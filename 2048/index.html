@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>2048</title>
+<style>
+  :root {
+    --bg:#14112b; --panel:#1f1a42; --text:#f1effa; --muted:#a9a3c9; --accent:#6c5ce7;
+    --board:min(92vw, calc(100vh - 170px), 480px); --gap:calc(var(--board) * 0.028);
+    --s:calc((var(--board) - var(--gap) * 5) / 4);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; }
+  body {
+    background: radial-gradient(800px 500px at 50% -10%, #2a1f5c, transparent 70%), var(--bg);
+    color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden; user-select:none; -webkit-user-select:none; touch-action:none;
+  }
+  .game { width:var(--board); display:flex; flex-direction:column; gap:12px; }
+  .top { display:flex; align-items:center; gap:8px; }
+  .top h1 { margin:0 auto 0 0; font-size:clamp(28px, 9vw, 44px); letter-spacing:-.03em; line-height:1; }
+  .box { background:var(--panel); border-radius:10px; padding:6px 12px; border:1px solid #ffffff14; text-align:center; min-width:70px; }
+  .box h3 { margin:0; font-size:10px; letter-spacing:.12em; color:var(--muted); text-transform:uppercase; }
+  .box .v { font-size:18px; font-weight:800; }
+  .bar { display:flex; align-items:center; gap:8px; }
+  .bar p { margin:0 auto 0 0; color:var(--muted); font-size:13px; }
+  button {
+    padding:8px 16px; border-radius:10px; border:0; cursor:pointer; touch-action:manipulation;
+    background:var(--accent); color:#fff; font:inherit; font-weight:700; white-space:nowrap;
+  }
+  button.ghost { background:var(--panel); border:1px solid #ffffff22; }
+  button:disabled { opacity:.4; cursor:default; }
+  .board {
+    position:relative; width:var(--board); height:var(--board); border-radius:12px;
+    background:#0b0918; border:2px solid #6c5ce766;
+  }
+  .cell, .tile {
+    position:absolute; left:0; top:0; width:var(--s); height:var(--s); border-radius:8px;
+    transform: translate(calc(var(--gap) + var(--c) * (var(--s) + var(--gap)) - 2px),
+                         calc(var(--gap) + var(--r) * (var(--s) + var(--gap)) - 2px));
+  }
+  .cell { background:#ffffff0d; }
+  .tile { transition: transform .11s ease-in-out; z-index:1; }
+  .tile.merged { z-index:2; }
+  .tile b {
+    display:flex; align-items:center; justify-content:center; width:100%; height:100%;
+    border-radius:8px; font-weight:800; font-size:calc(var(--s) * var(--f, .45));
+    background:var(--tc); color:var(--tt, #1a1205); box-shadow: 0 0 calc(var(--s) * var(--glow, 0)) var(--tc);
+  }
+  .tile.new b { animation: appear .18s ease-out; }
+  .tile.pop b { animation: pop .18s ease-out; }
+  @keyframes appear { from { transform: scale(0); } to { transform: scale(1); } }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  .overlay {
+    position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:10px; background:#0b0918d9; border-radius:10px; text-align:center; padding:20px;
+  }
+  .overlay[hidden] { display:none; }
+  .overlay h2 { margin:0; font-size:32px; letter-spacing:-.02em; }
+  .overlay p { margin:0; color:var(--muted); }
+  .overlay .row { display:flex; gap:8px; margin-top:6px; }
+  .overlay button { padding:10px 22px; font-size:16px; }
+  .keys { font-size:12px; color:var(--muted); text-align:center; }
+  .keys b { color:var(--text); font-weight:600; }
+  @supports (height: 100dvh) { :root { --board:min(92vw, calc(100dvh - 170px), 480px); } }
+  @media (pointer: coarse) { :root { --board:min(92vw, calc(100dvh - 130px), 480px); } .keys { display:none; } }
+  @media (max-width: 420px) { .bar p { display:none; } .bar { justify-content:flex-end; } .game { gap:8px; } }
+</style>
+</head>
+<body>
+<div class="game">
+  <div class="top">
+    <h1>2048</h1>
+    <div class="box"><h3>Score</h3><div class="v" id="score">0</div></div>
+    <div class="box"><h3>Best</h3><div class="v" id="best">0</div></div>
+  </div>
+  <div class="bar">
+    <p>Join the numbers to reach 2048.</p>
+    <button id="newGame">New game</button>
+  </div>
+  <div class="board" id="board">
+    <div id="overlay" class="overlay" hidden>
+      <h2 id="ovTitle"></h2>
+      <p id="ovText"></p>
+      <div class="row" id="ovButtons"></div>
+    </div>
+  </div>
+  <div class="keys"><b>Arrow keys</b> or <b>WASD</b> to slide · <b>N</b> new game · swipe on touch screens</div>
+</div>
+
+<script>
+const N = 4, SLIDE_MS = 110;
+const board = document.getElementById('board');
+const scoreEl = document.getElementById('score'), bestEl = document.getElementById('best');
+const overlay = document.getElementById('overlay');
+
+// Tile colours: cool purples for small numbers, warming up to gold
+const COLORS = {
+  2:    ['#d9d3ff'], 4:    ['#bfb5ff'], 8:    ['#9f8cff', '#fff'], 16:   ['#7f6bff', '#fff'],
+  32:   ['#5b8cff', '#fff'], 64:   ['#3ec7ff'], 128:  ['#5be37a'], 256:  ['#b8e34a'],
+  512:  ['#ffd23f'], 1024: ['#ff9f43'], 2048: ['#ff5d73', '#fff'],
+};
+
+let grid, tiles, score, best = 0, won, keepGoing, over, pending = null, nextId = 1;
+try { best = +localStorage.getItem('2048-best') || 0; } catch (e) {}
+
+for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.style.setProperty('--r', r); cell.style.setProperty('--c', c);
+  board.appendChild(cell);
+}
+
+function makeTile(r, c, v, cls) {
+  const t = { id: nextId++, r, c, v, merged: false, el: document.createElement('div') };
+  t.el.className = 'tile' + (cls ? ' ' + cls : '');
+  t.el.appendChild(document.createElement('b'));
+  place(t); paint(t);
+  board.appendChild(t.el);
+  grid[r][c] = t; tiles.push(t);
+  return t;
+}
+function place(t) { t.el.style.setProperty('--r', t.r); t.el.style.setProperty('--c', t.c); }
+function paint(t) {
+  const [bg, fg] = COLORS[t.v] || ['#c56cff', '#fff'];
+  const s = t.el.style, digits = String(t.v).length;
+  s.setProperty('--tc', bg); s.setProperty('--tt', fg || '#1a1205');
+  s.setProperty('--f', [0, .5, .48, .4, .32, .26, .22][digits] || .2);
+  s.setProperty('--glow', t.v >= 128 ? Math.min(.35, Math.log2(t.v) * .03 - .12) : 0);
+  t.el.firstChild.textContent = t.v;
+}
+
+function clearBoard() {
+  if (tiles) tiles.forEach(t => t.el.remove());
+  grid = Array.from({ length: N }, () => Array(N).fill(null));
+  tiles = [];
+}
+function empties() {
+  const out = [];
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!grid[r][c]) out.push([r, c]);
+  return out;
+}
+function spawn() {
+  const e = empties();
+  if (!e.length) return;
+  const [r, c] = e[Math.floor(Math.random() * e.length)];
+  makeTile(r, c, Math.random() < 0.9 ? 2 : 4, 'new');
+}
+
+function snapshot() {
+  return { cells: grid.map(row => row.map(t => (t ? t.v : 0))), score, won, keepGoing };
+}
+function load(s) {
+  clearBoard();
+  s.cells.forEach((row, r) => row.forEach((v, c) => { if (v) makeTile(r, c, v); }));
+  score = s.score; won = s.won; keepGoing = s.keepGoing; over = false;
+  updateScore(); checkOver();
+}
+function save() {
+  try { localStorage.setItem('2048-state', JSON.stringify(snapshot())); } catch (e) {}
+}
+
+function newGame() {
+  finishPending();
+  clearBoard();
+  score = 0; won = false; keepGoing = false; over = false;
+  spawn(); spawn();
+  updateScore(); hideOverlay(); save();
+}
+
+function updateScore() {
+  scoreEl.textContent = score;
+  if (score > best) {
+    best = score;
+    try { localStorage.setItem('2048-best', best); } catch (e) {}
+  }
+  bestEl.textContent = best;
+}
+
+const DIRS = { left: [0, -1], right: [0, 1], up: [-1, 0], down: [1, 0] };
+
+function move(dir) {
+  finishPending();
+  if (over || !overlay.hidden) return;
+  const [dr, dc] = DIRS[dir];
+  const rows = [...Array(N).keys()], cols = [...Array(N).keys()];
+  if (dr === 1) rows.reverse();
+  if (dc === 1) cols.reverse();
+  tiles.forEach(t => (t.merged = false));
+
+  let moved = false, gained = 0;
+  const dying = [], merged = [];
+  for (const r of rows) for (const c of cols) {
+    const t = grid[r][c];
+    if (!t) continue;
+    let pr = r, pc = c;
+    while (true) {
+      const nr = pr + dr, nc = pc + dc;
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N || grid[nr][nc]) break;
+      pr = nr; pc = nc;
+    }
+    const nr = pr + dr, nc = pc + dc;
+    const next = nr >= 0 && nr < N && nc >= 0 && nc < N ? grid[nr][nc] : null;
+    grid[r][c] = null;
+    if (next && next.v === t.v && !next.merged) {
+      // Slide into the neighbour and disappear; the neighbour doubles once the slide ends
+      next.merged = true; next.v *= 2; gained += next.v;
+      t.r = nr; t.c = nc; dying.push(t); merged.push(next);
+      moved = true;
+    } else {
+      grid[pr][pc] = t;
+      if (pr !== r || pc !== c) { t.r = pr; t.c = pc; moved = true; }
+    }
+    place(t);
+  }
+  if (!moved) return;
+
+  score += gained;
+  tiles = tiles.filter(t => !dying.includes(t));
+  tiles.forEach(t => t.el.classList.remove('new', 'pop'));
+  merged.forEach(t => t.el.classList.add('merged'));
+  updateScore();
+
+  const finish = () => {
+    pending = null;
+    dying.forEach(t => t.el.remove());
+    merged.forEach(t => {
+      paint(t);
+      t.el.classList.remove('merged');
+      void t.el.offsetWidth; // restart the pop animation
+      t.el.classList.add('pop');
+      if (t.v === 2048 && !won) won = true;
+    });
+    spawn();
+    save();
+    if (won && !keepGoing) showWin();
+    else checkOver();
+  };
+  pending = { finish, timer: setTimeout(finish, SLIDE_MS) };
+}
+function finishPending() {
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  pending.finish();
+}
+
+function canMove() {
+  if (empties().length) return true;
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const v = grid[r][c].v;
+    if ((c < N - 1 && grid[r][c + 1].v === v) || (r < N - 1 && grid[r + 1][c].v === v)) return true;
+  }
+  return false;
+}
+function checkOver() {
+  if (canMove()) return;
+  over = true;
+  showOverlay('Game over', `You scored ${score}.`, [['Try again', newGame]]);
+}
+function showWin() {
+  showOverlay('You made 2048!', 'Keep going for a bigger tile, or start fresh.', [
+    ['Keep going', () => { keepGoing = true; save(); hideOverlay(); }, true],
+    ['New game', newGame],
+  ]);
+}
+function showOverlay(title, text, buttons) {
+  document.getElementById('ovTitle').textContent = title;
+  document.getElementById('ovText').textContent = text;
+  const row = document.getElementById('ovButtons');
+  row.innerHTML = '';
+  for (const [label, fn, ghost] of buttons) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    if (ghost) b.className = 'ghost';
+    b.onclick = fn;
+    row.appendChild(b);
+  }
+  overlay.hidden = false;
+}
+function hideOverlay() { overlay.hidden = true; }
+
+document.getElementById('newGame').onclick = newGame;
+
+const KEYS = {
+  ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
+  a: 'left', d: 'right', w: 'up', s: 'down', A: 'left', D: 'right', W: 'up', S: 'down',
+};
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (KEYS[e.key]) { e.preventDefault(); move(KEYS[e.key]); }
+  else if (e.key === 'n' || e.key === 'N') newGame();
+});
+
+// Swipe anywhere on the page
+let touchStart = null;
+document.addEventListener('pointerdown', e => {
+  window.focus();
+  if (e.target.closest('button')) return;
+  touchStart = { x: e.clientX, y: e.clientY };
+});
+document.addEventListener('pointerup', e => {
+  if (!touchStart) return;
+  const dx = e.clientX - touchStart.x, dy = e.clientY - touchStart.y;
+  touchStart = null;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+  else move(dy > 0 ? 'down' : 'up');
+});
+document.addEventListener('pointercancel', () => (touchStart = null));
+
+// Pick up where the last game left off
+let saved = null;
+try { saved = JSON.parse(localStorage.getItem('2048-state')); } catch (e) {}
+if (saved && Array.isArray(saved.cells) && saved.cells.some(row => row.some(v => v))) {
+  load(saved);
+  if (won && !keepGoing && !over) showWin();
+} else {
+  newGame();
+}
+window.focus();
+</script>
+</body>
+</html>

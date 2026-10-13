@@ -24,6 +24,7 @@ source in Settings → Pages should be switched to `main`.
 
 - `cube-assault/`: first-person 3D shooter (Three.js bundled into the file).
 - `block-drop/`: falling-block puzzle with keyboard and touch controls.
+- `2048/`: sliding-number puzzle with keyboard and swipe controls.
 
 ## Adding a game
 

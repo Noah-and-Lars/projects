@@ -21,4 +21,14 @@ window.GAMES = [
     thumb: 'block-drop/thumb.svg',
     isNew: true,
   },
+  {
+    id: '2048',
+    title: '2048',
+    category: 'Puzzle',
+    description: 'Slide the tiles, join matching numbers and try to build a 2048 tile.',
+    controls: 'Keyboard or swipe',
+    path: '2048/index.html',
+    thumb: '2048/thumb.svg',
+    isNew: true,
+  },
 ];
