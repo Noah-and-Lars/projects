@@ -27,15 +27,15 @@ window.GAMES = [
     id: 'cube-assault',
     title: 'Cube Assault',
     category: 'Shooter',
-    tagline: 'Hold the village against endless waves of cubes.',
-    description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and unlock new weapons.',
+    tagline: 'Hold the line against waves of cubes, or ride into the new story campaign.',
+    description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and level up, unlock weapons from a knife to a rocket launcher that blows holes in buildings, and play the new campaign: Russia, 1944.',
     controls: 'Keyboard + mouse',
     keys: [['W A S D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right-click', 'Zoom'], ['Space', 'Jump'],
-           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Weapons'], ['Esc', 'Pause']],
+           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns'], ['6', 'Turret'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['E', 'Claim flag (campaign)'], ['Esc', 'Pause']],
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.svg?v=3',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-13T14:17:53+11:00',
+    updated: '2026-10-13T20:22:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -89,6 +89,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 1.9.2: a story campaign (Russia, 1944), the Frontier map, destructible buildings, a rocket launcher and menu music.' },
   { date: '2026-10-13', game: 'poly-racer', text: 'Poly Racer now has drifting. Brake while turning to slide through corners.' },
   { date: '2026-10-13', game: 'poly-racer', text: 'New game: Poly Racer. Six low-poly tracks with loops, jumps and a ghost of your best run.' },
   { date: '2026-10-13', game: 'block-drop', text: 'Block Drop is now called Blocktris, with new cover art.' },

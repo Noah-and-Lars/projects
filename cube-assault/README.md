@@ -1,19 +1,16 @@
 # Cube Assault
 
-A first-person 3D shooter in a single HTML file. Defend a village from waves of cubes, earn coins, level up your profile, and buy the Extreme Gun, a turret and a combat knife.
+A first-person 3D shooter in a single HTML file. Defend a village from waves of cubes, earn coins, level up your profile, and play the story campaign.
 
-## Play
+Play it online at https://noah-and-lars.github.io/projects/cube-assault/, or download `index.html` and open it in Chrome, Edge, Firefox or Safari. It works offline: the 3D engine, fonts and music are all built into the file. You need a keyboard and mouse.
 
-Download `index.html` and open it in Chrome, Edge, Firefox or Safari. It works offline: the 3D engine and fonts are built into the file. You need a keyboard and mouse.
+## Modes
 
-The first time you play, the game asks for your name. Press Play, then pick a map:
+Press Play to choose:
 
+- **Campaign**: story levels played in order. Level 1, *The Birch Road* (Russia, 1944), starts with a cutscene in an army jeep, then you hold the road against 5 waves of Rifle Cubes and claim the cube camp's flag. Levels 2 to 5 are coming soon.
 - **Classic Village**: the original walled village. Small, tight and fast.
-- **Frontier (work in progress)**: four times bigger, with the village in the middle, a dense forest, a mountain range, a farm and a town.
-
-Every building in Frontier's town can be entered. Take the stairs up floor by floor to the roof, where a low wall gives you cover for sniping. The cubes follow you: they come in through the door and climb the stairs after you.
-
-You always start in the middle of the village.
+- **Frontier** (work in progress): four times bigger, with a village, a dense forest, a mountain range, a town and a farm.
 
 ## Controls
 
@@ -26,10 +23,12 @@ You always start in the middle of the village.
 | Space | Jump |
 | Shift | Sprint |
 | R | Reload |
-| 1–5 / scroll wheel | Switch weapon |
+| 1–5 / scroll wheel | Switch gun |
+| 6 | Place your turret |
+| 7 | Knife (swipe the mouse or trackpad to slash) |
+| 8 | Rocket launcher |
 | Q | Swap to last weapon |
-| 6 | Place your turret (if you've bought one) |
-| Hold 7 | Combat knife (if you've bought one) |
+| E | Claim the flag (campaign) |
 | Esc | Pause |
 
 ## Enemies
@@ -41,31 +40,27 @@ You always start in the middle of the village.
 | Blue | Wave 7 | Keeps its distance and shoots slow energy shots. |
 | Brute (purple) | Wave 10 | Heavy armour, heavy melee. |
 | King (gold) | Wave 15, then every 5 waves | Boss. Leaps and slams the ground; jump the shockwave. |
+| Rifle Cube (red, armed) | Campaign only | Keeps its distance and shoots. |
 
 ## Weapons and shop
 
 - **Pistol** and **Rifle**: every game starts with these.
 - **Shotgun** and **Sniper**: unlock when you reach wave 5, in every game.
-- **Extreme Gun**: 1,000 coins in the Shop. Full-auto plasma; every shot explodes.
-- **Turret**: 400 coins in the Shop. Press 6 to set it down next to you. It shoots the nearest cube once a second and finishes any normal cube in two hits. It has 200 HP, never heals, and cubes will attack it. One at a time.
-- **Combat Knife**: 40 coins in the Shop. Hold 7 to keep slashing; every slash hits every cube in front of you within arm's reach. No ammo, no reloads.
+- **Knife**: 50 coins. Never runs out.
+- **Turret**: 200 coins. Shoots the nearest cube once a second, 200 HP, one at a time.
+- **Rocket Launcher**: 250 coins. One rocket at a time; the blast blows holes in houses, buildings and trees until the round ends.
+- **Extreme Gun**: 1,000 coins. Full-auto plasma, 200 rounds; every shot explodes.
 
 Every cube you destroy earns 1 coin (the King earns 10).
 
-## Profile
+## Profile and settings
 
-Click your profile in the top right of the main menu to see your level, total accuracy, shots fired, cubes killed, time played and best wave, and to pick a profile picture. Every point you score is XP.
+Your profile (top right of the main menu) shows your level, accuracy, shots fired, cubes killed, time played and best wave, and lets you pick a 3D profile picture. Everything is saved in your own browser. **Settings → Reset all data** starts fresh.
 
-The first time you load a new version, a What's New pop-up shows what was added.
-
-Everything is saved in your browser. **Settings → Reset all data** wipes it and starts fresh.
-
-## Graphics
-
-Settings has four graphics levels: Potato, Low, High and Ultra. Field of view goes from 60 to 120.
+Settings also has field of view, mouse speed, volume, menu music on or off, and four graphics levels: Potato, Low, High and Ultra.
 
 ## Credits
 
 - [three.js](https://threejs.org) r128, MIT License, embedded in the file.
 - Russo One and Barlow fonts, SIL Open Font License, embedded in the file.
-- All models, textures and sounds are generated in code.
+- All models, textures, sounds and music are generated in code.
