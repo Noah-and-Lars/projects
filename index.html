@@ -8,6 +8,21 @@
 <link rel="stylesheet" href="arcade.css">
 </head>
 <body>
+<div id="intro" class="intro" aria-hidden="true">
+  <h1 class="intro-title">Noah's and Lars's Arcade</h1>
+  <p class="intro-sub">Made by Lars and Noah</p>
+</div>
+<script>
+// Play the intro once per visit, not every time someone comes back from a game. A tap skips it.
+(() => {
+  const intro = document.getElementById('intro');
+  let seen = false;
+  try { seen = sessionStorage.getItem('intro-seen'); sessionStorage.setItem('intro-seen', '1'); } catch (e) {}
+  if (seen) { intro.remove(); return; }
+  intro.addEventListener('click', () => intro.classList.add('skip'));
+  intro.addEventListener('animationend', e => { if (e.target === intro) intro.remove(); });
+})();
+</script>
 <header class="top">
   <a class="brand" href="index.html"><span class="logo"></span>Noah's and Lars's Arcade</a>
   <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
