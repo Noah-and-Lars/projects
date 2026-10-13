@@ -33,7 +33,7 @@ window.GAMES = [
     keys: [['W A S D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right-click', 'Zoom'], ['Space', 'Jump'],
            ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Weapons'], ['Esc', 'Pause']],
     path: 'cube-assault/index.html',
-    thumb: 'cube-assault/thumb.svg',
+    thumb: 'cube-assault/thumb.svg?v=3',
     added: '2026-10-13T11:03:05+11:00',
     updated: '2026-10-13T14:17:53+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
