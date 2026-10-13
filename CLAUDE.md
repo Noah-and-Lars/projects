@@ -17,6 +17,8 @@ source in Settings → Pages should be switched to `main`.
 - `games.js`: the list of games. One entry per game (id, title, category,
   description, controls, path, thumb, isNew).
 - `arcade.css`: shared styles for the two pages above.
+  Both pages load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
+  files for 10 minutes, so bump N in both pages whenever either file changes.
 - The footer of both pages shows a contact email for bug reports. It's set once
   in `games.js` (`CONTACT_EMAIL`).
 - One folder per game, each with a self-contained `index.html` and a `thumb.svg`
