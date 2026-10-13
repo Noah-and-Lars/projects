@@ -11,6 +11,7 @@ Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade
 | [Cube Assault](cube-assault/) | 3D shooter | Keyboard + mouse |
 | [Blocktris](block-drop/) | Falling-block puzzle | Keyboard or touch |
 | [2048](2048/) | Sliding-number puzzle | Keyboard or swipe |
+| [Poly Racer](poly-racer/) | 3D time-trial racing | Keyboard or touch |
 
 ## Adding a game
 

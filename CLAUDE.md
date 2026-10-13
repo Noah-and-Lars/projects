@@ -25,6 +25,12 @@ source in Settings → Pages should be switched to `main`.
 - `cube-assault/`: first-person 3D shooter (Three.js bundled into the file).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.
 - `2048/`: sliding-number puzzle with keyboard and swipe controls.
+- `poly-racer/`: low-poly 3D time-trial racer in the style of PolyTrack (Three.js
+  copied from Cube Assault into the file). Tracks are strings of pieces in the
+  `TRACKS` list (S straight, L/R turns, BL/BR banked, HL/HR hairpins, U/D hills,
+  O loop, K + G + LAND jump, C checkpoint, F finish). Car physics is a raycast
+  vehicle against the track's own triangles. Best times, splits and ghosts are
+  saved per track in localStorage.
 
 ## Adding a game
 
