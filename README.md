@@ -1,1 +1,17 @@
 # projects
+
+**Jimmy's Arcade**: browser games that run straight from this repo, no installs.
+
+Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade online.
+
+## Games
+
+| Game | Type | Controls |
+|---|---|---|
+| [Cube Assault](cube-assault/) | 3D shooter | Keyboard + mouse |
+| [Block Drop](block-drop/) | Falling-block puzzle | Keyboard or touch |
+
+## Adding a game
+
+1. Make a folder with the game's `index.html` and a `thumb.svg` (or `.png`) cover.
+2. Add one entry for it in `games.js`.

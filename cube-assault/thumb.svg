@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2a4a"/>
+      <stop offset="1" stop-color="#3b5d8f"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="180" fill="url(#sky)"/>
+  <rect y="128" width="320" height="52" fill="#2f5a2e"/>
+  <polygon points="0,128 60,96 120,128" fill="#24334f"/>
+  <polygon points="200,128 270,90 320,118 320,128" fill="#24334f"/>
+  <!-- cubes -->
+  <g transform="translate(70,98)">
+    <polygon points="0,10 18,0 36,10 18,20" fill="#ff6b6b"/>
+    <polygon points="0,10 18,20 18,42 0,32" fill="#c0392b"/>
+    <polygon points="36,10 18,20 18,42 36,32" fill="#e04848"/>
+  </g>
+  <g transform="translate(190,88) scale(1.4)">
+    <polygon points="0,10 18,0 36,10 18,20" fill="#c79bff"/>
+    <polygon points="0,10 18,20 18,42 0,32" fill="#7a3fc4"/>
+    <polygon points="36,10 18,20 18,42 36,32" fill="#9b5de5"/>
+  </g>
+  <g transform="translate(140,112) scale(0.7)">
+    <polygon points="0,10 18,0 36,10 18,20" fill="#7cf29a"/>
+    <polygon points="0,10 18,20 18,42 0,32" fill="#2e9e4f"/>
+    <polygon points="36,10 18,20 18,42 36,32" fill="#41c466"/>
+  </g>
+  <!-- crosshair -->
+  <g stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.9">
+    <line x1="160" y1="62" x2="160" y2="74"/>
+    <line x1="160" y1="86" x2="160" y2="98"/>
+    <line x1="142" y1="80" x2="154" y2="80"/>
+    <line x1="166" y1="80" x2="178" y2="80"/>
+  </g>
+</svg>

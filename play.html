@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jimmy's Arcade</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='2' y='2' width='12' height='12' rx='3' fill='%236c5ce7'/><rect x='6' y='6' width='4' height='4' fill='%23fff'/></svg>">
+<link rel="stylesheet" href="arcade.css">
+</head>
+<body class="player">
+<header class="top">
+  <a class="back" href="index.html" aria-label="Back to all games">← All games</a>
+  <h1 id="title" class="ptitle"></h1>
+  <div class="actions">
+    <a id="newtab" class="btn ghost" target="_blank" rel="noopener">Open in new tab</a>
+    <button id="fs" class="btn">Fullscreen</button>
+  </div>
+</header>
+
+<main class="stage-wrap">
+  <div id="stage" class="stage">
+    <iframe id="frame" title="Game" allowfullscreen></iframe>
+  </div>
+  <p id="hint" class="hint"></p>
+
+  <h2 class="more-h">More games</h2>
+  <section id="more" class="grid small"></section>
+</main>
+
+<script src="games.js"></script>
+<script>
+const id = new URLSearchParams(location.search).get('game');
+const game = GAMES.find(g => g.id === id);
+
+if (!game) {
+  location.replace('index.html');
+} else {
+  document.title = game.title + " · Jimmy's Arcade";
+  document.getElementById('title').textContent = game.title;
+  document.getElementById('frame').src = game.path;
+  document.getElementById('newtab').href = game.path;
+  document.getElementById('hint').textContent =
+    'Controls: ' + game.controls + '. Click the game to give it focus.';
+
+  const stage = document.getElementById('stage');
+  document.getElementById('fs').onclick = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else (stage.requestFullscreen || stage.webkitRequestFullscreen).call(stage);
+  };
+
+  const more = document.getElementById('more');
+  for (const g of GAMES.filter(g => g.id !== id)) {
+    const a = document.createElement('a');
+    a.className = 'tile';
+    a.href = 'play.html?game=' + encodeURIComponent(g.id);
+    a.innerHTML = '<div class="thumb"><img alt="" loading="lazy"></div><div class="info"><h2></h2></div>';
+    a.querySelector('img').src = g.thumb;
+    a.querySelector('h2').textContent = g.title;
+    more.appendChild(a);
+  }
+  if (!more.children.length) document.querySelector('.more-h').hidden = true;
+}
+</script>
+</body>
+</html>
