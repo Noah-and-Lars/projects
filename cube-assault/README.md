@@ -1,6 +1,6 @@
 # Cube Assault
 
-A first-person 3D shooter in a single HTML file. Defend a village from waves of cubes, earn coins, level up your profile, and buy the Extreme Gun and a turret.
+A first-person 3D shooter in a single HTML file. Defend a village from waves of cubes, earn coins, level up your profile, and buy the Extreme Gun, a turret and a combat knife.
 
 ## Play
 
@@ -9,7 +9,9 @@ Download `index.html` and open it in Chrome, Edge, Firefox or Safari. It works o
 The first time you play, the game asks for your name. Press Play, then pick a map:
 
 - **Classic Village**: the original walled village. Small, tight and fast.
-- **Frontier (work in progress)**: four times bigger, with the village in the middle, a dense forest, a mountain range, a town and a farm.
+- **Frontier (work in progress)**: four times bigger, with the village in the middle, a dense forest, a mountain range, a farm and a town.
+
+Every building in Frontier's town can be entered. Take the stairs up floor by floor to the roof, where a low wall gives you cover for sniping. The cubes follow you: they come in through the door and climb the stairs after you.
 
 You always start in the middle of the village.
 
@@ -27,6 +29,7 @@ You always start in the middle of the village.
 | 1–5 / scroll wheel | Switch weapon |
 | Q | Swap to last weapon |
 | 6 | Place your turret (if you've bought one) |
+| Hold 7 | Combat knife (if you've bought one) |
 | Esc | Pause |
 
 ## Enemies
@@ -45,12 +48,15 @@ You always start in the middle of the village.
 - **Shotgun** and **Sniper**: unlock when you reach wave 5, in every game.
 - **Extreme Gun**: 1,000 coins in the Shop. Full-auto plasma; every shot explodes.
 - **Turret**: 400 coins in the Shop. Press 6 to set it down next to you. It shoots the nearest cube once a second and finishes any normal cube in two hits. It has 200 HP, never heals, and cubes will attack it. One at a time.
+- **Combat Knife**: 40 coins in the Shop. Hold 7 to keep slashing; every slash hits every cube in front of you within arm's reach. No ammo, no reloads.
 
 Every cube you destroy earns 1 coin (the King earns 10).
 
 ## Profile
 
 Click your profile in the top right of the main menu to see your level, total accuracy, shots fired, cubes killed, time played and best wave, and to pick a profile picture. Every point you score is XP.
+
+The first time you load a new version, a What's New pop-up shows what was added.
 
 Everything is saved in your browser. **Settings → Reset all data** wipes it and starts fresh.
 

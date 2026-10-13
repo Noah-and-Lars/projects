@@ -265,7 +265,27 @@
   .bars { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; margin: 12px 0 14px; font-size: 13px; color: var(--muted); }
   .bar { height: 8px; background: #252d38; border-radius: 4px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--plasma); }
-  #buyBtn, #buyTurret { width: 100%; }
+  #buyBtn, #buyTurret, #buyKnife { width: 100%; }
+  #knifeNote { font-size: 14px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
+  .knifeArt { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; border: 1px solid var(--line);
+    background: radial-gradient(circle at 50% 60%, rgba(239, 68, 68, .22), transparent 70%), #0a0e13; }
+  .newTag { font-family: var(--body); font-weight: 800; font-size: 11px; letter-spacing: 1px; color: #fff; background: #ef4444; border-radius: 4px; padding: 2px 6px; vertical-align: middle; margin-left: 6px; }
+
+  /* What's new pop-up, shown once per version */
+  #menu-whatsnew { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0 0 22px; max-width: 560px; overflow: hidden; gap: 12px; }
+  .wnBanner { width: 100%; position: relative; padding: 22px 24px 20px; text-align: left; color: #1a1205; overflow: hidden;
+    background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .14) 0 14px, transparent 14px 28px), linear-gradient(100deg, #f5b82e, #ffd166 55%, #f59e0b); }
+  .wnBanner .wnTag { display: inline-block; font-weight: 800; font-size: 12px; letter-spacing: 2px; background: #1a1205; color: var(--gold-hi); border-radius: 4px; padding: 3px 8px; margin-bottom: 8px; }
+  .wnBanner b { display: block; font-family: var(--display); font-weight: 400; font-size: clamp(30px, 7vw, 44px); line-height: 1; letter-spacing: 1px; text-wrap: balance; }
+  .wnBanner small { display: block; font-size: 15px; font-weight: 600; margin-top: 8px; line-height: 1.4; max-width: 46ch; }
+  .wnBanner::after { content: ""; position: absolute; right: -18px; bottom: -18px; width: 96px; height: 96px; border-radius: 10px; background: #dc2626; transform: rotate(14deg);
+    box-shadow: inset -14px -14px 0 rgba(0, 0, 0, .26); opacity: .9; }
+  .wnList { list-style: none; width: 100%; padding: 0 22px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+  .wnList li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; background: #1b222c; border: 1px solid #343d48; border-radius: 10px; padding: 10px 12px; }
+  .wnList i { font-style: normal; font-size: 22px; line-height: 1; text-align: center; padding-top: 2px; }
+  .wnList b { display: block; font-size: 16px; margin-bottom: 2px; }
+  .wnList span { font-size: 14px; color: var(--muted); line-height: 1.45; }
+  @media (max-width: 480px) { .wnBanner { padding: 18px 16px; } .wnList { padding: 0 14px; } }
   #turretNote { font-size: 14px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
   .turretArt { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; border: 1px solid var(--line);
     background: radial-gradient(circle at 50% 60%, rgba(245, 184, 46, .25), transparent 70%), #0a0e13; }
@@ -347,13 +367,32 @@
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <p class="controls"><kbd>WASD</kbd> move · <kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot · <kbd>Right-click</kbd> zoom · <kbd>Space</kbd> jump · <kbd>Shift</kbd> sprint · <kbd>R</kbd> reload · <kbd>1</kbd>–<kbd>5</kbd> / <kbd>Scroll</kbd> weapons · <kbd>Q</kbd> last weapon · <kbd>6</kbd> turret · <kbd>Esc</kbd> pause</p>
-    <button class="link" data-action="notes">v1.7.1 · What's new</button>
+    <p class="controls"><kbd>WASD</kbd> move · <kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot · <kbd>Right-click</kbd> zoom · <kbd>Space</kbd> jump · <kbd>Shift</kbd> sprint · <kbd>R</kbd> reload · <kbd>1</kbd>–<kbd>5</kbd> / <kbd>Scroll</kbd> weapons · <kbd>Q</kbd> last weapon · <kbd>6</kbd> turret · hold <kbd>7</kbd> knife · <kbd>Esc</kbd> pause</p>
+    <button class="link" data-action="whatsnew">v1.7.2 · What's new</button>
+  </div>
+
+  <div class="menu" id="menu-whatsnew">
+    <div class="wnBanner"><span class="wnTag" id="wnTag">NEW IN v1.7.2</span><b id="wnTitle"></b><small id="wnSub"></small></div>
+    <ul class="wnList" id="wnList"></ul>
+    <button class="btn" data-action="back">Let's go</button>
+    <button class="link" data-action="notes">All patch notes</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v1.7.2 <span>Climb the town</span></h3><ul>
+        <li>Every building in Frontier's town is now hollow and open. Walk in through the door and take the stairs up floor by floor to the roof, where a low wall gives you cover for sniping.</li>
+        <li>Cubes follow you. They walk in through the door, climb the stairs and come up after you, and if you jump down they take the stairs back down. Even the King squeezes up. Blue Cubes still prefer to shoot at you from the street when they can see you.</li>
+        <li>Outside, cubes now walk round the town's buildings instead of bumping into the walls.</li>
+        <li>New in the Shop: the Combat Knife (40 coins). Hold 7 to pull it out and keep slashing. Every slash hits every cube in front of you within arm's reach.</li>
+        <li>A What's New pop-up now opens the first time you load each new version.</li>
+        <li>Fix: holding Shift to sprint stopped the number keys from switching guns.</li>
+        <li>Fix: a big hit could knock a cube straight through a thin wall.</li>
+        <li>Fix: the "New guns unlocked" banner could pop up in your next game if you quit right after reaching wave 5.</li>
+        <li>Fix: health packs, the turret and the King's shockwave now work at the height they happen, not always at ground level.</li>
+        <li>Fix: cubes could spawn inside a house or a mountain and get stuck there.</li>
+      </ul></section>
       <section><h3>v1.7.1 <span>Turret &amp; fixes</span></h3><ul>
         <li>New in the Shop: the Turret (400 coins). Press 6 in a game to set it down next to you. It shoots the nearest cube it can see once a second, and any normal cube goes down in two hits. The King only takes a scratch from each shot.</li>
         <li>Your turret has 200 HP, double yours, and never heals. Cubes will go for it if it's closer than you, and enemy shots and the King's shockwave hurt it. Its health shows above yours, and it appears on the radar. You can only have one out at a time.</li>
@@ -484,6 +523,15 @@
         <div id="turretNote"></div>
       </div>
     </div>
+    <div class="item">
+      <img class="knifeArt" id="knifeArt" alt="The combat knife">
+      <div>
+        <h3>Combat Knife <span class="newTag">NEW</span></h3>
+        <p>Hold <kbd>7</kbd> in a game to pull it out. It keeps slashing while you hold the key, and every slash hits every cube in front of you within arm's reach. No ammo, no reloads.</p>
+        <button class="btn" id="buyKnife">Buy</button>
+        <div id="knifeNote"></div>
+      </div>
+    </div>
     <button class="btn secondary" data-action="back">Back</button>
   </div>
 
@@ -493,7 +541,7 @@
       <button class="mapcard" data-map="classic"><canvas width="320" height="320" id="prevClassic"></canvas>
         <b>Classic Village</b><span>The original walled village from before v1.7. Small, tight and fast.</span></button>
       <button class="mapcard" data-map="big"><canvas width="320" height="320" id="prevBig"></canvas>
-        <b>Frontier <em class="wip">WIP</em></b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm. Still a work in progress.</span></button>
+        <b>Frontier <em class="wip">WIP</em></b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a farm and a town you can climb to the rooftops.</span></button>
     </div>
     <button class="btn secondary" data-action="back">Back</button>
   </div>
@@ -682,6 +730,9 @@ const Sound = (() => {
       noise({ dur: 0.08, freq: 900, q: 1, vol: 0.3 }); tone({ freq: 220, dur: 0.06, type: 'square', vol: 0.06 });
       noise({ dur: 0.05, freq: 2200, q: 3, vol: 0.25, delay: 0.16 }); tone({ freq: 520, to: 880, dur: 0.18, type: 'triangle', vol: 0.08, delay: 0.26 });
     },
+    // the knife: a fast whoosh, and a meaty thwack when it connects
+    slash: () => { noise({ dur: 0.16, freq: 700, to: 3600, q: 0.8, vol: 0.28 }); noise({ dur: 0.05, freq: 5200, q: 2, vol: 0.06, delay: 0.06 }); },
+    stab: n => { noise({ dur: 0.07, freq: 900, q: 1, vol: 0.4 }); tone({ freq: 180, to: 70, dur: 0.09, vol: 0.3 * Math.min(2, n || 1) }); noise({ dur: 0.04, freq: 3000, q: 4, vol: 0.12, delay: 0.02 }); },
     magIn: () => { noise({ dur: 0.04, freq: 1600, q: 3, vol: 0.32 }); tone({ freq: 500, dur: 0.03, type: 'square', vol: 0.05 }); },
     death: () => { tone({ freq: 300, to: 40, dur: 1.2, type: 'sawtooth', vol: 0.14 }); noise({ dur: 0.8, freq: 400, vol: 0.2, to: 80 }); },
   };
@@ -1274,7 +1325,7 @@ let moreGrass = (() => {
   return mesh;
 })();
 delete scene.add;
-MAPS.classic = { root: classicRoot, arena: 40, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(), grass, flowers, moreGrass };
+MAPS.classic = { root: classicRoot, arena: 40, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(), towers: [], grass, flowers, moreGrass };
 
 // ---------- Frontier: the big four-zone map (v1.7, work in progress) ----------
 // village in the middle, forest to the north-west, mountains north-east, town south-west, farm south-east
@@ -1314,7 +1365,25 @@ function well() {
   noGrass.push({ x: 0, z: 0, hx: 1.6, hz: 1.6 });
 }
 let facadeTex = null;
-function building(x, z, w, d, h, color) {
+// Town buildings are hollow: a door, a floor every 3.5 m, switchback stairs and a roof with a low wall round it.
+// Each one is listed in `towers` with the waypoints cubes use to follow you in and up.
+const FLOOR_H = 3.5;
+const towers = [];
+const levelOf = y => Math.max(0, Math.floor((y + 0.3) / FLOOR_H)); // the top step already counts as the floor above
+function towerAt(x, z, pad = 0) {
+  for (const t of towers) if (Math.abs(x - t.x) < t.hx + pad && Math.abs(z - t.z) < t.hz + pad) return t;
+  return null;
+}
+function stairMesh(len, rise, width, mat) {
+  const N = Math.round(rise / 0.25), run = len / N, r = rise / N, s = new THREE.Shape();
+  // treads sit half a step either side of the slope you actually walk on
+  s.moveTo(0, 0);
+  for (let i = 0; i < N; i++) { s.lineTo(i * run, Math.min(rise, (i + 0.5) * r)); s.lineTo((i + 1) * run, Math.min(rise, (i + 0.5) * r)); }
+  s.lineTo(len, rise); s.lineTo(len, 0);
+  const geo = new THREE.ExtrudeGeometry(s, { depth: width, bevelEnabled: false }).translate(0, 0, -width / 2);
+  return new THREE.Mesh(geo, mat);
+}
+function building(x, z, w, d, h, color, door = 1) {
   facadeTex = facadeTex || tex(makeCanvas(128, (g, S) => {
     g.fillStyle = '#ebe7dd'; g.fillRect(0, 0, S, S);
     g.fillStyle = '#cfc9bc'; g.fillRect(0, S - 10, S, 10);
@@ -1324,12 +1393,74 @@ function building(x, z, w, d, h, color) {
     g.fillStyle = '#f6f3ec'; g.fillRect(62, 30, 4, 64);
     g.fillStyle = '#b9b3a6'; g.fillRect(26, 98, 76, 6);
   }));
-  const fac = new THREE.MeshLambertMaterial({ color, map: retex(facadeTex, Math.max(1, Math.round(Math.max(w, d) / 4)), Math.max(1, Math.round(h / 3.2))) });
-  const roof = lambert(0x5b5f66);
-  addBox(x, z, w, h, d, 0, { mat: [fac, fac, roof, roof, fac, fac] });
-  addBox(x, z, w + 0.4, 0.45, d + 0.4, 0x7a7e85, { y: h, collide: false });
-  addBox(x + w * 0.2, z - d * 0.15, 2, 1.2, 1.6, 0x9aa0a6, { y: h + 0.45, collide: false, solid: false });
-  addBox(x, z + d / 2 + 0.03, 1.6, 2.3, 0.08, 0x3a2a1e, { collide: false, solid: false, shadow: false }); // door
+  const n = Math.max(2, Math.round(h / FLOOR_H)), H = n * FLOOR_H, T = 0.4, DW = 2.8, DH = 2.9, cap = lambert(0x7a7e85);
+  const fac = (len, hh) => new THREE.MeshLambertMaterial({ color, map: retex(facadeTex, Math.max(1, Math.round(len / 4)), Math.max(1, Math.round(hh / FLOOR_H))) });
+  // a little glow on floors and stairs stands in for the light coming through the windows
+  const floorMat = cached('towerFloor', () => new THREE.MeshLambertMaterial({ color: 0xa39d93, emissive: 0x2e2b26 }));
+  const stairMat = cached('towerStair', () => new THREE.MeshLambertMaterial({ color: 0x8e8880, emissive: 0x24221e })), roofMat2 = lambert(0x5b5f66);
+  // outer walls; the door is in the wall facing the street (door = +1: the +z side, -1: the -z side)
+  const zd = z + door * d / 2, zb = z - door * d / 2, seg = (w + T - DW) / 2;
+  addBox(x, zb, w + T, H, T, 0, { mat: fac(w, H) });
+  for (const s of [-1, 1]) addBox(x + s * w / 2, z, T, H, d - T, 0, { mat: fac(d, H) });
+  for (const s of [-1, 1]) addBox(x + s * (DW / 2 + seg / 2), zd, seg, H, T, 0, { mat: fac(seg, H) });
+  addBox(x, zd, DW, H - DH, T, 0, { mat: fac(DW, H - DH), y: DH, collide: false });
+  for (const s of [-1, 1]) addBox(x + s * (DW / 2 + 0.07), zd, 0.14, DH, T + 0.1, 0x3a2a1e, { collide: false, solid: false, shadow: false });
+  addBox(x, zd, DW + 0.28, 0.14, T + 0.1, 0x3a2a1e, { y: DH - 0.07, collide: false, solid: false, shadow: false });
+
+  // the inside, in a local frame: u runs along the longer side, v across it
+  const alongX = w >= d, IL = (alongX ? w : d) - T, IS = (alongX ? d : w) - T;
+  const W = (u, v) => alongX ? [x + u, z + v] : [x + v, z + u];
+  const Lr = Math.min(5, IL - 2.6), bw = Math.min(2.2, (IS - 0.6) / 2);
+  // the first flight runs along the side away from the door; flights switch sides and direction every floor
+  const farV = alongX ? -door * (IS / 2 - bw / 2) : -(IS / 2 - bw / 2);
+  const dir0 = alongX ? 1 : -door;
+  const flights = [];
+  for (let k = 0; k < n; k++) {
+    const dir = k % 2 ? -dir0 : dir0, v = k % 2 ? -farV : farV, y0 = k * FLOOR_H;
+    const [lx, lz] = W(-dir * Lr / 2, v), [cx, cz] = W(0, v);
+    const m = stairMesh(Lr, FLOOR_H, bw, stairMat);
+    m.position.set(lx, y0, lz);
+    m.rotation.y = alongX ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? -Math.PI / 2 : Math.PI / 2);
+    m.castShadow = m.receiveShadow = true;
+    scene.add(m); solids.push(m);
+    const ramp = { ramp: true, x: cx, z: cz, hx: alongX ? Lr / 2 : bw / 2, hz: alongX ? bw / 2 : Lr / 2, axis: alongX ? 'x' : 'z', dir, y0, y1: y0 + FLOOR_H };
+    boxes.push(ramp);
+    // waypoints just off the bottom and top of the flight
+    const [bx, bz] = W(-dir * (Lr / 2 + 0.7), v), [tx, tz] = W(dir * (Lr / 2 + 0.7), v);
+    flights.push({ bx, bz, tx, tz, v, dir, ramp });
+  }
+  // floors (and the roof), each with a hole over the flight that comes up through it
+  const slab = (u0, u1, v0, v1, y, mat) => {
+    if (u1 - u0 < 0.05 || v1 - v0 < 0.05) return;
+    const [cx, cz] = W((u0 + u1) / 2, (v0 + v1) / 2), sx = alongX ? u1 - u0 : v1 - v0, sz = alongX ? v1 - v0 : u1 - u0;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.25, sz), mat);
+    m.position.set(cx, y - 0.125, cz); m.castShadow = m.receiveShadow = true;
+    scene.add(m); solids.push(m);
+    boxes.push({ x: cx, z: cz, hx: sx / 2, hz: sz / 2, y0: y - 0.25, h: y, top: true });
+  };
+  for (let k = 1; k <= n; k++) {
+    const y = k * FLOOR_H, f = flights[k - 1], mat = k === n ? roofMat2 : floorMat;
+    const hv0 = f.v - bw / 2, hv1 = f.v + bw / 2;
+    slab(-IL / 2 - T / 2, -Lr / 2, -IS / 2 - T / 2, IS / 2 + T / 2, y, mat);
+    slab(Lr / 2, IL / 2 + T / 2, -IS / 2 - T / 2, IS / 2 + T / 2, y, mat);
+    slab(-Lr / 2, Lr / 2, -IS / 2 - T / 2, hv0, y, mat);
+    slab(-Lr / 2, Lr / 2, hv1, IS / 2 + T / 2, y, mat);
+  }
+  // a low wall round the roof to hide behind, and the air-con box to climb on
+  const PH = 1.1;
+  for (const [px, pz, sx, sz] of [[x, z - d / 2, w + T, T], [x, z + d / 2, w + T, T], [x - w / 2, z, T, d - T], [x + w / 2, z, T, d - T]]) {
+    const m = addBox(px, pz, sx, PH, sz, 0, { mat: fac(Math.max(sx, sz), FLOOR_H), y: H, collide: false });
+    m.material.map.repeat.y = PH / FLOOR_H;
+    boxes.push({ x: px, z: pz, hx: sx / 2, hz: sz / 2, y0: H, h: H + PH });
+    addBox(px, pz, sx + 0.12, sx > sz ? 0.12 : 0.11, sz + 0.12, 0, { mat: cap, y: H + PH, collide: false, shadow: false });
+  }
+  const last = flights[n - 1], [ax, az] = W(-last.dir * (IL / 2 - 1.1), -last.v);
+  const acW = alongX ? 1.6 : 1.4, acD = alongX ? 1.4 : 1.6;
+  addBox(ax, az, acW, 1.1, acD, 0x9aa0a6, { y: H, collide: false });
+  boxes.push({ x: ax, z: az, hx: acW / 2, hz: acD / 2, y0: H, h: H + 1.1, top: true });
+
+  towers.push({ x, z, hx: w / 2, hz: d / 2, n, door, H, flights,
+    inX: x, inZ: z + door * (d / 2 - 1.1), outX: x, outZ: z + door * (d / 2 + 1.3) });
   houseRects.push({ x, z, hx: w / 2, hz: d / 2 });
   noGrass.push({ x, z, hx: w / 2 + 0.5, hz: d / 2 + 0.5 });
 }
@@ -1379,7 +1510,7 @@ function buildBigMap() {
   const keepSeed = seed;
   seed = 20251; // Frontier has its own layout, and the classic map's random sequence is left alone
   ARENA = 80;
-  boxes.length = solids.length = noGrass.length = houseRects.length = 0;
+  boxes.length = solids.length = noGrass.length = houseRects.length = towers.length = 0;
   scene.add = (...o) => { root.add(...o); return scene; };
   try {
     // perimeter wall
@@ -1494,12 +1625,13 @@ function buildBigMap() {
     noGrass.push({ x: -58, z: 58, hx: 22.5, hz: 22.5 });
     [[-43.5, 43, 12, 10, 10, 0xd8c3a5], [-61, 43, 9, 10, 14, 0xb9c4cf], [-75.5, 44, 7, 11, 8, 0xe2b8a0],
      [-43.5, 60.5, 11, 9, 8, 0xc9d1bf], [-60.8, 60.5, 9, 9, 18, 0xa7b3c2], [-75.5, 61, 7, 9, 11, 0xe0cfa8],
-     [-44, 76, 10, 6, 7, 0xd7a99a], [-61, 76, 9, 6, 9, 0xc0c6cc], [-75.5, 76, 7, 6, 6, 0xd9cdb4]]
-      .forEach(([x, z, w, d, h, c]) => building(x, z, w, d, h, c));
-    car(-53, 45, false, 0xc0392b); car(-68.5, 62, false, 0x2f6fb0); car(-46, 52.5, true, 0xe6b422); car(-60, 69, true, 0x6b7280);
-    [[-50.3, 49.6], [-50.3, 66], [-65.8, 49.6], [-65.8, 72]].forEach(([x, z]) => lamp(x, z));
+     [-44, 76, 10, 6, 7, 0xd7a99a, -1], [-61, 76, 9, 6, 9, 0xc0c6cc, -1], [-75.5, 76, 7, 6, 6, 0xd9cdb4, -1]]
+      .forEach(([x, z, w, d, h, c, door]) => building(x, z, w, d, h, c, door));
+    car(-54.1, 45, false, 0xc0392b); car(-68.5, 62, false, 0x2f6fb0); car(-46, 52.5, true, 0xe6b422); car(-60, 69, true, 0x6b7280);
+    // lamps stand halfway along the buildings' sides, clear of the corners and doors cubes walk round
+    [[-50, 43], [-55.8, 60.5], [-66, 43], [-71.5, 61]].forEach(([x, z]) => lamp(x, z));
     crate(-38.5, 54, 2); crate(-39.6, 54, 1); barrel(-39, 66.5, 0x2f5f8f); barrel(-71.5, 54.5, 0xb43c2c);
-    sandbags(-58, 49.4, 4, true);
+    sandbags(-55.5, 49.6, 4, true); // clear of the doorway opposite
 
     // south-east: a farm with a barn, fenced fields and hay
     house(63, 64, 12, 9, 'w', 0xa8432f, 0x3f3a36);
@@ -1528,7 +1660,7 @@ function buildBigMap() {
     [[18, -50, 1.2], [-20, -58, 1.4], [62, 22, 1.1], [-62, 18, 1.3], [24, 66, 1]].forEach(([x, z, r]) => rock(x, z, r));
 
     const g1 = grassLayer(36000), f1 = flowerLayer(1800), g2 = grassLayer(36000, false);
-    MAPS.big = { root, arena: 80, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(), grass: g1, flowers: f1, moreGrass: g2 };
+    MAPS.big = { root, arena: 80, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(), towers: towers.slice(), grass: g1, flowers: f1, moreGrass: g2 };
   } finally {
     delete scene.add;
     seed = keepSeed;
@@ -1541,15 +1673,27 @@ function useMap(id) {
   mapId = id;
   for (const k in MAPS) MAPS[k].root.visible = k === id;
   ARENA = M.arena;
-  for (const [arr, src] of [[boxes, M.boxes], [solids, M.solids], [noGrass, M.noGrass], [houseRects, M.houseRects]]) { arr.length = 0; arr.push(...src); }
+  for (const [arr, src] of [[boxes, M.boxes], [solids, M.solids], [noGrass, M.noGrass], [houseRects, M.houseRects], [towers, M.towers]]) { arr.length = 0; arr.push(...src); }
   grass = M.grass; flowers = M.flowers; moreGrass = M.moreGrass;
   applyQuality();
 }
 
-// Push a circle (pos, radius) at height y out of all boxes it isn't standing on top of
-function collide(pos, r, y = 0) {
+// Boxes can float (y0 > 0: upper floors, roof walls) and stand-on boxes are marked top. Stairs are ramps:
+// { ramp: true, x, z, hx, hz, axis: 'x' | 'z', dir: +-1 (the way it climbs), y0, y1 }
+const BODY = 1.8; // how tall you are, for floors overhead
+function rampY(b, x, z) {
+  const t = b.axis === 'x' ? (x - b.x) / (2 * b.hx) : (z - b.z) / (2 * b.hz);
+  return b.y0 + Math.max(0, Math.min(1, 0.5 + t * b.dir)) * (b.y1 - b.y0);
+}
+// Push a circle (pos, radius) for something standing at height y and `tall` high out of every box it overlaps;
+// it passes under boxes above its head and over boxes below its feet
+function collide(pos, r, y = 0, tall = BODY) {
   for (const b of boxes) {
-    if (b.h <= STEP && y >= b.h - 0.05) continue;
+    if (y + tall <= (b.y0 || 0) + 0.05) continue;
+    if (b.top && b.y0 > y + 0.3) continue; // floors overhead are ceilings: they don't shove a big cube off the stairs
+    // stairs and floors only block where they're too high to step onto
+    const top = b.ramp ? rampY(b, Math.max(b.x - b.hx, Math.min(pos.x, b.x + b.hx)), Math.max(b.z - b.hz, Math.min(pos.z, b.z + b.hz))) - 0.5 : b.top ? b.h - Math.max(0.5, r) : b.h; // wide cubes reach the next floor's edge from lower down the stairs
+    if (y >= top - 0.05) continue;
     const cx = Math.max(b.x - b.hx, Math.min(pos.x, b.x + b.hx));
     const cz = Math.max(b.z - b.hz, Math.min(pos.z, b.z + b.hz));
     const dx = pos.x - cx, dz = pos.z - cz;
@@ -1569,13 +1713,30 @@ function collide(pos, r, y = 0) {
   pos.x = Math.max(-lim, Math.min(lim, pos.x));
   pos.z = Math.max(-lim, Math.min(lim, pos.z));
 }
+// the highest thing under pos you could be standing on, given you were at prevY a moment ago
 function groundAt(pos, prevY) {
   let g = 0;
   for (const b of boxes) {
-    if (b.h > STEP || b.h > prevY + 0.05) continue;
+    if (b.ramp) {
+      if (Math.abs(pos.x - b.x) > b.hx + 0.05 || Math.abs(pos.z - b.z) > b.hz + 0.05) continue;
+      const y = rampY(b, pos.x, pos.z);
+      if (y <= prevY + 0.55) g = Math.max(g, y);
+      continue;
+    }
+    if (!(b.top || (b.h <= STEP && !b.y0)) || b.h > prevY + (b.top ? 0.55 : 0.05)) continue;
     if (Math.abs(pos.x - b.x) < b.hx + 0.2 && Math.abs(pos.z - b.z) < b.hz + 0.2) g = Math.max(g, b.h);
   }
   return g;
+}
+// the lowest floor overhead, so a jump can't put your head through the ceiling
+function ceilingAt(pos, head) {
+  let c = Infinity;
+  for (const b of boxes) {
+    const bot = b.y0 || 0;
+    if (b.ramp || bot <= 0 || bot < head - 0.3) continue;
+    if (Math.abs(pos.x - b.x) < b.hx + 0.3 && Math.abs(pos.z - b.z) < b.hz + 0.3) c = Math.min(c, bot);
+  }
+  return c;
 }
 
 // ---------- Effects ----------
@@ -2278,6 +2439,96 @@ let combo = 0, comboT = 0, bestCombo = 0, kills = 0, shotsFired = 0, shotsHit = 
 const COMBO_TIME = 2.5;
 const introduced = new Set();
 let introQueue = [], introShownAt = 0;
+
+// ---------- Combat knife (hold 7) ----------
+const KNIFE_PRICE = 40, KNIFE = { dmg: 3, every: 0.42, reach: 2.4, arc: 1.25 }; // arc: half-angle of the cone, in radians
+function knifeModel(withArm) {
+  const g = new THREE.Group();
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.0145, 0.0165, 0.115, 14).rotateX(Math.PI / 2), GM.rubber);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.056, 0.014, 0.012), GM.dark); guard.position.z = -0.062;
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.017, 12, 8), GM.dark); pommel.position.z = 0.06;
+  // clip-point blade: spine on top, edge curving up to the tip
+  const sh = new THREE.Shape();
+  sh.moveTo(0, 0.013); sh.lineTo(0.11, 0.013); sh.lineTo(0.135, 0.008); sh.lineTo(0.175, 0);
+  sh.quadraticCurveTo(0.13, -0.016, 0.06, -0.017); sh.lineTo(0, -0.015); sh.lineTo(0, 0.013);
+  const bladeGeo = new THREE.ExtrudeGeometry(sh, { depth: 0.0035, bevelEnabled: true, bevelThickness: 0.0012, bevelSize: 0.0012, bevelSegments: 1 })
+    .translate(0, 0, -0.00175).rotateY(Math.PI / 2);
+  const blade = new THREE.Mesh(bladeGeo, GM.bright); blade.position.z = -0.066;
+  const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.0062, 0.004, 0.08), GM.dark); fuller.position.set(0, 0.006, -0.11);
+  g.add(handle, guard, pommel, blade, fuller);
+  if (withArm) {
+    // four fingers curled round the grip, a palm and thumb, and the forearm running off the bottom of the screen
+    [-0.034, -0.012, 0.01, 0.031].forEach((z, i) => {
+      const f = new THREE.Mesh(new THREE.TorusGeometry(0.0225 - (i === 3 ? 0.002 : 0), 0.0092 - i * 0.0004, 8, 18, Math.PI * 1.45), HM.skin);
+      f.rotation.z = Math.PI * 0.42; f.position.z = z; g.add(f);
+    });
+    const palm = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.05, 0.085), HM.skin); palm.position.set(0.024, -0.004, 0); g.add(palm);
+    const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.0095, 0.0085, 0.046, 10).rotateX(Math.PI / 2), HM.skin);
+    thumb.position.set(-0.012, 0.022, -0.03); thumb.rotation.y = 0.25; g.add(thumb, joint(new THREE.Vector3(-0.015, 0.022, -0.053), 0.0088, HM.skin));
+    const W = new THREE.Vector3(0.02, -0.01, 0.05), M = new THREE.Vector3(0.05, -0.14, 0.2), E = new THREE.Vector3(0.1, -0.3, 0.38);
+    g.add(joint(W, 0.027, HM.skin, 16), limb(W, M, 0.027, 0.035, HM.skin, 16), joint(M, 0.035, HM.skin, 16), limb(M, E, 0.046, 0.054, HM.sleeve, 16), joint(E, 0.054, HM.sleeve, 16));
+  }
+  return g;
+}
+const knifeG = new THREE.Group();
+knifeG.add(knifeModel(true));
+knifeG.traverse(o => o.layers.set(1));
+knifeG.visible = false;
+camera.add(knifeG);
+let knifeOut = false, knifeIn = 0, knifeCd = 0, knifeSwing = 9;
+const arcGeo = new THREE.RingGeometry(0.95, 1.05, 28, 1, Math.PI * 0.15, Math.PI * 0.7);
+function slash() {
+  knifeCd = KNIFE.every; knifeSwing = 0;
+  Sound.play('slash');
+  // a white streak across your view
+  const arc = new THREE.Mesh(arcGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  arc.position.copy(camera.position).add(new THREE.Vector3(0, 0, -1.3).applyQuaternion(camera.quaternion));
+  arc.quaternion.copy(camera.quaternion); arc.rotateZ(-0.35);
+  addFx(arc, 0.16, (o, k) => { o.material.opacity = 0.55 * (1 - k); o.scale.setScalar(1 + k * 0.25); });
+  // every cube in front of you within reach, on your floor
+  const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
+  let hits = 0, killed = false;
+  for (const e of enemies.slice()) {
+    const u = e.userData;
+    if (u.spawnT < 1) continue;
+    const dx = e.position.x - player.pos.x, dz = e.position.z - player.pos.z, d = Math.hypot(dx, dz) || 0.001;
+    const dy = u.gy - player.pos.y;
+    if (d > KNIFE.reach + u.size * 0.5 || dy > 1.4 || dy < -u.size - 0.6) continue;
+    if (d > u.size * 0.5 + 0.5 && Math.acos(Math.max(-1, Math.min(1, (dx * fx + dz * fz) / d))) > KNIFE.arc) continue;
+    hits++;
+    u.hp -= KNIFE.dmg; u.hit = 0.12;
+    const p = e.position.clone().addScaledVector(new THREE.Vector3(-dx / d, 0, -dz / d), u.size * 0.5);
+    sparks(p, u.T.color, 5); debris(p, u.T.color, 2, 0.8);
+    shove(e, dx / d * 1.1 / Math.sqrt(u.size), dz / d * 1.1 / Math.sqrt(u.size));
+    const dead = u.hp <= 0;
+    popNumber(p.setY(p.y + 0.3), KNIFE.dmg, dead);
+    if (dead) { killEnemy(e); killed = true; }
+  }
+  if (hits) { hitMarker(killed); Sound.play('stab', hits); shake = Math.max(shake, 0.18); }
+}
+function updateKnife(dt) {
+  const want = !!(keys.Digit7 || keys.Numpad7) && !!profile.owned.knife && state === 'playing';
+  if (want !== knifeOut) {
+    knifeOut = want;
+    if (want) { knifeIn = 0; knifeCd = 0.15; zoomed = false; Sound.play('equip', 'pistol'); }
+    else switchT = 1;
+    updateHUD();
+  }
+  knifeIn = knifeOut ? Math.min(1, knifeIn + dt * 6) : 0;
+  knifeSwing += dt;
+  if (knifeOut && (knifeCd -= dt) <= 0) slash();
+}
+// where the knife sits: rest pose, plus the slash (wind up right, cut across to the left, recover)
+function poseKnife() {
+  const p = knifeSwing / 0.34;
+  let a = 0;
+  if (p < 0.18) a = -p / 0.18;
+  else if (p < 0.5) a = -1 + (p - 0.18) / 0.32 * 2.2;
+  else if (p < 1) a = 1.2 * (1 - (p - 0.5) / 0.5);
+  const rise = (1 - knifeIn) * 0.35;
+  knifeG.position.set(0.19 - a * 0.16, -0.2 - rise + (a < 0 ? -a * 0.05 : -a * 0.035), -0.42 - Math.max(0, a) * 0.05);
+  knifeG.rotation.set(0.35 - Math.abs(a) * 0.12, 0.28 + a * 0.75, -0.25 - a * 0.7);
+}
 // ignore clicks/keys for a moment so held fire doesn't skip the splash
 const introReady = () => performance.now() - introShownAt > 700;
 
@@ -2323,10 +2574,10 @@ function updateHUD() {
   $('hfill').style.width = hp + '%';
   $('hfill').style.background = hp > 50 ? 'linear-gradient(180deg,#86efac,#4ade80)' : hp > 25 ? 'linear-gradient(180deg,#fde68a,#facc15)' : 'linear-gradient(180deg,#fca5a5,#ef4444)';
   $('lowhp').classList.toggle('on', hp > 0 && hp <= 30 && state === 'playing');
-  $('weaponName').textContent = reloading > 0 ? 'Reloading…' : weapon.name;
-  $('ammoNow').textContent = ammo[weaponKey];
-  $('ammoMax').textContent = ' / ' + weapon.mag;
-  $('ammo').classList.toggle('low', ammo[weaponKey] <= Math.ceil(weapon.mag * 0.25));
+  $('weaponName').textContent = knifeOut ? 'Combat Knife' : reloading > 0 ? 'Reloading…' : weapon.name;
+  $('ammoNow').textContent = knifeOut ? '∞' : ammo[weaponKey];
+  $('ammoMax').textContent = knifeOut ? '' : ' / ' + weapon.mag;
+  $('ammo').classList.toggle('low', !knifeOut && ammo[weaponKey] <= Math.ceil(weapon.mag * 0.25));
   document.querySelectorAll('.coinTotal').forEach(el => el.textContent = profile.coins);
   $('bestWave').textContent = profile.best;
 }
@@ -2422,9 +2673,9 @@ function spawnEnemy(key) {
     const big = mapId !== 'classic', R = big ? 30 + Math.random() * 20 : ARENA - 2;
     x = Math.max(-ARENA + 2, Math.min(ARENA - 2, (big ? player.pos.x : 0) + Math.cos(a) * R));
     z = Math.max(-ARENA + 2, Math.min(ARENA - 2, (big ? player.pos.z : 0) + Math.sin(a) * R));
-  } while (Math.hypot(x - player.pos.x, z - player.pos.z) < 18 && ++tries < 50);
+  } while ((Math.hypot(x - player.pos.x, z - player.pos.z) < 18 || houseRects.some(h => Math.abs(x - h.x) < h.hx + 1.5 && Math.abs(z - h.z) < h.hz + 1.5)) && ++tries < 50);
   g.position.set(x, size / 2, z);
-  for (let i = 0; i < 3; i++) collide(g.position, size * 0.55);
+  for (let i = 0; i < 3; i++) collide(g.position, size * 0.55, 0, size);
   g.scale.setScalar(0.01);
   scene.add(g);
   simplify(g);
@@ -2436,7 +2687,7 @@ function spawnEnemy(key) {
     hit: 0, phase: Math.random() * 10, spawnT: 0, blink: 1 + Math.random() * 4,
     fireCd: (T.fireEvery || 0) * (0.6 + Math.random() * 0.6), los: false, losTimer: 0,
     strafe: Math.random() < .5 ? -1 : 1, strafeT: 2, detour: 0, detourSide: 1, stuck: 0,
-    slamCd: 3.5, slam: 0, air: 0,
+    slamCd: 3.5, slam: 0, air: 0, gy: 0, vy: 0, // gy: the floor it's standing on
   };
   puff(new THREE.Vector3(x, 0.4, z), 0xcfc4ad, 2.2 * size, 0.8);
   enemies.push(g);
@@ -2490,8 +2741,8 @@ function nextWave() {
   updateHUD();
   const earned = WEAPON_KEYS.filter(k => WEAPONS[k].unlockWave === wave);
   if (earned.length) {
-    const names = earned.map(k => WEAPONS[k].name).join(' and '), keysTxt = earned.map(k => WEAPON_KEYS.indexOf(k) + 1).join(' / ');
-    setTimeout(() => { if (state === 'playing' || state === 'intro') { banner('New guns unlocked', `${names} for this game · press ${keysTxt}`); Sound.play('buy'); } }, 2600);
+    const names = earned.map(k => WEAPONS[k].name).join(' and '), keysTxt = earned.map(k => WEAPON_KEYS.indexOf(k) + 1).join(' / '), game = gameId;
+    setTimeout(() => { if ((state === 'playing' || state === 'intro') && game === gameId) { banner('New guns unlocked', `${names} for this game · press ${keysTxt}`); Sound.play('buy'); } }, 2600);
   }
   const fresh = ENEMY_KEYS.filter(k => ENEMY_TYPES[k].unlock === wave && !introduced.has(k));
   if (fresh.length) { fresh.forEach(k => introduced.add(k)); introQueue = fresh; showIntro(); }
@@ -2550,7 +2801,7 @@ function enemyFire(e) {
 const raycaster = new THREE.Raycaster();
 
 function shoot() {
-  if (state !== 'playing' || fireCooldown > 0 || reloading > 0) return;
+  if (state !== 'playing' || fireCooldown > 0 || reloading > 0 || knifeOut) return;
   if (ammo[weaponKey] <= 0) { Sound.play('empty'); reload(); return; }
   ammo[weaponKey]--; fireCooldown = weapon.cooldown; recoil = 1; shotsFired++; profile.stats.shots++;
   kick += weapon.kick; bloom = Math.min(1, bloom + weapon.kick * 0.35);
@@ -2599,7 +2850,7 @@ function shoot() {
     const u = e.userData;
     u.hp -= r.dmg; u.hit = 0.1;
     const kb = e.position.clone().sub(player.pos).setY(0).normalize().multiplyScalar(Math.min(1.5, 0.3 * r.dmg) / Math.sqrt(u.size));
-    e.position.add(kb);
+    shove(e, kb.x, kb.z);
     const dead = u.hp <= 0;
     popNumber(r.p.clone().setY(r.p.y + 0.3), r.dmg, dead);
     if (dead) { killEnemy(e); killed = true; }
@@ -2615,7 +2866,7 @@ function killEnemy(e) {
   const c = e.position.clone();
   debris(c, T.color, Math.round(14 * u.size), u.size);
   glowFlash(c, T.color, 3 * u.size, 0.25);
-  puff(c.clone().setY(0.3), 0xd0c8b8, 2.5 * u.size, 0.7);
+  puff(c.clone().setY(u.gy + 0.3), 0xd0c8b8, 2.5 * u.size, 0.7);
   coinPop(c.clone().setY(c.y + u.size * 0.6));
   scene.remove(e);
   if (u.bar) scene.remove(u.bar);
@@ -2639,7 +2890,7 @@ function killEnemy(e) {
     Sound.play('combo', combo);
   }
   const drops = T.boss ? 2 : Math.random() < (DROP_CHANCE[e.userData.key] || 0) ? 1 : 0;
-  for (let i = 0; i < drops; i++) dropPack(c.clone().add(new THREE.Vector3(i * 1.5, 0, 0)));
+  for (let i = 0; i < drops; i++) dropPack(c.clone().add(new THREE.Vector3(i * 1.5, 0, 0)), u.gy);
   const ch = $('coinsHud'); ch.classList.remove('bump'); void ch.offsetWidth; ch.classList.add('bump');
   updateHUD();
   if (enemies.length === 0 && nextWaveIn <= 0) { nextWaveIn = 2.5; banner('Wave cleared', 'Next wave incoming'); Sound.play('cleared'); }
@@ -2653,15 +2904,16 @@ const packTex = tex(makeCanvas(64, (g, s) => {
 }));
 const packGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
 const packMat = new THREE.MeshLambertMaterial({ map: packTex, emissive: 0x112211 });
-function dropPack(pos) {
+function dropPack(pos, base = 0) {
   if (pickups.length >= 4) return;
   const g = new THREE.Group();
   const box = new THREE.Mesh(packGeo, packMat); box.castShadow = true;
   const glow = sprite(glowTex, 0x4ade80, 1.6, true, 0.45);
   g.add(box, glow);
-  g.position.set(pos.x, 0.55, pos.z);
-  collide(g.position, 0.4);
-  g.userData = { life: 20, t: Math.random() * 6, glow };
+  g.position.set(pos.x, base + 0.55, pos.z);
+  collide(g.position, 0.4, base, 0.6);
+  base = groundAt(g.position, base + 0.05); // pushed off a ledge? it lands below
+  g.userData = { life: 20, t: Math.random() * 6, glow, base };
   scene.add(g); pickups.push(g);
 }
 function removePack(i) { const g = pickups[i]; scene.remove(g); g.userData.glow.material.dispose(); pickups.splice(i, 1); }
@@ -2669,15 +2921,15 @@ function updatePickups(dt) {
   for (let i = pickups.length - 1; i >= 0; i--) {
     const g = pickups[i], u = g.userData;
     u.life -= dt; u.t += dt;
-    g.position.y = 0.55 + Math.sin(u.t * 3) * 0.12;
+    g.position.y = u.base + 0.55 + Math.sin(u.t * 3) * 0.12;
     g.rotation.y += dt * 1.5;
     g.visible = u.life > 3 || Math.floor(u.life * 8) % 2 === 0;
-    const near = Math.hypot(player.pos.x - g.position.x, player.pos.z - g.position.z) < 1.3 && player.pos.y < 1.5;
+    const near = Math.hypot(player.pos.x - g.position.x, player.pos.z - g.position.z) < 1.3 && player.pos.y - u.base < 1.5 && player.pos.y - u.base > -0.6;
     if (near && player.hp < 100) {
       player.hp = Math.min(100, player.hp + 30);
       Sound.play('heal');
       glowFlash(g.position, 0x4ade80, 2.5, 0.3);
-      popNumber(g.position.clone().setY(1.2), 0, true, '+30 HP');
+      popNumber(g.position.clone().setY(u.base + 1.2), 0, true, '+30 HP');
       removePack(i); updateHUD();
     } else if (u.life <= 0) removePack(i);
   }
@@ -2722,11 +2974,12 @@ function deployTurret() {
   if (!profile.owned.turret) { banner('No turret yet', 'Buy one in the Shop'); Sound.play('empty'); return; }
   if (turret) { banner('Turret already out', 'You can only have one at a time'); Sound.play('empty'); return; }
   const pos = new THREE.Vector3(player.pos.x - Math.sin(player.yaw) * 1.8, 0, player.pos.z - Math.cos(player.yaw) * 1.8);
-  for (let i = 0; i < 3; i++) collide(pos, 0.6);
+  for (let i = 0; i < 3; i++) collide(pos, 0.6, player.pos.y, 1.4);
+  pos.y = groundAt(pos, player.pos.y + 0.05);
   const m = turretModel();
   m.g.position.copy(pos); m.head.rotation.y = player.yaw;
   scene.add(m.g); simplify(m.g);
-  const box = { x: pos.x, z: pos.z, hx: 0.45, hz: 0.45, h: 1.4 };
+  const box = { x: pos.x, z: pos.z, hx: 0.45, hz: 0.45, h: pos.y + 1.4, y0: pos.y };
   boxes.push(box);
   turret = Object.assign(m, { pos, hp: TURRET_HP, cd: 0.8, look: 0, target: null, kick: 0, box });
   puff(pos.clone().setY(0.2), 0xcfc4ad, 1.6, 0.6);
@@ -2747,7 +3000,7 @@ function damageTurret(n) {
   if (!turret) return;
   turret.hp -= n;
   if (turret.hp > 0) { updateTurretHud(); return; }
-  const c = turret.pos.clone().setY(0.8);
+  const c = turret.pos.clone().setY(turret.pos.y + 0.8);
   debris(c, 0x5d656f, 18, 1); debris(c, 0xf5b82e, 6, 0.8);
   glowFlash(c, 0xffb347, 4, 0.3); puff(c.clone().setY(0.3), 0x8a8f96, 2.5, 0.8);
   Sound.play('kill', 1.8);
@@ -2763,7 +3016,7 @@ function updateTurret(dt) {
   // every 0.2 s pick the nearest cube it has a clear shot at
   if (T.look <= 0) {
     T.look = 0.2; T.target = null;
-    tEye.set(T.pos.x, 1.15, T.pos.z);
+    tEye.set(T.pos.x, T.pos.y + 1.15, T.pos.z);
     let best = 38;
     for (const e of enemies) {
       if (e.userData.spawnT < 1) continue;
@@ -2811,14 +3064,14 @@ function slamRing(pos, u) {
   const g = new THREE.Group();
   const flatRing = new THREE.Mesh(ringGeo, mat); flatRing.rotation.x = -Math.PI / 2; flatRing.position.y = 0.06;
   g.add(flatRing, new THREE.Mesh(wallGeo, mat));
-  g.position.set(pos.x, 0, pos.z);
+  g.position.set(pos.x, u.gy, pos.z);
   scene.add(g);
-  rings.push({ g, mat, x: pos.x, z: pos.z, r: u.size * 0.5, max: 18, dmg: 25, hit: false });
+  rings.push({ g, mat, x: pos.x, y: u.gy, z: pos.z, r: u.size * 0.5, max: 18, dmg: 25, hit: false });
   const d = Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z);
   shake = Math.max(shake, Math.max(0.2, 0.9 - d / 30));
   Sound.play('slam', d);
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; puff(new THREE.Vector3(pos.x + Math.cos(a) * u.size, 0.4, pos.z + Math.sin(a) * u.size), 0xcfc4ad, 2.5, 0.8); }
-  debris(new THREE.Vector3(pos.x, 0.2, pos.z), 0x8a6c46, 10, 1.2);
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; puff(new THREE.Vector3(pos.x + Math.cos(a) * u.size, u.gy + 0.4, pos.z + Math.sin(a) * u.size), 0xcfc4ad, 2.5, 0.8); }
+  debris(new THREE.Vector3(pos.x, u.gy + 0.2, pos.z), 0x8a6c46, 10, 1.2);
 }
 function updateRings(dt) {
   for (let i = rings.length - 1; i >= 0; i--) {
@@ -2827,13 +3080,13 @@ function updateRings(dt) {
     R.g.scale.set(R.r, 1, R.r);
     R.mat.opacity = 0.9 * (1 - R.r / R.max);
     const d = Math.hypot(player.pos.x - R.x, player.pos.z - R.z);
-    if (!R.hit && d >= prev - 0.6 && d <= R.r + 0.6 && player.pos.y < 0.45) {
+    if (!R.hit && d >= prev - 0.6 && d <= R.r + 0.6 && player.pos.y - R.y < 0.45 && player.pos.y - R.y > -0.6) {
       R.hit = true;
       player.hp -= R.dmg; damageFlash = 0.8; shake = Math.max(shake, 0.7);
       player.vy = 5; player.onGround = false;
       hurtFrom({ x: R.x, z: R.z }); Sound.play('hurt');
     }
-    if (turret && !R.hitT) {
+    if (turret && !R.hitT && Math.abs(turret.pos.y - R.y) < 0.5) {
       const td = Math.hypot(turret.pos.x - R.x, turret.pos.z - R.z);
       if (td >= prev - 0.6 && td <= R.r + 0.6) { R.hitT = true; damageTurret(R.dmg); }
     }
@@ -2876,7 +3129,9 @@ function releaseInput() {
   if (isLocked()) document.exitPointerLock();
 }
 
+let gameId = 0; // bumped every game, so delayed banners from the last one stay quiet
 function startGame() {
+  gameId++;
   resetGame();
   state = 'playing';
   hideMenus();
@@ -2915,6 +3170,7 @@ function resetGame() {
   setWeapon(settings.weapon);
   score = 0; wave = 0; runCoins = 0; damageFlash = 0; nextWaveIn = 0; deathT = 0; kick = 0; shake = 0;
   combo = comboT = bestCombo = kills = shotsFired = shotsHit = 0; lastWeapon = null;
+  knifeOut = false; knifeSwing = 9; knifeG.visible = false;
   $('combo').classList.remove('on');
   while (pickups.length) removePack(0);
   rings.forEach(R => { scene.remove(R.g); R.mat.dispose(); }); rings.length = 0;
@@ -3061,8 +3317,17 @@ function refreshTurretShop() {
   b.textContent = `Buy · ${TURRET_PRICE} coins`; b.disabled = short > 0;
   n.textContent = short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. Destroy cubes to earn them.` : 'You can afford it.';
 }
+function refreshKnifeShop() {
+  const b = $('buyKnife'), n = $('knifeNote');
+  if (!$('knifeArt').getAttribute('src')) $('knifeArt').src = avatarOf('knife').url;
+  if (profile.owned.knife) { b.textContent = 'Owned'; b.disabled = true; n.textContent = 'Hold 7 during a game to slash.'; return; }
+  const short = KNIFE_PRICE - profile.coins;
+  b.textContent = `Buy · ${KNIFE_PRICE} coins`; b.disabled = short > 0;
+  n.textContent = short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. Destroy cubes to earn them.` : 'You can afford it.';
+}
 function refreshShop() {
   refreshTurretShop();
+  refreshKnifeShop();
   const k = 'extreme', W = WEAPONS[k], btn = $('buyBtn'), note = $('buyNote');
   if (!owns(k)) {
     const short = W.price - profile.coins;
@@ -3084,7 +3349,7 @@ document.querySelectorAll('.mapcard').forEach(b => b.addEventListener('click', (
   if (id === 'big' && !MAPS.big) {
     // building Frontier takes a moment the first time
     b.classList.add('loading'); $('bigDesc').textContent = 'Building the map…';
-    setTimeout(() => { useMap(id); b.classList.remove('loading'); $('bigDesc').textContent = 'Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm. Still a work in progress.'; startGame(); }, 30);
+    setTimeout(() => { useMap(id); b.classList.remove('loading'); $('bigDesc').textContent = 'Four times bigger: the village in the middle, a dense forest, a mountain range, a farm and a town you can climb to the rooftops.'; startGame(); }, 30);
   } else { useMap(id); startGame(); }
 }));
 
@@ -3136,6 +3401,12 @@ $('buyTurret').addEventListener('click', () => {
   Sound.play('buy');
   refreshShop();
 });
+$('buyKnife').addEventListener('click', () => {
+  if (profile.owned.knife || profile.coins < KNIFE_PRICE) return;
+  profile.coins -= KNIFE_PRICE; profile.owned.knife = true; saveProfile();
+  Sound.play('buy');
+  refreshShop();
+});
 $('buyBtn').addEventListener('click', () => {
   const k = 'extreme', W = WEAPONS[k];
   if (!owns(k)) {
@@ -3154,7 +3425,7 @@ document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('clic
   else if (a === 'resume') resume();
   else if (a === 'quit') quitToMenu();
   else if (a === 'continue') continueIntro();
-  else if (a === 'settings' || a === 'shop' || a === 'notes' || a === 'profile' || a === 'reset' || a === 'maps') openSub(a);
+  else if (a === 'settings' || a === 'shop' || a === 'notes' || a === 'profile' || a === 'reset' || a === 'maps' || a === 'whatsnew') openSub(a);
   else if (a === 'back') showMenu(backTo[currentMenu] || 'main');
 }));
 
@@ -3163,7 +3434,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape') {
     if (state === 'playing') pause();
     else if (state === 'intro') continueIntro();
-    else if (['settings', 'shop', 'notes', 'profile', 'reset', 'maps'].includes(currentMenu) || (currentMenu === 'name' && profile.name)) showMenu(backTo[currentMenu] || 'main');
+    else if (['settings', 'shop', 'notes', 'profile', 'reset', 'maps', 'whatsnew'].includes(currentMenu) || (currentMenu === 'name' && profile.name)) showMenu(backTo[currentMenu] || 'main');
     else if (state === 'paused' && performance.now() - lastPause > 300) resume();
     return;
   }
@@ -3172,9 +3443,11 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'KeyR') reload();
   if (e.code === 'KeyQ' && lastWeapon && owns(lastWeapon)) setWeapon(lastWeapon);
-  const n = parseInt(e.key, 10);
+  // read the key's position, not its character, so Shift (sprint) + 1 still means 1
+  const dm = /^(?:Digit|Numpad)(\d)$/.exec(e.code), n = dm ? +dm[1] : 0;
   if (n >= 1 && n <= WEAPON_KEYS.length && owns(WEAPON_KEYS[n - 1]) && WEAPON_KEYS[n - 1] !== weaponKey) setWeapon(WEAPON_KEYS[n - 1]);
-  if (e.code === 'Digit6' || e.code === 'Numpad6') deployTurret();
+  if (n === 6) deployTurret();
+  if (n === 7 && !e.repeat && !profile.owned.knife) { banner('No knife yet', `Buy one in the Shop for ${KNIFE_PRICE} coins`); Sound.play('empty'); }
   if (e.code === 'Space') e.preventDefault();
 });
 addEventListener('keyup', e => keys[e.code] = false);
@@ -3197,7 +3470,7 @@ canvas.addEventListener('mousedown', e => {
   if (state !== 'playing') return;
   if (!isLocked()) lockMouse();
   if (e.button === 0) { mouseDown = true; shoot(); }
-  if (e.button === 2 && weapon === WEAPONS.sniper && reloading <= 0) zoomed = true;
+  if (e.button === 2 && weapon === WEAPONS.sniper && reloading <= 0 && !knifeOut) zoomed = true;
 });
 addEventListener('mouseup', e => {
   if (e.button === 0) mouseDown = false;
@@ -3246,14 +3519,106 @@ function updatePlayer(dt) {
     if (Math.floor(stepPhase / Math.PI) !== before) Sound.play('step');
   }
   if (keys.Space && player.onGround) { player.vy = 7; player.onGround = false; Sound.play('jump'); }
-  const prevY = player.pos.y, vyBefore = player.vy;
+  const prevY = player.pos.y, vyBefore = player.vy, wasGround = player.onGround;
   player.vy -= 20 * dt;
   player.pos.y += player.vy * dt;
+  if (player.vy > 0) {
+    const c = ceilingAt(player.pos, prevY + BODY);
+    if (player.pos.y + BODY > c) { player.pos.y = c - BODY; player.vy = 0; }
+  }
   const ground = groundAt(player.pos, prevY);
-  if (player.pos.y <= ground) {
+  // walking down stairs keeps your feet on them instead of bouncing down in little falls
+  if (player.pos.y <= ground || (wasGround && vyBefore <= 0 && player.pos.y - ground < 0.6)) {
     if (!player.onGround && vyBefore < -4) { landDip = Math.min(0.18, -vyBefore * 0.018); Sound.play('land'); }
     player.pos.y = ground; player.vy = 0; player.onGround = true;
   } else player.onGround = false;
+}
+
+// ---------- Following you indoors ----------
+// distance from (px, pz) to the segment a-b
+function segDist(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2));
+  return Math.hypot(px - ax - dx * t, pz - az - dz * t);
+}
+// walking a -> b: head for a, and once on the line between them, on to b
+const leg = (x, z, ax, az, bx, bz) => segDist(x, z, ax, az, bx, bz) < 0.9 ? [bx, bz] : [ax, az];
+// which flight of stairs (index) someone at x, z with their feet at y is on, or -1; the very top and bottom steps count as the floor
+function flightAt(t, x, z, y) {
+  return t.flights.findIndex(({ ramp: b }) => {
+    if (Math.abs(x - b.x) > b.hx + 0.05 || Math.abs(z - b.z) > b.hz + 0.05) return false;
+    const r = rampY(b, x, z);
+    return r > b.y0 + 0.25 && r < b.y1 - 0.25 && Math.abs(y - r) < 0.6;
+  });
+}
+// how far along the segment (x0, z0)-(x1, z1) (0-1) it enters building t's footprint grown by pad, or -1 if it misses
+function segEnters(x0, z0, x1, z1, t, pad) {
+  const dx = x1 - x0, dz = z1 - z0;
+  let a = 0, b = 1;
+  for (const [p, q] of [[-dx, x0 - (t.x - t.hx - pad)], [dx, t.x + t.hx + pad - x0], [-dz, z0 - (t.z - t.hz - pad)], [dz, t.z + t.hz + pad - z0]]) {
+    if (Math.abs(p) < 1e-9) { if (q < 0) return -1; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > b) return -1; a = Math.max(a, r); } else { if (r < a) return -1; b = Math.min(b, r); }
+  }
+  return a;
+}
+const segHitsRect = (x0, z0, x1, z1, t, pad) => segEnters(x0, z0, x1, z1, t, pad) >= 0;
+// outdoors: if a town building is in the way of the goal, head for the best corner round it instead
+function steerAround(x, z, gx, gz, skip) {
+  // deal with the nearest building in the way first
+  let t = null, near = Infinity;
+  for (const o of towers) {
+    const a = o === skip ? -1 : segEnters(x, z, gx, gz, o, 0.6);
+    if (a >= 0 && a < near) { near = a; t = o; }
+  }
+  if (t) {
+    let best = null, bd = Infinity;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      // out in the street, clear of the lamp posts on the pavement
+      const cx = t.x + sx * (t.hx + 2.4), cz = t.z + sz * (t.hz + 2.4);
+      if (Math.abs(cx) > ARENA - 1 || Math.abs(cz) > ARENA - 1 || Math.hypot(cx - x, cz - z) < 0.8 || segHitsRect(x, z, cx, cz, t, 0.4)) continue;
+      // prefer a corner you can see the goal from, so a cube doesn't dither between two
+      const d = Math.hypot(cx - x, cz - z) + Math.hypot(gx - cx, gz - cz) + (segHitsRect(cx, cz, gx, gz, t, 0.6) ? 50 : 0);
+      if (d < bd) { bd = d; best = [cx, cz]; }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+// where a cube should walk next when you're on another floor or in another building (null: straight at you)
+function routeFor(e, u) {
+  const x = e.position.x, z = e.position.z, P = player.pos;
+  const pt = towerAt(P.x, P.z), pf = pt ? flightAt(pt, P.x, P.z, P.y) : -1;
+  const et = towerAt(x, z);
+  if (et) {
+    const ef = flightAt(et, x, z, u.gy), el = Math.min(et.n, levelOf(u.gy));
+    if (et === pt && pf >= 0) {
+      // you're on the stairs: get on the same flight from whichever end is on the cube's floor
+      if (ef === pf) return null;
+      const f = et.flights[pf];
+      if (ef < 0 && el === pf) return leg(x, z, f.bx, f.bz, f.tx, f.tz);
+      if (ef < 0 && el === pf + 1) return leg(x, z, f.tx, f.tz, f.bx, f.bz);
+    }
+    // the floor to get to: yours, or the ground floor to leave by the door
+    const want = et !== pt ? 0 : pf >= 0 ? (el <= pf ? pf : pf + 1) : Math.min(pt.n, levelOf(P.y));
+    if (ef >= 0) { const f = et.flights[ef]; return want > ef ? [f.tx, f.tz] : [f.bx, f.bz]; }
+    if (el < want) { const f = et.flights[el]; return leg(x, z, f.bx, f.bz, f.tx, f.tz); }
+    if (el > want) { const f = et.flights[el - 1]; return leg(x, z, f.tx, f.tz, f.bx, f.bz); }
+    if (et === pt) return null; // on your floor
+    return leg(x, z, et.inX, et.inZ, et.outX, et.outZ); // ground floor: back out of the door
+  }
+  // outside, but still in some other building's doorway: finish stepping out first
+  const left = towers.find(t => t !== pt && segDist(x, z, t.inX, t.inZ, t.outX, t.outZ) < 1 && (z - t.outZ) * t.door < -0.4);
+  if (left) return [left.outX, left.outZ];
+  if (!pt) return steerAround(x, z, P.x, P.z, null);
+  // to the front of your building (round it if need be), then in through the door
+  const [gx, gz] = leg(x, z, pt.outX, pt.outZ, pt.inX, pt.inZ);
+  return steerAround(x, z, gx, gz, gx === pt.inX && gz === pt.inZ ? pt : null) || [gx, gz];
+}
+// knockback in small steps, so a big hit can't push a cube through a thin wall
+function shove(e, dx, dz) {
+  const u = e.userData, n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.15));
+  for (let i = 0; i < n; i++) { e.position.x += dx / n; e.position.z += dz / n; collide(e.position, u.size * 0.55, u.gy, u.size); }
 }
 
 function updateEnemies(dt, t) {
@@ -3267,11 +3632,14 @@ function updateEnemies(dt, t) {
     if (u.spawnT < 1) spd = 0;
     // melee cubes go for whichever is closer: you or your turret
     let tDist = Infinity, fx = dx, fz = dz;
-    if (turret && !T.ranged) {
+    if (turret && !T.ranged && Math.abs(turret.pos.y - u.gy) < 1) {
       const tx = turret.pos.x - e.position.x, tz = turret.pos.z - e.position.z;
       tDist = Math.hypot(tx, tz) || 0.001;
       if (tDist < dist) { mx = tx / tDist; mz = tz / tDist; fx = tx; fz = tz; if (tDist < u.size * 0.5 + 0.8) spd = 0; }
     }
+    // you're indoors or upstairs: follow the door and the stairs instead of walking into a wall
+    const route = tDist < dist || (T.ranged && u.los) ? null : routeFor(e, u);
+    if (route) { const rx = route[0] - e.position.x, rz = route[1] - e.position.z, rl = Math.hypot(rx, rz) || 0.001; mx = rx / rl; mz = rz / rl; }
 
     if (T.boss) {
       if (u.slam > 0) {
@@ -3311,9 +3679,15 @@ function updateEnemies(dt, t) {
     const bx = e.position.x, bz = e.position.z;
     e.position.x += mx * spd * dt;
     e.position.z += mz * spd * dt;
-    collide(e.position, u.size * 0.55);
+    collide(e.position, u.size * 0.55, u.gy, u.size);
+    // up and down stairs, and off ledges
+    const gnd = groundAt(e.position, u.gy);
+    if (u.gy > gnd + 0.6 || u.vy > 0) {
+      u.vy -= 20 * dt; u.gy += u.vy * dt;
+      if (u.gy <= gnd) { u.gy = gnd; u.vy = 0; }
+    } else { u.gy = gnd; u.vy = 0; }
     for (const o of enemies) {
-      if (o === e) continue;
+      if (o === e || Math.abs(o.userData.gy - u.gy) > 1.5) continue;
       const ox = e.position.x - o.position.x, oz = e.position.z - o.position.z;
       const od = Math.hypot(ox, oz), min = (u.size + o.userData.size) * 0.5;
       if (od < min && od > 0.001) {
@@ -3324,7 +3698,8 @@ function updateEnemies(dt, t) {
     // never overlap the player (bullets can't hit a cube from inside it)
     const minD = u.size * 0.5 + 0.45;
     const ex = e.position.x - player.pos.x, ez = e.position.z - player.pos.z, ed = Math.hypot(ex, ez);
-    if (ed < minD && player.pos.y < u.size + 0.3) {
+    const dy = player.pos.y - u.gy;
+    if (ed < minD && dy < u.size + 0.3 && dy > -BODY) {
       if (ed > 0.001) { e.position.x = player.pos.x + ex / ed * minD; e.position.z = player.pos.z + ez / ed * minD; }
       else e.position.x += minD;
     }
@@ -3340,19 +3715,19 @@ function updateEnemies(dt, t) {
     const hop = T.boss ? Math.abs(Math.sin(t * 4 + u.phase)) * 0.4 : Math.abs(Math.sin(t * (T.pace > 3 ? 14 : 8) + u.phase));
     const grow = 1 - Math.pow(1 - u.spawnT, 3);
     const punch = 1 + Math.max(0, u.hit) * (T.boss ? 0.4 : 1.5);
-    e.position.y = (u.size / 2) * grow + hop * 0.25 * u.size * grow - (1 - grow) * u.size * 0.5 + u.air;
+    e.position.y = u.gy + (u.size / 2) * grow + hop * 0.25 * u.size * grow - (1 - grow) * u.size * 0.5 + u.air;
     e.scale.set(grow * punch * (1.05 - hop * 0.08), grow * punch * (0.9 + hop * 0.16), grow * punch * (1.05 - hop * 0.08));
     u.blink -= dt;
     const closed = u.blink < 0.12;
     if (u.blink < 0) u.blink = 2 + Math.random() * 4;
     for (const eye of u.eyes) eye.scale.y = closed ? 0.15 : 1;
 
-    if (!T.ranged && u.air < 0.5 && dist < u.size * 0.5 + 0.7 && player.pos.y < u.size + 0.7) {
+    if (!T.ranged && u.air < 0.5 && dist < u.size * 0.5 + 0.7 && dy < u.size + 0.7 && dy > -1.2) {
       player.hp -= T.melee * dt;
       damageFlash = 0.5;
       if (player.hurtCd <= 0) { player.hurtCd = 0.4; hurtFrom(e.position); Sound.play('hurt'); shake = Math.max(shake, 0.3); }
     }
-    if (!T.ranged && tDist < dist && u.air < 0.5 && tDist < u.size * 0.5 + 0.95) damageTurret(T.melee * dt);
+    if (!T.ranged && tDist < dist && u.air < 0.5 && tDist < u.size * 0.5 + 0.95) damageTurret(T.melee * dt); // tDist is only set on the turret's floor
     u.hit -= dt;
     if (u.hit > 0) u.mat.emissive.setHex(0xffffff);
     else if (T.ranged && u.los && u.fireCd < 0.6) u.mat.emissive.setRGB(0.15, 0.45, 1).multiplyScalar(1 - Math.max(0, u.fireCd) / 0.6);
@@ -3382,9 +3757,9 @@ function updateShots(dt) {
       hurtFrom(u.from); Sound.play('hurt');
       sparks(p, 0x7cc4ff, 6);
     }
-    if (!dead && turret && Math.hypot(p.x - turret.pos.x, p.y - 0.9, p.z - turret.pos.z) < 0.75) { damageTurret(u.dmg); dead = true; sparks(p, 0x7cc4ff, 6); }
+    if (!dead && turret && Math.hypot(p.x - turret.pos.x, p.y - turret.pos.y - 0.9, p.z - turret.pos.z) < 0.75) { damageTurret(u.dmg); dead = true; sparks(p, 0x7cc4ff, 6); }
     if (!dead) for (const b of boxes) {
-      if (Math.abs(p.x - b.x) < b.hx && Math.abs(p.z - b.z) < b.hz && p.y < b.h) { dead = true; sparks(p, 0x7cc4ff, 5); glowFlash(p, 0x3b82f6, 1.2); break; }
+      if (Math.abs(p.x - b.x) < b.hx && Math.abs(p.z - b.z) < b.hz && p.y > (b.y0 || 0) && p.y < (b.ramp ? rampY(b, p.x, p.z) : b.h)) { dead = true; sparks(p, 0x7cc4ff, 5); glowFlash(p, 0x3b82f6, 1.2); break; }
     }
     if (dead) { removeShot(s); shots.splice(i, 1); }
   }
@@ -3395,6 +3770,7 @@ function update(dt, t) {
   profile.stats.time += dt;
   if ((profileSaveT -= dt) <= 0) { profileSaveT = 15; saveProfile(); }
   updatePlayer(dt);
+  updateKnife(dt);
 
   fireCooldown -= dt;
   if (mouseDown && weapon.auto) shoot();
@@ -3560,7 +3936,7 @@ function tick() {
     camera.position.set(Math.cos(a) * orbit, high, Math.sin(a) * orbit);
     camera.lookAt(0, 1, 0);
     if (camera.fov !== settings.fov) { camera.fov = curFov = settings.fov; camera.updateProjectionMatrix(); }
-    gun.visible = false;
+    gun.visible = knifeG.visible = false;
     shadowCenter.set(0, 0, 0);
   } else {
     const moving = state === 'playing' && player.onGround && (keys.KeyW || keys.KeyA || keys.KeyS || keys.KeyD);
@@ -3576,7 +3952,9 @@ function tick() {
     const scoped = zoomed && curFov < settings.fov / 2;
     $('scope').style.display = scoped ? 'block' : 'none';
     $('crosshair').style.display = scoped ? 'none' : 'block';
-    gun.visible = !scoped && state !== 'dead';
+    gun.visible = !scoped && state !== 'dead' && !knifeOut;
+    knifeG.visible = knifeOut && state !== 'dead';
+    if (knifeG.visible) poseKnife();
 
     // weapon: bob, sway, recoil, reload and switch animations
     const bobX = moving ? Math.sin(stepPhase) * 0.012 : 0;
@@ -3608,7 +3986,7 @@ function tick() {
   renderer.clear();
   camera.layers.set(0);
   renderer.render(scene, camera);
-  if (gun.visible) {
+  if (gun.visible || knifeG.visible) {
     renderer.clearDepth();
     vmCam.fov = vmFov(); vmCam.aspect = camera.aspect; vmCam.updateProjectionMatrix();
     vmCam.matrix.copy(camera.matrixWorld);
@@ -3699,6 +4077,7 @@ const AVATARS = (() => {
     { key: 'rock', label: 'Rock', make: () => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), flat(0x868b84)); m.scale.y = 0.7; m.rotation.y = 0.6; return m; }, dir: [1, 0.6, 1.2] },
     { key: 'pack', label: 'Health pack', make: () => new THREE.Mesh(packGeo, packMat), dir: [1, 0.8, 1.3] },
     { key: 'turret', label: 'Turret', make: () => turretModel().g, dir: [1, 0.45, -0.7], zoom: 0.85 },
+    { key: 'knife', label: 'Knife', make: () => { const g = knifeModel(false); g.rotation.set(0.6, 0, 0); return g; }, dir: [1, 0.25, 0.05], zoom: 0.62 },
     { key: 'shell', label: 'Shell', make: () => {
       const g = new THREE.Group();
       g.add(new THREE.Mesh(SHELL_GEO.shotBase, GM.brass), new THREE.Mesh(SHELL_GEO.shotHull, GM.hull));
@@ -3801,6 +4180,7 @@ function submitName() {
   saveProfile();
   Sound.init(); Sound.play('click');
   showMenu(first ? 'main' : 'profile');
+  if (first) maybeWhatsNew();
 }
 nameInput.addEventListener('input', () => { $('nameOk').disabled = !nameInput.value.trim(); });
 nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitName(); });
@@ -3808,10 +4188,38 @@ $('nameOk').addEventListener('click', submitName);
 $('renameBtn').addEventListener('click', () => { Sound.play('click'); openNameMenu(false); });
 addEventListener('pagehide', saveProfile);
 
+// ---------- What's new: a pop-up the first time you load each new version ----------
+const VERSION = '1.7.2';
+const WHATS_NEW = {
+  title: 'Climb the town',
+  sub: "Every building in Frontier's town is open. Take the stairs to the roof and snipe from the top.",
+  items: [
+    ['🏢', 'Climbable buildings', 'Walk in through the door, take the stairs up floor by floor and crouch behind the low wall on the roof.'],
+    ['🟥', 'The cubes climb too', 'They follow you in through the door and up the stairs, and back down if you jump off.'],
+    ['🔪', `Combat Knife · ${KNIFE_PRICE} coins`, 'New in the Shop. Hold 7 to keep slashing every cube in front of you, up close.'],
+    ['🔧', 'Fixes', "Shift + number keys switch guns again, big hits can't knock cubes through walls, and health packs, the turret and the King's shockwave work upstairs."],
+  ],
+};
+(() => {
+  $('wnTag').textContent = 'NEW IN v' + VERSION;
+  $('wnTitle').textContent = WHATS_NEW.title;
+  $('wnSub').textContent = WHATS_NEW.sub;
+  $('wnList').innerHTML = WHATS_NEW.items.map(() => '<li><i></i><div><b></b><span></span></div></li>').join('');
+  [...$('wnList').children].forEach((li, i) => {
+    const [icon, head, text] = WHATS_NEW.items[i];
+    li.querySelector('i').textContent = icon; li.querySelector('b').textContent = head; li.querySelector('span').textContent = text;
+  });
+})();
+function maybeWhatsNew() {
+  if (profile.seenVersion === VERSION) return;
+  profile.seenVersion = VERSION; saveProfile();
+  openSub('whatsnew');
+}
+
 renderAvatars();
 applyQuality();
 resetGame();
-if (profile.name) showMenu('main'); else openNameMenu(true);
+if (profile.name) { showMenu('main'); maybeWhatsNew(); } else openNameMenu(true);
 tick();
 </script>
 </body>
