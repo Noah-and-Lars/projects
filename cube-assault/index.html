@@ -280,6 +280,13 @@
   #prompt .pbar { width: 200px; height: 6px; margin: 8px auto 0; background: rgba(0, 0, 0, .5); border-radius: 3px; overflow: hidden; }
   #prompt .pbar i { display: block; height: 100%; width: 0; background: var(--gold-hi); }
   .soon { font-size: 14px !important; }
+  #choice { position: fixed; inset: 0; z-index: 35; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, .45); padding: 16px; }
+  .choiceBox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; max-width: 520px; width: 100%; text-align: center;
+    display: flex; flex-direction: column; gap: 10px; animation: menuIn .25s ease-out; }
+  .choiceBox h2 { font-family: var(--display); font-weight: 400; font-size: 30px; }
+  .choiceBtns { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 6px; }
+  .choiceBtns .btn { width: 100%; max-width: 380px; }
+  .choiceBtns kbd { color: inherit; border-color: currentColor; margin-right: 6px; }
 
   /* Map select */
   .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin: 4px 0 10px; }
@@ -362,6 +369,14 @@
 
 <div id="cine"></div>
 <div id="subs"><b id="subsWho"></b><span id="subsText"></span></div>
+<div id="choice"><div class="choiceBox">
+  <div class="eyebrow">Your call</div>
+  <h2>What do you do with him?</h2>
+  <div class="choiceBtns">
+    <button class="btn danger" id="choiceKill"><kbd>1</kbd> Throw him out of the window</button>
+    <button class="btn secondary" id="choiceSpare"><kbd>2</kbd> Spare him and take the bribe</button>
+  </div>
+</div></div>
 <div id="levelCard">
   <div class="eyebrow" id="lcLevel">Level 1</div>
   <h1 id="lcTitle">The Birch Road</h1>
@@ -402,12 +417,20 @@
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v1.9.2 · What's new</button>
+    <button class="link" data-action="notes">v2.0 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v2.0 <span>Campaign: Level 2</span></h3><ul>
+        <li>New campaign level: Level 2, Tajer Support (Mumbai, India, 2009). You're a SWAT officer raiding a scam call centre at the top of a tower.</li>
+        <li>A long opening cutscene: walk up to the tower with your three-officer SWAT team, sneak through the lobby, ride the lift to the fifth floor and spy on the scammers from behind a wall while they work their phones. Then Captain Mehta counts to three.</li>
+        <li>New enemy, campaign only: Scam Cubes. Yellow cubes with happy faces and headsets, about twenty of them at their computers. When the raid starts they jump off their chairs and come for you.</li>
+        <li>Take down every scammer but the last, and you grab him. He begs, offers you a bribe, and you decide what happens next. Choose carefully.</li>
+        <li>Campaign levels now unlock in order: finish Level 1 to open Level 2.</li>
+        <li>Fix: the campaign's Level complete and Mission failed screens always talked about Level 1.</li>
+      </ul></section>
       <section><h3>v1.9.2 <span>Menu music</span></h3><ul>
         <li>The menus now have music: a fast, catchy 16-bit style track made from the game's own sound engine, so it still works offline. It fades in on the menus and fades out when a game starts.</li>
         <li>New in Settings: Music On / Off.</li>
@@ -596,20 +619,23 @@
 
   <div class="menu" id="menu-news">
     <div class="eyebrow">What's new</div>
-    <h2>v1.9.2 · Menu music</h2>
+    <h2>v2.0 · Campaign: Level 2</h2>
     <ul class="newslist">
-      <li><b>Menu music.</b> A fast, catchy 16-bit style track now plays on the menus.</li>
-      <li>Don't want it? Turn it off in <b>Settings → Music</b>.</li>
+      <li><b>Level 2: Tajer Support.</b> Mumbai, India, 2009. Lead a SWAT raid on a scam call centre at the top of a tower.</li>
+      <li>A long cutscene with your SWAT team: the lobby, the lift and spying on the scammers before the raid.</li>
+      <li><b>Scam Cubes</b>, happy yellow cubes with headsets, only found in this level.</li>
+      <li>The last scammer begs for his life. <b>Your choice decides how the mission ends.</b></li>
+      <li>Finish Level 1 to unlock Level 2.</li>
     </ul>
     <button class="btn" id="newsOk">Let's go</button>
   </div>
 
   <div class="menu" id="menu-complete">
-    <div class="eyebrow">Level 1 · Russia · 1944</div>
+    <div class="eyebrow" id="cEyebrow">Level 1 · Russia · 1944</div>
     <h2>Level complete</h2>
-    <p>The flag is yours, comrade. The cube army is falling back from the birch road.</p>
+    <p id="cText">The flag is yours, comrade. The cube army is falling back from the birch road.</p>
     <div class="stats" id="cstats"></div>
-    <p class="soon">Level 2 is coming soon.</p>
+    <p class="soon" id="cSoon">Level 2 is coming soon.</p>
     <button class="btn" data-action="campaign">Back to campaign</button>
     <button class="btn secondary" data-action="quit">Main menu</button>
   </div>
@@ -621,7 +647,7 @@
         <span>Story missions on the Eastern Front, played in order. Level 1 is ready, and more are on the way.</span></div>
       <div class="levels">
         <button class="lvl" data-level="1"><small>Level 1</small><b>The Birch Road</b><span>Russia · 1944</span><i>✓ Complete</i></button>
-        <button class="lvl" disabled><small>Level 2</small><b>Coming soon</b></button>
+        <button class="lvl" data-level="2"><small>Level 2</small><b>Tajer Support</b><span id="lvl2Sub">Mumbai · 2009</span><i>✓ Complete</i></button>
         <button class="lvl" disabled><small>Level 3</small><b>Coming soon</b></button>
         <button class="lvl" disabled><small>Level 4</small><b>Coming soon</b></button>
         <button class="lvl" disabled><small>Level 5</small><b>Coming soon</b></button>
@@ -702,6 +728,9 @@ const ENEMY_TYPES = {
   king:   { name: 'King Cube', unlock: 15, color: 0xf5b82e, css: '#f5b82e', size: 2.6, hp: 60, speed: 2.1, melee: 50, reward: 2000, coins: 10, weight: 0, intro: 0, brows: true, boss: true,
             health: 5, pace: 1, attack: 'Ground slam',
             desc: 'The boss. It leaps into the air and slams the ground, sending out a shockwave ring. Jump over the ring, or stand on a crate, to dodge it. Worth 10 coins.' },
+  scam:   { name: 'Scam Cube', unlock: 999, color: 0xfacc15, css: '#facc15', size: 0.9, hp: 2, speed: 3.1, melee: 12, reward: 120, weight: 0, intro: 0, scam: true,
+            health: 1, pace: 3, attack: 'Melee',
+            desc: 'A scam caller with a headset and a big smile. Only found in the campaign.' },
   // campaign only: never rolled in normal waves (unlock 999, weight 0)
   rifle:  { name: 'Rifle Cube', unlock: 999, color: 0xdc2626, css: '#dc2626', size: 1, hp: 2, speed: 2.9, ranged: true, fireEvery: 2.8, shotDmg: 8, reward: 150, weight: 0, intro: 0,
             health: 1, pace: 2, attack: 'Rifle',
@@ -709,7 +738,7 @@ const ENEMY_TYPES = {
 };
 // most of each type a random wave can roll (the guaranteed intro cubes still count)
 const TYPE_CAP = n => ({ blue: 2 + Math.floor(Math.max(0, n - 7) / 3), purple: 1 + Math.floor(Math.max(0, n - 10) / 3) });
-const DROP_CHANCE = { red: 0.08, green: 0.08, blue: 0.15, purple: 0.3, king: 1, rifle: 0.12 };
+const DROP_CHANCE = { red: 0.08, green: 0.08, blue: 0.15, purple: 0.3, king: 1, rifle: 0.12, scam: 0.1 };
 const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
 
 // ---------- Saved settings & profile ----------
@@ -845,6 +874,11 @@ const Sound = (() => {
     engine: () => noise({ dur: 0.09, freq: 130, q: 1.2, vol: 0.1 }),
     skid: () => { noise({ dur: 0.8, freq: 1000, q: 0.9, vol: 0.13, to: 380 }); noise({ dur: 0.5, freq: 220, q: 1, vol: 0.12 }); },
     thunk: () => { noise({ dur: 0.08, freq: 320, q: 1, vol: 0.3 }); tone({ freq: 90, to: 60, dur: 0.1, vol: 0.2 }); },
+    ding: () => { tone({ freq: 1318, dur: 0.5, type: 'sine', vol: 0.14 }); tone({ freq: 1046, dur: 0.7, type: 'sine', vol: 0.12, delay: 0.18 }); },
+    liftDoor: () => noise({ dur: 0.6, freq: 500, q: 0.7, vol: 0.06, to: 900 }),
+    muzak: n => { const f = [523, 659, 784, 659][n % 4]; tone({ freq: f, dur: 0.5, type: 'triangle', vol: 0.035 }); tone({ freq: f / 2, dur: 0.6, type: 'sine', vol: 0.03 }); },
+    chatter: () => { for (let i = 0; i < 3; i++) tone({ freq: 380 + Math.random() * 260, to: 300 + Math.random() * 200, dur: 0.06, type: 'triangle', vol: 0.025, delay: i * 0.08 }); },
+    glass: () => { for (let i = 0; i < 8; i++) tone({ freq: 2400 + Math.random() * 3000, dur: 0.08 + Math.random() * 0.15, type: 'triangle', vol: 0.06, delay: Math.random() * 0.25 }); noise({ dur: 0.3, freq: 5000, q: 0.6, vol: 0.25 }); },
     magIn: () => { noise({ dur: 0.04, freq: 1600, q: 3, vol: 0.32 }); tone({ freq: 500, dur: 0.03, type: 'square', vol: 0.05 }); },
     death: () => { tone({ freq: 300, to: 40, dur: 1.2, type: 'sawtooth', vol: 0.14 }); noise({ dur: 0.8, freq: 400, vol: 0.2, to: 80 }); },
   };
@@ -1806,10 +1840,10 @@ for (let i = 0; i < CHUNKS; i++) {
   chunkMesh.setMatrixAt(i, ZERO); chunkMesh.setColorAt(i, _cc.set(0xffffff));
 }
 sceneAdd(chunkMesh);
-function spawnChunk(p, size, color, v) {
+function spawnChunk(p, size, color, v, floor = 0) {
   const i = chunkNext, c = chunks[i];
   chunkNext = (chunkNext + 1) % CHUNKS;
-  c.alive = true; c.rest = false; c.p.copy(p); c.v.copy(v); c.s = size; c.life = 40 + Math.random() * 6;
+  c.alive = true; c.rest = false; c.p.copy(p); c.v.copy(v); c.s = size; c.life = 40 + Math.random() * 6; c.floor = floor;
   c.r.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
   c.w.set((Math.random() - .5) * 14, (Math.random() - .5) * 14, (Math.random() - .5) * 14);
   chunkMesh.setColorAt(i, _cc.setHex(color)); chunkMesh.instanceColor.needsUpdate = true;
@@ -1826,7 +1860,7 @@ function updateChunks(dt) {
       c.v.y -= 20 * dt;
       c.p.addScaledVector(c.v, dt);
       c.r.addScaledVector(c.w, dt);
-      const floorY = c.s * 0.5;
+      const floorY = (c.floor || 0) + c.s * 0.5;
       if (c.p.y < floorY) {
         c.p.y = floorY;
         if (c.v.y < -2.2) { c.v.y *= -0.3; c.v.x *= 0.55; c.v.z *= 0.55; c.w.multiplyScalar(0.5); }
@@ -1842,7 +1876,7 @@ function updateChunks(dt) {
   if (dirty) chunkMesh.instanceMatrix.needsUpdate = true;
 }
 // fill a box-shaped region with blocks flying away from the blast at P
-function crumble(min, max, color, P, cap = 22) {
+function crumble(min, max, color, P, cap = 22, floor = 0) {
   const sx = max.x - min.x, sy = max.y - min.y, sz = max.z - min.z, vol = Math.max(0.001, sx * sy * sz);
   const n = Math.max(3, Math.min(cap, Math.round(vol / 0.08)));
   const size = Math.min(0.7, Math.max(0.16, Math.cbrt(vol / n) * 0.9));
@@ -1851,7 +1885,7 @@ function crumble(min, max, color, P, cap = 22) {
     p.set(min.x + Math.random() * sx, min.y + Math.random() * sy, min.z + Math.random() * sz);
     v.copy(p).sub(P); const d = v.length() || 1;
     v.multiplyScalar((2 + Math.random() * 5) / d); v.y += 2 + Math.random() * 3.5;
-    spawnChunk(p, size * (0.7 + Math.random() * 0.6), color, v);
+    spawnChunk(p, size * (0.7 + Math.random() * 0.6), color, v, floor);
   }
 }
 function matColor(mat) {
@@ -2104,11 +2138,16 @@ function slash() {
   updateHUD();
 }
 
+let mountainRing = null;
 function useMap(id) {
   if (id === 'big' && !MAPS.big) buildBigMap();
+  if (id === 'c2' && !MAPS.c2) buildCampaign2();
   if (id === 'c1' && !MAPS.c1) buildCampaign1();
   const M = MAPS[id];
-  // weather: the campaign map is grey and snowy
+  // weather: grey snow for Russia, warm haze for Mumbai; the tower map has its own street level, so the shared floor hides
+  floor.visible = !M.hideFloor;
+  mountainRing = mountainRing || scene.children.filter(o => o.isMesh && o.geometry && o.geometry.type === 'ConeGeometry' && Math.hypot(o.position.x, o.position.z) > 200);
+  for (const m of mountainRing) m.visible = !M.noMountains;
   const W = M.weather || {};
   scene.fog.color.setHex(W.fog || HORIZON);
   sky.material.uniforms.top.value.setHex(W.top || 0x3d7fd1);
@@ -2932,7 +2971,8 @@ function setWeapon(key) {
 function updateHUD() {
   $('score').textContent = 'Score: ' + score;
   $('coinsCount').textContent = profile.coins;
-  $('wave').textContent = gameMode === 'campaign' && camp ? (camp.phase === 'flag' || camp.phase === 'done' ? 'Objective: the flag' : 'Wave ' + wave + ' of ' + CAMP_WAVES.length + ' · ' + enemies.length + ' left')
+  $('wave').textContent = gameMode === 'campaign' && camp && camp.level === 2 ? 'Scammers left: ' + enemies.length
+    : gameMode === 'campaign' && camp ? (camp.phase === 'flag' || camp.phase === 'done' ? 'Objective: the flag' : 'Wave ' + wave + ' of ' + CAMP_WAVES.length + ' · ' + enemies.length + ' left')
     : 'Wave ' + wave + ' · ' + enemies.length + ' left';
   const hp = Math.max(0, Math.ceil(player.hp));
   $('hpNum').textContent = hp;
@@ -3019,6 +3059,17 @@ function spawnEnemy(key, at) {
     }
   }
   if (T.ranged) g.add(part(0.16, 0.16, 0.8, matBlack, size * 0.58, -0.05, -size * 0.35));
+  let smile = null;
+  if (T.scam) {
+    // a big smile, rosy cheeks and a call-centre headset
+    smile = new THREE.Mesh(new THREE.TorusGeometry(size * 0.17, size * 0.028, 6, 14, Math.PI), pupilMat);
+    smile.rotation.z = Math.PI; smile.position.set(0, -size * 0.1, -size / 2 - 0.02); g.add(smile);
+    for (const s of [-1, 1]) g.add(part(size * 0.12, size * 0.07, 0.03, flat(0xf59fb3), s * size * 0.3, -size * 0.04, -size / 2 - 0.015));
+    const band = new THREE.Mesh(new THREE.TorusGeometry(size * 0.53, size * 0.035, 6, 18, Math.PI), matBlack); band.position.y = size * 0.08; g.add(band);
+    for (const s of [-1, 1]) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.15, size * 0.15, 0.09, 12), matBlack); cup.rotation.z = Math.PI / 2; cup.position.set(s * (size / 2 + 0.04), size * 0.05, 0); g.add(cup); }
+    g.add(limb(new THREE.Vector3(-size / 2 - 0.06, 0, -size * 0.1), new THREE.Vector3(-size * 0.16, -size * 0.17, -size / 2 - 0.07), 0.016, 0.016, matBlack, 6));
+    g.add(joint(new THREE.Vector3(-size * 0.14, -size * 0.17, -size / 2 - 0.07), 0.035, matBlack, 8));
+  }
   if (T.boss) {
     const gold = cached('crown', () => new THREE.MeshStandardMaterial({ color: 0xffd34d, metalness: 0.7, roughness: 0.3, emissive: 0x3a2600 }));
     const crown = new THREE.Group();
@@ -3052,7 +3103,7 @@ function spawnEnemy(key, at) {
   m.userData.enemy = g;
   const hp = T.hp + Math.floor(wave / 9);
   g.userData = {
-    T, key, mesh: m, mat, size, eyes, hp, maxHp: hp, bar: null,
+    T, key, mesh: m, mat, size, eyes, smile, hp, maxHp: hp, bar: null, wake: 0,
     speed: T.speed + wave * 0.12 + Math.random() * 0.5,
     hit: 0, phase: Math.random() * 10, spawnT: 0, blink: 1 + Math.random() * 4,
     fireCd: (T.fireEvery || 0) * (0.6 + Math.random() * 0.6), los: false, losTimer: 0,
@@ -3102,7 +3153,7 @@ function waveRoster(n) {
 }
 
 function nextWave() {
-  if (gameMode === 'campaign') { campaignNextWave(); return; }
+  if (gameMode === 'campaign') { if (camp && camp.level === 1) campaignNextWave(); return; }
   wave++;
   waveRoster(wave).forEach(k => spawnEnemy(k));
   const healed = Math.round(Math.min(100, player.hp + 25) - player.hp);
@@ -3494,7 +3545,7 @@ function showMenu(name) {
   if (name === 'shop') refreshShop();
   if (name === 'settings') refreshSettingsUI();
   if (name === 'main' || name === 'profile') refreshProfile();
-  if (name === 'maps') document.querySelectorAll('.lvl[data-level]').forEach(b => b.classList.toggle('done', !!profile.campaign[b.dataset.level]));
+  if (name === 'maps') refreshLevels();
   updateHUD();
 }
 function openSub(name) { backTo[name] = currentMenu; showMenu(name); }
@@ -3577,7 +3628,8 @@ function gameOver() {
   saveProfile();
   $('deadTitle').textContent = story ? 'Mission failed' : 'Game over';
   $('deadPlay').textContent = story ? 'Retry level' : 'Play again';
-  $('finalScore').innerHTML = story ? 'The cubes held the birch road. Volkov is still waiting at the jeep.'
+  document.querySelectorAll('#menu-dead [data-action="shop"], #menu-dead [data-action="quit"]').forEach(b => b.style.display = '');
+  $('finalScore').innerHTML = story ? (LEVELS[camp ? camp.level : 1] || LEVELS[1]).fail
     : newBest ? '<span class="newbest">New best wave!</span>' : `Your best: wave ${profile.best}`;
   const acc = shotsFired ? Math.round(shotsHit / shotsFired * 100) + '%' : '–';
   $('stats').innerHTML = [['Score', score], ['Wave', wave], ['Kills', kills], ['Accuracy', acc], ['Best combo', bestCombo + '×'], ['Coins earned', runCoins]]
@@ -3831,7 +3883,7 @@ document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('clic
   Sound.init();
   const a = b.dataset.action;
   if (a !== 'play' && a !== 'continue') Sound.play('click');
-  if (a === 'play') { if (gameMode === 'campaign') startCampaign(1, true); else startGame(); }
+  if (a === 'play') { if (gameMode === 'campaign') startCampaign(camp ? camp.level : 1, true); else startGame(); }
   else if (a === 'campaign') { quitToMenu(); openSub('maps'); }
   else if (a === 'resume') resume();
   else if (a === 'quit') quitToMenu();
@@ -3842,6 +3894,7 @@ document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('clic
 
 // ---------- Input ----------
 addEventListener('keydown', e => {
+  if (state === 'cutscene' && cs && cs.choosing) { if (e.code === 'Digit1') choose('kill'); else if (e.code === 'Digit2') choose('spare'); return; }
   if (e.code === 'Escape') {
     if (state === 'playing') pause();
     else if (state === 'intro') continueIntro();
@@ -3953,6 +4006,7 @@ function updateEnemies(dt, t) {
     let mx = dx / dist, mz = dz / dist, spd = u.speed;
     u.spawnT = Math.min(1, u.spawnT + dt * 2);
     if (u.spawnT < 1) spd = 0;
+    if (u.wake > 0) { u.wake -= dt; spd = 0; } // still getting up from a desk
     // melee cubes go for whichever is closer: you or your turret
     let tDist = Infinity, fx = dx, fz = dz;
     if (turret && !T.ranged) {
@@ -4242,6 +4296,7 @@ function tick() {
 
   if (state === 'playing') update(dt, t);
   else if (state === 'cutscene') updateCutscene(dt);
+  if (state === 'cutscene' || state === 'won' || state === 'dead') updateChunks(dt);
   if (state !== 'paused') updateFx(dt);
   for (const c of clouds) { const u = c.userData; u.a += u.speed / u.r * dt; c.position.x = Math.cos(u.a) * u.r; c.position.z = Math.sin(u.a) * u.r; }
   if (mapId === 'c1' && MAPS.c1) updateSnow(dt, t);
@@ -4590,7 +4645,7 @@ function jeepZ(t) {
 const jeepSpeed = t => t < 0 ? 0 : t < DRIVE.spot ? DRIVE.v : Math.max(0, DRIVE.v - DRIVE.v / DRIVE.brake * (t - DRIVE.spot));
 const SPOT = [[-5, -10], [2, -13], [8, -9]];
 const _ce2 = new THREE.Vector3(), _ce3 = new THREE.Vector3();
-function updateCutscene(dt) {
+function cutsceneDrive(dt) {
   const C = MAPS.c1, J = C.jeep, D = C.driver, t = (cs.t += dt);
   // title card first, fading out into the drive
   const card = $('levelCard');
@@ -4671,6 +4726,7 @@ function beginFight() {
   state = 'playing';
   $('subs').style.display = 'none'; $('cine').style.display = 'none'; $('levelCard').style.display = 'none';
   placeJeepAtStop();
+  MAPS.c1.jeep.g.updateMatrixWorld(true);
   player.pos.set(J.g.position.x + 2.1, 0, J.g.position.z + 0.6); player.yaw = 0; player.pitch = 0; player.vy = 0; player.onGround = true;
   boxes.push({ x: J.g.position.x, z: J.g.position.z, hx: 0.85, hz: 1.75, h: 1.6 });
   setWeapon('rifle'); switchT = 1; Sound.play('equip', 'rifle');
@@ -4701,6 +4757,7 @@ function campaignNextWave() {
 const CLAIM = 2.5;
 function campaignUpdate(dt) {
   camp.time += dt;
+  if (camp.level === 2) { campaign2Update(dt); return; }
   const F = MAPS.c1.flag, now = performance.now() / 1000;
   F.enemy.rotation.y = Math.sin(now * 1.7) * 0.18; F.ours.rotation.y = Math.sin(now * 1.7 + 1) * 0.18;
   if (camp.phase !== 'flag') return;
@@ -4713,23 +4770,27 @@ function campaignUpdate(dt) {
   if (camp.claim >= CLAIM) completeLevel();
 }
 function completeLevel() {
+  const L = LEVELS[camp.level];
   $('lowhp').classList.remove('on');
   camp.phase = 'done';
   state = 'won';
   releaseInput();
   $('prompt').style.display = 'none'; objective('');
-  MAPS.c1.flag.beacon.visible = false;
+  if (camp.level === 1) MAPS.c1.flag.beacon.visible = false;
   profile.campaign[camp.level] = true; saveProfile();
-  banner('Flag captured!', 'Level 1 complete'); Sound.play('wave');
+  $('cEyebrow').textContent = L.tag; $('cText').textContent = L.done;
+  $('cSoon').textContent = LEVELS[camp.level + 1] ? `Level ${camp.level + 1} is unlocked.` : `Level ${camp.level + 1} is coming soon.`;
+  banner(L.won, `Level ${camp.level} complete`); Sound.play('wave');
   const acc = shotsFired ? Math.round(shotsHit / shotsFired * 100) + '%' : '–', s = Math.floor(camp.time);
-  $('cstats').innerHTML = [['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`], ['Cubes destroyed', kills], ['Accuracy', acc]]
+  $('cstats').innerHTML = [['Time', `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`], [L.killLabel, kills], ['Accuracy', acc]]
     .map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
   setTimeout(() => { if (state === 'won') showMenu('complete'); }, 2200);
 }
 function campaignReset() {
   cs = null; camp = null;
-  for (const id of ['subs', 'cine', 'levelCard', 'prompt']) $(id).style.display = 'none';
+  for (const id of ['subs', 'cine', 'levelCard', 'prompt', 'choice']) $(id).style.display = 'none';
   objective('');
+  resetC2();
   const C = MAPS.c1;
   if (!C) return;
   C.flag.enemy.position.y = 6.3; C.flag.ours.visible = false; C.flag.ours.position.y = 0.9; C.flag.beacon.visible = false;
@@ -4737,22 +4798,658 @@ function campaignReset() {
   C.driver.head.rotation.y = 0; C.driver.armR.rotation.set(0, 0, 0);
 }
 function startCampaign(n, skipIntro) {
+  const L = LEVELS[n];
   Sound.init();
   gameMode = 'classic';
-  useMap('c1');
+  useMap(L.map);
   resetGame();
   gameMode = 'campaign';
   camp = { level: n, phase: 'intro', time: 0, claim: 0 };
   hideMenus();
   lockMouse();
   setWeapon('rifle');
-  if (skipIntro) { beginFight(); return; }
+  if (L.setup) L.setup(skipIntro);
+  if (skipIntro) { L.begin(); return; }
   state = 'cutscene';
-  cs = { t: -4.2, yaw: 0, pitch: -0.03, eng: 0, spotted: false, skid: false, thunk: false };
+  cs = L.cutscene();
+  $('lcLevel').textContent = 'Level ' + n; $('lcTitle').textContent = L.title; $('lcWhere').textContent = L.where; $('lcBlurb').textContent = L.blurb;
   $('cine').style.display = 'block';
   updateCutscene(0);
 }
+function updateCutscene(dt) {
+  if (cs.kind === 'drive') cutsceneDrive(dt);
+  else if (cs.kind === 'raid') cutsceneRaid(dt);
+  else if (cs.kind === 'grab') cutsceneGrab(dt);
+}
+// levels unlock in order (a test account sees them all)
+function refreshLevels() {
+  document.querySelectorAll('.lvl[data-level]').forEach(b => {
+    const n = +b.dataset.level, open = n === 1 || !!profile.campaign[n - 1] || isAdmin();
+    b.disabled = !open;
+    b.classList.toggle('done', !!profile.campaign[n]);
+  });
+  $('lvl2Sub').textContent = $('lvl2Sub').parentNode.disabled ? 'Finish Level 1 first' : 'Mumbai · 2009';
+}
 document.querySelectorAll('.lvl[data-level]').forEach(b => b.addEventListener('click', () => { Sound.init(); Sound.play('click'); startCampaign(+b.dataset.level, false); }));
+
+// ---------- Campaign level data ----------
+const LEVELS = {
+  1: { map: 'c1', killLabel: 'Cubes destroyed', title: 'The Birch Road', where: 'Russia · Winter 1944', tag: 'Level 1 · Russia · 1944', won: 'Flag captured!',
+       blurb: 'The German cube army has dug in past the birch forest. Nobody sent in has come back. Push them out.',
+       done: 'The flag is yours, comrade. The cube army is falling back from the birch road.',
+       fail: 'The cubes held the birch road. Volkov is still waiting at the jeep.',
+       cutscene: () => ({ kind: 'drive', t: -4.2, yaw: 0, pitch: -0.03, eng: 0, spotted: false, skid: false, thunk: false }),
+       begin: () => beginFight() },
+  2: { map: 'c2', killLabel: 'Scammers', title: 'Tajer Support', where: 'Mumbai, India · 2009', tag: 'Level 2 · Mumbai · 2009', won: 'Call centre closed!',
+       blurb: 'A call centre at the top of a tower is scamming thousands of people a day. Your SWAT team has the warrant. Go in quiet.',
+       done: 'Tajer Support is shut down for good. Nobody is getting a call about their "virus" tonight.',
+       fail: 'The scammers overran your team. Take a breath and try the raid again.',
+       cutscene: () => ({ kind: 'raid', t: -4.2, yaw: 0, pitch: 0, step: 0, muzak: 0, chat: 0, ding: false, doors: 0 }),
+       setup: skip => setupC2(skip), begin: () => beginRaid() },
+};
+
+// ---------- Level 2 map: the Tajer Support tower, Mumbai ----------
+// The call-centre floor (fifth floor) sits at y = 0 so the normal game physics work there; the street is 16 m below.
+const STREET = -16;
+function makeSwat(skinHex, tag) {
+  const g = new THREE.Group(), body = new THREE.Group();
+  const suit = flat(0x1f2630), vest = flat(0x2f3946), skin = flat(skinHex), boots = flat(0x111317), helm = flat(0x161b22), black = flat(0x0d0f12), gunM = flat(0x22252a);
+  const part = (w, h, d, mat, x, y, z, parent = body) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; };
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const hip = new THREE.Group(); hip.position.set(s * 0.11, 0.95, 0); g.add(hip);
+    part(0.17, 0.9, 0.18, suit, 0, -0.45, 0, hip); part(0.17, 0.12, 0.28, boots, 0, -0.9, -0.05, hip);
+    legs.push(hip);
+  }
+  g.add(body);
+  part(0.46, 0.6, 0.28, suit, 0, 1.3, 0);
+  part(0.52, 0.48, 0.34, vest, 0, 1.33, 0);
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.11), new THREE.MeshBasicMaterial({ map: tex(makeCanvas(128, (c, S) => {
+    c.fillStyle = '#2f3946'; c.fillRect(0, 0, S, S); c.fillStyle = '#f5f5f0'; c.font = 'bold 54px Arial, sans-serif'; c.textAlign = 'center'; c.fillText('SWAT', S / 2, S / 2 + 18);
+  })) }));
+  label.position.set(0, 1.42, 0.172); label.rotation.y = Math.PI; body.add(label);
+  part(0.14, 0.1, 0.14, skin, 0, 1.66, 0);
+  const head = new THREE.Group(); head.position.set(0, 1.8, 0); body.add(head);
+  part(0.24, 0.26, 0.24, skin, 0, 0, 0, head);
+  part(0.3, 0.16, 0.31, helm, 0, 0.16, 0.01, head);
+  part(0.26, 0.06, 0.03, black, 0, 0.06, -0.125, head);   // goggles
+  part(0.04, 0.05, 0.04, skin, 0, -0.03, -0.13, head);
+  // arms and a compact rifle held across the chest
+  const rifle = new THREE.Group(); rifle.position.set(0.04, 1.3, -0.32); body.add(rifle);
+  part(0.06, 0.09, 0.62, gunM, 0, 0, -0.1, rifle); part(0.05, 0.16, 0.06, gunM, 0, -0.1, 0.05, rifle); part(0.05, 0.08, 0.2, gunM, 0, -0.02, 0.28, rifle);
+  for (const [sx, hx, hy, hz] of [[1, 0.06, 1.22, -0.25], [-1, -0.04, 1.3, -0.62]]) {
+    const sh = new THREE.Vector3(sx * 0.27, 1.55, 0), hand = new THREE.Vector3(hx, hy, hz), el = sh.clone().lerp(hand, 0.5).add(new THREE.Vector3(sx * 0.08, -0.12, 0.05));
+    body.add(limb(sh, el, 0.07, 0.065, suit, 8), limb(el, hand, 0.065, 0.055, suit, 8), joint(hand, 0.055, black, 8));
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { g, body, legs, head, tag, phase: Math.random() * 6, yaw: 0 };
+}
+function poseSwat(S, crouch, walk) {
+  S.body.position.y = crouch ? -0.42 : 0;
+  for (const [i, hip] of S.legs.entries()) {
+    hip.scale.y = crouch ? 0.55 : 1;
+    hip.rotation.x = walk ? Math.sin(S.phase + i * Math.PI) * 0.5 : 0;
+  }
+}
+function textTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.anisotropy = maxAniso; return t; }
+
+function buildCampaign2() {
+  const root = new THREE.Group();
+  sceneAdd(root);
+  const keepSeed = seed;
+  seed = 20090;
+  ARENA = 14;
+  boxes.length = solids.length = noGrass.length = houseRects.length = 0;
+  scene.add = (...o) => { root.add(...o); return scene; };
+  try {
+    const W = 14, D = 11, top = 20;                       // tower half-width (x), half-depth (z), roof height
+    const box = (w, h, d, mat, x, y, z, o = {}) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z);
+      m.castShadow = o.shadow !== false; m.receiveShadow = true; scene.add(m);
+      if (o.solid !== false) solids.push(m);
+      return m;
+    };
+    const plane = (w, d, mat, x, y, z, down) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat); m.rotation.x = down ? Math.PI / 2 : -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; scene.add(m); return m; };
+
+    // the street: dusty ground, roads, palms and a skyline
+    const dust = tex(makeCanvas(256, (g, S) => {
+      g.fillStyle = '#b89f7a'; g.fillRect(0, 0, S, S);
+      for (let i = 0; i < 3000; i++) { const v = rand(); g.fillStyle = v < 0.5 ? 'rgba(120,96,64,.35)' : 'rgba(214,196,160,.35)'; g.fillRect(rand() * S, rand() * S, 2 + rand() * 3, 2 + rand() * 3); }
+    }), 70, 70);
+    plane(420, 420, new THREE.MeshLambertMaterial({ map: dust }), 0, STREET, 0);
+    const asphalt = new THREE.MeshLambertMaterial({ color: 0x45474b, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    plane(8, 120, asphalt, 0, STREET + 0.02, 70); plane(220, 9, asphalt, 0, STREET + 0.02, 34);
+    const paveM = new THREE.MeshLambertMaterial({ color: 0xa7a29a, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    plane(36, 30, paveM, 0, STREET + 0.015, 0);
+    const std = color => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 1 });
+    const palms = [], rounds = [];
+    for (let i = 0; i < 70; i++) {
+      const a = rand() * Math.PI * 2, r = 22 + rand() * 60, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (Math.abs(x) < 6 && z > 10) continue;
+      if (Math.abs(z - 34) < 6) continue;
+      (rand() < 0.6 ? palms : rounds).push([x, z, 0.8 + rand() * 0.5, rand() * 6, 1]);
+    }
+    instances(new THREE.CylinderGeometry(0.16, 0.26, 7, 6).translate(0, 3.5, 0), std(0x7a5a3a), palms, STREET);
+    instances(new THREE.IcosahedronGeometry(2.2, 0).scale(1, 0.35, 1).translate(0, 7.1, 0), std(0xffffff), palms, STREET, c => c.setHSL(0.29 + rand() * 0.05, 0.45, 0.3 + rand() * 0.08));
+    instances(new THREE.CylinderGeometry(0.3, 0.45, 3, 6).translate(0, 1.5, 0), std(0x5e4630), rounds, STREET);
+    instances(new THREE.IcosahedronGeometry(2.6, 0).translate(0, 4.4, 0), std(0xffffff), rounds, STREET, c => c.setHSL(0.27 + rand() * 0.06, 0.4, 0.26 + rand() * 0.08));
+    const skyline = textTex(64, 64, (g, w, h) => { g.fillStyle = '#d8d0c2'; g.fillRect(0, 0, w, h); g.fillStyle = '#5b6a78'; for (let y = 6; y < h; y += 16) for (let x = 6; x < w; x += 16) g.fillRect(x, y, 8, 9); });
+    skyline.wrapS = skyline.wrapT = THREE.RepeatWrapping;
+    for (let i = 0; i < 26; i++) {
+      const a = i / 26 * Math.PI * 2 + rand() * 0.2, r = 95 + rand() * 60, w = 12 + rand() * 18, h = 14 + rand() * 46, d = 12 + rand() * 16;
+      const t = skyline.clone(); t.needsUpdate = true; t.repeat.set(Math.round(w / 4), Math.round(h / 4));
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ map: t, color: [0xe8dccb, 0xd5c7b6, 0xc9ced3, 0xe2c9a8][i % 4] }));
+      m.position.set(Math.cos(a) * r, STREET + h / 2, Math.sin(a) * r); m.rotation.y = -a; scene.add(m);
+    }
+    // police van at the kerb
+    const van = new THREE.Group();
+    van.add(new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.9, 4.8), flat(0xf2f2ee)));
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.14, 0.3, 4.82), flat(0x1f4fa8)); stripe.position.y = -0.2; van.add(stripe);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.3), new THREE.MeshBasicMaterial({ color: 0xd62828 })); bar.position.set(-0.3, 1.02, -1.2); van.add(bar);
+    const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.15, 0.3), new THREE.MeshBasicMaterial({ color: 0x2a5bd7 })); bar2.position.set(0.6, 1.02, -1.2); van.add(bar2);
+    for (const sx of [-1, 1]) for (const sz of [-1.5, 1.5]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.25, 12), flat(0x1b1c1f)); w.rotation.z = Math.PI / 2; w.position.set(sx * 1.0, -0.75, sz); van.add(w); }
+    van.position.set(7, STREET + 1.15, 34); van.rotation.y = 0.15; van.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(van);
+
+    // the tower shell: glass on the lobby front and the call-centre floor, solid facade everywhere else
+    const facade = textTex(128, 128, (g, w, h) => {
+      g.fillStyle = '#c8ced6'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#35506e'; g.fillRect(8, 10, w - 16, h - 34);
+      g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(12, 14, 26, h - 42);
+      g.fillStyle = '#c8ced6'; g.fillRect(w / 2 - 3, 10, 6, h - 34);
+    });
+    facade.wrapS = facade.wrapT = THREE.RepeatWrapping;
+    const facadeM = (w, h) => { const t = facade.clone(); t.needsUpdate = true; t.repeat.set(Math.round(w / 4), Math.round(h / 4)); return new THREE.MeshLambertMaterial({ map: t }); };
+    const wallM = new THREE.MeshLambertMaterial({ color: 0xe9e4da });
+    const glassM = new THREE.MeshBasicMaterial({ color: 0x9fc4d8, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
+    const frameM = flat(0x3b4048);
+    const shell = (y0, y1) => {
+      const h = y1 - y0, y = (y0 + y1) / 2;
+      box(2 * W + 0.3, h, 0.3, facadeM(2 * W, h), 0, y, -D);
+      box(0.3, h, 2 * D, facadeM(2 * D, h), W, y, 0); box(0.3, h, 2 * D, facadeM(2 * D, h), -W, y, 0);
+    };
+    // lobby (street level): glass front with an open door
+    shell(STREET, STREET + 4);
+    for (const sx of [-1, 1]) {
+      box(W - 1.3, 0.5, 0.3, frameM, sx * (W + 1.3) / 2, STREET + 0.25, D);
+      const gl = new THREE.Mesh(new THREE.PlaneGeometry(W - 1.3, 3.2), glassM); gl.position.set(sx * (W + 1.3) / 2, STREET + 2.1, D); scene.add(gl);
+      box(0.2, 4, 0.35, frameM, sx * 1.3, STREET + 2, D);
+    }
+    box(2 * W + 0.3, 0.5, 0.35, frameM, 0, STREET + 3.75, D);
+    shell(STREET + 4, -0.35);
+    box(2 * W + 0.3, -0.35 - (STREET + 4), 0.3, facadeM(2 * W, 12), 0, (STREET + 4 - 0.35) / 2, D);
+    shell(4, top);
+    box(2 * W + 0.3, top - 4, 0.3, facadeM(2 * W, top - 4), 0, (4 + top) / 2, D);
+    box(2 * W + 0.6, 0.5, 2 * D + 0.6, flat(0x8b9097), 0, top + 0.25, 0);
+    // the sign: on the front above the door, and big on the roof
+    const sign = textTex(1024, 256, (g, w, h) => {
+      g.fillStyle = '#123a73'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#ffd166'; g.beginPath(); g.arc(130, h / 2, 74, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#123a73'; g.font = 'bold 96px Arial, sans-serif'; g.textAlign = 'center'; g.fillText('☎', 130, h / 2 + 34);
+      g.fillStyle = '#ffffff'; g.font = 'bold 130px Arial, sans-serif'; g.textAlign = 'left'; g.fillText('TAJER SUPPORT', 240, h / 2 + 46);
+    });
+    const signM = new THREE.MeshBasicMaterial({ map: sign });
+    const s1 = new THREE.Mesh(new THREE.PlaneGeometry(8, 2), signM); s1.position.set(0, STREET + 5.1, D + 0.2); scene.add(s1);
+    box(16.4, 4.4, 0.4, flat(0x0e2b55), 0, top + 2.9, 2);
+    const s2 = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), signM); s2.position.set(0, top + 2.9, 2.21); scene.add(s2);
+    for (const sx of [-6, 6]) box(0.3, 1.2, 0.3, frameM, sx, top + 0.85, 2);
+
+    // lobby inside: marble floor, ceiling, reception, plants and the lift
+    const marble = textTex(256, 256, (g, w, h) => { g.fillStyle = '#ece6dc'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(150,140,128,.5)'; g.lineWidth = 2; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, h); g.moveTo(0, i * 64); g.lineTo(w, i * 64); g.stroke(); } });
+    marble.wrapS = marble.wrapT = THREE.RepeatWrapping; marble.repeat.set(7, 5.5);
+    plane(2 * W, 2 * D, new THREE.MeshLambertMaterial({ map: marble, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), 0, STREET + 0.03, 0);
+    plane(2 * W, 2 * D, new THREE.MeshLambertMaterial({ color: 0xf1efe9, emissive: 0x77746c }), 0, STREET + 3.7, 0, true);
+    box(3.2, 1.1, 1.0, flat(0x6b4a2e), 4, STREET + 0.55, 2);
+    box(3.4, 0.08, 1.2, flat(0xd8d2c4), 4, STREET + 1.14, 2);
+    const logo = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5), signM); logo.position.set(4, STREET + 2.6, -D + 0.17); scene.add(logo);
+    for (const [px, pz] of [[-6, 8.5], [10.5, 8.5], [10.5, -8], [-7, -8]]) {
+      box(0.6, 0.7, 0.6, flat(0xb0603c), px, STREET + 0.35, pz);
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 0), std(0x3f8a3c)); leaf.position.set(px, STREET + 1.3, pz); leaf.scale.y = 1.4; scene.add(leaf);
+    }
+    box(2.4, 0.5, 0.9, flat(0x2f4a6b), 9, STREET + 0.25, -4); box(2.4, 0.6, 0.2, flat(0x2f4a6b), 9, STREET + 0.75, -4.45);
+
+    // the lift core runs the full height on the west side; landing doors at the lobby and the fifth floor
+    const coreM = new THREE.MeshLambertMaterial({ color: 0xbfc4c9 }), doorM = flat(0x9aa3ab);
+    const CX0 = -W, CX1 = -10, CZ = 2.5;
+    box(CX1 - CX0, top - STREET, 0.2, coreM, (CX0 + CX1) / 2, (STREET + top) / 2, -CZ);
+    box(CX1 - CX0, top - STREET, 0.2, coreM, (CX0 + CX1) / 2, (STREET + top) / 2, CZ);
+    for (const sz of [-1, 1]) box(0.2, top - STREET, CZ - 1, coreM, CX1, (STREET + top) / 2, sz * (CZ + 1) / 2);
+    box(0.2, -2.4 - (STREET + 2.4) + 2.4, 2, coreM, CX1, (STREET + 2.4) / 2 - 0.0 + 0, 0);
+    box(0.2, top - 2.4, 2, coreM, CX1, (2.4 + top) / 2, 0);
+    const landing = y => {
+      const ds = [];
+      for (const sz of [-1, 1]) { const d = box(0.08, 2.4, 1.0, doorM, CX1 + 0.08, y + 1.2, sz * 0.5); ds.push(d); }
+      return ds;
+    };
+    const lobbyDoors = landing(STREET), callDoors = landing(0);
+    const floorInd = textTex(128, 64, (g, w, h) => { g.fillStyle = '#111'; g.fillRect(0, 0, w, h); });
+    const drawFloor = n => { const g = floorInd.image.getContext('2d'); g.fillStyle = '#111'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#ff5a3c'; g.font = 'bold 46px Arial, sans-serif'; g.textAlign = 'center'; g.fillText('▲ ' + n, 64, 48); floorInd.needsUpdate = true; };
+    drawFloor(1);
+    // the lift car
+    const car = new THREE.Group();
+    const carM = new THREE.MeshLambertMaterial({ color: 0xc9b48a, emissive: 0x4a3f2c }), carFloor = flat(0x5a5048);
+    const cpart = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.receiveShadow = true; car.add(m); return m; };
+    cpart(3.6, 0.12, 4.6, carFloor, 0, 0.0, 0); cpart(3.6, 0.1, 4.6, carM, 0, 2.9, 0);
+    cpart(0.1, 2.9, 4.6, carM, -1.75, 1.45, 0); cpart(3.6, 2.9, 0.1, carM, 0, 1.45, -2.25); cpart(3.6, 2.9, 0.1, carM, 0, 1.45, 2.25);
+    cpart(3.4, 0.05, 0.12, flat(0x8b7d66), 0, 1.0, -2.18); cpart(3.4, 0.05, 0.12, flat(0x8b7d66), 0, 1.0, 2.18);
+    const carLight = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshBasicMaterial({ color: 0xfff6dd })); carLight.rotation.x = Math.PI / 2; carLight.position.y = 2.84; car.add(carLight);
+    for (const sz of [-1, 1]) cpart(0.1, 2.9, 1.3, carM, 1.72, 1.45, sz * 1.65);
+    const carDoors = [];
+    for (const sz of [-1, 1]) carDoors.push(cpart(0.06, 2.4, 1.0, doorM, 1.66, 1.2, sz * 0.5));
+    const ind = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), new THREE.MeshBasicMaterial({ map: floorInd })); ind.position.set(1.62, 2.6, 0); ind.rotation.y = -Math.PI / 2; car.add(ind);
+    car.position.set(-12, STREET, 0); scene.add(car);
+
+    // ---- the fifth floor: the call centre ----
+    const carpet = textTex(128, 128, (g, w, h) => { g.fillStyle = '#4a5866'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,.12)'; for (let i = 0; i <= 2; i++) { g.fillRect(i * 64, 0, 2, h); g.fillRect(0, i * 64, w, 2); } });
+    carpet.wrapS = carpet.wrapT = THREE.RepeatWrapping; carpet.repeat.set(14, 11);
+    plane(2 * W, 2 * D, new THREE.MeshLambertMaterial({ map: carpet, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), 0, 0.004, 0);
+    box(2 * W + 0.3, 0.35, 2 * D + 0.3, flat(0x9da3a8), 0, -0.175, 0, { solid: false });
+    const ceil = plane(2 * W, 2 * D, new THREE.MeshLambertMaterial({ color: 0xe7e7e2, emissive: 0x6f6f6a }), 0, 3.8, 0, true); ceil.castShadow = true;
+    box(2 * W + 0.3, 0.2, 2 * D + 0.3, flat(0x9da3a8), 0, 3.9, 0, { solid: false });
+    for (let x = -6; x <= 12; x += 6) for (let z = -6; z <= 6; z += 6) { const p = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.6), new THREE.MeshBasicMaterial({ color: 0xfff8e6 })); p.rotation.x = Math.PI / 2; p.position.set(x, 3.78, z); scene.add(p); }
+    for (const [lx, lz] of [[2, -4], [2, 4]]) { const L = new THREE.PointLight(0xfff1d6, 0.45, 20); L.position.set(lx, 3.4, lz); scene.add(L); }
+    // windows all round: sill, glass, header, pillars. The east panes are the ones you can throw someone through.
+    const panes = {};
+    const windowWall = (axis, at, from, to) => {
+      const len = to - from, mid = (from + to) / 2;
+      const put = (w, h, mat, c, y) => axis === 'x' ? box(0.3, h, w, mat, at, y, c) : box(w, h, 0.3, mat, c, y, at);
+      put(len + 0.3, 0.9, wallM, mid, 0.45); put(len + 0.3, 0.8, wallM, mid, 3.6);
+      for (let c = from; c <= to + 0.01; c += 4) put(0.5, 4, wallM, c, 2);
+      for (let c = from + 2; c < to; c += 4) {
+        const gl = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.3), glassM); gl.position.set(axis === 'x' ? at : c, 2.05, axis === 'x' ? c : at); if (axis === 'x') gl.rotation.y = Math.PI / 2;
+        scene.add(gl);
+        if (axis === 'x' && at > 0) panes[c] = gl;
+      }
+      axis === 'x' ? addCollider(at, mid, 0.5, len, 4) : addCollider(mid, at, len, 0.5, 4);
+    };
+    windowWall('z', -D, -W, W); windowWall('z', D, -W, W); windowWall('x', W, -D, D); windowWall('x', -W, -D, D);
+    addCollider(-12, 0, 4.2, 5.2, 5);                                     // the lift core
+    // the wall you hide behind, and the little lift lobby
+    const partition = box(0.22, 2.3, 6.5, flat(0x8d98a3), -6.5, 1.15, -1.25); partition.userData.box = addCollider(-6.5, -1.25, 0.3, 6.5, 2.3);
+    box(0.5, 1.1, 0.5, flat(0xdfe6ec), -9, 0.55, -6); const jug = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 12), new THREE.MeshLambertMaterial({ color: 0x7fb4e0, transparent: true, opacity: 0.7 })); jug.position.set(-9, 1.35, -6); scene.add(jug);
+    // posters
+    const poster = (text, sub, x, z, ry, bg) => {
+      const t = textTex(512, 320, (g, w, h) => {
+        g.fillStyle = bg; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.textAlign = 'center';
+        g.font = 'bold 54px Arial, sans-serif'; g.fillText(text, w / 2, 130); g.font = '34px Arial, sans-serif'; g.fillText(sub, w / 2, 210);
+      });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), new THREE.MeshLambertMaterial({ map: t })); m.position.set(x, 2.2, z); m.rotation.y = ry; scene.add(m);
+    };
+    poster('TARGET: 500 CALLS', 'every single day', 4, -D + 0.2, 0, '#b3261e');
+    poster('SMILE ON THE PHONE!', 'They can hear it', 9, -D + 0.2, 0, '#1f6f43');
+    poster('GIFT CARDS TODAY: 312', 'Keep going team!', 6, D - 0.2, Math.PI, '#1f4fa8');
+    // twenty desks: four columns, five rows. Each scammer sits east of his desk, facing west towards the lift.
+    const screenTex = textTex(256, 192, (g, w, h) => {
+      g.fillStyle = '#0b3d91'; g.fillRect(0, 0, w, h); g.fillStyle = '#ff3b3b'; g.fillRect(0, 0, w, 40);
+      g.fillStyle = '#fff'; g.font = 'bold 26px Arial, sans-serif'; g.fillText('⚠ VIRUS ALERT', 14, 29);
+      g.font = '18px Arial, sans-serif'; ['CALL SCRIPT:', '1. Say "virus"', '2. Stay calm, sir', '3. Ask for gift cards', '4. Never hang up'].forEach((l, i) => g.fillText(l, 14, 70 + i * 24));
+    });
+    const scrM = new THREE.MeshBasicMaterial({ map: screenTex }), monM = flat(0x24272c);
+    const deskTop = flat(0xc8b79a), legM = flat(0x6b6f75), chairM = flat(0x2b2f36);
+    const seats = [];
+    for (const dx of [-1, 3, 7, 11]) for (const dz of [-8, -4, 0, 4, 8]) {
+      box(0.8, 0.06, 1.5, deskTop, dx, 0.74, dz);
+      box(0.06, 0.72, 1.4, legM, dx - 0.35, 0.36, dz, { shadow: false }); box(0.06, 0.72, 1.4, legM, dx + 0.35, 0.36, dz, { shadow: false });
+      const mon = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.62), [scrM, monM, monM, monM, monM, monM]); mon.position.set(dx - 0.2, 1.05, dz); mon.castShadow = true; scene.add(mon); solids.push(mon);
+      box(0.08, 0.2, 0.08, monM, dx - 0.24, 0.85, dz, { shadow: false });
+      box(0.18, 0.03, 0.5, flat(0x1b1d21), dx + 0.15, 0.78, dz, { shadow: false });
+      box(0.5, 0.08, 0.5, chairM, dx + 1.15, 0.48, dz); box(0.08, 0.6, 0.5, chairM, dx + 1.42, 0.82, dz);
+      box(0.06, 0.44, 0.06, legM, dx + 1.15, 0.22, dz, { shadow: false });
+      addCollider(dx, dz, 0.8, 1.5, 0.8);
+      seats.push([dx + 1.15, dz]);
+    }
+
+    // the SWAT team
+    const squad = [makeSwat(0xa86f4c, 'mehta'), makeSwat(0x8d5a3b, 'singh'), makeSwat(0xb97f57, 'dsouza')];
+    for (const S of squad) scene.add(S.g);
+
+    MAPS.c2 = { root, arena: W, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(),
+      grass: dummyLayer(), flowers: dummyLayer(), moreGrass: dummyLayer(), hideFloor: true, noMountains: true,
+      weather: { fog: 0xe8d6b8, top: 0x6f93c4, ground: 0xc9b48f },
+      car, carDoors, lobbyDoors, callDoors, drawFloor, panes, seats, squad, shownFloor: 1 };
+  } finally {
+    delete scene.add;
+    seed = keepSeed;
+  }
+}
+
+// ---------- Level 2: the raid ----------
+// everyone's route through the cutscene: [time, x, z]; y comes from which floor they're on
+const ROUTES = {
+  mehta:  [[0, 0.6, 40], [10.5, 0.6, 12.6], [13.2, -1.5, 6], [16.2, -7.6, 0.3], [18.2, -11.0, -1.2], [27.0, -11.0, -1.2], [28.8, -8.4, -0.6], [31.0, -7.4, -1.5]],
+  singh:  [[0, -1.4, 41.5], [10.5, -1.0, 14], [13.6, -2.8, 7], [16.6, -8.0, 1.4], [18.6, -11.2, 1.3], [27.3, -11.2, 1.3], [29.0, -8.6, 0.4], [31.2, -7.5, 0.1]],
+  dsouza: [[0, 2.0, 42], [10.5, 1.4, 14.2], [13.8, -0.5, 7.4], [16.8, -7.0, -1.2], [18.8, -12.3, -1.7], [27.2, -12.3, -1.7], [29.2, -8.2, -2.0], [31.4, -7.5, -3.0]],
+  you:    [[0, 0.4, 44.5], [10.5, 0.2, 16.4], [14.0, -1.0, 9], [17.0, -6.4, 0.8], [19.0, -13.1, 0.5], [27.4, -13.1, 0.5], [29.4, -8.0, 1.8], [31.6, -7.4, 1.9]],
+};
+const RAID_LINES = [
+  [1.0, 'Capt. Mehta', "That's the place. Tajer Support. They've been robbing people all over the world from this tower."],
+  [6.2, 'Capt. Mehta', 'Intel says the call floor is on five. Twenty of them, maybe more.'],
+  [9.6, 'Ofc. Singh', "Front door's not even locked. Sloppy."],
+  [12.4, "Ofc. D'Souza", 'Lobby is clear. No guards. Take the lift.'],
+  [15.0, 'Capt. Mehta', 'Nobody fires until I say so.'],
+  [20.6, 'Ofc. Singh', 'They even have lift music. Of course they do.'],
+  [23.4, 'Capt. Mehta', 'Fifth floor. Stay low and stay quiet.'],
+  [28.4, "Ofc. D'Souza", 'Behind the wall. Go.'],
+  [33.4, 'Scammer', 'Hello sir, this is Windows technical support. Your computer has a very dangerous virus.'],
+  [37.6, 'Scammer', "Yes ma'am, go to the shop and buy four gift cards, then read me the numbers on the back."],
+  [41.6, 'Scammer', 'Sir, hackers are in your bank account right now! Tell me your password and I will stop them.'],
+  [46.0, 'Capt. Mehta', "We've heard enough."],
+  [48.0, 'Capt. Mehta', 'On the count of three, we raid them.'],
+  [50.4, 'Capt. Mehta', 'One...'],
+  [51.4, 'Capt. Mehta', 'Two...'],
+  [52.4, 'Capt. Mehta', 'THREE!'],
+];
+const RAID = { lobbyOpen: 15.8, lobbyClose: 19.0, rideFrom: 20, rideTo: 25.5, callOpen: 25.8, callClose: 31.5, crouch: 30.8, peekFrom: 33, peekTo: 45.5, stand: 52.6, control: 53.1 };
+const PEEK = [-6.8, 2.9];
+function routeAt(R, t) {
+  if (t <= R[0][0]) return [R[0][1], R[0][2], false];
+  for (let i = 1; i < R.length; i++) if (t < R[i][0]) {
+    const [t0, x0, z0] = R[i - 1], [t1, x1, z1] = R[i], k = (t - t0) / (t1 - t0);
+    return [x0 + (x1 - x0) * k, z0 + (z1 - z0) * k, Math.hypot(x1 - x0, z1 - z0) > 0.05];
+  }
+  const L = R[R.length - 1]; return [L[1], L[2], false];
+}
+const ease = k => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
+const liftY = t => STREET + (0 - STREET) * ease((t - RAID.rideFrom) / (RAID.rideTo - RAID.rideFrom));
+const doorOpen = (t, open, close) => t < open ? 0 : t < open + 1 ? ease(t - open) : t < close ? 1 : t < close + 0.9 ? 1 - ease((t - close) / 0.9) : 0;
+function setDoors(ds, k) { ds[0].position.z = -0.5 - k * 0.95; ds[1].position.z = 0.5 + k * 0.95; }
+function lookAtYawPitch(from, to) { const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z; return [Math.atan2(-dx, -dz), Math.atan2(dy, Math.hypot(dx, dz))]; }
+const _rv = new THREE.Vector3(), _rw = new THREE.Vector3();
+let grabbed = null, grabArm = null;
+
+function setupC2(skip) {
+  const C = MAPS.c2;
+  resetC2();
+  // twenty scammers at their desks, facing the lift
+  for (const [x, z] of C.seats) {
+    spawnEnemy('scam', { x, z });
+    const e = enemies[enemies.length - 1], u = e.userData;
+    e.scale.setScalar(1); u.spawnT = 1; e.position.set(x, 0.52 + u.size / 2, z); e.rotation.y = Math.PI / 2;
+    u.seat = [x, z]; u.wake = 0.2 + Math.random() * 2.2;
+  }
+  if (skip) {
+    C.car.position.y = 0; setDoors(C.carDoors, 0); setDoors(C.callDoors, 0); C.drawFloor(5);
+    placeSquadAtWall();
+  }
+}
+function resetC2() {
+  if (grabbed) { if (grabbed.parent) grabbed.parent.remove(grabbed); disposeEnemy(grabbed); grabbed = null; }
+  if (grabArm) { camera.remove(grabArm); grabArm = null; }
+  $('choice').style.display = 'none';
+  const C = MAPS.c2;
+  if (!C) return;
+  C.car.position.y = STREET; setDoors(C.carDoors, 0); setDoors(C.lobbyDoors, 0); setDoors(C.callDoors, 0); C.drawFloor(1); C.shownFloor = 1;
+  for (const k in C.panes) C.panes[k].visible = true;
+  C.squad.forEach((S, i) => { const R = ROUTES[S.tag]; S.g.position.set(R[0][1], STREET, R[0][2]); S.g.rotation.y = 0; poseSwat(S, false, false); });
+}
+function placeSquadAtWall() {
+  for (const S of MAPS.c2.squad) {
+    const R = ROUTES[S.tag], L = R[R.length - 1];
+    S.g.position.set(L[1], 0, L[2]); S.g.rotation.y = -Math.PI / 2; poseSwat(S, false, false);
+  }
+}
+function cutsceneRaid(dt) {
+  const C = MAPS.c2, t = (cs.t += dt);
+  const card = $('levelCard');
+  if (t < 0) { card.style.display = 'flex'; card.style.opacity = t > -0.8 ? -t / 0.8 : 1; } else card.style.display = 'none';
+  // the lift: doors, the ride up, the floor numbers and the ding
+  const carY = liftY(t);
+  C.car.position.y = carY;
+  setDoors(C.lobbyDoors, doorOpen(t, RAID.lobbyOpen, RAID.lobbyClose));
+  setDoors(C.callDoors, doorOpen(t, RAID.callOpen, RAID.callClose));
+  setDoors(C.carDoors, Math.max(doorOpen(t, RAID.lobbyOpen, RAID.lobbyClose), doorOpen(t, RAID.callOpen, RAID.callClose)));
+  const fl = Math.max(1, Math.min(5, 1 + Math.floor((carY - STREET) / 4 + 0.05)));
+  if (fl !== C.shownFloor) { C.shownFloor = fl; C.drawFloor(fl); }
+  if (t >= RAID.rideTo + 0.1 && !cs.ding) { cs.ding = true; Sound.play('ding'); }
+  if ((t > RAID.lobbyOpen && cs.doors < 1) || (t > RAID.lobbyClose && cs.doors < 2) || (t > RAID.callOpen && cs.doors < 3)) { cs.doors++; Sound.play('liftDoor'); }
+  if (t > RAID.rideFrom && t < RAID.rideTo && (cs.muzak -= dt) <= 0) { cs.muzak = 0.55; cs.mz = (cs.mz || 0) + 1; Sound.play('muzak', cs.mz); }
+  const levelY = t < RAID.rideFrom ? STREET : t > RAID.rideTo ? 0 : carY;
+  // the squad walks their routes, then crouches behind the wall
+  for (const S of C.squad) {
+    const [x, z, moving] = routeAt(ROUTES[S.tag], t), p = S.g.position;
+    if (moving) { const a = Math.atan2(-(x - p.x), -(z - p.z)); if (Math.hypot(x - p.x, z - p.z) > 1e-4) S.yaw = a; S.phase += dt * 9; }
+    else if (t > RAID.rideFrom - 1.5 && t < RAID.callOpen) S.yaw = -Math.PI / 2;      // face the lift doors
+    else if (t > RAID.crouch) S.yaw = -Math.PI / 2;
+    p.set(x, levelY, z);
+    S.g.rotation.y += (Math.atan2(Math.sin(S.yaw - S.g.rotation.y), Math.cos(S.yaw - S.g.rotation.y))) * Math.min(1, dt * 8);
+    const crouch = t > RAID.crouch && t < RAID.stand;
+    poseSwat(S, crouch, moving && !crouch);
+    // Mehta turns to you for the count
+    if (S.tag === 'mehta') S.head.rotation.y += (((t > 45.8 && t < 52.4) ? -1.2 : 0) - S.head.rotation.y) * Math.min(1, dt * 4);
+  }
+  // the scammers at work: bobbing in their chairs, chattering away
+  for (const e of enemies) {
+    const u = e.userData; e.position.y = 0.52 + u.size / 2 + Math.abs(Math.sin(t * 3 + u.phase)) * 0.06;
+    e.rotation.y = Math.PI / 2 + Math.sin(t * 0.8 + u.phase) * 0.25;
+  }
+  if (t > RAID.peekFrom && t < RAID.peekTo + 1 && (cs.chat -= dt) <= 0) { cs.chat = 0.5 + Math.random() * 0.6; Sound.play('chatter'); }
+  // you: walking with the team, crouching, peeking round the wall
+  let [x, z, moving] = routeAt(ROUTES.you, t);
+  if (moving && (cs.step -= dt) <= 0) { cs.step = 0.42; Sound.play('step'); }
+  let eye = levelY + 1.6;
+  if (t > RAID.crouch && t < RAID.stand) eye = levelY + 1.05;
+  if (t > RAID.peekFrom) {
+    const k = t < RAID.peekTo ? ease((t - RAID.peekFrom) / 1.4) : 1 - ease((t - RAID.peekTo) / 1.2);
+    x += (PEEK[0] - x) * k; z += (PEEK[1] - z) * k; eye += 0.15 * k;
+  }
+  if (t > RAID.stand) { const k = ease((t - RAID.stand) / 0.5); x += (PEEK[0] - x) * k; z += (PEEK[1] - z) * k; eye = 1.6 * k + eye * (1 - k); }
+  const bob = moving ? Math.abs(Math.sin(t * 9)) * 0.04 : 0;
+  camera.position.set(x, eye + bob, z);
+  // where you look
+  const mehta = C.squad[0].g.position;
+  let target;
+  if (t < 16.0) target = _rv.set(mehta.x, mehta.y + 1.5, mehta.z - 2);
+  else if (t < RAID.callOpen + 0.6) target = _rv.set(-9.5, levelY + 1.85, 0.3);
+  else if (t < RAID.peekFrom) target = _rv.set(mehta.x, levelY + 0.9, mehta.z);
+  else if (t < RAID.peekTo) target = _rv.set(6, 1.15, 0);
+  else if (t < RAID.stand) target = _rv.set(mehta.x, 1.1, mehta.z);
+  else target = _rv.set(6, 1.2, 1);
+  const [ty, tp] = lookAtYawPitch(camera.position, target);
+  if (t < 0) { cs.yaw = ty; cs.pitch = tp; }
+  cs.yaw += Math.atan2(Math.sin(ty - cs.yaw), Math.cos(ty - cs.yaw)) * Math.min(1, dt * 2.4);
+  cs.pitch += (tp - cs.pitch) * Math.min(1, dt * 2.4);
+  camera.rotation.set(cs.pitch, cs.yaw, 0);
+  // subtitles
+  const line = RAID_LINES.filter(L => L[0] <= t).pop();
+  if (line && t < RAID.control) { $('subs').style.display = 'block'; $('subsWho').textContent = line[1]; $('subsText').textContent = line[2].slice(0, Math.floor((t - line[0]) * 36)); }
+  else $('subs').style.display = 'none';
+  if (t >= RAID.control) beginRaid();
+}
+function beginRaid() {
+  const C = MAPS.c2;
+  cs = null;
+  state = 'playing';
+  $('subs').style.display = 'none'; $('cine').style.display = 'none'; $('levelCard').style.display = 'none';
+  C.car.position.y = 0; setDoors(C.carDoors, 0); setDoors(C.callDoors, 0);
+  placeSquadAtWall();
+  player.pos.set(PEEK[0], 0, PEEK[1]); player.yaw = -Math.PI / 2; player.pitch = -0.02; player.vy = 0; player.onGround = true;
+  setWeapon('rifle'); switchT = 1; Sound.play('equip', 'rifle');
+  camp.phase = 'fight'; wave = 1;
+  banner('RAID!', 'Take down the scammers');
+  objective('Take down the scammers · ' + enemies.length + ' left');
+  Sound.play('wave');
+  clock.getDelta();
+  updateHUD();
+}
+function campaign2Update() {
+  if (camp.phase !== 'fight') return;
+  const left = enemies.length;
+  if (left !== camp.left) { camp.left = left; objective(left > 1 ? 'Take down the scammers · ' + left + ' left' : 'Grab the last scammer'); }
+  if (left === 1) startGrab(enemies[0]);
+  else if (left === 0) completeLevel(); // nobody left to grab
+}
+
+// the last scammer: grab him, hear him out, decide
+function startGrab(e) {
+  camp.phase = 'grab';
+  enemies.splice(enemies.indexOf(e), 1);
+  if (e.userData.bar) scene.remove(e.userData.bar);
+  grabbed = e;
+  const u = e.userData;
+  u.mat.emissive.setHex(0x2a2200); e.scale.setScalar(1);
+  if (u.smile) u.smile.rotation.z = 0;                // the smile turns upside down
+  for (const eye of u.eyes) eye.scale.set(1.25, 1.25, 1);
+  releaseInput();
+  state = 'cutscene';
+  $('cine').style.display = 'block'; $('reload').style.display = 'none';
+  const from = camera.position.clone(), to = e.position.clone(), dir = from.clone().sub(to).setY(0).normalize();
+  cs = { kind: 'grab', t: 0, branch: 'plead', from, stand: to.clone().addScaledVector(dir, 1.3).setY(1.6), yaw: player.yaw, pitch: player.pitch, choosing: false };
+  // your arm, for the grab
+  grabArm = new THREE.Group();
+  const sleeve = flat(0x1f2630);
+  const elbow = new THREE.Vector3(0.36, -0.52, -0.45), hand = new THREE.Vector3(0.16, 0.17, -1.3);
+  grabArm.add(limb(elbow, hand, 0.06, 0.05, sleeve, 10), joint(hand, 0.07, HM.skin, 10));
+  for (let i = 0; i < 4; i++) grabArm.add(limb(hand.clone().add(new THREE.Vector3(-0.06 + i * 0.04, 0.02, -0.02)), hand.clone().add(new THREE.Vector3(-0.07 + i * 0.045, 0.08, -0.1)), 0.016, 0.014, HM.skin, 6));
+  grabArm.visible = false; camera.add(grabArm);
+  Sound.play('hurt');
+  objective('');
+}
+const GRAB_LINES = [
+  [1.6, 'Scammer', "No, no, no! Please, sir! Don't kill me!"],
+  [4.6, 'Scammer', 'I am just a small cube! The boss makes us do the calls!'],
+  [8.0, 'Scammer', 'Listen, I can pay you. Money, gift cards, anything you want. A bribe!'],
+  [11.6, 'Scammer', 'Nobody has to know. It will be our little secret, okay?'],
+];
+const KILL_LINES = [[0.2, 'Scammer', 'Wait, wait! What are you doing?!'], [6.3, 'Capt. Mehta', "...Well. That's one way to end a phone call."]];
+const SPARE_LINES = [[0.2, 'Scammer', 'Thank you, sir! Thank you! You are a good man.'], [3.0, 'Scammer', '...But I am not.']];
+const HOLD = new THREE.Vector3(0.06, -0.32, -1.5);
+function choose(which) {
+  if (!cs || !cs.choosing) return;
+  cs.choosing = false;
+  $('choice').style.display = 'none';
+  Sound.play('click');
+  cs.branch = which; cs.t = 0;
+  if (which === 'kill') {
+    // the nearest east window
+    const zs = Object.keys(MAPS.c2.panes).map(Number), pz = zs.reduce((a, b) => Math.abs(b - camera.position.z) < Math.abs(a - camera.position.z) ? b : a);
+    cs.pane = pz; cs.from = camera.position.clone(); cs.to = new THREE.Vector3(12.6, 1.6, pz); cs.lean = new THREE.Vector3(13.95, 1.95, pz);
+  }
+}
+function cutsceneGrab(dt) {
+  const t = (cs.t += dt), e = grabbed, u = e.userData;
+  let lines = cs.branch === 'plead' ? GRAB_LINES : cs.branch === 'kill' ? KILL_LINES : SPARE_LINES;
+  if (cs.branch === 'plead') {
+    // walk up, reach out, lift him
+    const k = ease(t / 1.0);
+    camera.position.lerpVectors(cs.from, cs.stand, k);
+    if (t > 1.0 && e.parent !== camera) { grabArm.visible = true; camera.updateMatrixWorld(true); camera.attach(e); cs.held = e.position.clone(); cs.heldRot = e.rotation.clone(); Sound.play('thunk'); }
+    if (e.parent === camera) {
+      const h = ease((t - 1.0) / 0.6);
+      e.position.lerpVectors(cs.held, HOLD, h);
+      e.rotation.set(cs.heldRot.x * (1 - h), cs.heldRot.y * (1 - h) + Math.PI * h, cs.heldRot.z * (1 - h) + Math.sin(t * 34) * 0.06 * h);
+      e.position.x += Math.sin(t * 41) * 0.01 * h;
+      for (const eye of u.eyes) eye.scale.y = Math.sin(t * 3) > 0.95 ? 0.2 : 1.25;
+    } else {
+      const [ty, tp] = lookAtYawPitch(camera.position, e.position);
+      cs.yaw += Math.atan2(Math.sin(ty - cs.yaw), Math.cos(ty - cs.yaw)) * Math.min(1, dt * 6); cs.pitch += (tp - cs.pitch) * Math.min(1, dt * 6);
+    }
+    if (t > 1.2) cs.pitch += (-0.05 - cs.pitch) * Math.min(1, dt * 3);
+    camera.rotation.set(cs.pitch, cs.yaw, 0);
+    if (t > 15.2 && !cs.choosing && cs.branch === 'plead') { cs.choosing = true; $('choice').style.display = 'flex'; $('subs').style.display = 'none'; }
+  } else if (cs.branch === 'kill') {
+    // carry him to the window and throw him through it
+    if (!cs.flying) {
+      const k = ease(t / 2.3);
+      camera.position.lerpVectors(cs.from, cs.to, k);
+      cs.yaw += Math.atan2(Math.sin(-Math.PI / 2 - cs.yaw), Math.cos(-Math.PI / 2 - cs.yaw)) * Math.min(1, dt * 3);
+      cs.pitch += (-0.05 - cs.pitch) * Math.min(1, dt * 3);
+      e.rotation.z = Math.sin(t * 30) * 0.08; e.position.copy(HOLD);
+      if (t > 2.4) e.position.z = HOLD.z - ease((t - 2.4) / 0.25) * 0.5;
+      if (t > 2.65) {
+        cs.flying = true; scene.attach(e); grabArm.visible = false;
+        cs.v = new THREE.Vector3(3.4, 2.6, 0); cs.spin = new THREE.Vector3(5, 3, 7);
+        const pane = MAPS.c2.panes[cs.pane]; pane.visible = false;
+        crumble(new THREE.Vector3(13.9, 0.95, cs.pane - 1.7), new THREE.Vector3(14.1, 3.15, cs.pane + 1.7), 0xbfe0ee, new THREE.Vector3(12, 2, cs.pane), 30, STREET);
+        Sound.play('glass'); shake = Math.max(shake, 0.4);
+      }
+    } else if (!cs.splat) {
+      cs.v.y -= 20 * dt; e.position.addScaledVector(cs.v, dt);
+      e.rotation.x += cs.spin.x * dt; e.rotation.y += cs.spin.y * dt; e.rotation.z += cs.spin.z * dt;
+      if (e.position.y <= STREET + u.size / 2) {
+        cs.splat = true; e.visible = false;
+        const p = e.position.clone().setY(STREET + 0.45);
+        crumble(p.clone().addScalar(-0.45), p.clone().addScalar(0.45), u.T.color, p.clone().add(new THREE.Vector3(0, -1, 0)), 26, STREET);
+        puff(p, 0xcfc4ad, 2.5, 0.9); Sound.play('kill', 2.2); Sound.play('crumble');
+        kills++; profile.stats.kills++; addXp(u.T.reward); profile.coins += 1; runCoins += 1; score += u.T.reward; saveProfile(); updateHUD();
+      }
+    }
+    if (cs.flying) {
+      // lean out of the broken window to watch him fall
+      camera.position.lerpVectors(cs.to, cs.lean, ease((t - 2.65) / 0.9));
+      const target = cs.splat ? _rw.set(e.position.x, STREET, e.position.z) : e.position;
+      const [ty, tp] = lookAtYawPitch(camera.position, target);
+      cs.yaw += Math.atan2(Math.sin(ty - cs.yaw), Math.cos(ty - cs.yaw)) * Math.min(1, dt * 4); cs.pitch += (tp - cs.pitch) * Math.min(1, dt * 4);
+    }
+    camera.rotation.set(cs.pitch, cs.yaw, 0);
+    if (t > 8.6 && !cs.done) {
+      cs.done = true; $('subs').style.display = 'none'; $('cine').style.display = 'none';
+      player.pos.set(cs.lean.x, cs.lean.y - EYE, cs.lean.z); player.yaw = cs.yaw; player.pitch = Math.max(-1.4, cs.pitch);
+      completeLevel();
+    }
+  } else {
+    // spare him: he wriggles free and pulls a pistol from behind his back
+    if (t < 2.8) { e.rotation.z = Math.sin(t * 6) * 0.04; if (u.smile) u.smile.rotation.z = Math.PI; for (const eye of u.eyes) eye.scale.set(1, 1, 1); }
+    if (t > 2.8 && e.parent === camera) {
+      scene.attach(e); grabArm.visible = false;
+      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize();
+      cs.drop0 = e.position.clone(); cs.drop1 = camera.position.clone().addScaledVector(fwd, 1.7).setY(u.size / 2);
+      cs.face = Math.atan2(camera.position.x - cs.drop1.x, camera.position.z - cs.drop1.z) + Math.PI;
+      Sound.play('jump');
+    }
+    if (cs.drop0) {
+      const k = ease((t - 2.8) / 0.45);
+      e.position.lerpVectors(cs.drop0, cs.drop1, k); e.position.y += Math.sin(k * Math.PI) * 0.5;
+      e.rotation.set(0, cs.face, 0);
+    }
+    if (t > 3.4 && !cs.gun) {
+      cs.gun = GUN_MODELS.pistol().g; cs.gun.scale.setScalar(2.4); e.add(cs.gun); cs.gun.position.set(0.62, 0.05, 0.4);
+      Sound.play('reloaded');
+    }
+    if (cs.gun) { const k = ease((t - 3.4) / 0.7); cs.gun.position.set(0.62 - 0.2 * k, 0.05, 0.4 - 1.15 * k); cs.gun.rotation.y = (1 - k) * 1.2; }
+    if (t > 4.6 && !cs.shot) {
+      cs.shot = true;
+      cs.gun.updateMatrixWorld(true);
+      glowFlash(cs.gun.localToWorld(new THREE.Vector3(0, 0.033, -0.16)), 0xffcc66, 2.4, 0.15);
+      Sound.play('pistol'); Sound.play('hurt');
+      damageFlash = 1; $('damage').style.opacity = 1; shake = 1;
+      $('subs').style.display = 'none';
+    }
+    if (cs.shot) {
+      const k = Math.min(1, (t - 4.6) / 1.1);
+      camera.position.y = 1.6 - k * k * 1.25; camera.rotation.set(cs.pitch + k * 0.3, cs.yaw, k * 0.5);
+      damageFlash = Math.max(damageFlash, 0.8);
+    } else {
+      const [ty, tp] = lookAtYawPitch(camera.position, e.position.clone().setY(0.5));
+      cs.yaw += Math.atan2(Math.sin(ty - cs.yaw), Math.cos(ty - cs.yaw)) * Math.min(1, dt * 5); cs.pitch += (tp - cs.pitch) * Math.min(1, dt * 5);
+      camera.rotation.set(cs.pitch, cs.yaw, 0);
+    }
+    if (t > 6.2 && !cs.done) {
+      cs.done = true; $('cine').style.display = 'none';
+      player.pos.set(camera.position.x, 0, camera.position.z); player.yaw = cs.yaw; player.pitch = cs.pitch + 0.3; deathT = 0.9;
+      failMission('You spared him, and he had a pistol behind his back. Never trust a scammer.', true); }
+  }
+  // subtitles (none once the scene has handed over to an end screen)
+  if (!cs || cs.done) return;
+  const line = lines.filter(L => L[0] <= t).pop();
+  if (line && !cs.choosing && !(cs.branch === 'spare' && cs.shot)) { $('subs').style.display = 'block'; $('subsWho').textContent = line[1]; $('subsText').textContent = line[2].slice(0, Math.floor((t - line[0]) * 34)); }
+  else if (!line) $('subs').style.display = 'none';
+}
+// a failed mission; a forced one can only be restarted
+function failMission(text, forced) {
+  state = 'dead';
+  player.hp = 0; updateHUD();
+  releaseInput();
+  Sound.play('death');
+  $('deadTitle').textContent = 'Mission failed';
+  $('deadPlay').textContent = forced ? 'Restart mission' : 'Retry level';
+  $('finalScore').textContent = text;
+  const acc = shotsFired ? Math.round(shotsHit / shotsFired * 100) + '%' : '–';
+  $('stats').innerHTML = [['Scammers', kills], ['Accuracy', acc], ['Time', Math.floor(camp.time) + 's']].map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
+  document.querySelectorAll('#menu-dead [data-action="shop"], #menu-dead [data-action="quit"]').forEach(b => b.style.display = forced ? 'none' : '');
+  $('lowhp').classList.remove('on');
+  setTimeout(() => { if (state === 'dead') showMenu('dead'); }, 600);
+}
+$('choiceKill').addEventListener('click', () => choose('kill'));
+$('choiceSpare').addEventListener('click', () => choose('spare'));
 
 // ---------- Levels ----------
 const xpNeed = L => 2000 + (L - 1) * 1000;
@@ -4951,7 +5648,7 @@ addEventListener('pointerdown', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '1.9.2';
+const VERSION = '2.0';
 function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });

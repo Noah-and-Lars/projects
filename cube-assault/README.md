@@ -8,7 +8,10 @@ Play it online at https://noah-and-lars.github.io/projects/cube-assault/, or dow
 
 Press Play to choose:
 
-- **Campaign**: story levels played in order. Level 1, *The Birch Road* (Russia, 1944), starts with a cutscene in an army jeep, then you hold the road against 5 waves of Rifle Cubes and claim the cube camp's flag. Levels 2 to 5 are coming soon.
+- **Campaign**: story levels played in order; finish one to unlock the next.
+  - Level 1, *The Birch Road* (Russia, 1944): a cutscene in an army jeep, then hold the road against 5 waves of Rifle Cubes and claim the cube camp's flag.
+  - Level 2, *Tajer Support* (Mumbai, India, 2009): sneak into a tower with your SWAT team, spy on a scam call centre, raid it, then decide what happens to the last scammer.
+  - Levels 3 to 5 are coming soon.
 - **Classic Village**: the original walled village. Small, tight and fast.
 - **Frontier** (work in progress): four times bigger, with a village, a dense forest, a mountain range, a town and a farm.
 
@@ -29,6 +32,7 @@ Press Play to choose:
 | 8 | Rocket launcher |
 | Q | Swap to last weapon |
 | E | Claim the flag (campaign) |
+| 1 / 2 | Make your choice (campaign) |
 | Esc | Pause |
 
 ## Enemies
@@ -40,7 +44,8 @@ Press Play to choose:
 | Blue | Wave 7 | Keeps its distance and shoots slow energy shots. |
 | Brute (purple) | Wave 10 | Heavy armour, heavy melee. |
 | King (gold) | Wave 15, then every 5 waves | Boss. Leaps and slams the ground; jump the shockwave. |
-| Rifle Cube (red, armed) | Campaign only | Keeps its distance and shoots. |
+| Rifle Cube (red, armed) | Campaign Level 1 | Keeps its distance and shoots. |
+| Scam Cube (yellow, headset) | Campaign Level 2 | Jumps off its chair and rushes you. |
 
 ## Weapons and shop
 
