@@ -49,6 +49,15 @@ source in Settings → Pages should be switched to `main`.
   rotation, slip is capped near 45 degrees) that lasts while you keep steering.
   Best times, splits and ghosts are saved per track in localStorage.
 
+- `blockcraft/`: Minecraft-style voxel sandbox (Three.js copied in, WebGL 2
+  required). 16x128x16 chunks, procedural 16x16 textures in a texture array,
+  smooth lighting with sky and block light flood-fill, caves, every overworld
+  ore (plus deepslate versions), trees, mobs, crafting, furnaces, chests,
+  survival and creative. Worlds save to localStorage (`blockcraft-worlds` and
+  `blockcraft-world-<id>`, storing only changed blocks). Block ids are saved, so
+  only ever add new blocks at the end of the block list. It's heavy: keep tests
+  short, and don't run hundreds of frames in the preview pane.
+
 ## Adding a game
 
 1. Make a folder with a single self-contained `index.html` (no build step, no

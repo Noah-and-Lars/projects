@@ -12,6 +12,7 @@ Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade
 | [Blocktris](block-drop/) | Falling-block puzzle | Keyboard or touch |
 | [2048](2048/) | Sliding-number puzzle | Keyboard or swipe |
 | [Poly Racer](poly-racer/) | 3D time-trial racing | Keyboard or touch |
+| [Blockcraft](blockcraft/) | 3D block sandbox (survival and creative) | Keyboard + mouse or touch |
 
 ## Adding a game
 

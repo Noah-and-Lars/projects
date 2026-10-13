@@ -85,10 +85,26 @@ window.GAMES = [
       return n ? n + '/6 tracks finished' : null;
     },
   },
+  {
+    id: 'blockcraft',
+    title: 'Blockcraft',
+    category: 'Sandbox',
+    tagline: 'Mine, craft and build in an endless block world.',
+    description: 'A block-building sandbox with caves, every ore, crafting, furnaces, mobs and day and night. Survival or creative.',
+    controls: 'Keyboard + mouse or touch',
+    keys: [['W A S D', 'Walk'], ['Mouse', 'Look'], ['Left click', 'Break / attack'], ['Right click', 'Place / use / eat'], ['Space', 'Jump · double-tap to fly in creative'],
+           ['Shift', 'Sneak'], ['Ctrl', 'Sprint'], ['E', 'Inventory and crafting'], ['1–9', 'Hotbar'], ['Q', 'Drop'], ['T', 'Chat and /commands'], ['F3', 'Info']],
+    path: 'blockcraft/index.html',
+    thumb: 'blockcraft/thumb.svg',
+    added: '2026-10-13T21:00:00+11:00',
+    updated: '2026-10-13T21:00:00+11:00',
+    stat() { const w = readSave('blockcraft-worlds', true); return w && w.length ? w.length + (w.length === 1 ? ' world' : ' worlds') : null; },
+  },
 ];
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-13', game: 'blockcraft', text: 'New game: Blockcraft. Mine every ore, craft tools, fight mobs and build in an endless world.' },
   { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 1.9.2: a story campaign (Russia, 1944), the Frontier map, destructible buildings, a rocket launcher and menu music.' },
   { date: '2026-10-13', game: 'poly-racer', text: 'Poly Racer now has drifting. Brake while turning to slide through corners.' },
   { date: '2026-10-13', game: 'poly-racer', text: 'New game: Poly Racer. Six low-poly tracks with loops, jumps and a ghost of your best run.' },
