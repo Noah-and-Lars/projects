@@ -112,7 +112,7 @@
   <div id="split"></div>
   <div id="info"><b id="trackName"></b><span id="cpText"></span></div>
   <div id="speed">0<small>KM/H</small></div>
-  <div id="keys"><kbd>R</kbd> restart · <kbd>Enter</kbd> back to checkpoint · <kbd>Esc</kbd> menu</div>
+  <div id="keys"><kbd>Space</kbd> brake / drift · <kbd>R</kbd> restart · <kbd>Enter</kbd> back to checkpoint · <kbd>Esc</kbd> menu</div>
   <div id="ready"><span class="kb">Press <kbd>↑</kbd> or <kbd>W</kbd> to go</span><span class="tc">Hold ▲ to go</span></div>
   <div class="touch">
     <div class="tbtn" id="tLeft">◀</div>
@@ -131,7 +131,8 @@
     <p>Race the clock. Hit every checkpoint. Beat your ghost.</p>
     <div class="tracks" id="trackList"></div>
     <div class="help">
-      <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd> drive · steer in the air to line up landings<br>
+      <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd> drive · <kbd>Space</kbd> or <kbd>S</kbd> brake<br>
+      Brake while turning to drift · keep steering to hold it · straighten up to grip again<br>
       <kbd>R</kbd> restart · <kbd>Enter</kbd> back to last checkpoint · <kbd>Esc</kbd> pause
     </div>
   </div>
@@ -519,7 +520,8 @@ for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 0, 1]) CO
 
 const car = {
   p: new V3(), v: new V3(), q: new THREE.Quaternion(), w: new V3(), steer: 0, prev: new V3(), grounded: 0,
-  wheels: WHEELS.map(([x, z, front]) => ({ x, z, front, comp: 0, contact: false, spin: 0, hitT: 0 })),
+  drifting: false, drift: 0, straightT: 0, driftAge: 0, gripT: 0,
+  wheels: WHEELS.map(([x, z, front]) => ({ x, z, front, comp: 0, contact: false, spin: 0, hitT: 0, slip: 0 })),
 };
 const input = { up: false, down: false, left: false, right: false };
 let col = null;
@@ -548,6 +550,17 @@ function physics(dt, drive) {
   if (!drive && vf > 0.5) A = -8;
 
   const steerIn = drive ? (input.left ? 1 : 0) - (input.right ? 1 : 0) : 0;
+
+  // Drifting: brake while turning at speed and the back end lets go. The slide lasts while you
+  // keep steering (gas or not) and ends when you straighten up, stop sliding or slow right down.
+  car.straightT = steerIn ? 0 : car.straightT + dt;
+  const sideways = Math.abs(Math.atan2(car.v.dot(right), Math.max(0.1, vf)));
+  car.gripT = sideways < 0.08 ? car.gripT + dt : 0;
+  if (brake && steerIn && vf > 16 && car.grounded >= 3 && !car.drifting) { car.drifting = true; car.driftAge = 0; }
+  car.driftAge += dt;
+  if (car.drifting && (car.straightT > 0.25 || vf < 9 || !drive || (car.driftAge > 0.6 && car.gripT > 0.35))) car.drifting = false;
+  car.drift += ((car.drifting ? 1 : 0) - car.drift) * Math.min(1, dt * (car.drifting ? 8 : 3));
+  if (car.drifting && brake) A = gas ? CAR.ENG * (1 - Math.max(0, vf) / CAR.VMAX) : -6; // brake only scrubs a little mid-drift
   const target = steerIn * 0.62 / (1 + Math.abs(vf) / 15);
   car.steer += (target - car.steer) * Math.min(1, dt * 9);
 
@@ -556,7 +569,7 @@ function physics(dt, drive) {
   for (const wh of car.wheels) {
     mount.set(wh.x, CAR.mountY, wh.z).applyQuaternion(q).add(car.p);
     const hit = col.ray(mount, down, CAR.rest + CAR.radius);
-    if (!hit) { wh.contact = false; wh.comp = 0; continue; }
+    if (!hit) { wh.contact = false; wh.comp = 0; wh.slip = 0; continue; }
     wh.contact = true; grounded++; wh.hitT = hit.t;
     const x = CAR.rest + CAR.radius - hit.t;
     wh.comp = x;
@@ -575,9 +588,11 @@ function physics(dt, drive) {
     wf.addScaledVector(n, -wf.dot(n)).normalize();
     ws.crossVectors(n, wf);
     const vs = vc.dot(ws);
-    // braking mostly on the front wheels so the car doesn't spin
-    let fs = -vs * CAR.CS, fl = A < 0 && vf > 0.5 ? A * (wh.front ? 0.34 : 0.16) : A / 4;
-    const max = (wh.front ? CAR.MU_F : CAR.MU_R) * load, mag = Math.hypot(fs, fl);
+    wh.slip = Math.abs(vs);
+    // braking mostly on the front wheels so the car doesn't spin; the rear lets go while drifting
+    const loose = wh.front ? 0 : car.drift;
+    let fs = -vs * CAR.CS * (1 - 0.6 * loose), fl = A < 0 && vf > 0.5 ? A * (wh.front ? 0.34 : 0.16) : A / 4;
+    const max = (wh.front ? CAR.MU_F : CAR.MU_R * (1 - 0.45 * loose)) * load, mag = Math.hypot(fs, fl);
     if (mag > max) { fs *= max / mag; fl *= max / mag; }
     tmp.copy(n).multiplyScalar(load).addScaledVector(wf, fl).addScaledVector(ws, fs);
     F.add(tmp);
@@ -599,7 +614,24 @@ function physics(dt, drive) {
     want.addScaledVector(fwd, vc.crossVectors(up, ground).dot(fwd) * 3);
     if (drive) want.addScaledVector(up, steerIn * 1.4);
     car.w.lerp(want, Math.min(1, dt * 2.5));
-  } else car.w.multiplyScalar(1 - dt * 0.6);
+  } else {
+    car.w.multiplyScalar(1 - dt * 0.6);
+    if (speed > 5 && vf > 3) {
+      // slip angle: how far the car is pointing away from where it's going (+ = sliding to its right)
+      const slip = Math.atan2(car.v.dot(right), Math.max(0.1, vf));
+      let yaw = 0;
+      if (car.drift > 0.01) {
+        // steering sets how fast the car rotates, and the direction of travel bends towards the nose
+        yaw = (steerIn * 1.6 - car.w.dot(up)) * Math.min(1, dt * 5) * car.drift;
+        tmp.copy(car.v).applyAxisAngle(up, slip * 1.8 * car.drift * dt);
+        car.v.copy(tmp);
+      }
+      // never slide more than about 45 degrees, so it doesn't spin out
+      const over = slip - Math.max(-0.8, Math.min(0.8, slip));
+      yaw -= over * 6 * dt;
+      car.w.addScaledVector(up, yaw);
+    }
+  }
 
   car.prev.copy(car.p);
   car.p.addScaledVector(car.v, dt);
@@ -831,6 +863,45 @@ const shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 16).rotateX(-Math.PI /
 shadow.scale.set(1.3, 1, 2.4);
 scene.add(shadow);
 
+// Tyre smoke from the back wheels when they slide
+const smokeGeo = new THREE.IcosahedronGeometry(0.5, 0);
+const smoke = [...Array(48)].map(() => {
+  const m = new THREE.Mesh(smokeGeo, new THREE.MeshBasicMaterial({ color: '#eef1f6', transparent: true, opacity: 0, depthWrite: false }));
+  m.visible = false; scene.add(m);
+  return { m, life: 0, v: new V3() };
+});
+let smokeNext = 0, smokeAcc = 0;
+function updateSmoke(dt, on) {
+  let slip = 0;
+  for (const wh of car.wheels) if (!wh.front && wh.contact) slip = Math.max(slip, wh.slip);
+  smokeAcc += dt;
+  if (on && slip > 5 && smokeAcc > 0.04) {
+    smokeAcc = 0;
+    const up = _v[5].set(0, 1, 0).applyQuaternion(car.q);
+    for (const wh of car.wheels) {
+      if (wh.front || !wh.contact) continue;
+      const s = smoke[smokeNext++ % smoke.length];
+      s.life = 0.6;
+      s.v.copy(car.v).multiplyScalar(0.7); // drifts along behind the car instead of hanging in the air
+      s.m.position.set(wh.x, CAR.mountY, wh.z).applyQuaternion(car.q).add(car.p).addScaledVector(up, -wh.hitT + 0.25);
+      s.m.visible = true;
+    }
+  }
+  for (const s of smoke) {
+    if (s.life <= 0) continue;
+    s.life -= dt;
+    const k = 1 - s.life / 0.6;
+    s.m.scale.setScalar(0.5 + k * 1.4);
+    s.v.multiplyScalar(1 - dt * 2);
+    s.m.position.addScaledVector(s.v, dt).y += dt * 1.2;
+    // fade out anything close to the camera so it never fills the screen
+    const near = Math.max(0, Math.min(1, (s.m.position.distanceTo(camera.position) - 2.5) / 4));
+    s.m.material.opacity = 0.3 * (1 - k) * near;
+    s.m.visible = s.life > 0;
+  }
+  return on ? Math.max(0, Math.min(1, (slip - 5) / 10)) : 0;
+}
+
 function loadTrack(idx) {
   race.idx = idx;
   const t = race.track = buildTrack(TRACKS[idx]);
@@ -894,7 +965,7 @@ function updateCarMesh(dt) {
 
 // ---------- Sound ----------
 const sfx = (() => {
-  let ctx = null, osc, osc2, gain, filt;
+  let ctx = null, osc, osc2, gain, filt, skidGain;
   function init() {
     if (ctx) return;
     try {
@@ -906,6 +977,14 @@ const sfx = (() => {
       const g2 = ctx.createGain(); g2.gain.value = 0.35;
       osc.connect(filt); osc2.connect(g2); g2.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
       osc.start(); osc2.start();
+      // tyre screech: looping noise through a narrow band-pass
+      const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource(); noise.buffer = buf; noise.loop = true;
+      const band = ctx.createBiquadFilter(); band.type = 'bandpass'; band.frequency.value = 1500; band.Q.value = 5;
+      skidGain = ctx.createGain(); skidGain.gain.value = 0;
+      noise.connect(band); band.connect(skidGain); skidGain.connect(ctx.destination);
+      noise.start();
     } catch (e) { ctx = null; }
   }
   function beep(freqs, len, vol = 0.12) {
@@ -926,6 +1005,7 @@ const sfx = (() => {
       osc2.frequency.setTargetAtTime(f * 0.5, ctx.currentTime, 0.05);
       gain.gain.setTargetAtTime(on ? (throttle ? 0.07 : 0.045) : 0, ctx.currentTime, 0.08);
     },
+    skid(level) { if (ctx) skidGain.gain.setTargetAtTime(level * 0.09, ctx.currentTime, 0.05); },
     ding() { beep([988, 1319], 0.25); },
     finish() { beep([784, 988, 1175, 1568], 0.3); },
   };
@@ -934,6 +1014,7 @@ const sfx = (() => {
 // ---------- Menus ----------
 const hud = document.getElementById('hud');
 function showScreen(id) {
+  if (!id && document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
   for (const s of ['menu', 'pause', 'finish']) document.getElementById(s).hidden = s !== id;
 }
 function buildMenu() {
@@ -978,7 +1059,7 @@ document.addEventListener('click', e => {
 });
 
 // ---------- Input ----------
-const KEYMAP = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
+const KEYMAP = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', Space: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
 document.addEventListener('keydown', e => {
   sfx.init();
   if (KEYMAP[e.code]) { input[KEYMAP[e.code]] = true; e.preventDefault(); return; }
@@ -993,7 +1074,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
   }
 });
-document.addEventListener('keyup', e => { if (KEYMAP[e.code]) input[KEYMAP[e.code]] = false; });
+document.addEventListener('keyup', e => { if (KEYMAP[e.code]) { input[KEYMAP[e.code]] = false; e.preventDefault(); } });
 addEventListener('blur', () => { for (const k in input) input[k] = false; if (race.state === 'racing') pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && race.state === 'racing') pause(); });
 document.addEventListener('pointerdown', () => { window.focus(); sfx.init(); });
@@ -1037,7 +1118,9 @@ function frame(now) {
   document.getElementById('time').textContent = fmt(race.state === 'ready' ? 0 : race.time);
   document.getElementById('speed').firstChild.textContent = speed < 0.5 ? 0 : Math.round(speed * 3.6);
   if (splitTimer > 0 && (splitTimer -= dt) <= 0) showSplit(null);
-  sfx.engine(speed, race.state === 'racing' || race.state === 'ready' || race.state === 'finished', input.up && race.state !== 'finished');
+  const live = race.state === 'racing' || race.state === 'ready' || race.state === 'finished';
+  sfx.engine(speed, live, input.up && race.state !== 'finished');
+  sfx.skid(updateSmoke(dt, live));
   renderer.render(scene, camera);
 }
 

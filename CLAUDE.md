@@ -29,8 +29,10 @@ source in Settings → Pages should be switched to `main`.
   copied from Cube Assault into the file). Tracks are strings of pieces in the
   `TRACKS` list (S straight, L/R turns, BL/BR banked, HL/HR hairpins, U/D hills,
   O loop, K + G + LAND jump, C checkpoint, F finish). Car physics is a raycast
-  vehicle against the track's own triangles. Best times, splits and ghosts are
-  saved per track in localStorage.
+  vehicle against the track's own triangles. Space, S or Down brakes; braking
+  while turning at speed starts a drift (rear grip drops, steering sets the
+  rotation, slip is capped near 45 degrees) that lasts while you keep steering.
+  Best times, splits and ghosts are saved per track in localStorage.
 
 ## Adding a game
 

@@ -35,7 +35,7 @@ window.GAMES = [
     id: 'poly-racer',
     title: 'Poly Racer',
     category: 'Racing',
-    description: 'Low-poly time-trial racing. Hit every checkpoint, fly through loops and jumps, and beat your own ghost.',
+    description: 'Low-poly time-trial racing. Drift through corners, fly through loops and jumps, and beat your own ghost.',
     controls: 'Keyboard or touch',
     path: 'poly-racer/index.html',
     thumb: 'poly-racer/thumb.svg',
