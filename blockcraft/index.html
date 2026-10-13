@@ -483,7 +483,7 @@ function field(rng, layers, randW = 0) {
   const out = new Float32Array(TS * TS);
   let lo = 1e9, hi = -1e9;
   for (let i = 0; i < out.length; i++) {
-    let v = randW * rng();
+    let v = randW * 0.45 * rng();
     for (const [n, w] of parts) v += n[i] * w;
     out[i] = v; lo = Math.min(lo, v); hi = Math.max(hi, v);
   }
@@ -1016,7 +1016,8 @@ function buildTextures() {
     }
   }
   const data = new Uint8Array(TS * TS * 4 * TEX_PIX.length);
-  TEX_PIX.forEach((img, i) => data.set(img.d, i * TS * TS * 4));
+  // WebGL reads rows from the bottom up, so flip each texture to show it the right way up
+  TEX_PIX.forEach((img, i) => { for (let y = 0; y < TS; y++) data.set(img.d.subarray(y * TS * 4, (y + 1) * TS * 4), (i * TS + (TS - 1 - y)) * TS * 4); });
   return { data, layers: TEX_PIX.length };
 }
 
@@ -1980,7 +1981,7 @@ function blockGeometry(id) {
 const glCanvas = document.getElementById('gl');
 let renderer;
 try {
-  renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: false, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: 'high-performance' });
 } catch (e) { renderer = null; }
 if (!renderer || !renderer.capabilities.isWebGL2) {
   const err = document.getElementById('err');
@@ -1997,7 +1998,8 @@ scene.add(camera);
 const texInfo = buildTextures();
 const atlas = new THREE.DataTexture2DArray(texInfo.data, TS, TS, texInfo.layers);
 atlas.format = THREE.RGBAFormat; atlas.type = THREE.UnsignedByteType;
-atlas.magFilter = THREE.NearestFilter; atlas.minFilter = THREE.NearestMipmapLinearFilter;
+atlas.magFilter = THREE.NearestFilter; atlas.minFilter = THREE.LinearMipmapLinearFilter;
+atlas.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 atlas.generateMipmaps = true; atlas.wrapS = atlas.wrapT = THREE.RepeatWrapping;
 atlas.needsUpdate = true;
 
@@ -2571,17 +2573,19 @@ function raycast(world, o, d, maxDist, liquids) {
 }
 
 // ---------- Breaking ----------
+// only real tools count (blocks also have a 'tool' field: the tool that mines them)
+const toolOf = item => item && item.id >= 256 ? ITEMS[item.id] : null;
 function canHarvest(id, item) {
   const d = BLOCKS[id];
   if (d.tier < 0) return true;
-  const t = item ? itemDef(item.id) : null;
+  const t = toolOf(item);
   return !!(t && t.tool === 'pickaxe' && t.tier >= d.tier);
 }
 function breakTime(id, item) {
   const d = BLOCKS[id];
   if (d.hardness < 0) return Infinity;
   if (d.hardness === 0) return 0.05;
-  const t = item ? itemDef(item.id) : null;
+  const t = toolOf(item);
   let speed = 1;
   if (t && t.tool && t.tool === d.tool) speed = t.speed;
   if (t && t.tool === 'sword' && (d.leaves || d.name === 'cactus')) speed = 1.5;
@@ -2615,7 +2619,7 @@ function breakBlock(world, x, y, z, entities) {
   breakParticles(world, x, y, z, id);
   if (!creative()) {
     for (const [did, n] of dropsFor(id, item)) entities.dropItem(x + 0.5, y + 0.3, z + 0.5, did, n);
-    if (d.hardness > 0) damageHeld(item && itemDef(item.id).tool === 'sword' ? 2 : 1);
+    if (d.hardness > 0 && toolOf(item)) damageHeld(toolOf(item).tool === 'sword' ? 2 : 1);
     addExhaustion(0.005);
   }
   // knock off anything that was resting on it
@@ -2984,8 +2988,9 @@ class Entities {
     if (e.age > 300) { this.remove(e); return; }
     // picked up
     if (e.pickup <= 0 && !player.dead) {
-      const d = Math.hypot(e.pos.x - player.pos.x, e.pos.y - (player.pos.y + 0.7), e.pos.z - player.pos.z);
-      if (d < 1.6) {
+      // like Minecraft: anything within about a block of your body gets picked up
+      const dy = e.pos.y - player.pos.y;
+      if (Math.abs(e.pos.x - player.pos.x) < 1.3 && Math.abs(e.pos.z - player.pos.z) < 1.3 && dy > -1.4 && dy < 2.4) {
         const left = addItem(player.inv, e.id, e.count, e.dmg);
         if (left < e.count) { sfx.play('pop'); }
         if (left <= 0) this.remove(e); else e.count = left;
@@ -3953,7 +3958,8 @@ function streamChunks(budget) {
   const pcx = Math.floor(player.pos.x) >> 4, pcz = Math.floor(player.pos.z) >> 4;
   // anything the player just changed gets re-drawn straight away
   for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { const c = w.chunk(pcx + dx, pcz + dz); if (c && c.state >= 1 && neighboursLit(w, c)) meshDirty(w, c, true); }
-  const order = chunkOrder(R + 1);
+  // one ring wider than what's drawn, so every drawn chunk has all 8 neighbours
+  const order = chunkOrder(R + 2);
   // half the time for making new chunks, the rest for drawing them (nearest first)
   for (const [dx, dz] of order) {
     if (performance.now() - t0 > budget * 0.5) break;
@@ -3982,6 +3988,7 @@ function loadProgress() {
   const w = game.world, pcx = Math.floor(player.pos.x) >> 4, pcz = Math.floor(player.pos.z) >> 4, r = Math.min(3, OPT.renderDist);
   let done = 0, total = 0;
   for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+    if (dx * dx + dz * dz > r * r + 1) continue;   // same circle the game draws
     total++;
     const c = w.chunk(pcx + dx, pcz + dz);
     if (c && c.state >= 1 && !c.dirty.some(v => v)) done++;
@@ -4039,7 +4046,7 @@ function tickWorld(dt) {
 function tickFurnace(w, m, x, y, z, dt) {
   const it = m.items, input = it[0], out = SMELT[input?.id];
   const canCook = out && (!it[2] || (it[2].id === out && it[2].count < maxStack(out)));
-  if (m.burn > 0) m.burn -= dt;
+  if (!(m.burn > 0)) m.burn = 0; else m.burn -= dt;
   if (m.burn <= 0 && canCook && it[1] && FUEL[it[1].id]) {
     m.burn = m.burnMax = FUEL[it[1].id];
     if (it[1].id === IT.lava_bucket) it[1] = { id: IT.bucket, count: 1, dmg: 0 };
@@ -4094,7 +4101,15 @@ const DEATH_MSG = { fall: 'hit the ground too hard', drown: 'drowned', lava: 'tr
 
 const handScene = new THREE.Scene(), handCam = new THREE.PerspectiveCamera(70, 1, 0.01, 10);
 const armMat = new THREE.MeshBasicMaterial({ color: 0xc69c7a });
-const arm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.75), armMat);
+const armGeo = new THREE.BoxGeometry(0.22, 0.8, 0.22);
+{ // shade each side differently so the arm looks solid
+  const shades = [0.78, 0.9, 1.0, 0.6, 0.95, 0.7], col = [];
+  for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) col.push(shades[f], shades[f], shades[f]);
+  armGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+}
+armMat.vertexColors = true;
+const arm = new THREE.Mesh(armGeo, armMat);
+arm.scale.set(0.75, 1, 0.75);
 const handRoot = new THREE.Group(); handScene.add(handRoot);
 let heldModel = null, heldModelId = -1, equipT = 0;
 function updateHand(dt) {
@@ -4117,10 +4132,10 @@ function updateHand(dt) {
   if (heldModel) {
     if (heldModel.userData.cube) { heldModel.position.set(-0.05, 0.05, 0); heldModel.rotation.set(0.1, Math.PI / 4, 0); heldModel.scale.setScalar(0.36); }
     else { heldModel.position.set(0.06, 0.1, 0); heldModel.rotation.set(0.1, -Math.PI / 2 + 0.25, 0.5); heldModel.scale.setScalar(0.5); }
-  } else { arm.position.set(0.05, -0.05, 0.1); arm.rotation.set(-0.35, 0.15, 0.1); }
+  } else { arm.position.set(0.02, 0.06, -0.12); arm.rotation.set(-1.3, 0.35, 0.42); }
   const e = eyePos(), [ls, lb] = game.world.lightAt(Math.floor(e.x), Math.floor(e.y), Math.floor(e.z));
   const br = lightBright(ls, lb, U.uDaylight.value);
-  if (heldModel) heldModel.userData.setBright(heldModel.userData.cube ? br / 0.6 : br * 1.1); else armMat.color.setRGB(0.78 * br * 1.2, 0.61 * br * 1.2, 0.48 * br * 1.2);
+  if (heldModel) heldModel.userData.setBright(heldModel.userData.cube ? br / 0.6 : br * 1.1); else { const k = Math.min(1.1, br * 1.25); armMat.color.setRGB(0.92 * k, 0.7 * k, 0.55 * k); }
 }
 
 function updateGame(dt) {
@@ -4153,7 +4168,7 @@ function interact(w, ents, dt) {
   player.useCD = Math.max(0, player.useCD - dt); player.attackCD = Math.max(0, player.attackCD - dt);
   // attacking
   if (input.attack && mobFirst && player.attackCD <= 0) {
-    const s = held(), d = s ? itemDef(s.id) : null;
+    const s = held(), d = toolOf(s);
     const dmg = d && d.damage ? d.damage : 1;
     ents.hitMob(mob.mob, player.fallStart !== null && player.vel.y < 0 ? Math.floor(dmg * 1.5) : dmg, new V3(dir.x, 0, dir.z).normalize());
     player.attackCD = 0.45; player.swing = 1; addExhaustion(0.1);
