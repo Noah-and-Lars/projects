@@ -58,6 +58,8 @@ source in Settings → Pages should be switched to `main`.
   only ever add new blocks at the end of the block list. It's heavy: keep tests
   short, and don't run hundreds of frames in the preview pane.
 
+- `free-criminal/`: Free Criminal, an open-world 3D crime game set in San Varro (Three.js r128 copied from Cube Assault into the file). Saves only its settings.
+
 ## Adding a game
 
 1. Make a folder with a single self-contained `index.html` (no build step, no

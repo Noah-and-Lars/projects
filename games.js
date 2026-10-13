@@ -24,6 +24,22 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'free-criminal',
+    title: 'Free Criminal',
+    category: 'Action',
+    tagline: 'Fresh out of prison in San Varro. Steal cars, rob stores and outrun the cops.',
+    description: 'Open-world 3D crime game. Walk out of the penitentiary into the city of San Varro, steal any car, rob stores and the bank, buy guns at the Gun Locker and stay ahead of the police.',
+    controls: 'Keyboard + mouse',
+    keys: [['W A S D', 'Walk / drive'], ['Mouse', 'Look'], ['Click', 'Fire'], ['Right-click', 'Aim'], ['R', 'Reload'], ['Shift', 'Sprint'],
+           ['Space', 'Jump / handbrake'], ['F', 'Steal or enter a car'], ['E', 'Rob a store or the bank'], ['1 2 3', 'Buy at the Gun Locker'],
+           ['V', 'First / third person'], ['M', 'Map'], ['H', 'Horn'], ['Esc', 'Pause']],
+    path: 'free-criminal/index.html',
+    thumb: 'free-criminal/thumb.svg',
+    added: '2026-10-13T21:33:00+11:00',
+    updated: '2026-10-13T21:33:00+11:00',
+    stat() { return null; },
+  },
+  {
     id: 'cube-assault',
     title: 'Cube Assault',
     category: 'Shooter',
@@ -104,6 +120,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-13', game: 'free-criminal', text: 'New game: Free Criminal. Walk out of prison into San Varro, steal cars, rob the bank and outrun the cops.' },
   { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 2.0: campaign Level 2, Tajer Support. Lead a SWAT raid on a scam call centre in Mumbai, 2009, and decide the last scammer\'s fate.' },
   { date: '2026-10-13', game: 'blockcraft', text: 'Blockcraft 1.1: textures the right way up, a smoother look, a new hand, faster loading and bug fixes for mining, pickups and furnaces.' },
   { date: '2026-10-13', game: 'blockcraft', text: 'New game: Blockcraft. Mine every ore, craft tools, fight mobs and build in an endless world.' },
