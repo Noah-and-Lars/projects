@@ -104,6 +104,13 @@
   #hbar { width: 230px; height: 12px; background: rgba(0, 0, 0, .45); border-radius: 3px; margin-top: 6px; overflow: hidden; position: relative; box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); }
   #hfill { height: 100%; width: 100%; background: linear-gradient(180deg, #86efac, var(--ok)); transition: width .12s; }
   #hbar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(0, 0, 0, .35) 22px 23px); }
+  #turretHud { left: 24px; bottom: 90px; display: none; }
+  #turretHud .hrow { display: flex; align-items: baseline; gap: 8px; }
+  #turretHud .lbl { font-size: 13px; letter-spacing: 2px; opacity: .8; }
+  #tHpNum { font-family: var(--display); font-weight: 400; font-size: 22px; line-height: 1; }
+  #tbar { width: 170px; height: 9px; background: rgba(0, 0, 0, .45); border-radius: 3px; margin-top: 5px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); }
+  #tfill { height: 100%; width: 100%; background: linear-gradient(180deg, #fde68a, #f5b82e); transition: width .12s; }
+  #tfill.low { background: linear-gradient(180deg, #fca5a5, #ef4444); }
   #ammo { right: 24px; bottom: 22px; text-align: right; }
   #weaponName { font-size: 13px; opacity: .85; letter-spacing: 2px; text-transform: uppercase; }
   #ammoNow { font-family: var(--display); font-weight: 400; font-size: 38px; line-height: 1; }
@@ -167,6 +174,8 @@
   button.btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #9a6a05; }
   button.btn.secondary { background: #e7e9ec; box-shadow: 0 4px 0 #8f959c; }
   button.btn.secondary:hover { background: #fff; }
+  button.btn.danger { background: #ef4444; color: #fff; box-shadow: 0 4px 0 #991b1b; }
+  button.btn.danger:hover { background: #f87171; }
   button.btn:disabled { background: #3a4048; color: #9aa2ab; box-shadow: 0 4px 0 #22272d; cursor: default; transform: none; }
   button:focus-visible, .wcard:focus-visible { outline: 3px solid var(--plasma); outline-offset: 3px; }
 
@@ -201,6 +210,47 @@
   .newbest { color: var(--gold-hi); font-family: var(--display); letter-spacing: 1px; font-size: 20px; }
   @media (max-width: 480px) { .stats { grid-template-columns: repeat(2, 1fr); } }
 
+  /* Profile */
+  #profileBtn { position: absolute; top: 16px; right: 16px; display: none; align-items: center; gap: 10px; font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+    background: rgba(12, 16, 22, .72); border: 1px solid var(--line); border-radius: 999px; padding: 5px 18px 5px 5px; transition: border-color .15s, background .15s; z-index: 1; }
+  #overlay.home #profileBtn { display: flex; }
+  #profileBtn:hover { border-color: var(--gold); background: rgba(20, 26, 34, .92); }
+  #profileBtn img { width: 44px; height: 44px; }
+  #profileBtn b { display: block; font-size: 16px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #profileBtn small { display: block; color: var(--gold-hi); font-weight: 700; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .avatar { border-radius: 50%; background: radial-gradient(circle at 50% 38%, #3d4a5b, #141a22 75%); border: 2px solid var(--line); object-fit: contain; }
+  .avatar.big { width: 116px; height: 116px; flex: none; border-color: var(--gold); }
+  .phead { display: flex; align-items: center; gap: 18px; width: 100%; text-align: left; }
+  .phead h2 { margin: 0 0 2px; overflow-wrap: anywhere; }
+  .level { width: 100%; text-align: left; }
+  .lvrow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .lvrow b { font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--gold-hi); }
+  .lvrow span { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar.xp { height: 10px; }
+  .bar.xp i { background: linear-gradient(90deg, var(--gold), var(--gold-hi)); transition: width .4s; }
+  .avatars { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; width: 100%; margin-bottom: 8px; }
+  .avatars button { font: inherit; font-size: 11px; color: var(--muted); background: #1b222c; border: 2px solid #343d48; border-radius: 10px; padding: 6px 4px 5px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.2; }
+  .avatars button:hover { border-color: #8a96a3; }
+  .avatars button.sel { border-color: var(--gold); background: #33291a; color: var(--ink); }
+  .avatars img { width: 60px; height: 60px; }
+  .nameInput { width: 280px; max-width: 100%; font: inherit; font-size: 20px; font-weight: 700; text-align: center; color: var(--ink); background: #1b222c;
+    border: 2px solid #343d48; border-radius: 8px; padding: 10px 12px; margin: 6px 0 4px; }
+  .nameInput:focus { outline: none; border-color: var(--gold); }
+  @media (max-width: 480px) { .avatar.big { width: 84px; height: 84px; } #profileBtn { top: 10px; right: 10px; } }
+
+  /* Map select */
+  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin: 4px 0 10px; }
+  .mapcard { font: inherit; color: var(--ink); text-align: left; background: #1b222c; border: 2px solid #343d48; border-radius: 12px; padding: 10px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 6px; transition: border-color .15s, transform .08s; }
+  .mapcard:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .mapcard canvas { width: 100%; aspect-ratio: 1; border-radius: 8px; display: block; }
+  .mapcard b { font-family: var(--display); font-weight: 400; font-size: 21px; display: flex; align-items: center; gap: 8px; }
+  .mapcard span { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .mapcard.loading { opacity: .6; pointer-events: none; }
+  .wip { font-family: var(--body); font-weight: 800; font-size: 11px; letter-spacing: 1px; color: #1a1205; background: #f59e0b; border-radius: 4px; padding: 2px 6px; }
+  @media (max-width: 520px) { .maps { grid-template-columns: 1fr; } }
+
   /* Shop */
   .item { width: 100%; display: grid; grid-template-columns: 150px 1fr; gap: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; text-align: left; margin: 6px 0; }
   .item h3 { font-family: var(--display); font-weight: 400; font-size: 26px; margin-bottom: 4px; }
@@ -215,7 +265,10 @@
   .bars { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; margin: 12px 0 14px; font-size: 13px; color: var(--muted); }
   .bar { height: 8px; background: #252d38; border-radius: 4px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--plasma); }
-  #buyBtn { width: 100%; }
+  #buyBtn, #buyTurret { width: 100%; }
+  #turretNote { font-size: 14px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
+  .turretArt { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; border: 1px solid var(--line);
+    background: radial-gradient(circle at 50% 60%, rgba(245, 184, 46, .25), transparent 70%), #0a0e13; }
   #buyNote { font-size: 14px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
   @media (max-width: 520px) { .item { grid-template-columns: 1fr; } }
 
@@ -254,6 +307,7 @@
   <div class="stat" id="score">Score: 0</div>
   <div class="stat" id="coinsHud"><span class="coin"></span><b id="coinsCount">0</b></div>
   <div class="stat" id="wave">Wave 1</div>
+  <div class="stat" id="turretHud"><div class="hrow"><span class="lbl">TURRET</span><span id="tHpNum">200</span></div><div id="tbar"><div id="tfill"></div></div></div>
   <div class="stat" id="health"><div class="hrow"><span class="lbl">HP</span><span id="hpNum">100</span></div><div id="hbar"><div id="hfill"></div></div></div>
   <div class="stat" id="ammo"><div id="weaponName">Pistol</div><div><span id="ammoNow">12</span><span id="ammoMax"> / 12</span></div></div>
   <div id="banner"><b></b><span></span></div>
@@ -261,23 +315,90 @@
 </div>
 
 <div id="overlay" class="home">
+  <button id="profileBtn" data-action="profile" aria-label="Open your profile"><img class="avatar" id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
+
+  <div class="menu" id="menu-name">
+    <div class="logo-cubes"><span style="background:#dc2626"></span><span style="background:#22c55e"></span><span style="background:#3b82f6"></span><span style="background:#7c3aed"></span></div>
+    <h2 id="nameTitle">Welcome, recruit</h2>
+    <p id="nameSub">What should we call you?</p>
+    <input id="nameInput" class="nameInput" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false">
+    <button class="btn" id="nameOk" disabled>Continue</button>
+    <button class="btn secondary" id="nameCancel" data-action="back">Cancel</button>
+  </div>
+
+  <div class="menu" id="menu-profile">
+    <div class="phead">
+      <img class="avatar big" id="pAvatar" alt="Your profile picture">
+      <div><h2 id="pName"></h2><button class="link" id="renameBtn">Change name</button></div>
+    </div>
+    <div class="level"><div class="lvrow"><b id="pLevel">Level 1</b><span id="pXp"></span></div><div class="bar xp"><i id="pXpFill"></i></div></div>
+    <div class="stats" id="pStats"></div>
+    <div class="section">Profile picture</div>
+    <div class="avatars" id="avatarGrid"></div>
+    <button class="btn" data-action="back">Back</button>
+  </div>
   <div class="menu active" id="menu-main">
     <div class="logo-cubes"><span style="background:#dc2626"></span><span style="background:#22c55e"></span><span style="background:#3b82f6"></span><span style="background:#7c3aed"></span></div>
     <div class="title">CUBE<br><em>ASSAULT</em></div>
     <p class="tag">Hold the village against waves of cubes. Every cube you destroy earns a coin.</p>
     <div class="wallet"><span class="coin"></span><b class="coinTotal">0</b> coins <span class="sep">|</span> Best wave <b id="bestWave">0</b></div>
     <div class="btns">
-      <button class="btn" data-action="play">Play</button>
+      <button class="btn" data-action="maps">Play</button>
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <p class="controls"><kbd>WASD</kbd> move · <kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot · <kbd>Right-click</kbd> zoom · <kbd>Space</kbd> jump · <kbd>Shift</kbd> sprint · <kbd>R</kbd> reload · <kbd>1</kbd>–<kbd>5</kbd> / <kbd>Scroll</kbd> weapons · <kbd>Q</kbd> last weapon · <kbd>Esc</kbd> pause</p>
-    <button class="link" data-action="notes">v1.5 · What's new</button>
+    <p class="controls"><kbd>WASD</kbd> move · <kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot · <kbd>Right-click</kbd> zoom · <kbd>Space</kbd> jump · <kbd>Shift</kbd> sprint · <kbd>R</kbd> reload · <kbd>1</kbd>–<kbd>5</kbd> / <kbd>Scroll</kbd> weapons · <kbd>Q</kbd> last weapon · <kbd>6</kbd> turret · <kbd>Esc</kbd> pause</p>
+    <button class="link" data-action="notes">v1.7.1 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v1.7.1 <span>Turret &amp; fixes</span></h3><ul>
+        <li>New in the Shop: the Turret (400 coins). Press 6 in a game to set it down next to you. It shoots the nearest cube it can see once a second, and any normal cube goes down in two hits. The King only takes a scratch from each shot.</li>
+        <li>Your turret has 200 HP, double yours, and never heals. Cubes will go for it if it's closer than you, and enemy shots and the King's shockwave hurt it. Its health shows above yours, and it appears on the radar. You can only have one out at a time.</li>
+        <li>Fix: from inside a house, the ceiling showed the roof tiles stretched into a spiderweb pattern. Houses now have proper wooden ceilings.</li>
+        <li>Fix: the top of every doorway flickered where the door frame met the wall.</li>
+        <li>Windows now show on the inside walls of houses too, not just outside.</li>
+        <li>Fix: window bars flickered against the glass from a distance, and on Frontier the town's streets flickered against the paving.</li>
+      </ul></section>
+      <section><h3>v1.7 <span>Frontier</span></h3><ul>
+        <li>Pressing Play now lets you choose a map: Classic Village (the original map) or Frontier.</li>
+        <li>Frontier (work in progress) is four times the size of the classic map. It has the village in the middle, a dense forest, a mountain range, a town of tall buildings and parked cars, and a farm with a barn and fenced fields.</li>
+        <li>You always start in the middle of the village, on both maps.</li>
+        <li>On Frontier, cubes spawn 30 to 50 metres from you instead of at the outer wall, so you're not waiting for them to cross the map.</li>
+      </ul></section>
+      <section><h3>v1.6.3 <span>Pop!</span></h3><ul>
+        <li>The Shotgun and Sniper now unlock when you reach wave 5 in every game, instead of staying unlocked forever. Every game starts with the Pistol and Rifle, plus the Extreme Gun if you've bought it.</li>
+        <li>New sounds: destroyed cubes now burst with a punchy pop and rattling debris, deeper for bigger cubes. Every gun also has its own sound when you switch to it.</li>
+        <li>Fix: the snow on the mountains flickered and had ragged streaks, because it sat exactly on the rock.</li>
+        <li>Fix: clouds drifted straight through the mountains and jumped from one side of the sky to the other. They now circle slowly over the village.</li>
+      </ul></section>
+      <section><h3>v1.6.2 <span>Fresh start</span></h3><ul>
+        <li>You now start with the Pistol and Rifle. Reach wave 5 to unlock the Shotgun and Sniper for good. If you've already reached wave 5, they're already unlocked.</li>
+        <li>New in Settings: Reset all data. After a warning screen, it wipes your name, level, stats, coins, guns and settings and starts the game fresh.</li>
+        <li>Fix: if your browser blocked mouse capture, the message telling you what to do never appeared. It now shows at the bottom of the screen.</li>
+        <li>Fix: the kill-combo counter stayed on screen behind the game-over screen.</li>
+      </ul></section>
+      <section><h3>v1.6.1 <span>Fixes &amp; polish</span></h3><ul>
+        <li>The Extreme Gun now costs 1,000 coins (was 100). If you already own it, you keep it.</li>
+        <li>Fix: a big hit near the edge of the map could knock a cube through the outer wall, where it got stuck and the wave never ended.</li>
+        <li>Fix: destroyed cubes and enemy energy shots weren't cleared from memory, so long sessions slowly got slower.</li>
+        <li>Your best wave now counts when you quit to the menu, not only when you die.</li>
+        <li>The new-wave banner now shows how much health you actually got back, or "Full health".</li>
+      </ul></section>
+      <section><h3>v1.6 <span>Profiles</span></h3><ul>
+        <li>Profiles: the game asks for your name the first time you play. Click your profile in the top right of the main menu to see it.</li>
+        <li>Your profile tracks every game you play: level, total accuracy, shots fired, cubes killed, time played and best wave.</li>
+        <li>Levels: every point you score is XP. You'll see a banner mid-fight when you level up.</li>
+        <li>Profile pictures: choose from 3D portraits of things in the game, including every cube, the King, all five guns, a crate, a barrel, a tree and a health pack.</li>
+      </ul></section>
+      <section><h3>v1.5.1 <span>Hands on</span></h3><ul>
+        <li>You can now see your arms and hands. Every gun is held properly: trigger finger on the trigger, the other hand on the handguard, pump or forend, and both hands on the pistol.</li>
+        <li>Animated reloads: your free hand pulls the old magazine, grabs a fresh one and pushes it home. On the shotgun it feeds shells in one at a time, and on the sniper your hand works the bolt after every shot.</li>
+        <li>Your gun and arms now stay a sensible size at any field of view, instead of shrinking at wide settings and filling the screen at narrow ones.</li>
+        <li>Two new graphics options. Ultra: sharper image, crisper shadows, thicker grass and a longer view distance. Potato: low resolution, flat colours and no shadows or grass, for slow computers.</li>
+      </ul></section>
       <section><h3>v1.5 <span>Real guns</span></h3><ul>
         <li>All five weapons rebuilt in detail at real-world size: Glock-style pistol, AR-15 rifle with red-dot sight, pump shotgun with walnut stock, bolt-action sniper with a glass-lensed scope, and a sleeker Extreme Gun.</li>
         <li>Reflective metal, stippled grips, knurled turrets and wood grain.</li>
@@ -354,7 +475,35 @@
         <div id="buyNote"></div>
       </div>
     </div>
+    <div class="item">
+      <img class="turretArt" id="turretArt" alt="The turret">
+      <div>
+        <h3>Turret</h3>
+        <p>Press <kbd>6</kbd> in a game to set it down next to you. It shoots the nearest cube once a second, and any normal cube goes down in two hits. It has 200 HP, double yours, and never heals. One at a time.</p>
+        <button class="btn" id="buyTurret">Buy</button>
+        <div id="turretNote"></div>
+      </div>
+    </div>
     <button class="btn secondary" data-action="back">Back</button>
+  </div>
+
+  <div class="menu" id="menu-maps">
+    <h2>Choose a map</h2>
+    <div class="maps">
+      <button class="mapcard" data-map="classic"><canvas width="320" height="320" id="prevClassic"></canvas>
+        <b>Classic Village</b><span>The original walled village from before v1.7. Small, tight and fast.</span></button>
+      <button class="mapcard" data-map="big"><canvas width="320" height="320" id="prevBig"></canvas>
+        <b>Frontier <em class="wip">WIP</em></b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm. Still a work in progress.</span></button>
+    </div>
+    <button class="btn secondary" data-action="back">Back</button>
+  </div>
+
+  <div class="menu" id="menu-reset">
+    <h2>Reset all data?</h2>
+    <p>This permanently deletes everything: your name, level, stats, coins, best wave, unlocked and bought guns, profile picture and settings. The game restarts as if you'd never played.</p>
+    <p><b>This can't be undone.</b></p>
+    <button class="btn danger" id="resetYes">Yes, delete everything</button>
+    <button class="btn secondary" data-action="back">Cancel</button>
   </div>
 
   <div class="menu" id="menu-settings">
@@ -363,9 +512,11 @@
     <div class="row"><label for="fov">Field of view</label><input type="range" id="fov" min="60" max="120" step="1"><span class="val" id="fovVal"></span></div>
     <div class="row"><label for="sens">Mouse speed</label><input type="range" id="sens" min="0.2" max="3" step="0.1"><span class="val" id="sensVal"></span></div>
     <div class="row"><label for="vol">Volume</label><input type="range" id="vol" min="0" max="100" step="1"><span class="val" id="volVal"></span></div>
-    <div class="row"><label>Graphics</label><div class="seg" id="quality"><button data-quality="high">High</button><button data-quality="low">Low (faster)</button></div></div>
+    <div class="row"><label>Graphics</label><div class="seg" id="quality"><button data-quality="potato">Potato</button><button data-quality="low">Low</button><button data-quality="high">High</button><button data-quality="ultra">Ultra</button></div></div>
     <div class="section">Starting weapon</div>
     <div class="weapons" id="weaponCards"></div>
+    <div class="section">Data</div>
+    <button class="btn danger" data-action="reset">Reset all data</button>
     <button class="btn" data-action="back">Back</button>
   </div>
 </div>
@@ -385,10 +536,10 @@
 const WEAPONS = {
   pistol:  { name: 'Pistol',  dmg: 1.5, cooldown: 0.22, mag: 12, reload: 1.0, pellets: 1, spread: 0.004, auto: false, kick: 0.7, desc: 'Reliable. Semi-auto, 12 rounds.' },
   rifle:   { name: 'Rifle',   dmg: 1,   cooldown: 0.09, mag: 30, reload: 1.6, pellets: 1, spread: 0.018, auto: true,  kick: 0.3, desc: 'Full-auto, 30 rounds. Hold to spray.' },
-  shotgun: { name: 'Shotgun', dmg: 0.8, cooldown: 0.75, mag: 6,  reload: 1.8, pellets: 9, spread: 0.075, auto: false, kick: 1.6, desc: '9 pellets. Devastating up close.' },
-  sniper:  { name: 'Sniper',  dmg: 8,   cooldown: 1.1,  mag: 5,  reload: 2.0, pellets: 1, spread: 0,     auto: false, kick: 2.2, desc: 'One-shot kills. Right-click to scope.' },
+  shotgun: { name: 'Shotgun', dmg: 0.8, cooldown: 0.75, mag: 6,  reload: 1.8, pellets: 9, spread: 0.075, auto: false, kick: 1.6, unlockWave: 5, desc: '9 pellets. Devastating up close.' },
+  sniper:  { name: 'Sniper',  dmg: 8,   cooldown: 1.1,  mag: 5,  reload: 2.0, pellets: 1, spread: 0,     auto: false, kick: 2.2, unlockWave: 5, desc: 'One-shot kills. Right-click to scope.' },
   extreme: { name: 'Extreme Gun', dmg: 3, cooldown: 0.07, mag: 50, reload: 1.4, pellets: 1, spread: 0.008, auto: true, kick: 0.22, splash: 2.5, splashDmg: 2,
-             tracer: 0x22d3ee, price: 100, desc: 'Full-auto plasma. Every shot explodes.' },
+             tracer: 0x22d3ee, price: 1000, desc: 'Full-auto plasma. Every shot explodes.' },
 };
 const WEAPON_KEYS = Object.keys(WEAPONS);
 
@@ -416,14 +567,18 @@ const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
 
 // ---------- Saved settings & profile ----------
 const settings = { fov: 75, sens: 1, weapon: 'pistol', volume: 0.6, quality: 'high' };
-const profile = { coins: 0, owned: {}, best: 0 };
+const profile = { coins: 0, owned: {}, best: 0, name: '', avatar: '', xp: 0, stats: {} };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('cubeAssaultSettings') || '{}')); } catch (e) {}
 try { Object.assign(profile, JSON.parse(localStorage.getItem('cubeAssaultProfile') || '{}')); } catch (e) {}
 if (typeof profile.owned !== 'object' || !profile.owned) profile.owned = {};
-const owns = k => !WEAPONS[k].price || !!profile.owned[k];
-if (!WEAPONS[settings.weapon] || !owns(settings.weapon)) settings.weapon = 'pistol';
-function saveSettings() { try { localStorage.setItem('cubeAssaultSettings', JSON.stringify(settings)); } catch (e) {} }
-function saveProfile() { try { localStorage.setItem('cubeAssaultProfile', JSON.stringify(profile)); } catch (e) {} }
+profile.stats = Object.assign({ shots: 0, hits: 0, kills: 0, time: 0 }, profile.stats);
+// wave-locked guns unlock fresh in every game, so they're never stored as owned
+for (const k of WEAPON_KEYS) if (WEAPONS[k].unlockWave) delete profile.owned[k];
+const owns = k => { const w = WEAPONS[k]; return w.price ? !!profile.owned[k] : w.unlockWave ? wave >= w.unlockWave : true; };
+if (!WEAPONS[settings.weapon] || WEAPONS[settings.weapon].unlockWave || !owns(settings.weapon)) settings.weapon = 'pistol';
+let wiped = false; // set by Reset all data, so nothing gets saved back while the page reloads
+function saveSettings() { if (wiped) return; try { localStorage.setItem('cubeAssaultSettings', JSON.stringify(settings)); } catch (e) {} }
+function saveProfile() { if (wiped) return; try { localStorage.setItem('cubeAssaultProfile', JSON.stringify(profile)); } catch (e) {} }
 
 // ---------- Sound (synthesised, no files) ----------
 const Sound = (() => {
@@ -474,8 +629,26 @@ const Sound = (() => {
     blast: () => noise({ dur: 0.22, freq: 500, q: 0.6, vol: 0.22, to: 120 }),
     empty: () => tone({ freq: 900, dur: 0.03, type: 'square', vol: 0.08 }),
     hit: () => tone({ freq: 1800, to: 1200, dur: 0.05, type: 'triangle', vol: 0.12 }),
-    kill: () => { tone({ freq: 300, to: 900, dur: 0.12, type: 'square', vol: 0.09 }); noise({ dur: 0.18, freq: 1500, vol: 0.2, to: 400 });
-                  tone({ freq: 988, dur: 0.08, vol: 0.12, delay: 0.06 }); tone({ freq: 1319, dur: 0.18, vol: 0.12, delay: 0.12 }); },
+    // a cube bursting: thump, bright crack, a rumble that's deeper for bigger cubes, debris rattling down, then a little chime
+    kill: size => {
+      const s = Math.max(0.8, Math.min(2.6, size || 1)), low = 1 / Math.sqrt(s);
+      tone({ freq: 240 * low, to: 42 * low, dur: 0.14 + 0.06 * s, vol: 0.55, attack: 0.001 });
+      noise({ dur: 0.08, freq: 2800, q: 0.7, vol: 0.42, to: 600, attack: 0.001 });
+      noise({ dur: 0.25 + 0.12 * s, freq: 900 * low, q: 0.6, vol: 0.26, to: 140, delay: 0.01 });
+      for (let i = 0; i < 6; i++) noise({ dur: 0.022, freq: 2400 + Math.random() * 2800, q: 4, vol: 0.11, delay: 0.07 + Math.random() * 0.25 });
+      tone({ freq: 1319, dur: 0.09, type: 'triangle', vol: 0.07, delay: 0.05 });
+      tone({ freq: 1760, dur: 0.16, type: 'triangle', vol: 0.06, delay: 0.1 });
+    },
+    // drawing a gun: a quick whoosh, the grip landing in the hand and a chamber check, heavier for the long guns
+    equip: kind => {
+      const heavy = kind === 'shotgun' || kind === 'sniper';
+      noise({ dur: 0.12, freq: 600, q: 0.8, vol: 0.12, to: 1500 });
+      noise({ dur: 0.03, freq: heavy ? 1500 : 2600, q: 4, vol: 0.28, delay: 0.11 });
+      tone({ freq: heavy ? 170 : 320, dur: 0.05, type: 'square', vol: 0.05, delay: 0.11 });
+      noise({ dur: 0.04, freq: heavy ? 1100 : 3200, q: 3, vol: 0.22, delay: heavy ? 0.24 : 0.19 });
+      if (kind === 'shotgun') noise({ dur: 0.06, freq: 1800, q: 2.5, vol: 0.2, delay: 0.32 });
+      if (kind === 'extreme') tone({ freq: 300, to: 1300, dur: 0.28, type: 'sawtooth', vol: 0.05, delay: 0.08 });
+    },
     hurt: () => { tone({ freq: 120, to: 60, dur: 0.18, vol: 0.5 }); noise({ dur: 0.15, freq: 600, vol: 0.25 }); },
     enemyShot: d => { const v = Math.max(0, 1 - d / 50); if (v > 0.02) tone({ freq: 900, to: 200, dur: 0.22, type: 'square', vol: 0.12 * v }); },
     reload: () => { noise({ dur: 0.04, freq: 3000, q: 3, vol: 0.25 }); noise({ dur: 0.05, freq: 1800, q: 3, vol: 0.25, delay: 0.18 }); },
@@ -499,6 +672,16 @@ const Sound = (() => {
     boltBack: () => { noise({ dur: 0.09, freq: 1500, q: 2, vol: 0.26 }); },
     boltFwd: () => { noise({ dur: 0.07, freq: 2000, q: 2.5, vol: 0.28 }); noise({ dur: 0.03, freq: 3200, q: 4, vol: 0.2, delay: 0.12 }); },
     magOut: () => { noise({ dur: 0.05, freq: 2200, q: 3, vol: 0.25 }); noise({ dur: 0.12, freq: 700, q: 1, vol: 0.12, delay: 0.05 }); },
+    shellIn: () => { noise({ dur: 0.04, freq: 2600, q: 3, vol: 0.24 }); noise({ dur: 0.05, freq: 1100, q: 2, vol: 0.16, delay: 0.04 }); },
+    turret: d => {
+      const v = Math.max(0.15, 1 - (d || 0) / 60);
+      noise({ dur: 0.09, freq: 2400, q: 0.8, vol: 0.38 * v, to: 500 }); tone({ freq: 150, to: 55, dur: 0.09, type: 'square', vol: 0.12 * v });
+      noise({ dur: 0.03, freq: 4200, q: 3, vol: 0.12 * v, delay: 0.12 });
+    },
+    deploy: () => {
+      noise({ dur: 0.08, freq: 900, q: 1, vol: 0.3 }); tone({ freq: 220, dur: 0.06, type: 'square', vol: 0.06 });
+      noise({ dur: 0.05, freq: 2200, q: 3, vol: 0.25, delay: 0.16 }); tone({ freq: 520, to: 880, dur: 0.18, type: 'triangle', vol: 0.08, delay: 0.26 });
+    },
     magIn: () => { noise({ dur: 0.04, freq: 1600, q: 3, vol: 0.32 }); tone({ freq: 500, dur: 0.03, type: 'square', vol: 0.05 }); },
     death: () => { tone({ freq: 300, to: 40, dur: 1.2, type: 'sawtooth', vol: 0.14 }); noise({ dur: 0.8, freq: 400, vol: 0.2, to: 80 }); },
   };
@@ -518,6 +701,18 @@ const camera = new THREE.PerspectiveCamera(settings.fov, innerWidth / innerHeigh
 camera.rotation.order = 'YXZ';
 camera.layers.enable(1);
 scene.add(camera);
+// the gun and arms get their own camera, so they keep a sensible size at any field of view
+const vmCam = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.01, 20);
+vmCam.layers.set(1);
+vmCam.matrixAutoUpdate = false;
+const vmFov = () => 75 + (settings.fov - 75) * 0.35;
+// a point placed by the gun (seen through vmCam) moved to where it appears in the world view
+function vmToWorld(p) {
+  camera.worldToLocal(p);
+  const k = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / Math.tan(THREE.MathUtils.degToRad(vmFov()) / 2);
+  p.x *= k; p.y *= k;
+  return camera.localToWorld(p);
+}
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
@@ -530,7 +725,7 @@ const canvas = renderer.domElement;
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
 addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+  camera.aspect = vmCam.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
@@ -709,7 +904,23 @@ const clouds = [];
     g.userData.speed = 1 + rand() * 1.5;
     scene.add(g); clouds.push(g);
   }
+  for (const c of clouds) {
+    const u = c.userData;
+    u.r = Math.max(60, Math.min(175, Math.hypot(c.position.x, c.position.z)));
+    u.a = Math.atan2(c.position.z, c.position.x);
+    c.position.set(Math.cos(u.a) * u.r, c.position.y, Math.sin(u.a) * u.r);
+  }
 })();
+
+// ---------- Maps ----------
+// The classic map is built straight away into its own group; Frontier is built the first time it's picked.
+// While a map is being built, scene.add is pointed at that map's group.
+const MAPS = {};
+let mapId = 'classic';
+const sceneAdd = scene.add.bind(scene);
+const classicRoot = new THREE.Group();
+sceneAdd(classicRoot);
+scene.add = (...o) => { classicRoot.add(...o); return scene; };
 
 // distant hills and mountains
 (() => {
@@ -727,20 +938,21 @@ const clouds = [];
     const a = i / 14 * Math.PI * 2 + rand() * 0.25, r = 250 + rand() * 40, h = 60 + rand() * 50, w = 45 + rand() * 30;
     const m = new THREE.Mesh(new THREE.ConeGeometry(w, h, 6), rockM);
     m.position.set(Math.cos(a) * r, h / 2 - 8, Math.sin(a) * r); m.rotation.y = rand() * 3;
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(w * 0.32, h * 0.32, 6), snowM);
-    cap.position.y = h * 0.34;
-    m.add(cap); scene.add(m);
+    const hc = h * 0.34;
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(w * 0.36, hc, 6), snowM);
+    cap.position.y = h / 2 - hc / 2 + h * 0.012;
+    m.add(cap); sceneAdd(m); // the mountain ring is shared by both maps
   }
 })();
 
 // ---------- Map ----------
-const ARENA = 40;
+let ARENA = 40;
 const STEP = 1.3; // boxes this low can be stood on
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshLambertMaterial({ map: tex(grassCanvas, 200, 200) }));
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
-scene.add(floor);
+sceneAdd(floor);
 
 const solids = []; // meshes bullets can hit
 const boxes = [];  // {x, z, hx, hz, h} collision volumes
@@ -800,7 +1012,8 @@ function house(cx, cz, w, d, door, wallC, roofC) {
       // door frame
       for (const s of [-1, 1]) horiz ? addBox(x + s * (gap / 2 + 0.08), z, 0.16, 2.4, t + 0.12, 0, { mat: wood, ...deco })
                                      : addBox(x, z + s * (gap / 2 + 0.08), t + 0.12, 2.4, 0.16, 0, { mat: wood, ...deco });
-      horiz ? addBox(x, z, gap + 0.32, 0.16, t + 0.12, 0, { mat: wood, y: 2.3, ...deco }) : addBox(x, z, t + 0.12, 0.16, gap + 0.32, 0, { mat: wood, y: 2.3, ...deco });
+      // the header sits a hair below the wall above the door, so their undersides don't fight
+      horiz ? addBox(x, z, gap + 0.32, 0.16, t + 0.12, 0, { mat: wood, y: 2.28, ...deco }) : addBox(x, z, t + 0.12, 0.16, gap + 0.32, 0, { mat: wood, y: 2.28, ...deco });
     } else {
       horiz ? addBox(x, z, len + t, H, t, 0, { mat: wm }) : addBox(x, z, t, H, len + t, 0, { mat: wm });
       for (const s of len > 7 ? [-1, 1] : [0]) {
@@ -808,13 +1021,20 @@ function house(cx, cz, w, d, door, wallC, roofC) {
         if (horiz) {
           addBox(x + p, z + o, 1.6, 1.25, 0.06, 0, { y: 1.05, mat: frame, ...deco });
           addBox(x + p, z + o * 1.3, 1.3, 0.95, 0.06, 0, { y: 1.2, mat: win, ...deco });
-          addBox(x + p, z + o * 1.3, 0.08, 0.95, 0.07, 0, { y: 1.2, mat: frame, ...deco });
+          addBox(x + p, z + o * 1.3, 0.08, 0.95, 0.09, 0, { y: 1.2, mat: frame, ...deco });
           addBox(x + p, z + o * 1.6, 1.8, 0.1, 0.25, 0, { y: 1.0, mat: wood, ...deco });
+          // the same window seen from inside
+          addBox(x + p, z - o, 1.6, 1.25, 0.06, 0, { y: 1.05, mat: frame, ...deco });
+          addBox(x + p, z - o * 1.3, 1.3, 0.95, 0.06, 0, { y: 1.2, mat: win, ...deco });
+          addBox(x + p, z - o * 1.3, 0.08, 0.95, 0.09, 0, { y: 1.2, mat: frame, ...deco });
         } else {
           addBox(x + o, z + p, 0.06, 1.25, 1.6, 0, { y: 1.05, mat: frame, ...deco });
           addBox(x + o * 1.3, z + p, 0.06, 0.95, 1.3, 0, { y: 1.2, mat: win, ...deco });
-          addBox(x + o * 1.3, z + p, 0.07, 0.95, 0.08, 0, { y: 1.2, mat: frame, ...deco });
+          addBox(x + o * 1.3, z + p, 0.09, 0.95, 0.08, 0, { y: 1.2, mat: frame, ...deco });
           addBox(x + o * 1.6, z + p, 0.25, 0.1, 1.8, 0, { y: 1.0, mat: wood, ...deco });
+          addBox(x - o, z + p, 0.06, 1.25, 1.6, 0, { y: 1.05, mat: frame, ...deco });
+          addBox(x - o * 1.3, z + p, 0.06, 0.95, 1.3, 0, { y: 1.2, mat: win, ...deco });
+          addBox(x - o * 1.3, z + p, 0.09, 0.95, 0.08, 0, { y: 1.2, mat: frame, ...deco });
         }
       }
     }
@@ -829,6 +1049,9 @@ function house(cx, cz, w, d, door, wallC, roofC) {
   roofG.scale.set((w + 1) / Math.SQRT2, 1, (d + 1) / Math.SQRT2);
   roofG.position.set(cx, H + 0.95, cz);
   scene.add(roofG); solids.push(roof);
+  // a wooden ceiling, so you don't see the underside of the roof tiles from inside
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshLambertMaterial({ map: retex(plankTex, w / 3, d / 3), color: 0xc9b497 }));
+  ceil.rotation.x = Math.PI / 2; ceil.position.set(cx, H - 0.02, cz); ceil.receiveShadow = true; scene.add(ceil);
   addBox(cx + w * 0.22, cz - d * 0.18, 0.7, 1.7, 0.7, 0, { mat: chimneyMat, y: 3.4, collide: false });
   addBox(cx + w / 2 - 1.2, cz + d / 2 - 1.2, 1, 1, 1, 0, { mat: crateMat });
   addBox(cx - w / 2 + 1.4, cz - d / 2 + 1.1, 1.8, 0.9, 1, 0, { mat: lambert(0x6e4b2a) });
@@ -979,12 +1202,12 @@ function grassBlocked(x, z) {
   for (const b of noGrass) if (Math.abs(x - b.x) < b.hx && Math.abs(z - b.z) < b.hz) return true;
   return false;
 }
-function scatter(mesh, count, place) {
+function scatter(mesh, count, place, rnd = rand) {
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < count; i++) {
     let x, z, tries = 0;
-    do { x = (rand() * 2 - 1) * (ARENA - 1); z = (rand() * 2 - 1) * (ARENA - 1); } while (grassBlocked(x, z) && ++tries < 20);
-    p.set(x, 0, z); q.setFromAxisAngle(up, rand() * 6.28);
+    do { x = (rnd() * 2 - 1) * (ARENA - 1); z = (rnd() * 2 - 1) * (ARENA - 1); } while (grassBlocked(x, z) && ++tries < 20);
+    p.set(x, 0, z); q.setFromAxisAngle(up, rnd() * 6.28);
     place(i, s, p);
     m.compose(p, q, s);
     mesh.setMatrixAt(i, m);
@@ -1002,7 +1225,7 @@ function windy(mat) {
   };
   return mat;
 }
-const grass = (() => {
+let grass = (() => {
   const pos = [], col = [], nor = [];
   for (let b = 0; b < 4; b++) {
     const a = b / 4 * Math.PI + rand(), ca = Math.cos(a), sa = Math.sin(a), w = 0.035, h = 0.16 + rand() * 0.1;
@@ -1028,7 +1251,7 @@ const grass = (() => {
   scene.add(mesh);
   return mesh;
 })();
-const flowers = (() => {
+let flowers = (() => {
   const geo = new THREE.IcosahedronGeometry(0.045, 0).translate(0, 0.2, 0);
   const stemless = new THREE.InstancedMesh(geo, windy(new THREE.MeshLambertMaterial({ color: 0xffffff })), 700);
   const palette = [0xf5e663, 0xffffff, 0xf49ac1, 0xc4a7ff, 0xffb15c].map(h => new THREE.Color(h));
@@ -1036,6 +1259,292 @@ const flowers = (() => {
   scene.add(stemless);
   return stemless;
 })();
+// Ultra graphics: a second, denser layer of grass (Math.random, so the seeded village layout stays the same)
+let moreGrass = (() => {
+  const COUNT = 18000, r = Math.random;
+  const mesh = new THREE.InstancedMesh(grass.geometry, grass.material, COUNT);
+  const c = new THREE.Color();
+  scatter(mesh, COUNT, (i, s) => {
+    const k = 0.7 + r() * 0.7; s.set(k, k * (0.8 + r() * 0.5), k);
+    c.setHSL(0.24 + r() * 0.08, 0.42, 0.4 + r() * 0.12); mesh.setColorAt(i, c);
+  }, r);
+  mesh.receiveShadow = true;
+  mesh.visible = false;
+  scene.add(mesh);
+  return mesh;
+})();
+delete scene.add;
+MAPS.classic = { root: classicRoot, arena: 40, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(), grass, flowers, moreGrass };
+
+// ---------- Frontier: the big four-zone map (v1.7, work in progress) ----------
+// village in the middle, forest to the north-west, mountains north-east, town south-west, farm south-east
+function grassLayer(count, visible = true) {
+  const mesh = new THREE.InstancedMesh(MAPS.classic.grass.geometry, MAPS.classic.grass.material, count), c = new THREE.Color();
+  scatter(mesh, count, (i, s) => {
+    const k = 0.8 + rand() * 0.6; s.set(k, k * (0.8 + rand() * 0.4), k);
+    c.setHSL(0.24 + rand() * 0.07, 0.42, 0.41 + rand() * 0.11); mesh.setColorAt(i, c);
+  });
+  mesh.receiveShadow = true; mesh.visible = visible;
+  scene.add(mesh);
+  return mesh;
+}
+function flowerLayer(count) {
+  const mesh = new THREE.InstancedMesh(MAPS.classic.flowers.geometry, MAPS.classic.flowers.material, count);
+  const palette = [0xf5e663, 0xffffff, 0xf49ac1, 0xc4a7ff, 0xffb15c].map(h => new THREE.Color(h));
+  scatter(mesh, count, (i, s) => { s.setScalar(0.8 + rand() * 0.6); mesh.setColorAt(i, palette[(rand() * palette.length) | 0]); });
+  scene.add(mesh);
+  return mesh;
+}
+// flat ground patches (town paving, streets, fields)
+function ground(x, z, w, d, color, y = 0.012) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true;
+  scene.add(m);
+}
+function well() {
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.9, 12), flat(0x8d9399));
+  ring.position.set(0, 0.45, 0); ring.castShadow = ring.receiveShadow = true;
+  scene.add(ring); solids.push(ring); addCollider(0, 0, 2.2, 2.2, 0.9);
+  const water = new THREE.Mesh(new THREE.CircleGeometry(0.9, 12), new THREE.MeshLambertMaterial({ color: 0x2b5d86, emissive: 0x0a2236 }));
+  water.rotation.x = -Math.PI / 2; water.position.y = 0.8; scene.add(water);
+  for (const s of [-1, 1]) addBox(s * 1, 0, 0.18, 2.4, 0.18, 0x6b4423, { collide: false });
+  addBox(0, 0, 2.2, 0.12, 0.12, 0x6b4423, { y: 2.05, collide: false });
+  const r = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.9, 4), roofMat(0x7a3326));
+  r.rotation.y = Math.PI / 4; r.position.y = 2.8; r.castShadow = true; scene.add(r); solids.push(r);
+  noGrass.push({ x: 0, z: 0, hx: 1.6, hz: 1.6 });
+}
+let facadeTex = null;
+function building(x, z, w, d, h, color) {
+  facadeTex = facadeTex || tex(makeCanvas(128, (g, S) => {
+    g.fillStyle = '#ebe7dd'; g.fillRect(0, 0, S, S);
+    g.fillStyle = '#cfc9bc'; g.fillRect(0, S - 10, S, 10);
+    g.fillStyle = '#f6f3ec'; g.fillRect(30, 24, 68, 76);
+    g.fillStyle = '#36506d'; g.fillRect(36, 30, 56, 64);
+    g.fillStyle = 'rgba(255,255,255,.2)'; g.fillRect(40, 34, 14, 56);
+    g.fillStyle = '#f6f3ec'; g.fillRect(62, 30, 4, 64);
+    g.fillStyle = '#b9b3a6'; g.fillRect(26, 98, 76, 6);
+  }));
+  const fac = new THREE.MeshLambertMaterial({ color, map: retex(facadeTex, Math.max(1, Math.round(Math.max(w, d) / 4)), Math.max(1, Math.round(h / 3.2))) });
+  const roof = lambert(0x5b5f66);
+  addBox(x, z, w, h, d, 0, { mat: [fac, fac, roof, roof, fac, fac] });
+  addBox(x, z, w + 0.4, 0.45, d + 0.4, 0x7a7e85, { y: h, collide: false });
+  addBox(x + w * 0.2, z - d * 0.15, 2, 1.2, 1.6, 0x9aa0a6, { y: h + 0.45, collide: false, solid: false });
+  addBox(x, z + d / 2 + 0.03, 1.6, 2.3, 0.08, 0x3a2a1e, { collide: false, solid: false, shadow: false }); // door
+  houseRects.push({ x, z, hx: w / 2, hz: d / 2 });
+  noGrass.push({ x, z, hx: w / 2 + 0.5, hz: d / 2 + 0.5 });
+}
+function car(x, z, turned, color) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.75, 4.3), flat(color)); body.position.y = 0.62;
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.62, 2.3), flat(0x27303b)); cab.position.set(0, 1.3, 0.2);
+  g.add(body, cab);
+  for (const sx of [-1, 1]) for (const sz of [-1.35, 1.35]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.3, 12), flat(0x1b1c1f));
+    w.rotation.z = Math.PI / 2; w.position.set(sx * 0.9, 0.36, sz); g.add(w);
+  }
+  g.traverse(o => { o.castShadow = o.receiveShadow = true; });
+  g.position.set(x, 0, z); if (turned) g.rotation.y = Math.PI / 2;
+  scene.add(g); solids.push(body, cab);
+  turned ? addCollider(x, z, 4.3, 1.9, 1.6) : addCollider(x, z, 1.9, 4.3, 1.6);
+}
+function lamp(x, z) {
+  addBox(x, z, 0.18, 5, 0.18, 0x3b3f45, { collide: false });
+  addBox(x, z, 0.7, 0.2, 0.4, 0x3b3f45, { y: 5, collide: false, solid: false });
+  addCollider(x, z, 0.3, 0.3, 5);
+}
+function fence(x1, z1, x2, z2) {
+  const len = Math.hypot(x2 - x1, z2 - z1), horiz = Math.abs(z2 - z1) < 0.01, n = Math.max(1, Math.ceil(len / 2.5)), wood = lambert(0x8a6a48);
+  for (let i = 0; i <= n; i++) addBox(x1 + (x2 - x1) * i / n, z1 + (z2 - z1) * i / n, 0.18, 1.2, 0.18, 0, { mat: wood, collide: false });
+  for (const y of [0.45, 0.9]) horiz ? addBox((x1 + x2) / 2, z1, len, 0.12, 0.08, 0, { mat: wood, y, collide: false })
+                                     : addBox(x1, (z1 + z2) / 2, 0.08, 0.12, len, 0, { mat: wood, y, collide: false });
+  horiz ? addCollider((x1 + x2) / 2, z1, len, 0.3, 1.1) : addCollider(x1, (z1 + z2) / 2, 0.3, len, 1.1);
+}
+// instanced copies of one shape: list items are [x, z, scale, turn]
+function instances(geo, mat, list, y = 0, colorFn) {
+  const mesh = new THREE.InstancedMesh(geo, mat, list.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), c = new THREE.Color();
+  list.forEach(([x, z, k, turn, ky], i) => {
+    p.set(x, y, z); q.setFromAxisAngle(up, turn || 0); sc.set(k, k * (ky || 1), k);
+    m4.compose(p, q, sc); mesh.setMatrixAt(i, m4);
+    if (colorFn) { colorFn(c, i); mesh.setColorAt(i, c); }
+  });
+  mesh.castShadow = mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+
+function buildBigMap() {
+  const root = new THREE.Group();
+  sceneAdd(root);
+  const keepSeed = seed;
+  seed = 20251; // Frontier has its own layout, and the classic map's random sequence is left alone
+  ARENA = 80;
+  boxes.length = solids.length = noGrass.length = houseRects.length = 0;
+  scene.add = (...o) => { root.add(...o); return scene; };
+  try {
+    // perimeter wall
+    addBox(0, -ARENA, ARENA * 2, 4, 1, 0, { mat: wallMat });
+    addBox(0, ARENA, ARENA * 2, 4, 1, 0, { mat: wallMat });
+    addBox(-ARENA, 0, 1, 4, ARENA * 2, 0, { mat: wallMat });
+    addBox(ARENA, 0, 1, 4, ARENA * 2, 0, { mat: wallMat });
+    for (const [x, z, w, d] of [[0, -ARENA, ARENA * 2, 1.3], [0, ARENA, ARENA * 2, 1.3], [-ARENA, 0, 1.3, ARENA * 2], [ARENA, 0, 1.3, ARENA * 2]])
+      addBox(x, z, w, 0.25, d, 0x7b8086, { y: 4, collide: false });
+    for (let i = -ARENA; i <= ARENA; i += 10) {
+      for (const [x, z] of [[i, -ARENA], [i, ARENA], [-ARENA, i], [ARENA, i]]) {
+        addBox(x, z, 1.6, 4.6, 1.6, 0, { mat: pillarMat, collide: false });
+        addBox(x, z, 1.9, 0.3, 1.9, 0x7b8086, { y: 4.6, collide: false });
+      }
+    }
+    // rolling hills and forest outside the walls
+    const hill = new THREE.MeshStandardMaterial({ color: 0x5a8a4c, flatShading: true, roughness: 1 });
+    for (let i = 0; i < 24; i++) {
+      const a = i / 24 * Math.PI * 2 + rand() * 0.25, r = 185 + rand() * 40;
+      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(30 + rand() * 24, 1), hill);
+      m.scale.y = 0.3 + rand() * 0.25; m.position.set(Math.cos(a) * r, -3, Math.sin(a) * r);
+      scene.add(m);
+    }
+    const outer = [];
+    for (let i = 0; i < 380; i++) {
+      const a = rand() * Math.PI * 2, r = 88 + Math.pow(rand(), 0.7) * 75;
+      outer.push([Math.cos(a) * r, Math.sin(a) * r, 1 + rand() * 1.2, rand() * 6, 0.9 + rand() * 0.4]);
+    }
+    const pineTrunk = new THREE.CylinderGeometry(0.25, 0.35, 2.5, 5).translate(0, 1.25, 0);
+    const pineC1 = new THREE.ConeGeometry(2.1, 4, 6).translate(0, 4, 0), pineC2 = new THREE.ConeGeometry(1.5, 3.2, 6).translate(0, 6.2, 0);
+    const std = color => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 1 });
+    const pineShade = (c, l) => c.setHSL(0.3 + rand() * 0.06, 0.42, l + rand() * 0.08);
+    instances(pineTrunk, std(0x5a3b22), outer);
+    instances(pineC1, std(0xffffff), outer, 0, c => pineShade(c, 0.2));
+    instances(pineC2, std(0xffffff), outer, 0, c => pineShade(c, 0.24));
+
+    // roads: the classic cross, stretched to the new walls
+    const longRoad = tex(dirtCanvas, 1, 40);
+    decal(0, 0, 4.4, ARENA * 2 - 1, longRoad);
+    decal(0, 0, 4.4, ARENA * 2 - 1, longRoad, true);
+
+    // the village in the middle, as on the classic map, with a few more houses around it
+    house(-22, -20, 9, 7, 's', 0xefe0c0, 0x9a3b2a);
+    house(22, -22, 8, 8, 'w', 0xe0d2ad, 0x41526b);
+    house(-24, 22, 8, 6, 'e', 0xdde2e6, 0x5b3a29);
+    house(21, 24, 10, 7, 'n', 0xeedab3, 0x8a2f2f);
+    house(16, 50, 8, 7, 'n', 0xe7d7b6, 0x6b3b2a);
+    house(-16, 52, 9, 7, 'e', 0xd9dfe3, 0x8a2f2f);
+    house(52, 14, 7, 9, 'w', 0xeadcbc, 0x41526b);
+    house(52, -14, 8, 7, 'w', 0xdcd3be, 0x5b3a29);
+    well();
+    sandbags(-8, -10, 5, true); sandbags(9, 10, 5, true); sandbags(-12, 6, 4, false); sandbags(12, -6, 4, false);
+    sandbags(-4, -26, 6, true); sandbags(5, 27, 6, true); sandbags(-30, -6, 5, false); sandbags(30, 6, 5, false);
+    [[-14, -14, 1], [-12.9, -14, 2], [-14, -12.9, 1], [14, 13, 1], [15.1, 13, 2], [15.1, 14.1, 1], [-31, 13, 1], [-31, 14.1, 2],
+     [31, -12, 2], [31, -10.9, 1], [6, -33, 1], [-7, 33, 2], [-8.1, 33, 1], [27, 1.5, 1], [-8, 4, 1], [8, -3, 1]].forEach(([x, z, n]) => crate(x, z, n));
+    [[-10, -16, 0xb43c2c], [-9, -16.9, 0x2f5f8f], [11, 17, 0xb43c2c], [24, -13, 0x2f5f8f], [-25, 9, 0xb43c2c], [3, -22, 0x4c7a3a], [-17, 27, 0x2f5f8f]]
+      .forEach(([x, z, c]) => barrel(x, z, c));
+    [[-4, 14, 0.8], [9, 34, 1], [-15, 33, 1.1]].forEach(([x, z, r]) => rock(x, z, r));
+    [[17, -8, 0], [-18, 12, 1.57]].forEach(([x, z, r]) => hay(x, z, r));
+
+    // north-west: dense forest
+    const pines = [], rounds = [], pts = [];
+    const free = (x, z, d) => pts.every(([px, pz]) => (px - x) ** 2 + (pz - z) ** 2 > d * d);
+    for (let tries = 0; pts.length < 300 && tries < 12000; tries++) {
+      const x = -6 - rand() * 72, z = -6 - rand() * 72;
+      if (Math.hypot(x, z) < 34 || x > -4 || z > -4 || !free(x, z, 2.6) || clearance(x, z) < 1.5) continue;
+      pts.push([x, z]);
+      const t = [x, z, 0.9 + rand() * 0.7, rand() * 6, 0.9 + rand() * 0.3];
+      (rand() < 0.72 ? pines : rounds).push(t);
+      addCollider(x, z, 0.7 * t[2], 0.7 * t[2], 6);
+    }
+    solids.push(instances(pineTrunk, std(0x5a3b22), pines));
+    instances(pineC1, std(0xffffff), pines, 0, c => pineShade(c, 0.22));
+    instances(pineC2, std(0xffffff), pines, 0, c => pineShade(c, 0.26));
+    solids.push(instances(new THREE.CylinderGeometry(0.22, 0.32, 2.8, 6).translate(0, 1.4, 0), std(0x6b4423), rounds));
+    instances(new THREE.IcosahedronGeometry(1.7, 0).translate(0, 3.6, 0), std(0xffffff), rounds, 0, c => c.setHex(LEAF[(rand() * LEAF.length) | 0]));
+    const bushes = [];
+    for (let i = 0; i < 240; i++) {
+      const x = -6 - rand() * 72, z = -6 - rand() * 72;
+      if (Math.hypot(x, z) < 33 || x > -4 || z > -4) continue;
+      bushes.push([x, z, 0.6 + rand() * 0.6, rand() * 6, 0.65]);
+    }
+    instances(new THREE.IcosahedronGeometry(1, 0).translate(0, 0.45, 0), std(0xffffff), bushes, 0, c => c.setHSL(0.27 + rand() * 0.05, 0.45, 0.24 + rand() * 0.08));
+    for (const [x, z, turn] of [[-44, -52, 0.4], [-60, -40, 1.2], [-52, -66, 2.2], [-70, -58, 0.9], [-38, -66, 1.8]]) {
+      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 4.2, 8), flat(0x5e4027));
+      log.rotation.set(0, turn, Math.PI / 2); log.position.set(x, 0.38, z); log.castShadow = log.receiveShadow = true;
+      scene.add(log); solids.push(log);
+      addCollider(x, z, 2.6, 2.6, 0.8);
+    }
+    [[-46, -44, 1.3], [-66, -70, 1.6], [-58, -52, 1.1], [-74, -40, 1.4]].forEach(([x, z, r]) => rock(x, z, r));
+
+    // north-east: a mountain range in the corner
+    const rockM = flat(0x8b9097), snowM = flat(0xeef4fb);
+    for (const [x, z, w, h] of [[70, -70, 16, 34], [54, -73, 12, 25], [73, -52, 12, 27], [60, -58, 8, 17], [43, -75, 8, 15], [75, -38, 8, 15], [47, -61, 6, 11], [64, -44, 6, 10]]) {
+      const m = new THREE.Mesh(new THREE.ConeGeometry(w, h, 7), rockM);
+      m.position.set(x, h / 2, z); m.rotation.y = rand() * 3; m.castShadow = m.receiveShadow = true;
+      if (h > 18) {
+        const hc = h * 0.32, cap = new THREE.Mesh(new THREE.ConeGeometry(w * 0.34, hc, 7), snowM);
+        cap.position.y = h / 2 - hc / 2 + h * 0.012; m.add(cap);
+      }
+      scene.add(m); solids.push(m);
+      addCollider(x, z, w * 1.25, w * 1.25, h);
+      houseRects.push({ x, z, hx: w * 0.62, hz: w * 0.62 });
+    }
+    [[40, -46, 1.5], [50, -44, 1.1], [44, -54, 1.8], [56, -48, 1.2], [38, -60, 1.3], [66, -36, 1.6], [36, -70, 1.2], [58, -40, 0.9], [48, -50, 0.8]]
+      .forEach(([x, z, r]) => rock(x, z, r));
+
+    // south-west: a town of tall buildings, paved streets and parked cars
+    ground(-58, 58, 44, 44, 0x8b8d90);
+    ground(-58, 52.5, 44, 5, 0x4b4e53, 0.045); ground(-58, 69, 44, 5, 0x4b4e53, 0.045);
+    ground(-53, 58, 5, 44, 0x4b4e53, 0.045); ground(-68.5, 58, 5, 44, 0x4b4e53, 0.045);
+    noGrass.push({ x: -58, z: 58, hx: 22.5, hz: 22.5 });
+    [[-43.5, 43, 12, 10, 10, 0xd8c3a5], [-61, 43, 9, 10, 14, 0xb9c4cf], [-75.5, 44, 7, 11, 8, 0xe2b8a0],
+     [-43.5, 60.5, 11, 9, 8, 0xc9d1bf], [-60.8, 60.5, 9, 9, 18, 0xa7b3c2], [-75.5, 61, 7, 9, 11, 0xe0cfa8],
+     [-44, 76, 10, 6, 7, 0xd7a99a], [-61, 76, 9, 6, 9, 0xc0c6cc], [-75.5, 76, 7, 6, 6, 0xd9cdb4]]
+      .forEach(([x, z, w, d, h, c]) => building(x, z, w, d, h, c));
+    car(-53, 45, false, 0xc0392b); car(-68.5, 62, false, 0x2f6fb0); car(-46, 52.5, true, 0xe6b422); car(-60, 69, true, 0x6b7280);
+    [[-50.3, 49.6], [-50.3, 66], [-65.8, 49.6], [-65.8, 72]].forEach(([x, z]) => lamp(x, z));
+    crate(-38.5, 54, 2); crate(-39.6, 54, 1); barrel(-39, 66.5, 0x2f5f8f); barrel(-71.5, 54.5, 0xb43c2c);
+    sandbags(-58, 49.4, 4, true);
+
+    // south-east: a farm with a barn, fenced fields and hay
+    house(63, 64, 12, 9, 'w', 0xa8432f, 0x3f3a36);
+    ground(48, 50, 16, 12, 0x7a5c3c); noGrass.push({ x: 48, z: 50, hx: 8, hz: 6 });
+    ground(72, 46, 12, 14, 0x6e5436); noGrass.push({ x: 72, z: 46, hx: 6, hz: 7 });
+    fence(40, 44, 56, 44); fence(40, 56, 50, 56); fence(40, 44, 40, 56); fence(56, 44, 56, 56);
+    fence(66, 39, 78, 39); fence(66, 53, 78, 53); fence(66, 39, 66, 49);
+    const wheat = [], corn = [];
+    for (let z = 45.2; z < 55.5; z += 1.15) for (let x = 41; x < 55.5; x += 0.75) wheat.push([x + (rand() - .5) * 0.2, z, 0.9 + rand() * 0.3, rand() * 3]);
+    for (let x = 67.2; x < 77.5; x += 1.3) for (let z = 40; z < 52.5; z += 0.8) corn.push([x, z + (rand() - .5) * 0.2, 0.9 + rand() * 0.35, rand() * 3]);
+    instances(new THREE.BoxGeometry(0.22, 0.75, 0.22).translate(0, 0.37, 0), std(0xffffff), wheat, 0, c => c.setHSL(0.13 + rand() * 0.03, 0.6, 0.55 + rand() * 0.08));
+    instances(new THREE.ConeGeometry(0.28, 1.5, 5).translate(0, 0.75, 0), std(0xffffff), corn, 0, c => c.setHSL(0.27 + rand() * 0.04, 0.5, 0.33 + rand() * 0.07));
+    [[70, 58, 0.3], [74, 58.5, 1.2], [46, 70, 0.8], [52, 74, 0], [76, 74, 1.57], [60, 46, 0.4]].forEach(([x, z, r]) => hay(x, z, r));
+    barrel(56.5, 60, 0x4c7a3a); barrel(57.3, 61, 0x4c7a3a); crate(44, 62, 1); crate(45.1, 62, 2);
+
+    // the strips between the zones: scattered trees, rocks and cover
+    for (let placed = 0, tries = 0; placed < 46 && tries < 4000; tries++) {
+      const x = (rand() * 2 - 1) * (ARENA - 3), z = (rand() * 2 - 1) * (ARENA - 3);
+      const ax = Math.abs(x), az = Math.abs(z);
+      if ((ax > 36) === (az > 36) || ax < 4 || az < 4 || clearance(x, z) < 3) continue;
+      tree(x, z, 0.85 + rand() * 0.5, rand() < 0.5);
+      placed++;
+    }
+    sandbags(0, -52, 6, true); sandbags(-4, -56, 4, false); sandbags(52, 0, 6, false); sandbags(-52, 4, 5, false); sandbags(2, 58, 6, true);
+    [[3, -48, 1], [4.1, -48, 2], [48, -4, 1], [48, -2.9, 1], [-48, -8, 2], [-6, 64, 1]].forEach(([x, z, n]) => crate(x, z, n));
+    [[18, -50, 1.2], [-20, -58, 1.4], [62, 22, 1.1], [-62, 18, 1.3], [24, 66, 1]].forEach(([x, z, r]) => rock(x, z, r));
+
+    const g1 = grassLayer(36000), f1 = flowerLayer(1800), g2 = grassLayer(36000, false);
+    MAPS.big = { root, arena: 80, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(), grass: g1, flowers: f1, moreGrass: g2 };
+  } finally {
+    delete scene.add;
+    seed = keepSeed;
+  }
+}
+
+function useMap(id) {
+  if (id === 'big' && !MAPS.big) buildBigMap();
+  const M = MAPS[id];
+  mapId = id;
+  for (const k in MAPS) MAPS[k].root.visible = k === id;
+  ARENA = M.arena;
+  for (const [arr, src] of [[boxes, M.boxes], [solids, M.solids], [noGrass, M.noGrass], [houseRects, M.houseRects]]) { arr.length = 0; arr.push(...src); }
+  grass = M.grass; flowers = M.flowers; moreGrass = M.moreGrass;
+  applyQuality();
+}
 
 // Push a circle (pos, radius) at height y out of all boxes it isn't standing on top of
 function collide(pos, r, y = 0) {
@@ -1056,6 +1565,9 @@ function collide(pos, r, y = 0) {
       }
     }
   }
+  const lim = ARENA - 0.5 - r;
+  pos.x = Math.max(-lim, Math.min(lim, pos.x));
+  pos.z = Math.max(-lim, Math.min(lim, pos.z));
 }
 function groundAt(pos, prevY) {
   let g = 0;
@@ -1227,11 +1739,11 @@ const GM = (() => {
     blued: std({ color: 0x1c2534, metalness: 0.9, roughness: 0.26, ...worn, envMapIntensity: 1.3 }),
     scope: std({ color: 0x151619, metalness: 0.5, roughness: 0.32, envMapIntensity: 1.1 }),
     knurl: std({ color: 0x1b1c1f, metalness: 0.7, roughness: 0.45, bumpMap: GT.knurl, bumpScale: 0.6 }),
-    polymer: std({ color: 0x222327, metalness: 0, roughness: 0.6, envMapIntensity: 0.6 }),
-    stipple: std({ color: 0x222327, metalness: 0, roughness: 0.8, bumpMap: GT.stipple, bumpScale: 0.5, envMapIntensity: 0.5 }),
-    olive: std({ color: 0x434d33, metalness: 0, roughness: 0.85, envMapIntensity: 0.45 }),
-    mag: std({ color: 0x2a2826, metalness: 0.05, roughness: 0.6, envMapIntensity: 0.6 }),
-    rubber: std({ color: 0x121212, metalness: 0, roughness: 0.95, envMapIntensity: 0.4 }),
+    polymer: std({ color: 0x222327, metalness: 0, roughness: 0.6 }),
+    stipple: std({ color: 0x222327, metalness: 0, roughness: 0.8, bumpMap: GT.stipple, bumpScale: 0.5 }),
+    olive: std({ color: 0x4b5637, metalness: 0, roughness: 0.78, bumpMap: GT.stipple, bumpScale: 0.12 }),
+    mag: std({ color: 0x2a2826, metalness: 0.05, roughness: 0.6 }),
+    rubber: std({ color: 0x121212, metalness: 0, roughness: 0.95, bumpMap: GT.stipple, bumpScale: 0.3 }),
     wood: phys({ color: 0x8f6a4e, map: GT.wood, bumpMap: GT.woodBump, bumpScale: 0.15, roughness: 0.5, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
     brass: std({ color: 0xc9a04a, metalness: 1, roughness: 0.28, envMapIntensity: 1.3 }),
     hull: std({ color: 0xa1201a, metalness: 0, roughness: 0.45 }),
@@ -1239,7 +1751,7 @@ const GM = (() => {
     bore: new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.DoubleSide }),
     white: new THREE.MeshBasicMaterial({ color: 0xf0f0e8 }),
     redDot: new THREE.MeshBasicMaterial({ color: 0xff3030 }),
-    sciWhite: phys({ color: 0xa3aab3, metalness: 0.2, roughness: 0.45, clearcoat: 0.4, clearcoatRoughness: 0.35, envMapIntensity: 0.7 }),
+    sciWhite: phys({ color: 0xc9ced4, metalness: 0.1, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.15 }),
     sciDark: std({ color: 0x1a1d22, metalness: 0.65, roughness: 0.32, ...worn }),
     glow: new THREE.MeshBasicMaterial({ color: 0x22d3ee }),
     glow2: new THREE.MeshBasicMaterial({ color: 0xf0abfc }),
@@ -1367,7 +1879,7 @@ const GUN_MODELS = {
     // collapsible stock
     g.add(cylU(0.0152, 0.0152, -0.27, -0.075, 0.032, GM.alu));
     g.add(lathe([[0.0175, -0.088], [0.0175, -0.075], [0.0, -0.075]], GM.alu, 0.032));
-    g.add(extrudeSide([[-0.165, 0.052], [-0.29, 0.056], [-0.3, 0.05], [-0.305, -0.058], [-0.285, -0.065], [-0.205, -0.004], [-0.17, 0.012]], 0.04, GM.polymer, { bevel: 0.006 }));
+    g.add(extrudeSide([[-0.165, 0.052], [-0.29, 0.056], [-0.3, 0.05], [-0.305, -0.058], [-0.285, -0.065], [-0.205, -0.004], [-0.17, 0.012]], 0.04, GM.polymer));
     g.add(extrudeSide([[-0.3, 0.051], [-0.313, 0.051], [-0.318, -0.06], [-0.305, -0.059]], 0.043, GM.rubber, { bevel: 0.002 }));
     // red-dot sight
     g.add(box(0.022, 0.022, 0.034, GM.alu, 0, 0.068, 0.04));
@@ -1376,7 +1888,7 @@ const GUN_MODELS = {
     g.add(ball(0.0011, GM.redDot, 0, 0.097, 0.0125));
     const tur = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.009, 20), GM.knurl); tur.position.set(0, 0.119, -0.044); g.add(tur);
     const tur2 = tur.clone(); tur2.rotation.z = Math.PI / 2; tur2.position.set(-0.021, 0.097, -0.044); g.add(tur2);
-    return { g, mag, magDir: [0, -1, 0], view: { pos: [0.11, -0.12, -0.36], scale: 0.95, yaw: 0.06, pitch: 0.03, roll: -0.04 },
+    return { g, mag, magDir: [0, -1, 0], view: { pos: [0.17, -0.205, -0.5], scale: 0.95, yaw: 0.09, pitch: 0.07, roll: -0.08 },
              muzzle: [0, 0.031, 0.57], eject: [0.013, 0.04, 0.06], shell: 'rifle' };
   },
 
@@ -1394,7 +1906,7 @@ const GUN_MODELS = {
     g.add(box(0.014, 0.04, 0.012, GM.blued, 0, 0.018, 0.54));
     g.add(guardAt(0.04, -0.022, -0.005, -0.042, GM.alu));
     g.add(triggerAt(0.012, -0.005, GM.bright));
-    g.add(extrudeSide([[-0.06, 0.038], [-0.36, 0.046], [-0.405, 0.052], [-0.41, -0.105], [-0.37, -0.11], [-0.15, -0.056], [-0.12, -0.074], [-0.085, -0.064], [-0.06, -0.006]], 0.036, GM.wood, { bevel: 0.008 }));
+    g.add(extrudeSide([[-0.06, 0.038], [-0.36, 0.046], [-0.405, 0.052], [-0.41, -0.105], [-0.37, -0.11], [-0.15, -0.056], [-0.12, -0.074], [-0.085, -0.064], [-0.06, -0.006]], 0.036, GM.wood));
     g.add(extrudeSide([[-0.405, 0.052], [-0.425, 0.053], [-0.43, -0.106], [-0.41, -0.105]], 0.038, GM.rubber, { bevel: 0.002 }));
     // ribbed wooden pump with action bars
     const pts = [[0.011, 0], [0.019, 0.004]];
@@ -1404,7 +1916,7 @@ const GUN_MODELS = {
     for (const s of [-1, 1]) pump.add(box(0.002, 0.006, 0.13, GM.bright, s * 0.0108, 0.004, -0.055));
     pump.position.z = -0.205;
     g.add(pump);
-    return { g, pump, pumpTravel: 0.075, view: { pos: [0.12, -0.13, -0.36], scale: 0.85, yaw: 0.06, pitch: 0.04, roll: -0.08 },
+    return { g, pump, pumpTravel: 0.075, view: { pos: [0.21, -0.225, -0.5], scale: 0.85, yaw: 0.1, pitch: 0.1, roll: -0.22 },
              muzzle: [0, 0.032, 0.62], eject: [0.016, 0.03, 0.07], shell: 'shotgun' };
   },
 
@@ -1413,7 +1925,7 @@ const GUN_MODELS = {
     // thumbhole stock
     g.add(extrudeSide([[0.385, 0.012], [-0.065, 0.012], [-0.14, 0.032], [-0.42, 0.036], [-0.445, 0.042], [-0.445, -0.12], [-0.41, -0.125], [-0.2, -0.075],
       [-0.12, -0.13], [-0.075, -0.13], [-0.05, -0.05], [0.07, -0.05], [0.09, -0.03], [0.38, -0.026]], 0.042, GM.olive,
-      { bevel: 0.009, holes: [[[-0.085, -0.012], [-0.08, -0.06], [-0.1, -0.086], [-0.18, -0.055], [-0.17, -0.015]]] }));
+      { holes: [[[-0.085, -0.012], [-0.08, -0.06], [-0.1, -0.086], [-0.18, -0.055], [-0.17, -0.015]]] }));
     g.add(extrudeSide([[-0.445, 0.043], [-0.462, 0.043], [-0.465, -0.12], [-0.445, -0.121]], 0.044, GM.rubber, { bevel: 0.002 }));
     g.add(guardAt(0.035, -0.03, -0.045, -0.072, GM.dark));
     g.add(triggerAt(0.008, -0.045, GM.bright));
@@ -1446,18 +1958,16 @@ const GUN_MODELS = {
     g.add(mag);
     for (const s of [-1, 1]) g.add(cylU(0.0045, 0.0045, 0.2, 0.36, -0.034, GM.dark, s * 0.012));
     g.add(box(0.034, 0.014, 0.02, GM.dark, 0, -0.026, 0.37));
-    return { g, bolt, mag, magDir: [0, -1, 0], view: { pos: [0.12, -0.135, -0.36], scale: 0.85, yaw: 0.055, pitch: 0.03, roll: -0.06 },
+    return { g, bolt, mag, magDir: [0, -1, 0], view: { pos: [0.2, -0.215, -0.5], scale: 0.85, yaw: 0.09, pitch: 0.08, roll: -0.15 },
              muzzle: [0, 0.03, 0.745], eject: [0.018, 0.048, 0.02], shell: 'sniper' };
   },
 
   extreme() {
     const g = new THREE.Group(), mag = new THREE.Group(), coils = [];
-    g.add(extrudeSide([[-0.15, 0.045], [-0.05, 0.07], [0.25, 0.066], [0.34, 0.036], [0.34, 0.0], [0.12, -0.01], [0.09, -0.035], [0.0, -0.035], [-0.14, -0.02], [-0.17, 0.0]], 0.046, GM.sciWhite, { bevel: 0.007 }));
-    g.add(extrudeSide([[-0.11, 0.036], [0.2, 0.047], [0.28, 0.022], [0.1, 0.002], [-0.11, 0.002]], 0.051, GM.sciDark, { bevel: 0.002 }));
+    g.add(extrudeSide([[-0.22, 0.045], [-0.05, 0.07], [0.25, 0.066], [0.34, 0.036], [0.34, 0.0], [0.12, -0.01], [0.09, -0.035], [0.0, -0.035], [-0.2, -0.02], [-0.24, 0.0]], 0.046, GM.sciWhite, { bevel: 0.004 }));
+    g.add(extrudeSide([[-0.15, 0.036], [0.2, 0.047], [0.28, 0.022], [0.1, 0.002], [-0.15, 0.002]], 0.051, GM.sciDark, { bevel: 0.002 }));
     g.add(box(0.0535, 0.004, 0.32, GM.glow, 0, 0.026, 0.06));
     for (let i = 0; i < 6; i++) g.add(box(0.03, 0.004, 0.007, GM.sciDark, 0, 0.0695, -0.03 + i * 0.022));
-    // panel seams across the shell
-    for (const [u, y, h] of [[-0.08, 0.03, 0.075], [0.18, 0.035, 0.07], [0.28, 0.025, 0.06]]) g.add(box(0.0475, h, 0.0025, GM.bore, 0, y, u));
     g.add(cylU(0.016, 0.013, 0.3, 0.47, 0.025, GM.sciDark));
     for (let i = 0; i < 3; i++) {
       const c = new THREE.Mesh(new THREE.TorusGeometry(0.0215, 0.0045, 10, 36), GM.glow);
@@ -1480,7 +1990,7 @@ const GUN_MODELS = {
     g.add(box(0.036, 0.003, 0.01, GM.sciDark, 0, 0.105, 0.058));
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.026), GM.holo); pane.position.set(0, 0.089, -0.058); g.add(pane);
     const ret = new THREE.Mesh(new THREE.RingGeometry(0.0028, 0.0036, 24), GM.glow); ret.position.set(0, 0.089, -0.0575); g.add(ret);
-    return { g, mag, coils, magDir: [0, -1, 0], view: { pos: [0.125, -0.13, -0.36], scale: 0.9, yaw: 0.06, pitch: 0.03, roll: -0.05 }, muzzle: [0, 0.025, 0.5], eject: null };
+    return { g, mag, coils, magDir: [0, -1, 0], view: { pos: [0.2, -0.205, -0.48], scale: 0.9, yaw: 0.1, pitch: 0.07, roll: -0.12 }, muzzle: [0, 0.025, 0.5], eject: null };
   },
 };
 
@@ -1501,7 +2011,7 @@ function ejectShell() {
   if (!rig || !rig.eject || busy()) return;
   const p = new THREE.Vector3(rig.eject[0], rig.eject[1], -rig.eject[2]);
   gunModel.updateWorldMatrix(true, false);
-  gunModel.localToWorld(p);
+  vmToWorld(gunModel.localToWorld(p));
   let m;
   if (rig.shell === 'shotgun') { m = new THREE.Group(); m.add(new THREE.Mesh(SHELL_GEO.shotBase, GM.brass), new THREE.Mesh(SHELL_GEO.shotHull, GM.hull)); }
   else m = new THREE.Mesh(SHELL_GEO[rig.shell], GM.brass);
@@ -1531,14 +2041,223 @@ function ejectShell() {
   }, false);
 }
 
+// ---------- Arms & hands ----------
+// Built to real-world size in each gun's model space, so they scale, sway and recoil with the gun.
+const HM = (() => {
+  const std = o => new THREE.MeshStandardMaterial(Object.assign({ envMap: gunEnv, envMapIntensity: 0.35, metalness: 0, side: THREE.DoubleSide }, o));
+  return {
+    skin: std({ color: 0xd59c78, roughness: 0.62 }),
+    sleeve: std({ color: 0x55603f, roughness: 0.95, bumpMap: GT.stipple, bumpScale: 0.25 }),
+    cuff: std({ color: 0x3f4832, roughness: 0.95 }),
+    watch: std({ color: 0x1d1f22, roughness: 0.4, metalness: 0.6, envMapIntensity: 1.2 }),
+    face: std({ color: 0x9fb4c0, roughness: 0.08, metalness: 0.9, envMapIntensity: 1.8 }),
+  };
+})();
+const UP = new THREE.Vector3(0, 1, 0);
+function limb(a, b, r0, r1, mat, seg = 10) {
+  const d = new THREE.Vector3().subVectors(b, a), len = d.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, len, seg), mat);
+  m.position.addVectors(a, b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(UP, d.divideScalar(len));
+  return m;
+}
+function joint(p, r, mat, seg = 10) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(6, seg * 0.7 | 0)), mat);
+  m.position.copy(p);
+  return m;
+}
+// a jointed finger or thumb through the given points, thinning toward the tip
+function chain(g, pts, r0, r1, mat) {
+  const r = i => r0 + (r1 - r0) * i / (pts.length - 1);
+  g.add(joint(pts[0], r0, mat));
+  for (let i = 1; i < pts.length; i++) g.add(limb(pts[i - 1], pts[i], r(i - 1), r(i), mat), joint(pts[i], r(i), mat));
+}
+
+const FR = 0.0088; // finger radius
+// One hand wrapped round a grip that runs along the frame's y axis, centred on the origin, with half width rx and
+// half depth rz. The palm sits on +z, the fingers curl round through +x and the thumb lies along -x.
+// dir 1 puts the index finger at the top (a pistol grip); -1 puts it at the bottom (a handguard, once turned).
+function buildHand(g, o) {
+  const { rx, rz, top, dir = 1, trigger, thumb = [-0.4, -0.95, -1.45, -1.8], thumbY = [0, 0.01, 0.018, 0.022], thumbOut = 0.003, knuckle = 1.2 } = o;
+  const gap = 2 * FR + 0.001;
+  const at = (th, y, out = 0) => new THREE.Vector3((rx + FR + out) * Math.sin(th), y, (rz + FR + out) * Math.cos(th));
+  const rAvg = (rx + rz) / 2 + FR;
+  const lens = [0.088, 0.096, 0.09, 0.072], ys = [];
+  for (let i = 0; i < 4; i++) {
+    // with a trigger the index finger rides higher and the other three start just under the guard
+    const y = trigger ? (i ? top - dir * (FR + (i - 1) * gap) : top + dir * 0.004) : top - dir * (FR + i * gap);
+    ys.push(y);
+    let pts;
+    if (i === 0 && trigger) {
+      const K = at(knuckle - 0.1, y), T = trigger;
+      pts = [K, new THREE.Vector3(Math.max(T.x + 0.018, K.x * 0.85), (K.y + T.y) / 2 + 0.002 * dir, K.z + (T.z - K.z) * 0.5),
+             new THREE.Vector3(T.x + 0.01, T.y + 0.002, T.z + 0.008), new THREE.Vector3(T.x + 0.002, T.y - 0.004, T.z - 0.001)];
+    } else {
+      const L = lens[i];
+      let th = knuckle;
+      pts = [at(th, y)];
+      for (const seg of [L * 0.44, L * 0.31, L * 0.25]) { th = Math.min(th + seg / rAvg, Math.PI + 1.35); pts.push(at(th, y - dir * 0.0012)); }
+    }
+    const k = i === 3 ? 0.88 : 1;
+    chain(g, pts, FR * k, FR * 0.82 * k, HM.skin);
+  }
+  // palm: a thick curved pad round the back of the grip, from the thumb's root to the knuckles
+  const yA = ys[0] + dir * (FR + 0.003), yB = ys[3] - dir * (FR + 0.016);
+  const y0 = Math.min(yA, yB), y1 = Math.max(yA, yB);
+  const ravg = (rx + rz) / 2, d = 0.024 / ravg, e = 0.007;
+  const prof = [[1, y0 + e], [1 + d * 0.3, y0], [1 + d * 0.7, y0], [1 + d, y0 + e], [1 + d, y1 - e], [1 + d * 0.7, y1], [1 + d * 0.3, y1], [1, y1 - e], [1, y0 + e]];
+  const palm = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 14, -0.7, knuckle + 0.8), HM.skin);
+  palm.scale.set(rx + 0.0008, 1, rz + 0.0008);
+  g.add(palm);
+  // thumb, with a fleshy pad joining it to the palm
+  const yT = ys[0] - dir * 0.012;
+  chain(g, thumb.map((a, i) => at(a, yT + dir * thumbY[i], thumbOut)), 0.0118, 0.0088, HM.skin);
+  g.add(joint(at(-0.45, yT - dir * 0.012, 0.004), 0.015, HM.skin));
+  // heel of the hand and the wrist
+  const yMid = (ys[0] + ys[3]) / 2;
+  const heel = at(0.2, yB + dir * 0.008, 0.012), wrist = at(0.2, yB - dir * 0.006, 0.034);
+  g.add(limb(heel, wrist, 0.021, 0.024, HM.skin, 12), joint(wrist, 0.024, HM.skin, 12));
+  return { wrist, palm: at(0.35, yMid, 0.014) };
+}
+
+// grip, trigger and elbow for each hand, in the gun's model space (metres, forward is -z)
+const TURN = Math.PI / 2;
+const ARM_POSES = {
+  pistol: {
+    view: { pos: [0.12, -0.11, -0.42] },
+    right: { c: [0, -0.072, 0.043], rot: [-0.148, 0, 0], elbow: [0.06, -0.3, 0.3], trigger: [0, -0.016, -0.012], hand: { rx: 0.0145, rz: 0.02, top: 0.03 } },
+    left: { c: [0, -0.078, 0.043], rot: [-0.148, -1.3, 0], mirror: true, elbow: [-0.2, -0.3, 0.27],
+            hand: { rx: 0.039, rz: 0.033, top: 0.02, thumb: [-0.55, -0.25, 0.05, 0.3], thumbY: [0, 0.016, 0.028, 0.036], thumbOut: 0.012 } },
+  },
+  rifle: {
+    view: { pos: [0.15, -0.165, -0.48] },
+    right: { c: [0, -0.062, 0.038], rot: [-0.173, 0, 0], elbow: [0.07, -0.32, 0.3], trigger: [0, -0.024, -0.018], hand: { rx: 0.0135, rz: 0.017, top: 0.012 } },
+    left: { c: [0, 0.031, -0.31], rot: [TURN, 0, 0], elbow: [-0.17, -0.28, -0.02], hand: { rx: 0.024, rz: 0.024, top: -0.045, dir: -1 } },
+  },
+  shotgun: {
+    view: { pos: [0.16, -0.16, -0.48], pitch: 0.06, yaw: 0.12, roll: -0.18 },
+    right: { c: [0, -0.02, 0.082], rot: [-0.5, 0, 0], elbow: [0.08, -0.32, 0.32], trigger: [0, -0.017, -0.018], hand: { rx: 0.018, rz: 0.021, top: 0.02 } },
+    left: { parent: 'pump', c: [0, 0.004, -0.278], rot: [TURN, 0, 0], elbow: [-0.16, -0.28, -0.05], hand: { rx: 0.022, rz: 0.025, top: -0.05, dir: -1 } },
+  },
+  sniper: {
+    view: { pos: [0.16, -0.17, -0.48] },
+    right: { c: [0, -0.078, 0.084], rot: [-0.37, 0, 0], elbow: [0.08, -0.32, 0.34], trigger: [0, -0.057, -0.014], hand: { rx: 0.021, rz: 0.017, top: 0.004 } },
+    left: { c: [0, -0.01, -0.14], rot: [TURN, 0, 0], elbow: [-0.17, -0.28, -0.02], hand: { rx: 0.023, rz: 0.022, top: -0.045, dir: -1 } },
+  },
+  extreme: {
+    view: { pos: [0.16, -0.16, -0.46] },
+    right: { c: [0, -0.075, 0.04], rot: [-0.16, 0, 0], elbow: [0.07, -0.32, 0.3], trigger: [0, -0.042, -0.022], hand: { rx: 0.015, rz: 0.0175, top: 0.008 } },
+    left: { c: [0, 0.028, -0.21], rot: [TURN, 0, 0], elbow: [-0.18, -0.28, -0.04], hand: { rx: 0.026, rz: 0.032, top: -0.045, dir: -1 } },
+  },
+};
+
+function buildArm(rig, spec, left) {
+  const parent = spec.parent ? rig[spec.parent] : rig.g;
+  const base = spec.parent ? parent.position.clone() : new THREE.Vector3(); // parent origin in model space
+  const box = new THREE.Group(), frame = new THREE.Group();
+  frame.position.set(...spec.c).sub(base);
+  frame.rotation.set(...spec.rot);
+  if (spec.mirror) frame.scale.x = -1;
+  frame.updateMatrix();
+  const inv = frame.matrix.clone().invert();
+  const trigger = spec.trigger && new THREE.Vector3(...spec.trigger).sub(base).applyMatrix4(inv);
+  const h = buildHand(frame, Object.assign({ trigger }, spec.hand));
+  box.add(frame);
+  // forearm, rolled-up sleeve and upper arm, running off the bottom of the screen
+  const W = h.wrist.applyMatrix4(frame.matrix), E = new THREE.Vector3(...spec.elbow).sub(base);
+  const dir = E.clone().sub(W).normalize();
+  const M = W.clone().lerp(E, 0.45), S = E.clone().addScaledVector(dir, 0.35).add(new THREE.Vector3(left ? -0.05 : 0.05, -0.15, 0.1));
+  box.add(limb(W, M, 0.025, 0.036, HM.skin, 16), joint(M, 0.036, HM.skin, 16));
+  box.add(limb(M.clone().addScaledVector(dir, -0.012), M.clone().addScaledVector(dir, 0.03), 0.05, 0.05, HM.cuff, 16));
+  box.add(limb(M, E, 0.046, 0.052, HM.sleeve, 16), joint(E, 0.052, HM.sleeve, 16), limb(E, S, 0.052, 0.06, HM.sleeve, 16));
+  if (left) {
+    // wristwatch
+    const a = W.clone().addScaledVector(dir, 0.035), b = W.clone().addScaledVector(dir, 0.05);
+    box.add(limb(a, b, 0.0285, 0.029, HM.watch, 16));
+    const face = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.006, 20), HM.face);
+    face.position.copy(a.clone().lerp(b, 0.5)).add(new THREE.Vector3(left ? -0.026 : 0.026, 0.006, 0));
+    face.rotation.z = Math.PI / 2;
+    box.add(face);
+  }
+  parent.add(box);
+  return { g: box, palm: h.palm.applyMatrix4(frame.matrix).add(base) }; // palm in model space
+}
+
+function buildArms(rig, key) {
+  const P = ARM_POSES[key];
+  if (!P) return;
+  if (P.view) Object.assign(rig.view, P.view);
+  rig.g.updateMatrixWorld(true);
+  const arms = { right: buildArm(rig, P.right, false), left: buildArm(rig, P.left, true), cue: 0 };
+  if (rig.mag) {
+    const b = new THREE.Box3().setFromObject(rig.mag), c = b.getCenter(new THREE.Vector3());
+    arms.magBottom = new THREE.Vector3(c.x, b.min.y - 0.012, c.z);
+  }
+  if (key === 'shotgun') {
+    arms.port = new THREE.Vector3(0, -0.02, -0.09);
+    // a fresh shell held in the free hand while loading
+    const sh = new THREE.Group();
+    sh.add(new THREE.Mesh(SHELL_GEO.shotBase, GM.brass), new THREE.Mesh(SHELL_GEO.shotHull, GM.hull));
+    sh.rotation.x = -Math.PI / 2;
+    sh.position.copy(arms.left.palm).sub(rig.pump.position).add(new THREE.Vector3(0.012, 0.02, 0.02));
+    sh.visible = false;
+    arms.left.g.add(sh); arms.shell = sh;
+  }
+  if (rig.bolt) arms.knob = new THREE.Vector3(0.043, -0.012, 0.045);
+  rig.arms = arms;
+}
+
+const smooth = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
+const _armV = new THREE.Vector3(), _armW = new THREE.Vector3();
+// the free hand fetches magazines and shells; on the sniper the trigger hand works the bolt
+function animateArms(rprog) {
+  const A = rig.arms;
+  if (!A) return;
+  const L = A.left, R = A.right, D = _armV.set(0, 0, 0);
+  if (rprog > 0 && A.magBottom) {
+    // follows the magazine out, leaves the screen for a fresh one, pushes it home and goes back
+    const off = (d, out = new THREE.Vector3()) => out.copy(A.magBottom).addScaledVector(rig.magDirV, d).sub(L.palm);
+    const magD = p => p < 0.3 ? Math.pow(p / 0.3, 2) * 0.3 : p < 0.82 ? Math.pow(1 - (p - 0.5) / 0.32, 2) * 0.16 : 0;
+    const p = rprog;
+    if (p < 0.12) off(magD(p), D).multiplyScalar(smooth(p / 0.12));
+    else if (p < 0.3 || (p >= 0.5 && p < 0.82)) off(magD(p), D);
+    else if (p < 0.5) {
+      const s = (p - 0.3) / 0.2;
+      off(0.3, D).lerp(off(0.16, _armW), smooth(s));
+      D.add(_armW.set(-0.09, -0.2, 0.06).multiplyScalar(Math.sin(s * Math.PI)));
+    } else off(0, D).multiplyScalar(1 - smooth((p - 0.82) / 0.18));
+  } else if (rprog > 0 && A.port) {
+    // three trips: down for a shell, then push it up into the loading port
+    const base = _armW.copy(A.port).sub(L.palm);
+    const p = rprog, w = smooth(p / 0.15) * (1 - smooth((p - 0.85) / 0.15));
+    const cyc = Math.min(2.999, Math.max(0, (p - 0.15) / 0.7 * 3)), k = cyc % 1, push = p > 0.15 && p < 0.85 ? Math.sin(k * Math.PI) : 0;
+    D.copy(base).add(new THREE.Vector3(-0.03, -0.07, 0.03).multiplyScalar(1 - push)).add(new THREE.Vector3(0, 0.01, -0.01).multiplyScalar(push)).multiplyScalar(w);
+    if (A.shell) A.shell.visible = p > 0.08 && p < 0.85 && k < 0.55;
+    const n = p > 0.15 ? Math.floor(cyc + 0.5) : 0;
+    if (n > A.cue && n <= 3 && p < 0.86) { A.cue = n; Sound.play('shellIn'); }
+  }
+  if (rprog <= 0) { A.cue = 0; if (A.shell) A.shell.visible = false; }
+  L.g.position.copy(D);
+  L.g.rotation.x = 0;
+  // sniper: reach up, work the bolt with it, then back to the grip
+  R.g.position.set(0, 0, 0);
+  if (rig.bolt && A.knob && rprog <= 0) {
+    const p = (actT - 0.22) / 0.72;
+    const w = p < -0.25 || p > 1.3 ? 0 : p < 0 ? smooth((p + 0.25) / 0.25) : p > 1 ? 1 - smooth((p - 1) / 0.3) : 1;
+    if (w > 0) {
+      rig.bolt.updateMatrix();
+      const knob = _armW.copy(A.knob).applyMatrix4(rig.bolt.matrix);
+      R.g.position.copy(knob).sub(R.palm).add(new THREE.Vector3(0.02, -0.004, 0.014)).multiplyScalar(w);
+    }
+  }
+}
+
 const flash = new THREE.PointLight(0xffcc66, 0, 7);
 flash.layers.enable(1);
 const muzzle = sprite(flashTex, 0xffd27a, 0.4);
 muzzle.layers.set(1);
 gun.add(flash, muzzle);
 let gunModel = null, rig = null;
-const VIEW_FOV = 50;
-const VIEW_PUSH = Math.tan(75 / 2 * Math.PI / 180) / Math.tan(VIEW_FOV / 2 * Math.PI / 180);
 // action timing: seconds since the last shot, and whether that shot's shell has come out yet
 let actT = 9, actEjected = true, actCue = 0, magCue = 0;
 
@@ -1573,11 +2292,13 @@ function setWeapon(key) {
   reloading = 0; fireCooldown = 0.25; zoomed = false;
   if (gunModel) gun.remove(gunModel);
   rig = GUN_MODELS[key]();
+  buildArms(rig, key);
   gunModel = rig.g;
   gunModel.scale.setScalar(rig.view.scale);
   gunModel.rotation.set(rig.view.pitch || 0, rig.view.yaw, rig.view.roll || 0);
   gunModel.traverse(o => o.layers.set(1));
   gun.add(gunModel);
+  simplify(gunModel);
   // remember rest positions for the animated parts
   for (const p of ['slide', 'pump', 'bolt', 'mag']) if (rig[p]) rig[p].userData.rest = rig[p].position.clone();
   if (rig.magDir) rig.magDirV = new THREE.Vector3(...rig.magDir).normalize();
@@ -1589,7 +2310,7 @@ function setWeapon(key) {
   muzzle.material.color.setHex(weapon.tracer || 0xffd27a);
   muzzle.visible = false;
   actT = 9; actEjected = true;
-  if (changed && state === 'playing') { switchT = 1; Sound.play('reloaded'); }
+  if (changed && state === 'playing') { switchT = 1; Sound.play('equip', key); }
   updateHUD();
 }
 
@@ -1689,7 +2410,7 @@ function spawnEnemy(key) {
       crown.add(spike);
     }
     const gem = new THREE.Mesh(new THREE.OctahedronGeometry(size * 0.07), new THREE.MeshBasicMaterial({ color: 0xff3b6b }));
-    gem.position.set(0, 0, -size * 0.4); crown.add(gem);
+    gem.position.set(0, 0, -size * 0.4); gem.userData.ownMat = true; crown.add(gem);
     crown.children.forEach(c => c.castShadow = true);
     crown.position.y = size * 0.58;
     g.add(crown);
@@ -1697,13 +2418,16 @@ function spawnEnemy(key) {
   let x, z, tries = 0;
   do {
     const a = Math.random() * Math.PI * 2;
-    x = Math.max(-ARENA + 2, Math.min(ARENA - 2, Math.cos(a) * (ARENA - 2)));
-    z = Math.max(-ARENA + 2, Math.min(ARENA - 2, Math.sin(a) * (ARENA - 2)));
+    // classic: around the wall; Frontier: 30-50 m from you, so cubes don't take a minute to arrive
+    const big = mapId !== 'classic', R = big ? 30 + Math.random() * 20 : ARENA - 2;
+    x = Math.max(-ARENA + 2, Math.min(ARENA - 2, (big ? player.pos.x : 0) + Math.cos(a) * R));
+    z = Math.max(-ARENA + 2, Math.min(ARENA - 2, (big ? player.pos.z : 0) + Math.sin(a) * R));
   } while (Math.hypot(x - player.pos.x, z - player.pos.z) < 18 && ++tries < 50);
   g.position.set(x, size / 2, z);
   for (let i = 0; i < 3; i++) collide(g.position, size * 0.55);
   g.scale.setScalar(0.01);
   scene.add(g);
+  simplify(g);
   m.userData.enemy = g;
   const hp = T.hp + Math.floor(wave / 9);
   g.userData = {
@@ -1717,6 +2441,12 @@ function spawnEnemy(key) {
   puff(new THREE.Vector3(x, 0.4, z), 0xcfc4ad, 2.2 * size, 0.8);
   enemies.push(g);
 }
+
+function disposeEnemy(e) {
+  e.traverse(o => { if (o.isMesh) { o.geometry.dispose(); if (o.userData.ownMat) o.material.dispose(); } });
+  e.userData.mat.dispose();
+}
+function removeShot(s) { scene.remove(s); s.children.forEach(c => c.material.dispose()); }
 
 function enemyBar(e) {
   const u = e.userData;
@@ -1753,10 +2483,16 @@ function waveRoster(n) {
 function nextWave() {
   wave++;
   waveRoster(wave).forEach(spawnEnemy);
-  banner('Wave ' + wave, wave === 1 ? 'Defend the village' : '+25 HP');
+  const healed = Math.round(Math.min(100, player.hp + 25) - player.hp);
+  banner('Wave ' + wave, wave === 1 ? 'Defend the village' : healed > 0 ? `+${healed} HP` : 'Full health');
   Sound.play('wave');
   player.hp = Math.min(100, player.hp + 25);
   updateHUD();
+  const earned = WEAPON_KEYS.filter(k => WEAPONS[k].unlockWave === wave);
+  if (earned.length) {
+    const names = earned.map(k => WEAPONS[k].name).join(' and '), keysTxt = earned.map(k => WEAPON_KEYS.indexOf(k) + 1).join(' / ');
+    setTimeout(() => { if (state === 'playing' || state === 'intro') { banner('New guns unlocked', `${names} for this game · press ${keysTxt}`); Sound.play('buy'); } }, 2600);
+  }
   const fresh = ENEMY_KEYS.filter(k => ENEMY_TYPES[k].unlock === wave && !introduced.has(k));
   if (fresh.length) { fresh.forEach(k => introduced.add(k)); introQueue = fresh; showIntro(); }
 }
@@ -1816,7 +2552,7 @@ const raycaster = new THREE.Raycaster();
 function shoot() {
   if (state !== 'playing' || fireCooldown > 0 || reloading > 0) return;
   if (ammo[weaponKey] <= 0) { Sound.play('empty'); reload(); return; }
-  ammo[weaponKey]--; fireCooldown = weapon.cooldown; recoil = 1; shotsFired++;
+  ammo[weaponKey]--; fireCooldown = weapon.cooldown; recoil = 1; shotsFired++; profile.stats.shots++;
   kick += weapon.kick; bloom = Math.min(1, bloom + weapon.kick * 0.35);
   flash.intensity = 3; muzzleT = 0.05;
   muzzle.material.rotation = Math.random() * 6; muzzle.scale.setScalar(0.3 + Math.random() * 0.25 + (weapon.pellets > 1 ? 0.2 : 0));
@@ -1826,7 +2562,7 @@ function shoot() {
   if (actEjected) ejectShell();
 
   const targets = solids.concat(enemies.map(e => e.userData.mesh), [floor]);
-  const start = flash.getWorldPosition(new THREE.Vector3());
+  const start = vmToWorld(flash.getWorldPosition(new THREE.Vector3()));
   const damaged = new Map();
   const spread = zoomed ? 0 : weapon.spread;
   const add = (e, d, p) => { const r = damaged.get(e) || { dmg: 0, p }; r.dmg += d; damaged.set(e, r); };
@@ -1868,7 +2604,7 @@ function shoot() {
     popNumber(r.p.clone().setY(r.p.y + 0.3), r.dmg, dead);
     if (dead) { killEnemy(e); killed = true; }
   }
-  if (damaged.size) { shotsHit++; hitMarker(killed); if (!killed) Sound.play('hit'); }
+  if (damaged.size) { shotsHit++; profile.stats.hits++; hitMarker(killed); if (!killed) Sound.play('hit'); }
   if (ammo[weaponKey] === 0) reload();
   updateHUD();
 }
@@ -1883,16 +2619,19 @@ function killEnemy(e) {
   coinPop(c.clone().setY(c.y + u.size * 0.6));
   scene.remove(e);
   if (u.bar) scene.remove(u.bar);
+  disposeEnemy(e);
   enemies.splice(enemies.indexOf(e), 1);
   kills++;
   combo = comboT > 0 ? combo + 1 : 1;
   comboT = COMBO_TIME; bestCombo = Math.max(bestCombo, combo);
   const mult = Math.min(5, combo);
   score += T.reward * mult;
+  profile.stats.kills++;
+  addXp(T.reward * mult);
   const coins = T.coins || 1;
   profile.coins += coins; runCoins += coins;
   saveProfile();
-  Sound.play('kill');
+  Sound.play('kill', u.size);
   if (combo >= 2) {
     $('comboMult').textContent = '×' + mult;
     $('comboCount').textContent = combo + ' kill combo';
@@ -1944,6 +2683,126 @@ function updatePickups(dt) {
   }
 }
 
+// ---------- Turret ----------
+const TURRET_PRICE = 400, TURRET_HP = 200;
+let turret = null;
+function turretModel() {
+  const g = new THREE.Group(), head = new THREE.Group();
+  const dark = flat(0x2c3138), metal = flat(0x5d656f), accent = flat(0xf5b82e);
+  for (let i = 0; i < 3; i++) {
+    const a = i / 3 * Math.PI * 2 + 0.5, leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, 0.95, 6), dark);
+    leg.position.set(Math.cos(a) * 0.3, 0.42, Math.sin(a) * 0.3);
+    leg.rotation.set(-Math.sin(a) * 0.45, 0, Math.cos(a) * 0.45);
+    g.add(leg);
+  }
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.5, 8), metal); col.position.y = 0.82; g.add(col);
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.08, 12), dark); ring.position.y = 0.66; g.add(ring);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.34, 0.6), dark); head.add(body);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.05, 0.62), accent); stripe.position.y = 0.12; head.add(stripe);
+  const ammo = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.24, 0.36), accent); ammo.position.set(0.33, -0.02, 0.05); head.add(ammo);
+  const barrel = new THREE.Group();
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.62, 10).rotateX(Math.PI / 2), metal); tube.position.z = -0.6; barrel.add(tube);
+  const brake = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.12, 10).rotateX(Math.PI / 2), dark); brake.position.z = -0.9; barrel.add(brake);
+  barrel.position.y = 0.02; head.add(barrel);
+  const eye = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.03), new THREE.MeshBasicMaterial({ color: 0xff3b3b })); eye.position.set(-0.12, 0.08, -0.31); head.add(eye);
+  head.position.y = 1.12; g.add(head);
+  g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+  return { g, head, barrel, eye, muzzle: new THREE.Vector3(0, 0.02, -0.97) };
+}
+function updateTurretHud() {
+  $('turretHud').style.display = turret ? 'block' : 'none';
+  if (!turret) return;
+  const hp = Math.max(0, Math.ceil(turret.hp));
+  $('tHpNum').textContent = hp + ' / ' + TURRET_HP;
+  $('tfill').style.width = hp / TURRET_HP * 100 + '%';
+  $('tfill').classList.toggle('low', hp <= TURRET_HP * 0.3);
+}
+function deployTurret() {
+  if (state !== 'playing') return;
+  if (!profile.owned.turret) { banner('No turret yet', 'Buy one in the Shop'); Sound.play('empty'); return; }
+  if (turret) { banner('Turret already out', 'You can only have one at a time'); Sound.play('empty'); return; }
+  const pos = new THREE.Vector3(player.pos.x - Math.sin(player.yaw) * 1.8, 0, player.pos.z - Math.cos(player.yaw) * 1.8);
+  for (let i = 0; i < 3; i++) collide(pos, 0.6);
+  const m = turretModel();
+  m.g.position.copy(pos); m.head.rotation.y = player.yaw;
+  scene.add(m.g); simplify(m.g);
+  const box = { x: pos.x, z: pos.z, hx: 0.45, hz: 0.45, h: 1.4 };
+  boxes.push(box);
+  turret = Object.assign(m, { pos, hp: TURRET_HP, cd: 0.8, look: 0, target: null, kick: 0, box });
+  puff(pos.clone().setY(0.2), 0xcfc4ad, 1.6, 0.6);
+  Sound.play('deploy');
+  updateTurretHud();
+}
+function removeTurret() {
+  if (!turret) return;
+  scene.remove(turret.g);
+  turret.g.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+  turret.eye.material.dispose();
+  const i = boxes.indexOf(turret.box);
+  if (i >= 0) boxes.splice(i, 1);
+  turret = null;
+  updateTurretHud();
+}
+function damageTurret(n) {
+  if (!turret) return;
+  turret.hp -= n;
+  if (turret.hp > 0) { updateTurretHud(); return; }
+  const c = turret.pos.clone().setY(0.8);
+  debris(c, 0x5d656f, 18, 1); debris(c, 0xf5b82e, 6, 0.8);
+  glowFlash(c, 0xffb347, 4, 0.3); puff(c.clone().setY(0.3), 0x8a8f96, 2.5, 0.8);
+  Sound.play('kill', 1.8);
+  shake = Math.max(shake, Math.max(0.15, 0.6 - c.distanceTo(player.pos) / 40));
+  banner('Turret destroyed', 'Press 6 to place a new one');
+  removeTurret();
+}
+const tRay = new THREE.Raycaster(), tEye = new THREE.Vector3(), tDir = new THREE.Vector3();
+function updateTurret(dt) {
+  const T = turret;
+  if (!T) return;
+  T.cd -= dt; T.look -= dt; T.kick = Math.max(0, T.kick - dt * 6);
+  // every 0.2 s pick the nearest cube it has a clear shot at
+  if (T.look <= 0) {
+    T.look = 0.2; T.target = null;
+    tEye.set(T.pos.x, 1.15, T.pos.z);
+    let best = 38;
+    for (const e of enemies) {
+      if (e.userData.spawnT < 1) continue;
+      const d = Math.hypot(e.position.x - T.pos.x, e.position.z - T.pos.z);
+      if (d >= best) continue;
+      tDir.copy(e.position).sub(tEye);
+      const len = tDir.length();
+      tRay.set(tEye, tDir.divideScalar(len)); tRay.far = Math.max(0.1, len - e.userData.size * 0.6);
+      if (tRay.intersectObjects(solids, false).length) continue;
+      best = d; T.target = e;
+    }
+  }
+  const e = T.target && enemies.includes(T.target) ? T.target : null;
+  if (e) {
+    const want = Math.atan2(-(e.position.x - T.pos.x), -(e.position.z - T.pos.z));
+    let diff = want - T.head.rotation.y;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    T.head.rotation.y += diff * Math.min(1, dt * 10);
+    if (T.cd <= 0 && Math.abs(diff) < 0.25) { T.cd = 1; turretFire(e); }
+  } else T.head.rotation.y += dt * 0.6; // idle sweep
+  T.barrel.position.z = T.kick * 0.12;
+}
+function turretFire(e) {
+  const T = turret, u = e.userData;
+  T.head.updateWorldMatrix(true, false);
+  const from = T.head.localToWorld(T.muzzle.clone()), to = e.position.clone();
+  tracer(from, to, 0xffc65c, 0.045);
+  glowFlash(from, 0xffc65c, 0.9, 0.08);
+  T.kick = 1;
+  Sound.play('turret', T.pos.distanceTo(player.pos));
+  // two shots finish any normal cube; the King only takes a scratch
+  const dmg = u.T.boss ? u.maxHp * 0.05 : u.maxHp / 2;
+  u.hp -= dmg; u.hit = 0.1;
+  sparks(to, u.T.color, 4); debris(to, u.T.color, 1, 0.7);
+  const dead = u.hp <= 1e-6;
+  popNumber(to.clone().setY(to.y + 0.3), dmg, dead);
+  if (dead) killEnemy(e);
+}
+
 // ---------- Boss shockwave ----------
 const ringGeo = new THREE.RingGeometry(0.88, 1, 56);
 const wallGeo = new THREE.CylinderGeometry(1, 1, 0.6, 56, 1, true).translate(0, 0.3, 0);
@@ -1974,6 +2833,10 @@ function updateRings(dt) {
       player.vy = 5; player.onGround = false;
       hurtFrom({ x: R.x, z: R.z }); Sound.play('hurt');
     }
+    if (turret && !R.hitT) {
+      const td = Math.hypot(turret.pos.x - R.x, turret.pos.z - R.z);
+      if (td >= prev - 0.6 && td <= R.r + 0.6) { R.hitT = true; damageTurret(R.dmg); }
+    }
     if (R.r >= R.max) { scene.remove(R.g); R.mat.dispose(); rings.splice(i, 1); }
   }
 }
@@ -1994,6 +2857,7 @@ function showMenu(name) {
   document.querySelectorAll('.menu').forEach(m => m.classList.toggle('active', m.id === 'menu-' + name));
   if (name === 'shop') refreshShop();
   if (name === 'settings') refreshSettingsUI();
+  if (name === 'main' || name === 'profile') refreshProfile();
   updateHUD();
 }
 function openSub(name) { backTo[name] = currentMenu; showMenu(name); }
@@ -2033,14 +2897,16 @@ function pause() {
   showMenu('pause');
 }
 function quitToMenu() {
+  if (state !== 'menu') profile.best = Math.max(profile.best, wave);
+  saveProfile();
   resetGame();
   state = 'menu';
   showMenu('main');
 }
 function clearEnemies() {
-  enemies.forEach(e => { scene.remove(e); if (e.userData.bar) scene.remove(e.userData.bar); });
+  enemies.forEach(e => { scene.remove(e); if (e.userData.bar) scene.remove(e.userData.bar); disposeEnemy(e); });
   enemies.length = 0;
-  shots.forEach(s => scene.remove(s)); shots.length = 0;
+  shots.forEach(removeShot); shots.length = 0;
 }
 function resetGame() {
   clearEnemies();
@@ -2053,6 +2919,7 @@ function resetGame() {
   while (pickups.length) removePack(0);
   rings.forEach(R => { scene.remove(R.g); R.mat.dispose(); }); rings.length = 0;
   introduced.clear(); introQueue = [];
+  removeTurret();
   $('dmgNums').innerHTML = ''; $('dirs').innerHTML = '';
   updateHUD();
 }
@@ -2069,6 +2936,7 @@ function gameOver() {
     .map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
   $('bossbar').style.display = 'none';
   $('lowhp').classList.remove('on');
+  $('combo').classList.remove('on'); comboT = 0;
   setTimeout(() => { if (state === 'dead') showMenu('dead'); }, 1300);
 }
 
@@ -2085,6 +2953,7 @@ function refreshSettingsUI() {
     c.classList.toggle('sel', k === settings.weapon);
     c.classList.toggle('locked', !owns(k));
     if (w.price) c.querySelector('.lockNote').textContent = owns(k) ? 'Owned' : `Locked · Buy it in the Shop for ${w.price} coins`;
+    else if (w.unlockWave) c.querySelector('.lockNote').textContent = owns(k) ? `Unlocked for this game · press ${WEAPON_KEYS.indexOf(k) + 1}` : `Unlocks at wave ${w.unlockWave} in every game`;
   });
 }
 fovInput.addEventListener('input', () => { settings.fov = +fovInput.value; saveSettings(); refreshSettingsUI(); });
@@ -2094,18 +2963,76 @@ volInput.addEventListener('change', () => { Sound.init(); Sound.play('pistol'); 
 document.querySelectorAll('#quality button').forEach(b => b.addEventListener('click', () => {
   settings.quality = b.dataset.quality; saveSettings(); applyQuality(); refreshSettingsUI();
 }));
+// potato: half resolution, flat colours, no shadows or grass; ultra: supersampled, 4K shadows, denser grass, longer view
+const QUALITY = {
+  potato: { ratio: () => 0.5, shadow: 0, grass: false, fog: [22, 85] },
+  low: { ratio: () => 1, shadow: 1024, grass: false, fog: [45, 170] },
+  high: { ratio: () => Math.min(devicePixelRatio, 2), shadow: 2048, grass: true, fog: [45, 170] },
+  ultra: { ratio: () => Math.min(devicePixelRatio * 1.5, 2.5), shadow: 4096, grass: true, more: true, fog: [75, 260] },
+};
 function applyQuality() {
-  const hi = settings.quality !== 'low';
-  renderer.setPixelRatio(hi ? Math.min(devicePixelRatio, 2) : 1);
+  if (!QUALITY[settings.quality]) settings.quality = 'high';
+  const q = QUALITY[settings.quality];
+  renderer.setPixelRatio(q.ratio());
   renderer.setSize(innerWidth, innerHeight);
-  const ms = hi ? 2048 : 1024;
+  canvas.style.imageRendering = settings.quality === 'potato' ? 'pixelated' : '';
+  sun.castShadow = q.shadow > 0;
+  const ms = q.shadow || 512;
   if (sun.shadow.mapSize.x !== ms) {
     sun.shadow.mapSize.set(ms, ms);
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
   }
-  grass.visible = flowers.visible = hi;
+  grass.visible = flowers.visible = q.grass;
+  moreGrass.visible = !!q.more;
+  scene.fog.near = q.fog[0]; scene.fog.far = q.fog[1];
+  simplify(scene);
+}
+
+// Potato graphics: textures, reflections and bumps are swapped for each surface's average flat colour
+const texAvg = new WeakMap();
+function avgColor(t) {
+  let c = texAvg.get(t);
+  if (!c) {
+    c = new THREE.Color(1, 1, 1);
+    try {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 8;
+      const g = cv.getContext('2d'); g.drawImage(t.image, 0, 0, 8, 8);
+      const d = g.getImageData(0, 0, 8, 8).data;
+      let r = 0, gr = 0, b = 0;
+      for (let i = 0; i < d.length; i += 4) { r += d[i]; gr += d[i + 1]; b += d[i + 2]; }
+      const n = d.length / 4 * 255;
+      c.setRGB(r / n, gr / n, b / n);
+    } catch (e) {}
+    texAvg.set(t, c);
+  }
+  return c;
+}
+const RICH = ['map', 'envMap', 'roughnessMap', 'metalnessMap', 'bumpMap', 'normalMap'];
+function simplifyMat(m, on) {
+  if (!m || !(m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial)) return;
+  if ((m.transparent && m.map) || m === packMat) return; // decals and health packs keep their pictures
+  if (on && !m.userData.full) {
+    const full = { color: m.color.clone(), flatShading: m.flatShading };
+    for (const k of RICH) if (m[k]) { full[k] = m[k]; m[k] = null; }
+    if (full.map) m.color.multiply(avgColor(full.map));
+    m.flatShading = true;
+    m.userData.full = full; m.needsUpdate = true;
+  } else if (!on && m.userData.full) {
+    const full = m.userData.full;
+    delete m.userData.full;
+    for (const k in full) { if (k === 'color') m.color.copy(full.color); else m[k] = full[k]; }
+    m.needsUpdate = true;
+  }
+}
+function simplify(root) {
+  const on = settings.quality === 'potato';
+  root.traverse(o => {
+    if (!o.isMesh || o === grass || o === flowers || o === moreGrass) return;
+    for (const m of [].concat(o.material)) simplifyMat(m, on);
+  });
 }
 function equip(k) {
+  if (settings.weapon !== k) Sound.play('equip', k);
   settings.weapon = k; saveSettings();
   if (state === 'paused') setWeapon(k);
   refreshSettingsUI(); refreshShop();
@@ -2115,8 +3042,8 @@ WEAPON_KEYS.forEach((k, i) => {
   const card = document.createElement('button');
   card.className = 'wcard' + (w.price ? ' special' : ''); card.dataset.weapon = k;
   card.innerHTML = `<b>${i + 1}. ${w.name}</b><span>${w.desc}</span><span>Damage ${w.pellets > 1 ? w.dmg + ' × ' + w.pellets : w.dmg}${w.splash ? ' + blast' : ''} · Mag ${w.mag}</span>` +
-    (w.price ? '<span class="lockNote"></span>' : '');
-  card.addEventListener('click', () => owns(k) ? equip(k) : openSub('shop'));
+    (w.price || w.unlockWave ? '<span class="lockNote"></span>' : '');
+  card.addEventListener('click', () => owns(k) && !w.unlockWave ? equip(k) : w.price ? openSub('shop') : Sound.play('empty'));
   $('weaponCards').appendChild(card);
 });
 
@@ -2126,7 +3053,16 @@ WEAPON_KEYS.forEach((k, i) => {
   const rows = [['Damage', (X.dmg + X.splashDmg) / 5], ['Fire rate', (1 / X.cooldown) / 15], ['Magazine', X.mag / 50], ['Blast radius', 1]];
   $('shopBars').innerHTML = rows.map(([l, v]) => `<span>${l}</span><div class="bar"><i style="width:${Math.min(1, v) * 100}%"></i></div>`).join('');
 })();
+function refreshTurretShop() {
+  const b = $('buyTurret'), n = $('turretNote');
+  if (!$('turretArt').getAttribute('src')) $('turretArt').src = avatarOf('turret').url;
+  if (profile.owned.turret) { b.textContent = 'Owned'; b.disabled = true; n.textContent = 'Press 6 during a game to place it next to you.'; return; }
+  const short = TURRET_PRICE - profile.coins;
+  b.textContent = `Buy · ${TURRET_PRICE} coins`; b.disabled = short > 0;
+  n.textContent = short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. Destroy cubes to earn them.` : 'You can afford it.';
+}
 function refreshShop() {
+  refreshTurretShop();
   const k = 'extreme', W = WEAPONS[k], btn = $('buyBtn'), note = $('buyNote');
   if (!owns(k)) {
     const short = W.price - profile.coins;
@@ -2142,6 +3078,64 @@ function refreshShop() {
   }
   updateHUD();
 }
+document.querySelectorAll('.mapcard').forEach(b => b.addEventListener('click', () => {
+  Sound.init(); Sound.play('click');
+  const id = b.dataset.map;
+  if (id === 'big' && !MAPS.big) {
+    // building Frontier takes a moment the first time
+    b.classList.add('loading'); $('bigDesc').textContent = 'Building the map…';
+    setTimeout(() => { useMap(id); b.classList.remove('loading'); $('bigDesc').textContent = 'Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm. Still a work in progress.'; startGame(); }, 30);
+  } else { useMap(id); startGame(); }
+}));
+
+// map previews on the select screen
+function drawPreview(cv, id) {
+  const g = cv.getContext('2d'), S = cv.width, A = id === 'classic' ? 40 : 80, k = S / (A * 2 + 6), X = v => (v + A + 3) * k;
+  const rect = (x, z, w, d, c) => { g.fillStyle = c; g.fillRect(X(x - w / 2), X(z - d / 2), w * k, d * k); };
+  g.fillStyle = '#2f5a2a'; g.fillRect(0, 0, S, S);
+  rect(0, 0, A * 2, A * 2, '#4f8a40');
+  const village = [[-22, -20, 9, 7], [22, -22, 8, 8], [-24, 22, 8, 6], [21, 24, 10, 7]];
+  if (id === 'big') {
+    rect(-43, -43, 74, 74, '#24532a');
+    g.fillStyle = '#4f8a40'; g.beginPath(); g.arc(X(0), X(0), 34 * k, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#1b4421';
+    for (let i = 0; i < 160; i++) { const x = -8 - ((i * 37) % 70), z = -8 - ((i * 53) % 70); if (Math.hypot(x, z) > 35) { g.beginPath(); g.arc(X(x), X(z), 1.4 * k, 0, 7); g.fill(); } }
+    rect(58, -58, 44, 44, '#6f7a6a');
+    for (const [x, z, w] of [[70, -70, 16], [54, -73, 12], [73, -52, 12], [60, -58, 8], [43, -75, 8], [75, -38, 8]]) {
+      g.fillStyle = '#9aa3ad'; g.beginPath(); g.moveTo(X(x), X(z - w)); g.lineTo(X(x + w), X(z + w * 0.7)); g.lineTo(X(x - w), X(z + w * 0.7)); g.fill();
+      g.fillStyle = '#eef4fb'; g.beginPath(); g.moveTo(X(x), X(z - w)); g.lineTo(X(x + w * 0.35), X(z - w * 0.4)); g.lineTo(X(x - w * 0.35), X(z - w * 0.4)); g.fill();
+    }
+    rect(-58, 58, 44, 44, '#8b8d90');
+    for (const [x, z, w, d] of [[-43.5, 43, 12, 10], [-61, 43, 9, 10], [-75.5, 44, 7, 11], [-43.5, 60.5, 11, 9], [-60.8, 60.5, 9, 9], [-75.5, 61, 7, 9], [-44, 76, 10, 6], [-61, 76, 9, 6], [-75.5, 76, 7, 6]]) rect(x, z, w, d, '#c9ced6');
+    rect(48, 50, 16, 12, '#c9a74a'); rect(72, 46, 12, 14, '#5f8f3a'); rect(63, 64, 12, 9, '#a8432f');
+    village.push([16, 50, 8, 7], [-16, 52, 9, 7], [52, 14, 7, 9], [52, -14, 8, 7]);
+  }
+  rect(0, 0, 4.4, A * 2, '#b08f5f'); rect(0, 0, A * 2, 4.4, '#b08f5f');
+  for (const [x, z, w, d] of village) rect(x, z, w, d, '#e9dcc0');
+  g.fillStyle = '#8d9399'; g.beginPath(); g.arc(X(0), X(0), 1.6 * k, 0, 7); g.fill();
+  g.strokeStyle = '#9aa0a8'; g.lineWidth = Math.max(2, k); g.strokeRect(X(-A), X(-A), A * 2 * k, A * 2 * k);
+  // where you start
+  g.fillStyle = '#fff'; g.beginPath(); g.arc(X(0), X(5), Math.max(4, 1.6 * k), 0, 7); g.fill();
+  if (id === 'big') {
+    g.font = '700 13px Barlow, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#fff'; g.shadowColor = 'rgba(0,0,0,.8)'; g.shadowBlur = 4;
+    for (const [t, x, z] of [['Forest', -58, -58], ['Mountains', 58, -30], ['Town', -58, 34], ['Farm', 58, 34], ['Village', 0, -10]]) g.fillText(t, X(x), X(z));
+    g.shadowBlur = 0;
+  }
+}
+drawPreview($('prevClassic'), 'classic');
+drawPreview($('prevBig'), 'big');
+
+$('resetYes').addEventListener('click', () => {
+  wiped = true;
+  try { localStorage.removeItem('cubeAssaultSettings'); localStorage.removeItem('cubeAssaultProfile'); } catch (e) {}
+  location.reload();
+});
+$('buyTurret').addEventListener('click', () => {
+  if (profile.owned.turret || profile.coins < TURRET_PRICE) return;
+  profile.coins -= TURRET_PRICE; profile.owned.turret = true; saveProfile();
+  Sound.play('buy');
+  refreshShop();
+});
 $('buyBtn').addEventListener('click', () => {
   const k = 'extreme', W = WEAPONS[k];
   if (!owns(k)) {
@@ -2160,7 +3154,7 @@ document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('clic
   else if (a === 'resume') resume();
   else if (a === 'quit') quitToMenu();
   else if (a === 'continue') continueIntro();
-  else if (a === 'settings' || a === 'shop' || a === 'notes') openSub(a);
+  else if (a === 'settings' || a === 'shop' || a === 'notes' || a === 'profile' || a === 'reset' || a === 'maps') openSub(a);
   else if (a === 'back') showMenu(backTo[currentMenu] || 'main');
 }));
 
@@ -2169,7 +3163,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape') {
     if (state === 'playing') pause();
     else if (state === 'intro') continueIntro();
-    else if (['settings', 'shop', 'notes'].includes(currentMenu)) showMenu(backTo[currentMenu] || 'main');
+    else if (['settings', 'shop', 'notes', 'profile', 'reset', 'maps'].includes(currentMenu) || (currentMenu === 'name' && profile.name)) showMenu(backTo[currentMenu] || 'main');
     else if (state === 'paused' && performance.now() - lastPause > 300) resume();
     return;
   }
@@ -2180,6 +3174,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyQ' && lastWeapon && owns(lastWeapon)) setWeapon(lastWeapon);
   const n = parseInt(e.key, 10);
   if (n >= 1 && n <= WEAPON_KEYS.length && owns(WEAPON_KEYS[n - 1]) && WEAPON_KEYS[n - 1] !== weaponKey) setWeapon(WEAPON_KEYS[n - 1]);
+  if (e.code === 'Digit6' || e.code === 'Numpad6') deployTurret();
   if (e.code === 'Space') e.preventDefault();
 });
 addEventListener('keyup', e => keys[e.code] = false);
@@ -2270,6 +3265,13 @@ function updateEnemies(dt, t) {
     let mx = dx / dist, mz = dz / dist, spd = u.speed;
     u.spawnT = Math.min(1, u.spawnT + dt * 2);
     if (u.spawnT < 1) spd = 0;
+    // melee cubes go for whichever is closer: you or your turret
+    let tDist = Infinity, fx = dx, fz = dz;
+    if (turret && !T.ranged) {
+      const tx = turret.pos.x - e.position.x, tz = turret.pos.z - e.position.z;
+      tDist = Math.hypot(tx, tz) || 0.001;
+      if (tDist < dist) { mx = tx / tDist; mz = tz / tDist; fx = tx; fz = tz; if (tDist < u.size * 0.5 + 0.8) spd = 0; }
+    }
 
     if (T.boss) {
       if (u.slam > 0) {
@@ -2334,7 +3336,7 @@ function updateEnemies(dt, t) {
     } else u.stuck = Math.max(0, u.stuck - dt);
 
     // look, hop, squash and stretch
-    e.rotation.y = Math.atan2(-dx, -dz);
+    e.rotation.y = Math.atan2(-fx, -fz);
     const hop = T.boss ? Math.abs(Math.sin(t * 4 + u.phase)) * 0.4 : Math.abs(Math.sin(t * (T.pace > 3 ? 14 : 8) + u.phase));
     const grow = 1 - Math.pow(1 - u.spawnT, 3);
     const punch = 1 + Math.max(0, u.hit) * (T.boss ? 0.4 : 1.5);
@@ -2350,6 +3352,7 @@ function updateEnemies(dt, t) {
       damageFlash = 0.5;
       if (player.hurtCd <= 0) { player.hurtCd = 0.4; hurtFrom(e.position); Sound.play('hurt'); shake = Math.max(shake, 0.3); }
     }
+    if (!T.ranged && tDist < dist && u.air < 0.5 && tDist < u.size * 0.5 + 0.95) damageTurret(T.melee * dt);
     u.hit -= dt;
     if (u.hit > 0) u.mat.emissive.setHex(0xffffff);
     else if (T.ranged && u.los && u.fireCd < 0.6) u.mat.emissive.setRGB(0.15, 0.45, 1).multiplyScalar(1 - Math.max(0, u.fireCd) / 0.6);
@@ -2379,14 +3382,18 @@ function updateShots(dt) {
       hurtFrom(u.from); Sound.play('hurt');
       sparks(p, 0x7cc4ff, 6);
     }
+    if (!dead && turret && Math.hypot(p.x - turret.pos.x, p.y - 0.9, p.z - turret.pos.z) < 0.75) { damageTurret(u.dmg); dead = true; sparks(p, 0x7cc4ff, 6); }
     if (!dead) for (const b of boxes) {
       if (Math.abs(p.x - b.x) < b.hx && Math.abs(p.z - b.z) < b.hz && p.y < b.h) { dead = true; sparks(p, 0x7cc4ff, 5); glowFlash(p, 0x3b82f6, 1.2); break; }
     }
-    if (dead) { scene.remove(s); shots.splice(i, 1); }
+    if (dead) { removeShot(s); shots.splice(i, 1); }
   }
 }
 
+let profileSaveT = 15;
 function update(dt, t) {
+  profile.stats.time += dt;
+  if ((profileSaveT -= dt) <= 0) { profileSaveT = 15; saveProfile(); }
   updatePlayer(dt);
 
   fireCooldown -= dt;
@@ -2397,6 +3404,7 @@ function update(dt, t) {
   }
 
   updateEnemies(dt, t);
+  updateTurret(dt);
   updateShots(dt);
   updatePickups(dt);
   updateRings(dt);
@@ -2436,6 +3444,11 @@ function drawRadar() {
   rctx.strokeStyle = 'rgba(255,255,255,.35)'; rctx.lineWidth = 1 / k * 2;
   rctx.strokeRect(-ARENA - px, -ARENA - pz, ARENA * 2, ARENA * 2);
   rctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (turret) {
+    const [x, y] = toScreen(turret.pos.x, turret.pos.z);
+    rctx.fillStyle = '#f5b82e'; rctx.strokeStyle = '#000'; rctx.lineWidth = 1.5;
+    rctx.beginPath(); rctx.arc(x, y, 4.5, 0, Math.PI * 2); rctx.fill(); rctx.stroke();
+  }
   for (const g of pickups) {
     const [x, y] = toScreen(g.position.x, g.position.z);
     rctx.fillStyle = '#4ade80'; rctx.fillRect(x - 5, y - 1.5, 10, 3); rctx.fillRect(x - 1.5, y - 5, 3, 10);
@@ -2507,6 +3520,7 @@ function animateRig(dt, rprog) {
     rig.mag.visible = show;
     rig.mag.position.copy(rig.mag.userData.rest).addScaledVector(rig.magDirV, d);
   }
+  animateArms(rprog);
   if (rig.coils) {
     const t = clock.elapsedTime;
     rig.coils.forEach((c, i) => c.scale.setScalar(1 + Math.max(0, Math.sin(t * 6 - i * 0.9)) * 0.12 + (actT < 0.08 ? 0.15 : 0)));
@@ -2522,9 +3536,10 @@ function tick() {
 
   if (state === 'playing') update(dt, t);
   if (state !== 'paused') updateFx(dt);
-  for (const c of clouds) { c.position.x += c.userData.speed * dt; if (c.position.x > 220) c.position.x = -220; }
+  for (const c of clouds) { const u = c.userData; u.a += u.speed / u.r * dt; c.position.x = Math.cos(u.a) * u.r; c.position.z = Math.sin(u.a) * u.r; }
 
   $('hud').style.visibility = state === 'menu' ? 'hidden' : 'visible';
+  $('hint').style.display = state === 'playing' && !isLocked() ? 'block' : 'none';
   if (state !== 'menu') {
     drawRadar();
     const boss = state !== 'dead' && enemies.find(e => e.userData.T.boss);
@@ -2541,7 +3556,8 @@ function tick() {
   if (state === 'menu') {
     // slow orbit over the village behind the title screen
     const a = t * 0.05;
-    camera.position.set(Math.cos(a) * 34, 13, Math.sin(a) * 34);
+    const orbit = ARENA * 0.85, high = mapId === 'classic' ? 13 : 30;
+    camera.position.set(Math.cos(a) * orbit, high, Math.sin(a) * orbit);
     camera.lookAt(0, 1, 0);
     if (camera.fov !== settings.fov) { camera.fov = curFov = settings.fov; camera.updateProjectionMatrix(); }
     gun.visible = false;
@@ -2568,10 +3584,8 @@ function tick() {
     const rprog = reloading > 0 ? Math.min(1, 1 - reloading / weapon.reload) : 0;
     const rp = reloading > 0 ? Math.sin(rprog * Math.PI) : 0;
     const vp = rig.view.pos;
-    gun.position.set(vp[0] + bobX + swayX - rp * 0.04, vp[1] + Math.abs(bobX) * 0.8 + swayY - rp * 0.06 - switchT * 0.35, vp[2] + recoil * 0.07);
-    // positions are tuned for a 75° lens; push the gun out so it keeps its on-screen size under VIEW_FOV
-    gun.position.multiplyScalar(VIEW_PUSH);
-    gun.rotation.set(recoil * (weapon.kick > 1 ? 0.4 : 0.12) + rp * 0.35, swayX * 1.5 + rp * 0.25, -swayX * 1.2 + rp * 0.55);
+    gun.position.set(vp[0] + bobX + swayX - rp * 0.07, vp[1] + Math.abs(bobX) * 0.8 + swayY + rp * 0.05 - switchT * 0.35, vp[2] + recoil * 0.07 + rp * 0.02);
+    gun.rotation.set(recoil * (weapon.kick > 1 ? 0.4 : 0.12) + rp * 0.22, swayX * 1.5 + rp * 0.3, -swayX * 1.2 + rp * 0.45);
     animateRig(dt, rprog);
     const spreadPx = 6 + bloom * 14 + (moving ? 4 : 0) + (weapon.pellets > 1 ? 10 : 0);
     $('crosshair').style.setProperty('--gap', spreadPx + 'px');
@@ -2595,19 +3609,209 @@ function tick() {
   camera.layers.set(0);
   renderer.render(scene, camera);
   if (gun.visible) {
-    // the gun gets its own narrower lens so long guns aren't stretched near the camera
-    const worldFov = camera.fov;
-    camera.fov = VIEW_FOV; camera.updateProjectionMatrix();
     renderer.clearDepth();
-    camera.layers.set(1);
-    renderer.render(scene, camera);
-    camera.fov = worldFov; camera.updateProjectionMatrix();
+    vmCam.fov = vmFov(); vmCam.aspect = camera.aspect; vmCam.updateProjectionMatrix();
+    vmCam.matrix.copy(camera.matrixWorld);
+    vmCam.updateMatrixWorld(true);
+    renderer.render(scene, vmCam);
   }
 }
 
+// ---------- Levels ----------
+const xpNeed = L => 2000 + (L - 1) * 1000;
+function levelInfo(xp = profile.xp) {
+  let level = 1;
+  while (xp >= xpNeed(level)) { xp -= xpNeed(level); level++; }
+  return { level, into: xp, need: xpNeed(level) };
+}
+function addXp(n) {
+  const before = levelInfo().level;
+  profile.xp += n;
+  const after = levelInfo().level;
+  if (after > before) { banner('Level up!', 'You reached level ' + after); Sound.play('cleared'); }
+}
+
+// ---------- Profile pictures: small renders of things from the game ----------
+const AVATARS = (() => {
+  const SIDE = [1, 0.3, -0.3], FACE = [0.75, 0.5, -1];
+  const cube = key => () => {
+    const T = ENEMY_TYPES[key], g = new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: T.color, map: bevelTex })));
+    for (const x of [-1, 1]) {
+      const white = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.05), eyeMat);
+      const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.05), pupilMat);
+      white.position.set(x * 0.22, 0.15, -0.51); pupil.position.set(x * 0.22, 0.12, -0.53);
+      g.add(white, pupil);
+      if (T.brows) { const b = part(0.3, 0.06, 0.05, pupilMat, x * 0.2, 0.32, -0.52); b.rotation.z = x * 0.35; g.add(b); }
+    }
+    if (T.ranged) g.add(part(0.16, 0.16, 0.8, matBlack, 0.58, -0.05, -0.35));
+    if (T.boss) {
+      const gold = cached('crown', () => new THREE.MeshStandardMaterial({ color: 0xffd34d, metalness: 0.7, roughness: 0.3, emissive: 0x3a2600 }));
+      const crown = new THREE.Group();
+      crown.add(new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.4, 0.16, 10), gold));
+      for (let i = 0; i < 5; i++) {
+        const a = i / 5 * Math.PI * 2, spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.26, 4), gold);
+        spike.position.set(Math.cos(a) * 0.33, 0.2, Math.sin(a) * 0.33); crown.add(spike);
+      }
+      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.07), new THREE.MeshBasicMaterial({ color: 0xff3b6b }));
+      gem.position.set(0, 0, -0.4); crown.add(gem);
+      crown.position.y = 0.58; g.add(crown);
+    }
+    return g;
+  };
+  const gunPic = key => () => GUN_MODELS[key]().g;
+  return [
+    { key: 'red', label: 'Red Cube', make: cube('red'), dir: FACE },
+    { key: 'green', label: 'Green Cube', make: cube('green'), dir: FACE },
+    { key: 'blue', label: 'Blue Cube', make: cube('blue'), dir: FACE },
+    { key: 'purple', label: 'Brute', make: cube('purple'), dir: FACE },
+    { key: 'king', label: 'King Cube', make: cube('king'), dir: FACE },
+    { key: 'pistol', label: 'Pistol', make: gunPic('pistol'), dir: SIDE, zoom: 0.8 },
+    { key: 'rifle', label: 'Rifle', make: gunPic('rifle'), dir: SIDE, zoom: 0.6 },
+    { key: 'shotgun', label: 'Shotgun', make: gunPic('shotgun'), dir: SIDE, zoom: 0.6 },
+    { key: 'sniper', label: 'Sniper', make: gunPic('sniper'), dir: SIDE, zoom: 0.58 },
+    { key: 'extreme', label: 'Extreme Gun', make: gunPic('extreme'), dir: SIDE, zoom: 0.65 },
+    { key: 'crate', label: 'Crate', make: () => new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), crateMat), dir: [1, 0.7, 1.2] },
+    { key: 'barrel', label: 'Barrel', make: () => {
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.42, 1.1, 18), lambert(0x2f6fb0)));
+      for (const y of [-0.35, 0.35]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.465, 0.465, 0.06, 18), lambert(0x333333)); b.position.y = y; g.add(b); }
+      return g;
+    }, dir: [1, 0.6, 1.2] },
+    { key: 'pine', label: 'Pine tree', make: () => {
+      const g = new THREE.Group(), trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 2.2, 6), flat(0x6b4423));
+      trunk.position.y = 1.1; g.add(trunk);
+      for (let i = 0; i < 3; i++) {
+        const c = new THREE.Mesh(new THREE.ConeGeometry(1.7 - i * 0.4, 1.8, 7), flat(i % 2 ? 0x2f6b3a : 0x2a5f34));
+        c.position.y = 2 + i * 1.05; c.rotation.y = i; g.add(c);
+      }
+      return g;
+    }, dir: [1, 0.35, 1.2], zoom: 0.9 },
+    { key: 'oak', label: 'Tree', make: () => {
+      const g = new THREE.Group(), trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 2.2, 6), flat(0x6b4423));
+      trunk.position.y = 1.1; g.add(trunk);
+      for (const [x, y, z, r] of [[0, 2.8, 0, 1.5], [0.7, 3.4, 0.3, 1], [-0.6, 3.2, -0.4, 0.9]]) {
+        const c = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), flat(LEAF[1])); c.position.set(x, y, z); c.rotation.set(0.4, 0.8, 0); g.add(c);
+      }
+      return g;
+    }, dir: [1, 0.35, 1.2], zoom: 0.9 },
+    { key: 'hay', label: 'Hay bale', make: () => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.3, 16), flat(0xd8b65a)); m.rotation.z = Math.PI / 2; return m; }, dir: [1, 0.5, 1.3] },
+    { key: 'rock', label: 'Rock', make: () => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), flat(0x868b84)); m.scale.y = 0.7; m.rotation.y = 0.6; return m; }, dir: [1, 0.6, 1.2] },
+    { key: 'pack', label: 'Health pack', make: () => new THREE.Mesh(packGeo, packMat), dir: [1, 0.8, 1.3] },
+    { key: 'turret', label: 'Turret', make: () => turretModel().g, dir: [1, 0.45, -0.7], zoom: 0.85 },
+    { key: 'shell', label: 'Shell', make: () => {
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(SHELL_GEO.shotBase, GM.brass), new THREE.Mesh(SHELL_GEO.shotHull, GM.hull));
+      g.rotation.z = -0.5;
+      return g;
+    }, dir: [1, 0.4, 1.2], zoom: 0.85 },
+  ];
+})();
+
+// drawn once with the game's own renderer (so the guns keep their reflections) into data URLs for <img> tags
+function renderAvatars() {
+  const N = 256, OUT = 128;
+  const rt = new THREE.WebGLRenderTarget(N, N);
+  const sc = new THREE.Scene();
+  sc.add(new THREE.HemisphereLight(0xeaf4ff, 0x46523a, 0.85));
+  const key = new THREE.DirectionalLight(0xfff1d6, 0.95); key.position.set(3, 5, 4); sc.add(key);
+  const rim = new THREE.DirectionalLight(0x9fd0ff, 0.45); rim.position.set(-4, 2, -3); sc.add(rim);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.005, 100);
+  const buf = new Uint8Array(N * N * 4);
+  const big = document.createElement('canvas'); big.width = big.height = N;
+  const gb = big.getContext('2d'), img = gb.createImageData(N, N);
+  const small = document.createElement('canvas'); small.width = small.height = OUT;
+  const gs = small.getContext('2d');
+  const prevColor = renderer.getClearColor(new THREE.Color()), prevAlpha = renderer.getClearAlpha();
+  for (const a of AVATARS) {
+    try {
+      const obj = a.make();
+      sc.add(obj);
+      obj.updateMatrixWorld(true);
+      const sphere = new THREE.Box3().setFromObject(obj).getBoundingSphere(new THREE.Sphere());
+      const dir = new THREE.Vector3(...a.dir).normalize();
+      cam.position.copy(sphere.center).addScaledVector(dir, sphere.radius / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2)) * (a.zoom || 0.95));
+      cam.lookAt(sphere.center);
+      renderer.setRenderTarget(rt);
+      renderer.setClearColor(0x000000, 0);
+      renderer.clear();
+      renderer.render(sc, cam);
+      renderer.readRenderTargetPixels(rt, 0, 0, N, N, buf);
+      for (let y = 0; y < N; y++) img.data.set(buf.subarray((N - 1 - y) * N * 4, (N - y) * N * 4), y * N * 4); // WebGL rows run bottom-up
+      gb.putImageData(img, 0, 0);
+      gs.clearRect(0, 0, OUT, OUT);
+      gs.drawImage(big, 0, 0, OUT, OUT);
+      a.url = small.toDataURL('image/png');
+      sc.remove(obj);
+    } catch (e) { a.url = ''; }
+  }
+  renderer.setRenderTarget(null);
+  renderer.setClearColor(prevColor, prevAlpha);
+  rt.dispose();
+}
+
+// ---------- Profile screen ----------
+const avatarOf = k => AVATARS.find(a => a.key === k) || AVATARS[0];
+const fmtTime = sec => {
+  const t = Math.floor(sec), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60);
+  return h ? `${h}h ${m}m` : m ? `${m}m ${t % 60}s` : `${t}s`;
+};
+function refreshProfile() {
+  const L = levelInfo(), st = profile.stats, av = avatarOf(profile.avatar);
+  $('pbImg').src = $('pAvatar').src = av.url;
+  $('pbName').textContent = $('pName').textContent = profile.name || 'Player';
+  $('pbLevel').textContent = $('pLevel').textContent = 'Level ' + L.level;
+  $('pXp').textContent = `${L.into.toLocaleString()} / ${L.need.toLocaleString()} XP`;
+  $('pXpFill').style.width = L.into / L.need * 100 + '%';
+  const acc = st.shots ? (st.hits / st.shots * 100).toFixed(1) + '%' : '–';
+  $('pStats').innerHTML = [['Level', L.level], ['Accuracy', acc], ['Shots fired', st.shots.toLocaleString()],
+    ['Cubes killed', st.kills.toLocaleString()], ['Time played', fmtTime(st.time)], ['Best wave', profile.best]]
+    .map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
+  const grid = $('avatarGrid');
+  if (!grid.children.length) {
+    for (const a of AVATARS) {
+      const b = document.createElement('button');
+      b.dataset.key = a.key; b.title = a.label;
+      b.innerHTML = `<img alt=""><span>${a.label}</span>`;
+      b.firstChild.src = a.url;
+      b.addEventListener('click', () => { profile.avatar = a.key; saveProfile(); Sound.play('click'); refreshProfile(); });
+      grid.appendChild(b);
+    }
+  }
+  for (const b of grid.children) b.classList.toggle('sel', b.dataset.key === av.key);
+}
+
+// name: asked on the first visit, changeable from the profile
+const nameInput = $('nameInput');
+function openNameMenu(first) {
+  $('nameTitle').textContent = first ? 'Welcome, recruit' : 'Change name';
+  $('nameSub').textContent = first ? 'What should we call you? Your name goes on your profile.' : 'Pick a new name for your profile.';
+  $('nameCancel').style.display = first ? 'none' : '';
+  nameInput.value = profile.name || '';
+  $('nameOk').disabled = !nameInput.value.trim();
+  if (first) showMenu('name'); else openSub('name');
+  setTimeout(() => nameInput.focus(), 60);
+}
+function submitName() {
+  const n = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 16);
+  if (!n) { nameInput.focus(); return; }
+  const first = !profile.name;
+  profile.name = n;
+  if (!profile.avatar) profile.avatar = AVATARS[Math.random() * AVATARS.length | 0].key;
+  saveProfile();
+  Sound.init(); Sound.play('click');
+  showMenu(first ? 'main' : 'profile');
+}
+nameInput.addEventListener('input', () => { $('nameOk').disabled = !nameInput.value.trim(); });
+nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitName(); });
+$('nameOk').addEventListener('click', submitName);
+$('renameBtn').addEventListener('click', () => { Sound.play('click'); openNameMenu(false); });
+addEventListener('pagehide', saveProfile);
+
+renderAvatars();
 applyQuality();
 resetGame();
-showMenu('main');
+if (profile.name) showMenu('main'); else openNameMenu(true);
 tick();
 </script>
 </body>
