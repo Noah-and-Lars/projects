@@ -9,7 +9,9 @@
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
-  <h1 class="intro-title">Noah's and Lars's Arcade</h1>
+  <div class="intro-glow"></div>
+  <h1 class="intro-title" id="introTitle">Noah's and Lars's Arcade</h1>
+  <hr class="intro-line">
   <p class="intro-sub">Made by Lars and Noah</p>
 </div>
 <script>
@@ -19,8 +21,27 @@
   let seen = false;
   try { seen = sessionStorage.getItem('intro-seen'); sessionStorage.setItem('intro-seen', '1'); } catch (e) {}
   if (seen) { intro.remove(); return; }
-  intro.addEventListener('click', () => intro.classList.add('skip'));
-  intro.addEventListener('animationend', e => { if (e.target === intro) intro.remove(); });
+  document.documentElement.classList.add('intro-on');
+  // one span per letter so they can appear one after another
+  const title = document.getElementById('introTitle');
+  let i = 0;
+  title.replaceChildren(...title.textContent.split(' ').flatMap((word, w) => {
+    const box = document.createElement('span');
+    box.className = 'word';
+    for (const ch of word) {
+      const s = document.createElement('span');
+      s.textContent = ch; s.style.setProperty('--i', i++);
+      box.appendChild(s);
+    }
+    i++;
+    return w ? [' ', box] : [box];
+  }));
+  const done = () => { intro.remove(); document.documentElement.classList.remove('intro-on'); };
+  intro.addEventListener('click', () => {
+    intro.classList.add('skip');
+    for (const el of document.querySelectorAll('.intro-on .wrap, .intro-on .foot')) el.style.animationDelay = '0s';
+  });
+  intro.addEventListener('animationend', e => { if (e.target === intro) done(); });
 })();
 </script>
 <header class="top">
