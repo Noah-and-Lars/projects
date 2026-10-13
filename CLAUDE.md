@@ -1,4 +1,4 @@
-# Noah's and Lars's Arcade
+# Noah and Lars' Arcade
 
 A small browser-games site made by Lars and Noah, hosted with GitHub Pages at
 https://noah-and-lars.github.io/projects/ (repo: Noah-and-Lars/projects, moved

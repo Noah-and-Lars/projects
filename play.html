@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Noah's and Lars's Arcade</title>
+<title>Noah and Lars' Arcade</title>
 <meta name="description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups.">
 <meta name="theme-color" content="#0a0916">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
@@ -15,8 +15,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="N&amp;L Arcade">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Noah's and Lars's Arcade">
-<meta property="og:title" content="Noah's and Lars's Arcade">
+<meta property="og:site_name" content="Noah and Lars' Arcade">
+<meta property="og:title" content="Noah and Lars' Arcade">
 <meta property="og:description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups.">
 <meta property="og:image" content="https://noah-and-lars.github.io/projects/og.png">
 <meta property="og:image:width" content="1200">
@@ -63,7 +63,7 @@
   <p>Found a bug, or the game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=14"></script>
+<script src="games.js?v=15"></script>
 <script>
 const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('game');
@@ -74,7 +74,7 @@ if (!game) {
   location.replace('index.html');
 } else {
   Arcade.markPlayed(game.id);
-  document.title = game.title + " · Noah's and Lars's Arcade";
+  document.title = game.title + " · Noah and Lars' Arcade";
   $('title').textContent = game.title;
   fillContact('Problem with ' + game.title);
 

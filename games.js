@@ -5,7 +5,7 @@ window.CONTACT_EMAIL = ['jimmyscafe1000', 'gmail.com'].join('@');
 window.fillContact = (subject) => {
   for (const a of document.querySelectorAll('.contact')) {
     a.textContent = CONTACT_EMAIL;
-    a.href = 'mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent(subject || "Noah's and Lars's Arcade");
+    a.href = 'mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent(subject || "Noah and Lars' Arcade");
   }
 };
 

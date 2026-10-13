@@ -1,6 +1,6 @@
 # projects
 
-**Noah's and Lars's Arcade**: browser games that run straight from this repo, no installs.
+**Noah and Lars' Arcade**: browser games that run straight from this repo, no installs.
 
 Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade online.
 
