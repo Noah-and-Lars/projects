@@ -3850,7 +3850,7 @@ const saveOpts = () => { try { localStorage.setItem(OPT_KEY, JSON.stringify(OPT)
 fancyLeaves = OPT.fancyLeaves;
 gui.touch = isTouch;
 
-const game = { state: 'title', world: null, entities: null, info: null, time: 1000, hit: null, mobHit: null, fps: 60, debug: false, hideHUD: false, saveT: 0, titleYaw: 0, order: null, orderR: -1, clickToPlay: false };
+const game = { state: 'title', world: null, entities: null, info: null, time: 1000, hit: null, mobHit: null, fps: 60, debug: false, hideHUD: false, saveT: 0, titleYaw: 0, order: null, orderR: -1 };
 buildSprites();
 
 // ---------------- Worlds on disk ----------------
@@ -3888,6 +3888,8 @@ function startTitleWorld() {
 }
 function startWorld(info) {
   sfx.init();
+  // grab the mouse now, while the click that started the world still counts, so there's no 'click to play' step
+  if (!isTouch) try { const r = guiCv.requestPointerLock && guiCv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {}
   unloadWorld();
   let data = null;
   try { data = JSON.parse(localStorage.getItem(worldKey(info.id))); } catch (e) {}
@@ -3915,8 +3917,7 @@ function finishLoading() {
   if (game.fixSpawn) { fixSpawn(player.spawn); player.pos.fromArray(player.spawn); game.fixSpawn = false; }
   game.state = 'game';
   screen = null;
-  game.clickToPlay = !isTouch;
-  lockPointer();
+  if (!locked()) lockPointer();
   chat(player.mode === 'creative' ? 'Creative mode: double-tap Space to fly.' : 'Survival mode: punch a tree to get started!', '#ffff55');
   if (!isTouch) chat('Press E for your inventory, T to chat, F3 for info.', '#aaaaaa');
 }
@@ -4663,7 +4664,6 @@ addEventListener('keyup', e => { gui.shift = e.shiftKey; KEYS.delete(e.code); sy
 addEventListener('blur', () => { KEYS.clear(); syncMoveKeys(); input.attack = input.use = false; });
 document.addEventListener('pointerlockchange', () => {
   if (!locked() && game.state === 'game' && !screen && !player.dead) openScreen(PauseScreen());
-  if (locked()) game.clickToPlay = false;
 });
 function guiPos(e) { gui.mx = Math.floor(e.clientX * gui.dpr / gui.s); gui.my = Math.floor(e.clientY * gui.dpr / gui.s); }
 guiCv.addEventListener('mousedown', e => {
@@ -4821,7 +4821,6 @@ function drawGUI(dt) {
     if (!game.hideHUD) drawHUD(game.world);
     if (game.debug) drawDebug(game.world, game.fps);
     if (isTouch && !screen) drawTouch();
-    if (game.clickToPlay && !screen && !locked()) { fill(0, gui.H / 2 - 14, gui.W, 28, 'rgba(0,0,0,0.5)'); centerText(gctx, 'Click to play', gui.W / 2, gui.H / 2 - 4, '#ffffff'); }
   }
   if (screen) screen.draw();
   drawTooltip();
