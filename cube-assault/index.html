@@ -417,12 +417,21 @@
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.0 · What's new</button>
+    <button class="link" data-action="notes">v2.2 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v2.2 <span>Bring it down</span></h3><ul>
+        <li>Tajer Support has a new ending if you throw the last scammer out of the window: a ladder rolls out of the broken window, your team climbs down to the street, and Captain Mehta has one last idea.</li>
+        <li>A line of dynamite runs from the tower's front door. Shoot the TNT box at the end of the fuse, watch it burn all the way to the tower, and bring the whole call centre down.</li>
+      </ul></section>
+      <section><h3>v2.1 <span>Backup has arrived</span></h3><ul>
+        <li>Your SWAT team now joins the raid on Tajer Support: Mehta, Singh and D'Souza move through the call centre and open fire on the scammers alongside you. (The cubes are still yours to take down.)</li>
+        <li>Fix: black flickering stripes on the call-centre ceiling.</li>
+        <li>Fix: the call-centre walls flickered where the window pillars met the sills, and the lift doors flickered while sliding.</li>
+      </ul></section>
       <section><h3>v2.0 <span>Campaign: Level 2</span></h3><ul>
         <li>New campaign level: Level 2, Tajer Support (Mumbai, India, 2009). You're a SWAT officer raiding a scam call centre at the top of a tower.</li>
         <li>A long opening cutscene: walk up to the tower with your three-officer SWAT team, sneak through the lobby, ride the lift to the fifth floor and spy on the scammers from behind a wall while they work their phones. Then Captain Mehta counts to three.</li>
@@ -619,8 +628,11 @@
 
   <div class="menu" id="menu-news">
     <div class="eyebrow">What's new</div>
-    <h2>v2.0 · Campaign: Level 2</h2>
+    <h2>v2.2 · Bring it down</h2>
     <ul class="newslist">
+      <li><b>A new ending for Tajer Support:</b> climb down a ladder from the broken window, then blow the tower up.</li>
+      <li><b>Your SWAT team fights with you</b> in the Tajer Support raid.</li>
+      <li>Fixed flickering walls and ceiling in the call centre.</li>
       <li><b>Level 2: Tajer Support.</b> Mumbai, India, 2009. Lead a SWAT raid on a scam call centre at the top of a tower.</li>
       <li>A long cutscene with your SWAT team: the lobby, the lift and spying on the scammers before the raid.</li>
       <li><b>Scam Cubes</b>, happy yellow cubes with headsets, only found in this level.</li>
@@ -2184,8 +2196,9 @@ function collide(pos, r, y = 0) {
   pos.x = Math.max(-lim, Math.min(lim, pos.x));
   pos.z = Math.max(-lim, Math.min(lim, pos.z));
 }
+let floorBase = 0; // ground height; the Tajer Support ending is played down on the street
 function groundAt(pos, prevY) {
-  let g = 0;
+  let g = floorBase;
   for (const b of boxes) {
     if (b.h > STEP || b.h > prevY + 0.05) continue;
     if (Math.abs(pos.x - b.x) < b.hx + 0.2 && Math.abs(pos.z - b.z) < b.hz + 0.2) g = Math.max(g, b.h);
@@ -3255,6 +3268,7 @@ function shoot() {
       .normalize().applyQuaternion(camera.quaternion);
     raycaster.set(camera.position, dir);
     const hit = raycaster.intersectObjects(targets, false)[0];
+    if (hit && hit.object.userData.onShot) hit.object.userData.onShot();
     const end = hit ? hit.point : camera.position.clone().addScaledVector(dir, 150);
     tracer(zoomed ? camera.position.clone().addScaledVector(dir, 0.5) : start, end, tColor, weapon.tracer ? 0.05 : 0.025);
 
@@ -4820,6 +4834,7 @@ function updateCutscene(dt) {
   if (cs.kind === 'drive') cutsceneDrive(dt);
   else if (cs.kind === 'raid') cutsceneRaid(dt);
   else if (cs.kind === 'grab') cutsceneGrab(dt);
+  else if (cs.kind === 'escape') cutsceneEscape(dt);
 }
 // levels unlock in order (a test account sees them all)
 function refreshLevels() {
@@ -5017,7 +5032,7 @@ function buildCampaign2() {
     box(0.2, top - 2.4, 2, coreM, CX1, (2.4 + top) / 2, 0);
     const landing = y => {
       const ds = [];
-      for (const sz of [-1, 1]) { const d = box(0.08, 2.4, 1.0, doorM, CX1 + 0.08, y + 1.2, sz * 0.5); ds.push(d); }
+      for (const sz of [-1, 1]) { const d = box(0.06, 2.38, 1.0, doorM, CX1 + 0.16, y + 1.2, sz * 0.5); ds.push(d); }
       return ds;
     };
     const lobbyDoors = landing(STREET), callDoors = landing(0);
@@ -5043,8 +5058,8 @@ function buildCampaign2() {
     carpet.wrapS = carpet.wrapT = THREE.RepeatWrapping; carpet.repeat.set(14, 11);
     plane(2 * W, 2 * D, new THREE.MeshLambertMaterial({ map: carpet, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), 0, 0.004, 0);
     box(2 * W + 0.3, 0.35, 2 * D + 0.3, flat(0x9da3a8), 0, -0.175, 0, { solid: false });
-    const ceil = plane(2 * W, 2 * D, new THREE.MeshLambertMaterial({ color: 0xe7e7e2, emissive: 0x6f6f6a }), 0, 3.8, 0, true); ceil.castShadow = true;
-    box(2 * W + 0.3, 0.2, 2 * D + 0.3, flat(0x9da3a8), 0, 3.9, 0, { solid: false });
+    const ceil = plane(2 * W, 2 * D, new THREE.MeshLambertMaterial({ color: 0xe7e7e2, emissive: 0x6f6f6a }), 0, 3.8, 0, true); ceil.castShadow = true; ceil.receiveShadow = false;
+    box(2 * W + 0.3, 0.2, 2 * D + 0.3, flat(0x9da3a8), 0, 3.95, 0, { solid: false, shadow: false });
     for (let x = -6; x <= 12; x += 6) for (let z = -6; z <= 6; z += 6) { const p = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.6), new THREE.MeshBasicMaterial({ color: 0xfff8e6 })); p.rotation.x = Math.PI / 2; p.position.set(x, 3.78, z); scene.add(p); }
     for (const [lx, lz] of [[2, -4], [2, 4]]) { const L = new THREE.PointLight(0xfff1d6, 0.45, 20); L.position.set(lx, 3.4, lz); scene.add(L); }
     // windows all round: sill, glass, header, pillars. The east panes are the ones you can throw someone through.
@@ -5053,7 +5068,7 @@ function buildCampaign2() {
       const len = to - from, mid = (from + to) / 2;
       const put = (w, h, mat, c, y) => axis === 'x' ? box(0.3, h, w, mat, at, y, c) : box(w, h, 0.3, mat, c, y, at);
       put(len + 0.3, 0.9, wallM, mid, 0.45); put(len + 0.3, 0.8, wallM, mid, 3.6);
-      for (let c = from; c <= to + 0.01; c += 4) put(0.5, 4, wallM, c, 2);
+      for (let c = from; c <= to + 0.01; c += 4) axis === 'x' ? box(0.38, 3.98, 0.5, wallM, at, 2, c) : box(0.5, 3.98, 0.38, wallM, c, 2, at);
       for (let c = from + 2; c < to; c += 4) {
         const gl = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.3), glassM); gl.position.set(axis === 'x' ? at : c, 2.05, axis === 'x' ? c : at); if (axis === 'x') gl.rotation.y = Math.PI / 2;
         scene.add(gl);
@@ -5175,8 +5190,10 @@ function resetC2() {
   if (grabbed) { if (grabbed.parent) grabbed.parent.remove(grabbed); disposeEnemy(grabbed); grabbed = null; }
   if (grabArm) { camera.remove(grabArm); grabArm = null; }
   $('choice').style.display = 'none';
+  floorBase = 0;
   const C = MAPS.c2;
   if (!C) return;
+  if (C.esc) { C.esc.ladder.visible = false; C.esc.fuse.scale.z = 1; C.esc.fuse.position.z = C.esc.fuseZ; C.esc.tnt.visible = true; C.esc.tnt.userData.used = false; C.esc.spark.visible = false; }
   C.car.position.y = STREET; setDoors(C.carDoors, 0); setDoors(C.lobbyDoors, 0); setDoors(C.callDoors, 0); C.drawFloor(1); C.shownFloor = 1;
   for (const k in C.panes) C.panes[k].visible = true;
   C.squad.forEach((S, i) => { const R = ROUTES[S.tag]; S.g.position.set(R[0][1], STREET, R[0][2]); S.g.rotation.y = 0; poseSwat(S, false, false); });
@@ -5184,7 +5201,7 @@ function resetC2() {
 function placeSquadAtWall() {
   for (const S of MAPS.c2.squad) {
     const R = ROUTES[S.tag], L = R[R.length - 1];
-    S.g.position.set(L[1], 0, L[2]); S.g.rotation.y = -Math.PI / 2; poseSwat(S, false, false);
+    S.g.position.set(L[1], 0, L[2]); S.g.rotation.y = -Math.PI / 2; poseSwat(S, false, false); S.leg = undefined;
   }
 }
 function cutsceneRaid(dt) {
@@ -5270,8 +5287,42 @@ function beginRaid() {
   clock.getDelta();
   updateHUD();
 }
-function campaign2Update() {
+// each officer patrols an aisle clear of the desks, stopping to fire at the nearest scammer
+const SQUAD_PATROL = { mehta: [[-4, -9.6], [12, -9.6]], singh: [[-4, -6.5], [-4, 9]], dsouza: [[-4, 9.6], [12, 9.6]] };
+let squadSound = 0;
+function updateSquad(dt) {
+  squadSound -= dt;
+  for (const S of MAPS.c2.squad) {
+    const P = SQUAD_PATROL[S.tag], p = S.g.position;
+    if (S.leg === undefined) { S.leg = 1; S.cd = 0.6 + Math.random(); S.hold = 0; }
+    // nearest scammer in sight
+    let tgt = null, best = 30;
+    for (const e of enemies) { const d = Math.hypot(e.position.x - p.x, e.position.z - p.z); if (d < best) { best = d; tgt = e; } }
+    S.hold -= dt;
+    const goal = P[S.leg], dx = goal[0] - p.x, dz = goal[1] - p.z, dist = Math.hypot(dx, dz);
+    const walking = S.hold <= 0 && dist > 0.15;
+    if (walking) { const st = Math.min(dist, 1.7 * dt); p.x += dx / dist * st; p.z += dz / dist * st; S.phase += dt * 8; }
+    else if (dist <= 0.15) S.leg = 1 - S.leg;
+    let face = walking ? Math.atan2(-dx, -dz) : S.g.rotation.y;
+    if (tgt) face = Math.atan2(-(tgt.position.x - p.x), -(tgt.position.z - p.z));
+    S.g.rotation.y += Math.atan2(Math.sin(face - S.g.rotation.y), Math.cos(face - S.g.rotation.y)) * Math.min(1, dt * 8);
+    poseSwat(S, false, walking);
+    S.cd -= dt;
+    if (tgt && S.cd <= 0) {
+      S.cd = 0.35 + Math.random() * 0.7; S.hold = 0.5;
+      S.g.updateMatrixWorld(true);
+      const from = S.g.localToWorld(new THREE.Vector3(0.04, 1.3, -0.78));
+      const to = tgt.position.clone().add(new THREE.Vector3((Math.random() - .5) * 0.6, (Math.random() - .3) * 0.5, (Math.random() - .5) * 0.6));
+      tracer(from, to, 0xffe9a8, 0.025); glowFlash(from, 0xffcc66, 0.5, 0.06);
+      if (Math.random() < 0.5) sparks(to, 0xffd08a, 2, 4);
+      if (squadSound <= 0) { squadSound = 0.12; Sound.play('rifle'); }
+    }
+  }
+}
+function campaign2Update(dt) {
+  if (camp.phase === 'fuse' || camp.phase === 'burning' || camp.phase === 'boom') { updateDemolition(dt); return; }
   if (camp.phase !== 'fight') return;
+  updateSquad(dt);
   const left = enemies.length;
   if (left !== camp.left) { camp.left = left; objective(left > 1 ? 'Take down the scammers · ' + left + ' left' : 'Grab the last scammer'); }
   if (left === 1) startGrab(enemies[0]);
@@ -5381,9 +5432,8 @@ function cutsceneGrab(dt) {
     }
     camera.rotation.set(cs.pitch, cs.yaw, 0);
     if (t > 8.6 && !cs.done) {
-      cs.done = true; $('subs').style.display = 'none'; $('cine').style.display = 'none';
-      player.pos.set(cs.lean.x, cs.lean.y - EYE, cs.lean.z); player.yaw = cs.yaw; player.pitch = Math.max(-1.4, cs.pitch);
-      completeLevel();
+      cs.done = true; $('subs').style.display = 'none';
+      startEscape(cs.pane, cs.yaw, cs.pitch);
     }
   } else {
     // spare him: he wriggles free and pulls a pistol from behind his back
@@ -5450,6 +5500,142 @@ function failMission(text, forced) {
 }
 $('choiceKill').addEventListener('click', () => choose('kill'));
 $('choiceSpare').addEventListener('click', () => choose('spare'));
+
+// ---------- Tajer Support ending: down the ladder, then bring the tower down ----------
+const FUSE = { x: 0, from: 24, to: 11.7, burn: 3.4 };
+function buildEscapeProps() {
+  const C = MAPS.c2, root = C.root, rope = flat(0x8a6a3a), red = flat(0xc0262b);
+  const ladder = new THREE.Group();
+  for (const sz of [-0.32, 0.32]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 17, 6).translate(0, -8.5, 0), rope); r.position.z = sz; ladder.add(r); }
+  for (let y = -0.3; y > -17; y -= 0.42) { const g = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.7), rope); g.position.y = y; ladder.add(g); }
+  ladder.position.set(14.25, 0.9, 0); ladder.visible = false; root.add(ladder);
+  // the fuse runs from the TNT box back to the tower's front door, with dynamite stacked at the door
+  const len = FUSE.from - FUSE.to;
+  const fuse = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, len, 6).rotateX(Math.PI / 2).translate(0, 0, -len / 2), flat(0x2a2620));
+  fuse.position.set(FUSE.x, STREET + 0.05, FUSE.from); root.add(fuse);
+  for (const [x, z] of [[-1.2, 11.9], [0, 12.1], [1.2, 11.9], [-13, 11.9], [13, 11.9], [-13.6, -10], [13.6, -10]]) {
+    for (let i = 0; i < 3; i++) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.6, 8), red); d.position.set(x + (i - 1) * 0.15, STREET + 0.3, z); root.add(d); }
+  }
+  const tntTex = textTex(128, 128, (g, w, h) => { g.fillStyle = '#b3261e'; g.fillRect(0, 0, w, h); g.strokeStyle = '#2a0d0b'; g.lineWidth = 8; g.strokeRect(4, 4, w - 8, h - 8); g.fillStyle = '#fff'; g.font = 'bold 48px Arial, sans-serif'; g.textAlign = 'center'; g.fillText('TNT', w / 2, h / 2 + 16); });
+  const tnt = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8), new THREE.MeshLambertMaterial({ map: tntTex }));
+  tnt.position.set(FUSE.x, STREET + 0.3, FUSE.from + 0.4); tnt.castShadow = true; root.add(tnt);
+  tnt.userData.onShot = () => lightFuse();
+  const spark = sprite(glowTex, 0xffb347, 0.6); spark.visible = false; root.add(spark);
+  C.esc = { ladder, fuse, fuseZ: FUSE.from, tnt, spark };
+}
+const ESC_LINES = [
+  [1.0, 'Ofc. Singh', "Ladder's down! Everyone out the window!"],
+  [12.4, 'Capt. Mehta', "Right. Let's blow this place up."],
+  [15.2, 'Ofc. Singh', 'Charges are wired to the front door. The fuse runs all the way back here.'],
+  [18.6, "Ofc. D'Souza", 'Do the honours. Shoot the TNT.'],
+];
+const STAND = { mehta: [1.5, 28], singh: [-1.5, 28.6], dsouza: [5, 29], you: [3, 27] };
+function startEscape(pz, yaw, pitch) {
+  const C = MAPS.c2;
+  if (!C.esc) buildEscapeProps();
+  cs = { kind: 'escape', t: 0, pz, yaw, pitch, routes: {} };
+  // each officer: climb down one after another, then walk round to the front
+  C.squad.forEach((S, i) => {
+    const t0 = 1.2 + i * 1.0;
+    cs.routes[S.tag] = { t0, path: [[t0 + 2.4, 14.7, pz], [t0 + 4.4, 16.5, 14], [t0 + 7.2, ...STAND[S.tag]]] };
+  });
+  cs.you = [[9, 14.7, pz], [10.6, 16.5, 14], [13.4, ...STAND.you]];
+  C.esc.ladder.position.z = pz; C.esc.ladder.visible = true; C.esc.ladder.scale.y = 0.01;
+  Sound.play('liftDoor');
+}
+function cutsceneEscape(dt) {
+  const C = MAPS.c2, t = (cs.t += dt), E = C.esc;
+  E.ladder.scale.y = Math.max(0.01, ease(t / 1.0));
+  for (const S of C.squad) {
+    const R = cs.routes[S.tag], p = S.g.position;
+    if (t < R.t0) { p.set(12.6, 0, cs.pz + (S.tag === 'singh' ? 1 : -1)); continue; }
+    if (t < R.t0 + 2.4) { const k = (t - R.t0) / 2.4; p.set(14.7, 0.4 + (STREET - 0.4) * k, cs.pz); S.g.rotation.y = Math.PI / 2; poseSwat(S, false, true); S.phase += dt * 6; continue; }
+    const [x, z, moving] = routeAt([[R.t0 + 2.4, 14.7, cs.pz], ...R.path], t);
+    if (moving) S.g.rotation.y = Math.atan2(-(x - p.x), -(z - p.z)) || S.g.rotation.y; else S.g.rotation.y = 0;
+    p.set(x, STREET, z); poseSwat(S, false, moving); if (moving) S.phase += dt * 9;
+  }
+  // you: wait at the window, climb down, then follow them round
+  let pos, ty, tp;
+  if (t < 4.6) { pos = new THREE.Vector3(13.95, 1.95, cs.pz); const L = C.squad[Math.min(2, Math.floor((t - 1.2) / 1.0))] || C.squad[0]; [ty, tp] = lookAtYawPitch(pos, L.g.position.clone().setY(L.g.position.y + 1)); }
+  else if (t < 9) { const k = ease((t - 4.6) / 4.4); pos = new THREE.Vector3(15.0, 1.95 + (STREET + 1.6 - 1.95) * k + Math.sin(t * 9) * 0.04, cs.pz); ty = -Math.PI / 2; tp = -0.55; }
+  else {
+    const [x, z, moving] = routeAt(cs.you, t);
+    pos = new THREE.Vector3(x, STREET + 1.6 + (moving ? Math.abs(Math.sin(t * 9)) * 0.04 : 0), z);
+    if (moving && (cs.step = (cs.step || 0) - dt) <= 0) { cs.step = 0.42; Sound.play('step'); }
+    [ty, tp] = t < 13.4 ? lookAtYawPitch(pos, new THREE.Vector3(...[3, 0, 20].map((v, i) => i === 1 ? STREET + 1.4 : v))) : lookAtYawPitch(pos, new THREE.Vector3(0, STREET + 4, 11));
+    if (t > 15 && t < 18.4) [ty, tp] = lookAtYawPitch(pos, new THREE.Vector3(FUSE.x, STREET, 18));
+  }
+  cs.yaw += Math.atan2(Math.sin(ty - cs.yaw), Math.cos(ty - cs.yaw)) * Math.min(1, dt * 3);
+  cs.pitch += (tp - cs.pitch) * Math.min(1, dt * 3);
+  camera.position.copy(pos); camera.rotation.set(cs.pitch, cs.yaw, 0);
+  const line = ESC_LINES.filter(L => L[0] <= t).pop();
+  if (line) { $('subs').style.display = 'block'; $('subsWho').textContent = line[1]; $('subsText').textContent = line[2].slice(0, Math.floor((t - line[0]) * 34)); }
+  if (t > 20.6) beginFuse();
+}
+function beginFuse() {
+  const C = MAPS.c2;
+  cs = null;
+  state = 'playing';
+  $('subs').style.display = 'none'; $('cine').style.display = 'none';
+  floorBase = STREET; ARENA = 70;
+  player.pos.set(...STAND.you.slice(0, 1), STREET, STAND.you[1]); player.pos.set(STAND.you[0], STREET, STAND.you[1]);
+  player.yaw = 0; player.pitch = -0.12; player.vy = 0; player.onGround = true;
+  for (const S of C.squad) { const [x, z] = STAND[S.tag]; S.g.position.set(x, STREET, z); S.g.rotation.y = 0; poseSwat(S, false, false); }
+  solids.push(C.esc.tnt);
+  camp.phase = 'fuse';
+  setWeapon('rifle'); switchT = 1;
+  banner('Light the fuse', 'Shoot the TNT box');
+  objective('Shoot the TNT box to light the fuse');
+  clock.getDelta();
+  updateHUD();
+}
+function lightFuse() {
+  if (!camp || camp.phase !== 'fuse') return;
+  const E = MAPS.c2.esc;
+  camp.phase = 'burning'; camp.burn = 0; shotsHit++; profile.stats.hits++; hitMarker(false);
+  E.tnt.visible = false; const i = solids.indexOf(E.tnt); if (i >= 0) solids.splice(i, 1);
+  glowFlash(E.tnt.position, 0xffb347, 2, 0.2); sparks(E.tnt.position, 0xffd08a, 10, 5);
+  Sound.play('rocketFire');
+  E.spark.visible = true;
+  objective('The fuse is lit!');
+}
+function updateDemolition(dt) {
+  const C = MAPS.c2, E = C.esc;
+  if (camp.phase === 'burning') {
+    camp.burn += dt;
+    const k = Math.min(1, camp.burn / FUSE.burn), z = FUSE.from + (FUSE.to - FUSE.from) * k;
+    E.spark.position.set(FUSE.x, STREET + 0.15, z); E.spark.scale.setScalar(0.5 + Math.random() * 0.4);
+    E.fuse.scale.z = Math.max(0.001, 1 - k);
+    if (Math.random() < 0.6) sparks(E.spark.position, 0xffd08a, 1, 3);
+    if ((camp.hiss = (camp.hiss || 0) - dt) <= 0) { camp.hiss = 0.12; Sound.play('step'); }
+    if (k >= 1) { camp.phase = 'boom'; camp.boom = 0; camp.next = 0; E.spark.visible = false; objective(''); collapseTower(); }
+  } else if (camp.phase === 'boom') {
+    camp.boom += dt; camp.next -= dt;
+    if (camp.next <= 0 && camp.boom < 3) {
+      camp.next = 0.16;
+      const p = new THREE.Vector3((Math.random() - .5) * 28, STREET + Math.random() * 22, (Math.random() - .5) * 22);
+      glowFlash(p, 0xff8a2a, 10, 0.4); puff(p, 0x6b6560, 6, 1.6);
+      crumble(p.clone().addScalar(-1.5), p.clone().addScalar(1.5), [0xc8ced6, 0x35506e, 0xe9e4da, 0x9da3a8][Math.random() * 4 | 0], p.clone().setY(p.y - 2), 10, STREET);
+      if (Math.random() < 0.5) Sound.play('boom', 25);
+    }
+    shake = Math.max(shake, camp.boom < 3 ? 0.8 : 0);
+    if (camp.boom > 4.2 && camp.phase === 'boom') { camp.phase = 'done-boom'; completeLevel(); }
+  }
+}
+// hide everything standing on the tower's footprint (restored when the round resets)
+function collapseTower() {
+  const C = MAPS.c2, v = new THREE.Vector3();
+  C.root.updateMatrixWorld(true);
+  C.root.traverse(o => {
+    if (!o.isMesh || !o.visible || o === C.esc.ladder || o.parent === C.esc.ladder) return;
+    o.getWorldPosition(v);
+    if (Math.abs(v.x) < 15 && Math.abs(v.z) < 12.4 && v.y > STREET + 0.1) { o.visible = false; damage.hidden.push(o); }
+  });
+  C.esc.ladder.visible = false;
+  for (const S of C.squad) S.g.visible = true;
+  Sound.play('boom', 10); Sound.play('crumble');
+  glowFlash(new THREE.Vector3(0, STREET + 2, 12), 0xffa23a, 18, 0.6);
+}
 
 // ---------- Levels ----------
 const xpNeed = L => 2000 + (L - 1) * 1000;
@@ -5648,7 +5834,7 @@ addEventListener('pointerdown', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.0';
+const VERSION = '2.2';
 function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
