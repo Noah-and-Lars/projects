@@ -113,13 +113,14 @@ window.GAMES = [
     path: 'blockcraft/index.html',
     thumb: 'blockcraft/thumb.svg',
     added: '2026-10-13T21:00:00+11:00',
-    updated: '2026-10-14T10:46:29+11:00',
+    updated: '2026-10-14T10:50:31+11:00',
     stat() { const w = readSave('blockcraft-worlds', true); return w && w.length ? w.length + (w.length === 1 ? ' world' : ' worlds') : null; },
   },
 ];
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.2.1: no more "Click to play". The game grabs your mouse as soon as you pick a world.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.2: a Minecraft-style arm, head bobbing at Minecraft speed, sharper tree textures, and far-away chunks now unload for smoother frame rates.' },
   { date: '2026-10-14', game: 'cube-assault', text: 'Cube Assault 2.2: your SWAT team now fights beside you at Tajer Support, and a new ending lets you climb out the window and blow the tower up.' },
   { date: '2026-10-13', game: 'free-criminal', text: 'New game: Free Criminal. Walk out of prison into San Varro, steal cars, rob the bank and outrun the cops.' },

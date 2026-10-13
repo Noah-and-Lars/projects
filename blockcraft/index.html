@@ -4399,7 +4399,7 @@ const TitleScreen = () => ({
     if (button(bx, by, bw, 20, 'Singleplayer')) { sfx.init(); openScreen(WorldsScreen()); }
     if (button(bx, by + 24, bw, 20, 'Options...')) { sfx.init(); openScreen(OptionsScreen(() => openScreen(TitleScreen()))); }
     if (button(bx, by + 48, bw, 20, 'How to play')) { sfx.init(); openScreen(ControlsScreen(() => openScreen(TitleScreen()))); }
-    drawText(gctx, 'Blockcraft 1.2', 2, H - 10, '#ffffff');
+    drawText(gctx, 'Blockcraft 1.2.1', 2, H - 10, '#ffffff');
     const t = 'Made by Lars and Noah';
     drawText(gctx, t, W - textWidth(t) - 2, H - 10, '#ffffff');
   },
