@@ -13,7 +13,7 @@ window.GAMES = [
   },
   {
     id: 'block-drop',
-    title: 'Block Drop',
+    title: 'Blocktris',
     category: 'Puzzle',
     description: 'Stack falling blocks, clear lines and survive as the speed climbs.',
     controls: 'Keyboard or touch',
