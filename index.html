@@ -25,7 +25,10 @@
   <p id="empty" class="empty" hidden>No games match that search.</p>
 </main>
 
-<footer class="foot">Made by Lars and Noah · <span id="count"></span></footer>
+<footer class="foot">
+  <p>Made by Lars and Noah · <span id="count"></span></p>
+  <p>Found a bug, or a game won't load? Email <a class="contact"></a></p>
+</footer>
 
 <script src="games.js"></script>
 <script>
@@ -34,6 +37,8 @@ const cats = document.getElementById('cats');
 const search = document.getElementById('search');
 const empty = document.getElementById('empty');
 let active = 'All';
+
+fillContact('Arcade problem');
 
 document.getElementById('count').textContent =
   GAMES.length + (GAMES.length === 1 ? ' game' : ' games');

@@ -27,6 +27,10 @@
   <section id="more" class="grid small"></section>
 </main>
 
+<footer class="foot">
+  <p>Found a bug, or the game won't load? Email <a class="contact"></a></p>
+</footer>
+
 <script src="games.js"></script>
 <script>
 const id = new URLSearchParams(location.search).get('game');
@@ -37,6 +41,7 @@ if (!game) {
 } else {
   document.title = game.title + " · Noah's and Lars's Arcade";
   document.getElementById('title').textContent = game.title;
+  fillContact('Problem with ' + game.title);
   document.getElementById('frame').src = game.path;
   document.getElementById('newtab').href = game.path;
   document.getElementById('hint').textContent =

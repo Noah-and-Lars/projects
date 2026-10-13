@@ -1,3 +1,14 @@
+// Where bug reports go. Split up so simple spam bots scanning the page don't pick it up.
+window.CONTACT_EMAIL = ['jimmyscafe1000', 'gmail.com'].join('@');
+
+// Fills in any "Email us" link on the page, with an optional subject line
+window.fillContact = (subject) => {
+  for (const a of document.querySelectorAll('.contact')) {
+    a.textContent = CONTACT_EMAIL;
+    a.href = 'mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent(subject || "Noah's and Lars's Arcade");
+  }
+};
+
 // The list of games on the arcade. To add a game, put its folder next to this
 // file (with an index.html and a thumb.svg) and add one entry below.
 window.GAMES = [
