@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Projects Arcade</title>
+<title>Noah's and Lars's Arcade</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='2' y='2' width='12' height='12' rx='3' fill='%236c5ce7'/><rect x='6' y='6' width='4' height='4' fill='%23fff'/></svg>">
 <link rel="stylesheet" href="arcade.css">
 </head>
@@ -35,7 +35,7 @@ const game = GAMES.find(g => g.id === id);
 if (!game) {
   location.replace('index.html');
 } else {
-  document.title = game.title + " · Projects Arcade";
+  document.title = game.title + " · Noah's and Lars's Arcade";
   document.getElementById('title').textContent = game.title;
   document.getElementById('frame').src = game.path;
   document.getElementById('newtab').href = game.path;
