@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Game over · Noah's and Lars's Arcade</title>
+<meta name="theme-color" content="#0f0d1f">
+<!-- This page can show up at any address, so every link is from the site root -->
+<link rel="icon" href="/projects/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/projects/arcade.css?v=5">
+<style>
+  .lost { flex: 1; display: grid; place-items: center; text-align: center; padding: 40px 20px; }
+  .lost .code { font: 800 clamp(80px, 22vw, 180px)/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: -0.04em;
+    background: linear-gradient(180deg, #fff, #6c5ce7); -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 60px #6c5ce755; }
+  .lost h1 { margin: 4px 0 8px; font-size: clamp(26px, 5vw, 38px); letter-spacing: .2em; text-transform: uppercase; }
+  .lost p { margin: 0 auto 26px; color: var(--muted); max-width: 420px; }
+  .lost .btn { padding: 12px 24px; font-size: 16px; }
+  .blink { animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .blink { animation: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/projects/"><img class="logo" src="/projects/logo.svg" alt="">Noah's and Lars's Arcade</a>
+</header>
+<main class="lost">
+  <div>
+    <div class="code">404</div>
+    <h1>Game over</h1>
+    <p>There's nothing at this address. The link might have a typo, or the page was moved.</p>
+    <a class="btn" href="/projects/">Insert coin<span class="blink">_</span> Back to the arcade</a>
+  </div>
+</main>
+</body>
+</html>

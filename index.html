@@ -2,10 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Noah's and Lars's Arcade</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='2' y='2' width='12' height='12' rx='3' fill='%236c5ce7'/><rect x='6' y='6' width='4' height='4' fill='%23fff'/></svg>">
-<link rel="stylesheet" href="arcade.css?v=4">
+<meta name="description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups. Just pick a game and play.">
+<meta name="theme-color" content="#0f0d1f">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="N&amp;L Arcade">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Noah's and Lars's Arcade">
+<meta property="og:title" content="Noah's and Lars's Arcade">
+<meta property="og:description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups.">
+<meta property="og:url" content="https://noah-and-lars.github.io/projects/">
+<meta property="og:image" content="https://noah-and-lars.github.io/projects/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="arcade.css?v=5">
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
@@ -45,20 +63,31 @@
 })();
 </script>
 <header class="top">
-  <a class="brand" href="index.html"><span class="logo"></span>Noah's and Lars's Arcade</a>
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">Noah's and Lars's Arcade</a>
   <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
 </header>
 
 <main class="wrap">
-  <section class="hero">
-    <h1>Pick a game. Play instantly.</h1>
-    <p>No downloads, no sign-ups. Everything runs right in your browser.</p>
+  <a id="feature" class="feature"></a>
+
+  <section id="recentWrap" class="section" hidden>
+    <h2 class="sec-h">Continue playing</h2>
+    <div id="recent" class="recent"></div>
   </section>
 
-  <nav id="cats" class="chips" aria-label="Categories"></nav>
+  <section class="section">
+    <div class="sec-bar">
+      <h2 class="sec-h" id="gridTitle">All games</h2>
+      <nav id="cats" class="chips" aria-label="Categories"></nav>
+    </div>
+    <div id="grid" class="grid" aria-live="polite"></div>
+    <p id="empty" class="empty" hidden>No games match that search.</p>
+  </section>
 
-  <section id="grid" class="grid" aria-live="polite"></section>
-  <p id="empty" class="empty" hidden>No games match that search.</p>
+  <section id="newsWrap" class="section news">
+    <h2 class="sec-h">What's new</h2>
+    <ol id="news"></ol>
+  </section>
 </main>
 
 <footer class="foot">
@@ -66,59 +95,112 @@
   <p>Found a bug, or a game won't load? Email <a class="contact"></a></p>
 </footer>
 
-<script src="games.js?v=4"></script>
+<script src="games.js?v=5"></script>
 <script>
-const grid = document.getElementById('grid');
-const cats = document.getElementById('cats');
-const search = document.getElementById('search');
-const empty = document.getElementById('empty');
+const $ = id => document.getElementById(id);
+const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
+const byId = Object.fromEntries(GAMES.map(g => [g.id, g]));
+const TROPHY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 1h8v1h3v2.5A3.5 3.5 0 0 1 11.7 8 4 4 0 0 1 9 10.4V12h2v2H5v-2h2v-1.6A4 4 0 0 1 4.3 8 3.5 3.5 0 0 1 1 4.5V2h3zm8 2.5V6.3A1.5 1.5 0 0 0 13 5V3.5zM4 3.5H3V5a1.5 1.5 0 0 0 1 1.3z"/></svg>';
 let active = 'All';
 
 fillContact('Arcade problem');
+$('count').textContent = GAMES.length + (GAMES.length === 1 ? ' game' : ' games');
 
-document.getElementById('count').textContent =
-  GAMES.length + (GAMES.length === 1 ? ' game' : ' games');
+// Featured: whichever game arrived or changed most recently
+function renderFeature() {
+  const g = [...GAMES].sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))[0];
+  const badge = Arcade.badge(g), stat = Arcade.stat(g);
+  const f = $('feature');
+  f.href = playUrl(g);
+  f.innerHTML = `<img class="feature-art" alt="">
+    <div class="feature-body">
+      <span class="eyebrow"></span>
+      <h1></h1>
+      <p class="feature-tag"></p>
+      <div class="feature-meta"></div>
+      <span class="btn big"><span aria-hidden="true">▶</span> Play now</span>
+    </div>`;
+  f.querySelector('img').src = g.thumb;
+  f.querySelector('.eyebrow').textContent = badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
+  f.querySelector('h1').textContent = g.title;
+  f.querySelector('.feature-tag').textContent = g.tagline;
+  const meta = f.querySelector('.feature-meta');
+  for (const t of [g.category, g.controls]) { const s = document.createElement('span'); s.textContent = t; meta.appendChild(s); }
+  if (stat) { const s = document.createElement('span'); s.className = 'best'; s.innerHTML = TROPHY; s.append(stat); meta.appendChild(s); }
+}
 
-const categories = ['All', ...new Set(GAMES.map(g => g.category))];
-for (const c of categories) {
+function renderRecent() {
+  const list = Arcade.recent(3);
+  $('recentWrap').hidden = !list.length;
+  $('recent').replaceChildren(...list.map(g => {
+    const a = document.createElement('a');
+    a.className = 'mini'; a.href = playUrl(g);
+    a.innerHTML = '<img alt=""><div><b></b><span></span></div><span class="mini-play" aria-hidden="true">▶</span>';
+    a.querySelector('img').src = g.thumb;
+    a.querySelector('b').textContent = g.title;
+    a.querySelector('div span').textContent = Arcade.stat(g) || 'Keep playing';
+    return a;
+  }));
+}
+
+for (const c of ['All', ...new Set(GAMES.map(g => g.category))]) {
   const b = document.createElement('button');
-  b.className = 'chip';
-  b.textContent = c;
+  b.className = 'chip'; b.textContent = c;
   b.onclick = () => { active = c; render(); };
-  cats.appendChild(b);
+  $('cats').appendChild(b);
 }
 
 function tile(g) {
   const a = document.createElement('a');
-  a.className = 'tile';
-  a.href = 'play.html?game=' + encodeURIComponent(g.id);
+  a.className = 'tile'; a.href = playUrl(g);
+  const badge = Arcade.badge(g), stat = Arcade.stat(g);
   a.innerHTML = `
-    <div class="thumb"><img src="${g.thumb}" alt="" loading="lazy">
-      ${g.isNew ? '<span class="badge">NEW</span>' : ''}</div>
+    <div class="thumb"><img alt="" loading="lazy">${badge ? `<span class="badge${badge === 'UPDATED' ? ' upd' : ''}">${badge}</span>` : ''}</div>
     <div class="info">
       <h2></h2>
       <p class="desc"></p>
       <div class="meta"><span class="tag"></span><span class="ctl"></span></div>
+      ${stat ? '<p class="best">' + TROPHY + '<span></span></p>' : ''}
     </div>`;
+  a.querySelector('img').src = g.thumb;
   a.querySelector('h2').textContent = g.title;
   a.querySelector('.desc').textContent = g.description;
   a.querySelector('.tag').textContent = g.category;
   a.querySelector('.ctl').textContent = g.controls;
+  if (stat) a.querySelector('.best span').textContent = stat;
   return a;
 }
 
+function renderNews() {
+  $('news').replaceChildren(...NEWS.slice(0, 5).map(n => {
+    const li = document.createElement('li');
+    const g = byId[n.game];
+    li.innerHTML = '<time></time><a></a>';
+    li.querySelector('time').textContent = new Date(n.date + 'T12:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    const a = li.querySelector('a');
+    a.textContent = n.text;
+    if (g) a.href = playUrl(g); else a.removeAttribute('href');
+    return li;
+  }));
+}
+
 function render() {
-  const q = search.value.trim().toLowerCase();
+  const q = $('search').value.trim().toLowerCase();
   const list = GAMES.filter(g =>
     (active === 'All' || g.category === active) &&
     (!q || (g.title + ' ' + g.description + ' ' + g.category).toLowerCase().includes(q)));
-  grid.replaceChildren(...list.map(tile));
-  empty.hidden = list.length > 0;
-  for (const b of cats.children) b.classList.toggle('on', b.textContent === active);
+  $('grid').replaceChildren(...list.map(tile));
+  $('empty').hidden = list.length > 0;
+  for (const b of $('cats').children) b.classList.toggle('on', b.textContent === active);
+  // while searching, only show the results
+  document.body.classList.toggle('searching', !!q);
+  $('gridTitle').textContent = q ? 'Results' : 'All games';
 }
 
-search.addEventListener('input', render);
-render();
+$('search').addEventListener('input', render);
+renderFeature(); renderRecent(); renderNews(); render();
+// scores change while you play in another tab, so refresh when you come back
+addEventListener('pageshow', () => { renderFeature(); renderRecent(); render(); });
 </script>
 </body>
 </html>

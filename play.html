@@ -2,17 +2,37 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Noah's and Lars's Arcade</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='2' y='2' width='12' height='12' rx='3' fill='%236c5ce7'/><rect x='6' y='6' width='4' height='4' fill='%23fff'/></svg>">
-<link rel="stylesheet" href="arcade.css?v=4">
+<meta name="description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups.">
+<meta name="theme-color" content="#0a0916">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="N&amp;L Arcade">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Noah's and Lars's Arcade">
+<meta property="og:title" content="Noah's and Lars's Arcade">
+<meta property="og:description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups.">
+<meta property="og:image" content="https://noah-and-lars.github.io/projects/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="arcade.css?v=5">
 </head>
 <body class="player">
 <header class="top">
   <a class="back" href="index.html" aria-label="Back to all games">← All games</a>
-  <h1 id="title" class="ptitle"></h1>
+  <div class="ptitle-wrap">
+    <h1 id="title" class="ptitle"></h1>
+    <span id="best" class="pbest" hidden></span>
+  </div>
   <div class="actions">
-    <a id="newtab" class="btn ghost" target="_blank" rel="noopener">Open in new tab</a>
+    <a id="next" class="btn ghost">Next game →</a>
     <button id="fs" class="btn">Fullscreen</button>
   </div>
 </header>
@@ -20,10 +40,22 @@
 <main class="stage-wrap">
   <div id="stage" class="stage">
     <iframe id="frame" title="Game" allowfullscreen></iframe>
+    <div id="loading" class="loading">
+      <img id="loadArt" alt="">
+      <div class="loading-box">
+        <p id="loadText">Loading…</p>
+        <div class="loading-bar"><i></i></div>
+      </div>
+    </div>
   </div>
-  <p id="hint" class="hint"></p>
 
-  <h2 class="more-h">More games</h2>
+  <section class="howto">
+    <h2 class="sec-h">How to play</h2>
+    <ul id="keys" class="keys"></ul>
+    <p class="hint">Click the game if the keys don't respond. <a id="newtab" target="_blank" rel="noopener">Open in its own tab</a></p>
+  </section>
+
+  <h2 class="sec-h more-h">More games</h2>
   <section id="more" class="grid small"></section>
 </main>
 
@@ -31,39 +63,73 @@
   <p>Found a bug, or the game won't load? Email <a class="contact"></a></p>
 </footer>
 
-<script src="games.js?v=4"></script>
+<script src="games.js?v=5"></script>
 <script>
+const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('game');
-const game = GAMES.find(g => g.id === id);
+const index = GAMES.findIndex(g => g.id === id);
+const game = GAMES[index];
 
 if (!game) {
   location.replace('index.html');
 } else {
+  Arcade.markPlayed(game.id);
   document.title = game.title + " · Noah's and Lars's Arcade";
-  document.getElementById('title').textContent = game.title;
+  $('title').textContent = game.title;
   fillContact('Problem with ' + game.title);
-  document.getElementById('frame').src = game.path;
-  document.getElementById('newtab').href = game.path;
-  document.getElementById('hint').textContent =
-    'Controls: ' + game.controls + '. Click the game to give it focus.';
 
-  const stage = document.getElementById('stage');
-  document.getElementById('fs').onclick = () => {
+  // Your best, kept up to date while you play (the game saves it from inside the frame)
+  const showBest = () => {
+    const s = Arcade.stat(game);
+    $('best').hidden = !s;
+    if (s) $('best').textContent = s;
+  };
+  showBest();
+  addEventListener('storage', showBest);
+
+  // Loading screen until the game is ready, then hand it the keyboard
+  const frame = $('frame');
+  $('loadArt').src = game.thumb;
+  $('loadText').textContent = 'Loading ' + game.title + '…';
+  frame.addEventListener('load', () => {
+    $('loading').classList.add('done');
+    try { frame.contentWindow.focus(); } catch (e) {}
+  });
+  frame.src = game.path;
+  $('newtab').href = game.path;
+
+  const next = GAMES[(index + 1) % GAMES.length];
+  $('next').href = 'play.html?game=' + encodeURIComponent(next.id);
+  $('next').title = 'Play ' + next.title;
+
+  for (const [k, what] of game.keys || []) {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="kbds"></span><span></span>';
+    for (const part of k.split(' / ')) {
+      const kbd = document.createElement('kbd');
+      kbd.textContent = part;
+      li.firstChild.append(kbd);
+    }
+    li.lastChild.textContent = what;
+    $('keys').appendChild(li);
+  }
+
+  const stage = $('stage');
+  $('fs').onclick = () => {
     if (document.fullscreenElement) document.exitFullscreen();
     else (stage.requestFullscreen || stage.webkitRequestFullscreen).call(stage);
   };
 
-  const more = document.getElementById('more');
   for (const g of GAMES.filter(g => g.id !== id)) {
     const a = document.createElement('a');
     a.className = 'tile';
     a.href = 'play.html?game=' + encodeURIComponent(g.id);
-    a.innerHTML = '<div class="thumb"><img alt="" loading="lazy"></div><div class="info"><h2></h2></div>';
+    a.innerHTML = '<div class="thumb"><img alt="" loading="lazy"></div><div class="info"><h2></h2><p class="desc"></p></div>';
     a.querySelector('img').src = g.thumb;
     a.querySelector('h2').textContent = g.title;
-    more.appendChild(a);
+    a.querySelector('.desc').textContent = Arcade.stat(g) || g.tagline;
+    $('more').appendChild(a);
   }
-  if (!more.children.length) document.querySelector('.more-h').hidden = true;
 }
 </script>
 </body>

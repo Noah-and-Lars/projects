@@ -11,11 +11,22 @@ source in Settings → Pages should be switched to `main`.
 
 ## Layout
 
-- `index.html`: home page with a game tile grid, search and category filters.
-- `play.html?game=<id>`: plays a game in an iframe with fullscreen and a
-  "more games" row.
-- `games.js`: the list of games. One entry per game (id, title, category,
-  description, controls, path, thumb, isNew).
+- `index.html`: home page. Intro animation (once per visit), a featured-game
+  banner (the most recently added or updated game), "Continue playing", the
+  game grid with search and category filters, and "What's new".
+- `play.html?game=<id>`: plays a game in an iframe with a loading screen,
+  the player's best next to the title, "How to play" keys, Next game,
+  fullscreen and a "more games" row. Opening it marks the game as played.
+- `games.js`: the list of games and the site's shared helpers. Each game has
+  id, title, category, tagline, description, controls, keys, path, thumb,
+  added and updated (ISO times; they drive the NEW / UPDATED badges) and
+  stat(), which reads the player's best from what the game already saves in
+  localStorage. `NEWS` is the What's new list. `Arcade` tracks what this
+  browser has played. The site only reads game saves, never changes them.
+- `404.html`: "Game over" page GitHub Pages shows for missing addresses. It
+  uses /projects/ absolute links because it can appear at any path.
+- `logo.svg`, `icon-*.png`, `apple-touch-icon.png`, `manifest.webmanifest`:
+  logo and home-screen app icons. `og.png` is the preview image for shared links.
 - `arcade.css`: shared styles for the two pages above.
   Both pages load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
   files for 10 minutes, so bump N in both pages whenever either file changes.
@@ -42,7 +53,8 @@ source in Settings → Pages should be switched to `main`.
 
 1. Make a folder with a single self-contained `index.html` (no build step, no
    external servers) and a `thumb.svg`.
-2. Add an entry to `games.js`.
+2. Add an entry to `games.js` (with added/updated times, keys and a stat()
+   reader if the game saves a best), and a line at the top of `NEWS`.
 3. Add a row to the games table in `README.md`.
 4. Test it in a browser, including a phone-sized viewport.
 
