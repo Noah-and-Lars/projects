@@ -6,6 +6,8 @@ A first-person 3D shooter in a single HTML file. Defend a village from waves of 
 
 Download `index.html` and open it in Chrome, Edge, Firefox or Safari. It works offline: the 3D engine and fonts are built into the file. You need a keyboard and mouse.
 
+When you're online, the home screen shows how many people are playing right now. Offline, or on a network that blocks it, the counter just doesn't appear.
+
 The first time you play, the game asks for your name. Press Play, then pick a map:
 
 - **Classic Village**: the original walled village. Small, tight and fast.
