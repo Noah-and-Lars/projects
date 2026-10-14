@@ -69,7 +69,7 @@
 
 <div id="popup" class="popup" role="status" hidden>
   <span class="popup-badge">Update</span>
-  <a class="popup-text" href="play.html?game=free-criminal"><b>New Free Criminal update!</b> <span>Version 1.2: drag drivers out of their cars, dodge police vision cones, and explore a countryside full of homes.</span></a>
+  <a class="popup-text" href="play.html?game=free-criminal"><b>Free Criminal 1.4 is out!</b> <span>A world 7 times bigger, a giant bridge to an island, buildings to rob, safehouses, day and night, and touch controls.</span></a>
   <a class="popup-play" href="play.html?game=free-criminal">Play</a>
   <button class="popup-x" type="button" aria-label="Close">×</button>
 </div>
@@ -102,7 +102,7 @@
   <p>Found a bug, or a game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=26"></script>
+<script src="games.js?v=27"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
@@ -208,7 +208,7 @@ $('search').addEventListener('input', render);
 
 // Update popup at the top. Change POPUP_ID (and the text above) to announce something new; closing it hides that one for good.
 (() => {
-  const POPUP_ID = 'free-criminal-1.2', pop = $('popup');
+  const POPUP_ID = 'free-criminal-1.4', pop = $('popup');
   if (readSave('arcade-popup-closed') === POPUP_ID) return;
   pop.hidden = false;
   pop.querySelector('.popup-x').onclick = () => {
