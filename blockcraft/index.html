@@ -12,6 +12,7 @@
   #gui { z-index:2; image-rendering:pixelated; image-rendering:crisp-edges; }
   #cross { position:fixed; left:50%; top:50%; z-index:1; mix-blend-mode:difference; pointer-events:none; display:none; }
   #cross i { position:absolute; background:#fff; }
+  #vig { position:fixed; inset:0; z-index:1; pointer-events:none; display:none; background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.32) 100%); }
   .field {
     position:fixed; z-index:3; display:none; box-sizing:border-box; margin:0; padding:0 8px;
     background:#000; color:#e0e0e0; border:2px solid #a0a0a0; border-radius:0; outline:none;
@@ -24,6 +25,7 @@
 </head>
 <body>
 <canvas id="gl"></canvas>
+<div id="vig"></div>
 <div id="cross"><i></i><i></i></div>
 <canvas id="gui"></canvas>
 <input id="field1" class="field" maxlength="32" autocomplete="off" spellcheck="false">
@@ -148,7 +150,7 @@ class Noise {
 // =====================================================================
 // Block ids are saved in worlds, so new blocks must only ever be added at the END of the list.
 const AIR = 0;
-const SHAPE = { NONE: 0, CUBE: 1, CROSS: 2, TORCH: 3, LIQUID: 4, CACTUS: 5, PANEL: 6 };
+const SHAPE = { NONE: 0, CUBE: 1, CROSS: 2, TORCH: 3, LIQUID: 4, CACTUS: 5, PANEL: 6, LOW: 7 }; // LOW: 15/16 tall (farmland, paths)
 const PASS = { OPAQUE: 0, CUTOUT: 1, TRANS: 2 };
 const TINT = { NONE: 0, GRASS: 1, FOLIAGE: 2, BIRCH: 3, SPRUCE: 4, WATER: 5 };
 // faces: 0 east +x, 1 west -x, 2 top +y, 3 bottom -y, 4 south +z, 5 north -z
@@ -237,7 +239,7 @@ B('ice', { pass: PASS.TRANS, opaque: false, lop: 2, hardness: 0.5, tool: 'pickax
 B('clay', { hardness: 0.6, tool: 'shovel', sound: 'gravel', drop: () => [[IT.clay_ball, 4]] });
 B('cactus', { shape: SHAPE.CACTUS, opaque: false, lop: 0, tex: { top: 'cactus_top', bottom: 'cactus_bottom', side: 'cactus_side' }, hardness: 0.4, sound: 'wool', place: 'cactus', hurts: true });
 B('dead_bush', { ...PLANT, place: 'sandy', drop: r => r() < 0.5 ? [[IT.stick, 1]] : [], replaceable: true });
-B('short_grass', { ...PLANT, tint: TINT.GRASS, drop: r => r() < 0.1 ? [[IT.wheat, 1]] : [], replaceable: true, display: 'Grass' });
+B('short_grass', { ...PLANT, tint: TINT.GRASS, drop: r => r() < 0.125 ? [[IT.wheat_seeds, 1]] : [], replaceable: true, display: 'Grass' });
 B('fern', { ...PLANT, tint: TINT.GRASS, drop: () => [], replaceable: true });
 B('dandelion', { ...PLANT });
 B('poppy', { ...PLANT });
@@ -293,6 +295,14 @@ B('ladder_w', { shape: SHAPE.PANEL, pass: PASS.CUTOUT, solid: false, opaque: fal
 for (const n of ['ladder_n', 'ladder_s', 'ladder_e', 'ladder_w']) CLIMB[BL[n]] = 1;
 B('moss_block', { hardness: 0.1, tool: 'hoe', sound: 'grass' });
 B('packed_ice', { ...STONEY, tier: -1, hardness: 0.5, sound: 'glass', drop: () => [] });
+// farming: a hoe turns dirt into farmland, a shovel makes paths, seeds grow into wheat
+const LOWB = { shape: SHAPE.LOW, opaque: false, tool: 'shovel', drop: () => [[BL.dirt, 1]] };
+B('farmland', { ...LOWB, tex: { top: 'farmland', side: 'dirt', bottom: 'dirt' }, hardness: 0.6, sound: 'gravel' });
+B('farmland_moist', { ...LOWB, tex: { top: 'farmland_moist', side: 'dirt', bottom: 'dirt' }, hardness: 0.6, sound: 'gravel', display: 'Farmland', noItem: true });
+B('dirt_path', { ...LOWB, tex: { top: 'dirt_path_top', side: 'dirt_path_side', bottom: 'dirt' }, hardness: 0.65, sound: 'grass' });
+for (let i = 0; i < 8; i++) B('wheat_' + i, { ...PLANT, tex: 'wheat_stage_' + i, crop: i, noItem: true, display: 'Wheat Crops',
+  drop: r => i < 7 ? [[IT.wheat_seeds, 1]] : [[IT.wheat, 1], [IT.wheat_seeds, 1 + Math.floor(r() * 3)]] });
+const isFarmland = id => id === BL.farmland || id === BL.farmland_moist;
 
 // Resolve names used before every block was defined
 for (const d of BLOCKS) if (d && typeof d.item === 'string') d.item = BL[d.item];
@@ -334,6 +344,7 @@ for (const [mat, tier, speed, dur, dmg] of TOOL_MATS) {
     I(mat + '_' + type, { stack: 1, tool: type, tier, speed, durability: dur, damage: Math.max(1, dmg + TOOL_TYPES[type] + (type === 'axe' ? 2 : 0)), mat });
   }
 }
+I('wheat_seeds');
 for (const d of ITEMS) if (d && d.food) d.foodHunger = d.food[0];
 
 const itemDef = id => id < 256 ? BLOCKS[id] : ITEMS[id];
@@ -701,6 +712,32 @@ for (const [w, c] of Object.entries(WOODS)) {
     });
   });
 }
+
+// ---------- Farming ----------
+TEXDEF('farmland', (img, r) => {
+  const f = field(r, [[8, 8, 1]]);
+  img.each((x, y) => { const furrow = y % 4 === 0 ? 0.72 : y % 4 === 1 ? 1.08 : 1; img.set(x, y, shadeC(pick(DIRT_PAL, clamp(f[y * 16 + x] * 0.4 + r() * 0.6, 0, 0.999)), furrow * 0.95)); });
+});
+TEXDEF('farmland_moist', (img, r) => { TEXGEN.farmland(img, mulberry32(hashStr('farmland'))); img.each((x, y) => img.set(x, y, shadeC(img.get(x, y), 0.6))); });
+const PATH_PAL = PAL(['#7a5c30', '#86683a', '#927242', '#9d7c49', '#a8864f']);
+TEXDEF('dirt_path_top', (img, r) => { const f = field(r, [[6, 6, 1]]); img.each((x, y) => img.set(x, y, pick(PATH_PAL, clamp(f[y * 16 + x] * 0.45 + r() * 0.55, 0, 0.999)))); });
+TEXDEF('dirt_path_side', (img, r) => {
+  TEXGEN.dirt(img, mulberry32(hashStr('dirt')));
+  for (let x = 0; x < 16; x++) { const h = 2 + (r() < 0.4 ? 1 : 0); for (let y = 0; y < h; y++) img.set(x, y, pick(PATH_PAL, r() * 0.999)); }
+});
+for (let i = 0; i < 8; i++) TEXDEF('wheat_stage_' + i, (img, r) => {
+  img.each((x, y) => img.clear(x, y));
+  const ripe = i === 7, green = PAL(i < 4 ? ['#2d7a17', '#3a8f22', '#4aa52c', '#5cb836'] : ['#5d8f22', '#73a02c', '#8aad36', '#9fb840']);
+  const stalk = PAL(['#8a7a2a', '#9c8a32', '#ae9b3c']), ear = PAL(['#b48a24', '#c99e2e', '#dcb43c', '#e8c552']);
+  const H = Math.round(2 + i * 13 / 7);
+  for (let x = 1; x < 16; x += 2) {
+    const h = clamp(H + Math.floor(r() * 3) - 1, 1, 15), lean = r() < 0.5 ? -1 : 1;
+    for (let k = 0; k < h; k++) {
+      const y = 15 - k, xx = clamp(x + (k > h * 0.65 && r() < 0.5 ? lean : 0), 0, 15);
+      img.set(xx, y, ripe ? (k >= h - 4 ? pick(ear, r()) : pick(stalk, r())) : pick(green, clamp(k / Math.max(1, h) * 0.7 + r() * 0.3, 0, 0.999)));
+    }
+  }
+});
 
 // ---------- Plants ----------
 const LEAF_GRAY = PAL(['#4f4f4f', '#636363', '#787878', '#8c8c8c', '#a0a0a0']);
@@ -1085,6 +1122,10 @@ SPRDEF('steak', (img, r) => { blob(img, r, 8, 8, 6, 5, PAL(['#a86a3a', '#8a5028'
 function drumstick(img, r, pal) { blob(img, r, 6.5, 6.5, 4.5, 4.5, PAL(pal)); for (let i = 0; i < 5; i++) { img.set(9 + i, 9 + i, hexc('#f2f2e6')); img.set(10 + i, 9 + i, hexc('#d6d6c8')); } img.set(14, 13, hexc('#f2f2e6')); img.set(13, 14, hexc('#f2f2e6')); }
 SPRDEF('raw_chicken', (img, r) => drumstick(img, r, ['#fcd9c8', '#f2bca5', '#e09a80', '#c27a62']));
 SPRDEF('cooked_chicken', (img, r) => drumstick(img, r, ['#f0c070', '#d89a40', '#b87428', '#8a5218']));
+SPRDEF('wheat_seeds', (img, r) => {
+  for (const [x, y] of [[5, 6], [9, 5], [7, 9], [11, 9], [4, 11], [9, 12], [6, 4]]) { img.set(x, y, hexc(r() < 0.5 ? '#3f8f2a' : '#6b9a3a')); img.set(x + 1, y, hexc('#2e6a1e')); img.set(x, y + 1, hexc('#4f7a26')); }
+  outline(img, [30, 50, 12]);
+});
 SPRDEF('bread', (img, r) => { blob(img, r, 8, 9, 7, 3.8, PAL(['#e8b868', '#c88a3a', '#a86a24', '#7a4a14'])); for (let x = 4; x < 13; x += 3) img.set(x, 7, hexc('#f5d89a')); });
 SPRDEF('feather', img => { for (let i = 0; i < 11; i++) { img.set(3 + i, 13 - i, hexc('#d0d0d0')); img.set(4 + i, 13 - i, hexc('#ffffff')); img.set(4 + i, 12 - i, hexc('#f0f0f0')); if (i > 2) img.set(5 + i, 13 - i, hexc('#e0e0e0')); } outline(img, [90, 90, 90]); });
 SPRDEF('bone', img => { for (let i = 0; i < 9; i++) { img.set(4 + i, 11 - i, hexc('#f2f2e6')); img.set(5 + i, 11 - i, hexc('#d6d6c8')); } for (const [x, y] of [[3, 11], [4, 12], [3, 12], [13, 3], [12, 2], [13, 2]]) img.set(x, y, hexc('#f2f2e6')); outline(img, [90, 90, 80]); });
@@ -1135,7 +1176,7 @@ function buildSprites() {
   }
   // flat sprites for block items that aren't cubes (flowers, torches, ladders, saplings...)
   for (const d of BLOCKS) {
-    if (!d || !d.faces || d.shape === SHAPE.CUBE || d.shape === SHAPE.CACTUS || d.shape === SHAPE.LIQUID) continue;
+    if (!d || !d.faces || d.shape === SHAPE.CUBE || d.shape === SHAPE.CACTUS || d.shape === SHAPE.LOW || d.shape === SHAPE.LIQUID) continue;
     const img = new Pix().copyFrom(TEX_PIX[d.layers[0]]);
     if (d.tint) { const tc = tintColor(d.tint, 0); img.each((x, y) => { if (img.a(x, y)) img.set(x, y, [img.get(x, y)[0] * tc[0] / 255, img.get(x, y)[1] * tc[1] / 255, img.get(x, y)[2] * tc[2] / 255], img.a(x, y)); }); }
     SPRITES[d.id] = img;
@@ -1403,8 +1444,10 @@ class Gen {
       if (above !== AIR) continue;
       const r = hrand(seed ^ 0x9a55, wx, h, wz);
       if (below === B_.grass_block) {
-        const grass = { [BIO.PLAINS]: 0.3, [BIO.MEADOW]: 0.45, [BIO.FOREST]: 0.16, [BIO.BIRCH]: 0.18, [BIO.TAIGA]: 0.2, [BIO.MOUNTAINS]: 0.1 }[b] || 0.05;
-        const flowers = { [BIO.PLAINS]: 0.035, [BIO.MEADOW]: 0.12, [BIO.FOREST]: 0.02, [BIO.BIRCH]: 0.02 }[b] || 0;
+        // grass grows in patches rather than an even carpet
+        const patch = clamp(0.45 + this.nFlower.noise2(wx / 7 + 311, wz / 7 - 97) * 0.9, 0, 1);
+        const grass = ({ [BIO.PLAINS]: 0.3, [BIO.MEADOW]: 0.32, [BIO.FOREST]: 0.16, [BIO.BIRCH]: 0.18, [BIO.TAIGA]: 0.2, [BIO.MOUNTAINS]: 0.1 }[b] || 0.05) * patch;
+        const flowers = { [BIO.PLAINS]: 0.012, [BIO.MEADOW]: 0.05, [BIO.FOREST]: 0.012, [BIO.BIRCH]: 0.012 }[b] || 0;
         if (r < flowers) {
           const f = this.nFlower.noise2(wx / 30, wz / 30);
           setL(wx, h + 1, wz, f > 0.35 ? B_.poppy : f > -0.1 ? B_.dandelion : f > -0.45 ? B_.oxeye_daisy : B_.cornflower);
@@ -1819,6 +1862,7 @@ function meshSection(world, c, sy) {
     else if (shape === SHAPE.TORCH) torchModel(def, p, x, y, z);
     else if (shape === SHAPE.CACTUS) cactusModel(def, p, x, y, z);
     else if (shape === SHAPE.PANEL) panelModel(def, p, x, y, z);
+    else if (shape === SHAPE.LOW) lowModel(def, p, x, y, z);
   }
   return bufs.map(b => b.geometry());
 }
@@ -1835,7 +1879,8 @@ function cubeFaces(def, id, p, x, y, z, tints, base, world) {
     const op = p + FACE_OUT[f], nid = PAD_B[op];
     if (OPAQUE[nid]) continue;
     if (nid === id && (SELFCULL[id] || (leaves && !fancyLeaves))) continue;
-    if (def.pass === PASS.TRANS && LIQUID[nid] && def.liquid !== LIQUID[nid]) { /* ice next to water still drawn */ }
+    // see-through blocks (ice) don't draw the face they share with water: see-through faces aren't depth-sorted, so it would paint over the top
+    if (def.pass === PASS.TRANS && LIQUID[nid] === 1) continue;
     const corners = FACE_CORNERS[f], aoOff = AO_OFF[f], fs = FACE_SHADE[f];
     const tintAll = def.tint && (!def.tintTop || f === 2);
     const over = def.overLayer !== 255 && f !== 2 && f !== 3 ? def.overLayer : 255;
@@ -1871,7 +1916,7 @@ function crossModel(def, p, x, y, z, tints, base) {
   const wx = base[0] + x, wz = base[2] + z;
   // a little random nudge so grass and flowers don't line up in a grid
   let ox = 0, oz = 0;
-  if (def.replaceable || (def.needsSoil && !def.sapling && def.name !== 'sugar_cane')) { const h = ihash(77, wx, 0, wz); ox = ((h & 15) / 15 - 0.5) * 0.35; oz = (((h >> 4) & 15) / 15 - 0.5) * 0.35; }
+  if (def.replaceable || (def.needsSoil && !def.sapling && def.crop === undefined && def.name !== 'sugar_cane')) { const h = ihash(77, wx, 0, wz); ox = ((h & 15) / 15 - 0.5) * 0.35; oz = (((h >> 4) & 15) / 15 - 0.5) * 0.35; }
   const [s, b] = lightOf(p);
   const tc0 = def.tint ? tintAt(tints, def.tint, x, z) : WHITE, tcopy = [tc0[0], tc0[1], tc0[2]];
   const layer = def.layers[0], flags = def.tint ? FLAG_TINT : 0, sh = 230;
@@ -1954,6 +1999,20 @@ function cactusModel(def, p, x, y, z) {
     buf.quad(false);
   }
 }
+function lowModel(def, p, x, y, z) {
+  // a block 15/16 tall; the sides show the top 15 rows of their texture, like Minecraft
+  const buf = bufs[PASS.OPAQUE], top = 15 / 16;
+  for (let f = 0; f < 6; f++) {
+    const op = p + FACE_OUT[f], nid = PAD_B[op];
+    if (f !== 2 && OPAQUE[nid]) continue;
+    const [s, b] = lightOf(op), corners = FACE_CORNERS[f], side = f !== 2 && f !== 3;
+    for (let k = 0; k < 4; k++) {
+      const cn = corners[k];
+      buf.vert(x + cn[0], y + cn[1] * top, z + cn[2], FACE_UV[k][0], side ? 1 / 16 + FACE_UV[k][1] * top : FACE_UV[k][1], def.layers[f], 255, 0, Math.round(FACE_SHADE[f] * 255), WHITE, s, b);
+    }
+    buf.quad(false);
+  }
+}
 function panelModel(def, p, x, y, z) {
   // a flat picture just in front of the wall it hangs on (ladders); the cutout material shows both sides
   const buf = bufs[PASS.CUTOUT], n = FACE_DIRS[def.wallFace], [s, b] = lightOf(p), d = 1 / 16;
@@ -1978,6 +2037,7 @@ function blockGeometry(id) {
   const fakeWorld = { metaAt: () => null };
   if (shape === SHAPE.CUBE) cubeFaces(def, id, p, 0, 0, 0, tints, [0, 0, 0], fakeWorld);
   else if (shape === SHAPE.CACTUS) cactusModel(def, p, 0, 0, 0);
+  else if (shape === SHAPE.LOW) lowModel(def, p, 0, 0, 0);
   else if (shape === SHAPE.LIQUID) liquidFaces(def, id, p, 0, 0, 0, tints);
   const geoms = bufs.map(b => b.geometry());
   return geoms;
@@ -2117,8 +2177,8 @@ const moonTex = canvasTex(32, 32, g => {
   g.fillStyle = '#e8ecf4'; g.fillRect(9, 9, 14, 14);
   g.fillStyle = '#b8c0d0'; for (const [x, y, s] of [[11, 11, 3], [17, 13, 4], [13, 18, 2], [19, 19, 2]]) g.fillRect(x, y, s, s);
 });
-const sunMesh = new THREE.Mesh(new THREE.PlaneGeometry(130, 130), new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false }));
-const moonMesh = new THREE.Mesh(new THREE.PlaneGeometry(110, 110), new THREE.MeshBasicMaterial({ map: moonTex, transparent: true, depthWrite: false, depthTest: false, fog: false }));
+const sunMesh = new THREE.Mesh(new THREE.PlaneGeometry(130, 130), new THREE.MeshBasicMaterial({ map: sunTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+const moonMesh = new THREE.Mesh(new THREE.PlaneGeometry(110, 110), new THREE.MeshBasicMaterial({ map: moonTex, transparent: true, depthWrite: false, fog: false }));
 sunMesh.renderOrder = moonMesh.renderOrder = -9;
 scene.add(sunMesh, moonMesh);
 const starGeo = new THREE.BufferGeometry();
@@ -2127,7 +2187,7 @@ const starGeo = new THREE.BufferGeometry();
   for (let i = 0; i < 1400; i++) { const v = new V3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1).normalize().multiplyScalar(800); a.push(v.x, v.y, v.z); }
   starGeo.setAttribute('position', new THREE.Float32BufferAttribute(a, 3));
 }
-const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, depthWrite: false, depthTest: false, fog: false }));
+const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, depthWrite: false, fog: false }));
 stars.renderOrder = -9; stars.frustumCulled = false;
 scene.add(stars);
 
@@ -2272,7 +2332,7 @@ function spriteGeometry(img) {
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   return g;
 }
-const isCubeItem = id => id < 256 && BLOCKS[id] && (BLOCKS[id].shape === SHAPE.CUBE || BLOCKS[id].shape === SHAPE.CACTUS);
+const isCubeItem = id => id < 256 && BLOCKS[id] && (BLOCKS[id].shape === SHAPE.CUBE || BLOCKS[id].shape === SHAPE.CACTUS || BLOCKS[id].shape === SHAPE.LOW);
 // Returns a fresh Object3D for an item, plus a function to set its brightness
 function makeItemModel(id) {
   let entry = itemGeomCache.get(id);
@@ -2351,6 +2411,7 @@ function damageHeld(n = 1) {
 const SHAPE_BOX = id => {
   const d = BLOCKS[id];
   if (d.shape === SHAPE.CACTUS) return [1 / 16, 0, 1 / 16, 15 / 16, 1, 15 / 16];
+  if (d.shape === SHAPE.LOW) return [0, 0, 0, 1, 15 / 16, 1];
   return null;
 };
 function blockedAt(world, x, y, z) { const id = world.get(x, y, z); return id < 0 || SOLID[id]; }
@@ -2438,7 +2499,7 @@ function updatePlayerPhysics(world, dt) {
   }
 
   // stuck inside a block (it was placed on you, or you loaded in badly): climb out
-  if (boxHasBlock(world, p.x - 0.29, p.y + 0.01, p.z - 0.29, p.x + 0.29, p.y + Math.min(player.height, 1.0), p.z + 0.29, id => id > 0 && SOLID[id])) {
+  if (boxHasBlock(world, p.x - 0.29, p.y + 0.01, p.z - 0.29, p.x + 0.29, p.y + Math.min(player.height, 1.0), p.z + 0.29, (id, x, y) => id > 0 && SOLID[id] && y + (SHAPE_BOX(id) ? SHAPE_BOX(id)[4] : 1) > p.y + 0.01)) {
     for (let k = 1; k < 6; k++) {
       const ny = Math.floor(p.y) + k;
       if (!boxHasBlock(world, p.x - 0.29, ny + 0.01, p.z - 0.29, p.x + 0.29, ny + player.height, p.z + 0.29, id => id < 0 || SOLID[id])) { p.y = ny; v.y = 0; break; }
@@ -2458,7 +2519,19 @@ function updatePlayerPhysics(world, dt) {
       const nx = axis === 0 ? p.x + d : p.x, nz = axis === 2 ? p.z + d : p.z;
       if (!supported(world, nx, nz)) { if (axis === 0) v.x = 0; else v.z = 0; continue; }
     }
-    if (sweep(world, axis, d)) { if (axis === 0) v.x = 0; else v.z = 0; if (player.sprinting && !fly) player.sprinting = false; }
+    const sx = p.x, sz = p.z;
+    if (sweep(world, axis, d)) {
+      // Minecraft's step height: walk straight up ledges lower than 0.6 (paths, farmland) without jumping
+      let stepped = false;
+      if (player.onGround && !fly) {
+        const bx = p.x, by = p.y, bz = p.z;
+        p.x = sx; p.z = sz;
+        sweep(world, 1, 0.6); sweep(world, axis, d); sweep(world, 1, -0.6);
+        if (Math.abs(axis === 0 ? p.x - sx : p.z - sz) > Math.abs(axis === 0 ? bx - sx : bz - sz) + 1e-4 && p.y - by < 0.6) stepped = true;
+        else p.set(bx, by, bz);
+      }
+      if (!stepped) { if (axis === 0) v.x = 0; else v.z = 0; if (player.sprinting && !fly) player.sprinting = false; }
+    }
   }
   if (fly && player.onGround && !creative()) player.flying = false;
   if (fly && player.onGround && input.sneak) player.flying = false;
@@ -2467,7 +2540,7 @@ function updatePlayerPhysics(world, dt) {
   if (player.onGround || player.inWater || fly || player.onLadder) {
     if (player.fallStart !== null && player.onGround && !player.inWater && !fly) {
       const fell = player.fallStart - p.y;
-      if (fell > 3.5 && !player.inWater) { hurt(Math.floor(fell - 3), 'fall'); sfx.play(fell > 6 ? 'fall_big' : 'fall_small'); }
+      if (fell > 3.01 && !player.inWater) { hurt(Math.ceil(fell - 3), 'fall'); /* Minecraft: ceil(distance - 3) */ sfx.play(fell > 6 ? 'fall_big' : 'fall_small'); }
     }
     player.fallStart = player.onGround || player.inWater || fly || player.onLadder ? null : player.fallStart;
   } else if (v.y < 0 && player.fallStart === null) player.fallStart = p.y;
@@ -2542,6 +2615,7 @@ function pickBox(id) {
   }
   if (d.shape === SHAPE.PANEL) { const n = FACE_DIRS[d.wallFace]; return [n[0] > 0 ? 13 / 16 : 0, 0, n[2] > 0 ? 13 / 16 : 0, n[0] < 0 ? 3 / 16 : 1, 1, n[2] < 0 ? 3 / 16 : 1]; }
   if (d.shape === SHAPE.CACTUS) return [1 / 16, 0, 1 / 16, 15 / 16, 1, 15 / 16];
+  if (d.shape === SHAPE.LOW) return [0, 0, 0, 1, 15 / 16, 1];
   return [0, 0, 0, 1, 1, 1];
 }
 function rayBox(o, d, b, maxT) {
@@ -2637,6 +2711,7 @@ function breakBlock(world, x, y, z, entities) {
 function needsSupport(world, x, y, z) {
   const id = world.get(x, y, z); if (id <= 0) return false;
   const d = BLOCKS[id];
+  if (d.crop !== undefined) return !isFarmland(world.get(x, y - 1, z));
   if (d.shape === SHAPE.CROSS || (d.shape === SHAPE.TORCH && d.wall === undefined)) { const b = world.get(x, y - 1, z); return !(b > 0 && (SOLID[b] || (id === BL.sugar_cane && b === BL.sugar_cane))); }
   if (d.wall !== undefined) { const n = FACE_DIRS[d.wall], b = world.get(x + n[0], y + n[1], z + n[2]); return !(b > 0 && SOLID[b]); }
   if (d.shape === SHAPE.PANEL) { const n = FACE_DIRS[d.wallFace], b = world.get(x + n[0], y, z + n[2]); return !(b > 0 && SOLID[b]); }
@@ -2998,7 +3073,7 @@ class Entities {
     if (e.pickup <= 0 && !player.dead) {
       // like Minecraft: anything within about a block of your body gets picked up
       const dy = e.pos.y - player.pos.y;
-      if (Math.abs(e.pos.x - player.pos.x) < 1.3 && Math.abs(e.pos.z - player.pos.z) < 1.3 && dy > -1.4 && dy < 2.4) {
+      if (Math.abs(e.pos.x - player.pos.x) < 1.3 + e.hw && Math.abs(e.pos.z - player.pos.z) < 1.3 + e.hw && dy > -1.4 && dy < 2.4) { // Minecraft: player box grown by 1, touching the item's box
         const left = addItem(player.inv, e.id, e.count, e.dmg);
         if (left < e.count) { sfx.play('pop'); }
         if (left <= 0) this.remove(e); else e.count = left;
@@ -3033,6 +3108,8 @@ class Entities {
     }
     const toP = new V3(player.pos.x - p.x, 0, player.pos.z - p.z), dist = toP.length();
     if (dist > 96) { this.remove(e); return; }
+    // far-away monsters wander off now and then (Minecraft: 1 in 800 ticks beyond 32 blocks)
+    if (def.hostile && dist > 32 && Math.random() < dt / 40) { this.remove(e); return; }
     let move = 0, speed = def.speed;
     const inWater = LIQUID[inside] === 1;
     // decide where to go
@@ -3120,29 +3197,40 @@ class Entities {
       const sx = x + Math.floor(Math.random() * 4) - 2, sz = z + Math.floor(Math.random() * 4) - 2;
       for (let y = WH - 2; y > SEA - 2; y--) {
         const id = this.world.get(sx, y, sz);
-        if (id === BL.grass_block || id === BL.snowy_grass_block) { if (this.world.get(sx, y + 1, sz) === AIR && this.world.get(sx, y + 2, sz) === AIR) this.spawnMob(type, sx + 0.5, y + 1, sz + 0.5); break; }
+        if (id === BL.grass_block || id === BL.snowy_grass_block) { if (this.roomAt(sx, y + 1, sz)) this.spawnMob(type, sx + 0.5, y + 1, sz + 0.5); break; }
         if (id > 0 && SOLID[id]) break;
       }
     }
   }
+  // two blocks a mob can stand in: air or plants, not water or anything solid
+  roomAt(x, y, z) {
+    for (let k = 0; k < 2; k++) { const id = this.world.get(x, y + k, z); if (id < 0 || (id > 0 && (SOLID[id] || LIQUID[id]))) return false; }
+    return true;
+  }
   spawnMonsters(dt, daylight) {
     this.spawnT -= dt;
     if (this.spawnT > 0) return;
-    this.spawnT = 1;
+    this.spawnT = 0.5;
     const hostile = this.list.filter(e => e.type === 'mob' && e.def.hostile).length;
-    if (hostile >= 14) return;
-    const w = this.world, a = Math.random() * Math.PI * 2, r = 24 + Math.random() * 24;
-    const x = Math.floor(player.pos.x + Math.cos(a) * r), z = Math.floor(player.pos.z + Math.sin(a) * r);
-    const yStart = Math.min(WH - 3, Math.floor(player.pos.y) + 16);
-    for (let y = yStart; y > Math.max(1, player.pos.y - 24); y--) {
-      const id = w.get(x, y, z);
-      if (id < 0) return;
-      if (id > 0 && SOLID[id] && OPAQUE[id] && w.get(x, y + 1, z) === AIR && w.get(x, y + 2, z) === AIR) {
-        const [s, b] = w.lightAt(x, y + 1, z);
-        if (b > 0 || s * daylight > 6) return;
+    // Minecraft allows 70 monsters across 17x17 chunks; scale that to the area loaded around the player
+    const cap = clamp(Math.round(70 * Math.PI * (OPT.renderDist * 16) ** 2 / (17 * 17 * 256)), 6, 40);
+    if (hostile >= cap) return;
+    // like Minecraft: anywhere dark enough (block light 0, and night or underground), 24+ blocks from the player
+    const w = this.world, reach = Math.max(28, Math.min(56, OPT.renderDist * 16 - 4)), py = Math.floor(player.pos.y);
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const a = Math.random() * Math.PI * 2, r = 24 + Math.random() * (reach - 24);
+      const x = Math.floor(player.pos.x + Math.cos(a) * r), z = Math.floor(player.pos.z + Math.sin(a) * r);
+      let y = clamp(py - 32 + Math.floor(Math.random() * 56), 2, WH - 4);
+      for (let k = 0; k < 16; k++, y--) {
+        const id = w.get(x, y, z);
+        if (id < 0) break;
+        if (!(id > 0 && SOLID[id] && OPAQUE[id]) || !this.roomAt(x, y + 1, z)) continue;
+        const [sl, bl] = w.lightAt(x, y + 1, z);
+        if (bl > 0 || sl * daylight > 4) break;
+        if (Math.hypot(x + 0.5 - player.pos.x, y + 1 - player.pos.y, z + 0.5 - player.pos.z) < 24) break;
         const roll = Math.random();
-        this.spawnMob(roll < 0.5 ? 'zombie' : roll < 0.8 ? 'creeper' : 'spider', x + 0.5, y + 1, z + 0.5);
-        return;
+        this.spawnMob(roll < 0.45 ? 'zombie' : roll < 0.75 ? 'creeper' : 'spider', x + 0.5, y + 1, z + 0.5);
+        break;
       }
     }
   }
@@ -3458,8 +3546,9 @@ function craftingGrid(grid, w, x, y, ox, oy) {
   const r = findRecipe(grid, w), out = [r ? { id: r.out, count: r.n, dmg: 0 } : null];
   // arrow
   gctx.fillStyle = '#8b8b8b';
-  const ax = ox - 25, ay = oy + 5;
-  fill(ax, ay + 3, 16, 3, '#8b8b8b'); for (let k = 0; k < 6; k++) fill(ax + 15 + k, ay - 1 + k, 1, 11 - 2 * k, '#8b8b8b');
+  // arrow centred in the gap between the grid and the output slot
+  const gap0 = x + w * 18, gap1 = ox - 5, len = Math.min(22, gap1 - gap0 - 2), ax = Math.round((gap0 + gap1 - len) / 2), ay = oy + 5;
+  fill(ax, ay + 3, len - 6, 3, '#8b8b8b'); for (let k = 0; k < 6; k++) fill(ax + len - 7 + k, ay - 1 + k, 1, 11 - 2 * k, '#8b8b8b');
   slotBox(ox - 4, oy - 4); fill(ox - 4, oy - 4, 26, 26, '#8b8b8b'); fill(ox - 4, oy - 4, 25, 1, '#373737'); fill(ox - 4, oy - 4, 1, 25, '#373737'); fill(ox - 3, oy + 21, 25, 1, '#fff'); fill(ox + 21, oy - 3, 1, 25, '#fff');
   drawItem(out[0], ox + 1, oy + 1);
   if (inRect(ox - 3, oy - 3, 24, 24)) {
@@ -3507,12 +3596,11 @@ const InventoryScreen = () => ({
     const w = 176, h = 166, x = Math.floor((gui.W - w) / 2), y = Math.floor((gui.H - h) / 2);
     fill(0, 0, gui.W, gui.H, 'rgba(0,0,0,0.55)');
     panel(x, y, w, h);
-    drawText(gctx, 'Crafting', x + 97, y + 8, '#404040', false);
+    drawText(gctx, 'Crafting', x + 88, y + 8, '#404040', false);
     // little player preview box
     fill(x + 25, y + 7, 51, 72, '#000'); fill(x + 26, y + 8, 49, 70, '#2a2a2a');
     drawPlayerPreview(x + 26, y + 8, 49, 70);
-    craftingGrid(player.craft2, 2, x + 97, y + 17, x + 153, y + 27);
-    drawText(gctx, 'Inventory', x + 8, y + 72, '#404040', false);
+    craftingGrid(player.craft2, 2, x + 88, y + 18, x + 151, y + 28);
     playerInvRows(x + 7, y + 83, quickToInvOrHotbar);
     dropOutside(x, y, w, h);
   },
@@ -3678,7 +3766,7 @@ function drawHUD(world) {
   }
   // chat messages
   const now = performance.now(), chatOpen = screen && screen.name === 'chat';
-  let cy = H - 48;
+  let cy = isTouch ? H - 10 - 26 * 3 - 12 : H - 48; // on touch screens, above the move buttons
   for (let i = chatLog.length - 1; i >= 0 && cy > 20; i--) {
     const m = chatLog[i], age = (now - m.t) / 1000;
     if (!chatOpen && age > 10) continue;
@@ -3905,6 +3993,8 @@ function startWorld(info) {
     Object.assign(player, { health: p.health, food: p.food, sat: p.sat, spawn: p.spawn, sel: p.sel || 0, flying: !!p.flying, mode: p.mode || info.mode });
     p.inv.forEach((s, i) => { player.inv[i] = s; });
     game.fixSpawn = false;
+    // saved at the moment of death: come back at the spawn point with full health, as if you'd pressed Respawn
+    if (!(player.health > 0)) { player.health = 20; player.food = 20; player.sat = 5; player.pos.fromArray(player.spawn); }
   } else {
     const s = w.gen.findSpawn();
     player.spawn = s; player.pos.set(s[0], s[1], s[2]); player.yaw = 0; player.pitch = 0;
@@ -3975,7 +4065,7 @@ function streamChunks(budget) {
     const cx = pcx + dx, cz = pcz + dz;
     let c = w.chunk(cx, cz);
     if (!c) c = w.generateChunk(cx, cz);
-    if (c.state === 0) { w.lightChunk(c); if (game.state === 'game') game.entities.spawnAnimals(c); }
+    if (c.state === 0) { w.lightChunk(c); if (game.state === 'game' || game.state === 'loading') game.entities.spawnAnimals(c); }
   }
   let meshed = 0;
   for (const [dx, dz, d2] of order) {
@@ -4015,6 +4105,30 @@ function loadProgress() {
 }
 
 // ---------------- World ticking ----------------
+function randomTick(w, id, x, y, z) {
+  const above = w.get(x, y + 1, z), d = BLOCKS[id];
+  if (id === BL.grass_block && above > 0 && OPAQUE[above]) w.set(x, y, z, BL.dirt);
+  else if (id === BL.dirt && (above === AIR || (above > 0 && !OPAQUE[above] && !LIQUID[above]))) {
+    if (w.lightAt(x, y + 1, z)[0] >= 9) for (let k = 0; k < 4; k++) { const nx = x + Math.floor(Math.random() * 3) - 1, ny = y + Math.floor(Math.random() * 3) - 1, nz = z + Math.floor(Math.random() * 3) - 1; if (w.get(nx, ny, nz) === BL.grass_block) { w.set(x, y, z, BL.grass_block); break; } }
+  } else if (d.sapling && Math.random() < 1 / 14) {
+    const [s, b] = w.lightAt(x, y, z);
+    if (Math.max(s, b) >= 9) growTree(w, x, y, z, d.sapling);
+  } else if ((id === BL.sugar_cane || id === BL.cactus) && above === AIR && Math.random() < 1 / 16) {
+    let h = 1; while (w.get(x, y - h, z) === id) h++;
+    if (h < 3 && (id !== BL.cactus || soilOk(w, id, x, y + 1, z))) w.set(x, y + 1, z, id);
+  } else if (d.crop !== undefined && d.crop < 7) {
+    // hydrated farmland grows wheat about twice as fast
+    const [s, b] = w.lightAt(x, y, z);
+    if (Math.max(s, b) >= 9 && Math.random() < (w.get(x, y - 1, z) === BL.farmland_moist ? 1 / 7 : 1 / 13)) w.set(x, y, z, BL['wheat_' + (d.crop + 1)]);
+  } else if (isFarmland(id)) {
+    if (above > 0 && OPAQUE[above]) { w.set(x, y, z, BL.dirt); return; }
+    let wet = false;
+    for (let dy = 0; dy <= 1 && !wet; dy++) for (let dz = -4; dz <= 4 && !wet; dz++) for (let dx = -4; dx <= 4; dx++) if (LIQUID[Math.max(0, w.get(x + dx, y + dy, z + dz))] === 1) { wet = true; break; }
+    if (wet) { if (id === BL.farmland) w.set(x, y, z, BL.farmland_moist); }
+    else if (id === BL.farmland_moist) w.set(x, y, z, BL.farmland);
+    else if (!(above > 0 && BLOCKS[above].crop !== undefined)) w.set(x, y, z, BL.dirt);
+  }
+}
 function tickWorld(dt) {
   const w = game.world, ents = game.entities, now = performance.now() / 1000;
   // scheduled block updates: falling sand, plants losing their footing
@@ -4031,24 +4145,17 @@ function tickWorld(dt) {
       if (below === AIR || (below > 0 && (REPLACEABLE[below] || LIQUID[below]))) { w.set(x, y, z, AIR); ents.fallingBlock(x, y, z, id); }
     } else if (needsSupport(w, x, y, z)) popUnsupported(w, x, y, z, ents);
   }
-  // random ticks near the player: grass spreading, saplings growing, cane and cactus growing
-  const pcx = Math.floor(player.pos.x) >> 4, pcz = Math.floor(player.pos.z) >> 4;
-  for (let i = 0; i < 40; i++) {
-    const cx = pcx + Math.floor(Math.random() * 9) - 4, cz = pcz + Math.floor(Math.random() * 9) - 4, c = w.chunk(cx, cz);
-    if (!c || c.state < 1) continue;
-    const idx = Math.floor(Math.random() * c.blocks.length), id = c.blocks[idx];
-    if (!id) continue;
-    const x = cx * 16 + (idx & 15), y = idx >> 8, z = cz * 16 + ((idx >> 4) & 15), above = w.get(x, y + 1, z);
-    const d = BLOCKS[id];
-    if (id === BL.grass_block && above > 0 && OPAQUE[above]) w.set(x, y, z, BL.dirt);
-    else if (id === BL.dirt && (above === AIR || (above > 0 && !OPAQUE[above] && !LIQUID[above]))) {
-      if (w.lightAt(x, y + 1, z)[0] >= 9) for (let k = 0; k < 4; k++) { const nx = x + Math.floor(Math.random() * 3) - 1, ny = y + Math.floor(Math.random() * 3) - 1, nz = z + Math.floor(Math.random() * 3) - 1; if (w.get(nx, ny, nz) === BL.grass_block) { w.set(x, y, z, BL.grass_block); break; } }
-    } else if (d.sapling && Math.random() < 0.06) {
-      const [s, b] = w.lightAt(x, y, z);
-      if (Math.max(s, b) >= 9) growTree(w, x, y, z, d.sapling);
-    } else if ((id === BL.sugar_cane || id === BL.cactus) && above === AIR && Math.random() < 0.15) {
-      let h = 1; while (w.get(x, y - h, z) === id) h++;
-      if (h < 3 && (id !== BL.cactus || soilOk(w, id, x, y + 1, z))) w.set(x, y + 1, z, id);
+  // random ticks at Minecraft's rate: 3 random blocks in every 16x16x16 section, 20 times a second, in the chunks around the player
+  game.tickAcc = Math.min(0.2, (game.tickAcc || 0) + dt);
+  const pcx = Math.floor(player.pos.x) >> 4, pcz = Math.floor(player.pos.z) >> 4, TR = Math.min(4, OPT.renderDist);
+  for (; game.tickAcc >= 0.05; game.tickAcc -= 0.05) {
+    for (let cz = pcz - TR; cz <= pcz + TR; cz++) for (let cx = pcx - TR; cx <= pcx + TR; cx++) {
+      const c = w.chunk(cx, cz);
+      if (!c || c.state < 1) continue;
+      for (let sy = 0; sy < NSEC; sy++) for (let k = 0; k < 3; k++) {
+        const idx = ((Math.random() * 4096) | 0) | (sy << 12), id = c.blocks[idx];
+        if (id) randomTick(w, id, cx * 16 + (idx & 15), idx >> 8, cz * 16 + ((idx >> 4) & 15));
+      }
     }
   }
   // furnaces cook even when you're not looking at them
@@ -4142,6 +4249,7 @@ const armGeo = new THREE.BoxGeometry(0.25, 0.75, 0.25);
 const arm = new THREE.Mesh(armGeo, armMats);
 const handRoot = new THREE.Group(); handScene.add(handRoot);
 let heldModel = null, heldModelId = -1, equipT = 0;
+const handSway = { yaw: 0, pitch: 0 };
 function updateHand(dt) {
   const s = held(), id = s ? s.id : 0;
   if (id !== heldModelId) {
@@ -4157,8 +4265,14 @@ function updateHand(dt) {
   const sw = Math.sin((1 - player.swing) * Math.PI) * (player.swing > 0 ? 1 : 0);
   const bobX = OPT.viewBob ? Math.sin(player.bobT * Math.PI) * 0.025 * player.bob : 0, bobY = OPT.viewBob ? -Math.abs(Math.cos(player.bobT * Math.PI)) * 0.03 * player.bob : 0;
   const eating = player.eat > 0 ? Math.sin(performance.now() / 60) * 0.02 : 0;
-  handRoot.position.set(0.5 + bobX - sw * 0.25, -0.5 + bobY - equipT * 0.5 + sw * 0.15 + eating, -0.75 - sw * 0.1);
+  // keep the hand on screen on tall, narrow (portrait) screens
+  const handX = Math.min(0.5, 0.4 * handCam.aspect);
+  handRoot.position.set(handX + bobX - sw * 0.25, -0.5 + bobY - equipT * 0.5 + sw * 0.15 + eating, -0.75 - sw * 0.1);
   handRoot.rotation.set(-sw * 0.9, -sw * 0.4, 0);
+  // the hand trails slightly behind the view when you look around, like Minecraft
+  const k = Math.min(1, dt * 14), dyaw = Math.atan2(Math.sin(player.yaw - handSway.yaw), Math.cos(player.yaw - handSway.yaw));
+  handSway.yaw += dyaw * k; handSway.pitch += (player.pitch - handSway.pitch) * k;
+  handRoot.rotation.y += clamp(dyaw, -0.5, 0.5) * 0.3; handRoot.rotation.x += clamp(player.pitch - handSway.pitch, -0.5, 0.5) * 0.3;
   if (heldModel) {
     if (heldModel.userData.cube) { heldModel.position.set(-0.05, 0.05, 0); heldModel.rotation.set(0.1, Math.PI / 4, 0); heldModel.scale.setScalar(0.36); }
     else { heldModel.position.set(0.06, 0.1, 0); heldModel.rotation.set(0.1, -Math.PI / 2 + 0.25, 0.5); heldModel.scale.setScalar(0.5); }
@@ -4258,6 +4372,13 @@ function interact(w, ents, dt) {
       w.set(hit.x, hit.y, hit.z, AIR); ents.primeTNT(hit.x, hit.y, hit.z); damageHeld(1); player.swing = 1; player.useCD = 0.3; sfx.play('fuse');
     } else if (s && (s.id === IT.bucket || s.id === IT.water_bucket || s.id === IT.lava_bucket)) {
       useBucket(w, s); player.useCD = 0.3;
+    } else if (hit && sd && (sd.tool === 'hoe' || sd.tool === 'shovel') && hit.face !== 3 && w.get(hit.x, hit.y + 1, hit.z) === AIR &&
+        (sd.tool === 'hoe' ? hit.id === BL.grass_block || hit.id === BL.dirt || hit.id === BL.dirt_path : hit.id === BL.grass_block || hit.id === BL.dirt || hit.id === BL.snowy_grass_block)) {
+      // till soil into farmland, or flatten grass into a path
+      w.set(hit.x, hit.y, hit.z, sd.tool === 'hoe' ? BL.farmland : BL.dirt_path);
+      sfx.step(sd.tool === 'hoe' ? 'gravel' : 'grass'); damageHeld(1); player.swing = 1; player.useCD = 0.25;
+    } else if (hit && s && s.id === IT.wheat_seeds && isFarmland(hit.id) && hit.face === 2 && w.get(hit.x, hit.y + 1, hit.z) === AIR) {
+      w.set(hit.x, hit.y + 1, hit.z, BL.wheat_0); takeHeld(1); sfx.step('grass'); player.swing = 1; player.useCD = 0.2;
     } else if (hit && s && s.id < 256) {
       if (tryPlace(w, hit, ents)) { player.swing = 1; player.useCD = 0.22; }
       else player.useCD = 0.1;
@@ -4399,7 +4520,7 @@ const TitleScreen = () => ({
     if (button(bx, by, bw, 20, 'Singleplayer')) { sfx.init(); openScreen(WorldsScreen()); }
     if (button(bx, by + 24, bw, 20, 'Options...')) { sfx.init(); openScreen(OptionsScreen(() => openScreen(TitleScreen()))); }
     if (button(bx, by + 48, bw, 20, 'How to play')) { sfx.init(); openScreen(ControlsScreen(() => openScreen(TitleScreen()))); }
-    drawText(gctx, 'Blockcraft 1.2.1', 2, H - 10, '#ffffff');
+    drawText(gctx, 'Blockcraft 1.3', 2, H - 10, '#ffffff');
     const t = 'Made by Lars and Noah';
     drawText(gctx, t, W - textWidth(t) - 2, H - 10, '#ffffff');
   },
@@ -4667,7 +4788,7 @@ document.addEventListener('pointerlockchange', () => {
 });
 function guiPos(e) { gui.mx = Math.floor(e.clientX * gui.dpr / gui.s); gui.my = Math.floor(e.clientY * gui.dpr / gui.s); }
 guiCv.addEventListener('mousedown', e => {
-  sfx.init(); guiPos(e);
+  sfx.init(); guiPos(e); gui.shift = e.shiftKey;
   if (game.state === 'game' && !screen) {
     if (!locked()) { lockPointer(); return; }
     if (e.button === 0) { input.attack = true; input.attackPressed = true; }
@@ -4804,6 +4925,7 @@ function runFrame(now) {
   const showHand = game.state === 'game' && !game.hideHUD && !player.dead;
   if (showHand) { updateHand(dt); renderer.clearDepth(); renderer.render(handScene, handCam); }
   document.getElementById('cross').style.display = game.state === 'game' && !screen && !game.hideHUD ? 'block' : 'none';
+  document.getElementById('vig').style.display = game.state === 'game' && !game.hideHUD ? 'block' : 'none'; // soft dark edges, like Minecraft's vignette
   drawGUI(dt);
 }
 function drawGUI(dt) {

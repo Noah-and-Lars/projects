@@ -54,8 +54,11 @@ source in Settings → Pages should be switched to `main`.
   smooth lighting with sky and block light flood-fill, caves, every overworld
   ore (plus deepslate versions), trees, mobs, crafting, furnaces, chests,
   survival and creative. Worlds save to localStorage (`blockcraft-worlds` and
-  `blockcraft-world-<id>`, storing only changed blocks). Block ids are saved, so
-  only ever add new blocks at the end of the block list. It's heavy: keep tests
+  `blockcraft-world-<id>`, storing only changed blocks). Block and item ids are
+  saved, so only ever add new blocks at the end of the block list and new items
+  at the end of the item list (after the tools). Farming: a hoe tills
+  farmland, a shovel makes paths (both 15/16-tall `SHAPE.LOW` blocks), seeds
+  grow into wheat through random ticks, which run at Minecraft's rate. It's heavy: keep tests
   short, and don't run hundreds of frames in the preview pane.
 
 - `free-criminal/`: Free Criminal, an open-world 3D crime game set in San Varro (Three.js r128 copied from Cube Assault into the file). Saves only its settings.
