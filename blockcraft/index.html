@@ -4261,9 +4261,32 @@ const ARM_SHADE = [0.8, 0.62, 1.0, 0.55, 0.92, 0.7]; // +x, -x, +y (hand), -y (s
 const armMats = ARM_SHADE.map((k, f) => new THREE.MeshBasicMaterial({
   map: f === 2 ? armTexture(4, 4, 'hand', 11) : f === 3 ? armTexture(4, 4, 'shoulder', 12) : armTexture(4, 12, 'side', 20 + f),
 }));
-const armGeo = new THREE.BoxGeometry(0.25, 0.75, 0.25);
-const arm = new THREE.Mesh(armGeo, armMats);
+// Minecraft's right arm: a 4x12x4 pixel box hanging from a shoulder 5 pixels right of the body's centre
+const armGeo = new THREE.BoxGeometry(0.25, 0.75, 0.25); armGeo.translate(-0.375, 0.375, 0);
+const arm = new THREE.Mesh(armGeo, armMats); arm.matrixAutoUpdate = false; arm.visible = false; handScene.add(arm);
 const handRoot = new THREE.Group(); handScene.add(handRoot);
+// Where Minecraft Java draws the empty first-person arm (ItemInHandRenderer.renderPlayerArm), step for step:
+// swing 0..1 through a punch, equip 0 (raised) .. 1 (lowered)
+const _armM = new THREE.Matrix4(), _armR = new THREE.Matrix4(), DEG = Math.PI / 180;
+function armMatrix(swing, equip, pre) {
+  const M = _armM.copy(pre);
+  const T = (x, y, z) => M.multiply(_armR.makeTranslation(x, y, z));
+  const RX = a => M.multiply(_armR.makeRotationX(a * DEG)), RY = a => M.multiply(_armR.makeRotationY(a * DEG)), RZ = a => M.multiply(_armR.makeRotationZ(a * DEG));
+  const s1 = Math.sqrt(swing);
+  // narrow (portrait) screens: bring the arm in so it stays on screen
+  const fitX = Math.min(1, handCam.aspect / 1.3);
+  T((-0.3 * Math.sin(s1 * Math.PI) + 0.64) * fitX, 0.4 * Math.sin(s1 * Math.PI * 2) - 0.6 - equip * 0.6, -0.4 * Math.sin(swing * Math.PI) - 0.72);
+  RY(45);
+  RY(Math.sin(s1 * Math.PI) * 70);
+  RZ(Math.sin(swing * swing * Math.PI) * -20);
+  T(-1, 3.6, 3.5);
+  RZ(120); RX(200); RY(-135);
+  T(5.6, 0, 0);
+  // the arm model's own pivot (shoulder), in pixels
+  T(-5 / 16, 2 / 16, 0);
+  return M;
+}
+const _armPre = new THREE.Matrix4(), _armTmp = new THREE.Matrix4();
 let heldModel = null, heldModelId = -1, equipT = 0;
 const handSway = { yaw: 0, pitch: 0 };
 function updateHand(dt) {
@@ -4272,9 +4295,7 @@ function updateHand(dt) {
     if (heldModel) handRoot.remove(heldModel);
     heldModel = null;
     heldModelId = id; equipT = 1;
-    handRoot.remove(arm);
     if (id) { heldModel = makeItemModel(id); handRoot.add(heldModel); }
-    else handRoot.add(arm);
   }
   equipT = Math.max(0, equipT - dt * 5);
   player.swing = Math.max(0, player.swing - dt * 3.5);
@@ -4286,13 +4307,22 @@ function updateHand(dt) {
   handRoot.position.set(handX + bobX - sw * 0.25, -0.5 + bobY - equipT * 0.5 + sw * 0.15 + eating, -0.75 - sw * 0.1);
   handRoot.rotation.set(-sw * 0.9, -sw * 0.4, 0);
   // the hand trails slightly behind the view when you look around, like Minecraft
-  const k = Math.min(1, dt * 14), dyaw = Math.atan2(Math.sin(player.yaw - handSway.yaw), Math.cos(player.yaw - handSway.yaw));
+  // (Minecraft: the arm's angle catches up with the view by half every tick and tilts by a tenth of the gap)
+  const k = 1 - Math.pow(0.5, dt * 20), dyaw = Math.atan2(Math.sin(player.yaw - handSway.yaw), Math.cos(player.yaw - handSway.yaw));
   handSway.yaw += dyaw * k; handSway.pitch += (player.pitch - handSway.pitch) * k;
-  handRoot.rotation.y += clamp(dyaw, -0.5, 0.5) * 0.3; handRoot.rotation.x += clamp(player.pitch - handSway.pitch, -0.5, 0.5) * 0.3;
+  const swayY = clamp(dyaw, -0.6, 0.6) * 0.1 * 1.6, swayX = clamp(player.pitch - handSway.pitch, -0.6, 0.6) * 0.1 * 1.6;
+  handRoot.rotation.y += swayY; handRoot.rotation.x += swayX;
   if (heldModel) {
     if (heldModel.userData.cube) { heldModel.position.set(-0.05, 0.05, 0); heldModel.rotation.set(0.1, Math.PI / 4, 0); heldModel.scale.setScalar(0.36); }
     else { heldModel.position.set(0.06, 0.1, 0); heldModel.rotation.set(0.1, -Math.PI / 2 + 0.25, 0.5); heldModel.scale.setScalar(0.5); }
-  } else { arm.position.set(0.1, 0, -0.08); arm.rotation.set(-0.85, 0.45, 0.62); }
+  }
+  arm.visible = !heldModel;
+  if (!heldModel) {
+    // view bob and sway first, then Minecraft's arm placement
+    _armPre.makeTranslation(bobX * 2, bobY * 2 + eating, 0).multiply(_armTmp.makeRotationX(swayX)).multiply(_armTmp.makeRotationY(swayY));
+    arm.matrix.copy(armMatrix(player.swing > 0 ? 1 - player.swing : 0, equipT, _armPre));
+    arm.matrixWorldNeedsUpdate = true;
+  }
   const e = eyePos(), [ls, lb] = game.world.lightAt(Math.floor(e.x), Math.floor(e.y), Math.floor(e.z));
   const br = lightBright(ls, lb, U.uDaylight.value);
   if (heldModel) heldModel.userData.setBright(heldModel.userData.cube ? br / 0.6 : br * 1.1); else { const k = Math.min(1.15, br * 1.3); armMats.forEach((m, f) => m.color.setScalar(ARM_SHADE[f] * k)); }
@@ -4536,7 +4566,7 @@ const TitleScreen = () => ({
     if (button(bx, by, bw, 20, 'Singleplayer')) { sfx.init(); openScreen(WorldsScreen()); }
     if (button(bx, by + 24, bw, 20, 'Options...')) { sfx.init(); openScreen(OptionsScreen(() => openScreen(TitleScreen()))); }
     if (button(bx, by + 48, bw, 20, 'How to play')) { sfx.init(); openScreen(ControlsScreen(() => openScreen(TitleScreen()))); }
-    drawText(gctx, 'Blockcraft 1.3.1', 2, H - 10, '#ffffff');
+    drawText(gctx, 'Blockcraft 1.3.2', 2, H - 10, '#ffffff');
     const t = 'Made by Lars and Noah';
     drawText(gctx, t, W - textWidth(t) - 2, H - 10, '#ffffff');
   },
