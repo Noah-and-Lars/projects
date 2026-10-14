@@ -171,14 +171,31 @@ window.Arcade = {
 // blocked network, project paused after a quiet week) the counter just stays hidden.
 // play.html shares its connection with the game in its frame through window.ArcadeOnline,
 // so a player is only counted once. The publishable key is meant to be public.
+// Each browser keeps one id (arcade-online-id), so moving between pages or having two tabs open
+// counts as one person, and changes only show once they've held for a couple of seconds.
 window.ArcadeOnline = (() => {
   const URL = 'https://fewocduisjbctoxolkjr.supabase.co';
   const KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
   const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
   const CAP = 200; // the free plan's limit on simultaneous connections
-  let counts = null, started = false;
+  const SETTLE = 2500; // ms a new count has to hold before it's shown, so quick page changes don't flicker
+  let counts = null, started = false, timer = 0;
   const listeners = [];
-  const emit = c => { counts = c; for (const f of listeners) try { f(c); } catch (e) {} };
+  const send = c => { counts = c; for (const f of listeners) try { f(c); } catch (e) {} };
+  // first result and failures show straight away; changes after that wait until they settle
+  const emit = c => {
+    clearTimeout(timer);
+    if (!c || !counts) send(c);
+    else if (c.total !== counts.total || JSON.stringify(c.byGame) !== JSON.stringify(counts.byGame)) timer = setTimeout(() => send(c), SETTLE);
+  };
+  const browserId = () => {
+    let id = readSave('arcade-online-id');
+    if (!id) {
+      id = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
+      try { localStorage.setItem('arcade-online-id', id); } catch (e) {}
+    }
+    return id;
+  };
   return {
     CAP,
     // Join as someone on `where` (a game id, or 'home'). Safe to call once per page.
@@ -190,11 +207,14 @@ window.ArcadeOnline = (() => {
       lib.onload = () => {
         try {
           const client = window.supabase.createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-          const key = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
-          const ch = client.channel('online:arcade', { config: { presence: { key } } });
+          const ch = client.channel('online:arcade', { config: { presence: { key: browserId() } } });
           ch.on('presence', { event: 'sync' }, () => {
+            // one entry per browser; if it has several pages open, count it on a game over the home page
             const state = ch.presenceState(), byGame = {};
-            for (const k in state) { const g = (state[k][0] || {}).game || 'home'; byGame[g] = (byGame[g] || 0) + 1; }
+            for (const k in state) {
+              const gs = state[k].map(m => m.game || 'home'), g = gs.find(x => x !== 'home') || 'home';
+              byGame[g] = (byGame[g] || 0) + 1;
+            }
             emit({ total: Object.keys(state).length, byGame, full: Object.keys(state).length >= CAP });
           }).subscribe(status => {
             if (status === 'SUBSCRIBED') ch.track({ game: where }).catch(() => emit(null));

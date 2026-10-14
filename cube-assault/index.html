@@ -6025,14 +6025,28 @@ tick();
 (() => {
   const GAME = 'cube-assault';
   const box = document.getElementById('onlineCount'), num = document.getElementById('onlineNum');
-  const show = c => {
+  const render = c => {
     const n = c ? c.byGame[GAME] || 0 : 0;
     box.hidden = n < 1;
     num.textContent = c && c.full ? n + '+' : String(n);
   };
   try {
-    if (window.parent !== window && window.parent.ArcadeOnline) { window.parent.ArcadeOnline.subscribe(show); return; }
+    if (window.parent !== window && window.parent.ArcadeOnline) { window.parent.ArcadeOnline.subscribe(render); return; }
   } catch (e) {}
+  // Same as the arcade: one id per browser, and changes only show once they've held for a moment
+  let shown = null, timer = 0;
+  const show = c => {
+    clearTimeout(timer);
+    const n = c ? c.byGame[GAME] || 0 : -1;
+    if (shown === null || !c) { shown = n; render(c); }
+    else if (n !== shown) timer = setTimeout(() => { shown = n; render(c); }, 2500);
+  };
+  let id = null;
+  try { id = localStorage.getItem('arcade-online-id'); } catch (e) {}
+  if (!id) {
+    id = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { localStorage.setItem('arcade-online-id', id); } catch (e) {}
+  }
 
   const CAP = 200; // the free plan's limit on simultaneous connections
   const lib = document.createElement('script');
@@ -6043,11 +6057,13 @@ tick();
     try {
       const client = window.supabase.createClient('https://fewocduisjbctoxolkjr.supabase.co', 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',
         { auth: { persistSession: false, autoRefreshToken: false } });
-      const key = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
-      const ch = client.channel('online:arcade', { config: { presence: { key } } });
+      const ch = client.channel('online:arcade', { config: { presence: { key: id } } });
       ch.on('presence', { event: 'sync' }, () => {
         const state = ch.presenceState(), byGame = {};
-        for (const k in state) { const g = (state[k][0] || {}).game || 'home'; byGame[g] = (byGame[g] || 0) + 1; }
+        for (const k in state) {
+          const gs = state[k].map(m => m.game || 'home'), g = gs.find(x => x !== 'home') || 'home';
+          byGame[g] = (byGame[g] || 0) + 1;
+        }
         show({ byGame, full: Object.keys(state).length >= CAP });
       }).subscribe(status => {
         if (status === 'SUBSCRIBED') ch.track({ game: GAME }).catch(() => show(null));
