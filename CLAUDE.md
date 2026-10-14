@@ -27,6 +27,9 @@ source in Settings → Pages should be switched to `main`.
   uses /projects/ absolute links because it can appear at any path.
 - `logo.svg`, `icon-*.png`, `apple-touch-icon.png`, `manifest.webmanifest`:
   logo and home-screen app icons. `og.png` is the preview image for shared links.
+- The home page has an update popup under the header (`#popup` in
+  `index.html`). To announce something new, change its text and `POPUP_ID`;
+  closing it is remembered per ID in `arcade-popup-closed`.
 - `arcade.css`: shared styles for the two pages above.
   Both pages load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
   files for 10 minutes, so bump N in both pages whenever either file changes.
@@ -65,7 +68,7 @@ source in Settings → Pages should be switched to `main`.
   with their home is made. Mob skins are drawn per face from palettes in `MOB_DEFS`. It's heavy: keep tests
   short, and don't run hundreds of frames in the preview pane.
 
-- `free-criminal/`: Free Criminal, an open-world 3D crime game set in San Varro (Three.js r128 copied from Cube Assault into the file). Saves only its settings.
+- `free-criminal/`: Free Criminal, an open-world 3D crime game set in San Varro (Three.js r128 copied from Cube Assault into the file). Version 1.1 adds 3x traffic, ragdoll crashes, gun stores (10 guns, grenades), a mall and a new HUD. Saves only its settings (`freecriminal.settings.v1`).
 
 ## Adding a game
 

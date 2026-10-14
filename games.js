@@ -27,16 +27,16 @@ window.GAMES = [
     id: 'free-criminal',
     title: 'Free Criminal',
     category: 'Action',
-    tagline: 'Fresh out of prison in San Varro. Steal cars, rob stores and outrun the cops.',
-    description: 'Open-world 3D crime game. Walk out of the penitentiary into the city of San Varro, steal any car, rob stores and the bank, buy guns at the Gun Locker and stay ahead of the police.',
+    tagline: 'Fresh out of prison in San Varro. Steal cars, rob the mall and outrun the cops.',
+    description: 'Open-world 3D crime game. Walk out of the penitentiary into a busy San Varro, steal any car, rob stores, the bank and the mall, pick from 10 guns and grenades at the gun stores and stay ahead of the police. Crash hard and you fly out of the car.',
     controls: 'Keyboard + mouse',
     keys: [['W A S D', 'Walk / drive'], ['Mouse', 'Look'], ['Click', 'Fire'], ['Right-click', 'Aim'], ['R', 'Reload'], ['Shift', 'Sprint'],
-           ['Space', 'Jump / handbrake'], ['F', 'Steal or enter a car'], ['E', 'Rob a store or the bank'], ['1 2 3', 'Buy at the Gun Locker'],
+           ['Space', 'Jump / handbrake'], ['F', 'Steal or enter a car'], ['1', 'Take out / put away gun'], ['Q / Wheel', 'Switch gun'], ['G', 'Throw grenade'], ['E', 'Rob a store or the bank, or shop for guns'],
            ['V', 'First / third person'], ['M', 'Map'], ['H', 'Horn'], ['Esc', 'Pause']],
     path: 'free-criminal/index.html',
     thumb: 'free-criminal/thumb.svg',
     added: '2026-10-13T21:33:00+11:00',
-    updated: '2026-10-13T21:33:00+11:00',
+    updated: '2026-10-14T13:25:00+11:00',
     stat() { return null; },
   },
   {
@@ -120,6 +120,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-14', game: 'free-criminal', text: 'Free Criminal 1.1: 3× the traffic and crowds, ragdoll crashes, gun stores with 10 guns and grenades, a mall to rob, a denser city and a new HUD.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.4: villages with villagers and an iron golem (plains, desert, taiga and snowy styles), and new skins for every mob.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.3.2: the first-person hand now sits and punches exactly like Minecraft Java.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.3.1: new grass, dirt, tall grass, oak bark and leaf textures, closer to the classic look.' },
