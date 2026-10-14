@@ -2555,11 +2555,20 @@ var Sound = (function () {
   on('#cp-del', () => removeCheckpoint());
   on('#opt-music', () => { save.music = !save.music; Sound.setMusic(save.music); persist(); renderSettings(); });
   on('#opt-sfx', () => { save.sfx = !save.sfx; Sound.setSfx(save.sfx); persist(); renderSettings(); });
+  let resetArmed = null;
   on('#opt-reset', () => {
-    if (!window.confirm('Erase all progress? Your icon stays.')) return;
+    const b = $('#opt-reset');
+    if (!resetArmed) {
+      b.textContent = 'Tap again to erase';
+      resetArmed = setTimeout(() => { resetArmed = null; b.textContent = 'Erase'; }, 3000);
+      return;
+    }
+    clearTimeout(resetArmed);
+    resetArmed = null;
     save.levels = {};
     persist();
-    renderSettings();
+    b.textContent = 'Erased';
+    setTimeout(() => { b.textContent = 'Erase'; }, 1500);
   });
   // Buttons inside the HUD must not count as jumps.
   $$('#hud button').forEach(b => b.addEventListener('pointerdown', e => e.stopPropagation()));
