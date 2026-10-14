@@ -58,7 +58,11 @@ source in Settings → Pages should be switched to `main`.
   saved, so only ever add new blocks at the end of the block list and new items
   at the end of the item list (after the tools). Farming: a hoe tills
   farmland, a shovel makes paths (both 15/16-tall `SHAPE.LOW` blocks), seeds
-  grow into wheat through random ticks, which run at Minecraft's rate. It's heavy: keep tests
+  grow into wheat through random ticks, which run at Minecraft's rate.
+  Villages: `Gen.village(rx, rz)` plans at most one per 320x320 region from the
+  seed (plains, desert, taiga, snowy styles); each chunk builds its own part in
+  `decorate`, and `spawnVillagers` adds villagers and an iron golem when a chunk
+  with their home is made. Mob skins are drawn per face from palettes in `MOB_DEFS`. It's heavy: keep tests
   short, and don't run hundreds of frames in the preview pane.
 
 - `free-criminal/`: Free Criminal, an open-world 3D crime game set in San Varro (Three.js r128 copied from Cube Assault into the file). Saves only its settings.

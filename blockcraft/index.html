@@ -1250,14 +1250,157 @@ class Chunk {
 }
 
 // ---------------- Terrain generator ----------------
+const VREG = 320;
+const VILLAGE_MATS = {
+  plains: { wall: BL.oak_planks, post: BL.oak_log, roof: BL.oak_planks, floor: BL.oak_planks, found: BL.cobblestone, path: BL.dirt_path, planks: BL.oak_planks },
+  taiga: { wall: BL.spruce_planks, post: BL.spruce_log, roof: BL.spruce_planks, floor: BL.spruce_planks, found: BL.cobblestone, path: BL.dirt_path, planks: BL.spruce_planks },
+  snowy: { wall: BL.spruce_planks, post: BL.spruce_log, roof: BL.snow_block, floor: BL.spruce_planks, found: BL.cobblestone, path: BL.dirt_path, planks: BL.spruce_planks },
+  desert: { wall: BL.sandstone, post: BL.smooth_stone, roof: BL.sandstone, floor: BL.sandstone, found: BL.sandstone, path: BL.sandstone, planks: BL.sandstone, flatRoof: true },
+};
 class Gen {
   constructor(seed) {
     this.seed = seed | 0;
     const n = i => new Noise((seed * 31 + i * 1013) >>> 0);
     this.nCont = n(1); this.nEro = n(2); this.nPeak = n(3); this.nDet = n(4); this.nTemp = n(5); this.nHum = n(6);
     this.nCave1 = n(7); this.nCave2 = n(8); this.nCave3 = n(9); this.nMisc = n(10); this.nDeep = n(11); this.nRiver = n(12); this.nFlower = n(13);
-    this.cache = new Map();
+    this.cache = new Map(); this.villageCache = new Map();
   }
+
+  // ---------- Villages ----------
+  // The world is split into 320x320 regions; about half hold a village somewhere near their middle, if the
+  // ground there is flat enough and the biome has a village style. Everything is worked out from the seed,
+  // so every chunk builds its own part of the village the same way.
+  village(rx, rz) {
+    const key = rx + ',' + rz;
+    if (this.villageCache.has(key)) return this.villageCache.get(key);
+    let v = null;
+    const r = mulberry32(ihash(this.seed ^ 0x51ad, rx, 11, rz));
+    // a few tries per region for a spot that's on land, in a village biome and not too hilly
+    if (r() < 0.8) for (let k = 0; k < 6 && !v; k++) {
+      const vx = rx * VREG + 64 + Math.floor(r() * (VREG - 128)), vz = rz * VREG + 64 + Math.floor(r() * (VREG - 128));
+      const c = this.column(vx, vz), b = c.b;
+      const style = b === BIO.PLAINS || b === BIO.MEADOW ? 'plains' : b === BIO.DESERT ? 'desert' : b === BIO.TAIGA ? 'taiga' : b === BIO.SNOWY || b === BIO.SNOWY_TAIGA ? 'snowy' : null;
+      if (!style || c.h <= SEA) continue;
+      let lo = 999, hi = -999;
+      for (let i = 0; i < 16; i++) for (const d of [10, 24]) { const h = this.column(vx + Math.round(Math.cos(i / 8 * Math.PI) * d), vz + Math.round(Math.sin(i / 8 * Math.PI) * d)).h; lo = Math.min(lo, h); hi = Math.max(hi, h); }
+      if (hi - lo <= 11 && lo >= SEA) v = this.planVillage(vx, vz, style, r);
+    }
+    this.villageCache.set(key, v);
+    return v;
+  }
+  villagesNear(x0, z0, size) {
+    const out = [];
+    for (let rz = Math.floor((z0 - 64) / VREG); rz <= Math.floor((z0 + size + 64) / VREG); rz++)
+      for (let rx = Math.floor((x0 - 64) / VREG); rx <= Math.floor((x0 + size + 64) / VREG); rx++) {
+        const v = this.village(rx, rz);
+        if (v && v.vx + v.radius >= x0 && v.vx - v.radius < x0 + size && v.vz + v.radius >= z0 && v.vz - v.radius < z0 + size) out.push(v);
+      }
+    return out;
+  }
+  planVillage(vx, vz, style, r) {
+    const vy = this.column(vx, vz).h, pieces = [], rects = [[vx - 4, vz - 4, vx + 4, vz + 4]], spawns = [], roads = [];
+    pieces.push({ kind: 'well', x0: vx - 2, z0: vz - 2, x1: vx + 1, z1: vz + 1, y: vy });
+    let maxL = 0, houses = 0;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const L = 16 + Math.floor(r() * 14); maxL = Math.max(maxL, L);
+      roads.push({ dx, dz, L });
+      for (let st = 9; st + 3 <= L; st += 9) for (const side of [-1, 1]) {
+        if (r() < 0.2) continue;
+        const roll = r(), kind = roll < 0.45 ? 'house' : roll < 0.7 ? 'bighouse' : roll < 0.9 ? 'farm' : 'lamp';
+        const [w, d] = { house: [5, 5], bighouse: [7, 6], farm: [7, 9], lamp: [1, 1] }[kind];
+        let x0, z0, x1, z1, face;
+        const near = side * (kind === 'lamp' ? 2 : 3);
+        if (dx) { x0 = vx + dx * st - (w >> 1); x1 = x0 + w - 1; z0 = side > 0 ? vz + near : vz + near - d + 1; z1 = z0 + d - 1; face = side > 0 ? 'n' : 's'; }
+        else { z0 = vz + dz * st - (w >> 1); z1 = z0 + w - 1; x0 = side > 0 ? vx + near : vx + near - d + 1; x1 = x0 + d - 1; face = side > 0 ? 'w' : 'e'; }
+        if (rects.some(([a0, b0, a1, b1]) => x0 - 1 <= a1 && x1 + 1 >= a0 && z0 - 1 <= b1 && z1 + 1 >= b0)) continue;
+        const y = this.column((x0 + x1) >> 1, (z0 + z1) >> 1).h;
+        if (y < SEA) continue;
+        rects.push([x0, z0, x1, z1]);
+        const piece = { kind, x0, z0, x1, z1, y, face, seed: Math.floor(r() * 1e9) };
+        pieces.push(piece);
+        if (kind === 'house' || kind === 'bighouse') {
+          houses++;
+          for (let k = 0; k < (kind === 'bighouse' ? 2 : 1); k++) spawns.push({ vid: vx + ':' + vz + ':' + spawns.length, type: style === 'desert' ? 'villager_desert' : style === 'snowy' ? 'villager_snowy' : 'villager', x: ((x0 + x1) >> 1) + k, y: y + 1, z: (z0 + z1) >> 1 });
+        }
+      }
+    }
+    if (houses >= 2) spawns.push({ vid: vx + ':' + vz + ':golem', type: 'iron_golem', x: vx + 3, y: this.column(vx + 3, vz + 3).h + 1, z: vz + 3 });
+    return { vx, vz, vy, style, pieces, roads, spawns, radius: maxL + 12, mats: VILLAGE_MATS[style] };
+  }
+  // build the parts of a village that fall inside this chunk (set ignores anything outside it)
+  buildVillage(v, set) {
+    const M = v.mats, B_ = BL;
+    const ground = (x, z) => this.heightAt(x, z);
+    // roads: 3 wide, following the ground
+    for (const { dx, dz, L } of v.roads) for (let t = 0; t <= L; t++) for (let w = -1; w <= 1; w++) {
+      const x = v.vx + dx * t + (dz ? w : 0), z = v.vz + dz * t + (dx ? w : 0), h = ground(x, z);
+      if (h < SEA) { set(x, SEA, z, M.planks); continue; }
+      set(x, h, z, M.path); for (let k = 1; k <= 3; k++) set(x, h + k, z, AIR);
+    }
+    for (const pc of v.pieces) {
+      const { x0, z0, x1, z1, y } = pc, r = mulberry32(pc.seed || 7);
+      const fill = (ax, az, bx, bz, ay, by, id) => { for (let yy = ay; yy <= by; yy++) for (let zz = az; zz <= bz; zz++) for (let xx = ax; xx <= bx; xx++) set(xx, yy, zz, id); };
+      const foundation = (id) => { for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) { const h = ground(xx, zz); for (let yy = Math.min(h + 1, y - 1); yy < y; yy++) set(xx, yy, zz, id); } };
+      if (pc.kind === 'well') {
+        fill(x0 - 1, z0 - 1, x1 + 1, z1 + 1, y + 1, y + 8, AIR); foundation(M.found);
+        for (let zz = z0 - 2; zz <= z1 + 2; zz++) for (let xx = x0 - 2; xx <= x1 + 2; xx++) if (xx < x0 || xx > x1 || zz < z0 || zz > z1) { const h = ground(xx, zz); if (h >= SEA) set(xx, h, zz, M.path); }
+        fill(x0, z0, x1, z1, y, y, M.found); fill(x0, z0, x1, z1, y - 4, y - 1, M.found);
+        fill(x0 + 1, z0 + 1, x1 - 1, z1 - 1, y - 3, y, B_.water);
+        for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) if (xx === x0 || xx === x1 || zz === z0 || zz === z1) set(xx, y + 1, zz, M.found);
+        for (const [cx, cz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) fill(cx, cz, cx, cz, y + 2, y + 3, M.post);
+        fill(x0, z0, x1, z1, y + 4, y + 4, M.found);
+      } else if (pc.kind === 'lamp') {
+        const h = ground(x0, z0); set(x0, h, z0, M.found); fill(x0, z0, x0, z0, h + 1, h + 2, M.post); set(x0, h + 3, z0, B_.torch);
+      } else if (pc.kind === 'farm') {
+        fill(x0, z0, x1, z1, y + 1, y + 4, AIR); foundation(B_.dirt);
+        const longX = x1 - x0 > z1 - z0, mid = longX ? (z0 + z1) >> 1 : (x0 + x1) >> 1;
+        for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) {
+          if (xx === x0 || xx === x1 || zz === z0 || zz === z1) { set(xx, y, zz, M.post); continue; }
+          if ((longX ? zz : xx) === mid) { set(xx, y, zz, B_.water); continue; }
+          set(xx, y, zz, B_.farmland_moist); set(xx, y + 1, zz, B_['wheat_' + (2 + Math.floor(r() * 6))]);
+        }
+      } else {
+        // houses: a stone foundation, plank walls with log corners, glass windows, a doorway facing the road and a stepped roof
+        const H = pc.kind === 'bighouse' ? 4 : 3, cxm = (x0 + x1) >> 1, czm = (z0 + z1) >> 1;
+        fill(x0 - 1, z0 - 1, x1 + 1, z1 + 1, y + 1, y + H + 6, AIR); foundation(M.found);
+        const door = pc.face === 'n' ? [cxm, z0] : pc.face === 's' ? [cxm, z1] : pc.face === 'w' ? [x0, czm] : [x1, czm];
+        for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) {
+          const edge = xx === x0 || xx === x1 || zz === z0 || zz === z1, corner = (xx === x0 || xx === x1) && (zz === z0 || zz === z1);
+          set(xx, y, zz, edge ? M.found : M.floor);
+          for (let yy = y + 1; yy <= y + H; yy++) {
+            if (!edge) continue;
+            if (corner) { set(xx, yy, zz, M.post); continue; }
+            const isDoor = xx === door[0] && zz === door[1] && yy <= y + 2;
+            const isWindow = yy === y + 2 && !isDoor && ((xx === x0 || xx === x1) ? (zz - z0) % 2 === 0 : (xx - x0) % 2 === 0) && !(Math.abs(xx - door[0]) <= 0 && Math.abs(zz - door[1]) <= 0);
+            set(xx, yy, zz, isDoor ? AIR : isWindow ? B_.glass : M.wall);
+          }
+        }
+        // a step of path between the doorway and the road
+        const out = pc.face === 'n' ? [0, -1] : pc.face === 's' ? [0, 1] : pc.face === 'w' ? [-1, 0] : [1, 0];
+        { const sx = door[0] + out[0], sz = door[1] + out[1], h = ground(sx, sz); set(sx, Math.max(h, y), sz, M.path); set(sx, Math.max(h, y) + 1, sz, AIR); set(sx, Math.max(h, y) + 2, sz, AIR); }
+        // roof: flat in the desert, otherwise two slopes stepping in towards a ridge along the long side, with the gable ends filled in
+        if (M.flatRoof) fill(x0, z0, x1, z1, y + H + 1, y + H + 1, M.roof);
+        else {
+          const alongX = x1 - x0 >= z1 - z0;
+          for (let k = 0; ; k++) {
+            const c0 = (alongX ? z0 : x0) - 1 + k, c1 = (alongX ? z1 : x1) + 1 - k;
+            if (c0 > c1) break;
+            const yy = y + H + 1 + k;
+            if (alongX) fill(x0 - 1, c0, x1 + 1, c0, yy, yy, M.roof), fill(x0 - 1, c1, x1 + 1, c1, yy, yy, M.roof);
+            else fill(c0, z0 - 1, c0, z1 + 1, yy, yy, M.roof), fill(c1, z0 - 1, c1, z1 + 1, yy, yy, M.roof);
+            // gable ends: wall under the slope at both ends
+            for (let c = c0 + 1; c <= c1 - 1; c++) for (const e of alongX ? [x0, x1] : [z0, z1]) set(alongX ? e : c, yy, alongX ? c : e, c0 + 1 === c1 - 1 || c === c0 + 1 || c === c1 - 1 ? M.post : M.wall);
+            if (c0 === c1 || c0 + 1 === c1) { fill(alongX ? x0 - 1 : c0, alongX ? c0 : z0 - 1, alongX ? x1 + 1 : c1, alongX ? c1 : z1 + 1, yy, yy, M.roof); break; }
+          }
+        }
+        // inside: a torch, a crafting table, and in big houses a bookshelf and a chest
+        set(x0 + 1, y + 1, z0 + 1, B_.torch);
+        set(x1 - 1, y + 1, z1 - 1, B_.crafting_table);
+        if (pc.kind === 'bighouse') { set(x1 - 1, y + 1, z0 + 1, B_.bookshelf); set(x0 + 1, y + 1, z1 - 1, B_.chest); }
+      }
+    }
+  }
+
   // Height of the top solid block and the biome, for one column
   column(x, z) {
     const c = this.nCont.fbm2(x / 900, z / 900, 4) * 1.4;
@@ -1429,10 +1572,12 @@ class Gen {
         ch.blocks[i] = id;
       }
     };
+    const villages = this.villagesNear(bx - 3, bz - 3, 22);
+    const inVillage = (x, z) => villages.some(v => Math.abs(x - v.vx) < v.radius && Math.abs(z - v.vz) < v.radius);
     // trees, including ones growing just over the border that reach into this chunk
     for (let wz = bz - 3; wz < bz + 19; wz++) for (let wx = bx - 3; wx < bx + 19; wx++) {
       const b = this.biomeAt(wx, wz), dens = BIOMES[b].trees;
-      if (!dens) continue;
+      if (!dens || (villages.length && inVillage(wx, wz))) continue;
       const h = this.heightAt(wx, wz);
       if (h < SEA) continue;
       if (hrand(seed ^ 0x5eed, wx, 0, wz) >= dens) continue;
@@ -1481,6 +1626,11 @@ class Gen {
         for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, nz = z + dz; if (nx >= 0 && nz >= 0 && nx < 16 && nz < 16 && ch.blocks[nx | (nz << 4) | (h << 8)] === B_.water) water = true; }
         if (water) { const n = 1 + Math.floor(hrand(seed, wx, 4, wz) * 3); for (let k = 1; k <= n; k++) setL(wx, h + k, wz, B_.sugar_cane); }
       }
+    }
+    // villages: built last, over the top of whatever was here
+    if (villages.length) {
+      const setV = (wx, wy, wz, id) => { const x = wx - bx, z = wz - bz; if (x < 0 || z < 0 || x > 15 || z > 15 || wy < 1 || wy >= WH) return; ch.blocks[x | (z << 4) | (wy << 8)] = id; };
+      for (const v of this.villagesNear(bx, bz, 16)) this.buildVillage(v, setV);
     }
   }
 
@@ -2830,92 +2980,163 @@ function sweepBox(world, pos, hw, h, axis, delta) {
 }
 
 // ---------- Mob models: boxes with pixel-art faces ----------
+// base is one colour, or a palette (first colour most common) painted pixel by pixel
 function faceCanvas(w, h, base, draw, seed) {
   const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h);
-  const g = c.getContext('2d'), r = mulberry32(seed || 1), b = hexc(base);
+  const g = c.getContext('2d'), r = mulberry32(seed || 1);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const f = 1 + (r() - 0.5) * 0.14;
-    g.fillStyle = `rgb(${b[0] * f | 0},${b[1] * f | 0},${b[2] * f | 0})`; g.fillRect(x, y, 1, 1);
+    if (Array.isArray(base)) g.fillStyle = base[r() < 0.5 ? 0 : 1 + Math.floor(r() * (base.length - 1))];
+    else { const b = hexc(base), f = 1 + (r() - 0.5) * 0.14; g.fillStyle = `rgb(${b[0] * f | 0},${b[1] * f | 0},${b[2] * f | 0})`; }
+    g.fillRect(x, y, 1, 1);
   }
   if (draw) draw(g, w, h, r);
   const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
   return t;
 }
 const px = (g, x, y, col, w = 1, h = 1) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
-// part: [name, size [w,h,d] in pixels, pivot [x,y,z], box offset from pivot [x,y,z], base colour, face painters {front, top, ...}]
+// fill a face (or part of it) pixel by pixel from a palette
+const fillPal = (g, r, pal, x0, y0, w, h) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) px(g, x, y, pal[r() < 0.5 ? 0 : 1 + Math.floor(r() * (pal.length - 1))]); };
+// a few irregular blotches (cow patches, vines)
+const blotches = (g, w, h, r, pal, n, size) => {
+  for (let i = 0; i < n; i++) {
+    let x = Math.floor(r() * w), y = Math.floor(r() * h);
+    for (let k = 0; k < size; k++) { px(g, x, y, pal[Math.floor(r() * pal.length)]); x = clamp(x + Math.floor(r() * 3) - 1, 0, w - 1); y = clamp(y + Math.floor(r() * 3) - 1, 0, h - 1); }
+  }
+};
+const specks = (g, w, h, r, col, n) => { for (let i = 0; i < n; i++) px(g, Math.floor(r() * w), Math.floor(r() * h), col); };
+
+const PIG = ['#f0a5a2', '#ec9c99', '#f5b0ad', '#e7938f', '#f7bbb8'];
+const COW = ['#43301f', '#3c2a1b', '#4c3726', '#352517'], COW_W = ['#e9e9e9', '#dcdcdc', '#f4f4f4'];
+const WOOL = ['#e9e9e9', '#f3f3f3', '#dddddd', '#fafafa', '#d3d3d3'], SHEEP_SKIN = ['#d9b9a1', '#d2b099', '#dfc1aa'];
+const HEN = ['#ffffff', '#f1f1f1', '#e6e6e6', '#fafafa'], HEN_WING = ['#ececec', '#dedede', '#f6f6f6'];
+const ZSKIN = ['#527c3d', '#4a7337', '#5b8744', '#456b33', '#60904a'], ZHAIR = ['#3a5a2a', '#33512a', '#40632f'];
+const SHIRT = ['#00a1a1', '#0a9494', '#12acac', '#008a8a'], PANTS = ['#3d3b9b', '#46449f', '#34328c', '#4c4aa9'];
+const CREEPER = ['#0da60d', '#2f9a26', '#56c349', '#11810e', '#7fd16f', '#1c6a14', '#a9e59a'];
+const SPIDER = ['#342b23', '#2c241d', '#3d342a', '#261f19', '#4a3e32'];
+const VSKIN = ['#bd8b72', '#b5836a', '#c49379', '#ad7c64'];
+const IRON = ['#bdb5a9', '#b1a99c', '#c8c1b6', '#a39b8e', '#d2ccc2'], VINE = ['#3f7d22', '#4f8f2c', '#5fa238', '#2f6a1a'];
+const villagerDef = robe => ({
+  hp: 20, hw: 0.3, h: 1.95, speed: 1.5, villager: true, keep: true, drops: [], sound: 'villager',
+  parts: [
+    ['head', [8, 10, 8], [0, 24, 0], [0, 5, 0], VSKIN, { front: (g, w, h, r) => {
+      px(g, 1, 3, '#3e2a1d', 6, 1);                                                   // one long eyebrow
+      px(g, 1, 4, '#ffffff'); px(g, 2, 4, '#3d8a2b'); px(g, 5, 4, '#3d8a2b'); px(g, 6, 4, '#ffffff');
+      px(g, 2, 7, '#9a6b55', 4, 1); px(g, 3, 8, '#8f624d', 2, 1);
+    } }],
+    ['nose', [2, 4, 2], [0, 26, 0], [0, -1, 5], ['#ae7c64', '#a8765e', '#b5836a']],
+    ['body', [8, 12, 6], [0, 18, 0], [0, 0, 0], robe, { front: (g, w, h) => px(g, 0, 7, shadeHex(robe[0], 0.7), w, 1) }],
+    ['robe', [8.6, 7, 6.6], [0, 9, 0], [0, 0, 0], robe, { all: (g, w, h) => px(g, 0, 0, shadeHex(robe[0], 0.85), w, 1) }],
+    // folded arms: two sleeves angled forward and the hands across the chest
+    ['xarm', [4, 8, 4], [0, 21, 1], [-6, -2, 0], robe, { bottom: (g, w, h, r) => fillPal(g, r, VSKIN, 0, 0, w, h) }, [-0.75, 0, 0]],
+    ['xarm', [4, 8, 4], [0, 21, 1], [6, -2, 0], robe, { bottom: (g, w, h, r) => fillPal(g, r, VSKIN, 0, 0, w, h) }, [-0.75, 0, 0]],
+    ['xarm', [8, 4, 4], [0, 21, 1], [0, -4, 0], VSKIN, {}, [-0.75, 0, 0]],
+    ['leg', [4, 12, 4], [-2, 12, 0], [0, -6, 0], ['#5a4a3a', '#524234', '#62503f']], ['leg', [4, 12, 4], [2, 12, 0], [0, -6, 0], ['#5a4a3a', '#524234', '#62503f']],
+  ],
+});
+function shadeHex(hex, f) { const c = hexc(hex); return `rgb(${c[0] * f | 0},${c[1] * f | 0},${c[2] * f | 0})`; }
+// part: [name, size [w,h,d] in pixels, pivot [x,y,z], box offset from pivot [x,y,z], base colour or palette, face painters {front, top, ...}, fixed rotation]
 const MOB_DEFS = {
   pig: {
     hp: 10, hw: 0.45, h: 0.9, speed: 1.4, drops: [[IT.raw_porkchop, 1, 3]], sound: 'pig',
     parts: [
-      ['body', [10, 8, 16], [0, 9, 0], [0, 0, 0], '#f0a5a2'],
-      ['head', [8, 8, 8], [0, 12, 8], [0, 0, 4], '#f0a5a2', { front: (g) => { px(g, 2, 4, '#e88a87', 4, 3); px(g, 3, 5, '#8a4a48'); px(g, 4, 5, '#8a4a48'); px(g, 1, 1, '#ffffff'); px(g, 2, 1, '#1a1a1a'); px(g, 6, 1, '#ffffff'); px(g, 5, 1, '#1a1a1a'); } }],
-      ['leg', [4, 6, 4], [-3, 6, 5], [0, -3, 0], '#e8999a'], ['leg', [4, 6, 4], [3, 6, 5], [0, -3, 0], '#e8999a'],
-      ['leg', [4, 6, 4], [-3, 6, -5], [0, -3, 0], '#e8999a'], ['leg', [4, 6, 4], [3, 6, -5], [0, -3, 0], '#e8999a'],
+      ['body', [10, 8, 16], [0, 9, 0], [0, 0, 0], PIG, { all: (g, w, h, r) => specks(g, w, h, r, '#de8986', 5) }],
+      ['head', [8, 8, 8], [0, 12, 8], [0, 0, 4], PIG, { front: (g) => { px(g, 1, 3, '#ffffff'); px(g, 2, 3, '#101010'); px(g, 5, 3, '#101010'); px(g, 6, 3, '#ffffff'); px(g, 1, 2, '#e2908d', 2, 1); px(g, 5, 2, '#e2908d', 2, 1); } }],
+      ['snout', [4, 3, 1], [0, 12, 8], [0, -1.5, 8.5], ['#f7b9b6', '#f3b0ad'], { front: (g) => { px(g, 0, 1, '#9c5552'); px(g, 3, 1, '#9c5552'); px(g, 0, 2, '#e9a3a0', 4, 1); } }],
+      ...[[-3, 5], [3, 5], [-3, -5], [3, -5]].map(([x, z]) => ['leg', [4, 6, 4], [x, 6, z], [0, -3, 0], PIG, { all: (g, w, h) => px(g, 0, h - 1, '#d4827f', w, 1) }]),
     ],
   },
   cow: {
     hp: 10, hw: 0.45, h: 1.4, speed: 1.2, drops: [[IT.raw_beef, 1, 3]], sound: 'cow',
     parts: [
-      ['body', [12, 10, 18], [0, 17, 0], [0, 0, 0], '#4a3626', { all: (g, w, h, r) => { for (let i = 0; i < 4; i++) px(g, Math.floor(r() * (w - 4)), Math.floor(r() * (h - 3)), '#e8e8e8', 3 + Math.floor(r() * 3), 2 + Math.floor(r() * 2)); } }],
-      ['head', [8, 8, 6], [0, 20, 9], [0, 0, 3], '#4a3626', { front: (g) => { px(g, 2, 5, '#c9a28a', 4, 3); px(g, 1, 2, '#ffffff'); px(g, 2, 2, '#111'); px(g, 6, 2, '#ffffff'); px(g, 5, 2, '#111'); px(g, 3, 0, '#e8e8e8', 2, 2); } }],
-      ['horn', [1, 3, 1], [-4.5, 24, 10], [0, 1.5, 0], '#d8d0b8'], ['horn', [1, 3, 1], [4.5, 24, 10], [0, 1.5, 0], '#d8d0b8'],
-      ['leg', [4, 12, 4], [-4, 12, 6], [0, -6, 0], '#3a2a1e'], ['leg', [4, 12, 4], [4, 12, 6], [0, -6, 0], '#3a2a1e'],
-      ['leg', [4, 12, 4], [-4, 12, -6], [0, -6, 0], '#3a2a1e'], ['leg', [4, 12, 4], [4, 12, -6], [0, -6, 0], '#3a2a1e'],
+      ['body', [12, 10, 18], [0, 17, 0], [0, 0, 0], COW, { all: (g, w, h, r) => blotches(g, w, h, r, COW_W, 3, Math.floor(w * h / 9)) }],
+      ['head', [8, 8, 6], [0, 20, 9], [0, 0, 3], COW, { front: (g, w, h, r) => {
+        px(g, 3, 0, '#e8e8e8', 2, 4); px(g, 2, 1, '#e8e8e8');
+        px(g, 1, 3, '#ffffff'); px(g, 2, 3, '#101010'); px(g, 5, 3, '#101010'); px(g, 6, 3, '#ffffff');
+        fillPal(g, r, ['#b9a593', '#ad9886', '#c3af9e'], 1, 5, 6, 3); px(g, 2, 6, '#5a4a3e'); px(g, 5, 6, '#5a4a3e');
+      } }],
+      ['horn', [1, 3, 1], [-4.5, 24, 10], [0, 1.5, 0], ['#d8d0b8', '#c9c0a6']], ['horn', [1, 3, 1], [4.5, 24, 10], [0, 1.5, 0], ['#d8d0b8', '#c9c0a6']],
+      ['udder', [4, 2, 5], [0, 12, -5], [0, -0.5, 0], ['#e5a3a3', '#dd9898', '#eeb0b0']],
+      ...[[-4, 6], [4, 6], [-4, -6], [4, -6]].map(([x, z]) => ['leg', [4, 12, 4], [x, 12, z], [0, -6, 0], COW, { all: (g, w, h, r) => { if (r() < 0.5) px(g, 0, 4, '#e8e8e8', w, 3); px(g, 0, h - 2, '#2a1f15', w, 2); } }]),
     ],
   },
   sheep: {
     hp: 8, hw: 0.45, h: 1.3, speed: 1.3, drops: [[BL.white_wool, 1, 1]], sound: 'sheep',
     parts: [
-      ['body', [12, 10, 18], [0, 16, 0], [0, 0, 0], '#ebebeb'],
-      ['head', [6, 6, 8], [0, 18, 9], [0, 0, 4], '#d8c8b8', { front: (g) => { px(g, 0, 2, '#ffffff'); px(g, 1, 2, '#222'); px(g, 5, 2, '#ffffff'); px(g, 4, 2, '#222'); px(g, 2, 4, '#c08f8f', 2, 1); } }],
-      ['leg', [4, 12, 4], [-3, 12, 6], [0, -6, 0], '#d8c8b8'], ['leg', [4, 12, 4], [3, 12, 6], [0, -6, 0], '#d8c8b8'],
-      ['leg', [4, 12, 4], [-3, 12, -6], [0, -6, 0], '#d8c8b8'], ['leg', [4, 12, 4], [3, 12, -6], [0, -6, 0], '#d8c8b8'],
+      ['body', [12, 10, 18], [0, 16, 0], [0, 0, 0], WOOL, { all: (g, w, h, r) => specks(g, w, h, r, '#c8c8c8', 6) }],
+      ['head', [6, 6, 8], [0, 18, 9], [0, 0, 4], WOOL, { front: (g, w, h, r) => {
+        fillPal(g, r, SHEEP_SKIN, 0, 1, 6, 5);
+        px(g, 0, 2, '#ffffff'); px(g, 1, 2, '#1a1a1a'); px(g, 4, 2, '#1a1a1a'); px(g, 5, 2, '#ffffff');
+        px(g, 2, 4, '#c69e8e', 2, 1); px(g, 2, 5, '#b08a7a', 2, 1);
+      }, bottom: (g, w, h, r) => fillPal(g, r, SHEEP_SKIN, 0, 0, w, h) }],
+      ...[[-3, 6], [3, 6], [-3, -6], [3, -6]].map(([x, z]) => ['leg', [4, 12, 4], [x, 12, z], [0, -6, 0], WOOL, { all: (g, w, h, r) => fillPal(g, r, SHEEP_SKIN, 0, 6, w, 6) }]),
     ],
   },
   chicken: {
     hp: 4, hw: 0.2, h: 0.7, speed: 1.3, drops: [[IT.raw_chicken, 1, 1], [IT.feather, 0, 2]], sound: 'chicken',
     parts: [
-      ['body', [6, 6, 8], [0, 8, 0], [0, 0, 0], '#f2f2f2'],
-      ['head', [4, 6, 3], [0, 11, 4], [0, 1, 1.5], '#f2f2f2', { front: (g) => { px(g, 0, 1, '#111'); px(g, 3, 1, '#111'); } }],
-      ['beak', [4, 2, 2], [0, 12, 6], [0, 0, 1], '#f2b01a'], ['wattle', [2, 2, 2], [0, 10, 6], [0, 0, 0.5], '#d82020'],
-      ['wing', [1, 4, 6], [-3.5, 9, 0], [0, 0, 0], '#e6e6e6'], ['wing', [1, 4, 6], [3.5, 9, 0], [0, 0, 0], '#e6e6e6'],
-      ['leg', [1, 5, 1], [-1.5, 5, 0], [0, -2.5, 0], '#f2b01a'], ['leg', [1, 5, 1], [1.5, 5, 0], [0, -2.5, 0], '#f2b01a'],
+      ['body', [6, 6, 8], [0, 8, 0], [0, 0, 0], HEN],
+      ['head', [4, 6, 3], [0, 11, 4], [0, 1, 1.5], HEN, { front: (g) => { px(g, 0, 2, '#101010'); px(g, 3, 2, '#101010'); } }],
+      ['beak', [4, 2, 2], [0, 12, 6], [0, 0, 1], ['#f5b521', '#f0aa18'], { all: (g, w, h) => px(g, 0, h - 1, '#d8901a', w, 1) }],
+      ['wattle', [2, 2, 2], [0, 10, 6], [0, 0, 0.5], ['#d92b2b', '#c42424', '#e23a3a']],
+      ['wing', [1, 4, 6], [-3.5, 9, 0], [0, 0, 0], HEN_WING], ['wing', [1, 4, 6], [3.5, 9, 0], [0, 0, 0], HEN_WING],
+      ['leg', [1, 5, 1], [-1.5, 5, 0], [0, -2.5, 0], ['#f2a516', '#e39812']], ['leg', [1, 5, 1], [1.5, 5, 0], [0, -2.5, 0], ['#f2a516', '#e39812']],
+      ['foot', [3, 0.5, 3], [-1.5, 0, 0], [0, 0.25, 0.5], ['#f2a516']], ['foot', [3, 0.5, 3], [1.5, 0, 0], [0, 0.25, 0.5], ['#f2a516']],
     ],
   },
   zombie: {
     hp: 20, hw: 0.3, h: 1.95, speed: 2.3, hostile: true, attack: 3, burns: true, drops: [[IT.rotten_flesh, 0, 2]], sound: 'zombie',
     parts: [
-      ['head', [8, 8, 8], [0, 24, 0], [0, 4, 0], '#5a8a46', { front: (g) => { px(g, 1, 3, '#1a2a12', 2, 1); px(g, 5, 3, '#1a2a12', 2, 1); px(g, 3, 5, '#3e6630', 2, 1); px(g, 2, 6, '#2a4a20', 4, 1); }, top: (g) => px(g, 0, 0, '#3a5a2a', 8, 3) }],
-      ['body', [8, 12, 4], [0, 18, 0], [0, 0, 0], '#2a8a8a', { front: (g) => px(g, 0, 10, '#1f6a6a', 8, 2) }],
-      ['arm', [4, 12, 4], [-6, 22, 0], [0, -4, 0], '#5a8a46', { front: (g) => px(g, 0, 0, '#2a8a8a', 4, 4) }], ['arm', [4, 12, 4], [6, 22, 0], [0, -4, 0], '#5a8a46', { front: (g) => px(g, 0, 0, '#2a8a8a', 4, 4) }],
-      ['leg', [4, 12, 4], [-2, 12, 0], [0, -6, 0], '#3a3aa0'], ['leg', [4, 12, 4], [2, 12, 0], [0, -6, 0], '#3a3aa0'],
+      ['head', [8, 8, 8], [0, 24, 0], [0, 4, 0], ZSKIN, {
+        front: (g, w, h, r) => { fillPal(g, r, ZHAIR, 0, 0, 8, 2); px(g, 0, 2, '#3a5a2a'); px(g, 7, 2, '#3a5a2a'); px(g, 1, 3, '#3d6230', 2, 1); px(g, 5, 3, '#3d6230', 2, 1); px(g, 1, 4, '#16200f', 2, 1); px(g, 5, 4, '#16200f', 2, 1); px(g, 3, 5, '#41662f', 2, 1); px(g, 2, 6, '#2b4320', 4, 1); },
+        top: (g, w, h, r) => fillPal(g, r, ZHAIR, 0, 0, w, h), back: (g, w, h, r) => fillPal(g, r, ZHAIR, 0, 0, w, 5),
+        left: (g, w, h, r) => fillPal(g, r, ZHAIR, 0, 0, w, 3), right: (g, w, h, r) => fillPal(g, r, ZHAIR, 0, 0, w, 3) }],
+      ['body', [8, 12, 4], [0, 18, 0], [0, 0, 0], SHIRT, { front: (g, w, h, r) => { px(g, 3, 0, '#527c3d', 2, 1); specks(g, w, h, r, '#006f6f', 4); } }],
+      ...[-6, 6].map(x => ['arm', [4, 12, 4], [x, 22, 0], [0, -4, 0], ZSKIN, { all: (g, w, h, r) => fillPal(g, r, SHIRT, 0, 0, w, 4), top: (g, w, h, r) => fillPal(g, r, SHIRT, 0, 0, w, h) }]),
+      ...[-2, 2].map(x => ['leg', [4, 12, 4], [x, 12, 0], [0, -6, 0], PANTS, { all: (g, w, h, r) => fillPal(g, r, ['#5c5c5c', '#4f4f4f', '#666666'], 0, h - 2, w, 2) }]),
     ],
   },
   creeper: {
     hp: 20, hw: 0.3, h: 1.7, speed: 2.0, hostile: true, explode: true, drops: [[IT.gunpowder, 0, 2]], sound: 'creeper',
     parts: [
-      ['head', [8, 8, 8], [0, 18, 0], [0, 4, 0], '#4caf3a', { all: (g, w, h, r) => { for (let i = 0; i < 14; i++) px(g, Math.floor(r() * w), Math.floor(r() * h), r() < 0.5 ? '#2f7a24' : '#7cd06a'); },
-        front: (g) => { px(g, 1, 2, '#0d0d0d', 2, 2); px(g, 5, 2, '#0d0d0d', 2, 2); px(g, 3, 4, '#0d0d0d', 2, 3); px(g, 2, 5, '#0d0d0d', 1, 3); px(g, 5, 5, '#0d0d0d', 1, 3); } }],
-      ['body', [8, 12, 4], [0, 12, 0], [0, 0, 0], '#4caf3a', { all: (g, w, h, r) => { for (let i = 0; i < 18; i++) px(g, Math.floor(r() * w), Math.floor(r() * h), r() < 0.5 ? '#2f7a24' : '#7cd06a'); } }],
-      ['leg', [4, 6, 4], [-2, 6, 4], [0, -3, 0], '#3e9a30'], ['leg', [4, 6, 4], [2, 6, 4], [0, -3, 0], '#3e9a30'],
-      ['leg', [4, 6, 4], [-2, 6, -4], [0, -3, 0], '#3e9a30'], ['leg', [4, 6, 4], [2, 6, -4], [0, -3, 0], '#3e9a30'],
+      ['head', [8, 8, 8], [0, 18, 0], [0, 4, 0], CREEPER, { front: (g) => { px(g, 1, 2, '#0d0d0d', 2, 2); px(g, 5, 2, '#0d0d0d', 2, 2); px(g, 3, 4, '#0d0d0d', 2, 3); px(g, 2, 5, '#0d0d0d', 1, 3); px(g, 5, 5, '#0d0d0d', 1, 3); } }],
+      ['body', [8, 12, 4], [0, 12, 0], [0, 0, 0], CREEPER],
+      ...[[-2, 4], [2, 4], [-2, -4], [2, -4]].map(([x, z]) => ['leg', [4, 6, 4], [x, 6, z], [0, -3, 0], CREEPER, { all: (g, w, h) => px(g, 0, h - 1, '#0b5a08', w, 1) }]),
     ],
   },
   spider: {
     hp: 16, hw: 0.7, h: 0.9, speed: 2.8, hostile: true, attack: 2, nightOnly: true, drops: [[IT.string, 0, 2]], sound: 'spider',
     parts: [
-      ['body', [10, 8, 12], [0, 9, -7], [0, 0, 0], '#3a3028'],
-      ['neck', [6, 6, 6], [0, 9, 1], [0, 0, 0], '#2e261f'],
-      ['head', [8, 8, 8], [0, 9, 7], [0, 0, 0], '#3a3028', { front: (g) => { px(g, 1, 3, '#d01010', 2, 1); px(g, 5, 3, '#d01010', 2, 1); px(g, 2, 2, '#d01010'); px(g, 5, 2, '#d01010'); } }],
-      ...[-1, 1].flatMap(sd => [3, 1, -1, -3].map((z, i) => ['sleg', [16, 2, 2], [sd * 4, 9, z], [sd * 8, 0, 0], '#2a221b'])),
+      ['body', [10, 8, 12], [0, 9, -7], [0, 0, 0], SPIDER, { all: (g, w, h, r) => specks(g, w, h, r, '#5c4d3e', 8) }],
+      ['neck', [6, 6, 6], [0, 9, 1], [0, 0, 0], SPIDER],
+      ['head', [8, 8, 8], [0, 9, 7], [0, 0, 0], SPIDER, { front: (g) => {
+        px(g, 1, 3, '#b31111', 2, 2); px(g, 1, 3, '#ff4040'); px(g, 5, 3, '#b31111', 2, 2); px(g, 5, 3, '#ff4040');
+        px(g, 0, 2, '#b31111'); px(g, 7, 2, '#b31111'); px(g, 3, 2, '#b31111'); px(g, 4, 2, '#b31111'); px(g, 3, 5, '#8a0d0d', 2, 1);
+      } }],
+      ...[-1, 1].flatMap(sd => [3, 1, -1, -3].map((z, i) => ['sleg', [16, 2, 2], [sd * 4, 9, z], [sd * 8, 0, 0], ['#241d17', '#2c241d', '#1d1712']])),
+    ],
+  },
+  villager: villagerDef(['#6b4a30', '#634428', '#74523a', '#5b3d24']),
+  villager_desert: villagerDef(['#b8915c', '#ad8653', '#c29b66', '#a17a49']),
+  villager_snowy: villagerDef(['#3f5f8a', '#38567d', '#466898', '#324e72']),
+  iron_golem: {
+    hp: 100, hw: 0.7, h: 2.7, speed: 1.3, golem: true, keep: true, attack: 10, drops: [[IT.iron_ingot, 3, 5], [BL.poppy, 0, 2]], sound: 'golem',
+    parts: [
+      ['head', [8, 10, 8], [0, 33, 0], [0, 5, 1], IRON, { front: (g, w, h, r) => { px(g, 1, 3, '#5a544b', 6, 1); px(g, 2, 4, '#7a1b12'); px(g, 5, 4, '#7a1b12'); specks(g, w, h, r, '#9a9386', 3); } }],
+      ['nose', [2, 4, 2], [0, 35, 5], [0, -1, 1], ['#b9b2a6', '#aea79a']],
+      ['body', [18, 12, 11], [0, 27, 0], [0, 0, 0], IRON, { all: (g, w, h, r) => { blotches(g, w, h, r, VINE, 2, 6); specks(g, w, h, r, '#8f887c', 6); } }],
+      ['waist', [9, 5, 6], [0, 18.5, 0], [0, 0, 0], IRON, { all: (g, w, h, r) => specks(g, w, h, r, '#8f887c', 2) }],
+      ...[-11, 11].map(x => ['arm', [4, 30, 6], [x, 33, 0], [0, -13, 0], IRON, { all: (g, w, h, r) => { blotches(g, w, h, r, VINE, 1, 5); specks(g, w, h, r, '#8f887c', 4); } }]),
+      ...[-4.5, 4.5].map(x => ['leg', [6, 16, 5], [x, 16, 0], [0, -8, 0], IRON, { all: (g, w, h, r) => { blotches(g, w, h, r, VINE, 1, 5); specks(g, w, h, r, '#8f887c', 3); } }]),
     ],
   },
 };
+// light on a mob: brightest on top, darkest underneath, like Minecraft (box faces: +x, -x, +y, -y, +z, -z)
+const MOB_SHADE = [0.78, 0.78, 1.0, 0.5, 0.9, 0.72];
 const mobPartCache = new Map();
 function buildMob(type) {
   const def = MOB_DEFS[type], group = new THREE.Group(), parts = [];
   const mats = [];
-  def.parts.forEach(([name, size, pivot, off, base, paint = {}], idx) => {
+  def.parts.forEach(([name, size, pivot, off, base, paint = {}, rot], idx) => {
     const key = type + idx;
     let entry = mobPartCache.get(key);
     if (!entry) {
@@ -2926,9 +3147,10 @@ function buildMob(type) {
       entry = { geo: new THREE.BoxGeometry(w / 16, h / 16, d / 16), textures };
       mobPartCache.set(key, entry);
     }
-    const pmats = entry.textures.map(t => new THREE.MeshBasicMaterial({ map: t }));
+    const pmats = entry.textures.map((t, f) => { const m = new THREE.MeshBasicMaterial({ map: t }); m.userData.shade = MOB_SHADE[f]; return m; });
     mats.push(...pmats);
     const pivotObj = new THREE.Group(); pivotObj.position.set(pivot[0] / 16, pivot[1] / 16, pivot[2] / 16);
+    if (rot) pivotObj.rotation.set(rot[0], rot[1], rot[2]);
     const mesh = new THREE.Mesh(entry.geo, pmats); mesh.position.set(off[0] / 16, off[1] / 16, off[2] / 16);
     pivotObj.add(mesh); group.add(pivotObj);
     parts.push({ name, obj: pivotObj, mesh, side: pivot[0] < 0 ? -1 : 1, front: pivot[2] > 0 });
@@ -2984,7 +3206,8 @@ class Entities {
     e.hp -= dmg; e.hurtT = 0.5;
     e.vel.x += dir.x * 6; e.vel.z += dir.z * 6; e.vel.y = 5;
     sfx.play(e.def.sound + '_hurt', e.pos);
-    if (!e.def.hostile) e.panic = 5;
+    if (e.def.golem) e.angry = 25;
+    else if (!e.def.hostile) e.panic = 5;
     if (e.hp <= 0) { e.deathT = 1; sfx.play(e.def.sound + '_death', e.pos); }
   }
   explode(x, y, z, power) {
@@ -3123,14 +3346,21 @@ class Entities {
       return;
     }
     const toP = new V3(player.pos.x - p.x, 0, player.pos.z - p.z), dist = toP.length();
-    if (dist > 96) { this.remove(e); return; }
+    if (dist > (def.keep ? 240 : 96)) { this.remove(e); return; }
     // far-away monsters wander off now and then (Minecraft: 1 in 800 ticks beyond 32 blocks)
     if (def.hostile && dist > 32 && Math.random() < dt / 40) { this.remove(e); return; }
     let move = 0, speed = def.speed;
     const inWater = LIQUID[inside] === 1;
     // decide where to go
     const dark = def.nightOnly ? daylight < 0.5 : true;
-    const hunting = def.hostile && dark && !player.dead && player.mode === 'survival' && dist < 16;
+    // iron golems guard their village: they go after monsters nearby, and after you if you hit them
+    let prey = null;
+    if (def.golem) {
+      e.angry = Math.max(0, (e.angry || 0) - dt); e.scan = (e.scan || 0) - dt;
+      if (e.scan <= 0) { e.scan = 0.5; let best = 16; e.prey = null; for (const o of this.list) if (o.type === 'mob' && o.def.hostile && !o.def.explode && !o.deathT && !o.dead) { const d = Math.hypot(o.pos.x - p.x, o.pos.z - p.z); if (d < best) { best = d; e.prey = o; } } }
+      if (e.prey && !e.prey.dead && !e.prey.deathT) prey = e.prey;
+    }
+    const hunting = ((def.hostile && dark) || (def.golem && e.angry > 0)) && !player.dead && player.mode === 'survival' && dist < (def.golem ? 24 : 16);
     if (hunting) {
       e.target = new V3(player.pos.x, player.pos.y, player.pos.z);
       move = 1; e.panic = 0;
@@ -3141,11 +3371,23 @@ class Entities {
         e.attackCD = 1; hurt(def.attack, 'mob');
         player.vel.addScaledVector(toP.clone().normalize(), 5); player.vel.y = Math.max(player.vel.y, 4);
       }
+    } else if (prey) {
+      e.target = prey.pos.clone(); move = 1;
+      const d = Math.hypot(prey.pos.x - p.x, prey.pos.z - p.z);
+      if (d < 1.3 + e.hw + prey.hw && e.attackCD <= 0) {
+        e.attackCD = 1.25; for (const part of e.parts) if (part.name === 'arm') part.punch = 1;
+        this.hitMob(prey, 7 + Math.floor(Math.random() * 15), new V3(prey.pos.x - p.x, 0, prey.pos.z - p.z).normalize()); prey.vel.y = 10;
+        sfx.play('golem_attack', p);
+      }
     } else {
       if (def.explode) e.fuse = Math.max(0, e.fuse - dt);
       e.think -= dt;
       if (e.panic > 0) { e.panic -= dt; speed *= 2; if (e.think <= 0) { e.think = 1; e.target = new V3(p.x + (Math.random() - 0.5) * 16, p.y, p.z + (Math.random() - 0.5) * 16); } }
-      else if (e.think <= 0) { e.think = 3 + Math.random() * 6; e.target = Math.random() < 0.6 ? new V3(p.x + (Math.random() - 0.5) * 14, p.y, p.z + (Math.random() - 0.5) * 14) : null; }
+      else if (e.think <= 0) {
+        e.think = 3 + Math.random() * 6;
+        if (e.home && Math.hypot(e.home[0] - p.x, e.home[1] - p.z) > (def.golem ? 10 : 16)) e.target = new V3(e.home[0] + (Math.random() - 0.5) * 8, p.y, e.home[1] + (Math.random() - 0.5) * 8);
+        else e.target = Math.random() < 0.6 ? new V3(p.x + (Math.random() - 0.5) * 14, p.y, p.z + (Math.random() - 0.5) * 14) : null;
+      }
       if (e.target) move = 1;
     }
     if (e.target) {
@@ -3188,7 +3430,10 @@ class Entities {
     const swing = Math.sin(e.walk) * Math.min(1, Math.hypot(e.vel.x, e.vel.z) / 2) * 0.7;
     for (const part of e.parts) {
       if (part.name === 'leg') part.obj.rotation.x = (part.front === (part.side > 0)) ? swing : -swing;
-      else if (part.name === 'arm') part.obj.rotation.x = e.mob === 'zombie' ? -Math.PI / 2 + swing * 0.2 : swing;
+      else if (part.name === 'arm') {
+        if (part.punch) { part.punch = Math.max(0, part.punch - dt * 3); part.obj.rotation.x = -Math.sin(part.punch * Math.PI) * 1.8; }
+        else part.obj.rotation.x = e.mob === 'zombie' ? -Math.PI / 2 + swing * 0.2 : (part.side > 0 ? swing : -swing);
+      }
       else if (part.name === 'sleg') { part.obj.rotation.z = part.side * (0.5 + Math.sin(e.walk * 1.5 + part.obj.position.z * 4) * 0.25); part.obj.rotation.y = part.obj.position.z * 2 * part.side; }
       else if (part.name === 'wing') part.obj.rotation.z = e.onGround ? 0 : part.side * Math.sin(e.walk * 6) * 0.6;
     }
@@ -3197,7 +3442,7 @@ class Entities {
     const [s, b] = w.lightAt(Math.floor(p.x), Math.floor(p.y + 0.9), Math.floor(p.z));
     const br = lightBright(s, b, U.uDaylight.value) / 0.75;
     const flash = def.explode && e.fuse > 0 && Math.floor(e.fuse * 8) % 2 === 0;
-    for (const m of e.mats) { if (e.hurtT > 0.3) m.color.setRGB(Math.min(1, br * 1.6), br * 0.4, br * 0.4); else if (flash) m.color.setScalar(2); else m.color.setScalar(Math.min(1.1, br)); }
+    for (const m of e.mats) { const sh = m.userData.shade || 1; if (e.hurtT > 0.3) m.color.setRGB(Math.min(1, br * 1.6) * sh, br * 0.4 * sh, br * 0.4 * sh); else if (flash) m.color.setScalar(2); else m.color.setScalar(Math.min(1.1, br) * sh); }
     if (def.explode) e.obj.scale.setScalar(1 + e.fuse * 0.12);
   }
   // spawn animals in a freshly made chunk and monsters in the dark near the player
@@ -3216,6 +3461,15 @@ class Entities {
         if (id === BL.grass_block || id === BL.snowy_grass_block) { if (this.roomAt(sx, y + 1, sz)) this.spawnMob(type, sx + 0.5, y + 1, sz + 0.5); break; }
         if (id > 0 && SOLID[id]) break;
       }
+    }
+  }
+  // the villagers (and golem) whose home is in this chunk, unless they're already about
+  spawnVillagers(c) {
+    for (const v of this.world.gen.villagesNear(c.cx * 16, c.cz * 16, 16)) for (const sp of v.spawns) {
+      if (Math.floor(sp.x / 16) !== c.cx || Math.floor(sp.z / 16) !== c.cz) continue;
+      if (this.list.some(e => e.vid === sp.vid && !e.dead)) continue;
+      const e = this.spawnMob(sp.type, sp.x + 0.5, sp.y, sp.z + 0.5);
+      e.vid = sp.vid; e.home = [v.vx + 0.5, v.vz + 0.5];
     }
   }
   // two blocks a mob can stand in: air or plants, not water or anything solid
@@ -3909,6 +4163,10 @@ const sfx = (() => {
     chicken_hurt: o => tone(o, { f0: 1400, f1: 900, dur: 0.12, type: 'square', vol: 0.05 }), chicken_death: o => tone(o, { f0: 1200, f1: 500, dur: 0.3, type: 'square', vol: 0.05 }),
     zombie: o => { tone(o, { f0: 95, f1: 70, dur: 1.1, type: 'sawtooth', vol: 0.09, vib: 6, attack: 0.2 }); noise(o, { freq: 380, type: 'lowpass', vol: 0.08, dur: 1 }); },
     zombie_hurt: o => tone(o, { f0: 140, f1: 90, dur: 0.3, type: 'sawtooth', vol: 0.12 }), zombie_death: o => tone(o, { f0: 120, f1: 50, dur: 0.9, type: 'sawtooth', vol: 0.12, vib: 4 }),
+    villager: o => { tone(o, { f0: 240, f1: 300, dur: 0.12, type: 'sawtooth', vol: 0.05, vib: 18 }); tone(o, { f0: 280, f1: 210, dur: 0.22, type: 'sawtooth', vol: 0.05, vib: 18, at: 0.12 }); },
+    villager_hurt: o => tone(o, { f0: 360, f1: 250, dur: 0.2, type: 'sawtooth', vol: 0.07, vib: 25 }), villager_death: o => tone(o, { f0: 300, f1: 120, dur: 0.6, type: 'sawtooth', vol: 0.07, vib: 12 }),
+    golem: o => MAT.metal(o, 0.4), golem_hurt: o => { MAT.metal(o, 0.8); noise(o, { freq: 400, vol: 0.15, dur: 0.2 }); }, golem_death: o => { MAT.metal(o, 1); noise(o, { freq: 300, sweep: 80, vol: 0.25, dur: 0.8 }); },
+    golem_attack: o => { noise(o, { freq: 220, type: 'lowpass', vol: 0.35, dur: 0.25 }); tone(o, { f0: 90, f1: 50, dur: 0.25, vol: 0.2 }); },
     creeper: o => noise(o, { freq: 3000, type: 'highpass', vol: 0.04, dur: 0.4 }),
     creeper_hurt: o => noise(o, { freq: 1500, vol: 0.2, dur: 0.15 }), creeper_death: o => noise(o, { freq: 800, sweep: 200, vol: 0.2, dur: 0.6 }),
     spider: o => noise(o, { freq: 2600, q: 3, vol: 0.12, dur: 0.25, rate: 0.7 }),
@@ -4081,7 +4339,7 @@ function streamChunks(budget) {
     const cx = pcx + dx, cz = pcz + dz;
     let c = w.chunk(cx, cz);
     if (!c) c = w.generateChunk(cx, cz);
-    if (c.state === 0) { w.lightChunk(c); if (game.state === 'game' || game.state === 'loading') game.entities.spawnAnimals(c); }
+    if (c.state === 0) { w.lightChunk(c); if (game.state === 'game' || game.state === 'loading') { game.entities.spawnAnimals(c); game.entities.spawnVillagers(c); } }
   }
   let meshed = 0;
   for (const [dx, dz, d2] of order) {
@@ -4566,7 +4824,7 @@ const TitleScreen = () => ({
     if (button(bx, by, bw, 20, 'Singleplayer')) { sfx.init(); openScreen(WorldsScreen()); }
     if (button(bx, by + 24, bw, 20, 'Options...')) { sfx.init(); openScreen(OptionsScreen(() => openScreen(TitleScreen()))); }
     if (button(bx, by + 48, bw, 20, 'How to play')) { sfx.init(); openScreen(ControlsScreen(() => openScreen(TitleScreen()))); }
-    drawText(gctx, 'Blockcraft 1.3.2', 2, H - 10, '#ffffff');
+    drawText(gctx, 'Blockcraft 1.4', 2, H - 10, '#ffffff');
     const t = 'Made by Lars and Noah';
     drawText(gctx, t, W - textWidth(t) - 2, H - 10, '#ffffff');
   },

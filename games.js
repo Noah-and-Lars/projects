@@ -113,13 +113,14 @@ window.GAMES = [
     path: 'blockcraft/index.html',
     thumb: 'blockcraft/thumb.svg',
     added: '2026-10-13T21:00:00+11:00',
-    updated: '2026-10-14T13:03:14+11:00',
+    updated: '2026-10-14T13:20:59+11:00',
     stat() { const w = readSave('blockcraft-worlds', true); return w && w.length ? w.length + (w.length === 1 ? ' world' : ' worlds') : null; },
   },
 ];
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.4: villages with villagers and an iron golem (plains, desert, taiga and snowy styles), and new skins for every mob.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.3.2: the first-person hand now sits and punches exactly like Minecraft Java.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.3.1: new grass, dirt, tall grass, oak bark and leaf textures, closer to the classic look.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.3: farming (hoes till farmland, plant seeds, grow wheat), shovel paths, mobs that spawn properly at night and in caves, fixed ice, and the sun no longer shines through blocks.' },
