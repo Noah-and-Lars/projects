@@ -65,7 +65,9 @@ source in Settings → Pages should be switched to `main`.
   Villages: `Gen.village(rx, rz)` plans at most one per 320x320 region from the
   seed (plains, desert, taiga, snowy styles); each chunk builds its own part in
   `decorate`, and `spawnVillagers` adds villagers and an iron golem when a chunk
-  with their home is made. Mob skins are drawn per face from palettes in `MOB_DEFS`. It's heavy: keep tests
+  with their home is made. Mob skins are drawn per face from palettes in `MOB_DEFS`.
+  `SHAPE.BOXES` blocks (stairs, slabs, doors, fences, lanterns) are drawn and
+  collide as a list of boxes; stairs and doors use one block id per facing/state. It's heavy: keep tests
   short, and don't run hundreds of frames in the preview pane.
 
 - `free-criminal/`: Free Criminal, an open-world 3D crime game set in San Varro (Three.js r128 copied from Cube Assault into the file). Version 1.1 adds 3x traffic, ragdoll crashes, gun stores (10 guns, grenades), a mall and a new HUD. Saves only its settings (`freecriminal.settings.v1`).

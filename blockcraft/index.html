@@ -150,7 +150,7 @@ class Noise {
 // =====================================================================
 // Block ids are saved in worlds, so new blocks must only ever be added at the END of the list.
 const AIR = 0;
-const SHAPE = { NONE: 0, CUBE: 1, CROSS: 2, TORCH: 3, LIQUID: 4, CACTUS: 5, PANEL: 6, LOW: 7 }; // LOW: 15/16 tall (farmland, paths)
+const SHAPE = { NONE: 0, CUBE: 1, CROSS: 2, TORCH: 3, LIQUID: 4, CACTUS: 5, PANEL: 6, LOW: 7, BOXES: 8 }; // BOXES: made of a few boxes (stairs, slabs, doors, fences, lanterns) // LOW: 15/16 tall (farmland, paths)
 const PASS = { OPAQUE: 0, CUTOUT: 1, TRANS: 2 };
 const TINT = { NONE: 0, GRASS: 1, FOLIAGE: 2, BIRCH: 3, SPRUCE: 4, WATER: 5 };
 // faces: 0 east +x, 1 west -x, 2 top +y, 3 bottom -y, 4 south +z, 5 north -z
@@ -303,6 +303,21 @@ B('dirt_path', { ...LOWB, tex: { top: 'dirt_path_top', side: 'dirt_path_side', b
 for (let i = 0; i < 8; i++) B('wheat_' + i, { ...PLANT, tex: 'wheat_stage_' + i, crop: i, noItem: true, display: 'Wheat Crops',
   drop: r => i < 7 ? [[IT.wheat_seeds, 1]] : [[IT.wheat, 1], [IT.wheat_seeds, 1 + Math.floor(r() * 3)]] });
 const isFarmland = id => id === BL.farmland || id === BL.farmland_moist;
+// village blocks: stairs (the tall half towards n/s/e/w), slabs, doors, fences, lanterns, hay, terracotta
+const STAIR_BOXES = { n: [[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0, 1, 1, 0.5]], s: [[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0.5, 1, 1, 1]], e: [[0, 0, 0, 1, 0.5, 1], [0.5, 0.5, 0, 1, 1, 1]], w: [[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0, 0.5, 1, 1]] };
+for (const [mat, tex, base] of [['oak', 'oak_planks', WOODY], ['spruce', 'spruce_planks', WOODY], ['cobblestone', 'cobblestone', STONEY]])
+  for (const f of ['n', 's', 'e', 'w']) B(mat + '_stairs_' + f, { ...base, shape: SHAPE.BOXES, opaque: false, lop: 15, tex, boxes: STAIR_BOXES[f], stairs: mat, place: 'stairs', display: titleCase(mat + ' stairs'), ...(f !== 'n' ? { item: mat + '_stairs_n' } : {}) });
+B('oak_slab', { ...WOODY, shape: SHAPE.BOXES, opaque: false, lop: 15, tex: 'oak_planks', boxes: [[0, 0, 0, 1, 0.5, 1]], slab: true });
+B('cobblestone_slab', { ...STONEY, shape: SHAPE.BOXES, opaque: false, lop: 15, tex: 'cobblestone', boxes: [[0, 0, 0, 1, 0.5, 1]], slab: true });
+const DOOR_PANEL = { n: [0, 0, 0, 1, 1, 3 / 16], s: [0, 0, 13 / 16, 1, 1, 1], e: [13 / 16, 0, 0, 1, 1, 1], w: [0, 0, 0, 3 / 16, 1, 1] };
+for (const half of ['lower', 'upper']) for (const side of ['n', 's', 'e', 'w']) for (const open of [0, 1])
+  B(`oak_door_${half}_${side}_${open}`, { ...WOODY, hardness: 3, shape: SHAPE.BOXES, pass: PASS.CUTOUT, opaque: false, tex: half === 'lower' ? 'door_bottom' : 'door_top', boxes: [DOOR_PANEL[side]], door: { half, side, open }, noItem: true, display: 'Oak Door', drop: () => half === 'lower' ? [[IT.oak_door, 1]] : [] });
+B('oak_fence', { ...WOODY, shape: SHAPE.BOXES, opaque: false, tex: 'oak_planks', fence: true, boxes: [[6 / 16, 0, 6 / 16, 10 / 16, 1, 10 / 16]], collide: [[0.2, 0, 0.2, 0.8, 1, 0.8]] });
+B('lantern', { shape: SHAPE.BOXES, pass: PASS.CUTOUT, opaque: false, solid: false, emit: 15, hardness: 3.5, tool: 'pickaxe', sound: 'metal', tex: 'lantern', boxes: [[5 / 16, 0, 5 / 16, 11 / 16, 7 / 16, 11 / 16], [6 / 16, 7 / 16, 6 / 16, 10 / 16, 9 / 16, 10 / 16]] });
+B('hay_block', { tex: { top: 'hay_block_top', side: 'hay_block_side' }, hardness: 0.5, tool: 'hoe', sound: 'grass' });
+B('white_terracotta', { ...STONEY, hardness: 1.25 });
+B('terracotta', { ...STONEY, hardness: 1.25 });
+const DOOR_CW = { n: 'e', e: 's', s: 'w', w: 'n' }, DOOR_CCW = { e: 'n', s: 'e', w: 's', n: 'w' };
 
 // Resolve names used before every block was defined
 for (const d of BLOCKS) if (d && typeof d.item === 'string') d.item = BL[d.item];
@@ -345,6 +360,7 @@ for (const [mat, tier, speed, dur, dmg] of TOOL_MATS) {
   }
 }
 I('wheat_seeds');
+I('oak_door');
 for (const d of ITEMS) if (d && d.food) d.foodHunger = d.food[0];
 
 const itemDef = id => id < 256 ? BLOCKS[id] : ITEMS[id];
@@ -368,6 +384,16 @@ shaped(['P', 'P'], { P: 'planks' }, IT.stick, 4);
 shaped(['PP', 'PP'], { P: 'planks' }, BL.crafting_table);
 shaped(['CCC', 'C C', 'CCC'], { C: 'cobble' }, BL.furnace);
 shaped(['PPP', 'P P', 'PPP'], { P: 'planks' }, BL.chest);
+shaped(['P  ', 'PP ', 'PPP'], { P: BL.oak_planks }, BL.oak_stairs_n, 4);
+shaped(['P  ', 'PP ', 'PPP'], { P: BL.spruce_planks }, BL.spruce_stairs_n, 4);
+shaped(['C  ', 'CC ', 'CCC'], { C: BL.cobblestone }, BL.cobblestone_stairs_n, 4);
+shaped(['PPP'], { P: BL.oak_planks }, BL.oak_slab, 6);
+shaped(['CCC'], { C: BL.cobblestone }, BL.cobblestone_slab, 6);
+shaped(['PP', 'PP', 'PP'], { P: BL.oak_planks }, IT.oak_door, 3);
+shaped(['PSP', 'PSP'], { P: BL.oak_planks, S: IT.stick }, BL.oak_fence, 3);
+shaped(['I', 'T', 'I'], { I: IT.iron_ingot, T: BL.torch }, BL.lantern);
+shaped(['WWW', 'WWW', 'WWW'], { W: IT.wheat }, BL.hay_block);
+shaped(['H'], { H: BL.hay_block }, IT.wheat, 9);
 shaped(['C', 'S'], { C: 'coals', S: IT.stick }, BL.torch, 4);
 shaped(['S S', 'SSS', 'S S'], { S: IT.stick }, BL.ladder, 3);
 const TOOL_HEADS = { wooden: 'planks', stone: 'cobble', iron: IT.iron_ingot, golden: IT.gold_ingot, diamond: IT.diamond };
@@ -746,6 +772,33 @@ for (let i = 0; i < 8; i++) TEXDEF('wheat_stage_' + i, (img, r) => {
     }
   }
 });
+
+// ---------- Village blocks ----------
+const DOOR_PAL = PAL(['#8f6a3e', '#9c7646', '#a8824f', '#83603a']);
+TEXDEF('door_bottom', (img, r) => {
+  img.each((x, y) => img.set(x, y, pick(DOOR_PAL, r() * 0.999)));
+  img.each((x, y) => { if (x === 0 || x === 15 || y === 15 || y === 0 || y === 7 || x === 7 || x === 8) img.set(x, y, hexc('#6b4b29')); });
+  img.set(12, 4, hexc('#3a3a3a')); img.set(12, 5, hexc('#5a5a5a'));
+});
+TEXDEF('door_top', (img, r) => {
+  img.each((x, y) => img.set(x, y, pick(DOOR_PAL, r() * 0.999)));
+  img.each((x, y) => { if (x === 0 || x === 15 || y === 0 || y === 15 || x === 7 || x === 8 || y === 7) img.set(x, y, hexc('#6b4b29')); });
+  // four small windows
+  for (const [x0, y0] of [[2, 2], [10, 2], [2, 9], [10, 9]]) for (let y = y0; y < y0 + 4; y++) for (let x = x0; x < x0 + 4; x++) img.clear(x, y);
+});
+TEXDEF('lantern', (img, r) => {
+  img.each((x, y) => img.set(x, y, hexc(r() < 0.5 ? '#2e2e33' : '#3a3a40')));
+  for (let y = 10; y <= 14; y++) for (let x = 6; x <= 9; x++) img.set(x, y, hexc(r() < 0.5 ? '#ffd65a' : '#ffbf3a'));
+  for (let x = 6; x <= 9; x++) img.set(x, 12, hexc('#fff0a8'));
+});
+const HAY = PAL(['#b5932a', '#c4a232', '#a6841f', '#d0b043', '#9c7a1c']);
+TEXDEF('hay_block_side', (img, r) => {
+  for (let x = 0; x < 16; x++) { const t = r(); for (let y = 0; y < 16; y++) img.set(x, y, pick(HAY, clamp(t * 0.6 + r() * 0.4, 0, 0.999))); }
+  for (const y0 of [3, 11]) for (let x = 0; x < 16; x++) { img.set(x, y0, hexc(r() < 0.5 ? '#6f4a1c' : '#7d5523')); img.set(x, y0 + 1, hexc('#5e3d16')); }
+});
+TEXDEF('hay_block_top', (img, r) => img.each((x, y) => { const d = Math.hypot(x - 7.5, y - 7.5); img.set(x, y, pick(HAY, clamp((d % 3) / 3 * 0.5 + r() * 0.5, 0, 0.999))); }));
+TEXDEF('white_terracotta', (img, r) => { const f = field(r, [[4, 4, 1]]); img.each((x, y) => img.set(x, y, pick(PAL(['#cdae9c', '#d3b4a2', '#c8a896', '#d8bba9']), clamp(f[y * 16 + x] * 0.4 + r() * 0.6, 0, 0.999)))); });
+TEXDEF('terracotta', (img, r) => { const f = field(r, [[4, 4, 1]]); img.each((x, y) => img.set(x, y, pick(PAL(['#93583b', '#9a5e40', '#8c5236', '#a06446']), clamp(f[y * 16 + x] * 0.4 + r() * 0.6, 0, 0.999)))); });
 
 // ---------- Plants ----------
 const LEAF_GRAY = PAL(['#454545', '#575757', '#6b6b6b', '#7f7f7f', '#949494', '#a8a8a8']);
@@ -1138,6 +1191,13 @@ SPRDEF('steak', (img, r) => { blob(img, r, 8, 8, 6, 5, PAL(['#a86a3a', '#8a5028'
 function drumstick(img, r, pal) { blob(img, r, 6.5, 6.5, 4.5, 4.5, PAL(pal)); for (let i = 0; i < 5; i++) { img.set(9 + i, 9 + i, hexc('#f2f2e6')); img.set(10 + i, 9 + i, hexc('#d6d6c8')); } img.set(14, 13, hexc('#f2f2e6')); img.set(13, 14, hexc('#f2f2e6')); }
 SPRDEF('raw_chicken', (img, r) => drumstick(img, r, ['#fcd9c8', '#f2bca5', '#e09a80', '#c27a62']));
 SPRDEF('cooked_chicken', (img, r) => drumstick(img, r, ['#f0c070', '#d89a40', '#b87428', '#8a5218']));
+SPRDEF('oak_door', (img, r) => {
+  for (let y = 1; y < 15; y++) for (let x = 4; x < 12; x++) img.set(x, y, pick(DOOR_PAL, r() * 0.999));
+  for (let y = 1; y < 15; y++) { img.set(4, y, hexc('#6b4b29')); img.set(11, y, hexc('#6b4b29')); }
+  for (let x = 4; x < 12; x++) { img.set(x, 1, hexc('#6b4b29')); img.set(x, 14, hexc('#6b4b29')); img.set(x, 8, hexc('#6b4b29')); }
+  for (const [x, y] of [[5, 2], [6, 2], [9, 2], [10, 2], [5, 3], [6, 3], [9, 3], [10, 3], [5, 5], [6, 5], [9, 5], [10, 5], [5, 6], [6, 6], [9, 6], [10, 6]]) img.set(x, y, hexc('#b9d3e0'));
+  img.set(10, 10, hexc('#3a3a3a')); outline(img, [50, 34, 16]);
+});
 SPRDEF('wheat_seeds', (img, r) => {
   for (const [x, y] of [[5, 6], [9, 5], [7, 9], [11, 9], [4, 11], [9, 12], [6, 4]]) { img.set(x, y, hexc(r() < 0.5 ? '#3f8f2a' : '#6b9a3a')); img.set(x + 1, y, hexc('#2e6a1e')); img.set(x, y + 1, hexc('#4f7a26')); }
   outline(img, [30, 50, 12]);
@@ -1192,7 +1252,7 @@ function buildSprites() {
   }
   // flat sprites for block items that aren't cubes (flowers, torches, ladders, saplings...)
   for (const d of BLOCKS) {
-    if (!d || !d.faces || d.shape === SHAPE.CUBE || d.shape === SHAPE.CACTUS || d.shape === SHAPE.LOW || d.shape === SHAPE.LIQUID) continue;
+    if (!d || !d.faces || d.shape === SHAPE.CUBE || d.shape === SHAPE.CACTUS || d.shape === SHAPE.LOW || d.stairs || d.slab || d.shape === SHAPE.LIQUID) continue;
     const img = new Pix().copyFrom(TEX_PIX[d.layers[0]]);
     if (d.tint) { const tc = tintColor(d.tint, 0); img.each((x, y) => { if (img.a(x, y)) img.set(x, y, [img.get(x, y)[0] * tc[0] / 255, img.get(x, y)[1] * tc[1] / 255, img.get(x, y)[2] * tc[2] / 255], img.a(x, y)); }); }
     SPRITES[d.id] = img;
@@ -1252,10 +1312,10 @@ class Chunk {
 // ---------------- Terrain generator ----------------
 const VREG = 320;
 const VILLAGE_MATS = {
-  plains: { wall: BL.oak_planks, post: BL.oak_log, roof: BL.oak_planks, floor: BL.oak_planks, found: BL.cobblestone, path: BL.dirt_path, planks: BL.oak_planks },
-  taiga: { wall: BL.spruce_planks, post: BL.spruce_log, roof: BL.spruce_planks, floor: BL.spruce_planks, found: BL.cobblestone, path: BL.dirt_path, planks: BL.spruce_planks },
-  snowy: { wall: BL.spruce_planks, post: BL.spruce_log, roof: BL.snow_block, floor: BL.spruce_planks, found: BL.cobblestone, path: BL.dirt_path, planks: BL.spruce_planks },
-  desert: { wall: BL.sandstone, post: BL.smooth_stone, roof: BL.sandstone, floor: BL.sandstone, found: BL.sandstone, path: BL.sandstone, planks: BL.sandstone, flatRoof: true },
+  plains: { wall: BL.oak_planks, post: BL.oak_log, floor: BL.oak_planks, found: BL.cobblestone, cobble: BL.cobblestone, stone: BL.stone_bricks, plaster: BL.white_terracotta, path: BL.dirt_path, planks: BL.oak_planks, stairs: 'oak', stepStairs: 'cobblestone', flowers: true },
+  taiga: { wall: BL.spruce_planks, post: BL.spruce_log, floor: BL.spruce_planks, found: BL.cobblestone, cobble: BL.cobblestone, stone: BL.stone_bricks, plaster: BL.white_terracotta, path: BL.dirt_path, planks: BL.spruce_planks, stairs: 'spruce', stepStairs: 'cobblestone' },
+  snowy: { wall: BL.spruce_planks, post: BL.spruce_log, floor: BL.spruce_planks, found: BL.cobblestone, cobble: BL.cobblestone, stone: BL.stone_bricks, plaster: BL.white_terracotta, path: BL.dirt_path, planks: BL.spruce_planks, stairs: 'spruce', stepStairs: 'cobblestone', slabTop: BL.snow_block },
+  desert: { wall: BL.sandstone, post: BL.terracotta, floor: BL.sandstone, found: BL.sandstone, cobble: BL.sandstone, stone: BL.sandstone, plaster: BL.sandstone, path: BL.sandstone, planks: BL.sandstone, roofFlat: BL.sandstone, flatRoof: true },
 };
 class Gen {
   constructor(seed) {
@@ -1306,8 +1366,11 @@ class Gen {
       roads.push({ dx, dz, L });
       for (let st = 9; st + 3 <= L; st += 9) for (const side of [-1, 1]) {
         if (r() < 0.2) continue;
-        const roll = r(), kind = roll < 0.45 ? 'house' : roll < 0.7 ? 'bighouse' : roll < 0.9 ? 'farm' : 'lamp';
-        const [w, d] = { house: [5, 5], bighouse: [7, 6], farm: [7, 9], lamp: [1, 1] }[kind];
+        const roll = r();
+        let kind = roll < 0.24 ? 'house' : roll < 0.48 ? 'bighouse' : roll < 0.66 ? 'plaster' : roll < 0.73 ? 'smithy' : roll < 0.88 ? 'farm' : roll < 0.95 ? 'lamp' : 'hay';
+        if (kind === 'smithy' && pieces.some(q => q.kind === 'smithy')) kind = 'house';
+        if (style === 'desert' && kind === 'plaster') kind = 'bighouse';
+        const [w, d] = { house: [5, 5], bighouse: [5, 7], plaster: [7, 5], smithy: [5, 6], farm: [7, 9], lamp: [1, 1], hay: [2, 2] }[kind];
         let x0, z0, x1, z1, face;
         const near = side * (kind === 'lamp' ? 2 : 3);
         if (dx) { x0 = vx + dx * st - (w >> 1); x1 = x0 + w - 1; z0 = side > 0 ? vz + near : vz + near - d + 1; z1 = z0 + d - 1; face = side > 0 ? 'n' : 's'; }
@@ -1318,9 +1381,9 @@ class Gen {
         rects.push([x0, z0, x1, z1]);
         const piece = { kind, x0, z0, x1, z1, y, face, seed: Math.floor(r() * 1e9) };
         pieces.push(piece);
-        if (kind === 'house' || kind === 'bighouse') {
+        if (kind === 'house' || kind === 'bighouse' || kind === 'plaster' || kind === 'smithy') {
           houses++;
-          for (let k = 0; k < (kind === 'bighouse' ? 2 : 1); k++) spawns.push({ vid: vx + ':' + vz + ':' + spawns.length, type: style === 'desert' ? 'villager_desert' : style === 'snowy' ? 'villager_snowy' : 'villager', x: ((x0 + x1) >> 1) + k, y: y + 1, z: (z0 + z1) >> 1 });
+          for (let k = 0; k < (kind === 'bighouse' || kind === 'plaster' ? 2 : 1); k++) spawns.push({ vid: vx + ':' + vz + ':' + spawns.length, type: style === 'desert' ? 'villager_desert' : style === 'snowy' ? 'villager_snowy' : 'villager', x: ((x0 + x1) >> 1) + (k ? 1 : 0), y: y + 2, z: (z0 + z1) >> 1 });
         }
       }
     }
@@ -1350,7 +1413,10 @@ class Gen {
         for (const [cx, cz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) fill(cx, cz, cx, cz, y + 2, y + 3, M.post);
         fill(x0, z0, x1, z1, y + 4, y + 4, M.found);
       } else if (pc.kind === 'lamp') {
-        const h = ground(x0, z0); set(x0, h, z0, M.found); fill(x0, z0, x0, z0, h + 1, h + 2, M.post); set(x0, h + 3, z0, B_.torch);
+        // a fence post with a lantern on top
+        const h = ground(x0, z0); set(x0, h, z0, M.found); fill(x0, z0, x0, z0, h + 1, h + 2, B_.oak_fence); set(x0, h + 3, z0, B_.lantern);
+      } else if (pc.kind === 'hay') {
+        for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) { const h = ground(xx, zz); set(xx, h + 1, zz, B_.hay_block); if (r() < 0.4) set(xx, h + 2, zz, B_.hay_block); }
       } else if (pc.kind === 'farm') {
         fill(x0, z0, x1, z1, y + 1, y + 4, AIR); foundation(B_.dirt);
         const longX = x1 - x0 > z1 - z0, mid = longX ? (z0 + z1) >> 1 : (x0 + x1) >> 1;
@@ -1359,44 +1425,90 @@ class Gen {
           if ((longX ? zz : xx) === mid) { set(xx, y, zz, B_.water); continue; }
           set(xx, y, zz, B_.farmland_moist); set(xx, y + 1, zz, B_['wheat_' + (2 + Math.floor(r() * 6))]);
         }
-      } else {
-        // houses: a stone foundation, plank walls with log corners, glass windows, a doorway facing the road and a stepped roof
-        const H = pc.kind === 'bighouse' ? 4 : 3, cxm = (x0 + x1) >> 1, czm = (z0 + z1) >> 1;
-        fill(x0 - 1, z0 - 1, x1 + 1, z1 + 1, y + 1, y + H + 6, AIR); foundation(M.found);
-        const door = pc.face === 'n' ? [cxm, z0] : pc.face === 's' ? [cxm, z1] : pc.face === 'w' ? [x0, czm] : [x1, czm];
-        for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) {
-          const edge = xx === x0 || xx === x1 || zz === z0 || zz === z1, corner = (xx === x0 || xx === x1) && (zz === z0 || zz === z1);
-          set(xx, y, zz, edge ? M.found : M.floor);
-          for (let yy = y + 1; yy <= y + H; yy++) {
-            if (!edge) continue;
-            if (corner) { set(xx, yy, zz, M.post); continue; }
-            const isDoor = xx === door[0] && zz === door[1] && yy <= y + 2;
-            const isWindow = yy === y + 2 && !isDoor && ((xx === x0 || xx === x1) ? (zz - z0) % 2 === 0 : (xx - x0) % 2 === 0) && !(Math.abs(xx - door[0]) <= 0 && Math.abs(zz - door[1]) <= 0);
-            set(xx, yy, zz, isDoor ? AIR : isWindow ? B_.glass : M.wall);
-          }
+      } else this.buildHouse(pc, M, set, fill, ground, r);
+    }
+  }
+  // the houses. Floors sit one block up on a stone foundation, with a step up to an oak door facing the road.
+  buildHouse(pc, M, set, fill, ground, r) {
+    const { x0, z0, x1, z1, kind } = pc, B_ = BL, fy = pc.y + 1, cxm = (x0 + x1) >> 1, czm = (z0 + z1) >> 1;
+    const H = kind === 'house' ? 3 : 4;
+    const out = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }[pc.face], back = { n: 's', s: 'n', w: 'e', e: 'w' }[pc.face];
+    const door = pc.face === 'n' ? [cxm, z0] : pc.face === 's' ? [cxm, z1] : pc.face === 'w' ? [x0, czm] : [x1, czm];
+    const wall = kind === 'house' ? M.cobble : kind === 'plaster' ? M.plaster : kind === 'smithy' ? M.stone : M.wall;
+    fill(x0 - 1, z0 - 1, x1 + 1, z1 + 1, fy + 1, fy + H + 8, AIR);
+    // foundation from the ground up to the floor
+    for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) { const h = ground(xx, zz); for (let yy = Math.min(h + 1, fy - 1); yy < fy; yy++) set(xx, yy, zz, M.found); }
+    for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) {
+      const edge = xx === x0 || xx === x1 || zz === z0 || zz === z1, corner = (xx === x0 || xx === x1) && (zz === z0 || zz === z1);
+      set(xx, fy, zz, edge ? (kind === 'plaster' && r() < 0.35 ? B_.mossy_cobblestone : M.found) : kind === 'smithy' ? M.found : M.floor);
+      if (!edge) continue;
+      const front = (pc.face === 'n' && zz === z0) || (pc.face === 's' && zz === z1) || (pc.face === 'w' && xx === x0) || (pc.face === 'e' && xx === x1);
+      const mid = kind === 'bighouse' && !front && ((xx === x0 || xx === x1) ? zz === czm : xx === cxm) && !(xx === door[0] && zz === door[1]);
+      for (let yy = fy + 1; yy <= fy + H; yy++) {
+        let id = corner || mid ? M.post : wall;
+        if (kind === 'plaster' && yy === fy + H) id = M.post;                                   // log beam along the top
+        if (kind === 'smithy' && front && !corner) id = yy === fy + H ? M.stone : AIR;          // open front
+        if (kind === 'smithy' && front && corner && yy < fy + H) id = B_.oak_fence;
+        const win = yy === fy + 2 && !corner && !mid && !front && ((xx === x0 || xx === x1) ? (zz - z0) % 2 === 1 : (xx - x0) % 2 === 1) && kind !== 'smithy';
+        if (win) id = B_.glass;
+        if (xx === door[0] && zz === door[1] && kind !== 'smithy' && yy <= fy + 2) id = yy === fy + 1 ? B_[`oak_door_lower_${pc.face}_0`] : B_[`oak_door_upper_${pc.face}_0`];
+        set(xx, yy, zz, id);
+      }
+    }
+    // outside the door: a step, a torch above, and in plank houses flower boxes either side
+    const sx = door[0] + out[0], sz = door[1] + out[1];
+    // steps down from the door until they meet the ground
+    { let lvl = fy, tx = sx, tz = sz;
+      for (let i = 0; i < 4; i++, lvl--, tx += out[0], tz += out[1]) {
+        const g = ground(tx, tz);
+        if (i > 0 && g >= lvl) break;
+        for (let yy = Math.min(g + 1, lvl - 1); yy < lvl; yy++) set(tx, yy, tz, M.found);
+        set(tx, lvl, tz, M.stepStairs ? B_[M.stepStairs + '_stairs_' + back] : M.found);
+        for (let k = 1; k <= 3; k++) set(tx, lvl + k, tz, AIR);
+      } }
+    if (kind !== 'smithy') set(sx, fy + 3, sz, B_['wall_torch_' + back]);
+    const px_ = out[1] ? 1 : 0, pz_ = out[0] ? 1 : 0;
+    if (kind === 'bighouse' && M.flowers) for (const k of [-1, 1]) { const fx = sx + px_ * k, fz = sz + pz_ * k; set(fx, fy, fz, B_.grass_block); set(fx, fy + 1, fz, r() < 0.7 ? B_.poppy : B_.dandelion); set(fx, fy - 1, fz, M.found); }
+    if (kind === 'plaster') for (const k of [-1, 1]) { const fx = sx + px_ * k, fz = sz + pz_ * k; set(fx, fy, fz, M.found); set(fx, fy + 1, fz, B_.oak_fence); if (k > 0) set(fx, fy + 2, fz, B_.lantern); }
+    // inside
+    if (kind === 'smithy') {
+      set(x0 + 1, fy + 1, z0 + 1, B_.furnace); set(x1 - 1, fy + 1, z0 + 1, B_.furnace); set(cxm, fy + 1, z1 - 1, B_.chest);
+      for (const [xx, zz] of [[x0 + 1, z1 - 1], [x1 - 1, z1 - 1]]) set(xx, fy + 1, zz, B_.lantern);
+    } else {
+      const inner = [[x0 + 1, z0 + 1], [x1 - 1, z0 + 1], [x0 + 1, z1 - 1], [x1 - 1, z1 - 1]].filter(([xx, zz]) => Math.abs(xx - door[0]) + Math.abs(zz - door[1]) > 1);
+      if (inner[0]) set(inner[0][0], fy + 1, inner[0][1], B_.torch);
+      if (inner[1]) set(inner[1][0], fy + 1, inner[1][1], B_.crafting_table);
+      if (inner[2] && kind !== 'house') set(inner[2][0], fy + 1, inner[2][1], r() < 0.5 ? B_.bookshelf : B_.chest);
+    }
+    // roofs
+    const top = fy + H + 1;
+    if (M.flatRoof || kind === 'smithy') {
+      fill(x0, z0, x1, z1, top, top, kind === 'smithy' ? B_.cobblestone_slab : M.roofFlat);
+      if (kind === 'smithy') fill(x1 - 1, z1 - 1, x1 - 1, z1 - 1, top, top + 2, B_.cobblestone);
+      else for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) if (xx === x0 || xx === x1 || zz === z0 || zz === z1) set(xx, top + 1, zz, M.roofFlat);
+    } else if (kind === 'house') {
+      // stacked plank layers, one smaller each step, with an overhang
+      for (let k = 0; ; k++) {
+        const a0 = x0 - 1 + k, a1 = x1 + 1 - k, b0 = z0 - 1 + k, b1 = z1 + 1 - k;
+        if (a0 > a1 || b0 > b1) break;
+        fill(a0, b0, a1, b1, top + k, top + k, M.planks);
+      }
+    } else {
+      // gable roof of stairs, the ridge running front to back on plank houses and along the road on plaster houses
+      const ridgeX = kind === 'plaster' ? (pc.face === 'n' || pc.face === 's') : (pc.face === 'w' || pc.face === 'e');
+      const c0s = ridgeX ? z0 : x0, c1s = ridgeX ? z1 : x1, l0 = (ridgeX ? x0 : z0) - 1, l1 = (ridgeX ? x1 : z1) + 1;
+      const put = (c, l, yy, id) => ridgeX ? set(l, yy, c, id) : set(c, yy, l, id);
+      const lowSide = ridgeX ? 's' : 'e', highSide = ridgeX ? 'n' : 'w';
+      for (let k = 0; ; k++) {
+        const c0 = c0s - 1 + k, c1 = c1s + 1 - k, yy = top - 1 + k;
+        if (c0 > c1) break;
+        for (let l = l0; l <= l1; l++) {
+          if (c0 === c1) put(c0, l, yy, M.slabTop || M.planks);
+          else { put(c0, l, yy, B_[M.stairs + '_stairs_' + lowSide]); put(c1, l, yy, B_[M.stairs + '_stairs_' + highSide]); }
         }
-        // a step of path between the doorway and the road
-        const out = pc.face === 'n' ? [0, -1] : pc.face === 's' ? [0, 1] : pc.face === 'w' ? [-1, 0] : [1, 0];
-        { const sx = door[0] + out[0], sz = door[1] + out[1], h = ground(sx, sz); set(sx, Math.max(h, y), sz, M.path); set(sx, Math.max(h, y) + 1, sz, AIR); set(sx, Math.max(h, y) + 2, sz, AIR); }
-        // roof: flat in the desert, otherwise two slopes stepping in towards a ridge along the long side, with the gable ends filled in
-        if (M.flatRoof) fill(x0, z0, x1, z1, y + H + 1, y + H + 1, M.roof);
-        else {
-          const alongX = x1 - x0 >= z1 - z0;
-          for (let k = 0; ; k++) {
-            const c0 = (alongX ? z0 : x0) - 1 + k, c1 = (alongX ? z1 : x1) + 1 - k;
-            if (c0 > c1) break;
-            const yy = y + H + 1 + k;
-            if (alongX) fill(x0 - 1, c0, x1 + 1, c0, yy, yy, M.roof), fill(x0 - 1, c1, x1 + 1, c1, yy, yy, M.roof);
-            else fill(c0, z0 - 1, c0, z1 + 1, yy, yy, M.roof), fill(c1, z0 - 1, c1, z1 + 1, yy, yy, M.roof);
-            // gable ends: wall under the slope at both ends
-            for (let c = c0 + 1; c <= c1 - 1; c++) for (const e of alongX ? [x0, x1] : [z0, z1]) set(alongX ? e : c, yy, alongX ? c : e, c0 + 1 === c1 - 1 || c === c0 + 1 || c === c1 - 1 ? M.post : M.wall);
-            if (c0 === c1 || c0 + 1 === c1) { fill(alongX ? x0 - 1 : c0, alongX ? c0 : z0 - 1, alongX ? x1 + 1 : c1, alongX ? c1 : z1 + 1, yy, yy, M.roof); break; }
-          }
-        }
-        // inside: a torch, a crafting table, and in big houses a bookshelf and a chest
-        set(x0 + 1, y + 1, z0 + 1, B_.torch);
-        set(x1 - 1, y + 1, z1 - 1, B_.crafting_table);
-        if (pc.kind === 'bighouse') { set(x1 - 1, y + 1, z0 + 1, B_.bookshelf); set(x0 + 1, y + 1, z1 - 1, B_.chest); }
+        // gable ends under this layer
+        if (k > 0) for (let c = c0 + 1; c <= c1 - 1; c++) for (const l of [l0 + 1, l1 - 1]) put(c, l, yy, kind === 'plaster' ? (c === c0 + 1 || c === c1 - 1 ? M.post : M.plaster) : M.wall);
+        if (c0 + 1 >= c1) break;
       }
     }
   }
@@ -2029,6 +2141,7 @@ function meshSection(world, c, sy) {
     else if (shape === SHAPE.CACTUS) cactusModel(def, p, x, y, z);
     else if (shape === SHAPE.PANEL) panelModel(def, p, x, y, z);
     else if (shape === SHAPE.LOW) lowModel(def, p, x, y, z);
+    else if (shape === SHAPE.BOXES) boxesModel(def, p, x, y, z);
   }
   return bufs.map(b => b.geometry());
 }
@@ -2165,6 +2278,43 @@ function cactusModel(def, p, x, y, z) {
     buf.quad(false);
   }
 }
+// which texture axis each face's u and v run along, worked out from the cube's own corner table
+const FACE_UVAX = FACE_CORNERS.map(corners => [0, 1].map(t => {
+  for (let a = 0; a < 3; a++) {
+    if (corners.every((c, k) => c[a] === FACE_UV[k][t])) return [a, false];
+    if (corners.every((c, k) => c[a] === 1 - FACE_UV[k][t])) return [a, true];
+  }
+  return [0, false];
+}));
+// blocks made of a few boxes; each face shows the matching part of its texture, like Minecraft's block models
+function fenceBoxes(p) {
+  const out = [[6 / 16, 0, 6 / 16, 10 / 16, 1, 10 / 16]];
+  const joins = id => id > 0 && (BLOCKS[id].fence || OPAQUE[id]);
+  for (const [f, box] of [[0, [10 / 16, 1]], [1, [0, 6 / 16]], [4, [10 / 16, 1]], [5, [0, 6 / 16]]]) {
+    if (!joins(PAD_B[p + FACE_OUT[f]])) continue;
+    for (const [y0, y1] of [[6 / 16, 9 / 16], [12 / 16, 15 / 16]])
+      out.push(f < 2 ? [box[0], y0, 7 / 16, box[1], y1, 9 / 16] : [7 / 16, y0, box[0], 9 / 16, y1, box[1]]);
+  }
+  return out;
+}
+function boxesModel(def, p, x, y, z) {
+  const buf = bufs[def.pass], boxes = def.fence && p !== undefined ? fenceBoxes(p) : def.boxes, glow = def.emit ? 15 : 0;
+  for (const bx of boxes) {
+    for (let f = 0; f < 6; f++) {
+      const edge = [bx[3] === 1, bx[0] === 0, bx[4] === 1, bx[1] === 0, bx[5] === 1, bx[2] === 0][f];
+      const op = p + FACE_OUT[f];
+      if (edge && OPAQUE[PAD_B[op]]) continue;
+      let [s, b] = lightOf(op); if (glow) b = Math.max(b, glow);
+      const corners = FACE_CORNERS[f], [[ua, uf], [va, vf]] = FACE_UVAX[f];
+      for (let k = 0; k < 4; k++) {
+        const cn = corners[k], q = [cn[0] ? bx[3] : bx[0], cn[1] ? bx[4] : bx[1], cn[2] ? bx[5] : bx[2]];
+        const u = uf ? 1 - q[ua] : q[ua], v = vf ? 1 - q[va] : q[va];
+        buf.vert(x + q[0], y + q[1], z + q[2], u, v, def.layers[f], 255, 0, Math.round(FACE_SHADE[f] * 255), WHITE, s, b);
+      }
+      buf.quad(false);
+    }
+  }
+}
 function lowModel(def, p, x, y, z) {
   // a block 15/16 tall; the sides show the top 15 rows of their texture, like Minecraft
   const buf = bufs[PASS.OPAQUE], top = 15 / 16;
@@ -2204,6 +2354,7 @@ function blockGeometry(id) {
   if (shape === SHAPE.CUBE) cubeFaces(def, id, p, 0, 0, 0, tints, [0, 0, 0], fakeWorld);
   else if (shape === SHAPE.CACTUS) cactusModel(def, p, 0, 0, 0);
   else if (shape === SHAPE.LOW) lowModel(def, p, 0, 0, 0);
+  else if (shape === SHAPE.BOXES) boxesModel(def, p, 0, 0, 0);
   else if (shape === SHAPE.LIQUID) liquidFaces(def, id, p, 0, 0, 0, tints);
   const geoms = bufs.map(b => b.geometry());
   return geoms;
@@ -2498,7 +2649,7 @@ function spriteGeometry(img) {
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   return g;
 }
-const isCubeItem = id => id < 256 && BLOCKS[id] && (BLOCKS[id].shape === SHAPE.CUBE || BLOCKS[id].shape === SHAPE.CACTUS || BLOCKS[id].shape === SHAPE.LOW);
+const isCubeItem = id => id < 256 && BLOCKS[id] && (BLOCKS[id].shape === SHAPE.CUBE || BLOCKS[id].shape === SHAPE.CACTUS || BLOCKS[id].shape === SHAPE.LOW || !!BLOCKS[id].stairs || !!BLOCKS[id].slab);
 // Returns a fresh Object3D for an item, plus a function to set its brightness
 function makeItemModel(id) {
   let entry = itemGeomCache.get(id);
@@ -2578,8 +2729,11 @@ const SHAPE_BOX = id => {
   const d = BLOCKS[id];
   if (d.shape === SHAPE.CACTUS) return [1 / 16, 0, 1 / 16, 15 / 16, 1, 15 / 16];
   if (d.shape === SHAPE.LOW) return [0, 0, 0, 1, 15 / 16, 1];
+  if (d.shape === SHAPE.BOXES) { const bs = d.collide || d.boxes; return [0, 0, 0, 1, Math.max(...bs.map(b => b[4])), 1]; }
   return null;
 };
+// the boxes you bump into (most blocks: one full cube)
+const SHAPE_BOXES = id => { const d = BLOCKS[id]; if (d.shape === SHAPE.BOXES) return d.collide || d.boxes; const b = SHAPE_BOX(id); return b ? [b] : null; };
 function blockedAt(world, x, y, z) { const id = world.get(x, y, z); return id < 0 || SOLID[id]; }
 function sweep(world, axis, delta) {
   if (!delta) return false;
@@ -2593,12 +2747,13 @@ function sweep(world, axis, delta) {
       for (let z = Math.floor(min[2]); z <= Math.floor(max[2] - 1e-9); z++) {
         const id = world.get(x, y, z);
         if (!(id < 0 || SOLID[id])) continue;
-        const sb = id > 0 ? SHAPE_BOX(id) : null;
-        const bmin = [x + (sb ? sb[0] : 0), y + (sb ? sb[1] : 0), z + (sb ? sb[2] : 0)], bmax = [x + (sb ? sb[3] : 1), y + (sb ? sb[4] : 1), z + (sb ? sb[5] : 1)];
-        if (bmax[0] <= min[0] || bmin[0] >= max[0] || bmax[1] <= min[1] || bmin[1] >= max[1] || bmax[2] <= min[2] || bmin[2] >= max[2]) continue;
-        hit = true;
-        if (delta > 0) allowed = Math.min(allowed, bmin[axis] - omax[axis] - 1e-5);
-        else allowed = Math.max(allowed, bmax[axis] - omin[axis] + 1e-5);
+        for (const sb of (id > 0 && SHAPE_BOXES(id)) || [null]) {
+          const bmin = [x + (sb ? sb[0] : 0), y + (sb ? sb[1] : 0), z + (sb ? sb[2] : 0)], bmax = [x + (sb ? sb[3] : 1), y + (sb ? sb[4] : 1), z + (sb ? sb[5] : 1)];
+          if (bmax[0] <= min[0] || bmin[0] >= max[0] || bmax[1] <= min[1] || bmin[1] >= max[1] || bmax[2] <= min[2] || bmin[2] >= max[2]) continue;
+          hit = true;
+          if (delta > 0) allowed = Math.min(allowed, bmin[axis] - omax[axis] - 1e-5);
+          else allowed = Math.max(allowed, bmax[axis] - omin[axis] + 1e-5);
+        }
       }
   if (hit) { if (delta > 0) allowed = Math.max(0, allowed); else allowed = Math.min(0, allowed); }
   if (axis === 0) p.x += allowed; else if (axis === 1) p.y += allowed; else p.z += allowed;
@@ -2665,7 +2820,9 @@ function updatePlayerPhysics(world, dt) {
   }
 
   // stuck inside a block (it was placed on you, or you loaded in badly): climb out
-  if (boxHasBlock(world, p.x - 0.29, p.y + 0.01, p.z - 0.29, p.x + 0.29, p.y + Math.min(player.height, 1.0), p.z + 0.29, (id, x, y) => id > 0 && SOLID[id] && y + (SHAPE_BOX(id) ? SHAPE_BOX(id)[4] : 1) > p.y + 0.01)) {
+  // (uses each block's real boxes, so standing on a stair's low step or a slab doesn't count)
+  const inBoxes = (id, x, y, z) => id > 0 && SOLID[id] && ((SHAPE_BOXES(id)) || [[0, 0, 0, 1, 1, 1]]).some(b => x + b[3] > p.x - 0.29 && x + b[0] < p.x + 0.29 && z + b[5] > p.z - 0.29 && z + b[2] < p.z + 0.29 && y + b[4] > p.y + 0.01 && y + b[1] < p.y + Math.min(player.height, 1.0));
+  if (boxHasBlock(world, p.x - 0.29, p.y + 0.01, p.z - 0.29, p.x + 0.29, p.y + Math.min(player.height, 1.0), p.z + 0.29, inBoxes)) {
     for (let k = 1; k < 6; k++) {
       const ny = Math.floor(p.y) + k;
       if (!boxHasBlock(world, p.x - 0.29, ny + 0.01, p.z - 0.29, p.x + 0.29, ny + player.height, p.z + 0.29, id => id < 0 || SOLID[id])) { p.y = ny; v.y = 0; break; }
@@ -2782,6 +2939,7 @@ function pickBox(id) {
   if (d.shape === SHAPE.PANEL) { const n = FACE_DIRS[d.wallFace]; return [n[0] > 0 ? 13 / 16 : 0, 0, n[2] > 0 ? 13 / 16 : 0, n[0] < 0 ? 3 / 16 : 1, 1, n[2] < 0 ? 3 / 16 : 1]; }
   if (d.shape === SHAPE.CACTUS) return [1 / 16, 0, 1 / 16, 15 / 16, 1, 15 / 16];
   if (d.shape === SHAPE.LOW) return [0, 0, 0, 1, 15 / 16, 1];
+  if (d.shape === SHAPE.BOXES) { const bs = d.boxes; return [0, 1, 2, 3, 4, 5].map(i => i < 3 ? Math.min(...bs.map(b => b[i])) : Math.max(...bs.map(b => b[i]))); }
   return [0, 0, 0, 1, 1, 1];
 }
 function rayBox(o, d, b, maxT) {
@@ -2863,6 +3021,7 @@ function breakBlock(world, x, y, z, entities) {
   const meta = world.metaAt(x, y, z);
   if (meta && meta.items) for (const s of meta.items) if (s) entities.dropItem(x + 0.5, y + 0.5, z + 0.5, s.id, s.count, s.dmg);
   world.set(x, y, z, AIR);
+  if (d.door) { const oy = d.door.half === 'lower' ? y + 1 : y - 1; if (BLOCKS[world.get(x, oy, z)]?.door) world.set(x, oy, z, AIR); }
   sfx.dig(d.sound);
   breakParticles(world, x, y, z, id);
   if (!creative()) {
@@ -2940,6 +3099,10 @@ function tryPlace(world, hit, entities) {
   } else if (def.place === 'ladder') {
     if (face === 2 || face === 3) return false;
     id = BL[['ladder_w', 'ladder_e', '', '', 'ladder_n', 'ladder_s'][face]];
+  } else if (def.place === 'stairs') {
+    // the tall half goes on the side you're looking towards, like Minecraft
+    const d = lookDir(new V3());
+    id = BL[def.stairs + '_stairs_' + (Math.abs(d.x) > Math.abs(d.z) ? (d.x > 0 ? 'e' : 'w') : (d.z > 0 ? 's' : 'n'))];
   } else if (def.log) {
     if (face === 0 || face === 1) id = BL[def.log + '_log_x'];
     else if (face === 4 || face === 5) id = BL[def.log + '_log_z'];
@@ -4681,6 +4844,18 @@ function interact(w, ents, dt) {
       // till soil into farmland, or flatten grass into a path
       w.set(hit.x, hit.y, hit.z, sd.tool === 'hoe' ? BL.farmland : BL.dirt_path);
       sfx.step(sd.tool === 'hoe' ? 'gravel' : 'grass'); damageHeld(1); player.swing = 1; player.useCD = 0.25;
+    } else if (hit && BLOCKS[hit.id].door && !player.sneaking) {
+      // open or close a door (both halves)
+      const dd = BLOCKS[hit.id].door, side = dd.open ? DOOR_CCW[dd.side] : DOOR_CW[dd.side], open = dd.open ? 0 : 1;
+      const ly = dd.half === 'lower' ? hit.y : hit.y - 1;
+      w.set(hit.x, ly, hit.z, BL[`oak_door_lower_${side}_${open}`]);
+      if (BLOCKS[w.get(hit.x, ly + 1, hit.z)]?.door) w.set(hit.x, ly + 1, hit.z, BL[`oak_door_upper_${side}_${open}`]);
+      sfx.play('door'); player.swing = 1; player.useCD = 0.25;
+    } else if (hit && s && s.id === IT.oak_door && hit.face === 2 && hit.y + 2 < WH && REPLACEABLE[Math.max(0, w.get(hit.x, hit.y + 1, hit.z))] && REPLACEABLE[Math.max(0, w.get(hit.x, hit.y + 2, hit.z))] && !playerOverlaps(hit.x, hit.y + 1, hit.z) && !playerOverlaps(hit.x, hit.y + 2, hit.z)) {
+      // a door stands on the side of its block nearest you
+      const dx = player.pos.x - (hit.x + 0.5), dz = player.pos.z - (hit.z + 0.5), side = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'e' : 'w') : (dz > 0 ? 's' : 'n');
+      w.set(hit.x, hit.y + 1, hit.z, BL[`oak_door_lower_${side}_0`]); w.set(hit.x, hit.y + 2, hit.z, BL[`oak_door_upper_${side}_0`]);
+      sfx.place('wood'); takeHeld(1); player.swing = 1; player.useCD = 0.25;
     } else if (hit && s && s.id === IT.wheat_seeds && isFarmland(hit.id) && hit.face === 2 && w.get(hit.x, hit.y + 1, hit.z) === AIR) {
       w.set(hit.x, hit.y + 1, hit.z, BL.wheat_0); takeHeld(1); sfx.step('grass'); player.swing = 1; player.useCD = 0.2;
     } else if (hit && s && s.id < 256) {
@@ -4824,7 +4999,7 @@ const TitleScreen = () => ({
     if (button(bx, by, bw, 20, 'Singleplayer')) { sfx.init(); openScreen(WorldsScreen()); }
     if (button(bx, by + 24, bw, 20, 'Options...')) { sfx.init(); openScreen(OptionsScreen(() => openScreen(TitleScreen()))); }
     if (button(bx, by + 48, bw, 20, 'How to play')) { sfx.init(); openScreen(ControlsScreen(() => openScreen(TitleScreen()))); }
-    drawText(gctx, 'Blockcraft 1.4', 2, H - 10, '#ffffff');
+    drawText(gctx, 'Blockcraft 1.5', 2, H - 10, '#ffffff');
     const t = 'Made by Lars and Noah';
     drawText(gctx, t, W - textWidth(t) - 2, H - 10, '#ffffff');
   },
