@@ -164,3 +164,49 @@ window.Arcade = {
   },
   stat(g) { try { return g.stat ? g.stat() : null; } catch (e) { return null; } },
 };
+
+// Live "on now" counter, using Supabase Realtime Presence (project noah-and-lars-games).
+// Every open arcade page joins one presence channel and says which game it's on ('home' for the home page).
+// Nothing is saved: Supabase only sees who's connected right now. If it can't be reached (offline,
+// blocked network, project paused after a quiet week) the counter just stays hidden.
+// play.html shares its connection with the game in its frame through window.ArcadeOnline,
+// so a player is only counted once. The publishable key is meant to be public.
+window.ArcadeOnline = (() => {
+  const URL = 'https://fewocduisjbctoxolkjr.supabase.co';
+  const KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
+  const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const CAP = 200; // the free plan's limit on simultaneous connections
+  let counts = null, started = false;
+  const listeners = [];
+  const emit = c => { counts = c; for (const f of listeners) try { f(c); } catch (e) {} };
+  return {
+    CAP,
+    // Join as someone on `where` (a game id, or 'home'). Safe to call once per page.
+    start(where) {
+      if (started) return; started = true;
+      const lib = document.createElement('script');
+      lib.src = LIB; lib.async = true;
+      lib.onerror = () => emit(null);
+      lib.onload = () => {
+        try {
+          const client = window.supabase.createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          const key = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
+          const ch = client.channel('online:arcade', { config: { presence: { key } } });
+          ch.on('presence', { event: 'sync' }, () => {
+            const state = ch.presenceState(), byGame = {};
+            for (const k in state) { const g = (state[k][0] || {}).game || 'home'; byGame[g] = (byGame[g] || 0) + 1; }
+            emit({ total: Object.keys(state).length, byGame, full: Object.keys(state).length >= CAP });
+          }).subscribe(status => {
+            if (status === 'SUBSCRIBED') ch.track({ game: where }).catch(() => emit(null));
+            else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') emit(null);
+          });
+        } catch (e) { emit(null); }
+      };
+      document.head.appendChild(lib);
+    },
+    // Called with { total, byGame, full } on every change, or null when the counter can't connect.
+    subscribe(f) { listeners.push(f); if (counts) f(counts); },
+    // "12", or "200+" once the free plan is full
+    label(n, c) { return c && c.full ? n + '+' : String(n); },
+  };
+})();

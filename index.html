@@ -23,7 +23,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=6">
+<link rel="stylesheet" href="arcade.css?v=7">
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
@@ -64,6 +64,7 @@
 </script>
 <header class="top">
   <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">Noah and Lars' Arcade</a>
+  <span id="online" class="online" title="People on the arcade right now" hidden><i aria-hidden="true"></i><b>0</b> on now</span>
   <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
 </header>
 
@@ -102,7 +103,7 @@
   <p>Found a bug, or a game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=27"></script>
+<script src="games.js?v=28"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
@@ -217,6 +218,12 @@ $('search').addEventListener('input', render);
   };
 })();
 renderFeature(); renderRecent(); renderNews(); render();
+// Live count of everyone on the arcade (home page and every game)
+ArcadeOnline.subscribe(c => {
+  $('online').hidden = !c || c.total < 1;
+  if (c) $('online').querySelector('b').textContent = ArcadeOnline.label(c.total, c);
+});
+ArcadeOnline.start('home');
 // scores change while you play in another tab, so refresh when you come back
 addEventListener('pageshow', () => { renderFeature(); renderRecent(); render(); });
 </script>

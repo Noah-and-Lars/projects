@@ -41,6 +41,15 @@ a { color: inherit; text-decoration: none; }
 }
 #search:focus { border-color: var(--accent); }
 
+/* Live "on now" count in the header, hidden until it connects */
+.online { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); white-space: nowrap;
+  padding: 4px 11px 4px 9px; border-radius: 999px; background: #ffffff0d; border: 1px solid #ffffff1a; font-variant-numeric: tabular-nums; }
+.online[hidden] { display: none; }
+.online b { color: var(--text); }
+.online i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); animation: onlinePulse 2s ease-out infinite; }
+@keyframes onlinePulse { 0% { box-shadow: 0 0 0 0 #00d2a899; } 70%, 100% { box-shadow: 0 0 0 6px #00d2a800; } }
+@media (prefers-reduced-motion: reduce) { .online i { animation: none; } }
+
 .wrap, .stage-wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; flex: 1; }
 
 .hero { padding: 36px 0 12px; }

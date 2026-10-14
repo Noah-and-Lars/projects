@@ -33,6 +33,15 @@ source in Settings → Pages should be switched to `main`.
 - `arcade.css`: shared styles for the two pages above.
   Both pages load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
   files for 10 minutes, so bump N in both pages whenever either file changes.
+- Live "on now" counter: `ArcadeOnline` in `games.js` joins one Supabase
+  Realtime Presence channel (`online:arcade`, project `noah-and-lars-games`)
+  and tracks which game each visitor is on (`home` for the home page). The home
+  header shows the total; `play.html` joins for the game it's showing, and a
+  game in its frame reads the count from `window.parent.ArcadeOnline` instead
+  of connecting again. Cube Assault shows its own count on its home menu and
+  connects itself when opened on its own. The free plan allows 200 connections,
+  so counts show as "200+" when full. If Supabase can't be reached, counters
+  stay hidden. Nothing is stored; the publishable key is meant to be public.
 - The footer of both pages shows a contact email for bug reports. It's set once
   in `games.js` (`CONTACT_EMAIL`).
 - One folder per game, each with a self-contained `index.html` and a `thumb.svg`
@@ -84,7 +93,8 @@ source in Settings → Pages should be switched to `main`.
 ## Conventions
 
 - Games save progress only in the player's own browser (`localStorage`, wrapped
-  in try/catch). No accounts, servers or data collection.
+  in try/catch). No accounts or data collection. The only server is the live
+  "on now" counter (Supabase Presence), which stores nothing.
 - Only original games: no copies of other people's games.
 - The owner works mostly from a phone, so explain GitHub steps for the mobile
   app or Safari.

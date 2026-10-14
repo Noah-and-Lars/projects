@@ -203,6 +203,13 @@
   .wallet { display: flex; align-items: center; gap: 8px; font-size: 17px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px 6px 8px; font-variant-numeric: tabular-nums; }
   .wallet b { color: var(--gold-hi); }
   .wallet .sep { opacity: .4; }
+  /* Live player count, hidden until it connects */
+  .online { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; padding-left: 10px; }
+  .online[hidden] { display: none; }
+  .online b { color: var(--ink); }
+  .online i { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); animation: onlinePulse 2s ease-out infinite; }
+  @keyframes onlinePulse { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, .6); } 70%, 100% { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0); } }
+  @media (prefers-reduced-motion: reduce) { .online i { animation: none; } }
   .btns { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
   .controls { font-size: 14px !important; opacity: .8; }
   kbd { font-family: var(--body); font-size: 12px; font-weight: 700; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--ink); }
@@ -464,6 +471,7 @@
     <div class="title">CUBE<br><em>ASSAULT</em></div>
     <p class="tag">Hold the village against waves of cubes. Every cube you destroy earns a coin.</p>
     <div class="wallet"><span class="coin"></span><b class="coinTotal">0</b> coins <span class="sep">|</span> Best wave <b id="bestWave">0</b></div>
+    <div class="online" id="onlineCount" hidden><i></i><span><b id="onlineNum">0</b> playing now</span></div>
     <div class="btns">
       <button class="btn" data-action="maps">Play</button>
       <button class="btn secondary" data-action="shop">Shop</button>
@@ -6008,6 +6016,47 @@ applyQuality();
 resetGame();
 if (profile.name) { showMenu('main'); maybeShowNews(); } else openNameMenu(true);
 tick();
+</script>
+<script>
+// ---------- Live player counter (Supabase Realtime Presence) ----------
+// On the arcade's play page, the page around the game already keeps the count (window.ArcadeOnline),
+// so the game just reads it. Opened on its own, the game joins the same channel itself.
+// If Supabase can't be reached, the counter stays hidden and the game is unaffected.
+(() => {
+  const GAME = 'cube-assault';
+  const box = document.getElementById('onlineCount'), num = document.getElementById('onlineNum');
+  const show = c => {
+    const n = c ? c.byGame[GAME] || 0 : 0;
+    box.hidden = n < 1;
+    num.textContent = c && c.full ? n + '+' : String(n);
+  };
+  try {
+    if (window.parent !== window && window.parent.ArcadeOnline) { window.parent.ArcadeOnline.subscribe(show); return; }
+  } catch (e) {}
+
+  const CAP = 200; // the free plan's limit on simultaneous connections
+  const lib = document.createElement('script');
+  lib.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  lib.async = true;
+  lib.onerror = () => show(null);
+  lib.onload = () => {
+    try {
+      const client = window.supabase.createClient('https://fewocduisjbctoxolkjr.supabase.co', 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',
+        { auth: { persistSession: false, autoRefreshToken: false } });
+      const key = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const ch = client.channel('online:arcade', { config: { presence: { key } } });
+      ch.on('presence', { event: 'sync' }, () => {
+        const state = ch.presenceState(), byGame = {};
+        for (const k in state) { const g = (state[k][0] || {}).game || 'home'; byGame[g] = (byGame[g] || 0) + 1; }
+        show({ byGame, full: Object.keys(state).length >= CAP });
+      }).subscribe(status => {
+        if (status === 'SUBSCRIBED') ch.track({ game: GAME }).catch(() => show(null));
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') show(null);
+      });
+    } catch (e) { show(null); }
+  };
+  document.head.appendChild(lib);
+})();
 </script>
 </body>
 </html>

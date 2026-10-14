@@ -22,7 +22,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=6">
+<link rel="stylesheet" href="arcade.css?v=7">
 </head>
 <body class="player">
 <header class="top">
@@ -63,7 +63,7 @@
   <p>Found a bug, or the game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=27"></script>
+<script src="games.js?v=28"></script>
 <script>
 const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('game');
@@ -74,6 +74,8 @@ if (!game) {
   location.replace('index.html');
 } else {
   Arcade.markPlayed(game.id);
+  // Count this player as on this game; the game in the frame reads the count through window.ArcadeOnline
+  ArcadeOnline.start(game.id);
   document.title = game.title + " · Noah and Lars' Arcade";
   $('title').textContent = game.title;
   fillContact('Problem with ' + game.title);
