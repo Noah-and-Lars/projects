@@ -41,17 +41,17 @@ window.GAMES = [
     id: 'free-criminal',
     title: 'Free Criminal',
     category: 'Action',
-    tagline: 'Fresh out of prison in San Varro. Steal cars, rob the mall and outrun the cops.',
-    description: 'Open-world 3D crime game. Walk out of the penitentiary into a busy San Varro, steal any car, rob stores, the bank and the mall, pick from 10 guns and grenades at the gun stores and stay ahead of the police, who only spot you when you are in front of them. Crash hard and you fly out of the car.',
+    tagline: 'Fresh out of prison and thrown in a dumpster. Steal cars, rob stores and outrun the cops.',
+    description: 'Open-world 3D crime game. Walk out of the penitentiary into a busy San Varro, steal any car, rob stores, the bank and the mall, pick from 10 guns and grenades at the gun stores and stay ahead of the police, who only spot you when you are in front of them. Crash hard and you fly out of the car. Every purchase and robbery plays its own cutscene, and your profile tracks your level, stats and outfits.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Walk / drive'], ['Mouse', 'Look'], ['Click', 'Fire'], ['Right-click', 'Aim'], ['R', 'Reload'], ['Shift', 'Sprint'],
-           ['Space', 'Jump / handbrake'], ['F', 'Carjack or enter a car'], ['1', 'Take out / put away gun'], ['Q / Wheel', 'Switch gun'], ['G', 'Throw grenade'], ['E', 'Rob a store or the bank, or shop for guns'],
+           ['Space', 'Jump / handbrake'], ['F', 'Carjack or enter a car'], ['1', 'Take out / put away gun'], ['Q / Wheel', 'Switch gun'], ['G', 'Throw grenade'], ['E', 'Shop, or rob a store with a gun out'],
            ['V', 'First / third person'], ['M', 'Map'], ['H', 'Horn'], ['Esc', 'Pause']],
     path: 'free-criminal/index.html',
     thumb: 'free-criminal/thumb.svg',
     added: '2026-10-13T21:33:00+11:00',
-    updated: '2026-10-14T17:53:00+11:00',
-    stat() { return null; },
+    updated: '2026-10-14T22:26:00+11:00',
+    stat() { const p = readSave('freecriminal.profile.v1', true); return p && p.xp ? 'Level ' + (1 + Math.floor(Math.sqrt(p.xp / 150))) : null; },
   },
   {
     id: 'cube-assault',
@@ -134,6 +134,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-14', game: 'free-criminal', text: 'Free Criminal 1.5, the cutscene update: a new opening where the guards throw you in a dumpster, cutscenes when you buy or rob at stores, grocery stores, a profile with your name, levels and outfits, speed cameras, and past patch notes.' },
   { date: '2026-10-14', game: 'cube-tower-defense', text: 'New game: Cube Tower Defense. Place your squad along the road and stop the cubes from Cube Assault reaching your fort.' },
   { date: '2026-10-14', game: 'cube-assault', text: 'Cube Assault 2.4: Hard mode for endless (tougher cubes and more of them) and the giant orange Splitter Cube from wave 20.' },
   { date: '2026-10-14', game: 'free-criminal', text: 'Free Criminal 1.4: a world 7 times bigger with forests, farms and new towns, a giant bridge to an island, enterable buildings, safehouses, day and night, rain, touch controls and much more.' },
