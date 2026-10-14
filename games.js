@@ -24,6 +24,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'cube-tower-defense',
+    title: 'Cube Tower Defense',
+    category: 'Strategy',
+    tagline: 'Cubes march down the road to your fort. Place your squad and stop them.',
+    description: 'Tower defense with the cubes from Cube Assault. Place Gunners, Archers, Bombers, Snipers, Freezers, Rocketeers and Flamethrowers along the winding road, send out mini tanks, and hold your fort through endless waves.',
+    controls: 'Mouse or touch',
+    keys: [['Click a unit', 'Pick it in the shop'], ['Click the grass', 'Place it'], ['1–8', 'Pick a unit'], ['Space', 'Start the next wave'], ['Right-click / Esc', 'Cancel'], ['Esc', 'Pause']],
+    path: 'cube-tower-defense/index.html',
+    thumb: 'cube-tower-defense/thumb.svg',
+    added: '2026-10-14T21:26:00+11:00',
+    updated: '2026-10-14T21:26:00+11:00',
+    stat() { const p = readSave('cubeTDProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
+  },
+  {
     id: 'free-criminal',
     title: 'Free Criminal',
     category: 'Action',
@@ -120,6 +134,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-14', game: 'cube-tower-defense', text: 'New game: Cube Tower Defense. Place your squad along the road and stop the cubes from Cube Assault reaching your fort.' },
   { date: '2026-10-14', game: 'cube-assault', text: 'Cube Assault 2.4: Hard mode for endless (tougher cubes and more of them) and the giant orange Splitter Cube from wave 20.' },
   { date: '2026-10-14', game: 'free-criminal', text: 'Free Criminal 1.4: a world 7 times bigger with forests, farms and new towns, a giant bridge to an island, enterable buildings, safehouses, day and night, rain, touch controls and much more.' },
   { date: '2026-10-14', game: 'free-criminal', text: 'Free Criminal 1.2: drag drivers out when you carjack, police with vision cones (shown on the minimap), many more homes and trees, and the hospital bill now shows on your cash.' },
