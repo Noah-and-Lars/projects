@@ -52,6 +52,7 @@ Touch controls turn on by themselves on phones and tablets; **Settings → Touch
 | Green | Wave 4 | Small and very fast. |
 | Blue | Wave 7 | Keeps its distance and shoots slow energy shots. |
 | Brute (purple) | Wave 10 | Heavy armour, heavy melee. |
+| Splitter (orange) | Wave 20, then every 5 waves | Giant; splits into two smaller cubes when destroyed, three times over. |
 | King (gold) | Wave 15, then every 5 waves | Boss. Leaps and slams the ground; jump the shockwave. |
 | Rifle Cube (red, armed) | Campaign Level 1 | Keeps its distance and shoots. |
 | Scam Cube (yellow, headset) | Campaign Level 2 | Jumps off its chair and rushes you. |

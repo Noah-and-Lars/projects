@@ -203,13 +203,6 @@
   .wallet { display: flex; align-items: center; gap: 8px; font-size: 17px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px 6px 8px; font-variant-numeric: tabular-nums; }
   .wallet b { color: var(--gold-hi); }
   .wallet .sep { opacity: .4; }
-  /* Live player count, hidden until it connects */
-  .online { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; padding-left: 10px; }
-  .online[hidden] { display: none; }
-  .online b { color: var(--ink); }
-  .online i { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); animation: onlinePulse 2s ease-out infinite; }
-  @keyframes onlinePulse { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, .6); } 70%, 100% { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0); } }
-  @media (prefers-reduced-motion: reduce) { .online i { animation: none; } }
   .btns { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
   .controls { font-size: 14px !important; opacity: .8; }
   kbd { font-family: var(--body); font-size: 12px; font-weight: 700; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--ink); }
@@ -471,18 +464,22 @@
     <div class="title">CUBE<br><em>ASSAULT</em></div>
     <p class="tag">Hold the village against waves of cubes. Every cube you destroy earns a coin.</p>
     <div class="wallet"><span class="coin"></span><b class="coinTotal">0</b> coins <span class="sep">|</span> Best wave <b id="bestWave">0</b></div>
-    <div class="online" id="onlineCount" hidden><i></i><span><b id="onlineNum">0</b> playing now</span></div>
     <div class="btns">
       <button class="btn" data-action="maps">Play</button>
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.3 · What's new</button>
+    <button class="link" data-action="notes">v2.4 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v2.4 <span>Hard mode</span></h3><ul>
+        <li>Endless now has two difficulties, picked on the map screen. Hard: cubes have 70% more health and 40% more of them spawn each wave.</li>
+        <li>New enemy from wave 20: the Splitter Cube, a giant orange cube that splits into two smaller cubes when destroyed, three times over. Another one joins every fifth wave after that.</li>
+        <li>On a phone or tablet, the game now asks the first time whether you want touch controls.</li>
+      </ul></section>
       <section><h3>v2.3 <span>Play anywhere</span></h3><ul>
         <li>Cube Assault now works on phones and tablets. Touch controls: a joystick on the left to move (push it all the way to sprint), drag anywhere on the right to look, and buttons for fire, jump, reload, the sniper scope, your turret, holding E in the campaign, and pause.</li>
         <li>Tap a gun in the bar at the bottom of the screen to switch to it. Drag your thumb while holding Fire to aim and shoot at the same time. With the knife, swipe to slash.</li>
@@ -697,13 +694,11 @@
 
   <div class="menu" id="menu-news">
     <div class="eyebrow">What's new</div>
-    <h2>v2.3 · Play anywhere</h2>
+    <h2>v2.4 · Hard mode</h2>
     <ul class="newslist">
-      <li><b>Play on your phone or tablet.</b> A joystick to move, drag to look, and buttons for fire, jump, reload, scope, turret and pause.</li>
-      <li><b>Tap a gun</b> in the bar at the bottom to switch. Swipe to slash with the knife.</li>
-      <li>Touch controls switch on by themselves on phones. Change it in <b>Settings → Touch controls</b> (Auto, On or Off).</li>
-      <li>Menus now fit on short screens.</li>
-      <li>Fix: the mouse wheel no longer cancels your reload when you only have one gun.</li>
+      <li><b>Hard mode</b> for endless: cubes have 70% more health, and 40% more of them come each wave. Pick it on the map screen.</li>
+      <li><b>Splitter Cube</b> from wave 20: a giant orange cube that splits in two when destroyed, three times over.</li>
+      <li>Phones and tablets now get asked whether to use touch controls.</li>
     </ul>
     <button class="btn" id="newsOk">Let's go</button>
   </div>
@@ -720,6 +715,8 @@
 
   <div class="menu" id="menu-maps">
     <h2>Choose a map</h2>
+    <div class="row"><label>Endless difficulty</label><div class="seg" id="diffSeg"><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div></div>
+    <p class="touchNote" id="diffNote"></p>
     <div class="campaign">
       <div class="campHead"><b>Campaign</b><em class="wip">NEW</em>
         <span>Story missions on the Eastern Front, played in order. Level 1 is ready, and more are on the way.</span></div>
@@ -738,6 +735,14 @@
         <b>Frontier <em class="wip">WIP</em></b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm. Still a work in progress.</span></button>
     </div>
     <button class="btn secondary" data-action="back">Back</button>
+  </div>
+
+  <div class="menu" id="menu-touchask">
+    <div class="eyebrow">Phone or tablet detected</div>
+    <h2>Use touch controls?</h2>
+    <p>It looks like you’re on a phone or tablet. Touch controls give you a joystick to move, drag to look, and buttons to fire, jump and switch guns. You can change this later in Settings.</p>
+    <button class="btn" id="touchYes">Yes, use touch controls</button>
+    <button class="btn secondary" id="touchNo">No thanks</button>
   </div>
 
   <div class="menu" id="menu-reset">
@@ -805,6 +810,9 @@ const ENEMY_TYPES = {
   purple: { name: 'Brute Cube', unlock: 10, color: 0x7c3aed, css: '#8b5cf6', size: 1.6, hp: 10, speed: 2.4, melee: 40, reward: 300, weight: 0.3, intro: 2, brows: true,
             health: 5, pace: 2, attack: 'Heavy melee',
             desc: 'A big armoured cube. It takes a lot of hits and does heavy damage up close. The shotgun and sniper deal with it best.' },
+  splitter: { name: 'Splitter Cube', unlock: 20, color: 0xf97316, css: '#f97316', size: 3.4, hp: 26, speed: 2.0, melee: 35, reward: 400, coins: 3, weight: 0, intro: 1, brows: true, split: true,
+            health: 4, pace: 2, attack: 'Heavy melee, splits',
+            desc: 'A giant orange cube. Destroy it and it splits into two smaller cubes, and those split again, three times over. Back off and keep firing.' },
   king:   { name: 'King Cube', unlock: 15, color: 0xf5b82e, css: '#f5b82e', size: 2.6, hp: 60, speed: 2.1, melee: 50, reward: 2000, coins: 10, weight: 0, intro: 0, brows: true, boss: true,
             health: 5, pace: 1, attack: 'Ground slam',
             desc: 'The boss. It leaps into the air and slams the ground, sending out a shockwave ring. Jump over the ring, or stand on a crate, to dodge it. Worth 10 coins.' },
@@ -818,7 +826,7 @@ const ENEMY_TYPES = {
 };
 // most of each type a random wave can roll (the guaranteed intro cubes still count)
 const TYPE_CAP = n => ({ blue: 2 + Math.floor(Math.max(0, n - 7) / 3), purple: 1 + Math.floor(Math.max(0, n - 10) / 3) });
-const DROP_CHANCE = { red: 0.08, green: 0.08, blue: 0.15, purple: 0.3, king: 1, rifle: 0.12, scam: 0.1 };
+const DROP_CHANCE = { splitter: 0.15,  red: 0.08, green: 0.08, blue: 0.15, purple: 0.3, king: 1, rifle: 0.12, scam: 0.1 };
 const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
 
 // ---------- Saved settings & profile ----------
@@ -838,6 +846,7 @@ profile.stats = Object.assign({ shots: 0, hits: 0, kills: 0, time: 0 }, profile.
 // wave-locked guns unlock fresh in every game, so they're never stored as owned
 for (const k of WEAPON_KEYS) if (WEAPONS[k].unlockWave) delete profile.owned[k];
 let gameMode = 'classic'; // classic | campaign
+const isHard = () => gameMode !== 'campaign' && settings.difficulty === 'hard';
 const isAdmin = () => (profile.name || '').trim() === 'ADMINTEST';
 const ownsBase = k => { if (isAdmin()) return true; const w = WEAPONS[k]; return w.price ? !!profile.owned[k] : w.unlockWave ? wave >= w.unlockWave : true; };
 const owns = k => (gameMode === 'campaign' && state !== 'menu' && !isAdmin()) ? k === 'rifle' : ownsBase(k);
@@ -3124,8 +3133,8 @@ const barGeo = new THREE.PlaneGeometry(1, 1).translate(0.5, 0, 0);
 const barBgMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false });
 const barFillMat = new THREE.MeshBasicMaterial({ color: 0xff5a4f, depthWrite: false });
 
-function spawnEnemy(key, at) {
-  const T = ENEMY_TYPES[key], size = T.size;
+function spawnEnemy(key, at, opt) {
+  const T = ENEMY_TYPES[key], size = (opt && opt.size) || T.size;
   const g = new THREE.Group();
   const mat = new THREE.MeshLambertMaterial({ color: T.color, map: bevelTex });
   const m = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), mat);
@@ -3189,15 +3198,16 @@ function spawnEnemy(key, at) {
   scene.add(g);
   simplify(g);
   m.userData.enemy = g;
-  const hp = T.hp + Math.floor(wave / 9);
+  const hp = Math.round((T.hp * ((opt && opt.hpMul) || 1) + Math.floor(wave / 9)) * (isHard() ? 1.7 : 1));
   g.userData = {
     T, key, mesh: m, mat, size, eyes, smile, hp, maxHp: hp, bar: null, wake: 0,
     speed: T.speed + wave * 0.12 + Math.random() * 0.5,
     hit: 0, phase: Math.random() * 10, spawnT: 0, blink: 1 + Math.random() * 4,
     fireCd: (T.fireEvery || 0) * (0.6 + Math.random() * 0.6), los: false, losTimer: 0,
     strafe: Math.random() < .5 ? -1 : 1, strafeT: 2, detour: 0, detourSide: 1, stuck: 0,
-    slamCd: 3.5, slam: 0, air: 0,
+    slamCd: 3.5, slam: 0, air: 0, gen: (opt && opt.gen) || 0,
   };
+  if (opt && opt.gen) g.userData.speed += opt.gen * 0.7;
   puff(new THREE.Vector3(x, 0.4, z), 0xcfc4ad, 2.2 * size, 0.8);
   enemies.push(g);
 }
@@ -3223,10 +3233,11 @@ function enemyBar(e) {
 }
 
 function waveRoster(n) {
-  const count = 3 + n * 2;
+  const count = Math.round((3 + n * 2) * (isHard() ? 1.4 : 1));
   const unlocked = ENEMY_KEYS.filter(k => ENEMY_TYPES[k].unlock <= n);
   const list = [];
   for (const k of unlocked) if (ENEMY_TYPES[k].unlock === n) for (let i = 0; i < ENEMY_TYPES[k].intro; i++) list.push(k);
+  if (n > 20 && n % 5 === 0) list.push('splitter');
   if (n >= 15 && n % 5 === 0) for (let i = 0; i < 1 + Math.floor((n - 15) / 10); i++) list.push('king');
   const caps = TYPE_CAP(n), have = k => list.filter(x => x === k).length;
   const pool = unlocked.filter(k => ENEMY_TYPES[k].weight > 0);
@@ -3245,7 +3256,7 @@ function nextWave() {
   wave++;
   waveRoster(wave).forEach(k => spawnEnemy(k));
   const healed = Math.round(Math.min(100, player.hp + 25) - player.hp);
-  banner('Wave ' + wave, wave === 1 ? 'Defend the village' : healed > 0 ? `+${healed} HP` : 'Full health');
+  banner('Wave ' + wave + (isHard() ? ' · Hard' : ''), wave === 1 ? 'Defend the village' : healed > 0 ? `+${healed} HP` : 'Full health');
   Sound.play('wave');
   player.hp = Math.min(100, player.hp + 25);
   updateHUD();
@@ -3409,6 +3420,8 @@ function killEnemy(e) {
     const cb = $('combo'); cb.classList.add('on'); cb.classList.remove('pop'); void cb.offsetWidth; cb.classList.add('pop');
     Sound.play('combo', combo);
   }
+  // the splitter breaks into two smaller cubes, three generations deep
+  if (T.split && u.gen < 3) for (const s of [-1, 1]) spawnEnemy('splitter', { x: c.x + s * u.size * 0.5, z: c.z + (Math.random() - 0.5) }, { gen: u.gen + 1, size: u.size * 0.66, hpMul: Math.pow(0.5, u.gen + 1) });
   const drops = T.boss ? 2 : Math.random() < (DROP_CHANCE[e.userData.key] || 0) ? 1 : 0;
   for (let i = 0; i < drops; i++) dropPack(c.clone().add(new THREE.Vector3(i * 1.5, 0, 0)));
   const ch = $('coinsHud'); ch.classList.remove('bump'); void ch.offsetWidth; ch.classList.add('bump');
@@ -3634,7 +3647,7 @@ function showMenu(name) {
   if (name === 'shop') refreshShop();
   if (name === 'settings') refreshSettingsUI();
   if (name === 'main' || name === 'profile') refreshProfile();
-  if (name === 'maps') refreshLevels();
+  if (name === 'maps') { refreshLevels(); refreshDiff(); }
   updateHUD();
 }
 function openSub(name) { backTo[name] = currentMenu; showMenu(name); }
@@ -3735,6 +3748,9 @@ function gameOver() {
 // settings UI
 const fovInput = $('fov'), sensInput = $('sens'), volInput = $('vol');
 fovInput.value = settings.fov; sensInput.value = settings.sens; volInput.value = Math.round(settings.volume * 100);
+function refreshDiff() { document.querySelectorAll('#diffSeg button').forEach(b => b.classList.toggle('sel', b.dataset.diff === (settings.difficulty || 'normal')));
+  $('diffNote').textContent = settings.difficulty === 'hard' ? 'Hard: cubes have 70% more health and 40% more of them spawn each wave.' : 'Normal: the classic Cube Assault.'; }
+document.querySelectorAll('#diffSeg button').forEach(b => b.addEventListener('click', () => { settings.difficulty = b.dataset.diff; saveSettings(); Sound.init(); Sound.play('click'); refreshDiff(); }));
 function refreshSettingsUI() {
   document.querySelectorAll('#touchSeg button').forEach(b => b.classList.toggle('sel', b.dataset.touch === (settings.touch || 'auto')));
   $('touchNote').textContent = 'Auto: ' + (autoTouch ? 'this looks like a phone or tablet, so touch controls are on.' : 'this looks like a computer, so touch controls are off.');
@@ -6006,7 +6022,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.3';
+const VERSION = '2.4';
 function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
@@ -6014,65 +6030,11 @@ $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
 renderAvatars();
 applyQuality();
 resetGame();
-if (profile.name) { showMenu('main'); maybeShowNews(); } else openNameMenu(true);
+function startupMenus() { if (profile.name) { showMenu('main'); maybeShowNews(); } else openNameMenu(true); }
+function answerTouch(on) { settings.touch = on ? 'on' : 'off'; settings.touchAsked = true; saveSettings(); Sound.init(); Sound.play('click'); startupMenus(); }
+$('touchYes').addEventListener('click', () => answerTouch(true)); $('touchNo').addEventListener('click', () => answerTouch(false));
+if (autoTouch && !settings.touchAsked && settings.touch !== 'off' && settings.touch !== 'on') showMenu('touchask'); else startupMenus();
 tick();
-</script>
-<script>
-// ---------- Live player counter (Supabase Realtime Presence) ----------
-// On the arcade's play page, the page around the game already keeps the count (window.ArcadeOnline),
-// so the game just reads it. Opened on its own, the game joins the same channel itself.
-// If Supabase can't be reached, the counter stays hidden and the game is unaffected.
-(() => {
-  const GAME = 'cube-assault';
-  const box = document.getElementById('onlineCount'), num = document.getElementById('onlineNum');
-  const render = c => {
-    const n = c ? c.byGame[GAME] || 0 : 0;
-    box.hidden = n < 1;
-    num.textContent = c && c.full ? n + '+' : String(n);
-  };
-  try {
-    if (window.parent !== window && window.parent.ArcadeOnline) { window.parent.ArcadeOnline.subscribe(render); return; }
-  } catch (e) {}
-  // Same as the arcade: one id per browser, and changes only show once they've held for a moment
-  let shown = null, timer = 0;
-  const show = c => {
-    clearTimeout(timer);
-    const n = c ? c.byGame[GAME] || 0 : -1;
-    if (shown === null || !c) { shown = n; render(c); }
-    else if (n !== shown) timer = setTimeout(() => { shown = n; render(c); }, 2500);
-  };
-  let id = null;
-  try { id = localStorage.getItem('arcade-online-id'); } catch (e) {}
-  if (!id) {
-    id = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
-    try { localStorage.setItem('arcade-online-id', id); } catch (e) {}
-  }
-
-  const CAP = 200; // the free plan's limit on simultaneous connections
-  const lib = document.createElement('script');
-  lib.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
-  lib.async = true;
-  lib.onerror = () => show(null);
-  lib.onload = () => {
-    try {
-      const client = window.supabase.createClient('https://fewocduisjbctoxolkjr.supabase.co', 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',
-        { auth: { persistSession: false, autoRefreshToken: false } });
-      const ch = client.channel('online:arcade', { config: { presence: { key: id } } });
-      ch.on('presence', { event: 'sync' }, () => {
-        const state = ch.presenceState(), byGame = {};
-        for (const k in state) {
-          const gs = state[k].map(m => m.game || 'home'), g = gs.find(x => x !== 'home') || 'home';
-          byGame[g] = (byGame[g] || 0) + 1;
-        }
-        show({ byGame, full: Object.keys(state).length >= CAP });
-      }).subscribe(status => {
-        if (status === 'SUBSCRIBED') ch.track({ game: GAME }).catch(() => show(null));
-        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') show(null);
-      });
-    } catch (e) { show(null); }
-  };
-  document.head.appendChild(lib);
-})();
 </script>
 </body>
 </html>
