@@ -254,7 +254,7 @@
       <button class="btn" data-action="play">Play</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v1.1.1 · What's new</button>
+    <button class="link" data-action="notes">v1.1.2 · What's new</button>
   </div>
 
   <div class="menu" id="menu-profile">
@@ -298,6 +298,19 @@
       <div><i>🎵</i><span><b>Music</b>Calm 16-bit music while you play, and a different tune on the menu.</span></div>
     </div>
     <div class="notes panelbox">
+      <h3>v1.1.2 <span>Farms, the Commando and the King Cube</span></h3>
+      <div class="feat" style="margin:8px 0 12px">
+        <div><img data-av="farm" alt=""><span><b>Farm · 60</b>Pays 20 coins after every wave you clear. Up to 3 per game.</span></div>
+        <div><img data-av="commando" alt=""><span><b>Commando · 400</b>A minigun that shreds big waves.</span></div>
+        <div><img data-av="king" alt=""><span><b>King Cube</b>From wave 15, then every 5 waves. The most health of any cube, and it summons 5 red cubes every 6 seconds.</span></div>
+      </div>
+      <ul>
+        <li>Money is much tighter: clearing a wave now pays 30 coins plus 4 per wave number (it was 60 plus 12). Spend carefully.</li>
+        <li>New building: the Farm (60). It earns 20 coins after every wave you clear. You can have up to 3.</li>
+        <li>New unit: the Commando (400). His minigun spins up and tears through crowds of cubes.</li>
+        <li>New boss: the King Cube arrives on wave 15 and every 5 waves after that. It has more health than any other cube and summons 5 red cubes in front of it every 6 seconds.</li>
+        <li>Keys 1 to 9 and 0 pick units from the shop.</li>
+      </ul>
       <h3>v1.1.1 <span>Quiet menu</span></h3>
       <ul>
         <li>The battle playing behind the main menu is now silent. You only hear the menu music and button clicks.</li>
@@ -331,6 +344,21 @@
       <div><img data-av="tank" alt=""><span><b>Mini Tank Base · 100</b>Place it on the map; mini tanks roll out of your fort and drive back down the road, blasting cubes.</span></div>
       <div><i>🪙</i><span><b>Coins come from waves</b>Destroying cubes no longer pays. Clear a wave to earn a bigger bonus.</span></div>
       <div><i>🎵</i><span><b>Music</b>Calm 16-bit music while you play, and a different tune on the menu.</span></div>
+    </div>
+    <div class="notes panelbox">
+      <h3>v1.1.2 <span>Farms, the Commando and the King Cube</span></h3>
+      <div class="feat" style="margin:8px 0 12px">
+        <div><img data-av="farm" alt=""><span><b>Farm · 60</b>Pays 20 coins after every wave you clear. Up to 3 per game.</span></div>
+        <div><img data-av="commando" alt=""><span><b>Commando · 400</b>A minigun that shreds big waves.</span></div>
+        <div><img data-av="king" alt=""><span><b>King Cube</b>From wave 15, then every 5 waves. The most health of any cube, and it summons 5 red cubes every 6 seconds.</span></div>
+      </div>
+      <ul>
+        <li>Money is much tighter: clearing a wave now pays 30 coins plus 4 per wave number (it was 60 plus 12). Spend carefully.</li>
+        <li>New building: the Farm (60). It earns 20 coins after every wave you clear. You can have up to 3.</li>
+        <li>New unit: the Commando (400). His minigun spins up and tears through crowds of cubes.</li>
+        <li>New boss: the King Cube arrives on wave 15 and every 5 waves after that. It has more health than any other cube and summons 5 red cubes in front of it every 6 seconds.</li>
+        <li>Keys 1 to 9 and 0 pick units from the shop.</li>
+      </ul>
     </div>
     <button class="btn" id="newsOk">Let's go</button>
   </div>
@@ -415,6 +443,9 @@ const Sound = (() => {
     freezer: () => { for (let i = 0; i < 4; i++) tone(1400 + i * 300, 0.18, 0.04, 'sine', 900, i * 0.04); hiss(0.08, 0.3, 8000, 3000); },
     flamer: () => { hiss(0.09, 0.16, 1400, 500); },
     tank: () => { tone(110, 0.15, 0.16, 'square', 50); hiss(0.18, 0.2, 2200, 200); },
+    commando: () => { hiss(0.07, 0.05, 6000, 1200); tone(170, 0.03, 0.035, 'square', 90); },
+    king: () => { tone(196, 0.3, 0.14, 'sawtooth', 98); tone(147, 0.6, 0.14, 'sawtooth', 73, 0.28); },
+    summon: () => { for (let i = 0; i < 3; i++) tone(300 + i * 120, 0.12, 0.06, 'square', 600, i * 0.06); },
   };
   return { get ctx() { return ctx; }, get master() { return master; }, get noise() { return noise; }, init, setVolume: v => { if (master) master.gain.value = v; },
     play(n) { if (!ctx) return; if (state !== 'play' && !['click', 'deny', 'level'].includes(n)) return; const now = performance.now(); if (n !== 'boom' && last[n] && now - last[n] < 45) return; last[n] = now; lib[n] && lib[n](); } };
@@ -536,6 +567,7 @@ const ETYPES = {
   red:    { name: 'Red Cube', hp: 3, speed: 2.6, dmg: 1, reward: 2, xp: 5, size: 1.35, color: 0xdc2626 },
   green:  { name: 'Green Cube', hp: 2, speed: 4.4, dmg: 1, reward: 2, xp: 5, size: 1.1, color: 0x16a34a, brows: true },
   purple: { name: 'Brute Cube', hp: 14, speed: 1.6, dmg: 5, reward: 6, xp: 15, size: 1.9, color: 0x7c3aed, brows: true },
+  king:   { name: 'King Cube', hp: 260, speed: 0.95, dmg: 40, reward: 0, xp: 150, size: 3.0, color: 0xf2b630, brows: true, king: true },
 };
 const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff }), pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
 const edgeTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 64, 64);
@@ -549,13 +581,21 @@ function cubeModel(key, scale = 1) {
   for (const k of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(s * 0.22, s * 0.22, 0.04), eyeMat); w.position.set(k * s * 0.22, s * 0.62, s / 2 + 0.01); body.add(w);
     const p = new THREE.Mesh(new THREE.BoxGeometry(s * 0.1, s * 0.1, 0.04), pupilMat); p.position.set(k * s * 0.22, s * 0.6, s / 2 + 0.03); body.add(p);
     if (T.brows) { const b = new THREE.Mesh(new THREE.BoxGeometry(s * 0.3, s * 0.06, 0.04), pupilMat); b.position.set(k * s * 0.2, s * 0.82, s / 2 + 0.03); b.rotation.z = -k * 0.35; body.add(b); } }
+  if (T.king) { // a gold crown with red jewels
+    const gold = lam('#fde047'), ruby = lam('#dc2626'), cw = s * 0.82, ch = s * 0.16, y0 = s + ch / 2;
+    for (const [w, d, x, z] of [[cw, 0.12, 0, cw / 2], [cw, 0.12, 0, -cw / 2], [0.12, cw, cw / 2, 0], [0.12, cw, -cw / 2, 0]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, ch, d), gold); m.position.set(x, y0, z); body.add(m); }
+    for (let i = 0; i < 4; i++) for (let j = -1; j <= 1; j++) { const a = i * Math.PI / 2, px = Math.sin(a) * cw / 2 + Math.cos(a) * j * cw * 0.36, pz = Math.cos(a) * cw / 2 - Math.sin(a) * j * cw * 0.36;
+      const sp = new THREE.Mesh(new THREE.ConeGeometry(0.13, s * 0.22, 4), gold); sp.position.set(px, s + ch + s * 0.1, pz); body.add(sp); }
+    const gem = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.05), ruby); gem.position.set(0, y0, cw / 2 + 0.06); body.add(gem);
+    body.traverse(o => { if (o.isMesh) o.castShadow = true; }); }
   return { g, body, s };
 }
 const enemies = [];
 const barGeo = new THREE.PlaneGeometry(1, 0.14), barBg = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7, depthTest: false }), barFg = new THREE.MeshBasicMaterial({ color: 0x4ade80, depthTest: false });
 function spawnEnemy(key, hpMul) {
   const T = ETYPES[key], mod = cubeModel(key), hp = Math.max(1, Math.round(T.hp * hpMul));
-  const e = { key, T, ...mod, d: -rand(0, 0.5), hp, maxHp: hp, speed: T.speed * rand(0.95, 1.06), phase: Math.random() * 6, bar: null, slow: 0 };
+  const e = { key, T, ...mod, d: -rand(0, 0.5), hp, maxHp: hp, speed: T.speed * rand(0.95, 1.06), phase: Math.random() * 6, bar: null, slow: 0, summon: 4 };
+  if (T.king && state === 'play') { banner('The King Cube is here!', 'It summons red cubes. Take it down!'); Sound.play('king'); }
   scene.add(e.g); enemies.push(e); return e;
 }
 function removeEnemy(e) { scene.remove(e.g); if (e.bar) scene.remove(e.bar); e.g.traverse(o => { if (o.isMesh) o.geometry.dispose(); }); if (e.ice) e.ice.material.dispose(); enemies.splice(enemies.indexOf(e), 1); }
@@ -568,6 +608,8 @@ function updateEnemies(dt) {
     posAt(Math.max(0, e.d), _p); e.g.position.set(_p.x, 0, _p.z);
     const hop = Math.abs(Math.sin(e.phase)); e.body.position.y = hop * 0.35 * e.s; e.body.scale.set(1 + (1 - hop) * 0.08, 1 - (1 - hop) * 0.1, 1 + (1 - hop) * 0.08);
     e.g.rotation.y = Math.atan2(_p.dx, _p.dz);
+    if (e.T.king && e.d > 1) { e.summon -= dt; if (e.summon <= 0) { e.summon = 6; const p0 = e.g.position.clone(); flash(p0.clone().setY(e.s), 3, 0xffd34d); Sound.play('summon');
+      for (let j = 0; j < 5; j++) { const r = spawnEnemy('red', waveHpMul); r.d = Math.min(BASE_D - 2, e.d + e.s * 0.5 + 1.4 + j * 1.5); const q = posAt(r.d, { x: 0, z: 0 }); r.g.position.set(q.x, 0, q.z); puffRing(q.x, q.z); } } }
     if (e.hp < e.maxHp) { if (!e.bar) { e.bar = new THREE.Group(); const bg = new THREE.Mesh(barGeo, barBg), fg = new THREE.Mesh(barGeo, barFg); fg.position.z = 0.001; e.bar.add(bg, fg); e.bar.userData.fg = fg; e.bar.renderOrder = 5; bg.renderOrder = 5; fg.renderOrder = 6; scene.add(e.bar); }
       const k = e.hp / e.maxHp, fg = e.bar.userData.fg; fg.scale.x = k; fg.position.x = -(1 - k) / 2; e.bar.position.set(_p.x, e.s * 1.6 + 0.4, _p.z); e.bar.quaternion.copy(camera.quaternion); e.bar.scale.setScalar(Math.max(1, e.s)); } }
 }
@@ -585,13 +627,16 @@ const TTYPES = {
   freezer: { name: 'Freezer', price: 65, range: 6.5, rate: 1.6, dmg: 0.5, slow: 2.5, short: 'Frost blasts slow cubes down.', desc: 'Every frost blast slows all the cubes around him for a few seconds.', ring: '#7dd3fc' },
   rocketeer: { name: 'Rocketeer', price: 75, range: 11, rate: 2.2, dmg: 4, splash: 2.3, short: 'Homing rockets with a blast.', desc: 'Fires homing rockets that blow up a small area.', ring: '#f87171' },
   flamer: { name: 'Flamethrower', price: 150, range: 5.5, rate: 0.1, dmg: 0.42, cone: 0.65, short: 'Torches every cube in front.', desc: 'A short-range stream of fire that burns every cube in front of him.', ring: '#f97316' },
+  commando: { name: 'Commando', price: 400, range: 9, rate: 0.07, dmg: 1.1, short: 'Minigun. Shreds big waves.', desc: 'Spins up a minigun that tears through crowds of cubes. Expensive, but nothing beats him against big waves.', ring: '#e11d48' },
   depot: { name: 'Mini Tank Base', price: 100, range: 0, rate: 9, short: 'Sends tanks down the road.', desc: 'During a wave, mini tanks roll out of your fort and drive back down the road, shooting and ramming cubes.', ring: '#fde047', vehicle: true },
+  farm: { name: 'Farm', price: 60, range: 0, rate: 0, short: '+20 coins after every wave. Max 3.', desc: 'Grows crops that earn 20 coins after every wave you clear. You can have up to 3 farms.', ring: '#facc15', building: true },
 };
-const ORDER = ['gunner', 'archer', 'bomber', 'sniper', 'freezer', 'rocketeer', 'flamer', 'depot'];
+const MAX_FARMS = 3, BIG = k => k === 'depot' || k === 'farm', farmCount = () => towers.filter(t => t.kind === 'farm').length;
+const ORDER = ['gunner', 'archer', 'bomber', 'sniper', 'freezer', 'rocketeer', 'flamer', 'commando', 'depot', 'farm'];
 const SKIN = ['#f1c9a5', '#d9a679', '#a86b42', '#7c4a2a'];
 function personModel(kind) {
   const g = new THREE.Group(), aim = new THREE.Group(); g.add(aim);
-  const L = { archer: { shirt: '#6b4a2c', pants: '#3f3022', hat: '#2f5d2f', rim: '#a3e635' }, freezer: { shirt: '#dbeafe', pants: '#bfdbfe', hat: '#e0f2fe', rim: '#7dd3fc' }, rocketeer: { shirt: '#7f1d1d', pants: '#3f1d1d', hat: '#27272a', rim: '#f87171' }, flamer: { shirt: '#3f3f46', pants: '#27272a', hat: '#18181b', rim: '#f97316' }, gunner: { shirt: '#4b5d3a', pants: '#3a4a2c', hat: '#3d4a2e', rim: '#4ade80' }, bomber: { shirt: '#e0701f', pants: '#4a4f57', hat: '#2c2f35', rim: '#fb923c' }, sniper: { shirt: '#2f3b24', pants: '#2a3320', hat: '#4a5a32', rim: '#60a5fa' } }[kind];
+  const L = { archer: { shirt: '#6b4a2c', pants: '#3f3022', hat: '#2f5d2f', rim: '#a3e635' }, freezer: { shirt: '#dbeafe', pants: '#bfdbfe', hat: '#e0f2fe', rim: '#7dd3fc' }, rocketeer: { shirt: '#7f1d1d', pants: '#3f1d1d', hat: '#27272a', rim: '#f87171' }, flamer: { shirt: '#3f3f46', pants: '#27272a', hat: '#18181b', rim: '#f97316' }, commando: { shirt: '#3d3a2a', pants: '#2b2a20', hat: '#b91c1c', rim: '#e11d48' }, gunner: { shirt: '#4b5d3a', pants: '#3a4a2c', hat: '#3d4a2e', rim: '#4ade80' }, bomber: { shirt: '#e0701f', pants: '#4a4f57', hat: '#2c2f35', rim: '#fb923c' }, sniper: { shirt: '#2f3b24', pants: '#2a3320', hat: '#4a5a32', rim: '#60a5fa' } }[kind];
   const skin = SKIN[(Math.random() * SKIN.length) | 0];
   cyl(0.95, 1.05, 0.3, 14, '#8d877a', 0, 0.15, 0, g); cyl(0.9, 0.9, 0.06, 14, L.rim, 0, 0.32, 0, g);
   for (const s of [-1, 1]) box(0.22, 0.62, 0.24, L.pants, s * 0.14, 0.66, 0, aim);
@@ -599,7 +644,7 @@ function personModel(kind) {
   box(0.32, 0.32, 0.32, skin, 0, 1.78, 0, aim);
   for (const s of [-1, 1]) box(0.05, 0.05, 0.02, '#141414', s * 0.08, 1.8, 0.165, aim);
   for (const s of [-1, 1]) { const a = box(0.16, 0.5, 0.16, L.shirt, s * 0.36, 1.32, 0.16, aim); a.rotation.x = -1.2; }
-  const muzzle = new THREE.Object3D(); aim.add(muzzle);
+  const muzzle = new THREE.Object3D(); aim.add(muzzle); let spin = null;
   if (kind === 'gunner') { box(0.38, 0.14, 0.38, L.hat, 0, 2.0, 0, aim); box(0.42, 0.04, 0.42, L.hat, 0, 1.94, 0, aim);
     box(0.08, 0.12, 0.8, '#1d1f22', 0.14, 1.36, 0.55, aim); box(0.06, 0.16, 0.08, '#1d1f22', 0.14, 1.24, 0.38, aim); muzzle.position.set(0.14, 1.38, 0.98); }
   if (kind === 'bomber') { box(0.36, 0.1, 0.36, L.hat, 0, 1.98, 0, aim); box(0.58, 0.4, 0.34, '#3a3d42', 0, 1.3, -0.3, aim);
@@ -618,9 +663,21 @@ function personModel(kind) {
   if (kind === 'flamer') { box(0.36, 0.34, 0.36, L.hat, 0, 1.8, 0, aim); box(0.22, 0.16, 0.12, '#111', 0, 1.72, 0.2, aim); for (const s of [-1, 1]) box(0.08, 0.08, 0.06, '#f59e0b', s * 0.08, 1.85, 0.19, aim);
     for (const s of [-1, 1]) cyl(0.13, 0.13, 0.7, 10, '#dc2626', s * 0.15, 1.32, -0.3, aim); box(0.56, 0.06, 0.34, '#facc15', 0, 1.1, 0, aim);
     box(0.1, 0.12, 0.8, '#52525b', 0.14, 1.28, 0.5, aim); box(0.14, 0.14, 0.1, '#f97316', 0.14, 1.28, 0.92, aim); muzzle.position.set(0.14, 1.28, 1.0); }
+  if (kind === 'commando') { box(0.36, 0.1, 0.36, L.hat, 0, 1.93, 0, aim); box(0.1, 0.08, 0.24, L.hat, 0.1, 1.9, -0.26, aim); box(0.3, 0.06, 0.04, '#111', 0, 1.82, 0.17, aim);
+    box(0.6, 0.66, 0.36, L.shirt, 0, 1.28, 0, aim); box(0.62, 0.08, 0.06, '#c9a227', 0, 1.36, 0.19, aim).rotation.z = 0.6; box(0.44, 0.5, 0.3, '#4b5563', 0, 1.28, -0.32, aim);
+    box(0.22, 0.24, 0.62, '#374151', 0.1, 1.18, 0.5, aim); spin = new THREE.Group(); spin.position.set(0.1, 1.18, 0.95); aim.add(spin);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, b = cyl(0.03, 0.03, 0.7, 6, '#1f2937', Math.cos(a) * 0.07, Math.sin(a) * 0.07, 0.2, spin); b.rotation.x = Math.PI / 2; }
+    cyl(0.1, 0.1, 0.06, 10, '#111827', 0, 0, 0.5, spin).rotation.x = Math.PI / 2; muzzle.position.set(0.1, 1.18, 1.6); }
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  return { g, aim, muzzle };
+  return { g, aim, muzzle, spin };
 }
+function farmModel() { const g = new THREE.Group(), aim = new THREE.Group(), muzzle = new THREE.Object3D(); g.add(aim); aim.add(muzzle); const crops = new THREE.Group(); g.add(crops);
+  box(3.4, 0.14, 3.2, '#7a5230', 0, 0.07, 0, g);
+  for (let r = 0; r < 4; r++) { box(1.7, 0.12, 0.34, '#5c3d22', 0.65, 0.17, -1.2 + r * 0.8, g); for (let c = 0; c < 4; c++) box(0.28, 0.4, 0.28, c % 2 ? '#65a30d' : '#84cc16', 0.05 + c * 0.42, 0.4, -1.2 + r * 0.8, crops); }
+  box(1.3, 1.1, 1.5, '#b91c1c', -1.0, 0.69, 0.55, g); box(1.34, 0.12, 1.54, '#f5f5f4', -1.0, 1.2, 0.55, g); box(0.5, 0.7, 0.04, '#f5f5f4', -1.0, 0.5, 1.31, g);
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.95, 0.7, 4, 1), lam('#57534e')); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 1.15); roof.position.set(-1.0, 1.6, 0.55); g.add(roof);
+  cyl(0.32, 0.32, 1.7, 12, '#d6d3d1', -1.15, 0.9, -0.9, g); const dome = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam('#a8a29e')); dome.position.set(-1.15, 1.75, -0.9); g.add(dome);
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return { g, aim, muzzle, crops }; }
 function depotModel() { const g = new THREE.Group(), aim = new THREE.Group(), muzzle = new THREE.Object3D(); g.add(aim); aim.add(muzzle);
   box(3.4, 0.2, 3.4, '#9ca3af', 0, 0.1, 0, g); box(2.8, 1.8, 2.2, '#4d5d33', 0, 1.1, -0.3, g); box(3.0, 0.2, 2.4, '#3a4726', 0, 2.1, -0.3, g);
   box(1.6, 1.3, 0.06, '#1f2937', 0, 0.85, 0.82, g); for (let i = 0; i < 4; i++) box(1.6, 0.04, 0.07, '#374151', 0, 0.35 + i * 0.3, 0.84, g);
@@ -631,7 +688,7 @@ function tankModel() { const g = new THREE.Group(), turret = new THREE.Group(), 
   turret.position.set(0, 0.72, -0.1); g.add(turret); box(0.85, 0.32, 0.9, '#6b7d44', 0, 0.1, 0, turret); const barrel = cyl(0.07, 0.07, 1.0, 8, '#2d3320', 0, 0.12, 0.85, turret); barrel.rotation.x = Math.PI / 2;
   box(0.18, 0.04, 0.18, '#fde047', 0, 0.28, -0.1, turret); muzzle.position.set(0, 0.12, 1.4); turret.add(muzzle);
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return { g, turret, muzzle, aim: turret }; }
-const unitModel = kind => kind === 'depot' ? depotModel() : personModel(kind);
+const unitModel = kind => kind === 'depot' ? depotModel() : kind === 'farm' ? farmModel() : personModel(kind);
 const towers = [];
 const rangeRing = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
 rangeRing.rotation.x = -Math.PI / 2; rangeRing.position.y = 0.12; rangeRing.visible = false; scene.add(rangeRing);
@@ -643,15 +700,15 @@ function canPlace(x, z) {
   if (Math.abs(x) > FW / 2 - 1.2 || Math.abs(z) > FH / 2 - 1.2) return false;
   if (distToPath(x, z) < PW / 2 + 1.5) return false;
   if (Math.hypot(x - 33.5, z - PATH[PATH.length - 1][1]) < 8 || x < -29) return false;
-  for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < (t.kind === 'depot' || placing === 'depot' ? 3.6 : 2.6)) return false;
+  for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < (BIG(t.kind) || BIG(placing) ? 3.6 : 2.6)) return false;
   for (const o of OBST) if (Math.hypot(o.x - x, o.z - z) < o.r + 0.9) return false;
   return true;
 }
-function makeUnit(kind, x, z) { const T = TTYPES[kind], mod = unitModel(kind); if (kind !== 'depot') mod.g.scale.setScalar(1.6); mod.g.position.set(x, 0, z);
-  if (kind === 'depot') mod.g.rotation.y = Math.atan2(-x, -z); else mod.aim.rotation.y = Math.atan2(-x, -z); scene.add(mod.g);
+function makeUnit(kind, x, z) { const T = TTYPES[kind], mod = unitModel(kind); if (!BIG(kind)) mod.g.scale.setScalar(1.6); mod.g.position.set(x, 0, z);
+  if (BIG(kind)) mod.g.rotation.y = Math.atan2(-x, -z); else mod.aim.rotation.y = Math.atan2(-x, -z); scene.add(mod.g);
   const t = { kind, T, ...mod, x, z, cd: kind === 'depot' ? 1.5 : 0.2, kills: 0, spent: T.price, kick: 0 }; towers.push(t); return t; }
 function placeTower(kind, x, z) {
-  const T = TTYPES[kind]; if (coins < T.price || !canPlace(x, z)) { Sound.play('deny'); return false; }
+  const T = TTYPES[kind]; if (coins < T.price || !canPlace(x, z) || (kind === 'farm' && farmCount() >= MAX_FARMS)) { Sound.play('deny'); return false; }
   coins -= T.price; const t = makeUnit(kind, x, z); profile.stats.towers++;
   puffRing(x, z); Sound.play('place'); updateSide(); return t;
 }
@@ -662,11 +719,13 @@ function updateTowers(dt) {
   for (const t of towers) {
     t.cd -= dt; t.kick = Math.max(0, t.kick - dt * 6);
     if (t.kind === 'depot') { if (inWave && t.cd <= 0 && tanks.filter(k => k.src === t).length < 2) { t.cd = t.T.rate; spawnTank(t); } continue; }
+    if (t.kind === 'farm') { t.crops.position.y = Math.sin(performance.now() / 600 + t.x) * 0.03; continue; }
     t.aim.position.z = -t.kick * 0.12;
-    const best = targetFor(t); if (!best) continue;
+    const best = targetFor(t); if (t.spin) { t.spinV = (t.spinV || 0) + ((best ? 30 : 0) - (t.spinV || 0)) * Math.min(1, dt * 3); t.spin.rotation.z += t.spinV * dt; } if (!best) { if (t.cd < 0) t.cd = 0; continue; }
     const want = Math.atan2(best.g.position.x - t.x, best.g.position.z - t.z); let da = want - t.aim.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); t.aim.rotation.y += da * Math.min(1, dt * 14);
     if (t.cd > 0 || Math.abs(da) > 0.5) continue;
-    t.cd = t.T.rate; t.aim.updateMatrixWorld(); t.muzzle.getWorldPosition(_v);
+    if (t.kind === 'commando' && t.spinV < 18) continue;
+    const nShots = t.kind === 'commando' ? Math.min(4, Math.floor(-t.cd / t.T.rate) + 1) : 1; if (t.kind === 'commando') t.cd += t.T.rate * nShots; else t.cd = t.T.rate; t.aim.updateMatrixWorld(); t.muzzle.getWorldPosition(_v);
     _w.set(best.g.position.x, best.s * 0.55, best.g.position.z);
     if (t.kind === 'flamer') { // a cone of fire
       const fx0 = Math.sin(t.aim.rotation.y), fz0 = Math.cos(t.aim.rotation.y);
@@ -677,6 +736,8 @@ function updateTowers(dt) {
     if (t.kind === 'bomber') { const fl = 0.55, land = posAt(best.d + best.speed * fl, { x: 0, z: 0 }); throwBomb(_v.clone(), new THREE.Vector3(land.x, 0.2, land.z), fl, t); Sound.play('bomber'); }
     else if (t.kind === 'archer') { shoot('arrow', _v.clone(), best, t, 0.28); Sound.play('archer'); }
     else if (t.kind === 'rocketeer') { shoot('rocket', _v.clone(), best, t, 0.8); flash(_v, 0.9, 0xffb347); Sound.play('rocketeer'); }
+    else if (t.kind === 'commando') { tracer(_v, _w, 0xffd38a, 0.04); flash(_v, 0.7, 0xffc46b); damage(best, t.T.dmg * nShots, t); Sound.play('commando');
+      if (Math.random() < 0.4) { const o = enemies.find(e => e !== best && e.hp > 0 && e.d > 0.5 && Math.hypot(e.g.position.x - best.g.position.x, e.g.position.z - best.g.position.z) < 2.5); if (o) damage(o, t.T.dmg * nShots, t); } }
     else if (t.kind === 'freezer') { frostRing(t.x, t.z, t.T.range); flash(_v, 1.2, 0x9be7ff); Sound.play('freezer');
       for (const e of [...enemies]) if (Math.hypot(e.g.position.x - t.x, e.g.position.z - t.z) <= t.T.range) { e.slow = Math.max(e.slow, t.T.slow); damage(e, t.T.dmg, t); } }
     else { tracer(_v, _w, t.kind === 'sniper' ? 0xbfe3ff : 0xffe2a0, t.kind === 'sniper' ? 0.12 : 0.05); flash(_v, t.kind === 'sniper' ? 1.1 : 0.6); damage(best, t.T.dmg, t); Sound.play(t.kind); }
@@ -756,14 +817,16 @@ function startWave() {
   const n = 6 + wave * 3; spawnQ = [];
   for (let i = 0; i < n; i++) { let k = 'red'; const r = Math.random(); if (wave >= 6 && r < Math.min(0.28, 0.06 + (wave - 6) * 0.02)) k = 'purple'; else if (wave >= 3 && r < 0.42) k = 'green'; spawnQ.push(k); }
   if (wave % 5 === 0) for (let i = 0; i < Math.floor(wave / 5); i++) spawnQ.push('purple');
+  if (wave >= 15 && wave % 5 === 0) spawnQ.splice(Math.floor(spawnQ.length / 2), 0, 'king');
   waveHpMul = 1 + 0.09 * (wave - 1) + Math.max(0, wave - 15) * 0.05;
   spawnT = 0; banner('Wave ' + wave, n + ' cubes incoming'); Sound.play('wave'); updateSide(); updateHud();
 }
 function updateWaves(dt) {
   if (!inWave) { if (settings.autoWave && wave > 0) { autoT -= dt; if (autoT <= 0) startWave(); } return; }
   spawnT -= dt; if (spawnQ.length && spawnT <= 0) { spawnEnemy(spawnQ.shift(), waveHpMul); spawnT = Math.max(0.3, 0.95 - wave * 0.03) * rand(0.8, 1.2); }
-  if (!spawnQ.length && !enemies.length) { inWave = false; const bonus = 60 + wave * 12; coins += bonus; runCoins += bonus; coinPop(new THREE.Vector3(33.5, 4, PATH[PATH.length - 1][1]), bonus); profile.stats.waves++; addXp(20 + wave * 5);
-    if (wave > profile.best) profile.best = wave; saveProfile(); banner('Wave ' + wave + ' cleared', '+' + bonus + ' coins'); Sound.play('cleared'); autoT = 3; updateSide(); updateHud(); }
+  if (!spawnQ.length && !enemies.length) { inWave = false; const bonus = 30 + wave * 4; coins += bonus; runCoins += bonus; coinPop(new THREE.Vector3(33.5, 4, PATH[PATH.length - 1][1]), bonus); profile.stats.waves++; addXp(20 + wave * 5);
+    let farm = 0; for (const t of towers) if (t.kind === 'farm') { farm += 20; t.earned = (t.earned || 0) + 20; coinPop(new THREE.Vector3(t.x, 2.5, t.z), 20); } coins += farm; runCoins += farm;
+    if (wave > profile.best) profile.best = wave; saveProfile(); banner('Wave ' + wave + ' cleared', '+' + bonus + ' coins' + (farm ? ' · farms +' + farm : '')); Sound.play('cleared'); autoT = 3; updateSide(); updateHud(); }
 }
 function gameOver() {
   state = 'over'; inWave = false; setGhost(null); Sound.play('lose');
@@ -782,19 +845,20 @@ function updateHud() {
 }
 function updateSide() {
   $('coinNum').textContent = coins;
-  for (const c of document.querySelectorAll('.tcard')) { const k = c.dataset.t; c.classList.toggle('sel', placing === k); c.classList.toggle('poor', coins < TTYPES[k].price); }
+  for (const c of document.querySelectorAll('.tcard')) { const k = c.dataset.t; c.classList.toggle('sel', placing === k); c.classList.toggle('poor', coins < TTYPES[k].price || (k === 'farm' && farmCount() >= MAX_FARMS)); }
+  { const f = document.querySelector('.tcard[data-t="farm"] > span'); if (f) f.textContent = '+20 coins after every wave. ' + farmCount() + ' / ' + MAX_FARMS + ' built.'; }
   $('waveBtn').disabled = inWave || state !== 'play'; $('waveBtn').textContent = inWave ? 'Wave ' + wave : wave === 0 ? 'Start wave' : 'Next wave';
   $('speedBtn').textContent = 'Speed ' + speed + '×'; $('autoWave').checked = !!settings.autoWave;
   const s = selected; $('info').hidden = !s;
-  if (s) { $('infoName').textContent = s.T.name; $('infoText').textContent = `${s.T.desc} Cubes destroyed: ${s.kills}.`; $('sellBtn').textContent = 'Sell for ' + Math.floor(s.spent * 0.7); }
+  if (s) { $('infoName').textContent = s.T.name; $('infoText').textContent = s.kind === 'farm' ? `${s.T.desc} Coins earned: ${s.earned || 0}.` : `${s.T.desc} Cubes destroyed: ${s.kills}.`; $('sellBtn').textContent = 'Sell for ' + Math.floor(s.spent * 0.7); }
 }
 function setTip(t) { $('tip').hidden = !t; if (t) $('tip').textContent = t; }
 
 // ---------- Placing towers ----------
 function setGhost(kind) {
   if (ghost.mod) scene.remove(ghost.mod.g); ghost.mod = null; ghost.kind = kind; placing = kind; canvas.classList.toggle('placing', !!kind);
-  if (kind) { ghost.mod = unitModel(kind); if (kind !== 'depot') ghost.mod.g.scale.setScalar(1.6); ghost.mod.g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.6; o.castShadow = false; } }); ghost.mod.g.visible = false; scene.add(ghost.mod.g); selected = null;
-    setTip((kind === 'depot' ? 'Click the grass to build the Mini Tank Base. Its tanks drive out of your fort during waves. ' : 'Click the grass to place the ' + TTYPES[kind].name + '. ') + 'Right-click or Esc to cancel.'); }
+  if (kind) { ghost.mod = unitModel(kind); if (!BIG(kind)) ghost.mod.g.scale.setScalar(1.6); ghost.mod.g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.6; o.castShadow = false; } }); ghost.mod.g.visible = false; scene.add(ghost.mod.g); selected = null;
+    setTip((kind === 'depot' ? 'Click the grass to build the Mini Tank Base. Its tanks drive out of your fort during waves. ' : kind === 'farm' ? 'Click the grass to plant a Farm. It pays 20 coins after every wave. ' : 'Click the grass to place the ' + TTYPES[kind].name + '. ') + 'Right-click or Esc to cancel.'); }
   else { setTip(''); showRange(0, 0, 0); }
   updateSide();
 }
@@ -808,14 +872,14 @@ canvas.addEventListener('pointerdown', ev => {
   Sound.init(); if (state !== 'play') return; const p = groundAt(ev); if (!p) return;
   if (ev.button === 2) { setGhost(null); return; }
   if (placing) { if (ev.pointerType !== 'mouse' && ghost.mod && !ghost.mod.g.visible) { ghost.mod.g.visible = true; ghost.mod.g.position.set(p.x, 0, p.z); }
-    const k = placing; if (placeTower(k, p.x, p.z)) { if (coins < TTYPES[k].price) setGhost(null); else showRange(p.x, p.z, 0); } else { setTip(coins < TTYPES[k].price ? 'Not enough coins.' : 'You can’t place it there. Keep off the road, trees and rocks.'); clearTimeout(window.__tipT); window.__tipT = setTimeout(() => { if (placing) setTip('Click the grass to place the ' + TTYPES[placing].name + '. Right-click or Esc to cancel.'); }, 1800); } return; }
+    const k = placing; if (placeTower(k, p.x, p.z)) { if (coins < TTYPES[k].price || (k === 'farm' && farmCount() >= MAX_FARMS)) setGhost(null); else showRange(p.x, p.z, 0); } else { setTip(coins < TTYPES[k].price ? 'Not enough coins.' : 'You can’t place it there. Keep off the road, trees and rocks.'); clearTimeout(window.__tipT); window.__tipT = setTimeout(() => { if (placing) setTip('Click the grass to place the ' + TTYPES[placing].name + '. Right-click or Esc to cancel.'); }, 1800); } return; }
   let best = null, bd = 1.4; for (const t of towers) { const d = Math.hypot(t.x - p.x, t.z - p.z); if (d < bd) { bd = d; best = t; } }
   selected = best; if (best) { showRange(best.x, best.z, best.T.range, best.T.ring); Sound.play('click'); } else showRange(0, 0, 0); updateSide();
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-(function buildCards() { let h = '<div class="side-h">Squad</div>'; for (const k of ORDER) { const T = TTYPES[k]; if (k === 'depot') h += '<div class="side-h">Vehicles</div>';
+(function buildCards() { let h = '<div class="side-h">Squad</div>'; for (const k of ORDER) { const T = TTYPES[k]; if (k === 'depot') h += '<div class="side-h">Vehicles</div>'; if (k === 'farm') h += '<div class="side-h">Buildings</div>';
   h += `<button class="tcard" data-t="${k}"><img alt=""><b>${T.name} <em><span class="coin" style="width:14px;height:14px"></span>${T.price}</em></b><span>${T.short}</span></button>`; } $('cards').innerHTML = h; })();
-for (const c of document.querySelectorAll('.tcard')) c.addEventListener('click', () => { Sound.init(); if (state !== 'play') return; const k = c.dataset.t; if (placing === k) { setGhost(null); return; } if (coins < TTYPES[k].price) { Sound.play('deny'); setTip('Not enough coins for the ' + TTYPES[k].name + ' yet.'); setTimeout(() => { if (!placing) setTip(''); }, 1600); return; } Sound.play('click'); setGhost(k); });
+for (const c of document.querySelectorAll('.tcard')) c.addEventListener('click', () => { Sound.init(); if (state !== 'play') return; const k = c.dataset.t; if (placing === k) { setGhost(null); return; } if (k === 'farm' && farmCount() >= MAX_FARMS) { Sound.play('deny'); setTip('You already have 3 farms. Sell one to build another.'); setTimeout(() => { if (!placing) setTip(''); }, 1800); return; } if (coins < TTYPES[k].price) { Sound.play('deny'); setTip('Not enough coins for the ' + TTYPES[k].name + ' yet.'); setTimeout(() => { if (!placing) setTip(''); }, 1600); return; } Sound.play('click'); setGhost(k); });
 $('sellBtn').addEventListener('click', () => { if (selected) { sellTower(selected); showRange(0, 0, 0); } });
 $('waveBtn').addEventListener('click', () => { Sound.init(); startWave(); });
 $('speedBtn').addEventListener('click', () => { speed = speed === 1 ? 2 : speed === 2 ? 3 : 1; Sound.play('click'); updateSide(); });
@@ -824,7 +888,7 @@ $('pauseBtn').addEventListener('click', () => pause());
 addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (state === 'play') { if (placing) setGhost(null); else if (selected) { selected = null; showRange(0, 0, 0); updateSide(); } else pause(); } else if (state === 'paused' && currentMenu === 'pause') resume(); else if (currentMenu && backTo[currentMenu]) showMenu(backTo[currentMenu]); return; }
   if (state !== 'play' || e.target.tagName === 'INPUT') return;
-  const n = /^Digit([1-8])$/.exec(e.code), k = n && ORDER[+n[1] - 1]; if (k) document.querySelector(`.tcard[data-t="${k}"]`).click();
+  const n = /^Digit([0-9])$/.exec(e.code), k = n && ORDER[(+n[1] + 9) % 10]; if (k) document.querySelector(`.tcard[data-t="${k}"]`).click();
   if (e.code === 'Space') { e.preventDefault(); startWave(); }
 });
 
@@ -870,7 +934,7 @@ function submitName() { const v = nameInput.value.trim().slice(0, 16); if (!v) r
 nameInput.addEventListener('input', () => { $('nameOk').disabled = !nameInput.value.trim(); }); nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitName(); });
 $('nameOk').addEventListener('click', submitName); $('renameBtn').addEventListener('click', () => openNameMenu(false));
 $('profileBtn').addEventListener('click', () => { Sound.init(); Sound.play('click'); openSub('profile'); });
-const VERSION = '1.1';
+const VERSION = '1.1.2';
 function maybeNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 $('newsOk').addEventListener('click', () => { settings.seenVersion = VERSION; saveSettings(); Sound.init(); Sound.play('click'); showMenu('main'); });
 addEventListener('pagehide', () => { saveProfile(); });
@@ -882,8 +946,8 @@ function renderAvatars() {
   const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); r.setSize(128, 128);
   const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x445533, 1.0)); const dl = new THREE.DirectionalLight(0xffffff, 0.7); dl.position.set(2, 4, 3); sc.add(dl);
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  const list = [['red', () => cubeModel('red', 0.95), 1.0], ['green', () => cubeModel('green', 1.15), 1.0], ['purple', () => cubeModel('purple', 0.68), 1.0], ['gunner', () => personModel('gunner'), 1.4], ['bomber', () => personModel('bomber'), 1.4], ['sniper', () => personModel('sniper'), 1.4], ['archer', () => personModel('archer'), 1.4], ['freezer', () => personModel('freezer'), 1.4], ['rocketeer', () => personModel('rocketeer'), 1.4], ['flamer', () => personModel('flamer'), 1.4], ['tank', () => tankModel(), 0.4], ['depot', () => depotModel(), 0.9]];
-  for (const [k, make, y] of list) { const m = make(); const g = m.g; g.rotation.y = 0.5; if (m.aim) m.aim.rotation.y = 0; sc.add(g); const far = k === 'depot' ? 2.1 : 1; cam.position.set(2.4 * far, y + 1.2 * far, 4.2 * far); cam.lookAt(0, y * 0.75, 0); r.render(sc, cam); AVATARS[k] = r.domElement.toDataURL(); sc.remove(g); }
+  const list = [['red', () => cubeModel('red', 0.95), 1.0], ['green', () => cubeModel('green', 1.15), 1.0], ['purple', () => cubeModel('purple', 0.68), 1.0], ['gunner', () => personModel('gunner'), 1.4], ['bomber', () => personModel('bomber'), 1.4], ['sniper', () => personModel('sniper'), 1.4], ['archer', () => personModel('archer'), 1.4], ['freezer', () => personModel('freezer'), 1.4], ['rocketeer', () => personModel('rocketeer'), 1.4], ['flamer', () => personModel('flamer'), 1.4], ['tank', () => tankModel(), 0.4], ['depot', () => depotModel(), 0.9], ['commando', () => personModel('commando'), 1.4], ['farm', () => farmModel(), 0.9], ['king', () => cubeModel('king', 0.45), 1.0]];
+  for (const [k, make, y] of list) { const m = make(); const g = m.g; g.rotation.y = 0.5; if (m.aim) m.aim.rotation.y = 0; sc.add(g); const far = k === 'depot' || k === 'farm' ? 2.1 : 1; cam.position.set(2.4 * far, y + 1.2 * far, 4.2 * far); cam.lookAt(0, y * 0.75, 0); r.render(sc, cam); AVATARS[k] = r.domElement.toDataURL(); sc.remove(g); }
   r.dispose(); r.forceContextLoss && r.forceContextLoss();
   for (const c of document.querySelectorAll('.tcard')) c.querySelector('img').src = AVATARS[c.dataset.t];
   for (const im of document.querySelectorAll('img[data-av]')) im.src = AVATARS[im.dataset.av];
