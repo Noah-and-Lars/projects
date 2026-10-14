@@ -24,6 +24,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'gamble-your-life-away',
+    title: 'Gamble Your Life Away',
+    category: 'Casino',
+    tagline: 'A 3D casino with 24 games and $50,000. Just do not end up in debt.',
+    description: 'Walk into a 3D casino with $50,000 and try 24 games: slots, roulette, blackjack, baccarat, craps, video poker, plinko, crash, mines, horse racing, keno, scratch cards and more. The house lends you a little credit, but end a round in debt and the casino kills you.',
+    controls: 'Mouse or touch',
+    keys: [['Drag', 'Look around the casino'], ['Click a game', 'Sit down and play'], ['Chips', 'Pick your bet'], ['Esc', 'Back to the casino floor']],
+    path: 'gamble-your-life-away/index.html',
+    thumb: 'gamble-your-life-away/thumb.svg',
+    added: '2026-10-15T11:00:00+11:00',
+    updated: '2026-10-15T11:00:00+11:00',
+    stat() { const s = readSave('gambleLifeSave', true); return s && s.rounds ? 'Richest ' + '$' + Math.round(s.peak).toLocaleString('en-US') : null; },
+  },
+  {
     id: 'cube-tower-defense',
     title: 'Cube Tower Defense',
     category: 'Strategy',
@@ -134,6 +148,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-15', game: 'gamble-your-life-away', text: 'New game: Gamble Your Life Away. A 3D casino with 24 games and $50,000 to spend. End a round in debt and the casino gets you.' },
   { date: '2026-10-15', game: 'cube-tower-defense', text: 'Cube Tower Defense 1.1.3: wave coins cut in half, a new Shotgunner with huge short-range spread damage, and bug fixes.' },
   { date: '2026-10-14', game: 'cube-tower-defense', text: 'Cube Tower Defense 1.1.2: tighter money, Farms that pay 20 coins a wave, the minigun Commando, and the King Cube boss from wave 15.' },
   { date: '2026-10-14', game: 'free-criminal', text: 'Free Criminal 1.5, the cutscene update: a new opening where the guards throw you in a dumpster, cutscenes when you buy or rob at stores, grocery stores, a profile with your name, levels and outfits, speed cameras, and past patch notes.' },

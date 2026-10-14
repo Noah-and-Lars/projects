@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a0a12"/><stop offset="1" stop-color="#7a1422"/></linearGradient>
+<linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#f5c04a"/><stop offset="1" stop-color="#b9741a"/></linearGradient></defs>
+<rect width="320" height="180" fill="url(#g)"/>
+<g fill="none" stroke="#d9a830" stroke-opacity=".25" stroke-width="2"><path d="M0 150 L40 120 L80 150 L120 120 L160 150 L200 120 L240 150 L280 120 L320 150"/><path d="M0 180 L40 150 L80 180 L120 150 L160 180 L200 150 L240 180 L280 150 L320 180"/></g>
+<g transform="translate(250 92)"><circle r="44" fill="#2a140a"/><circle r="38" fill="#c9b48a"/>
+<g stroke-width="10" fill="none"><circle r="30" stroke="#b4142a" stroke-dasharray="7.9 7.9"/><circle r="30" stroke="#141418" stroke-dasharray="7.9 7.9" stroke-dashoffset="7.9"/></g>
+<circle r="20" fill="#d9a830"/><circle r="6" fill="#8a5a12"/><circle cx="0" cy="-34" r="4" fill="#fff"/></g>
+<g transform="translate(36 112) rotate(-12)"><rect width="46" height="64" rx="6" fill="#fbf8f1"/><text x="8" y="22" font-family="Arial" font-weight="700" font-size="18" fill="#c0182b">A</text><text x="23" y="48" font-family="Arial" font-size="26" fill="#c0182b" text-anchor="middle">♥</text></g>
+<g transform="translate(70 104) rotate(8)"><rect width="46" height="64" rx="6" fill="#fbf8f1"/><text x="8" y="22" font-family="Arial" font-weight="700" font-size="18" fill="#14141a">K</text><text x="23" y="48" font-family="Arial" font-size="26" fill="#14141a" text-anchor="middle">♠</text></g>
+<g><circle cx="150" cy="150" r="16" fill="#b4232f" stroke="#fff" stroke-width="3" stroke-dasharray="5 4"/><circle cx="180" cy="156" r="16" fill="#11804a" stroke="#fff" stroke-width="3" stroke-dasharray="5 4"/><circle cx="165" cy="136" r="16" fill="#1f6fd1" stroke="#fff" stroke-width="3" stroke-dasharray="5 4"/></g>
+<text x="20" y="46" font-family="Impact, Arial Black, sans-serif" font-size="34" fill="url(#t)" stroke="#3a1404" stroke-width="1.5">GAMBLE</text>
+<text x="20" y="80" font-family="Impact, Arial Black, sans-serif" font-size="25" fill="url(#t)" stroke="#3a1404" stroke-width="1">YOUR LIFE AWAY</text>
+</svg>
