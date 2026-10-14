@@ -23,7 +23,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=7">
+<link rel="stylesheet" href="arcade.css?v=8">
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
@@ -64,7 +64,6 @@
 </script>
 <header class="top">
   <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">Noah and Lars' Arcade</a>
-  <span id="online" class="online" title="People on the arcade right now" hidden><i aria-hidden="true"></i><b>0</b> on now</span>
   <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
 </header>
 
@@ -76,6 +75,7 @@
 </div>
 
 <main class="wrap">
+  <div id="online" class="live" role="status" hidden><i aria-hidden="true"></i><b>0</b><span>people on the arcade right now</span></div>
   <a id="feature" class="feature"></a>
 
   <section id="recentWrap" class="section" hidden>
@@ -221,8 +221,21 @@ renderFeature(); renderRecent(); renderNews(); render();
 // Live count of everyone on the arcade (home page and every game)
 ArcadeOnline.subscribe(c => {
   $('online').hidden = !c || c.total < 1;
-  if (c) $('online').querySelector('b').textContent = ArcadeOnline.label(c.total, c);
+  if (!c) return;
+  $('online').querySelector('b').textContent = ArcadeOnline.label(c.total, c);
+  $('online').querySelector('span').textContent = (c.total === 1 && !c.full ? 'person' : 'people') + ' on the arcade right now';
 });
+// The update popup floats over the top of the page, so keep the live count just below it while it's open
+function fitLive() {
+  const pop = $('popup'), live = $('online');
+  live.style.marginTop = '';
+  if (pop.hidden) return;
+  const gap = pop.getBoundingClientRect().bottom + 12 - live.getBoundingClientRect().top;
+  if (gap > 0) live.style.marginTop = (parseFloat(getComputedStyle(live).marginTop) + gap) + 'px';
+}
+ArcadeOnline.subscribe(() => requestAnimationFrame(fitLive));
+addEventListener('resize', fitLive);
+$('popup').querySelector('.popup-x').addEventListener('click', fitLive);
 ArcadeOnline.start('home');
 // scores change while you play in another tab, so refresh when you come back
 addEventListener('pageshow', () => { renderFeature(); renderRecent(); render(); });
