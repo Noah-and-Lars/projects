@@ -33,8 +33,8 @@ window.GAMES = [
     keys: [['Drag', 'Look around the casino'], ['Click a game', 'Sit down and play'], ['Chips', 'Pick your bet'], ['Esc', 'Back to the casino floor']],
     path: 'gamble-your-life-away/index.html',
     thumb: 'gamble-your-life-away/thumb.svg',
-    added: '2026-10-15T11:00:00+11:00',
-    updated: '2026-10-15T12:30:00+11:00',
+    added: '2026-10-15T10:15:00+11:00',
+    updated: '2026-10-15T10:38:00+11:00',
     stat() { const s = readSave('gambleLifeSave', true); return s && s.rounds ? 'Richest ' + '$' + Math.round(s.peak).toLocaleString('en-US') : null; },
   },
   {
