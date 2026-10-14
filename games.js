@@ -45,13 +45,13 @@ window.GAMES = [
     category: 'Shooter',
     tagline: 'Hold the line against waves of cubes, or play the story campaign: Russia 1944 and a SWAT raid in Mumbai.',
     description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and level up, unlock weapons from a knife to a rocket launcher that blows holes in buildings, and play the campaign: hold the birch road in Russia, 1944, then raid a scam call centre in Mumbai, 2009.',
-    controls: 'Keyboard + mouse',
+    controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right-click', 'Zoom'], ['Space', 'Jump'],
-           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns'], ['6', 'Turret'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['E', 'Claim flag (campaign)'], ['1 / 2', 'Make your choice (campaign)'], ['Esc', 'Pause']],
+           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns'], ['6', 'Turret'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['E', 'Claim flag (campaign)'], ['1 / 2', 'Make your choice (campaign)'], ['Esc', 'Pause'], ['Touch', 'Joystick to move, drag to look, on-screen buttons']],
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.svg?v=3',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-14T08:04:00+11:00',
+    updated: '2026-10-14T13:57:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -120,6 +120,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-14', game: 'cube-assault', text: 'Cube Assault 2.3: play on your phone or tablet, with a joystick, drag-to-look and buttons for fire, jump, reload and switching guns.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.5: new village houses (cobblestone cottages, plank houses with stair roofs, white plaster houses, a blacksmith) plus stairs, slabs, doors, fences, lanterns and hay bales you can craft.' },
   { date: '2026-10-14', game: 'free-criminal', text: 'Free Criminal 1.1: 3× the traffic and crowds, ragdoll crashes, gun stores with 10 guns and grenades, a mall to rob, a denser city and a new HUD.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.4: villages with villagers and an iron golem (plains, desert, taiga and snowy styles), and new skins for every mob.' },

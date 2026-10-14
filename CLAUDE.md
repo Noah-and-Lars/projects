@@ -40,7 +40,7 @@ source in Settings → Pages should be switched to `main`.
 
 ## Games
 
-- `cube-assault/`: first-person 3D shooter (Three.js bundled into the file).
+- `cube-assault/`: first-person 3D shooter (Three.js bundled into the file). Since 2.3 it has touch controls (`#touch` layer, `autoTouch` / `touchMode()`, setting `touch`: auto, on or off).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.
 - `2048/`: sliding-number puzzle with keyboard and swipe controls.
 - `poly-racer/`: low-poly 3D time-trial racer in the style of PolyTrack (Three.js

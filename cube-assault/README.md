@@ -2,7 +2,7 @@
 
 A first-person 3D shooter in a single HTML file. Defend a village from waves of cubes, earn coins, level up your profile, and play the story campaign.
 
-Play it online at https://noah-and-lars.github.io/projects/cube-assault/, or download `index.html` and open it in Chrome, Edge, Firefox or Safari. It works offline: the 3D engine, fonts and music are all built into the file. You need a keyboard and mouse.
+Play it online at https://noah-and-lars.github.io/projects/cube-assault/, or download `index.html` and open it in Chrome, Edge, Firefox or Safari. It works offline: the 3D engine, fonts and music are all built into the file. Play with a keyboard and mouse, or on a phone or tablet with touch controls.
 
 ## Modes
 
@@ -35,6 +35,15 @@ Press Play to choose:
 | 1 / 2 | Make your choice (campaign) |
 | Esc | Pause |
 
+### Touch controls (phones and tablets)
+
+Touch controls turn on by themselves on phones and tablets; **Settings → Touch controls** switches between Auto, On and Off. Hold the phone sideways.
+
+- Left side: joystick to move (push it all the way to sprint).
+- Right side: drag to look.
+- Buttons: Fire (slide your thumb while holding it to aim), Jump, Reload, Scope (sniper), Turret, Hold E (campaign) and Pause.
+- Tap a gun in the bar at the bottom to switch to it. With the knife, swipe to slash.
+
 ## Enemies
 
 | Cube | Arrives | What it does |
@@ -62,7 +71,7 @@ Every cube you destroy earns 1 coin (the King earns 10).
 
 Your profile (top right of the main menu) shows your level, accuracy, shots fired, cubes killed, time played and best wave, and lets you pick a 3D profile picture. Everything is saved in your own browser. **Settings → Reset all data** starts fresh.
 
-Settings also has field of view, mouse speed, volume, menu music on or off, and four graphics levels: Potato, Low, High and Ultra.
+Settings also has touch controls (Auto, On or Off), field of view, look speed, volume, menu music on or off, and four graphics levels: Potato, Low, High and Ultra.
 
 ## Credits
 

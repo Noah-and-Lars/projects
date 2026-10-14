@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cube Assault</title>
 <style>
 /* Russo One and Barlow (SIL Open Font License), embedded so the game works offline */
@@ -55,12 +55,51 @@
 
   /* HUD */
   #hud { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .touchNote { margin: -4px 0 6px; font-size: 13px; opacity: .7; }
+  body.touch #overlay { touch-action: pan-y; }
+  /* short screens (phones on their side): tighter menus so the buttons fit */
+  @media (max-height: 500px) {
+    #overlay { padding-top: 12px; padding-bottom: 12px; }
+    .menu { gap: 6px; }
+    .menu h2 { font-size: 28px; margin-bottom: 2px; }
+    .menu p { font-size: 15px; }
+    .title { font-size: 46px; }
+    .btns { margin: 6px 0; gap: 6px; }
+    #menu-intro { padding: 16px 18px; }
+  }
   #vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .35)); }
   #lowhp { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(200, 0, 0, .55)); opacity: 0; }
   #lowhp.on { animation: pulse 1s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: .35; } 50% { opacity: .85; } }
   #damage { position: absolute; inset: 0; background: radial-gradient(transparent 40%, #f00c); opacity: 0; }
 
+  /* Touch controls (phones and tablets) */
+  body.touch { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #touch { position: fixed; inset: 0; z-index: 5; display: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
+  #touch.on { display: block; }
+  #tLook { position: absolute; inset: 0; }
+  #tStick { position: absolute; left: 0; top: 30%; bottom: 0; width: 42%; }
+  .tBase { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; background: rgba(255, 255, 255, .07); border: 2px solid rgba(255, 255, 255, .28); pointer-events: none; left: calc(max(24px, env(safe-area-inset-left)) + 86px); top: calc(100% - 140px); opacity: .7; }
+  .tBase.on { opacity: 1; }
+  .tKnob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255, 255, 255, .32); border: 2px solid rgba(255, 255, 255, .65); }
+  .tb { position: absolute; border-radius: 50%; background: rgba(12, 16, 24, .42); border: 2px solid rgba(255, 255, 255, .35); color: #fff; font: 700 12px/1.1 var(--body); letter-spacing: 1px; text-transform: uppercase; display: grid; place-items: center; text-align: center; text-shadow: 0 1px 2px #000; }
+  .tb.on { background: rgba(255, 209, 102, .5); border-color: #ffd166; }
+  .tb[hidden] { display: none; }
+  #tFire { right: calc(max(24px, env(safe-area-inset-right)) + 6px); bottom: 92px; width: 96px; height: 96px; font-size: 15px; background: rgba(220, 38, 38, .42); border-color: rgba(255, 160, 160, .6); }
+  #tJump { right: calc(max(24px, env(safe-area-inset-right)) + 118px); bottom: 64px; width: 64px; height: 64px; }
+  #tReload { right: calc(max(24px, env(safe-area-inset-right)) + 24px); bottom: 204px; width: 58px; height: 58px; }
+  #tAim { right: calc(max(24px, env(safe-area-inset-right)) + 104px); bottom: 150px; width: 58px; height: 58px; }
+  #tUse { right: calc(max(24px, env(safe-area-inset-right)) + 186px); bottom: 136px; width: 66px; height: 66px; }
+  #tTurret { right: calc(max(24px, env(safe-area-inset-right)) + 100px); bottom: 226px; width: 54px; height: 54px; font-size: 10px; }
+  #tPause { right: calc(max(24px, env(safe-area-inset-right))); top: 50px; width: 44px; height: 44px; border-radius: 12px; font-size: 16px; letter-spacing: 0; }
+  #tWeapons { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 6px; max-width: calc(100% - 340px); overflow-x: auto; }
+  #tWeapons div { flex: none; padding: 8px 12px; border-radius: 10px; background: rgba(12, 16, 24, .55); border: 1px solid rgba(255, 255, 255, .25); font: 700 12px var(--body); letter-spacing: 1px; text-transform: uppercase; color: #fff; white-space: nowrap; }
+  #tWeapons div.sel { background: rgba(255, 209, 102, .85); color: #111; border-color: #ffd166; }
+  #tRotate { position: absolute; inset: 0; display: none; place-items: center; background: rgba(6, 9, 14, .9); font-size: 20px; font-weight: 700; text-align: center; padding: 24px; }
+  @media (orientation: portrait) { #tRotate { display: grid; } }
+  .rotateMsg { display: none; }
+  @media (orientation: portrait) { body.touch .rotateMsg { display: block; color: var(--gold); font-weight: 700; } }
+  body.touch #crosshair { --gap: 7px; }
   #crosshair { position: absolute; left: 50%; top: 50%; --gap: 6px; }
   #crosshair i { position: absolute; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); }
   #crosshair .t, #crosshair .b { width: 2px; height: 9px; left: -1px; }
@@ -367,6 +406,19 @@
   <div id="hint">Click the game to capture the mouse</div>
 </div>
 
+<div id="touch">
+  <div id="tLook"></div>
+  <div id="tStick"><div class="tBase" id="tBase"><div class="tKnob" id="tKnob"></div></div></div>
+  <div class="tb" id="tFire">Fire</div>
+  <div class="tb" id="tJump">Jump</div>
+  <div class="tb" id="tReload">Reload</div>
+  <div class="tb" id="tAim" hidden>Scope</div>
+  <div class="tb" id="tUse" hidden>Hold<br>E</div>
+  <div class="tb" id="tTurret" hidden>Turret</div>
+  <div class="tb" id="tPause" aria-label="Pause">II</div>
+  <div id="tWeapons"></div>
+  <div id="tRotate">Turn your phone sideways to play.</div>
+</div>
 <div id="cine"></div>
 <div id="subs"><b id="subsWho"></b><span id="subsText"></span></div>
 <div id="choice"><div class="choiceBox">
@@ -417,12 +469,20 @@
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.2 · What's new</button>
+    <button class="link" data-action="notes">v2.3 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v2.3 <span>Play anywhere</span></h3><ul>
+        <li>Cube Assault now works on phones and tablets. Touch controls: a joystick on the left to move (push it all the way to sprint), drag anywhere on the right to look, and buttons for fire, jump, reload, the sniper scope, your turret, holding E in the campaign, and pause.</li>
+        <li>Tap a gun in the bar at the bottom of the screen to switch to it. Drag your thumb while holding Fire to aim and shoot at the same time. With the knife, swipe to slash.</li>
+        <li>The game spots phones and tablets by itself. Settings → Touch controls lets you pick Auto, On or Off.</li>
+        <li>Phones start on Low graphics the first time, so the game runs smoothly. You can change it in Settings.</li>
+        <li>Menus fit on short screens, like a phone held sideways, and scroll by touch.</li>
+        <li>Fix: scrolling the mouse wheel when you only had one gun (as in the campaign) cancelled your reload.</li>
+      </ul></section>
       <section><h3>v2.2 <span>Bring it down</span></h3><ul>
         <li>Tajer Support has a new ending if you throw the last scammer out of the window: a ladder rolls out of the broken window, your team climbs down to the street, and Captain Mehta has one last idea.</li>
         <li>A line of dynamite runs from the tower's front door. Shoot the TNT box at the end of the fuse, watch it burn all the way to the tower, and bring the whole call centre down.</li>
@@ -558,6 +618,7 @@
 
   <div class="menu" id="menu-pause">
     <h2>Paused</h2>
+    <p class="rotateMsg">Turn your phone sideways to play.</p>
     <button class="btn" data-action="resume">Resume</button>
     <button class="btn secondary" data-action="shop">Shop</button>
     <button class="btn secondary" data-action="settings">Settings</button>
@@ -628,16 +689,13 @@
 
   <div class="menu" id="menu-news">
     <div class="eyebrow">What's new</div>
-    <h2>v2.2 · Bring it down</h2>
+    <h2>v2.3 · Play anywhere</h2>
     <ul class="newslist">
-      <li><b>A new ending for Tajer Support:</b> climb down a ladder from the broken window, then blow the tower up.</li>
-      <li><b>Your SWAT team fights with you</b> in the Tajer Support raid.</li>
-      <li>Fixed flickering walls and ceiling in the call centre.</li>
-      <li><b>Level 2: Tajer Support.</b> Mumbai, India, 2009. Lead a SWAT raid on a scam call centre at the top of a tower.</li>
-      <li>A long cutscene with your SWAT team: the lobby, the lift and spying on the scammers before the raid.</li>
-      <li><b>Scam Cubes</b>, happy yellow cubes with headsets, only found in this level.</li>
-      <li>The last scammer begs for his life. <b>Your choice decides how the mission ends.</b></li>
-      <li>Finish Level 1 to unlock Level 2.</li>
+      <li><b>Play on your phone or tablet.</b> A joystick to move, drag to look, and buttons for fire, jump, reload, scope, turret and pause.</li>
+      <li><b>Tap a gun</b> in the bar at the bottom to switch. Swipe to slash with the knife.</li>
+      <li>Touch controls switch on by themselves on phones. Change it in <b>Settings → Touch controls</b> (Auto, On or Off).</li>
+      <li>Menus now fit on short screens.</li>
+      <li>Fix: the mouse wheel no longer cancels your reload when you only have one gun.</li>
     </ul>
     <button class="btn" id="newsOk">Let's go</button>
   </div>
@@ -686,9 +744,11 @@
     <h2>Settings</h2>
     <div class="section">Display &amp; sound</div>
     <div class="row"><label for="fov">Field of view</label><input type="range" id="fov" min="60" max="120" step="1"><span class="val" id="fovVal"></span></div>
-    <div class="row"><label for="sens">Mouse speed</label><input type="range" id="sens" min="0.2" max="3" step="0.1"><span class="val" id="sensVal"></span></div>
+    <div class="row"><label for="sens">Look speed</label><input type="range" id="sens" min="0.2" max="3" step="0.1"><span class="val" id="sensVal"></span></div>
     <div class="row"><label for="vol">Volume</label><input type="range" id="vol" min="0" max="100" step="1"><span class="val" id="volVal"></span></div>
     <div class="row"><label>Music</label><div class="seg" id="musicSeg"><button data-music="on">On</button><button data-music="off">Off</button></div></div>
+    <div class="row"><label>Touch controls</label><div class="seg" id="touchSeg"><button data-touch="auto">Auto</button><button data-touch="on">On</button><button data-touch="off">Off</button></div></div>
+    <p class="touchNote" id="touchNote"></p>
     <div class="row"><label>Graphics</label><div class="seg" id="quality"><button data-quality="potato">Potato</button><button data-quality="low">Low</button><button data-quality="high">High</button><button data-quality="ultra">Ultra</button></div></div>
     <div class="section">Starting weapon</div>
     <div class="weapons" id="weaponCards"></div>
@@ -715,11 +775,11 @@ const WEAPONS = {
   rifle:   { slot: 2, name: 'Rifle',   dmg: 1,   cooldown: 0.09, mag: 30, reload: 1.6, pellets: 1, spread: 0.018, auto: true,  kick: 0.3, desc: 'Full-auto, 30 rounds. Hold to spray.' },
   shotgun: { slot: 3, name: 'Shotgun', dmg: 0.8, cooldown: 0.75, mag: 6,  reload: 1.8, pellets: 9, spread: 0.075, auto: false, kick: 1.6, unlockWave: 5, desc: '9 pellets. Devastating up close.' },
   sniper:  { slot: 4, name: 'Sniper',  dmg: 8,   cooldown: 1.1,  mag: 5,  reload: 2.0, pellets: 1, spread: 0,     auto: false, kick: 2.2, unlockWave: 5, desc: 'One-shot kills. Right-click to scope.' },
-  extreme: { slot: 5, name: 'Extreme Gun', dmg: 3, cooldown: 0.07, mag: 200, reload: 1.4, pellets: 1, spread: 0.008, auto: true, kick: 0.22, splash: 2.5, splashDmg: 2,
+  extreme: { slot: 5, name: 'Extreme Gun', short: 'Extreme', dmg: 3, cooldown: 0.07, mag: 200, reload: 1.4, pellets: 1, spread: 0.008, auto: true, kick: 0.22, splash: 2.5, splashDmg: 2,
              tracer: 0x22d3ee, price: 1000, desc: 'Full-auto plasma. Every shot explodes.' },
   knife:   { slot: 7, name: 'Knife', dmg: 2, cooldown: 0.42, mag: Infinity, reload: 0, pellets: 1, spread: 0, auto: false, kick: 0, melee: true, price: 50,
              desc: 'Press 7, then swipe the mouse or trackpad (or click) to slash. Never runs out.' },
-  rocket:  { slot: 8, name: 'Rocket Launcher', dmg: 4, cooldown: 0.5, mag: 1, reload: 3, pellets: 1, spread: 0, auto: false, kick: 3, rocket: true, splash: 4.5, price: 250,
+  rocket:  { slot: 8, name: 'Rocket Launcher', short: 'Rocket', dmg: 4, cooldown: 0.5, mag: 1, reload: 3, pellets: 1, spread: 0, auto: false, kick: 3, rocket: true, splash: 4.5, price: 250,
              tracer: 0xffa23a, desc: 'One rocket at a time, 3 s reload. Blows holes in buildings.' },
 };
 const WEAPON_KEYS = Object.keys(WEAPONS);
@@ -754,10 +814,17 @@ const DROP_CHANCE = { red: 0.08, green: 0.08, blue: 0.15, purple: 0.3, king: 1, 
 const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
 
 // ---------- Saved settings & profile ----------
-const settings = { fov: 75, sens: 1, weapon: 'pistol', volume: 0.6, quality: 'high', music: true };
+const settings = { fov: 75, sens: 1, weapon: 'pistol', volume: 0.6, quality: 'high', music: true, touch: 'auto' };
 const profile = { coins: 0, owned: {}, best: 0, name: '', avatar: '', xp: 0, stats: {}, campaign: {} };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('cubeAssaultSettings') || '{}')); } catch (e) {}
 try { Object.assign(profile, JSON.parse(localStorage.getItem('cubeAssaultProfile') || '{}')); } catch (e) {}
+// phones and tablets: a touch screen with no mouse, or a mobile browser
+const autoTouch = (() => { try {
+  return (matchMedia('(pointer: coarse)').matches && !matchMedia('(hover: hover)').matches) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+} catch (e) { return false; } })();
+const touchMode = () => settings.touch === 'on' || (settings.touch !== 'off' && autoTouch);
+// first visit on a phone starts on Low graphics
+try { if (autoTouch && !localStorage.getItem('cubeAssaultSettings')) settings.quality = 'low'; } catch (e) {}
 if (typeof profile.owned !== 'object' || !profile.owned) profile.owned = {};
 profile.stats = Object.assign({ shots: 0, hits: 0, kills: 0, time: 0 }, profile.stats);
 // wave-locked guns unlock fresh in every game, so they're never stored as owned
@@ -3566,6 +3633,7 @@ function openSub(name) { backTo[name] = currentMenu; showMenu(name); }
 function hideMenus() { $('overlay').style.display = 'none'; currentMenu = null; }
 
 function lockMouse() {
+  if (touchMode()) return;
   try {
     const p = canvas.requestPointerLock();
     if (p && p.catch) p.catch(() => {});
@@ -3613,6 +3681,8 @@ function clearEnemies() {
 }
 function resetGame() {
   clearEnemies();
+  for (const k in keys) keys[k] = false;
+  mouseDown = false; swipe = 0;
   player.pos.set(0, 0, 5); player.vy = 0; player.hp = 100; player.yaw = 0; player.pitch = 0;
   for (const k of WEAPON_KEYS) ammo[k] = WEAPONS[k].mag;
   setWeapon(settings.weapon);
@@ -3658,6 +3728,8 @@ function gameOver() {
 const fovInput = $('fov'), sensInput = $('sens'), volInput = $('vol');
 fovInput.value = settings.fov; sensInput.value = settings.sens; volInput.value = Math.round(settings.volume * 100);
 function refreshSettingsUI() {
+  document.querySelectorAll('#touchSeg button').forEach(b => b.classList.toggle('sel', b.dataset.touch === (settings.touch || 'auto')));
+  $('touchNote').textContent = 'Auto: ' + (autoTouch ? 'this looks like a phone or tablet, so touch controls are on.' : 'this looks like a computer, so touch controls are off.');
   $('fovVal').textContent = settings.fov + '°';
   $('sensVal').textContent = (+settings.sens).toFixed(1) + '×';
   $('volVal').textContent = Math.round(settings.volume * 100) + '%';
@@ -3678,6 +3750,7 @@ volInput.addEventListener('change', () => { Sound.init(); Sound.play('pistol'); 
 document.querySelectorAll('#musicSeg button').forEach(b => b.addEventListener('click', () => {
   settings.music = b.dataset.music === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI();
 }));
+document.querySelectorAll('#touchSeg button').forEach(b => b.addEventListener('click', () => { settings.touch = b.dataset.touch; saveSettings(); refreshSettingsUI(); }));
 document.querySelectorAll('#quality button').forEach(b => b.addEventListener('click', () => {
   settings.quality = b.dataset.quality; saveSettings(); applyQuality(); refreshSettingsUI();
 }));
@@ -3932,12 +4005,15 @@ let lastWheel = 0;
 addEventListener('wheel', e => {
   if (state !== 'playing' || performance.now() - lastWheel < 150 || Math.abs(e.deltaY) < 1) return;
   lastWheel = performance.now();
+  // with only one gun (the campaign), scrolling used to restart it and cancel the reload
   const list = WEAPON_KEYS.filter(owns), i = list.indexOf(weaponKey);
-  setWeapon(list[(i + (e.deltaY > 0 ? 1 : -1) + list.length) % list.length]);
+  if (list.length < 2) return;
+  const next = list[(i + (e.deltaY > 0 ? 1 : -1) + list.length) % list.length];
+  if (next !== weaponKey) setWeapon(next);
 }, { passive: true });
 // switching tabs or windows pauses instead of letting the cubes eat you
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouseDown = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouseDown = false; zoomed = false; });
 
 let mouseDown = false;
 canvas.addEventListener('mousedown', e => {
@@ -3956,24 +4032,107 @@ addEventListener('mouseup', e => {
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 addEventListener('mousemove', e => {
-  if (state !== 'playing') return;
-  // knife: a quick flick of the mouse or trackpad is a slash
+  if (state !== 'playing' || touchMode()) return;
+  lookBy(e.movementX, e.movementY);
+});
+function lookBy(mx, my) {
+  // knife: a quick flick of the mouse, trackpad or finger is a slash
   if (weapon.melee) {
-    swipe += Math.abs(e.movementX) + Math.abs(e.movementY) * 0.6;
-    if (swipe > 120 && fireCooldown <= 0) { swipe = 0; slashDir = Math.sign(e.movementX) || 1; swiping = true; shoot(); swiping = false; }
+    swipe += Math.abs(mx) + Math.abs(my) * 0.6;
+    if (swipe > 120 && fireCooldown <= 0) { swipe = 0; slashDir = Math.sign(mx) || 1; swiping = true; shoot(); swiping = false; }
   }
   const s = 0.0022 * settings.sens * (curFov / settings.fov);
-  player.yaw -= e.movementX * s;
-  player.pitch -= e.movementY * s;
+  player.yaw -= mx * s;
+  player.pitch -= my * s;
   player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch));
-  swayX = Math.max(-0.05, Math.min(0.05, swayX - e.movementX * 0.00035));
-  swayY = Math.max(-0.04, Math.min(0.04, swayY + e.movementY * 0.00035));
+  swayX = Math.max(-0.05, Math.min(0.05, swayX - mx * 0.00035));
+  swayY = Math.max(-0.04, Math.min(0.04, swayY + my * 0.00035));
+}
+
+// ---------- Touch controls ----------
+const TC = { mx: 0, my: 0, stick: null, look: null, fireId: null, fireX: 0, fireY: 0, on: false, wkey: '' };
+const TOUCH_LOOK = 1.7; // finger pixels feel slower than mouse counts
+function touchButton(id, down, up, drag) {
+  const el = $(id);
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation();
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+    el.classList.add('on'); Sound.init();
+    if (state === 'playing') down(e);
+  });
+  const end = e => { if (!el.classList.contains('on')) return; el.classList.remove('on'); if (up) up(e); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  if (drag) el.addEventListener('pointermove', e => { if (el.classList.contains('on') && state === 'playing') drag(e); });
+}
+touchButton('tFire', e => { TC.fireX = e.clientX; TC.fireY = e.clientY; mouseDown = true; shoot(); }, () => { mouseDown = false; },
+  e => { lookBy((e.clientX - TC.fireX) * TOUCH_LOOK, (e.clientY - TC.fireY) * TOUCH_LOOK); TC.fireX = e.clientX; TC.fireY = e.clientY; });
+touchButton('tJump', () => { keys.Space = true; }, () => { keys.Space = false; });
+touchButton('tReload', () => reload());
+touchButton('tAim', () => { if (weapon === WEAPONS.sniper && reloading <= 0) zoomed = !zoomed; });
+touchButton('tUse', () => { keys.KeyE = true; }, () => { keys.KeyE = false; });
+touchButton('tTurret', () => deployTurret());
+touchButton('tPause', () => pause());
+$('tWeapons').addEventListener('pointerdown', e => {
+  e.preventDefault(); e.stopPropagation();
+  const k = e.target.dataset && e.target.dataset.w;
+  if (state === 'playing' && k && owns(k) && k !== weaponKey) setWeapon(k);
 });
+const stickEl = $('tStick'), baseEl = $('tBase'), knobEl = $('tKnob');
+function stickReset() { TC.stick = null; TC.mx = TC.my = 0; baseEl.style.left = baseEl.style.top = ''; knobEl.style.transform = ''; baseEl.classList.remove('on'); }
+stickEl.addEventListener('pointerdown', e => {
+  e.preventDefault(); e.stopPropagation(); if (TC.stick) return;
+  try { stickEl.setPointerCapture(e.pointerId); } catch (err) {}
+  const r = stickEl.getBoundingClientRect();
+  TC.stick = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  baseEl.style.left = (e.clientX - r.left) + 'px'; baseEl.style.top = (e.clientY - r.top) + 'px'; baseEl.classList.add('on');
+});
+stickEl.addEventListener('pointermove', e => {
+  if (!TC.stick || e.pointerId !== TC.stick.id) return;
+  let dx = e.clientX - TC.stick.x, dy = e.clientY - TC.stick.y; const R = 56, l = Math.hypot(dx, dy);
+  if (l > R) { dx *= R / l; dy *= R / l; }
+  knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
+  TC.mx = dx / R; TC.my = dy / R;
+});
+const stickUp = e => { if (TC.stick && e.pointerId === TC.stick.id) stickReset(); };
+stickEl.addEventListener('pointerup', stickUp); stickEl.addEventListener('pointercancel', stickUp);
+const lookEl = $('tLook');
+lookEl.addEventListener('pointerdown', e => {
+  e.preventDefault(); if (TC.look) return;
+  try { lookEl.setPointerCapture(e.pointerId); } catch (err) {}
+  TC.look = { id: e.pointerId, x: e.clientX, y: e.clientY };
+});
+lookEl.addEventListener('pointermove', e => {
+  if (!TC.look || e.pointerId !== TC.look.id || state !== 'playing') return;
+  lookBy((e.clientX - TC.look.x) * TOUCH_LOOK, (e.clientY - TC.look.y) * TOUCH_LOOK);
+  TC.look.x = e.clientX; TC.look.y = e.clientY;
+});
+const lookUp = e => { if (TC.look && e.pointerId === TC.look.id) TC.look = null; };
+lookEl.addEventListener('pointerup', lookUp); lookEl.addEventListener('pointercancel', lookUp);
+function updateTouchUI() {
+  const tm = touchMode(), on = tm && state === 'playing';
+  document.body.classList.toggle('touch', tm);
+  if (on !== TC.on) {
+    TC.on = on; $('touch').classList.toggle('on', on);
+    if (!on) { stickReset(); TC.look = null; for (const b of document.querySelectorAll('#touch .tb.on')) b.classList.remove('on'); }
+  }
+  if (!on) return;
+  // held upright the controls don't fit, so wait in the pause menu until the phone is turned
+  if (innerHeight > innerWidth * 1.1) { pause(); return; }
+  const list = WEAPON_KEYS.filter(owns), key = list.join() + '|' + weaponKey;
+  if (key !== TC.wkey) {
+    TC.wkey = key;
+    $('tWeapons').replaceChildren(...list.map(k => { const d = document.createElement('div'); d.dataset.w = k; d.textContent = WEAPONS[k].short || WEAPONS[k].name; d.classList.toggle('sel', k === weaponKey); return d; }));
+  }
+  $('tAim').hidden = weapon !== WEAPONS.sniper; $('tAim').classList.toggle('on', zoomed);
+  $('tUse').hidden = gameMode !== 'campaign';
+  $('tTurret').hidden = !ownsTurret();
+  $('tReload').hidden = !!weapon.melee;
+}
 
 // Losing pointer lock (the browser handles Esc itself) pauses the game
 document.addEventListener('pointerlockchange', () => {
   if (isLocked()) $('hint').textContent = 'Click the game to capture the mouse';
-  if (!isLocked() && state === 'playing') pause();
+  if (!isLocked() && state === 'playing' && !touchMode()) pause();
 });
 document.addEventListener('pointerlockerror', () => {
   $('hint').textContent = 'Your browser blocked mouse capture. Click the game to try again, or open the file directly in Chrome, Edge or Firefox.';
@@ -3991,7 +4150,10 @@ function updatePlayer(dt) {
   if (keys.KeyS || keys.ArrowDown) move.sub(fwd);
   if (keys.KeyD || keys.ArrowRight) move.add(right);
   if (keys.KeyA || keys.ArrowLeft) move.sub(right);
-  const speed = zoomed ? 3 : (keys.ShiftLeft || keys.ShiftRight) ? 10 : 6;
+  // touch stick: a small dead zone, and pushing it all the way out sprints
+  const stick = Math.hypot(TC.mx, TC.my);
+  if (stick > 0.18) { move.addScaledVector(right, TC.mx).addScaledVector(fwd, -TC.my); }
+  const speed = zoomed ? 3 : (keys.ShiftLeft || keys.ShiftRight || stick > 0.94) ? 10 : 6;
   const moving = move.lengthSq() > 0;
   if (moving) player.pos.addScaledVector(move.normalize(), speed * dt);
   collide(player.pos, 0.45, player.pos.y);
@@ -4318,7 +4480,8 @@ function tick() {
 
   $('hud').style.visibility = state === 'menu' || state === 'cutscene' ? 'hidden' : 'visible';
   if (bannerQueue.length && performance.now() >= bannerUntil) banner(...bannerQueue.shift());
-  $('hint').style.display = state === 'playing' && !isLocked() ? 'block' : 'none';
+  $('hint').style.display = state === 'playing' && !isLocked() && !touchMode() ? 'block' : 'none';
+  updateTouchUI();
   if (state !== 'menu' && state !== 'cutscene') {
     drawRadar();
     const boss = state !== 'dead' && enemies.find(e => e.userData.T.boss);
@@ -4348,7 +4511,7 @@ function tick() {
     if (camera.fov !== settings.fov) { camera.fov = curFov = settings.fov; camera.updateProjectionMatrix(); }
     shadowCenter.set(Math.round(camera.position.x), 0, Math.round(camera.position.z));
   } else {
-    const moving = state === 'playing' && player.onGround && (keys.KeyW || keys.KeyA || keys.KeyS || keys.KeyD);
+    const moving = state === 'playing' && player.onGround && (keys.KeyW || keys.KeyA || keys.KeyS || keys.KeyD || Math.hypot(TC.mx, TC.my) > 0.18);
     const bobY = moving ? Math.abs(Math.sin(stepPhase)) * 0.05 : 0;
     const sh = shake * shake;
     let y = player.pos.y + EYE + bobY - landDip, roll = 0;
@@ -5831,10 +5994,11 @@ $('nameOk').addEventListener('click', submitName);
 $('renameBtn').addEventListener('click', () => { Sound.play('click'); openNameMenu(false); });
 addEventListener('pagehide', saveProfile);
 addEventListener('pointerdown', () => Sound.init());
+addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.2';
+const VERSION = '2.3';
 function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
