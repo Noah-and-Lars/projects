@@ -95,6 +95,3 @@ source in Settings → Pages should be switched to `main`.
 - Games save progress only in the player's own browser (`localStorage`, wrapped
   in try/catch). No accounts or data collection. The only server is the live
   "on now" counter (Supabase Presence), which stores nothing.
-- Only original games: no copies of other people's games.
-- The owner works mostly from a phone, so explain GitHub steps for the mobile
-  app or Safari.
