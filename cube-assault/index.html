@@ -203,6 +203,13 @@
   .wallet { display: flex; align-items: center; gap: 8px; font-size: 17px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px 6px 8px; font-variant-numeric: tabular-nums; }
   .wallet b { color: var(--gold-hi); }
   .wallet .sep { opacity: .4; }
+  /* Live player count, hidden until it connects */
+  .online { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; padding-left: 10px; }
+  .online[hidden] { display: none; }
+  .online b { color: var(--ink); }
+  .online i { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); animation: onlinePulse 2s ease-out infinite; }
+  @keyframes onlinePulse { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, .6); } 70%, 100% { box-shadow: 0 0 0 7px rgba(74, 222, 128, 0); } }
+  @media (prefers-reduced-motion: reduce) { .online i { animation: none; } }
   .btns { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
   .controls { font-size: 14px !important; opacity: .8; }
   kbd { font-family: var(--body); font-size: 12px; font-weight: 700; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--ink); }
@@ -379,6 +386,73 @@
   .pips i { width: 8px; height: 8px; border-radius: 2px; background: #3a434e; }
   .pips i.on { background: var(--gold); }
 </style>
+<style id="mp-ui-css">
+/* ===== Multiplayer screens and HUD (Noah). Uses the game's own colours, fonts and menu pieces. ===== */
+.mpField { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.mpField label { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
+.mpField input { font: inherit; font-weight: 700; font-size: 20px; color: var(--ink); background: #1b222c; border: 1px solid #343d48; border-radius: 8px; padding: 10px 12px; outline: none; }
+.mpField input:focus { border-color: var(--gold); }
+.mpField input.code { font-family: var(--display); font-size: 34px; letter-spacing: 8px; text-align: center; text-transform: uppercase; }
+.mpErr { min-height: 22px; color: var(--danger); font-weight: 700; }
+.mpErr.ok { color: var(--muted); }
+.mpResting { width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 10px; background: rgba(245, 184, 46, .12); border: 1px solid rgba(245, 184, 46, .45); color: var(--gold-hi); font-weight: 700; }
+.mpCode { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.mpCode b { font-family: var(--display); font-weight: 400; font-size: 46px; letter-spacing: 8px; color: var(--gold-hi); }
+.mpCode button { font: inherit; font-weight: 700; color: var(--ink); background: #1b222c; border: 1px solid #343d48; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.mpTeams { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mpTeams.solo { grid-template-columns: 1fr; }
+.mpCol { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 6px; text-align: left; min-height: 80px; }
+.mpCol.red { border-color: rgba(220, 38, 38, .6); } .mpCol.blue { border-color: rgba(59, 130, 246, .6); }
+.mpCol h4 { margin: 0; display: flex; justify-content: space-between; align-items: center; font-family: var(--display); font-weight: 400; font-size: 17px; letter-spacing: .5px; }
+.mpCol.red h4 { color: #f87171; } .mpCol.blue h4 { color: #60a5fa; }
+.mpCol h4 button { font: inherit; font-family: var(--body); font-size: 13px; font-weight: 700; border: 0; border-radius: 6px; padding: 5px 9px; cursor: pointer; color: #fff; }
+.mpCol.red h4 button { background: #b91c1c; } .mpCol.blue h4 button { background: #1d4ed8; }
+.mpCol h4 button:disabled { opacity: .35; cursor: default; }
+.mpP { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .05); border-radius: 8px; padding: 6px 8px; font-weight: 700; }
+.mpP .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; background: #8a929c; }
+.mpP .dot.red { background: #dc2626; } .mpP .dot.blue { background: #3b82f6; }
+.mpP .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpP .me { color: var(--gold-hi); }
+.mpP .ping { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mpP .kick { font: inherit; font-size: 12px; font-weight: 700; color: #fca5a5; background: transparent; border: 1px solid rgba(239, 68, 68, .5); border-radius: 6px; padding: 3px 7px; cursor: pointer; }
+.mpWait { color: var(--muted); font-weight: 700; }
+.mpSettings { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.mpSettings .row label { min-width: 104px; }
+.mpSettings .seg button:disabled { cursor: default; }
+.mpSettings.ro .seg button:not(.sel) { opacity: .45; }
+.mpBtns { width: 100%; display: flex; gap: 10px; } .mpBtns > * { flex: 1; }
+.mpTable { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.mpTable th { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); text-align: right; padding: 4px 8px; font-weight: 700; }
+.mpTable th:first-child, .mpTable td:first-child { text-align: left; }
+.mpTable td { padding: 6px 8px; text-align: right; font-weight: 700; border-top: 1px solid rgba(255, 255, 255, .07); }
+.mpTable tr.red td:first-child { color: #f87171; } .mpTable tr.blue td:first-child { color: #60a5fa; }
+.mpTable tr.you td { background: rgba(245, 184, 46, .1); }
+.mpWinner { font-family: var(--display); font-size: 30px; color: var(--gold-hi); }
+/* in-match HUD: only on while a match is running */
+#mpHud { display: none; }
+body.mpOn #mpHud { display: block; }
+body.mpOn #score, body.mpOn #coinsHud, body.mpOn #wave { visibility: hidden; }
+#mpScore { position: absolute; left: 24px; top: 18px; display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 22px; text-shadow: 0 2px 4px rgba(0, 0, 0, .7); }
+#mpScore .r { color: #f87171; } #mpScore .b { color: #60a5fa; } #mpScore .t { color: var(--ink); font-family: var(--body); font-weight: 700; font-size: 18px; margin-left: 6px; }
+#mpPing { position: absolute; left: 24px; top: 50px; font-size: 14px; font-weight: 700; color: var(--muted); text-shadow: 0 1px 3px #000; display: flex; align-items: center; gap: 6px; }
+#mpPing i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+#mpPing.mid i { background: var(--gold); } #mpPing.bad i { background: var(--danger); }
+#mpFeed { position: absolute; right: 24px; top: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
+#mpFeed div { background: rgba(10, 14, 20, .6); border-radius: 6px; padding: 4px 10px; font-weight: 700; font-size: 15px; animation: mpIn .2s ease-out; }
+#mpFeed .red { color: #f87171; } #mpFeed .blue { color: #60a5fa; } #mpFeed .ffa { color: var(--ink); } #mpFeed .w { color: var(--muted); font-size: 13px; margin: 0 6px; }
+@keyframes mpIn { from { opacity: 0; transform: translateX(14px); } }
+#mpRespawn { position: absolute; left: 50%; top: 38%; transform: translateX(-50%); text-align: center; display: none; font-family: var(--display); font-size: 34px; color: var(--ink); text-shadow: 0 3px 8px #000; }
+#mpRespawn small { display: block; font-family: var(--body); font-weight: 700; font-size: 16px; color: var(--muted); }
+#mpBoard { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(620px, calc(100% - 32px)); max-height: 80%; overflow: auto; display: none; background: rgba(10, 14, 20, .88); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+#mpBoard.on { display: block; }
+#mpBoard h3 { margin: 0 0 8px; font-family: var(--display); font-weight: 400; text-align: center; }
+#mpTags { position: absolute; inset: 0; pointer-events: none; }
+#mpTags span { position: absolute; transform: translate(-50%, -100%); font-weight: 700; font-size: 14px; padding: 1px 7px; border-radius: 6px; background: rgba(10, 14, 20, .55); white-space: nowrap; }
+#mpTags span.red { color: #fca5a5; } #mpTags span.blue { color: #93c5fd; } #mpTags span.ffa { color: var(--ink); }
+#mpBoardBtn { display: none; position: absolute; left: calc(max(24px, env(safe-area-inset-left)) + 0px); top: 78px; font: inherit; font-weight: 700; font-size: 14px; color: #fff; background: rgba(12, 16, 24, .55); border: 2px solid rgba(255, 255, 255, .35); border-radius: 10px; padding: 8px 12px; pointer-events: auto; }
+body.touch.mpOn #mpBoardBtn { display: block; }
+@media (max-width: 600px) { .mpCode b { font-size: 36px; letter-spacing: 5px; } .mpSettings .row label { min-width: 86px; font-size: 14px; } .mpTeams { grid-template-columns: 1fr; } #mpFeed { top: 56px; } }
+</style>
 </head>
 <body>
 <div id="hud">
@@ -464,17 +538,27 @@
     <div class="title">CUBE<br><em>ASSAULT</em></div>
     <p class="tag">Hold the village against waves of cubes. Every cube you destroy earns a coin.</p>
     <div class="wallet"><span class="coin"></span><b class="coinTotal">0</b> coins <span class="sep">|</span> Best wave <b id="bestWave">0</b></div>
+    <div class="online" id="onlineCount" hidden><i></i><span><b id="onlineNum">0</b> playing now</span></div>
     <div class="btns">
       <button class="btn" data-action="maps">Play</button>
+      <button class="btn secondary" id="mpMenuBtn">Multiplayer</button>
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.4 · What's new</button>
+    <button class="link" data-action="notes">v2.5 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v2.5 <span>Multiplayer and Outpost</span></h3><ul>
+        <li>New Multiplayer button on the main menu. Create a match to get a 5-letter room code (with an optional password), or join a friend's match by typing their code.</li>
+        <li>Multiplayer is a preview for now: matches are filled with practice bots, and real online play with friends is coming in a later update.</li>
+        <li>The lobby has Red and Blue teams (tap a team to switch), and the host picks the mode (Team Deathmatch, Free-for-all or Co-op waves), team size (1v1, 2v2, 3v3), map, kill limit, time limit, friendly fire and whether the room is locked. The host can also auto-balance teams and kick players.</li>
+        <li>In a match: hold Tab (or tap Scores on touch) for the scoreboard, plus a kill feed, team-coloured name tags, a ping indicator and a respawn countdown. A results screen at the end lets you rematch or leave.</li>
+        <li>New map: Outpost, a desert compound with Red and Blue spawns at opposite ends, three lanes, chokepoints, two crate-filled sites (A and B), a pump house in the middle and four watchtowers. Play it in single-player too, from the map screen.</li>
+        <li>The "playing now" counter is back on the main menu.</li>
+      </ul></section>
       <section><h3>v2.4 <span>Hard mode</span></h3><ul>
         <li>Endless now has two difficulties, picked on the map screen. Hard: cubes have 70% more health and 40% more of them spawn each wave.</li>
         <li>New enemy from wave 20: the Splitter Cube, a giant orange cube that splits into two smaller cubes when destroyed, three times over. Another one joins every fifth wave after that.</li>
@@ -694,11 +778,12 @@
 
   <div class="menu" id="menu-news">
     <div class="eyebrow">What's new</div>
-    <h2>v2.4 · Hard mode</h2>
+    <h2>v2.5 · Multiplayer and Outpost</h2>
     <ul class="newslist">
-      <li><b>Hard mode</b> for endless: cubes have 70% more health, and 40% more of them come each wave. Pick it on the map screen.</li>
-      <li><b>Splitter Cube</b> from wave 20: a giant orange cube that splits in two when destroyed, three times over.</li>
-      <li>Phones and tablets now get asked whether to use touch controls.</li>
+      <li><b>Multiplayer</b> on the main menu: create a match with a room code or join one, pick teams, and set the mode, map and limits. It's a preview with practice bots for now; real online play with friends is coming soon.</li>
+      <li><b>Outpost</b>, a new map with Red and Blue spawns, three lanes, sites A and B and watchtowers. Also playable in single-player.</li>
+      <li>In matches: Tab scoreboard, kill feed, name tags, ping and respawn countdown.</li>
+      <li>The "playing now" counter is back on the main menu.</li>
     </ul>
     <button class="btn" id="newsOk">Let's go</button>
   </div>
@@ -733,6 +818,8 @@
         <b>Classic Village</b><span>The original walled village from before v1.7. Small, tight and fast.</span></button>
       <button class="mapcard" data-map="big"><canvas width="320" height="320" id="prevBig"></canvas>
         <b>Frontier <em class="wip">WIP</em></b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm. Still a work in progress.</span></button>
+      <button class="mapcard" data-map="outpost"><canvas width="320" height="320" id="prevOutpost"></canvas>
+        <b>Outpost <em class="wip">NEW</em></b><span>A walled desert compound built for team fights: two sites, three lanes and plenty of cover.</span></button>
     </div>
     <button class="btn secondary" data-action="back">Back</button>
   </div>
@@ -2234,11 +2321,113 @@ function slash() {
   updateHUD();
 }
 
+// ===== CS MAP (Noah) =====
+// Outpost: a small walled desert compound for team fights, inspired by Counter-Strike but its own layout.
+// Red spawns in the north, Blue in the south, and the whole map is mirrored both ways, so it's fair.
+// Three lanes run north-south: a long west lane to Site A, a long east lane to Site B, and mid through the
+// pump house in the centre. Each lane has a chokepoint door; crates, sandbags and barrels give cover.
+// Built like the campaign maps: its own group, the shared box/collider helpers and the seeded rand(),
+// so the same layout comes out on every computer. Everything inside the outer wall can be blown up.
+function buildOutpost() {
+  const root = new THREE.Group();
+  sceneAdd(root);
+  const keepSeed = seed;
+  seed = 4242;
+  const A = 36;
+  ARENA = A;
+  boxes.length = solids.length = noGrass.length = houseRects.length = 0;
+  scene.add = (...o) => { root.add(...o); return scene; };
+  try {
+    const sandStone = plaster(0xd9c49b), darkStone = plaster(0xb59d74), trim = lambert(0x8a7556);
+    // sand over the whole compound
+    const sand = tex(makeCanvas(256, (g, S) => {
+      g.fillStyle = '#cdb68a'; g.fillRect(0, 0, S, S);
+      for (let i = 0; i < 2600; i++) { const v = rand(); g.fillStyle = v < 0.5 ? 'rgba(150,120,80,.28)' : 'rgba(236,220,186,.32)'; g.fillRect(rand() * S, rand() * S, 2 + rand() * 3, 2 + rand() * 3); }
+    }), 18, 18);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(A * 2 + 6, A * 2 + 6), new THREE.MeshLambertMaterial({ map: sand, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = 0.02; ground.receiveShadow = true; scene.add(ground);
+    noGrass.push({ x: 0, z: 0, hx: A + 3, hz: A + 3 });
+
+    // outer wall, the same brick and pillars as the village
+    addBox(0, -A, A * 2, 4, 1, 0, { mat: wallMat });
+    addBox(0, A, A * 2, 4, 1, 0, { mat: wallMat });
+    addBox(-A, 0, 1, 4, A * 2, 0, { mat: wallMat });
+    addBox(A, 0, 1, 4, A * 2, 0, { mat: wallMat });
+    for (const [x, z, w, d] of [[0, -A, A * 2, 1.3], [0, A, A * 2, 1.3], [-A, 0, 1.3, A * 2], [A, 0, 1.3, A * 2]])
+      addBox(x, z, w, 0.25, d, 0x7b8086, { y: 4, collide: false });
+    for (let i = -A; i <= A; i += 12) for (const [x, z] of [[i, -A], [i, A], [-A, i], [A, i]]) {
+      addBox(x, z, 1.6, 4.6, 1.6, 0, { mat: pillarMat, collide: false });
+      addBox(x, z, 1.9, 0.3, 1.9, 0x7b8086, { y: 4.6, collide: false });
+    }
+
+    // a wall segment between two x (or z) values, with a capstone so it reads as a wall
+    const H = 3.4;
+    const wallX = (x0, x1, z) => { const w = x1 - x0, x = (x0 + x1) / 2; addBox(x, z, w, H, 0.8, 0, { mat: sandStone }); addBox(x, z, w + 0.1, 0.18, 1, 0, { mat: trim, y: H, collide: false }); };
+    const wallZ = (z0, z1, x) => { const d = z1 - z0, z = (z0 + z1) / 2; addBox(x, z, 0.8, H, d, 0, { mat: sandStone }); addBox(x, z, 1, 0.18, d + 0.1, 0, { mat: trim, y: H, collide: false }); };
+    // everything below is built for the north half; the south half is the same thing flipped
+    for (const s of [-1, 1]) {
+      const Z = v => v * s, zs = (a, b) => s < 0 ? [a, b] : [-b, -a];
+      // spawn line: three doorways (west lane, mid, east lane)
+      wallX(-A + 0.5, -27, Z(-24)); wallX(-21, -3.5, Z(-24)); wallX(3.5, 21, Z(-24)); wallX(27, A - 0.5, Z(-24));
+      // lane dividers: long walls between the side lanes and mid
+      for (const x of [-12, 12]) wallZ(...zs(-24, -9), x);
+      // chokepoints part way down each lane
+      wallX(-A + 0.5, -28, Z(-15)); wallX(-21, -12.4, Z(-15));      // west lane door, 7 m wide
+      wallX(12.4, 21, Z(-15)); wallX(28, A - 0.5, Z(-15));          // east lane door
+      wallX(-11.6, -2.5, Z(-15)); wallX(2.5, 11.6, Z(-15));          // mid door, 5 m wide
+      // spawn cover
+      crate(-6, Z(-30), 2); crate(6, Z(-30), 2); crate(-18, Z(-31)); crate(18, Z(-31));
+      sandbags(0, Z(-27.5), 4, true);
+      // lane cover
+      crate(-31, Z(-19)); crate(-30, Z(-19.4), 2); crate(31, Z(-19)); crate(30, Z(-19.4), 2);
+      barrel(-15, Z(-20), 0x2f5d8a); barrel(15, Z(-20), 0x8a2f2f);
+      crate(-6.5, Z(-19)); crate(6.5, Z(-19));
+      // between the chokepoints and the sites
+      sandbags(-24, Z(-10.5), 5, true); sandbags(24, Z(-10.5), 5, true);
+      crate(-4, Z(-10), 1); crate(4, Z(-10), 1);
+    }
+    // Site A (west) and Site B (east): open squares with a big crate stack in the middle and low walls around
+    for (const sx of [-1, 1]) {
+      const X = v => v * sx;
+      crate(X(24), 0, 3); crate(X(25), 0, 2); crate(X(24), 1, 2); crate(X(24), -1, 1);
+      crate(X(31), 4); crate(X(31), -4); crate(X(17), 5); crate(X(17), -5);
+      wallZ(-3, 3, X(13.5));                                         // a short wall between the site and mid
+      barrel(X(33), 0, 0x6b6b6b); barrel(X(14.5), 6.2, 0x6b6b6b); barrel(X(14.5), -6.2, 0x6b6b6b);
+      // the site letter painted on the ground
+      const letter = tex(makeCanvas(128, (g, S) => { g.clearRect(0, 0, S, S); g.fillStyle = 'rgba(200,40,40,.85)'; g.font = '900 96px Barlow, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(sx < 0 ? 'A' : 'B', S / 2, S / 2 + 6); }));
+      const lm = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshLambertMaterial({ map: letter, transparent: true, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+      lm.rotation.x = -Math.PI / 2; lm.position.set(X(28), 0.04, 0); scene.add(lm);
+    }
+    // the pump house in mid: walk through it east-west, shoot through its windows north-south
+    house(0, 0, 6, 5, 'w', 0xe8d8b0, 0x8a4b2f);
+    houseRects.push({ x: 0, z: 0, hx: 3, hz: 2.5 });
+    addBox(4.6, 0, 0.8, 1.1, 2.4, 0, { mat: darkStone });             // low cover outside the east door
+    // two watchtowers on the long sightlines (not climbable, just cover and a landmark)
+    for (const [x, z] of [[-33, -33], [33, 33], [33, -33], [-33, 33]]) { addBox(x, z, 2, 6, 2, 0, { mat: darkStone }); addBox(x, z, 2.6, 0.3, 2.6, 0, { mat: trim, y: 6, collide: false }); }
+
+    // spawn points for multiplayer, and spread-out points for free-for-all and single-player cube waves
+    const spawns = {
+      red: [[-8, -31], [0, -32], [8, -31], [-14, -33], [14, -33]].map(([x, z]) => ({ x, z, yaw: Math.PI })),
+      blue: [[8, 31], [0, 32], [-8, 31], [14, 33], [-14, 33]].map(([x, z]) => ({ x, z, yaw: 0 })),
+      ffa: [[-24, -20], [24, 20], [24, -20], [-24, 20], [-31, 0], [31, 0], [0, -20], [0, 20], [-18, -8], [18, 8], [18, -8], [-18, 8]].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) })),
+    };
+    MAPS.outpost = { root, arena: A, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(),
+      grass: dummyLayer(), flowers: dummyLayer(), moreGrass: dummyLayer(),
+      weather: { fog: 0xe6d3ad, top: 0x5b8fd6, ground: 0xc9b48f },
+      id: 'outpost', name: 'Outpost', spawns, bounds: { minX: -A + 0.6, maxX: A - 0.6, minZ: -A + 0.6, maxZ: A - 0.6 } };
+  } finally {
+    delete scene.add;
+    seed = keepSeed;
+  }
+}
+// ===== END CS MAP =====
+
 let mountainRing = null;
 function useMap(id) {
   if (id === 'big' && !MAPS.big) buildBigMap();
   if (id === 'c2' && !MAPS.c2) buildCampaign2();
   if (id === 'c1' && !MAPS.c1) buildCampaign1();
+  if (id === 'outpost' && !MAPS.outpost) buildOutpost();
   const M = MAPS[id];
   // weather: grey snow for Russia, warm haze for Mumbai; the tower map has its own street level, so the shared floor hides
   floor.visible = !M.hideFloor;
@@ -3187,10 +3376,11 @@ function spawnEnemy(key, at, opt) {
   do {
     const a = Math.random() * Math.PI * 2;
     // classic: around the wall; Frontier: 30-50 m from you, so cubes don't take a minute to arrive
-    const big = mapId !== 'classic', R = big ? 30 + Math.random() * 20 : ARENA - 2;
+    const big = mapId !== 'classic' && mapId !== 'outpost', R = big ? 30 + Math.random() * 20 : ARENA - 2;
     x = Math.max(-ARENA + 2, Math.min(ARENA - 2, (big ? player.pos.x : 0) + Math.cos(a) * R));
     z = Math.max(-ARENA + 2, Math.min(ARENA - 2, (big ? player.pos.z : 0) + Math.sin(a) * R));
   } while (Math.hypot(x - player.pos.x, z - player.pos.z) < 18 && ++tries < 50);
+  if (mapId === 'outpost' && MAPS.outpost) { const far = MAPS.outpost.spawns.ffa.filter(p => Math.hypot(p.x - player.pos.x, p.z - player.pos.z) > 18), p = far[Math.floor(Math.random() * far.length)] || MAPS.outpost.spawns.ffa[0]; x = p.x + (Math.random() - .5) * 2; z = p.z + (Math.random() - .5) * 2; }
   if (at && typeof at === 'object' && Number.isFinite(at.x) && Number.isFinite(at.z)) { x = at.x; z = at.z; }
   g.position.set(x, size / 2, z);
   for (let i = 0; i < 3; i++) collide(g.position, size * 0.55);
@@ -3933,6 +4123,27 @@ document.querySelectorAll('.mapcard').forEach(b => b.addEventListener('click', (
 }));
 
 // map previews on the select screen
+// ===== CS MAP (Noah) ===== preview of the Outpost for its map card
+function drawOutpostPreview(cv) {
+  const g = cv.getContext('2d'), S = cv.width, A = 36, k = S / (A * 2 + 6), X = v => (v + A + 3) * k;
+  const rect = (x, z, w, d, c) => { g.fillStyle = c; g.fillRect(X(x - w / 2), X(z - d / 2), w * k, d * k); };
+  g.fillStyle = '#a8916a'; g.fillRect(0, 0, S, S); rect(0, 0, A * 2, A * 2, '#cdb68a');
+  const wall = '#8a7556';
+  for (const s of [-1, 1]) {
+    for (const [a, b] of [[-A, -27], [-21, -3.5], [3.5, 21], [27, A]]) rect((a + b) / 2, s * 24, b - a, 0.9, wall);
+    for (const [a, b] of [[-A, -28], [-21, -12.4], [12.4, 21], [28, A], [-11.6, -2.5], [2.5, 11.6]]) rect((a + b) / 2, s * 15, b - a, 0.9, wall);
+    for (const x of [-12, 12]) rect(x, s * 16.5, 0.9, 15, wall);
+    rect(s * 13.5, 0, 0.9, 6, wall);
+  }
+  rect(0, 0, 6, 5, '#e8d8b0');
+  for (const [x, z] of [[-24, 0], [24, 0], [-6, -30], [6, -30], [-6, 30], [6, 30], [-31, -19], [31, -19], [-31, 19], [31, 19]]) rect(x, z, 1.6, 1.6, '#9c7a45');
+  g.fillStyle = 'rgba(220,38,38,.55)'; g.fillRect(X(-A), X(-A), A * 2 * k, 10 * k);
+  g.fillStyle = 'rgba(59,130,246,.55)'; g.fillRect(X(-A), X(A - 10), A * 2 * k, 10 * k);
+  g.font = '700 15px Barlow, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#fff'; g.shadowColor = 'rgba(0,0,0,.8)'; g.shadowBlur = 4;
+  for (const [t, x, z] of [['A', -26, 4], ['B', 26, 4], ['Mid', 0, 8], ['Red', 0, -33], ['Blue', 0, 35]]) g.fillText(t, X(x), X(z));
+  g.shadowBlur = 0; g.strokeStyle = '#9aa0a8'; g.lineWidth = Math.max(2, k); g.strokeRect(X(-A), X(-A), A * 2 * k, A * 2 * k);
+}
+// ===== END CS MAP =====
 function drawPreview(cv, id) {
   const g = cv.getContext('2d'), S = cv.width, A = id === 'classic' ? 40 : 80, k = S / (A * 2 + 6), X = v => (v + A + 3) * k;
   const rect = (x, z, w, d, c) => { g.fillStyle = c; g.fillRect(X(x - w / 2), X(z - d / 2), w * k, d * k); };
@@ -3968,6 +4179,7 @@ function drawPreview(cv, id) {
 }
 drawPreview($('prevClassic'), 'classic');
 drawPreview($('prevBig'), 'big');
+drawOutpostPreview($('prevOutpost'));
 
 $('resetYes').addEventListener('click', () => {
   wiped = true;
@@ -6022,7 +6234,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.4';
+const VERSION = '2.5';
 function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
@@ -6035,6 +6247,448 @@ function answerTouch(on) { settings.touch = on ? 'on' : 'off'; settings.touchAsk
 $('touchYes').addEventListener('click', () => answerTouch(true)); $('touchNo').addEventListener('click', () => answerTouch(false));
 if (autoTouch && !settings.touchAsked && settings.touch !== 'off' && settings.touch !== 'on') showMenu('touchask'); else startupMenus();
 tick();
+</script>
+<script>
+// ---------- Live player counter (Supabase Realtime Presence) ----------
+// On the arcade's play page, the page around the game already keeps the count (window.ArcadeOnline),
+// so the game just reads it. Opened on its own, the game joins the same channel itself.
+// If Supabase can't be reached, the counter stays hidden and the game is unaffected.
+(() => {
+  const GAME = 'cube-assault';
+  const box = document.getElementById('onlineCount'), num = document.getElementById('onlineNum');
+  const show = c => {
+    const n = c ? c.byGame[GAME] || 0 : 0;
+    box.hidden = n < 1;
+    num.textContent = c && c.full ? n + '+' : String(n);
+  };
+  try {
+    if (window.parent !== window && window.parent.ArcadeOnline) { window.parent.ArcadeOnline.subscribe(show); return; }
+  } catch (e) {}
+
+  const CAP = 200; // the free plan's limit on simultaneous connections
+  const lib = document.createElement('script');
+  lib.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  lib.async = true;
+  lib.onerror = () => show(null);
+  lib.onload = () => {
+    try {
+      const client = window.supabase.createClient('https://fewocduisjbctoxolkjr.supabase.co', 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',
+        { auth: { persistSession: false, autoRefreshToken: false } });
+      const key = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const ch = client.channel('online:arcade', { config: { presence: { key } } });
+      ch.on('presence', { event: 'sync' }, () => {
+        const state = ch.presenceState(), byGame = {};
+        for (const k in state) { const g = (state[k][0] || {}).game || 'home'; byGame[g] = (byGame[g] || 0) + 1; }
+        show({ byGame, full: Object.keys(state).length >= CAP });
+      }).subscribe(status => {
+        if (status === 'SUBSCRIBED') ch.track({ game: GAME }).catch(() => show(null));
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') show(null);
+      });
+    } catch (e) { show(null); }
+  };
+  document.head.appendChild(lib);
+})();
+</script>
+<script id="mp-stub">
+// ===== Fake CAMP for testing the multiplayer screens without the internet (Noah) =====
+// TODO(netcode): Lars's networking provides the real window.CAMP and replaces all of this.
+// This block does nothing at all if window.CAMP already exists.
+// It runs entirely in this tab: pretend bot players join, switch teams and leave, and a pretend match
+// sends scores, kills and respawns so the HUD and results screen can be tried out.
+// Test codes for Join: ZZZZZ = no such room, FFFFF = full, KKKKK = locked, PPPPP = password "cube", XXXXX = offline.
+// Add ?mpoffline to the address to make Create and Join both fail as offline.
+if (!window.CAMP) window.CAMP = (() => {
+  const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0, O, 1, I or L
+  const NAMES = ['Lars', 'Maya', 'Theo', 'Zara', 'Kai', 'Ivy', 'Remy', 'Nova', 'Otto', 'June'];
+  const handlers = {};
+  const emit = (ev, d) => setTimeout(() => (handlers[ev] || []).forEach(f => { try { f(d); } catch (e) { console.error(e); } }), 0);
+  const myId = 'me-' + Math.random().toString(36).slice(2, 8);
+  let room = null, timers = [], sim = null, joinT = 0;
+  const later = (ms, f) => timers.push(setTimeout(f, ms));
+  const clear = () => { timers.forEach(clearTimeout); timers = []; if (sim) { clearInterval(sim.iv); removeBots(); sim = null; } };
+  const code5 = () => Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
+  const list = () => room ? [...room.players.values()].sort((a, b) => a.joinedAt - b.joinedAt) : [];
+  const pub = p => ({ id: p.id, name: p.name, team: p.team, isHost: p.id === room.hostId, ping: p.ping });
+  const players = () => list().map(pub);
+  const firePlayers = () => emit('players', players());
+  const smaller = () => { const ps = list(); return ps.filter(p => p.team === 'red').length <= ps.filter(p => p.team === 'blue').length ? 'red' : 'blue'; };
+  const addBot = () => {
+    if (!room || sim || room.players.size >= 6) return; // nobody new joins mid-match in the pretend room
+    const used = new Set(list().map(p => p.name)), name = NAMES.find(n => !used.has(n)) || 'Bot';
+    const id = 'bot-' + Math.random().toString(36).slice(2, 7);
+    room.players.set(id, { id, name, team: room.settings.mode === 'tdm' ? smaller() : null, ping: 25 + Math.floor(Math.random() * 70), joinedAt: ++joinT, bot: true });
+    firePlayers();
+  };
+  // bots wander around the lobby a little: join, sometimes switch team, sometimes leave
+  const lobbyLife = n => {
+    for (let i = 0; i < n; i++) later(1200 + i * (900 + Math.random() * 1800), addBot);
+    later(9000 + Math.random() * 4000, () => { if (!room || sim) return; const b = list().find(p => p.bot && p.id !== room.hostId); if (b && room.settings.mode === 'tdm') { b.team = b.team === 'red' ? 'blue' : 'red'; firePlayers(); } });
+    later(15000 + Math.random() * 6000, () => { if (!room || sim) return; const b = list().filter(p => p.bot && p.id !== room.hostId).pop(); if (b && Math.random() < 0.5) { room.players.delete(b.id); firePlayers(); } });
+  };
+  const newRoom = (code, hostId) => ({ code, hostId, password: '', players: new Map(), settings: { mode: 'tdm', teamSize: 3, mapId: 'outpost', killLimit: 20, timeLimit: 10, friendlyFire: false, locked: false } });
+  const offline = () => /mpoffline/.test(location.search);
+
+  // ---- pretend bots in the world, so name tags have something to sit on (TODO(netcode): real players)
+  let botMeshes = new Map();
+  function removeBots() { for (const m of botMeshes.values()) { m.parent && m.parent.remove(m); m.geometry.dispose(); } botMeshes.clear(); }
+  function spawnSpot(team, i) { const M = MAPS[mapId], S = M && M.spawns; const arr = S ? (team === 'red' ? S.red : team === 'blue' ? S.blue : S.ffa) : null;
+    if (arr && arr.length) return arr[i % arr.length]; const z = team === 'blue' ? 28 : team === 'red' ? -28 : (i % 2 ? 20 : -20); return { x: (i % 3 - 1) * 6, z }; }
+  function startSim() {
+    const s = room.settings, stats = new Map(list().map(p => [p.id, { kills: 0, deaths: 0 }]));
+    sim = { stats, timeLeft: s.timeLimit * 60, red: 0, blue: 0, iv: 0 };
+    list().forEach((p, i) => { if (p.id === myId) return;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), new THREE.MeshLambertMaterial({ color: p.team === 'blue' ? 0x3b82f6 : p.team === 'red' ? 0xdc2626 : 0x9b7bd6 }));
+      const sp = spawnSpot(p.team, i + 1); m.position.set(sp.x, 0.75, sp.z); m.userData.v = { x: 0, z: 0, t: 0 }; scene.children.includes(m) || sceneAdd(m); botMeshes.set(p.id, m); });
+    const total = () => s.mode === 'tdm' ? Math.max(sim.red, sim.blue) : Math.max(0, ...[...stats.values()].map(x => x.kills));
+    sim.iv = setInterval(() => {
+      if (!room) return; sim.timeLeft--;
+      for (const m of botMeshes.values()) { const v = m.userData.v; if ((v.t -= 1) <= 0) { const a = Math.random() * 6.28; v.x = Math.cos(a) * 2.5; v.z = Math.sin(a) * 2.5; v.t = 2 + Math.random() * 3; }
+        const B = (MAPS[mapId] && MAPS[mapId].bounds) || { minX: -ARENA + 1, maxX: ARENA - 1, minZ: -ARENA + 1, maxZ: ARENA - 1 };
+        m.position.x = Math.max(B.minX, Math.min(B.maxX, m.position.x + v.x)); m.position.z = Math.max(B.minZ, Math.min(B.maxZ, m.position.z + v.z)); collide(m.position, 0.6); }
+      if (Math.random() < 0.35) { // somebody got somebody
+        const ps = list(), k = ps[Math.floor(Math.random() * ps.length)], victims = ps.filter(p => p !== k && (s.mode !== 'tdm' || p.team !== k.team));
+        const v = victims[Math.floor(Math.random() * victims.length)];
+        const st = id => stats.get(id) || stats.set(id, { kills: 0, deaths: 0 }).get(id);
+        if (k && v) { st(k.id).kills++; st(v.id).deaths++; if (s.mode === 'tdm') sim[k.team]++;
+          emit('kill', { killerId: k.id, victimId: v.id, weapon: ['rifle', 'pistol', 'shotgun', 'sniper'][Math.floor(Math.random() * 4)] });
+          emit('respawn', { id: v.id, inSeconds: 3 }); }
+      }
+      for (const p of room.players.values()) p.ping = Math.max(12, Math.min(260, p.ping + Math.round((Math.random() - 0.5) * 14)));
+      emit('scores', { red: sim.red, blue: sim.blue, players: [...stats].map(([id, x]) => ({ id, kills: x.kills, deaths: x.deaths })), timeLeft: sim.timeLeft });
+      if (sim.timeLeft <= 0 || total() >= s.killLimit && s.mode !== 'coop') endSim();
+    }, 1000);
+  }
+  function endSim() {
+    const s = room.settings, rows = list().map(p => ({ id: p.id, name: p.name, team: p.team, kills: sim.stats.get(p.id)?.kills || 0, deaths: sim.stats.get(p.id)?.deaths || 0 }));
+    let winner = 'draw';
+    if (s.mode === 'tdm') winner = sim.red > sim.blue ? 'red' : sim.blue > sim.red ? 'blue' : 'draw';
+    else if (s.mode === 'ffa') { const top = [...rows].sort((a, b) => b.kills - a.kills); winner = top.length && (top.length < 2 || top[0].kills > top[1].kills) ? top[0].id : 'draw'; }
+    else winner = 'coop';
+    const scores = { red: sim.red, blue: sim.blue, players: rows };
+    clearInterval(sim.iv); removeBots(); sim = null;
+    emit('matchEnd', { scores, winner });
+  }
+
+  return {
+    createRoom({ name, password } = {}) {
+      return new Promise((res, rej) => setTimeout(() => {
+        if (offline()) return rej('offline');
+        clear(); room = newRoom(code5(), myId); room.password = password || '';
+        room.players.set(myId, { id: myId, name: name || 'Player', team: 'red', ping: 18, joinedAt: ++joinT });
+        firePlayers(); emit('settings', { ...room.settings }); lobbyLife(1 + Math.floor(Math.random() * 3)); res({ code: room.code });
+      }, 350));
+    },
+    joinRoom(code, { name, password } = {}) {
+      return new Promise((res, rej) => setTimeout(() => {
+        code = String(code || '').toUpperCase();
+        if (offline() || code === 'XXXXX') return rej('offline');
+        if (code.length !== 5 || code === 'ZZZZZ') return rej('not_found');
+        if (code === 'FFFFF') return rej('full');
+        if (code === 'KKKKK') return rej('locked');
+        if (code === 'PPPPP' && password !== 'cube') return rej('bad_password');
+        clear(); const hostId = 'bot-host'; room = newRoom(code, hostId);
+        room.players.set(hostId, { id: hostId, name: 'Lars', team: 'red', ping: 30, joinedAt: ++joinT, bot: true });
+        room.players.set(myId, { id: myId, name: name || 'Player', team: null, ping: 40, joinedAt: ++joinT });
+        room.players.get(myId).team = smaller();
+        firePlayers(); emit('settings', { ...room.settings }); lobbyLife(1 + Math.floor(Math.random() * 2));
+        // the pretend host starts the match a little while after you've joined
+        later(14000, () => { if (room && !sim && room.hostId !== myId) { emit('matchStart', { mapId: room.settings.mapId, seed: Math.floor(Math.random() * 1e9), settings: { ...room.settings } }); startSim(); } });
+        res();
+      }, 450));
+    },
+    leaveRoom() { clear(); room = null; },
+    isHost() { return !!room && room.hostId === myId; },
+    myId() { return myId; },
+    getPlayers() { return room ? players() : []; },
+    getSettings() { return room ? { ...room.settings } : null; },
+    setTeam(team) { const me = room && room.players.get(myId); if (!me) return; me.team = team; firePlayers(); },
+    updateSettings(partial) { if (!this.isHost()) return; Object.assign(room.settings, partial);
+      if (partial.mode && partial.mode !== 'tdm') { for (const p of room.players.values()) p.team = null; firePlayers(); }
+      if (partial.mode === 'tdm') { this.autoBalance(); }
+      emit('settings', { ...room.settings }); },
+    autoBalance() { if (!this.isHost()) return; list().forEach((p, i) => p.team = i % 2 ? 'blue' : 'red'); firePlayers(); },
+    kick(id) { if (!this.isHost() || id === myId) return; room.players.delete(id); firePlayers(); },
+    startMatch() { if (!this.isHost() || sim) return; emit('matchStart', { mapId: room.settings.mapId, seed: Math.floor(Math.random() * 1e9), settings: { ...room.settings } }); startSim(); },
+    on(ev, f) { (handlers[ev] = handlers[ev] || []).push(f); },
+    // PROPOSED: where the other players are right now, so the HUD can put name tags over them: [{ id, x, y, z }]
+    getRemotes() { return [...botMeshes].map(([id, m]) => ({ id, x: m.position.x, y: m.position.y + 0.55, z: m.position.z })); },
+    // test helpers, only in this stub
+    _debug: {
+      hostLeaves() { if (!room || room.hostId === myId) return; room.players.delete(room.hostId); const next = list()[0]; room.hostId = next.id; emit('hostChanged', next.id); firePlayers(); },
+      endNow() { if (sim) endSim(); },
+      respawnMe(s = 3) { emit('respawn', { id: myId, inSeconds: s }); },
+      kickMe() { if (room) { clear(); room = null; emit('error', 'kicked'); } },
+    },
+  };
+})();
+</script>
+<script id="mp-ui">
+// ===== Multiplayer lobby, match HUD and results screens (Noah) =====
+// Only ever calls window.CAMP and listens to its events. It never talks to Supabase about matches,
+// never sends anything on a timer or every frame, and is invisible in single-player.
+(() => {
+  const CAMP = window.CAMP;
+  if (!CAMP) return;
+  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost']];
+  const MODES = [['tdm', 'Team Deathmatch'], ['ffa', 'Free-for-all'], ['coop', 'Co-op']];
+  const ERR = {
+    not_found: 'No room with that code. Check it and try again.',
+    full: 'That room is full. Rooms hold up to 6 players.',
+    locked: 'The host has locked that room.',
+    bad_password: 'Wrong password for that room.',
+    offline: 'Multiplayer is resting right now — single-player still works.',
+    kicked: 'The host removed you from the room.',
+    host_left: 'The host left, so the match ended.',
+  };
+  const ALPH = /[^ABCDEFGHJKMNPQRSTUVWXYZ23456789]/g;
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const click = () => { Sound.init(); Sound.play('click'); };
+  let code = '', inRoom = false, inMatch = false, players = [], settings = null, board = { red: 0, blue: 0, players: [], timeLeft: 0, at: 0 }, respawnAt = 0, busy = false;
+
+  // ---------- the screens, added to the game's own overlay so showMenu() treats them like any other menu ----------
+  const ov = $('overlay');
+  const add = html => { const d = document.createElement('div'); d.innerHTML = html.trim(); ov.appendChild(d.firstChild); };
+  add(`<div class="menu" id="menu-mp">
+    <div class="eyebrow">Online</div><h2>Multiplayer</h2>
+    <p>Team Deathmatch, Free-for-all or Co-op with up to 6 friends. Rooms are private: share the 5-letter code to let people in.</p>
+    <div class="mpResting" id="mpResting" hidden>Multiplayer is resting right now — single-player still works.</div>
+    <button class="btn" id="mpCreateBtn">Create match</button>
+    <button class="btn secondary" id="mpJoinBtn">Join match</button>
+    <button class="btn secondary" data-mp="main">Back</button></div>`);
+  add(`<div class="menu" id="menu-mpcreate">
+    <div class="eyebrow">Multiplayer</div><h2>Create match</h2>
+    <div class="mpField"><label for="mpCPass">Password (optional)</label><input id="mpCPass" type="text" maxlength="24" autocomplete="off" placeholder="Leave empty for no password"></div>
+    <div class="mpErr" id="mpCErr"></div>
+    <button class="btn" id="mpCGo">Create</button>
+    <button class="btn secondary" data-mp="mp">Back</button></div>`);
+  add(`<div class="menu" id="menu-mpjoin">
+    <div class="eyebrow">Multiplayer</div><h2>Join match</h2>
+    <div class="mpField"><label for="mpJCode">Room code</label><input id="mpJCode" class="code" type="text" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCDE"></div>
+    <div class="mpField" id="mpJPassBox" hidden><label for="mpJPass">Password</label><input id="mpJPass" type="text" maxlength="24" autocomplete="off"></div>
+    <button class="link" id="mpJPassToggle">This room has a password</button>
+    <div class="mpErr" id="mpJErr"></div>
+    <button class="btn" id="mpJGo" disabled>Join</button>
+    <button class="btn secondary" data-mp="mp">Back</button></div>`);
+  add(`<div class="menu" id="menu-lobby" style="max-width:680px">
+    <div class="eyebrow">Room code</div>
+    <div class="mpCode"><b id="mpLCode">-----</b><button id="mpCopy">Copy</button></div>
+    <div class="mpTeams" id="mpTeams"></div>
+    <div class="section">Match settings</div>
+    <div class="mpSettings" id="mpSettings"></div>
+    <div class="mpErr ok" id="mpLNote"></div>
+    <div class="mpBtns"><button class="btn secondary" id="mpBalance">Auto-balance</button><button class="btn" id="mpStart">Start</button></div>
+    <button class="btn secondary" id="mpLeave">Leave room</button></div>`);
+  add(`<div class="menu" id="menu-mpresults">
+    <div class="eyebrow">Match over</div><div class="mpWinner" id="mpWinner">Red team wins</div>
+    <table class="mpTable" id="mpResTable"></table>
+    <div class="mpBtns"><button class="btn" id="mpRematch">Rematch</button><button class="btn secondary" id="mpResLeave">Leave</button></div></div>`);
+
+  // ---------- the match HUD, added to the game's HUD; CSS keeps it hidden unless a match is running ----------
+  const hud = document.createElement('div'); hud.id = 'mpHud';
+  hud.innerHTML = `<div id="mpTags"></div><div id="mpScore"></div><div id="mpPing"><i></i><span>– ms</span></div><div id="mpFeed"></div>
+    <div id="mpRespawn"></div><div id="mpBoard"></div><button id="mpBoardBtn">Scores</button>`;
+  $('hud').appendChild(hud);
+
+  const show = name => showMenu(name);
+  const byId = id => players.find(p => p.id === id);
+  const teamOf = id => (byId(id) || {}).team;
+  const mode = () => (settings && settings.mode) || 'tdm';
+
+  // ---------- main menu → multiplayer ----------
+  $('mpMenuBtn').addEventListener('click', () => { click(); show('mp'); });
+  ov.addEventListener('click', e => { const b = e.target.closest('[data-mp]'); if (b) { click(); show(b.dataset.mp); } });
+  $('mpCreateBtn').addEventListener('click', () => { click(); $('mpCErr').textContent = ''; show('mpcreate'); });
+  $('mpJoinBtn').addEventListener('click', () => { click(); $('mpJErr').textContent = ''; show('mpjoin'); setTimeout(() => $('mpJCode').focus(), 50); });
+  const resting = on => { $('mpResting').hidden = !on; if (on) $('mpResting').textContent = ERR.offline; };
+
+  $('mpCGo').addEventListener('click', async () => {
+    if (busy) return; click(); busy = true; $('mpCErr').className = 'mpErr ok'; $('mpCErr').textContent = 'Creating the room…';
+    try { const r = await CAMP.createRoom({ name: profile.name || 'Player', password: $('mpCPass').value.trim() }); code = r.code; enterLobby(); }
+    catch (e) { $('mpCErr').className = 'mpErr'; $('mpCErr').textContent = ERR[e] || 'Something went wrong. Try again.'; if (e === 'offline') resting(true); }
+    busy = false;
+  });
+  const codeIn = $('mpJCode');
+  codeIn.addEventListener('input', () => { const v = codeIn.value.toUpperCase().replace(/[01IOL]/g, c => ({ 0: 'O', 1: 'I' }[c] || c)).replace(ALPH, ''); codeIn.value = v.slice(0, 5); $('mpJGo').disabled = codeIn.value.length !== 5; $('mpJErr').textContent = ''; });
+  codeIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && !$('mpJGo').disabled) $('mpJGo').click(); });
+  for (const id of ['mpCPass', 'mpJPass']) $(id).addEventListener('keydown', e => e.stopPropagation());
+  $('mpJPassToggle').addEventListener('click', () => { click(); $('mpJPassBox').hidden = false; $('mpJPassToggle').hidden = true; $('mpJPass').focus(); });
+  $('mpJGo').addEventListener('click', async () => {
+    if (busy) return; click(); busy = true; const c = codeIn.value; $('mpJErr').className = 'mpErr ok'; $('mpJErr').textContent = 'Joining…';
+    try { await CAMP.joinRoom(c, { name: profile.name || 'Player', password: $('mpJPass').value.trim() }); code = c; enterLobby(); }
+    catch (e) { $('mpJErr').className = 'mpErr'; $('mpJErr').textContent = ERR[e] || 'Something went wrong. Try again.';
+      if (e === 'bad_password') { $('mpJPassBox').hidden = false; $('mpJPassToggle').hidden = true; $('mpJPass').select(); }
+      if (e === 'offline') resting(true); }
+    busy = false;
+  });
+
+  // ---------- the lobby ----------
+  function enterLobby() { inRoom = true; players = CAMP.getPlayers(); settings = CAMP.getSettings(); $('mpLCode').textContent = code; show('lobby'); renderLobby(); }
+  $('mpCopy').addEventListener('click', () => {
+    click(); const done = () => { $('mpCopy').textContent = 'Copied!'; setTimeout(() => $('mpCopy').textContent = 'Copy', 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(code).then(done, done); else done();
+  });
+  function valid() {
+    const s = settings || {}, n = players.length;
+    if (s.mode === 'ffa') return n >= 2 ? '' : 'Free-for-all needs at least 2 players.';
+    if (s.mode === 'coop') return n >= 1 ? '' : 'Waiting for players.';
+    const r = players.filter(p => p.team === 'red').length, b = players.filter(p => p.team === 'blue').length;
+    if (players.some(p => !p.team)) return 'Everyone needs to pick a team.';
+    if (!r || !b) return 'Both teams need at least one player.';
+    if (r > s.teamSize || b > s.teamSize) return `Teams can have at most ${s.teamSize} player${s.teamSize > 1 ? 's' : ''} (${s.teamSize}v${s.teamSize}).`;
+    return '';
+  }
+  function row(p, host, me) {
+    const kick = host && p.id !== me ? `<button class="kick" data-kick="${esc(p.id)}">Kick</button>` : '';
+    return `<div class="mpP"><span class="dot ${p.team || ''}"></span><span class="nm${p.id === me ? ' me' : ''}">${p.isHost ? '👑 ' : ''}${esc(p.name)}${p.id === me ? ' (you)' : ''}</span><span class="ping">${p.ping != null ? p.ping + ' ms' : ''}</span>${kick}</div>`;
+  }
+  function renderLobby() {
+    if (!inRoom || !settings) return;
+    const host = CAMP.isHost(), me = CAMP.myId(), s = settings, T = $('mpTeams');
+    if (s.mode === 'tdm') {
+      const col = (t, label) => { const list = players.filter(p => p.team === t), mine = (byId(me) || {}).team === t;
+        return `<div class="mpCol ${t}"><h4>${label} · ${list.length}/${s.teamSize}<button data-team="${t}"${mine || list.length >= s.teamSize ? ' disabled' : ''}>${mine ? 'Your team' : 'Join'}</button></h4>${list.map(p => row(p, host, me)).join('')}</div>`; };
+      const none = players.filter(p => !p.team);
+      T.className = 'mpTeams';
+      T.innerHTML = col('red', 'Red') + col('blue', 'Blue') + (none.length ? `<div class="mpCol" style="grid-column:1/-1"><h4>No team yet</h4>${none.map(p => row(p, host, me)).join('')}</div>` : '');
+    } else { T.className = 'mpTeams solo'; T.innerHTML = `<div class="mpCol"><h4>Players · ${players.length}/6</h4>${players.map(p => row(p, host, me)).join('')}</div>`; }
+    const seg = (label, key, opts, show = true) => !show ? '' : `<div class="row"><label>${label}</label><div class="seg">${opts.map(([v, t]) =>
+      `<button data-set="${key}" data-val="${v}" class="${String(s[key]) === String(v) ? 'sel' : ''}"${host ? '' : ' disabled'}>${t}</button>`).join('')}</div></div>`;
+    const S = $('mpSettings'); S.className = 'mpSettings' + (host ? '' : ' ro');
+    S.innerHTML = seg('Mode', 'mode', MODES) + seg('Teams', 'teamSize', [[1, '1v1'], [2, '2v2'], [3, '3v3']], s.mode === 'tdm') + seg('Map', 'mapId', MP_MAPS)
+      + seg('Kill limit', 'killLimit', [[10, '10'], [20, '20'], [30, '30']], s.mode !== 'coop') + seg('Time limit', 'timeLimit', [[5, '5 min'], [10, '10 min'], [15, '15 min']])
+      + seg('Friendly fire', 'friendlyFire', [[false, 'Off'], [true, 'On']], s.mode !== 'ffa') + seg('Lock room', 'locked', [[false, 'Open'], [true, 'Locked']]);
+    const why = valid();
+    $('mpStart').hidden = $('mpBalance').hidden = !host; $('mpBalance').disabled = s.mode !== 'tdm';
+    $('mpStart').disabled = !!why;
+    $('mpLNote').textContent = host ? (why || 'Ready when you are.') : 'Waiting for host…';
+  }
+  $('mpTeams').addEventListener('click', e => {
+    const k = e.target.closest('[data-kick]'); if (k) { click(); CAMP.kick(k.dataset.kick); return; }
+    const t = e.target.closest('[data-team]'); if (t && !t.disabled) { click(); CAMP.setTeam(t.dataset.team); }
+  });
+  $('mpSettings').addEventListener('click', e => {
+    const b = e.target.closest('[data-set]'); if (!b || b.disabled || !CAMP.isHost()) return; click();
+    const k = b.dataset.set, raw = b.dataset.val, v = raw === 'true' ? true : raw === 'false' ? false : /^\d+$/.test(raw) ? +raw : raw;
+    CAMP.updateSettings({ [k]: v });
+  });
+  $('mpBalance').addEventListener('click', () => { click(); CAMP.autoBalance(); });
+  $('mpStart').addEventListener('click', () => { if (valid()) return; Sound.init(); Sound.play('click'); CAMP.startMatch(); });
+  function leave(toMenu = 'mp', note = '') {
+    if (inRoom) CAMP.leaveRoom();
+    inRoom = false; endHud();
+    if (state !== 'menu') quitToMenu();
+    show(toMenu);
+    if (note) { $('mpResting').hidden = false; $('mpResting').textContent = note; } else { $('mpResting').hidden = true; $('mpResting').textContent = ERR.offline; }
+  }
+  $('mpLeave').addEventListener('click', () => { click(); leave(); });
+  $('mpResLeave').addEventListener('click', () => { click(); leave(); });
+  $('mpRematch').addEventListener('click', () => { click(); show('lobby'); renderLobby(); });
+
+  // ---------- the match ----------
+  const SP = { // spawn points for the two older maps; the Outpost brings its own
+    classic: { red: [[-6, -30], [0, -31], [6, -30]], blue: [[6, 30], [0, 31], [-6, 30]], ffa: [[0, -30], [0, 30], [-30, 0], [30, 0], [-12, 12], [12, -12]] },
+  };
+  SP.big = SP.classic;
+  function spawnFor(id) {
+    const M = MAPS[mapId], S = (M && M.spawns) || SP[mapId] || SP.classic, t = teamOf(id), i = Math.max(0, players.filter(p => p.team === t).findIndex(p => p.id === id));
+    const list = t === 'red' ? S.red : t === 'blue' ? S.blue : S.ffa, p = list[(t ? i : players.findIndex(q => q.id === id)) % list.length] || list[0];
+    return Array.isArray(p) ? { x: p[0], z: p[1], yaw: p[1] < 0 ? Math.PI : 0 } : p;
+  }
+  // TODO(netcode): Lars's side moves players, decides hits and runs the rules. This only gets you onto the map.
+  function startMatch(d) {
+    settings = d.settings || settings; inMatch = true; board = { red: 0, blue: 0, players: [], timeLeft: (settings.timeLimit || 10) * 60, at: performance.now() };
+    gameMode = 'mp';
+    resetGame();
+    useMap(d.mapId || 'outpost');
+    const sp = spawnFor(CAMP.myId()); player.pos.set(sp.x, 0, sp.z); player.yaw = sp.yaw || 0;
+    document.body.classList.add('mpOn'); $('mpFeed').innerHTML = ''; respawnAt = 0;
+    state = 'playing'; hideMenus(); lockMouse();
+    if (settings.mode === 'coop') nextWave(); // co-op uses the normal cube waves until the shared version exists
+    banner(MODES.find(m => m[0] === settings.mode)[1], (MP_MAPS.find(m => m[0] === mapId) || [0, ''])[1]);
+    hudTick();
+  }
+  function endHud() { inMatch = false; document.body.classList.remove('mpOn'); $('mpBoard').classList.remove('on'); $('mpTags').innerHTML = ''; $('mpRespawn').style.display = 'none'; }
+  function endMatch(d) {
+    const sc = d.scores || {}, rows = (sc.players || []).map(r => ({ ...r, name: r.name || (byId(r.id) || {}).name || 'Player', team: r.team || teamOf(r.id) }));
+    endHud(); releaseInput(); state = 'menu';
+    const me = CAMP.myId(), w = d.winner;
+    $('mpWinner').textContent = w === 'red' ? `Red team wins ${sc.red ?? ''}–${sc.blue ?? ''}` : w === 'blue' ? `Blue team wins ${sc.blue ?? ''}–${sc.red ?? ''}`
+      : w === 'draw' ? 'It’s a draw' : w === 'coop' ? 'Co-op match over' : w === me ? 'You win!' : `${esc((byId(w) || rows.find(r => r.id === w) || { name: 'Someone' }).name)} wins`;
+    rows.sort((a, b) => (b.kills - a.kills) || (a.deaths - b.deaths));
+    $('mpResTable').innerHTML = '<tr><th>Player</th><th>Kills</th><th>Deaths</th></tr>' + rows.map(r => `<tr class="${r.team || ''}${r.id === me ? ' you' : ''}"><td>${esc(r.name)}${r.id === me ? ' (you)' : ''}</td><td>${r.kills}</td><td>${r.deaths}</td></tr>`).join('');
+    Sound.play(w === me || (w && w === teamOf(me)) ? 'wave' : 'death');
+    show('mpresults');
+  }
+
+  // scores, kill feed, respawn countdown, scoreboard, ping and name tags
+  const fmtT = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  function scoreLine() {
+    const left = board.timeLeft - (performance.now() - board.at) / 1000, me = CAMP.myId();
+    if (mode() === 'tdm') return `<span class="r">RED ${board.red}</span><span>–</span><span class="b">${board.blue} BLUE</span><span class="t">${fmtT(left)}</span>`;
+    if (mode() === 'ffa') { const mine = (board.players.find(p => p.id === me) || { kills: 0 }).kills, top = Math.max(0, ...board.players.map(p => p.kills));
+      return `<span>You ${mine}</span><span class="t">Leader ${top} · first to ${settings.killLimit}</span><span class="t">${fmtT(left)}</span>`; }
+    return `<span>Co-op</span><span class="t">${fmtT(left)}</span>`;
+  }
+  function renderBoard() {
+    const me = CAMP.myId(), stat = id => board.players.find(p => p.id === id) || { kills: 0, deaths: 0 };
+    const rows = players.map(p => ({ ...p, ...stat(p.id) })).sort((a, b) => (b.kills - a.kills) || (a.deaths - b.deaths));
+    const table = list => `<table class="mpTable"><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Ping</th></tr>${list.map(r => `<tr class="${r.team || ''}${r.id === me ? ' you' : ''}"><td>${r.isHost ? '👑 ' : ''}${esc(r.name)}</td><td>${r.kills}</td><td>${r.deaths}</td><td>${r.ping ?? '–'}</td></tr>`).join('')}</table>`;
+    $('mpBoard').innerHTML = mode() === 'tdm'
+      ? `<h3><span style="color:#f87171">Red ${board.red}</span> · <span style="color:#60a5fa">${board.blue} Blue</span></h3>${table(rows.filter(r => r.team === 'red'))}<div style="height:10px"></div>${table(rows.filter(r => r.team === 'blue'))}`
+      : `<h3>${mode() === 'ffa' ? 'Free-for-all' : 'Co-op'}</h3>${table(rows)}`;
+  }
+  function renderPing() { const me = byId(CAMP.myId()), ms = me && me.ping, el = $('mpPing'); el.querySelector('span').textContent = ms != null ? ms + ' ms' : '– ms'; el.className = ms >= 200 ? 'bad' : ms >= 100 ? 'mid' : ''; }
+  const tagPool = [], _v = new THREE.Vector3(), _d = new THREE.Vector3(), losRay = new THREE.Raycaster();
+  // teammates' tags always show; anyone else's only when nothing solid is in the way (no seeing names through walls)
+  const seen = (x, y, z) => { _d.set(x, y, z).sub(camera.position); const len = _d.length(); losRay.set(camera.position, _d.divideScalar(len)); losRay.far = len - 0.8; return !losRay.intersectObjects(solids, false).length; };
+  function renderTags() {
+    const list = (CAMP.getRemotes && CAMP.getRemotes()) || [], box = $('mpTags'), W = innerWidth, H = innerHeight;
+    while (tagPool.length < list.length) { const s = document.createElement('span'); box.appendChild(s); tagPool.push(s); }
+    tagPool.forEach((s, i) => {
+      const r = list[i]; if (!r) { s.style.display = 'none'; return; }
+      _v.set(r.x, r.y + 0.6, r.z); const d = _v.distanceTo(camera.position); _v.project(camera);
+      if (_v.z > 1 || d > 70) { s.style.display = 'none'; return; }
+      const p = byId(r.id) || { name: '?' }, mate = mode() !== 'ffa' && p.team && p.team === teamOf(CAMP.myId());
+      if (!mate && !seen(r.x, r.y, r.z)) { s.style.display = 'none'; return; }
+      s.style.display = ''; s.textContent = p.name; s.className = mode() === 'tdm' ? p.team || 'ffa' : 'ffa';
+      s.style.left = (_v.x * 0.5 + 0.5) * W + 'px'; s.style.top = (-_v.y * 0.5 + 0.5) * H + 'px'; s.style.opacity = d > 45 ? 0.6 : 1;
+    });
+  }
+  function hudTick() {
+    if (!inMatch) return; requestAnimationFrame(hudTick);
+    $('mpScore').innerHTML = scoreLine(); renderTags();
+    const r = $('mpRespawn');
+    if (respawnAt) { const left = (respawnAt - performance.now()) / 1000; if (left > 0) { r.style.display = 'block'; r.innerHTML = `Respawning in ${Math.ceil(left)}<small>You were taken out</small>`; } else { respawnAt = 0; r.style.display = 'none'; } }
+  }
+  function feed(d) {
+    const k = byId(d.killerId) || { name: '?' }, v = byId(d.victimId) || { name: '?' }, cls = p => mode() === 'tdm' ? p.team || 'ffa' : 'ffa';
+    const el = document.createElement('div'); el.innerHTML = `<span class="${cls(k)}">${esc(k.name)}</span><span class="w">⟶</span><span class="${cls(v)}">${esc(v.name)}</span>`;
+    const F = $('mpFeed'); F.appendChild(el); while (F.childElementCount > 5) F.firstChild.remove(); setTimeout(() => el.remove(), 6000);
+  }
+
+  // hold Tab for the scoreboard (or tap Scores on touch)
+  addEventListener('keydown', e => { if (e.code === 'Tab' && inMatch) { e.preventDefault(); if (!e.repeat) { renderBoard(); $('mpBoard').classList.add('on'); } } });
+  addEventListener('keyup', e => { if (e.code === 'Tab') $('mpBoard').classList.remove('on'); });
+  $('mpBoardBtn').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); renderBoard(); $('mpBoard').classList.toggle('on'); });
+  // Esc on the multiplayer screens goes back, like the other menus
+  addEventListener('keydown', e => { if (e.code !== 'Escape') return; if (currentMenu === 'mp') show('main'); else if (currentMenu === 'mpcreate' || currentMenu === 'mpjoin') show('mp'); });
+  // quitting from the pause menu during a match also leaves the room
+  document.addEventListener('click', e => { if (e.target.closest('#menu-pause [data-action="quit"]') && inRoom) { CAMP.leaveRoom(); inRoom = false; endHud(); } }, true);
+
+  // ---------- what the netcode tells us ----------
+  CAMP.on('players', l => { players = l || []; renderLobby(); renderPing(); if ($('mpBoard').classList.contains('on')) renderBoard(); });
+  CAMP.on('settings', s => { settings = s; renderLobby(); });
+  CAMP.on('hostChanged', id => { players = CAMP.getPlayers(); renderLobby(); if (id === CAMP.myId()) banner('You’re the host now', inMatch ? 'The match carries on' : 'You can change the settings'); });
+  CAMP.on('matchStart', startMatch);
+  CAMP.on('matchEnd', endMatch);
+  CAMP.on('scores', d => { board = { red: d.red || 0, blue: d.blue || 0, players: d.players || [], timeLeft: d.timeLeft ?? board.timeLeft, at: performance.now() }; renderPing(); if ($('mpBoard').classList.contains('on')) renderBoard(); });
+  CAMP.on('kill', d => { if (inMatch) feed(d); });
+  CAMP.on('respawn', d => { if (inMatch && d.id === CAMP.myId()) respawnAt = performance.now() + (d.inSeconds || 3) * 1000; });
+  CAMP.on('error', c => {
+    if (c === 'offline') { resting(true); if (inRoom) leave('mp', ERR.offline); return; }
+    if (c === 'kicked' || c === 'host_left') leave('mp', ERR[c]);
+  });
+})();
 </script>
 </body>
 </html>

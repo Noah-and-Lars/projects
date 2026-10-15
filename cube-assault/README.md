@@ -68,6 +68,12 @@ Touch controls turn on by themselves on phones and tablets; **Settings → Touch
 
 Every cube you destroy earns 1 coin (the King earns 10).
 
+## Multiplayer (preview)
+
+Press **Multiplayer** on the main menu to create a match (you get a 5-letter room code and can add a password) or join one by code. In the lobby, pick Red or Blue; the host chooses the mode (Team Deathmatch, Free-for-all or Co-op waves), team size, map, kill limit, time limit, friendly fire and whether the room is locked. During a match, hold **Tab** (or tap **Scores**) for the scoreboard. For now matches are filled with practice bots; real online play is coming in a later update.
+
+The new **Outpost** map (Red and Blue spawns, three lanes, sites A and B, a pump house and watchtowers) can also be played in single-player from the map screen.
+
 ## Profile and settings
 
 Your profile (top right of the main menu) shows your level, accuracy, shots fired, cubes killed, time played and best wave, and lets you pick a 3D profile picture. Everything is saved in your own browser. **Settings → Reset all data** starts fresh.
