@@ -262,6 +262,8 @@
   .hero p { color: #ffe9c2; margin-top: 6px; }
   .hero-guns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
   .hero-guns img { width: 62px; height: 62px; border-radius: 14px; background: rgba(0, 0, 0, .25); border: 1px solid rgba(255, 255, 255, .2); animation: heroHop 1.8s ease-in-out infinite; }
+  .hero-guns .hcube { width: 62px; height: 62px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .2); display: grid; place-items: center; font-size: 30px; font-style: normal; animation: heroHop 1.8s ease-in-out infinite; }
+  .hero-guns > :nth-child(2) { animation-delay: .15s; } .hero-guns > :nth-child(3) { animation-delay: .3s; } .hero-guns > :nth-child(4) { animation-delay: .45s; }
   .hero-guns img:nth-child(2) { animation-delay: .15s; } .hero-guns img:nth-child(3) { animation-delay: .3s; } .hero-guns img:nth-child(4) { animation-delay: .45s; }
   @keyframes heroHop { 0%, 60%, 100% { transform: translateY(0) scale(1, 1); } 30% { transform: translateY(-9px) scale(.95, 1.06); } 50% { transform: translateY(0) scale(1.08, .9); } }
   .hero .spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fff7c2; box-shadow: 0 0 12px #ffd166; animation: heroTwinkle 2.4s ease-in-out infinite; }
@@ -616,21 +618,27 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.7 · What's new</button>
+    <button class="link" data-action="notes">v2.7.1 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7<span>New hands</span></h1><p>Gloved hands holding every gun like a modern shooter, a scoped rifle, a new pistol and a knife that pokes forward.</p>
-      <div class="hero-guns"><img data-av="rifle" alt="Rifle"><img data-av="pistol" alt="Pistol"><img data-av="knife" alt="Knife"><img data-av="sniper" alt="Sniper"></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7.1<span>The Angry Cube</span></h1><p>A new cube that smashes through walls, cubes that jump fences, and crates you can climb.</p>
+      <div class="hero-guns"><i class="hcube" style="background:#6b7280">😠</i><img data-av="purple" alt="Brute Cube"><i class="hcube" style="background:#8a6a48">📦</i><img data-av="red" alt="Red Cube"></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><i>🧤</i><span><b>New hands</b>Tactical gloves with knuckle pads and wrist straps, and sleeves down to the gloves, on every gun.</span></div>
-      <div><img data-av="rifle" alt=""><span><b>Scoped rifle</b>The rifle has a scope now. Right-click (or tap aim on touch) to look through it; it zooms less than the sniper.</span></div>
-      <div><img data-av="pistol" alt=""><span><b>New-look pistol</b>A dark slide on a tan frame, with serrations, a rail and a flared grip, held lower and straighter.</span></div>
-      <div><img data-av="knife" alt=""><span><b>Knife poke</b>The knife is held on the right with the blade up, and stabs straight forward. The hand stays straight on the handle.</span></div>
-      <div><i>🛠️</i><span><b>Fixes</b>Texture and visual fixes. Multiplayer and the campaign play the same as before.</span></div>
+      <div><i>😠</i><span><b>Angry Cube</b>A grey cube that smashes straight through house walls, trees and buildings. One arrives at wave 20, then one every 5 waves.</span></div>
+      <div><i>🦘</i><span><b>Cubes jump</b>Cubes hop over fences (like round the wheat farm) and crates to reach you, and jump up after you onto crates.</span></div>
+      <div><i>📦</i><span><b>Climb crates</b>A slightly higher jump makes crates easy to stand on, and you can climb a stack of two from a single crate.</span></div>
+      <div><img data-av="purple" alt=""><span><b>Tougher Brute</b>The purple Brute Cube has twice the health.</span></div>
     </div>
     <div class="notes"><div class="older">Older updates</div>
+      <section><h3>v2.7 <span>New hands</span></h3><ul>
+        <li>New first-person hands: tactical gloves with knuckle pads and wrist straps, and sleeves down to the gloves, holding every gun the way soldiers do in modern shooters.</li>
+        <li>The rifle has a scope, like the sniper's. Right-click (or tap the aim button on touch) to aim through it; it zooms in less than the sniper.</li>
+        <li>A new-look pistol: a dark slide on a tan frame, with serrations, a rail and a flared grip, held lower and straighter.</li>
+        <li>The knife is held on the right with the blade up and pokes straight forward.</li>
+        <li>New patch notes and What's new screens.</li>
+      </ul></section>
       <section><h3>v2.6.3 <span>Fixes</span></h3><ul>
         <li>Online gunshots and their sounds no longer lag: the first shot of every burst is sent straight away instead of waiting for the next network update, so other players see and hear your shots, and you get your hit markers, about 3 to 4 times sooner.</li>
         <li>Fixed a match sometimes ending straight away as a draw if the host pressed Start just as someone was still connecting.</li>
@@ -887,14 +895,14 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-news">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7<span>New hands</span></h1><p>Gloved hands holding every gun like a modern shooter, a scoped rifle, a new pistol and a knife that pokes forward.</p>
-      <div class="hero-guns"><img data-av="rifle" alt="Rifle"><img data-av="pistol" alt="Pistol"><img data-av="knife" alt="Knife"><img data-av="sniper" alt="Sniper"></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7.1<span>The Angry Cube</span></h1><p>A new cube that smashes through walls, cubes that jump fences, and crates you can climb.</p>
+      <div class="hero-guns"><i class="hcube" style="background:#6b7280">😠</i><img data-av="purple" alt="Brute Cube"><i class="hcube" style="background:#8a6a48">📦</i><img data-av="red" alt="Red Cube"></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><i>🧤</i><span><b>New hands</b>Tactical gloves with knuckle pads and wrist straps, and sleeves down to the gloves, on every gun.</span></div>
-      <div><img data-av="rifle" alt=""><span><b>Scoped rifle</b>Right-click (or tap aim on touch) to look through the rifle's new scope.</span></div>
-      <div><img data-av="pistol" alt=""><span><b>New-look pistol</b>A dark slide on a tan frame, held lower and straighter.</span></div>
-      <div><img data-av="knife" alt=""><span><b>Knife poke</b>Held on the right with the blade up, it stabs straight forward.</span></div>
+      <div><i>😠</i><span><b>Angry Cube</b>A grey cube that smashes straight through house walls, trees and buildings. One arrives at wave 20, then one every 5 waves.</span></div>
+      <div><i>🦘</i><span><b>Cubes jump</b>Cubes hop over fences (like round the wheat farm) and crates to reach you, and jump up after you onto crates.</span></div>
+      <div><i>📦</i><span><b>Climb crates</b>A slightly higher jump makes crates easy to stand on, and you can climb a stack of two from a single crate.</span></div>
+      <div><img data-av="purple" alt=""><span><b>Tougher Brute</b>The purple Brute Cube has twice the health.</span></div>
     </div>
     <div class="btns2"><button class="btn secondary" id="newsPast">Past updates</button><button class="btn" id="newsOk">Let's go</button></div>
   </div>
@@ -1005,12 +1013,15 @@ const ENEMY_TYPES = {
   blue:   { name: 'Blue Cube', unlock: 7, color: 0x2563eb, css: '#3b82f6', size: 1.1, hp: 4, speed: 2.8, ranged: true, fireEvery: 3, shotDmg: 10, reward: 200, weight: 0.45, intro: 3,
             health: 2, pace: 2, attack: 'Gun, slow fire rate',
             desc: 'Carries a gun. It keeps its distance and fires a slow energy shot every few seconds. It glows just before it fires, so get behind cover when it lights up.' },
-  purple: { name: 'Brute Cube', unlock: 10, color: 0x7c3aed, css: '#8b5cf6', size: 1.6, hp: 10, speed: 2.4, melee: 40, reward: 300, weight: 0.3, intro: 2, brows: true,
+  purple: { name: 'Brute Cube', unlock: 10, color: 0x7c3aed, css: '#8b5cf6', size: 1.6, hp: 20, speed: 2.4, melee: 40, reward: 300, weight: 0.3, intro: 2, brows: true,
             health: 5, pace: 2, attack: 'Heavy melee',
             desc: 'A big armoured cube. It takes a lot of hits and does heavy damage up close. The shotgun and sniper deal with it best.' },
   splitter: { name: 'Splitter Cube', unlock: 20, color: 0xf97316, css: '#f97316', size: 3.4, hp: 26, speed: 2.0, melee: 35, reward: 400, coins: 3, weight: 0, intro: 1, brows: true, split: true,
             health: 4, pace: 2, attack: 'Heavy melee, splits',
             desc: 'A giant orange cube. Destroy it and it splits into two smaller cubes, and those split again, three times over. Back off and keep firing.' },
+  angry:  { name: 'Angry Cube', unlock: 20, color: 0x6b7280, css: '#9ca3af', size: 1.9, hp: 30, speed: 2.6, melee: 40, reward: 500, coins: 4, weight: 0, intro: 1, brows: true, smash: true,
+            health: 4, pace: 2, attack: 'Smashes through walls',
+            desc: 'A furious grey cube that never goes round anything. It smashes straight through house walls, trees and buildings to get to you, so hiding indoors won\u2019t save you.' },
   king:   { name: 'King Cube', unlock: 15, color: 0xf5b82e, css: '#f5b82e', size: 2.6, hp: 60, speed: 2.1, melee: 50, reward: 2000, coins: 10, weight: 0, intro: 0, brows: true, boss: true,
             health: 5, pace: 1, attack: 'Ground slam',
             desc: 'The boss. It leaps into the air and slams the ground, sending out a shockwave ring. Jump over the ring, or stand on a crate, to dodge it. Worth 10 coins.' },
@@ -1024,7 +1035,7 @@ const ENEMY_TYPES = {
 };
 // most of each type a random wave can roll (the guaranteed intro cubes still count)
 const TYPE_CAP = n => ({ blue: 2 + Math.floor(Math.max(0, n - 7) / 3), purple: 1 + Math.floor(Math.max(0, n - 10) / 3) });
-const DROP_CHANCE = { splitter: 0.15,  red: 0.08, green: 0.08, blue: 0.15, purple: 0.3, king: 1, rifle: 0.12, scam: 0.1 };
+const DROP_CHANCE = { angry: 0.3, splitter: 0.15,  red: 0.08, green: 0.08, blue: 0.15, purple: 0.3, king: 1, rifle: 0.12, scam: 0.1 };
 const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
 
 // ---------- Saved settings & profile ----------
@@ -1519,7 +1530,8 @@ scene.add = (...o) => { classicRoot.add(...o); return scene; };
 
 // ---------- Map ----------
 let ARENA = 40;
-const STEP = 1.3; // boxes this low can be stood on
+const STEP = 2.1; // boxes this low can be stood on (2.7.1: up to a stack of two crates)
+const HOP = 1.35;  // 2.7.1: cubes hop over anything this low (fences, single crates)
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshLambertMaterial({ map: tex(grassCanvas, 200, 200) }));
 floor.rotation.x = -Math.PI / 2;
@@ -2564,7 +2576,7 @@ function useMap(id) {
 // Push a circle (pos, radius) at height y out of all boxes it isn't standing on top of
 function collide(pos, r, y = 0) {
   for (const b of boxes) {
-    if (b.h <= STEP && y >= b.h - 0.05) continue;
+    if (b.h <= STEP && y >= b.h - 0.25) continue; // close enough to the top to step up onto it
     const cx = Math.max(b.x - b.hx, Math.min(pos.x, b.x + b.hx));
     const cz = Math.max(b.z - b.hz, Math.min(pos.z, b.z + b.hz));
     const dx = pos.x - cx, dz = pos.z - cz;
@@ -2584,11 +2596,26 @@ function collide(pos, r, y = 0) {
   pos.x = Math.max(-lim, Math.min(lim, pos.x));
   pos.z = Math.max(-lim, Math.min(lim, pos.z));
 }
+// 2.7.1: what a cube is standing on (crates and other low boxes under its footprint)
+function cubeGround(pos, y, r) {
+  let g = floorBase;
+  for (const b of boxes) {
+    if (b.h > STEP || b.h > y + 0.3) continue;
+    if (Math.abs(pos.x - b.x) < b.hx + r * 0.6 && Math.abs(pos.z - b.z) < b.hz + r * 0.6) g = Math.max(g, b.h);
+  }
+  return g;
+}
+// a fence or crate just ahead that a cube can hop over
+function lowBoxAhead(pos, mx, mz, d) {
+  const x = pos.x + mx * d, z = pos.z + mz * d;
+  for (const b of boxes) if (b.h <= HOP && b.h > 0.3 && Math.abs(x - b.x) < b.hx + 0.1 && Math.abs(z - b.z) < b.hz + 0.1) return b;
+  return null;
+}
 let floorBase = 0; // ground height; the Tajer Support ending is played down on the street
 function groundAt(pos, prevY) {
   let g = floorBase;
   for (const b of boxes) {
-    if (b.h > STEP || b.h > prevY + 0.05) continue;
+    if (b.h > STEP || b.h > prevY + 0.25) continue;
     if (Math.abs(pos.x - b.x) < b.hx + 0.2 && Math.abs(pos.z - b.z) < b.hz + 0.2) g = Math.max(g, b.h);
   }
   return g;
@@ -3565,6 +3592,7 @@ function waveRoster(n) {
   const list = [];
   for (const k of unlocked) if (ENEMY_TYPES[k].unlock === n) for (let i = 0; i < ENEMY_TYPES[k].intro; i++) list.push(k);
   if (n > 20 && n % 5 === 0) list.push('splitter');
+  if (n > 20 && n % 5 === 0) list.push('angry'); // 2.7.1: one Angry Cube at wave 20 and every 5 waves after
   if (n >= 15 && n % 5 === 0) for (let i = 0; i < 1 + Math.floor((n - 15) / 10); i++) list.push('king');
   const caps = TYPE_CAP(n), have = k => list.filter(x => x === k).length;
   const pool = unlocked.filter(k => ENEMY_TYPES[k].weight > 0);
@@ -4538,7 +4566,7 @@ function updatePlayer(dt) {
     stepPhase += dt * speed * 1.15;
     if (Math.floor(stepPhase / Math.PI) !== before) Sound.play('step');
   }
-  if (keys.Space && player.onGround) { player.vy = 7; player.onGround = false; Sound.play('jump'); }
+  if (keys.Space && player.onGround) { player.vy = 7.6; player.onGround = false; Sound.play('jump'); } // 2.7.1: a bit higher, enough for a crate
   const prevY = player.pos.y, vyBefore = player.vy;
   player.vy -= 20 * dt;
   player.pos.y += player.vy * dt;
@@ -4605,7 +4633,25 @@ function updateEnemies(dt, t) {
     const bx = e.position.x, bz = e.position.z;
     e.position.x += mx * spd * dt;
     e.position.z += mz * spd * dt;
-    collide(e.position, u.size * 0.55);
+    // 2.7.1: hop over low things in the way, or up after you when you're standing on something
+    u.jy = u.jy || 0; u.jv = u.jv || 0;
+    const jr = u.size * 0.55;
+    if (u.jy <= cubeGround(e.position, u.jy, jr) + 0.01 && u.jv <= 0 && spd > 0 && !T.boss && !u.slam) {
+      const ahead = lowBoxAhead(e.position, mx, mz, jr + 0.45);
+      if (ahead || (player.pos.y > u.jy + 0.4 && dist < u.size * 0.5 + 2.4)) { u.jv = 7.8; }
+    }
+    collide(e.position, jr, u.jy);
+    if (T.smash && spd > 0) {
+      // the Angry Cube doesn't go round walls and trees: it smashes straight through them
+      u.smashCd = (u.smashCd || 0) - dt;
+      if (Math.hypot(e.position.x - bx, e.position.z - bz) < spd * dt * 0.6 && u.smashCd <= 0) {
+        u.smashCd = 0.3;
+        smashMap(new THREE.Vector3(e.position.x + mx * u.size * 0.75, u.size * 0.55, e.position.z + mz * u.size * 0.75), u.size * 0.95);
+        shake = Math.max(shake, Math.max(0, 0.35 - dist / 60));
+      }
+    }
+    { const g = cubeGround(e.position, u.jy, jr);
+      if (u.jv !== 0 || u.jy > g) { u.jv -= 20 * dt; u.jy += u.jv * dt; if (u.jy <= g) { u.jy = g; u.jv = 0; } } else u.jy = g; }
     for (const o of enemies) {
       if (o === e) continue;
       const ox = e.position.x - o.position.x, oz = e.position.z - o.position.z;
@@ -4618,13 +4664,13 @@ function updateEnemies(dt, t) {
     // never overlap the player (bullets can't hit a cube from inside it)
     const minD = u.size * 0.5 + 0.45;
     const ex = e.position.x - player.pos.x, ez = e.position.z - player.pos.z, ed = Math.hypot(ex, ez);
-    if (ed < minD && player.pos.y < u.size + 0.3) {
+    if (ed < minD && player.pos.y - (u.jy || 0) < u.size + 0.3 && (u.jy || 0) - player.pos.y < u.size) {
       if (ed > 0.001) { e.position.x = player.pos.x + ex / ed * minD; e.position.z = player.pos.z + ez / ed * minD; }
       else e.position.x += minD;
     }
     // walking into a wall? go around it for a moment
     const moved = Math.hypot(e.position.x - bx, e.position.z - bz);
-    if (spd > 0 && moved < spd * dt * 0.3 && dist > 1.6) {
+    if (spd > 0 && moved < spd * dt * 0.3 && dist > 1.6 && !T.smash) {
       u.stuck += dt;
       if (u.stuck > 0.25) { u.detour = 0.9 + Math.random() * 0.9; u.detourSide = Math.random() < .5 ? -1 : 1; u.stuck = 0; }
     } else u.stuck = Math.max(0, u.stuck - dt);
@@ -4634,7 +4680,7 @@ function updateEnemies(dt, t) {
     const hop = T.boss ? Math.abs(Math.sin(t * 4 + u.phase)) * 0.4 : Math.abs(Math.sin(t * (T.pace > 3 ? 14 : 8) + u.phase));
     const grow = 1 - Math.pow(1 - u.spawnT, 3);
     const punch = 1 + Math.max(0, u.hit) * (T.boss ? 0.4 : 1.5);
-    e.position.y = (u.size / 2) * grow + hop * 0.25 * u.size * grow - (1 - grow) * u.size * 0.5 + u.air;
+    e.position.y = (u.size / 2) * grow + hop * 0.25 * u.size * grow - (1 - grow) * u.size * 0.5 + u.air + (u.jy || 0);
     e.scale.set(grow * punch * (1.05 - hop * 0.08), grow * punch * (0.9 + hop * 0.16), grow * punch * (1.05 - hop * 0.08));
     // thrown by a rocket blast
     if (u.flyV || u.flyY) { u.flyV = (u.flyV || 0) - 20 * dt; u.flyY = Math.max(0, (u.flyY || 0) + u.flyV * dt); if (u.flyY <= 0) u.flyV = 0; e.position.y += u.flyY; }
@@ -4643,7 +4689,7 @@ function updateEnemies(dt, t) {
     if (u.blink < 0) u.blink = 2 + Math.random() * 4;
     for (const eye of u.eyes) eye.scale.y = closed ? 0.15 : 1;
 
-    if (!T.ranged && u.air < 0.5 && !(u.flyY > 0.5) && dist < u.size * 0.5 + 0.7 && player.pos.y < u.size + 0.7) {
+    if (!T.ranged && u.air < 0.5 && !(u.flyY > 0.5) && dist < u.size * 0.5 + 0.7 && player.pos.y - (u.jy || 0) < u.size + 0.7 && (u.jy || 0) - player.pos.y < u.size) {
       player.hp -= T.melee * dt;
       damageFlash = 0.5;
       if (player.hurtCd <= 0) { player.hurtCd = 0.4; hurtFrom(e.position); Sound.play('hurt'); shake = Math.max(shake, 0.3); }
@@ -6377,8 +6423,8 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.7';
-const NEWS_VERSION = '2.7'; // the update the "What's new" popup is about (small fix updates don't get one)
+const VERSION = '2.7.1';
+const NEWS_VERSION = '2.7.1'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
