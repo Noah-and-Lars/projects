@@ -88,6 +88,10 @@ Since 2.6.2 the rifle is a fourth choice in C:S Mode, and every choice shows a 3
 
 Other players show up as low-poly people. There are six looks, and everyone in a room gets their own (in the order they joined), with a band in their team colour; enemies have a red dot above their name. When someone wins a match, a short victory scene plays on the map for everyone: the winners celebrate up front with the losers standing behind them, under VICTORY or DEFEAT, and then the scores show (click, tap or press Space to skip). Winning an online match, as a team or on your own, earns 50 coins.
 
+## Hands and guns (2.7)
+
+Your hands wear tactical gloves with knuckle pads, and your sleeves come down to the gloves. The rifle has a scope: right-click (or tap the aim button on touch) to look through it. The pistol has a dark slide on a tan frame, and the knife is held blade-up on the right and pokes straight forward.
+
 ## Profile and settings
 
 Your profile (top right of the main menu) shows your level, accuracy, shots fired, cubes killed, time played and best wave, and lets you pick a 3D profile picture. Everything is saved in your own browser. **Settings → Reset all data** starts fresh.

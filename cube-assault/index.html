@@ -247,6 +247,32 @@
   .notes { width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; max-height: 62vh; overflow-y: auto;
     display: flex; flex-direction: column; gap: 16px; }
   .notes h3 { font-family: var(--display); font-weight: 400; font-size: 21px; }
+  /* 2.7: the newest update gets its own animated card at the top of the patch notes (like Cube Tower Defense) */
+  #menu-notes, #menu-news { max-width: 760px; }
+  #menu-news .btns2 { display: flex; gap: 10px; width: 100%; } #menu-news .btns2 .btn { flex: 1; }
+  #menu-notes .notes { max-height: 46vh; }
+  .hero { position: relative; width: 100%; border-radius: 18px; overflow: hidden; padding: 24px 22px 18px; text-align: left; border: 1px solid rgba(255, 209, 102, .35); box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+    background: linear-gradient(120deg, #1f2a1a, #4a3a1c 45%, #b45309); }
+  .hero::before { content: ""; position: absolute; inset: -50%; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, .07) 0 22px, transparent 22px 60px); animation: heroStripes 6s linear infinite; }
+  @keyframes heroStripes { to { transform: translateX(120px); } }
+  .hero > * { position: relative; }
+  .ribbon { display: inline-block; background: var(--gold); color: #1a1205; font-weight: 800; letter-spacing: .18em; font-size: 12px; padding: 5px 12px; border-radius: 6px; transform: rotate(-2deg); box-shadow: 0 4px 0 rgba(0, 0, 0, .3); }
+  .hero h1 { margin: 10px 0 2px; font-family: var(--display); font-weight: 400; font-size: clamp(34px, 6vw, 52px); line-height: .95; text-shadow: 0 4px 0 rgba(0, 0, 0, .45); }
+  .hero h1 span { display: block; color: var(--gold-hi); font-size: .55em; letter-spacing: .04em; }
+  .hero p { color: #ffe9c2; margin-top: 6px; }
+  .hero-guns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .hero-guns img { width: 62px; height: 62px; border-radius: 14px; background: rgba(0, 0, 0, .25); border: 1px solid rgba(255, 255, 255, .2); animation: heroHop 1.8s ease-in-out infinite; }
+  .hero-guns img:nth-child(2) { animation-delay: .15s; } .hero-guns img:nth-child(3) { animation-delay: .3s; } .hero-guns img:nth-child(4) { animation-delay: .45s; }
+  @keyframes heroHop { 0%, 60%, 100% { transform: translateY(0) scale(1, 1); } 30% { transform: translateY(-9px) scale(.95, 1.06); } 50% { transform: translateY(0) scale(1.08, .9); } }
+  .hero .spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fff7c2; box-shadow: 0 0 12px #ffd166; animation: heroTwinkle 2.4s ease-in-out infinite; }
+  @keyframes heroTwinkle { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: 1; transform: scale(1); } }
+  .feat { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; width: 100%; text-align: left; }
+  .feat div { display: flex; gap: 10px; align-items: flex-start; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 14px; padding: 10px; animation: featIn .4s ease-out backwards; }
+  .feat div:nth-child(2) { animation-delay: .06s; } .feat div:nth-child(3) { animation-delay: .12s; } .feat div:nth-child(4) { animation-delay: .18s; } .feat div:nth-child(5) { animation-delay: .24s; }
+  @keyframes featIn { from { opacity: 0; transform: translateY(8px); } }
+  .feat img, .feat i { width: 44px; height: 44px; border-radius: 10px; flex: none; background: rgba(255, 255, 255, .06); font-style: normal; display: grid; place-items: center; font-size: 22px; }
+  .feat b { display: block; font-size: 15px; } .feat span { font-size: 13px; color: var(--muted); line-height: 1.35; }
+  .notes .older { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
   .notes h3 span { font-family: var(--body); font-weight: 700; font-size: 13px; color: var(--gold); margin-left: 8px; letter-spacing: 1.5px; text-transform: uppercase; }
   .notes h4 { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: #f87171; margin-top: 10px; }
   #menu-news { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px 24px; max-width: 540px; }
@@ -590,12 +616,26 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.6.3 · What's new</button>
+    <button class="link" data-action="notes">v2.7 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
-    <h2>Patch notes</h2>
-    <div class="notes">
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7<span>New hands</span></h1><p>Gloved hands holding every gun like a modern shooter, a scoped rifle, a new pistol and a knife that pokes forward.</p>
+      <div class="hero-guns"><img data-av="rifle" alt="Rifle"><img data-av="pistol" alt="Pistol"><img data-av="knife" alt="Knife"><img data-av="sniper" alt="Sniper"></div>
+      <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
+    <div class="feat">
+      <div><i>🧤</i><span><b>New hands</b>Tactical gloves with knuckle pads and wrist straps, and sleeves down to the gloves, on every gun.</span></div>
+      <div><img data-av="rifle" alt=""><span><b>Scoped rifle</b>The rifle has a scope now. Right-click (or tap aim on touch) to look through it; it zooms less than the sniper.</span></div>
+      <div><img data-av="pistol" alt=""><span><b>New-look pistol</b>A dark slide on a tan frame, with serrations, a rail and a flared grip, held lower and straighter.</span></div>
+      <div><img data-av="knife" alt=""><span><b>Knife poke</b>The knife is held on the right with the blade up, and stabs straight forward. The hand stays straight on the handle.</span></div>
+      <div><i>🛠️</i><span><b>Fixes</b>Texture and visual fixes. Multiplayer and the campaign play the same as before.</span></div>
+    </div>
+    <div class="notes"><div class="older">Older updates</div>
+      <section><h3>v2.6.3 <span>Fixes</span></h3><ul>
+        <li>Online gunshots and their sounds no longer lag: the first shot of every burst is sent straight away instead of waiting for the next network update, so other players see and hear your shots, and you get your hit markers, about 3 to 4 times sooner.</li>
+        <li>Fixed a match sometimes ending straight away as a draw if the host pressed Start just as someone was still connecting.</li>
+        <li>Other players' models are lighter to draw, for smoother frame rates on school laptops.</li>
+      </ul></section>
       <section><h3>v2.6.2 <span>C:S Mode</span></h3><ul>
         <li>The rifle is now a choice for your main gun in C:S Mode, alongside the shotgun, sniper and rocket launcher. Each choice shows a 3D picture of the gun.</li>
         <li>Other players are now low-poly people instead of cubes. There are 6 looks and everyone in a room gets their own, with a band in their team colour.</li>
@@ -603,11 +643,6 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <li>When a match is won, a victory scene plays on the map for everyone: the winning team (or the Free-for-all winner) celebrates up front with the losers standing behind them, under a big VICTORY or DEFEAT. Then the scores show. Click, tap or press Space to skip it.</li>
         <li>Winning an online match, as a team or on your own, gives you 50 coins. Losing gives none.</li>
         <li>Single-player and the campaign are unchanged.</li>
-      </ul></section>
-      <section><h3>v2.6.3 <span>Fixes</span></h3><ul>
-        <li>Online gunshots and their sounds no longer lag: the first shot of every burst is sent straight away instead of waiting for the next network update, so other players see and hear your shots, and you get your hit markers, about 3 to 4 times sooner.</li>
-        <li>Fixed a match sometimes ending straight away as a draw if the host pressed Start just as someone was still connecting.</li>
-        <li>Other players' models are lighter to draw, for smoother frame rates on school laptops.</li>
       </ul></section>
       <section><h3>v2.6.1 <span>C:S Mode</span></h3><ul>
         <li>New multiplayer mode: C:S Mode, on the Outpost. Two teams, Terrorists (orange) and Counter-Terrorists (blue), play rounds. The host picks 3, 5 or 8 rounds to win.</li>
@@ -852,19 +887,16 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-news">
-    <div class="eyebrow">What's new</div>
-    <h2>v2.6.2 · C:S Mode</h2>
-    <ul class="newslist">
-      <li><b>Players are people now</b>: 6 different looks, one each, with red dots over enemies.</li>
-      <li><b>Victory scene</b> at the end of every match, then the scores. <b>Win an online match for 50 coins.</b></li>
-      <li><b>Rifle</b> added to the C:S Mode gun choice, and every choice shows the gun in 3D.</li>
-    </ul>
-    <div class="section">Also new in 2.6.1</div>
-    <ul class="newslist">
-      <li><b>C:S Mode</b>: Terrorists vs Counter-Terrorists in rounds on the Outpost. Plant the bomb at site A or B, or defuse it by holding E for 12 seconds.</li>
-      <li>No Extreme Gun or turrets against other players; both still work in <b>Co-op</b>. The full list is in What's new.</li>
-    </ul>
-    <button class="btn" id="newsOk">Let's go</button>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7<span>New hands</span></h1><p>Gloved hands holding every gun like a modern shooter, a scoped rifle, a new pistol and a knife that pokes forward.</p>
+      <div class="hero-guns"><img data-av="rifle" alt="Rifle"><img data-av="pistol" alt="Pistol"><img data-av="knife" alt="Knife"><img data-av="sniper" alt="Sniper"></div>
+      <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
+    <div class="feat">
+      <div><i>🧤</i><span><b>New hands</b>Tactical gloves with knuckle pads and wrist straps, and sleeves down to the gloves, on every gun.</span></div>
+      <div><img data-av="rifle" alt=""><span><b>Scoped rifle</b>Right-click (or tap aim on touch) to look through the rifle's new scope.</span></div>
+      <div><img data-av="pistol" alt=""><span><b>New-look pistol</b>A dark slide on a tan frame, held lower and straighter.</span></div>
+      <div><img data-av="knife" alt=""><span><b>Knife poke</b>Held on the right with the blade up, it stabs straight forward.</span></div>
+    </div>
+    <div class="btns2"><button class="btn secondary" id="newsPast">Past updates</button><button class="btn" id="newsOk">Let's go</button></div>
   </div>
 
   <div class="menu" id="menu-complete">
@@ -951,7 +983,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
 // ---------- Weapons & enemies ----------
 const WEAPONS = {
   pistol:  { slot: 1, name: 'Pistol',  dmg: 1.5, cooldown: 0.22, mag: 12, reload: 1.0, pellets: 1, spread: 0.004, auto: false, kick: 0.7, desc: 'Reliable. Semi-auto, 12 rounds.' },
-  rifle:   { slot: 2, name: 'Rifle',   dmg: 1,   cooldown: 0.09, mag: 30, reload: 1.6, pellets: 1, spread: 0.018, auto: true,  kick: 0.3, desc: 'Full-auto, 30 rounds. Hold to spray.' },
+  rifle:   { slot: 2, name: 'Rifle',   dmg: 1,   cooldown: 0.09, mag: 30, reload: 1.6, pellets: 1, spread: 0.018, auto: true,  kick: 0.3, desc: 'Full-auto, 30 rounds. Hold to spray, right-click to aim through the scope.' },
   shotgun: { slot: 3, name: 'Shotgun', dmg: 0.8, cooldown: 0.75, mag: 6,  reload: 1.8, pellets: 9, spread: 0.075, auto: false, kick: 1.6, unlockWave: 5, desc: '9 pellets. Devastating up close.' },
   sniper:  { slot: 4, name: 'Sniper',  dmg: 8,   cooldown: 1.1,  mag: 5,  reload: 2.0, pellets: 1, spread: 0,     auto: false, kick: 2.2, unlockWave: 5, desc: 'One-shot kills. Right-click to scope.' },
   extreme: { slot: 5, name: 'Extreme Gun', short: 'Extreme', dmg: 3, cooldown: 0.07, mag: 200, reload: 1.4, pellets: 1, spread: 0.008, auto: true, kick: 0.22, splash: 2.5, splashDmg: 2,
@@ -2715,7 +2747,9 @@ const GM = (() => {
   const phys = (o) => new THREE.MeshPhysicalMaterial(Object.assign({ envMap: gunEnv, envMapIntensity: 1.6, side: THREE.DoubleSide }, o));
   const worn = { map: GT.wear, roughnessMap: GT.rough };
   return {
-    slide: std({ color: 0x34373c, metalness: 0.8, roughness: 0.34, ...worn, envMapIntensity: 1.8 }),
+    slide: std({ color: 0x1e2023, metalness: 0.55, roughness: 0.42, ...worn, envMapIntensity: 1.4 }),
+    pframe: std({ color: 0x6b5c43, metalness: 0, roughness: 0.62, envMapIntensity: 0.5 }),
+    pgrip: std({ color: 0x5e5140, metalness: 0, roughness: 0.85, bumpMap: GT.stipple, bumpScale: 0.5, envMapIntensity: 0.5 }),
     dark: std({ color: 0x1c1d20, metalness: 0.6, roughness: 0.5, ...worn }),
     bright: std({ color: 0xa8adb3, metalness: 1, roughness: 0.22, envMapIntensity: 1.2 }),
     alu: std({ color: 0x27292d, metalness: 0.7, roughness: 0.42, ...worn }),
@@ -2803,6 +2837,8 @@ function guardAt(front, back, top, bottom, mat, thick = 0.012) {
   return extrudeSide(o, thick, mat, { holes: [i], bevel: 0.0012 });
 }
 
+// a scope ring clamped to a picatinny rail (2.7, for the rifle's scope)
+function S27ring(g, u) { g.add(cylU(0.0165, 0.0165, u - 0.005, u + 0.005, 0.089, GM.alu)); g.add(box(0.02, 0.03, 0.012, GM.alu, 0, 0.068, u)); }
 // ---- the five weapons, built to real-world size (metres) ----
 const GUN_MODELS = {
   pistol() {
@@ -2817,19 +2853,25 @@ const GUN_MODELS = {
     }
     slide.add(box(0.0034, 0.0065, 0.006, GM.dark, 0, 0.0508, 0.131), ball(0.0011, GM.white, 0, 0.0522, 0.1278));
     slide.add(cylU(0.0077, 0.0077, 0.139, 0.1425, 0.033, GM.bright), cylU(0.0046, 0.0046, 0.14, 0.1432, 0.033, GM.bore));
+    for (let i = 0; i < 4; i++) slide.add(box(0.0264, 0.018, 0.0014, GM.bore, 0, 0.0335, 0.112 + i * 0.0034));
+    slide.add(box(0.012, 0.008, 0.03, GM.bright, 0.0035, 0.044, 0.03));
     g.add(slide);
+    g.add(box(0.022, 0.006, 0.05, GM.pframe, 0, 0.003, 0.105));
+    for (let i = 0; i < 3; i++) g.add(box(0.0232, 0.0028, 0.006, GM.dark, 0, -0.0005, 0.088 + i * 0.016));
+    g.add(extrudeSide([[-0.05, 0.02], [-0.078, 0.008], [-0.074, 0.0], [-0.052, 0.008]], 0.026, GM.pframe, { bevel: 0.0015 }));
+    g.add(extrudeSide([[-0.026, -0.112], [-0.074, -0.11], [-0.078, -0.12], [-0.024, -0.122]], 0.031, GM.pframe, { bevel: 0.0015 }));
     // frame with trigger guard, dust cover and angled grip
     g.add(extrudeSide([[-0.05, 0.018], [0.132, 0.018], [0.136, 0.006], [0.06, 0.0], [0.056, -0.006], [0.058, -0.03, 0.046, -0.034],
       [0.006, -0.034], [-0.012, -0.024], [-0.03, -0.12], [-0.034, -0.128], [-0.072, -0.126], [-0.061, -0.03], [-0.072, -0.002, -0.058, 0.01], [-0.05, 0.018]],
-      0.027, GM.polymer, { holes: [[[0.049, -0.006], [0.05, -0.024, 0.042, -0.028], [0.006, -0.028], [-0.003, -0.02], [-0.002, -0.006]]] }));
-    g.add(extrudeSide([[-0.016, -0.032], [-0.03, -0.114], [-0.068, -0.113], [-0.058, -0.032]], 0.0288, GM.stipple, { bevel: 0.001 }));
+      0.027, GM.pframe, { holes: [[[0.049, -0.006], [0.05, -0.024, 0.042, -0.028], [0.006, -0.028], [-0.003, -0.02], [-0.002, -0.006]]] }));
+    g.add(extrudeSide([[-0.016, -0.032], [-0.03, -0.114], [-0.068, -0.113], [-0.058, -0.032]], 0.0288, GM.pgrip, { bevel: 0.001 }));
     for (let i = 0; i < 3; i++) g.add(box(0.0275, 0.0018, 0.012, GM.bore, 0, 0.0025, 0.08 + i * 0.016));
     g.add(triggerAt(0.006, -0.004, GM.dark));
     g.add(box(0.0016, 0.0042, 0.016, GM.dark, -0.0142, 0.0135, 0.012), box(0.0016, 0.003, 0.009, GM.dark, -0.0142, 0.0115, 0.046));
     mag.add(extrudeSide([[-0.031, -0.035], [-0.033, -0.127], [-0.069, -0.127], [-0.059, -0.035]], 0.021, GM.dark));
-    mag.add(extrudeSide([[-0.032, -0.126], [-0.073, -0.125], [-0.075, -0.135], [-0.031, -0.136]], 0.027, GM.polymer));
+    mag.add(extrudeSide([[-0.032, -0.126], [-0.073, -0.125], [-0.075, -0.135], [-0.031, -0.136]], 0.027, GM.pframe));
     g.add(mag);
-    return { g, mag, slide, magDir: [0, -1, 0.3], view: { pos: [0.19, -0.17, -0.42], scale: 1.55, yaw: 0.22, pitch: 0.02, roll: -0.05 },
+    return { g, mag, slide, magDir: [0, -1, 0.3], view: { pos: [0.19, -0.17, -0.42], scale: 1.4, yaw: 0.1, pitch: 0.04, roll: -0.03 },
              muzzle: [0, 0.033, 0.146], eject: [0.014, 0.05, 0.03], shell: 'pistol', slideTravel: 0.028 };
   },
 
@@ -2865,13 +2907,14 @@ const GUN_MODELS = {
     g.add(lathe([[0.0175, -0.088], [0.0175, -0.075], [0.0, -0.075]], GM.alu, 0.032));
     g.add(extrudeSide([[-0.165, 0.052], [-0.29, 0.056], [-0.3, 0.05], [-0.305, -0.058], [-0.285, -0.065], [-0.205, -0.004], [-0.17, 0.012]], 0.04, GM.polymer));
     g.add(extrudeSide([[-0.3, 0.051], [-0.313, 0.051], [-0.318, -0.06], [-0.305, -0.059]], 0.043, GM.rubber, { bevel: 0.002 }));
-    // red-dot sight
-    g.add(box(0.022, 0.022, 0.034, GM.alu, 0, 0.068, 0.04));
-    g.add(lathe([[0.0165, 0.01], [0.019, 0.012], [0.019, 0.022], [0.017, 0.024], [0.017, 0.06], [0.019, 0.063], [0.019, 0.072], [0.0165, 0.074]], GM.alu, 0.097));
-    g.add(lens(0.0166, GM.glass, 0.097, 0.073, false), lens(0.0166, GM.glass, 0.097, 0.011, true));
-    g.add(ball(0.0011, GM.redDot, 0, 0.097, 0.0125));
-    const tur = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.009, 20), GM.knurl); tur.position.set(0, 0.119, -0.044); g.add(tur);
-    const tur2 = tur.clone(); tur2.rotation.z = Math.PI / 2; tur2.position.set(-0.021, 0.097, -0.044); g.add(tur2);
+    // 2.7: a scope (like the sniper's, a bit shorter) on two rings on the top rail
+    for (const u of [-0.02, 0.085]) { S27ring(g, u); }
+    g.add(lathe([[0.011, -0.075], [0.0185, -0.07], [0.019, -0.064], [0.019, -0.035], [0.0145, -0.022], [0.0135, -0.01], [0.0135, 0.09], [0.0165, 0.105],
+      [0.0225, 0.135], [0.0225, 0.165], [0.021, 0.168], [0.011, 0.169]], GM.scope, 0.089));
+    g.add(cylU(0.0198, 0.0198, -0.06, -0.044, 0.089, GM.knurl));
+    const tur = new THREE.Mesh(new THREE.CylinderGeometry(0.0095, 0.0095, 0.012, 24), GM.knurl); tur.position.set(0, 0.108, -0.04); g.add(tur);
+    const tur2 = tur.clone(); tur2.rotation.z = Math.PI / 2; tur2.position.set(-0.02, 0.089, -0.04); g.add(tur2);
+    g.add(lens(0.0205, GM.glass, 0.089, 0.168, false), lens(0.0175, GM.glass, 0.089, -0.074, true));
     return { g, mag, magDir: [0, -1, 0], view: { pos: [0.17, -0.205, -0.5], scale: 0.95, yaw: 0.09, pitch: 0.07, roll: -0.08 },
              muzzle: [0, 0.031, 0.57], eject: [0.013, 0.04, 0.06], shell: 'rifle' };
   },
@@ -2984,7 +3027,7 @@ const GUN_MODELS = {
     g.add(box(0.016, 0.054, 0.012, GM.dark, 0, 0, -0.004));
     g.add(cylU(0.0155, 0.0145, -0.13, -0.01, 0, GM.rubber, 0, 14));
     g.add(cylU(0.018, 0.018, -0.142, -0.128, 0, GM.dark, 0, 14));
-    return { g, knife: true, view: { pos: [0.17, -0.16, -0.4], scale: 1.5, yaw: 0.3, pitch: 0.28, roll: -0.25 }, muzzle: [0, 0, 0.19], eject: null };
+    return { g, knife: true, view: { pos: [0.16, -0.15, -0.42], scale: 1.25, yaw: 0.1, pitch: 1.15, roll: 0.12 }, muzzle: [0, 0, 0.19], eject: null };
   },
 
   rocket() {
@@ -3060,6 +3103,10 @@ const HM = (() => {
   const std = o => new THREE.MeshStandardMaterial(Object.assign({ envMap: gunEnv, envMapIntensity: 0.35, metalness: 0, side: THREE.DoubleSide }, o));
   return {
     skin: std({ color: 0xd59c78, roughness: 0.62 }),
+    // 2.7: tactical gloves, with hard knuckle pads and a wrist strap
+    glove: std({ color: 0x7a6548, roughness: 0.88, bumpMap: GT.stipple, bumpScale: 0.08 }),
+    pad: std({ color: 0x17181a, roughness: 0.5, metalness: 0.1, envMapIntensity: 0.8 }),
+    strap: std({ color: 0x3d4232, roughness: 0.9, bumpMap: GT.stipple, bumpScale: 0.25 }),
     sleeve: std({ color: 0x55603f, roughness: 0.95, bumpMap: GT.stipple, bumpScale: 0.25 }),
     cuff: std({ color: 0x3f4832, roughness: 0.95 }),
     watch: std({ color: 0x1d1f22, roughness: 0.4, metalness: 0.6, envMapIntensity: 1.2 }),
@@ -3112,24 +3159,27 @@ function buildHand(g, o) {
       for (const seg of [L * 0.44, L * 0.31, L * 0.25]) { th = Math.min(th + seg / rAvg, Math.PI + 1.35); pts.push(at(th, y - dir * 0.0012)); }
     }
     const k = i === 3 ? 0.88 : 1;
-    chain(g, pts, FR * k, FR * 0.82 * k, HM.skin);
+    chain(g, pts, FR * k * 1.06, FR * 0.86 * k, HM.glove);
+    // a hard pad over each knuckle
+    const kp = pts[0].clone(), kn = new THREE.Vector3(kp.x, 0, kp.z).normalize();
+    const pad = joint(kp.addScaledVector(kn, FR * 0.55), FR * 0.82 * k, HM.pad, 10); pad.scale.set(1, 0.7, 1); g.add(pad);
   }
   // palm: a thick curved pad round the back of the grip, from the thumb's root to the knuckles
   const yA = ys[0] + dir * (FR + 0.003), yB = ys[3] - dir * (FR + 0.016);
   const y0 = Math.min(yA, yB), y1 = Math.max(yA, yB);
   const ravg = (rx + rz) / 2, d = 0.024 / ravg, e = 0.007;
   const prof = [[1, y0 + e], [1 + d * 0.3, y0], [1 + d * 0.7, y0], [1 + d, y0 + e], [1 + d, y1 - e], [1 + d * 0.7, y1], [1 + d * 0.3, y1], [1, y1 - e], [1, y0 + e]];
-  const palm = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 14, -0.7, knuckle + 0.8), HM.skin);
+  const palm = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 14, -0.7, knuckle + 0.8), HM.glove);
   palm.scale.set(rx + 0.0008, 1, rz + 0.0008);
   g.add(palm);
   // thumb, with a fleshy pad joining it to the palm
   const yT = ys[0] - dir * 0.012;
-  chain(g, thumb.map((a, i) => at(a, yT + dir * thumbY[i], thumbOut)), 0.0118, 0.0088, HM.skin);
-  g.add(joint(at(-0.45, yT - dir * 0.012, 0.004), 0.015, HM.skin));
+  chain(g, thumb.map((a, i) => at(a, yT + dir * thumbY[i], thumbOut)), 0.0124, 0.0092, HM.glove);
+  g.add(joint(at(-0.45, yT - dir * 0.012, 0.004), 0.0155, HM.glove));
   // heel of the hand and the wrist
   const yMid = (ys[0] + ys[3]) / 2;
   const heel = at(0.2, yB + dir * 0.008, 0.012), wrist = at(0.2, yB - dir * 0.006, 0.034);
-  g.add(limb(heel, wrist, 0.021, 0.024, HM.skin, 12), joint(wrist, 0.024, HM.skin, 12));
+  g.add(limb(heel, wrist, 0.022, 0.025, HM.glove, 12), joint(wrist, 0.025, HM.glove, 12));
   return { wrist, palm: at(0.35, yMid, 0.014) };
 }
 
@@ -3138,14 +3188,14 @@ const TURN = Math.PI / 2;
 const ARM_POSES = {
   // knife: a fist round the handle, blade forward; the other hand stays out of sight
   knife: {
-    right: { c: [0, 0, 0.068], basis: [[0, 1, 0], [0, 0, 1], [1, 0, 0]], mirror: true, elbow: [0.06, -0.3, 0.3], hand: { rx: 0.016, rz: 0.016, top: -0.06, dir: -1 } },
+    right: { c: [0, 0, 0.068], basis: [[0, 1, 0], [0, 0, 1], [1, 0, 0]], mirror: true, elbow: [0.05, 0.1, 0.38], hand: { rx: 0.016, rz: 0.016, top: -0.06, dir: -1 } },
   },
   rocket: {
     right: { c: [0, -0.066, -0.049], rot: [-0.11, 0, 0], elbow: [0.1, -0.32, 0.25], trigger: [0, -0.022, -0.096], hand: { rx: 0.015, rz: 0.019, top: 0.02 } },
     left: { c: [0, -0.061, -0.293], rot: [0, 0, 0], mirror: true, elbow: [-0.2, -0.3, 0.0], hand: { rx: 0.015, rz: 0.017, top: 0.035 } },
   },
   pistol: {
-    view: { pos: [0.12, -0.11, -0.42] },
+    view: { pos: [0.12, -0.135, -0.44] },
     right: { c: [0, -0.072, 0.043], rot: [-0.148, 0, 0], elbow: [0.06, -0.3, 0.3], trigger: [0, -0.016, -0.012], hand: { rx: 0.0145, rz: 0.02, top: 0.03 } },
     left: { c: [0, -0.078, 0.043], rot: [-0.148, -1.3, 0], mirror: true, elbow: [-0.2, -0.3, 0.27],
             hand: { rx: 0.039, rz: 0.033, top: 0.02, thumb: [-0.55, -0.25, 0.05, 0.3], thumbY: [0, 0.016, 0.028, 0.036], thumbOut: 0.012 } },
@@ -3189,15 +3239,19 @@ function buildArm(rig, spec, left) {
   const W = h.wrist.applyMatrix4(frame.matrix), E = new THREE.Vector3(...spec.elbow).sub(base);
   const dir = E.clone().sub(W).normalize();
   const M = W.clone().lerp(E, 0.45), S = E.clone().addScaledVector(dir, 0.35).add(new THREE.Vector3(left ? -0.05 : 0.05, -0.15, 0.1));
-  box.add(limb(W, M, 0.025, 0.036, HM.skin, 16), joint(M, 0.036, HM.skin, 16));
-  box.add(limb(M.clone().addScaledVector(dir, -0.012), M.clone().addScaledVector(dir, 0.03), 0.05, 0.05, HM.cuff, 16));
+  // 2.7: sleeves down to the gloves (no bare forearm), a little thicker
+  box.add(limb(W, M, 0.034, 0.044, HM.sleeve, 16), joint(M, 0.044, HM.sleeve, 16));
+  box.add(limb(W.clone().addScaledVector(dir, 0.04), W.clone().addScaledVector(dir, 0.07), 0.037, 0.039, HM.cuff, 16));
+  box.add(limb(W.clone().addScaledVector(dir, -0.006), W.clone().addScaledVector(dir, 0.045), 0.029, 0.031, HM.glove, 16));
+  box.add(limb(W.clone().addScaledVector(dir, 0.022), W.clone().addScaledVector(dir, 0.038), 0.0325, 0.0325, HM.strap, 16));
+  box.add(limb(M.clone().addScaledVector(dir, -0.006), M.clone().addScaledVector(dir, 0.012), 0.047, 0.048, HM.sleeve, 16));
   box.add(limb(M, E, 0.046, 0.052, HM.sleeve, 16), joint(E, 0.052, HM.sleeve, 16), limb(E, S, 0.052, 0.06, HM.sleeve, 16));
   if (left) {
     // wristwatch
-    const a = W.clone().addScaledVector(dir, 0.035), b = W.clone().addScaledVector(dir, 0.05);
-    box.add(limb(a, b, 0.0285, 0.029, HM.watch, 16));
+    const a = W.clone().addScaledVector(dir, 0.06), b = W.clone().addScaledVector(dir, 0.075);
+    box.add(limb(a, b, 0.031, 0.0315, HM.watch, 16));
     const face = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.006, 20), HM.face);
-    face.position.copy(a.clone().lerp(b, 0.5)).add(new THREE.Vector3(left ? -0.026 : 0.026, 0.006, 0));
+    face.position.copy(a.clone().lerp(b, 0.5)).add(new THREE.Vector3(left ? -0.029 : 0.029, 0.006, 0));
     face.rotation.z = Math.PI / 2;
     box.add(face);
   }
@@ -4345,7 +4399,7 @@ canvas.addEventListener('mousedown', e => {
   if (state !== 'playing') return;
   if (!isLocked()) lockMouse();
   if (e.button === 0) { mouseDown = true; shoot(); }
-  if (e.button === 2 && weapon === WEAPONS.sniper && reloading <= 0) zoomed = true;
+  if (e.button === 2 && (weapon === WEAPONS.sniper || weapon === WEAPONS.rifle) && reloading <= 0) zoomed = true; // 2.7: the rifle has a scope too
 });
 addEventListener('mouseup', e => {
   if (e.button === 0) mouseDown = false;
@@ -4390,7 +4444,7 @@ touchButton('tFire', e => { TC.fireX = e.clientX; TC.fireY = e.clientY; mouseDow
   e => { lookBy((e.clientX - TC.fireX) * TOUCH_LOOK, (e.clientY - TC.fireY) * TOUCH_LOOK); TC.fireX = e.clientX; TC.fireY = e.clientY; });
 touchButton('tJump', () => { keys.Space = true; }, () => { keys.Space = false; });
 touchButton('tReload', () => reload());
-touchButton('tAim', () => { if (weapon === WEAPONS.sniper && reloading <= 0) zoomed = !zoomed; });
+touchButton('tAim', () => { if ((weapon === WEAPONS.sniper || weapon === WEAPONS.rifle) && reloading <= 0) zoomed = !zoomed; });
 touchButton('tUse', () => { keys.KeyE = true; }, () => { keys.KeyE = false; });
 touchButton('tTurret', () => deployTurret());
 touchButton('tPause', () => pause());
@@ -4445,7 +4499,7 @@ function updateTouchUI() {
     TC.wkey = key;
     $('tWeapons').replaceChildren(...list.map(k => { const d = document.createElement('div'); d.dataset.w = k; d.textContent = WEAPONS[k].short || WEAPONS[k].name; d.classList.toggle('sel', k === weaponKey); return d; }));
   }
-  $('tAim').hidden = weapon !== WEAPONS.sniper; $('tAim').classList.toggle('on', zoomed);
+  $('tAim').hidden = weapon !== WEAPONS.sniper && weapon !== WEAPONS.rifle; $('tAim').classList.toggle('on', zoomed);
   $('tUse').hidden = gameMode !== 'campaign' && !(gameMode === 'mp' && window.mpRules && mpRules.cs());
   $('tTurret').hidden = !ownsTurret() || (gameMode === 'mp' && !(window.mpRules && mpRules.turret()));
   $('tReload').hidden = !!weapon.melee;
@@ -4776,8 +4830,11 @@ function animateRig(dt, rprog) {
   if (rig.knife) {
     // the slash: a quick arc across the screen and back
     const k = slashT > 0 ? 1 - slashT / 0.32 : 0, sw = Math.sin(k * Math.PI), v = rig.view;
-    gunModel.rotation.set((v.pitch || 0) - sw * 0.6, v.yaw + slashDir * (0.9 - k * 1.8) * sw, (v.roll || 0) + slashDir * sw * 0.9);
-    gunModel.position.set(-slashDir * (0.5 - k) * sw * 0.22, sw * 0.03, -sw * 0.12);
+    // 2.7: a poke: the blade tips forward from upright and the hand stabs straight out ahead, then comes back up.
+    // Only the pitch changes, so the wrist never twists.
+    const out = k < 0.35 ? smooth(k / 0.35) : 1 - smooth((k - 0.35) / 0.65);
+    gunModel.rotation.set((v.pitch || 0) - out * 0.55, v.yaw - out * 0.06, (v.roll || 0) * (1 - out));
+    gunModel.position.set(-out * 0.08, out * 0.05, -out * 0.3);
   }
   if (rig.coils) {
     const t = clock.elapsedTime;
@@ -4840,7 +4897,7 @@ function tick() {
     if (state === 'dead') { deathT += dt; const k = Math.min(1, deathT / 0.9); y = player.pos.y + EYE - k * k * 1.2; roll = k * 0.45; }
     camera.position.set(player.pos.x + (Math.random() - .5) * sh * 0.3, y + (Math.random() - .5) * sh * 0.3, player.pos.z + (Math.random() - .5) * sh * 0.3);
     camera.rotation.set(player.pitch + kick * 0.03, player.yaw, roll);
-    const targetFov = zoomed ? settings.fov / 4 : settings.fov;
+    const targetFov = zoomed ? settings.fov / (weapon === WEAPONS.rifle ? 2.6 : 4) : settings.fov; // 2.7: the rifle's scope zooms less than the sniper's
     curFov += (targetFov - curFov) * Math.min(1, dt * 15);
     if (Math.abs(camera.fov - curFov) > 0.01) { camera.fov = curFov; camera.updateProjectionMatrix(); }
     const scoped = zoomed && curFov < settings.fov / 2;
@@ -6320,13 +6377,15 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.6.3';
-const NEWS_VERSION = '2.6.2'; // the update the "What's new" popup is about (small fix updates don't get one)
+const VERSION = '2.7';
+const NEWS_VERSION = '2.7'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
 
 renderAvatars();
+$('newsPast').addEventListener('click', () => { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); openSub('notes'); backTo.notes = 'main'; });
+for (const im of document.querySelectorAll('img[data-av]')) { const a = AVATARS.find(x => x.key === im.dataset.av); if (a && a.url) im.src = a.url; } // 2.7: gun pictures in the patch notes
 applyQuality();
 resetGame();
 function startupMenus() { if (profile.name) { showMenu('main'); maybeShowNews(); } else openNameMenu(true); }
