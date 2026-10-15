@@ -27,14 +27,14 @@ window.GAMES = [
     id: 'gamble-your-life-away',
     title: 'Gamble Your Life Away',
     category: 'Casino',
-    tagline: 'A 3D casino with 24 games and $50,000. Just do not end up in debt.',
-    description: 'Walk into a 3D casino with $50,000 and try 24 games: slots, roulette, blackjack, baccarat, craps, video poker, plinko, crash, mines, horse racing, keno, scratch cards and more. The house lends you a little credit, but end a round in debt and the casino kills you.',
+    tagline: 'A 3D casino with 24 games and $80,000. Just do not end up in debt.',
+    description: 'Walk into a 3D casino with $80,000 and try 24 games: slots, roulette, blackjack, baccarat, craps, video poker, plinko, crash, mines, horse racing, keno, scratch cards and more. The house lends you a little credit, but end a round in debt and the casino kills you.',
     controls: 'Mouse or touch',
     keys: [['Drag', 'Look around the casino'], ['Click a game', 'Sit down and play'], ['Chips', 'Pick your bet'], ['Esc', 'Back to the casino floor']],
     path: 'gamble-your-life-away/index.html',
     thumb: 'gamble-your-life-away/thumb.svg',
     added: '2026-10-15T10:15:00+11:00',
-    updated: '2026-10-15T11:56:00+11:00',
+    updated: '2026-10-15T12:04:00+11:00',
     stat() { const s = readSave('gambleLifeSave', true); return s && s.rounds ? 'Richest ' + '$' + Math.round(s.peak).toLocaleString('en-US') : null; },
   },
   {
@@ -148,6 +148,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-15', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.0.4: every game now wins 40% of the time, you start with $80,000, and the stress meter moved to the top right.' },
   { date: '2026-10-15', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.0.3: the house now wins 3 rounds in 4, debt gets you shot by the casino worker, and a new stress meter: buy a pack of cigarettes to calm down.' },
   { date: '2026-10-15', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.0.2: hit exactly $0 and the casino gives you one last 50/50 spin at the roulette wheel. Plus a rebuilt roulette wheel.' },
   { date: '2026-10-15', game: 'blockcraft', text: 'Blockcraft 2.0: the Nether and the End. Nether portals, fortresses, bastions, strongholds, the Ender Dragon and elytra, every Minecraft mob, new biomes (cherry grove, pale garden, swamp, jungle, badlands and more), the deep dark with ancient cities and the warden, witch huts, desert pyramids, igloos, and the new sulfur caves. Old worlds keep working.' },

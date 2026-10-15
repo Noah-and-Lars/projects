@@ -65,8 +65,8 @@
   #money.up { animation: up .6s; } #money.down { animation: down .6s; }
   @keyframes up { 30% { box-shadow: 0 0 40px rgba(61, 220, 132, .7); transform: scale(1.06); } }
   @keyframes down { 30% { box-shadow: 0 0 40px rgba(208, 40, 58, .7); transform: scale(.97); } }
-  #delta { position: fixed; top: 132px; left: 50%; transform: translateX(-50%); z-index: 5; font-family: var(--display); font-size: 26px; opacity: 0; transition: opacity .3s, transform .9s; pointer-events: none; text-shadow: 0 2px 6px #000; }
-  #top { flex-wrap: nowrap; } #stressBox { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 999px; background: rgba(20, 10, 12, .85); border: 1px solid var(--line); font-weight: 800; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  #delta { position: fixed; top: 88px; left: 50%; transform: translateX(-50%); z-index: 5; font-family: var(--display); font-size: 26px; opacity: 0; transition: opacity .3s, transform .9s; pointer-events: none; text-shadow: 0 2px 6px #000; }
+  #top { flex-wrap: nowrap; } #top[hidden] ~ #stressBox { display: none; } #stressBox { position: fixed; top: 14px; right: 14px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 999px; background: rgba(20, 10, 12, .85); border: 1px solid var(--line); font-weight: 800; font-size: 13px; color: var(--muted); white-space: nowrap; }
   #stressBox i { display: block; width: 110px; height: 9px; border-radius: 6px; background: rgba(255, 255, 255, .1); overflow: hidden; } #stressBox i b { display: block; height: 100%; width: 0; background: var(--green); transition: width .5s, background .5s; }
   #stressBox.hi { border-color: #ff4d5e; color: #ffb3b9; animation: pulse 1s ease-in-out infinite; } @keyframes pulse { 50% { box-shadow: 0 0 22px rgba(255, 77, 94, .55); } }
   #bSmoke { border: 0; border-radius: 999px; padding: 5px 10px; font-weight: 900; font-size: 13px; background: rgba(255, 255, 255, .1); color: var(--fg); cursor: pointer; } #bSmoke:hover { background: rgba(255, 255, 255, .2); }
@@ -187,6 +187,7 @@
     .chip { width: 40px; height: 40px; font-size: 11px; }
     .gbtn { padding: 9px 12px; font-size: 14px; }
     #hint { font-size: 13px; white-space: normal; text-align: center; width: 86%; }
+    #stressBox { top: auto; bottom: auto; top: 76px; right: 10px; } #stressBox i { width: 70px; }
   }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
@@ -195,10 +196,10 @@
 <canvas id="c"></canvas>
 <div id="top" hidden>
   <button class="tbtn" id="bList">🎰 Games</button>
-  <div id="money"><small>Your money</small><b id="moneyV">$50,000</b></div>
+  <div id="money"><small>Your money</small><b id="moneyV">$80,000</b></div>
   <button class="tbtn" id="bMenu">☰ Menu</button>
-  <div id="stressBox"><span>😰 Stress</span><i><b id="stressFill"></b></i><button id="bSmoke" title="Buy a pack of cigarettes and have a smoke">🚬 $100</button></div>
 </div>
+<div id="stressBox"><span>😰 Stress</span><i><b id="stressFill"></b></i><button id="bSmoke" title="Buy a pack of cigarettes and have a smoke">🚬 $100</button></div>
 <div id="stressFx"></div>
 <div id="delta"></div>
 <div id="hint" hidden>Drag to look around · click a game to sit down</div>
@@ -219,12 +220,12 @@
   <div class="menu" id="m-main">
     <div class="chips-deco"><i style="background:#b4232f"></i><i style="background:#1f6fd1"></i><i style="background:#11804a"></i><i style="background:#1d1d22"></i></div>
     <h1 class="logo">Gamble<span>Your Life Away</span></h1>
-    <p id="mainSub">24 casino games. $50,000 to start. Don’t end up in debt.</p>
+    <p id="mainSub">24 casino games. $80,000 to start. Don’t end up in debt.</p>
     <button class="btn" id="bPlay">Play</button>
     <button class="btn sec" data-go="stats">Your stats</button>
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.0.3 · Patch notes</button>
+    <button class="link" data-go="notes">v1.0.4 · Patch notes</button>
   </div>
 
   <div class="menu wide" id="m-list">
@@ -246,15 +247,15 @@
   <div class="menu" id="m-stats">
     <h2>Your stats</h2>
     <div class="stats" id="statsBox"></div>
-    <button class="btn danger" id="bReset">Start over with $50,000</button>
+    <button class="btn danger" id="bReset">Start over with $80,000</button>
     <button class="btn sec" data-go="back">Back</button>
   </div>
 
   <div class="menu" id="m-how">
     <h2>How to play</h2>
-    <div class="box"><p>You walk in with <b>$50,000</b>. Drag to look around the casino floor and click any game to sit down (or open the <b>Games</b> list).</p>
+    <div class="box"><p>You walk in with <b>$80,000</b>. Drag to look around the casino floor and click any game to sit down (or open the <b>Games</b> list).</p>
       <p style="margin-top:8px">Pick your chip at the bottom, then play. Every game has a <b>How it works</b> button with the rules and payouts.</p>
-      <p style="margin-top:8px">The house wins about <b>3 rounds out of 4</b>. It will let you bet up to <b>$10,000 more than you have</b>, but end a round <b>in debt</b> and the casino worker ties you up and shoots you. Hit <b>exactly $0</b> and you get one last 50/50 spin at the roulette wheel.</p>
+      <p style="margin-top:8px">You win about <b>4 rounds in 10</b>. It will let you bet up to <b>$10,000 more than you have</b>, but end a round <b>in debt</b> and the casino worker ties you up and shoots you. Hit <b>exactly $0</b> and you get one last 50/50 spin at the roulette wheel.</p>
       <p style="margin-top:8px">Losing raises your <b>stress</b>. Buy a pack of cigarettes for $100 to calm down. If your stress maxes out, you can’t bet again until you’ve had a smoke.</p></div>
     <button class="btn sec" data-go="back">Back</button>
   </div>
@@ -270,18 +271,25 @@
   </div>
 
   <div class="menu wide" id="m-notes">
-    <div class="hero"><div class="ribbon">GRAND OPENING</div><h1>v1.0<span>Welcome to the casino</span></h1><p>24 games under one roof, $50,000 in your pocket, and a house that never forgives a debt.</p>
+    <div class="hero"><div class="ribbon">GRAND OPENING</div><h1>v1.0<span>Welcome to the casino</span></h1><p>24 games under one roof, $80,000 in your pocket, and a house that never forgives a debt.</p>
       <div class="dice"><i>7</i><i>♠</i></div>
       <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:14%;top:76%;animation-delay:1.5s"></span></div>
     <div class="feat">
       <div><i>🎰</i><span><b>24 games</b>Slots, roulette, blackjack, poker, craps, plinko, crash, mines, horse racing and plenty more.</span></div>
       <div><i>🏛️</i><span><b>A 3D casino</b>Look around a full casino floor, then sit down at any table or machine.</span></div>
-      <div><i>💵</i><span><b>$50,000 to start</b>Pick your chips from $100 up to $25,000, or go all in.</span></div>
+      <div><i>💵</i><span><b>$80,000 to start</b>Pick your chips from $100 up to $25,000, or go all in.</span></div>
       <div><i>☠️</i><span><b>No debts allowed</b>Bet on the house’s credit if you dare. End a round in debt and the casino kills you.</span></div>
       <div><i>📊</i><span><b>Your stats</b>Richest you’ve been, biggest win, rounds played and how many times the casino got you.</span></div>
       <div><i>🎷</i><span><b>Lounge music</b>A smooth jazz loop while you lose everything.</span></div>
     </div>
     <div class="box notes">
+      <h3>v1.0.4 <span>Better odds</span></h3>
+      <ul>
+        <li>Every game now wins 40% of the time and loses 60%, on every machine and table and every bet, including the slot machines, Keno, Scratch Cards and Pick 3. What you see is still exactly what you’re paid.</li>
+        <li>You now start with $80,000.</li>
+        <li>The stress meter moved to the top right corner.</li>
+        <li>Smoking: no more “Ahh…”. After your drags you just say “Much better. Time to gamble.”</li>
+      </ul>
       <h3>v1.0.3 <span>The house always wins</span></h3>
       <ul>
         <li>Go into debt and the casino worker now takes you to the roulette wheel, ties your hands and shoots you: no last spin, just “The house always wins.” Game over, back to the menu with $50,000. (The bouncers are retired.)</li>
@@ -330,7 +338,7 @@
     <h2 style="color:#ff6b6b">The casino got you</h2>
     <p id="deadText"></p>
     <div class="stats" id="deadStats"></div>
-    <button class="btn" id="bAgain">Start over with $50,000</button>
+    <button class="btn" id="bAgain">Start over with $80,000</button>
   </div>
 </div>
 <script>
@@ -356,9 +364,10 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.f
 const weighted = list => { let r = Math.random() * list.reduce((s, x) => s + x.w, 0); for (const x of list) { r -= x.w; if (r <= 0) return x; } return list[list.length - 1]; };
 
 // ---------- save ----------
-const START = 50000, CREDIT = 10000, VERSION = '1.0.3', SKEY = 'gambleLifeSave';
+const START = 80000, CREDIT = 10000, VERSION = '1.0.4', SKEY = 'gambleLifeSave';
 const save = Object.assign({ money: START, peak: START, rounds: 0, wins: 0, biggest: 0, deaths: 0, played: {}, bet: 1000, stress: 0, seenVersion: '', volume: 0.7, music: true, quality: 'high' },
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { return {}; } })());
+if (!save.rounds && save.money === 50000) save.money = START; // never played before 1.0.4: start with the new amount
 let wiped = false;
 function store() { if (wiped) return; try { localStorage.setItem(SKEY, JSON.stringify(save)); } catch (e) {} }
 
@@ -488,14 +497,13 @@ async function rollDice(dice, values, spots, { from = [1.4, 1.5, 0.6], dur = 1.1
     inn.rotation.x = fx + st[i][0] * (1 - e); inn.rotation.z = fz + st[i][2] * (1 - e); inn.rotation.y = st[i][1] * (1 - e); }); });
   dice.forEach(d => { d.rotation.y = rand(-0.5, 0.5); }); Sound.play('dice'); }
 
-// ---------- the house edge: you win at most 1 round in 4 ----------
-// The outcome is picked before anything animates, so what you see is always what you're paid.
-const WIN_RATE = 0.25;
-function rigged(gen, isWin, samples = 300) { let w = 0; for (let i = 0; i < samples; i++) if (isWin(gen())) w++; const p = w / samples;
-  let o = gen(); if (!isWin(o) || p <= WIN_RATE || Math.random() < WIN_RATE / p) return o;
-  for (let i = 0; i < 500; i++) { o = gen(); if (!isWin(o)) return o; } return o; }
-// one step of a climb (a guess, a tile, a door) goes your way at most 1 time in 4
-const riggedStep = p => Math.random() < Math.min(p, WIN_RATE);
+// ---------- the odds: every game, every bet wins 40% of the time and loses 60% ----------
+// The result is decided first (win or lose), then a natural outcome of that kind is drawn and animated,
+// so what you see is always exactly what you're paid.
+const WIN_RATE = 0.4;
+function rigged(gen, isWin) { const want = Math.random() < WIN_RATE; let o = gen(); for (let i = 0; i < 4000 && isWin(o) !== want; i++) o = gen(); return o; }
+// one step of a climb (a guess, a tile, a door) goes your way 40% of the time
+const riggedStep = () => Math.random() < WIN_RATE;
 
 // ---------- the casino state ----------
 const GAMES = [], STATIONS = [];
@@ -822,7 +830,7 @@ defGame({ id: 'poker', name: 'Video Poker', icon: '♠️', type: 'machine', blu
     await Promise.all(this.cards.map((m, i) => this.hideCard(i))); this.hand = []; for (let i = 0; i < 5; i++) { this.hand.push(this.deck.pop()); await this.showCard(i, this.hand[i]); }
     const r = pokerRank(this.hand); this.drawPay(r); msg(r ? `You have ${VP.find(x => x[0] === r)[1].toLowerCase()}. Hold and draw.` : 'Pick the cards to hold, then draw.'); }); },
   draw() { return run(async () => { const pays = h => { const r = VP.find(x => x[0] === pokerRank(h)); return r ? r[2] : 0; };
-    const fin = rigged(() => { const dk = shuffle([...this.deck]); return this.hand.map((c, i) => this.held[i] ? c : dk.pop()); }, h => pays(h) > 1, 200);
+    const fin = rigged(() => { const dk = shuffle([...this.deck]); return this.hand.map((c, i) => this.held[i] ? c : dk.pop()); }, h => pays(h) > 1);
     for (let i = 0; i < 5; i++) if (!this.held[i]) { await this.hideCard(i); this.hand[i] = fin[i]; await this.showCard(i, this.hand[i]); }
     const r = pokerRank(this.hand), row = VP.find(x => x[0] === r); this.drawPay(r); this.held = [false, false, false, false, false]; this.showHeld(); settle(row ? this.put * row[2] : 0, this.put, row ? row[1] + '!' : 'Nothing.'); }); } });
 
@@ -845,7 +853,7 @@ defGame({ id: 'keno', name: 'Keno', icon: '🔢', type: 'machine', blurb: 'Pick 
   paint() { this.cells.forEach((b, i) => { const n = i + 1; b.className = 'cell' + (this.drawn.includes(n) ? (this.picks.has(n) ? ' hit' : ' miss') : this.picks.has(n) ? ' on' : ''); });
     const k = this.picks.size; this.pt.innerHTML = k ? `Pay table for ${k} pick${k > 1 ? 's' : ''}: ` + Object.entries(KENO_PAY[k]).map(([h, m]) => `<b>${h}</b> hit${h > 1 ? 's' : ''} ${m}×`).join(' · ') : 'Pick numbers to see the pay table.'; },
   play() { return run(async () => { const k = this.picks.size; if (!k) { msg('Pick at least one number first.', 'bad'); return; } const b = bet(); if (!stake(b)) return;
-    this.drawn = []; this.paint(); this.draw([]); this.mixing = true; const pool = rigged(() => shuffle([...Array(40)].map((_, i) => i + 1)).slice(0, 10), pl => (KENO_PAY[k][pl.filter(n => this.picks.has(n)).length] || 0) > 1, 200);
+    this.drawn = []; this.paint(); this.draw([]); this.mixing = true; const pool = rigged(() => shuffle([...Array(40)].map((_, i) => i + 1)).slice(0, 10), pl => (KENO_PAY[k][pl.filter(n => this.picks.has(n)).length] || 0) > 1);
     for (const n of pool) { await wait(0.38); this.drawn.push(n); this.draw(this.drawn); this.paint(); Sound.play(this.picks.has(n) ? 'ding' : 'tick'); }
     this.mixing = false; const hits = pool.filter(n => this.picks.has(n)).length, m = KENO_PAY[k][hits] || 0; settle(b * m, b, `${hits} of your ${k} came up.`); }); },
   update(dt) { if (!this.balls) return; const sp = this.mixing ? 2.2 : 0.25, c = this.dome.position; for (const b of this.balls) { b.position.addScaledVector(b.userData.v, dt * sp); const d = b.position.clone().sub(c); if (d.length() > 0.34) { d.normalize(); b.userData.v.reflect(d).multiplyScalar(1); b.position.copy(c).addScaledVector(d, 0.34); } if (!this.mixing) b.userData.v.y -= dt * 2; } } });
@@ -887,7 +895,7 @@ defGame({ id: 'crash', name: 'Crash', icon: '🚀', type: 'machine', blurb: 'Cas
     c.font = "700 30px 'Barlow', Arial"; c.fillStyle = '#9fe8c2'; c.textAlign = 'left'; c.fillText('Last: ' + this.hist.map(x => x.toFixed(2) + '×').join('  '), 24, 34); }); },
   enter() { buildBets(); const c = ctl(); this.bGo = btn(c, '🚀 LAUNCH', () => this.launch(), 'go'); this.bOut = btn(c, '💰 CASH OUT', () => this.cashOut(), 'grn'); this.sync(); msg('Launch, then cash out before it crashes.'); },
   sync() { const f = !!this.flying; this.bGo.disabled = f || roundOpen; this.bOut.disabled = !f; },
-  launch() { return run(async () => { const b = bet(); if (!stake(b)) return; roundOpen = true; this.put = b; this.cp = Math.random() < 1 - WIN_RATE ? 1 + randi(0, 7) / 100 : Math.max(1.1, Math.floor(100 * 0.97 / (1 - Math.random())) / 100); this.t = 0; this.m = 1; this.flying = true; this.flame.visible = true; }); },
+  launch() { return run(async () => { const b = bet(); if (!stake(b)) return; roundOpen = true; this.put = b; this.cp = Math.random() >= WIN_RATE ? 1 + randi(0, 7) / 100 : Math.max(1.1, Math.floor(100 * 0.97 / (1 - Math.random())) / 100); this.t = 0; this.m = 1; this.flying = true; this.flame.visible = true; }); },
   cashOut() { if (!this.flying) return; this.flying = false; this.flame.visible = false; const m = this.m; this.hist.unshift(this.cp); this.hist.length = Math.min(6, this.hist.length); settle(this.put * m, this.put, `Cashed out at ${m.toFixed(2)}× (it would have crashed at ${this.cp.toFixed(2)}×).`); this.land(); this.sync(); },
   land() { const r = this.rocket, y0 = r.position.y; tween(0.6, k => { r.position.y = lerp(y0, 1.12, k); r.rotation.z = 0; }); },
   update(dt) { if (!this.rocket) return; if (this.flying) { this.t += dt; this.m = Math.exp(0.11 * this.t); if (Math.random() < 0.3) Sound.play('rocket'); this.flame.scale.set(0.25 + Math.random() * 0.1, 0.4 + Math.random() * 0.2, 1);
@@ -981,7 +989,7 @@ defGame({ id: 'shell', name: 'Shell Game', icon: '🥤', type: 'table', blurb: '
       Sound.play('tick'); await tween(d, k => { const e = ease(k); A.position.x = lerp(xa, xb, e); B.position.x = lerp(xb, xa, e); A.position.z = 0.1 + Math.sin(k * Math.PI) * 0.25; B.position.z = 0.1 - Math.sin(k * Math.PI) * 0.25; });
       A.userData.slot = bb; B.userData.slot = a; }
     roundOpen = true; msg('Which cup has the ball?'); }); },
-  choose(i) { return run(async () => { const c = this.cupAt(i); if (c === this.ballCup && Math.random() >= WIN_RATE) this.ballCup = pick(this.cups.filter(x => x !== c)); const win = c === this.ballCup; this.ball.position.x = this.ballCup.position.x; this.ball.visible = true; await this.lift(c, true); if (!win) await this.lift(this.ballCup, true);
+  choose(i) { return run(async () => { const c = this.cupAt(i); this.ballCup = Math.random() < WIN_RATE ? c : pick(this.cups.filter(x => x !== c)); const win = c === this.ballCup; this.ball.position.x = this.ballCup.position.x; this.ball.visible = true; await this.lift(c, true); if (!win) await this.lift(this.ballCup, true);
     settle(win ? this.put * 2.85 : 0, this.put, win ? 'Found it!' : 'Wrong cup.'); await wait(0.6); this.cups.forEach(cc => this.lift(cc, false)); this.ball.visible = false; }); } });
 
 // ---------- dragon tiger ----------
@@ -1017,7 +1025,7 @@ defGame({ id: 'tower', name: 'Tower', icon: '🗼', type: 'machine', blurb: 'Cli
   sync() { const open = roundOpen && cur === this; this.bGo.disabled = open; this.dB.forEach(b => b.disabled = !open); this.bCash.disabled = !open || !this.floor; },
   reset3d() { this.doors.flat().forEach(m => m.material = mat('#5a4a8a', { roughness: 0.4 })); this.climber.position.set(0, 0.2, 0.32); },
   start() { return run(async () => { const b = bet(); if (!stake(b)) return; roundOpen = true; this.put = b; this.floor = 0; this.trap = [...Array(8)].map(() => randi(0, 2)); this.reset3d(); msg(this.status()); }); },
-  pickDoor(d) { return run(async () => { const f = this.floor; if (riggedStep(2 / 3)) { if (this.trap[f] === d) this.trap[f] = (d + randi(1, 2)) % 3; } else this.trap[f] = d; const safe = this.trap[f] !== d, m = this.doors[f][d], c = this.climber, x0 = c.position.x, y0 = c.position.y;
+  pickDoor(d) { return run(async () => { const f = this.floor; if (riggedStep()) { if (this.trap[f] === d) this.trap[f] = (d + randi(1, 2)) % 3; } else this.trap[f] = d; const safe = this.trap[f] !== d, m = this.doors[f][d], c = this.climber, x0 = c.position.x, y0 = c.position.y;
     await tween(0.35, k => { c.position.x = lerp(x0, m.position.x, k); c.position.y = lerp(y0, m.position.y, k) + Math.sin(k * Math.PI) * 0.15; });
     this.doors[f].forEach((o, i) => o.material = mat(i === this.trap[f] ? '#b4232f' : '#1f9a63', { roughness: 0.4, emissive: i === this.trap[f] ? '#5a0a10' : '#0a3a20' }));
     if (!safe) { Sound.play('boom'); await tween(0.5, k => c.position.y = lerp(m.position.y, 0.2, k * k)); return settle(0, this.put, `Trap door on floor ${f + 1}.`); }
@@ -1036,7 +1044,7 @@ defGame({ id: 'pick3', name: 'Pick 3 Lottery', icon: '🎱', type: 'machine', bl
     this.out = []; plane(1.6, 0.3, textTex('PICK 3', { w: 512, h: 96, size: 70, color: '#ffe9a8', glow: '#ffb02e' }), 0, 0.75, 0.46, g); this.digits = this.digits || [1, 2, 3]; },
   enter() { buildBets(); const c = ctl(); this.dEl = this.digits.map((d, i) => { const w = el('div', 'ctl', null, c); btn(w, '−', () => { this.digits[i] = (this.digits[i] + 9) % 10; this.dEl[i].textContent = this.digits[i]; }, 'small'); const s = el('b', '', String(d), w); s.style.cssText = 'font-family:var(--display);font-size:28px;width:28px;text-align:center'; btn(w, '+', () => { this.digits[i] = (this.digits[i] + 1) % 10; this.dEl[i].textContent = this.digits[i]; }, 'small'); return s; });
     btn(c, '🎱 DRAW', () => this.draw(), 'go'); msg('Pick three digits and draw.'); },
-  draw() { return run(async () => { const b = bet(); if (!stake(b)) return; this.out.forEach(o => this.g.remove(o)); this.out = []; this.mixing = true; const r = rigged(() => [randi(0, 9), randi(0, 9), randi(0, 9)], r => this.digits.every((d, i) => d === r[i]) || [...this.digits].sort().join() === [...r].sort().join(), 100);
+  draw() { return run(async () => { const b = bet(); if (!stake(b)) return; this.out.forEach(o => this.g.remove(o)); this.out = []; this.mixing = true; const r = rigged(() => [randi(0, 9), randi(0, 9), randi(0, 9)], r => this.digits.every((d, i) => d === r[i]) || [...this.digits].sort().join() === [...r].sort().join());
     for (let i = 0; i < 3; i++) { await wait(0.7); const m = mesh(new THREE.SphereGeometry(0.075, 16, 12), this.mats[r[i]], -0.4, 1.9, 0, this.g); this.out.push(m); Sound.play('ding');
       await tween(0.6, k => { m.position.set(lerp(-0.4, this.tubes[i], k), lerp(1.95, 1.15, k * k) + Math.sin(k * Math.PI) * 0.3, lerp(0, 0.2, k)); m.rotation.y = k * 6; }); m.rotation.set(0, -Math.PI / 2, 0); }
     this.mixing = false; const p = this.digits, exact = p.every((d, i) => d === r[i]), any = !exact && [...p].sort().join() === [...r].sort().join();
@@ -1147,7 +1155,7 @@ $('bPlay').onclick = async () => { Sound.init(); Music.start(); Sound.play('chip
 $('bMenu').onclick = () => { Sound.play('click'); if (mode === 'game' && (busy || roundOpen)) { msg('Finish this round first.', 'bad'); return; } if (mode === 'game') { mode = 'paused'; } showMenu('pause'); };
 $('bList').onclick = () => { Sound.play('click'); if (mode === 'game' && (busy || roundOpen)) { msg('Finish this round first.', 'bad'); return; } if (mode === 'game') mode = 'paused'; showMenu('list'); };
 $('bTitle').onclick = () => { Sound.play('click'); if (cur) { if (cur.leave) cur.leave(); cur = null; $('gp').hidden = true; scene.userData.spot.intensity = 0; } toTitle(); };
-function toTitle() { mode = 'title'; $('top').hidden = true; $('hint').hidden = true; menuStack = []; showMenu('main'); mode = 'title'; $('mainSub').textContent = save.money !== START || save.rounds ? `You have ${fmt(save.money)}. Don’t end up in debt.` : '24 casino games. $50,000 to start. Don’t end up in debt.'; $('bPlay').textContent = save.rounds ? 'Continue' : 'Play'; }
+function toTitle() { mode = 'title'; $('top').hidden = true; $('hint').hidden = true; menuStack = []; showMenu('main'); mode = 'title'; $('mainSub').textContent = save.money !== START || save.rounds ? `You have ${fmt(save.money)}. Don’t end up in debt.` : `24 casino games. ${fmt(START)} to start. Don’t end up in debt.`; $('bPlay').textContent = save.rounds ? 'Continue' : 'Play'; }
 function fillList() { const L = $('list'); L.innerHTML = ''; root0.forEach(g => { const b = el('button', '', `<i>${g.icon}</i><b>${g.name}</b><span>${g.blurb}</span>`, L); b.onclick = () => { Sound.play('click'); hideMenus(); if (cur) { cur.leave && cur.leave(); cur = null; } $('top').hidden = false; mode = 'floor'; enterGame(g); }; }); }
 function fillStats() { const fav = Object.entries(save.played).sort((a, b) => b[1] - a[1])[0], fg = fav && GAMES.find(g => g.id === fav[0]);
   $('statsBox').innerHTML = [['Money', fmt(save.money)], ['Richest ever', fmt(save.peak)], ['Biggest win', fmt(save.biggest)], ['Rounds played', save.rounds.toLocaleString()], ['Rounds won', save.wins.toLocaleString()], ['Killed by the casino', save.deaths], ['Favourite game', fg ? fg.name : '–'], ['Games tried', Object.keys(save.played).length + ' / ' + GAMES.length]].map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join(''); }
@@ -1155,7 +1163,7 @@ function fillSettings() { $('vol').value = Math.round(save.volume * 100); docume
 $('vol').oninput = e => { save.volume = e.target.value / 100; Sound.setVolume(save.volume); store(); };
 document.querySelectorAll('#musSeg button').forEach(b => b.onclick = () => { save.music = b.dataset.v === 'on'; store(); if (save.music) { Sound.init(); Music.start(); } else Music.stop(); fillSettings(); });
 document.querySelectorAll('#qSeg button').forEach(b => b.onclick = () => { save.quality = b.dataset.v; store(); applyQuality(); fillSettings(); });
-$('bReset').onclick = () => { if (!confirm('Start over with $50,000? Your stats stay, your money resets.')) return; save.money = START; store(); hud(); Sound.play('chip'); fillStats(); };
+$('bReset').onclick = () => { if (!confirm(`Start over with ${fmt(START)}? Your stats stay, your money resets.`)) return; save.money = START; store(); hud(); Sound.play('chip'); fillStats(); };
 function applyQuality() { const hi = save.quality !== 'low'; renderer.setPixelRatio(Math.min(devicePixelRatio || 1, hi ? 2 : 1)); renderer.shadowMap.enabled = hi; scene.userData.sun.castShadow = hi; LIGHTS.forEach((L, i) => L.visible = hi || i < 3);
   scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); }); resize(); }
 
@@ -1210,7 +1218,7 @@ async function lastChance(debt = 0) { if (dead || lcOn) return; lcOn = true; dea
   await wait(1.2); $('gameover').style.opacity = 1; await wait(2.6);
   scene.remove(w.g); $('red').style.opacity = 0; save.deaths++; save.money = START; save.stress = 0; store(); hud();
   camera.position.copy(orbitPos()); look.copy(orbit.target); camera.lookAt(look); dead = false; busy = false; lcOn = false; toTitle();
-  $('mainSub').textContent = debt ? `Game over. You ended up ${fmt(debt)} in debt. You start again with $50,000.` : 'Game over. You hit $0 and lost the last spin. You start again with $50,000.';
+  $('mainSub').textContent = debt ? `Game over. You ended up ${fmt(debt)} in debt. You start again with ${fmt(START)}.` : `Game over. You hit $0 and lost the last spin. You start again with ${fmt(START)}.`;
   $('gameover').style.opacity = 0; await wait(0.3); bl.style.transition = 'opacity 1.2s'; bl.style.opacity = 0; }
 
 // ---------- stress, and a smoke to calm down ----------
@@ -1246,7 +1254,7 @@ async function smokeAnim() { const price = Math.min(CIG_PRICE, Math.max(0, save.
   Sound.play('click2'); flame.visible = true; await tween(0.9, k => { flame.scale.set(0.035 + Math.random() * 0.01, 0.06 + Math.random() * 0.02, 1); ember.material.emissiveIntensity = 0.4 + k * 1.6; glow.scale.setScalar(0.03 + k * 0.03); }); flame.visible = false;
   for (let n = 0; n < 2; n++) { await move(low, mouth, 0.55); Sound.hiss(0.05, 1.1, 900, 400);
     await tween(1.1, k => { ember.material.emissiveIntensity = 2 + Math.sin(k * Math.PI) * 3; glow.scale.setScalar(0.06 + Math.sin(k * Math.PI) * 0.05); });
-    await move(mouth, low, 0.5); Sound.hiss(0.08, 1.4, 600, 200); puff(); save.stress = Math.max(0, (save.stress || 0) - 50); stressHud(); sub(n ? '<em>You:</em> “Much better.”' : '<em>You:</em> “Ahh…”'); await wait(1.4); }
+    await move(mouth, low, 0.5); Sound.hiss(0.08, 1.4, 600, 200); puff(); save.stress = Math.max(0, (save.stress || 0) - 50); stressHud(); sub(n ? '<em>You:</em> “Much better. Time to gamble.”' : ''); await wait(1.4); }
   await move(low, rest, 0.6); }
 
 // ---------- loop ----------
