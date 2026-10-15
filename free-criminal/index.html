@@ -231,6 +231,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 #speedo.over{color:#ff5a4d}
 #camWarn{position:absolute;left:50%;top:14px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:12px;background:rgba(160,20,20,.88);border:2px solid #ffd166;color:#fff;font-weight:800;font-size:19px;letter-spacing:.02em;box-shadow:0 8px 30px rgba(0,0,0,.45);animation:blink 0.8s steps(2) infinite;white-space:nowrap}
 #camWarn b{font-family:var(--display);font-weight:400;font-size:22px;color:#ffd166}
+#boost{margin-top:6px;padding:5px 12px;border-radius:10px;background:rgba(242,177,52,.18);border:1px solid rgba(242,177,52,.6);color:#ffe2a0;font-weight:800;font-size:17px;text-align:right}
 #camFlash{position:fixed;inset:0;z-index:46;background:#fff;opacity:0;pointer-events:none;transition:opacity .6s ease-out}
 #updPop{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:20px;background:rgba(5,7,10,.72);backdrop-filter:blur(5px);overflow:auto}
 #updPop .box{width:min(760px,100%);display:flex;flex-direction:column;gap:12px;animation:popIn .45s cubic-bezier(.2,.8,.2,1)}
@@ -316,6 +317,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
     <div id="cashDelta"></div>
     <div id="debt" hidden></div>
     <div id="clock"></div>
+    <div id="boost" hidden></div>
     <div id="weapon" class="off"><div class="wl"><span id="wName">Holstered</span><span id="ammo">Press 1</span></div><div id="nadeBox" hidden><svg viewBox="0 0 16 20" aria-hidden="true"><circle cx="8" cy="12.5" r="6.5" fill="#9fb07a"/><rect x="5" y="2" width="6" height="4" rx="1" fill="#cfcfcf"/><path d="M11 3h4v2h-4z" fill="#cfcfcf"/></svg><span id="nades">0</span></div></div>
   </div>
   <div id="bl"><canvas id="mm" width="460" height="460"></canvas><div class="bars"><div class="bar hp"><i id="hpBar"></i></div><div class="bar ar"><i id="arBar" style="width:0"></i></div></div></div>
@@ -328,15 +330,14 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.5<span>The cutscene update</span></h1><p>A brand new release day, store scenes, and a profile that’s all yours.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.6<span>Open for business</span></h1><p>Every café, sushi bar, bakery and bookshop in the city is open. Buy something, or rob the place.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
-    <div><i>🗑️</i><span><b>New opening</b>Close-up shots, you finally tell the guards what you think of them, and they throw you in a dumpster. Climb out and the game begins.</span></div>
-    <div><i>🏪</i><span><b>Store scenes</b>Buying at a gun store or grocery store, and robbing a store, the mall or the bank, all play their own cutscene.</span></div>
-    <div><i>🛒</i><span><b>Grocery stores</b>Buy snacks and meals to heal, or a lottery ticket. Take out a gun first if you’d rather rob the place.</span></div>
-    <div><i>🪪</i><span><b>Your profile</b>Pick a name (it’s what you’re called in cutscenes), earn XP, level up, track your stats and unlock new outfits.</span></div>
-    <div><i>🚗</i><span><b>Calmer outer towns</b>Fewer cars in the outer towns and the countryside. Downtown San Varro is as busy as ever.</span></div>
-    <div><i>📜</i><span><b>Past patch notes</b>Every update since v1.0 is now under Patch notes in the menu.</span></div>
+    <div><i>🏪</i><span><b>16 kinds of shops</b>Cafés, pizza, sushi, bakeries, bookshops, diners, tacos, noodles, pharmacies, gyms, a hotel and more, all open in every town.</span></div>
+    <div><i>🛍️</i><span><b>Press B to buy</b>Walk up to a shop and press B. The clerk comes to the counter, then pick from the menu.</span></div>
+    <div><i>🔫</i><span><b>Press E to rob</b>Same shops, different scene: pull a gun, empty the register, and run before the police arrive.</span></div>
+    <div><i>🍣</i><span><b>Food boosts</b>Sushi ($20), free bread at the bakery and other food heal you and give you a speed boost for a minute.</span></div>
+    <div><i>🚗</i><span><b>Fixed drivers</b>Drivers’ heads no longer poke through the roofs of their cars.</span></div>
   </div>
   <div class="row2"><button class="go sec" id="updPast">Past updates</button><button class="go" id="updOk">Let's go</button></div>
 </div></div>
@@ -359,7 +360,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <div class="tb tfoot" id="tAim">Aim</div><div class="tb tcar" id="tHorn">Horn</div>
   <div class="tb tfoot" id="tJump">Jump</div>
   <div class="tb" id="tE">E<br>Use</div><div class="tb" id="tF">F<br>Car</div><div class="tb" id="tRld">R</div><div class="tb tfoot" id="tG">Nade</div>
-  <div id="tBar"><div class="tb" id="tPause" aria-label="Pause">II</div><div class="tfoot" data-k="Digit1">1 Gun</div><div class="tfoot" data-k="Digit2">2 Knife</div><div class="tfoot" data-k="KeyQ">Next</div><div data-k="KeyC">View</div><div data-k="KeyM">Map</div></div>
+  <div id="tBar"><div class="tb" id="tPause" aria-label="Pause">II</div><div class="tfoot" data-k="Digit1">1 Gun</div><div class="tfoot" data-k="Digit2">2 Knife</div><div class="tfoot" data-k="KeyQ">Next</div><div data-k="KeyC">View</div><div data-k="KeyM">Map</div><div data-k="KeyB">B Buy</div></div>
   <div id="tRotate">Turn your phone sideways to play.</div>
 </div>
 <div id="big" hidden><div id="bigTxt">Wasted</div></div>
@@ -370,7 +371,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.5.1</b>San Varro</div>
+    <div class="ver"><b>v1.6</b>San Varro</div>
     <nav class="nav">
       <button id="bPlay">Play</button>
       <button data-panel="pProfile">Profile</button>
@@ -379,7 +380,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
       <button data-panel="pSettings">Settings</button>
       <button data-panel="pControls">Controls</button>
     </nav>
-    <div class="news"><b>New in v1.5</b><ul><li>A new opening cutscene: close-ups, attitude, and a dumpster</li><li>Cutscenes when you buy at gun and grocery stores, and when you rob a store, the mall or the bank</li><li>A profile with your name, levels, stats and outfits</li><li>Fewer cars in the outer towns, the city stays busy</li><li>All the old patch notes under <b>Patch notes</b></li></ul></div>
+    <div class="news"><b>New in v1.6</b><ul><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
     <div class="foot">Keyboard and mouse, or touch controls on phones and tablets (Settings → Touch controls). Best in Chrome or Edge, full screen.</div>
   </div>
 </div>
@@ -423,7 +424,14 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.5.1</b>Police balance<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.6</b>Open for business<span>Latest</span></summary><ul>
+    <li>Every closed storefront in the cities and towns is now a real shop: café, pizza, barber, deli, pharmacy, burgers, diner, books, laundry, sushi, tacos, gym, flowers, hotel, bakery and noodles.</li>
+    <li>Press <b>B</b> at any shop to buy. The clerk comes to the counter for a short scene, then a menu opens with that shop’s items. B also works at gun stores and grocery stores.</li>
+    <li>Press <b>E</b> at a storefront to rob it, with its own robbery scene.</li>
+    <li>Sushi costs $20 and bread at the bakery is free. Food and drinks heal you and give a speed boost for a minute (you run 20% faster and slowly heal). The boost shows under the clock.</li>
+    <li>Other shops: medicine at the pharmacy, a workout at the gym (+20 armor), books for XP, a hotel room that heals you and skips to the morning.</li>
+    <li>Fixed: NPC drivers’ heads poked through the roofs of their cars. Drivers now fit inside every car.</li></ul></details>
+  <details><summary><b>v1.5.1</b>Police balance</summary><ul>
     <li>Half as many police: half as many police cars in normal traffic, and when you’re wanted the police send half as many cars, half as often.</li>
     <li>The police are 30% slower than you: police cars top out at 70% of the average car you can drive, and cops on foot run at 70% of your sprint.</li>
     <li>Tested from start to finish: driving, police chases, shops, robberies, buildings and respawning.</li></ul></details>
@@ -471,7 +479,8 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
     <kbd>Shift</kbd><span>Sprint</span>
     <kbd>Space</kbd><span>Jump / handbrake</span>
     <kbd>F</kbd><span>Steal, enter or exit a vehicle</span>
-    <kbd>E</kbd><span>Shop at gun and grocery stores (with a gun out: rob them), rob the bank, go into buildings, rent or open a safehouse</span>
+    <kbd>E</kbd><span>Rob a shop, café or restaurant (or shop at gun and grocery stores), rob the bank, go into buildings, rent or open a safehouse</span>
+    <kbd>B</kbd><span>Buy at any shop: food, drinks, medicine, books and more</span>
     <kbd>V / C</kbd><span>First / third person (in a car: hood view)</span>
     <kbd>R in a car</kbd><span>Change radio station</span>
     <kbd>M</kbd><span>Map (in the pause menu: zoom, and set a route)</span>
@@ -849,7 +858,8 @@ function makeCarModel(t,color){
   const bg=merge(parts);const bodyMesh=new THREE.Mesh(bg,CAR_MAT);bodyMesh.castShadow=true;bodyMesh.receiveShadow=true;body.add(bodyMesh);
   const glass=new THREE.Mesh(new THREE.BoxGeometry(t.w*0.88,t.ch,t.cl),GLASS_MAT);glass.position.set(0,cy,t.cz);body.add(glass);
   const look=t.police?copLook():randLook();
-  const dg=merge([B(0.42,0.45,0.26,look.shirt,0.4,top+0.35,t.cz-0.15),B(0.24,0.27,0.25,look.skin,0.4,top+0.72,t.cz-0.15),B(0.26,0.08,0.27,look.hair,0.4,top+0.88,t.cz-0.15)]);
+  const dg=merge([B(0.42,0.45,0.26,look.shirt,0,0.225,0),B(0.24,0.27,0.25,look.skin,0,0.595,0),B(0.26,0.08,0.27,look.hair,0,0.755,0)]),dsc=Math.min(1,(t.ch+0.08)/0.795);
+  dg.scale(dsc,dsc,dsc);dg.translate(0.4,top-0.14,t.cz-0.15);
   const driverMesh=new THREE.Mesh(dg,HMAT);driverMesh.visible=false;body.add(driverMesh);
   let lights=null;
   if(t.police){const r=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.13,0.26),RED_OFF),b=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.13,0.26),BLUE_OFF);r.position.set(0.3,roofY+0.19,t.cz);b.position.set(-0.3,roofY+0.19,t.cz);body.add(r,b);lights=[r,b];}
@@ -1138,7 +1148,7 @@ function updDay(dt){DAY.t=(DAY.t+dt)%DAY.len;const h=hourOf(DAY.t);
 const SIGNQ=[],VENTS=[],LAMPQ=[],WINQ=[],LAMPS={nsR:[],nsG:[],ewR:[],ewG:[]},LIGHTM={};
 const SHOPN=[['CAFE','#6b3e26'],['PIZZA','#c0392b'],['BARBER','#2c3e8f'],['DELI','#2f7d4a'],['PHARMACY','#1f8a70'],['BURGERS','#d35400'],['DINER','#b03a5b'],['BOOKS','#5b3f8a'],
   ['LAUNDRY','#2b7bb9'],['SUSHI','#1d1d1d'],['TACOS','#c98a12'],['GYM','#333a44'],['FLOWERS','#c2577e'],['HOTEL','#8a6d1d'],['BAKERY','#a0522d'],['NOODLES','#b22222']];
-const DOORS=[],DOORH=new Map();
+const DOORS=[],DOORH=new Map(),FRONTS=[];
 function addDoor(x,z,nx,nz,kind,noMesh){const d={x:x+nx*0.9,z:z+nz*0.9,fx:x,fz:z,nx,nz,kind,cool:-1};DOORS.push(d);const k=Math.floor(d.x/20)*100003+Math.floor(d.z/20);let a=DOORH.get(k);if(!a){a=[];DOORH.set(k,a);}a.push(d);d.k=k;
   if(noMesh){const ry=Math.atan2(nx,nz);addB('plain',G(new THREE.BoxGeometry(2.2,2.6,0.12),'#2a1d14',x+nx*0.06,1.3,z+nz*0.06,0,ry,0));addB('plain',G(new THREE.BoxGeometry(2.6,0.2,0.16),'#c9c3b5',x+nx*0.08,2.7,z+nz*0.08,0,ry,0));}return d;}
 function removeDoor(d){let i=DOORS.indexOf(d);if(i>=0)DOORS.splice(i,1);const a=DOORH.get(d.k);if(a){i=a.indexOf(d);if(i>=0)a.splice(i,1);}}
@@ -1210,7 +1220,7 @@ function storefront(x,z,w,d,sx,sz){
       addB('plain',G(new THREE.BoxGeometry(sw+0.3,0.12,1.7),SHOPN[k][1],fx+nx*0.85,3.35,fz+nz*0.85,0.32,ry,0));
       if(Math.random()<0.015)addCam(fx+nx*0.55,6.3,fz+nz*0.55,ry);
       addB('plain',G(new THREE.BoxGeometry(Math.min(sw*0.8,7)+0.2,1.25,0.12),'#1a1b1d',fx+nx*0.06,4.35,fz+nz*0.06,0,ry,0));
-      SIGNQ.push({x:fx+nx*0.13,y:4.35,z:fz+nz*0.13,ry,w:Math.min(sw*0.8,7),h:1.05,k});}}}
+      SIGNQ.push({x:fx+nx*0.13,y:4.35,z:fz+nz*0.13,ry,w:Math.min(sw*0.8,7),h:1.05,k});FRONTS.push({x:fx,z:fz,nx,nz,ry,k,name:SHOPN[k][0],shop:null});}}}
 function buildSigns(){if(!SIGNQ.length)return;const C=4,R=4,tex=canvasTex(1024,512,g=>{SHOPN.forEach(([t,c],i)=>{const x=(i%C)*256,y=((i/C)|0)*128;g.fillStyle=c;g.fillRect(x,y,256,128);
     g.strokeStyle='rgba(255,255,255,.5)';g.lineWidth=5;g.strokeRect(x+6,y+6,244,116);g.fillStyle='#fff8e6';g.textAlign='center';g.textBaseline='middle';let fs=74;g.font=fs+'px Anton, Impact, sans-serif';
     while(g.measureText(t).width>220&&fs>20){fs-=3;g.font=fs+'px Anton, Impact, sans-serif';}g.fillText(t,x+128,y+68);});});
@@ -2020,7 +2030,8 @@ function manageWorld(dt){
     // clerks come back
     for(const s of SHOPS){if(s.cool>0||!s.clerk.dead)continue;if(Math.hypot(s.cx-player.pos.x,s.cz-player.pos.z)<60)continue;const i=PEDS.indexOf(s.clerk);s.clerk.remove();if(i>=0)PEDS.splice(i,1);
       const cl=new Ped(randLook(),'clerk',s.cx,s.cz,0);cl.shop=s;s.clerk=cl;PEDS.push(cl);}}
-  for(const s of SHOPS)if(s.cool>0)s.cool-=dt;
+  for(const s of SHOPS)if(s.cool>0)s.cool-=dt;for(const s of FRONTSHOPS)if(s.cool>0)s.cool-=dt;
+  if(boosted()&&state==='play'&&player.hp>0)player.hp=Math.min(100,player.hp+0.5*dt);
   // cars
   for(const c of CARS){if(c===player.inCar)continue;
     if(c.dead||!c.driver)carPhysics(c,0,0,0,true,dt);
@@ -2064,7 +2075,7 @@ function updatePlayerFoot(dt){
   if(keys.KeyW){mx+=fx;mz+=fz;}if(keys.KeyS){mx-=fx;mz-=fz;}if(keys.KeyD){mx+=rx;mz+=rz;}if(keys.KeyA){mx-=rx;mz-=rz;}
   const stk=Math.hypot(TCH.mx,TCH.my);if(stk>0.15){mx+=-fx*TCH.my+rx*TCH.mx;mz+=-fz*TCH.my+rz*TCH.mx;}
   const ml=Math.hypot(mx,mz),moving=ml>0.01;if(moving){mx/=ml;mz/=ml;}
-  let sp=(keys.ShiftLeft||keys.ShiftRight||stk>0.93)?7.2:4.0;if(mouseR)sp*=0.6;
+  let sp=(keys.ShiftLeft||keys.ShiftRight||stk>0.93)?7.2:4.0;if(mouseR)sp*=0.6;if(boosted())sp*=1.2;
   const k=1-Math.exp(-12*dt);P.vx=lerp(P.vx,moving?mx*sp:0,k);P.vz=lerp(P.vz,moving?mz*sp:0,k);
   P.pos.x+=P.vx*dt;P.pos.z+=P.vz*dt;
   const gy=groundY(P.pos.x,P.pos.z);
@@ -2189,7 +2200,7 @@ function updatePlayerCar(dt){const c=player.inCar;
   player.pos.set(c.pos.x,c.pos.y,c.pos.z);}
 function shopAt(){for(const s of SHOPS){const r=s.rect;if(player.pos.x>r[0]&&player.pos.x<r[1]&&player.pos.z>r[2]&&player.pos.z<r[3])return s;}return null;}
 function interact(){if(state!=='play'||player.inCar||robbing||player.rag||player.jack)return;if(INSIDE){if(exitNear()){$('fade').style.opacity=1;setTimeout(()=>{leaveBuilding();$('fade').style.opacity=0;},300);return;}const L=lootNear();if(L&&!CRACK)startCrack(L);return;}
-  const sh=safeNear();if(sh){useSafehouse(sh);return;}const s=shopAt();if(!s){const d=doorNear();if(d)enterBuilding(d);return;}
+  const sh=safeNear();if(sh){useSafehouse(sh);return;}const s=shopAt();if(!s){const f=frontNear();if(f){robFront(f);return;}const d=doorNear();if(d)enterBuilding(d);return;}
   if(s.clerk.dead){notify('Nobody is minding the store.',2);return;}
   if(s.kind==='gun'){if(W.level>0){notify('The clerk won’t serve you with the cops on your tail.',3);return;}startScene('gun',s,()=>openShop(s));return;}
   if(s.cool>0){notify('This place was hit recently. Come back later.',3);return;}
@@ -2204,13 +2215,17 @@ const EXTRAS=[{id:'nades',name:'Grenades ×3',tag:'Throwable',price:150,desc:'Pr
 let shopOpen=null;
 let shopBought=0;
 function openShop(s){if(W.level>0){notify('The clerk won’t serve you with the cops on your tail.',3);return;}shopOpen=s;shopBought=0;state='shop';mouseL=mouseR=false;
-  $('shopName').textContent=s.name;$('shopKick').textContent=s.kind==='gun'?'Gun store':'Grocery store';$('shopMsg').textContent='';renderShop();$('shop').hidden=false;if(document.pointerLockElement)document.exitPointerLock();}
+  $('shopName').textContent=s.kind==='front'?titleCase(s.name):s.name;$('shopKick').textContent=s.kind==='gun'?'Gun store':s.kind==='front'?'Open for business':'Grocery store';$('shopMsg').textContent='';renderShop();$('shop').hidden=false;if(document.pointerLockElement)document.exitPointerLock();}
 function closeShop(){if(state!=='shop')return;const s=shopOpen;$('shop').hidden=true;$('stash').hidden=true;state='play';shopOpen=null;lockPointer();
   if(s&&shopBought>0&&!s.clerk.dead)startScene(s.kind==='gun'?'gunbye':'grocbye',s);}
 const sbar=v=>`<i><u style="width:${Math.round(clamp(v,0.06,1)*100)}%"></u></i>`;
 const GROCERY=[{id:'g_coffee',name:'Coffee',tag:'Drink',price:4,hp:8},{id:'g_chips',name:'Chips',tag:'Snack',price:6,hp:12},{id:'g_soda',name:'Energy drink',tag:'Drink',price:9,hp:18},
   {id:'g_sand',name:'Sandwich',tag:'Food',price:14,hp:30},{id:'g_meal',name:'Hot meal',tag:'Food',price:25,hp:60},{id:'g_lotto',name:'Lottery ticket',tag:'Luck',price:5}];
 function renderShop(){const P=player;$('shopCash').textContent=fmt(P.cash);let h='';
+  if(shopOpen&&shopOpen.kind==='front'){for(const it of FRONT_ITEMS[shopOpen.name]||[]){const full=it.hp&&!it.boost&&P.hp>=100;
+      h+=`<div class="card extra"><div class="ctag">${it.tag}</div><div class="cname">${it.name}</div><p>${itemDesc(it)}</p><button data-buy="${it.id}"${full||P.cash<it.price&&it.price>0?' disabled':''}>${full?'Full health':it.price?fmt(it.price):'Free'}</button></div>`;}
+    h+=`<div class="card rob"><div class="ctag">Crime</div><div class="cname">Rob the register</div><p>Pull a gun on the clerk and take the cash. The police will come after you.</p><button data-buy="rob">Rob it</button></div>`;
+    $('shopGrid').innerHTML=h;return;}
   if(shopOpen&&shopOpen.kind!=='gun'){for(const g of GROCERY){const full=g.hp&&P.hp>=100;
       h+=`<div class="card extra"><div class="ctag">${g.tag}</div><div class="cname">${g.name}</div><p>${g.hp?`+${g.hp} health.`:'Scratch it at the counter. Most are duds, some pay $50, a few pay $1,000.'}</p><button data-buy="${g.id}"${full||P.cash<g.price?' disabled':''}>${full?'Full health':fmt(g.price)}</button></div>`;}
     h+=`<div class="card rob"><div class="ctag">Crime</div><div class="cname">Rob the register</div><p>Pull a gun on the clerk and take the cash. The police will come after you.</p><button data-buy="rob">Rob it</button></div>`;
@@ -2223,6 +2238,11 @@ function renderShop(){const P=player;$('shopCash').textContent=fmt(P.cash);let h
   $('shopGrid').innerHTML=h;}
 function buyItem(id){const P=player;
   if(id==='rob'){const s=shopOpen;shopBought=0;closeShop();if(s)startRob(s);return;}
+  const fi=shopOpen&&shopOpen.kind==='front'&&(FRONT_ITEMS[shopOpen.name]||[]).find(x=>x.id===id);
+  if(fi){if(fi.price>0&&P.cash<fi.price)return;if(fi.price)giveCash(-fi.price);shopBought++;PROF.stats.bought++;addXp(2+(fi.xp||0));sfx.buy();const got=[];
+    if(fi.hp){P.hp=Math.min(100,P.hp+fi.hp);got.push(`+${fi.hp} health`);}if(fi.armor){P.armor=Math.min(100,P.armor+fi.armor);got.push(`+${fi.armor} armor`);}
+    if(fi.boost){BOOST.until=T+60;BOOST.name=fi.name;got.push('a speed boost for a minute');}if(fi.sleep){P.hp=100;DAY.t=30;got.push('a good night’s sleep');}if(fi.xp)got.push(`+${fi.xp} XP`);
+    $('shopMsg').textContent=`${fi.name}: ${got.join(', ')||fi.desc}.`;hudCash=P.cash;$('cash').textContent=fmt(P.cash);renderShop();return;}
   const g=GROCERY.find(x=>x.id===id);if(g){if(P.cash<g.price||(g.hp&&P.hp>=100))return;giveCash(-g.price);shopBought++;PROF.stats.bought++;addXp(2);sfx.buy();
     if(g.hp){P.hp=Math.min(100,P.hp+g.hp);$('shopMsg').textContent=`You had the ${g.name.toLowerCase()}. Health ${Math.round(P.hp)}.`;}
     else{const r=Math.random(),win=r<0.02?1000:r<0.14?50:0;if(win)giveCash(win);$('shopMsg').textContent=win?`Winner! The ticket pays ${fmt(win)}.`:'No luck. Better luck next time.';}
@@ -2242,12 +2262,12 @@ const kf=(t,K)=>{if(t<=K[0][0])return K[0][1];for(let i=1;i<K.length;i++)if(t<=K
 const say=(who,txt)=>who==='me'?`<em class="me">${pname()}:</em> “${txt}”`:who?`<em>${who}:</em> “${txt}”`:`<i>${txt}</i>`;
 function startRob(s){const P=player;if(!P.drawn||WPN[P.wpn].melee)equip(P.lastGun&&P.owned[P.lastGun]&&!WPN[P.lastGun].melee?P.lastGun:'rifle');startScene('rob',s,()=>robPayout(s));}
 function startScene(kind,s,after){const P=player,bank=s.kind==='bank',nm=titleCase(s.name),clerk=bank?'Teller':'Clerk';
-  Object.assign(SC,{on:true,t:0,kind,shop:s,after:after||null,f:{},pz:s.czc+(bank?1.7:1.35),p0:{x:P.pos.x,z:P.pos.z}});
+  Object.assign(SC,{on:true,t:0,kind,shop:s,after:after||null,f:{},pz:s.czc+(bank?1.7:1.35),p0:fromW(s,P.pos.x,P.pos.z)});
   if(kind==='gunbye'||kind==='grocbye')SC.p0=null;
   state='scene';mouseL=mouseR=false;for(const k in keys)keys[k]=false;robbing=null;$('prog').hidden=true;
   $('hud').hidden=true;$('cine').hidden=false;['place','title','sub'].forEach(i=>$(i).style.opacity=0);
   vm.visible=false;fists.visible=false;P.m.group.visible=true;if(kind!=='rob')P.drawn=false;updGunVis();
-  intLight.position.set(s.x+0.4,2.7,s.czc+0.7);intLight.intensity=2.2;
+  intLight.position.copy(toW(s,s.x+0.4,2.7,s.czc+0.7));intLight.intensity=2.2;if(s.kind==='front')frontProps(s,true);
   if(!SC.bag){SC.bag=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color:0xffffff}));SC.bag.castShadow=true;scene.add(SC.bag);}
   const b=SC.bag;b.visible=false;b.rotation.set(0,0,0);
   if(kind==='rob'){b.material.color.set(0x23291f);b.scale.set(0.5,0.34,0.3);}else if(kind==='gunbye'){b.material.color.set(0x1d1f22);b.scale.set(0.95,0.16,0.36);}else{b.material.color.set(0xc8a26a);b.scale.set(0.34,0.42,0.24);}
@@ -2255,7 +2275,7 @@ function startScene(kind,s,after){const P=player,bank=s.kind==='bank',nm=titleCa
   SC.lines={
     gun:[[1.2,2.9,clerk,`Welcome to ${nm}. Looking for something loud?`],[3.0,4.4,'me','Show me what you’ve got.'],[4.6,5.8,clerk,'Take your pick.']],
     gunbye:[[0.3,2.0,clerk,'Pleasure doing business. Try not to shoot anyone I know.'],[2.1,3.4,'me','No promises.']],
-    groc:[[1.2,2.8,clerk,`Hi! Welcome to ${nm}.`],[2.9,4.2,'me','Just grabbing a few things.']],
+    groc:s.kind==='front'?[[1.2,2.8,clerk,`Hi! Welcome to ${nm}. ${GREET[s.name]||''}`],[2.9,4.2,'me','What have you got?']]:[[1.2,2.8,clerk,`Hi! Welcome to ${nm}.`],[2.9,4.2,'me','Just grabbing a few things.']],
     grocbye:[[0.3,1.9,clerk,'That’s everything. Have a nice day!'],[2.0,3.1,'me','You too.']],
     rob:[[1.0,2.6,'me',bank?'Nobody move! Open the vault and fill the bag!':mall?'This whole register is mine. Hand it over!':'Everything in the register. Now!'],
       [2.7,4.0,clerk,bank?'Please! Take it, take all of it!':'Okay, okay! Please don’t shoot!'],[4.2,6.0,'me',bank?'Big bills only. I’m in a hurry.':'Faster. And don’t touch that alarm.'],
@@ -2266,7 +2286,7 @@ function updScene(dt){SC.t+=dt;const t=SC.t,s=SC.shop,P=player,m=P.m,c=s.clerk,c
   // the player walks up to the counter, then faces the clerk
   let px=x,pzz=pz,ry=Math.PI,amp=0;
   if(SC.p0&&t<1.0){const k=ss(0,1.0,t);px=lerp(SC.p0.x,x,k);pzz=lerp(SC.p0.z,pz,k);const d=Math.hypot(x-SC.p0.x,pz-SC.p0.z);if(d>0.3&&t<0.85){ry=Math.atan2(x-SC.p0.x,pz-SC.p0.z);amp=0.55;}}
-  P.pos.set(px,groundY(px,pzz),pzz);m.group.rotation.set(0,lerpA(m.group.rotation.y,ry,1-Math.exp(-14*dt)),0);
+  const FRY=s.fr?s.fr.ry:0;{const w=toW(s,px,0,pzz);P.pos.set(w.x,groundY(w.x,w.z),w.z);}m.group.rotation.set(0,lerpA(m.group.rotation.y,ry+FRY,1-Math.exp(-14*dt)),0);
   const gun=K==='rob'&&t>0.6,one=WPN[P.wpn].one;pose(m,t*7,amp,gun?(one?'pistol':'rifle'):'walk',0);
   const talking=SC.lines.some(l=>l[2]==='me'&&t>l[0]&&t<l[1]);if(!gun&&talking){m.armR.rotation.set(-0.7+0.15*Math.sin(t*6),0,-0.25);}
   // the clerk
@@ -2274,18 +2294,18 @@ function updScene(dt){SC.t+=dt;const t=SC.t,s=SC.shop,P=player,m=P.m,c=s.clerk,c
   if(K==='rob'){
     if(t>1.4&&t<4.1){pose(cm,0,0,'handsup');cm.armL.rotation.z+=Math.sin(t*40)*0.04;cm.armR.rotation.z+=Math.sin(t*37)*0.04;}
     else if(t>=4.1&&t<6.2){cry=0.7;const w=Math.sin(t*11);cm.armL.rotation.set(-0.9-0.35*w,0,0.15);cm.armR.rotation.set(-0.9+0.35*w,0,-0.15);cm.upper.rotation.x=0.3;
-      b.visible=true;const g=0.35+0.65*ss(4.1,6.0,t);b.position.set(x+0.3,1.245+0.17*g+0.01,cz-0.05);b.scale.set(0.5*g,0.34*g,0.3*g);}
+      b.visible=true;const g=0.35+0.65*ss(4.1,6.0,t);b.rotation.y=FRY;b.position.copy(toW(s,x+0.3,1.245+0.17*g+0.01,cz-0.05));b.scale.set(0.5*g,0.34*g,0.3*g);}
     else if(t>=6.2&&t<7.4){const k=ss(6.2,6.9,t),k2=ss(6.9,7.3,t);cm.armL.rotation.set(-1.35,0,0.1);cm.armR.rotation.set(-1.35,0,-0.1);b.visible=k2<1;b.scale.set(0.5,0.34,0.3);
-      b.position.set(lerp(x+0.3,x+0.35,k2),1.42+(bank?1.35*Math.sin(Math.PI*k):0)+lerp(0,-0.35,k2),lerp(lerp(cz-0.05,cz+0.3,k),pz-0.35,k2));if(t>6.9){m.armL.rotation.set(-1.2,0,0.2);}}
+      b.rotation.y=FRY;b.position.copy(toW(s,lerp(x+0.3,x+0.35,k2),1.42+(bank?1.35*Math.sin(Math.PI*k):0)+lerp(0,-0.35,k2),lerp(lerp(cz-0.05,cz+0.3,k),pz-0.35,k2)));if(t>6.9){m.armL.rotation.set(-1.2,0,0.2);}}
     else if(t>=7.4){b.visible=false;const k=ss(7.4,7.9,t);cm.hips.position.y=0.95-0.4*k;cm.upper.rotation.x=0.5*k;cm.legL.rotation.x=cm.legR.rotation.x=-0.9*k;cm.armR.rotation.set(-0.6-0.3*k,0,-0.2);if(t>7.6&&once('alarm'))sfx.alarm();}
     if(t>0.75&&once('cock'))sfx.reload();}
   else if(K==='gun'||K==='groc'){if(t>1.2&&t<2.2)cm.armR.rotation.set(-2.6+0.3*Math.sin(t*12),0,-0.35);
     if(K==='gun'&&t>4.5){cry=Math.PI*ss(4.5,5.0,t);cm.armR.rotation.set(-2.2,0,-0.2);}}
   else{const k=ss(0.1,1.0,t),k2=ss(2.1,2.6,t);b.visible=k2<1;cm.armL.rotation.set(-1.2,0,0.1);cm.armR.rotation.set(-1.2,0,-0.1);
-    b.position.set(lerp(x,x+0.3,k2),1.245+b.scale.y/2+0.01-0.4*k2,lerp(lerp(cz-0.3,cz+0.25,k),pz-0.3,k2));if(t>2.1)m.armL.rotation.set(-1.25,0,0.15);if(t>0.2&&once('ding'))sfx.buy();}
-  cm.group.rotation.y=lerpA(cm.group.rotation.y,cry,1-Math.exp(-10*dt));
+    b.rotation.y=FRY;b.position.copy(toW(s,lerp(x,x+0.3,k2),1.245+b.scale.y/2+0.01-0.4*k2,lerp(lerp(cz-0.3,cz+0.25,k),pz-0.3,k2)));if(t>2.1)m.armL.rotation.set(-1.25,0,0.15);if(t>0.2&&once('ding'))sfx.buy();}
+  cm.group.rotation.y=lerpA(cm.group.rotation.y,cry+FRY,1-Math.exp(-10*dt));
   // camera: cut between a few angles
-  const C=(a,b,k)=>{camera.position.copy(a);camera.lookAt(b);},A=()=>C(V3(x+0.8,1.9,pz+1.8),V3(x-0.1,1.45,ck)),
+  const C=(a,b)=>{camera.position.copy(toW(s,a.x,a.y,a.z));camera.lookAt(toW(s,b.x,b.y,b.z));},A=()=>C(V3(x+0.8,1.9,pz+1.8),V3(x-0.1,1.45,ck)),
     face=k=>C(V3(x-0.45+k*0.12,1.8,cz+(bank?0.5:0.05)),V3(x,1.72,pz)),clerkF=k=>C(V3(x+0.55-k*0.12,1.8,cz+(bank?0.3:0.85)),V3(x,1.68,ck)),
     side=()=>bank?C(V3(x+2.6,1.95,cz-0.25),V3(x+0.4,1.3,ck+0.5)):C(V3(x+2.9,1.65,cz+0.95),V3(x+0.3,1.3,cz-0.15));
   const shot=(a,b)=>t>=a&&t<b,kk=(a,b)=>clamp((t-a)/(b-a),0,1);
@@ -2298,13 +2318,54 @@ function updScene(dt){SC.t+=dt;const t=SC.t,s=SC.shop,P=player,m=P.m,c=s.clerk,c
   if(t>SC.dur)endScene();}
 function endScene(){if(!SC.on)return;const s=SC.shop,P=player,after=SC.after;SC.on=false;SC.after=null;if(SC.bag)SC.bag.visible=false;
   state='play';$('cine').hidden=true;$('hud').hidden=false;$('sub').style.opacity=0;intLight.intensity=0;
-  P.pos.set(s.x,groundY(s.x,SC.pz),SC.pz);P.vx=P.vz=P.vy=0;P.h=Math.PI;P.m.group.rotation.set(0,Math.PI,0);yaw=Math.PI;pitch=-0.06;P.m.group.visible=!P.fp;camFov=55;
-  const cm=s.clerk.m;cm.hips.position.y=0.95;cm.upper.rotation.x=0;cm.group.rotation.y=s.clerk.h=0;
+  const FRY=s.fr?s.fr.ry:0,w=toW(s,s.x,0,SC.pz);P.pos.set(w.x,groundY(w.x,w.z),w.z);P.vx=P.vz=P.vy=0;P.h=Math.PI+FRY;P.m.group.rotation.set(0,P.h,0);yaw=P.h;pitch=-0.06;P.m.group.visible=!P.fp;camFov=55;
+  const cm=s.clerk.m;cm.hips.position.y=0.95;cm.upper.rotation.x=0;cm.legL.rotation.x=cm.legR.rotation.x=0;cm.group.rotation.y=s.clerk.h=FRY;if(s.kind==='front')frontGone(s);
   if(after)after();}
-function robPayout(s){const bank=s.kind==='bank',amt=bank?Math.round(rand(4000,7500)/10)*10:s.mall?Math.round(rand(s.rich?2500:900,s.rich?4500:1800)/10)*10:Math.round(rand(300,900)/5)*5;
+function robPayout(s){const bank=s.kind==='bank',amt=s.kind==='front'?Math.round(rand(200,700)/5)*5:bank?Math.round(rand(4000,7500)/10)*10:s.mall?Math.round(rand(s.rich?2500:900,s.rich?4500:1800)/10)*10:Math.round(rand(300,900)/5)*5;
   giveCash(amt);hudCash=player.cash;s.cool=bank?180:s.mall?240:180;s.clerk.handsUp=true;setTimeout(()=>{s.clerk.handsUp=false;},6000);
-  addCrime(bank?4:2,bank?18:6);scare(s.x,s.z,60);PROF.stats.robberies++;PROF.stats.stolen+=amt;addXp(bank?150:s.mall?90:60);
+  addCrime(bank?4:2,bank?18:6);{const w=toW(s,s.x,0,s.cz);scare(w.x,w.z,60);}PROF.stats.robberies++;PROF.stats.stolen+=amt;addXp(bank?150:s.mall?90:60);
   notify(`You took <b>${fmt(amt)}</b>. The alarm is ringing, lose the cops!`,5);}
+/* ---------- v1.6 storefront shops: B to buy, E to rob ---------- */
+// every shop works in its own frame: local +z points out of the shop towards the street
+function toW(s,x,y,z){const f=s.fr;if(!f)return V3(x,y,z);const c=Math.cos(f.ry),n=Math.sin(f.ry);return V3(f.ox+x*c+z*n,y,f.oz-x*n+z*c);}
+function fromW(s,x,z){const f=s.fr;if(!f)return{x,z};const dx=x-f.ox,dz=z-f.oz,c=Math.cos(f.ry),n=Math.sin(f.ry);return{x:dx*c-dz*n,z:dx*n+dz*c};}
+const FOOD=(id,name,price,hp,tag='Food')=>({id,name,price,hp,boost:true,tag});
+const FRONT_ITEMS={
+  CAFE:[FOOD('f_cafe1','Coffee',5,8,'Drink'),FOOD('f_cafe2','Croissant',6,12),FOOD('f_cafe3','Iced latte',7,10,'Drink')],
+  PIZZA:[FOOD('f_pz1','Pizza slice',8,20),FOOD('f_pz2','Whole pizza',25,60)],
+  BARBER:[{id:'f_bb1',name:'Haircut',price:25,xp:10,tag:'Style',desc:'Looking sharp.'},{id:'f_bb2',name:'Hot shave',price:15,xp:6,tag:'Style',desc:'Smooth.'}],
+  DELI:[FOOD('f_dl1','Sandwich',12,30),FOOD('f_dl2','Soup',8,20)],
+  PHARMACY:[{id:'f_ph1',name:'Bandages',price:40,hp:50,tag:'Medicine'},{id:'f_ph2',name:'Painkillers',price:25,hp:30,tag:'Medicine'},FOOD('f_ph3','Energy pills',20,5,'Medicine')],
+  BURGERS:[FOOD('f_bg1','Burger',10,30),FOOD('f_bg2','Fries',5,12),FOOD('f_bg3','Milkshake',6,10,'Drink')],
+  DINER:[FOOD('f_dn1','Pancakes',9,25),FOOD('f_dn2','Full breakfast',15,45)],
+  BOOKS:[{id:'f_bk1',name:'Comic book',price:5,xp:15,tag:'Read'},{id:'f_bk2',name:'Crime novel',price:12,xp:40,tag:'Read'},{id:'f_bk3',name:'How to Rob a Bank',price:30,xp:120,tag:'Read'}],
+  LAUNDRY:[{id:'f_ld1',name:'Wash and dry',price:8,xp:5,tag:'Service',desc:'Fresh clothes. You feel brand new.'}],
+  SUSHI:[FOOD('f_su1','Sushi',20,25),FOOD('f_su2','Sashimi platter',35,45)],
+  TACOS:[FOOD('f_tc1','Taco',4,12),FOOD('f_tc2','Burrito',9,28)],
+  GYM:[{id:'f_gy1',name:'Day pass',price:15,armor:20,boost:true,tag:'Workout',desc:'+20 armor and a speed boost for a minute.'},FOOD('f_gy2','Protein shake',8,10,'Drink')],
+  FLOWERS:[{id:'f_fl1',name:'Bouquet',price:15,xp:10,tag:'Gift',desc:'Someone in San Varro is going to be very happy.'}],
+  HOTEL:[{id:'f_ht1',name:'Room for the night',price:60,sleep:true,tag:'Stay',desc:'Full health, and you wake up in the morning.'}],
+  BAKERY:[FOOD('f_bk_bread','Bread',0,10),FOOD('f_bk_donut','Donut',3,8),FOOD('f_bk_cake','Cake slice',12,25)],
+  NOODLES:[FOOD('f_nd1','Ramen',11,30),FOOD('f_nd2','Dumplings',8,20)]};
+const GREET={CAFE:'Coffee’s fresh!',PIZZA:'Hot slices, right out of the oven.',BARBER:'Take a seat.',DELI:'What’ll it be?',PHARMACY:'Need something for the pain?',BURGERS:'Welcome to the grill!',DINER:'Sit anywhere, hon.',BOOKS:'Looking for something to read?',
+  LAUNDRY:'Wash, dry and fold.',SUSHI:'The fish came in this morning.',TACOS:'Best tacos in San Varro.',GYM:'Ready to sweat?',FLOWERS:'Something for someone special?',HOTEL:'Checking in?',BAKERY:'Bread’s free today!',NOODLES:'The ramen’s hot.'};
+const itemDesc=it=>it.desc||[it.hp?`+${it.hp} health`:'',it.boost?'a speed boost for a minute':'',it.xp?`+${it.xp} XP`:''].filter(Boolean).join(' and ').replace(/^./,c=>c.toUpperCase())+'.';
+const FRONTSHOPS=[];
+function frontShop(f){if(f.shop)return f.shop;const s={kind:'front',name:f.name,x:0,czc:1.75,cz:0.45,z:1.75,D:2,H:4.2,fr:{ox:f.x,oz:f.z,ry:f.ry},clerk:null,cool:0,f};FRONTSHOPS.push(s);return f.shop=s;}
+function frontNear(){if(INSIDE||player.inCar)return null;let best=null,bd=3.4;for(const f of FRONTS){const d=Math.hypot(player.pos.x-(f.x+f.nx*2.4),player.pos.z-(f.z+f.nz*2.4));if(d<bd){bd=d;best=f;}}return best;}
+let sceneProps=null;
+function frontProps(s,on){if(!sceneProps){const g=new THREE.Group();g.add(new THREE.Mesh(merge([B(1.8,1.2,0.6,'#6e4a2c',0,0.6,0),B(1.9,0.05,0.7,'#3a2a1c',0,1.22,0),B(0.34,0.24,0.3,'#1d1d1d',-0.62,1.37,0),B(2.2,0.08,0.9,'#d9d2bf',0,2.75,-0.6),B(0.06,2.7,0.06,'#555',-1.05,1.35,-0.15),B(0.06,2.7,0.06,'#555',1.05,1.35,-0.15)]),M.plain));scene.add(g);g.traverse(o=>{if(o.isMesh)o.castShadow=true;});sceneProps=g;}
+  sceneProps.visible=on;if(!on)return;const p=toW(s,0,0,s.czc);sceneProps.position.set(p.x,groundY(p.x,p.z),p.z);sceneProps.rotation.y=s.fr.ry;
+  if(!s.clerk){s.clerk={m:makeHuman(randLook()),h:0,dead:false,handsUp:false,temp:true};}scene.add(s.clerk.m.group);const c=toW(s,0,0,s.cz);s.clerk.m.group.position.set(c.x,groundY(c.x,c.z),c.z);s.clerk.m.group.rotation.y=s.fr.ry;}
+function frontGone(s){if(sceneProps)sceneProps.visible=false;if(s.clerk&&s.clerk.temp)scene.remove(s.clerk.m.group);}
+function buyNear(){if(state!=='play'||player.inCar||player.rag||player.jack||INSIDE)return;
+  const f=frontNear();if(f){const s=frontShop(f);if(s.cool>0){notify('They’re still shaken up after the robbery. Come back later.',3);return;}if(W.level>0){notify('Nobody will serve you with the cops on your tail.',3);return;}startScene('groc',s,()=>openShop(s));return;}
+  const s=shopAt();if(s&&!s.clerk.dead&&!s.mall&&s.kind!=='bank'){if(W.level>0){notify('The clerk won’t serve you with the cops on your tail.',3);return;}if(s.kind==='gun'){startScene('gun',s,()=>openShop(s));return;}if(s.cool>0){notify('This place was hit recently. Come back later.',3);return;}startScene('groc',s,()=>openShop(s));return;}
+  notify('Walk up to a shop to buy something.',2);}
+function robFront(f){const s=frontShop(f);if(s.cool>0){notify('This place was hit recently. Come back later.',3);return;}startRob(s);}
+// food boost: a bit faster and slowly healing for a minute
+const BOOST={until:-1,name:''};
+const boosted=()=>T<BOOST.until;
 /* ---------- death / respawn ---------- */
 function die(kind){if(state!=='play')return;PROF.stats[kind==='busted'?'busted':'wasted']++;saveProfile();state='dead';deadT=0;deadKind=kind;respawning=false;robbing=null;$('prog').hidden=true;player.jack=null;if(player.rag){player.rag=null;player.m.group.rotation.x=wrapA(player.m.group.rotation.x);}
   if(player.inCar)exitCar(true);if(kind==='wasted'){player.dead=true;}
@@ -2439,7 +2500,7 @@ function endIntro(){
   state='play';updGunVis();$('cine').hidden=true;$('hud').hidden=false;
   notify('You’re out with a rifle, a knife and <b>$2,500</b>. Click to punch, <b>1</b> for the rifle, <b>2</b> for the knife, <b>F</b> by a car to steal it. Gun stores sell 10 guns and grenades. The mall is waiting to be robbed.',10);
 }
-function newGame(){clearPolice();Object.assign(player,{hp:100,armor:0,cash:2500,wpn:'rifle',owned:{rifle:{ammo:30,reserve:240},knife:{ammo:0,reserve:0}},drawn:false,nades:0,rag:null,jack:null,trig:false,nadeCD:0,reload:0,inCar:null,lastCar:null,dead:false,vx:0,vz:0,vy:0,fp:false});robbing=null;ROUTE=null;CLEARRD=null;CAMCUT.done=false;for(const c of CAMS)c.cd=0;leaveBuilding(true);DAY.t=30;WEATHER.k=0;WEATHER.target=0;WEATHER.t=rand(150,260);radioOff();resetSafehouses();for(const d of DOORS)d.cool=-1;clearNades();setGunModel();showCashChange(0);
+function newGame(){clearPolice();BOOST.until=-1;Object.assign(player,{hp:100,armor:0,cash:2500,wpn:'rifle',owned:{rifle:{ammo:30,reserve:240},knife:{ammo:0,reserve:0}},drawn:false,nades:0,rag:null,jack:null,trig:false,nadeCD:0,reload:0,inCar:null,lastCar:null,dead:false,vx:0,vz:0,vy:0,fp:false});robbing=null;ROUTE=null;CLEARRD=null;CAMCUT.done=false;for(const c of CAMS)c.cd=0;leaveBuilding(true);DAY.t=30;WEATHER.k=0;WEATHER.target=0;WEATHER.t=rand(150,260);radioOff();resetSafehouses();for(const d of DOORS)d.cool=-1;clearNades();setGunModel();showCashChange(0);
   player.m.group.rotation.x=0;for(const c of CARS)if(c.driver==='player')c.setDriver(null);}
 
 /* ---------- HUD ---------- */
@@ -2461,7 +2522,8 @@ function contextHint(){if(!locked&&!noLock&&state==='play')return'Click the game
   const s=shopAt();if(s){if(s.kind==='gun')return s.clerk.dead?'Nobody is minding the store.':'Press <b>E</b> to browse 10 guns, grenades and gear.';
     if(s.clerk.dead)return'Nobody is minding the store.';if(s.cool>0)return'This place was hit recently. Come back later.';
     if(s.mall)return'Press <b>E</b> or walk up to the counter to rob the register.';if(s.kind==='bank')return'Press <b>E</b> to rob the vault.';
-    return player.drawn&&!WPN[player.wpn].melee?'Press <b>E</b> to rob the register.':'Press <b>E</b> to shop for snacks. Take out a gun (<b>1</b>) first to rob the place.';}
+    return player.drawn&&!WPN[player.wpn].melee?'Press <b>E</b> to rob the register, or <b>B</b> to buy.':'Press <b>E</b> or <b>B</b> to shop for snacks. Take out a gun (<b>1</b>) first to rob the place.';}
+  {const f=frontNear();if(f){const s=f.shop;return s&&s.cool>0?'This place was hit recently. Come back later.':`<b>${titleCase(f.name)}</b>: press <b>B</b> to buy, <b>E</b> to rob it.`;}}
   {const d=doorNear();if(d)return`Press <b>E</b> to go inside the ${d.kind==='apt'?'apartment':d.kind==='warehouse'?'warehouse':'office building'}.`;}
   const c=nearestCar();if(c)return c.driver==='ai'||c.driver==='cop'?`Press <b>F</b> to carjack the ${c.t.name}.`:`Press <b>F</b> to get in the ${c.t.name}.`;return'';}
 const BLIPC={rent:['#9aa3ad','R'],safe:['#2fbf71','S'],mall:['#c77dff','M'],store:['#7fcc6c','$'],bank:['#7fcc6c','B'],gun:['#d23b30','G'],hosp:['#e8e8e8','H'],police:['#3f7fe0','P']};
@@ -2516,6 +2578,7 @@ function updateHUD(dt){
   const P=player;
   if(hudCash!==P.cash){const d=P.cash-hudCash;hudCash+=Math.sign(d)*Math.max(1,Math.abs(d)*dt*5);if(Math.abs(P.cash-hudCash)<1)hudCash=P.cash;$('cash').textContent=fmt(hudCash);}
   starEls.forEach((s,i)=>s.classList.toggle('on',i<W.level));$('stars').classList.toggle('blink',W.level>0&&!W.seen);
+  {const bt=BOOST.until-T,be=$('boost');if(bt>0){be.hidden=false;be.textContent=`⚡ ${BOOST.name} boost · ${Math.ceil(bt)}s`;}else if(!be.hidden)be.hidden=true;}
   $('hpBar').style.width=clamp(P.hp,0,100)+'%';$('arBar').style.width=clamp(P.armor,0,100)+'%';
   const g=gunNow(),wn=P.drawn?WPN[P.wpn].name:'Holstered',am=!P.drawn?'1 gun · 2 knife':WPN[P.wpn].melee?'Click to stab':P.reload>0?'Reloading…':`${g.ammo} / ${g.reserve}`,ak=wn+am+P.nades;
   if(ak!==lastAmmo){$('wName').textContent=wn;$('ammo').textContent=am;$('nades').textContent=P.nades;$('nadeBox').hidden=!P.nades;$('weapon').classList.toggle('off',!P.drawn);lastAmmo=ak;}
@@ -2639,7 +2702,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.5';
+const VERSION='1.6';
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -2690,6 +2753,7 @@ addEventListener('keydown',e=>{keys[e.code]=true;
     case 'KeyC':if(player.inCar){player.carFp=!player.carFp;showVeh(player.carFp?'Hood view':'Chase view');}else{player.fp=!player.fp;player.m.group.visible=!player.fp||!!player.rag;}break;
     case 'KeyF':if(player.rag||player.jack)break;if(player.inCar)exitCar();else{const c=nearestCar();if(c)enterCar(c);}break;
     case 'KeyE':interact();break;
+    case 'KeyB':buyNear();break;
     case 'KeyR':if(player.inCar)radioNext();else startReload();break;
     case 'KeyM':mapOpen=!mapOpen;$('bigmap').hidden=!mapOpen;break;
     case 'KeyH':if(player.inCar){sfx.horn();scare(player.pos.x,player.pos.z,15);}break;
@@ -2717,7 +2781,7 @@ addEventListener('resize',resize);
 /* ---------- main loop ---------- */
 let menuA=0,lastT=performance.now();
 function frame(now){requestAnimationFrame(frame);tick(now);}
-if(/debug/.test(location.search))window.__fc={step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook};
+if(/debug/.test(location.search))window.__fc={step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook};
 function tick(now){
   const rdt=clamp((now-lastT)/1000,0,0.05);lastT=Math.max(lastT,now);fpsN++;fpsT+=rdt;if(fpsT>0.5){$('fps').textContent=Math.round(fpsN/fpsT)+' fps';fpsN=0;fpsT=0;}
   if(state==='loading')return;
