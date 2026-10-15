@@ -34,7 +34,7 @@ window.GAMES = [
     path: 'gamble-your-life-away/index.html',
     thumb: 'gamble-your-life-away/thumb.svg',
     added: '2026-10-15T10:15:00+11:00',
-    updated: '2026-10-15T10:38:00+11:00',
+    updated: '2026-10-15T11:26:00+11:00',
     stat() { const s = readSave('gambleLifeSave', true); return s && s.rounds ? 'Richest ' + '$' + Math.round(s.peak).toLocaleString('en-US') : null; },
   },
   {
@@ -148,6 +148,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-15', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.0.2: hit exactly $0 and the casino gives you one last 50/50 spin at the roulette wheel. Plus a rebuilt roulette wheel.' },
   { date: '2026-10-15', game: 'blockcraft', text: 'Blockcraft 2.0: the Nether and the End. Nether portals, fortresses, bastions, strongholds, the Ender Dragon and elytra, every Minecraft mob, new biomes (cherry grove, pale garden, swamp, jungle, badlands and more), the deep dark with ancient cities and the warden, witch huts, desert pyramids, igloos, and the new sulfur caves. Old worlds keep working.' },
   { date: '2026-10-15', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.0.1: fairer odds in every game, no more overlapping or flickering textures, a fixed neon sign and lots of bug fixes.' },
   { date: '2026-10-15', game: 'gamble-your-life-away', text: 'New game: Gamble Your Life Away. A 3D casino with 24 games and $50,000 to spend. End a round in debt and the casino gets you.' },
