@@ -590,7 +590,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.6.2 · What's new</button>
+    <button class="link" data-action="notes">v2.6.3 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
@@ -603,6 +603,11 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <li>When a match is won, a victory scene plays on the map for everyone: the winning team (or the Free-for-all winner) celebrates up front with the losers standing behind them, under a big VICTORY or DEFEAT. Then the scores show. Click, tap or press Space to skip it.</li>
         <li>Winning an online match, as a team or on your own, gives you 50 coins. Losing gives none.</li>
         <li>Single-player and the campaign are unchanged.</li>
+      </ul></section>
+      <section><h3>v2.6.3 <span>Fixes</span></h3><ul>
+        <li>Online gunshots and their sounds no longer lag: the first shot of every burst is sent straight away instead of waiting for the next network update, so other players see and hear your shots, and you get your hit markers, about 3 to 4 times sooner.</li>
+        <li>Fixed a match sometimes ending straight away as a draw if the host pressed Start just as someone was still connecting.</li>
+        <li>Other players' models are lighter to draw, for smoother frame rates on school laptops.</li>
       </ul></section>
       <section><h3>v2.6.1 <span>C:S Mode</span></h3><ul>
         <li>New multiplayer mode: C:S Mode, on the Outpost. Two teams, Terrorists (orange) and Counter-Terrorists (blue), play rounds. The host picks 3, 5 or 8 rounds to win.</li>
@@ -6315,9 +6320,10 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.6.2';
-function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
-function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
+const VERSION = '2.6.3';
+const NEWS_VERSION = '2.6.2'; // the update the "What's new" popup is about (small fix updates don't get one)
+function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
+function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
 
 renderAvatars();
@@ -6794,6 +6800,7 @@ tick();
   }
   function startMatch() {
     if (!isHost() || match) return;
+    if ((MODES[room.settings.mode] || MODES.tdm).pvp && members().length < 2) return; // 2.6.3: someone's connection hadn't caught up yet
     const s = { ...room.settings };
     match = newMatch(s); match.seed = Math.floor(Math.random() * 1e9);
     for (const m of members()) match.P.set(m.id, newP(m.id, room.roster.get(m.id)));
@@ -7047,10 +7054,10 @@ tick();
       rows.push([P.id, r2(P.x), r2(P.y), r2(P.z), r2(P.yaw), r2(P.pitch), r1(P.vx), r1(P.vy), r1(P.vz), P.w, Math.ceil(P.hp), P.alive ? 1 : 0, P.life, P.kills, P.deaths,
         P.id === myId ? 0 : P.ping, Math.round(t - P.at), P.ackT, P.ackAt ? Math.round(t - P.ackAt) : 0]);
     }
-    if (t - match.lastSnap < 1000 / room.hz) return;
+    if (t - match.lastSnap < 1000 / room.hz && !((match.fx.length || match.hits.length) && t - (match.lastFxSnap || 0) >= 1000 / room.hz)) return; // 2.6.3: shots don't wait
     const key = JSON.stringify(rows.map(r => r.slice(0, 15))) + match.red + ',' + match.blue;
     if (key === match.lastKey && !match.hits.length && !match.fx.length && t - match.lastSnap < IDLE_MS) return; // nothing new: stay quiet
-    match.lastKey = key; match.lastSnap = t;
+    match.lastKey = key; match.lastSnap = t; if (match.fx.length || match.hits.length) match.lastFxSnap = t;
     const S = { t: Math.round(t), hz: room.hz, p: rows, sc: [match.red, match.blue, Math.ceil(Math.max(0, match.endAt - t) / 1000)] };
     if (match.hits.length) S.x = match.hits.splice(0);
     if (match.fx.length) S.f = match.fx.splice(0);
@@ -7261,9 +7268,9 @@ tick();
     if (match.mode.rounds) m.e = !match.meDead && state === 'playing' && keys.KeyE ? 1 : 0;
     const key = JSON.stringify([m.p, m.w, m.h, m.k, m.d, m.l, m.e]);
     if (match.shots.length) m.s = match.shots.splice(0, 24);
-    if (!due && !(m.s && t - room.lastSend >= 1000 / room.hz)) { if (m.s) match.shots.unshift(...m.s); return; }
+    if (!due && !(m.s && (t - room.lastSend >= 1000 / room.hz || t - (match.lastShotUp || 0) >= 1000 / room.hz))) { if (m.s) match.shots.unshift(...m.s); return; } // 2.6.3: a new burst goes at once
     if (!m.s && key === match.lastKey2 && t - room.lastSend < IDLE_MS) return; // standing still: stay quiet
-    match.lastKey2 = key; room.lastSend = t;
+    match.lastKey2 = key; room.lastSend = t; if (m.s) match.lastShotUp = t;
     if (m.p) { match.myHist.push([m.t, player.pos.x, player.pos.y, player.pos.z]); while (match.myHist.length > 40) match.myHist.shift(); }
     send(room.up, 'i', m);
   }
@@ -7935,7 +7942,7 @@ if (!window.CAMP) window.CAMP = (() => {
   const NO_TEAM = 0x9b7bd6;
   // one person: feet at y = 0, about 1.85 m tall like the hitbox, facing -z like the cubes did
   function makePerson(si, color) {
-    const K = SKINS[((si % 6) + 6) % 6], L = c => lambert(c), m = (geo, c, x, y, z, parent) => { const o = new THREE.Mesh(geo, L(c)); o.position.set(x, y, z); o.castShadow = true; parent.add(o); return o; };
+    const K = SKINS[((si % 6) + 6) % 6], L = c => lambert(c), m = (geo, c, x, y, z, parent) => { const o = new THREE.Mesh(geo, L(c)); o.position.set(x, y, z); o.castShadow = geo === PG.torso || geo === PG.leg || geo === PG.head; parent.add(o); return o; };
     const g = new THREE.Group(), P = { g, legs: [], arms: [] };
     for (const s of [-1, 1]) { const leg = new THREE.Group(); leg.position.set(s * 0.13, 0.86, 0); m(PG.leg, K.pants, 0, 0, 0, leg); m(PG.shoe, K.shoes, 0, -0.8, -0.04, leg); g.add(leg); P.legs.push(leg); }
     m(PG.torso, K.shirt, 0, 1.19, 0, g);
