@@ -545,12 +545,21 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.5 · What's new</button>
+    <button class="link" data-action="notes">v2.6 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v2.6 <span>Real online multiplayer</span></h3><ul>
+        <li>Multiplayer is live: create a match, share the 5-letter code, and up to 6 friends can join from their own computers, tablets or phones. No more practice bots.</li>
+        <li>Team Deathmatch and Free-for-all with real hits, deaths, respawns and scores. Everyone gets the same guns: pistol, rifle, shotgun, sniper, knife and rocket launcher.</li>
+        <li>Co-op: play the cube waves side by side on the same map (each player fights their own cubes for now).</li>
+        <li>Rockets blow the same holes in everyone's map, and players who join late see them too.</li>
+        <li>Other players glide smoothly even on a slow connection, your own movement never waits for the internet, and shots count where you saw the other player.</li>
+        <li>If the host leaves, the next player takes over and the match carries on.</li>
+        <li>Works on school networks (no special ports). Press F3 in a match for network stats.</li>
+      </ul></section>
       <section><h3>v2.5 <span>Multiplayer and Outpost</span></h3><ul>
         <li>New Multiplayer button on the main menu. Create a match to get a 5-letter room code (with an optional password), or join a friend's match by typing their code.</li>
         <li>Multiplayer is a preview for now: matches are filled with practice bots, and real online play with friends is coming in a later update.</li>
@@ -778,12 +787,12 @@ body.touch.mpOn #mpBoardBtn { display: block; }
 
   <div class="menu" id="menu-news">
     <div class="eyebrow">What's new</div>
-    <h2>v2.5 · Multiplayer and Outpost</h2>
+    <h2>v2.6 · Real online multiplayer</h2>
     <ul class="newslist">
-      <li><b>Multiplayer</b> on the main menu: create a match with a room code or join one, pick teams, and set the mode, map and limits. It's a preview with practice bots for now; real online play with friends is coming soon.</li>
-      <li><b>Outpost</b>, a new map with Red and Blue spawns, three lanes, sites A and B and watchtowers. Also playable in single-player.</li>
-      <li>In matches: Tab scoreboard, kill feed, name tags, ping and respawn countdown.</li>
-      <li>The "playing now" counter is back on the main menu.</li>
+      <li><b>Play online with friends</b>: press Multiplayer, create a match and share the 5-letter code. Up to 6 players, on any device.</li>
+      <li><b>Team Deathmatch</b> (1v1 to 3v3) and <b>Free-for-all</b> with real hits, kills and respawns, plus <b>Co-op</b> against the cube waves.</li>
+      <li>Rockets blow holes in everyone's map at once, and if the host leaves the match carries on.</li>
+      <li>Try it on the <b>Outpost</b> map, built for team fights.</li>
     </ul>
     <button class="btn" id="newsOk">Let's go</button>
   </div>
@@ -932,11 +941,11 @@ if (typeof profile.owned !== 'object' || !profile.owned) profile.owned = {};
 profile.stats = Object.assign({ shots: 0, hits: 0, kills: 0, time: 0 }, profile.stats);
 // wave-locked guns unlock fresh in every game, so they're never stored as owned
 for (const k of WEAPON_KEYS) if (WEAPONS[k].unlockWave) delete profile.owned[k];
-let gameMode = 'classic'; // classic | campaign
+let gameMode = 'classic'; // classic | campaign | mp
 const isHard = () => gameMode !== 'campaign' && settings.difficulty === 'hard';
 const isAdmin = () => (profile.name || '').trim() === 'ADMINTEST';
 const ownsBase = k => { if (isAdmin()) return true; const w = WEAPONS[k]; return w.price ? !!profile.owned[k] : w.unlockWave ? wave >= w.unlockWave : true; };
-const owns = k => (gameMode === 'campaign' && state !== 'menu' && !isAdmin()) ? k === 'rifle' : ownsBase(k);
+const owns = k => (gameMode === 'mp' && window.mpNet) ? mpNet.guns.includes(k) : (gameMode === 'campaign' && state !== 'menu' && !isAdmin()) ? k === 'rifle' : ownsBase(k); // mp-net hook: everyone gets the same guns in multiplayer
 const ownsTurret = () => isAdmin() || !!profile.owned.turret;
 if (!WEAPONS[settings.weapon] || WEAPONS[settings.weapon].unlockWave || !owns(settings.weapon)) settings.weapon = 'pistol';
 let wiped = false; // set by Reset all data, so nothing gets saved back while the page reloads
@@ -2238,6 +2247,7 @@ function fireRocket() {
   g.position.copy(start);
   scene.add(g);
   rockets.push({ g, fire, v: dir.multiplyScalar(42), life: 5, smoke: 0 });
+  if (gameMode === 'mp' && window.mpNet) mpNet.rocket(rockets[rockets.length - 1]); // mp-net hook
   puff(camera.position.clone().addScaledVector(look, -1.2).setY(camera.position.y - 0.3), 0xcfc8bc, 1.4, 0.6);
   Sound.play('rocketFire');
 }
@@ -2291,7 +2301,7 @@ function explode(P) {
     player.vy = Math.max(player.vy, 7.5 * k); player.onGround = false;
     collide(player.pos, 0.45, player.pos.y);
   }
-  smashMap(P, RAD * 0.8);
+  if (gameMode !== 'mp') smashMap(P, RAD * 0.8); // mp-net hook: in multiplayer the host says what breaks
 }
 
 // knife
@@ -2300,6 +2310,7 @@ function slash() {
   fireCooldown = weapon.cooldown; slashT = 0.32; shotsFired++; profile.stats.shots++;
   if (!swiping) slashDir = -slashDir;
   Sound.play('slash');
+  if (gameMode === 'mp' && window.mpNet) mpNet.slash(); // mp-net hook
   const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
   let hit = false, killed = false;
   for (const e of [...enemies]) {
@@ -3547,6 +3558,7 @@ function shoot() {
     if (hit && hit.object.userData.onShot) hit.object.userData.onShot();
     const end = hit ? hit.point : camera.position.clone().addScaledVector(dir, 150);
     tracer(zoomed ? camera.position.clone().addScaledVector(dir, 0.5) : start, end, tColor, weapon.tracer ? 0.05 : 0.025);
+    if (gameMode === 'mp' && window.mpNet) mpNet.pellet(dir, hit); // mp-net hook
 
     if (hit && hit.object.userData.enemy) {
       const e = hit.object.userData.enemy;
@@ -3566,6 +3578,7 @@ function shoot() {
     }
   }
 
+  if (gameMode === 'mp' && window.mpNet) mpNet.fired(); // mp-net hook
   let killed = false;
   for (const [e, r] of damaged) {
     const u = e.userData;
@@ -3698,6 +3711,7 @@ function updateTurretHud() {
 function deployTurret() {
   if (state !== 'playing') return;
   if (gameMode === 'campaign' && !isAdmin()) { banner('No turret here', 'This level is rifle only'); Sound.play('empty'); return; }
+  if (gameMode === 'mp') { banner('No turret here', 'Not in multiplayer'); Sound.play('empty'); return; } // mp-net hook
   if (!ownsTurret()) { banner('No turret yet', 'Buy one in the Shop'); Sound.play('empty'); return; }
   if (turret) { banner('Turret already out', 'You can only have one at a time'); Sound.play('empty'); return; }
   const pos = new THREE.Vector3(player.pos.x - Math.sin(player.yaw) * 1.8, 0, player.pos.z - Math.cos(player.yaw) * 1.8);
@@ -4577,7 +4591,7 @@ function update(dt, t) {
 
   if (nextWaveIn > 0) { nextWaveIn -= dt; if (nextWaveIn <= 0) nextWave(); }
   if (damageFlash > 0) updateHUD();
-  if (player.hp <= 0) gameOver();
+  if (player.hp <= 0 && gameMode !== 'mp') gameOver(); // mp-net hook: in multiplayer the host decides deaths
 }
 
 // ---------- Radar ----------
@@ -6234,7 +6248,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.5';
+const VERSION = '2.6';
 function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
@@ -6274,6 +6288,7 @@ tick();
     try {
       const client = window.supabase.createClient('https://fewocduisjbctoxolkjr.supabase.co', 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',
         { auth: { persistSession: false, autoRefreshToken: false } });
+      window.caSupabase = client; // mp-net uses this same connection for multiplayer
       const key = (crypto.randomUUID && crypto.randomUUID()) || Math.random().toString(36).slice(2) + Date.now().toString(36);
       const ch = client.channel('online:arcade', { config: { presence: { key } } });
       ch.on('presence', { event: 'sync' }, () => {
@@ -6287,6 +6302,1032 @@ tick();
     } catch (e) { show(null); }
   };
   document.head.appendChild(lib);
+})();
+</script>
+<script id="mp-net">
+// ===== Online multiplayer: rooms and netcode (Lars) =====
+// The real window.CAMP behind Noah's lobby, HUD and results screens (mp-ui). It is defined before mp-stub,
+// so the stub stays out of the way. Everything runs in the browser over Supabase Realtime: secure WebSockets
+// on port 443, no WebRTC, the arcade's own Supabase project and, where it can, the arcade's own connection.
+//
+// How it works
+// - A room is one channel, ca-room-<CODE>. Presence on it is the player list, and the host is whoever joined
+//   first (ties broken by id). The host broadcasts the room state, snapshots and one-off events on it.
+// - Each player also has a private pipe to the host, ca-room-<CODE>-<id>, that only they and the host join.
+//   Inputs go up that pipe, so an input costs 2 messages (sent + delivered to the host) instead of 1 + everyone.
+// - The host's browser is the referee. It checks movement and fire rates and decides hits (rewinding everyone
+//   to where the shooter saw them), damage, deaths, respawns, scores and the end of the match. Your own
+//   movement is predicted on your screen and never waits; other players are drawn ~200 ms in the past,
+//   blended between snapshots, carried along their velocity for up to 250 ms when one is late, and eased
+//   back over 100 ms when it arrives.
+// - Rockets: the host flies them and sends each explosion (position) once; every screen breaks the map itself.
+// - If the host leaves, the next player in join order takes over and the match carries on.
+//
+// Message budget. The free plan allows 2 million messages a month and at most 100 a second for the whole
+// project, and Supabase counts every send and every delivery. Per update tick in a room of n players:
+//   inputs (n - 1) x 2 = 2n - 2,   snapshot 1 sent + (n - 1) delivered = n,   so 3n - 2 messages a tick.
+// MAX_HZ is the most updates a second; the host lowers the rate so a room stays under ROOM_BUDGET:
+//   1v1, n = 2:  4 a tick x 7/s = 28/s, 1,680 a minute  ->  ~20 hours of 1v1 a month
+//   2v2, n = 4: 10 a tick x 7/s = 70/s, 4,200 a minute  ->  ~8 hours of 2v2 a month
+//   3v3, n = 6: 16 a tick x 4/s = 64/s, 3,840 a minute  ->  ~8.7 hours of 3v3 a month
+// These are worst cases, with everyone moving all the time; standing still sends one "still here" every 2 s.
+// Shots ride along with the next input (or go at once if nothing went out lately); kills, respawns,
+// explosions and match start and end go out straight away. The lobby costs about 1 message a second each.
+// Because of the 100-a-second cap, only about one full 3v3 can run at a time across the whole site.
+// Debugging: F3 shows the message counts, ping and rate; add ?mplag=150&mploss=0.05 to the address to add
+// 150 ms of delay and drop 5% of incoming messages (or call CAMP._debug.net(150, 0.05)).
+(() => {
+  // ---------- tuning ----------
+  const MAX_HZ = 7;          // the most updates a second, for inputs and snapshots alike
+  const ROOM_BUDGET = 70;    // messages a second one room may cost (sends + deliveries)
+  const IDLE_MS = 2000;      // when nothing changes, one "still here" message this often
+  const SILENT_MS = 10000;   // the host removes anyone it hasn't heard from for this long
+  const MAX_PLAYERS = 6;
+  const HIST_MS = 1000;      // how far back the host keeps (and can rewind) everyone's position
+  const EXTRAP_MS = 250, EASE_MS = 100, RESPAWN_S = 3;
+  const MAX_SPEED = 10;      // sprinting speed in updatePlayer()
+  const GUNS = ['pistol', 'rifle', 'shotgun', 'sniper', 'knife', 'rocket']; // the same guns for everyone; the Extreme Gun stays single-player
+  const DMG = { pistol: 22, rifle: 12, shotgun: 12, sniper: 100, knife: 55, rocket: 100 }; // per hit (per pellet), out of 100 health
+  const BOX_R = 0.55, BOX_H = 1.85; // a player's hitbox: 1.1 m wide, 1.85 m tall
+  const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
+  const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0, O, 1, I or L
+  const DEFAULTS = { mode: 'tdm', teamSize: 3, mapId: 'outpost', killLimit: 20, timeLimit: 10, friendlyFire: false, locked: false };
+  const ALLOWED = { mode: ['tdm', 'ffa', 'coop'], teamSize: [1, 2, 3], mapId: ['classic', 'big', 'outpost'], killLimit: [10, 20, 30], timeLimit: [5, 10, 15], friendlyFire: [false, true], locked: [false, true] };
+  const SPAWNS = { red: [[-6, -30], [0, -31], [6, -30]], blue: [[6, 30], [0, 31], [-6, 30]], ffa: [[0, -30], [0, 30], [-30, 0], [30, 0], [-12, 12], [12, -12]] }; // Classic and Frontier, as in mp-ui
+  const COLORS = { red: 0xdc2626, blue: 0x3b82f6, none: 0x9b7bd6 };
+
+  // ---------- game modes: add a new one here ----------
+  // teams: players pick Red or Blue. pvp: players can hurt each other. selfHp: each player's own screen owns
+  // their health (co-op, where the cubes are on your screen). hurts(a, b, s): can a hurt b. credit(a, b): does
+  // a kill of b count for a. done(m): limit reached. winner(m, rows): 'red', 'blue', a player id, 'draw' or 'coop'.
+  const MODES = {
+    tdm: { teams: true, pvp: true,
+      hurts: (a, b, s) => a !== b && (s.friendlyFire || a.team !== b.team),
+      credit: (a, b) => a.team !== b.team,
+      done: m => Math.max(m.red, m.blue) >= m.s.killLimit,
+      winner: m => m.red > m.blue ? 'red' : m.blue > m.red ? 'blue' : 'draw' },
+    ffa: { teams: false, pvp: true,
+      hurts: (a, b) => a !== b,
+      credit: () => true,
+      done: m => [...m.P.values()].some(p => p.kills >= m.s.killLimit),
+      winner: (m, rows) => { const top = [...rows].sort((a, b) => b.kills - a.kills); return top.length && (top.length < 2 || top[0].kills > top[1].kills) ? top[0].id : 'draw'; } },
+    // co-op, first version: everyone shares the map and sees each other, and each player fights the cube waves
+    // on their own screen. Kills are cubes destroyed. TODO: one shared set of cubes run by the host.
+    coop: { teams: false, pvp: false, selfHp: true,
+      hurts: () => false, credit: () => false, done: () => false, winner: () => 'coop' },
+  };
+
+  // ---------- small helpers ----------
+  const now = () => performance.now();
+  const r2 = v => Math.round(v * 100) / 100, r1 = v => Math.round(v * 10) / 10;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const num = v => typeof v === 'number' && isFinite(v);
+  const myId = (Math.random().toString(36) + '0000000').slice(2, 8);
+  const hzFor = n => Math.max(3, Math.min(MAX_HZ, Math.floor(ROOM_BUDGET / Math.max(1, 3 * n - 2))));
+  const delayFor = hz => Math.max(160, 1000 / hz + 60);
+  const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+  const code5 = () => Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
+  const handlers = {};
+  const emit = (ev, d) => (handlers[ev] || []).slice().forEach(f => { try { f(d); } catch (e) { console.error(e); } });
+  // the clock of another computer: off = our time - their time, from the quickest message seen (drifts slowly)
+  const syncClock = () => ({ off: null, sample(theirs, ours) { const o = ours - theirs; if (this.off === null || o < this.off) this.off = o; else this.off += (o - this.off) * 0.01; } });
+
+  // pretend lag and packet loss, for testing: ?mplag=150&mploss=0.05
+  const qs = new URLSearchParams(location.search);
+  const NET = { lag: +qs.get('mplag') || 0, loss: +qs.get('mploss') || 0 };
+  // what we've sent and received this session, for the F3 overlay
+  const stats = { sent: 0, recv: 0, times: [] };
+  const count = out => { out ? stats.sent++ : stats.recv++; stats.times.push(now()); if (stats.times.length > 9000) stats.times.splice(0, 3000); };
+
+  // ---------- the Supabase connection ----------
+  // On the arcade's play page, use the page's own connection (one connection per player, as the counter expects);
+  // opened on its own, use the one the game's counter made. Only if neither is there do we open one.
+  let client = null, libLoad = null;
+  function getClient() {
+    if (client) return Promise.resolve(client);
+    try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(client = c); } catch (e) {}
+    if (window.caSupabase) return Promise.resolve(client = window.caSupabase);
+    if (!libLoad) libLoad = new Promise((res, rej) => {
+      if (window.supabase && window.supabase.createClient) return res();
+      const s = document.createElement('script'); s.src = SB_LIB; s.async = true;
+      s.onload = res; s.onerror = () => { libLoad = null; rej('offline'); };
+      document.head.appendChild(s);
+    });
+    return libLoad.then(() => {
+      if (client) return client;
+      if (window.caSupabase) return client = window.caSupabase;
+      return client = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    }).catch(() => { throw 'offline'; });
+  }
+  function chan(topic, presence) {
+    const config = { broadcast: { self: false, ack: false } };
+    if (presence) config.presence = { key: myId };
+    return client.channel(topic, { config });
+  }
+  // subscribe; resolves once joined. Later trouble (or recovery) goes to later(status).
+  function joinChan(ch, later) {
+    return new Promise((res, rej) => {
+      let done = false;
+      const to = setTimeout(() => { if (!done) { done = true; rej('offline'); } }, 9000);
+      ch.subscribe(status => {
+        if (!done) {
+          if (status === 'SUBSCRIBED') { done = true; clearTimeout(to); res(); }
+          else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { done = true; clearTimeout(to); rej('offline'); }
+          return;
+        }
+        if (later) later(status);
+      });
+    });
+  }
+  function dropChan(ch) { if (!ch) return; try { const p = client.removeChannel(ch); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+  function send(ch, ev, payload) {
+    if (!ch || ch.state !== 'joined') return false;
+    count(true);
+    try { const p = ch.send({ type: 'broadcast', event: ev, payload }); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    return true;
+  }
+  function listen(ch, ev, fn) {
+    ch.on('broadcast', { event: ev }, m => {
+      count(false);
+      if (NET.loss && Math.random() < NET.loss) return;
+      const r = room, go = () => { if (room === r && r && !r.closed) { try { fn(m.payload || {}); } catch (e) { console.error(e); } } };
+      if (NET.lag) setTimeout(go, NET.lag * (0.75 + Math.random() * 0.5)); else go();
+    });
+  }
+
+  // ---------- the room ----------
+  let room = null;   // the room we're in
+  let match = null;  // the match being played, if any
+  const isHost = () => !!room && room.hostId === myId;
+  function newRoom(code, name) {
+    let synced; const sync = new Promise(r => synced = r);
+    return { code, name: String(name || 'Player').slice(0, 24), ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
+      roster: new Map(), settings: { ...DEFAULTS }, pings: {}, acks: {}, myPing: null, seen: new Set(), kicked: new Set(),
+      ups: new Map(), lastHeard: new Map(), pw: '', hz: MAX_HZ, stDue: false, lastSt: 0, lastSend: 0, sync, synced, trouble: 0, waitAcc: null };
+  }
+  function presList() {
+    const st = room.ch ? room.ch.presenceState() : {}, out = [];
+    for (const k in st) { const m = st[k] && st[k][0]; if (m && m.id) out.push({ id: String(m.id), n: m.n, j: +m.j || 0 }); }
+    if (room.tracked && !out.some(m => m.id === myId)) out.push({ id: myId, n: room.name, j: room.j });
+    return out.sort((a, b) => a.j - b.j || (a.id < b.id ? -1 : 1));
+  }
+  // everyone in the room: in Presence and accepted by the host
+  const members = () => { const list = presList(); return room.roster.size ? list.filter(m => room.roster.has(m.id)) : list; };
+  const nameOf = id => { const m = room && presList().find(p => p.id === id); return m ? m.n || 'Player' : 'Player'; };
+  function playerList() {
+    if (!room) return [];
+    return members().map(m => ({ id: m.id, name: m.n || 'Player', team: room.roster.get(m.id) || null, isHost: m.id === room.hostId,
+      ping: m.id === myId ? (isHost() ? 0 : room.myPing) : m.id === room.hostId ? 0 : room.pings[m.id] ?? null }));
+  }
+  const emitPlayers = () => emit('players', playerList());
+  function teamCounts() { const c = { red: 0, blue: 0 }; for (const t of room.roster.values()) if (t) c[t]++; return c; }
+  const smallerTeam = () => { const c = teamCounts(); return c.red <= c.blue ? 'red' : 'blue'; };
+
+  function onPresence() {
+    if (!room) return;
+    count(false);
+    room.synced();
+    const here = new Set(presList().map(m => m.id));
+    for (const id of here) room.seen.add(id);
+    if (isHost()) for (const id of [...room.roster.keys()]) if (id !== myId && room.seen.has(id) && !here.has(id)) removePlayer(id);
+    elect();
+    if (match) for (const id of [...avatars.keys()]) if (!here.has(id)) removeAvatar(id);
+    emitPlayers();
+  }
+  // the host is whoever joined first; if that changes (the host left), everyone works out the same new one
+  function elect() {
+    const first = members()[0];
+    if (!first || first.id === room.hostId || !room.hostId) return;
+    if (!presList().some(m => m.id === room.hostId)) setHost(first.id);
+  }
+  function setHost(id) {
+    room.hostId = id;
+    if (id === myId) becomeHost();
+    else if (match) { match.hostClk = syncClock(); for (const a of avatars.values()) a.buf.length = 0; }
+    emit('hostChanged', id); emitPlayers();
+  }
+  function becomeHost() {
+    room.lastHeard = new Map();
+    for (const id of room.roster.keys()) if (id !== myId) { room.lastHeard.set(id, now()); openUp(id); }
+    if (match) takeOver();
+    sendState();
+  }
+  // the pipe from a player to the host
+  async function openUp(id) {
+    if (room.ups.has(id)) return room.ups.get(id);
+    const r = room, ch = chan('ca-room-' + r.code + '-' + id);
+    r.ups.set(id, ch);
+    listen(ch, 'i', d => onInput(id, d));
+    listen(ch, 'tm', d => onTeam(id, d));
+    try { await joinChan(ch); } catch (e) {}
+    return ch;
+  }
+  function closeUp(id) { if (!room) return; dropChan(room.ups.get(id)); room.ups.delete(id); }
+  function wireRoom(ch) {
+    ch.on('presence', { event: 'sync' }, () => onPresence());
+    listen(ch, 'hello', onHello);
+    listen(ch, 'st', onState);
+    const fromHost = fn => d => { if (d.h === room.hostId && !isHost()) fn(d); };
+    listen(ch, 'go', fromHost(d => startLocal(d, false)));
+    listen(ch, 'S', fromHost(onSnap));
+    listen(ch, 'k', fromHost(onKill));
+    listen(ch, 'sp', fromHost(onSpawn));
+    listen(ch, 'b', fromHost(onBoom));
+    listen(ch, 'end', fromHost(onEnd));
+  }
+  function wireMine(ch) {
+    listen(ch, 'acc', d => { if (room.waitAcc) room.waitAcc(d); });
+    listen(ch, 'kick', () => { teardown(); emit('error', 'kicked'); });
+  }
+  const hostSend = (ev, d) => { d.h = myId; send(room.ch, ev, d); };
+  // the channel dropped: give Supabase a few seconds to reconnect before giving up
+  function trouble(status) {
+    if (!room || room.closed) return;
+    if (status === 'SUBSCRIBED') { clearTimeout(room.trouble); room.trouble = 0; if (room.tracked) room.ch.track({ id: myId, n: room.name, j: room.j }).catch(() => {}); return; }
+    if (room.trouble) return;
+    room.trouble = setTimeout(() => { if (room && !room.closed) { teardown(); emit('error', 'offline'); } }, 8000);
+  }
+  const waitSync = ms => Promise.race([room.sync, new Promise(r => setTimeout(r, ms))]);
+  async function track() { room.tracked = true; await room.ch.track({ id: myId, n: room.name, j: room.j }); }
+
+  async function createRoom({ name, password } = {}) {
+    if (room) leaveRoom();
+    await getClient();
+    for (let tries = 0; tries < 3; tries++) {
+      room = newRoom(code5(), name);
+      try {
+        room.ch = chan('ca-room-' + room.code, true); wireRoom(room.ch);
+        await joinChan(room.ch, trouble);
+        await waitSync(1500);
+        if (presList().length) { teardown(); continue; } // that code is taken, pick another
+        room.hostId = myId; room.j = Date.now();
+        room.pw = password ? hash(room.code + ':' + password) : '';
+        room.roster.set(myId, 'red');
+        await track();
+        start(); emitPlayers(); emit('settings', { ...room.settings });
+        return { code: room.code };
+      } catch (e) { teardown(); throw 'offline'; }
+    }
+    throw 'offline';
+  }
+  async function joinRoom(code, { name, password } = {}) {
+    if (room) leaveRoom();
+    code = String(code || '').toUpperCase().trim();
+    if (code.length !== 5) throw 'not_found';
+    await getClient();
+    room = newRoom(code, name);
+    try {
+      room.ch = chan('ca-room-' + code, true); wireRoom(room.ch);
+      await joinChan(room.ch, trouble);
+      await waitSync(2500);
+      const list = presList();
+      if (!list.length) throw 'not_found';
+      if (list.length >= MAX_PLAYERS) throw 'full';
+      room.up = chan('ca-room-' + code + '-' + myId); wireMine(room.up);
+      await joinChan(room.up, trouble);
+      const acc = await new Promise((res, rej) => {
+        room.waitAcc = res; setTimeout(() => rej('not_found'), 8000);
+        send(room.ch, 'hello', { id: myId, n: room.name, pw: password ? hash(code + ':' + password) : '' });
+      });
+      room.waitAcc = null;
+      if (acc.no) throw acc.no;
+      room.hostId = acc.h; room.settings = { ...DEFAULTS, ...acc.s }; room.roster = new Map(acc.r || []);
+      room.j = Math.max(Date.now(), ...presList().map(m => m.j + 1)); // always after everyone already here
+      await track();
+      start(); emitPlayers(); emit('settings', { ...room.settings });
+      if (acc.go) setTimeout(() => { if (room) startLocal(acc.go, true); }, 0); // a match is on: jump in once the lobby has opened
+    } catch (e) { teardown(); throw typeof e === 'string' ? e : 'offline'; }
+  }
+  function leaveRoom() {
+    if (!room) return;
+    try { if (room.tracked) room.ch.untrack(); } catch (e) {}
+    teardown();
+  }
+  function teardown() {
+    if (!room) return;
+    const r = room; r.closed = true; clearTimeout(r.trouble);
+    endLocal();
+    for (const ch of r.ups.values()) dropChan(ch);
+    dropChan(r.up); dropChan(r.ch);
+    room = null;
+    if (gameMode === 'mp') gameMode = 'classic';
+  }
+
+  // ---------- host: who's in, teams and settings ----------
+  async function onHello(d) {
+    if (!isHost()) return;
+    const id = String(d.id || '').slice(0, 12);
+    if (!id || id === myId) return;
+    let no = '';
+    if (room.kicked.has(id)) no = 'locked';
+    else if (!room.roster.has(id)) {
+      if (room.settings.locked) no = 'locked';
+      else if (room.roster.size >= MAX_PLAYERS) no = 'full';
+      else if (room.pw && d.pw !== room.pw) no = 'bad_password';
+    }
+    const r = room, up = await openUp(id);
+    if (room !== r) return;
+    if (no) { send(up, 'acc', { no }); setTimeout(() => closeUp(id), 1500); return; }
+    if (!room.roster.has(id)) room.roster.set(id, room.settings.mode === 'tdm' ? smallerTeam() : null);
+    room.lastHeard.set(id, now());
+    const acc = { ok: 1, h: myId, s: room.settings, r: [...room.roster] };
+    if (match) { if (!match.P.has(id)) match.P.set(id, newP(id, room.roster.get(id))); acc.go = goInfo(); }
+    send(up, 'acc', acc);
+    sendState();
+  }
+  function onTeam(id, d) {
+    if (!isHost() || match || room.settings.mode !== 'tdm' || !room.roster.has(id)) return;
+    const t = d.t === 'red' || d.t === 'blue' ? d.t : null;
+    if (!t || room.roster.get(id) === t || teamCounts()[t] >= room.settings.teamSize) return;
+    room.roster.set(id, t); sendState(); emitPlayers();
+  }
+  function removePlayer(id) {
+    room.roster.delete(id); room.lastHeard.delete(id); delete room.pings[id];
+    setTimeout(() => closeUp(id), 1000);
+    if (match) { match.P.delete(id); removeAvatar(id); }
+    room.stDue = true;
+  }
+  function sendState() {
+    if (!isHost()) return;
+    room.stDue = false; room.lastSt = now();
+    const a = {}, t = now();
+    for (const [id, [ts, at]] of Object.entries(room.acks)) a[id] = [ts, Math.round(t - at)];
+    hostSend('st', { s: room.settings, r: [...room.roster], g: room.pings, a, m: match ? 1 : 0 });
+  }
+  function onState(d) {
+    if (d.h !== room.hostId) {
+      // two hosts (after a hiccup in Presence): the one who joined first keeps it, and everyone follows them
+      const rank = id => { const i = presList().findIndex(m => m.id === id); return i < 0 ? 1e9 : i; };
+      if (!d.h || rank(d.h) >= rank(room.hostId)) return;
+      setHost(d.h);
+    }
+    if (isHost()) return;
+    const before = JSON.stringify(room.settings);
+    room.settings = { ...DEFAULTS, ...d.s };
+    room.roster = new Map(d.r || []);
+    room.pings = d.g || {};
+    const mine = d.a && d.a[myId];
+    if (mine) ping(now() - mine[0] - mine[1]);
+    if (!room.roster.has(myId) && room.tracked) { teardown(); emit('error', 'kicked'); return; }
+    if (JSON.stringify(room.settings) !== before) emit('settings', { ...room.settings });
+    emitPlayers();
+  }
+  const ping = ms => { if (!(ms >= 0 && ms < 5000)) return; room.myPing = Math.round(room.myPing == null ? ms : room.myPing * 0.7 + ms * 0.3); };
+
+  // ---------- timers: a 20 Hz pump for the network (it keeps going in a background tab) and a frame loop ----------
+  let pumpT = 0;
+  function start() {
+    if (!pumpT) pumpT = setInterval(pump, 50);
+    room.lastSend = now();
+  }
+  function pump() {
+    if (!room) { clearInterval(pumpT); pumpT = 0; return; }
+    const t = now();
+    if (isHost()) {
+      room.hz = hzFor(members().length);
+      for (const [id, at] of room.lastHeard) if (t - at > SILENT_MS) kick(id); // gone quiet: probably closed the tab
+      for (const [id, ch] of room.ups) if (ch.state === 'closed' || ch.state === 'errored') { room.ups.delete(id); dropChan(ch); if (room.roster.has(id)) openUp(id); } // a pipe dropped: open it again
+      if (match) hostTick(t);
+      if (room.stDue || t - room.lastSt > (match ? 5000 : IDLE_MS)) sendState();
+    } else clientTick(t);
+    if (match && t - (match.lastPl || 0) > 2000) { match.lastPl = t; emitPlayers(); } // keeps the HUD's ping fresh
+  }
+
+  // ---------- the match ----------
+  const avatars = new Map();   // the other players, as cubes
+  const vRockets = [];         // other players' rockets in flight (just for show; the host decides where they land)
+  function newMatch(s) {
+    return { s: { ...s }, mode: MODES[s.mode] || MODES.tdm, P: new Map(), red: 0, blue: 0, endAt: now() + s.timeLimit * 60000,
+      rockets: [], booms: [], hits: [], fx: [], lastSnap: 0, lastKey: '', hostClk: syncClock(), rows: new Map(), timeLeft: s.timeLimit * 60,
+      life: 0, meDead: false, died: false, shots: [], pellets: [], myHist: [], lastKey2: '', corr: new THREE.Vector3(), corrAt: 0,
+      prev: player.pos.clone(), vel: new THREE.Vector3(), histAt: 0, rid: 0, lastPl: 0, lastScores: 0 };
+  }
+  function newP(id, team) {
+    return { id, team: team || null, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, vx: 0, vy: 0, vz: 0, w: 1, hp: 100, alive: true, life: 0, kills: 0, deaths: 0,
+      ping: 0, hist: [], clk: syncClock(), lastT: -1, lastRecv: 0, ackT: 0, ackAt: 0, fire: {}, shotTimes: [], respawnAt: 0, known: false, at: 0 };
+  }
+  function goInfo() {
+    return { mapId: match.s.mapId, seed: match.seed, s: match.s, left: Math.max(0, Math.round(match.endAt - now())), booms: match.booms, sc: [match.red, match.blue],
+      lives: Object.fromEntries([...match.P].map(([id, p]) => [id, p.life])) };
+  }
+  function startMatch() {
+    if (!isHost() || match) return;
+    const s = { ...room.settings };
+    match = newMatch(s); match.seed = Math.floor(Math.random() * 1e9);
+    for (const m of members()) match.P.set(m.id, newP(m.id, room.roster.get(m.id)));
+    const go = goInfo();
+    hostSend('go', go);
+    startLocal(go, false);
+    sendState();
+  }
+  // everyone: build the map and drop into it (Noah's startMatch does the screens and the first spawn)
+  function startLocal(go, late) {
+    if (!room) return;
+    if (!isHost()) { if (match) endLocal(); match = newMatch({ ...DEFAULTS, ...go.s }); match.seed = go.seed; match.endAt = now() + (go.left || 0); }
+    match.life = (go.lives && go.lives[myId]) || 0;
+    if (go.sc) { match.red = go.sc[0] || 0; match.blue = go.sc[1] || 0; }
+    emit('matchStart', { mapId: go.mapId, seed: go.seed, settings: { ...match.s } });
+    if (!owns(weaponKey)) setWeapon('rifle');
+    match.prev.copy(player.pos);
+    // joined late: knock the same holes in the map that everyone else already has
+    for (const b of go.booms || []) { match.booms.push(b); smashMap(new THREE.Vector3(b[0], b[1], b[2]), WEAPONS.rocket.splash * 0.8); }
+    if (late) emitScores();
+    for (const m of members()) if (m.id !== myId) avatarFor(m.id);
+    if (isHost()) updateMine(now());
+  }
+  function endLocal() {
+    for (const id of [...avatars.keys()]) removeAvatar(id);
+    while (vRockets.length) removeVRocket(0);
+    match = null;
+  }
+  function onEnd(d) {
+    if (!match) return;
+    endLocal();
+    emit('matchEnd', d);
+    if (gameMode === 'mp') gameMode = 'classic';
+  }
+
+  // ---------- host: running the match ----------
+  function hostTick(t) {
+    updateMine(t);
+    stepRockets(t);
+    for (const P of match.P.values()) if (!P.alive && P.respawnAt && t >= P.respawnAt) respawn(P);
+    if (!match) return;
+    const n = match.P.size;
+    if (t >= match.endAt || match.mode.done(match) || n < 1 || (match.mode.pvp && n < 2)) { endMatchHost(); return; }
+    snapshot(t);
+    if (t - match.lastScores > 500) { match.lastScores = t; emitScores(); }
+  }
+  // the host's own player, read straight from the game
+  function updateMine(t) {
+    const P = match && match.P.get(myId);
+    if (!P) return;
+    P.x = player.pos.x; P.y = player.pos.y; P.z = player.pos.z; P.yaw = player.yaw; P.pitch = player.pitch;
+    P.vx = match.vel.x; P.vy = player.vy; P.vz = match.vel.z; P.w = Math.max(0, WEAPON_KEYS.indexOf(weaponKey));
+    if (match.mode.selfHp) { P.hp = Math.max(0, player.hp); P.kills = kills; }
+    P.known = true; P.at = t;
+    if (t - match.histAt > 30) { match.histAt = t; pushHist(P, t); }
+  }
+  function pushHist(P, t) {
+    P.hist.push([t, P.x, P.y, P.z]);
+    while (P.hist.length > 2 && P.hist[0][0] < t - HIST_MS - 300) P.hist.shift();
+  }
+  // where P was at host time t (for lag compensation)
+  function posAt(P, t) {
+    const h = P.hist;
+    if (!h.length || t >= h[h.length - 1][0]) return { x: P.x, y: P.y, z: P.z };
+    if (t <= h[0][0]) return { x: h[0][1], y: h[0][2], z: h[0][3] };
+    let i = h.length - 2; while (i > 0 && h[i][0] > t) i--;
+    const a = h[i], b = h[i + 1], k = (t - a[0]) / Math.max(1, b[0] - a[0]);
+    return { x: a[1] + (b[1] - a[1]) * k, y: a[2] + (b[2] - a[2]) * k, z: a[3] + (b[3] - a[3]) * k };
+  }
+  function bounds() {
+    const M = MAPS[mapId], B = M && M.bounds;
+    return B || { minX: -ARENA + 0.5, maxX: ARENA - 0.5, minZ: -ARENA + 0.5, maxZ: ARENA - 0.5 };
+  }
+  function onInput(id, m) {
+    if (!isHost() || !room.roster.has(id)) return;
+    const t = now();
+    room.lastHeard.set(id, t);
+    if (num(m.g)) room.pings[id] = Math.round(m.g);
+    if (num(m.t)) room.acks[id] = [m.t, t];
+    if (!match || !num(m.t)) return;
+    const P = match.P.get(id);
+    if (!P) return;
+    P.ackT = m.t; P.ackAt = t; P.ping = room.pings[id] || 0;
+    P.clk.sample(m.t, t);
+    if (match.mode.selfHp) {
+      if (num(m.h)) P.hp = clamp(m.h, 0, 100);
+      if (num(m.k)) P.kills = Math.max(0, m.k | 0);
+      if (m.d && P.alive && m.l === P.life) kill(P, null, 'cube');
+    }
+    if (m.l !== P.life) return; // from before their last respawn
+    if (Array.isArray(m.p) && m.t > P.lastT && P.alive) move(P, m, t);
+    if (Array.isArray(m.s)) for (const s of m.s.slice(0, 24)) shotFrom(P, s, t);
+  }
+  // anti-cheat: nobody moves faster than sprinting (plus a margin for rocket blasts and lag) or leaves the map
+  function move(P, m, t) {
+    const [x, y, z, yaw, pitch, vx = 0, vy = 0, vz = 0] = m.p;
+    if (![x, y, z, yaw, pitch, vx, vy, vz].every(num)) return;
+    const B = bounds(), nx = clamp(x, B.minX, B.maxX), nz = clamp(z, B.minZ, B.maxZ);
+    if (P.known && P.lastT > 0) {
+      const dt = Math.min(Math.max(0, (m.t - P.lastT) / 1000), (t - P.lastRecv) / 1000 + 0.5);
+      if (Math.hypot(nx - P.x, nz - P.z) > MAX_SPEED * 1.3 * dt + 1.6) { P.lastT = m.t; P.lastRecv = t; P.bad = (P.bad || 0) + 1; return; } // too fast: stays put, and the snapshot pulls them back
+    }
+    P.x = nx; P.y = clamp(y, -1, 6); P.z = nz; P.yaw = yaw; P.pitch = clamp(pitch, -1.6, 1.6);
+    P.vx = clamp(vx, -15, 15); P.vy = clamp(vy, -30, 15); P.vz = clamp(vz, -15, 15);
+    if (num(m.w) && GUNS.includes(WEAPON_KEYS[m.w])) P.w = m.w;
+    P.known = true; P.lastT = m.t; P.lastRecv = t;
+    P.at = Math.min(t, m.t + P.clk.off);
+    pushHist(P, P.at);
+    avatarFor(P.id).push(P.at, P.x, P.y, P.z, P.yaw, P.pitch, P.vx, P.vy, P.vz);
+  }
+  // a shot: { t, w, rt (the host time the shooter was seeing), o: [x, y, z] eye, d: directions, r: rocket id }
+  function shotFrom(P, s, t) {
+    if (!P.alive || !s || !num(s.t) || !num(s.w) || !Array.isArray(s.d)) return;
+    const key = WEAPON_KEYS[s.w];
+    if (!GUNS.includes(key)) return;
+    const W = WEAPONS[key], gap = key === 'rocket' ? (W.reload + W.cooldown) * 800 : W.cooldown * 750;
+    if (s.t - (P.fire[key] ?? -1e9) < gap) return; // faster than the gun fires
+    P.shotTimes = P.shotTimes.filter(x => t - x < 1000);
+    if (P.shotTimes.length > 1000 / gap + 3) return;
+    P.fire[key] = s.t; P.shotTimes.push(t);
+    const eye = new THREE.Vector3(P.x, P.y + EYE, P.z);
+    let o = Array.isArray(s.o) && s.o.every(num) ? new THREE.Vector3(s.o[0], s.o[1], s.o[2]) : eye;
+    if (o.distanceTo(eye) > 3) o = eye;
+    const rt = clamp(num(s.rt) ? s.rt : t, t - HIST_MS, t);
+    fire(P, key, o, s.d, rt, s.r);
+  }
+  const _ray = new THREE.Raycaster(), _dir = new THREE.Vector3();
+  function rayBox(o, d, p) { // distance along the ray to a player's box, or null
+    let t0 = 0, t1 = 1e9;
+    for (const [oa, da, lo, hi] of [[o.x, d.x, p.x - BOX_R, p.x + BOX_R], [o.y, d.y, p.y, p.y + BOX_H], [o.z, d.z, p.z - BOX_R, p.z + BOX_R]]) {
+      if (Math.abs(da) < 1e-8) { if (oa < lo || oa > hi) return null; continue; }
+      let a = (lo - oa) / da, b = (hi - oa) / da; if (a > b) [a, b] = [b, a];
+      t0 = Math.max(t0, a); t1 = Math.min(t1, b); if (t0 > t1) return null;
+    }
+    return t0;
+  }
+  const wallDist = (o, d, far) => { _ray.set(o, d); _ray.far = far; const h = _ray.intersectObjects(solids.concat([floor]), false)[0]; return h ? h.distance : far; };
+  function fire(P, key, o, d, rt, rid) {
+    const W = WEAPONS[key], hits = new Map(), wi = WEAPON_KEYS.indexOf(key);
+    if (key === 'rocket') {
+      if (!d.slice(0, 3).every(num)) return;
+      const v = new THREE.Vector3(d[0], d[1], d[2]).normalize();
+      match.rockets.push({ id: rid | 0, owner: P.id, p: o.clone(), v: v.clone().multiplyScalar(42), life: 5, age: 0 });
+      addFx(P.id, ['r', P.id, r2(o.x), r2(o.y), r2(o.z), r2(v.x), r2(v.y), r2(v.z), rid | 0]);
+      return;
+    }
+    if (key === 'knife') {
+      const yaw = num(d[0]) ? d[0] : P.yaw, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+      addFx(P.id, ['k', P.id]);
+      if (!match.mode.pvp) return;
+      for (const Q of match.P.values()) {
+        if (Q === P || !Q.alive || !Q.known || !match.mode.hurts(P, Q, match.s)) continue;
+        const q = posAt(Q, rt), tx = q.x - o.x, tz = q.z - o.z, l = Math.hypot(tx, tz), dist = l - 0.5;
+        if (dist > 2.3 || (dist > 0.4 && (tx * fx + tz * fz) / (l || 1) < 0.55) || Math.abs(q.y - (o.y - EYE)) > 2.2) continue;
+        _dir.set(q.x, q.y + 1, q.z).sub(o); const len = _dir.length();
+        if (wallDist(o, _dir.divideScalar(len), Math.max(0.05, len - 0.5)) < len - 0.5) continue; // no stabbing through walls
+        hits.set(Q, DMG.knife);
+      }
+    } else {
+      for (let i = 0; i < Math.min(W.pellets, Math.floor(d.length / 3)); i++) {
+        if (!num(d[i * 3]) || !num(d[i * 3 + 1]) || !num(d[i * 3 + 2])) continue;
+        _dir.set(d[i * 3], d[i * 3 + 1], d[i * 3 + 2]); if (_dir.lengthSq() < 1e-6) continue; _dir.normalize();
+        let best = wallDist(o, _dir, 150), who = null;
+        if (match.mode.pvp) for (const Q of match.P.values()) {
+          if (Q === P || !Q.alive || !Q.known || !match.mode.hurts(P, Q, match.s)) continue;
+          const tt = rayBox(o, _dir, posAt(Q, rt)); // where Q was on the shooter's screen
+          if (tt !== null && tt < best) { best = tt; who = Q; }
+        }
+        if (who) hits.set(who, (hits.get(who) || 0) + DMG[key] * (key === 'shotgun' ? Math.max(0.35, 1 - Math.max(0, best - 8) / 18) : 1));
+        if (i === 0) addFx(P.id, ['s', P.id, wi, r2(_dir.x), r2(_dir.y), r2(_dir.z), r1(best)]);
+      }
+    }
+    for (const [Q, dmg] of hits) hurt(Q, Math.round(dmg), P, key);
+  }
+  // things other screens should show (tracers, rockets): sent with the next snapshot, and shown on the host now
+  function addFx(id, f) { if (match.fx.length < 40) match.fx.push(f); if (id !== myId) showFx(f); }
+  function hurt(Q, dmg, P, key) {
+    if (!Q.alive || dmg <= 0) return;
+    Q.hp = Math.max(0, Q.hp - dmg);
+    const dead = Q.hp <= 0, h = [P.id, Q.id, dmg, dead ? 1 : 0];
+    match.hits.push(h);
+    if (Q.id === myId) { player.hp = Q.hp; updateHUD(); }
+    feedback(h);
+    if (dead) kill(Q, P, key);
+  }
+  function kill(Q, P, key) {
+    Q.alive = false; Q.hp = 0; Q.deaths++; Q.respawnAt = now() + RESPAWN_S * 1000;
+    if (P && P !== Q && match.mode.credit(P, Q)) { P.kills++; if (match.mode.teams && P.team) match[P.team]++; }
+    const d = { killerId: P ? P.id : null, victimId: Q.id, weapon: key, rs: RESPAWN_S };
+    hostSend('k', d); onKill(d);
+    match.lastKey = ''; // the scores changed: the next snapshot goes out even if nobody moved
+  }
+  function spawnSpots(team) {
+    const M = MAPS[mapId], S = (M && M.spawns) || SPAWNS, list = (team === 'red' ? S.red : team === 'blue' ? S.blue : S.ffa) || S.ffa;
+    return list.map(p => Array.isArray(p) ? { x: p[0], z: p[1], yaw: p[1] < 0 ? Math.PI : 0 } : p);
+  }
+  // the spawn point furthest from anyone who could shoot you
+  function pickSpawn(Q) {
+    const spots = spawnSpots(match.mode.teams ? Q.team : null);
+    const foes = [...match.P.values()].filter(p => p !== Q && p.alive && p.known && (!match.mode.teams || p.team !== Q.team));
+    let best = spots[0], bestD = -1;
+    for (const s of spots) { const dd = foes.length ? Math.min(...foes.map(f => Math.hypot(f.x - s.x, f.z - s.z))) : Math.random() * 10; if (dd > bestD) { bestD = dd; best = s; } }
+    return best;
+  }
+  function respawn(Q) {
+    const sp = pickSpawn(Q);
+    Q.alive = true; Q.hp = 100; Q.life++; Q.respawnAt = 0; Q.fire = {};
+    Q.x = sp.x; Q.y = 0; Q.z = sp.z; Q.yaw = sp.yaw || 0; Q.pitch = Q.vx = Q.vy = Q.vz = 0;
+    Q.known = true; Q.hist = []; Q.at = now(); pushHist(Q, Q.at);
+    const d = { id: Q.id, x: r2(sp.x), z: r2(sp.z), yw: r2(sp.yaw || 0), l: Q.life };
+    hostSend('sp', d); onSpawn(d);
+  }
+  function stepRockets(t) {
+    const dt = Math.min(0.2, (t - (match.rocketT || t)) / 1000); match.rocketT = t;
+    for (let i = match.rockets.length - 1; i >= 0; i--) {
+      const k = match.rockets[i]; k.life -= dt; k.age += dt;
+      const step = k.v.length() * dt; _dir.copy(k.v).normalize();
+      let best = wallDist(k.p, _dir, step + 0.3), hitP = best < step + 0.3;
+      for (const Q of match.P.values()) {
+        if (!Q.alive || !Q.known || (Q.id === k.owner && k.age < 0.4)) continue;
+        const tt = rayBox(k.p, _dir, Q); if (tt !== null && tt < best) { best = tt; hitP = true; }
+      }
+      if (hitP || k.life <= 0) { match.rockets.splice(i, 1); boom(k, hitP ? k.p.clone().addScaledVector(_dir, Math.max(0, best - 0.2)) : k.p.clone()); continue; }
+      k.v.y -= 1.5 * dt; k.p.addScaledVector(k.v, dt);
+    }
+  }
+  function boom(k, P) {
+    const d = { x: r2(P.x), y: r2(P.y), z: r2(P.z), r: k.id, o: k.owner };
+    hostSend('b', d); onBoom(d);
+    const owner = match && match.P.get(k.owner), RAD = WEAPONS.rocket.splash;
+    if (!match || !match.mode.pvp || !owner) return;
+    for (const Q of [...match.P.values()]) {
+      if (Q === owner || !Q.alive || !Q.known || !match.mode.hurts(owner, Q, match.s)) continue; // no hurting yourself, as in single-player
+      const dd = Math.hypot(Q.x - P.x, Q.y + 0.9 - P.y, Q.z - P.z);
+      if (dd < RAD) hurt(Q, Math.round(Math.max(20, DMG.rocket * (1 - dd / RAD))), owner, 'rocket');
+    }
+  }
+  function snapshot(t) {
+    const rows = [];
+    for (const P of match.P.values()) {
+      if (!P.known) continue;
+      rows.push([P.id, r2(P.x), r2(P.y), r2(P.z), r2(P.yaw), r2(P.pitch), r1(P.vx), r1(P.vy), r1(P.vz), P.w, Math.ceil(P.hp), P.alive ? 1 : 0, P.life, P.kills, P.deaths,
+        P.id === myId ? 0 : P.ping, Math.round(t - P.at), P.ackT, P.ackAt ? Math.round(t - P.ackAt) : 0]);
+    }
+    if (t - match.lastSnap < 1000 / room.hz) return;
+    const key = JSON.stringify(rows.map(r => r.slice(0, 15))) + match.red + ',' + match.blue;
+    if (key === match.lastKey && !match.hits.length && !match.fx.length && t - match.lastSnap < IDLE_MS) return; // nothing new: stay quiet
+    match.lastKey = key; match.lastSnap = t;
+    const S = { t: Math.round(t), hz: room.hz, p: rows, sc: [match.red, match.blue, Math.ceil(Math.max(0, match.endAt - t) / 1000)] };
+    if (match.hits.length) S.x = match.hits.splice(0);
+    if (match.fx.length) S.f = match.fx.splice(0);
+    hostSend('S', S);
+  }
+  function emitScores() {
+    if (!match) return;
+    const players = isHost() ? [...match.P.values()].map(p => ({ id: p.id, kills: p.kills, deaths: p.deaths }))
+      : [...match.rows.values()].map(r => ({ id: r[0], kills: r[13], deaths: r[14] }));
+    const timeLeft = isHost() ? Math.max(0, (match.endAt - now()) / 1000) : match.timeLeft;
+    emit('scores', { red: match.red, blue: match.blue, players, timeLeft });
+  }
+  function endMatchHost() {
+    const rows = [...match.P.values()].map(p => ({ id: p.id, name: nameOf(p.id), team: p.team, kills: p.kills, deaths: p.deaths }));
+    const d = { scores: { red: match.red, blue: match.blue, players: rows }, winner: match.mode.winner(match, rows) };
+    hostSend('end', d); onEnd(d); sendState();
+  }
+  // the host left mid-match and it's us now: carry on from what our screen already knows
+  function takeOver() {
+    const t = now(), P = new Map();
+    for (const m of members()) {
+      const p = newP(m.id, room.roster.get(m.id)), row = match.rows.get(m.id), a = avatars.get(m.id);
+      if (row) Object.assign(p, { hp: row[10], alive: !!row[11], life: row[12], kills: row[13], deaths: row[14] });
+      if (a && a.has) { p.x = a.pos.x; p.y = a.pos.y; p.z = a.pos.z; p.yaw = a.yaw; p.known = true; p.at = t; pushHist(p, t); }
+      if (!p.alive) p.respawnAt = t + 1500;
+      P.set(m.id, p);
+    }
+    const me = P.get(myId); if (me) { me.life = match.life; me.alive = !match.meDead; if (!me.alive) me.respawnAt = t + 1500; }
+    match.P = P; match.endAt = t + match.timeLeft * 1000; match.lastSnap = 0; match.lastKey = ''; match.rockets = [];
+    for (const a of avatars.values()) a.buf.length = 0;
+    for (const p of P.values()) if (p.known && p.id !== myId) { const a = avatars.get(p.id); if (a) a.push(t, p.x, p.y, p.z, p.yaw, 0, 0, 0, 0); }
+  }
+  function kick(id) {
+    if (!isHost() || id === myId || !room.roster.has(id)) return;
+    send(room.ups.get(id), 'kick', {});
+    room.kicked.add(id); removePlayer(id); sendState(); emitPlayers();
+  }
+
+  // ---------- everyone: what the host tells us ----------
+  function onSnap(S) {
+    if (!match || !Array.isArray(S.p)) return;
+    const t = now();
+    match.hostClk.sample(S.t, t);
+    if (num(S.hz)) room.hz = S.hz;
+    for (const row of S.p) {
+      if (!Array.isArray(row) || row.length < 19) continue;
+      const [id, x, y, z, yaw, pitch, vx, vy, vz, w, hp, alive, life, , , pg, age, ackT, hold] = row;
+      match.rows.set(id, row);
+      if (id !== myId) room.pings[id] = pg;
+      if (id === myId) { mine(row, t, ackT, hold); continue; }
+      const a = avatarFor(id);
+      a.w = w;
+      if (alive && !a.alive && life === a.life) continue; // still waiting for its respawn
+      if (life !== a.life) { a.buf.length = 0; a.has = false; a.err.set(0, 0, 0); }
+      a.alive = !!alive; a.life = life;
+      if (alive) a.push(S.t - age, x, y, z, yaw, pitch, vx, vy, vz);
+    }
+    for (const h of S.x || []) feedback(h);
+    for (const f of S.f || []) showFx(f);
+    if (Array.isArray(S.sc)) { match.red = S.sc[0]; match.blue = S.sc[1]; match.timeLeft = S.sc[2]; }
+    emitScores();
+  }
+  // our own row: health, missed deaths and respawns, and pulling us back if the host disagrees with where we are
+  function mine(row, t, ackT, hold) {
+    const [, x, , z, , , , , , , hp, alive, life] = row;
+    if (ackT) ping(t - ackT - hold);
+    if (!match.mode.selfHp && Math.ceil(player.hp) !== hp) { player.hp = hp; updateHUD(); }
+    if (life > match.life && alive) { onSpawn({ id: myId, x, z, yw: player.yaw, l: life }); return; }
+    if (!alive && life === match.life && !match.meDead) dieLocal();
+    if (!alive || life !== match.life || !ackT || t - match.corrAt < 400) return;
+    const h = match.myHist.find(e => e[0] === ackT);
+    if (!h) return;
+    const dx = x - h[1], dz = z - h[3], d = Math.hypot(dx, dz);
+    if (d < 0.75) return;
+    match.corrAt = t;
+    if (d > 6) { player.pos.x += dx; player.pos.z += dz; match.corr.set(0, 0, 0); } // far out: snap
+    else match.corr.set(dx, 0, dz);                                                  // otherwise ease over 100 ms
+  }
+  function onKill(d) {
+    if (!match) return;
+    if (d.killerId) emit('kill', { killerId: d.killerId, victimId: d.victimId, weapon: d.weapon }); // co-op deaths to cubes stay out of the kill feed
+    emit('respawn', { id: d.victimId, inSeconds: d.rs || RESPAWN_S });
+    if (d.victimId === myId) dieLocal();
+    else { const a = avatars.get(d.victimId); if (a) a.die(); }
+    if (d.killerId === myId && d.victimId !== myId) { hitMarker(true); Sound.play('kill', 1); }
+  }
+  function dieLocal() {
+    if (match.meDead) return;
+    match.meDead = true; match.corr.set(0, 0, 0);
+    if (!match.mode.selfHp) player.hp = 0;
+    mouseDown = false; zoomed = false; reloading = 0;
+    if (state === 'playing') { state = 'dead'; deathT = 0; }
+    Sound.play('death'); updateHUD();
+  }
+  function onSpawn(d) {
+    if (!match) return;
+    if (d.id !== myId) { const a = avatarFor(d.id); a.respawn(d.x, d.z, d.yw, d.l); return; }
+    match.meDead = false; match.died = false; match.life = d.l; match.myHist = []; match.corr.set(0, 0, 0);
+    player.pos.set(d.x, 0, d.z); player.yaw = d.yw || 0; player.pitch = 0; player.vy = 0; player.onGround = true; player.hp = 100;
+    for (const k of WEAPON_KEYS) ammo[k] = WEAPONS[k].mag;
+    reloading = 0; fireCooldown = 0; damageFlash = 0; deathT = 0;
+    if (rig) rig.loaded = true;
+    if (state === 'dead') { state = 'playing'; clock.getDelta(); }
+    match.prev.copy(player.pos);
+    updateHUD();
+  }
+  function onBoom(d) {
+    if (!match || ![d.x, d.y, d.z].every(num)) return;
+    const P = new THREE.Vector3(d.x, d.y, d.z);
+    match.booms.push([d.x, d.y, d.z]);
+    let show = true;
+    if (d.o === myId) { const i = rockets.findIndex(k => k.mpId === d.r); if (i >= 0) removeRocket(i); else show = false; } // already burst on our screen
+    else { const i = vRockets.findIndex(k => k.owner === d.o && k.id === d.r); if (i >= 0) removeVRocket(i); }
+    if (show) explode(P);
+    smashMap(P, WEAPONS.rocket.splash * 0.8);
+  }
+  // hit confirmations from the host: [shooter, victim, damage, killed]
+  function feedback(h) {
+    if (!match || !Array.isArray(h)) return;
+    const [s, v, dmg, dead] = h;
+    if (s === myId && v !== myId) {
+      const a = avatars.get(v);
+      if (a) popNumber(a.g.position.clone().setY(a.g.position.y + 1.6), dmg / 10, !!dead);
+      if (!dead) { hitMarker(false); Sound.play('hit'); }
+    }
+    if (v === myId) {
+      damageFlash = 0.7; shake = Math.max(shake, 0.4); Sound.play('hurt');
+      const a = avatars.get(s); if (a) hurtFrom(a.g.position);
+    }
+  }
+
+  // ---------- everyone: sending our input ----------
+  function clientTick(t) {
+    const interval = 1000 / room.hz;
+    if (!match) { if (t - room.lastSend >= IDLE_MS) { room.lastSend = t; send(room.up, 'i', { t: Math.round(t), g: room.myPing }); } return; }
+    sendInput(t, t - room.lastSend >= interval);
+  }
+  function sendInput(t, due) {
+    const m = { t: Math.round(t), l: match.life, g: room.myPing };
+    if (t - lastF > 150) match.vel.set(0, 0, 0); // no frames lately (hidden tab): we aren't moving
+    if (!match.meDead) {
+      m.p = [r2(player.pos.x), r2(player.pos.y), r2(player.pos.z), r2(player.yaw), r2(player.pitch), r1(match.vel.x), r1(player.vy), r1(match.vel.z)];
+      m.w = Math.max(0, WEAPON_KEYS.indexOf(weaponKey));
+    }
+    if (match.mode.selfHp) { m.h = Math.max(0, Math.round(player.hp)); m.k = kills; if (match.died) m.d = 1; }
+    const key = JSON.stringify([m.p, m.w, m.h, m.k, m.d, m.l]);
+    if (match.shots.length) m.s = match.shots.splice(0, 24);
+    if (!due && !(m.s && t - room.lastSend >= 1000 / room.hz)) { if (m.s) match.shots.unshift(...m.s); return; }
+    if (!m.s && key === match.lastKey2 && t - room.lastSend < IDLE_MS) return; // standing still: stay quiet
+    match.lastKey2 = key; room.lastSend = t;
+    if (m.p) { match.myHist.push([m.t, player.pos.x, player.pos.y, player.pos.z]); while (match.myHist.length > 40) match.myHist.shift(); }
+    send(room.up, 'i', m);
+  }
+  // the host time we're showing the other players at
+  function viewTime() {
+    const d = delayFor(room.hz);
+    return isHost() ? now() - d : now() - (match.hostClk.off ?? 0) - d;
+  }
+  function myShot(w, d, extra) {
+    if (!match || match.meDead) return null;
+    const s = { t: Math.round(now()), w: WEAPON_KEYS.indexOf(w), rt: Math.round(viewTime()), o: [r2(player.pos.x), r2(player.pos.y + EYE), r2(player.pos.z)], d, ...extra };
+    if (isHost()) { const P = match.P.get(myId); if (P) shotFrom(P, s, now()); }
+    else { match.shots.push(s); sendInput(now(), false); }
+    return s;
+  }
+
+  // ---------- hooks the game calls (see shoot(), slash(), fireRocket()) ----------
+  const _hit = new THREE.Raycaster();
+  function pellet(dir, hit) {
+    if (!match) return;
+    match.pellets.push(Math.round(dir.x * 1000) / 1000, Math.round(dir.y * 1000) / 1000, Math.round(dir.z * 1000) / 1000);
+    // sparks where it looks like we hit someone; the damage only shows once the host agrees
+    _hit.set(camera.position, dir); _hit.far = hit ? hit.distance : 150;
+    const meshes = []; for (const a of avatars.values()) if (a.g.visible) meshes.push(a.body, a.head);
+    const h = meshes.length && _hit.intersectObjects(meshes, false)[0];
+    if (h) sparks(h.point, h.object.material.color.getHex(), 3);
+  }
+  function fired() { if (!match) return; const d = match.pellets.splice(0); if (d.length) myShot(weaponKey, d); }
+  function slashHook() { if (match) myShot('knife', [r2(player.yaw)]); }
+  function rocketHook(k) {
+    if (!match) return;
+    const v = k.v.clone().normalize(), p = k.g.position;
+    k.mpId = ++match.rid;
+    myShot('rocket', [r2(v.x), r2(v.y), r2(v.z)], { o: [r2(p.x), r2(p.y), r2(p.z)], r: k.mpId });
+  }
+
+  // ---------- the other players, as cubes ----------
+  const avBody = new THREE.BoxGeometry(0.95, 1.0, 0.95).translate(0, 0.5, 0);
+  const avHead = new THREE.BoxGeometry(0.72, 0.72, 0.72);
+  const avEye = new THREE.BoxGeometry(0.16, 0.18, 0.02), avPupil = new THREE.BoxGeometry(0.08, 0.1, 0.02), avGun = new THREE.BoxGeometry(0.12, 0.14, 0.62);
+  const gunMat = new THREE.MeshLambertMaterial({ color: 0x1d2024 });
+  function colorFor(id) { const t = room && room.roster.get(id); return match && match.mode.teams && t ? COLORS[t] : COLORS.none; }
+  function avatarFor(id) {
+    let a = avatars.get(id);
+    if (a) return a;
+    const g = new THREE.Group(), color = colorFor(id), mat = lambert(color);
+    const body = new THREE.Mesh(avBody, mat), head = new THREE.Mesh(avHead, mat), gunM = new THREE.Mesh(avGun, gunMat);
+    head.position.y = 1.42; gunM.position.set(0.38, 0.95, -0.4);
+    for (const s of [-1, 1]) {
+      const e = new THREE.Mesh(avEye, eyeMat), p = new THREE.Mesh(avPupil, pupilMat);
+      e.position.set(s * 0.16, 0.08, -0.365); p.position.set(s * 0.16, 0.06, -0.375); head.add(e, p);
+    }
+    body.castShadow = head.castShadow = true;
+    g.add(body, head, gunM); g.visible = false; scene.add(g);
+    a = { id, g, body, head, color, buf: [], has: false, alive: true, life: 0, w: 1, pos: new THREE.Vector3(), yaw: 0, err: new THREE.Vector3(), fresh: false,
+      push(t, x, y, z, yaw, pitch, vx, vy, vz) {
+        const last = this.buf[this.buf.length - 1];
+        if (last && t <= last.t) return; // old or repeated
+        this.buf.push({ t, x, y, z, yaw, pitch, vx, vy, vz }); this.fresh = true;
+        if (this.buf.length > 40) this.buf.shift();
+      },
+      die() { if (!this.g.visible) return; this.alive = false; this.g.visible = false; const c = this.g.position.clone().setY(this.g.position.y + 0.9); debris(c, this.color, 14, 1); glowFlash(c, this.color, 3, 0.25); puff(c.clone().setY(0.3), 0xd0c8b8, 2.5, 0.7); },
+      respawn(x, z, yaw, life) { this.alive = true; this.life = life; this.buf.length = 0; this.err.set(0, 0, 0); this.has = false; this.push(match ? viewTime() : 0, x, 0, z, yaw, 0, 0, 0, 0); },
+    };
+    avatars.set(id, a);
+    return a;
+  }
+  function removeAvatar(id) { const a = avatars.get(id); if (!a) return; scene.remove(a.g); avatars.delete(id); }
+  const lerpAngle = (a, b, k) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * k; };
+  const _tgt = new THREE.Vector3();
+  function drawAvatar(a, vt, dt) {
+    const b = a.buf;
+    if (!b.length || !a.alive) { a.g.visible = false; return; }
+    let yaw, pitch, i = b.length - 1;
+    while (i >= 0 && b[i].t > vt) i--;
+    if (i < 0) { _tgt.set(b[0].x, b[0].y, b[0].z); yaw = b[0].yaw; pitch = b[0].pitch; }
+    else if (i === b.length - 1) { // the next snapshot is late: keep them going for a moment
+      const s = b[i], e = Math.min(EXTRAP_MS, vt - s.t) / 1000;
+      _tgt.set(s.x + s.vx * e, Math.max(0, s.y + s.vy * e), s.z + s.vz * e); yaw = s.yaw; pitch = s.pitch;
+    } else { // blend between the two snapshots around the time we're showing
+      const s = b[i], n = b[i + 1], k = (vt - s.t) / Math.max(1, n.t - s.t);
+      _tgt.set(s.x + (n.x - s.x) * k, s.y + (n.y - s.y) * k, s.z + (n.z - s.z) * k); yaw = lerpAngle(s.yaw, n.yaw, k); pitch = s.pitch + (n.pitch - s.pitch) * k;
+    }
+    // new data moved where they should be: ease from where we drew them instead of jumping
+    if (a.fresh && a.has) { a.err.copy(a.pos).sub(_tgt); if (a.err.length() > 3) a.err.set(0, 0, 0); }
+    a.fresh = false;
+    a.err.multiplyScalar(Math.max(0, 1 - dt / (EASE_MS / 1000)));
+    a.pos.copy(_tgt).add(a.err); a.yaw = yaw; a.has = true;
+    a.g.position.copy(a.pos); a.g.rotation.y = yaw; a.head.rotation.x = clamp(pitch, -0.8, 0.8);
+    a.g.visible = true;
+    while (b.length > 2 && b[1].t < vt - 1000) b.shift();
+  }
+  function recolor() { for (const a of avatars.values()) { const c = colorFor(a.id); if (c !== a.color) { a.color = c; a.body.material = a.head.material = lambert(c); } } }
+  // other people's shots and rockets
+  function showFx(f) {
+    if (!match || !Array.isArray(f) || f[1] === myId) return;
+    const a = avatars.get(f[1]); if (!a || !a.g.visible) return;
+    const near = a.pos.distanceTo(player.pos) < 32;
+    const from = new THREE.Vector3(0.38, 0.95, -0.75).applyAxisAngle(UPV, a.yaw).add(a.pos);
+    if (f[0] === 's') {
+      const key = WEAPON_KEYS[f[2]], W = WEAPONS[key] || WEAPONS.rifle, dir = new THREE.Vector3(f[3], f[4], f[5]).normalize();
+      for (let i = 0; i < (W.pellets > 1 ? 4 : 1); i++) {
+        const d = i ? dir.clone().add(new THREE.Vector3((Math.random() - .5) * W.spread * 2, (Math.random() - .5) * W.spread * 2, (Math.random() - .5) * W.spread * 2)).normalize() : dir;
+        tracer(from, from.clone().addScaledVector(d, Math.max(1, f[6] || 60)), W.tracer || 0xffe9a8, 0.03);
+      }
+      glowFlash(from, 0xffd27a, 0.7, 0.06);
+      if (near && key) Sound.play(key);
+    } else if (f[0] === 'k') { if (near) Sound.play('slash'); }
+    else if (f[0] === 'r') {
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(rocketParts.body, lambert(0x3f4a3a)), new THREE.Mesh(rocketParts.nose, flat(0x2b2f33)));
+      for (let i = 0; i < 2; i++) { const fin = new THREE.Mesh(rocketParts.fin, flat(0x2b2f33)); fin.rotation.z = i * Math.PI / 2; g.add(fin); }
+      const fire = sprite(glowTex, 0xffb347, 0.7); fire.position.z = 0.3; g.add(fire);
+      g.position.set(f[2], f[3], f[4]); scene.add(g);
+      vRockets.push({ id: f[8], owner: f[1], g, fire, v: new THREE.Vector3(f[5], f[6], f[7]).multiplyScalar(42), life: 5, smoke: 0 });
+      if (near) Sound.play('rocketFire');
+    }
+  }
+  function removeVRocket(i) { const k = vRockets[i]; scene.remove(k.g); k.fire.material.dispose(); vRockets.splice(i, 1); }
+  const _look = new THREE.Vector3();
+  function stepVRockets(dt) {
+    for (let i = vRockets.length - 1; i >= 0; i--) {
+      const k = vRockets[i];
+      if ((k.life -= dt) <= 0) { removeVRocket(i); continue; }
+      if (k.stopped) continue;
+      _dir.copy(k.v).normalize();
+      if (wallDist(k.g.position, _dir, k.v.length() * dt + 0.3) < k.v.length() * dt + 0.3) { k.stopped = true; k.g.visible = false; continue; } // waits for the host's explosion
+      k.v.y -= 1.5 * dt; k.g.position.addScaledVector(k.v, dt);
+      k.g.lookAt(_look.copy(k.g.position).sub(k.v)); k.fire.material.rotation += dt * 20;
+      if ((k.smoke -= dt) <= 0) { k.smoke = 0.025; puff(k.g.position.clone(), 0xb8b4ac, 0.55, 0.9); }
+    }
+  }
+
+  // ---------- every frame ----------
+  let lastF = now();
+  function frame() {
+    requestAnimationFrame(frame);
+    const t = now(), dt = Math.min(0.1, (t - lastF) / 1000); lastF = t;
+    if (dbgOn && t - dbgAt > 250) { dbgAt = t; drawDebug(t); }
+    if (!room || !match) return;
+    if (dt > 0) { match.vel.set((player.pos.x - match.prev.x) / dt, 0, (player.pos.z - match.prev.z) / dt); if (match.vel.length() > 14) match.vel.set(0, 0, 0); }
+    match.prev.copy(player.pos);
+    if (match.meDead && state === 'playing') { state = 'dead'; deathT = 0; }
+    // co-op: the cubes on your screen took your last health
+    if (match.mode.selfHp && player.hp <= 0 && !match.meDead && state === 'playing') {
+      if (isHost()) { const P = match.P.get(myId); if (P) kill(P, null, 'cube'); }
+      else { match.died = true; dieLocal(); sendInput(now(), true); }
+    }
+    if (match.corr.lengthSq() > 1e-6) { const k = Math.min(1, dt / (EASE_MS / 1000)); player.pos.x += match.corr.x * k; player.pos.z += match.corr.z * k; match.corr.multiplyScalar(1 - k); }
+    if (isHost()) updateMine(t);
+    recolor();
+    const vt = viewTime();
+    for (const a of avatars.values()) {
+      drawAvatar(a, vt, dt);
+      // players don't walk through each other
+      if (a.g.visible && state === 'playing' && Math.abs(a.pos.y - player.pos.y) < 1.6) {
+        const dx = player.pos.x - a.pos.x, dz = player.pos.z - a.pos.z, d = Math.hypot(dx, dz);
+        if (d < 0.95 && d > 1e-4) { player.pos.x += dx / d * (0.95 - d); player.pos.z += dz / d * (0.95 - d); }
+      }
+    }
+    stepVRockets(dt);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- F3: network debug overlay ----------
+  let dbgOn = false, dbgAt = 0;
+  const dbg = document.createElement('div');
+  dbg.id = 'mpDebug';
+  dbg.style.cssText = 'position:fixed;left:12px;top:50%;transform:translateY(-50%);z-index:60;pointer-events:none;display:none;background:rgba(10,14,20,.78);color:#e8eef5;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px 12px;font:600 12px/1.55 Barlow,Arial,sans-serif;white-space:pre;min-width:190px';
+  document.body.appendChild(dbg);
+  addEventListener('keydown', e => { if (e.code === 'F3') { e.preventDefault(); dbgOn = !dbgOn; dbg.style.display = dbgOn ? 'block' : 'none'; drawDebug(now()); } });
+  function drawDebug(t) {
+    const minute = stats.times.filter(x => t - x < 60000).length;
+    const lines = ['NETWORK  (F3)'];
+    if (room) {
+      lines.push(`Room ${room.code} · ${isHost() ? 'host' : 'client'}`, `Players ${members().length} / ${MAX_PLAYERS}`,
+        `Update rate ${room.hz}/s · view delay ${Math.round(delayFor(room.hz))} ms`, `Ping ${isHost() ? 0 : room.myPing ?? '–'} ms`);
+      if (match) lines.push(`Match: ${match.s.mode} on ${match.s.mapId}`);
+    } else lines.push('Not in a room');
+    lines.push(`Sent ${stats.sent} · received ${stats.recv}`, `Last minute: ${minute} messages`);
+    if (NET.lag || NET.loss) lines.push(`Fake lag ${NET.lag} ms · loss ${Math.round(NET.loss * 100)}%`);
+    dbg.textContent = lines.join('\n');
+  }
+
+  // ---------- the interface Noah's lobby is written against ----------
+  window.mpNet = { guns: GUNS, pellet, fired, slash: slashHook, rocket: rocketHook };
+  window.CAMP = {
+    createRoom, joinRoom, leaveRoom, startMatch, kick,
+    isHost, myId: () => myId,
+    getPlayers: () => playerList(),
+    getSettings: () => room ? { ...room.settings } : null,
+    setTeam(team) {
+      if (!room || match || room.settings.mode !== 'tdm' || (team !== 'red' && team !== 'blue')) return;
+      if (isHost()) onTeam(myId, { t: team }); else send(room.up, 'tm', { t: team });
+    },
+    updateSettings(partial) {
+      if (!isHost() || match) return;
+      for (const k in partial) if (ALLOWED[k] && ALLOWED[k].includes(partial[k])) room.settings[k] = partial[k];
+      if (partial.mode && partial.mode !== 'tdm') for (const id of room.roster.keys()) room.roster.set(id, null);
+      if (partial.mode === 'tdm') this.autoBalance();
+      sendState(); emit('settings', { ...room.settings }); emitPlayers();
+    },
+    autoBalance() {
+      if (!isHost() || match || room.settings.mode !== 'tdm') return;
+      members().forEach((m, i) => room.roster.set(m.id, i % 2 ? 'blue' : 'red'));
+      for (const id of room.roster.keys()) if (!room.roster.get(id)) room.roster.set(id, smallerTeam());
+      sendState(); emitPlayers();
+    },
+    on(ev, f) { (handlers[ev] = handlers[ev] || []).push(f); },
+    // PROPOSED by mp-ui: where the other players are right now, for name tags: [{ id, x, y, z }]
+    getRemotes: () => [...avatars.values()].filter(a => a.g.visible).map(a => ({ id: a.id, x: a.pos.x, y: a.pos.y + 1.8, z: a.pos.z })),
+    _debug: {
+      net(lag = 0, loss = 0) { NET.lag = lag; NET.loss = loss; },
+      stats: () => ({ ...stats, times: undefined, hz: room && room.hz, ping: room && room.myPing }),
+      room: () => room, match: () => match,
+    },
+  };
 })();
 </script>
 <script id="mp-stub">

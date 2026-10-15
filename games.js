@@ -71,7 +71,7 @@ window.GAMES = [
     id: 'cube-assault',
     title: 'Cube Assault',
     category: 'Shooter',
-    tagline: 'Hold the line against waves of cubes, play the story campaign, or try the new multiplayer preview on the Outpost map.',
+    tagline: 'Hold the line against waves of cubes, play the story campaign, or play online with up to 6 friends.',
     description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and level up, unlock weapons from a knife to a rocket launcher that blows holes in buildings, and play the campaign: hold the birch road in Russia, 1944, then raid a scam call centre in Mumbai, 2009.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right-click', 'Zoom'], ['Space', 'Jump'],
@@ -79,7 +79,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.svg?v=3',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-15T20:00:00+11:00',
+    updated: '2026-10-15T20:20:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -148,6 +148,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-15', game: 'cube-assault', text: 'Cube Assault 2.6: real online multiplayer. Create a match, share the code and play Team Deathmatch, Free-for-all or Co-op with up to 6 friends, on any device and on school networks too.' },
   { date: '2026-10-15', game: 'cube-assault', text: 'Cube Assault 2.5: a multiplayer preview with room codes, Red and Blue teams, Team Deathmatch, Free-for-all and Co-op (practice bots for now, real online play is coming), plus Outpost, a new map with A and B sites.' },
   { date: '2026-10-15', game: 'free-criminal', text: 'Free Criminal 1.6, a major update: every cafe, sushi bar, bakery and bookshop is open. Press B to buy or E to rob, food gives a speed boost, and drivers heads no longer poke through car roofs.' },
   { date: '2026-10-15', game: 'free-criminal', text: 'Free Criminal 1.6: every cafe, sushi bar, bakery and bookshop is open. Press B to buy or E to rob, food gives a speed boost, and drivers heads no longer poke through car roofs.' },
@@ -221,7 +222,7 @@ window.ArcadeOnline = (() => {
   const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
   const CAP = 200; // the free plan's limit on simultaneous connections
   const SETTLE = 2500; // ms a new count has to hold before it's shown, so quick page changes don't flicker
-  let counts = null, started = false, timer = 0;
+  let counts = null, started = false, timer = 0, client = null;
   const listeners = [];
   const send = c => { counts = c; for (const f of listeners) try { f(c); } catch (e) {} };
   // first result and failures show straight away; changes after that wait until they settle
@@ -248,7 +249,7 @@ window.ArcadeOnline = (() => {
       lib.onerror = () => emit(null);
       lib.onload = () => {
         try {
-          const client = window.supabase.createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          client = window.supabase.createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
           const ch = client.channel('online:arcade', { config: { presence: { key: browserId() } } });
           ch.on('presence', { event: 'sync' }, () => {
             // one entry per browser; if it has several pages open, count it on a game over the home page
@@ -270,5 +271,8 @@ window.ArcadeOnline = (() => {
     subscribe(f) { listeners.push(f); if (counts) f(counts); },
     // "12", or "200+" once the free plan is full
     label(n, c) { return c && c.full ? n + '+' : String(n); },
+    // The Supabase connection, once it's open (null until then). Cube Assault's multiplayer shares it,
+    // so a player in a match still uses just one connection.
+    client() { return client; },
   };
 })();

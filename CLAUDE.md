@@ -50,6 +50,7 @@ source in Settings → Pages should be switched to `main`.
 ## Games
 
 - `cube-assault/`: first-person 3D shooter (Three.js bundled into the file). Since 2.3 it has touch controls (`#touch` layer, `autoTouch` / `touchMode()`, setting `touch`: auto, on or off).
+  Since 2.6 it has online multiplayer. Noah's blocks (`mp-ui-css`, `mp-ui`, `mp-stub`, `CS MAP`) are the lobby, HUD, results and Outpost map; Lars's `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are Supabase Realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). The free plan caps the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.
 - `2048/`: sliding-number puzzle with keyboard and swipe controls.
 - `poly-racer/`: low-poly 3D time-trial racer in the style of PolyTrack (Three.js
