@@ -388,7 +388,13 @@
   .bars { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; margin: 12px 0 14px; font-size: 13px; color: var(--muted); }
   .bar { height: 8px; background: #252d38; border-radius: 4px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--plasma); }
-  #buyBtn, #buyTurret { width: 100%; }
+  #buyBtn, #buyTurret, #buyBarricade { width: 100%; }
+  .barArt { width: 120px; height: 120px; flex: none; border-radius: 14px; background: #1b222c; position: relative; overflow: hidden; }
+  .barArt i { position: absolute; left: 10px; right: 10px; height: 18px; border-radius: 3px; background: linear-gradient(#a07a52, #7a5a3a); box-shadow: inset 0 0 0 2px rgba(0,0,0,.2); }
+  .barArt i:nth-child(1) { top: 26px; transform: rotate(-8deg); } .barArt i:nth-child(2) { top: 52px; transform: rotate(6deg); } .barArt i:nth-child(3) { top: 78px; transform: rotate(-5deg); }
+  #barHint { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); background: rgba(10,14,20,.7); color: var(--ink); font-weight: 700; padding: 8px 14px; border-radius: 10px; font-size: 15px; display: none; white-space: nowrap; }
+  #barHint.on { display: block; } #barHint kbd { background: var(--gold); color: #1a1205; border-radius: 4px; padding: 1px 6px; }
+  #tBar { right: calc(max(24px, env(safe-area-inset-right)) + 100px); bottom: 290px; width: 54px; height: 54px; font-size: 10px; }
   .item .shopBuy { width: 100%; }
   .shopNote { font-size: 14px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
   #turretNote { font-size: 14px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
@@ -562,6 +568,8 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   <div class="tb" id="tAim" hidden>Scope</div>
   <div class="tb" id="tUse" hidden>Hold<br>E</div>
   <div class="tb" id="tTurret" hidden>Turret</div>
+  <div class="tb" id="tBar" hidden>Board<br>up</div>
+  <div id="barHint"></div>
   <div class="tb" id="tPause" aria-label="Pause">II</div>
   <div id="tWeapons"></div>
   <div id="tRotate">Turn your phone sideways to play.</div>
@@ -618,20 +626,26 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.7.1 · What's new</button>
+    <button class="link" data-action="notes">v2.7.2 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7.1<span>The Angry Cube</span></h1><p>A new cube that smashes through walls, cubes that jump fences, and crates you can climb.</p>
-      <div class="hero-guns"><i class="hcube" style="background:#6b7280">😠</i><img data-av="purple" alt="Brute Cube"><i class="hcube" style="background:#8a6a48">📦</i><img data-av="red" alt="Red Cube"></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7.2<span>Barrels &amp; barricades</span></h1><p>Exploding red barrels, barricades to board yourself in, and a scope you can lock.</p>
+      <div class="hero-guns"><i class="hcube" style="background:#b43c2c">🛢️</i><i class="hcube" style="background:#7a5a3a">🪵</i><img data-av="sniper" alt="Sniper"><i class="hcube" style="background:#6b7280">😠</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><i>😠</i><span><b>Angry Cube</b>A grey cube that smashes straight through house walls, trees and buildings. One arrives at wave 20, then one every 5 waves.</span></div>
-      <div><i>🦘</i><span><b>Cubes jump</b>Cubes hop over fences (like round the wheat farm) and crates to reach you, and jump up after you onto crates.</span></div>
-      <div><i>📦</i><span><b>Climb crates</b>A slightly higher jump makes crates easy to stand on, and you can climb a stack of two from a single crate.</span></div>
-      <div><img data-av="purple" alt=""><span><b>Tougher Brute</b>The purple Brute Cube has twice the health.</span></div>
+      <div><i>🛢️</i><span><b>Exploding barrels</b>Shoot a red barrel once and it leaks fuel; shoot it again and it blows up, hurting cubes and you nearby. Rockets set them off too.</span></div>
+      <div><i>🪵</i><span><b>Barricades · 100</b>Buy them in the Shop, stand in a house doorway and press J: your hands screw planks over the door to keep the cubes out.</span></div>
+      <div><i>🧱</i><span><b>Break-in</b>A barricade has 100 HP. Cubes batter it down, the Angry Cube goes straight through, and your own bullets break it too.</span></div>
+      <div><img data-av="sniper" alt=""><span><b>Scope lock</b>New in Settings: click once to scope in and it stays until you click again. Easier on trackpads and iPads.</span></div>
     </div>
     <div class="notes"><div class="older">Older updates</div>
+      <section><h3>v2.7.1 <span>The Angry Cube</span></h3><ul>
+        <li>New cube: the Angry Cube, a grey cube that smashes straight through house walls, trees and buildings. One arrives at wave 20, then one every 5 waves.</li>
+        <li>Cubes jump over fences (like the ones round the wheat farm) and crates to reach you, and jump up after you onto crates.</li>
+        <li>A slightly higher jump makes crates easy to stand on, and you can climb a stack of two from a single crate.</li>
+        <li>The purple Brute Cube has twice the health.</li>
+      </ul></section>
       <section><h3>v2.7 <span>New hands</span></h3><ul>
         <li>New first-person hands: tactical gloves with knuckle pads and wrist straps, and sleeves down to the gloves, holding every gun the way soldiers do in modern shooters.</li>
         <li>The rifle has a scope, like the sniper's. Right-click (or tap the aim button on touch) to aim through it; it zooms in less than the sniper.</li>
@@ -873,6 +887,15 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <div id="turretNote"></div>
       </div>
     </div>
+    <div class="item">
+      <div class="barArt"><i></i><i></i><i></i></div>
+      <div>
+        <h3>Barricade</h3>
+        <p>Stand in a house doorway and press <kbd>J</kbd> to board it up with planks. Cubes have to break through it (100 HP), and so do your bullets. One use each.</p>
+        <button class="btn" id="buyBarricade">Buy</button>
+        <div id="barricadeNote"></div>
+      </div>
+    </div>
     <div class="item" data-shop="knife">
       <img class="turretArt" alt="The knife">
       <div>
@@ -895,14 +918,14 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-news">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7.1<span>The Angry Cube</span></h1><p>A new cube that smashes through walls, cubes that jump fences, and crates you can climb.</p>
-      <div class="hero-guns"><i class="hcube" style="background:#6b7280">😠</i><img data-av="purple" alt="Brute Cube"><i class="hcube" style="background:#8a6a48">📦</i><img data-av="red" alt="Red Cube"></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.7.2<span>Barrels &amp; barricades</span></h1><p>Exploding red barrels, barricades to board yourself in, and a scope you can lock.</p>
+      <div class="hero-guns"><i class="hcube" style="background:#b43c2c">🛢️</i><i class="hcube" style="background:#7a5a3a">🪵</i><img data-av="sniper" alt="Sniper"><i class="hcube" style="background:#6b7280">😠</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><i>😠</i><span><b>Angry Cube</b>A grey cube that smashes straight through house walls, trees and buildings. One arrives at wave 20, then one every 5 waves.</span></div>
-      <div><i>🦘</i><span><b>Cubes jump</b>Cubes hop over fences (like round the wheat farm) and crates to reach you, and jump up after you onto crates.</span></div>
-      <div><i>📦</i><span><b>Climb crates</b>A slightly higher jump makes crates easy to stand on, and you can climb a stack of two from a single crate.</span></div>
-      <div><img data-av="purple" alt=""><span><b>Tougher Brute</b>The purple Brute Cube has twice the health.</span></div>
+      <div><i>🛢️</i><span><b>Exploding barrels</b>Shoot a red barrel once and it leaks fuel; shoot it again and it blows up, hurting cubes and you nearby. Rockets set them off too.</span></div>
+      <div><i>🪵</i><span><b>Barricades · 100</b>Buy them in the Shop, stand in a house doorway and press J: your hands screw planks over the door to keep the cubes out.</span></div>
+      <div><i>🧱</i><span><b>Break-in</b>A barricade has 100 HP. Cubes batter it down, the Angry Cube goes straight through, and your own bullets break it too.</span></div>
+      <div><img data-av="sniper" alt=""><span><b>Scope lock</b>New in Settings: click once to scope in and it stays until you click again. Easier on trackpads and iPads.</span></div>
     </div>
     <div class="btns2"><button class="btn secondary" id="newsPast">Past updates</button><button class="btn" id="newsOk">Let's go</button></div>
   </div>
@@ -966,6 +989,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
     <div class="row"><label for="sens">Look speed</label><input type="range" id="sens" min="0.2" max="3" step="0.1"><span class="val" id="sensVal"></span></div>
     <div class="row"><label for="vol">Volume</label><input type="range" id="vol" min="0" max="100" step="1"><span class="val" id="volVal"></span></div>
     <div class="row"><label>Music</label><div class="seg" id="musicSeg"><button data-music="on">On</button><button data-music="off">Off</button></div></div>
+    <div class="row"><label>Scope</label><div class="seg" id="scopeSeg"><button data-scope="hold">Hold</button><button data-scope="lock">Click to lock</button></div></div>
     <div class="row"><label>Touch controls</label><div class="seg" id="touchSeg"><button data-touch="auto">Auto</button><button data-touch="on">On</button><button data-touch="off">Off</button></div></div>
     <p class="touchNote" id="touchNote"></p>
     <div class="row"><label>Graphics</label><div class="seg" id="quality"><button data-quality="potato">Potato</button><button data-quality="low">Low</button><button data-quality="high">High</button><button data-quality="ultra">Ultra</button></div></div>
@@ -1039,7 +1063,7 @@ const DROP_CHANCE = { angry: 0.3, splitter: 0.15,  red: 0.08, green: 0.08, blue:
 const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
 
 // ---------- Saved settings & profile ----------
-const settings = { fov: 75, sens: 1, weapon: 'pistol', volume: 0.6, quality: 'high', music: true, touch: 'auto' };
+const settings = { fov: 75, sens: 1, weapon: 'pistol', volume: 0.6, quality: 'high', music: true, touch: 'auto', scopeLock: false };
 const profile = { coins: 0, owned: {}, best: 0, name: '', avatar: '', xp: 0, stats: {}, campaign: {} };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('cubeAssaultSettings') || '{}')); } catch (e) {}
 try { Object.assign(profile, JSON.parse(localStorage.getItem('cubeAssaultProfile') || '{}')); } catch (e) {}
@@ -1531,6 +1555,7 @@ scene.add = (...o) => { classicRoot.add(...o); return scene; };
 // ---------- Map ----------
 let ARENA = 40;
 const STEP = 2.1; // boxes this low can be stood on (2.7.1: up to a stack of two crates)
+const REDBARRELS = [], DOORWAYS = [], BOOMQ = [], BARRICADES = [], BARRICADE_PRICE = 100; // 2.7.2
 const HOP = 1.35;  // 2.7.1: cubes hop over anything this low (fences, single crates)
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshLambertMaterial({ map: tex(grassCanvas, 200, 200) }));
@@ -1599,7 +1624,8 @@ function house(cx, cz, w, d, door, wallC, roofC) {
       for (const s of [-1, 1]) horiz ? addBox(x + s * (gap / 2 + 0.08), z, 0.16, 2.4, t + 0.12, 0, { mat: wood, ...deco })
                                      : addBox(x, z + s * (gap / 2 + 0.08), t + 0.12, 2.4, 0.16, 0, { mat: wood, ...deco });
       // the header sits a hair below the wall above the door, so their undersides don't fight
-      horiz ? addBox(x, z, gap + 0.32, 0.16, t + 0.12, 0, { mat: wood, y: 2.28, ...deco }) : addBox(x, z, t + 0.12, 0.16, gap + 0.32, 0, { mat: wood, y: 2.28, ...deco });
+      const hdr = horiz ? addBox(x, z, gap + 0.32, 0.16, t + 0.12, 0, { mat: wood, y: 2.28, ...deco }) : addBox(x, z, t + 0.12, 0.16, gap + 0.32, 0, { mat: wood, y: 2.28, ...deco });
+      DOORWAYS.push({ x, z, horiz, gap, t, ref: hdr, bar: null }); // 2.7.2: for barricades
     } else {
       horiz ? addBox(x, z, len + t, H, t, 0, { mat: wm }) : addBox(x, z, t, H, len + t, 0, { mat: wm });
       for (const s of len > 7 ? [-1, 1] : [0]) {
@@ -1701,7 +1727,11 @@ function barrel(x, z, color) {
     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.465, 0.465, 0.06, 14), lambert(0x333333));
     band.position.set(x, y, z); scene.add(band); parts.push(band);
   }
-  link(parts, addCollider(x, z, 0.9, 0.9, 1.1));
+  const box = addCollider(x, z, 0.9, 0.9, 1.1);
+  link(parts, box);
+  // 2.7.2: red barrels are full of fuel: the first shot springs a leak, the second blows it up
+  const c = new THREE.Color(color);
+  if (c.r > 0.45 && c.g < 0.32 && c.b < 0.32) { const rb = { x, z, parts, box, m, hits: 0, gone: false, oil: null }; REDBARRELS.push(rb); m.userData.onShot = () => shootBarrel(rb); }
 }
 function hay(x, z, rot) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.3, 14), flat(0xd8b65a));
@@ -2327,6 +2357,7 @@ function smashMap(P, r) {
 }
 // the round is over: put the map back together
 function restoreMap() {
+  reset272();
   for (const m of damage.hidden) { m.visible = true; delete m.userData.gone; }
   for (const m of damage.added) { if (m.parent) m.parent.remove(m); m.geometry.dispose(); }
   for (const [f, i] of damage.forest) { f.items[i].gone = false; for (const m of f.meshes) { m.setMatrixAt(i, forestMatrix(f.items[i])); m.instanceMatrix.needsUpdate = true; } }
@@ -2416,6 +2447,7 @@ function explode(P) {
     collide(player.pos, 0.45, player.pos.y);
   }
   if (gameMode !== 'mp') smashMap(P, RAD * 0.8); // mp-net hook: in multiplayer the host says what breaks
+  boomNearby(P); // 2.7.2: set off red barrels and break barricades nearby
 }
 
 // knife
@@ -2619,6 +2651,152 @@ function groundAt(pos, prevY) {
     if (Math.abs(pos.x - b.x) < b.hx + 0.2 && Math.abs(pos.z - b.z) < b.hz + 0.2) g = Math.max(g, b.h);
   }
   return g;
+}
+
+// ---------- 2.7.2: explosive red barrels and barricades ----------
+const live272 = () => gameMode === 'classic' || (gameMode === 'mp' && !!window.mpRules && mpRules.turret()); // single-player waves and co-op only
+const inPlay = o => { let p = o; while (p.parent) p = p.parent; return p === scene; };
+function shootBarrel(rb) {
+  if (!live272() || rb.gone || !inPlay(rb.m)) return;
+  rb.hits++;
+  if (rb.hits === 1) {
+    // a hole near the top: fuel spurts out and a dark puddle spreads round it
+    Sound.play('hit');
+    const pud = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshLambertMaterial({ color: 0x15110c, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+    pud.rotation.x = -Math.PI / 2; pud.position.set(rb.x + 0.5, 0.03, rb.z + 0.2); pud.scale.setScalar(0.1); scene.add(pud);
+    rb.oil = { pud, t: 0, drip: 0 };
+    return;
+  }
+  BOOMQ.push({ rb, t: 0 });
+}
+function explodeBarrel(rb) {
+  if (rb.gone) return; rb.gone = true;
+  const P = new THREE.Vector3(rb.x, 0.6, rb.z);
+  for (const p of rb.parts) shatter(p, P);
+  dropBox(rb.box); dropSolid(rb.m);
+  if (rb.oil) rb.oil.pud.visible = false;
+  explode(P);
+  glowFlash(P, 0xff7b25, 12, 0.45);
+  // the blast hurts you too (rockets only push you, barrels burn)
+  const d = P.distanceTo(new THREE.Vector3(player.pos.x, player.pos.y + 0.9, player.pos.z)), R = 5;
+  if (d < R && state === 'playing') { player.hp -= Math.round(45 * (1 - d / R)) + 5; damageFlash = 0.9; shake = Math.max(shake, 0.8); hurtFrom(P); Sound.play('hurt'); updateHUD(); }
+}
+// rockets, grenades and other barrels set off red barrels nearby and smash barricades
+function boomNearby(P) {
+  if (!live272()) return;
+  for (const rb of REDBARRELS) if (!rb.gone && inPlay(rb.m) && Math.hypot(rb.x - P.x, rb.z - P.z) < 3.6 && !BOOMQ.some(q => q.rb === rb)) BOOMQ.push({ rb, t: -0.18 });
+  for (const B of BARRICADES) { const d = Math.hypot(B.x - P.x, B.z - P.z); if (d < 4.5) hitBarricade(B, 60 * (1 - d / 4.5) + 40); }
+}
+function nearDoor() {
+  let best = null, bd = 2.4;
+  for (const D of DOORWAYS) { if (D.bar || !inPlay(D.ref)) continue; const d = Math.hypot(player.pos.x - D.x, player.pos.z - D.z); if (d < bd) { bd = d; best = D; } }
+  return best;
+}
+let BAR = null; // the boarding-up animation in progress
+function startBarricade() {
+  if (state !== 'playing' || BAR) return;
+  if (gameMode !== 'classic') { banner('No barricades here', 'Only in single-player waves'); Sound.play('empty'); return; }
+  if ((profile.barricades || 0) <= 0) { banner('No barricades', 'Buy them in the Shop (100 coins)'); Sound.play('empty'); return; }
+  const D = nearDoor();
+  if (!D) { banner('No doorway here', 'Stand in a house doorway and press J'); Sound.play('empty'); return; }
+  // the planks go on the side you're standing on
+  const side = D.horiz ? Math.sign(player.pos.z - D.z || 1) : Math.sign(player.pos.x - D.x || 1);
+  BAR = { t: 0, D, side, placed: false, cue: 0 };
+  profile.barricades--; saveProfile();
+  mouseDown = false; zoomed = false; reloading = 0;
+  if (gunModel) gunModel.visible = false;
+  if (!barVM) barVM = makeBarVM();
+  barVM.visible = true;
+}
+// the hands: a plank held up to the door, then a drill driving in a screw at each end
+let barVM = null;
+const makeBarVM = () => {
+  const g = new THREE.Group(), wood = lambert(0x9c7650);
+  const plank = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.11, 0.025), wood); g.add(plank);
+  for (const s of [-1, 1]) { const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.012, 8), GM.bright); sc.rotation.x = Math.PI / 2; sc.position.set(s * 0.26, 0, 0.016); sc.visible = false; g.add(sc); g.userData['s' + s] = sc; }
+  const hand = new THREE.Group();
+  hand.add(new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.09, 0.035), HM.glove));
+  for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.05, 0.02), HM.glove); f.position.set(-0.026 + i * 0.017, 0.06, 0.012); hand.add(f); }
+  const th = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.045, 0.02), HM.glove); th.position.set(0.05, 0.02, 0.012); th.rotation.z = -0.6; hand.add(th);
+  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.2, 12), HM.sleeve); cuff.position.set(0, -0.14, 0.02); hand.add(cuff);
+  hand.position.set(-0.2, -0.05, 0.03); g.add(hand);
+  const drill = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.14), GM.polymer);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.11, 0.045), GM.dark); grip.position.set(0, -0.08, 0.04);
+  const bit = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.006, 0.06, 8), GM.bright); bit.rotation.x = Math.PI / 2; bit.position.set(0, 0, -0.1);
+  const chuck = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.025, 12), GM.dark); chuck.rotation.x = Math.PI / 2; chuck.position.set(0, 0, -0.08);
+  const rh = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.08, 0.06), HM.glove); rh.position.set(0, -0.09, 0.06);
+  const rcuff = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.04, 0.2, 12), HM.sleeve); rcuff.position.set(0.02, -0.2, 0.1); rcuff.rotation.x = 0.4;
+  drill.add(body, grip, bit, chuck, rh, rcuff); g.add(drill); g.userData.drill = drill; g.userData.bit = bit; g.userData.hand = hand;
+  g.traverse(o => o.layers.set(1)); g.visible = false; camera.add(g);
+  return g;
+};
+function placeBarricade(D, side) {
+  const wood = lambert(0x8f6a46), dark = lambert(0x6e5034), W = D.gap + 0.5, off = side * (D.t / 2 + 0.05), meshes = [];
+  for (const [y, tilt, mat] of [[0.55, 0.1, wood], [1.2, -0.08, dark], [1.85, 0.06, wood]]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(W, 0.22, 0.07), mat);
+    if (D.horiz) { m.position.set(D.x, y, D.z + off); m.rotation.z = tilt; } else { m.position.set(D.x + off, y, D.z); m.rotation.set(0, Math.PI / 2, tilt); }
+    m.castShadow = m.receiveShadow = true; scene.add(m); solids.push(m); meshes.push(m);
+  }
+  const box = D.horiz ? addCollider(D.x, D.z + off, W, 0.4, 2.4) : addCollider(D.x + off, D.z, 0.4, W, 2.4);
+  const B = { D, x: D.horiz ? D.x : D.x + off, z: D.horiz ? D.z + off : D.z, meshes, box, hp: 100 };
+  for (const m of meshes) m.userData.onShot = () => hitBarricade(B, Math.max(6, weapon.dmg * 12) * (weapon.pellets > 1 ? 0.6 : 1));
+  D.bar = B; BARRICADES.push(B);
+  Sound.play('deploy');
+}
+function hitBarricade(B, dmg) {
+  if (B.hp <= 0) return;
+  B.hp -= dmg;
+  const keep = B.hp > 66 ? 3 : B.hp > 33 ? 2 : B.hp > 0 ? 1 : 0;
+  B.meshes.forEach((m, i) => { if (i >= keep && m.visible) { m.visible = false; dropSolid(m); debris(m.position.clone(), 0x8f6a46, 6, 0.6); Sound.play('crumble'); } });
+  if (B.hp <= 0) removeBarricade(B, true);
+}
+function removeBarricade(B, broken) {
+  for (const m of B.meshes) { dropSolid(m); scene.remove(m); }
+  dropBox(B.box); B.D.bar = null; B.hp = 0;
+  const i = BARRICADES.indexOf(B); if (i >= 0) BARRICADES.splice(i, 1);
+  if (broken) { banner('Barricade broken!', 'The cubes are coming in'); Sound.play('crumble'); }
+}
+function reset272() {
+  for (const B of [...BARRICADES]) removeBarricade(B, false);
+  for (const rb of REDBARRELS) { rb.hits = 0; rb.gone = false; if (rb.oil) { scene.remove(rb.oil.pud); rb.oil.pud.geometry.dispose(); rb.oil = null; } }
+  BOOMQ.length = 0;
+  if (BAR) { BAR = null; if (barVM) barVM.visible = false; if (gunModel) gunModel.visible = true; }
+}
+function updateBoom272(dt) {
+  // leaking barrels and the ones about to go up
+  for (const rb of REDBARRELS) if (rb.oil && !rb.gone) {
+    const o = rb.oil; o.t += dt; o.pud.scale.setScalar(Math.min(1.6, 0.1 + o.t * 0.35));
+    if ((o.drip -= dt) <= 0) { o.drip = 0.12; puff(new THREE.Vector3(rb.x + 0.38, 0.8 - Math.random() * 0.3, rb.z + 0.15), 0x1a140e, 0.18, 0.35); }
+  }
+  for (let i = BOOMQ.length - 1; i >= 0; i--) { const q = BOOMQ[i]; q.t += dt; if (q.t >= 0) { BOOMQ.splice(i, 1); explodeBarrel(q.rb); } }
+  // cubes break barricades (the Angry Cube goes straight through)
+  for (const B of [...BARRICADES]) for (const e of enemies) {
+    const u = e.userData, d = Math.hypot(e.position.x - B.x, e.position.z - B.z);
+    if (d < u.size * 0.5 + 1.3 && !u.T.ranged) { if (u.T.smash) { removeBarricade(B, true); break; } hitBarricade(B, u.T.melee * 1.1 * dt); if (B.hp <= 0) break; }
+  }
+  // "press J" when you're in a doorway with a barricade to use
+  const show = gameMode === 'classic' && state === 'playing' && !BAR && (profile.barricades || 0) > 0 && !!nearDoor();
+  const h = $('barHint'); h.classList.toggle('on', show);
+  if (show) { const txt = `<kbd>J</kbd> Board up the door · ${profile.barricades} left`; if (h.innerHTML !== txt) h.innerHTML = txt; }
+  $('tBar').hidden = !(show && touchMode());
+  // the boarding-up animation
+  if (BAR) {
+    BAR.t += dt; const t = BAR.t, ud = barVM.userData, drill = ud.drill;
+    const up = Math.min(1, t / 0.35), down = Math.max(0, (t - 1.75) / 0.3), lift = smooth(up) * (1 - smooth(down));
+    barVM.position.set(0, -0.42 + lift * 0.24, -0.5); barVM.rotation.set(-0.05, 0, Math.sin(t * 2) * 0.02);
+    // the drill comes in for the left screw, then the right one
+    const at = t < 1.05 ? -1 : 1, dk = t < 0.45 ? 0 : t < 1.05 ? smooth((t - 0.45) / 0.25) * (1 - smooth((t - 0.9) / 0.15)) : t < 1.65 ? smooth((t - 1.05) / 0.25) * (1 - smooth((t - 1.5) / 0.15)) : 0;
+    drill.visible = t > 0.35 && t < 1.75;
+    drill.position.set(at * 0.26 + 0.05, 0.02 - (1 - dk) * 0.18, 0.2 - dk * 0.17);
+    ud.bit.rotation.y += dt * 60 * dk;
+    ud.hand.position.x = -0.2 + Math.sin(t * 3) * 0.004;
+    if (dk > 0.8 && Math.random() < 0.5) sparks(barVM.localToWorld(new THREE.Vector3(at * 0.26, 0, 0.02)), 0xffd08a, 1, 2);
+    if (t > 0.85 && !barVM.userData['s-1'].visible) { barVM.userData['s-1'].visible = true; Sound.play('reload'); }
+    if (t > 1.45 && !barVM.userData.s1.visible) { barVM.userData.s1.visible = true; Sound.play('reload'); }
+    if (t > 1.5 && !BAR.placed) { BAR.placed = true; placeBarricade(BAR.D, BAR.side); }
+    fireCooldown = Math.max(fireCooldown, 0.1);
+    if (t > 2.05) { BAR = null; barVM.visible = false; barVM.userData['s-1'].visible = barVM.userData.s1.visible = false; if (gunModel) gunModel.visible = true; banner('Door boarded up', 'Cubes have to break through it'); }
+  }
 }
 
 // ---------- Effects ----------
@@ -4117,6 +4295,7 @@ function refreshSettingsUI() {
   $('volVal').textContent = Math.round(settings.volume * 100) + '%';
   document.querySelectorAll('#quality button').forEach(b => b.classList.toggle('sel', b.dataset.quality === settings.quality));
   document.querySelectorAll('#musicSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.music === 'on') === (settings.music !== false)));
+  document.querySelectorAll('#scopeSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.scope === 'lock') === !!settings.scopeLock));
   document.querySelectorAll('.wcard').forEach(c => {
     const k = c.dataset.weapon, w = WEAPONS[k];
     c.classList.toggle('sel', k === settings.weapon);
@@ -4133,6 +4312,8 @@ document.querySelectorAll('#musicSeg button').forEach(b => b.addEventListener('c
   settings.music = b.dataset.music === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI();
 }));
 document.querySelectorAll('#touchSeg button').forEach(b => b.addEventListener('click', () => { settings.touch = b.dataset.touch; saveSettings(); refreshSettingsUI(); }));
+// 2.7.2: scope lock: one right-click scopes in and it stays until you click again (easier on trackpads and iPads)
+document.querySelectorAll('#scopeSeg button').forEach(b => b.addEventListener('click', () => { settings.scopeLock = b.dataset.scope === 'lock'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI(); }));
 document.querySelectorAll('#quality button').forEach(b => b.addEventListener('click', () => {
   settings.quality = b.dataset.quality; saveSettings(); applyQuality(); refreshSettingsUI();
 }));
@@ -4261,8 +4442,13 @@ document.querySelectorAll('[data-shop]').forEach(item => item.querySelector('.sh
   Sound.play('buy');
   refreshSettingsUI(); refreshShop();
 }));
+function refreshBarricadeShop() {
+  const n = profile.barricades || 0, short = BARRICADE_PRICE - profile.coins;
+  $('buyBarricade').textContent = `Buy · ${BARRICADE_PRICE} coins`; $('buyBarricade').disabled = short > 0;
+  $('barricadeNote').textContent = `You have ${n}. ` + (short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'} for another.` : 'You can afford another.');
+}
 function refreshShop() {
-  refreshTurretShop();
+  refreshTurretShop(); refreshBarricadeShop();
   refreshWeaponShop();
   const k = 'extreme', W = WEAPONS[k], btn = $('buyBtn'), note = $('buyNote');
   if (!ownsBase(k)) {
@@ -4354,6 +4540,11 @@ $('resetYes').addEventListener('click', () => {
   try { localStorage.removeItem('cubeAssaultSettings'); localStorage.removeItem('cubeAssaultProfile'); } catch (e) {}
   location.reload();
 });
+$('buyBarricade').addEventListener('click', () => {
+  if (profile.coins < BARRICADE_PRICE) return;
+  profile.coins -= BARRICADE_PRICE; profile.barricades = (profile.barricades || 0) + 1; saveProfile();
+  Sound.play('buy'); refreshShop();
+});
 $('buyTurret').addEventListener('click', () => {
   if (ownsTurret() || profile.coins < TURRET_PRICE) return;
   profile.coins -= TURRET_PRICE; profile.owned.turret = true; saveProfile();
@@ -4402,6 +4593,7 @@ addEventListener('keydown', e => {
   const n = parseInt(e.key, 10), slot = WEAPON_KEYS.find(k => WEAPONS[k].slot === n);
   if (slot && owns(slot) && slot !== weaponKey) setWeapon(slot);
   if (e.code === 'Digit6' || e.code === 'Numpad6') deployTurret();
+  if (e.code === 'KeyJ') startBarricade();
   if (e.code === 'Space') e.preventDefault();
 });
 addEventListener('keyup', e => keys[e.code] = false);
@@ -4427,11 +4619,11 @@ canvas.addEventListener('mousedown', e => {
   if (state !== 'playing') return;
   if (!isLocked()) lockMouse();
   if (e.button === 0) { mouseDown = true; shoot(); }
-  if (e.button === 2 && (weapon === WEAPONS.sniper || weapon === WEAPONS.rifle) && reloading <= 0) zoomed = true; // 2.7: the rifle has a scope too
+  if (e.button === 2 && (weapon === WEAPONS.sniper || weapon === WEAPONS.rifle) && reloading <= 0) zoomed = settings.scopeLock ? !zoomed : true; // 2.7: the rifle has a scope too; 2.7.2: scope lock
 });
 addEventListener('mouseup', e => {
   if (e.button === 0) mouseDown = false;
-  if (e.button === 2) zoomed = false;
+  if (e.button === 2 && !settings.scopeLock) zoomed = false;
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -4475,6 +4667,7 @@ touchButton('tReload', () => reload());
 touchButton('tAim', () => { if ((weapon === WEAPONS.sniper || weapon === WEAPONS.rifle) && reloading <= 0) zoomed = !zoomed; });
 touchButton('tUse', () => { keys.KeyE = true; }, () => { keys.KeyE = false; });
 touchButton('tTurret', () => deployTurret());
+touchButton('tBar', () => startBarricade());
 touchButton('tPause', () => pause());
 $('tWeapons').addEventListener('pointerdown', e => {
   e.preventDefault(); e.stopPropagation();
@@ -4747,6 +4940,7 @@ function update(dt, t) {
 
   updateEnemies(dt, t);
   updateTurret(dt);
+  updateBoom272(dt);
   if (gameMode === 'campaign') campaignUpdate(dt);
   updateRockets(dt);
   updateChunks(dt);
@@ -6423,8 +6617,8 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.7.1';
-const NEWS_VERSION = '2.7.1'; // the update the "What's new" popup is about (small fix updates don't get one)
+const VERSION = '2.7.2';
+const NEWS_VERSION = '2.7.2'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
