@@ -464,6 +464,36 @@ body.mpCS .mpP .dot.red { background: #d97706; } body.mpCS .mpTable tr.red td:fi
 .mpLoad button span { font-size: 13px; color: var(--muted); line-height: 1.35; }
 .mpLoad button.sel, .mpLoad button:hover { border-color: var(--gold); }
 @media (max-width: 600px) { .mpLoad { grid-template-columns: 1fr; } .mpLoad button { padding: 10px 8px; } }
+/* 2.6.2: gun pictures in the picker, red dots over enemies, the end-of-match victory scene, the coin reward */
+.mpLoad { width: 100%; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+.mpLoad button { padding: 8px 6px 10px; }
+.mpLoad button img { display: block; width: 100%; max-width: 84px; aspect-ratio: 1; object-fit: contain; margin: -4px auto 0; pointer-events: none; }
+#menu-mploadout { max-width: 640px; }
+@media (max-height: 520px) { #menu-mploadout h2 { margin: 0; } #menu-mploadout p { margin: 4px 0; } .mpLoad { margin: 8px 0; } .mpLoad button img { max-width: 52px; } .mpLoad button span { display: none; } .mpLoad button b { font-size: 17px; margin: 0; } }
+.mpLoad button[hidden] { display: none; }
+@media (max-width: 600px) { .mpLoad { grid-template-columns: 1fr 1fr; } .mpLoad button img { max-width: 64px; margin-top: -2px; } }
+#mpTags span { text-align: center; }
+#mpTags span i.foe { display: block; width: 9px; height: 9px; margin: 0 auto 3px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 6px #ef4444, 0 0 0 2px rgba(10, 14, 20, .6); }
+#mpWin { position: fixed; inset: 0; z-index: 40; display: none; cursor: pointer; user-select: none; -webkit-user-select: none; }
+#mpWin.on { display: block; }
+#mpWin::before, #mpWin::after { content: ''; position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height .7s ease; }
+#mpWin::before { top: 0; } #mpWin::after { bottom: 0; }
+#mpWin.bars::before, #mpWin.bars::after { height: 11vh; }
+#mpWin .ttl { position: absolute; left: 0; right: 0; top: 14vh; text-align: center; padding: 0 16px; }
+#mpWin .ttl b { display: block; font-family: var(--display); font-weight: 400; font-size: clamp(52px, 11vw, 124px); letter-spacing: 6px; line-height: 1; color: var(--gold);
+  text-shadow: 0 6px 24px rgba(0, 0, 0, .65), 0 0 46px rgba(240, 190, 80, .5); opacity: 0; }
+#mpWin.lose .ttl b { color: #ef4444; text-shadow: 0 6px 24px rgba(0, 0, 0, .65), 0 0 46px rgba(239, 68, 68, .45); }
+#mpWin.go .ttl b { animation: mpSlam .75s cubic-bezier(.2, 1.4, .4, 1) .35s forwards; }
+#mpWin .ttl span { display: block; margin-top: 10px; font-weight: 700; font-size: clamp(16px, 2.6vw, 22px); color: var(--ink); text-shadow: 0 2px 6px #000; opacity: 0; }
+#mpWin.go .ttl span { animation: mpFadeUp .6s .95s forwards; }
+#mpWin .names { position: absolute; left: 0; right: 0; bottom: calc(11vh + 16px); text-align: center; padding: 0 16px; font-weight: 700; font-size: 17px; color: var(--ink); text-shadow: 0 2px 6px #000; opacity: 0; }
+#mpWin.go .names { animation: mpFadeUp .6s 1.6s forwards; }
+#mpWin .skip { position: absolute; right: 16px; top: calc(11vh + 10px); font-size: 13px; font-weight: 700; color: var(--muted); opacity: 0; }
+#mpWin.go .skip { animation: mpFadeUp .5s 2s forwards; }
+@keyframes mpSlam { 0% { opacity: 0; transform: scale(2.8); } 60% { opacity: 1; transform: scale(.93); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes mpFadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.mpCoins { font-weight: 700; color: var(--gold); margin: 4px 0 2px; min-height: 1px; }
+.mpCoins:empty { display: none; }
 #mpBoardBtn { display: none; position: absolute; left: calc(max(24px, env(safe-area-inset-left)) + 0px); top: 78px; font: inherit; font-weight: 700; font-size: 14px; color: #fff; background: rgba(12, 16, 24, .55); border: 2px solid rgba(255, 255, 255, .35); border-radius: 10px; padding: 8px 12px; pointer-events: auto; }
 body.touch.mpOn #mpBoardBtn { display: block; }
 @media (max-width: 600px) { .mpCode b { font-size: 36px; letter-spacing: 5px; } .mpSettings .row label { min-width: 86px; font-size: 14px; } .mpTeams { grid-template-columns: 1fr; } #mpFeed { top: 56px; } }
@@ -560,12 +590,20 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.6.1 · What's new</button>
+    <button class="link" data-action="notes">v2.6.2 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v2.6.2 <span>C:S Mode</span></h3><ul>
+        <li>The rifle is now a choice for your main gun in C:S Mode, alongside the shotgun, sniper and rocket launcher. Each choice shows a 3D picture of the gun.</li>
+        <li>Other players are now low-poly people instead of cubes. There are 6 looks and everyone in a room gets their own, with a band in their team colour.</li>
+        <li>Enemies have a red dot above their name tag.</li>
+        <li>When a match is won, a victory scene plays on the map for everyone: the winning team (or the Free-for-all winner) celebrates up front with the losers standing behind them, under a big VICTORY or DEFEAT. Then the scores show. Click, tap or press Space to skip it.</li>
+        <li>Winning an online match, as a team or on your own, gives you 50 coins. Losing gives none.</li>
+        <li>Single-player and the campaign are unchanged.</li>
+      </ul></section>
       <section><h3>v2.6.1 <span>C:S Mode</span></h3><ul>
         <li>New multiplayer mode: C:S Mode, on the Outpost. Two teams, Terrorists (orange) and Counter-Terrorists (blue), play rounds. The host picks 3, 5 or 8 rounds to win.</li>
         <li>Terrorists: stand in site A or site B and hold E (or the E button on touch) for 3 seconds to plant the bomb, then guard it. If it explodes after 60 seconds, the Terrorists win the round.</li>
@@ -810,18 +848,16 @@ body.touch.mpOn #mpBoardBtn { display: block; }
 
   <div class="menu" id="menu-news">
     <div class="eyebrow">What's new</div>
-    <h2>v2.6.1 · C:S Mode</h2>
+    <h2>v2.6.2 · C:S Mode</h2>
     <ul class="newslist">
-      <li><b>C:S Mode</b> in multiplayer: Terrorists vs Counter-Terrorists in rounds on the Outpost. Plant the bomb at site A or B and guard it for 60 seconds, or defuse it by holding E for 12 seconds. Wiping out the other team wins the round too.</li>
-      <li><b>Pick your gun</b> in C:S Mode and Free-for-all: pistol and knife, plus a shotgun, sniper or rocket launcher.</li>
-      <li>No Extreme Gun or turrets against other players. Both are back in <b>Co-op</b> against the cubes.</li>
+      <li><b>Players are people now</b>: 6 different looks, one each, with red dots over enemies.</li>
+      <li><b>Victory scene</b> at the end of every match, then the scores. <b>Win an online match for 50 coins.</b></li>
+      <li><b>Rifle</b> added to the C:S Mode gun choice, and every choice shows the gun in 3D.</li>
     </ul>
-    <div class="section">Also new in 2.6</div>
+    <div class="section">Also new in 2.6.1</div>
     <ul class="newslist">
-      <li><b>Play online with friends</b>: press Multiplayer, create a match and share the 5-letter code. Up to 6 players, on any device.</li>
-      <li><b>Team Deathmatch</b> (1v1 to 3v3) and <b>Free-for-all</b> with real hits, kills and respawns, plus <b>Co-op</b> against the cube waves.</li>
-      <li>Rockets blow holes in everyone's map at once, and if the host leaves the match carries on.</li>
-      <li>Try it on the <b>Outpost</b> map, built for team fights.</li>
+      <li><b>C:S Mode</b>: Terrorists vs Counter-Terrorists in rounds on the Outpost. Plant the bomb at site A or B, or defuse it by holding E for 12 seconds.</li>
+      <li>No Extreme Gun or turrets against other players; both still work in <b>Co-op</b>. The full list is in What's new.</li>
     </ul>
     <button class="btn" id="newsOk">Let's go</button>
   </div>
@@ -6279,7 +6315,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.6.1';
+const VERSION = '2.6.2';
 function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
@@ -6388,7 +6424,7 @@ tick();
   const SPAWNS = { red: [[-6, -30], [0, -31], [6, -30]], blue: [[6, 30], [0, 31], [-6, 30]], ffa: [[0, -30], [0, 30], [-30, 0], [30, 0], [-12, 12], [12, -12]] }; // Classic and Frontier, as in mp-ui
   const COLORS = { red: 0xdc2626, blue: 0x3b82f6, none: 0x9b7bd6 };
   const CS_COLORS = { red: 0xd97706, blue: 0x2563eb }; // C:S Mode: Terrorists are 'red' and Counter-Terrorists 'blue' underneath
-  const LOADOUT = ['pistol', 'knife', 'shotgun', 'sniper', 'rocket']; // Free-for-all and C:S Mode: pistol and knife, plus ONE of the other three
+  const LOADOUT = ['pistol', 'knife', 'rifle', 'shotgun', 'sniper', 'rocket']; // Free-for-all and C:S Mode: pistol and knife, plus ONE other gun (the rifle only in C:S Mode)
   const PLANT_MS = 3000, DEFUSE_MS = 12000, BOMB_MS = 60000, ROUND_MS = 100000, ROUND_GAP_MS = 5000, DEFUSE_R = 2.2;
 
   // ---------- game modes: add a new one here ----------
@@ -7292,6 +7328,7 @@ tick();
       die() { if (!this.g.visible) return; this.alive = false; this.g.visible = false; const c = this.g.position.clone().setY(this.g.position.y + 0.9); debris(c, this.color, 14, 1); glowFlash(c, this.color, 3, 0.25); puff(c.clone().setY(0.3), 0xd0c8b8, 2.5, 0.7); },
       respawn(x, z, yaw, life) { this.alive = true; this.life = life; this.buf.length = 0; this.err.set(0, 0, 0); this.has = false; this.push(match ? viewTime() : 0, x, 0, z, yaw, 0, 0, 0, 0); },
     };
+    if (window.mpSkin) { try { mpSkin(a); } catch (e) { console.error(e); } } // 2.6.2: mp-ui draws them as people
     avatars.set(id, a);
     return a;
   }
@@ -7646,12 +7683,13 @@ if (!window.CAMP) window.CAMP = (() => {
     <button class="btn secondary" id="mpLeave">Leave room</button></div>`);
   add(`<div class="menu" id="menu-mpresults">
     <div class="eyebrow">Match over</div><div class="mpWinner" id="mpWinner">Red team wins</div>
+    <div class="mpCoins" id="mpCoins"></div>
     <table class="mpTable" id="mpResTable"></table>
     <div class="mpBtns"><button class="btn" id="mpRematch">Rematch</button><button class="btn secondary" id="mpResLeave">Leave</button></div></div>`);
   add(`<div class="menu" id="menu-mploadout">
     <div class="eyebrow">Pick your gun</div><h2>Loadout</h2>
     <p>Everyone gets a pistol (1) and a knife (7). Pick one more gun for this match.</p>
-    <div class="mpLoad" id="mpLoad"><button data-gun="shotgun"><b>Shotgun</b><span>Key 3 · 9 pellets, deadly up close</span></button><button data-gun="sniper"><b>Sniper</b><span>Key 4 · one-shot kills, right-click to scope</span></button><button data-gun="rocket"><b>Rocket launcher</b><span>Key 8 · splash damage, 3 s reload</span></button></div></div>`);
+    <div class="mpLoad" id="mpLoad"><button data-gun="rifle"><b>Rifle</b><span>Key 2 · full-auto, 30 rounds</span></button><button data-gun="shotgun"><b>Shotgun</b><span>Key 3 · 9 pellets, deadly up close</span></button><button data-gun="sniper"><b>Sniper</b><span>Key 4 · one-shot kills, right-click to scope</span></button><button data-gun="rocket"><b>Rocket launcher</b><span>Key 8 · splash damage, 3 s reload</span></button></div></div>`);
 
   // ---------- the match HUD, added to the game's HUD; CSS keeps it hidden unless a match is running ----------
   const hud = document.createElement('div'); hud.id = 'mpHud';
@@ -7746,6 +7784,7 @@ if (!window.CAMP) window.CAMP = (() => {
   $('mpBalance').addEventListener('click', () => { click(); CAMP.autoBalance(); });
   $('mpStart').addEventListener('click', () => { if (valid()) return; Sound.init(); Sound.play('click'); CAMP.startMatch(); });
   function leave(toMenu = 'mp', note = '') {
+    if (scene2) scene2.finish();
     if (inRoom) CAMP.leaveRoom();
     inRoom = false; endHud(); document.body.classList.remove('mpCS');
     if (state !== 'menu') quitToMenu();
@@ -7768,6 +7807,7 @@ if (!window.CAMP) window.CAMP = (() => {
   }
   // TODO(netcode): Lars's side moves players, decides hits and runs the rules. This only gets you onto the map.
   function startMatch(d) {
+    if (scene2) scene2.finish();
     settings = d.settings || settings; inMatch = true; board = { red: 0, blue: 0, players: [], timeLeft: (settings.timeLimit || 10) * 60, at: performance.now() };
     gameMode = 'mp';
     resetGame();
@@ -7786,13 +7826,17 @@ if (!window.CAMP) window.CAMP = (() => {
     const sc = d.scores || {}, rows = (sc.players || []).map(r => ({ ...r, name: r.name || (byId(r.id) || {}).name || 'Player', team: r.team || teamOf(r.id) }));
     endHud(); releaseInput(); state = 'menu';
     const me = CAMP.myId(), w = d.winner;
+    const won = !!w && w !== 'draw' && w !== 'coop' && (w === me || w === teamOf(me) || (rows.find(r => r.id === me) || {}).team === w);
     const csm = settings && settings.mode === 'cs';
     $('mpWinner').textContent = w === 'red' ? `${csm ? 'Terrorists win' : 'Red team wins'} ${sc.red ?? ''}–${sc.blue ?? ''}` : w === 'blue' ? `${csm ? 'Counter-Terrorists win' : 'Blue team wins'} ${sc.blue ?? ''}–${sc.red ?? ''}`
       : w === 'draw' ? 'It’s a draw' : w === 'coop' ? 'Co-op match over' : w === me ? 'You win!' : `${esc((byId(w) || rows.find(r => r.id === w) || { name: 'Someone' }).name)} wins`;
     rows.sort((a, b) => (b.kills - a.kills) || (a.deaths - b.deaths));
     $('mpResTable').innerHTML = '<tr><th>Player</th><th>Kills</th><th>Deaths</th></tr>' + rows.map(r => `<tr class="${r.team || ''}${r.id === me ? ' you' : ''}"><td>${esc(r.name)}${r.id === me ? ' (you)' : ''}</td><td>${r.kills}</td><td>${r.deaths}</td></tr>`).join('');
-    Sound.play(w === me || (w && w === teamOf(me)) ? 'wave' : 'death');
-    show('mpresults');
+    // 2.6.2: winning an online match (as a team or on your own) is worth 50 coins; losing gives none
+    $('mpCoins').textContent = '';
+    if (won) { profile.coins += 50; saveProfile(); updateHUD(); $('mpCoins').textContent = '+50 coins for the win'; }
+    const done = () => { Sound.play(won ? 'wave' : 'death'); show('mpresults'); };
+    if (!victoryScene(rows, w, won, sc, done)) done();
   }
 
   // scores, kill feed, respawn countdown, scoreboard, ping and name tags
@@ -7828,7 +7872,9 @@ if (!window.CAMP) window.CAMP = (() => {
       if (_v.z > 1 || d > 70) { s.style.display = 'none'; return; }
       const p = byId(r.id) || { name: '?' }, mate = mode() !== 'ffa' && p.team && p.team === teamOf(CAMP.myId());
       if (!mate && !seen(r.x, r.y, r.z)) { s.style.display = 'none'; return; }
-      s.style.display = ''; s.textContent = p.name; s.className = teamed(mode()) ? p.team || 'ffa' : 'ffa';
+      const foe = mode() === 'ffa' || (teamed(mode()) && !mate && p.team && p.team !== teamOf(CAMP.myId()));
+      const html = (foe ? '<i class="foe"></i>' : '') + esc(p.name); if (s._h !== html) { s._h = html; s.innerHTML = html; }
+      s.style.display = ''; s.className = teamed(mode()) ? p.team || 'ffa' : 'ffa';
       s.style.left = (_v.x * 0.5 + 0.5) * W + 'px'; s.style.top = (-_v.y * 0.5 + 0.5) * H + 'px'; s.style.opacity = d > 45 ? 0.6 : 1;
     });
   }
@@ -7838,14 +7884,26 @@ if (!window.CAMP) window.CAMP = (() => {
     const r = $('mpRespawn');
     if (respawnAt) { const left = (respawnAt - performance.now()) / 1000; if (left > 0) { r.style.display = 'block'; r.innerHTML = `Respawning in ${Math.ceil(left)}<small>You were taken out</small>`; } else { respawnAt = 0; r.style.display = 'none'; } }
     if (mode() === 'cs') csHud();
+    animateSkins();
   }
 
   // ---------- the gun picker (Free-for-all and C:S Mode) ----------
   let loadout = 'shotgun';
-  try { const g = localStorage.getItem('cubeAssaultMpGun'); if (['shotgun', 'sniper', 'rocket'].includes(g)) loadout = g; } catch (e) {}
-  function pickGun() { document.querySelectorAll('#mpLoad button').forEach(b => b.classList.toggle('sel', b.dataset.gun === loadout)); show('mploadout'); }
+  try { const g = localStorage.getItem('cubeAssaultMpGun'); if (['rifle', 'shotgun', 'sniper', 'rocket'].includes(g)) loadout = g; } catch (e) {}
+  // the guns you can pick: the rifle only in C:S Mode
+  const pickable = () => mode() === 'cs' ? ['rifle', 'shotgun', 'sniper', 'rocket'] : ['shotgun', 'sniper', 'rocket'];
+  const picked = () => pickable().includes(loadout) ? loadout : 'shotgun';
+  function pickGun() {
+    const ok = pickable(), cur = picked();
+    document.querySelectorAll('#mpLoad button').forEach(b => {
+      const k = b.dataset.gun; b.hidden = !ok.includes(k); b.classList.toggle('sel', k === cur);
+      if (!b.querySelector('img')) { const a = typeof AVATARS !== 'undefined' && AVATARS.find(x => x.key === k); if (a && a.url) { const im = new Image(); im.src = a.url; im.alt = ''; b.prepend(im); } }
+    });
+    show('mploadout');
+  }
   $('mpLoad').addEventListener('click', e => {
     const b = e.target.closest('[data-gun]'); if (!b || !inMatch || currentMenu !== 'mploadout') return;
+    if (!pickable().includes(b.dataset.gun)) return;
     click(); loadout = b.dataset.gun; try { localStorage.setItem('cubeAssaultMpGun', loadout); } catch (e) {}
     setWeapon(loadout); resume();
   });
@@ -7855,11 +7913,159 @@ if (!window.CAMP) window.CAMP = (() => {
     turret: () => mode() === 'coop', // turrets fight cubes: co-op only, never against other players
     owns: k => {
       const m = mode(), guns = (window.mpNet && mpNet.guns) || [];
-      if (m === 'ffa' || m === 'cs') return k === 'pistol' || k === 'knife' || k === loadout;
+      if (m === 'ffa' || m === 'cs') return k === 'pistol' || k === 'knife' || k === picked();
       if (m === 'coop') return guns.includes(k) || (k === 'extreme' && ownsBase(k)); // the Extreme Gun is fine against cubes
       return guns.includes(k);
     },
   };
+
+  // ---------- 2.6.2: other players as low-poly people, six skins, one per person ----------
+  const SKINS = [
+    { skin: 0xc68e62, shirt: 0x4d6b3a, pants: 0x8b7a55, shoes: 0x3b2f22, hair: 0x3a2a1a, hat: 'cap', hatC: 0x2f4a26 },     // ranger
+    { skin: 0x7a4e32, shirt: 0xe8e6df, pants: 0x5d6670, shoes: 0x22262b, hair: 0x15110e, hat: 'none' },                    // medic
+    { skin: 0xf0c7a4, shirt: 0x2a2c31, pants: 0x34507a, shoes: 0x1a1a1a, hair: 0x6b3d1f, hat: 'band', hatC: 0xc0392b },    // biker
+    { skin: 0xd9a77c, shirt: 0xe0b23a, pants: 0x2d3440, shoes: 0x4a3a2a, hair: 0x2a1d14, hat: 'beanie', hatC: 0x7a2f8f },  // scout
+    { skin: 0xf2d0b5, shirt: 0x1f2b45, pants: 0x15181e, shoes: 0x0e0f12, hair: 0xd8c27a, hat: 'shades' },                  // agent
+    { skin: 0x9c6a45, shirt: 0xc8b083, pants: 0x6b5236, shoes: 0x3a2d20, hair: 0x1b1612, hat: 'helmet', hatC: 0x7d7a5a },  // desert
+  ];
+  const PB = (w, h, d, y = 0) => new THREE.BoxGeometry(w, h, d).translate(0, y, 0);
+  const PG = { leg: PB(0.22, 0.8, 0.24, -0.4), shoe: PB(0.24, 0.12, 0.32), torso: PB(0.58, 0.66, 0.3), band: PB(0.62, 0.12, 0.34), arm: PB(0.17, 0.6, 0.18, -0.27),
+    hand: PB(0.15, 0.13, 0.15), head: PB(0.34, 0.36, 0.34), eye: PB(0.055, 0.055, 0.02), hair: PB(0.36, 0.1, 0.36), cap: PB(0.38, 0.1, 0.38), brim: PB(0.3, 0.035, 0.17),
+    beanie: PB(0.38, 0.17, 0.38), hband: PB(0.37, 0.07, 0.37), shades: PB(0.3, 0.07, 0.03), helmet: PB(0.42, 0.17, 0.42), gun: PB(0.09, 0.13, 0.62), grip: PB(0.07, 0.15, 0.08) };
+  const NO_TEAM = 0x9b7bd6;
+  // one person: feet at y = 0, about 1.85 m tall like the hitbox, facing -z like the cubes did
+  function makePerson(si, color) {
+    const K = SKINS[((si % 6) + 6) % 6], L = c => lambert(c), m = (geo, c, x, y, z, parent) => { const o = new THREE.Mesh(geo, L(c)); o.position.set(x, y, z); o.castShadow = true; parent.add(o); return o; };
+    const g = new THREE.Group(), P = { g, legs: [], arms: [] };
+    for (const s of [-1, 1]) { const leg = new THREE.Group(); leg.position.set(s * 0.13, 0.86, 0); m(PG.leg, K.pants, 0, 0, 0, leg); m(PG.shoe, K.shoes, 0, -0.8, -0.04, leg); g.add(leg); P.legs.push(leg); }
+    m(PG.torso, K.shirt, 0, 1.19, 0, g);
+    P.band = m(PG.band, color === NO_TEAM ? K.shirt : color, 0, 1.4, 0, g); P.band.visible = color !== NO_TEAM;
+    for (const s of [-1, 1]) { const arm = new THREE.Group(); arm.position.set(s * 0.375, 1.48, 0); m(PG.arm, K.shirt, 0, 0, 0, arm); m(PG.hand, K.skin, 0, -0.6, 0, arm); g.add(arm); P.arms.push(arm); }
+    const head = new THREE.Group(); head.position.set(0, 1.7, 0); g.add(head); P.head = head;
+    m(PG.head, K.skin, 0, 0, 0, head);
+    for (const s of [-1, 1]) m(PG.eye, 0x16181c, s * 0.08, 0.03, -0.172, head);
+    if (K.hat !== 'helmet' && K.hat !== 'beanie' && K.hat !== 'cap') m(PG.hair, K.hair, 0, 0.19, 0.01, head);
+    if (K.hat === 'cap') { m(PG.cap, K.hatC, 0, 0.2, 0, head); m(PG.brim, K.hatC, 0, 0.16, -0.25, head); }
+    if (K.hat === 'beanie') m(PG.beanie, K.hatC, 0, 0.2, 0.01, head);
+    if (K.hat === 'band') m(PG.hband, K.hatC, 0, 0.1, 0, head);
+    if (K.hat === 'shades') m(PG.shades, 0x0b0c0f, 0, 0.035, -0.18, head);
+    if (K.hat === 'helmet') m(PG.helmet, K.hatC, 0, 0.18, 0, head);
+    const gunG = new THREE.Group(); gunG.position.set(0.1, 1.24, -0.42); m(PG.gun, 0x1d2024, 0, 0, 0, gunG); m(PG.grip, 0x1d2024, 0, -0.12, 0.16, gunG); g.add(gunG); P.gun = gunG;
+    pose(P, 'hold', 0, 0);
+    return P;
+  }
+  // poses: hold (aiming the gun), cheer (arms up), sad (head down, arms hanging); walk swings the legs
+  function pose(P, kind, t, walk) {
+    const sw = Math.sin(t) * walk;
+    P.legs[0].rotation.x = sw * 0.7; P.legs[1].rotation.x = -sw * 0.7;
+    P.gun.visible = kind === 'hold';
+    if (kind === 'hold') { P.arms[0].rotation.set(1.2, 0, 0.38); P.arms[1].rotation.set(1.35, 0, -0.1); }
+    else if (kind === 'cheer') { const k = Math.sin(t * 7); P.arms[0].rotation.set(2.75 + k * 0.18, 0, -0.3); P.arms[1].rotation.set(2.75 - k * 0.18, 0, 0.3); P.head.rotation.x = 0.15; }
+    else { P.arms[0].rotation.set(0.08, 0, -0.06); P.arms[1].rotation.set(0.08, 0, 0.06); P.head.rotation.x = -0.55 + Math.sin(t * 1.3) * 0.04; }
+  }
+  // the same skin for a person on every screen: their place in the room's join order
+  const skinOf = id => { const i = players.findIndex(p => p.id === id); if (i >= 0) return i; let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
+  const skinned = new Map();
+  let skinT = performance.now();
+  window.mpSkin = a => {
+    const P = makePerson(skinOf(a.id), a.color);
+    for (const c of a.g.children) c.visible = false; // the cube body, head and gun (still used for hit sparks)
+    a.g.add(P.g);
+    skinned.set(a.id, { a, P, last: a.g.position.clone(), phase: 0, walk: 0, color: a.color });
+  };
+  function animateSkins() {
+    const t = performance.now(), dt = Math.min(0.1, (t - skinT) / 1000); skinT = t;
+    for (const [id, s] of skinned) {
+      if (!s.a.g.parent) { skinned.delete(id); continue; }
+      if (s.a.color !== s.color) { s.color = s.a.color; s.P.band.material = lambert(s.color); s.P.band.visible = s.color !== NO_TEAM; }
+      const v = dt > 0 ? Math.hypot(s.a.g.position.x - s.last.x, s.a.g.position.z - s.last.z) / dt : 0; s.last.copy(s.a.g.position);
+      s.walk += (Math.min(1, v / 5) - s.walk) * Math.min(1, dt * 10); s.phase += dt * (4 + v * 1.1);
+      pose(s.P, 'hold', s.phase, s.walk);
+      s.P.head.rotation.x = Math.max(-0.6, Math.min(0.6, s.a.head.rotation.x)); // where they're looking
+    }
+  }
+
+  // ---------- 2.6.2: the end-of-match victory scene, played on the map for everyone ----------
+  const win = document.createElement('div'); win.id = 'mpWin';
+  win.innerHTML = '<div class="ttl"><b></b><span></span></div><div class="names"></div><div class="skip">Click or tap to skip</div>';
+  document.body.appendChild(win);
+  const _r = new THREE.Raycaster(), _o = new THREE.Vector3(), _dv = new THREE.Vector3();
+  const clearAlong = (x, z, dx, dz, far) => { let best = far; for (const y of [0.5, 1.6]) { _r.set(_o.set(x, y, z), _dv.set(dx, 0, dz)); _r.far = far; const h = _r.intersectObjects(solids, false)[0]; if (h) best = Math.min(best, h.distance); } return best; };
+  // an open stretch of ground: the camera stands at (x, z) and looks along (dx, dz) with ~20 m clear ahead and room either side
+  function stageSpot() {
+    const M = MAPS[mapId], S = (M && M.spawns) || SP[mapId] || SP.classic, list = [];
+    for (const k of ['ffa', 'red', 'blue']) for (const p of S[k] || []) list.push(Array.isArray(p) ? { x: p[0], z: p[1] } : p);
+    list.push({ x: 0, z: 8 }, { x: 0, z: -8 });
+    let best = null, bestS = -1;
+    for (const p of list) for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4, dx = Math.sin(a), dz = Math.cos(a), sx = dz, sz = -dx;
+      let s = clearAlong(p.x, p.z, dx, dz, 22);
+      for (const o of [-3.2, 3.2]) s = Math.min(s, clearAlong(p.x + sx * o, p.z + sz * o, dx, dz, 22));
+      s = Math.min(s, clearAlong(p.x, p.z, -dx, -dz, 3) * 7); // a little room behind the camera too
+      if (s > bestS) { bestS = s; best = { x: p.x, z: p.z, dx, dz, sx, sz, room: s }; }
+      if (s >= 21) return best;
+    }
+    return best;
+  }
+  let scene2 = null;
+  function victoryScene(rows, w, won, sc, done) {
+    if (!w || w === 'draw' || w === 'coop' || !rows.length) return false;
+    const teamWin = w === 'red' || w === 'blue';
+    const winners = rows.filter(r => teamWin ? r.team === w : r.id === w), losers = rows.filter(r => !winners.includes(r));
+    if (!winners.length) return false;
+    let spot; try { spot = stageSpot(); } catch (e) { spot = null; }
+    if (!spot) return false;
+    const near = Math.min(4.6, spot.room * 0.3), far = Math.min(14, spot.room * 0.82);
+    const yawTo = (dx, dz) => Math.atan2(-dx, -dz), faceCam = yawTo(-spot.dx, -spot.dz);
+    const csm = settings && settings.mode === 'cs';
+    const col = r => !teamed(settings && settings.mode) ? NO_TEAM : r.team === 'red' ? (csm ? 0xd97706 : 0xdc2626) : r.team === 'blue' ? (csm ? 0x2563eb : 0x3b82f6) : NO_TEAM;
+    const group = new THREE.Group(), people = [];
+    const line = (list, dist, gap, kind) => list.forEach((r, i) => {
+      const P = makePerson(skinOf(r.id), col(r)), o = (i - (list.length - 1) / 2) * gap;
+      P.g.position.set(spot.x + spot.dx * dist + spot.sx * o, 0, spot.z + spot.dz * dist + spot.sz * o); P.g.rotation.y = faceCam;
+      group.add(P.g); people.push({ P, kind, ph: i * 1.7 });
+    });
+    line(winners, near, 1.15, 'cheer'); line(losers, far, 1.7, 'sad');
+    scene.add(group);
+    const tName = teamWin ? (csm ? (w === 'red' ? 'Terrorists' : 'Counter-Terrorists') : (w === 'red' ? 'Red team' : 'Blue team')) : '';
+    const top = winners[0];
+    win.className = 'on' + (won ? '' : ' lose');
+    win.querySelector('b').textContent = won ? 'VICTORY' : 'DEFEAT';
+    win.querySelector('span').textContent = teamWin ? `${tName} win ${w === 'red' ? sc.red : sc.blue}–${w === 'red' ? sc.blue : sc.red}` : `${top.name} wins with ${top.kills} kill${top.kills === 1 ? '' : 's'}`;
+    win.querySelector('.names').textContent = teamWin ? winners.map(r => r.name).join(' · ') : '';
+    void win.offsetWidth; win.classList.add('bars', 'go');
+    mpCutsceneCs(true); state = 'cutscene'; hideMenus();
+    Sound.play(won ? 'cleared' : 'death');
+    const t0 = performance.now(), focus = new THREE.Vector3(spot.x + spot.dx * near, 1.15, spot.z + spot.dz * near);
+    const far3 = new THREE.Vector3(spot.x + spot.dx * (near + far) / 2, 1.2, spot.z + spot.dz * (near + far) / 2), look = new THREE.Vector3();
+    let fin = false, burst = 0;
+    const finish = () => {
+      if (fin) return; fin = true; scene2 = null; clearTimeout(cap);
+      scene.remove(group); win.className = ''; mpCutsceneCs(false);
+      if (state === 'cutscene') state = 'menu';
+      done();
+    };
+    const cap = setTimeout(finish, 7600); // in case frames stop (a hidden tab)
+    const skip = () => { if (performance.now() - t0 > 1200) finish(); };
+    win.onclick = skip;
+    scene2 = { finish, skip };
+    const ease = k => k < 0 ? 0 : k > 1 ? 1 : k * k * (3 - 2 * k);
+    (function step() {
+      if (fin) return; requestAnimationFrame(step);
+      const t = (performance.now() - t0) / 1000;
+      // the camera: low and off to the side, sweeping round to face the winners, then easing back to show the losers behind
+      const k = ease(t / 2.6), back = ease((t - 3) / 3) * 1.2, side = (1 - k) * 2.4;
+      camera.position.set(spot.x + spot.dx * (1.6 - 1.6 * k - back) + spot.sx * side, 0.75 + k * 0.85 + back * 0.15, spot.z + spot.dz * (1.6 - 1.6 * k - back) + spot.sz * side);
+      look.copy(focus).lerp(far3, ease((t - 3.2) / 2.5) * 0.45);
+      camera.lookAt(look);
+      if (camera.fov !== settings.fov) { camera.fov = settings.fov; camera.updateProjectionMatrix(); }
+      for (const p of people) { pose(p.P, p.kind, t + p.ph, 0); if (p.kind === 'cheer') p.P.g.position.y = Math.max(0, Math.sin((t + p.ph) * 5)) * 0.22; }
+      if (won && burst < 3 && t > 0.6 + burst * 0.9) { const p = people[burst % Math.max(1, winners.length)].P.g.position; sparks(new THREE.Vector3(p.x, 2.4, p.z), [0xffd34d, 0xff7a3d, 0x7ad3ff][burst], 22, 7); burst++; }
+      if (t > 7.2) finish();
+    })();
+    return true;
+  }
+  addEventListener('keydown', e => { if (scene2 && (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape')) { e.preventDefault(); scene2.skip(); } });
 
   // ---------- C:S Mode: round banners, the bomb, and the plant/defuse hint ----------
   let cs = null, bombG = null, beepAt = 0;
@@ -7944,6 +8150,8 @@ if (!window.CAMP) window.CAMP = (() => {
     if (c === 'kicked' || c === 'host_left') leave('mp', ERR[c]);
   });
 })();
+// 2.6.2: the game's tick() runs the campaign cutscene code while state is 'cutscene'; give it an empty one during the victory scene
+function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
 </script>
 </body>
 </html>
