@@ -370,7 +370,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.5</b>San Varro</div>
+    <div class="ver"><b>v1.5.1</b>San Varro</div>
     <nav class="nav">
       <button id="bPlay">Play</button>
       <button data-panel="pProfile">Profile</button>
@@ -423,7 +423,11 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.5</b>The cutscene update<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.5.1</b>Police balance<span>Latest</span></summary><ul>
+    <li>Half as many police: half as many police cars in normal traffic, and when you’re wanted the police send half as many cars, half as often.</li>
+    <li>The police are 30% slower than you: police cars top out at 70% of the average car you can drive, and cops on foot run at 70% of your sprint.</li>
+    <li>Tested from start to finish: driving, police chases, shops, robberies, buildings and respawning.</li></ul></details>
+  <details><summary><b>v1.5</b>The cutscene update</summary><ul>
     <li>New opening: close-up shots, you tell the guards what you really think, and they throw you in a dumpster outside the gate. You climb out and the game starts.</li>
     <li>Cutscenes at the gun store and grocery stores when you buy, and when you rob a store, the mall or the bank.</li>
     <li>Grocery stores sell snacks, meals and lottery tickets. Take out a gun before pressing E to rob one instead.</li>
@@ -821,6 +825,10 @@ const CT={
 CT.taxi=Object.assign({},CT.sedan,{name:'City Taxi',taxi:1});
 CT.police=Object.assign({},CT.sedan,{name:'Police Cruiser',max:56,acc:14,brake:26,grip:10,police:1});
 for(const k in CT)CT[k].wb=CT[k].l*0.6;
+// v1.5.1: police are 30% slower than the player. Cop cars top out at 70% of the average car you can drive, cops on foot run at 70% of your sprint
+const PLAYER_CARS=['sedan','sports','suv','van','pickup','taxi'],avgOf=k=>PLAYER_CARS.reduce((s,t)=>s+CT[t][k],0)/PLAYER_CARS.length;
+const COP_MAX=avgOf('max')*0.7,COP_ACC=avgOf('acc')*0.7,COP_RUN=7.2*0.7;
+const copT=c=>c.copT||(c.copT=Object.assign({},c.t,{max:COP_MAX,acc:COP_ACC}));
 const CAR_COLORS=['#b3121b','#1d4fa3','#e8e8e8','#151515','#7d8186','#2f6e3a','#d9a21b','#5b2a86','#c5c9cc','#0f6c78','#8a3b12','#f2f2f0','#24324a'];
 const WHEEL_GEO={};
 function wheelGeo(r){if(!WHEEL_GEO[r])WHEEL_GEO[r]=merge([G(new THREE.CylinderGeometry(r,r,0.26,14),'#141414',0,0,0,0,0,Math.PI/2),G(new THREE.CylinderGeometry(r*0.6,r*0.6,0.28,10),'#b9bdc1',0,0,0,0,0,Math.PI/2)]);return WHEEL_GEO[r];}
@@ -866,7 +874,7 @@ class Car{
   remove(){scene.remove(this.m.group);this.m.geos.forEach(g=>g.dispose());}
 }
 function carPhysics(c,thr,brk,steerIn,hand,dt){
-  const T=c.t,sh=Math.sin(c.h),ch=Math.cos(c.h);
+  const T=c.driver==='cop'?copT(c):c.t,sh=Math.sin(c.h),ch=Math.cos(c.h);
   let vF=c.vel.x*sh+c.vel.y*ch,vR=-c.vel.x*ch+c.vel.y*sh;
   if(c.dead){thr=0;brk=0;hand=true;steerIn=0;}
   if(thr>0){if(vF>=-0.5)vF+=T.acc*thr*dt*(1-clamp(vF/T.max,0,1)*0.85)*(vF>T.max?0:1);else vF+=T.brake*dt;}
@@ -1748,7 +1756,7 @@ function updateCop(p,dt){
   const lethal=W.level>=3||W.aggro>0||!!player.inCar;
   p.losT-=dt;if(p.losT<=0){p.los=d<90&&losCheck(p.pos.x,p.pos.y+1.5,p.pos.z,tgt.x,tgt.y+1.2,tgt.z);p.losT=0.35;}
   let spd=0;
-  if(d>(lethal?15:1.3)||!p.los){spd=d<6?2.5:5.3;p.pos.x+=dx*spd*dt;p.pos.z+=dz*spd*dt;collideCircle(p.pos,0.35,1);pushOutOfCars(p.pos,0.35);clampWorld(p.pos);}
+  if(d>(lethal?15:1.3)||!p.los){spd=d<6?2.5:COP_RUN;p.pos.x+=dx*spd*dt;p.pos.z+=dz*spd*dt;collideCircle(p.pos,0.35,1);pushOutOfCars(p.pos,0.35);clampWorld(p.pos);}
   p.pos.y=groundY(p.pos.x,p.pos.z);p.h=lerpA(p.h,Math.atan2(dx,dz),1-Math.exp(-10*dt));
   if(lethal&&p.los&&d<75){p.fireCD-=dt;if(p.fireCD<=0){p.fireCD=rand(0.7,1.4)/(1+W.level*0.12);p.muzzle.getWorldPosition(_a);copShoot(_a,d);}}
   if(!lethal&&d<2.2&&!player.inCar&&Math.hypot(player.vx,player.vz)<2.5)W.bustNear=true;
@@ -1807,7 +1815,7 @@ function aiPolice(c,dt){
     else{
       if(ai.rev>0){ai.rev-=dt;driveTo(c,tgt.x,tgt.z,0,dt,true);return;}
       if(!player.inCar&&d<18){driveTo(c,tgt.x,tgt.z,0,dt);if(Math.abs(c.vF)<1.5)deployCops(c);return;}
-      const lead=clamp(d/30,0,1.2);driveTo(c,tgt.x+tv.x*lead,tgt.z+tv.y*lead,player.inCar?c.t.max:Math.min(c.t.max,d*0.8+6),dt);stuckCheck(c,dt,10);
+      const lead=clamp(d/30,0,1.2);driveTo(c,tgt.x+tv.x*lead,tgt.z+tv.y*lead,player.inCar?COP_MAX:Math.min(COP_MAX,d*0.8+6),dt);stuckCheck(c,dt,10);
       if(W.level>=3&&d<35){c.copCD-=dt;if(c.copCD<=0){c.copCD=rand(1,1.8);_a.set(c.pos.x,c.pos.y+1.5,c.pos.z);if(losCheck(_a.x,_a.y,_a.z,tgt.x,tgt.y+1.2,tgt.z))copShoot(_a,d,-0.1);}}
       return;}}
   aiNav(c,dt,1.6);
@@ -1891,7 +1899,7 @@ function spawnTraffic(fx,fz,minD,maxD){
   const cand=EDGES.filter(e=>Math.abs((e.a.x+e.b.x)/2-fx)<maxD+60&&Math.abs((e.a.z+e.b.z)/2-fz)<maxD+60&&!(CLEARRD&&roadKey(e)===CLEARRD.key));if(!cand.length)return;
   for(let k=0;k<25;k++){const e=pick(cand),t=rand(0.15,0.85);const x0=e.a.x+(e.b.x-e.a.x)*t,z0=e.a.z+(e.b.z-e.a.z)*t;const d=Math.hypot(x0-fx,z0-fz);if(d<minD||d>maxD)continue;
     const fw=Math.random()<0.5,from=fw?e.a:e.b,to=fw?e.b:e.a,dx=(to.x-from.x)/e.len,dz=(to.z-from.z)/e.len;
-    const police=Math.random()<0.06,type=police?'police':pick(['sedan','sedan','sedan','suv','suv','sports','van','pickup','taxi','taxi']);
+    const police=Math.random()<0.03,type=police?'police':pick(['sedan','sedan','sedan','suv','suv','sports','van','pickup','taxi','taxi']);
     const tmp={ai:{hw:Math.random()<0.5?3.4:9.4}};const lane=laneOf(tmp,e);const x=x0-dz*lane,z=z0+dx*lane;
     if(state==='play'&&d<230&&inView(x,z))continue;if(CARS.some(c=>Math.abs(c.pos.x-x)<12&&Math.abs(c.pos.z-z)<12))continue;
     const c=new Car(type,x,z,Math.atan2(dx,dz));c.ai.hw=tmp.ai.hw;c.setDriver(police?'cop':'ai');setEdge(c,from,to);const v=SPEED[e.type]*0.7;c.vel.set(dx*v,dz*v);c.vF=v;CARS.push(c);return c;}
@@ -2033,9 +2041,9 @@ function manageWorld(dt){
       if(!seen&&!INSIDE&&heli&&!heli.dead&&heli.g.position.distanceTo(pp)<range*1.5)seen=true;
       W.seen=seen;if(seen){W.evadeT=0;W.tx=pp.x;W.tz=pp.z;}else{W.evadeT+=dt;if(W.evadeT>8+W.level*3&&state==='play'){PROF.stats.escapes++;addXp(20*W.level);clearWanted();notify('You lost the cops.',3);}}
       W.spawnCD-=dt;policeT-=dt;
-      if(policeT<=0){policeT=0.5;const want=W.level+(W.level>=4?1:0);const cars=CARS.filter(c=>c.driver==='cop'&&!c.dead);const foot=PEDS.filter(p=>p.kind==='cop'&&!p.dead).length;
+      if(policeT<=0){policeT=0.5;const want=Math.ceil((W.level+(W.level>=4?1:0))/2);const cars=CARS.filter(c=>c.driver==='cop'&&!c.dead);const foot=PEDS.filter(p=>p.kind==='cop'&&!p.dead).length;
         for(const c of cars)if(c.ai.mode==='traffic'){c.ai.mode='pursue';c.ai.from=null;c.ai.to=nearestNode(c.pos.x,c.pos.z);}
-        if(cars.length+Math.ceil(foot/2)<want&&W.spawnCD<=0&&state==='play'){spawnCop();W.spawnCD=3;}}
+        if(cars.length+Math.ceil(foot/2)<want&&W.spawnCD<=0&&state==='play'){spawnCop();W.spawnCD=6;}}
       if(W.bustNear&&state==='play'){W.bustT+=dt;if(W.bustT>1.6)die('busted');}else W.bustT=Math.max(0,W.bustT-dt);}
   }
   AGT.spawn-=dt;AGT.cd-=dt;if(state==='play'&&player.cash<0&&!INSIDE&&AGT.cd<=0){AGT.cd=1;const ac=CARS.filter(c=>c.driver==='agent'&&!c.dead).length,af=PEDS.filter(p=>p.kind==='agent'&&!p.dead).length;
