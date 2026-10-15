@@ -449,6 +449,21 @@ body.mpOn #score, body.mpOn #coinsHud, body.mpOn #wave { visibility: hidden; }
 #mpTags { position: absolute; inset: 0; pointer-events: none; }
 #mpTags span { position: absolute; transform: translate(-50%, -100%); font-weight: 700; font-size: 14px; padding: 1px 7px; border-radius: 6px; background: rgba(10, 14, 20, .55); white-space: nowrap; }
 #mpTags span.red { color: #fca5a5; } #mpTags span.blue { color: #93c5fd; } #mpTags span.ffa { color: var(--ink); }
+/* C:S Mode (2.6.1): Terrorists are orange instead of red; the plant/defuse hint and bar; the gun picker */
+body.mpCS .mpCol.red { border-color: rgba(217, 119, 6, .6); } body.mpCS .mpCol.red h4 { color: #fbbf24; } body.mpCS .mpCol.red h4 button { background: #b45309; }
+body.mpCS .mpP .dot.red { background: #d97706; } body.mpCS .mpTable tr.red td:first-child, body.mpCS #mpScore .r, body.mpCS #mpFeed .red { color: #fbbf24; } body.mpCS #mpTags span.red { color: #fcd34d; }
+#mpScore .bomb { color: #f87171; font-family: var(--body); font-weight: 700; font-size: 18px; margin-left: 6px; }
+#mpCS { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); text-align: center; display: none; pointer-events: none; width: min(90vw, 420px); }
+#mpCS.on { display: block; }
+#mpCS .hint { font-weight: 700; font-size: 17px; color: var(--ink); text-shadow: 0 2px 4px #000; }
+#mpCS .bar { width: 260px; max-width: 80%; height: 10px; margin: 8px auto 0; background: rgba(10, 14, 20, .65); border-radius: 6px; overflow: hidden; display: none; }
+#mpCS .bar.on { display: block; } #mpCS .bar i { display: block; height: 100%; width: 0; background: var(--gold); }
+.mpLoad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+.mpLoad button { font: inherit; color: var(--ink); background: #1b222c; border: 2px solid #343d48; border-radius: 12px; padding: 14px 8px; cursor: pointer; }
+.mpLoad button b { display: block; font-family: var(--display); font-weight: 400; font-size: 20px; margin-bottom: 4px; }
+.mpLoad button span { font-size: 13px; color: var(--muted); line-height: 1.35; }
+.mpLoad button.sel, .mpLoad button:hover { border-color: var(--gold); }
+@media (max-width: 600px) { .mpLoad { grid-template-columns: 1fr; } .mpLoad button { padding: 10px 8px; } }
 #mpBoardBtn { display: none; position: absolute; left: calc(max(24px, env(safe-area-inset-left)) + 0px); top: 78px; font: inherit; font-weight: 700; font-size: 14px; color: #fff; background: rgba(12, 16, 24, .55); border: 2px solid rgba(255, 255, 255, .35); border-radius: 10px; padding: 8px 12px; pointer-events: auto; }
 body.touch.mpOn #mpBoardBtn { display: block; }
 @media (max-width: 600px) { .mpCode b { font-size: 36px; letter-spacing: 5px; } .mpSettings .row label { min-width: 86px; font-size: 14px; } .mpTeams { grid-template-columns: 1fr; } #mpFeed { top: 56px; } }
@@ -545,12 +560,20 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.6 · What's new</button>
+    <button class="link" data-action="notes">v2.6.1 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
     <h2>Patch notes</h2>
     <div class="notes">
+      <section><h3>v2.6.1 <span>C:S Mode</span></h3><ul>
+        <li>New multiplayer mode: C:S Mode, on the Outpost. Two teams, Terrorists (orange) and Counter-Terrorists (blue), play rounds. The host picks 3, 5 or 8 rounds to win.</li>
+        <li>Terrorists: stand in site A or site B and hold E (or the E button on touch) for 3 seconds to plant the bomb, then guard it. If it explodes after 60 seconds, the Terrorists win the round.</li>
+        <li>Counter-Terrorists: defend both sites. If the bomb is planted, find it and hold E for 12 seconds to defuse it. Stopping the plant until the round timer runs out also wins the round.</li>
+        <li>Either team also wins a round by taking out everyone on the other side (once the bomb is planted, the Counter-Terrorists still have to defuse it). If you're taken out, you're back at the start of the next round.</li>
+        <li>Starting gun choice in C:S Mode and Free-for-all: everyone gets a pistol and a knife, and picks one more gun when the match starts: shotgun, sniper or rocket launcher.</li>
+        <li>No Extreme Gun and no turrets when fighting other players. In Co-op against the cube waves you can use your Extreme Gun and turret again, if you own them.</li>
+      </ul></section>
       <section><h3>v2.6 <span>Real online multiplayer</span></h3><ul>
         <li>Multiplayer is live: create a match, share the 5-letter code, and up to 6 friends can join from their own computers, tablets or phones. No more practice bots.</li>
         <li>Team Deathmatch and Free-for-all with real hits, deaths, respawns and scores. Everyone gets the same guns: pistol, rifle, shotgun, sniper, knife and rocket launcher.</li>
@@ -787,7 +810,13 @@ body.touch.mpOn #mpBoardBtn { display: block; }
 
   <div class="menu" id="menu-news">
     <div class="eyebrow">What's new</div>
-    <h2>v2.6 · Real online multiplayer</h2>
+    <h2>v2.6.1 · C:S Mode</h2>
+    <ul class="newslist">
+      <li><b>C:S Mode</b> in multiplayer: Terrorists vs Counter-Terrorists in rounds on the Outpost. Plant the bomb at site A or B and guard it for 60 seconds, or defuse it by holding E for 12 seconds. Wiping out the other team wins the round too.</li>
+      <li><b>Pick your gun</b> in C:S Mode and Free-for-all: pistol and knife, plus a shotgun, sniper or rocket launcher.</li>
+      <li>No Extreme Gun or turrets against other players. Both are back in <b>Co-op</b> against the cubes.</li>
+    </ul>
+    <div class="section">Also new in 2.6</div>
     <ul class="newslist">
       <li><b>Play online with friends</b>: press Multiplayer, create a match and share the 5-letter code. Up to 6 players, on any device.</li>
       <li><b>Team Deathmatch</b> (1v1 to 3v3) and <b>Free-for-all</b> with real hits, kills and respawns, plus <b>Co-op</b> against the cube waves.</li>
@@ -945,7 +974,7 @@ let gameMode = 'classic'; // classic | campaign | mp
 const isHard = () => gameMode !== 'campaign' && settings.difficulty === 'hard';
 const isAdmin = () => (profile.name || '').trim() === 'ADMINTEST';
 const ownsBase = k => { if (isAdmin()) return true; const w = WEAPONS[k]; return w.price ? !!profile.owned[k] : w.unlockWave ? wave >= w.unlockWave : true; };
-const owns = k => (gameMode === 'mp' && window.mpNet) ? mpNet.guns.includes(k) : (gameMode === 'campaign' && state !== 'menu' && !isAdmin()) ? k === 'rifle' : ownsBase(k); // mp-net hook: everyone gets the same guns in multiplayer
+const owns = k => (gameMode === 'mp' && window.mpNet) ? (window.mpRules ? mpRules.owns(k) : mpNet.guns.includes(k)) : (gameMode === 'campaign' && state !== 'menu' && !isAdmin()) ? k === 'rifle' : ownsBase(k); // mp-net hook: everyone gets the same guns in multiplayer
 const ownsTurret = () => isAdmin() || !!profile.owned.turret;
 if (!WEAPONS[settings.weapon] || WEAPONS[settings.weapon].unlockWave || !owns(settings.weapon)) settings.weapon = 'pistol';
 let wiped = false; // set by Reset all data, so nothing gets saved back while the page reloads
@@ -2425,7 +2454,9 @@ function buildOutpost() {
     MAPS.outpost = { root, arena: A, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(),
       grass: dummyLayer(), flowers: dummyLayer(), moreGrass: dummyLayer(),
       weather: { fog: 0xe6d3ad, top: 0x5b8fd6, ground: 0xc9b48f },
-      id: 'outpost', name: 'Outpost', spawns, bounds: { minX: -A + 0.6, maxX: A - 0.6, minZ: -A + 0.6, maxZ: A - 0.6 } };
+      id: 'outpost', name: 'Outpost', spawns, bounds: { minX: -A + 0.6, maxX: A - 0.6, minZ: -A + 0.6, maxZ: A - 0.6 },
+      // the bomb sites for C:S Mode: the open squares west and east of mid, between the sandbags and the outer wall
+      sites: { A: { x0: -A + 0.6, x1: -14, z0: -9.5, z1: 9.5 }, B: { x0: 14, x1: A - 0.6, z0: -9.5, z1: 9.5 } } };
   } finally {
     delete scene.add;
     seed = keepSeed;
@@ -3711,7 +3742,7 @@ function updateTurretHud() {
 function deployTurret() {
   if (state !== 'playing') return;
   if (gameMode === 'campaign' && !isAdmin()) { banner('No turret here', 'This level is rifle only'); Sound.play('empty'); return; }
-  if (gameMode === 'mp') { banner('No turret here', 'Not in multiplayer'); Sound.play('empty'); return; } // mp-net hook
+  if (gameMode === 'mp' && !(window.mpRules && mpRules.turret())) { banner('No turret here', 'Only in co-op multiplayer'); Sound.play('empty'); return; } // mp-net hook
   if (!ownsTurret()) { banner('No turret yet', 'Buy one in the Shop'); Sound.play('empty'); return; }
   if (turret) { banner('Turret already out', 'You can only have one at a time'); Sound.play('empty'); return; }
   const pos = new THREE.Vector3(player.pos.x - Math.sin(player.yaw) * 1.8, 0, player.pos.z - Math.cos(player.yaw) * 1.8);
@@ -4374,8 +4405,8 @@ function updateTouchUI() {
     $('tWeapons').replaceChildren(...list.map(k => { const d = document.createElement('div'); d.dataset.w = k; d.textContent = WEAPONS[k].short || WEAPONS[k].name; d.classList.toggle('sel', k === weaponKey); return d; }));
   }
   $('tAim').hidden = weapon !== WEAPONS.sniper; $('tAim').classList.toggle('on', zoomed);
-  $('tUse').hidden = gameMode !== 'campaign';
-  $('tTurret').hidden = !ownsTurret();
+  $('tUse').hidden = gameMode !== 'campaign' && !(gameMode === 'mp' && window.mpRules && mpRules.cs());
+  $('tTurret').hidden = !ownsTurret() || (gameMode === 'mp' && !(window.mpRules && mpRules.turret()));
   $('tReload').hidden = !!weapon.melee;
 }
 
@@ -6248,7 +6279,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.6';
+const VERSION = '2.6.1';
 function maybeShowNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
@@ -6352,10 +6383,13 @@ tick();
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
   const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
   const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0, O, 1, I or L
-  const DEFAULTS = { mode: 'tdm', teamSize: 3, mapId: 'outpost', killLimit: 20, timeLimit: 10, friendlyFire: false, locked: false };
-  const ALLOWED = { mode: ['tdm', 'ffa', 'coop'], teamSize: [1, 2, 3], mapId: ['classic', 'big', 'outpost'], killLimit: [10, 20, 30], timeLimit: [5, 10, 15], friendlyFire: [false, true], locked: [false, true] };
+  const DEFAULTS = { mode: 'tdm', teamSize: 3, mapId: 'outpost', killLimit: 20, timeLimit: 10, friendlyFire: false, locked: false, winRounds: 5 };
+  const ALLOWED = { mode: ['tdm', 'ffa', 'coop', 'cs'], teamSize: [1, 2, 3], mapId: ['classic', 'big', 'outpost'], killLimit: [10, 20, 30], timeLimit: [5, 10, 15], friendlyFire: [false, true], locked: [false, true], winRounds: [3, 5, 8] };
   const SPAWNS = { red: [[-6, -30], [0, -31], [6, -30]], blue: [[6, 30], [0, 31], [-6, 30]], ffa: [[0, -30], [0, 30], [-30, 0], [30, 0], [-12, 12], [12, -12]] }; // Classic and Frontier, as in mp-ui
   const COLORS = { red: 0xdc2626, blue: 0x3b82f6, none: 0x9b7bd6 };
+  const CS_COLORS = { red: 0xd97706, blue: 0x2563eb }; // C:S Mode: Terrorists are 'red' and Counter-Terrorists 'blue' underneath
+  const LOADOUT = ['pistol', 'knife', 'shotgun', 'sniper', 'rocket']; // Free-for-all and C:S Mode: pistol and knife, plus ONE of the other three
+  const PLANT_MS = 3000, DEFUSE_MS = 12000, BOMB_MS = 60000, ROUND_MS = 100000, ROUND_GAP_MS = 5000, DEFUSE_R = 2.2;
 
   // ---------- game modes: add a new one here ----------
   // teams: players pick Red or Blue. pvp: players can hurt each other. selfHp: each player's own screen owns
@@ -6367,7 +6401,7 @@ tick();
       credit: (a, b) => a.team !== b.team,
       done: m => Math.max(m.red, m.blue) >= m.s.killLimit,
       winner: m => m.red > m.blue ? 'red' : m.blue > m.red ? 'blue' : 'draw' },
-    ffa: { teams: false, pvp: true,
+    ffa: { teams: false, pvp: true, loadout: true,
       hurts: (a, b) => a !== b,
       credit: () => true,
       done: m => [...m.P.values()].some(p => p.kills >= m.s.killLimit),
@@ -6376,7 +6410,17 @@ tick();
     // on their own screen. Kills are cubes destroyed. TODO: one shared set of cubes run by the host.
     coop: { teams: false, pvp: false, selfHp: true,
       hurts: () => false, credit: () => false, done: () => false, winner: () => 'coop' },
+    // C:S Mode (Noah, 2.6.1): Terrorists ('red') vs Counter-Terrorists ('blue') in rounds on the Outpost. Terrorists plant
+    // the bomb at site A or B and guard it for a minute; Counter-Terrorists stop the plant or defuse it (12 s). Wiping out
+    // the other side also wins the round. No respawns until the next round. m.red / m.blue count rounds won.
+    cs: { teams: true, pvp: true, rounds: true, loadout: true,
+      hurts: (a, b, s) => a !== b && (s.friendlyFire || a.team !== b.team),
+      credit: (a, b) => a.team !== b.team,
+      done: m => { const c = teamSizes(m); return !c.red || !c.blue || !!(m.cs && m.cs.over && now() >= m.cs.nextAt); },
+      winner: m => { const c = teamSizes(m); return !c.red ? 'blue' : !c.blue ? 'red' : m.red > m.blue ? 'red' : m.blue > m.red ? 'blue' : 'draw'; } },
   };
+  const teamSizes = m => { const c = { red: 0, blue: 0 }; for (const p of m.P.values()) if (p.team) c[p.team]++; return c; };
+  const teamMode = mode => !!(MODES[mode] && MODES[mode].teams);
 
   // ---------- small helpers ----------
   const now = () => performance.now();
@@ -6535,6 +6579,7 @@ tick();
     listen(ch, 'sp', fromHost(onSpawn));
     listen(ch, 'b', fromHost(onBoom));
     listen(ch, 'end', fromHost(onEnd));
+    listen(ch, 'cs', fromHost(onCs));
   }
   function wireMine(ch) {
     listen(ch, 'acc', d => { if (room.waitAcc) room.waitAcc(d); });
@@ -6629,7 +6674,7 @@ tick();
     const r = room, up = await openUp(id);
     if (room !== r) return;
     if (no) { send(up, 'acc', { no }); setTimeout(() => closeUp(id), 1500); return; }
-    if (!room.roster.has(id)) room.roster.set(id, room.settings.mode === 'tdm' ? smallerTeam() : null);
+    if (!room.roster.has(id)) room.roster.set(id, teamMode(room.settings.mode) ? smallerTeam() : null);
     room.lastHeard.set(id, now());
     const acc = { ok: 1, h: myId, s: room.settings, r: [...room.roster] };
     if (match) { if (!match.P.has(id)) match.P.set(id, newP(id, room.roster.get(id))); acc.go = goInfo(); }
@@ -6637,7 +6682,7 @@ tick();
     sendState();
   }
   function onTeam(id, d) {
-    if (!isHost() || match || room.settings.mode !== 'tdm' || !room.roster.has(id)) return;
+    if (!isHost() || match || !teamMode(room.settings.mode) || !room.roster.has(id)) return;
     const t = d.t === 'red' || d.t === 'blue' ? d.t : null;
     if (!t || room.roster.get(id) === t || teamCounts()[t] >= room.settings.teamSize) return;
     room.roster.set(id, t); sendState(); emitPlayers();
@@ -6709,13 +6754,14 @@ tick();
   }
   function goInfo() {
     return { mapId: match.s.mapId, seed: match.seed, s: match.s, left: Math.max(0, Math.round(match.endAt - now())), booms: match.booms, sc: [match.red, match.blue],
-      lives: Object.fromEntries([...match.P].map(([id, p]) => [id, p.life])) };
+      lives: Object.fromEntries([...match.P].map(([id, p]) => [id, p.life])), cs: match.cs ? csInfo() : 0 };
   }
   function startMatch() {
     if (!isHost() || match) return;
     const s = { ...room.settings };
     match = newMatch(s); match.seed = Math.floor(Math.random() * 1e9);
     for (const m of members()) match.P.set(m.id, newP(m.id, room.roster.get(m.id)));
+    if (match.mode.rounds) match.cs = { round: 1, phase: 'live', roundAt: now() + ROUND_MS, bomb: null, prog: null, win: 0, over: false, nextAt: 0 };
     const go = goInfo();
     hostSend('go', go);
     startLocal(go, false);
@@ -6728,6 +6774,7 @@ tick();
     match.life = (go.lives && go.lives[myId]) || 0;
     if (go.sc) { match.red = go.sc[0] || 0; match.blue = go.sc[1] || 0; }
     emit('matchStart', { mapId: go.mapId, seed: go.seed, settings: { ...match.s } });
+    if (go.cs) onCs(go.cs);
     if (!owns(weaponKey)) setWeapon('rifle');
     match.prev.copy(player.pos);
     // joined late: knock the same holes in the map that everyone else already has
@@ -6754,6 +6801,7 @@ tick();
     stepRockets(t);
     for (const P of match.P.values()) if (!P.alive && P.respawnAt && t >= P.respawnAt) respawn(P);
     if (!match) return;
+    if (match.cs) csTick(t);
     const n = match.P.size;
     if (t >= match.endAt || match.mode.done(match) || n < 1 || (match.mode.pvp && n < 2)) { endMatchHost(); return; }
     snapshot(t);
@@ -6797,6 +6845,7 @@ tick();
     if (!P) return;
     P.ackT = m.t; P.ackAt = t; P.ping = room.pings[id] || 0;
     P.clk.sample(m.t, t);
+    if (match.mode.rounds) P.use = m.e === 1;
     if (match.mode.selfHp) {
       if (num(m.h)) P.hp = clamp(m.h, 0, 100);
       if (num(m.k)) P.kills = Math.max(0, m.k | 0);
@@ -6828,6 +6877,10 @@ tick();
     if (!P.alive || !s || !num(s.t) || !num(s.w) || !Array.isArray(s.d)) return;
     const key = WEAPON_KEYS[s.w];
     if (!GUNS.includes(key)) return;
+    if (match.mode.loadout) { // pistol and knife, plus the one gun they picked (the first other gun they fire)
+      if (!LOADOUT.includes(key)) return;
+      if (key !== 'pistol' && key !== 'knife') { if (P.pick && P.pick !== key) return; P.pick = key; }
+    }
     const W = WEAPONS[key], gap = key === 'rocket' ? (W.reload + W.cooldown) * 800 : W.cooldown * 750;
     if (s.t - (P.fire[key] ?? -1e9) < gap) return; // faster than the gun fires
     P.shotTimes = P.shotTimes.filter(x => t - x < 1000);
@@ -6899,9 +6952,10 @@ tick();
     if (dead) kill(Q, P, key);
   }
   function kill(Q, P, key) {
-    Q.alive = false; Q.hp = 0; Q.deaths++; Q.respawnAt = now() + RESPAWN_S * 1000;
-    if (P && P !== Q && match.mode.credit(P, Q)) { P.kills++; if (match.mode.teams && P.team) match[P.team]++; }
+    Q.alive = false; Q.hp = 0; Q.deaths++; Q.respawnAt = match.mode.rounds ? 0 : now() + RESPAWN_S * 1000;
+    if (P && P !== Q && match.mode.credit(P, Q)) { P.kills++; if (match.mode.teams && P.team && !match.mode.rounds) match[P.team]++; }
     const d = { killerId: P ? P.id : null, victimId: Q.id, weapon: key, rs: RESPAWN_S };
+    if (match.mode.rounds) d.out = 1; // out until the next round
     hostSend('k', d); onKill(d);
     match.lastKey = ''; // the scores changed: the next snapshot goes out even if nobody moved
   }
@@ -6917,8 +6971,8 @@ tick();
     for (const s of spots) { const dd = foes.length ? Math.min(...foes.map(f => Math.hypot(f.x - s.x, f.z - s.z))) : Math.random() * 10; if (dd > bestD) { bestD = dd; best = s; } }
     return best;
   }
-  function respawn(Q) {
-    const sp = pickSpawn(Q);
+  function respawn(Q, at) {
+    const sp = at || pickSpawn(Q);
     Q.alive = true; Q.hp = 100; Q.life++; Q.respawnAt = 0; Q.fire = {};
     Q.x = sp.x; Q.y = 0; Q.z = sp.z; Q.yaw = sp.yaw || 0; Q.pitch = Q.vx = Q.vy = Q.vz = 0;
     Q.known = true; Q.hist = []; Q.at = now(); pushHist(Q, Q.at);
@@ -6985,10 +7039,11 @@ tick();
       const p = newP(m.id, room.roster.get(m.id)), row = match.rows.get(m.id), a = avatars.get(m.id);
       if (row) Object.assign(p, { hp: row[10], alive: !!row[11], life: row[12], kills: row[13], deaths: row[14] });
       if (a && a.has) { p.x = a.pos.x; p.y = a.pos.y; p.z = a.pos.z; p.yaw = a.yaw; p.known = true; p.at = t; pushHist(p, t); }
-      if (!p.alive) p.respawnAt = t + 1500;
+      if (!p.alive && !match.mode.rounds) p.respawnAt = t + 1500;
       P.set(m.id, p);
     }
-    const me = P.get(myId); if (me) { me.life = match.life; me.alive = !match.meDead; if (!me.alive) me.respawnAt = t + 1500; }
+    const me = P.get(myId); if (me) { me.life = match.life; me.alive = !match.meDead; if (!me.alive && !match.mode.rounds) me.respawnAt = t + 1500; }
+    if (match.csV) match.cs = csRestore(match.csV); // C:S Mode: carry on the round from what our screen knows
     match.P = P; match.endAt = t + match.timeLeft * 1000; match.lastSnap = 0; match.lastKey = ''; match.rockets = [];
     for (const a of avatars.values()) a.buf.length = 0;
     for (const p of P.values()) if (p.known && p.id !== myId) { const a = avatars.get(p.id); if (a) a.push(t, p.x, p.y, p.z, p.yaw, 0, 0, 0, 0); }
@@ -6997,6 +7052,67 @@ tick();
     if (!isHost() || id === myId || !room.roster.has(id)) return;
     send(room.ups.get(id), 'kick', {});
     room.kicked.add(id); removePlayer(id); sendState(); emitPlayers();
+  }
+
+  // ---------- host: C:S Mode rounds, the bomb, planting and defusing (Noah, 2.6.1) ----------
+  // Costs one 'cs' message (plus deliveries) only when something changes: a plant or defuse starts or stops,
+  // the bomb goes down, a round ends or starts. Holding E rides along with the normal input as e: 1.
+  function siteAt(x, z) { const S = MAPS[mapId] && MAPS[mapId].sites; if (!S) return null; for (const k in S) { const b = S[k]; if (x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1) return k; } return null; }
+  function csTick(t) {
+    const C = match.cs;
+    if (C.phase === 'end') { if (!C.over && t >= C.nextAt) csRound(t); return; }
+    const all = [...match.P.values()], T = all.filter(p => p.team === 'red'), CT = all.filter(p => p.team === 'blue');
+    if (!T.length || !CT.length) return; // a team emptied out: done() ends the match
+    const me = match.P.get(myId); if (me) me.use = !match.meDead && state === 'playing' && !!keys.KeyE;
+    const can = P => P.alive && P.known && P.use && (C.bomb ? P.team === 'blue' && Math.hypot(P.x - C.bomb.x, P.z - C.bomb.z) < DEFUSE_R : P.team === 'red' && !!siteAt(P.x, P.z));
+    let pr = C.prog;
+    if (pr && !(match.P.get(pr.id) && can(match.P.get(pr.id)))) pr = null;
+    if (!pr) { const P = all.find(can); if (P) pr = { id: P.id, kind: C.bomb ? 'defuse' : 'plant', start: t, need: C.bomb ? DEFUSE_MS : PLANT_MS }; }
+    if (pr !== C.prog) { C.prog = pr; csSend(); }
+    if (pr && t - pr.start >= pr.need) {
+      const P = match.P.get(pr.id); C.prog = null;
+      if (pr.kind === 'defuse') { csWin('blue', 'defused', t); return; }
+      C.bomb = { x: P.x, z: P.z, site: siteAt(P.x, P.z) || 'A', at: t + BOMB_MS, by: P.id }; csSend();
+    }
+    if (C.bomb && t >= C.bomb.at) { csWin('red', 'exploded', t); return; }
+    if (!CT.some(p => p.alive)) { csWin('red', 'eliminated', t); return; }
+    if (!C.bomb && !T.some(p => p.alive)) { csWin('blue', 'eliminated', t); return; }
+    if (!C.bomb && t >= C.roundAt) csWin('blue', 'time', t);
+  }
+  function csWin(team, why, t) {
+    const C = match.cs;
+    C.phase = 'end'; C.prog = null; C.win = [team, why]; match[team]++;
+    C.over = Math.max(match.red, match.blue) >= (match.s.winRounds || 5);
+    C.nextAt = t + ROUND_GAP_MS; match.lastKey = '';
+    csSend();
+  }
+  function csRound(t) {
+    const C = match.cs, n = { red: 0, blue: 0 };
+    C.round++; C.phase = 'live'; C.bomb = null; C.prog = null; C.win = 0; C.roundAt = t + ROUND_MS;
+    for (const P of match.P.values()) { const spots = spawnSpots(P.team), i = n[P.team] || 0; n[P.team] = i + 1; P.use = false; respawn(P, spots[i % spots.length]); } // everyone back to their own spawn spot
+    csSend();
+  }
+  function csInfo() {
+    const C = match.cs, t = now();
+    return { r: C.round, ph: C.phase, sc: [match.red, match.blue], rl: Math.max(0, Math.round(C.roundAt - t)),
+      b: C.bomb ? [r2(C.bomb.x), r2(C.bomb.z), C.bomb.site, Math.max(0, Math.round(C.bomb.at - t)), C.bomb.by || ''] : 0,
+      p: C.prog ? [C.prog.id, C.prog.kind, Math.round(t - C.prog.start), C.prog.need] : 0,
+      w: C.win || 0, o: C.over ? 1 : 0, nx: C.phase === 'end' ? Math.max(0, Math.round(C.nextAt - t)) : 0 };
+  }
+  function csSend() { const d = csInfo(); hostSend('cs', d); onCs(d); }
+  // everyone: the round as our screen sees it (times turned into our own clock)
+  function onCs(d) {
+    if (!match || !d) return;
+    const t = now();
+    match.csV = { round: d.r | 0, phase: d.ph === 'end' ? 'end' : 'live', roundAt: t + (d.rl || 0), nextAt: t + (d.nx || 0), over: !!d.o, win: Array.isArray(d.w) ? d.w : null,
+      bomb: Array.isArray(d.b) ? { x: d.b[0], z: d.b[1], site: d.b[2], at: t + d.b[3], by: d.b[4] } : null,
+      prog: Array.isArray(d.p) ? { id: d.p[0], kind: d.p[1], start: t - d.p[2], need: d.p[3] } : null };
+    if (Array.isArray(d.sc)) { match.red = d.sc[0] | 0; match.blue = d.sc[1] | 0; }
+    emit('cs', { ...match.csV });
+  }
+  function csRestore(V) {
+    return { round: V.round, phase: V.phase, roundAt: V.roundAt, nextAt: V.nextAt, over: V.over, win: V.win || 0, prog: null,
+      bomb: V.bomb ? { x: V.bomb.x, z: V.bomb.z, site: V.bomb.site, at: V.bomb.at, by: V.bomb.by } : null };
   }
 
   // ---------- everyone: what the host tells us ----------
@@ -7042,7 +7158,7 @@ tick();
   function onKill(d) {
     if (!match) return;
     if (d.killerId) emit('kill', { killerId: d.killerId, victimId: d.victimId, weapon: d.weapon }); // co-op deaths to cubes stay out of the kill feed
-    emit('respawn', { id: d.victimId, inSeconds: d.rs || RESPAWN_S });
+    emit('respawn', { id: d.victimId, inSeconds: d.out ? 0 : d.rs || RESPAWN_S, out: !!d.out });
     if (d.victimId === myId) dieLocal();
     else { const a = avatars.get(d.victimId); if (a) a.die(); }
     if (d.killerId === myId && d.victimId !== myId) { hitMarker(true); Sound.play('kill', 1); }
@@ -7106,7 +7222,8 @@ tick();
       m.w = Math.max(0, WEAPON_KEYS.indexOf(weaponKey));
     }
     if (match.mode.selfHp) { m.h = Math.max(0, Math.round(player.hp)); m.k = kills; if (match.died) m.d = 1; }
-    const key = JSON.stringify([m.p, m.w, m.h, m.k, m.d, m.l]);
+    if (match.mode.rounds) m.e = !match.meDead && state === 'playing' && keys.KeyE ? 1 : 0;
+    const key = JSON.stringify([m.p, m.w, m.h, m.k, m.d, m.l, m.e]);
     if (match.shots.length) m.s = match.shots.splice(0, 24);
     if (!due && !(m.s && t - room.lastSend >= 1000 / room.hz)) { if (m.s) match.shots.unshift(...m.s); return; }
     if (!m.s && key === match.lastKey2 && t - room.lastSend < IDLE_MS) return; // standing still: stay quiet
@@ -7152,7 +7269,7 @@ tick();
   const avHead = new THREE.BoxGeometry(0.72, 0.72, 0.72);
   const avEye = new THREE.BoxGeometry(0.16, 0.18, 0.02), avPupil = new THREE.BoxGeometry(0.08, 0.1, 0.02), avGun = new THREE.BoxGeometry(0.12, 0.14, 0.62);
   const gunMat = new THREE.MeshLambertMaterial({ color: 0x1d2024 });
-  function colorFor(id) { const t = room && room.roster.get(id); return match && match.mode.teams && t ? COLORS[t] : COLORS.none; }
+  function colorFor(id) { const t = room && room.roster.get(id); return match && match.mode.teams && t ? (match.mode.rounds ? CS_COLORS : COLORS)[t] : COLORS.none; }
   function avatarFor(id) {
     let a = avatars.get(id);
     if (a) return a;
@@ -7303,18 +7420,20 @@ tick();
     getPlayers: () => playerList(),
     getSettings: () => room ? { ...room.settings } : null,
     setTeam(team) {
-      if (!room || match || room.settings.mode !== 'tdm' || (team !== 'red' && team !== 'blue')) return;
+      if (!room || match || !teamMode(room.settings.mode) || (team !== 'red' && team !== 'blue')) return;
       if (isHost()) onTeam(myId, { t: team }); else send(room.up, 'tm', { t: team });
     },
     updateSettings(partial) {
       if (!isHost() || match) return;
+      const wasTeams = teamMode(room.settings.mode);
       for (const k in partial) if (ALLOWED[k] && ALLOWED[k].includes(partial[k])) room.settings[k] = partial[k];
-      if (partial.mode && partial.mode !== 'tdm') for (const id of room.roster.keys()) room.roster.set(id, null);
-      if (partial.mode === 'tdm') this.autoBalance();
+      if (room.settings.mode === 'cs') room.settings.mapId = 'outpost'; // the bomb sites are on the Outpost
+      if (partial.mode && !teamMode(partial.mode)) for (const id of room.roster.keys()) room.roster.set(id, null);
+      if (partial.mode && teamMode(partial.mode) && !wasTeams) this.autoBalance();
       sendState(); emit('settings', { ...room.settings }); emitPlayers();
     },
     autoBalance() {
-      if (!isHost() || match || room.settings.mode !== 'tdm') return;
+      if (!isHost() || match || !teamMode(room.settings.mode)) return;
       members().forEach((m, i) => room.roster.set(m.id, i % 2 ? 'blue' : 'red'));
       for (const id of room.roster.keys()) if (!room.roster.get(id)) room.roster.set(id, smallerTeam());
       sendState(); emitPlayers();
@@ -7327,6 +7446,8 @@ tick();
       stats: () => ({ ...stats, times: undefined, hz: room && room.hz, ping: room && room.myPing }),
       room: () => room, match: () => match,
     },
+    // C:S Mode (Noah, 2.6.1): the round as this screen sees it, or null: { round, phase, roundAt, nextAt, over, win, bomb, prog }
+    getCs: () => match && match.csV ? { ...match.csV } : null,
   };
 })();
 </script>
@@ -7357,7 +7478,7 @@ if (!window.CAMP) window.CAMP = (() => {
     if (!room || sim || room.players.size >= 6) return; // nobody new joins mid-match in the pretend room
     const used = new Set(list().map(p => p.name)), name = NAMES.find(n => !used.has(n)) || 'Bot';
     const id = 'bot-' + Math.random().toString(36).slice(2, 7);
-    room.players.set(id, { id, name, team: room.settings.mode === 'tdm' ? smaller() : null, ping: 25 + Math.floor(Math.random() * 70), joinedAt: ++joinT, bot: true });
+    room.players.set(id, { id, name, team: room.settings.mode === 'tdm' || room.settings.mode === 'cs' ? smaller() : null, ping: 25 + Math.floor(Math.random() * 70), joinedAt: ++joinT, bot: true });
     firePlayers();
   };
   // bots wander around the lobby a little: join, sometimes switch team, sometimes leave
@@ -7366,7 +7487,7 @@ if (!window.CAMP) window.CAMP = (() => {
     later(9000 + Math.random() * 4000, () => { if (!room || sim) return; const b = list().find(p => p.bot && p.id !== room.hostId); if (b && room.settings.mode === 'tdm') { b.team = b.team === 'red' ? 'blue' : 'red'; firePlayers(); } });
     later(15000 + Math.random() * 6000, () => { if (!room || sim) return; const b = list().filter(p => p.bot && p.id !== room.hostId).pop(); if (b && Math.random() < 0.5) { room.players.delete(b.id); firePlayers(); } });
   };
-  const newRoom = (code, hostId) => ({ code, hostId, password: '', players: new Map(), settings: { mode: 'tdm', teamSize: 3, mapId: 'outpost', killLimit: 20, timeLimit: 10, friendlyFire: false, locked: false } });
+  const newRoom = (code, hostId) => ({ code, hostId, password: '', players: new Map(), settings: { mode: 'tdm', teamSize: 3, mapId: 'outpost', killLimit: 20, timeLimit: 10, friendlyFire: false, locked: false, winRounds: 5 } });
   const offline = () => /mpoffline/.test(location.search);
 
   // ---- pretend bots in the world, so name tags have something to sit on (TODO(netcode): real players)
@@ -7444,8 +7565,9 @@ if (!window.CAMP) window.CAMP = (() => {
     getSettings() { return room ? { ...room.settings } : null; },
     setTeam(team) { const me = room && room.players.get(myId); if (!me) return; me.team = team; firePlayers(); },
     updateSettings(partial) { if (!this.isHost()) return; Object.assign(room.settings, partial);
-      if (partial.mode && partial.mode !== 'tdm') { for (const p of room.players.values()) p.team = null; firePlayers(); }
-      if (partial.mode === 'tdm') { this.autoBalance(); }
+      if (partial.mode && partial.mode !== 'tdm' && partial.mode !== 'cs') { for (const p of room.players.values()) p.team = null; firePlayers(); }
+      if (partial.mode === 'tdm' || partial.mode === 'cs') { this.autoBalance(); }
+      if (room.settings.mode === 'cs') room.settings.mapId = 'outpost';
       emit('settings', { ...room.settings }); },
     autoBalance() { if (!this.isHost()) return; list().forEach((p, i) => p.team = i % 2 ? 'blue' : 'red'); firePlayers(); },
     kick(id) { if (!this.isHost() || id === myId) return; room.players.delete(id); firePlayers(); },
@@ -7471,7 +7593,10 @@ if (!window.CAMP) window.CAMP = (() => {
   const CAMP = window.CAMP;
   if (!CAMP) return;
   const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost']];
-  const MODES = [['tdm', 'Team Deathmatch'], ['ffa', 'Free-for-all'], ['coop', 'Co-op']];
+  const MODES = [['tdm', 'Team Deathmatch'], ['cs', 'C:S Mode'], ['ffa', 'Free-for-all'], ['coop', 'Co-op']];
+  const teamed = m => m === 'tdm' || m === 'cs';
+  // C:S Mode calls the teams Terrorists ('red') and Counter-Terrorists ('blue')
+  const tname = (t, short) => (settings && settings.mode === 'cs') ? (t === 'red' ? (short ? 'T' : 'Terrorists') : (short ? 'CT' : 'Counter-Terrorists')) : (t === 'red' ? 'Red' : 'Blue');
   const ERR = {
     not_found: 'No room with that code. Check it and try again.',
     full: 'That room is full. Rooms hold up to 6 players.',
@@ -7491,7 +7616,7 @@ if (!window.CAMP) window.CAMP = (() => {
   const add = html => { const d = document.createElement('div'); d.innerHTML = html.trim(); ov.appendChild(d.firstChild); };
   add(`<div class="menu" id="menu-mp">
     <div class="eyebrow">Online</div><h2>Multiplayer</h2>
-    <p>Team Deathmatch, Free-for-all or Co-op with up to 6 friends. Rooms are private: share the 5-letter code to let people in.</p>
+    <p>Team Deathmatch, C:S Mode, Free-for-all or Co-op with up to 6 friends. Rooms are private: share the 5-letter code to let people in.</p>
     <div class="mpResting" id="mpResting" hidden>Multiplayer is resting right now — single-player still works.</div>
     <button class="btn" id="mpCreateBtn">Create match</button>
     <button class="btn secondary" id="mpJoinBtn">Join match</button>
@@ -7523,11 +7648,15 @@ if (!window.CAMP) window.CAMP = (() => {
     <div class="eyebrow">Match over</div><div class="mpWinner" id="mpWinner">Red team wins</div>
     <table class="mpTable" id="mpResTable"></table>
     <div class="mpBtns"><button class="btn" id="mpRematch">Rematch</button><button class="btn secondary" id="mpResLeave">Leave</button></div></div>`);
+  add(`<div class="menu" id="menu-mploadout">
+    <div class="eyebrow">Pick your gun</div><h2>Loadout</h2>
+    <p>Everyone gets a pistol (1) and a knife (7). Pick one more gun for this match.</p>
+    <div class="mpLoad" id="mpLoad"><button data-gun="shotgun"><b>Shotgun</b><span>Key 3 · 9 pellets, deadly up close</span></button><button data-gun="sniper"><b>Sniper</b><span>Key 4 · one-shot kills, right-click to scope</span></button><button data-gun="rocket"><b>Rocket launcher</b><span>Key 8 · splash damage, 3 s reload</span></button></div></div>`);
 
   // ---------- the match HUD, added to the game's HUD; CSS keeps it hidden unless a match is running ----------
   const hud = document.createElement('div'); hud.id = 'mpHud';
   hud.innerHTML = `<div id="mpTags"></div><div id="mpScore"></div><div id="mpPing"><i></i><span>– ms</span></div><div id="mpFeed"></div>
-    <div id="mpRespawn"></div><div id="mpBoard"></div><button id="mpBoardBtn">Scores</button>`;
+    <div id="mpRespawn"></div><div id="mpBoard"></div><button id="mpBoardBtn">Scores</button><div id="mpCS"><div class="hint"></div><div class="bar"><i></i></div></div>`;
   $('hud').appendChild(hud);
 
   const show = name => showMenu(name);
@@ -7585,21 +7714,23 @@ if (!window.CAMP) window.CAMP = (() => {
   function renderLobby() {
     if (!inRoom || !settings) return;
     const host = CAMP.isHost(), me = CAMP.myId(), s = settings, T = $('mpTeams');
-    if (s.mode === 'tdm') {
+    document.body.classList.toggle('mpCS', s.mode === 'cs');
+    if (teamed(s.mode)) {
       const col = (t, label) => { const list = players.filter(p => p.team === t), mine = (byId(me) || {}).team === t;
         return `<div class="mpCol ${t}"><h4>${label} · ${list.length}/${s.teamSize}<button data-team="${t}"${mine || list.length >= s.teamSize ? ' disabled' : ''}>${mine ? 'Your team' : 'Join'}</button></h4>${list.map(p => row(p, host, me)).join('')}</div>`; };
       const none = players.filter(p => !p.team);
       T.className = 'mpTeams';
-      T.innerHTML = col('red', 'Red') + col('blue', 'Blue') + (none.length ? `<div class="mpCol" style="grid-column:1/-1"><h4>No team yet</h4>${none.map(p => row(p, host, me)).join('')}</div>` : '');
+      T.innerHTML = col('red', tname('red')) + col('blue', tname('blue')) + (none.length ? `<div class="mpCol" style="grid-column:1/-1"><h4>No team yet</h4>${none.map(p => row(p, host, me)).join('')}</div>` : '');
     } else { T.className = 'mpTeams solo'; T.innerHTML = `<div class="mpCol"><h4>Players · ${players.length}/6</h4>${players.map(p => row(p, host, me)).join('')}</div>`; }
     const seg = (label, key, opts, show = true) => !show ? '' : `<div class="row"><label>${label}</label><div class="seg">${opts.map(([v, t]) =>
       `<button data-set="${key}" data-val="${v}" class="${String(s[key]) === String(v) ? 'sel' : ''}"${host ? '' : ' disabled'}>${t}</button>`).join('')}</div></div>`;
     const S = $('mpSettings'); S.className = 'mpSettings' + (host ? '' : ' ro');
-    S.innerHTML = seg('Mode', 'mode', MODES) + seg('Teams', 'teamSize', [[1, '1v1'], [2, '2v2'], [3, '3v3']], s.mode === 'tdm') + seg('Map', 'mapId', MP_MAPS)
-      + seg('Kill limit', 'killLimit', [[10, '10'], [20, '20'], [30, '30']], s.mode !== 'coop') + seg('Time limit', 'timeLimit', [[5, '5 min'], [10, '10 min'], [15, '15 min']])
+    S.innerHTML = seg('Mode', 'mode', MODES) + seg('Teams', 'teamSize', [[1, '1v1'], [2, '2v2'], [3, '3v3']], teamed(s.mode)) + seg('Map', 'mapId', s.mode === 'cs' ? MP_MAPS.filter(m => m[0] === 'outpost') : MP_MAPS)
+      + seg('Kill limit', 'killLimit', [[10, '10'], [20, '20'], [30, '30']], s.mode !== 'coop' && s.mode !== 'cs') + seg('Rounds to win', 'winRounds', [[3, '3'], [5, '5'], [8, '8']], s.mode === 'cs')
+      + seg('Time limit', 'timeLimit', [[5, '5 min'], [10, '10 min'], [15, '15 min']])
       + seg('Friendly fire', 'friendlyFire', [[false, 'Off'], [true, 'On']], s.mode !== 'ffa') + seg('Lock room', 'locked', [[false, 'Open'], [true, 'Locked']]);
     const why = valid();
-    $('mpStart').hidden = $('mpBalance').hidden = !host; $('mpBalance').disabled = s.mode !== 'tdm';
+    $('mpStart').hidden = $('mpBalance').hidden = !host; $('mpBalance').disabled = !teamed(s.mode);
     $('mpStart').disabled = !!why;
     $('mpLNote').textContent = host ? (why || 'Ready when you are.') : 'Waiting for host…';
   }
@@ -7616,7 +7747,7 @@ if (!window.CAMP) window.CAMP = (() => {
   $('mpStart').addEventListener('click', () => { if (valid()) return; Sound.init(); Sound.play('click'); CAMP.startMatch(); });
   function leave(toMenu = 'mp', note = '') {
     if (inRoom) CAMP.leaveRoom();
-    inRoom = false; endHud();
+    inRoom = false; endHud(); document.body.classList.remove('mpCS');
     if (state !== 'menu') quitToMenu();
     show(toMenu);
     if (note) { $('mpResting').hidden = false; $('mpResting').textContent = note; } else { $('mpResting').hidden = true; $('mpResting').textContent = ERR.offline; }
@@ -7643,17 +7774,20 @@ if (!window.CAMP) window.CAMP = (() => {
     useMap(d.mapId || 'outpost');
     const sp = spawnFor(CAMP.myId()); player.pos.set(sp.x, 0, sp.z); player.yaw = sp.yaw || 0;
     document.body.classList.add('mpOn'); $('mpFeed').innerHTML = ''; respawnAt = 0;
-    state = 'playing'; hideMenus(); lockMouse();
+    document.body.classList.toggle('mpCS', settings.mode === 'cs'); csClear();
+    if (settings.mode === 'ffa' || settings.mode === 'cs') { setWeapon('pistol'); state = 'paused'; releaseInput(); pickGun(); } // pick a gun first
+    else { state = 'playing'; hideMenus(); lockMouse(); }
     if (settings.mode === 'coop') nextWave(); // co-op uses the normal cube waves until the shared version exists
     banner(MODES.find(m => m[0] === settings.mode)[1], (MP_MAPS.find(m => m[0] === mapId) || [0, ''])[1]);
     hudTick();
   }
-  function endHud() { inMatch = false; document.body.classList.remove('mpOn'); $('mpBoard').classList.remove('on'); $('mpTags').innerHTML = ''; $('mpRespawn').style.display = 'none'; }
+  function endHud() { csClear(); inMatch = false; document.body.classList.remove('mpOn'); $('mpBoard').classList.remove('on'); $('mpTags').innerHTML = ''; $('mpRespawn').style.display = 'none'; }
   function endMatch(d) {
     const sc = d.scores || {}, rows = (sc.players || []).map(r => ({ ...r, name: r.name || (byId(r.id) || {}).name || 'Player', team: r.team || teamOf(r.id) }));
     endHud(); releaseInput(); state = 'menu';
     const me = CAMP.myId(), w = d.winner;
-    $('mpWinner').textContent = w === 'red' ? `Red team wins ${sc.red ?? ''}–${sc.blue ?? ''}` : w === 'blue' ? `Blue team wins ${sc.blue ?? ''}–${sc.red ?? ''}`
+    const csm = settings && settings.mode === 'cs';
+    $('mpWinner').textContent = w === 'red' ? `${csm ? 'Terrorists win' : 'Red team wins'} ${sc.red ?? ''}–${sc.blue ?? ''}` : w === 'blue' ? `${csm ? 'Counter-Terrorists win' : 'Blue team wins'} ${sc.blue ?? ''}–${sc.red ?? ''}`
       : w === 'draw' ? 'It’s a draw' : w === 'coop' ? 'Co-op match over' : w === me ? 'You win!' : `${esc((byId(w) || rows.find(r => r.id === w) || { name: 'Someone' }).name)} wins`;
     rows.sort((a, b) => (b.kills - a.kills) || (a.deaths - b.deaths));
     $('mpResTable').innerHTML = '<tr><th>Player</th><th>Kills</th><th>Deaths</th></tr>' + rows.map(r => `<tr class="${r.team || ''}${r.id === me ? ' you' : ''}"><td>${esc(r.name)}${r.id === me ? ' (you)' : ''}</td><td>${r.kills}</td><td>${r.deaths}</td></tr>`).join('');
@@ -7665,6 +7799,9 @@ if (!window.CAMP) window.CAMP = (() => {
   const fmtT = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
   function scoreLine() {
     const left = board.timeLeft - (performance.now() - board.at) / 1000, me = CAMP.myId();
+    if (mode() === 'cs') { const V = cs, t = performance.now();
+      const tm = !V ? '' : V.phase === 'live' && V.bomb ? `<span class="bomb">BOMB ${fmtT((V.bomb.at - t) / 1000)}</span>` : V.phase === 'live' ? `<span class="t">${fmtT((V.roundAt - t) / 1000)}</span>` : '';
+      return `<span class="r">T ${board.red}</span><span>–</span><span class="b">${board.blue} CT</span><span class="t">Round ${V ? V.round : 1} · first to ${settings.winRounds || 5}</span>${tm}`; }
     if (mode() === 'tdm') return `<span class="r">RED ${board.red}</span><span>–</span><span class="b">${board.blue} BLUE</span><span class="t">${fmtT(left)}</span>`;
     if (mode() === 'ffa') { const mine = (board.players.find(p => p.id === me) || { kills: 0 }).kills, top = Math.max(0, ...board.players.map(p => p.kills));
       return `<span>You ${mine}</span><span class="t">Leader ${top} · first to ${settings.killLimit}</span><span class="t">${fmtT(left)}</span>`; }
@@ -7674,8 +7811,8 @@ if (!window.CAMP) window.CAMP = (() => {
     const me = CAMP.myId(), stat = id => board.players.find(p => p.id === id) || { kills: 0, deaths: 0 };
     const rows = players.map(p => ({ ...p, ...stat(p.id) })).sort((a, b) => (b.kills - a.kills) || (a.deaths - b.deaths));
     const table = list => `<table class="mpTable"><tr><th>Player</th><th>Kills</th><th>Deaths</th><th>Ping</th></tr>${list.map(r => `<tr class="${r.team || ''}${r.id === me ? ' you' : ''}"><td>${r.isHost ? '👑 ' : ''}${esc(r.name)}</td><td>${r.kills}</td><td>${r.deaths}</td><td>${r.ping ?? '–'}</td></tr>`).join('')}</table>`;
-    $('mpBoard').innerHTML = mode() === 'tdm'
-      ? `<h3><span style="color:#f87171">Red ${board.red}</span> · <span style="color:#60a5fa">${board.blue} Blue</span></h3>${table(rows.filter(r => r.team === 'red'))}<div style="height:10px"></div>${table(rows.filter(r => r.team === 'blue'))}`
+    $('mpBoard').innerHTML = teamed(mode())
+      ? `<h3><span style="color:${mode() === 'cs' ? '#fbbf24' : '#f87171'}">${tname('red')} ${board.red}</span> · <span style="color:#60a5fa">${board.blue} ${tname('blue')}</span></h3>${table(rows.filter(r => r.team === 'red'))}<div style="height:10px"></div>${table(rows.filter(r => r.team === 'blue'))}`
       : `<h3>${mode() === 'ffa' ? 'Free-for-all' : 'Co-op'}</h3>${table(rows)}`;
   }
   function renderPing() { const me = byId(CAMP.myId()), ms = me && me.ping, el = $('mpPing'); el.querySelector('span').textContent = ms != null ? ms + ' ms' : '– ms'; el.className = ms >= 200 ? 'bad' : ms >= 100 ? 'mid' : ''; }
@@ -7691,7 +7828,7 @@ if (!window.CAMP) window.CAMP = (() => {
       if (_v.z > 1 || d > 70) { s.style.display = 'none'; return; }
       const p = byId(r.id) || { name: '?' }, mate = mode() !== 'ffa' && p.team && p.team === teamOf(CAMP.myId());
       if (!mate && !seen(r.x, r.y, r.z)) { s.style.display = 'none'; return; }
-      s.style.display = ''; s.textContent = p.name; s.className = mode() === 'tdm' ? p.team || 'ffa' : 'ffa';
+      s.style.display = ''; s.textContent = p.name; s.className = teamed(mode()) ? p.team || 'ffa' : 'ffa';
       s.style.left = (_v.x * 0.5 + 0.5) * W + 'px'; s.style.top = (-_v.y * 0.5 + 0.5) * H + 'px'; s.style.opacity = d > 45 ? 0.6 : 1;
     });
   }
@@ -7700,9 +7837,85 @@ if (!window.CAMP) window.CAMP = (() => {
     $('mpScore').innerHTML = scoreLine(); renderTags();
     const r = $('mpRespawn');
     if (respawnAt) { const left = (respawnAt - performance.now()) / 1000; if (left > 0) { r.style.display = 'block'; r.innerHTML = `Respawning in ${Math.ceil(left)}<small>You were taken out</small>`; } else { respawnAt = 0; r.style.display = 'none'; } }
+    if (mode() === 'cs') csHud();
+  }
+
+  // ---------- the gun picker (Free-for-all and C:S Mode) ----------
+  let loadout = 'shotgun';
+  try { const g = localStorage.getItem('cubeAssaultMpGun'); if (['shotgun', 'sniper', 'rocket'].includes(g)) loadout = g; } catch (e) {}
+  function pickGun() { document.querySelectorAll('#mpLoad button').forEach(b => b.classList.toggle('sel', b.dataset.gun === loadout)); show('mploadout'); }
+  $('mpLoad').addEventListener('click', e => {
+    const b = e.target.closest('[data-gun]'); if (!b || !inMatch || currentMenu !== 'mploadout') return;
+    click(); loadout = b.dataset.gun; try { localStorage.setItem('cubeAssaultMpGun', loadout); } catch (e) {}
+    setWeapon(loadout); resume();
+  });
+  // what you can carry in each mode; the game's owns() and turret checks ask this (see the hooks in the main script)
+  window.mpRules = {
+    cs: () => inMatch && mode() === 'cs',
+    turret: () => mode() === 'coop', // turrets fight cubes: co-op only, never against other players
+    owns: k => {
+      const m = mode(), guns = (window.mpNet && mpNet.guns) || [];
+      if (m === 'ffa' || m === 'cs') return k === 'pistol' || k === 'knife' || k === loadout;
+      if (m === 'coop') return guns.includes(k) || (k === 'extreme' && ownsBase(k)); // the Extreme Gun is fine against cubes
+      return guns.includes(k);
+    },
+  };
+
+  // ---------- C:S Mode: round banners, the bomb, and the plant/defuse hint ----------
+  let cs = null, bombG = null, beepAt = 0;
+  const csWhy = { exploded: 'The bomb exploded', defused: 'The bomb was defused', eliminated: 'The other side was wiped out', time: 'Time ran out before the bomb was planted' };
+  function csClear() { cs = null; if (bombG) { bombG.parent && bombG.parent.remove(bombG); bombG = null; } $('mpCS').classList.remove('on'); }
+  function bombModel(x, z) {
+    const g = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.38), lambert(0x3a3f2c)); box.position.y = 0.13;
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.2), lambert(0x1d2024)); pad.position.set(0, 0.25, 0.02);
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.07), new THREE.MeshBasicMaterial({ color: 0xff2020 })); led.position.set(0.18, 0.27, -0.1);
+    g.add(box, pad, led); g.userData.led = led; g.position.set(x, 0, z); scene.add(g);
+    return g;
+  }
+  function csEvent(V) {
+    const prev = cs, me = CAMP.myId(), my = teamOf(me);
+    cs = V;
+    if (V.bomb && !bombG) bombG = bombModel(V.bomb.x, V.bomb.z);
+    if (V.phase === 'live' && (!prev || prev.round !== V.round || prev.phase !== 'live')) {
+      if (bombG) { bombG.parent && bombG.parent.remove(bombG); bombG = null; }
+      banner(`Round ${V.round}`, my === 'red' ? 'Plant the bomb at site A or B' : 'Defend sites A and B');
+    }
+    if (V.bomb && !(prev && prev.bomb)) { banner(`Bomb planted at site ${V.bomb.site}`, my === 'blue' ? 'Find it and hold E for 12 seconds to defuse' : 'Guard it for 60 seconds'); Sound.play('deploy'); beepAt = 0; }
+    if (V.phase === 'end' && (!prev || prev.phase !== 'end') && V.win) {
+      const [team, why] = V.win;
+      if (why === 'exploded' && (V.bomb || (prev && prev.bomb))) { const b = V.bomb || prev.bomb, P = new THREE.Vector3(b.x, 0.6, b.z); explode(P); glowFlash(P, 0xffa23a, 22, 0.6); shake = Math.max(shake, 1); }
+      if (bombG) { bombG.parent && bombG.parent.remove(bombG); bombG = null; }
+      banner(`${tname(team)} win the round`, csWhy[why] || '');
+      Sound.play(team === my ? 'cleared' : 'death');
+    }
+  }
+  function csHud() {
+    const V = cs, el = $('mpCS'), hint = el.firstChild, bar = el.lastChild, t = performance.now(), me = CAMP.myId(), my = teamOf(me);
+    if (!V) { el.classList.remove('on'); return; }
+    const hold = document.body.classList.contains('touch') ? 'Hold the E button' : 'Hold E';
+    const sites = MAPS[mapId] && MAPS[mapId].sites, here = sites && Object.keys(sites).find(k => { const b = sites[k]; return player.pos.x >= b.x0 && player.pos.x <= b.x1 && player.pos.z >= b.z0 && player.pos.z <= b.z1; });
+    let text = '', p = -1;
+    if (V.phase === 'live' && state === 'playing') {
+      if (V.prog && V.prog.id === me) { p = (t - V.prog.start) / V.prog.need; text = V.prog.kind === 'plant' ? 'Planting the bomb…' : 'Defusing the bomb…'; }
+      else if (my === 'red' && !V.bomb && here) text = `${hold} for 3 seconds to plant the bomb at site ${here}`;
+      else if (my === 'blue' && V.bomb && Math.hypot(player.pos.x - V.bomb.x, player.pos.z - V.bomb.z) < 2.2) text = `${hold} for 12 seconds to defuse the bomb`;
+      else if (V.prog && teamOf(V.prog.id) === my) text = `${esc((byId(V.prog.id) || { name: 'A teammate' }).name)} is ${V.prog.kind === 'plant' ? 'planting the bomb' : 'defusing the bomb'}…`;
+    }
+    const r = $('mpRespawn');
+    if (V.phase === 'live' && state === 'dead' && !respawnAt) { r.style.display = 'block'; r.innerHTML = 'Out this round<small>You’ll be back when the next round starts</small>'; }
+    else if (!respawnAt) r.style.display = 'none';
+    el.classList.toggle('on', !!text); hint.textContent = text;
+    bar.classList.toggle('on', p >= 0); if (p >= 0) bar.firstChild.style.width = Math.min(100, p * 100) + '%';
+    // the planted bomb blinks and beeps faster as it runs down
+    if (V.bomb && bombG && V.phase === 'live') {
+      const left = Math.max(0, V.bomb.at - t), gap = Math.max(130, Math.min(1000, left / 60));
+      if (t >= beepAt) { beepAt = t + gap; bombG.userData.led.visible = true; const d = Math.hypot(player.pos.x - V.bomb.x, player.pos.z - V.bomb.z); if (d < 40) Sound.play('click'); }
+      else if (t > beepAt - gap + 90) bombG.userData.led.visible = false;
+    }
   }
   function feed(d) {
-    const k = byId(d.killerId) || { name: '?' }, v = byId(d.victimId) || { name: '?' }, cls = p => mode() === 'tdm' ? p.team || 'ffa' : 'ffa';
+    const k = byId(d.killerId) || { name: '?' }, v = byId(d.victimId) || { name: '?' }, cls = p => teamed(mode()) ? p.team || 'ffa' : 'ffa';
     const el = document.createElement('div'); el.innerHTML = `<span class="${cls(k)}">${esc(k.name)}</span><span class="w">⟶</span><span class="${cls(v)}">${esc(v.name)}</span>`;
     const F = $('mpFeed'); F.appendChild(el); while (F.childElementCount > 5) F.firstChild.remove(); setTimeout(() => el.remove(), 6000);
   }
@@ -7714,7 +7927,7 @@ if (!window.CAMP) window.CAMP = (() => {
   // Esc on the multiplayer screens goes back, like the other menus
   addEventListener('keydown', e => { if (e.code !== 'Escape') return; if (currentMenu === 'mp') show('main'); else if (currentMenu === 'mpcreate' || currentMenu === 'mpjoin') show('mp'); });
   // quitting from the pause menu during a match also leaves the room
-  document.addEventListener('click', e => { if (e.target.closest('#menu-pause [data-action="quit"]') && inRoom) { CAMP.leaveRoom(); inRoom = false; endHud(); } }, true);
+  document.addEventListener('click', e => { if (e.target.closest('#menu-pause [data-action="quit"]') && inRoom) { CAMP.leaveRoom(); inRoom = false; endHud(); document.body.classList.remove('mpCS'); } }, true);
 
   // ---------- what the netcode tells us ----------
   CAMP.on('players', l => { players = l || []; renderLobby(); renderPing(); if ($('mpBoard').classList.contains('on')) renderBoard(); });
@@ -7724,7 +7937,8 @@ if (!window.CAMP) window.CAMP = (() => {
   CAMP.on('matchEnd', endMatch);
   CAMP.on('scores', d => { board = { red: d.red || 0, blue: d.blue || 0, players: d.players || [], timeLeft: d.timeLeft ?? board.timeLeft, at: performance.now() }; renderPing(); if ($('mpBoard').classList.contains('on')) renderBoard(); });
   CAMP.on('kill', d => { if (inMatch) feed(d); });
-  CAMP.on('respawn', d => { if (inMatch && d.id === CAMP.myId()) respawnAt = performance.now() + (d.inSeconds || 3) * 1000; });
+  CAMP.on('respawn', d => { if (inMatch && d.id === CAMP.myId()) respawnAt = d.out ? 0 : performance.now() + (d.inSeconds || 3) * 1000; });
+  CAMP.on('cs', d => { if (inMatch) csEvent(d); });
   CAMP.on('error', c => {
     if (c === 'offline') { resting(true); if (inRoom) leave('mp', ERR.offline); return; }
     if (c === 'kicked' || c === 'host_left') leave('mp', ERR[c]);

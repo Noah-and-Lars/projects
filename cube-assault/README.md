@@ -76,6 +76,12 @@ Since 2.6 it's real online play for up to 6 players. It runs over Supabase Realt
 
 The new **Outpost** map (Red and Blue spawns, three lanes, sites A and B, a pump house and watchtowers) can also be played in single-player from the map screen.
 
+### C:S Mode (2.6.1)
+
+Terrorists (orange) against Counter-Terrorists (blue) in rounds on the Outpost; the host picks 3, 5 or 8 rounds to win. Terrorists hold **E** for 3 seconds inside site A or B to plant the bomb, and win the round if it explodes 60 seconds later. Counter-Terrorists defend both sites and hold **E** for 12 seconds next to a planted bomb to defuse it; they also win if time runs out before a plant. Taking out the whole other team wins a round too (but a planted bomb still has to be defused). If you're taken out, you're back at the start of the next round.
+
+In C:S Mode and Free-for-all everyone starts with a pistol and a knife and picks one more gun: a shotgun, a sniper or a rocket launcher. The Extreme Gun and turrets are only allowed in Co-op, against the cubes.
+
 ## Profile and settings
 
 Your profile (top right of the main menu) shows your level, accuracy, shots fired, cubes killed, time played and best wave, and lets you pick a 3D profile picture. Everything is saved in your own browser. **Settings → Reset all data** starts fresh.
