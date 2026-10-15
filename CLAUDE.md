@@ -78,6 +78,14 @@ source in Settings → Pages should be switched to `main`.
   `SHAPE.BOXES` blocks (stairs, slabs, doors, fences, lanterns) are drawn and
   collide as a list of boxes; stairs and doors use one block id per facing/state. It's heavy: keep tests
   short, and don't run hundreds of frames in the preview pane.
+  Since 2.0: block ids are 16-bit (`BCAP = 4096`), items start at `ITEM_BASE = 4096`,
+  and each dimension (Overworld `Gen`, Nether `NetherGen`, End `EndGen`) is its own
+  `World`; `changeDimension()` moves between them. The save is format v2 (a section per
+  dimension in `dims`, plus `endState` and `genVersion`); `migrateSave()` converts 1.x
+  saves and first keeps the original as `blockcraft-world-<id>-backup-1x`. Worlds with
+  `genVersion 1` keep the old Overworld (`Gen.v2` is false), so only change 1.x terrain
+  behind a `this.v2` check. Structures are `Plan`s built chunk by chunk (`makeCtx`,
+  `structuresNear`); mobs are defined in `MOB_DEFS` with movement types in `MOVERS`.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
