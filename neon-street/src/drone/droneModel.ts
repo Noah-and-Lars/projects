@@ -16,14 +16,15 @@ export interface DroneMesh {
 
 export function buildDroneMesh(): DroneMesh {
   const b = new SceneBuilder();
-  const mBody = b.material({ base: [0.09, 0.095, 0.11], metallic: 0.7, roughness: 0.35 });
-  const mBodyLight = b.material({ base: [0.2, 0.21, 0.23], metallic: 0.5, roughness: 0.4 });
+  const mBody = b.material({ base: [0.16, 0.17, 0.19], metallic: 0.6, roughness: 0.35 });
+  const mBodyLight = b.material({ base: [0.85, 0.45, 0.08], metallic: 0.2, roughness: 0.45 });
   const mRail = b.material({ base: [0.05, 0.05, 0.055], metallic: 0.8, roughness: 0.3 });
   const mPod = b.material({ base: [0.12, 0.12, 0.13], metallic: 0.9, roughness: 0.25 });
   const mLens = b.material({ emission: [45, 44, 40], kind: MatKind.Emitter });
-  const mStatus = b.material({ emission: [0.4, 4.0, 1.2], kind: MatKind.Emitter, flags: MatFlag.Blink, aux: [0, 1, 0, 0] });
-  const mNavRed = b.material({ emission: [6.0, 0.3, 0.2], kind: MatKind.Emitter });
-  const mNavGreen = b.material({ emission: [0.3, 6.0, 0.5], kind: MatKind.Emitter });
+  const mStatus = b.material({ emission: [0.6, 7.0, 2.0], kind: MatKind.Emitter, flags: MatFlag.Blink, aux: [0, 1, 0, 0] });
+  const mNavRed = b.material({ emission: [14.0, 0.6, 0.4], kind: MatKind.Emitter });
+  const mNavGreen = b.material({ emission: [0.6, 14.0, 1.0], kind: MatKind.Emitter });
+  const mRailLed = b.material({ emission: [1.6, 1.9, 2.4], kind: MatKind.Emitter });
   const mStrobe = b.material({ emission: [30, 30, 32], kind: MatKind.Emitter, flags: MatFlag.Blink, aux: [0, 2, 0, 0] });
   const mCamLed = b.material({ emission: [3.0, 0.2, 0.2], kind: MatKind.Emitter, flags: MatFlag.Blink, aux: [0.3, 3, 0, 0] });
   const mGlass = b.material({ base: [0, 0, 0], roughness: 0.05 });
@@ -38,6 +39,9 @@ export function buildDroneMesh(): DroneMesh {
   // Rails (H frame) and cross bar.
   for (const x of [-0.5, 0.5]) {
     b.box([x - 0.035, -0.03, -0.62], [x + 0.035, 0.03, 0.62], mRail);
+    // Thin LED strip along the outside of each rail so the silhouette reads at night.
+    const lx0 = x < 0 ? x - 0.04 : x + 0.035, lx1 = x < 0 ? x - 0.035 : x + 0.04;
+    b.box([lx0, -0.008, -0.4], [lx1, 0.008, 0.4], mRailLed, x < 0 ? Face.NX : Face.PX);
   }
   b.box([-0.5, -0.03, -0.04], [0.5, 0.03, 0.04], mRail);
   // Motor pods and props.

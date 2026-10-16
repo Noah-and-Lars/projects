@@ -199,6 +199,15 @@ async function boot(): Promise<void> {
   ($('#optHud') as HTMLInputElement).addEventListener('change', (e) => hud.setVisible((e.target as HTMLInputElement).checked));
 
   dbg.ready = true;
+  // Debug hook for the headless script: dump renderer state.
+  (dbg as unknown as { inspect: () => unknown }).inspect = () => ({
+    poses: renderer.poses,
+    spot: renderer.spot,
+    objects: [{ root: droneRoot, triStart: droneTriStart }],
+    triCount: scene.triCount,
+    bvhNodes: bvh.nodeCount,
+    uniforms: Array.from((renderer as unknown as { uniformData: Float32Array }).uniformData),
+  });
   let lastFrameStart = performance.now();
   startLoop(({ dt, time }) => {
     if (dbg.pause) return;
@@ -221,7 +230,7 @@ async function boot(): Promise<void> {
       }
       renderer.poses[0] = { pos: ds.pos, rot: ds.rot, boundsMin: bmin, boundsMax: bmax };
       renderer.spot = {
-        pos: ds.lampPos, dir: ds.lampDir, intensity: 140,
+        pos: ds.lampPos, dir: ds.lampDir, intensity: 1000,
         cosInner: Math.cos((7 * Math.PI) / 180), cosOuter: Math.cos((13 * Math.PI) / 180), range: 45,
       };
       rainSystem.drone = { pos: ds.pos, strength: ds.downwash };

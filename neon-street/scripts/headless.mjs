@@ -107,6 +107,10 @@ const state = await page.evaluate(() => {
   if (window.__neon) window.__neon.pause = true;
   return JSON.parse(JSON.stringify(window.__neon ?? null));
 });
+if (flag('inspect')) {
+  const info = await page.evaluate(() => JSON.parse(JSON.stringify(window.__neon?.inspect?.() ?? null)));
+  console.log('inspect:', JSON.stringify(info));
+}
 const out = opt('out', 'headless.png');
 try {
   // A broken pipeline never presents a frame, so don't wait long in that case.

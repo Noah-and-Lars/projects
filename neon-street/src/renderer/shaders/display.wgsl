@@ -76,6 +76,10 @@ fn sampleCatmullRom(uv: vec2f, size: vec2f) -> vec3f {
 
 @fragment
 fn fs(in: VSOut) -> @location(0) vec4f {
+  if (D.mode > 4.5) {
+    // Uniform sanity view: searchlight intensity, object 0 active, object 0 height.
+    return vec4f(U.s0.w / 200.0, select(0.0, 1.0, U.objs[0].pos.w >= 0.0), U.objs[0].pos.y / 10.0, 1.0);
+  }
   if (D.mode > 0.5) {
     let pix = vec2i(in.uv * D.hdrSize);
     if (D.mode < 1.5) { return vec4f(toSrgb(aces(textureLoad(dbgDiff, pix, 0).rgb * D.exposure)), 1.0); }
