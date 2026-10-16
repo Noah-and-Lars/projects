@@ -28,11 +28,15 @@ Ultra ~20–40 FPS, Melt is a slideshow on purpose.
    animated billboards, floating holograms, procedural glyph neon,
    balconies, an overhead walkway, drains, manholes, banners, zebra
    crossings and distant towers with beacons.
-4. **Rain and water** — next
-   Falling rain lit by neon, splashes near the camera, ripples in puddles,
-   a shallow-water simulation so water flows downhill into gutters and
-   drains and puddles grow while it pours, drips off awnings and ledges,
-   drops running down windows, occasional thunder and lightning.
+4. **Rain and water** — DONE
+   GPU shallow-water simulation on a 10 cm grid (crowned road, gutters,
+   dips, drains): rain fills it, water flows downhill and pools, a wave
+   layer carries raindrop and footstep ripples into the puddle normals.
+   Rain streaks and splashes as GPU particles around the camera, lit by a
+   progressive irradiance probe volume and depth-tested against the path
+   tracer's G-buffer; drips from awnings and the walkway; animated drops
+   running down every pane; a wet sheen at the foot of the walls; lightning
+   flashes with a temporal-blend boost so they read instantly.
 5. **The drone** (scenery, no gameplay)
    Quadcopter with four spinning propellers, status LEDs, red/green arm
    lights, white strobe, searchlight. Downwash pushes rain sideways and

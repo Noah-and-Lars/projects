@@ -24,6 +24,8 @@ export class PlayerController {
   private camY: number;
   private bobPhase = 0;
   private bobAmount = 0;
+  private lastStepPhase = 0;
+  private footsteps: Vec3[] = [];
   headBob = true;
 
   constructor(private readonly scene: SceneData, private readonly input: Input, spawn: Vec3 = STREET.spawn) {
@@ -85,6 +87,20 @@ export class PlayerController {
     const moving = Math.hypot(this.vel[0], this.vel[2]);
     this.bobAmount = lerp(this.bobAmount, this.headBob ? Math.min(1, moving / WALK_SPEED) : 0, 1 - Math.exp(-dt * 6));
     this.bobPhase += dt * moving * 1.7;
+    // A foot lands every half bob cycle; alternate left and right of the body.
+    const stepIdx = Math.floor(this.bobPhase / Math.PI);
+    if (stepIdx !== this.lastStepPhase && moving > 0.3) {
+      this.lastStepPhase = stepIdx;
+      const side = stepIdx % 2 === 0 ? 0.18 : -0.18;
+      this.footsteps.push([this.pos[0] + right[0] * side + fwd[0] * 0.3, this.pos[1], this.pos[2] + right[2] * side + fwd[2] * 0.3]);
+    }
+  }
+
+  /** Foot impacts since the last call (world positions), for splashes and ripples. */
+  consumeFootsteps(): Vec3[] {
+    const f = this.footsteps;
+    this.footsteps = [];
+    return f;
   }
 
   private collide(): void {

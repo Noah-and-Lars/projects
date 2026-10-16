@@ -19,6 +19,8 @@ export const MatFlag = {
   Billboard: 16,
   /** Neon glyph strip (procedural characters). */
   Glyph: 32,
+  /** Emission pulses or blinks over time (aux.x = phase, aux.y = pattern). */
+  Blink: 64,
 } as const;
 
 export const MatKind = {
@@ -28,6 +30,8 @@ export const MatKind = {
   Emitter: 2,
   /** Translucent hologram: adds light and lets the ray continue. */
   Hologram: 3,
+  /** Tinted translucent surface (spinning prop discs): attenuates and continues. */
+  Translucent: 4,
 } as const;
 
 export interface MaterialDesc {
@@ -68,6 +72,8 @@ export class SceneBuilder {
   readonly colliders: AABB[] = [];
   /** Axis-aligned step surfaces the player can stand on (sidewalks). */
   readonly walkSurfaces: { min: Vec3; max: Vec3; height: number }[] = [];
+  /** Edges that shed drips (awning fronts, ledges). */
+  readonly dripEdges: [Vec3, Vec3][] = [];
 
   material(d: MaterialDesc): number {
     const base = d.base ?? [0.5, 0.5, 0.5];
@@ -160,8 +166,37 @@ export class SceneBuilder {
       lightCount,
       colliders: this.colliders,
       walkSurfaces: this.walkSurfaces,
+      dripEdges: this.dripEdges,
     };
   }
+}
+
+/**
+ * Append the triangles and materials of `extra` after `base`. Lights stay
+ * those of `base`; the extra object (the drone) is lit analytically.
+ */
+export function mergeScenes(base: SceneData, extra: SceneData): { scene: SceneData; triStart: number } {
+  const tris = new Float32Array(base.tris.length + extra.tris.length);
+  tris.set(base.tris, 0);
+  tris.set(extra.tris, base.tris.length);
+  for (let i = 0; i < extra.triCount; i++) {
+    const o = base.tris.length + i * TRI_FLOATS;
+    tris[o + 3] += base.matCount; // material id
+    tris[o + 7] = -1;             // never a sampled light
+  }
+  const mats = new Float32Array(base.mats.length + extra.mats.length);
+  mats.set(base.mats, 0);
+  mats.set(extra.mats, base.mats.length);
+  return {
+    scene: {
+      ...base,
+      tris,
+      triCount: base.triCount + extra.triCount,
+      mats,
+      matCount: base.matCount + extra.matCount,
+    },
+    triStart: base.triCount,
+  };
 }
 
 export interface SceneData {
@@ -176,4 +211,5 @@ export interface SceneData {
   lightCount: number;
   colliders: AABB[];
   walkSurfaces: { min: Vec3; max: Vec3; height: number }[];
+  dripEdges: [Vec3, Vec3][];
 }

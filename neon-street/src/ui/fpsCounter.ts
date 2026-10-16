@@ -50,7 +50,7 @@ export class Hud {
       `${this.fps.toFixed(0).padStart(4)} fps   frame ${(1000 / Math.max(this.fps, 0.01)).toFixed(1)} ms   ${gpu}`,
       `${info.presetName}  ${s.renderWidth}x${s.renderHeight} -> ${info.canvasW}x${info.canvasH}  (${st.renderScale.toFixed(2)}x)`,
       `${st.spp} spp  ${st.maxBounces} bounces  fog ${['off', 'cheap', 'volumetric'][st.fogMode] ?? st.fogMode}  denoise ${st.atrousIterations}`,
-      `${s.triCount} tris  ${s.lightCount} lights  ${s.bvhNodes} bvh nodes`,
+      `${s.triCount} tris  ${s.lightCount} lights  ${s.bvhNodes} bvh nodes  rain ${st.rain.toFixed(2)} x ${st.rainDrops}k streaks`,
       `${info.adapterName}`,
       `pos ${info.pos.map((v) => v.toFixed(1)).join(' ')}`,
     ];

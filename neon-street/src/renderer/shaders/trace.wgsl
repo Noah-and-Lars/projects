@@ -40,6 +40,8 @@ struct Material {
 @group(0) @binding(7) var texSamp: sampler;
 @group(0) @binding(8) var texAlb: texture_2d_array<f32>; // rgb albedo, a roughness
 @group(0) @binding(9) var texNrm: texture_2d_array<f32>; // rgb tangent normal, a ambient occlusion
+@group(0) @binding(10) var waterTex: texture_2d<f32>;    // depth, wave, d/dx, d/dz over the street
+@group(0) @binding(11) var clampSamp: sampler;
 
 const TEX_SIZE: f32 = 1024.0;
 
@@ -48,6 +50,11 @@ const TEX_SIZE: f32 = 1024.0;
 @group(1) @binding(2) var outPos: texture_storage_2d<rgba32float, write>; // xyz, w = packed normal
 @group(1) @binding(3) var outAlb: texture_storage_2d<rgba16float, write>; // rgb diffuse albedo, a = roughness
 @group(1) @binding(4) var outEmit: texture_storage_2d<rgba16float, write>; // rgb direct emission, a = reflection distance
+
+// Irradiance probe volume (entry point `probes`): running average of the
+// light arriving at points in the air, used to light rain and particles.
+@group(2) @binding(0) var probeIn: texture_3d<f32>;
+@group(2) @binding(1) var probeOut: texture_storage_3d<rgba16float, write>;
 
 const NO_HIT: u32 = 0xffffffffu;
 const T_MAX: f32 = 1e30;
@@ -59,12 +66,14 @@ const KIND_OPAQUE: u32 = 0u;
 const KIND_GLASS: u32 = 1u;
 const KIND_EMITTER: u32 = 2u;
 const KIND_HOLO: u32 = 3u;
+const KIND_TRANSLUCENT: u32 = 4u;
 const FLAG_ROAD: u32 = 1u;
 const FLAG_WINDOW: u32 = 2u;
 const FLAG_GRIME: u32 = 4u;
 const FLAG_SIDEWALK: u32 = 8u;
 const FLAG_BILLBOARD: u32 = 16u;
 const FLAG_GLYPH: u32 = 32u;
+const FLAG_BLINK: u32 = 64u;
 
 // ---------------------------------------------------------------- random
 
@@ -147,12 +156,13 @@ fn triHit(i: u32, ro: vec3f, rd: vec3f) -> f32 {
   return select(T_MAX, t, t > 1e-4);
 }
 
-fn intersectScene(ro: vec3f, rd: vec3f, tmax0: f32) -> Hit {
+// Traverse the BVH rooted at `root`, improving on `best`.
+fn traverse(root: u32, ro: vec3f, rd: vec3f, tmax0: f32) -> Hit {
   var best = Hit(tmax0, NO_HIT);
   let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
   var stack: array<u32, 48>;
   var sp = 0u;
-  var node = 0u;
+  var node = root;
   loop {
     let n = nodes[node];
     if (n.cnt > 0u) {
@@ -193,15 +203,44 @@ fn intersectScene(ro: vec3f, rd: vec3f, tmax0: f32) -> Hit {
   return best;
 }
 
+// ---- the drone: a rigidly transformed second BVH level ------------------
+// U.d0 = drone position xyz, w = root node (negative when there is no drone)
+// U.d1..d3 = rotation rows (object -> world); d4/d5 = world bounds.
+
+fn droneActive() -> bool { return U.d0.w >= 0.0; }
+
+fn droneToLocalDir(v: vec3f) -> vec3f {
+  // Inverse of a rotation is its transpose: dot with the columns.
+  return vec3f(dot(vec3f(U.d1.x, U.d2.x, U.d3.x), v), dot(vec3f(U.d1.y, U.d2.y, U.d3.y), v), dot(vec3f(U.d1.z, U.d2.z, U.d3.z), v));
+}
+
+fn droneToWorldDir(v: vec3f) -> vec3f {
+  return vec3f(dot(U.d1.xyz, v), dot(U.d2.xyz, v), dot(U.d3.xyz, v));
+}
+
+fn intersectScene(ro: vec3f, rd: vec3f, tmax0: f32) -> Hit {
+  var best = traverse(0u, ro, rd, tmax0);
+  if (droneActive()) {
+    let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
+    if (aabbHit(U.d4.xyz, U.d5.xyz, ro, invDir, best.t) < T_MAX) {
+      let lo = droneToLocalDir(ro - U.d0.xyz);
+      let ld = droneToLocalDir(rd);
+      let h = traverse(u32(U.d0.w), lo, ld, best.t);
+      if (h.t < best.t) { best = h; }
+    }
+  }
+  return best;
+}
+
 fn isHologram(tri: u32) -> bool {
   return u32(mats[u32(tris[tri].v0.w)].prm.w + 0.5) == KIND_HOLO;
 }
 
-fn occluded(ro: vec3f, rd: vec3f, tmax: f32) -> bool {
+fn anyHit(root: u32, ro: vec3f, rd: vec3f, tmax: f32) -> bool {
   let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
   var stack: array<u32, 48>;
   var sp = 0u;
-  var node = 0u;
+  var node = root;
   loop {
     let n = nodes[node];
     if (n.cnt > 0u) {
@@ -233,6 +272,17 @@ fn occluded(ro: vec3f, rd: vec3f, tmax: f32) -> bool {
       if (sp < 48u) { stack[sp] = r; sp++; }
     } else {
       node = select(r, l, tl < T_MAX);
+    }
+  }
+  return false;
+}
+
+fn occluded(ro: vec3f, rd: vec3f, tmax: f32) -> bool {
+  if (anyHit(0u, ro, rd, tmax)) { return true; }
+  if (droneActive()) {
+    let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
+    if (aabbHit(U.d4.xyz, U.d5.xyz, ro, invDir, tmax) < T_MAX) {
+      return anyHit(u32(U.d0.w), droneToLocalDir(ro - U.d0.xyz), droneToLocalDir(rd), tmax);
     }
   }
   return false;
@@ -473,7 +523,26 @@ fn emitted(m: Material, p: vec3f, n: vec3f, dir: vec3f) -> vec3f {
   if ((flags & FLAG_WINDOW) != 0u) { return roomRadiance(m, p, n, dir); }
   if ((flags & FLAG_BILLBOARD) != 0u) { return billboardPattern(m, p, n); }
   if ((flags & FLAG_GLYPH) != 0u) { return m.emis.rgb * glyphPattern(m, p, n); }
+  if ((flags & FLAG_BLINK) != 0u) {
+    let t = U.p1.w + m.aux.x;
+    let pattern = u32(m.aux.y + 0.5);
+    var k = 1.0;
+    if (pattern == 1u) { k = 0.45 + 0.55 * sin(t * 3.0) * sin(t * 3.0); }           // slow breathing
+    else if (pattern == 2u) { k = step(0.93, fract(t * 1.1)) + 0.6 * step(0.98, fract(t * 1.1 + 0.07)); } // strobe
+    else if (pattern == 3u) { k = step(0.5, fract(t * 1.0)); }                       // recording blink
+    return m.emis.rgb * k;
+  }
   return m.emis.rgb;
+}
+
+// Spinning prop disc: a soft dark disc with two faint blade streaks.
+fn propCoverage(m: Material, pLocal: vec3f) -> f32 {
+  let c = pLocal.xz - m.aux.xy;
+  let r = length(c) / max(m.aux.z, 0.01);
+  if (r > 1.0 || r < 0.08) { return 0.0; }
+  let ang = atan2(c.y, c.x) - U.p1.w * 60.0;
+  let blade = pow(abs(sin(ang)), 8.0);
+  return (0.22 + 0.25 * blade) * smoothstep(1.0, 0.85, r);
 }
 
 // `footprint` is the ray cone's width at the hit in metres; it picks the mip.
@@ -483,6 +552,8 @@ fn evalSurface(h: Hit, ro: vec3f, rd: vec3f, footprint: f32) -> Surf {
   var s: Surf;
   s.p = ro + rd * h.t;
   s.ng = tr.n.xyz;
+  // Drone triangles live in object space: rotate their normal into the world.
+  if (h.tri >= u32(U.p5.w)) { s.ng = droneToWorldDir(s.ng); }
   s.inside = dot(rd, s.ng) > 0.0;
   s.gf = select(s.ng, -s.ng, s.inside);
   s.n = s.gf;
@@ -526,35 +597,90 @@ fn evalSurface(h: Hit, ro: vec3f, rd: vec3f, footprint: f32) -> Surf {
     }
   }
 
-  if ((flags & FLAG_ROAD) != 0u) {
-    let w = fbm(p.xz * 0.55 + vec2f(3.1, -1.7));
-    let wet = smoothstep(0.43, 0.48, w);
+  if ((flags & (FLAG_ROAD | FLAG_SIDEWALK)) != 0u) {
+    // Standing water comes from the simulation: depth, ripple height, ripple slope.
+    let wuv = (p.xz - U.p4.xy) / U.p4.zw;
+    let ws = textureSampleLevel(waterTex, clampSamp, wuv, 0.0);
+    let film = U.p5.x;
+    let puddle = smoothstep(0.0005, 0.004, ws.x);
     var base = s.base;
-    // Lane markings and two zebra crossings.
-    let zc = fract((p.z + 100.0) / 6.0);
-    if (abs(p.x) < 0.08 && zc < 0.5) { base = vec3f(0.45, 0.45, 0.42); }
-    if (abs(abs(p.x) - 3.75) < 0.06) { base = vec3f(0.35, 0.35, 0.33); }
-    let crossing = (p.z > -3.2 && p.z < 0.0) || (p.z > 58.5 && p.z < 61.7);
-    if (crossing && abs(p.x) < 3.6 && fract(p.x * 1.1 + 0.25) < 0.5) { base = mix(base, vec3f(0.5, 0.5, 0.47), 0.85); }
-    s.base = mix(base, base * 0.35, wet);
-    s.rough = mix(s.rough, 0.012, wet);
-    // Standing water hides the asphalt relief.
-    s.n = normalize(mix(s.n, s.gf, wet));
-  } else if ((flags & FLAG_SIDEWALK) != 0u) {
-    let n2 = fbm(p.xz * 1.3 + vec2f(7.0, 2.0));
-    let wet = smoothstep(0.5, 0.64, n2);
-    s.base *= 1.0 - 0.4 * wet;
-    s.rough = mix(s.rough, 0.07, wet);
-    s.n = normalize(mix(s.n, s.gf, wet * 0.7));
+    if ((flags & FLAG_ROAD) != 0u) {
+      // Lane markings and two zebra crossings.
+      let zc = fract((p.z + 100.0) / 6.0);
+      if (abs(p.x) < 0.08 && zc < 0.5) { base = vec3f(0.45, 0.45, 0.42); }
+      if (abs(abs(p.x) - 3.75) < 0.06) { base = vec3f(0.35, 0.35, 0.33); }
+      let crossing = (p.z > -3.2 && p.z < 0.0) || (p.z > 58.5 && p.z < 61.7);
+      if (crossing && abs(p.x) < 3.6 && fract(p.x * 1.1 + 0.25) < 0.5) { base = mix(base, vec3f(0.5, 0.5, 0.47), 0.85); }
+    }
+    // A wet film darkens and smooths everything; puddles are mirrors.
+    base *= mix(1.0, 0.62, film);
+    s.base = mix(base, base * 0.5, puddle);
+    s.rough = mix(s.rough, 0.2, film * 0.85);
+    s.rough = mix(s.rough, 0.01, puddle);
+    let ripple = normalize(vec3f(-ws.z * 4.0, 1.0, -ws.w * 4.0));
+    s.n = normalize(mix(s.n, ripple, puddle));
   } else if ((flags & FLAG_GRIME) != 0u) {
     let g = fbm(vec2f(p.y * 0.6, (p.x + p.z) * 0.6));
     s.base *= (0.7 + 0.45 * g) * mix(0.45, 1.0, smoothstep(0.0, 3.5, p.y));
     s.rough = min(1.0, s.rough + 0.08 * g);
+    // Splash zone: the bottom of every wall is soaked.
+    let soak = U.p5.x * (1.0 - smoothstep(0.3, 2.2, p.y));
+    s.base *= 1.0 - 0.35 * soak;
+    s.rough = mix(s.rough, 0.25, soak);
+  }
+  // Rain running down glass: perturbs reflections and the view inside.
+  if (s.kind == KIND_OPAQUE && s.metallic < 0.01 && s.rough < 0.06 && abs(s.ng.y) < 0.5 && U.p5.z > 0.0) {
+    let dn = rainOnGlass(p, s.ng);
+    var T = vec3f(1.0, 0.0, 0.0);
+    if (abs(s.ng.x) > 0.5) { T = vec3f(0.0, 0.0, 1.0); }
+    let B = vec3f(0.0, 1.0, 0.0);
+    s.n = normalize(s.n + T * dn.x + B * dn.y);
   }
   if (luminance(s.emis) > 0.0 && (flags & (FLAG_WINDOW | FLAG_BILLBOARD | FLAG_GLYPH)) != 0u) {
-    s.emis = emitted(m, p, s.ng, rd);
+    // Drops on the glass bend the view into the room a little.
+    let viewDir = normalize(rd + (s.n - s.gf) * 1.5);
+    s.emis = emitted(m, p, s.ng, viewDir);
   }
   return s;
+}
+
+// Rain on a vertical pane: running drops in staggered columns plus a static
+// sprinkle of small beads. Returns a tangent-space normal offset.
+fn rainOnGlass(p: vec3f, n: vec3f) -> vec2f {
+  let time = U.p1.w;
+  let strength = clamp(U.p5.z, 0.0, 1.5);
+  let u = select(p.x, p.z, abs(n.x) > 0.5);
+  let v = p.y;
+  var off = vec2f(0.0);
+  // Running drops.
+  for (var layer = 0; layer < 2; layer++) {
+    let colW = select(0.11, 0.17, layer == 1);
+    let col = floor(u / colW);
+    let seed = hash21(vec2f(col, f32(layer) * 7.3));
+    if (seed > 0.35 * strength + 0.25) { continue; }
+    let speed = 0.25 + 0.4 * hash21(vec2f(col, 2.0 + f32(layer)));
+    let cycle = 1.4 + 1.2 * hash21(vec2f(col, 5.0));
+    let dropV = fract(-time * speed / cycle + seed) * cycle;
+    let localV = fract(v / cycle) * cycle;
+    let dv = localV - dropV;
+    let du = fract(u / colW) * colW - colW * 0.5 - 0.015 * sin(v * 9.0 + seed * 20.0);
+    let r = vec2f(du / 0.02, dv / 0.03);
+    let d2 = dot(r, r);
+    if (d2 < 1.0) {
+      off += r * (1.0 - d2) * 0.9;
+    }
+    // Thin trail above the drop.
+    if (dv > 0.0 && dv < 0.35 && abs(du) < 0.006) { off.x += du / 0.006 * 0.2; }
+  }
+  // Static beads.
+  let cell = floor(vec2f(u, v) * 40.0);
+  let bead = hash21(cell + 11.0);
+  if (bead < 0.12 * strength) {
+    let c = (fract(vec2f(u, v) * 40.0) - 0.5 - (vec2f(hash21(cell), hash21(cell + 3.0)) - 0.5) * 0.5) / 0.22;
+    let d2 = dot(c, c);
+    if (d2 < 1.0) { off += c * (1.0 - d2) * 0.5; }
+  }
+  return off;
 }
 
 // ------------------------------------------------------------------ bsdf
@@ -826,6 +952,51 @@ fn neeFog(cell: u32, p: vec3f, rd: vec3f) -> vec3f {
   return ls.le * (ph / pdfSa) * w;
 }
 
+// ---- the drone's searchlight: an analytic spot light ----------------------
+
+struct SpotLight {
+  L: vec3f,     // direction from p toward the light
+  dist: f32,
+  irr: vec3f,   // incident radiance factor (intensity x cone / d^2), before visibility
+  ok: bool,
+};
+
+fn spotAt(p: vec3f) -> SpotLight {
+  var s: SpotLight;
+  s.ok = false;
+  if (U.s0.w <= 0.0) { return s; }
+  let d = U.s0.xyz - p;
+  let d2 = max(dot(d, d), 0.01);
+  s.dist = sqrt(d2);
+  s.L = d / s.dist;
+  if (s.dist > U.s2.y) { return s; }
+  let cone = smoothstep(U.s1.w, U.s2.x, dot(-s.L, U.s1.xyz));
+  if (cone <= 0.0) { return s; }
+  s.irr = vec3f(1.0, 0.97, 0.9) * (U.s0.w * cone / d2);
+  s.ok = true;
+  return s;
+}
+
+fn neeSpotSurface(s: Surf, l: Lobes, wo: vec3f) -> Nee {
+  var out: Nee;
+  let sp = spotAt(s.p);
+  if (!sp.ok) { return out; }
+  let cosS = dot(s.n, sp.L);
+  if (cosS <= 0.0 || dot(s.gf, sp.L) <= 0.0) { return out; }
+  if (occluded(offsetRay(s.p, s.gf), sp.L, sp.dist - 1e-2)) { return out; }
+  let ev = bsdfEval(s, l, wo, sp.L);
+  out.diff = sp.irr * ev.diff * cosS;
+  out.spec = sp.irr * ev.spec * cosS;
+  return out;
+}
+
+fn neeSpotFog(p: vec3f, rd: vec3f) -> vec3f {
+  let sp = spotAt(p);
+  if (!sp.ok) { return vec3f(0.0); }
+  if (occluded(p, sp.L, sp.dist - 1e-2)) { return vec3f(0.0); }
+  return sp.irr * phaseHg(dot(rd, sp.L));
+}
+
 fn insideFog(p: vec3f) -> bool {
   return abs(p.x) < 32.0 && p.z > -28.0 && p.z < 140.0 && p.y < 45.0;
 }
@@ -840,6 +1011,61 @@ fn sky(d: vec3f) -> vec3f {
 fn clampLum(c: vec3f, maxLum: f32) -> vec3f {
   let l = luminance(c);
   return select(c, c * (maxLum / l), l > maxLum);
+}
+
+// ---------------------------------------------------------------- probes
+
+// One shadowed light sample of the fluence (light from all directions) at p.
+fn fluenceSample(p: vec3f) -> vec3f {
+  let cell = cellOf(p);
+  var best: LightSample;
+  var wSum = 0.0;
+  var pHatBest = 0.0;
+  let m = 4u;
+  for (var k = 0u; k < m; k++) {
+    var c = sampleLight(cell);
+    let d = c.pos - p;
+    let d2 = max(dot(d, d), 0.05);
+    let L = d * inverseSqrt(d2);
+    let flags = u32(mats[c.mat].prm.z + 0.5);
+    if ((flags & (FLAG_WINDOW | FLAG_BILLBOARD | FLAG_GLYPH)) != 0u) { c.le = emitted(mats[c.mat], c.pos, c.n, L); }
+    let pHat = luminance(c.le) * abs(dot(c.n, L)) / d2;
+    let w = pHat / c.pdfA;
+    wSum += w;
+    if (w > 0.0 && rnd() * wSum < w) { best = c; pHatBest = pHat; }
+  }
+  if (pHatBest <= 0.0) { return vec3f(0.0); }
+  let d = best.pos - p;
+  let d2 = max(dot(d, d), 0.05);
+  let dist = sqrt(d2);
+  let L = d / dist;
+  if (occluded(p, L, dist - 2e-3)) { return vec3f(0.0); }
+  let pdfA = pHatBest * f32(m) / wSum;
+  var f = best.le * (abs(dot(best.n, L)) / d2) / pdfA;
+  // The searchlight is deterministic; add it directly.
+  let sp = spotAt(p);
+  if (sp.ok && !occluded(p, sp.L, sp.dist - 1e-2)) { f += sp.irr; }
+  return f;
+}
+
+@compute @workgroup_size(4, 4, 4)
+fn probes(@builtin(global_invocation_id) gid: vec3u) {
+  if (gid.x >= PROBE_DIMS.x || gid.y >= PROBE_DIMS.y || gid.z >= PROBE_DIMS.z) { return; }
+  let frame = u32(U.p2.z);
+  let idx = gid.x + gid.y * PROBE_DIMS.x + gid.z * PROBE_DIMS.x * PROBE_DIMS.y;
+  let prev = textureLoad(probeIn, vec3i(gid), 0);
+  // Refresh a quarter of the cells per frame.
+  if ((idx + frame) % 4u != 0u) {
+    textureStore(probeOut, vec3i(gid), prev);
+    return;
+  }
+  rngState = pcg(pcg(idx) ^ pcg(frame * 0x9E3779B9u + 101u));
+  let jitter = vec3f(rnd(), rnd(), rnd());
+  let p = PROBE_ORIGIN + (vec3f(gid) + jitter) * PROBE_CELL;
+  let est = clampLum(fluenceSample(p), 200.0);
+  let n = min(prev.a + 1.0, 96.0);
+  let avg = mix(prev.rgb, est, 1.0 / n);
+  textureStore(probeOut, vec3i(gid), vec4f(avg, n));
 }
 
 // ------------------------------------------------------------------ main
@@ -922,7 +1148,7 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
           T *= FOG_ALBEDO;
           let cell = cellOf(sp);
           if (haveLights) {
-            let c = T * neeFog(cell, sp, rd);
+            let c = T * (neeFog(cell, sp, rd) + neeSpotFog(sp, rd));
             if (chan == 1u) { Ls += c; } else { Ld += c; }
           }
           let nd = sampleHg(rd);
@@ -962,6 +1188,17 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     }
     if (s.kind == KIND_EMITTER) { break; }
 
+    if (s.kind == KIND_TRANSLUCENT) {
+      // Prop disc: attenuate by the blurred blade coverage and continue.
+      let m = mats[u32(tris[hit.tri].v0.w)];
+      let pl = droneToLocalDir(s.p - U.d0.xyz);
+      let cov = propCoverage(m, pl);
+      T *= 1.0 - cov * (1.0 - m.base.rgb * 0.4);
+      pathDist += hit.t;
+      ro = offsetRay(s.p, -s.gf);
+      continue;
+    }
+
     if (s.kind == KIND_HOLO) {
       // Translucent light: add its glow, keep going straight through.
       let hp = holoPattern(mats[u32(tris[hit.tri].v0.w)], s.p, s.ng);
@@ -999,7 +1236,10 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     let lb = lobes(s, wo);
     let cell = cellOf(s.p);
     if (haveLights) {
-      let nee = neeSurface(cell, s, lb, wo);
+      var nee = neeSurface(cell, s, lb, wo);
+      let spotNee = neeSpotSurface(s, lb, wo);
+      nee.diff += spotNee.diff;
+      nee.spec += spotNee.spec;
       if (chanSet) {
         let c = T * (nee.diff + nee.spec);
         if (chan == 1u) { Ls += c; } else { Ld += c; }

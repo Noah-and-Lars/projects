@@ -21,8 +21,10 @@ Open the printed URL, click the view, then walk with **W A S D**, run with
 the stats, **F2** cycles debug views (diffuse / albedo / normals / specular).
 
 URL parameters: `?preset=ultra`, `&scale=0.75`, `&spp=2`, `&bounces=6`,
-`&fog=2`, `&w=1280&h=720` (fixed canvas size), `&autostart=1` (skip the start
-screen).
+`&fog=2`, `&rain=1.5`, `&drops=30` (thousands of streaks), `&warm=20`
+(seconds of rain simulated before the first frame), `&lightning=0`,
+`&x=..&z=..&yaw=..&pitch=..` (start pose), `&w=1280&h=720` (fixed canvas
+size), `&autostart=1` (skip the start screen).
 
 ## Presets
 
@@ -52,6 +54,15 @@ stats overlay shows GPU time split into trace / denoise / post.
   resampled importance sampling in the shader, so nearby neon dominates.
 - `composite.wgsl`, `bloom.wgsl`, `display.wgsl` — HDR composite, bloom mip
   chain, Catmull-Rom upscale, ACES tone map.
+- `src/weather/water.ts` — shallow-water simulation over the street: rain
+  fills a depth layer that flows downhill into gutters and drains; a wave
+  layer carries raindrop and footstep ripples. The tracer reads it for
+  puddles and ripple normals.
+- `src/weather/rain.ts` — rain streaks, splashes and awning drips as GPU
+  particles, lit by an irradiance probe volume the tracer fills in
+  progressively, drawn after denoising with a depth test against the
+  G-buffer.
+- `src/weather/lightning.ts` — sky flashes.
 - `src/world/street.ts` — the procedural street (buildings, windows, neon
   signs, streetlights, props) built from boxes and quads.
 - `src/renderer/bvh.ts` — binned-SAH BVH builder.

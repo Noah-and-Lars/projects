@@ -220,6 +220,8 @@ export function buildStreet(seed = 1337): SceneData {
       if (rng() < 0.4) {
         const aw0 = facadeX, aw1 = facadeX + inward * 1.3;
         b.box([Math.min(aw0, aw1), 2.95, z + 0.5], [Math.max(aw0, aw1), 3.07, z + w - 0.8], mAwning);
+        // Rain runs off the awning's front edge.
+        b.dripEdges.push([[aw1, 2.93, z + 0.5], [aw1, 2.93, z + w - 0.8]]);
       }
       // A drain pipe running down the facade edge.
       if (rng() < 0.5) {
@@ -279,6 +281,7 @@ export function buildStreet(seed = 1337): SceneData {
     const mRail = b.material({ base: [0.25, 0.25, 0.27], metallic: 1, roughness: 0.4 });
     const mStrip = b.material({ emission: [3, 3.6, 4.5], kind: MatKind.Emitter });
     b.box([-S.sidewalkOuter, 7.0, z], [S.sidewalkOuter, 7.4, z + 3.0], mDeck);
+    b.dripEdges.push([[-S.sidewalkOuter, 6.98, z], [S.sidewalkOuter, 6.98, z]], [[-S.sidewalkOuter, 6.98, z + 3.0], [S.sidewalkOuter, 6.98, z + 3.0]]);
     for (const zz of [z + 0.05, z + 2.85]) {
       b.box([-S.sidewalkOuter, 7.4, zz], [S.sidewalkOuter, 8.5, zz + 0.1], mRail, Face.All & ~Face.NY);
     }

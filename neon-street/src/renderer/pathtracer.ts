@@ -15,6 +15,7 @@ import type { BvhData } from './bvh';
 import type { LightGrid } from './lightgrid';
 import type { RenderSettings } from './presets';
 import type { TextureSet } from './textures';
+import type { RainSystem } from '../weather/rain';
 import commonWgsl from './shaders/common.wgsl?raw';
 import traceWgsl from './shaders/trace.wgsl?raw';
 import temporalWgsl from './shaders/temporal.wgsl?raw';
@@ -45,8 +46,34 @@ export interface RenderStats {
 }
 
 const MAX_ATROUS = 5;
-const UNIFORM_FLOATS = 52;
+const UNIFORM_FLOATS = 96;
 const BLOOM_LEVELS = 4;
+
+/** Drone transform and searchlight for this frame. */
+export interface DroneUniforms {
+  pos: Vec3;
+  rot: number[];
+  boundsMin: Vec3;
+  boundsMax: Vec3;
+  lampPos: Vec3;
+  lampDir: Vec3;
+  lampIntensity: number;
+  cosInner: number;
+  cosOuter: number;
+  range: number;
+}
+
+/** Per-frame weather inputs the renderer forwards to the shaders. */
+export interface WeatherState {
+  /** 0..1 how wet every surface is. */
+  wetness: number;
+  /** Rain intensity (drives drops on glass). */
+  rain: number;
+  /** Sky brightness multiplier (lightning). */
+  sky: number;
+  /** Minimum temporal blend factor this frame (0 = normal, 1 = full reset). */
+  historyBoost: number;
+}
 
 export class PathTracer {
   private readonly device: GPUDevice;
@@ -68,6 +95,12 @@ export class PathTracer {
   private readonly sceneBG: GPUBindGroup;
 
   private readonly tracePipe: GPUComputePipeline;
+  private readonly probePipe: GPUComputePipeline;
+  private readonly probeBGL: GPUBindGroupLayout;
+  private readonly probeTex: [GPUTexture, GPUTexture];
+  private readonly probeBGs: [GPUBindGroup, GPUBindGroup];
+  /** Optional rain system drawn into the HDR image after compositing. */
+  rain: RainSystem | null = null;
   private readonly temporalPipe: GPUComputePipeline;
   private readonly atrousPipe: GPUComputePipeline;
   private readonly compositePipe: GPUComputePipeline;
@@ -92,7 +125,21 @@ export class PathTracer {
 
   readonly stats: RenderStats;
 
-  constructor(private readonly gpu: Gpu, scene: SceneData, bvh: BvhData, grid: LightGrid, textures: TextureSet) {
+  private readonly waterExtent: [number, number, number, number];
+  weather: WeatherState = { wetness: 1, rain: 1, sky: 1, historyBoost: 0 };
+  /** Set each frame by the drone flight; null hides the drone. */
+  drone: DroneUniforms | null = null;
+  private readonly droneRoot: number;
+  private readonly droneTriStart: number;
+
+  constructor(
+    private readonly gpu: Gpu, scene: SceneData, bvh: BvhData, grid: LightGrid, textures: TextureSet,
+    water: { surface: GPUTexture; sampler: GPUSampler; extent: [number, number, number, number] },
+    drone: { root: number; triStart: number } = { root: -1, triStart: 1e9 },
+  ) {
+    this.waterExtent = water.extent;
+    this.droneRoot = drone.root;
+    this.droneTriStart = drone.triStart;
     const device = gpu.device;
     this.device = device;
     this.grid = grid;
@@ -139,7 +186,7 @@ export class PathTracer {
     const smp = (binding: number, vis = C): GPUBindGroupLayoutEntry => ({ binding, visibility: vis, sampler: { type: 'filtering' } });
 
     const texArr = (binding: number): GPUBindGroupLayoutEntry => ({ binding, visibility: C, texture: { sampleType: 'float', viewDimension: '2d-array' } });
-    this.sceneBGL = device.createBindGroupLayout({ label: 'scene', entries: [uni(0), ro(1), ro(2), ro(3), ro(4), ro(5), ro(6), smp(7), texArr(8), texArr(9)] });
+    this.sceneBGL = device.createBindGroupLayout({ label: 'scene', entries: [uni(0), ro(1), ro(2), ro(3), ro(4), ro(5), ro(6), smp(7), texArr(8), texArr(9), tex(10), smp(11)] });
     // WebGPU allows only 4 storage textures per stage, hence the packed outputs.
     this.traceTexBGL = device.createBindGroupLayout({
       label: 'trace textures',
@@ -173,6 +220,8 @@ export class PathTracer {
         { binding: 7, resource: textures.sampler },
         { binding: 8, resource: textures.albedo.createView({ dimension: '2d-array' }) },
         { binding: 9, resource: textures.normal.createView({ dimension: '2d-array' }) },
+        { binding: 10, resource: water.surface.createView() },
+        { binding: 11, resource: water.sampler },
       ],
     });
 
@@ -184,7 +233,39 @@ export class PathTracer {
         layout: device.createPipelineLayout({ bindGroupLayouts: layouts }),
         compute: { module: module(label, code), entryPoint: 'main' },
       });
-    this.tracePipe = compute('trace', traceWgsl, [this.sceneBGL, this.traceTexBGL]);
+    const traceModule = module('trace', traceWgsl);
+    this.tracePipe = device.createComputePipeline({
+      label: 'trace',
+      layout: device.createPipelineLayout({ bindGroupLayouts: [this.sceneBGL, this.traceTexBGL] }),
+      compute: { module: traceModule, entryPoint: 'main' },
+    });
+    // Irradiance probes: same module, second entry point, 3D ping-pong textures.
+    this.probeBGL = device.createBindGroupLayout({
+      label: 'probes',
+      entries: [
+        { binding: 0, visibility: C, texture: { sampleType: 'float', viewDimension: '3d' } },
+        { binding: 1, visibility: C, storageTexture: { access: 'write-only', format: 'rgba16float', viewDimension: '3d' } },
+      ],
+    });
+    const emptyBGL = device.createBindGroupLayout({ label: 'empty', entries: [] });
+    this.probePipe = device.createComputePipeline({
+      label: 'probes',
+      layout: device.createPipelineLayout({ bindGroupLayouts: [this.sceneBGL, emptyBGL, this.probeBGL] }),
+      compute: { module: traceModule, entryPoint: 'probes' },
+    });
+    const mkProbe = (label: string) => device.createTexture({
+      label, size: [32, 24, 300], dimension: '3d', format: 'rgba16float',
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
+    });
+    this.probeTex = [mkProbe('probes 0'), mkProbe('probes 1')];
+    const probeBG = (i: number) => device.createBindGroup({
+      layout: this.probeBGL,
+      entries: [
+        { binding: 0, resource: this.probeTex[i ^ 1].createView({ dimension: '3d' }) },
+        { binding: 1, resource: this.probeTex[i].createView({ dimension: '3d' }) },
+      ],
+    });
+    this.probeBGs = [probeBG(0), probeBG(1)];
     this.temporalPipe = compute('temporal', temporalWgsl, [this.temporalBGL]);
     this.atrousPipe = compute('atrous', atrousWgsl, [this.atrousBGL]);
     this.compositePipe = compute('composite', compositeWgsl, [this.compositeBGL]);
@@ -233,9 +314,10 @@ export class PathTracer {
     this.tex = {};
     this.bgCache.clear();
     const usage = GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING;
-    const mk = (name: string, format: GPUTextureFormat, tw = w, th = h) => {
-      this.tex[name] = this.device.createTexture({ label: name, size: [tw, th], format, usage });
+    const mk = (name: string, format: GPUTextureFormat, tw = w, th = h, extraUsage = 0) => {
+      this.tex[name] = this.device.createTexture({ label: name, size: [tw, th], format, usage: usage | extraUsage });
     };
+    this.rain?.invalidate();
     for (const i of [0, 1]) {
       mk(`rad${i}`, 'rgba32uint');
       mk(`pos${i}`, 'rgba32float');
@@ -247,7 +329,7 @@ export class PathTracer {
     mk('alb', 'rgba16float');
     mk('emit', 'rgba16float');
     for (const n of ['tmpA', 'tmpB', 'tmpC', 'tmpD']) mk(n, 'rgba16float');
-    mk('hdr', 'rgba16float');
+    mk('hdr', 'rgba16float', w, h, GPUTextureUsage.RENDER_ATTACHMENT);
 
     // Bloom chain: half, quarter, eighth, sixteenth.
     this.bloomSizes = [];
@@ -313,9 +395,27 @@ export class PathTracer {
     put(28, prev.up, 0);
     u[32] = this.renderW; u[33] = this.renderH; u[34] = 1 / this.renderW; u[35] = 1 / this.renderH;
     u[36] = settings.maxBounces; u[37] = sampleIndex; u[38] = settings.fogDensity; u[39] = settings.fogMode;
-    u[40] = this.stats.lightCount; u[41] = settings.maxHistory; u[42] = this.resetPending ? 1 : 0; u[43] = time;
-    u[44] = 40; u[45] = 1.0; u[46] = this.frame; u[47] = settings.spp;
+    const w = this.weather;
+    u[40] = this.stats.lightCount; u[41] = settings.maxHistory; u[42] = this.resetPending ? 1 : Math.min(0.98, w.historyBoost); u[43] = time;
+    u[44] = 40; u[45] = w.sky; u[46] = this.frame; u[47] = settings.spp;
     u[48] = settings.lightSamples; u[49] = this.grid.z0; u[50] = this.grid.cellSize; u[51] = this.grid.cellCount;
+    u[52] = this.waterExtent[0]; u[53] = this.waterExtent[1]; u[54] = this.waterExtent[2]; u[55] = this.waterExtent[3];
+    u[56] = w.wetness; u[57] = w.historyBoost; u[58] = w.rain; u[59] = this.droneTriStart;
+    const d = this.drone;
+    if (d && this.droneRoot >= 0) {
+      put(60, d.pos, this.droneRoot);
+      u[64] = d.rot[0]; u[65] = d.rot[1]; u[66] = d.rot[2]; u[67] = 0;
+      u[68] = d.rot[3]; u[69] = d.rot[4]; u[70] = d.rot[5]; u[71] = 0;
+      u[72] = d.rot[6]; u[73] = d.rot[7]; u[74] = d.rot[8]; u[75] = 0;
+      put(76, d.boundsMin, 0);
+      put(80, d.boundsMax, 0);
+      put(84, d.lampPos, d.lampIntensity);
+      put(88, d.lampDir, d.cosOuter);
+      u[92] = d.cosInner; u[93] = d.range; u[94] = 0; u[95] = 0;
+    } else {
+      u[63] = -1; // no drone
+      u[87] = 0;  // no searchlight
+    }
     this.device.queue.writeBuffer(this.uniformBuf, 0, u.buffer, 0, u.byteLength);
   }
 
@@ -357,6 +457,19 @@ export class PathTracer {
     const gy = Math.ceil(this.renderH / 8);
     const spp = Math.max(1, Math.round(settings.spp));
     const qs = this.querySet;
+
+    // ---- irradiance probes (a quarter of the volume per frame)
+    {
+      this.writeUniforms(cam, settings, 0, time);
+      const enc = device.createCommandEncoder({ label: 'probes' });
+      const pass = enc.beginComputePass({ label: 'probes' });
+      pass.setPipeline(this.probePipe);
+      pass.setBindGroup(0, this.sceneBG);
+      pass.setBindGroup(2, this.probeBGs[cur]);
+      pass.dispatchWorkgroups(8, 6, 75);
+      pass.end();
+      device.queue.submit([enc.finish()]);
+    }
 
     // ---- trace: one submit per sample so a heavy preset can't stall the GPU
     // watchdog with a single giant dispatch.
@@ -424,6 +537,9 @@ export class PathTracer {
       ]);
       this.computePass(enc, 'composite', this.compositePipe, [bg], gx, gy, qs ? { querySet: qs, endOfPassWriteIndex: 2 } : undefined);
     }
+
+    // ---- rain streaks and splashes, lit by the probes, depth-tested against the G-buffer
+    this.rain?.draw(enc, this.view('hdr'), `rain${cur}`, this.uniformBuf, this.view(`pos${cur}`), this.probeTex[cur].createView({ dimension: '3d' }));
 
     // ---- bloom
     {

@@ -13,11 +13,31 @@ struct Uniforms {
   p0: vec4f,        // maxBounces, sampleIndex, fogDensity, fogMode
   p1: vec4f,        // lightCount, maxHistory, resetHistory, time
   p2: vec4f,        // fireflyClamp, skyIntensity, frame, spp
-  p3: vec4f,        // lightCandidates, 0, 0, 0
+  p3: vec4f,        // lightCandidates, light grid z0, cell size, cell count
+  p4: vec4f,        // water grid origin xz, size xz (metres)
+  p5: vec4f,        // rain wetness (0..1), history boost, rain intensity, drone tri start
+  d0: vec4f,        // drone position, w = BVH root node (< 0: no drone)
+  d1: vec4f,        // drone rotation rows (object -> world)
+  d2: vec4f,
+  d3: vec4f,
+  d4: vec4f,        // drone world bounds min
+  d5: vec4f,        // drone world bounds max
+  s0: vec4f,        // searchlight position, w = intensity
+  s1: vec4f,        // searchlight direction, w = cos(outer cone)
+  s2: vec4f,        // cos(inner cone), range, 0, 0
 };
 
 const PI: f32 = 3.14159265358979;
 const INV_PI: f32 = 0.31830988618;
+
+// Irradiance probe volume over the street: half-metre cells.
+const PROBE_ORIGIN: vec3f = vec3f(-8.0, 0.0, -20.0);
+const PROBE_CELL: f32 = 0.5;
+const PROBE_DIMS: vec3u = vec3u(32u, 24u, 300u);
+
+fn probeUvw(p: vec3f) -> vec3f {
+  return (p - PROBE_ORIGIN) / (vec3f(PROBE_DIMS) * PROBE_CELL);
+}
 
 fn luminance(c: vec3f) -> f32 {
   return dot(c, vec3f(0.2126, 0.7152, 0.0722));

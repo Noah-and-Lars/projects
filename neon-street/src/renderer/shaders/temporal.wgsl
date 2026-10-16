@@ -102,7 +102,10 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   let rough = textureLoad(curAlb, pix, 0).a;
   let emit4 = textureLoad(curEmit, pix, 0);
   let ld = luminance(cur.diff);
-  let reset = U.p1.z > 0.5;
+  // p1.z is 1 for a full history reset; smaller values raise the blend
+  // factor temporarily (lightning flashes) without discarding history.
+  let reset = U.p1.z > 0.99;
+  let boost = select(0.0, U.p1.z, U.p1.z < 0.99);
   let maxHist = max(U.p1.y, 1.0);
 
   // ---- diffuse + emission: surface reprojection
@@ -127,7 +130,7 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     }
   }
   let nD = min(dLen + 1.0, maxHist);
-  let aD = 1.0 / nD;
+  let aD = max(1.0 / nD, boost);
   let diff = mix(dHist, cur.diff, aD);
   let m1 = mix(mom.x, ld, aD);
   let m2 = mix(mom.y, ld * ld, aD);
@@ -161,7 +164,7 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   // the approximate reprojection cannot smear them.
   let specMax = mix(maxHist, min(maxHist, 10.0), smoothstep(0.1, 0.5, rough));
   let nS = min(sLen + 1.0, specMax);
-  let aS = 1.0 / nS;
+  let aS = max(1.0 / nS, boost);
   let spec = mix(sHist, cur.spec, aS);
 
   // ---- variance: spatial estimate for young history and for specular

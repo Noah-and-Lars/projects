@@ -13,6 +13,31 @@ export interface BvhData {
   triIdx: Uint32Array;
 }
 
+/**
+ * Append a second BVH (built over triangles that start at `triOffset` in the
+ * combined triangle list) after the first. Returns the combined data and the
+ * node index of the appended root.
+ */
+export function appendBvh(a: BvhData, b: BvhData, triOffset: number): { bvh: BvhData; root: number } {
+  const nodesA = new Uint32Array(a.nodes);
+  const nodesB = new Uint32Array(b.nodes);
+  const out = new Uint32Array(nodesA.length + nodesB.length);
+  out.set(nodesA, 0);
+  const triIdxOffset = a.triIdx.length;
+  for (let i = 0; i < b.nodeCount; i++) {
+    const src = i * 8;
+    const dst = nodesA.length + src;
+    for (let k = 0; k < 8; k++) out[dst + k] = nodesB[src + k];
+    const count = nodesB[src + 7];
+    // Leaves point into triIdx, interior nodes at child nodes; both shift.
+    out[dst + 3] = count > 0 ? nodesB[src + 3] + triIdxOffset : nodesB[src + 3] + a.nodeCount;
+  }
+  const triIdx = new Uint32Array(a.triIdx.length + b.triIdx.length);
+  triIdx.set(a.triIdx, 0);
+  for (let i = 0; i < b.triIdx.length; i++) triIdx[a.triIdx.length + i] = b.triIdx[i] + triOffset;
+  return { bvh: { nodes: out.buffer, nodeCount: a.nodeCount + b.nodeCount, triIdx }, root: a.nodeCount };
+}
+
 export function buildBvh(tris: Float32Array, triCount: number): BvhData {
   // Precompute centroids and bounds per triangle.
   const cmin = new Float32Array(triCount * 3);

@@ -3,14 +3,20 @@
 import { GpuUnavailableError, initGpu } from './core/gpu';
 import { Input } from './core/input';
 import { startLoop } from './core/loop';
-import { buildBvh } from './renderer/bvh';
+import { appendBvh, buildBvh } from './renderer/bvh';
 import { buildLightGrid } from './renderer/lightgrid';
 import { PathTracer } from './renderer/pathtracer';
+import { buildDroneMesh } from './drone/droneModel';
+import { DroneFlight, transform } from './drone/droneFlight';
+import { mergeScenes } from './world/geometry';
 import { PRESETS, type PresetName, presetFromName, type RenderSettings } from './renderer/presets';
 import { loadTextureSet } from './renderer/textures';
 import { PlayerController } from './player/controller';
 import { Hud } from './ui/fpsCounter';
 import { SettingsMenu } from './ui/settings';
+import { WaterSim } from './weather/water';
+import { RainSystem } from './weather/rain';
+import { Lightning } from './weather/lightning';
 import { STREET, buildStreet } from './world/street';
 
 interface NeonDebug {
@@ -68,10 +74,26 @@ async function boot(): Promise<void> {
   statusEl.textContent = 'Loading textures…';
   const textures = await loadTextureSet(device, 'textures/', (d, t) => { statusEl.textContent = `Loading textures… ${d}/${t}`; });
   statusEl.textContent = 'Building the street…';
-  const scene = buildStreet();
-  const bvh = buildBvh(scene.tris, scene.triCount);
+  const street = buildStreet();
+  const droneMesh = buildDroneMesh();
+  // The drone rides along as a second BVH after the street's.
+  const { scene, triStart: droneTriStart } = mergeScenes(street, droneMesh.scene);
+  const streetBvh = buildBvh(street.tris, street.triCount);
+  const droneBvh = buildBvh(droneMesh.scene.tris, droneMesh.scene.triCount);
+  const { bvh, root: droneRoot } = appendBvh(streetBvh, droneBvh, droneTriStart);
   const grid = buildLightGrid(scene, STREET.zStart - 30, STREET.zEnd + 30, 6);
-  const renderer = new PathTracer(gpu, scene, bvh, grid, textures);
+  const water = new WaterSim(device);
+  const renderer = new PathTracer(gpu, scene, bvh, grid, textures, water, { root: droneRoot, triStart: droneTriStart });
+  const droneFlight = new DroneFlight(droneMesh.lamp, params.get('drone') !== '0');
+  const droneCorners: [number, number, number][] = [];
+  for (const x of [-0.86, 0.86]) for (const y of [-0.3, 0.5]) for (const z of [-0.68, 0.68]) droneCorners.push([x, y, z]);
+  // Let it rain for a while before the first frame so the street starts wet.
+  const warmSeconds = parseFloat(params.get('warm') ?? '') || 12;
+  statusEl.textContent = 'Filling the puddles…';
+  water.warm(warmSeconds, 0.0004);
+  const lightning = new Lightning(params.get('lightning') !== '0');
+  const rainSystem = new RainSystem(device, water.ground, scene.dripEdges, 'rgba16float');
+  renderer.rain = rainSystem;
   const displayMode = parseInt(params.get('mode') ?? '0', 10);
   if (Number.isFinite(displayMode)) renderer.displayMode = displayMode;
 
@@ -91,6 +113,8 @@ async function boot(): Promise<void> {
   override('atrousIterations', 'denoise');
   override('bloom', 'bloom');
   override('exposure', 'exposure');
+  override('rain', 'rain');
+  override('rainDrops', 'drops');
 
   const input = new Input(canvas);
   const controller = new PlayerController(scene, input);
@@ -173,7 +197,39 @@ async function boot(): Promise<void> {
     const cpuMs = frameStart - lastFrameStart;
     lastFrameStart = frameStart;
     controller.update(dt, input.locked);
-    renderer.render(controller.camera(), settings, time);
+    // Weather: water flows every frame, footsteps ripple it, lightning flashes.
+    const rain = Math.max(0, settings.rain);
+    const impulses = controller.consumeFootsteps().map((p) => ({ x: p[0], z: p[2], radius: 0.32, strength: 0.006 }));
+    // Drone: fly, then feed its transform, searchlight and downwash to everything.
+    const ds = droneFlight.update(dt, time);
+    if (ds.active) {
+      const bmin: [number, number, number] = [Infinity, Infinity, Infinity];
+      const bmax: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+      for (const c of droneCorners) {
+        const w = transform(ds.rot, c, ds.pos);
+        for (let i = 0; i < 3; i++) { bmin[i] = Math.min(bmin[i], w[i]); bmax[i] = Math.max(bmax[i], w[i]); }
+      }
+      renderer.drone = {
+        pos: ds.pos, rot: ds.rot, boundsMin: bmin, boundsMax: bmax,
+        lampPos: ds.lampPos, lampDir: ds.lampDir, lampIntensity: 140,
+        cosInner: Math.cos((7 * Math.PI) / 180), cosOuter: Math.cos((13 * Math.PI) / 180), range: 45,
+      };
+      rainSystem.drone = { pos: ds.pos, strength: ds.downwash };
+      // Choppy water under the rotors.
+      for (let i = 0; i < 3; i++) {
+        const a = Math.random() * Math.PI * 2, r = Math.random() * 1.5;
+        impulses.push({ x: ds.ground[0] + Math.cos(a) * r, z: ds.ground[2] + Math.sin(a) * r, radius: 0.35, strength: 0.0025 * ds.downwash });
+      }
+    } else {
+      renderer.drone = null;
+      rainSystem.drone = null;
+    }
+    water.step(dt, time, 0.0004 * rain, impulses);
+    const cam = controller.camera();
+    rainSystem.update(dt, time, cam.pos, settings.rainDrops * 1000, rain);
+    const flash = lightning.update(dt, time);
+    renderer.weather = { wetness: Math.min(1, rain), rain, sky: flash.sky, historyBoost: flash.historyBoost };
+    renderer.render(cam, settings, time);
     hud.update(dt, cpuMs, {
       stats: renderer.stats,
       settings,
