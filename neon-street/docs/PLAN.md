@@ -16,11 +16,12 @@ Ultra ~20–40 FPS, Melt is a slideshow on purpose.
    estimation with resampled light candidates, SVGF-style temporal +
    a-trous denoiser, procedural street, first-person walking with
    collision, Low..Melt presets, stats overlay, headless check script.
-2. **Denoiser, upscaling and performance** — next
-   Better reprojection (colour clamping), a proper upscaler instead of
-   bilinear, bloom and lens effects, GPU timing per pass, tune presets on
-   the 3060 Ti.
-3. **The street**
+2. **Denoiser, upscaling and performance** — DONE
+   Diffuse/specular split with virtual-point reprojection for sharp
+   reflections in motion, light grid along the street, bloom, bicubic
+   upscale with sharpening, per-pass GPU timing, presets retuned for a
+   3060 Ti (measured 18 fps on the old Ultra).
+3. **The street** — next
    Real textures (Poly Haven / ambientCG, CC0): wet asphalt, brick, concrete,
    metal. Fake interiors behind see-through reflective windows, a few real
    shop interiors at street level. Holographic ads, animated billboards,

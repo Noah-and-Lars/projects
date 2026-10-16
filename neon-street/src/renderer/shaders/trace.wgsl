@@ -1,8 +1,11 @@
 // Path tracing kernel: one light path per pixel per dispatch.
 //
-// Output `outRad` is the running sum over this frame's samples, divided by
-// the primary surface albedo (the denoiser works on demodulated radiance and
-// the display pass multiplies the albedo back in).
+// Radiance is split into a diffuse and a specular channel, decided by the
+// first scattering event, so the denoiser can treat reflections differently
+// (they move with the reflected object, not with the surface). Both channels
+// are summed over this frame's samples into one packed rgba32uint texture.
+// The diffuse channel is divided by the primary diffuse albedo; emission seen
+// directly by the camera goes to its own texture and bypasses the denoiser.
 
 struct Tri {
   v0: vec4f, // xyz, w = material id
@@ -31,20 +34,20 @@ struct Material {
 @group(0) @binding(3) var<storage, read> triIdx: array<u32>;
 @group(0) @binding(4) var<storage, read> mats: array<Material>;
 @group(0) @binding(5) var<storage, read> lightTris: array<u32>;
-@group(0) @binding(6) var<storage, read> lightCdf: array<f32>;
+@group(0) @binding(6) var<storage, read> gridCdf: array<f32>; // per-cell light CDFs
 
-@group(1) @binding(0) var accumIn: texture_2d<f32>;
-@group(1) @binding(1) var outRad: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(0) var accumIn: texture_2d<u32>;
+@group(1) @binding(1) var outRad: texture_storage_2d<rgba32uint, write>;  // packed diff + spec sums
 @group(1) @binding(2) var outPos: texture_storage_2d<rgba32float, write>; // xyz, w = packed normal
-@group(1) @binding(3) var outAlb: texture_storage_2d<rgba16float, write>; // rgb albedo, a = roughness
-@group(1) @binding(4) var outEmit: texture_storage_2d<rgba16float, write>; // directly visible emission
+@group(1) @binding(3) var outAlb: texture_storage_2d<rgba16float, write>; // rgb diffuse albedo, a = roughness
+@group(1) @binding(4) var outEmit: texture_storage_2d<rgba16float, write>; // rgb direct emission, a = reflection distance
 
 const NO_HIT: u32 = 0xffffffffu;
 const T_MAX: f32 = 1e30;
 const FOG_FAR: f32 = 400.0;
 const FOG_ALBEDO: f32 = 0.85;
-const SKY_DIST: f32 = 1000.0;
 const FOG_G: f32 = 0.55;
+const SKY_DIST: f32 = 1000.0;
 const KIND_OPAQUE: u32 = 0u;
 const KIND_GLASS: u32 = 1u;
 const KIND_EMITTER: u32 = 2u;
@@ -367,11 +370,18 @@ fn lobes(s: Surf, wo: vec3f) -> Lobes {
   return l;
 }
 
-// Returns rgb = f (BSDF value), a = pdf of sampling wi.
-fn bsdfEval(s: Surf, l: Lobes, wo: vec3f, wi: vec3f) -> vec4f {
+struct Eval {
+  diff: vec3f,
+  spec: vec3f,
+  pdfD: f32, // pdf of the cosine lobe
+  pdfS: f32, // pdf of the GGX lobe
+};
+
+fn bsdfEval(s: Surf, l: Lobes, wo: vec3f, wi: vec3f) -> Eval {
+  var e: Eval;
   let ndl = dot(s.n, wi);
   let ndv = dot(s.n, wo);
-  if (ndl <= 0.0 || ndv <= 0.0) { return vec4f(0.0); }
+  if (ndl <= 0.0 || ndv <= 0.0) { return e; }
   let h = normalize(wo + wi);
   let ndh = max(dot(s.n, h), 0.0);
   let vdh = max(dot(wo, h), 0.0);
@@ -380,21 +390,24 @@ fn bsdfEval(s: Surf, l: Lobes, wo: vec3f, wi: vec3f) -> vec4f {
   let D = dGgx(a2, ndh);
   let g1v = g1Smith(a2, ndv);
   let G = g1v * g1Smith(a2, ndl);
-  let spec = F * (D * G / (4.0 * ndv * ndl + 1e-6));
-  let diff = l.kd * INV_PI;
-  let pdfSpec = D * g1v / (4.0 * ndv + 1e-6);
-  let pdf = l.pSpec * pdfSpec + (1.0 - l.pSpec) * ndl * INV_PI;
-  return vec4f(spec + diff, pdf);
+  e.spec = F * (D * G / (4.0 * ndv * ndl + 1e-6));
+  e.diff = l.kd * INV_PI;
+  e.pdfS = D * g1v / (4.0 * ndv + 1e-6);
+  e.pdfD = ndl * INV_PI;
+  return e;
 }
 
-fn sampleBsdf(s: Surf, l: Lobes, wo: vec3f) -> vec3f {
+// Returns the sampled direction; `spec` reports which lobe produced it.
+fn sampleBsdf(s: Surf, l: Lobes, wo: vec3f, spec: ptr<function, bool>) -> vec3f {
   let frame = tangentFrame(s.n);
   if (rnd() < l.pSpec) {
+    *spec = true;
     let woL = transpose(frame) * wo;
     let hL = sampleVndf(woL, l.alpha, rnd(), rnd());
     let h = frame * hL;
     return reflect(-wo, h);
   }
+  *spec = false;
   let u1 = rnd();
   let u2 = rnd();
   let r = sqrt(u1);
@@ -409,38 +422,44 @@ fn offsetRay(p: vec3f, n: vec3f) -> vec3f {
 
 // ------------------------------------------------------------- lighting
 
-struct LightSample {
-  pos: vec3f,
-  n: vec3f,
-  le: vec3f,
-  pdfA: f32, // probability density per unit area, including light selection
-  ok: bool,
-};
+fn lightCount() -> u32 { return u32(U.p1.x); }
 
-fn pickLight() -> u32 {
-  let count = u32(U.p1.x);
+fn cellOf(p: vec3f) -> u32 {
+  let cells = max(i32(U.p3.w), 1);
+  let c = i32(floor((p.z - U.p3.y) / max(U.p3.z, 1e-3)));
+  return u32(clamp(c, 0, cells - 1));
+}
+
+fn pickLight(cell: u32) -> u32 {
+  let count = lightCount();
+  let base = cell * count;
   let u = rnd();
   var lo = 0u;
   var hi = count - 1u;
   for (var it = 0u; it < 24u; it++) {
     if (lo >= hi) { break; }
     let mid = (lo + hi) / 2u;
-    if (lightCdf[mid] < u) { lo = mid + 1u; } else { hi = mid; }
+    if (gridCdf[base + mid] < u) { lo = mid + 1u; } else { hi = mid; }
   }
   return lo;
 }
 
-fn lightProb(li: u32) -> f32 {
-  let prev = select(lightCdf[li - 1u], 0.0, li == 0u);
-  return max(lightCdf[li] - prev, 1e-8);
+fn lightProb(cell: u32, li: u32) -> f32 {
+  let base = cell * lightCount();
+  let prev = select(gridCdf[base + li - 1u], 0.0, li == 0u);
+  return max(gridCdf[base + li] - prev, 1e-8);
 }
 
-fn sampleLight() -> LightSample {
+struct LightSample {
+  pos: vec3f,
+  n: vec3f,
+  le: vec3f,
+  pdfA: f32, // probability density per unit area, including light selection
+};
+
+fn sampleLight(cell: u32) -> LightSample {
   var ls: LightSample;
-  ls.ok = false;
-  let count = u32(U.p1.x);
-  if (count == 0u) { return ls; }
-  let li = pickLight();
+  let li = pickLight(cell);
   let tr = tris[lightTris[li]];
   let r1 = rnd();
   let r2 = rnd();
@@ -453,64 +472,8 @@ fn sampleLight() -> LightSample {
   let m = mats[u32(tr.v0.w)];
   ls.le = m.emis.rgb;
   if ((u32(m.prm.z + 0.5) & FLAG_WINDOW) != 0u) { ls.le *= windowPattern(m, ls.pos, ls.n); }
-  ls.pdfA = lightProb(li) / max(tr.v2.w, 1e-6);
-  ls.ok = true;
+  ls.pdfA = lightProb(cell, li) / max(tr.v2.w, 1e-6);
   return ls;
-}
-
-// Resampled importance sampling: draw a few candidates from the power CDF,
-// keep one in proportion to its estimated (unshadowed) contribution here.
-// With ~1000 lights along the street this is what makes nearby neon win.
-struct Reservoir {
-  ls: LightSample,
-  wSum: f32,
-  pHat: f32,
-};
-
-fn risPick(p: vec3f, n: vec3f, useCos: bool, rd: vec3f) -> Reservoir {
-  var r: Reservoir;
-  r.wSum = 0.0;
-  r.pHat = 0.0;
-  r.ls.ok = false;
-  let m = max(u32(U.p3.x + 0.5), 1u);
-  for (var k = 0u; k < m; k++) {
-    let c = sampleLight();
-    if (!c.ok) { break; }
-    let d = c.pos - p;
-    let d2 = max(dot(d, d), 1e-3);
-    let L = d * inverseSqrt(d2);
-    let cosL = abs(dot(c.n, L));
-    var geom = cosL / d2;
-    if (useCos) { geom *= max(dot(n, L), 0.0); } else { geom *= phaseHg(dot(rd, L)); }
-    let pHat = luminance(c.le) * geom;
-    let w = pHat / c.pdfA;
-    r.wSum += w;
-    if (w > 0.0 && rnd() * r.wSum < w) {
-      r.ls = c;
-      r.pHat = pHat;
-    }
-  }
-  // Effective area pdf of the chosen light under RIS, used for MIS.
-  if (r.pHat > 0.0) { r.ls.pdfA = r.pHat * f32(m) / r.wSum; }
-  return r;
-}
-
-fn neeSurface(s: Surf, l: Lobes, wo: vec3f) -> vec3f {
-  let r = risPick(s.p, s.n, true, vec3f(0.0));
-  if (!r.ls.ok || r.pHat <= 0.0) { return vec3f(0.0); }
-  let ls = r.ls;
-  let d = ls.pos - s.p;
-  let d2 = dot(d, d);
-  let dist = sqrt(d2);
-  let L = d / dist;
-  let cosS = dot(s.n, L);
-  let cosL = abs(dot(ls.n, L));
-  if (cosS <= 0.0 || cosL < 1e-4) { return vec3f(0.0); }
-  if (occluded(offsetRay(s.p, s.n), L, dist - 2e-3)) { return vec3f(0.0); }
-  let pdfSa = ls.pdfA * d2 / cosL;
-  let fe = bsdfEval(s, l, wo, L);
-  let w = pdfSa * pdfSa / (pdfSa * pdfSa + fe.a * fe.a);
-  return ls.le * fe.rgb * (cosS / pdfSa) * w;
 }
 
 fn phaseHg(cosT: f32) -> f32 {
@@ -531,9 +494,74 @@ fn sampleHg(rd: vec3f) -> vec3f {
   return normalize(frame * vec3f(sinT * cos(phi), sinT * sin(phi), cosT));
 }
 
-fn neeFog(p: vec3f, rd: vec3f) -> vec3f {
-  let r = risPick(p, vec3f(0.0), false, rd);
-  if (!r.ls.ok || r.pHat <= 0.0) { return vec3f(0.0); }
+// Resampled importance sampling: draw a few candidates from the cell's CDF,
+// keep one in proportion to its estimated (unshadowed) contribution here.
+struct Reservoir {
+  ls: LightSample,
+  wSum: f32,
+  pHat: f32,
+};
+
+fn risPick(cell: u32, p: vec3f, n: vec3f, useCos: bool, rd: vec3f) -> Reservoir {
+  var r: Reservoir;
+  r.wSum = 0.0;
+  r.pHat = 0.0;
+  let m = max(u32(U.p3.x + 0.5), 1u);
+  for (var k = 0u; k < m; k++) {
+    let c = sampleLight(cell);
+    let d = c.pos - p;
+    let d2 = max(dot(d, d), 1e-3);
+    let L = d * inverseSqrt(d2);
+    let cosL = abs(dot(c.n, L));
+    var geom = cosL / d2;
+    if (useCos) { geom *= max(dot(n, L), 0.0); } else { geom *= phaseHg(dot(rd, L)); }
+    let pHat = luminance(c.le) * geom;
+    let w = pHat / c.pdfA;
+    r.wSum += w;
+    if (w > 0.0 && rnd() * r.wSum < w) {
+      r.ls = c;
+      r.pHat = pHat;
+    }
+  }
+  // Effective area pdf of the chosen light under RIS, used for MIS.
+  if (r.pHat > 0.0) { r.ls.pdfA = r.pHat * f32(m) / r.wSum; }
+  return r;
+}
+
+struct Nee {
+  diff: vec3f,
+  spec: vec3f,
+};
+
+fn neeSurface(cell: u32, s: Surf, l: Lobes, wo: vec3f) -> Nee {
+  var out: Nee;
+  let r = risPick(cell, s.p, s.n, true, vec3f(0.0));
+  if (r.pHat <= 0.0) { return out; }
+  let ls = r.ls;
+  let d = ls.pos - s.p;
+  let d2 = dot(d, d);
+  let dist = sqrt(d2);
+  let L = d / dist;
+  let cosS = dot(s.n, L);
+  let cosL = abs(dot(ls.n, L));
+  if (cosS <= 0.0 || cosL < 1e-4) { return out; }
+  if (occluded(offsetRay(s.p, s.n), L, dist - 2e-3)) { return out; }
+  let pdfSa = ls.pdfA * d2 / cosL;
+  let ev = bsdfEval(s, l, wo, L);
+  // Each lobe is its own sampling technique for MIS purposes.
+  let pD = (1.0 - l.pSpec) * ev.pdfD;
+  let pS = l.pSpec * ev.pdfS;
+  let wD = pdfSa * pdfSa / (pdfSa * pdfSa + pD * pD);
+  let wS = pdfSa * pdfSa / (pdfSa * pdfSa + pS * pS);
+  let k = ls.le * (cosS / pdfSa);
+  out.diff = k * ev.diff * wD;
+  out.spec = k * ev.spec * wS;
+  return out;
+}
+
+fn neeFog(cell: u32, p: vec3f, rd: vec3f) -> vec3f {
+  let r = risPick(cell, p, vec3f(0.0), false, rd);
+  if (r.pHat <= 0.0) { return vec3f(0.0); }
   let ls = r.ls;
   let d = ls.pos - p;
   let d2 = dot(d, d);
@@ -557,6 +585,11 @@ fn sky(d: vec3f) -> vec3f {
   let horizon = vec3f(0.10, 0.05, 0.045);
   let zenith = vec3f(0.004, 0.006, 0.014);
   return mix(zenith, horizon, exp(-t * 7.0)) * U.p2.y;
+}
+
+fn clampLum(c: vec3f, maxLum: f32) -> vec3f {
+  let l = luminance(c);
+  return select(c, c * (maxLum / l), l > maxLum);
 }
 
 // ------------------------------------------------------------------ main
@@ -583,21 +616,24 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   let maxBounces = u32(U.p0.x);
   let fogMode = u32(U.p0.w + 0.5);
   let sigma = U.p0.z;
-  let haveLights = U.p1.x > 0.5;
+  let haveLights = lightCount() > 0u;
 
-  var L = vec3f(0.0);
+  var Ld = vec3f(0.0);   // diffuse channel
+  var Ls = vec3f(0.0);   // specular channel
   var T = vec3f(1.0);
+  var chan = 0u;         // channel for everything after the first scattering event
+  var chanSet = false;
+  var tRefl = 0.0;       // distance from the primary hit to what it reflects
   var lastPdf = 0.0;
   var lastDelta = true;
+  var lastCell = 0u;
   var primaryT = FOG_FAR;
   // Misses get a far-away position facing the camera so the sky still gets
   // temporal history and spatial filtering.
   var gPos = ro + rd * SKY_DIST;
   var gNrm = -rd;
-  var gAlb = vec3f(1.0);
+  var gKd = vec3f(1.0);
   var gRough = 1.0;
-  // Emission seen directly by the camera is deterministic, so it bypasses
-  // the denoiser entirely and is added back in the display pass.
   var gEmit = vec3f(0.0);
 
   for (var bounce = 0u; bounce <= maxBounces; bounce++) {
@@ -613,10 +649,12 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
         gPos = s.p;
         gNrm = s.n;
         let lb = lobes(s, -rd);
-        gAlb = lb.kd + lb.f0;
+        gKd = lb.kd;
         gRough = s.rough;
-        if (s.kind != KIND_OPAQUE || luminance(s.emis) > 0.0) { gAlb = vec3f(1.0); }
+        if (s.kind != KIND_OPAQUE || luminance(s.emis) > 0.0) { gKd = vec3f(1.0); }
       }
+    } else if (bounce == 1u && chan == 1u) {
+      tRefl = select(SKY_DIST, hit.t, hasHit);
     }
 
     // Volumetric fog: maybe scatter before reaching the surface.
@@ -625,11 +663,17 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
       if (ts < tHit) {
         let sp = ro + rd * ts;
         if (insideFog(sp)) {
+          if (!chanSet) { chan = 0u; chanSet = true; }
           T *= FOG_ALBEDO;
-          if (haveLights) { L += T * neeFog(sp, rd); }
+          let cell = cellOf(sp);
+          if (haveLights) {
+            let c = T * neeFog(cell, sp, rd);
+            if (chan == 1u) { Ls += c; } else { Ld += c; }
+          }
           let nd = sampleHg(rd);
           lastPdf = phaseHg(dot(rd, nd));
           lastDelta = false;
+          lastCell = cell;
           ro = sp;
           rd = nd;
           continue;
@@ -638,7 +682,8 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     }
 
     if (!hasHit) {
-      L += T * sky(rd);
+      let c = T * sky(rd);
+      if (chan == 1u) { Ls += c; } else { Ld += c; }
       break;
     }
 
@@ -651,15 +696,17 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
         let li = i32(tris[hit.tri].v1.w);
         if (!lastDelta && li >= 0 && haveLights) {
           let cosL = max(abs(dot(s.ng, rd)), 1e-4);
-          let pdfSa = (lightProb(u32(li)) / max(tris[hit.tri].v2.w, 1e-6)) * hit.t * hit.t / cosL;
+          let pdfSa = (lightProb(lastCell, u32(li)) / max(tris[hit.tri].v2.w, 1e-6)) * hit.t * hit.t / cosL;
           w = lastPdf * lastPdf / (lastPdf * lastPdf + pdfSa * pdfSa);
         }
-        L += T * s.emis * w;
+        let c = T * s.emis * w;
+        if (chan == 1u) { Ls += c; } else { Ld += c; }
       }
     }
     if (s.kind == KIND_EMITTER) { break; }
 
     if (s.kind == KIND_GLASS) {
+      if (!chanSet) { chan = 1u; chanSet = true; }
       let eta = select(1.0 / s.ior, s.ior, s.inside);
       let cosI = clamp(-dot(rd, s.n), 0.0, 1.0);
       let k = 1.0 - eta * eta * (1.0 - cosI * cosI);
@@ -679,14 +726,36 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
 
     let wo = -rd;
     let lb = lobes(s, wo);
-    if (haveLights) { L += T * neeSurface(s, lb, wo); }
+    let cell = cellOf(s.p);
+    if (haveLights) {
+      let nee = neeSurface(cell, s, lb, wo);
+      if (chanSet) {
+        let c = T * (nee.diff + nee.spec);
+        if (chan == 1u) { Ls += c; } else { Ld += c; }
+      } else {
+        Ld += T * nee.diff;
+        Ls += T * nee.spec;
+      }
+    }
 
-    let wi = sampleBsdf(s, lb, wo);
-    let fe = bsdfEval(s, lb, wo, wi);
-    if (fe.a <= 0.0) { break; }
-    T *= fe.rgb * (dot(s.n, wi) / fe.a);
-    lastPdf = fe.a;
+    var specLobe = false;
+    let wi = sampleBsdf(s, lb, wo, &specLobe);
+    let ev = bsdfEval(s, lb, wo, wi);
+    var f = ev.diff;
+    var pdf = (1.0 - lb.pSpec) * ev.pdfD;
+    if (specLobe) {
+      f = ev.spec;
+      pdf = lb.pSpec * ev.pdfS;
+    }
+    if (pdf <= 0.0) { break; }
+    if (!chanSet) {
+      chan = select(0u, 1u, specLobe);
+      chanSet = true;
+    }
+    T *= f * (dot(s.n, wi) / pdf);
+    lastPdf = pdf;
     lastDelta = false;
+    lastCell = cell;
     ro = offsetRay(s.p, s.n);
     rd = wi;
 
@@ -701,23 +770,26 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   // Cheap analytic haze for the Low preset.
   if (fogMode == 1u && sigma > 0.0) {
     let a = exp(-sigma * 0.8 * min(primaryT, FOG_FAR));
-    L = L * a + vec3f(0.09, 0.045, 0.08) * (1.0 - a);
+    Ld = Ld * a + vec3f(0.09, 0.045, 0.08) * (1.0 - a);
+    Ls *= a;
   }
 
-  // Firefly clamp.
-  let lum = luminance(L);
+  // Firefly clamp, then demodulate the diffuse channel by its albedo.
   let clampV = U.p2.x;
-  if (lum > clampV) { L *= clampV / lum; }
-
-  // Demodulate by primary albedo and accumulate this frame's samples.
-  var demod = L / max(gAlb, vec3f(0.01));
+  var d = clampLum(Ld, clampV) / max(gKd, vec3f(0.01));
+  var sp = clampLum(Ls, clampV);
   if (sampleIndex > 0u) {
-    demod += textureLoad(accumIn, pix, 0).rgb;
+    let prev = textureLoad(accumIn, pix, 0);
+    let p0 = unpack2x16float(prev.x);
+    let p1 = unpack2x16float(prev.y);
+    let p2 = unpack2x16float(prev.z);
+    d += vec3f(p0, p1.x);
+    sp += vec3f(p1.y, p2);
   }
-  textureStore(outRad, pix, vec4f(demod, 1.0));
+  textureStore(outRad, pix, vec4u(pack2x16float(d.rg), pack2x16float(vec2f(d.b, sp.r)), pack2x16float(sp.gb), 0u));
   if (sampleIndex == 0u) {
     textureStore(outPos, pix, vec4f(gPos, packNormal(gNrm)));
-    textureStore(outAlb, pix, vec4f(gAlb, gRough));
-    textureStore(outEmit, pix, vec4f(gEmit, 1.0));
+    textureStore(outAlb, pix, vec4f(gKd, gRough));
+    textureStore(outEmit, pix, vec4f(gEmit, tRefl));
   }
 }

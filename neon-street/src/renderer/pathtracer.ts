@@ -1,20 +1,25 @@
 // The renderer: owns GPU buffers, textures and pipelines and encodes one frame.
 //
 // Frame pipeline (all at render resolution unless noted):
-//   trace  x spp   -> radiance sum (demodulated), G-buffer (pos, normal, albedo)
-//   temporal       -> reprojected history + variance
-//   atrous x N     -> edge-aware blur; first pass also feeds next frame's history
-//   display        -> remodulate, tone map, upscale to the canvas
+//   trace  x spp   -> packed diffuse/specular sums, G-buffer (pos+normal, albedo+roughness, emission+reflection distance)
+//   temporal       -> reprojected diffuse / specular / emission history + variance
+//   atrous x N     -> edge-aware blur per channel; pass 0 of each also feeds next frame's history
+//   composite      -> HDR image (diffuse x albedo + specular + emission)
+//   bloom          -> mip chain down and back up
+//   display        -> bicubic upscale, bloom, tone map, to the canvas
 
 import type { Vec3 } from '../core/math';
 import type { Gpu } from '../core/gpu';
 import type { SceneData } from '../world/geometry';
 import type { BvhData } from './bvh';
+import type { LightGrid } from './lightgrid';
 import type { RenderSettings } from './presets';
 import commonWgsl from './shaders/common.wgsl?raw';
 import traceWgsl from './shaders/trace.wgsl?raw';
 import temporalWgsl from './shaders/temporal.wgsl?raw';
 import atrousWgsl from './shaders/atrous.wgsl?raw';
+import compositeWgsl from './shaders/composite.wgsl?raw';
+import bloomWgsl from './shaders/bloom.wgsl?raw';
 import displayWgsl from './shaders/display.wgsl?raw';
 
 export interface CameraState {
@@ -31,53 +36,65 @@ export interface RenderStats {
   triCount: number;
   lightCount: number;
   bvhNodes: number;
-  /** Last measured GPU frame time in ms, or null when timestamps are unavailable. */
+  /** GPU times in ms for the last measured frame, or null without timestamp support. */
   gpuMs: number | null;
+  traceMs: number | null;
+  denoiseMs: number | null;
+  postMs: number | null;
 }
 
 const MAX_ATROUS = 5;
 const UNIFORM_FLOATS = 52;
+const BLOOM_LEVELS = 4;
 
 export class PathTracer {
   private readonly device: GPUDevice;
   private readonly uniformBuf: GPUBuffer;
   private readonly uniformData = new Float32Array(UNIFORM_FLOATS);
-  private readonly atrousParamBufs: GPUBuffer[] = [];
+  private readonly atrousDiffParams: GPUBuffer[] = [];
+  private readonly atrousSpecParams: GPUBuffer[] = [];
   private readonly displayParamBuf: GPUBuffer;
+  private bloomParamBufs: GPUBuffer[] = [];
   private readonly sampler: GPUSampler;
 
   private readonly sceneBGL: GPUBindGroupLayout;
   private readonly traceTexBGL: GPUBindGroupLayout;
   private readonly temporalBGL: GPUBindGroupLayout;
   private readonly atrousBGL: GPUBindGroupLayout;
+  private readonly compositeBGL: GPUBindGroupLayout;
+  private readonly bloomBGL: GPUBindGroupLayout;
   private readonly displayBGL: GPUBindGroupLayout;
   private readonly sceneBG: GPUBindGroup;
 
   private readonly tracePipe: GPUComputePipeline;
   private readonly temporalPipe: GPUComputePipeline;
   private readonly atrousPipe: GPUComputePipeline;
+  private readonly compositePipe: GPUComputePipeline;
+  private readonly bloomPipe: GPUComputePipeline;
   private readonly displayPipe: GPURenderPipeline;
 
   private tex: Record<string, GPUTexture> = {};
+  private bloomSizes: [number, number][] = [];
   private bgCache = new Map<string, GPUBindGroup>();
   private renderW = 0;
   private renderH = 0;
   private frame = 0;
   private prevCam: CameraState | null = null;
   private resetPending = true;
+  private readonly grid: LightGrid;
   displayMode = 0;
 
-  // GPU timing.
+  // GPU timing: 0 trace begin, 1 trace end, 2 denoise+composite end, 3 display end.
   private querySet: GPUQuerySet | null = null;
   private resolveBuf: GPUBuffer | null = null;
   private readBufs: { buf: GPUBuffer; busy: boolean }[] = [];
-  private gpuMs: number | null = null;
 
   readonly stats: RenderStats;
 
-  constructor(private readonly gpu: Gpu, scene: SceneData, bvh: BvhData) {
+  constructor(private readonly gpu: Gpu, scene: SceneData, bvh: BvhData, grid: LightGrid) {
     const device = gpu.device;
     this.device = device;
+    this.grid = grid;
 
     const storage = (data: ArrayBufferView | ArrayBuffer, label: string) => {
       const byteLength = Math.max(16, data.byteLength);
@@ -93,36 +110,52 @@ export class PathTracer {
     const triIdxBuf = storage(bvh.triIdx, 'bvh tri indices');
     const matsBuf = storage(scene.mats, 'materials');
     const lightTrisBuf = storage(scene.lightTris, 'light tris');
-    const lightCdfBuf = storage(scene.lightCdf, 'light cdf');
+    const gridBuf = storage(grid.cdf, 'light grid cdf');
 
     this.uniformBuf = device.createBuffer({ label: 'uniforms', size: UNIFORM_FLOATS * 4, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-    for (let i = 0; i < MAX_ATROUS; i++) {
-      const b = device.createBuffer({ label: `atrous ${i}`, size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-      device.queue.writeBuffer(b, 0, new Float32Array([1 << i, 4.0, 0, 0]));
-      this.atrousParamBufs.push(b);
-    }
-    this.displayParamBuf = device.createBuffer({ label: 'display params', size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const atrousParams = (label: string, sigmaL: number, sigmaRough: number, normalPow: number) => {
+      const out: GPUBuffer[] = [];
+      for (let i = 0; i < MAX_ATROUS; i++) {
+        const b = device.createBuffer({ label: `${label} ${i}`, size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        device.queue.writeBuffer(b, 0, new Float32Array([1 << i, sigmaL, sigmaRough, normalPow]));
+        out.push(b);
+      }
+      return out;
+    };
+    this.atrousDiffParams = atrousParams('atrous diff', 4.0, 0.15, 64);
+    // Reflections: stop hard at roughness and normal changes, blur less.
+    this.atrousSpecParams = atrousParams('atrous spec', 3.0, 0.05, 128);
+    this.displayParamBuf = device.createBuffer({ label: 'display params', size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear', addressModeU: 'clamp-to-edge', addressModeV: 'clamp-to-edge' });
 
     // ---- bind group layouts -------------------------------------------------
     const C = GPUShaderStage.COMPUTE;
+    const F = GPUShaderStage.FRAGMENT;
     const ro = (binding: number): GPUBindGroupLayoutEntry => ({ binding, visibility: C, buffer: { type: 'read-only-storage' } });
     const tex = (binding: number, sampleType: GPUTextureSampleType = 'float', vis = C): GPUBindGroupLayoutEntry => ({ binding, visibility: vis, texture: { sampleType } });
     const st = (binding: number, format: GPUTextureFormat): GPUBindGroupLayoutEntry => ({ binding, visibility: C, storageTexture: { access: 'write-only', format } });
     const uni = (binding: number, vis = C): GPUBindGroupLayoutEntry => ({ binding, visibility: vis, buffer: { type: 'uniform' } });
+    const smp = (binding: number, vis = C): GPUBindGroupLayoutEntry => ({ binding, visibility: vis, sampler: { type: 'filtering' } });
 
     this.sceneBGL = device.createBindGroupLayout({ label: 'scene', entries: [uni(0), ro(1), ro(2), ro(3), ro(4), ro(5), ro(6)] });
-    // WebGPU allows only 4 storage textures per stage, hence the packed G-buffer.
-    this.traceTexBGL = device.createBindGroupLayout({ label: 'trace textures', entries: [tex(0), st(1, 'rgba16float'), st(2, 'rgba32float'), st(3, 'rgba16float'), st(4, 'rgba16float')] });
+    // WebGPU allows only 4 storage textures per stage, hence the packed outputs.
+    this.traceTexBGL = device.createBindGroupLayout({
+      label: 'trace textures',
+      entries: [tex(0, 'uint'), st(1, 'rgba32uint'), st(2, 'rgba32float'), st(3, 'rgba16float'), st(4, 'rgba16float')],
+    });
     this.temporalBGL = device.createBindGroupLayout({
       label: 'temporal',
-      entries: [uni(0), tex(1), tex(2, 'unfilterable-float'), tex(3), tex(4), tex(5, 'unfilterable-float'), st(6, 'rgba16float'), st(7, 'rgba16float'), tex(8), tex(9), st(10, 'rgba16float')],
+      entries: [
+        uni(0), tex(1, 'uint'), tex(2, 'unfilterable-float'), tex(3), tex(4), tex(5), tex(6), tex(7), tex(8), tex(9, 'unfilterable-float'),
+        st(10, 'rgba16float'), st(11, 'rgba16float'), st(12, 'rgba16float'), st(13, 'rgba16float'),
+      ],
     });
     this.atrousBGL = device.createBindGroupLayout({ label: 'atrous', entries: [uni(0), tex(1), tex(2, 'unfilterable-float'), tex(3), st(4, 'rgba16float'), uni(5)] });
-    const F = GPUShaderStage.FRAGMENT;
+    this.compositeBGL = device.createBindGroupLayout({ label: 'composite', entries: [uni(0), tex(1), tex(2), tex(3), tex(4), st(5, 'rgba16float')] });
+    this.bloomBGL = device.createBindGroupLayout({ label: 'bloom', entries: [smp(0), tex(1), st(2, 'rgba16float'), uni(3), tex(4)] });
     this.displayBGL = device.createBindGroupLayout({
       label: 'display',
-      entries: [{ binding: 0, visibility: F, sampler: { type: 'filtering' } }, tex(1, 'float', F), tex(2, 'float', F), tex(3, 'float', F), uni(4, F), tex(5, 'unfilterable-float', F), uni(6, F)],
+      entries: [smp(0, F), tex(1, 'float', F), tex(2, 'float', F), uni(3, F), uni(4, F), tex(5, 'unfilterable-float', F), tex(6, 'float', F), tex(7, 'float', F), tex(8, 'float', F)],
     });
 
     this.sceneBG = device.createBindGroup({
@@ -134,7 +167,7 @@ export class PathTracer {
         { binding: 3, resource: { buffer: triIdxBuf } },
         { binding: 4, resource: { buffer: matsBuf } },
         { binding: 5, resource: { buffer: lightTrisBuf } },
-        { binding: 6, resource: { buffer: lightCdfBuf } },
+        { binding: 6, resource: { buffer: gridBuf } },
       ],
     });
 
@@ -149,6 +182,8 @@ export class PathTracer {
     this.tracePipe = compute('trace', traceWgsl, [this.sceneBGL, this.traceTexBGL]);
     this.temporalPipe = compute('temporal', temporalWgsl, [this.temporalBGL]);
     this.atrousPipe = compute('atrous', atrousWgsl, [this.atrousBGL]);
+    this.compositePipe = compute('composite', compositeWgsl, [this.compositeBGL]);
+    this.bloomPipe = compute('bloom', bloomWgsl, [this.bloomBGL]);
     const displayModule = module('display', displayWgsl);
     this.displayPipe = device.createRenderPipeline({
       label: 'display',
@@ -159,10 +194,10 @@ export class PathTracer {
     });
 
     if (gpu.hasTimestamps) {
-      this.querySet = device.createQuerySet({ type: 'timestamp', count: 2 });
-      this.resolveBuf = device.createBuffer({ size: 16, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC });
+      this.querySet = device.createQuerySet({ type: 'timestamp', count: 4 });
+      this.resolveBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC });
       for (let i = 0; i < 3; i++) {
-        this.readBufs.push({ buf: device.createBuffer({ size: 16, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST }), busy: false });
+        this.readBufs.push({ buf: device.createBuffer({ size: 32, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST }), busy: false });
       }
     }
 
@@ -173,14 +208,17 @@ export class PathTracer {
       lightCount: scene.lightCount,
       bvhNodes: bvh.nodeCount,
       gpuMs: null,
+      traceMs: null,
+      denoiseMs: null,
+      postMs: null,
     };
   }
 
   /** Ensure render targets match the canvas size and render scale. */
   resize(canvasW: number, canvasH: number, renderScale: number): void {
     const maxDim = this.device.limits.maxTextureDimension2D;
-    const w = Math.min(maxDim, Math.max(8, Math.round(canvasW * renderScale)));
-    const h = Math.min(maxDim, Math.max(8, Math.round(canvasH * renderScale)));
+    const w = Math.min(maxDim, Math.max(16, Math.round(canvasW * renderScale)));
+    const h = Math.min(maxDim, Math.max(16, Math.round(canvasH * renderScale)));
     if (w === this.renderW && h === this.renderH) return;
     this.renderW = w;
     this.renderH = h;
@@ -190,20 +228,51 @@ export class PathTracer {
     this.tex = {};
     this.bgCache.clear();
     const usage = GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING;
-    const mk = (name: string, format: GPUTextureFormat) => {
-      this.tex[name] = this.device.createTexture({ label: name, size: [w, h], format, usage });
+    const mk = (name: string, format: GPUTextureFormat, tw = w, th = h) => {
+      this.tex[name] = this.device.createTexture({ label: name, size: [tw, th], format, usage });
     };
     for (const i of [0, 1]) {
-      mk(`rad${i}`, 'rgba16float');
+      mk(`rad${i}`, 'rgba32uint');
       mk(`pos${i}`, 'rgba32float');
-      mk(`hist${i}`, 'rgba16float');
+      mk(`diffHist${i}`, 'rgba16float');
+      mk(`specHist${i}`, 'rgba16float');
       mk(`mom${i}`, 'rgba16float');
       mk(`emitHist${i}`, 'rgba16float');
     }
     mk('alb', 'rgba16float');
     mk('emit', 'rgba16float');
-    mk('tmpA', 'rgba16float');
-    mk('tmpB', 'rgba16float');
+    for (const n of ['tmpA', 'tmpB', 'tmpC', 'tmpD']) mk(n, 'rgba16float');
+    mk('hdr', 'rgba16float');
+
+    // Bloom chain: half, quarter, eighth, sixteenth.
+    this.bloomSizes = [];
+    for (const b of this.bloomParamBufs) b.destroy();
+    this.bloomParamBufs = [];
+    let bw = w, bh = h;
+    for (let i = 0; i < BLOOM_LEVELS; i++) {
+      bw = Math.max(1, bw >> 1);
+      bh = Math.max(1, bh >> 1);
+      this.bloomSizes.push([bw, bh]);
+      mk(`down${i}`, 'rgba16float', bw, bh);
+      if (i < BLOOM_LEVELS - 1) mk(`up${i}`, 'rgba16float', bw, bh);
+    }
+    const bloomParam = (srcW: number, srcH: number, dstW: number, dstH: number, mode: number) => {
+      const b = this.device.createBuffer({ label: `bloom params ${mode}`, size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+      this.device.queue.writeBuffer(b, 0, new Float32Array([srcW, srcH, dstW, dstH, 1.0, 0.5, mode, 0]));
+      this.bloomParamBufs.push(b);
+    };
+    // Downsample passes 0..3, then upsample passes.
+    let sw = w, sh = h;
+    for (let i = 0; i < BLOOM_LEVELS; i++) {
+      const [dw, dh] = this.bloomSizes[i];
+      bloomParam(sw, sh, dw, dh, i === 0 ? 0 : 1);
+      sw = dw; sh = dh;
+    }
+    for (let i = BLOOM_LEVELS - 2; i >= 0; i--) {
+      const [srcW2, srcH2] = this.bloomSizes[i + 1];
+      const [dw, dh] = this.bloomSizes[i];
+      bloomParam(srcW2, srcH2, dw, dh, 2);
+    }
     this.resetPending = true;
   }
 
@@ -241,8 +310,37 @@ export class PathTracer {
     u[36] = settings.maxBounces; u[37] = sampleIndex; u[38] = settings.fogDensity; u[39] = settings.fogMode;
     u[40] = this.stats.lightCount; u[41] = settings.maxHistory; u[42] = this.resetPending ? 1 : 0; u[43] = time;
     u[44] = 40; u[45] = 1.0; u[46] = this.frame; u[47] = settings.spp;
-    u[48] = settings.lightSamples; u[49] = 0; u[50] = 0; u[51] = 0;
+    u[48] = settings.lightSamples; u[49] = this.grid.z0; u[50] = this.grid.cellSize; u[51] = this.grid.cellCount;
     this.device.queue.writeBuffer(this.uniformBuf, 0, u.buffer, 0, u.byteLength);
+  }
+
+  private computePass(enc: GPUCommandEncoder, label: string, pipe: GPUComputePipeline, bgs: GPUBindGroup[], gx: number, gy: number, ts?: GPUComputePassTimestampWrites): void {
+    const desc: GPUComputePassDescriptor = { label };
+    if (ts) desc.timestampWrites = ts;
+    const pass = enc.beginComputePass(desc);
+    pass.setPipeline(pipe);
+    bgs.forEach((bg, i) => pass.setBindGroup(i, bg));
+    pass.dispatchWorkgroups(gx, gy);
+    pass.end();
+  }
+
+  /** Runs one a-trous chain; returns the name of the texture holding the result. */
+  private atrousChain(enc: GPUCommandEncoder, cur: number, input: string, histName: string, scratch: string, params: GPUBuffer[], iters: number, gx: number, gy: number): string {
+    let src = input;
+    for (let i = 0; i < iters; i++) {
+      const output = i === 0 ? histName : src === input ? scratch : input;
+      const bg = this.bindGroup(`atrous${cur}:${src}>${output}:${histName}:${i}`, this.atrousBGL, () => [
+        { binding: 0, resource: { buffer: this.uniformBuf } },
+        { binding: 1, resource: this.view(src) },
+        { binding: 2, resource: this.view(`pos${cur}`) },
+        { binding: 3, resource: this.view('alb') },
+        { binding: 4, resource: this.view(output) },
+        { binding: 5, resource: { buffer: params[i] } },
+      ]);
+      this.computePass(enc, `atrous ${histName} ${i}`, this.atrousPipe, [bg], gx, gy);
+      src = output;
+    }
+    return src;
   }
 
   render(cam: CameraState, settings: RenderSettings, time: number): void {
@@ -250,9 +348,10 @@ export class PathTracer {
     const device = this.device;
     const cur = this.frame & 1;
     const prev = cur ^ 1;
-    const groupsX = Math.ceil(this.renderW / 8);
-    const groupsY = Math.ceil(this.renderH / 8);
+    const gx = Math.ceil(this.renderW / 8);
+    const gy = Math.ceil(this.renderH / 8);
     const spp = Math.max(1, Math.round(settings.spp));
+    const qs = this.querySet;
 
     // ---- trace: one submit per sample so a heavy preset can't stall the GPU
     // watchdog with a single giant dispatch.
@@ -268,14 +367,13 @@ export class PathTracer {
         { binding: 4, resource: this.view('emit') },
       ]);
       const enc = device.createCommandEncoder({ label: `trace ${s}` });
-      const passDesc: GPUComputePassDescriptor = {};
-      if (s === 0 && this.querySet) passDesc.timestampWrites = { querySet: this.querySet, beginningOfPassWriteIndex: 0 };
-      const pass = enc.beginComputePass(passDesc);
-      pass.setPipeline(this.tracePipe);
-      pass.setBindGroup(0, this.sceneBG);
-      pass.setBindGroup(1, bg);
-      pass.dispatchWorkgroups(groupsX, groupsY);
-      pass.end();
+      let ts: GPUComputePassTimestampWrites | undefined;
+      if (qs) {
+        ts = { querySet: qs };
+        if (s === 0) ts.beginningOfPassWriteIndex = 0;
+        if (s === spp - 1) ts.endOfPassWriteIndex = 1;
+      }
+      this.computePass(enc, `trace ${s}`, this.tracePipe, [this.sceneBG, bg], gx, gy, ts);
       device.queue.submit([enc.finish()]);
     }
     const lastRad = `rad${(spp - 1) & 1}`;
@@ -288,60 +386,95 @@ export class PathTracer {
         { binding: 0, resource: { buffer: this.uniformBuf } },
         { binding: 1, resource: this.view(lastRad) },
         { binding: 2, resource: this.view(`pos${cur}`) },
-        { binding: 3, resource: this.view(`hist${prev}`) },
-        { binding: 4, resource: this.view(`mom${prev}`) },
-        { binding: 5, resource: this.view(`pos${prev}`) },
-        { binding: 6, resource: this.view('tmpA') },
-        { binding: 7, resource: this.view(`mom${cur}`) },
-        { binding: 8, resource: this.view('emit') },
-        { binding: 9, resource: this.view(`emitHist${prev}`) },
-        { binding: 10, resource: this.view(`emitHist${cur}`) },
+        { binding: 3, resource: this.view('alb') },
+        { binding: 4, resource: this.view('emit') },
+        { binding: 5, resource: this.view(`diffHist${prev}`) },
+        { binding: 6, resource: this.view(`specHist${prev}`) },
+        { binding: 7, resource: this.view(`mom${prev}`) },
+        { binding: 8, resource: this.view(`emitHist${prev}`) },
+        { binding: 9, resource: this.view(`pos${prev}`) },
+        { binding: 10, resource: this.view('tmpA') },
+        { binding: 11, resource: this.view('tmpB') },
+        { binding: 12, resource: this.view(`mom${cur}`) },
+        { binding: 13, resource: this.view(`emitHist${cur}`) },
       ]);
-      const pass = enc.beginComputePass({ label: 'temporal' });
-      pass.setPipeline(this.temporalPipe);
-      pass.setBindGroup(0, bg);
-      pass.dispatchWorkgroups(groupsX, groupsY);
-      pass.end();
+      this.computePass(enc, 'temporal', this.temporalPipe, [bg], gx, gy);
     }
 
-    // ---- a-trous passes; pass 0 writes the history used by the next frame.
+    // ---- a-trous chains; pass 0 of each writes the history for the next frame.
     const iters = Math.min(MAX_ATROUS, Math.max(1, Math.round(settings.atrousIterations)));
-    let input = 'tmpA';
-    for (let i = 0; i < iters; i++) {
-      const output = i === 0 ? `hist${cur}` : input === 'tmpA' ? 'tmpB' : 'tmpA';
-      const bg = this.bindGroup(`atrous${cur}:${input}>${output}:${i}`, this.atrousBGL, () => [
+    const specIters = Math.max(1, Math.min(iters, Math.round(iters * 0.6)));
+    const diffOut = this.atrousChain(enc, cur, 'tmpA', `diffHist${cur}`, 'tmpC', this.atrousDiffParams, iters, gx, gy);
+    const specOut = this.atrousChain(enc, cur, 'tmpB', `specHist${cur}`, 'tmpD', this.atrousSpecParams, specIters, gx, gy);
+
+    // ---- composite to HDR
+    {
+      const bg = this.bindGroup(`composite${cur}:${diffOut}:${specOut}`, this.compositeBGL, () => [
         { binding: 0, resource: { buffer: this.uniformBuf } },
-        { binding: 1, resource: this.view(input) },
-        { binding: 2, resource: this.view(`pos${cur}`) },
+        { binding: 1, resource: this.view(diffOut) },
+        { binding: 2, resource: this.view(specOut) },
         { binding: 3, resource: this.view('alb') },
-        { binding: 4, resource: this.view(output) },
-        { binding: 5, resource: { buffer: this.atrousParamBufs[i] } },
+        { binding: 4, resource: this.view(`emitHist${cur}`) },
+        { binding: 5, resource: this.view('hdr') },
       ]);
-      const pass = enc.beginComputePass({ label: `atrous ${i}` });
-      pass.setPipeline(this.atrousPipe);
-      pass.setBindGroup(0, bg);
-      pass.dispatchWorkgroups(groupsX, groupsY);
-      pass.end();
-      input = output;
+      this.computePass(enc, 'composite', this.compositePipe, [bg], gx, gy, qs ? { querySet: qs, endOfPassWriteIndex: 2 } : undefined);
+    }
+
+    // ---- bloom
+    {
+      let src = 'hdr';
+      for (let i = 0; i < BLOOM_LEVELS; i++) {
+        const dst = `down${i}`;
+        const [dw, dh] = this.bloomSizes[i];
+        const bg = this.bindGroup(`bloom down ${i}`, this.bloomBGL, () => [
+          { binding: 0, resource: this.sampler },
+          { binding: 1, resource: this.view(src) },
+          { binding: 2, resource: this.view(dst) },
+          { binding: 3, resource: { buffer: this.bloomParamBufs[i] } },
+          { binding: 4, resource: this.view(dst === 'down0' ? 'down1' : 'down0') },
+        ]);
+        this.computePass(enc, `bloom down ${i}`, this.bloomPipe, [bg], Math.ceil(dw / 8), Math.ceil(dh / 8));
+        src = dst;
+      }
+      let pIdx = BLOOM_LEVELS;
+      src = `down${BLOOM_LEVELS - 1}`;
+      for (let i = BLOOM_LEVELS - 2; i >= 0; i--) {
+        const dst = `up${i}`;
+        const [dw, dh] = this.bloomSizes[i];
+        const srcName = src;
+        const bg = this.bindGroup(`bloom up ${i}`, this.bloomBGL, () => [
+          { binding: 0, resource: this.sampler },
+          { binding: 1, resource: this.view(srcName) },
+          { binding: 2, resource: this.view(dst) },
+          { binding: 3, resource: { buffer: this.bloomParamBufs[pIdx] } },
+          { binding: 4, resource: this.view(`down${i}`) },
+        ]);
+        this.computePass(enc, `bloom up ${i}`, this.bloomPipe, [bg], Math.ceil(dw / 8), Math.ceil(dh / 8));
+        src = dst;
+        pIdx++;
+      }
     }
 
     // ---- display
-    device.queue.writeBuffer(this.displayParamBuf, 0, new Float32Array([settings.exposure, 0.35, this.displayMode, 0]));
+    const sharpen = settings.renderScale < 0.95 ? 0.35 : 0;
+    device.queue.writeBuffer(this.displayParamBuf, 0, new Float32Array([settings.exposure, 0.35, this.displayMode, settings.bloom, this.renderW, this.renderH, sharpen, 0]));
     {
-      const bg = this.bindGroup(`display:${input}:${cur}`, this.displayBGL, () => [
+      const bg = this.bindGroup(`display:${cur}:${diffOut}:${specOut}`, this.displayBGL, () => [
         { binding: 0, resource: this.sampler },
-        { binding: 1, resource: this.view(input) },
-        { binding: 2, resource: this.view('alb') },
-        { binding: 3, resource: this.view(`emitHist${cur}`) },
-        { binding: 4, resource: { buffer: this.displayParamBuf } },
+        { binding: 1, resource: this.view('hdr') },
+        { binding: 2, resource: this.view('up0') },
+        { binding: 3, resource: { buffer: this.displayParamBuf } },
+        { binding: 4, resource: { buffer: this.uniformBuf } },
         { binding: 5, resource: this.view(`pos${cur}`) },
-        { binding: 6, resource: { buffer: this.uniformBuf } },
+        { binding: 6, resource: this.view('alb') },
+        { binding: 7, resource: this.view(diffOut) },
+        { binding: 8, resource: this.view(specOut) },
       ]);
       const desc: GPURenderPassDescriptor = {
         label: 'display',
         colorAttachments: [{ view: this.gpu.context.getCurrentTexture().createView(), loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }],
       };
-      if (this.querySet) desc.timestampWrites = { querySet: this.querySet, endOfPassWriteIndex: 1 };
+      if (qs) desc.timestampWrites = { querySet: qs, endOfPassWriteIndex: 3 };
       const pass = enc.beginRenderPass(desc);
       pass.setPipeline(this.displayPipe);
       pass.setBindGroup(0, bg);
@@ -351,12 +484,12 @@ export class PathTracer {
 
     // ---- GPU timing readback
     let readSlot: { buf: GPUBuffer; busy: boolean } | undefined;
-    if (this.querySet && this.resolveBuf) {
+    if (qs && this.resolveBuf) {
       readSlot = this.readBufs.find((r) => !r.busy);
       if (readSlot) {
         readSlot.busy = true;
-        enc.resolveQuerySet(this.querySet, 0, 2, this.resolveBuf, 0);
-        enc.copyBufferToBuffer(this.resolveBuf, 0, readSlot.buf, 0, 16);
+        enc.resolveQuerySet(qs, 0, 4, this.resolveBuf, 0);
+        enc.copyBufferToBuffer(this.resolveBuf, 0, readSlot.buf, 0, 32);
       }
     }
     device.queue.submit([enc.finish()]);
@@ -364,11 +497,16 @@ export class PathTracer {
       const slot = readSlot;
       slot.buf.mapAsync(GPUMapMode.READ).then(() => {
         const t = new BigUint64Array(slot.buf.getMappedRange());
-        const ns = Number(t[1] - t[0]);
+        const ms = (a: bigint, b: bigint) => Number(b - a) / 1e6;
+        const total = ms(t[0], t[3]);
         slot.buf.unmap();
         slot.busy = false;
-        if (ns > 0 && ns < 60e9) this.gpuMs = ns / 1e6;
-        this.stats.gpuMs = this.gpuMs;
+        if (total > 0 && total < 60000) {
+          this.stats.gpuMs = total;
+          this.stats.traceMs = ms(t[0], t[1]);
+          this.stats.denoiseMs = ms(t[1], t[2]);
+          this.stats.postMs = ms(t[2], t[3]);
+        }
       }).catch(() => { slot.busy = false; });
     }
 

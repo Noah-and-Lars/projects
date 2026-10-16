@@ -18,7 +18,7 @@ npm run dev
 
 Open the printed URL, click the view, then walk with **W A S D**, run with
 **Shift**, look with the mouse. **Esc** opens the settings panel, **H** hides
-the stats, **F2** cycles debug views (radiance / albedo / normals).
+the stats, **F2** cycles debug views (diffuse / albedo / normals / specular).
 
 URL parameters: `?preset=ultra`, `&scale=0.75`, `&spp=2`, `&bounces=6`,
 `&fog=2`, `&w=1280&h=720` (fixed canvas size), `&autostart=1` (skip the start
@@ -26,15 +26,17 @@ screen).
 
 ## Presets
 
-| Preset | Render scale | Samples/pixel | Bounces | Fog |
-|--------|-------------:|--------------:|--------:|-----|
-| Low    | 0.50 | 1 | 2  | cheap haze |
-| Medium | 0.67 | 1 | 3  | volumetric |
-| High   | 0.75 | 1 | 4  | volumetric |
-| Ultra  | 1.00 | 2 | 6  | volumetric |
-| Melt   | 2.00 (supersampled) | 4 | 10 | volumetric |
+| Preset | Render scale | Samples/pixel | Bounces | Light candidates | Fog |
+|--------|-------------:|--------------:|--------:|-----------------:|-----|
+| Low    | 0.50 | 1 | 2  | 2  | cheap haze |
+| Medium | 0.60 | 1 | 3  | 4  | volumetric |
+| High   | 0.70 | 1 | 4  | 6  | volumetric |
+| Ultra  | 0.85 | 2 | 5  | 8  | volumetric |
+| Melt   | 1.75 (supersampled) | 4 | 10 | 16 | volumetric |
 
-Every value can also be changed individually in the panel.
+Tuned against an RTX 3060 Ti at 1080p: High around 60 fps, Ultra around
+30 fps. Every value can also be changed individually in the panel, and the
+stats overlay shows GPU time split into trace / denoise / post.
 
 ## How it works
 
@@ -42,9 +44,14 @@ Every value can also be changed individually in the panel.
   per dispatch over a BVH of the whole street, with next-event estimation
   toward neon, windows and streetlights, GGX materials, glass, procedural
   puddles on the road, and volumetric fog with single scattering.
-- `temporal.wgsl` + `atrous.wgsl` — an SVGF-style denoiser: reproject last
-  frame's result with the previous camera, accumulate, then edge-aware blur.
-- `display.wgsl` — remodulate albedo, expose, ACES tone map, upscale.
+- `temporal.wgsl` + `atrous.wgsl` — an SVGF-style denoiser with separate
+  diffuse and specular channels. Reflections on smooth surfaces are
+  reprojected through the *virtual* point behind the mirror so they stay
+  sharp while the camera moves.
+- `lightgrid.ts` — per-cell light selection along the street, plus
+  resampled importance sampling in the shader, so nearby neon dominates.
+- `composite.wgsl`, `bloom.wgsl`, `display.wgsl` — HDR composite, bloom mip
+  chain, Catmull-Rom upscale, ACES tone map.
 - `src/world/street.ts` — the procedural street (buildings, windows, neon
   signs, streetlights, props) built from boxes and quads.
 - `src/renderer/bvh.ts` — binned-SAH BVH builder.

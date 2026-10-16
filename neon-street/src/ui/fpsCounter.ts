@@ -44,9 +44,10 @@ export class Hud {
     if (!this.visible) return;
     const s = info.stats;
     const st = info.settings;
-    const gpu = s.gpuMs == null ? 'n/a' : `${s.gpuMs.toFixed(1)} ms`;
+    const ms = (v: number | null) => (v == null ? 'n/a' : `${v.toFixed(1)}`);
+    const gpu = s.gpuMs == null ? 'gpu n/a' : `gpu ${ms(s.gpuMs)} ms (trace ${ms(s.traceMs)} / denoise ${ms(s.denoiseMs)} / post ${ms(s.postMs)})`;
     const lines = [
-      `${this.fps.toFixed(0).padStart(4)} fps   frame ${(1000 / Math.max(this.fps, 0.01)).toFixed(1)} ms   gpu ${gpu}`,
+      `${this.fps.toFixed(0).padStart(4)} fps   frame ${(1000 / Math.max(this.fps, 0.01)).toFixed(1)} ms   ${gpu}`,
       `${info.presetName}  ${s.renderWidth}x${s.renderHeight} -> ${info.canvasW}x${info.canvasH}  (${st.renderScale.toFixed(2)}x)`,
       `${st.spp} spp  ${st.maxBounces} bounces  fog ${['off', 'cheap', 'volumetric'][st.fogMode] ?? st.fogMode}  denoise ${st.atrousIterations}`,
       `${s.triCount} tris  ${s.lightCount} lights  ${s.bvhNodes} bvh nodes`,

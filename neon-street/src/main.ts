@@ -4,12 +4,13 @@ import { GpuUnavailableError, initGpu } from './core/gpu';
 import { Input } from './core/input';
 import { startLoop } from './core/loop';
 import { buildBvh } from './renderer/bvh';
+import { buildLightGrid } from './renderer/lightgrid';
 import { PathTracer } from './renderer/pathtracer';
 import { PRESETS, type PresetName, presetFromName, type RenderSettings } from './renderer/presets';
 import { PlayerController } from './player/controller';
 import { Hud } from './ui/fpsCounter';
 import { SettingsMenu } from './ui/settings';
-import { buildStreet } from './world/street';
+import { STREET, buildStreet } from './world/street';
 
 interface NeonDebug {
   ready: boolean;
@@ -66,7 +67,8 @@ async function boot(): Promise<void> {
   statusEl.textContent = 'Building the street…';
   const scene = buildStreet();
   const bvh = buildBvh(scene.tris, scene.triCount);
-  const renderer = new PathTracer(gpu, scene, bvh);
+  const grid = buildLightGrid(scene, STREET.zStart - 30, STREET.zEnd + 30, 6);
+  const renderer = new PathTracer(gpu, scene, bvh, grid);
   const displayMode = parseInt(params.get('mode') ?? '0', 10);
   if (Number.isFinite(displayMode)) renderer.displayMode = displayMode;
 
@@ -84,6 +86,7 @@ async function boot(): Promise<void> {
   override('fogMode', 'fog');
   override('fogDensity', 'fogDensity');
   override('atrousIterations', 'denoise');
+  override('bloom', 'bloom');
   override('exposure', 'exposure');
 
   const input = new Input(canvas);
@@ -149,7 +152,7 @@ async function boot(): Promise<void> {
       // Esc while the menu is open with no pointer lock: close and relock.
       if (menu.isOpen) { menu.close(); void input.requestLock(); }
     }
-    if (e.code === 'F2') renderer.displayMode = (renderer.displayMode + 1) % 4;
+    if (e.code === 'F2') renderer.displayMode = (renderer.displayMode + 1) % 5;
   });
   ($('#optHud') as HTMLInputElement).addEventListener('change', (e) => hud.setVisible((e.target as HTMLInputElement).checked));
 

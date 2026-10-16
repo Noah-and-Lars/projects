@@ -1,11 +1,12 @@
 // Edge-aware a-trous wavelet filter (SVGF). Each pass widens the kernel by
-// doubling the step; alpha carries the luminance variance.
+// doubling the step; alpha carries the luminance variance. Used for both the
+// diffuse and the specular channel with different edge sensitivities.
 
 struct AtrousParams {
   step: f32,
   sigmaL: f32,
-  pad0: f32,
-  pad1: f32,
+  sigmaRough: f32, // roughness difference that halves a tap's weight
+  normalPow: f32,
 };
 
 @group(0) @binding(0) var<uniform> U: Uniforms;
@@ -60,12 +61,12 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
       let qp4 = textureLoad(gPos, q, 0);
       let cq = textureLoad(inRad, q, 0);
       let h = KERNEL[abs(dx)] * KERNEL[abs(dy)];
-      let wn = pow(max(dot(np, unpackNormal(qp4.w)), 0.0), 64.0);
+      let wn = pow(max(dot(np, unpackNormal(qp4.w)), 0.0), A.normalPow);
       let planeDist = abs(dot(np, qp4.xyz - pp));
       let wz = exp(-planeDist / sigmaPlane);
       let wl = exp(-abs(lp - luminance(cq.rgb)) / sigmaLum);
       // Keep puddle edges crisp: wet and dry asphalt share a plane but not a roughness.
-      let wr = exp(-abs(roughP - textureLoad(gAlb, q, 0).a) / 0.15);
+      let wr = exp(-abs(roughP - textureLoad(gAlb, q, 0).a) / A.sigmaRough);
       let w = h * wn * wz * wl * wr;
       sum += cq.rgb * w;
       sumVar += cq.a * w * w;
