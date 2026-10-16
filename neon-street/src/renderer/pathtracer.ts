@@ -14,6 +14,7 @@ import type { SceneData } from '../world/geometry';
 import type { BvhData } from './bvh';
 import type { LightGrid } from './lightgrid';
 import type { RenderSettings } from './presets';
+import type { TextureSet } from './textures';
 import commonWgsl from './shaders/common.wgsl?raw';
 import traceWgsl from './shaders/trace.wgsl?raw';
 import temporalWgsl from './shaders/temporal.wgsl?raw';
@@ -91,7 +92,7 @@ export class PathTracer {
 
   readonly stats: RenderStats;
 
-  constructor(private readonly gpu: Gpu, scene: SceneData, bvh: BvhData, grid: LightGrid) {
+  constructor(private readonly gpu: Gpu, scene: SceneData, bvh: BvhData, grid: LightGrid, textures: TextureSet) {
     const device = gpu.device;
     this.device = device;
     this.grid = grid;
@@ -137,7 +138,8 @@ export class PathTracer {
     const uni = (binding: number, vis = C): GPUBindGroupLayoutEntry => ({ binding, visibility: vis, buffer: { type: 'uniform' } });
     const smp = (binding: number, vis = C): GPUBindGroupLayoutEntry => ({ binding, visibility: vis, sampler: { type: 'filtering' } });
 
-    this.sceneBGL = device.createBindGroupLayout({ label: 'scene', entries: [uni(0), ro(1), ro(2), ro(3), ro(4), ro(5), ro(6)] });
+    const texArr = (binding: number): GPUBindGroupLayoutEntry => ({ binding, visibility: C, texture: { sampleType: 'float', viewDimension: '2d-array' } });
+    this.sceneBGL = device.createBindGroupLayout({ label: 'scene', entries: [uni(0), ro(1), ro(2), ro(3), ro(4), ro(5), ro(6), smp(7), texArr(8), texArr(9)] });
     // WebGPU allows only 4 storage textures per stage, hence the packed outputs.
     this.traceTexBGL = device.createBindGroupLayout({
       label: 'trace textures',
@@ -168,6 +170,9 @@ export class PathTracer {
         { binding: 4, resource: { buffer: matsBuf } },
         { binding: 5, resource: { buffer: lightTrisBuf } },
         { binding: 6, resource: { buffer: gridBuf } },
+        { binding: 7, resource: textures.sampler },
+        { binding: 8, resource: textures.albedo.createView({ dimension: '2d-array' }) },
+        { binding: 9, resource: textures.normal.createView({ dimension: '2d-array' }) },
       ],
     });
 

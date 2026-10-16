@@ -7,6 +7,7 @@ import { buildBvh } from './renderer/bvh';
 import { buildLightGrid } from './renderer/lightgrid';
 import { PathTracer } from './renderer/pathtracer';
 import { PRESETS, type PresetName, presetFromName, type RenderSettings } from './renderer/presets';
+import { loadTextureSet } from './renderer/textures';
 import { PlayerController } from './player/controller';
 import { Hud } from './ui/fpsCounter';
 import { SettingsMenu } from './ui/settings';
@@ -64,11 +65,13 @@ async function boot(): Promise<void> {
     console.error(msg);
   });
 
+  statusEl.textContent = 'Loading textures…';
+  const textures = await loadTextureSet(device, 'textures/', (d, t) => { statusEl.textContent = `Loading textures… ${d}/${t}`; });
   statusEl.textContent = 'Building the street…';
   const scene = buildStreet();
   const bvh = buildBvh(scene.tris, scene.triCount);
   const grid = buildLightGrid(scene, STREET.zStart - 30, STREET.zEnd + 30, 6);
-  const renderer = new PathTracer(gpu, scene, bvh, grid);
+  const renderer = new PathTracer(gpu, scene, bvh, grid, textures);
   const displayMode = parseInt(params.get('mode') ?? '0', 10);
   if (Number.isFinite(displayMode)) renderer.displayMode = displayMode;
 

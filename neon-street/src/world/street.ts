@@ -36,12 +36,15 @@ const WINDOW_COLORS: Vec3[] = [
   [0.5, 1.0, 0.8],   // mint
 ];
 
-const FACADE_COLORS: Vec3[] = [
-  [0.22, 0.10, 0.07], // brick
-  [0.14, 0.14, 0.15], // concrete
-  [0.06, 0.10, 0.11], // dark teal panels
-  [0.20, 0.17, 0.13], // beige
-  [0.09, 0.09, 0.12], // dark blue-grey
+/** Facade looks: texture plus a tint; tints darken the scans to fit a night street. */
+const FACADES: { tex: string; tint: Vec3; metallic?: number; rough?: number }[] = [
+  { tex: 'brick', tint: [0.85, 0.8, 0.8] },
+  { tex: 'brick', tint: [0.55, 0.5, 0.52] },
+  { tex: 'brick2', tint: [0.6, 0.6, 0.62] },
+  { tex: 'concrete', tint: [0.7, 0.7, 0.72] },
+  { tex: 'concrete2', tint: [0.55, 0.57, 0.62] },
+  { tex: 'corrugated', tint: [0.3, 0.34, 0.38], metallic: 0.5, rough: 0.9 },
+  { tex: 'metal', tint: [0.8, 0.8, 0.82], metallic: 0.7 },
 ];
 
 export function buildStreet(seed = 1337): SceneData {
@@ -51,8 +54,8 @@ export function buildStreet(seed = 1337): SceneData {
   const S = STREET;
 
   // ---- shared materials -------------------------------------------------
-  const mRoad = b.material({ base: [0.035, 0.035, 0.04], roughness: 0.45, flags: MatFlag.Road });
-  const mSidewalk = b.material({ base: [0.10, 0.10, 0.11], roughness: 0.4, flags: MatFlag.Sidewalk });
+  const mRoad = b.material({ base: [0.55, 0.55, 0.58], roughness: 1.0, flags: MatFlag.Road, tex: 'asphalt' });
+  const mSidewalk = b.material({ base: [0.6, 0.6, 0.63], roughness: 1.0, flags: MatFlag.Sidewalk, tex: 'paving' });
   const mPole = b.material({ base: [0.30, 0.30, 0.32], metallic: 1, roughness: 0.35 });
   const mBollard = b.material({ base: [0.62, 0.62, 0.64], metallic: 1, roughness: 0.22 });
   const mLampHousing = b.material({ base: [0.05, 0.05, 0.055], metallic: 0.6, roughness: 0.4 });
@@ -62,7 +65,7 @@ export function buildStreet(seed = 1337): SceneData {
   const mCable = b.material({ base: [0.02, 0.02, 0.022], roughness: 0.6 });
   const mAcUnit = b.material({ base: [0.36, 0.36, 0.37], metallic: 0.7, roughness: 0.5 });
   const mPipe = b.material({ base: [0.12, 0.11, 0.10], metallic: 0.8, roughness: 0.45 });
-  const mVending = b.material({ base: [0.12, 0.12, 0.14], metallic: 0.2, roughness: 0.3 });
+  const mVending = b.material({ base: [0.5, 0.5, 0.55], metallic: 0.6, roughness: 0.6, tex: 'metal', texScale: 1.2 });
   const mVendingPanel = b.material({ emission: [0.7, 1.4, 1.8], kind: MatKind.Emitter });
   const mCrate = [
     b.material({ base: [0.05, 0.12, 0.07], roughness: 0.35 }),
@@ -96,10 +99,13 @@ export function buildStreet(seed = 1337): SceneData {
       const backX = side * (S.sidewalkOuter + 14);
       const min: Vec3 = [Math.min(facadeX, backX), 0, z];
       const max: Vec3 = [Math.max(facadeX, backX), h, z + w - 0.3];
+      const look = pick(FACADES);
       const mFacade = b.material({
-        base: pick(FACADE_COLORS),
-        roughness: 0.55 + rng() * 0.2,
+        base: look.tint,
+        roughness: look.rough ?? 1.0,
+        metallic: look.metallic ?? 0,
         flags: MatFlag.Grime,
+        tex: look.tex,
       });
       // Skip the face pointing away from the street and the bottom.
       const hidden = (side > 0 ? Face.PX : Face.NX) | Face.NY;
@@ -186,7 +192,7 @@ export function buildStreet(seed = 1337): SceneData {
 
   // Buildings closing off both ends of the street.
   for (const [zWall, inward] of [[S.zEnd + 3, -1], [S.zStart - 4, 1]] as const) {
-    const mFacade = b.material({ base: pick(FACADE_COLORS), roughness: 0.6, flags: MatFlag.Grime });
+    const mFacade = b.material({ base: [0.5, 0.52, 0.56], roughness: 1.0, flags: MatFlag.Grime, tex: 'concrete2' });
     const min: Vec3 = [-45, 0, inward > 0 ? zWall - 16 : zWall];
     const max: Vec3 = [45, 34, inward > 0 ? zWall : zWall + 16];
     b.box(min, max, mFacade, inward > 0 ? Face.PZ | Face.PY : Face.NZ | Face.PY, true);

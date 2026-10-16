@@ -2,6 +2,7 @@
 // exact layouts the GPU buffers use (see renderer/shaders/trace.wgsl).
 
 import { type AABB, type Vec3, cross, luminance, normalize, sub } from '../core/math';
+import { textureLayer, textureScale } from '../renderer/textures';
 
 /** Material flags understood by the shader (bitmask stored in prm.z). */
 export const MatFlag = {
@@ -33,12 +34,18 @@ export interface MaterialDesc {
   ior?: number;
   /** Free parameters used by procedural flags (window bottom/height/seed, texture scale). */
   extra?: [number, number, number, number];
+  /** Name of a texture from the manifest; base becomes a tint and roughness a multiplier. */
+  tex?: string;
+  /** Override the manifest's metres-per-tile. */
+  texScale?: number;
+  /** Normal map strength (1 = as authored). */
+  bump?: number;
 }
 
 /** Bit mask naming the faces of a box: -x,+x,-y,+y,-z,+z. */
 export const Face = { NX: 1, PX: 2, NY: 4, PY: 8, NZ: 16, PZ: 32, All: 63 } as const;
 
-const MAT_FLOATS = 16; // 4 x vec4f
+const MAT_FLOATS = 20; // 5 x vec4f
 const TRI_FLOATS = 16; // 4 x vec4f
 
 export class SceneBuilder {
@@ -58,11 +65,14 @@ export class SceneBuilder {
     const base = d.base ?? [0.5, 0.5, 0.5];
     const em = d.emission ?? [0, 0, 0];
     const extra = d.extra ?? [0, 0, 0, 0];
+    const layer = d.tex ? textureLayer(d.tex) : -1;
+    const scale = d.texScale ?? (d.tex ? textureScale(d.tex) : 1);
     this.matData.push(
       base[0], base[1], base[2], d.metallic ?? 0,
       em[0], em[1], em[2], 0,
       d.roughness ?? 0.5, d.ior ?? 1.5, d.flags ?? 0, d.kind ?? MatKind.Opaque,
       extra[0], extra[1], extra[2], extra[3],
+      layer, layer, scale, d.bump ?? 1,
     );
     return this.matCount++;
   }
@@ -148,7 +158,7 @@ export interface SceneData {
   /** 16 floats per triangle: v0.xyz, matId | v1.xyz, lightIdx | v2.xyz, area | n.xyz, 0 */
   tris: Float32Array;
   triCount: number;
-  /** 16 floats per material. */
+  /** 20 floats per material. */
   mats: Float32Array;
   matCount: number;
   lightTris: Uint32Array;

@@ -22,10 +22,11 @@ struct Node {
 };
 
 struct Material {
-  base: vec4f,  // rgb base colour, a = metallic
+  base: vec4f,  // rgb base colour (tint when textured), a = metallic
   emis: vec4f,  // rgb emitted radiance
-  prm: vec4f,   // roughness, ior, flags, kind
+  prm: vec4f,   // roughness (multiplier when textured), ior, flags, kind
   extra: vec4f, // procedural parameters
+  texp: vec4f,  // albedo layer (-1 none), normal layer, metres per tile, bump strength
 };
 
 @group(0) @binding(0) var<uniform> U: Uniforms;
@@ -35,6 +36,11 @@ struct Material {
 @group(0) @binding(4) var<storage, read> mats: array<Material>;
 @group(0) @binding(5) var<storage, read> lightTris: array<u32>;
 @group(0) @binding(6) var<storage, read> gridCdf: array<f32>; // per-cell light CDFs
+@group(0) @binding(7) var texSamp: sampler;
+@group(0) @binding(8) var texAlb: texture_2d_array<f32>; // rgb albedo, a roughness
+@group(0) @binding(9) var texNrm: texture_2d_array<f32>; // rgb tangent normal, a ambient occlusion
+
+const TEX_SIZE: f32 = 1024.0;
 
 @group(1) @binding(0) var accumIn: texture_2d<u32>;
 @group(1) @binding(1) var outRad: texture_storage_2d<rgba32uint, write>;  // packed diff + spec sums
@@ -226,7 +232,8 @@ fn occluded(ro: vec3f, rd: vec3f, tmax: f32) -> bool {
 
 struct Surf {
   p: vec3f,
-  n: vec3f,      // shading normal, facing the incoming ray
+  n: vec3f,      // shading normal (normal-mapped), facing the incoming ray
+  gf: vec3f,     // geometric normal facing the incoming ray
   ng: vec3f,     // stored geometric normal
   base: vec3f,
   metallic: f32,
@@ -263,14 +270,16 @@ fn windowPattern(m: Material, p: vec3f, n: vec3f) -> f32 {
   return b;
 }
 
-fn evalSurface(h: Hit, ro: vec3f, rd: vec3f) -> Surf {
+// `footprint` is the ray cone's width at the hit in metres; it picks the mip.
+fn evalSurface(h: Hit, ro: vec3f, rd: vec3f, footprint: f32) -> Surf {
   let tr = tris[h.tri];
   let m = mats[u32(tr.v0.w)];
   var s: Surf;
   s.p = ro + rd * h.t;
   s.ng = tr.n.xyz;
   s.inside = dot(rd, s.ng) > 0.0;
-  s.n = select(s.ng, -s.ng, s.inside);
+  s.gf = select(s.ng, -s.ng, s.inside);
+  s.n = s.gf;
   s.base = m.base.rgb;
   s.metallic = m.base.a;
   s.rough = m.prm.x;
@@ -280,28 +289,58 @@ fn evalSurface(h: Hit, ro: vec3f, rd: vec3f) -> Surf {
   let flags = u32(m.prm.z + 0.5);
   let p = s.p;
 
+  // Textured surfaces: planar mapping along the dominant axis, normal mapping.
+  if (m.texp.x >= 0.0) {
+    let an = abs(s.ng);
+    var uv = p.xy;
+    var T = vec3f(1.0, 0.0, 0.0);
+    var B = vec3f(0.0, 1.0, 0.0);
+    if (an.y > 0.5) {
+      uv = p.xz; T = vec3f(1.0, 0.0, 0.0); B = vec3f(0.0, 0.0, 1.0);
+    } else if (an.x > 0.5) {
+      uv = p.zy; T = vec3f(0.0, 0.0, 1.0); B = vec3f(0.0, 1.0, 0.0);
+    }
+    let scale = max(m.texp.z, 1e-3);
+    uv /= scale;
+    let lod = clamp(log2(max(footprint, 1e-5) * TEX_SIZE / scale), 0.0, 9.0);
+    let layer = i32(m.texp.x);
+    let a = textureSampleLevel(texAlb, texSamp, uv, layer, lod);
+    s.base *= a.rgb;
+    s.rough = clamp(a.a * m.prm.x, 0.02, 1.0);
+    if (m.texp.y >= 0.0) {
+      let nm = textureSampleLevel(texNrm, texSamp, uv, i32(m.texp.y), lod);
+      let tn = nm.rgb * 2.0 - 1.0;
+      let bump = m.texp.w;
+      var nn = normalize(T * (tn.x * bump) + B * (tn.y * bump) + s.gf * max(tn.z, 0.2));
+      // Never let the bumped normal dip below the real surface.
+      let d = dot(nn, s.gf);
+      if (d < 0.08) { nn = normalize(nn + s.gf * (0.08 - d)); }
+      s.n = nn;
+      s.base *= mix(1.0, nm.a, 0.6);
+    }
+  }
+
   if ((flags & FLAG_ROAD) != 0u) {
     let w = fbm(p.xz * 0.55 + vec2f(3.1, -1.7));
     let wet = smoothstep(0.43, 0.48, w);
-    var base = s.base * (0.7 + 0.6 * fbm(p.xz * 6.0));
+    var base = s.base;
     // Lane markings.
     let zc = fract((p.z + 100.0) / 6.0);
     if (abs(p.x) < 0.08 && zc < 0.5) { base = vec3f(0.45, 0.45, 0.42); }
     if (abs(abs(p.x) - 3.75) < 0.06) { base = vec3f(0.35, 0.35, 0.33); }
     s.base = mix(base, base * 0.35, wet);
-    s.rough = mix(0.42 + 0.18 * fbm(p.xz * 2.3), 0.012, wet);
+    s.rough = mix(s.rough, 0.012, wet);
+    // Standing water hides the asphalt relief.
+    s.n = normalize(mix(s.n, s.gf, wet));
   } else if ((flags & FLAG_SIDEWALK) != 0u) {
     let n2 = fbm(p.xz * 1.3 + vec2f(7.0, 2.0));
     let wet = smoothstep(0.5, 0.64, n2);
-    var base = s.base * (0.75 + 0.5 * fbm(p.xz * 8.0));
-    let gx = abs(fract(p.x / 1.5) - 0.5);
-    let gz = abs(fract(p.z / 1.5) - 0.5);
-    if (gx > 0.49 || gz > 0.49) { base *= 0.45; }
-    s.base = base * (1.0 - 0.4 * wet);
-    s.rough = mix(0.45, 0.07, wet);
+    s.base *= 1.0 - 0.4 * wet;
+    s.rough = mix(s.rough, 0.07, wet);
+    s.n = normalize(mix(s.n, s.gf, wet * 0.7));
   } else if ((flags & FLAG_GRIME) != 0u) {
     let g = fbm(vec2f(p.y * 0.6, (p.x + p.z) * 0.6));
-    s.base *= (0.55 + 0.6 * g) * mix(0.45, 1.0, smoothstep(0.0, 3.5, p.y));
+    s.base *= (0.7 + 0.45 * g) * mix(0.45, 1.0, smoothstep(0.0, 3.5, p.y));
     s.rough = min(1.0, s.rough + 0.08 * g);
   }
   if ((flags & FLAG_WINDOW) != 0u) {
@@ -544,8 +583,8 @@ fn neeSurface(cell: u32, s: Surf, l: Lobes, wo: vec3f) -> Nee {
   let L = d / dist;
   let cosS = dot(s.n, L);
   let cosL = abs(dot(ls.n, L));
-  if (cosS <= 0.0 || cosL < 1e-4) { return out; }
-  if (occluded(offsetRay(s.p, s.n), L, dist - 2e-3)) { return out; }
+  if (cosS <= 0.0 || cosL < 1e-4 || dot(s.gf, L) <= 0.0) { return out; }
+  if (occluded(offsetRay(s.p, s.gf), L, dist - 2e-3)) { return out; }
   let pdfSa = ls.pdfA * d2 / cosL;
   let ev = bsdfEval(s, l, wo, L);
   // Each lobe is its own sampling technique for MIS purposes.
@@ -628,6 +667,11 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   var lastDelta = true;
   var lastCell = 0u;
   var primaryT = FOG_FAR;
+  // Ray cone for texture LOD: width grows with distance travelled and with
+  // the roughness of each bounce.
+  let pixelSpread = 2.0 * tanH * U.res.w;
+  var pathDist = 0.0;
+  var coneSpread = pixelSpread;
   // Misses get a far-away position facing the camera so the sky still gets
   // temporal history and spatial filtering.
   var gPos = ro + rd * SKY_DIST;
@@ -641,7 +685,7 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     let hasHit = hit.tri != NO_HIT;
     let tHit = select(FOG_FAR, hit.t, hasHit);
     var s: Surf;
-    if (hasHit) { s = evalSurface(hit, ro, rd); }
+    if (hasHit) { s = evalSurface(hit, ro, rd, (pathDist + hit.t) * coneSpread); }
 
     if (bounce == 0u) {
       primaryT = tHit;
@@ -674,6 +718,8 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
           lastPdf = phaseHg(dot(rd, nd));
           lastDelta = false;
           lastCell = cell;
+          pathDist += ts;
+          coneSpread += 0.3;
           ro = sp;
           rd = nd;
           continue;
@@ -715,12 +761,13 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
       if (s.inside) { T *= exp(-hit.t * vec3f(0.06, 0.02, 0.03)); }
       if (rnd() < F) {
         rd = reflect(rd, s.n);
-        ro = offsetRay(s.p, s.n);
+        ro = offsetRay(s.p, s.gf);
       } else {
         rd = normalize(eta * rd + (eta * cosI - sqrt(max(k, 0.0))) * s.n);
-        ro = offsetRay(s.p, -s.n);
+        ro = offsetRay(s.p, -s.gf);
       }
       lastDelta = true;
+      pathDist += hit.t;
       continue;
     }
 
@@ -747,7 +794,7 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
       f = ev.spec;
       pdf = lb.pSpec * ev.pdfS;
     }
-    if (pdf <= 0.0) { break; }
+    if (pdf <= 0.0 || dot(s.gf, wi) <= 0.0) { break; }
     if (!chanSet) {
       chan = select(0u, 1u, specLobe);
       chanSet = true;
@@ -756,7 +803,9 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     lastPdf = pdf;
     lastDelta = false;
     lastCell = cell;
-    ro = offsetRay(s.p, s.n);
+    pathDist += hit.t;
+    coneSpread += select(0.25, s.rough * 0.5, specLobe);
+    ro = offsetRay(s.p, s.gf);
     rd = wi;
 
     // Russian roulette.
