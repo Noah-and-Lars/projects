@@ -40,7 +40,8 @@
         "portable",
         "zip"
       ],
-      "artifactName": "NeonStreet-${version}-${arch}.${ext}"
+      "artifactName": "NeonStreet-${version}-${arch}.${ext}",
+      "signAndEditExecutable": false
     },
     "linux": {
       "target": [
