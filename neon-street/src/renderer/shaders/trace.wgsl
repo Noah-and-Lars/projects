@@ -35,14 +35,15 @@ struct Material {
 
 @group(1) @binding(0) var accumIn: texture_2d<f32>;
 @group(1) @binding(1) var outRad: texture_storage_2d<rgba16float, write>;
-@group(1) @binding(2) var outPos: texture_storage_2d<rgba32float, write>;
-@group(1) @binding(3) var outNrm: texture_storage_2d<rgba16float, write>;
-@group(1) @binding(4) var outAlb: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(2) var outPos: texture_storage_2d<rgba32float, write>; // xyz, w = packed normal
+@group(1) @binding(3) var outAlb: texture_storage_2d<rgba16float, write>; // rgb albedo, a = roughness
+@group(1) @binding(4) var outEmit: texture_storage_2d<rgba16float, write>; // directly visible emission
 
 const NO_HIT: u32 = 0xffffffffu;
 const T_MAX: f32 = 1e30;
 const FOG_FAR: f32 = 400.0;
-const FOG_ALBEDO: f32 = 0.9;
+const FOG_ALBEDO: f32 = 0.85;
+const SKY_DIST: f32 = 1000.0;
 const FOG_G: f32 = 0.55;
 const KIND_OPAQUE: u32 = 0u;
 const KIND_GLASS: u32 = 1u;
@@ -240,10 +241,15 @@ fn windowPattern(m: Material, p: vec3f, n: vec3f) -> f32 {
   let seed = m.extra.z;
   var b = 0.5 + 0.5 * vnoise(vec2f(along * 1.7 + seed, v * 2.2 + seed * 0.37));
   b *= 0.65 + 0.35 * (1.0 - v);
-  // Shopfronts (extra.w == 1) get bright product-shelf bands instead.
+  // Shopfronts (extra.w == 1): shelves and signage behind the glass, with
+  // dark mullions between the panes.
   if (m.extra.w > 0.5) {
-    b = 0.55 + 0.45 * vnoise(vec2f(along * 0.9 + seed, v * 4.0));
-    b *= 0.7 + 0.3 * step(0.12, fract(v * 3.0));
+    let shelf = vnoise(vec2f(along * 1.6 + seed, v * 5.0 + seed));
+    b = 0.12 + 0.88 * smoothstep(0.35, 0.75, shelf);
+    b *= 0.55 + 0.45 * step(0.1, fract(v * 4.0));
+    // Brighter band of signage near the top.
+    b += 0.6 * smoothstep(0.78, 0.86, v) * step(0.3, vnoise(vec2f(along * 3.0, seed)));
+    if (fract(along / 2.4) < 0.035) { b *= 0.05; }
   } else {
     // Window frame cross.
     let fu = fract(along / 1.4);
@@ -293,7 +299,7 @@ fn evalSurface(h: Hit, ro: vec3f, rd: vec3f) -> Surf {
   } else if ((flags & FLAG_GRIME) != 0u) {
     let g = fbm(vec2f(p.y * 0.6, (p.x + p.z) * 0.6));
     s.base *= (0.55 + 0.6 * g) * mix(0.45, 1.0, smoothstep(0.0, 3.5, p.y));
-    s.rough = min(1.0, s.rough + 0.2 * g);
+    s.rough = min(1.0, s.rough + 0.08 * g);
   }
   if ((flags & FLAG_WINDOW) != 0u) {
     s.emis *= windowPattern(m, p, s.ng);
@@ -584,9 +590,15 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   var lastPdf = 0.0;
   var lastDelta = true;
   var primaryT = FOG_FAR;
-  var gPos = vec4f(0.0);
-  var gNrm = vec4f(0.0, 1.0, 0.0, 0.0);
+  // Misses get a far-away position facing the camera so the sky still gets
+  // temporal history and spatial filtering.
+  var gPos = ro + rd * SKY_DIST;
+  var gNrm = -rd;
   var gAlb = vec3f(1.0);
+  var gRough = 1.0;
+  // Emission seen directly by the camera is deterministic, so it bypasses
+  // the denoiser entirely and is added back in the display pass.
+  var gEmit = vec3f(0.0);
 
   for (var bounce = 0u; bounce <= maxBounces; bounce++) {
     let hit = intersectScene(ro, rd, T_MAX);
@@ -598,10 +610,11 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     if (bounce == 0u) {
       primaryT = tHit;
       if (hasHit) {
-        gPos = vec4f(s.p, 1.0);
-        gNrm = vec4f(s.n, hit.t);
+        gPos = s.p;
+        gNrm = s.n;
         let lb = lobes(s, -rd);
         gAlb = lb.kd + lb.f0;
+        gRough = s.rough;
         if (s.kind != KIND_OPAQUE || luminance(s.emis) > 0.0) { gAlb = vec3f(1.0); }
       }
     }
@@ -631,14 +644,18 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
 
     // Emission (with MIS against light sampling when we got here by BSDF sampling).
     if (luminance(s.emis) > 0.0) {
-      var w = 1.0;
-      let li = i32(tris[hit.tri].v1.w);
-      if (!lastDelta && li >= 0 && haveLights) {
-        let cosL = max(abs(dot(s.ng, rd)), 1e-4);
-        let pdfSa = (lightProb(u32(li)) / max(tris[hit.tri].v2.w, 1e-6)) * hit.t * hit.t / cosL;
-        w = lastPdf * lastPdf / (lastPdf * lastPdf + pdfSa * pdfSa);
+      if (bounce == 0u) {
+        gEmit = s.emis;
+      } else {
+        var w = 1.0;
+        let li = i32(tris[hit.tri].v1.w);
+        if (!lastDelta && li >= 0 && haveLights) {
+          let cosL = max(abs(dot(s.ng, rd)), 1e-4);
+          let pdfSa = (lightProb(u32(li)) / max(tris[hit.tri].v2.w, 1e-6)) * hit.t * hit.t / cosL;
+          w = lastPdf * lastPdf / (lastPdf * lastPdf + pdfSa * pdfSa);
+        }
+        L += T * s.emis * w;
       }
-      L += T * s.emis * w;
     }
     if (s.kind == KIND_EMITTER) { break; }
 
@@ -699,8 +716,8 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   }
   textureStore(outRad, pix, vec4f(demod, 1.0));
   if (sampleIndex == 0u) {
-    textureStore(outPos, pix, gPos);
-    textureStore(outNrm, pix, gNrm);
-    textureStore(outAlb, pix, vec4f(gAlb, 1.0));
+    textureStore(outPos, pix, vec4f(gPos, packNormal(gNrm)));
+    textureStore(outAlb, pix, vec4f(gAlb, gRough));
+    textureStore(outEmit, pix, vec4f(gEmit, 1.0));
   }
 }

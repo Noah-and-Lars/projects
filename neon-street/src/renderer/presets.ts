@@ -21,11 +21,11 @@ export interface RenderSettings {
 export type PresetName = 'Low' | 'Medium' | 'High' | 'Ultra' | 'Melt';
 
 export const PRESETS: Record<PresetName, RenderSettings> = {
-  Low:    { renderScale: 0.5,  spp: 1, maxBounces: 2,  lightSamples: 2,  fogMode: 1, fogDensity: 0.010, maxHistory: 24, atrousIterations: 4, exposure: 1.3 },
-  Medium: { renderScale: 0.67, spp: 1, maxBounces: 3,  lightSamples: 4,  fogMode: 2, fogDensity: 0.010, maxHistory: 24, atrousIterations: 4, exposure: 1.3 },
-  High:   { renderScale: 0.75, spp: 1, maxBounces: 4,  lightSamples: 6,  fogMode: 2, fogDensity: 0.010, maxHistory: 32, atrousIterations: 3, exposure: 1.3 },
-  Ultra:  { renderScale: 1.0,  spp: 2, maxBounces: 6,  lightSamples: 8,  fogMode: 2, fogDensity: 0.010, maxHistory: 32, atrousIterations: 3, exposure: 1.3 },
-  Melt:   { renderScale: 2.0,  spp: 4, maxBounces: 10, lightSamples: 16, fogMode: 2, fogDensity: 0.012, maxHistory: 32, atrousIterations: 2, exposure: 1.3 },
+  Low:    { renderScale: 0.5,  spp: 1, maxBounces: 2,  lightSamples: 2,  fogMode: 1, fogDensity: 0.006, maxHistory: 24, atrousIterations: 4, exposure: 1.3 },
+  Medium: { renderScale: 0.67, spp: 1, maxBounces: 3,  lightSamples: 4,  fogMode: 2, fogDensity: 0.006, maxHistory: 24, atrousIterations: 4, exposure: 1.3 },
+  High:   { renderScale: 0.75, spp: 1, maxBounces: 4,  lightSamples: 6,  fogMode: 2, fogDensity: 0.006, maxHistory: 32, atrousIterations: 3, exposure: 1.3 },
+  Ultra:  { renderScale: 1.0,  spp: 2, maxBounces: 6,  lightSamples: 8,  fogMode: 2, fogDensity: 0.006, maxHistory: 32, atrousIterations: 3, exposure: 1.3 },
+  Melt:   { renderScale: 2.0,  spp: 4, maxBounces: 10, lightSamples: 16, fogMode: 2, fogDensity: 0.008, maxHistory: 32, atrousIterations: 2, exposure: 1.3 },
 };
 
 export const PRESET_ORDER: PresetName[] = ['Low', 'Medium', 'High', 'Ultra', 'Melt'];

@@ -89,6 +89,7 @@ async function boot(): Promise<void> {
   const input = new Input(canvas);
   const controller = new PlayerController(scene, input);
   const hud = new Hud($('#hud'));
+  if (params.get('hud') === '0') hud.setVisible(false);
   const menu = new SettingsMenu($('#menu'), settings, presetName, (_s, structural) => {
     if (structural) renderer.resetHistory();
     resize(true);

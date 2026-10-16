@@ -112,16 +112,17 @@ export class PathTracer {
     const uni = (binding: number, vis = C): GPUBindGroupLayoutEntry => ({ binding, visibility: vis, buffer: { type: 'uniform' } });
 
     this.sceneBGL = device.createBindGroupLayout({ label: 'scene', entries: [uni(0), ro(1), ro(2), ro(3), ro(4), ro(5), ro(6)] });
+    // WebGPU allows only 4 storage textures per stage, hence the packed G-buffer.
     this.traceTexBGL = device.createBindGroupLayout({ label: 'trace textures', entries: [tex(0), st(1, 'rgba16float'), st(2, 'rgba32float'), st(3, 'rgba16float'), st(4, 'rgba16float')] });
     this.temporalBGL = device.createBindGroupLayout({
       label: 'temporal',
-      entries: [uni(0), tex(1), tex(2, 'unfilterable-float'), tex(3), tex(4), tex(5), tex(6, 'unfilterable-float'), tex(7), st(8, 'rgba16float'), st(9, 'rgba16float')],
+      entries: [uni(0), tex(1), tex(2, 'unfilterable-float'), tex(3), tex(4), tex(5, 'unfilterable-float'), st(6, 'rgba16float'), st(7, 'rgba16float'), tex(8), tex(9), st(10, 'rgba16float')],
     });
     this.atrousBGL = device.createBindGroupLayout({ label: 'atrous', entries: [uni(0), tex(1), tex(2, 'unfilterable-float'), tex(3), st(4, 'rgba16float'), uni(5)] });
     const F = GPUShaderStage.FRAGMENT;
     this.displayBGL = device.createBindGroupLayout({
       label: 'display',
-      entries: [{ binding: 0, visibility: F, sampler: { type: 'filtering' } }, tex(1, 'float', F), tex(2, 'float', F), tex(3, 'float', F), uni(4, F)],
+      entries: [{ binding: 0, visibility: F, sampler: { type: 'filtering' } }, tex(1, 'float', F), tex(2, 'float', F), tex(3, 'float', F), uni(4, F), tex(5, 'unfilterable-float', F), uni(6, F)],
     });
 
     this.sceneBG = device.createBindGroup({
@@ -195,11 +196,12 @@ export class PathTracer {
     for (const i of [0, 1]) {
       mk(`rad${i}`, 'rgba16float');
       mk(`pos${i}`, 'rgba32float');
-      mk(`nrm${i}`, 'rgba16float');
       mk(`hist${i}`, 'rgba16float');
       mk(`mom${i}`, 'rgba16float');
+      mk(`emitHist${i}`, 'rgba16float');
     }
     mk('alb', 'rgba16float');
+    mk('emit', 'rgba16float');
     mk('tmpA', 'rgba16float');
     mk('tmpB', 'rgba16float');
     this.resetPending = true;
@@ -262,8 +264,8 @@ export class PathTracer {
         { binding: 0, resource: this.view(`rad${inIdx}`) },
         { binding: 1, resource: this.view(`rad${outIdx}`) },
         { binding: 2, resource: this.view(`pos${cur}`) },
-        { binding: 3, resource: this.view(`nrm${cur}`) },
-        { binding: 4, resource: this.view('alb') },
+        { binding: 3, resource: this.view('alb') },
+        { binding: 4, resource: this.view('emit') },
       ]);
       const enc = device.createCommandEncoder({ label: `trace ${s}` });
       const passDesc: GPUComputePassDescriptor = {};
@@ -286,13 +288,14 @@ export class PathTracer {
         { binding: 0, resource: { buffer: this.uniformBuf } },
         { binding: 1, resource: this.view(lastRad) },
         { binding: 2, resource: this.view(`pos${cur}`) },
-        { binding: 3, resource: this.view(`nrm${cur}`) },
-        { binding: 4, resource: this.view(`hist${prev}`) },
-        { binding: 5, resource: this.view(`mom${prev}`) },
-        { binding: 6, resource: this.view(`pos${prev}`) },
-        { binding: 7, resource: this.view(`nrm${prev}`) },
-        { binding: 8, resource: this.view('tmpA') },
-        { binding: 9, resource: this.view(`mom${cur}`) },
+        { binding: 3, resource: this.view(`hist${prev}`) },
+        { binding: 4, resource: this.view(`mom${prev}`) },
+        { binding: 5, resource: this.view(`pos${prev}`) },
+        { binding: 6, resource: this.view('tmpA') },
+        { binding: 7, resource: this.view(`mom${cur}`) },
+        { binding: 8, resource: this.view('emit') },
+        { binding: 9, resource: this.view(`emitHist${prev}`) },
+        { binding: 10, resource: this.view(`emitHist${cur}`) },
       ]);
       const pass = enc.beginComputePass({ label: 'temporal' });
       pass.setPipeline(this.temporalPipe);
@@ -310,7 +313,7 @@ export class PathTracer {
         { binding: 0, resource: { buffer: this.uniformBuf } },
         { binding: 1, resource: this.view(input) },
         { binding: 2, resource: this.view(`pos${cur}`) },
-        { binding: 3, resource: this.view(`nrm${cur}`) },
+        { binding: 3, resource: this.view('alb') },
         { binding: 4, resource: this.view(output) },
         { binding: 5, resource: { buffer: this.atrousParamBufs[i] } },
       ]);
@@ -329,8 +332,10 @@ export class PathTracer {
         { binding: 0, resource: this.sampler },
         { binding: 1, resource: this.view(input) },
         { binding: 2, resource: this.view('alb') },
-        { binding: 3, resource: this.view(`nrm${cur}`) },
+        { binding: 3, resource: this.view(`emitHist${cur}`) },
         { binding: 4, resource: { buffer: this.displayParamBuf } },
+        { binding: 5, resource: this.view(`pos${cur}`) },
+        { binding: 6, resource: { buffer: this.uniformBuf } },
       ]);
       const desc: GPURenderPassDescriptor = {
         label: 'display',

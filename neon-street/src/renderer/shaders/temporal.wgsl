@@ -3,14 +3,17 @@
 
 @group(0) @binding(0) var<uniform> U: Uniforms;
 @group(0) @binding(1) var curRad: texture_2d<f32>;
-@group(0) @binding(2) var curPos: texture_2d<f32>;
-@group(0) @binding(3) var curNrm: texture_2d<f32>;
-@group(0) @binding(4) var prevHist: texture_2d<f32>;
-@group(0) @binding(5) var prevMom: texture_2d<f32>;
-@group(0) @binding(6) var prevPos: texture_2d<f32>;
-@group(0) @binding(7) var prevNrm: texture_2d<f32>;
-@group(0) @binding(8) var outHist: texture_storage_2d<rgba16float, write>;
-@group(0) @binding(9) var outMom: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(2) var curPos: texture_2d<f32>;   // xyz, w = packed normal
+@group(0) @binding(3) var prevHist: texture_2d<f32>;
+@group(0) @binding(4) var prevMom: texture_2d<f32>;
+@group(0) @binding(5) var prevPos: texture_2d<f32>;
+@group(0) @binding(6) var outHist: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(7) var outMom: texture_storage_2d<rgba16float, write>;
+// Directly visible emission is deterministic but sampled with a per-frame
+// jitter, so it is accumulated the same way to anti-alias it.
+@group(0) @binding(8) var curEmit: texture_2d<f32>;
+@group(0) @binding(9) var prevEmit: texture_2d<f32>;
+@group(0) @binding(10) var outEmit: texture_storage_2d<rgba16float, write>;
 
 // Project a world position with the previous frame's camera. Returns pixel
 // coordinates (unrounded) and the view depth in z; z <= 0 means behind.
@@ -35,23 +38,20 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
 
   let spp = max(U.p2.w, 1.0);
   let c = textureLoad(curRad, pix, 0).rgb / spp;
-  let pos = textureLoad(curPos, pix, 0);
-  let nrm = textureLoad(curNrm, pix, 0);
+  let pos4 = textureLoad(curPos, pix, 0);
+  let pos = pos4.xyz;
+  let nrm = unpackNormal(pos4.w);
+  let dist = length(pos - U.camPos.xyz);
   let lc = luminance(c);
 
-  if (pos.w < 0.5) {
-    // Sky: no geometry to validate against, just keep the current value.
-    textureStore(outHist, pix, vec4f(c, 0.0));
-    textureStore(outMom, pix, vec4f(lc, lc * lc, 1.0, 0.0));
-    return;
-  }
-
+  let e = textureLoad(curEmit, pix, 0).rgb;
   var hist = vec3f(0.0);
   var mom = vec3f(0.0);
+  var emitHist = vec3f(0.0);
   var sumW = 0.0;
   let reset = U.p1.z > 0.5;
   if (!reset) {
-    let pp = projectPrev(pos.xyz);
+    let pp = projectPrev(pos);
     if (pp.z > 0.01) {
       let base = vec2i(floor(pp.xy));
       let f = fract(pp.xy);
@@ -60,15 +60,14 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
       for (var i = 0; i < 4; i++) {
         let q = base + offs[i];
         if (q.x < 0 || q.y < 0 || q.x >= W || q.y >= H) { continue; }
-        let qp = textureLoad(prevPos, q, 0);
-        if (qp.w < 0.5) { continue; }
-        let qn = textureLoad(prevNrm, q, 0).xyz;
-        let planeDist = abs(dot(nrm.xyz, qp.xyz - pos.xyz));
-        if (planeDist > 0.02 + 0.015 * nrm.w) { continue; }
-        if (dot(qn, nrm.xyz) < 0.85) { continue; }
+        let qp4 = textureLoad(prevPos, q, 0);
+        let planeDist = abs(dot(nrm, qp4.xyz - pos));
+        if (planeDist > 0.02 + 0.015 * dist) { continue; }
+        if (dot(unpackNormal(qp4.w), nrm) < 0.85) { continue; }
         let w = wts[i];
         hist += textureLoad(prevHist, q, 0).rgb * w;
         mom += textureLoad(prevMom, q, 0).xyz * w;
+        emitHist += textureLoad(prevEmit, q, 0).rgb * w;
         sumW += w;
       }
     }
@@ -78,10 +77,12 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   if (sumW > 0.01) {
     hist /= sumW;
     mom /= sumW;
+    emitHist /= sumW;
     histLen = mom.z;
   } else {
     hist = c;
     mom = vec3f(lc, lc * lc, 0.0);
+    emitHist = e;
   }
 
   let n = min(histLen + 1.0, max(U.p1.y, 1.0));
@@ -113,4 +114,6 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
 
   textureStore(outHist, pix, vec4f(color, variance));
   textureStore(outMom, pix, vec4f(m1, m2, n, 0.0));
+  // Emission converges faster than radiance; a shorter window keeps it from smearing.
+  textureStore(outEmit, pix, vec4f(mix(emitHist, e, max(alpha, 1.0 / 12.0)), 1.0));
 }

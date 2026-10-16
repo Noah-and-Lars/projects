@@ -1,4 +1,5 @@
-// Final composite: remodulate albedo, expose, tone map, encode to sRGB.
+// Final composite: remodulate albedo, add direct emission, expose, tone map,
+// encode to sRGB. Also hosts the debug views.
 
 struct DisplayParams {
   exposure: f32,
@@ -10,8 +11,10 @@ struct DisplayParams {
 @group(0) @binding(0) var samp: sampler;
 @group(0) @binding(1) var rad: texture_2d<f32>;
 @group(0) @binding(2) var alb: texture_2d<f32>;
-@group(0) @binding(3) var nrm: texture_2d<f32>;
+@group(0) @binding(3) var emit: texture_2d<f32>;
 @group(0) @binding(4) var<uniform> D: DisplayParams;
+@group(0) @binding(5) var gPos: texture_2d<f32>;
+@group(0) @binding(6) var<uniform> U: Uniforms;
 
 struct VSOut {
   @builtin(position) pos: vec4f,
@@ -43,10 +46,15 @@ fn toSrgb(c: vec3f) -> vec3f {
 fn fs(in: VSOut) -> @location(0) vec4f {
   let r = textureSampleLevel(rad, samp, in.uv, 0.0).rgb;
   let a = textureSampleLevel(alb, samp, in.uv, 0.0).rgb;
-  var c = r * a;
+  let e = textureSampleLevel(emit, samp, in.uv, 0.0).rgb;
+  var c = r * a + e;
   if (D.mode > 0.5 && D.mode < 1.5) { c = r; }
   if (D.mode > 1.5 && D.mode < 2.5) { return vec4f(toSrgb(a), 1.0); }
-  if (D.mode > 2.5) { return vec4f(textureSampleLevel(nrm, samp, in.uv, 0.0).xyz * 0.5 + 0.5, 1.0); }
+  if (D.mode > 2.5) {
+    let pix = vec2i(in.uv * U.res.xy);
+    let n = unpackNormal(textureLoad(gPos, pix, 0).w);
+    return vec4f(n * 0.5 + 0.5, 1.0);
+  }
   c *= D.exposure;
   let d = in.uv - 0.5;
   c *= 1.0 - D.vignette * dot(d, d) * 2.0;

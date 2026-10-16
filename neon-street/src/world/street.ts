@@ -63,7 +63,7 @@ export function buildStreet(seed = 1337): SceneData {
   const mAcUnit = b.material({ base: [0.36, 0.36, 0.37], metallic: 0.7, roughness: 0.5 });
   const mPipe = b.material({ base: [0.12, 0.11, 0.10], metallic: 0.8, roughness: 0.45 });
   const mVending = b.material({ base: [0.12, 0.12, 0.14], metallic: 0.2, roughness: 0.3 });
-  const mVendingPanel = b.material({ emission: [1.4, 2.8, 3.6], kind: MatKind.Emitter });
+  const mVendingPanel = b.material({ emission: [0.7, 1.4, 1.8], kind: MatKind.Emitter });
   const mCrate = [
     b.material({ base: [0.05, 0.12, 0.07], roughness: 0.35 }),
     b.material({ base: [0.05, 0.07, 0.14], roughness: 0.35 }),
@@ -117,7 +117,7 @@ export function buildStreet(seed = 1337): SceneData {
           let mat = mDarkGlass;
           if (lit) {
             const col = pick(WINDOW_COLORS);
-            const inten = 0.5 + rng() * 1.3;
+            const inten = 0.15 + rng() * 0.4;
             mat = b.material({
               base: [0, 0, 0],
               roughness: 0.04,
@@ -146,7 +146,7 @@ export function buildStreet(seed = 1337): SceneData {
       const mShop = b.material({
         base: [0, 0, 0],
         roughness: 0.03,
-        emission: scale(shopCol, 0.45 + rng() * 0.7),
+        emission: scale(shopCol, 0.08 + rng() * 0.16),
         flags: MatFlag.Window,
         extra: [0.35, 2.65, rng() * 100, 1],
       });
@@ -197,7 +197,7 @@ export function buildStreet(seed = 1337): SceneData {
       for (let xx = 1; xx + 1.4 < 89; xx += 2.4) {
         const lit = rng() < 0.3;
         const mat = lit
-          ? b.material({ base: [0, 0, 0], roughness: 0.04, emission: scale(pick(WINDOW_COLORS), 0.5 + rng()), flags: MatFlag.Window, extra: [y, 1.6, rng() * 100, 0] })
+          ? b.material({ base: [0, 0, 0], roughness: 0.04, emission: scale(pick(WINDOW_COLORS), 0.12 + rng() * 0.35), flags: MatFlag.Window, extra: [y, 1.6, rng() * 100, 0] })
           : mDarkGlass;
         addWindowZ(b, origin, u, v, inward, xx, y, 1.4, 1.6, mat);
       }
