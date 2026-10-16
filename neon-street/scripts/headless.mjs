@@ -101,9 +101,14 @@ try {
 } catch (e) {
   console.error('timed out waiting for frames:', e.message);
 }
-const state = await page.evaluate(() => JSON.parse(JSON.stringify(window.__neon ?? null)));
+// Freeze the loop so the compositor can present the last frame for the capture
+// (a software GPU can take many seconds per frame at higher settings).
+const state = await page.evaluate(() => {
+  if (window.__neon) window.__neon.pause = true;
+  return JSON.parse(JSON.stringify(window.__neon ?? null));
+});
 const out = opt('out', 'headless.png');
-await page.screenshot({ path: out });
+await page.screenshot({ path: out, timeout: 180000 });
 await browser.close();
 server.close();
 

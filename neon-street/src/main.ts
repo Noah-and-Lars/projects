@@ -13,6 +13,8 @@ import { buildStreet } from './world/street';
 
 interface NeonDebug {
   ready: boolean;
+  /** Set by the headless script to freeze the last frame before a screenshot. */
+  pause: boolean;
   frames: number;
   fps: number;
   gpuMs: number | null;
@@ -21,7 +23,7 @@ interface NeonDebug {
   errors: string[];
 }
 
-const dbg: NeonDebug = { ready: false, frames: 0, fps: 0, gpuMs: null, renderW: 0, renderH: 0, errors: [] };
+const dbg: NeonDebug = { ready: false, pause: false, frames: 0, fps: 0, gpuMs: null, renderW: 0, renderH: 0, errors: [] };
 (window as unknown as { __neon: NeonDebug }).__neon = dbg;
 
 const $ = <T extends HTMLElement>(sel: string): T => {
@@ -153,6 +155,7 @@ async function boot(): Promise<void> {
   dbg.ready = true;
   let lastFrameStart = performance.now();
   startLoop(({ dt, time }) => {
+    if (dbg.pause) return;
     const frameStart = performance.now();
     const cpuMs = frameStart - lastFrameStart;
     lastFrameStart = frameStart;
