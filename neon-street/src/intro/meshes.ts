@@ -2,7 +2,31 @@
 // helmet. Object spaces: arms point along +z (forearm to fingertips) with
 // the palm facing -y; the helmet is centred on the head, +z forward.
 
+import type { Vec3 } from '../core/math';
 import { Face, MatFlag, MatKind, SceneBuilder, type SceneData } from '../world/geometry';
+
+/** Wrist extension: the hand is tilted up from the forearm so that, with the
+ *  forearm sloping down at about 40 degrees, the palm lies flat on the ground. */
+const WRIST_BEND = (-40 * Math.PI) / 180;
+
+/** A box rotated about the x axis through the pivot (y, z); same winding as `box`. */
+function boxRotX(b: SceneBuilder, min: Vec3, max: Vec3, mat: number, ang: number, pivot: [number, number]): void {
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  const T = (p: Vec3): Vec3 => {
+    const y = p[1] - pivot[0];
+    const z = p[2] - pivot[1];
+    return [p[0], y * c - z * s + pivot[0], y * s + z * c + pivot[1]];
+  };
+  const [x0, y0, z0] = min;
+  const [x1, y1, z1] = max;
+  b.quad(T([x0, y0, z0]), T([x0, y0, z1]), T([x0, y1, z1]), T([x0, y1, z0]), mat);
+  b.quad(T([x1, y0, z1]), T([x1, y0, z0]), T([x1, y1, z0]), T([x1, y1, z1]), mat);
+  b.quad(T([x0, y0, z0]), T([x1, y0, z0]), T([x1, y0, z1]), T([x0, y0, z1]), mat);
+  b.quad(T([x0, y1, z1]), T([x1, y1, z1]), T([x1, y1, z0]), T([x0, y1, z0]), mat);
+  b.quad(T([x1, y0, z0]), T([x0, y0, z0]), T([x0, y1, z0]), T([x1, y1, z0]), mat);
+  b.quad(T([x0, y0, z1]), T([x1, y0, z1]), T([x1, y1, z1]), T([x0, y1, z1]), mat);
+}
 
 export function buildArmMesh(side: -1 | 1): SceneData {
   const b = new SceneBuilder();
@@ -21,20 +45,22 @@ export function buildArmMesh(side: -1 | 1): SceneData {
   b.box([side * 0.045, -0.01, -0.15], [side * 0.058, 0.01, -0.12], mLed);
   // Wrist cuff.
   b.box([-0.056, -0.05, -0.02], [0.056, 0.05, 0.02], mSuitPlate);
+  // Hand, bent up at the wrist (pivot at the cuff).
+  const hand = (min: Vec3, max: Vec3, mat: number) => boxRotX(b, min, max, mat, WRIST_BEND, [0, 0.02]);
   // Palm and back-of-hand plate.
-  b.box([-0.045, -0.03, 0.02], [0.045, 0.02, 0.12], mGlove);
-  b.box([-0.04, 0.02, 0.03], [0.04, 0.03, 0.1], mKnuckle);
+  hand([-0.045, -0.03, 0.02], [0.045, 0.02, 0.12], mGlove);
+  hand([-0.04, 0.02, 0.03], [0.04, 0.03, 0.1], mKnuckle);
   // Four fingers with two segments each.
   for (let i = 0; i < 4; i++) {
     const x = -0.034 + i * 0.0227;
-    b.box([x - 0.0095, -0.025, 0.12], [x + 0.0095, 0.005, 0.17], mGlove);
-    b.box([x - 0.009, -0.03, 0.17], [x + 0.009, 0.0, 0.215], mGlove);
-    b.box([x - 0.008, 0.005, 0.125], [x + 0.008, 0.012, 0.16], mKnuckle);
+    hand([x - 0.0095, -0.025, 0.12], [x + 0.0095, 0.005, 0.17], mGlove);
+    hand([x - 0.009, -0.03, 0.17], [x + 0.009, 0.0, 0.215], mGlove);
+    hand([x - 0.008, 0.005, 0.125], [x + 0.008, 0.012, 0.16], mKnuckle);
   }
   // Thumb on the inner side.
   const tx = side > 0 ? -0.045 : 0.045;
-  b.box([Math.min(tx, tx - side * 0.03), -0.02, 0.03], [Math.max(tx, tx - side * 0.03), 0.0, 0.08], mGlove);
-  b.box([Math.min(tx - side * 0.03, tx - side * 0.05), -0.02, 0.06], [Math.max(tx - side * 0.03, tx - side * 0.05), 0.0, 0.11], mGlove);
+  hand([Math.min(tx, tx - side * 0.03), -0.02, 0.03], [Math.max(tx, tx - side * 0.03), 0.0, 0.08], mGlove);
+  hand([Math.min(tx - side * 0.03, tx - side * 0.05), -0.02, 0.06], [Math.max(tx - side * 0.03, tx - side * 0.05), 0.0, 0.11], mGlove);
   return finishNoLights(b);
 }
 

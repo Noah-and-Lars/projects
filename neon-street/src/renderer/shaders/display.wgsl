@@ -98,70 +98,81 @@ fn visorFx(uv0: vec2f) -> Visor {
   v.hud = vec3f(0.0);
   let lift = D.intro.w;
   let aspect = D.intro2.y;
-  // The whole helmet slides up and away as it is taken off.
+  // The whole helmet slides up and away as it is taken off (uv.y grows downward).
   let uv = uv0 + vec2f(0.0, lift * 1.3);
-  let c = vec2f((uv.x - 0.5) * aspect, uv.y - 0.5);
-  // Opening: a rounded rectangle, wider than tall, with a brow and a chin bar.
-  let w = 0.83 - 0.12 * smoothstep(0.0, 0.5, abs(c.y) * 2.0);
-  let h = 0.46;
-  let dx = abs(c.x) - w * 0.5;
-  let dy = abs(c.y) - h;
+  // Centred coordinates with y up, x scaled by the aspect ratio.
+  let c = vec2f((uv.x - 0.5) * aspect, 0.5 - uv.y);
+  // Opening: a wide rounded rectangle that covers most of the view, with a
+  // slight pinch at the temples and a chin bar at the bottom.
+  let halfW = 0.76 - 0.05 * smoothstep(0.2, 0.5, abs(c.y));
+  let halfH = 0.43;
+  let dx = abs(c.x) - halfW;
+  let dy = abs(c.y) - halfH;
   let outside = max(dx, dy);
-  v.dark = smoothstep(-0.02, 0.03, outside);
-  // Chin bar notch and brow.
-  if (c.y < -0.3 && abs(c.x) < 0.22) { v.dark = max(v.dark, smoothstep(-0.34, -0.3, c.y) * (1.0 - smoothstep(-0.3, -0.26, c.y))); }
-  v.fog = smoothstep(-0.25, 0.02, outside) * 0.55;
-  // Cracks radiating from a hit point on the upper left.
-  let hit = vec2f(-0.42, 0.22);
+  v.dark = smoothstep(-0.015, 0.02, outside);
+  // Chin bar: a rounded bump into the opening at the bottom centre.
+  let chin = smoothstep(0.26, 0.14, abs(c.x)) * smoothstep(-0.46, -0.4, c.y) * (1.0 - smoothstep(-0.37, -0.31, c.y));
+  v.dark = max(v.dark, chin);
+  // The helmet ends at the neck ring; below it the world shows as it lifts.
+  v.dark *= smoothstep(-0.78, -0.66, c.y);
+  v.fog = smoothstep(-0.22, 0.02, outside) * 0.4 * smoothstep(-0.78, -0.66, c.y);
+  // Fine cracks radiating from an impact point on the upper left.
+  let hit = vec2f(-0.5, 0.28);
   let d = c - hit;
   let ang = atan2(d.y, d.x);
   let r = length(d);
   var crack = 0.0;
-  for (var i = 0; i < 5; i++) {
-    let a0 = -0.4 + f32(i) * 0.55 + 0.2 * hash21(vec2f(f32(i), 1.0));
-    let wob = 0.06 * sin(r * 30.0 + f32(i) * 2.0);
+  for (var i = 0; i < 6; i++) {
+    let a0 = -1.3 + f32(i) * 0.42 + 0.25 * hash21(vec2f(f32(i), 1.0));
+    let wob = 0.05 * sin(r * 40.0 + f32(i) * 2.0);
     let da = abs(ang - a0 - wob);
-    let len = 0.25 + 0.3 * hash21(vec2f(f32(i), 2.0));
-    crack = max(crack, smoothstep(0.012, 0.0, da * r) * (1.0 - smoothstep(len * 0.6, len, r)));
+    let len = 0.14 + 0.22 * hash21(vec2f(f32(i), 2.0));
+    crack = max(crack, smoothstep(0.0035, 0.0, da * r) * (1.0 - smoothstep(len * 0.5, len, r)));
   }
-  v.uvOffset += vec2f(crack * 0.006, -crack * 0.004);
-  v.hud += vec3f(0.9) * crack * 0.35;
+  v.uvOffset += vec2f(crack * 0.003, -crack * 0.002);
+  v.hud += vec3f(0.7, 0.75, 0.8) * crack * 0.12;
   // Rain drops on the outside of the visor: sparse, slowly sliding down.
-  let cell = floor(uv * vec2f(14.0, 9.0));
+  let grid = vec2f(16.0, 10.0);
+  let cell = floor(uv * grid);
   let seed = hash21(cell + 7.0);
-  if (seed < 0.3) {
-    let slide = fract(D.time * (0.02 + 0.06 * seed) + seed);
-    let centre = vec2f(0.5 + 0.3 * (hash21(cell) - 0.5), 1.0 - slide);
-    let f = (fract(uv * vec2f(14.0, 9.0)) - centre) * vec2f(1.0, 0.7);
-    let dd = dot(f, f) * 40.0;
-    if (dd < 1.0) { v.uvOffset += f * (1.0 - dd) * 0.08; }
+  if (seed < 0.28) {
+    let slide = fract(D.time * (0.015 + 0.05 * seed) + seed);
+    let centre = vec2f(0.5 + 0.3 * (hash21(cell) - 0.5), 0.25 + 0.5 * slide);
+    let f = (fract(uv * grid) - centre) * vec2f(1.0, 0.7);
+    let dd = dot(f, f) * 110.0;
+    if (dd < 1.0) { v.uvOffset += f * (1.0 - dd) * 0.05; }
   }
-  // HUD: cyan readouts on the left, a status bar on the right, booting with glitches.
+  // HUD: cyan readouts top-left, an integrity bar bottom-left, ticks on the
+  // right and a faint reticle; it glitches while booting.
   let boot = D.intro2.x;
   let glitchRow = step(0.75, hash21(vec2f(floor(uv.y * 40.0), floor(D.time * 9.0)))) * boot;
   let gx = uv.x + glitchRow * 0.03;
   var hud = 0.0;
-  // Text-like rows.
-  for (var row = 0; row < 5; row++) {
-    let ry = 0.66 - f32(row) * 0.045;
-    if (abs(uv.y - ry) < 0.012 && gx > 0.08 && gx < 0.28) {
-      let cellx = floor((gx - 0.08) * 90.0);
-      let on = hash21(vec2f(cellx, f32(row) + floor(D.time * 0.5))) > 0.42;
-      hud += select(0.0, 1.0, on) * 0.8;
+  // Six lines of fake readout text: short words of varying length.
+  for (var row = 0; row < 6; row++) {
+    let ry = 0.2 + f32(row) * 0.026;
+    if (abs(uv.y - ry) < 0.006 && gx > 0.12 && gx < 0.32) {
+      let cellx = floor((gx - 0.12) * 260.0);
+      let word = floor(cellx / 7.0);
+      let gap = fract(cellx / 7.0) > 0.86;
+      let on = hash21(vec2f(word, f32(row) + floor(D.time * 0.4))) > 0.35 && !gap;
+      let line = 1.0 - smoothstep(0.0, 0.3, abs(fract(uv.y * 200.0) - 0.5) * 2.0 - 0.6);
+      hud += select(0.0, 1.0, on) * 0.8 * line;
     }
   }
-  // Integrity bar.
-  if (abs(uv.y - 0.33) < 0.01 && gx > 0.08 && gx < 0.3) {
+  // Integrity bar with a thin frame.
+  if (abs(uv.y - 0.72) < 0.006 && gx > 0.12 && gx < 0.3) {
     let fill = 0.64 + 0.03 * sin(D.time * 3.0);
-    hud += select(0.25, 1.0, (gx - 0.08) / 0.22 < fill);
+    let inner = abs(uv.y - 0.72) < 0.0035 && gx > 0.123 && gx < 0.297;
+    hud += select(0.35, select(0.15, 1.0, (gx - 0.123) / 0.174 < fill), inner);
   }
-  // Right-side ticks and a reticle.
-  if (gx > 0.72 && gx < 0.74 && fract(uv.y * 12.0) < 0.3 && uv.y > 0.3 && uv.y < 0.7) { hud += 0.7; }
-  let rc = length(c * vec2f(1.0, 1.0));
-  hud += smoothstep(0.012, 0.0, abs(rc - 0.1)) * 0.4 * step(0.6, fract(ang * 1.0 + D.time * 0.2));
-  // Flicker while booting.
+  // Tick scale on the right.
+  if (gx > 0.86 && gx < 0.872 && fract(uv.y * 24.0) < 0.2 && uv.y > 0.3 && uv.y < 0.7) { hud += 0.6; }
+  if (gx > 0.86 && gx < 0.884 && fract(uv.y * 6.0) < 0.08 && uv.y > 0.3 && uv.y < 0.7) { hud += 0.6; }
+  let rc = length(c);
+  hud += smoothstep(0.008, 0.0, abs(rc - 0.08)) * 0.3 * step(0.6, fract(ang + D.time * 0.2));
   let flick = mix(1.0, step(0.3, hash21(vec2f(floor(D.time * 22.0), 3.0))), boot);
-  v.hud += vec3f(0.35, 1.0, 1.1) * hud * 0.35 * flick * (1.0 - v.dark);
+  v.hud += vec3f(0.35, 1.0, 1.1) * hud * 0.3 * flick * (1.0 - v.dark);
   return v;
 }
 
@@ -196,8 +207,9 @@ fn fs(in: VSOut) -> @location(0) vec4f {
     c = max(c + (c - blur) * D.sharpen, vec3f(0.0));
   }
   let bloomS = textureSampleLevel(bloomTex, samp, uv, 0.0).rgb;
-  // Out of focus: the bloom chain runs unthresholded while D.intro.y > 0.
-  if (D.intro.y > 0.0) { c = mix(c, bloomS, D.intro.y * 0.9); }
+  // Out of focus: the bloom chain runs unthresholded while D.intro.y > 0 (it
+  // sums four levels, hence the scale).
+  if (D.intro.y > 0.0) { c = mix(c, bloomS * 0.28, D.intro.y * 0.9); }
   c += bloomS * D.bloom;
   c *= D.exposure;
   let d = uv - 0.5;
@@ -206,13 +218,13 @@ fn fs(in: VSOut) -> @location(0) vec4f {
     let k = D.intro.z;
     // Fogged edges of the glass, the dark helmet frame, and the HUD glow.
     c = mix(c, vec3f(0.35, 0.4, 0.45) * (0.3 + luminance(c)), visor.fog * k);
-    c = mix(c, vec3f(0.01, 0.01, 0.012), visor.dark * k);
+    c = mix(c, vec3f(0.002, 0.002, 0.003), visor.dark * k);
     c += visor.hud * k;
   }
   // Eyelids: dark reddish lids closing from the top and bottom.
   if (D.intro.x > 0.0) {
     let open = 1.0 - D.intro.x;
-    let edge = abs(in.uv.y - 0.5) - 0.5 * open * (1.0 + 0.15 * sin(in.uv.x * 6.0));
+    let edge = abs(in.uv.y - 0.5) - 0.5 * open * (0.92 + 0.14 * cos((in.uv.x - 0.5) * 4.0));
     let lid = smoothstep(-0.06, 0.02, edge);
     c = mix(c, vec3f(0.03, 0.006, 0.004) * (1.0 - lid * 0.5), lid);
   }

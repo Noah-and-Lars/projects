@@ -30,13 +30,17 @@ export interface IntroFrame {
   done: boolean;
 }
 
-const ARM_LOCAL_BOUNDS: [Vec3, Vec3] = [[-0.09, -0.06, -0.33], [0.09, 0.06, 0.22]];
+const ARM_LOCAL_BOUNDS: [Vec3, Vec3] = [[-0.09, -0.06, -0.33], [0.09, 0.17, 0.22]];
 const HELMET_LOCAL_BOUNDS: [Vec3, Vec3] = [[-0.16, -0.15, -0.17], [0.16, 0.25, 0.13]];
-const DURATION = 16.2;
+const DURATION = 16.4;
+
+type Pose = [number, number, number, number]; // eye height, pitch, roll, yaw
 
 const smooth = (a: number, b: number, t: number) => { const x = clamp((t - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); };
 const add = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const scale = (a: Vec3, s: number): Vec3 => [a[0] * s, a[1] * s, a[2] * s];
+const mixPose = (a: Pose, b: Pose, k: number): Pose => a.map((v, i) => lerp(v, b[i], k)) as Pose;
 
 /** Camera basis from yaw/pitch/roll. */
 function basis(yaw: number, pitch: number, roll: number): { fwd: Vec3; right: Vec3; up: Vec3 } {
@@ -76,6 +80,7 @@ export class IntroSequence {
   private fired = new Set<string>();
   private helmetVel: Vec3 = [0, 0, 0];
   private helmetPos: Vec3 | null = null;
+  private helmetAxes: [Vec3, Vec3, Vec3] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
   private helmetSpin = 0;
   private helmetRest = false;
 
@@ -107,13 +112,12 @@ export class IntroSequence {
   }
 
   private helmetPose(): DynObjectPose {
-    const p = this.helmetPos!;
+    const [ox, oy, oz] = this.helmetAxes;
+    // Tumble about the forward axis after release.
     const a = this.helmetSpin;
-    // Lying on its side: tilted around the forward axis.
-    const ox: Vec3 = [Math.cos(a), Math.sin(a), 0];
-    const oy: Vec3 = [-Math.sin(a), Math.cos(a), 0];
-    const oz: Vec3 = [0, 0, 1];
-    return poseFromAxes(p, ox, oy, oz, HELMET_LOCAL_BOUNDS);
+    const rx = normalize(add(scale(ox, Math.cos(a)), scale(oy, Math.sin(a))));
+    const ry = normalize(add(scale(oy, Math.cos(a)), scale(ox, -Math.sin(a))));
+    return poseFromAxes(this.helmetPos!, rx, ry, oz, HELMET_LOCAL_BOUNDS);
   }
 
   update(dt: number): IntroFrame {
@@ -127,22 +131,17 @@ export class IntroSequence {
 
     // ---- camera -----------------------------------------------------------
     const yaw0 = this.yaw;
-    const lying: [number, number, number, number] = [0.32, 1.25, 0.2, yaw0 + 0.35];   // eye height, pitch, roll, yaw
-    const sitting: [number, number, number, number] = [1.0, -0.45, 0.0, yaw0 - 0.55];
-    const standing: [number, number, number, number] = [1.7, 0.0, 0.0, yaw0];
-    let pose = lying;
+    const lying: Pose = [0.32, 1.0, 0.2, yaw0 + 0.35];
+    const pressing: Pose = [1.0, -0.95, 0.0, yaw0 + 0.4];      // looking down at the hand
+    const helmetLook: Pose = [1.05, -0.05, 0.0, yaw0 - 0.05];   // looking ahead while lifting
+    const dropLook: Pose = [1.05, -0.62, 0.0, yaw0 + 0.75];     // watching the helmet land
+    const standing: Pose = [1.7, 0.0, 0.0, yaw0];
+    let pose: Pose;
     if (t < 5.5) pose = lying;
-    else if (t < 8.6) { const k = smooth(5.5, 8.4, t); pose = lying.map((v, i) => lerp(v, sitting[i], k)) as typeof lying; }
-    else if (t < 13.6) {
-      // Look forward-up for the helmet, then back to level.
-      const k = smooth(8.8, 9.8, t);
-      const look: [number, number, number, number] = [1.05, -0.08, 0, yaw0 - 0.1];
-      pose = sitting.map((v, i) => lerp(v, look[i], k)) as typeof lying;
-    } else {
-      const k = smooth(13.6, 16.0, t);
-      const look: [number, number, number, number] = [1.05, -0.08, 0, yaw0 - 0.1];
-      pose = look.map((v, i) => lerp(v, standing[i], k)) as typeof lying;
-    }
+    else if (t < 8.6) pose = mixPose(lying, pressing, smooth(5.5, 8.2, t));
+    else if (t < 12.4) pose = mixPose(pressing, helmetLook, smooth(8.6, 9.6, t));
+    else if (t < 14.4) pose = mixPose(helmetLook, dropLook, smooth(12.4, 13.1, t));
+    else pose = mixPose(dropLook, standing, smooth(14.4, 16.2, t));
     // A little tremor while coming to.
     const tremor = (1 - smooth(4.0, 9.0, t)) * 0.012;
     const yawN = pose[3] + Math.sin(t * 7.3) * tremor;
@@ -151,68 +150,70 @@ export class IntroSequence {
     const camPos: Vec3 = [this.feet[0], this.ground + pose[0], this.feet[2]];
     const camera: CameraState = { pos: camPos, fwd: b.fwd, right: b.right, up: b.up, tanHalfFov: Math.tan((75 * Math.PI) / 360) };
     const toWorld = (l: Vec3): Vec3 => add(add(add(camPos, scale(b.right, l[0])), scale(b.up, l[1])), scale(b.fwd, l[2]));
+    // Flat facing direction for ground targets.
+    const flatF: Vec3 = [Math.sin(yaw0 + 0.4), 0, Math.cos(yaw0 + 0.4)];
+    const flatR: Vec3 = [Math.cos(yaw0 + 0.4), 0, -Math.sin(yaw0 + 0.4)];
 
     // ---- arms -----------------------------------------------------------------
-    // Rest poses hang below the view; the hands come up when needed.
-    const armPose = (side: -1 | 1, local: Vec3, pitchDown: number, yawIn: number): DynObjectPose => {
-      const pos = toWorld(local);
-      // Object z axis: forward tilted down; roll so the palm faces down.
-      const cp = Math.cos(pitchDown), sp = Math.sin(pitchDown);
-      const cy = Math.cos(yawIn), sy = Math.sin(yawIn);
-      const oz = normalize(add(add(scale(b.fwd, cp * cy), scale(b.up, -sp)), scale(b.right, -side * sy)));
+    // An arm reaches from the shoulder toward a world-space hand target; the
+    // object origin is the wrist, fingertips 0.21 m further along +z.
+    const armTo = (side: -1 | 1, hand: Vec3): DynObjectPose => {
+      const shoulder = toWorld([side * 0.22, -0.28, -0.05]);
+      const oz = normalize(sub(hand, shoulder));
       const ox0 = normalize(cross(b.up, oz));
       const oy = normalize(cross(oz, ox0));
-      return poseFromAxes(pos, ox0, oy, oz, ARM_LOCAL_BOUNDS);
+      const wrist = sub(sub(hand, scale(oz, 0.08)), scale(oy, 0.01));
+      return poseFromAxes(wrist, ox0, oy, oz, ARM_LOCAL_BOUNDS);
     };
     let armL: DynObjectPose | null = null;
     let armR: DynObjectPose | null = null;
     // Right hand presses into the puddle beside you while sitting up.
-    if (t > 5.8 && t < 9.4) {
-      const down = smooth(5.8, 7.1, t) * (1 - smooth(8.3, 9.3, t));
-      const rest: Vec3 = [0.3, -0.55, 0.35];
-      const press: Vec3 = [0.42, -(pose[0] - 0.03), 0.5]; // fingertips at the ground
-      const local: Vec3 = rest.map((v, i) => lerp(v, press[i], down)) as Vec3;
-      armR = armPose(1, local, lerp(0.9, 0.25, down), 0.15);
-      fire('splash', 7.0, () => { impulses.push({ x: toWorld(press)[0], z: toWorld(press)[2], radius: 0.3, strength: 0.012 }); });
-      if (t > 7.0 && t < 8.3) {
-        // Hand resting in the water keeps it moving a little.
-        if (Math.random() < dt * 3) impulses.push({ x: toWorld(press)[0] + (Math.random() - 0.5) * 0.15, z: toWorld(press)[2] + (Math.random() - 0.5) * 0.15, radius: 0.12, strength: 0.002 });
+    const pressPoint: Vec3 = add(add([this.feet[0], this.ground + 0.02, this.feet[2]], scale(flatR, 0.38)), scale(flatF, 0.62));
+    if (t > 5.9 && t < 9.5) {
+      const down = smooth(5.9, 7.1, t) * (1 - smooth(8.4, 9.4, t));
+      const rest = toWorld([0.3, -0.7, 0.3]);
+      const hand: Vec3 = [lerp(rest[0], pressPoint[0], down), lerp(rest[1], pressPoint[1], down), lerp(rest[2], pressPoint[2], down)];
+      armR = armTo(1, hand);
+      fire('splash', 7.0, () => { impulses.push({ x: pressPoint[0], z: pressPoint[2], radius: 0.3, strength: 0.012 }); });
+      if (t > 7.0 && t < 8.4 && Math.random() < dt * 3) {
+        impulses.push({ x: pressPoint[0] + (Math.random() - 0.5) * 0.15, z: pressPoint[2] + (Math.random() - 0.5) * 0.15, radius: 0.12, strength: 0.002 });
       }
-      fire('drip', 8.6);
+      fire('drip', 8.7);
     }
     // Both hands rise to the helmet, lift it, carry it right and let go.
     let helmet: DynObjectPose | null = null;
-    if (t > 9.0 && t < 13.9) {
-      const up = smooth(9.0, 10.0, t);
+    if (t > 9.1 && t < 14.0) {
+      const up = smooth(9.1, 10.1, t);
       const lift = smooth(10.4, 11.6, t);
       const carry = smooth(11.6, 12.6, t);
       const release = smooth(12.6, 13.9, t);
-      const hL: Vec3 = [lerp(-0.45, -0.22, up) + carry * 0.35, lerp(-0.5, -0.02, up) + lift * 0.42 - carry * 0.25, 0.3];
-      const hR: Vec3 = [lerp(0.45, 0.22, up) + carry * 0.35, lerp(-0.5, -0.02, up) + lift * 0.42 - carry * 0.25, 0.3];
-      const away = release * 0.5;
-      armL = armPose(-1, [hL[0] - away * 0.4, hL[1] - away, hL[2]], 0.35 - lift * 0.5, 0.25);
-      armR = armPose(1, [hR[0] + away * 0.4, hR[1] - away, hR[2]], 0.35 - lift * 0.5, 0.25);
+      const hL: Vec3 = [lerp(-0.5, -0.2, up) + carry * 0.4, lerp(-0.6, -0.04, up) + lift * 0.45 - carry * 0.35, lerp(0.35, 0.3, up)];
+      const hR: Vec3 = [lerp(0.5, 0.2, up) + carry * 0.4, lerp(-0.6, -0.04, up) + lift * 0.45 - carry * 0.35, lerp(0.35, 0.3, up)];
+      const away = release * 0.6;
+      armL = armTo(-1, toWorld([hL[0] - away * 0.3, hL[1] - away, hL[2] + away * 0.1]));
+      armR = armTo(1, toWorld([hR[0] + away * 0.3, hR[1] - away, hR[2] + away * 0.1]));
       fire('seal', 10.3);
       if (t >= 10.4 && t < 12.6) {
         // The helmet moves with the hands until released.
-        const local: Vec3 = [(hL[0] + hR[0]) * 0.5, (hL[1] + hR[1]) * 0.5 + 0.02, 0.28];
+        const local: Vec3 = [(hL[0] + hR[0]) * 0.5, (hL[1] + hR[1]) * 0.5 + 0.03, 0.3];
         const pos = toWorld(local);
-        helmet = poseFromAxes(pos, b.right, b.up, b.fwd, HELMET_LOCAL_BOUNDS);
-        this.helmetPos = pos;
-        this.helmetVel = [b.right[0] * 0.6 + b.fwd[0] * 0.2, 0.2, b.right[2] * 0.6 + b.fwd[2] * 0.2];
+        this.helmetAxes = [b.right, b.up, b.fwd];
         this.helmetSpin = 0;
+        this.helmetPos = pos;
+        helmet = this.helmetPose();
+        this.helmetVel = add(scale(b.right, 0.9), [0, 0.3, 0]);
       }
     }
     // Free fall after release, landing beside you.
     if (t >= 12.6 && this.helmetPos && !this.helmetRest) {
       this.helmetVel[1] -= 9.8 * dt;
       for (let i = 0; i < 3; i++) this.helmetPos[i] += this.helmetVel[i] * dt;
-      this.helmetSpin += dt * 4;
+      this.helmetSpin += dt * 5;
       const floor = this.ground + 0.15;
       if (this.helmetPos[1] <= floor) {
         this.helmetPos[1] = floor;
         this.helmetRest = true;
-        this.helmetSpin = Math.PI * 0.42;
+        this.helmetSpin = Math.PI * 0.45;
         events.push('thud');
         impulses.push({ x: this.helmetPos[0], z: this.helmetPos[2], radius: 0.4, strength: 0.02 });
       }
@@ -227,11 +228,11 @@ export class IntroSequence {
     else eyelid = 1 - smooth(2.4, 5.2, t);
     const blur = (1 - smooth(3.0, 7.5, t)) * 0.9;
     const liftV = smooth(10.4, 11.6, t);
-    const visor = 1 - smooth(11.2, 11.8, t);
+    const visor = 1 - smooth(11.3, 11.8, t);
     const boot = clamp(1 - smooth(2.6, 6.0, t), 0, 1) * (t > 1.2 ? 1 : 0) + (t > 10.3 ? smooth(10.3, 10.5, t) * (1 - smooth(10.5, 11.0, t)) : 0);
     const muffle = 1 - smooth(10.4, 12.0, t);
     // HUD inside the discarded helmet keeps glowing for a moment, then dies.
-    const hud = t < 10.4 ? 1 : 1 - smooth(13.0, 14.6, t);
+    const hud = t < 10.4 ? 1 : 1 - smooth(13.2, 14.8, t);
     fire('breath', 0.2);
 
     const done = t >= DURATION;
