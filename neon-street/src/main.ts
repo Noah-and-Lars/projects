@@ -1,5 +1,6 @@
 // Entry point: boot the GPU, build the street, run the frame loop.
 
+import { VERSION } from './version';
 import { GpuUnavailableError, initGpu } from './core/gpu';
 import { Input } from './core/input';
 import { startLoop } from './core/loop';
@@ -56,6 +57,7 @@ async function boot(): Promise<void> {
   const canvas = $<HTMLCanvasElement>('#gfx');
   const startEl = $('#start');
   const statusEl = $('#startStatus');
+  $('#version').textContent = VERSION;
   const headless = params.get('headless') === '1' || params.get('autostart') === '1';
 
   let gpu;
