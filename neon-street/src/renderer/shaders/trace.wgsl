@@ -25,8 +25,9 @@ struct Material {
   base: vec4f,  // rgb base colour (tint when textured), a = metallic
   emis: vec4f,  // rgb emitted radiance
   prm: vec4f,   // roughness (multiplier when textured), ior, flags, kind
-  extra: vec4f, // procedural parameters
+  extra: vec4f, // procedural parameters (windows: bottom y, height, left edge, shop flag; screens: u0, v0, width, height)
   texp: vec4f,  // albedo layer (-1 none), normal layer, metres per tile, bump strength
+  aux: vec4f,   // seed, variant, room width, room depth
 };
 
 @group(0) @binding(0) var<uniform> U: Uniforms;
@@ -57,10 +58,13 @@ const SKY_DIST: f32 = 1000.0;
 const KIND_OPAQUE: u32 = 0u;
 const KIND_GLASS: u32 = 1u;
 const KIND_EMITTER: u32 = 2u;
+const KIND_HOLO: u32 = 3u;
 const FLAG_ROAD: u32 = 1u;
 const FLAG_WINDOW: u32 = 2u;
 const FLAG_GRIME: u32 = 4u;
 const FLAG_SIDEWALK: u32 = 8u;
+const FLAG_BILLBOARD: u32 = 16u;
+const FLAG_GLYPH: u32 = 32u;
 
 // ---------------------------------------------------------------- random
 
@@ -189,6 +193,10 @@ fn intersectScene(ro: vec3f, rd: vec3f, tmax0: f32) -> Hit {
   return best;
 }
 
+fn isHologram(tri: u32) -> bool {
+  return u32(mats[u32(tris[tri].v0.w)].prm.w + 0.5) == KIND_HOLO;
+}
+
 fn occluded(ro: vec3f, rd: vec3f, tmax: f32) -> bool {
   let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
   var stack: array<u32, 48>;
@@ -198,8 +206,10 @@ fn occluded(ro: vec3f, rd: vec3f, tmax: f32) -> bool {
     let n = nodes[node];
     if (n.cnt > 0u) {
       for (var k = 0u; k < n.cnt; k++) {
-        let t = triHit(triIdx[n.lf + k], ro, rd);
-        if (t < tmax) { return true; }
+        let ti = triIdx[n.lf + k];
+        let t = triHit(ti, ro, rd);
+        // Holograms are light, not matter: they never cast shadows.
+        if (t < tmax && !isHologram(ti)) { return true; }
       }
       if (sp == 0u) { break; }
       sp--;
@@ -244,30 +254,226 @@ struct Surf {
   inside: bool,
 };
 
-// Emission pattern for lit windows: curtains, a darker ceiling, frame bars.
-fn windowPattern(m: Material, p: vec3f, n: vec3f) -> f32 {
-  let along = select(p.x, p.z, abs(n.x) > 0.5);
-  let v = clamp((p.y - m.extra.x) / max(m.extra.y, 0.01), 0.0, 1.0);
-  let seed = m.extra.z;
-  var b = 0.5 + 0.5 * vnoise(vec2f(along * 1.7 + seed, v * 2.2 + seed * 0.37));
-  b *= 0.65 + 0.35 * (1.0 - v);
-  // Shopfronts (extra.w == 1): shelves and signage behind the glass, with
-  // dark mullions between the panes.
-  if (m.extra.w > 0.5) {
-    let shelf = vnoise(vec2f(along * 1.6 + seed, v * 5.0 + seed));
-    b = 0.12 + 0.88 * smoothstep(0.35, 0.75, shelf);
-    b *= 0.55 + 0.45 * step(0.1, fract(v * 4.0));
-    // Brighter band of signage near the top.
-    b += 0.6 * smoothstep(0.78, 0.86, v) * step(0.3, vnoise(vec2f(along * 3.0, seed)));
-    if (fract(along / 2.4) < 0.035) { b *= 0.05; }
-  } else {
-    // Window frame cross.
-    let fu = fract(along / 1.4);
-    if (abs(v - 0.5) < 0.025 || abs(fu - 0.5) < 0.02) { b *= 0.08; }
-    // Some windows have blinds.
-    if (hash21(vec2f(seed, 3.0)) < 0.3 && fract(v * 9.0) < 0.22) { b *= 0.35; }
+// ------------------------------------------------------ emissive patterns
+
+fn palette(i: f32) -> vec3f {
+  let k = u32(fract(i * 0.1234 + 0.37) * 6.0);
+  switch (k) {
+    case 0u: { return vec3f(1.0, 0.15, 0.6); }   // magenta
+    case 1u: { return vec3f(0.1, 0.85, 1.0); }   // cyan
+    case 2u: { return vec3f(1.0, 0.75, 0.1); }   // yellow
+    case 3u: { return vec3f(1.0, 0.35, 0.05); }  // orange
+    case 4u: { return vec3f(0.3, 0.4, 1.0); }    // electric blue
+    default: { return vec3f(0.3, 1.0, 0.45); }   // green
   }
-  return b;
+}
+
+// Wall-local coordinates: u along the wall, v up, for axis-aligned facades.
+fn wallU(p: vec3f, n: vec3f) -> f32 {
+  return select(p.x, p.z, abs(n.x) > 0.5);
+}
+
+// Interior mapping: intersect the ray with a virtual room box behind the
+// window and shade whichever face it hits, lit by a ceiling fixture.
+fn roomRadiance(m: Material, p: vec3f, n: vec3f, dir: vec3f) -> vec3f {
+  let time = U.p1.w;
+  let seed = m.aux.x;
+  let isShop = m.extra.w > 0.5;
+  let u = wallU(p, n);
+  let du = select(dir.x, dir.z, abs(n.x) > 0.5);
+  let dv = dir.y;
+  let dw = max(-dot(dir, n), 1e-4);
+  let u0 = m.extra.z;
+  let width = max(m.aux.z, 0.5);
+  let depth = max(m.aux.w, 1.0);
+  let floorY = select(m.extra.x - 0.9, m.extra.x - 0.3, isShop);
+  let height = select(2.8, 3.2, isShop);
+  let v = p.y;
+
+  // Distances to the room's walls along the ray.
+  let tu = select((u0 - u) / min(du, -1e-5), (u0 + width - u) / max(du, 1e-5), du > 0.0);
+  let tv = select((floorY - v) / min(dv, -1e-5), (floorY + height - v) / max(dv, 1e-5), dv > 0.0);
+  let tw = depth / dw;
+  let t = min(tu, min(tv, tw));
+  let hu = u + du * t;
+  let hv = v + dv * t;
+  let hw = dw * t;
+
+  let wallCol = mix(vec3f(0.55, 0.5, 0.44), vec3f(0.42, 0.47, 0.58), hash21(vec2f(seed, 1.0)));
+  var col = wallCol;
+  let lightU = u0 + width * 0.5;
+  let lightW = depth * 0.5;
+  if (t == tw) {
+    // Back wall: wallpaper, furniture band, a picture or a screen.
+    col = wallCol * (0.9 + 0.1 * vnoise(vec2f(hu * 3.0, hv * 3.0)));
+    if (hv < floorY + 0.95) { col = vec3f(0.12, 0.1, 0.09); }
+    let pu = (hu - u0) / width;
+    let pv = (hv - floorY) / height;
+    if (isShop) {
+      // Shelves with products.
+      let shelf = fract(pv * 5.0);
+      if (shelf < 0.12 && pv > 0.25) { col = vec3f(0.3, 0.28, 0.26); }
+      else if (pv > 0.25) {
+        let cellId = floor(vec2f(hu * 4.0, pv * 5.0));
+        let prod = hash21(cellId + seed);
+        col = select(col, palette(prod * 10.0) * (0.4 + 0.6 * hash21(cellId * 1.7 + seed)), prod > 0.35);
+      }
+    } else {
+      // Picture frame or a TV, depending on the seed.
+      let kind = hash21(vec2f(seed, 7.0));
+      if (abs(pu - 0.55) < 0.17 && abs(pv - 0.58) < 0.14) {
+        if (kind < 0.45) {
+          let flick = 0.6 + 0.4 * hash21(vec2f(floor(time * 6.0), seed));
+          col = mix(vec3f(0.4, 0.55, 1.0), palette(floor(time * 0.7) + seed), 0.5) * 3.0 * flick;
+        } else {
+          col = palette(seed * 3.0) * 0.5;
+        }
+      }
+    }
+  } else if (t == tv) {
+    if (dv > 0.0) {
+      // Ceiling with the light fixture.
+      col = vec3f(0.85, 0.85, 0.82);
+      col = vec3f(0.6, 0.6, 0.58);
+      let fixture = select(abs(hu - lightU) < 0.45 && abs(hw - lightW) < 0.3,
+                           fract((hu - u0) / 2.0) < 0.3 && abs(hw - lightW) < 0.4, isShop);
+      if (fixture) { col = vec3f(5.0); }
+    } else {
+      col = select(vec3f(0.16, 0.13, 0.11), vec3f(0.22, 0.22, 0.24), isShop);
+    }
+  } else {
+    col = wallCol * 0.55;
+  }
+  // Falloff from the ceiling light; most of the room sits in its shadow.
+  let dl = vec3f(hu - lightU, hv - (floorY + height), hw - lightW);
+  let fall = 1.0 / (1.0 + 0.18 * dot(dl, dl));
+  var out = col * (0.1 + 0.9 * fall) * m.emis.rgb;
+  // Window frame: a cross for apartments, a mullion every pane for shops.
+  if (isShop) {
+    if (fract((u - u0) / 2.4) < 0.02 || (p.y - m.extra.x) / m.extra.y > 0.96) { out *= 0.04; }
+  } else {
+    let fu = (u - (u0 + 0.5)) / 1.4;
+    let fv = (p.y - m.extra.x) / max(m.extra.y, 0.01);
+    if (abs(fu - 0.5) < 0.025 || abs(fv - 0.5) < 0.025) { out *= 0.06; }
+  }
+  // Blinds or curtains on some apartments.
+  if (!isShop && hash21(vec2f(seed, 3.0)) < 0.3) {
+    let slat = fract((p.y - m.extra.x) * 9.0);
+    out *= select(0.35, 1.0, slat > 0.22);
+  }
+  return out;
+}
+
+// Animated advertising screen: palette blocks, a logo, scrolling text bars,
+// scanlines and the occasional glitch.
+fn billboardPattern(m: Material, p: vec3f, n: vec3f) -> vec3f {
+  let time = U.p1.w;
+  let seed = m.aux.x;
+  var uv = vec2f((wallU(p, n) - m.extra.x) / max(m.extra.z, 0.1), (p.y - m.extra.y) / max(m.extra.w, 0.1));
+  // Mirror so text scrolls the right way on both sides of the street.
+  if (n.x > 0.5 || n.z < -0.5) { uv.x = 1.0 - uv.x; }
+  let aspect = m.extra.z / max(m.extra.w, 0.1);
+  let glitch = step(0.92, hash21(vec2f(floor(time * 5.0), seed)));
+  if (glitch > 0.5 && hash21(vec2f(floor(uv.y * 20.0), floor(time * 5.0))) > 0.6) { uv.x += 0.06; }
+  let c1 = palette(seed);
+  let c2 = palette(seed + 1.7);
+  var col = c1 * (0.25 + 0.35 * smoothstep(0.0, 1.0, uv.y));
+  // Big logo ring on the left.
+  let lc = vec2f((uv.x - 0.25) * aspect, uv.y - 0.55);
+  let ring = abs(length(lc) - 0.28);
+  col = mix(col, c2 * 2.5, smoothstep(0.08, 0.04, ring));
+  col = mix(col, vec3f(2.2), smoothstep(0.1, 0.06, length(lc - vec2f(0.12, 0.08))) * 0.6);
+  // Rows of text-like bars that scroll.
+  for (var row = 0; row < 3; row++) {
+    let ry = 0.42 - f32(row) * 0.13;
+    if (abs(uv.y - ry) < 0.045 && uv.x > 0.5) {
+      let dirn = select(1.0, -1.0, row == 1);
+      let x = uv.x * aspect * 6.0 + time * 0.35 * dirn + seed;
+      let cell = floor(x);
+      let on = hash21(vec2f(cell, f32(row) + seed)) > 0.4 && fract(x) > 0.15;
+      col = mix(col, select(c2, vec3f(1.8), row == 0) * 1.6, select(0.0, 1.0, on));
+    }
+  }
+  // Tagline block at the bottom right.
+  if (uv.y < 0.12 && uv.x > 0.55) { col = mix(col, c2 * 1.4, step(0.5, hash21(vec2f(floor(uv.x * 30.0), seed + 9.0)))); }
+  // Scanlines and flicker.
+  col *= 0.86 + 0.14 * sin(uv.y * m.extra.w * 220.0);
+  col *= 0.92 + 0.08 * hash21(vec2f(floor(time * 24.0), seed));
+  col *= 1.0 - glitch * 0.3;
+  return col * m.emis.rgb;
+}
+
+// Procedural neon "characters": a column (or row) of blocky glyphs.
+fn glyphPattern(m: Material, p: vec3f, n: vec3f) -> f32 {
+  let u = wallU(p, n) - m.extra.x;
+  let v = p.y - m.extra.y;
+  let cell = max(m.aux.z, 0.2);
+  let vertical = m.aux.y < 0.5; // variant 0: glyphs stacked vertically
+  let along = select(u, v, vertical);
+  let across = select(v, u, vertical);
+  let ci = floor(along / cell);
+  let g = hash21(vec2f(ci, m.aux.x));
+  if (g < 0.18) { return 0.0; }
+  let fa = fract(along / cell);
+  let fc = across / cell;
+  let gx = (fc - 0.15) / 0.7 * 5.0;
+  let gy = (fa - 0.14) / 0.72 * 7.0;
+  if (gx < 0.0 || gx >= 5.0 || gy < 0.0 || gy >= 7.0) { return 0.0; }
+  let bx = floor(gx);
+  let by = floor(gy);
+  var on = hash21(vec2f(bx + by * 5.0, g * 113.0)) < 0.42;
+  // Guaranteed strokes keep the shapes readable as characters.
+  if (by == 3.0 || bx == 0.0 || (by == 6.0 && g > 0.5)) { on = on || hash21(vec2f(by + bx * 0.3, g * 77.0)) < 0.85; }
+  if (!on) { return 0.0; }
+  let e = min(min(fract(gx), 1.0 - fract(gx)), min(fract(gy), 1.0 - fract(gy)));
+  let flick = 0.85 + 0.15 * step(0.03, hash21(vec2f(floor(U.p1.w * 20.0), m.aux.x + ci)));
+  return smoothstep(0.0, 0.2, e) * flick;
+}
+
+// Floating holographic ad: returns rgb emission and alpha (coverage).
+fn holoPattern(m: Material, p: vec3f, n: vec3f) -> vec4f {
+  let time = U.p1.w;
+  let seed = m.aux.x;
+  let uv = vec2f((wallU(p, n) - m.extra.x) / max(m.extra.z, 0.1), (p.y - m.extra.y) / max(m.extra.w, 0.1));
+  let aspect = m.extra.z / max(m.extra.w, 0.1);
+  let c = vec2f((uv.x - 0.5) * aspect, uv.y - 0.6);
+  let col = palette(seed);
+  var a = 0.0;
+  // Pulsing rings.
+  let r = length(c);
+  let pulse = fract(time * 0.5 + seed);
+  a += smoothstep(0.03, 0.0, abs(r - 0.32 * pulse)) * (1.0 - pulse) * 0.8;
+  a += smoothstep(0.02, 0.0, abs(r - 0.3)) * 0.6;
+  // Rotating arc.
+  let ang = atan2(c.y, c.x) + time * 1.3;
+  a += smoothstep(0.03, 0.0, abs(r - 0.4)) * step(0.0, sin(ang * 2.0)) * 0.9;
+  // Centre symbol.
+  a += smoothstep(0.12, 0.05, r) * (0.6 + 0.4 * sin(time * 3.0 + seed));
+  // Scrolling glyph rows underneath.
+  if (uv.y < 0.28 && uv.y > 0.05) {
+    let x = uv.x * aspect * 10.0 - time * 0.8 + seed;
+    let row = floor(uv.y * 20.0);
+    let on = hash21(vec2f(floor(x), row + seed)) > 0.45 && fract(x) > 0.2 && fract(uv.y * 20.0) > 0.25;
+    a += select(0.0, 0.7, on);
+  }
+  // Scanlines, edge fade, flicker, glitch tearing.
+  a *= 0.7 + 0.3 * sin(uv.y * 160.0 + time * 10.0);
+  let edge = smoothstep(0.0, 0.08, uv.x) * smoothstep(1.0, 0.92, uv.x) * smoothstep(0.0, 0.05, uv.y) * smoothstep(1.0, 0.9, uv.y);
+  a *= edge;
+  a *= 0.8 + 0.2 * hash21(vec2f(floor(time * 30.0), seed));
+  if (hash21(vec2f(floor(time * 4.0), seed + 2.0)) > 0.9 && fract(uv.y * 7.0 + time) < 0.1) { a *= 0.2; }
+  a = clamp(a, 0.0, 1.0);
+  return vec4f(col * m.aux.y * a, a * 0.3);
+}
+
+// Emitted radiance of a material at point p (wall normal n) toward -dir,
+// where dir is the ray direction arriving at the surface.
+fn emitted(m: Material, p: vec3f, n: vec3f, dir: vec3f) -> vec3f {
+  let flags = u32(m.prm.z + 0.5);
+  if ((flags & FLAG_WINDOW) != 0u) { return roomRadiance(m, p, n, dir); }
+  if ((flags & FLAG_BILLBOARD) != 0u) { return billboardPattern(m, p, n); }
+  if ((flags & FLAG_GLYPH) != 0u) { return m.emis.rgb * glyphPattern(m, p, n); }
+  return m.emis.rgb;
 }
 
 // `footprint` is the ray cone's width at the hit in metres; it picks the mip.
@@ -324,10 +530,12 @@ fn evalSurface(h: Hit, ro: vec3f, rd: vec3f, footprint: f32) -> Surf {
     let w = fbm(p.xz * 0.55 + vec2f(3.1, -1.7));
     let wet = smoothstep(0.43, 0.48, w);
     var base = s.base;
-    // Lane markings.
+    // Lane markings and two zebra crossings.
     let zc = fract((p.z + 100.0) / 6.0);
     if (abs(p.x) < 0.08 && zc < 0.5) { base = vec3f(0.45, 0.45, 0.42); }
     if (abs(abs(p.x) - 3.75) < 0.06) { base = vec3f(0.35, 0.35, 0.33); }
+    let crossing = (p.z > -3.2 && p.z < 0.0) || (p.z > 58.5 && p.z < 61.7);
+    if (crossing && abs(p.x) < 3.6 && fract(p.x * 1.1 + 0.25) < 0.5) { base = mix(base, vec3f(0.5, 0.5, 0.47), 0.85); }
     s.base = mix(base, base * 0.35, wet);
     s.rough = mix(s.rough, 0.012, wet);
     // Standing water hides the asphalt relief.
@@ -343,8 +551,8 @@ fn evalSurface(h: Hit, ro: vec3f, rd: vec3f, footprint: f32) -> Surf {
     s.base *= (0.7 + 0.45 * g) * mix(0.45, 1.0, smoothstep(0.0, 3.5, p.y));
     s.rough = min(1.0, s.rough + 0.08 * g);
   }
-  if ((flags & FLAG_WINDOW) != 0u) {
-    s.emis *= windowPattern(m, p, s.ng);
+  if (luminance(s.emis) > 0.0 && (flags & (FLAG_WINDOW | FLAG_BILLBOARD | FLAG_GLYPH)) != 0u) {
+    s.emis = emitted(m, p, s.ng, rd);
   }
   return s;
 }
@@ -494,6 +702,7 @@ struct LightSample {
   n: vec3f,
   le: vec3f,
   pdfA: f32, // probability density per unit area, including light selection
+  mat: u32,
 };
 
 fn sampleLight(cell: u32) -> LightSample {
@@ -508,9 +717,8 @@ fn sampleLight(cell: u32) -> LightSample {
   let b2 = 1.0 - b0 - b1;
   ls.pos = tr.v0.xyz * b0 + tr.v1.xyz * b1 + tr.v2.xyz * b2;
   ls.n = tr.n.xyz;
-  let m = mats[u32(tr.v0.w)];
-  ls.le = m.emis.rgb;
-  if ((u32(m.prm.z + 0.5) & FLAG_WINDOW) != 0u) { ls.le *= windowPattern(m, ls.pos, ls.n); }
+  ls.mat = u32(tr.v0.w);
+  ls.le = mats[ls.mat].emis.rgb;
   ls.pdfA = lightProb(cell, li) / max(tr.v2.w, 1e-6);
   return ls;
 }
@@ -547,10 +755,13 @@ fn risPick(cell: u32, p: vec3f, n: vec3f, useCos: bool, rd: vec3f) -> Reservoir 
   r.pHat = 0.0;
   let m = max(u32(U.p3.x + 0.5), 1u);
   for (var k = 0u; k < m; k++) {
-    let c = sampleLight(cell);
+    var c = sampleLight(cell);
     let d = c.pos - p;
     let d2 = max(dot(d, d), 1e-3);
     let L = d * inverseSqrt(d2);
+    // Patterned emitters depend on where they are seen from.
+    let flags = u32(mats[c.mat].prm.z + 0.5);
+    if ((flags & (FLAG_WINDOW | FLAG_BILLBOARD | FLAG_GLYPH)) != 0u) { c.le = emitted(mats[c.mat], c.pos, c.n, L); }
     let cosL = abs(dot(c.n, L));
     var geom = cosL / d2;
     if (useCos) { geom *= max(dot(n, L), 0.0); } else { geom *= phaseHg(dot(rd, L)); }
@@ -750,6 +961,19 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
       }
     }
     if (s.kind == KIND_EMITTER) { break; }
+
+    if (s.kind == KIND_HOLO) {
+      // Translucent light: add its glow, keep going straight through.
+      let hp = holoPattern(mats[u32(tris[hit.tri].v0.w)], s.p, s.ng);
+      if (bounce == 0u) { gEmit += hp.rgb; } else {
+        let c = T * hp.rgb;
+        if (chan == 1u) { Ls += c; } else { Ld += c; }
+      }
+      T *= 1.0 - hp.a;
+      pathDist += hit.t;
+      ro = offsetRay(s.p, -s.gf);
+      continue;
+    }
 
     if (s.kind == KIND_GLASS) {
       if (!chanSet) { chan = 1u; chanSet = true; }

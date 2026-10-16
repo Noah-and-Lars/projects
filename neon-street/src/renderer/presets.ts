@@ -24,11 +24,11 @@ export type PresetName = 'Low' | 'Medium' | 'High' | 'Ultra' | 'Melt';
 
 // Tuned against an RTX 3060 Ti at 1080p: High ~60 fps, Ultra ~30 fps.
 export const PRESETS: Record<PresetName, RenderSettings> = {
-  Low:    { renderScale: 0.5,  spp: 1, maxBounces: 2,  lightSamples: 2,  fogMode: 1, fogDensity: 0.006, maxHistory: 24, atrousIterations: 4, bloom: 0.06, exposure: 1.3 },
-  Medium: { renderScale: 0.6,  spp: 1, maxBounces: 3,  lightSamples: 4,  fogMode: 2, fogDensity: 0.006, maxHistory: 24, atrousIterations: 4, bloom: 0.06, exposure: 1.3 },
-  High:   { renderScale: 0.7,  spp: 1, maxBounces: 4,  lightSamples: 6,  fogMode: 2, fogDensity: 0.006, maxHistory: 32, atrousIterations: 3, bloom: 0.06, exposure: 1.3 },
-  Ultra:  { renderScale: 0.85, spp: 2, maxBounces: 5,  lightSamples: 8,  fogMode: 2, fogDensity: 0.006, maxHistory: 32, atrousIterations: 3, bloom: 0.06, exposure: 1.3 },
-  Melt:   { renderScale: 1.75, spp: 4, maxBounces: 10, lightSamples: 16, fogMode: 2, fogDensity: 0.008, maxHistory: 32, atrousIterations: 2, bloom: 0.06, exposure: 1.3 },
+  Low:    { renderScale: 0.5,  spp: 1, maxBounces: 2,  lightSamples: 2,  fogMode: 1, fogDensity: 0.006, maxHistory: 24, atrousIterations: 4, bloom: 0.06, exposure: 1.5 },
+  Medium: { renderScale: 0.6,  spp: 1, maxBounces: 3,  lightSamples: 4,  fogMode: 2, fogDensity: 0.006, maxHistory: 24, atrousIterations: 4, bloom: 0.06, exposure: 1.5 },
+  High:   { renderScale: 0.7,  spp: 1, maxBounces: 4,  lightSamples: 6,  fogMode: 2, fogDensity: 0.006, maxHistory: 32, atrousIterations: 3, bloom: 0.06, exposure: 1.5 },
+  Ultra:  { renderScale: 0.85, spp: 2, maxBounces: 5,  lightSamples: 8,  fogMode: 2, fogDensity: 0.006, maxHistory: 32, atrousIterations: 3, bloom: 0.06, exposure: 1.5 },
+  Melt:   { renderScale: 1.75, spp: 4, maxBounces: 10, lightSamples: 16, fogMode: 2, fogDensity: 0.008, maxHistory: 32, atrousIterations: 2, bloom: 0.06, exposure: 1.5 },
 };
 
 export const PRESET_ORDER: PresetName[] = ['Low', 'Medium', 'High', 'Ultra', 'Melt'];

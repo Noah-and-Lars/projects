@@ -124,15 +124,26 @@ export function buildStreet(seed = 1337): SceneData {
           if (lit) {
             const col = pick(WINDOW_COLORS);
             const inten = 0.15 + rng() * 0.4;
+            // extra: window bottom, height, room left edge (along the wall), shop flag
+            // aux: seed, variant, room width, room depth
             mat = b.material({
               base: [0, 0, 0],
               roughness: 0.04,
               emission: scale(col, inten),
               flags: MatFlag.Window,
-              extra: [y, 1.6, rng() * 100, 0],
+              extra: [y, 1.6, z + zz - 0.5, 0],
+              aux: [rng() * 100, 0, 2.4, 4.0],
             });
           }
           addWindow(b, origin, u, v, inward, zz, y, 1.4, 1.6, mat);
+          // Balconies on some windows: slab plus railing.
+          if (rng() < 0.12 && y > 4.5) {
+            const bx0 = facadeX, bx1 = facadeX + inward * 1.0;
+            b.box([Math.min(bx0, bx1), y - 0.18, z + zz - 0.3], [Math.max(bx0, bx1), y - 0.06, z + zz + 1.7], mSignBacking, Face.All & ~(side > 0 ? Face.PX : Face.NX));
+            const rx0 = facadeX + inward * 0.96, rx1 = facadeX + inward * 1.0;
+            b.box([Math.min(rx0, rx1), y - 0.06, z + zz - 0.3], [Math.max(rx0, rx1), y + 0.95, z + zz + 1.7], mPole, Face.All);
+            continue;
+          }
           // Air-conditioning units under some windows.
           if (rng() < 0.14) {
             const ax0 = facadeX + inward * 0.02;
@@ -149,14 +160,32 @@ export function buildStreet(seed = 1337): SceneData {
 
       // Ground floor: glowing shopfront window, sign band, maybe an awning.
       const shopCol = pick(WINDOW_COLORS);
+      const shopW = w - 0.3 - 1.45;
       const mShop = b.material({
         base: [0, 0, 0],
         roughness: 0.03,
-        emission: scale(shopCol, 0.08 + rng() * 0.16),
+        emission: scale(shopCol, 0.1 + rng() * 0.18),
         flags: MatFlag.Window,
-        extra: [0.35, 2.65, rng() * 100, 1],
+        extra: [0.35, 2.65, z + 0.6, 1],
+        aux: [rng() * 100, 0, shopW, 6.0],
       });
-      addWindow(b, origin, u, v, inward, 0.6, 0.35, w - 0.3 - 1.45, 2.65, mShop, 0.05);
+      addWindow(b, origin, u, v, inward, 0.6, 0.35, shopW, 2.65, mShop, 0.05);
+
+      // Advertising screen high up on taller buildings.
+      if (h > 15 && rng() < 0.4) {
+        const bw = Math.min(7, w - 2.3);
+        const mBoard = b.material({
+          emission: [1, 1, 1].map((c) => c * (1.6 + rng() * 1.2)) as Vec3,
+          kind: MatKind.Emitter,
+          flags: MatFlag.Billboard,
+          extra: [z + 1.0, 10.6, bw, 3.6],
+          aux: [rng() * 100, 0, 0, 0],
+        });
+        addWindow(b, origin, u, v, inward, 1.0, 10.6, bw, 3.6, mBoard, 0.1);
+        // Frame around the screen.
+        const fx0 = facadeX, fx1 = facadeX + inward * 0.12;
+        b.box([Math.min(fx0, fx1), 10.45, z + 0.85], [Math.max(fx0, fx1), 14.35, z + 1.0 + bw + 0.15], mSignBacking, Face.All & ~(side > 0 ? Face.PX : Face.NX));
+      }
 
       const bandX0 = facadeX, bandX1 = facadeX + inward * 0.15;
       b.box(
@@ -165,7 +194,9 @@ export function buildStreet(seed = 1337): SceneData {
         mSignBacking,
         Face.All & ~(side > 0 ? Face.PX : Face.NX),
       );
-      if (rng() < 0.55) {
+      const signRoll = rng();
+      if (signRoll < 0.4) {
+        // Plain neon tube along the sign band.
         const mNeon = b.material({ emission: scale(pick(NEON_COLORS), 0.9), kind: MatKind.Emitter });
         const nx0 = facadeX + inward * 0.15, nx1 = facadeX + inward * 0.22;
         b.box(
@@ -174,6 +205,17 @@ export function buildStreet(seed = 1337): SceneData {
           mNeon,
           Face.All & ~(side > 0 ? Face.PX : Face.NX),
         );
+      } else if (signRoll < 0.8) {
+        // Row of neon glyphs on the sign band.
+        const len = Math.min(w - 2.0, 2 + Math.floor(rng() * 6) * 0.6);
+        const mGlyph = b.material({
+          emission: scale(pick(NEON_COLORS), 0.7),
+          kind: MatKind.Emitter,
+          flags: MatFlag.Glyph,
+          extra: [z + 0.8, 3.15, len, 0.6],
+          aux: [rng() * 100, 1, 0.6, 0],
+        });
+        addWindow(b, origin, u, v, inward, 0.8, 3.15, len, 0.6, mGlyph, 0.16);
       }
       if (rng() < 0.4) {
         const aw0 = facadeX, aw1 = facadeX + inward * 1.3;
@@ -203,26 +245,113 @@ export function buildStreet(seed = 1337): SceneData {
       for (let xx = 1; xx + 1.4 < 89; xx += 2.4) {
         const lit = rng() < 0.3;
         const mat = lit
-          ? b.material({ base: [0, 0, 0], roughness: 0.04, emission: scale(pick(WINDOW_COLORS), 0.12 + rng() * 0.35), flags: MatFlag.Window, extra: [y, 1.6, rng() * 100, 0] })
+          ? b.material({ base: [0, 0, 0], roughness: 0.04, emission: scale(pick(WINDOW_COLORS), 0.12 + rng() * 0.35), flags: MatFlag.Window, extra: [y, 1.6, -45 + xx - 0.5, 0], aux: [rng() * 100, 0, 2.4, 4.0] })
           : mDarkGlass;
         addWindowZ(b, origin, u, v, inward, xx, y, 1.4, 1.6, mat);
       }
     }
   }
 
-  // ---- neon blade signs ------------------------------------------------------
+  // ---- neon blade signs: a column of glyphs on both faces -------------------
   for (const { z, side } of blade) {
     const col = pick(NEON_COLORS);
-    const mNeon = b.material({ emission: col, kind: MatKind.Emitter });
     const fx = side * S.sidewalkOuter;
     const inward = -side;
     const bx0 = fx, bx1 = fx + inward * 1.35;
     b.box([Math.min(bx0, bx1), 4.4, z], [Math.max(bx0, bx1), 9.6, z + 0.25], mSignBacking, Face.All & ~(side > 0 ? Face.PX : Face.NX));
-    // Tube strips on both faces of the blade.
     const sx0 = fx + inward * 0.18, sx1 = fx + inward * 1.2;
-    b.box([Math.min(sx0, sx1), 4.6, z - 0.04], [Math.max(sx0, sx1), 9.4, z + 0.29], mNeon, Face.NZ | Face.PZ);
+    const mGlyph = b.material({
+      emission: col,
+      kind: MatKind.Emitter,
+      flags: MatFlag.Glyph,
+      extra: [Math.min(sx0, sx1), 4.6, 1.02, 4.8],
+      aux: [rng() * 100, 0, 0.95, 0],
+    });
+    b.box([Math.min(sx0, sx1), 4.6, z - 0.04], [Math.max(sx0, sx1), 9.4, z + 0.29], mGlyph, Face.NZ | Face.PZ);
     // Bracket.
     b.box([Math.min(fx, fx + inward * 1.35), 9.55, z + 0.08], [Math.max(fx, fx + inward * 1.35), 9.62, z + 0.17], mPole);
+  }
+
+  // ---- overhead walkway across the street ---------------------------------------
+  {
+    const z = 64;
+    const mDeck = b.material({ base: [0.45, 0.45, 0.48], metallic: 0.6, roughness: 1.0, tex: 'metal', texScale: 1.5 });
+    const mRail = b.material({ base: [0.25, 0.25, 0.27], metallic: 1, roughness: 0.4 });
+    const mStrip = b.material({ emission: [3, 3.6, 4.5], kind: MatKind.Emitter });
+    b.box([-S.sidewalkOuter, 7.0, z], [S.sidewalkOuter, 7.4, z + 3.0], mDeck);
+    for (const zz of [z + 0.05, z + 2.85]) {
+      b.box([-S.sidewalkOuter, 7.4, zz], [S.sidewalkOuter, 8.5, zz + 0.1], mRail, Face.All & ~Face.NY);
+    }
+    // Light strip under the deck and support columns on the sidewalks.
+    b.box([-S.sidewalkOuter + 0.5, 6.94, z + 1.4], [S.sidewalkOuter - 0.5, 7.0, z + 1.6], mStrip, Face.All & ~Face.PY);
+    for (const x of [-4.9, 4.9]) {
+      b.box([x - 0.25, S.sidewalkHeight, z + 0.3], [x + 0.25, 7.0, z + 2.7], mDeck, Face.All & ~Face.NY, true);
+    }
+  }
+
+  // ---- drains, manholes, banners ------------------------------------------------
+  const mIron = b.material({ base: [0.12, 0.12, 0.13], metallic: 1, roughness: 0.55 });
+  for (let i = 0; i < 7; i++) {
+    const z = 6 + i * 18;
+    for (const side of [-1, 1]) {
+      b.box([side * 3.72 - 0.2, 0.0, z], [side * 3.72 + 0.2, 0.018, z + 0.7], mIron, Face.All & ~Face.NY);
+    }
+  }
+  for (let i = 0; i < 5; i++) {
+    const z = 14 + i * 23 + rng() * 6;
+    const x = -1.5 + rng() * 3;
+    b.box([x - 0.38, 0.0, z - 0.38], [x + 0.38, 0.012, z + 0.38], mIron, Face.All & ~Face.NY);
+  }
+  const mBanner = [
+    b.material({ base: [0.55, 0.08, 0.1], roughness: 0.8 }),
+    b.material({ base: [0.06, 0.25, 0.3], roughness: 0.8 }),
+    b.material({ base: [0.5, 0.35, 0.05], roughness: 0.8 }),
+  ];
+  for (let i = 0; i < 6; i++) {
+    const z = 12 + i * 19 + rng() * 8;
+    const x = (rng() < 0.5 ? -1 : 1) * (1.5 + rng() * 1.5);
+    const y = 7.5 + rng() * 2;
+    b.box([x - 0.45, y - 1.9, z], [x + 0.45, y, z + 0.03], pick(mBanner));
+    b.box([-S.sidewalkOuter, y, z], [S.sidewalkOuter, y + 0.03, z + 0.03], mCable, Face.All & ~Face.PY);
+  }
+
+  // ---- distant towers beyond the far end -------------------------------------------
+  {
+    const mTower = b.material({ base: [0.35, 0.37, 0.42], roughness: 1.0, flags: MatFlag.Grime, tex: 'concrete2', texScale: 6 });
+    const mBeacon = b.material({ emission: [40, 2, 1], kind: MatKind.Emitter });
+    const towers: [number, number, number, number][] = [[-30, 150, 22, 75], [-2, 162, 26, 95], [26, 152, 18, 60], [48, 170, 30, 82], [-58, 168, 28, 70]];
+    for (const [x0, z0, w, h] of towers) {
+      b.box([x0, 0, z0], [x0 + w, h, z0 + 22], mTower, Face.NZ | Face.PY | Face.NX | Face.PX);
+      for (let y = 36; y + 2 < h - 2; y += 4.5) {
+        for (let xx = 1.5; xx + 1.6 < w - 1; xx += 3.2) {
+          if (rng() > 0.28) continue;
+          const mat = b.material({ base: [0, 0, 0], roughness: 0.04, emission: scale(pick(WINDOW_COLORS), 0.3 + rng() * 0.5), flags: MatFlag.Window, extra: [y, 2.0, x0 + xx - 0.8, 0], aux: [rng() * 100, 0, 3.2, 5.0] });
+          addWindowZ(b, [x0, 0, z0], [1, 0, 0], [0, 1, 0], -1, xx, y, 1.6, 2.0, mat);
+        }
+      }
+      b.box([x0 + w * 0.5 - 0.15, h, z0 + 11], [x0 + w * 0.5 + 0.15, h + 0.3, z0 + 11.3], mBeacon);
+    }
+  }
+
+  // ---- floating holographic ads over the sidewalks -----------------------------
+  for (let i = 0; i < 7; i++) {
+    const side = i % 2 === 0 ? 1 : -1;
+    const z = 10 + i * 16 + rng() * 6;
+    const hw = 2.2 + rng() * 0.8;
+    const hh = hw * 1.25;
+    const x0 = side * 5.6 - hw * 0.5;
+    const y0 = 5.5 + rng() * 2.5;
+    const mHolo = b.material({
+      kind: MatKind.Hologram,
+      extra: [x0, y0, hw, hh],
+      aux: [rng() * 100, 2.0 + rng() * 1.5, 0, 0],
+    });
+    // Faces down the street so you see it head-on while walking; two-sided anyway.
+    quadFacing(b, [x0, y0, z], [1, 0, 0], [0, 1, 0], hw, hh, [0, 0, -1], mHolo);
+    // Projector pole and emitter underneath.
+    const px = side * 5.6;
+    b.box([px - 0.05, S.sidewalkHeight, z - 0.05], [px + 0.05, y0 - 0.3, z + 0.05], mPole, Face.All & ~Face.NY, true);
+    b.box([px - 0.2, y0 - 0.3, z - 0.2], [px + 0.2, y0 - 0.1, z + 0.2], mLampHousing);
   }
 
   // ---- streetlights ---------------------------------------------------------

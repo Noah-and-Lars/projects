@@ -132,7 +132,9 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   let m1 = mix(mom.x, ld, aD);
   let m2 = mix(mom.y, ld * ld, aD);
   var dVar = max(0.0, m2 - m1 * m1);
-  let emit = mix(eHist, emit4.rgb, max(aD, 1.0 / 12.0));
+  // Short window: enough to anti-alias edges, short enough that animated
+  // screens and holograms don't smear.
+  let emit = mix(eHist, emit4.rgb, max(aD, 1.0 / 6.0));
 
   // ---- specular: virtual-point reprojection on smooth surfaces
   var sHist = cur.spec;

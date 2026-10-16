@@ -94,6 +94,12 @@ async function boot(): Promise<void> {
 
   const input = new Input(canvas);
   const controller = new PlayerController(scene, input);
+  // Optional start pose for captures: ?x=..&z=..&yaw=deg&pitch=deg
+  const num = (k: string) => { const v = parseFloat(params.get(k) ?? ''); return Number.isFinite(v) ? v : null; };
+  const px = num('x'), pz = num('z'), pyaw = num('yaw'), ppitch = num('pitch');
+  if (px != null || pz != null) controller.teleport(px ?? controller.pos[0], pz ?? controller.pos[2]);
+  if (pyaw != null) controller.yaw = (pyaw * Math.PI) / 180;
+  if (ppitch != null) controller.pitch = (ppitch * Math.PI) / 180;
   const hud = new Hud($('#hud'));
   if (params.get('hud') === '0') hud.setVisible(false);
   const menu = new SettingsMenu($('#menu'), settings, presetName, (_s, structural) => {

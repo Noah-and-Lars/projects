@@ -9,12 +9,16 @@ export const MatFlag = {
   None: 0,
   /** Road: procedural puddles, lane markings, wet/dry roughness split. */
   Road: 1,
-  /** Lit window: emission is shaped by a per-window curtain/room pattern. */
+  /** Lit window: a virtual room behind the glass (interior mapping). */
   Window: 2,
   /** Facade: procedural grime and darkening near the ground. */
   Grime: 4,
   /** Sidewalk: wet concrete with noisy roughness. */
   Sidewalk: 8,
+  /** Animated advertising screen. */
+  Billboard: 16,
+  /** Neon glyph strip (procedural characters). */
+  Glyph: 32,
 } as const;
 
 export const MatKind = {
@@ -22,6 +26,8 @@ export const MatKind = {
   Glass: 1,
   /** Pure emitter: paths terminate on it (neon tubes, LEDs, light bulbs). */
   Emitter: 2,
+  /** Translucent hologram: adds light and lets the ray continue. */
+  Hologram: 3,
 } as const;
 
 export interface MaterialDesc {
@@ -40,12 +46,14 @@ export interface MaterialDesc {
   texScale?: number;
   /** Normal map strength (1 = as authored). */
   bump?: number;
+  /** Extra procedural parameters: seed, variant, room width, room depth. */
+  aux?: [number, number, number, number];
 }
 
 /** Bit mask naming the faces of a box: -x,+x,-y,+y,-z,+z. */
 export const Face = { NX: 1, PX: 2, NY: 4, PY: 8, NZ: 16, PZ: 32, All: 63 } as const;
 
-const MAT_FLOATS = 20; // 5 x vec4f
+const MAT_FLOATS = 24; // 6 x vec4f
 const TRI_FLOATS = 16; // 4 x vec4f
 
 export class SceneBuilder {
@@ -67,12 +75,14 @@ export class SceneBuilder {
     const extra = d.extra ?? [0, 0, 0, 0];
     const layer = d.tex ? textureLayer(d.tex) : -1;
     const scale = d.texScale ?? (d.tex ? textureScale(d.tex) : 1);
+    const aux = d.aux ?? [0, 0, 0, 0];
     this.matData.push(
       base[0], base[1], base[2], d.metallic ?? 0,
       em[0], em[1], em[2], 0,
       d.roughness ?? 0.5, d.ior ?? 1.5, d.flags ?? 0, d.kind ?? MatKind.Opaque,
       extra[0], extra[1], extra[2], extra[3],
       layer, layer, scale, d.bump ?? 1,
+      aux[0], aux[1], aux[2], aux[3],
     );
     return this.matCount++;
   }
@@ -158,7 +168,7 @@ export interface SceneData {
   /** 16 floats per triangle: v0.xyz, matId | v1.xyz, lightIdx | v2.xyz, area | n.xyz, 0 */
   tris: Float32Array;
   triCount: number;
-  /** 20 floats per material. */
+  /** 24 floats per material. */
   mats: Float32Array;
   matCount: number;
   lightTris: Uint32Array;

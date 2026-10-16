@@ -21,12 +21,14 @@ Ultra ~20–40 FPS, Melt is a slideshow on purpose.
    reflections in motion, light grid along the street, bloom, bicubic
    upscale with sharpening, per-pass GPU timing, presets retuned for a
    3060 Ti (measured 18 fps on the old Ultra).
-3. **The street** — next
-   Real textures (Poly Haven / ambientCG, CC0): wet asphalt, brick, concrete,
-   metal. Fake interiors behind see-through reflective windows, a few real
-   shop interiors at street level. Holographic ads, animated billboards,
-   steam vents, cables, more props. Original brands only.
-4. **Rain and water**
+3. **The street** — DONE
+   Eight CC0 ambientCG textures with normal mapping (asphalt, paving,
+   bricks, concrete, metal). Interior-mapped rooms behind every lit window
+   and shopfront (parallax, ceiling lights, shelves, flickering TVs),
+   animated billboards, floating holograms, procedural glyph neon,
+   balconies, an overhead walkway, drains, manholes, banners, zebra
+   crossings and distant towers with beacons.
+4. **Rain and water** — next
    Falling rain lit by neon, splashes near the camera, ripples in puddles,
    a shallow-water simulation so water flows downhill into gutters and
    drains and puddles grow while it pours, drips off awnings and ledges,

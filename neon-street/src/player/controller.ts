@@ -31,6 +31,12 @@ export class PlayerController {
     this.camY = this.pos[1] + EYE_HEIGHT;
   }
 
+  /** Move instantly to a spot on the street (used by URL parameters). */
+  teleport(x: number, z: number): void {
+    this.pos = [x, this.groundHeight(x, z), z];
+    this.camY = this.pos[1] + EYE_HEIGHT;
+  }
+
   groundHeight(x: number, z: number): number {
     let h = 0;
     for (const s of this.scene.walkSurfaces) {

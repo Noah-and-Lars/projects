@@ -108,7 +108,12 @@ const state = await page.evaluate(() => {
   return JSON.parse(JSON.stringify(window.__neon ?? null));
 });
 const out = opt('out', 'headless.png');
-await page.screenshot({ path: out, timeout: 180000 });
+try {
+  // A broken pipeline never presents a frame, so don't wait long in that case.
+  await page.screenshot({ path: out, timeout: state?.errors?.length ? 15000 : 180000 });
+} catch (e) {
+  console.error('screenshot failed:', e.message.split('\n')[0]);
+}
 await browser.close();
 server.close();
 
