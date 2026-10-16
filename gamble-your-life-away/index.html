@@ -230,7 +230,7 @@
     <button class="btn sec" data-go="stats">Your stats</button>
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.0.5 · Patch notes</button>
+    <button class="link" data-go="notes">v1.0.6 · Patch notes</button>
   </div>
 
   <div class="menu wide" id="m-list">
@@ -288,6 +288,11 @@
       <div><i>🎷</i><span><b>Lounge music</b>A smooth jazz loop while you lose everything.</span></div>
     </div>
     <div class="box notes">
+      <h3>v1.0.6 <span>Urgent update</span></h3>
+      <ul>
+        <li>Limbo: the highest target is now 2× (1.5× or 2×), and Limbo never pays out. The house always wins at Limbo.</li>
+        <li>Big Six Wheel nerfed: payouts roughly halved ($1 1.5× · $2 2× · $5 4× · $10 7× · $20 12× · ★ or ☠ 25×, was 2.2× up to 52×), and your symbol now comes up only about 1 spin in 5.</li>
+      </ul>
       <h3>v1.0.5 <span>Critical bug fixes</span></h3>
       <ul>
         <li>Buttons always work now. The message under the buttons used to change between one and two lines, which made every button jump up and down so clicks often missed. The message now always takes the same space, so buttons never move.</li>
@@ -376,7 +381,7 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.f
 const weighted = list => { let r = Math.random() * list.reduce((s, x) => s + x.w, 0); for (const x of list) { r -= x.w; if (r <= 0) return x; } return list[list.length - 1]; };
 
 // ---------- save ----------
-const START = 80000, CREDIT = 10000, VERSION = '1.0.5', SKEY = 'gambleLifeSave';
+const START = 80000, CREDIT = 10000, VERSION = '1.0.6', SKEY = 'gambleLifeSave';
 const save = Object.assign({ money: START, peak: START, rounds: 0, wins: 0, biggest: 0, deaths: 0, played: {}, bet: 1000, stress: 0, seenVersion: '', volume: 0.7, music: true, quality: 'high' },
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { return {}; } })());
 if (!save.rounds && save.money === 50000) save.money = START; // never played before 1.0.4: start with the new amount
@@ -522,7 +527,7 @@ async function rollDice(dice, values, spots, { from = [1.4, 1.5, 0.6], dur = 1.1
 // The result is decided first (win or lose), then a natural outcome of that kind is drawn and animated,
 // so what you see is always exactly what you're paid.
 const WIN_RATE = 0.4;
-function rigged(gen, isWin) { const want = Math.random() < WIN_RATE; let o = gen(); for (let i = 0; i < 4000 && isWin(o) !== want; i++) o = gen(); return o; }
+function rigged(gen, isWin, rate = WIN_RATE) { const want = Math.random() < rate; let o = gen(); for (let i = 0; i < 4000 && isWin(o) !== want; i++) o = gen(); return o; }
 // one step of a climb (a guess, a tile, a door) goes your way 40% of the time
 const riggedStep = () => Math.random() < WIN_RATE;
 
@@ -757,10 +762,10 @@ defGame({ id: 'sicbo', name: 'Sic Bo', icon: '🎲', type: 'table', blurb: 'Thre
     settle(ok ? b * (this.choice === 'triple' ? 34 : 2) : 0, b, `${v.join(' · ')} = ${s}${tri ? ', a triple' : ''}.`); }); } });
 
 // ---------- big six wheel ----------
-const SIX = [{ k: '1', n: 24, pay: 2.2, c: '#2f7dd1' }, { k: '2', n: 15, pay: 3.4, c: '#e8b020' }, { k: '5', n: 7, pay: 7.4, c: '#b4232f' }, { k: '10', n: 4, pay: 13, c: '#11804a' }, { k: '20', n: 2, pay: 26, c: '#7b3fbf' }, { k: '★', n: 1, pay: 52, c: '#f2f2f2', t: '#c0182b' }, { k: '☠', n: 1, pay: 52, c: '#111111' }];
+const SIX = [{ k: '1', n: 24, pay: 1.5, c: '#2f7dd1' }, { k: '2', n: 15, pay: 2, c: '#e8b020' }, { k: '5', n: 7, pay: 4, c: '#b4232f' }, { k: '10', n: 4, pay: 7, c: '#11804a' }, { k: '20', n: 2, pay: 12, c: '#7b3fbf' }, { k: '★', n: 1, pay: 25, c: '#f2f2f2', t: '#c0182b' }, { k: '☠', n: 1, pay: 25, c: '#111111' }]; // 1.0.6: nerfed
 const SIX_SEGS = (() => { const a = []; SIX.forEach((s, si) => { for (let i = 0; i < s.n; i++) a.push({ si, f: (i + 0.37 * si) / s.n }); }); a.sort((x, y) => x.f - y.f); return a.map(x => x.si); })();
 defGame({ id: 'bigsix', name: 'Big Six Wheel', icon: '🎡', type: 'wheel', blurb: 'Spin the giant money wheel',
-  rules: 'Bet on a symbol, then spin. Where the pointer stops pays: $1 2.2× · $2 3.4× · $5 7.4× · $10 13× · $20 26× · ★ or ☠ 52×.',
+  rules: 'Bet on a symbol, then spin. Where the pointer stops pays: $1 1.5× · $2 2× · $5 4× · $10 7× · $20 12× · ★ or ☠ 25×. Your symbol comes up about 1 spin in 5.',
   build(g) { for (const s of [-1, 1]) box(0.16, 2.2, 0.16, '#2a160c', s * 0.5, 1.1, -0.25, g); box(1.4, 0.16, 0.8, '#2a160c', 0, 0.08, -0.25, g);
     const W = new THREE.Group(); W.position.set(0, 2.25, 0); g.add(W); this.W = W; const n = SIX_SEGS.length, s = Math.PI * 2 / n;
     const tex = canvasTex(1024, 1024, (c, w) => { const R = w / 2; c.translate(R, R); SIX_SEGS.forEach((si, i) => { c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, R - 4, -(i + 1) * s, -i * s); c.closePath(); c.fillStyle = SIX[si].c; c.fill(); c.strokeStyle = '#f5d48a'; c.lineWidth = 3; c.stroke();
@@ -770,7 +775,7 @@ defGame({ id: 'bigsix', name: 'Big Six Wheel', icon: '🎡', type: 'wheel', blur
     cyl(1.66, 1.66, 0.1, 96, GOLD(), 0, 0, 0, W).rotation.x = Math.PI / 2; for (let i = 0; i < n; i++) { const a = i * s, p = cyl(0.02, 0.02, 0.12, 6, GOLD(), Math.cos(a) * 1.58, Math.sin(a) * 1.58, 0.1, W); p.rotation.x = Math.PI / 2; }
     this.flap = new THREE.Group(); this.flap.position.set(0, 2.25 + 1.78, 0.14); g.add(this.flap); const f = box(0.08, 0.3, 0.03, '#b4232f', 0, -0.12, 0, this.flap); box(0.3, 0.12, 0.2, GOLD(), 0, 0.06, -0.05, this.flap); this.n = n; this.s = s; },
   enter() { buildBets(); const c = ctl(); this.choice = this.choice ?? 0; group(c, SIX.map((x, i) => [i, (x.k === '★' || x.k === '☠' ? x.k : '$' + x.k) + ` · ${x.pay}×`]), this.choice, v => this.choice = +v); btn(c, '🎡 SPIN', () => this.spin(), 'go'); msg('Pick a symbol and spin the wheel.'); },
-  spin() { return run(async () => { const b = bet(); if (!stake(b)) return; const s = this.s, i = rigged(() => randi(0, this.n - 1), i => SIX_SEGS[i] === this.choice), R0 = this.W.rotation.z, base = Math.PI / 2 - (i + 0.5 + rand(-0.35, 0.35)) * s;
+  spin() { return run(async () => { const b = bet(); if (!stake(b)) return; const s = this.s, i = rigged(() => randi(0, this.n - 1), i => SIX_SEGS[i] === this.choice, 0.2), R0 = this.W.rotation.z, base = Math.PI / 2 - (i + 0.5 + rand(-0.35, 0.35)) * s;
     const R1 = base - Math.PI * 2 * Math.ceil((base - (R0 - Math.PI * 7)) / (Math.PI * 2)); let last = null;
     await tween(6.5, k => { this.W.rotation.z = lerp(R0, R1, easeOut(k)); const idx = Math.floor((((Math.PI / 2 - this.W.rotation.z) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / s);
       if (idx !== last) { last = idx; Sound.play('tick'); this.flap.rotation.z = 0.35; } this.flap.rotation.z *= 0.85; });
@@ -1025,12 +1030,12 @@ defGame({ id: 'dragon', name: 'Dragon Tiger', icon: '🐉', type: 'table', blurb
 
 // ---------- limbo ----------
 defGame({ id: 'limbo', name: 'Limbo', icon: '📈', type: 'machine', blurb: 'Pick a target, hope it goes higher',
-  rules: 'Pick a target multiplier. A random multiplier is rolled: if it reaches your target, you win your bet times the target. Higher targets win less often.',
-  build(g) { const f = cabinet(g, '#e8902a', { w: 1.7, title: 'LIMBO', screen: [1.5, 0.9, 1.6] }); this.scr = screenTex(768, 460); plane(1.5, 0.9, this.scr, 0, 1.6, f, g); this.target = this.target || 2; this.paint(1, null); },
+  rules: 'Pick a target of 1.5× or 2× (2× is the most you can ever win here). A random multiplier is rolled: if it reaches your target, you win your bet times the target. The house always wins at Limbo.',
+  build(g) { const f = cabinet(g, '#e8902a', { w: 1.7, title: 'LIMBO', screen: [1.5, 0.9, 1.6] }); this.scr = screenTex(768, 460); plane(1.5, 0.9, this.scr, 0, 1.6, f, g); this.target = Math.min(2, this.target || 2); this.paint(1, null); },
   paint(v, ok) { drawScreen(this.scr, (c, w, h) => { c.fillStyle = '#1a0f02'; c.fillRect(0, 0, w, h); c.fillStyle = '#f5c04a'; c.font = "700 34px 'Barlow', Arial"; c.textAlign = 'center'; c.fillText('TARGET ' + this.target.toFixed(2) + '×', w / 2, 60);
     c.fillStyle = ok == null ? '#fff' : ok ? '#3ddc84' : '#ff4d5e'; c.font = "400 150px 'Russo One', Impact"; c.textBaseline = 'middle'; c.fillText(v.toFixed(2) + '×', w / 2, h / 2 + 30); }); },
-  enter() { buildBets(); const c = ctl(); el('span', 'lbl', 'Target', c); group(c, [1.5, 2, 3, 5, 10, 25, 100].map(x => [x, x + '×']), this.target, v => { this.target = +v; this.paint(1, null); }); btn(c, '📈 ROLL', () => this.roll(), 'go'); msg('Pick a target and roll.'); },
-  roll() { return run(async () => { const b = bet(); if (!stake(b)) return; const r = rigged(() => Math.max(1, Math.floor(100 * 0.97 / (1 - Math.random())) / 100), r => r >= this.target), show = Math.min(r, 10000);
+  enter() { buildBets(); const c = ctl(); el('span', 'lbl', 'Target', c); if (this.target > 2) this.target = 2; group(c, [1.5, 2].map(x => [x, x + '×']), this.target, v => { this.target = +v; this.paint(1, null); }); btn(c, '📈 ROLL', () => this.roll(), 'go'); msg('Pick a target and roll.'); },
+  roll() { return run(async () => { const b = bet(); if (!stake(b)) return; const r = rigged(() => Math.max(1, Math.floor(100 * 0.97 / (1 - Math.random())) / 100), r => r >= this.target, 0), show = Math.min(r, 10000); // 1.0.6: Limbo never pays
     await tween(0.9, k => { this.paint(1 + (show - 1) * easeOut(k) * (k < 1 ? Math.random() * 0.1 + 0.9 : 1), null); if (Math.random() < 0.4) Sound.play('tick'); }); const ok = r >= this.target; this.paint(r, ok);
     settle(ok ? b * this.target : 0, b, `Rolled ${r.toFixed(2)}×.`); }); } });
 
