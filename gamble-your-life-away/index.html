@@ -101,7 +101,10 @@
   .gbtn.on { outline: 3px solid var(--gold-hi); outline-offset: 1px; }
   .gbtn:disabled { opacity: .4; cursor: default; }
   .gbtn.small { padding: 7px 10px; font-size: 14px; }
-  .gmsg { margin-top: 8px; min-height: 24px; font-weight: 800; font-size: 18px; }
+  .gmsg { margin-top: 8px; height: 48px; line-height: 24px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-weight: 800; font-size: 18px; }
+  /* 1.0.5: buttons react on the first touch and never get eaten by text selection or double-tap zoom */
+  button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  .bets { min-height: 50px; } .betv { position: relative; } .betv small { position: absolute; left: 0; top: 100%; white-space: nowrap; }
   .gmsg.win { color: var(--green); } .gmsg.bad { color: #ff7a7a; } .gmsg.info { color: var(--muted); }
   .grid { display: grid; gap: 4px; }
   .cell { border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .06); color: var(--fg); border-radius: 8px; font-weight: 800; cursor: pointer; padding: 6px 0; font-size: 14px; }
@@ -189,6 +192,8 @@
     #hint { font-size: 13px; white-space: normal; text-align: center; width: 86%; }
     #stressBox { top: auto; bottom: auto; top: 76px; right: 10px; } #stressBox i { width: 70px; }
   }
+  /* 1.0.5: on anything narrower than a big screen the stress meter sits under the top bar, so it never covers the Menu button */
+  @media (max-width: 1000px) { #stressBox { top: 76px; right: 10px; } }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -225,7 +230,7 @@
     <button class="btn sec" data-go="stats">Your stats</button>
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.0.4 · Patch notes</button>
+    <button class="link" data-go="notes">v1.0.5 · Patch notes</button>
   </div>
 
   <div class="menu wide" id="m-list">
@@ -283,6 +288,13 @@
       <div><i>🎷</i><span><b>Lounge music</b>A smooth jazz loop while you lose everything.</span></div>
     </div>
     <div class="box notes">
+      <h3>v1.0.5 <span>Critical bug fixes</span></h3>
+      <ul>
+        <li>Buttons always work now. The message under the buttons used to change between one and two lines, which made every button jump up and down so clicks often missed. The message now always takes the same space, so buttons never move.</li>
+        <li>Every press counts: if you press and let go on a button and the browser somehow loses the click, the game clicks it for you. Buttons also react straight away on iPads and phones (no double-tap zoom, no text getting selected).</li>
+        <li>On iPads, phones and smaller windows the stress meter used to sit on top of the Menu button, so pressing Menu did nothing. It now sits just under the top bar.</li>
+        <li>The $0 scene: the casino worker’s rope now goes all the way round your wrists. Your hands come together in the middle, inside the loops, instead of the rope floating between them.</li>
+      </ul>
       <h3>v1.0.4 <span>Better odds</span></h3>
       <ul>
         <li>Every game now wins 40% of the time and loses 60%, on every machine and table and every bet, including the slot machines, Keno, Scratch Cards and Pick 3. What you see is still exactly what you’re paid.</li>
@@ -364,11 +376,20 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.f
 const weighted = list => { let r = Math.random() * list.reduce((s, x) => s + x.w, 0); for (const x of list) { r -= x.w; if (r <= 0) return x; } return list[list.length - 1]; };
 
 // ---------- save ----------
-const START = 80000, CREDIT = 10000, VERSION = '1.0.4', SKEY = 'gambleLifeSave';
+const START = 80000, CREDIT = 10000, VERSION = '1.0.5', SKEY = 'gambleLifeSave';
 const save = Object.assign({ money: START, peak: START, rounds: 0, wins: 0, biggest: 0, deaths: 0, played: {}, bet: 1000, stress: 0, seenVersion: '', volume: 0.7, music: true, quality: 'high' },
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { return {}; } })());
 if (!save.rounds && save.money === 50000) save.money = START; // never played before 1.0.4: start with the new amount
 let wiped = false;
+// 1.0.5: every button press counts. If you press and release on a button but the browser drops the click
+// (the button moved a little, the frame was busy, a trackpad wobble), the game clicks it for you.
+(() => { let pb = null, px = 0, py = 0, got = false;
+  document.addEventListener('pointerdown', e => { const b = e.target.closest && e.target.closest('button'); pb = b && !b.disabled ? b : null; px = e.clientX; py = e.clientY; got = false; }, true);
+  document.addEventListener('click', e => { if (pb && e.target.closest && e.target.closest('button') === pb) got = true; }, true);
+  document.addEventListener('pointerup', e => { const b = pb; if (!b) return; const r = b.getBoundingClientRect(), pad = 30;
+    const near = e.clientX > r.left - pad && e.clientX < r.right + pad && e.clientY > r.top - pad && e.clientY < r.bottom + pad && Math.hypot(e.clientX - px, e.clientY - py) < 60;
+    setTimeout(() => { if (!got && near && b.isConnected && !b.disabled && pb === b) b.click(); pb = null; }, 350); }, true);
+})();
 function store() { if (wiped) return; try { localStorage.setItem(SKEY, JSON.stringify(save)); } catch (e) {} }
 
 // ---------- sound (all made in code) ----------
@@ -1183,8 +1204,8 @@ function worker() { const g = new THREE.Group(), legs = [];
   const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xffd27a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); flash.position.set(0, -1.05, 0); flash.scale.setScalar(0.5); flash.visible = false; armR.add(flash);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return { g, legs, armL, armR, gun, flash }; }
 function makeHands() { const g = new THREE.Group(), rings = []; g.position.set(0, -0.27, -0.62);
-  for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * 0.17, -0.03, 0.18); a.rotation.y = -s * 0.42; g.add(a); box(0.12, 0.12, 0.36, '#2a2a30', 0, 0, -0.06, a); box(0.1, 0.07, 0.13, '#e0ac7e', 0, 0, -0.29, a); }
-  for (let i = 0; i < 4; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.095, 0.014, 8, 20), mat('#c8a46a', { roughness: 0.9 })); r.position.set(0, -0.02, -0.04 - i * 0.035); r.scale.setScalar(0.001); g.add(r); rings.push(r); }
+  for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * 0.17, -0.03, 0.18); a.rotation.y = s * 0.42; g.add(a); box(0.12, 0.12, 0.36, '#2a2a30', 0, 0, -0.06, a); box(0.1, 0.07, 0.13, '#e0ac7e', 0, 0, -0.29, a); }
+  for (let i = 0; i < 4; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.016, 8, 24).scale(1.12, 0.78, 1), mat('#c8a46a', { roughness: 0.9 })); r.position.set(0, -0.03, -0.035 - i * 0.032); r.scale.setScalar(0.001); g.add(r); rings.push(r); }
   g.traverse(o => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 2; } }); g.visible = false; camera.add(g); return { g, rings }; }
 let HANDS = null, lcOn = false;
 function walk(w, to, dur) { const from = w.g.position.clone(); return tween(dur, k => { w.g.position.lerpVectors(from, to, ease(k)); w.legs.forEach((l, j) => l.rotation.x = Math.sin(k * dur * 9 + j * Math.PI) * 0.45 * (1 - k * k)); }); }
