@@ -209,7 +209,7 @@ fn fs(in: VSOut) -> @location(0) vec4f {
   let bloomS = textureSampleLevel(bloomTex, samp, uv, 0.0).rgb;
   // Out of focus: the bloom chain runs unthresholded while D.intro.y > 0 (it
   // sums four levels, hence the scale).
-  if (D.intro.y > 0.0) { c = mix(c, bloomS * 0.28, D.intro.y * 0.9); }
+  if (D.intro.y > 0.0) { c = mix(c, bloomS * 0.2, D.intro.y * 0.9); }
   c += bloomS * D.bloom;
   c *= D.exposure;
   let d = uv - 0.5;

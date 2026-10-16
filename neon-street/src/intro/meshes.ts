@@ -30,11 +30,11 @@ function boxRotX(b: SceneBuilder, min: Vec3, max: Vec3, mat: number, ang: number
 
 export function buildArmMesh(side: -1 | 1): SceneData {
   const b = new SceneBuilder();
-  const mSuit = b.material({ base: [0.07, 0.075, 0.085], roughness: 0.55 });
-  const mSuitPlate = b.material({ base: [0.14, 0.15, 0.17], metallic: 0.5, roughness: 0.35 });
-  const mStripe = b.material({ emission: [2.2, 0.9, 0.15], kind: MatKind.Emitter });
-  const mGlove = b.material({ base: [0.05, 0.05, 0.055], roughness: 0.6 });
-  const mKnuckle = b.material({ base: [0.2, 0.2, 0.22], metallic: 0.7, roughness: 0.3 });
+  const mSuit = b.material({ base: [0.16, 0.17, 0.2], roughness: 0.55 });
+  const mSuitPlate = b.material({ base: [0.3, 0.31, 0.34], metallic: 0.5, roughness: 0.35 });
+  const mStripe = b.material({ emission: [1.3, 0.55, 0.1], kind: MatKind.Emitter });
+  const mGlove = b.material({ base: [0.2, 0.19, 0.18], roughness: 0.6 });
+  const mKnuckle = b.material({ base: [0.38, 0.38, 0.4], metallic: 0.7, roughness: 0.3 });
   const mLed = b.material({ emission: [0.3, 2.5, 3.0], kind: MatKind.Emitter, flags: MatFlag.Blink, aux: [side, 1, 0, 0] });
 
   // Forearm sleeve (z from -0.32 at the elbow to 0 at the wrist).
@@ -66,7 +66,7 @@ export function buildArmMesh(side: -1 | 1): SceneData {
 
 export function buildHelmetMesh(): SceneData {
   const b = new SceneBuilder();
-  const mShell = b.material({ base: [0.1, 0.105, 0.12], metallic: 0.4, roughness: 0.3 });
+  const mShell = b.material({ base: [0.22, 0.23, 0.26], metallic: 0.4, roughness: 0.3 });
   const mShellLight = b.material({ base: [0.6, 0.32, 0.06], metallic: 0.2, roughness: 0.4 });
   const mVisor = b.material({ base: [0, 0, 0], roughness: 0.03 });
   const mSeal = b.material({ base: [0.03, 0.03, 0.035], roughness: 0.7 });

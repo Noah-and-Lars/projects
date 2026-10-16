@@ -149,7 +149,11 @@ async function boot(): Promise<void> {
   intro.active = introWanted;
   if (introWanted && headless) intro.begin();
   const introSkip = parseFloat(params.get('introAt') ?? '');
-  if (Number.isFinite(introSkip) && introWanted) { intro.begin(); intro.update(introSkip); }
+  if (Number.isFinite(introSkip) && introWanted) {
+    // Step in small increments so the helmet's carry and fall play out.
+    intro.begin();
+    for (let s = 0; s < introSkip; s += 1 / 60) intro.update(Math.min(1 / 60, introSkip - s));
+  }
   const hud = new Hud($('#hud'));
   if (params.get('hud') === '0') hud.setVisible(false);
   const menu = new SettingsMenu($('#menu'), settings, presetName, (_s, structural) => {
