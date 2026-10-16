@@ -46,18 +46,29 @@ export interface RenderStats {
 }
 
 const MAX_ATROUS = 5;
-const UNIFORM_FLOATS = 96;
+const MAX_OBJS = 4;
+const UNIFORM_FLOATS = 72 + MAX_OBJS * 24;
 const BLOOM_LEVELS = 4;
 
-/** Drone transform and searchlight for this frame. */
-export interface DroneUniforms {
+/** A rigid dynamic object's placement this frame (object space -> world). */
+export interface DynObjectPose {
   pos: Vec3;
+  /** Row-major 3x3 rotation. */
   rot: number[];
   boundsMin: Vec3;
   boundsMax: Vec3;
-  lampPos: Vec3;
-  lampDir: Vec3;
-  lampIntensity: number;
+}
+
+/** Static info about a dynamic object's slice of the merged BVH. */
+export interface DynObjectInfo {
+  root: number;
+  triStart: number;
+}
+
+export interface SpotLightState {
+  pos: Vec3;
+  dir: Vec3;
+  intensity: number;
   cosInner: number;
   cosOuter: number;
   range: number;
@@ -127,19 +138,21 @@ export class PathTracer {
 
   private readonly waterExtent: [number, number, number, number];
   weather: WeatherState = { wetness: 1, rain: 1, sky: 1, historyBoost: 0 };
-  /** Set each frame by the drone flight; null hides the drone. */
-  drone: DroneUniforms | null = null;
-  private readonly droneRoot: number;
-  private readonly droneTriStart: number;
+  /** Per-slot poses for the dynamic objects; null hides a slot. */
+  readonly poses: (DynObjectPose | null)[] = new Array(MAX_OBJS).fill(null);
+  /** The drone's searchlight; null switches it off. */
+  spot: SpotLightState | null = null;
+  private readonly objects: DynObjectInfo[];
+  private readonly firstDynamicTri: number;
 
   constructor(
     private readonly gpu: Gpu, scene: SceneData, bvh: BvhData, grid: LightGrid, textures: TextureSet,
     water: { surface: GPUTexture; sampler: GPUSampler; extent: [number, number, number, number] },
-    drone: { root: number; triStart: number } = { root: -1, triStart: 1e9 },
+    objects: DynObjectInfo[] = [],
   ) {
     this.waterExtent = water.extent;
-    this.droneRoot = drone.root;
-    this.droneTriStart = drone.triStart;
+    this.objects = objects.slice(0, MAX_OBJS);
+    this.firstDynamicTri = objects.length ? Math.min(...objects.map((o) => o.triStart)) : 1e9;
     const device = gpu.device;
     this.device = device;
     this.grid = grid;
@@ -400,21 +413,26 @@ export class PathTracer {
     u[44] = 40; u[45] = w.sky; u[46] = this.frame; u[47] = settings.spp;
     u[48] = settings.lightSamples; u[49] = this.grid.z0; u[50] = this.grid.cellSize; u[51] = this.grid.cellCount;
     u[52] = this.waterExtent[0]; u[53] = this.waterExtent[1]; u[54] = this.waterExtent[2]; u[55] = this.waterExtent[3];
-    u[56] = w.wetness; u[57] = w.historyBoost; u[58] = w.rain; u[59] = this.droneTriStart;
-    const d = this.drone;
-    if (d && this.droneRoot >= 0) {
-      put(60, d.pos, this.droneRoot);
-      u[64] = d.rot[0]; u[65] = d.rot[1]; u[66] = d.rot[2]; u[67] = 0;
-      u[68] = d.rot[3]; u[69] = d.rot[4]; u[70] = d.rot[5]; u[71] = 0;
-      u[72] = d.rot[6]; u[73] = d.rot[7]; u[74] = d.rot[8]; u[75] = 0;
-      put(76, d.boundsMin, 0);
-      put(80, d.boundsMax, 0);
-      put(84, d.lampPos, d.lampIntensity);
-      put(88, d.lampDir, d.cosOuter);
-      u[92] = d.cosInner; u[93] = d.range; u[94] = 0; u[95] = 0;
+    u[56] = w.wetness; u[57] = w.historyBoost; u[58] = w.rain; u[59] = this.firstDynamicTri;
+    const sp = this.spot;
+    if (sp) {
+      put(60, sp.pos, sp.intensity);
+      put(64, sp.dir, sp.cosOuter);
+      u[68] = sp.cosInner; u[69] = sp.range; u[70] = 0; u[71] = 0;
     } else {
-      u[63] = -1; // no drone
-      u[87] = 0;  // no searchlight
+      u[63] = 0; // intensity 0 switches the searchlight off
+    }
+    for (let i = 0; i < MAX_OBJS; i++) {
+      const o = 72 + i * 24;
+      const pose = this.poses[i];
+      const info = this.objects[i];
+      if (!pose || !info) { u[o + 3] = -1; continue; }
+      put(o, pose.pos, info.root);
+      u[o + 4] = pose.rot[0]; u[o + 5] = pose.rot[1]; u[o + 6] = pose.rot[2]; u[o + 7] = 0;
+      u[o + 8] = pose.rot[3]; u[o + 9] = pose.rot[4]; u[o + 10] = pose.rot[5]; u[o + 11] = 0;
+      u[o + 12] = pose.rot[6]; u[o + 13] = pose.rot[7]; u[o + 14] = pose.rot[8]; u[o + 15] = 0;
+      put(o + 16, pose.boundsMin, 0);
+      put(o + 20, pose.boundsMax, info.triStart);
     }
     this.device.queue.writeBuffer(this.uniformBuf, 0, u.buffer, 0, u.byteLength);
   }

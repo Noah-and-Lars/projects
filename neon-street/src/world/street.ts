@@ -216,12 +216,14 @@ export function buildStreet(seed = 1337): SceneData {
           aux: [rng() * 100, 1, 0.6, 0],
         });
         addWindow(b, origin, u, v, inward, 0.8, 3.15, len, 0.6, mGlyph, 0.16);
+        b.soundSpots.push({ pos: [facadeX + inward * 0.2, 3.45, z + 0.8 + len * 0.5], kind: 0 });
       }
       if (rng() < 0.4) {
         const aw0 = facadeX, aw1 = facadeX + inward * 1.3;
         b.box([Math.min(aw0, aw1), 2.95, z + 0.5], [Math.max(aw0, aw1), 3.07, z + w - 0.8], mAwning);
-        // Rain runs off the awning's front edge.
+        // Rain runs off the awning's front edge; underneath it the rain sounds muffled.
         b.dripEdges.push([[aw1, 2.93, z + 0.5], [aw1, 2.93, z + w - 0.8]]);
+        b.covers.push({ min: [Math.min(aw0, aw1), 2.9, z + 0.5], max: [Math.max(aw0, aw1), 3.1, z + w - 0.8] });
       }
       // A drain pipe running down the facade edge.
       if (rng() < 0.5) {
@@ -270,6 +272,7 @@ export function buildStreet(seed = 1337): SceneData {
       aux: [rng() * 100, 0, 0.95, 0],
     });
     b.box([Math.min(sx0, sx1), 4.6, z - 0.04], [Math.max(sx0, sx1), 9.4, z + 0.29], mGlyph, Face.NZ | Face.PZ);
+    b.soundSpots.push({ pos: [fx + inward * 0.7, 7.0, z + 0.12], kind: 0 });
     // Bracket.
     b.box([Math.min(fx, fx + inward * 1.35), 9.55, z + 0.08], [Math.max(fx, fx + inward * 1.35), 9.62, z + 0.17], mPole);
   }
@@ -281,6 +284,7 @@ export function buildStreet(seed = 1337): SceneData {
     const mRail = b.material({ base: [0.25, 0.25, 0.27], metallic: 1, roughness: 0.4 });
     const mStrip = b.material({ emission: [3, 3.6, 4.5], kind: MatKind.Emitter });
     b.box([-S.sidewalkOuter, 7.0, z], [S.sidewalkOuter, 7.4, z + 3.0], mDeck);
+    b.covers.push({ min: [-S.sidewalkOuter, 6.9, z], max: [S.sidewalkOuter, 7.5, z + 3.0] });
     b.dripEdges.push([[-S.sidewalkOuter, 6.98, z], [S.sidewalkOuter, 6.98, z]], [[-S.sidewalkOuter, 6.98, z + 3.0], [S.sidewalkOuter, 6.98, z + 3.0]]);
     for (const zz of [z + 0.05, z + 2.85]) {
       b.box([-S.sidewalkOuter, 7.4, zz], [S.sidewalkOuter, 8.5, zz + 0.1], mRail, Face.All & ~Face.NY);
@@ -351,6 +355,7 @@ export function buildStreet(seed = 1337): SceneData {
     });
     // Faces down the street so you see it head-on while walking; two-sided anyway.
     quadFacing(b, [x0, y0, z], [1, 0, 0], [0, 1, 0], hw, hh, [0, 0, -1], mHolo);
+    b.soundSpots.push({ pos: [x0 + hw * 0.5, y0 + hh * 0.5, z], kind: 1 });
     // Projector pole and emitter underneath.
     const px = side * 5.6;
     b.box([px - 0.05, S.sidewalkHeight, z - 0.05], [px + 0.05, y0 - 0.3, z + 0.05], mPole, Face.All & ~Face.NY, true);

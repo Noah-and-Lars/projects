@@ -74,6 +74,10 @@ export class SceneBuilder {
   readonly walkSurfaces: { min: Vec3; max: Vec3; height: number }[] = [];
   /** Edges that shed drips (awning fronts, ledges). */
   readonly dripEdges: [Vec3, Vec3][] = [];
+  /** Positioned sound sources: 0 neon buzz, 1 hologram, 2 vent hiss. */
+  readonly soundSpots: { pos: Vec3; kind: number }[] = [];
+  /** Overhead cover (awnings, the walkway) that muffles rain for the listener below. */
+  readonly covers: AABB[] = [];
 
   material(d: MaterialDesc): number {
     const base = d.base ?? [0.5, 0.5, 0.5];
@@ -167,6 +171,8 @@ export class SceneBuilder {
       colliders: this.colliders,
       walkSurfaces: this.walkSurfaces,
       dripEdges: this.dripEdges,
+      soundSpots: this.soundSpots,
+      covers: this.covers,
     };
   }
 }
@@ -212,4 +218,6 @@ export interface SceneData {
   colliders: AABB[];
   walkSurfaces: { min: Vec3; max: Vec3; height: number }[];
   dripEdges: [Vec3, Vec3][];
+  soundSpots: { pos: Vec3; kind: number }[];
+  covers: AABB[];
 }

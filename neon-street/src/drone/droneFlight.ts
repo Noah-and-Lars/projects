@@ -47,8 +47,21 @@ export class DroneFlight {
   }
 
   active: boolean;
+  /** Debug: hold the drone at a fixed spot (searchlight straight down). */
+  pinned: Vec3 | null = null;
 
   update(dt: number, time: number): DroneState {
+    if (this.pinned) {
+      this.pos = [...this.pinned];
+      this.vel = [0, 0, 0];
+      this.yaw += dt * 0.3;
+      const rot = rotationYXZ(this.yaw, 0.05, 0);
+      const lampPos = transform(rot, this.lampLocal, this.pos);
+      return {
+        pos: [...this.pos], rot, lampPos, lampDir: [Math.sin(time * 0.5) * 0.25, -1, Math.cos(time * 0.5) * 0.25],
+        rotorSpeed: 180, ground: [this.pos[0], 0, this.pos[2]], downwash: 0.8, active: this.active,
+      };
+    }
     const wp = this.waypoints[this.target];
     const to: Vec3 = [wp.x - this.pos[0], wp.y - this.pos[1], wp.z - this.pos[2]];
     const dist = Math.hypot(to[0], to[1], to[2]);

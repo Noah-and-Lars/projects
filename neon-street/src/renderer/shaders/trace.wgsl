@@ -203,31 +203,44 @@ fn traverse(root: u32, ro: vec3f, rd: vec3f, tmax0: f32) -> Hit {
   return best;
 }
 
-// ---- the drone: a rigidly transformed second BVH level ------------------
-// U.d0 = drone position xyz, w = root node (negative when there is no drone)
-// U.d1..d3 = rotation rows (object -> world); d4/d5 = world bounds.
+// ---- dynamic objects: rigidly transformed second-level BVHs ---------------
 
-fn droneActive() -> bool { return U.d0.w >= 0.0; }
+const MAX_OBJS: u32 = 4u;
 
-fn droneToLocalDir(v: vec3f) -> vec3f {
+fn objLocalDir(i: u32, v: vec3f) -> vec3f {
   // Inverse of a rotation is its transpose: dot with the columns.
-  return vec3f(dot(vec3f(U.d1.x, U.d2.x, U.d3.x), v), dot(vec3f(U.d1.y, U.d2.y, U.d3.y), v), dot(vec3f(U.d1.z, U.d2.z, U.d3.z), v));
+  let o = U.objs[i];
+  return vec3f(dot(vec3f(o.r0.x, o.r1.x, o.r2.x), v), dot(vec3f(o.r0.y, o.r1.y, o.r2.y), v), dot(vec3f(o.r0.z, o.r1.z, o.r2.z), v));
 }
 
-fn droneToWorldDir(v: vec3f) -> vec3f {
-  return vec3f(dot(U.d1.xyz, v), dot(U.d2.xyz, v), dot(U.d3.xyz, v));
+fn objWorldDir(i: u32, v: vec3f) -> vec3f {
+  let o = U.objs[i];
+  return vec3f(dot(o.r0.xyz, v), dot(o.r1.xyz, v), dot(o.r2.xyz, v));
+}
+
+fn objLocalPos(i: u32, p: vec3f) -> vec3f {
+  return objLocalDir(i, p - U.objs[i].pos.xyz);
+}
+
+// Which dynamic object owns triangle `tri` (-1 for the static street).
+fn objOf(tri: u32) -> i32 {
+  if (f32(tri) < U.p5.w) { return -1; }
+  var best = -1;
+  for (var i = 0u; i < MAX_OBJS; i++) {
+    if (U.objs[i].pos.w >= 0.0 && f32(tri) >= U.objs[i].bmax.w) { best = i32(i); }
+  }
+  return best;
 }
 
 fn intersectScene(ro: vec3f, rd: vec3f, tmax0: f32) -> Hit {
   var best = traverse(0u, ro, rd, tmax0);
-  if (droneActive()) {
-    let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
-    if (aabbHit(U.d4.xyz, U.d5.xyz, ro, invDir, best.t) < T_MAX) {
-      let lo = droneToLocalDir(ro - U.d0.xyz);
-      let ld = droneToLocalDir(rd);
-      let h = traverse(u32(U.d0.w), lo, ld, best.t);
-      if (h.t < best.t) { best = h; }
-    }
+  let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
+  for (var i = 0u; i < MAX_OBJS; i++) {
+    let o = U.objs[i];
+    if (o.pos.w < 0.0) { continue; }
+    if (aabbHit(o.bmin.xyz, o.bmax.xyz, ro, invDir, best.t) >= T_MAX) { continue; }
+    let h = traverse(u32(o.pos.w), objLocalPos(i, ro), objLocalDir(i, rd), best.t);
+    if (h.t < best.t) { best = h; }
   }
   return best;
 }
@@ -279,11 +292,12 @@ fn anyHit(root: u32, ro: vec3f, rd: vec3f, tmax: f32) -> bool {
 
 fn occluded(ro: vec3f, rd: vec3f, tmax: f32) -> bool {
   if (anyHit(0u, ro, rd, tmax)) { return true; }
-  if (droneActive()) {
-    let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
-    if (aabbHit(U.d4.xyz, U.d5.xyz, ro, invDir, tmax) < T_MAX) {
-      return anyHit(u32(U.d0.w), droneToLocalDir(ro - U.d0.xyz), droneToLocalDir(rd), tmax);
-    }
+  let invDir = 1.0 / select(rd, vec3f(1e-8), abs(rd) < vec3f(1e-8));
+  for (var i = 0u; i < MAX_OBJS; i++) {
+    let o = U.objs[i];
+    if (o.pos.w < 0.0) { continue; }
+    if (aabbHit(o.bmin.xyz, o.bmax.xyz, ro, invDir, tmax) >= T_MAX) { continue; }
+    if (anyHit(u32(o.pos.w), objLocalPos(i, ro), objLocalDir(i, rd), tmax)) { return true; }
   }
   return false;
 }
@@ -552,8 +566,9 @@ fn evalSurface(h: Hit, ro: vec3f, rd: vec3f, footprint: f32) -> Surf {
   var s: Surf;
   s.p = ro + rd * h.t;
   s.ng = tr.n.xyz;
-  // Drone triangles live in object space: rotate their normal into the world.
-  if (h.tri >= u32(U.p5.w)) { s.ng = droneToWorldDir(s.ng); }
+  // Dynamic-object triangles live in object space: rotate their normal into the world.
+  let obj = objOf(h.tri);
+  if (obj >= 0) { s.ng = objWorldDir(u32(obj), s.ng); }
   s.inside = dot(rd, s.ng) > 0.0;
   s.gf = select(s.ng, -s.ng, s.inside);
   s.n = s.gf;
@@ -1191,7 +1206,8 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     if (s.kind == KIND_TRANSLUCENT) {
       // Prop disc: attenuate by the blurred blade coverage and continue.
       let m = mats[u32(tris[hit.tri].v0.w)];
-      let pl = droneToLocalDir(s.p - U.d0.xyz);
+      let owner = objOf(hit.tri);
+      let pl = select(s.p, objLocalPos(u32(max(owner, 0)), s.p), owner >= 0);
       let cov = propCoverage(m, pl);
       T *= 1.0 - cov * (1.0 - m.base.rgb * 0.4);
       pathDist += hit.t;

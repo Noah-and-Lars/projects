@@ -17,6 +17,7 @@ import { SettingsMenu } from './ui/settings';
 import { WaterSim } from './weather/water';
 import { RainSystem } from './weather/rain';
 import { Lightning } from './weather/lightning';
+import { AudioEngine } from './audio/audio';
 import { STREET, buildStreet } from './world/street';
 
 interface NeonDebug {
@@ -83,8 +84,9 @@ async function boot(): Promise<void> {
   const { bvh, root: droneRoot } = appendBvh(streetBvh, droneBvh, droneTriStart);
   const grid = buildLightGrid(scene, STREET.zStart - 30, STREET.zEnd + 30, 6);
   const water = new WaterSim(device);
-  const renderer = new PathTracer(gpu, scene, bvh, grid, textures, water, { root: droneRoot, triStart: droneTriStart });
+  const renderer = new PathTracer(gpu, scene, bvh, grid, textures, water, [{ root: droneRoot, triStart: droneTriStart }]);
   const droneFlight = new DroneFlight(droneMesh.lamp, params.get('drone') !== '0');
+  if (params.get('drone') === 'pin') droneFlight.pinned = [0.5, 4.5, 8];
   const droneCorners: [number, number, number][] = [];
   for (const x of [-0.86, 0.86]) for (const y of [-0.3, 0.5]) for (const z of [-0.68, 0.68]) droneCorners.push([x, y, z]);
   // Let it rain for a while before the first frame so the street starts wet.
@@ -94,6 +96,12 @@ async function boot(): Promise<void> {
   const lightning = new Lightning(params.get('lightning') !== '0');
   const rainSystem = new RainSystem(device, water.ground, scene.dripEdges, 'rgba16float');
   renderer.rain = rainSystem;
+  const audio = new AudioEngine(scene.soundSpots, scene.dripEdges, scene.covers);
+  const volumeEl = document.querySelector<HTMLInputElement>('#optVolume');
+  if (volumeEl) {
+    audio.volume = parseFloat(volumeEl.value);
+    volumeEl.addEventListener('input', () => audio.setVolume(parseFloat(volumeEl.value)));
+  }
   const displayMode = parseInt(params.get('mode') ?? '0', 10);
   if (Number.isFinite(displayMode)) renderer.displayMode = displayMode;
 
@@ -165,6 +173,7 @@ async function boot(): Promise<void> {
     started = true;
     hideStart();
     menu.close();
+    audio.start();
     void input.requestLock();
   });
   canvas.addEventListener('click', () => {
@@ -199,7 +208,8 @@ async function boot(): Promise<void> {
     controller.update(dt, input.locked);
     // Weather: water flows every frame, footsteps ripple it, lightning flashes.
     const rain = Math.max(0, settings.rain);
-    const impulses = controller.consumeFootsteps().map((p) => ({ x: p[0], z: p[2], radius: 0.32, strength: 0.006 }));
+    const steps = controller.consumeFootsteps();
+    const impulses = steps.map((p) => ({ x: p[0], z: p[2], radius: 0.32, strength: 0.006 }));
     // Drone: fly, then feed its transform, searchlight and downwash to everything.
     const ds = droneFlight.update(dt, time);
     if (ds.active) {
@@ -209,9 +219,9 @@ async function boot(): Promise<void> {
         const w = transform(ds.rot, c, ds.pos);
         for (let i = 0; i < 3; i++) { bmin[i] = Math.min(bmin[i], w[i]); bmax[i] = Math.max(bmax[i], w[i]); }
       }
-      renderer.drone = {
-        pos: ds.pos, rot: ds.rot, boundsMin: bmin, boundsMax: bmax,
-        lampPos: ds.lampPos, lampDir: ds.lampDir, lampIntensity: 140,
+      renderer.poses[0] = { pos: ds.pos, rot: ds.rot, boundsMin: bmin, boundsMax: bmax };
+      renderer.spot = {
+        pos: ds.lampPos, dir: ds.lampDir, intensity: 140,
         cosInner: Math.cos((7 * Math.PI) / 180), cosOuter: Math.cos((13 * Math.PI) / 180), range: 45,
       };
       rainSystem.drone = { pos: ds.pos, strength: ds.downwash };
@@ -221,7 +231,8 @@ async function boot(): Promise<void> {
         impulses.push({ x: ds.ground[0] + Math.cos(a) * r, z: ds.ground[2] + Math.sin(a) * r, radius: 0.35, strength: 0.0025 * ds.downwash });
       }
     } else {
-      renderer.drone = null;
+      renderer.poses[0] = null;
+      renderer.spot = null;
       rainSystem.drone = null;
     }
     water.step(dt, time, 0.0004 * rain, impulses);
@@ -229,6 +240,11 @@ async function boot(): Promise<void> {
     rainSystem.update(dt, time, cam.pos, settings.rainDrops * 1000, rain);
     const flash = lightning.update(dt, time);
     renderer.weather = { wetness: Math.min(1, rain), rain, sky: flash.sky, historyBoost: flash.historyBoost };
+    audio.update({
+      camPos: cam.pos, fwd: cam.fwd, up: cam.up, rain, footsteps: steps,
+      drone: ds.active ? { pos: ds.pos, rotorSpeed: ds.rotorSpeed } : null,
+      lightningStarted: flash.started, time, dt,
+    });
     renderer.render(cam, settings, time);
     hud.update(dt, cpuMs, {
       stats: renderer.stats,

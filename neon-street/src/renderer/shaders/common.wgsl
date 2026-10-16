@@ -15,16 +15,21 @@ struct Uniforms {
   p2: vec4f,        // fireflyClamp, skyIntensity, frame, spp
   p3: vec4f,        // lightCandidates, light grid z0, cell size, cell count
   p4: vec4f,        // water grid origin xz, size xz (metres)
-  p5: vec4f,        // rain wetness (0..1), history boost, rain intensity, drone tri start
-  d0: vec4f,        // drone position, w = BVH root node (< 0: no drone)
-  d1: vec4f,        // drone rotation rows (object -> world)
-  d2: vec4f,
-  d3: vec4f,
-  d4: vec4f,        // drone world bounds min
-  d5: vec4f,        // drone world bounds max
+  p5: vec4f,        // rain wetness (0..1), history boost, rain intensity, first dynamic triangle
   s0: vec4f,        // searchlight position, w = intensity
   s1: vec4f,        // searchlight direction, w = cos(outer cone)
   s2: vec4f,        // cos(inner cone), range, 0, 0
+  objs: array<DynObj, 4>, // rigid dynamic objects (drone, arms, helmet)
+};
+
+// A rigidly transformed object with its own BVH (object space -> world).
+struct DynObj {
+  pos: vec4f,  // position, w = BVH root node (< 0: inactive)
+  r0: vec4f,   // rotation rows
+  r1: vec4f,
+  r2: vec4f,
+  bmin: vec4f, // world bounds
+  bmax: vec4f, // w = first triangle index of this object
 };
 
 const PI: f32 = 3.14159265358979;
