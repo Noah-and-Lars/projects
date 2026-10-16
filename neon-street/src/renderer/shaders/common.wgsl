@@ -13,6 +13,7 @@ struct Uniforms {
   p0: vec4f,        // maxBounces, sampleIndex, fogDensity, fogMode
   p1: vec4f,        // lightCount, maxHistory, resetHistory, time
   p2: vec4f,        // fireflyClamp, skyIntensity, frame, spp
+  p3: vec4f,        // lightCandidates, 0, 0, 0
 };
 
 const PI: f32 = 3.14159265358979;

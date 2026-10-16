@@ -452,9 +452,47 @@ fn sampleLight() -> LightSample {
   return ls;
 }
 
+// Resampled importance sampling: draw a few candidates from the power CDF,
+// keep one in proportion to its estimated (unshadowed) contribution here.
+// With ~1000 lights along the street this is what makes nearby neon win.
+struct Reservoir {
+  ls: LightSample,
+  wSum: f32,
+  pHat: f32,
+};
+
+fn risPick(p: vec3f, n: vec3f, useCos: bool, rd: vec3f) -> Reservoir {
+  var r: Reservoir;
+  r.wSum = 0.0;
+  r.pHat = 0.0;
+  r.ls.ok = false;
+  let m = max(u32(U.p3.x + 0.5), 1u);
+  for (var k = 0u; k < m; k++) {
+    let c = sampleLight();
+    if (!c.ok) { break; }
+    let d = c.pos - p;
+    let d2 = max(dot(d, d), 1e-3);
+    let L = d * inverseSqrt(d2);
+    let cosL = abs(dot(c.n, L));
+    var geom = cosL / d2;
+    if (useCos) { geom *= max(dot(n, L), 0.0); } else { geom *= phaseHg(dot(rd, L)); }
+    let pHat = luminance(c.le) * geom;
+    let w = pHat / c.pdfA;
+    r.wSum += w;
+    if (w > 0.0 && rnd() * r.wSum < w) {
+      r.ls = c;
+      r.pHat = pHat;
+    }
+  }
+  // Effective area pdf of the chosen light under RIS, used for MIS.
+  if (r.pHat > 0.0) { r.ls.pdfA = r.pHat * f32(m) / r.wSum; }
+  return r;
+}
+
 fn neeSurface(s: Surf, l: Lobes, wo: vec3f) -> vec3f {
-  let ls = sampleLight();
-  if (!ls.ok) { return vec3f(0.0); }
+  let r = risPick(s.p, s.n, true, vec3f(0.0));
+  if (!r.ls.ok || r.pHat <= 0.0) { return vec3f(0.0); }
+  let ls = r.ls;
   let d = ls.pos - s.p;
   let d2 = dot(d, d);
   let dist = sqrt(d2);
@@ -488,8 +526,9 @@ fn sampleHg(rd: vec3f) -> vec3f {
 }
 
 fn neeFog(p: vec3f, rd: vec3f) -> vec3f {
-  let ls = sampleLight();
-  if (!ls.ok) { return vec3f(0.0); }
+  let r = risPick(p, vec3f(0.0), false, rd);
+  if (!r.ls.ok || r.pHat <= 0.0) { return vec3f(0.0); }
+  let ls = r.ls;
   let d = ls.pos - p;
   let d2 = dot(d, d);
   let dist = sqrt(d2);

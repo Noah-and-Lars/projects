@@ -36,7 +36,7 @@ export interface RenderStats {
 }
 
 const MAX_ATROUS = 5;
-const UNIFORM_FLOATS = 48;
+const UNIFORM_FLOATS = 52;
 
 export class PathTracer {
   private readonly device: GPUDevice;
@@ -239,6 +239,7 @@ export class PathTracer {
     u[36] = settings.maxBounces; u[37] = sampleIndex; u[38] = settings.fogDensity; u[39] = settings.fogMode;
     u[40] = this.stats.lightCount; u[41] = settings.maxHistory; u[42] = this.resetPending ? 1 : 0; u[43] = time;
     u[44] = 40; u[45] = 1.0; u[46] = this.frame; u[47] = settings.spp;
+    u[48] = settings.lightSamples; u[49] = 0; u[50] = 0; u[51] = 0;
     this.device.queue.writeBuffer(this.uniformBuf, 0, u.buffer, 0, u.byteLength);
   }
 

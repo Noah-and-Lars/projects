@@ -78,6 +78,7 @@ async function boot(): Promise<void> {
   override('renderScale', 'scale');
   override('spp', 'spp');
   override('maxBounces', 'bounces');
+  override('lightSamples', 'lights');
   override('fogMode', 'fog');
   override('fogDensity', 'fogDensity');
   override('atrousIterations', 'denoise');
