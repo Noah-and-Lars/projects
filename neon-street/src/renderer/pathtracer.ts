@@ -142,6 +142,10 @@ export class PathTracer {
   readonly poses: (DynObjectPose | null)[] = new Array(MAX_OBJS).fill(null);
   /** The drone's searchlight; null switches it off. */
   spot: SpotLightState | null = null;
+  /** Intro overlay (helmet visor, eyelids, blur); null when not playing. */
+  intro: { eyelid: number; blur: number; visor: number; lift: number; boot: number } | null = null;
+  /** Helmet HUD glow multiplier (material pattern 5). */
+  hudGlow = 0;
   private readonly objects: DynObjectInfo[];
   private readonly firstDynamicTri: number;
 
@@ -186,7 +190,7 @@ export class PathTracer {
     this.atrousDiffParams = atrousParams('atrous diff', 4.0, 0.15, 64);
     // Reflections: stop hard at roughness and normal changes, blur less.
     this.atrousSpecParams = atrousParams('atrous spec', 3.0, 0.05, 128);
-    this.displayParamBuf = device.createBuffer({ label: 'display params', size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    this.displayParamBuf = device.createBuffer({ label: 'display params', size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear', addressModeU: 'clamp-to-edge', addressModeV: 'clamp-to-edge' });
 
     // ---- bind group layouts -------------------------------------------------
@@ -418,10 +422,11 @@ export class PathTracer {
     if (sp) {
       put(60, sp.pos, sp.intensity);
       put(64, sp.dir, sp.cosOuter);
-      u[68] = sp.cosInner; u[69] = sp.range; u[70] = 0; u[71] = 0;
+      u[68] = sp.cosInner; u[69] = sp.range;
     } else {
       u[63] = 0; // intensity 0 switches the searchlight off
     }
+    u[70] = this.hudGlow; u[71] = 0;
     for (let i = 0; i < MAX_OBJS; i++) {
       const o = 72 + i * 24;
       const pose = this.poses[i];
@@ -559,8 +564,10 @@ export class PathTracer {
     // ---- rain streaks and splashes, lit by the probes, depth-tested against the G-buffer
     this.rain?.draw(enc, this.view('hdr'), `rain${cur}`, this.uniformBuf, this.view(`pos${cur}`), this.probeTex[cur].createView({ dimension: '3d' }));
 
-    // ---- bloom
+    // ---- bloom (unthresholded while the intro is out of focus, so it doubles as a blur)
     {
+      const threshold = this.intro && this.intro.blur > 0 ? 0 : 1.0;
+      device.queue.writeBuffer(this.bloomParamBufs[0], 16, new Float32Array([threshold, 0.5]));
       let src = 'hdr';
       for (let i = 0; i < BLOOM_LEVELS; i++) {
         const dst = `down${i}`;
@@ -596,7 +603,12 @@ export class PathTracer {
 
     // ---- display
     const sharpen = settings.renderScale < 0.95 ? 0.35 : 0;
-    device.queue.writeBuffer(this.displayParamBuf, 0, new Float32Array([settings.exposure, 0.35, this.displayMode, settings.bloom, this.renderW, this.renderH, sharpen, 0]));
+    const it = this.intro;
+    device.queue.writeBuffer(this.displayParamBuf, 0, new Float32Array([
+      settings.exposure, 0.35, this.displayMode, settings.bloom, this.renderW, this.renderH, sharpen, time,
+      it?.eyelid ?? 0, it?.blur ?? 0, it?.visor ?? 0, it?.lift ?? 0,
+      it?.boot ?? 0, this.renderW / this.renderH, 0, 0,
+    ]));
     {
       const bg = this.bindGroup(`display:${cur}:${diffOut}:${specOut}`, this.displayBGL, () => [
         { binding: 0, resource: this.sampler },

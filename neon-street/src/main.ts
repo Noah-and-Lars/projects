@@ -8,7 +8,9 @@ import { buildLightGrid } from './renderer/lightgrid';
 import { PathTracer } from './renderer/pathtracer';
 import { buildDroneMesh } from './drone/droneModel';
 import { DroneFlight, transform } from './drone/droneFlight';
-import { mergeScenes } from './world/geometry';
+import { mergeScenes, type SceneData } from './world/geometry';
+import { buildArmMesh, buildHelmetMesh } from './intro/meshes';
+import { IntroSequence } from './intro/intro';
 import { PRESETS, type PresetName, presetFromName, type RenderSettings } from './renderer/presets';
 import { loadTextureSet } from './renderer/textures';
 import { PlayerController } from './player/controller';
@@ -77,14 +79,23 @@ async function boot(): Promise<void> {
   statusEl.textContent = 'Building the street…';
   const street = buildStreet();
   const droneMesh = buildDroneMesh();
-  // The drone rides along as a second BVH after the street's.
-  const { scene, triStart: droneTriStart } = mergeScenes(street, droneMesh.scene);
-  const streetBvh = buildBvh(street.tris, street.triCount);
-  const droneBvh = buildBvh(droneMesh.scene.tris, droneMesh.scene.triCount);
-  const { bvh, root: droneRoot } = appendBvh(streetBvh, droneBvh, droneTriStart);
+  // Dynamic objects ride along as extra BVHs after the street's:
+  // slot 0 drone, 1 left arm, 2 right arm, 3 helmet.
+  const dynamic: SceneData[] = [droneMesh.scene, buildArmMesh(-1), buildArmMesh(1), buildHelmetMesh()];
+  let scene = street;
+  let bvh = buildBvh(street.tris, street.triCount);
+  const objects: { root: number; triStart: number }[] = [];
+  for (const d of dynamic) {
+    const merged = mergeScenes(scene, d);
+    const appended = appendBvh(bvh, buildBvh(d.tris, d.triCount), merged.triStart);
+    scene = merged.scene;
+    bvh = appended.bvh;
+    objects.push({ root: appended.root, triStart: merged.triStart });
+  }
+  const droneRoot = objects[0].root, droneTriStart = objects[0].triStart;
   const grid = buildLightGrid(scene, STREET.zStart - 30, STREET.zEnd + 30, 6);
   const water = new WaterSim(device);
-  const renderer = new PathTracer(gpu, scene, bvh, grid, textures, water, [{ root: droneRoot, triStart: droneTriStart }]);
+  const renderer = new PathTracer(gpu, scene, bvh, grid, textures, water, objects);
   const droneFlight = new DroneFlight(droneMesh.lamp, params.get('drone') !== '0');
   if (params.get('drone') === 'pin') droneFlight.pinned = [0.5, 4.5, 8];
   const droneCorners: [number, number, number][] = [];
@@ -132,6 +143,13 @@ async function boot(): Promise<void> {
   if (px != null || pz != null) controller.teleport(px ?? controller.pos[0], pz ?? controller.pos[2]);
   if (pyaw != null) controller.yaw = (pyaw * Math.PI) / 180;
   if (ppitch != null) controller.pitch = (ppitch * Math.PI) / 180;
+  // Wake-up sequence: on by default for real sessions, off for headless captures unless asked.
+  const introWanted = params.get('intro') === '1' || (params.get('intro') !== '0' && !headless);
+  const intro = new IntroSequence([controller.pos[0], controller.pos[1], controller.pos[2]], controller.yaw, controller.groundHeight(controller.pos[0], controller.pos[2]));
+  intro.active = introWanted;
+  if (introWanted && headless) intro.begin();
+  const introSkip = parseFloat(params.get('introAt') ?? '');
+  if (Number.isFinite(introSkip) && introWanted) { intro.begin(); intro.update(introSkip); }
   const hud = new Hud($('#hud'));
   if (params.get('hud') === '0') hud.setVisible(false);
   const menu = new SettingsMenu($('#menu'), settings, presetName, (_s, structural) => {
@@ -174,6 +192,7 @@ async function boot(): Promise<void> {
     hideStart();
     menu.close();
     audio.start();
+    intro.begin();
     void input.requestLock();
   });
   canvas.addEventListener('click', () => {
@@ -195,8 +214,16 @@ async function boot(): Promise<void> {
       if (menu.isOpen) { menu.close(); void input.requestLock(); }
     }
     if (e.code === 'F2') renderer.displayMode = (renderer.displayMode + 1) % 5;
+    if (intro.active && (e.code === 'Space' || e.code === 'Enter')) intro.skip();
   });
+  canvas.addEventListener('mousedown', () => { if (intro.active && started) intro.skip(); });
   ($('#optHud') as HTMLInputElement).addEventListener('change', (e) => hud.setVisible((e.target as HTMLInputElement).checked));
+  document.querySelector<HTMLButtonElement>('#optReplay')?.addEventListener('click', () => {
+    controller.teleport(STREET.spawn[0], STREET.spawn[2]);
+    intro.restart();
+    menu.close();
+    void input.requestLock();
+  });
 
   dbg.ready = true;
   // Debug hook for the headless script: dump renderer state.
@@ -214,11 +241,38 @@ async function boot(): Promise<void> {
     const frameStart = performance.now();
     const cpuMs = frameStart - lastFrameStart;
     lastFrameStart = frameStart;
-    controller.update(dt, input.locked);
+    const introPlaying = intro.active;
+    controller.update(dt, input.locked && !introPlaying);
     // Weather: water flows every frame, footsteps ripple it, lightning flashes.
     const rain = Math.max(0, settings.rain);
     const steps = controller.consumeFootsteps();
     const impulses = steps.map((p) => ({ x: p[0], z: p[2], radius: 0.32, strength: 0.006 }));
+    // Intro: drives the camera, the arms and the helmet until it hands over.
+    let introCam: typeof renderer.poses extends unknown ? ReturnType<typeof controller.camera> | null : never = null;
+    if (introPlaying) {
+      // introFreeze=1 holds the sequence at its current point for captures.
+      const f = intro.update(params.get('introFreeze') === '1' ? 0 : dt);
+      introCam = f.camera;
+      renderer.poses[1] = f.armL;
+      renderer.poses[2] = f.armR;
+      renderer.poses[3] = f.helmet;
+      renderer.intro = f.overlay;
+      renderer.hudGlow = f.hud;
+      audio.setMuffle(f.muffle);
+      for (const ev of f.events) audio.cue(ev);
+      impulses.push(...f.impulses);
+      if (f.done) {
+        renderer.intro = null;
+        renderer.poses[1] = null;
+        renderer.poses[2] = null;
+        controller.yaw = intro['yaw' as keyof IntroSequence] as unknown as number;
+        controller.pitch = 0;
+        audio.setMuffle(0);
+      }
+    } else {
+      // The discarded helmet stays where it landed.
+      renderer.poses[3] = intro.helmetRestingPose;
+    }
     // Drone: fly, then feed its transform, searchlight and downwash to everything.
     const ds = droneFlight.update(dt, time);
     if (ds.active) {
@@ -245,7 +299,7 @@ async function boot(): Promise<void> {
       rainSystem.drone = null;
     }
     water.step(dt, time, 0.0004 * rain, impulses);
-    const cam = controller.camera();
+    const cam = introCam ?? controller.camera();
     rainSystem.update(dt, time, cam.pos, settings.rainDrops * 1000, rain);
     const flash = lightning.update(dt, time);
     renderer.weather = { wetness: Math.min(1, rain), rain, sky: flash.sky, historyBoost: flash.historyBoost };

@@ -544,6 +544,7 @@ fn emitted(m: Material, p: vec3f, n: vec3f, dir: vec3f) -> vec3f {
     if (pattern == 1u) { k = 0.45 + 0.55 * sin(t * 3.0) * sin(t * 3.0); }           // slow breathing
     else if (pattern == 2u) { k = step(0.93, fract(t * 1.1)) + 0.6 * step(0.98, fract(t * 1.1 + 0.07)); } // strobe
     else if (pattern == 3u) { k = step(0.5, fract(t * 1.0)); }                       // recording blink
+    else if (pattern == 5u) { k = U.s2.z * (0.8 + 0.2 * step(0.2, hash21(vec2f(floor(t * 18.0), 5.0)))); } // helmet HUD
     return m.emis.rgb * k;
   }
   return m.emis.rgb;

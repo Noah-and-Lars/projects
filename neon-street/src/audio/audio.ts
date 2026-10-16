@@ -43,6 +43,8 @@ export class AudioEngine {
   private nextSiren = 30;
   private nextAssign = 0;
   private covered = 0;
+  private muffleFilter!: BiquadFilterNode;
+  private breathGain!: GainNode;
   volume = 0.8;
   private started = false;
 
@@ -60,7 +62,11 @@ export class AudioEngine {
     this.started = true;
     this.master = ctx.createGain();
     this.master.gain.value = this.volume;
-    this.master.connect(ctx.destination);
+    // Everything passes through the helmet filter; wide open when it is off.
+    this.muffleFilter = ctx.createBiquadFilter();
+    this.muffleFilter.type = 'lowpass';
+    this.muffleFilter.frequency.value = 20000;
+    this.master.connect(this.muffleFilter).connect(ctx.destination);
 
     // Street-canyon reverb from a synthetic impulse response.
     const convolver = ctx.createConvolver();
@@ -124,6 +130,22 @@ export class AudioEngine {
     trafficLfo.start();
     traffic.connect(trafficBp).connect(trafficGain).connect(this.cityGain);
 
+    // Breathing inside the helmet (bypasses the muffle filter: it is already inside).
+    const breath = this.loop(this.noiseBuf);
+    const breathBp = ctx.createBiquadFilter();
+    breathBp.type = 'bandpass'; breathBp.frequency.value = 700; breathBp.Q.value = 0.6;
+    this.breathGain = ctx.createGain();
+    this.breathGain.gain.value = 0;
+    const breathLfo = ctx.createOscillator();
+    breathLfo.frequency.value = 0.27;
+    const breathLfoGain = ctx.createGain();
+    breathLfoGain.gain.value = 0.5;
+    const breathBase = ctx.createGain();
+    breathBase.gain.value = 0.5;
+    breathLfo.connect(breathLfoGain).connect(breathBase.gain);
+    breathLfo.start();
+    breath.connect(breathBp).connect(breathBase).connect(this.breathGain).connect(ctx.destination);
+
     // Positioned voice pools.
     for (let i = 0; i < 6; i++) this.neonVoices.push(this.makeNeonVoice());
     for (let i = 0; i < 3; i++) this.holoVoices.push(this.makeHoloVoice());
@@ -134,6 +156,36 @@ export class AudioEngine {
   setVolume(v: number): void {
     this.volume = v;
     if (this.master) this.master.gain.setTargetAtTime(v, this.ctx!.currentTime, 0.05);
+  }
+
+  /** 0 = open air, 1 = sealed inside the helmet. */
+  setMuffle(m: number): void {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.muffleFilter.frequency.setTargetAtTime(20000 - 19400 * m, t, 0.08);
+    this.breathGain.gain.setTargetAtTime(0.14 * m * this.volume, t, 0.1);
+  }
+
+  /** Intro cues. */
+  cue(name: string): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    if (name === 'seal') {
+      // Latch click, then a pressure hiss.
+      this.oneShot(this.noiseBuf, null, 'highpass', 2500, 0.5, 0.002, 0.04, 1.5);
+      setTimeout(() => this.oneShot(this.noiseBuf, null, 'bandpass', 3800, 0.22, 0.05, 0.9, 1.0), 120);
+    } else if (name === 'thud') {
+      this.oneShot(this.brownBuf, null, 'lowpass', 300, 0.9, 0.004, 0.35, 0.9);
+      setTimeout(() => this.oneShot(this.noiseBuf, null, 'bandpass', 2200, 0.25, 0.01, 0.3, 1.1), 30);
+    } else if (name === 'splash') {
+      this.oneShot(this.noiseBuf, null, 'bandpass', 1800, 0.35, 0.01, 0.35, 1.0);
+      this.oneShot(this.noiseBuf, null, 'lowpass', 400, 0.3, 0.005, 0.2, 0.7);
+    } else if (name === 'drip') {
+      for (let i = 0; i < 5; i++) setTimeout(() => this.plink([0, 0, 0]), 150 + i * 180 + Math.random() * 120);
+    } else if (name === 'breath') {
+      void t;
+    }
   }
 
   // ------------------------------------------------------------ helpers

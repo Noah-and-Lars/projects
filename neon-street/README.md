@@ -16,15 +16,19 @@ npm install
 npm run dev
 ```
 
-Open the printed URL, click the view, then walk with **W A S D**, run with
-**Shift**, look with the mouse. **Esc** opens the settings panel, **H** hides
-the stats, **F2** cycles debug views (diffuse / albedo / normals / specular).
+Open the printed URL, click the view, and the wake-up sequence plays (skip it
+with **Space** or a click; replay it from the settings panel). Then walk with
+**W A S D**, run with **Shift**, look with the mouse. **Esc** opens the
+settings panel, **H** hides the stats, **F2** cycles debug views (diffuse /
+albedo / normals / specular).
 
 URL parameters: `?preset=ultra`, `&scale=0.75`, `&spp=2`, `&bounces=6`,
 `&fog=2`, `&rain=1.5`, `&drops=30` (thousands of streaks), `&warm=20`
 (seconds of rain simulated before the first frame), `&lightning=0`,
-`&x=..&z=..&yaw=..&pitch=..` (start pose), `&w=1280&h=720` (fixed canvas
-size), `&autostart=1` (skip the start screen).
+`&x=..&z=..&yaw=..&pitch=..` (start pose), `&intro=0` / `&intro=1`,
+`&introAt=7&introFreeze=1` (hold the intro at a given second), `&drone=0` /
+`&drone=pin`, `&w=1280&h=720` (fixed canvas size), `&autostart=1` (skip the
+start screen).
 
 ## Presets
 
@@ -63,6 +67,11 @@ stats overlay shows GPU time split into trace / denoise / post.
   progressively, drawn after denoising with a depth test against the
   G-buffer.
 - `src/weather/lightning.ts` — sky flashes.
+- `src/drone/` — the patrol drone: mesh, flight path and searchlight. Dynamic
+  objects are traced as rigidly transformed second-level BVHs.
+- `src/audio/audio.ts` — all sound, synthesised with the Web Audio API.
+- `src/intro/` — the wake-up sequence: camera script, arm and helmet meshes,
+  and the visor overlay drawn in `display.wgsl`.
 - `src/world/street.ts` — the procedural street (buildings, windows, neon
   signs, streetlights, props) built from boxes and quads.
 - `src/renderer/bvh.ts` — binned-SAH BVH builder.

@@ -37,20 +37,25 @@ Ultra ~20–40 FPS, Melt is a slideshow on purpose.
    tracer's G-buffer; drips from awnings and the walkway; animated drops
    running down every pane; a wet sheen at the foot of the walls; lightning
    flashes with a temporal-blend boost so they read instantly.
-5. **The drone** (scenery, no gameplay)
-   Quadcopter with four spinning propellers, status LEDs, red/green arm
-   lights, white strobe, searchlight. Downwash pushes rain sideways and
-   ripples the puddles below it. Tilts when it moves.
-6. **Sound**
-   3D positional audio: rain on different surfaces (puddles, metal awnings,
-   the drone), drips and gutters, footsteps, neon buzz, hologram glitches,
-   city ambience, the drone's whir, thunder. Mostly generated in code.
-7. **Intro sequence** (skippable, replayable)
-   Wake up inside a helmet: muffled sound, cracked visor, rain on the glass,
-   glitching HUD. A gloved hand (part of the suit) presses into a puddle —
-   splash, ripples, drips. Helmet comes off: view goes sharp, sound opens
-   up, helmet drops into the puddle and its HUD dies. Stand up.
-8. **Polish and performance pass.**
+5. **The drone** — DONE
+   H-frame quadcopter traced as a rigidly transformed second BVH: four
+   blurred prop discs, status LEDs, red/green nav lights, tail strobe,
+   rail LED strips, camera gimbal. Analytic searchlight sampled by
+   surfaces, fog (visible beam) and the probe volume. Patrols waypoints,
+   hovers, tilts into motion, sweeps the light; downwash ripples the
+   puddles and blows rain outward.
+6. **Sound** — DONE
+   Procedural Web Audio: rain bed muffled under cover, awning drumming,
+   drips at the nearest awnings, footsteps and splashes, neon hum with
+   crackle, hologram bleeps, city rumble, distant sirens, drone rotors
+   with doppler, thunder after lightning, synthetic street reverb.
+7. **Intro sequence** — DONE (skip with Space/click, replay from the menu)
+   Wake up inside a cracked helmet: eyelids, blur, rain on the visor,
+   booting HUD, muffled breathing. Sit up, press a gloved hand into a
+   puddle (ripples, splash, drips). Both hands lift the helmet off: the
+   view clears, sound opens up, the helmet drops beside you and its HUD
+   dies. Stand up and take control.
+8. **Polish and performance pass** — next (needs measurements on the 3060 Ti).
 
 Later options: cars (code-built or paid models), a native .exe build using
 Vulkan ray tracing for a big speed-up.
