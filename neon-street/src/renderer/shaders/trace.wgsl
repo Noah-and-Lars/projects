@@ -445,8 +445,8 @@ fn billboardPattern(m: Material, p: vec3f, n: vec3f) -> vec3f {
   // Big logo ring on the left.
   let lc = vec2f((uv.x - 0.25) * aspect, uv.y - 0.55);
   let ring = abs(length(lc) - 0.28);
-  col = mix(col, c2 * 2.5, smoothstep(0.08, 0.04, ring));
-  col = mix(col, vec3f(2.2), smoothstep(0.1, 0.06, length(lc - vec2f(0.12, 0.08))) * 0.6);
+  col = mix(col, c2 * 2.5, (1.0 - smoothstep(0.04, 0.08, ring)));
+  col = mix(col, vec3f(2.2), (1.0 - smoothstep(0.06, 0.1, length(lc - vec2f(0.12, 0.08)))) * 0.6);
   // Rows of text-like bars that scroll.
   for (var row = 0; row < 3; row++) {
     let ry = 0.42 - f32(row) * 0.13;
@@ -506,13 +506,13 @@ fn holoPattern(m: Material, p: vec3f, n: vec3f) -> vec4f {
   // Pulsing rings.
   let r = length(c);
   let pulse = fract(time * 0.5 + seed);
-  a += smoothstep(0.03, 0.0, abs(r - 0.32 * pulse)) * (1.0 - pulse) * 0.8;
-  a += smoothstep(0.02, 0.0, abs(r - 0.3)) * 0.6;
+  a += (1.0 - smoothstep(0.0, 0.03, abs(r - 0.32 * pulse))) * (1.0 - pulse) * 0.8;
+  a += (1.0 - smoothstep(0.0, 0.02, abs(r - 0.3))) * 0.6;
   // Rotating arc.
   let ang = atan2(c.y, c.x) + time * 1.3;
-  a += smoothstep(0.03, 0.0, abs(r - 0.4)) * step(0.0, sin(ang * 2.0)) * 0.9;
+  a += (1.0 - smoothstep(0.0, 0.03, abs(r - 0.4))) * step(0.0, sin(ang * 2.0)) * 0.9;
   // Centre symbol.
-  a += smoothstep(0.12, 0.05, r) * (0.6 + 0.4 * sin(time * 3.0 + seed));
+  a += (1.0 - smoothstep(0.05, 0.12, r)) * (0.6 + 0.4 * sin(time * 3.0 + seed));
   // Scrolling glyph rows underneath.
   if (uv.y < 0.28 && uv.y > 0.05) {
     let x = uv.x * aspect * 10.0 - time * 0.8 + seed;
@@ -522,7 +522,7 @@ fn holoPattern(m: Material, p: vec3f, n: vec3f) -> vec4f {
   }
   // Scanlines, edge fade, flicker, glitch tearing.
   a *= 0.7 + 0.3 * sin(uv.y * 160.0 + time * 10.0);
-  let edge = smoothstep(0.0, 0.08, uv.x) * smoothstep(1.0, 0.92, uv.x) * smoothstep(0.0, 0.05, uv.y) * smoothstep(1.0, 0.9, uv.y);
+  let edge = smoothstep(0.0, 0.08, uv.x) * (1.0 - smoothstep(0.92, 1.0, uv.x)) * smoothstep(0.0, 0.05, uv.y) * (1.0 - smoothstep(0.9, 1.0, uv.y));
   a *= edge;
   a *= 0.8 + 0.2 * hash21(vec2f(floor(time * 30.0), seed));
   if (hash21(vec2f(floor(time * 4.0), seed + 2.0)) > 0.9 && fract(uv.y * 7.0 + time) < 0.1) { a *= 0.2; }
@@ -557,7 +557,7 @@ fn propCoverage(m: Material, pLocal: vec3f) -> f32 {
   if (r > 1.0 || r < 0.08) { return 0.0; }
   let ang = atan2(c.y, c.x) - U.p1.w * 60.0;
   let blade = pow(abs(sin(ang)), 8.0);
-  return (0.22 + 0.25 * blade) * smoothstep(1.0, 0.85, r);
+  return (0.22 + 0.25 * blade) * (1.0 - smoothstep(0.85, 1.0, r));
 }
 
 // `footprint` is the ray cone's width at the hit in metres; it picks the mip.

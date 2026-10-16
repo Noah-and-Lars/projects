@@ -30,6 +30,21 @@ URL parameters: `?preset=ultra`, `&scale=0.75`, `&spp=2`, `&bounces=6`,
 `&drone=pin`, `&w=1280&h=720` (fixed canvas size), `&autostart=1` (skip the
 start screen).
 
+## Desktop app (no browser)
+
+The same engine can run as a normal Windows program through Electron, with
+a launcher for preset, resolution, fullscreen and an unlocked frame rate:
+
+```sh
+npm install
+npm run app        # build and open the desktop app
+npm run package    # build NeonStreet-<version>-x64.exe into release/
+```
+
+`npm run package` produces a portable `.exe` (no installer) and a `.zip` in
+`release/`. In the app, **F11** toggles fullscreen, **F10** returns to the
+launcher, **Alt+F4** quits. The launcher shows which GPU WebGPU picked.
+
 ## Presets
 
 | Preset | Render scale | Samples/pixel | Bounces | Light candidates | Fog |

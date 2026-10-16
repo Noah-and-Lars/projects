@@ -55,7 +55,13 @@ Ultra ~20–40 FPS, Melt is a slideshow on purpose.
    puddle (ripples, splash, drips). Both hands lift the helmet off: the
    view clears, sound opens up, the helmet drops beside you and its HUD
    dies. Stand up and take control.
-8. **Polish and performance pass** — next (needs measurements on the 3060 Ti).
+8. **Desktop app** — DONE
+   Electron shell with a launcher (preset, resolution, fullscreen, vsync
+   off, intro/stats toggles, GPU readout); the game is served over a
+   private `app://` scheme from `dist/`. `npm run package` builds a
+   portable Windows `.exe`. Shaders adjusted so older WGSL compilers accept
+   them (no reversed-constant `smoothstep`).
+9. **Polish and performance pass** — next (needs measurements on the 3060 Ti).
 
 Later options: cars (code-built or paid models), a native .exe build using
 Vulkan ray tracing for a big speed-up.

@@ -183,13 +183,13 @@ fn fs(in: VSOut) -> @location(0) vec4f {
   if (in.dist > sceneDist + 0.02) { discard; }
   var a = 0.0;
   if (in.kind < 0.5) {
-    a = (1.0 - abs(in.uv.x)) * smoothstep(-1.0, -0.6, in.uv.y) * smoothstep(1.0, 0.3, in.uv.y);
+    a = (1.0 - abs(in.uv.x)) * smoothstep(-1.0, -0.6, in.uv.y) * (1.0 - smoothstep(0.3, 1.0, in.uv.y));
     // Fade very close drops (they'd cover the screen) and distant ones.
     a *= smoothstep(0.25, 0.9, in.dist) * (1.0 - smoothstep(R.look.z * 0.6, R.look.z, in.dist));
   } else {
     let t = in.age / 0.16;
     let r = length(in.uv * vec2f(1.0, 1.4));
-    a = smoothstep(0.35, 0.0, abs(r - (0.2 + 0.7 * t))) * (1.0 - t) * 0.7;
+    a = (1.0 - smoothstep(0.0, 0.35, abs(r - (0.2 + 0.7 * t)))) * (1.0 - t) * 0.7;
     a *= smoothstep(0.3, 1.0, in.dist) * (1.0 - smoothstep(R.look.z * 0.3, R.look.z * 0.6, in.dist));
   }
   return vec4f(in.light * a, 0.0);

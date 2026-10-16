@@ -224,6 +224,14 @@ async function boot(): Promise<void> {
   });
   canvas.addEventListener('mousedown', () => { if (intro.active && started) intro.skip(); });
   ($('#optHud') as HTMLInputElement).addEventListener('change', (e) => hud.setVisible((e.target as HTMLInputElement).checked));
+  // Extra buttons when running inside the desktop app.
+  const neonApp = (window as unknown as { neonApp?: { fullscreen(on?: boolean): Promise<boolean>; launcher(): Promise<void> } }).neonApp;
+  if (neonApp) {
+    const row = document.querySelector<HTMLElement>('#appRow');
+    if (row) row.style.display = 'flex';
+    document.querySelector<HTMLButtonElement>('#optFullscreen')?.addEventListener('click', () => { void neonApp.fullscreen(); });
+    document.querySelector<HTMLButtonElement>('#optLauncher')?.addEventListener('click', () => { void neonApp.launcher(); });
+  }
   document.querySelector<HTMLButtonElement>('#optReplay')?.addEventListener('click', () => {
     controller.teleport(STREET.spawn[0], STREET.spawn[2]);
     intro.restart();

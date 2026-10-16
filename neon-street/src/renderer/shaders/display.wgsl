@@ -111,7 +111,7 @@ fn visorFx(uv0: vec2f) -> Visor {
   let outside = max(dx, dy);
   v.dark = smoothstep(-0.015, 0.02, outside);
   // Chin bar: a rounded bump into the opening at the bottom centre.
-  let chin = smoothstep(0.26, 0.14, abs(c.x)) * smoothstep(-0.46, -0.4, c.y) * (1.0 - smoothstep(-0.37, -0.31, c.y));
+  let chin = (1.0 - smoothstep(0.14, 0.26, abs(c.x))) * smoothstep(-0.46, -0.4, c.y) * (1.0 - smoothstep(-0.37, -0.31, c.y));
   v.dark = max(v.dark, chin);
   // The helmet ends at the neck ring; below it the world shows as it lifts.
   v.dark *= smoothstep(-0.78, -0.66, c.y);
@@ -127,7 +127,7 @@ fn visorFx(uv0: vec2f) -> Visor {
     let wob = 0.05 * sin(r * 40.0 + f32(i) * 2.0);
     let da = abs(ang - a0 - wob);
     let len = 0.14 + 0.22 * hash21(vec2f(f32(i), 2.0));
-    crack = max(crack, smoothstep(0.0035, 0.0, da * r) * (1.0 - smoothstep(len * 0.5, len, r)));
+    crack = max(crack, (1.0 - smoothstep(0.0, 0.0035, da * r)) * (1.0 - smoothstep(len * 0.5, len, r)));
   }
   v.uvOffset += vec2f(crack * 0.003, -crack * 0.002);
   v.hud += vec3f(0.7, 0.75, 0.8) * crack * 0.12;
@@ -170,7 +170,7 @@ fn visorFx(uv0: vec2f) -> Visor {
   if (gx > 0.86 && gx < 0.872 && fract(uv.y * 24.0) < 0.2 && uv.y > 0.3 && uv.y < 0.7) { hud += 0.6; }
   if (gx > 0.86 && gx < 0.884 && fract(uv.y * 6.0) < 0.08 && uv.y > 0.3 && uv.y < 0.7) { hud += 0.6; }
   let rc = length(c);
-  hud += smoothstep(0.008, 0.0, abs(rc - 0.08)) * 0.3 * step(0.6, fract(ang + D.time * 0.2));
+  hud += (1.0 - smoothstep(0.0, 0.008, abs(rc - 0.08))) * 0.3 * step(0.6, fract(ang + D.time * 0.2));
   let flick = mix(1.0, step(0.3, hash21(vec2f(floor(D.time * 22.0), 3.0))), boot);
   v.hud += vec3f(0.35, 1.0, 1.1) * hud * 0.3 * flick * (1.0 - v.dark);
   return v;
