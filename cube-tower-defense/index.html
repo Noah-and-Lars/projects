@@ -209,6 +209,25 @@
     .btn { padding: 9px 12px; font-size: 15px; }
   }
   @media (prefers-reduced-motion: reduce) { .menu.active { animation: none; } }
+  /* 1.2: upgrades, shown right under your coins when you click a unit */
+  #coins { order: -2; } #info { order: -1; }
+  #upgrades { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  .upg-stats { font-size: 12px; font-weight: 700; color: #cbd5e1; background: rgba(0, 0, 0, .25); border-radius: 8px; padding: 6px 8px; line-height: 1.35; }
+  .upg-note { font-size: 12px; color: var(--muted); }
+  .upg { border-radius: 10px; padding: 8px; border: 1px solid rgba(251, 191, 36, .45); background: rgba(251, 191, 36, .08); }
+  .upg.upg-B { border-color: rgba(56, 189, 248, .45); background: rgba(56, 189, 248, .08); }
+  .upg-h { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fcd34d; }
+  .upg-B .upg-h { color: #7dd3fc; }
+  .upg-lv { color: var(--muted); white-space: nowrap; }
+  .upg-pips { display: inline-flex; gap: 3px; margin-left: 4px; vertical-align: middle; }
+  .upg-pips i { width: 7px; height: 7px; border-radius: 2px; transform: rotate(45deg); background: rgba(255, 255, 255, .18); }
+  .upg-pips i.on { background: currentColor; }
+  .upg b { display: block; font-family: var(--display); font-weight: 400; font-size: 16px; margin-top: 4px; }
+  #info .upg p { margin: 2px 0 8px; font-size: 12.5px; color: #d6dde6; }
+  .upg.done p { margin-bottom: 0; }
+  .upg-buy { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; font-size: 15px; touch-action: manipulation; }
+  .upg-buy.poor { opacity: .5; }
+
 </style>
 </head>
 <body>
@@ -226,7 +245,7 @@
   <aside id="side" hidden>
     <div id="coins"><span class="coin"></span><span id="coinNum">100</span></div>
     <div id="cards"></div>
-    <div id="info" hidden><b id="infoName">Gunner</b><p id="infoText"></p><button class="btn secondary" id="sellBtn">Sell</button></div>
+    <div id="info" hidden><b id="infoName">Gunner</b><p id="infoText"></p><div id="upgrades"></div><button class="btn secondary" id="sellBtn">Sell</button></div>
     <div class="spacer"></div>
     <label class="check">Auto-start waves<input type="checkbox" id="autoWave"></label>
     <div class="row2"><button class="btn secondary" id="speedBtn">Speed 1×</button><button class="btn" id="waveBtn">Start wave</button></div>
@@ -254,7 +273,7 @@
       <button class="btn" data-action="play">Play</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v1.1.3 · What's new</button>
+    <button class="link" data-action="notes">v1.2 · What's new</button>
   </div>
 
   <div class="menu" id="menu-profile">
@@ -285,19 +304,27 @@
   </div>
 
   <div class="menu wide" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.1<span>Reinforcements</span></h1><p style="color:#ffe9c2;margin-top:6px">Five new units, mini tanks, music, and a new way to earn coins.</p>
-      <div class="hero-units"><img data-av="flamer" alt="Flamethrower"><img data-av="rocketeer" alt="Rocketeer"><img data-av="freezer" alt="Freezer"><img data-av="archer" alt="Archer"><img data-av="tank" alt="Mini tank"></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.2<span>Upgrades</span></h1><p style="color:#ffe9c2;margin-top:6px">Every unit can now be upgraded three times, down one of two paths.</p>
+      <div class="hero-units"><img data-av="sniper" alt="Sniper"><img data-av="commando" alt="Commando"><img data-av="freezer" alt="Freezer"><img data-av="flamer" alt="Flamethrower"><img data-av="farm" alt="Farm"></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><img data-av="flamer" alt=""><span><b>Flamethrower · 150</b>Torches every cube in a cone in front of him.</span></div>
-      <div><img data-av="rocketeer" alt=""><span><b>Rocketeer · 75</b>Homing rockets that blast a small area.</span></div>
-      <div><img data-av="freezer" alt=""><span><b>Freezer · 65</b>A frost blast that slows every cube nearby.</span></div>
-      <div><img data-av="archer" alt=""><span><b>Archer · 30</b>A cheap, long-range bow for the early waves.</span></div>
-      <div><img data-av="tank" alt=""><span><b>Mini Tank Base · 100</b>Place it on the map; mini tanks roll out of your fort and drive back down the road, blasting cubes.</span></div>
-      <div><i>🪙</i><span><b>Coins come from waves</b>Destroying cubes no longer pays. Clear a wave to earn a bigger bonus.</span></div>
-      <div><i>🎵</i><span><b>Music</b>Calm 16-bit music while you play, and a different tune on the menu.</span></div>
+      <div><i>⬆️</i><span><b>Upgrade paths</b>Click a unit on the map to see its upgrades. Each has two paths with three levels; picking one locks the other.</span></div>
+      <div><i>💰</i><span><b>Pay as you go</b>Upgrades cost coins, and every level costs more than the last. Selling a unit gives back 70% of everything you spent on it.</span></div>
+      <div><img data-av="sniper" alt=""><span><b>For example: Sniper</b>Deadeye ends in the Railgun, which shoots through 4 cubes. Semi-Auto ends in an Auto Sniper.</span></div>
+      <div><img data-av="farm" alt=""><span><b>Farms and tanks too</b>Farms can grow bigger fields or open a savings bank. The Mini Tank Base can build tougher tanks or send out more of them.</span></div>
+      <div><img data-av="freezer" alt=""><span><b>Freezer · 95</b>More expensive (it was 65).</span></div>
+      <div><img data-av="flamer" alt=""><span><b>Flamethrower · 110</b>Cheaper (it was 150).</span></div>
     </div>
     <div class="notes panelbox">
+      <h3>v1.2 <span>Upgrades</span></h3>
+      <ul>
+        <li>Click any unit you have placed to see its upgrades under your coins: the upgrade’s name, what it does, and a button to buy it.</li>
+        <li>Every unit, the Mini Tank Base and the Farm have two upgrade paths with three levels each. Your first upgrade picks the path; the other one is then locked for that unit.</li>
+        <li>Upgrades get pricier at every level. Gold or blue stars over a unit show its level.</li>
+        <li>The Freezer now costs 95 (was 65) and the Flamethrower 110 (was 150).</li>
+        <li>The info panel now shows each unit’s damage, rate of fire and range.</li>
+        <li>Fixed: the Farm and the Mini Tank Base were hard to click; now you can click anywhere on them.</li>
+      </ul>
       <h3>v1.1.3 <span>Shotgunner</span></h3>
       <ul>
         <li>Wave coins cut in half again: clearing a wave now pays 15 coins plus 2 per wave number. Farms still pay 20 each.</li>
@@ -342,19 +369,27 @@
   </div>
 
   <div class="menu wide" id="menu-news">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.1<span>Reinforcements</span></h1><p style="color:#ffe9c2;margin-top:6px">Five new units, mini tanks, music, and a new way to earn coins.</p>
-      <div class="hero-units"><img data-av="flamer" alt="Flamethrower"><img data-av="rocketeer" alt="Rocketeer"><img data-av="freezer" alt="Freezer"><img data-av="archer" alt="Archer"><img data-av="tank" alt="Mini tank"></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.2<span>Upgrades</span></h1><p style="color:#ffe9c2;margin-top:6px">Every unit can now be upgraded three times, down one of two paths.</p>
+      <div class="hero-units"><img data-av="sniper" alt="Sniper"><img data-av="commando" alt="Commando"><img data-av="freezer" alt="Freezer"><img data-av="flamer" alt="Flamethrower"><img data-av="farm" alt="Farm"></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><img data-av="flamer" alt=""><span><b>Flamethrower · 150</b>Torches every cube in a cone in front of him.</span></div>
-      <div><img data-av="rocketeer" alt=""><span><b>Rocketeer · 75</b>Homing rockets that blast a small area.</span></div>
-      <div><img data-av="freezer" alt=""><span><b>Freezer · 65</b>A frost blast that slows every cube nearby.</span></div>
-      <div><img data-av="archer" alt=""><span><b>Archer · 30</b>A cheap, long-range bow for the early waves.</span></div>
-      <div><img data-av="tank" alt=""><span><b>Mini Tank Base · 100</b>Place it on the map; mini tanks roll out of your fort and drive back down the road, blasting cubes.</span></div>
-      <div><i>🪙</i><span><b>Coins come from waves</b>Destroying cubes no longer pays. Clear a wave to earn a bigger bonus.</span></div>
-      <div><i>🎵</i><span><b>Music</b>Calm 16-bit music while you play, and a different tune on the menu.</span></div>
+      <div><i>⬆️</i><span><b>Upgrade paths</b>Click a unit on the map to see its upgrades. Each has two paths with three levels; picking one locks the other.</span></div>
+      <div><i>💰</i><span><b>Pay as you go</b>Upgrades cost coins, and every level costs more than the last. Selling a unit gives back 70% of everything you spent on it.</span></div>
+      <div><img data-av="sniper" alt=""><span><b>For example: Sniper</b>Deadeye ends in the Railgun, which shoots through 4 cubes. Semi-Auto ends in an Auto Sniper.</span></div>
+      <div><img data-av="farm" alt=""><span><b>Farms and tanks too</b>Farms can grow bigger fields or open a savings bank. The Mini Tank Base can build tougher tanks or send out more of them.</span></div>
+      <div><img data-av="freezer" alt=""><span><b>Freezer · 95</b>More expensive (it was 65).</span></div>
+      <div><img data-av="flamer" alt=""><span><b>Flamethrower · 110</b>Cheaper (it was 150).</span></div>
     </div>
     <div class="notes panelbox">
+      <h3>v1.2 <span>Upgrades</span></h3>
+      <ul>
+        <li>Click any unit you have placed to see its upgrades under your coins: the upgrade’s name, what it does, and a button to buy it.</li>
+        <li>Every unit, the Mini Tank Base and the Farm have two upgrade paths with three levels each. Your first upgrade picks the path; the other one is then locked for that unit.</li>
+        <li>Upgrades get pricier at every level. Gold or blue stars over a unit show its level.</li>
+        <li>The Freezer now costs 95 (was 65) and the Flamethrower 110 (was 150).</li>
+        <li>The info panel now shows each unit’s damage, rate of fire and range.</li>
+        <li>Fixed: the Farm and the Mini Tank Base were hard to click; now you can click anywhere on them.</li>
+      </ul>
       <h3>v1.1.3 <span>Shotgunner</span></h3>
       <ul>
         <li>Wave coins cut in half again: clearing a wave now pays 15 coins plus 2 per wave number. Farms still pay 20 each.</li>
@@ -620,7 +655,7 @@ function spawnEnemy(key, hpMul) {
 function removeEnemy(e) { scene.remove(e.g); if (e.bar) scene.remove(e.bar); e.g.traverse(o => { if (o.isMesh) o.geometry.dispose(); }); if (e.ice) e.ice.material.dispose(); enemies.splice(enemies.indexOf(e), 1); }
 const _p = { x: 0, z: 0, dx: 1, dz: 0 };
 function updateEnemies(dt) {
-  for (let i = enemies.length - 1; i >= 0; i--) { const e = enemies[i]; const sp = e.slow > 0 ? e.speed * 0.45 : e.speed; e.slow = Math.max(0, e.slow - dt); e.d += sp * dt; e.phase += dt * sp * 2.2;
+  for (let i = enemies.length - 1; i >= 0; i--) { const e = enemies[i]; const sp = e.slow > 0 ? e.speed * (e.slowK || 0.45) : e.speed; e.slow = Math.max(0, e.slow - dt); if (e.slow <= 0) e.slowK = 0; e.d += sp * dt; e.phase += dt * sp * 2.2;
     if (e.slow > 0 && !e.ice) { e.ice = new THREE.Mesh(new THREE.BoxGeometry(e.s * 1.12, e.s * 1.12, e.s * 1.12), new THREE.MeshLambertMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.45 })); e.ice.position.y = e.s / 2; e.body.add(e.ice); }
     if (e.ice) e.ice.visible = e.slow > 0;
     if (e.d >= BASE_D) { baseHp = Math.max(0, baseHp - e.T.dmg); hurtFlash = 1; Sound.play('hurt'); burst(e.g.position, e.T.color, 10, e.s); removeEnemy(e); if (baseHp <= 0) { gameOver(); return; } continue; }
@@ -634,7 +669,7 @@ function updateEnemies(dt) {
 }
 function damage(e, n, src) {
   if (e.hp <= 0) return; e.hp -= n;
-  if (e.hp <= 0) { const c = e.g.position.clone(); burst(c, e.T.color, 14, e.s); if (state === 'play') { kills++; profile.stats.kills++; addXp(e.T.xp); } if (src) src.kills++; Sound.play('pop'); removeEnemy(e); }
+  if (e.hp <= 0) { const c = e.g.position.clone(); burst(c, e.T.color, 14, e.s); if (state === 'play') { kills++; profile.stats.kills++; addXp(e.T.xp); } if (src) (src.owner || src).kills++; Sound.play('pop'); removeEnemy(e); }
 }
 
 // ---------- Your squad (low-poly people) ----------
@@ -643,13 +678,13 @@ const TTYPES = {
   archer: { name: 'Archer', price: 30, range: 10.5, rate: 0.85, dmg: 1.3, short: 'Cheap long-range arrows.', desc: 'A cheap bow with long range. Great for the early waves.', ring: '#a3e635' },
   bomber: { name: 'Bomber', price: 35, range: 7.5, rate: 1.8, dmg: 2, splash: 2.7, short: 'Bombs that blast every cube nearby.', desc: 'Lobs bombs that blast every cube close to where they land.', ring: '#fb923c' },
   sniper: { name: 'Sniper', price: 50, range: 70, rate: 2.2, dmg: 6, short: 'Big hits from anywhere. Slow reload.', desc: 'Hits hard from anywhere on the map, but takes a while to reload.', ring: '#60a5fa' },
-  freezer: { name: 'Freezer', price: 65, range: 6.5, rate: 1.6, dmg: 0.5, slow: 2.5, short: 'Frost blasts slow cubes down.', desc: 'Every frost blast slows all the cubes around him for a few seconds.', ring: '#7dd3fc' },
+  freezer: { name: 'Freezer', price: 95, range: 6.5, rate: 1.6, dmg: 0.5, slow: 2.5, short: 'Frost blasts slow cubes down.', desc: 'Every frost blast slows all the cubes around him for a few seconds.', ring: '#7dd3fc' },
   rocketeer: { name: 'Rocketeer', price: 75, range: 11, rate: 2.2, dmg: 4, splash: 2.3, short: 'Homing rockets with a blast.', desc: 'Fires homing rockets that blow up a small area.', ring: '#f87171' },
-  flamer: { name: 'Flamethrower', price: 150, range: 5.5, rate: 0.1, dmg: 0.42, cone: 0.65, short: 'Torches every cube in front.', desc: 'A short-range stream of fire that burns every cube in front of him.', ring: '#f97316' },
+  flamer: { name: 'Flamethrower', price: 110, range: 5.5, rate: 0.1, dmg: 0.42, cone: 0.65, short: 'Torches every cube in front.', desc: 'A short-range stream of fire that burns every cube in front of him.', ring: '#f97316' },
   shotgunner: { name: 'Shotgunner', price: 90, range: 5, rate: 1.1, dmg: 3, cone: 0.55, short: 'Short range, huge spread damage.', desc: 'Every shotgun blast hits all the cubes in a wide cone in front of him. Short range, so put him right next to the road.', ring: '#facc15' },
   commando: { name: 'Commando', price: 400, range: 9, rate: 0.07, dmg: 1.1, short: 'Minigun. Shreds big waves.', desc: 'Spins up a minigun that tears through crowds of cubes. Expensive, but nothing beats him against big waves.', ring: '#e11d48' },
-  depot: { name: 'Mini Tank Base', price: 100, range: 0, rate: 9, short: 'Sends tanks down the road.', desc: 'During a wave, mini tanks roll out of your fort and drive back down the road, shooting and ramming cubes.', ring: '#fde047', vehicle: true },
-  farm: { name: 'Farm', price: 60, range: 0, rate: 0, short: '+20 coins after every wave. Max 3.', desc: 'Grows crops that earn 20 coins after every wave you clear. You can have up to 3 farms.', ring: '#facc15', building: true },
+  depot: { name: 'Mini Tank Base', price: 100, range: 0, rate: 9, tankHp: 26, tankDmg: 2, maxTanks: 2, tankSpeed: 1.8, short: 'Sends tanks down the road.', desc: 'During a wave, mini tanks roll out of your fort and drive back down the road, shooting and ramming cubes.', ring: '#fde047', vehicle: true },
+  farm: { name: 'Farm', price: 60, range: 0, rate: 0, income: 20, short: '+20 coins after every wave. Max 3.', desc: 'Grows crops that earn 20 coins after every wave you clear. You can have up to 3 farms.', ring: '#facc15', building: true },
 };
 const MAX_FARMS = 3, BIG = k => k === 'depot' || k === 'farm', farmCount = () => towers.filter(t => t.kind === 'farm').length;
 const ORDER = ['gunner', 'archer', 'bomber', 'sniper', 'freezer', 'rocketeer', 'flamer', 'shotgunner', 'commando', 'depot', 'farm'];
@@ -711,6 +746,131 @@ function tankModel() { const g = new THREE.Group(), turret = new THREE.Group(), 
   box(0.18, 0.04, 0.18, '#fde047', 0, 0.28, -0.1, turret); muzzle.position.set(0, 0.12, 1.4); turret.add(muzzle);
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return { g, turret, muzzle, aim: turret }; }
 const unitModel = kind => kind === 'depot' ? depotModel() : kind === 'farm' ? farmModel() : personModel(kind);
+// 1.2: upgrades. Each unit has two paths (A and B) with three levels. The first upgrade picks the path.
+const UP_MULT = [0.8, 1.6, 3.2], UP_MIN = [25, 50, 100];
+function upCost(kind, lvl) { return Math.round(Math.max(UP_MIN[lvl], TTYPES[kind].price * UP_MULT[lvl]) / 5) * 5; }
+const UPG = {
+  gunner: {
+    A: { name: 'Marksman', lv: [
+      { n: 'Steady Aim', d: '+50% damage and +1 range.', f: T => { T.dmg *= 1.5; T.range += 1; } },
+      { n: 'Hollow Points', d: '+50% damage.', f: T => { T.dmg *= 1.5; } },
+      { n: 'Sharpshooter', d: 'Double damage, +2 range, and every shot also hits a second cube.', f: T => { T.dmg *= 2; T.range += 2; T.extra = 1; } }] },
+    B: { name: 'Rapid Fire', lv: [
+      { n: 'Light Trigger', d: 'Fires 30% faster.', f: T => { T.rate *= 0.7; } },
+      { n: 'Extended Mag', d: 'Fires another 30% faster.', f: T => { T.rate *= 0.7; } },
+      { n: 'Full Auto', d: 'Fires twice as fast and +1 range.', f: T => { T.rate *= 0.5; T.range += 1; } }] } },
+  archer: {
+    A: { name: 'Longbow', lv: [
+      { n: 'Yew Bow', d: '+3 range.', f: T => { T.range += 3; } },
+      { n: 'Broadhead Arrows', d: '+80% damage.', f: T => { T.dmg *= 1.8; } },
+      { n: 'Eagle Eye', d: '+5 range and double damage.', f: T => { T.range += 5; T.dmg *= 2; } }] },
+    B: { name: 'Volley', lv: [
+      { n: 'Twin Nock', d: 'Shoots 2 arrows at 2 different cubes.', f: T => { T.multi = 2; } },
+      { n: 'Quick Draw', d: 'Draws 35% faster.', f: T => { T.rate *= 0.65; } },
+      { n: 'Arrow Rain', d: 'Shoots 4 arrows at once.', f: T => { T.multi = 4; } }] } },
+  bomber: {
+    A: { name: 'Demolition', lv: [
+      { n: 'Bigger Fuse', d: '+30% blast radius.', f: T => { T.splash *= 1.3; } },
+      { n: 'Heavy Charge', d: '+75% damage.', f: T => { T.dmg *= 1.75; } },
+      { n: 'Mega Bomb', d: 'Double damage and a much bigger blast.', f: T => { T.dmg *= 2; T.splash *= 1.35; } }] },
+    B: { name: 'Cluster', lv: [
+      { n: 'Quick Throw', d: 'Throws 30% faster.', f: T => { T.rate *= 0.7; } },
+      { n: 'Cluster Bombs', d: 'Every bomb splits into 2 smaller bombs when it lands.', f: T => { T.cluster = 2; } },
+      { n: 'Carpet Bomber', d: 'Throws 35% faster and every bomb splits into 4.', f: T => { T.rate *= 0.65; T.cluster = 4; } }] } },
+  sniper: {
+    A: { name: 'Deadeye', lv: [
+      { n: 'Heavy Rounds', d: '+60% damage.', f: T => { T.dmg *= 1.6; } },
+      { n: 'Armour Piercing', d: 'Another +60% damage.', f: T => { T.dmg *= 1.6; } },
+      { n: 'Railgun', d: 'Double damage, and every shot goes through up to 3 more cubes.', f: T => { T.dmg *= 2; T.extra = 3; } }] },
+    B: { name: 'Semi-Auto', lv: [
+      { n: 'Smooth Bolt', d: 'Reloads 30% faster.', f: T => { T.rate *= 0.7; } },
+      { n: 'Semi-Auto', d: 'Reloads another 35% faster.', f: T => { T.rate *= 0.65; } },
+      { n: 'Auto Sniper', d: 'Reloads twice as fast.', f: T => { T.rate *= 0.5; } }] } },
+  freezer: {
+    A: { name: 'Deep Freeze', lv: [
+      { n: 'Colder Gas', d: 'Cubes stay frozen 1.5 seconds longer.', f: T => { T.slow += 1.5; } },
+      { n: 'Ice Shell', d: 'Frozen cubes crawl at a third of their speed (instead of under half).', f: T => { T.slowK = 0.32; } },
+      { n: 'Absolute Zero', d: 'Frozen cubes nearly stop, and stay frozen 2 seconds longer.', f: T => { T.slowK = 0.18; T.slow += 2; } }] },
+    B: { name: 'Frostbite', lv: [
+      { n: 'Sharp Frost', d: 'Triple damage and +1 range.', f: T => { T.dmg *= 3; T.range += 1; } },
+      { n: 'Blizzard', d: 'Blasts 30% more often.', f: T => { T.rate *= 0.7; } },
+      { n: 'Hailstorm', d: 'Double damage and +2 range.', f: T => { T.dmg *= 2; T.range += 2; } }] } },
+  rocketeer: {
+    A: { name: 'Warheads', lv: [
+      { n: 'HE Rockets', d: '+50% damage.', f: T => { T.dmg *= 1.5; } },
+      { n: 'Wide Blast', d: '+40% blast radius.', f: T => { T.splash *= 1.4; } },
+      { n: 'Bunker Buster', d: 'Double damage and an even bigger blast.', f: T => { T.dmg *= 2; T.splash *= 1.3; } }] },
+    B: { name: 'Salvo', lv: [
+      { n: 'Fast Loader', d: 'Fires 30% faster.', f: T => { T.rate *= 0.7; } },
+      { n: 'Twin Tubes', d: 'Fires 2 rockets at 2 different cubes.', f: T => { T.multi = 2; } },
+      { n: 'Rocket Pod', d: 'Fires 3 rockets at once and reloads 25% faster.', f: T => { T.multi = 3; T.rate *= 0.75; } }] } },
+  flamer: {
+    A: { name: 'Napalm', lv: [
+      { n: 'Hotter Fuel', d: '+40% damage.', f: T => { T.dmg *= 1.4; } },
+      { n: 'Napalm', d: '+50% damage.', f: T => { T.dmg *= 1.5; } },
+      { n: 'Inferno', d: 'Double damage.', f: T => { T.dmg *= 2; } }] },
+    B: { name: 'Wide Nozzle', lv: [
+      { n: 'Long Hose', d: '+1 range.', f: T => { T.range += 1; } },
+      { n: 'Wide Nozzle', d: 'A much wider cone of fire.', f: T => { T.cone *= 1.3; } },
+      { n: 'Dragon’s Breath', d: '+2 range and an even wider cone.', f: T => { T.range += 2; T.cone = Math.min(1.4, T.cone * 1.25); } }] } },
+  shotgunner: {
+    A: { name: 'Slugs', lv: [
+      { n: 'Buckshot', d: '+40% damage.', f: T => { T.dmg *= 1.4; } },
+      { n: 'Slugs', d: '+60% damage.', f: T => { T.dmg *= 1.6; } },
+      { n: 'Hand Cannon', d: 'Double damage and +1 range.', f: T => { T.dmg *= 2; T.range += 1; } }] },
+    B: { name: 'Pump Action', lv: [
+      { n: 'Smooth Pump', d: 'Fires 25% faster.', f: T => { T.rate *= 0.75; } },
+      { n: 'Wide Choke', d: 'A wider spread and +1 range.', f: T => { T.cone *= 1.25; T.range += 1; } },
+      { n: 'Auto Shotgun', d: 'Fires twice as fast.', f: T => { T.rate *= 0.5; } }] } },
+  commando: {
+    A: { name: 'Heavy Rounds', lv: [
+      { n: 'Big Belt', d: '+35% damage.', f: T => { T.dmg *= 1.35; } },
+      { n: 'AP Rounds', d: '+50% damage.', f: T => { T.dmg *= 1.5; } },
+      { n: 'Devastator', d: 'Double damage.', f: T => { T.dmg *= 2; } }] },
+    B: { name: 'Bullet Storm', lv: [
+      { n: 'Fast Spin', d: 'Fires 20% faster.', f: T => { T.rate *= 0.8; } },
+      { n: 'Wide Arc', d: '+2 range, and stray bullets hit nearby cubes more often.', f: T => { T.range += 2; T.spread = 0.7; } },
+      { n: 'Bullet Storm', d: 'Fires 35% faster, and every burst also hits a second cube.', f: T => { T.rate *= 0.65; T.spread = 1; } }] } },
+  depot: {
+    A: { name: 'Heavy Armour', lv: [
+      { n: 'Thick Plates', d: 'Tanks get 60% more health.', f: T => { T.tankHp = Math.round(T.tankHp * 1.6); } },
+      { n: 'Bigger Gun', d: 'Tanks hit twice as hard.', f: T => { T.tankDmg *= 2; } },
+      { n: 'Battle Tank', d: 'Tanks get double health and hit 50% harder.', f: T => { T.tankHp *= 2; T.tankDmg *= 1.5; } }] },
+    B: { name: 'Motor Pool', lv: [
+      { n: 'Faster Builds', d: 'Sends tanks out 30% more often.', f: T => { T.rate *= 0.7; } },
+      { n: 'Third Bay', d: 'Up to 3 tanks out at once.', f: T => { T.maxTanks = 3; } },
+      { n: 'Convoy', d: 'Up to 4 tanks, sent out 35% more often, and they drive faster.', f: T => { T.maxTanks = 4; T.rate *= 0.65; T.tankSpeed = 2.4; } }] } },
+  farm: {
+    A: { name: 'Bigger Fields', lv: [
+      { n: 'Fertiliser', d: 'Earns 30 coins after every wave (instead of 20).', f: T => { T.income = 30; } },
+      { n: 'Greenhouse', d: 'Earns 42 coins after every wave.', f: T => { T.income = 42; } },
+      { n: 'Big Harvest', d: 'Earns 60 coins after every wave.', f: T => { T.income = 60; } }] },
+    B: { name: 'Savings Bank', lv: [
+      { n: 'Piggy Bank', d: 'After every wave it also pays 4% of the coins you have (up to 20).', f: T => { T.interest = 0.04; T.intMax = 20; } },
+      { n: 'Savings', d: 'Pays 7% of your coins (up to 40) on top of its crops.', f: T => { T.interest = 0.07; T.intMax = 40; } },
+      { n: 'Vault', d: 'Pays 10% of your coins (up to 75) on top of its crops.', f: T => { T.interest = 0.1; T.intMax = 75; } }] } },
+};
+// gold stars over a unit show its upgrade level
+function setPips(t) {
+  if (t.pips) t.g.remove(t.pips);
+  if (!t.up.lvl) { t.pips = null; return; }
+  const g = new THREE.Group(), big = BIG(t.kind), col = t.up.b === 'A' ? '#fbbf24' : '#38bdf8';
+  const s = big ? 0.55 : 0.32, gap = big ? 0.85 : 0.48;
+  for (let i = 0; i < t.up.lvl; i++) { const m = box(s, s, s, new THREE.MeshBasicMaterial({ color: col }), (i - (t.up.lvl - 1) / 2) * gap, 0, 0, g); m.rotation.set(0.6, 0.8, 0); m.castShadow = false; }
+  g.position.y = big ? 3.5 : 2.55; t.g.add(g); t.pips = g;
+}
+function buyUpgrade(t, b) {
+  if (!t || !towers.includes(t) || t.up.lvl >= 3 || (t.up.b && t.up.b !== b)) return;
+  const cost = upCost(t.kind, t.up.lvl), U = UPG[t.kind][b].lv[t.up.lvl];
+  if (coins < cost) { Sound.play('deny'); setTip('Not enough coins for ' + U.n + ' yet.'); clearTimeout(window.__tipT); window.__tipT = setTimeout(() => { if (!placing) setTip(''); }, 1600); return; }
+  coins -= cost; t.spent += cost; U.f(t.T); t.up = { b, lvl: t.up.lvl + 1 }; setPips(t);
+  puffRing(t.x, t.z); Sound.play('place'); if (selected === t) showRange(t.x, t.z, t.T.range, t.T.ring); updateSide();
+}
+// targets for units that fire at several cubes at once: the ones furthest along the road
+function targetsFor(t, n) { const list = []; for (const e of enemies) { if (e.d < 0.5 || e.hp <= 0) continue; if (Math.hypot(e.g.position.x - t.x, e.g.position.z - t.z) > t.T.range) continue; list.push(e); } return list.sort((a, b) => b.d - a.d).slice(0, n); }
+// extra cubes next to the one that was hit (Sharpshooter, Railgun)
+function hitExtra(t, first, n) { const near = enemies.filter(e => e !== first && e.hp > 0 && e.d > 0.5 && Math.hypot(e.g.position.x - first.g.position.x, e.g.position.z - first.g.position.z) < 3.2).sort((a, b) => Math.abs(a.d - first.d) - Math.abs(b.d - first.d)).slice(0, n);
+  for (const e of near) { _w.set(e.g.position.x, e.s * 0.55, e.g.position.z); tracer(_v, _w, 0xbfe3ff, 0.08); damage(e, t.T.dmg, t); } }
 const towers = [];
 const rangeRing = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
 rangeRing.rotation.x = -Math.PI / 2; rangeRing.position.y = 0.12; rangeRing.visible = false; scene.add(rangeRing);
@@ -728,7 +888,8 @@ function canPlace(x, z) {
 }
 function makeUnit(kind, x, z) { const T = TTYPES[kind], mod = unitModel(kind); if (!BIG(kind)) mod.g.scale.setScalar(1.6); mod.g.position.set(x, 0, z);
   if (BIG(kind)) mod.g.rotation.y = Math.atan2(-x, -z); else mod.aim.rotation.y = Math.atan2(-x, -z); scene.add(mod.g);
-  const t = { kind, T, ...mod, x, z, cd: kind === 'depot' ? 1.5 : 0.2, kills: 0, spent: T.price, kick: 0 }; towers.push(t); return t; }
+  const t = { kind, T: { ...T }, ...mod, x, z, cd: kind === 'depot' ? 1.5 : 0.2, kills: 0, spent: T.price, kick: 0, up: { b: null, lvl: 0 }, id: ++unitId }; towers.push(t); return t; }
+let unitId = 0;
 function placeTower(kind, x, z) {
   const T = TTYPES[kind]; if (coins < T.price || !canPlace(x, z) || (kind === 'farm' && farmCount() >= MAX_FARMS)) { Sound.play('deny'); return false; }
   coins -= T.price; const t = makeUnit(kind, x, z); profile.stats.towers++;
@@ -740,7 +901,7 @@ function targetFor(t) { let best = null, bd = -1; for (const e of enemies) { if 
 function updateTowers(dt) {
   for (const t of towers) {
     t.cd -= dt; t.kick = Math.max(0, t.kick - dt * 6);
-    if (t.kind === 'depot') { if (inWave && t.cd <= 0 && tanks.filter(k => k.src === t).length < 2) { t.cd = t.T.rate; spawnTank(t); } continue; }
+    if (t.kind === 'depot') { if (inWave && t.cd <= 0 && tanks.filter(k => k.src === t).length < t.T.maxTanks) { t.cd = t.T.rate; spawnTank(t); } continue; }
     if (t.kind === 'farm') { t.crops.position.y = Math.sin(performance.now() / 600 + t.x) * 0.03; continue; }
     t.aim.position.z = -t.kick * 0.12;
     const best = targetFor(t); if (t.spin) { t.spinV = (t.spinV || 0) + ((best ? 30 : 0) - (t.spinV || 0)) * Math.min(1, dt * 3); t.spin.rotation.z += t.spinV * dt; } if (!best) { if (t.cd < 0) t.cd = 0; continue; }
@@ -756,17 +917,17 @@ function updateTowers(dt) {
       Sound.play('flamer'); continue; }
     t.kick = 1;
     if (t.kind === 'bomber') { const fl = 0.55, land = posAt(best.d + best.speed * fl, { x: 0, z: 0 }); throwBomb(_v.clone(), new THREE.Vector3(land.x, 0.2, land.z), fl, t); Sound.play('bomber'); }
-    else if (t.kind === 'archer') { shoot('arrow', _v.clone(), best, t, 0.28); Sound.play('archer'); }
-    else if (t.kind === 'rocketeer') { shoot('rocket', _v.clone(), best, t, 0.8); flash(_v, 0.9, 0xffb347); Sound.play('rocketeer'); }
+    else if (t.kind === 'archer') { for (const e of t.T.multi ? targetsFor(t, t.T.multi) : [best]) shoot('arrow', _v.clone(), e, t, 0.28); Sound.play('archer'); }
+    else if (t.kind === 'rocketeer') { for (const e of t.T.multi ? targetsFor(t, t.T.multi) : [best]) shoot('rocket', _v.clone(), e, t, 0.8); flash(_v, 0.9, 0xffb347); Sound.play('rocketeer'); }
     else if (t.kind === 'shotgunner') { const fx0 = Math.sin(t.aim.rotation.y), fz0 = Math.cos(t.aim.rotation.y); flash(_v, 1.4, 0xffd38a); shake = Math.max(shake, 0.05);
       for (let i = 0; i < 7; i++) { const a = t.aim.rotation.y + rand(-t.T.cone, t.T.cone), r = rand(2.5, t.T.range); _w.set(_v.x + Math.sin(a) * r, rand(0.3, 1.2), _v.z + Math.cos(a) * r); tracer(_v, _w, 0xffe2a0, 0.06); }
       for (const e of [...enemies]) { if (e.d < 0.5 || e.hp <= 0) continue; const dx = e.g.position.x - t.x, dz = e.g.position.z - t.z, d = Math.hypot(dx, dz); if (d > t.T.range + e.s * 0.5 || d < 0.01) continue; if ((dx * fx0 + dz * fz0) / d < Math.cos(t.T.cone)) continue; damage(e, t.T.dmg, t); }
       Sound.play('shotgun'); }
     else if (t.kind === 'commando') { tracer(_v, _w, 0xffd38a, 0.04); flash(_v, 0.7, 0xffc46b); damage(best, t.T.dmg * nShots, t); Sound.play('commando');
-      if (Math.random() < 0.4) { const o = enemies.find(e => e !== best && e.hp > 0 && e.d > 0.5 && Math.hypot(e.g.position.x - best.g.position.x, e.g.position.z - best.g.position.z) < 2.5); if (o) damage(o, t.T.dmg * nShots, t); } }
+      if (Math.random() < (t.T.spread || 0.4)) { const o = enemies.find(e => e !== best && e.hp > 0 && e.d > 0.5 && Math.hypot(e.g.position.x - best.g.position.x, e.g.position.z - best.g.position.z) < 2.5); if (o) damage(o, t.T.dmg * nShots, t); } }
     else if (t.kind === 'freezer') { frostRing(t.x, t.z, t.T.range); flash(_v, 1.2, 0x9be7ff); Sound.play('freezer');
-      for (const e of [...enemies]) if (Math.hypot(e.g.position.x - t.x, e.g.position.z - t.z) <= t.T.range) { e.slow = Math.max(e.slow, t.T.slow); damage(e, t.T.dmg, t); } }
-    else { tracer(_v, _w, t.kind === 'sniper' ? 0xbfe3ff : 0xffe2a0, t.kind === 'sniper' ? 0.12 : 0.05); flash(_v, t.kind === 'sniper' ? 1.1 : 0.6); damage(best, t.T.dmg, t); Sound.play(t.kind); }
+      for (const e of [...enemies]) if (Math.hypot(e.g.position.x - t.x, e.g.position.z - t.z) <= t.T.range) { e.slow = Math.max(e.slow, t.T.slow); e.slowK = Math.min(e.slowK || 0.45, t.T.slowK || 0.45); damage(e, t.T.dmg, t); } }
+    else { tracer(_v, _w, t.kind === 'sniper' ? 0xbfe3ff : 0xffe2a0, t.kind === 'sniper' ? 0.12 : 0.05); flash(_v, t.kind === 'sniper' ? 1.1 : 0.6); damage(best, t.T.dmg, t); if (t.T.extra) hitExtra(t, best, t.T.extra); Sound.play(t.kind); }
   }
 }
 // arrows and rockets fly to their (moving) target
@@ -786,14 +947,14 @@ const frosts = [];
 function updateFrost(dt) { for (let i = frosts.length - 1; i >= 0; i--) { const f = frosts[i]; f.t += dt; const k = f.t / 0.45; f.m.scale.setScalar(0.3 + k * f.r); f.m.material.opacity = 0.8 * (1 - k); if (k >= 1) { scene.remove(f.m); f.m.geometry.dispose(); f.m.material.dispose(); frosts.splice(i, 1); } } }
 // mini tanks: roll out of the fort and drive back down the road towards the tunnel
 const tanks = [];
-function spawnTank(src) { const m = tankModel(); scene.add(m.g); tanks.push({ ...m, src, d: BASE_D - 0.5, hp: 26, cd: 0.6, hitCd: 0, speed: 1.8 }); Sound.play('tank'); }
+function spawnTank(src) { const m = tankModel(); scene.add(m.g); tanks.push({ ...m, src, d: BASE_D - 0.5, hp: src.T.tankHp, cd: 0.6, hitCd: 0, speed: src.T.tankSpeed }); Sound.play('tank'); }
 function removeTank(k) { scene.remove(k.g); tanks.splice(tanks.indexOf(k), 1); }
 function updateTanks(dt) { for (let i = tanks.length - 1; i >= 0; i--) { const k = tanks[i];
     let block = null; for (const e of enemies) { if (e.hp <= 0 || e.d < 0.3) continue; const gap = k.d - e.d; if (gap > -0.5 && gap < e.s * 0.5 + 1.25) { block = e; break; } }
-    if (!block) k.d -= k.speed * dt; else { block.d = Math.min(block.d, k.d - (block.s * 0.5 + 1.2)); k.hitCd -= dt; if (k.hitCd <= 0) { k.hitCd = 0.6; k.hp -= block.T.dmg * 2; damage(block, 1.5, k.src); burst(k.g.position, 0x6b7d44, 3, 0.6); } }
+    if (!block) k.d -= k.speed * dt; else { block.d = Math.min(block.d, k.d - (block.s * 0.5 + 1.2)); k.hitCd -= dt; if (k.hitCd <= 0) { k.hitCd = 0.6; k.hp -= block.T.dmg * 2; damage(block, 0.75 * k.src.T.tankDmg, k.src); burst(k.g.position, 0x6b7d44, 3, 0.6); } }
     posAt(k.d, _p); k.g.position.set(_p.x, 0, _p.z); k.g.rotation.y = Math.atan2(-_p.dx, -_p.dz);
     k.cd -= dt; if (k.cd <= 0) { let tgt = null, bd = 1e9; for (const e of enemies) { if (e.d < 0.5 || e.hp <= 0) continue; const dd = k.d - e.d; if (dd > -2 && dd < 8 && dd < bd) { bd = dd; tgt = e; } }
-      if (tgt) { k.cd = 1.1; k.g.updateMatrixWorld(); k.muzzle.getWorldPosition(_v); _w.set(tgt.g.position.x, tgt.s * 0.5, tgt.g.position.z); tracer(_v, _w, 0xfff1a8, 0.06); flash(_v, 0.9); damage(tgt, 2, k.src); Sound.play('tank'); } }
+      if (tgt) { k.cd = 1.1; k.g.updateMatrixWorld(); k.muzzle.getWorldPosition(_v); _w.set(tgt.g.position.x, tgt.s * 0.5, tgt.g.position.z); tracer(_v, _w, 0xfff1a8, 0.06); flash(_v, 0.9); damage(tgt, k.src.T.tankDmg, k.src); Sound.play('tank'); } }
     if (k.hp <= 0) { burst(k.g.position, 0x5b6b3a, 12, 1); flash(k.g.position.clone().setY(1), 2, 0xff9a3c); Sound.play('boom'); removeTank(k); }
     else if (k.d <= 1) removeTank(k); } }
 // ---------- Bombs, tracers and effects ----------
@@ -805,7 +966,8 @@ function updateBombs(dt) { for (let i = bombs.length - 1; i >= 0; i--) { const b
   if (k >= 1) { scene.remove(b.m); bombs.splice(i, 1); explode(b.to, b.src); } } }
 function explode(p, src) { Sound.play('boom'); flash(p.clone().setY(0.8), 2.4, 0xff9a3c); burst(p, 0x4b4b4b, 10, 1.2); shake = Math.max(shake, 0.12);
   for (let i = 0; i < 8; i++) addFx(sprite(0xffb347, 1.4), new THREE.Vector3(p.x + rand(-1, 1), 0.6, p.z + rand(-1, 1)), new THREE.Vector3(rand(-2, 2), rand(2, 4), rand(-2, 2)), 0.45, 2.2);
-  for (const e of [...enemies]) if (Math.hypot(e.g.position.x - p.x, e.g.position.z - p.z) < src.T.splash) damage(e, src.T.dmg, src); }
+  for (const e of [...enemies]) if (Math.hypot(e.g.position.x - p.x, e.g.position.z - p.z) < src.T.splash) damage(e, src.T.dmg, src);
+  if (src.T.cluster) { const sub = { T: { ...src.T, dmg: src.T.dmg * 0.5, splash: src.T.splash * 0.6, cluster: 0 }, owner: src }; for (let i = 0; i < src.T.cluster; i++) { const a = i / src.T.cluster * Math.PI * 2 + rand(0, 1); throwBomb(p.clone().setY(0.4), new THREE.Vector3(p.x + Math.cos(a) * 2.2, 0.2, p.z + Math.sin(a) * 2.2), 0.35, sub); } } }
 const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
 function sprite(color, size) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); s.scale.setScalar(size); return s; }
 function addFx(obj, pos, vel, life, grow = 0, grav = 0) { obj.position.copy(pos); scene.add(obj); fx.push({ obj, vel, life, max: life, grow, grav, base: obj.scale.x }); }
@@ -851,7 +1013,7 @@ function updateWaves(dt) {
   if (!inWave) { if (settings.autoWave && wave > 0) { autoT -= dt; if (autoT <= 0) startWave(); } return; }
   spawnT -= dt; if (spawnQ.length && spawnT <= 0) { spawnEnemy(spawnQ.shift(), waveHpMul); spawnT = Math.max(0.3, 0.95 - wave * 0.03) * rand(0.8, 1.2); }
   if (!spawnQ.length && !enemies.length) { inWave = false; const bonus = 15 + wave * 2; coins += bonus; runCoins += bonus; coinPop(new THREE.Vector3(33.5, 4, PATH[PATH.length - 1][1]), bonus); profile.stats.waves++; addXp(20 + wave * 5);
-    let farm = 0; for (const t of towers) if (t.kind === 'farm') { farm += 20; t.earned = (t.earned || 0) + 20; coinPop(new THREE.Vector3(t.x, 2.5, t.z), 20); } coins += farm; runCoins += farm;
+    let farm = 0; for (const t of towers) if (t.kind === 'farm') { const n = t.T.income + (t.T.interest ? Math.min(t.T.intMax, Math.floor(coins * t.T.interest)) : 0); farm += n; t.earned = (t.earned || 0) + n; coinPop(new THREE.Vector3(t.x, 2.5, t.z), n); } coins += farm; runCoins += farm;
     if (wave > profile.best) profile.best = wave; saveProfile(); banner('Wave ' + wave + ' cleared', '+' + bonus + ' coins' + (farm ? ' · farms +' + farm : '')); Sound.play('cleared'); autoT = 3; updateSide(); updateHud(); }
 }
 function gameOver() {
@@ -876,8 +1038,33 @@ function updateSide() {
   $('waveBtn').disabled = inWave || state !== 'play'; $('waveBtn').textContent = inWave ? 'Wave ' + wave : wave === 0 ? 'Start wave' : 'Next wave';
   $('speedBtn').textContent = 'Speed ' + speed + '×'; $('autoWave').checked = !!settings.autoWave;
   const s = selected; $('info').hidden = !s;
-  if (s) { $('infoName').textContent = s.T.name; $('infoText').textContent = s.kind === 'farm' ? `${s.T.desc} Coins earned: ${s.earned || 0}.` : `${s.T.desc} Cubes destroyed: ${s.kills}.`; $('sellBtn').textContent = 'Sell for ' + Math.floor(s.spent * 0.7); }
+  if (s) { $('infoName').textContent = s.T.name; $('infoText').textContent = s.kind === 'farm' ? `${s.T.desc} Coins earned: ${s.earned || 0}.` : `${s.T.desc} Cubes destroyed: ${s.kills}.`; $('sellBtn').textContent = 'Sell for ' + Math.floor(s.spent * 0.7); renderUpgrades(s); }
+  else lastUpKey = '';
 }
+// 1.2: the upgrade part of the info panel. It's only rebuilt when the unit or its level changes, so the buy
+// buttons never get swapped out from under a click; affordability is just a class.
+let lastUpKey = '';
+const f1 = n => (Math.round(n * 10) / 10).toString();
+function statLine(t) { const T = t.T;
+  if (t.kind === 'farm') return `Earns ${T.income} coins a wave` + (T.interest ? ` + ${Math.round(T.interest * 100)}% of your coins (max ${T.intMax})` : '');
+  if (t.kind === 'depot') return `${T.maxTanks} tanks at a time · ${T.tankHp} health · ${f1(T.tankDmg)} damage · every ${f1(T.rate)}s`;
+  let s = `Damage ${f1(T.dmg)}` + (T.multi ? ` ×${T.multi}` : '') + ` · ${f1(1 / T.rate)} per second · Range ${f1(Math.min(T.range, 70))}`;
+  if (t.kind === 'freezer') s += ` · Freezes ${f1(T.slow)}s`; if (T.splash) s += ` · Blast ${f1(T.splash)}`; return s; }
+function renderUpgrades(t) {
+  const key = t.id + ':' + t.up.b + ':' + t.up.lvl, box = $('upgrades');
+  if (key !== lastUpKey) {
+    lastUpKey = key; let h = `<div class="upg-stats">${statLine(t)}</div>`;
+    const pips = b => [0, 1, 2].map(i => `<i class="${t.up.b === b && i < t.up.lvl ? 'on' : ''}"></i>`).join('');
+    const opt = b => { const P = UPG[t.kind][b], U = P.lv[t.up.lvl], c = upCost(t.kind, t.up.lvl);
+      return `<div class="upg upg-${b}"><div class="upg-h"><span class="upg-path">${P.name} <span class="upg-pips">${pips(b)}</span></span><span class="upg-lv">Level ${t.up.lvl + 1}</span></div><b>${U.n}</b><p>${U.d}</p><button class="btn upg-buy" data-b="${b}" data-cost="${c}">Buy for <span class="coin" style="width:14px;height:14px"></span>${c}</button></div>`; };
+    if (t.up.lvl === 0) h += `<div class="upg-note">Pick an upgrade path. Buying one locks the other.</div>` + opt('A') + opt('B');
+    else if (t.up.lvl < 3) h += opt(t.up.b);
+    else h += `<div class="upg upg-${t.up.b} done"><div class="upg-h"><span class="upg-path">${UPG[t.kind][t.up.b].name} <span class="upg-pips">${pips(t.up.b)}</span></span><span class="upg-lv">Max level</span></div><b>${UPG[t.kind][t.up.b].lv[2].n}</b><p>Fully upgraded.</p></div>`;
+    box.innerHTML = h;
+  } else box.querySelector('.upg-stats').textContent = statLine(t);
+  for (const b of box.querySelectorAll('.upg-buy')) b.classList.toggle('poor', coins < +b.dataset.cost);
+}
+$('upgrades').addEventListener('click', e => { const b = e.target.closest('.upg-buy'); if (!b || !selected) return; Sound.init(); buyUpgrade(selected, b.dataset.b); });
 function setTip(t) { $('tip').hidden = !t; if (t) $('tip').textContent = t; }
 
 // ---------- Placing towers ----------
@@ -899,8 +1086,8 @@ canvas.addEventListener('pointerdown', ev => {
   if (ev.button === 2) { setGhost(null); return; }
   if (placing) { if (ev.pointerType !== 'mouse' && ghost.mod && !ghost.mod.g.visible) { ghost.mod.g.visible = true; ghost.mod.g.position.set(p.x, 0, p.z); }
     const k = placing; if (placeTower(k, p.x, p.z)) { if (coins < TTYPES[k].price || (k === 'farm' && farmCount() >= MAX_FARMS)) setGhost(null); else showRange(p.x, p.z, 0); } else { setTip(coins < TTYPES[k].price ? 'Not enough coins.' : 'You can’t place it there. Keep off the road, trees and rocks.'); clearTimeout(window.__tipT); window.__tipT = setTimeout(() => { if (placing) setTip('Click the grass to place the ' + TTYPES[placing].name + '. Right-click or Esc to cancel.'); }, 1800); } return; }
-  let best = null, bd = 1.4; for (const t of towers) { const d = Math.hypot(t.x - p.x, t.z - p.z); if (d < bd) { bd = d; best = t; } }
-  selected = best; if (best) { showRange(best.x, best.z, best.T.range, best.T.ring); Sound.play('click'); } else showRange(0, 0, 0); updateSide();
+  let best = null, bd = 99; for (const t of towers) { const d = Math.hypot(t.x - p.x, t.z - p.z) - (BIG(t.kind) ? 0.9 : 0); if (d < 1.4 && d < bd) { bd = d; best = t; } }
+  selected = best; if (best) { showRange(best.x, best.z, best.T.range, best.T.ring); Sound.play('click'); $('side').scrollTop = 0; } else showRange(0, 0, 0); updateSide();
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 (function buildCards() { let h = '<div class="side-h">Squad</div>'; for (const k of ORDER) { const T = TTYPES[k]; if (k === 'depot') h += '<div class="side-h">Vehicles</div>'; if (k === 'farm') h += '<div class="side-h">Buildings</div>';
@@ -960,7 +1147,7 @@ function submitName() { const v = nameInput.value.trim().slice(0, 16); if (!v) r
 nameInput.addEventListener('input', () => { $('nameOk').disabled = !nameInput.value.trim(); }); nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitName(); });
 $('nameOk').addEventListener('click', submitName); $('renameBtn').addEventListener('click', () => openNameMenu(false));
 $('profileBtn').addEventListener('click', () => { Sound.init(); Sound.play('click'); openSub('profile'); });
-const VERSION = '1.1.3';
+const VERSION = '1.2';
 function maybeNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
 $('newsOk').addEventListener('click', () => { settings.seenVersion = VERSION; saveSettings(); Sound.init(); Sound.play('click'); showMenu('main'); });
 addEventListener('pagehide', () => { saveProfile(); });
@@ -1016,7 +1203,7 @@ addDemo();
 refreshBadge();
 if (profile.name) { showMenu('main'); maybeNews(); } else { showMenu('main'); openNameMenu(true); }
 tick();
-if (/debug/.test(location.search)) window.__td = { get state() { return state; }, set coins(v) { coins = v; updateSide(); }, get coins() { return coins; }, placeTower, startWave, towers, enemies, tanks, makeUnit, get wave() { return wave; }, get baseHp() { return baseHp; }, set baseHp(v) { baseHp = v; }, canPlace, step(n) { for (let i = 0; i < n; i++) { updateWaves(1 / 30); updateEnemies(1 / 30); updateTowers(1 / 30); updateBombs(1 / 30); updateShots(1 / 30); updateTanks(1 / 30); updateFrost(1 / 30); updateFx(1 / 30); } } };
+if (/debug/.test(location.search)) window.__td = { get state() { return state; }, set coins(v) { coins = v; updateSide(); }, get coins() { return coins; }, placeTower, startWave, buyUpgrade, upCost, UPG, towers, enemies, tanks, makeUnit, get wave() { return wave; }, get baseHp() { return baseHp; }, set baseHp(v) { baseHp = v; }, canPlace, step(n) { for (let i = 0; i < n; i++) { updateWaves(1 / 30); updateEnemies(1 / 30); updateTowers(1 / 30); updateBombs(1 / 30); updateShots(1 / 30); updateTanks(1 / 30); updateFrost(1 / 30); updateFx(1 / 30); } } };
 })();
 </script>
 </body>
