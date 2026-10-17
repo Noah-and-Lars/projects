@@ -116,7 +116,8 @@ $('count').textContent = GAMES.length + (GAMES.length === 1 ? ' game' : ' games'
 
 // Featured: whichever game arrived or changed most recently
 function renderFeature() {
-  const g = [...GAMES].sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))[0];
+  // Pinned: Russian Roulette stays in the banner even when another game is updated more recently
+  const g = GAMES.find(x => x.id === 'russian-roulette') || [...GAMES].sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))[0];
   const badge = Arcade.badge(g), stat = Arcade.stat(g);
   const f = $('feature');
   f.href = playUrl(g);
