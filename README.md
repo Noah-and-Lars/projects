@@ -17,7 +17,7 @@ Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade
 | [Blockcraft](blockcraft/) | 3D block sandbox with the Nether and the End (survival and creative) | Keyboard + mouse or touch |
 | [Russian Roulette](russian-roulette/) | First-person thriller | Mouse, keyboard or touch |
 | [Chess](chess/) | Chess against the computer (Easy, Medium, Hard) | Mouse or touch |
-| [Bull Run](bull-run/) | Stock-trading strategy | Mouse, keyboard or touch |
+| [Stocks Game](bull-run/) | Stock-trading strategy | Mouse, keyboard or touch |
 
 ## Adding a game
 

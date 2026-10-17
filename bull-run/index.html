@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bull Run</title>
+<title>Stocks Game</title>
 <style>
   :root {
     --bg: #0b0f17; --bg-2: #0f1522; --panel: #141b2a; --panel-2: #1a2334; --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .13);
@@ -222,7 +222,7 @@
 <body>
 <div id="app">
   <header>
-    <div class="logo"><i>📈</i>BULL RUN</div>
+    <div class="logo"><i>📈</i>STOCKS GAME</div>
     <div class="clock"><b id="date" class="num">—</b><span id="dayNo">Day 1</span><div class="bar"><i id="dayBar"></i></div></div>
     <div class="speed" id="speed">
       <button data-s="0" class="pause" title="Pause (Space)">❚❚</button>
@@ -303,7 +303,7 @@
 <div id="toasts"></div>
 
 <div class="modal" id="mIntro" hidden><div class="dlg">
-  <h1>Welcome to <em>Bull Run</em></h1>
+  <h1>Welcome to the <em>Stocks Game</em></h1>
   <p>You have <b style="color:var(--text)">$10,000</b> and a market of twelve companies. Buy low, sell high and build the biggest fortune you can. The calendar runs fast (a trading day every couple of seconds), but prices and news only move every <b style="color:var(--text)">15 trading days</b>, about every 25 seconds, so you have time to think between moves. Your portfolio is saved in this browser.</p>
   <ul>
     <li><b>Pick a stock</b> on the left to see its chart, then <b>Buy</b> or <b>Sell</b> under the chart.</li>
@@ -350,7 +350,7 @@
 </div></div>
 
 <div class="modal" id="mMenu" hidden><div class="dlg">
-  <h1>Bull Run</h1>
+  <h1>Stocks Game</h1>
   <p id="menuStats"></p>
   <div class="setrow"><span>Sound</span><button class="btn" id="sndBtn">On</button></div>
   <div class="setrow"><span>How to play</span><button class="btn" id="howBtn">Show</button></div>
@@ -362,7 +362,7 @@
 <script>
 'use strict';
 // =====================================================================
-//  Bull Run: a stock-trading game. One file, no servers; everything is saved in localStorage.
+//  Stocks Game (folder bull-run/): a stock-trading game. One file, no servers; everything is saved in localStorage.
 // =====================================================================
 const SAVE_KEY = 'bullRunSave', DAILY_KEY = 'bullRunDaily', DAILY_DAYS = 252, START_CASH = 10000, DAY_SECS = 1.6, TICK = 15, EARN = 126, MAX_HIST = 1300;
 const $ = id => document.getElementById(id);
@@ -559,7 +559,7 @@ function showReport(final) {
   $('repShare').hidden = !final; $('repGo').textContent = final ? 'Back to your career' : 'Continue';
   if (final) {
     try { const prev = JSON.parse(localStorage.getItem(DAILY_KEY + '-best') || 'null'); if (!prev || w > prev.worth) localStorage.setItem(DAILY_KEY + '-best', JSON.stringify({ date: G.daily, worth: w, ret })); } catch (e) {}
-    $('repShare').onclick = () => { const text = `Bull Run daily · ${fmtDate(new Date(G.daily + 'T12:00:00Z'))}\n${fmt(w, 0)} (${pct(ret)}) ${rank}\nThe market did ${pct(mkt)}.\nhttps://noah-and-lars.github.io/projects/play.html?game=bull-run`; (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied to the clipboard', 'gold'), () => prompt('Copy your score:', text)); };
+    $('repShare').onclick = () => { const text = `Stocks Game daily · ${fmtDate(new Date(G.daily + 'T12:00:00Z'))}\n${fmt(w, 0)} (${pct(ret)}) ${rank}\nThe market did ${pct(mkt)}.\nhttps://noah-and-lars.github.io/projects/play.html?game=bull-run`; (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied to the clipboard', 'gold'), () => prompt('Copy your score:', text)); };
   } else G.year = newYear(w, G.day);
   setSpeed(0); openModal('mReport'); snd && Sound.win();
 }
