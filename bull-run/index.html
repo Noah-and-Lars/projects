@@ -97,6 +97,17 @@
   .seg { display: flex; background: var(--bg-2); border-radius: 10px; padding: 3px; border: 1px solid var(--line); }
   .seg button { padding: 7px 16px; border-radius: 8px; font-weight: 800; font-size: 13px; color: var(--muted); }
   .seg button.on.buy { background: var(--up); color: #04150c; } .seg button.on.sell { background: var(--down); color: #2a060a; }
+  .seg button.on.short, .seg button.on.cover { background: #a78bfa; color: #1b1040; }
+  #go.short, #go.cover { background: #a78bfa; color: #1b1040; box-shadow: 0 6px 24px rgba(167, 139, 250, .3); }
+  .hold.sh .t { color: #c4b5fd !important; } .hold .tag { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 5px; background: rgba(167, 139, 250, .18); color: #c4b5fd; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+  .debt { text-align: right; line-height: 1.1; padding-left: 14px; border-left: 1px solid var(--line); } .debt small { display: block; font-size: 11px; color: var(--down); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; } .debt b { font-size: 16px; font-weight: 700; color: var(--down); }
+  .back { display: grid; gap: 10px; margin-top: 12px; }
+  .deal { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 12px; padding: 14px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+  .deal h3 { margin: 0; font-size: 15px; } .deal p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; } .deal .meta { grid-column: 1; font-size: 12px; color: var(--dim); } .deal .meta b { color: var(--text); font-weight: 700; }
+  .deal .act { grid-row: 1 / 4; grid-column: 2; display: flex; flex-direction: column; gap: 6px; } .deal .act .btn { padding: 9px 14px; font-size: 13px; white-space: nowrap; }
+  .deal.off { opacity: .5; }
+  @media (max-width: 760px) { .deal { grid-template-columns: 1fr; } .deal .act { grid-row: auto; grid-column: 1; flex-direction: row; flex-wrap: wrap; } }
+  #mPrison .dlg { text-align: center; border-color: rgba(255, 92, 108, .4); } #mPrison h1 { color: var(--down); font-size: 34px; }
   .qty { display: flex; align-items: center; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
   .qty button { width: 38px; height: 38px; font-size: 18px; color: var(--muted); } .qty button:hover { color: var(--text); background: var(--panel-2); }
   .qty input { flex: 1; min-width: 0; width: 80px; text-align: center; background: none; border: 0; outline: 0; font-size: 16px; font-weight: 800; height: 38px; -moz-appearance: textfield; }
@@ -198,13 +209,12 @@
     <div class="clock"><b id="date" class="num">—</b><span id="dayNo">Day 1</span><div class="bar"><i id="dayBar"></i></div></div>
     <div class="speed" id="speed">
       <button data-s="0" class="pause" title="Pause (Space)">❚❚</button>
-      <button data-s="1" class="on" title="Normal speed (1)">▶</button>
-      <button data-s="3" title="Fast (2)">▶▶</button>
-      <button data-s="10" title="Very fast (3)">▶▶▶</button>
+      <button data-s="1" class="on" title="Play (1)">▶</button>
     </div>
     <div class="worth"><small>Net worth</small><b id="worth" class="num">$0</b><span id="worthChg" class="pill flat num">0.00%</span></div>
     <div class="cashbox"><small>Cash</small><b id="cash" class="num">$0</b></div>
-    <button class="iconbtn" id="tipBtn" title="Buy insider info (I)" aria-label="Buy insider info">🕵️</button>
+    <div class="debt" id="debtBox" hidden><small>Owed</small><b id="debt" class="num">$0</b></div>
+    <button class="iconbtn" id="tipBtn" title="Back room (I)" aria-label="Back room">🕵️</button>
     <button class="iconbtn" id="goalsBtn" title="Milestones" aria-label="Milestones">🏆</button>
     <button class="iconbtn" id="menuBtn" title="Menu" aria-label="Menu">☰</button>
   </header>
@@ -237,7 +247,7 @@
       </div>
       <div class="card">
         <div class="trade">
-          <div class="seg" id="side"><button class="on buy" data-side="buy">Buy</button><button class="sell" data-side="sell">Sell</button></div>
+          <div class="seg" id="side"><button class="on buy" data-side="buy">Buy</button><button class="sell" data-side="sell">Sell</button><button class="short" data-side="short">Short</button><button class="cover" data-side="cover">Cover</button></div>
           <div class="qty"><button id="qMinus">−</button><input id="qty" type="number" min="0" step="1" value="10" inputmode="numeric"><button id="qPlus">+</button></div>
           <div class="presets"><button data-q="1">1</button><button data-q="10">10</button><button data-q="100">100</button><button data-q="max">Max</button></div>
           <div class="sum"><span>Total <b id="total" class="num">$0.00</b></span><span id="after" class="num"></span><span class="pos" id="posInfo"></span></div>
@@ -283,18 +293,28 @@
     <li><b>Read the news.</b> Headlines move prices: earnings, scandals, booms and the odd crash. <b>Rumours</b> (👂) arrive a day or two early and are right more often than not.</li>
     <li><b>Earnings</b> come every quarter. The chart header counts down to each company's next report.</li>
     <li>Some companies pay a <b>dividend</b> every quarter just for holding their shares.</li>
-    <li>Short of patience? Press 🕵️ to <b>buy insider info</b>: a tip that always comes true. Buy too many and the regulator catches you.</li>
-    <li><b>Speed</b>: <kbd>Space</kbd> pauses, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> set the speed. <kbd>B</kbd> and <kbd>S</kbd> switch between buying and selling, <kbd>↑</kbd> <kbd>↓</kbd> change stock, <kbd>Enter</kbd> trades.</li>
+    <li>Press 🕵️ for the <b>back room</b>: insider tips that always come true, pump-and-dump schemes, a loan shark and a regulator who can be bribed. All of it has consequences. Three convictions and you go to <b>prison</b> for a year.</li>
+    <li><b>Keys</b>: <kbd>Space</kbd> pauses (there is no fast-forward: the market runs at one speed). <kbd>B</kbd> <kbd>S</kbd> <kbd>H</kbd> <kbd>C</kbd> pick buy, sell, short or cover, <kbd>↑</kbd> <kbd>↓</kbd> change stock, <kbd>Enter</kbd> trades.</li>
+    <li><b>Short selling</b>: bet on a fall. Borrow shares and sell them; cover later to buy them back. If the price rises 50% against you, the broker closes it for you.</li>
   </ul>
   <div class="row"><button class="btn primary" id="introGo">Open the market</button></div>
 </div></div>
 
 <div class="modal" id="mTip" hidden><div class="dlg">
-  <h1>Insider info</h1>
-  <p>A contact on the trading floor will sell you a tip about something that <b style="color:var(--text)">is going to happen</b>: a deal, a scandal, an earnings result or a crash. Tips always come true.</p>
-  <p>Insider trading is illegal. Every tip you buy makes the regulator more suspicious, and if you are caught you pay a heavy fine. Lie low for a while and the heat dies down.</p>
-  <div class="tipbox"><div><small>Price</small><b id="tipPrice" class="num">$0</b></div><div><small>Chance of being caught</small><b id="tipRisk" class="num">0%</b></div></div>
-  <div class="row"><button class="btn primary" id="tipGo">Buy the tip</button><button class="btn" data-close>Not now</button></div>
+  <h1>The back room</h1>
+  <p>Nothing in here is legal. Every deal raises the regulator's suspicion (your <b style="color:var(--text)">heat</b>), and the chance of being caught climbs with it. Lie low and the heat fades. <b style="color:var(--down)">Three convictions and you go to prison.</b></p>
+  <div class="back">
+    <div class="deal"><h3>🕵️ Insider info</h3><p>A tip about something that is going to happen: a deal, a scandal, an earnings result or a crash. Tips always come true.</p><div class="meta">Price <b id="tipPrice" class="num">$0</b> · caught <b id="tipRisk">0%</b></div><div class="act"><button class="btn primary" id="tipGo">Buy a tip</button></div></div>
+    <div class="deal" id="pumpDeal"><h3>📣 Pump and dump</h3><p>Pay a crew to spread fake rumours about <b id="pumpName">the selected stock</b>. It climbs for three days, then collapses on the fourth. Be out before it does.</p><div class="meta">Price <b id="pumpPrice" class="num">$0</b> · caught <b id="pumpRisk">0%</b></div><div class="act"><button class="btn primary" id="pumpGo">Start the pump</button></div></div>
+    <div class="deal"><h3>🦈 Loan shark</h3><p>Cash now, no questions. 2% interest a week, compounding. Keep it longer than six months, or let your net worth sink below what you owe, and he collects: everything you own, sold.</p><div class="meta">Owed <b id="loanOwed" class="num">$0</b> · can borrow up to <b id="loanMax" class="num">$0</b></div><div class="act"><button class="btn" id="loan1">Borrow 25%</button><button class="btn" id="loan2">Borrow 100%</button><button class="btn primary" id="loanPay">Repay</button></div></div>
+    <div class="deal"><h3>💼 Bribe the regulator</h3><p>Make the investigation go away. Your heat drops to zero, unless the bribe leaks, in which case it counts as a conviction and the fine is doubled.</p><div class="meta">Price <b id="bribePrice" class="num">$0</b> · leaks <b>20%</b> of the time · heat now <b id="heatNow">0</b></div><div class="act"><button class="btn" id="bribeGo">Pay the bribe</button></div></div>
+  </div>
+  <div class="row"><button class="btn" data-close>Leave</button></div>
+</div></div>
+<div class="modal" id="mPrison" hidden><div class="dlg">
+  <h1>PRISON</h1>
+  <p id="prisonText"></p>
+  <div class="row" style="justify-content:center"><button class="btn primary" id="prisonGo">Walk out</button></div>
 </div></div>
 <div class="modal" id="mGoals" hidden><div class="dlg">
   <h1>Milestones</h1>
@@ -365,7 +385,7 @@ function newGame() {
   const g = {
     v: 1, day: 0, cash: START_CASH, speed: 1, intro: false,
     stocks: COMPANIES.map((c, i) => ({ closes: [], shock: 0, mom: 0, earn: (i * 5) % 63, open: c.p, hi: c.p, lo: c.p, nextBeat: null })),
-    crashIn: 0, log: [], pending: [], heat: 0,
+    crashIn: 0, log: [], pending: [], heat: 0, short: {}, debt: 0, debtAge: 0, busts: 0,
     hold: {}, news: [], mkt: 0.2, sect: Object.fromEntries(Object.keys(SECTORS).map(k => [k, 0])),
     worthHist: [], stats: { trades: 0, realised: 0, dividends: 0, best: START_CASH }, goals: [],
   };
@@ -414,6 +434,8 @@ function openDay() {
   for (const ev of G.pending.filter(e => e.day === G.day)) {
     if (ev.type === 'stock') { G.stocks[ev.i].shock += ev.size * 0.4; G.stocks[ev.i].mom = clamp(G.stocks[ev.i].mom + ev.size * 0.15, -0.03, 0.03); addNews(ev.text, ev.size, 'stock', ev.i); }
     else if (ev.type === 'crash') { G.crashIn = 1; }
+    else if (ev.type === 'pump') { G.stocks[ev.i].shock += ev.size * 0.5; if (ev.text) addNews(ev.text, ev.size, 'stock', ev.i); }
+    else if (ev.type === 'dump') { G.stocks[ev.i].shock += ev.size * 0.7; G.stocks[ev.i].mom = -0.02; addNews(ev.text, ev.size, 'stock', ev.i); }
   }
   G.pending = G.pending.filter(e => e.day > G.day);
   if (G.heat > 0 && G.day % 5 === 0) G.heat--;
@@ -429,6 +451,7 @@ function openDay() {
 function closeDay() {
   for (let i = 0; i < COMPANIES.length; i++) { const s = G.stocks[i]; const c = +targets[i].toFixed(2); s.closes.push(c); if (s.closes.length > MAX_HIST) s.closes.shift(); live[i] = c; s.hi = Math.max(s.hi, c); s.lo = Math.min(s.lo, c); }
   G.day++;
+  marginCalls(); loanDay();
   const w = worth(); G.worthHist.push(+w.toFixed(2)); if (G.worthHist.length > MAX_HIST) G.worthHist.shift();
   if (w > G.stats.best) G.stats.best = w;
   checkGoals(w);
@@ -449,33 +472,76 @@ function addNews(h, fx, kind, stock) { G.news.unshift({ day: G.day, h, fx, kind,
 
 // ---- money ----
 function holdingsValue() { let v = 0; for (const t in G.hold) { const i = COMPANIES.findIndex(c => c.t === t); if (G.hold[t].qty > 0) v += G.hold[t].qty * price(i); } return v; }
-function worth() { return G.cash + holdingsValue(); }
-function trade(i, qty, isBuy) {
+function shortPL() { let v = 0; for (const t in G.short) { const i = COMPANIES.findIndex(c => c.t === t), sh = G.short[t]; v += (sh.entry - price(i)) * sh.qty; } return v; }
+function shortExposure() { let v = 0; for (const t in G.short) v += G.short[t].qty * G.short[t].entry; return v; }
+function collateral() { return G.cash - shortExposure(); }
+function worth() { return G.cash + holdingsValue() + shortPL() - G.debt; }
+function raiseCash(amount) { // sells holdings, biggest first, until there is enough cash (used by fines and the loan shark)
+  const items = Object.entries(G.hold).filter(([, h]) => h.qty > 0).map(([t, h]) => ({ t, h, i: COMPANIES.findIndex(c => c.t === t) })).sort((a, b) => b.h.qty * price(b.i) - a.h.qty * price(a.i));
+  for (const it of items) { if (G.cash >= amount) break; const p = price(it.i); G.cash += it.h.qty * p; G.stats.realised += (p - it.h.cost) * it.h.qty; logTrade(`Forced sale of <b>${it.h.qty.toLocaleString()} ${it.t}</b> at ${fmt(p)}`, it.h.qty * p); delete G.hold[it.t]; }
+}
+function coverAll(why) { for (const t of Object.keys(G.short)) { const i = COMPANIES.findIndex(c => c.t === t); trade(i, G.short[t].qty, 'cover', true); } }
+function marginCalls() {
+  for (const t of Object.keys(G.short)) { const i = COMPANIES.findIndex(c => c.t === t), sh = G.short[t], loss = (price(i) - sh.entry) * sh.qty;
+    if (price(i) > sh.entry * 1.5 || loss > G.cash * 0.9) { toast(`Margin call: your short on ${t} was closed`, 'down', `Loss ${fmt(loss)}`); trade(i, sh.qty, 'cover', true); } }
+}
+function loanDay() {
+  if (G.debt <= 0) { G.debtAge = 0; return; }
+  G.debtAge++; if (G.debtAge % 5 === 0) { const interest = G.debt * 0.02; G.debt += interest; logTrade('<b>Loan shark</b> interest', -interest); }
+  if (G.debtAge > 126 || worth() < 0 || G.debt > (G.cash + holdingsValue() + shortPL()) * 0.95) collect();
+}
+function collect() {
+  coverAll(); raiseCash(Infinity); const taken = Math.min(G.cash, G.debt); G.cash -= taken; const left = G.debt - taken; G.debt = 0; G.debtAge = 0;
+  addNews(`The loan shark collects. Everything you owned was sold${left > 0 ? ' and he still says you owe him' : ''}. ` + (G.cash < 500 ? 'He leaves you $500 to start again.' : ''), 0, 'bust');
+  if (G.cash < 500) G.cash = 500; logTrade('<b>Loan shark</b> collects', -taken); toast('The loan shark collected', 'down', 'Your holdings were sold to pay him.'); snd && Sound.alarm(); save(); renderAll();
+}
+function trade(i, qty, how, quiet) {
+  if (how === true) how = 'buy'; if (how === false) how = 'sell';
   const c = COMPANIES[i], p = price(i); qty = Math.floor(qty); if (qty <= 0) return false;
-  const h = G.hold[c.t] || (G.hold[c.t] = { qty: 0, cost: 0 });
-  if (isBuy) {
-    const total = qty * p; if (total > G.cash + 1e-6) return false;
+  if (how === 'buy') {
+    const h = G.hold[c.t] || (G.hold[c.t] = { qty: 0, cost: 0 }), total = qty * p; if (total > G.cash + 1e-6) return false;
     G.cash -= total; h.cost = (h.cost * h.qty + total) / (h.qty + qty); h.qty += qty;
     toast(`Bought ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, 'up', fmt(total)); logTrade(`Bought <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, -total);
-  } else {
-    if (qty > h.qty) return false;
+  } else if (how === 'sell') {
+    const h = G.hold[c.t]; if (!h || qty > h.qty) return false;
     const total = qty * p, gain = (p - h.cost) * qty; G.cash += total; h.qty -= qty; G.stats.realised += gain;
     if (h.qty === 0) delete G.hold[c.t];
     toast(`Sold ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, gain >= 0 ? 'up' : 'down', `${gain >= 0 ? 'Profit' : 'Loss'} ${fmt(gain)}`); logTrade(`Sold <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)} (${gain >= 0 ? '+' : ''}${fmt(gain)})`, total);
+  } else if (how === 'short') { // borrow shares and sell them; the cash stays put as collateral
+    const total = qty * p; if (total > collateral() + 1e-6) return false;
+    const sh = G.short[c.t] || (G.short[c.t] = { qty: 0, entry: 0 }); sh.entry = (sh.entry * sh.qty + total) / (sh.qty + qty); sh.qty += qty;
+    toast(`Shorted ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, 'down', `You profit if it falls`); logTrade(`Shorted <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, 0);
+  } else if (how === 'cover') {
+    const sh = G.short[c.t]; if (!sh || qty > sh.qty) return false;
+    const gain = (sh.entry - p) * qty; G.cash += gain; sh.qty -= qty; G.stats.realised += gain; if (sh.qty === 0) delete G.short[c.t];
+    if (!quiet) toast(`Covered ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, gain >= 0 ? 'up' : 'down', `${gain >= 0 ? 'Profit' : 'Loss'} ${fmt(gain)}`); logTrade(`Covered <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)} (${gain >= 0 ? '+' : ''}${fmt(gain)})`, gain);
   }
-  G.stats.trades++; snd && Sound.trade(isBuy); save(); renderAll(); return true;
+  G.stats.trades++; if (!quiet) { snd && Sound.trade(how === 'buy' || how === 'cover'); save(); renderAll(); } return true;
 }
-// ---- insider info ----
+// ---- the back room: insider info, pump and dump, the loan shark, bribes, and prison ----
 const tipPrice = () => Math.max(250, Math.round(worth() * 0.03 / 10) * 10);
+const pumpPrice = () => Math.max(500, Math.round(worth() * 0.05 / 10) * 10);
+const bribePrice = () => Math.max(1000, Math.round(worth() * 0.1 / 10) * 10);
 const tipRisk = () => Math.min(0.6, 0.05 + G.heat * 0.07);
-function showTip() { $('tipPrice').textContent = fmt(tipPrice(), 0); $('tipRisk').textContent = Math.round(tipRisk() * 100) + '%'; $('tipGo').disabled = G.cash < tipPrice(); openModal('mTip'); }
+const loanMax = () => Math.max(0, Math.round(Math.max(1000, (worth() + G.debt) * 2) - G.debt));
+function showTip() {
+  $('tipPrice').textContent = fmt(tipPrice(), 0); $('tipRisk').textContent = Math.round(tipRisk() * 100) + '%'; $('tipGo').disabled = G.cash < tipPrice();
+  $('pumpPrice').textContent = fmt(pumpPrice(), 0); $('pumpRisk').textContent = Math.round(Math.min(0.7, tipRisk() + 0.05) * 100) + '%'; $('pumpName').textContent = sel === PF ? 'the selected stock' : COMPANIES[sel].n;
+  $('pumpDeal').classList.toggle('off', sel === PF || G.pending.some(e => e.type === 'pump')); $('pumpGo').disabled = sel === PF || G.cash < pumpPrice() || G.pending.some(e => e.type === 'pump');
+  $('loanOwed').textContent = fmt(G.debt, 0); $('loanMax').textContent = fmt(loanMax(), 0); $('loanPay').disabled = G.debt <= 0 || G.cash <= 0; $('loan1').disabled = loanMax() < 500; $('loan2').disabled = loanMax() < 500;
+  $('bribePrice').textContent = fmt(bribePrice(), 0); $('heatNow').textContent = G.heat; $('bribeGo').disabled = G.cash < bribePrice() || G.heat === 0;
+  openModal('mTip');
+}
+function bust(fine, why) { // caught: a fine (selling holdings if the cash is not there), the heat resets, and a third conviction means prison
+  raiseCash(fine); fine = Math.min(fine, G.cash); G.cash -= fine; G.heat = 0; G.busts++;
+  addNews(`${why} Fined ${fmt(fine, 0)}. ${G.busts >= 3 ? 'Third conviction: prison.' : `Conviction ${G.busts} of 3.`}`, 0, 'bust'); logTrade('<b>Fine</b>', -fine);
+  toast('Caught!', 'down', `Fined ${fmt(fine, 0)} · conviction ${G.busts} of 3`); snd && Sound.alarm(); save(); renderAll();
+  if (G.busts >= 3) prison();
+}
 function buyTip() {
   const cost = tipPrice(); if (G.cash < cost) return;
   const risk = tipRisk(); G.cash -= cost; G.heat++; logTrade('Bought <b>insider info</b>', -cost); closeModals();
-  if (Math.random() < risk) { // caught: a fine, and the tip is worthless
-    const fine = Math.max(cost * 2, Math.round(G.cash * 0.3)); G.cash = Math.max(0, G.cash - fine); G.heat = 0;
-    addNews('Regulators catch you insider trading. Fined ' + fmt(fine, 0) + '.', 0, 'bust'); logTrade('<b>Insider trading fine</b>', -fine); toast('Caught! Fined ' + fmt(fine, 0), 'down', 'The regulator was watching you.'); snd && Sound.alarm(); save(); renderAll(); return;
-  }
+  if (Math.random() < risk) { bust(Math.max(cost * 2, Math.round(G.cash * 0.3)), 'Regulators catch you insider trading.'); return; }
   const r = Math.random(); let text, stock;
   if (r < 0.6) { // a company event in a few days
     const i = Math.floor(Math.random() * COMPANIES.length), good = Math.random() < 0.7, size = rand(0.08, 0.22) * (good ? 1 : -1), days = 2 + Math.floor(Math.random() * 3);
@@ -490,7 +556,34 @@ function buyTip() {
   else { const best = [...COMPANIES.keys()].sort((a, b) => G.stocks[b].mom - G.stocks[a].mom)[0]; text = `Tip: nothing big is brewing. The strongest momentum right now is in ${COMPANIES[best].n}.`; stock = best; }
   addNews(text, 0, 'tip', stock); toast('Tip received', 'gold', text.replace(/^Tip: /, '')); snd && Sound.trade(true); save(); renderAll();
 }
-$('tipBtn').addEventListener('click', showTip); $('tipGo').addEventListener('click', buyTip);
+function pumpStart() {
+  if (sel === PF || G.pending.some(e => e.type === 'pump')) return; const cost = pumpPrice(); if (G.cash < cost) return;
+  const risk = Math.min(0.7, tipRisk() + 0.05), i = sel, c = COMPANIES[i]; G.cash -= cost; G.heat += 2; logTrade(`Paid for a <b>pump on ${c.t}</b>`, -cost); closeModals();
+  if (Math.random() < risk) { bust(Math.max(cost * 2, Math.round(G.cash * 0.35)), 'Regulators trace the fake rumours back to you.'); return; }
+  const lines = [`Wild rumours: ${c.n} is about to be bought out`, `${c.n} shares surge as the buyout talk spreads`, `Everyone is piling into ${c.n}`];
+  let total = 0; for (let d = 1; d <= 3; d++) { const size = rand(0.07, 0.13); total += size; G.pending.push({ day: G.day + d, type: 'pump', i, size, text: lines[d - 1] }); }
+  G.pending.push({ day: G.day + 4, type: 'dump', i, size: -total * 1.25, text: `The rumours about ${c.n} were fake. Shares collapse.` });
+  addNews(`Your pump on ${c.n} starts tomorrow and collapses in 4 days. Be out before then.`, 0, 'tip', i); toast('The pump is on', 'gold', `${c.t} climbs for three days, then falls on the fourth.`); save(); renderAll();
+}
+function borrow(frac) { const amt = Math.min(loanMax(), Math.max(1000, Math.round((worth() + G.debt) * frac / 100) * 100)); if (amt < 500) return; G.debt += amt; G.cash += amt; if (G.debtAge === 0) G.debtAge = 1; logTrade('<b>Loan shark</b> loan', amt); toast(`Borrowed ${fmt(amt, 0)}`, 'gold', '2% a week. Pay him back within six months.'); closeModals(); save(); renderAll(); }
+function repay() { const amt = Math.min(G.cash, G.debt); if (amt <= 0) return; G.cash -= amt; G.debt -= amt; if (G.debt < 1) { G.debt = 0; G.debtAge = 0; } logTrade('<b>Loan shark</b> repaid', -amt); toast(`Repaid ${fmt(amt, 0)}`, 'up', G.debt > 0 ? `${fmt(G.debt, 0)} still owed` : 'Debt cleared'); closeModals(); save(); renderAll(); }
+function bribe() {
+  const cost = bribePrice(); if (G.cash < cost || G.heat === 0) return; G.cash -= cost; logTrade('<b>Bribed</b> the regulator', -cost); closeModals();
+  if (Math.random() < 0.2) { bust(Math.max(cost * 4, Math.round(G.cash * 0.5)), 'The bribe leaks.'); return; }
+  G.heat = 0; addNews('The investigation into your trades is quietly dropped.', 0, 'tip'); toast('The heat is off', 'gold', 'Your file has been closed.'); save(); renderAll();
+}
+function prison() {
+  setSpeed(0); closeModals(); const before = worth();
+  coverAll(); if (G.debt > 0) collect();
+  const mute = window.toast; window.toast = () => {};
+  for (let d = 0; d < 252; d++) { closeDay(); startDay(); }
+  window.toast = mute; G.busts = 0; G.heat = 0; G.pending = []; save();
+  const after = worth(); $('prisonText').innerHTML = `Three convictions. You serve a year. Your shares sit untouched while the market moves on without you.<br><br>Net worth going in: <b>${fmt(before, 0)}</b><br>Net worth coming out: <b class="${cls(after - before)}">${fmt(after, 0)}</b>`;
+  addNews('You are released after a year in prison. Your record is clean, for now.', 0, 'bust'); openModal('mPrison'); renderAll();
+}
+$('tipBtn').addEventListener('click', showTip); $('tipGo').addEventListener('click', buyTip); $('pumpGo').addEventListener('click', pumpStart);
+$('loan1').addEventListener('click', () => borrow(0.25)); $('loan2').addEventListener('click', () => borrow(1)); $('loanPay').addEventListener('click', repay); $('bribeGo').addEventListener('click', bribe);
+$('prisonGo').addEventListener('click', () => { closeModals(); setSpeed(1); });
 function logTrade(h, amt) { (G.log || (G.log = [])).unshift({ day: G.day, h, amt }); if (G.log.length > 40) G.log.pop(); renderLog(); }
 function checkGoals(w) {
   for (const [amt, name] of GOALS) if (w >= amt && !G.goals.includes(amt)) { G.goals.push(amt); toast(`Milestone: ${name}`, 'gold', `Net worth passed ${fmt(amt, 0)}`); snd && Sound.win(); }
@@ -537,7 +630,7 @@ function renderList() {
   for (let i = 0; i < COMPANIES.length; i++) {
     const row = rows[i + 1], p = price(i), ch = p / lastClose(i) - 1, own = G.hold[COMPANIES[i].t];
     row.classList.toggle('sel', i === sel);
-    row.querySelector('.own').hidden = !(own && own.qty > 0);
+    row.querySelector('.own').hidden = !((own && own.qty > 0) || G.short[COMPANIES[i].t]);
     row.querySelector('.p b').textContent = fmt(p);
     const s = row.querySelector('.p span'); s.textContent = pct(ch); s.className = cls(ch);
     if (lastShown[i] !== undefined && Math.abs(p - lastShown[i]) > 0.005 * p) { row.classList.remove('flash-up', 'flash-down'); void row.offsetWidth; row.classList.add(p > lastShown[i] ? 'flash-up' : 'flash-down'); lastShown[i] = p; }
@@ -557,10 +650,11 @@ function renderHeader() {
   const w = worth(), prev = G.worthHist[G.worthHist.length - 1] || START_CASH, ch = w / prev - 1;
   $('worth').textContent = fmtShort(w); const pill = $('worthChg'); pill.textContent = pct(ch); pill.className = 'pill num ' + cls(ch);
   $('cash').textContent = fmtShort(G.cash);
+  $('debtBox').hidden = G.debt <= 0; $('debt').textContent = fmtShort(G.debt);
   $('date').textContent = fmtDate(dateOf(G.day)); $('dayNo').textContent = `Day ${G.day + 1} · Year ${Math.floor(G.day / 252) + 1}`;
   $('mood').textContent = G.mkt > 0.4 ? '🐂 Bull market' : G.mkt < -0.4 ? '🐻 Bear market' : 'Mixed';
   $('dayBar').style.width = (dayFrac * 100).toFixed(1) + '%';
-  $('tipBtn').classList.toggle('hot', G.heat > 0); $('tipBtn').title = `Buy insider info (I) · ${fmt(tipPrice(), 0)}` + (G.heat ? ` · ${Math.round(tipRisk() * 100)}% risk` : '');
+  $('tipBtn').classList.toggle('hot', G.heat > 0); $('tipBtn').title = 'Back room (I)' + (G.heat ? ` · heat ${G.heat}` : '') + (G.busts ? ` · ${G.busts} conviction${G.busts > 1 ? 's' : ''}` : '');
 }
 function renderChartHead() {
   if (sel === PF) {
@@ -581,21 +675,29 @@ function renderChartHead() {
   const y = s.closes[Math.max(0, s.closes.length - 252)], yc = p / y - 1; const fy = $('fYear'); fy.textContent = pct(yc); fy.className = 'num ' + cls(yc);
   $('fDiv').textContent = c.div ? (c.div * 100).toFixed(1) + '%' : '—';
   const until = (63 - ((G.day + s.earn) % 63)) % 63; $('fEarn').textContent = until === 0 ? 'Today' : until === 1 ? 'Tomorrow' : `in ${until}d`;
-  const own = $('fOwn'); if (h && h.qty > 0) { const pl = (p - h.cost) * h.qty; own.innerHTML = `${h.qty.toLocaleString()} sh <span class="${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)}</span>`; } else own.textContent = '—';
+  const own = $('fOwn'), sh = G.short[c.t]; if (h && h.qty > 0) { const pl = (p - h.cost) * h.qty; own.innerHTML = `${h.qty.toLocaleString()} sh <span class="${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)}</span>`; } else if (sh) { const pl = (sh.entry - p) * sh.qty; own.innerHTML = `short ${sh.qty.toLocaleString()} <span class="${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)}</span>`; } else own.textContent = '—';
 }
 function factLabels(a, b, c) { $('fDiv').previousElementSibling.textContent = a; $('fEarn').previousElementSibling.textContent = b; $('fOwn').previousElementSibling.textContent = c; }
 function renderPortfolio() {
-  const hv = holdingsValue(), w = G.cash + hv, ret = w / START_CASH - 1, prev = G.worthHist[G.worthHist.length - 1] || START_CASH, today = w - prev;
+  const hv = holdingsValue(), w = worth(), ret = w / START_CASH - 1, prev = G.worthHist[G.worthHist.length - 1] || START_CASH, today = w - prev;
   $('pfAll').textContent = fmtShort(w);
   $('kHold').textContent = fmtShort(hv);
   const r = $('kRet'); r.textContent = `${pct(ret)}`; r.className = 'num ' + cls(ret);
   const t = $('kToday'); t.textContent = `${today >= 0 ? '+' : ''}${fmt(today)}`; t.className = 'num ' + cls(today);
   const re = $('kReal'); re.textContent = `${G.stats.realised >= 0 ? '+' : ''}${fmt(G.stats.realised)}`; re.className = 'num ' + cls(G.stats.realised);
   // allocation bar: cash in grey, each holding in its own colour
-  const al = $('alloc'); let html = `<i style="width:${(G.cash / w * 100).toFixed(2)}%;background:#2a3448" title="Cash"></i>`;
+  const al = $('alloc'); let html = `<i style="width:${clamp(G.cash / Math.max(w, 1) * 100, 0, 100).toFixed(2)}%;background:#2a3448" title="Cash"></i>`;
   const items = Object.entries(G.hold).filter(([, h]) => h.qty > 0).map(([t, h]) => { const i = COMPANIES.findIndex(c => c.t === t); return { t, h, i, v: h.qty * price(i) }; }).sort((a, b) => b.v - a.v);
-  items.forEach(it => { html += `<i style="width:${(it.v / w * 100).toFixed(2)}%;background:${colorOf(it.i)}" title="${it.t}"></i>`; }); al.innerHTML = html;
-  holdsEl.innerHTML = items.length ? '' : '<div class="empty">No shares yet. Pick a stock and press Buy.</div>';
+  items.forEach(it => { html += `<i style="width:${clamp(it.v / Math.max(w, 1) * 100, 0, 100).toFixed(2)}%;background:${colorOf(it.i)}" title="${it.t}"></i>`; }); al.innerHTML = html;
+  const shorts = Object.entries(G.short).map(([t, sh]) => ({ t, sh, i: COMPANIES.findIndex(c => c.t === t) }));
+  holdsEl.innerHTML = items.length || shorts.length ? '' : '<div class="empty">No shares yet. Pick a stock and press Buy.</div>';
+  for (const it of shorts) {
+    const p = price(it.i), pl = (it.sh.entry - p) * it.sh.qty, plp = (it.sh.entry - p) / it.sh.entry;
+    const d = document.createElement('div'); d.className = 'hold sh num';
+    d.innerHTML = `<div class="t">${it.t}<span class="tag">SHORT</span><span>${it.sh.qty.toLocaleString()} sh · at ${fmt(it.sh.entry)}</span></div><div class="v">${fmt(it.sh.qty * p)}</div><div class="s">closes if it passes ${fmt(it.sh.entry * 1.5)}</div><div class="pl ${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)} (${pct(plp)})</div>`;
+    d.addEventListener('click', () => { select(it.i); setSide('cover'); if (innerWidth <= 760) showTab('colMid'); });
+    holdsEl.appendChild(d);
+  }
   for (const it of items) {
     const p = price(it.i), pl = (p - it.h.cost) * it.h.qty, plp = p / it.h.cost - 1;
     const d = document.createElement('div'); d.className = 'hold num';
@@ -610,19 +712,21 @@ function renderNews(fresh) {
   G.news.forEach((n, k) => {
     const d = document.createElement('div'); d.className = 'news' + (fresh && k === 0 ? ' fresh' : '');
     const fx = n.fx ? `<div class="fx ${cls(n.fx)}">${pct(n.fx)}</div>` : '<div></div>';
-    d.classList.toggle('rumour', n.kind === 'rumour'); d.classList.toggle('tip', n.kind === 'tip'); d.classList.toggle('bust', n.kind === 'bust'); d.innerHTML = `<div class="h">${n.h}</div>${fx}<div class="d">${fmtDate(dateOf(n.day))}${n.kind === 'earn' ? ' · Earnings' : n.kind === 'mkt' ? ' · Markets' : n.kind === 'sect' ? ' · Sector' : n.kind === 'rumour' ? ' · Rumour' : n.kind === 'tip' ? ' · Insider info' : n.kind === 'bust' ? ' · Regulator' : ''}</div>`;
+    d.classList.toggle('rumour', n.kind === 'rumour'); d.classList.toggle('tip', n.kind === 'tip'); d.classList.toggle('bust', n.kind === 'bust'); d.innerHTML = `<div class="h">${n.h}</div>${fx}<div class="d">${fmtDate(dateOf(n.day))}${n.kind === 'earn' ? ' · Earnings' : n.kind === 'mkt' ? ' · Markets' : n.kind === 'sect' ? ' · Sector' : n.kind === 'rumour' ? ' · Rumour' : n.kind === 'tip' ? ' · Insider info' : n.kind === 'bust' ? ' · Trouble' : ''}</div>`;
     if (n.stock !== undefined) { d.style.cursor = 'pointer'; d.addEventListener('click', () => { select(n.stock); if (innerWidth <= 760) showTab('colMid'); }); }
     newsEl.appendChild(d);
   });
 }
 function renderTrade() {
   document.querySelector('.trade').classList.toggle('off', sel === PF); if (sel === PF) return;
-  const c = COMPANIES[sel], p = price(sel), h = G.hold[c.t], q = Math.max(0, Math.floor(+$('qty').value || 0)), total = q * p;
+  const c = COMPANIES[sel], p = price(sel), h = G.hold[c.t], sh = G.short[c.t], q = Math.max(0, Math.floor(+$('qty').value || 0)), total = q * p, Q = q.toLocaleString();
   $('total').textContent = fmt(total);
-  const go = $('go'); go.className = side;
-  if (side === 'buy') { go.textContent = q ? `Buy ${q.toLocaleString()} ${c.t}` : 'Buy'; go.disabled = !q || total > G.cash + 1e-6; $('after').textContent = `Cash after: ${fmt(G.cash - total)}`; $('after').className = 'num ' + (total > G.cash ? 'down' : ''); }
-  else { go.textContent = q ? `Sell ${q.toLocaleString()} ${c.t}` : 'Sell'; go.disabled = !q || !h || q > h.qty; const gain = h ? (p - h.cost) * q : 0; $('after').textContent = h && q ? `${gain >= 0 ? 'Profit' : 'Loss'}: ${fmt(gain)}` : ''; $('after').className = 'num ' + cls(gain); }
-  $('posInfo').textContent = h && h.qty > 0 ? `You own ${h.qty.toLocaleString()} · avg ${fmt(h.cost)}` : `Max affordable: ${Math.floor(G.cash / p).toLocaleString()}`;
+  const go = $('go'); go.className = side; const after = $('after');
+  if (side === 'buy') { go.textContent = q ? `Buy ${Q} ${c.t}` : 'Buy'; go.disabled = !q || total > G.cash + 1e-6; after.textContent = `Cash after: ${fmt(G.cash - total)}`; after.className = 'num ' + (total > G.cash ? 'down' : ''); }
+  else if (side === 'sell') { go.textContent = q ? `Sell ${Q} ${c.t}` : 'Sell'; go.disabled = !q || !h || q > h.qty; const gain = h ? (p - h.cost) * q : 0; after.textContent = h && q ? `${gain >= 0 ? 'Profit' : 'Loss'}: ${fmt(gain)}` : ''; after.className = 'num ' + cls(gain); }
+  else if (side === 'short') { go.textContent = q ? `Short ${Q} ${c.t}` : 'Short'; go.disabled = !q || total > collateral() + 1e-6; after.textContent = `Collateral left: ${fmt(collateral() - total)}`; after.className = 'num ' + (total > collateral() ? 'down' : ''); }
+  else { go.textContent = q ? `Cover ${Q} ${c.t}` : 'Cover'; go.disabled = !q || !sh || q > sh.qty; const gain = sh ? (sh.entry - p) * q : 0; after.textContent = sh && q ? `${gain >= 0 ? 'Profit' : 'Loss'}: ${fmt(gain)}` : ''; after.className = 'num ' + cls(gain); }
+  $('posInfo').textContent = side === 'short' ? `Max: ${Math.floor(collateral() / p).toLocaleString()} (cash is your collateral)` : side === 'cover' ? (sh ? `Short ${sh.qty.toLocaleString()} at ${fmt(sh.entry)}` : 'No short position') : h && h.qty > 0 ? `You own ${h.qty.toLocaleString()} · avg ${fmt(h.cost)}` : `Max affordable: ${Math.floor(G.cash / p).toLocaleString()}`;
 }
 function renderLog() {
   const el = $('logEl'); el.innerHTML = (G.log && G.log.length) ? '' : '<div class="empty">Your trades and dividends will show here.</div>';
@@ -641,9 +745,9 @@ function drawChart() {
   const r = chart.getBoundingClientRect(); if (!r.width) return;
   const dpr = Math.min(2, devicePixelRatio || 1); if (chart.width !== Math.round(r.width * dpr) || chart.height !== Math.round(r.height * dpr)) { chart.width = Math.round(r.width * dpr); chart.height = Math.round(r.height * dpr); }
   const W = r.width, H = r.height; cg.setTransform(dpr, 0, 0, dpr, 0, 0); cg.clearRect(0, 0, W, H);
-  const { data, firstDay } = chartData(), c = COMPANIES[sel], h = sel === PF ? null : G.hold[c.t];
+  const { data, firstDay } = chartData(), c = COMPANIES[sel], h = sel === PF ? null : G.hold[c.t], sh = sel === PF ? null : G.short[c.t];
   const padL = 8, padR = 62, padT = 12, padB = 24, iw = W - padL - padR, ih = H - padT - padB;
-  let mn = Math.min(...data), mx = Math.max(...data); if (h && h.qty > 0) { mn = Math.min(mn, h.cost); mx = Math.max(mx, h.cost); } const pad = (mx - mn) * 0.08 || mn * 0.05; mn -= pad; mx += pad;
+  let mn = Math.min(...data), mx = Math.max(...data); if (h && h.qty > 0) { mn = Math.min(mn, h.cost); mx = Math.max(mx, h.cost); } if (sh) { mn = Math.min(mn, sh.entry); mx = Math.max(mx, sh.entry); } const pad = (mx - mn) * 0.08 || mn * 0.05; mn -= pad; mx += pad;
   const X = k => padL + k / (data.length - 1) * iw, Y = v => padT + (1 - (v - mn) / (mx - mn)) * ih;
   const up = data[data.length - 1] >= data[0], col = sel === PF ? '#f5c451' : up ? '#22c57a' : '#ff5c6c';
   // grid and price labels
@@ -658,6 +762,7 @@ function drawChart() {
   cg.beginPath(); data.forEach((v, k) => k ? cg.lineTo(X(k), Y(v)) : cg.moveTo(X(k), Y(v))); cg.strokeStyle = col; cg.lineWidth = 2; cg.lineJoin = 'round'; cg.stroke();
   // your average cost
   if (h && h.qty > 0) { const y = Y(h.cost); cg.setLineDash([5, 4]); cg.strokeStyle = 'rgba(245,196,81,.7)'; cg.lineWidth = 1; cg.beginPath(); cg.moveTo(padL, y); cg.lineTo(padL + iw, y); cg.stroke(); cg.setLineDash([]); cg.fillStyle = '#f5c451'; cg.textAlign = 'left'; cg.textBaseline = 'bottom'; cg.fillText('Your avg ' + fmt(h.cost), padL + 4, y - 2); }
+  if (sh) { const y = Y(sh.entry); cg.setLineDash([5, 4]); cg.strokeStyle = 'rgba(196,181,253,.7)'; cg.lineWidth = 1; cg.beginPath(); cg.moveTo(padL, y); cg.lineTo(padL + iw, y); cg.stroke(); cg.setLineDash([]); cg.fillStyle = '#c4b5fd'; cg.textAlign = 'left'; cg.textBaseline = 'bottom'; cg.fillText('Short at ' + fmt(sh.entry), padL + 4, y - 2); }
   // the live price marker and tag
   const lx = X(n), ly = Y(data[n]); cg.fillStyle = col; cg.beginPath(); cg.arc(lx, ly, 3.5, 0, Math.PI * 2); cg.fill();
   cg.fillStyle = col; roundRect(padL + iw + 4, ly - 9, padR - 6, 18, 5); cg.fill(); cg.fillStyle = sel === PF ? '#2a1f00' : up ? '#04150c' : '#2a060a'; cg.textAlign = 'center'; cg.textBaseline = 'middle'; cg.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font'); cg.fillText(fmt(data[n], data[n] >= 1000 ? 0 : 2), padL + iw + 4 + (padR - 6) / 2, ly);
@@ -706,21 +811,21 @@ function select(i) { sel = clamp(i, PF, COMPANIES.length - 1); hover = null; ren
 function setSide(s) { side = s; document.querySelectorAll('#side button').forEach(b => b.classList.toggle('on', b.dataset.side === s)); renderTrade(); }
 function setSpeed(s) { speed = s; G.speed = s; document.querySelectorAll('#speed button').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
 function setQty(q) { $('qty').value = Math.max(0, Math.floor(q)); renderTrade(); }
-function maxQty() { const c = COMPANIES[sel], h = G.hold[c.t]; return side === 'buy' ? Math.floor(G.cash / price(sel)) : h ? h.qty : 0; }
+function maxQty() { const c = COMPANIES[sel], h = G.hold[c.t], sh = G.short[c.t]; return side === 'buy' ? Math.floor(G.cash / price(sel)) : side === 'short' ? Math.max(0, Math.floor(collateral() / price(sel))) : side === 'cover' ? (sh ? sh.qty : 0) : h ? h.qty : 0; }
 document.querySelectorAll('#side button').forEach(b => b.addEventListener('click', () => setSide(b.dataset.side)));
 document.querySelectorAll('#speed button').forEach(b => b.addEventListener('click', () => { setSpeed(+b.dataset.s); Sound.click(); }));
 document.querySelectorAll('#ranges button').forEach(b => b.addEventListener('click', () => { range = +b.dataset.r; document.querySelectorAll('#ranges button').forEach(x => x.classList.toggle('on', x === b)); drawChart(); }));
 document.querySelectorAll('.presets button').forEach(b => b.addEventListener('click', () => setQty(b.dataset.q === 'max' ? maxQty() : +b.dataset.q)));
 $('qMinus').addEventListener('click', () => setQty((+$('qty').value || 0) - 1)); $('qPlus').addEventListener('click', () => setQty((+$('qty').value || 0) + 1));
 $('qty').addEventListener('input', renderTrade);
-$('go').addEventListener('click', () => { if (!trade(sel, +$('qty').value, side === 'buy')) toast(side === 'buy' ? 'Not enough cash.' : 'You do not own that many.', 'down'); });
+$('go').addEventListener('click', () => { if (!trade(sel, +$('qty').value, side)) toast(side === 'buy' ? 'Not enough cash.' : side === 'short' ? 'Not enough collateral.' : side === 'cover' ? 'You are not short that many.' : 'You do not own that many.', 'down'); });
 function showTab(id) { document.querySelectorAll('main .col').forEach(c => c.classList.toggle('show', c.id === id)); document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id)); drawChart(); }
 document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' && e.key !== 'Enter' && e.key !== 'Escape') return;
   if (e.key === ' ') { e.preventDefault(); setSpeed(speed ? 0 : (G.speed || 1)); if (!speed) G.speed = 1; }
-  else if (e.key === '1') setSpeed(1); else if (e.key === '2') setSpeed(3); else if (e.key === '3') setSpeed(10);
-  else if (e.key === 'b' || e.key === 'B') setSide('buy'); else if (e.key === 's' || e.key === 'S') setSide('sell');
+  else if (e.key === '1') setSpeed(1);
+  else if (e.key === 'b' || e.key === 'B') setSide('buy'); else if (e.key === 's' || e.key === 'S') setSide('sell'); else if (e.key === 'h' || e.key === 'H') setSide('short'); else if (e.key === 'c' || e.key === 'C') setSide('cover');
   else if (e.key === 'ArrowDown') { e.preventDefault(); select(sel + 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); select(sel - 1); }
   else if (e.key === 'Enter') { if (!document.querySelector('.modal:not([hidden])')) $('go').click(); }
   else if (e.key === 'Escape') closeModals();
@@ -750,9 +855,9 @@ function frame(now) {
 }
 
 // ---- go ----
-G = load() || newGame(); if (G.crashIn === undefined) G.crashIn = 0; if (!G.pending) G.pending = []; if (!G.heat) G.heat = 0; if (!G.log) G.log = []; for (const st of G.stocks) if (st.nextBeat === undefined) st.nextBeat = null;
+G = load() || newGame(); if (G.crashIn === undefined) G.crashIn = 0; if (!G.pending) G.pending = []; if (!G.heat) G.heat = 0; if (!G.short) G.short = {}; if (!G.debt) G.debt = 0; if (!G.debtAge) G.debtAge = 0; if (!G.busts) G.busts = 0; if (!G.log) G.log = []; for (const st of G.stocks) if (st.nextBeat === undefined) st.nextBeat = null;
 try { snd = localStorage.getItem(SAVE_KEY + '-snd') !== '0'; } catch (e) {}
-buildList(); startDay(); setSpeed(G.speed === 0 ? 1 : G.speed || 1); setSide('buy');
+buildList(); startDay(); setSpeed(1); setSide('buy');
 renderAll(); renderSparks(); renderNews();
 renderLog();
 if (!G.intro) { openModal('mIntro'); setSpeed(0); $('introGo').addEventListener('click', () => setSpeed(1), { once: true }); }
