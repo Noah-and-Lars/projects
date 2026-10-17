@@ -185,7 +185,7 @@
     <button class="mbtn gold" data-go="play">Sit down</button>
     <button class="mbtn" data-go="how">How to play</button>
     <button class="mbtn" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.0.1 · Patch notes</button>
+    <button class="link" data-go="notes">v1.0.2 · Patch notes</button>
   </div>
   <div class="menu" id="m-how">
     <h2>How to play</h2>
@@ -235,6 +235,12 @@
       <li>When the bullet is yours, the screen now just goes black the moment the hammer falls.</li>
       <li>When the bullet is his, it is far bloodier: a spray of blood and red mist, blood up the wall behind him, running down his face, pooling on the table and dripping onto the floor, and the room goes darker. Some of his blood spatters round the top edges of your screen, and his body stays in view for a few seconds before the win screen.</li>
     </ul></div>
+    <div class="box"><h3>v1.0.2 <span>Fair odds</span></h3><ul>
+      <li>The odds are back to exactly 1 in 6 for every pull, for you and for him. The stranger no longer seems to die on his first try.</li>
+      <li>A new stranger every game, and each one looks different from the last: a different shirt colour, hair colour and hairstyle (short, buzz cut, bald, swept back, mohawk, long, spiky or a flat cap).</li>
+      <li>Shirt colours are stronger, so they no longer all look the same pale colour under the bulb.</li>
+      <li>Bug fixes: the heartbeat, breathing and ticking clock now stop while the game is paused.</li>
+    </ul></div>
     <button class="mbtn" data-go="back">Back</button>
   </div>
   <div class="menu" id="m-pause">
@@ -259,9 +265,9 @@
 <script>
 'use strict';
 // =====================================================================
-//  Russian Roulette v1.0.1
+//  Russian Roulette v1.0.2
 // =====================================================================
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -369,7 +375,8 @@ const Sound = (() => {
     // called every frame: heartbeat, breathing, the clock, the drone
     update() {
       if (!ctx || ctx.state !== 'running') return;
-      const t = now(), s = S.stress;
+      const t = now(), s = S.paused ? 0 : S.stress;
+      if (S.paused) { droneG.gain.setTargetAtTime(0.02, t, 0.3); nextBeat = t + 0.3; nextBreath = t + 1; nextTick = Math.floor(t) + 1; return; }
       droneG.gain.setTargetAtTime(0.025 + s * 0.09, t, 0.5);
       if (S.heart && t >= nextBeat - 0.05) {
         const at = Math.max(t, nextBeat), g = 0.12 + s * 0.65;
@@ -812,9 +819,12 @@ let fpName = 'off';
 // =====================================================================
 const NAMES = ['Viktor', 'Dmitri', 'Sergei', 'Boris', 'Anton', 'Mikhail', 'Yuri', 'Oleg', 'Pavel', 'Nikolai', 'Grigori', 'Lev', 'Fyodor', 'Arkady', 'Ivan', 'Kostya', 'Ruslan', 'Stepan', 'Gennady', 'Matvei'];
 const SKINS = [0xe2b597, 0xd6a37f, 0xc08b67, 0xa0704f, 0x7e553b, 0xedc7aa];
-const HAIRS = [0x1b1511, 0x3a2a1d, 0x5a442e, 0x8b7d6c, 0xbab4aa, 0x262626, 0x6b3a1e];
-const SHIRTS = [0x8f877a, 0x4f5442, 0x4a3a35, 0x4f2222, 0x2f3d4f, 0x5f533d, 0x2d2d30, 0x6b6257];
-let npc = null, lastName = '';
+const HAIRS = [0x1b1511, 0x3a2a1d, 0x5a442e, 0x8b7d6c, 0xbab4aa, 0x262626, 0x6b3a1e, 0x9a6a2a];
+// 1.0.2: strong colours, so every stranger's shirt really looks different under the bulb
+const SHIRTS = [0x6e1414, 0x173a66, 0x24521f, 0x5a3412, 0x4a4a4e, 0x141416, 0x9e968a, 0x5a1f52, 0x7a5a10, 0x0f4a4a, 0x6a2f0e, 0x1d2a44];
+const STYLES = ['short', 'buzz', 'bald', 'swept', 'mohawk', 'long', 'flatcap', 'spiky'];
+let npc = null, lastName = '', lastLook = { shirt: -1, hair: -1, style: '' };
+function pickNew(n, last) { let i; do { i = Math.floor(Math.random() * n); } while (i === last && n > 1); return i; }
 function buildNPC() {
   if (npc) {
     if (tgun.g.parent !== scene) scene.attach(tgun.g); // never throw the gun away with him
@@ -825,15 +835,18 @@ function buildNPC() {
   let name; do { name = pick(NAMES); } while (name === lastName); lastName = name;
   const skin = std({ color: pick(SKINS), roughness: 0.62, flatShading: true });
   const skinSm = std({ color: skin.color.clone().multiplyScalar(0.8).getHex(), roughness: 0.62 });
-  const shirt = std({ color: pick(SHIRTS), roughness: 0.9, flatShading: true });
-  const hair = std({ color: pick(HAIRS), roughness: 0.85, flatShading: true });
+  const si = pickNew(SHIRTS.length, lastLook.shirt), hi = pickNew(HAIRS.length, lastLook.hair);
+  let style; do { style = pick(STYLES); } while (style === lastLook.style);
+  lastLook = { shirt: si, hair: hi, style };
+  const shirt = std({ color: SHIRTS[si], roughness: 0.95, flatShading: true });
+  const hair = std({ color: HAIRS[hi], roughness: 0.85, flatShading: true });
   const dark = std({ color: 0x1a1412, roughness: 0.9 });
   const n = { root, name, nerve: rand(0.15, 1), alive: true, skin, shirt };
   // hips at the chair; the torso pivots there so he can lean in and slump
   const torso = new THREE.Group(); torso.position.set(0, 0.5, NPC_Z); root.add(torso); n.torso = torso;
   const body = (prof, mat, sz, sx = 1) => { const m = mesh(new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 12), mat, 0, 0, 0, torso); m.scale.set(sx, 1, sz); return m; };
   body([[0, 0], [0.15, 0], [0.165, 0.08], [0.158, 0.2], [0.175, 0.33], [0.198, 0.43], [0.192, 0.49], [0.13, 0.545], [0.075, 0.575], [0, 0.575]], shirt, 0.62);
-  if (Math.random() < 0.5) body([[0.155, 0.06], [0.168, 0.08], [0.161, 0.2], [0.178, 0.33], [0.196, 0.42], [0.17, 0.47]], std({ color: pick([0x1d1f22, 0x2b2118, 0x22262a]), roughness: 0.9, flatShading: true, side: THREE.DoubleSide }), 0.64, 1.01); // a waistcoat
+  if (Math.random() < 0.5) body([[0.155, 0.06], [0.168, 0.08], [0.161, 0.2], [0.178, 0.33], [0.196, 0.42], [0.17, 0.47]], std({ color: pick([0x1d1f22, 0x2b2118, 0x22262a, 0x3a2a1a, 0x1a2a1a]), roughness: 0.9, flatShading: true, side: THREE.DoubleSide }), 0.64, 1.01); // a waistcoat
   mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.12, 10), skin, 0, 0.62, 0.01, torso);
   // legs (mostly under the table)
   for (const x of [-0.1, 0.1]) { mesh(roundBox(0.14, 0.13, 0.44, 0.05), dark, x, 0.0, 0.2, torso); mesh(roundBox(0.12, 0.46, 0.12, 0.04), dark, x, -0.24, 0.42, torso); }
@@ -857,9 +870,16 @@ function buildNPC() {
   }
   const mouth = mesh(box(0.04, 0.006, 0.006), std({ color: 0x3a1a18, roughness: 0.6 }), 0, -0.05, 0.096, head); n.mouth = mouth;
   // hair: a cap, a buzz or nothing; maybe a beard or a moustache
-  const style = pick(['cap', 'cap', 'buzz', 'bald', 'swept']);
-  if (style !== 'bald') { const hm = mesh(new THREE.SphereGeometry(0.104, 14, 7, 0, Math.PI * 2, 0, Math.PI * (style === 'buzz' ? 0.36 : 0.42)), hair, 0, style === 'swept' ? 0.014 : 0.006, -0.008, head); hm.scale.set(0.9, style === 'swept' ? 1.2 : 1.12, 1.0); hm.rotation.x = -0.32; }
-  else mesh(new THREE.SphereGeometry(0.103, 12, 7, Math.PI * 0.6, Math.PI * 0.8, Math.PI * 0.35, Math.PI * 0.25), hair, 0, 0, 0, head).scale.set(0.9, 1.1, 1);
+  const cap = (th, y, sy) => { const hm = mesh(new THREE.SphereGeometry(0.104, 14, 7, 0, Math.PI * 2, 0, Math.PI * th), hair, 0, y, -0.008, head); hm.scale.set(0.9, sy, 1.0); hm.rotation.x = -0.32; return hm; };
+  if (style === 'short') cap(0.42, 0.006, 1.12);
+  else if (style === 'buzz') cap(0.36, 0.004, 1.1);
+  else if (style === 'swept') cap(0.42, 0.016, 1.24);
+  // bald and mohawk: a fringe round the back of the head (1.0.2: it used to sit on one side)
+  else if (style === 'bald') mesh(new THREE.SphereGeometry(0.104, 14, 7, Math.PI * 1.05, Math.PI * 0.9, Math.PI * 0.32, Math.PI * 0.28), hair, 0, 0, 0, head).scale.set(0.9, 1.12, 0.98);
+  else if (style === 'mohawk') { mesh(new THREE.SphereGeometry(0.104, 14, 7, Math.PI * 1.05, Math.PI * 0.9, Math.PI * 0.32, Math.PI * 0.28), hair, 0, 0, 0, head).scale.set(0.9, 1.12, 0.98); for (let i = 0; i < 6; i++) { const a = -0.5 + i * 0.36; mesh(box(0.022, 0.045, 0.03), hair, 0, Math.cos(a) * 0.11, Math.sin(a) * 0.1, head).rotation.x = a; } }
+  else if (style === 'long') { cap(0.45, 0.008, 1.14); mesh(roundBox(0.17, 0.14, 0.05, 0.02), hair, 0, -0.04, -0.075, head); for (const s of [-1, 1]) mesh(roundBox(0.03, 0.12, 0.07, 0.012), hair, s * 0.085, -0.025, -0.03, head); }
+  else if (style === 'flatcap') { cap(0.3, 0.004, 1.08); const hat = std({ color: pick([0x3a3328, 0x2a2e33, 0x4a3a22]), roughness: 0.95, flatShading: true }); const c = mesh(new THREE.CylinderGeometry(0.098, 0.104, 0.05, 14), hat, 0, 0.09, -0.004, head); c.rotation.x = -0.12; const brim = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.01, 14, 1, false, -Math.PI / 2, Math.PI), hat, 0, 0.07, 0.07, head); brim.rotation.x = -0.1; brim.scale.set(1.1, 1, 0.75); }
+  else if (style === 'spiky') { cap(0.4, 0.006, 1.1); for (let i = 0; i < 9; i++) { const a = rand(-1.2, 1.2), b = rand(-0.9, 0.5); const sp = mesh(new THREE.ConeGeometry(0.018, 0.05, 4), hair, Math.sin(a) * 0.07, 0.1 + Math.cos(a) * 0.012, Math.sin(b) * 0.06 - 0.01, head); sp.rotation.set(b * 0.6, 0, -a * 0.6); } }
   const facial = pick(['none', 'none', 'stubble', 'beard', 'moustache']);
   if (facial === 'beard' || facial === 'stubble') { const bm = mesh(new THREE.SphereGeometry(facial === 'beard' ? 0.106 : 0.102, 12, 7, -Math.PI * 0.1, Math.PI * 1.2, Math.PI * 0.58, Math.PI * 0.3), facial === 'beard' ? hair : std({ color: 0x2a221c, roughness: 1, transparent: true, opacity: 0.55, flatShading: true }), 0, -0.01, 0.006, head); bm.scale.set(0.9, 1.1, 1); }
   if (facial === 'moustache') mesh(box(0.05, 0.012, 0.014), hair, 0, -0.036, 0.098, head);
@@ -1240,7 +1260,13 @@ const LINES = {
   watchYou: ['He watches you without blinking.', '“Go on.”', '“We do not have all night.”', 'He leans forward to watch.', '“Your hands are shaking, friend.”'],
   afterYou: ['“Lucky.”', '“Again, then.”', 'He nods slowly.', 'He swallows hard.', '“Hm.”'],
 };
-function roll() { return Math.random() < 1 / 6; } // every pull: one chance in six
+// 1.0.2: every pull is exactly one chance in six. The bullet sits in one of six chambers and the spin stops on one of
+// six; it only fires if they match. Uses the browser's crypto random numbers, with no bias towards either player.
+function rand6() {
+  try { const a = new Uint32Array(1); let v; do { crypto.getRandomValues(a); v = a[0]; } while (v >= 4294967292); return v % 6; }
+  catch (e) { return Math.floor(Math.random() * 6); }
+}
+function roll() { return rand6() === rand6(); }
 function stressFor(base) { return clamp(base + Math.min(0.3, (game ? game.round : 0) * 0.04), 0, 1); }
 
 async function spinCylinder(gun, live, dur = 1.5) {
@@ -1510,7 +1536,7 @@ function toTitle() {
 
 async function sitDown() {
   Sound.init(); abortAll(); const my = runId;
-  hideMenus(); resetTable(!npc || !npc.alive); cam.mode = 'move';
+  hideMenus(); resetTable(true); cam.mode = 'move'; // 1.0.2: a new stranger every game
   const a = camera.position.clone(), la = cam.look.clone();
   cam.pos.copy(a);
   try {
@@ -1612,7 +1638,7 @@ function frame(now) {
   // stress builds slowly and falls slowly
   stress += (stressTo + (holdS ? holdS.p * 0.25 : 0) - stress) * (1 - Math.exp(-dt * 1.2));
   document.documentElement.style.setProperty('--stress', stress.toFixed(3));
-  Sound.S.stress = stress; Sound.update();
+  Sound.S.stress = stress; Sound.S.paused = paused; Sound.update();
   // the lamp swings, and the bulb flickers now and then
   LAMP.vx += (-LAMP.ax * 9 - LAMP.vx * 0.25) * dt; LAMP.vz += (-LAMP.az * 9 - LAMP.vz * 0.25) * dt;
   LAMP.ax += LAMP.vx * dt; LAMP.az += LAMP.vz * dt; if (Math.abs(LAMP.ax) + Math.abs(LAMP.az) < 0.01) lampKick(0.02);
