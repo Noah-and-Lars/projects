@@ -42,7 +42,7 @@
 <style>
   /* Layout: full-bleed 3D canvas; menus float over a dark scrim, the home menu docks left over the orbiting map */
   :root { --ink: #f2ebe2; --muted: #a99d90; --gold: #e2b04a; --gold-hi: #ffd27a; --red: #c41e2a; --panel: rgba(14, 10, 9, .9); --line: rgba(255, 255, 255, .1);
-    --display: 'Russo One', Impact, sans-serif; --ui: 'Barlow', Arial, sans-serif; --stress: 0; }
+    --display: 'Russo One', Impact, sans-serif; --ui: 'Barlow', Arial, sans-serif; --stress: 0; --dark: 0; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: #050403; color: var(--ink); font-family: var(--ui); overflow: hidden; -webkit-font-smoothing: antialiased; }
   canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -50,7 +50,8 @@
   /* the darkness closing in: stronger the more stressed you are */
   #vig { position: fixed; inset: 0; pointer-events: none; z-index: 2;
     background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) calc(55% - var(--stress) * 22%), rgba(0, 0, 0, calc(.55 + var(--stress) * .35)) 100%),
-                radial-gradient(ellipse at center, rgba(120, 0, 0, 0) 50%, rgba(120, 0, 0, calc(var(--stress) * .28)) 100%); }
+                radial-gradient(ellipse at center, rgba(120, 0, 0, 0) 50%, rgba(120, 0, 0, calc(var(--stress) * .28)) 100%),
+                radial-gradient(ellipse at center, rgba(40, 0, 0, calc(var(--dark) * .25)) 30%, rgba(60, 0, 0, calc(var(--dark) * .6)) 100%); }
   #grain { position: fixed; inset: -50%; pointer-events: none; z-index: 2; opacity: .07; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"); animation: grain .5s steps(3) infinite; }
   @keyframes grain { 0% { transform: translate(0, 0); } 33% { transform: translate(-6%, 4%); } 66% { transform: translate(5%, -5%); } }
   #flash { position: fixed; inset: 0; z-index: 8; pointer-events: none; background: #fff; opacity: 0; }
@@ -148,7 +149,7 @@
   #end.lose h1 { color: #ff2b2b; text-shadow: 0 0 40px rgba(255, 0, 0, .45), 0 6px 0 #000; } #end.win h1 { color: var(--gold-hi); text-shadow: 0 0 40px rgba(255, 200, 80, .4), 0 6px 0 #000; }
   #end p { font-size: 19px; font-weight: 700; margin: 12px 0 18px; color: var(--ink); } #end p b { color: var(--gold-hi); }
   #end .stats { margin-bottom: 8px; }
-  #end.win { background: radial-gradient(ellipse at center, rgba(0, 0, 0, .35), rgba(0, 0, 0, .8)); }
+  #end.win { background: radial-gradient(ellipse at center, rgba(20, 0, 0, .55), rgba(0, 0, 0, .92)); }
   #end.lose { background: #000; }
 
   #rot { display: none; }
@@ -184,7 +185,7 @@
     <button class="mbtn gold" data-go="play">Sit down</button>
     <button class="mbtn" data-go="how">How to play</button>
     <button class="mbtn" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.0 · Patch notes</button>
+    <button class="link" data-go="notes">v1.0.1 · Patch notes</button>
   </div>
   <div class="menu" id="m-how">
     <h2>How to play</h2>
@@ -229,6 +230,11 @@
       <li>Hold to pull the trigger with the revolver to your head. Empty chambers click; the bullet ends the game.</li>
       <li>Win streak and best streak, saved in your browser.</li>
     </ul></div>
+    <div class="box"><h3>v1.0.1 <span>Fixes</span></h3><ul>
+      <li>Fixed the stranger’s eye sometimes not showing.</li>
+      <li>When the bullet is yours, the screen now just goes black the moment the hammer falls.</li>
+      <li>When the bullet is his, it is far bloodier: a spray of blood and red mist, blood up the wall behind him, running down his face, pooling on the table and dripping onto the floor, and the room goes darker. Some of his blood spatters round the top edges of your screen, and his body stays in view for a few seconds before the win screen.</li>
+    </ul></div>
     <button class="mbtn" data-go="back">Back</button>
   </div>
   <div class="menu" id="m-pause">
@@ -253,9 +259,9 @@
 <script>
 'use strict';
 // =====================================================================
-//  Russian Roulette v1.0
+//  Russian Roulette v1.0.1
 // =====================================================================
-const VERSION = '1.0';
+const VERSION = '1.0.1';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -356,6 +362,7 @@ const Sound = (() => {
     thud(g = 0.5) { tone({ f: 95, f2: 55, d: 0.12, g }); noise({ type: 'lowpass', f: 700, d: 0.08, g: g * 0.5 }); },
     scrape() { noise({ f: 900, f2: 1700, q: 1.5, a: 0.05, d: 0.7, g: 0.12 }); },
     clatter() { for (let i = 0; i < 4; i++) { noise({ at: now() + i * 0.09 + Math.random() * 0.04, f: 1800 + Math.random() * 1500, q: 5, d: 0.05, g: 0.4 / (i + 1) }); } tone({ f: 140, f2: 70, d: 0.1, g: 0.3 }); },
+    splat() { noise({ at: now() + 0.03, type: 'lowpass', f: 1400, f2: 300, a: 0.01, d: 0.35, g: 0.7 }); noise({ at: now() + 0.18, type: 'lowpass', f: 900, a: 0.01, d: 0.25, g: 0.4 }); },
     body() { tone({ f: 70, f2: 40, d: 0.3, g: 0.6 }); noise({ type: 'lowpass', f: 500, d: 0.25, g: 0.4 }); },
     exhale() { noise({ f: 700, q: 0.8, a: 0.15, d: 1.1, g: 0.09 }); },
     gasp() { noise({ f: 1300, q: 1, a: 0.04, d: 0.3, g: 0.08 }); },
@@ -511,6 +518,8 @@ const MAT = {
   nail: std({ color: 0xe6c0b0, roughness: 0.35 }),
   sweat: std({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.55, envMap: ENV, envMapIntensity: 1.5 }),
   blood: std({ color: 0x5c0208, roughness: 0.25, metalness: 0.05 }),
+  soak: std({ color: 0x320106, roughness: 0.9 }),
+  gore: std({ color: 0x2c0004, roughness: 0.18, metalness: 0.05, envMap: ENV, envMapIntensity: 0.5 }),
 };
 
 function mesh(geo, mat, x = 0, y = 0, z = 0, parent = scene, shadow = true) {
@@ -833,18 +842,18 @@ function buildNPC() {
   const head = new THREE.Group(); head.position.set(0, 0.75, 0.02); head.scale.setScalar(1.12); torso.add(head); n.head = head;
   const skull = mesh(new THREE.SphereGeometry(0.1, 14, 11), skin, 0, 0, 0, head); skull.scale.set(0.86, 1.12, 0.96);
   mesh(new THREE.SphereGeometry(0.07, 10, 8), skin, 0, -0.055, 0.03, head).scale.set(0.95, 0.75, 0.95); // jaw and chin
-  mesh(box(0.085, 0.014, 0.02), skin, 0, 0.04, 0.083, head); // brow ridge, so his eyes sit in shadow
+  mesh(box(0.085, 0.014, 0.02), skin, 0, 0.042, 0.087, head); // brow ridge, so his eyes sit in shadow
   mesh(box(0.017, 0.042, 0.022), skin, 0, 0.0, 0.093, head).rotation.x = -0.32; // nose
   mesh(new THREE.SphereGeometry(0.012, 8, 6), skin, 0, -0.019, 0.103, head);
   for (const s of [-1, 1]) mesh(new THREE.SphereGeometry(0.024, 8, 6), skin, s * 0.088, 0.0, 0.0, head).scale.set(0.45, 1, 0.75);
   n.eyes = []; n.pupils = []; n.brows = [];
   const white = std({ color: 0xcfc5b6, roughness: 0.3 }), iris = std({ color: pick([0x3b2a1a, 0x2b3a4a, 0x3a4a2a, 0x1a1410]), roughness: 0.2 });
   for (const s of [-1, 1]) {
-    const eg = new THREE.Group(); eg.position.set(s * 0.033, 0.022, 0.078); head.add(eg);
+    const eg = new THREE.Group(); eg.position.set(s * 0.033, 0.022, 0.086); head.add(eg); // 1.0.1: further forward, so neither eye hides inside the skull
     mesh(new THREE.SphereGeometry(0.0112, 10, 8), white, 0, 0, 0, eg, false);
     const pu = mesh(new THREE.SphereGeometry(0.0058, 8, 6), iris, 0, 0, 0.0082, eg, false);
     n.eyes.push(eg); n.pupils.push(pu);
-    const br = mesh(box(0.034, 0.008, 0.01), hair, s * 0.035, 0.048, 0.091, head); n.brows.push(br);
+    const br = mesh(box(0.034, 0.008, 0.01), hair, s * 0.035, 0.05, 0.096, head); n.brows.push(br);
   }
   const mouth = mesh(box(0.04, 0.006, 0.006), std({ color: 0x3a1a18, roughness: 0.6 }), 0, -0.05, 0.096, head); n.mouth = mouth;
   // hair: a cap, a buzz or nothing; maybe a beard or a moustache
@@ -856,7 +865,17 @@ function buildNPC() {
   if (facial === 'moustache') mesh(box(0.05, 0.012, 0.014), hair, 0, -0.036, 0.098, head);
   // sweat that runs down his face when he's scared
   n.sweat = [0, 1].map(i => { const d = mesh(new THREE.SphereGeometry(0.004, 6, 5), MAT.sweat, 0, 0, 0, head, false); d.scale.set(1, 1.5, 1); d.userData = { t: i * 1.7, x: rand(-0.05, 0.05) }; d.visible = false; return d; });
-  n.wound = mesh(new THREE.SphereGeometry(0.014, 8, 6), MAT.blood, -0.088, 0.03, 0.02, head, false); n.wound.scale.set(0.4, 1.2, 1.2); n.wound.visible = false;
+  n.wound = mesh(new THREE.SphereGeometry(0.014, 8, 6), MAT.gore, -0.088, 0.03, 0.02, head, false); n.wound.scale.set(0.4, 1.2, 1.2); n.wound.visible = false;
+  // (each stain sits just on the front of the chest: R is the body's radius at that height)
+  n.stains = [];
+  for (let i = 0; i < 11; i++) { // blood soaking into the shirt, mostly down his left side
+    const x = rand(-0.06, 0.15), y = rand(0.3, 0.53), R = y > 0.48 ? 0.176 : 0.197, r = rand(0.025, 0.06);
+    const z = 0.645 * Math.sqrt(Math.max(0, R * R - x * x)) - 0.002;
+    const m = mesh(new THREE.SphereGeometry(r, 9, 6), MAT.soak, x, y, z, torso, false); m.rotation.y = Math.atan2(x, z) * 0.8; m.scale.set(0.0001, 0.0001, 0.0001); m.visible = false; n.stains.push(m);
+  }
+  n.exitWound = mesh(new THREE.SphereGeometry(0.022, 8, 6), MAT.gore, 0.086, 0.035, 0.0, head, false); n.exitWound.scale.set(0.45, 1.3, 1.3); n.exitWound.visible = false;
+  n.streaks = [[-0.09, 0.028, 0.025, 0.004, 0.01], [-0.087, 0.02, 0.04, 0.004, 0.008], [0.088, 0.03, 0.01, 0.004, 0.014], [-0.05, 0.03, 0.08, 0.007, 0.004], [0.06, 0.03, 0.07, 0.007, 0.004]].map(([x, y, z, w, d]) => {
+    const m = mesh(new THREE.BoxGeometry(w, 1, d).translate(0, -0.5, 0), MAT.gore, x, y, z, head, false); m.scale.y = 0.0001; m.visible = false; m.userData.len = rand(0.08, 0.14); return m; });
   // arms: an upper arm and forearm between shoulder, elbow and wrist, placed by a little IK solver
   const arm = side => {
     const up = mesh(new THREE.CylinderGeometry(0.042, 0.05, 1, 10), shirt, 0, 0, 0, root), fo = mesh(new THREE.CylinderGeometry(0.034, 0.042, 1, 10), shirt, 0, 0, 0, root);
@@ -957,6 +976,7 @@ function updateNPC(dt, t) {
     n.mouth.scale.y = 1 + 2 * k;
     for (const e of n.eyes) e.scale.y = 0.08;
     for (const d of n.sweat) d.visible = false;
+    n.dripT = (n.dripT || 0) - dt; if (n.dripT <= 0) { n.dripT = rand(0.15, 0.5); n.head.updateMatrixWorld(true); drip(n.head.localToWorld(V3(rand(0.02, 0.09), -0.06, rand(-0.02, 0.04)))); }
   }
   solveArm(n, n.R, t); solveArm(n, n.L, t);
 }
@@ -1036,6 +1056,15 @@ const Blood = (() => {
         d.y = ny; d.v = d.v * (1 - dt * 0.2) + rand(-20, 30) * dt * sc; d.w = Math.max(2 * sc, d.w * (1 - dt * 0.12));
       }
     },
+    // 1.0.1: a light spatter of his blood round the top edges of your screen
+    light() {
+      size(); drips = []; cv.style.transition = 'none'; cv.style.transform = 'none'; cv.style.opacity = '0.85'; cv.style.display = 'block'; on = true;
+      g.clearRect(0, 0, W, H); const m = Math.max(W, H);
+      for (let i = 0; i < 9; i++) splat(rand(0, W), rand(-m * 0.02, H * 0.06), m * rand(0.015, 0.04));
+      for (const x of [0, W]) for (let i = 0; i < 3; i++) splat(x + rand(-m * 0.02, m * 0.02), rand(0, H * 0.25), m * rand(0.015, 0.035));
+      for (const d of drips) { d.life = Math.min(d.life, rand(0.6, 1.4)); d.v *= 0.6; d.w *= 0.6; }
+    },
+    fade() { cv.style.transition = 'opacity .8s'; cv.style.opacity = '0'; },
     wipe() { cv.style.transition = 'transform 1.9s cubic-bezier(.55,0,.35,1)'; cv.style.transform = 'translateY(105%)'; },
     clear() { on = false; drips = []; g.clearRect(0, 0, cv.width, cv.height); cv.style.transition = 'none'; cv.style.transform = 'none'; cv.style.display = 'none'; },
   };
@@ -1048,15 +1077,42 @@ const tableBlood = (() => {
   return {
     m, show() {
       const c = tex.image, g = c.getContext('2d'); g.clearRect(0, 0, 512, 512);
-      for (let i = 0; i < 40; i++) { const x = 256 + rand(-40, 200), y = 256 + rand(-120, 60), r = rand(2, i < 3 ? 26 : 9); g.fillStyle = pick(['#6a040c', '#580208', '#7a0812']); g.beginPath(); g.ellipse(x, y, r * rand(1, 2.2), r, rand(-0.4, 0.4), 0, Math.PI * 2); g.fill(); }
+      for (let i = 0; i < 110; i++) { const x = 256 + rand(-60, 230), y = 256 + rand(-150, 90), r = rand(2, i < 6 ? 40 : 11); g.fillStyle = pick(['#3a0105', '#2a0003', '#4e0208']); g.beginPath(); g.ellipse(x, y, r * rand(1, 2.2), r, rand(-0.4, 0.4), 0, Math.PI * 2); g.fill(); }
       tex.needsUpdate = true; m.visible = true; m.material.opacity = 0;
     }, hide() { m.visible = false; },
   };
 })();
 // a spray of blood when he is shot
 const spray = [];
-for (let i = 0; i < 46; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.006, 5, 4), MAT.blood); s.visible = false; scene.add(s); spray.push({ m: s, v: V3(0, 0, 0), life: 0 }); }
-function burst(p, dir) { for (const s of spray) { s.m.position.copy(p); s.v.copy(dir).multiplyScalar(rand(1.2, 3.6)).add(V3(rand(-0.7, 0.7), rand(-0.3, 0.9), rand(-0.7, 0.7))); s.life = rand(0.4, 1.0); s.m.visible = true; s.m.scale.setScalar(rand(0.6, 1.8)); } }
+for (let i = 0; i < 160; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.006, 5, 4), i % 3 ? MAT.gore : MAT.blood); s.visible = false; scene.add(s); spray.push({ m: s, v: V3(0, 0, 0), life: 0 }); }
+function burst(p, dir) { for (const s of spray) { s.m.position.copy(p); s.v.copy(dir).multiplyScalar(rand(1.5, 5)).add(V3(rand(-1, 1), rand(-0.4, 1.3), rand(-1.6, 0.5))); s.life = rand(0.5, 1.4); s.m.visible = true; s.m.scale.setScalar(rand(0.6, 2.6)); } }
+// one drop falling from his head
+function drip(p) { const s = spray.find(s => s.life <= 0); if (!s) return; s.m.position.copy(p); s.v.set(rand(-0.05, 0.05), -0.2, rand(-0.05, 0.05)); s.life = 2; s.m.visible = true; s.m.scale.set(0.8, 1.6, 0.8); }
+// the rest of the mess: a cloud of red mist, the wall behind him, and a pool under his chair
+const gore = (() => {
+  const splat = (w, h, draw) => { const t = canvasTex(w, h, draw); return t; };
+  const mist = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(120,0,6,0.9)'); gr.addColorStop(1, 'rgba(60,0,3,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }), transparent: true, depthWrite: false, opacity: 0 }));
+  mist.visible = false; scene.add(mist);
+  const wallTex = splat(512, 512, () => {});
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshStandardMaterial({ map: wallTex, emissiveMap: wallTex, emissive: 0xff5050, emissiveIntensity: 1.4, transparent: true, roughness: 0.3, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, depthWrite: false }));
+  wall.position.set(0.55, 1.3, -ROOM.d / 2 + 0.006); wall.visible = false; scene.add(wall);
+  const poolTex = splat(256, 256, (g) => { const gr = g.createRadialGradient(128, 128, 10, 128, 128, 126); gr.addColorStop(0, '#2a0003'); gr.addColorStop(0.75, '#3a0105'); gr.addColorStop(1, 'rgba(40,0,3,0)'); g.fillStyle = gr; g.beginPath(); for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 2, r = 100 + Math.sin(i * 2.3) * 16 + Math.random() * 10; g.lineTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); } g.fill(); });
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshStandardMaterial({ map: poolTex, transparent: true, roughness: 0.12, metalness: 0.1, envMap: ENV, envMapIntensity: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, depthWrite: false }));
+  pool.rotation.x = -Math.PI / 2; pool.position.set(0.3, 0.003, NPC_Z + 0.05); pool.visible = false; scene.add(pool);
+  function drawWall() {
+    const g = wallTex.image.getContext('2d'); g.clearRect(0, 0, 512, 512);
+    for (let i = 0; i < 260; i++) { const a = rand(-0.6, 0.9), d = Math.pow(Math.random(), 1.6) * 230, x = 170 + Math.cos(a) * d, y = 250 + Math.sin(a) * d * 0.7 + rand(-30, 30), r = rand(1, i < 12 ? 22 : 7) * (1 - d / 300); g.fillStyle = pick(['#3a0105', '#2a0003', '#4e0208']); g.beginPath(); g.ellipse(x, y, Math.max(1, r * rand(1, 2.4)), Math.max(1, r), a, 0, Math.PI * 2); g.fill(); }
+    for (let i = 0; i < 16; i++) { const x = 120 + rand(0, 200), y = 220 + rand(-40, 60), w = rand(2, 6); g.fillStyle = '#300004'; g.fillRect(x, y, w, rand(60, 240)); g.beginPath(); g.arc(x + w / 2, y + rand(60, 240), w, 0, Math.PI * 2); g.fill(); }
+    wallTex.needsUpdate = true;
+  }
+  return {
+    mist, wall, pool,
+    show(exit) {
+      mist.position.copy(exit); mist.visible = true; drawWall(); wall.visible = true; wall.material.opacity = 0; pool.visible = true; pool.scale.setScalar(0.05);
+    },
+    hide() { mist.visible = false; wall.visible = false; pool.visible = false; },
+  };
+})();
 function updateSpray(dt) { for (const s of spray) { if (s.life <= 0) continue; s.life -= dt; s.v.y -= 9.8 * dt; s.m.position.addScaledVector(s.v, dt); if (s.m.position.y < TOP + 0.003 && Math.abs(s.m.position.x) < 0.65 && Math.abs(s.m.position.z) < 0.42) s.life = 0; if (s.m.position.y < 0.01) s.life = 0; if (s.life <= 0) s.m.visible = false; } }
 
 // =====================================================================
@@ -1141,7 +1197,7 @@ function updateHold(dt) {
 //  Camera
 // =====================================================================
 const cam = { pos: V3(1.7, 1.75, 1.45), look: V3(0, 0.95, -0.35), lookTo: V3(0, 0.95, -0.35), roll: 0, rollTo: 0, fovTo: 62, fov: 62, kick: 0, mode: 'title', drop: 0 };
-let stress = 0, stressTo = 0;
+let stress = 0, stressTo = 0, dark = 0, darkTo = 0; // dark: the room dims after a death
 function baseFov() { const a = camera.aspect; return a >= 1.35 ? 62 : Math.min(84, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(31)) * 1.35 / a))); }
 function lookAtNPC() { cam.lookTo.set(0, 1.2, NPC_Z + 0.1); }
 function updateCamera(dt, t) {
@@ -1363,26 +1419,14 @@ async function hisTurn() {
 async function youDie() {
   Sound.shot(true); Sound.S.heart = false; Sound.S.breathe = false; Sound.S.tick = false;
   fp.gun.setCock(0);
-  const fl = $('flash'); fl.style.transition = 'none'; fl.style.opacity = '1';
-  Blood.hit(); cam.kick = 1; lampKick(0.4);
-  requestAnimationFrame(() => { fl.style.transition = 'opacity .5s'; fl.style.opacity = '0'; });
-  // your head snaps to the side and you fall onto the table
-  const p0 = cam.pos.clone(), r0 = cam.roll;
-  cam.rollTo = 1.1; stressTo = 0; stress = 0;
-  tween(0.7, k => { cam.pos.copy(p0).add(V3(-0.25 * k, -0.42 * k, -0.15 * k)); cam.roll = lerp(r0, 1.1, k); cam.lookTo.set(-0.6, TOP, -0.2); }, easeIn).catch(() => {});
-  fpTo('off', 0.4, easeIn).then(() => { fp.rig.visible = false; }).catch(() => {});
-  $('black').style.opacity = '1';
-  hud.hidden = true;
-  await wait(0.6); Sound.body();
+  // 1.0.1: the moment the hammer falls, everything goes black. No blood, no flash.
+  const bl = $('black'); bl.style.transition = 'none'; bl.style.opacity = '1'; void bl.offsetWidth; bl.style.transition = '';
+  hud.hidden = true; fp.rig.visible = false; stressTo = 0; stress = 0;
   // the game is over: the streak goes
   const lost = save.streak;
   save.streak = 0; save.inGame = false; persist(); updateHud();
-  await wait(1.6);
+  await wait(2.2);
   showEnd(false, lost);
-  await wait(0.5);
-  Blood.wipe();
-  await wait(2.1);
-  Blood.clear();
 }
 
 async function heDies() {
@@ -1391,8 +1435,16 @@ async function heDies() {
   const tp = npc.head.localToWorld(V3(-0.09, 0.03, 0.02)), exit = npc.head.localToWorld(V3(0.1, 0.03, 0.02));
   flashL.position.copy(tp); flashL.intensity = 6; cam.kick = 0.35; lampKick(0.35);
   const fl = $('flash'); fl.style.transition = 'none'; fl.style.opacity = '0.35'; requestAnimationFrame(() => { fl.style.transition = 'opacity .35s'; fl.style.opacity = '0'; });
-  burst(exit, exit.clone().sub(tp).normalize());
-  npc.alive = false; npc.slump = 0; npc.wound.visible = true; npc.R.tremor = 0; npc.fear = 0;
+  burst(exit, exit.clone().sub(tp).normalize()); Sound.splat(); Blood.light();
+  gore.show(exit); darkTo = 1; LAMP.flickT = 0.6;
+  tween(0.7, (k, r) => { gore.mist.scale.setScalar(0.08 + r * 0.7); gore.mist.material.opacity = 0.85 * (1 - r); }, linear).catch(() => {});
+  wait(0.12).then(() => tween(0.5, k => { gore.wall.material.opacity = k; }, easeOut)).catch(() => {});
+  tween(8, k => { gore.pool.scale.setScalar(0.05 + k * 0.95); }, easeOut).catch(() => {});
+  npc.alive = false; npc.slump = 0; npc.wound.visible = true; npc.exitWound.visible = true; npc.R.tremor = 0; npc.fear = 0; npc.dripT = 0;
+  for (const s of npc.streaks) { s.visible = true; s.scale.y = 0.0001; }
+  for (const s of npc.stains) s.visible = true;
+  tween(5, k => { npc.stains.forEach((s, i) => { const q = clamp(k * 1.8 - i * 0.08, 0.0001, 1); s.scale.set(q, q * 1.6, q * 0.14); }); }, easeOut).catch(() => {});
+  tween(2.6, k => { for (const s of npc.streaks) s.scale.y = 0.0001 + k * s.userData.len; }, easeOut).catch(() => {});
   npc.head.rotation.z -= 0.5; npc.head.rotation.x -= 0.15;
   tableBlood.show();
   tween(0.9, k => { npc.slump = k; }, easeOut).catch(() => {});
@@ -1409,7 +1461,10 @@ async function heDies() {
   save.streak++; save.wins++; const newBest = save.streak > save.best; if (newBest) save.best = save.streak; save.inGame = false; persist(); updateHud();
   $('streak').classList.remove('bump'); void $('streak').offsetWidth; $('streak').classList.add('bump');
   await wait(2.4);
+  // 1.0.1: two more seconds of just the body before the win screen
   sub(''); hud.hidden = true;
+  await wait(2);
+  Blood.fade(); await wait(0.8); Blood.clear();
   showEnd(true, save.streak, newBest);
 }
 
@@ -1428,7 +1483,7 @@ function resetTable(newFace) {
   if (newFace || !npc || !npc.alive) buildNPC();
   else { restPose(npc.R); restPose(npc.L); npc.fear = 0; npc.R.tremor = 0; npc.mouthOpen = 0; npc.eyesShut = false; npc.look.set(0, SEAT.y, SEAT.z); }
   placeGun('center'); tgun.angle = 0; tgun.cyl.rotation.z = 0; tgun.setCock(0); tgun.setPull(0); GUN.fall = null;
-  coin.phase = 'hidden'; tableBlood.hide(); for (const s of spray) { s.life = 0; s.m.visible = false; }
+  coin.phase = 'hidden'; tableBlood.hide(); gore.hide(); dark = darkTo = 0; for (const s of spray) { s.life = 0; s.m.visible = false; }
   fp.rig.visible = false; holdS = null;
   cam.pos.copy(SEAT); cam.roll = cam.rollTo = 0; cam.kick = 0; cam.fovTo = 62; lookAtNPC(); cam.look.copy(cam.lookTo);
   stress = stressTo = 0.1; Sound.unmuffle(); Sound.S.heart = true; Sound.S.breathe = false;
@@ -1564,9 +1619,10 @@ function frame(now) {
   lamp.rotation.set(LAMP.ax, 0, LAMP.az);
   if (LAMP.flickT > 0) { LAMP.flickT -= dt; LAMP.flick = Math.random() < 0.5 ? rand(0.05, 0.4) : 1; } else { LAMP.flick = 1; if (Math.random() < dt * (0.06 + stress * 0.25)) LAMP.flickT = rand(0.08, 0.35); }
   const li = LAMP.flick * (0.97 + Math.sin(t * 50) * 0.015);
-  spot.intensity = 3.4 * li; fill.intensity = 0.2 * li; bulbM.material.color.setScalar(0.25 + 0.75 * li); glowS.material.opacity = 0.8 * li;
+  spot.intensity = 3.4 * li * (1 - dark * 0.45); fill.intensity = 0.2 * li * (1 - dark * 0.5); bulbM.material.color.setScalar(0.25 + 0.75 * li); glowS.material.opacity = 0.8 * li;
   Sound.hum(LAMP.flick < 1 ? 0.03 : 0.005);
   flashL.intensity = Math.max(0, flashL.intensity - dt * 40);
+  dark += (darkTo - dark) * (1 - Math.exp(-dt * 1.5)); renderer.toneMappingExposure = 1 - dark * 0.3; hemi.intensity = 0.07 * (1 - dark); document.documentElement.style.setProperty('--dark', dark.toFixed(3));
   if (!paused) {
     updateNPC(dt, gt); updateCoin(dt); updateSpray(dt);
     if (GUN.fall) { // tumbling to the floor
