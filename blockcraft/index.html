@@ -12225,5 +12225,25 @@ else startTitleWorld();
 requestAnimationFrame(frame);
 
 </script>
+<div id="bcNotice" role="dialog" aria-modal="true" aria-labelledby="bcNoticeT" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.72);font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;touch-action:auto;-webkit-user-select:text;user-select:text">
+  <div style="width:min(440px,100%);background:#1d1f24;color:#eceff4;border:1px solid rgba(255,255,255,.14);border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.6);padding:24px 22px 20px;text-align:center;line-height:1.5">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f0b44c;margin-bottom:8px">Notice</div>
+    <h2 id="bcNoticeT" style="margin:0 0 10px;font-size:22px;font-weight:800">Blockcraft has been discontinued</h2>
+    <p style="margin:0 0 10px;font-size:15px;color:#c9ced8">Blockcraft is no longer in active development and will not receive any further updates.</p>
+    <p style="margin:0 0 18px;font-size:15px;color:#c9ced8">The game remains fully playable, and your saved worlds are unaffected. Thank you for playing.</p>
+    <button id="bcNoticeOk" type="button" style="font:inherit;font-weight:800;font-size:16px;padding:11px 28px;border:0;border-radius:8px;background:#4c8bf5;color:#fff;cursor:pointer;touch-action:manipulation">Continue</button>
+  </div>
+</div>
+<script>
+(function () {
+  var n = document.getElementById('bcNotice'), ok = document.getElementById('bcNoticeOk');
+  var stop = function (e) { if (document.body.contains(n)) e.stopPropagation(); };
+  ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'wheel', 'keydown', 'keyup'].forEach(function (t) { n.addEventListener(t, stop); });
+  var close = function () { if (n.parentNode) n.parentNode.removeChild(n); };
+  ok.addEventListener('click', close);
+  ok.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); close(); } });
+  try { ok.focus(); } catch (e) {}
+})();
+</script>
 </body>
 </html>
