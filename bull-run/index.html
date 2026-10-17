@@ -87,6 +87,9 @@
   .ranges { display: flex; gap: 4px; padding: 4px 16px 0; }
   .ranges button { padding: 4px 10px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--muted); }
   .ranges button.on { background: var(--panel-2); color: var(--text); }
+  #nextMove { margin-left: auto; align-self: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 4px 10px; border-radius: 999px; background: var(--panel-2); }
+  #nextMove.soon { color: var(--gold); background: rgba(245, 196, 81, .14); }
+  .stock .t .tipmark { font-size: 11px; }
   .chartwrap { flex: 1; min-height: 180px; position: relative; padding: 6px 8px 8px; }
   #chart { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
   .tip { position: absolute; top: 10px; left: 16px; pointer-events: none; background: rgba(10, 14, 22, .9); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 9px; font-size: 12px; line-height: 1.3; display: none; }
@@ -248,7 +251,7 @@
           </div>
         </div>
         <div class="ranges" id="ranges">
-          <button data-r="63">3M</button><button data-r="252" class="on">1Y</button><button data-r="756">3Y</button><button data-r="0">All</button>
+          <button data-r="63">3M</button><button data-r="252" class="on">1Y</button><button data-r="756">3Y</button><button data-r="0">All</button><span id="nextMove" class="num">—</span>
         </div>
         <div class="chartwrap"><canvas id="chart"></canvas><div class="tip" id="tip"></div></div>
       </div>
@@ -311,7 +314,7 @@
 
 <div class="modal" id="mTip" hidden><div class="dlg">
   <h1>The back room</h1>
-  <p>Nothing in here is legal. Every deal raises the regulator's suspicion (your <b style="color:var(--text)">heat</b>), and the chance of being caught climbs with it. Lie low and the heat fades. <b style="color:var(--down)">Three convictions and you go to prison.</b></p>
+  <p><b style="color:var(--text)">The market is paused while you're in here.</b> Nothing in here is legal. Every deal raises the regulator's suspicion (your <b style="color:var(--text)">heat</b>), and the chance of being caught climbs with it. Lie low and the heat fades. <b style="color:var(--down)">Three convictions and you go to prison.</b></p>
   <div class="back">
     <div class="deal"><h3>🕵️ Insider info</h3><p>A tip about something that is going to happen: a deal, a scandal, an earnings result or a crash. Tips always come true.</p><div class="meta">Price <b id="tipPrice" class="num">$0</b> · caught <b id="tipRisk">0%</b></div><div class="act"><button class="btn primary" id="tipGo">Buy a tip</button></div></div>
     <div class="deal" id="pumpDeal"><h3>📣 Pump and dump</h3><p>Pay a crew to spread fake rumours about <b id="pumpName">the selected stock</b>. It climbs for three market updates, then collapses on the fourth. Be out before it does.</p><div class="meta">Price <b id="pumpPrice" class="num">$0</b> · caught <b id="pumpRisk">0%</b></div><div class="act"><button class="btn primary" id="pumpGo">Start the pump</button></div></div>
@@ -618,6 +621,7 @@ function showTip() {
   $('pumpDeal').classList.toggle('off', sel === PF || G.pending.some(e => e.type === 'pump')); $('pumpGo').disabled = sel === PF || G.cash < pumpPrice() || G.pending.some(e => e.type === 'pump');
   $('loanOwed').textContent = fmt(G.debt, 0); $('loanMax').textContent = fmt(loanMax(), 0); $('loanPay').disabled = G.debt <= 0 || G.cash <= 0; $('loan1').disabled = loanMax() < 500; $('loan2').disabled = loanMax() < 500;
   $('bribePrice').textContent = fmt(bribePrice(), 0); $('heatNow').textContent = G.heat; $('bribeGo').disabled = G.cash < bribePrice() || G.heat === 0;
+  if (speed) { backRoomResume = speed; setSpeed(0); }
   openModal('mTip');
 }
 function bust(fine, why) { // caught: a fine (selling holdings if the cash is not there), the heat resets, and a third conviction means prison
@@ -626,32 +630,49 @@ function bust(fine, why) { // caught: a fine (selling holdings if the cash is no
   toast('Caught!', 'down', `Fined ${fmt(fine, 0)} · conviction ${G.busts} of 3`); snd && Sound.alarm(); save(); renderAll();
   if (G.busts >= 3) prison();
 }
+// When does the market next move, and when does a scheduled update land? The update on tick day T is
+// computed at T's open and shows up when T closes. A tip always lands at least MIN_LEAD trading days out
+// (about 15 seconds or more), so there is time to act on it.
+const MIN_LEAD = 9;
+const updateAtOrAfter = d => Math.ceil(d / TICK) * TICK;
+const nextMoveDay = () => updateAtOrAfter(G.day);
+const secsUntil = T => Math.max(0, (T - G.day + 1 - dayFrac) * DAY_SECS);
+const leadUpdate = () => updateAtOrAfter(Math.max(G.day + 1, G.day + MIN_LEAD));
+const inSecs = T => `in about ${Math.round(secsUntil(T) / 5) * 5 || 5} seconds`;
+function reportUpdate(i) { // the update at which company i next reports earnings
+  for (let T = updateAtOrAfter(G.day + 1); T < G.day + EARN + TICK * 2; T += TICK) if ((T + G.stocks[i].earn) % EARN < TICK) return T;
+  return Infinity;
+}
 function buyTip() {
   const cost = tipPrice(); if (G.cash < cost) return;
   const risk = tipRisk(); G.cash -= cost; G.heat++; logTrade('Bought <b>insider info</b>', -cost); closeModals();
   if (Math.random() < risk) { bust(Math.max(cost * 2, Math.round(G.cash * 0.3)), 'Regulators catch you insider trading.'); return; }
-  const r = Math.random(); let text, stock;
+  const r = Math.random(); let text, stock, dir = 0;
   if (r < 0.6) { // a company event in a few days
-    const i = Math.floor(Math.random() * COMPANIES.length), good = Math.random() < 0.7, size = rand(0.08, 0.22) * (good ? 1 : -1), days = 1 + Math.floor(Math.random() * 2) * TICK;
+    const i = Math.floor(Math.random() * COMPANIES.length), good = Math.random() < 0.7, size = rand(0.08, 0.22) * (good ? 1 : -1), T = leadUpdate(); dir = good ? 1 : -1;
     const what = good ? pick(['will announce a huge contract', 'is about to be taken over', 'will unveil a surprise product', 'will report record sales']) : pick(['is about to be hit by a scandal', 'will recall its main product', 'is about to lose its biggest customer']);
-    G.pending.push({ day: G.day + days, type: 'stock', i, size, text: (good ? pick(NEWS.good) : pick(NEWS.bad)).replace('{n}', COMPANIES[i].n) });
-    text = `Tip: ${COMPANIES[i].n} ${what} at the ${days > 1 ? 'update after next' : 'next market update'} (${good ? 'up' : 'down'} about ${Math.round(Math.abs(size) * 100)}%).`; stock = i;
+    G.pending.push({ day: T, type: 'stock', i, size, tip: true, text: (good ? pick(NEWS.good) : pick(NEWS.bad)).replace('{n}', COMPANIES[i].n) });
+    text = `Tip: ${COMPANIES[i].n} ${what} ${inSecs(T)} (${good ? 'up' : 'down'} about ${Math.round(Math.abs(size) * 100)}%).`; stock = i;
   } else if (r < 0.88) { // the next earnings result
-    let best = -1, soon = 99; COMPANIES.forEach((c, i) => { const u = (EARN - ((G.day + G.stocks[i].earn) % EARN)) % EARN || EARN; if (u < soon) { soon = u; best = i; } });
-    const st = G.stocks[best]; if (st.nextBeat === null) st.nextBeat = Math.random() < 0.52;
-    text = `Tip: ${COMPANIES[best].n} will ${st.nextBeat ? 'beat' : 'miss'} expectations when it reports in ${soon} day${soon === 1 ? '' : 's'}.`; stock = best;
-  } else if (!G.crashIn && Math.random() < 0.5) { G.pending.push({ day: G.day + 1 + Math.floor(Math.random() * 2) * TICK, type: 'crash' }); text = 'Tip: a crash is coming within the next two market updates. Get out before then.'; }
+    // the soonest report that is still far enough away to act on (crypto has no earnings)
+    let best = -1, when = Infinity; COMPANIES.forEach((c, i) => { if (c.s === 'crypto' || isLocked(i)) return; const T = reportUpdate(i); if (T >= G.day + MIN_LEAD && T < when) { when = T; best = i; } });
+    const st = G.stocks[best]; if (st.nextBeat === null) st.nextBeat = Math.random() < 0.52; dir = st.nextBeat ? 1 : -1;
+    text = `Tip: ${COMPANIES[best].n} will ${st.nextBeat ? 'beat' : 'miss'} expectations when it reports, ${inSecs(when)}.`; stock = best;
+  } else if (!G.crashIn && Math.random() < 0.5) { const T = leadUpdate(); G.pending.push({ day: T, type: 'crash' }); text = `Tip: a crash is coming ${inSecs(T)}. Get out of the market before then.`; }
   else { const best = [...COMPANIES.keys()].sort((a, b) => G.stocks[b].mom - G.stocks[a].mom)[0]; text = `Tip: nothing big is brewing. The strongest momentum right now is in ${COMPANIES[best].n}.`; stock = best; }
-  addNews(text, 0, 'tip', stock); toast('Tip received', 'gold', text.replace(/^Tip: /, '')); snd && Sound.trade(true); save(); renderAll();
+  addNews(text, 0, 'tip', stock); toast('Tip received', 'gold', text.replace(/^Tip: /, '')); snd && Sound.trade(true); save();
+  // take the player straight to the stock, ready to trade the right way
+  if (stock !== undefined && !isLocked(stock)) { select(stock); const h = G.hold[COMPANIES[stock].t]; setSide(dir > 0 ? 'buy' : dir < 0 ? (h && h.qty > 0 ? 'sell' : 'short') : 'buy'); if (dir) setQty(maxQty()); if (innerWidth <= 760) showTab('colMid'); }
+  renderAll();
 }
 function pumpStart() {
   if (sel === PF || G.pending.some(e => e.type === 'pump')) return; const cost = pumpPrice(); if (G.cash < cost) return;
   const risk = Math.min(0.7, tipRisk() + 0.05), i = sel, c = COMPANIES[i]; G.cash -= cost; G.heat += 2; logTrade(`Paid for a <b>pump on ${c.t}</b>`, -cost); closeModals();
   if (Math.random() < risk) { bust(Math.max(cost * 2, Math.round(G.cash * 0.35)), 'Regulators trace the fake rumours back to you.'); return; }
   const lines = [`Wild rumours: ${c.n} is about to be bought out`, `${c.n} shares surge as the buyout talk spreads`, `Everyone is piling into ${c.n}`];
-  let total = 0; for (let d = 1; d <= 3; d++) { const size = rand(0.07, 0.13); total += size; G.pending.push({ day: G.day + 1 + (d - 1) * TICK, type: 'pump', i, size, text: lines[d - 1] }); }
-  G.pending.push({ day: G.day + 1 + 3 * TICK, type: 'dump', i, size: -total * 1.25, text: `The rumours about ${c.n} were fake. Shares collapse.` });
-  addNews(`Your pump on ${c.n} runs for the next three market updates and collapses on the fourth. Be out before then.`, 0, 'tip', i); toast('The pump is on', 'gold', `${c.t} climbs for three updates, then falls on the fourth.`); save(); renderAll();
+  const T0 = leadUpdate(); let total = 0; for (let d = 0; d < 3; d++) { const size = rand(0.07, 0.13); total += size; G.pending.push({ day: T0 + d * TICK, type: 'pump', i, size, tip: d === 0, text: lines[d] }); }
+  G.pending.push({ day: T0 + 3 * TICK, type: 'dump', i, size: -total * 1.25, text: `The rumours about ${c.n} were fake. Shares collapse.` });
+  addNews(`Your pump on ${c.n} starts ${inSecs(T0)}, climbs for three market updates and collapses on the fourth. Be out before then.`, 0, 'tip', i); select(i); setSide('buy'); setQty(maxQty()); if (innerWidth <= 760) showTab('colMid'); toast('The pump is on', 'gold', `${c.t} climbs for three updates, then falls on the fourth.`); save(); renderAll();
 }
 function borrow(frac) { const amt = Math.min(loanMax(), Math.max(1000, Math.round((worth() + G.debt) * frac / 100) * 100)); if (amt < 500) return; G.debt += amt; G.cash += amt; if (G.debtAge === 0) G.debtAge = 1; logTrade('<b>Loan shark</b> loan', amt); toast(`Borrowed ${fmt(amt, 0)}`, 'gold', '2% a week. Pay him back within six months.'); closeModals(); save(); renderAll(); }
 function repay() { const amt = Math.min(G.cash, G.debt); if (amt <= 0) return; G.cash -= amt; G.debt -= amt; if (G.debt < 1) { G.debt = 0; G.debtAge = 0; } logTrade('<b>Loan shark</b> repaid', -amt); toast(`Repaid ${fmt(amt, 0)}`, 'up', G.debt > 0 ? `${fmt(G.debt, 0)} still owed` : 'Debt cleared'); closeModals(); save(); renderAll(); }
@@ -708,7 +729,7 @@ function buildList() {
   pf.addEventListener('click', () => { select(PF); if (innerWidth <= 760) showTab('colMid'); }); listEl.appendChild(pf);
   COMPANIES.forEach((c, i) => {
     const row = document.createElement('div'); row.className = 'stock'; row.dataset.i = i;
-    row.innerHTML = `<div><div class="t">${c.t}<span class="own" hidden></span></div><div class="n">${c.n}</div></div><canvas width="128" height="52"></canvas><div class="p num"><b></b><span></span></div>`;
+    row.innerHTML = `<div><div class="t">${c.t}<span class="own" hidden></span><span class="tipmark" hidden title="Your tip lands on this stock">🕵️</span></div><div class="n">${c.n}</div></div><canvas width="128" height="52"></canvas><div class="p num"><b></b><span></span></div>`;
     row.addEventListener('click', () => { if (isLocked(i)) { toast(`${c.n} unlocks at ${fmt(c.unlock, 0)}`, 'gold', 'Reach that net worth once and it stays unlocked'); return; } select(i); if (innerWidth <= 760) showTab('colMid'); });
     listEl.appendChild(row); sparks.push(row.querySelector('canvas'));
   });
@@ -722,6 +743,7 @@ function renderList() {
     row.classList.toggle('sel', i === sel);
     if (isLocked(i)) { row.classList.add('locked'); row.querySelector('.p b').textContent = '🔒 ' + fmt(COMPANIES[i].unlock, 0); row.querySelector('.p span').textContent = ''; continue; } row.classList.remove('locked');
     row.querySelector('.own').hidden = !((own && own.qty > 0) || G.short[COMPANIES[i].t]);
+    row.querySelector('.tipmark').hidden = !G.pending.some(e => e.tip && e.i === i);
     row.querySelector('.p b').textContent = fmt(p);
     const s = row.querySelector('.p span'); s.textContent = pct(ch); s.className = cls(ch);
     if (lastShown[i] !== undefined && Math.abs(p - lastShown[i]) > 0.005 * p) { row.classList.remove('flash-up', 'flash-down'); void row.offsetWidth; row.classList.add(p > lastShown[i] ? 'flash-up' : 'flash-down'); lastShown[i] = p; }
@@ -744,7 +766,7 @@ function renderHeader() {
   $('debtBox').hidden = G.debt <= 0; $('debt').textContent = fmtShort(G.debt);
   $('date').textContent = fmtDate(dateOf(G.day)); $('dayNo').textContent = G.daily ? `Day ${Math.min(G.day + 1, DAILY_DAYS)} of ${DAILY_DAYS}` : `Day ${G.day + 1} · Year ${Math.floor(G.day / 252) + 1}`;
   $('mood').textContent = G.mkt > 0.4 ? '🐂 Bull market' : G.mkt < -0.4 ? '🐻 Bear market' : 'Mixed';
-  $('dayBar').style.width = (dayFrac * 100).toFixed(1) + '%';
+  { const T = nextMoveDay(), left = secsUntil(T), done = clamp((G.day - T + TICK - 1 + dayFrac) / TICK, 0, 1); $('dayBar').style.width = (done * 100).toFixed(1) + '%'; $('nextMove').textContent = speed ? `Next move in ${Math.ceil(left)}s` : 'Paused'; $('nextMove').classList.toggle('soon', speed && left < 5); }
   $('tipBtn').classList.toggle('hot', G.heat > 0); $('tipBtn').title = 'Back room (I)' + (G.heat ? ` · heat ${G.heat}` : '') + (G.busts ? ` · ${G.busts} conviction${G.busts > 1 ? 's' : ''}` : '');
 }
 function renderChartHead() {
@@ -885,7 +907,8 @@ function toast(text, kind = '', small = '') {
   while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
 }
 function openModal(id) { $(id).hidden = false; }
-function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); }
+let backRoomResume = 0; // the market is paused while you are in the back room
+function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); if (backRoomResume) { const sp = backRoomResume; backRoomResume = 0; setSpeed(sp); } }
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModals));
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModals(); }));
 function showGoals() {
