@@ -23,7 +23,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=8">
+<link rel="stylesheet" href="arcade.css?v=9">
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
@@ -103,7 +103,7 @@
   <p>Found a bug, or a game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=55"></script>
+<script src="games.js?v=56"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
@@ -163,7 +163,7 @@ function tile(g) {
   a.className = 'tile'; a.href = playUrl(g);
   const badge = Arcade.badge(g), stat = Arcade.stat(g);
   a.innerHTML = `
-    <div class="thumb"><img alt="" loading="lazy">${badge ? `<span class="badge${badge === 'UPDATED' ? ' upd' : ''}">${badge}</span>` : ''}</div>
+    <div class="thumb"><img alt="" loading="lazy">${badge ? `<span class="badge${badge === 'UPDATED' ? ' upd' : badge === 'DISCONTINUED' ? ' off' : ''}">${badge}</span>` : ''}</div>
     <div class="info">
       <h2></h2>
       <p class="desc"></p>
