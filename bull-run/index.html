@@ -175,6 +175,13 @@
   .btn:hover { filter: brightness(1.1); }
   .goals { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 10px; }
   .goal { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 12px; color: var(--muted); }
+  .goal em { display: block; font-style: normal; color: #c4b5fd; margin-top: 3px; }
+  #repGrid { grid-template-columns: repeat(3, 1fr); } #repGrid div { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; line-height: 1.15; } #repGrid b { display: block; font-size: 16px; } #repGrid span { font-size: 11px; color: var(--muted); }
+  .stock.locked { opacity: .55; cursor: default; } .stock.locked .p b { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .hold.op .t { color: var(--gold) !important; } .hold .tag.op { background: rgba(245, 196, 81, .16); color: var(--gold); }
+  .daily #date::before { content: 'DAILY · '; color: var(--gold); }
+  #side button.opt { display: none; } .opts #side button.opt { display: block; }
+  .seg button.on.call, .seg button.on.put { background: var(--gold); color: #2a1f00; } #go.call, #go.put { background: var(--gold); color: #2a1f00; box-shadow: 0 6px 24px rgba(245, 196, 81, .3); }
   .goal b { display: block; font-size: 14px; color: var(--text); } .goal.done { border-color: rgba(245, 196, 81, .4); } .goal.done b { color: var(--gold); }
   .setrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 
@@ -196,7 +203,7 @@
     #tabs button { flex: 1; padding: 10px 4px 9px; font-size: 11px; font-weight: 800; letter-spacing: .04em; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 3px; }
     #tabs button i { font-style: normal; font-size: 18px; } #tabs button.on { color: var(--text); }
     .chead .price b { font-size: 22px; } .chead .name b { font-size: 17px; }
-    .trade { grid-template-columns: 1fr 1fr; } .trade .seg { grid-column: 1 / -1; } .trade .seg button { flex: 1; }
+    .trade { grid-template-columns: 1fr 1fr; } .trade .seg { grid-column: 1 / -1; flex-wrap: wrap; } .trade .seg button { flex: 1 1 30%; padding: 7px 8px; }
     .presets { justify-content: flex-end; }
     .chartwrap { min-height: 220px; }
   }
@@ -247,7 +254,7 @@
       </div>
       <div class="card">
         <div class="trade">
-          <div class="seg" id="side"><button class="on buy" data-side="buy">Buy</button><button class="sell" data-side="sell">Sell</button><button class="short" data-side="short">Short</button><button class="cover" data-side="cover">Cover</button></div>
+          <div class="seg" id="side"><button class="on buy" data-side="buy">Buy</button><button class="sell" data-side="sell">Sell</button><button class="short" data-side="short">Short</button><button class="cover" data-side="cover">Cover</button><button class="opt call" data-side="call">Call</button><button class="opt put" data-side="put">Put</button></div>
           <div class="qty"><button id="qMinus">−</button><input id="qty" type="number" min="0" step="1" value="10" inputmode="numeric"><button id="qPlus">+</button></div>
           <div class="presets"><button data-q="1">1</button><button data-q="10">10</button><button data-q="100">100</button><button data-q="max">Max</button></div>
           <div class="sum"><span>Total <b id="total" class="num">$0.00</b></span><span id="after" class="num"></span><span class="pos" id="posInfo"></span></div>
@@ -291,7 +298,9 @@
   <ul>
     <li><b>Pick a stock</b> on the left to see its chart, then <b>Buy</b> or <b>Sell</b> under the chart.</li>
     <li><b>Read the news.</b> Headlines move prices: earnings, scandals, booms and the odd crash. <b>Rumours</b> (👂) arrive a day or two early and are right more often than not.</li>
-    <li><b>Earnings</b> come every quarter. The chart header counts down to each company's next report.</li>
+    <li><b>Earnings</b> come every quarter. The chart header counts down to each company's next report. Every year you get a <b>report card</b> against the market.</li>
+    <li><b>Reputation</b>: your best net worth unlocks things for good: crypto at $25,000, half-price back-room deals at $50,000, options (calls and puts) at $100,000.</li>
+    <li><b>Daily challenge</b> (in the menu): the same one-year market for everyone who plays today. One score, copy it and compare.</li>
     <li>Some companies pay a <b>dividend</b> every quarter just for holding their shares.</li>
     <li>Press 🕵️ for the <b>back room</b>: insider tips that always come true, pump-and-dump schemes, a loan shark and a regulator who can be bribed. All of it has consequences. Three convictions and you go to <b>prison</b> for a year.</li>
     <li><b>Keys</b>: <kbd>Space</kbd> pauses (there is no fast-forward: the market runs at one speed). <kbd>B</kbd> <kbd>S</kbd> <kbd>H</kbd> <kbd>C</kbd> pick buy, sell, short or cover, <kbd>↑</kbd> <kbd>↓</kbd> change stock, <kbd>Enter</kbd> trades.</li>
@@ -311,6 +320,13 @@
   </div>
   <div class="row"><button class="btn" data-close>Leave</button></div>
 </div></div>
+<div class="modal" id="mReport" hidden><div class="dlg">
+  <h1 id="repT">Year report</h1>
+  <p id="repSub"></p>
+  <p id="repRank" style="font-size:22px;font-weight:900;color:var(--gold);margin:4px 0 10px" hidden></p>
+  <div class="goals" id="repGrid"></div>
+  <div class="row"><button class="btn primary" id="repGo">Continue</button><button class="btn" id="repShare" hidden>Copy score to share</button></div>
+</div></div>
 <div class="modal" id="mPrison" hidden><div class="dlg">
   <h1>PRISON</h1>
   <p id="prisonText"></p>
@@ -328,6 +344,7 @@
   <p id="menuStats"></p>
   <div class="setrow"><span>Sound</span><button class="btn" id="sndBtn">On</button></div>
   <div class="setrow"><span>How to play</span><button class="btn" id="howBtn">Show</button></div>
+  <div class="setrow"><span id="dailyLabel">Daily challenge</span><button class="btn" id="dailyBtn">Play today's market</button></div>
   <div class="setrow"><span>Start over with $10,000</span><button class="btn danger" id="resetBtn">New game</button></div>
   <div class="row"><button class="btn" data-close>Close</button></div>
 </div></div>
@@ -337,19 +354,28 @@
 // =====================================================================
 //  Bull Run: a stock-trading game. One file, no servers; everything is saved in localStorage.
 // =====================================================================
-const SAVE_KEY = 'bullRunSave', START_CASH = 10000, DAY_SECS = 1.6, MAX_HIST = 1300;
+const SAVE_KEY = 'bullRunSave', DAILY_KEY = 'bullRunDaily', DAILY_DAYS = 252, START_CASH = 10000, DAY_SECS = 1.6, MAX_HIST = 1300;
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+// The market's own dice. In the daily challenge they are seeded from the date, so everyone gets the same prices and news;
+// anything the player does (tips, pumps) uses Math.random so it cannot knock the shared market off course.
+function mulberry32(a) { return { next() { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }, get state() { return a; }, set state(v) { a = v | 0; } }; }
+function hashStr(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+const M = { g: null };
+const mr = () => M.g ? M.g.next() : Math.random();
+const mrand = (a, b) => a + mr() * (b - a);
+const mpick = a => a[Math.floor(mr() * a.length)];
+function mgauss() { let u = 0, v = 0; while (!u) u = mr(); while (!v) v = mr(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 const fmt = (n, d = 2) => (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtShort = n => Math.abs(n) >= 1e6 ? (n < 0 ? '-' : '') + '$' + (Math.abs(n) / 1e6).toFixed(2) + 'M' : fmt(n, Math.abs(n) >= 1e4 ? 0 : 2);
 const pct = (n, sign = true) => (sign && n > 0 ? '+' : '') + (n * 100).toFixed(2) + '%';
 const cls = n => n > 0.00005 ? 'up' : n < -0.00005 ? 'down' : 'flat';
 
 // ---- the companies ----
-const SECTORS = { tech: 'Technology', energy: 'Energy', finance: 'Finance', retail: 'Retail', health: 'Health', fun: 'Entertainment' };
+const SECTORS = { tech: 'Technology', energy: 'Energy', finance: 'Finance', retail: 'Retail', health: 'Health', fun: 'Entertainment', crypto: 'Crypto' };
 const COMPANIES = [
   { t: 'CUBE', n: 'Cubeware Systems', s: 'tech', p: 142, vol: 0.0165, drift: 0.0005, div: 0 },
   { t: 'POLY', n: 'Polytrack Motors', s: 'tech', p: 48, vol: 0.0225, drift: 0.0006, div: 0 },
@@ -363,6 +389,9 @@ const COMPANIES = [
   { t: 'HEAL', n: 'Healblock Pharma', s: 'health', p: 76, vol: 0.0203, drift: 0.0005, div: 0.01 },
   { t: 'BRUT', n: 'Brute Fitness', s: 'health', p: 12, vol: 0.0285, drift: 0.0006, div: 0 },
   { t: 'OUTP', n: 'Outpost Stores', s: 'retail', p: 38, vol: 0.0142, drift: 0.0003, div: 0.03 },
+  // unlocked by reputation (see GOALS): wild, no earnings, no dividends
+  { t: 'BTCB', n: 'Bitcube', s: 'crypto', p: 412, vol: 0.038, drift: 0.0006, div: 0, unlock: 25000 },
+  { t: 'DOGE', n: 'Dogeblock', s: 'crypto', p: 2.4, vol: 0.052, drift: 0.0004, div: 0, unlock: 25000 },
 ];
 const NEWS = {
   good: ['{n} beats earnings forecasts by a mile', '{n} lands a huge government contract', 'Analysts upgrade {n} to "strong buy"', '{n} announces a surprise buyback', 'Record quarter at {n} sends shares soaring', '{n} unveils a product nobody saw coming', 'Takeover rumours swirl around {n}', '{n} CEO: "best year in our history"'],
@@ -372,8 +401,16 @@ const NEWS = {
   mktGood: ['Markets surge as interest rates are cut', 'Record jobs report lifts every sector', 'Trade deal signed; stocks jump', 'Inflation cools, markets celebrate'],
   mktBad: ['Markets tumble on recession fears', 'Interest rates raised more than expected', 'Bank failure rattles investors', 'Oil shock sends markets lower'],
   crash: ['BLACK MONDAY: markets in free fall', 'Panic selling grips the exchange', 'Global crisis: biggest one-day drop in years'],
+  cryptoGood: ['A celebrity tweets about {n}', '{n} listed on a major exchange', 'Whales are buying {n}', '{n} to the moon, say forums'],
+  cryptoBad: ['Exchange holding {n} is hacked', 'Regulators threaten to ban {n}', '{n} founder vanishes with the keys', 'Whales dump {n}'],
 };
-const GOALS = [[12500, 'First profit', 'Reach $12,500'], [25000, 'Doubled up', 'Reach $25,000'], [50000, 'Serious money', 'Reach $50,000'], [100000, 'Six figures', 'Reach $100,000'], [250000, 'Quarter million', 'Reach $250,000'], [500000, 'Half a million', 'Reach $500,000'], [1000000, 'Millionaire', 'Reach $1,000,000'], [10000000, 'Tycoon', 'Reach $10,000,000']];
+const GOALS = [[12500, 'First profit', 'Reach $12,500'], [25000, 'Doubled up', 'Reach $25,000', 'Unlocks crypto'], [50000, 'Serious money', 'Reach $50,000', 'Back-room deals at half price'], [100000, 'Six figures', 'Reach $100,000', 'Unlocks options'], [250000, 'Quarter million', 'Reach $250,000'], [500000, 'Half a million', 'Reach $500,000'], [1000000, 'Millionaire', 'Reach $1,000,000'], [10000000, 'Tycoon', 'Reach $10,000,000']];
+// reputation: your best net worth ever, across the career game and any daily challenge
+let repBest = 0;
+function refreshRep() { repBest = 0; try { for (const k of [SAVE_KEY, DAILY_KEY]) { const o = JSON.parse(localStorage.getItem(k)); const g = o && o.stocks ? o : o && o.g; if (g && g.stats) repBest = Math.max(repBest, g.stats.best); } } catch (e) {} }
+function rep() { return Math.max(G ? G.stats.best : 0, repBest); }
+const unlocked = amt => rep() >= amt;
+const isLocked = i => i >= 0 && COMPANIES[i].unlock && !unlocked(COMPANIES[i].unlock);
 
 // ---- state ----
 let G = null;           // the saved game
@@ -390,42 +427,54 @@ function newGame() {
     worthHist: [], stats: { trades: 0, realised: 0, dividends: 0, best: START_CASH }, goals: [],
   };
   // a year of history to look back on, so the charts aren't empty
-  for (let i = 0; i < COMPANIES.length; i++) {
-    const s = g.stocks[i], c = COMPANIES[i]; let p = c.p, mood = 0;
-    for (let d = 0; d < 252; d++) { mood = clamp(mood * 0.97 + gauss() * 0.12, -1, 1); s.closes.unshift(+p.toFixed(2)); p /= Math.exp(c.drift + mood * 0.002 + c.vol * gauss()); }
-    s.open = s.hi = s.lo = c.p;
-  }
+  for (let i = 0; i < COMPANIES.length; i++) genHistory(g.stocks[i], COMPANIES[i]);
+  g.options = []; g.year = newYear(START_CASH, 0);
   for (let d = 0; d < 252; d++) g.worthHist.push(START_CASH);
   g.news.push({ day: 0, h: 'The exchange opens. You have $10,000 to invest.', fx: 0, kind: 'info' });
   return g;
 }
-function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && s.stocks && s.stocks.length === COMPANIES.length) return s; } catch (e) {} return null; }
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) {} }
+function genHistory(s, c) {
+  let p = c.p, mood = 0; s.closes = [];
+  for (let d = 0; d < 252; d++) { mood = clamp(mood * 0.97 + mgauss() * 0.12, -1, 1); s.closes.unshift(+p.toFixed(2)); p /= Math.exp(c.drift + mood * 0.002 + c.vol * mgauss()); }
+  s.open = s.hi = s.lo = c.p;
+}
+function newYear(startWorth, startDay) { return { start: startWorth, startDay, trades: [], div: 0, fines: 0, n: 0 }; }
+function migrate(g) { // saves from earlier versions
+  if (g.crashIn === undefined) g.crashIn = 0; if (!g.pending) g.pending = []; if (!g.heat) g.heat = 0; if (!g.short) g.short = {}; if (!g.debt) g.debt = 0; if (!g.debtAge) g.debtAge = 0; if (!g.busts) g.busts = 0; if (!g.log) g.log = [];
+  for (const st of g.stocks) if (st.nextBeat === undefined) st.nextBeat = null;
+  while (g.stocks.length < COMPANIES.length) { const i = g.stocks.length, c = COMPANIES[i], st = { closes: [], shock: 0, mom: 0, earn: (i * 5) % 63, open: c.p, hi: c.p, lo: c.p, nextBeat: null }; genHistory(st, c); for (let d = 252; d < g.worthHist.length; d++) { st.closes.push(+(st.closes[st.closes.length - 1] * Math.exp(c.drift + c.vol * mgauss())).toFixed(2)); } g.stocks.push(st); }
+  for (const k in SECTORS) if (g.sect[k] === undefined) g.sect[k] = 0;
+  if (!g.options) g.options = []; if (!g.year) g.year = newYear(g.worthHist[g.worthHist.length - 1] || START_CASH, Math.floor(g.day / 252) * 252);
+  return g;
+}
+function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && s.stocks && s.stocks.length >= 12) return migrate(s); } catch (e) {} return null; }
+function save() { try { if (G.daily) { G.rngState = M.g.state; localStorage.setItem(DAILY_KEY, JSON.stringify({ date: G.daily, g: G })); } else localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) {} }
 
 // ---- prices ----
 const lastClose = i => G.stocks[i].closes[G.stocks[i].closes.length - 1];
 const price = i => live[i];
 function dayTarget(i) { // where today will close, decided at the open
   const s = G.stocks[i], c = COMPANIES[i];
-  const r = c.drift * 0.6 + c.vol * c.vol / 2 + G.mkt * 0.0008 + G.sect[c.s] * 0.0006 + s.shock + s.mom * 0.15 + c.vol * gauss();
+  const r = c.drift * 0.6 + c.vol * c.vol / 2 + G.mkt * 0.0008 + G.sect[c.s] * 0.0006 + s.shock + s.mom * 0.15 + c.vol * mgauss();
   return lastClose(i) * Math.exp(clamp(r, -0.4, 0.4));
 }
 let targets = [];
 function openDay() {
   // the mood of the market and each sector drifts a little every day
-  G.mkt = clamp(G.mkt * 0.985 + gauss() * 0.08, -1, 1);
-  for (const k in G.sect) G.sect[k] = clamp(G.sect[k] * 0.97 + gauss() * 0.1, -1, 1);
+  G.mkt = clamp(G.mkt * 0.985 + mgauss() * 0.08, -1, 1);
+  for (const k in G.sect) G.sect[k] = clamp(G.sect[k] * 0.97 + mgauss() * 0.1, -1, 1);
   for (let i = 0; i < COMPANIES.length; i++) { const s = G.stocks[i]; s.shock *= 0.6; s.open = lastClose(i); s.hi = s.lo = s.open; }
   // scheduled: earnings every quarter per company; dividends with them
   for (let i = 0; i < COMPANIES.length; i++) {
     const s = G.stocks[i], c = COMPANIES[i];
     // two days before a report, whispers sometimes get out (and are right three times in four)
-    if ((G.day + s.earn) % 63 === 61) { s.nextBeat = Math.random() < 0.52; if (Math.random() < 0.55) { const say = Math.random() < 0.75 ? s.nextBeat : !s.nextBeat; addNews((say ? pick(['Whispers that {n} will beat expectations this week', 'Analysts expect a strong report from {n}']) : pick(['Rumours of a weak quarter at {n}', 'Insiders nervous ahead of the {n} report'])).replace('{n}', c.n), 0, 'rumour', i); } }
+    if (c.s === 'crypto') { s.mom *= 0.9; continue; }
+    if ((G.day + s.earn) % 63 === 61) { s.nextBeat = mr() < 0.52; if (mr() < 0.55) { const say = mr() < 0.75 ? s.nextBeat : !s.nextBeat; addNews((say ? mpick(['Whispers that {n} will beat expectations this week', 'Analysts expect a strong report from {n}']) : mpick(['Rumours of a weak quarter at {n}', 'Insiders nervous ahead of the {n} report'])).replace('{n}', c.n), 0, 'rumour', i); } }
     if ((G.day + s.earn) % 63 === 0 && G.day > 0) {
-      const beat = s.nextBeat === null ? Math.random() < 0.52 : s.nextBeat, size = rand(0.03, 0.13) * (beat ? 1 : -1); s.nextBeat = null;
+      const beat = s.nextBeat === null ? mr() < 0.52 : s.nextBeat, size = mrand(0.03, 0.13) * (beat ? 1 : -1); s.nextBeat = null;
       s.shock += size * 0.4; s.mom = clamp(s.mom + size * 0.15, -0.03, 0.03);
-      addNews((beat ? pick(NEWS.good.slice(0, 1).concat(['Strong results at {n}; shares jump', '{n} earnings top estimates'])) : pick(['{n} disappoints on earnings', '{n} profit falls short of estimates'])).replace('{n}', c.n), size, 'earn');
-      const q = G.hold[c.t]; if (c.div > 0 && q && q.qty > 0) { const amt = q.qty * lastClose(i) * c.div / 4; G.cash += amt; G.stats.dividends += amt; toast(`Dividend from ${c.t}: ${fmt(amt)}`, 'gold', `${q.qty} shares × ${fmt(lastClose(i) * c.div / 4)}`); logTrade(`Dividend from <b>${c.t}</b>`, amt); }
+      addNews((beat ? mpick(NEWS.good.slice(0, 1).concat(['Strong results at {n}; shares jump', '{n} earnings top estimates'])) : mpick(['{n} disappoints on earnings', '{n} profit falls short of estimates'])).replace('{n}', c.n), size, 'earn');
+      const q = G.hold[c.t]; if (c.div > 0 && q && q.qty > 0) { const amt = q.qty * lastClose(i) * c.div / 4; G.cash += amt; G.stats.dividends += amt; G.year.div += amt; toast(`Dividend from ${c.t}: ${fmt(amt)}`, 'gold', `${q.qty} shares × ${fmt(lastClose(i) * c.div / 4)}`); logTrade(`Dividend from <b>${c.t}</b>`, amt); }
     }
     s.mom *= 0.9;
   }
@@ -439,23 +488,55 @@ function openDay() {
   }
   G.pending = G.pending.filter(e => e.day > G.day);
   if (G.heat > 0 && G.day % 5 === 0) G.heat--;
-  const roll = Math.random();
+  const roll = mr();
   // a crash about once every three years, sometimes with a warning the day before; the mood then recovers over the following months
-  if (G.crashIn > 0 && --G.crashIn === 0) { const size = -rand(0.12, 0.25); G.mkt = -0.8; for (const s of G.stocks) s.shock += size * rand(0.3, 0.5); addNews(pick(NEWS.crash), size, 'mkt'); snd && Sound.alarm(); }
-  else if (roll < 0.0014 && !G.crashIn) { G.crashIn = Math.random() < 0.6 ? 2 : 1; if (G.crashIn === 2) addNews(pick(['Traders nervous as volatility spikes', 'Warning signs flash across the market', 'Whispers of trouble in the banking system']), 0, 'rumour'); }
-  else if (roll < 0.03) { const good = Math.random() < 0.5, size = rand(0.012, 0.045) * (good ? 1 : -1); G.mkt = clamp(G.mkt + size * 8, -1, 1); for (const s of G.stocks) s.shock += size * rand(0.3, 0.5); addNews(pick(good ? NEWS.mktGood : NEWS.mktBad), size, 'mkt'); }
-  else if (roll < 0.1) { const k = pick(Object.keys(SECTORS)), good = Math.random() < 0.5, size = rand(0.02, 0.07) * (good ? 1 : -1); G.sect[k] = clamp(G.sect[k] + size * 8, -1, 1); COMPANIES.forEach((c, i) => { if (c.s === k) G.stocks[i].shock += size * rand(0.3, 0.5); }); addNews(pick(good ? NEWS.sectorGood : NEWS.sectorBad).replace('{s}', SECTORS[k]), size, 'sect'); }
-  else if (roll < 0.26) { const i = Math.floor(Math.random() * COMPANIES.length), good = Math.random() < 0.5, size = rand(0.03, 0.12) * (good ? 1 : -1); G.stocks[i].shock += size * 0.4; G.stocks[i].mom = clamp(G.stocks[i].mom + size * 0.15, -0.03, 0.03); addNews(pick(good ? NEWS.good : NEWS.bad).replace('{n}', COMPANIES[i].n), size, 'stock', i); }
-  targets = COMPANIES.map((c, i) => dayTarget(i));
+  if (G.crashIn > 0 && --G.crashIn === 0) { const size = -mrand(0.12, 0.25); G.mkt = -0.8; for (const s of G.stocks) s.shock += size * mrand(0.3, 0.5); addNews(mpick(NEWS.crash), size, 'mkt'); snd && Sound.alarm(); }
+  else if (roll < 0.0014 && !G.crashIn) { G.crashIn = mr() < 0.6 ? 2 : 1; if (G.crashIn === 2) addNews(mpick(['Traders nervous as volatility spikes', 'Warning signs flash across the market', 'Whispers of trouble in the banking system']), 0, 'rumour'); }
+  else if (roll < 0.03) { const good = mr() < 0.5, size = mrand(0.012, 0.045) * (good ? 1 : -1); G.mkt = clamp(G.mkt + size * 8, -1, 1); for (const s of G.stocks) s.shock += size * mrand(0.3, 0.5); addNews(mpick(good ? NEWS.mktGood : NEWS.mktBad), size, 'mkt'); }
+  else if (roll < 0.1) { const k = mpick(Object.keys(SECTORS)), good = mr() < 0.5, size = mrand(0.02, 0.07) * (good ? 1 : -1); G.sect[k] = clamp(G.sect[k] + size * 8, -1, 1); COMPANIES.forEach((c, i) => { if (c.s === k) G.stocks[i].shock += size * mrand(0.3, 0.5); }); addNews(mpick(good ? NEWS.sectorGood : NEWS.sectorBad).replace('{s}', SECTORS[k]), size, 'sect'); }
+  else if (roll < 0.26) { const i = Math.floor(mr() * COMPANIES.length), good = mr() < 0.5, size = mrand(0.03, 0.12) * (good ? 1 : -1); G.stocks[i].shock += size * 0.4; G.stocks[i].mom = clamp(G.stocks[i].mom + size * 0.15, -0.03, 0.03); addNews(mpick(COMPANIES[i].s === 'crypto' ? (good ? NEWS.cryptoGood : NEWS.cryptoBad) : good ? NEWS.good : NEWS.bad).replace('{n}', COMPANIES[i].n), size * (COMPANIES[i].s === 'crypto' ? 1.6 : 1), 'stock', i); }
+  targets = COMPANIES.map((c, i) => dayTarget(i)); G.opened = G.day; G.targets = targets.slice();
 }
 function closeDay() {
   for (let i = 0; i < COMPANIES.length; i++) { const s = G.stocks[i]; const c = +targets[i].toFixed(2); s.closes.push(c); if (s.closes.length > MAX_HIST) s.closes.shift(); live[i] = c; s.hi = Math.max(s.hi, c); s.lo = Math.min(s.lo, c); }
   G.day++;
-  marginCalls(); loanDay();
+  marginCalls(); loanDay(); settleOptions();
   const w = worth(); G.worthHist.push(+w.toFixed(2)); if (G.worthHist.length > MAX_HIST) G.worthHist.shift();
   if (w > G.stats.best) G.stats.best = w;
   checkGoals(w);
   save();
+  if (inPrison) return;
+  if (G.daily && G.day >= DAILY_DAYS && !G.done) { G.done = true; save(); showReport(true); }
+  else if (!G.daily && G.day % 252 === 0 && G.day > 0) showReport(false);
+}
+// ---- options: a call or put on a stock, settled ten trading days later ----
+const OPT_DAYS = 10, OPT_PREMIUM = 0.05;
+function optionValue(o) { const p = price(o.i); return Math.max(0, o.type === 'call' ? p - o.strike : o.strike - p) * o.qty; }
+function settleOptions() {
+  for (const o of G.options.filter(o => o.expiry <= G.day)) {
+    const pay = optionValue(o), gain = pay - o.premium; G.cash += pay; G.stats.realised += gain; G.year.trades.push({ t: o.t, gain, what: `${o.type} on ${o.t}` });
+    logTrade(`${o.type === 'call' ? 'Call' : 'Put'} on <b>${o.qty.toLocaleString()} ${o.t}</b> expired`, pay); toast(`${o.type === 'call' ? 'Call' : 'Put'} on ${o.t} expired`, gain >= 0 ? 'up' : 'down', pay > 0 ? `Paid out ${fmt(pay)}` : 'Worthless');
+  }
+  G.options = G.options.filter(o => o.expiry > G.day);
+}
+// ---- the year-end report (and the daily challenge's final score) ----
+function marketReturn(days) { let sum = 0, n = 0; for (let i = 0; i < COMPANIES.length; i++) { const cl = G.stocks[i].closes; if (cl.length > days) { sum += cl[cl.length - 1] / cl[cl.length - 1 - days] - 1; n++; } } return n ? sum / n : 0; }
+function showReport(final) {
+  const y = G.year, w = worth(), ret = w / y.start - 1, days = G.day - y.startDay, mkt = marketReturn(days);
+  const best = y.trades.length ? y.trades.reduce((a, b) => b.gain > a.gain ? b : a) : null, worst = y.trades.length ? y.trades.reduce((a, b) => b.gain < a.gain ? b : a) : null;
+  const yearNo = Math.floor((G.day - 1) / 252) + 1;
+  $('repT').textContent = final ? 'Final score' : `Year ${yearNo} report`;
+  $('repSub').textContent = final ? `Daily challenge · ${fmtDate(new Date(G.daily + 'T12:00:00Z'))}` : `${fmtDate(dateOf(y.startDay))} to ${fmtDate(dateOf(G.day - 1))}`;
+  const rank = final ? (ret >= 2 ? '🐂 Wolf of Wall Street' : ret >= 0.75 ? '🦈 Shark' : ret >= 0.2 ? '📈 Trader' : ret >= 0 ? '🌱 Rookie' : '💸 Wiped out') : '';
+  $('repGrid').innerHTML = [[fmt(w, 0), 'Net worth'], [pct(ret), final ? 'Score' : 'Your return', cls(ret)], [pct(mkt), 'The market', cls(mkt)], [pct(ret - mkt), 'Beat the market by', cls(ret - mkt)], [y.trades.length + y.n, 'Trades'], [fmt(y.div, 0), 'Dividends'], [fmt(y.fines, 0), 'Fines', y.fines ? 'down' : ''], [best ? `${best.gain >= 0 ? '+' : ''}${fmt(best.gain, 0)}` : '—', best ? `Best: ${best.what || best.t}` : 'Best trade', best ? cls(best.gain) : ''], [worst ? `${worst.gain >= 0 ? '+' : ''}${fmt(worst.gain, 0)}` : '—', worst ? `Worst: ${worst.what || worst.t}` : 'Worst trade', worst ? cls(worst.gain) : '']]
+    .map(([v, l, c]) => `<div><b class="${c || ''}">${v}</b><span>${l}</span></div>`).join('');
+  $('repRank').textContent = rank; $('repRank').hidden = !final;
+  $('repShare').hidden = !final; $('repGo').textContent = final ? 'Back to your career' : 'Continue';
+  if (final) {
+    try { const prev = JSON.parse(localStorage.getItem(DAILY_KEY + '-best') || 'null'); if (!prev || w > prev.worth) localStorage.setItem(DAILY_KEY + '-best', JSON.stringify({ date: G.daily, worth: w, ret })); } catch (e) {}
+    $('repShare').onclick = () => { const text = `Bull Run daily · ${fmtDate(new Date(G.daily + 'T12:00:00Z'))}\n${fmt(w, 0)} (${pct(ret)}) ${rank}\nThe market did ${pct(mkt)}.\nhttps://noah-and-lars.github.io/projects/play.html?game=bull-run`; (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied to the clipboard', 'gold'), () => prompt('Copy your score:', text)); };
+  } else G.year = newYear(w, G.day);
+  setSpeed(0); openModal('mReport'); snd && Sound.win();
 }
 function tickPrices(dt) {
   dayFrac = clamp(dayFrac, 0, 1);
@@ -475,7 +556,8 @@ function holdingsValue() { let v = 0; for (const t in G.hold) { const i = COMPAN
 function shortPL() { let v = 0; for (const t in G.short) { const i = COMPANIES.findIndex(c => c.t === t), sh = G.short[t]; v += (sh.entry - price(i)) * sh.qty; } return v; }
 function shortExposure() { let v = 0; for (const t in G.short) v += G.short[t].qty * G.short[t].entry; return v; }
 function collateral() { return G.cash - shortExposure(); }
-function worth() { return G.cash + holdingsValue() + shortPL() - G.debt; }
+function optionsValue() { let v = 0; for (const o of G.options) v += optionValue(o); return v; }
+function worth() { return G.cash + holdingsValue() + shortPL() + optionsValue() - G.debt; }
 function raiseCash(amount) { // sells holdings, biggest first, until there is enough cash (used by fines and the loan shark)
   const items = Object.entries(G.hold).filter(([, h]) => h.qty > 0).map(([t, h]) => ({ t, h, i: COMPANIES.findIndex(c => c.t === t) })).sort((a, b) => b.h.qty * price(b.i) - a.h.qty * price(a.i));
   for (const it of items) { if (G.cash >= amount) break; const p = price(it.i); G.cash += it.h.qty * p; G.stats.realised += (p - it.h.cost) * it.h.qty; logTrade(`Forced sale of <b>${it.h.qty.toLocaleString()} ${it.t}</b> at ${fmt(p)}`, it.h.qty * p); delete G.hold[it.t]; }
@@ -504,23 +586,28 @@ function trade(i, qty, how, quiet) {
     toast(`Bought ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, 'up', fmt(total)); logTrade(`Bought <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, -total);
   } else if (how === 'sell') {
     const h = G.hold[c.t]; if (!h || qty > h.qty) return false;
-    const total = qty * p, gain = (p - h.cost) * qty; G.cash += total; h.qty -= qty; G.stats.realised += gain;
+    const total = qty * p, gain = (p - h.cost) * qty; G.cash += total; h.qty -= qty; G.stats.realised += gain; G.year.trades.push({ t: c.t, gain });
     if (h.qty === 0) delete G.hold[c.t];
     toast(`Sold ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, gain >= 0 ? 'up' : 'down', `${gain >= 0 ? 'Profit' : 'Loss'} ${fmt(gain)}`); logTrade(`Sold <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)} (${gain >= 0 ? '+' : ''}${fmt(gain)})`, total);
   } else if (how === 'short') { // borrow shares and sell them; the cash stays put as collateral
     const total = qty * p; if (total > collateral() + 1e-6) return false;
     const sh = G.short[c.t] || (G.short[c.t] = { qty: 0, entry: 0 }); sh.entry = (sh.entry * sh.qty + total) / (sh.qty + qty); sh.qty += qty;
     toast(`Shorted ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, 'down', `You profit if it falls`); logTrade(`Shorted <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, 0);
+  } else if (how === 'call' || how === 'put') {
+    if (!unlocked(100000)) return false; const premium = qty * p * OPT_PREMIUM; if (premium > G.cash + 1e-6) return false;
+    G.cash -= premium; G.options.push({ t: c.t, i, type: how, qty, strike: p, expiry: G.day + OPT_DAYS, premium });
+    toast(`Bought a ${how} on ${qty.toLocaleString()} ${c.t}`, 'gold', `Strike ${fmt(p)} · expires in ${OPT_DAYS} days · premium ${fmt(premium)}`); logTrade(`${how === 'call' ? 'Call' : 'Put'} on <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, -premium);
   } else if (how === 'cover') {
     const sh = G.short[c.t]; if (!sh || qty > sh.qty) return false;
-    const gain = (sh.entry - p) * qty; G.cash += gain; sh.qty -= qty; G.stats.realised += gain; if (sh.qty === 0) delete G.short[c.t];
+    const gain = (sh.entry - p) * qty; G.cash += gain; sh.qty -= qty; G.stats.realised += gain; G.year.trades.push({ t: c.t, gain, what: 'short ' + c.t }); if (sh.qty === 0) delete G.short[c.t];
     if (!quiet) toast(`Covered ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, gain >= 0 ? 'up' : 'down', `${gain >= 0 ? 'Profit' : 'Loss'} ${fmt(gain)}`); logTrade(`Covered <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)} (${gain >= 0 ? '+' : ''}${fmt(gain)})`, gain);
   }
-  G.stats.trades++; if (!quiet) { snd && Sound.trade(how === 'buy' || how === 'cover'); save(); renderAll(); } return true;
+  G.stats.trades++; if (how === 'buy' || how === 'short') G.year.n++; if (!quiet) { snd && Sound.trade(how === 'buy' || how === 'cover'); save(); renderAll(); } return true;
 }
 // ---- the back room: insider info, pump and dump, the loan shark, bribes, and prison ----
-const tipPrice = () => Math.max(250, Math.round(worth() * 0.03 / 10) * 10);
-const pumpPrice = () => Math.max(500, Math.round(worth() * 0.05 / 10) * 10);
+const disc = () => unlocked(50000) ? 0.5 : 1; // reputation: half-price deals
+const tipPrice = () => Math.max(250, Math.round(worth() * 0.03 * disc() / 10) * 10);
+const pumpPrice = () => Math.max(500, Math.round(worth() * 0.05 * disc() / 10) * 10);
 const bribePrice = () => Math.max(1000, Math.round(worth() * 0.1 / 10) * 10);
 const tipRisk = () => Math.min(0.6, 0.05 + G.heat * 0.07);
 const loanMax = () => Math.max(0, Math.round(Math.max(1000, (worth() + G.debt) * 2) - G.debt));
@@ -533,7 +620,7 @@ function showTip() {
   openModal('mTip');
 }
 function bust(fine, why) { // caught: a fine (selling holdings if the cash is not there), the heat resets, and a third conviction means prison
-  raiseCash(fine); fine = Math.min(fine, G.cash); G.cash -= fine; G.heat = 0; G.busts++;
+  raiseCash(fine); fine = Math.min(fine, G.cash); G.cash -= fine; G.heat = 0; G.busts++; G.year.fines += fine;
   addNews(`${why} Fined ${fmt(fine, 0)}. ${G.busts >= 3 ? 'Third conviction: prison.' : `Conviction ${G.busts} of 3.`}`, 0, 'bust'); logTrade('<b>Fine</b>', -fine);
   toast('Caught!', 'down', `Fined ${fmt(fine, 0)} · conviction ${G.busts} of 3`); snd && Sound.alarm(); save(); renderAll();
   if (G.busts >= 3) prison();
@@ -572,12 +659,14 @@ function bribe() {
   if (Math.random() < 0.2) { bust(Math.max(cost * 4, Math.round(G.cash * 0.5)), 'The bribe leaks.'); return; }
   G.heat = 0; addNews('The investigation into your trades is quietly dropped.', 0, 'tip'); toast('The heat is off', 'gold', 'Your file has been closed.'); save(); renderAll();
 }
+let inPrison = false;
 function prison() {
   setSpeed(0); closeModals(); const before = worth();
   coverAll(); if (G.debt > 0) collect();
-  const mute = window.toast; window.toast = () => {};
+  if (G.daily) { G.done = true; G.busts = 0; G.heat = 0; addNews('Three convictions. The challenge ends in handcuffs.', 0, 'bust'); save(); showReport(true); return; }
+  const mute = window.toast; window.toast = () => {}; inPrison = true;
   for (let d = 0; d < 252; d++) { closeDay(); startDay(); }
-  window.toast = mute; G.busts = 0; G.heat = 0; G.pending = []; save();
+  inPrison = false; window.toast = mute; G.busts = 0; G.heat = 0; G.pending = []; G.year = newYear(worth(), G.day); save();
   const after = worth(); $('prisonText').innerHTML = `Three convictions. You serve a year. Your shares sit untouched while the market moves on without you.<br><br>Net worth going in: <b>${fmt(before, 0)}</b><br>Net worth coming out: <b class="${cls(after - before)}">${fmt(after, 0)}</b>`;
   addNews('You are released after a year in prison. Your record is clean, for now.', 0, 'bust'); openModal('mPrison'); renderAll();
 }
@@ -586,7 +675,7 @@ $('loan1').addEventListener('click', () => borrow(0.25)); $('loan2').addEventLis
 $('prisonGo').addEventListener('click', () => { closeModals(); setSpeed(1); });
 function logTrade(h, amt) { (G.log || (G.log = [])).unshift({ day: G.day, h, amt }); if (G.log.length > 40) G.log.pop(); renderLog(); }
 function checkGoals(w) {
-  for (const [amt, name] of GOALS) if (w >= amt && !G.goals.includes(amt)) { G.goals.push(amt); toast(`Milestone: ${name}`, 'gold', `Net worth passed ${fmt(amt, 0)}`); snd && Sound.win(); }
+  for (const [amt, name, , unlock] of GOALS) if (w >= amt && !G.goals.includes(amt)) { G.goals.push(amt); toast(`Milestone: ${name}`, 'gold', unlock ? `${unlock}!` : `Net worth passed ${fmt(amt, 0)}`); snd && Sound.win(); if (unlock) { document.body.classList.toggle('opts', unlocked(100000)); renderList(); } }
 }
 
 // ---- calendar: trading days only, from the first Monday of 2026 ----
@@ -619,7 +708,7 @@ function buildList() {
   COMPANIES.forEach((c, i) => {
     const row = document.createElement('div'); row.className = 'stock'; row.dataset.i = i;
     row.innerHTML = `<div><div class="t">${c.t}<span class="own" hidden></span></div><div class="n">${c.n}</div></div><canvas width="128" height="52"></canvas><div class="p num"><b></b><span></span></div>`;
-    row.addEventListener('click', () => { select(i); if (innerWidth <= 760) showTab('colMid'); });
+    row.addEventListener('click', () => { if (isLocked(i)) { toast(`${c.n} unlocks at ${fmt(c.unlock, 0)}`, 'gold', 'Reach that net worth once and it stays unlocked'); return; } select(i); if (innerWidth <= 760) showTab('colMid'); });
     listEl.appendChild(row); sparks.push(row.querySelector('canvas'));
   });
 }
@@ -630,6 +719,7 @@ function renderList() {
   for (let i = 0; i < COMPANIES.length; i++) {
     const row = rows[i + 1], p = price(i), ch = p / lastClose(i) - 1, own = G.hold[COMPANIES[i].t];
     row.classList.toggle('sel', i === sel);
+    if (isLocked(i)) { row.classList.add('locked'); row.querySelector('.p b').textContent = '🔒 ' + fmt(COMPANIES[i].unlock, 0); row.querySelector('.p span').textContent = ''; continue; } row.classList.remove('locked');
     row.querySelector('.own').hidden = !((own && own.qty > 0) || G.short[COMPANIES[i].t]);
     row.querySelector('.p b').textContent = fmt(p);
     const s = row.querySelector('.p span'); s.textContent = pct(ch); s.className = cls(ch);
@@ -651,7 +741,7 @@ function renderHeader() {
   $('worth').textContent = fmtShort(w); const pill = $('worthChg'); pill.textContent = pct(ch); pill.className = 'pill num ' + cls(ch);
   $('cash').textContent = fmtShort(G.cash);
   $('debtBox').hidden = G.debt <= 0; $('debt').textContent = fmtShort(G.debt);
-  $('date').textContent = fmtDate(dateOf(G.day)); $('dayNo').textContent = `Day ${G.day + 1} · Year ${Math.floor(G.day / 252) + 1}`;
+  $('date').textContent = fmtDate(dateOf(G.day)); $('dayNo').textContent = G.daily ? `Day ${Math.min(G.day + 1, DAILY_DAYS)} of ${DAILY_DAYS}` : `Day ${G.day + 1} · Year ${Math.floor(G.day / 252) + 1}`;
   $('mood').textContent = G.mkt > 0.4 ? '🐂 Bull market' : G.mkt < -0.4 ? '🐻 Bear market' : 'Mixed';
   $('dayBar').style.width = (dayFrac * 100).toFixed(1) + '%';
   $('tipBtn').classList.toggle('hot', G.heat > 0); $('tipBtn').title = 'Back room (I)' + (G.heat ? ` · heat ${G.heat}` : '') + (G.busts ? ` · ${G.busts} conviction${G.busts > 1 ? 's' : ''}` : '');
@@ -661,7 +751,7 @@ function renderChartHead() {
     const w = worth(), prev = G.worthHist[G.worthHist.length - 1] || START_CASH, ch = w / prev - 1, ret = w / START_CASH - 1;
     $('cName').textContent = 'Your portfolio'; $('cSub').textContent = `Started with ${fmt(START_CASH, 0)} on ${fmtDate(dateOf(0))}`;
     $('cPrice').textContent = fmt(w); const e = $('cChg'); e.textContent = `${ch >= 0 ? '+' : ''}${fmt(w - prev)} (${pct(ch)}) today`; e.className = 'num ' + cls(ch);
-    $('fRange').textContent = `${fmt(Math.min(...G.worthHist.slice(-1), w), 0)} – ${fmt(Math.max(...G.worthHist.slice(-1), w), 0)}`;
+    $('fRange').textContent = G.daily ? `Day ${Math.min(G.day + 1, DAILY_DAYS)} of ${DAILY_DAYS}` : `${fmt(Math.min(...G.worthHist.slice(-1), w), 0)} – ${fmt(Math.max(...G.worthHist.slice(-1), w), 0)}`;
     const y = G.worthHist[Math.max(0, G.worthHist.length - 252)] || START_CASH, yc = w / y - 1; const fy = $('fYear'); fy.textContent = pct(yc); fy.className = 'num ' + cls(yc);
     $('fDiv').textContent = fmt(G.stats.dividends, 0); $('fEarn').textContent = G.stats.trades.toLocaleString(); const own = $('fOwn'); own.textContent = pct(ret); own.className = 'num ' + cls(ret);
     factLabels('Dividends earned', 'Trades', 'Total return');
@@ -690,7 +780,12 @@ function renderPortfolio() {
   const items = Object.entries(G.hold).filter(([, h]) => h.qty > 0).map(([t, h]) => { const i = COMPANIES.findIndex(c => c.t === t); return { t, h, i, v: h.qty * price(i) }; }).sort((a, b) => b.v - a.v);
   items.forEach(it => { html += `<i style="width:${clamp(it.v / Math.max(w, 1) * 100, 0, 100).toFixed(2)}%;background:${colorOf(it.i)}" title="${it.t}"></i>`; }); al.innerHTML = html;
   const shorts = Object.entries(G.short).map(([t, sh]) => ({ t, sh, i: COMPANIES.findIndex(c => c.t === t) }));
-  holdsEl.innerHTML = items.length || shorts.length ? '' : '<div class="empty">No shares yet. Pick a stock and press Buy.</div>';
+  holdsEl.innerHTML = items.length || shorts.length || G.options.length ? '' : '<div class="empty">No shares yet. Pick a stock and press Buy.</div>';
+  for (const o of G.options) {
+    const v = optionValue(o), d = document.createElement('div'); d.className = 'hold op num';
+    d.innerHTML = `<div class="t">${o.t}<span class="tag op">${o.type.toUpperCase()}</span><span>${o.qty.toLocaleString()} · strike ${fmt(o.strike)}</span></div><div class="v">${fmt(v)}</div><div class="s">expires in ${o.expiry - G.day} day${o.expiry - G.day === 1 ? '' : 's'} · paid ${fmt(o.premium)}</div><div class="pl ${cls(v - o.premium)}">${v - o.premium >= 0 ? '+' : ''}${fmt(v - o.premium)}</div>`;
+    d.addEventListener('click', () => { select(o.i); if (innerWidth <= 760) showTab('colMid'); }); holdsEl.appendChild(d);
+  }
   for (const it of shorts) {
     const p = price(it.i), pl = (it.sh.entry - p) * it.sh.qty, plp = (it.sh.entry - p) / it.sh.entry;
     const d = document.createElement('div'); d.className = 'hold sh num';
@@ -725,8 +820,9 @@ function renderTrade() {
   if (side === 'buy') { go.textContent = q ? `Buy ${Q} ${c.t}` : 'Buy'; go.disabled = !q || total > G.cash + 1e-6; after.textContent = `Cash after: ${fmt(G.cash - total)}`; after.className = 'num ' + (total > G.cash ? 'down' : ''); }
   else if (side === 'sell') { go.textContent = q ? `Sell ${Q} ${c.t}` : 'Sell'; go.disabled = !q || !h || q > h.qty; const gain = h ? (p - h.cost) * q : 0; after.textContent = h && q ? `${gain >= 0 ? 'Profit' : 'Loss'}: ${fmt(gain)}` : ''; after.className = 'num ' + cls(gain); }
   else if (side === 'short') { go.textContent = q ? `Short ${Q} ${c.t}` : 'Short'; go.disabled = !q || total > collateral() + 1e-6; after.textContent = `Collateral left: ${fmt(collateral() - total)}`; after.className = 'num ' + (total > collateral() ? 'down' : ''); }
+  else if (side === 'call' || side === 'put') { const prem = total * OPT_PREMIUM; go.textContent = q ? `Buy ${side} on ${Q} ${c.t} · ${fmt(prem)}` : side === 'call' ? 'Buy call' : 'Buy put'; go.disabled = !q || prem > G.cash + 1e-6; after.textContent = `Premium ${fmt(prem)} · strike ${fmt(p)} · ${OPT_DAYS} days`; after.className = 'num ' + (prem > G.cash ? 'down' : ''); }
   else { go.textContent = q ? `Cover ${Q} ${c.t}` : 'Cover'; go.disabled = !q || !sh || q > sh.qty; const gain = sh ? (sh.entry - p) * q : 0; after.textContent = sh && q ? `${gain >= 0 ? 'Profit' : 'Loss'}: ${fmt(gain)}` : ''; after.className = 'num ' + cls(gain); }
-  $('posInfo').textContent = side === 'short' ? `Max: ${Math.floor(collateral() / p).toLocaleString()} (cash is your collateral)` : side === 'cover' ? (sh ? `Short ${sh.qty.toLocaleString()} at ${fmt(sh.entry)}` : 'No short position') : h && h.qty > 0 ? `You own ${h.qty.toLocaleString()} · avg ${fmt(h.cost)}` : `Max affordable: ${Math.floor(G.cash / p).toLocaleString()}`;
+  $('posInfo').textContent = side === 'call' ? `Pays (price − ${fmt(p)}) per share if it rises in ${OPT_DAYS} days` : side === 'put' ? `Pays (${fmt(p)} − price) per share if it falls in ${OPT_DAYS} days` : side === 'short' ? `Max: ${Math.floor(collateral() / p).toLocaleString()} (cash is your collateral)` : side === 'cover' ? (sh ? `Short ${sh.qty.toLocaleString()} at ${fmt(sh.entry)}` : 'No short position') : h && h.qty > 0 ? `You own ${h.qty.toLocaleString()} · avg ${fmt(h.cost)}` : `Max affordable: ${Math.floor(G.cash / p).toLocaleString()}`;
 }
 function renderLog() {
   const el = $('logEl'); el.innerHTML = (G.log && G.log.length) ? '' : '<div class="empty">Your trades and dividends will show here.</div>';
@@ -793,32 +889,47 @@ document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModals(); }));
 function showGoals() {
   const w = worth(); $('goalsSub').textContent = `Net worth ${fmt(w)} · best ${fmt(G.stats.best)} · ${G.stats.trades} trades · ${fmt(G.stats.dividends)} in dividends`;
-  $('goals').innerHTML = GOALS.map(([amt, name, desc]) => `<div class="goal ${G.goals.includes(amt) ? 'done' : ''}">${G.goals.includes(amt) ? '🏆' : '🔒'} <b>${name}</b>${desc}</div>`).join('');
+  $('goals').innerHTML = GOALS.map(([amt, name, desc, unlock]) => `<div class="goal ${G.goals.includes(amt) ? 'done' : ''}">${G.goals.includes(amt) ? '🏆' : '🔒'} <b>${name}</b>${desc}${unlock ? `<em>${unlocked(amt) ? '✓ ' : ''}${unlock}</em>` : ''}</div>`).join('');
   openModal('mGoals');
 }
 function showMenu() {
-  $('menuStats').textContent = `Day ${G.day + 1} · ${G.stats.trades} trades · realised ${fmt(G.stats.realised)} · dividends ${fmt(G.stats.dividends)} · best net worth ${fmt(G.stats.best)}`;
+  $('menuStats').textContent = `${G.daily ? 'Daily challenge' : 'Career'} · day ${G.day + 1} · ${G.stats.trades} trades · realised ${fmt(G.stats.realised)} · dividends ${fmt(G.stats.dividends)} · best net worth ${fmt(G.stats.best)}`;
+  let best = null; try { best = JSON.parse(localStorage.getItem(DAILY_KEY + '-best') || 'null'); } catch (e) {}
+  $('dailyLabel').innerHTML = G.daily ? 'Back to your career' : `Daily challenge<br><small style="color:var(--muted)">Same market for everyone today, one year, one score${best ? ` · your best ${fmt(best.worth, 0)}` : ''}</small>`;
+  $('dailyBtn').textContent = G.daily ? 'Career' : "Play today's market";
   $('sndBtn').textContent = snd ? 'On' : 'Off'; openModal('mMenu');
 }
+const todayKey = () => new Date().toISOString().slice(0, 10);
+function switchGame(g) { save(); refreshRep(); G = g; lastShown = []; sel = 0; closeModals(); buildList(); startDay(); setSide('buy'); document.body.classList.toggle('daily', !!G.daily); document.body.classList.toggle('opts', unlocked(100000)); renderAll(); renderSparks(); renderNews(); renderLog(); setSpeed(G.done ? 0 : 1); if (G.done) showReport(true); }
+function startDaily() {
+  const date = todayKey(); let saved = null; try { saved = JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) {}
+  if (saved && saved.date === date && saved.g) { M.g = mulberry32(0); M.g.state = saved.g.rngState; switchGame(migrate(saved.g)); return; }
+  M.g = mulberry32(hashStr('bull-run-' + date)); const g = newGame(); g.daily = date; g.intro = true; g.done = false; g.rngState = M.g.state;
+  g.news[0].h = `Daily challenge for ${fmtDate(new Date(date + 'T12:00:00Z'))}: one year, $10,000, the same market for everyone. Make it count.`;
+  switchGame(g); toast('Daily challenge', 'gold', 'One year on the clock. Your score is your net worth at the end.');
+}
+function backToCareer() { if (G.daily) save(); M.g = null; switchGame(load() || newGame()); }
+$('dailyBtn').addEventListener('click', () => G.daily ? backToCareer() : startDaily());
+$('repGo').addEventListener('click', () => { closeModals(); if (G.daily && G.done) backToCareer(); else setSpeed(1); });
 $('goalsBtn').addEventListener('click', showGoals); $('menuBtn').addEventListener('click', showMenu);
 $('sndBtn').addEventListener('click', () => { snd = !snd; $('sndBtn').textContent = snd ? 'On' : 'Off'; try { localStorage.setItem(SAVE_KEY + '-snd', snd ? '1' : '0'); } catch (e) {} });
 $('howBtn').addEventListener('click', () => { closeModals(); openModal('mIntro'); });
 $('introGo').addEventListener('click', () => { closeModals(); G.intro = true; save(); Sound.click(); });
-$('resetBtn').addEventListener('click', () => { if (confirm('Start over? Your portfolio, cash and history will be wiped.')) { G = newGame(); G.intro = true; startDay(); save(); lastShown = []; renderAll(); renderSparks(); renderNews(); closeModals(); toast('New game. $10,000 in cash.', 'gold'); } });
+$('resetBtn').addEventListener('click', () => { if (confirm(G.daily ? 'Restart today\'s challenge from day 1?' : 'Start over? Your portfolio, cash and history will be wiped.')) { if (G.daily) { try { localStorage.removeItem(DAILY_KEY); } catch (e) {} startDaily(); } else { M.g = null; switchGame(Object.assign(newGame(), { intro: true })); toast('New game. $10,000 in cash.', 'gold'); } } });
 
 // ---- controls ----
-function select(i) { sel = clamp(i, PF, COMPANIES.length - 1); hover = null; renderChartHead(); renderTrade(); renderList(); drawChart(); }
+function select(i) { sel = clamp(i, PF, COMPANIES.length - 1); if (isLocked(sel)) sel = PF; if ((side === 'call' || side === 'put') && !unlocked(100000)) setSide('buy'); hover = null; renderChartHead(); renderTrade(); renderList(); drawChart(); }
 function setSide(s) { side = s; document.querySelectorAll('#side button').forEach(b => b.classList.toggle('on', b.dataset.side === s)); renderTrade(); }
 function setSpeed(s) { speed = s; G.speed = s; document.querySelectorAll('#speed button').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
 function setQty(q) { $('qty').value = Math.max(0, Math.floor(q)); renderTrade(); }
-function maxQty() { const c = COMPANIES[sel], h = G.hold[c.t], sh = G.short[c.t]; return side === 'buy' ? Math.floor(G.cash / price(sel)) : side === 'short' ? Math.max(0, Math.floor(collateral() / price(sel))) : side === 'cover' ? (sh ? sh.qty : 0) : h ? h.qty : 0; }
+function maxQty() { const c = COMPANIES[sel], h = G.hold[c.t], sh = G.short[c.t]; return side === 'buy' ? Math.floor(G.cash / price(sel)) : side === 'call' || side === 'put' ? Math.floor(G.cash / (price(sel) * OPT_PREMIUM)) : side === 'short' ? Math.max(0, Math.floor(collateral() / price(sel))) : side === 'cover' ? (sh ? sh.qty : 0) : h ? h.qty : 0; }
 document.querySelectorAll('#side button').forEach(b => b.addEventListener('click', () => setSide(b.dataset.side)));
 document.querySelectorAll('#speed button').forEach(b => b.addEventListener('click', () => { setSpeed(+b.dataset.s); Sound.click(); }));
 document.querySelectorAll('#ranges button').forEach(b => b.addEventListener('click', () => { range = +b.dataset.r; document.querySelectorAll('#ranges button').forEach(x => x.classList.toggle('on', x === b)); drawChart(); }));
 document.querySelectorAll('.presets button').forEach(b => b.addEventListener('click', () => setQty(b.dataset.q === 'max' ? maxQty() : +b.dataset.q)));
 $('qMinus').addEventListener('click', () => setQty((+$('qty').value || 0) - 1)); $('qPlus').addEventListener('click', () => setQty((+$('qty').value || 0) + 1));
 $('qty').addEventListener('input', renderTrade);
-$('go').addEventListener('click', () => { if (!trade(sel, +$('qty').value, side)) toast(side === 'buy' ? 'Not enough cash.' : side === 'short' ? 'Not enough collateral.' : side === 'cover' ? 'You are not short that many.' : 'You do not own that many.', 'down'); });
+$('go').addEventListener('click', () => { if (!trade(sel, +$('qty').value, side)) toast(side === 'buy' || side === 'call' || side === 'put' ? 'Not enough cash.' : side === 'short' ? 'Not enough collateral.' : side === 'cover' ? 'You are not short that many.' : 'You do not own that many.', 'down'); });
 function showTab(id) { document.querySelectorAll('main .col').forEach(c => c.classList.toggle('show', c.id === id)); document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id)); drawChart(); }
 document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 addEventListener('keydown', e => {
@@ -837,7 +948,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) save(
 addEventListener('pagehide', save);
 
 // ---- the loop ----
-function startDay() { live = COMPANIES.map((c, i) => lastClose(i)); dayFrac = 0; tickAcc = 0; openDay(); }
+function startDay() { live = COMPANIES.map((c, i) => lastClose(i)); dayFrac = 0; tickAcc = 0; if (G.opened === G.day && G.targets && G.targets.length === COMPANIES.length) targets = G.targets.slice(); else openDay(); }
 let last = performance.now(), sparkT = 0;
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
@@ -846,7 +957,7 @@ function frame(now) {
     while (t > 0) {
       const step = Math.min(t, DAY_SECS - dayFrac * DAY_SECS); t -= step;
       tickPrices(step / Math.max(0.2, Math.sqrt(speed))); dayFrac += step / DAY_SECS;
-      if (dayFrac >= 0.9999) { closeDay(); startDay(); }
+      if (dayFrac >= 0.9999) { closeDay(); if (G.done) { setSpeed(0); break; } startDay(); }
     }
     renderHeader(); renderList(); renderChartHead(); renderPortfolio(); renderTrade(); drawChart();
     sparkT += dt; if (sparkT > 0.5) { sparkT = 0; renderSparks(); }
@@ -855,7 +966,8 @@ function frame(now) {
 }
 
 // ---- go ----
-G = load() || newGame(); if (G.crashIn === undefined) G.crashIn = 0; if (!G.pending) G.pending = []; if (!G.heat) G.heat = 0; if (!G.short) G.short = {}; if (!G.debt) G.debt = 0; if (!G.debtAge) G.debtAge = 0; if (!G.busts) G.busts = 0; if (!G.log) G.log = []; for (const st of G.stocks) if (st.nextBeat === undefined) st.nextBeat = null;
+G = load() || newGame(); refreshRep();
+document.body.classList.toggle('opts', unlocked(100000));
 try { snd = localStorage.getItem(SAVE_KEY + '-snd') !== '0'; } catch (e) {}
 buildList(); startDay(); setSpeed(1); setSide('buy');
 renderAll(); renderSparks(); renderNews();
