@@ -98,6 +98,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
 }
 .badge.upd { background: #ffd23f; color: #2a1f00; }
+.badge.off { background: #e5484d; color: #fff; }
 .info { padding: 12px 14px 14px; }
 .info h2 { margin: 0; font-size: 17px; }
 .desc { margin: 4px 0 10px; color: var(--muted); font-size: 13.5px; }

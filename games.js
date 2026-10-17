@@ -20,6 +20,7 @@ function readSave(key, json) {
 // The list of games on the arcade. To add a game, put its folder next to this
 // file (with an index.html and a thumb.svg) and add one entry below.
 //   added / updated: when the game arrived and last changed (drives the NEW and UPDATED badges)
+//   badge: optional fixed badge (e.g. 'DISCONTINUED') shown instead of NEW / UPDATED
 //   keys: shown under the game on its play page
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
@@ -156,6 +157,7 @@ window.GAMES = [
     thumb: 'blockcraft/thumb.svg',
     added: '2026-10-13T21:00:00+11:00',
     updated: '2026-10-16T13:13:03+11:00',
+    badge: 'DISCONTINUED',
     stat() { const w = readSave('blockcraft-worlds', true); return w && w.length ? w.length + (w.length === 1 ? ' world' : ' worlds') : null; },
   },
 ];
@@ -226,6 +228,7 @@ window.Arcade = {
   },
   // NEW until you've played it (for its first month); UPDATED if it changed since you last played
   badge(g) {
+    if (g.badge) return g.badge;
     const last = this.played()[g.id];
     if (!last) return Date.now() - Date.parse(g.added) < 30 * 864e5 ? 'NEW' : null;
     return Date.parse(g.updated) > Date.parse(last) ? 'UPDATED' : null;
