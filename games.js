@@ -29,9 +29,9 @@ window.GAMES = [
     title: 'Bull Run',
     category: 'Strategy',
     tagline: 'Turn $10,000 into a fortune on a market that never sleeps.',
-    description: 'A stock-trading game. Twelve companies, live prices, earnings, dividends, booms and the odd crash. Read the news, buy low, sell high and chase the millionaire milestone. Your portfolio is saved in your browser.',
+    description: 'A stock-trading game. Twelve companies, live prices, earnings, dividends, booms and the odd crash. Read the news, buy insider tips if you dare, buy low, sell high and chase the millionaire milestone. Your portfolio is saved in your browser.',
     controls: 'Mouse, keyboard or touch',
-    keys: [['Click a stock', 'Open its chart'], ['B / S', 'Buy or sell'], ['Enter', 'Place the trade'], ['M', 'Max shares'], ['↑ ↓', 'Change stock'], ['Space', 'Pause'], ['1 2 3', 'Speed']],
+    keys: [['Click a stock', 'Open its chart'], ['B / S', 'Buy or sell'], ['Enter', 'Place the trade'], ['M', 'Max shares'], ['I', 'Buy insider info'], ['↑ ↓', 'Change stock'], ['Space', 'Pause'], ['1 2 3', 'Speed']],
     path: 'bull-run/index.html',
     thumb: 'bull-run/thumb.svg',
     added: '2026-10-17T17:40:00+11:00',
@@ -192,7 +192,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
-  { date: '2026-10-17', game: 'bull-run', text: 'New game: Bull Run. A stock-trading game with twelve companies, live prices, earnings, dividends, news that moves the market and the odd crash. Start with $10,000 and chase the millionaire milestone.' },
+  { date: '2026-10-17', game: 'bull-run', text: 'New game: Bull Run. A stock-trading game with twelve companies, live prices, earnings, dividends, rumours, news that moves the market and the odd crash. Buy insider info if you dare: the regulator is watching. Start with $10,000 and chase the millionaire milestone.' },
   { date: '2026-10-17', game: 'chess', text: 'New game: Chess. Play the computer on Easy, Medium or Hard on a classic green board, with every rule of chess and your games saved.' },
   { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.0.3: a more human stranger. His eyes dart and widen, he swallows, his jaw trembles, his shoulders hunch, he holds his breath before he pulls and flinches at every click. He hesitates in his own way (staring you down, shutting his eyes, muttering, tightening his finger and easing off), but always pulls within a few seconds. His hands open and close round the gun, which he now picks up properly. When the bullet is yours the screen just goes black, with nothing red after it.' },
   { date: '2026-10-17', game: 'cube-tower-defense', text: 'Cube Tower Defense 1.2, Upgrades: click any unit to upgrade it. Every unit has two upgrade paths with three levels each. The Freezer now costs 95 and the Flamethrower 110.' },

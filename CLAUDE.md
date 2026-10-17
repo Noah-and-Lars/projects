@@ -92,7 +92,7 @@ source in Settings → Pages should be switched to `main`.
 
 - `free-criminal/`: Free Criminal, an open-world 3D crime game set in San Varro (Three.js r128 copied from Cube Assault into the file). Version 1.1 adds 3x traffic, ragdoll crashes, gun stores (10 guns, grenades), a mall and a new HUD; 1.2 adds carjack animations, police vision cones and a denser countryside; 1.4 is a much bigger streamed world (countryside built in 400 m chunks around the player), interiors, safehouses, day/night, rain and touch controls. The page has no doctype (quirks mode), so element ids match CSS case-insensitively: never reuse an id that differs only by case. Saves only its settings (`freecriminal.settings.v1`).
 
-- `bull-run/`: Bull Run, a stock-trading game (plain canvas 2D, no libraries). Twelve made-up companies with prices from a daily random walk plus market, sector and company moods and news shocks; one trading day lasts `DAY_SECS` at 1x. Earnings and dividends every 63 trading days per company. Saves everything to `bullRunSave` (format `v: 1`, including a year of generated price history); `stat()` on the home page reads `stats.best`.
+- `bull-run/`: Bull Run, a stock-trading game (plain canvas 2D, no libraries). Twelve made-up companies with prices from a daily random walk plus market, sector and company moods and news shocks; one trading day lasts `DAY_SECS` at 1x. Earnings and dividends every 63 trading days per company; rumours two days before a report; insider tips (`buyTip`) schedule events in `G.pending` and raise `G.heat`, which sets the chance of a fine. Saves everything to `bullRunSave` (format `v: 1`, including a year of generated price history); `stat()` on the home page reads `stats.best`.
 
 ## Adding a game
 

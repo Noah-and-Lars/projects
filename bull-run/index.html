@@ -136,6 +136,10 @@
   .news .d { grid-column: 1 / -1; font-size: 11px; color: var(--dim); }
   .news .fx { font-size: 11px; font-weight: 800; white-space: nowrap; }
   .news.rumour .h { color: var(--gold); } .news.rumour .h::before { content: '👂 '; }
+  .news.tip .h { color: #c4b5fd; } .news.tip .h::before { content: '🕵️ '; } .news.bust .h { color: var(--down); }
+  .tipbox { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 12px; padding: 14px; margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tipbox small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; } .tipbox b { font-size: 18px; }
+  .iconbtn.hot { color: #c4b5fd; border-color: rgba(196, 181, 253, .4); }
   .news.fresh { animation: pop .4s ease-out; } @keyframes pop { from { background: var(--accent-soft); } }
 
   /* ---- toasts, modals ---- */
@@ -200,6 +204,7 @@
     </div>
     <div class="worth"><small>Net worth</small><b id="worth" class="num">$0</b><span id="worthChg" class="pill flat num">0.00%</span></div>
     <div class="cashbox"><small>Cash</small><b id="cash" class="num">$0</b></div>
+    <button class="iconbtn" id="tipBtn" title="Buy insider info (I)" aria-label="Buy insider info">🕵️</button>
     <button class="iconbtn" id="goalsBtn" title="Milestones" aria-label="Milestones">🏆</button>
     <button class="iconbtn" id="menuBtn" title="Menu" aria-label="Menu">☰</button>
   </header>
@@ -278,11 +283,19 @@
     <li><b>Read the news.</b> Headlines move prices: earnings, scandals, booms and the odd crash. <b>Rumours</b> (👂) arrive a day or two early and are right more often than not.</li>
     <li><b>Earnings</b> come every quarter. The chart header counts down to each company's next report.</li>
     <li>Some companies pay a <b>dividend</b> every quarter just for holding their shares.</li>
+    <li>Short of patience? Press 🕵️ to <b>buy insider info</b>: a tip that always comes true. Buy too many and the regulator catches you.</li>
     <li><b>Speed</b>: <kbd>Space</kbd> pauses, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> set the speed. <kbd>B</kbd> and <kbd>S</kbd> switch between buying and selling, <kbd>↑</kbd> <kbd>↓</kbd> change stock, <kbd>Enter</kbd> trades.</li>
   </ul>
   <div class="row"><button class="btn primary" id="introGo">Open the market</button></div>
 </div></div>
 
+<div class="modal" id="mTip" hidden><div class="dlg">
+  <h1>Insider info</h1>
+  <p>A contact on the trading floor will sell you a tip about something that <b style="color:var(--text)">is going to happen</b>: a deal, a scandal, an earnings result or a crash. Tips always come true.</p>
+  <p>Insider trading is illegal. Every tip you buy makes the regulator more suspicious, and if you are caught you pay a heavy fine. Lie low for a while and the heat dies down.</p>
+  <div class="tipbox"><div><small>Price</small><b id="tipPrice" class="num">$0</b></div><div><small>Chance of being caught</small><b id="tipRisk" class="num">0%</b></div></div>
+  <div class="row"><button class="btn primary" id="tipGo">Buy the tip</button><button class="btn" data-close>Not now</button></div>
+</div></div>
 <div class="modal" id="mGoals" hidden><div class="dlg">
   <h1>Milestones</h1>
   <p id="goalsSub"></p>
@@ -352,7 +365,7 @@ function newGame() {
   const g = {
     v: 1, day: 0, cash: START_CASH, speed: 1, intro: false,
     stocks: COMPANIES.map((c, i) => ({ closes: [], shock: 0, mom: 0, earn: (i * 5) % 63, open: c.p, hi: c.p, lo: c.p, nextBeat: null })),
-    crashIn: 0, log: [],
+    crashIn: 0, log: [], pending: [], heat: 0,
     hold: {}, news: [], mkt: 0.2, sect: Object.fromEntries(Object.keys(SECTORS).map(k => [k, 0])),
     worthHist: [], stats: { trades: 0, realised: 0, dividends: 0, best: START_CASH }, goals: [],
   };
@@ -397,6 +410,13 @@ function openDay() {
     s.mom *= 0.9;
   }
   // random news
+  // tips you paid for come true on the day
+  for (const ev of G.pending.filter(e => e.day === G.day)) {
+    if (ev.type === 'stock') { G.stocks[ev.i].shock += ev.size * 0.4; G.stocks[ev.i].mom = clamp(G.stocks[ev.i].mom + ev.size * 0.15, -0.03, 0.03); addNews(ev.text, ev.size, 'stock', ev.i); }
+    else if (ev.type === 'crash') { G.crashIn = 1; }
+  }
+  G.pending = G.pending.filter(e => e.day > G.day);
+  if (G.heat > 0 && G.day % 5 === 0) G.heat--;
   const roll = Math.random();
   // a crash about once every three years, sometimes with a warning the day before; the mood then recovers over the following months
   if (G.crashIn > 0 && --G.crashIn === 0) { const size = -rand(0.12, 0.25); G.mkt = -0.8; for (const s of G.stocks) s.shock += size * rand(0.3, 0.5); addNews(pick(NEWS.crash), size, 'mkt'); snd && Sound.alarm(); }
@@ -445,6 +465,32 @@ function trade(i, qty, isBuy) {
   }
   G.stats.trades++; snd && Sound.trade(isBuy); save(); renderAll(); return true;
 }
+// ---- insider info ----
+const tipPrice = () => Math.max(250, Math.round(worth() * 0.03 / 10) * 10);
+const tipRisk = () => Math.min(0.6, 0.05 + G.heat * 0.07);
+function showTip() { $('tipPrice').textContent = fmt(tipPrice(), 0); $('tipRisk').textContent = Math.round(tipRisk() * 100) + '%'; $('tipGo').disabled = G.cash < tipPrice(); openModal('mTip'); }
+function buyTip() {
+  const cost = tipPrice(); if (G.cash < cost) return;
+  const risk = tipRisk(); G.cash -= cost; G.heat++; logTrade('Bought <b>insider info</b>', -cost); closeModals();
+  if (Math.random() < risk) { // caught: a fine, and the tip is worthless
+    const fine = Math.max(cost * 2, Math.round(G.cash * 0.3)); G.cash = Math.max(0, G.cash - fine); G.heat = 0;
+    addNews('Regulators catch you insider trading. Fined ' + fmt(fine, 0) + '.', 0, 'bust'); logTrade('<b>Insider trading fine</b>', -fine); toast('Caught! Fined ' + fmt(fine, 0), 'down', 'The regulator was watching you.'); snd && Sound.alarm(); save(); renderAll(); return;
+  }
+  const r = Math.random(); let text, stock;
+  if (r < 0.6) { // a company event in a few days
+    const i = Math.floor(Math.random() * COMPANIES.length), good = Math.random() < 0.7, size = rand(0.08, 0.22) * (good ? 1 : -1), days = 2 + Math.floor(Math.random() * 3);
+    const what = good ? pick(['will announce a huge contract', 'is about to be taken over', 'will unveil a surprise product', 'will report record sales']) : pick(['is about to be hit by a scandal', 'will recall its main product', 'is about to lose its biggest customer']);
+    G.pending.push({ day: G.day + days, type: 'stock', i, size, text: (good ? pick(NEWS.good) : pick(NEWS.bad)).replace('{n}', COMPANIES[i].n) });
+    text = `Tip: ${COMPANIES[i].n} ${what} in ${days} days (${good ? 'up' : 'down'} about ${Math.round(Math.abs(size) * 100)}%).`; stock = i;
+  } else if (r < 0.88) { // the next earnings result
+    let best = -1, soon = 99; COMPANIES.forEach((c, i) => { const u = (63 - ((G.day + G.stocks[i].earn) % 63)) % 63 || 63; if (u < soon) { soon = u; best = i; } });
+    const st = G.stocks[best]; if (st.nextBeat === null) st.nextBeat = Math.random() < 0.52;
+    text = `Tip: ${COMPANIES[best].n} will ${st.nextBeat ? 'beat' : 'miss'} expectations when it reports in ${soon} day${soon === 1 ? '' : 's'}.`; stock = best;
+  } else if (!G.crashIn && Math.random() < 0.5) { const days = 3 + Math.floor(Math.random() * 5); G.pending.push({ day: G.day + days - 1, type: 'crash' }); text = `Tip: a crash is coming in ${days} days. Get out of the market before then.`; }
+  else { const best = [...COMPANIES.keys()].sort((a, b) => G.stocks[b].mom - G.stocks[a].mom)[0]; text = `Tip: nothing big is brewing. The strongest momentum right now is in ${COMPANIES[best].n}.`; stock = best; }
+  addNews(text, 0, 'tip', stock); toast('Tip received', 'gold', text.replace(/^Tip: /, '')); snd && Sound.trade(true); save(); renderAll();
+}
+$('tipBtn').addEventListener('click', showTip); $('tipGo').addEventListener('click', buyTip);
 function logTrade(h, amt) { (G.log || (G.log = [])).unshift({ day: G.day, h, amt }); if (G.log.length > 40) G.log.pop(); renderLog(); }
 function checkGoals(w) {
   for (const [amt, name] of GOALS) if (w >= amt && !G.goals.includes(amt)) { G.goals.push(amt); toast(`Milestone: ${name}`, 'gold', `Net worth passed ${fmt(amt, 0)}`); snd && Sound.win(); }
@@ -514,6 +560,7 @@ function renderHeader() {
   $('date').textContent = fmtDate(dateOf(G.day)); $('dayNo').textContent = `Day ${G.day + 1} · Year ${Math.floor(G.day / 252) + 1}`;
   $('mood').textContent = G.mkt > 0.4 ? '🐂 Bull market' : G.mkt < -0.4 ? '🐻 Bear market' : 'Mixed';
   $('dayBar').style.width = (dayFrac * 100).toFixed(1) + '%';
+  $('tipBtn').classList.toggle('hot', G.heat > 0); $('tipBtn').title = `Buy insider info (I) · ${fmt(tipPrice(), 0)}` + (G.heat ? ` · ${Math.round(tipRisk() * 100)}% risk` : '');
 }
 function renderChartHead() {
   if (sel === PF) {
@@ -563,7 +610,7 @@ function renderNews(fresh) {
   G.news.forEach((n, k) => {
     const d = document.createElement('div'); d.className = 'news' + (fresh && k === 0 ? ' fresh' : '');
     const fx = n.fx ? `<div class="fx ${cls(n.fx)}">${pct(n.fx)}</div>` : '<div></div>';
-    d.classList.toggle('rumour', n.kind === 'rumour'); d.innerHTML = `<div class="h">${n.h}</div>${fx}<div class="d">${fmtDate(dateOf(n.day))}${n.kind === 'earn' ? ' · Earnings' : n.kind === 'mkt' ? ' · Markets' : n.kind === 'sect' ? ' · Sector' : n.kind === 'rumour' ? ' · Rumour' : ''}</div>`;
+    d.classList.toggle('rumour', n.kind === 'rumour'); d.classList.toggle('tip', n.kind === 'tip'); d.classList.toggle('bust', n.kind === 'bust'); d.innerHTML = `<div class="h">${n.h}</div>${fx}<div class="d">${fmtDate(dateOf(n.day))}${n.kind === 'earn' ? ' · Earnings' : n.kind === 'mkt' ? ' · Markets' : n.kind === 'sect' ? ' · Sector' : n.kind === 'rumour' ? ' · Rumour' : n.kind === 'tip' ? ' · Insider info' : n.kind === 'bust' ? ' · Regulator' : ''}</div>`;
     if (n.stock !== undefined) { d.style.cursor = 'pointer'; d.addEventListener('click', () => { select(n.stock); if (innerWidth <= 760) showTab('colMid'); }); }
     newsEl.appendChild(d);
   });
@@ -678,6 +725,7 @@ addEventListener('keydown', e => {
   else if (e.key === 'Enter') { if (!document.querySelector('.modal:not([hidden])')) $('go').click(); }
   else if (e.key === 'Escape') closeModals();
   else if (e.key === 'm' || e.key === 'M') setQty(maxQty());
+  else if (e.key === 'i' || e.key === 'I') showTip();
 });
 addEventListener('resize', drawChart);
 document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
@@ -702,7 +750,7 @@ function frame(now) {
 }
 
 // ---- go ----
-G = load() || newGame(); if (G.crashIn === undefined) G.crashIn = 0; if (!G.log) G.log = []; for (const st of G.stocks) if (st.nextBeat === undefined) st.nextBeat = null;
+G = load() || newGame(); if (G.crashIn === undefined) G.crashIn = 0; if (!G.pending) G.pending = []; if (!G.heat) G.heat = 0; if (!G.log) G.log = []; for (const st of G.stocks) if (st.nextBeat === undefined) st.nextBeat = null;
 try { snd = localStorage.getItem(SAVE_KEY + '-snd') !== '0'; } catch (e) {}
 buildList(); startDay(); setSpeed(G.speed === 0 ? 1 : G.speed || 1); setSide('buy');
 renderAll(); renderSparks(); renderNews();
