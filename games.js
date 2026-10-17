@@ -163,14 +163,14 @@ window.GAMES = [
     title: 'Blockcraft',
     category: 'Sandbox',
     tagline: 'Mine, craft and build in an endless block world.',
-    description: 'A block-building sandbox with caves, every ore, crafting, villages, every Minecraft mob, the Nether, the End and the Ender Dragon. Survival or creative.',
+    description: 'A block-building sandbox with caves, every ore, crafting, villages, every Minecraft mob, the Nether, the End and the Ender Dragon. Survival or creative, on your own or on the public multiplayer server.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Walk'], ['Mouse', 'Look'], ['Left click', 'Break / attack'], ['Right click', 'Place / use / eat'], ['Space', 'Jump · double-tap to fly in creative'],
-           ['Shift', 'Sneak'], ['Ctrl', 'Sprint'], ['E', 'Inventory and crafting'], ['1–9', 'Hotbar'], ['Q', 'Drop'], ['T', 'Chat and /commands'], ['F3', 'Info']],
+           ['Shift', 'Sneak'], ['Ctrl', 'Sprint'], ['E', 'Inventory and crafting'], ['1–9', 'Hotbar'], ['Q', 'Drop'], ['T', 'Chat and /commands'], ['Tab', 'Who\'s on (multiplayer)'], ['F3', 'Info']],
     path: 'blockcraft/index.html',
     thumb: 'blockcraft/thumb.svg',
     added: '2026-10-13T21:00:00+11:00',
-    updated: '2026-10-16T13:13:03+11:00',
+    updated: '2026-10-17T22:47:39+11:00',
     badge: 'DISCONTINUED',
     stat() { const w = readSave('blockcraft-worlds', true); return w && w.length ? w.length + (w.length === 1 ? ' world' : ' worlds') : null; },
   },
@@ -178,6 +178,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-17', game: 'blockcraft', text: 'Blockcraft 6.0, the final update: multiplayer. Press Multiplayer on the title screen to join the public server, one survival world everyone shares that\'s open all the time. See other players, build together, chat with T, fight with PvP, and hold Tab to see who\'s on.' },
   { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.1.3: a more scared stranger, with darting eyes, worried brows, swallowing and a trembling jaw, and new ways to hesitate before he pulls the trigger.' },
   { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.1.2, new game mode: Buckshot. A shotgun with live and blank shells, health charges, three rounds and items (magnifying glass, handcuffs, handsaw, beer, cigarettes). Pick it with Change gamemode under Sit down.' },
   { date: '2026-10-17', game: 'chess', text: 'New game: Chess. Play the computer on Easy, Medium or Hard on a classic green board, with every rule of chess and your games saved.' },

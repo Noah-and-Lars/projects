@@ -87,6 +87,19 @@ source in Settings → Pages should be switched to `main`.
   `genVersion 1` keep the old Overworld (`Gen.v2` is false), so only change 1.x terrain
   behind a `this.v2` check. Structures are `Plan`s built chunk by chunk (`makeCtx`,
   `structuresNear`); mobs are defined in `MOB_DEFS` with movement types in `MOVERS`.
+  Since 6.0 (its last update) it has a public multiplayer server: the `MP` block ("Multiplayer: the public
+  server"), the Multiplayer button on the title screen and `MultiplayerScreen`. There's no game server. Everyone
+  plays one world from a fixed seed (`MP_SEED`), saved in each player's own browser (`blockcraft-world-mp-public`),
+  and the shared world remembers when each changed block last changed (`World.stamps`, which only that world has).
+  When players meet, their copies merge block by block and the newest change wins, so the world carries on while
+  nobody's online. Every block change goes through `World.set`, which reports it to `MP.changed` on the shared
+  world; a change that isn't a block change (a chest's contents) is reported with `MP.touch`. It uses the arcade's
+  Supabase project (sharing `ArcadeOnline.client()` when on the play page): `bc-public-who` is Presence (the player
+  list; the host is whoever joined first), `bc-public` carries block changes, chat, PvP hits and the host's
+  position snapshots, and `bc-public-p-<id>` is a pipe from each player to the host for positions and for the
+  world swap when someone joins. Mobs, dropped items and the dragon stay on each player's screen. Cheat commands
+  are off there. The player's name and first-join date are in `blockcraft-mp`. For testing, `?mproom=<name>`
+  opens a private test server with its own channels and save: never test on the real one.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
@@ -104,5 +117,6 @@ source in Settings → Pages should be switched to `main`.
 ## Conventions
 
 - Games save progress only in the player's own browser (`localStorage`, wrapped
-  in try/catch). No accounts or data collection. The only server is the live
-  "on now" counter (Supabase Presence), which stores nothing.
+  in try/catch). No accounts or data collection. The only server is Supabase Realtime (the live "on now"
+  counter, Cube Assault's rooms and Blockcraft's public server), which passes messages along and stores
+  nothing. Blockcraft's shared world is saved in each player's browser.
