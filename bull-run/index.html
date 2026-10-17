@@ -157,10 +157,16 @@
   .news.fresh { animation: pop .4s ease-out; } @keyframes pop { from { background: var(--accent-soft); } }
 
   /* ---- toasts, modals ---- */
-  #toasts { position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; z-index: 50; pointer-events: none; }
-  .toast { background: var(--panel-2); border: 1px solid var(--line-2); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); animation: tin .25s ease-out; max-width: 320px; }
+  #toasts { position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); width: 330px; z-index: 50; pointer-events: none; transition: height .25s; }
+  .toast { position: absolute; right: 0; bottom: 0; width: 100%; pointer-events: auto; background: var(--panel-2); border: 1px solid var(--line-2); border-left: 4px solid var(--accent); border-radius: 12px; padding: 10px 34px 10px 14px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); transform-origin: 50% 100%; transition: transform .3s cubic-bezier(.2, .8, .2, 1), opacity .3s; cursor: pointer; }
+  .toast > div { transition: opacity .2s; } .toast.behind > div { opacity: 0; } .toast.behind .x { visibility: hidden; }
   .toast.up { border-left-color: var(--up); } .toast.down { border-left-color: var(--down); } .toast.gold { border-left-color: var(--gold); }
-  .toast small { display: block; color: var(--muted); font-weight: 500; margin-top: 2px; }
+  .toast.pin { border-left-color: #c4b5fd; background: #1d2338; } .toast.pin b.cd { color: #c4b5fd; }
+  .toast small { display: block; color: var(--muted); font-weight: 500; margin-top: 2px; line-height: 1.35; }
+  .toast .x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 6px; color: var(--dim); font-size: 15px; line-height: 1; display: grid; place-items: center; }
+  .toast .x:hover { color: var(--text); background: var(--panel); }
+  .toast .count { position: absolute; top: -9px; left: 10px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+  .toast.in { animation: tin .3s ease-out; }
   @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
   .modal { position: fixed; inset: 0; background: rgba(4, 7, 12, .72); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 16px; z-index: 40; }
   .modal[hidden] { display: none; }
@@ -195,6 +201,7 @@
     #colRight { grid-column: 1 / -1; flex-direction: row; } #colRight .card { flex: 1; }
   }
   @media (max-width: 760px) {
+    #toasts { right: 12px; left: 12px; width: auto; bottom: calc(72px + env(safe-area-inset-bottom)); }
     header { gap: 10px; padding: 10px 12px; flex-wrap: wrap; }
     .clock { display: none; } .cashbox { display: none; }
     .worth b { font-size: 18px; }
@@ -653,20 +660,20 @@ function buyTip() {
   const cost = tipPrice(); if (G.cash < cost) return;
   const risk = tipRisk(); G.cash -= cost; G.heat++; logTrade('Bought <b>insider info</b>', -cost); closeModals();
   if (Math.random() < risk) { bust(Math.max(cost * 2, Math.round(G.cash * 0.3)), 'Regulators catch you insider trading.'); return; }
-  const r = Math.random(); let text, stock, dir = 0;
+  const r = Math.random(); let text, stock, dir = 0, tipLands = null;
   if (r < 0.6) { // a company event in a few days
-    const i = Math.floor(Math.random() * COMPANIES.length), good = Math.random() < 0.7, size = rand(0.08, 0.22) * (good ? 1 : -1), T = leadUpdate(); dir = good ? 1 : -1;
+    const open = [...COMPANIES.keys()].filter(k => !isLocked(k)), i = open[Math.floor(Math.random() * open.length)], good = Math.random() < 0.7, size = rand(0.08, 0.22) * (good ? 1 : -1), T = leadUpdate(); dir = good ? 1 : -1;
     const what = good ? pick(['will announce a huge contract', 'is about to be taken over', 'will unveil a surprise product', 'will report record sales']) : pick(['is about to be hit by a scandal', 'will recall its main product', 'is about to lose its biggest customer']);
-    G.pending.push({ day: T, type: 'stock', i, size, tip: true, text: (good ? pick(NEWS.good) : pick(NEWS.bad)).replace('{n}', COMPANIES[i].n) });
+    tipLands = T; G.pending.push({ day: T, type: 'stock', i, size, tip: true, text: (good ? pick(NEWS.good) : pick(NEWS.bad)).replace('{n}', COMPANIES[i].n) });
     text = `Tip: ${COMPANIES[i].n} ${what} ${inSecs(T)} (${good ? 'up' : 'down'} about ${Math.round(Math.abs(size) * 100)}%).`; stock = i;
   } else if (r < 0.88) { // the next earnings result
     // the soonest report that is still far enough away to act on (crypto has no earnings)
     let best = -1, when = Infinity; COMPANIES.forEach((c, i) => { if (c.s === 'crypto' || isLocked(i)) return; const T = reportUpdate(i); if (T >= G.day + MIN_LEAD && T < when) { when = T; best = i; } });
-    const beat = beatOf(best, when); dir = beat ? 1 : -1;
+    const beat = beatOf(best, when); dir = beat ? 1 : -1; tipLands = when;
     text = `Tip: ${COMPANIES[best].n} will ${beat ? 'beat' : 'miss'} expectations when it reports, ${inSecs(when)}.`; stock = best;
-  } else if (!G.crashIn && !G.daily && Math.random() < 0.5) { const T = leadUpdate(); G.pending.push({ day: T, type: 'crash' }); text = `Tip: a crash is coming ${inSecs(T)}. Get out of the market before then.`; }
-  else { const best = [...COMPANIES.keys()].sort((a, b) => G.stocks[b].mom - G.stocks[a].mom)[0]; text = `Tip: nothing big is brewing. The strongest momentum right now is in ${COMPANIES[best].n}.`; stock = best; }
-  addNews(text, 0, 'tip', stock); toast('Tip received', 'gold', text.replace(/^Tip: /, '')); snd && Sound.trade(true); save();
+  } else if (!G.crashIn && !G.daily && Math.random() < 0.5) { const T = leadUpdate(); tipLands = T; G.pending.push({ day: T, type: 'crash' }); text = `Tip: a crash is coming ${inSecs(T)}. Get out of the market before then.`; }
+  else { const best = [...COMPANIES.keys()].filter(k => !isLocked(k)).sort((a, b) => G.stocks[b].mom - G.stocks[a].mom)[0]; text = `Tip: nothing big is brewing. The strongest momentum right now is in ${COMPANIES[best].n}.`; stock = best; }
+  addNews(text, 0, 'tip', stock); const landT = tipLands; toast('🕵️ Tip received', 'gold', text.replace(/^Tip: /, '').replace(/ in about \d+ seconds/, ''), landT === null ? { secs: 9 } : { until: () => secsUntil(landT) }); snd && Sound.trade(true); save();
   // take the player straight to the stock, ready to trade the right way
   if (stock !== undefined && !isLocked(stock)) { select(stock); const h = G.hold[COMPANIES[stock].t]; setSide(dir > 0 ? 'buy' : dir < 0 ? (h && h.qty > 0 ? 'sell' : 'short') : 'buy'); if (dir) setQty(maxQty()); if (innerWidth <= 760) showTab('colMid'); }
   renderAll();
@@ -678,7 +685,7 @@ function pumpStart() {
   const lines = [`Wild rumours: ${c.n} is about to be bought out`, `${c.n} shares surge as the buyout talk spreads`, `Everyone is piling into ${c.n}`];
   const T0 = leadUpdate(); let total = 0; for (let d = 0; d < 3; d++) { const size = rand(0.07, 0.13); total += size; G.pending.push({ day: T0 + d * TICK, type: 'pump', i, size, tip: d === 0, text: lines[d] }); }
   G.pending.push({ day: T0 + 3 * TICK, type: 'dump', i, size: -total * 1.25, text: `The rumours about ${c.n} were fake. Shares collapse.` });
-  addNews(`Your pump on ${c.n} starts ${inSecs(T0)}, climbs for three market updates and collapses on the fourth. Be out before then.`, 0, 'tip', i); select(i); setSide('buy'); setQty(maxQty()); if (innerWidth <= 760) showTab('colMid'); toast('The pump is on', 'gold', `${c.t} climbs for three updates, then falls on the fourth.`); save(); renderAll();
+  addNews(`Your pump on ${c.n} starts ${inSecs(T0)}, climbs for three market updates and collapses on the fourth. Be out before then.`, 0, 'tip', i); select(i); setSide('buy'); setQty(maxQty()); if (innerWidth <= 760) showTab('colMid'); toast('📣 The pump is on', 'gold', `${c.t} climbs for three updates, then collapses. Sell before it does.`, { until: () => secsUntil(T0 + 3 * TICK), label: () => secsUntil(T0) > 0 ? `Climb starts in ${Math.ceil(secsUntil(T0))}s · collapses` : 'Collapses' }); save(); renderAll();
 }
 function borrow(frac) { const amt = Math.min(loanMax(), Math.max(1000, Math.round((worth() + G.debt) * frac / 100) * 100)); if (amt < 500) return; G.debt += amt; G.cash += amt; if (G.debtAge === 0) G.debtAge = 1; logTrade('<b>Loan shark</b> loan', amt); toast(`Borrowed ${fmt(amt, 0)}`, 'gold', '2% a week. Pay him back within six months.'); closeModals(); save(); renderAll(); }
 function repay() { const amt = Math.min(G.cash, G.debt); if (amt <= 0) return; G.cash -= amt; G.debt -= amt; if (G.debt < 1) { G.debt = 0; G.debtAge = 0; } logTrade('<b>Loan shark</b> repaid', -amt); toast(`Repaid ${fmt(amt, 0)}`, 'up', G.debt > 0 ? `${fmt(G.debt, 0)} still owed` : 'Debt cleared'); closeModals(); save(); renderAll(); }
@@ -907,11 +914,50 @@ chart.addEventListener('pointerdown', e => { const r = chart.getBoundingClientRe
 chart.addEventListener('pointerleave', () => { hover = null; drawChart(); });
 
 // ---- toasts and modals ----
-function toast(text, kind = '', small = '') {
-  const t = document.createElement('div'); t.className = 'toast ' + kind; t.innerHTML = text + (small ? `<small>${small}</small>` : ''); $('toasts').appendChild(t);
-  setTimeout(() => { t.style.transition = 'opacity .4s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3200);
-  while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
+// Notifications stack like a deck of cards: the newest sits in front with the others tucked behind it.
+// Hover (or tap) the stack to fan them out. A tip stays pinned at the front with a countdown until it lands.
+const Toasts = { list: [], open: false, el: null };
+function toast(text, kind = '', small = '', opts = {}) {
+  const el = document.createElement('div'); el.className = 'toast in ' + kind + (opts.until ? ' pin' : '');
+  el.innerHTML = `<div><span class="tt">${text}</span>${small ? `<small>${small}</small>` : ''}${opts.until ? '<small><b class="cd"></b></small>' : ''}</div><button class="x" aria-label="Dismiss">×</button>`;
+  const t = { el, left: opts.secs || 4.5, until: opts.until, label: opts.label, born: performance.now() };
+  el.querySelector('.x').addEventListener('click', e => { e.stopPropagation(); dropToast(t); });
+  el.addEventListener('click', () => { Toasts.open = !Toasts.open; layoutToasts(); });
+  $('toasts').appendChild(el); Toasts.list.push(t);
+  // keep at most 6: drop the oldest ordinary ones first
+  while (Toasts.list.length > 6) dropToast(Toasts.list.find(x => !x.until) || Toasts.list[0], true);
+  tickToast(t); layoutToasts();
 }
+function dropToast(t, now) {
+  const k = Toasts.list.indexOf(t); if (k < 0) return; Toasts.list.splice(k, 1);
+  if (now) t.el.remove(); else { t.el.style.opacity = '0'; t.el.style.pointerEvents = 'none'; setTimeout(() => t.el.remove(), 300); }
+  if (!Toasts.list.length) Toasts.open = false; layoutToasts();
+}
+function tickToast(t) { // a pinned tip counts down to its update, then shows that it landed and fades like the rest
+  if (!t.until) return;
+  const left = t.until(); const cd = t.el.querySelector('.cd');
+  if (left > 0) cd.textContent = (t.label ? t.label(left) : 'Lands') + ` in ${Math.ceil(left)}s`;
+  else { t.until = null; t.left = 4.5; t.el.classList.remove('pin'); cd.textContent = 'Landed'; layoutToasts(); }
+}
+function layoutToasts() {
+  // order: pinned tips first (newest first), then everything else newest first
+  const order = [...Toasts.list].sort((a, b) => (!!b.until - !!a.until) || b.born - a.born);
+  const hs = order.map(t => t.el.offsetHeight); let y = 0;
+  order.forEach((t, k) => {
+    const el = t.el; el.style.zIndex = 100 - k; el.classList.toggle('behind', !Toasts.open && k > 0);
+    const c = el.querySelector('.count'); if (c) c.remove();
+    if (Toasts.open) { el.style.transform = `translateY(${-y}px)`; el.style.opacity = '1'; y += hs[k] + 8; }
+    else { const d = Math.min(k, 3); el.style.transform = `translateY(${-d * 12}px) scale(${1 - d * 0.05})`; el.style.opacity = k > 3 ? '0' : String(1 - d * 0.2); }
+  });
+  if (!Toasts.open && order.length > 1) { const c = document.createElement('span'); c.className = 'count'; c.textContent = `${order.length} notifications · ${matchMedia('(hover: hover)').matches ? 'hover' : 'tap'} to see all`; order[0].el.appendChild(c); }
+  $('toasts').style.height = (Toasts.open ? Math.max(0, y - 8) : (hs[0] || 0)) + 'px';
+}
+$('toasts').addEventListener('mouseenter', () => { if (matchMedia('(hover: hover)').matches) { Toasts.open = true; layoutToasts(); } });
+$('toasts').addEventListener('mouseleave', () => { if (matchMedia('(hover: hover)').matches) { Toasts.open = false; layoutToasts(); } });
+setInterval(() => { // timers pause while the stack is fanned out, so you can read them
+  for (const t of [...Toasts.list]) { if (t.until) tickToast(t); else if (!Toasts.open) { t.left -= 0.2; if (t.left <= 0) dropToast(t); } }
+}, 200);
+function clearToasts() { for (const t of [...Toasts.list]) dropToast(t, true); }
 function openModal(id) { $(id).hidden = false; }
 let backRoomResume = 0; // the market is paused while you are in the back room
 function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); if (backRoomResume) { const sp = backRoomResume; backRoomResume = 0; setSpeed(sp); } }
@@ -930,7 +976,7 @@ function showMenu() {
   $('sndBtn').textContent = snd ? 'On' : 'Off'; openModal('mMenu');
 }
 const todayKey = () => new Date().toISOString().slice(0, 10);
-function switchGame(g) { save(); refreshRep(); G = g; lastShown = []; sel = 0; closeModals(); buildList(); startDay(); setSide('buy'); document.body.classList.toggle('daily', !!G.daily); document.body.classList.toggle('opts', unlocked(100000)); renderAll(); renderSparks(); renderNews(); renderLog(); setSpeed(G.done ? 0 : 1); if (G.done) showReport(true); }
+function switchGame(g) { save(); refreshRep(); clearToasts(); G = g; lastShown = []; sel = 0; closeModals(); buildList(); startDay(); setSide('buy'); document.body.classList.toggle('daily', !!G.daily); document.body.classList.toggle('opts', unlocked(100000)); renderAll(); renderSparks(); renderNews(); renderLog(); setSpeed(G.done ? 0 : 1); if (G.done) showReport(true); }
 function startDaily() {
   const date = todayKey(); let saved = null; try { saved = JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) {}
   if (saved && saved.date === date && saved.g) { M.g = mulberry32(0); M.g.state = saved.g.rngState; switchGame(migrate(saved.g)); return; }
