@@ -168,6 +168,8 @@
   #ammoMax { font-size: 18px; opacity: .7; }
   #ammo.low #ammoNow { color: #ff6b5b; }
   #score { left: 24px; top: 18px; }
+  #fps { position: absolute; left: 24px; top: 3px; font-size: 12px; font-weight: 700; letter-spacing: .5px; font-variant-numeric: tabular-nums; color: #4ade80; text-shadow: 0 1px 2px #000; opacity: .85; }
+  #fps.mid { color: #facc15; } #fps.low { color: #f87171; } #fps.off { display: none; }
   #coinsHud { left: 24px; top: 48px; display: flex; align-items: center; gap: 8px; font-size: 20px; }
   #coinsHud.bump b { animation: bump .3s; display: inline-block; }
   @keyframes bump { 50% { transform: scale(1.35); color: var(--gold-hi); } }
@@ -575,6 +577,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   <canvas id="radar" width="264" height="264"></canvas>
   <div id="combo"><span id="comboMult">×2</span><small id="comboCount">2 kill combo</small><span class="ct"><i id="comboTime"></i></span></div>
   <div id="bossbar"><div class="name">KING CUBE</div><div class="track"><div class="fill" id="bossFill"></div></div></div>
+  <div id="fps">FPS --</div>
   <div class="stat" id="score">Score: 0</div>
   <div class="stat" id="coinsHud"><span class="coin"></span><b id="coinsCount">0</b></div>
   <div class="stat" id="wave">Wave 1</div>
@@ -661,7 +664,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.8.1 · What's new</button>
+    <button class="link" data-action="notes">v2.8.2 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
@@ -679,6 +682,10 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🌐</i><span><b>Public lobbies</b>New in Multiplayer: make your lobby public (recommended) and anyone can find it in Public lobbies and join, no code needed. The menu has big new cards with a map behind each one.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.8.2 <span>FPS counter</span></h3><ul>
+        <li>An FPS counter in the top left: green when it's smooth, yellow under 50, red under 30. Turn it off in Settings → FPS counter.</li>
+        <li>Level 3's first aid kit now heals you twice (+40 HP each) before it has to restock.</li>
+      </ul></section>
       <section><h3>v2.8.1 <span>First aid</span></h3><ul>
         <li>Campaign Level 3: there's a first aid kit on a crate back in our trench, by the ladders, with a green cross above it so you can see it from no man's land. Walk up to it for +40 HP; then it takes 25 seconds to restock.</li>
       </ul></section>
@@ -1057,6 +1064,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
     <div class="row"><label for="fov">Field of view</label><input type="range" id="fov" min="60" max="120" step="1"><span class="val" id="fovVal"></span></div>
     <div class="row"><label for="sens">Look speed</label><input type="range" id="sens" min="0.2" max="3" step="0.1"><span class="val" id="sensVal"></span></div>
     <div class="row"><label for="vol">Volume</label><input type="range" id="vol" min="0" max="100" step="1"><span class="val" id="volVal"></span></div>
+    <div class="row"><label>FPS counter</label><div class="seg" id="fpsSeg"><button data-fps="on">On</button><button data-fps="off">Off</button></div></div>
     <div class="row"><label>Music</label><div class="seg" id="musicSeg"><button data-music="on">On</button><button data-music="off">Off</button></div></div>
     <div class="row"><label>Scope</label><div class="seg" id="scopeSeg"><button data-scope="hold">Hold</button><button data-scope="lock">Click to lock</button></div></div>
     <div class="row"><label>Touch controls</label><div class="seg" id="touchSeg"><button data-touch="auto">Auto</button><button data-touch="on">On</button><button data-touch="off">Off</button></div></div>
@@ -4463,6 +4471,8 @@ function refreshSettingsUI() {
   $('sensVal').textContent = (+settings.sens).toFixed(1) + '×';
   $('volVal').textContent = Math.round(settings.volume * 100) + '%';
   document.querySelectorAll('#quality button').forEach(b => b.classList.toggle('sel', b.dataset.quality === settings.quality));
+  document.querySelectorAll('#fpsSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.fps === 'on') === (settings.showFps !== false)));
+  $('fps').classList.toggle('off', settings.showFps === false);
   document.querySelectorAll('#musicSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.music === 'on') === (settings.music !== false)));
   document.querySelectorAll('#scopeSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.scope === 'lock') === !!settings.scopeLock));
   document.querySelectorAll('.wcard').forEach(c => {
@@ -4482,6 +4492,7 @@ document.querySelectorAll('#musicSeg button').forEach(b => b.addEventListener('c
   settings.music = b.dataset.music === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI();
 }));
 document.querySelectorAll('#touchSeg button').forEach(b => b.addEventListener('click', () => { settings.touch = b.dataset.touch; saveSettings(); refreshSettingsUI(); }));
+document.querySelectorAll('#fpsSeg button').forEach(b => b.addEventListener('click', () => { settings.showFps = b.dataset.fps === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI(); })); // 2.8.2
 // 2.8: the keybind list. Click a control, press a key; a key that's taken swaps with the control that had it.
 var bindListen = null; // var: refreshSettingsUI can run before this line
 function refreshBinds() {
@@ -5286,9 +5297,12 @@ function animateRig(dt, rprog) {
 }
 
 const shadowCenter = new THREE.Vector3();
+var fpsN = 0, fpsAt = performance.now();
 function tick() {
   requestAnimationFrame(tick);
   const dt = Math.min(clock.getDelta(), 0.05);
+  // 2.8.2: frames per second, counted over half a second of real time
+  { const n = performance.now(); fpsN++; if (n - fpsAt >= 500) { const f = Math.round(fpsN * 1000 / (n - fpsAt)), el = $('fps'); fpsN = 0; fpsAt = n; el.textContent = 'FPS ' + f; el.classList.toggle('mid', f < 50 && f >= 30); el.classList.toggle('low', f < 30); } }
   const t = clock.elapsedTime;
   windTime.value = t;
 
@@ -7201,7 +7215,7 @@ function buildCampaign3() {
 }
 
 // 2.8.1: a first aid kit on a crate in our trench, by the ladders. Walk up to it for +40 HP; then it restocks for 25 s.
-const KIT = { x: 2.6, z: 1.08, heal: 40, restock: 25 };
+const KIT = { x: 2.6, z: 1.08, heal: 40, restock: 25, uses: 2, gap: 2 }; // 2.8.2: two heals, then it restocks
 function buildFirstAid() {
   const g = new THREE.Group();
   const crate = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.5, 0.5), lambert(0x6e5236)); crate.position.y = 0.37; crate.castShadow = crate.receiveShadow = true; g.add(crate);
@@ -7222,22 +7236,24 @@ function buildFirstAid() {
   const glow = sprite(glowTex, 0x4ade80, 1.4, true, 0.5); glow.position.y = 2.45; g.add(glow);
   g.position.set(KIT.x, 0.12, KIT.z); scene.add(g);
   addCollider(KIT.x, KIT.z, 0.8, 0.55, 1.05);
-  return { g, lid, sign, glow, cd: 0, note: 0 };
+  return { g, lid, sign, glow, cd: 0, note: 0, uses: KIT.uses, wait: 0 };
 }
 function updateFirstAid(dt) {
   const K = MAPS.c3.kit, t = performance.now() / 1000;
-  K.cd = Math.max(0, K.cd - dt); K.note -= dt;
-  const ready = K.cd <= 0;
+  K.cd = Math.max(0, K.cd - dt); K.note -= dt; K.wait = Math.max(0, K.wait - dt);
+  if (K.cd <= 0 && K.uses <= 0) K.uses = KIT.uses;   // restocked
+  const ready = K.cd <= 0 && K.uses > 0;
   K.sign.position.y = 2.45 + Math.sin(t * 2.4) * 0.06;
   K.sign.material.opacity = ready ? 1 : 0.35; K.glow.material.opacity = ready ? 0.45 + Math.sin(t * 3) * 0.12 : 0.08;
   K.lid.rotation.x = ready ? 0 : -0.5; K.lid.position.z = ready ? 0 : 0.08;
   const near = Math.hypot(player.pos.x - KIT.x, player.pos.z - KIT.z) < 1.4 && player.pos.y < 1.2;
   if (!near) return;
-  if (ready && player.hp < 100) {
+  if (ready && K.wait <= 0 && player.hp < 100) {
     const got = Math.min(KIT.heal, 100 - player.hp);
-    player.hp = Math.min(100, player.hp + KIT.heal); K.cd = KIT.restock;
+    player.hp = Math.min(100, player.hp + KIT.heal); K.uses--; K.wait = KIT.gap;
+    if (K.uses <= 0) K.cd = KIT.restock;
     Sound.play('heal'); glowFlash(K.g.position.clone().setY(1.0), 0x4ade80, 2.5, 0.3);
-    popNumber(K.g.position.clone().setY(1.4), 0, true, `+${Math.round(got)} HP`); updateHUD();
+    popNumber(K.g.position.clone().setY(1.4), 0, true, `+${Math.round(got)} HP${K.uses > 0 ? ' · 1 heal left' : ''}`); updateHUD();
   } else if (!ready && K.note <= 0) { K.note = 1.6; popNumber(K.g.position.clone().setY(1.4), 0, false, `First aid restocking · ${Math.ceil(K.cd)}s`); }
 }
 
@@ -7296,7 +7312,7 @@ function resetC3() {
   poseTommy(C.hale, 'stand', 0); poseTommy(C.harsh, 'stand', 0);
   for (const A of C.allies) { A.R.g.position.copy(A.home); A.R.g.rotation.set(0, 0, 0); A.mode = 'aim'; A.R.g.visible = true; poseTommy(A.R, 'aim', 0); }
   C.mg.rotation.y = Math.PI;
-  C.kit.cd = 0; C.kit.note = 0;
+  C.kit.cd = 0; C.kit.note = 0; C.kit.uses = KIT.uses; C.kit.wait = 0;
 }
 // where everyone is once the cutscene is over (also used by Retry)
 function placeC3Start() {
@@ -7427,7 +7443,7 @@ function beginWestern() {
   camp.phase = 'nml'; wave = 1; camp.left = -1;
   for (const e of enemies) e.userData.fireCd = 1.4 + Math.random() * 2.4; // a moment to get moving before they open up
   banner("Over the top!", "Cross no man's land");
-  bannerQueue.push(['First aid kit', 'Back in our trench by the ladders · +40 HP']); // 2.8.1
+  bannerQueue.push(['First aid kit', 'Back in our trench by the ladders · two heals of +40 HP']); // 2.8.1
   objective("Cross no man's land · get into the German trench");
   Sound.play('wave');
   clock.getDelta();
@@ -7921,7 +7937,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.8.1';
+const VERSION = '2.8.2';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
