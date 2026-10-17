@@ -31,6 +31,7 @@
   .logo i { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--up), #0f9d58); display: grid; place-items: center; font-style: normal; font-size: 15px; box-shadow: 0 4px 14px rgba(34, 197, 122, .35); }
   .clock { display: flex; flex-direction: column; line-height: 1.15; }
   .clock b { font-size: 14px; } .clock span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .clock .bar { height: 3px; width: 100%; background: var(--panel-2); border-radius: 2px; margin-top: 4px; overflow: hidden; } .clock .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
   .speed { display: flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
   .speed button { padding: 5px 10px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--muted); }
   .speed button.on { background: var(--panel-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
@@ -65,6 +66,8 @@
   .stock .p { text-align: right; line-height: 1.15; }
   .stock .p b { display: block; font-size: 13px; }
   .stock .p span { font-size: 11px; font-weight: 700; }
+  .stock.pf { grid-template-columns: 1fr auto; border-top: 0; background: linear-gradient(90deg, rgba(245, 196, 81, .08), transparent); }
+  .stock.pf .t { color: var(--gold); }
   .stock.flash-up { animation: fup .5s; } .stock.flash-down { animation: fdown .5s; }
   @keyframes fup { 0% { background: var(--up-soft); } } @keyframes fdown { 0% { background: var(--down-soft); } }
 
@@ -122,6 +125,9 @@
   .hold .v { text-align: right; font-weight: 700; font-size: 13px; }
   .hold .s { font-size: 11px; color: var(--muted); } .hold .pl { text-align: right; font-size: 11px; font-weight: 700; }
   .empty { padding: 18px 14px; color: var(--dim); font-size: 13px; text-align: center; }
+  .log { display: flex; justify-content: space-between; gap: 10px; padding: 7px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .log b { color: var(--text); } .log span:last-child { white-space: nowrap; }
+  .trade.off { opacity: .4; pointer-events: none; }
 
   /* ---- news ---- */
   #newsCard { flex: 1; }
@@ -129,6 +135,7 @@
   .news .h { font-size: 13px; line-height: 1.3; } .news .h b { font-weight: 800; }
   .news .d { grid-column: 1 / -1; font-size: 11px; color: var(--dim); }
   .news .fx { font-size: 11px; font-weight: 800; white-space: nowrap; }
+  .news.rumour .h { color: var(--gold); } .news.rumour .h::before { content: '👂 '; }
   .news.fresh { animation: pop .4s ease-out; } @keyframes pop { from { background: var(--accent-soft); } }
 
   /* ---- toasts, modals ---- */
@@ -184,7 +191,7 @@
 <div id="app">
   <header>
     <div class="logo"><i>📈</i>BULL RUN</div>
-    <div class="clock"><b id="date" class="num">—</b><span id="dayNo">Day 1</span></div>
+    <div class="clock"><b id="date" class="num">—</b><span id="dayNo">Day 1</span><div class="bar"><i id="dayBar"></i></div></div>
     <div class="speed" id="speed">
       <button data-s="0" class="pause" title="Pause (Space)">❚❚</button>
       <button data-s="1" class="on" title="Normal speed (1)">▶</button>
@@ -193,8 +200,8 @@
     </div>
     <div class="worth"><small>Net worth</small><b id="worth" class="num">$0</b><span id="worthChg" class="pill flat num">0.00%</span></div>
     <div class="cashbox"><small>Cash</small><b id="cash" class="num">$0</b></div>
-    <button class="iconbtn" id="goalsBtn" title="Milestones">🏆</button>
-    <button class="iconbtn" id="menuBtn" title="Menu">☰</button>
+    <button class="iconbtn" id="goalsBtn" title="Milestones" aria-label="Milestones">🏆</button>
+    <button class="iconbtn" id="menuBtn" title="Menu" aria-label="Menu">☰</button>
   </header>
 
   <main>
@@ -214,6 +221,7 @@
             <div class="fact"><small>Day range</small><b id="fRange" class="num">—</b></div>
             <div class="fact"><small>1 year</small><b id="fYear" class="num">—</b></div>
             <div class="fact"><small>Dividend</small><b id="fDiv" class="num">—</b></div>
+            <div class="fact"><small>Earnings</small><b id="fEarn" class="num">—</b></div>
             <div class="fact"><small>You own</small><b id="fOwn" class="num">—</b></div>
           </div>
         </div>
@@ -243,7 +251,9 @@
           <div class="kpi"><small>Realised</small><b id="kReal" class="num">—</b></div>
         </div>
         <div class="alloc" id="alloc"></div>
-        <div class="scroll" id="holds" style="max-height: 40vh"></div>
+        <div class="scroll" id="holds" style="max-height: 34vh"></div>
+        <h2 style="border-top:1px solid var(--line)">Activity</h2>
+        <div class="scroll" id="logEl" style="max-height: 22vh"></div>
       </div>
       <div class="card" id="newsCard">
         <h2>News</h2>
@@ -265,7 +275,8 @@
   <p>You have <b style="color:var(--text)">$10,000</b> and a market of twelve companies. Buy low, sell high and build the biggest fortune you can. The market never sleeps while the game runs, and your portfolio is saved in this browser.</p>
   <ul>
     <li><b>Pick a stock</b> on the left to see its chart, then <b>Buy</b> or <b>Sell</b> under the chart.</li>
-    <li><b>Read the news.</b> Headlines move prices: earnings, scandals, booms and the odd crash.</li>
+    <li><b>Read the news.</b> Headlines move prices: earnings, scandals, booms and the odd crash. <b>Rumours</b> (👂) arrive a day or two early and are right more often than not.</li>
+    <li><b>Earnings</b> come every quarter. The chart header counts down to each company's next report.</li>
     <li>Some companies pay a <b>dividend</b> every quarter just for holding their shares.</li>
     <li><b>Speed</b>: <kbd>Space</kbd> pauses, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> set the speed. <kbd>B</kbd> and <kbd>S</kbd> switch between buying and selling, <kbd>↑</kbd> <kbd>↓</kbd> change stock, <kbd>Enter</kbd> trades.</li>
   </ul>
@@ -340,7 +351,8 @@ let snd = true;
 function newGame() {
   const g = {
     v: 1, day: 0, cash: START_CASH, speed: 1, intro: false,
-    stocks: COMPANIES.map((c, i) => ({ closes: [], shock: 0, mom: 0, earn: (i * 5) % 63, open: c.p, hi: c.p, lo: c.p })),
+    stocks: COMPANIES.map((c, i) => ({ closes: [], shock: 0, mom: 0, earn: (i * 5) % 63, open: c.p, hi: c.p, lo: c.p, nextBeat: null })),
+    crashIn: 0, log: [],
     hold: {}, news: [], mkt: 0.2, sect: Object.fromEntries(Object.keys(SECTORS).map(k => [k, 0])),
     worthHist: [], stats: { trades: 0, realised: 0, dividends: 0, best: START_CASH }, goals: [],
   };
@@ -362,7 +374,7 @@ const lastClose = i => G.stocks[i].closes[G.stocks[i].closes.length - 1];
 const price = i => live[i];
 function dayTarget(i) { // where today will close, decided at the open
   const s = G.stocks[i], c = COMPANIES[i];
-  const r = c.drift + c.vol * c.vol / 4 + G.mkt * 0.0008 + G.sect[c.s] * 0.0006 + s.shock + s.mom * 0.15 + c.vol * gauss();
+  const r = c.drift * 0.6 + c.vol * c.vol / 2 + G.mkt * 0.0008 + G.sect[c.s] * 0.0006 + s.shock + s.mom * 0.15 + c.vol * gauss();
   return lastClose(i) * Math.exp(clamp(r, -0.4, 0.4));
 }
 let targets = [];
@@ -374,21 +386,24 @@ function openDay() {
   // scheduled: earnings every quarter per company; dividends with them
   for (let i = 0; i < COMPANIES.length; i++) {
     const s = G.stocks[i], c = COMPANIES[i];
+    // two days before a report, whispers sometimes get out (and are right three times in four)
+    if ((G.day + s.earn) % 63 === 61) { s.nextBeat = Math.random() < 0.52; if (Math.random() < 0.55) { const say = Math.random() < 0.75 ? s.nextBeat : !s.nextBeat; addNews((say ? pick(['Whispers that {n} will beat expectations this week', 'Analysts expect a strong report from {n}']) : pick(['Rumours of a weak quarter at {n}', 'Insiders nervous ahead of the {n} report'])).replace('{n}', c.n), 0, 'rumour', i); } }
     if ((G.day + s.earn) % 63 === 0 && G.day > 0) {
-      const beat = Math.random() < 0.52, size = rand(0.03, 0.13) * (beat ? 1 : -1);
+      const beat = s.nextBeat === null ? Math.random() < 0.52 : s.nextBeat, size = rand(0.03, 0.13) * (beat ? 1 : -1); s.nextBeat = null;
       s.shock += size * 0.4; s.mom = clamp(s.mom + size * 0.15, -0.03, 0.03);
       addNews((beat ? pick(NEWS.good.slice(0, 1).concat(['Strong results at {n}; shares jump', '{n} earnings top estimates'])) : pick(['{n} disappoints on earnings', '{n} profit falls short of estimates'])).replace('{n}', c.n), size, 'earn');
-      const q = G.hold[c.t]; if (c.div > 0 && q && q.qty > 0) { const amt = q.qty * lastClose(i) * c.div / 4; G.cash += amt; G.stats.dividends += amt; toast(`Dividend from ${c.t}: ${fmt(amt)}`, 'gold', `${q.qty} shares × ${fmt(lastClose(i) * c.div / 4)}`); }
+      const q = G.hold[c.t]; if (c.div > 0 && q && q.qty > 0) { const amt = q.qty * lastClose(i) * c.div / 4; G.cash += amt; G.stats.dividends += amt; toast(`Dividend from ${c.t}: ${fmt(amt)}`, 'gold', `${q.qty} shares × ${fmt(lastClose(i) * c.div / 4)}`); logTrade(`Dividend from <b>${c.t}</b>`, amt); }
     }
     s.mom *= 0.9;
   }
   // random news
   const roll = Math.random();
-  // (a crash about once every three years; the market mood then recovers on its own over the following months)
-  if (roll < 0.0014) { const size = -rand(0.12, 0.25); G.mkt = -0.8; for (const s of G.stocks) s.shock += size * rand(0.3, 0.5); addNews(pick(NEWS.crash), size, 'mkt'); snd && Sound.alarm(); }
+  // a crash about once every three years, sometimes with a warning the day before; the mood then recovers over the following months
+  if (G.crashIn > 0 && --G.crashIn === 0) { const size = -rand(0.12, 0.25); G.mkt = -0.8; for (const s of G.stocks) s.shock += size * rand(0.3, 0.5); addNews(pick(NEWS.crash), size, 'mkt'); snd && Sound.alarm(); }
+  else if (roll < 0.0014 && !G.crashIn) { G.crashIn = Math.random() < 0.6 ? 2 : 1; if (G.crashIn === 2) addNews(pick(['Traders nervous as volatility spikes', 'Warning signs flash across the market', 'Whispers of trouble in the banking system']), 0, 'rumour'); }
   else if (roll < 0.03) { const good = Math.random() < 0.5, size = rand(0.012, 0.045) * (good ? 1 : -1); G.mkt = clamp(G.mkt + size * 8, -1, 1); for (const s of G.stocks) s.shock += size * rand(0.3, 0.5); addNews(pick(good ? NEWS.mktGood : NEWS.mktBad), size, 'mkt'); }
   else if (roll < 0.1) { const k = pick(Object.keys(SECTORS)), good = Math.random() < 0.5, size = rand(0.02, 0.07) * (good ? 1 : -1); G.sect[k] = clamp(G.sect[k] + size * 8, -1, 1); COMPANIES.forEach((c, i) => { if (c.s === k) G.stocks[i].shock += size * rand(0.3, 0.5); }); addNews(pick(good ? NEWS.sectorGood : NEWS.sectorBad).replace('{s}', SECTORS[k]), size, 'sect'); }
-  else if (roll < 0.3) { const i = Math.floor(Math.random() * COMPANIES.length), good = Math.random() < 0.5, size = rand(0.03, 0.12) * (good ? 1 : -1); G.stocks[i].shock += size * 0.4; G.stocks[i].mom = clamp(G.stocks[i].mom + size * 0.15, -0.03, 0.03); addNews(pick(good ? NEWS.good : NEWS.bad).replace('{n}', COMPANIES[i].n), size, 'stock', i); }
+  else if (roll < 0.26) { const i = Math.floor(Math.random() * COMPANIES.length), good = Math.random() < 0.5, size = rand(0.03, 0.12) * (good ? 1 : -1); G.stocks[i].shock += size * 0.4; G.stocks[i].mom = clamp(G.stocks[i].mom + size * 0.15, -0.03, 0.03); addNews(pick(good ? NEWS.good : NEWS.bad).replace('{n}', COMPANIES[i].n), size, 'stock', i); }
   targets = COMPANIES.map((c, i) => dayTarget(i));
 }
 function closeDay() {
@@ -410,7 +425,7 @@ function tickPrices(dt) {
     s.hi = Math.max(s.hi, live[i]); s.lo = Math.min(s.lo, live[i]);
   }
 }
-function addNews(h, fx, kind, stock) { G.news.unshift({ day: G.day, h, fx, kind, stock }); if (G.news.length > 60) G.news.pop(); renderNews(true); if (snd && kind !== 'earn') Sound.news(); }
+function addNews(h, fx, kind, stock) { G.news.unshift({ day: G.day, h, fx, kind, stock }); if (G.news.length > 60) G.news.pop(); renderNews(true); if (snd && kind !== 'earn' && speed <= 3) Sound.news(); }
 
 // ---- money ----
 function holdingsValue() { let v = 0; for (const t in G.hold) { const i = COMPANIES.findIndex(c => c.t === t); if (G.hold[t].qty > 0) v += G.hold[t].qty * price(i); } return v; }
@@ -421,15 +436,16 @@ function trade(i, qty, isBuy) {
   if (isBuy) {
     const total = qty * p; if (total > G.cash + 1e-6) return false;
     G.cash -= total; h.cost = (h.cost * h.qty + total) / (h.qty + qty); h.qty += qty;
-    toast(`Bought ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, 'up', fmt(total));
+    toast(`Bought ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, 'up', fmt(total)); logTrade(`Bought <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, -total);
   } else {
     if (qty > h.qty) return false;
     const total = qty * p, gain = (p - h.cost) * qty; G.cash += total; h.qty -= qty; G.stats.realised += gain;
     if (h.qty === 0) delete G.hold[c.t];
-    toast(`Sold ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, gain >= 0 ? 'up' : 'down', `${gain >= 0 ? 'Profit' : 'Loss'} ${fmt(gain)}`);
+    toast(`Sold ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, gain >= 0 ? 'up' : 'down', `${gain >= 0 ? 'Profit' : 'Loss'} ${fmt(gain)}`); logTrade(`Sold <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)} (${gain >= 0 ? '+' : ''}${fmt(gain)})`, total);
   }
   G.stats.trades++; snd && Sound.trade(isBuy); save(); renderAll(); return true;
 }
+function logTrade(h, amt) { (G.log || (G.log = [])).unshift({ day: G.day, h, amt }); if (G.log.length > 40) G.log.pop(); renderLog(); }
 function checkGoals(w) {
   for (const [amt, name] of GOALS) if (w >= amt && !G.goals.includes(amt)) { G.goals.push(amt); toast(`Milestone: ${name}`, 'gold', `Net worth passed ${fmt(amt, 0)}`); snd && Sound.win(); }
 }
@@ -456,8 +472,11 @@ const Sound = (() => {
 // ---- rendering ----
 const listEl = $('list'), newsEl = $('news'), holdsEl = $('holds');
 const sparks = [];
+const PF = -1; // sel === PF shows your net worth instead of a stock
 function buildList() {
   listEl.innerHTML = ''; sparks.length = 0;
+  const pf = document.createElement('div'); pf.className = 'stock pf'; pf.innerHTML = `<div><div class="t">💼 Your portfolio</div><div class="n">Net worth over time</div></div><div class="p num"><b id="pfRowV"></b><span id="pfRowC"></span></div>`;
+  pf.addEventListener('click', () => { select(PF); if (innerWidth <= 760) showTab('colMid'); }); listEl.appendChild(pf);
   COMPANIES.forEach((c, i) => {
     const row = document.createElement('div'); row.className = 'stock'; row.dataset.i = i;
     row.innerHTML = `<div><div class="t">${c.t}<span class="own" hidden></span></div><div class="n">${c.n}</div></div><canvas width="128" height="52"></canvas><div class="p num"><b></b><span></span></div>`;
@@ -468,8 +487,9 @@ function buildList() {
 let lastShown = [];
 function renderList() {
   const rows = listEl.children;
+  { const w = worth(), ch = w / START_CASH - 1; rows[0].classList.toggle('sel', sel === PF); $('pfRowV').textContent = fmtShort(w); const c = $('pfRowC'); c.textContent = pct(ch); c.className = cls(ch); }
   for (let i = 0; i < COMPANIES.length; i++) {
-    const row = rows[i], p = price(i), ch = p / lastClose(i) - 1, own = G.hold[COMPANIES[i].t];
+    const row = rows[i + 1], p = price(i), ch = p / lastClose(i) - 1, own = G.hold[COMPANIES[i].t];
     row.classList.toggle('sel', i === sel);
     row.querySelector('.own').hidden = !(own && own.qty > 0);
     row.querySelector('.p b').textContent = fmt(p);
@@ -493,16 +513,30 @@ function renderHeader() {
   $('cash').textContent = fmtShort(G.cash);
   $('date').textContent = fmtDate(dateOf(G.day)); $('dayNo').textContent = `Day ${G.day + 1} · Year ${Math.floor(G.day / 252) + 1}`;
   $('mood').textContent = G.mkt > 0.4 ? '🐂 Bull market' : G.mkt < -0.4 ? '🐻 Bear market' : 'Mixed';
+  $('dayBar').style.width = (dayFrac * 100).toFixed(1) + '%';
 }
 function renderChartHead() {
+  if (sel === PF) {
+    const w = worth(), prev = G.worthHist[G.worthHist.length - 1] || START_CASH, ch = w / prev - 1, ret = w / START_CASH - 1;
+    $('cName').textContent = 'Your portfolio'; $('cSub').textContent = `Started with ${fmt(START_CASH, 0)} on ${fmtDate(dateOf(0))}`;
+    $('cPrice').textContent = fmt(w); const e = $('cChg'); e.textContent = `${ch >= 0 ? '+' : ''}${fmt(w - prev)} (${pct(ch)}) today`; e.className = 'num ' + cls(ch);
+    $('fRange').textContent = `${fmt(Math.min(...G.worthHist.slice(-1), w), 0)} – ${fmt(Math.max(...G.worthHist.slice(-1), w), 0)}`;
+    const y = G.worthHist[Math.max(0, G.worthHist.length - 252)] || START_CASH, yc = w / y - 1; const fy = $('fYear'); fy.textContent = pct(yc); fy.className = 'num ' + cls(yc);
+    $('fDiv').textContent = fmt(G.stats.dividends, 0); $('fEarn').textContent = G.stats.trades.toLocaleString(); const own = $('fOwn'); own.textContent = pct(ret); own.className = 'num ' + cls(ret);
+    factLabels('Dividends earned', 'Trades', 'Total return');
+    return;
+  }
+  factLabels('Dividend', 'Earnings', 'You own');
   const c = COMPANIES[sel], s = G.stocks[sel], p = price(sel), ch = p / lastClose(sel) - 1, h = G.hold[c.t];
   $('cName').textContent = `${c.n} (${c.t})`; $('cSub').textContent = SECTORS[c.s] + (c.div ? ` · pays ${(c.div * 100).toFixed(1)}% a year in dividends` : ' · no dividend');
   $('cPrice').textContent = fmt(p); const e = $('cChg'); e.textContent = `${ch >= 0 ? '+' : ''}${fmt(p - lastClose(sel))} (${pct(ch)}) today`; e.className = 'num ' + cls(ch);
   $('fRange').textContent = `${fmt(s.lo)} – ${fmt(s.hi)}`;
   const y = s.closes[Math.max(0, s.closes.length - 252)], yc = p / y - 1; const fy = $('fYear'); fy.textContent = pct(yc); fy.className = 'num ' + cls(yc);
   $('fDiv').textContent = c.div ? (c.div * 100).toFixed(1) + '%' : '—';
+  const until = (63 - ((G.day + s.earn) % 63)) % 63; $('fEarn').textContent = until === 0 ? 'Today' : until === 1 ? 'Tomorrow' : `in ${until}d`;
   const own = $('fOwn'); if (h && h.qty > 0) { const pl = (p - h.cost) * h.qty; own.innerHTML = `${h.qty.toLocaleString()} sh <span class="${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)}</span>`; } else own.textContent = '—';
 }
+function factLabels(a, b, c) { $('fDiv').previousElementSibling.textContent = a; $('fEarn').previousElementSibling.textContent = b; $('fOwn').previousElementSibling.textContent = c; }
 function renderPortfolio() {
   const hv = holdingsValue(), w = G.cash + hv, ret = w / START_CASH - 1, prev = G.worthHist[G.worthHist.length - 1] || START_CASH, today = w - prev;
   $('pfAll').textContent = fmtShort(w);
@@ -529,12 +563,13 @@ function renderNews(fresh) {
   G.news.forEach((n, k) => {
     const d = document.createElement('div'); d.className = 'news' + (fresh && k === 0 ? ' fresh' : '');
     const fx = n.fx ? `<div class="fx ${cls(n.fx)}">${pct(n.fx)}</div>` : '<div></div>';
-    d.innerHTML = `<div class="h">${n.h}</div>${fx}<div class="d">${fmtDate(dateOf(n.day))}${n.kind === 'earn' ? ' · Earnings' : n.kind === 'mkt' ? ' · Markets' : n.kind === 'sect' ? ' · Sector' : ''}</div>`;
+    d.classList.toggle('rumour', n.kind === 'rumour'); d.innerHTML = `<div class="h">${n.h}</div>${fx}<div class="d">${fmtDate(dateOf(n.day))}${n.kind === 'earn' ? ' · Earnings' : n.kind === 'mkt' ? ' · Markets' : n.kind === 'sect' ? ' · Sector' : n.kind === 'rumour' ? ' · Rumour' : ''}</div>`;
     if (n.stock !== undefined) { d.style.cursor = 'pointer'; d.addEventListener('click', () => { select(n.stock); if (innerWidth <= 760) showTab('colMid'); }); }
     newsEl.appendChild(d);
   });
 }
 function renderTrade() {
+  document.querySelector('.trade').classList.toggle('off', sel === PF); if (sel === PF) return;
   const c = COMPANIES[sel], p = price(sel), h = G.hold[c.t], q = Math.max(0, Math.floor(+$('qty').value || 0)), total = q * p;
   $('total').textContent = fmt(total);
   const go = $('go'); go.className = side;
@@ -542,24 +577,28 @@ function renderTrade() {
   else { go.textContent = q ? `Sell ${q.toLocaleString()} ${c.t}` : 'Sell'; go.disabled = !q || !h || q > h.qty; const gain = h ? (p - h.cost) * q : 0; $('after').textContent = h && q ? `${gain >= 0 ? 'Profit' : 'Loss'}: ${fmt(gain)}` : ''; $('after').className = 'num ' + cls(gain); }
   $('posInfo').textContent = h && h.qty > 0 ? `You own ${h.qty.toLocaleString()} · avg ${fmt(h.cost)}` : `Max affordable: ${Math.floor(G.cash / p).toLocaleString()}`;
 }
-function renderAll() { renderHeader(); renderList(); renderChartHead(); renderPortfolio(); renderTrade(); drawChart(); }
+function renderLog() {
+  const el = $('logEl'); el.innerHTML = (G.log && G.log.length) ? '' : '<div class="empty">Your trades and dividends will show here.</div>';
+  for (const l of (G.log || [])) { const d = document.createElement('div'); d.className = 'log num'; d.innerHTML = `<span>${l.h}</span><span class="${cls(l.amt)}">${l.amt >= 0 ? '+' : ''}${fmt(l.amt)}</span>`; el.appendChild(d); }
+}
+function renderAll() { renderHeader(); renderList(); renderChartHead(); renderPortfolio(); renderTrade(); renderLog(); drawChart(); }
 
 // ---- the chart ----
 const chart = $('chart'), cg = chart.getContext('2d'), tip = $('tip');
 function chartData() {
-  const data = G.stocks[sel].closes.slice(range ? -range : 0).concat([price(sel)]);
-  const first = G.stocks[sel].closes.length - (data.length - 1);
+  const hist = sel === PF ? G.worthHist : G.stocks[sel].closes;
+  const data = hist.slice(range ? -range : 0).concat([sel === PF ? worth() : price(sel)]);
   return { data, firstDay: G.day - (data.length - 1) };
 }
 function drawChart() {
   const r = chart.getBoundingClientRect(); if (!r.width) return;
   const dpr = Math.min(2, devicePixelRatio || 1); if (chart.width !== Math.round(r.width * dpr) || chart.height !== Math.round(r.height * dpr)) { chart.width = Math.round(r.width * dpr); chart.height = Math.round(r.height * dpr); }
   const W = r.width, H = r.height; cg.setTransform(dpr, 0, 0, dpr, 0, 0); cg.clearRect(0, 0, W, H);
-  const { data, firstDay } = chartData(), c = COMPANIES[sel], h = G.hold[c.t];
+  const { data, firstDay } = chartData(), c = COMPANIES[sel], h = sel === PF ? null : G.hold[c.t];
   const padL = 8, padR = 62, padT = 12, padB = 24, iw = W - padL - padR, ih = H - padT - padB;
   let mn = Math.min(...data), mx = Math.max(...data); if (h && h.qty > 0) { mn = Math.min(mn, h.cost); mx = Math.max(mx, h.cost); } const pad = (mx - mn) * 0.08 || mn * 0.05; mn -= pad; mx += pad;
   const X = k => padL + k / (data.length - 1) * iw, Y = v => padT + (1 - (v - mn) / (mx - mn)) * ih;
-  const up = data[data.length - 1] >= data[0], col = up ? '#22c57a' : '#ff5c6c';
+  const up = data[data.length - 1] >= data[0], col = sel === PF ? '#f5c451' : up ? '#22c57a' : '#ff5c6c';
   // grid and price labels
   cg.font = '11px ' + getComputedStyle(document.body).getPropertyValue('--font'); cg.textBaseline = 'middle'; cg.textAlign = 'left';
   const steps = 5; for (let i = 0; i <= steps; i++) { const v = mn + (mx - mn) * i / steps, y = Y(v); cg.strokeStyle = 'rgba(255,255,255,.06)'; cg.beginPath(); cg.moveTo(padL, y); cg.lineTo(padL + iw, y); cg.stroke(); cg.fillStyle = '#5c6782'; cg.fillText(fmt(v, v >= 1000 ? 0 : 2), padL + iw + 8, y); }
@@ -567,14 +606,14 @@ function drawChart() {
   cg.textAlign = 'center'; cg.textBaseline = 'top'; const n = data.length - 1, every = Math.max(1, Math.round(n / Math.max(2, Math.floor(iw / 90))));
   for (let k = 0; k <= n; k += every) { if (n - k < every * 0.4 && k !== n) continue; cg.fillStyle = '#5c6782'; cg.fillText(fmtDate(dateOf(firstDay + k)).replace(/ \d{4}$/, ''), clamp(X(k), padL + 22, padL + iw - 22), padT + ih + 8); }
   // area and line
-  const grad = cg.createLinearGradient(0, padT, 0, padT + ih); grad.addColorStop(0, up ? 'rgba(34,197,122,.28)' : 'rgba(255,92,108,.28)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+  const grad = cg.createLinearGradient(0, padT, 0, padT + ih); grad.addColorStop(0, sel === PF ? 'rgba(245,196,81,.25)' : up ? 'rgba(34,197,122,.28)' : 'rgba(255,92,108,.28)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
   cg.beginPath(); data.forEach((v, k) => k ? cg.lineTo(X(k), Y(v)) : cg.moveTo(X(k), Y(v))); cg.lineTo(X(n), padT + ih); cg.lineTo(X(0), padT + ih); cg.closePath(); cg.fillStyle = grad; cg.fill();
   cg.beginPath(); data.forEach((v, k) => k ? cg.lineTo(X(k), Y(v)) : cg.moveTo(X(k), Y(v))); cg.strokeStyle = col; cg.lineWidth = 2; cg.lineJoin = 'round'; cg.stroke();
   // your average cost
   if (h && h.qty > 0) { const y = Y(h.cost); cg.setLineDash([5, 4]); cg.strokeStyle = 'rgba(245,196,81,.7)'; cg.lineWidth = 1; cg.beginPath(); cg.moveTo(padL, y); cg.lineTo(padL + iw, y); cg.stroke(); cg.setLineDash([]); cg.fillStyle = '#f5c451'; cg.textAlign = 'left'; cg.textBaseline = 'bottom'; cg.fillText('Your avg ' + fmt(h.cost), padL + 4, y - 2); }
   // the live price marker and tag
   const lx = X(n), ly = Y(data[n]); cg.fillStyle = col; cg.beginPath(); cg.arc(lx, ly, 3.5, 0, Math.PI * 2); cg.fill();
-  cg.fillStyle = col; roundRect(padL + iw + 4, ly - 9, padR - 6, 18, 5); cg.fill(); cg.fillStyle = up ? '#04150c' : '#2a060a'; cg.textAlign = 'center'; cg.textBaseline = 'middle'; cg.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font'); cg.fillText(fmt(data[n], data[n] >= 1000 ? 0 : 2), padL + iw + 4 + (padR - 6) / 2, ly);
+  cg.fillStyle = col; roundRect(padL + iw + 4, ly - 9, padR - 6, 18, 5); cg.fill(); cg.fillStyle = sel === PF ? '#2a1f00' : up ? '#04150c' : '#2a060a'; cg.textAlign = 'center'; cg.textBaseline = 'middle'; cg.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font'); cg.fillText(fmt(data[n], data[n] >= 1000 ? 0 : 2), padL + iw + 4 + (padR - 6) / 2, ly);
   // crosshair
   if (hover !== null) {
     const k = clamp(Math.round((hover - padL) / iw * n), 0, n), x = X(k), y = Y(data[k]);
@@ -616,7 +655,7 @@ $('introGo').addEventListener('click', () => { closeModals(); G.intro = true; sa
 $('resetBtn').addEventListener('click', () => { if (confirm('Start over? Your portfolio, cash and history will be wiped.')) { G = newGame(); G.intro = true; startDay(); save(); lastShown = []; renderAll(); renderSparks(); renderNews(); closeModals(); toast('New game. $10,000 in cash.', 'gold'); } });
 
 // ---- controls ----
-function select(i) { sel = clamp(i, 0, COMPANIES.length - 1); hover = null; renderChartHead(); renderTrade(); renderList(); drawChart(); }
+function select(i) { sel = clamp(i, PF, COMPANIES.length - 1); hover = null; renderChartHead(); renderTrade(); renderList(); drawChart(); }
 function setSide(s) { side = s; document.querySelectorAll('#side button').forEach(b => b.classList.toggle('on', b.dataset.side === s)); renderTrade(); }
 function setSpeed(s) { speed = s; G.speed = s; document.querySelectorAll('#speed button').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
 function setQty(q) { $('qty').value = Math.max(0, Math.floor(q)); renderTrade(); }
@@ -663,10 +702,11 @@ function frame(now) {
 }
 
 // ---- go ----
-G = load() || newGame();
+G = load() || newGame(); if (G.crashIn === undefined) G.crashIn = 0; if (!G.log) G.log = []; for (const st of G.stocks) if (st.nextBeat === undefined) st.nextBeat = null;
 try { snd = localStorage.getItem(SAVE_KEY + '-snd') !== '0'; } catch (e) {}
 buildList(); startDay(); setSpeed(G.speed === 0 ? 1 : G.speed || 1); setSide('buy');
 renderAll(); renderSparks(); renderNews();
+renderLog();
 if (!G.intro) { openModal('mIntro'); setSpeed(0); $('introGo').addEventListener('click', () => setSpeed(1), { once: true }); }
 requestAnimationFrame(frame);
 </script>
