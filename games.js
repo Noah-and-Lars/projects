@@ -42,14 +42,14 @@ window.GAMES = [
     id: 'russian-roulette',
     title: 'Russian Roulette',
     category: 'Thriller',
-    tagline: 'One revolver, one bullet, six chambers. How long can you keep your nerve?',
+    tagline: 'One revolver, one bullet, six chambers. New: Buckshot mode, with a shotgun, live and blank shells and items.',
     description: 'Sit across a table from a stranger in a dim, dirty room. A coin toss decides who goes first, then the cylinder is spun before every turn: put the revolver to your head and squeeze. Every pull is a 1 in 6 chance. Beat stranger after stranger to build a win streak, but one loaded chamber ends it.',
     controls: 'Mouse, keyboard or touch',
     keys: [['Heads / Tails', 'Call the coin toss'], ['Hold button or Space', 'Squeeze the trigger'], ['Esc', 'Pause']],
     path: 'russian-roulette/index.html',
     thumb: 'russian-roulette/thumb.jpg',
     added: '2026-10-17T12:50:00+11:00',
-    updated: '2026-10-17T16:30:00+11:00',
+    updated: '2026-10-17T18:33:00+11:00',
     stat() { const s = readSave('russianRouletteSave', true); return s && s.best ? 'Best streak ' + s.best : null; },
   },
   {
@@ -178,6 +178,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.1.2, new game mode: Buckshot. A shotgun with live and blank shells, health charges, three rounds and items (magnifying glass, handcuffs, handsaw, beer, cigarettes). Pick it with Change gamemode under Sit down.' },
   { date: '2026-10-17', game: 'chess', text: 'New game: Chess. Play the computer on Easy, Medium or Hard on a classic green board, with every rule of chess and your games saved.' },
   { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.0.3: a more human stranger. His eyes dart and widen, he swallows, his jaw trembles, his shoulders hunch, he holds his breath before he pulls and flinches at every click. He hesitates in his own way (staring you down, shutting his eyes, muttering, tightening his finger and easing off), but always pulls within a few seconds. His hands open and close round the gun, which he now picks up properly. When the bullet is yours the screen just goes black, with nothing red after it.' },
   { date: '2026-10-17', game: 'cube-tower-defense', text: 'Cube Tower Defense 1.2, Upgrades: click any unit to upgrade it. Every unit has two upgrade paths with three levels each. The Freezer now costs 95 and the Flamethrower 110.' },

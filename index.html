@@ -103,7 +103,7 @@
   <p>Found a bug, or a game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=59"></script>
+<script src="games.js?v=60"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
@@ -130,7 +130,7 @@ function renderFeature() {
       <span class="btn big"><span aria-hidden="true">▶</span> Play now</span>
     </div>`;
   f.querySelector('img').src = g.thumb;
-  f.querySelector('.eyebrow').textContent = g.id === 'cube-assault' ? 'MULTIPLAYER SUPPORT ADDED' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
+  f.querySelector('.eyebrow').textContent = g.id === 'russian-roulette' ? 'New gamemode: Buckshot' : g.id === 'cube-assault' ? 'MULTIPLAYER SUPPORT ADDED' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
   f.querySelector('h1').textContent = g.title;
   f.querySelector('.feature-tag').textContent = g.tagline;
   const meta = f.querySelector('.feature-meta');
