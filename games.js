@@ -25,6 +25,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'chess',
+    title: 'Chess',
+    category: 'Board',
+    tagline: 'Classic chess against the computer, on Easy, Medium or Hard.',
+    description: 'Play chess against the computer on a classic green board. Pick Easy, Medium or Hard, play as White, Black or a random colour, and drag or click your pieces. Every rule is in: castling, en passant, promotion, checkmate, stalemate and draws. Your game is saved, and your wins, losses and draws are kept for each level.',
+    controls: 'Mouse or touch',
+    keys: [['Drag or click', 'Move a piece'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around']],
+    path: 'chess/index.html',
+    thumb: 'chess/thumb.svg',
+    added: '2026-10-17T17:11:00+11:00',
+    updated: '2026-10-17T17:11:00+11:00',
+    stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = ['easy', 'medium', 'hard'].reduce((n, l) => n + ((s.stats[l] && s.stats[l].w) || 0), 0); return w ? w + (w === 1 ? ' win' : ' wins') : null; },
+  },
+  {
     id: 'russian-roulette',
     title: 'Russian Roulette',
     category: 'Thriller',
@@ -164,6 +178,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-17', game: 'chess', text: 'New game: Chess. Play the computer on Easy, Medium or Hard on a classic green board, with every rule of chess and your games saved.' },
   { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.0.3: a more human stranger. His eyes dart and widen, he swallows, his jaw trembles, his shoulders hunch, he holds his breath before he pulls and flinches at every click. He hesitates in his own way (staring you down, shutting his eyes, muttering, tightening his finger and easing off), but always pulls within a few seconds. His hands open and close round the gun, which he now picks up properly. When the bullet is yours the screen just goes black, with nothing red after it.' },
   { date: '2026-10-17', game: 'cube-tower-defense', text: 'Cube Tower Defense 1.2, Upgrades: click any unit to upgrade it. Every unit has two upgrade paths with three levels each. The Freezer now costs 95 and the Flamethrower 110.' },
   { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.0.2: fair 1 in 6 odds on every pull, a new stranger every game with a different shirt colour, hair colour and hairstyle (8 styles, including a mohawk and a flat cap), and bug fixes.' },

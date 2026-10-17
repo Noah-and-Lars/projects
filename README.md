@@ -16,6 +16,7 @@ Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade
 | [Cube Tower Defense](cube-tower-defense/) | Tower defense | Mouse or touch |
 | [Blockcraft](blockcraft/) | 3D block sandbox with the Nether and the End (survival and creative) | Keyboard + mouse or touch |
 | [Russian Roulette](russian-roulette/) | First-person thriller | Mouse, keyboard or touch |
+| [Chess](chess/) | Chess against the computer (Easy, Medium, Hard) | Mouse or touch |
 
 ## Adding a game
 
