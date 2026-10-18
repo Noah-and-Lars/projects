@@ -424,7 +424,10 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.6.1</b>The big fix update<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.6.2</b>Lottery closed<span>Latest</span></summary><ul>
+    <li>The lottery has been removed. Lottery tickets are still on the shelf at grocery stores, but they're under construction and no longer available to buy.</li>
+    <li>Fixed: you could lose your wanted stars just by standing outside the store you'd robbed, before the police even arrived. The police now search where you were last seen, so you have to get away from there (or out of sight once they're on you) to lose them.</li></ul></details>
+  <details><summary><b>v1.6.1</b>The big fix update</summary><ul>
     <li>The Strait Bridge: the concrete piers no longer poke up through the road on the island side, and the road from Interstate 1 to the bridge is finally paved (it used to be grass).</li>
     <li>Houses and offices: walk out through the door to leave (you used to fall out into an empty world behind the room). The people who live and work inside now stay there instead of vanishing.</li>
     <li>If you hide in a building while you’re wanted, the police break the door down after 10 seconds and come in after you.</li>
@@ -2198,7 +2201,7 @@ function manageWorld(dt){
       if(INSIDE&&state==='play'){if(INSIDE.breachAt==null){INSIDE.breachAt=T+10;notify('The police know you’re in here. They’ll break the door down in <b>10 seconds</b>!',5);}
         if(INSIDE.breachAt>0){const left=INSIDE.breachAt-T;if(left<=0){INSIDE.breachAt=-1;breachIn();}else if(Math.ceil(left/2)!==INSIDE.bang){INSIDE.bang=Math.ceil(left/2);sfx.crash(0.45);shake=Math.max(shake,0.15);}}}
       if(!seen&&!INSIDE&&heli&&!heli.dead&&heli.g.position.distanceTo(pp)<range*1.5)seen=true;
-      W.seen=seen;if(seen){W.evadeT=0;W.tx=pp.x;W.tz=pp.z;}else{if(!(INSIDE&&INSIDE.breachAt>0))W.evadeT+=dt;if(W.evadeT>8+W.level*3&&state==='play'){PROF.stats.escapes++;addXp(20*W.level);clearWanted();notify('You lost the cops.',3);}}
+      W.seen=seen;if(seen){W.evadeT=0;W.tx=pp.x;W.tz=pp.z;}else{if(!(INSIDE&&INSIDE.breachAt>0)&&Math.hypot(pp.x-W.tx,pp.z-W.tz)>40)W.evadeT+=dt;/* 1.6.2: they search where you were last seen */if(W.evadeT>8+W.level*3&&state==='play'){PROF.stats.escapes++;addXp(20*W.level);clearWanted();notify('You lost the cops.',3);}}
       W.spawnCD-=dt;policeT-=dt;
       if(policeT<=0){policeT=0.5;const cap=COPCAP[W.level];let have=copCount();
         for(const c of CARS)if(c.driver==='cop'&&!c.dead&&c.ai.mode==='traffic'&&have+(c.crew||2)<=cap){c.ai.mode='pursue';c.ai.from=null;c.ai.to=nearestNode(c.pos.x,c.pos.z);have+=c.crew||2;}
@@ -2383,14 +2386,14 @@ function closeShop(){if(state!=='shop')return;const s=shopOpen;$('shop').hidden=
   if(s&&shopBought>0&&!s.clerk.dead)startScene(s.kind==='gun'?'gunbye':'grocbye',s);}
 const sbar=v=>`<i><u style="width:${Math.round(clamp(v,0.06,1)*100)}%"></u></i>`;
 const GROCERY=[{id:'g_coffee',name:'Coffee',tag:'Drink',price:4,hp:8},{id:'g_chips',name:'Chips',tag:'Snack',price:6,hp:12},{id:'g_soda',name:'Energy drink',tag:'Drink',price:9,hp:18},
-  {id:'g_sand',name:'Sandwich',tag:'Food',price:14,hp:30},{id:'g_meal',name:'Hot meal',tag:'Food',price:25,hp:60},{id:'g_lotto',name:'Lottery ticket',tag:'Luck',price:5}];
+  {id:'g_sand',name:'Sandwich',tag:'Food',price:14,hp:30},{id:'g_meal',name:'Hot meal',tag:'Food',price:25,hp:60},{id:'g_lotto',name:'Lottery ticket',tag:'Under construction',price:0,off:true}];// 1.6.2: the lottery is gone
 function renderShop(){const P=player;$('shopCash').textContent=fmt(P.cash);let h='';
   if(shopOpen&&shopOpen.kind==='front'){for(const it of FRONT_ITEMS[shopOpen.name]||[]){const full=it.hp&&!it.boost&&P.hp>=100;
       h+=`<div class="card extra"><div class="ctag">${it.tag}</div><div class="cname">${it.name}</div><p>${itemDesc(it)}</p><button data-buy="${it.id}"${full||P.cash<it.price&&it.price>0?' disabled':''}>${full?'Full health':it.price?fmt(it.price):'Free'}</button></div>`;}
     h+=`<div class="card rob"><div class="ctag">Crime</div><div class="cname">Rob the register</div><p>Pull a gun on the clerk and take the cash. The police will come after you.</p><button data-buy="rob">Rob it</button></div>`;
     $('shopGrid').innerHTML=h;return;}
   if(shopOpen&&shopOpen.kind!=='gun'){for(const g of GROCERY){const full=g.hp&&P.hp>=100;
-      h+=`<div class="card extra"><div class="ctag">${g.tag}</div><div class="cname">${g.name}</div><p>${g.hp?`+${g.hp} health.`:'Scratch it at the counter. Most are duds, some pay $50, a few pay $1,000.'}</p><button data-buy="${g.id}"${full||P.cash<g.price?' disabled':''}>${full?'Full health':fmt(g.price)}</button></div>`;}
+      h+=`<div class="card extra"><div class="ctag">${g.tag}</div><div class="cname">${g.name}</div><p>${g.hp?`+${g.hp} health.`:'Under construction. No longer available to purchase.'}</p><button data-buy="${g.id}"${g.off?'':full||P.cash<g.price?' disabled':''}>${g.off?'Unavailable':full?'Full health':fmt(g.price)}</button></div>`;}
     h+=`<div class="card rob"><div class="ctag">Crime</div><div class="cname">Rob the register</div><p>Pull a gun on the clerk and take the cash. The police will come after you.</p><button data-buy="rob">Rob it</button></div>`;
     $('shopGrid').innerHTML=h;return;}
   for(const k of WORDER){const w=WPN[k];if(!w.price)continue;const own=!!P.owned[k];
@@ -2406,9 +2409,9 @@ function buyItem(id){const P=player;
     if(fi.hp){P.hp=Math.min(100,P.hp+fi.hp);got.push(`+${fi.hp} health`);}if(fi.armor){P.armor=Math.min(100,P.armor+fi.armor);got.push(`+${fi.armor} armor`);}
     if(fi.boost){BOOST.until=T+60;BOOST.name=fi.name;got.push('a speed boost for a minute');}if(fi.sleep){P.hp=100;DAY.t=30;got.push('a good night’s sleep');}if(fi.xp)got.push(`+${fi.xp} XP`);
     $('shopMsg').textContent=`${fi.name}: ${got.join(', ')||fi.desc}.`;hudCash=P.cash;$('cash').textContent=fmt(P.cash);renderShop();return;}
-  const g=GROCERY.find(x=>x.id===id);if(g){if(P.cash<g.price||(g.hp&&P.hp>=100))return;giveCash(-g.price);shopBought++;PROF.stats.bought++;addXp(2);sfx.buy();
+  const g=GROCERY.find(x=>x.id===id);if(g&&g.off){sfx.click();$('shopMsg').textContent='The lottery is under construction and is no longer available to purchase.';return;}
+  if(g){if(P.cash<g.price||(g.hp&&P.hp>=100))return;giveCash(-g.price);shopBought++;PROF.stats.bought++;addXp(2);sfx.buy();
     if(g.hp){P.hp=Math.min(100,P.hp+g.hp);$('shopMsg').textContent=`You had the ${g.name.toLowerCase()}. Health ${Math.round(P.hp)}.`;}
-    else{const r=Math.random(),win=r<0.02?1000:r<0.14?50:0;if(win)giveCash(win);$('shopMsg').textContent=win?`Winner! The ticket pays ${fmt(win)}.`:'No luck. Better luck next time.';}
     hudCash=P.cash;$('cash').textContent=fmt(P.cash);renderShop();return;}
   const w=WPN[id],ex=EXTRAS.find(x=>x.id===id),price=w?w.price:ex?ex.price:Infinity;if(P.cash<price){sfx.click();return;}shopBought++;PROF.stats.bought++;addXp(5);
   if(w){if(P.owned[id])return;P.owned[id]={ammo:w.mag,reserve:w.res};equip(id);}
@@ -2869,7 +2872,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.6.1';
+const VERSION='1.6.2',NEWS_VERSION='1.6.1';// 1.6.2 is a small update: no new pop-up for it
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -2888,7 +2891,7 @@ let nameFirst=false;
 function openName(first){nameFirst=first;$('npTitle').innerHTML=first?'Welcome to San Varro<span>What do they call you?</span>':'Change your name<span>Pick a new one</span>';
   $('npCancel').hidden=first;$('npName').value=first?'':PROF.name;$('npOk').disabled=!$('npName').value.trim();$('namePop').hidden=false;setTimeout(()=>$('npName').focus(),60);}
 function submitName(){const v=$('npName').value.replace(/\s+/g,' ').trim().slice(0,16);if(!v)return;PROF.name=v;saveProfile();$('namePop').hidden=true;refreshBadge();refreshProfile();
-  if(nameFirst&&settings.seenVersion!==VERSION)$('updPop').hidden=false;nameFirst=false;}
+  if(nameFirst&&settings.seenVersion!==VERSION&&settings.seenVersion!==NEWS_VERSION)$('updPop').hidden=false;nameFirst=false;}
 $('npName').addEventListener('input',()=>{$('npOk').disabled=!$('npName').value.trim();});
 $('npName').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')submitName();if(e.key==='Escape'&&!nameFirst)$('namePop').hidden=true;});
 $('npOk').addEventListener('click',submitName);$('npCancel').addEventListener('click',()=>{$('namePop').hidden=true;});
@@ -2987,7 +2990,7 @@ async function boot(){
   try{await Promise.race([document.fonts.load('64px Anton'),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   try{buildWorld();createPlayer();}catch(err){console.error(err);$('loadTxt').textContent='Something went wrong while building the city: '+err.message;return;}
   updChunks(0,true);applySettings();renderAvatars();refreshBadge();state='menu';$('loading').hidden=true;$('menu').hidden=false;requestAnimationFrame(frame);
-  if(!PROF.name)openName(true);else if(settings.seenVersion!==VERSION)$('updPop').hidden=false;
+  if(!PROF.name)openName(true);else if(settings.seenVersion!==VERSION&&settings.seenVersion!==NEWS_VERSION)$('updPop').hidden=false;
 }
 setTimeout(boot,30);
 })();
