@@ -122,7 +122,7 @@ window.GAMES = [
     path: 'free-criminal/index.html',
     thumb: 'free-criminal/thumb.jpg?v=2',
     added: '2026-10-13T21:33:00+11:00',
-    updated: '2026-10-18T22:30:00+11:00',
+    updated: '2026-10-19T00:30:00+11:00',
     stat() { const p = readSave('freecriminal.profile.v1', true); return p && p.xp ? 'Level ' + (1 + Math.floor(Math.sqrt(p.xp / 150))) : null; },
   },
   {
@@ -207,6 +207,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-19', game: 'free-criminal', text: 'Free Criminal 1.8.2: online, everyone now has the same time of day (to the minute) and the same weather.' },
   { date: '2026-10-18', game: 'free-criminal', text: 'Free Criminal online: drive into another player and they go ragdoll flying, and 10 seconds of spawn protection when you join or respawn.' },
   { date: '2026-10-18', game: 'free-criminal', text: 'Free Criminal 1.8.1: Play online is now the top, recommended way to play; Play offline checks with you first, and the update splash shows the newest version.' },
   { date: '2026-10-18', game: 'havoc-bay', text: 'New game: Havoc Bay. A Red vs Blue sea battle: command warships and aircraft carriers, fly planes, man the harbor guns, claim islands and destroy the enemy harbor. Play online on the shared server, in a private room, or against bots.' },

@@ -348,7 +348,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.8.1<span>Online first</span></h1><p>Play online is now the main way to play: one San Varro for everyone, with fights, races, robberies and chat.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.8.2<span>Online first</span></h1><p>Play online is now the main way to play: one San Varro for everyone, with fights, races, robberies and chat.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
     <div><i>🌐</i><span><b>Play online · Recommended</b>The top button on the menu. Everyone who presses it shares the same city.</span></div>
@@ -356,6 +356,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
     <div><i>💬</i><span><b>Chat</b>Press T, type and press Enter to talk to everyone in the online city.</span></div>
     <div><i>📴</i><span><b>Play offline</b>Still there, but it checks with you first: online is the better, more supported mode.</span></div>
     <div><i>👤</i><span><b>Tidier menu</b>Your profile is the card in the top right corner.</span></div>
+    <div><i>🌦️</i><span><b>One sky for everyone</b>Online, everyone has the same time of day, to the minute, and the same weather.</span></div>
   </div>
   <div class="row2"><button class="go sec" id="updPast">Past updates</button><button class="go" id="updOk">Let's go</button></div>
 </div></div>
@@ -393,7 +394,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.8.1</b>San Varro</div>
+    <div class="ver"><b>v1.8.2</b>San Varro</div>
     <nav class="nav">
       <button id="bOnline" class="online">Play online</button>
       <button id="bPlay">Play offline</button>
@@ -402,7 +403,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
       <button data-panel="pSettings">Settings</button>
       <button data-panel="pControls">Controls</button>
     </nav>
-    <div class="news"><b>New in v1.8.1</b><ul><li><b>Play online</b> (recommended): one city for everyone, with PvP and chat</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
+    <div class="news"><b>New in v1.8.2</b><ul><li><b>Play online</b> (recommended): one city for everyone, with PvP and chat</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
     <p id="onlineMsg" hidden></p>
     <div class="foot">Keyboard and mouse, or touch controls on phones and tablets (Settings → Touch controls). Best in Chrome or Edge, full screen.</div>
   </div>
@@ -447,7 +448,11 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.8.1</b>Online first<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.8.2</b>One sky<span>Latest</span></summary><ul>
+    <li>Online, everyone's time of day is synced to the minute: the same sunrise, the same night, the same clock in the corner.</li>
+    <li>Online, the weather is synced too: when it rains for one player, it rains for everyone.</li>
+  </ul></details>
+  <details><summary><b>v1.8.1</b>Online first</summary><ul>
     <li><b>Play online</b> is now the top button on the menu, with a <b>Recommended</b> badge.</li>
     <li><b>Play</b> is now <b>Play offline</b>. It tells you offline isn’t recommended, then asks if you’re sure, because online is the better, more supported mode.</li>
     <li>The Profile button on the left is gone: open your profile with the card in the top right corner.</li>
@@ -2922,7 +2927,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.8.1',NEWS_VERSION='1.8.1';// 1.6.2 is a small update: no new pop-up for it
+const VERSION='1.8.2',NEWS_VERSION='1.8.1';// 1.8.2 is a small update: no new pop-up for it
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3105,7 +3110,7 @@ const NET=(()=>{
     const st=myState(),key=JSON.stringify(st);
     if(hostId===myId){const full=fullDue||t-lastFull>FULL_MS,list=[];if(key!==lastUp||full){list.push([myId,...st]);lastUp=key;}
       for(const[id,s]of ups)if(full||changed.has(id))list.push([id,...s]);changed.clear();
-      if(list.length&&roster.length>1)send(main,'s',{p:list});if(full){lastFull=t;fullDue=false;}}
+      if(list.length&&roster.length>1)send(main,'s',{p:list,ts:Date.now()});if(full){lastFull=t;fullDue=false;}}
     else if(key!==lastUp&&send(pipe,'u',{s:st}))lastUp=key;}
 
   // ---------- drawing the other players ----------
@@ -3172,7 +3177,7 @@ const NET=(()=>{
   // ---------- joining and leaving ----------
   api.join=async()=>{api.name=(PROF.name||'Player').replace(/[<>&"]/g,'').slice(0,16);await getClient();
     who=chan(BASE+'-who',true);who.on('presence',{event:'sync'},onPresence);
-    main=chan(BASE+'-pub');listen(main,'s',m=>{if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'c',m=>{if(api.on&&typeof m.m==='string'&&m.f!==myId)chatLine(nameOf(m.f),m.m.slice(0,140),false);});
+    main=chan(BASE+'-pub');listen(main,'s',m=>{if(num(m.ts)&&hostId!==myId)syncClock(m.ts);if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'c',m=>{if(api.on&&typeof m.m==='string'&&m.f!==myId)chatLine(nameOf(m.f),m.m.slice(0,140),false);});
     pipe=chan(BASE+'-p-'+myId);
     try{await Promise.all([joinChan(who,st=>{if(st==='SUBSCRIBED'&&api.on)who.track({id:myId,n:api.name,j:joinT,l:PROF.look}).catch(()=>{});}),joinChan(main),joinChan(pipe)]);}
     catch(e){api.leave();throw e;}
@@ -3180,13 +3185,24 @@ const NET=(()=>{
     joinT=Date.now();api.on=true;hostId=null;roster=[];await who.track({id:myId,n:api.name,j:joinT,l:PROF.look});
     for(let k=0;k<20&&!readRoster().some(m=>m.id===myId&&who.presenceState()[myId]);k++)await new Promise(r=>setTimeout(r,100));
     onPresence();return readRoster().length;};
-  api.leave=()=>{api.on=false;const chs=[who,main,pipe,...pipes.values()];who=main=pipe=null;pipes.clear();ups.clear();changed.clear();for(const id of[...avatars.keys()])removeAvatar(id);hostId=null;roster=[];
+  api.leave=()=>{api.on=false;WEATHER.t=rand(60,150);clockSet=false;clockOff=0;const chs=[who,main,pipe,...pipes.values()];who=main=pipe=null;pipes.clear();ups.clear();changed.clear();for(const id of[...avatars.keys()])removeAvatar(id);hostId=null;roster=[];
     try{chs[0]&&chs[0].untrack().catch(()=>{});}catch(e){}setTimeout(()=>chs.forEach(drop),300);};
   api.count=()=>roster.length;
   // chat (1.8): T to talk to everyone in the online city
   let chatT=0;api.say=t=>{t=String(t||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,140);if(!api.on||!t||now()-chatT<600)return;chatT=now();send(main,'c',{f:myId,m:t});chatLine(api.name,t,true);};
   api._dbg=()=>[...avatars.values()].map(a=>({n:a.name,vis:a.vis,car:a.inCar,pos:a.pos.toArray().map(v=>+v.toFixed(1)),buf:a.buf.length}));
-  api.frame=dt=>{if(!api.on)return;const t=now();if(state==='play'||state==='dead')tickPos(t);drawAvatars(dt);checkRunOver();};
+  // 1.8.2: one clock for the whole online city. The host's clock rides along on its snapshots (no extra messages);
+  // the time of day and the weather are worked out from it, so everyone sees the same hour and the same rain.
+  let clockOff=0,clockSet=false;
+  function syncClock(ts){const off=ts-Date.now();if(!clockSet||Math.abs(off-clockOff)>1500){clockOff=off;clockSet=true;}else clockOff+=(off-clockOff)*0.1;}
+  const cityNow=()=>(Date.now()+clockOff)/1000; // a new host keeps the corrected clock it already had, so the sky doesn't jump
+  const hash=i=>{let x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x);};
+  const WSLOT=200; // the weather is decided in 200-second slots: rain in about a third of them
+  function syncSky(snap){const t=cityNow();DAY.t=((t+40)%DAY.len+DAY.len)%DAY.len;
+    const slot=Math.floor(t/WSLOT),h=hash(slot),rain=h<0.35?0.65+hash(slot+0.5)*0.35:0;
+    WEATHER.target=rain;WEATHER.t=1e9;if(snap)WEATHER.k=rain;}
+  api.syncSky=syncSky;
+  api.frame=dt=>{if(!api.on)return;syncSky(false);const t=now();if(state==='play'||state==='dead')tickPos(t);drawAvatars(dt);checkRunOver();};
   return api;
 })();
 // Play online: straight into the shared city (no prison cutscene), next to the hospital
@@ -3197,7 +3213,7 @@ async function playOnline(){
   b.disabled=false;b.textContent='Play online';
   newGame();setPlayerLook();$('menu').hidden=true;lockPointer();
   const P=player,x=SPAWN.hosp.x+rand(-6,6),z=SPAWN.hosp.z+rand(-6,6);P.pos.set(x,groundY(x,z),z);P.h=SPAWN.hosp.h||0;P.m.group.rotation.set(0,P.h,0);P.m.group.visible=!P.fp;yaw=P.h;pitch=-0.08;
-  state='play';updGunVis();$('hud').hidden=false;updChunks(0,true);NET.protect();
+  state='play';updGunVis();$('hud').hidden=false;updChunks(0,true);NET.protect();NET.syncSky(true);
   const n=NET.count();notify(`You’re in the online city${n>1?` with <b>${n-1}</b> other player${n>2?'s':''}`:'. Nobody else is here yet'}. Other players show on your map in <b style="color:#3fa0ff">blue</b>. Shoot them, race them, or rob the town together. Press <b>T</b> to chat.`,9);
 }
 // ---------- chat (1.8): T opens it while you're online, Enter sends, Esc cancels ----------
