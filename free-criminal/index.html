@@ -348,7 +348,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.8.2<span>Online first</span></h1><p>Play online is now the main way to play: one San Varro for everyone, with fights, races, robberies and chat.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.8.3<span>Online first</span></h1><p>Play online is now the main way to play: one San Varro for everyone, with fights, races, robberies and chat.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
     <div><i>🌐</i><span><b>Play online · Recommended</b>The top button on the menu. Everyone who presses it shares the same city.</span></div>
@@ -394,7 +394,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.8.2</b>San Varro</div>
+    <div class="ver"><b>v1.8.3</b>San Varro</div>
     <nav class="nav">
       <button id="bOnline" class="online">Play online</button>
       <button id="bPlay">Play offline</button>
@@ -403,7 +403,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
       <button data-panel="pSettings">Settings</button>
       <button data-panel="pControls">Controls</button>
     </nav>
-    <div class="news"><b>New in v1.8.2</b><ul><li><b>Play online</b> (recommended): one city for everyone, with PvP and chat</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
+    <div class="news"><b>New in v1.8.3</b><ul><li><b>Play online</b> (recommended): one city for everyone, with PvP and chat</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
     <p id="onlineMsg" hidden></p>
     <div class="foot">Keyboard and mouse, or touch controls on phones and tablets (Settings → Touch controls). Best in Chrome or Edge, full screen.</div>
   </div>
@@ -448,7 +448,11 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.8.2</b>One sky<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.8.3</b>See everyone<span>Latest</span></summary><ul>
+    <li>Fixed: online, players could stop seeing each other. Everyone's position goes through the first player in, and that stopped whenever they paused, opened a shop, watched a cutscene or switched to another tab. It now keeps going no matter what they're doing.</li>
+    <li>Every other player now shows on the big map (M) and the map screen too, as a blue dot with their name, moving as they move. They were only on the minimap before.</li>
+  </ul></details>
+  <details><summary><b>v1.8.2</b>One sky</summary><ul>
     <li>Online, everyone's time of day is synced to the minute: the same sunrise, the same night, the same clock in the corner.</li>
     <li>Online, the weather is synced too: when it rains for one player, it rains for everyone.</li>
   </ul></details>
@@ -2796,6 +2800,7 @@ function drawRoute(g,pts,w){if(pts.length<2)return;g.lineJoin='round';g.lineCap=
 function drawBigMap(){const S=bm.width,k=S/MAPW;bg.drawImage(MAPIMG,0,0,S,S);
   if(ROUTE){drawRoute(bg,ROUTE.pts.map(p=>[mx(p[0])*k,mx(p[1])*k]),6);drawPin(bg,mx(ROUTE.x)*k,mx(ROUTE.z)*k,12);}
   for(const b of BLIPS)drawBlip(bg,mx(b.x)*k,mx(b.z)*k,b.type,11);drawLegend(bg,14,bm.height-14,14);
+  if(NET.on)NET.mapBlips(bg,(x,z)=>[mx(x)*k,mx(z)*k],8,true); // 1.8.3: the other players
   bg.font='700 22px Anton, Impact';bg.fillStyle='rgba(255,255,255,.75)';bg.textAlign='center';
   MAP_LABELS.forEach(([n,x,z])=>bg.fillText(n,mx(x)*k,mx(z)*k));
   const P=player,h=P.inCar?P.inCar.h:P.h;drawArrow(bg,mx(P.pos.x)*k,mx(P.pos.z)*k,Math.atan2(Math.cos(h),Math.sin(h))+Math.PI/2,16);}
@@ -2845,6 +2850,7 @@ function sizeMap(){const r=mapC.getBoundingClientRect();MV.d=Math.min(2,devicePi
 function clampView(){MV.s=clamp(MV.s,Math.min(mapC.width,mapC.height)/(2*MEXT),9*MV.d);MV.cx=clamp(MV.cx,-WX,WX);MV.cz=clamp(MV.cz,-WZN,ISL.z+ISL.rz);}
 function openMap(){hidePanels();MV.open=true;$('mapPanel').hidden=false;sizeMap();MV.cx=player.pos.x;MV.cz=player.pos.z;MV.s=Math.min(mapC.width,mapC.height)/700;clampView();
   MV.tgt=ROUTE?{x:ROUTE.x,z:ROUTE.z,name:ROUTE.name}:null;updMapUI();drawMapView();}
+setInterval(()=>{if(MV.open&&NET.on)drawMapView();},500); // 1.8.3: keep the other players moving on the map screen
 function closeMap(){MV.open=false;MV.drag=null;$('mapPanel').hidden=true;}
 function updMapUI(){$('mRoute').disabled=!MV.tgt||(ROUTE&&ROUTE.x===MV.tgt.x&&ROUTE.z===MV.tgt.z);$('mClear').hidden=!ROUTE;
   $('mapInfo').innerHTML=ROUTE&&MV.tgt&&ROUTE.x===MV.tgt.x&&ROUTE.z===MV.tgt.z?`Route set to <b>${ROUTE.name}</b>. Follow the blue line on your minimap.`:MV.tgt?`Picked: <b>${MV.tgt.name}</b>`:'Click anywhere on the map to pick a destination.';}
@@ -2858,6 +2864,7 @@ function drawMapView(){const g=mc,W=mapC.width,H=mapC.height,s=MV.s,d=MV.d;g.fil
   g.font=`700 ${Math.round(20*d)}px Anton, Impact`;g.fillStyle='rgba(255,255,255,.8)';g.textAlign='center';g.textBaseline='middle';MAP_LABELS.forEach(([n,x,z])=>g.fillText(n,sx2(x),sz2(z)));
   for(const b of BLIPS)drawBlip(g,sx2(b.x),sz2(b.z),b.type,10*d);if(s>0.32*d)blipLabels(g,b=>[sx2(b.x),sz2(b.z)],11*d);drawLegend(g,12*d,H-12*d,12*d);
   if(MV.tgt)drawPin(g,sx2(MV.tgt.x),sz2(MV.tgt.z),12*d,ROUTE&&ROUTE.x===MV.tgt.x&&ROUTE.z===MV.tgt.z?'#3fa0ff':'#f2b134');
+  if(NET.on)NET.mapBlips(g,(x,z)=>[sx2(x),sz2(z)],8*d,true); // 1.8.3: the other players
   const P=player,h=P.inCar?P.inCar.h:P.h;drawArrow(g,sx2(P.pos.x),sz2(P.pos.z),Math.atan2(Math.cos(h),Math.sin(h))+Math.PI/2,14*d);}
 function zoomMap(f,X,Y){if(X===undefined){X=mapC.width/2;Y=mapC.height/2;}const x=wX(X),z=wZ(Y);MV.s*=f;clampView();MV.cx=x-(X-mapC.width/2)/MV.s;MV.cz=z-(Y-mapC.height/2)/MV.s;clampView();drawMapView();}
 const mapXY=e=>{const r=mapC.getBoundingClientRect();return[(e.clientX-r.left)*MV.d,(e.clientY-r.top)*MV.d];};
@@ -2927,7 +2934,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.8.2',NEWS_VERSION='1.8.1';// 1.8.2 is a small update: no new pop-up for it
+const VERSION='1.8.3',NEWS_VERSION='1.8.1';// 1.8.3 is a small update: no new pop-up for it
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3093,7 +3100,7 @@ const NET=(()=>{
     fullDue=true;
     const first=roster[0];
     if(first&&first.id!==hostId){hostId=first.id;lastUp='';if(hostId!==myId){for(const ch of pipes.values())drop(ch);pipes.clear();ups.clear();}}
-    if(hostId===myId)for(const m of roster)if(m.id!==myId&&!pipes.has(m.id)){const ch=chan(BASE+'-p-'+m.id);pipes.set(m.id,ch);const id=m.id;listen(ch,'u',p=>{if(hostId===myId)gotState(id,p.s,true);});joinChan(ch).catch(()=>{if(pipes.get(id)===ch)pipes.delete(id);});}
+    if(hostId===myId)for(const m of roster)if(m.id!==myId&&!pipes.has(m.id)){const ch=chan(BASE+'-p-'+m.id);pipes.set(m.id,ch);const id=m.id;listen(ch,'u',p=>{if(hostId===myId){gotState(id,p.s,true);if(document.hidden)tickPos(now());}});joinChan(ch).catch(()=>{if(pipes.get(id)===ch)pipes.delete(id);});}
   }
 
   // ---------- where everyone is ----------
@@ -3172,6 +3179,9 @@ const NET=(()=>{
   api.blast=at=>{for(const a of avatars.values()){if(!a.vis||a.prot)continue;const d=a.pos.distanceTo(at),R=a.inCar?9:8;if(d<R)send(main,'h',{f:myId,to:a.id,dmg:Math.round((R-d)*(a.inCar?20:14))});}};
 
   // ---------- the minimap ----------
+  api.mapBlips=(g,to,r,names)=>{g.save();g.textAlign='center';g.textBaseline='bottom';g.font=`700 ${Math.round(r*1.5)}px Barlow Condensed, Arial`;
+    for(const a of avatars.values()){if(!a.buf.length||a.buf[a.buf.length-1].s[9])continue;const[x,y]=to(a.pos.x,a.pos.z);g.fillStyle='#111';g.beginPath();g.arc(x,y,r+2,0,7);g.fill();g.fillStyle='#3fa0ff';g.beginPath();g.arc(x,y,r,0,7);g.fill();
+      if(names){g.lineWidth=4;g.strokeStyle='rgba(0,0,0,.75)';g.strokeText(a.name,x,y-r-3);g.fillStyle='#bfe0ff';g.fillText(a.name,x,y-r-3);}}g.restore();};
   api.blips=(g,to)=>{for(const a of avatars.values()){if(!a.vis)continue;const[x,y]=to(a.pos.x,a.pos.z,true);g.fillStyle='#111';g.beginPath();g.arc(x,y,9,0,7);g.fill();g.fillStyle='#3fa0ff';g.beginPath();g.arc(x,y,7,0,7);g.fill();}};
 
   // ---------- joining and leaving ----------
@@ -3202,7 +3212,12 @@ const NET=(()=>{
     const slot=Math.floor(t/WSLOT),h=hash(slot),rain=h<0.35?0.65+hash(slot+0.5)*0.35:0;
     WEATHER.target=rain;WEATHER.t=1e9;if(snap)WEATHER.k=rain;}
   api.syncSky=syncSky;
-  api.frame=dt=>{if(!api.on)return;syncSky(false);const t=now();if(state==='play'||state==='dead')tickPos(t);drawAvatars(dt);checkRunOver();};
+  api.frame=dt=>{if(!api.on)return;syncSky(false);drawAvatars(dt);checkRunOver();};
+  // 1.8.3: sending and passing on positions runs on its own timer, not the game's frames. It used to stop whenever the
+  // host (the first player in) paused, opened a shop, watched a cutscene or switched to another tab, and then nobody
+  // could see anybody. Timers keep running in a background tab (slowed down), and the host also passes positions on
+  // the moment they arrive while its tab is hidden.
+  setInterval(()=>{if(api.on)tickPos(now());},100);
   return api;
 })();
 // Play online: straight into the shared city (no prison cutscene), next to the hospital
