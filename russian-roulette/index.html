@@ -168,6 +168,14 @@
   #end.win { background: radial-gradient(ellipse at center, rgba(20, 0, 0, .55), rgba(0, 0, 0, .92)); }
   #end.lose { background: #000; }
 
+  /* 1.2: play online */
+  .mbtn.online { border-color: rgba(226, 176, 74, .55); background: linear-gradient(180deg, rgba(70, 40, 18, .95), rgba(40, 22, 12, .95)); }
+  .mbtn.online i { display: inline-block; width: 9px; height: 9px; margin-right: 9px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 10px #3ddc84; vertical-align: 1px; }
+  .txt { width: 190px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0, 0, 0, .45); color: var(--ink); font: inherit; font-weight: 700; font-size: 16px; }
+  .txt:focus { outline: none; border-color: var(--gold); }
+  .codejoin { display: flex; gap: 8px; width: min(320px, 100%); margin: 10px auto 0; } .codejoin .txt { width: 0; flex: 1; text-transform: uppercase; letter-spacing: .2em; text-align: center; } .codejoin .mbtn { width: auto; flex: 1.3; margin: 0; }
+  .codejoin[hidden], .mbtn[hidden] { display: none; }
+  #netStatus { min-height: 1.4em; margin: 14px 0 0; font-size: 15px; color: var(--gold-hi); } #netStatus.bad { color: #ff8a8a; }
   #rot { display: none; }
   @media (max-width: 640px) {
     #actions { height: 122px; bottom: calc(14px + env(safe-area-inset-bottom)); } #actions .btns { gap: 10px; min-height: 100px; } .abtn { min-width: 0; flex: 1; max-width: 200px; padding: 14px 10px; }
@@ -202,16 +210,30 @@
     <div class="modepill" id="modePill">Mode: Russian Roulette</div>
     <div class="stats" id="titleStats"></div>
     <button class="mbtn gold" data-go="play">Sit down</button>
+    <button class="mbtn online" data-go="online"><i></i>Play online</button>
     <button class="mbtn" data-go="mode">Change gamemode</button>
     <button class="mbtn" data-go="how">How to play</button>
     <button class="mbtn" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.1.3 · Patch notes</button>
+    <button class="link" data-go="notes">v1.2 · Patch notes</button>
   </div>
   <div class="menu" id="m-mode">
     <h2>Game mode</h2>
     <button class="modecard" data-mode="rr"><i>☠️</i><span><b>Russian Roulette</b>A revolver with one bullet in six chambers. A coin toss decides who goes first, and every pull is a 1 in 6 chance.</span></button>
     <button class="modecard" data-mode="bs"><i>💥</i><span><b>Buckshot Roulette</b>A shotgun loaded with live and blank shells, health charges and items. Beat the dealer in all three rounds.</span></button>
     <button class="mbtn" data-go="back">Back</button>
+  </div>
+  <div class="menu" id="m-online">
+    <h2>Play online</h2>
+    <div class="tag" style="margin:6px 0 14px">Russian Roulette against a real person. One revolver, one bullet, two players.</div>
+    <div class="box">
+      <div class="row"><label for="netName">Your name</label><input id="netName" class="txt" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Name"></div>
+    </div>
+    <button class="mbtn gold netpick" data-go="netQuick">Quick match</button>
+    <button class="mbtn netpick" data-go="netCreate">Create a private table</button>
+    <div class="codejoin netpick"><input id="netCode" class="txt" maxlength="5" autocomplete="off" spellcheck="false" placeholder="CODE"><button class="mbtn" data-go="netJoin">Join with code</button></div>
+    <div class="tag" id="netStatus"></div>
+    <button class="mbtn" data-go="netCancel" id="netCancel" hidden>Cancel</button>
+    <button class="mbtn" data-go="netBack" id="netBack">Back</button>
   </div>
   <div class="menu" id="m-wip">
     <h2>Work in progress</h2>
@@ -255,17 +277,25 @@
     <button class="mbtn" data-go="back">Back</button>
   </div>
   <div class="menu wide" id="m-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.1<span>Buckshot</span></h1><p>A second game mode: Buckshot Roulette. A shotgun, live and blank shells, health charges and items, against the same strangers in the same dim room.</p>
-      <div class="icons"><i>💥</i><i>🔍</i><i>🍺</i><i>🚬</i></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.2<span>Play online</span></h1><p>Russian Roulette against a real person. Find someone with Quick match, or make a private table and send a friend the code.</p>
+      <div class="icons"><i>🌐</i><i>🪙</i><i>☠️</i><i>🔁</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><i>🎮</i><span><b>Change gamemode</b>A new button under Sit down lets you pick Russian Roulette or Buckshot Roulette.</span></div>
-      <div><i>💥</i><span><b>The shotgun</b>Live (red) and blank (blue) shells. You see how many of each, then they’re loaded in a hidden order.</span></div>
-      <div><i>🎯</i><span><b>Him or you</b>Shoot the dealer, or yourself: a blank on yourself means you go again.</span></div>
-      <div><i>⚡</i><span><b>Charges</b>Three rounds with 2, 4 and 5 charges. Lose all your charges in any round and it’s over.</span></div>
-      <div><i>🔍</i><span><b>Items</b>Magnifying glass, handcuffs, handsaw, beer and cigarettes, handed out with every load from round 2.</span></div>
-      <div><i>🏆</i><span><b>Its own streak</b>Buckshot keeps its own win streak and best, separate from Russian Roulette.</span></div>
+      <div><i>🌐</i><span><b>Play online</b>A new button under Sit down. Type your name and play another person instead of a stranger.</span></div>
+      <div><i>⚡</i><span><b>Quick match</b>Puts you at a table with whoever else is waiting.</span></div>
+      <div><i>🔑</i><span><b>Private tables</b>Make a table and get a 5-letter code. Your friend types it in to sit down across from you.</span></div>
+      <div><i>🪙</i><span><b>Same rules</b>One player calls the coin, the winner picks who goes first, and every pull is 1 in 6.</span></div>
+      <div><i>👀</i><span><b>Watch them squeeze</b>On their turn you see their finger tighten on the trigger as they hold the button.</span></div>
+      <div><i>🏆</i><span><b>Online wins</b>Counted on their own. Your single-player streak isn’t touched.</span></div>
     </div>
+    <div class="box"><h3>v1.2 <span>Play online</span></h3><ul>
+      <li>New <b>Play online</b> button on the main menu: play Russian Roulette against another person.</li>
+      <li><b>Quick match</b> sits you down with whoever else is waiting. <b>Create a private table</b> gives you a 5-letter code to send a friend, and <b>Join with code</b> takes you to their table.</li>
+      <li>Your opponent takes the stranger’s seat, with their name. You see them pick up the gun, spin it and squeeze the trigger as they hold the button.</li>
+      <li>One of you calls the coin, the winner chooses who goes first, and every pull is still exactly 1 in 6.</li>
+      <li>After a game, both press Play again for a rematch. Leaving the table loses the game. If you don’t move for 30 seconds on your turn, the game moves for you.</li>
+      <li>Online wins and games are counted separately, so your single-player streak stays as it is. Online play is Russian Roulette only; Buckshot stays single player.</li>
+    </ul></div>
     <div class="box"><h3>v1.1.3 <span>A more scared stranger</span></h3><ul>
       <li>The stranger shows his fear: his eyes dart about and widen, his brows show worry, he swallows nervously and his jaw trembles.</li>
       <li>His body gives him away too: his shoulders hunch, he holds his breath before he pulls, and he flinches at every click, even yours.</li>
@@ -335,7 +365,7 @@
 // =====================================================================
 //  Russian Roulette v1.1.3
 // =====================================================================
-const VERSION = '1.1.3';
+const VERSION = '1.2';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -351,9 +381,9 @@ const UP = V3(0, 1, 0);
 
 // ---------- save ----------
 const SAVE_KEY = 'russianRouletteSave';
-const save = { streak: 0, best: 0, wins: 0, games: 0, inGame: false, vol: 0.8, shake: 1, qual: 'high', mode: 'rr', bsStreak: 0, bsBest: 0, bsWins: 0, bsGames: 0, bsInGame: false };
+const save = { streak: 0, best: 0, wins: 0, games: 0, inGame: false, vol: 0.8, shake: 1, qual: 'high', mode: 'rr', bsStreak: 0, bsBest: 0, bsWins: 0, bsGames: 0, bsInGame: false, onWins: 0, onGames: 0, name: '' };
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
-for (const k of ['streak', 'best', 'wins', 'games', 'bsStreak', 'bsBest', 'bsWins', 'bsGames']) save[k] = Math.max(0, Math.floor(+save[k] || 0));
+for (const k of ['streak', 'best', 'wins', 'games', 'bsStreak', 'bsBest', 'bsWins', 'bsGames', 'onWins', 'onGames']) save[k] = Math.max(0, Math.floor(+save[k] || 0));
 if (save.mode !== 'bs') save.mode = 'rr';
 save.vol = clamp(+save.vol, 0, 1); if (!isFinite(save.vol)) save.vol = 0.8;
 if (![0, 0.5, 1].includes(+save.shake)) save.shake = 1; save.shake = +save.shake;
@@ -1322,6 +1352,7 @@ function sub(html, secs = 0) { subEl.innerHTML = html; subEl.classList.toggle('o
 function banner(big, small = '', cls = '', secs = 2.2) { bannerEl.className = 'on ' + cls; bannerEl.querySelector('b').textContent = big; bannerEl.querySelector('span').textContent = small; bannerTimer = secs; }
 function setOpp(t) { $('opp').textContent = t; }
 function updateHud() {
+  $('streak').querySelector('small').textContent = 'WIN STREAK';
   const bs = save.mode === 'bs'; $('streakN').textContent = bs ? save.bsStreak : save.streak; $('bestN').textContent = 'Best ' + (bs ? save.bsBest : save.best);
 }
 let pending = null;
@@ -1646,6 +1677,7 @@ async function youDie() {
   // 1.0.1: the moment the hammer falls, everything goes black. No blood, no flash.
   const bl = $('black'); bl.style.transition = 'none'; bl.style.opacity = '1'; void bl.offsetWidth; bl.style.transition = '';
   hud.hidden = true; fp.rig.visible = false; stressTo = 0; stress = 0;
+  if (game && game.online) { await wait(2.2); onlineEnd(false); return; }
   // the game is over: the streak goes
   const lost = save.streak;
   save.streak = 0; save.inGame = false; persist(); updateHud();
@@ -1682,14 +1714,17 @@ async function heDies() {
   await wait(0.5); Sound.body();
   await wait(0.9);
   sub(`The chamber was loaded. ${npc.name} is dead.`, 0);
-  save.streak++; save.wins++; const newBest = save.streak > save.best; if (newBest) save.best = save.streak; save.inGame = false; persist(); updateHud();
+  const online = !!(game && game.online);
+  let newBest = false;
+  if (online) { $('streakN').textContent = save.onWins + 1; }
+  else { save.streak++; save.wins++; newBest = save.streak > save.best; if (newBest) save.best = save.streak; save.inGame = false; persist(); updateHud(); }
   $('streak').classList.remove('bump'); void $('streak').offsetWidth; $('streak').classList.add('bump');
   await wait(2.4);
   // 1.0.1: two more seconds of just the body before the win screen
   sub(''); hud.hidden = true;
   await wait(2);
   Blood.fade(); await wait(0.8); Blood.clear();
-  showEnd(true, save.streak, newBest);
+  if (online) onlineEnd(true); else showEnd(true, save.streak, newBest);
 }
 
 function statsHTML(list) { return list.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join(''); }
@@ -1699,7 +1734,7 @@ function showEnd(win, n, newBest) {
   $('endT').textContent = win ? 'YOU SURVIVED' : 'GAME OVER';
   $('endP').innerHTML = win ? (newBest ? `New best streak: <b>${n}</b>` : `Win streak: <b>${n}</b>`) : (n > 0 ? `The chamber was loaded. Your streak of <b>${n}</b> is over.` : 'The chamber was loaded.');
   $('endS').innerHTML = statsHTML([[save.streak, 'Streak'], [save.best, 'Best'], [save.wins, 'Wins'], [save.games, 'Games']]);
-  $('endAgain').textContent = win ? 'Next stranger' : 'Try again';
+  $('endAgain').textContent = win ? 'Next stranger' : 'Try again'; $('endAgain').disabled = false;
 }
 
 // get the table ready for a new game (a new stranger if the old one is dead or you lost)
@@ -1726,6 +1761,7 @@ async function newGame() {
 function onErr(e) { if (!(e instanceof Abort)) console.error(e); }
 
 function toTitle() {
+  if (Online.on) { if (state === 'game' && game && game.online) { save.onGames++; persist(); } Online.leave(); } // leaving an online game loses it
   abortAll(); state = 'title'; paused = false;
   if (save.inGame) { save.inGame = false; save.streak = 0; persist(); } // you left in the middle of a game
   if (save.bsInGame) { save.bsInGame = false; save.bsStreak = 0; persist(); }
@@ -1758,16 +1794,21 @@ function showMenu(name) {
   if (name === 'title') { $('titleStats').innerHTML = save.mode === 'bs' ? statsHTML([[save.bsStreak, 'Streak'], [save.bsBest, 'Best'], [save.bsWins, 'Wins'], [save.bsGames, 'Games']]) : statsHTML([[save.streak, 'Streak'], [save.best, 'Best'], [save.wins, 'Wins'], [save.games, 'Games']]); menuBack = 'title'; if (typeof syncModeUI === 'function') syncModeUI(); }
   if (name === 'pause') { menuBack = 'pause'; $('pauseNote').textContent = (save.inGame || save.bsInGame) ? 'Leaving the table now counts as a loss and ends your win streak.' : ''; }
   if (name === 'settings') syncSettings();
+  if (name === 'online') { if (!$('netName').value) $('netName').value = save.name || ''; if (!Online.on) { onlineWaiting(false); onlineStatus(''); } }
   ov.scrollTop = 0;
 }
 function hideMenus() { ov.hidden = true; }
-function pauseGame() { if (state !== 'game' || paused) return; paused = true; if (holdS) holdS.down = false; showMenu('pause'); }
+function pauseGame() {
+  // online the game can't stop for you: the menu opens, the table carries on
+  if (state === 'game' && game && game.online) { if (ov.hidden) { showMenu('pause'); $('pauseNote').textContent = 'The game keeps going online. Leaving the table now loses it.'; } return; }
+  if (state !== 'game' || paused) return; paused = true; if (holdS) holdS.down = false; showMenu('pause'); }
 function resumeGame() { paused = false; hideMenus(); }
 ov.addEventListener('click', e => {
   const b = e.target.closest('[data-go]'); if (!b) return;
   Sound.init(); Sound.ui();
   const go = b.dataset.go;
-  if (go === 'play') { if (save.mode === 'bs') showMenu('wip'); else sitDown(); }
+  if (go.startsWith('net')) onlineMenuGo(go);
+  else if (go === 'play') { if (save.mode === 'bs') showMenu('wip'); else sitDown(); }
   else if (go === 'wipok') sitDown();
   else if (go === 'back') showMenu(menuBack);
   else if (go === 'resume') resumeGame();
@@ -1775,7 +1816,12 @@ ov.addEventListener('click', e => {
   else showMenu(go);
 });
 $('menuBtn').addEventListener('click', () => { Sound.ui(); pauseGame(); });
-$('endAgain').addEventListener('click', () => { Sound.ui(); newGame(); });
+$('endAgain').addEventListener('click', () => {
+  Sound.ui();
+  if (!(game && game.online)) { newGame(); return; }
+  if (Online.left() || !Online.on) { toTitle(); showMenu('online'); return; }
+  $('endAgain').disabled = true; Online.again();
+});
 $('endMenu').addEventListener('click', () => { Sound.ui(); toTitle(); });
 
 // settings
@@ -2447,6 +2493,404 @@ $('m-mode').addEventListener('click', e => {
   save.mode = b.dataset.mode; persist(); syncModeUI(); bsReset(); showMenu('title');
 });
 syncModeUI(); bsReset();
+
+// =====================================================================
+//  1.2: Play online. Russian Roulette against a real person, over the arcade's Supabase Realtime project.
+// =====================================================================
+// Quick match: everyone waiting is in Presence on rr-lobby, oldest first, and the oldest two pair up (the older one
+// is host). A private table has a 5-letter code, and whoever made it is host. A table is one channel, rr-t-<key>:
+// Presence says who's sitting there and every move is a broadcast to the other player (self: false).
+// The host's browser rolls everything (the coin and every spin), so both screens always agree.
+// One game: the guest calls the coin ('call'), the host tosses it ('toss'), the winner picks who goes first
+// ('first'). Each turn the guest asks the host for a spin ('spinreq') and the host rolls it ('spin', live or not),
+// the shooter's squeeze goes across as it happens ('hold', a few times a second) and 'pulled' ends it.
+// Every message carries g, the game number at the table, so nothing from an old game leaks into a new one.
+// After a game both press Play again ('again'). Leaving the table or closing the page loses the game.
+// A game costs a few dozen messages, so this barely touches the arcade's Supabase allowance.
+// Testing: add ?rrroom=abc to the address to use separate channels (rr-test-abc-...).
+const AFK = 30; // seconds before an online turn takes itself
+const Online = (() => {
+  const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
+  const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const TEST = (new URLSearchParams(location.search).get('rrroom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
+  const BASE = TEST ? 'rr-test-' + TEST : 'rr';
+  const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0, O, 1, I or L
+  const myId = (Math.random().toString(36) + '0000000').slice(2, 8);
+  let client = null, libLoad = null, lobby = null, table = null, tableKey = '', hostId = null, expectId = null, seatT = 0;
+  let opp = null, left = false, g = 0, oppAgain = -1, meAgain = -1, waitTimer = 0;
+  const inbox = [], waiters = [];
+  const api = { name: '', on: false, opp: () => opp, isHost: () => hostId === myId, me: myId };
+
+  function getClient() {
+    if (client) return Promise.resolve(client);
+    try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(client = c); } catch (e) {}
+    if (!libLoad) libLoad = new Promise((res, rej) => {
+      if (window.supabase && window.supabase.createClient) return res();
+      const s = document.createElement('script'); s.src = SB_LIB; s.async = true;
+      s.onload = res; s.onerror = () => { libLoad = null; rej('offline'); };
+      document.head.appendChild(s);
+    });
+    return libLoad.then(() => client || (client = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } })));
+  }
+  const chan = topic => client.channel(topic, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
+  function joinChan(ch) {
+    return new Promise((res, rej) => {
+      let done = false;
+      const to = setTimeout(() => { if (!done) { done = true; rej('offline'); } }, 10000);
+      ch.subscribe(st => {
+        if (done) return;
+        if (st === 'SUBSCRIBED') { done = true; clearTimeout(to); res(); }
+        else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { done = true; clearTimeout(to); rej('offline'); }
+      });
+    });
+  }
+  function drop(ch) { if (!ch || !client) return; try { ch.untrack && ch.untrack().catch(() => {}); } catch (e) {} try { const p = client.removeChannel(ch); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+  const members = ch => { const st = ch ? ch.presenceState() : {}, out = []; for (const k in st) { const m = st[k] && st[k][0]; if (m && typeof m.id === 'string') out.push(m); } return out; };
+  const cleanName = n => String(n || '').replace(/[^A-Za-z0-9_ .'-]/g, '').trim().slice(0, 16);
+  api.cleanName = cleanName;
+
+  // ---------- messages at the table ----------
+  function send(ev, payload = {}) {
+    if (!table || table.state !== 'joined') return;
+    try { const p = table.send({ type: 'broadcast', event: ev, payload: Object.assign({ f: myId, g }, payload) }); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+  api.send = send;
+  function deliver() {
+    for (let i = 0; i < waiters.length; i++) {
+      const w = waiters[i], k = inbox.findIndex(m => w.evs.includes(m.ev));
+      if (k >= 0) { waiters.splice(i--, 1); w.res(inbox.splice(k, 1)[0]); }
+    }
+  }
+  function onMsg(ev, m) {
+    if (!opp || m.f !== opp.id) return;
+    if (ev === 'again') { oppAgain = m.g | 0; emit('again'); return; }
+    if ((m.g | 0) < g) return;                       // from a game that's over
+    inbox.push(Object.assign({ ev }, m)); deliver();
+  }
+  // the next message of one of these kinds, in the order they came
+  api.next = evs => new Promise((res, rej) => { if (left) return rej(new Abort()); waiters.push({ evs: [].concat(evs), res, rej }); deliver(); });
+
+  // ---------- events for the menus and the game ----------
+  const handlers = {};
+  const emit = (ev, d) => (handlers[ev] || []).forEach(f => { try { f(d); } catch (e) { console.error(e); } });
+  api.onEvent = (ev, f) => { (handlers[ev] = handlers[ev] || []).push(f); };
+
+  // ---------- sitting down at a table ----------
+  async function seat(key, host, expect) {
+    tableKey = key; hostId = host; expectId = expect || null; opp = null; left = false; g = 0; oppAgain = meAgain = -1; inbox.length = 0;
+    table = chan(BASE + '-t-' + key);
+    for (const ev of ['call', 'toss', 'first', 'spinreq', 'spin', 'hold', 'pulled', 'again']) table.on('broadcast', { event: ev }, m => onMsg(ev, m.payload || {}));
+    table.on('presence', { event: 'sync' }, onTable);
+    await joinChan(table);
+    seatT = performance.now();
+    await table.track({ id: myId, n: api.name, h: host === myId });
+  }
+  function onTable() {
+    const others = members(table).filter(m => m.id !== myId);
+    if (!opp) {
+      const host = others.find(m => m.h), c = expectId ? others.find(m => m.id === expectId) : hostId === myId ? others[0] : host;
+      if (!hostId && others.length > 1) { emit('error', 'That table is full.'); api.leave(); return; }
+      if (!c) return;
+      if (!hostId) hostId = c.id;
+      opp = { id: c.id, name: cleanName(c.n) || 'Stranger' };
+      clearTimeout(waitTimer);
+      emit('matched', opp);
+    } else if (!others.some(m => m.id === opp.id) && !left) {
+      left = true;
+      for (const w of waiters.splice(0)) w.rej(new Abort());
+      emit('left', opp);
+    }
+  }
+
+  // ---------- the three ways in ----------
+  api.quick = async name => {
+    api.name = cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    lobby = chan(BASE + '-lobby');
+    const t = Date.now();
+    let pairing = false;
+    lobby.on('presence', { event: 'sync' }, () => {
+      if (pairing || !lobby) return;
+      // everyone waiting, oldest first; pairs are (1st, 2nd), (3rd, 4th)...
+      const q = members(lobby).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1)), i = q.findIndex(m => m.id === myId);
+      if (i < 0) return;
+      const mate = i % 2 === 0 ? q[i + 1] : q[i - 1];
+      if (!mate) return;
+      pairing = true;
+      const host = i % 2 === 0 ? myId : mate.id, guest = host === myId ? mate.id : myId;
+      const lb = lobby; lobby = null; drop(lb);
+      seat('q' + host + guest, host, mate.id).catch(() => emit('error', 'offline'));
+      // if they never sit down (they paired with someone else), go back in the queue
+      clearTimeout(waitTimer);
+      waitTimer = setTimeout(() => { if (!opp && api.on) { const tb = table; table = null; drop(tb); emit('requeue'); api.quick(api.name).catch(() => emit('error', 'offline')); } }, 8000);
+    });
+    await joinChan(lobby);
+    await lobby.track({ id: myId, n: api.name, t });
+  };
+  api.create = async name => {
+    api.name = cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    const code = Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
+    await seat('c' + code, myId, null);
+    return code;
+  };
+  api.join = async (name, code) => {
+    api.name = cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    await seat('c' + code, null, null);
+    clearTimeout(waitTimer);
+    waitTimer = setTimeout(() => { if (!opp && api.on) { emit('error', 'Nobody is at table ' + code + '.'); api.leave(); } }, 6000);
+  };
+  api.leave = () => {
+    api.on = false; clearTimeout(waitTimer);
+    for (const w of waiters.splice(0)) w.rej(new Abort());
+    inbox.length = 0;
+    const a = lobby, b = table; lobby = table = null; opp = null; hostId = null;
+    drop(a); drop(b);
+  };
+  // a new game at the same table
+  api.newGame = () => { g++; inbox.length = 0; };
+  api.game = () => g;
+  api.left = () => left;
+  api.again = () => { meAgain = g; send('again'); emit('again'); };
+  api.bothAgain = () => meAgain === g && oppAgain === g;
+  return api;
+})();
+
+// a button press that happens by itself if the player doesn't (so a game can't stall on someone who walked off)
+function autoPress(secs) {
+  let off = false;
+  wait(secs).then(() => { if (off) return; const b = actionsEl.querySelector('.abtn'); if (b) b.click(); if (holdS) holdS.down = true; }).catch(() => {});
+  return () => { off = true; };
+}
+
+async function playOnline() {
+  const opp = Online.opp(), host = Online.isHost(), N = opp.name;
+  game = { round: 0, my: runId, online: true };
+  state = 'game'; hud.hidden = false;
+  $('streak').querySelector('small').textContent = 'ONLINE WINS'; $('streakN').textContent = save.onWins; $('bestN').textContent = save.onGames + (save.onGames === 1 ? ' game' : ' games');
+  npc.name = N; setOpp(N + ' · Online'); stressTo = 0.15; lookAtNPC(); cam.fovTo = 62; Sound.S.tick = true; Sound.S.heart = true;
+  await wait(0.5);
+  sub(`Your opponent is <em>${N}</em>. A real person, somewhere out there.`); npc.look.set(0, SEAT.y, SEAT.z);
+  await wait(2);
+  // ---- the coin: the guest calls it, the host's browser tosses it ----
+  sub(host ? `A coin spins on the table. ${N} calls it.` : 'A coin spins on the table. Call it while it spins.');
+  await handTo(npc.L, { p: V3(COIN_X + 0.06, TOP + 0.05, COIN_Z - 0.08), q: qFrom(V3(-1, 0, 0.3), V3(0, 0, 1)) }, 0.7);
+  coin.phase = 'spin'; coin.phi = rand(0, 6); coin.w = 26; coin.g.position.set(COIN_X, TOP, COIN_Z); Sound.coinFlick();
+  cam.lookTo.set(COIN_X, TOP + 0.03, COIN_Z); cam.fovTo = 28; npc.look.set(COIN_X, TOP, COIN_Z);
+  handTo(npc.L, 'rest', 0.6).catch(() => {});
+  await wait(0.5);
+  let call, result, winner;
+  if (host) {
+    sub(`${N} is calling it…`);
+    call = (await Online.next('call')).c === 'tails' ? 'tails' : 'heads';
+    result = Math.random() < 0.5 ? 'heads' : 'tails';
+    winner = call === result ? opp.id : Online.me;
+    Online.send('toss', { r: result, c: call, w: winner });
+    sub(`${N} calls <em>${call}</em>.`);
+  } else {
+    const stop = autoPress(20);
+    call = await choose('Call it', [{ k: 'heads', t: 'Heads' }, { k: 'tails', t: 'Tails' }]); stop();
+    Online.send('call', { c: call });
+    sub(`You call <em>${call}</em>.`);
+    const t = await Online.next('toss'); result = t.r === 'tails' ? 'tails' : 'heads'; winner = t.w;
+  }
+  coin.target = result === 'heads' ? 0 : Math.PI; coin.k = 0; coin.phase = 'fall';
+  await wait(2.4);
+  const iWon = winner === Online.me;
+  banner(result.toUpperCase(), iWon ? 'You won the toss' : `${N} won the toss`, iWon ? 'gold' : '', 2.4);
+  await wait(1.8);
+  cam.fovTo = 62; lookAtNPC(); npc.look.set(0, SEAT.y, SEAT.z);
+  let first;
+  if (iWon) {
+    sub('You won the toss. Do you want to shoot first or second?');
+    const stop = autoPress(20);
+    const c = await choose('Your choice', [{ k: 'first', t: 'Go first' }, { k: 'second', t: 'Go second' }]); stop();
+    first = c === 'first' ? Online.me : opp.id;
+    Online.send('first', { id: first });
+  } else {
+    sub(`${N} won the toss and is choosing…`);
+    first = (await Online.next('first')).id === Online.me ? Online.me : opp.id;
+  }
+  sub(first === Online.me ? 'You will pull the trigger first.' : `${N} will pull the trigger first.`);
+  handTo(npc.L, { p: V3(COIN_X + 0.04, TOP + 0.05, COIN_Z), q: qFrom(V3(-1, 0, 0.3), V3(0, 0, 1)) }, 0.6).then(() => { coin.phase = 'hidden'; return handTo(npc.L, 'rest', 0.6); }).catch(() => {});
+  await wait(2.2);
+  let mine = first === Online.me;
+  for (;;) {
+    game.round++;
+    const over = mine ? await myTurnOnline() : await theirTurnOnline();
+    if (over) return;
+    mine = !mine;
+  }
+}
+// the spin for this turn: the host rolls it, and tells the other player
+async function onlineSpin(mine) {
+  if (Online.isHost()) {
+    if (!mine) await Online.next('spinreq');
+    const live = roll();
+    Online.send('spin', { live });
+    return live;
+  }
+  if (mine) Online.send('spinreq');
+  return !!(await Online.next('spin')).live;
+}
+async function myTurnOnline() {
+  const N = npc.name;
+  setOpp(`${N} · Round ${game.round}`);
+  banner('YOUR TURN', 'Spin the cylinder', 'gold', 1.8);
+  stressTo = stressFor(0.35); npc.look.set(0, SEAT.y, SEAT.z); npc.leanExtra = 0.06; npc.fear = 0.2;
+  sub(game.round > 1 ? `${N} watches you.` : 'The revolver is yours.', 3);
+  if (GUN.at !== 'you') {
+    const a = { p: tgun.g.position.clone(), q: tgun.g.quaternion.clone() }, b = tablePose('you');
+    Sound.scrape(); await tween(0.7, k => { tgun.g.position.lerpVectors(a.p, b.p, k); tgun.g.quaternion.copy(a.q).slerp(b.q, k); });
+    GUN.at = 'you';
+  }
+  cam.lookTo.copy(tgun.g.position).add(V3(0, 0.1, -0.1)); await wait(0.5);
+  { const a = tgun.g.position.clone(); await tween(0.35, k => { tgun.g.position.copy(a).add(V3(0.05 * k, 0.12 * k, 0.12 * k)); }, easeIn); }
+  tgun.g.visible = false; fp.gun.angle = tgun.cyl.rotation.z; fp.gun.cyl.rotation.z = fp.gun.angle; fp.gun.setCock(0); fp.gun.setPull(0); fp.hand.setTrigger(0);
+  const off = fpPose('off'); fpCur.p.copy(off.p); fpCur.q.copy(off.q); fp.rig.visible = true;
+  lookAtNPC(); cam.lookTo.y -= 0.12;
+  await fpTo('front', 0.8, easeOut);
+  { const stop = autoPress(AFK); await choose('Your turn', [{ k: 'spin', t: 'Spin the cylinder', cls: 'gold' }]); stop(); }
+  const live = await onlineSpin(true);
+  stressTo = stressFor(0.5);
+  await spinCylinder(fp.gun, live, 1.6);
+  sub('One bullet. Six chambers.', 2.4);
+  await wait(0.5);
+  lookAtNPC(); cam.rollTo = -0.06; Sound.gasp(); npc.fear = 0.45; npc.lipPress = 0.6;
+  await fpTo('temple', 1.0);
+  stressTo = stressFor(0.72); Sound.S.breathe = true;
+  sub(`Squeeze the trigger. ${N} is watching.`, 0);
+  // the other player sees your finger tighten as it happens
+  let lastP = -1;
+  const iv = setInterval(() => { if (!holdS) return; const p = Math.round(holdS.p * 20) / 20; if (p !== lastP) { lastP = p; Online.send('hold', { p }); } }, 150);
+  const stop = autoPress(AFK);
+  try { await holdToPull(); } finally { clearInterval(iv); stop(); }
+  Online.send('pulled');
+  Sound.S.breathe = false; sub('');
+  if (live) { await youDie(); return true; }
+  fp.gun.setCock(0); Sound.dry(); cam.kick = 0.25;
+  npc.flinchT = 0.8; npc.wince = 0.7; npc.lipPress = 0; npc.leanExtra = 0;
+  banner('BLANK', 'The shot was blank.', 'gold', 2.4);
+  stressTo = stressFor(0.25); cam.rollTo = 0;
+  await wait(0.9); Sound.exhale();
+  fp.gun.angle += Math.PI / 3; fp.gun.cyl.rotation.z = fp.gun.angle; fp.gun.setPull(0); fp.hand.setTrigger(0);
+  await wait(0.6);
+  await fpTo('off', 0.6, easeIn); fp.rig.visible = false;
+  const t0 = tablePose('you'); tgun.g.position.copy(t0.p); tgun.g.quaternion.copy(t0.q); tgun.g.visible = true; tgun.angle = fp.gun.angle; tgun.cyl.rotation.z = tgun.angle; Sound.thud(0.35);
+  await wait(0.25);
+  { const b = tablePose('him'); const a = { p: tgun.g.position.clone(), q: tgun.g.quaternion.clone() }; Sound.scrape(); await tween(0.8, k => { tgun.g.position.lerpVectors(a.p, b.p, k); tgun.g.quaternion.copy(a.q).slerp(b.q, k); }, easeOut); GUN.at = 'him'; }
+  await wait(0.6);
+  return false;
+}
+async function theirTurnOnline() {
+  const N = npc.name;
+  setOpp(`${N} · Round ${game.round}`);
+  banner(N.toUpperCase() + '’S TURN', 'Watch', '', 1.8);
+  lookAtNPC(); cam.lookTo.y -= 0.05; stressTo = stressFor(0.3);
+  if (GUN.at !== 'him' && GUN.at !== 'center') {
+    const a = { p: tgun.g.position.clone(), q: tgun.g.quaternion.clone() }, b = tablePose('him');
+    Sound.scrape(); await tween(0.8, k => { tgun.g.position.lerpVectors(a.p, b.p, k); tgun.g.quaternion.copy(a.q).slerp(b.q, k); }, easeOut); GUN.at = 'him';
+  }
+  await wait(0.6);
+  npc.look.copy(tgun.g.position); npc.fear = 0.25;
+  await handTo(npc.R, 'gun', 0.9);
+  npc.R.H.updateMatrixWorld(true); npc.R.H.attach(tgun.g); npc.R.hand.setCurl(false);
+  { const a = { p: tgun.g.position.clone(), q: tgun.g.quaternion.clone() }; await tween(0.3, k => { tgun.g.position.lerpVectors(a.p, V3(0, 0, 0), k); tgun.g.quaternion.copy(a.q).slerp(new THREE.Quaternion(), k); }); }
+  GUN.at = 'hand';
+  npc.look.set(0, SEAT.y, SEAT.z);
+  await handTo(npc.R, 'show', 0.8);
+  sub(`${N} is about to spin the cylinder…`, 0);
+  const live = await onlineSpin(false);
+  sub('');
+  npc.look.copy(npc.R.H.position);
+  await spinCylinder(tgun, live, 1.4);
+  npc.fear = 0.6; stressTo = stressFor(0.5);
+  await wait(0.4);
+  npc.look.set(0, SEAT.y, SEAT.z); npc.shrugTo = 0.6; npc.away = 1;
+  await handTo(npc.R, 'temple', 1.0);
+  npc.R.tremor = 0.5; stressTo = stressFor(0.62);
+  sub(`${N} puts the gun to their head.`, 0);
+  // follow their finger as they squeeze
+  let p0 = 0;
+  const show = p => { tgun.setCock(smooth(p / 0.92)); tgun.setPull(p); npc.R.hand.setTrigger(p); tgun.cyl.rotation.z = tgun.angle + smooth(p / 0.9) * Math.PI / 3; };
+  for (;;) {
+    const m = await Online.next(['hold', 'pulled']);
+    if (m.ev === 'pulled') break;
+    const p = clamp(+m.p || 0, 0, 1), from = p0; p0 = p;
+    if (p > 0.3) { sub('Their finger tightens on the trigger…', 0); npc.holdBreath = true; npc.lipPress = 1; npc.fear = 1; }
+    tween(0.14, k => show(lerp(from, p, k)), linear).catch(() => {});
+  }
+  await tween(0.12, k => show(lerp(p0, 1, k)), linear);
+  sub('');
+  if (live) { await heDies(); return true; }
+  tgun.setCock(0); Sound.dry(); cam.kick = 0.12; tgun.angle += Math.PI / 3; tgun.cyl.rotation.z = tgun.angle;
+  npc.flinchT = 1; npc.wince = 1; npc.holdBreath = false; npc.lipPress = 0; npc.away = 0;
+  banner('BLANK', `${N} survives.`, '', 2.4);
+  npc.R.tremor = 0.6; npc.fear = 0.6; stressTo = stressFor(0.25);
+  await wait(0.6); Sound.exhale(); npc.mouthOpen = 0.5; npc.shrugTo = 0;
+  tgun.setPull(0); npc.R.hand.setTrigger(0);
+  await wait(0.5); npc.mouthOpen = 0.15; npc.look.set(0, SEAT.y, SEAT.z);
+  GUN.at = 'him'; await handTo(npc.R, 'gun', 0.9);
+  scene.attach(tgun.g); npc.R.hand.setCurl(true);
+  { const b = tablePose('him'); const a = { p: tgun.g.position.clone(), q: tgun.g.quaternion.clone() }; await tween(0.3, k => { tgun.g.position.lerpVectors(a.p, b.p, k); tgun.g.quaternion.copy(a.q).slerp(b.q, k); }); Sound.thud(0.4); GUN.at = 'him'; }
+  npc.R.tremor = 0; npc.mouthOpen = 0; npc.fear = 0.2;
+  handTo(npc.R, 'rest', 0.8).catch(() => {});
+  { const b = tablePose('you'); const a = { p: tgun.g.position.clone(), q: tgun.g.quaternion.clone() }; Sound.scrape(); await tween(0.8, k => { tgun.g.position.lerpVectors(a.p, b.p, k); tgun.g.quaternion.copy(a.q).slerp(b.q, k); }, easeOut); GUN.at = 'you'; }
+  await wait(0.5);
+  return false;
+}
+// the end of an online game; leftBy: the other player walked away
+function onlineEnd(win, leftBy) {
+  state = 'end'; Sound.S.tick = false; Sound.S.heart = false; Sound.S.breathe = false;
+  save.onGames++; if (win) save.onWins++; persist();
+  const e = $('end'); e.className = win ? 'win' : 'lose'; e.hidden = false; hud.hidden = true;
+  const N = (Online.opp() || {}).name || 'Your opponent';
+  $('endT').textContent = win ? 'YOU SURVIVED' : 'GAME OVER';
+  $('endP').innerHTML = leftBy ? `<b>${N}</b> left the table. You win.` : win ? `The bullet was <b>${N}</b>’s.` : 'The chamber was loaded.';
+  $('endS').innerHTML = statsHTML([[save.onWins, 'Online wins'], [save.onGames, 'Online games']]);
+  $('endAgain').textContent = Online.left() ? 'Find a new match' : 'Play again'; $('endAgain').disabled = false;
+}
+async function startOnlineGame() {
+  abortAll(); const my = runId;
+  Online.newGame();
+  $('black').style.opacity = '1'; $('end').hidden = true; hideMenus();
+  await new Promise(r => setTimeout(r, 650)); if (my !== runId) return;
+  resetTable(true); cam.pos.copy(SEAT); cam.mode = 'seat';
+  $('black').style.opacity = '0';
+  playOnline().catch(onErr);
+}
+// what happens at the table, whatever screen you're on
+Online.onEvent('matched', o => { onlineStatus(`Found ${o.name}. Sitting down…`); Sound.init(); startOnlineGame(); });
+Online.onEvent('left', o => {
+  if (state === 'game' && game && game.online) { abortAll(); Blood.clear(); $('black').style.opacity = '0'; onlineEnd(true, true); }
+  else if (state === 'end') { $('endP').innerHTML = `<b>${o.name}</b> left the table.`; $('endAgain').textContent = 'Find a new match'; }
+});
+Online.onEvent('again', () => {
+  if (state !== 'end' || !Online.on) return;
+  if (Online.bothAgain()) startOnlineGame();
+  else if (!Online.left()) $('endP').innerHTML = $('endAgain').disabled ? `Waiting for <b>${Online.opp().name}</b>…` : `<b>${Online.opp().name}</b> wants to play again.`;
+});
+Online.onEvent('error', msg => { onlineWaiting(false); onlineStatus(msg === 'offline' ? 'Couldn’t connect. Check your internet and try again.' : msg, true); });
+Online.onEvent('requeue', () => onlineStatus('Still looking for someone to play…'));
+function onlineStatus(t, bad) { const s = $('netStatus'); s.textContent = t || ''; s.classList.toggle('bad', !!bad); }
+function onlineWaiting(on) { for (const b of document.querySelectorAll('#m-online .netpick')) b.hidden = on; $('netCancel').hidden = !on; $('netBack').hidden = on; }
+function onlineMenuGo(go) {
+  const name = Online.cleanName($('netName').value);
+  if (go === 'netBack') { showMenu('title'); return; }
+  if (go === 'netCancel') { Online.leave(); onlineWaiting(false); onlineStatus(''); return; }
+  if (!name) { onlineStatus('Type your name first.', true); $('netName').focus(); return; }
+  save.name = name; persist();
+  onlineWaiting(true);
+  if (go === 'netQuick') { onlineStatus('Looking for someone to play…'); Online.quick(name).catch(onlineWaitingFail); }
+  else if (go === 'netCreate') { onlineStatus('Setting up a table…'); Online.create(name).then(code => onlineStatus(`Your table code is ${code}. Send it to a friend, then wait here.`)).catch(onlineWaitingFail); }
+  else if (go === 'netJoin') {
+    const code = $('netCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 5) { onlineWaiting(false); onlineStatus('A table code has 5 letters.', true); return; }
+    onlineStatus('Joining table ' + code + '…'); Online.join(name, code).catch(onlineWaitingFail);
+  }
+}
+function onlineWaitingFail() { Online.leave(); onlineWaiting(false); onlineStatus('Couldn’t connect. Check your internet and try again.', true); }
 
 // =====================================================================
 //  Start

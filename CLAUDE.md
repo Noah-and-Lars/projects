@@ -105,6 +105,15 @@ source in Settings → Pages should be switched to `main`.
   works there for everyone (gamemode is kept per player); `/time set` changes the time for the whole server. The player's name and first-join date are in `blockcraft-mp`. For testing, `?mproom=<name>`
   opens a private test server with its own channels and save: never test on the real one.
 
+- `russian-roulette/`: Russian Roulette (and Buckshot Roulette, still work in progress) in a dim room, Three.js
+  bundled into the file. Saves `russianRouletteSave`. Since 1.2 it has online play (Russian Roulette only): the
+  `Online` block, the Play online button and `m-online` menu. Quick match pairs the two players waiting longest in
+  Presence on `rr-lobby`; a private table has a 5-letter code. A table is the channel `rr-t-<key>`. The host's
+  browser rolls the coin and every spin, so both screens agree; `playOnline`, `myTurnOnline` and
+  `theirTurnOnline` run the game on each screen, waiting on each other's messages with `Online.next()`. Online wins
+  and games are `onWins` / `onGames`, apart from the single-player streak. `?rrroom=<name>` uses separate test
+  channels: test with that, never on the real lobby.
+
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
 - `free-criminal/`: Free Criminal, an open-world 3D crime game set in San Varro (Three.js r128 copied from Cube Assault into the file). Version 1.1 adds 3x traffic, ragdoll crashes, gun stores (10 guns, grenades), a mall and a new HUD; 1.2 adds carjack animations, police vision cones and a denser countryside; 1.4 is a much bigger streamed world (countryside built in 400 m chunks around the player), interiors, safehouses, day/night, rain and touch controls. The page has no doctype (quirks mode), so element ids match CSS case-insensitively: never reuse an id that differs only by case. Saves only its settings (`freecriminal.settings.v1`).

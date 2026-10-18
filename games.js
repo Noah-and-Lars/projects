@@ -42,14 +42,14 @@ window.GAMES = [
     id: 'russian-roulette',
     title: 'Russian Roulette',
     category: 'Thriller',
-    tagline: 'One revolver, one bullet, six chambers. New: Buckshot mode, with a shotgun, live and blank shells and items.',
+    tagline: 'One revolver, one bullet, six chambers. New: play online against a real person.',
     description: 'Sit across a table from a stranger in a dim, dirty room. A coin toss decides who goes first, then the cylinder is spun before every turn: put the revolver to your head and squeeze. Every pull is a 1 in 6 chance. Beat stranger after stranger to build a win streak, but one loaded chamber ends it.',
     controls: 'Mouse, keyboard or touch',
-    keys: [['Heads / Tails', 'Call the coin toss'], ['Hold button or Space', 'Squeeze the trigger'], ['Esc', 'Pause']],
+    keys: [['Heads / Tails', 'Call the coin toss'], ['Hold button or Space', 'Squeeze the trigger'], ['Play online', 'Quick match or a private table'], ['Esc', 'Pause']],
     path: 'russian-roulette/index.html',
     thumb: 'russian-roulette/thumb.jpg',
     added: '2026-10-17T12:50:00+11:00',
-    updated: '2026-10-17T19:43:00+11:00',
+    updated: '2026-10-18T15:40:28+11:00',
     stat() { const s = readSave('russianRouletteSave', true); return s && s.best ? 'Best streak ' + s.best : null; },
   },
   {
@@ -178,6 +178,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-18', game: 'russian-roulette', text: 'Russian Roulette 1.2: play online. Press Play online on the main menu to play a real person: Quick match finds whoever is waiting, or make a private table and send a friend the 5-letter code.' },
   { date: '2026-10-18', game: 'cube-tower-defense', text: 'Cube Tower Defense 1.2.1: your base\'s health now floats right on top of your fort instead of in the corner.' },
   { date: '2026-10-18', game: 'free-criminal', text: "Free Criminal 1.6.2: the lottery is closed (tickets are under construction and can't be bought), and you can no longer lose your wanted stars by standing outside the store you just robbed." },
   { date: '2026-10-18', game: 'cube-assault', text: "Cube Assault 2.8.2: an FPS counter in the top left (turn it off in Settings), and Level 3's first aid kit now heals you twice before it restocks." },
