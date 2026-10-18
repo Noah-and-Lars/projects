@@ -54,7 +54,7 @@ source in Settings → Pages should be switched to `main`.
 ## Games
 
 - `cube-assault/`: first-person 3D shooter (Three.js bundled into the file). Since 2.3 it has touch controls (`#touch` layer, `autoTouch` / `touchMode()`, setting `touch`: auto, on or off).
-  Since 2.6 it has online multiplayer. Noah's blocks (`mp-ui-css`, `mp-ui`, `mp-stub`, `CS MAP`) are the lobby, HUD, results and Outpost map; Lars's `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are Supabase Realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). The free plan caps the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`).
+  Since 2.6 it has online multiplayer. Noah's blocks (`mp-ui-css`, `mp-ui`, `mp-stub`, `CS MAP`) are the lobby, HUD, results and Outpost map; Lars's `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are Supabase Realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). The free plan caps the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`). Room chat (2.8.3): 'chat' on the room channel, `CAMP.chat()` and the 'chat' event, drawn by the `<script id="mp-chat">` block (Enter opens it).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.
 - `2048/`: sliding-number puzzle with keyboard and swipe controls.
 - `poly-racer/`: low-poly 3D time-trial racer in the style of PolyTrack (Three.js
@@ -121,7 +121,7 @@ source in Settings → Pages should be switched to `main`.
   block and the Play online box in the side panel. Quick match pairs in Presence on `ch-lobby`; a private table has
   a 5-letter code; a table is the channel `ch-t-<key>`. Moves are 'mv' (move number and UCI), checked for legality
   on the other side. The host is White in the first game and colours swap each rematch. `online.on` is true at a
-  table: the computer, undo and saving the game are off then, and the record is `save.online`. `?chroom=<name>`
+  table: the computer, undo and saving the game are off then, and the record is `save.online`. Chat (1.2) is 'chat' at the table, in the box under Play online. `?chroom=<name>`
   uses separate test channels.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
@@ -130,7 +130,7 @@ source in Settings → Pages should be switched to `main`.
   shared city on the arcade's Supabase project: `fc-who` Presence (player list, host = first to join), `fc-pub` for
   the host's position snapshots, hits and kills, and a `fc-p-<id>` pipe from each player to the host. Other players
   are drawn with `makeHuman` / `makeCarModel`, `shootRay` checks them (`NET.ray`), and the victim's own screen takes
-  the damage. Traffic, peds and police stay local. `?fcroom=<name>` uses separate test channels (and exposes
+  the damage. Chat (1.8): T opens `#fcChat`, messages are 'c' on `fc-pub`. Traffic, peds and police stay local. `?fcroom=<name>` uses separate test channels (and exposes
   `window.__fc` for tests).
 
 ## Adding a game

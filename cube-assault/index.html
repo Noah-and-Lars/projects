@@ -682,6 +682,9 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🌐</i><span><b>Public lobbies</b>New in Multiplayer: make your lobby public (recommended) and anyone can find it in Public lobbies and join, no code needed. The menu has big new cards with a map behind each one.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.8.3 <span>Chat</span></h3><ul>
+        <li>Multiplayer chat: in a lobby or a match, press <b>Enter</b>, type, and press <b>Enter</b> again to send it to everyone in the room. <b>Esc</b> cancels. Messages fade after a few seconds.</li>
+      </ul></section>
       <section><h3>v2.8.2 <span>FPS counter</span></h3><ul>
         <li>An FPS counter in the top left: green when it's smooth, yellow under 50, red under 30. Turn it off in Settings → FPS counter.</li>
         <li>Level 3's first aid kit now heals you twice (+40 HP each) before it has to restock.</li>
@@ -7937,7 +7940,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.8.2';
+const VERSION = '2.8.3';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -8241,6 +8244,8 @@ tick();
     listen(ch, 'b', fromHost(onBoom));
     listen(ch, 'end', fromHost(onEnd));
     listen(ch, 'cs', fromHost(onCs));
+    // chat (2.9): anyone in the room to everyone in it
+    listen(ch, 'chat', d => { if (typeof d.m === 'string' && typeof d.id === 'string' && d.id !== myId) emit('chat', { id: d.id, name: nameOf(d.id), text: d.m.slice(0, 140) }); });
   }
   function wireMine(ch) {
     listen(ch, 'acc', d => { if (room.waitAcc) room.waitAcc(d); });
@@ -9102,6 +9107,16 @@ tick();
       sendState(); emitPlayers();
     },
     on(ev, f) { (handlers[ev] = handlers[ev] || []).push(f); },
+    // chat (2.9): say something to everyone in the room; it comes back to this screen as a 'chat' event too
+    inRoom: () => !!room,
+    chat(text) {
+      text = String(text || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 140);
+      if (!room || !text) return false;
+      const t = now(); if (t - (room.chatT || 0) < 600) return false; room.chatT = t;
+      send(room.ch, 'chat', { id: myId, m: text });
+      emit('chat', { id: myId, name: room.name, text, me: true });
+      return true;
+    },
     // PROPOSED by mp-ui: where the other players are right now, for name tags: [{ id, x, y, z }]
     getRemotes: () => [...avatars.values()].filter(a => a.g.visible).map(a => ({ id: a.id, x: a.pos.x, y: a.pos.y + 1.8, z: a.pos.z })),
     _debug: {
@@ -9112,6 +9127,47 @@ tick();
     // C:S Mode (Noah, 2.6.1): the round as this screen sees it, or null: { round, phase, roundAt, nextAt, over, win, bomb, prog }
     getCs: () => match && match.csV ? { ...match.csV } : null,
   };
+})();
+</script>
+<script id="mp-chat">
+// ===== Room chat (2.9): Enter opens it in a lobby or a match, Enter sends, Esc cancels =====
+// Typing doesn't let go of the mouse (that would pause the game); the box takes the keys while it's open.
+(() => {
+  const css = document.createElement('style');
+  css.textContent = `#mpChat{position:fixed;left:16px;bottom:120px;z-index:60;width:min(420px,calc(100% - 32px));font:600 15px/1.35 system-ui,-apple-system,'Segoe UI',Arial,sans-serif;pointer-events:none}
+    #mpChat .ln{background:rgba(0,0,0,.55);color:#fff;padding:3px 9px;border-radius:6px;margin-top:3px;width:fit-content;max-width:100%;overflow-wrap:anywhere;transition:opacity .6s;text-shadow:0 1px 2px #000}
+    #mpChat .ln b{color:#7fd4ff}#mpChat .ln.me b{color:#ffd166}#mpChat .ln.gone{opacity:0}
+    #mpChat input{pointer-events:auto;display:none;width:100%;box-sizing:border-box;margin-top:6px;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.35);background:rgba(10,12,20,.85);color:#fff;font:inherit;outline:none}
+    #mpChat.open input{display:block}#mpChat.open .ln.gone{opacity:1}
+    #mpChatHint{position:fixed;left:16px;bottom:96px;z-index:60;font:700 12px system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;text-shadow:0 1px 2px #000}`;
+  document.head.appendChild(css);
+  const box = document.createElement('div'); box.id = 'mpChat'; box.innerHTML = '<div class="log"></div><input maxlength="140" placeholder="Say something… (Enter to send, Esc to cancel)" autocomplete="off" spellcheck="false">';
+  const hint = document.createElement('div'); hint.id = 'mpChatHint'; hint.textContent = 'Enter: chat'; hint.style.display = 'none';
+  document.body.append(box, hint);
+  const log = box.querySelector('.log'), input = box.querySelector('input');
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ready = () => window.CAMP && CAMP.inRoom && CAMP.inRoom();
+  function add(d) {
+    const el = document.createElement('div'); el.className = 'ln' + (d.me ? ' me' : '');
+    el.innerHTML = `<b>${esc(d.name || 'Player')}:</b> ${esc(d.text)}`;
+    log.appendChild(el); while (log.children.length > 8) log.firstChild.remove();
+    setTimeout(() => el.classList.add('gone'), 9000);
+  }
+  if (window.CAMP && CAMP.on) CAMP.on('chat', add);
+  const open = () => { box.classList.add('open'); input.value = ''; setTimeout(() => input.focus(), 0); };
+  const close = () => { box.classList.remove('open'); input.blur(); };
+  addEventListener('keydown', e => {
+    if (e.code !== 'Enter' || box.classList.contains('open') || !ready()) return;
+    const a = document.activeElement; if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a !== input) return;
+    e.preventDefault(); e.stopImmediatePropagation(); open();
+  }, true);
+  input.addEventListener('keydown', e => {
+    e.stopPropagation();   // the game doesn't see what you type
+    if (e.code === 'Enter') { e.preventDefault(); if (input.value.trim()) CAMP.chat(input.value); close(); }
+    else if (e.code === 'Escape') { e.preventDefault(); close(); }
+  });
+  input.addEventListener('keyup', e => e.stopPropagation());
+  setInterval(() => { const on = ready(); hint.style.display = on && !box.classList.contains('open') ? 'block' : 'none'; if (!on && box.classList.contains('open')) close(); if (!on) log.innerHTML = ''; }, 500);
 })();
 </script>
 <script id="mp-stub">

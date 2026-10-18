@@ -99,6 +99,11 @@
   .netbtn { display: block; width: 100%; margin-top: 8px; border: 0; border-radius: 6px; background: #3c3a37; color: var(--ink); font-weight: 700; font-size: 14px; padding: 10px; } .netbtn:hover { background: #484643; }
   .netrow { display: flex; gap: 6px; margin-top: 8px; } .netrow .txt { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .2em; text-align: center; } .netrow .netbtn { flex: 1.4; margin: 0; }
   #netStatus { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--green-hi); } #netStatus:empty { display: none; } #netStatus.bad { color: #ff8a80; }
+  #chatBox { display: none; margin-bottom: 8px; } body.online #chatBox { display: block; }
+  #chatLog { max-height: 150px; min-height: 40px; overflow-y: auto; background: var(--panel2); border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; font-size: 14px; line-height: 1.4; }
+  #chatLog:empty::before { content: 'Chat with your opponent here.'; color: var(--muted); }
+  #chatLog div { overflow-wrap: anywhere; } #chatLog b { color: var(--green-hi); } #chatLog .me b { color: #ffd166; } #chatLog .sys { color: var(--muted); font-style: italic; }
+  #chatIn { font-weight: 600; font-size: 14px; }
   #netLeave { display: none; } body.online #netLeave { display: block; } body.online #netPick, body.online #netCancel, body.online .offline-only { display: none; }
   #resNew:disabled { opacity: .6; }
   @media (max-width: 860px) {
@@ -129,6 +134,7 @@
         <div class="netrow"><input id="netCode" class="txt code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="netbtn" data-net="join">Join with code</button></div>
       </div>
       <button class="netbtn" data-net="cancel" id="netCancel" hidden>Cancel</button>
+      <div id="chatBox"><div id="chatLog"></div><input id="chatIn" class="txt" maxlength="140" placeholder="Say something… (Enter to send)" autocomplete="off" spellcheck="false"></div>
       <button class="netbtn" data-net="leave" id="netLeave">Leave the table</button>
       <div id="netStatus"></div>
     </div>
@@ -142,7 +148,11 @@
 </div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.1</span></summary>
+    <summary>Patch notes <span>v1.2</span></summary>
+    <h3>v1.2 <small>Chat</small></h3>
+    <ul>
+      <li>Chat with your opponent in online games: type in the box under Play online and press Enter.</li>
+    </ul>
     <h3>v1.1 <small>Play online</small></h3>
     <ul>
       <li>Play another person online: type your name under Play online and press Quick match to play whoever else is waiting.</li>
@@ -453,7 +463,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.1';
+const VERSION = '1.2';
 const $ = id => document.getElementById(id);
 
 // ---------- the pieces: flat 2D shapes, drawn here so the game needs no image files ----------
@@ -820,7 +830,7 @@ const Net = (() => {
   async function seat(key, host, expect) {
     hostId = host; expectId = expect || null; api.opp = null; api.left = false;
     table = chan(BASE + '-t-' + key);
-    for (const ev of ['mv', 'resign', 'again']) table.on('broadcast', { event: ev }, m => { const p = m.payload || {}; if (api.opp && p.f === api.opp.id) emit(ev, p); });
+    for (const ev of ['mv', 'resign', 'again', 'chat']) table.on('broadcast', { event: ev }, m => { const p = m.payload || {}; if (api.opp && p.f === api.opp.id) emit(ev, p); });
     table.on('presence', { event: 'sync' }, onTable);
     await joinChan(table);
     await table.track({ id: myId, n: api.name, h: host === myId });
@@ -900,7 +910,18 @@ function leaveOnline() {
     if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
   } else newGame();
 }
-Net.onEvent('matched', o => { netStatus(`Playing ${o.name}.`); startOnline(); });
+Net.onEvent('matched', o => { netStatus(`Playing ${o.name}.`); $('chatLog').innerHTML = ''; startOnline(); });
+// chat with the other player (1.2)
+const escH = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function chatLine(name, text, me) { const el = document.createElement('div'); if (me) el.className = 'me'; el.innerHTML = `<b>${escH(name)}:</b> ${escH(text)}`; const log = $('chatLog'); log.appendChild(el); while (log.children.length > 60) log.firstChild.remove(); log.scrollTop = log.scrollHeight; }
+Net.onEvent('chat', p => { if (online.on && typeof p.m === 'string') { chatLine(oppName(), p.m.slice(0, 140)); if (save.sound) Sound.move(); } });
+let chatT = 0;
+$('chatIn').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const t = e.target.value.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 140);
+  if (!t || !online.on || Date.now() - chatT < 600) return;
+  chatT = Date.now(); Net.send('chat', { m: t }); chatLine('You', t, true); e.target.value = '';
+});
 Net.onEvent('mv', p => {
   if (!online.on || over || (p.n | 0) !== hist.length || (G.w ? 'w' : 'b') === player) return;
   const m = legalNow.find(x => uci(x) === p.u); if (m) playMove(m);

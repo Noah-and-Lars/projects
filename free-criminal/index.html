@@ -121,6 +121,10 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 .nav button:hover,.nav button.on,.nav button:focus-visible{background:var(--gold);color:var(--ink);transform:translateX(6px);opacity:1}
 .nav button.online{border-color:#3fa0ff;color:#bfe0ff}.nav button.online::before{content:'';display:inline-block;width:12px;height:12px;border-radius:50%;background:#3ddc84;box-shadow:0 0 10px #3ddc84;margin-right:12px;vertical-align:4px}
 .nav button.online:disabled{opacity:.6;cursor:default}
+#fcChat{position:fixed;left:16px;bottom:270px;z-index:40;width:min(400px,calc(100% - 32px));font:600 16px/1.35 Barlow,Arial,sans-serif;pointer-events:none;display:none}
+#fcChat .ln{background:rgba(10,12,16,.62);color:#fff;padding:3px 9px;border-radius:6px;margin-top:3px;width:fit-content;max-width:100%;overflow-wrap:anywhere;transition:opacity .6s}
+#fcChat .ln b{color:#7fc4ff}#fcChat .ln.me b{color:#ffd166}#fcChat .ln.gone{opacity:0}#fcChat.open .ln.gone{opacity:1}
+#fcChat input{pointer-events:auto;display:none;width:100%;box-sizing:border-box;margin-top:6px;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.35);background:rgba(10,12,16,.88);color:#fff;font:inherit;outline:none}#fcChat.open input{display:block}
 #onlineMsg{margin:10px 0 0;color:#ff9a8a;font-weight:700;font-size:16px;max-width:420px}
 .news{background:var(--glass);border:1px solid var(--stroke);border-radius:var(--r);padding:14px 18px;backdrop-filter:blur(10px);font-size:17px;font-weight:600}
 .news b{display:block;font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
@@ -374,7 +378,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.7</b>San Varro</div>
+    <div class="ver"><b>v1.8</b>San Varro</div>
     <nav class="nav">
       <button id="bPlay">Play</button>
       <button id="bOnline" class="online">Play online</button>
@@ -429,7 +433,9 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.7.1</b>Online fights<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.8</b>Chat<span>Latest</span></summary><ul>
+    <li>Online chat: press <b>T</b>, type, and press <b>Enter</b> to talk to everyone in the online city. <b>Esc</b> cancels. Messages show above the minimap.</li></ul></details>
+  <details><summary><b>v1.7.1</b>Online fights</summary><ul>
     <li>Fixed: punches and knife slashes didn’t hurt other players online (you start with your gun put away, so a click is a punch). Now they do.</li>
     <li>Grenades and cars you blow up hurt other players near them too.</li>
     <li>Other players are a little easier to hit with a gun.</li></ul></details>
@@ -3120,7 +3126,7 @@ const NET=(()=>{
   // ---------- joining and leaving ----------
   api.join=async()=>{api.name=(PROF.name||'Player').replace(/[<>&"]/g,'').slice(0,16);await getClient();
     who=chan(BASE+'-who',true);who.on('presence',{event:'sync'},onPresence);
-    main=chan(BASE+'-pub');listen(main,'s',m=>{if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);
+    main=chan(BASE+'-pub');listen(main,'s',m=>{if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'c',m=>{if(api.on&&typeof m.m==='string'&&m.f!==myId)chatLine(nameOf(m.f),m.m.slice(0,140),false);});
     pipe=chan(BASE+'-p-'+myId);
     try{await Promise.all([joinChan(who,st=>{if(st==='SUBSCRIBED'&&api.on)who.track({id:myId,n:api.name,j:joinT,l:PROF.look}).catch(()=>{});}),joinChan(main),joinChan(pipe)]);}
     catch(e){api.leave();throw e;}
@@ -3131,6 +3137,8 @@ const NET=(()=>{
   api.leave=()=>{api.on=false;const chs=[who,main,pipe,...pipes.values()];who=main=pipe=null;pipes.clear();ups.clear();changed.clear();for(const id of[...avatars.keys()])removeAvatar(id);hostId=null;roster=[];
     try{chs[0]&&chs[0].untrack().catch(()=>{});}catch(e){}setTimeout(()=>chs.forEach(drop),300);};
   api.count=()=>roster.length;
+  // chat (1.8): T to talk to everyone in the online city
+  let chatT=0;api.say=t=>{t=String(t||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,140);if(!api.on||!t||now()-chatT<600)return;chatT=now();send(main,'c',{f:myId,m:t});chatLine(api.name,t,true);};
   api._dbg=()=>[...avatars.values()].map(a=>({n:a.name,vis:a.vis,car:a.inCar,pos:a.pos.toArray().map(v=>+v.toFixed(1)),buf:a.buf.length}));
   api.frame=dt=>{if(!api.on)return;const t=now();if(state==='play'||state==='dead')tickPos(t);drawAvatars(dt);};
   return api;
@@ -3144,8 +3152,20 @@ async function playOnline(){
   newGame();setPlayerLook();$('menu').hidden=true;lockPointer();
   const P=player,x=SPAWN.hosp.x+rand(-6,6),z=SPAWN.hosp.z+rand(-6,6);P.pos.set(x,groundY(x,z),z);P.h=SPAWN.hosp.h||0;P.m.group.rotation.set(0,P.h,0);P.m.group.visible=!P.fp;yaw=P.h;pitch=-0.08;
   state='play';updGunVis();$('hud').hidden=false;updChunks(0,true);
-  const n=NET.count();notify(`You’re in the online city${n>1?` with <b>${n-1}</b> other player${n>2?'s':''}`:'. Nobody else is here yet'}. Other players show on your map in <b style="color:#3fa0ff">blue</b>. Shoot them, race them, or rob the town together.`,9);
+  const n=NET.count();notify(`You’re in the online city${n>1?` with <b>${n-1}</b> other player${n>2?'s':''}`:'. Nobody else is here yet'}. Other players show on your map in <b style="color:#3fa0ff">blue</b>. Shoot them, race them, or rob the town together. Press <b>T</b> to chat.`,9);
 }
+// ---------- chat (1.8): T opens it while you're online, Enter sends, Esc cancels ----------
+// Typing keeps the mouse captured (letting go would pause the game) and the box takes the keys while it's open.
+const chatBox=document.createElement('div');chatBox.id='fcChat';chatBox.innerHTML='<div class="log"></div><input maxlength="140" placeholder="Say something… (Enter to send, Esc to cancel)" autocomplete="off" spellcheck="false">';document.body.appendChild(chatBox);
+const chatLog=chatBox.querySelector('.log'),chatIn=chatBox.querySelector('input');
+function chatLine(name,text,me){const el=document.createElement('div');el.className='ln'+(me?' me':'');el.innerHTML=`<b>${esc(name)}:</b> ${esc(text)}`;chatLog.appendChild(el);while(chatLog.children.length>8)chatLog.firstChild.remove();setTimeout(()=>el.classList.add('gone'),10000);}
+const chatOpen=()=>chatBox.classList.contains('open');
+function openChat(){for(const k in keys)keys[k]=false;mouseL=mouseR=false;chatBox.classList.add('open');chatIn.value='';setTimeout(()=>chatIn.focus(),0);}
+function closeChat(){chatBox.classList.remove('open');chatIn.blur();}
+addEventListener('keydown',e=>{if(e.code!=='KeyT'||chatOpen()||!NET.on||state!=='play'||e.repeat)return;const a=document.activeElement;if(a&&a.tagName==='INPUT')return;e.preventDefault();e.stopImmediatePropagation();openChat();},true);
+chatIn.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Enter'){e.preventDefault();NET.say(chatIn.value);closeChat();}else if(e.code==='Escape'){e.preventDefault();closeChat();}});
+chatIn.addEventListener('keyup',e=>e.stopPropagation());
+setInterval(()=>{chatBox.style.display=NET.on&&(state==='play'||state==='dead'||state==='shop')?'block':'none';if(!NET.on){chatLog.innerHTML='';if(chatOpen())closeChat();}},400);
 function notifyMenu(t){const el=$('onlineMsg');el.textContent=t;el.hidden=!t;}
 $('bOnline').addEventListener('click',()=>{notifyMenu('');playOnline();});
 // for tests on a test server (?fcroom=...) only: reach inside the game from the console

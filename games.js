@@ -35,7 +35,7 @@ window.GAMES = [
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-10-18T17:11:22+11:00',
+    updated: '2026-10-18T18:23:51+11:00',
     stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = ['easy', 'medium', 'hard'].reduce((n, l) => n + ((s.stats[l] && s.stats[l].w) || 0), 0); return w ? w + (w === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -93,7 +93,7 @@ window.GAMES = [
     path: 'free-criminal/index.html',
     thumb: 'free-criminal/thumb.svg',
     added: '2026-10-13T21:33:00+11:00',
-    updated: '2026-10-18T17:31:32+11:00',
+    updated: '2026-10-18T18:23:51+11:00',
     stat() { const p = readSave('freecriminal.profile.v1', true); return p && p.xp ? 'Level ' + (1 + Math.floor(Math.sqrt(p.xp / 150))) : null; },
   },
   {
@@ -108,7 +108,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.svg?v=3',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-18T09:00:00+11:00',
+    updated: '2026-10-18T18:23:51+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -178,6 +178,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-18', game: 'cube-assault', text: 'Chat in multiplayer: Cube Assault (press Enter in a lobby or a match), Free Criminal online (press T) and online Chess (the box under Play online).' },
   { date: '2026-10-18', game: 'free-criminal', text: 'Free Criminal 1.7: play online. Press Play online on the menu to share San Varro with everyone else who does. See each other drive and run around, find each other on the minimap, and shoot it out.' },
   { date: '2026-10-18', game: 'chess', text: 'Chess 1.1: play online. Type your name under Play online and press Quick match to play another person, or make a private table and send a friend the code. Colours swap every rematch.' },
   { date: '2026-10-18', game: 'russian-roulette', text: 'Russian Roulette 1.2.1: Buckshot online. Pick Buckshot, press Play online, and play the shotgun game against a real person, items and all. Quick match now says when you\'re the only one waiting.' },
