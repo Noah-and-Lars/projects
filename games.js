@@ -120,7 +120,7 @@ window.GAMES = [
            ['Space', 'Jump / handbrake'], ['F', 'Carjack or enter a car'], ['1', 'Take out / put away gun'], ['Q / Wheel', 'Switch gun'], ['G', 'Throw grenade'], ['E', 'Shop, or rob a store with a gun out'],
            ['V', 'First / third person'], ['M', 'Map'], ['H', 'Horn'], ['Esc', 'Pause']],
     path: 'free-criminal/index.html',
-    thumb: 'free-criminal/thumb.svg',
+    thumb: 'free-criminal/thumb.jpg?v=2',
     added: '2026-10-13T21:33:00+11:00',
     updated: '2026-10-18T18:23:51+11:00',
     stat() { const p = readSave('freecriminal.profile.v1', true); return p && p.xp ? 'Level ' + (1 + Math.floor(Math.sqrt(p.xp / 150))) : null; },
