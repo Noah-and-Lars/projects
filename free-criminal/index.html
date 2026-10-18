@@ -121,6 +121,17 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 .nav button:hover,.nav button.on,.nav button:focus-visible{background:var(--gold);color:var(--ink);transform:translateX(6px);opacity:1}
 .nav button.online{border-color:#3fa0ff;color:#bfe0ff}.nav button.online::before{content:'';display:inline-block;width:12px;height:12px;border-radius:50%;background:#3ddc84;box-shadow:0 0 10px #3ddc84;margin-right:12px;vertical-align:4px}
 .nav button.online:disabled{opacity:.6;cursor:default}
+.nav button.online::after{content:'Recommended';display:inline-block;margin-left:14px;padding:3px 9px 2px;border-radius:999px;background:#3ddc84;color:#06210f;font:800 13px var(--ui);letter-spacing:.08em;text-transform:uppercase;vertical-align:6px}
+.nav button.online:disabled::after{display:none}
+#offPop{position:fixed;inset:0;z-index:45;display:grid;place-items:center;padding:20px;background:rgba(5,7,10,.72);backdrop-filter:blur(5px)}
+#offPop[hidden]{display:none}
+#offPop .box{width:min(520px,100%);box-sizing:border-box;padding:26px 26px 22px;border-radius:18px;background:rgba(14,16,22,.94);border:1px solid var(--stroke);border-top:4px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,.5);text-align:center;animation:popIn .35s cubic-bezier(.2,.8,.2,1)}
+#offPop h2{font-family:var(--display);font-weight:400;font-size:38px;text-transform:uppercase;margin:4px 0 10px;transform:skewX(-7deg)}
+#offPop p{color:var(--muted);font-size:19px;line-height:1.4;margin:0 0 8px}
+#offPop ul{text-align:left;color:var(--fg);font-size:18px;line-height:1.45;margin:6px auto 12px;padding-left:22px;max-width:400px}
+#offPop .row2{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+#offPop .go{border:0;border-radius:12px;padding:12px 22px;font:800 19px var(--ui);background:#3ddc84;color:#06210f;cursor:pointer}
+#offPop .go.sec{background:rgba(255,255,255,.08);color:var(--fg);border:1px solid var(--stroke)}
 #fcChat{position:fixed;left:16px;bottom:270px;z-index:40;width:min(400px,calc(100% - 32px));font:600 16px/1.35 Barlow,Arial,sans-serif;pointer-events:none;display:none}
 #fcChat .ln{background:rgba(10,12,16,.62);color:#fff;padding:3px 9px;border-radius:6px;margin-top:3px;width:fit-content;max-width:100%;overflow-wrap:anywhere;transition:opacity .6s}
 #fcChat .ln b{color:#7fc4ff}#fcChat .ln.me b{color:#ffd166}#fcChat .ln.gone{opacity:0}#fcChat.open .ln.gone{opacity:1}
@@ -337,14 +348,14 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.6.1<span>The big fix update</span></h1><p>A safer bridge, houses you can walk out of, see-through shops and a bank vault worth $5,000.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.8.1<span>Online first</span></h1><p>Play online is now the main way to play: one San Varro for everyone, with fights, races, robberies and chat.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
-    <div><i>🏦</i><span><b>The bank vault</b>Rob the bank and the manager hands you the key to the back. Empty the vault for $5,000.</span></div>
-    <div><i>🪟</i><span><b>See-through shops</b>Glass shop windows and storefronts you can see into, and far more detail inside.</span></div>
-    <div><i>🚓</i><span><b>Fairer police</b>30% smaller vision cones and a limit on officers for each star. They break down doors after 10 seconds.</span></div>
-    <div><i>🕴️</i><span><b>Calmer Secret Service</b>They come 2 minutes after you fall into debt, one car at a time, and shooting them gives no stars.</span></div>
-    <div><i>🌉</i><span><b>Lots of fixes</b>The bridge, house doors, people inside buildings, and a 4-minute cooldown on every robbery.</span></div>
+    <div><i>🌐</i><span><b>Play online · Recommended</b>The top button on the menu. Everyone who presses it shares the same city.</span></div>
+    <div><i>🥊</i><span><b>Fight other players</b>Guns, punches, knives, grenades and exploding cars all hurt other players.</span></div>
+    <div><i>💬</i><span><b>Chat</b>Press T, type and press Enter to talk to everyone in the online city.</span></div>
+    <div><i>📴</i><span><b>Play offline</b>Still there, but it checks with you first: online is the better, more supported mode.</span></div>
+    <div><i>👤</i><span><b>Tidier menu</b>Your profile is the card in the top right corner.</span></div>
   </div>
   <div class="row2"><button class="go sec" id="updPast">Past updates</button><button class="go" id="updOk">Let's go</button></div>
 </div></div>
@@ -374,21 +385,24 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="fade"></div>
 <div id="fps" hidden></div>
 
+<div id="offPop" hidden><div class="box">
+  <div class="kick" id="offKick">Offline mode</div><h2 id="offTitle">Not recommended</h2><div id="offBody"></div>
+  <div class="row2"><button class="go sec" id="offNo">Play offline</button><button class="go" id="offOnline">Play online instead</button></div>
+</div></div>
 <div id="menu" hidden>
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.8</b>San Varro</div>
+    <div class="ver"><b>v1.8.1</b>San Varro</div>
     <nav class="nav">
-      <button id="bPlay">Play</button>
       <button id="bOnline" class="online">Play online</button>
-      <button data-panel="pProfile">Profile</button>
+      <button id="bPlay">Play offline</button>
       <button id="bNews">What's new</button>
       <button data-panel="pNotes">Patch notes</button>
       <button data-panel="pSettings">Settings</button>
       <button data-panel="pControls">Controls</button>
     </nav>
-    <div class="news"><b>New in v1.7</b><ul><li><b>Play online</b>: one city for everyone, with PvP</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
+    <div class="news"><b>New in v1.8.1</b><ul><li><b>Play online</b> (recommended): one city for everyone, with PvP and chat</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
     <p id="onlineMsg" hidden></p>
     <div class="foot">Keyboard and mouse, or touch controls on phones and tablets (Settings → Touch controls). Best in Chrome or Edge, full screen.</div>
   </div>
@@ -433,7 +447,12 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.8</b>Chat<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.8.1</b>Online first<span>Latest</span></summary><ul>
+    <li><b>Play online</b> is now the top button on the menu, with a <b>Recommended</b> badge.</li>
+    <li><b>Play</b> is now <b>Play offline</b>. It tells you offline isn’t recommended, then asks if you’re sure, because online is the better, more supported mode.</li>
+    <li>The Profile button on the left is gone: open your profile with the card in the top right corner.</li>
+    <li>Fixed: the big update splash and the version number still said 1.6.1. They show the newest version now.</li></ul></details>
+  <details><summary><b>v1.8</b>Chat</summary><ul>
     <li>Online chat: press <b>T</b>, type, and press <b>Enter</b> to talk to everyone in the online city. <b>Esc</b> cancels. Messages show above the minimap.</li></ul></details>
   <details><summary><b>v1.7.1</b>Online fights</summary><ul>
     <li>Fixed: punches and knife slashes didn’t hurt other players online (you start with your gun put away, so a click is a punch). Now they do.</li>
@@ -2901,7 +2920,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.6.2',NEWS_VERSION='1.6.1';// 1.6.2 is a small update: no new pop-up for it
+const VERSION='1.8.1',NEWS_VERSION='1.8.1';// 1.6.2 is a small update: no new pop-up for it
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -2930,7 +2949,16 @@ $('pReset').addEventListener('click',()=>{if(!confirm('Reset your profile? This 
   setPlayerLook();hidePanels();refreshBadge();openName(true);});
 addEventListener('pagehide',saveProfile);
 function lockPointer(){if(touchMode()){noLock=true;return;}try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{noLock=true;});}catch(e){noLock=true;}}
-$('bPlay').addEventListener('click',()=>{if(state!=='menu')return;initAudio();if(RADIO.st===MENU_ST)radioOff();hidePanels();$('menu').hidden=true;lockPointer();startIntro();});
+function playOffline(){if(state!=='menu')return;initAudio();if(RADIO.st===MENU_ST)radioOff();hidePanels();$('menu').hidden=true;lockPointer();startIntro();}
+// 1.8.1: Play offline asks twice, because online is the mode to play
+let offStep=0;
+function offAsk(step){offStep=step;const pop=$('offPop');
+  if(step===1){$('offKick').textContent='Offline mode';$('offTitle').textContent='Not recommended';$('offBody').innerHTML='<p>Playing offline isn’t recommended. Free Criminal is best played online.</p>';$('offNo').textContent='Play offline anyway';}
+  else{$('offKick').textContent='Are you sure?';$('offTitle').textContent='Online is better';$('offBody').innerHTML='<p>Online mode is the more supported, better mode for Free Criminal:</p><ul><li>One San Varro shared with everyone who’s playing</li><li>Race, fight or rob the town with other players</li><li>Chat with <b>T</b></li><li>New features and fixes come to online first</li></ul>';$('offNo').textContent='Yes, play offline';}
+  pop.hidden=false;}
+$('bPlay').addEventListener('click',()=>{if(state!=='menu')return;initAudio();sfx.click&&sfx.click();offAsk(1);});
+$('offNo').addEventListener('click',()=>{if(offStep===1){offAsk(2);return;}$('offPop').hidden=true;playOffline();});
+$('offOnline').addEventListener('click',()=>{$('offPop').hidden=true;notifyMenu('');playOnline();});
 $('bResume').addEventListener('click',resume);
 $('bQuit').addEventListener('click',()=>{if(NET.on)NET.leave();saveProfile();refreshBadge();hidePanels();closeMap();ROUTE=null;$('pause').hidden=true;$('hud').hidden=true;$('big').hidden=true;canvas.style.filter=baseFilter();if(player.inCar)exitCar(true);newGame();player.m.group.visible=false;state='menu';$('menu').hidden=false;mapOpen=false;$('bigmap').hidden=true;if(AUD.eg){AUD.eg.gain.value=0;AUD.sg.gain.value=0;AUD.tyre.gain.value=0;}menuMusic();});
 function pause(){if(state!=='play')return;state='paused';if(RADIO.st>=0){RADIO.paused=RADIO.st;radioOff();}mouseL=mouseR=false;$('pause').hidden=false;if(document.pointerLockElement)document.exitPointerLock();}
