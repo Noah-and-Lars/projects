@@ -25,6 +25,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'bull-run',
+    title: 'Stocks Game',
+    category: 'Strategy',
+    tagline: 'Turn $10,000 into a fortune on a market that never sleeps.',
+    description: 'A stock-trading game. Twelve companies, live prices, earnings, dividends, booms and the odd crash. Read the news, short the losers, and if you dare visit the back room: insider tips, pump-and-dump schemes, a loan shark and a regulator who takes bribes. Three convictions and you go to prison. Your portfolio is saved in your browser.',
+    controls: 'Mouse, keyboard or touch',
+    keys: [['Click a stock', 'Open its chart'], ['B / S', 'Buy or sell'], ['H / C', 'Short or cover'], ['Enter', 'Place the trade'], ['M', 'Max shares'], ['I', 'The back room'], ['↑ ↓', 'Change stock'], ['Space', 'Pause']],
+    path: 'bull-run/index.html',
+    thumb: 'bull-run/thumb.svg',
+    added: '2026-10-18T19:38:00+11:00',
+    updated: '2026-10-18T19:38:00+11:00',
+    stat() { const s = readSave('bullRunSave', true); if (!s || !s.stats) return null; const w = s.stats.best || 0; return w > 10000 ? 'Best $' + Math.round(w).toLocaleString() : null; },
+  },
+  {
     id: 'chess',
     title: 'Chess',
     category: 'Board',
@@ -178,6 +192,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-18', game: 'bull-run', text: 'New game: Stocks Game. A stock-trading game with twelve companies, live prices, earnings, dividends, rumours, news that moves the market and the odd crash. Short sell, buy insider tips, run a pump and dump, borrow from a loan shark or bribe the regulator, all at your own risk: three convictions means prison. Your best net worth unlocks crypto, cheaper deals and options. Every year you get a report card against the market, and the daily challenge gives everyone the same market for one year and one score to share.' },
   { date: '2026-10-18', game: 'cube-assault', text: 'Chat in multiplayer: Cube Assault (press Enter in a lobby or a match), Free Criminal online (press T) and online Chess (the box under Play online).' },
   { date: '2026-10-18', game: 'free-criminal', text: 'Free Criminal 1.7: play online. Press Play online on the menu to share San Varro with everyone else who does. See each other drive and run around, find each other on the minimap, and shoot it out.' },
   { date: '2026-10-18', game: 'chess', text: 'Chess 1.1: play online. Type your name under Play online and press Quick match to play another person, or make a private table and send a friend the code. Colours swap every rematch.' },

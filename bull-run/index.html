@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stocks Game</title>
+<style>
+  :root {
+    --bg: #0b0f17; --bg-2: #0f1522; --panel: #141b2a; --panel-2: #1a2334; --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .13);
+    --text: #eef2f8; --muted: #8b96ad; --dim: #5c6782;
+    --up: #22c57a; --up-soft: rgba(34, 197, 122, .14); --down: #ff5c6c; --down-soft: rgba(255, 92, 108, .14);
+    --gold: #f5c451; --accent: #4f8cff; --accent-soft: rgba(79, 140, 255, .16);
+    --radius: 14px; --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.4 var(--font); -webkit-font-smoothing: antialiased; overflow: hidden; }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+  button:disabled { cursor: default; opacity: .45; }
+  input { font: inherit; color: inherit; }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+  .pill.up { background: var(--up-soft); } .pill.down { background: var(--down-soft); } .pill.flat { background: var(--panel-2); color: var(--muted); }
+
+  /* ---- layout ---- */
+  #app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+  header { display: flex; align-items: center; gap: 14px; padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top)); border-bottom: 1px solid var(--line); background: linear-gradient(180deg, var(--bg-2), var(--bg)); }
+  .logo { display: flex; align-items: center; gap: 9px; font-weight: 900; letter-spacing: -.02em; font-size: 18px; }
+  .logo i { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--up), #0f9d58); display: grid; place-items: center; font-style: normal; font-size: 15px; box-shadow: 0 4px 14px rgba(34, 197, 122, .35); }
+  .clock { display: flex; flex-direction: column; line-height: 1.15; }
+  .clock b { font-size: 14px; } .clock span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .clock .bar { height: 3px; width: 100%; background: var(--panel-2); border-radius: 2px; margin-top: 4px; overflow: hidden; } .clock .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+  .speed { display: flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+  .speed button { padding: 5px 10px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--muted); }
+  .speed button.on { background: var(--panel-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .speed button.on.pause { color: var(--gold); }
+  .worth { margin-left: auto; text-align: right; line-height: 1.1; }
+  .worth small { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; }
+  .worth b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .worth .pill { margin-left: 8px; vertical-align: 3px; }
+  .cashbox { text-align: right; line-height: 1.1; padding-left: 14px; border-left: 1px solid var(--line); }
+  .cashbox small { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; }
+  .cashbox b { font-size: 16px; font-weight: 700; }
+  .iconbtn { width: 36px; height: 36px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); font-size: 16px; }
+  .iconbtn:hover { color: var(--text); border-color: var(--line-2); }
+
+  main { display: grid; grid-template-columns: 280px 1fr 320px; gap: 12px; padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); min-height: 0; }
+  .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 0; }
+  .card > h2 { margin: 0; padding: 12px 14px 10px; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .card > h2 .right { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--dim); }
+  .scroll { overflow: auto; min-height: 0; overscroll-behavior: contain; }
+  .scroll::-webkit-scrollbar { width: 8px; } .scroll::-webkit-scrollbar-thumb { background: var(--panel-2); border-radius: 8px; }
+
+  /* ---- watchlist ---- */
+  #watch { flex: 1; }
+  .stock { display: grid; grid-template-columns: 1fr 64px 76px; gap: 8px; align-items: center; padding: 9px 14px; border-top: 1px solid var(--line); cursor: pointer; transition: background .12s; }
+  .stock:hover { background: var(--panel-2); }
+  .stock.sel { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .stock .t { font-weight: 800; font-size: 13px; letter-spacing: .02em; display: flex; align-items: center; gap: 6px; }
+  .stock .t .own { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .stock .n { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stock canvas { width: 64px; height: 26px; display: block; }
+  .stock .p { text-align: right; line-height: 1.15; }
+  .stock .p b { display: block; font-size: 13px; }
+  .stock .p span { font-size: 11px; font-weight: 700; }
+  .stock.pf { grid-template-columns: 1fr auto; border-top: 0; background: linear-gradient(90deg, rgba(245, 196, 81, .08), transparent); }
+  .stock.pf .t { color: var(--gold); }
+  .stock.flash-up { animation: fup .5s; } .stock.flash-down { animation: fdown .5s; }
+  @keyframes fup { 0% { background: var(--up-soft); } } @keyframes fdown { 0% { background: var(--down-soft); } }
+
+  /* ---- chart ---- */
+  #chartCard { flex: 1; }
+  .chead { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px 6px; flex-wrap: wrap; }
+  .chead .name { line-height: 1.1; }
+  .chead .name b { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+  .chead .name span { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .chead .price { line-height: 1.1; }
+  .chead .price b { font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+  .chead .price div { margin-top: 3px; font-size: 13px; font-weight: 700; }
+  .chead .facts { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; }
+  .fact { line-height: 1.1; text-align: right; }
+  .fact small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; }
+  .fact b { font-size: 13px; font-weight: 700; }
+  .ranges { display: flex; gap: 4px; padding: 4px 16px 0; }
+  .ranges button { padding: 4px 10px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--muted); }
+  .ranges button.on { background: var(--panel-2); color: var(--text); }
+  #nextMove { margin-left: auto; align-self: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 4px 10px; border-radius: 999px; background: var(--panel-2); }
+  #nextMove.soon { color: var(--gold); background: rgba(245, 196, 81, .14); }
+  .stock .t .tipmark { font-size: 11px; }
+  .chartwrap { flex: 1; min-height: 180px; position: relative; padding: 6px 8px 8px; }
+  #chart { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+  .tip { position: absolute; top: 10px; left: 16px; pointer-events: none; background: rgba(10, 14, 22, .9); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 9px; font-size: 12px; line-height: 1.3; display: none; }
+  .tip b { font-size: 13px; }
+
+  /* ---- trade ---- */
+  .trade { padding: 12px 14px 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 10px 12px; align-items: center; }
+  .seg { display: flex; background: var(--bg-2); border-radius: 10px; padding: 3px; border: 1px solid var(--line); }
+  .seg button { padding: 7px 16px; border-radius: 8px; font-weight: 800; font-size: 13px; color: var(--muted); }
+  .seg button.on.buy { background: var(--up); color: #04150c; } .seg button.on.sell { background: var(--down); color: #2a060a; }
+  .seg button.on.short, .seg button.on.cover { background: #a78bfa; color: #1b1040; }
+  #go.short, #go.cover { background: #a78bfa; color: #1b1040; box-shadow: 0 6px 24px rgba(167, 139, 250, .3); }
+  .hold.sh .t { color: #c4b5fd !important; } .hold .tag { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 5px; background: rgba(167, 139, 250, .18); color: #c4b5fd; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+  .debt { text-align: right; line-height: 1.1; padding-left: 14px; border-left: 1px solid var(--line); } .debt small { display: block; font-size: 11px; color: var(--down); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; } .debt b { font-size: 16px; font-weight: 700; color: var(--down); }
+  .back { display: grid; gap: 10px; margin-top: 12px; }
+  .deal { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 12px; padding: 14px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+  .deal h3 { margin: 0; font-size: 15px; } .deal p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; } .deal .meta { grid-column: 1; font-size: 12px; color: var(--dim); } .deal .meta b { color: var(--text); font-weight: 700; }
+  .deal .act { grid-row: 1 / 4; grid-column: 2; display: flex; flex-direction: column; gap: 6px; } .deal .act .btn { padding: 9px 14px; font-size: 13px; white-space: nowrap; }
+  .deal.off { opacity: .5; }
+  @media (max-width: 760px) { .deal { grid-template-columns: 1fr; } .deal .act { grid-row: auto; grid-column: 1; flex-direction: row; flex-wrap: wrap; } }
+  #mPrison .dlg { text-align: center; border-color: rgba(255, 92, 108, .4); } #mPrison h1 { color: var(--down); font-size: 34px; }
+  .qty { display: flex; align-items: center; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .qty button { width: 38px; height: 38px; font-size: 18px; color: var(--muted); } .qty button:hover { color: var(--text); background: var(--panel-2); }
+  .qty input { flex: 1; min-width: 0; width: 80px; text-align: center; background: none; border: 0; outline: 0; font-size: 16px; font-weight: 800; height: 38px; -moz-appearance: textfield; }
+  .qty input::-webkit-inner-spin-button, .qty input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .presets { display: flex; gap: 4px; }
+  .presets button { padding: 6px 9px; border-radius: 8px; background: var(--panel-2); font-size: 12px; font-weight: 700; color: var(--muted); }
+  .presets button:hover { color: var(--text); }
+  .trade .sum { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
+  .trade .sum b { color: var(--text); font-size: 15px; }
+  .trade .sum .pos { margin-left: auto; text-align: right; font-size: 12px; }
+  #go { grid-column: 1 / -1; padding: 13px; border-radius: 12px; font-weight: 900; font-size: 15px; letter-spacing: .02em; transition: transform .08s, filter .12s; }
+  #go.buy { background: var(--up); color: #04150c; box-shadow: 0 6px 24px rgba(34, 197, 122, .3); }
+  #go.sell { background: var(--down); color: #2a060a; box-shadow: 0 6px 24px rgba(255, 92, 108, .3); }
+  #go:not(:disabled):hover { filter: brightness(1.08); } #go:not(:disabled):active { transform: scale(.985); }
+
+  /* ---- portfolio ---- */
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .kpi { background: var(--panel); padding: 10px 14px; line-height: 1.15; }
+  .kpi small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; }
+  .kpi b { font-size: 15px; font-weight: 800; }
+  .alloc { display: flex; height: 6px; margin: 10px 14px 0; border-radius: 4px; overflow: hidden; background: var(--bg-2); }
+  .alloc i { display: block; height: 100%; }
+  .hold { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 9px 14px; border-top: 1px solid var(--line); cursor: pointer; }
+  .hold:hover { background: var(--panel-2); }
+  .hold .t { font-weight: 800; font-size: 13px; } .hold .t span { color: var(--muted); font-weight: 500; font-size: 11px; margin-left: 6px; }
+  .hold .v { text-align: right; font-weight: 700; font-size: 13px; }
+  .hold .s { font-size: 11px; color: var(--muted); } .hold .pl { text-align: right; font-size: 11px; font-weight: 700; }
+  .empty { padding: 18px 14px; color: var(--dim); font-size: 13px; text-align: center; }
+  .log { display: flex; justify-content: space-between; gap: 10px; padding: 7px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .log b { color: var(--text); } .log span:last-child { white-space: nowrap; }
+  .trade.off { opacity: .4; pointer-events: none; }
+
+  /* ---- news ---- */
+  #newsCard { flex: 1; }
+  .news { padding: 10px 14px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+  .news .h { font-size: 13px; line-height: 1.3; } .news .h b { font-weight: 800; }
+  .news .d { grid-column: 1 / -1; font-size: 11px; color: var(--dim); }
+  .news .fx { font-size: 11px; font-weight: 800; white-space: nowrap; }
+  .news.rumour .h { color: var(--gold); } .news.rumour .h::before { content: '👂 '; }
+  .news.tip .h { color: #c4b5fd; } .news.tip .h::before { content: '🕵️ '; } .news.bust .h { color: var(--down); }
+  .tipbox { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 12px; padding: 14px; margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tipbox small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 3px; } .tipbox b { font-size: 18px; }
+  .iconbtn.hot { color: #c4b5fd; border-color: rgba(196, 181, 253, .4); }
+  .news.fresh { animation: pop .4s ease-out; } @keyframes pop { from { background: var(--accent-soft); } }
+
+  /* ---- toasts, modals ---- */
+  #toasts { position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); width: 330px; z-index: 50; pointer-events: none; transition: height .25s; }
+  .toast { position: absolute; right: 0; bottom: 0; width: 100%; pointer-events: auto; background: var(--panel-2); border: 1px solid var(--line-2); border-left: 4px solid var(--accent); border-radius: 12px; padding: 10px 34px 10px 14px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); transform-origin: 50% 100%; transition: transform .3s cubic-bezier(.2, .8, .2, 1), opacity .3s; cursor: pointer; }
+  .toast > div { transition: opacity .2s; } .toast.behind > div { opacity: 0; } .toast.behind .x { visibility: hidden; }
+  .toast.up { border-left-color: var(--up); } .toast.down { border-left-color: var(--down); } .toast.gold { border-left-color: var(--gold); }
+  .toast.pin { border-left-color: #c4b5fd; background: #1d2338; } .toast.pin b.cd { color: #c4b5fd; }
+  .toast small { display: block; color: var(--muted); font-weight: 500; margin-top: 2px; line-height: 1.35; }
+  .toast .x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 6px; color: var(--dim); font-size: 15px; line-height: 1; display: grid; place-items: center; }
+  .toast .x:hover { color: var(--text); background: var(--panel); }
+  .toast .count { position: absolute; top: -9px; left: 10px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+  .toast.in { animation: tin .3s ease-out; }
+  @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+  .modal { position: fixed; inset: 0; background: rgba(4, 7, 12, .72); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 16px; z-index: 40; }
+  .modal[hidden] { display: none; }
+  .dlg { background: var(--panel); border: 1px solid var(--line-2); border-radius: 18px; width: min(520px, 100%); max-height: 100%; overflow: auto; padding: 24px; box-shadow: 0 30px 80px rgba(0, 0, 0, .6); animation: tin .25s ease-out; }
+  .dlg h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.02em; }
+  .dlg h1 em { font-style: normal; color: var(--up); }
+  .dlg p { color: var(--muted); margin: 8px 0; line-height: 1.5; }
+  .dlg ul { margin: 8px 0; padding-left: 18px; color: var(--muted); line-height: 1.6; }
+  .dlg li b { color: var(--text); }
+  .dlg kbd { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 6px; font-size: 12px; font-weight: 700; color: var(--text); }
+  .dlg .row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .btn { padding: 11px 18px; border-radius: 11px; font-weight: 800; background: var(--panel-2); border: 1px solid var(--line-2); }
+  .btn.primary { background: var(--up); color: #04150c; border-color: transparent; }
+  .btn.danger { background: var(--down-soft); color: var(--down); border-color: rgba(255, 92, 108, .3); }
+  .btn:hover { filter: brightness(1.1); }
+  .goals { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 10px; }
+  .goal { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 12px; color: var(--muted); }
+  .goal em { display: block; font-style: normal; color: #c4b5fd; margin-top: 3px; }
+  #repGrid { grid-template-columns: repeat(3, 1fr); } #repGrid div { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; line-height: 1.15; } #repGrid b { display: block; font-size: 16px; } #repGrid span { font-size: 11px; color: var(--muted); }
+  .stock.locked { opacity: .55; cursor: default; } .stock.locked .p b { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .hold.op .t { color: var(--gold) !important; } .hold .tag.op { background: rgba(245, 196, 81, .16); color: var(--gold); }
+  .daily #date::before { content: 'DAILY · '; color: var(--gold); }
+  #side button.opt { display: none; } .opts #side button.opt { display: block; }
+  .seg button.on.call, .seg button.on.put { background: var(--gold); color: #2a1f00; } #go.call, #go.put { background: var(--gold); color: #2a1f00; box-shadow: 0 6px 24px rgba(245, 196, 81, .3); }
+  .goal b { display: block; font-size: 14px; color: var(--text); } .goal.done { border-color: rgba(245, 196, 81, .4); } .goal.done b { color: var(--gold); }
+  .setrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+
+  /* ---- mobile ---- */
+  #tabs { display: none; }
+  @media (max-width: 1100px) {
+    main { grid-template-columns: 260px 1fr; }
+    #colRight { grid-column: 1 / -1; flex-direction: row; } #colRight .card { flex: 1; }
+  }
+  @media (max-width: 760px) {
+    #toasts { right: 12px; left: 12px; width: auto; bottom: calc(72px + env(safe-area-inset-bottom)); }
+    header { gap: 10px; padding: 10px 12px; flex-wrap: wrap; }
+    .clock { display: none; } .cashbox { display: none; }
+    .worth b { font-size: 18px; }
+    main { grid-template-columns: 1fr; padding: 10px 12px 0; }
+    main .col { display: none; } main .col.show { display: flex; }
+    #colRight { flex-direction: column; }
+    #app { grid-template-rows: auto 1fr auto; }
+    #tabs { display: flex; border-top: 1px solid var(--line); background: var(--bg-2); padding-bottom: env(safe-area-inset-bottom); }
+    #tabs button { flex: 1; padding: 10px 4px 9px; font-size: 11px; font-weight: 800; letter-spacing: .04em; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    #tabs button i { font-style: normal; font-size: 18px; } #tabs button.on { color: var(--text); }
+    .chead .price b { font-size: 22px; } .chead .name b { font-size: 17px; }
+    .trade { grid-template-columns: 1fr 1fr; } .trade .seg { grid-column: 1 / -1; flex-wrap: wrap; } .trade .seg button { flex: 1 1 30%; padding: 7px 8px; }
+    .presets { justify-content: flex-end; }
+    .chartwrap { min-height: 220px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo"><i>📈</i>STOCKS GAME</div>
+    <div class="clock"><b id="date" class="num">—</b><span id="dayNo">Day 1</span><div class="bar"><i id="dayBar"></i></div></div>
+    <div class="speed" id="speed">
+      <button data-s="0" class="pause" title="Pause (Space)">❚❚</button>
+      <button data-s="1" class="on" title="Play (1)">▶</button>
+    </div>
+    <div class="worth"><small>Net worth</small><b id="worth" class="num">$0</b><span id="worthChg" class="pill flat num">0.00%</span></div>
+    <div class="cashbox"><small>Cash</small><b id="cash" class="num">$0</b></div>
+    <div class="debt" id="debtBox" hidden><small>Owed</small><b id="debt" class="num">$0</b></div>
+    <button class="iconbtn" id="tipBtn" title="Back room (I)" aria-label="Back room">🕵️</button>
+    <button class="iconbtn" id="goalsBtn" title="Milestones" aria-label="Milestones">🏆</button>
+    <button class="iconbtn" id="menuBtn" title="Menu" aria-label="Menu">☰</button>
+  </header>
+
+  <main>
+    <div class="col show" id="colLeft">
+      <div class="card" id="watch">
+        <h2>Market <span class="right" id="mood">—</span></h2>
+        <div class="scroll" id="list"></div>
+      </div>
+    </div>
+
+    <div class="col" id="colMid">
+      <div class="card" id="chartCard">
+        <div class="chead">
+          <div class="name"><b id="cName">—</b><span id="cSub">—</span></div>
+          <div class="price"><b id="cPrice" class="num">$0.00</b><div id="cChg" class="num">—</div></div>
+          <div class="facts">
+            <div class="fact"><small>Before last move</small><b id="fRange" class="num">—</b></div>
+            <div class="fact"><small>1 year</small><b id="fYear" class="num">—</b></div>
+            <div class="fact"><small>Dividend</small><b id="fDiv" class="num">—</b></div>
+            <div class="fact"><small>Earnings</small><b id="fEarn" class="num">—</b></div>
+            <div class="fact"><small>You own</small><b id="fOwn" class="num">—</b></div>
+          </div>
+        </div>
+        <div class="ranges" id="ranges">
+          <button data-r="63">3M</button><button data-r="252" class="on">1Y</button><button data-r="756">3Y</button><button data-r="0">All</button><span id="nextMove" class="num">—</span>
+        </div>
+        <div class="chartwrap"><canvas id="chart"></canvas><div class="tip" id="tip"></div></div>
+      </div>
+      <div class="card">
+        <div class="trade">
+          <div class="seg" id="side"><button class="on buy" data-side="buy">Buy</button><button class="sell" data-side="sell">Sell</button><button class="short" data-side="short">Short</button><button class="cover" data-side="cover">Cover</button><button class="opt call" data-side="call">Call</button><button class="opt put" data-side="put">Put</button></div>
+          <div class="qty"><button id="qMinus">−</button><input id="qty" type="number" min="0" step="1" value="10" inputmode="numeric"><button id="qPlus">+</button></div>
+          <div class="presets"><button data-q="1">1</button><button data-q="10">10</button><button data-q="100">100</button><button data-q="max">Max</button></div>
+          <div class="sum"><span>Total <b id="total" class="num">$0.00</b></span><span id="after" class="num"></span><span class="pos" id="posInfo"></span></div>
+          <button id="go" class="buy">Buy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col" id="colRight">
+      <div class="card">
+        <h2>Portfolio <span class="right num" id="pfAll">—</span></h2>
+        <div class="kpis">
+          <div class="kpi"><small>Holdings</small><b id="kHold" class="num">$0</b></div>
+          <div class="kpi"><small>Total return</small><b id="kRet" class="num">—</b></div>
+          <div class="kpi"><small>Last update</small><b id="kToday" class="num">—</b></div>
+          <div class="kpi"><small>Realised</small><b id="kReal" class="num">—</b></div>
+        </div>
+        <div class="alloc" id="alloc"></div>
+        <div class="scroll" id="holds" style="max-height: 34vh"></div>
+        <h2 style="border-top:1px solid var(--line)">Activity</h2>
+        <div class="scroll" id="logEl" style="max-height: 22vh"></div>
+      </div>
+      <div class="card" id="newsCard">
+        <h2>News</h2>
+        <div class="scroll" id="news"></div>
+      </div>
+    </div>
+  </main>
+
+  <nav id="tabs">
+    <button data-tab="colLeft" class="on"><i>📊</i>Market</button>
+    <button data-tab="colMid"><i>💹</i>Trade</button>
+    <button data-tab="colRight"><i>💼</i>Portfolio</button>
+  </nav>
+</div>
+<div id="toasts"></div>
+
+<div class="modal" id="mIntro" hidden><div class="dlg">
+  <h1>Welcome to the <em>Stocks Game</em></h1>
+  <p>You have <b style="color:var(--text)">$10,000</b> and a market of twelve companies. Buy low, sell high and build the biggest fortune you can. The calendar runs fast (a trading day every couple of seconds), but prices and news only move every <b style="color:var(--text)">15 trading days</b>, about every 25 seconds, so you have time to think between moves. Your portfolio is saved in this browser.</p>
+  <ul>
+    <li><b>Pick a stock</b> on the left to see its chart, then <b>Buy</b> or <b>Sell</b> under the chart.</li>
+    <li><b>Read the news.</b> Headlines move prices: earnings, scandals, booms and the odd crash. <b>Rumours</b> (👂) arrive a day or two early and are right more often than not.</li>
+    <li><b>Earnings</b> come twice a year. The chart header counts down to each company's next report. Every year you get a <b>report card</b> against the market.</li>
+    <li><b>Reputation</b>: your best net worth unlocks things for good: crypto at $25,000, half-price back-room deals at $50,000, options (calls and puts) at $100,000.</li>
+    <li><b>Daily challenge</b> (in the menu): the same market for everyone who plays today, one year long (about 7 minutes). One score, copy it and compare.</li>
+    <li>Some companies pay a <b>dividend</b> twice a year just for holding their shares.</li>
+    <li>Press 🕵️ for the <b>back room</b>: insider tips that always come true, pump-and-dump schemes, a loan shark and a regulator who can be bribed. All of it has consequences. Three convictions and you go to <b>prison</b> for a year.</li>
+    <li><b>Keys</b>: <kbd>Space</kbd> pauses (there is no fast-forward: the market runs at one speed). <kbd>B</kbd> <kbd>S</kbd> <kbd>H</kbd> <kbd>C</kbd> pick buy, sell, short or cover, <kbd>↑</kbd> <kbd>↓</kbd> change stock, <kbd>Enter</kbd> trades.</li>
+    <li><b>Short selling</b>: bet on a fall. Borrow shares and sell them; cover later to buy them back. If the price rises 50% against you, the broker closes it for you.</li>
+  </ul>
+  <div class="row"><button class="btn primary" id="introGo">Open the market</button></div>
+</div></div>
+
+<div class="modal" id="mTip" hidden><div class="dlg">
+  <h1>The back room</h1>
+  <p><b style="color:var(--text)">The market is paused while you're in here.</b> Nothing in here is legal. Every deal raises the regulator's suspicion (your <b style="color:var(--text)">heat</b>), and the chance of being caught climbs with it. Lie low and the heat fades. <b style="color:var(--down)">Three convictions and you go to prison.</b></p>
+  <div class="back">
+    <div class="deal"><h3>🕵️ Insider info</h3><p>A tip about something that is going to happen: a deal, a scandal, an earnings result or a crash. Tips always come true.</p><div class="meta">Price <b id="tipPrice" class="num">$0</b> · caught <b id="tipRisk">0%</b></div><div class="act"><button class="btn primary" id="tipGo">Buy a tip</button></div></div>
+    <div class="deal" id="pumpDeal"><h3>📣 Pump and dump</h3><p>Pay a crew to spread fake rumours about <b id="pumpName">the selected stock</b>. It climbs for three market updates, then collapses on the fourth. Be out before it does.</p><div class="meta">Price <b id="pumpPrice" class="num">$0</b> · caught <b id="pumpRisk">0%</b></div><div class="act"><button class="btn primary" id="pumpGo">Start the pump</button></div></div>
+    <div class="deal"><h3>🦈 Loan shark</h3><p>Cash now, no questions. 2% interest a week, compounding. Keep it longer than six months, or let your net worth sink below what you owe, and he collects: everything you own, sold.</p><div class="meta">Owed <b id="loanOwed" class="num">$0</b> · can borrow up to <b id="loanMax" class="num">$0</b></div><div class="act"><button class="btn" id="loan1">Borrow 25%</button><button class="btn" id="loan2">Borrow 100%</button><button class="btn primary" id="loanPay">Repay</button></div></div>
+    <div class="deal"><h3>💼 Bribe the regulator</h3><p>Make the investigation go away. Your heat drops to zero, unless the bribe leaks, in which case it counts as a conviction and the fine is doubled.</p><div class="meta">Price <b id="bribePrice" class="num">$0</b> · leaks <b>20%</b> of the time · heat now <b id="heatNow">0</b></div><div class="act"><button class="btn" id="bribeGo">Pay the bribe</button></div></div>
+  </div>
+  <div class="row"><button class="btn" data-close>Leave</button></div>
+</div></div>
+<div class="modal" id="mReport" hidden><div class="dlg">
+  <h1 id="repT">Year report</h1>
+  <p id="repSub"></p>
+  <p id="repRank" style="font-size:22px;font-weight:900;color:var(--gold);margin:4px 0 10px" hidden></p>
+  <div class="goals" id="repGrid"></div>
+  <div class="row"><button class="btn primary" id="repGo">Continue</button><button class="btn" id="repShare" hidden>Copy score to share</button></div>
+</div></div>
+<div class="modal" id="mPrison" hidden><div class="dlg">
+  <h1>PRISON</h1>
+  <p id="prisonText"></p>
+  <div class="row" style="justify-content:center"><button class="btn primary" id="prisonGo">Walk out</button></div>
+</div></div>
+<div class="modal" id="mGoals" hidden><div class="dlg">
+  <h1>Milestones</h1>
+  <p id="goalsSub"></p>
+  <div class="goals" id="goals"></div>
+  <div class="row"><button class="btn" data-close>Close</button></div>
+</div></div>
+
+<div class="modal" id="mMenu" hidden><div class="dlg">
+  <h1>Stocks Game</h1>
+  <p id="menuStats"></p>
+  <div class="setrow"><span>Sound</span><button class="btn" id="sndBtn">On</button></div>
+  <div class="setrow"><span>How to play</span><button class="btn" id="howBtn">Show</button></div>
+  <div class="setrow"><span id="dailyLabel">Daily challenge</span><button class="btn" id="dailyBtn">Play today's market</button></div>
+  <div class="setrow"><span>Start over with $10,000</span><button class="btn danger" id="resetBtn">New game</button></div>
+  <div class="row"><button class="btn" data-close>Close</button></div>
+</div></div>
+
+<script>
+'use strict';
+// =====================================================================
+//  Stocks Game (folder bull-run/): a stock-trading game. One file, no servers; everything is saved in localStorage.
+// =====================================================================
+const SAVE_KEY = 'bullRunSave', DAILY_KEY = 'bullRunDaily', DAILY_DAYS = 252, START_CASH = 10000, DAY_SECS = 1.6, TICK = 15, EARN = 126, MAX_HIST = 1300;
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+// The market's own dice. In the daily challenge they are seeded from the date, so everyone gets the same prices and news;
+// anything the player does (tips, pumps) uses Math.random so it cannot knock the shared market off course.
+function mulberry32(a) { return { next() { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }, get state() { return a; }, set state(v) { a = v | 0; } }; }
+function hashStr(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+const M = { g: null };
+// In the daily challenge every part of each day's market (the moods, each company's earnings, the news, each stock's move)
+// draws from its own stream, seeded from the date, the day and the part. So if your tips or pumps change one stock,
+// every other stock, and every later day, still matches what everyone else sees.
+function stream(key) { if (G && G.daily) M.g = mulberry32(hashStr(G.daily + ':' + G.day + ':' + key)); }
+// whether company i beats at the report on update T: fixed in advance in the daily, so rumours and tips can know it
+function beatOf(i, T) { if (G.daily) return mulberry32(hashStr(G.daily + ':beat:' + i + ':' + T)).next() < 0.52; const s = G.stocks[i]; if (s.nextBeat === null) s.nextBeat = Math.random() < 0.52; return s.nextBeat; }
+const mr = () => M.g ? M.g.next() : Math.random();
+const mrand = (a, b) => a + mr() * (b - a);
+const mpick = a => a[Math.floor(mr() * a.length)];
+function mgauss() { let u = 0, v = 0; while (!u) u = mr(); while (!v) v = mr(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+const fmt = (n, d = 2) => (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtShort = n => Math.abs(n) >= 1e6 ? (n < 0 ? '-' : '') + '$' + (Math.abs(n) / 1e6).toFixed(2) + 'M' : fmt(n, Math.abs(n) >= 1e4 ? 0 : 2);
+const pct = (n, sign = true) => (sign && n > 0 ? '+' : '') + (n * 100).toFixed(2) + '%';
+const cls = n => n > 0.00005 ? 'up' : n < -0.00005 ? 'down' : 'flat';
+
+// ---- the companies ----
+const SECTORS = { tech: 'Technology', energy: 'Energy', finance: 'Finance', retail: 'Retail', health: 'Health', fun: 'Entertainment', crypto: 'Crypto' };
+const COMPANIES = [
+  { t: 'CUBE', n: 'Cubeware Systems', s: 'tech', p: 142, vol: 0.0165, drift: 0.0005, div: 0 },
+  { t: 'POLY', n: 'Polytrack Motors', s: 'tech', p: 48, vol: 0.0225, drift: 0.0006, div: 0 },
+  { t: 'ARCD', n: 'Noah & Lars Arcade', s: 'fun', p: 23, vol: 0.021, drift: 0.0007, div: 0 },
+  { t: 'BLCK', n: 'Blockcraft Mining', s: 'energy', p: 67, vol: 0.018, drift: 0.0003, div: 0.035 },
+  { t: 'SPIN', n: 'Spin Casinos', s: 'fun', p: 31, vol: 0.0255, drift: 0.0004, div: 0.02 },
+  { t: 'SVB', n: 'San Varro Bank', s: 'finance', p: 88, vol: 0.012, drift: 0.0003, div: 0.04 },
+  { t: 'FRNT', n: 'Frontier Freight', s: 'retail', p: 54, vol: 0.0135, drift: 0.0003, div: 0.025 },
+  { t: 'TAJR', n: 'Tajer Telecom', s: 'tech', p: 19, vol: 0.015, drift: 0.0002, div: 0.055 },
+  { t: 'NTHR', n: 'Nether Oil & Gas', s: 'energy', p: 112, vol: 0.0195, drift: 0.0002, div: 0.045 },
+  { t: 'HEAL', n: 'Healblock Pharma', s: 'health', p: 76, vol: 0.0203, drift: 0.0005, div: 0.01 },
+  { t: 'BRUT', n: 'Brute Fitness', s: 'health', p: 12, vol: 0.0285, drift: 0.0006, div: 0 },
+  { t: 'OUTP', n: 'Outpost Stores', s: 'retail', p: 38, vol: 0.0142, drift: 0.0003, div: 0.03 },
+  // unlocked by reputation (see GOALS): wild, no earnings, no dividends
+  { t: 'BTCB', n: 'Bitcube', s: 'crypto', p: 412, vol: 0.03, drift: 0.0006, div: 0, unlock: 25000 },
+  { t: 'DOGE', n: 'Dogeblock', s: 'crypto', p: 2.4, vol: 0.04, drift: 0.0004, div: 0, unlock: 25000 },
+];
+const NEWS = {
+  good: ['{n} beats earnings forecasts by a mile', '{n} lands a huge government contract', 'Analysts upgrade {n} to "strong buy"', '{n} announces a surprise buyback', 'Record quarter at {n} sends shares soaring', '{n} unveils a product nobody saw coming', 'Takeover rumours swirl around {n}', '{n} CEO: "best year in our history"'],
+  bad: ['{n} misses earnings, cuts its outlook', 'Regulators open an investigation into {n}', '{n} recalls its flagship product', 'CEO of {n} resigns after scandal', '{n} warns of weak demand ahead', 'Hackers breach {n} customer data', 'Short seller publishes a damning report on {n}', '{n} slashes its dividend'],
+  sectorGood: ['{s} stocks rally on strong demand', 'Government unveils support package for {s}', 'Investors pile into {s}'],
+  sectorBad: ['{s} stocks slide on new regulation', 'Supply problems hit {s} companies', '{s} sell-off as costs spike'],
+  mktGood: ['Markets surge as interest rates are cut', 'Record jobs report lifts every sector', 'Trade deal signed; stocks jump', 'Inflation cools, markets celebrate'],
+  mktBad: ['Markets tumble on recession fears', 'Interest rates raised more than expected', 'Bank failure rattles investors', 'Oil shock sends markets lower'],
+  crash: ['BLACK MONDAY: markets in free fall', 'Panic selling grips the exchange', 'Global crisis: biggest one-day drop in years'],
+  cryptoGood: ['A celebrity tweets about {n}', '{n} listed on a major exchange', 'Whales are buying {n}', '{n} to the moon, say forums'],
+  cryptoBad: ['Exchange holding {n} is hacked', 'Regulators threaten to ban {n}', '{n} founder vanishes with the keys', 'Whales dump {n}'],
+};
+const GOALS = [[12500, 'First profit', 'Reach $12,500'], [25000, 'Doubled up', 'Reach $25,000', 'Unlocks crypto'], [50000, 'Serious money', 'Reach $50,000', 'Back-room deals at half price'], [100000, 'Six figures', 'Reach $100,000', 'Unlocks options'], [250000, 'Quarter million', 'Reach $250,000'], [500000, 'Half a million', 'Reach $500,000'], [1000000, 'Millionaire', 'Reach $1,000,000'], [10000000, 'Tycoon', 'Reach $10,000,000']];
+// reputation: your best net worth ever, across the career game and any daily challenge
+let repBest = 0;
+function refreshRep() { repBest = 0; try { for (const k of [SAVE_KEY, DAILY_KEY]) { const o = JSON.parse(localStorage.getItem(k)); const g = o && o.stocks ? o : o && o.g; if (g && g.stats) repBest = Math.max(repBest, g.stats.best); } } catch (e) {} }
+function rep() { return Math.max(G ? G.stats.best : 0, repBest); }
+const unlocked = amt => rep() >= amt;
+const isLocked = i => i >= 0 && COMPANIES[i].unlock && !unlocked(COMPANIES[i].unlock);
+
+// ---- state ----
+let G = null;           // the saved game
+let live = [];          // live intraday prices per stock
+let sel = 0, side = 'buy', range = 252, speed = 1, tickAcc = 0, dayFrac = 0, hover = null;
+let snd = true;
+
+function newGame() {
+  const g = {
+    v: 1, day: 0, cash: START_CASH, speed: 1, intro: false,
+    stocks: COMPANIES.map((c, i) => ({ closes: [], shock: 0, mom: 0, earn: (i * 9) % 126, open: c.p, hi: c.p, lo: c.p, nextBeat: null })),
+    crashIn: 0, log: [], pending: [], heat: 0, short: {}, debt: 0, debtAge: 0, busts: 0,
+    hold: {}, news: [], mkt: 0.2, sect: Object.fromEntries(Object.keys(SECTORS).map(k => [k, 0])),
+    worthHist: [], stats: { trades: 0, realised: 0, dividends: 0, best: START_CASH }, goals: [],
+  };
+  // a year of history to look back on, so the charts aren't empty
+  for (let i = 0; i < COMPANIES.length; i++) genHistory(g.stocks[i], COMPANIES[i]);
+  g.options = []; g.year = newYear(START_CASH, 0); g.tickWorth = START_CASH;
+  for (let d = 0; d < 252; d++) g.worthHist.push(START_CASH);
+  g.news.push({ day: 0, h: 'The exchange opens. You have $10,000 to invest.', fx: 0, kind: 'info' });
+  return g;
+}
+function genHistory(s, c) {
+  let p = c.p, mood = 0; s.closes = [];
+  for (let d = 0; d < 252; d++) { s.closes.unshift(+p.toFixed(2)); if (d % TICK === TICK - 1) { mood = clamp(mood * 0.63 + mgauss() * 0.4, -1, 1); p /= Math.exp(c.drift * TICK + mood * 0.002 * TICK + c.vol * Math.sqrt(TICK) * mgauss()); } }
+  s.open = s.hi = s.lo = c.p; s.prevTick = s.closes[Math.max(0, s.closes.length - 1 - TICK)];
+}
+function newYear(startWorth, startDay) { return { start: startWorth, startDay, trades: [], div: 0, fines: 0, n: 0 }; }
+function migrate(g) { // saves from earlier versions
+  if (g.crashIn === undefined) g.crashIn = 0; if (!g.pending) g.pending = []; if (!g.heat) g.heat = 0; if (!g.short) g.short = {}; if (!g.debt) g.debt = 0; if (!g.debtAge) g.debtAge = 0; if (!g.busts) g.busts = 0; if (!g.log) g.log = [];
+  for (const st of g.stocks) if (st.nextBeat === undefined) st.nextBeat = null;
+  while (g.stocks.length < COMPANIES.length) { const i = g.stocks.length, c = COMPANIES[i], st = { closes: [], shock: 0, mom: 0, earn: (i * 9) % 126, open: c.p, hi: c.p, lo: c.p, nextBeat: null }; genHistory(st, c); for (let d = 252; d < g.worthHist.length; d++) { st.closes.push(+(st.closes[st.closes.length - 1] * (d % TICK === 0 ? Math.exp(c.drift * TICK + c.vol * Math.sqrt(TICK) * mgauss()) : 1)).toFixed(2)); } g.stocks.push(st); }
+  for (const st of g.stocks) if (st.prevTick === undefined) { const cl = st.closes; let k = cl.length - 2; while (k > 0 && cl[k] === cl[cl.length - 1]) k--; st.prevTick = cl[Math.max(0, k)]; }
+  if (g.tickWorth === undefined) g.tickWorth = g.worthHist[Math.max(0, g.worthHist.length - 1 - TICK)] || START_CASH;
+  for (const k in SECTORS) if (g.sect[k] === undefined) g.sect[k] = 0;
+  if (!g.options) g.options = []; if (!g.year) g.year = newYear(g.worthHist[g.worthHist.length - 1] || START_CASH, Math.floor(g.day / 252) * 252);
+  return g;
+}
+function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && s.stocks && s.stocks.length >= 12) return migrate(s); } catch (e) {} return null; }
+function save() { try { if (G.daily) { G.rngState = M.g.state; localStorage.setItem(DAILY_KEY, JSON.stringify({ date: G.daily, g: G })); } else localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) {} }
+
+// ---- prices ----
+const lastClose = i => G.stocks[i].closes[G.stocks[i].closes.length - 1];
+// 'change' figures compare with the market's previous update, not the previous (usually flat) day
+const prevClose = i => G.stocks[i].prevTick || lastClose(i);
+const prevWorth = () => G.tickWorth || START_CASH;
+const price = i => live[i];
+function dayTarget(i) { // where today will close, decided at the open
+  const s = G.stocks[i], c = COMPANIES[i]; stream('move' + i);
+  const T = TICK, r = (c.drift * 0.6 + c.vol * c.vol / 2 + G.mkt * 0.0008 + G.sect[c.s] * 0.0006) * T + s.shock + s.mom * 0.15 + c.vol * Math.sqrt(T) * mgauss();
+  return lastClose(i) * Math.exp(clamp(r, -0.45, 0.45));
+}
+let targets = [];
+function openDay() {
+  for (let i = 0; i < COMPANIES.length; i++) { const s = G.stocks[i]; s.open = lastClose(i); s.hi = s.lo = s.open; }
+  if (G.heat > 0 && G.day % 5 === 0) G.heat--;
+  // the calendar runs every day, but prices and news only move every TICK trading days (about 25 seconds)
+  if (G.day % TICK !== 0) { targets = COMPANIES.map((c, i) => lastClose(i)); G.opened = G.day; G.targets = targets.slice(); return; }
+  // the mood of the market and each sector drifts between updates
+  stream('mood'); G.mkt = clamp(G.mkt * 0.8 + mgauss() * 0.3, -1, 1);
+  for (const k in G.sect) G.sect[k] = clamp(G.sect[k] * 0.63 + mgauss() * 0.4, -1, 1);
+  for (const s of G.stocks) s.shock *= 0.6;
+  // scheduled: earnings every quarter per company; dividends with them
+  for (let i = 0; i < COMPANIES.length; i++) {
+    const s = G.stocks[i], c = COMPANIES[i]; stream('earn' + i);
+    // the update before a report, whispers sometimes get out (and are right three times in four)
+    if (c.s === 'crypto') { s.mom *= 0.9; continue; }
+    if ((G.day + TICK + s.earn) % EARN < TICK) { const nb = beatOf(i, G.day + TICK); if (mr() < 0.35) { const say = mr() < 0.75 ? nb : !nb; addNews((say ? mpick(['Whispers that {n} will beat expectations this week', 'Analysts expect a strong report from {n}']) : mpick(['Rumours of a weak quarter at {n}', 'Insiders nervous ahead of the {n} report'])).replace('{n}', c.n), 0, 'rumour', i); } }
+    if ((G.day + s.earn) % EARN < TICK && G.day > 0) { // the first update on or after the report date
+      const beat = beatOf(i, G.day), size = mrand(0.03, 0.13) * (beat ? 1 : -1); s.nextBeat = null;
+      s.shock += size * 0.4; s.mom = clamp(s.mom + size * 0.15, -0.03, 0.03);
+      addNews((beat ? mpick(NEWS.good.slice(0, 1).concat(['Strong results at {n}; shares jump', '{n} earnings top estimates'])) : mpick(['{n} disappoints on earnings', '{n} profit falls short of estimates'])).replace('{n}', c.n), size, 'earn');
+      const q = G.hold[c.t]; if (c.div > 0 && q && q.qty > 0) { const amt = q.qty * lastClose(i) * c.div / 2; G.cash += amt; G.stats.dividends += amt; G.year.div += amt; toast(`Dividend from ${c.t}: ${fmt(amt)}`, 'gold', `${q.qty} shares × ${fmt(lastClose(i) * c.div / 2)}`); logTrade(`Dividend from <b>${c.t}</b>`, amt); }
+    }
+    s.mom *= 0.9;
+  }
+  // random news
+  // tips you paid for come true on the day
+  for (const ev of G.pending.filter(e => e.day <= G.day)) {
+    if (ev.type === 'stock') { G.stocks[ev.i].shock += ev.size * 0.4; G.stocks[ev.i].mom = clamp(G.stocks[ev.i].mom + ev.size * 0.15, -0.03, 0.03); addNews(ev.text, ev.size, 'stock', ev.i); }
+    else if (ev.type === 'crash') { G.crashIn = 1; }
+    else if (ev.type === 'pump') { G.stocks[ev.i].shock += ev.size * 0.5; if (ev.text) addNews(ev.text, ev.size, 'stock', ev.i); }
+    else if (ev.type === 'dump') { G.stocks[ev.i].shock += ev.size * 0.7; G.stocks[ev.i].mom = -0.02; addNews(ev.text, ev.size, 'stock', ev.i); }
+  }
+  G.pending = G.pending.filter(e => e.day > G.day);
+  stream('news'); const roll = mr();
+  // a crash about once every three years, sometimes with a warning one update before; the mood then recovers over the following months
+  if (G.crashIn > 0 && --G.crashIn === 0) { const size = -mrand(0.12, 0.25); G.mkt = -0.8; for (const s of G.stocks) s.shock += size * mrand(0.3, 0.5); addNews(mpick(NEWS.crash), size, 'mkt'); snd && Sound.alarm(); }
+  else if (roll < 0.02 && !G.crashIn) { G.crashIn = mr() < 0.6 ? 2 : 1; if (G.crashIn === 2) addNews(mpick(['Traders nervous as volatility spikes', 'Warning signs flash across the market', 'Whispers of trouble in the banking system']), 0, 'rumour'); }
+  else if (roll < 0.12) { const good = mr() < 0.5, size = mrand(0.012, 0.045) * (good ? 1 : -1); G.mkt = clamp(G.mkt + size * 8, -1, 1); for (const s of G.stocks) s.shock += size * mrand(0.3, 0.5); addNews(mpick(good ? NEWS.mktGood : NEWS.mktBad), size, 'mkt'); }
+  else if (roll < 0.32) { const k = mpick(Object.keys(SECTORS)), good = mr() < 0.5, size = mrand(0.02, 0.07) * (good ? 1 : -1); G.sect[k] = clamp(G.sect[k] + size * 8, -1, 1); COMPANIES.forEach((c, i) => { if (c.s === k) G.stocks[i].shock += size * mrand(0.3, 0.5); }); addNews(mpick(good ? NEWS.sectorGood : NEWS.sectorBad).replace('{s}', SECTORS[k]), size, 'sect'); }
+  else if (roll < 0.75) { const i = Math.floor(mr() * COMPANIES.length), good = mr() < 0.5, size = mrand(0.03, 0.12) * (good ? 1 : -1); G.stocks[i].shock += size * 0.4; G.stocks[i].mom = clamp(G.stocks[i].mom + size * 0.15, -0.03, 0.03); addNews(mpick(COMPANIES[i].s === 'crypto' ? (good ? NEWS.cryptoGood : NEWS.cryptoBad) : good ? NEWS.good : NEWS.bad).replace('{n}', COMPANIES[i].n), size * (COMPANIES[i].s === 'crypto' ? 1.6 : 1), 'stock', i); }
+  targets = COMPANIES.map((c, i) => dayTarget(i)); G.opened = G.day; G.targets = targets.slice();
+}
+function closeDay() {
+  if (G.day % TICK === 0) G.tickWorth = G.worthHist[G.worthHist.length - 1] || START_CASH;
+  for (let i = 0; i < COMPANIES.length; i++) { const s = G.stocks[i]; const c = +targets[i].toFixed(2); if (c !== lastClose(i)) s.prevTick = lastClose(i); s.closes.push(c); if (s.closes.length > MAX_HIST) s.closes.shift(); live[i] = c; s.hi = Math.max(s.hi, c); s.lo = Math.min(s.lo, c); }
+  G.day++;
+  marginCalls(); loanDay(); settleOptions();
+  const w = worth(); G.worthHist.push(+w.toFixed(2)); if (G.worthHist.length > MAX_HIST) G.worthHist.shift();
+  if (w > G.stats.best) G.stats.best = w;
+  checkGoals(w);
+  save();
+  if (inPrison) return;
+  if (G.daily && G.day >= DAILY_DAYS && !G.done) { G.done = true; save(); showReport(true); }
+  else if (!G.daily && G.day % 252 === 0 && G.day > 0) showReport(false);
+}
+// ---- options: a call or put on a stock, settled ten trading days later ----
+const OPT_DAYS = 30, OPT_PREMIUM = 0.05; // two market updates
+function optionValue(o) { const p = price(o.i); return Math.max(0, o.type === 'call' ? p - o.strike : o.strike - p) * o.qty; }
+function settleOptions() {
+  for (const o of G.options.filter(o => o.expiry <= G.day)) {
+    const pay = optionValue(o), gain = pay - o.premium; G.cash += pay; G.stats.realised += gain; G.year.trades.push({ t: o.t, gain, what: `${o.type} on ${o.t}` });
+    logTrade(`${o.type === 'call' ? 'Call' : 'Put'} on <b>${o.qty.toLocaleString()} ${o.t}</b> expired`, pay); toast(`${o.type === 'call' ? 'Call' : 'Put'} on ${o.t} expired`, gain >= 0 ? 'up' : 'down', pay > 0 ? `Paid out ${fmt(pay)}` : 'Worthless');
+  }
+  G.options = G.options.filter(o => o.expiry > G.day);
+}
+// ---- the year-end report (and the daily challenge's final score) ----
+function marketReturn(days) { let sum = 0, n = 0; for (let i = 0; i < COMPANIES.length; i++) { const cl = G.stocks[i].closes; if (cl.length > days) { sum += cl[cl.length - 1] / cl[cl.length - 1 - days] - 1; n++; } } return n ? sum / n : 0; }
+function showReport(final) {
+  const y = G.year, w = worth(), ret = w / y.start - 1, days = G.day - y.startDay, mkt = marketReturn(days);
+  const best = y.trades.length ? y.trades.reduce((a, b) => b.gain > a.gain ? b : a) : null, worst = y.trades.length ? y.trades.reduce((a, b) => b.gain < a.gain ? b : a) : null;
+  const yearNo = Math.floor((G.day - 1) / 252) + 1;
+  $('repT').textContent = final ? 'Final score' : `Year ${yearNo} report`;
+  $('repSub').textContent = final ? `Daily challenge · ${fmtDate(new Date(G.daily + 'T12:00:00Z'))}` : `${fmtDate(dateOf(y.startDay))} to ${fmtDate(dateOf(G.day - 1))}`;
+  const rank = final ? (ret >= 2 ? '🐂 Wolf of Wall Street' : ret >= 0.75 ? '🦈 Shark' : ret >= 0.2 ? '📈 Trader' : ret >= 0 ? '🌱 Rookie' : '💸 Wiped out') : '';
+  $('repGrid').innerHTML = [[fmt(w, 0), 'Net worth'], [pct(ret), final ? 'Score' : 'Your return', cls(ret)], [pct(mkt), 'The market', cls(mkt)], [pct(ret - mkt), 'Beat the market by', cls(ret - mkt)], [y.trades.length + y.n, 'Trades'], [fmt(y.div, 0), 'Dividends'], [fmt(y.fines, 0), 'Fines', y.fines ? 'down' : ''], [best ? `${best.gain >= 0 ? '+' : ''}${fmt(best.gain, 0)}` : '—', best ? `Best: ${best.what || best.t}` : 'Best trade', best ? cls(best.gain) : ''], [worst ? `${worst.gain >= 0 ? '+' : ''}${fmt(worst.gain, 0)}` : '—', worst ? `Worst: ${worst.what || worst.t}` : 'Worst trade', worst ? cls(worst.gain) : '']]
+    .map(([v, l, c]) => `<div><b class="${c || ''}">${v}</b><span>${l}</span></div>`).join('');
+  $('repRank').textContent = rank; $('repRank').hidden = !final;
+  $('repShare').hidden = !final; $('repGo').textContent = final ? 'Back to your career' : 'Continue';
+  if (final) {
+    try { const prev = JSON.parse(localStorage.getItem(DAILY_KEY + '-best') || 'null'); if (!prev || w > prev.worth) localStorage.setItem(DAILY_KEY + '-best', JSON.stringify({ date: G.daily, worth: w, ret })); } catch (e) {}
+    $('repShare').onclick = () => { const text = `Stocks Game daily · ${fmtDate(new Date(G.daily + 'T12:00:00Z'))}\n${fmt(w, 0)} (${pct(ret)}) ${rank}\nThe market did ${pct(mkt)}.\nhttps://noah-and-lars.github.io/projects/play.html?game=bull-run`; (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied to the clipboard', 'gold'), () => prompt('Copy your score:', text)); };
+  } else G.year = newYear(w, G.day);
+  setSpeed(0); openModal('mReport'); snd && Sound.win();
+}
+function tickPrices(dt) { // prices only move at the close, once every DAY_SECS seconds, so the numbers never flicker
+  dayFrac = clamp(dayFrac, 0, 1);
+}
+function addNews(h, fx, kind, stock) { G.news.unshift({ day: G.day, h, fx, kind, stock }); if (G.news.length > 60) G.news.pop(); renderNews(true); if (snd && kind !== 'earn' && speed <= 3) Sound.news(); }
+
+// ---- money ----
+function holdingsValue() { let v = 0; for (const t in G.hold) { const i = COMPANIES.findIndex(c => c.t === t); if (G.hold[t].qty > 0) v += G.hold[t].qty * price(i); } return v; }
+function shortPL() { let v = 0; for (const t in G.short) { const i = COMPANIES.findIndex(c => c.t === t), sh = G.short[t]; v += (sh.entry - price(i)) * sh.qty; } return v; }
+function shortExposure() { let v = 0; for (const t in G.short) v += G.short[t].qty * G.short[t].entry; return v; }
+function collateral() { return G.cash - shortExposure(); }
+function optionsValue() { let v = 0; for (const o of G.options) v += optionValue(o); return v; }
+function worth() { return G.cash + holdingsValue() + shortPL() + optionsValue() - G.debt; }
+function raiseCash(amount) { // sells holdings, biggest first, until there is enough cash (used by fines and the loan shark)
+  const items = Object.entries(G.hold).filter(([, h]) => h.qty > 0).map(([t, h]) => ({ t, h, i: COMPANIES.findIndex(c => c.t === t) })).sort((a, b) => b.h.qty * price(b.i) - a.h.qty * price(a.i));
+  for (const it of items) { if (G.cash >= amount) break; const p = price(it.i); G.cash += it.h.qty * p; G.stats.realised += (p - it.h.cost) * it.h.qty; logTrade(`Forced sale of <b>${it.h.qty.toLocaleString()} ${it.t}</b> at ${fmt(p)}`, it.h.qty * p); delete G.hold[it.t]; }
+}
+function coverAll(why) { for (const t of Object.keys(G.short)) { const i = COMPANIES.findIndex(c => c.t === t); trade(i, G.short[t].qty, 'cover', true); } }
+function marginCalls() {
+  for (const t of Object.keys(G.short)) { const i = COMPANIES.findIndex(c => c.t === t), sh = G.short[t], loss = (price(i) - sh.entry) * sh.qty;
+    if (price(i) > sh.entry * 1.5 || loss > G.cash * 0.9) { toast(`Margin call: your short on ${t} was closed`, 'down', `Loss ${fmt(loss)}`); trade(i, sh.qty, 'cover', true); } }
+}
+function loanDay() {
+  if (G.debt <= 0) { G.debtAge = 0; return; }
+  G.debtAge++; if (G.debtAge % 5 === 0) { const interest = G.debt * 0.02; G.debt += interest; logTrade('<b>Loan shark</b> interest', -interest); }
+  if (G.debtAge > 126 || worth() < 0 || G.debt > (G.cash + holdingsValue() + shortPL()) * 0.95) collect();
+}
+function collect() {
+  coverAll(); raiseCash(Infinity); const taken = Math.min(G.cash, G.debt); G.cash -= taken; const left = G.debt - taken; G.debt = 0; G.debtAge = 0;
+  addNews(`The loan shark collects. Everything you owned was sold${left > 0 ? ' and he still says you owe him' : ''}. ` + (G.cash < 500 ? 'He leaves you $500 to start again.' : ''), 0, 'bust');
+  if (G.cash < 500) G.cash = 500; logTrade('<b>Loan shark</b> collects', -taken); toast('The loan shark collected', 'down', 'Your holdings were sold to pay him.'); snd && Sound.alarm(); save(); renderAll();
+}
+function trade(i, qty, how, quiet) {
+  if (how === true) how = 'buy'; if (how === false) how = 'sell';
+  const c = COMPANIES[i], p = price(i); qty = Math.floor(qty); if (qty <= 0) return false;
+  if (how === 'buy') {
+    const h = G.hold[c.t] || (G.hold[c.t] = { qty: 0, cost: 0 }), total = qty * p; if (total > G.cash + 1e-6) return false;
+    G.cash -= total; h.cost = (h.cost * h.qty + total) / (h.qty + qty); h.qty += qty;
+    toast(`Bought ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, 'up', fmt(total)); logTrade(`Bought <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, -total);
+  } else if (how === 'sell') {
+    const h = G.hold[c.t]; if (!h || qty > h.qty) return false;
+    const total = qty * p, gain = (p - h.cost) * qty; G.cash += total; h.qty -= qty; G.stats.realised += gain; G.year.trades.push({ t: c.t, gain });
+    if (h.qty === 0) delete G.hold[c.t];
+    toast(`Sold ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, gain >= 0 ? 'up' : 'down', `${gain >= 0 ? 'Profit' : 'Loss'} ${fmt(gain)}`); logTrade(`Sold <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)} (${gain >= 0 ? '+' : ''}${fmt(gain)})`, total);
+  } else if (how === 'short') { // borrow shares and sell them; the cash stays put as collateral
+    const total = qty * p; if (total > collateral() + 1e-6) return false;
+    const sh = G.short[c.t] || (G.short[c.t] = { qty: 0, entry: 0 }); sh.entry = (sh.entry * sh.qty + total) / (sh.qty + qty); sh.qty += qty;
+    toast(`Shorted ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, 'down', `You profit if it falls`); logTrade(`Shorted <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, 0);
+  } else if (how === 'call' || how === 'put') {
+    if (!unlocked(100000)) return false; const premium = qty * p * OPT_PREMIUM; if (premium > G.cash + 1e-6) return false;
+    G.cash -= premium; G.options.push({ t: c.t, i, type: how, qty, strike: p, expiry: G.day + OPT_DAYS, premium });
+    toast(`Bought a ${how} on ${qty.toLocaleString()} ${c.t}`, 'gold', `Strike ${fmt(p)} · expires in ${OPT_DAYS} days · premium ${fmt(premium)}`); logTrade(`${how === 'call' ? 'Call' : 'Put'} on <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)}`, -premium);
+  } else if (how === 'cover') {
+    const sh = G.short[c.t]; if (!sh || qty > sh.qty) return false;
+    const gain = (sh.entry - p) * qty; G.cash += gain; sh.qty -= qty; G.stats.realised += gain; G.year.trades.push({ t: c.t, gain, what: 'short ' + c.t }); if (sh.qty === 0) delete G.short[c.t];
+    if (!quiet) toast(`Covered ${qty.toLocaleString()} ${c.t} at ${fmt(p)}`, gain >= 0 ? 'up' : 'down', `${gain >= 0 ? 'Profit' : 'Loss'} ${fmt(gain)}`); logTrade(`Covered <b>${qty.toLocaleString()} ${c.t}</b> at ${fmt(p)} (${gain >= 0 ? '+' : ''}${fmt(gain)})`, gain);
+  }
+  G.stats.trades++; if (how === 'buy' || how === 'short') G.year.n++; if (!quiet) { snd && Sound.trade(how === 'buy' || how === 'cover'); save(); renderAll(); } return true;
+}
+// ---- the back room: insider info, pump and dump, the loan shark, bribes, and prison ----
+const disc = () => unlocked(50000) ? 0.5 : 1; // reputation: half-price deals
+const tipPrice = () => Math.max(250, Math.round(worth() * 0.03 * disc() / 10) * 10);
+const pumpPrice = () => Math.max(500, Math.round(worth() * 0.05 * disc() / 10) * 10);
+const bribePrice = () => Math.max(1000, Math.round(worth() * 0.1 / 10) * 10);
+const tipRisk = () => Math.min(0.6, 0.05 + G.heat * 0.07);
+const loanMax = () => Math.max(0, Math.round(Math.max(1000, (worth() + G.debt) * 2) - G.debt));
+function showTip() {
+  $('tipPrice').textContent = fmt(tipPrice(), 0); $('tipRisk').textContent = Math.round(tipRisk() * 100) + '%'; $('tipGo').disabled = G.cash < tipPrice();
+  $('pumpPrice').textContent = fmt(pumpPrice(), 0); $('pumpRisk').textContent = Math.round(Math.min(0.7, tipRisk() + 0.05) * 100) + '%'; $('pumpName').textContent = sel === PF ? 'the selected stock' : COMPANIES[sel].n;
+  $('pumpDeal').classList.toggle('off', sel === PF || G.pending.some(e => e.type === 'pump')); $('pumpGo').disabled = sel === PF || G.cash < pumpPrice() || G.pending.some(e => e.type === 'pump');
+  $('loanOwed').textContent = fmt(G.debt, 0); $('loanMax').textContent = fmt(loanMax(), 0); $('loanPay').disabled = G.debt <= 0 || G.cash <= 0; $('loan1').disabled = loanMax() < 500; $('loan2').disabled = loanMax() < 500;
+  $('bribePrice').textContent = fmt(bribePrice(), 0); $('heatNow').textContent = G.heat; $('bribeGo').disabled = G.cash < bribePrice() || G.heat === 0;
+  if (speed) { backRoomResume = speed; setSpeed(0); }
+  openModal('mTip');
+}
+function bust(fine, why) { // caught: a fine (selling holdings if the cash is not there), the heat resets, and a third conviction means prison
+  raiseCash(fine); fine = Math.min(fine, G.cash); G.cash -= fine; G.heat = 0; G.busts++; G.year.fines += fine;
+  addNews(`${why} Fined ${fmt(fine, 0)}. ${G.busts >= 3 ? 'Third conviction: prison.' : `Conviction ${G.busts} of 3.`}`, 0, 'bust'); logTrade('<b>Fine</b>', -fine);
+  toast('Caught!', 'down', `Fined ${fmt(fine, 0)} · conviction ${G.busts} of 3`); snd && Sound.alarm(); save(); renderAll();
+  if (G.busts >= 3) prison();
+}
+// When does the market next move, and when does a scheduled update land? The update on tick day T is
+// computed at T's open and shows up when T closes. A tip always lands at least MIN_LEAD trading days out
+// (about 15 seconds or more), so there is time to act on it.
+const MIN_LEAD = 9;
+const updateAtOrAfter = d => Math.ceil(d / TICK) * TICK;
+const nextMoveDay = () => updateAtOrAfter(G.day);
+const secsUntil = T => Math.max(0, (T - G.day + 1 - dayFrac) * DAY_SECS);
+const leadUpdate = () => updateAtOrAfter(Math.max(G.day + 1, G.day + MIN_LEAD));
+const inSecs = T => `in about ${Math.round(secsUntil(T) / 5) * 5 || 5} seconds`;
+function reportUpdate(i) { // the update at which company i next reports earnings
+  for (let T = updateAtOrAfter(G.day + 1); T < G.day + EARN + TICK * 2; T += TICK) if ((T + G.stocks[i].earn) % EARN < TICK) return T;
+  return Infinity;
+}
+function buyTip() {
+  const cost = tipPrice(); if (G.cash < cost) return;
+  const risk = tipRisk(); G.cash -= cost; G.heat++; logTrade('Bought <b>insider info</b>', -cost); closeModals();
+  if (Math.random() < risk) { bust(Math.max(cost * 2, Math.round(G.cash * 0.3)), 'Regulators catch you insider trading.'); return; }
+  const r = Math.random(); let text, stock, dir = 0, tipLands = null;
+  if (r < 0.6) { // a company event in a few days
+    const open = [...COMPANIES.keys()].filter(k => !isLocked(k)), i = open[Math.floor(Math.random() * open.length)], good = Math.random() < 0.7, size = rand(0.08, 0.22) * (good ? 1 : -1), T = leadUpdate(); dir = good ? 1 : -1;
+    const what = good ? pick(['will announce a huge contract', 'is about to be taken over', 'will unveil a surprise product', 'will report record sales']) : pick(['is about to be hit by a scandal', 'will recall its main product', 'is about to lose its biggest customer']);
+    tipLands = T; G.pending.push({ day: T, type: 'stock', i, size, tip: true, text: (good ? pick(NEWS.good) : pick(NEWS.bad)).replace('{n}', COMPANIES[i].n) });
+    text = `Tip: ${COMPANIES[i].n} ${what} ${inSecs(T)} (${good ? 'up' : 'down'} about ${Math.round(Math.abs(size) * 100)}%).`; stock = i;
+  } else if (r < 0.88) { // the next earnings result
+    // the soonest report that is still far enough away to act on (crypto has no earnings)
+    let best = -1, when = Infinity; COMPANIES.forEach((c, i) => { if (c.s === 'crypto' || isLocked(i)) return; const T = reportUpdate(i); if (T >= G.day + MIN_LEAD && T < when) { when = T; best = i; } });
+    const beat = beatOf(best, when); dir = beat ? 1 : -1; tipLands = when;
+    text = `Tip: ${COMPANIES[best].n} will ${beat ? 'beat' : 'miss'} expectations when it reports, ${inSecs(when)}.`; stock = best;
+  } else if (!G.crashIn && !G.daily && Math.random() < 0.5) { const T = leadUpdate(); tipLands = T; G.pending.push({ day: T, type: 'crash' }); text = `Tip: a crash is coming ${inSecs(T)}. Get out of the market before then.`; }
+  else { const best = [...COMPANIES.keys()].filter(k => !isLocked(k)).sort((a, b) => G.stocks[b].mom - G.stocks[a].mom)[0]; text = `Tip: nothing big is brewing. The strongest momentum right now is in ${COMPANIES[best].n}.`; stock = best; }
+  addNews(text, 0, 'tip', stock); const landT = tipLands; toast('🕵️ Tip received', 'gold', text.replace(/^Tip: /, '').replace(/ in about \d+ seconds/, ''), landT === null ? { secs: 9 } : { until: () => secsUntil(landT) }); snd && Sound.trade(true); save();
+  // take the player straight to the stock, ready to trade the right way
+  if (stock !== undefined && !isLocked(stock)) { select(stock); const h = G.hold[COMPANIES[stock].t]; setSide(dir > 0 ? 'buy' : dir < 0 ? (h && h.qty > 0 ? 'sell' : 'short') : 'buy'); if (dir) setQty(maxQty()); if (innerWidth <= 760) showTab('colMid'); }
+  renderAll();
+}
+function pumpStart() {
+  if (sel === PF || G.pending.some(e => e.type === 'pump')) return; const cost = pumpPrice(); if (G.cash < cost) return;
+  const risk = Math.min(0.7, tipRisk() + 0.05), i = sel, c = COMPANIES[i]; G.cash -= cost; G.heat += 2; logTrade(`Paid for a <b>pump on ${c.t}</b>`, -cost); closeModals();
+  if (Math.random() < risk) { bust(Math.max(cost * 2, Math.round(G.cash * 0.35)), 'Regulators trace the fake rumours back to you.'); return; }
+  const lines = [`Wild rumours: ${c.n} is about to be bought out`, `${c.n} shares surge as the buyout talk spreads`, `Everyone is piling into ${c.n}`];
+  const T0 = leadUpdate(); let total = 0; for (let d = 0; d < 3; d++) { const size = rand(0.07, 0.13); total += size; G.pending.push({ day: T0 + d * TICK, type: 'pump', i, size, tip: d === 0, text: lines[d] }); }
+  G.pending.push({ day: T0 + 3 * TICK, type: 'dump', i, size: -total * 1.25, text: `The rumours about ${c.n} were fake. Shares collapse.` });
+  addNews(`Your pump on ${c.n} starts ${inSecs(T0)}, climbs for three market updates and collapses on the fourth. Be out before then.`, 0, 'tip', i); select(i); setSide('buy'); setQty(maxQty()); if (innerWidth <= 760) showTab('colMid'); toast('📣 The pump is on', 'gold', `${c.t} climbs for three updates, then collapses. Sell before it does.`, { until: () => secsUntil(T0 + 3 * TICK), label: () => secsUntil(T0) > 0 ? `Climb starts in ${Math.ceil(secsUntil(T0))}s · collapses` : 'Collapses' }); save(); renderAll();
+}
+function borrow(frac) { const amt = Math.min(loanMax(), Math.max(1000, Math.round((worth() + G.debt) * frac / 100) * 100)); if (amt < 500) return; G.debt += amt; G.cash += amt; if (G.debtAge === 0) G.debtAge = 1; logTrade('<b>Loan shark</b> loan', amt); toast(`Borrowed ${fmt(amt, 0)}`, 'gold', '2% a week. Pay him back within six months.'); closeModals(); save(); renderAll(); }
+function repay() { const amt = Math.min(G.cash, G.debt); if (amt <= 0) return; G.cash -= amt; G.debt -= amt; if (G.debt < 1) { G.debt = 0; G.debtAge = 0; } logTrade('<b>Loan shark</b> repaid', -amt); toast(`Repaid ${fmt(amt, 0)}`, 'up', G.debt > 0 ? `${fmt(G.debt, 0)} still owed` : 'Debt cleared'); closeModals(); save(); renderAll(); }
+function bribe() {
+  const cost = bribePrice(); if (G.cash < cost || G.heat === 0) return; G.cash -= cost; logTrade('<b>Bribed</b> the regulator', -cost); closeModals();
+  if (Math.random() < 0.2) { bust(Math.max(cost * 4, Math.round(G.cash * 0.5)), 'The bribe leaks.'); return; }
+  G.heat = 0; addNews('The investigation into your trades is quietly dropped.', 0, 'tip'); toast('The heat is off', 'gold', 'Your file has been closed.'); save(); renderAll();
+}
+let inPrison = false;
+function prison() {
+  setSpeed(0); closeModals(); const before = worth();
+  coverAll(); if (G.debt > 0) collect();
+  if (G.daily) { G.done = true; G.busts = 0; G.heat = 0; addNews('Three convictions. The challenge ends in handcuffs.', 0, 'bust'); save(); showReport(true); return; }
+  const mute = window.toast; window.toast = () => {}; inPrison = true;
+  for (let d = 0; d < 252; d++) { closeDay(); startDay(); }
+  inPrison = false; window.toast = mute; G.busts = 0; G.heat = 0; G.pending = []; G.year = newYear(worth(), G.day); save();
+  const after = worth(); $('prisonText').innerHTML = `Three convictions. You serve a year. Your shares sit untouched while the market moves on without you.<br><br>Net worth going in: <b>${fmt(before, 0)}</b><br>Net worth coming out: <b class="${cls(after - before)}">${fmt(after, 0)}</b>`;
+  addNews('You are released after a year in prison. Your record is clean, for now.', 0, 'bust'); openModal('mPrison'); renderAll();
+}
+$('tipBtn').addEventListener('click', showTip); $('tipGo').addEventListener('click', buyTip); $('pumpGo').addEventListener('click', pumpStart);
+$('loan1').addEventListener('click', () => borrow(0.25)); $('loan2').addEventListener('click', () => borrow(1)); $('loanPay').addEventListener('click', repay); $('bribeGo').addEventListener('click', bribe);
+$('prisonGo').addEventListener('click', () => { closeModals(); setSpeed(1); });
+function logTrade(h, amt) { (G.log || (G.log = [])).unshift({ day: G.day, h, amt }); if (G.log.length > 40) G.log.pop(); renderLog(); }
+function checkGoals(w) {
+  for (const [amt, name, , unlock] of GOALS) if (w >= amt && !G.goals.includes(amt)) { G.goals.push(amt); toast(`Milestone: ${name}`, 'gold', unlock ? `${unlock}!` : `Net worth passed ${fmt(amt, 0)}`); snd && Sound.win(); if (unlock) { document.body.classList.toggle('opts', unlocked(100000)); renderList(); } }
+}
+
+// ---- calendar: trading days only, from the first Monday of 2026 ----
+const DAY0 = Date.UTC(2026, 0, 5);
+function dateOf(day) { const weeks = Math.floor(day / 5), rem = day % 5; return new Date(DAY0 + (weeks * 7 + rem) * 864e5); }
+const fmtDate = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+// ---- sound (tiny, generated) ----
+const Sound = (() => {
+  let ctx = null;
+  const ac = () => { if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ctx && ctx.state === 'suspended') ctx.resume(); return ctx; };
+  const tone = (f, d = 0.12, type = 'sine', g = 0.08, at = 0) => { const c = ac(); if (!c) return; const o = c.createOscillator(), v = c.createGain(); o.type = type; o.frequency.value = f; v.gain.setValueAtTime(0.0001, c.currentTime + at); v.gain.exponentialRampToValueAtTime(g, c.currentTime + at + 0.01); v.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + at + d); o.connect(v).connect(c.destination); o.start(c.currentTime + at); o.stop(c.currentTime + at + d + 0.02); };
+  return {
+    trade(buy) { tone(buy ? 660 : 440, 0.1); tone(buy ? 990 : 330, 0.14, 'sine', 0.06, 0.08); },
+    news() { tone(880, 0.08, 'triangle', 0.04); },
+    alarm() { for (let i = 0; i < 3; i++) tone(220, 0.18, 'sawtooth', 0.05, i * 0.22); },
+    win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.07, i * 0.09)); },
+    click() { tone(1200, 0.04, 'square', 0.02); },
+  };
+})();
+
+// ---- rendering ----
+const listEl = $('list'), newsEl = $('news'), holdsEl = $('holds');
+const sparks = [];
+const PF = -1; // sel === PF shows your net worth instead of a stock
+function buildList() {
+  listEl.innerHTML = ''; sparks.length = 0;
+  const pf = document.createElement('div'); pf.className = 'stock pf'; pf.innerHTML = `<div><div class="t">💼 Your portfolio</div><div class="n">Net worth over time</div></div><div class="p num"><b id="pfRowV"></b><span id="pfRowC"></span></div>`;
+  pf.addEventListener('click', () => { select(PF); if (innerWidth <= 760) showTab('colMid'); }); listEl.appendChild(pf);
+  COMPANIES.forEach((c, i) => {
+    const row = document.createElement('div'); row.className = 'stock'; row.dataset.i = i;
+    row.innerHTML = `<div><div class="t">${c.t}<span class="own" hidden></span><span class="tipmark" hidden title="Your tip lands on this stock">🕵️</span></div><div class="n">${c.n}</div></div><canvas width="128" height="52"></canvas><div class="p num"><b></b><span></span></div>`;
+    row.addEventListener('click', () => { if (isLocked(i)) { toast(`${c.n} unlocks at ${fmt(c.unlock, 0)}`, 'gold', 'Reach that net worth once and it stays unlocked'); return; } select(i); if (innerWidth <= 760) showTab('colMid'); });
+    listEl.appendChild(row); sparks.push(row.querySelector('canvas'));
+  });
+}
+let lastShown = [];
+function renderList() {
+  const rows = listEl.children;
+  { const w = worth(), ch = w / START_CASH - 1; rows[0].classList.toggle('sel', sel === PF); $('pfRowV').textContent = fmtShort(w); const c = $('pfRowC'); c.textContent = pct(ch); c.className = cls(ch); }
+  for (let i = 0; i < COMPANIES.length; i++) {
+    const row = rows[i + 1], p = price(i), ch = p / prevClose(i) - 1, own = G.hold[COMPANIES[i].t];
+    row.classList.toggle('sel', i === sel);
+    if (isLocked(i)) { row.classList.add('locked'); row.querySelector('.p b').textContent = '🔒 ' + fmt(COMPANIES[i].unlock, 0); row.querySelector('.p span').textContent = ''; continue; } row.classList.remove('locked');
+    row.querySelector('.own').hidden = !((own && own.qty > 0) || G.short[COMPANIES[i].t]);
+    row.querySelector('.tipmark').hidden = !G.pending.some(e => e.tip && e.i === i);
+    row.querySelector('.p b').textContent = fmt(p);
+    const s = row.querySelector('.p span'); s.textContent = pct(ch); s.className = cls(ch);
+    if (lastShown[i] !== undefined && Math.abs(p - lastShown[i]) > 0.005 * p) { row.classList.remove('flash-up', 'flash-down'); void row.offsetWidth; row.classList.add(p > lastShown[i] ? 'flash-up' : 'flash-down'); lastShown[i] = p; }
+    if (lastShown[i] === undefined) lastShown[i] = p;
+  }
+}
+function renderSparks() {
+  for (let i = 0; i < COMPANIES.length; i++) {
+    const cv = sparks[i], g = cv.getContext('2d'), data = G.stocks[i].closes.slice(-TICK * 10).concat([price(i)]);
+    const W = cv.width, H = cv.height, mn = Math.min(...data), mx = Math.max(...data), sp = mx - mn || 1, up = data[data.length - 1] >= data[0];
+    g.clearRect(0, 0, W, H); g.beginPath();
+    data.forEach((v, k) => { const x = k / (data.length - 1) * (W - 2) + 1, y = H - 4 - (v - mn) / sp * (H - 8); k ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.strokeStyle = up ? '#22c57a' : '#ff5c6c'; g.lineWidth = 2.5; g.lineJoin = 'round'; g.stroke();
+  }
+}
+function renderHeader() {
+  const w = worth(), prev = prevWorth(), ch = w / prev - 1;
+  $('worth').textContent = fmtShort(w); const pill = $('worthChg'); pill.textContent = pct(ch); pill.className = 'pill num ' + cls(ch);
+  $('cash').textContent = fmtShort(G.cash);
+  $('debtBox').hidden = G.debt <= 0; $('debt').textContent = fmtShort(G.debt);
+  $('date').textContent = fmtDate(dateOf(G.day)); $('dayNo').textContent = G.daily ? `Day ${Math.min(G.day + 1, DAILY_DAYS)} of ${DAILY_DAYS}` : `Day ${G.day + 1} · Year ${Math.floor(G.day / 252) + 1}`;
+  $('mood').textContent = G.mkt > 0.4 ? '🐂 Bull market' : G.mkt < -0.4 ? '🐻 Bear market' : 'Mixed';
+  { const T = nextMoveDay(), left = secsUntil(T), done = clamp((G.day - T + TICK - 1 + dayFrac) / TICK, 0, 1); $('dayBar').style.width = (done * 100).toFixed(1) + '%'; $('nextMove').textContent = speed ? `Next move in ${Math.ceil(left)}s` : 'Paused'; $('nextMove').classList.toggle('soon', speed && left < 5); }
+  $('tipBtn').classList.toggle('hot', G.heat > 0); $('tipBtn').title = 'Back room (I)' + (G.heat ? ` · heat ${G.heat}` : '') + (G.busts ? ` · ${G.busts} conviction${G.busts > 1 ? 's' : ''}` : '');
+}
+function renderChartHead() {
+  if (sel === PF) {
+    const w = worth(), prev = prevWorth(), ch = w / prev - 1, ret = w / START_CASH - 1;
+    $('cName').textContent = 'Your portfolio'; $('cSub').textContent = `Started with ${fmt(START_CASH, 0)} on ${fmtDate(dateOf(0))}`;
+    $('cPrice').textContent = fmt(w); const e = $('cChg'); e.textContent = `${ch >= 0 ? '+' : ''}${fmt(w - prev)} (${pct(ch)}) today`; e.className = 'num ' + cls(ch);
+    $('fRange').previousElementSibling.textContent = G.daily ? 'Progress' : 'Before last move'; $('fRange').textContent = G.daily ? `Day ${Math.min(G.day + 1, DAILY_DAYS)} of ${DAILY_DAYS}` : fmt(prev, 0);
+    const y = G.worthHist[Math.max(0, G.worthHist.length - 252)] || START_CASH, yc = w / y - 1; const fy = $('fYear'); fy.textContent = pct(yc); fy.className = 'num ' + cls(yc);
+    $('fDiv').textContent = fmt(G.stats.dividends, 0); $('fEarn').textContent = G.stats.trades.toLocaleString(); const own = $('fOwn'); own.textContent = pct(ret); own.className = 'num ' + cls(ret);
+    factLabels('Dividends earned', 'Trades', 'Total return');
+    return;
+  }
+  factLabels('Dividend', 'Earnings', 'You own'); $('fRange').previousElementSibling.textContent = 'Before last move';
+  const c = COMPANIES[sel], s = G.stocks[sel], p = price(sel), ch = p / prevClose(sel) - 1, h = G.hold[c.t];
+  $('cName').textContent = `${c.n} (${c.t})`; $('cSub').textContent = SECTORS[c.s] + (c.div ? ` · pays ${(c.div * 100).toFixed(1)}% a year in dividends` : ' · no dividend');
+  $('cPrice').textContent = fmt(p); const e = $('cChg'); e.textContent = `${ch >= 0 ? '+' : ''}${fmt(p - prevClose(sel))} (${pct(ch)}) last update`; e.className = 'num ' + cls(ch);
+  $('fRange').textContent = fmt(prevClose(sel));
+  const y = s.closes[Math.max(0, s.closes.length - 252)], yc = p / y - 1; const fy = $('fYear'); fy.textContent = pct(yc); fy.className = 'num ' + cls(yc);
+  $('fDiv').textContent = c.div ? (c.div * 100).toFixed(1) + '%' : '—';
+  const until = (EARN - ((G.day + s.earn) % EARN)) % EARN; $('fEarn').textContent = until === 0 ? 'Today' : until === 1 ? 'Tomorrow' : `in ${until}d`;
+  const own = $('fOwn'), sh = G.short[c.t]; if (h && h.qty > 0) { const pl = (p - h.cost) * h.qty; own.innerHTML = `${h.qty.toLocaleString()} sh <span class="${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)}</span>`; } else if (sh) { const pl = (sh.entry - p) * sh.qty; own.innerHTML = `short ${sh.qty.toLocaleString()} <span class="${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)}</span>`; } else own.textContent = '—';
+}
+function factLabels(a, b, c) { $('fDiv').previousElementSibling.textContent = a; $('fEarn').previousElementSibling.textContent = b; $('fOwn').previousElementSibling.textContent = c; }
+function renderPortfolio() {
+  const hv = holdingsValue(), w = worth(), ret = w / START_CASH - 1, prev = prevWorth(), today = w - prev;
+  $('pfAll').textContent = fmtShort(w);
+  $('kHold').textContent = fmtShort(hv);
+  const r = $('kRet'); r.textContent = `${pct(ret)}`; r.className = 'num ' + cls(ret);
+  const t = $('kToday'); t.textContent = `${today >= 0 ? '+' : ''}${fmt(today)}`; t.className = 'num ' + cls(today);
+  const re = $('kReal'); re.textContent = `${G.stats.realised >= 0 ? '+' : ''}${fmt(G.stats.realised)}`; re.className = 'num ' + cls(G.stats.realised);
+  // allocation bar: cash in grey, each holding in its own colour
+  const al = $('alloc'); let html = `<i style="width:${clamp(G.cash / Math.max(w, 1) * 100, 0, 100).toFixed(2)}%;background:#2a3448" title="Cash"></i>`;
+  const items = Object.entries(G.hold).filter(([, h]) => h.qty > 0).map(([t, h]) => { const i = COMPANIES.findIndex(c => c.t === t); return { t, h, i, v: h.qty * price(i) }; }).sort((a, b) => b.v - a.v);
+  items.forEach(it => { html += `<i style="width:${clamp(it.v / Math.max(w, 1) * 100, 0, 100).toFixed(2)}%;background:${colorOf(it.i)}" title="${it.t}"></i>`; }); al.innerHTML = html;
+  const shorts = Object.entries(G.short).map(([t, sh]) => ({ t, sh, i: COMPANIES.findIndex(c => c.t === t) }));
+  holdsEl.innerHTML = items.length || shorts.length || G.options.length ? '' : '<div class="empty">No shares yet. Pick a stock and press Buy.</div>';
+  for (const o of G.options) {
+    const v = optionValue(o), d = document.createElement('div'); d.className = 'hold op num';
+    d.innerHTML = `<div class="t">${o.t}<span class="tag op">${o.type.toUpperCase()}</span><span>${o.qty.toLocaleString()} · strike ${fmt(o.strike)}</span></div><div class="v">${fmt(v)}</div><div class="s">expires in ${o.expiry - G.day} day${o.expiry - G.day === 1 ? '' : 's'} · paid ${fmt(o.premium)}</div><div class="pl ${cls(v - o.premium)}">${v - o.premium >= 0 ? '+' : ''}${fmt(v - o.premium)}</div>`;
+    d.addEventListener('click', () => { select(o.i); if (innerWidth <= 760) showTab('colMid'); }); holdsEl.appendChild(d);
+  }
+  for (const it of shorts) {
+    const p = price(it.i), pl = (it.sh.entry - p) * it.sh.qty, plp = (it.sh.entry - p) / it.sh.entry;
+    const d = document.createElement('div'); d.className = 'hold sh num';
+    d.innerHTML = `<div class="t">${it.t}<span class="tag">SHORT</span><span>${it.sh.qty.toLocaleString()} sh · at ${fmt(it.sh.entry)}</span></div><div class="v">${fmt(it.sh.qty * p)}</div><div class="s">closes if it passes ${fmt(it.sh.entry * 1.5)}</div><div class="pl ${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)} (${pct(plp)})</div>`;
+    d.addEventListener('click', () => { select(it.i); setSide('cover'); if (innerWidth <= 760) showTab('colMid'); });
+    holdsEl.appendChild(d);
+  }
+  for (const it of items) {
+    const p = price(it.i), pl = (p - it.h.cost) * it.h.qty, plp = p / it.h.cost - 1;
+    const d = document.createElement('div'); d.className = 'hold num';
+    d.innerHTML = `<div class="t" style="color:${colorOf(it.i)}">${it.t}<span>${it.h.qty.toLocaleString()} sh · avg ${fmt(it.h.cost)}</span></div><div class="v">${fmt(it.v)}</div><div class="s">${(it.v / w * 100).toFixed(1)}% of portfolio</div><div class="pl ${cls(pl)}">${pl >= 0 ? '+' : ''}${fmt(pl)} (${pct(plp)})</div>`;
+    d.addEventListener('click', () => { select(it.i); if (innerWidth <= 760) showTab('colMid'); });
+    holdsEl.appendChild(d);
+  }
+}
+function colorOf(i) { return ['#4f8cff', '#22c57a', '#f5c451', '#ff5c6c', '#a78bfa', '#38bdf8', '#fb923c', '#34d399', '#f472b6', '#facc15', '#60a5fa', '#c084fc'][i % 12]; }
+function renderNews(fresh) {
+  newsEl.innerHTML = '';
+  G.news.forEach((n, k) => {
+    const d = document.createElement('div'); d.className = 'news' + (fresh && k === 0 ? ' fresh' : '');
+    const fx = n.fx ? `<div class="fx ${cls(n.fx)}">${pct(n.fx)}</div>` : '<div></div>';
+    d.classList.toggle('rumour', n.kind === 'rumour'); d.classList.toggle('tip', n.kind === 'tip'); d.classList.toggle('bust', n.kind === 'bust'); d.innerHTML = `<div class="h">${n.h}</div>${fx}<div class="d">${fmtDate(dateOf(n.day))}${n.kind === 'earn' ? ' · Earnings' : n.kind === 'mkt' ? ' · Markets' : n.kind === 'sect' ? ' · Sector' : n.kind === 'rumour' ? ' · Rumour' : n.kind === 'tip' ? ' · Insider info' : n.kind === 'bust' ? ' · Trouble' : ''}</div>`;
+    if (n.stock !== undefined) { d.style.cursor = 'pointer'; d.addEventListener('click', () => { select(n.stock); if (innerWidth <= 760) showTab('colMid'); }); }
+    newsEl.appendChild(d);
+  });
+}
+function renderTrade() {
+  document.querySelector('.trade').classList.toggle('off', sel === PF); if (sel === PF) return;
+  const c = COMPANIES[sel], p = price(sel), h = G.hold[c.t], sh = G.short[c.t], q = Math.max(0, Math.floor(+$('qty').value || 0)), total = q * p, Q = q.toLocaleString();
+  $('total').textContent = fmt(total);
+  const go = $('go'); go.className = side; const after = $('after');
+  if (side === 'buy') { go.textContent = q ? `Buy ${Q} ${c.t}` : 'Buy'; go.disabled = !q || total > G.cash + 1e-6; after.textContent = `Cash after: ${fmt(G.cash - total)}`; after.className = 'num ' + (total > G.cash ? 'down' : ''); }
+  else if (side === 'sell') { go.textContent = q ? `Sell ${Q} ${c.t}` : 'Sell'; go.disabled = !q || !h || q > h.qty; const gain = h ? (p - h.cost) * q : 0; after.textContent = h && q ? `${gain >= 0 ? 'Profit' : 'Loss'}: ${fmt(gain)}` : ''; after.className = 'num ' + cls(gain); }
+  else if (side === 'short') { go.textContent = q ? `Short ${Q} ${c.t}` : 'Short'; go.disabled = !q || total > collateral() + 1e-6; after.textContent = `Collateral left: ${fmt(collateral() - total)}`; after.className = 'num ' + (total > collateral() ? 'down' : ''); }
+  else if (side === 'call' || side === 'put') { const prem = total * OPT_PREMIUM; go.textContent = q ? `Buy ${side} on ${Q} ${c.t} · ${fmt(prem)}` : side === 'call' ? 'Buy call' : 'Buy put'; go.disabled = !q || prem > G.cash + 1e-6; after.textContent = `Premium ${fmt(prem)} · strike ${fmt(p)} · ${OPT_DAYS} days`; after.className = 'num ' + (prem > G.cash ? 'down' : ''); }
+  else { go.textContent = q ? `Cover ${Q} ${c.t}` : 'Cover'; go.disabled = !q || !sh || q > sh.qty; const gain = sh ? (sh.entry - p) * q : 0; after.textContent = sh && q ? `${gain >= 0 ? 'Profit' : 'Loss'}: ${fmt(gain)}` : ''; after.className = 'num ' + cls(gain); }
+  $('posInfo').textContent = side === 'call' ? `Pays (price − ${fmt(p)}) per share if it rises in ${OPT_DAYS} days` : side === 'put' ? `Pays (${fmt(p)} − price) per share if it falls in ${OPT_DAYS} days` : side === 'short' ? `Max: ${Math.floor(collateral() / p).toLocaleString()} (cash is your collateral)` : side === 'cover' ? (sh ? `Short ${sh.qty.toLocaleString()} at ${fmt(sh.entry)}` : 'No short position') : h && h.qty > 0 ? `You own ${h.qty.toLocaleString()} · avg ${fmt(h.cost)}` : `Max affordable: ${Math.floor(G.cash / p).toLocaleString()}`;
+}
+function renderLog() {
+  const el = $('logEl'); el.innerHTML = (G.log && G.log.length) ? '' : '<div class="empty">Your trades and dividends will show here.</div>';
+  for (const l of (G.log || [])) { const d = document.createElement('div'); d.className = 'log num'; d.innerHTML = `<span>${l.h}</span><span class="${cls(l.amt)}">${l.amt >= 0 ? '+' : ''}${fmt(l.amt)}</span>`; el.appendChild(d); }
+}
+function renderAll() { renderHeader(); renderList(); renderChartHead(); renderPortfolio(); renderTrade(); renderLog(); drawChart(); }
+
+// ---- the chart ----
+const chart = $('chart'), cg = chart.getContext('2d'), tip = $('tip');
+function chartData() {
+  const hist = sel === PF ? G.worthHist : G.stocks[sel].closes;
+  const data = hist.slice(range ? -range : 0).concat([sel === PF ? worth() : price(sel)]);
+  return { data, firstDay: G.day - (data.length - 1) };
+}
+function drawChart() {
+  const r = chart.getBoundingClientRect(); if (!r.width) return;
+  const dpr = Math.min(2, devicePixelRatio || 1); if (chart.width !== Math.round(r.width * dpr) || chart.height !== Math.round(r.height * dpr)) { chart.width = Math.round(r.width * dpr); chart.height = Math.round(r.height * dpr); }
+  const W = r.width, H = r.height; cg.setTransform(dpr, 0, 0, dpr, 0, 0); cg.clearRect(0, 0, W, H);
+  const { data, firstDay } = chartData(), c = COMPANIES[sel], h = sel === PF ? null : G.hold[c.t], sh = sel === PF ? null : G.short[c.t];
+  const padL = 8, padR = 62, padT = 12, padB = 24, iw = W - padL - padR, ih = H - padT - padB;
+  let mn = Math.min(...data), mx = Math.max(...data); if (h && h.qty > 0) { mn = Math.min(mn, h.cost); mx = Math.max(mx, h.cost); } if (sh) { mn = Math.min(mn, sh.entry); mx = Math.max(mx, sh.entry); } const pad = (mx - mn) * 0.08 || mn * 0.05; mn -= pad; mx += pad;
+  const X = k => padL + k / (data.length - 1) * iw, Y = v => padT + (1 - (v - mn) / (mx - mn)) * ih;
+  const up = data[data.length - 1] >= data[0], col = sel === PF ? '#f5c451' : up ? '#22c57a' : '#ff5c6c';
+  // grid and price labels
+  cg.font = '11px ' + getComputedStyle(document.body).getPropertyValue('--font'); cg.textBaseline = 'middle'; cg.textAlign = 'left';
+  const steps = 5; for (let i = 0; i <= steps; i++) { const v = mn + (mx - mn) * i / steps, y = Y(v); cg.strokeStyle = 'rgba(255,255,255,.06)'; cg.beginPath(); cg.moveTo(padL, y); cg.lineTo(padL + iw, y); cg.stroke(); cg.fillStyle = '#5c6782'; cg.fillText(fmt(v, v >= 1000 ? 0 : 2), padL + iw + 8, y); }
+  // date labels
+  cg.textAlign = 'center'; cg.textBaseline = 'top'; const n = data.length - 1, every = Math.max(1, Math.round(n / Math.max(2, Math.floor(iw / 90))));
+  for (let k = 0; k <= n; k += every) { if (n - k < every * 0.4 && k !== n) continue; cg.fillStyle = '#5c6782'; cg.fillText(fmtDate(dateOf(firstDay + k)).replace(/ \d{4}$/, ''), clamp(X(k), padL + 22, padL + iw - 22), padT + ih + 8); }
+  // area and line
+  const grad = cg.createLinearGradient(0, padT, 0, padT + ih); grad.addColorStop(0, sel === PF ? 'rgba(245,196,81,.25)' : up ? 'rgba(34,197,122,.28)' : 'rgba(255,92,108,.28)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+  cg.beginPath(); data.forEach((v, k) => k ? cg.lineTo(X(k), Y(v)) : cg.moveTo(X(k), Y(v))); cg.lineTo(X(n), padT + ih); cg.lineTo(X(0), padT + ih); cg.closePath(); cg.fillStyle = grad; cg.fill();
+  cg.beginPath(); data.forEach((v, k) => k ? cg.lineTo(X(k), Y(v)) : cg.moveTo(X(k), Y(v))); cg.strokeStyle = col; cg.lineWidth = 2; cg.lineJoin = 'round'; cg.stroke();
+  // your average cost
+  if (h && h.qty > 0) { const y = Y(h.cost); cg.setLineDash([5, 4]); cg.strokeStyle = 'rgba(245,196,81,.7)'; cg.lineWidth = 1; cg.beginPath(); cg.moveTo(padL, y); cg.lineTo(padL + iw, y); cg.stroke(); cg.setLineDash([]); cg.fillStyle = '#f5c451'; cg.textAlign = 'left'; cg.textBaseline = 'bottom'; cg.fillText('Your avg ' + fmt(h.cost), padL + 4, y - 2); }
+  if (sh) { const y = Y(sh.entry); cg.setLineDash([5, 4]); cg.strokeStyle = 'rgba(196,181,253,.7)'; cg.lineWidth = 1; cg.beginPath(); cg.moveTo(padL, y); cg.lineTo(padL + iw, y); cg.stroke(); cg.setLineDash([]); cg.fillStyle = '#c4b5fd'; cg.textAlign = 'left'; cg.textBaseline = 'bottom'; cg.fillText('Short at ' + fmt(sh.entry), padL + 4, y - 2); }
+  // the live price marker and tag
+  const lx = X(n), ly = Y(data[n]); cg.fillStyle = col; cg.beginPath(); cg.arc(lx, ly, 3.5, 0, Math.PI * 2); cg.fill();
+  cg.fillStyle = col; roundRect(padL + iw + 4, ly - 9, padR - 6, 18, 5); cg.fill(); cg.fillStyle = sel === PF ? '#2a1f00' : up ? '#04150c' : '#2a060a'; cg.textAlign = 'center'; cg.textBaseline = 'middle'; cg.font = 'bold 11px ' + getComputedStyle(document.body).getPropertyValue('--font'); cg.fillText(fmt(data[n], data[n] >= 1000 ? 0 : 2), padL + iw + 4 + (padR - 6) / 2, ly);
+  // crosshair
+  if (hover !== null) {
+    const k = clamp(Math.round((hover - padL) / iw * n), 0, n), x = X(k), y = Y(data[k]);
+    cg.strokeStyle = 'rgba(255,255,255,.25)'; cg.setLineDash([3, 3]); cg.beginPath(); cg.moveTo(x, padT); cg.lineTo(x, padT + ih); cg.stroke(); cg.setLineDash([]);
+    cg.fillStyle = '#fff'; cg.beginPath(); cg.arc(x, y, 4, 0, Math.PI * 2); cg.fill(); cg.fillStyle = col; cg.beginPath(); cg.arc(x, y, 2.5, 0, Math.PI * 2); cg.fill();
+    const chg = data[k] / data[0] - 1;
+    tip.style.display = 'block'; tip.innerHTML = `<b class="num">${fmt(data[k])}</b> <span class="${cls(chg)} num">${pct(chg)}</span><br><span style="color:var(--muted)">${k === n ? 'Now' : fmtDate(dateOf(firstDay + k))}</span>`;
+    tip.style.left = Math.min(x + 14, W - tip.offsetWidth - 8) + 'px';
+  } else tip.style.display = 'none';
+}
+function roundRect(x, y, w, h, r) { cg.beginPath(); cg.moveTo(x + r, y); cg.arcTo(x + w, y, x + w, y + h, r); cg.arcTo(x + w, y + h, x, y + h, r); cg.arcTo(x, y + h, x, y, r); cg.arcTo(x, y, x + w, y, r); cg.closePath(); }
+chart.addEventListener('pointermove', e => { const r = chart.getBoundingClientRect(); hover = e.clientX - r.left; drawChart(); });
+chart.addEventListener('pointerdown', e => { const r = chart.getBoundingClientRect(); hover = e.clientX - r.left; drawChart(); });
+chart.addEventListener('pointerleave', () => { hover = null; drawChart(); });
+
+// ---- toasts and modals ----
+// Notifications stack like a deck of cards: the newest sits in front with the others tucked behind it.
+// Hover (or tap) the stack to fan them out. A tip stays pinned at the front with a countdown until it lands.
+const Toasts = { list: [], open: false, el: null };
+function toast(text, kind = '', small = '', opts = {}) {
+  const el = document.createElement('div'); el.className = 'toast in ' + kind + (opts.until ? ' pin' : '');
+  el.innerHTML = `<div><span class="tt">${text}</span>${small ? `<small>${small}</small>` : ''}${opts.until ? '<small><b class="cd"></b></small>' : ''}</div><button class="x" aria-label="Dismiss">×</button>`;
+  const t = { el, left: opts.secs || 4.5, until: opts.until, label: opts.label, born: performance.now() };
+  el.querySelector('.x').addEventListener('click', e => { e.stopPropagation(); dropToast(t); });
+  el.addEventListener('click', () => { Toasts.open = !Toasts.open; layoutToasts(); });
+  $('toasts').appendChild(el); Toasts.list.push(t);
+  // keep at most 6: drop the oldest ordinary ones first
+  while (Toasts.list.length > 6) dropToast(Toasts.list.find(x => !x.until) || Toasts.list[0], true);
+  tickToast(t); layoutToasts();
+}
+function dropToast(t, now) {
+  const k = Toasts.list.indexOf(t); if (k < 0) return; Toasts.list.splice(k, 1);
+  if (now) t.el.remove(); else { t.el.style.opacity = '0'; t.el.style.pointerEvents = 'none'; setTimeout(() => t.el.remove(), 300); }
+  if (!Toasts.list.length) Toasts.open = false; layoutToasts();
+}
+function tickToast(t) { // a pinned tip counts down to its update, then shows that it landed and fades like the rest
+  if (!t.until) return;
+  const left = t.until(); const cd = t.el.querySelector('.cd');
+  if (left > 0) cd.textContent = (t.label ? t.label(left) : 'Lands') + ` in ${Math.ceil(left)}s`;
+  else { t.until = null; t.left = 4.5; t.el.classList.remove('pin'); cd.textContent = 'Landed'; layoutToasts(); }
+}
+function layoutToasts() {
+  // order: pinned tips first (newest first), then everything else newest first
+  const order = [...Toasts.list].sort((a, b) => (!!b.until - !!a.until) || b.born - a.born);
+  const hs = order.map(t => t.el.offsetHeight); let y = 0;
+  order.forEach((t, k) => {
+    const el = t.el; el.style.zIndex = 100 - k; el.classList.toggle('behind', !Toasts.open && k > 0);
+    const c = el.querySelector('.count'); if (c) c.remove();
+    if (Toasts.open) { el.style.transform = `translateY(${-y}px)`; el.style.opacity = '1'; y += hs[k] + 8; }
+    else { const d = Math.min(k, 3); el.style.transform = `translateY(${-d * 12}px) scale(${1 - d * 0.05})`; el.style.opacity = k > 3 ? '0' : String(1 - d * 0.2); }
+  });
+  if (!Toasts.open && order.length > 1) { const c = document.createElement('span'); c.className = 'count'; c.textContent = `${order.length} notifications · ${matchMedia('(hover: hover)').matches ? 'hover' : 'tap'} to see all`; order[0].el.appendChild(c); }
+  $('toasts').style.height = (Toasts.open ? Math.max(0, y - 8) : (hs[0] || 0)) + 'px';
+}
+$('toasts').addEventListener('mouseenter', () => { if (matchMedia('(hover: hover)').matches) { Toasts.open = true; layoutToasts(); } });
+$('toasts').addEventListener('mouseleave', () => { if (matchMedia('(hover: hover)').matches) { Toasts.open = false; layoutToasts(); } });
+setInterval(() => { // timers pause while the stack is fanned out, so you can read them
+  for (const t of [...Toasts.list]) { if (t.until) tickToast(t); else if (!Toasts.open) { t.left -= 0.2; if (t.left <= 0) dropToast(t); } }
+}, 200);
+function clearToasts() { for (const t of [...Toasts.list]) dropToast(t, true); }
+function openModal(id) { $(id).hidden = false; }
+let backRoomResume = 0; // the market is paused while you are in the back room
+function closeModals() { document.querySelectorAll('.modal').forEach(m => m.hidden = true); if (backRoomResume) { const sp = backRoomResume; backRoomResume = 0; setSpeed(sp); } }
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModals));
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModals(); }));
+function showGoals() {
+  const w = worth(); $('goalsSub').textContent = `Net worth ${fmt(w)} · best ${fmt(G.stats.best)} · ${G.stats.trades} trades · ${fmt(G.stats.dividends)} in dividends`;
+  $('goals').innerHTML = GOALS.map(([amt, name, desc, unlock]) => `<div class="goal ${G.goals.includes(amt) ? 'done' : ''}">${G.goals.includes(amt) ? '🏆' : '🔒'} <b>${name}</b>${desc}${unlock ? `<em>${unlocked(amt) ? '✓ ' : ''}${unlock}</em>` : ''}</div>`).join('');
+  openModal('mGoals');
+}
+function showMenu() {
+  $('menuStats').textContent = `${G.daily ? 'Daily challenge' : 'Career'} · day ${G.day + 1} · ${G.stats.trades} trades · realised ${fmt(G.stats.realised)} · dividends ${fmt(G.stats.dividends)} · best net worth ${fmt(G.stats.best)}`;
+  let best = null; try { best = JSON.parse(localStorage.getItem(DAILY_KEY + '-best') || 'null'); } catch (e) {}
+  $('dailyLabel').innerHTML = G.daily ? 'Back to your career' : `Daily challenge<br><small style="color:var(--muted)">Same market for everyone today, one year (about 7 minutes), one score${best ? ` · your best ${fmt(best.worth, 0)}` : ''}</small>`;
+  $('dailyBtn').textContent = G.daily ? 'Career' : "Play today's market";
+  $('sndBtn').textContent = snd ? 'On' : 'Off'; openModal('mMenu');
+}
+const todayKey = () => new Date().toISOString().slice(0, 10);
+function switchGame(g) { save(); refreshRep(); clearToasts(); G = g; lastShown = []; sel = 0; closeModals(); buildList(); startDay(); setSide('buy'); document.body.classList.toggle('daily', !!G.daily); document.body.classList.toggle('opts', unlocked(100000)); renderAll(); renderSparks(); renderNews(); renderLog(); setSpeed(G.done ? 0 : 1); if (G.done) showReport(true); }
+function startDaily() {
+  const date = todayKey(); let saved = null; try { saved = JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) {}
+  if (saved && saved.date === date && saved.g) { M.g = mulberry32(0); M.g.state = saved.g.rngState; switchGame(migrate(saved.g)); return; }
+  M.g = mulberry32(hashStr('bull-run-' + date)); const g = newGame(); g.daily = date; g.intro = true; g.done = false; g.rngState = M.g.state;
+  g.news[0].h = `Daily challenge for ${fmtDate(new Date(date + 'T12:00:00Z'))}: one year, $10,000, the same market for everyone. Make it count.`;
+  switchGame(g); toast('Daily challenge', 'gold', 'One year on the clock. Your score is your net worth at the end.');
+}
+function backToCareer() { if (G.daily) save(); M.g = null; switchGame(load() || newGame()); }
+$('dailyBtn').addEventListener('click', () => G.daily ? backToCareer() : startDaily());
+$('repGo').addEventListener('click', () => { closeModals(); if (G.daily && G.done) backToCareer(); else setSpeed(1); });
+$('goalsBtn').addEventListener('click', showGoals); $('menuBtn').addEventListener('click', showMenu);
+$('sndBtn').addEventListener('click', () => { snd = !snd; $('sndBtn').textContent = snd ? 'On' : 'Off'; try { localStorage.setItem(SAVE_KEY + '-snd', snd ? '1' : '0'); } catch (e) {} });
+$('howBtn').addEventListener('click', () => { closeModals(); openModal('mIntro'); });
+$('introGo').addEventListener('click', () => { closeModals(); G.intro = true; save(); Sound.click(); });
+$('resetBtn').addEventListener('click', () => { if (confirm(G.daily ? 'Restart today\'s challenge from day 1?' : 'Start over? Your portfolio, cash and history will be wiped.')) { if (G.daily) { try { localStorage.removeItem(DAILY_KEY); } catch (e) {} startDaily(); } else { M.g = null; switchGame(Object.assign(newGame(), { intro: true })); toast('New game. $10,000 in cash.', 'gold'); } } });
+
+// ---- controls ----
+function select(i) { sel = clamp(i, PF, COMPANIES.length - 1); if (isLocked(sel)) sel = PF; if ((side === 'call' || side === 'put') && !unlocked(100000)) setSide('buy'); hover = null; renderChartHead(); renderTrade(); renderList(); drawChart(); }
+function setSide(s) { side = s; document.querySelectorAll('#side button').forEach(b => b.classList.toggle('on', b.dataset.side === s)); renderTrade(); }
+function setSpeed(s) { speed = s; G.speed = s; document.querySelectorAll('#speed button').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
+function setQty(q) { $('qty').value = Math.max(0, Math.floor(q)); renderTrade(); }
+function maxQty() { const c = COMPANIES[sel], h = G.hold[c.t], sh = G.short[c.t]; return side === 'buy' ? Math.floor(G.cash / price(sel)) : side === 'call' || side === 'put' ? Math.floor(G.cash / (price(sel) * OPT_PREMIUM)) : side === 'short' ? Math.max(0, Math.floor(collateral() / price(sel))) : side === 'cover' ? (sh ? sh.qty : 0) : h ? h.qty : 0; }
+document.querySelectorAll('#side button').forEach(b => b.addEventListener('click', () => setSide(b.dataset.side)));
+document.querySelectorAll('#speed button').forEach(b => b.addEventListener('click', () => { setSpeed(+b.dataset.s); Sound.click(); }));
+document.querySelectorAll('#ranges button').forEach(b => b.addEventListener('click', () => { range = +b.dataset.r; document.querySelectorAll('#ranges button').forEach(x => x.classList.toggle('on', x === b)); drawChart(); }));
+document.querySelectorAll('.presets button').forEach(b => b.addEventListener('click', () => setQty(b.dataset.q === 'max' ? maxQty() : +b.dataset.q)));
+$('qMinus').addEventListener('click', () => setQty((+$('qty').value || 0) - 1)); $('qPlus').addEventListener('click', () => setQty((+$('qty').value || 0) + 1));
+$('qty').addEventListener('input', renderTrade);
+$('go').addEventListener('click', () => { if (!trade(sel, +$('qty').value, side)) toast(side === 'buy' || side === 'call' || side === 'put' ? 'Not enough cash.' : side === 'short' ? 'Not enough collateral.' : side === 'cover' ? 'You are not short that many.' : 'You do not own that many.', 'down'); });
+function showTab(id) { document.querySelectorAll('main .col').forEach(c => c.classList.toggle('show', c.id === id)); document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id)); drawChart(); }
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.key !== 'Enter' && e.key !== 'Escape') return;
+  if (e.key === ' ') { e.preventDefault(); setSpeed(speed ? 0 : (G.speed || 1)); if (!speed) G.speed = 1; }
+  else if (e.key === '1') setSpeed(1);
+  else if (e.key === 'b' || e.key === 'B') setSide('buy'); else if (e.key === 's' || e.key === 'S') setSide('sell'); else if (e.key === 'h' || e.key === 'H') setSide('short'); else if (e.key === 'c' || e.key === 'C') setSide('cover');
+  else if (e.key === 'ArrowDown') { e.preventDefault(); select(sel + 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); select(sel - 1); }
+  else if (e.key === 'Enter') { if (!document.querySelector('.modal:not([hidden])')) $('go').click(); }
+  else if (e.key === 'Escape') closeModals();
+  else if (e.key === 'm' || e.key === 'M') setQty(maxQty());
+  else if (e.key === 'i' || e.key === 'I') showTip();
+});
+addEventListener('resize', drawChart);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+addEventListener('pagehide', save);
+
+// ---- the loop ----
+function startDay() { live = COMPANIES.map((c, i) => lastClose(i)); dayFrac = 0; tickAcc = 0; if (G.opened === G.day && G.targets && G.targets.length === COMPANIES.length) targets = G.targets.slice(); else openDay(); }
+let last = performance.now(), sparkT = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (speed > 0 && !document.hidden) {
+    let t = dt * speed;
+    while (t > 0) {
+      const step = Math.min(t, DAY_SECS - dayFrac * DAY_SECS); t -= step;
+      tickPrices(step / Math.max(0.2, Math.sqrt(speed))); dayFrac += step / DAY_SECS;
+      if (dayFrac >= 0.9999) { closeDay(); if (G.done) { setSpeed(0); break; } startDay(); }
+    }
+    renderHeader(); renderList(); renderChartHead(); renderPortfolio(); renderTrade(); drawChart();
+    sparkT += dt; if (sparkT > 0.5) { sparkT = 0; renderSparks(); }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---- go ----
+G = load() || newGame(); refreshRep();
+document.body.classList.toggle('opts', unlocked(100000));
+try { snd = localStorage.getItem(SAVE_KEY + '-snd') !== '0'; } catch (e) {}
+buildList(); startDay(); setSpeed(1); setSide('buy');
+renderAll(); renderSparks(); renderNews();
+renderLog();
+if (!G.intro) { openModal('mIntro'); setSpeed(0); $('introGo').addEventListener('click', () => setSpeed(1), { once: true }); }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
