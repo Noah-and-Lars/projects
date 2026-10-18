@@ -25,6 +25,21 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'havoc-bay',
+    title: 'Havoc Bay',
+    category: 'Action',
+    tagline: 'Red vs Blue sea battle. Command warships, fly planes and destroy the enemy harbor, online or against bots.',
+    description: 'A Roblox-style naval battle. Blue and Red each have a harbor with 25,000 health. Sail jet skis, turret boats, destroyers, battleships and aircraft carriers, fly fighters, jets and bombers, man the harbor guns, and claim five islands for turrets, forward spawns and gold. Play on the shared online server, where you take a bot\'s place, in a private room with friends, or offline against bots. The losing harbor gets a visit from a B-52.',
+    controls: 'Keyboard + mouse or touch',
+    keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['F', 'Torpedo or drop a bomb'], ['R', 'Missile (jet, battleship)'],
+           ['E', 'Use pads and turrets, get in and out'], ['Space', 'Jump, or level out a plane'], ['Shift', 'Sprint'], ['B', 'Deploy menu, or launch a plane from your carrier'], ['M', 'Map'], ['Tab', 'Scoreboard'], ['Esc', 'Pause']],
+    path: 'havoc-bay/index.html',
+    thumb: 'havoc-bay/thumb.svg',
+    added: '2026-10-18T20:55:00+11:00',
+    updated: '2026-10-18T20:55:00+11:00',
+    stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
+  },
+  {
     id: 'bull-run',
     title: 'Stocks Game',
     category: 'Strategy',
@@ -192,6 +207,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-18', game: 'havoc-bay', text: 'New game: Havoc Bay. A Red vs Blue sea battle: command warships and aircraft carriers, fly planes, man the harbor guns, claim islands and destroy the enemy harbor. Play online on the shared server, in a private room, or against bots.' },
   { date: '2026-10-18', game: 'bull-run', text: 'New game: Stocks Game. A stock-trading game with twelve companies, live prices, earnings, dividends, rumours, news that moves the market and the odd crash. Short sell, buy insider tips, run a pump and dump, borrow from a loan shark or bribe the regulator, all at your own risk: three convictions means prison. Your best net worth unlocks crypto, cheaper deals and options. Every year you get a report card against the market, and the daily challenge gives everyone the same market for one year and one score to share.' },
   { date: '2026-10-18', game: 'cube-assault', text: 'Chat in multiplayer: Cube Assault (press Enter in a lobby or a match), Free Criminal online (press T) and online Chess (the box under Play online).' },
   { date: '2026-10-18', game: 'free-criminal', text: 'Free Criminal 1.7: play online. Press Play online on the menu to share San Varro with everyone else who does. See each other drive and run around, find each other on the minimap, and shoot it out.' },

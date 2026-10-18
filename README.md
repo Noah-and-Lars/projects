@@ -18,6 +18,7 @@ Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade
 | [Russian Roulette](russian-roulette/) | First-person thriller | Mouse, keyboard or touch |
 | [Chess](chess/) | Chess against the computer (Easy, Medium, Hard) | Mouse or touch |
 | [Stocks Game](bull-run/) | Stock-trading strategy | Mouse, keyboard or touch |
+| [Havoc Bay](havoc-bay/) | Red vs Blue sea battle with warships, planes and islands, online or against bots | Keyboard + mouse or touch |
 
 ## Adding a game
 
