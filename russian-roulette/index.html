@@ -214,7 +214,7 @@
     <button class="mbtn" data-go="mode">Change gamemode</button>
     <button class="mbtn" data-go="how">How to play</button>
     <button class="mbtn" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.2 · Patch notes</button>
+    <button class="link" data-go="notes">v1.2.1 · Patch notes</button>
   </div>
   <div class="menu" id="m-mode">
     <h2>Game mode</h2>
@@ -224,7 +224,8 @@
   </div>
   <div class="menu" id="m-online">
     <h2>Play online</h2>
-    <div class="tag" style="margin:6px 0 14px">Russian Roulette against a real person. One revolver, one bullet, two players.</div>
+    <div class="tag" style="margin:6px 0 10px" id="netTag">Russian Roulette against a real person. One revolver, one bullet, two players.</div>
+    <div class="modepill" id="netMode" style="margin:0 0 4px">Mode: Russian Roulette</div>
     <div class="box">
       <div class="row"><label for="netName">Your name</label><input id="netName" class="txt" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Name"></div>
     </div>
@@ -288,6 +289,14 @@
       <div><i>👀</i><span><b>Watch them squeeze</b>On their turn you see their finger tighten on the trigger as they hold the button.</span></div>
       <div><i>🏆</i><span><b>Online wins</b>Counted on their own. Your single-player streak isn’t touched.</span></div>
     </div>
+    <div class="box"><h3>v1.2.1 <span>Buckshot online</span></h3><ul>
+      <li>Buckshot Roulette can be played online too. Pick Buckshot with Change gamemode, then press Play online.</li>
+      <li>The other player sits in the dealer’s seat. Watch them use their items and turn the shotgun on you or on themselves.</li>
+      <li>One of you loads every shell and hands out every item, so you both always see the same gun. The first shot in a round takes turns between you.</li>
+      <li>Quick match puts Russian Roulette players with Russian Roulette players and Buckshot players with Buckshot players. A private table plays the game mode of whoever made it.</li>
+      <li>Quick match now tells you when you’re the only one waiting, and keeps your place in the queue.</li>
+      <li>Fixed: Quick match while Buckshot was picked started a game of Russian Roulette without a revolver on the table.</li>
+    </ul></div>
     <div class="box"><h3>v1.2 <span>Play online</span></h3><ul>
       <li>New <b>Play online</b> button on the main menu: play Russian Roulette against another person.</li>
       <li><b>Quick match</b> sits you down with whoever else is waiting. <b>Create a private table</b> gives you a 5-letter code to send a friend, and <b>Join with code</b> takes you to their table.</li>
@@ -365,7 +374,7 @@
 // =====================================================================
 //  Russian Roulette v1.1.3
 // =====================================================================
-const VERSION = '1.2';
+const VERSION = '1.2.1';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -1794,7 +1803,7 @@ function showMenu(name) {
   if (name === 'title') { $('titleStats').innerHTML = save.mode === 'bs' ? statsHTML([[save.bsStreak, 'Streak'], [save.bsBest, 'Best'], [save.bsWins, 'Wins'], [save.bsGames, 'Games']]) : statsHTML([[save.streak, 'Streak'], [save.best, 'Best'], [save.wins, 'Wins'], [save.games, 'Games']]); menuBack = 'title'; if (typeof syncModeUI === 'function') syncModeUI(); }
   if (name === 'pause') { menuBack = 'pause'; $('pauseNote').textContent = (save.inGame || save.bsInGame) ? 'Leaving the table now counts as a loss and ends your win streak.' : ''; }
   if (name === 'settings') syncSettings();
-  if (name === 'online') { if (!$('netName').value) $('netName').value = save.name || ''; if (!Online.on) { onlineWaiting(false); onlineStatus(''); } }
+  if (name === 'online') { $('netMode').textContent = 'Mode: ' + MODES[save.mode].n; $('netTag').textContent = save.mode === 'bs' ? 'Buckshot Roulette against a real person. One shotgun, three rounds, two players.' : 'Russian Roulette against a real person. One revolver, one bullet, two players.'; if (!$('netName').value) $('netName').value = save.name || ''; if (!Online.on) { onlineWaiting(false); onlineStatus(''); } }
   ov.scrollTop = 0;
 }
 function hideMenus() { ov.hidden = true; }
@@ -2101,12 +2110,21 @@ function chooseBS() {
 }
 
 // ---------- loading the gun ----------
-async function bsLoad() {
+// what goes into the gun and onto the table: the shells in order, and the items each of you gets
+function bsRollLoad() {
   const total = 2 + Math.floor(Math.random() * 7);                                  // 2 to 8 shells
   const live = clamp(Math.round(total / 2 + rand(-1.49, 1.49)), 1, total - 1), blank = total - live;
   const shells = [...Array(live).fill(true), ...Array(blank).fill(false)];
   for (let i = shells.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shells[i], shells[j]] = [shells[j], shells[i]]; }
-  BS.shells = shells; BS.liveLeft = live; BS.blankLeft = blank; BS.knownHim = null;
+  const n = BS_ROUNDS[BS.round].items, add = { you: [], him: [] };
+  for (const who of ['you', 'him']) for (let i = 0; i < n && BS.items[who].length + i < 8; i++) add[who].push(pick(BS_KINDS));
+  return { shells, add };
+}
+// preset: online, the host rolls the load and both screens use it
+async function bsLoad(preset) {
+  const { shells, add } = preset || bsRollLoad();
+  const live = shells.filter(Boolean).length, blank = shells.length - live, total = shells.length;
+  BS.shells = shells.slice(); BS.liveLeft = live; BS.blankLeft = blank; BS.knownHim = null;
   // the shells are laid out for both of you to see, live ones first
   clearShells(); cam.lookTo.set(0, TOP + 0.05, -0.16); cam.fovTo = 44;
   const order = [...Array(live).fill(true), ...Array(blank).fill(false)];
@@ -2122,7 +2140,7 @@ async function bsLoad() {
   // later rounds hand out items with every load (eight at most each)
   const n = BS_ROUNDS[BS.round].items;
   if (n) {
-    for (const who of ['you', 'him']) { for (let i = 0; i < n && BS.items[who].length < 8; i++) BS.items[who].push(pick(BS_KINDS)); layoutItems(who); }
+    for (const who of ['you', 'him']) { BS.items[who].push(...add[who]); layoutItems(who); }
     for (const who of ['you', 'him']) for (const m of itemMeshes[who]) { const y = m.position.y; tween(0.3, k => { m.position.y = y + (1 - k) * 0.08; }, easeOut).catch(() => {}); }
     Sound.items(); sub(`You each get ${n} items.`, 2.2); await wait(1.4);
   }
@@ -2165,7 +2183,10 @@ async function bsYourTurn() {
   await pickUp();
   let k;
   for (;;) {
-    k = await chooseBS();
+    const stop = game.online ? autoPress(AFK) : () => {};
+    k = await chooseBS(); stop();
+    // online, the other player sees what you do as you do it
+    if (game.online) Online.send('bsact', k.startsWith('item:') ? { a: 'item', k: k.slice(5) } : { a: 'shoot', t: k });
     if (k.startsWith('item:')) {
       await useItemYou(k.slice(5));
       if (!BS.shells.length) { if (fps.rig.visible) await putDown(); return 'you'; }
@@ -2327,6 +2348,10 @@ async function bsHisTurn() {
   const kn = dealerKnows();
   const atYou = kn === true || (kn === null && (BS.liveLeft > BS.blankLeft || (BS.liveLeft === BS.blankLeft && Math.random() < 0.6)));
   if (atYou && (kn === true || BS.liveLeft > BS.blankLeft) && it.includes('saw') && !BS.saw) await dealerUse('saw');
+  return bsHeShoots(atYou);
+}
+// he shoots (you, or himself); returns whose turn is next
+async function bsHeShoots(atYou) {
   // he picks up the shotgun
   if (!BS.npcHold) { placeSg(sgRest()); BS.npcHold = true; await sgTo(() => npcSgPose('ready'), 0.8); }
   sub(atYou ? `${npc.name} turns the shotgun on you.` : `${npc.name} turns the shotgun on himself.`, 0);
@@ -2343,7 +2368,7 @@ async function bsHisTurn() {
   }
   if (live) { ejectShell(true, fireFrom(sg)); unsaw(); await bsHitHim(dmg, true); await npcPutDown(); return 'you'; }
   Sound.dry(); ejectShell(false, fireFrom(sg)); unsaw(); npc.fear = 0.3; sub(`Blank. <em>${npc.name} goes again.</em>`, 2); await wait(1);
-  if (!BS.shells.length) { await npcPutDown(); return 'you'; }
+  if (!BS.shells.length) { await npcPutDown(); return game.online ? 'him' : 'you'; } // online he keeps his turn after the reload, as you would
   BS.npcSelf = false; await sgTo(() => npcSgPose('ready'), 0.6);
   return 'him';
 }
@@ -2375,6 +2400,7 @@ async function bsYouDie() {
   Sound.S.heart = false; Sound.S.breathe = false; Sound.S.tick = false;
   const bl = $('black'); bl.style.transition = 'none'; bl.style.opacity = '1'; void bl.offsetWidth; bl.style.transition = '';
   hud.hidden = true; $('bsHud').hidden = true; fps.rig.visible = false; stressTo = 0; stress = 0; actionsEl.classList.remove('bs');
+  if (game && game.online) { await wait(2.2); onlineEnd(false); return; }
   const lost = save.bsStreak; save.bsStreak = 0; save.bsInGame = false; persist(); updateHud();
   await wait(2.2);
   bsShowEnd(false, lost);
@@ -2399,12 +2425,15 @@ async function bsHeDies() {
   handTo(npc.R, 'limp', 0.6, easeIn).catch(() => {}); handTo(npc.L, 'limp', 0.8, easeIn).catch(() => {});
   stressTo = 0.1;
   await wait(0.5); Sound.body(); await wait(0.9);
-  sub(`${npc.name} is dead. You survived the last round.`, 0);
-  save.bsStreak++; save.bsWins++; const newBest = save.bsStreak > save.bsBest; if (newBest) save.bsBest = save.bsStreak; save.bsInGame = false; persist(); updateHud();
+  sub(game && game.online ? `${npc.name} is out. You survived the last round.` : `${npc.name} is dead. You survived the last round.`, 0);
+  const online = !!(game && game.online);
+  let newBest = false;
+  if (online) $('streakN').textContent = save.onWins + 1;
+  else { save.bsStreak++; save.bsWins++; newBest = save.bsStreak > save.bsBest; if (newBest) save.bsBest = save.bsStreak; save.bsInGame = false; persist(); updateHud(); }
   $('streak').classList.remove('bump'); void $('streak').offsetWidth; $('streak').classList.add('bump');
   await wait(2.4); sub(''); hud.hidden = true; $('bsHud').hidden = true;
   await wait(2); Blood.fade(); await wait(0.8); Blood.clear();
-  bsShowEnd(true, save.bsStreak, newBest);
+  if (online) onlineEnd(true); else bsShowEnd(true, save.bsStreak, newBest);
 }
 function bsShowEnd(win, n, newBest) {
   state = 'end'; Sound.S.tick = false;
@@ -2517,9 +2546,9 @@ const Online = (() => {
   const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0, O, 1, I or L
   const myId = (Math.random().toString(36) + '0000000').slice(2, 8);
   let client = null, libLoad = null, lobby = null, table = null, tableKey = '', hostId = null, expectId = null, seatT = 0;
-  let opp = null, left = false, g = 0, oppAgain = -1, meAgain = -1, waitTimer = 0;
+  let opp = null, left = false, g = 0, oppAgain = -1, meAgain = -1, waitTimer = 0, mode = 'rr', queueT = 0;
   const inbox = [], waiters = [];
-  const api = { name: '', on: false, opp: () => opp, isHost: () => hostId === myId, me: myId };
+  const api = { name: '', on: false, opp: () => opp, isHost: () => hostId === myId, me: myId, mode: () => mode };
 
   function getClient() {
     if (client) return Promise.resolve(client);
@@ -2579,11 +2608,11 @@ const Online = (() => {
   async function seat(key, host, expect) {
     tableKey = key; hostId = host; expectId = expect || null; opp = null; left = false; g = 0; oppAgain = meAgain = -1; inbox.length = 0;
     table = chan(BASE + '-t-' + key);
-    for (const ev of ['call', 'toss', 'first', 'spinreq', 'spin', 'hold', 'pulled', 'again']) table.on('broadcast', { event: ev }, m => onMsg(ev, m.payload || {}));
+    for (const ev of ['call', 'toss', 'first', 'spinreq', 'spin', 'hold', 'pulled', 'again', 'bsload', 'bsact']) table.on('broadcast', { event: ev }, m => onMsg(ev, m.payload || {}));
     table.on('presence', { event: 'sync' }, onTable);
     await joinChan(table);
     seatT = performance.now();
-    await table.track({ id: myId, n: api.name, h: host === myId });
+    await table.track({ id: myId, n: api.name, h: host === myId, m: mode });
   }
   function onTable() {
     const others = members(table).filter(m => m.id !== myId);
@@ -2592,6 +2621,8 @@ const Online = (() => {
       if (!hostId && others.length > 1) { emit('error', 'That table is full.'); api.leave(); return; }
       if (!c) return;
       if (!hostId) hostId = c.id;
+      // the table plays the host's game mode
+      const hm = (hostId === myId ? mode : c.m); if (hm === 'rr' || hm === 'bs') mode = hm;
       opp = { id: c.id, name: cleanName(c.n) || 'Stranger' };
       clearTimeout(waitTimer);
       emit('matched', opp);
@@ -2603,17 +2634,19 @@ const Online = (() => {
   }
 
   // ---------- the three ways in ----------
-  api.quick = async name => {
-    api.name = cleanName(name) || 'Player'; api.on = true;
+  // Quick match: one queue per game mode
+  api.quick = async (name, m, again) => {
+    api.name = cleanName(name) || 'Player'; api.on = true; mode = m === 'bs' ? 'bs' : 'rr';
     await getClient();
-    lobby = chan(BASE + '-lobby');
-    const t = Date.now();
+    lobby = chan(BASE + '-lobby' + (mode === 'bs' ? '-bs' : ''));
+    const t = again && queueT ? queueT : (queueT = Date.now()); // back in the queue after a pairing that fell through: keep your place
     let pairing = false;
     lobby.on('presence', { event: 'sync' }, () => {
       if (pairing || !lobby) return;
       // everyone waiting, oldest first; pairs are (1st, 2nd), (3rd, 4th)...
       const q = members(lobby).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1)), i = q.findIndex(m => m.id === myId);
       if (i < 0) return;
+      emit('queue', q.length);
       const mate = i % 2 === 0 ? q[i + 1] : q[i - 1];
       if (!mate) return;
       pairing = true;
@@ -2622,13 +2655,13 @@ const Online = (() => {
       seat('q' + host + guest, host, mate.id).catch(() => emit('error', 'offline'));
       // if they never sit down (they paired with someone else), go back in the queue
       clearTimeout(waitTimer);
-      waitTimer = setTimeout(() => { if (!opp && api.on) { const tb = table; table = null; drop(tb); emit('requeue'); api.quick(api.name).catch(() => emit('error', 'offline')); } }, 8000);
+      waitTimer = setTimeout(() => { if (!opp && api.on) { const tb = table; table = null; drop(tb); emit('requeue'); api.quick(api.name, mode, true).catch(() => emit('error', 'offline')); } }, 8000);
     });
     await joinChan(lobby);
     await lobby.track({ id: myId, n: api.name, t });
   };
-  api.create = async name => {
-    api.name = cleanName(name) || 'Player'; api.on = true;
+  api.create = async (name, m) => {
+    api.name = cleanName(name) || 'Player'; api.on = true; mode = m === 'bs' ? 'bs' : 'rr';
     await getClient();
     const code = Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
     await seat('c' + code, myId, null);
@@ -2840,11 +2873,69 @@ async function theirTurnOnline() {
   await wait(0.5);
   return false;
 }
+// ---------- online Buckshot ----------
+// The host rolls every load (shells and items) and sends it ('bsload'); the player whose turn it is sends each thing
+// they do ('bsact': an item, or who they shoot), and the other screen plays it out as the dealer would. Both screens
+// work out everything else (damage, turns, rounds) the same way from those, so they always agree.
+async function bsTheirTurnOnline() {
+  setOpp(`${npc.name} · Round ${BS.round + 1} of 3`); lookAtNPC(); cam.lookTo.y -= 0.06;
+  stressTo = clamp(0.35 + (BS.max - BS.hp.you) * 0.1, 0, 0.8); npc.fear = 0.3 + (BS.max - BS.hp.him) * 0.12;
+  sub(`${npc.name}’s turn…`, 0);
+  for (;;) {
+    const m = await Online.next('bsact');
+    if (m.a === 'item' && BS_KINDS.includes(m.k) && BS.items.him.includes(m.k)) {
+      sub('');
+      if (BS.npcHold) await npcPutDown();
+      await dealerUse(m.k);
+      if (!BS.shells.length) return 'him';   // they racked out the last shell: they go again after the reload
+      continue;
+    }
+    if (m.a === 'shoot') { sub(''); return bsHeShoots(m.t === 'him'); } // their 'him' is you
+  }
+}
+async function playBuckshotOnline() {
+  const N = Online.opp().name, host = Online.isHost();
+  game = { round: 0, my: runId, online: true }; BS.won = 0;
+  state = 'game'; hud.hidden = false; $('bsHud').hidden = false; hud.classList.add('bsmode'); BS.on = true;
+  $('streak').querySelector('small').textContent = 'ONLINE WINS'; $('streakN').textContent = save.onWins; $('bestN').textContent = save.onGames + (save.onGames === 1 ? ' game' : ' games');
+  npc.name = N; setOpp(N + ' · Online'); stressTo = 0.15; lookAtNPC(); cam.fovTo = 62; Sound.S.tick = true; Sound.S.heart = true;
+  await wait(0.5);
+  sub(`Buckshot against <em>${N}</em>, a real person. Three rounds. Survive the third and you win.`, 3.2); npc.look.set(0, SEAT.y, SEAT.z);
+  await wait(3);
+  for (let r = 0; r < 3; r++) {
+    BS.round = r; BS.max = BS_ROUNDS[r].hp; BS.hp = { you: BS.max, him: BS.max }; BS.shells = []; BS.liveLeft = 0; BS.blankLeft = 0; BS.saw = false; sg.setSaw(false); fps.setSaw(false); BS.cuffs = { you: 0, him: 0 };
+    BS.items = { you: [], him: [] }; layoutItems('you'); layoutItems('him'); bsHudRender();
+    banner(`ROUND ${r + 1}`, [`${BS.max} charges each. No items.`, `${BS.max} charges each. Items with every load.`, `${BS.max} charges each. The defibrillator is cut. No coming back.`][r], 'gold', 2.8);
+    setOpp(`${N} · Round ${r + 1} of 3`); await wait(2.4);
+    // the host goes first in rounds 1 and 3, the other player in round 2
+    let turn = (r % 2 === 0) === host ? 'you' : 'him';
+    while (BS.hp.you > 0 && BS.hp.him > 0) {
+      if (!BS.shells.length) {
+        let preset;
+        if (host) { preset = bsRollLoad(); Online.send('bsload', { s: preset.shells, a: preset.add.you, b: preset.add.him }); }
+        else { const m = await Online.next('bsload'); const ok = a => (Array.isArray(a) ? a : []).filter(k => BS_KINDS.includes(k)).slice(0, 8); preset = { shells: (Array.isArray(m.s) ? m.s : [true, false]).slice(0, 8).map(Boolean), add: { you: ok(m.b), him: ok(m.a) } }; }
+        await bsLoad(preset);
+      }
+      if (BS.cuffs[turn]) {
+        BS.cuffs[turn] = 0; sub(turn === 'you' ? 'You’re cuffed. <em>You skip this turn.</em>' : `${N} is cuffed and <em>skips their turn</em>.`, 2.4); Sound.cuffs();
+        await wait(2); turn = other(turn); continue;
+      }
+      turn = turn === 'you' ? await bsYourTurn() : await bsTheirTurnOnline();
+    }
+    if (BS.hp.you <= 0) {
+      if (r < 2) { await bsYouOut(); continue; }
+      await bsYouDie(); return;
+    }
+    BS.won++;
+    await npcPutDown();
+    if (r < 2) await bsHeOut(); else { await bsHeDies(); return; }
+  }
+}
 // the end of an online game; leftBy: the other player walked away
 function onlineEnd(win, leftBy) {
   state = 'end'; Sound.S.tick = false; Sound.S.heart = false; Sound.S.breathe = false;
   save.onGames++; if (win) save.onWins++; persist();
-  const e = $('end'); e.className = win ? 'win' : 'lose'; e.hidden = false; hud.hidden = true;
+  const e = $('end'); e.className = win ? 'win' : 'lose'; e.hidden = false; hud.hidden = true; $('bsHud').hidden = true;
   const N = (Online.opp() || {}).name || 'Your opponent';
   $('endT').textContent = win ? 'YOU SURVIVED' : 'GAME OVER';
   $('endP').innerHTML = leftBy ? `<b>${N}</b> left the table. You win.` : win ? `The bullet was <b>${N}</b>’s.` : 'The chamber was loaded.';
@@ -2858,10 +2949,15 @@ async function startOnlineGame() {
   await new Promise(r => setTimeout(r, 650)); if (my !== runId) return;
   resetTable(true); cam.pos.copy(SEAT); cam.mode = 'seat';
   $('black').style.opacity = '0';
-  playOnline().catch(onErr);
+  (Online.mode() === 'bs' ? playBuckshotOnline : playOnline)().catch(onErr);
 }
 // what happens at the table, whatever screen you're on
-Online.onEvent('matched', o => { onlineStatus(`Found ${o.name}. Sitting down…`); Sound.init(); startOnlineGame(); });
+Online.onEvent('matched', o => {
+  onlineStatus(`Found ${o.name}. Sitting down…`); Sound.init();
+  // a private table plays its maker's mode
+  if (save.mode !== Online.mode()) { save.mode = Online.mode(); persist(); syncModeUI(); }
+  startOnlineGame();
+});
 Online.onEvent('left', o => {
   if (state === 'game' && game && game.online) { abortAll(); Blood.clear(); $('black').style.opacity = '0'; onlineEnd(true, true); }
   else if (state === 'end') { $('endP').innerHTML = `<b>${o.name}</b> left the table.`; $('endAgain').textContent = 'Find a new match'; }
@@ -2873,6 +2969,7 @@ Online.onEvent('again', () => {
 });
 Online.onEvent('error', msg => { onlineWaiting(false); onlineStatus(msg === 'offline' ? 'Couldn’t connect. Check your internet and try again.' : msg, true); });
 Online.onEvent('requeue', () => onlineStatus('Still looking for someone to play…'));
+Online.onEvent('queue', n => { if (Online.on && !Online.opp()) onlineStatus(n > 1 ? 'Found someone. Sitting down…' : 'Looking for someone to play… You’re the only one waiting right now. Keep this open, or send a friend a private table code.'); });
 function onlineStatus(t, bad) { const s = $('netStatus'); s.textContent = t || ''; s.classList.toggle('bad', !!bad); }
 function onlineWaiting(on) { for (const b of document.querySelectorAll('#m-online .netpick')) b.hidden = on; $('netCancel').hidden = !on; $('netBack').hidden = on; }
 function onlineMenuGo(go) {
@@ -2882,8 +2979,8 @@ function onlineMenuGo(go) {
   if (!name) { onlineStatus('Type your name first.', true); $('netName').focus(); return; }
   save.name = name; persist();
   onlineWaiting(true);
-  if (go === 'netQuick') { onlineStatus('Looking for someone to play…'); Online.quick(name).catch(onlineWaitingFail); }
-  else if (go === 'netCreate') { onlineStatus('Setting up a table…'); Online.create(name).then(code => onlineStatus(`Your table code is ${code}. Send it to a friend, then wait here.`)).catch(onlineWaitingFail); }
+  if (go === 'netQuick') { onlineStatus('Looking for someone to play…'); Online.quick(name, save.mode).catch(onlineWaitingFail); }
+  else if (go === 'netCreate') { onlineStatus('Setting up a table…'); Online.create(name, save.mode).then(code => onlineStatus(`Your table code is ${code}. Send it to a friend, then wait here.`)).catch(onlineWaitingFail); }
   else if (go === 'netJoin') {
     const code = $('netCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (code.length !== 5) { onlineWaiting(false); onlineStatus('A table code has 5 letters.', true); return; }

@@ -92,6 +92,15 @@
   #notes h3 { margin: 14px 0 6px; font-size: 16px; } #notes h3 small { color: var(--green); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-left: 8px; }
   #notes ul { margin: 0; padding-left: 20px; color: #d6d4d0; line-height: 1.55; font-size: 14px; }
 
+  /* 1.1: play online */
+  .txt { display: block; width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); font: inherit; font-weight: 700; font-size: 15px; }
+  .txt:focus { outline: none; border-color: var(--green); }
+  .bigbtn.net { margin-top: 8px; font-size: 16px; padding: 11px; }
+  .netbtn { display: block; width: 100%; margin-top: 8px; border: 0; border-radius: 6px; background: #3c3a37; color: var(--ink); font-weight: 700; font-size: 14px; padding: 10px; } .netbtn:hover { background: #484643; }
+  .netrow { display: flex; gap: 6px; margin-top: 8px; } .netrow .txt { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .2em; text-align: center; } .netrow .netbtn { flex: 1.4; margin: 0; }
+  #netStatus { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--green-hi); } #netStatus:empty { display: none; } #netStatus.bad { color: #ff8a80; }
+  #netLeave { display: none; } body.online #netLeave { display: block; } body.online #netPick, body.online #netCancel, body.online .offline-only { display: none; }
+  #resNew:disabled { opacity: .6; }
   @media (max-width: 860px) {
     #app { flex-direction: column; align-items: center; padding: 10px 8px; gap: 12px; }
     #side { width: var(--size); } #moves { max-height: 180px; }
@@ -108,21 +117,40 @@
     <div class="player" id="botBar"><div class="avatar you">🙂</div><div style="min-width:0"><div class="pname" id="botName">You</div><div class="caps" id="botCaps"></div></div></div>
   </div>
   <aside id="side">
-    <div class="head"><img id="logo" alt="">Play the computer</div>
-    <div class="sect"><h4>Computer</h4><div class="seg" id="levelSeg"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div></div>
-    <div class="sect"><h4>Play as</h4><div class="seg" id="colorSeg"><button data-v="w">White</button><button data-v="r">Random</button><button data-v="b">Black</button></div></div>
-    <div class="sect"><button class="bigbtn" id="newBtn">New game</button></div>
+    <div class="head"><img id="logo" alt=""><span id="headT">Play the computer</span></div>
+    <div class="sect offline-only"><h4>Computer</h4><div class="seg" id="levelSeg"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div></div>
+    <div class="sect offline-only"><h4>Play as</h4><div class="seg" id="colorSeg"><button data-v="w">White</button><button data-v="r">Random</button><button data-v="b">Black</button></div></div>
+    <div class="sect offline-only"><button class="bigbtn" id="newBtn">New game</button></div>
+    <div class="sect" id="netBox"><h4>Play online</h4>
+      <div id="netPick">
+        <input id="netName" class="txt" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false">
+        <button class="bigbtn net" data-net="quick">Quick match</button>
+        <button class="netbtn" data-net="create">Create a private table</button>
+        <div class="netrow"><input id="netCode" class="txt code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="netbtn" data-net="join">Join with code</button></div>
+      </div>
+      <button class="netbtn" data-net="cancel" id="netCancel" hidden>Cancel</button>
+      <button class="netbtn" data-net="leave" id="netLeave">Leave the table</button>
+      <div id="netStatus"></div>
+    </div>
     <div id="moves"></div>
     <div id="status"></div>
     <div class="tools"><button id="undoBtn" title="Take back your last move"><b>↶</b>Undo</button><button id="flipBtn" title="Turn the board around"><b>⇅</b>Flip</button><button id="resignBtn" title="Give up this game"><b>⚑</b>Resign</button></div>
-    <div class="sect"><h4>Your record against this level</h4><div class="stats" id="stats"></div>
+    <div class="sect"><h4 id="statsT">Your record against this level</h4><div class="stats" id="stats"></div>
       <label class="check">Show legal moves<input type="checkbox" id="hintsChk"></label>
       <label class="check">Sound<input type="checkbox" id="soundChk"></label></div>
   </aside>
 </div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.0</span></summary>
+    <summary>Patch notes <span>v1.1</span></summary>
+    <h3>v1.1 <small>Play online</small></h3>
+    <ul>
+      <li>Play another person online: type your name under Play online and press Quick match to play whoever else is waiting.</li>
+      <li>Or create a private table and send a friend its 5-letter code; they type it in and press Join with code.</li>
+      <li>The table's maker plays White first, and you swap colours every rematch. Press Rematch after a game to play again.</li>
+      <li>Resign gives up the game; leaving the table counts as a loss. Undo is off online.</li>
+      <li>Your online record is kept on its own, and your game against the computer is still there when you leave the table.</li>
+    </ul>
     <h3>v1.0 <small>First release</small></h3>
     <ul>
       <li>Play chess against the computer on a classic green board, seen from above.</li>
@@ -425,7 +453,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.0';
+const VERSION = '1.1';
 const $ = id => document.getElementById(id);
 
 // ---------- the pieces: flat 2D shapes, drawn here so the game needs no image files ----------
@@ -451,8 +479,9 @@ document.head.insertAdjacentHTML('beforeend', `<link rel="icon" href="${IMG.N}">
 
 // ---------- saving ----------
 const SAVE_KEY = 'chessSave';
-const save = { level: 'medium', color: 'w', hints: true, sound: true, stats: {}, game: null };
+const save = { level: 'medium', color: 'w', hints: true, sound: true, stats: {}, game: null, name: '', online: { w: 0, l: 0, d: 0 } };
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
+if (!save.online || typeof save.online !== 'object') save.online = {}; for (const k of ['w', 'l', 'd']) save.online[k] = Math.max(0, save.online[k] | 0);
 if (!['easy', 'medium', 'hard'].includes(save.level)) save.level = 'medium';
 if (!['w', 'b', 'r'].includes(save.color)) save.color = 'w';
 for (const l of ['easy', 'medium', 'hard']) { const s = save.stats[l] || {}; save.stats[l] = { w: +s.w || 0, l: +s.l || 0, d: +s.d || 0 }; }
@@ -533,12 +562,14 @@ function renderMarks() {
 
 // ---------- playing a move ----------
 function playMove(m, dropped) {
+  // online, your own moves go to the other player
+  if (online.on && (G.w ? 'w' : 'b') === player) Net.send('mv', { n: hist.length, u: uci(m) });
   const s = san(G, m, legalNow); make(G, m); G.u.length = 0;
   hist.push({ m, san: s }); keys.push(posKey(G)); legalNow = legal(G); selected = -1;
   animateMove(m, dropped);
   if (s.endsWith('#') || s.endsWith('+')) Sound.check(); else if (m.pr) Sound.promote(); else if (m.fl === 'c') Sound.castle(); else if (m.cap) Sound.capture(); else Sound.move();
   checkEnd(); renderMarks(); renderSide(); saveGame();
-  if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
+  if (!online.on && !over && (G.w ? 'w' : 'b') !== player) aiMove();
 }
 function checkEnd() {
   if (over) return;
@@ -550,11 +581,13 @@ function checkEnd() {
   if (over) finish();
 }
 function finish() {
-  const st = save.stats[level]; if (!over.winner) st.d++; else if (over.winner === player) st.w++; else st.l++;
-  save.game = null; persist();
+  // online games have their own record, and leave your saved game against the computer alone
+  const st = online.on ? save.online : save.stats[level]; if (!over.winner) st.d++; else if (over.winner === player) st.w++; else st.l++;
+  if (!online.on) save.game = null; persist();
   const won = over.winner === player;
   $('resT').textContent = !over.winner ? 'Draw' : won ? 'You won!' : 'You lost';
-  $('resP').textContent = over.resigned ? 'You resigned' : (over.winner ? (won ? 'You won ' : 'The computer won ') : 'Drawn ') + over.why;
+  $('resP').textContent = over.left ? `${oppName()} left the table. You win.` : over.oppResigned ? `${oppName()} resigned` : over.resigned ? 'You resigned' : (over.winner ? (won ? 'You won ' : (online.on ? oppName() : 'The computer') + ' won ') : 'Drawn ') + over.why;
+  $('resNew').textContent = !online.on ? 'New game' : Net.left || !Net.on ? 'Find a new game' : 'Rematch'; $('resNew').disabled = false;
   setTimeout(() => { if (over) { $('result').hidden = false; Sound.end(won); } }, 450);
   renderSide();
 }
@@ -651,11 +684,13 @@ function captured(forWhite) { // pieces of the other colour this side has taken,
 function capsHTML(white) { const c = captured(white); return c.out.map(p => `<img alt="" src="${IMG[p]}">`).join('') + (c.lead > 0 ? `<span>+${c.lead}</span>` : ''); }
 function renderSide() {
   const topIsWhite = flip(), aiColor = player === 'w' ? 'b' : 'w';
-  const nameFor = col => col === player ? 'You' : `Computer<small>${LV[level]}</small>`;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const nameFor = col => col === player ? 'You' : online.on ? `${esc(oppName())}<small>Online</small>` : `Computer<small>${LV[level]}</small>`;
+  const oppFace = online.on ? '👤' : '🤖';
   const topCol = topIsWhite ? 'w' : 'b', botCol = topIsWhite ? 'b' : 'w';
   $('topName').innerHTML = nameFor(topCol); $('botName').innerHTML = nameFor(botCol);
-  $('topBar').querySelector('.avatar').textContent = topCol === player ? '🙂' : '🤖'; $('topBar').querySelector('.avatar').classList.toggle('you', topCol === player);
-  $('botBar').querySelector('.avatar').textContent = botCol === player ? '🙂' : '🤖'; $('botBar').querySelector('.avatar').classList.toggle('you', botCol === player);
+  $('topBar').querySelector('.avatar').textContent = topCol === player ? '🙂' : oppFace; $('topBar').querySelector('.avatar').classList.toggle('you', topCol === player);
+  $('botBar').querySelector('.avatar').textContent = botCol === player ? '🙂' : oppFace; $('botBar').querySelector('.avatar').classList.toggle('you', botCol === player);
   $('topCaps').innerHTML = capsHTML(topCol === 'w'); $('botCaps').innerHTML = capsHTML(botCol === 'w');
   // the thinking dots go on the computer's bar
   const think = $('thinking'); (topCol === aiColor ? $('topBar') : $('botBar')).appendChild(think);
@@ -670,17 +705,20 @@ function renderSide() {
   if (over) st = !over.winner ? 'Draw ' + over.why + '.' : (over.winner === player ? 'You won ' : 'You lost ') + (over.resigned ? '(you resigned).' : over.why + '.');
   else if (resignArm) st = 'Click Resign again to give up this game.';
   else if (aiBusy) st = 'The computer is thinking…';
-  else st = (inCheck(G, G.w) ? 'Check! ' : '') + 'Your move.';
+  else if (online.on && (G.w ? 'w' : 'b') !== player) st = (inCheck(G, G.w) ? 'Check! ' : '') + `${oppName()}’s move.`;
+  else st = (inCheck(G, G.w) ? 'Check! ' : '') + 'Your move.' + (online.on && !hist.length ? ` You’re ${player === 'w' ? 'White' : 'Black'}.` : '');
   $('status').textContent = st;
-  $('undoBtn').disabled = !!over || !hist.some((x, i) => (i % 2 === 0) === (player === 'w'));
+  $('undoBtn').disabled = online.on || !!over || !hist.some((x, i) => (i % 2 === 0) === (player === 'w'));
   $('resignBtn').disabled = !!over || !hist.length;
-  const s = save.stats[save.level];
+  const s = online.on ? save.online : save.stats[save.level];
+  $('statsT').textContent = online.on ? 'Your online record' : 'Your record against this level';
+  $('headT').textContent = online.on ? 'Playing online' : 'Play the computer';
   $('stats').innerHTML = `<div><b>${s.w}</b><span>Wins</span></div><div><b>${s.l}</b><span>Losses</span></div><div><b>${s.d}</b><span>Draws</span></div>`;
   for (const b of $('levelSeg').children) b.classList.toggle('on', b.dataset.v === save.level);
   for (const b of $('colorSeg').children) b.classList.toggle('on', b.dataset.v === save.color);
   $('hintsChk').checked = save.hints; $('soundChk').checked = save.sound;
 }
-function saveGame() { save.game = over ? null : { moves: hist.map(x => uci(x.m)), player, level }; persist(); }
+function saveGame() { if (online.on) return; save.game = over ? null : { moves: hist.map(x => uci(x.m)), player, level }; persist(); }
 
 // ---------- new game, undo, flip, resign ----------
 function newGame() {
@@ -696,10 +734,17 @@ function replay(list) {
   for (const u of list) { const m = legalNow.find(x => uci(x) === u); if (!m) break; const s = san(G, m, legalNow); make(G, m); G.u.length = 0; hist.push({ m, san: s }); keys.push(posKey(G)); legalNow = legal(G); }
 }
 $('newBtn').addEventListener('click', () => { Sound.init(); newGame(); });
-$('resNew').addEventListener('click', () => { Sound.init(); newGame(); });
+$('resNew').addEventListener('click', () => {
+  Sound.init();
+  if (!online.on) { newGame(); return; }
+  if (Net.left || !Net.on) { leaveOnline(); return; }
+  // a rematch, with the colours swapped, once you both press it
+  online.meAgain = true; Net.send('again'); $('resNew').disabled = true;
+  if (online.oppAgain) startOnline(); else $('resP').textContent = `Waiting for ${oppName()}…`;
+});
 $('resView').addEventListener('click', () => { $('result').hidden = true; });
 $('undoBtn').addEventListener('click', () => {
-  if (over) return; Sound.init(); reqId++; aiBusy = false; $('thinking').hidden = true; $('promo').hidden = true;
+  if (over || online.on) return; Sound.init(); reqId++; aiBusy = false; $('thinking').hidden = true; $('promo').hidden = true;
   const list = hist.map(x => uci(x.m));
   // take back to just before your last move
   while (list.length) { const wasMine = (list.length % 2 === 1) === (player === 'w'); list.pop(); if (wasMine) break; }
@@ -711,6 +756,7 @@ $('resignBtn').addEventListener('click', () => {
   if (over || !hist.length) return;
   if (!resignArm) { resignArm = setTimeout(() => { resignArm = 0; renderSide(); }, 3000); renderSide(); return; }
   clearTimeout(resignArm); resignArm = 0; reqId++; aiBusy = false; $('thinking').hidden = true;
+  if (online.on) Net.send('resign');
   over = { winner: player === 'w' ? 'b' : 'w', why: '', resigned: true }; finish(); renderMarks();
 });
 for (const [id, key] of [['levelSeg', 'level'], ['colorSeg', 'color']]) $(id).addEventListener('click', e => {
@@ -727,6 +773,166 @@ function resize() {
   document.documentElement.style.setProperty('--size', Math.max(260, Math.floor(size / 8) * 8) + 'px');
 }
 addEventListener('resize', resize);
+
+
+// ---------- 1.1: play online against another person ----------
+// Over the arcade's Supabase Realtime project. Quick match: everyone waiting is in Presence on ch-lobby, oldest
+// first, and the oldest two pair up (the older one is host). A private table has a 5-letter code and whoever made it
+// is host. A table is one channel, ch-t-<key>: Presence says who's sitting there, and moves are broadcasts.
+// The host plays White in the first game and the colours swap with every rematch. A move is 'mv' with its number
+// (n) and the move in UCI (u); the other side checks it's legal before playing it. 'resign', and 'again' for a rematch.
+// Leaving the table loses the game. ?chroom=<name> uses separate test channels.
+const Net = (() => {
+  const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
+  const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const TEST = (new URLSearchParams(location.search).get('chroom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
+  const BASE = TEST ? 'ch-test-' + TEST : 'ch';
+  const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const myId = (Math.random().toString(36) + '0000000').slice(2, 8);
+  let client = null, libLoad = null, lobby = null, table = null, hostId = null, expectId = null, waitTimer = 0, queueT = 0;
+  const api = { on: false, name: '', opp: null, left: false, me: myId, isHost: () => hostId === myId };
+  const handlers = {};
+  const emit = (ev, d) => (handlers[ev] || []).forEach(f => { try { f(d); } catch (e) { console.error(e); } });
+  api.onEvent = (ev, f) => { (handlers[ev] = handlers[ev] || []).push(f); };
+  api.cleanName = n => String(n || '').replace(/[^A-Za-z0-9_ .'-]/g, '').trim().slice(0, 16);
+
+  function getClient() {
+    if (client) return Promise.resolve(client);
+    try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(client = c); } catch (e) {}
+    if (!libLoad) libLoad = new Promise((res, rej) => {
+      if (window.supabase && window.supabase.createClient) return res();
+      const s = document.createElement('script'); s.src = SB_LIB; s.async = true; s.onload = res; s.onerror = () => { libLoad = null; rej('offline'); };
+      document.head.appendChild(s);
+    });
+    return libLoad.then(() => client || (client = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } })));
+  }
+  const chan = topic => client.channel(topic, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
+  function joinChan(ch) {
+    return new Promise((res, rej) => {
+      let done = false; const to = setTimeout(() => { if (!done) { done = true; rej('offline'); } }, 10000);
+      ch.subscribe(st => { if (done) return; if (st === 'SUBSCRIBED') { done = true; clearTimeout(to); res(); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { done = true; clearTimeout(to); rej('offline'); } });
+    });
+  }
+  function drop(ch) { if (!ch || !client) return; try { ch.untrack && ch.untrack().catch(() => {}); } catch (e) {} try { const p = client.removeChannel(ch); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+  const members = ch => { const st = ch ? ch.presenceState() : {}, out = []; for (const k in st) { const m = st[k] && st[k][0]; if (m && typeof m.id === 'string') out.push(m); } return out; };
+  api.send = (ev, payload = {}) => { if (!table || table.state !== 'joined') return; try { const p = table.send({ type: 'broadcast', event: ev, payload: Object.assign({ f: myId }, payload) }); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+
+  async function seat(key, host, expect) {
+    hostId = host; expectId = expect || null; api.opp = null; api.left = false;
+    table = chan(BASE + '-t-' + key);
+    for (const ev of ['mv', 'resign', 'again']) table.on('broadcast', { event: ev }, m => { const p = m.payload || {}; if (api.opp && p.f === api.opp.id) emit(ev, p); });
+    table.on('presence', { event: 'sync' }, onTable);
+    await joinChan(table);
+    await table.track({ id: myId, n: api.name, h: host === myId });
+  }
+  function onTable() {
+    const others = members(table).filter(m => m.id !== myId);
+    if (!api.opp) {
+      const c = expectId ? others.find(m => m.id === expectId) : hostId === myId ? others[0] : others.find(m => m.h);
+      if (!hostId && others.length > 1) { emit('error', 'That table is full.'); api.leave(); return; }
+      if (!c) return;
+      if (!hostId) hostId = c.id;
+      api.opp = { id: c.id, name: api.cleanName(c.n) || 'Opponent' };
+      clearTimeout(waitTimer); emit('matched', api.opp);
+    } else if (!others.some(m => m.id === api.opp.id) && !api.left) { api.left = true; emit('left', api.opp); }
+  }
+  api.quick = async (name, again) => {
+    api.name = api.cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    lobby = chan(BASE + '-lobby');
+    const t = again && queueT ? queueT : (queueT = Date.now());
+    let pairing = false;
+    lobby.on('presence', { event: 'sync' }, () => {
+      if (pairing || !lobby) return;
+      const q = members(lobby).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1)), i = q.findIndex(m => m.id === myId);
+      if (i < 0) return;
+      emit('queue', q.length);
+      const mate = i % 2 === 0 ? q[i + 1] : q[i - 1];
+      if (!mate) return;
+      pairing = true;
+      const host = i % 2 === 0 ? myId : mate.id, guest = host === myId ? mate.id : myId;
+      const lb = lobby; lobby = null; drop(lb);
+      seat('q' + host + guest, host, mate.id).catch(() => emit('error', 'offline'));
+      clearTimeout(waitTimer);
+      waitTimer = setTimeout(() => { if (!api.opp && api.on) { const tb = table; table = null; drop(tb); api.quick(api.name, true).catch(() => emit('error', 'offline')); } }, 8000);
+    });
+    await joinChan(lobby);
+    await lobby.track({ id: myId, n: api.name, t });
+  };
+  api.create = async name => {
+    api.name = api.cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    const code = Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
+    await seat('c' + code, myId, null);
+    return code;
+  };
+  api.join = async (name, code) => {
+    api.name = api.cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    await seat('c' + code, null, null);
+    clearTimeout(waitTimer);
+    waitTimer = setTimeout(() => { if (!api.opp && api.on) { emit('error', 'Nobody is at table ' + code + '.'); api.leave(); } }, 6000);
+  };
+  api.leave = () => { api.on = false; clearTimeout(waitTimer); const a = lobby, b = table; lobby = table = null; api.opp = null; hostId = null; drop(a); drop(b); };
+  return api;
+})();
+
+// the online game: on is true while you're at a table
+const online = { on: false, gameNo: 0, meAgain: false, oppAgain: false };
+const oppName = () => (Net.opp && Net.opp.name) || online.lastOpp || 'Opponent';
+function startOnline() {
+  online.on = true; online.lastOpp = Net.opp.name;
+  reqId++; aiBusy = false; $('thinking').hidden = true; $('result').hidden = true; $('promo').hidden = true;
+  // the host is White in odd games, Black in even ones
+  player = (online.gameNo % 2 === 0) === Net.isHost() ? 'w' : 'b'; online.gameNo++; online.meAgain = online.oppAgain = false;
+  G = fromFEN(START_FEN); hist = []; keys = [posKey(G)]; legalNow = legal(G); over = null; selected = -1; resignArm = 0; flipped = false;
+  document.body.classList.add('online');
+  buildSquares(); renderAll(); renderSide(); Sound.start();
+}
+function leaveOnline() {
+  Net.leave(); online.on = false; online.gameNo = 0; document.body.classList.remove('online');
+  netWaiting(false); netStatus('');
+  // back to your game against the computer
+  if (save.game && Array.isArray(save.game.moves)) {
+    reqId++; aiBusy = false; $('result').hidden = true;
+    player = save.game.player === 'b' ? 'b' : 'w'; level = ['easy', 'medium', 'hard'].includes(save.game.level) ? save.game.level : 'medium'; over = null;
+    replay(save.game.moves); buildSquares(); renderAll(); checkEnd(); renderSide();
+    if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
+  } else newGame();
+}
+Net.onEvent('matched', o => { netStatus(`Playing ${o.name}.`); startOnline(); });
+Net.onEvent('mv', p => {
+  if (!online.on || over || (p.n | 0) !== hist.length || (G.w ? 'w' : 'b') === player) return;
+  const m = legalNow.find(x => uci(x) === p.u); if (m) playMove(m);
+});
+Net.onEvent('resign', () => { if (online.on && !over) { over = { winner: player, why: 'by resignation', oppResigned: true }; finish(); renderMarks(); } });
+Net.onEvent('left', () => {
+  if (!online.on) return;
+  if (!over) { over = { winner: player, why: '', left: true }; finish(); renderMarks(); }
+  else { $('resP').textContent = `${oppName()} left the table.`; $('resNew').textContent = 'Find a new game'; renderSide(); }
+});
+Net.onEvent('again', () => { online.oppAgain = true; if (online.meAgain) startOnline(); else if (over) $('resP').textContent = `${oppName()} wants a rematch.`; });
+Net.onEvent('error', msg => { netWaiting(false); netStatus(msg === 'offline' ? 'Couldn’t connect. Check your internet and try again.' : msg, true); });
+Net.onEvent('queue', n => { if (Net.on && !Net.opp) netStatus(n > 1 ? 'Found someone. Starting…' : 'Looking for someone to play… You’re the only one waiting right now. Keep this open, or send a friend a private table code.'); });
+function netStatus(t, bad) { const s = $('netStatus'); s.textContent = t || ''; s.classList.toggle('bad', !!bad); }
+function netWaiting(on) { $('netPick').hidden = on; $('netCancel').hidden = !on; }
+function netFail() { Net.leave(); netWaiting(false); netStatus('Couldn’t connect. Check your internet and try again.', true); }
+$('netBox').addEventListener('click', e => {
+  const b = e.target.closest('button[data-net]'); if (!b) return; Sound.init();
+  const go = b.dataset.net, name = Net.cleanName($('netName').value);
+  if (go === 'cancel') { Net.leave(); netWaiting(false); netStatus(''); return; }
+  if (go === 'leave') { leaveOnline(); return; }
+  if (!name) { netStatus('Type your name first.', true); $('netName').focus(); return; }
+  save.name = name; persist(); netWaiting(true);
+  if (go === 'quick') { netStatus('Looking for someone to play…'); Net.quick(name).catch(netFail); }
+  else if (go === 'create') { netStatus('Setting up a table…'); Net.create(name).then(code => netStatus(`Your table code is ${code}. Send it to a friend, then wait here.`)).catch(netFail); }
+  else if (go === 'join') {
+    const code = $('netCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 5) { netWaiting(false); netStatus('A table code has 5 letters.', true); return; }
+    netStatus('Joining table ' + code + '…'); Net.join(name, code).catch(netFail);
+  }
+});
+$('netName').value = save.name || '';
 
 // ---------- start: carry on a saved game, or start a new one ----------
 resize();

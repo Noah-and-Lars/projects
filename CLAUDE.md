@@ -106,13 +106,23 @@ source in Settings → Pages should be switched to `main`.
   opens a private test server with its own channels and save: never test on the real one.
 
 - `russian-roulette/`: Russian Roulette (and Buckshot Roulette, still work in progress) in a dim room, Three.js
-  bundled into the file. Saves `russianRouletteSave`. Since 1.2 it has online play (Russian Roulette only): the
-  `Online` block, the Play online button and `m-online` menu. Quick match pairs the two players waiting longest in
-  Presence on `rr-lobby`; a private table has a 5-letter code. A table is the channel `rr-t-<key>`. The host's
+  bundled into the file. Saves `russianRouletteSave`. Since 1.2 it has online play: the `Online` block, the Play
+  online button and `m-online` menu. Quick match pairs the two players waiting longest in Presence on `rr-lobby`
+  (`rr-lobby-bs` for Buckshot); a private table has a 5-letter code and plays its maker's mode. A table is the channel `rr-t-<key>`. The host's
   browser rolls the coin and every spin, so both screens agree; `playOnline`, `myTurnOnline` and
-  `theirTurnOnline` run the game on each screen, waiting on each other's messages with `Online.next()`. Online wins
+  `theirTurnOnline` run the game on each screen, waiting on each other's messages with `Online.next()`. Online Buckshot (1.2.1, `playBuckshotOnline`):
+  the host rolls every load (`bsRollLoad`, sent as 'bsload'), the shooter sends each item and shot ('bsact'), and
+  the other screen plays it as the dealer (`bsTheirTurnOnline`, `dealerUse`, `bsHeShoots`). Online wins
   and games are `onWins` / `onGames`, apart from the single-player streak. `?rrroom=<name>` uses separate test
   channels: test with that, never on the real lobby.
+
+- `chess/`: Chess against the computer (the engine is the `<script id="engine">` block, shared with a Web Worker).
+  Saves `chessSave` (settings, per-level stats, the game in progress). Since 1.1 it plays online too: the `Net`
+  block and the Play online box in the side panel. Quick match pairs in Presence on `ch-lobby`; a private table has
+  a 5-letter code; a table is the channel `ch-t-<key>`. Moves are 'mv' (move number and UCI), checked for legality
+  on the other side. The host is White in the first game and colours swap each rematch. `online.on` is true at a
+  table: the computer, undo and saving the game are off then, and the record is `save.online`. `?chroom=<name>`
+  uses separate test channels.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
