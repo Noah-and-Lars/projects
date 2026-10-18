@@ -146,6 +146,7 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 #fcChat{position:fixed;left:16px;bottom:270px;z-index:40;width:min(400px,calc(100% - 32px));font:600 16px/1.35 Barlow,Arial,sans-serif;pointer-events:none;display:none}
 #fcChat .ln{background:rgba(10,12,16,.62);color:#fff;padding:3px 9px;border-radius:6px;margin-top:3px;width:fit-content;max-width:100%;overflow-wrap:anywhere;transition:opacity .6s}
 #fcChat .ln b{color:#7fc4ff}#fcChat .ln.me b{color:#ffd166}#fcChat .ln.gone{opacity:0}#fcChat.open .ln.gone{opacity:1}
+#fcChat .hint{display:inline-block;margin-bottom:4px;padding:2px 9px 2px 4px;border-radius:999px;background:rgba(10,12,16,.55);color:#cfd6e0;font-size:14px}#fcChat .hint kbd{display:inline-block;margin-right:5px;padding:0 6px;border-radius:4px;background:#f2b134;color:#111;font:800 13px/1.4 var(--ui)}#fcChat.open .hint{display:none}
 #fcChat input{pointer-events:auto;display:none;width:100%;box-sizing:border-box;margin-top:6px;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.35);background:rgba(10,12,16,.88);color:#fff;font:inherit;outline:none}#fcChat.open input{display:block}
 #onlineMsg{margin:10px 0 0;color:#ff9a8a;font-weight:700;font-size:16px;max-width:420px}
 .news{background:var(--glass);border:1px solid var(--stroke);border-radius:var(--r);padding:14px 18px;backdrop-filter:blur(10px);font-size:17px;font-weight:600}
@@ -246,7 +247,7 @@ body.touch{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-t
 #tBrake{right:max(14px,env(safe-area-inset-right));bottom:20px;width:88px;height:88px;font-size:15px}
 #tHorn{right:calc(max(14px,env(safe-area-inset-right)) + 98px);bottom:84px;width:54px;height:54px}
 #tBar div{padding:9px 13px;border-radius:10px;background:rgba(12,16,24,.55);border:1px solid rgba(255,255,255,.25);font:700 13px var(--ui);letter-spacing:.05em;text-transform:uppercase;color:#fff;white-space:nowrap}
-#tBar div.on{background:rgba(242,177,52,.85);color:#111}
+#tChat[hidden]{display:none}#tBar div.on{background:rgba(242,177,52,.85);color:#111}
 #touch.car .tfoot,#touch:not(.car) .tcar{display:none!important}
 #tRotate{position:absolute;inset:0;display:none;place-items:center;background:rgba(6,9,14,.92);font-size:20px;font-weight:700;text-align:center;padding:24px}
 @media (orientation:portrait){#tRotate{display:grid}}
@@ -359,7 +360,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.8.4<span>Online first</span></h1><p>Play online is now the main way to play: one San Varro for everyone, with fights, races, robberies and chat.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.8.5<span>Online first</span></h1><p>Play online is now the main way to play: one San Varro for everyone, with fights, races, robberies and chat.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
     <div><i>🌐</i><span><b>Play online · Recommended</b>The top button on the menu. Everyone who presses it shares the same city.</span></div>
@@ -390,7 +391,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <div class="tb tfoot" id="tAim">Aim</div><div class="tb tcar" id="tHorn">Horn</div>
   <div class="tb tfoot" id="tJump">Jump</div>
   <div class="tb" id="tE">E<br>Use</div><div class="tb" id="tF">F<br>Car</div><div class="tb" id="tRld">R</div><div class="tb tfoot" id="tG">Nade</div>
-  <div id="tBar"><div class="tb" id="tPause" aria-label="Pause">II</div><div class="tfoot" data-k="Digit1">1 Gun</div><div class="tfoot" data-k="Digit2">2 Knife</div><div class="tfoot" data-k="KeyQ">Next</div><div data-k="KeyC">View</div><div data-k="KeyM">Map</div><div data-k="KeyB">B Buy</div></div>
+  <div id="tBar"><div class="tb" id="tPause" aria-label="Pause">II</div><div class="tfoot" data-k="Digit1">1 Gun</div><div class="tfoot" data-k="Digit2">2 Knife</div><div class="tfoot" data-k="KeyQ">Next</div><div data-k="KeyC">View</div><div data-k="KeyM">Map</div><div data-k="KeyB">B Buy</div><div id="tChat" hidden>Chat</div></div>
   <div id="tRotate">Turn your phone sideways to play.</div>
 </div>
 <div id="big" hidden><div id="bigTxt">Wasted</div></div>
@@ -405,7 +406,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.8.4</b>San Varro</div>
+    <div class="ver"><b>v1.8.5</b>San Varro</div>
     <nav class="nav">
       <button id="bOnline" class="online">Play online</button>
       <button id="bPlay">Play offline</button>
@@ -414,7 +415,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
       <button data-panel="pSettings">Settings</button>
       <button data-panel="pControls">Controls</button>
     </nav>
-    <div class="news"><b>New in v1.8.4</b><ul><li><b>Play online</b> (recommended): one city for everyone, with PvP and chat</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
+    <div class="news"><b>New in v1.8.5</b><ul><li><b>Play online</b> (recommended): one city for everyone, with PvP and chat</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
     <p id="onlineMsg" hidden></p>
     <div class="foot">Keyboard and mouse, or touch controls on phones and tablets (Settings → Touch controls). Best in Chrome or Edge, full screen.</div>
   </div>
@@ -459,7 +460,12 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.8.4</b>Players and map<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.8.5</b>Chat<span>Latest</span></summary><ul>
+    <li><b>T</b> opens the chat while you're online, now also while you're waiting to respawn. A small <b>T Chat</b> hint sits above the chat so everyone knows.</li>
+    <li>Pressing T offline tells you chat is for online play.</li>
+    <li>Phones and tablets: a <b>Chat</b> button in the bottom bar when you're online.</li>
+  </ul></details>
+  <details><summary><b>v1.8.4</b>Players and map</summary><ul>
     <li>Hold <b>Tab</b> to see everyone who's playing online: their names, whether they're on foot, driving or down, and how far away they are. Offline it just says it's you.</li>
     <li><b>M</b> now opens the full map screen, the same one as Pause → Map: zoom, drag around and set a route. Press M or Esc to close it and you're straight back in the game.</li>
   </ul></details>
@@ -564,6 +570,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
     <kbd>R in a car</kbd><span>Change radio station</span>
     <kbd>M</kbd><span>Map: zoom, drag and set a route (M or Esc closes it)</span>
     <kbd>Tab</kbd><span>Hold to see everyone who's playing (online)</span>
+    <kbd>T</kbd><span>Chat (online): type, Enter sends, Esc cancels</span>
     <kbd>H</kbd><span>Horn</span>
     <kbd>Esc</kbd><span>Pause</span>
   </div>
@@ -2950,7 +2957,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.8.4',NEWS_VERSION='1.8.1';// 1.8.4 is a small update: no new pop-up for it
+const VERSION='1.8.5',NEWS_VERSION='1.8.1';// 1.8.5 is a small update: no new pop-up for it
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3266,10 +3273,15 @@ function chatLine(name,text,me){const el=document.createElement('div');el.classN
 const chatOpen=()=>chatBox.classList.contains('open');
 function openChat(){for(const k in keys)keys[k]=false;mouseL=mouseR=false;chatBox.classList.add('open');chatIn.value='';setTimeout(()=>chatIn.focus(),0);}
 function closeChat(){chatBox.classList.remove('open');chatIn.blur();}
-addEventListener('keydown',e=>{if(e.code!=='KeyT'||chatOpen()||!NET.on||state!=='play'||e.repeat)return;const a=document.activeElement;if(a&&a.tagName==='INPUT')return;e.preventDefault();e.stopImmediatePropagation();openChat();},true);
+addEventListener('keydown',e=>{if(e.code!=='KeyT'||chatOpen()||e.repeat)return;const a=document.activeElement;if(a&&a.tagName==='INPUT')return;
+  if(!NET.on){if(state==='play'){e.preventDefault();notify('Chat is for online play. Press <b>Play online</b> on the menu to talk to everyone.',3);}return;}
+  if(state!=='play'&&state!=='dead')return;e.preventDefault();e.stopImmediatePropagation();openChat();},true);
+// 1.8.5: a hint under the chat so everyone knows T opens it, and a Chat button for phones and tablets
+const chatHint=document.createElement('div');chatHint.className='hint';chatHint.innerHTML='<kbd>T</kbd> Chat';chatBox.insertBefore(chatHint,chatBox.firstChild);
 chatIn.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Enter'){e.preventDefault();NET.say(chatIn.value);closeChat();}else if(e.code==='Escape'){e.preventDefault();closeChat();}});
 chatIn.addEventListener('keyup',e=>e.stopPropagation());
-setInterval(()=>{chatBox.style.display=NET.on&&(state==='play'||state==='dead'||state==='shop')?'block':'none';if(!NET.on){chatLog.innerHTML='';if(chatOpen())closeChat();}},400);
+$('tChat').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(NET.on&&(state==='play'||state==='dead'))openChat();});
+setInterval(()=>{$('tChat').hidden=!NET.on;chatBox.style.display=NET.on&&(state==='play'||state==='dead'||state==='shop')?'block':'none';if(!NET.on){chatLog.innerHTML='';if(chatOpen())closeChat();}},400);
 function notifyMenu(t){const el=$('onlineMsg');el.textContent=t;el.hidden=!t;}
 $('bOnline').addEventListener('click',()=>{notifyMenu('');playOnline();});
 // for tests on a test server (?fcroom=...) only: reach inside the game from the console
