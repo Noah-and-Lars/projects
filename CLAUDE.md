@@ -30,6 +30,10 @@ source in Settings → Pages should be switched to `main`.
 - The home page has an update popup under the header (`#popup` in
   `index.html`). To announce something new, change its text and `POPUP_ID`;
   closing it is remembered per ID in `arcade-popup-closed`.
+- The home page also has a notice in the middle of the screen (`#notice` in
+  `index.html`, styles at the end of `arcade.css`): right now the Blockcraft
+  discontinued notice. It shows once per visit, after the intro, until the
+  player presses Okay (`notice-seen` in sessionStorage).
 - `arcade.css`: shared styles for the two pages above.
   Both pages load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
   files for 10 minutes, so bump N in both pages whenever either file changes.
