@@ -119,6 +119,9 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 .nav{gap:8px}
 .nav button{font-size:30px;padding:6px 22px;margin-left:0;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--stroke);min-width:250px;box-sizing:border-box;opacity:.92;transition:transform .15s,background .15s,color .15s}
 .nav button:hover,.nav button.on,.nav button:focus-visible{background:var(--gold);color:var(--ink);transform:translateX(6px);opacity:1}
+.nav button.online{border-color:#3fa0ff;color:#bfe0ff}.nav button.online::before{content:'';display:inline-block;width:12px;height:12px;border-radius:50%;background:#3ddc84;box-shadow:0 0 10px #3ddc84;margin-right:12px;vertical-align:4px}
+.nav button.online:disabled{opacity:.6;cursor:default}
+#onlineMsg{margin:10px 0 0;color:#ff9a8a;font-weight:700;font-size:16px;max-width:420px}
 .news{background:var(--glass);border:1px solid var(--stroke);border-radius:var(--r);padding:14px 18px;backdrop-filter:blur(10px);font-size:17px;font-weight:600}
 .news b{display:block;font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
 .news ul{margin:0;padding-left:18px;line-height:1.4;color:#dcdad3}
@@ -371,16 +374,18 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.6</b>San Varro</div>
+    <div class="ver"><b>v1.7</b>San Varro</div>
     <nav class="nav">
       <button id="bPlay">Play</button>
+      <button id="bOnline" class="online">Play online</button>
       <button data-panel="pProfile">Profile</button>
       <button id="bNews">What's new</button>
       <button data-panel="pNotes">Patch notes</button>
       <button data-panel="pSettings">Settings</button>
       <button data-panel="pControls">Controls</button>
     </nav>
-    <div class="news"><b>New in v1.6</b><ul><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
+    <div class="news"><b>New in v1.7</b><ul><li><b>Play online</b>: one city for everyone, with PvP</li><li>Every closed shop is open: cafés, sushi, bakeries, books and more</li><li>Press <b>B</b> to buy, <b>E</b> to rob, each with its own cutscene</li><li>Sushi ($20) and free bread give health and a speed boost for a minute</li><li>Drivers’ heads no longer poke through car roofs</li></ul></div>
+    <p id="onlineMsg" hidden></p>
     <div class="foot">Keyboard and mouse, or touch controls on phones and tablets (Settings → Touch controls). Best in Chrome or Edge, full screen.</div>
   </div>
 </div>
@@ -424,7 +429,12 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.6.2</b>Lottery closed<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.7</b>Play online<span>Latest</span></summary><ul>
+    <li>New on the main menu: <b>Play online</b>. Everyone who presses it is in the same San Varro.</li>
+    <li>See the other players walk, run and drive, with their name over their head, and find them on your minimap as <b style="color:#3fa0ff">blue</b> dots.</li>
+    <li>Shoot them: your bullets hurt other players, headshots do more, and shots into their car hurt the driver. When someone goes down, everyone sees who took them out (+25 XP for you).</li>
+    <li>Up to 16 players at once. You start next to the hospital, with the same rifle, knife and $2,500 as always. Traffic, people on the street and the police are your own.</li></ul></details>
+  <details><summary><b>v1.6.2</b>Lottery closed</summary><ul>
     <li>The lottery has been removed. Lottery tickets are still on the shelf at grocery stores, but they're under construction and no longer available to buy.</li>
     <li>Fixed: you could lose your wanted stars just by standing outside the store you'd robbed, before the police even arrived. The police now search where you were last seen, so you have to get away from there (or out of sight once they're on you) to lose them.</li></ul></details>
   <details><summary><b>v1.6.1</b>The big fix update</summary><ul>
@@ -888,7 +898,7 @@ const CARS=[];
 class Car{
   constructor(type,x,z,h,color){
     this.type=type;this.t=CT[type];color=color||(type==='police'?'#121418':type==='taxi'?'#f2c21b':pick(CAR_COLORS));
-    this.m=makeCarModel(this.t,color);scene.add(this.m.group);this.pos=this.m.group.position;this.pos.set(x,groundY(x,z),z);
+    this.color=color;this.m=makeCarModel(this.t,color);scene.add(this.m.group);this.pos=this.m.group.position;this.pos.set(x,groundY(x,z),z);
     this.h=h;this.vel=new THREE.Vector2();this.vF=0;this.vR=0;this.lastVF=0;this.steer=0;this.hp=1000;this.dead=false;this.driver=null;
     this.ai={mode:'traffic',from:null,to:null,edge:null,next:null,hw:Math.random()<0.5?3.4:9.4,mul:rand(0.85,1.1),stuck:0,rev:0,wait:0,ignore:0,panic:0};
     this.siren=false;this.persist=false;this.smokeT=0;this.spin=0;this.yv=0;this.yo=0;this.lastHit=null;this.crashCD=0;this.copCD=rand(1,2);
@@ -2281,7 +2291,7 @@ function rayCar(o,d,c){const dx=o.x-c.pos.x,dz=o.z-c.pos.z;const sh=Math.sin(c.h
 function playerFire(){
   const P=player,w=WPN[P.wpn],g=gunNow();if(P.reload>0)return;
   if(g.ammo<=0){if(g.reserve>0)startReload();else{sfx.click();P.fireT=0.3;notify('Out of ammo. Buy more at a <b>gun store</b>.',3);}return;}
-  g.ammo--;P.fireT=w.rate;P.fireHold=0.8;
+  g.ammo--;P.fireT=w.rate;P.fireHold=0.8;NET.fired();
   const o=camera.position.clone();_a.set(P.pos.x,P.pos.y+1.4,P.pos.z);const minT=P.fp?0.2:o.distanceTo(_a)+0.2;
   (P.fp?vmMuzzle:P.muzzle).getWorldPosition(_a);const mz=_a.clone();
   part(mz.x,mz.y,mz.z,0,0,0,0.05,w.pel||w.dmg>70?0.7:0.45,0.4,'#ffd27a',1,true);flashL.position.copy(mz);flashL.intensity=2.5;
@@ -2299,6 +2309,7 @@ function shootRay(o,dir,minT,mz,w){
   if(dir.y<-1e-4){const tg=-o.y/dir.y;if(tg<best&&tg>minT){best=tg;hit={k:'w'};}}
   for(const p of PEDS){if(p.dead)continue;if(Math.abs(p.pos.x-o.x)>best+2&&Math.abs(p.pos.z-o.z)>best+2)continue;const t=rayPed(o,dir,p);if(t>minT&&t<best){best=t;hit={k:'p',p};}}
   for(const c of CARS){if(c===player.inCar)continue;if(c.pos.distanceTo(o)>best+4)continue;const t=rayCar(o,dir,c);if(t>minT&&t<best){best=t;hit={k:'c',c};}}
+  if(NET.on){const r=NET.ray(o,dir,best,minT);if(r){best=r.t;hit={k:'n',a:r.a};}} // other players online
   if(heli&&!heli.dead){const hp=heli.g.position;_b.copy(hp).sub(o);const t=_b.dot(dir);if(t>minT&&t<best){_b.addScaledVector(dir,-t);if(_b.length()<3.2){best=t;hit={k:'h'};}}}
   const pt=o.clone().addScaledVector(dir,best);tracer(mz,pt);
   if(!hit)return;
@@ -2307,6 +2318,7 @@ function shootRay(o,dir,minT,mz,w){
   else if(hit.k==='c'){const c=hit.c;c.hp-=w.dmg*1.3;c.lastHit='player';hitMark(false);for(let i=0;i<4;i++)part(pt.x,pt.y,pt.z,rand(-2,2),rand(1,3),rand(-2,2),0.25,0.1,0.05,'#ffe08a',1,true,10);
     if(c.driver==='ai')c.ai.panic=10;if(c.driver==='cop'||c.type==='police'){W.aggro=20;addCrime(1,1);}}
   else if(hit.k==='h'){heli.hp-=w.dmg*0.9;hitMark(heli.hp<=0);}
+  else if(hit.k==='n'){const a=hit.a;NET.hit(a,w.dmg,!a.inCar&&pt.y>a.pos.y+1.55);if(!a.inCar)for(let i=0;i<5;i++)part(pt.x,pt.y,pt.z,rand(-1.5,1.5)+dir.x*2,rand(0,2),rand(-1.5,1.5)+dir.z*2,0.4,0.12,0.1,'#8a0d0d',1,false,9);}
   else{for(let i=0;i<4;i++)part(pt.x,pt.y,pt.z,rand(-1.5,1.5),rand(0.5,2.5),rand(-1.5,1.5),0.35,0.12,0.25,'#c8bfae',0.9,false,8);}
 }
 let hmT=0;function hitMark(kill){const h=$('hitmark');h.classList.toggle('kill',kill);h.style.opacity=1;hmT=0.15;}
@@ -2715,6 +2727,7 @@ function drawMinimap0(){
   for(const cm of CAMS){if(Math.abs(cm.x-P.pos.x)>range*1.2||Math.abs(cm.z-P.pos.z)>range*1.2)continue;const[x,y]=to(cm.x,cm.z);mg.fillStyle='#f2c21b';mg.strokeStyle='#111';mg.lineWidth=2;mg.fillRect(x-6,y-5,12,10);mg.strokeRect(x-6,y-5,12,10);mg.fillStyle='#111';mg.beginPath();mg.arc(x,y,2.5,0,7);mg.fill();}
   if(ROUTE){drawRoute(mg,ROUTE.pts.map(p=>to(p[0],p[1])),9);const[x,y]=to(ROUTE.x,ROUTE.z,true);drawPin(mg,x,y,13);}
   for(const b of BLIPS){const[x,y]=to(b.x,b.z,true);drawBlip(mg,x,y,b.type,11);}
+  if(NET.on)NET.blips(mg,to);
   const flash=((T*4)|0)%2;
   { const vr=(W.level>0?70+W.level*18:60)*COP_VIS,a=Math.PI/3*COP_VIS;
     const cone=(o,h,r,hot)=>{if(Math.hypot(o.x-P.pos.x,o.z-P.pos.z)>range*1.3+r)return;mg.fillStyle=hot?'rgba(255,70,60,.28)':'rgba(120,170,255,.2)';mg.beginPath();let[x,y]=to(o.x,o.z);mg.moveTo(x,y);
@@ -2903,7 +2916,7 @@ addEventListener('pagehide',saveProfile);
 function lockPointer(){if(touchMode()){noLock=true;return;}try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{noLock=true;});}catch(e){noLock=true;}}
 $('bPlay').addEventListener('click',()=>{if(state!=='menu')return;initAudio();if(RADIO.st===MENU_ST)radioOff();hidePanels();$('menu').hidden=true;lockPointer();startIntro();});
 $('bResume').addEventListener('click',resume);
-$('bQuit').addEventListener('click',()=>{saveProfile();refreshBadge();hidePanels();closeMap();ROUTE=null;$('pause').hidden=true;$('hud').hidden=true;$('big').hidden=true;canvas.style.filter=baseFilter();if(player.inCar)exitCar(true);newGame();player.m.group.visible=false;state='menu';$('menu').hidden=false;mapOpen=false;$('bigmap').hidden=true;if(AUD.eg){AUD.eg.gain.value=0;AUD.sg.gain.value=0;AUD.tyre.gain.value=0;}menuMusic();});
+$('bQuit').addEventListener('click',()=>{if(NET.on)NET.leave();saveProfile();refreshBadge();hidePanels();closeMap();ROUTE=null;$('pause').hidden=true;$('hud').hidden=true;$('big').hidden=true;canvas.style.filter=baseFilter();if(player.inCar)exitCar(true);newGame();player.m.group.visible=false;state='menu';$('menu').hidden=false;mapOpen=false;$('bigmap').hidden=true;if(AUD.eg){AUD.eg.gain.value=0;AUD.sg.gain.value=0;AUD.tyre.gain.value=0;}menuMusic();});
 function pause(){if(state!=='play')return;state='paused';if(RADIO.st>=0){RADIO.paused=RADIO.st;radioOff();}mouseL=mouseR=false;$('pause').hidden=false;if(document.pointerLockElement)document.exitPointerLock();}
 function resume(){hidePanels();closeMap();$('pause').hidden=true;state='play';lockPointer();if(RADIO.paused!==undefined&&RADIO.paused>=0&&player.inCar)radioOn(RADIO.paused);RADIO.paused=-1;}
 
@@ -2964,7 +2977,7 @@ function tick(now){
     else if(state==='play'){if(player.inCar)updatePlayerCar(dt);else updatePlayerFoot(dt);}
     else if(state==='dead')updateDead(rdt);
     camera.getWorldDirection(_cf);
-    if(state!=='camcut'&&state!=='scene')manageWorld(dt);updTouch();
+    if(state!=='camcut'&&state!=='scene')manageWorld(dt);updTouch();NET.frame(rdt);
     if(state==='play'){PROF.stats.time+=rdt;if(player.inCar)PROF.stats.km+=Math.abs(player.inCar.vF)*rdt/1000;if((profSaveT+=rdt)>20){profSaveT=0;saveProfile();}}
     if(state==='play'||state==='dead'||state==='shop'){updateCamera(rdt);updateHUD(rdt);}
     camera.getWorldDirection(_cf);
@@ -2984,6 +2997,142 @@ function tick(now){
   if(starPts)starPts.position.copy(camera.position);if(moonSprite)moonSprite.position.copy(camera.position).addScaledVector(SUNDIR,4800);
   renderer.render(scene,camera);
 }
+
+/* ---------- 1.7: online free roam ----------
+   One shared San Varro for everyone who presses Play online, over the arcade's Supabase Realtime project. You see the
+   other players walk, run and drive (with name tags and on the minimap), and you can shoot them. Traffic, people on
+   the street and the police stay on each player's own screen.
+   Channels: fc-who is Presence (the player list: id, name, look, join time; the host is whoever joined first),
+   fc-pub carries the host's snapshots of where everyone is ('s'), hits ('h') and kills ('k'), and fc-p-<id> is a pipe
+   from each player to the host for their position ('u').
+   Message budget (the free plan counts every send and delivery, 100 a second for the whole arcade): a tick costs
+   3n - 2 messages for n players, so the rate drops as more join (MAX_HZ, BUDGET), and nothing goes out while you stand
+   still. ?fcroom=<name> uses separate test channels. */
+const NET=(()=>{
+  const SB_URL='https://fewocduisjbctoxolkjr.supabase.co',SB_KEY='sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',SB_LIB='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const TEST=(new URLSearchParams(location.search).get('fcroom')||'').replace(/[^a-z0-9]/gi,'').slice(0,12).toLowerCase(),BASE=TEST?'fc-test-'+TEST:'fc';
+  const MAX_HZ=6,BUDGET=30,MAX_PLAYERS=16,FULL_MS=8000;
+  const myId=(Math.random().toString(36)+'0000000').slice(2,8),now=()=>performance.now();
+  let client=null,libLoad=null,who=null,main=null,pipe=null,hostId=null,joinT=0,roster=[],upT=0,lastUp='',lastFull=0,fullDue=false,shots=0;
+  const pipes=new Map(),ups=new Map(),changed=new Set(),avatars=new Map(),api={on:false,name:'',lastBy:null};
+  const num=v=>typeof v==='number'&&isFinite(v),r2=v=>Math.round(v*100)/100;
+  const hzFor=n=>Math.max(1,Math.min(MAX_HZ,Math.floor(BUDGET/Math.max(1,3*n-2))));
+  function getClient(){
+    if(client)return Promise.resolve(client);
+    try{const A=window.parent!==window&&window.parent.ArcadeOnline,c=A&&A.client&&A.client();if(c)return Promise.resolve(client=c);}catch(e){}
+    if(!libLoad)libLoad=new Promise((res,rej)=>{if(window.supabase&&window.supabase.createClient)return res();const s=document.createElement('script');s.src=SB_LIB;s.async=true;s.onload=res;s.onerror=()=>{libLoad=null;rej('offline');};document.head.appendChild(s);});
+    return libLoad.then(()=>client||(client=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false,autoRefreshToken:false}})));
+  }
+  const chan=(topic,pres)=>client.channel(topic,{config:Object.assign({broadcast:{self:false,ack:false}},pres?{presence:{key:myId}}:{})});
+  function joinChan(ch,later){return new Promise((res,rej)=>{let done=false;const to=setTimeout(()=>{if(!done){done=true;rej('offline');}},10000);
+    ch.subscribe(st=>{if(!done){if(st==='SUBSCRIBED'){done=true;clearTimeout(to);res();}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){done=true;clearTimeout(to);rej('offline');}return;}if(later)later(st);});});}
+  function drop(ch){if(!ch||!client)return;try{const p=client.removeChannel(ch);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
+  function send(ch,ev,payload){if(!ch||ch.state!=='joined')return false;try{const p=ch.send({type:'broadcast',event:ev,payload});if(p&&p.catch)p.catch(()=>{});}catch(e){}return true;}
+  const listen=(ch,ev,fn)=>ch.on('broadcast',{event:ev},m=>{try{fn(m.payload||{});}catch(e){console.error(e);}});
+  const nameOf=id=>{const m=roster.find(r=>r.id===id);return m?m.n:'Someone';};
+
+  // ---------- who's on ----------
+  function readRoster(){const st=who?who.presenceState():{},out=[];for(const k in st){const m=st[k]&&st[k][0];if(m&&typeof m.id==='string')out.push({id:m.id,n:String(m.n||'Player').replace(/[<>&"]/g,'').slice(0,16),j:+m.j||0,l:String(m.l||'')});}
+    if(api.on&&!out.some(m=>m.id===myId))out.push({id:myId,n:api.name,j:joinT,l:PROF.look});return out.sort((a,b)=>a.j-b.j||(a.id<b.id?-1:1));}
+  function onPresence(){
+    const before=new Set(roster.map(m=>m.id));roster=readRoster();const here=new Set(roster.map(m=>m.id));
+    if(!api.on)return;
+    for(const m of roster)if(!before.has(m.id)&&m.id!==myId&&before.size)notify(`<b>${esc(m.n)}</b> joined San Varro.`,3);
+    for(const id of before)if(!here.has(id)){const a=avatars.get(id);if(a)notify(`<b>${esc(a.name)}</b> left.`,3);removeAvatar(id);ups.delete(id);changed.delete(id);if(pipes.has(id)){drop(pipes.get(id));pipes.delete(id);}}
+    fullDue=true;
+    const first=roster[0];
+    if(first&&first.id!==hostId){hostId=first.id;lastUp='';if(hostId!==myId){for(const ch of pipes.values())drop(ch);pipes.clear();ups.clear();}}
+    if(hostId===myId)for(const m of roster)if(m.id!==myId&&!pipes.has(m.id)){const ch=chan(BASE+'-p-'+m.id);pipes.set(m.id,ch);const id=m.id;listen(ch,'u',p=>{if(hostId===myId)gotState(id,p.s,true);});joinChan(ch).catch(()=>{if(pipes.get(id)===ch)pipes.delete(id);});}
+  }
+
+  // ---------- where everyone is ----------
+  // [x, y, z, heading, stride (0-1), pose (0 walk, 1 rifle, 2 pistol), car type ('' on foot), car colour, shots fired, dead, look]
+  function myState(){const P=player,c=P.inCar,w=WPN[P.wpn],spd=Math.hypot(P.vx,P.vz);
+    const pose=P.drawn&&w&&!w.melee?(/pistol|revolver|smg/i.test(w.tag||'')?2:1):0;
+    if(c)return[r2(c.pos.x),r2(c.pos.y),r2(c.pos.z),r2(c.h),0,0,c.type,c.color||'#888',shots&255,0,PROF.look];
+    return[r2(P.pos.x),r2(P.pos.y),r2(P.pos.z),r2(P.h),spd>4?0.95:spd>0.5?0.55:0,pose,'','',shots&255,P.dead||state==='dead'?1:0,PROF.look];}
+  function cleanState(s){if(!Array.isArray(s)||s.length<11||![0,1,2,3].every(i=>num(s[i])&&Math.abs(s[i])<1e5))return null;
+    return[s[0],s[1],s[2],s[3],clamp(+s[4]||0,0,1),s[5]|0,CT[s[6]]&&s[6]!=='police'?s[6]:'',/^#[0-9a-f]{6}$/i.test(s[7])?s[7]:'#888888',s[8]|0,s[9]?1:0,String(s[10]||'')];}
+  function gotState(id,s0,up){const s=cleanState(s0);if(!s||id===myId)return;if(up){ups.set(id,s);changed.add(id);}
+    let a=avatars.get(id);if(!a)a=makeAvatar(id);a.buf.push({at:now(),s});if(a.buf.length>20)a.buf.shift();}
+  function tickPos(t){const hz=hzFor(Math.max(1,roster.length));if(t-upT<1000/hz)return;upT=t;
+    const st=myState(),key=JSON.stringify(st);
+    if(hostId===myId){const full=fullDue||t-lastFull>FULL_MS,list=[];if(key!==lastUp||full){list.push([myId,...st]);lastUp=key;}
+      for(const[id,s]of ups)if(full||changed.has(id))list.push([id,...s]);changed.clear();
+      if(list.length&&roster.length>1)send(main,'s',{p:list});if(full){lastFull=t;fullDue=false;}}
+    else if(key!==lastUp&&send(pipe,'u',{s:st}))lastUp=key;}
+
+  // ---------- drawing the other players ----------
+  function nameTag(n){const cv=document.createElement('canvas'),g=cv.getContext('2d');g.font='700 30px Barlow Condensed, Arial';const w=Math.ceil(g.measureText(n).width)+24;cv.width=w;cv.height=44;
+    g.font='700 30px Barlow Condensed, Arial';g.fillStyle='rgba(0,0,0,.45)';g.fillRect(0,0,w,44);g.fillStyle='#fff';g.textBaseline='middle';g.fillText(n,12,23);
+    const tex=new THREE.CanvasTexture(cv),sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));sp.scale.set(w/80,44/80,1);sp.renderOrder=999;return sp;}
+  function makeAvatar(id){const m=roster.find(r=>r.id===id),name=m?m.n:'Player',look=lookOf2(m&&m.l),h=makeHuman(look);scene.add(h.group);h.group.visible=false;
+    const tag=nameTag(name);scene.add(tag);const a={id,name,look:m&&m.l,h,tag,cars:{},car:null,buf:[],pos:new THREE.Vector3(),hd:0,ph:0,shots:-1,vis:false,inCar:false,type:''};avatars.set(id,a);return a;}
+  const lookOf2=id=>{const l=LOOKS.find(x=>x.id===id)||LOOKS[1];return l.look;};
+  function removeAvatar(id){const a=avatars.get(id);if(!a)return;scene.remove(a.h.group);a.h.geos.forEach(g=>g.dispose());scene.remove(a.tag);a.tag.material.map.dispose();
+    for(const k in a.cars){scene.remove(a.cars[k].group);a.cars[k].geos.forEach(g=>g.dispose());}avatars.delete(id);}
+  function carFor(a,type,color){const k=type+color;let m=a.cars[k];if(!m){m=a.cars[k]=makeCarModel(CT[type],color);scene.add(m.group);if(m.driverMesh)m.driverMesh.visible=true;}return m;}
+  const lerpA=(a,b,k)=>{let d=b-a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return a+d*k;};
+  function drawAvatars(dt){const hz=hzFor(Math.max(1,roster.length)),t=now()-(1000/hz*1.6+120),show=state==='play'||state==='dead'||state==='shop';
+    for(const a of avatars.values()){const b=a.buf;if(!b.length)continue;while(b.length>2&&b[1].at<=t)b.shift();
+      let s=b[0].s,p0=s,k=1;if(b.length>1&&b[0].at<=t){p0=b[0].s;s=b[1].s;k=Math.min(1,(t-b[0].at)/Math.max(1,b[1].at-b[0].at));}
+      const jump=Math.hypot(s[0]-a.pos.x,s[2]-a.pos.z)>80;
+      a.pos.set(p0[0]+(s[0]-p0[0])*k,p0[1]+(s[1]-p0[1])*k,p0[2]+(s[2]-p0[2])*k);a.hd=lerpA(p0[3],s[3],k);if(jump){a.pos.set(s[0],s[1],s[2]);a.hd=s[3];b.length=1;}
+      const inCar=!!s[6];a.inCar=inCar;a.type=s[6];a.vis=show&&!s[9]&&!INSIDE;
+      if(a.look!==s[10]){a.look=s[10];const n=makeHuman(lookOf2(s[10]));scene.remove(a.h.group);a.h.geos.forEach(g=>g.dispose());a.h=n;scene.add(n.group);}
+      for(const key in a.cars)a.cars[key].group.visible=false;
+      if(inCar){const m=carFor(a,s[6],s[7]);m.group.visible=a.vis;m.group.position.copy(a.pos);m.group.rotation.y=a.hd;a.car=m;a.h.group.visible=false;}
+      else{a.car=null;a.h.group.visible=a.vis;a.h.group.position.copy(a.pos);a.h.group.rotation.y=a.hd;a.ph+=dt*(s[4]>0.9?11:s[4]>0?6:0);pose(a.h,a.ph,s[4],['walk','rifle','pistol'][s[5]]||'walk',0);}
+      a.tag.visible=a.vis&&a.pos.distanceTo(camera.position)<160;a.tag.position.set(a.pos.x,a.pos.y+(inCar?(a.car&&a.car.roofY||1.5)+0.9:2.35),a.pos.z);
+      // their shots: a muzzle flash and a tracer where they face
+      if(a.shots<0)a.shots=s[8];else if(s[8]!==a.shots){a.shots=s[8];if(a.vis&&!inCar){const sx=Math.sin(a.hd),sz=Math.cos(a.hd),o=V3(a.pos.x+sx*0.6,a.pos.y+1.4,a.pos.z+sz*0.6);part(o.x,o.y,o.z,0,0,0,0.05,0.45,0.4,'#ffd27a',1,true);tracer(o,o.clone().add(V3(sx*40,0,sz*40)));if(a.pos.distanceTo(player.pos)<120)sfx.shot(Math.min(1,a.pos.distanceTo(player.pos)/120));}}}}
+
+  // ---------- fighting ----------
+  // shootRay asks: does this shot hit another player before t? (on foot: the same box as a person; in a car: the car)
+  api.ray=(o,d,best,minT)=>{let hit=null;for(const a of avatars.values()){if(!a.vis)continue;if(a.pos.distanceTo(o)>best+6)continue;
+    const t=a.inCar&&a.car?rayCar(o,d,{pos:a.pos,h:a.hd,yo:0,t:CT[a.type],m:a.car}):rayPed(o,d,{pos:a.pos});if(t>minT&&t<best){best=t;hit={a,t};}}return hit;};
+  api.hit=(a,dmg,head)=>{send(main,'h',{f:myId,to:a.id,dmg:Math.round(Math.min(500,dmg)*(head?3.5:1)*(a.inCar?0.35:1))});hitMark(false);};
+  function onHit(m){if(!api.on||m.to!==myId||state!=='play'||!num(m.dmg))return;const a=avatars.get(m.f);if(!a||a.pos.distanceTo(player.inCar?player.inCar.pos:player.pos)>400)return;
+    api.lastBy=a.name;const was=player.hp;damagePlayer(Math.min(1000,Math.max(0,m.dmg)));if(was>0&&player.hp<=0)send(main,'k',{f:myId,by:m.f});}
+  function onKill(m){if(!api.on)return;const v=m.f,k=m.by;notify(k===myId?`You took out <b>${esc(nameOf(v))}</b>.`:`<b>${esc(nameOf(k))}</b> took out <b>${esc(nameOf(v))}</b>.`,4);if(k===myId){PROF.stats.kills=(PROF.stats.kills||0)+1;addXp(25);}}
+  api.fired=()=>{shots++;};
+
+  // ---------- the minimap ----------
+  api.blips=(g,to)=>{for(const a of avatars.values()){if(!a.vis)continue;const[x,y]=to(a.pos.x,a.pos.z,true);g.fillStyle='#111';g.beginPath();g.arc(x,y,9,0,7);g.fill();g.fillStyle='#3fa0ff';g.beginPath();g.arc(x,y,7,0,7);g.fill();}};
+
+  // ---------- joining and leaving ----------
+  api.join=async()=>{api.name=(PROF.name||'Player').replace(/[<>&"]/g,'').slice(0,16);await getClient();
+    who=chan(BASE+'-who',true);who.on('presence',{event:'sync'},onPresence);
+    main=chan(BASE+'-pub');listen(main,'s',m=>{if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);
+    pipe=chan(BASE+'-p-'+myId);
+    try{await Promise.all([joinChan(who,st=>{if(st==='SUBSCRIBED'&&api.on)who.track({id:myId,n:api.name,j:joinT,l:PROF.look}).catch(()=>{});}),joinChan(main),joinChan(pipe)]);}
+    catch(e){api.leave();throw e;}
+    const others=readRoster().filter(m=>m.id!==myId);if(others.length>=MAX_PLAYERS){api.leave();throw 'full';}
+    joinT=Date.now();api.on=true;hostId=null;roster=[];await who.track({id:myId,n:api.name,j:joinT,l:PROF.look});
+    for(let k=0;k<20&&!readRoster().some(m=>m.id===myId&&who.presenceState()[myId]);k++)await new Promise(r=>setTimeout(r,100));
+    onPresence();return readRoster().length;};
+  api.leave=()=>{api.on=false;const chs=[who,main,pipe,...pipes.values()];who=main=pipe=null;pipes.clear();ups.clear();changed.clear();for(const id of[...avatars.keys()])removeAvatar(id);hostId=null;roster=[];
+    try{chs[0]&&chs[0].untrack().catch(()=>{});}catch(e){}setTimeout(()=>chs.forEach(drop),300);};
+  api.count=()=>roster.length;
+  api._dbg=()=>[...avatars.values()].map(a=>({n:a.name,vis:a.vis,car:a.inCar,pos:a.pos.toArray().map(v=>+v.toFixed(1)),buf:a.buf.length}));
+  api.frame=dt=>{if(!api.on)return;const t=now();if(state==='play'||state==='dead')tickPos(t);drawAvatars(dt);};
+  return api;
+})();
+// Play online: straight into the shared city (no prison cutscene), next to the hospital
+async function playOnline(){
+  if(state!=='menu')return;initAudio();if(RADIO.st===MENU_ST)radioOff();hidePanels();
+  const b=$('bOnline');b.disabled=true;b.textContent='Connecting…';
+  try{await NET.join();}catch(e){b.disabled=false;b.textContent='Play online';notifyMenu(e==='full'?'The online city is full right now (16 players). Try again soon.':'Couldn’t connect to the online city. Check your internet and try again.');return;}
+  b.disabled=false;b.textContent='Play online';
+  newGame();setPlayerLook();$('menu').hidden=true;lockPointer();
+  const P=player,x=SPAWN.hosp.x+rand(-6,6),z=SPAWN.hosp.z+rand(-6,6);P.pos.set(x,groundY(x,z),z);P.h=SPAWN.hosp.h||0;P.m.group.rotation.set(0,P.h,0);P.m.group.visible=!P.fp;yaw=P.h;pitch=-0.08;
+  state='play';updGunVis();$('hud').hidden=false;updChunks(0,true);
+  const n=NET.count();notify(`You’re in the online city${n>1?` with <b>${n-1}</b> other player${n>2?'s':''}`:'. Nobody else is here yet'}. Other players show on your map in <b style="color:#3fa0ff">blue</b>. Shoot them, race them, or rob the town together.`,9);
+}
+function notifyMenu(t){const el=$('onlineMsg');el.textContent=t;el.hidden=!t;}
+$('bOnline').addEventListener('click',()=>{notifyMenu('');playOnline();});
+// for tests on a test server (?fcroom=...) only: reach inside the game from the console
+if(new URLSearchParams(location.search).get('fcroom'))window.__fc={get player(){return player;},get state(){return state;},get note(){return noteHTML;},NET,shootRay,WPN,V3,groundY,parkCar,enterCar};
 
 /* ---------- boot ---------- */
 async function boot(){
