@@ -429,7 +429,11 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.7</b>Play online<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.7.1</b>Online fights<span>Latest</span></summary><ul>
+    <li>Fixed: punches and knife slashes didn’t hurt other players online (you start with your gun put away, so a click is a punch). Now they do.</li>
+    <li>Grenades and cars you blow up hurt other players near them too.</li>
+    <li>Other players are a little easier to hit with a gun.</li></ul></details>
+  <details><summary><b>v1.7</b>Play online</summary><ul>
     <li>New on the main menu: <b>Play online</b>. Everyone who presses it is in the same San Varro.</li>
     <li>See the other players walk, run and drive, with their name over their head, and find them on your minimap as <b style="color:#3fa0ff">blue</b> dots.</li>
     <li>Shoot them: your bullets hurt other players, headshots do more, and shots into their car hurt the driver. When someone goes down, everyone sees who took them out (+25 XP for you).</li>
@@ -2099,7 +2103,8 @@ function explode(x,y,z,byPlayer,src,spare){
   for(const p of PEDS){if(p.dead)continue;const d=p.pos.distanceTo(_a);if(d<8)killPed(p,byPlayer,{x:(p.pos.x-x)/d*9,y:(p.pos.z-z)/d*9});}
   for(const c of CARS){if(c===src||c.dead)continue;const d=Math.hypot(c.pos.x-x,c.pos.z-z);if(d<9){c.hp-=(9-d)*110;if(byPlayer)c.lastHit='player';}}
   if(!player.inCar&&!player.dead&&!spare){const d=player.pos.distanceTo(_a);if(d<8)damagePlayer((8-d)*14);}
-  if(heli&&!heli.dead&&heli.g.position.distanceTo(_a)<8)heli.hp-=400;}
+  if(heli&&!heli.dead&&heli.g.position.distanceTo(_a)<8)heli.hp-=400;
+  if(byPlayer&&NET.on)NET.blast(_a);} // your grenades and blown-up cars hurt other players too
 function explodeCar(c){const byP=c.lastHit==='player';c.dead=true;c.hp=0;c.m.bodyMesh.material=BURNT_MAT;c.m.glass.visible=false;c.m.driverMesh.visible=false;c.siren=false;
   if(byP&&(c.driver==='ai'||c.driver==='cop'))addCrime(c.driver==='cop'?3:1,c.driver==='cop'?6:3);
   const wasP=c.driver==='player';if(wasP){ejectPlayer(c,24);damagePlayer(20);}
@@ -2273,6 +2278,11 @@ function punch(w){const P=player;P.fireT=w?w.rate:0.42;P.punchT=0.28;P.guardT=1.
   const fx=Math.sin(yaw),fz=Math.cos(yaw);let best=null,bd=w?2.4:2.1;
   for(const p of PEDS){if(p.dead||p.pulled)continue;const dx=p.pos.x-P.pos.x,dz=p.pos.z-P.pos.z,d=Math.hypot(dx,dz);
     if(d>bd||Math.abs(p.pos.y-P.pos.y)>1.2)continue;if(d>0.5&&(dx*fx+dz*fz)/d<0.45)continue;best=p;bd=d;}
+  // online: another player in front of you, closer than anyone else, takes the punch or the slash
+  const mate=NET.on?NET.melee(fx,fz,bd):null;
+  if(mate){setTimeout(()=>{if(state!=='play')return;NET.hit(mate,w?w.dmg:26,false);sfx.punch();shake=Math.max(shake,0.06);
+    if(w)for(let i=0;i<5;i++)part(mate.pos.x,mate.pos.y+1.3,mate.pos.z,fx*2+rand(-1,1),rand(0,2),fz*2+rand(-1,1),0.4,0.12,0.1,'#8a0d0d',1,false,9);
+    else part(mate.pos.x,mate.pos.y+1.5,mate.pos.z,fx,1,fz,0.25,0.25,0.3,'#ffffff',0.6,false);},90);return;}
   if(!best)return;
   setTimeout(()=>{if(best.dead||state!=='play')return;best.hp-=w?w.dmg:26;sfx.punch();shake=Math.max(shake,0.06);hitMark(best.hp<=0);
     if(w)for(let i=0;i<5;i++)part(best.pos.x,best.pos.y+1.3,best.pos.z,fx*2+rand(-1,1),rand(0,2),fz*2+rand(-1,1),0.4,0.12,0.1,'#8a0d0d',1,false,9);
@@ -3090,12 +3100,19 @@ const NET=(()=>{
   // ---------- fighting ----------
   // shootRay asks: does this shot hit another player before t? (on foot: the same box as a person; in a car: the car)
   api.ray=(o,d,best,minT)=>{let hit=null;for(const a of avatars.values()){if(!a.vis)continue;if(a.pos.distanceTo(o)>best+6)continue;
-    const t=a.inCar&&a.car?rayCar(o,d,{pos:a.pos,h:a.hd,yo:0,t:CT[a.type],m:a.car}):rayPed(o,d,{pos:a.pos});if(t>minT&&t<best){best=t;hit={a,t};}}return hit;};
+    const t=a.inCar&&a.car?rayCar(o,d,{pos:a.pos,h:a.hd,yo:0,t:CT[a.type],m:a.car}):rayBody(o,d,a.pos);if(t>minT&&t<best){best=t;hit={a,t};}}return hit;};
+  // a person's box, a bit wider than for people on the street: other players move fast and are drawn a moment behind
+  function rayBody(o,d,p){return rayBox(o.x,o.y,o.z,1/(d.x||1e-12),1/(d.y||1e-12),1/(d.z||1e-12),{x0:p.x-0.5,x1:p.x+0.5,y0:p.y,y1:p.y+1.95,z0:p.z-0.5,z1:p.z+0.5});}
   api.hit=(a,dmg,head)=>{send(main,'h',{f:myId,to:a.id,dmg:Math.round(Math.min(500,dmg)*(head?3.5:1)*(a.inCar?0.35:1))});hitMark(false);};
   function onHit(m){if(!api.on||m.to!==myId||state!=='play'||!num(m.dmg))return;const a=avatars.get(m.f);if(!a||a.pos.distanceTo(player.inCar?player.inCar.pos:player.pos)>400)return;
     api.lastBy=a.name;const was=player.hp;damagePlayer(Math.min(1000,Math.max(0,m.dmg)));if(was>0&&player.hp<=0)send(main,'k',{f:myId,by:m.f});}
   function onKill(m){if(!api.on)return;const v=m.f,k=m.by;notify(k===myId?`You took out <b>${esc(nameOf(v))}</b>.`:`<b>${esc(nameOf(k))}</b> took out <b>${esc(nameOf(v))}</b>.`,4);if(k===myId){PROF.stats.kills=(PROF.stats.kills||0)+1;addXp(25);}}
   api.fired=()=>{shots++;};
+  // a punch or a slash: the nearest other player on foot within reach and in front of you (the same test as for people)
+  api.melee=(fx,fz,reach)=>{let best=null,bd=reach;for(const a of avatars.values()){if(!a.vis||a.inCar)continue;const dx=a.pos.x-player.pos.x,dz=a.pos.z-player.pos.z,d=Math.hypot(dx,dz);
+    if(d>bd||Math.abs(a.pos.y-player.pos.y)>1.2)continue;if(d>0.5&&(dx*fx+dz*fz)/d<0.45)continue;best=a;bd=d;}return best;};
+  // an explosion: the same damage it does to you, to everyone near it (a little more through a car)
+  api.blast=at=>{for(const a of avatars.values()){if(!a.vis)continue;const d=a.pos.distanceTo(at),R=a.inCar?9:8;if(d<R)send(main,'h',{f:myId,to:a.id,dmg:Math.round((R-d)*(a.inCar?20:14))});}};
 
   // ---------- the minimap ----------
   api.blips=(g,to)=>{for(const a of avatars.values()){if(!a.vis)continue;const[x,y]=to(a.pos.x,a.pos.z,true);g.fillStyle='#111';g.beginPath();g.arc(x,y,9,0,7);g.fill();g.fillStyle='#3fa0ff';g.beginPath();g.arc(x,y,7,0,7);g.fill();}};
@@ -3132,7 +3149,7 @@ async function playOnline(){
 function notifyMenu(t){const el=$('onlineMsg');el.textContent=t;el.hidden=!t;}
 $('bOnline').addEventListener('click',()=>{notifyMenu('');playOnline();});
 // for tests on a test server (?fcroom=...) only: reach inside the game from the console
-if(new URLSearchParams(location.search).get('fcroom'))window.__fc={get player(){return player;},get state(){return state;},get note(){return noteHTML;},NET,shootRay,WPN,V3,groundY,parkCar,enterCar};
+if(new URLSearchParams(location.search).get('fcroom'))window.__fc={get player(){return player;},get state(){return state;},get note(){return noteHTML;},NET,shootRay,WPN,V3,groundY,parkCar,enterCar,punch,playerFire,equip,throwNade,explode,setYaw:v=>{yaw=v;pitch=-0.05;}};
 
 /* ---------- boot ---------- */
 async function boot(){
