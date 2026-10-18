@@ -4446,6 +4446,11 @@ class World {
       }
       for (const [k, v] of saved.meta || []) this.meta.set(k, v);
       this.portals = saved.portals || [];
+      // the public server's world: when each changed block last changed (see MP)
+      if (saved.stamps) {
+        this.stamps = new Map();
+        for (const [k, flat] of Object.entries(saved.stamps)) { const m = new Map(); for (let i = 0; i < flat.length; i += 2) m.set(flat[i], flat[i + 1]); this.stamps.set(+k, m); }
+      }
     }
     this.portals = this.portals || [];
   }
@@ -4641,6 +4646,7 @@ class World {
     if (id === BL.creaking_heart && c.hearts && !c.hearts.includes(i)) c.hearts.push(i);
     let m = this.mods.get(c.key); if (!m) { m = new Map(); this.mods.set(c.key, m); }
     m.set(i, id);
+    if (this.stamps) MP.changed(this, c.key, i, x, y, z);
     this.markDirty(c, x & 15, y, z & 15, true);
     if (c.state >= 1) this.relight(x, y, z, old, id);
     if (!opts.keepMeta && (BLOCKS[old].ui === 'chest' || BLOCKS[old].ui === 'furnace' || BLOCKS[old].facing) && !(BLOCKS[id] && BLOCKS[id].facing)) this.meta.delete(x + ',' + y + ',' + z);
@@ -4654,7 +4660,9 @@ class World {
   serialize() {
     const mods = {};
     for (const [k, m] of this.mods) { const flat = []; for (const [i, id] of m) flat.push(i, id); mods[k] = flat; }
-    return { mods, meta: [...this.meta], portals: this.portals };
+    const out = { mods, meta: [...this.meta], portals: this.portals };
+    if (this.stamps) { out.stamps = {}; for (const [k, m] of this.stamps) { const flat = []; for (const [i, t] of m) flat.push(i, t); out.stamps[k] = flat; } }
+    return out;
   }
 }
 
@@ -9028,6 +9036,7 @@ function openScreen(s) {
 }
 function closeScreen() {
   if (screen && screen.onClose) screen.onClose();
+  if (screen && screen.netPos) MP.touch(...screen.netPos);
   screen = null;
   hideFields();
   if (game.state === 'game') lockPointer();
@@ -9681,6 +9690,12 @@ function drawHUD(world) {
     }
   }
   drawHUDExtras();
+  if (MP.on() && KEYS.has('Tab')) {
+    const ps = MP.players(), w = Math.min(W - 10, 160), x = Math.floor(W / 2 - w / 2);
+    fill(x, 10, w, 14 + ps.length * 10, 'rgba(0,0,0,0.55)');
+    centerText(gctx, game.info.name + ' · ' + ps.length + ' playing', W / 2, 13, '#ffff55');
+    ps.forEach((p, i) => drawText(gctx, p.n + (p.n === MP.name ? ' (you)' : ''), x + 4, 24 + i * 10, '#ffffff'));
+  }
   // chat messages
   const now = performance.now(), chatOpen = screen && screen.name === 'chat';
   let cy = isTouch ? H - 10 - 26 * 3 - 12 : H - 48; // on touch screens, above the move buttons
@@ -9702,6 +9717,7 @@ function drawDebug(world, fps) {
     `Facing: ${dir}`, `Light: ${s} sky, ${b} block`, `Biome: ${BIOMES[world.gen.biomeAt(bx, bz)].name}`,
     `Chunks: ${world.chunks.size}  Entities: ${game.entities.list.length}`, `Time: ${Math.floor(game.time)}  Seed: ${world.seed}`,
   ];
+  if (MP.on()) lines.push(MP.debug());
   const hit = game.hit;
   if (hit) lines.push(`Looking at: ${BLOCKS[hit.id].name} (${hit.x} ${hit.y} ${hit.z})`);
   lines.forEach((l, i) => { fill(1, 1 + i * 10, textWidth(l) + 4, 10, 'rgba(80,80,80,0.55)'); drawText(gctx, l, 3, 2 + i * 10, '#e0e0e0'); });
@@ -9980,6 +9996,7 @@ function unloadWorld() {
 // the world for a dimension, made the first time it's needed from what was saved for it
 function getWorld(dim) {
   if (!game.dims[dim]) game.dims[dim] = new World(game.seed, game.saved && game.saved.dims && game.saved.dims[dim], dim);
+  if (game.info && game.info.mp && !game.dims[dim].stamps) game.dims[dim].stamps = new Map();
   return game.dims[dim];
 }
 // Saves from before 2.0 kept items at ids 256 and up and had only the overworld
@@ -10019,6 +10036,7 @@ function resetPlayer() {
 }
 function startTitleWorld() {
   unloadWorld();
+  game.info = null;
   game.seed = 20240613; game.endState = newEndState(); game.genVersion = 2;
   const w = game.world = getWorld(DIM.OVERWORLD);
   player.dim = DIM.OVERWORLD;
@@ -10084,6 +10102,11 @@ function finishLoading() {
   if (game.arrive) { const a = game.arrive; game.arrive = null; a(); return; }
   chat(player.mode === 'creative' ? 'Creative mode: double-tap Space to fly.' : 'Survival mode: punch a tree to get started!', '#ffff55');
   if (!isTouch) chat('Press E for your inventory, T to chat, F3 for info.', '#aaaaaa');
+  if (MP.on()) {
+    const n = MP.players().length;
+    chat('Welcome to the ' + game.info.name + '! ' + (n > 1 ? (n - 1) + (n === 2 ? ' other player is' : ' other players are') + ' on.' : 'Nobody else is on right now. Your changes reach others next time you\'re on together.'), '#55ffff');
+    if (!isTouch) chat('Hold Tab to see who\'s playing.', '#aaaaaa');
+  }
 }
 function fixSpawn(s) {
   const w = game.world;
@@ -10110,7 +10133,7 @@ function saveGame() {
     if (e) { e.played = Date.now(); e.mode = player.mode; writeWorlds(list); }
   } catch (e) { chat('Could not save: the browser is out of storage space.', '#ff5555'); }
 }
-function quitToTitle() { saveGame(); returnCursor(); startTitleWorld(); }
+function quitToTitle() { saveGame(); returnCursor(); MP.leave(); startTitleWorld(); }
 
 // ---------------- Loading chunks around the player ----------------
 function chunkOrder(R) {
@@ -10854,7 +10877,13 @@ function die() {
     const lv = xpLevel(player.xp).level; game.entities.dropXP(player.pos.x, player.pos.y + 1, player.pos.z, Math.min(100, lv * 7)); player.xp = 0;
   }
   player.effects = {}; player.absorb = 0;
+  if (MP.on()) MP.announce(deathText());
   openScreen(DeathScreen());
+}
+function deathText() {
+  const by = player.lastCause === 'player' && player.lastKiller ? 'was slain by ' + player.lastKiller
+    : player.lastCause === 'mob' && player.lastHurtBy ? 'was slain by ' + titleCase(player.lastHurtBy) : DEATH_MSG[player.lastCause] || 'died';
+  return (MP.on() ? MP.name : 'Player') + ' ' + by;
 }
 // respawning: at a charged respawn anchor in the nether, at your bed, or at the world spawn
 function respawn() {
@@ -10877,7 +10906,7 @@ function respawn() {
 }
 const DEATH_MSG = { fall: 'hit the ground too hard', drown: 'drowned', lava: 'tried to swim in lava', fire: 'burned to death', mob: 'was slain by a mob', explosion: 'blew up', starve: 'starved to death', cactus: 'was pricked to death', void: 'fell out of the world',
   magic: 'was killed by magic', wither: 'withered away', poison: 'was poisoned', magma: 'discovered the floor was lava', falling_block: 'was squashed by a falling block', bed: 'was killed by [Intentional Game Design]',
-  arrow: 'was shot', fireball: 'was fireballed', fly_into_wall: 'experienced kinetic energy', trident: 'was impaled', sonic: 'was obliterated by a sonically-charged shriek', dry: 'dried out' };
+  arrow: 'was shot', player: 'was slain by another player', fireball: 'was fireballed', fly_into_wall: 'experienced kinetic energy', trident: 'was impaled', sonic: 'was obliterated by a sonically-charged shriek', dry: 'dried out' };
 
 const handScene = new THREE.Scene(), handCam = new THREE.PerspectiveCamera(70, 1, 0.01, 10);
 // Minecraft-style arm: a 4x4x12 pixel box with a skin texture and a short cyan sleeve at the shoulder end
@@ -10976,7 +11005,7 @@ function updateGame(dt) {
     const steps = Math.max(1, Math.ceil(Math.max(Math.abs(player.vel.x), Math.abs(player.vel.y), Math.abs(player.vel.z)) * dt / 0.35));
     for (let i = 0; i < steps; i++) updatePlayerPhysics(w, dt / steps);
     updateSurvival(w, dt);
-    interact(w, ents, dt);
+    MP.act = true; interact(w, ents, dt); MP.act = false;
   }
   ents.update(dt, daylight);
   ents.spawnMonsters(dt, daylight);
@@ -11047,16 +11076,20 @@ function interact(w, ents, dt) {
   const reach = creative() ? 5 : 4.5;
   const hit = (screen ? null : raycast(w, eye, dir, reach));
   const mob = screen || player.riding && 0 ? null : ents.rayMob(eye, dir, creative() ? 5 : 3);
-  const mobFirst = mob && (!hit || mob.t < hit.t);
+  // other players on the public server
+  const peer = screen || !MP.on() ? null : MP.rayPeer(eye, dir, 3);
+  const peerFirst = !!peer && (!hit || peer.t < hit.t) && (!mob || peer.t < mob.t);
+  const mobFirst = !peerFirst && mob && (!hit || mob.t < hit.t);
   game.hit = hit; game.mobHit = mobFirst ? mob : null;
   player.useCD = Math.max(0, player.useCD - dt); player.attackCD = Math.max(0, player.attackCD - dt); player.pearlCD = Math.max(0, (player.pearlCD || 0) - dt);
   player.sinceAttack = (player.sinceAttack || 0) + dt;
   // attacking: one hit per click, its strength depends on how recharged you are
-  if (input.attackPressed && mobFirst && mob.mob !== player.riding) attackEntity(ents, mob.mob);
+  if (input.attackPressed && peerFirst) MP.attack(peer.peer);
+  else if (input.attackPressed && mobFirst && mob.mob !== player.riding) attackEntity(ents, mob.mob);
   else if (input.attackPressed && !hit && !mobFirst) { player.swing = 1; player.sinceAttack = 0; }
   // breaking
   const key = hit ? hit.x + ',' + hit.y + ',' + hit.z : '';
-  if (input.attack && hit && !mobFirst && !player.blocking) {
+  if (input.attack && hit && !mobFirst && !peerFirst && !player.blocking) {
     if (creative()) {
       const s = held(), sd = s && itemDef(s.id);
       if (sd && sd.tool === 'sword') {} // swords can't break blocks in creative
@@ -11316,6 +11349,7 @@ function useBed(w, ents, x, y, z, bd) {
   // beds blow up anywhere but the overworld
   if (w.dim !== DIM.OVERWORLD) { const [dx, dz] = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[bd.bed.side]; const hx = bd.bed.part === 'head' ? x : x + dx, hz = bd.bed.part === 'head' ? z : z + dz; w.set(x, y, z, AIR); ents.explode(hx + 0.5, y + 0.5, hz + 0.5, 5, { fire: true, cause: 'bed' }); return; }
   player.spawn = [x + 0.5, y + 1, z + 0.5]; player.anchor = null;
+  if (MP.on()) { chat('Respawn point set. On the public server the night can\'t be skipped.', '#aaaaaa'); return; }
   const t = game.time % 24000, night = t >= 12542 && t <= 23460;
   if (!night) { chat('Respawn point set. You can only sleep at night.', '#aaaaaa'); return; }
   if (ents.list.some(e => e.type === 'mob' && e.def.hostile && e.pos.distanceTo(new V3(x, y, z)) < 8)) { chat('You may not rest now; there are monsters nearby', '#ff5555'); return; }
@@ -11556,6 +11590,7 @@ function openUI(w, hit, ui) {
   if (ui === 'smithing') openScreen(SmithingScreen());
   if (ui === 'beacon') openScreen(BeaconScreen(w, hit.x, hit.y, hit.z));
   if (ui === 'stonecutter') openScreen(StonecutterScreen());
+  if (screen && ['chest', 'shulker', 'furnace', 'brewing'].includes(ui)) screen.netPos = [w, hit.x, hit.y, hit.z];
 }
 
 // ---------------- Sky and camera ----------------
@@ -11680,7 +11715,7 @@ function updateCamera(dt) {
 }
 
 // ---------------- Screens ----------------
-const SPLASHES = ['Now with ores!', 'Made by Lars and Noah!', 'Punch a tree!', 'Diamonds!', 'Watch out for creepers!', '100% blocks!', 'Also try Poly Racer!', 'Contains TNT!', 'Smooth lighting!', 'Infinite worlds!', 'Mind the lava!', 'Deepslate!', 'Not made of slop!', 'Pixel perfect!', 'Day and night!', 'Saves in your browser!'];
+const SPLASHES = ['Now with multiplayer!', 'Say hi in chat!', 'Now with ores!', 'Made by Lars and Noah!', 'Punch a tree!', 'Diamonds!', 'Watch out for creepers!', '100% blocks!', 'Also try Poly Racer!', 'Contains TNT!', 'Smooth lighting!', 'Infinite worlds!', 'Mind the lava!', 'Deepslate!', 'Not made of slop!', 'Pixel perfect!', 'Day and night!', 'Saves in your browser!'];
 let splash = SPLASHES[Math.floor(Math.random() * SPLASHES.length)];
 let logoCanvas = null;
 function drawLogo(cx, y) {
@@ -11718,9 +11753,10 @@ const TitleScreen = () => ({
     gctx.restore();
     const by = Math.floor(H * 0.12) + 60, bw = Math.min(200, W - 20), bx = Math.floor(cx - bw / 2);
     if (button(bx, by, bw, 20, 'Singleplayer')) { sfx.init(); openScreen(WorldsScreen()); }
-    if (button(bx, by + 24, bw, 20, 'Options...')) { sfx.init(); openScreen(OptionsScreen(() => openScreen(TitleScreen()))); }
-    if (button(bx, by + 48, bw, 20, 'How to play')) { sfx.init(); openScreen(ControlsScreen(() => openScreen(TitleScreen()))); }
-    drawText(gctx, 'Blockcraft 5.1', 2, H - 10, '#ffffff');
+    if (button(bx, by + 24, bw, 20, 'Multiplayer')) { sfx.init(); openScreen(MultiplayerScreen()); }
+    if (button(bx, by + 48, bw, 20, 'Options...')) { sfx.init(); openScreen(OptionsScreen(() => openScreen(TitleScreen()))); }
+    if (button(bx, by + 72, bw, 20, 'How to play')) { sfx.init(); openScreen(ControlsScreen(() => openScreen(TitleScreen()))); }
+    drawText(gctx, 'Blockcraft 6.0', 2, H - 10, '#ffffff');
     const t = 'Made by Lars and Noah';
     drawText(gctx, t, W - textWidth(t) - 2, H - 10, '#ffffff');
   },
@@ -11763,6 +11799,48 @@ const WorldsScreen = () => {
     key(e) { if (e.code === 'Escape') openScreen(TitleScreen()); },
   };
 };
+// The public server: one world for everyone, always open
+const MultiplayerScreen = () => {
+  const field = document.getElementById('field1');
+  field.value = MP.savedName();
+  let err = '', joining = false;
+  const peek = () => MP.peek().catch(() => {});
+  peek();
+  const join = () => {
+    if (joining || MP.status() === 'connecting') return;
+    const name = MP.cleanName(field.value);
+    if (!name) { err = 'Type a name first (letters, numbers, _ and spaces).'; return; }
+    sfx.init(); joining = true; err = '';
+    MP.join(name).then(() => hideFields()).catch(e => { joining = false; err = e === 'taken' ? 'Someone on the server is already called ' + name + '.' : 'Couldn\'t connect to the server. Check your internet and try again.'; });
+  };
+  return {
+    name: 'multiplayer', submit: join,
+    draw() {
+      const W = gui.W, H = gui.H, cx = W / 2, fw = Math.min(220, W - 20), fx = Math.floor(cx - fw / 2), st = MP.status();
+      dirtBackground(0.25);
+      centerText(gctx, 'Multiplayer', cx, 10, '#ffffff');
+      fill(fx - 4, 26, fw + 8, 62, 'rgba(0,0,0,0.45)');
+      gctx.drawImage(itemIcon(BL.grass_block), fx, 30, 28, 28);
+      drawText(gctx, MP.INFO.name, fx + 34, 31, '#ffffff');
+      drawText(gctx, 'One world for everyone, always open.', fx + 34, 41, '#a0a0a0');
+      drawText(gctx, 'Anything goes: PvP on, commands for all.', fx + 34, 51, '#a0a0a0');
+      const ps = MP.players();
+      const line = st === 'online' ? (ps.length ? ps.length + ' playing: ' + ps.slice(0, 5).map(p => p.n).join(', ') + (ps.length > 5 ? '...' : '') : 'Nobody is on right now. Be the first!')
+        : st === 'offline' ? 'Can\'t reach the server right now.' : 'Connecting...';
+      drawText(gctx, line, fx, 64, st === 'offline' ? '#ff8080' : st === 'online' ? '#80ff80' : '#a0a0a0');
+      if (MP.created()) drawText(gctx, 'You first joined on ' + new Date(MP.created()).toLocaleDateString(), fx, 75, '#707070');
+      drawText(gctx, 'Your name', fx, 96, '#a0a0a0');
+      textField('field1', fx, 106, fw, 20, 'Name');
+      if (err) drawText(gctx, err, fx, 130, '#ff8080');
+      const bw = Math.min(150, (W - 30) / 2);
+      if (st === 'offline' && !joining) { if (button(Math.floor(cx - bw - 4), H - 30, bw, 20, 'Try Again')) { err = ''; peek(); } }
+      else if (button(Math.floor(cx - bw - 4), H - 30, bw, 20, joining ? 'Joining...' : 'Join Server', !joining && st === 'online')) join();
+      if (button(Math.floor(cx + 4), H - 30, bw, 20, 'Back')) { hideFields(); openScreen(TitleScreen()); }
+    },
+    key(e) { if (e.code === 'Escape') { hideFields(); openScreen(TitleScreen()); } else if (e.code === 'Enter') join(); },
+  };
+};
+document.getElementById('field1').addEventListener('keydown', e => { if (e.code === 'Enter' && screen && screen.submit) screen.submit(); });
 const CreateScreen = () => {
   let mode = 'survival';
   const n = listWorlds().length + 1;
@@ -11850,14 +11928,15 @@ const LoadingScreen = title => ({
   draw() {
     dirtBackground(0.25);
     const p = loadProgress(), cx = gui.W / 2, cy = gui.H / 2;
-    centerText(gctx, title || 'Loading world', cx, cy - 20, '#ffffff');
-    centerText(gctx, 'Building terrain', cx, cy - 6, '#a0a0a0');
+    const syncing = MP.on() && !MP.ready();
+    centerText(gctx, title || (MP.on() ? 'Joining the ' + game.info.name : 'Loading world'), cx, cy - 20, '#ffffff');
+    centerText(gctx, syncing && p >= 1 ? MP.syncText() : 'Building terrain', cx, cy - 6, '#a0a0a0');
     fill(cx - 50, cy + 8, 100, 4, '#808080'); fill(cx - 50, cy + 8, Math.round(100 * p), 4, '#80ff80');
-    if (p >= 1) finishLoading();
+    if (p >= 1 && !syncing) finishLoading();
   },
 });
 const PauseScreen = () => ({
-  name: 'pause', pauses: true,
+  name: 'pause', pauses: !MP.on(),   // the public server keeps going while you're in the menu
   draw() {
     const W = gui.W, H = gui.H, cx = W / 2, by = Math.floor(H / 4) + 8;
     fill(0, 0, W, H, 'rgba(0,0,0,0.6)');
@@ -11865,8 +11944,8 @@ const PauseScreen = () => ({
     if (button(cx - 100, by, 200, 20, 'Back to Game')) closeScreen();
     if (button(cx - 100, by + 24, 98, 20, 'Options...')) openScreen(OptionsScreen(() => openScreen(PauseScreen())));
     if (button(cx + 2, by + 24, 98, 20, 'How to play')) openScreen(ControlsScreen(() => openScreen(PauseScreen())));
-    if (button(cx - 100, by + 48, 200, 20, 'Save and Quit to Title')) quitToTitle();
-    drawText(gctx, game.info ? game.info.name : '', 4, H - 10, '#a0a0a0');
+    if (button(cx - 100, by + 48, 200, 20, MP.on() ? 'Disconnect' : 'Save and Quit to Title')) quitToTitle();
+    drawText(gctx, game.info ? game.info.name + (MP.on() ? ' · ' + MP.players().length + ' playing' : '') : '', 4, H - 10, '#a0a0a0');
   },
   key(e) { if (e.code === 'Escape') closeScreen(); },
 });
@@ -11877,8 +11956,7 @@ const DeathScreen = () => ({
     const grd = gctx.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, 'rgba(80,0,0,0.6)'); grd.addColorStop(1, 'rgba(160,30,30,0.75)');
     gctx.fillStyle = grd; gctx.fillRect(0, 0, W, H);
     centerText(gctx, 'You died!', cx, Math.floor(H / 4), '#ffffff', true, 2);
-    const by = player.lastCause === 'mob' && player.lastHurtBy ? 'was slain by ' + titleCase(player.lastHurtBy) : DEATH_MSG[player.lastCause] || 'died';
-    centerText(gctx, 'Player ' + by, cx, Math.floor(H / 4) + 26, '#ffffff');
+    centerText(gctx, deathText(), cx, Math.floor(H / 4) + 26, '#ffffff');
     if (button(cx - 100, Math.floor(H / 4) + 52, 200, 20, 'Respawn')) respawn();
     if (button(cx - 100, Math.floor(H / 4) + 76, 200, 20, 'Title Screen')) { player.dead = false; player.health = 20; quitToTitle(); }
   },
@@ -11901,10 +11979,13 @@ document.getElementById('chat').addEventListener('keydown', e => {
 for (const id of ['field1', 'field2']) document.getElementById(id).addEventListener('keydown', e => e.stopPropagation());
 
 function runCommand(text) {
-  if (!text.startsWith('/')) { chat('<Player> ' + text); return; }
+  if (!text.startsWith('/')) { if (MP.on()) MP.say(text); else chat('<Player> ' + text); return; }
   const [cmd, ...args] = text.slice(1).split(/\s+/);
   const w = game.world, ents = game.entities;
   const bad = msg => chat(msg, '#ff5555'), ok = msg => chat(msg, '#aaaaaa');
+  // on the public server everyone can use every command; /list is only there
+  if (MP.on() && cmd === 'list') { const ps = MP.players(); ok(ps.length + ' playing: ' + ps.map(p => p.n).join(', ')); return; }
+  if (MP.on() && cmd === 'help') chat('/list: who\'s playing on the server', '#ffff55');
   switch (cmd) {
     case 'help':
       chat('/gamemode survival|creative, /time set day|night, /tp x y z, /give item [count]', '#ffff55');
@@ -11922,7 +12003,9 @@ function runCommand(text) {
     case 'time': {
       const v = args[1], t = { day: 1000, noon: 6000, sunset: 12000, night: 13000, midnight: 18000, sunrise: 23000 }[v] ?? Number(v);
       if (args[0] !== 'set' || !isFinite(t)) { bad('Usage: /time set day|night|noon|midnight|<number>'); break; }
-      game.time = ((t % 24000) + 24000) % 24000; ok('Time set to ' + Math.floor(game.time)); break;
+      game.time = ((t % 24000) + 24000) % 24000; ok('Time set to ' + Math.floor(game.time));
+      if (MP.on()) MP.setTime(game.time);   // the whole server shares one clock
+      break;
     }
     case 'tp': {
       const [x, y, z] = args.map((a, i) => a.startsWith('~') ? player.pos.getComponent(i) + (Number(a.slice(1)) || 0) : Number(a));
@@ -11941,7 +12024,7 @@ function runCommand(text) {
     case 'clear': player.inv.fill(null); player.armor.fill(null); player.offhand = null; ok('Inventory cleared.'); break;
     case 'summon': {
       const t = (args[0] || '').replace(/^minecraft:/, '');
-      if (!MOB_DEFS[t]) { bad('Unknown mob. Try any mob, e.g. /summon blaze or /summon ender_dragon'); break; }
+      if (!MOB_DEFS[t] || MOB_DEFS[t].netOnly) { bad('Unknown mob. Try any mob, e.g. /summon blaze or /summon ender_dragon'); break; }
       const d = lookDir(new V3());
       const e = ents.spawnMob(t, player.pos.x + d.x * 4, player.pos.y + 0.5, player.pos.z + d.z * 4, { baby: args.includes('baby'), charged: args.includes('charged'), size: Number(args[1]) || undefined });
       if (e) { e.persistent = true; if (e.def.boss) ents.boss = e; ok('Summoned ' + titleCase(t)); }
@@ -11995,6 +12078,656 @@ function runCommand(text) {
     default: bad('Unknown command. Try /help');
   }
 }
+
+// =====================================================================
+// Multiplayer: the public server (6.0)
+// =====================================================================
+// One world everyone shares, open all the time. There's no game server: everyone on it talks over the arcade's
+// Supabase Realtime project, and the world itself lives in each player's browser (the save 'blockcraft-world-mp-public').
+// The terrain comes from one fixed seed, so it's the same for everybody, and it's made the first time anyone walks
+// somewhere. What players change is kept per block along with when it changed (World.stamps, seconds since EPOCH).
+// When two copies meet they merge, and for each block the newest change wins. So the world carries on between visits
+// even with nobody online: what you build on your own reaches everyone else the next time you're on with someone.
+//
+// Channels
+// - bc-public-who: Presence, the player list ({ id, n: name, j: when they joined }). The host is whoever joined first
+//   (ties broken by id). The Multiplayer screen watches it without joining, to show who's on.
+// - bc-public: to everyone. Block changes ('e'), chat ('c'), hits ('h') and the host's snapshots of where everyone is ('s').
+// - bc-public-p-<id>: a pipe between one player and the host. Positions go up it ('u'), and when someone joins they and
+//   the host swap what they each have of the world on it: 'hi' until both have heard each other, then a digest of
+//   every changed chunk ('dg'), then the chunks that differ ('ch'), then 'dn'. The host passes on to everyone the
+//   changes the newcomer brought that won.
+// Message budget: the free plan counts every send and every delivery, and allows 100 a second (2 million a month)
+// for the whole arcade. Positions cost 3n - 2 messages a tick for n players (n - 1 ups, each sent and delivered,
+// plus one snapshot delivered to n - 1), so the rate drops as more people join (MAX_HZ, BUDGET). Nothing goes out
+// while you stand still, and block changes are batched: quickly for what you do (EDIT_MS), slowly for what the
+// world does by itself, like water flowing and crops growing (SIM_MS).
+// Mobs, dropped items and the dragon fight stay on each player's own screen.
+// Testing: add ?mproom=abc to the address for a private test server (its own channels and its own save).
+const MP_SEED = 1414213562;
+const MP = (() => {
+  const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
+  const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const ROOM = (new URLSearchParams(location.search).get('mproom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
+  const BASE = ROOM ? 'bc-test-' + ROOM : 'bc-public';
+  const INFO = { id: ROOM ? 'mp-test-' + ROOM : 'mp-public', name: ROOM ? 'Test Server ' + ROOM : 'Public Server', seed: MP_SEED, mode: 'survival', mp: true };
+  const PREFS_KEY = 'blockcraft-mp';
+  const MAX_HZ = 5, BUDGET = 30;        // position updates a second at most, and messages a second they may cost in all
+  const EDIT_MS = 120, SIM_MS = 1000;   // how long block changes wait to be sent: yours, and the world's own
+  const FULL_MS = 10000;                // the host sends everyone's position this often even if nobody moved
+  const SYNC_MS = 30000;                // give up waiting for the host after this long and play anyway
+  const PART = 30000;                   // largest message, in characters of JSON
+  const RATE = 9;                       // most messages a second this browser sends
+  const EPOCH = Date.UTC(2026, 9, 1) / 1000;
+  const myId = (Math.random().toString(36) + '0000000').slice(2, 8);
+  const now = () => performance.now();
+  const stampNow = () => Math.floor(Date.now() / 1000 - EPOCH);
+  const r2 = v => Math.round(v * 100) / 100;
+  const num = v => typeof v === 'number' && isFinite(v);
+  const int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+  const prefs = (() => { try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch (e) { return {}; } })();
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {} };
+  const stats = { sent: 0, recv: 0 };
+
+  let client = null, libLoad = null;
+  let who = null, whoReady = null, main = null, pipe = null;
+  let status = 'idle';          // idle, connecting, online (watching the player list), offline
+  let joined = false, ready = false, joinT = 0, hostId = null, readyAt = 0;
+  let alone = false;            // we're host only because nobody else was on when we joined, so we haven't synced with anyone
+  let roster = [];              // [{ id, n, j }] sorted by join order
+  let seen = new Set();
+  const pipes = new Map();      // host only: player id -> their pipe
+  const sessions = new Map();   // player id -> world swap in progress with them
+  const avatars = new Map();    // player id -> how we draw them
+  const ups = new Map();        // host only: player id -> their latest position
+  const changed = new Set();    // host only: who moved since the last snapshot
+  const pend = new Map();       // block changes waiting to go: "dim,x,y,z" -> [dim, x, y, z]
+  let pendAct = false, pendT = 0, lastFull = 0, fullDue = false, upT = 0, lastUp = '', swingN = 0, lastSwing = 0;
+  let tokens = RATE, tokenT = now();
+  const queue = [];             // messages waiting for a free slot under RATE: [channel, event, payload]
+  const api = { act: false, INFO };
+
+  // ---------- the Supabase connection (shared with the arcade page when there is one) ----------
+  function getClient() {
+    if (client) return Promise.resolve(client);
+    try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(client = c); } catch (e) {}
+    if (!libLoad) libLoad = new Promise((res, rej) => {
+      if (window.supabase && window.supabase.createClient) return res();
+      const s = document.createElement('script'); s.src = SB_LIB; s.async = true;
+      s.onload = res; s.onerror = () => { libLoad = null; rej('offline'); };
+      document.head.appendChild(s);
+    });
+    return libLoad.then(() => client || (client = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } })));
+  }
+  function chan(topic, presence) {
+    const config = { broadcast: { self: false, ack: false } };
+    if (presence) config.presence = { key: myId };
+    return client.channel(topic, { config });
+  }
+  function joinChan(ch, later) {
+    return new Promise((res, rej) => {
+      let done = false;
+      const to = setTimeout(() => { if (!done) { done = true; rej('offline'); } }, 10000);
+      ch.subscribe(st => {
+        if (!done) {
+          if (st === 'SUBSCRIBED') { done = true; clearTimeout(to); res(); }
+          else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { done = true; clearTimeout(to); rej('offline'); }
+          return;
+        }
+        if (later) later(st);
+      });
+    });
+  }
+  function dropChan(ch) { if (!ch || !client) return; try { const p = client.removeChannel(ch); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+  function refill() { const t = now(); tokens = Math.min(RATE, tokens + (t - tokenT) / 1000 * RATE); tokenT = t; }
+  // send now if there's room under RATE; otherwise drop it (positions) or wait in line (everything else)
+  function send(ch, ev, payload, wait = true) {
+    if (!ch || ch.state !== 'joined') return false;
+    refill();
+    if (tokens < 1 || queue.length) { if (wait) queue.push([ch, ev, payload]); return false; }
+    tokens--; stats.sent++;
+    try { const p = ch.send({ type: 'broadcast', event: ev, payload }); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    return true;
+  }
+  function drain() {
+    refill();
+    while (queue.length && tokens >= 1) {
+      const [ch, ev, payload] = queue.shift();
+      if (ch.state !== 'joined') continue;
+      tokens--; stats.sent++;
+      try { const p = ch.send({ type: 'broadcast', event: ev, payload }); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    }
+  }
+  function listen(ch, ev, fn) {
+    ch.on('broadcast', { event: ev }, m => { stats.recv++; try { fn(m.payload || {}); } catch (e) { console.error(e); } });
+  }
+
+  // ---------- who's on ----------
+  function readRoster() {
+    const st = who ? who.presenceState() : {}, out = [];
+    for (const k in st) { const m = st[k] && st[k][0]; if (m && typeof m.id === 'string' && m.id.length <= 12) out.push({ id: m.id, n: cleanName(m.n) || 'Player', j: +m.j || 0 }); }
+    if (joined && !out.some(m => m.id === myId)) out.push({ id: myId, n: api.name, j: joinT });
+    return out.sort((a, b) => a.j - b.j || (a.id < b.id ? -1 : 1));
+  }
+  function onPresence() {
+    stats.recv++;
+    const before = new Set(roster.map(m => m.id));
+    roster = readRoster();
+    const here = new Set(roster.map(m => m.id));
+    if (!joined) return;
+    for (const m of roster) if (!before.has(m.id) && m.id !== myId && seen.has(myId)) chat(m.n + ' joined the game', '#ffff55');
+    for (const id of before) if (!here.has(id)) {
+      const a = avatars.get(id); if (a && ready) chat(a.name + ' left the game', '#ffff55');
+      removeAvatar(id); ups.delete(id); changed.delete(id);
+      const s = sessions.get(id); if (s) sessions.delete(id);
+      if (pipes.has(id)) { dropChan(pipes.get(id)); pipes.delete(id); }
+    }
+    for (const id of here) seen.add(id);
+    fullDue = true;
+    elect();
+    // host: anyone new gets a pipe, and the world swap
+    if (hostId === myId) for (const m of roster) if (m.id !== myId && !pipes.has(m.id)) openPipe(m.id, false);
+  }
+  // the host is whoever has been on longest; when they leave, everyone works out the same new one
+  function elect() {
+    const first = roster.find(m => m.id === myId) ? roster[0] : null;
+    if (!first || first.id === hostId) return;
+    const was = hostId;
+    hostId = first.id;
+    if (hostId === myId) {
+      // taking over from a host who left: everyone here already shares the world with them, so they only need
+      // pipes for their positions. Host because nobody else is on: we're ready once that's held for a moment
+      // (the player list can take a moment to arrive)
+      if (was) { for (const m of roster) if (m.id !== myId) openPipe(m.id, true); alone = false; }
+      else alone = true;
+    } else {
+      for (const ch of pipes.values()) dropChan(ch);
+      pipes.clear(); ups.clear();
+      // a newcomer, or someone who thought they were alone, swaps the world with the host; so does anyone who was
+      // in the middle of a swap with a host who left
+      if (!ready || alone || [...sessions.values()].some(s => !s.done)) { sessions.clear(); startSession(hostId, pipe); ready = false; readyAt = now(); }
+      alone = false;
+    }
+    lastUp = '';  // the new host hasn't heard where we are
+  }
+  // host: open a pipe to a player; a newcomer gets the world swap
+  function openPipe(id, synced) {
+    if (pipes.has(id)) return;
+    const ch = chan(BASE + '-p-' + id);
+    pipes.set(id, ch);
+    listenPipe(ch, id);
+    joinChan(ch).then(() => { if (!synced && !sessions.has(id) && pipes.get(id) === ch) startSession(id, ch); }).catch(() => { if (pipes.get(id) === ch) pipes.delete(id); });
+  }
+  // peer: who's at the other end of the pipe. On our own pipe (peer null) that's whoever is host right now.
+  function listenPipe(ch, peer) {
+    const from = m => { const p = peer === null ? hostId : peer; return p && m.f === p ? p : null; };
+    listen(ch, 'u', m => { if (peer !== null && hostId === myId) gotState(peer, m.s, true); });
+    listen(ch, 'hi', m => { const p = from(m); if (p) onHi(p, ch, m); });
+    listen(ch, 'dg', m => { const p = from(m); if (p) onDigest(p, m); });
+    listen(ch, 'ch', m => { const p = from(m); if (p) onChunks(p, m); });
+    listen(ch, 'dn', m => { const p = from(m); if (p) onDone(p, m); });
+  }
+
+  // ---------- swapping the world with someone ----------
+  function startSession(peer, ch) {
+    const s = { peer, ch, heard: false, theyHeard: false, started: false, done: false, sentDone: false, gotDone: false, hiT: 0, t0: now(),
+      dg: {}, dgParts: 0, dgTotal: -1, recvParts: 0, waitN: 0, won: [] };
+    sessions.set(peer, s);
+    return s;
+  }
+  function onHi(peer, ch, m) {
+    if (m.f !== peer) return;
+    let s = sessions.get(peer);
+    if (!s || (s.started && !m.got)) s = startSession(peer, ch);   // they started over
+    s.heard = true; if (m.got) s.theyHeard = true;
+    if (num(m.c) && m.c > 0) { prefs.created = Math.min(prefs.created || m.c, m.c); savePrefs(); }
+  }
+  function pumpSessions() {
+    const t = now();
+    for (const s of sessions.values()) {
+      if (s.done) continue;
+      if (!s.started) {
+        // 'hi' once a second until we've each heard the other, then one more so they know we heard them
+        if (t - s.hiT > 1000) { s.hiT = t; send(s.ch, 'hi', { f: myId, got: s.heard, c: prefs.created || 0 }, false); }
+        if (!(s.heard && s.theyHeard)) continue;
+        send(s.ch, 'hi', { f: myId, got: true, c: prefs.created || 0 });
+        s.started = true;
+        sendParts(s.ch, 'dg', digestEntries(), (part, k, last) => ({ f: myId, k, last, d: Object.fromEntries(part) }));
+      }
+      if (s.sentDone && s.gotDone && s.recvParts >= s.waitN) finishSession(s);
+      else if (t - s.t0 > SYNC_MS * 2) { s.done = true; if (!ready) { ready = true; chat('Couldn\'t sync with the other players. Your changes will join theirs next time.', '#ff5555'); } }
+    }
+    if (!ready && alone && hostId === myId && t - readyAt > 1500) ready = true;
+    if (!ready && joined && t - readyAt > SYNC_MS && hostId !== myId && ![...sessions.values()].some(s => s.started)) {
+      ready = true; chat('The other players didn\'t answer. Playing your copy of the world for now.', '#ff5555');
+    }
+  }
+  function finishSession(s) {
+    s.done = true;
+    if (s.peer === hostId) ready = true;
+    alone = false;
+    // host: pass on to everyone else what the newcomer brought that was newer
+    if (hostId === myId && s.won.length) sendEdits(s.won, 0);
+    s.won = [];
+  }
+  // chunk -> a short hash of everything changed in it, so both sides only send the chunks that differ
+  function chunkHash(w, ck) {
+    const st = w.stamps.get(ck), mods = w.mods.get(ck);
+    let h = 0, n = 0;
+    for (const [i, t] of st) { const id = mods && mods.get(i) || 0; h = (h + Math.imul(Math.imul(i + 1, 0x9e3779b1) ^ Math.imul(id + 7, 0x85ebca6b) ^ Math.imul(t, 0xc2b2ae35), 0x27d4eb2f)) | 0; n++; }
+    return (h >>> 0).toString(36) + n.toString(36);
+  }
+  function mpWorlds() { const out = []; for (let d = 0; d < 3; d++) { const w = getWorld(d); if (w.stamps) out.push(w); } return out; }
+  function digestEntries() { const out = []; for (const w of mpWorlds()) for (const ck of w.stamps.keys()) out.push([w.dim + ':' + ck, chunkHash(w, ck)]); return out; }
+  // split a list into messages of at most PART characters
+  function sendParts(ch, ev, list, wrap) {
+    const parts = []; let cur = [], size = 0;
+    for (const e of list) { const l = JSON.stringify(e).length + 1; if (cur.length && size + l > PART) { parts.push(cur); cur = []; size = 0; } cur.push(e); size += l; }
+    parts.push(cur);
+    parts.forEach((p, k) => send(ch, ev, wrap(p, k, k === parts.length - 1, parts.length)));
+    return parts.length;
+  }
+  function onDigest(peer, m) {
+    const s = sessions.get(peer);
+    if (!s || s.done || m.f !== peer || !m.d || typeof m.d !== 'object') return;
+    Object.assign(s.dg, m.d); s.dgParts++;
+    if (m.last) s.dgTotal = (m.k | 0) + 1;
+    if (s.dgTotal < 0 || s.dgParts < s.dgTotal) return;
+    // send every chunk they don't have, or have differently
+    const out = [];
+    for (const w of mpWorlds()) for (const ck of w.stamps.keys()) {
+      const dk = w.dim + ':' + ck;
+      if (s.dg[dk] !== chunkHash(w, ck)) out.push(chunkData(w, ck));
+    }
+    const n = out.length ? sendParts(s.ch, 'ch', out, (part, k, last, n) => ({ f: myId, k, n, c: part })) : 0;
+    send(s.ch, 'dn', { f: myId, n });
+    s.sentDone = true;
+  }
+  function chunkData(w, ck) {
+    const st = w.stamps.get(ck), mods = w.mods.get(ck), flat = [], metas = {};
+    const bx = (Math.floor(ck / 65536) - 32768) * 16, bz = (ck % 65536 - 32768) * 16;
+    for (const [i, t] of st) {
+      flat.push(i, mods && mods.has(i) ? mods.get(i) : 0, t);
+      const m = w.meta.get((bx + (i & 15)) + ',' + (i >> 8) + ',' + (bz + ((i >> 4) & 15)));
+      if (m) metas[i] = m;
+    }
+    return [w.dim + ':' + ck, flat, metas];
+  }
+  function onChunks(peer, m) {
+    const s = sessions.get(peer);
+    if (!s || s.done || m.f !== peer || !Array.isArray(m.c)) return;
+    s.recvParts++; if (int(m.n, 1, 1e6)) s.expect = m.n;
+    for (const c of m.c) {
+      if (!Array.isArray(c) || typeof c[0] !== 'string' || !Array.isArray(c[1])) continue;
+      const [ds, cks] = c[0].split(':'), d = +ds, ck = +cks;
+      if (!int(d, 0, 2) || !int(ck, 0, 0xffffffff)) continue;
+      const w = getWorld(d), bx = (Math.floor(ck / 65536) - 32768) * 16, bz = (ck % 65536 - 32768) * 16, metas = c[2] && typeof c[2] === 'object' ? c[2] : {};
+      const list = [];
+      for (let k = 0; k + 2 < c[1].length; k += 3) {
+        const i = c[1][k], id = c[1][k + 1], t = c[1][k + 2];
+        if (!int(i, 0, 16 * 16 * WH - 1)) continue;
+        list.push([bx + (i & 15), i >> 8, bz + ((i >> 4) & 15), id, t, metas[i]]);
+      }
+      const won = applyEdits(w, list, false, true);
+      if (hostId === myId) for (const e of won) s.won.push([d, ...e]);
+    }
+  }
+  // they've sent everything (n messages of chunks); we're done once those have all arrived
+  function onDone(peer, m) { const s = sessions.get(peer); if (s && !s.done) { s.gotDone = true; s.waitN = m.n | 0; } }
+
+  // ---------- block changes ----------
+  const cleanStack = s => s && typeof s === 'object' && int(s.id, 1, 65535) && itemDef(s.id) && int(s.count, 1, 127) ? s : null;
+  // what someone else sends is checked before it goes into our world: real blocks, real items, nothing huge
+  function cleanMeta(m) {
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return null;
+    let size = 0; try { size = JSON.stringify(m).length; } catch (e) { return null; }
+    if (size > 20000) return null;
+    for (const k in m) {
+      if (Array.isArray(m[k]) && m[k].some(v => v && typeof v === 'object' && 'id' in v)) m[k] = m[k].map(cleanStack).map(v => v && v.contents && Array.isArray(v.contents) ? Object.assign(v, { contents: v.contents.map(cleanStack) }) : v);
+    }
+    return m;
+  }
+  const validBlock = id => int(id, 0, BLOCKS.length - 1) && !!BLOCKS[id];
+  // apply changes [x, y, z, id, t, meta] where they're newer than ours; returns the ones that were.
+  // fx: play the sounds and particles. bulk: one chunk's worth from a world swap; if it's a lot and the chunk is
+  // already built, it's cheaper to make the chunk again than to change it block by block
+  function applyEdits(w, list, fx, bulk) {
+    const won = [], tmax = stampNow() + 60;
+    let rebuild = null;
+    if (bulk && list.length > 48 && list.length) { const [x0, , z0] = list[0]; rebuild = w.chunk(x0 >> 4, z0 >> 4) || null; }
+    for (const [x, y, z, id, t0, meta] of list) {
+      if (!int(x, -3e7, 3e7) || !int(z, -3e7, 3e7) || !int(y, 0, WH - 1) || !validBlock(id) || !int(t0, 0, 2e9)) continue;
+      const t = Math.min(t0, tmax), ck = ckey(x >> 4, z >> 4), i = cidx(x & 15, y, z & 15);
+      let st = w.stamps.get(ck); const cur = st && st.get(i), mods = w.mods.get(ck), curId = mods && mods.has(i) ? mods.get(i) : -1;
+      if (cur !== undefined && (cur > t || (cur === t && curId >= id))) continue;
+      if (!st) w.stamps.set(ck, st = new Map());
+      const c = w.chunk(x >> 4, z >> 4);
+      const old = c ? c.blocks[i] : curId;
+      if (c && c !== rebuild) { api.applying = true; try { w.set(x, y, z, id, { keepMeta: true }); } finally { api.applying = false; } w.markDirty(c, x & 15, y, z & 15, true); }
+      setMod(w, ck, i, id);
+      st.set(i, t);
+      const k = x + ',' + y + ',' + z, m = cleanMeta(meta);
+      if (m) w.meta.set(k, m); else w.meta.delete(k);
+      if (BLOCKS[id].portal === 'nether') registerPortal(w, x, y, z, BLOCKS[id].axis2);
+      if (fx && game.world === w && old !== id && Math.abs(x - player.pos.x) < 32 && Math.abs(z - player.pos.z) < 32) {
+        const p = { x: x + 0.5, y: y + 0.5, z: z + 0.5 };
+        if (id === AIR && old > 0) { sfx.dig(BLOCKS[old].sound, p); breakParticles(w, x, y, z, old); } else if (id > 0 && !LIQUID[id]) sfx.place(BLOCKS[id].sound, p);
+      }
+      won.push([x, y, z, id, t, m || undefined]);
+    }
+    if (rebuild && won.length) { disposeChunkMeshes(rebuild); w.chunks.delete(rebuild.key); }
+    return won;
+  }
+  function setMod(w, ck, i, id) { let m = w.mods.get(ck); if (!m) w.mods.set(ck, m = new Map()); m.set(i, id); }
+  // World.set calls this for every block that changes in a shared world
+  api.changed = (w, ck, i, x, y, z) => {
+    if (api.applying) return;
+    let st = w.stamps.get(ck); if (!st) w.stamps.set(ck, st = new Map());
+    st.set(i, stampNow());
+    if (joined) { pend.set(w.dim + ',' + x + ',' + y + ',' + z, [w.dim, x, y, z]); if (api.act) pendAct = true; }
+  };
+  // something about a block changed without the block itself changing (a chest's contents)
+  api.touch = (w, x, y, z) => {
+    if (!w || !w.stamps || y < 0 || y >= WH) return;
+    const ck = ckey(x >> 4, z >> 4), i = cidx(x & 15, y, z & 15), id = w.get(x, y, z);
+    if (id < 0) return;
+    setMod(w, ck, i, id);
+    api.act = true; api.changed(w, ck, i, x, y, z); api.act = false;
+  };
+  function flushEdits() {
+    if (!pend.size) return;
+    const byDim = [[], [], []];
+    for (const [d, x, y, z] of pend.values()) {
+      const w = game.dims[d]; if (!w || !w.stamps) continue;
+      const ck = ckey(x >> 4, z >> 4), i = cidx(x & 15, y, z & 15), mods = w.mods.get(ck), st = w.stamps.get(ck);
+      if (!mods || !st || !mods.has(i)) continue;
+      byDim[d].push([x, y, z, mods.get(i), st.get(i), w.meta.get(x + ',' + y + ',' + z)]);
+    }
+    const a = pendAct ? 1 : 0;
+    pend.clear(); pendAct = false;
+    byDim.forEach((list, d) => { if (list.length) sendEdits(list.map(e => [d, ...e]), a); });
+  }
+  // edits: [dim, x, y, z, id, t, meta]
+  function sendEdits(list, a) {
+    for (let d = 0; d < 3; d++) {
+      const mine = list.filter(e => e[0] === d).map(e => e[6] ? e.slice(1, 7) : e.slice(1, 6));
+      if (mine.length) sendParts(main, 'e', mine, part => ({ f: myId, d, a, e: part }));
+    }
+  }
+  function onEdits(m) {
+    if (!joined) return;
+    if (!game.info || !game.info.mp || !int(m.d, 0, 2) || !Array.isArray(m.e)) return;
+    applyEdits(getWorld(m.d), m.e.filter(Array.isArray), !!m.a);
+  }
+
+  // ---------- where everyone is ----------
+  const hzFor = n => Math.max(1, Math.min(MAX_HZ, Math.floor(BUDGET / Math.max(1, 3 * n - 2))));
+  function myState() {
+    const s = held();
+    return [player.dim, r2(player.pos.x), r2(player.pos.y), r2(player.pos.z), r2(player.yaw), r2(player.pitch), (player.sneaking ? 1 : 0) | (player.dead ? 2 : 0), swingN & 255, s ? s.id : 0];
+  }
+  function cleanState(s) {
+    if (!Array.isArray(s) || s.length < 9 || !int(s[0], 0, 2) || ![1, 2, 3, 4, 5].every(i => num(s[i]) && Math.abs(s[i]) < 3e7)) return null;
+    return [s[0], s[1], s[2], s[3], s[4], s[5], s[6] | 0, s[7] | 0, int(s[8], 0, 65535) && itemDef(s[8]) ? s[8] : 0];
+  }
+  function gotState(id, s0, fromUp) {
+    const s = cleanState(s0); if (!s || id === myId) return;
+    if (fromUp) { ups.set(id, s); changed.add(id); }
+    const m = roster.find(r => r.id === id);
+    let a = avatars.get(id);
+    if (!a) a = makeAvatar(id, m ? m.n : 'Player');
+    else if (m && m.n !== a.name) { removeAvatar(id); a = makeAvatar(id, m.n); }
+    a.buf.push({ at: now(), s });
+    if (a.buf.length > 20) a.buf.shift();
+  }
+  function tickPositions(t) {
+    const n = Math.max(1, roster.length), hz = hzFor(n);
+    if (t - upT < 1000 / hz) return;
+    upT = t;
+    const st = myState(), key = JSON.stringify(st);
+    if (hostId === myId) {
+      const full = fullDue || t - lastFull > FULL_MS;
+      const list = [];
+      if (key !== lastUp || full) { list.push([myId, ...st]); lastUp = key; }
+      for (const [id, s] of ups) if (full || changed.has(id)) list.push([id, ...s]);
+      changed.clear();
+      if (list.length && roster.length > 1) send(main, 's', { t: Math.floor(game.time), p: list }, false);
+      if (full) { lastFull = t; fullDue = false; }
+    } else if (key !== lastUp) {
+      if (send(pipe, 'u', { s: st }, false)) lastUp = key;
+    }
+  }
+  function onSnapshot(m) {
+    if (!Array.isArray(m.p)) return;
+    for (const e of m.p) if (Array.isArray(e) && typeof e[0] === 'string') gotState(e[0], e.slice(1), false);
+    if (num(m.t) && game.info && game.info.mp && ready) {
+      let d = m.t - game.time; if (d > 12000) d -= 24000; if (d < -12000) d += 24000;
+      if (Math.abs(d) > 40) game.time = ((m.t % 24000) + 24000) % 24000;
+    }
+  }
+
+  // ---------- drawing other players ----------
+  const SHIRTS = ['#00a3a3', '#b02e26', '#5e7c16', '#c9a227', '#7b2fbe', '#d4661e', '#d46a9a', '#d8d8d8'];
+  const P_SKIN = ['#c69c7b', '#bd9070', '#cfa588', '#b78868'], P_HAIR = ['#3b2a1c', '#46301f', '#33241a'], P_PANTS = ['#3f3f9a', '#36368a', '#4646a6'];
+  const tone = hex => [0.92, 1, 1.06, 0.97].map(f => shadeHex(hex, f));
+  SHIRTS.forEach((c, k) => {
+    MOB_DEFS['player_' + k] = { netOnly: true, hp: 20, hw: 0.3, h: 1.8, parts: humanoid({ skin: P_SKIN, shirt: tone(c), pants: P_PANTS,
+      head: {
+        front: g => { px(g, 0, 0, P_HAIR[0], 8, 2); px(g, 0, 2, P_HAIR[1], 1, 1); px(g, 7, 2, P_HAIR[1], 1, 1); px(g, 1, 4, '#ffffff'); px(g, 2, 4, '#3b4f9e'); px(g, 5, 4, '#3b4f9e'); px(g, 6, 4, '#ffffff'); px(g, 3, 5, '#a8765a', 2, 1); px(g, 3, 6, '#7a4a3a', 2, 1); },
+        top: g => px(g, 0, 0, P_HAIR[0], 8, 8), back: g => px(g, 0, 0, P_HAIR[2], 8, 8),
+        left: g => { px(g, 0, 0, P_HAIR[1], 8, 2); px(g, 0, 2, P_HAIR[1], 3, 2); }, right: g => { px(g, 0, 0, P_HAIR[1], 8, 2); px(g, 5, 2, P_HAIR[1], 3, 2); },
+      },
+      arm: { all: (g, w, h, r, f) => { if (f !== 3) px(g, 0, 0, shadeHex(c, 0.9), w, f === 2 ? h : 4); } },
+      leg: { all: (g, w, h, r, f) => { if (f !== 2) px(g, 0, f === 3 ? 0 : h - 2, '#5a5a5a', w, f === 3 ? h : 2); } } }) };
+  });
+  function nameTag(name) {
+    const w = textWidth(name) + 4, h = 12, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const g = cv.getContext('2d'); g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, w, h); drawText(g, name, 2, 2, '#ffffff', false);
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+    sp.scale.set(w / 40, h / 40, 1); sp.renderOrder = 999;
+    return sp;
+  }
+  function makeAvatar(id, name) {
+    const look = (hashStr(name) >>> 0) % SHIRTS.length, m = buildMob('player_' + look);
+    const tag = nameTag(name); tag.position.y = 2.15; m.group.add(tag);
+    m.group.visible = false; scene.add(m.group);
+    const a = { id, name, m, tag, buf: [], pos: new V3(), yaw: 0, pitch: 0, dim: -1, flags: 0, swing: -1, held: 0, heldModel: null, walk: 0, punch: 0, vis: false };
+    avatars.set(id, a);
+    return a;
+  }
+  function removeAvatar(id) {
+    const a = avatars.get(id); if (!a) return;
+    scene.remove(a.m.group); disposeMaterials(a.m.group); a.tag.material.map.dispose();
+    avatars.delete(id);
+  }
+  const lerpAng = (a, b, k) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * k; };
+  function drawAvatars(dt) {
+    const hz = hzFor(Math.max(1, roster.length)), delay = 1000 / hz * 1.6 + 120, t = now() - delay;
+    for (const a of avatars.values()) {
+      const b = a.buf; if (!b.length) { a.m.group.visible = false; continue; }
+      while (b.length > 2 && b[1].at <= t) b.shift();
+      let s, k = 1;
+      if (b.length > 1 && b[0].at <= t) { s = b[1].s; k = Math.min(1, (t - b[0].at) / Math.max(1, b[1].at - b[0].at)); }
+      else s = b[0].s;
+      const p0 = b.length > 1 && b[0].at <= t ? b[0].s : s;
+      const ox = a.pos.x, oz = a.pos.z, jump = a.dim !== s[0] || a.pos.distanceTo(new V3(s[1], s[2], s[3])) > 12;
+      a.dim = s[0]; a.flags = s[6];
+      a.pos.set(p0[1] + (s[1] - p0[1]) * k, p0[2] + (s[2] - p0[2]) * k, p0[3] + (s[3] - p0[3]) * k);
+      if (jump) { a.pos.set(s[1], s[2], s[3]); b.length = 1; }
+      a.yaw = lerpAng(p0[4], s[4], k); a.pitch = p0[5] + (s[5] - p0[5]) * k;
+      if (a.swing !== s[7]) { if (a.swing >= 0) a.punch = 1; a.swing = s[7]; }
+      if (a.held !== s[8]) setHeld(a, s[8]);
+      const vis = !!game.world && game.world.dim === a.dim && (game.state === 'game' || game.state === 'loading') && !(a.flags & 2);
+      a.m.group.visible = vis; a.vis = vis;
+      if (!vis) continue;
+      // legs swing with how fast they're going, the head looks where they look
+      const spd = dt > 0 ? Math.hypot(a.pos.x - ox, a.pos.z - oz) / dt : 0;
+      a.walk += Math.min(spd, 8) * dt * 2.2;
+      const sw = Math.sin(a.walk) * Math.min(1, spd / 3) * 0.8, sneak = a.flags & 1;
+      a.punch = Math.max(0, a.punch - dt * 3);
+      for (const part of a.m.parts) {
+        const o = part.obj;
+        if (part.name === 'leg') o.rotation.x = part.side > 0 ? sw : -sw;
+        else if (part.name === 'arm') o.rotation.x = part.side > 0 && a.punch > 0 ? -Math.sin(a.punch * Math.PI) * 1.6 : (part.side > 0 ? -sw : sw) * 0.8;
+        else if (part.name === 'head') o.rotation.x = -a.pitch;
+      }
+      a.m.root.scale.y = sneak ? 0.88 : 1;   // crouched, feet still on the ground
+      a.tag.position.y = sneak ? 1.95 : 2.15;
+      a.m.group.position.copy(a.pos);
+      a.m.group.rotation.y = a.yaw + Math.PI;
+      const [ls, lb] = game.world.lightAt(Math.floor(a.pos.x), Math.floor(a.pos.y + 1), Math.floor(a.pos.z));
+      const br = Math.min(1.1, lightBright(ls, lb, U.uDaylight.value) / 0.75);
+      for (const mt of a.m.mats) mt.color.setScalar(a.hurtT > 0 ? 1 : br);
+      if (a.hurtT > 0) { a.hurtT -= dt; for (const mt of a.m.mats) mt.color.setRGB(Math.min(1, br * 1.6), br * 0.4, br * 0.4); }
+      if (a.heldModel) a.heldModel.userData.setBright(lightBright(ls, lb, U.uDaylight.value) / (a.heldModel.userData.cube ? 0.6 : 1));
+    }
+  }
+  function setHeld(a, id) {
+    a.held = id;
+    if (a.heldModel) { a.heldModel.parent.remove(a.heldModel); disposeMaterials(a.heldModel); a.heldModel = null; }
+    if (!id) return;
+    const arm = (a.m.byName.arm || []).find(p => p.side > 0);
+    if (!arm) return;
+    const it = makeItemModel(id); it.scale.setScalar(0.55); it.position.set(0, -10 / 16, 0.1); it.rotation.set(-Math.PI / 2, Math.PI / 2, 0);
+    arm.mesh.parent.add(it); a.heldModel = it;
+  }
+
+  // ---------- fighting other players ----------
+  api.rayPeer = (o, d, maxT) => {
+    let best = null, bt = maxT;
+    for (const a of avatars.values()) {
+      if (!a.vis) continue;
+      const h = a.flags & 1 ? 1.5 : 1.8, r = rayBox(o, d, [a.pos.x - 0.3, a.pos.y, a.pos.z - 0.3, a.pos.x + 0.3, a.pos.y + h, a.pos.z + 0.3], bt);
+      if (r && r.t < bt) { bt = r.t; best = a; }
+    }
+    return best ? { peer: best, t: bt } : null;
+  };
+  // the same damage a hit on a mob would do; the player who was hit takes it on their own screen
+  api.attack = a => {
+    const s = held(), d = s ? itemDef(s.id) : null, { dmg } = weaponStats(s), charge = attackCharge();
+    player.sinceAttack = 0; player.swing = 1; addExhaustion(0.1);
+    let amount = dmg * (0.2 + charge * charge * 0.8);
+    const sharp = enchLevel(s, 'sharpness'); if (sharp) amount += (0.5 * sharp + 0.5) * charge;
+    if (player.effects.strength) amount += 3 * (player.effects.strength.lvl + 1);
+    if (player.effects.weakness) amount -= 4 * (player.effects.weakness.lvl + 1);
+    const falling = player.fallStart !== null && player.vel.y < 0 && !player.onGround && !player.inWater && !player.onLadder && !player.riding;
+    if (charge > 0.9 && falling) amount *= 1.5;
+    const look = lookDir(new V3()), dir = new V3(look.x, 0, look.z).normalize(), kb = (1 + enchLevel(s, 'knockback') + (player.sprinting && charge > 0.9 ? 1 : 0)) * 0.6;
+    if (amount > 0) send(main, 'h', { f: myId, to: a.id, dmg: Math.round(Math.max(0, amount) * 10) / 10, kb: [r2(dir.x * kb), r2(dir.z * kb)], fire: enchLevel(s, 'fire_aspect') });
+    a.hurtT = 0.4; sfx.play('hit', a.pos);
+    if (d && d.tool) player.inv[player.sel] = useDurability(s, d.tool === 'sword' ? 1 : 2);
+  };
+  function onHit(m) {
+    if (m.to !== myId || !joined || !ready || !game.info || !game.info.mp || game.state !== 'game' || player.dead) return;
+    const a = avatars.get(m.f);
+    if (!a || a.dim !== player.dim || a.pos.distanceTo(player.pos) > 7 || !num(m.dmg)) return;
+    player.lastKiller = a.name;
+    const kb = Array.isArray(m.kb) ? m.kb : [0, 0];
+    if (hurtPlayer(Math.min(30, Math.max(0, m.dmg)), 'player', { x: a.pos.x, z: a.pos.z })) {
+      if (num(kb[0]) && num(kb[1])) { player.vel.x += Math.max(-3, Math.min(3, kb[0])) * 6; player.vel.z += Math.max(-3, Math.min(3, kb[1])) * 6; player.vel.y = Math.max(player.vel.y, 4); }
+      if (int(m.fire, 1, 2)) player.fire = Math.max(player.fire, 4 * m.fire);
+    }
+  }
+
+  // ---------- chat ----------
+  let chatT = 0;
+  api.say = text => {
+    text = String(text).slice(0, 120);
+    if (now() - chatT < 400) { chat('You\'re sending messages too fast.', '#ff5555'); return; }
+    chatT = now();
+    chat('<' + api.name + '> ' + text);
+    send(main, 'c', { f: myId, m: text });
+  };
+  api.setTime = t => { send(main, 'tm', { t: Math.floor(t) }); send(main, 'c', { f: myId, m: api.name + ' set the time to ' + Math.floor(t), k: 'info' }); };
+  function onTime(m) { if (joined && ready && game.info && game.info.mp && int(m.t, 0, 23999)) game.time = m.t; }
+  api.announce = text => { chat(text, '#ffffff'); send(main, 'c', { f: myId, m: String(text).slice(0, 160), k: 'info' }); };
+  function onChat(m) {
+    if (!joined || !ready || typeof m.m !== 'string') return;
+    const r = roster.find(p => p.id === m.f), name = r ? r.n : 'Player', text = m.m.slice(0, 160).replace(/[\u0000-\u001f]/g, '');
+    if (m.k === 'info') chat(text, '#ffffff'); else chat('<' + name + '> ' + text);
+  }
+
+  // ---------- joining and leaving ----------
+  function cleanName(n) { return String(n || '').replace(/[^A-Za-z0-9_ ]/g, '').trim().slice(0, 16); }
+  api.cleanName = cleanName;
+  // the Multiplayer screen watches the player list without joining
+  api.peek = () => {
+    if (whoReady) return whoReady;
+    status = 'connecting';
+    whoReady = getClient().then(() => {
+      who = chan(BASE + '-who', true);
+      who.on('presence', { event: 'sync' }, onPresence);
+      // back after losing the connection: say we're here again, and catch up on what we missed
+      return joinChan(who, st => {
+        if (st !== 'SUBSCRIBED' || !joined) return;
+        who.track({ id: myId, n: api.name, j: joinT }).catch(() => {});
+        if (ready && hostId && hostId !== myId) { sessions.clear(); startSession(hostId, pipe); }
+      });
+    }).then(() => { status = 'online'; roster = readRoster(); }).catch(e => { status = 'offline'; dropChan(who); who = null; whoReady = null; throw e; });
+    return whoReady;
+  };
+  api.join = async name => {
+    api.name = cleanName(name) || 'Player';
+    prefs.name = api.name; savePrefs();
+    await api.peek();
+    if (roster.some(m => m.n.toLowerCase() === api.name.toLowerCase())) throw 'taken';
+    main = chan(BASE); pipe = chan(BASE + '-p-' + myId);
+    listen(main, 'e', onEdits); listen(main, 's', onSnapshot); listen(main, 'c', onChat); listen(main, 'h', onHit); listen(main, 'tm', onTime);
+    listenPipe(pipe, null);
+    try { await Promise.all([joinChan(main), joinChan(pipe)]); }
+    catch (e) { dropChan(main); dropChan(pipe); main = pipe = null; throw e; }
+    joinT = Date.now(); joined = true; ready = false; readyAt = now(); hostId = null; alone = false; seen = new Set(); roster = [];
+    if (!prefs.created) { prefs.created = Date.now(); savePrefs(); }
+    await who.track({ id: myId, n: api.name, j: joinT }).catch(() => {});
+    // wait (briefly) for the player list to include us
+    for (let k = 0; k < 30 && !readRoster().some(m => m.id === myId && who.presenceState()[myId]); k++) await new Promise(r => setTimeout(r, 100));
+    roster = readRoster(); seen = new Set(roster.map(m => m.id));
+    elect();
+    startWorld(INFO);
+  };
+  api.leave = () => {
+    if (!joined) return;
+    flushEdits(); drain();
+    joined = false; ready = false; hostId = null;
+    const chans = [main, pipe, ...pipes.values()];
+    main = pipe = null; pipes.clear(); sessions.clear(); ups.clear(); changed.clear(); pend.clear(); queue.length = 0;
+    for (const id of [...avatars.keys()]) removeAvatar(id);
+    try { if (who) who.untrack().catch(() => {}); } catch (e) {}
+    setTimeout(() => chans.forEach(dropChan), 500);
+  };
+  api.on = () => joined && !!game.info && !!game.info.mp;
+  api.ready = () => ready;
+  api.status = () => status;
+  api.players = () => roster;
+  api.isHost = () => hostId === myId;
+  api.savedName = () => prefs.name || '';
+  api.created = () => prefs.created || 0;
+  api.syncText = () => {
+    const s = [...sessions.values()].find(x => !x.done);
+    if (!s || !s.started) return 'Finding the other players';
+    return 'Syncing the world' + (s.expect ? ' (' + Math.min(99, Math.round(s.recvParts / s.expect * 100)) + '%)' : '');
+  };
+  // for tests and the console: who we're drawing, who's host
+  api._debug = () => ({ me: myId, host: hostId, ready, sessions: [...sessions.values()].map(x => ({ peer: x.peer, done: x.done })), avatars: [...avatars.values()].map(x => ({ id: x.id, name: x.name, vis: x.vis, pos: x.pos.toArray() })), stats });
+  api.debug = () => `Public server: ${roster.length} on, ${hzFor(Math.max(1, roster.length))} Hz${hostId === myId ? ', host' : ''}, sent ${stats.sent}, got ${stats.recv}`;
+  // every frame, in the game or not
+  api.frame = dt => {
+    if (!joined) return;
+    const t = now();
+    if (player.swing >= 0.95 && lastSwing < 0.95) swingN++;
+    lastSwing = player.swing;
+    pumpSessions();
+    if (pend.size && t - pendT > (pendAct ? EDIT_MS : SIM_MS)) { pendT = t; flushEdits(); }
+    if (!pend.size) pendT = t;
+    if (ready && game.state === 'game' && game.info && game.info.mp) tickPositions(t);
+    drawAvatars(dt);
+    drain();
+  };
+  // keep the world swap going even while the tab is in the background (no animation frames there)
+  setInterval(() => { if (joined && document.hidden) { pumpSessions(); drain(); if (pend.size) flushEdits(); } }, 1000);
+  return api;
+})();
 
 // ---------------- Input ----------------
 function lockPointer() {
@@ -12176,6 +12909,7 @@ function runFrame(now) {
   // touch: holding still on the world breaks blocks
   if (isTouch && touchUI.lookId !== null && performance.now() - touchUI.startT > 320 && touchUI.moved < 24) input.attack = true;
   if (game.state === 'game' && game.world && !(screen && screen.pauses)) updateGame(dt);
+  MP.frame(dt);
   if (game.world) { updateSky(); nightVision(); }
   updateCamera(dt);
   renderer.clear();
@@ -12224,6 +12958,27 @@ if (resumeInfo) { startWorld(resumeInfo); chat('The graphics reset, so the game 
 else startTitleWorld();
 requestAnimationFrame(frame);
 
+</script>
+<div id="bcNotice" role="dialog" aria-modal="true" aria-labelledby="bcNoticeT" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.72);font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;touch-action:auto;-webkit-user-select:text;user-select:text">
+  <div style="width:min(440px,100%);background:#1d1f24;color:#eceff4;border:1px solid rgba(255,255,255,.14);border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.6);padding:24px 22px 20px;text-align:center;line-height:1.5">
+    <div style="font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f0b44c;margin-bottom:8px">Notice</div>
+    <h2 id="bcNoticeT" style="margin:0 0 10px;font-size:22px;font-weight:800">Blockcraft has been discontinued</h2>
+    <p style="margin:0 0 10px;font-size:15px;color:#c9ced8">Blockcraft is no longer in active development and will not receive any further updates.</p>
+    <p style="margin:0 0 10px;font-size:15px;color:#c9ced8">Its final update, 6.0, adds a public multiplayer server: press Multiplayer on the title screen to join a world everyone shares.</p>
+    <p style="margin:0 0 18px;font-size:15px;color:#c9ced8">The game remains fully playable, and your saved worlds are unaffected. Thank you for playing.</p>
+    <button id="bcNoticeOk" type="button" style="font:inherit;font-weight:800;font-size:16px;padding:11px 28px;border:0;border-radius:8px;background:#4c8bf5;color:#fff;cursor:pointer;touch-action:manipulation">Continue</button>
+  </div>
+</div>
+<script>
+(function () {
+  var n = document.getElementById('bcNotice'), ok = document.getElementById('bcNoticeOk');
+  var stop = function (e) { if (document.body.contains(n)) e.stopPropagation(); };
+  ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'wheel', 'keydown', 'keyup'].forEach(function (t) { n.addEventListener(t, stop); });
+  var close = function () { if (n.parentNode) n.parentNode.removeChild(n); };
+  ok.addEventListener('click', close);
+  ok.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); close(); } });
+  try { ok.focus(); } catch (e) {}
+})();
 </script>
 </body>
 </html>

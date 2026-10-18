@@ -23,7 +23,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=10">
+<link rel="stylesheet" href="arcade.css?v=11">
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
@@ -62,17 +62,24 @@
   intro.addEventListener('animationend', e => { if (e.target === intro) done(); });
 })();
 </script>
+<div id="notice" class="notice" role="dialog" aria-modal="true" aria-labelledby="noticeT" hidden>
+  <div class="notice-box">
+    <div class="notice-tag">Notice</div>
+    <h2 id="noticeT">Blockcraft has been discontinued</h2>
+    <p>Blockcraft won't get any more updates. Its final updates are out now:</p>
+    <ul>
+      <li><b>A public multiplayer server.</b> One world everyone shares, open all the time. Press Multiplayer on the title screen to join.</li>
+      <li><b>Commands for everyone</b> on the server, like /gamemode, /give and /time.</li>
+    </ul>
+    <p>The game stays fully playable, and your saved worlds are safe.</p>
+    <button id="noticeOk" class="notice-ok" type="button">Okay</button>
+  </div>
+</div>
 <header class="top">
   <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">Noah and Lars' Arcade</a>
   <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
 </header>
 
-<div id="popup" class="popup" role="status" hidden>
-  <span class="popup-badge">Update</span>
-  <a class="popup-text" href="play.html?game=blockcraft"><b>Blockcraft 5.1!</b> <span>Boats, fishing, fireworks, Minecraft textures and classic tool icons, plus stairs, slabs and fences for every wood.</span></a>
-  <a class="popup-play" href="play.html?game=blockcraft">Play</a>
-  <button class="popup-x" type="button" aria-label="Close">×</button>
-</div>
 
 <main class="wrap">
   <div id="online" class="live" role="status" hidden><i aria-hidden="true"></i><b>0</b><span>people on the arcade right now</span></div>
@@ -103,7 +110,7 @@
   <p>Found a bug, or a game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=61"></script>
+<script src="games.js?v=73"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
@@ -130,7 +137,7 @@ function renderFeature() {
       <span class="btn big"><span aria-hidden="true">▶</span> Play now</span>
     </div>`;
   f.querySelector('img').src = g.thumb;
-  f.querySelector('.eyebrow').textContent = g.id === 'cube-assault' ? 'MULTIPLAYER SUPPORT ADDED' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
+  f.querySelector('.eyebrow').textContent = g.id === 'russian-roulette' ? 'New gamemode: Buckshot' : g.id === 'cube-assault' ? 'MULTIPLAYER SUPPORT ADDED' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
   f.querySelector('h1').textContent = g.title;
   f.querySelector('.feature-tag').textContent = g.tagline;
   const meta = f.querySelector('.feature-meta');
@@ -208,15 +215,21 @@ function render() {
 
 $('search').addEventListener('input', render);
 
-// Update popup at the top. Change POPUP_ID (and the text above) to announce something new; closing it hides that one for good.
+// The Blockcraft notice in the middle of the screen, once per visit (after the intro); Okay closes it
 (() => {
-  const POPUP_ID = 'blockcraft-5.1', pop = $('popup');
-  if (readSave('arcade-popup-closed') === POPUP_ID) return;
-  pop.hidden = false;
-  pop.querySelector('.popup-x').onclick = () => {
-    pop.hidden = true;
-    try { localStorage.setItem('arcade-popup-closed', POPUP_ID); } catch (e) {}
+  let seen = false;
+  try { seen = sessionStorage.getItem('notice-seen'); } catch (e) {}
+  if (seen) return;
+  const box = $('notice'), ok = $('noticeOk');
+  const show = () => {
+    if ($('intro')) { setTimeout(show, 200); return; }
+    box.hidden = false; ok.focus();
   };
+  ok.addEventListener('click', () => {
+    box.hidden = true;
+    try { sessionStorage.setItem('notice-seen', '1'); } catch (e) {}
+  });
+  show();
 })();
 renderFeature(); renderRecent(); renderNews(); render();
 // Live count of everyone on the arcade (home page and every game)
@@ -226,17 +239,6 @@ ArcadeOnline.subscribe(c => {
   $('online').querySelector('b').textContent = ArcadeOnline.label(c.total, c);
   $('online').querySelector('span').textContent = (c.total === 1 && !c.full ? 'person' : 'people') + ' on the arcade right now';
 });
-// The update popup floats over the top of the page, so keep the live count just below it while it's open
-function fitLive() {
-  const pop = $('popup'), live = $('online');
-  live.style.marginTop = '';
-  if (pop.hidden) return;
-  const gap = pop.getBoundingClientRect().bottom + 12 - live.getBoundingClientRect().top;
-  if (gap > 0) live.style.marginTop = (parseFloat(getComputedStyle(live).marginTop) + gap) + 'px';
-}
-ArcadeOnline.subscribe(() => requestAnimationFrame(fitLive));
-addEventListener('resize', fitLive);
-$('popup').querySelector('.popup-x').addEventListener('click', fitLive);
 ArcadeOnline.start('home');
 // scores change while you play in another tab, so refresh when you come back
 addEventListener('pageshow', () => { renderFeature(); renderRecent(); render(); });

@@ -14,7 +14,7 @@ Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade
 | [Poly Racer](poly-racer/) | 3D time-trial racing | Keyboard or touch |
 | [Free Criminal](free-criminal/) | Open-world crime | Keyboard + mouse |
 | [Cube Tower Defense](cube-tower-defense/) | Tower defense | Mouse or touch |
-| [Blockcraft](blockcraft/) | 3D block sandbox with the Nether and the End (survival and creative) | Keyboard + mouse or touch |
+| [Blockcraft](blockcraft/) | 3D block sandbox with the Nether, the End and a public multiplayer server (survival and creative) | Keyboard + mouse or touch |
 | [Russian Roulette](russian-roulette/) | First-person thriller | Mouse, keyboard or touch |
 | [Chess](chess/) | Chess against the computer (Easy, Medium, Hard) | Mouse or touch |
 | [Stocks Game](bull-run/) | Stock-trading strategy | Mouse, keyboard or touch |
