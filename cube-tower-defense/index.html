@@ -61,7 +61,8 @@
   /* HUD over the board */
   #hud { position: absolute; inset: 0; pointer-events: none; }
   .pill { background: rgba(10, 14, 20, .72); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(6px); }
-  #baseBox { position: absolute; left: 14px; top: 14px; width: 230px; }
+  #baseBox { position: absolute; left: 14px; top: 14px; width: 150px; padding: 6px 10px; transform: translate(-50%, -100%); pointer-events: none; z-index: 2; } /* 1.2.1: placed over the fort every frame */
+  #baseBox::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -7px; border: 7px solid transparent; border-bottom: 0; border-top-color: rgba(10, 14, 20, .72); }
   #baseBox .row { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; letter-spacing: .08em; font-size: 13px; text-transform: uppercase; color: var(--muted); }
   #baseHp { font-family: var(--display); font-size: 22px; color: var(--ink); letter-spacing: 0; }
   .bar { height: 9px; border-radius: 99px; background: rgba(0, 0, 0, .5); overflow: hidden; margin-top: 6px; }
@@ -198,7 +199,7 @@
     #coins { font-size: 22px; }
     .tcard { grid-template-columns: 44px 1fr; }
     .tcard img { width: 44px; height: 44px; }
-    #baseBox { width: 180px; }
+    #baseBox { width: 128px; }
   }
   @media (max-height: 520px) and (min-aspect-ratio: 1/1) {
     #side { width: 220px; padding: 10px; gap: 6px; }
@@ -273,7 +274,7 @@
       <button class="btn" data-action="play">Play</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v1.2 · What's new</button>
+    <button class="link" data-action="notes">v1.2.1 · What's new</button>
   </div>
 
   <div class="menu" id="menu-profile">
@@ -316,6 +317,10 @@
       <div><img data-av="flamer" alt=""><span><b>Flamethrower · 110</b>Cheaper (it was 150).</span></div>
     </div>
     <div class="notes panelbox">
+      <h3>v1.2.1 <span>Base health</span></h3>
+      <ul>
+        <li>Your base's health now floats right on top of your fort, instead of in the top-left corner.</li>
+      </ul>
       <h3>v1.2 <span>Upgrades</span></h3>
       <ul>
         <li>Click any unit you have placed to see its upgrades under your coins: the upgrade’s name, what it does, and a button to buy it.</li>
@@ -381,6 +386,10 @@
       <div><img data-av="flamer" alt=""><span><b>Flamethrower · 110</b>Cheaper (it was 150).</span></div>
     </div>
     <div class="notes panelbox">
+      <h3>v1.2.1 <span>Base health</span></h3>
+      <ul>
+        <li>Your base's health now floats right on top of your fort, instead of in the top-left corner.</li>
+      </ul>
       <h3>v1.2 <span>Upgrades</span></h3>
       <ul>
         <li>Click any unit you have placed to see its upgrades under your coins: the upgrade’s name, what it does, and a button to buy it.</li>
@@ -1147,8 +1156,8 @@ function submitName() { const v = nameInput.value.trim().slice(0, 16); if (!v) r
 nameInput.addEventListener('input', () => { $('nameOk').disabled = !nameInput.value.trim(); }); nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitName(); });
 $('nameOk').addEventListener('click', submitName); $('renameBtn').addEventListener('click', () => openNameMenu(false));
 $('profileBtn').addEventListener('click', () => { Sound.init(); Sound.play('click'); openSub('profile'); });
-const VERSION = '1.2';
-function maybeNews() { if (settings.seenVersion !== VERSION) openSub('news'); }
+const VERSION = '1.2.1', NEWS_VERSION = '1.2'; // 1.2.1 is a small update: no new pop-up
+function maybeNews() { if (settings.seenVersion !== VERSION && settings.seenVersion !== NEWS_VERSION) openSub('news'); }
 $('newsOk').addEventListener('click', () => { settings.seenVersion = VERSION; saveSettings(); Sound.init(); Sound.play('click'); showMenu('main'); });
 addEventListener('pagehide', () => { saveProfile(); });
 addEventListener('pointerdown', () => Sound.init()); addEventListener('keydown', () => Sound.init());
@@ -1190,10 +1199,20 @@ function tick() {
   updateFx(state === 'paused' ? 0 : rdt * (state === 'play' ? speed : 1));
   bannerT -= rdt; if (bannerT <= 0) $('banner').style.opacity = 0;
   if (scene.userData.flag) scene.userData.flag.rotation.y = Math.sin(performance.now() / 400) * 0.25;
+  placeBaseBox();
   const base = camera.userData.base; if (base) { camera.position.copy(base); if (shake > 0) { camera.position.x += rand(-shake, shake); camera.position.z += rand(-shake, shake); shake = Math.max(0, shake - rdt * 0.6); } if (hurtFlash > 0) { shake = Math.max(shake, 0.25 * hurtFlash); hurtFlash = 0; } }
   renderer.render(scene, camera);
 }
 
+// 1.2.1: the base's health sits on top of the fort
+const _bb = new THREE.Vector3();
+function placeBaseBox() {
+  const f = scene.userData.flag, box = $('baseBox'); if (!f || !box) return;
+  f.parent.updateMatrixWorld(); _bb.set(f.parent.position.x + 0.5, 11.2, f.parent.position.z).project(camera);
+  const c = renderer.domElement, w = c.clientWidth, h = c.clientHeight, bw = box.offsetWidth, bh = box.offsetHeight;
+  const x = Math.min(w - bw / 2 - 6, Math.max(bw / 2 + 6, (_bb.x + 1) / 2 * w)), y = Math.min(h - 6, Math.max(bh + 6, (1 - _bb.y) / 2 * h));
+  box.style.left = x + 'px'; box.style.top = y + 'px';
+}
 // ---------- Boot ----------
 renderAvatars();
 buildBoard();
