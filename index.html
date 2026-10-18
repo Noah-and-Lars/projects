@@ -202,7 +202,10 @@ function renderNews() {
 
 function render() {
   const q = $('search').value.trim().toLowerCase();
-  const list = GAMES.filter(g =>
+  // the order of the All games grid: these eight first (two rows of four), then everything else as listed in games.js
+  const FIRST = ['cube-assault', 'russian-roulette', 'free-criminal', 'bull-run', 'gamble-your-life-away', 'cube-tower-defense', 'chess', 'havoc-bay'];
+  const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
+  const list = [...GAMES].sort((a, b) => rank(a) - rank(b)).filter(g =>
     (active === 'All' || g.category === active) &&
     (!q || (g.title + ' ' + g.description + ' ' + g.category).toLowerCase().includes(q)));
   $('grid').replaceChildren(...list.map(tile));
