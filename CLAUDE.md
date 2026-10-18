@@ -97,8 +97,8 @@ source in Settings → Pages should be switched to `main`.
   Supabase project (sharing `ArcadeOnline.client()` when on the play page): `bc-public-who` is Presence (the player
   list; the host is whoever joined first), `bc-public` carries block changes, chat, PvP hits and the host's
   position snapshots, and `bc-public-p-<id>` is a pipe from each player to the host for positions and for the
-  world swap when someone joins. Mobs, dropped items and the dragon stay on each player's screen. Cheat commands
-  are off there. The player's name and first-join date are in `blockcraft-mp`. For testing, `?mproom=<name>`
+  world swap when someone joins. Mobs, dropped items and the dragon stay on each player's screen. Every command
+  works there for everyone (gamemode is kept per player); `/time set` changes the time for the whole server. The player's name and first-join date are in `blockcraft-mp`. For testing, `?mproom=<name>`
   opens a private test server with its own channels and save: never test on the real one.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.

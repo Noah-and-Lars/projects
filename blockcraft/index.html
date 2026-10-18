@@ -10070,11 +10070,10 @@ function startWorld(info) {
   game.daysAwake = data && data.daysAwake || 0; game.dayCount = data && data.dayCount || 0;
   resetPlayer();
   player.mode = info.mode; player.dim = dim;
-  if (info.mp) player.mode = 'survival';
   if (data && data.player) {
     const p = data.player;
     player.pos.fromArray(p.pos); player.yaw = p.yaw; player.pitch = p.pitch;
-    Object.assign(player, { health: p.health, food: p.food, sat: p.sat, spawn: p.spawn, sel: p.sel || 0, flying: !!p.flying && !info.mp, mode: info.mp ? 'survival' : p.mode || info.mode,
+    Object.assign(player, { health: p.health, food: p.food, sat: p.sat, spawn: p.spawn, sel: p.sel || 0, flying: !!p.flying, mode: p.mode || info.mode,
       xp: p.xp || 0, anchor: p.anchor || null, sleptDay: p.sleptDay || 0, effects: p.effects || {} });
     p.inv.forEach((s, i) => { player.inv[i] = s; });
     if (p.armor) p.armor.forEach((s, i) => { player.armor[i] = s; });
@@ -11824,7 +11823,7 @@ const MultiplayerScreen = () => {
       gctx.drawImage(itemIcon(BL.grass_block), fx, 30, 28, 28);
       drawText(gctx, MP.INFO.name, fx + 34, 31, '#ffffff');
       drawText(gctx, 'One world for everyone, always open.', fx + 34, 41, '#a0a0a0');
-      drawText(gctx, 'Survival. Anything goes, PvP is on.', fx + 34, 51, '#a0a0a0');
+      drawText(gctx, 'Anything goes: PvP on, commands for all.', fx + 34, 51, '#a0a0a0');
       const ps = MP.players();
       const line = st === 'online' ? (ps.length ? ps.length + ' playing: ' + ps.slice(0, 5).map(p => p.n).join(', ') + (ps.length > 5 ? '...' : '') : 'Nobody is on right now. Be the first!')
         : st === 'offline' ? 'Can\'t reach the server right now.' : 'Connecting...';
@@ -11984,12 +11983,9 @@ function runCommand(text) {
   const [cmd, ...args] = text.slice(1).split(/\s+/);
   const w = game.world, ents = game.entities;
   const bad = msg => chat(msg, '#ff5555'), ok = msg => chat(msg, '#aaaaaa');
-  // the public server is plain survival: no cheats
-  if (MP.on()) {
-    if (cmd === 'help') { chat('/list: who\'s playing, /kill: start again at your spawn point, /seed: the world\'s seed', '#ffff55'); return; }
-    if (cmd === 'list') { const ps = MP.players(); ok(ps.length + ' playing: ' + ps.map(p => p.n).join(', ')); return; }
-    if (cmd !== 'kill' && cmd !== 'seed') { bad('That command is turned off on the public server. Try /help'); return; }
-  }
+  // on the public server everyone can use every command; /list is only there
+  if (MP.on() && cmd === 'list') { const ps = MP.players(); ok(ps.length + ' playing: ' + ps.map(p => p.n).join(', ')); return; }
+  if (MP.on() && cmd === 'help') chat('/list: who\'s playing on the server', '#ffff55');
   switch (cmd) {
     case 'help':
       chat('/gamemode survival|creative, /time set day|night, /tp x y z, /give item [count]', '#ffff55');
@@ -12007,7 +12003,9 @@ function runCommand(text) {
     case 'time': {
       const v = args[1], t = { day: 1000, noon: 6000, sunset: 12000, night: 13000, midnight: 18000, sunrise: 23000 }[v] ?? Number(v);
       if (args[0] !== 'set' || !isFinite(t)) { bad('Usage: /time set day|night|noon|midnight|<number>'); break; }
-      game.time = ((t % 24000) + 24000) % 24000; ok('Time set to ' + Math.floor(game.time)); break;
+      game.time = ((t % 24000) + 24000) % 24000; ok('Time set to ' + Math.floor(game.time));
+      if (MP.on()) MP.setTime(game.time);   // the whole server shares one clock
+      break;
     }
     case 'tp': {
       const [x, y, z] = args.map((a, i) => a.startsWith('~') ? player.pos.getComponent(i) + (Number(a.slice(1)) || 0) : Number(a));
@@ -12641,6 +12639,8 @@ const MP = (() => {
     chat('<' + api.name + '> ' + text);
     send(main, 'c', { f: myId, m: text });
   };
+  api.setTime = t => { send(main, 'tm', { t: Math.floor(t) }); send(main, 'c', { f: myId, m: api.name + ' set the time to ' + Math.floor(t), k: 'info' }); };
+  function onTime(m) { if (joined && ready && game.info && game.info.mp && int(m.t, 0, 23999)) game.time = m.t; }
   api.announce = text => { chat(text, '#ffffff'); send(main, 'c', { f: myId, m: String(text).slice(0, 160), k: 'info' }); };
   function onChat(m) {
     if (!joined || !ready || typeof m.m !== 'string') return;
@@ -12673,7 +12673,7 @@ const MP = (() => {
     await api.peek();
     if (roster.some(m => m.n.toLowerCase() === api.name.toLowerCase())) throw 'taken';
     main = chan(BASE); pipe = chan(BASE + '-p-' + myId);
-    listen(main, 'e', onEdits); listen(main, 's', onSnapshot); listen(main, 'c', onChat); listen(main, 'h', onHit);
+    listen(main, 'e', onEdits); listen(main, 's', onSnapshot); listen(main, 'c', onChat); listen(main, 'h', onHit); listen(main, 'tm', onTime);
     listenPipe(pipe, null);
     try { await Promise.all([joinChan(main), joinChan(pipe)]); }
     catch (e) { dropChan(main); dropChan(pipe); main = pipe = null; throw e; }
