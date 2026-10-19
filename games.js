@@ -126,7 +126,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-20T12:00:00+11:00',
+    updated: '2026-10-20T16:00:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -196,6 +196,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-20', game: 'cube-assault', text: 'Cube Assault 2.9.4: the campaign begins. Press Campaign to watch the opening cinematic: the helicopter briefing, the missile, the crash and the fall over the island. The full campaign arrives in 3.0.' },
   { date: '2026-10-20', game: 'cube-assault', text: 'Cube Assault 2.9.3: new multiplayer map Dust II, for Team Deathmatch, Free-for-all and C:S Mode, with long, mid, short, catwalk, the B tunnels and both bomb sites.' },
   { date: '2026-10-19', game: 'cube-assault', text: 'Cube Assault 2.9.2: a new look and a new sound. New menus with a cinematic helicopter background, a Play screen (Campaign, Singleplayer, Multiplayer, Missions), a heavy war soundtrack, iPad mode, a one-screen shop and a scope key.' },
   { date: '2026-10-19', game: 'havoc-bay', text: 'Havoc Bay has a new title screen: a cinematic reel of a fighter cockpit over the clouds, a carrier deck and catapult launch, and soldiers advancing under Black Hawks. Set Graphics to Low in Settings to get the old battle view back.' },
