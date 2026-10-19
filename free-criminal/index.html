@@ -469,7 +469,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.9</b>San Varro</div>
+    <div class="ver"><b>v1.9.1</b>San Varro</div>
     <nav class="nav">
       <button id="bOnline" class="online">Play online</button>
       <button id="bPlay">Play offline</button>
@@ -523,7 +523,13 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.9</b>Phone, buses and saving<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.9.1</b>The subway<span>Latest</span></summary><ul>
+    <li><b>The subway:</b> every city has an underground station. Look for the green-lit <b>SUBWAY</b> pavilion on the pavement with the city's name on it (a <b>T</b> on the map) and press <b>E</b> to go down.</li>
+    <li>Each station has two platforms with the tracks between them. A train comes into each platform once a minute: it brakes in out of the tunnel, the doors slide open, a chime plays, the doors close and it pulls out. The boards show where each platform goes and when the next train is due.</li>
+    <li>Walk in through the open doors and stay on board: 20 seconds later you're at the next city's station. <b>Platform 1</b> runs San Varro → Harbor City → Port Bellmore → North Point → Redwood → Silver Lake → Cedar Falls → Isla Verde and back round; <b>Platform 2</b> goes the other way.</li>
+    <li>Press <b>E</b> at the stairs to go up to the street in whichever city you're in, or at the passage at the other end to cross to the other platform.</li>
+  </ul></details>
+  <details><summary><b>v1.9</b>Phone, buses and saving</summary><ul>
     <li><b>The phone:</b> press <b>P</b> and a smartphone slides up on the right (phones and tablets: the Phone button). Press P or Esc to put it away.</li>
     <li><b>Messages:</b> online, open Messages, pick a player and text them privately. Only they see it. New messages pop up and show a red badge on the app.</li>
     <li><b>myBANK:</b> put money in the bank and take it out from the phone. Money in myBANK stays safe when you’re wasted or busted. You can’t deposit while the police are after you.</li>
@@ -813,7 +819,8 @@ function rayBoxes(ox,oy,oz,dx,dy,dz,maxD){RS++;const ix=1/(dx||1e-12),iy=1/(dy||
     for(let i=0;i<arr.length;i++){const b=arr[i];if(b.rs===RS)continue;b.rs=RS;if(b.ti!==undefined&&b.ti>=treeVis)continue;const h=rayBox(ox,oy,oz,ix,iy,iz,b);if(h<best)best=h;}}
   return best;}
 function losCheck(ax,ay,az,bx,by,bz){const dx=bx-ax,dy=by-ay,dz=bz-az,d=Math.hypot(dx,dy,dz)||1;return rayBoxes(ax,ay,az,dx/d,dy/d,dz/d,d)>=d-0.6;}
-function groundY(x,z){if(x>BRX-12&&x<BRX+12&&z>BRZ0&&z<BRZ1)return deckH(z);if(BLOCKSET.has(bkey(x,z))){const lx=((x%100)+100)%100-50,lz=((z%100)+100)%100-50;if(Math.abs(lx)<43&&Math.abs(lz)<43)return 0.18;}return 0;}
+function groundY(x,z){if(z<-14330&&z>-14470&&x>350&&x<850)return 1.3; // 1.9.1: the subway station's platforms
+if(x>BRX-12&&x<BRX+12&&z>BRZ0&&z<BRZ1)return deckH(z);if(BLOCKSET.has(bkey(x,z))){const lx=((x%100)+100)%100-50,lz=((z%100)+100)%100-50;if(Math.abs(lx)<43&&Math.abs(lz)<43)return 0.18;}return 0;}
 const WX=9000,WZN=10000,MEXT=10000;// mainland: x -9000..9000, z -10000 (north) to the coast at 1055; an island lies south across the strait
 const ISL={x:0,z:3450,rx:2600,rz:1050},BRX=-1200,BRZ0=900,BRZ1=2600;
 const onIsland=(x,z)=>((x-ISL.x)/ISL.rx)**2+((z-ISL.z)/ISL.rz)**2<=1;
@@ -1391,7 +1398,7 @@ function updWeather(dt){const Wt=WEATHER;Wt.t-=dt;
   if(AUD.ctx){if(!rainSnd&&k>0.01){const s=AUD.ctx.createBufferSource();s.buffer=AUD.noise;s.loop=true;const f=AUD.ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=1800;f.Q.value=0.4;const g=AUD.ctx.createGain();g.gain.value=0;s.connect(f);f.connect(g);g.connect(AUD.master);s.start();rainSnd=g;}
     if(rainSnd)rainSnd.gain.setTargetAtTime((inside?0.03:0.11)*k,AUD.ctx.currentTime,0.3);}}
 // 1.9: no rain indoors: in a building, a shop, the bank or the mall, or in a shop cutscene
-function underRoof(){if(state==='scene')return true;if(state==='menu'||state==='intro'||state==='loading'||!player||player.inCar||player.ride)return false;const p=player.pos;
+function underRoof(){if(state==='scene'||SUBWAY)return true;if(state==='menu'||state==='intro'||state==='loading'||!player||player.inCar||player.ride)return false;const p=player.pos;
   if(typeof MALL!=='undefined'&&MALL&&p.x>MALL.x0&&p.x<MALL.x1&&p.z>MALL.z0&&p.z<MALL.z1)return true;return!!shopAt();}
 /* ---------- day and night: 5 minutes of day (06:00-18:00), then 5 minutes of night ---------- */
 const DAY={t:40,len:600};let DAYK=1,NIGHTK=0,nightMeshes=[],starPts=null,moonSprite=null,headL=null;
@@ -2011,9 +2018,9 @@ function buildWorld(){
   buildGraph();buildSky();buildRoads();
   for(let i=-5;i<5;i++)for(let j=-5;j<5;j++)makeBlock(i*100+50,j*100+50);
   for(const t of TOWNS)for(let x=t.x0+50;x<t.x1;x+=100)for(let z=t.z0+50;z<t.z1;z+=100)makeBlock(x,z);
-  buildBridge();
+  buildBridge();buildSubwayEntrances(); // 1.9.1
   buildLights();buildCams();buildCamSet();for(const v of VENTS)addB('road',CYL(0.6,0.6,0.02,12,'#232426',v.x,0.07,v.z));
-  buildPrison();buildCountry();buildTrees();finishBatches();buildSigns();buildBirds();buildNight();buildRain();buildInteriors();buildGrass();buildMapImage();
+  buildPrison();buildCountry();buildTrees();finishBatches();buildSigns();buildBirds();buildNight();buildRain();buildInteriors();buildStation();buildGrass();buildMapImage();
 }
 
 /* ---------- game state ---------- */
@@ -2523,9 +2530,9 @@ function updatePlayerFoot(dt){
   if(P.onGround&&keys.Space&&!P.jumpHeld){P.vy=6.2;P.onGround=false;}P.jumpHeld=!!keys.Space;
   P.vy-=20*dt;P.pos.y+=P.vy*dt;if(P.pos.y<=gy){P.pos.y=gy;P.vy=0;P.onGround=true;}
   collideCircle(P.pos,0.38,P.pos.y+0.9);
-  const hc=INSIDE?null:pushOutOfCars(P.pos,0.4);if(hc&&hc!==P.lastHitCar){const sp=Math.abs(hc.vF);P.lastHitCar=hc;setTimeout(()=>P.lastHitCar=null,800);damagePlayer(sp*0.8);
+  const hc=INSIDE||SUBWAY?null:pushOutOfCars(P.pos,0.4);if(hc&&hc!==P.lastHitCar){const sp=Math.abs(hc.vF);P.lastHitCar=hc;setTimeout(()=>P.lastHitCar=null,800);damagePlayer(sp*0.8);
     if(state==='play'){if(sp>8){startRag(hc.vel.x*0.75,4+sp*0.12,hc.vel.y*0.75);return;}P.vx+=hc.vel.x*0.6;P.vz+=hc.vel.y*0.6;P.vy=4;P.onGround=false;}}
-  if(!INSIDE)clampWorld(P.pos);
+  if(!INSIDE&&!SUBWAY)clampWorld(P.pos);
   const Wp=WPN[P.wpn],strafe=P.drawn&&(mouseR||mouseL||P.fireHold>0)||P.fp||P.punchT>0;
   if(strafe)P.h=lerpA(P.h,yaw,1-Math.exp(-20*dt));else if(moving)P.h=lerpA(P.h,Math.atan2(mx,mz),1-Math.exp(-10*dt));
   const spd=Math.hypot(P.vx,P.vz);P.phase+=dt*spd*1.9;
@@ -2660,7 +2667,7 @@ function updVault(dt){if(!VAULT)return;const s=VAULT.s;if(!vaultNear(s)||player.
     addCrime(4,18);{scare(s.cx,s.cz,70);}PROF.stats.robberies++;PROF.stats.stolen+=amt;addXp(200);
     notify(`You emptied the vault: <b>${fmt(amt)}</b>! The alarm is ringing, get out and lose the cops!`,6);}}
 function shopAt(){for(const s of SHOPS){const r=s.rect;if(player.pos.x>r[0]&&player.pos.x<r[1]&&player.pos.z>r[2]&&player.pos.z<r[3])return s;}return null;}
-function interact(){if(state!=='play'||player.inCar||player.ride||robbing||VAULT||BUSROB||player.rag||player.jack)return;if(INSIDE){if(exitNear()){$('fade').style.opacity=1;setTimeout(()=>{leaveBuilding();$('fade').style.opacity=0;},300);return;}const L=lootNear();if(L&&!CRACK)startCrack(L);return;}
+function interact(){if(state!=='play'||player.inCar||player.ride||robbing||VAULT||BUSROB||player.rag||player.jack)return;if(SUBWAY){subUse();return;}{const se=subEntranceNear();if(se){enterSubway(se);return;}}if(INSIDE){if(exitNear()){$('fade').style.opacity=1;setTimeout(()=>{leaveBuilding();$('fade').style.opacity=0;},300);return;}const L=lootNear();if(L&&!CRACK)startCrack(L);return;}
   const sh=safeNear();if(sh){useSafehouse(sh);return;}const s=shopAt();if(!s){const bz=busNear();if(bz&&!frontNear()){robBus(bz);return;}}if(!s){const f=frontNear();if(f){robFront(f);return;}const d=doorNear();if(d)enterBuilding(d);return;}
   if(vaultNear(s)){if(!VAULT)useVault(s);return;}
   if(s.clerk.dead){notify('Nobody is minding the store.',2);return;}
@@ -2844,7 +2851,7 @@ function updateDead(rdt){deadT+=rdt;const m=player.m;
 function clearPolice(){for(const c of CARS)if(c.driver==='cop'||c.police){c.remove();c.gone=true;}const keep=CARS.filter(c=>!c.gone);CARS.length=0;CARS.push(...keep);
   for(const p of PEDS)if(p.kind==='cop')p.remove();const pk=PEDS.filter(p=>p.kind!=='cop');PEDS.length=0;PEDS.push(...pk);
   if(heli){scene.remove(heli.g);heli=null;}clearWanted();}
-function respawn(){const list=deadKind==='wasted'?[SPAWN.hosp,...HOSPS]:[SPAWN.pd,...PDS],sp=list.reduce((a,b)=>Math.hypot(b.x-player.pos.x,b.z-player.pos.z)<Math.hypot(a.x-player.pos.x,a.z-player.pos.z)?b:a),P=player,wasted=deadKind==='wasted';leaveBuilding(true);
+function respawn(){const list=deadKind==='wasted'?[SPAWN.hosp,...HOSPS]:[SPAWN.pd,...PDS],sp=list.reduce((a,b)=>Math.hypot(b.x-player.pos.x,b.z-player.pos.z)<Math.hypot(a.x-player.pos.x,a.z-player.pos.z)?b:a),P=player,wasted=deadKind==='wasted';leaveBuilding(true);leaveSubway(true);
   const lost=Object.keys(P.owned).filter(k=>k!=='rifle'&&k!=='knife');for(const k of lost)delete P.owned[k];P.nades=0;P.wpn='rifle';P.drawn=false;setGunModel();
   if(!wasted){P.owned.rifle.reserve=Math.floor(P.owned.rifle.reserve/2);P.armor=0;}
   const drop=P.cash>0?Math.floor(P.cash*0.25):0,fee=wasted?750:400;P.cash-=drop+fee;showCashChange(-(drop+fee));clearPolice();clearAgents();
@@ -2967,7 +2974,7 @@ function endIntro(){
   state='play';updGunVis();$('cine').hidden=true;$('hud').hidden=false;
   notify(SAVED?`Welcome back, ${pname()}. Your game was saved: you’ve got <b>${fmt(player.cash)}</b> on you${BANK.bal>0?` and <b>${fmt(BANK.bal)}</b> in myBANK`:''}. Press <b>P</b> for your phone.`:'You’re out with a rifle, a knife and <b>$2,500</b>. Click to punch, <b>1</b> for the rifle, <b>2</b> for the knife, <b>F</b> by a car to steal it. Gun stores sell 10 guns and grenades. The mall is waiting to be robbed.',10);
 }
-function newGame(){clearPolice();clearAgents();BUSROB=null;BANK.bal=0;BANK.log.length=0;BOOST.until=-1;Object.assign(player,{hp:100,armor:0,cash:2500,wpn:'rifle',owned:{rifle:{ammo:30,reserve:240},knife:{ammo:0,reserve:0}},drawn:false,nades:0,rag:null,jack:null,trig:false,nadeCD:0,reload:0,inCar:null,lastCar:null,ride:null,dead:false,vx:0,vz:0,vy:0,fp:false});robbing=null;ROUTE=null;CLEARRD=null;CAMCUT.done=false;for(const c of CAMS)c.cd=0;leaveBuilding(true);DAY.t=30;WEATHER.k=0;WEATHER.target=0;WEATHER.t=rand(150,260);radioOff();resetSafehouses();for(const d of DOORS)d.cool=-1;clearNades();setGunModel();showCashChange(0);
+function newGame(){clearPolice();clearAgents();BUSROB=null;BANK.bal=0;BANK.log.length=0;BOOST.until=-1;Object.assign(player,{hp:100,armor:0,cash:2500,wpn:'rifle',owned:{rifle:{ammo:30,reserve:240},knife:{ammo:0,reserve:0}},drawn:false,nades:0,rag:null,jack:null,trig:false,nadeCD:0,reload:0,inCar:null,lastCar:null,ride:null,dead:false,vx:0,vz:0,vy:0,fp:false});robbing=null;ROUTE=null;CLEARRD=null;CAMCUT.done=false;for(const c of CAMS)c.cd=0;leaveBuilding(true);leaveSubway(true);DAY.t=30;WEATHER.k=0;WEATHER.target=0;WEATHER.t=rand(150,260);radioOff();resetSafehouses();for(const d of DOORS)d.cool=-1;clearNades();setGunModel();showCashChange(0);
   player.m.group.rotation.x=0;for(const c of CARS)if(c.driver==='player')c.setDriver(null);}
 
 /* ---------- HUD ---------- */
@@ -2983,8 +2990,9 @@ function zoneOf(x,z){if(x<-535&&x>-670&&z>50&&z<190)return'State Penitentiary';i
   if(z>975)return'Coral Beach';if(Math.abs(x)>3270||z<-3270||(Math.abs(z-700)<25&&Math.abs(x)>1400))return'Coast Highway';if((Math.abs(z-700)<25&&Math.abs(x)<=1410)||(Math.abs(x-1400)<25&&z<710))return'Interstate 1';
   if(Math.abs(z+1100)<25||Math.abs(x+1400)<25)return'Ridge Road';if(z<-1600)return x<0?'Northwood':'Copper Ridge';if(Math.abs(x)>1600)return x<0?'West Fields':'East Valley';return x<0?'Pine Hills':'Green Valley';}
 function showVeh(n){$('veh').textContent=n;$('veh').style.opacity=1;vehT=4;}
-function contextHint(){if(PHONE.open)return'';if(!locked&&!noLock&&state==='play')return'Click the game to control the camera.';if(state==='play'&&player.ride)return`Riding with <b>${esc(player.ride.name)}</b>. Press <b>F</b> to get out.`;if(state!=='play'||robbing||BUSROB||player.inCar)return'';
+function contextHint(){if(PHONE.open)return'';if(!locked&&!noLock&&state==='play')return'Click the game to control the camera.';{const sh=subHint();if(sh!==null&&state==='play')return sh;}if(state==='play'&&player.ride)return`Riding with <b>${esc(player.ride.name)}</b>. Press <b>F</b> to get out.`;if(state!=='play'||robbing||BUSROB||player.inCar)return'';
   if(INSIDE){if(CRACK)return'';if(exitNear())return'Press <b>E</b> to go back outside.';const L=lootNear();if(L)return INSIDE.door.cool>T?'Someone already cleaned this place out.':`Press <b>E</b> to rob ${L.label}.`;return'';}
+  {const se=subEntranceNear();if(se)return`Press <b>E</b> to go down to the subway: <b>${se.name}</b> station.`;}
   const sh=safeNear();if(sh)return sh.owned?`Press <b>E</b> to open your safehouse.`:`Press <b>E</b> to rent <b>${sh.name}</b> for $1,000. Guns and cash kept here are safe when you die.`;
   const s=shopAt();if(s){if(s.kind==='gun')return s.clerk.dead?'Nobody is minding the store.':'Press <b>E</b> to browse 10 guns, grenades and gear.';
     if(s.clerk.dead)return'Nobody is minding the store.';if(s.cool>0)return'This place was hit recently. Come back later.';
@@ -2994,7 +3002,7 @@ function contextHint(){if(PHONE.open)return'';if(!locked&&!noLock&&state==='play
   {const d=doorNear();if(d)return`Press <b>E</b> to go inside the ${d.kind==='apt'?'apartment':d.kind==='warehouse'?'warehouse':'office building'}.`;}
   {const bz=busNear();if(bz)return busHint(bz);}
   const c=nearestCar(),rc=NET.on?NET.rideCand():null;if(rc&&(!c||rc.d<Math.hypot(c.pos.x-player.pos.x,c.pos.z-player.pos.z)))return`Press <b>F</b> to ride in <b>${esc(rc.a.name)}</b>’s car.`;if(c)return c.driver==='ai'||c.driver==='cop'?`Press <b>F</b> to carjack the ${c.t.name}.`:`Press <b>F</b> to get in the ${c.t.name}.`;return'';}
-const BLIPC={rent:['#9aa3ad','R'],safe:['#2fbf71','S'],mall:['#c77dff','M'],store:['#7fcc6c','$'],bank:['#7fcc6c','B'],gun:['#d23b30','G'],hosp:['#e8e8e8','H'],police:['#3f7fe0','P']};
+const BLIPC={rent:['#9aa3ad','R'],safe:['#2fbf71','S'],mall:['#c77dff','M'],store:['#7fcc6c','$'],bank:['#7fcc6c','B'],gun:['#d23b30','G'],hosp:['#e8e8e8','H'],police:['#3f7fe0','P'],subway:['#1b9e5a','T']};
 function drawBlip(g,x,y,type,s){const b=BLIPC[type];g.fillStyle='#111';g.beginPath();g.arc(x,y,s+2,0,7);g.fill();g.fillStyle=b[0];g.beginPath();g.arc(x,y,s,0,7);g.fill();g.fillStyle='#111';g.font=`700 ${s*1.4}px Barlow Condensed, Arial`;g.textAlign='center';g.textBaseline='middle';g.fillText(b[1],x,y+1);}
 function drawArrow(g,x,y,ang,s){g.save();g.translate(x,y);g.rotate(ang);g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=2;g.beginPath();g.moveTo(0,-s);g.lineTo(s*0.75,s*0.8);g.lineTo(0,s*0.4);g.lineTo(-s*0.75,s*0.8);g.closePath();g.fill();g.stroke();g.restore();}
 function drawMinimap(){if(INSIDE){const sv=player.pos.clone();player.pos.set(INSIDE.door.x,0,INSIDE.door.z);try{drawMinimap0();}finally{player.pos.copy(sv);}return;}drawMinimap0();}
@@ -3084,7 +3092,7 @@ function computeRoute(){if(!ROUTE)return;const P=player.pos,a=nearestNode(P.x,P.
   if(path.length>1&&between(P,path[0],path[1]))path.shift();
   if(path.length>1&&between({x:ROUTE.x,z:ROUTE.z},path[path.length-2],path[path.length-1]))path.pop();
   ROUTE.pts=[[P.x,P.z],...path.map(q=>[q.x,q.z]),[ROUTE.x,ROUTE.z]];}
-const BLIPN={store:'the store',bank:'the bank',gun:'the gun store',hosp:'the hospital',police:'the police station',mall:'San Varro Mall'};
+const BLIPN={subway:'the subway',store:'the store',bank:'the bank',gun:'the gun store',hosp:'the hospital',police:'the police station',mall:'San Varro Mall'};
 const sx2=x=>(x-MV.cx)*MV.s+mapC.width/2,sz2=z=>(z-MV.cz)*MV.s+mapC.height/2,wX=X=>(X-mapC.width/2)/MV.s+MV.cx,wZ=Y=>(Y-mapC.height/2)/MV.s+MV.cz;
 function sizeMap(){const r=mapC.getBoundingClientRect();MV.d=Math.min(2,devicePixelRatio||1);mapC.width=Math.max(50,Math.round(r.width*MV.d));mapC.height=Math.max(50,Math.round(r.height*MV.d));}
 function clampView(){MV.s=clamp(MV.s,Math.min(mapC.width,mapC.height)/(2*MEXT),9*MV.d);MV.cx=clamp(MV.cx,-WX,WX);MV.cz=clamp(MV.cz,-WZN,ISL.z+ISL.rz);}
@@ -3176,7 +3184,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.9',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
+const VERSION='1.9.1',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3273,7 +3281,7 @@ addEventListener('resize',resize);
 /* ---------- main loop ---------- */
 let menuA=0,lastT=performance.now();
 function frame(now){requestAnimationFrame(frame);tick(now);}
-if(/debug/.test(location.search))window.__fc={step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook};
+if(/debug/.test(location.search))window.__fc={step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook,get SUBE(){return SUBE;},get SUBT(){return SUBT;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;}};
 function tick(now){
   const rdt=clamp((now-lastT)/1000,0,0.05);lastT=Math.max(lastT,now);fpsN++;fpsT+=rdt;if(fpsT>0.5){$('fps').textContent=Math.round(fpsN/fpsT)+' fps';fpsN=0;fpsT=0;}
   if(state==='loading')return;
@@ -3283,7 +3291,7 @@ function tick(now){
     else if(state==='intro')updateIntro(rdt);
     else if(state==='camcut')updCamCut(rdt);
     else if(state==='scene')updScene(rdt);
-    else if(state==='play'){if(player.inCar)updatePlayerCar(dt);else if(player.ride)NET.rideTick(dt);else updatePlayerFoot(dt);}
+    else if(state==='play'){if(player.inCar)updatePlayerCar(dt);else if(player.ride)NET.rideTick(dt);else updatePlayerFoot(dt);updSubway(dt);}
     else if(state==='dead')updateDead(rdt);
     camera.getWorldDirection(_cf);
     if(state!=='camcut'&&state!=='scene')manageWorld(dt);updTouch();NET.frame(rdt);
@@ -3306,6 +3314,219 @@ function tick(now){
   if(starPts)starPts.position.copy(camera.position);if(moonSprite)moonSprite.position.copy(camera.position).addScaledVector(SUNDIR,4800);
   renderer.render(scene,camera);
 }
+
+/* ---------- 1.9.1: the subway ----------
+   Every city has a subway entrance on the street (a glass pavilion with the city's name). Inside is a big underground
+   station: two platforms with the tracks between them. A train comes into each platform once a minute: it brakes in
+   out of the tunnel, the doors slide open, close a few seconds later with a chime, and it pulls out. Ride it and you're
+   in the next city's station 20 seconds later. Platform 1 goes one way round the line, Platform 2 the other way.
+   There is one station hall (far from the map, like the building interiors); its signs and boards change to the city
+   you're in. */
+const SUB_LINE=['San Varro','Harbor City','Port Bellmore','North Point','Redwood','Silver Lake','Cedar Falls','Isla Verde'];
+const SUBE=[];          // street entrances: {city, x, z, dx, dz (the way the door faces), name}
+var SUBWAY=null;        // while you're underground: {city, plat}
+const SO={x:600,z:-14400},SUB_HALF=48,SUB_Y=-1.25,SY=1.3; // the platforms are 1.3 m up so the tracks sit above the ground
+const SUBT=[];          // the two trains
+let subLights=[],subBoards=[],subNames=[],subTunnelLights=[];
+const subNext=(i,dir)=>(i+dir+SUB_LINE.length)%SUB_LINE.length;
+function subTownBox(name){return name==='San Varro'?CITYBOX:TOWNS.find(t=>t.name===name);}
+// ---- the street entrances: a pavilion on the pavement near the middle of each city ----
+function buildSubwayEntrances(){
+  for(const name of SUB_LINE){const tw=subTownBox(name);if(!tw)continue;
+    const mx=(tw.x0+tw.x1)/2,mz=(tw.z0+tw.z1)/2;
+    const blocks=[];for(let x=tw.x0+50;x<tw.x1;x+=100)for(let z=tw.z0+50;z<tw.z1;z+=100)blocks.push([x,z]);
+    blocks.sort((a,b)=>Math.hypot(a[0]-mx,a[1]-mz)-Math.hypot(b[0]-mx,b[1]-mz));
+    let spot=null;
+    for(const[cx,cz]of blocks){for(const[ax,az]of[[1,0],[0,1],[-1,0],[0,-1]])for(const s of[0,-2,2,-4,4]){
+        const x=cx+(az?s:ax*39.2),z=cz+(ax?s:az*39.2),ex=az?1:0,ez=ax?1:0;
+        if([-3,0,3].every(k=>freeSpot(x+ex*k,z+ez*k,1.8))){spot={x,z,ax,az,ex,ez};break;}}
+      if(spot)break;}
+    if(!spot)continue;
+    const{x,z,ax,az,ex,ez}=spot,L=6.4,Wd=3.2,ry=Math.atan2(ex,ez);
+    // glass walls on a steel frame, a roof with the sign, and the door at one end
+    const steel='#2b3138',glassC='#8fb4c8';
+    addB('plain',G(new THREE.BoxGeometry(Wd,0.12,L),'#3a4048',x,0.24,z,0,ry,0));
+    for(const s of[-1,1]){addB('plain',G(new THREE.BoxGeometry(0.08,2.6,L),glassC,x+ax*0+(ez?s*Wd/2:0),1.55,z+(ex?s*Wd/2:0),0,ry,0));}
+    addB('plain',G(new THREE.BoxGeometry(Wd,2.6,0.08),glassC,x-ex*L/2,1.55,z-ez*L/2,0,ry,0));
+    for(const s of[-1,1])for(const k of[-1,0,1])addB('plain',G(new THREE.BoxGeometry(0.14,2.7,0.14),steel,x+ex*k*L/2+(ez?s*Wd/2:0),1.6,z+ez*k*L/2+(ex?s*Wd/2:0)));
+    addB('plain',G(new THREE.BoxGeometry(Wd+0.5,0.22,L+0.5),steel,x,2.98,z,0,ry,0));
+    addB('plain',G(new THREE.BoxGeometry(2.0,2.4,0.06),'#0d0f12',x+ex*L/2,1.45,z+ez*L/2,0,ry,0));   // the dark doorway down to the station
+    addB('plain',G(new THREE.BoxGeometry(Wd,0.5,0.1),steel,x+ex*L/2,2.75,z+ez*L/2,0,ry,0));
+    sign('SUBWAY','#1b5e3a','#fff',Wd*0.86,0.46,x+ex*(L/2+0.07),2.75,z+ez*(L/2+0.07),ry);
+    addColl(Math.min(x-ex*L/2,x+ex*L/2)-(ez?Wd/2:0.1),Math.max(x-ex*L/2,x+ex*L/2)+(ez?Wd/2:0.1),Math.min(z-ez*L/2,z+ez*L/2)-(ex?Wd/2:0.1),Math.max(z-ez*L/2,z+ez*L/2)+(ex?Wd/2:0.1),0,3.2);
+    // the sign on the roof, both sides, and a green globe lamp by the door
+    for(const s of[-1,1]){const sx=x+(ez?s*(Wd/2+0.06):0),sz=z+(ex?s*(Wd/2+0.06):0);sign('SUBWAY · '+name.toUpperCase(),'#1b5e3a','#fff',L*0.92,0.62,sx,3.45,sz,Math.atan2(ez?s:0,ex?s:0));}
+    const lx=x+ex*(L/2+0.8)+(ez?Wd/2:0),lz=z+ez*(L/2+0.8)+(ex?Wd/2:0);
+    addB('plain',CYL(0.07,0.09,2.8,8,'#1d2a22',lx,1.6,lz));addB('plain',G(new THREE.SphereGeometry(0.28,10,8),'#56d38a',lx,3.1,lz));WINQ.push(G(new THREE.SphereGeometry(0.29,10,8),'#7dffb0',lx,3.1,lz));
+    SUBE.push({city:SUB_LINE.indexOf(name),name,x:x+ex*(L/2+1.0),z:z+ez*(L/2+1.0),dx:ex,dz:ez});
+    BLIPS.push({x,z,type:'subway',name:'Subway · '+name});}}
+const subEntranceNear=()=>{if(player.inCar||SUBWAY)return null;for(const e of SUBE)if(Math.hypot(player.pos.x-e.x,player.pos.z-e.z)<2.6)return e;return null;};
+
+// ---- the station hall ----
+function buildStation(){
+  const L=[],O=SO,H=6.2,PA=-4,PB=4,BACK=11,deco=[];
+  const box=(w,h,d,c,x,y,z,coll)=>{L.push(B(w,h,d,c,O.x+x,y+SY,O.z+z));if(coll)addColl(O.x+x-w/2,O.x+x+w/2,O.z+z-d/2,O.z+z+d/2,y+SY-h/2,y+SY+h/2);};
+  // floors: two platforms at street-floor level, the track bed lower down between them
+  box(SUB_HALF*2,0.1,BACK-PB,'#9c968c',0,-0.05,-(BACK+PB)/2);box(SUB_HALF*2,0.1,BACK-PB,'#9c968c',0,-0.05,(BACK+PB)/2);
+  for(const s of[-1,1]){box(SUB_HALF*2,0.02,0.45,'#e3c22b',0,0.01,s*(PB+0.25));box(SUB_HALF*2,0.02,0.12,'#f2f2f2',0,0.012,s*(PB+0.55));} // yellow edge lines
+  box(SUB_HALF*2+190,0.1,PB*2,'#34302b',0,SUB_Y-0.05,0);
+  for(const s of[-1,1])box(SUB_HALF*2,-SUB_Y,0.2,'#6f6a62',0,SUB_Y/2,s*PB);           // the platform edges down to the tracks
+  // rails and sleepers for both tracks, running on into the tunnels
+  for(const tz of[-2.45,2.45]){for(const r of[-0.72,0.72])box(SUB_HALF*2+190,0.14,0.08,'#8a8f96',0,SUB_Y+0.07+0.1,tz+r);
+    for(let x=-SUB_HALF-95;x<SUB_HALF+95;x+=0.9)box(0.24,0.1,2.1,'#3c3228',x,SUB_Y+0.05,tz);}
+  // walls, ceiling and the tiled back walls with a coloured band
+  for(const s of[-1,1]){box(SUB_HALF*2,H,0.3,'#e9e6df',0,H/2,s*(BACK+0.15),true);box(SUB_HALF*2,0.5,0.04,'#2f6db8',0,2.2,s*(BACK-0.02));box(SUB_HALF*2,0.12,0.04,'#e3c22b',0,2.5,s*(BACK-0.02));
+    for(const e of[-1,1])box(0.3,H,BACK-PB,'#e9e6df',e*(SUB_HALF+0.15),H/2,s*(BACK+PB)/2,true);}
+  box(SUB_HALF*2+0.6,0.3,BACK*2+0.6,'#cfcac0',0,H+0.15,0);
+  // the tunnels at both ends: a concrete tube over the tracks
+  for(const e of[-1,1]){const cx=e*(SUB_HALF+47.5);box(95,0.3,PB*2,'#4a4640',cx,4.5,0);for(const s of[-1,1])box(95,4.5-SUB_Y,0.4,'#57524b',cx,(4.5+SUB_Y)/2,s*(PB+0.2));
+    box(95,4.5-SUB_Y,0.3,'#4f4a44',cx,(4.5+SUB_Y)/2,0);                                     // the wall between the two tracks
+    box(0.3,H-4.5,PB*2,'#e9e6df',e*(SUB_HALF+0.15),(H+4.5)/2,0);
+    box(0.3,4.5-SUB_Y,PB*2+0.6,'#0b0c0e',e*(SUB_HALF+95),(4.5+SUB_Y)/2,0);}
+  // the pillars between the tracks and along the platforms, the benches and bins
+  for(let x=-SUB_HALF+6;x<=SUB_HALF-6;x+=8){box(0.6,H-SUB_Y,0.6,'#d8d4cb',x,(H+SUB_Y)/2,0);box(0.62,0.3,0.62,'#2f6db8',x,1.6,0);}
+  for(const s of[-1,1])for(let x=-SUB_HALF+12;x<=SUB_HALF-12;x+=12){box(0.7,H,0.7,'#d8d4cb',x,H/2,s*8,true);
+    box(2.4,0.45,0.6,'#6b4a2c',x+3.4,0.45,s*9.9,true);box(2.4,0.6,0.08,'#6b4a2c',x+3.4,0.9,s*10.25);
+    box(0.5,0.9,0.5,'#3a3d40',x-3,0.45,s*10.4,true);}
+  // the stairs up to the street (west) and the passage to the other platform (east) in each back wall
+  for(const s of[-1,1]){for(let k=0;k<5;k++)box(3.8,0.06,0.04,'#5a5f66',-30,0.3+k*0.55,s*(BACK-0.12));   // the stairs going up, seen through the doorway
+    box(4.4,3.2,0.1,'#111315',-30,1.6,s*(BACK-0.05));box(4.4,3.2,0.1,'#111315',30,1.6,s*(BACK-0.05));
+    for(const ex of[-32.2,-27.8,27.8,32.2])box(0.2,3.2,1.2,'#d8d4cb',ex,1.6,s*(BACK-0.55),true);}
+  // the lights in the ceiling
+  const lightM=new THREE.MeshBasicMaterial({color:0xfff6e8});
+  for(const s of[-1,1])for(let x=-SUB_HALF+3;x<SUB_HALF;x+=6){const m=new THREE.Mesh(new THREE.BoxGeometry(2.6,0.06,0.3),lightM);m.position.set(O.x+x,SY+H-0.05,O.z+s*7.5);scene.add(m);}
+  const tl=new THREE.MeshBasicMaterial({color:0xffd9a0});
+  for(const e of[-1,1])for(const s of[-1,1])for(let k=0;k<10;k++){const m=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.12,0.06),tl);m.position.set(O.x+e*(SUB_HALF+5+k*9),SY+2.8,O.z+s*(PB-0.05));scene.add(m);subTunnelLights.push({m,e,s,k});}
+  const mesh=new THREE.Mesh(merge(L),new THREE.MeshLambertMaterial({vertexColors:true,emissive:0x1d1b18}));mesh.matrixAutoUpdate=false;scene.add(mesh);L.forEach(g=>g.dispose());
+  for(const[x,z]of[[-26,0],[0,0],[26,0]]){const p=new THREE.PointLight(0xfff1dc,0,46,1.2);p.position.set(O.x+x,SY+4.8,O.z+z);scene.add(p);subLights.push(p);}
+  // the city name along the back walls, the platform signs and the departure boards
+  for(const s of[-1,1])for(const x of[-40,-15,15,40]){const m=new THREE.Mesh(new THREE.PlaneGeometry(9,1.2),new THREE.MeshBasicMaterial({map:signTex('SAN VARRO','#1d3557','#fff',1024,136)}));
+    m.position.set(O.x+x,SY+3.4,O.z+s*(BACK-0.05));m.rotation.y=s>0?Math.PI:0;scene.add(m);subNames.push(m);}
+  for(const s of[-1,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(4.4,0.9),new THREE.MeshBasicMaterial({map:signTex('EXIT · STREET','#1b5e3a','#fff',512,104)}));m.position.set(O.x-30,SY+3.75,O.z+s*(BACK-0.1));m.rotation.y=s>0?Math.PI:0;scene.add(m);
+    const n=new THREE.Mesh(new THREE.PlaneGeometry(4.4,0.9),new THREE.MeshBasicMaterial({map:signTex(s<0?'TO PLATFORM 2':'TO PLATFORM 1','#2f6db8','#fff',512,104)}));n.position.set(O.x+30,SY+3.75,O.z+s*(BACK-0.1));n.rotation.y=s>0?Math.PI:0;scene.add(n);
+    for(const x of[-12,12]){const c=document.createElement('canvas');c.width=512;c.height=128;const t=new THREE.CanvasTexture(c);const b=new THREE.Mesh(new THREE.PlaneGeometry(3.6,0.9),new THREE.MeshBasicMaterial({map:t}));
+      b.position.set(O.x+x,SY+4.4,O.z+s*5.2);b.rotation.y=s>0?Math.PI:0;scene.add(b);subBoards.push({c,t,plat:s<0?0:1});
+      const hang=new THREE.Mesh(new THREE.BoxGeometry(3.8,1.0,0.12),subLam(0x1a1c20));hang.position.set(O.x+x,SY+4.4,O.z+s*5.27);scene.add(hang);}}
+  // the platform edges stop you walking onto the tracks (they open up at the train doors while a train is in)
+  SUBT.push(makeTrain(0),makeTrain(1));}
+const subLam=c=>new THREE.MeshLambertMaterial({color:c});
+
+// ---- the trains: three silver cars with a red stripe, sliding doors, lit inside ----
+const CAR_L=14.5,CAR_GAP=0.5,DOOR_X=[-3.5,3.5],TRAIN_HALF=(CAR_L*3+CAR_GAP*2)/2;
+function makeTrain(plat){
+  const g=new THREE.Group(),dir=plat===0?1:-1,tz=plat===0?-2.45:2.45,body=[],glassL=[],doors=[],strips=[];
+  const W=3.0,H=3.15,FL=0;
+  for(let c=-1;c<=1;c++){const cx=c*(CAR_L+CAR_GAP);
+    body.push(B(CAR_L,0.5,W-0.2,'#2a2c30',cx,FL-0.3,0));                                           // underframe
+    for(const bx of[-CAR_L/2+2.4,CAR_L/2-2.4]){body.push(B(2.6,0.3,W-0.6,'#1b1c1f',cx+bx,FL-0.68,0));for(const wx of[-0.75,0.75])for(const wz of[-0.72,0.72]){const w=G(new THREE.CylinderGeometry(0.42,0.42,0.12,12),'#3a3b3e',cx+bx+wx,FL-0.62,wz,Math.PI/2,0,0);body.push(w);}}
+    body.push(B(CAR_L,0.06,W,'#6e7176',cx,FL-0.03,0));                                             // floor
+    body.push(B(CAR_L+0.02,0.4,W+0.06,'#c9ccd1',cx,H-0.05,0),B(CAR_L-0.4,0.18,W-0.6,'#b5b8bd',cx,H+0.25,0)); // roof
+    for(const s of[-1,1]){
+      const z=s*W/2;
+      // side wall: low panel, red stripe, window band with piers, upper panel; gaps where the doors are
+      const segs=[[-CAR_L/2,DOOR_X[0]-0.85],[DOOR_X[0]+0.85,DOOR_X[1]-0.85],[DOOR_X[1]+0.85,CAR_L/2]];
+      for(const[a,b]of segs){const w=b-a,m=(a+b)/2;
+        body.push(B(w,0.95,0.08,'#c9ccd1',cx+m,FL+0.47,z),B(w,0.18,0.09,'#c8202a',cx+m,FL+1.0,z),B(w,0.75,0.08,'#c9ccd1',cx+m,FL+2.6,z));
+        const n=Math.max(1,Math.round(w/2.2));for(let k=0;k<=n;k++)body.push(B(0.18,1.15,0.08,'#c9ccd1',cx+a+k*w/n,FL+1.66,z));
+        glassL.push(B(w,1.15,0.04,'#22303b',cx+m,FL+1.66,z));
+        body.push(B(w,0.42,0.42,'#2f5fa8',cx+m,FL+0.45,z-s*0.32),B(w,0.5,0.08,'#2f5fa8',cx+m,FL+0.85,z-s*0.08));} // seats along the walls
+      for(const dx of DOOR_X){body.push(B(0.12,2.3,0.12,'#9a9da2',cx+dx-0.86,FL+1.15,z),B(0.12,2.3,0.12,'#9a9da2',cx+dx+0.86,FL+1.15,z),B(1.84,0.82,0.08,'#c9ccd1',cx+dx,FL+2.62,z));
+        for(const lr of[-1,1]){const d=new THREE.Mesh(merge([B(0.82,2.2,0.06,'#c9ccd1',0,1.1,0),B(0.5,1.0,0.07,'#22303b',0,1.5,0),B(0.82,0.12,0.07,'#c8202a',0,0.97,0)]),HMAT);
+          d.position.set(cx+dx+lr*0.41,FL,z);g.add(d);doors.push({m:d,base:cx+dx+lr*0.41,lr,side:s});}}}
+    for(const e of[-1,1])body.push(B(0.08,H,W,'#c9ccd1',cx+e*CAR_L/2,FL+H/2,0),B(0.9,2.1,0.1,'#4a4d52',cx+e*(CAR_L/2-0.05),FL+1.05,0));
+    for(const px of[-5,0,5])body.push(G(new THREE.CylinderGeometry(0.03,0.03,H,8),'#d9dce0',cx+px,FL+H/2,0));                  // grab poles
+    body.push(B(CAR_L-0.2,0.03,W-0.2,'#e6e6e1',cx,H-0.27,0));for(let k=-2;k<=2;k++)strips.push(B(2.2,0.04,0.28,'#ffffff',cx+k*2.8,H-0.3,0));}
+  // the cab at each end: sloped nose, headlights at the front, tail lights at the back
+  for(const e of[-1,1]){const nx=e*(TRAIN_HALF);body.push(B(0.6,H-0.4,W-0.1,'#c9ccd1',nx+e*0.3,FL+1.3,0),B(0.4,1.2,W-0.3,'#22303b',nx+e*0.55,FL+1.9,0),B(0.64,0.2,W,'#c8202a',nx+e*0.3,FL+1.0,0));}
+  const lamps=new THREE.Group();const head=new THREE.MeshBasicMaterial({color:0xfff6d8}),tail=new THREE.MeshBasicMaterial({color:0xff2a1a});
+  for(const zz of[-0.9,0.9]){const a=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.22,0.36),head);a.position.set(TRAIN_HALF+0.62,FL+0.5,zz);lamps.add(a);const b=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.2,0.3),tail);b.position.set(-TRAIN_HALF-0.62,FL+0.5,zz);lamps.add(b);}
+  g.add(lamps);
+  const bm=new THREE.Mesh(merge(body),new THREE.MeshLambertMaterial({vertexColors:true,emissive:0x121212}));bm.castShadow=false;g.add(bm);body.forEach(x=>x.dispose());
+  const gm=new THREE.Mesh(merge(glassL),new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.55,emissive:0x101820}));g.add(gm);glassL.forEach(x=>x.dispose());
+  const sm=new THREE.Mesh(merge(strips),new THREE.MeshBasicMaterial({vertexColors:true}));g.add(sm);strips.forEach(x=>x.dispose());
+  const light=new THREE.PointLight(0xfff4e0,0,22,1.5);light.position.set(0,2.4,0);g.add(light);
+  g.position.set(SO.x-dir*999,SY,SO.z+tz);if(dir<0)g.rotation.y=Math.PI;scene.add(g);g.visible=false;
+  // the platform side of this train is world -z for platform 1 and +z for platform 2; with the train turned round for
+  // platform 2 that's local -z for both
+  const tr={plat,dir,tz,g,doors,light,x:-dir*999,phase:'gap',pt:0,wait:0,door:0,colls:[],edge:null,riding:false,gone:false};
+  tr.edge=subEdge(tr,false);return tr;}
+// collision for one platform: the edge (whole, or with gaps at the open doors) and the car walls while a train is in
+function subEdge(tr,open){for(const b of tr.colls)removeColl(b);tr.colls.length=0;
+  const s=tr.plat===0?-1:1,ze0=s<0?SO.z-4.05:SO.z+3.65,ze1=ze0+0.4,add=(x0,x1,z0,z1)=>tr.colls.push(addColl(SO.x+x0,SO.x+x1,z0,z1,-2,7));
+  if(!open){add(-SUB_HALF,SUB_HALF,ze0,ze1);return;}
+  const gaps=[];for(let c=-1;c<=1;c++)for(const dx of DOOR_X)gaps.push(c*(CAR_L+CAR_GAP)+dx);
+  let x=-SUB_HALF;for(const gx of gaps.sort((a,b)=>a-b)){add(x,gx-0.75,ze0,ze1);x=gx+0.75;}add(x,SUB_HALF,ze0,ze1);
+  // the far side and the ends of the train
+  const zf=SO.z+tr.tz-s*1.5,zfa=Math.min(zf,zf-s*0.3),zfb=Math.max(zf,zf-s*0.3);add(-TRAIN_HALF,TRAIN_HALF,zfa,zfb);
+  const zi0=Math.min(SO.z+tr.tz-1.5,SO.z+tr.tz+1.5),zi1=zi0+3.0;add(-TRAIN_HALF-0.3,-TRAIN_HALF,zi0,zi1);add(TRAIN_HALF,TRAIN_HALF+0.3,zi0,zi1);}
+
+// ---- sounds: a low rumble while a train moves, brakes, the door chime ----
+function subRumble(tr,on,speed){if(!AUD.ctx)return;if(!tr.snd){const s=AUD.ctx.createBufferSource();s.buffer=AUD.noise;s.loop=true;const f=AUD.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=180;const g=AUD.ctx.createGain();g.gain.value=0;s.connect(f);f.connect(g);g.connect(AUD.master);s.start();tr.snd={g,f};}
+  const t=AUD.ctx.currentTime;tr.snd.g.gain.setTargetAtTime(on?Math.min(0.5,0.08+speed*0.02):0,t,0.25);tr.snd.f.frequency.setTargetAtTime(120+speed*12,t,0.3);}
+function subChime(){if(!AUD.ctx)return;const t=AUD.ctx.currentTime;[[0,784],[0.32,622]].forEach(([d,f])=>{const o=AUD.ctx.createOscillator(),g=AUD.ctx.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(0.16,t+d+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+d+0.6);o.connect(g);g.connect(AUD.master);o.start(t+d);o.stop(t+d+0.65);});}
+function subHiss(){if(!AUD.ctx)return;const t=AUD.ctx.currentTime,s=AUD.ctx.createBufferSource();s.buffer=AUD.noise;const f=AUD.ctx.createBiquadFilter();f.type='highpass';f.frequency.value=2500;const g=AUD.ctx.createGain();g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.7);s.connect(f);f.connect(g);g.connect(AUD.master);s.start(t);s.stop(t+0.75);}
+function subBrake(){if(!AUD.ctx)return;const t=AUD.ctx.currentTime,o=AUD.ctx.createOscillator(),g=AUD.ctx.createGain();o.type='sawtooth';o.frequency.setValueAtTime(2300,t);o.frequency.linearRampToValueAtTime(1700,t+2.2);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.025,t+0.4);g.gain.linearRampToValueAtTime(0,t+2.4);o.connect(g);g.connect(AUD.master);o.start(t);o.stop(t+2.5);}
+
+// ---- each platform's timetable: a train every minute (platform 2 half a minute after platform 1) ----
+const SUB_ARR=5.5,SUB_DWELL=13,SUB_DEP=5,SUB_RIDE=9.5,SUB_GAP=60-SUB_ARR-SUB_DWELL-SUB_DEP;
+const easeOut=u=>1-(1-u)*(1-u),easeIn=u=>u*u;
+function subSchedule(){for(const tr of SUBT){tr.phase='gap';tr.opened=false;tr.chimed=false;tr.wait=tr.plat===0?8+Math.random()*20:38+Math.random()*10;tr.wait%=60;tr.g.visible=false;tr.door=0;setDoors(tr);subEdge(tr,false);tr.riding=false;}}
+function setDoors(tr){for(const d of tr.doors){if(d.side>0){d.m.position.x=d.base;continue;}d.m.position.x=d.base+d.lr*0.78*tr.door;}}
+function trainX(tr,x){tr.x=x;tr.g.position.x=SO.x+x;}
+function updSubway(dt){
+  if(!SUBWAY){for(const tr of SUBT)if(tr.snd)subRumble(tr,false,0);return;}
+  const P=player;
+  for(const tr of SUBT){const d=tr.dir;tr.pt+=dt;const was=tr.x;
+    if(tr.phase==='gap'){tr.wait-=dt;if(tr.wait<=0){tr.phase='arrive';tr.pt=0;tr.opened=false;tr.chimed=false;tr.g.visible=true;trainX(tr,-d*80);tr.light.intensity=0.55;subBrake();}}
+    else if(tr.phase==='arrive'){const u=Math.min(1,tr.pt/SUB_ARR);trainX(tr,-d*80*(1-easeOut(u)));subRumble(tr,true,(1-u)*16);
+      if(u>=1){tr.phase='dwell';tr.pt=0;subRumble(tr,false,0);}}
+    else if(tr.phase==='dwell'){
+      if(tr.pt>0.8&&tr.pt<2.0){if(tr.door===0){subHiss();}tr.door=Math.min(1,(tr.pt-0.8)/1.0);setDoors(tr);if(tr.pt>1.3&&!tr.opened){tr.opened=true;subEdge(tr,true);}}
+      if(tr.pt>SUB_DWELL-3.2&&!tr.chimed){tr.chimed=true;subChime();}
+      if(tr.pt>SUB_DWELL-2&&tr.pt<SUB_DWELL-0.8){if(tr.door===1)subHiss();tr.door=Math.max(0,1-(tr.pt-(SUB_DWELL-2))/1.0);setDoors(tr);}
+      if(tr.pt>SUB_DWELL-1.2&&tr.opened){tr.opened=false;tr.door=0;setDoors(tr);
+        // anyone standing in the train when the doors shut is going for a ride
+        tr.riding=subInTrain(tr);subEdge(tr,false);if(tr.riding){P.wasFp=P.fp;P.fp=true;P.m.group.visible=false;yaw=d>0?Math.PI/2:-Math.PI/2;pitch=-0.05;notify(`Next stop: <b>${SUB_LINE[subNext(SUBWAY.city,d)]}</b>`,4);}}
+      if(tr.pt>=SUB_DWELL){tr.phase='depart';tr.pt=0;tr.chimed=false;}}
+    else if(tr.phase==='depart'){const u=Math.min(1,tr.pt/SUB_DEP);trainX(tr,d*80*easeIn(u));subRumble(tr,true,u*16);
+      if(u>=1){if(tr.riding){tr.phase='ride';tr.pt=0;}else{tr.phase='gap';tr.wait=SUB_GAP;tr.g.visible=false;tr.light.intensity=0;subRumble(tr,false,0);}}}
+    else if(tr.phase==='ride'){subRumble(tr,true,16);shake=Math.max(shake,0.05);
+      if(tr.pt>=SUB_RIDE){// on to the next city: the same train comes into the next station along the line
+        SUBWAY.city=subNext(SUBWAY.city,d);subSigns();subCrowd();const dx=-d*160;trainX(tr,tr.x+dx);tr.phase='arrive';tr.opened=false;tr.chimed=false;tr.pt=0;subBrake();
+        for(const o of SUBT)if(o!==tr&&o.phase!=='gap'){o.phase='gap';o.opened=false;o.chimed=false;o.wait=20+Math.random()*25;o.g.visible=false;o.light.intensity=0;subEdge(o,false);o.door=0;setDoors(o);}
+        notify(`Now arriving: <b>${SUB_LINE[SUBWAY.city]}</b>`,4);}}
+    // riding: you move with the train and stay inside it
+    if(tr.riding){P.pos.x+=tr.x-was;const lx=P.pos.x-(SO.x+tr.x),zc=SO.z+tr.tz;P.pos.x=SO.x+tr.x+clamp(lx,-TRAIN_HALF+0.5,TRAIN_HALF-0.5);P.pos.z=clamp(P.pos.z,zc-1.1,zc+1.1);P.pos.y=SY;
+      if(tr.phase==='dwell'&&tr.opened){tr.riding=false;P.fp=!!P.wasFp;P.m.group.visible=!P.fp;}}}
+  // the tunnel lights rush past while a train is moving
+  for(const L of subTunnelLights){const tr=SUBT[L.s<0?0:1],v=tr.phase==='ride'?32:0;L.off=((L.off||0)+v*dt)%90;L.m.position.x=SO.x+L.e*(SUB_HALF+5+((L.k*9+(L.e*tr.dir>0?-1:1)*L.off)%90+90)%90);}
+  subBoardT-=dt;if(subBoardT<=0){subBoardT=0.5;subDrawBoards();}}
+let subBoardT=0;
+function subInTrain(tr){const P=player.pos;return Math.abs(P.x-(SO.x+tr.x))<TRAIN_HALF&&Math.abs(P.z-(SO.z+tr.tz))<1.5;}
+function subSigns(){const n=SUB_LINE[SUBWAY.city].toUpperCase();for(const m of subNames){m.material.map.dispose();m.material.map=signTex(n,'#1d3557','#fff',1024,136);m.material.needsUpdate=true;}subDrawBoards();}
+function subDrawBoards(){if(!SUBWAY)return;for(const b of subBoards){const tr=SUBT[b.plat],g=b.c.getContext('2d'),to=SUB_LINE[subNext(SUBWAY.city,tr.dir)];
+  g.fillStyle='#0b0d10';g.fillRect(0,0,512,128);g.fillStyle='#ffb000';g.font='bold 30px Arial';g.textBaseline='top';g.fillText(`PLATFORM ${b.plat+1} · TO ${to.toUpperCase()}`,16,14);
+  const s=tr.phase==='gap'?Math.ceil(tr.wait+SUB_ARR):0;g.font='bold 40px Arial';g.fillText(tr.phase==='dwell'?'NOW BOARDING':tr.phase==='gap'?`NEXT TRAIN ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:tr.phase==='arrive'?'TRAIN ARRIVING':'DEPARTING',16,62);b.t.needsUpdate=true;}}
+// ---- going down and coming back up ----
+let subPeds=[];
+function subCrowd(){for(const p of subPeds){p.remove();const i=PEDS.indexOf(p);if(i>=0)PEDS.splice(i,1);}subPeds=[];if(!SUBWAY)return;
+  for(let i=0;i<7;i++){const s=Math.random()<0.5?-1:1,x=SO.x+rand(-40,40),z=SO.z+s*rand(5.2,6.8);if(Math.abs(x-SO.x+30)<4||Math.abs(x-SO.x-30)<4)continue;
+    const p=new Ped(randLook(),'civ',x,z,s<0?0:Math.PI);p.state='idle';p.inside=true;PEDS.push(p);subPeds.push(p);}}
+function enterSubway(e){$('fade').style.opacity=1;setTimeout(()=>{if(state!=='play')return;const P=player;SUBWAY={city:e.city,plat:0};subSigns();subSchedule();subCrowd();
+  P.pos.set(SO.x-30,SY,SO.z-9.4);P.vx=P.vz=0;yaw=0;P.h=0;pitch=-0.05;for(const l of subLights)l.intensity=0.9;closeMap();$('fade').style.opacity=0;
+  notify(`<b>${e.name}</b> station. Trains every minute: Platform 1 to <b>${SUB_LINE[subNext(e.city,1)]}</b>, Platform 2 to <b>${SUB_LINE[subNext(e.city,-1)]}</b>.`,6);},300);}
+function leaveSubway(silent){if(!SUBWAY)return;const P=player,c=SUBWAY.city;for(const tr of SUBT){if(tr.riding){tr.riding=false;}tr.phase='gap';tr.opened=false;tr.chimed=false;tr.g.visible=false;tr.light.intensity=0;subRumble(tr,false,0);subEdge(tr,false);tr.door=0;setDoors(tr);}
+  if(P.wasFp!==undefined){P.fp=!!P.wasFp;P.wasFp=undefined;P.m.group.visible=!P.fp;}
+  for(const l of subLights)l.intensity=0;SUBWAY=null;subCrowd();if(silent)return;
+  const e=SUBE.find(x=>x.city===c)||SUBE[0];P.pos.set(e.x+e.dx*0.8,groundY(e.x,e.z),e.z+e.dz*0.8);yaw=Math.atan2(e.dx,e.dz);P.h=yaw;pitch=-0.08;updChunks(0,true);}
+const subZone=()=>{if(!SUBWAY)return null;const P=player.pos,lx=P.x-SO.x,lz=P.z-SO.z,back=Math.abs(lz)>9.2;if(!back)return null;if(Math.abs(lx+30)<2.3)return'exit';if(Math.abs(lx-30)<2.3)return'cross';return null;};
+function subUse(){const z=subZone();if(!z)return false;$('fade').style.opacity=1;
+  setTimeout(()=>{if(!SUBWAY)return;if(z==='exit'){leaveSubway();}else{const P=player,s=P.pos.z<SO.z?1:-1;P.pos.set(SO.x+30,SY,SO.z+s*9.4);yaw=s>0?Math.PI:0;P.h=yaw;}$('fade').style.opacity=0;},300);return true;}
+function subHint(){if(!SUBWAY)return null;const z=subZone();if(z==='exit')return`Press <b>E</b> to go up to the street in <b>${SUB_LINE[SUBWAY.city]}</b>.`;
+  if(z==='cross')return`Press <b>E</b> to go across to <b>Platform ${player.pos.z<SO.z?2:1}</b>.`;
+  for(const tr of SUBT){if(tr.riding)return tr.phase==='ride'?`On the train to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>…`:'';
+    if(tr.phase==='dwell'&&tr.opened&&Math.abs(player.pos.z-(SO.z+tr.tz))<4)return subInTrain(tr)?`Stay on board to ride to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>. The doors close soon.`:`Walk in through the open doors to ride to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>.`;}
+  return'';}
 
 /* ---------- 1.7: online free roam ----------
    One shared San Varro for everyone who presses Play online, over the arcade's Supabase Realtime project. You see the
