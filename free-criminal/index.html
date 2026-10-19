@@ -171,6 +171,11 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 #phone .app i{position:relative;width:58px;height:58px;border-radius:16px;display:grid;place-items:center;font-style:normal;font-size:28px;box-shadow:0 6px 14px rgba(0,0,0,.35);transition:transform .12s}
 #phone .app:hover i{transform:scale(1.07)}
 #phone .ic-m{background:linear-gradient(160deg,#5ef08a,#18b84f)}
+#phone .ic-t{background:linear-gradient(160deg,#ff9d2e,#c2410c)}#phone .ic-p{background:linear-gradient(160deg,#34d3b3,#0f766e)}
+#phone .tt{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.06)}#phone .tt.here{background:rgba(63,160,255,.12)}#phone .tt b{display:block;font-size:15px}#phone .tt em{font-style:normal;font-size:11px;color:#6cb6ff;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+#phone .ttr{display:flex;justify-content:space-between;font-size:13px;color:#aab3c2;margin-top:3px}#phone .ttr i{font-style:normal;font-weight:800;color:#ffd27a;font-variant-numeric:tabular-nums}#phone .ttr i.now{color:#5ee08a}
+#phone .pay{flex:1;overflow:auto;padding:12px 14px}#phone .payto{display:block;width:100%;margin-top:8px;padding:9px 12px;border-radius:10px;border:1px solid #2c3442;background:#121722;color:#fff;font:inherit;text-align:left;cursor:pointer}#phone .payto.sel{border-color:#34d3b3;background:rgba(52,211,179,.12)}
+#phone .payamts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}#phone .payamts button{border:0;border-radius:10px;padding:9px 0;font:700 13px Barlow,Arial;background:#0f766e;color:#fff;cursor:pointer}#phone .payamts button:disabled{opacity:.35;cursor:default}
 #phone .ic-b{background:linear-gradient(160deg,#1d3d72,#0a1a33);border:2px solid #f2b134;font:900 14px/1 Barlow,Arial!important;color:#f2b134;flex-direction:column;letter-spacing:.04em}
 #phone .ic-b small{display:block;font:700 11px Barlow,Arial;color:#fff;margin-bottom:1px}
 #phone .app em{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:10px;background:#ff3b30;font:800 12px/20px Arial;font-style:normal;text-align:center;padding:0 5px;color:#fff}
@@ -469,7 +474,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.9.2</b>San Varro</div>
+    <div class="ver"><b>v1.9.3</b>San Varro</div>
     <nav class="nav">
       <button id="bOnline" class="online">Play online</button>
       <button id="bPlay">Play offline</button>
@@ -523,7 +528,13 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.9.2</b>On the tracks<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.9.3</b>Train Times and PAYTransfer<span>Latest</span></summary><ul>
+    <li>New phone app: <b>Train Times</b>. Every subway station, both platforms, where each one goes and how long until the next train (or <b>Boarding</b> while it's in). The trains run to this timetable, the same for everyone online.</li>
+    <li>New phone app: <b>PAYTransfer</b> (online). Pick a player and send them money from the cash you're carrying. You can send up to <b>$6,000 every 10 minutes</b>. If the other player doesn't get it (they left, or lost connection), it comes straight back to you.</li>
+    <li>Fixed: online, players in another city's subway station showed up in yours. You now only see players in the same station as you.</li>
+    <li>Fixed: players who are underground show on the map at their station's entrance, and the Tab list says which subway station they're in, instead of a distance thousands of kilometres away.</li>
+  </ul></details>
+  <details><summary><b>v1.9.2</b>On the tracks</summary><ul>
     <li>You now start with <b>$10,000</b> instead of $2,500.</li>
     <li>Online only lets in players on the latest version. If a newer version comes out while you're playing online, you're taken back to the menu and asked to refresh the page; players on an older version can't be seen or joined until they update.</li>
     <li>Subway: you can jump down onto the tracks and walk across to the other platform, then press <b>E</b> (or jump) at the edge to climb up. Watch out: a train coming in or pulling out will kill you, and it sounds its horn when you're in the way.</li>
@@ -3207,7 +3218,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.9.2',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
+const VERSION='1.9.3',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3508,7 +3519,13 @@ function subBrake(){if(!AUD.ctx)return;const t=AUD.ctx.currentTime,o=AUD.ctx.cre
 // ---- each platform's timetable: a train every minute (platform 2 half a minute after platform 1) ----
 const SUB_ARR=5.5,SUB_DWELL=13,SUB_DEP=5,SUB_RIDE=9.5,SUB_GAP=60-SUB_ARR-SUB_DWELL-SUB_DEP;
 const easeOut=u=>1-(1-u)*(1-u),easeIn=u=>u*u;
-function subSchedule(){for(const tr of SUBT){tr.phase='gap';tr.opened=false;tr.chimed=false;tr.wait=tr.plat===0?8+Math.random()*20:38+Math.random()*10;tr.wait%=60;tr.g.visible=false;tr.door=0;setDoors(tr);subEdge(tr,false);tr.riding=false;}}
+// 1.9.3: one timetable for every station, from the clock (so the Train Times app, the boards and everyone online agree):
+// seconds until the next train stops at a platform
+function subNextArr(city,plat){const t=Date.now()/1000,off=city*7+plat*30;return 60-((t+off)%60);}
+const subWaitFor=(city,plat)=>((subNextArr(city,plat)-SUB_ARR)%60+60)%60;
+function subSchedule(){for(const tr of SUBT){tr.phase='gap';tr.opened=false;tr.chimed=false;tr.wait=subWaitFor(SUBWAY?SUBWAY.city:0,tr.plat);tr.g.visible=false;tr.door=0;setDoors(tr);subEdge(tr,false);tr.riding=false;tr.light.intensity=0;
+    // a train that should be standing at the platform right now is already there
+    const e=60-subNextArr(SUBWAY?SUBWAY.city:0,tr.plat);if(e<SUB_DWELL-2.5){tr.phase='dwell';tr.pt=Math.max(0,e);tr.g.visible=true;trainX(tr,0);tr.light.intensity=0.55;if(tr.pt>1.3){tr.door=1;setDoors(tr);tr.opened=true;subEdge(tr,true);}else subEdge(tr,'closed');}}}
 function setDoors(tr){for(const d of tr.doors){if(d.side>0){d.m.position.x=d.base;continue;}d.m.position.x=d.base+d.lr*0.78*tr.door;}}
 function trainX(tr,x){tr.x=x;tr.g.position.x=SO.x+x;}
 function updSubway(dt){
@@ -3531,7 +3548,7 @@ function updSubway(dt){
     else if(tr.phase==='ride'){subRumble(tr,true,16);shake=Math.max(shake,0.05);
       if(tr.pt>=SUB_RIDE){// on to the next city: the same train comes into the next station along the line
         SUBWAY.city=subNext(SUBWAY.city,d);subSigns();subCrowd();const dx=-d*160;trainX(tr,tr.x+dx);tr.phase='arrive';tr.opened=false;tr.chimed=false;tr.pt=0;subBrake();
-        for(const o of SUBT)if(o!==tr&&o.phase!=='gap'){o.phase='gap';o.opened=false;o.chimed=false;o.wait=20+Math.random()*25;o.g.visible=false;o.light.intensity=0;subEdge(o,false);o.door=0;setDoors(o);}
+        for(const o of SUBT)if(o!==tr&&o.phase!=='gap'){o.phase='gap';o.opened=false;o.chimed=false;o.wait=subWaitFor(SUBWAY.city,o.plat);o.g.visible=false;o.light.intensity=0;subEdge(o,false);o.door=0;setDoors(o);}
         notify(`Now arriving: <b>${SUB_LINE[SUBWAY.city]}</b>`,4);}}
     // 1.9.2: down on the tracks: the horn when a train is coming at you, and it runs you over
     if(tr.g.visible&&(tr.phase==='arrive'||tr.phase==='depart')&&!tr.riding&&P.pos.y<0.8&&state==='play'){
@@ -3641,12 +3658,13 @@ const NET=(()=>{
   // [x, y, z, heading, stride (0-1), pose (0 walk, 1 rifle, 2 pistol), car type ('' on foot), car colour, shots fired, dead, look]
   // 1.9: [12] is the id of the player whose car you're riding in ('' when you aren't)
   function myState(){const P=player,c=P.inCar,w=WPN[P.wpn],spd=Math.hypot(P.vx,P.vz);
-    if(P.ride)return[r2(P.pos.x),r2(P.pos.y),r2(P.pos.z),r2(P.h),0,0,'','',shots&255,P.dead||state==='dead'?1:0,PROF.look,api.prot()?1:0,P.ride.id];
+    const sc=SUBWAY?SUBWAY.city:-1; // 1.9.3: [13] the subway station you're in (-1 above ground)
+    if(P.ride)return[r2(P.pos.x),r2(P.pos.y),r2(P.pos.z),r2(P.h),0,0,'','',shots&255,P.dead||state==='dead'?1:0,PROF.look,api.prot()?1:0,P.ride.id,sc];
     const pose=P.drawn&&w&&!w.melee?(/pistol|revolver|smg/i.test(w.tag||'')?2:1):0;
-    if(c)return[r2(c.pos.x),r2(c.pos.y),r2(c.pos.z),r2(c.h),0,0,c.type,c.color||'#888',shots&255,0,PROF.look,api.prot()?1:0];
-    return[r2(P.pos.x),r2(P.pos.y),r2(P.pos.z),r2(P.h),spd>4?0.95:spd>0.5?0.55:0,P.rag?3:pose,'','',shots&255,P.dead||state==='dead'?1:0,PROF.look,api.prot()?1:0];}
+    if(c)return[r2(c.pos.x),r2(c.pos.y),r2(c.pos.z),r2(c.h),0,0,c.type,c.color||'#888',shots&255,0,PROF.look,api.prot()?1:0,'',sc];
+    return[r2(P.pos.x),r2(P.pos.y),r2(P.pos.z),r2(P.h),spd>4?0.95:spd>0.5?0.55:0,P.rag?3:pose,'','',shots&255,P.dead||state==='dead'?1:0,PROF.look,api.prot()?1:0,'',sc];}
   function cleanState(s){if(!Array.isArray(s)||s.length<11||![0,1,2,3].every(i=>num(s[i])&&Math.abs(s[i])<1e5))return null;
-    return[s[0],s[1],s[2],s[3],clamp(+s[4]||0,0,1),s[5]|0,CT[s[6]]&&s[6]!=='police'?s[6]:'',/^#[0-9a-f]{6}$/i.test(s[7])?s[7]:'#888888',s[8]|0,s[9]?1:0,String(s[10]||''),s[11]?1:0,typeof s[12]==='string'&&/^[a-z0-9]{1,10}$/.test(s[12])?s[12]:''];}
+    return[s[0],s[1],s[2],s[3],clamp(+s[4]||0,0,1),s[5]|0,CT[s[6]]&&s[6]!=='police'?s[6]:'',/^#[0-9a-f]{6}$/i.test(s[7])?s[7]:'#888888',s[8]|0,s[9]?1:0,String(s[10]||''),s[11]?1:0,typeof s[12]==='string'&&/^[a-z0-9]{1,10}$/.test(s[12])?s[12]:'',Number.isInteger(s[13])&&s[13]>=0&&s[13]<8?s[13]:-1];}
   function gotState(id,s0,up){const s=cleanState(s0);if(!s||id===myId)return;if(up){ups.set(id,s);changed.add(id);}
     let a=avatars.get(id);if(!a)a=makeAvatar(id);a.buf.push({at:now(),s});if(a.buf.length>20)a.buf.shift();}
   function tickPos(t){const hz=hzFor(Math.max(1,roster.length));if(t-upT<1000/hz)return;upT=t;
@@ -3673,7 +3691,7 @@ const NET=(()=>{
       const jump=Math.hypot(s[0]-a.pos.x,s[2]-a.pos.z)>80,ox=a.pos.x,oz=a.pos.z;
       a.pos.set(p0[0]+(s[0]-p0[0])*k,p0[1]+(s[1]-p0[1])*k,p0[2]+(s[2]-p0[2])*k);a.hd=lerpA(p0[3],s[3],k);if(jump){a.pos.set(s[0],s[1],s[2]);a.hd=s[3];b.length=1;}
       if(jump||!(dt>0)){a.vx=a.vz=0;}else{const kv=1-Math.exp(-10*dt);a.vx=lerp(a.vx||0,(a.pos.x-ox)/dt,kv);a.vz=lerp(a.vz||0,(a.pos.z-oz)/dt,kv);} // 1.9: how fast they're going, for crashes
-      const inCar=!!s[6];a.inCar=inCar;a.ride=s[12]||'';a.type=s[6];a.vis=show&&!s[9]&&!INSIDE;a.prot=!!s[11];
+      const inCar=!!s[6];a.inCar=inCar;a.ride=s[12]||'';a.type=s[6];a.sub=s[13];a.vis=show&&!s[9]&&!INSIDE&&(s[13]<0?!SUBWAY:!!SUBWAY&&SUBWAY.city===s[13]);a.prot=!!s[11];
       if(a.look!==s[10]){a.look=s[10];const n=makeHuman(lookOf2(s[10]));scene.remove(a.h.group);a.h.geos.forEach(g=>g.dispose());a.h=n;scene.add(n.group);}
       for(const key in a.cars)a.cars[key].group.visible=false;
       if(inCar){const m=carFor(a,s[6],s[7]);m.group.visible=a.vis;m.group.position.copy(a.pos);m.group.rotation.y=a.hd;a.car=m;a.h.group.visible=false;}
@@ -3725,15 +3743,16 @@ const NET=(()=>{
   api.blast=at=>{for(const a of avatars.values()){if(!a.vis||a.prot)continue;const d=a.pos.distanceTo(at),R=a.inCar?9:8;if(d<R)send(main,'h',{f:myId,to:a.id,dmg:Math.round((R-d)*(a.inCar?20:14))});}};
 
   // ---------- the minimap ----------
+  const mapAt=a=>{if(a.sub>=0){const e=SUBE.find(x=>x.city===a.sub);if(e)return[e.x,e.z];}return[a.pos.x,a.pos.z];};
   api.mapBlips=(g,to,r,names)=>{g.save();g.textAlign='center';g.textBaseline='bottom';g.font=`700 ${Math.round(r*1.5)}px Barlow Condensed, Arial`;
-    for(const a of avatars.values()){if(!a.buf.length||a.buf[a.buf.length-1].s[9])continue;const[x,y]=to(a.pos.x,a.pos.z);g.fillStyle='#111';g.beginPath();g.arc(x,y,r+2,0,7);g.fill();g.fillStyle='#3fa0ff';g.beginPath();g.arc(x,y,r,0,7);g.fill();
+    for(const a of avatars.values()){if(!a.buf.length||a.buf[a.buf.length-1].s[9])continue;const[x,y]=to(...mapAt(a));g.fillStyle='#111';g.beginPath();g.arc(x,y,r+2,0,7);g.fill();g.fillStyle='#3fa0ff';g.beginPath();g.arc(x,y,r,0,7);g.fill();
       if(names){g.lineWidth=4;g.strokeStyle='rgba(0,0,0,.75)';g.strokeText(a.name,x,y-r-3);g.fillStyle='#bfe0ff';g.fillText(a.name,x,y-r-3);}}g.restore();};
-  api.blips=(g,to)=>{for(const a of avatars.values()){if(!a.vis)continue;const[x,y]=to(a.pos.x,a.pos.z,true);g.fillStyle='#111';g.beginPath();g.arc(x,y,9,0,7);g.fill();g.fillStyle='#3fa0ff';g.beginPath();g.arc(x,y,7,0,7);g.fill();}};
+  api.blips=(g,to)=>{for(const a of avatars.values()){if(!a.vis&&!(a.sub>=0))continue;if(a.buf.length&&a.buf[a.buf.length-1].s[9])continue;const[x,y]=to(...mapAt(a),true);g.fillStyle='#111';g.beginPath();g.arc(x,y,9,0,7);g.fill();g.fillStyle='#3fa0ff';g.beginPath();g.arc(x,y,7,0,7);g.fill();}};
 
   // ---------- joining and leaving ----------
   api.join=async()=>{api.name=(PROF.name||'Player').replace(/[<>&"]/g,'').slice(0,16);await getClient();
     who=chan(BASE+'-who',true);who.on('presence',{event:'sync'},onPresence);
-    main=chan(BASE+'-pub');listen(main,'s',m=>{if(num(m.ts)&&hostId!==myId)syncClock(m.ts);if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'pm',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.m==='string')gotPm(m.f,nameOf(m.f),m.m.slice(0,200));});listen(main,'c',m=>{if(api.on&&typeof m.m==='string'&&m.f!==myId)chatLine(nameOf(m.f),m.m.slice(0,140),false);});
+    main=chan(BASE+'-pub');listen(main,'s',m=>{if(num(m.ts)&&hostId!==myId)syncClock(m.ts);if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'pay',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.id==='string'&&Number.isInteger(m.n)&&m.n>0&&m.n<=PAY_MAX){gotPay(m.f,nameOf(m.f),m.n,m.id);send(main,'payok',{to:m.f,id:m.id});}});listen(main,'payok',m=>{if(api.on&&m.to===myId&&typeof m.id==='string')gotPayOk(m.id);});listen(main,'pm',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.m==='string')gotPm(m.f,nameOf(m.f),m.m.slice(0,200));});listen(main,'c',m=>{if(api.on&&typeof m.m==='string'&&m.f!==myId)chatLine(nameOf(m.f),m.m.slice(0,140),false);});
     pipe=chan(BASE+'-p-'+myId);
     try{await Promise.all([joinChan(who,st=>{if(st==='SUBSCRIBED'&&api.on)who.track({id:myId,n:api.name,j:joinT,l:PROF.look,v:VERSION}).catch(()=>{});}),joinChan(main),joinChan(pipe)]);}
     catch(e){api.leave();throw e;}
@@ -3747,7 +3766,7 @@ const NET=(()=>{
   api.outdated=v=>{if(!api.on)return;outdatedTo=v;if(state==='menu'){api.leave();return;}$('bQuit').click();notifyMenu(`A new version of Free Criminal (v${v}) is out. Refresh the page to update; online only lets in the latest version.`);};
   // 1.8.4: the Tab list: everyone online, you first
   api.players=()=>roster.map(r=>{const a=avatars.get(r.id),me=r.id===myId,last=a&&a.buf.length?a.buf[a.buf.length-1].s:null;
-    return{n:me?api.name:r.n,me,host:r.id===hostId,st:me?(player.dead||state==='dead'?'Down':player.ride?'Passenger':player.inCar?'Driving':'On foot'):!last?'Joining…':last[9]?'Down':last[12]?'Passenger':last[6]?'Driving':'On foot',d:me||!a?null:Math.round(a.pos.distanceTo(player.inCar?player.inCar.pos:player.pos))};}).sort((a,b)=>b.me-a.me);
+    return{n:me?api.name:r.n,me,host:r.id===hostId,st:me?(player.dead||state==='dead'?'Down':SUBWAY?'Subway · '+SUB_LINE[SUBWAY.city]:player.ride?'Passenger':player.inCar?'Driving':'On foot'):!last?'Joining…':last[9]?'Down':last[13]>=0?'Subway · '+SUB_LINE[last[13]]:last[12]?'Passenger':last[6]?'Driving':'On foot',d:me||!a?null:(()=>{const m=SUBWAY&&subMapPos(),[ax,az]=mapAt(a),px=m?m.x:(player.inCar?player.inCar.pos:player.pos).x,pz=m?m.z:(player.inCar?player.inCar.pos:player.pos).z;return Math.round(Math.hypot(ax-px,az-pz));})()};}).sort((a,b)=>b.me-a.me);
   // chat (1.8): T to talk to everyone in the online city
   let chatT=0;api.say=t=>{t=String(t||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,140);if(!api.on||!t||settings.chatOff||now()-chatT<600)return;chatT=now();send(main,'c',{f:myId,m:t});chatLine(api.name,t,true);};
   api._dbg=()=>[...avatars.values()].map(a=>({n:a.name,vis:a.vis,car:a.inCar,pos:a.pos.toArray().map(v=>+v.toFixed(1)),buf:a.buf.length}));
@@ -3795,6 +3814,8 @@ const NET=(()=>{
   // 1.9: private messages from the phone: they go out like chat, but only the player they're for shows them
   let pmT=0;api.pm=(to,t)=>{t=String(t||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,200);if(!api.on||!t||settings.chatOff||now()-pmT<400||!roster.some(r=>r.id===to))return false;pmT=now();return send(main,'pm',{f:myId,to,m:t});};
   api.people=()=>roster.filter(r=>r.id!==myId).map(r=>({id:r.id,n:r.n}));
+  // 1.9.3: PAYTransfer: the money goes to one player, who sends back a receipt (no receipt in time = the sender gets it back)
+  api.pay=(to,n)=>{if(!api.on||!roster.some(r=>r.id===to))return null;const id=myId+(Math.random().toString(36)+'000000').slice(2,8);return send(main,'pay',{f:myId,to,n,id})?id:null;};
   // 1.8.3: sending and passing on positions runs on its own timer, not the game's frames. It used to stop whenever the
   // host (the first player in) paused, opened a shop, watched a cutscene or switched to another tab, and then nobody
   // could see anybody. Timers keep running in a background tab (slowed down), and the host also passes positions on
@@ -3870,8 +3891,36 @@ const showTxt=t=>esc(settings.censor?CENSOR(t):t),showName=n=>esc(settings.censo
 const convOf=(id,name)=>{let c=PMS.get(id);if(!c){c={id,name:name||'Player',msgs:[],unread:0,last:0};PMS.set(id,c);}return c;};
 const phHead=(title,back,cls)=>`<div class="ah${cls?' '+cls:''}"><button class="bkb" data-go="${back}">‹ ${back==='home'?'Home':'Back'}</button><div class="at">${title}</div></div>`;
 function homeHtml(){const u=settings.chatOff?0:phoneUnread();return`<div class="home"><div class="clk">${phoneTime()}</div><div class="dt">San Varro · ${NET.on?'Online':'Offline'}</div>
-  <div class="apps"><button class="app" data-app="msgs"><i class="ic-m">💬${u?`<em>${u>9?'9+':u}</em>`:''}</i>Messages</button><button class="app" data-app="bank"><i class="ic-b"><small>my</small>BANK</i>myBANK</button></div>
+  <div class="apps"><button class="app" data-app="msgs"><i class="ic-m">💬${u?`<em>${u>9?'9+':u}</em>`:''}</i>Messages</button><button class="app" data-app="bank"><i class="ic-b"><small>my</small>BANK</i>myBANK</button><button class="app" data-app="trains"><i class="ic-t">🚇</i>Train Times</button><button class="app" data-app="pay"><i class="ic-p">💸</i>PAYTransfer</button></div>
   <div class="tip"><b>P</b> or <b>Esc</b> puts the phone away</div></div>`;}
+function trainsHtml(){const h=phHead('Train Times','home'),fm=s=>s>60-SUB_DWELL+0.5?'<i class="now">Boarding</i>':`<i>${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}</i>`;
+  return h+'<div class="list">'+SUB_LINE.map((n,i)=>{const here=SUBWAY&&SUBWAY.city===i;
+    return`<div class="tt${here?' here':''}"><b>${n}</b>${here?'<em>You are here</em>':''}<div class="ttr"><span>Platform 1 → ${SUB_LINE[subNext(i,1)]}</span>${fm(subNextArr(i,0))}</div><div class="ttr"><span>Platform 2 → ${SUB_LINE[subNext(i,-1)]}</span>${fm(subNextArr(i,1))}</div></div>`;}).join('')+'</div>';}
+// 1.9.3: PAYTransfer: send money to another player online, up to $6,000 in any 10 minutes (kept through a refresh)
+const PAYKEY='freecriminal.pay.v1',PAY_MAX=6000,PAY_WIN=600000;
+let PAYLOG=(()=>{try{const a=JSON.parse(localStorage.getItem(PAYKEY));return Array.isArray(a)?a.filter(x=>x&&typeof x.at==='number'&&typeof x.n==='number'):[];}catch(e){return[];}})();
+const PAYHIST=[],PAYPEND=new Map(),PAYSEEN=new Set();let payTo=null;
+const payUsed=()=>{const now=Date.now();PAYLOG=PAYLOG.filter(x=>now-x.at<PAY_WIN);return PAYLOG.reduce((s,x)=>s+x.n,0);};
+const payLeft=()=>Math.max(0,PAY_MAX-payUsed());
+const paySave=()=>{try{localStorage.setItem(PAYKEY,JSON.stringify(PAYLOG));}catch(e){}};
+function payHtml(){const h=phHead('PAYTransfer','home');
+  if(!NET.on)return h+'<div class="empty">PAYTransfer works online. Play online to send money to other players.</div>';
+  const ppl=NET.people(),left=payLeft(),P=player;
+  if(payTo&&!ppl.some(p=>p.id===payTo))payTo=null;
+  let s=`<div class="pay"><div class="bcard" style="background:linear-gradient(135deg,#0f766e,#0b3d3a);border-color:rgba(52,211,179,.5)"><small>You can send</small><div class="bal">${fmt(left)}</div><div class="w">of ${fmt(PAY_MAX)} every 10 minutes · cash on you ${fmt(P.cash)}</div></div>`;
+  if(!ppl.length)s+='<div class="bn">Nobody else is online right now.</div>';
+  else{s+='<div class="bl">Send to</div>'+ppl.map(p=>`<button class="payto${payTo===p.id?' sel':''}" data-payto="${p.id}">${showName(p.n)}</button>`).join('');
+    if(payTo){const can=n=>n<=left&&n<=P.cash;s+='<div class="bl">Amount</div><div class="payamts">'+[100,500,1000,2500,4000,6000].map(n=>`<button data-paysend="${n}"${can(n)?'':' disabled'}>${fmt(n)}</button>`).join('')+'</div>';}}
+  if(PAYHIST.length)s+='<div class="bl">Recent</div>'+PAYHIST.slice(-6).reverse().map(x=>`<div class="lg"><span>${x.out?'To':'From'} ${showName(x.who)} · ${x.at}${x.st?' · '+x.st:''}</span><span class="${x.out?'m':'p'}">${x.out?'−':'+'}${fmt(x.n)}</span></div>`).join('');
+  return h+s+'</div>';}
+function paySend(n){const P=player,p=NET.people().find(q=>q.id===payTo);if(!p||!(n>0)||n>payLeft()||n>P.cash)return;
+  const id=NET.pay(p.id,n);if(!id){notify('Couldn’t send that right now.',2);return;}
+  giveCash(-n);PAYLOG.push({at:Date.now(),n});paySave();const h={out:true,who:p.n,n,at:phoneTime(),st:'sending…'};PAYHIST.push(h);
+  PAYPEND.set(id,{n,h,timer:setTimeout(()=>{if(!PAYPEND.has(id))return;PAYPEND.delete(id);giveCash(n);PAYLOG=PAYLOG.filter(x=>!(x.n===n&&Math.abs(x.at-Date.now())<20000));paySave();h.st='returned';notify(`<b>${showName(p.n)}</b> didn’t get the ${fmt(n)}, so it came back to you.`,4);if(PHONE.open)renderPhone();},7000)});
+  sfx.buy&&sfx.buy();saveGame();renderPhone();}
+function gotPay(from,name,n,id){if(PAYSEEN.has(id))return;PAYSEEN.add(id);giveCash(n);PAYHIST.push({out:false,who:name,n,at:phoneTime()});saveGame();phoneBeep();
+  notify(`💸 <b>${showName(name)}</b> sent you <b>${fmt(n)}</b> with PAYTransfer.`,5);if(PHONE.open)renderPhone();}
+function gotPayOk(id){const p=PAYPEND.get(id);if(!p)return;clearTimeout(p.timer);PAYPEND.delete(id);p.h.st='sent';if(PHONE.open)renderPhone();}
 function msgsHtml(){const h=phHead('Messages','home');
   if(settings.chatOff)return h+'<div class="empty">Chat is turned off, so messages are off too. Nobody’s messages reach you until you turn it back on.<button class="pbtn" data-act="chatOn">Turn chat back on</button></div>';
   if(!NET.on)return h+'<div class="empty">You’re playing offline. Play online to message other players.</div>';
@@ -3893,11 +3942,11 @@ function bankHtml(){const P=player,b=BANK.bal,c=P.cash,w=W.level>0;
    <div class="bl">Withdraw</div><div class="bgrid">${btn('wd',100,'$100')}${btn('wd',500,'$500')}${btn('wd',1000,'$1K')}${btn('wd','all','All')}</div>
    <div class="bn">Money in myBANK stays safe when you’re wasted or busted, and it’s saved with your game.</div>
    <div class="bl">Recent</div>${BANK.log.length?BANK.log.slice().reverse().map(l=>`<div class="lg"><span>${l.d?'Deposit':'Withdrawal'} · ${l.at}</span><span class="${l.d?'p':'m'}">${l.d?'+':'−'}${fmt(l.n)}</span></div>`).join(''):'<div class="bn">No transactions yet.</div>'}</div>`;}
-function phoneKey(){const V=PHONE.view;if(V==='home')return V+phoneTime()+phoneUnread()+NET.on+settings.chatOff;if(V==='bank')return V+player.cash+'|'+BANK.bal+'|'+(W.level>0)+BANK.log.length;
+function phoneKey(){const V=PHONE.view;if(V==='trains')return V+Math.floor(Date.now()/1000)+(SUBWAY?SUBWAY.city:-1);if(V==='pay')return V+player.cash+'|'+payLeft()+'|'+payTo+'|'+PAYHIST.length+PAYHIST.map(x=>x.st||'').join()+'|'+(NET.on?NET.people().map(p=>p.id).join():'');if(V==='home')return V+phoneTime()+phoneUnread()+NET.on+settings.chatOff;if(V==='bank')return V+player.cash+'|'+BANK.bal+'|'+(W.level>0)+BANK.log.length;
   if(V==='msgs')return V+(NET.on?NET.people().map(p=>p.id+p.n).join():'')+[...PMS.values()].map(c=>c.msgs.length+':'+c.unread).join()+settings.chatOff+settings.censor;
   return V+!!chatPeer(PHONE.with)+settings.chatOff+settings.censor;}
 function renderPhone(){const V=PHONE.view,old=$('phIn')?$('phIn').value:'';phView.className='view v-'+V;
-  phView.innerHTML=V==='msgs'?msgsHtml():V==='chat'?chatHtml(PHONE.with):V==='bank'?bankHtml():homeHtml();PHONE.key=phoneKey();$('phTime').textContent=phoneTime();
+  phView.innerHTML=V==='msgs'?msgsHtml():V==='chat'?chatHtml(PHONE.with):V==='bank'?bankHtml():V==='trains'?trainsHtml():V==='pay'?payHtml():homeHtml();PHONE.key=phoneKey();$('phTime').textContent=phoneTime();
   if(V==='chat'){const c=PMS.get(PHONE.with);if(c)c.unread=0;const L=$('phMsgList');if(L)L.scrollTop=L.scrollHeight;const i=$('phIn');
     if(i){i.value=old;i.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Enter'){e.preventDefault();phSend();}else if(e.code==='Escape'){e.preventDefault();i.blur();}});i.addEventListener('keyup',e=>e.stopPropagation());if(!touchMode())setTimeout(()=>i.focus(),30);}}}
 function updMsgs(){const L=$('phMsgList');if(L){L.innerHTML=bubbles(PHONE.with);L.scrollTop=L.scrollHeight;}}
@@ -3915,7 +3964,8 @@ function bankAct(a){const[op,v]=a.split(':'),P=player;let n=Math.floor(v==='all'
 function openPhone(){if(PHONE.open)return;if(chatOpen())closeChat();PHONE.open=true;PHONE.view='home';renderPhone();phone.classList.add('open');if(sfx.click)sfx.click();
   for(const k in keys)keys[k]=false;mouseL=mouseR=false;if(document.pointerLockElement)document.exitPointerLock();}
 function closePhone(relock){if(!PHONE.open)return;PHONE.open=false;phone.classList.remove('open');const a=document.activeElement;if(a&&phone.contains(a))a.blur();if(relock!==false&&state==='play')lockPointer();}
-phone.addEventListener('click',e=>{const b=e.target.closest('[data-app],[data-go],[data-pm],[data-bank],[data-act],.hb');if(!b||b.disabled)return;
+phone.addEventListener('click',e=>{const b=e.target.closest('[data-app],[data-go],[data-pm],[data-bank],[data-act],[data-payto],[data-paysend],.hb');if(!b||b.disabled)return;
+  if(b.dataset.payto){payTo=b.dataset.payto;if(sfx.click)sfx.click();renderPhone();return;}if(b.dataset.paysend){paySend(+b.dataset.paysend);return;}
   if(b.classList.contains('hb')){closePhone();return;}if(sfx.click&&!b.dataset.bank)sfx.click();
   if(b.dataset.app){PHONE.view=b.dataset.app;renderPhone();}else if(b.dataset.go){PHONE.view=b.dataset.go;renderPhone();}
   else if(b.dataset.pm){const id=b.dataset.pm,p=chatPeer(id);convOf(id,p?p.n:'Player');PHONE.view='chat';PHONE.with=id;renderPhone();}
@@ -3933,7 +3983,7 @@ setInterval(()=>{if(!PHONE.open)return;if(state!=='play'&&state!=='dead'&&state!
 function notifyMenu(t){const el=$('onlineMsg');el.textContent=t;el.hidden=!t;}
 $('bOnline').addEventListener('click',()=>{notifyMenu('');playOnline();});
 // for tests on a test server (?fcroom=...) only: reach inside the game from the console
-if(new URLSearchParams(location.search).get('fcroom'))window.__fc={get player(){return player;},get state(){return state;},get note(){return noteHTML;},NET,shootRay,WPN,V3,groundY,parkCar,enterCar,punch,playerFire,equip,throwNade,explode,setYaw:v=>{yaw=v;pitch=-0.05;}};
+if(new URLSearchParams(location.search).get('fcroom'))window.__fc={get player(){return player;},get state(){return state;},get note(){return noteHTML;},NET,shootRay,WPN,V3,groundY,parkCar,enterCar,punch,playerFire,equip,throwNade,explode,setYaw:v=>{yaw=v;pitch=-0.05;},get SUBE(){return SUBE;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;}};
 
 /* ---------- boot ---------- */
 async function boot(){
