@@ -4431,7 +4431,7 @@ function frame(now) {
   if (clouds) clouds.position.x = Math.sin(GAME.time * 0.003) * 500;
   const f = PLAYER.ent && PLAYER.ent.alive ? PLAYER.ent.pos : camera.position;
   sun.target.position.set(f.x, 0, f.z); sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 500);
-  renderer.render(scene, camera);
+  if (!(window.hbReel && hbReel.covering)) renderer.render(scene, camera); // the title reel covers the demo battle
 }
 function onResize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); }
 addEventListener('resize', onResize);
@@ -5821,5 +5821,1401 @@ setTimeout(() => {
   window.HBNet = { get room() { return room; }, get match() { return M; }, myId, stats, createRoom, joinRoom, joinWorld, playWorld, leaveRoom, startMatchHost, toLobby, quit };
 })();
 </script>
+<!-- hb-reel:start -->
+<script id="hb-reel">
+'use strict';
+/* ==========================================================================
+   Title-screen reel
+   --------------------------------------------------------------------------
+   Five cinematic shots behind the title menu, 7 s each with a fade through black:
+   1) the pilot's view over the clouds: instrument panel, HUD and canopy frame,
+   2) a camera on the glareshield looking back at the pilot, banking over farmland,
+   3) high over a busy carrier deck, a jet launching off the bow,
+   4) low on the deck behind a jet on the catapult as it launches on full afterburner,
+   5) soldiers advancing through the dust as two Black Hawks cross overhead.
+   It has its own renderer and scenes (a more realistic look than the game itself) and only runs
+   while the title menu is up; the game skips drawing its demo battle while the reel covers it.
+   Checking a moment by eye: hbReel.hold = true; hbReel.seek(24).
+   ========================================================================== */
+(() => {
+const T = THREE;
+const SHOT_LEN = 7, FADE = 0.7, BASE_DARK = 0.3;
+const V = (x, y, z) => new T.Vector3(x, y, z);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const lin = hex => new T.Color(hex).convertSRGBToLinear();
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash2(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); }
+function noise2(x, y) { const xi = Math.floor(x), yi = Math.floor(y); let xf = x - xi, yf = y - yi; xf = xf * xf * (3 - 2 * xf); yf = yf * yf * (3 - 2 * yf); const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1); return a + (b - a) * xf + (c - a) * yf + (a - b - c + d) * xf * yf; }
+function fbm(x, y, o = 4) { let v = 0, a = 0.5, f = 1; for (let i = 0; i < o; i++) { v += a * noise2(x * f + i * 7.3, y * f + i * 3.1); a *= 0.5; f *= 2.03; } return v; }
+function snoise(t, s) { const i = Math.floor(t), f = t - i, u = f * f * (3 - 2 * f); return (hash2(i, s) + (hash2(i + 1, s) - hash2(i, s)) * u) * 2 - 1; }
+function canvasTex(w, h, draw, { srgb = true, repeat = null, aniso = 8 } = {}) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+  const t = new T.CanvasTexture(c); if (srgb) t.encoding = T.sRGBEncoding; t.anisotropy = aniso;
+  if (repeat) { t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+  return t;
+}
+function speckle(g, w, h, n, size, amp, seed) {
+  const r = mulberry(seed);
+  for (let i = 0; i < n; i++) { const v = (r() - 0.5) * amp; g.fillStyle = v > 0 ? `rgba(255,255,255,${v})` : `rgba(0,0,0,${-v})`; const s = size * (0.4 + r()); g.fillRect(r() * w, r() * h, s, s); }
+}
+const std = (hex, rough = 0.7, metal = 0, extra = {}) => new T.MeshStandardMaterial(Object.assign({ color: lin(hex), roughness: rough, metalness: metal }, extra));
+const glow = (r, g, b) => new T.Color(r, g, b);
+const tube = (pts, r, seg = 30, rs = 8) => new T.TubeGeometry(new T.CatmullRomCurve3(pts), seg, r, rs);
+const texRepeat = (tex, x, y) => { const t = tex.clone(); t.needsUpdate = true; t.repeat.set(x, y); return t; };
+function decalTex(text, w = 256, h = 96, color = '#2c3136', font = 'bold 64px sans-serif') {
+  return canvasTex(w, h, g => { g.clearRect(0, 0, w, h); g.fillStyle = color; g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + 2); });
+}
+// A lofted body through superellipse cross-sections along z: { z, w, h, y, n, top, bot }. n = 2 is an
+// ellipse, larger n squarer. Faces point outward; u runs round the section, v along z.
+function loft(stations, seg = 28, { capStart = true, capEnd = true, vScale = 1 / 8 } = {}) {
+  const pos = [], uv = [], idx = [], ring = seg + 1;
+  for (const s of stations) {
+    const n = s.n || 2.4;
+    for (let i = 0; i <= seg; i++) {
+      const a = i / seg * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+      const x = Math.sign(c) * Math.pow(Math.abs(c), 2 / n) * s.w;
+      const y = Math.sign(sn) * Math.pow(Math.abs(sn), 2 / n) * (sn >= 0 ? (s.top ?? s.h) : (s.bot ?? s.h));
+      pos.push(x, (s.y || 0) + y, s.z); uv.push(i / seg * 2, s.z * vScale);
+    }
+  }
+  for (let j = 0; j < stations.length - 1; j++) for (let i = 0; i < seg; i++) { const a = j * ring + i, b = a + ring; idx.push(a, a + 1, b, a + 1, b + 1, b); }
+  const cap = (j, flip) => { const s = stations[j], c = pos.length / 3; pos.push(0, s.y || 0, s.z); uv.push(0.5, s.z * vScale); for (let i = 0; i < seg; i++) { const a = j * ring + i; if (flip) idx.push(c, a + 1, a); else idx.push(c, a, a + 1); } };
+  if (capStart) cap(0, true);
+  if (capEnd) cap(stations.length - 1, false);
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+// A box with rounded edges (a bevelled extrusion), centred on the origin. UVs are in metres.
+function roundBox(w, h, d, r = 0.015, seg = 2) {
+  r = Math.max(0.0008, Math.min(r, w / 2 - 0.0005, h / 2 - 0.0005, d / 2 - 0.0005));
+  const iw = w / 2 - r, ih = h / 2 - r, s = new T.Shape();
+  s.moveTo(-iw, -ih); s.lineTo(iw, -ih); s.lineTo(iw, ih); s.lineTo(-iw, ih); s.lineTo(-iw, -ih);
+  const depth = Math.max(0.0004, d - 2 * r);
+  const g = new T.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: r, bevelSize: r, bevelSegments: seg, curveSegments: 4 });
+  g.translate(0, 0, -depth / 2); return g;
+}
+// A capsule along -y from the origin (a finger, a thumb): rounded tip, open root.
+function capsule(len, r0, r1, seg = 8) {
+  const pts = [V2(0.0001, -len), V2(r1 * 0.7, -len + r1 * 0.3), V2(r1, -len + r1), V2(r0, -len * 0.5), V2(r0, 0.0)];   // tip first so the faces point outward
+  return new T.LatheGeometry(pts, seg);
+}
+function V2(x, y) { return new T.Vector2(x, y); }
+// Two-bone arm IK in the torso's frame: puts the point L2 down the forearm on `target`, bending the
+// elbow toward `pole`.
+const DOWN = V(0, -1, 0);
+function solveArm(sh, el, target, pole, L1, L2) {
+  const S = sh.position, d = target.clone().sub(S), dist = clamp(d.length(), 0.05, L1 + L2 - 0.002);
+  const dn = d.normalize(), a = (L1 * L1 - L2 * L2 + dist * dist) / (2 * dist), hh = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+  const pn = pole.clone().sub(dn.clone().multiplyScalar(pole.dot(dn))).normalize();
+  const E = S.clone().addScaledVector(dn, a).addScaledVector(pn, hh), Tg = S.clone().addScaledVector(dn, dist);
+  sh.quaternion.setFromUnitVectors(DOWN, E.clone().sub(S).normalize());
+  el.quaternion.setFromUnitVectors(DOWN, Tg.sub(E).normalize().applyQuaternion(sh.quaternion.clone().invert()));
+}
+// Merges the meshes directly under each group of a model, one mesh per material, so a detailed
+// figure costs a handful of draw calls instead of hundreds. Meshes marked userData.keep stay apart.
+function mergeMeshes(parent) {
+  const byMat = new Map();
+  for (const c of parent.children) if (c.isMesh && !c.userData.keep && !c.userData.flame) { if (!byMat.has(c.material)) byMat.set(c.material, []); byMat.get(c.material).push(c); }
+  for (const [mat, list] of byMat) {
+    if (list.length < 2) continue;
+    const pos = [], nor = [], uv = [];
+    for (const m of list) {
+      m.updateMatrix();
+      const g = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(m.matrix);
+      pos.push(g.attributes.position.array); nor.push(g.attributes.normal.array);
+      uv.push(g.attributes.uv ? g.attributes.uv.array : new Float32Array(g.attributes.position.count * 2));
+      parent.remove(m);
+    }
+    const cat = arrs => { let n = 0; for (const a of arrs) n += a.length; const out = new Float32Array(n); let o = 0; for (const a of arrs) { out.set(a, o); o += a.length; } return out; };
+    const geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.BufferAttribute(cat(pos), 3)); geo.setAttribute('normal', new T.BufferAttribute(cat(nor), 3)); geo.setAttribute('uv', new T.BufferAttribute(cat(uv), 2));
+    const mesh = new T.Mesh(geo, mat); mesh.castShadow = mesh.receiveShadow = true; parent.add(mesh);
+  }
+}
+function mergeTree(root) { const nodes = []; root.traverse(o => { if (!o.isMesh && !o.isSprite) nodes.push(o); }); nodes.forEach(mergeMeshes); }
+// One smooth head: a sphere (seam at the back) pushed out into a nose, brow ridge, cheekbones, lips,
+// chin and ears, with the jaw narrowed, so nothing is stuck on. Eyes, brows and lips are painted.
+const FACE = {};
+function headGeometry() {
+  if (FACE.geo) return FACE.geo;
+  const g = new T.SphereGeometry(1, 72, 54, -Math.PI / 2), p = g.attributes.position, v = new T.Vector3();
+  const b = (d, cx, cy, cz, sx, sy, sz) => { const dx = (d.x - cx) / sx, dy = (d.y - cy) / sy, dz = (d.z - cz) / sz; return Math.exp(-(dx * dx + dy * dy + dz * dz)); };
+  for (let i = 0; i < p.count; i++) {
+    const d = v.fromBufferAttribute(p, i).normalize(); let r = 1;
+    r += 0.15 * b(d, 0, -0.1, 1, 0.085, 0.2, 0.25);                                    // nose, bridge to tip
+    r += 0.06 * b(d, 0, -0.25, 1, 0.13, 0.07, 0.2);                                    // nostrils
+    r -= 0.06 * (b(d, 0.31, 0.12, 0.94, 0.13, 0.085, 0.2) + b(d, -0.31, 0.12, 0.94, 0.13, 0.085, 0.2));   // eye sockets
+    r += 0.045 * b(d, 0, 0.27, 0.96, 0.42, 0.07, 0.25);                                // brow ridge
+    r += 0.03 * (b(d, 0.5, -0.12, 0.85, 0.14, 0.12, 0.2) + b(d, -0.5, -0.12, 0.85, 0.14, 0.12, 0.2));    // cheekbones
+    r += 0.028 * b(d, 0, -0.44, 0.9, 0.16, 0.05, 0.2);                                 // lips
+    r -= 0.012 * b(d, 0, -0.49, 0.9, 0.17, 0.018, 0.2);                                // mouth line
+    r += 0.045 * b(d, 0, -0.72, 0.7, 0.18, 0.1, 0.25);                                 // chin
+    r += 0.11 * (b(d, 1, 0.02, -0.06, 0.07, 0.17, 0.11) + b(d, -1, 0.02, -0.06, 0.07, 0.17, 0.11));     // ears
+    let x = d.x * r, y = d.y * r, z = d.z * r;
+    if (y < 0) { const k = 1 - 0.22 * Math.min(1, -y); x *= k; z *= z > 0 ? 1 - 0.04 * -y : k; }           // narrower jaw
+    p.setXYZ(i, x * 0.9, y * 1.12, z);
+  }
+  g.computeVertexNormals();
+  return FACE.geo = g;
+}
+// The face painted round the head (front of the face at u = 0.5): eyes, lids, brows, lips, hair.
+function faceMaterial(skinHex, stubble) {
+  const key = skinHex + (stubble ? 's' : '');
+  if (FACE[key]) return FACE[key];
+  const skin = '#' + new T.Color(skinHex).getHexString(), dk = new T.Color(skinHex).multiplyScalar(0.62), dark = '#' + dk.getHexString();
+  const tex = canvasTex(512, 256, (g, w, h) => {
+    g.fillStyle = skin; g.fillRect(0, 0, w, h); speckle(g, w, h, 1200, 2, 0.05, 7);
+    const cx = w / 2, ey = h * 0.462, ex = w * 0.052;
+    for (const s of [-1, 1]) {
+      const x = cx + s * ex;
+      g.fillStyle = 'rgba(40,20,10,.18)'; g.beginPath(); g.ellipse(x, ey, 12, 8, 0, 0, 7); g.fill();          // socket shadow
+      g.fillStyle = '#ebe5da'; g.beginPath(); g.ellipse(x, ey, 7.5, 3.6, 0, 0, 7); g.fill();
+      g.fillStyle = '#3a2716'; g.beginPath(); g.arc(x + s * 0.5, ey + 0.3, 3, 0, 7); g.fill();
+      g.fillStyle = '#0a0705'; g.beginPath(); g.arc(x + s * 0.5, ey + 0.3, 1.4, 0, 7); g.fill();
+      g.strokeStyle = dark; g.lineWidth = 1.6; g.beginPath(); g.ellipse(x, ey + 0.6, 8, 4.2, 0, Math.PI * 1.08, Math.PI * 1.92); g.stroke();   // upper lid
+      g.strokeStyle = '#231a12'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - s * 6, h * 0.418); g.quadraticCurveTo(x, h * 0.405, x + s * 9, h * 0.418); g.stroke();   // brow
+    }
+    const my = h * 0.648;
+    g.fillStyle = 'rgba(120,55,45,.45)'; g.beginPath(); g.ellipse(cx, my, 13, 4.2, 0, 0, 7); g.fill();     // lips
+    g.strokeStyle = 'rgba(60,25,18,.6)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(cx - 12, my); g.quadraticCurveTo(cx, my + 1.5, cx + 12, my); g.stroke();
+    if (stubble) { g.fillStyle = 'rgba(30,22,16,.35)'; const r = mulberry(9); for (let i = 0; i < 1600; i++) { const a = r() * Math.PI * 2, x = cx + Math.cos(a) * (14 + r() * 42), y = h * 0.69 + Math.sin(a) * 26; if (y > h * 0.6) g.fillRect(x, y, 1.4, 1.4); } }
+    // hair: crown and back of the head, a ragged hairline, sideburns
+    g.fillStyle = '#231a12'; g.beginPath(); g.moveTo(0, 0); g.lineTo(w, 0); g.lineTo(w, h * 0.5);
+    for (let x = w; x >= 0; x -= 8) { const f = Math.abs(x - cx) / (w / 2), yy = f > 0.35 ? h * 0.5 : h * (0.33 - 0.16 * Math.cos(f / 0.35 * Math.PI / 2)); g.lineTo(x, yy + (x % 16 ? 2 : -2)); }
+    g.closePath(); g.fill();
+  });
+  return FACE[key] = new T.MeshStandardMaterial({ map: tex, roughness: 0.55 });
+}
+
+
+// ---------- shared textures ----------
+const TEX = {};
+TEX.soft = canvasTex(128, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, { srgb: false });
+TEX.puff = canvasTex(128, 128, (g, w, h) => {
+  const r = mulberry(5);
+  for (let i = 0; i < 55; i++) { const a = r() * 6.28, d = r() * w * 0.25, x = w / 2 + Math.cos(a) * d, y = h / 2 + Math.sin(a) * d, rad = w * (0.1 + r() * 0.16); const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(255,255,255,.2)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }
+  g.globalCompositeOperation = 'destination-in'; const m = g.createRadialGradient(w / 2, h / 2, w * 0.1, w / 2, h / 2, w * 0.5); m.addColorStop(0, '#000'); m.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = m; g.fillRect(0, 0, w, h);
+}, { srgb: false });
+// a cumulus billow: dense, lit from above, grey underside
+TEX.cloud = canvasTex(256, 256, (g, w, h) => {
+  const r = mulberry(33);
+  for (let i = 0; i < 70; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * w * 0.27, x = w / 2 + Math.cos(a) * d, y = h * 0.52 + Math.sin(a) * d * 0.6, rad = w * (0.09 + r() * 0.13); const gr = g.createRadialGradient(x, y - rad * 0.3, 0, x, y, rad); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(236,240,246,.8)'); gr.addColorStop(1, 'rgba(200,208,220,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }
+  g.globalCompositeOperation = 'source-atop'; const sh = g.createLinearGradient(0, h * 0.35, 0, h * 0.85); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(90,105,125,.45)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
+}, { srgb: false });
+// light grey airframe with panel lines and rivets (tinted per aircraft)
+TEX.panels = canvasTex(512, 512, (g, w, h) => {
+  g.fillStyle = '#c9cdd0'; g.fillRect(0, 0, w, h); speckle(g, w, h, 900, 30, 0.05, 3);
+  g.strokeStyle = 'rgba(60,66,72,.55)'; g.lineWidth = 1.5;
+  const r = mulberry(8);
+  for (let i = 0; i < 9; i++) { const x = r() * w; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+  for (let i = 0; i < 7; i++) { const y = r() * h; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  for (let i = 0; i < 14; i++) { g.strokeRect(r() * w, r() * h, 20 + r() * 50, 14 + r() * 40); }
+  g.fillStyle = 'rgba(70,75,80,.45)'; for (let i = 0; i < 600; i++) g.fillRect(r() * w, r() * h, 1.5, 1.5);
+  g.fillStyle = 'rgba(40,40,40,.08)'; for (let i = 0; i < 40; i++) { g.beginPath(); g.ellipse(r() * w, r() * h, 10 + r() * 60, 4 + r() * 20, r() * 3, 0, 7); g.fill(); }
+}, { repeat: [1, 1] });
+// multicam-style desert camouflage
+TEX.multicam = canvasTex(256, 256, (g, w, h) => {
+  const r = mulberry(11); g.fillStyle = '#c3aa80'; g.fillRect(0, 0, w, h);
+  for (const [col, n, sz] of [['#a68c63', 90, 16], ['#8a7350', 60, 12], ['#7b7951', 40, 10], ['#dccaa4', 50, 12], ['#5c4a34', 30, 6]]) {
+    g.fillStyle = col;
+    for (let i = 0; i < n; i++) { const x = r() * w, y = r() * h, rx = sz * (0.5 + r()), ry = sz * (0.3 + r() * 0.6), a = r() * 3; for (const [ox, oy] of [[0, 0], [-w, 0], [0, -h], [w, 0], [0, h]]) { g.beginPath(); g.ellipse(x + ox, y + oy, rx, ry, a, 0, 7); g.fill(); } }
+  }
+  speckle(g, w, h, 2500, 2, 0.12, 12);
+}, { repeat: [3, 3] });
+// coyote-brown webbing with MOLLE rows, for plate carriers and packs
+TEX.webbing = canvasTex(128, 128, (g, w, h) => {
+  g.fillStyle = '#8a7250'; g.fillRect(0, 0, w, h); speckle(g, w, h, 800, 2, 0.15, 14);
+  for (let y = 6; y < h; y += 12) { g.fillStyle = 'rgba(55,40,24,.55)'; g.fillRect(0, y, w, 3); g.fillStyle = 'rgba(255,240,210,.14)'; g.fillRect(0, y - 1, w, 1); }
+  for (let x = 0; x < w; x += 16) { g.fillStyle = 'rgba(55,40,24,.35)'; g.fillRect(x, 0, 1.5, h); }
+});
+TEX.flightSuit = canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#5f6a47'; g.fillRect(0, 0, w, h); speckle(g, w, h, 900, 3, 0.12, 21); g.strokeStyle = 'rgba(0,0,0,.18)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(0, i * 22 + 5); g.bezierCurveTo(40, i * 22, 80, i * 22 + 12, w, i * 22 + 4); g.stroke(); } }, { repeat: [2, 2] });
+TEX.hose = canvasTex(64, 64, (g, w, h) => { for (let y = 0; y < h; y += 8) { g.fillStyle = '#b9bdc1'; g.fillRect(0, y, w, 5); g.fillStyle = '#4e5358'; g.fillRect(0, y + 5, w, 3); } }, { repeat: [1, 18] });
+// survival-vest mesh: olive with a lighter diamond net
+TEX.netVest = canvasTex(128, 128, (g, w, h) => { g.fillStyle = '#4f5a3a'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(150,165,115,.55)'; g.lineWidth = 2; for (let i = -w; i < w * 2; i += 10) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h, h); g.stroke(); g.beginPath(); g.moveTo(i, h); g.lineTo(i + h, 0); g.stroke(); } speckle(g, w, h, 300, 2, 0.15, 23); }, { repeat: [3, 2] });
+// nozzle petals: titanium with dark seams and a heat tint
+TEX.petals = canvasTex(256, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#8a7f70'); gr.addColorStop(1, '#4a3f38'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(20,18,16,.7)'; for (let x = 0; x < w; x += 16) g.fillRect(x, 0, 2, h); g.fillStyle = 'rgba(90,60,140,.18)'; g.fillRect(0, h * 0.6, w, h * 0.4); });
+// the hot core of an afterburner seen end-on
+TEX.burner = canvasTex(128, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, '#fffbe8'); gr.addColorStop(0.35, '#ffd27a'); gr.addColorStop(0.7, '#ff7a1e'); gr.addColorStop(0.92, '#7a2008'); gr.addColorStop(1, '#2a0a04'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(120,40,10,.35)'; g.lineWidth = 2; for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28; g.beginPath(); g.moveTo(w / 2 + Math.cos(a) * w * 0.3, h / 2 + Math.sin(a) * h * 0.3); g.lineTo(w / 2 + Math.cos(a) * w * 0.5, h / 2 + Math.sin(a) * h * 0.5); g.stroke(); } });
+// yellow and black stripes for the ejection handle
+TEX.hazard = canvasTex(64, 16, (g, w, h) => { g.fillStyle = '#e2b52a'; g.fillRect(0, 0, w, h); g.fillStyle = '#151515'; for (let x = -16; x < w; x += 16) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 8, 0); g.lineTo(x + 16, 0); g.lineTo(x + 8, h); g.fill(); } }, { repeat: [4, 1] });
+// a subdued flag patch (reversed, as worn on the right shoulder)
+TEX.flag = canvasTex(64, 40, (g, w, h) => { for (let i = 0; i < 7; i++) { g.fillStyle = i % 2 ? '#8a7d60' : '#3e3527'; g.fillRect(0, i * h / 7, w, h / 7 + 1); } g.fillStyle = '#3e3527'; g.fillRect(w * 0.55, 0, w * 0.45, h * 0.55); g.fillStyle = '#8a7d60'; for (let y = 0; y < 4; y++) for (let x = 0; x < 5; x++) g.fillRect(w * 0.58 + x * 5, 3 + y * 5, 2, 2); });
+
+// A sky panorama used as the reflection map: gradient, sun and a ground band. Every shiny surface
+// (the pilot's helmet and visor, the canopy, the airframes) reflects it.
+function envFrom(renderer, { top, hor, ground, sunU = 0.62, sunV = 0.3, sunCol = '#fff6e0' }) {
+  const tex = canvasTex(1024, 512, (g, w, h) => {
+    let gr = g.createLinearGradient(0, 0, 0, h * 0.5); gr.addColorStop(0, top); gr.addColorStop(1, hor); g.fillStyle = gr; g.fillRect(0, 0, w, h * 0.5);
+    gr = g.createLinearGradient(0, h * 0.5, 0, h); gr.addColorStop(0, hor); gr.addColorStop(0.12, ground); gr.addColorStop(1, ground); g.fillStyle = gr; g.fillRect(0, h * 0.5, w, h * 0.5);
+    const r = mulberry(4); g.globalAlpha = 0.25;
+    for (let i = 0; i < 160; i++) { g.fillStyle = r() > 0.5 ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.25)'; g.fillRect(r() * w, h * 0.52 + r() * h * 0.45, 8 + r() * 60, 4 + r() * 20); }
+    g.globalAlpha = 1;
+    for (let i = 0; i < 12; i++) { const x = r() * w, y = h * (0.2 + r() * 0.26); const c = g.createRadialGradient(x, y, 0, x, y, 30 + r() * 60); c.addColorStop(0, 'rgba(255,255,255,.55)'); c.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = c; g.fillRect(x - 100, y - 100, 200, 200); }
+    const sx = sunU * w, sy = sunV * h, s = g.createRadialGradient(sx, sy, 0, sx, sy, 90); s.addColorStop(0, sunCol); s.addColorStop(0.08, sunCol); s.addColorStop(1, 'rgba(255,240,200,0)'); g.fillStyle = s; g.fillRect(sx - 100, sy - 100, 200, 200);
+  });
+  tex.mapping = T.EquirectangularReflectionMapping;
+  const pm = new T.PMREMGenerator(renderer); const env = pm.fromEquirectangular(tex).texture; pm.dispose(); tex.dispose();
+  return env;
+}
+
+function skyDome(o) {
+  const m = new T.ShaderMaterial({
+    side: T.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: lin(o.top) }, hor: { value: lin(o.hor) }, gnd: { value: lin(o.ground) }, sd: { value: o.sunDir.clone().normalize() }, sc: { value: lin(o.sun) }, haze: { value: o.haze || 0.55 } },
+    vertexShader: 'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform vec3 top, hor, gnd, sc, sd; uniform float haze; varying vec3 vD;
+      void main(){ vec3 d = normalize(vD); float h = d.y; float s = max(dot(d, sd), 0.0);
+        vec3 c = h > 0.0 ? mix(hor, top, pow(h, haze)) : mix(hor, gnd, pow(-h, 0.35));
+        c += sc * (pow(s, 6.0) * 0.25 + pow(s, 90.0) * 0.6) + sc * smoothstep(0.9993, 0.9996, s) * 4.0;
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <encodings_fragment>
+      }`,
+  });
+  const mesh = new T.Mesh(new T.SphereGeometry(1, 32, 16), m); mesh.scale.setScalar(o.radius || 40000); mesh.renderOrder = -1; mesh.frustumCulled = false;
+  return mesh;
+}
+
+// ---------- particles ----------
+class Particles {
+  constructor(parent, n, map, blending) {
+    this.items = []; this.i = 0;
+    for (let k = 0; k < n; k++) {
+      const s = new T.Sprite(new T.SpriteMaterial({ map, blending, transparent: true, depthWrite: false, fog: blending !== T.AdditiveBlending }));
+      s.visible = false; parent.add(s);
+      this.items.push({ s, vel: V(0, 0, 0), age: 0, life: 1, s0: 1, s1: 1, c0: new T.Color(), c1: new T.Color(), o0: 1, o1: 0, drag: 0, grav: 0, spin: 0, fade: 0 });
+    }
+  }
+  spawn(pos, vel, life, s0, s1, c0, c1, o0 = 1, o1 = 0, drag = 0, grav = 0, fade = 0) {
+    const p = this.items[this.i]; this.i = (this.i + 1) % this.items.length;
+    p.s.visible = true; p.s.position.copy(pos); p.vel.copy(vel); p.age = 0; p.life = life; p.s0 = s0; p.s1 = s1;
+    p.c0.copy(c0); p.c1.copy(c1); p.o0 = o0; p.o1 = o1; p.drag = drag; p.grav = grav; p.fade = fade;
+    p.spin = (Math.random() - 0.5) * 0.8; p.s.material.rotation = Math.random() * 6.28; this.apply(p, 0); return p;
+  }
+  apply(p, k) {
+    const sc = p.s0 + (p.s1 - p.s0) * (1 - (1 - k) * (1 - k)); p.s.scale.set(sc, sc, 1);
+    p.s.material.color.copy(p.c0).lerp(p.c1, k);
+    let o = p.o0 + (p.o1 - p.o0) * k; if (p.fade && p.age < p.fade) o *= p.age / p.fade; p.s.material.opacity = o;
+  }
+  update(dt) {
+    for (const p of this.items) {
+      if (!p.s.visible) continue; p.age += dt;
+      if (p.age >= p.life) { p.s.visible = false; continue; }
+      p.vel.multiplyScalar(Math.max(0, 1 - p.drag * dt)); p.vel.y += p.grav * dt;
+      p.s.position.addScaledVector(p.vel, dt); p.s.material.rotation += p.spin * dt; this.apply(p, p.age / p.life);
+    }
+  }
+  clear() { for (const p of this.items) p.s.visible = false; }
+}
+
+// ---------- people ----------
+// A detailed figure on joints, facing +z: lofted chest and hips, a modelled face (brow, nose, lips,
+// eyes, ears, jaw), gloved hands with fingers. Negative x on a hip swings the leg forward, positive
+// x on a knee bends it back; arms that hold a rifle are placed by two-bone IK onto its grips.
+// kit 'soldier': multicam, plate carrier with magazine, admin and radio pouches, tourniquet,
+// hydration tube, assault pack, helmet with rails, NVG mount, goggles and cover, sunglasses, knee
+// pads, tan boots and an M4 on a sling.
+// kit 'deck': coloured jersey under a flotation vest with reflective tape and a job code on the back,
+// cranial helmet with ear cups and goggles, leather gloves.
+const MAT = {};
+const matOnce = (k, f) => MAT[k] || (MAT[k] = f());
+class Person {
+  constructor(o) {
+    this.g = new T.Group(); const J = this.j = {};
+    const add = (geo, mat, parent, x = 0, y = 0, z = 0) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+    const limb = (len, r0, r1, mat, parent, seg = 14) => { const geo = new T.CylinderGeometry(r1, r0, len, seg, 2); geo.translate(0, -len / 2, 0); add(geo, mat, parent); add(new T.SphereGeometry(r0 * 1.02, seg, 8), mat, parent); };
+    const soldier = o.kit === 'soldier', deck = o.kit === 'deck';
+    const skinHex = o.skin || 0xb98a66;
+    const skin = matOnce('skin' + skinHex, () => std(skinHex, 0.55));
+    const lip = matOnce('lip' + skinHex, () => new T.MeshStandardMaterial({ color: lin(skinHex).multiplyScalar(0.7), roughness: 0.45 }));
+    const hairM = matOnce('hair', () => std(0x221911, 0.9));
+    const eyeW = matOnce('eyeW', () => std(0xe6e0d6, 0.25)), iris = matOnce('iris', () => std(0x24180f, 0.2));
+    const camoL = matOnce('camoL', () => new T.MeshStandardMaterial({ map: texRepeat(TEX.multicam, 2, 1.4), roughness: 0.95 }));
+    const camoB = matOnce('camoB', () => new T.MeshStandardMaterial({ map: texRepeat(TEX.multicam, 2.5, 2.5), roughness: 0.95 }));
+    const web = matOnce('web', () => new T.MeshStandardMaterial({ map: texRepeat(TEX.webbing, 4, 4), roughness: 0.95 }));
+    const coyote = matOnce('coyote', () => std(0x7d6648, 0.9)), coyoteDark = matOnce('coyoteDark', () => std(0x5e4c35, 0.9));
+    const black = matOnce('black', () => std(0x161616, 0.55, 0.2));
+    const lens = matOnce('lens', () => new T.MeshPhysicalMaterial({ color: lin(0x15120f), roughness: 0.04, metalness: 0.7, clearcoat: 1, envMapIntensity: 1.5 }));
+    const shirt = soldier ? camoL : o.shirt, pants = soldier ? camoL : o.pants, sleeve = soldier ? camoL : (o.sleeve || o.shirt);
+    const glove = soldier ? matOnce('sglove', () => std(0x7a6548, 0.85)) : matOnce('dglove', () => std(0xc9a24a, 0.8));
+    const boot = soldier ? matOnce('sboot', () => std(0xb39670, 0.95)) : matOnce('dboot', () => std(0x1e1b18, 0.7));
+    const sole = matOnce('sole', () => std(0x3a3129, 0.9));
+    const root = this.root = new T.Group(); this.g.add(root);
+    const hg = loft([{ z: -0.11, w: 0.13, h: 0.09 }, { z: -0.02, w: 0.172, h: 0.115 }, { z: 0.06, w: 0.168, h: 0.112 }, { z: 0.11, w: 0.165, h: 0.11 }], 18, { vScale: 2 }); hg.rotateX(-Math.PI / 2);
+    add(hg, pants, root);
+    // chest: lofted up from the waist to the shoulders and the base of the neck
+    const torso = J.torso = new T.Group(); torso.position.y = 0.08; root.add(torso);
+    const cg = loft([{ z: 0, w: 0.165, h: 0.11 }, { z: 0.12, w: 0.16, h: 0.108 }, { z: 0.28, w: 0.192, h: 0.128 }, { z: 0.42, w: 0.212, h: 0.122 }, { z: 0.5, w: 0.2, h: 0.105 }, { z: 0.55, w: 0.14, h: 0.08 }, { z: 0.58, w: 0.07, h: 0.06 }], 22, { vScale: 2 }); cg.rotateX(-Math.PI / 2);
+    add(cg, shirt, torso);
+    for (const s of [-1, 1]) add(new T.SphereGeometry(0.072, 14, 10), shirt, torso, s * 0.2, 0.47, 0).scale.set(1, 0.9, 1.05);
+    add(new T.TorusGeometry(0.066, 0.017, 8, 18), shirt, torso, 0, 0.555, 0.005).rotation.x = Math.PI / 2;
+    // neck and head
+    add(new T.CylinderGeometry(0.05, 0.056, 0.12, 12), skin, torso, 0, 0.6, 0);
+    const head = J.head = new T.Group(); head.position.set(0, 0.64, 0.005); torso.add(head);
+    add(headGeometry(), faceMaterial(skinHex, soldier && (skinHex & 1)), head, 0, 0.105, 0).scale.setScalar(0.098);   // one sculpted head
+    if (soldier) {
+      const helmM = matOnce('helm', () => new T.MeshStandardMaterial({ map: texRepeat(TEX.multicam, 1.5, 1), color: lin(0xd8cfc0), roughness: 0.9 }));
+      add(new T.SphereGeometry(0.128, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.53), helmM, head, 0, 0.127, -0.01).scale.set(1.0, 0.93, 1.1);
+      add(new T.TorusGeometry(0.127, 0.006, 6, 40), black, head, 0, 0.122, -0.01).scale.set(1, 1.1, 1);
+      head.children[head.children.length - 1].rotation.x = Math.PI / 2;
+      for (const s of [-1, 1]) add(roundBox(0.014, 0.026, 0.17, 0.005), black, head, s * 0.128, 0.132, -0.005).rotation.z = s * 0.12;  // rails
+      add(roundBox(0.044, 0.036, 0.022, 0.007), black, head, 0, 0.226, 0.118).rotation.x = 0.45;          // NVG mount
+      add(roundBox(0.085, 0.06, 0.035, 0.012), coyote, head, 0, 0.14, -0.15);                               // counterweight
+      add(roundBox(0.06, 0.04, 0.006, 0.003), coyoteDark, head, 0, 0.235, -0.04).rotation.x = -0.6;         // velcro patch
+      // goggles stowed on the front of the helmet, their strap round the shell
+      const strap = add(new T.TorusGeometry(0.133, 0.007, 6, 40), black, head, 0, 0.17, -0.01); strap.rotation.x = Math.PI / 2 - 0.25; strap.scale.set(1, 1.1, 1);
+      add(roundBox(0.16, 0.046, 0.026, 0.015), black, head, 0, 0.204, 0.106).rotation.x = -0.6;
+      add(roundBox(0.148, 0.036, 0.016, 0.012), lens, head, 0, 0.204, 0.118).rotation.x = -0.6;
+      // wrap-around sunglasses and their arms
+      add(new T.SphereGeometry(0.104, 28, 6, Math.PI * 0.2, Math.PI * 0.6, Math.PI * 0.43, Math.PI * 0.09), lens, head, 0, 0.108, -0.006).scale.set(0.95, 1, 1.08);
+      for (const s of [-1, 1]) add(roundBox(0.004, 0.006, 0.09, 0.002), black, head, s * 0.087, 0.112, 0.035);
+      add(tube([V(-0.088, 0.1, 0.0), V(-0.06, 0.02, 0.045), V(0, -0.005, 0.07), V(0.06, 0.02, 0.045), V(0.088, 0.1, 0.0)], 0.005, 16, 5), black, head);  // chin strap
+    } else if (deck) {
+      const hm = o.helmetMat || matOnce('cranial', () => std(0xe6e6e6, 0.45));
+      add(new T.SphereGeometry(0.118, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), hm, head, 0, 0.13, -0.02).scale.set(1, 0.95, 1.12);
+      for (const s of [-1, 1]) {
+        add(new T.CylinderGeometry(0.05, 0.05, 0.045, 18), hm, head, s * 0.105, 0.095, -0.005).rotation.z = Math.PI / 2;
+        add(new T.CylinderGeometry(0.04, 0.04, 0.012, 16), black, head, s * 0.13, 0.095, -0.005).rotation.z = Math.PI / 2;
+      }
+      const gogM = matOnce('goggle', () => new T.MeshPhysicalMaterial({ color: lin(0x0e1216), roughness: 0.03, metalness: 0.5, clearcoat: 1 }));
+      add(roundBox(0.19, 0.062, 0.03, 0.02), black, head, 0, 0.165, 0.092).rotation.x = -0.3;
+      add(roundBox(0.175, 0.05, 0.02, 0.016), gogM, head, 0, 0.166, 0.105).rotation.x = -0.3;
+      add(tube([V(-0.11, 0.08, 0.0), V(-0.07, 0.015, 0.05), V(0, -0.003, 0.07), V(0.07, 0.015, 0.05), V(0.11, 0.08, 0.0)], 0.006, 16, 5), black, head);
+    }
+    // arms: shoulder, biceps, sleeve pocket and patch, forearm, gloved hand with fingers and thumb
+    const arm = side => {
+      const sh = new T.Group(); sh.position.set(side * 0.215, 0.47, 0); torso.add(sh);
+      limb(0.3, 0.06, 0.05, sleeve, sh);
+      add(new T.SphereGeometry(0.052, 12, 10), sleeve, sh, 0, -0.13, 0.012).scale.set(1, 1.7, 1.05);
+      if (soldier) {
+        add(roundBox(0.022, 0.11, 0.075, 0.008), camoB, sh, side * 0.056, -0.1, 0);
+        const patch = new T.Mesh(new T.PlaneGeometry(0.06, 0.038), matOnce(side > 0 ? 'flag' : 'irp', () => side > 0 ? new T.MeshStandardMaterial({ map: TEX.flag, roughness: 0.9 }) : std(0x4a4436, 0.9)));
+        patch.position.set(side * 0.069, -0.085, 0); patch.rotation.y = side * Math.PI / 2; sh.add(patch);
+      }
+      const el = new T.Group(); el.position.y = -0.3; sh.add(el);
+      limb(0.26, 0.049, 0.04, sleeve, el);
+      if (soldier) add(new T.CylinderGeometry(0.046, 0.046, 0.03, 12), sleeve, el, 0, -0.245, 0);
+      const hand = new T.Group(); hand.position.y = -0.27; el.add(hand);
+      add(roundBox(0.072, 0.08, 0.034, 0.013), glove, hand, 0, -0.04, 0);
+      for (let i = 0; i < 4; i++) { const f = add(capsule(0.052 - Math.abs(i - 1.5) * 0.006, 0.0095, 0.0085, 7), glove, hand, (i - 1.5) * 0.017, -0.076, 0.004); f.rotation.x = -0.9 - i * 0.05; }
+      const th = add(capsule(0.045, 0.011, 0.009, 7), glove, hand, -side * 0.022, -0.03, 0.02); th.rotation.set(-0.7, 0, side * 0.6);
+      return [sh, el, hand];
+    };
+    [J.shL, J.elL, J.handL] = arm(-1); [J.shR, J.elR, J.handR] = arm(1);
+    // legs: thigh, cargo pocket, knee pad, calf, boot with sole and laces
+    const leg = side => {
+      const hip = new T.Group(); hip.position.set(side * 0.095, -0.04, 0); root.add(hip);
+      limb(0.42, 0.088, 0.068, pants, hip);
+      add(new T.SphereGeometry(0.07, 12, 10), pants, hip, 0, -0.16, 0.012).scale.set(1.05, 1.9, 1.1);
+      if (soldier) { add(roundBox(0.04, 0.14, 0.11, 0.014), camoB, hip, side * 0.078, -0.24, 0); add(roundBox(0.043, 0.028, 0.114, 0.008), camoB, hip, side * 0.079, -0.17, 0); }
+      else if (deck) add(roundBox(0.04, 0.14, 0.12, 0.012), pants, hip, side * 0.075, -0.24, 0);
+      const kn = new T.Group(); kn.position.y = -0.42; hip.add(kn);
+      limb(0.4, 0.066, 0.048, pants, kn);
+      add(new T.SphereGeometry(0.05, 12, 10), pants, kn, 0, -0.12, -0.012).scale.set(1, 1.8, 1.05);
+      if (soldier) { add(roundBox(0.105, 0.13, 0.05, 0.024), coyoteDark, kn, 0, -0.03, 0.06); add(roundBox(0.14, 0.018, 0.12, 0.006), black, kn, 0, -0.07, 0.0); }
+      const an = new T.Group(); an.position.y = -0.4; kn.add(an);
+      add(roundBox(0.108, 0.1, 0.25, 0.035), boot, an, 0, -0.04, 0.045);
+      add(roundBox(0.115, 0.024, 0.265, 0.008), sole, an, 0, -0.088, 0.047);
+      add(new T.CylinderGeometry(0.058, 0.062, 0.16, 14), boot, an, 0, 0.04, -0.005);
+      if (soldier) add(roundBox(0.036, 0.12, 0.01, 0.004), sole, an, 0, 0.03, 0.058);
+      return [hip, kn, an];
+    };
+    [J.hipL, J.kneeL, J.ankleL] = leg(-1); [J.hipR, J.kneeR, J.ankleR] = leg(1);
+    if (soldier) {
+      add(roundBox(0.34, 0.32, 0.065, 0.02), web, torso, 0, 0.32, 0.135);              // front plate bag
+      add(roundBox(0.34, 0.34, 0.065, 0.02), web, torso, 0, 0.33, -0.13);              // back plate bag
+      for (const s of [-1, 1]) {
+        add(roundBox(0.055, 0.19, 0.22, 0.015), web, torso, s * 0.2, 0.24, 0);          // cummerbund
+        add(roundBox(0.075, 0.03, 0.28, 0.012), coyote, torso, s * 0.11, 0.5, 0);       // padded shoulder straps
+      }
+      for (const x of [-0.098, 0, 0.098]) {                                              // magazine pouches
+        add(roundBox(0.082, 0.12, 0.055, 0.012), coyote, torso, x, 0.21, 0.19);
+        add(roundBox(0.084, 0.028, 0.058, 0.008), coyoteDark, torso, x, 0.275, 0.192);
+        add(roundBox(0.086, 0.012, 0.06, 0.004), black, torso, x, 0.2, 0.193);
+      }
+      add(roundBox(0.16, 0.08, 0.04, 0.01), coyote, torso, 0, 0.405, 0.185);           // admin pouch
+      const fp = new T.Mesh(new T.PlaneGeometry(0.05, 0.032), matOnce('flag', () => new T.MeshStandardMaterial({ map: TEX.flag, roughness: 0.9 }))); fp.position.set(0.04, 0.41, 0.206); torso.add(fp);
+      add(roundBox(0.056, 0.15, 0.07, 0.012), coyoteDark, torso, -0.225, 0.3, 0.04);   // radio
+      add(new T.CylinderGeometry(0.005, 0.007, 0.28, 5), black, torso, -0.225, 0.5, 0.04);
+      add(tube([V(-0.21, 0.36, 0.08), V(-0.15, 0.45, 0.17), V(-0.08, 0.43, 0.2)], 0.006, 10, 5), black, torso);   // PTT cable
+      add(roundBox(0.032, 0.07, 0.03, 0.008), black, torso, 0.11, 0.44, 0.15);           // tourniquet
+      add(roundBox(0.034, 0.012, 0.032, 0.004), matOnce('red', () => std(0xb02a20, 0.7)), torso, 0.11, 0.48, 0.152);
+      add(tube([V(0.13, 0.5, -0.12), V(0.15, 0.53, 0.02), V(0.14, 0.46, 0.15), V(0.1, 0.36, 0.17)], 0.008, 16, 6), black, torso);  // hydration tube
+      add(roundBox(0.3, 0.36, 0.15, 0.035), web, torso, 0, 0.33, -0.235);               // assault pack
+      add(roundBox(0.31, 0.06, 0.16, 0.02), coyoteDark, torso, 0, 0.52, -0.235);
+      for (const s of [-1, 1]) add(roundBox(0.05, 0.16, 0.08, 0.015), coyote, torso, s * 0.175, 0.3, -0.25);
+      add(roundBox(0.35, 0.05, 0.25, 0.015), coyoteDark, torso, 0, 0.02, 0);           // belt
+      add(roundBox(0.1, 0.09, 0.05, 0.015), coyote, torso, 0.15, 0.0, -0.13);           // IFAK
+      add(roundBox(0.06, 0.1, 0.08, 0.015), coyote, torso, -0.2, 0.0, 0.04);
+    }
+    if (deck) {
+      const tape = matOnce('tape', () => std(0xd8dcdf, 0.3, 0.4));
+      add(roundBox(0.4, 0.32, 0.29, 0.05), o.jersey, torso, 0, 0.3, 0);               // flotation vest
+      add(roundBox(0.405, 0.035, 0.295, 0.012), tape, torso, 0, 0.22, 0);
+      add(roundBox(0.405, 0.035, 0.295, 0.012), tape, torso, 0, 0.37, 0);
+      add(new T.TorusGeometry(0.09, 0.035, 8, 20), o.jersey, torso, 0, 0.52, -0.01).rotation.x = Math.PI / 2;
+      for (const s of [-1, 1]) add(roundBox(0.09, 0.08, 0.04, 0.012), o.jersey, torso, s * 0.1, 0.25, 0.15);
+      if (o.code) { const code = new T.Mesh(new T.PlaneGeometry(0.26, 0.11), matOnce('code' + o.code, () => new T.MeshStandardMaterial({ map: decalTex(o.code, 256, 110, '#141414', 'bold 70px sans-serif'), transparent: true, roughness: 0.8 }))); code.position.set(0, 0.32, -0.147); code.rotation.y = Math.PI; torso.add(code); }
+    }
+    if (o.rifle) {
+      const rf = this.rifle = new T.Group(); rf.scale.setScalar(0.85);
+      const dk = matOnce('gun2', () => std(0x26272a, 0.45, 0.45)), tanP = matOnce('gunTan', () => std(0x7f6c4e, 0.8));
+      add(roundBox(0.046, 0.075, 0.3, 0.008), black, rf, 0, 0, 0.05);                    // upper receiver
+      add(roundBox(0.04, 0.05, 0.17, 0.008), dk, rf, 0, -0.05, 0.03);                     // lower receiver
+      add(new T.CylinderGeometry(0.03, 0.03, 0.28, 12).rotateX(Math.PI / 2), dk, rf, 0, 0.002, 0.34);   // handguard
+      for (const [x, y, rz] of [[0, 0.032, 0], [0.032, 0, Math.PI / 2], [-0.032, 0, Math.PI / 2]]) add(roundBox(0.02, 0.008, 0.28, 0.003), black, rf, x, y, 0.34).rotation.z = rz;
+      add(roundBox(0.02, 0.012, 0.42, 0.003), black, rf, 0, 0.044, 0.18);                 // top rail
+      add(new T.CylinderGeometry(0.011, 0.011, 0.2, 8).rotateX(Math.PI / 2), black, rf, 0, 0.002, 0.57);
+      add(new T.CylinderGeometry(0.016, 0.016, 0.055, 8).rotateX(Math.PI / 2), black, rf, 0, 0.002, 0.69);   // flash hider
+      add(roundBox(0.012, 0.055, 0.012, 0.003), black, rf, 0, 0.04, 0.47);                // front sight
+      add(new T.CylinderGeometry(0.022, 0.022, 0.13, 14).rotateX(Math.PI / 2), black, rf, 0, 0.082, 0.07);   // optic
+      add(new T.CylinderGeometry(0.027, 0.022, 0.025, 14).rotateX(Math.PI / 2), black, rf, 0, 0.082, 0.14);
+      add(roundBox(0.02, 0.025, 0.05, 0.004), black, rf, 0, 0.058, 0.07);
+      add(roundBox(0.028, 0.09, 0.062, 0.006), tanP, rf, 0, -0.1, 0.12).rotation.x = 0.15;   // magazine
+      add(roundBox(0.028, 0.08, 0.06, 0.006), tanP, rf, 0, -0.175, 0.137).rotation.x = 0.32;
+      add(roundBox(0.03, 0.1, 0.04, 0.008), black, rf, 0, -0.08, -0.04).rotation.x = -0.35;  // grip
+      add(new T.CylinderGeometry(0.016, 0.016, 0.18, 10).rotateX(Math.PI / 2), black, rf, 0, 0.0, -0.17);
+      add(roundBox(0.042, 0.085, 0.15, 0.012), black, rf, 0, -0.02, -0.27);               // stock
+      add(tube([V(0.025, -0.02, 0.33), V(0.03, -0.2, 0.12), V(0.03, -0.22, -0.1), V(0.025, -0.03, -0.32)], 0.006, 20, 5), matOnce('sling', () => std(0x4e4a38, 0.9)), rf);
+      this.muzzle = new T.Object3D(); this.muzzle.position.set(0, 0.002, 0.72); rf.add(this.muzzle);
+      this.gripR = V(0, -0.1, -0.045); this.gripL = V(0, -0.025, 0.24);
+      torso.add(rf);
+    }
+    mergeTree(this.g);
+    this.phase = Math.random() * 6.28;
+    this.pose(POSE.stand);
+    if (this.rifle) this.holdRifle('aim');
+  }
+  // where the rifle sits on the body; the arms follow it
+  holdRifle(kind) {
+    if (!this.rifle) return; const r = this.rifle;
+    if (kind === 'low') { r.position.set(0.04, 0.26, 0.3); r.rotation.set(0.62, 0.3, 0.12); }
+    else if (kind === 'prone') { r.position.set(0.09, 0.78, 0.04); r.rotation.set(-Math.PI / 2 - 0.08, 0, 0); }
+    else { r.position.set(0.08, 0.43, 0.4); r.rotation.set(0, 0, 0); }
+    this.armsToRifle();
+  }
+  armsToRifle() {
+    if (!this.rifle) return; const J = this.j; this.rifle.updateMatrix(); const m = this.rifle.matrix;
+    solveArm(J.shR, J.elR, this.gripR.clone().applyMatrix4(m), V(0.8, -0.5, -0.4), 0.3, 0.31);
+    solveArm(J.shL, J.elL, this.gripL.clone().applyMatrix4(m), V(-0.5, -0.8, 0.1), 0.3, 0.31);
+  }
+  pose(p) {
+    const J = this.j;
+    for (const k in p) {
+      if (k === 'rootY') { this.root.position.y = p.rootY; continue; }
+      if (this.rifle && (k.startsWith('sh') || k.startsWith('el'))) continue;
+      if (J[k]) J[k].rotation.set(p[k][0], p[k][1] || 0, p[k][2] || 0);
+    }
+    if (this.rifle) this.armsToRifle();
+  }
+  run(dt, speed = 1) {
+    this.phase += dt * 8.5 * speed; const s = Math.sin(this.phase);
+    this.pose({ rootY: 0.93 + 0.05 * Math.abs(Math.sin(this.phase * 2)) - 0.04, torso: [0.22, 0.06 * s, 0.03 * s], head: [-0.12],
+      hipL: [-0.85 * s - 0.2], kneeL: [0.25 + 1.1 * Math.max(0, s)], hipR: [0.85 * s - 0.2], kneeR: [0.25 + 1.1 * Math.max(0, -s)], ankleL: [0.2 * Math.max(0, -s)], ankleR: [0.2 * Math.max(0, s)] });
+  }
+}
+const POSE = {
+  stand: { rootY: 0.95, torso: [0.02], head: [0], hipL: [0, 0, -0.04], kneeL: [0.02], hipR: [0, 0, 0.04], kneeR: [0.02], ankleL: [0], ankleR: [0], shL: [0.05, 0, -0.1], elL: [-0.2], shR: [0.05, 0, 0.1], elR: [-0.2] },
+  lowReady: { rootY: 0.95, torso: [0.04], head: [0, -0.3], hipL: [-0.05, 0, -0.08], kneeL: [0.08], hipR: [0.05, 0, 0.08], kneeR: [0.05] },
+  aimStand: { rootY: 0.94, torso: [0.12, -0.05], head: [0.12, 0.08], hipL: [-0.15, 0, -0.1], kneeL: [0.2], hipR: [0.1, 0, 0.1], kneeR: [0.1] },
+  prone: { rootY: 0.95, torso: [0], head: [-1.0], hipL: [0, 0, -0.18], kneeL: [0.1], hipR: [0, 0, 0.15], kneeR: [0.25], ankleL: [1.3], ankleR: [1.2], shL: [-2.5, 0, 0.35], elL: [-0.7], shR: [-2.3, 0, -0.25], elR: [-1.2] },
+  kneelAim: { rootY: 0.58, torso: [0.18], head: [0.1, 0.08], hipL: [-1.45, 0, -0.1], kneeL: [1.45], hipR: [0.15, 0, 0.12], kneeR: [1.6], ankleL: [0], ankleR: [0.9] },
+  crouchPoint: { rootY: 0.52, torso: [0.75], head: [-0.7], hipL: [-1.6, 0, -0.15], kneeL: [1.75], hipR: [0.2, 0, 0.15], kneeR: [1.7], ankleL: [0], ankleR: [0.9], shR: [-1.75, 0, -0.1], elR: [-0.05], shL: [-0.5, 0, 0.2], elL: [-0.3] },
+  crouchTouch: { rootY: 0.48, torso: [0.95], head: [-0.8], hipL: [-1.7, 0, -0.15], kneeL: [1.85], hipR: [0.25, 0, 0.15], kneeR: [1.75], ankleL: [0], ankleR: [0.9], shR: [-0.75, 0, -0.1], elR: [-0.05], shL: [-0.5, 0, 0.2], elL: [-0.3] },
+  standPoint: { rootY: 0.95, torso: [0.08, 0.25], head: [0, 0.35], hipL: [0, 0, -0.06], kneeL: [0.05], hipR: [-0.1, 0, 0.06], kneeR: [0.15], ankleL: [0], ankleR: [0], shR: [-1.45, 0.3, 0.1], elR: [-0.05], shL: [0.1, 0, -0.15], elL: [-0.4] },
+};
+// a cheap figure for people far away (the aerial shot): body, legs, head and helmet
+function farCrew(jersey, helmet) {
+  const g = new T.Group(), j = matOnce('j' + jersey, () => std(jersey, 0.85)), p = matOnce('pants', () => std(0x2c3240, 0.85)), h = matOnce('h' + helmet, () => std(helmet, 0.6));
+  const add = (geo, mat, y) => { const m = new T.Mesh(geo, mat); m.position.y = y; m.castShadow = true; g.add(m); return m; };
+  add(new T.BoxGeometry(0.34, 0.85, 0.22), p, 0.43); add(new T.BoxGeometry(0.44, 0.55, 0.3), j, 1.15); add(new T.SphereGeometry(0.13, 8, 6), h, 1.58);
+  return g;
+}
+
+// ---------- aircraft ----------
+const airframe = (hex = 0xb3b9be) => new T.MeshStandardMaterial({ color: lin(hex), map: TEX.panels, roughness: 0.5, metalness: 0.3, envMapIntensity: 0.8 });
+function extrudeXZ(pts, depth) { const s = new T.Shape(); pts.forEach(([x, z], i) => i ? s.lineTo(x, z) : s.moveTo(x, z)); const g = new T.ExtrudeGeometry(s, { depth, bevelEnabled: false }); g.rotateX(Math.PI / 2); return g; }
+// A twin-engine carrier fighter, nose toward -z: lofted radome, chined forebody and wide centre
+// body, gold-tinted canopy with its bow, boxy intakes with dark mouths, swept wings and tails,
+// canted twin fins with the side number, wingtip missiles on pylons, nozzles with titanium petals
+// and an end-on afterburner core, launch-bar nose gear and main gear with hubs and doors.
+// One detailed jet is built and merged; every other jet is a clone sharing its geometry.
+const FIGHTER = {};
+function fighterMats() {
+  if (FIGHTER.M) return FIGHTER.M;
+  const body = airframe(0x9aa3aa); body.side = T.DoubleSide;
+  return FIGHTER.M = {
+    body, dark: std(0x2a2d30, 0.45, 0.6), black: std(0x141516, 0.6, 0.3), tyre: std(0x1a1a1a, 0.9), hub: std(0xd8dadc, 0.4, 0.5), strut: std(0xc9ccce, 0.35, 0.7),
+    petals: new T.MeshStandardMaterial({ map: TEX.petals, roughness: 0.4, metalness: 0.85, side: T.DoubleSide }),
+    liner: std(0x1d1a18, 0.8, 0.3, { side: T.DoubleSide }),
+    canopy: new T.MeshPhysicalMaterial({ color: lin(0x5a4a30), roughness: 0.03, metalness: 0.6, clearcoat: 1, envMapIntensity: 1.6 }),
+    missile: std(0xe6e6e6, 0.4), seeker: std(0x30343a, 0.2, 0.6), helmet: std(0xd8d8d8, 0.3, 0.1),
+    num: new T.MeshStandardMaterial({ map: decalTex('201', 256, 96, '#3b4248'), transparent: true, roughness: 0.6, side: T.DoubleSide }),
+    navy: new T.MeshStandardMaterial({ map: decalTex('NAVY', 256, 64, '#3b4248', 'bold 48px sans-serif'), transparent: true, roughness: 0.6 }),
+    roundel: new T.MeshStandardMaterial({ map: canvasTex(64, 64, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#5a636a'; g.beginPath(); g.arc(32, 32, 26, 0, 7); g.fill(); g.fillStyle = '#9aa3aa'; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 8 : 20; g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } g.fill(); }), transparent: true, roughness: 0.6 }),
+    core: new T.MeshBasicMaterial({ map: TEX.burner, color: glow(1.8, 1.25, 1.0) }),
+  };
+}
+function buildFighter() {
+  const M = fighterMats(), g = new T.Group(), Y = 1.95;
+  const add = (geo, mat, x = 0, y = 0, z = 0, parent = g) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+  add(loft([{ z: -8.9, w: 0.02, h: 0.02, y: Y - 0.05 }, { z: -8.4, w: 0.2, h: 0.18, y: Y - 0.04 }, { z: -7.4, w: 0.42, h: 0.36, y: Y - 0.02 }, { z: -6.2, w: 0.62, h: 0.5, y: Y }, { z: -5.0, w: 0.8, h: 0.56, y: Y, n: 2.8 },
+    { z: -3.6, w: 1.15, h: 0.62, y: Y, n: 3.2, bot: 0.55 }, { z: -1.5, w: 1.55, h: 0.7, y: Y, n: 3.6, bot: 0.6 }, { z: 1.5, w: 1.72, h: 0.72, y: Y, n: 3.8, bot: 0.62 }, { z: 4.5, w: 1.66, h: 0.68, y: Y, n: 3.6 },
+    { z: 6.6, w: 1.5, h: 0.6, y: Y - 0.05, n: 3.2 }, { z: 8.1, w: 1.32, h: 0.52, y: Y - 0.08, n: 3 }], 36), M.body);
+  add(loft([{ z: -3.4, w: 0.05, h: 0.03, y: Y + 0.52 }, { z: -2.4, w: 0.48, h: 0.2, y: Y + 0.54 }, { z: 3, w: 0.6, h: 0.22, y: Y + 0.52 }, { z: 7.3, w: 0.42, h: 0.1, y: Y + 0.42 }], 22), M.body);   // dorsal spine
+  add(new T.SphereGeometry(1, 30, 14, 0, Math.PI * 2, 0, Math.PI / 2), M.canopy, 0, Y + 0.47, -4.7).scale.set(0.5, 0.52, 1.8);
+  add(tube([V(-0.47, Y + 0.5, -4.15), V(-0.32, Y + 0.88, -4.2), V(0, Y + 0.98, -4.2), V(0.32, Y + 0.88, -4.2), V(0.47, Y + 0.5, -4.15)], 0.03, 20, 6), M.dark);
+  add(new T.SphereGeometry(0.13, 12, 10), M.helmet, 0, Y + 0.72, -4.8);
+  for (const s of [-1, 1]) {
+    // intake duct beside the cockpit, its mouth dark
+    add(loft([{ z: -3.75, w: 0.36, h: 0.42, y: 0, n: 4 }, { z: -2.5, w: 0.4, h: 0.45, y: 0.02, n: 4 }, { z: 0.8, w: 0.36, h: 0.4, y: 0.06, n: 3.5 }, { z: 2.2, w: 0.05, h: 0.1, y: 0.12 }], 20, { capStart: false }), M.body, s * 1.32, Y - 0.12, 0);
+    add(new T.PlaneGeometry(0.66, 0.78), M.black, s * 1.32, Y - 0.12, -3.7).rotation.y = Math.PI;
+    // wings, tailplanes and canted fins with the side number on the outside
+    add(extrudeXZ([[1.4, -1.6], [5.6, 3.3], [5.6, 4.6], [1.4, 5.5]], 0.13), M.body, 0, Y - 0.12, 0).scale.x = s;
+    add(extrudeXZ([[1.25, 6.4], [3.7, 8.2], [3.7, 9.0], [1.25, 9.2]], 0.09), M.body, 0, Y - 0.2, 0).scale.x = s;
+    const fs = new T.Shape(); [[4.6, 0], [7.0, 2.7], [8.0, 2.7], [8.6, 0]].forEach(([z, y], i) => i ? fs.lineTo(z, y) : fs.moveTo(z, y));
+    const fgeo = new T.ExtrudeGeometry(fs, { depth: 0.12, bevelEnabled: false }); fgeo.rotateY(-Math.PI / 2);
+    const fin = add(fgeo, M.body, s * 0.95 + (s > 0 ? 0.06 : 0), Y + 0.42, 0); fin.rotation.z = -s * 0.22;
+    const nm = add(new T.PlaneGeometry(0.9, 0.34), M.num, 0, 0, 0); nm.userData.keep = true;
+    nm.position.set(s * (1.03 + Math.sin(0.22) * 1.3) + s * 0.03, Y + 0.42 + Math.cos(0.22) * 1.3, 7.2);
+    nm.quaternion.setFromEuler(new T.Euler(0, s * Math.PI / 2, -s * 0.22, 'ZYX'));
+    const nv = add(new T.PlaneGeometry(0.8, 0.2), M.navy, s * 1.56, Y + 0.05, 2.2); nv.rotation.y = s * Math.PI / 2; nv.userData.keep = true;
+    const rd = add(new T.PlaneGeometry(0.9, 0.9), M.roundel, s * 4.2, Y - 0.02, 3.6); rd.rotation.x = -Math.PI / 2; rd.userData.keep = true;
+    // wingtip pylon and missile
+    add(roundBox(0.08, 0.22, 0.9, 0.02), M.body, s * 4.4, Y - 0.3, 3.4);
+    const ms = new T.CylinderGeometry(0.085, 0.085, 2.9, 12); ms.rotateX(Math.PI / 2); add(ms, M.missile, s * 4.4, Y - 0.5, 3.3);
+    add(new T.ConeGeometry(0.085, 0.32, 12).rotateX(-Math.PI / 2), M.seeker, s * 4.4, Y - 0.5, 1.7);
+    for (let k = 0; k < 4; k++) { const f = add(roundBox(0.02, 0.22, 0.25, 0.005), M.missile, s * 4.4, Y - 0.5, 4.6); f.rotation.z = k * Math.PI / 2 + Math.PI / 4; f.translateY(0.12); }
+    // nozzle: converging titanium petals, a dark liner and the glowing core, then the plume
+    const nz = new T.Group(); nz.position.set(s * 0.62, Y - 0.1, 8.05); g.add(nz);
+    const sh = new T.CylinderGeometry(0.5, 0.58, 1.0, 28, 1, true); sh.rotateX(Math.PI / 2); sh.translate(0, 0, 0.5); add(sh, M.petals, 0, 0, 0, nz);
+    const ln = new T.CylinderGeometry(0.47, 0.47, 0.5, 24, 1, true); ln.rotateX(Math.PI / 2); add(ln, M.liner, 0, 0, 0.45, nz);
+    const core = add(new T.CircleGeometry(0.46, 28), M.core, 0, 0, 0.42, nz); core.userData.flame = true;
+    for (const [z, sc, c] of [[0.9, 0.95, glow(1.7, 0.75, 0.22)], [1.4, 1.1, glow(1.4, 0.48, 0.12)], [2.2, 1.0, glow(0.95, 0.3, 0.07)], [3.1, 0.8, glow(0.5, 0.15, 0.04)], [1.6, 0.32, glow(1.5, 1.4, 1.6)], [2.4, 0.28, glow(1.25, 1.15, 1.4)], [3.2, 0.24, glow(1.0, 0.9, 1.15)]]) {
+      const sp = new T.Sprite(new T.SpriteMaterial({ map: TEX.soft, color: c, blending: T.AdditiveBlending, transparent: true, depthWrite: false, fog: false }));
+      sp.position.set(0, 0, z); sp.scale.setScalar(sc); sp.userData.base = sc; sp.userData.flame = true; nz.add(sp);
+    }
+    // main gear: leg, wheel with its hub, gear door
+    add(new T.CylinderGeometry(0.07, 0.07, 1.0, 10), M.strut, s * 1.42, 0.9, 1.5);
+    const wh = new T.CylinderGeometry(0.42, 0.42, 0.26, 20); wh.rotateZ(Math.PI / 2); add(wh, M.tyre, s * 1.48, 0.42, 1.5);
+    const hb = new T.CylinderGeometry(0.22, 0.22, 0.27, 16); hb.rotateZ(Math.PI / 2); add(hb, M.hub, s * 1.48, 0.42, 1.5);
+    add(roundBox(0.03, 0.85, 1.2, 0.01), M.body, s * 1.12, 1.05, 1.4);
+  }
+  // nose gear: twin wheels, leg, the launch bar down to the shuttle, the door
+  for (const x of [-0.17, 0.17]) { const nw = new T.CylinderGeometry(0.3, 0.3, 0.2, 16); nw.rotateZ(Math.PI / 2); add(nw, M.tyre, x, 0.3, -5.8); }
+  add(new T.CylinderGeometry(0.06, 0.06, 1.2, 10), M.strut, 0, 0.9, -5.75);
+  add(roundBox(0.07, 0.07, 1.3, 0.02), M.strut, 0, 0.32, -6.35).rotation.x = 0.38;
+  add(roundBox(0.03, 0.6, 1.0, 0.01), M.body, 0.3, 1.15, -5.6);
+  mergeTree(g);
+  return g;
+}
+function makeFighter(burner = true) {
+  if (!FIGHTER.template) FIGHTER.template = buildFighter();
+  const g = FIGHTER.template.clone(true);
+  g.flames = []; g.traverse(o => { if (o.userData.flame) g.flames.push(o); });
+  g.burner = on => { for (const f of g.flames) f.visible = on; };
+  g.flicker = (k = 1) => { for (const f of g.flames) if (f.isSprite) f.scale.setScalar(f.userData.base * k * (0.9 + 0.2 * Math.random())); };
+  g.burner(burner);
+  return g;
+}
+// A UH-60 Black Hawk, nose toward -z: long cabin with the sliding door and two windows, a big
+// glazed cockpit, twin engines on the roof, a tail boom rising to a swept pylon with the canted
+// tail rotor on the right and the stabilator low at the tail, fixed main gear and a tail wheel.
+function makeBlackHawk(hex) {
+  const g = new T.Group(), body = airframe(hex), dark = std(0x1c1e1f, 0.6, 0.3), black = std(0x101112, 0.5, 0.3);
+  body.roughness = 0.65; body.metalness = 0.15;
+  const glass = new T.MeshPhysicalMaterial({ color: lin(0x1e2a33), roughness: 0.04, metalness: 0.5, clearcoat: 1 });
+  const add = (geo, mat, x = 0, y = 0, z = 0, parent = g) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+  const prof = [[0, -6.35], [0.42, -6.3], [0.8, -6.05], [1.1, -5.55], [1.3, -4.8], [1.4, -3.6], [1.42, 0], [1.38, 1.6], [1.18, 2.9], [0.85, 4.0], [0.55, 4.6]];
+  const fg = new T.LatheGeometry(prof.map(([r, y]) => new T.Vector2(r, y)), 26); fg.rotateX(Math.PI / 2);
+  add(fg, body, 0, 1.75).scale.set(0.86, 0.98, 1);
+  add(new T.BoxGeometry(2.2, 0.6, 8.2), body, 0, 0.92, -1.3);                          // flat cabin floor
+  add(new T.BoxGeometry(1.6, 0.55, 4.2), body, 0, 3.0, -0.9);                          // engine deck
+  for (const s of [-1, 1]) {
+    const e = new T.CylinderGeometry(0.34, 0.34, 2.6, 16); e.rotateX(Math.PI / 2); add(e, body, s * 0.7, 3.05, -0.3);
+    const ex = new T.CylinderGeometry(0.22, 0.28, 0.8, 12); ex.rotateX(Math.PI / 2); const em = add(ex, black, s * 0.95, 3.1, 1.25); em.rotation.y = -s * 0.6;
+    // cockpit glazing: side window, chin window, windscreen
+    const side = add(new T.PlaneGeometry(1.25, 0.75), glass, s * 1.205, 2.2, -4.7); side.rotation.y = s * Math.PI / 2; side.rotation.x = -0.12;
+    const chin = add(new T.PlaneGeometry(0.6, 0.38), glass, s * 1.12, 1.42, -5.3); chin.rotation.y = s * (Math.PI / 2 - 0.35);
+    const ws = add(new T.PlaneGeometry(0.85, 0.8), glass, s * 0.48, 2.3, -5.83); ws.rotation.set(-0.55, s * 0.5, 0, 'YXZ');
+    // the cabin door with two windows, and the gunner's window
+    add(new T.PlaneGeometry(1.9, 1.35), std(0x6e6450, 0.7), s * 1.225, 1.75, -2.2).rotation.y = s * Math.PI / 2;
+    for (const z of [-2.75, -1.65]) add(new T.PlaneGeometry(0.55, 0.5), glass, s * 1.235, 2.05, z).rotation.y = s * Math.PI / 2;
+    add(new T.PlaneGeometry(0.5, 0.45), glass, s * 1.23, 2.05, -3.6).rotation.y = s * Math.PI / 2;
+    // fixed main gear: drag struts and the wheel
+    const wheel = new T.CylinderGeometry(0.34, 0.34, 0.24, 16); wheel.rotateZ(Math.PI / 2); add(wheel, black, s * 1.55, 0.34, -2.9);
+    add(tube([V(s * 1.0, 1.0, -3.4), V(s * 1.5, 0.4, -2.9)], 0.06, 4, 6), dark);
+    add(tube([V(s * 1.05, 0.95, -2.2), V(s * 1.5, 0.4, -2.9)], 0.05, 4, 6), dark);
+  }
+  add(new T.CylinderGeometry(0.42, 0.5, 0.45, 16), body, 0, 3.45, -1.2);               // rotor mast fairing
+  add(new T.BoxGeometry(0.06, 0.4, 0.5), dark, 0, 2.95, -5.1).rotation.x = -0.6;      // wire cutter
+  const boom = new T.CylinderGeometry(0.24, 0.58, 7.6, 16); boom.rotateX(Math.PI / 2);
+  const bm = add(boom, body, 0, 2.2, 8.1); bm.rotation.x = -0.05;
+  const ps = new T.Shape(); [[0, 0], [1.9, 2.5], [2.6, 2.5], [1.6, 0]].forEach(([z, y], i) => i ? ps.lineTo(z, y) : ps.moveTo(z, y));
+  const pg = new T.ExtrudeGeometry(ps, { depth: 0.24, bevelEnabled: false }); pg.rotateY(-Math.PI / 2);
+  add(pg, body, 0.12, 2.25, 11.2);
+  add(new T.BoxGeometry(4.3, 0.07, 1.0), body, 0, 2.15, 12.3);                         // stabilator
+  add(new T.BoxGeometry(0.05, 0.08, 1.2), std(0xe0b52a, 0.7), 0.42, 2.45, 7.0);       // yellow marking
+  const num = canvasTex(256, 96, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = '#2a2a2a'; c.font = 'bold 64px sans-serif'; c.textAlign = 'center'; c.fillText('529', w / 2, 70); });
+  for (const s of [-1, 1]) { const nm = new T.Mesh(new T.PlaneGeometry(0.7, 0.26), new T.MeshBasicMaterial({ map: num, transparent: true })); nm.position.set(s * 0.47, 2.3, 8.6); nm.rotation.y = s * Math.PI / 2; g.add(nm); }
+  add(new T.CylinderGeometry(0.15, 0.15, 0.12, 12).rotateZ(Math.PI / 2), black, 0, 0.18, 11.3);
+  add(new T.BoxGeometry(0.06, 0.6, 0.06), dark, 0, 0.5, 11.25);
+  const rotor = g.rotor = new T.Group(); rotor.position.set(0, 3.85, -1.2); g.add(rotor);
+  add(new T.CylinderGeometry(0.35, 0.35, 0.25, 12), black, 0, 0, 0, rotor);
+  for (let i = 0; i < 4; i++) { const a = new T.Group(); a.rotation.y = i * Math.PI / 2; const b = new T.Mesh(new T.BoxGeometry(7.9, 0.07, 0.53), dark); b.position.x = 4.1; b.rotation.z = -0.025; b.castShadow = true; a.add(b); rotor.add(a); }
+  const disc = new T.Mesh(new T.CircleGeometry(8.1, 48), new T.MeshBasicMaterial({ color: 0x0c0c0c, transparent: true, opacity: 0.12, side: T.DoubleSide, depthWrite: false })); disc.rotation.x = -Math.PI / 2; rotor.add(disc);
+  const tr = g.tailRotor = new T.Group(); tr.position.set(0.38, 4.2, 13.15); tr.rotation.z = -0.35; g.add(tr);
+  for (let i = 0; i < 4; i++) { const b = new T.Mesh(new T.BoxGeometry(0.04, 1.65, 0.2), dark); b.geometry.translate(0, 0.82, 0); b.rotation.x = i * Math.PI / 2; tr.add(b); }
+  mergeTree(g);
+  g.update = dt => { rotor.rotation.y += dt * 27; tr.rotation.x += dt * 95; };
+  return g;
+}
+
+/* ==========================================================================
+   Shot 1: the pilot's view. Instrument panel and gauges, the HUD glass with its green symbology,
+   the canopy bow, the stick in a gloved hand; a sea of cloud below and the sun ahead.
+   ========================================================================== */
+function panelTexture() {
+  return canvasTex(1024, 448, (g, w, h) => {
+    g.fillStyle = '#1d2023'; g.fillRect(0, 0, w, h); speckle(g, w, h, 1500, 4, 0.05, 81);
+    g.strokeStyle = '#2c3034'; g.lineWidth = 3; g.strokeRect(6, 6, w - 12, h - 12);
+    const gauge = (cx, cy, r, needle) => {
+      g.fillStyle = '#0b0c0d'; g.beginPath(); g.arc(cx, cy, r + 7, 0, 7); g.fill();
+      g.strokeStyle = '#4a4e52'; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, r + 5, 0, 7); g.stroke();
+      g.fillStyle = '#050505'; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+      g.strokeStyle = '#d8d8d8'; g.lineWidth = 1.5;
+      for (let i = 0; i <= 30; i++) { const a = Math.PI * 0.75 + i / 30 * Math.PI * 1.5, l = i % 5 ? 4 : 9; g.beginPath(); g.moveTo(cx + Math.cos(a) * (r - 2), cy + Math.sin(a) * (r - 2)); g.lineTo(cx + Math.cos(a) * (r - 2 - l), cy + Math.sin(a) * (r - 2 - l)); g.stroke(); }
+      const a = Math.PI * 0.75 + needle * Math.PI * 1.5; g.strokeStyle = '#f2f2f2'; g.lineWidth = 3; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * (r - 8), cy + Math.sin(a) * (r - 8)); g.stroke();
+      g.fillStyle = '#d0d0d0'; g.font = '9px sans-serif'; g.textAlign = 'center'; g.fillText(['RPM', 'EGT', 'FF', 'OIL', 'HYD', 'NOZ'][Math.floor(needle * 9) % 6], cx, cy + r * 0.55);
+    };
+    const mfd = (x, y, ww, hh, kind) => {
+      g.fillStyle = '#121416'; g.fillRect(x - 16, y - 16, ww + 32, hh + 32);
+      g.fillStyle = '#2b2f33'; for (let i = 0; i < 5; i++) { g.fillRect(x + 8 + i * (ww - 24) / 4, y - 13, 14, 9); g.fillRect(x + 8 + i * (ww - 24) / 4, y + hh + 4, 14, 9); g.fillRect(x - 13, y + 10 + i * (hh - 30) / 4, 9, 14); g.fillRect(x + ww + 4, y + 10 + i * (hh - 30) / 4, 9, 14); }
+      g.fillStyle = '#02140a'; g.fillRect(x, y, ww, hh);
+      g.strokeStyle = 'rgba(70,255,120,.85)'; g.fillStyle = 'rgba(70,255,120,.9)'; g.lineWidth = 1.5;
+      if (kind === 'radar') { const cx = x + ww / 2, cy = y + hh - 10; for (let r = 40; r < hh; r += 40) { g.beginPath(); g.arc(cx, cy, r, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); } for (const a of [1.15, 1.5, 1.85]) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(Math.PI * a) * hh, cy + Math.sin(Math.PI * a) * hh); g.stroke(); } for (let i = 0; i < 5; i++) g.fillRect(cx - 60 + i * 30, y + 30 + (i % 3) * 25, 6, 6); }
+      else { g.beginPath(); g.moveTo(x + 10, y + hh * 0.6); for (let i = 0; i <= 20; i++) g.lineTo(x + 10 + i * (ww - 20) / 20, y + hh * 0.6 - Math.sin(i * 0.7) * 18 - i * 2); g.stroke(); g.font = '11px monospace'; for (let i = 0; i < 4; i++) g.fillText(['FUEL 6800', 'TGT 02', 'WPT 3', 'G 1.2'][i], x + 10, y + 18 + i * 16); }
+    };
+    mfd(70, 70, 230, 210, 'radar'); mfd(724, 70, 230, 210, 'nav');
+    let k = 0.13; for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { gauge(420 + c * 92, 105 + r * 100, 36, k); k = (k * 7.3 + 0.21) % 1; }
+    for (let i = 0; i < 6; i++) gauge(110 + i * 34 + (i > 2 ? 520 : 0), 360, 13, (i * 0.17 + 0.2) % 1);
+    for (let i = 0; i < 10; i++) { g.fillStyle = ['#7a1a12', '#7a6a12', '#1a5a20', '#3a3d40'][i % 4]; g.fillRect(380 + i * 28, 30, 22, 12); }
+    g.fillStyle = '#2b2f33'; for (let i = 0; i < 24; i++) g.fillRect(360 + (i % 8) * 36, 390 + Math.floor(i / 8) * 16, 26, 10);
+  });
+}
+function hudTexture() {
+  return canvasTex(512, 512, (g, w, h) => {
+    g.clearRect(0, 0, w, h); g.strokeStyle = 'rgba(90,255,130,1)'; g.fillStyle = 'rgba(90,255,130,1)'; g.lineWidth = 3; g.font = 'bold 20px monospace'; g.textAlign = 'center';
+    for (let i = -5; i <= 5; i++) { const x = w / 2 + i * 34; g.beginPath(); g.moveTo(x, 40); g.lineTo(x, i % 2 ? 50 : 58); g.stroke(); if (!(i % 2)) g.fillText(String(((36 + i / 2) % 36 + 36) % 36).padStart(2, '0'), x, 82); }
+    g.beginPath(); g.moveTo(w / 2, 30); g.lineTo(w / 2 - 8, 18); g.lineTo(w / 2 + 8, 18); g.closePath(); g.fill();
+    for (const [y, n] of [[150, 10], [250, 5], [350, -5], [430, -10]]) { g.setLineDash(n < 0 ? [12, 8] : []); g.beginPath(); g.moveTo(140, y); g.lineTo(220, y); g.moveTo(292, y); g.lineTo(372, y); g.stroke(); g.setLineDash([]); g.fillText(String(Math.abs(n)), 116, y + 7); g.fillText(String(Math.abs(n)), 396, y + 7); }
+    g.beginPath(); g.moveTo(60, 300); g.lineTo(452, 300); g.stroke();
+    g.beginPath(); g.arc(w / 2, 280, 12, 0, 7); g.stroke(); g.beginPath(); g.moveTo(w / 2 - 34, 280); g.lineTo(w / 2 - 12, 280); g.moveTo(w / 2 + 12, 280); g.lineTo(w / 2 + 34, 280); g.moveTo(w / 2, 268); g.lineTo(w / 2, 254); g.stroke();
+    g.strokeRect(20, 230, 70, 34); g.strokeRect(422, 230, 80, 34); g.fillText('452', 55, 255); g.fillText('10500', 462, 255);
+    g.font = '16px monospace'; g.fillText('M 0.82', 55, 290); g.fillText('G 1.3', 55, 312); g.fillText('ARM', 462, 290);
+  }, { srgb: false });
+}
+function shotPilotView(R) {
+  const S = new T.Scene();
+  S.fog = new T.FogExp2(lin(0xc8daea), 0.000045);
+  S.environment = envFrom(R, { top: '#2364c0', hor: '#dce9f4', ground: '#eef2f6', sunU: 0.5, sunV: 0.18 });
+  const cam = new T.PerspectiveCamera(74, 1, 0.03, 80000);
+  const sunDir = V(0.06, 0.42, -0.9).normalize();
+  const sky = skyDome({ top: 0x1a58b4, hor: 0xd3e3f2, ground: 0xe9eef3, sunDir, sun: 0xfff3dc, haze: 0.38 }); S.add(sky);
+  S.add(new T.HemisphereLight(lin(0xdce8ff), lin(0xb8c2cc), 0.55));
+  const sun = new T.DirectionalLight(lin(0xfff3e0), 1.4); S.add(sun); S.add(sun.target);
+  const glare = new T.Sprite(new T.SpriteMaterial({ map: TEX.soft, color: glow(2.4, 2.2, 1.9), blending: T.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); S.add(glare);
+  const ALT = 3300, CLOUD = 2350, SPAN = 16000;
+  const floor = new T.Mesh(new T.PlaneGeometry(120000, 120000), new T.MeshStandardMaterial({ color: lin(0xe6ebf0), roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.position.y = CLOUD - 120; S.add(floor);
+  const clouds = []; const cr = mulberry(91);
+  for (let i = 0; i < 520; i++) {
+    const shade = 0.82 + cr() * 0.18, s = new T.Sprite(new T.SpriteMaterial({ map: TEX.cloud, color: new T.Color(shade, shade, shade * 1.02), transparent: true, depthWrite: false }));
+    s.position.set((cr() - 0.5) * SPAN, CLOUD - 60 + cr() * 260, (cr() - 0.5) * SPAN); s.scale.setScalar(380 + cr() * 900); s.material.rotation = (cr() - 0.5) * 0.3;
+    S.add(s); clouds.push(s);
+  }
+  const jet = new T.Group(); S.add(jet);
+  const add = (geo, mat, x = 0, y = 0, z = 0, parent = jet) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+  const dark = std(0x24272a, 0.6, 0.3), darker = std(0x16181a, 0.7, 0.2), frame = std(0x3a3e42, 0.45, 0.6), suit = new T.MeshStandardMaterial({ map: TEX.flightSuit, roughness: 0.9 });
+  const panelMap = panelTexture();
+  add(new T.BoxGeometry(1.0, 0.46, 0.12), dark, 0, 0.55, -0.74).rotation.x = -0.18;
+  const face = add(new T.PlaneGeometry(0.98, 0.43), new T.MeshStandardMaterial({ map: panelMap, emissive: lin(0xffffff), emissiveMap: panelMap, emissiveIntensity: 0.35, roughness: 0.6 }), 0, 0.56, -0.672); face.rotation.x = -0.18;
+  add(new T.BoxGeometry(1.06, 0.07, 0.36), darker, 0, 0.8, -0.82);
+  add(new T.CylinderGeometry(0.04, 0.04, 1.06, 12).rotateZ(Math.PI / 2), darker, 0, 0.8, -0.64);
+  for (const s of [-1, 1]) add(new T.BoxGeometry(0.035, 0.3, 0.04), darker, s * 0.21, 0.97, -0.8).rotation.x = -0.25;
+  add(new T.BoxGeometry(0.46, 0.035, 0.05), darker, 0, 1.12, -0.85);
+  const comb = add(new T.PlaneGeometry(0.42, 0.3), new T.MeshPhysicalMaterial({ color: lin(0xa8e8c0), roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.16, clearcoat: 1, depthWrite: false }), 0, 0.98, -0.8); comb.rotation.x = -0.25;
+  const sym = add(new T.PlaneGeometry(0.4, 0.4), new T.MeshBasicMaterial({ map: hudTexture(), color: glow(0.5, 1.6, 0.7), transparent: true, blending: T.AdditiveBlending, depthWrite: false, fog: false }), 0, 0.99, -0.795); sym.rotation.x = -0.25;
+  const arch = (z, y0, top, wd, r) => add(tube([V(-wd, y0, z), V(-wd * 0.85, y0 + top * 0.55, z), V(-wd * 0.45, y0 + top * 0.92, z), V(0, y0 + top, z), V(wd * 0.45, y0 + top * 0.92, z), V(wd * 0.85, y0 + top * 0.55, z), V(wd, y0, z)], r, 60, 10), frame);
+  arch(-0.98, 0.8, 0.62, 0.56, 0.05);
+  for (const s of [-1, 1]) {
+    add(tube([V(s * 0.56, 0.8, -0.98), V(s * 0.5, 1.05, -1.3), V(s * 0.3, 1.25, -1.75)], 0.035, 20, 8), frame);
+    const mir = add(new T.BoxGeometry(0.12, 0.06, 0.02), new T.MeshPhysicalMaterial({ color: lin(0xbfc8d0), roughness: 0.02, metalness: 1 }), s * 0.26, 1.36, -0.96); mir.rotation.y = s * 0.3;
+    add(new T.BoxGeometry(0.2, 0.22, 1.6), dark, s * 0.5, 0.62, -0.1);
+    const con = canvasTex(128, 512, (g, w, hh) => { g.fillStyle = '#25282b'; g.fillRect(0, 0, w, hh); const r = mulberry(s > 0 ? 3 : 4); for (let i = 0; i < 40; i++) { g.fillStyle = ['#3a3e42', '#d8d8d8', '#1a5a20', '#8a2a1a'][Math.floor(r() * 4)]; g.fillRect(8 + r() * 100, 8 + r() * 480, 6 + r() * 14, 5 + r() * 8); } });
+    add(new T.PlaneGeometry(0.2, 1.6), new T.MeshStandardMaterial({ map: con, emissive: lin(0xffffff), emissiveMap: con, emissiveIntensity: 0.15, roughness: 0.7 }), s * 0.5, 0.731, -0.1).rotation.x = -Math.PI / 2;
+    add(new T.BoxGeometry(0.05, 0.05, 2.2), frame, s * 0.6, 0.78, 0.0);
+  }
+  add(new T.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new T.MeshPhysicalMaterial({ color: lin(0xe0f0ff), roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.05, clearcoat: 1, side: T.DoubleSide, depthWrite: false }), 0, 0.8, -0.2).scale.set(0.6, 0.66, 1.9);
+  for (const s of [-1, 1]) {
+    add(tube([V(s * 0.13, 0.42, 0.2), V(s * 0.14, 0.5, -0.12), V(s * 0.15, 0.52, -0.36)], 0.085, 16, 12), suit);
+    add(new T.SphereGeometry(0.09, 14, 10), suit, s * 0.15, 0.52, -0.38);
+    add(tube([V(s * 0.15, 0.5, -0.38), V(s * 0.15, 0.25, -0.46), V(s * 0.15, 0.05, -0.5)], 0.07, 12, 10), suit);
+  }
+  add(new T.CylinderGeometry(0.018, 0.022, 0.34, 10), darker, 0, 0.32, -0.28).rotation.x = 0.15;
+  add(new T.BoxGeometry(0.05, 0.12, 0.06), darker, 0, 0.53, -0.25).rotation.x = 0.15;
+  const glove = std(0x3e352b, 0.85);
+  add(new T.SphereGeometry(0.055, 12, 10), glove, 0.01, 0.52, -0.23).scale.set(1, 1.2, 1.1);
+  add(tube([V(0.03, 0.5, -0.2), V(0.12, 0.47, -0.05), V(0.22, 0.48, 0.15)], 0.045, 12, 10), suit);
+  add(new T.BoxGeometry(0.07, 0.09, 0.12), darker, -0.42, 0.78, -0.08);
+  add(new T.SphereGeometry(0.055, 12, 10), glove, -0.42, 0.82, -0.06);
+  add(tube([V(-0.42, 0.8, -0.04), V(-0.36, 0.72, 0.1), V(-0.28, 0.66, 0.25)], 0.045, 12, 10), suit);
+  const streak = canvasTex(256, 256, (g, w, h) => { g.clearRect(0, 0, w, h); const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.44, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,.6)'); gr.addColorStop(0.56, 'rgba(255,255,255,0)'); gr.addColorStop(0.68, 'rgba(255,255,255,.22)'); gr.addColorStop(0.72, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }, { srgb: false });
+  const refl = add(new T.PlaneGeometry(1.2, 0.75), new T.MeshBasicMaterial({ map: streak, transparent: true, opacity: 0.1, blending: T.AdditiveBlending, depthWrite: false, fog: false }), 0, 1.16, -1.3); refl.rotation.x = -0.6;
+  function start() {}
+  function update(t, dt) {
+    refl.material.map.offset.x = 0.04 * Math.sin(t * 0.35);
+    const roll = 0.1 * Math.sin(t * 0.35) + 0.03 * Math.sin(t * 1.1), pitch = 0.015 * Math.sin(t * 0.5);
+    jet.position.set(0, ALT, 0); jet.rotation.set(pitch, 0, roll, 'YXZ'); jet.updateMatrixWorld(true);
+    for (const c of clouds) { c.position.z += 230 * dt; if (c.position.z > SPAN / 2) c.position.z -= SPAN; }
+    cam.position.copy(jet.localToWorld(V(0, 1.01, 0.12)));
+    cam.up.copy(V(0, 1, 0).applyQuaternion(jet.quaternion));
+    cam.lookAt(jet.localToWorld(V(0, 0.86, -2.4)));
+    sky.position.copy(cam.position);
+    glare.position.copy(cam.position).addScaledVector(sunDir, 30000); glare.scale.setScalar(5200);
+    sun.position.copy(jet.position).addScaledVector(sunDir, 50); sun.target.position.copy(jet.position);
+  }
+  return { scene: S, camera: cam, start, update, shake: 0.4, exposure: 1.0 };
+}
+
+/* ==========================================================================
+   Shot 2: a camera on the glareshield looking back at the pilot (a wide, fisheye action-camera
+   look): his helmet with the visor down, mask and ribbed hose, survival vest, life preserver and
+   harness; the ejection seat, the sills with their hoses and switch panels; behind him the spine,
+   the wings and the tail, the jet banked steeply over farmland.
+   ========================================================================== */
+function shotPilotCam(R) {
+  const S = new T.Scene(), fogCol = lin(0xbccbdc);
+  S.fog = new T.FogExp2(fogCol, 0.00006);
+  S.environment = envFrom(R, { top: '#2f6fc0', hor: '#dfe9f2', ground: '#9a8a68', sunU: 0.58, sunV: 0.22 });
+  const cam = new T.PerspectiveCamera(108, 1, 0.04, 80000);
+  const sunDir = V(0.6, 0.62, 0.5).normalize();
+  const sky = skyDome({ top: 0x1552b0, hor: 0xcfe0ee, ground: 0xb7b09a, sunDir, sun: 0xfff1d6, haze: 0.32 }); S.add(sky);
+  S.add(new T.HemisphereLight(lin(0xd8e6ff), lin(0x8d7d5e), 0.55));
+  const sun = new T.DirectionalLight(lin(0xfff1dc), 1.5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 0.1, far: 20 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.01;
+  S.add(sun); S.add(sun.target);
+  const fields = canvasTex(1024, 1024, (g, w, h) => {
+    const r = mulberry(17); g.fillStyle = '#a99674'; g.fillRect(0, 0, w, h);
+    const pal = ['#ae9a74', '#bca981', '#8f8a5a', '#727c4a', '#c8b791', '#9c8b63', '#7f6f4d', '#5f6b40', '#b6a07a', '#d0c4a2'];
+    for (let by = 0; by < 8; by++) for (let bx = 0; bx < 8; bx++) {
+      g.save(); g.translate(bx * 128 + 64, by * 128 + 64); g.rotate((r() - 0.5) * 0.5);
+      const cols = 2 + Math.floor(r() * 4), rows = 1 + Math.floor(r() * 3);
+      for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+        const fw = 150 / cols, fh = 150 / rows; g.fillStyle = pal[Math.floor(r() * pal.length)];
+        g.fillRect(-75 + i * fw, -75 + j * fh, fw - 2, fh - 2);
+        if (r() < 0.35) { g.fillStyle = 'rgba(0,0,0,.12)'; for (let k = 0; k < fw; k += 4) g.fillRect(-75 + i * fw + k, -75 + j * fh, 1.5, fh - 2); }
+        if (r() < 0.15) { g.fillStyle = 'rgba(40,60,30,.5)'; for (let k = 0; k < 40; k++) g.fillRect(-75 + i * fw + r() * fw, -75 + j * fh + r() * fh, 3, 3); }
+      }
+      g.restore();
+    }
+    g.strokeStyle = 'rgba(220,210,190,.6)'; g.lineWidth = 2;
+    for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(r() * w, 0); g.bezierCurveTo(r() * w, h * 0.3, r() * w, h * 0.7, r() * w, h); g.stroke(); }
+    g.strokeStyle = 'rgba(120,110,90,.6)'; g.lineWidth = 1; for (let i = 0; i < 14; i++) { g.beginPath(); g.moveTo(0, r() * h); g.lineTo(w, r() * h); g.stroke(); }
+    g.fillStyle = 'rgba(140,140,140,.55)'; for (let i = 0; i < 18; i++) { const x = r() * w, y = r() * h; for (let k = 0; k < 30; k++) g.fillRect(x + (r() - .5) * 30, y + (r() - .5) * 30, 3, 3); }
+  });
+  fields.wrapS = fields.wrapT = T.RepeatWrapping; fields.repeat.set(24, 24);
+  const TILE = 120000 / 24;
+  const ground = new T.Mesh(new T.PlaneGeometry(120000, 120000), new T.MeshStandardMaterial({ map: fields, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; S.add(ground);
+  const clouds = new T.Group(); S.add(clouds);
+  const cr = mulberry(29);
+  for (let i = 0; i < 60; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: TEX.cloud, color: lin(0xffffff), transparent: true, opacity: 0.8, depthWrite: false })); sp.position.set((cr() - 0.5) * 30000, 1400 + cr() * 700, (cr() - 0.5) * 30000); sp.scale.setScalar(700 + cr() * 1300); clouds.add(sp); }
+
+  const jet = new T.Group(); S.add(jet); const ALT = 3200;
+  const body = airframe(0xb0b7bd); body.side = T.DoubleSide;
+  const dark = std(0x2b2e31, 0.55, 0.4), black = std(0x121314, 0.55, 0.2), rail = std(0xaeb3b7, 0.25, 0.9), seatM = std(0x3b4034, 0.85), padM = std(0x242628, 0.9);
+  const add = (geo, mat, x = 0, y = 0, z = 0, parent = jet) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+  const consoleTex = canvasTex(512, 256, (g, w, h) => {
+    g.fillStyle = '#2a2d30'; g.fillRect(0, 0, w, h);
+    const labels = ['FUEL', 'HYD', 'GEN', 'OXY', 'ANTI-G', 'NAV', 'COMM', 'IFF'];
+    for (let i = 0; i < 6; i++) {
+      const px = 8 + i * 84; g.fillStyle = '#1d1f22'; g.fillRect(px, 10, 76, 236); g.strokeStyle = '#3c4044'; g.strokeRect(px, 10, 76, 236);
+      for (let k = 0; k < 8; k++) { const y = 26 + k * 28; g.fillStyle = '#d6d6d6'; g.font = '9px sans-serif'; g.fillText(labels[(i + k) % 8], px + 6, y); g.fillStyle = '#0d0e0f'; g.beginPath(); g.arc(px + 58, y - 3, 6, 0, 7); g.fill(); g.fillStyle = '#c9c9c9'; g.fillRect(px + 56, y - 13, 4, 9); }
+    }
+    g.fillStyle = '#c22a1e'; g.fillRect(120, 40, 14, 10); g.fillStyle = '#e2b52a'; g.fillRect(300, 120, 16, 10);
+  });
+  const consoleM = new T.MeshStandardMaterial({ map: consoleTex, roughness: 0.7, emissive: lin(0xffffff), emissiveMap: consoleTex, emissiveIntensity: 0.08 });
+  const redTag = std(0xc22a1e, 0.7);
+  for (const s of [-1, 1]) {
+    add(roundBox(0.18, 0.22, 3.0, 0.05), body, s * 0.63, 0.7, 0.05);                     // canopy sill
+    add(roundBox(0.05, 0.05, 2.9, 0.02), rail, s * 0.56, 0.84, 0.05);                     // canopy rail
+    add(roundBox(0.08, 0.06, 2.2, 0.025), padM, s * 0.53, 0.72, -0.1);                    // padded coaming
+    add(new T.PlaneGeometry(1.7, 0.42), consoleM, s * 0.52, 0.42, -0.2).rotation.y = -s * Math.PI / 2;
+    add(roundBox(0.3, 0.12, 1.6, 0.03), dark, s * 0.4, 0.5, -0.25);                      // side console
+    add(new T.PlaneGeometry(0.28, 1.5), consoleM, s * 0.4, 0.562, -0.25).rotation.x = -Math.PI / 2;
+    for (let k = 0; k < 3; k++) add(tube([V(s * (0.47 - k * 0.025), 0.62 - k * 0.02, -1.35), V(s * (0.5 - k * 0.02), 0.66 - k * 0.02, -0.3), V(s * (0.49 - k * 0.025), 0.6 - k * 0.03, 0.7), V(s * (0.45 - k * 0.02), 0.48 - k * 0.04, 1.35)], 0.024 - k * 0.005, 40, 8), black);
+    for (const z of [-0.9, 0.0, 0.8]) add(roundBox(0.05, 0.045, 0.04, 0.008), rail, s * 0.48, 0.64, z);
+    add(roundBox(0.012, 0.05, 0.02, 0.004), redTag, s * 0.44, 0.57, -0.6);
+  }
+  add(roundBox(1.1, 0.5, 0.2, 0.04), dark, 0, 0.35, -1.45);
+  // the ejection seat behind him: bucket, side beams, back, headbox with the striped firing handle
+  add(roundBox(0.6, 0.95, 0.2, 0.05), seatM, 0, 0.62, 0.44);
+  for (const s of [-1, 1]) add(roundBox(0.05, 1.25, 0.1, 0.015), rail, s * 0.33, 0.75, 0.47);
+  add(roundBox(0.48, 0.42, 0.3, 0.06), seatM, 0, 1.25, 0.5);
+  add(roundBox(0.44, 0.08, 0.26, 0.03), padM, 0, 1.48, 0.5);
+  add(new T.TorusGeometry(0.085, 0.017, 8, 20, Math.PI), new T.MeshStandardMaterial({ map: TEX.hazard, roughness: 0.6 }), 0, 1.5, 0.4).rotation.x = -0.4;
+  // the airframe behind: spine, intakes, wings, tailplanes and the fin
+  add(loft([{ z: 0.3, w: 1.0, h: 0.42, y: 0.25, n: 3 }, { z: 2, w: 1.45, h: 0.55, y: 0.2, n: 3.4 }, { z: 8, w: 1.45, h: 0.5, y: 0.15, n: 3.4 }, { z: 12.6, w: 1.0, h: 0.4, y: 0.1, n: 3 }], 30), body);
+  add(loft([{ z: 0.6, w: 0.3, h: 0.12, y: 0.62 }, { z: 2, w: 0.45, h: 0.18, y: 0.68 }, { z: 10.5, w: 0.35, h: 0.12, y: 0.6 }], 20), body);
+  for (const s of [-1, 1]) {
+    add(loft([{ z: -0.4, w: 0.36, h: 0.36, y: 0, n: 4 }, { z: 3.6, w: 0.34, h: 0.34, y: 0, n: 3.5 }], 20, { capStart: false }), body, s * 1.15, 0.22, 0);
+    add(extrudeXZ([[0.9, -0.2], [6.4, 6.2], [6.4, 7.4], [0.9, 8.4]], 0.14), body, 0, 0.18, 0).scale.x = s;
+    add(extrudeXZ([[0.8, 10.4], [3.3, 12.3], [3.3, 12.9], [0.8, 12.9]], 0.1), body, 0, 0.15, 0).scale.x = s;
+    // walkway lines and a missile on each wing station
+    const wl = add(new T.PlaneGeometry(0.03, 4.5), std(0x2e3337, 0.7), s * 2.0, 0.33, 3.6); wl.rotation.x = -Math.PI / 2; wl.rotation.z = s * 0.35;
+    const ms = new T.CylinderGeometry(0.085, 0.085, 2.9, 12); ms.rotateX(Math.PI / 2); add(ms, std(0xe8e8e8, 0.4), s * 4.3, 0.02, 5.4);
+    add(roundBox(0.07, 0.18, 0.9, 0.02), body, s * 4.3, 0.12, 5.4);
+  }
+  const fs = new T.Shape(); [[8.6, 0], [11.4, 3.5], [12.4, 3.5], [12.6, 0]].forEach(([z, y], i) => i ? fs.lineTo(z, y) : fs.moveTo(z, y));
+  const fgeo = new T.ExtrudeGeometry(fs, { depth: 0.14, bevelEnabled: false }); fgeo.rotateY(-Math.PI / 2);
+  add(fgeo, body, 0.07, 0.7, 0);
+  // canopy glass and its bows
+  add(new T.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new T.MeshPhysicalMaterial({ color: lin(0xdfefff), roughness: 0.02, metalness: 0.1, clearcoat: 1, transparent: true, opacity: 0.08, side: T.DoubleSide, depthWrite: false, envMapIntensity: 1.4 }), 0, 0.82, 0.1).scale.set(0.6, 0.62, 1.75);
+  for (const z of [0.75]) add(tube([V(-0.58, 0.84, z), V(-0.42, 1.25, z + 0.02), V(0, 1.42, z + 0.05), V(0.42, 1.25, z + 0.02), V(0.58, 0.84, z)], 0.022, 40), rail);
+
+  // the pilot, facing the camera
+  const pilot = new T.Group(); pilot.position.set(0, 0.33, 0.2); pilot.rotation.y = Math.PI; jet.add(pilot);
+  const suit = new T.MeshStandardMaterial({ map: texRepeat(TEX.flightSuit, 1.5, 1.5), roughness: 0.9 }), vestM = new T.MeshStandardMaterial({ map: TEX.netVest, roughness: 0.9 });
+  const lpu = std(0x59633f, 0.75), webG = std(0x6d6f68, 0.85), metal = std(0xc0c4c8, 0.25, 0.9), glove = std(0x3a3128, 0.8);
+  const padd = (geo, mat, x = 0, y = 0, z = 0) => add(geo, mat, x, y, z, pilot);
+  const tg = loft([{ z: 0, w: 0.18, h: 0.13 }, { z: 0.2, w: 0.19, h: 0.13 }, { z: 0.38, w: 0.22, h: 0.14 }, { z: 0.52, w: 0.23, h: 0.13 }, { z: 0.6, w: 0.2, h: 0.1 }, { z: 0.66, w: 0.12, h: 0.08 }, { z: 0.7, w: 0.07, h: 0.06 }], 24, { vScale: 2 }); tg.rotateX(-Math.PI / 2);
+  padd(tg, suit, 0, 0.02, 0);
+  const vg = loft([{ z: 0.12, w: 0.205, h: 0.15 }, { z: 0.38, w: 0.235, h: 0.158 }, { z: 0.54, w: 0.24, h: 0.145 }, { z: 0.6, w: 0.2, h: 0.11 }], 24, { vScale: 2 }); vg.rotateX(-Math.PI / 2);
+  padd(vg, vestM, 0, 0.02, 0);
+  for (const [x, y, w, h] of [[-0.12, 0.43, 0.11, 0.15], [0.12, 0.37, 0.13, 0.12], [0.13, 0.51, 0.1, 0.08], [-0.13, 0.26, 0.13, 0.1], [0.02, 0.23, 0.1, 0.08]]) padd(roundBox(w, h, 0.045, 0.015), vestM, x, y, 0.16);
+  // life preserver bladders down each side of the chest, harness to the Koch fittings, lap belt
+  for (const s of [-1, 1]) {
+    padd(tube([V(s * 0.04, 0.69, -0.07), V(s * 0.12, 0.67, 0.05), V(s * 0.155, 0.56, 0.145), V(s * 0.145, 0.39, 0.175), V(s * 0.1, 0.23, 0.175)], 0.038, 26, 10), lpu);
+    padd(tube([V(s * 0.1, 0.73, -0.06), V(s * 0.12, 0.69, 0.1), V(s * 0.115, 0.52, 0.19), V(s * 0.1, 0.34, 0.195)], 0.016, 16, 4), webG);
+    padd(roundBox(0.065, 0.07, 0.03, 0.01), metal, s * 0.1, 0.31, 0.2);
+    padd(roundBox(0.04, 0.05, 0.025, 0.008), metal, s * 0.118, 0.51, 0.195);
+    padd(tube([V(s * 0.1, 0.3, 0.2), V(s * 0.2, 0.18, 0.15), V(s * 0.26, 0.12, 0.0)], 0.018, 10, 4), webG);
+    // arms: shoulder, upper arm down the side, forearm forward to the stick or throttle
+    padd(new T.SphereGeometry(0.1, 16, 12), suit, s * 0.26, 0.6, 0).scale.set(1, 0.9, 1.05);
+    padd(tube([V(s * 0.28, 0.6, 0.0), V(s * 0.31, 0.42, 0.06), V(s * 0.3, 0.27, 0.12)], 0.065, 14, 12), suit);
+    padd(tube([V(s * 0.3, 0.27, 0.12), V(s * 0.25, 0.2, 0.3), V(s * 0.18, 0.16, 0.45)], 0.052, 12, 10), suit);
+    padd(roundBox(0.075, 0.06, 0.1, 0.02), glove, s * 0.17, 0.15, 0.5);
+  }
+  padd(tube([V(-0.06, 0.7, -0.09), V(0, 0.72, -0.11), V(0.06, 0.7, -0.09)], 0.04, 8, 10), lpu);
+  padd(roundBox(0.03, 0.06, 0.02, 0.006), redTag, 0.2, 0.3, 0.21);
+  padd(new T.CylinderGeometry(0.055, 0.06, 0.1, 12), suit, 0, 0.74, 0);
+  // the helmet: glossy shell, visor housing, mirrored visor, edge roll, knobs, bayonets, ear cups
+  const shell = new T.MeshPhysicalMaterial({ color: lin(0xdfe2e4), roughness: 0.18, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 1.6 });
+  const visor = new T.MeshPhysicalMaterial({ color: lin(0x8a6a3e), roughness: 0.03, metalness: 1.0, clearcoat: 1, clearcoatRoughness: 0.0, envMapIntensity: 1.7 });
+  const trim = std(0x2a2c2e, 0.6), maskHard = new T.MeshPhysicalMaterial({ color: lin(0x45494d), roughness: 0.35, metalness: 0.25, clearcoat: 0.6 }), rubber = std(0x2c2e30, 0.8);
+  const helmet = new T.Group(); helmet.position.set(0, 0.93, 0.02); pilot.add(helmet);
+  const hadd = (geo, mat, x = 0, y = 0, z = 0) => add(geo, mat, x, y, z, helmet);
+  hadd(new T.SphereGeometry(0.165, 40, 30), shell).scale.set(0.95, 1.02, 1.12);
+  hadd(new T.SphereGeometry(0.171, 40, 12, Math.PI * 0.15, Math.PI * 0.7, 0, Math.PI * 0.33), shell).scale.set(0.95, 1.02, 1.12);
+  hadd(new T.SphereGeometry(0.176, 40, 14, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.3, Math.PI * 0.24), visor).scale.set(0.95, 1.02, 1.12);
+  const er = hadd(new T.TorusGeometry(0.158, 0.012, 8, 44), trim, 0, -0.075, -0.01); er.rotation.x = Math.PI / 2 + 0.35; er.scale.set(0.95, 1.12, 1);
+  hadd(new T.CylinderGeometry(0.018, 0.018, 0.03, 12), trim, 0, 0.176, 0.12).rotation.x = 0.9;
+  for (const s of [-1, 1]) {
+    hadd(new T.CylinderGeometry(0.022, 0.022, 0.03, 12), trim, s * 0.15, -0.035, 0.085).rotation.z = Math.PI / 2;
+    hadd(new T.SphereGeometry(0.06, 16, 12), shell, s * 0.142, -0.005, -0.01).scale.set(0.45, 1, 1);
+  }
+  const decal = canvasTex(128, 64, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#1c1c1c'; g.beginPath(); g.moveTo(10, 40); g.lineTo(64, 14); g.lineTo(118, 40); g.lineTo(64, 28); g.closePath(); g.fill(); g.beginPath(); g.arc(64, 26, 7, 0, 7); g.fill(); });
+  const dm = new T.Mesh(new T.PlaneGeometry(0.16, 0.08), new T.MeshBasicMaterial({ map: decal, transparent: true })); dm.position.set(0, 0.155, 0.14); dm.rotation.x = -0.75; helmet.add(dm);
+  // oxygen mask: hard shell, rubber seal against the face, exhalation valve, straps to the bayonets
+  const mask = new T.LatheGeometry([[0.0, 0.0], [0.03, 0.003], [0.055, 0.02], [0.07, 0.05], [0.078, 0.085], [0.07, 0.11]].map(([r, y]) => V2(r, y)), 24); mask.rotateX(Math.PI / 2);
+  const mk = hadd(mask, maskHard, 0, -0.118, 0.27); mk.rotation.y = Math.PI; mk.scale.setScalar(0.88);
+  hadd(new T.TorusGeometry(0.06, 0.013, 8, 22), rubber, 0, -0.112, 0.17).scale.set(1, 1.25, 1);
+  hadd(new T.CylinderGeometry(0.022, 0.022, 0.03, 14).rotateX(Math.PI / 2), trim, 0, -0.13, 0.275);
+  for (const s of [-1, 1]) hadd(tube([V(s * 0.05, -0.1, 0.2), V(s * 0.12, -0.065, 0.135), V(s * 0.15, -0.035, 0.09)], 0.008, 10, 5), trim);
+  padd(tube([V(0, 0.79, 0.31), V(0.01, 0.68, 0.34), V(-0.05, 0.55, 0.32), V(-0.13, 0.4, 0.28), V(-0.2, 0.24, 0.2), V(-0.24, 0.15, 0.08)], 0.028, 70, 14), new T.MeshStandardMaterial({ map: TEX.hose, roughness: 0.35, metalness: 0.1 }));
+  padd(roundBox(0.06, 0.05, 0.05, 0.012), metal, -0.24, 0.15, 0.07);
+  padd(tube([V(0.03, 0.82, 0.29), V(0.08, 0.7, 0.25), V(0.15, 0.6, 0.2)], 0.008, 16, 6), std(0xe1b81e, 0.5));
+  mergeTree(jet);
+  const speed = new Particles(jet, 40, TEX.puff, T.NormalBlending);
+  let spawnT = 0;
+  function start() { speed.clear(); ground.position.set(0, 0, 0); }
+  function update(t, dt) {
+    const bank = -0.8 - 0.06 * Math.sin(t * 0.45), pitch = -0.08 + 0.02 * Math.sin(t * 0.7);
+    jet.position.set(0, ALT, 0); jet.rotation.set(pitch, 0.04 * Math.sin(t * 0.3), bank, 'YXZ'); jet.updateMatrixWorld(true);
+    ground.position.z = (t * 260) % TILE; clouds.position.z = (t * 260) % 30000 - 15000;
+    spawnT -= dt;
+    while (spawnT < 0) { spawnT += 0.12; speed.spawn(V(rnd(-30, 30), rnd(-12, 10), rnd(-90, -60)), V(0, 0, 260), 0.9, rnd(4, 9), rnd(10, 18), lin(0xffffff), lin(0xffffff), 0, 0); }
+    for (const p of speed.items) if (p.s.visible) p.s.material.opacity = 0.32 * Math.sin(Math.PI * clamp(p.age / p.life, 0, 1));
+    speed.update(dt);
+    helmet.rotation.set(0.04 * Math.sin(t * 0.6), 0.14 * Math.sin(t * 0.35) - 0.08, 0.025 * Math.sin(t * 0.8));
+    cam.position.copy(jet.localToWorld(V(0.1, 1.28, -0.62)));   // inside the canopy, on the glareshield
+    cam.up.copy(V(0, 1, 0).applyQuaternion(jet.quaternion));
+    cam.lookAt(jet.localToWorld(V(0.0, 0.95, 4.2)));
+    sky.position.copy(cam.position);
+    sun.position.copy(jet.position).addScaledVector(sunDir, 8); sun.target.position.copy(jet.position);
+  }
+  return { scene: S, camera: cam, start, update, shake: 0.55, exposure: 1.0 };
+}
+/* ==========================================================================
+   The carrier, shared by shots 3 and 4: a shaped flight deck with its markings, the island with
+   masts, radars and domes, rows of parked jets, tractors, a helicopter, the deck crew, two jets on
+   the bow catapults with steam on the tracks, the sea and the wake.
+   ========================================================================== */
+function buildCarrier(R) {
+  const S = new T.Scene();
+  S.fog = new T.FogExp2(lin(0xa9bccb), 0.0009);
+  S.environment = envFrom(R, { top: '#6f8fb4', hor: '#c9d4dc', ground: '#20456a', sunU: 0.35, sunV: 0.3 });
+  const sunDir = V(-0.35, 0.55, -0.75).normalize();
+  const sky = skyDome({ top: 0x6a8cb2, hor: 0xc8d4de, ground: 0x1d4366, sunDir, sun: 0xfff0d8, haze: 0.55, radius: 20000 }); S.add(sky);
+  S.add(new T.HemisphereLight(lin(0xdde8f2), lin(0x3a4a58), 0.7));
+  const sun = new T.DirectionalLight(lin(0xfff2e2), 1.3); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 400 }); sun.shadow.bias = -0.0005;
+  S.add(sun); S.add(sun.target);
+  const bump = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#808080'; g.fillRect(0, 0, w, h); const r = mulberry(41); for (let i = 0; i < 900; i++) { const v = r() > 0.5 ? 255 : 0; g.fillStyle = `rgba(${v},${v},${v},.12)`; g.beginPath(); g.ellipse(r() * w, r() * h, 4 + r() * 14, 1 + r() * 3, r() * 0.4, 0, 7); g.fill(); } }, { srgb: false, repeat: [500, 500] });
+  const sea = new T.Mesh(new T.PlaneGeometry(40000, 40000), new T.MeshStandardMaterial({ color: lin(0x163a5c), roughness: 0.22, metalness: 0.2, bumpMap: bump, bumpScale: 0.5 }));
+  sea.rotation.x = -Math.PI / 2; sea.position.y = -19; S.add(sea);
+  const wakeTex = canvasTex(256, 1024, (g, w, h) => { g.clearRect(0, 0, w, h); const r = mulberry(44); for (let i = 0; i < 1400; i++) { const y = r() * h, spread = 0.12 + y / h * 0.5, x = w / 2 + (r() - 0.5) * w * spread; g.fillStyle = `rgba(255,255,255,${(0.35 * (1 - y / h)).toFixed(3)})`; g.beginPath(); g.ellipse(x, y, 2 + r() * 8, 1 + r() * 3, 0, 0, 7); g.fill(); } });
+  wakeTex.wrapT = T.RepeatWrapping;
+  const wake = new T.Mesh(new T.PlaneGeometry(90, 900), new T.MeshBasicMaterial({ map: wakeTex, transparent: true, depthWrite: false })); wake.rotation.x = -Math.PI / 2; wake.position.set(-4, -18.9, 130 + 450); S.add(wake);
+  const OUT = [[-14, -212], [12, -212], [24, -198], [33, -150], [38, -70], [38, 120], [31, 130], [-28, 130], [-36, 112], [-46, 62], [-46, -2], [-38, -44], [-30, -120], [-22, -182]];
+  const X0 = -46, X1 = 38, Z0 = -212, Z1 = 130, DW = X1 - X0, DL = Z1 - Z0;
+  const shapeOf = sc => { const s = new T.Shape(); OUT.forEach(([x, z], i) => { const px = (x + 4) * sc - 4, pz = (z + 40) * sc - 40; i ? s.lineTo(px, -pz) : s.moveTo(px, -pz); }); return s; };
+  const deckTex = canvasTex(512, 2084, (g, w, h) => {
+    const px = x => (x - X0) / DW * w, pz = z => (z - Z0) / DL * h;
+    g.fillStyle = '#4f5357'; g.fillRect(0, 0, w, h); speckle(g, w, h, 9000, 6, 0.08, 51);
+    const r = mulberry(52); g.strokeStyle = 'rgba(15,15,15,.2)'; g.lineWidth = 3;
+    for (let i = 0; i < 80; i++) { const x = r() * w, y = r() * h; g.beginPath(); g.moveTo(x, y); g.bezierCurveTo(x + 20, y + 80, x - 20, y + 160, x + (r() - .5) * 40, y + 260); g.stroke(); }
+    const dash = (x0, z0, x1, z1, col, wid, on = 14, off = 10) => { g.strokeStyle = col; g.lineWidth = wid; g.setLineDash(off ? [on, off] : []); g.beginPath(); g.moveTo(px(x0), pz(z0)); g.lineTo(px(x1), pz(z1)); g.stroke(); g.setLineDash([]); };
+    dash(8, 128, -40, -30, '#ededed', 3, 22, 14); dash(22, 126, -26, -36, '#ededed', 4, 0, 0); dash(-6, 128, -50, -24, '#ededed', 4, 0, 0);
+    dash(20, 124, -28, -34, '#c8352b', 3, 16, 16); dash(-4, 126, -48, -20, '#c8352b', 3, 16, 16);
+    for (let i = 0; i < 4; i++) dash(18 - i * 3.5, 92 - i * 12, -4 - i * 3.5, 98 - i * 12, '#bcbcbc', 2, 0, 0);
+    dash(16, -205, 20, 128, '#e2b52a', 3, 0, 0);
+    for (const [ez, el] of [[-40, 22], [60, 22]]) { g.strokeStyle = '#e2b52a'; g.lineWidth = 2.5; g.strokeRect(px(26), pz(ez), px(38) - px(26), pz(ez + el) - pz(ez)); }
+    for (const cx of [-12, 10]) {
+      g.fillStyle = '#1a1a1a'; g.fillRect(px(cx) - 1.5, pz(-206), 3, pz(-12) - pz(-206));
+      dash(cx - 1.4, -206, cx - 1.4, -12, '#ededed', 2, 12, 9); dash(cx + 1.4, -206, cx + 1.4, -12, '#ededed', 2, 12, 9);
+      dash(cx - 3.4, -180, cx - 3.4, -12, '#d23a2c', 2.5, 16, 12); dash(cx + 3.4, -180, cx + 3.4, -12, '#d23a2c', 2.5, 16, 12);
+    }
+    g.fillStyle = '#ededed'; for (let i = 0; i < 4; i++) { const z = -196 + i * 7; g.beginPath(); g.moveTo(px(-1), pz(z)); g.lineTo(px(-8), pz(z + 5)); g.lineTo(px(-6), pz(z + 6.5)); g.lineTo(px(-1), pz(z + 2.5)); g.lineTo(px(4), pz(z + 6.5)); g.lineTo(px(6), pz(z + 5)); g.closePath(); g.fill(); }
+    g.strokeStyle = '#e2b52a'; g.lineWidth = 3;
+    for (const [a, b, c, d] of [[[-12, 0], [-12, 25], [0, 40], [18, 60]], [[10, -5], [10, 20], [20, 30], [28, 45]], [[-30, -150], [-20, -100], [-14, -60], [-12, -20]]]) { g.beginPath(); g.moveTo(px(a[0]), pz(a[1])); g.bezierCurveTo(px(b[0]), pz(b[1]), px(c[0]), pz(c[1]), px(d[0]), pz(d[1])); g.stroke(); }
+    g.fillStyle = 'rgba(30,30,30,.6)'; for (let i = 0; i < 400; i++) { const x = X0 + r() * DW, z = Z0 + r() * DL; g.fillRect(px(x), pz(z), 2, 2); }
+    g.font = 'bold 120px sans-serif'; g.fillStyle = 'rgba(236,236,236,.9)'; g.textAlign = 'center';
+    g.save(); g.translate(px(2), pz(108)); g.fillText('77', 0, 40); g.restore();
+    g.save(); g.translate(px(4), pz(-160)); g.rotate(Math.PI); g.fillText('77', 0, 40); g.restore();
+    g.fillStyle = '#e2b52a'; g.fillRect(px(-26), pz(126), px(29) - px(-26), 10); g.fillStyle = '#1a1a1a'; for (let x = -26; x < 29; x += 4) g.fillRect(px(x), pz(126), 9, 10);
+  });
+  const dgeo = new T.ShapeGeometry(shapeOf(1)); dgeo.rotateX(-Math.PI / 2);
+  { const p = dgeo.attributes.position, uv = dgeo.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) - X0) / DW, 1 - (p.getZ(i) - Z0) / DL); }
+  const deck = new T.Mesh(dgeo, new T.MeshStandardMaterial({ map: deckTex, roughness: 0.85, metalness: 0.05 })); deck.position.y = 0.02; deck.receiveShadow = true; S.add(deck);
+  const hullM = std(0x575d63, 0.8, 0.2), hullDark = std(0x3e4348, 0.8, 0.25);
+  const slab = new T.ExtrudeGeometry(shapeOf(1), { depth: 1.6, bevelEnabled: false }); slab.rotateX(-Math.PI / 2);
+  const sm = new T.Mesh(slab, hullDark); sm.position.y = -1.6; S.add(sm);
+  const hullG = new T.ExtrudeGeometry(shapeOf(0.9), { depth: 17.5, bevelEnabled: false }); hullG.rotateX(-Math.PI / 2);
+  const hm = new T.Mesh(hullG, hullM); hm.position.y = -19.5; S.add(hm);
+  const rr = mulberry(55), raftM = std(0xe8e8e8, 0.6);
+  for (let i = 0; i < OUT.length; i++) {
+    const [ax, az] = OUT[i], [bx, bz] = OUT[(i + 1) % OUT.length], len = Math.hypot(bx - ax, bz - az);
+    if (len < 20 || az === -212) continue;
+    const cw = new T.Mesh(new T.BoxGeometry(2.2, 0.8, len), hullDark); cw.position.set((ax + bx) / 2, -1.8, (az + bz) / 2); cw.rotation.y = Math.atan2(bx - ax, bz - az); S.add(cw);
+    const n = Math.floor(len / 9); for (let k = 0; k < n; k++) { const f = (k + 0.5) / n, x = ax + (bx - ax) * f, z = az + (bz - az) * f; const c = new T.Mesh(new T.CylinderGeometry(0.45, 0.45, 1.3, 8), raftM); c.rotation.z = Math.PI / 2; c.rotation.y = cw.rotation.y; c.position.set(x * 1.03, -2.9, z); S.add(c); if (rr() < 0.25) { const ant = new T.Mesh(new T.CylinderGeometry(0.05, 0.08, 7, 6), hullDark); ant.position.set(x * 1.04, 1.5, z); S.add(ant); } }
+  }
+  const island = new T.Group(); island.position.set(31, 0, 8); S.add(island);
+  const isl = (w, h, d, x, y, z, m = hullM) => { const o = new T.Mesh(new T.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; island.add(o); return o; };
+  isl(10, 14, 38, 0, 7, 0); isl(9, 6, 30, 0, 17, -2); isl(8, 5, 18, 0, 22.5, -5); isl(6.5, 3.5, 10, 0, 26.7, -6);
+  const winTex = canvasTex(512, 64, (g, w, h) => { g.fillStyle = '#575d63'; g.fillRect(0, 0, w, h); g.fillStyle = '#121a22'; for (let i = 0; i < 24; i++) g.fillRect(6 + i * 21, 18, 15, 24); });
+  for (const [y, d, x, z] of [[17.5, 30, -4.55, -2], [23, 18, -4.05, -5], [9, 38, -5.05, 0]]) { const wp = new T.Mesh(new T.PlaneGeometry(d, 2.4), new T.MeshStandardMaterial({ map: winTex, roughness: 0.3, metalness: 0.3 })); wp.position.set(x, y, z); wp.rotation.y = -Math.PI / 2; island.add(wp); }
+  const mast = new T.Group(); mast.position.set(0, 28.5, -6); island.add(mast);
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const leg = new T.Mesh(new T.CylinderGeometry(0.12, 0.2, 16, 6), hullDark); leg.position.set(sx * 1.2, 8, sz * 1.2); leg.rotation.set(-sz * 0.06, 0, sx * 0.06); mast.add(leg); }
+  for (let y = 3; y < 16; y += 3) { const ring = new T.Mesh(new T.BoxGeometry(2.6 - y * 0.05, 0.15, 2.6 - y * 0.05), hullDark); ring.position.y = y; mast.add(ring); }
+  for (const [y, w] of [[10, 5], [14, 3.5]]) { const yard = new T.Mesh(new T.BoxGeometry(w, 0.2, 0.3), hullDark); yard.position.y = y; mast.add(yard); }
+  const dome = std(0xf0f0f0, 0.5);
+  for (const [x, y, z, r] of [[0, 17.5, 0, 1.0], [2.5, 29, -1, 1.3], [-2.5, 29, -1, 1.3], [0, 26, 8, 1.6]]) { const d = new T.Mesh(new T.SphereGeometry(r, 16, 12), dome); d.position.set(x, y, z); island.add(d); }
+  for (const [y, z, ry] of [[24.5, 3, 0], [24.5, -12, Math.PI]]) { const rp = new T.Mesh(new T.BoxGeometry(4, 3.2, 0.25), std(0x4a5056, 0.5, 0.4)); rp.position.set(-3.5, y, z); rp.rotation.y = ry + 0.6; island.add(rp); }
+  const spinR = new T.Mesh(new T.BoxGeometry(5, 1.1, 0.25), std(0x5a6066, 0.5, 0.4)); spinR.position.set(0, 21, 14); island.add(spinR);
+  const parked = [];
+  for (const [x, z, ry] of [[29, -150, 0.85], [29, -128, 0.85], [29, -106, 0.85], [29, -84, 0.85], [29, -62, 0.85], [29, 42, 0.95], [29, 60, 0.95], [29, 78, 0.95], [29, 96, 0.95], [29, 114, 0.95], [-27, -150, -0.75], [-24, -130, -0.75], [-21, -110, -0.75], [-2, 112, Math.PI / 2], [-14, 112, Math.PI / 2]]) {
+    const p = makeFighter(false); p.position.set(x, 0, z); p.rotation.y = ry; S.add(p); parked.push(p);
+  }
+  const seahawk = makeBlackHawk(0x8d969d); seahawk.position.set(-26, 0, 98); seahawk.rotation.y = 0.4; S.add(seahawk);
+  const yellow = std(0xd9b02a, 0.6, 0.2), tyre = std(0x161616, 0.9);
+  const tractor = (x, z, ry) => { const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = ry; S.add(g); const b = new T.Mesh(new T.BoxGeometry(1.8, 0.8, 3.0), yellow); b.position.y = 0.75; b.castShadow = true; g.add(b); const c = new T.Mesh(new T.BoxGeometry(1.6, 0.6, 1.0), yellow); c.position.set(0, 1.4, 0.6); g.add(c); for (const [wx, wz] of [[-0.95, -1], [0.95, -1], [-0.95, 1], [0.95, 1]]) { const w = new T.Mesh(new T.CylinderGeometry(0.38, 0.38, 0.3, 12).rotateZ(Math.PI / 2), tyre); w.position.set(wx, 0.38, wz); g.add(w); } return g; };
+  for (const [x, z, ry] of [[22, -138, 0.3], [21, -95, 2.0], [22, 52, 1.0], [20, 88, 0.2], [-16, -138, -0.4], [2, 30, 1.5], [-6, 70, 0.6], [14, -30, 2.4]]) tractor(x, z, ry);
+  const JERSEYS = [0xe0b51e, 0x2e8b3a, 0xb52a1e, 0xe8e8e8, 0x7b3fa6, 0x3a5fb0, 0x8a5a2a];
+  const walkers = []; const cr = mulberry(77);
+  for (let i = 0; i < 70; i++) {
+    const near = parked[Math.floor(cr() * parked.length)], c = JERSEYS[Math.floor(cr() * JERSEYS.length)];
+    const f = farCrew(c, c); f.position.set(near.position.x + (cr() - 0.5) * 14 - Math.sign(near.position.x) * 4, 0, near.position.z + (cr() - 0.5) * 14); f.rotation.y = cr() * 6.28; S.add(f);
+    if (cr() < 0.4) walkers.push({ f, dir: cr() * 6.28, speed: 0.8 + cr() * 0.8, home: f.position.clone() });
+  }
+  for (let i = 0; i < 18; i++) { const c = JERSEYS[Math.floor(cr() * 5)], f = farCrew(c, c); f.position.set(17 + cr() * 9, 0, -64 + cr() * 60); f.rotation.y = cr() * 6.28; S.add(f); }
+  // crews round the bow catapults, seen in the aerial shot (moved off for the low launch shot)
+  const catCrew = new T.Group(); S.add(catCrew);
+  for (let i = 0; i < 24; i++) { const c = JERSEYS[Math.floor(cr() * 6)], f = farCrew(c, c), side = cr() < 0.5 ? -12 : 10; f.position.set(side + (cr() < 0.5 ? -1 : 1) * (3.5 + cr() * 6), 0, -48 + cr() * 44); f.rotation.y = cr() * 6.28; catCrew.add(f); }
+  const jetP = makeFighter(true), jetS = makeFighter(true); S.add(jetP); S.add(jetS);
+  const P = { x: -12, z0: -18 }, Sb = { x: 10, z0: -18 };
+  const jbd = new T.Mesh(new T.BoxGeometry(9, 3.2, 0.3), std(0x4a4f54, 0.6, 0.4)); jbd.position.set(10, 1.4, -6.5); jbd.rotation.x = -0.9; S.add(jbd);
+  const steam = new Particles(S, 300, TEX.puff, T.NormalBlending);
+  const lightP = new T.PointLight(lin(0xff9a40), 2.5, 30, 2); jetP.add(lightP); lightP.position.set(0, 1.0, 11);
+  const away = makeFighter(true); S.add(away);
+  const guard = makeBlackHawk(0x8d969d); guard.position.set(-78, 26, 20); S.add(guard);   // plane guard, hovering off the port side
+  const C = { S, sky, sun, sunDir, jetP, jetS, P, Sb, steam, walkers, away, lightP, catCrew };
+  C.place = (jet, cat, launchAt, t) => {
+    let z = cat.z0, y = 0, pitch = 0; const launched = t >= launchAt;
+    if (launched) { const lt = t - launchAt; z = cat.z0 - 0.5 * 46 * lt * lt; if (z < -212) { const over = -212 - z; y = over * 0.08 + over * over * 0.0004; pitch = Math.min(0.22, over * 0.004); } }
+    jet.position.set(cat.x, y, z); jet.rotation.set(pitch, 0, 0); return { launched, z };
+  };
+  let steamT = 0;
+  C.steamTick = (dt, cat, state) => {
+    steamT -= dt;
+    while (steamT < 0) {
+      steamT += state.launched ? 0.03 : 0.05;
+      const z = state.launched ? rnd(Math.max(-206, state.z), cat.z0 + 4) : cat.z0 + rnd(-14, 5);
+      steam.spawn(V(cat.x + rnd(-0.4, 0.4), 0.2, z), V(rnd(-0.4, 0.4), rnd(0.8, 2.4), rnd(1.5, 4)), rnd(2.5, 4.5), rnd(0.8, 1.6), rnd(4, 8), lin(0xf2f4f6), lin(0xd8dde2), state.launched ? 0.55 : 0.45, 0, 0.3, 0.2, 0.3);
+    }
+  };
+  C.common = (t, dt) => {
+    for (const w of walkers) { w.f.position.set(w.home.x + Math.sin(w.dir) * w.speed * t, 0, w.home.z + Math.cos(w.dir) * w.speed * t); w.f.rotation.y = w.dir; }
+    away.position.set(-30 + t * 8, 160 + t * 18, -900 - t * 150); away.rotation.set(0.25, 0.1, -0.2);
+    guard.position.set(-78 + Math.sin(t * 0.3) * 1.5, 26 + Math.sin(t * 0.9) * 0.6, 20 - t * 0.5); guard.rotation.set(-0.05, 0.08 * Math.sin(t * 0.4), 0.04 * Math.sin(t * 0.7), 'YXZ'); guard.update(dt);
+    jetP.flicker(); jetS.flicker();
+    steam.update(dt);
+    wakeTex.offset.y = (t * 0.05) % 1;
+  };
+  return C;
+}
+function shotCarrierAerial(C) {
+  const cam = new T.PerspectiveCamera(48, 1, 0.5, 30000);
+  const LAUNCH = 3.0;
+  function start() { C.steam.clear(); C.jetP.burner(false); C.jetS.burner(true); C.catCrew.visible = true; if (C.detail) C.detail.visible = false; }
+  function update(t, dt) {
+    C.place(C.jetP, C.P, 1e9, t);
+    const st = C.place(C.jetS, C.Sb, LAUNCH, t);
+    C.steamTick(dt, C.Sb, st); C.common(t, dt);
+    C.lightP.intensity = 0;
+    cam.position.set(58, 58, 150);
+    cam.lookAt(-4 - t * 0.6, 0, -55);
+    C.sky.position.copy(cam.position);
+    C.sun.target.position.set(0, 0, -30); C.sun.position.copy(C.sun.target.position).addScaledVector(C.sunDir, 200);
+    const sc = C.sun.shadow.camera; sc.left = sc.bottom = -170; sc.right = sc.top = 170; sc.updateProjectionMatrix();
+  }
+  return { scene: C.S, camera: cam, start, update, shake: 0.12, exposure: 1.0 };
+}
+function shotCarrierLaunch(C) {
+  const S = C.S, cam = new T.PerspectiveCamera(46, 1, 0.08, 30000);
+  // fine non-skid grain and tyre marks over the deck around the catapult, for the low camera
+  const ns = canvasTex(256, 256, (g, w, h) => { g.clearRect(0, 0, w, h); const r = mulberry(91); for (let i = 0; i < 5000; i++) { g.fillStyle = `rgba(255,255,255,${(0.3 + r() * 0.7).toFixed(2)})`; g.fillRect(r() * w, r() * h, 1 + r() * 1.5, 1 + r() * 1.5); } }, { srgb: false, repeat: [22, 28] });
+  const detail = new T.Mesh(new T.PlaneGeometry(34, 44), new T.MeshStandardMaterial({ color: lin(0x2e3134), alphaMap: ns, transparent: true, opacity: 0.6, roughness: 0.95, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  detail.rotation.x = -Math.PI / 2; detail.position.set(-8, 0.03, -14); detail.receiveShadow = true; S.add(detail); C.detail = detail;
+  // the deck crew round the two catapults, in full detail, each with the job code on the back
+  const crew = [];
+  const person = (jersey, x, z, ry, pose, code) => {
+    const jm = matOnce('dj' + jersey, () => std(jersey, 0.85));
+    const p = new Person({ kit: 'deck', skin: [0xc49a76, 0x8d5a3b, 0xd8b090, 0x6b4428][crew.length % 4], shirt: jm, jersey: jm, sleeve: jm, pants: matOnce('dpants', () => std(0x2a3140, 0.85)), helmetMat: matOnce('dh' + jersey, () => std(jersey === 0xe8e8e8 ? 0xe6e6e6 : jersey, 0.5)), code });
+    p.pose(POSE[pose]); p.g.position.set(x, 0, z); p.g.rotation.y = ry; S.add(p.g); crew.push(p); return p;
+  };
+  const shooter = person(0xe0b51e, -6.0, -29, Math.PI + 0.15, 'crouchPoint', 'CAT 1');
+  person(0x2e8b3a, -18.5, -14, Math.PI - 0.2, 'crouchPoint', 'V-2'); person(0x2e8b3a, -17, -9, Math.PI - 0.4, 'crouchPoint', 'V-2');
+  person(0xe8e8e8, -3.4, -16, Math.PI + 0.3, 'crouchPoint', 'SAFETY'); person(0xb52a1e, -4.8, -40, Math.PI + 0.5, 'crouchPoint', 'ORD'); person(0x7b3fa6, -21, -36, Math.PI - 0.3, 'crouchPoint', 'FUEL');
+  person(0x2e8b3a, 4, -24, Math.PI - 0.6, 'crouchPoint', 'CAT 2'); person(0xe0b51e, 15, -30, Math.PI + 0.4, 'standPoint', 'CAT 2'); person(0xe8e8e8, 17, -16, Math.PI - 0.8, 'stand', 'QA'); person(0x3a5fb0, 4.5, -6, Math.PI + 0.2, 'stand', 'V-1');
+  // the crewman close to the camera, turned toward the bow and pointing the jet away
+  const fg = person(0xe8e8e8, -6.65, -1.65, Math.PI + 0.2, 'standPoint', 'SAFETY');
+  const LAUNCH = 3.4;
+  let camYaw = 0, camPitch = 0, wispT = 0;
+  const camPos = V(-7.4, 1.35, 1.8), yaw0 = Math.atan2(-(-12 - -7.4), -(-12 - 1.8));
+  function start() {
+    C.steam.clear(); C.jetP.burner(true); C.jetS.burner(false); camYaw = 0; camPitch = 0; C.catCrew.visible = false; detail.visible = true;
+    shooter.pose(POSE.crouchPoint);
+    for (let i = 0; i < 70; i++) { C.steamTick(0.05, C.P, { launched: false, z: C.P.z0 }); C.steam.update(0.05); }
+  }
+  function update(t, dt) {
+    C.place(C.jetS, C.Sb, 1e9, t);
+    const st = C.place(C.jetP, C.P, LAUNCH, t);
+    C.steamTick(dt, C.P, st); C.common(t, dt);
+    // thin steam leaking from the whole length of the track
+    wispT -= dt;
+    while (wispT < 0) { wispT += 0.08; const z = rnd(-150, -22); C.steam.spawn(V(C.P.x + rnd(-0.3, 0.3), 0.15, z), V(rnd(-0.3, 0.3), rnd(0.4, 1.2), rnd(1, 3)), rnd(2, 3.5), rnd(0.5, 1), rnd(2.5, 4.5), lin(0xf2f4f6), lin(0xd8dde2), 0.3, 0, 0.3, 0.1, 0.3); }
+    C.lightP.intensity = 2.6 * (0.85 + 0.3 * Math.random());
+    // the shooter touches the deck: the launch signal
+    if (t > LAUNCH - 0.7) { const k = smooth(LAUNCH - 0.7, LAUNCH - 0.2, t), a = POSE.crouchPoint, b = POSE.crouchTouch; shooter.pose({ rootY: a.rootY + (b.rootY - a.rootY) * k, torso: [a.torso[0] + (b.torso[0] - a.torso[0]) * k], shR: [a.shR[0] + (b.shR[0] - a.shR[0]) * k, 0, -0.1] }); }
+    fg.j.shR.rotation.x = -1.45 + 0.05 * Math.sin(t * 2);
+    const target = C.jetP.position.clone().add(V(0, 1.9 + C.jetP.position.y * 0.2, 6));
+    const d = target.clone().sub(camPos);
+    // the camera turns part of the way after the jet, so the crewman stays in frame
+    const jetYaw = Math.atan2(-d.x, -d.z), wantYaw = 0.06 + (jetYaw - yaw0) * 0.12, wantPitch = Math.atan2(d.y, Math.hypot(d.x, d.z)) * 0.6;
+    camYaw += (wantYaw - camYaw) * (1 - Math.exp(-4 * dt)); camPitch += (wantPitch - camPitch) * (1 - Math.exp(-4 * dt));
+    if (t < 0.05) { camYaw = wantYaw; camPitch = wantPitch; }
+    cam.position.copy(camPos); cam.rotation.set(camPitch, camYaw, 0, 'YXZ');
+    C.sky.position.copy(cam.position);
+    C.sun.target.position.set(-10, 0, -12); C.sun.position.copy(C.sun.target.position).addScaledVector(C.sunDir, 120);
+    const sc = C.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.updateProjectionMatrix();
+    shot.shake = st.launched ? 0.4 + 1.2 * Math.exp(-(t - LAUNCH) * 1.5) : 0.25;
+  }
+  const shot = { scene: S, camera: cam, start, update, shake: 0.25, exposure: 1.0 };
+  return shot;
+}
+
+/* ==========================================================================
+   Shot 5: the ground assault. Low in the sand behind two riflemen lying prone and firing at the far
+   ridge; a third kneels and fires on the flank; three more run toward us from a Black Hawk flaring
+   to land in its own dust storm, a second one passing higher. Debris, tracers both ways, the sun
+   low behind it all.
+   ========================================================================== */
+function shotAssault(R) {
+  const S = new T.Scene(), fogCol = lin(0xc9a982);
+  S.fog = new T.FogExp2(fogCol, 0.016);
+  S.environment = envFrom(R, { top: '#b7c0c6', hor: '#d9c29c', ground: '#8f7552', sunU: 0.42, sunV: 0.22, sunCol: '#fff4dc' });
+  const cam = new T.PerspectiveCamera(52, 1, 0.05, 3000);
+  const sunDir = V(-0.25, 0.4, -0.88).normalize();
+  const sky = skyDome({ top: 0x9ea9b2, hor: 0xdcc39c, ground: 0xb08d62, sunDir, sun: 0xfff2d6, haze: 0.5, radius: 2500 }); S.add(sky);
+  S.add(new T.HemisphereLight(lin(0xf2e4cc), lin(0x8a6a48), 0.8));
+  const sun = new T.DirectionalLight(lin(0xfff1d8), 1.4); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 160 }); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
+  S.add(sun); S.add(sun.target);
+  const sand = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#b8996c'; g.fillRect(0, 0, w, h); speckle(g, w, h, 6000, 3, 0.18, 61); const r = mulberry(62); g.fillStyle = 'rgba(90,70,45,.25)'; for (let i = 0; i < 60; i++) { g.beginPath(); g.ellipse(r() * w, r() * h, 2 + r() * 6, 1 + r() * 3, r() * 3, 0, 7); g.fill(); } g.strokeStyle = 'rgba(120,95,60,.25)'; g.lineWidth = 2; for (let i = 0; i < 14; i++) { const y = r() * h; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + 6, w * 0.6, y - 6, w, y); g.stroke(); } }, { repeat: [90, 90] });
+  const tg = new T.PlaneGeometry(500, 500, 180, 180); tg.rotateX(-Math.PI / 2);
+  const hAt = (x, z) => { const d = Math.hypot(x * 0.8, z + 6); const near = smooth(8, 30, d); return (fbm(x * 0.03, z * 0.03, 4) - 0.45) * 5 * near + (fbm(x * 0.4, z * 0.4, 2) - 0.5) * 0.22 + Math.max(0, -z - 70) * 0.06; };
+  const pa = tg.attributes.position; for (let i = 0; i < pa.count; i++) pa.setY(i, hAt(pa.getX(i), pa.getZ(i)));
+  tg.computeVertexNormals();
+  const terrain = new T.Mesh(tg, new T.MeshStandardMaterial({ map: sand, roughness: 1 })); terrain.receiveShadow = true; S.add(terrain);
+  const rockM = std(0x7d6a50, 0.95), scrub = std(0x5b5236, 0.95), rr = mulberry(71);
+  for (let i = 0; i < 110; i++) { const x = (rr() - 0.5) * 44, z = 6 - rr() * 70, s = 0.06 + rr() * rr() * 0.6; if (Math.abs(x) < 3 && z > -22 && z < 5) continue; const m = new T.Mesh(new T.DodecahedronGeometry(s, 1), rockM); m.position.set(x, hAt(x, z) + s * 0.25, z); m.scale.y = 0.6; m.rotation.set(rr() * 3, rr() * 3, 0); m.castShadow = m.receiveShadow = true; S.add(m); }
+  for (let i = 0; i < 40; i++) { const x = (rr() - 0.5) * 50, z = -4 - rr() * 60, s = 0.2 + rr() * 0.35; if (Math.abs(x) < 4) continue; const m = new T.Mesh(new T.IcosahedronGeometry(s, 0), scrub); m.position.set(x, hAt(x, z) + s * 0.4, z); m.scale.y = 0.55; S.add(m); }
+  const outfit = i => ({ kit: 'soldier', skin: [0xc49a76, 0x8d5a3b, 0xd8b090, 0x6b4428, 0xb88a66, 0x9a6a48][i % 6], rifle: true });
+  const wrap = (p, x, z, ry, prone) => { const w = new T.Group(); w.position.set(x, hAt(x, z) + (prone ? 0.13 : 0), z); w.rotation.y = ry; if (prone) p.g.rotation.x = Math.PI / 2; w.add(p.g); S.add(w); p.wrap = w; return p; };
+  // two lying prone in front of us, firing at the far ridge
+  const prone = [wrap(new Person(outfit(0)), -2.3, 1.2, Math.PI + 0.1, true), wrap(new Person(outfit(1)), 2.1, 0.0, Math.PI - 0.15, true)];
+  prone.forEach(p => { p.pose(POSE.prone); p.root.position.y = 0; p.holdRifle('prone'); });
+  // one kneeling on the left, firing on the flank; one standing behind cover on the right
+  const kneel = wrap(new Person(outfit(2)), -4.4, -5.5, Math.PI + 0.55, false); kneel.pose(POSE.kneelAim); kneel.holdRifle('aim');
+  const stand = wrap(new Person(outfit(3)), 5.2, -9, Math.PI - 0.5, false); stand.pose(POSE.aimStand); stand.holdRifle('aim');
+  // three running toward us from the landing zone, rifles at the ready
+  const runners = [[-0.9, -17, 0.0, 0.05], [2.7, -20, 0.45, -0.08], [-4.6, -25, 0.9, 0.12]].map(([x, z, delay, ry], i) => {
+    const p = wrap(new Person(outfit(4 + i)), x, z, ry, false); p.start = V(x, 0, z); p.delay = delay; p.ry = ry; p.holdRifle('low'); return p;
+  });
+  const shooters = [...prone, kneel, stand];
+  shooters.forEach(p => { p.nextBurst = rnd(0, 1.0); p.burstLeft = 0; p.shotT = 0; });
+  const h1 = makeBlackHawk(0xc6a573), h2 = makeBlackHawk(0xbd9d6c); S.add(h1); S.add(h2);
+  const dust = new Particles(S, 520, TEX.puff, T.NormalBlending), fire = new Particles(S, 140, TEX.soft, T.AdditiveBlending), flash = new Particles(S, 50, TEX.soft, T.AdditiveBlending);
+  const tracerGeo = new T.BoxGeometry(0.035, 0.035, 3.0);
+  const tracerOut = new T.MeshBasicMaterial({ color: glow(3.0, 2.2, 0.9), transparent: true, opacity: 0.9, blending: T.AdditiveBlending, depthWrite: false });
+  const tracerIn = new T.MeshBasicMaterial({ color: glow(0.9, 3.0, 1.0), transparent: true, opacity: 0.9, blending: T.AdditiveBlending, depthWrite: false });
+  const tracers = []; for (let i = 0; i < 50; i++) { const m = new T.Mesh(tracerGeo, tracerOut); m.visible = false; S.add(m); tracers.push({ m, vel: V(0, 0, 0), life: 0 }); }
+  let ti = 0;
+  const shootTracer = (from, dir, mat, speed) => { const tr = tracers[ti]; ti = (ti + 1) % tracers.length; tr.m.material = mat; tr.m.visible = true; tr.m.position.copy(from); tr.m.lookAt(from.clone().add(dir)); tr.vel.copy(dir).multiplyScalar(speed); tr.life = 0.6; };
+  const chunks = []; const chunkM = std(0x5e4a34, 0.95);
+  for (let i = 0; i < 60; i++) { const m = new T.Mesh(new T.DodecahedronGeometry(rnd(0.03, 0.12), 0), chunkM); m.visible = false; m.castShadow = true; S.add(m); chunks.push({ m, vel: V(0, 0, 0), spin: V(0, 0, 0), life: 0 }); }
+  let ci = 0;
+  const throwChunk = (pos, vel) => { const c = chunks[ci]; ci = (ci + 1) % chunks.length; c.m.visible = true; c.m.position.copy(pos); c.vel.copy(vel); c.spin.set(rnd(-9, 9), rnd(-9, 9), rnd(-9, 9)); c.life = 4; };
+  const brassM = std(0xc9a14a, 0.3, 0.9), brass = [];
+  for (let i = 0; i < 40; i++) { const m = new T.Mesh(new T.CylinderGeometry(0.005, 0.005, 0.022, 6), brassM); m.visible = false; S.add(m); brass.push({ m, vel: V(0, 0, 0), life: 0 }); }
+  let bi = 0;
+  const fireShot = p => {
+    const mp = p.muzzle.getWorldPosition(V(0, 0, 0)), dir = V(0, 0, 1).applyQuaternion(p.muzzle.getWorldQuaternion(new T.Quaternion())).add(V(rnd(-0.03, 0.03), rnd(0, 0.04), rnd(-0.03, 0.03))).normalize();
+    flash.spawn(mp, V(0, 0, 0), 0.06, 0.4, 0.55, glow(3, 2.2, 1), glow(2, 1, 0.3), 1, 0);
+    if (Math.random() < 0.5) shootTracer(mp.clone().addScaledVector(dir, 2), dir, tracerOut, 320);
+    dust.spawn(mp.clone().addScaledVector(dir, 0.3), dir.clone().multiplyScalar(2), 0.6, 0.15, 0.7, lin(0xcfc8bc), lin(0xb8ad9a), 0.35, 0, 2, 0.3);
+    const right = dir.clone().cross(V(0, 1, 0)).normalize(), c = brass[bi]; bi = (bi + 1) % brass.length;
+    c.m.visible = true; c.m.position.copy(mp).addScaledVector(dir, -0.5); c.vel.copy(right).multiplyScalar(rnd(2.5, 4)).add(V(0, rnd(1.5, 3), 0)); c.life = 1.2;
+  };
+  const explode = pos => {
+    for (let i = 0; i < 28; i++) fire.spawn(pos.clone().add(V(rnd(-1.5, 1.5), rnd(0, 2.5), rnd(-1.5, 1.5))), V(rnd(-6, 6), rnd(4, 14), rnd(-6, 6)), rnd(0.4, 1.0), rnd(2, 3.5), rnd(5, 9), glow(3, 1.8, 0.6), glow(1.2, 0.3, 0.05), 1, 0, 2, -2);
+    for (let i = 0; i < 44; i++) dust.spawn(pos.clone().add(V(rnd(-2, 2), rnd(0, 3), rnd(-2, 2))), V(rnd(-7, 7), rnd(3, 16), rnd(-7, 7)), rnd(4, 7), rnd(2, 4), rnd(10, 18), lin(0x9a7d58), lin(0x7a6448), 0.85, 0, 0.8, -0.6, 0.2);
+    for (let i = 0; i < 18; i++) throwChunk(pos.clone().add(V(0, 1, 0)), V(rnd(-10, 10), rnd(8, 20), rnd(-4, 14)));
+  };
+  let booms = [], dustT = 0, incomingT = 0;
+  const ambient = (dt, prewarm) => {
+    dustT -= dt;
+    while (dustT < 0) {
+      dustT += 0.02;
+      const x = rnd(-30, 30), z = rnd(-55, 4);
+      dust.spawn(V(x, hAt(x, z) + rnd(0.2, 3), z), V(rnd(2, 5), rnd(0.2, 1), rnd(-1, 1)), rnd(5, 9), rnd(3, 6), rnd(8, 14), lin(0xc4a47a), lin(0xb39470), 0.3, 0, 0.1, 0.05, prewarm ? 0 : 1.2);
+    }
+  };
+  function start() {
+    dust.clear(); fire.clear(); flash.clear(); tracers.forEach(t => { t.m.visible = false; t.life = 0; }); chunks.forEach(c => { c.m.visible = false; c.life = 0; }); brass.forEach(c => { c.m.visible = false; c.life = 0; });
+    booms = [[1.4, V(-18, 0, -50)], [4.3, V(16, 0, -58)]];
+    runners.forEach(p => { p.wrap.position.set(p.start.x, hAt(p.start.x, p.start.z), p.start.z); p.pose(POSE.lowReady); p.holdRifle('low'); });
+    for (let i = 0; i < 90; i++) ambient(0.05, true);
+  }
+  function update(t, dt) {
+    // the near Black Hawk slows into a hover over the landing zone, nose up in the flare
+    const e = smooth(0, SHOT_LEN, t);
+    h1.position.set(-30 + 34 * (1 - (1 - e) * (1 - e)), 9 - 4 * e, -27); h1.rotation.set(0.04 + 0.12 * e, -Math.PI / 2, 0.04 * Math.sin(t * 0.8), 'YXZ');
+    h2.position.set(-60 + 100 * t / SHOT_LEN, 22, -55); h2.rotation.set(-0.08, -Math.PI / 2, -0.05, 'YXZ');
+    h1.update(dt); h2.update(dt);
+    // rotor wash: a ring of sand blown out from under it, thicker as it gets lower
+    const low = clamp(1 - (h1.position.y - 3) / 12, 0.2, 1);
+    for (let i = 0; i < Math.round(9 * low); i++) {
+      const a = rnd(0, 6.28), r = rnd(2, 16), x = h1.position.x + Math.cos(a) * r, z = h1.position.z + Math.sin(a) * r, gy = hAt(x, z);
+      dust.spawn(V(x, gy + 0.5, z), V(Math.cos(a) * rnd(7, 14), rnd(0.5, 3), Math.sin(a) * rnd(7, 14)), rnd(2.5, 4.5), rnd(2, 3), rnd(8, 14), lin(0xcaa87b), lin(0xb59670), 0.5, 0, 0.45, 0.1, 0.3);
+    }
+    ambient(dt, false);
+    for (const b of booms) if (!b.done && t > b[0]) { b.done = true; explode(V(b[1].x, hAt(b[1].x, b[1].z), b[1].z)); }
+    if (Math.random() < dt * 10) throwChunk(V(rnd(-6, 6), 0.2, rnd(-12, -3)), V(rnd(-3, 3), rnd(3, 7), rnd(3, 9)));
+    // incoming fire from the ridge, passing over our heads
+    incomingT -= dt;
+    if (incomingT < 0) { incomingT = rnd(0.15, 0.5); const from = V(rnd(-40, 40), rnd(2, 6), -90), to = V(rnd(-4, 4), rnd(2.5, 6), 8); shootTracer(from, to.sub(from).normalize(), tracerIn, 260); }
+    // the runners come in toward us, rifles at the ready
+    for (const p of runners) {
+      if (t < p.delay) continue;
+      p.run(dt, 0.85); p.wrap.rotation.y = p.ry;
+      p.wrap.position.x += Math.sin(p.ry) * dt * 2.6; p.wrap.position.z += Math.cos(p.ry) * dt * 2.6;
+      p.wrap.position.y = hAt(p.wrap.position.x, p.wrap.position.z);
+    }
+    for (const p of shooters) {
+      p.nextBurst -= dt;
+      if (p.nextBurst <= 0 && p.burstLeft <= 0) { p.burstLeft = 3 + Math.floor(Math.random() * 4); p.nextBurst = rnd(0.8, 2.0); }
+      if (p.burstLeft > 0) { p.shotT -= dt; if (p.shotT <= 0) { p.shotT = 0.09; p.burstLeft--; fireShot(p); } }
+    }
+    for (const tr of tracers) if (tr.life > 0) { tr.life -= dt; tr.m.position.addScaledVector(tr.vel, dt); if (tr.life <= 0) tr.m.visible = false; }
+    for (const c of chunks) if (c.life > 0) { c.life -= dt; c.vel.y -= 9.8 * dt; c.m.position.addScaledVector(c.vel, dt); c.m.rotation.x += c.spin.x * dt; c.m.rotation.y += c.spin.y * dt; if (c.m.position.y < hAt(c.m.position.x, c.m.position.z) || c.life <= 0) { c.life = 0; c.m.visible = false; } }
+    for (const c of brass) if (c.life > 0) { c.life -= dt; c.vel.y -= 9.8 * dt; c.m.position.addScaledVector(c.vel, dt); c.m.rotation.x += dt * 25; c.m.rotation.z += dt * 18; const gy = hAt(c.m.position.x, c.m.position.z) + 0.01; if (c.m.position.y < gy) { c.m.position.y = gy; c.vel.multiplyScalar(0); } if (c.life <= 0) c.m.visible = false; }
+    dust.update(dt); fire.update(dt); flash.update(dt);
+    // camera low in the sand behind the prone pair
+    cam.position.set(0.2, hAt(0.2, 4.4) + 0.6, 4.4);
+    cam.lookAt(0.3, 3.4 + 0.6 * Math.sin(t * 0.25), -20);
+    sky.position.copy(cam.position);
+    sun.target.position.set(0, 0, -5); sun.position.copy(sun.target.position).addScaledVector(sunDir, 70);
+  }
+  return { scene: S, camera: cam, start, update, shake: 1.0, exposure: 1.05 };
+}
+
+// ---------- the finish: bloom, lens, grade, grain ----------
+// Each shot renders into an HDR target; bright parts are blurred into a glow; then one pass adds
+// the glow, an optional fisheye (the action camera on the pilot), slight colour fringing at the
+// edges, a filmic grade (cool shadows, warm highlights), a vignette and film grain.
+function makePost(R) {
+  if (!R.capabilities.isWebGL2) return null;
+  const opts = { type: T.HalfFloatType, minFilter: T.LinearFilter, magFilter: T.LinearFilter, depthBuffer: true };
+  const main = T.WebGLMultisampleRenderTarget ? new T.WebGLMultisampleRenderTarget(4, 4, opts) : new T.WebGLRenderTarget(4, 4, opts);
+  if ('samples' in main) main.samples = 4;
+  const small = { type: T.HalfFloatType, minFilter: T.LinearFilter, magFilter: T.LinearFilter, depthBuffer: false };
+  const half = new T.WebGLRenderTarget(4, 4, small), blurA = new T.WebGLRenderTarget(4, 4, small), blurB = new T.WebGLRenderTarget(4, 4, small);
+  const cam = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1), quad = new T.Mesh(new T.PlaneGeometry(2, 2)), qs = new T.Scene(); quad.frustumCulled = false; qs.add(quad);
+  const vs = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const pass = (uniforms, fs) => new T.ShaderMaterial({ uniforms, vertexShader: vs, fragmentShader: fs, depthTest: false, depthWrite: false, toneMapped: false });
+  const bright = pass({ t: { value: null }, th: { value: 0.72 } }, 'uniform sampler2D t; uniform float th; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(th, th + 0.3, l), 1.0); }');
+  const blur = pass({ t: { value: null }, dir: { value: new T.Vector2() } }, 'uniform sampler2D t; uniform vec2 dir; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * 0.227; c += (texture2D(t, vUv + dir * 1.385).rgb + texture2D(t, vUv - dir * 1.385).rgb) * 0.316; c += (texture2D(t, vUv + dir * 3.231).rgb + texture2D(t, vUv - dir * 3.231).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }');
+  const comp = pass({ t: { value: null }, b: { value: null }, time: { value: 0 }, fish: { value: 0 }, bloom: { value: 0.5 }, grain: { value: 0.04 }, chroma: { value: 0.002 }, vig: { value: 0.45 }, aspect: { value: 1 }, warm: { value: 0 } },
+    `uniform sampler2D t, b; uniform float time, fish, bloom, grain, chroma, vig, aspect, warm; varying vec2 vUv;
+    void main(){
+      vec2 p = vUv - 0.5; p.x *= aspect; float r2 = dot(p, p), rc = 0.25 * aspect * aspect + 0.25;
+      vec2 q = p * (1.0 + fish * r2) / (1.0 + fish * rc); q.x /= aspect; vec2 uv = q + 0.5;
+      vec2 off = (uv - 0.5) * chroma * (0.4 + r2 * 3.0);
+      vec3 c = vec3(texture2D(t, uv + off).r, texture2D(t, uv).g, texture2D(t, uv - off).b);
+      c += texture2D(b, uv).rgb * bloom;
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(c, c * vec3(0.93, 0.98, 1.07), (1.0 - smoothstep(0.0, 0.3, l)) * 0.6);
+      c = mix(c, c * vec3(1.04 + warm, 1.0, 0.95 - warm), smoothstep(0.3, 1.0, l) * 0.6);
+      c = l + (c - l) * 1.06;
+      c *= 1.0 - vig * smoothstep(0.2, 1.0, r2 * 2.0 / rc);
+      float n = fract(sin(dot(vUv * vec2(1234.5, 876.3) + fract(time * 7.13), vec2(12.9898, 78.233))) * 43758.5453);
+      c += (n - 0.5) * grain;
+      gl_FragColor = vec4(max(c, 0.0), 1.0);
+      #include <encodings_fragment>
+    }`);
+  const size = new T.Vector2();
+  const draw = (mat, target) => { quad.material = mat; R.setRenderTarget(target); R.render(qs, cam); };
+  return {
+    setSize() {
+      R.getDrawingBufferSize(size); const w = Math.max(4, size.x), h = Math.max(4, size.y);
+      main.setSize(w, h); for (const rt of [half, blurA, blurB]) rt.setSize(Math.max(4, w >> 1), Math.max(4, h >> 1));
+      comp.uniforms.aspect.value = w / h;
+    },
+    render(scene, camera, o, time) {
+      R.setRenderTarget(main); R.render(scene, camera);
+      bright.uniforms.t.value = main.texture; draw(bright, half);
+      const px = 1 / half.width, py = 1 / half.height;
+      blur.uniforms.t.value = half.texture; blur.uniforms.dir.value.set(px, 0); draw(blur, blurA);
+      blur.uniforms.t.value = blurA.texture; blur.uniforms.dir.value.set(0, py); draw(blur, blurB);
+      blur.uniforms.t.value = blurB.texture; blur.uniforms.dir.value.set(px * 2.5, 0); draw(blur, blurA);
+      blur.uniforms.t.value = blurA.texture; blur.uniforms.dir.value.set(0, py * 2.5); draw(blur, blurB);
+      const u = comp.uniforms; u.t.value = main.texture; u.b.value = blurB.texture; u.time.value = time;
+      u.fish.value = o.fish; u.bloom.value = o.bloom; u.grain.value = o.grain; u.chroma.value = o.chroma; u.vig.value = o.vig; u.warm.value = o.warm;
+      draw(comp, null);
+    },
+  };
+}
+
+// ---------- the reel ----------
+let R = null, shots = [], canvas, shade, vignette, post = null, elapsed = 0, lastIdx = -1, seed = 0, on = false, last = performance.now();
+const LOOK = [
+  { bloom: 0.55, fish: 0.06, grain: 0.035, chroma: 0.0015, vig: 0.45, warm: 0.0 },   // pilot's view
+  { bloom: 0.45, fish: 0.42, grain: 0.04, chroma: 0.003, vig: 0.55, warm: 0.0 },     // camera on the pilot
+  null,                                                                               // carrier from above: drawn plain, crisp
+  { bloom: 0.85, fish: 0.0, grain: 0.04, chroma: 0.002, vig: 0.45, warm: 0.03 },     // catapult launch
+  { bloom: 0.6, fish: 0.0, grain: 0.05, chroma: 0.0025, vig: 0.5, warm: 0.06 },      // ground assault
+];
+function build() {
+  R = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  R.outputEncoding = T.sRGBEncoding; R.toneMapping = T.ACESFilmicToneMapping; R.toneMappingExposure = 1.0;
+  R.shadowMap.enabled = true; R.shadowMap.type = T.PCFSoftShadowMap;
+  canvas = R.domElement; canvas.id = 'hbReel';
+  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:2;display:none;pointer-events:none';
+  shade = document.createElement('div'); shade.style.cssText = 'position:fixed;inset:0;z-index:3;background:#04070c;opacity:1;display:none;pointer-events:none';
+  vignette = document.createElement('div'); vignette.style.cssText = 'position:fixed;inset:0;z-index:3;display:none;pointer-events:none;background:radial-gradient(ellipse at 60% 50%, rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 100%)';
+  const gl = document.getElementById('gl'); gl.after(canvas, shade, vignette);
+  try { post = makePost(R); } catch (e) { console.warn('title reel: plain rendering', e); post = null; }
+  const carrier = buildCarrier(R);
+  shots = [shotPilotView(R), shotPilotCam(R), shotCarrierAerial(carrier), shotCarrierLaunch(carrier), shotAssault(R)];
+  shots.forEach((s, i) => { s.post = LOOK[i]; });
+  resize();
+}
+function resize() { if (!R) return; R.setSize(innerWidth, innerHeight); if (post) post.setSize(); for (const s of shots) { s.camera.aspect = innerWidth / innerHeight; s.camera.updateProjectionMatrix(); } }
+addEventListener('resize', resize);
+// the game's Graphics quality setting: Low keeps the old demo battle, Medium draws the reel plainly
+// at a lower resolution, High adds the film finish
+const quality = () => typeof qualityLevel === 'function' ? qualityLevel() : 'high';
+let lastQ = null;
+const wanted = () => typeof GAME !== 'undefined' && GAME.demo && quality() !== 'low' && !document.getElementById('title').classList.contains('hidden');
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const want = wanted();
+  if (want && !R) { try { build(); } catch (e) { console.error('title reel disabled:', e); window.hbReel = null; return; } }
+  if (want !== on) { on = want; if (R) { canvas.style.display = shade.style.display = on ? 'block' : 'none'; vignette.style.display = on && !post ? 'block' : 'none'; } if (on) { elapsed = 0; lastIdx = -1; } }
+  if (!on) return;
+  const q = quality(); if (q !== lastQ) { lastQ = q; R.setPixelRatio(q === 'high' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1); resize(); }
+  const step = window.hbReel && hbReel.hold ? 0 : dt;
+  frameAt(elapsed + step, step);
+}
+function frameAt(time, dt, draw = true) {
+  elapsed = time;
+  const idx = Math.floor(elapsed / SHOT_LEN) % shots.length, tl = elapsed % SHOT_LEN, shot = shots[idx];
+  if (idx !== lastIdx) { lastIdx = idx; seed = Math.random() * 10; shot.start(); }
+  shot.update(tl, dt);
+  if (!draw) return;
+  const sh = shot.shake, e = elapsed, c = shot.camera;
+  c.rotateX(sh * (0.0025 * Math.sin(e * 43) + 0.0016 * Math.sin(e * 29.7 + 1) + 0.007 * snoise(e * 1.7, seed)));
+  c.rotateY(sh * (0.002 * Math.sin(e * 37 + 2) + 0.0013 * Math.sin(e * 23.1) + 0.009 * snoise(e * 1.2, seed + 3)));
+  c.rotateZ(sh * (0.0014 * Math.sin(e * 31 + 0.5) + 0.005 * snoise(e * 0.8, seed + 7)));
+  R.toneMappingExposure = shot.exposure;
+  const film = post && shot.post && lastQ === 'high';
+  vignette.style.display = film ? 'none' : 'block';
+  if (film) {
+    try { post.render(shot.scene, c, shot.post, elapsed); }
+    catch (err) { console.warn('title reel: post-processing off', err); post = null; vignette.style.display = 'block'; R.setRenderTarget(null); R.render(shot.scene, c); }
+  } else R.render(shot.scene, c);
+  const f = tl < FADE ? 1 - tl / FADE : tl > SHOT_LEN - FADE ? (tl - (SHOT_LEN - FADE)) / FADE : 0;
+  shade.style.opacity = BASE_DARK + (1 - BASE_DARK) * f * f * (3 - 2 * f);
+}
+window.hbReel = {
+  get covering() { return on; },
+  get elapsed() { return elapsed; },
+  get shots() { return shots; },
+  get post() { return !!post; },
+  hold: false, // freeze the reel on the current moment (for checking)
+  // jump to a moment: hbReel.seek(24) plays the reel up to 24 s in small steps and draws the last one
+  seek(time) { if (!R) build(); elapsed = Math.floor(time / SHOT_LEN) * SHOT_LEN; lastIdx = -1; while (elapsed < time - 1e-6) { const nt = Math.min(time, elapsed + 1 / 30); frameAt(nt, 1 / 30, nt >= time - 1e-6); } },
+};
+requestAnimationFrame(loop);
+})();
+</script>
+<!-- hb-reel:end -->
 </body>
 </html>
