@@ -137,7 +137,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-18T18:23:51+11:00',
+    updated: '2026-10-19T19:00:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -207,6 +207,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-19', game: 'cube-assault', text: 'Cube Assault 2.8.4: bug fixes, and the Campaign is now called Missions. Cube Assault 3.0 is coming with a brand-new campaign and a new UI.' },
   { date: '2026-10-19', href: 'chat.html', text: 'New: Global chat. Press Chat at the top of the arcade to talk with everyone who\'s on. Messages are kept only in your own browser.' },
   { date: '2026-10-19', game: 'free-criminal', text: 'Free Criminal 1.9, the big one: a phone with private messages and myBANK, your game saves, buses you can rob, ride in other players\u2019 cars, car fights online, chat settings and busier cities.' },
   { date: '2026-10-19', game: 'free-criminal', text: 'Free Criminal 1.8.5: press T to chat online (now also while respawning), with a hint on screen and a Chat button on phones.' },

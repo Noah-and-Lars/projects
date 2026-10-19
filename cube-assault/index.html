@@ -664,7 +664,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <button class="btn secondary" data-action="shop">Shop</button>
       <button class="btn secondary" data-action="settings">Settings</button>
     </div>
-    <button class="link" data-action="notes">v2.8.2 · What's new</button>
+    <button class="link" data-action="notes">v2.8.4 · What's new</button>
   </div>
 
   <div class="menu" id="menu-notes">
@@ -682,6 +682,10 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🌐</i><span><b>Public lobbies</b>New in Multiplayer: make your lobby public (recommended) and anyone can find it in Public lobbies and join, no code needed. The menu has big new cards with a map behind each one.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.8.4 <span>Bug fixes</span></h3><ul>
+        <li>Bug fixes and stability improvements.</li>
+        <li>The Campaign is now called <b>Missions</b>. A brand-new campaign and a new UI are coming in 3.0.</li>
+      </ul></section>
       <section><h3>v2.8.3 <span>Chat</span></h3><ul>
         <li>Multiplayer chat: in a lobby or a match, press <b>Enter</b>, type, and press <b>Enter</b> again to send it to everyone in the room. <b>Esc</b> cancels. Messages fade after a few seconds.</li>
       </ul></section>
@@ -1015,7 +1019,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
     <p id="cText">The flag is yours, comrade. The cube army is falling back from the birch road.</p>
     <div class="stats" id="cstats"></div>
     <p class="soon" id="cSoon">Level 2 is coming soon.</p>
-    <button class="btn" data-action="campaign">Back to campaign</button>
+    <button class="btn" data-action="campaign">Back to Missions</button>
     <button class="btn secondary" data-action="quit">Main menu</button>
   </div>
 
@@ -1024,7 +1028,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
     <div class="row"><label>Endless difficulty</label><div class="seg" id="diffSeg"><button data-diff="normal">Normal</button><button data-diff="hard">Hard</button></div></div>
     <p class="touchNote" id="diffNote"></p>
     <div class="campaign">
-      <div class="campHead"><b>Campaign</b><em class="wip">NEW</em>
+      <div class="campHead"><b>Missions</b><em class="wip">NEW</em>
         <span>Story missions, played in order. Levels 1 to 3 are ready, and more are on the way.</span></div>
       <div class="levels">
         <button class="lvl" data-level="1"><small>Level 1</small><b>The Birch Road</b><span>Russia · 1944</span><i>✓ Complete</i></button>
@@ -1180,7 +1184,7 @@ function saveSettings() { if (wiped) return; try { localStorage.setItem('cubeAss
 // 2.8: keybinds. Every keyboard control can go on any key; the game itself still thinks in the default keys.
 const BIND_DEFAULTS = { forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', sprint: 'ShiftLeft', jump: 'Space', reload: 'KeyR', use: 'KeyE', lastWeapon: 'KeyQ',
   pistol: 'Digit1', rifle: 'Digit2', shotgun: 'Digit3', sniper: 'Digit4', extreme: 'Digit5', turret: 'Digit6', knife: 'Digit7', rocket: 'Digit8', barricade: 'KeyJ' };
-const BIND_LABELS = { forward: 'Move forward', back: 'Move back', left: 'Move left', right: 'Move right', sprint: 'Sprint', jump: 'Jump', reload: 'Reload', use: 'Use (hold in the campaign)',
+const BIND_LABELS = { forward: 'Move forward', back: 'Move back', left: 'Move left', right: 'Move right', sprint: 'Sprint', jump: 'Jump', reload: 'Reload', use: 'Use (hold in Missions)',
   lastWeapon: 'Last weapon', pistol: 'Pistol', rifle: 'Rifle', shotgun: 'Shotgun', sniper: 'Sniper', extreme: 'Extreme Gun', turret: 'Place turret', knife: 'Knife', rocket: 'Rocket launcher', barricade: 'Board up a door' };
 if (!settings.binds || typeof settings.binds !== 'object') settings.binds = {};
 const bindOf = a => settings.binds[a] || BIND_DEFAULTS[a];
@@ -7649,10 +7653,10 @@ const ACHIEVEMENTS = [
   { id: 'shop', icon: '🛒', name: 'Window Shopping', desc: 'Buy something in the Shop', r: 'common' },
   { id: 'rich', icon: '💰', name: 'Savings Account', desc: 'Have 1,000 coins at once', r: 'rare', goal: 1000, prog: () => profile.coins },
   { id: 'lvl10', icon: '⭐', name: 'Seasoned', desc: 'Reach player level 10', r: 'rare', goal: 10, prog: () => levelInfo().level },
-  { id: 'c1', icon: '🚩', name: 'The Birch Road', desc: 'Complete campaign Level 1', r: 'common' },
-  { id: 'c2', icon: '☎️', name: 'Call Centre Closed', desc: 'Complete campaign Level 2', r: 'common' },
-  { id: 'c3', icon: '🪖', name: 'Over the Top', desc: 'Complete campaign Level 3', r: 'rare' },
-  { id: 'cAll', icon: '🎖️', name: 'Veteran', desc: 'Complete every campaign level', r: 'epic' },
+  { id: 'c1', icon: '🚩', name: 'The Birch Road', desc: 'Complete Mission 1', r: 'common' },
+  { id: 'c2', icon: '☎️', name: 'Call Centre Closed', desc: 'Complete Mission 2', r: 'common' },
+  { id: 'c3', icon: '🪖', name: 'Over the Top', desc: 'Complete Mission 3', r: 'rare' },
+  { id: 'cAll', icon: '🎖️', name: 'Veteran', desc: 'Complete every Mission', r: 'epic' },
   { id: 'window', icon: '🪟', name: 'Window Cleaner', desc: 'Throw the last scammer out of the window', r: 'common' },
   { id: 'spare', icon: '🤝', name: 'Never Trust a Scammer', desc: 'Spare the last scammer', r: 'rare' },
   { id: 'gunner', icon: '🔇', name: 'Silence the Gun', desc: 'Take out the German machine gunner', r: 'rare' },
@@ -7940,7 +7944,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.8.3';
+const VERSION = '2.8.4';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -10102,6 +10106,42 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
   new MutationObserver(() => { if (browsing && currentMenu !== 'mpbrowse') { browsing = false; setTimeout(lobbyIdle, 300); } }).observe($('menu-mpbrowse'), { attributes: true, attributeFilter: ['class'] });
   addEventListener('keydown', e => { if (e.code === 'Escape' && currentMenu === 'mpbrowse') { showMenu('mp'); } });
 })();
+</script>
+<div id="ca30Pop" role="dialog" aria-modal="true" aria-labelledby="ca30T">
+  <div class="c30box">
+    <div class="c30img"><img src="thumb.jpg" alt="Cube Assault"></div>
+    <div class="c30body">
+      <span class="c30tag">Coming in Cube Assault 3.0</span>
+      <h2 id="ca30T">Cube Assault is changing in 3.0</h2>
+      <p><b>Cube Assault 3.0</b> is a big one: the game is changing significantly. It brings a <b>brand-new, detailed campaign</b> with a full story, more levels and bigger battles, and a <b>completely new UI</b> across the menus and the game. It will be rolled out soon.</p>
+      <p>Until then, the current story levels have been renamed <b>Missions</b>. You can still play all of them from the Play screen, and your progress is kept.</p>
+      <button id="ca30Ok">Got it</button>
+    </div>
+  </div>
+</div>
+<style>
+#ca30Pop{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:16px;background:rgba(4,6,10,.78);backdrop-filter:blur(6px);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+#ca30Pop[hidden]{display:none}
+#ca30Pop .c30box{width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;border-radius:20px;background:#12151c;border:1px solid rgba(255,255,255,.12);box-shadow:0 30px 80px rgba(0,0,0,.6);color:#eef1f6;animation:c30in .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes c30in{from{transform:translateY(20px) scale(.96);opacity:0}}
+#ca30Pop .c30img{position:relative;aspect-ratio:16/9;overflow:hidden}
+#ca30Pop .c30img img{width:100%;height:100%;object-fit:cover;display:block}
+#ca30Pop .c30img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,21,28,0) 80%,#12151c 100%)}
+#ca30Pop .c30title{position:absolute;left:22px;bottom:12px;z-index:1}
+#ca30Pop .c30title small{display:block;color:#ffc53d;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+#ca30Pop .c30title b{display:block;font-size:40px;font-weight:900;letter-spacing:-.01em;text-transform:uppercase;text-shadow:0 3px 14px rgba(0,0,0,.6)}
+#ca30Pop .c30body{padding:6px 24px 24px}
+#ca30Pop .c30tag{display:inline-block;padding:4px 10px;border-radius:999px;background:rgba(255,197,61,.15);color:#ffc53d;font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+#ca30Pop h2{margin:10px 0 8px;font-size:24px;line-height:1.2}
+#ca30Pop p{margin:0 0 10px;color:#b9c1cf;font-size:16px;line-height:1.5}
+#ca30Pop p b{color:#fff}
+#ca30Pop button{margin-top:8px;width:100%;border:0;border-radius:12px;padding:13px;font:800 17px system-ui,sans-serif;background:#ffc53d;color:#111;cursor:pointer}
+#ca30Pop button:hover{filter:brightness(1.08)}
+</style>
+<script>
+// 2.8.4: shown every time the game opens
+(function(){var p=document.getElementById('ca30Pop'),ok=document.getElementById('ca30Ok');function close(){p.hidden=true;}
+  ok.addEventListener('click',close);addEventListener('keydown',function(e){if(!p.hidden&&(e.key==='Escape'||e.key==='Enter')){e.preventDefault();e.stopPropagation();close();}},true);setTimeout(function(){ok.focus();},50);})();
 </script>
 </body>
 </html>
