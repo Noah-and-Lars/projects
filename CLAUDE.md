@@ -58,6 +58,11 @@ source in Settings → Pages should be switched to `main`.
   `arcade.css` (`.notice`, `.notice-box`, `.notice-ok`) are still used by the
   chat's name box.
 - `arcade.css`: shared styles for the pages above.
+- `tos.js`: the Terms of Service pop-up, loaded by `index.html`, `play.html` and
+  `chat.html`. It shows until the visitor ticks the box and agrees; agreeing is
+  remembered in localStorage (`arcade-tos-agreed`, set to `TOS_VERSION`). Change
+  `TOS_VERSION` to ask everyone again after editing the terms. `?notos=1` skips it
+  (for screenshots and tests only).
   `index.html`, `play.html` and `chat.html` load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
   files for 10 minutes, so bump N in all three pages whenever either file changes.
 - Live "on now" counter: `ArcadeOnline` in `games.js` joins one Supabase
