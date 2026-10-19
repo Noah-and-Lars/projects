@@ -111,7 +111,7 @@ window.GAMES = [
     path: 'free-criminal/index.html',
     thumb: 'free-criminal/thumb.jpg?v=2',
     added: '2026-10-13T21:33:00+11:00',
-    updated: '2026-10-20T18:00:00+11:00',
+    updated: '2026-10-20T20:00:00+11:00',
     stat() { const p = readSave('freecriminal.profile.v1', true); return p && p.xp ? 'Level ' + (1 + Math.floor(Math.sqrt(p.xp / 150))) : null; },
   },
   {
@@ -196,6 +196,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-20', game: 'free-criminal', text: 'Free Criminal 1.9.2: start with $10,000, online only on the latest version, walk across the subway tracks (watch for trains), next-stop screens on the trains, your map follows the train, and more shops in every town.' },
   { date: '2026-10-20', game: 'free-criminal', text: 'Free Criminal 1.9.1: the subway. Every city has an underground station with two platforms and a train every minute; ride it to the next city in 20 seconds.' },
   { date: '2026-10-20', game: 'cube-assault', text: 'Cube Assault 2.9.4: the campaign begins. Press Campaign to watch the opening cinematic: the helicopter briefing, the missile, the crash and the fall over the island. The full campaign arrives in 3.0.' },
   { date: '2026-10-20', game: 'cube-assault', text: 'Cube Assault 2.9.3: new multiplayer map Dust II, for Team Deathmatch, Free-for-all and C:S Mode, with long, mid, short, catwalk, the B tunnels and both bomb sites.' },

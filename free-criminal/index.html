@@ -404,7 +404,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <div id="help" hidden></div>
   <div id="tr">
     <div id="stars"></div>
-    <div id="cash">$2,500</div>
+    <div id="cash">$10,000</div>
     <div id="cashDelta"></div>
     <div id="debt" hidden></div>
     <div id="clock"></div>
@@ -469,7 +469,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.9.1</b>San Varro</div>
+    <div class="ver"><b>v1.9.2</b>San Varro</div>
     <nav class="nav">
       <button id="bOnline" class="online">Play online</button>
       <button id="bPlay">Play offline</button>
@@ -523,7 +523,15 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.9.1</b>The subway<span>Latest</span></summary><ul>
+  <details open><summary><b>v1.9.2</b>On the tracks<span>Latest</span></summary><ul>
+    <li>You now start with <b>$10,000</b> instead of $2,500.</li>
+    <li>Online only lets in players on the latest version. If a newer version comes out while you're playing online, you're taken back to the menu and asked to refresh the page; players on an older version can't be seen or joined until they update.</li>
+    <li>Subway: you can jump down onto the tracks and walk across to the other platform, then press <b>E</b> (or jump) at the edge to climb up. Watch out: a train coming in or pulling out will kill you, and it sounds its horn when you're in the way.</li>
+    <li>Screens inside the trains show the next stop, and the station you're at when the doors open.</li>
+    <li>While you're underground or riding the subway, your arrow on the minimap and the map follows the train from city to city.</li>
+    <li>More shops in the other cities: new stores in Port Bellmore, Cedar Falls, Harbor City, Silver Lake, North Point and Isla Verde, and gun stores in Cedar Falls and Redwood.</li>
+  </ul></details>
+  <details><summary><b>v1.9.1</b>The subway</summary><ul>
     <li><b>The subway:</b> every city has an underground station. Look for the green-lit <b>SUBWAY</b> pavilion on the pavement with the city's name on it (a <b>T</b> on the map) and press <b>E</b> to go down.</li>
     <li>Each station has two platforms with the tracks between them. A train comes into each platform once a minute: it brakes in out of the tunnel, the doors slide open, a chime plays, the doors close and it pulls out. The boards show where each platform goes and when the next train is due.</li>
     <li>Walk in through the open doors and stay on board: 20 seconds later you're at the next city's station. <b>Platform 1</b> runs San Varro → Harbor City → Port Bellmore → North Point → Redwood → Silver Lake → Cedar Falls → Isla Verde and back round; <b>Platform 2</b> goes the other way.</li>
@@ -819,7 +827,7 @@ function rayBoxes(ox,oy,oz,dx,dy,dz,maxD){RS++;const ix=1/(dx||1e-12),iy=1/(dy||
     for(let i=0;i<arr.length;i++){const b=arr[i];if(b.rs===RS)continue;b.rs=RS;if(b.ti!==undefined&&b.ti>=treeVis)continue;const h=rayBox(ox,oy,oz,ix,iy,iz,b);if(h<best)best=h;}}
   return best;}
 function losCheck(ax,ay,az,bx,by,bz){const dx=bx-ax,dy=by-ay,dz=bz-az,d=Math.hypot(dx,dy,dz)||1;return rayBoxes(ax,ay,az,dx/d,dy/d,dz/d,d)>=d-0.6;}
-function groundY(x,z){if(z<-14330&&z>-14470&&x>350&&x<850)return 1.3; // 1.9.1: the subway station's platforms
+function groundY(x,z){if(z<-14330&&z>-14470&&x>350&&x<850)return subGround(x,z); // 1.9.1: the subway station's platforms
 if(x>BRX-12&&x<BRX+12&&z>BRZ0&&z<BRZ1)return deckH(z);if(BLOCKSET.has(bkey(x,z))){const lx=((x%100)+100)%100-50,lz=((z%100)+100)%100-50;if(Math.abs(lx)<43&&Math.abs(lz)<43)return 0.18;}return 0;}
 const WX=9000,WZN=10000,MEXT=10000;// mainland: x -9000..9000, z -10000 (north) to the coast at 1055; an island lies south across the strait
 const ISL={x:0,z:3450,rx:2600,rz:1050},BRX=-1200,BRZ0=900,BRZ1=2600;
@@ -1690,6 +1698,19 @@ SPECIAL['-2350,-1950']=(x,z)=>storeBlock(x,z,'CEDAR GENERAL','#2f9a5a');
 SPECIAL['-2250,-2050']=(x,z)=>GEN.park(x,z);SPECIAL['-2250,-2050'].isPark=true;
 const HOSPS=[],PDS=[];
 SPECIAL['5150,-1850']=(x,z)=>storeBlock(x,z,'HARBOR MART','#1f8a70');
+// 1.9.2: more shops in the other cities
+SPECIAL['2150,-2450']=(x,z)=>storeBlock(x,z,'BAYSIDE MARKET','#1f8a70');
+SPECIAL['2450,-2250']=(x,z)=>storeBlock(x,z,'PORT LIQUOR','#2f6db8');
+SPECIAL['-2450,-2150']=(x,z)=>{makeShop(x,z+20,20,14,5.5,'gun','CEDAR ARMS','#8a1f1f','#4a4f45');bld('office',70,rand(10,16),30,x,z-22,pick(OFFICE_C),'#85817b');};
+SPECIAL['-2150,-1950']=(x,z)=>storeBlock(x,z,'FALLS FOOD MART','#c0392b');
+SPECIAL['5350,-1550']=(x,z)=>storeBlock(x,z,'HARBOR 24/7','#c23b2e');
+SPECIAL['5750,-1650']=(x,z)=>storeBlock(x,z,'DOCKSIDE LIQUOR','#2f6db8');
+SPECIAL['5150,-1450']=(x,z)=>storeBlock(x,z,'CITY GROCER','#2f9a5a');
+SPECIAL['-5650,-1650']=(x,z)=>storeBlock(x,z,'SILVER SPOON DELI','#7a4fb8');
+SPECIAL['-5450,-1550']=(x,z)=>storeBlock(x,z,'LAKE LIQUOR','#2f6db8');
+SPECIAL['1650,-8150']=(x,z)=>storeBlock(x,z,'POINT LIQUOR','#2f6db8');
+SPECIAL['-6350,-6750']=(x,z)=>{makeShop(x,z+20,20,14,5.5,'gun','REDWOOD OUTFITTERS','#8a1f1f','#4a4f45');bld('office',60,rand(8,12),30,x,z-22,pick(OFFICE_C),'#85817b');};
+SPECIAL['-150,3450']=(x,z)=>storeBlock(x,z,'BEACH SHACK','#e07b1a');
 SPECIAL['5850,-1350']=(x,z)=>{makeShop(x,z+20,20,14,5.5,'gun','HARBOR ARMS','#8a1f1f','#4a4f45');bld('office',70,rand(14,24),30,x,z-22,pick(OFFICE_C),'#85817b');};
 SPECIAL['5450,-1250']=(x,z)=>{bld('office',60,20,36,x,z-8,'#f0f0ee','#c8cacb');addB('plain',B(1.4,5,0.3,'#d22323',x,13,z+10.2));addB('plain',B(5,1.4,0.3,'#d22323',x,13,z+10.2));
   sign('HARBOR GENERAL HOSPITAL','#d22323','#fff',20,2,x,8,z+10.2,0);BLIPS.push({x,z:z+20,type:'hosp',name:'Hospital'});HOSPS.push({x,z:z+22,h:0});};
@@ -2028,7 +2049,7 @@ let state='loading',T=0,locked=false,noLock=false,mouseL=false,mouseR=false,mapO
 let yaw=Math.PI/2,pitch=-0.08,camCarYaw=0,camYawOff=0,camPitchOff=0,lastMouseT=-10,aimK=0,shake=0,dmgFlash=0,camFov=75;
 const keys={};
 const W={level:0,heat:0,seen:false,evadeT:0,tx:0,tz:0,aggro:0,bustT:0,spawnCD:0};
-const player={m:null,pos:null,h:Math.PI/2,vx:0,vz:0,vy:0,onGround:true,hp:100,armor:0,cash:2500,wpn:'rifle',owned:{rifle:{ammo:30,reserve:240},knife:{ammo:0,reserve:0}},drawn:false,nades:0,rag:null,jack:null,trig:false,nadeCD:0,reload:0,fireT:0,fireHold:0,inCar:null,lastCar:null,fp:false,dead:false,rifle:null,muzzle:null,phase:0,jumpHeld:false};
+const player={m:null,pos:null,h:Math.PI/2,vx:0,vz:0,vy:0,onGround:true,hp:100,armor:0,cash:10000,wpn:'rifle',owned:{rifle:{ammo:30,reserve:240},knife:{ammo:0,reserve:0}},drawn:false,nades:0,rag:null,jack:null,trig:false,nadeCD:0,reload:0,fireT:0,fireHold:0,inCar:null,lastCar:null,fp:false,dead:false,rifle:null,muzzle:null,phase:0,jumpHeld:false};
 let vm=null,fists=null,vmMuzzle=null,robbing=null,noteT=0,noteHTML='',deadT=0,deadKind='',respawning=false;
 const _cf=new THREE.Vector3(),_a=new THREE.Vector3(),_b=new THREE.Vector3(),_cp={x:0,z:0};
 
@@ -2972,15 +2993,15 @@ function endIntro(){
   IN.cops.forEach(h=>{scene.remove(h.group);h.geos.forEach(g=>g.dispose());});IN.cops=[];gate.position.z=120;dumpLid.rotation.z=0;$('sub').style.opacity=0;$('title').style.opacity=0;
   const P=player;P.pos.set(-533.6,0,112.2);P.h=Math.PI/2;P.m.group.rotation.set(0,Math.PI/2,0);yaw=Math.PI/2;pitch=-0.08;camFov=50;
   state='play';updGunVis();$('cine').hidden=true;$('hud').hidden=false;
-  notify(SAVED?`Welcome back, ${pname()}. Your game was saved: you’ve got <b>${fmt(player.cash)}</b> on you${BANK.bal>0?` and <b>${fmt(BANK.bal)}</b> in myBANK`:''}. Press <b>P</b> for your phone.`:'You’re out with a rifle, a knife and <b>$2,500</b>. Click to punch, <b>1</b> for the rifle, <b>2</b> for the knife, <b>F</b> by a car to steal it. Gun stores sell 10 guns and grenades. The mall is waiting to be robbed.',10);
+  notify(SAVED?`Welcome back, ${pname()}. Your game was saved: you’ve got <b>${fmt(player.cash)}</b> on you${BANK.bal>0?` and <b>${fmt(BANK.bal)}</b> in myBANK`:''}. Press <b>P</b> for your phone.`:'You’re out with a rifle, a knife and <b>$10,000</b>. Click to punch, <b>1</b> for the rifle, <b>2</b> for the knife, <b>F</b> by a car to steal it. Gun stores sell 10 guns and grenades. The mall is waiting to be robbed.',10);
 }
-function newGame(){clearPolice();clearAgents();BUSROB=null;BANK.bal=0;BANK.log.length=0;BOOST.until=-1;Object.assign(player,{hp:100,armor:0,cash:2500,wpn:'rifle',owned:{rifle:{ammo:30,reserve:240},knife:{ammo:0,reserve:0}},drawn:false,nades:0,rag:null,jack:null,trig:false,nadeCD:0,reload:0,inCar:null,lastCar:null,ride:null,dead:false,vx:0,vz:0,vy:0,fp:false});robbing=null;ROUTE=null;CLEARRD=null;CAMCUT.done=false;for(const c of CAMS)c.cd=0;leaveBuilding(true);leaveSubway(true);DAY.t=30;WEATHER.k=0;WEATHER.target=0;WEATHER.t=rand(150,260);radioOff();resetSafehouses();for(const d of DOORS)d.cool=-1;clearNades();setGunModel();showCashChange(0);
+function newGame(){clearPolice();clearAgents();BUSROB=null;BANK.bal=0;BANK.log.length=0;BOOST.until=-1;Object.assign(player,{hp:100,armor:0,cash:10000,wpn:'rifle',owned:{rifle:{ammo:30,reserve:240},knife:{ammo:0,reserve:0}},drawn:false,nades:0,rag:null,jack:null,trig:false,nadeCD:0,reload:0,inCar:null,lastCar:null,ride:null,dead:false,vx:0,vz:0,vy:0,fp:false});robbing=null;ROUTE=null;CLEARRD=null;CAMCUT.done=false;for(const c of CAMS)c.cd=0;leaveBuilding(true);leaveSubway(true);DAY.t=30;WEATHER.k=0;WEATHER.target=0;WEATHER.t=rand(150,260);radioOff();resetSafehouses();for(const d of DOORS)d.cool=-1;clearNades();setGunModel();showCashChange(0);
   player.m.group.rotation.x=0;for(const c of CARS)if(c.driver==='player')c.setDriver(null);}
 
 /* ---------- HUD ---------- */
 const STAR='<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.2 6.8.8-5 4.6 1.3 6.7L12 17.4l-5.9 3.4 1.3-6.7-5-4.6 6.8-.8z"/></svg>';
 $('stars').innerHTML=STAR.repeat(5);const starEls=[...$('stars').children];
-let hudCash=2500,lastHelp=null,zoneName='',zoneT=0,vehT=0,lastAmmo='',fpsN=0,fpsT=0;
+let hudCash=10000,lastHelp=null,zoneName='',zoneT=0,vehT=0,lastAmmo='',fpsN=0,fpsT=0;
 const mm=$('mm'),mg=mm.getContext('2d'),bm=$('bm'),bg=bm.getContext('2d');
 function zoneOf(x,z){if(x<-535&&x>-670&&z>50&&z<190)return'State Penitentiary';if(x>-89&&x<-11&&z>117&&z<183)return'San Varro Mall';
   if(Math.abs(x)<=510&&Math.abs(z)<=510){const cx=Math.floor((x+500)/100)*100-450,cz=Math.floor((z+500)/100)*100-450;return{downtown:'Downtown',industrial:'Port District',residential:'Westbrook',midtown:'Midtown'}[district(cx,cz)];}
@@ -3005,7 +3026,7 @@ function contextHint(){if(PHONE.open)return'';if(!locked&&!noLock&&state==='play
 const BLIPC={rent:['#9aa3ad','R'],safe:['#2fbf71','S'],mall:['#c77dff','M'],store:['#7fcc6c','$'],bank:['#7fcc6c','B'],gun:['#d23b30','G'],hosp:['#e8e8e8','H'],police:['#3f7fe0','P'],subway:['#1b9e5a','T']};
 function drawBlip(g,x,y,type,s){const b=BLIPC[type];g.fillStyle='#111';g.beginPath();g.arc(x,y,s+2,0,7);g.fill();g.fillStyle=b[0];g.beginPath();g.arc(x,y,s,0,7);g.fill();g.fillStyle='#111';g.font=`700 ${s*1.4}px Barlow Condensed, Arial`;g.textAlign='center';g.textBaseline='middle';g.fillText(b[1],x,y+1);}
 function drawArrow(g,x,y,ang,s){g.save();g.translate(x,y);g.rotate(ang);g.fillStyle='#fff';g.strokeStyle='#000';g.lineWidth=2;g.beginPath();g.moveTo(0,-s);g.lineTo(s*0.75,s*0.8);g.lineTo(0,s*0.4);g.lineTo(-s*0.75,s*0.8);g.closePath();g.fill();g.stroke();g.restore();}
-function drawMinimap(){if(INSIDE){const sv=player.pos.clone();player.pos.set(INSIDE.door.x,0,INSIDE.door.z);try{drawMinimap0();}finally{player.pos.copy(sv);}return;}drawMinimap0();}
+function drawMinimap(){if(SUBWAY){const mp=subMapPos();if(mp){const sv=player.pos.clone();player.pos.set(mp.x,0,mp.z);try{drawMinimap0();}finally{player.pos.copy(sv);}return;}}if(INSIDE){const sv=player.pos.clone();player.pos.set(INSIDE.door.x,0,INSIDE.door.z);try{drawMinimap0();}finally{player.pos.copy(sv);}return;}drawMinimap0();}
 function drawMinimap0(){
   const Wd=mm.width,Ht=mm.height,cx=Wd/2,cy=Ht/2,P=player,range=P.inCar?240:140,ppm=Ht/(range*1.6);
   const cyaw=P.inCar?camCarYaw:yaw,th=-Math.PI/2-Math.atan2(Math.cos(cyaw),Math.sin(cyaw)),cs=Math.cos(th),sn=Math.sin(th);
@@ -3045,7 +3066,8 @@ function blipLabels(g,map,s,min){g.save();g.font=`700 ${Math.round(s*1.3)}px Bar
 function drawPin(g,x,y,s,col){g.fillStyle=col||'#3fa0ff';g.strokeStyle='#fff';g.lineWidth=Math.max(2,s*0.22);g.beginPath();g.moveTo(x,y);g.lineTo(x-s*0.7,y-s*1.5);g.arc(x,y-s*1.9,s*0.8,Math.PI*0.8,Math.PI*0.2);g.closePath();g.fill();g.stroke();g.fillStyle='#fff';g.beginPath();g.arc(x,y-s*1.9,s*0.3,0,7);g.fill();}
 function drawRoute(g,pts,w){if(pts.length<2)return;g.lineJoin='round';g.lineCap='round';g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(const p of pts)g.lineTo(p[0],p[1]);
   g.strokeStyle='rgba(8,24,52,.85)';g.lineWidth=w*1.7;g.stroke();g.strokeStyle='#3fa0ff';g.lineWidth=w;g.stroke();}
-function drawBigMap(){const S=bm.width,k=S/MAPW;bg.drawImage(MAPIMG,0,0,S,S);
+function drawBigMap(){if(SUBWAY){const mp=subMapPos();if(mp){const sv=player.pos.clone();player.pos.set(mp.x,0,mp.z);try{drawBigMap0();}finally{player.pos.copy(sv);}return;}}drawBigMap0();}
+function drawBigMap0(){const S=bm.width,k=S/MAPW;bg.drawImage(MAPIMG,0,0,S,S);
   if(ROUTE){drawRoute(bg,ROUTE.pts.map(p=>[mx(p[0])*k,mx(p[1])*k]),6);drawPin(bg,mx(ROUTE.x)*k,mx(ROUTE.z)*k,12);}
   for(const b of BLIPS)drawBlip(bg,mx(b.x)*k,mx(b.z)*k,b.type,11);drawLegend(bg,14,bm.height-14,14);
   if(NET.on)NET.mapBlips(bg,(x,z)=>[mx(x)*k,mx(z)*k],8,true); // 1.8.3: the other players
@@ -3096,13 +3118,14 @@ const BLIPN={subway:'the subway',store:'the store',bank:'the bank',gun:'the gun 
 const sx2=x=>(x-MV.cx)*MV.s+mapC.width/2,sz2=z=>(z-MV.cz)*MV.s+mapC.height/2,wX=X=>(X-mapC.width/2)/MV.s+MV.cx,wZ=Y=>(Y-mapC.height/2)/MV.s+MV.cz;
 function sizeMap(){const r=mapC.getBoundingClientRect();MV.d=Math.min(2,devicePixelRatio||1);mapC.width=Math.max(50,Math.round(r.width*MV.d));mapC.height=Math.max(50,Math.round(r.height*MV.d));}
 function clampView(){MV.s=clamp(MV.s,Math.min(mapC.width,mapC.height)/(2*MEXT),9*MV.d);MV.cx=clamp(MV.cx,-WX,WX);MV.cz=clamp(MV.cz,-WZN,ISL.z+ISL.rz);}
-function openMap(){hidePanels();MV.open=true;$('mapPanel').hidden=false;sizeMap();MV.cx=player.pos.x;MV.cz=player.pos.z;MV.s=Math.min(mapC.width,mapC.height)/700;clampView();
+function openMap(){hidePanels();MV.open=true;$('mapPanel').hidden=false;sizeMap();{const mp=SUBWAY&&subMapPos();MV.cx=mp?mp.x:player.pos.x;MV.cz=mp?mp.z:player.pos.z;}MV.s=Math.min(mapC.width,mapC.height)/700;clampView();
   MV.tgt=ROUTE?{x:ROUTE.x,z:ROUTE.z,name:ROUTE.name}:null;updMapUI();drawMapView();}
-setInterval(()=>{if(MV.open&&NET.on)drawMapView();},500); // 1.8.3: keep the other players moving on the map screen
+setInterval(()=>{if(MV.open&&(NET.on||SUBWAY))drawMapView();},500); // 1.8.3: keep the other players moving on the map screen
 function closeMap(){MV.open=false;MV.drag=null;$('mapPanel').hidden=true;if(MV.fromPlay){MV.fromPlay=false;if(state==='paused')resume();}}
 function updMapUI(){$('mRoute').disabled=!MV.tgt||(ROUTE&&ROUTE.x===MV.tgt.x&&ROUTE.z===MV.tgt.z);$('mClear').hidden=!ROUTE;
   $('mapInfo').innerHTML=ROUTE&&MV.tgt&&ROUTE.x===MV.tgt.x&&ROUTE.z===MV.tgt.z?`Route set to <b>${ROUTE.name}</b>. Follow the blue line on your minimap.`:MV.tgt?`Picked: <b>${MV.tgt.name}</b>`:'Click anywhere on the map to pick a destination.';}
-function drawMapView(){const g=mc,W=mapC.width,H=mapC.height,s=MV.s,d=MV.d;g.fillStyle='#3a6f9b';g.fillRect(0,0,W,H);
+function drawMapView(){if(SUBWAY){const mp=subMapPos();if(mp){const sv=player.pos.clone();player.pos.set(mp.x,0,mp.z);try{drawMapView0();}finally{player.pos.copy(sv);}return;}}drawMapView0();}
+function drawMapView0(){const g=mc,W=mapC.width,H=mapC.height,s=MV.s,d=MV.d;g.fillStyle='#3a6f9b';g.fillRect(0,0,W,H);
   g.imageSmoothingEnabled=true;g.drawImage(MAPIMG,sx2(-MEXT),sz2(-MEXT),2*MEXT*s,2*MEXT*s);
   if(s>0.9*d){const x0=wX(0),x1=wX(W),z0=wZ(0),z1=wZ(H);
     for(const r of MAPR){if(r[0]>x1||r[0]+r[2]<x0||r[1]>z1||r[1]+r[3]<z0)continue;g.fillStyle=r[4];g.fillRect(sx2(r[0]),sz2(r[1]),r[2]*s,r[3]*s);}
@@ -3184,7 +3207,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.9.1',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
+const VERSION='1.9.2',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3281,7 +3304,7 @@ addEventListener('resize',resize);
 /* ---------- main loop ---------- */
 let menuA=0,lastT=performance.now();
 function frame(now){requestAnimationFrame(frame);tick(now);}
-if(/debug/.test(location.search))window.__fc={step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook,get SUBE(){return SUBE;},get SUBT(){return SUBT;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;}};
+if(/debug/.test(location.search))window.__fc={step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook,get mapPos(){return subMapPos();},get SUBE(){return SUBE;},get SUBT(){return SUBT;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;}};
 function tick(now){
   const rdt=clamp((now-lastT)/1000,0,0.05);lastT=Math.max(lastT,now);fpsN++;fpsT+=rdt;if(fpsT>0.5){$('fps').textContent=Math.round(fpsN/fpsT)+' fps';fpsN=0;fpsT=0;}
   if(state==='loading')return;
@@ -3408,6 +3431,11 @@ function buildStation(){
       b.position.set(O.x+x,SY+4.4,O.z+s*5.2);b.rotation.y=s>0?Math.PI:0;scene.add(b);subBoards.push({c,t,plat:s<0?0:1});
       const hang=new THREE.Mesh(new THREE.BoxGeometry(3.8,1.0,0.12),subLam(0x1a1c20));hang.position.set(O.x+x,SY+4.4,O.z+s*5.27);scene.add(hang);}}
   // the platform edges stop you walking onto the tracks (they open up at the train doors while a train is in)
+  for(const s of[-1,1])addColl(SO.x-SUB_HALF,SO.x+SUB_HALF,Math.min(SO.z+s*3.95,SO.z+s*11),Math.max(SO.z+s*3.95,SO.z+s*11),-1,SY-0.02);
+  for(let x=-SUB_HALF+6;x<=SUB_HALF-6;x+=8)addColl(SO.x+x-0.3,SO.x+x+0.3,SO.z-0.3,SO.z+0.3,-1,8);
+  for(const e of[-1,1]){const x0=e<0?SO.x-SUB_HALF-95:SO.x+SUB_HALF,x1=e<0?SO.x-SUB_HALF:SO.x+SUB_HALF+95;
+    addColl(x0,x1,SO.z-4.4,SO.z-3.95,-1,8);addColl(x0,x1,SO.z+3.95,SO.z+4.4,-1,8);addColl(x0,x1,SO.z-0.15,SO.z+0.15,-1,8);
+    addColl(e<0?x0-1:x1,e<0?x0:x1+1,SO.z-4.4,SO.z+4.4,-1,8);}
   SUBT.push(makeTrain(0),makeTrain(1));}
 const subLam=c=>new THREE.MeshLambertMaterial({color:c});
 
@@ -3444,21 +3472,31 @@ function makeTrain(plat){
   const bm=new THREE.Mesh(merge(body),new THREE.MeshLambertMaterial({vertexColors:true,emissive:0x121212}));bm.castShadow=false;g.add(bm);body.forEach(x=>x.dispose());
   const gm=new THREE.Mesh(merge(glassL),new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:0.55,emissive:0x101820}));g.add(gm);glassL.forEach(x=>x.dispose());
   const sm=new THREE.Mesh(merge(strips),new THREE.MeshBasicMaterial({vertexColors:true}));g.add(sm);strips.forEach(x=>x.dispose());
+  // 1.9.2: screens above the doors inside: the next stop
+  const scr=document.createElement('canvas');scr.width=512;scr.height=96;const scrT=new THREE.CanvasTexture(scr),scrM=new THREE.MeshBasicMaterial({map:scrT});
+  for(let c=-1;c<=1;c++)for(const dx of DOOR_X)for(const s of[-1,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.28),scrM);m.position.set(c*(CAR_L+CAR_GAP)+dx,FL+2.42,s*(W/2-0.07));m.rotation.y=s<0?0:Math.PI;g.add(m);}
   const light=new THREE.PointLight(0xfff4e0,0,22,1.5);light.position.set(0,2.4,0);g.add(light);
   g.position.set(SO.x-dir*999,SY,SO.z+tz);if(dir<0)g.rotation.y=Math.PI;scene.add(g);g.visible=false;
   // the platform side of this train is world -z for platform 1 and +z for platform 2; with the train turned round for
   // platform 2 that's local -z for both
-  const tr={plat,dir,tz,g,doors,light,x:-dir*999,phase:'gap',pt:0,wait:0,door:0,colls:[],edge:null,riding:false,gone:false};
-  tr.edge=subEdge(tr,false);return tr;}
+  const tr={plat,dir,tz,g,doors,light,scr,scrT,x:-dir*999,phase:'gap',pt:0,wait:0,door:0,colls:[],edge:null,riding:false,gone:false};
+  subEdge(tr,false);return tr;}
 // collision for one platform: the edge (whole, or with gaps at the open doors) and the car walls while a train is in
-function subEdge(tr,open){for(const b of tr.colls)removeColl(b);tr.colls.length=0;
-  const s=tr.plat===0?-1:1,ze0=s<0?SO.z-4.05:SO.z+3.65,ze1=ze0+0.4,add=(x0,x1,z0,z1)=>tr.colls.push(addColl(SO.x+x0,SO.x+x1,z0,z1,-2,7));
-  if(!open){add(-SUB_HALF,SUB_HALF,ze0,ze1);return;}
-  const gaps=[];for(let c=-1;c<=1;c++)for(const dx of DOOR_X)gaps.push(c*(CAR_L+CAR_GAP)+dx);
-  let x=-SUB_HALF;for(const gx of gaps.sort((a,b)=>a-b)){add(x,gx-0.75,ze0,ze1);x=gx+0.75;}add(x,SUB_HALF,ze0,ze1);
-  // the far side and the ends of the train
-  const zf=SO.z+tr.tz-s*1.5,zfa=Math.min(zf,zf-s*0.3),zfb=Math.max(zf,zf-s*0.3);add(-TRAIN_HALF,TRAIN_HALF,zfa,zfb);
-  const zi0=Math.min(SO.z+tr.tz-1.5,SO.z+tr.tz+1.5),zi1=zi0+3.0;add(-TRAIN_HALF-0.3,-TRAIN_HALF,zi0,zi1);add(TRAIN_HALF,TRAIN_HALF+0.3,zi0,zi1);}
+// a train standing in the station: its sides (with gaps at open doors), its ends, and the body underneath it, so you
+// can't walk through it from the platform or from the tracks. Nothing while it's moving (then it runs you over).
+function subEdge(tr,open){for(const b of tr.colls)removeColl(b);tr.colls.length=0;if(!open)return;
+  const s=tr.plat===0?-1:1,zc=SO.z+tr.tz,add=(x0,x1,z0,z1,y0,y1)=>tr.colls.push(addColl(SO.x+tr.x+x0,SO.x+tr.x+x1,z0,z1,y0,y1));
+  const zn=zc+s*1.5,zna=Math.min(zn,zn-s*0.25),znb=Math.max(zn,zn-s*0.25),up=[SY,SY+3.4];
+  if(open==='closed')add(-TRAIN_HALF,TRAIN_HALF,zna,znb,...up);
+  else{const gaps=[];for(let c=-1;c<=1;c++)for(const dx of DOOR_X)gaps.push(c*(CAR_L+CAR_GAP)+dx);
+    let x=-TRAIN_HALF;for(const gx of gaps.sort((a,b)=>a-b)){add(x,gx-0.75,zna,znb,...up);x=gx+0.75;}add(x,TRAIN_HALF,zna,znb,...up);}
+  const zf=zc-s*1.5,zfa=Math.min(zf,zf+s*0.3),zfb=Math.max(zf,zf+s*0.3);add(-TRAIN_HALF,TRAIN_HALF,zfa,zfb,...up);
+  add(-TRAIN_HALF-0.3,-TRAIN_HALF,zc-1.5,zc+1.5,...up);add(TRAIN_HALF,TRAIN_HALF+0.3,zc-1.5,zc+1.5,...up);
+  add(-TRAIN_HALF-0.3,TRAIN_HALF+0.3,zc-1.55,zc+1.55,-1,SY-0.02);}
+// how high the floor is in the station: platforms, the train floor if you're in a train, otherwise the tracks
+function subGround(x,z){const lz=z-SO.z;if(Math.abs(lz)>3.95&&Math.abs(x-SO.x)<SUB_HALF)return SY;
+  for(const tr of SUBT)if(tr.g.visible&&Math.abs(z-(SO.z+tr.tz))<1.5&&Math.abs(x-(SO.x+tr.x))<TRAIN_HALF&&player.pos.y>0.8)return SY;
+  return SY+SUB_Y;}
 
 // ---- sounds: a low rumble while a train moves, brakes, the door chime ----
 function subRumble(tr,on,speed){if(!AUD.ctx)return;if(!tr.snd){const s=AUD.ctx.createBufferSource();s.buffer=AUD.noise;s.loop=true;const f=AUD.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=180;const g=AUD.ctx.createGain();g.gain.value=0;s.connect(f);f.connect(g);g.connect(AUD.master);s.start();tr.snd={g,f};}
@@ -3479,15 +3517,15 @@ function updSubway(dt){
   for(const tr of SUBT){const d=tr.dir;tr.pt+=dt;const was=tr.x;
     if(tr.phase==='gap'){tr.wait-=dt;if(tr.wait<=0){tr.phase='arrive';tr.pt=0;tr.opened=false;tr.chimed=false;tr.g.visible=true;trainX(tr,-d*80);tr.light.intensity=0.55;subBrake();}}
     else if(tr.phase==='arrive'){const u=Math.min(1,tr.pt/SUB_ARR);trainX(tr,-d*80*(1-easeOut(u)));subRumble(tr,true,(1-u)*16);
-      if(u>=1){tr.phase='dwell';tr.pt=0;subRumble(tr,false,0);}}
+      if(u>=1){tr.phase='dwell';tr.pt=0;subRumble(tr,false,0);subEdge(tr,'closed');}}
     else if(tr.phase==='dwell'){
       if(tr.pt>0.8&&tr.pt<2.0){if(tr.door===0){subHiss();}tr.door=Math.min(1,(tr.pt-0.8)/1.0);setDoors(tr);if(tr.pt>1.3&&!tr.opened){tr.opened=true;subEdge(tr,true);}}
       if(tr.pt>SUB_DWELL-3.2&&!tr.chimed){tr.chimed=true;subChime();}
       if(tr.pt>SUB_DWELL-2&&tr.pt<SUB_DWELL-0.8){if(tr.door===1)subHiss();tr.door=Math.max(0,1-(tr.pt-(SUB_DWELL-2))/1.0);setDoors(tr);}
       if(tr.pt>SUB_DWELL-1.2&&tr.opened){tr.opened=false;tr.door=0;setDoors(tr);
         // anyone standing in the train when the doors shut is going for a ride
-        tr.riding=subInTrain(tr);subEdge(tr,false);if(tr.riding){P.wasFp=P.fp;P.fp=true;P.m.group.visible=false;yaw=d>0?Math.PI/2:-Math.PI/2;pitch=-0.05;notify(`Next stop: <b>${SUB_LINE[subNext(SUBWAY.city,d)]}</b>`,4);}}
-      if(tr.pt>=SUB_DWELL){tr.phase='depart';tr.pt=0;tr.chimed=false;}}
+        tr.riding=subInTrain(tr);subEdge(tr,'closed');if(tr.riding){P.wasFp=P.fp;P.fp=true;P.m.group.visible=false;yaw=d>0?Math.PI/2:-Math.PI/2;pitch=-0.05;notify(`Next stop: <b>${SUB_LINE[subNext(SUBWAY.city,d)]}</b>`,4);}}
+      if(tr.pt>=SUB_DWELL){tr.phase='depart';tr.pt=0;tr.chimed=false;subEdge(tr,false);}}
     else if(tr.phase==='depart'){const u=Math.min(1,tr.pt/SUB_DEP);trainX(tr,d*80*easeIn(u));subRumble(tr,true,u*16);
       if(u>=1){if(tr.riding){tr.phase='ride';tr.pt=0;}else{tr.phase='gap';tr.wait=SUB_GAP;tr.g.visible=false;tr.light.intensity=0;subRumble(tr,false,0);}}}
     else if(tr.phase==='ride'){subRumble(tr,true,16);shake=Math.max(shake,0.05);
@@ -3495,16 +3533,31 @@ function updSubway(dt){
         SUBWAY.city=subNext(SUBWAY.city,d);subSigns();subCrowd();const dx=-d*160;trainX(tr,tr.x+dx);tr.phase='arrive';tr.opened=false;tr.chimed=false;tr.pt=0;subBrake();
         for(const o of SUBT)if(o!==tr&&o.phase!=='gap'){o.phase='gap';o.opened=false;o.chimed=false;o.wait=20+Math.random()*25;o.g.visible=false;o.light.intensity=0;subEdge(o,false);o.door=0;setDoors(o);}
         notify(`Now arriving: <b>${SUB_LINE[SUBWAY.city]}</b>`,4);}}
+    // 1.9.2: down on the tracks: the horn when a train is coming at you, and it runs you over
+    if(tr.g.visible&&(tr.phase==='arrive'||tr.phase==='depart')&&!tr.riding&&P.pos.y<0.8&&state==='play'){
+      const dz=Math.abs(P.pos.z-(SO.z+tr.tz)),dx=(P.pos.x-(SO.x+tr.x))*tr.dir;
+      if(dz<1.8&&dx>TRAIN_HALF&&dx<TRAIN_HALF+60&&!tr.honked){tr.honked=true;subHorn();}
+      if(dz<1.75&&Math.abs(dx)<TRAIN_HALF+0.6){const sp=tr.phase==='arrive'?14:9;startRag(tr.dir*sp,6,(P.pos.z<SO.z+tr.tz?-1:1)*3);damagePlayer(1000);notify('You were hit by the train.',4);}}
+    if(tr.phase!=='arrive'&&tr.phase!=='depart')tr.honked=false;
     // riding: you move with the train and stay inside it
     if(tr.riding){P.pos.x+=tr.x-was;const lx=P.pos.x-(SO.x+tr.x),zc=SO.z+tr.tz;P.pos.x=SO.x+tr.x+clamp(lx,-TRAIN_HALF+0.5,TRAIN_HALF-0.5);P.pos.z=clamp(P.pos.z,zc-1.1,zc+1.1);P.pos.y=SY;
       if(tr.phase==='dwell'&&tr.opened){tr.riding=false;P.fp=!!P.wasFp;P.m.group.visible=!P.fp;}}}
   // the tunnel lights rush past while a train is moving
   for(const L of subTunnelLights){const tr=SUBT[L.s<0?0:1],v=tr.phase==='ride'?32:0;L.off=((L.off||0)+v*dt)%90;L.m.position.x=SO.x+L.e*(SUB_HALF+5+((L.k*9+(L.e*tr.dir>0?-1:1)*L.off)%90+90)%90);}
+  if(subAtEdge()&&keys.Space)subClimb();
   subBoardT-=dt;if(subBoardT<=0){subBoardT=0.5;subDrawBoards();}}
 let subBoardT=0;
+function subHorn(){if(!AUD.ctx)return;const t=AUD.ctx.currentTime;for(const f of[311,392]){const o=AUD.ctx.createOscillator(),g=AUD.ctx.createGain();o.type='sawtooth';o.frequency.value=f;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.06,t+0.05);g.gain.setValueAtTime(0.06,t+1.1);g.gain.linearRampToValueAtTime(0,t+1.3);o.connect(g);g.connect(AUD.master);o.start(t);o.stop(t+1.35);}}
+const subOnTracks=()=>SUBWAY&&player.pos.y<0.8&&Math.abs(player.pos.x-SO.x)<SUB_HALF-1;
+const subAtEdge=()=>subOnTracks()&&Math.abs(player.pos.z-SO.z)>3.2;
+function subClimb(){const P=player,s=P.pos.z<SO.z?-1:1;P.pos.set(P.pos.x,SY,SO.z+s*4.5);P.vy=0;P.vx=P.vz=0;sfx.click&&sfx.click();}
 function subInTrain(tr){const P=player.pos;return Math.abs(P.x-(SO.x+tr.x))<TRAIN_HALF&&Math.abs(P.z-(SO.z+tr.tz))<1.5;}
 function subSigns(){const n=SUB_LINE[SUBWAY.city].toUpperCase();for(const m of subNames){m.material.map.dispose();m.material.map=signTex(n,'#1d3557','#fff',1024,136);m.material.needsUpdate=true;}subDrawBoards();}
-function subDrawBoards(){if(!SUBWAY)return;for(const b of subBoards){const tr=SUBT[b.plat],g=b.c.getContext('2d'),to=SUB_LINE[subNext(SUBWAY.city,tr.dir)];
+function subDrawScreens(){if(!SUBWAY)return;for(const tr of SUBT){if(!tr.g.visible)continue;const g=tr.scr.getContext('2d'),here=SUB_LINE[SUBWAY.city],next=SUB_LINE[subNext(SUBWAY.city,tr.dir)];
+  const[top,big]=tr.phase==='arrive'?['ARRIVING AT',here]:tr.phase==='dwell'?['THIS STOP',here]:['NEXT STOP',next];
+  g.fillStyle='#06080b';g.fillRect(0,0,512,96);g.fillStyle='#c8202a';g.fillRect(0,0,14,96);g.fillStyle='#ff9d2e';g.font='bold 24px Arial';g.textBaseline='top';g.fillText(top,30,10);
+  g.font='bold 44px Arial';g.fillStyle='#ffd27a';g.fillText(big.toUpperCase(),30,40);tr.scrT.needsUpdate=true;}}
+function subDrawBoards(){if(!SUBWAY)return;subDrawScreens();for(const b of subBoards){const tr=SUBT[b.plat],g=b.c.getContext('2d'),to=SUB_LINE[subNext(SUBWAY.city,tr.dir)];
   g.fillStyle='#0b0d10';g.fillRect(0,0,512,128);g.fillStyle='#ffb000';g.font='bold 30px Arial';g.textBaseline='top';g.fillText(`PLATFORM ${b.plat+1} · TO ${to.toUpperCase()}`,16,14);
   const s=tr.phase==='gap'?Math.ceil(tr.wait+SUB_ARR):0;g.font='bold 40px Arial';g.fillText(tr.phase==='dwell'?'NOW BOARDING':tr.phase==='gap'?`NEXT TRAIN ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:tr.phase==='arrive'?'TRAIN ARRIVING':'DEPARTING',16,62);b.t.needsUpdate=true;}}
 // ---- going down and coming back up ----
@@ -3519,10 +3572,15 @@ function leaveSubway(silent){if(!SUBWAY)return;const P=player,c=SUBWAY.city;for(
   if(P.wasFp!==undefined){P.fp=!!P.wasFp;P.wasFp=undefined;P.m.group.visible=!P.fp;}
   for(const l of subLights)l.intensity=0;SUBWAY=null;subCrowd();if(silent)return;
   const e=SUBE.find(x=>x.city===c)||SUBE[0];P.pos.set(e.x+e.dx*0.8,groundY(e.x,e.z),e.z+e.dz*0.8);yaw=Math.atan2(e.dx,e.dz);P.h=yaw;pitch=-0.08;updChunks(0,true);}
+function subMapPos(){const at=i=>SUBE.find(e=>e.city===i)||SUBE[0];if(!SUBWAY||!SUBE.length)return null;
+  for(const tr of SUBT)if(tr.riding){const k=tr.phase==='depart'?0.1*tr.pt/SUB_DEP:tr.phase==='ride'?0.1+0.8*Math.min(1,tr.pt/SUB_RIDE):0.9+0.1*Math.min(1,tr.pt/SUB_ARR);
+    const from=tr.phase==='arrive'||tr.phase==='dwell'?at(subNext(SUBWAY.city,-tr.dir)):at(SUBWAY.city),to=tr.phase==='arrive'||tr.phase==='dwell'?at(SUBWAY.city):at(subNext(SUBWAY.city,tr.dir));
+    return{x:from.x+(to.x-from.x)*k,z:from.z+(to.z-from.z)*k};}
+  const e=at(SUBWAY.city);return{x:e.x,z:e.z};}
 const subZone=()=>{if(!SUBWAY)return null;const P=player.pos,lx=P.x-SO.x,lz=P.z-SO.z,back=Math.abs(lz)>9.2;if(!back)return null;if(Math.abs(lx+30)<2.3)return'exit';if(Math.abs(lx-30)<2.3)return'cross';return null;};
-function subUse(){const z=subZone();if(!z)return false;$('fade').style.opacity=1;
+function subUse(){if(subAtEdge()){subClimb();return true;}const z=subZone();if(!z)return false;$('fade').style.opacity=1;
   setTimeout(()=>{if(!SUBWAY)return;if(z==='exit'){leaveSubway();}else{const P=player,s=P.pos.z<SO.z?1:-1;P.pos.set(SO.x+30,SY,SO.z+s*9.4);yaw=s>0?Math.PI:0;P.h=yaw;}$('fade').style.opacity=0;},300);return true;}
-function subHint(){if(!SUBWAY)return null;const z=subZone();if(z==='exit')return`Press <b>E</b> to go up to the street in <b>${SUB_LINE[SUBWAY.city]}</b>.`;
+function subHint(){if(!SUBWAY)return null;if(subAtEdge())return`Press <b>E</b> or jump to climb up onto <b>Platform ${player.pos.z<SO.z?1:2}</b>.`;if(subOnTracks())return'You’re on the tracks. Watch out for trains!';const z=subZone();if(z==='exit')return`Press <b>E</b> to go up to the street in <b>${SUB_LINE[SUBWAY.city]}</b>.`;
   if(z==='cross')return`Press <b>E</b> to go across to <b>Platform ${player.pos.z<SO.z?2:1}</b>.`;
   for(const tr of SUBT){if(tr.riding)return tr.phase==='ride'?`On the train to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>…`:'';
     if(tr.phase==='dwell'&&tr.opened&&Math.abs(player.pos.z-(SO.z+tr.tz))<4)return subInTrain(tr)?`Stay on board to ride to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>. The doors close soon.`:`Walk in through the open doors to ride to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>.`;}
@@ -3562,8 +3620,12 @@ const NET=(()=>{
   const nameOf=id=>{const m=roster.find(r=>r.id===id);return m?m.n:'Someone';};
 
   // ---------- who's on ----------
-  function readRoster(){const st=who?who.presenceState():{},out=[];for(const k in st){const m=st[k]&&st[k][0];if(m&&typeof m.id==='string')out.push({id:m.id,n:String(m.n||'Player').replace(/[<>&"]/g,'').slice(0,16),j:+m.j||0,l:String(m.l||'')});}
-    if(api.on&&!out.some(m=>m.id===myId))out.push({id:myId,n:api.name,j:joinT,l:PROF.look});return out.sort((a,b)=>a.j-b.j||(a.id<b.id?-1:1));}
+  function readRoster(){const st=who?who.presenceState():{},out=[];for(const k in st){const m=st[k]&&st[k][0];if(m&&typeof m.id==='string')out.push({id:m.id,n:String(m.n||'Player').replace(/[<>&"]/g,'').slice(0,16),j:+m.j||0,l:String(m.l||''),v:String(m.v||'')});}
+    if(api.on&&!out.some(m=>m.id===myId))out.push({id:myId,n:api.name,j:joinT,l:PROF.look,v:VERSION});
+    // 1.9.2: only the latest version plays online. Someone on a newer version means this game is out of date; anyone on
+    // an older version (or one from before 1.9.2, which doesn't say) is left out, so they can't be seen or be the host.
+    const newer=out.find(m=>m.id!==myId&&verNewer(m.v,VERSION));if(newer&&api.on)setTimeout(()=>api.outdated(newer.v),0);
+    return out.filter(m=>m.id===myId||!verNewer(VERSION,m.v)).sort((a,b)=>a.j-b.j||(a.id<b.id?-1:1));}
   function onPresence(){
     const before=new Set(roster.map(m=>m.id));roster=readRoster();const here=new Set(roster.map(m=>m.id));
     if(!api.on)return;
@@ -3673,15 +3735,16 @@ const NET=(()=>{
     who=chan(BASE+'-who',true);who.on('presence',{event:'sync'},onPresence);
     main=chan(BASE+'-pub');listen(main,'s',m=>{if(num(m.ts)&&hostId!==myId)syncClock(m.ts);if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'pm',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.m==='string')gotPm(m.f,nameOf(m.f),m.m.slice(0,200));});listen(main,'c',m=>{if(api.on&&typeof m.m==='string'&&m.f!==myId)chatLine(nameOf(m.f),m.m.slice(0,140),false);});
     pipe=chan(BASE+'-p-'+myId);
-    try{await Promise.all([joinChan(who,st=>{if(st==='SUBSCRIBED'&&api.on)who.track({id:myId,n:api.name,j:joinT,l:PROF.look}).catch(()=>{});}),joinChan(main),joinChan(pipe)]);}
+    try{await Promise.all([joinChan(who,st=>{if(st==='SUBSCRIBED'&&api.on)who.track({id:myId,n:api.name,j:joinT,l:PROF.look,v:VERSION}).catch(()=>{});}),joinChan(main),joinChan(pipe)]);}
     catch(e){api.leave();throw e;}
     const others=readRoster().filter(m=>m.id!==myId);if(others.length>=MAX_PLAYERS){api.leave();throw 'full';}
-    joinT=Date.now();api.on=true;hostId=null;roster=[];await who.track({id:myId,n:api.name,j:joinT,l:PROF.look});
+    joinT=Date.now();api.on=true;hostId=null;roster=[];await who.track({id:myId,n:api.name,j:joinT,l:PROF.look,v:VERSION});
     for(let k=0;k<20&&!readRoster().some(m=>m.id===myId&&who.presenceState()[myId]);k++)await new Promise(r=>setTimeout(r,100));
     onPresence();return readRoster().length;};
   api.leave=()=>{if(player&&player.ride)unride(true);api.on=false;WEATHER.t=rand(60,150);clockSet=false;clockOff=0;const chs=[who,main,pipe,...pipes.values()];who=main=pipe=null;pipes.clear();ups.clear();changed.clear();for(const id of[...avatars.keys()])removeAvatar(id);hostId=null;roster=[];
     try{chs[0]&&chs[0].untrack().catch(()=>{});}catch(e){}setTimeout(()=>chs.forEach(drop),300);};
   api.count=()=>roster.length;
+  api.outdated=v=>{if(!api.on)return;outdatedTo=v;if(state==='menu'){api.leave();return;}$('bQuit').click();notifyMenu(`A new version of Free Criminal (v${v}) is out. Refresh the page to update; online only lets in the latest version.`);};
   // 1.8.4: the Tab list: everyone online, you first
   api.players=()=>roster.map(r=>{const a=avatars.get(r.id),me=r.id===myId,last=a&&a.buf.length?a.buf[a.buf.length-1].s:null;
     return{n:me?api.name:r.n,me,host:r.id===hostId,st:me?(player.dead||state==='dead'?'Down':player.ride?'Passenger':player.inCar?'Driving':'On foot'):!last?'Joining…':last[9]?'Down':last[12]?'Passenger':last[6]?'Driving':'On foot',d:me||!a?null:Math.round(a.pos.distanceTo(player.inCar?player.inCar.pos:player.pos))};}).sort((a,b)=>b.me-a.me);
@@ -3740,10 +3803,21 @@ const NET=(()=>{
   return api;
 })();
 // Play online: straight into the shared city (no prison cutscene), next to the hospital
+// 1.9.2: online only lets in the latest version. Before joining, read the version that's live on the site; while you're
+// online, check again every 2 minutes, and if a newer one is out, back to the menu to refresh.
+const verNewer=(a,b)=>{const x=String(a||'0').split('.').map(Number),y=String(b||'0').split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d>0;}return false;};
+let outdatedTo=null;
+const LIVE_URL=new URLSearchParams(location.search).get('vcheck')||'https://noah-and-lars.github.io/projects/free-criminal/index.html';
+function liveVersion(){return fetch(LIVE_URL+(LIVE_URL.includes('?')?'&':'?')+'vc='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=/const VERSION='([\d.]+)'/.exec(t);return m?m[1]:null;}).catch(()=>null);}
+setInterval(()=>{if(!NET.on)return;liveVersion().then(v=>{if(v&&verNewer(v,VERSION)&&NET.on)NET.outdated(v);});},120000);
 async function playOnline(){
-  if(state!=='menu')return;initAudio();if(RADIO.st===MENU_ST)radioOff();hidePanels();
+  if(state!=='menu')return;
+  if(outdatedTo){notifyMenu(`A new version of Free Criminal (v${outdatedTo}) is out. Refresh the page to update; online only lets in the latest version.`);return;}
+  {const b=$('bOnline');b.disabled=true;b.textContent='Checking version…';const v=await liveVersion();b.disabled=false;b.textContent='Play online';
+    if(v&&verNewer(v,VERSION)){outdatedTo=v;notifyMenu(`A new version of Free Criminal (v${v}) is out. Refresh the page to update; online only lets in the latest version.`);return;}}initAudio();if(RADIO.st===MENU_ST)radioOff();hidePanels();
   const b=$('bOnline');b.disabled=true;b.textContent='Connecting…';
   try{await NET.join();}catch(e){b.disabled=false;b.textContent='Play online';notifyMenu(e==='full'?'The online city is full right now (16 players). Try again soon.':'Couldn’t connect to the online city. Check your internet and try again.');return;}
+  await new Promise(r=>setTimeout(r,0));if(outdatedTo){if(NET.on)NET.leave();b.disabled=false;b.textContent='Play online';notifyMenu(`A new version of Free Criminal (v${outdatedTo}) is out. Refresh the page to update; online only lets in the latest version.`);return;} // 1.9.2
   b.disabled=false;b.textContent='Play online';
   newGame();loadGame();setPlayerLook();$('menu').hidden=true;lockPointer();
   const P=player,x=SPAWN.hosp.x+rand(-6,6),z=SPAWN.hosp.z+rand(-6,6);P.pos.set(x,groundY(x,z),z);P.h=SPAWN.hosp.h||0;P.m.group.rotation.set(0,P.h,0);P.m.group.visible=!P.fp;yaw=P.h;pitch=-0.08;
