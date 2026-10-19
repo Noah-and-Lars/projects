@@ -60,18 +60,13 @@
   </form>
 </div>
 
-<footer class="foot">
-  <p>Found a bug, or the chat won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
-</footer>
-
-<script src="games.js?v=84"></script>
+<script src="games.js?v=86"></script>
 <script>
 // Global chat: everyone on this page talks in one Supabase Realtime channel (arcade-chat).
 // Nothing is stored on a server. Each browser keeps the last KEEP messages in its own localStorage,
 // and when someone arrives, whoever has been in the chat longest sends them the recent ones.
 // ?chatroom=<name> uses a separate test channel and history, so tests never reach the real chat.
 const $ = id => document.getElementById(id);
-fillContact('Problem with the chat');
 
 const ROOM = (new URLSearchParams(location.search).get('chatroom') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
 const CHANNEL = ROOM ? 'arcade-chat-test-' + ROOM : 'arcade-chat';

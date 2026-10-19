@@ -69,8 +69,7 @@ source in Settings → Pages should be switched to `main`.
   connects itself when opened on its own. The free plan allows 200 connections,
   so counts show as "200+" when full. If Supabase can't be reached, counters
   stay hidden. Nothing is stored; the publishable key is meant to be public.
-- The footer of every page shows a contact email for bug reports. It's set once
-  in `games.js` (`CONTACT_EMAIL`).
+- The site shows no email or contact details anywhere (the owner removed them).
 - One folder per game, each with a self-contained `index.html` and a `thumb.svg`
   cover (16:9).
 

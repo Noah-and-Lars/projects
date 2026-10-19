@@ -59,11 +59,7 @@
   <section id="more" class="grid small"></section>
 </main>
 
-<footer class="foot">
-  <p>Found a bug, or the game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
-</footer>
-
-<script src="games.js?v=85"></script>
+<script src="games.js?v=86"></script>
 <script>
 const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('game');
@@ -78,7 +74,6 @@ if (!game) {
   ArcadeOnline.start(game.id);
   document.title = game.title + " · The Arcade";
   $('title').textContent = game.title;
-  fillContact('Problem with ' + game.title);
 
   // Your best, kept up to date while you play (the game saves it from inside the frame)
   const showBest = () => {

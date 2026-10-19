@@ -1,14 +1,3 @@
-// Where bug reports go. Split up so simple spam bots scanning the page don't pick it up.
-window.CONTACT_EMAIL = ['jimmyscafe1000', 'gmail.com'].join('@');
-
-// Fills in any "Email us" link on the page, with an optional subject line
-window.fillContact = (subject) => {
-  for (const a of document.querySelectorAll('.contact')) {
-    a.textContent = CONTACT_EMAIL;
-    a.href = 'mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent(subject || "The Arcade");
-  }
-};
-
 // Reads something a game saved in this browser. Returns null if it isn't there or storage is blocked.
 function readSave(key, json) {
   try {
