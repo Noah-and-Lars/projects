@@ -664,7 +664,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <button class="uiCard" data-action="settings" data-art="settings" style="--ac:#60a5fa"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Graphics · controls · sound</em><b>Settings</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v2.9.2 · What's new</button>
+    <button class="link verLink" data-action="notes">v2.9.3 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -690,10 +690,11 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.2<span>New look, new sound</span></h1><p>A new main menu with a cinematic helicopter background, a Play screen for Campaign, Singleplayer, Multiplayer and Missions, a heavy new war soundtrack and iPad mode.</p>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.3<span>Dust II</span></h1><p>A new main menu with a cinematic helicopter background, a Play screen for Campaign, Singleplayer, Multiplayer and Missions, a heavy new war soundtrack and iPad mode.</p>
       <div class="hero-guns"><i class="hcube" style="background:#3a4a3a">🚁</i><i class="hcube" style="background:#6f5a2c">🎮</i><i class="hcube" style="background:#3a3f46">🥁</i><i class="hcube" style="background:#2c4a6f">📱</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
+      <div><i>🏜️</i><span><b>New map: Dust II</b>The classic desert map in multiplayer, for Team Deathmatch, Free-for-all and C:S Mode: long, mid, short, catwalk, the B tunnels and both bomb sites.</span></div>
       <div><i>🚁</i><span><b>Cinematic menu</b>A formation of helicopters flies over the village behind the main menu: the chase ship, the door gunner, the pilot, the man on the skid and the squad in the back.</span></div>
       <div><i>🎮</i><span><b>New menus</b>A big Play button with Shop and Settings under it, each with a picture from the game fading in behind it.</span></div>
       <div><i>🗺️</i><span><b>Play screen</b>Campaign (coming in 3.0), Singleplayer, Multiplayer and Missions, each with its own picture.</span></div>
@@ -704,6 +705,11 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.3 <span>Dust II</span></h3><ul>
+        <li>New multiplayer map: <b>Dust II</b>, for Team Deathmatch, Free-for-all and C:S Mode. Terrorists start at T spawn in the south, Counter-Terrorists at CT spawn in the north.</li>
+        <li>Everything is where it should be: long doors, long A and pit, the A car and the blue dumpster, A site with goose and A default, short and its stairs, catwalk above mid, mid doors, xbox, lower and upper B tunnels, B site with B doors, B car and back of B, outside tunnels, T ramp and outside long with its domed building.</li>
+        <li>C:S Mode: the bombs plant on A site and B site, just like the real thing.</li>
+      </ul></section>
       <section><h3>v2.9.2 <span>Cinematic menu</span></h3><ul>
         <li>Multiplayer now checks that you're on the latest version of the game. If a newer version is out, it asks you to refresh the page to update before you can create or join a match, so everyone online plays the same game.</li>
         <li>The main menu's background is now a cinematic: a formation of helicopters flying over the village, with shots from a chase ship, the door gunner, the pilot, the man on the skid and the squad in the back. On Ultra graphics the far background softens into a haze.</li>
@@ -2743,6 +2749,257 @@ function buildOutpost() {
   }
 }
 // ===== END CS MAP =====
+// ===== DUST II MAP (2.9.3) =====
+// Dust II for multiplayer: Team Deathmatch, Free-for-all and C:S Mode. The layout is traced from the classic overhead map
+// at 0.15 m a pixel: T spawn at the bottom (south), CT spawn at the top (north), A site top right, B site top left.
+// DUST_SOLID are the buildings and walls (pixel corners plus a height), DUST_TUN the roofed tunnels (upper and lower B),
+// DUST_ROCK the rock pile between B and CT, DUST_OPEN the walkable grid (5 px a cell) used to put windows on the walls.
+const DUST_SHOT = [[36, 11, 8], [18, 0, -26]]; // a camera spot and where it looks, for the lobby picture
+const DUST_SOLID=[[0,0,590,15,6.5],[0,15,35,60,6.5],[85,15,590,35,6.5],[85,35,445,40,6.5],[535,35,590,135,6.5],[95,40,445,55,6.5],[150,55,445,60,6.5],[0,60,20,590,6.5],[25,60,35,65,6.5],[190,60,445,65,6.5],[200,65,445,70,6.5],[215,70,350,75,6.5],[385,70,390,75,6.5],[20,75,35,90,6.5],[215,75,265,80,6.5],[285,75,350,80,6.5],[220,80,255,85,6.5],[20,90,30,110,6.5],[30,100,35,110,6.5],[20,120,25,590,6.5],[540,135,590,140,6.5],[565,140,590,590,6.5],[560,150,565,305,6.5],[555,180,560,185,6.5],[145,185,235,240,7],[395,185,475,280,6.5],[555,190,560,195,6.5],[25,215,50,275,6.5],[70,215,85,255,7],[535,215,560,300,6.5],[85,240,160,255,7],[185,270,235,285,7.5],[390,270,395,280,6.5],[25,275,30,525,6.5],[315,275,390,285,6.5],[190,285,235,325,7.5],[315,285,385,290,6.5],[315,290,380,365,6.5],[185,295,190,460,7.5],[180,300,185,460,7.5],[540,300,560,305,6.5],[30,305,90,340,6.5],[110,305,180,340,7.5],[90,315,95,335,6.5],[190,325,225,370,7.5],[30,340,65,350,6.5],[135,340,180,345,7.5],[140,345,180,355,7.5],[30,350,60,355,6.5],[225,350,230,365,7.5],[30,355,45,360,6.5],[50,355,55,360,6.5],[145,355,155,360,7.5],[160,355,180,460,7.5],[30,360,40,525,6.5],[190,370,220,460,7.5],[490,405,565,590,6.5],[220,415,225,515,7.5],[225,420,230,515,7.5],[230,425,240,515,7.5],[155,430,160,470,7.5],[240,430,245,515,7.5],[430,430,490,590,6.5],[145,445,155,470,7.5],[140,450,145,465,7.5],[160,460,165,465,7.5],[200,460,220,515,7.5],[385,500,430,590,6.5],[380,505,385,590,6.5],[25,585,380,590,6.5]];
+const DUST_TUN=[[50,203,68,273],[32,273,182,307],[50,255,100,273],[68,257,160,280],[160,240,242,268],[157,268,187,300],[93,307,110,342]];
+const DUST_ROCK=[[150,60,190,90],[190,65,200,90],[200,70,215,105],[265,75,285,105],[215,80,220,105],[255,80,265,105],[220,85,255,105]];
+const DUST_OPEN=["0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","0000000111111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","0000000111111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","0000000111111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","0000000111111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","0000000111111111100000000000000000000000000000000000000000000000000000000000000000000000011111111111111111100000000000","0000000111111111111000000000000000000000000000000000000000000000000000000000000000000000011111111111111111100000000000","0000000111111111111000000000000000000000000000000000000000000000000000000000000000000000011111111111111111100000000000","0000000111111111111000000000000000000000000000000000000000000000000000000000000000000000011111111111111111100000000000","0000000111111111111111111111110000000000000000000000000000000000000000000000000000000000011111111111111111100000000000","0000100111111111111111111111110000000000000000000000000000000000000000000000000000000000011111111111111111100000000000","0000111111111111111111111111110000000000000000000000000000000000000000000000000000000000011111111111111111100000000000","0000111111111111111111111111110000000000000000000000000000000000000000111111101111111111111111111111111111100000000000","0000000111111111111111111111110000000000000000000000000000000000000000111111111111111111111111111111111111100000000000","0000000111111111111111111111110000000000000000000000000001111111111111111111111111111111111111111111111111100000000000","0000000111111111111111111111110000000000000000000000000001111111111111111111111111111111111111111111111111100000000000","0000001111111111111111111111111111111111000000000000000001111111111111111111111111111111111111111111111111100000000000","0000001111111111111111111111111111111111000000000000000001111111111111111111111111111111111111111111111111100000000000","0000000111111111111111111111111111111111000000000000000001111111111111111111111111111111111111111111111111100000000000","0000000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000","0000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000","0000111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111000000","0000011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110000000","0000011111111111111111111111100000000000000000011111111111111111111111111111111000000000000000011111111111111111000000","0000011111111111111111111111100000000000000000011111111111111111111111111111111000000000000000011111111111111110000000","0000011111111111111111111111100000000000000000011111111111111111111111111111111000000000000000011111111111111111000000","0000011111111111111111111111100000000000000000011111111111111111111111111111111000000000000000011111111111111111000000","0000011111111111111111111111100000000000000000011111111111111111111111111111111000000000000000011111111111111111000000","0000011111111111111111111111100000000000000000011111111111111111111111111111111000000000000000011111111111111111000000","0000000000111100011111111111100000000000000000011111111111111111111111111111111000000000000000011111111111100000000000","0000000000111100011111111111100000000000000000011111111111111111111111111111111000000000000000011111111111100000000000","0000000000111100011111111111100000000000000000011111111111111111111111111111111000000000000000011111111111100000000000","0000000000111100011111111111100000000000000000011111111111111111111111111111111000000000000000011111111111100000000000","0000000000111100011111111111100000000000000000011111111111111111111111111111111000000000000000011111111111100000000000","0000000000111100000000000000000011111111111111111111111111111111111111111111111000000000000000011111111111100000000000","0000000000111100000000000000000011111111111111111111111111111111111111111111111000000000000000011111111111100000000000","0000000000111100000000000000000011111111111111111111111111111111111111111111111000000000000000011111111111100000000000","0000000000111111111111111111111111111111111111111111111111111111111111111111111000000000000000011111111111100000000000","0000000000111111111111111111111111111111111111111111111111111111111111111111111000000000000000011111111111100000000000","0000000000111111111111111111111111111111111111111111111111111111111111111111111000000000000000011111111111100000000000","0000000000111111111111111111111111111000000000011111111111111111111111111111110000000000000000011111111111100000000000","0000001111111111111111111111111111111000000000011111111111111110000000000000000000000000000000011111111111100000000000","0000001111111111111111111111111111111000000000011111111111111110000000000000001111111111111111111111111111100000000000","0000001111111111111111111111111111111100000000011111111111111110000000000000011111111111111111111111111111100000000000","0000001111111111111111111111111111111100000000011111111111111110000000000000111111111111111111111111111111100000000000","0000001111111111111111111111111111111000000000011111111111111110000000000000111111111111111111111111111111100000000000","0000001111111111111111111111111111110000000000011111111111111110000000000000111111111111111111111111111111110000000000","0000000000000000001111000000000000000000000000011111111111111110000000000000111111111111111111111111111111111111100000","0000000000000000001111000000000000000000000000011111111111111110000000000000111111111111111111111111111111111111100000","0000000000000000000111000000000000000000000000011111111111111110000000000000111111111111111111111111111111111111100000","0000000000000000000111000000000000000000000000011111111111111110000000000000111111111111111111111111111111111111100000","0000000000000000000111000000000000000000000001111111111111111110000000000000111111111111111111111111111111111111100000","0000000000000000000111000000000000000000000001111111111111111110000000000000111111111111111111111111111111111111100000","0000000000000000001111000000000000000000000001111111111111111110000000000000111111111111111111111111111111111111100000","0000000000000111111111111110000000000000000001111111111111111110000000000000111111111111111111111111111111111111100000","0000000000000111111111111111000000000000000001111111111111111110000000000000111111111111111111111111111111111111100000","0000000000001111111111111111000000000000000000111111111111111110000000000000111111111111111111111111111111111111100000","0000000001011111111111111111100100000000000000111111111111111110000000000000111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000000111111111111111110000000000000111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000001111111111111111111111111111111111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111111111111111111100000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111100000000000000000000","0000000011111111111111111111111100000000000011111111111111111111111111111111111111111111111111111100000000000000000000","0000000011111111111111111111111100000000000001111111111111111111111111111111111111111111111111111100000000000000000000","0000000011111111111111111111111100000000000000111111111111111111111111111111111111111111111111111100000000000000000000","0000000011111111111111111111111100000000000000001111111111111111111111111111111111111111111111111100000000000000000000","0000000011111111111111111111111000000000000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111000000000000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111000000000000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111100000000000000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111000000000000000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111000000000000000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111000001111111000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111100011111111000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111111111111100000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111100000000000000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111000000000000000000000000000000000000000000","0000000011111111111111111111111111111111000000000111111111111111111111111111000000000000000000000000000000000000000000","0000000011111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000000011111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000011111111111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000","0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"];
+function buildDust2() {
+  const root = new THREE.Group();
+  sceneAdd(root);
+  const keepSeed = seed;
+  seed = 2002;
+  const A = 45;
+  ARENA = A;
+  boxes.length = solids.length = noGrass.length = houseRects.length = 0;
+  scene.add = (...o) => { root.add(...o); return scene; };
+  try {
+    const K = 0.15, P = p => (p - 295) * K;
+    // a box from pixel corners: x0, y0 (top left) to x1, y1
+    const R = (x0, y0, x1, y1) => ({ x: (P(x0) + P(x1)) / 2, z: (P(y0) + P(y1)) / 2, w: (x1 - x0) * K, d: (y1 - y0) * K });
+    // textures: sun-baked mud brick, white plaster, stone tiles, sand
+    const brickC = makeCanvas(256, (g, S) => {
+      g.fillStyle = '#d9c39a'; g.fillRect(0, 0, S, S);
+      for (let i = 0; i < 2200; i++) { const v = rand(); g.fillStyle = v < 0.5 ? 'rgba(150,118,76,.18)' : 'rgba(246,232,202,.22)'; g.fillRect(rand() * S, rand() * S, 1 + rand() * 4, 1 + rand() * 3); }
+      g.strokeStyle = 'rgba(120,92,58,.35)'; g.lineWidth = 2;
+      for (let y = 0; y < S; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(S, y); g.stroke(); for (let x = (y / 32 % 2) * 32; x < S; x += 64) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 32); g.stroke(); } }
+      for (let i = 0; i < 6; i++) { g.strokeStyle = 'rgba(110,84,52,.3)'; g.beginPath(); let x = rand() * S, y = rand() * S; g.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (rand() - .5) * 30; y += rand() * 22; g.lineTo(x, y); } g.stroke(); }
+    });
+    const plasterC = makeCanvas(256, (g, S) => {
+      g.fillStyle = '#ece6d8'; g.fillRect(0, 0, S, S);
+      for (let i = 0; i < 1800; i++) { const v = rand(); g.fillStyle = v < 0.5 ? 'rgba(170,150,120,.14)' : 'rgba(255,255,255,.25)'; g.fillRect(rand() * S, rand() * S, 2 + rand() * 6, 2 + rand() * 6); }
+      for (let i = 0; i < 5; i++) { g.fillStyle = 'rgba(196,170,128,.35)'; g.fillRect(rand() * S, rand() * S, 20 + rand() * 40, 10 + rand() * 30); } // patches where the plaster has fallen off
+    });
+    const tileC = makeCanvas(256, (g, S) => {
+      g.fillStyle = '#b7b2a6'; g.fillRect(0, 0, S, S);
+      for (let y = 0; y < S; y += 32) for (let x = 0; x < S; x += 32) { const v = 0.85 + rand() * 0.25; g.fillStyle = `rgb(${183 * v | 0},${178 * v | 0},${166 * v | 0})`; g.fillRect(x + 1, y + 1, 30, 30); }
+      g.fillStyle = 'rgba(90,84,74,.5)'; for (let i = 0; i <= S; i += 32) { g.fillRect(i, 0, 2, S); g.fillRect(0, i, S, 2); }
+    });
+    const sandC = makeCanvas(256, (g, S) => {
+      g.fillStyle = '#d2b986'; g.fillRect(0, 0, S, S);
+      for (let i = 0; i < 3200; i++) { const v = rand(); g.fillStyle = v < 0.5 ? 'rgba(150,120,80,.25)' : 'rgba(240,224,190,.3)'; g.fillRect(rand() * S, rand() * S, 2 + rand() * 3, 2 + rand() * 3); }
+      for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(120,100,70,.35)'; g.beginPath(); g.arc(rand() * S, rand() * S, 1 + rand() * 2, 0, 7); g.fill(); }
+    });
+    const mk = (c, col) => { const t = tex(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return new THREE.MeshLambertMaterial({ map: t, color: col || 0xffffff }); };
+    const brick = mk(brickC), brickD = mk(brickC, 0xd8c8b0), white = mk(plasterC), tile = mk(tileC), roofTop = lambert(0xb89b6c), roofW = lambert(0xd9d3c4);
+    const wood = lambert(0x6b4a2c), woodD = lambert(0x4a321e), blueDoor = lambert(0x3d6f8f), dark = lambert(0x2a221a);
+
+    // a box whose texture keeps the same size on every face (3 m a tile), whatever the box's size
+    function tbox(x, z, w, h, d, mats, o = {}) {
+      const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+      for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i; uv.setXY(k, uv.getX(k) * dims[f][0] / 3, uv.getY(k) * dims[f][1] / 3); }
+      const m = new THREE.Mesh(g, mats);
+      const y = o.y || 0;
+      m.position.set(x, y + h / 2, z); m.castShadow = o.shadow !== false; m.receiveShadow = true;
+      scene.add(m);
+      if (o.solid !== false) solids.push(m);
+      if (o.collide !== false && y === 0) { m.userData.box = { x, z, hx: w / 2, hz: d / 2, h }; boxes.push(m.userData.box); }
+      return m;
+    }
+    const sideTop = (side, top) => [side, side, top, side, side, side];
+    const wallPx = (x0, y0, x1, y1, h, mat) => { const r = R(x0, y0, x1, y1); return tbox(r.x, r.z, r.w, h, r.d, sideTop(mat || brick, roofTop)); };
+
+    // the ground: sand everywhere, stone tiles on A, short, catwalk and back of B
+    const sandT = tex(sandC, 110, 110); sandT.wrapS = sandT.wrapT = THREE.RepeatWrapping;
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), new THREE.MeshLambertMaterial({ map: sandT, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = 0.02; ground.receiveShadow = true; scene.add(ground);
+    noGrass.push({ x: 0, z: 0, hx: A + 3, hz: A + 3 });
+    const floorPx = (x0, y0, x1, y1, mat, lift) => {
+      const r = R(x0, y0, x1, y1), t = mat.map.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(r.w / 3, r.d / 3);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.d), new THREE.MeshLambertMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -2 - (lift || 0), polygonOffsetUnits: -2 - (lift || 0) }));
+      m.rotation.x = -Math.PI / 2; m.position.set(r.x, 0.03, r.z); m.receiveShadow = true; scene.add(m);
+    };
+    floorPx(352, 75, 488, 130, tile); floorPx(352, 130, 396, 208, tile);   // A site and the way up from short
+    floorPx(30, 58, 92, 122, tile, 1);                                     // back of B
+    floorPx(150, 105, 285, 182, tile, 1);                                  // the paved yard outside B doors
+
+    // ---- the buildings and walls, traced from the map ----
+    // the A side and CT spawn are white-washed; the T side and B are mud brick
+    for (const [x0, y0, x1, y1, h] of DUST_SOLID) {
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, whiteSide = cx > 300 && cy < 300;
+      wallPx(x0, y0, x1, y1, h, whiteSide ? white : brick);
+    }
+    // windows, shutters and the odd balcony on the long walls that face the streets
+    const OPEN = (px, py) => { const gx = Math.floor(px / 5), gy = Math.floor(py / 5); return gy >= 0 && gy < DUST_OPEN.length && gx >= 0 && gx < DUST_OPEN.length && DUST_OPEN[gy][gx] === '1'; };
+    const glass = new THREE.MeshLambertMaterial({ color: 0x2a2f33, emissive: 0x0c0e10 }), deco = { collide: false, solid: false, shadow: false };
+    for (const [x0, y0, x1, y1, h] of DUST_SOLID) {
+      if (h < 6) continue;
+      const faces = [[x0, y0, x1, y0, 0, -1], [x0, y1, x1, y1, 0, 1], [x0, y0, x0, y1, -1, 0], [x1, y0, x1, y1, 1, 0]];
+      for (const [ax, ay, bx, by, nx, ny] of faces) {
+        const len = Math.hypot(bx - ax, by - ay) * K; if (len < 5) continue;
+        const n = Math.floor(len / 4.5);
+        for (let i = 0; i < n; i++) {
+          const t = (i + 0.5) / n, px = ax + (bx - ax) * t, py = ay + (by - ay) * t;
+          if (!OPEN(px + nx * 6, py + ny * 6) || !OPEN(px + nx * 6 + (bx - ax ? 4 : 0), py + ny * 6 + (by - ay ? 4 : 0))) continue;
+          if (rand() < 0.45) continue;
+          const wx = P(px) + nx * 0.03, wz = P(py) + ny * 0.03, along = nx === 0, wy = h > 7 ? 4.4 : 3.6;
+          addBox(wx, wz, along ? 1.1 : 0.06, 1.3, along ? 0.06 : 1.1, 0, { mat: glass, y: wy, ...deco });
+          addBox(wx + nx * 0.04, wz + ny * 0.04, along ? 1.35 : 0.08, 0.12, along ? 0.08 : 1.35, 0, { mat: wood, y: wy - 0.12, ...deco });
+          if (rand() < 0.5) for (const s of [-1, 1]) addBox(wx + nx * 0.05 + (along ? s * 0.85 : 0), wz + ny * 0.05 + (along ? 0 : s * 0.85), along ? 0.55 : 0.07, 1.3, along ? 0.07 : 0.55, 0, { mat: s < 0 ? blueDoor : woodD, y: wy, ...deco });
+          if (h >= 7.5 && rand() < 0.25) addBox(wx + nx * 0.5, wz + ny * 0.5, along ? 1.8 : 1, 0.12, along ? 1 : 1.8, 0, { mat: wood, y: wy - 0.25, ...deco }); // a little balcony
+        }
+      }
+    }
+
+    // ---- the walls with doors that the overhead map draws as lines ----
+    const lintel = (x0, y0, x1, y1, top) => { const r = R(x0, y0, x1, y1); tbox(r.x, r.z, r.w, top - 3.2, r.d, sideTop(brick, roofTop), { y: 3.2, collide: false }); };
+    // a wooden door leaf, swung open, hinged at (hx, hz)
+    const leaf = (hx, hz, w, ang, mat) => { const g = new THREE.Mesh(new THREE.BoxGeometry(w, 2.9, 0.1), mat); g.geometry.translate(w / 2, 1.45, 0); g.position.set(hx, 0.02, hz); g.rotation.y = ang; g.castShadow = true; scene.add(g);
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.08, 0.12), woodD); fr.geometry.translate(w / 2, 2.5, 0); fr.position.copy(g.position); fr.rotation.y = ang; scene.add(fr); };
+    // B doors: the double doors from B site out to the yard
+    wallPx(143, 55, 150, 129, 5.5); wallPx(143, 159, 150, 183, 5.5); lintel(143, 129, 150, 159, 5.5);
+    leaf(P(146.5), P(129), 2.2, -Math.PI / 2 - 1.2, wood); leaf(P(146.5), P(159), 2.2, Math.PI / 2 + 1.2, wood);
+    // mid doors (the double doors between mid and CT)
+    wallPx(247, 226, 257, 232, 5.5); wallPx(280, 226, 290, 232, 5.5); lintel(257, 226, 280, 232, 5.5);
+    leaf(P(257), P(229), 1.7, -1.35, wood); leaf(P(280), P(229), 1.7, Math.PI + 1.35, wood);
+    // the wall between mid and lower B, with the tunnel's doorway
+    wallPx(236, 228, 247, 240, 5.5); wallPx(236, 262, 247, 322, 5.5); lintel(236, 240, 247, 262, 5.5);
+    // long doors: the big blue double doors between outside long and long, and the walls round the doors room
+    wallPx(380, 338, 386, 398, 5.5); wallPx(440, 344, 446, 404, 5.5);
+    wallPx(380, 398, 397, 404, 5.5); wallPx(427, 398, 446, 404, 5.5); lintel(397, 398, 427, 404, 5.5);
+    leaf(P(397), P(401), 2.2, -1.25, blueDoor); leaf(P(427), P(401), 2.2, Math.PI + 1.25, blueDoor);
+
+    // ---- catwalk and short: a raised stone walkway above mid, up to A ----
+    const stone = sideTop(lambert(0xb9ae97), tile);
+    const plat = (x0, y0, x1, y1, h) => { const r = R(x0, y0, x1, y1); return tbox(r.x, r.z, r.w, h, r.d, stone); };
+    plat(289, 236, 396, 270, 1.0);                       // short
+    plat(289, 270, 315, 345, 1.0);                       // catwalk
+    // steps up from top of mid onto catwalk, and down from short to A (0.2 m a step)
+    for (let i = 0; i < 4; i++) plat(289, 345 + i * 4, 315, 349 + i * 4, 0.8 - i * 0.2);
+    for (let i = 0; i < 4; i++) plat(352, 232 - i * 4, 396, 236 - i * 4, 0.8 - i * 0.2);
+    // the low walls along catwalk (towards mid) and along short (towards CT), and a rail post or two
+    wallPx(286, 250, 289, 338, 1.55, brickD); wallPx(289, 233, 352, 236, 1.6, brickD);
+
+    // ---- the rock pile between B and CT ----
+    const rockM = flat(0x9c8361), rockD = flat(0x7f6a4e);
+    for (const [x0, y0, x1, y1] of DUST_ROCK) { const r = R(x0, y0, x1, y1); addCollider(r.x, r.z, r.w, r.d, 4.5); }
+    for (let i = 0; i < 55; i++) {
+      const r = DUST_ROCK[i % DUST_ROCK.length], px = r[0] + rand() * (r[2] - r[0]), py = r[1] + rand() * (r[3] - r[1]), s = 0.8 + rand() * 1.9;
+      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rand() < 0.5 ? rockM : rockD);
+      m.position.set(P(px), s * 0.5 + rand() * 1.6, P(py)); m.rotation.set(rand() * 3, rand() * 3, rand() * 3); m.scale.y = 0.75; m.castShadow = m.receiveShadow = true; scene.add(m); solids.push(m);
+    }
+
+    // ---- the tunnels: roofs over upper and lower B, with lamps ----
+    const ceil = lambert(0x5a4632), beam = lambert(0x3e2c1c);
+    for (const [x0, y0, x1, y1] of DUST_TUN) { const r = R(x0, y0, x1, y1); tbox(r.x, r.z, r.w + 0.02, 0.5, r.d + 0.02, sideTop(ceil, roofTop), { y: 3.3, collide: false, shadow: true }); }
+    for (const [px, py] of [[95, 285], [140, 285], [200, 250], [105, 325], [75, 240]]) {
+      const l = new THREE.PointLight(0xffc27a, 0.9, 9); l.position.set(P(px), 2.9, P(py)); scene.add(l);
+      addBox(P(px), P(py), 0.25, 0.25, 0.25, 0, { mat: new THREE.MeshBasicMaterial({ color: 0xffd9a0 }), y: 3.0, collide: false, solid: false, shadow: false });
+    }
+
+    // ---- CT spawn: palms in round stone planters, and a fountain ----
+    const trunkM = lambert(0x7a5a3a), frondM = flat(0x4e7a32), frondD = flat(0x3d6328), planterM = lambert(0xcfc6b2);
+    const palm = (px, py, big) => {
+      const x = P(px), z = P(py), R0 = big ? 2.6 : 1.4;
+      const pl = new THREE.Mesh(new THREE.CylinderGeometry(R0, R0 + 0.1, 0.7, 8), planterM); pl.position.set(x, 0.35, z); pl.castShadow = pl.receiveShadow = true; scene.add(pl); solids.push(pl);
+      const soil = new THREE.Mesh(new THREE.CylinderGeometry(R0 - 0.15, R0 - 0.15, 0.05, 8), lambert(0x5a4330)); soil.position.set(x, 0.69, z); scene.add(soil);
+      addCollider(x, z, R0 * 1.6, R0 * 1.6, 0.7);
+      const n = big ? 3 : 1;
+      for (let k = 0; k < n; k++) {
+        const ox = n > 1 ? Math.cos(k * 2.1) * 1.1 : 0, oz = n > 1 ? Math.sin(k * 2.1) * 1.1 : 0, H = 5.5 + rand() * 2.5;
+        const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, H, 7), trunkM); tr.position.set(x + ox, 0.7 + H / 2, z + oz); tr.rotation.z = (rand() - .5) * 0.15; tr.castShadow = true; scene.add(tr); solids.push(tr);
+        for (let f = 0; f < 8; f++) {
+          const a = f / 8 * Math.PI * 2 + rand() * 0.3, fr = new THREE.Mesh(new THREE.ConeGeometry(0.45, 3.2, 4), f % 2 ? frondM : frondD);
+          fr.geometry.translate(0, 1.6, 0); fr.position.set(x + ox, 0.7 + H, z + oz); fr.rotation.set(Math.PI / 2 - 0.35 - rand() * 0.3, 0, 0); fr.rotation.y = a; fr.rotation.order = 'YXZ'; fr.scale.set(1, 1, 0.18); fr.castShadow = true; scene.add(fr);
+        }
+      }
+    };
+    palm(344, 92); palm(290, 129); palm(344, 180); palm(290, 190); palm(316, 212, true); palm(289, 222); palm(340, 222);
+
+    // ---- outside long: the domed building ----
+    {
+      const x = P(300), z = P(430), base = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 4.2, 8), white);
+      base.position.set(x, 2.1, z); base.rotation.y = Math.PI / 8; base.castShadow = base.receiveShadow = true; scene.add(base); solids.push(base);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(3.6, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), roofW); dome.position.set(x, 4.2, z); dome.castShadow = true; scene.add(dome); solids.push(dome);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.25, 1.2, 6), lambert(0xb08d3c)); tip.position.set(x, 8.3, z); scene.add(tip);
+      addCollider(x, z, 7.4, 7.4, 4.2);
+      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; addBox(x + Math.cos(a) * 4.22, z + Math.sin(a) * 4.22, 0.06, 1.0, 0.06, 0, { mat: glass, y: 2.4, ...deco }); }
+    }
+
+    // ---- props: crates, barrels, the cars, the blue dumpster ----
+    const cratePx = (px, py, st) => crate(P(px), P(py), st || 1);
+    const barrelPx = (px, py, c) => barrel(P(px), P(py), c || 0x5f7f46);
+    // A site: A default (the crates in the middle), goose, the barrels by long
+    cratePx(425, 105, 2); cratePx(432, 105); cratePx(425, 112); cratePx(470, 72, 2); cratePx(476, 72); cratePx(400, 140);
+    barrelPx(485, 128); barrelPx(485, 134, 0x2f5d8a); barrelPx(360, 82, 0x8a2f2f);
+    // B site: B default, the boxes at back of B (1st and 2nd), B car's boxes
+    cratePx(100, 105, 2); cratePx(107, 105); cratePx(100, 112); cratePx(46, 115); cratePx(46, 70, 2); cratePx(130, 40); cratePx(60, 180, 2);
+    barrelPx(125, 200); barrelPx(132, 205, 0x8a2f2f);
+    // mid: xbox, the crates at top of mid; long: crates by pit; T spawn and outside tunnels
+    cratePx(241, 333, 2); cratePx(262, 395); cratePx(512, 300); cratePx(530, 390, 2); cratePx(405, 470);
+    cratePx(235, 545, 2); cratePx(242, 545); cratePx(395, 560); cratePx(80, 370); cratePx(170, 440); barrelPx(65, 470); barrelPx(130, 368, 0x2f5d8a); barrelPx(330, 505);
+    // cars: an old sedan on long by A ramp (A car) and one by B car
+    const car = (px, py, ang, col) => {
+      const x = P(px), z = P(py), g = new THREE.Group(), body = lambert(col), win = new THREE.MeshLambertMaterial({ color: 0x24313a, emissive: 0x05080a });
+      const part = (w, h, d, y, zz, m) => { const p = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); p.position.set(0, y, zz); p.castShadow = p.receiveShadow = true; g.add(p); solids.push(p); return p; };
+      part(1.8, 0.65, 4.2, 0.65, 0, body); part(1.6, 0.55, 2.1, 1.25, -0.2, body); part(1.62, 0.4, 1.9, 1.27, -0.2, win);
+      for (const sx of [-0.85, 0.85]) for (const sz of [-1.3, 1.3]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.25, 12), dark); w.rotation.z = Math.PI / 2; w.position.set(sx, 0.34, sz); g.add(w); }
+      g.position.set(x, 0, z); g.rotation.y = ang; scene.add(g);
+      const c = Math.abs(Math.cos(ang)), s = Math.abs(Math.sin(ang)); addCollider(x, z, 1.8 * c + 4.2 * s, 1.8 * s + 4.2 * c, 1.5);
+    };
+    car(535, 175, 0.08, 0xe8e6df); car(75, 212, Math.PI / 2 + 0.1, 0x6d7f8c);
+    // the blue dumpster at long corner
+    { const x = P(470), z = P(368); addBox(x, z, 2.6, 1.4, 1.5, 0x2f5f9a); addBox(x, z, 2.7, 0.12, 1.6, 0x24497a, { y: 1.4, collide: false }); }
+
+    // ---- the site letters, painted on the walls and the ground ----
+    const letterTex = (L, col) => tex(makeCanvas(128, (g, S) => { g.clearRect(0, 0, S, S); g.fillStyle = col; g.font = '900 104px Barlow, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(L, S / 2, S / 2 + 6); }));
+    const sign = (L, x, z, rotY) => {
+      const bg = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), lambert(0xf2eee4)); bg.position.set(x, 3, z); bg.rotation.y = rotY; scene.add(bg);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), new THREE.MeshLambertMaterial({ map: letterTex(L, '#d0532b'), transparent: true, polygonOffset: true, polygonOffsetFactor: -2 })); m.position.set(x, 3, z); m.rotation.y = rotY; m.position.addScaledVector(new THREE.Vector3(Math.sin(rotY), 0, Math.cos(rotY)), 0.02); scene.add(m);
+    };
+    sign('B', P(150) + 0.05, P(110), Math.PI / 2);   // on B doors' wall, seen from the yard
+    sign('A', P(470), P(35) + 0.08, 0);               // on the wall at back of A
+    for (const [L, px, py] of [['A', 430, 100], ['B', 85, 95]]) {
+      const lm = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4.5), new THREE.MeshLambertMaterial({ map: letterTex(L, 'rgba(208,83,43,.8)'), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+      lm.rotation.x = -Math.PI / 2; lm.position.set(P(px), 0.05, P(py)); scene.add(lm);
+    }
+
+    // ---- beyond the walls: the rest of the town and the desert hills, so the skyline looks like Dust II ----
+    const far = { collide: false, solid: false };
+    for (let i = 0; i < 46; i++) {
+      const a = i / 46 * Math.PI * 2 + rand() * 0.06, d = 54 + rand() * 18, x = Math.cos(a) * d, z = Math.sin(a) * d, w = 6 + rand() * 10, dd = 6 + rand() * 10, h = 8 + rand() * 12;
+      tbox(x, z, w, h, dd, sideTop(rand() < 0.35 ? white : brick, roofTop), far);
+      if (rand() < 0.15) { const dm = new THREE.Mesh(new THREE.SphereGeometry(Math.min(w, dd) * 0.35, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), roofW); dm.position.set(x, h, z); scene.add(dm); }
+    }
+    { const x = -62, z = -58, mt = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.7, 26, 8), white); mt.position.set(x, 13, z); scene.add(mt);   // a minaret
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(1.9, 3.5, 8), roofW); cap.position.set(x, 27.7, z); scene.add(cap); }
+    const hillM = flat(0xc9ad7c);
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2, d = 120 + rand() * 40, hill = new THREE.Mesh(new THREE.ConeGeometry(30 + rand() * 25, 14 + rand() * 12, 7), hillM); hill.position.set(Math.cos(a) * d, 5, Math.sin(a) * d); hill.scale.y = 0.8; scene.add(hill); }
+
+    // spawn points: T at the bottom, CT at the top, and spread-out points for free-for-all
+    const pt = (px, py, yaw) => ({ x: P(px), z: P(py), yaw });
+    const spawns = {
+      red: [[255, 548], [285, 556], [315, 548], [345, 556], [375, 548]].map(([x, y]) => pt(x, y, 0)),
+      blue: [[305, 150], [327, 162], [305, 105], [325, 122], [268, 160]].map(([x, y]) => pt(x, y, Math.PI)),
+      ffa: [[95, 140], [59, 238], [215, 140], [265, 300], [110, 430], [150, 520], [330, 470], [470, 320], [520, 230], [440, 90], [330, 140], [400, 450]].map(([x, y]) => ({ x: P(x), z: P(y), yaw: Math.atan2(P(x), P(y)) })),
+    };
+    MAPS.dust2 = { root, arena: A, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(),
+      grass: dummyLayer(), flowers: dummyLayer(), moreGrass: dummyLayer(),
+      weather: { fog: 0xe9d7b0, top: 0x6f9fd8, ground: 0xd4bf93 }, noMountains: true, hideFloor: true,
+      id: 'dust2', name: 'Dust II', spawns, bounds: { minX: -A + 0.6, maxX: A - 0.6, minZ: -A + 0.6, maxZ: A - 0.6 },
+      // the bomb sites for C:S Mode
+      sites: { A: { x0: P(352), x1: P(490), z0: P(30), z1: P(165) }, B: { x0: P(25), x1: P(145), z0: P(12), z1: P(232) } } };
+  } finally {
+    delete scene.add;
+    seed = keepSeed;
+  }
+}
+// ===== END DUST II MAP =====
 
 let mountainRing = null;
 function useMap(id) {
@@ -2751,6 +3008,7 @@ function useMap(id) {
   if (id === 'c1' && !MAPS.c1) buildCampaign1();
   if (id === 'c3' && !MAPS.c3) buildCampaign3();
   if (id === 'outpost' && !MAPS.outpost) buildOutpost();
+  if (id === 'dust2' && !MAPS.dust2) buildDust2(); // 2.9.3
   const M = MAPS[id];
   // weather: grey snow for Russia, warm haze for Mumbai; the tower map has its own street level, so the shared floor hides
   floor.visible = !M.hideFloor;
@@ -8003,7 +8261,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.2';
+const VERSION = '2.9.3';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -8824,7 +9082,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
   const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
   const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0, O, 1, I or L
   const DEFAULTS = { mode: 'tdm', teamSize: 3, mapId: 'outpost', killLimit: 20, timeLimit: 10, friendlyFire: false, locked: false, winRounds: 5 };
-  const ALLOWED = { mode: ['tdm', 'ffa', 'coop', 'cs'], teamSize: [1, 2, 3], mapId: ['classic', 'big', 'outpost'], killLimit: [10, 20, 30], timeLimit: [5, 10, 15], friendlyFire: [false, true], locked: [false, true], winRounds: [3, 5, 8] };
+  const ALLOWED = { mode: ['tdm', 'ffa', 'coop', 'cs'], teamSize: [1, 2, 3], mapId: ['classic', 'big', 'outpost', 'dust2'], killLimit: [10, 20, 30], timeLimit: [5, 10, 15], friendlyFire: [false, true], locked: [false, true], winRounds: [3, 5, 8] };
   const SPAWNS = { red: [[-6, -30], [0, -31], [6, -30]], blue: [[6, 30], [0, 31], [-6, 30]], ffa: [[0, -30], [0, 30], [-30, 0], [30, 0], [-12, 12], [12, -12]] }; // Classic and Frontier, as in mp-ui
   const COLORS = { red: 0xdc2626, blue: 0x3b82f6, none: 0x9b7bd6 };
   const CS_COLORS = { red: 0xd97706, blue: 0x2563eb }; // C:S Mode: Terrorists are 'red' and Counter-Terrorists 'blue' underneath
@@ -9871,7 +10129,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
       if (!isHost() || match) return;
       const wasTeams = teamMode(room.settings.mode);
       for (const k in partial) if (ALLOWED[k] && ALLOWED[k].includes(partial[k])) room.settings[k] = partial[k];
-      if (room.settings.mode === 'cs') room.settings.mapId = 'outpost'; // the bomb sites are on the Outpost
+      if (room.settings.mode === 'cs' && room.settings.mapId !== 'dust2') room.settings.mapId = 'outpost'; // the bomb sites are on the Outpost (2.9.3: and Dust II)
       if (partial.mode && !teamMode(partial.mode)) for (const id of room.roster.keys()) room.roster.set(id, null);
       if (partial.mode && teamMode(partial.mode) && !wasTeams) this.autoBalance();
       sendState(); emit('settings', { ...room.settings }); emitPlayers();
@@ -10062,7 +10320,7 @@ if (!window.CAMP) window.CAMP = (() => {
     updateSettings(partial) { if (!this.isHost()) return; Object.assign(room.settings, partial);
       if (partial.mode && partial.mode !== 'tdm' && partial.mode !== 'cs') { for (const p of room.players.values()) p.team = null; firePlayers(); }
       if (partial.mode === 'tdm' || partial.mode === 'cs') { this.autoBalance(); }
-      if (room.settings.mode === 'cs') room.settings.mapId = 'outpost';
+      if (room.settings.mode === 'cs' && room.settings.mapId !== 'dust2') room.settings.mapId = 'outpost'; // 2.9.3: or Dust II
       emit('settings', { ...room.settings }); },
     autoBalance() { if (!this.isHost()) return; list().forEach((p, i) => p.team = i % 2 ? 'blue' : 'red'); firePlayers(); },
     kick(id) { if (!this.isHost() || id === myId) return; room.players.delete(id); firePlayers(); },
@@ -10087,7 +10345,7 @@ if (!window.CAMP) window.CAMP = (() => {
 (() => {
   const CAMP = window.CAMP;
   if (!CAMP) return;
-  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost']];
+  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost'], ['dust2', 'Dust II']]; // 2.9.3: Dust II
   const MODES = [['tdm', 'Team Deathmatch'], ['cs', 'C:S Mode'], ['ffa', 'Free-for-all'], ['coop', 'Co-op']];
   const teamed = m => m === 'tdm' || m === 'cs';
   // C:S Mode calls the teams Terrorists ('red') and Counter-Terrorists ('blue')
@@ -10221,7 +10479,7 @@ if (!window.CAMP) window.CAMP = (() => {
     const seg = (label, key, opts, show = true) => !show ? '' : `<div class="row"><label>${label}</label><div class="seg">${opts.map(([v, t]) =>
       `<button data-set="${key}" data-val="${v}" class="${String(s[key]) === String(v) ? 'sel' : ''}"${host ? '' : ' disabled'}>${t}</button>`).join('')}</div></div>`;
     const S = $('mpSettings'); S.className = 'mpSettings' + (host ? '' : ' ro');
-    S.innerHTML = seg('Mode', 'mode', MODES) + seg('Teams', 'teamSize', [[1, '1v1'], [2, '2v2'], [3, '3v3']], teamed(s.mode)) + seg('Map', 'mapId', s.mode === 'cs' ? MP_MAPS.filter(m => m[0] === 'outpost') : MP_MAPS)
+    S.innerHTML = seg('Mode', 'mode', MODES) + seg('Teams', 'teamSize', [[1, '1v1'], [2, '2v2'], [3, '3v3']], teamed(s.mode)) + seg('Map', 'mapId', s.mode === 'cs' ? MP_MAPS.filter(m => m[0] === 'outpost' || m[0] === 'dust2') : s.mode === 'coop' ? MP_MAPS.filter(m => m[0] !== 'dust2') : MP_MAPS)
       + seg('Kill limit', 'killLimit', [[10, '10'], [20, '20'], [30, '30']], s.mode !== 'coop' && s.mode !== 'cs') + seg('Rounds to win', 'winRounds', [[3, '3'], [5, '5'], [8, '8']], s.mode === 'cs')
       + seg('Time limit', 'timeLimit', [[5, '5 min'], [10, '10 min'], [15, '15 min']])
       + seg('Friendly fire', 'friendlyFire', [[false, 'Off'], [true, 'On']], s.mode !== 'ffa') + seg('Lock room', 'locked', [[false, 'Open'], [true, 'Locked']]);
@@ -10237,7 +10495,8 @@ if (!window.CAMP) window.CAMP = (() => {
   $('mpSettings').addEventListener('click', e => {
     const b = e.target.closest('[data-set]'); if (!b || b.disabled || !CAMP.isHost()) return; click();
     const k = b.dataset.set, raw = b.dataset.val, v = raw === 'true' ? true : raw === 'false' ? false : /^\d+$/.test(raw) ? +raw : raw;
-    CAMP.updateSettings({ [k]: v });
+    const onDust = !!document.querySelector('#mpSettings .sel[data-set="mapId"][data-val="dust2"]'); // 2.9.3: no Dust II in Co-op
+    CAMP.updateSettings(k === 'mode' && v === 'coop' && onDust ? { mode: v, mapId: 'outpost' } : { [k]: v });
   });
   $('mpBalance').addEventListener('click', () => { click(); CAMP.autoBalance(); });
   $('mpStart').addEventListener('click', () => { if (valid()) return; Sound.init(); Sound.play('click'); CAMP.startMatch(); });
@@ -10752,7 +11011,7 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
   // Built on top of the multiplayer, not inside it: a host who picks "Public" posts a small listing (code, map, mode, players)
   // on a shared Supabase presence channel, 'ca-lobby', over the connection the game already has. Joining from the list
   // fills in the normal Join screen and presses Join, so every join goes through the same code as typing the code in.
-  const MODE_NAME = { tdm: 'Team Deathmatch', ffa: 'Free-for-all', coop: 'Co-op', cs: 'C:S Mode' }, MAP_NAME = { classic: 'Classic Village', big: 'Frontier', outpost: 'Outpost' };
+  const MODE_NAME = { tdm: 'Team Deathmatch', ffa: 'Free-for-all', coop: 'Co-op', cs: 'C:S Mode' }, MAP_NAME = { classic: 'Classic Village', big: 'Frontier', outpost: 'Outpost', dust2: 'Dust II' };
   const MAXP = 6, pubRooms = new Set(), pwRooms = new Set();
   let wantPublic = true, pending = null, lob = null, lobReady = null, hosting = null, lastKey = '', browsing = false, matchLive = false, thumbs = {};
   const lobbyClient = () => {
@@ -10860,6 +11119,7 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
     browsing = true;
     showMenu('mpbrowse');
     $('mpBStatus').textContent = 'Looking for lobbies…'; $('mpBList').innerHTML = '';
+    try { if (!thumbs.dust2) thumbs.dust2 = mapShot('dust2', DUST_SHOT[0], DUST_SHOT[1]); } catch (e) {} // 2.9.3
     try { if (!thumbs.outpost) thumbs.outpost = mapShot('outpost', [20, 15, 34], [2, 0, -6]); if (!thumbs.classic) thumbs.classic = mapShot('classic', [-22, 9, 27], [2, 1.5, 0]); if (!thumbs.big && $('prevBig')) thumbs.big = $('prevBig').toDataURL(); } catch (e) {}
     lobbyChan().then(renderBrowse).catch(() => { $('mpBStatus').textContent = ''; $('mpBList').innerHTML = `<div class="mpBEmpty">Public lobbies can't be reached right now.<br>You can still create a match or join one with a code.</div>`; });
   }
