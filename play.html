@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Noah and Lars' Arcade</title>
-<meta name="description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups.">
+<title>The Arcade</title>
+<meta name="description" content="Free browser games. No downloads, no sign-ups.">
 <meta name="theme-color" content="#0a0916">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
@@ -13,16 +13,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="N&amp;L Arcade">
+<meta name="apple-mobile-web-app-title" content="The Arcade">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Noah and Lars' Arcade">
-<meta property="og:title" content="Noah and Lars' Arcade">
-<meta property="og:description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups.">
+<meta property="og:site_name" content="The Arcade">
+<meta property="og:title" content="The Arcade">
+<meta property="og:description" content="Free browser games. No downloads, no sign-ups.">
 <meta property="og:image" content="https://noah-and-lars.github.io/projects/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=11">
+<link rel="stylesheet" href="arcade.css?v=12">
 </head>
 <body class="player">
 <header class="top">
@@ -63,7 +63,7 @@
   <p>Found a bug, or the game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=83"></script>
+<script src="games.js?v=84"></script>
 <script>
 const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('game');
@@ -76,7 +76,7 @@ if (!game) {
   Arcade.markPlayed(game.id);
   // Count this player as on this game; the game in the frame reads the count through window.ArcadeOnline
   ArcadeOnline.start(game.id);
-  document.title = game.title + " · Noah and Lars' Arcade";
+  document.title = game.title + " · The Arcade";
   $('title').textContent = game.title;
   fillContact('Problem with ' + game.title);
 

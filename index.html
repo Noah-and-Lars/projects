@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Noah and Lars' Arcade</title>
-<meta name="description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups. Just pick a game and play.">
+<title>The Arcade</title>
+<meta name="description" content="Free browser games. No downloads, no sign-ups. Just pick a game and play.">
 <meta name="theme-color" content="#0f0d1f">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
@@ -13,22 +13,22 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="N&amp;L Arcade">
+<meta name="apple-mobile-web-app-title" content="The Arcade">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Noah and Lars' Arcade">
-<meta property="og:title" content="Noah and Lars' Arcade">
-<meta property="og:description" content="Free browser games made by Lars and Noah. No downloads, no sign-ups.">
+<meta property="og:site_name" content="The Arcade">
+<meta property="og:title" content="The Arcade">
+<meta property="og:description" content="Free browser games. No downloads, no sign-ups.">
 <meta property="og:url" content="https://noah-and-lars.github.io/projects/">
 <meta property="og:image" content="https://noah-and-lars.github.io/projects/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=11">
+<link rel="stylesheet" href="arcade.css?v=12">
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
   <div class="intro-glow"></div>
-  <h1 class="intro-title" id="introTitle">Noah and Lars' Arcade</h1>
+  <h1 class="intro-title" id="introTitle">The Arcade</h1>
   <hr class="intro-line">
   <p class="intro-sub">Play instantly · No downloads</p>
 </div>
@@ -76,7 +76,11 @@
   </div>
 </div>
 <header class="top">
-  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">Noah and Lars' Arcade</a>
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">The Arcade</a>
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab on" href="index.html" aria-current="page">Games</a>
+    <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span> <b id="chatN" class="tab-n" hidden></b></a>
+  </nav>
   <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
 </header>
 
@@ -106,11 +110,11 @@
 </main>
 
 <footer class="foot">
-  <p>Made by Lars and Noah · <span id="count"></span></p>
+  <p>The Arcade · <span id="count"></span></p>
   <p>Found a bug, or a game won't load? Email <a class="contact"></a> and we'll get back to you within 24 hours.</p>
 </footer>
 
-<script src="games.js?v=83"></script>
+<script src="games.js?v=84"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
@@ -195,7 +199,7 @@ function renderNews() {
     li.querySelector('time').textContent = new Date(n.date + 'T12:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
     const a = li.querySelector('a');
     a.textContent = n.text;
-    if (g) a.href = playUrl(g); else a.removeAttribute('href');
+    if (g) a.href = playUrl(g); else if (n.href) a.href = n.href; else a.removeAttribute('href');
     return li;
   }));
 }
@@ -241,6 +245,10 @@ ArcadeOnline.subscribe(c => {
   if (!c) return;
   $('online').querySelector('b').textContent = ArcadeOnline.label(c.total, c);
   $('online').querySelector('span').textContent = (c.total === 1 && !c.full ? 'person' : 'people') + ' on the arcade right now';
+  // how many are on the Global chat page, on its tab
+  const n = c.byGame.chat || 0;
+  $('chatN').hidden = !n; $('chatN').textContent = n;
+  $('chatN').title = n + (n === 1 ? ' person' : ' people') + ' in the chat';
 });
 ArcadeOnline.start('home');
 // scores change while you play in another tab, so refresh when you come back

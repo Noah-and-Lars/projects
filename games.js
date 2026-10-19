@@ -5,7 +5,7 @@ window.CONTACT_EMAIL = ['jimmyscafe1000', 'gmail.com'].join('@');
 window.fillContact = (subject) => {
   for (const a of document.querySelectorAll('.contact')) {
     a.textContent = CONTACT_EMAIL;
-    a.href = 'mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent(subject || "Noah and Lars' Arcade");
+    a.href = 'mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent(subject || "The Arcade");
   }
 };
 
@@ -207,6 +207,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-19', href: 'chat.html', text: 'New: Global chat. Press Chat at the top of the arcade to talk with everyone who\'s on. Messages are kept only in your own browser.' },
   { date: '2026-10-19', game: 'free-criminal', text: 'Free Criminal 1.9, the big one: a phone with private messages and myBANK, your game saves, buses you can rob, ride in other players\u2019 cars, car fights online, chat settings and busier cities.' },
   { date: '2026-10-19', game: 'free-criminal', text: 'Free Criminal 1.8.5: press T to chat online (now also while respawning), with a hint on screen and a Chat button on phones.' },
   { date: '2026-10-19', game: 'free-criminal', text: 'Free Criminal 1.8.4: hold Tab to see everyone playing online, and M opens the full map screen.' },
@@ -225,7 +226,7 @@ window.NEWS = [
   { date: '2026-10-18', game: 'free-criminal', text: "Free Criminal 1.6.2: the lottery is closed (tickets are under construction and can't be bought), and you can no longer lose your wanted stars by standing outside the store you just robbed." },
   { date: '2026-10-18', game: 'cube-assault', text: "Cube Assault 2.8.2: an FPS counter in the top left (turn it off in Settings), and Level 3's first aid kit now heals you twice before it restocks." },
   { date: '2026-10-18', game: 'cube-assault', text: "Cube Assault 2.8.1: a first aid kit back in our trench on Level 3, The Western Front. Walk up to it for +40 HP, then it restocks in 25 seconds." },
-  { date: '2026-10-17', game: 'cube-assault', text: "Cube Assault 2.8, the campaign update: Level 3, The Western Front, public lobbies in multiplayer, 34 achievements with badges, keybinds, every barrel explodes, two turrets after wave 15, 45-coin barricades and a rebuilt Tajer Support." },
+  { date: '2026-10-17', game: 'cube-assault', text: "Cube Assault 2.8, the campaign update: Level 3, The Western Front, public lobbies in multiplayer, 34 achievements with badges, keybinds, every barrel explodes, two turrets after wave 15, 45-coin barricades and a rebuilt Apex Support." },
   { date: '2026-10-17', game: 'blockcraft', text: 'Blockcraft 6.0, the final update: multiplayer. Press Multiplayer on the title screen to join the public server, one survival world everyone shares that\'s open all the time. See other players, build together, chat with T, fight with PvP, and hold Tab to see who\'s on.' },
   { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.1.3: a more scared stranger, with darting eyes, worried brows, swallowing and a trembling jaw, and new ways to hesitate before he pulls the trigger.' },
   { date: '2026-10-17', game: 'russian-roulette', text: 'Russian Roulette 1.1.2, new game mode: Buckshot. A shotgun with live and blank shells, health charges, three rounds and items (magnifying glass, handcuffs, handsaw, beer, cigarettes). Pick it with Change gamemode under Sit down.' },
@@ -269,9 +270,9 @@ window.NEWS = [
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.3: farming (hoes till farmland, plant seeds, grow wheat), shovel paths, mobs that spawn properly at night and in caves, fixed ice, and the sun no longer shines through blocks.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.2.1: no more "Click to play". The game grabs your mouse as soon as you pick a world.' },
   { date: '2026-10-14', game: 'blockcraft', text: 'Blockcraft 1.2: a Minecraft-style arm, head bobbing at Minecraft speed, sharper tree textures, and far-away chunks now unload for smoother frame rates.' },
-  { date: '2026-10-14', game: 'cube-assault', text: 'Cube Assault 2.2: your SWAT team now fights beside you at Tajer Support, and a new ending lets you climb out the window and blow the tower up.' },
+  { date: '2026-10-14', game: 'cube-assault', text: 'Cube Assault 2.2: your SWAT team now fights beside you at Apex Support, and a new ending lets you climb out the window and blow the tower up.' },
   { date: '2026-10-13', game: 'free-criminal', text: 'New game: Free Criminal. Walk out of prison into San Varro, steal cars, rob the bank and outrun the cops.' },
-  { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 2.0: campaign Level 2, Tajer Support. Lead a SWAT raid on a scam call centre in Mumbai, 2009, and decide the last scammer\'s fate.' },
+  { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 2.0: campaign Level 2, Apex Support. Lead a SWAT raid on a scam call centre in Mumbai, 2009, and decide the last scammer\'s fate.' },
   { date: '2026-10-13', game: 'blockcraft', text: 'Blockcraft 1.1: textures the right way up, a smoother look, a new hand, faster loading and bug fixes for mining, pickups and furnaces.' },
   { date: '2026-10-13', game: 'blockcraft', text: 'New game: Blockcraft. Mine every ore, craft tools, fight mobs and build in an endless world.' },
   { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 1.9.2: a story campaign (Russia, 1944), the Frontier map, destructible buildings, a rocket launcher and menu music.' },
@@ -304,7 +305,7 @@ window.Arcade = {
   stat(g) { try { return g.stat ? g.stat() : null; } catch (e) { return null; } },
 };
 
-// Live "on now" counter, using Supabase Realtime Presence (project noah-and-lars-games).
+// Live "on now" counter, using Supabase Realtime Presence (the arcade's Supabase project).
 // Every open arcade page joins one presence channel and says which game it's on ('home' for the home page).
 // Nothing is saved: Supabase only sees who's connected right now. If it can't be reached (offline,
 // blocked network, project paused after a quiet week) the counter just stays hidden.
@@ -318,8 +319,10 @@ window.ArcadeOnline = (() => {
   const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
   const CAP = 200; // the free plan's limit on simultaneous connections
   const SETTLE = 2500; // ms a new count has to hold before it's shown, so quick page changes don't flicker
-  let counts = null, started = false, timer = 0, client = null;
-  const listeners = [];
+  let counts = null, started = false, timer = 0, client = null, settled = false;
+  const listeners = [], waiting = [];
+  // the connection is open (or failed, with null): hand it to whoever asked through ready()
+  const opened = c => { client = c; settled = true; for (const f of waiting.splice(0)) try { f(c); } catch (e) {} };
   const send = c => { counts = c; for (const f of listeners) try { f(c); } catch (e) {} };
   // first result and failures show straight away; changes after that wait until they settle
   const emit = c => {
@@ -342,10 +345,10 @@ window.ArcadeOnline = (() => {
       if (started) return; started = true;
       const lib = document.createElement('script');
       lib.src = LIB; lib.async = true;
-      lib.onerror = () => emit(null);
+      lib.onerror = () => { emit(null); opened(null); };
       lib.onload = () => {
         try {
-          client = window.supabase.createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          opened(window.supabase.createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } }));
           const ch = client.channel('online:arcade', { config: { presence: { key: browserId() } } });
           ch.on('presence', { event: 'sync' }, () => {
             // one entry per browser; if it has several pages open, count it on a game over the home page
@@ -359,7 +362,7 @@ window.ArcadeOnline = (() => {
             if (status === 'SUBSCRIBED') ch.track({ game: where }).catch(() => emit(null));
             else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') emit(null);
           });
-        } catch (e) { emit(null); }
+        } catch (e) { emit(null); if (!settled) opened(null); }
       };
       document.head.appendChild(lib);
     },
@@ -370,5 +373,8 @@ window.ArcadeOnline = (() => {
     // The Supabase connection, once it's open (null until then). Cube Assault's multiplayer shares it,
     // so a player in a match still uses just one connection.
     client() { return client; },
+    // Calls f with the connection as soon as it's open, or with null if it can't be reached
+    // (the global chat opens its own channel on it). Call start() first.
+    ready(f) { if (settled) f(client); else waiting.push(f); },
   };
 })();

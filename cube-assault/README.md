@@ -10,7 +10,7 @@ Press Play to choose:
 
 - **Campaign**: story levels played in order; finish one to unlock the next.
   - Level 1, *The Birch Road* (Russia, 1944): a cutscene in an army jeep, then hold the road against 5 waves of Rifle Cubes and claim the cube camp's flag.
-  - Level 2, *Tajer Support* (Mumbai, India, 2009): sneak into a tower with your SWAT team, spy on a scam call centre and raid it with them, then decide what happens to the last scammer. Choose right and you get to bring the whole tower down.
+  - Level 2, *Apex Support* (Mumbai, India, 2009): sneak into a tower with your SWAT team, spy on a scam call centre and raid it with them, then decide what happens to the last scammer. Choose right and you get to bring the whole tower down.
   - Levels 3 to 5 are coming soon.
 - **Classic Village**: the original walled village. Small, tight and fast.
 - **Frontier** (work in progress): four times bigger, with a village, a dense forest, a mountain range, a town and a farm.

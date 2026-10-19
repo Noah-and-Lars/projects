@@ -1,7 +1,7 @@
 {
-  "name": "Noah and Lars' Arcade",
-  "short_name": "N&L Arcade",
-  "description": "Free browser games made by Lars and Noah.",
+  "name": "The Arcade",
+  "short_name": "The Arcade",
+  "description": "Free browser games. No downloads, no sign-ups.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

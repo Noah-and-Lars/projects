@@ -1,8 +1,9 @@
 # projects
 
-**Noah and Lars' Arcade**: browser games that run straight from this repo, no installs.
+**The Arcade**: browser games that run straight from this repo, no installs.
 
 Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade online.
+The Chat tab (`chat.html`) is a global chat for everyone on the arcade; messages are kept only in each player's browser.
 
 ## Games
 

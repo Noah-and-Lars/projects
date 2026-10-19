@@ -395,12 +395,12 @@ const SECTORS = { tech: 'Technology', energy: 'Energy', finance: 'Finance', reta
 const COMPANIES = [
   { t: 'CUBE', n: 'Cubeware Systems', s: 'tech', p: 142, vol: 0.0165, drift: 0.0005, div: 0 },
   { t: 'POLY', n: 'Polytrack Motors', s: 'tech', p: 48, vol: 0.0225, drift: 0.0006, div: 0 },
-  { t: 'ARCD', n: 'Noah & Lars Arcade', s: 'fun', p: 23, vol: 0.021, drift: 0.0007, div: 0 },
+  { t: 'ARCD', n: 'The Arcade', s: 'fun', p: 23, vol: 0.021, drift: 0.0007, div: 0 },
   { t: 'BLCK', n: 'Blockcraft Mining', s: 'energy', p: 67, vol: 0.018, drift: 0.0003, div: 0.035 },
   { t: 'SPIN', n: 'Spin Casinos', s: 'fun', p: 31, vol: 0.0255, drift: 0.0004, div: 0.02 },
   { t: 'SVB', n: 'San Varro Bank', s: 'finance', p: 88, vol: 0.012, drift: 0.0003, div: 0.04 },
   { t: 'FRNT', n: 'Frontier Freight', s: 'retail', p: 54, vol: 0.0135, drift: 0.0003, div: 0.025 },
-  { t: 'TAJR', n: 'Tajer Telecom', s: 'tech', p: 19, vol: 0.015, drift: 0.0002, div: 0.055 },
+  { t: 'APEX', n: 'Apex Telecom', s: 'tech', p: 19, vol: 0.015, drift: 0.0002, div: 0.055 },
   { t: 'NTHR', n: 'Nether Oil & Gas', s: 'energy', p: 112, vol: 0.0195, drift: 0.0002, div: 0.045 },
   { t: 'HEAL', n: 'Healblock Pharma', s: 'health', p: 76, vol: 0.0203, drift: 0.0005, div: 0.01 },
   { t: 'BRUT', n: 'Brute Fitness', s: 'health', p: 12, vol: 0.0285, drift: 0.0006, div: 0 },
@@ -463,6 +463,9 @@ function migrate(g) { // saves from earlier versions
   if (g.tickWorth === undefined) g.tickWorth = g.worthHist[Math.max(0, g.worthHist.length - 1 - TICK)] || START_CASH;
   for (const k in SECTORS) if (g.sect[k] === undefined) g.sect[k] = 0;
   if (!g.options) g.options = []; if (!g.year) g.year = newYear(g.worthHist[g.worthHist.length - 1] || START_CASH, Math.floor(g.day / 252) * 252);
+  // Apex Telecom used to trade under another ticker: shares and shorts saved under a ticker that no longer exists are its
+  for (const book of [g.hold, g.short]) if (book) for (const t of Object.keys(book)) if (!COMPANIES.some(c => c.t === t)) { book.APEX = book[t]; delete book[t]; }
+  for (const o of g.options) if (COMPANIES[o.i]) o.t = COMPANIES[o.i].t;
   return g;
 }
 function load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && s.stocks && s.stocks.length >= 12) return migrate(s); } catch (e) {} return null; }

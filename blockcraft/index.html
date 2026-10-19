@@ -2316,7 +2316,7 @@ SPRDEF('turtle_helmet', img => armorSprite(img, 'helmet', 'turtle'));
 // sword and pickaxe icons copied pixel for pixel from Minecraft ('------' is see-through); they're also what you hold
 const spriteHex = (img, hex) => img.each((x, y) => { const i = (y * 16 + x) * 6, c = hex.substr(i, 6); if (c === '------') img.clear(x, y); else img.set(x, y, [parseInt(c.substr(0, 2), 16), parseInt(c.substr(2, 2), 16), parseInt(c.substr(4, 2), 16)]); });
 // raw ores, copper ingot, glow berries and glow ink sac icons, copied from Minecraft
-// tool, bow, rod, lead, clock, compass and bottle icons in the classic Minecraft style (from Lars' picture)
+// tool, bow, rod, lead, clock, compass and bottle icons in the classic Minecraft style (from a reference picture)
 for (const wd of BOAT_WOODS) SPRDEF(wd + '_boat', img => {
   const src = TEX_PIX[TEX_LAYER[wd + '_planks']]; let c = [150, 120, 70];
   if (src) { c = [0, 0, 0]; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const q = src.get(x, y); c[0] += q[0]; c[1] += q[1]; c[2] += q[2]; } c = c.map(v => v / 256); }
@@ -9515,7 +9515,7 @@ const SleepScreen = () => {
 };
 const CreditsScreen = done => {
   let t = 0;
-  const lines = ['', 'THE END', '', 'You defeated the Ender Dragon.', 'The portal home lies open.', '', 'Blockcraft', 'Made by Lars and Noah', '', 'Inspired by Minecraft', 'by Mojang Studios', '', '', 'Thanks for playing!'];
+  const lines = ['', 'THE END', '', 'You defeated the Ender Dragon.', 'The portal home lies open.', '', 'Blockcraft', 'Made for The Arcade', '', 'Inspired by Minecraft', 'by Mojang Studios', '', '', 'Thanks for playing!'];
   return {
     name: 'credits', pauses: true,
     draw() {
@@ -11715,7 +11715,7 @@ function updateCamera(dt) {
 }
 
 // ---------------- Screens ----------------
-const SPLASHES = ['Now with multiplayer!', 'Say hi in chat!', 'Now with ores!', 'Made by Lars and Noah!', 'Punch a tree!', 'Diamonds!', 'Watch out for creepers!', '100% blocks!', 'Also try Poly Racer!', 'Contains TNT!', 'Smooth lighting!', 'Infinite worlds!', 'Mind the lava!', 'Deepslate!', 'Not made of slop!', 'Pixel perfect!', 'Day and night!', 'Saves in your browser!'];
+const SPLASHES = ['Now with multiplayer!', 'Say hi in chat!', 'Now with ores!', 'Made for The Arcade!', 'Punch a tree!', 'Diamonds!', 'Watch out for creepers!', '100% blocks!', 'Also try Poly Racer!', 'Contains TNT!', 'Smooth lighting!', 'Infinite worlds!', 'Mind the lava!', 'Deepslate!', 'Not made of slop!', 'Pixel perfect!', 'Day and night!', 'Saves in your browser!'];
 let splash = SPLASHES[Math.floor(Math.random() * SPLASHES.length)];
 let logoCanvas = null;
 function drawLogo(cx, y) {
@@ -11757,7 +11757,7 @@ const TitleScreen = () => ({
     if (button(bx, by + 48, bw, 20, 'Options...')) { sfx.init(); openScreen(OptionsScreen(() => openScreen(TitleScreen()))); }
     if (button(bx, by + 72, bw, 20, 'How to play')) { sfx.init(); openScreen(ControlsScreen(() => openScreen(TitleScreen()))); }
     drawText(gctx, 'Blockcraft 6.0', 2, H - 10, '#ffffff');
-    const t = 'Made by Lars and Noah';
+    const t = 'Made for The Arcade';
     drawText(gctx, t, W - textWidth(t) - 2, H - 10, '#ffffff');
   },
 });

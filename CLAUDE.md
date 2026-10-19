@@ -1,8 +1,10 @@
-# Noah and Lars' Arcade
+# The Arcade
 
-A small browser-games site made by Lars and Noah, hosted with GitHub Pages at
+A small browser-games site called The Arcade, hosted with GitHub Pages at
 https://noah-and-lars.github.io/projects/ (repo: Noah-and-Lars/projects, moved
-from jimmyscafe/projects).
+from jimmyscafe/projects). That address comes from the GitHub account name;
+apart from it, no personal names appear anywhere on the site (pages, games,
+credits, comments, images). Keep it that way.
 
 GitHub Pages currently publishes from the branch
 `claude/jimmyscafe-projects-access-9mbcw3`, not `main`. Anything pushed there
@@ -14,6 +16,27 @@ source in Settings → Pages should be switched to `main`.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
+- The header of the home page and the chat page has two tabs, Games
+  (`index.html`) and Global chat (`chat.html`). On the home page the chat tab
+  shows how many people are in the chat (`byGame.chat` from `ArcadeOnline`).
+- `chat.html`: the Global chat. One Supabase Realtime channel, `arcade-chat`:
+  'msg' broadcasts are messages ({ id, u, n, t, ts }: message id, sender's chat
+  id, name, text, time), Presence is the "In the chat" list (key = the
+  browser's chat id, with the name and when they arrived). Nothing is stored on
+  a server: each browser keeps the newest 200 messages in its own localStorage
+  (`arcade-chat-log`; also `-id`, `-name`, `-muted`, `-cleared`). A newcomer
+  sends 'hreq' with the time of its newest message, and only the person who has
+  been in the chat longest answers with up to 100 newer messages ('hist'), so
+  the history carries on as long as someone is around. Messages and names go
+  through `tidy()` (whitespace, length, a swear-word filter) and are only ever
+  shown with textContent. Sending is limited to 5 messages in 10 seconds, other
+  people's floods (more than 8 in 10 seconds) are ignored, and Mute hides a
+  person on this device only. Names: 2-20 characters, no swear words, and words
+  like admin, mod or staff are reserved. It reuses the arcade's connection
+  (`ArcadeOnline.ready()`). `?chatroom=<name>` uses its own test channel and
+  storage: test with that, never in the real chat. To be two people in one
+  browser, open the test room on http://localhost:8765 and on
+  http://127.0.0.1:8765 (two origins, so two separate storages).
 - `play.html?game=<id>`: plays a game in an iframe with a loading screen,
   the player's best next to the title, "How to play" keys, Next game,
   fullscreen and a "more games" row. Opening it marks the game as played.
@@ -34,11 +57,11 @@ source in Settings → Pages should be switched to `main`.
   `index.html`, styles at the end of `arcade.css`): right now the Blockcraft
   discontinued notice. It shows once per visit, after the intro, until the
   player presses Okay (`notice-seen` in sessionStorage).
-- `arcade.css`: shared styles for the two pages above.
-  Both pages load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
-  files for 10 minutes, so bump N in both pages whenever either file changes.
+- `arcade.css`: shared styles for the pages above.
+  `index.html`, `play.html` and `chat.html` load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
+  files for 10 minutes, so bump N in all three pages whenever either file changes.
 - Live "on now" counter: `ArcadeOnline` in `games.js` joins one Supabase
-  Realtime Presence channel (`online:arcade`, project `noah-and-lars-games`)
+  Realtime Presence channel (`online:arcade`, project ref `fewocduisjbctoxolkjr`)
   and tracks which game each visitor is on (`home` for the home page). The home
   header shows the total; `play.html` joins for the game it's showing, and a
   game in its frame reads the count from `window.parent.ArcadeOnline` instead
@@ -46,7 +69,7 @@ source in Settings → Pages should be switched to `main`.
   connects itself when opened on its own. The free plan allows 200 connections,
   so counts show as "200+" when full. If Supabase can't be reached, counters
   stay hidden. Nothing is stored; the publishable key is meant to be public.
-- The footer of both pages shows a contact email for bug reports. It's set once
+- The footer of every page shows a contact email for bug reports. It's set once
   in `games.js` (`CONTACT_EMAIL`).
 - One folder per game, each with a self-contained `index.html` and a `thumb.svg`
   cover (16:9).
@@ -54,7 +77,7 @@ source in Settings → Pages should be switched to `main`.
 ## Games
 
 - `cube-assault/`: first-person 3D shooter (Three.js bundled into the file). Since 2.3 it has touch controls (`#touch` layer, `autoTouch` / `touchMode()`, setting `touch`: auto, on or off).
-  Since 2.6 it has online multiplayer. Noah's blocks (`mp-ui-css`, `mp-ui`, `mp-stub`, `CS MAP`) are the lobby, HUD, results and Outpost map; Lars's `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are Supabase Realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). The free plan caps the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`). Room chat (2.8.3): 'chat' on the room channel, `CAMP.chat()` and the 'chat' event, drawn by the `<script id="mp-chat">` block (Enter opens it).
+  Since 2.6 it has online multiplayer. The blocks `mp-ui-css`, `mp-ui`, `mp-stub` and `CS MAP` are the lobby, HUD, results and Outpost map; the `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are Supabase Realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). The free plan caps the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`). Room chat (2.8.3): 'chat' on the room channel, `CAMP.chat()` and the 'chat' event, drawn by the `<script id="mp-chat">` block (Enter opens it).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.
 - `2048/`: sliding-number puzzle with keyboard and swipe controls.
 - `poly-racer/`: low-poly 3D time-trial racer in the style of PolyTrack (Three.js
@@ -151,5 +174,5 @@ source in Settings → Pages should be switched to `main`.
 
 - Games save progress only in the player's own browser (`localStorage`, wrapped
   in try/catch). No accounts or data collection. The only server is Supabase Realtime (the live "on now"
-  counter, Cube Assault's rooms and Blockcraft's public server), which passes messages along and stores
+  counter, the Global chat, the games' online rooms and Blockcraft's public server), which passes messages along and stores
   nothing. Blockcraft's shared world is saved in each player's browser.
