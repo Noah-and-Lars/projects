@@ -60,14 +60,14 @@ window.GAMES = [
     id: 'russian-roulette',
     title: 'Russian Roulette',
     category: 'Thriller',
-    tagline: 'One revolver, one bullet, six chambers. New: play online against a real person, in Russian Roulette or Buckshot.',
+    tagline: 'One revolver, one bullet, six chambers. New: online Buckshot for 2 to 6 players at one table.',
     description: 'Sit across a table from a stranger in a dim, dirty room. A coin toss decides who goes first, then the cylinder is spun before every turn: put the revolver to your head and squeeze. Every pull is a 1 in 6 chance. Beat stranger after stranger to build a win streak, but one loaded chamber ends it.',
     controls: 'Mouse, keyboard or touch',
     keys: [['Heads / Tails', 'Call the coin toss'], ['Hold button or Space', 'Squeeze the trigger'], ['Play online', 'Quick match or a private table'], ['Esc', 'Pause']],
     path: 'russian-roulette/index.html',
     thumb: 'russian-roulette/thumb.jpg',
     added: '2026-10-17T12:50:00+11:00',
-    updated: '2026-10-18T17:02:12+11:00',
+    updated: '2026-10-20T11:03:29+11:00',
     stat() { const s = readSave('russianRouletteSave', true); return s && s.best ? 'Best streak ' + s.best : null; },
   },
   {
@@ -196,6 +196,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-20', game: 'russian-roulette', text: 'Russian Roulette 1.3: online Buckshot for 2 to 6 players. Make a private table and send friends the code, or let Quick match fill a table. With three or more you sit round a round table, pick who to shoot each turn, and the last one standing wins.' },
   { date: '2026-10-20', game: 'free-criminal', text: 'Free Criminal 1.9.3: two new phone apps, Train Times (every station and the next train) and PAYTransfer (send other players up to $6,000 every 10 minutes), plus online subway fixes.' },
   { date: '2026-10-20', game: 'free-criminal', text: 'Free Criminal 1.9.2: start with $10,000, online only on the latest version, walk across the subway tracks (watch for trains), next-stop screens on the trains, your map follows the train, and more shops in every town.' },
   { date: '2026-10-20', game: 'free-criminal', text: 'Free Criminal 1.9.1: the subway. Every city has an underground station with two platforms and a train every minute; ride it to the next city in 20 seconds.' },

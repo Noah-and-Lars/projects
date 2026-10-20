@@ -137,11 +137,22 @@ source in Settings → Pages should be switched to `main`.
   online button and `m-online` menu. Quick match pairs the two players waiting longest in Presence on `rr-lobby`
   (`rr-lobby-bs` for Buckshot); a private table has a 5-letter code and plays its maker's mode. A table is the channel `rr-t-<key>`. The host's
   browser rolls the coin and every spin, so both screens agree; `playOnline`, `myTurnOnline` and
-  `theirTurnOnline` run the game on each screen, waiting on each other's messages with `Online.next()`. Online Buckshot (1.2.1, `playBuckshotOnline`):
-  the host rolls every load (`bsRollLoad`, sent as 'bsload'), the shooter sends each item and shot ('bsact'), and
-  the other screen plays it as the dealer (`bsTheirTurnOnline`, `dealerUse`, `bsHeShoots`). Online wins
+  `theirTurnOnline` run the game on each screen, waiting on each other's messages with `Online.next()`. Online Buckshot (1.3, the
+  "Party Buckshot" block, `playBuckshotParty`) seats 2 to 6: at a Buckshot table Presence is everyone sitting there, and
+  the host (the maker, or whoever comes first in `seated()`) sends 'start' with the seat order (`Online.roster()`); after
+  a game it starts the next one when everyone still there has pressed Play again. Buckshot quick match groups up to 6
+  on `rr-lobby-party` (`quickParty`, 'go'). Every turn starts with the host's 'turn' (whose turn, who has left, the next
+  load; `pbBoundary`), the player whose turn it is sends 'bsact' (items, and shots with the target's id), and every
+  screen works out the rest the same way (`pbYourTurn`, `pbTheirTurn`, `pbNpcShoots`). If the host leaves, the next
+  player round the table takes over. With 3 or more a round table comes out (`setPartyTable`). Each stranger sits in
+  his own seat frame, `n.root` (`makeNPC`; `seatPt`/`seatPose`/`worldPose` convert), which is not moved at all in the
+  usual chair, so single player, Russian Roulette and the intro work as before; `pbClear` (called by `bsReset`) puts
+  the usual table and stranger back. Presence carries `v: PARTY_V` so copies from before 1.3 stay off Buckshot tables.
+  A hidden tab's clock keeps running during an online game (no frames, but the others aren't left waiting). The opening
+  cinematic is the `rr-intro` block (`Intro`): it plays on load (`?nointro` skips it) and from Watch the intro. Online wins
   and games are `onWins` / `onGames`, apart from the single-player streak. `?rrroom=<name>` uses separate test
-  channels: test with that, never on the real lobby.
+  channels: test with that, never on the real lobby. To be several players at once, put
+  a few iframes of the game with the same `?rrroom=` on one page and drive them with `contentWindow.eval(...)`.
 
 - `chess/`: Chess against the computer (the engine is the `<script id="engine">` block, shared with a Web Worker).
   Saves `chessSave` (settings, per-level stats, the game in progress). Since 1.1 it plays online too: the `Net`

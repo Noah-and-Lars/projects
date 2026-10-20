@@ -176,11 +176,20 @@
   .codejoin { display: flex; gap: 8px; width: min(320px, 100%); margin: 10px auto 0; } .codejoin .txt { width: 0; flex: 1; text-transform: uppercase; letter-spacing: .2em; text-align: center; } .codejoin .mbtn { width: auto; flex: 1.3; margin: 0; }
   .codejoin[hidden], .mbtn[hidden] { display: none; }
   #netStatus { min-height: 1.4em; margin: 14px 0 0; font-size: 15px; color: var(--gold-hi); } #netStatus.bad { color: #ff8a8a; }
+  /* 1.3: Buckshot for 2 to 6: the table's lobby, everyone's charges, and a shoot button for each player */
+  #netLobby[hidden] { display: none; } #netPlayers { margin: 4px 0 0; padding-left: 22px; } #netPlayers li { font-weight: 800; margin: 3px 0; }
+  .hosttag { margin-left: 8px; padding: 1px 7px; border-radius: 6px; background: rgba(226, 176, 74, .18); color: var(--gold-hi); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; vertical-align: 1px; }
+  .mbtn:disabled { opacity: .45; cursor: default; }
+  #bsHud .hrow.now .who { color: var(--gold-hi); } #bsHud .hrow.out { opacity: .4; } #bsHud .bolts em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  #actions.party { height: auto; min-height: 150px; } #actions.party .btns { flex-wrap: wrap; gap: 8px; min-height: 0; max-width: 760px; }
+  #actions.party .abtn { min-width: 0; padding: 12px 18px; font-size: clamp(15px, 2vw, 19px); }
   #rot { display: none; }
   @media (max-width: 640px) {
     #actions { height: 122px; bottom: calc(14px + env(safe-area-inset-bottom)); } #actions .btns { gap: 10px; min-height: 100px; } .abtn { min-width: 0; flex: 1; max-width: 200px; padding: 14px 10px; }
     #banner { top: max(19%, 150px); }
     #bsHud { top: calc(136px + env(safe-area-inset-top)); } #hud.bsmode #banner { top: calc(212px + env(safe-area-inset-top)); } .chip .nm { display: none; } #actions.bs { height: 140px; }
+    #actions.party { height: auto; min-height: 140px; } #actions.party .abtn { flex: 1 1 40%; max-width: none; padding: 10px 8px; font-size: 15px; }
+    #bsHud .hrow .who { max-width: 72px; } #bsHud .bolts { font-size: 13px; }
     #sub { bottom: calc(146px + env(safe-area-inset-bottom)); } #streak b { font-size: 24px; } #opp { top: calc(96px + env(safe-area-inset-top)); }
   }
   @media (prefers-reduced-motion: reduce) { #grain { animation: none; } }
@@ -214,7 +223,8 @@
     <button class="mbtn" data-go="mode">Change gamemode</button>
     <button class="mbtn" data-go="how">How to play</button>
     <button class="mbtn" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.2.1 · Patch notes</button>
+    <button class="mbtn" data-go="intro">Watch the intro</button>
+    <button class="link" data-go="notes">v1.3 · Patch notes</button>
   </div>
   <div class="menu" id="m-mode">
     <h2>Game mode</h2>
@@ -232,7 +242,9 @@
     <button class="mbtn gold netpick" data-go="netQuick">Quick match</button>
     <button class="mbtn netpick" data-go="netCreate">Create a private table</button>
     <div class="codejoin netpick"><input id="netCode" class="txt" maxlength="5" autocomplete="off" spellcheck="false" placeholder="CODE"><button class="mbtn" data-go="netJoin">Join with code</button></div>
+    <div class="box" id="netLobby" hidden><h3 id="netLobbyT"></h3><ol id="netPlayers"></ol></div>
     <div class="tag" id="netStatus"></div>
+    <button class="mbtn gold" data-go="netStart" id="netStart" hidden>Start the game</button>
     <button class="mbtn" data-go="netCancel" id="netCancel" hidden>Cancel</button>
     <button class="mbtn" data-go="netBack" id="netBack">Back</button>
   </div>
@@ -263,6 +275,7 @@
         <li>You both have charges (⚡). Round 1 has 2 charges each, round 2 has 4 and round 3 has 5. If you run out in round 1 or 2, the defibrillator brings you back for the next round. In round 3 it’s cut: run out and you lose, beat the dealer and you win.</li>
         <li>From round 2, you both get items every time the gun is loaded. Use as many as you like before you shoot:
           🔍 <b>Magnifying glass</b> shows the shell in the chamber. ⛓️ <b>Handcuffs</b> make the dealer skip his next turn. 🪚 <b>Handsaw</b> makes the next live shell do 2 damage. 🍺 <b>Beer</b> racks out the current shell without firing it. 🚬 <b>Cigarettes</b> give back one charge.</li>
+        <li>Online, 2 to 6 people can play one game. On your turn, pick who to shoot. Handcuffs make the next player round the table skip their turn. A round goes on until one player is left, and the last one standing in round 3 wins.</li>
       </ul>
     </div>
     <button class="mbtn" data-go="back">Back</button>
@@ -278,17 +291,27 @@
     <button class="mbtn" data-go="back">Back</button>
   </div>
   <div class="menu wide" id="m-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.2<span>Play online</span></h1><p>Russian Roulette against a real person. Find someone with Quick match, or make a private table and send a friend the code.</p>
-      <div class="icons"><i>🌐</i><i>🪙</i><i>☠️</i><i>🔁</i></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.3<span>Buckshot for up to 6</span></h1><p>Online Buckshot now seats 2 to 6 players at one table. Make a private table and send your friends the code, or let Quick match fill a table for you.</p>
+      <div class="icons"><i>👥</i><i>💥</i><i>⛓️</i><i>💀</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><i>🌐</i><span><b>Play online</b>A new button under Sit down. Type your name and play another person instead of a stranger.</span></div>
-      <div><i>⚡</i><span><b>Quick match</b>Puts you at a table with whoever else is waiting.</span></div>
-      <div><i>🔑</i><span><b>Private tables</b>Make a table and get a 5-letter code. Your friend types it in to sit down across from you.</span></div>
-      <div><i>🪙</i><span><b>Same rules</b>One player calls the coin, the winner picks who goes first, and every pull is 1 in 6.</span></div>
-      <div><i>👀</i><span><b>Watch them squeeze</b>On their turn you see their finger tighten on the trigger as they hold the button.</span></div>
-      <div><i>🏆</i><span><b>Online wins</b>Counted on their own. Your single-player streak isn’t touched.</span></div>
+      <div><i>👥</i><span><b>2 to 6 players</b>One online Buckshot game for up to six. With three or more, a round table comes out and everyone sits round it.</span></div>
+      <div><i>🎯</i><span><b>Pick your target</b>On your turn there’s a Shoot button for every player still in, as well as Shoot yourself.</span></div>
+      <div><i>🔑</i><span><b>Private tables</b>Send friends the code. Everyone who sits down shows up in the list, and the host presses Start.</span></div>
+      <div><i>⚡</i><span><b>Quick match</b>Puts up to six Buckshot players together. Once two are waiting, it waits a few seconds for more.</span></div>
+      <div><i>⛓️</i><span><b>Items for everyone</b>Everyone still in gets items with every load. Handcuffs make the next player skip their turn.</span></div>
+      <div><i>💀</i><span><b>Last one standing</b>A round goes on until one player is left. In round 3 there’s no coming back.</span></div>
     </div>
+    <div class="box"><h3>v1.3 <span>Buckshot for up to 6</span></h3><ul>
+      <li>Online Buckshot holds 2 to 6 players in one game. Pick Buckshot with Change gamemode, then press Play online.</li>
+      <li>Turns go round the table to your left, and a different player takes the first turn in each round.</li>
+      <li>Run out of charges in round 1 or 2 and you watch the rest of the round from behind your chair; the defibrillator brings everyone back for the next round. In round 3 it’s cut, and the last one standing wins.</li>
+      <li>If someone leaves, they’re out for the rest of the game and everyone else carries on. If the host leaves, the next player round the table takes over.</li>
+      <li>After a game, the next one starts when everyone still at the table has pressed Play again. Friends can sit down with the code between games.</li>
+      <li>An online game keeps going when you switch to another tab, so the others aren’t left waiting.</li>
+      <li>Russian Roulette online is still one against one.</li>
+      <li>A new opening cinematic plays when the game opens. Skip it, or watch it again with Watch the intro on the main menu.</li>
+    </ul></div>
     <div class="box"><h3>v1.2.1 <span>Buckshot online</span></h3><ul>
       <li>Buckshot Roulette can be played online too. Pick Buckshot with Change gamemode, then press Play online.</li>
       <li>The other player sits in the dealer’s seat. Watch them use their items and turn the shotgun on you or on themselves.</li>
@@ -374,7 +397,7 @@
 // =====================================================================
 //  Russian Roulette v1.1.3
 // =====================================================================
-const VERSION = '1.2.1';
+const VERSION = '1.3';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -457,6 +480,17 @@ const Sound = (() => {
     tick(g = 0.12) { noise({ f: 3800, q: 6, d: 0.018, g, type: 'bandpass' }); },
     ratchet() { noise({ f: 2600 + Math.random() * 600, q: 9, d: 0.016, g: 0.22 }); tone({ f: 1900, d: 0.012, g: 0.03, type: 'square' }); },
     cock() { noise({ f: 2300, q: 7, d: 0.03, g: 0.4 }); noise({ at: now() + 0.07, f: 3100, q: 9, d: 0.025, g: 0.5 }); tone({ at: now() + 0.07, f: 900, d: 0.02, g: 0.06, type: 'square' }); },
+    revolver(part) { // the intro: the hammer drawn back slowly, in its parts
+      if (!ctx) return; const t = now();
+      if (part === 'grip') { noise({ f: 1500, q: 2.5, d: 0.06, g: 0.1 }); noise({ type: 'lowpass', f: 380, d: 0.07, g: 0.14 }); tone({ f: 190, f2: 140, d: 0.05, g: 0.05 }); } // the thumb on the spur, the action taking up
+      else if (part === 'pawl') { noise({ f: 3900 + Math.random() * 500, q: 14, d: 0.011, g: 0.3 }); noise({ f: 1700, q: 5, d: 0.02, g: 0.06 }); tone({ f: 2950, d: 0.035, g: 0.025, type: 'triangle' }); } // the pawl over the ratchet
+      else if (part === 'set') { // the cylinder stop and the sear: click-CLACK, and the frame rings for a moment
+        noise({ f: 2700, q: 7, d: 0.022, g: 0.45, verb: true });
+        noise({ at: t + 0.05, f: 3500, q: 6, d: 0.03, g: 0.85, verb: true }); noise({ at: t + 0.05, type: 'highpass', f: 6000, d: 0.012, g: 0.35 });
+        for (const [f, g, d] of [[2210, 0.06, 0.26], [3540, 0.04, 0.18], [5290, 0.025, 0.11], [7060, 0.014, 0.07]]) tone({ at: t + 0.05, f, d, g, a: 0.001, verb: true });
+        tone({ at: t + 0.05, f: 330, f2: 170, d: 0.09, g: 0.2 });
+      }
+    },
     dry() { // the hammer falls on an empty chamber
       noise({ f: 3300, q: 10, d: 0.035, g: 0.9, verb: true }); tone({ f: 2100, f2: 1500, d: 0.03, g: 0.12, type: 'square' }); tone({ f: 160, f2: 90, d: 0.07, g: 0.3 });
     },
@@ -722,18 +756,25 @@ const room = new THREE.Group(); scene.add(room);
 
 // ---------- the table and chairs ----------
 const table = new THREE.Group(); scene.add(table);
+// 1.3: the parts a party game swaps out for the round table (see Party below)
+const TABLE = { rect: [], chair: null, props: [] };
+function makeChair(parent, z) {
+  const ch = new THREE.Group(); ch.position.set(0, 0, z); parent.add(ch);
+  mesh(box(0.46, 0.04, 0.44), MAT.chair, 0, 0.45, 0, ch);
+  for (const x of [-0.2, 0.2]) { mesh(box(0.04, 0.45, 0.04), MAT.chair, x, 0.225, 0.18, ch); mesh(box(0.04, 1.0, 0.04), MAT.chair, x, 0.5, -0.2, ch); }
+  for (const y of [0.75, 0.92]) mesh(box(0.4, 0.07, 0.025), MAT.chair, 0, y, -0.2, ch);
+  return ch;
+}
 (function buildTable() {
   mesh(box(1.3, 0.05, 0.84), MAT.table, 0, TOP - 0.025, 0, table);
   for (const x of [-0.58, 0.58]) for (const z of [-0.36, 0.36]) mesh(box(0.07, TOP - 0.05, 0.07), MAT.darkWood, x, (TOP - 0.05) / 2, z, table);
   mesh(box(1.12, 0.09, 0.03), MAT.darkWood, 0, TOP - 0.095, 0.36, table); mesh(box(1.12, 0.09, 0.03), MAT.darkWood, 0, TOP - 0.095, -0.36, table);
   mesh(box(0.03, 0.09, 0.68), MAT.darkWood, 0.58, TOP - 0.095, 0, table); mesh(box(0.03, 0.09, 0.68), MAT.darkWood, -0.58, TOP - 0.095, 0, table);
+  TABLE.rect = table.children.slice();
   // his chair
-  const ch = new THREE.Group(); ch.position.set(0, 0, NPC_Z - 0.04); scene.add(ch);
-  mesh(box(0.46, 0.04, 0.44), MAT.chair, 0, 0.45, 0, ch);
-  for (const x of [-0.2, 0.2]) { mesh(box(0.04, 0.45, 0.04), MAT.chair, x, 0.225, 0.18, ch); mesh(box(0.04, 1.0, 0.04), MAT.chair, x, 0.5, -0.2, ch); }
-  for (const y of [0.75, 0.92]) mesh(box(0.4, 0.07, 0.025), MAT.chair, 0, y, -0.2, ch);
+  TABLE.chair = makeChair(scene, NPC_Z - 0.04);
   // the ashtray with a burning cigarette
-  const ash = new THREE.Group(); ash.position.set(0.44, TOP, -0.2); table.add(ash);
+  const ash = new THREE.Group(); ash.position.set(0.44, TOP, -0.2); table.add(ash); TABLE.props.push(ash);
   const tray = new THREE.LatheGeometry([[0, 0.0], [0.055, 0.0], [0.06, 0.006], [0.058, 0.022], [0.048, 0.022], [0.042, 0.008], [0, 0.008]].map(p => new THREE.Vector2(p[0], p[1])), 20);
   mesh(tray, MAT.ash, 0, 0, 0, ash);
   for (let i = 0; i < 3; i++) { const b = mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.03, 8), MAT.paper, rand(-0.02, 0.02), 0.012, rand(-0.02, 0.02), ash); b.rotation.set(Math.PI / 2, 0, rand(0, 3)); }
@@ -744,11 +785,12 @@ const table = new THREE.Group(); scene.add(table);
   // the bottle and a glass
   const bl = new THREE.LatheGeometry([[0, 0], [0.04, 0], [0.042, 0.01], [0.042, 0.19], [0.034, 0.23], [0.014, 0.26], [0.013, 0.33], [0, 0.33]].map(p => new THREE.Vector2(p[0], p[1])), 18);
   const bottle = mesh(bl, MAT.glass, -0.47, TOP, -0.25, scene); bottle.castShadow = true;
-  mesh(new THREE.CylinderGeometry(0.0435, 0.0435, 0.08, 18, 1, true), MAT.label, -0.47, TOP + 0.1, -0.25);
-  mesh(new THREE.CylinderGeometry(0.0145, 0.0145, 0.025, 12), MAT.frame, -0.47, TOP + 0.34, -0.25);
+  TABLE.props.push(bottle, mesh(new THREE.CylinderGeometry(0.0435, 0.0435, 0.08, 18, 1, true), MAT.label, -0.47, TOP + 0.1, -0.25),
+    mesh(new THREE.CylinderGeometry(0.0145, 0.0145, 0.025, 12), MAT.frame, -0.47, TOP + 0.34, -0.25));
   const glassG = new THREE.LatheGeometry([[0, 0], [0.034, 0], [0.036, 0.004], [0.04, 0.085], [0.037, 0.085], [0.033, 0.006], [0, 0.006]].map(p => new THREE.Vector2(p[0], p[1])), 18);
-  mesh(glassG, MAT.clearGlass, -0.36, TOP, 0.06).castShadow = false;
-  mesh(new THREE.CylinderGeometry(0.0335, 0.033, 0.026, 18), MAT.whisky, -0.36, TOP + 0.02, 0.06).castShadow = false;
+  const gl = mesh(glassG, MAT.clearGlass, -0.36, TOP, 0.06); gl.castShadow = false;
+  const wh = mesh(new THREE.CylinderGeometry(0.0335, 0.033, 0.026, 18), MAT.whisky, -0.36, TOP + 0.02, 0.06); wh.castShadow = false;
+  TABLE.props.push(gl, wh);
 })();
 
 // ---------- the lamp: one bare bulb under a tin shade, swinging ----------
@@ -984,28 +1026,37 @@ const SHIRTS = [0x6e1414, 0x173a66, 0x24521f, 0x5a3412, 0x4a4a4e, 0x141416, 0x9e
 const STYLES = ['short', 'buzz', 'bald', 'swept', 'mohawk', 'long', 'flatcap', 'spiky'];
 let npc = null, lastName = '', lastLook = { shirt: -1, hair: -1, style: '' };
 function pickNew(n, last) { let i; do { i = Math.floor(Math.random() * n); } while (i === last && n > 1); return i; }
-function buildNPC() {
-  if (npc) {
-    if (tgun.g.parent !== scene) scene.attach(tgun.g); // never throw the gun away with him
-    scene.remove(npc.root); const keep = new Set(Object.values(MAT));
-    npc.root.traverse(o => { if (o.isMesh) { o.geometry.dispose(); if (!keep.has(o.material)) o.material.dispose(); } });
-  }
+// 1.3: the party game seats several strangers, so building one and throwing one away are separate from npc
+function dropNPC(n) {
+  if (!n) return;
+  if (tgun.g.parent !== scene) scene.attach(tgun.g); // never throw the gun away with him
+  scene.remove(n.root); const keep = new Set(Object.values(MAT));
+  n.root.traverse(o => { if (o.isMesh) { o.geometry.dispose(); if (!keep.has(o.material)) o.material.dispose(); } });
+}
+function buildNPC(look = null) { dropNPC(npc); npc = makeNPC(look); return npc; }
+// 1.3: every stranger sits in his own frame, n.root. In the usual chair across the table it isn't moved or turned at
+// all, so his frame and the world are the same; round the party table these convert between the two.
+const _qInv = new THREE.Quaternion();
+function seatPt(n, v) { return n.root.worldToLocal(v); } // a world point into his frame (changes v)
+function seatPose(n, p, q) { return { p: n.root.worldToLocal(p.clone()), q: q.clone().premultiply(_qInv.copy(n.root.quaternion).invert()) }; }
+function worldPose(n, pose) { return { p: n.root.localToWorld(pose.p.clone()), q: pose.q.clone().premultiply(n.root.quaternion) }; }
+function makeNPC(look = null) { // look: a fixed stranger (the intro); without one he is picked at random
   const root = new THREE.Group(); scene.add(root);
-  let name; do { name = pick(NAMES); } while (name === lastName); lastName = name;
-  const skin = std({ color: pick(SKINS), roughness: 0.62, flatShading: true });
+  let name; do { name = pick(NAMES); } while (name === lastName); lastName = name; if (look) name = look.name;
+  const skin = std({ color: look ? look.skin : pick(SKINS), roughness: 0.62, flatShading: true });
   const skinSm = std({ color: skin.color.clone().multiplyScalar(0.8).getHex(), roughness: 0.62 });
   const si = pickNew(SHIRTS.length, lastLook.shirt), hi = pickNew(HAIRS.length, lastLook.hair);
-  let style; do { style = pick(STYLES); } while (style === lastLook.style);
+  let style; do { style = pick(STYLES); } while (style === lastLook.style); if (look) style = look.style;
   lastLook = { shirt: si, hair: hi, style };
-  const shirt = std({ color: SHIRTS[si], roughness: 0.95, flatShading: true });
-  const hair = std({ color: HAIRS[hi], roughness: 0.85, flatShading: true });
+  const shirt = std({ color: look ? look.shirt : SHIRTS[si], roughness: 0.95, flatShading: true });
+  const hair = std({ color: look ? look.hair : HAIRS[hi], roughness: 0.85, flatShading: true });
   const dark = std({ color: 0x1a1412, roughness: 0.9 });
   const n = { root, name, nerve: rand(0.15, 1), alive: true, skin, shirt };
   // hips at the chair; the torso pivots there so he can lean in and slump
   const torso = new THREE.Group(); torso.position.set(0, 0.5, NPC_Z); root.add(torso); n.torso = torso;
   const body = (prof, mat, sz, sx = 1) => { const m = mesh(new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 12), mat, 0, 0, 0, torso); m.scale.set(sx, 1, sz); return m; };
   body([[0, 0], [0.15, 0], [0.165, 0.08], [0.158, 0.2], [0.175, 0.33], [0.198, 0.43], [0.192, 0.49], [0.13, 0.545], [0.075, 0.575], [0, 0.575]], shirt, 0.62);
-  if (Math.random() < 0.5) body([[0.155, 0.06], [0.168, 0.08], [0.161, 0.2], [0.178, 0.33], [0.196, 0.42], [0.17, 0.47]], std({ color: pick([0x1d1f22, 0x2b2118, 0x22262a, 0x3a2a1a, 0x1a2a1a]), roughness: 0.9, flatShading: true, side: THREE.DoubleSide }), 0.64, 1.01); // a waistcoat
+  if (!look && Math.random() < 0.5) body([[0.155, 0.06], [0.168, 0.08], [0.161, 0.2], [0.178, 0.33], [0.196, 0.42], [0.17, 0.47]], std({ color: pick([0x1d1f22, 0x2b2118, 0x22262a, 0x3a2a1a, 0x1a2a1a]), roughness: 0.9, flatShading: true, side: THREE.DoubleSide }), 0.64, 1.01); // a waistcoat
   n.neck = mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.12, 10), skin, 0, 0.62, 0.01, torso);
   // legs (mostly under the table)
   for (const x of [-0.1, 0.1]) { mesh(roundBox(0.14, 0.13, 0.44, 0.05), dark, x, 0.0, 0.2, torso); mesh(roundBox(0.12, 0.46, 0.12, 0.04), dark, x, -0.24, 0.42, torso); }
@@ -1039,7 +1090,7 @@ function buildNPC() {
   else if (style === 'long') { cap(0.45, 0.008, 1.14); mesh(roundBox(0.17, 0.14, 0.05, 0.02), hair, 0, -0.04, -0.075, head); for (const s of [-1, 1]) mesh(roundBox(0.03, 0.12, 0.07, 0.012), hair, s * 0.085, -0.025, -0.03, head); }
   else if (style === 'flatcap') { cap(0.3, 0.004, 1.08); const hat = std({ color: pick([0x3a3328, 0x2a2e33, 0x4a3a22]), roughness: 0.95, flatShading: true }); const c = mesh(new THREE.CylinderGeometry(0.098, 0.104, 0.05, 14), hat, 0, 0.09, -0.004, head); c.rotation.x = -0.12; const brim = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.01, 14, 1, false, -Math.PI / 2, Math.PI), hat, 0, 0.07, 0.07, head); brim.rotation.x = -0.1; brim.scale.set(1.1, 1, 0.75); }
   else if (style === 'spiky') { cap(0.4, 0.006, 1.1); for (let i = 0; i < 9; i++) { const a = rand(-1.2, 1.2), b = rand(-0.9, 0.5); const sp = mesh(new THREE.ConeGeometry(0.018, 0.05, 4), hair, Math.sin(a) * 0.07, 0.1 + Math.cos(a) * 0.012, Math.sin(b) * 0.06 - 0.01, head); sp.rotation.set(b * 0.6, 0, -a * 0.6); } }
-  const facial = pick(['none', 'none', 'stubble', 'beard', 'moustache']);
+  const facial = look ? look.facial : pick(['none', 'none', 'stubble', 'beard', 'moustache']);
   if (facial === 'beard' || facial === 'stubble') { const bm = mesh(new THREE.SphereGeometry(facial === 'beard' ? 0.106 : 0.102, 12, 7, -Math.PI * 0.1, Math.PI * 1.2, Math.PI * 0.58, Math.PI * 0.3), facial === 'beard' ? hair : std({ color: 0x2a221c, roughness: 1, transparent: true, opacity: 0.55, flatShading: true }), 0, -0.01, 0.006, head); bm.scale.set(0.9, 1.1, 1); }
   if (facial === 'moustache') mesh(box(0.05, 0.012, 0.014), hair, 0, -0.036, 0.098, head);
   // sweat that runs down his face when he's scared
@@ -1066,14 +1117,13 @@ function buildNPC() {
       setGrip(k) { if (A.grip === k) return; A.grip = k; hand.g.visible = k === 'hand'; barP.g.visible = k === 'pump'; barB.g.visible = k === 'barrel'; A.wrist = (k === 'pump' ? barP : k === 'barrel' ? barB : hand).g.userData.wrist; } };
     hand.setCurl(true); return A;
   };
-  n.R = arm(-1); n.L = arm(1);
+  n.R = arm(-1); n.L = arm(1); n.R.n = n.L.n = n;
   n.lean = 0; n.leanTo = 0; n.slump = 0; n.blink = rand(1, 3); n.fear = 0; n.look = V3(0, SEAT.y, SEAT.z); n.mouthOpen = 0;
   // his nerves, in detail (see updateNPC)
   n.headX = 0; n.headY = 0; n.shrug = 0; n.shrugTo = 0; n.leanExtra = 0; n.flinchT = 0; n.wince = 0; n.away = 0;
   n.swayPh = rand(0, 6.28); n.breathPh = rand(0, 6.28); n.breathK = 0; n.holdBreath = false;
   n.glance = new THREE.Vector2(); n.glanceTo = new THREE.Vector2(); n.glanceT = 0; n.browAsym = rand(-1, 1);
   n.lipPress = 0; n.mutter = 0; n.swallow = 0;
-  npc = n;
   restPose(n.R, true); restPose(n.L, true);
   return n;
 }
@@ -1085,15 +1135,16 @@ function handPose(arm, name) {
   // 1.1.2: relaxed fists standing on their little-finger side on the table, fingers curled in (nothing sticking up)
   if (name === 'rest') return { p: V3(s * 0.17, TOP + 0.09, -0.33), q: qFrom(V3(-s * 0.2, 0, 1), UP) };
   if (name === 'show') return { p: V3(s * 0.08, 1.0, -0.47), q: qFrom(V3(0.86, 0.5, 0.05), V3(-0.5, 0.86, 0)) };
+  const n = arm.n || npc;
   if (name === 'temple') { // the barrel against his right temple
-    npc.head.updateMatrixWorld(true);
-    const t = npc.head.localToWorld(V3(-0.09, 0.03, 0.02));
-    const f = V3(1, 0, 0).applyQuaternion(npc.head.getWorldQuaternion(new THREE.Quaternion()));
-    const u = V3(0, 1, 0).applyQuaternion(npc.head.getWorldQuaternion(new THREE.Quaternion()));
+    n.head.updateMatrixWorld(true);
+    const t = n.head.localToWorld(V3(-0.09, 0.03, 0.02));
+    const f = V3(1, 0, 0).applyQuaternion(n.head.getWorldQuaternion(new THREE.Quaternion()));
+    const u = V3(0, 1, 0).applyQuaternion(n.head.getWorldQuaternion(new THREE.Quaternion()));
     const q = qFrom(f, u); const p = t.clone().sub(MUZZLE.clone().applyQuaternion(q)).addScaledVector(f, -0.004);
-    return { p, q };
+    return seatPose(n, p, q);
   }
-  if (name === 'face') { npc.head.updateMatrixWorld(true); return { p: npc.head.localToWorld(V3(s * 0.035, -0.035, 0.125)), q: qFrom(V3(-s * 0.5, 0.15, -0.85), V3(0, 1, 0)) }; }
+  if (name === 'face') { n.head.updateMatrixWorld(true); return { p: seatPt(n, n.head.localToWorld(V3(s * 0.035, -0.035, 0.125))), q: qFrom(V3(-s * 0.5, 0.15, -0.85), V3(0, 1, 0)) }; }
   if (name === 'limp') return { p: s < 0 ? V3(0.02, 0.5, NPC_Z + 0.08) : V3(0.52, 0.3, NPC_Z + 0.05), q: qFrom(V3(0, -1, 0.2), V3(0, 0, s < 0 ? 1 : -1)) };
   if (name === 'gun') { const t = tablePose(GUN.at); return { p: t.p.clone().add(V3(0, 0.05, 0)), q: qFrom(V3(-s * 0.4, 0, -0.1 + 0.3), V3(0, 0, 1)) }; }
   return null;
@@ -1108,16 +1159,16 @@ const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vect
 function solveArm(n, arm, t) {
   const L1 = 0.31, L2 = 0.33; // 1.1.1: longer forearms, so both hands reach the shotgun
   n.torso.updateMatrixWorld(true);
-  const S = n.torso.localToWorld(V3(arm.side * 0.195, 0.48 + (n.shrug || 0) * 0.03, 0.0));
+  const S = seatPt(n, n.torso.localToWorld(V3(arm.side * 0.195, 0.48 + (n.shrug || 0) * 0.03, 0.0)));
   // the hand, with a tremor when he's scared
   arm.H.position.copy(arm.pos); arm.H.quaternion.copy(arm.q);
   if (arm.tremor > 0) arm.H.position.add(V3(Math.sin(t * 31) * 0.6 + Math.sin(t * 17.3), Math.sin(t * 27.1 + 1) + Math.sin(t * 13.7) * 0.5, Math.sin(t * 23.9 + 2)).multiplyScalar(arm.tremor * 0.004));
   arm.H.updateMatrixWorld(true);
-  let W = arm.H.localToWorld(arm.wrist.clone());
+  let W = seatPt(n, arm.H.localToWorld(arm.wrist.clone()));
   let d = W.distanceTo(S);
   if (d > L1 + L2 - 0.005) { // out of reach: pull the hand back a bit
     const pull = _v1.subVectors(W, S).multiplyScalar(1 - (L1 + L2 - 0.005) / d);
-    arm.H.position.sub(pull); arm.H.updateMatrixWorld(true); W = arm.H.localToWorld(arm.wrist.clone()); d = W.distanceTo(S);
+    arm.H.position.sub(pull); arm.H.updateMatrixWorld(true); W = seatPt(n, arm.H.localToWorld(arm.wrist.clone())); d = W.distanceTo(S);
   }
   const dir = _v2.subVectors(W, S).normalize();
   const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
@@ -1128,10 +1179,10 @@ function solveArm(n, arm, t) {
   return d;
 }
 
-function updateNPC(dt, t) {
-  const n = npc; if (!n) return;
+function updateNPC(dt, t, n = npc) {
+  if (!n) return;
   // lean in when reaching for something far away
-  const reachR = arm => { n.torso.updateMatrixWorld(true); const S = n.torso.localToWorld(V3(arm.side * 0.195, 0.48 + n.shrug * 0.03, 0)); return arm.pos.distanceTo(S); };
+  const reachR = arm => { n.torso.updateMatrixWorld(true); const S = seatPt(n, n.torso.localToWorld(V3(arm.side * 0.195, 0.48 + n.shrug * 0.03, 0))); return arm.pos.distanceTo(S); };
   if (n.alive) {
     const need = Math.max(reachR(n.R), reachR(n.L));
     const f = n.fear;
@@ -1149,7 +1200,7 @@ function updateNPC(dt, t) {
     n.torso.position.y = 0.5;
     // his head follows what he is looking at, leans away from the barrel, and jerks at a click
     n.head.updateMatrixWorld(true);
-    const hp = n.head.getWorldPosition(_v3), want = n.look.clone().sub(hp);
+    const hp = seatPt(n, n.head.getWorldPosition(_v3)), want = seatPt(n, n.look.clone()).sub(hp);
     const yaw = Math.atan2(want.x, want.z), pitch = -Math.atan2(want.y, Math.hypot(want.x, want.z));
     n.headX += (clamp(pitch, -0.5, 0.5) - n.lean - n.headX) * (1 - Math.exp(-dt * 5));
     n.headY += (clamp(yaw, -0.6, 0.6) - n.headY) * (1 - Math.exp(-dt * 5));
@@ -1226,6 +1277,7 @@ function updateCoin(dt) {
   const st = Math.abs(Math.sin(coin.theta)), ct = Math.abs(Math.cos(coin.theta));
   coin.mesh.position.y = COIN_R * st + COIN_H / 2 * ct + 0.0005;
   coin.mesh.quaternion.setFromAxisAngle(UP, coin.phi).multiply(new THREE.Quaternion().setFromAxisAngle(V3(1, 0, 0), coin.theta));
+  if (coin.chi) coin.mesh.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(UP, coin.chi)); // turning about its own face (the intro's wobble)
 }
 
 // =====================================================================
@@ -1329,7 +1381,9 @@ const gore = (() => {
     hide() { mist.visible = false; wall.visible = false; pool.visible = false; },
   };
 })();
-function updateSpray(dt) { for (const s of spray) { if (s.life <= 0) continue; s.life -= dt; s.v.y -= 9.8 * dt; s.m.position.addScaledVector(s.v, dt); if (s.m.position.y < TOP + 0.003 && Math.abs(s.m.position.x) < 0.65 && Math.abs(s.m.position.z) < 0.42) s.life = 0; if (s.m.position.y < 0.01) s.life = 0; if (s.life <= 0) s.m.visible = false; } }
+// 1.3: is a point over the table (the round one in a party game)?
+function onTableXZ(p) { return PB.on && PB.round ? Math.hypot(p.x, p.z) < PB.R : Math.abs(p.x) < 0.65 && Math.abs(p.z) < 0.42; }
+function updateSpray(dt) { for (const s of spray) { if (s.life <= 0) continue; s.life -= dt; s.v.y -= 9.8 * dt; s.m.position.addScaledVector(s.v, dt); if (s.m.position.y < TOP + 0.003 && onTableXZ(s.m.position)) s.life = 0; if (s.m.position.y < 0.01) s.life = 0; if (s.life <= 0) s.m.visible = false; } }
 
 // =====================================================================
 //  Game time, tweens and waits (they all stop when you pause)
@@ -1803,7 +1857,7 @@ function showMenu(name) {
   if (name === 'title') { $('titleStats').innerHTML = save.mode === 'bs' ? statsHTML([[save.bsStreak, 'Streak'], [save.bsBest, 'Best'], [save.bsWins, 'Wins'], [save.bsGames, 'Games']]) : statsHTML([[save.streak, 'Streak'], [save.best, 'Best'], [save.wins, 'Wins'], [save.games, 'Games']]); menuBack = 'title'; if (typeof syncModeUI === 'function') syncModeUI(); }
   if (name === 'pause') { menuBack = 'pause'; $('pauseNote').textContent = (save.inGame || save.bsInGame) ? 'Leaving the table now counts as a loss and ends your win streak.' : ''; }
   if (name === 'settings') syncSettings();
-  if (name === 'online') { $('netMode').textContent = 'Mode: ' + MODES[save.mode].n; $('netTag').textContent = save.mode === 'bs' ? 'Buckshot Roulette against a real person. One shotgun, three rounds, two players.' : 'Russian Roulette against a real person. One revolver, one bullet, two players.'; if (!$('netName').value) $('netName').value = save.name || ''; if (!Online.on) { onlineWaiting(false); onlineStatus(''); } }
+  if (name === 'online') { $('netMode').textContent = 'Mode: ' + MODES[save.mode].n; $('netTag').textContent = save.mode === 'bs' ? 'Buckshot Roulette against real people. One shotgun, three rounds, 2 to 6 players.' : 'Russian Roulette against a real person. One revolver, one bullet, two players.'; if (!$('netName').value) $('netName').value = save.name || ''; if (!Online.on) { onlineWaiting(false); onlineStatus(''); } else partyLobbyRender(); }
   ov.scrollTop = 0;
 }
 function hideMenus() { ov.hidden = true; }
@@ -1822,6 +1876,7 @@ ov.addEventListener('click', e => {
   else if (go === 'back') showMenu(menuBack);
   else if (go === 'resume') resumeGame();
   else if (go === 'quit') toTitle();
+  else if (go === 'intro') Intro.play();
   else showMenu(go);
 });
 $('menuBtn').addEventListener('click', () => { Sound.ui(); pauseGame(); });
@@ -1916,7 +1971,8 @@ function frame(now) {
   Blood.update(dt);
   // dust and smoke
   const dp = dust.pos; for (let i = 0; i < dust.n; i++) { dp[i * 3 + 1] += Math.sin(t * 0.3 + i) * 0.0004; dp[i * 3] += Math.cos(t * 0.2 + i * 1.3) * 0.0003; } dust.p.geometry.attributes.position.needsUpdate = true;
-  if (SMOKE.originObj) {
+  if (SMOKE.off) { for (const s of smokeP) s.material.opacity = 0; } // 1.3: the ashtray is put away for a party
+  else if (SMOKE.originObj) {
     SMOKE.originObj.localToWorld(SMOKE.origin.set(0.066, 0, 0));
     for (const s of smokeP) { s.userData.t = (s.userData.t + dt) % 4; const k = s.userData.t / 4; s.position.set(SMOKE.origin.x + Math.sin(k * 7 + t * 0.5) * 0.04 * k, SMOKE.origin.y + k * 0.7, SMOKE.origin.z + Math.cos(k * 5) * 0.03 * k); s.scale.setScalar(0.03 + k * 0.22); s.material.opacity = Math.sin(k * Math.PI) * 0.18; }
   }
@@ -1930,6 +1986,15 @@ function frame(now) {
   updateCamera(dt, t);
   renderer.render(scene, camera);
 }
+// 1.3: a hidden tab gets no frames, but an online game can't wait for it (the others would sit there), so its clock
+// keeps going a few times a second until the tab is back
+let hiddenAt = 0;
+setInterval(() => {
+  if (!document.hidden || state !== 'game' || !(game && game.online)) { hiddenAt = 0; return; }
+  const now = performance.now(); if (!hiddenAt) { hiddenAt = now; return; }
+  const dt = Math.min(1, (now - hiddenAt) / 1000); hiddenAt = now;
+  gt += dt; stepTime(); updateHold(dt);
+}, 250);
 
 
 // =====================================================================
@@ -1949,6 +2014,9 @@ const BS_ROUNDS = [{ hp: 2, items: 0 }, { hp: 4, items: 2 }, { hp: 5, items: 4 }
 const BS = { on: false, round: 0, max: 2, hp: { you: 2, him: 2 }, shells: [], liveLeft: 0, blankLeft: 0, items: { you: [], him: [] }, saw: false, cuffs: { you: 0, him: 0 }, knownHim: null,
   npcHold: false, sgDriven: false, sgCur: { p: V3(0, 0, 0), q: new THREE.Quaternion() }, fpsCur: { p: V3(0.2, -0.7, -0.5), q: new THREE.Quaternion() }, ejected: [], shellsShown: [] };
 const other = w => w === 'you' ? 'him' : 'you';
+// 1.3: online Buckshot for 2 to 6 players (Party Buckshot, after the online code). P: the players in seat order.
+const partyR = n => 0.62 + 0.05 * (n - 3); // the round table that comes out for 3 or more: bigger for more players
+const PB = { on: false, round: false, R: 0.62, P: [], byId: {}, me: null, cur: null, g: 0, step: 0, eye: SEAT.clone(), rest: null, shellAt: V3(0, TOP, -0.16), shellDir: V3(1, 0, 0), top: null, tops: {}, hudHTML: null, fov: 62, spectate: false };
 
 // ---------- the shotgun ----------
 // 1.1.1: the shotgun has a pistol grip shaped exactly like the revolver's, so the same hand fits it. Hands are
@@ -2018,8 +2086,9 @@ function updateArm(a, hand, elbow, on) {
 const armR = makeArm(), armL = makeArm(), armC = makeArm();
 // the stranger's hands follow the gun the same way
 const _m4 = new THREE.Matrix4(), _sc = new THREE.Vector3();
-function armTo(arm, anchor, bar) { anchor.updateMatrixWorld(true); _m4.copy(anchor.matrixWorld); if (bar) _m4.multiply(BAR_M); _m4.decompose(arm.pos, arm.q, _sc); }
-function sgRest() { return { p: V3(0.02, TOP + 0.024, 0.04), q: qFrom(V3(1, 0, 0.12), V3(0, 0, -1)) }; }
+const _m4i = new THREE.Matrix4();
+function armTo(arm, anchor, bar) { anchor.updateMatrixWorld(true); _m4.copy(anchor.matrixWorld); if (bar) _m4.multiply(BAR_M); if (arm.n) _m4.premultiply(_m4i.copy(arm.n.root.matrixWorld).invert()); _m4.decompose(arm.pos, arm.q, _sc); }
+function sgRest() { if (PB.on && PB.rest) return { p: PB.rest.p.clone(), q: PB.rest.q.clone() }; return { p: V3(0.02, TOP + 0.024, 0.04), q: qFrom(V3(1, 0, 0.12), V3(0, 0, -1)) }; }
 function placeSg(pose) { BS.sgCur.p.copy(pose.p); BS.sgCur.q.copy(pose.q); sg.g.position.copy(pose.p); sg.g.quaternion.copy(pose.q); }
 function sgTo(poseFn, dur, ease = easeInOut) {
   const a = { p: BS.sgCur.p.clone(), q: BS.sgCur.q.clone() }; BS.sgDriven = true;
@@ -2267,33 +2336,36 @@ function lighterFlame(p) {
 }
 function glowEmber(cig, on) { cig.userData.ember.material.color.setHex(on ? 0xff5a14 : 0x3a2a24); }
 // the stranger: puts the gun down, lights one, smokes it
-async function heSmokes() {
-  const cig = makeCig(); cig.position.copy(CIG_IN_HAND); npc.R.H.add(cig); npc.R.setGrip('hand'); npc.R.hand.setCurl(true);
-  const lips = () => { npc.head.updateMatrixWorld(true); return npc.head.localToWorld(V3(0, -0.05, 0.1)); };
+// (1.3: n is any stranger, in his own seat frame; gain gives the charge back, online)
+async function heSmokes(n = npc, gain = null) {
+  const cig = makeCig(); cig.position.copy(CIG_IN_HAND); n.R.H.add(cig); n.R.setGrip('hand'); n.R.hand.setCurl(true);
+  const lips = () => { n.head.updateMatrixWorld(true); return seatPt(n, n.head.localToWorld(V3(0, -0.05, 0.1))); };
   // the filter at his lips, the lit end pointing out and down to his right
   const mouthPose = (back = 0) => { const f = V3(-0.4, -0.3, 1).normalize(), q = qFrom(f, UP); const filt = CIG_IN_HAND.clone().add(V3(0, 0, -0.02)); return { p: lips().addScaledVector(f, back).sub(filt.applyQuaternion(q)), q }; };
-  sub(`${npc.name} puts the gun down and lights a cigarette.`, 0); npc.look.set(0, 1.1, -0.3);
-  await handTo(npc.R, mouthPose(0.0), 0.8);
+  sub(`${n.name} puts the gun down and lights a cigarette.`, 0); n.look.copy(n.root.localToWorld(V3(0, 1.1, -0.3)));
+  await handTo(n.R, mouthPose(0.0), 0.8);
   // the lighter in his other hand
-  const tipW = () => npc.R.H.localToWorld(CIG_IN_HAND.clone().add(V3(0, 0, 0.078)));
-  await handTo(npc.L, { p: tipW().add(V3(0.04, -0.07, 0.03)), q: qFrom(V3(-1, 0.4, 0.2), UP) }, 0.5);
+  const tipW = () => n.R.H.localToWorld(CIG_IN_HAND.clone().add(V3(0, 0, 0.078)));
+  await handTo(n.L, { p: seatPt(n, tipW()).add(V3(0.04, -0.07, 0.03)), q: qFrom(V3(-1, 0.4, 0.2), UP) }, 0.5);
   Sound.cig(); const fl = lighterFlame(tipW().add(V3(0, 0.012, 0)));
   await wait(0.7); scene.remove(fl); fl.material.dispose(); glowEmber(cig, true);
-  handTo(npc.L, 'rest', 0.6).catch(() => {});
-  npc.eyesShut = true; await wait(1.0); npc.eyesShut = false;
+  handTo(n.L, 'rest', 0.6).catch(() => {});
+  n.eyesShut = true; await wait(1.0); n.eyesShut = false;
   // the smoke goes out of his mouth as he lowers the cigarette
-  await handTo(npc.R, mouthPose(0.12), 0.5);
-  const l = lips(); for (let i = 0; i < 6; i++) { puff(l.clone().add(V3(rand(-0.01, 0.01), 0, 0.02)), V3(rand(-0.05, 0.05), rand(0.02, 0.08), rand(0.12, 0.25)), 0.05, rand(1.6, 2.4)); await wait(0.07); }
+  await handTo(n.R, mouthPose(0.12), 0.5);
+  const l = n.root.localToWorld(lips()), turn = v => v.applyQuaternion(n.root.quaternion);
+  for (let i = 0; i < 6; i++) { puff(l.clone().add(turn(V3(rand(-0.01, 0.01), 0, 0.02))), turn(V3(rand(-0.05, 0.05), rand(0.02, 0.08), rand(0.12, 0.25))), 0.05, rand(1.6, 2.4)); await wait(0.07); }
   for (let i = 0; i < 3; i++) puff(tipW(), V3(0, 0.06, 0), 0.03, 2);
-  BS.hp.him = Math.min(BS.max, BS.hp.him + 1); bsHudRender(); sub(`${npc.name} smokes a cigarette. <em>+1 charge</em>.`, 2.4); Sound.exhale();
+  if (gain) gain(); else { BS.hp.him = Math.min(BS.max, BS.hp.him + 1); bsHudRender(); }
+  sub(`${n.name} smokes a cigarette. <em>+1 charge</em>.`, 2.4); Sound.exhale();
   await wait(1.2);
   // stubs it out in the ashtray
-  await handTo(npc.R, { p: V3(0.38, TOP + 0.06, -0.24), q: qFrom(V3(0.2, -1, 0.2), V3(0, 0, -1)) }, 0.7);
-  npc.R.H.remove(cig); handTo(npc.R, 'rest', 0.6).catch(() => {}); await wait(0.4);
+  await handTo(n.R, { p: V3(0.38, TOP + 0.06, -0.24), q: qFrom(V3(0.2, -1, 0.2), V3(0, 0, -1)) }, 0.7);
+  n.R.H.remove(cig); handTo(n.R, 'rest', 0.6).catch(() => {}); await wait(0.4);
 }
 // you: put the shotgun down, light one and smoke it
 const cigHand = (() => { const h = buildHand(skinYou, { nails: true, noShadow: true }); h.setCurl(true); const rig = new THREE.Group(); rig.add(h.g); camera.add(rig); rig.visible = false; const c = makeCig(); c.position.copy(CIG_IN_HAND); h.g.add(c); return { rig, cig: c, h }; })();
-async function youSmoke() {
+async function youSmoke(gain = null) {
   // the filter end at your lips, the lit end pointing away from you
   const filt = CIG_IN_HAND.clone().add(V3(0, 0, -0.02));
   const pose = (at, f) => { const q = qFrom(f, UP); return { p: at.clone().sub(filt.clone().applyQuaternion(q)), q }; };
@@ -2313,7 +2385,7 @@ async function youSmoke() {
   // breathe the smoke out in front of you
   camera.updateMatrixWorld(true);
   for (let i = 0; i < 6; i++) { const p = camera.localToWorld(V3(rand(-0.02, 0.02), -0.06, -0.12)), dir = camera.localToWorld(V3(rand(-0.06, 0.06), 0.05, -0.4)).sub(camera.position.clone()); puff(p, dir.multiplyScalar(0.6), 0.05, rand(1.6, 2.4)); await wait(0.07); }
-  Sound.exhale(); BS.hp.you = Math.min(BS.max, BS.hp.you + 1); bsHudRender(); sub('You smoke the cigarette. <em>+1 charge</em>.', 2.4);
+  Sound.exhale(); if (gain) gain(); else { BS.hp.you = Math.min(BS.max, BS.hp.you + 1); bsHudRender(); } sub('You smoke the cigarette. <em>+1 charge</em>.', 2.4);
   await wait(1.0); cam.rollTo = 0;
   await go(off, 0.6, easeIn); cigHand.rig.visible = false;
 }
@@ -2479,12 +2551,14 @@ async function playBuckshot() {
 
 // ---------- every frame ----------
 function bsUpdate(dt) {
+  for (const p of PB.P) if (p.n && p.n !== npc && p.n.root.visible) updateNPC(dt, gt, p.n); // 1.3: the other players round the table
   if (!BS.on && !sg.g.visible) { for (const a of [armR, armL, armC]) a.skin.visible = a.cuff.visible = a.sleeve.visible = false; return; }
   if (BS.sgDriven) { sg.g.position.copy(BS.sgCur.p); sg.g.quaternion.copy(BS.sgCur.q); }
-  if (BS.npcHold && npc) { // his hands stay on the gun: grip and pump, or pump and barrel when it's turned on himself
+  const hn = BS.hn || npc; // 1.3: online, whoever has the gun
+  if (BS.npcHold && hn) { // his hands stay on the gun: grip and pump, or pump and barrel when it's turned on himself
     sg.g.updateMatrixWorld(true);
-    if (BS.npcSelf) { npc.R.setGrip('pump'); npc.L.setGrip('barrel'); armTo(npc.R, sg.anchorP, false); armTo(npc.L, sg.anchorF, false); }
-    else { npc.R.setGrip('hand'); npc.L.setGrip('pump'); armTo(npc.R, sg.anchorR, false); armTo(npc.L, sg.anchorP, false); npc.R.hand.setCurl(false); }
+    if (BS.npcSelf) { hn.R.setGrip('pump'); hn.L.setGrip('barrel'); armTo(hn.R, sg.anchorP, false); armTo(hn.L, sg.anchorF, false); }
+    else { hn.R.setGrip('hand'); hn.L.setGrip('pump'); armTo(hn.R, sg.anchorR, false); armTo(hn.L, sg.anchorP, false); hn.R.hand.setCurl(false); }
   }
   updatePuffs(dt);
   if (fps.rig.visible) {
@@ -2496,13 +2570,14 @@ function bsUpdate(dt) {
   updateArm(armC, cigHand.h, V3(0.32, -0.6, 0.05), cigHand.rig.visible);
   for (const e of BS.ejected) { // spent shells bounce on the table and the floor
     if (e.rest) continue; e.v.y -= 9.8 * dt; e.m.position.addScaledVector(e.v, dt); e.m.rotation.x += e.w.x * dt; e.m.rotation.z += e.w.z * dt;
-    const onTable = Math.abs(e.m.position.x) < 0.65 && Math.abs(e.m.position.z) < 0.42, floor = onTable ? TOP + 0.011 : 0.011;
+    const onTable = onTableXZ(e.m.position), floor = onTable ? TOP + 0.011 : 0.011;
     if (e.m.position.y < floor) { e.m.position.y = floor; if (Math.abs(e.v.y) > 0.6) { e.v.y *= -0.35; e.v.x *= 0.5; e.v.z *= 0.5; Sound.shellDrop(); } else { e.rest = true; e.m.rotation.set(Math.PI / 2, rand(0, 6), 0); } }
   }
 }
 // called whenever the table is reset (both modes): shows the right gun, clears the shotgun's things
 function bsReset() {
   const bs = save.mode === 'bs';
+  pbClear(); // 1.3: back to the usual table and one stranger
   BS.on = false; BS.npcHold = false; if (npc && npc.R.setGrip) { npc.R.setGrip('hand'); npc.L.setGrip('hand'); } BS.sgDriven = false; BS.saw = false; sg.setSaw(false); fps.setSaw(false);
   BS.items = { you: [], him: [] }; layoutItems('you'); layoutItems('him'); clearShells(); BS.shells = []; BS.liveLeft = 0; BS.blankLeft = 0;
   fps.rig.visible = false; fpsGrip(false); BS.npcSelf = false; cigHand.rig.visible = false; for (const f of puffs) scene.remove(f.s); puffs.length = 0;
@@ -2537,7 +2612,15 @@ syncModeUI(); bsReset();
 // After a game both press Play again ('again'). Leaving the table or closing the page loses the game.
 // A game costs a few dozen messages, so this barely touches the arcade's Supabase allowance.
 // Testing: add ?rrroom=abc to the address to use separate channels (rr-test-abc-...).
+// 1.3: Buckshot tables seat 2 to 6 (see Party Buckshot below). A Buckshot table works differently: Presence is
+// everyone sitting there, and the host (whoever made the table, or has been there longest) starts the game with
+// 'start' and the seat order. After a game everyone presses Play again ('again'), and the host starts the next one
+// when everyone still there is ready. Someone who comes in between games joins the next one. Quick match puts
+// Buckshot players in Presence on rr-lobby-party: once two are waiting, the oldest one waits QUICK_WAIT for more
+// (up to 6), then sends 'go' with who's coming and everyone sits down at the table rr-t-q<their id>.
+// v in Presence (PARTY_V) keeps copies of the game from before 1.3 out of a Buckshot table.
 const AFK = 30; // seconds before an online turn takes itself
+const PARTY_MAX = 6, PARTY_V = 13, QUICK_WAIT = 12000;
 const Online = (() => {
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
   const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
@@ -2547,8 +2630,11 @@ const Online = (() => {
   const myId = (Math.random().toString(36) + '0000000').slice(2, 8);
   let client = null, libLoad = null, lobby = null, table = null, tableKey = '', hostId = null, expectId = null, seatT = 0;
   let opp = null, left = false, g = 0, oppAgain = -1, meAgain = -1, waitTimer = 0, mode = 'rr', queueT = 0;
+  // 1.3, a Buckshot table: who is sitting there (here), the players in the game in seat order (roster), who has left
+  // since it started (gone), who has pressed Play again (readyG: id -> game number)
+  let party = false, phase = 'lobby', here = [], roster = [], gone = new Set(), readyG = {}, joinT = 0, code = '', quickT = false, expectIds = null, joined = false;
   const inbox = [], waiters = [];
-  const api = { name: '', on: false, opp: () => opp, isHost: () => hostId === myId, me: myId, mode: () => mode };
+  const api = { name: '', on: false, opp: () => opp, isHost: () => party ? (seated()[0] || {}).id === myId : hostId === myId, me: myId, mode: () => mode, party: () => party };
 
   function getClient() {
     if (client) return Promise.resolve(client);
@@ -2584,20 +2670,32 @@ const Online = (() => {
     try { const p = table.send({ type: 'broadcast', event: ev, payload: Object.assign({ f: myId, g }, payload) }); if (p && p.catch) p.catch(() => {}); } catch (e) {}
   }
   api.send = send;
+  // 1.3: a waiter is a check that looks through the inbox (taking what it wants out of it) and returns something once
+  // it's found it; it runs again whenever a message comes in or someone leaves
   function deliver() {
     for (let i = 0; i < waiters.length; i++) {
-      const w = waiters[i], k = inbox.findIndex(m => w.evs.includes(m.ev));
-      if (k >= 0) { waiters.splice(i--, 1); w.res(inbox.splice(k, 1)[0]); }
+      const w = waiters[i]; let r;
+      try { r = w.check(inbox); } catch (e) { console.error(e); }
+      if (r !== undefined) { waiters.splice(i--, 1); w.res(r); }
     }
   }
   function onMsg(ev, m) {
+    if (party) {
+      if (typeof m.f !== 'string' || m.f === myId) return;
+      if (ev === 'again') { readyG[m.f] = m.g | 0; emit('again'); hostCheck(); return; }
+      if (ev === 'start') { onStart(m); return; }
+      if ((m.g | 0) < g) return;                     // from a game that's over
+      inbox.push(Object.assign({ ev }, m)); deliver(); return;
+    }
     if (!opp || m.f !== opp.id) return;
     if (ev === 'again') { oppAgain = m.g | 0; emit('again'); return; }
     if ((m.g | 0) < g) return;                       // from a game that's over
     inbox.push(Object.assign({ ev }, m)); deliver();
   }
+  api.until = check => new Promise((res, rej) => { if (left || !api.on) return rej(new Abort()); waiters.push({ check, res, rej }); deliver(); });
   // the next message of one of these kinds, in the order they came
-  api.next = evs => new Promise((res, rej) => { if (left) return rej(new Abort()); waiters.push({ evs: [].concat(evs), res, rej }); deliver(); });
+  api.next = evs => { evs = [].concat(evs); return api.until(box => { const k = box.findIndex(m => evs.includes(m.ev)); if (k >= 0) return box.splice(k, 1)[0]; }); };
+  api.cancel = () => { for (const w of waiters.splice(0)) w.rej(new Abort()); };
 
   // ---------- events for the menus and the game ----------
   const handlers = {};
@@ -2607,15 +2705,31 @@ const Online = (() => {
   // ---------- sitting down at a table ----------
   async function seat(key, host, expect) {
     tableKey = key; hostId = host; expectId = expect || null; opp = null; left = false; g = 0; oppAgain = meAgain = -1; inbox.length = 0;
+    phase = 'lobby'; here = []; roster = []; gone = new Set(); readyG = {}; joinT = Date.now(); joined = false;
     table = chan(BASE + '-t-' + key);
-    for (const ev of ['call', 'toss', 'first', 'spinreq', 'spin', 'hold', 'pulled', 'again', 'bsload', 'bsact']) table.on('broadcast', { event: ev }, m => onMsg(ev, m.payload || {}));
+    for (const ev of ['call', 'toss', 'first', 'spinreq', 'spin', 'hold', 'pulled', 'again', 'bsload', 'bsact', 'start', 'turn']) table.on('broadcast', { event: ev }, m => onMsg(ev, m.payload || {}));
     table.on('presence', { event: 'sync' }, onTable);
     await joinChan(table);
     seatT = performance.now();
-    await table.track({ id: myId, n: api.name, h: host === myId, m: mode });
+    await track();
+  }
+  function track() {
+    if (!table) return Promise.resolve();
+    try { return table.track({ id: myId, n: api.name, h: hostId === myId, m: mode, t: joinT, v: PARTY_V, st: phase }).catch(() => {}); } catch (e) { return Promise.resolve(); }
   }
   function onTable() {
+    if (!table) return;
     const others = members(table).filter(m => m.id !== myId);
+    // 1.3: joining with a code: a Buckshot table works differently
+    if (!party && !opp && !hostId) {
+      // (whoever made it says so; once they've left, anyone else at a Buckshot table does)
+      const h = others.find(m => m.h);
+      if (h ? h.m === 'bs' : others.some(m => m.m === 'bs' && m.v === PARTY_V)) {
+        if (h && h.v !== PARTY_V) { emit('error', 'That table is on an older version of the game. Ask them to reload the page.'); api.leave(); return; }
+        party = true; mode = 'bs'; track();
+      }
+    }
+    if (party) { onParty(others); return; }
     if (!opp) {
       const host = others.find(m => m.h), c = expectId ? others.find(m => m.id === expectId) : hostId === myId ? others[0] : host;
       if (!hostId && others.length > 1) { emit('error', 'That table is full.'); api.leave(); return; }
@@ -2633,12 +2747,89 @@ const Online = (() => {
     }
   }
 
+  // ---------- 1.3: a Buckshot table ----------
+  // everyone at the table in seat order: the players of the last game first (as they sat), then the host, then
+  // whoever came first. The first one is the host.
+  function seated() {
+    const ri = id => { const i = roster.findIndex(p => p.id === id); return i < 0 ? PARTY_MAX : i; };
+    return here.slice().sort((a, b) => (ri(a.id) - ri(b.id)) || ((b.h ? 1 : 0) - (a.h ? 1 : 0)) || ((+a.t || 0) - (+b.t || 0)) || (a.id < b.id ? -1 : 1));
+  }
+  function onParty(others) {
+    here = [{ id: myId, n: api.name, h: hostId === myId, t: joinT }, ...others.filter(m => m.v === PARTY_V)];
+    if (phase !== 'lobby') {
+      // in a game (or just after one): anyone in it who isn't at the table any more has left
+      for (const p of roster) if (p.id !== myId && !gone.has(p.id) && !here.some(m => m.id === p.id)) { gone.add(p.id); emit('gone', p); }
+    } else if (!joined) {
+      // just sat down: is there anyone here, and is the table open?
+      if (hostId !== myId) {
+        if (here.length < 2) return;
+        const host = seated()[0];
+        if (host.st === 'game') { emit('error', 'That table is in the middle of a game. Try again when it’s over.'); api.leave(); return; }
+        if (here.length > PARTY_MAX) { emit('error', 'That table is full (6 players).'); api.leave(); return; }
+      }
+      joined = true; if (!quickT) clearTimeout(waitTimer);
+    }
+    deliver(); emit('lobby'); hostCheck();
+  }
+  // the host starts a game when a quick-match table has everyone it's waiting for, or when everyone wants to play again
+  function hostCheck() {
+    if (!party || !table || !joined || !api.isHost()) return;
+    const s = seated();
+    if (phase === 'lobby' && expectIds) { if (expectIds.every(id => s.some(m => m.id === id))) api.start(); return; }
+    if (phase === 'end' && readyG[myId] === g && s.length >= 2 && s.every(m => m.id === myId || readyG[m.id] === g || !roster.some(p => p.id === m.id))) api.start();
+  }
+  function begin(list, ng) {
+    expectIds = null; clearTimeout(waitTimer);
+    g = ng; roster = list.map(x => ({ id: x.id, name: x.id === myId ? api.name : cleanName(x.n) || 'Stranger' })); gone = new Set(); phase = 'game';
+    for (let i = inbox.length - 1; i >= 0; i--) if ((inbox[i].g | 0) < g) inbox.splice(i, 1);
+    track();
+  }
+  api.start = () => {
+    if (!party || !table || !api.isHost() || phase === 'game') return false;
+    const s = seated().slice(0, PARTY_MAX); if (s.length < 2) return false;
+    begin(s, g + 1);
+    send('start', { p: roster.map(p => ({ id: p.id, n: p.name })) });
+    emit('start'); return true;
+  };
+  function onStart(m) {
+    const list = (Array.isArray(m.p) ? m.p : []).filter(x => x && typeof x.id === 'string').slice(0, PARTY_MAX), ng = m.g | 0;
+    if (phase === 'game' && ng <= g) return;
+    if (!list.some(x => x.id === myId)) { // it started without me
+      if (phase === 'lobby') { if (quickT) requeue(); else { emit('error', 'That table is full (6 players).'); api.leave(); } }
+      return;
+    }
+    begin(list, ng); emit('start');
+  }
+  function requeue() { const tb = table; table = null; drop(tb); here = []; roster = []; phase = 'lobby'; joined = false; expectIds = null; emit('requeue'); api.quick(api.name, 'bs', true).catch(() => emit('error', 'offline')); }
+  async function sitParty(key, host, expect) {
+    try { await seat(key, host, null); } catch (e) { emit('error', 'offline'); return; }
+    if (!api.on) return;
+    clearTimeout(waitTimer);
+    if (host === myId) { // wait a few seconds for everyone to sit down, then start with whoever made it
+      expectIds = expect;
+      waitTimer = setTimeout(() => { if (!api.on || phase !== 'lobby') return; expectIds = null; if (seated().length >= 2) api.start(); else requeue(); }, 6000);
+      hostCheck();
+    } else waitTimer = setTimeout(() => { if (api.on && phase === 'lobby') requeue(); }, 14000);
+  }
+  // for the menu: who's at the table before the game starts
+  api.lobby = () => {
+    if (!party || !table || !joined || phase !== 'lobby') return null;
+    const s = seated();
+    return { code, quick: quickT, host: api.isHost(), players: s.map((m, i) => ({ name: m.id === myId ? api.name : cleanName(m.n) || 'Stranger', me: m.id === myId, host: i === 0 })) };
+  };
+  api.roster = () => roster.map(p => ({ id: p.id, name: p.name }));
+  api.isGone = id => gone.has(id);
+  api.setPhase = ph => { phase = ph; track(); hostCheck(); };
+  api.readyInfo = () => { const s = seated(); return { ready: s.filter(m => readyG[m.id] === g || (m.id !== myId && !roster.some(p => p.id === m.id))).length, total: s.length }; };
+
   // ---------- the three ways in ----------
   // Quick match: one queue per game mode
   api.quick = async (name, m, again) => {
     api.name = cleanName(name) || 'Player'; api.on = true; mode = m === 'bs' ? 'bs' : 'rr';
+    if (mode === 'bs') return quickParty(again);
+    party = false;
     await getClient();
-    lobby = chan(BASE + '-lobby' + (mode === 'bs' ? '-bs' : ''));
+    lobby = chan(BASE + '-lobby');
     const t = again && queueT ? queueT : (queueT = Date.now()); // back in the queue after a pairing that fell through: keep your place
     let pairing = false;
     lobby.on('presence', { event: 'sync' }, () => {
@@ -2660,32 +2851,77 @@ const Online = (() => {
     await joinChan(lobby);
     await lobby.track({ id: myId, n: api.name, t });
   };
+  // 1.3: quick match for Buckshot: groups of up to 6, oldest first; the oldest in each group sends everyone to a table
+  async function quickParty(again) {
+    party = true; quickT = true; code = '';
+    await getClient();
+    const lb = lobby = chan(BASE + '-lobby-party');
+    const t = again && queueT ? queueT : (queueT = Date.now());
+    let goTimer = 0, goAt = 0, done = false;
+    const group = () => {
+      const q = members(lb).filter(m => m.v === PARTY_V).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1)), i = q.findIndex(m => m.id === myId);
+      if (i < 0) return null; const s = Math.floor(i / PARTY_MAX) * PARTY_MAX; return q.slice(s, s + PARTY_MAX);
+    };
+    const leaveLobby = later => { done = true; clearTimeout(goTimer); if (lobby === lb) lobby = null; if (later) setTimeout(() => drop(lb), 600); else drop(lb); };
+    const go = () => {
+      if (done || lobby !== lb) return;
+      const gr = group(); if (!gr || gr[0].id !== myId || gr.length < 2) { goAt = 0; emit('countdown', 0); return; }
+      const ids = gr.map(m => m.id);
+      try { lb.send({ type: 'broadcast', event: 'go', payload: { f: myId, ids } }); } catch (e) {}
+      leaveLobby(true); // a moment later, so 'go' gets out first
+      sitParty('q' + myId, myId, ids);
+    };
+    lb.on('broadcast', { event: 'go' }, ({ payload: m }) => {
+      if (done || !m || typeof m.f !== 'string' || !Array.isArray(m.ids) || !m.ids.includes(myId)) return;
+      leaveLobby(false); sitParty('q' + m.f, m.f, null);
+    });
+    lb.on('broadcast', { event: 'cd' }, ({ payload: m }) => { if (!done && m && +m.ms > 0) emit('countdown', Date.now() + Math.min(QUICK_WAIT, +m.ms)); });
+    lb.on('presence', { event: 'sync' }, () => {
+      if (done || lobby !== lb) return;
+      const gr = group(); if (!gr) return;
+      emit('queue', gr.length);
+      if (gr[0].id !== myId) { if (goAt) { goAt = 0; clearTimeout(goTimer); } return; } // someone who has waited longer is in charge
+      if (gr.length >= PARTY_MAX) { go(); return; }
+      if (gr.length < 2) { if (goAt) { goAt = 0; clearTimeout(goTimer); emit('countdown', 0); } return; }
+      if (!goAt) { goAt = Date.now() + QUICK_WAIT; clearTimeout(goTimer); goTimer = setTimeout(go, QUICK_WAIT); emit('countdown', goAt); }
+      try { lb.send({ type: 'broadcast', event: 'cd', payload: { ms: goAt - Date.now() } }); } catch (e) {}
+    });
+    await joinChan(lb);
+    if (lobby !== lb) return;
+    await lb.track({ id: myId, n: api.name, t, v: PARTY_V });
+  }
   api.create = async (name, m) => {
     api.name = cleanName(name) || 'Player'; api.on = true; mode = m === 'bs' ? 'bs' : 'rr';
+    party = mode === 'bs'; quickT = false; expectIds = null;
     await getClient();
-    const code = Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
+    code = Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
     await seat('c' + code, myId, null);
     return code;
   };
-  api.join = async (name, code) => {
+  api.join = async (name, c) => {
     api.name = cleanName(name) || 'Player'; api.on = true;
+    party = false; quickT = false; expectIds = null; code = c;
     await getClient();
-    await seat('c' + code, null, null);
+    await seat('c' + c, null, null);
     clearTimeout(waitTimer);
-    waitTimer = setTimeout(() => { if (!opp && api.on) { emit('error', 'Nobody is at table ' + code + '.'); api.leave(); } }, 6000);
+    waitTimer = setTimeout(() => { if (!opp && !joined && api.on) { emit('error', 'Nobody is at table ' + c + '.'); api.leave(); } }, 6000);
   };
   api.leave = () => {
     api.on = false; clearTimeout(waitTimer);
     for (const w of waiters.splice(0)) w.rej(new Abort());
     inbox.length = 0;
     const a = lobby, b = table; lobby = table = null; opp = null; hostId = null;
+    party = false; phase = 'lobby'; here = []; roster = []; gone = new Set(); expectIds = null; quickT = false; joined = false; code = '';
     drop(a); drop(b);
   };
   // a new game at the same table
   api.newGame = () => { g++; inbox.length = 0; };
   api.game = () => g;
-  api.left = () => left;
-  api.again = () => { meAgain = g; send('again'); emit('again'); };
+  api.left = () => party ? here.every(m => m.id === myId) : left;
+  api.again = () => {
+    if (party) { readyG[myId] = g; send('again'); emit('again'); hostCheck(); return; }
+    meAgain = g; send('again'); emit('again');
+  };
   api.bothAgain = () => meAgain === g && oppAgain === g;
   return api;
 })();
@@ -2873,63 +3109,548 @@ async function theirTurnOnline() {
   await wait(0.5);
   return false;
 }
-// ---------- online Buckshot ----------
-// The host rolls every load (shells and items) and sends it ('bsload'); the player whose turn it is sends each thing
-// they do ('bsact': an item, or who they shoot), and the other screen plays it out as the dealer would. Both screens
-// work out everything else (damage, turns, rounds) the same way from those, so they always agree.
-async function bsTheirTurnOnline() {
-  setOpp(`${npc.name} · Round ${BS.round + 1} of 3`); lookAtNPC(); cam.lookTo.y -= 0.06;
-  stressTo = clamp(0.35 + (BS.max - BS.hp.you) * 0.1, 0, 0.8); npc.fear = 0.3 + (BS.max - BS.hp.him) * 0.12;
-  sub(`${npc.name}’s turn…`, 0);
-  for (;;) {
-    const m = await Online.next('bsact');
-    if (m.a === 'item' && BS_KINDS.includes(m.k) && BS.items.him.includes(m.k)) {
-      sub('');
-      if (BS.npcHold) await npcPutDown();
-      await dealerUse(m.k);
-      if (!BS.shells.length) return 'him';   // they racked out the last shell: they go again after the reload
-      continue;
+// =====================================================================
+//  1.3: Party Buckshot. Online Buckshot for 2 to 6 players. Two play at the usual table; for three or more a round
+//  table comes out and everyone sits round it in the order they play (the next player is on your left).
+// =====================================================================
+// Everyone gets the same seat order from the host's 'start' (Online.roster()). Every turn starts with the host's
+// 'turn': s, the turn's number in the game; t, whose turn it is; o, players who have left the table since the last
+// one; l, the next load when the gun is empty (the shells, and the items each player still in the round gets).
+// Everyone waits for it. The player whose turn it is sends each item and shot as they do it ('bsact'; a shot says
+// who at, t), and every other screen plays it out with that player's stranger. Everything else (damage, who is out,
+// whose turn is next, rounds) every screen works out the same way from those messages, so they always agree.
+// If the host leaves, the next player round the table takes over sending 'turn'. A player who leaves is out for the
+// rest of the game; if they leave on their own turn, it ends there. Handcuffs make the next player skip a turn.
+// A round goes on until one player is left; in rounds 1 and 2 everyone who ran out is brought back for the next.
+// In round 3 running out is death, and the last one standing wins.
+const pbAlive = () => PB.P.filter(p => !p.out && !p.gone);
+// the next player round the table after p who is still in the round
+function pbNext(p) { const N = PB.P.length; for (let i = 1; i <= N; i++) { const q = PB.P[(p.k + i) % N]; if (!q.out && !q.gone) return q; } return p; }
+// whoever sends 'turn': the first player round the table who is still here
+function pbHost() { return PB.P.find(p => p.me || !(p.gone || Online.isGone(p.id))) || PB.me; }
+// where someone's head is (for looking and aiming)
+function pbHead(p) { if (p.me) return PB.eye.clone().add(V3(0, -0.06, 0)); p.n.head.updateMatrixWorld(true); return p.n.head.getWorldPosition(V3(0, 0, 0)); }
+// everyone still sitting up looks at whoever's turn it is (who looks at the table)
+function pbLooks(at) { for (const p of PB.P) if (p.n && p.n.alive && !p.gone) p.n.look.copy(p === at || !at ? V3(0, 0.95, 0) : pbHead(at)); }
+function pbCamDefault() { cam.lookTo.set(0, 0.98, PB.round ? -0.1 : -0.25); }
+
+// ---------- the table and the seats ----------
+function setPartyTable(on) {
+  if (PB.top) PB.top.visible = false;
+  if (on) {
+    const R = PB.R;
+    if (!PB.tops[R]) {
+      const t = PB.tops[R] = new THREE.Group(); scene.add(t);
+      mesh(new THREE.CylinderGeometry(R, R, 0.05, 56), MAT.table, 0, TOP - 0.025, 0, t);
+      mesh(new THREE.TorusGeometry(R - 0.01, 0.018, 8, 56), MAT.darkWood, 0, TOP - 0.035, 0, t).rotation.x = Math.PI / 2;
+      mesh(new THREE.CylinderGeometry(0.07, 0.09, TOP - 0.05, 16), MAT.darkWood, 0, (TOP - 0.05) / 2, 0, t);
+      for (let i = 0; i < 4; i++) { const f = mesh(box(0.6, 0.05, 0.08), MAT.darkWood, 0, 0.025, 0, t); f.rotation.y = i * Math.PI / 4 + Math.PI / 8; }
     }
-    if (m.a === 'shoot') { sub(''); return bsHeShoots(m.t === 'him'); } // their 'him' is you
+    PB.top = PB.tops[R]; PB.top.visible = true;
+  }
+  for (const m of TABLE.rect) m.visible = !on;
+  for (const m of TABLE.props) m.visible = !on;
+  if (TABLE.chair) TABLE.chair.visible = !on;
+  SMOKE.off = on; spot.angle = on ? 1.0 : 0.82;
+}
+// back to the usual table and its one stranger (called by bsReset, so whenever the table is reset)
+function pbClear() {
+  for (const p of PB.P) { if (p.n && p.n !== npc) dropNPC(p.n); for (const m of p.meshes) scene.remove(m); }
+  PB.P = []; PB.byId = {}; PB.me = null; PB.cur = null; PB.on = false; PB.round = false; PB.rest = null; PB.spectate = false; BS.hn = null;
+  if (npc) npc.root.visible = true;
+  setPartyTable(false);
+  gore.pool.position.set(0.3, 0.003, NPC_Z + 0.05);
+  if (PB.hudHTML !== null) { $('bsHud').innerHTML = PB.hudHTML; PB.hudHTML = null; }
+  actionsEl.classList.remove('party');
+}
+// seat everyone: you at the bottom, the others round the table in turn order (with two, he's in the usual chair)
+function pbSetup(roster) {
+  pbClear();
+  const N = roster.length, myK = Math.max(0, roster.findIndex(r => r.id === Online.me)), round = N > 2;
+  PB.R = round ? partyR(N) : 0.42; const off = PB.R - 0.42;
+  PB.on = true; PB.round = round; PB.fov = N > 4 ? 68 : round ? 64 : 62;
+  setPartyTable(round);
+  if (round && npc) npc.root.visible = false;
+  PB.eye.set(0, SEAT.y, SEAT.z + off);
+  roster.forEach((r, k) => {
+    const rel = (k - myK + N) % N, th = rel * Math.PI * 2 / N;
+    // his frame: turned to face the middle of the table, pushed back to its edge
+    const frame = new THREE.Object3D(); frame.rotation.y = Math.PI - th; frame.position.set(-Math.sin(th) * off, 0, Math.cos(th) * off); frame.updateMatrixWorld(true);
+    const p = { id: r.id, name: r.name, k, me: r.id === Online.me, th, frame, n: null, hp: 0, out: false, gone: false, cuffs: 0, items: [], meshes: [] };
+    if (!p.me) {
+      if (!round) p.n = npc;
+      else { p.n = makeNPC(); p.n.root.position.copy(frame.position); p.n.root.rotation.copy(frame.rotation); p.n.root.updateMatrixWorld(true); makeChair(p.n.root, NPC_Z - 0.04); restPose(p.n.R); restPose(p.n.L); }
+      p.n.name = r.name;
+      // nobody at the table wears the same colour
+      const used = PB.P.filter(q => q.n).map(q => q.n.shirt.color.getHex());
+      if (used.includes(p.n.shirt.color.getHex())) { const c = SHIRTS.find(c => !used.includes(c)); if (c !== undefined) p.n.shirt.color.setHex(c); }
+    }
+    PB.P.push(p); PB.byId[p.id] = p;
+  });
+  PB.me = PB.P.find(p => p.me);
+  // round the table the shotgun lies between seats, and the shells are shown just on your side of it
+  if (round) {
+    const a = (N % 2 ? 90 : 180) / N * Math.PI / 180, f = V3(Math.sin(a), 0, -Math.cos(a)), u = V3(f.z, 0, -f.x);
+    PB.rest = { p: V3(-f.x * 0.16, TOP + 0.024, -f.z * 0.16), q: qFrom(f, u) };
+    const side = V3(-f.z, 0, f.x); if (side.z < 0) side.negate();
+    PB.shellAt = side.multiplyScalar(0.15).setY(TOP); PB.shellDir = f.clone();
+  } else { PB.rest = null; PB.shellAt = V3(0, TOP, -0.16); PB.shellDir = V3(1, 0, 0); }
+  placeSg(sgRest());
+}
+
+// ---------- items, one row in front of each player ----------
+function pbSlot(p, i) {
+  if (!PB.round) return itemSlot(p.me ? 'you' : 'him', i);
+  const row = i >> 2, col = i & 3;
+  return p.frame.localToWorld(V3([-0.15, -0.05, 0.05, 0.15][col], TOP, -0.11 - row * 0.1));
+}
+function pbLayout(p) {
+  for (const m of p.meshes) scene.remove(m);
+  p.meshes = p.items.map((k, i) => { const m = itemMesh(k); m.position.copy(pbSlot(p, i)); m.rotation.y = PB.round ? p.frame.rotation.y + Math.PI + 0.2 : (p.me ? 0.2 : Math.PI + 0.2); scene.add(m); return m; });
+}
+
+// ---------- the HUD: everyone's charges ----------
+function pbHudRender(cur) {
+  if (cur !== undefined) PB.cur = cur;
+  const h = $('bsHud'); if (PB.hudHTML === null) PB.hudHTML = h.innerHTML;
+  h.innerHTML = '';
+  for (const p of PB.P) {
+    const row = document.createElement('div'); row.className = 'hrow' + (p === PB.cur ? ' now' : '') + (p.out || p.gone ? ' out' : '');
+    const w = document.createElement('span'); w.className = 'who'; w.textContent = p.me ? 'You' : p.name;
+    const b = document.createElement('span'); b.className = 'bolts';
+    b.innerHTML = p.gone ? '<em>Left</em>' : Array.from({ length: BS.max }, (_, i) => `<i class="${i < p.hp ? 'on' : ''}">⚡</i>`).join('');
+    row.append(w, b); h.appendChild(row);
   }
 }
-async function playBuckshotOnline() {
-  const N = Online.opp().name, host = Online.isHost();
-  game = { round: 0, my: runId, online: true }; BS.won = 0;
+
+// ---------- the start of each turn ----------
+function pbRollLoad(o) {
+  const total = 2 + Math.floor(Math.random() * 7);                                  // 2 to 8 shells
+  const live = clamp(Math.round(total / 2 + rand(-1.49, 1.49)), 1, total - 1);
+  const shells = [...Array(live).fill(true), ...Array(total - live).fill(false)];
+  for (let i = shells.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shells[i], shells[j]] = [shells[j], shells[i]]; }
+  const n = BS_ROUNDS[BS.round].items, items = {};
+  for (const p of PB.P) {
+    if (p.out || p.gone || o.includes(p.id)) continue;
+    const add = []; for (let i = 0; i < n && p.items.length + i < 8; i++) add.push(pick(BS_KINDS));
+    if (add.length) items[p.id] = add;
+  }
+  return { s: shells, i: items };
+}
+function pbCleanLoad(l) {
+  const s = (Array.isArray(l.s) ? l.s : []).slice(0, 8).map(Boolean), i = {};
+  for (const p of PB.P) { const a = l.i && Array.isArray(l.i[p.id]) ? l.i[p.id].filter(k => BS_KINDS.includes(k)) : []; if (a.length) i[p.id] = a.slice(0, Math.max(0, 8 - p.items.length)); }
+  return { s: s.length >= 2 ? s : [true, false], i };
+}
+// returns whose turn it is, or null when the round is over (everyone else has left)
+async function pbBoundary(next) {
+  const s = ++PB.step, g = PB.g;
+  let m;
+  for (;;) {
+    const h = pbHost();
+    if (h.me) {
+      const o = PB.P.filter(p => !p.me && !p.gone && Online.isGone(p.id)).map(p => p.id);
+      const outNow = p => p.out || p.gone || o.includes(p.id);
+      let t = next;
+      if (outNow(t)) { t = null; for (let i = 1; i <= PB.P.length; i++) { const q = PB.P[(next.k + i) % PB.P.length]; if (!outNow(q)) { t = q; break; } } }
+      const still = PB.P.filter(p => !outNow(p)).length;
+      m = { s, t: t && still > 1 ? t.id : '', o };
+      if (m.t && !BS.shells.length) m.l = pbRollLoad(o);
+      Online.send('turn', m);
+      break;
+    }
+    const r = await Online.until(box => {
+      for (let i = box.length - 1; i >= 0; i--) { const x = box[i]; if (x.ev === 'turn' && ((x.g | 0) < g || (x.s | 0) < s)) box.splice(i, 1); } // from earlier
+      const k = box.findIndex(x => x.ev === 'turn' && (x.g | 0) === g && (x.s | 0) === s); if (k >= 0) return box.splice(k, 1)[0];
+      if (Online.isGone(h.id)) return 'host';
+    });
+    if (r !== 'host') { m = r; break; }
+  }
+  const o = Array.isArray(m.o) ? m.o : [];
+  if (o.includes(Online.me)) throw new PartyDropped(); // the others lost you (your connection dropped)
+  for (const id of o) { const p = PB.byId[id]; if (p && !p.me && !p.gone) await pbGone(p); }
+  const t = PB.byId[m.t];
+  if (!t || t.out || t.gone || pbAlive().length < 2) return null;
+  if (m.l && typeof m.l === 'object') await pbLoad(pbCleanLoad(m.l));
+  return t;
+}
+class PartyDropped extends Error {}
+
+// ---------- loading the gun ----------
+async function pbLoad(L) {
+  const shells = L.s, live = shells.filter(Boolean).length, blank = shells.length - live, total = shells.length;
+  BS.shells = shells.slice(); BS.liveLeft = live; BS.blankLeft = blank; BS.knownHim = null;
+  clearShells(); cam.lookTo.copy(PB.shellAt).add(V3(0, 0.05, 0)); cam.fovTo = 44; pbLooks(null);
+  const order = [...Array(live).fill(true), ...Array(blank).fill(false)];
+  order.forEach((l, i) => { const m = shellMesh(l); m.position.copy(PB.shellAt).addScaledVector(PB.shellDir, (i - (total - 1) / 2) * 0.045); m.scale.setScalar(0.001); scene.add(m); BS.shellsShown.push(m); });
+  for (let i = 0; i < BS.shellsShown.length; i++) { const m = BS.shellsShown[i]; tween(0.25, k => m.scale.setScalar(Math.max(0.001, k)), easeOut).catch(() => {}); Sound.shellIn(); await wait(0.09); }
+  banner(`${live} LIVE · ${blank} BLANK`, 'Loaded in a random order', '', 3);
+  sub(`<em style="color:#ff6a6a">${live} live</em> and <em style="color:#7fb0ff">${blank} blank</em>. Remember them.`, 3);
+  await wait(2.6);
+  for (const m of BS.shellsShown) { tween(0.18, k => { m.scale.setScalar(Math.max(0.001, 1 - k)); m.position.y = TOP + k * 0.05; }, easeIn).catch(() => {}); Sound.shellIn(); await wait(0.12); }
+  BS.shellsShown.forEach(m => scene.remove(m)); BS.shellsShown = [];
+  Sound.rack(); await wait(0.4);
+  const n = BS_ROUNDS[BS.round].items;
+  if (n) {
+    for (const p of PB.P) {
+      const add = L.i[p.id]; if (!add || !add.length) continue;
+      p.items.push(...add); pbLayout(p);
+      for (const m of p.meshes) { const y = m.position.y; tween(0.3, k => { m.position.y = y + (1 - k) * 0.08; }, easeOut).catch(() => {}); }
+    }
+    Sound.items(); sub(PB.P.length > 2 ? `Everyone still in gets ${n} items.` : `You each get ${n} items.`, 2.2); await wait(1.4);
+  }
+  cam.fovTo = PB.fov; pbCamDefault();
+}
+
+// ---------- getting hit ----------
+async function pbHitMe(dmg) {
+  const me = PB.me;
+  Sound.bigShot(true); cam.kick = 1; lampKick(0.4);
+  hurtFlash('#9a0000', 0.95, 0.9);
+  me.hp = Math.max(0, me.hp - dmg); pbHudRender();
+  if (me.hp <= 0) return;
+  const bl = $('black'); bl.style.transition = 'opacity .15s'; bl.style.opacity = '1'; fps.rig.visible = false;
+  await wait(1.2); Sound.zap(); hurtFlash('#9ad4ff', 0.6, 0.6); bl.style.transition = ''; bl.style.opacity = '0'; Sound.unmuffle();
+  sub(`The defibrillator jolts you back. You lost <em>${dmg} charge${dmg > 1 ? 's' : ''}</em>.`, 2.6);
+  await wait(1);
+}
+// T is hit by a live shell fired from 'from'
+async function pbHitNpc(T, dmg, from) {
+  const n = T.n; n.head.updateMatrixWorld(true); const hp = n.head.localToWorld(V3(0, -0.15, 0.05));
+  const back = V3(0, 0, -1).applyQuaternion(n.root.quaternion), dir = hp.clone().sub(from).setY(0);
+  burst(hp, (dir.lengthSq() > 0.04 ? dir.normalize() : back).add(V3(rand(-0.3, 0.3), 0.3, rand(-0.3, 0.3))).normalize()); lampKick(0.3);
+  T.hp = Math.max(0, T.hp - dmg); pbHudRender();
+  n.lean = -0.45; n.fear = 0.8; n.mouthOpen = 0.8; Sound.body();
+  sub(dmg > 1 ? `Live. The sawn-off barrel does <em>2 damage</em> to ${T.name}.` : `Live. ${T.name} loses a charge.`, 2.2);
+  await wait(0.8); n.mouthOpen = 0.2;
+}
+// a player has run out of charges: out of the round, or (round 3) dead
+async function pbOut(p) {
+  p.out = true; p.cuffs = 0; pbHudRender();
+  const final = BS.round === 2;
+  if (p.me) return pbMeOut(final);
+  const n = p.n;
+  if (BS.npcHold && BS.hn === n) { // the shotgun drops onto the table
+    BS.npcHold = false; BS.npcSelf = false; BS.hn = null; n.R.setGrip('hand'); n.L.setGrip('hand');
+    sgTo(() => sgRest(), 0.5, easeIn).then(() => { BS.sgDriven = false; placeSg(sgRest()); Sound.clatter(); }).catch(() => {});
+  }
+  n.alive = false; n.slump = 0; n.fear = 0; n.R.tremor = 0; n.dripT = 0;
+  tween(0.9, k => { n.slump = k; }, easeOut).catch(() => {});
+  handTo(n.R, 'limp', 0.6, easeIn).catch(() => {}); handTo(n.L, 'limp', 0.8, easeIn).catch(() => {});
+  if (final) pbGore(n);
+  stressTo = 0.2; await wait(0.5); Sound.body(); await wait(0.6);
+  sub(final ? `${p.name} is dead.` : `${p.name} is out of charges. <em>Out of round ${BS.round + 1}.</em>`, 2.6);
+  await wait(1.8);
+}
+function pbGore(n) {
+  n.head.updateMatrixWorld(true);
+  const face = n.head.localToWorld(V3(0, -0.02, 0.09)), back = n.head.localToWorld(V3(0, 0.03, -0.1));
+  cam.kick = Math.max(cam.kick, 0.3); lampKick(0.4);
+  burst(back, back.clone().sub(face).normalize()); Sound.splat();
+  if (!PB.round) { gore.show(back); Blood.light(); tableBlood.show(); tween(1.6, k => { tableBlood.m.material.opacity = k; tableBlood.m.scale.setScalar(0.5 + k * 0.5); }, easeOut).catch(() => {}); }
+  else { gore.mist.position.copy(back); gore.mist.visible = true; gore.pool.position.copy(n.root.localToWorld(V3(0.3, 0.003, NPC_Z + 0.05))); gore.pool.visible = true; gore.pool.scale.setScalar(0.05); }
+  darkTo = Math.min(1, darkTo + (PB.round ? 0.4 : 1)); LAMP.flickT = 0.6;
+  tween(0.7, (k, r) => { gore.mist.scale.setScalar(0.08 + r * 0.7); gore.mist.material.opacity = 0.85 * (1 - r); }, linear).catch(() => {});
+  if (!PB.round) wait(0.12).then(() => tween(0.5, k => { gore.wall.material.opacity = k; }, easeOut)).catch(() => {});
+  tween(8, k => { gore.pool.scale.setScalar(0.05 + k * 0.95); }, easeOut).catch(() => {});
+  n.wound.visible = true; n.exitWound.visible = true;
+  for (const s of n.streaks) { s.visible = true; s.scale.y = 0.0001; } for (const s of n.stains) s.visible = true;
+  tween(5, k => { n.stains.forEach((s, i) => { const q = clamp(k * 1.8 - i * 0.08, 0.0001, 1); s.scale.set(q, q * 1.6, q * 0.14); }); }, easeOut).catch(() => {});
+  tween(2.6, k => { for (const s of n.streaks) s.scale.y = 0.0001 + k * s.userData.len; }, easeOut).catch(() => {});
+}
+// you're out: black, then you watch the rest from behind your chair
+async function pbMeOut(final) {
+  const bl = $('black'); bl.style.transition = 'none'; bl.style.opacity = '1'; void bl.offsetWidth; bl.style.transition = '';
+  fps.rig.visible = false; cigHand.rig.visible = false; actionsEl.innerHTML = ''; actionsEl.classList.remove('bs', 'party'); Sound.S.heart = false; stressTo = 0.2;
+  if (!BS.npcHold) { BS.sgDriven = false; placeSg(sgRest()); sg.g.visible = true; }
+  await wait(1.6);
+  sub(final ? 'You’re dead. <em>The defibrillator is cut.</em>' : `You flatline. <em>You’re out of round ${BS.round + 1}.</em>`, 0); await wait(2);
+  PB.spectate = true; cam.pos.copy(PB.eye).add(V3(0, 0.42, 0.42)); pbCamDefault(); cam.lookTo.y = TOP + 0.1; cam.look.copy(cam.lookTo);
+  bl.style.opacity = '0'; Sound.unmuffle();
+  sub(final ? 'You’re out of the game. Watching the rest…' : 'You’re out of this round. Watching the rest of it…', 3);
+  await wait(1);
+}
+// someone left the table: they're out for good
+async function pbGone(p) {
+  if (p.gone) return;
+  p.gone = true; p.out = true; p.cuffs = 0; p.items = []; pbLayout(p);
+  if (p.n) {
+    if (BS.hn === p.n) { BS.npcHold = false; BS.npcSelf = false; BS.hn = null; BS.sgDriven = false; placeSg(sgRest()); }
+    p.n.root.visible = false;
+  }
+  pbHudRender(); sub(`<em>${p.name}</em> left the table.`, 2.6); Sound.thud(0.3);
+  await wait(1.2);
+}
+
+// ---------- your turn ----------
+// use items, then shoot one of the others or yourself
+function pbChoose() {
+  return new Promise((res, rej) => {
+    const p = { res, rej, done: false }; pending = p;
+    const me = PB.me, nx = pbNext(me);
+    actionsEl.innerHTML = ''; actionsEl.classList.add('bs', 'party');
+    const lb = document.createElement('div'); lb.className = 'lbl'; lb.textContent = me.items.length ? 'Use items, then shoot' : 'Your shot'; actionsEl.appendChild(lb);
+    const pickIt = k => { if (p.done || pending !== p) return; p.done = true; pending = null; Sound.ui(); actionsEl.innerHTML = ''; actionsEl.classList.remove('bs', 'party'); res(k); };
+    if (me.items.length) {
+      const chips = document.createElement('div'); chips.className = 'chips';
+      for (const k of BS_KINDS) {
+        const n = me.items.filter(x => x === k).length; if (!n) continue; const I = BS_ITEMS[k];
+        const off = (k === 'cuffs' && (nx.cuffs || BS.shells.length < 2)) || (k === 'saw' && BS.saw) || (k === 'cigs' && me.hp >= BS.max);
+        const b = document.createElement('button'); b.className = 'chip' + (off ? ' off' : ''); b.title = I.n + ': ' + (k === 'cuffs' ? `${nx.name} skips their next turn.` : I.d);
+        b.innerHTML = `<span class="ic">${I.icon}</span><span class="nm">${I.s}</span>${n > 1 ? `<span class="ct">×${n}</span>` : ''}`;
+        b.addEventListener('click', () => { if (off) { sub(k === 'cigs' ? 'You already have all your charges.' : k === 'saw' ? 'The barrel is already sawn off.' : 'You can’t use the handcuffs right now.', 2); return; } pickIt('item:' + k); });
+        chips.appendChild(b);
+      }
+      actionsEl.appendChild(chips);
+    }
+    const row = document.createElement('div'); row.className = 'btns';
+    const targets = []; for (let q = pbNext(me); q !== me && !targets.includes(q); q = pbNext(q)) targets.push(q);
+    for (const q of targets) { const b = document.createElement('button'); b.className = 'abtn red'; b.textContent = 'Shoot ' + q.name; b.addEventListener('click', () => pickIt(q.id)); row.appendChild(b); }
+    { const b = document.createElement('button'); b.className = 'abtn'; b.textContent = 'Shoot yourself'; b.addEventListener('click', () => pickIt('self')); row.appendChild(b); }
+    actionsEl.appendChild(row);
+  });
+}
+async function pbUseItemMe(k) {
+  const me = PB.me, i = me.items.indexOf(k); if (i < 0) return;
+  if (k === 'cigs' && fps.rig.visible) await putDown(); // you put the shotgun down to smoke
+  me.items.splice(i, 1); pbLayout(me);
+  if (k === 'glass') { Sound.glass(); const live = BS.shells[0]; banner(live ? 'LIVE' : 'BLANK', 'The shell in the chamber', live ? 'red' : 'blue', 2.4); await wait(1.4); }
+  else if (k === 'cuffs') { const T = pbNext(me); Sound.cuffs(); T.cuffs = 1; sub(`You cuff ${T.name}. <em>They skip their next turn.</em>`, 2.4); if (T.n) T.n.fear = 0.5; await wait(1.2); }
+  else if (k === 'saw') { Sound.saw(); BS.saw = true; await wait(0.5); sg.setSaw(true); fps.setSaw(true); sub('You saw off the barrel. A live shell now does <em>2 damage</em>.', 2.6); await wait(0.9); }
+  else if (k === 'beer') {
+    Sound.beer(); await wait(0.6); const live = BS.shells.shift(); if (live) BS.liveLeft--; else BS.blankLeft--;
+    Sound.rack(); ejectShell(live, fireFrom(fps)); sub(`You rack out a <em style="color:${live ? '#ff6a6a' : '#7fb0ff'}">${live ? 'live' : 'blank'}</em> shell.`, 2.4); await wait(1.2);
+  }
+  else if (k === 'cigs') await youSmoke(() => { me.hp = Math.min(BS.max, me.hp + 1); pbHudRender(); });
+}
+async function pbYourTurn() {
+  const me = PB.me;
+  setOpp(`Your turn · Round ${BS.round + 1} of 3`); pbHudRender(me);
+  banner('YOUR TURN', '', 'gold', 1.4);
+  stressTo = clamp(0.3 + (BS.max - me.hp) * 0.1, 0, 0.8);
+  pbCamDefault(); pbLooks(me);
+  const pickUp = async () => { if (fps.rig.visible) return; sg.g.visible = false; fpsGrip(false); const o = fpsPose('off'); BS.fpsCur.p.copy(o.p); BS.fpsCur.q.copy(o.q); fps.rig.visible = true; Sound.thud(0.2); await fpsTo('hold', 0.6, easeOut); };
+  await pickUp();
+  let k;
+  for (;;) {
+    const stop = autoPress(AFK);
+    k = await pbChoose(); stop();
+    // the others see what you do as you do it
+    Online.send('bsact', k.startsWith('item:') ? { a: 'item', k: k.slice(5) } : { a: 'shoot', t: k === 'self' ? me.id : k });
+    if (k.startsWith('item:')) {
+      await pbUseItemMe(k.slice(5));
+      if (!BS.shells.length) { if (fps.rig.visible) await putDown(); return me; } // you racked out the last one: you go again after the reload
+      await pickUp(); // you put the gun down to smoke: pick it back up before you shoot
+      continue;
+    }
+    break;
+  }
+  const live = BS.shells.shift(); if (live) BS.liveLeft--; else BS.blankLeft--;
+  const dmg = BS.saw ? 2 : 1; game.round++;
+  if (k !== 'self') {
+    const T = PB.byId[k];
+    cam.lookTo.copy(pbHead(T)).add(V3(0, -0.06, 0)); T.n.fear = Math.max(T.n.fear, 0.6); pbLooks(me);
+    await fpsTo('him', 0.55); await wait(rand(0.4, 0.8)); fps.hR.setTrigger(1); fps.trig.rotation.x = 0.45; setTimeout(() => { fps.hR.setTrigger(0); fps.trig.rotation.x = 0; }, 250);
+    if (live) { Sound.bigShot(false); cam.kick = 0.55; hurtFlash('#fff', 0.3, 0.25); await pbHitNpc(T, dmg, PB.eye); }
+    else { Sound.dry(); sub(`Blank. ${T.name} lives.`, 1.6); T.n.fear = 0.3; }
+    ejectShell(live, fireFrom(fps)); unsaw(); Sound.rack();
+    await wait(0.8); await putDown();
+    if (T.hp <= 0) await pbOut(T);
+    return pbNext(me);
+  }
+  // at yourself
+  stressTo = 0.85; pbCamDefault();
+  { const tw = fpsTo('self', 0.9); wait(0.35).then(() => fpsGrip(true)).catch(() => {}); await tw; } Sound.gasp(); await wait(rand(0.8, 1.4));
+  if (live) {
+    ejectShell(true, PB.eye.clone().add(V3(0.15, -0.26, -0.5))); unsaw(); await pbHitMe(dmg);
+    if (me.hp > 0) await putDown(); else await pbOut(me);
+    return pbNext(me);
+  }
+  Sound.dry(); cam.kick = 0.2; ejectShell(false, fireFrom(fps)); unsaw(); Sound.exhale();
+  sub('Blank. <em>You go again.</em>', 2); stressTo = 0.35; { const tw = fpsTo('hold', 0.6); wait(0.25).then(() => fpsGrip(false)).catch(() => {}); await tw; }
+  if (!BS.shells.length) await putDown();
+  return me;
+}
+
+// ---------- someone else's turn ----------
+// the next thing they do, or null if they've left the table
+function pbAct(A) {
+  const g = PB.g;
+  return Online.until(box => {
+    const k = box.findIndex(x => x.ev === 'bsact' && x.f === A.id && (x.g | 0) === g); if (k >= 0) return box.splice(k, 1)[0];
+    if (Online.isGone(A.id)) return null;
+  });
+}
+async function pbNpcPutDown(A) {
+  const n = A.n; if (!BS.npcHold || BS.hn !== n) return;
+  BS.npcSelf = false; n.R.setGrip('hand'); n.L.setGrip('hand'); n.R.hand.setCurl(true);
+  await sgTo(() => sgRest(), 0.8);
+  BS.npcHold = false; BS.sgDriven = false; BS.hn = null; placeSg(sgRest()); restPose(n.R); restPose(n.L); Sound.thud(0.35);
+}
+async function pbNpcUse(A, k) {
+  const n = A.n;
+  if (BS.npcHold && BS.hn === n) await pbNpcPutDown(A); // the gun goes down while they use things
+  const i = A.items.indexOf(k); if (i < 0) return;
+  const m = A.meshes[i];
+  if (m) { const at = seatPt(n, m.position.clone()); await handTo(n.L, { p: at.add(V3(0, 0.05, 0)), q: qFrom(V3(1, 0, 0.3), V3(0, 0, -1)) }, 0.5); }
+  A.items.splice(i, 1); pbLayout(A); handTo(n.L, 'rest', 0.5).catch(() => {});
+  if (k === 'glass') { Sound.glass(); sub(`${A.name} looks into the chamber with the magnifying glass…`, 2.2); await wait(1.4); }
+  else if (k === 'cuffs') { const T = pbNext(A); Sound.cuffs(); T.cuffs = 1; sub(T.me ? `${A.name} cuffs you. <em>You skip your next turn.</em>` : `${A.name} cuffs ${T.name}. <em>They skip their next turn.</em>`, 2.6); if (T.n) T.n.fear = 0.5; await wait(1.3); }
+  else if (k === 'saw') { Sound.saw(); BS.saw = true; await wait(0.5); sg.setSaw(true); fps.setSaw(true); sub(`${A.name} saws off the barrel. The next live shell does <em>2 damage</em>.`, 2.6); await wait(1); }
+  else if (k === 'beer') {
+    Sound.beer(); await wait(0.5); const live = BS.shells.shift(); if (live) BS.liveLeft--; else BS.blankLeft--;
+    Sound.rack(); ejectShell(live, fireFrom(sg)); sub(`${A.name} drinks a beer and racks out a <em style="color:${live ? '#ff6a6a' : '#7fb0ff'}">${live ? 'live' : 'blank'}</em> shell.`, 2.6); await wait(1.3);
+  }
+  else if (k === 'cigs') await heSmokes(n, () => { A.hp = Math.min(BS.max, A.hp + 1); pbHudRender(); });
+}
+// A shoots T (T may be A)
+async function pbNpcShoots(A, T) {
+  const n = A.n, self = T === A;
+  if (!BS.npcHold || BS.hn !== n) { placeSg(sgRest()); BS.hn = n; BS.npcHold = true; BS.npcSelf = false; await sgTo(() => worldPose(n, npcSgPose('ready')), 0.8); }
+  sub(self ? `${A.name} turns the shotgun on themselves.` : T.me ? `${A.name} turns the shotgun on you.` : `${A.name} turns the shotgun on ${T.name}.`, 0);
+  pbLooks(A); n.look.copy(self ? V3(0, 0.95, 0) : pbHead(T)); if (!self && T.n) T.n.look.copy(pbHead(A));
+  // aimed at someone: the gun swings round in front of him towards them (straight across it's the usual pose)
+  const aim = () => {
+    const tl = seatPt(n, pbHead(T).add(V3(0, T.me ? 0 : -0.05, 0))), piv = V3(0, 1.0, NPC_Z), yaw = Math.atan2(tl.x - piv.x, tl.z - piv.z);
+    const p = V3(-0.12, 0, 0.24).applyAxisAngle(UP, yaw * 0.85).add(piv);
+    return worldPose(n, { p, q: qFrom(tl.sub(p), UP) });
+  };
+  { const tw = sgTo(self ? () => worldPose(n, npcSgPose('self')) : aim, 0.8); wait(0.3).then(() => { BS.npcSelf = self; }).catch(() => {}); await tw; }
+  if (T.me) stressTo = 0.9; else { T.n.fear = 0.9; if (!self) wait(0.5).then(() => { cam.lookTo.copy(pbHead(T)).add(V3(0, -0.08, 0)); }).catch(() => {}); }
+  await wait(rand(0.9, 1.8));
+  const live = BS.shells.shift(); if (live) BS.liveLeft--; else BS.blankLeft--;
+  const dmg = BS.saw ? 2 : 1; game.round++; sub('');
+  sg.g.updateMatrixWorld(true); const muzzle = sg.g.localToWorld(V3(0, 0.035, sg.muzzleZ()));
+  if (T.me) {
+    if (live) { ejectShell(true, fireFrom(sg)); unsaw(); await pbHitMe(dmg); }
+    else { Sound.dry(); cam.kick = 0.15; ejectShell(false, fireFrom(sg)); unsaw(); sub('Blank.', 2); Sound.exhale(); await wait(0.8); }
+    if (PB.me.hp <= 0) await pbOut(PB.me);
+    await pbNpcPutDown(A);
+    return pbNext(A);
+  }
+  if (live) {
+    Sound.bigShot(false); cam.kick = self ? 0.2 : 0.3; lampKick(0.3); flashL.position.copy(muzzle); flashL.intensity = 7; hurtFlash('#fff', 0.2, 0.3);
+    ejectShell(true, fireFrom(sg)); unsaw();
+    await pbHitNpc(T, dmg, muzzle);
+    if (T.hp <= 0) await pbOut(T); // (drops the gun if it was in their hands)
+    await pbNpcPutDown(A);
+    return pbNext(A);
+  }
+  Sound.dry(); ejectShell(false, fireFrom(sg)); unsaw();
+  if (!self) { T.n.fear = 0.3; sub(`Blank. ${T.name} lives.`, 1.8); await wait(0.9); await pbNpcPutDown(A); return pbNext(A); }
+  n.fear = 0.3; sub(`Blank. <em>${A.name} goes again.</em>`, 2); await wait(1);
+  if (!BS.shells.length) { await pbNpcPutDown(A); return A; }
+  BS.npcSelf = false; await sgTo(() => worldPose(n, npcSgPose('ready')), 0.6);
+  return A;
+}
+async function pbTheirTurn(A) {
+  const n = A.n;
+  setOpp(`${A.name}’s turn · Round ${BS.round + 1} of 3`); pbHudRender(A);
+  cam.lookTo.copy(pbHead(A)).add(V3(0, -0.1, 0)); pbLooks(A);
+  if (!PB.me.out) stressTo = clamp(0.35 + (BS.max - PB.me.hp) * 0.1, 0, 0.8);
+  n.fear = 0.3 + (BS.max - A.hp) * 0.12;
+  sub(`${A.name}’s turn…`, 0);
+  for (;;) {
+    const m = await pbAct(A);
+    if (!m) { await pbNpcPutDown(A); await pbGone(A); return pbNext(A); } // they left in the middle of their turn
+    if (m.a === 'item' && BS_KINDS.includes(m.k) && A.items.includes(m.k)) {
+      sub('');
+      await pbNpcUse(A, m.k);
+      if (!BS.shells.length) return A; // they racked out the last shell: they go again after the reload
+      cam.lookTo.copy(pbHead(A)).add(V3(0, -0.1, 0));
+      continue;
+    }
+    if (m.a === 'shoot' && PB.byId[m.t]) { sub(''); return pbNpcShoots(A, PB.byId[m.t]); }
+  }
+}
+
+// ---------- a whole game ----------
+async function playBuckshotParty() {
+  const roster = Online.roster(), N = roster.length;
+  game = { round: 0, my: runId, online: true, party: true }; BS.won = 0;
+  pbSetup(roster); PB.g = Online.game(); PB.step = 0;
   state = 'game'; hud.hidden = false; $('bsHud').hidden = false; hud.classList.add('bsmode'); BS.on = true;
   $('streak').querySelector('small').textContent = 'ONLINE WINS'; $('streakN').textContent = save.onWins; $('bestN').textContent = save.onGames + (save.onGames === 1 ? ' game' : ' games');
-  npc.name = N; setOpp(N + ' · Online'); stressTo = 0.15; lookAtNPC(); cam.fovTo = 62; Sound.S.tick = true; Sound.S.heart = true;
+  cam.pos.copy(PB.eye); cam.fovTo = PB.fov; pbCamDefault(); cam.look.copy(cam.lookTo); pbLooks(null);
+  const others = PB.P.filter(p => !p.me), names = others.map(p => p.name);
+  setOpp(N > 2 ? `${N} players · Online` : `${names[0]} · Online`); stressTo = 0.15; Sound.S.tick = true; Sound.S.heart = true;
+  BS.max = BS_ROUNDS[0].hp; for (const p of PB.P) p.hp = BS.max; pbHudRender(null);
   await wait(0.5);
-  sub(`Buckshot against <em>${N}</em>, a real person. Three rounds. Survive the third and you win.`, 3.2); npc.look.set(0, SEAT.y, SEAT.z);
-  await wait(3);
-  for (let r = 0; r < 3; r++) {
-    BS.round = r; BS.max = BS_ROUNDS[r].hp; BS.hp = { you: BS.max, him: BS.max }; BS.shells = []; BS.liveLeft = 0; BS.blankLeft = 0; BS.saw = false; sg.setSaw(false); fps.setSaw(false); BS.cuffs = { you: 0, him: 0 };
-    BS.items = { you: [], him: [] }; layoutItems('you'); layoutItems('him'); bsHudRender();
-    banner(`ROUND ${r + 1}`, [`${BS.max} charges each. No items.`, `${BS.max} charges each. Items with every load.`, `${BS.max} charges each. The defibrillator is cut. No coming back.`][r], 'gold', 2.8);
-    setOpp(`${N} · Round ${r + 1} of 3`); await wait(2.4);
-    // the host goes first in rounds 1 and 3, the other player in round 2
-    let turn = (r % 2 === 0) === host ? 'you' : 'him';
-    while (BS.hp.you > 0 && BS.hp.him > 0) {
-      if (!BS.shells.length) {
-        let preset;
-        if (host) { preset = bsRollLoad(); Online.send('bsload', { s: preset.shells, a: preset.add.you, b: preset.add.him }); }
-        else { const m = await Online.next('bsload'); const ok = a => (Array.isArray(a) ? a : []).filter(k => BS_KINDS.includes(k)).slice(0, 8); preset = { shells: (Array.isArray(m.s) ? m.s : [true, false]).slice(0, 8).map(Boolean), add: { you: ok(m.b), him: ok(m.a) } }; }
-        await bsLoad(preset);
+  const list = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0];
+  sub(N > 2 ? `Buckshot with <em>${list}</em>. Three rounds. Be the last one standing in the third and you win.` : `Buckshot against <em>${list}</em>, a real person. Three rounds. Survive the third and you win.`, 4);
+  await wait(3.4);
+  let winner = null;
+  try {
+    for (let r = 0; r < 3; r++) {
+      BS.round = r; BS.max = BS_ROUNDS[r].hp; BS.shells = []; BS.liveLeft = 0; BS.blankLeft = 0; BS.saw = false; sg.setSaw(false); fps.setSaw(false); BS.knownHim = null;
+      for (const p of PB.P) { p.items = []; pbLayout(p); p.cuffs = 0; if (!p.gone) { p.hp = BS.max; p.out = false; } }
+      pbHudRender(null);
+      if (PB.P.filter(p => !p.gone).length < 2) break; // everyone else has left
+      banner(`ROUND ${r + 1}`, [`${BS.max} charges each. No items.`, `${BS.max} charges each. Items with every load.`, `${BS.max} charges each. The defibrillator is cut. No coming back.`][r], 'gold', 2.8);
+      setOpp(`Round ${r + 1} of 3 · ${pbAlive().length} players`); await wait(2.4);
+      // a different player starts each round
+      let next = PB.P[r % N]; if (next.out || next.gone) next = pbNext(next);
+      while (pbAlive().length > 1) {
+        const A = await pbBoundary(next);
+        if (!A) break;
+        if (A.cuffs) {
+          A.cuffs = 0; pbHudRender(A); sub(A.me ? 'You’re cuffed. <em>You skip this turn.</em>' : `${A.name} is cuffed and <em>skips their turn</em>.`, 2.4); Sound.cuffs();
+          await wait(2); next = pbNext(A); continue;
+        }
+        next = A.me ? await pbYourTurn() : await pbTheirTurn(A);
       }
-      if (BS.cuffs[turn]) {
-        BS.cuffs[turn] = 0; sub(turn === 'you' ? 'You’re cuffed. <em>You skip this turn.</em>' : `${N} is cuffed and <em>skips their turn</em>.`, 2.4); Sound.cuffs();
-        await wait(2); turn = other(turn); continue;
-      }
-      turn = turn === 'you' ? await bsYourTurn() : await bsTheirTurnOnline();
+      const alive = pbAlive(), stay = PB.P.filter(p => !p.gone);
+      if (alive.length === 1 && alive[0].me) BS.won++;
+      if (r === 2 || stay.length < 2) { winner = alive.length === 1 ? alive[0] : stay.length === 1 ? stay[0] : null; break; }
+      await pbRoundEnd(r, alive.length === 1 ? alive[0] : null);
     }
-    if (BS.hp.you <= 0) {
-      if (r < 2) { await bsYouOut(); continue; }
-      await bsYouDie(); return;
-    }
-    BS.won++;
-    await npcPutDown();
-    if (r < 2) await bsHeOut(); else { await bsHeDies(); return; }
+  } catch (e) { if (e instanceof PartyDropped) { pbEnd(false, null, true); return; } throw e; }
+  if (!winner) { const stay = PB.P.filter(p => !p.gone); winner = stay.length === 1 ? stay[0] : null; }
+  await pbFinish(winner);
+}
+// rounds 1 and 2: whoever ran out is brought back
+async function pbRoundEnd(r, w) {
+  pbHudRender(null); stressTo = 0.15; pbCamDefault();
+  sub(w ? (w.me ? `<em>You win round ${r + 1}.</em>` : `${w.name} wins round ${r + 1}.`) : `Round ${r + 1} is over.`, 0);
+  await wait(2.6);
+  const outs = PB.P.filter(p => p.out && !p.gone);
+  if (outs.length) {
+    sub(outs.length > 1 ? 'The defibrillator shocks them all back to life…' : outs[0].me ? 'The defibrillator shocks you back to life…' : `The defibrillator shocks ${outs[0].name} back to life…`, 0);
+    Sound.zap(); hurtFlash('#9ad4ff', 0.55, 0.6);
+    for (const p of outs) if (p.n) { const n = p.n; n.alive = true; n.slump = 0; restPose(n.R); restPose(n.L); n.fear = 0.4; n.mouthOpen = 0.6; }
+    if (PB.me.out) { PB.spectate = false; cam.pos.copy(PB.eye); pbCamDefault(); cam.look.copy(cam.lookTo); Sound.S.heart = true; }
+    await wait(1.6); for (const p of outs) if (p.n) p.n.mouthOpen = 0;
   }
+  sub('');
+}
+async function pbFinish(w) {
+  const win = !!(w && w.me);
+  stressTo = 0.1; pbHudRender(null);
+  sub(win ? (PB.P.every(p => p.me || p.gone) ? 'Everyone else has left the table. <em>You win.</em>' : '<em>You’re the last one standing.</em>') : w ? `<em>${w.name}</em> is the last one standing.` : 'Nobody is left standing.', 0);
+  if (win) { $('streakN').textContent = save.onWins + 1; $('streak').classList.remove('bump'); void $('streak').offsetWidth; $('streak').classList.add('bump'); }
+  if (w && w.n) { w.n.look.copy(PB.eye); w.n.fear = 0; }
+  await wait(3.2); sub(''); hud.hidden = true; $('bsHud').hidden = true;
+  await wait(1.2); Blood.fade(); await wait(0.8); Blood.clear();
+  pbEnd(win, w);
+}
+function pbEnd(win, w, dropped) {
+  state = 'end'; Sound.S.tick = false; Sound.S.heart = false; Sound.S.breathe = false;
+  save.onGames++; if (win) save.onWins++; persist();
+  Online.setPhase('end');
+  const e = $('end'); e.className = win ? 'win' : 'lose'; e.hidden = false; hud.hidden = true; $('bsHud').hidden = true;
+  $('endT').textContent = win ? 'YOU SURVIVED' : 'GAME OVER';
+  $('endP').innerHTML = dropped ? 'You lost your connection to the table.' : win ? (PB.P.every(p => p.me || p.gone) ? 'Everyone else left the table. You win.' : `You were the last one standing. Rounds won: <b>${BS.won}/3</b>`) : w ? `<b>${w.name}</b> was the last one standing.` : 'Nobody was left standing.';
+  $('endS').innerHTML = statsHTML([[save.onWins, 'Online wins'], [save.onGames, 'Online games']]);
+  $('endAgain').textContent = dropped || Online.left() ? 'Find a new match' : 'Play again'; $('endAgain').disabled = false;
+  if (dropped) Online.leave();
+}
+// the end screen's line about who wants to play again
+function pbAgainText() {
+  if (state !== 'end' || !Online.on || !Online.party()) return;
+  if (Online.left()) { $('endP').innerHTML = 'Everyone else has left the table.'; $('endAgain').textContent = 'Find a new match'; $('endAgain').disabled = false; return; }
+  const r = Online.readyInfo();
+  if ($('endAgain').disabled) $('endP').innerHTML = `Waiting for everyone to press Play again… <b>${r.ready} of ${r.total}</b> ready.`;
+  else if (r.ready) $('endP').innerHTML = `<b>${r.ready} of ${r.total}</b> want to play again.`;
 }
 // the end of an online game; leftBy: the other player walked away
 function onlineEnd(win, leftBy) {
@@ -2944,12 +3665,12 @@ function onlineEnd(win, leftBy) {
 }
 async function startOnlineGame() {
   abortAll(); const my = runId;
-  Online.newGame();
+  if (Online.party()) Online.cancel(); else Online.newGame(); // a Buckshot table's game number comes with 'start'
   $('black').style.opacity = '1'; $('end').hidden = true; hideMenus();
   await new Promise(r => setTimeout(r, 650)); if (my !== runId) return;
   resetTable(true); cam.pos.copy(SEAT); cam.mode = 'seat';
   $('black').style.opacity = '0';
-  (Online.mode() === 'bs' ? playBuckshotOnline : playOnline)().catch(onErr);
+  (Online.party() ? playBuckshotParty : playOnline)().catch(onErr);
 }
 // what happens at the table, whatever screen you're on
 Online.onEvent('matched', o => {
@@ -2962,25 +3683,64 @@ Online.onEvent('left', o => {
   if (state === 'game' && game && game.online) { abortAll(); Blood.clear(); $('black').style.opacity = '0'; onlineEnd(true, true); }
   else if (state === 'end') { $('endP').innerHTML = `<b>${o.name}</b> left the table.`; $('endAgain').textContent = 'Find a new match'; }
 });
+// 1.3: a Buckshot table: the host has started a game (the first one, or the next)
+Online.onEvent('start', () => {
+  if (!Online.on) return;
+  onlineStatus(''); Sound.init();
+  if (save.mode !== 'bs') { save.mode = 'bs'; persist(); syncModeUI(); }
+  startOnlineGame();
+});
+Online.onEvent('lobby', () => partyLobbyRender());
+Online.onEvent('gone', p => { if (state === 'end' && Online.party()) { pbAgainText(); if (!Online.left() && !$('endAgain').disabled) $('endP').innerHTML = `<b>${p.name}</b> left the table.`; } });
 Online.onEvent('again', () => {
   if (state !== 'end' || !Online.on) return;
+  if (Online.party()) { pbAgainText(); return; }
   if (Online.bothAgain()) startOnlineGame();
   else if (!Online.left()) $('endP').innerHTML = $('endAgain').disabled ? `Waiting for <b>${Online.opp().name}</b>…` : `<b>${Online.opp().name}</b> wants to play again.`;
 });
 Online.onEvent('error', msg => { onlineWaiting(false); onlineStatus(msg === 'offline' ? 'Couldn’t connect. Check your internet and try again.' : msg, true); });
-Online.onEvent('requeue', () => onlineStatus('Still looking for someone to play…'));
-Online.onEvent('queue', n => { if (Online.on && !Online.opp()) onlineStatus(n > 1 ? 'Found someone. Sitting down…' : 'Looking for someone to play… You’re the only one waiting right now. Keep this open, or send a friend a private table code.'); });
+Online.onEvent('requeue', () => onlineStatus(Online.party() ? 'Still looking for players…' : 'Still looking for someone to play…'));
+Online.onEvent('queue', n => {
+  if (!Online.on || Online.opp()) return;
+  if (Online.party()) { quickN = n; partyQueueStatus(); return; }
+  onlineStatus(n > 1 ? 'Found someone. Sitting down…' : 'Looking for someone to play… You’re the only one waiting right now. Keep this open, or send a friend a private table code.');
+});
+// 1.3: Buckshot quick match: how many are waiting, and when the game starts
+let quickN = 0, quickAt = 0, quickTick = 0;
+Online.onEvent('countdown', at => { quickAt = at; clearInterval(quickTick); if (at) quickTick = setInterval(partyQueueStatus, 500); partyQueueStatus(); });
+function partyQueueStatus() {
+  if (!Online.on || !Online.party() || Online.lobby() || state !== 'title') { clearInterval(quickTick); return; }
+  const secs = Math.max(0, Math.ceil((quickAt - Date.now()) / 1000));
+  onlineStatus(quickN < 2 ? 'Looking for players… You’re the only one waiting right now. Keep this open, or make a private table and send friends the code.'
+    : quickAt ? `Found ${quickN} players. Waiting for more to join (up to 6)… Starting in ${secs}.` : `Found ${quickN} players. Sitting down…`);
+}
+// 1.3: who's at a Buckshot table before the game starts
+function partyLobbyRender() {
+  const L = Online.on && Online.party() ? Online.lobby() : null;
+  $('netLobby').hidden = !L; $('netStart').hidden = !L || !L.host || L.quick;
+  if (!L) return;
+  clearInterval(quickTick);
+  $('netMode').textContent = 'Mode: ' + MODES.bs.n; $('netTag').textContent = 'Buckshot Roulette against real people. One shotgun, three rounds, 2 to 6 players.';
+  $('netLobbyT').textContent = (L.code ? 'Table ' + L.code + ' · ' : '') + `${L.players.length} of ${PARTY_MAX} players`;
+  const ol = $('netPlayers'); ol.innerHTML = '';
+  for (const p of L.players) { const li = document.createElement('li'); li.textContent = p.name + (p.me ? ' (you)' : ''); if (p.host) { const b = document.createElement('span'); b.className = 'hosttag'; b.textContent = 'host'; li.appendChild(b); } ol.appendChild(li); }
+  $('netStart').disabled = L.players.length < 2;
+  const host = L.players[0];
+  onlineStatus(L.quick ? 'Sitting down…' : !L.host ? `Waiting for ${host ? host.name : 'the host'} to start the game…`
+    : L.players.length < 2 ? `Your table code is ${L.code}. Send it to friends (2 to 6 players), then wait here.` : `Press Start when everyone is here. Your table code is ${L.code}.`);
+}
 function onlineStatus(t, bad) { const s = $('netStatus'); s.textContent = t || ''; s.classList.toggle('bad', !!bad); }
-function onlineWaiting(on) { for (const b of document.querySelectorAll('#m-online .netpick')) b.hidden = on; $('netCancel').hidden = !on; $('netBack').hidden = on; }
+function onlineWaiting(on) { for (const b of document.querySelectorAll('#m-online .netpick')) b.hidden = on; $('netCancel').hidden = !on; $('netBack').hidden = on; if (!on) { $('netLobby').hidden = true; $('netStart').hidden = true; clearInterval(quickTick); quickAt = 0; } }
 function onlineMenuGo(go) {
   const name = Online.cleanName($('netName').value);
   if (go === 'netBack') { showMenu('title'); return; }
   if (go === 'netCancel') { Online.leave(); onlineWaiting(false); onlineStatus(''); return; }
+  if (go === 'netStart') { if (!Online.start()) onlineStatus('You need at least 2 players to start.', true); return; }
   if (!name) { onlineStatus('Type your name first.', true); $('netName').focus(); return; }
   save.name = name; persist();
   onlineWaiting(true);
-  if (go === 'netQuick') { onlineStatus('Looking for someone to play…'); Online.quick(name, save.mode).catch(onlineWaitingFail); }
-  else if (go === 'netCreate') { onlineStatus('Setting up a table…'); Online.create(name, save.mode).then(code => onlineStatus(`Your table code is ${code}. Send it to a friend, then wait here.`)).catch(onlineWaitingFail); }
+  if (go === 'netQuick') { quickN = 0; quickAt = 0; onlineStatus(save.mode === 'bs' ? 'Looking for players…' : 'Looking for someone to play…'); Online.quick(name, save.mode).catch(onlineWaitingFail); }
+  else if (go === 'netCreate') { onlineStatus('Setting up a table…'); Online.create(name, save.mode).then(code => { if (Online.party()) partyLobbyRender(); else onlineStatus(`Your table code is ${code}. Send it to a friend, then wait here.`); }).catch(onlineWaitingFail); }
   else if (go === 'netJoin') {
     const code = $('netCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (code.length !== 5) { onlineWaiting(false); onlineStatus('A table code has 5 letters.', true); return; }
@@ -2988,6 +3748,273 @@ function onlineMenuGo(go) {
   }
 }
 function onlineWaitingFail() { Online.leave(); onlineWaiting(false); onlineStatus('Couldn’t connect. Check your internet and try again.', true); }
+
+/* rr-intro:start */
+// =====================================================================
+//  The intro cinematic (rr-intro)
+// =====================================================================
+// Plays when the game opens, and again from "Watch the intro" on the title screen. A coin spins on
+// the table, slower and slower, until it falls flat. Cut to the stranger: he puts the revolver to his
+// temple, and a single tear runs down into his beard. Close on the gun: the hammer comes back and the
+// cylinder turns the one live round up under it. He squeezes, and everything goes black on the shot
+// (as when you lose). Then the table again: blood across it, the gun dropping beside the coin, and the title.
+// Everything is the game's own room, man, revolver and coin, run on the game's wait()/tween() clock.
+const Intro = (() => {
+  const SND = new Proxy({}, { get: (_, k) => (...a) => { try { return Sound[k](...a); } catch (e) { return undefined; } } });   // sounds that never throw (no audio until the first tap)
+  const ss = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  const LOOK = { skin: 0xe2b597, shirt: 0x8e2a22, hair: 0x3a2a1d, style: 'bald', facial: 'beard', name: 'Viktor' };
+  const css = document.createElement('style');
+  css.textContent = `
+  #intro { position: fixed; inset: 0; z-index: 15; pointer-events: none; display: none; }
+  #intro.on { display: block; }
+  #intro .bar { position: absolute; left: 0; right: 0; height: max(0px, calc((100vh - 100vw / 2.39) / 2)); background: #000; }
+  #intro .bar.t { top: 0; } #intro .bar.b { bottom: 0; }
+  @media (max-aspect-ratio: 6/5) { #intro .bar { display: none; } }   /* a phone held upright: no letterbox, it would leave a sliver */
+  #introSkip { position: absolute; right: calc(18px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); pointer-events: auto; font: 800 13px/1 var(--ui); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); background: rgba(0, 0, 0, .4); border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; cursor: pointer; }
+  #introSkip:hover { color: var(--ink); border-color: var(--gold); }
+  #introSound { position: absolute; left: calc(18px + env(safe-area-inset-left)); bottom: calc(24px + env(safe-area-inset-bottom)); font: 700 12px/1 var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); opacity: .75; }`;
+  document.head.appendChild(css);
+  const el = document.createElement('div'); el.id = 'intro';
+  el.innerHTML = '<div class="bar t"></div><div class="bar b"></div><div id="introSound">Tap anywhere for sound</div><button id="introSkip">Skip ›</button>';
+  document.body.appendChild(el);
+  const soundHint = el.querySelector('#introSound');
+  addEventListener('pointerdown', () => { soundHint.style.display = 'none'; }, { once: true });
+  if (navigator.userActivation && navigator.userActivation.hasBeenActive) soundHint.style.display = 'none';
+
+  const black = $('black');
+  const blackNow = o => { black.style.transition = 'none'; black.style.opacity = String(o); void black.offsetWidth; black.style.transition = ''; };
+  const fadeBlack = (o, s) => { black.style.transition = `opacity ${s}s`; black.style.opacity = String(o); };
+  const shotCam = (pos, look, fov) => { cam.pos.copy(pos); cam.look.copy(look); cam.lookTo.copy(look); cam.fov = cam.fovTo = fov; };
+  let on = false, bullet = null, tear = null, smoke = [];
+  const gunLight = new THREE.PointLight(0xffd2a0, 0, 0.7, 2); scene.add(gunLight);   // a little light on the gun for its close-up
+
+  // the one live round: a copper nose sitting in the mouth of chamber 0
+  function loadRound() {
+    const m = std({ color: 0xb8703a, metalness: 0.85, roughness: 0.28, envMap: ENV, envMapIntensity: 1.3 });
+    bullet = new THREE.Group(); const a = Math.PI / 2, r = 0.0128;
+    const body = new THREE.Mesh(cylZ(0.0047, 0.0047, 0.006, 14), m); body.position.z = 0.0195;
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.0047, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2), m); nose.position.z = 0.0225; nose.scale.set(1, 1, 0.9);
+    bullet.add(body, nose); bullet.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); tgun.cyl.add(bullet);
+  }
+  // a tear: a glossy bead under his left eye and the wet line it leaves on his cheek
+  const TEAR_PATH = [V3(0.036, 0.009, 0.091), V3(0.041, -0.004, 0.087), V3(0.045, -0.016, 0.084), V3(0.047, -0.026, 0.083)];
+  function tearAt(k) { const n = TEAR_PATH.length - 1, i = Math.min(n - 1, Math.floor(k * n)), f = k * n - i; return TEAR_PATH[i].clone().lerp(TEAR_PATH[i + 1], f); }
+  function makeTear() {
+    const tm = std({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.42, envMap: ENV, envMapIntensity: 2.4 });
+    const drop = mesh(new THREE.SphereGeometry(0.0026, 12, 9), tm, 0, 0, 0, npc.head, false);
+    const trail = mesh(new THREE.CylinderGeometry(0.0007, 0.001, 1, 6).translate(0, 0.5, 0), tm, 0, 0, 0, npc.head, false);
+    drop.visible = trail.visible = false; tear = { drop, trail };
+  }
+  function placeTear(k, size) {
+    const p = tearAt(k), p0 = TEAR_PATH[0];
+    tear.drop.visible = size > 0.01; tear.drop.position.copy(p); tear.drop.scale.set(size, size * (1.25 + k * 0.4), size * 0.7);
+    const d = p.clone().sub(p0), len = d.length();
+    tear.trail.visible = len > 0.001; tear.trail.position.copy(p0); tear.trail.scale.set(1, Math.max(1e-4, len), 1);
+    tear.trail.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize());
+  }
+
+  async function run() {
+    // the set: this stranger, the gun in the middle of the table, the room dark round the lamp
+    abortAll(); on = true; state = 'intro';
+    hideMenus(); hud.hidden = true; el.classList.add('on'); blackNow(1);
+    buildNPC(LOOK); resetTable(false);
+    cam.mode = 'intro'; stress = 0; stressTo = 0.06; Sound.S.heart = false; Sound.S.breathe = false; Sound.S.tick = false; SND.unmuffle();
+    npc.look.set(0, SEAT.y, SEAT.z); npc.fear = 0.3;
+    for (const s of smoke) s.visible = false;
+
+    // 1. the coin. Up on its edge it spins, slower and slower, the face flickering heads and tails; it
+    // leans further as it slows; then, like a real coin, it rolls round on its rim faster and faster,
+    // rattling, while the face itself barely turns, and drops flat on heads. One long camera move: down
+    // at the table top, circling in, rising at the end to look down on the face.
+    coin.phase = 'intro'; coin.g.position.set(COIN_X, TOP, COIN_Z); coin.phi = 0; coin.theta = Math.PI / 2; coin.chi = 0;
+    await wait(0.3);
+    SND.coinFlick(); fadeBlack(0, 1.6);
+    const SPIN = 6.6, LEAN = 8.6, LAND = 10.75, S1 = 12.4, TH1 = Math.PI / 2 - 0.36;
+    let prev = 0, tickAt = 0, landed = false, wob = 0, half = 0;
+    await tween(S1, (e, k) => {
+      const i = k * S1, dt = Math.max(0, i - prev); prev = i;
+      const drift = 1 - ss(0, LAND, i);
+      coin.g.position.set(COIN_X + Math.sin(i * 0.37) * 0.022 * drift, TOP, COIN_Z + (1 - Math.cos(i * 0.31)) * 0.016 * drift);
+      if (i < SPIN) {                       // up on its edge, slowing
+        const w = 30 * Math.exp(-i / 2.1) + 5.2;
+        coin.phi += w * dt; coin.theta = Math.PI / 2 - 0.02 - 0.05 * ss(0, SPIN, i) + Math.sin(i * 2.1) * 0.012;
+        const h = Math.floor(coin.phi / Math.PI); if (h !== half) { half = h; SND.coinRattle(0.012 + 0.006 * (1 - i / SPIN)); }
+      } else if (i < LEAN) {                // slow enough now to lean, the spin dying
+        const f = ss(SPIN, LEAN, i);
+        coin.phi += lerp(5.2, 3.6, f) * dt; coin.theta = lerp(Math.PI / 2 - 0.07, TH1, f * f);
+        const h = Math.floor(coin.phi / Math.PI); if (h !== half) { half = h; SND.coinRattle(0.018); }
+      } else if (i < LAND) {                // rolling round on its rim: the wobble speeds up, the face hardly turns
+        const f = (i - LEAN) / (LAND - LEAN), q = Math.pow(f, 1.7), wr = 3.6 + 46 * q * q;
+        coin.phi += wr * dt; coin.chi -= wr * dt * (0.88 * ss(0, 0.3, f));
+        coin.theta = lerp(TH1, 0, q);
+        if (i - tickAt > lerp(0.2, 0.022, q)) { tickAt = i; SND.coinRattle(0.03 + q * 0.11); }
+      } else {                              // down, a last shiver, still
+        if (!landed) { landed = true; wob = 1; SND.coinLand(); }
+        wob = Math.max(0, wob - dt * 2.6); coin.theta = Math.sin(i * 42) * 0.045 * wob;
+      }
+      // the camera: circling in at table height, then craning up to look down on the face as it lands
+      const up = ss(0.5, 0.9, k), a = 0.1 + 0.62 * ss(0, 1, k), r = lerp(0.25, 0.15, ss(0, 0.85, k)) - 0.03 * up;
+      const C = coin.g.position;
+      shotCam(V3(C.x + Math.cos(a) * r, TOP + 0.032 + 0.15 * up, C.z + Math.sin(a) * r), V3(C.x, TOP + 0.014 - 0.006 * up, C.z), lerp(34, 30, k));
+    }, linear);
+
+    // 2. cut to him: the revolver comes up to his right temple, and his hand will not keep still
+    npc.R.H.updateMatrixWorld(true); npc.R.H.attach(tgun.g); tgun.g.position.set(0, 0, 0); tgun.g.quaternion.identity(); npc.R.hand.setCurl(false); GUN.at = 'hand';
+    { const s = handPose(npc.R, 'show'); npc.R.pos.copy(s.p); npc.R.q.copy(s.q); }
+    // the loaded chamber starts one notch round on the side facing the camera (the cinematic turns the cylinder
+    // the other way from the game, so the round rolls up into view rather than round the far side)
+    tgun.angle = Math.PI / 3; tgun.cyl.rotation.z = tgun.angle; tgun.setCock(0); tgun.setPull(0); loadRound();
+    npc.fear = 0.75; npc.shrugTo = 0.8; npc.away = 1; npc.leanExtra = 0; stressTo = 0.45; Sound.S.heart = true; Sound.S.breathe = true;
+    npc.head.updateMatrixWorld(true);
+    const H0 = npc.head.getWorldPosition(V3(0, 0, 0));
+    handTo(npc.R, 'temple', 1.1).then(() => { tween(9, k => { npc.R.tremor = 0.45 + k * 0.9; }, linear).catch(() => {}); }).catch(() => {});
+    wait(1.6).then(() => { SND.gasp(); npc.mouthOpen = 0.35; return wait(0.5); }).then(() => { npc.mouthOpen = 0; }).catch(() => {});
+    const S2 = 3.8;
+    await tween(S2, (e, k) => {
+      const d = 0.98 - k * 0.22;
+      shotCam(V3(H0.x + 0.03, H0.y - 0.06, H0.z + d), V3(H0.x - 0.035, H0.y - 0.1, H0.z), 36);
+    }, linear);
+
+    // 3. close on his face: his eyes fill, and one tear runs down his cheek into his beard
+    makeTear(); npc.look.set(0, SEAT.y - 0.15, SEAT.z);
+    npc.head.updateMatrixWorld(true);
+    const C3 = npc.head.localToWorld(V3(0.12, 0.0, 0.42)), S3 = 3.6;
+    wait(1.05).then(() => { npc.eyesShut = true; return wait(0.16); }).then(() => { npc.eyesShut = false; }).catch(() => {});
+    wait(2.9).then(() => { npc.eyesShut = true; SND.exhale(); }).catch(() => {});
+    await tween(S3, (e, k) => {
+      const i = k * S3;
+      const grow = ss(0.3, 1.2, i), run = Math.pow(clamp((i - 1.35) / 1.8, 0, 1), 1.6), gone = 1 - ss(3.0, 3.5, i);
+      placeTear(run, 0.95 * grow * (run >= 1 ? gone : 1));
+      shotCam(C3.clone().add(V3(0, 0, -k * 0.06)), npc.head.localToWorld(V3(0.022, -0.012, 0.07)), 30);
+    }, linear);
+
+    // 4. the revolver: the hammer comes back, the cylinder turns one notch, and the round rolls up under it
+    npc.holdBreath = true; npc.lipPress = 1;
+    const S4 = 2.3;
+    let cocked = false, gripped = false, pawls = 0;
+    await tween(S4, (e, k) => {
+      const i = k * S4, u = clamp((i - 0.35) / 1.45, 0, 1);
+      // a steady pull, the cylinder turning in the middle of it, the last bit snapping home
+      const p = u < 0.88 ? 0.86 * ss(0, 0.88, u) : lerp(0.86, 1, Math.pow((u - 0.88) / 0.12, 0.5));
+      tgun.setCock(p); tgun.cyl.rotation.z = tgun.angle - ss(0.2, 1, p) * Math.PI / 3;
+      if (!gripped && u > 0) { gripped = true; SND.revolver('grip'); }
+      if (pawls < 3 && p > [0.3, 0.5, 0.7][pawls]) { pawls++; SND.revolver('pawl'); }
+      if (!cocked && u >= 1) { cocked = true; SND.revolver('set'); cam.kick = 0.05; }
+      tgun.g.updateMatrixWorld(true);
+      const cp = tgun.g.localToWorld(V3(-0.15 + k * 0.015, 0.06 - k * 0.005, 0.13 - k * 0.01));
+      shotCam(cp, tgun.g.localToWorld(V3(0, 0.004, 0.018)), 30); gunLight.position.copy(cp); gunLight.intensity = 1.5;
+    }, linear);
+    tgun.angle -= Math.PI / 3; tgun.cyl.rotation.z = tgun.angle; gunLight.intensity = 0;
+
+    // 5. back on him: eyes shut, breath held, and the finger closes
+    npc.eyesShut = true; stressTo = 0.6;
+    const S5 = 1.5;
+    await tween(S5, (e, k) => {
+      const i = k * S5, p = easeIn(clamp((i - 0.75) / 0.75, 0, 1));
+      tgun.setPull(p); npc.R.hand.setTrigger(p);
+      shotCam(V3(H0.x + 0.02, H0.y - 0.05, H0.z + 0.66 - k * 0.04), V3(H0.x - 0.03, H0.y - 0.06, H0.z), 34);
+    }, linear);
+    // the shot: black, at once
+    blackNow(1); SND.shot(true); Sound.S.heart = false; Sound.S.breathe = false; stress = stressTo = 0;
+    tgun.setCock(0); tear.drop.visible = tear.trail.visible = false;
+    npc.alive = false; npc.slump = 1; npc.R.tremor = 0; npc.R.hand.setCurl(true);
+    await wait(1.7);
+
+    // 6. the table again: the gun drops beside the coin, smoking, under the swinging lamp
+    scene.attach(tgun.g); GUN.at = 'table'; { const l = handPose(npc.R, 'limp'); npc.R.pos.copy(l.p); npc.R.q.copy(l.q); }
+    darkTo = dark = 0.45; lampKick(0.4); LAMP.flickT = 0.5;
+    spatterTable(); bloodOnCoin(); dripNext = 0.9;
+    const G0 = V3(COIN_X - 0.2, TOP + 0.42, COIN_Z + 0.08), GR = tablePose('center');
+    const land = V3(COIN_X - 0.17, GR.p.y, COIN_Z + 0.07);
+    tgun.g.position.copy(G0); tgun.g.quaternion.copy(GR.q).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.6, 0.3, -0.9)));
+    const qa = tgun.g.quaternion.clone();
+    fadeBlack(0, 0.25);
+    let hit = 0, prev6 = 0;
+    const S6 = 3.9;
+    await tween(S6, (e, k) => {
+      const i = k * S6; dripStep(i, Math.max(0, i - prev6)); prev6 = i;
+      // a fall, two small bounces, then still
+      const f = clamp(i / 0.32, 0, 1), b1 = clamp((i - 0.32) / 0.22, 0, 1), b2 = clamp((i - 0.54) / 0.12, 0, 1);
+      let y = lerp(G0.y, land.y, f * f);
+      if (i >= 0.32) y = land.y + Math.sin(b1 * Math.PI) * 0.03 + (i >= 0.54 ? Math.sin(b2 * Math.PI) * 0.008 : 0);
+      tgun.g.position.set(lerp(G0.x, land.x, Math.min(1, i / 0.66)), y, lerp(G0.z, land.z, Math.min(1, i / 0.66)));
+      tgun.g.quaternion.copy(qa).slerp(GR.q, Math.min(1, i / 0.62));
+      if (hit === 0 && i >= 0.32) { hit = 1; SND.clatter(); }
+      if (hit === 1 && i >= 0.54) { hit = 2; SND.thud(0.25); }
+      // a thread of smoke from the muzzle
+      tgun.g.updateMatrixWorld(true); const mz = tgun.g.localToWorld(MUZZLE.clone());
+      smoke.forEach((s, j) => { const t = ((i * 0.55 + j / smoke.length) % 1); s.visible = i > 0.7; s.position.set(mz.x + Math.sin(t * 6 + j) * 0.012 * t, mz.y + t * 0.22, mz.z + Math.cos(t * 5 + j) * 0.01 * t); s.scale.setScalar(0.02 + t * 0.07); s.material.opacity = 0.32 * Math.sin(t * Math.PI) * Math.min(1, (i - 0.7) * 2); });
+      shotCam(V3(COIN_X + 0.2 - k * 0.03, TOP + 0.055, COIN_Z + 0.16 - k * 0.02), V3(COIN_X - 0.07, TOP + 0.02, COIN_Z + 0.03), 38);
+      if (i > S6 - 1.0 && black.style.opacity === '0') fadeBlack(1, 0.9);
+    }, linear);
+    finish();
+  }
+  // blood on the table: the game's own table-blood decal, drawn fresh round the coin and the gun, a few
+  // drops on the coin itself, and more dripping down from above while the shot holds
+  const toPx = (x, z) => [256 + (x - 0.28) / 0.9 * 512, 256 + (z + 0.25) / 0.9 * 512];
+  const REDS = ['#3a0105', '#2a0003', '#4e0208', '#5e030b', '#6a0610'];
+  function blot(g, x, y, r, ang = 0, stretch = 1) {
+    g.save(); g.translate(x, y); g.rotate(ang); g.fillStyle = pick(REDS); g.beginPath();
+    const n = 14; for (let i = 0; i <= n; i++) { const a = i / n * Math.PI * 2, rr = r * rand(0.78, 1.15); const px = Math.cos(a) * rr * stretch, py = Math.sin(a) * rr; if (i) g.lineTo(px, py); else g.moveTo(px, py); }
+    g.closePath(); g.fill();
+    if (stretch > 1.4) { g.beginPath(); g.ellipse(r * stretch * 1.25, 0, r * 0.35, r * 0.28, 0, 0, Math.PI * 2); g.fill(); }   // the little tail a flying drop leaves
+    g.restore();
+  }
+  function spatterTable() {
+    const tex = tableBlood.m.material.map, g = tex.image.getContext('2d'); g.clearRect(0, 0, 512, 512);
+    const [sx, sy] = toPx(-0.05, -0.62), [cx, cy] = toPx(COIN_X - 0.06, COIN_Z - 0.03);
+    // heavy blots where most of it came down, then a spray of drops thrown out from his side of the table
+    for (let i = 0; i < 6; i++) blot(g, cx + rand(-38, 30), cy + rand(-46, 18), rand(7, 17), rand(0, 3), rand(1, 1.6));
+    for (let i = 0; i < 170; i++) {
+      const d = Math.pow(Math.random(), 1.6) * 150, a = rand(0, Math.PI * 2), x = cx + Math.cos(a) * d * 1.2, y = cy + Math.sin(a) * d * 0.9 - 20;
+      const ang = Math.atan2(y - sy, x - sx), far = d / 150;
+      blot(g, x, y, rand(1.2, 4.2) * (1 - far * 0.55), ang, 1 + far * rand(0.4, 2.2));
+    }
+    tex.needsUpdate = true; tableBlood.m.visible = true; tableBlood.m.material.opacity = 1;
+  }
+  const coinDrops = [];
+  function bloodOnCoin() {
+    for (let i = 0; i < 3; i++) { const d = new THREE.Mesh(new THREE.SphereGeometry(0.0032 + i * 0.0012, 10, 6), MAT.blood); d.scale.set(1, 0.28, 1 + i * 0.3); d.position.set(rand(-0.016, 0.014), COIN_H + 0.0008, rand(-0.016, 0.012)); d.rotation.y = rand(0, 3); coin.g.add(d); coinDrops.push(d); }
+  }
+  // drips falling from above into the frame; each one lands as a new spot with a crown of specks
+  const drips = []; for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.0034, 8, 6), MAT.blood); m.visible = false; scene.add(m); drips.push({ m, v: 0, on: false }); }
+  let dripNext = 0;
+  function dripStep(i, dt) {
+    if (i >= dripNext) { dripNext = i + rand(0.45, 0.85); const d = drips.find(d => !d.on); if (d) { d.on = true; d.v = 0; d.m.visible = true; d.m.position.set(COIN_X - 0.07 + rand(-0.04, 0.05), TOP + 0.5, COIN_Z - 0.04 + rand(-0.04, 0.04)); d.m.scale.set(1, 1.5, 1); } }
+    for (const d of drips) {
+      if (!d.on) continue; d.v += 9.8 * dt; d.m.position.y -= d.v * dt;
+      if (d.m.position.y <= TOP + 0.002) {
+        d.on = false; d.m.visible = false;
+        const tex = tableBlood.m.material.map, g = tex.image.getContext('2d'), [x, y] = toPx(d.m.position.x, d.m.position.z);
+        blot(g, x, y, rand(3, 5)); for (let k = 0; k < 7; k++) { const a = rand(0, Math.PI * 2), r = rand(6, 12); blot(g, x + Math.cos(a) * r, y + Math.sin(a) * r, rand(0.8, 1.6), a, 1.8); }
+        tex.needsUpdate = true;
+      }
+    }
+  }
+
+  // the smoke puffs, made once
+  for (let j = 0; j < 7; j++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.smoke, transparent: true, depthWrite: false, opacity: 0, color: 0xcfc6b8 })); s.visible = false; scene.add(s); smoke.push(s); }
+
+  function finish() {
+    if (!on) return; on = false;
+    el.classList.remove('on');
+    if (bullet) { bullet.parent && bullet.parent.remove(bullet); bullet = null; }
+    for (const s of smoke) s.visible = false;
+    for (const d of coinDrops) coin.g.remove(d); coinDrops.length = 0; for (const d of drips) { d.on = false; d.m.visible = false; }
+    coin.chi = 0;
+    tear = null; gunLight.intensity = 0; SND.unmuffle(); dark = darkTo = 0;
+    blackNow(1); if (npc) npc.alive = false;   // a new stranger sits down for the title
+    toTitle();
+  }
+  function skip() { if (!on) return; abortAll(); finish(); }
+  el.querySelector('#introSkip').addEventListener('click', e => { e.stopPropagation(); SND.ui(); skip(); });
+  addEventListener('keydown', e => { if (on && (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); skip(); } });
+  return {
+    play() { if (on) return; run().catch(e => { if (!(e instanceof Abort)) { console.error('intro:', e); finish(); } }); },
+    skip, get on() { return on; },
+  };
+})();
+/* rr-intro:end */
 
 // =====================================================================
 //  Start
@@ -2997,6 +4024,7 @@ applyQuality(); resize(); updateHud();
 cam.look.copy(cam.lookTo);
 showMenu('title');
 requestAnimationFrame(frame);
+{ const q = new URLSearchParams(location.search); if (!q.has('rrroom') && !q.has('nointro')) Intro.play(); } // the intro cinematic plays as the game opens
 
 </script>
 </body>
