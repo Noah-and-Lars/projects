@@ -230,7 +230,8 @@
     <button class="btn sec" data-go="stats">Your stats</button>
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.0.6 · Patch notes</button>
+    <button class="btn sec" id="bIntro">Watch the intro</button>
+    <button class="link" data-go="notes">v1.0.7 · Patch notes</button>
   </div>
 
   <div class="menu wide" id="m-list">
@@ -288,6 +289,11 @@
       <div><i>🎷</i><span><b>Lounge music</b>A smooth jazz loop while you lose everything.</span></div>
     </div>
     <div class="box notes">
+      <h3>v1.0.7 <span>Opening cinematic</span></h3>
+      <ul>
+        <li>A new opening cinematic plays as you walk in: the roulette ball racing round the wheel, dice cracking off the craps rail, 7-7-7 on the Lucky 7s, a Plinko ball dropping into the 18× slot, a photo finish at the horse track, and the house shoving every chip it has across the blackjack table.</li>
+        <li>Watch it again any time with Watch the intro on the main menu. Skip, Esc, Enter or Space skips it, and a tap turns the sound on.</li>
+      </ul>
       <h3>v1.0.6 <span>Urgent update</span></h3>
       <ul>
         <li>Limbo: the highest target is now 2× (1.5× or 2×), and Limbo never pays out. The house always wins at Limbo.</li>
@@ -381,7 +387,7 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.f
 const weighted = list => { let r = Math.random() * list.reduce((s, x) => s + x.w, 0); for (const x of list) { r -= x.w; if (r <= 0) return x; } return list[list.length - 1]; };
 
 // ---------- save ----------
-const START = 80000, CREDIT = 10000, VERSION = '1.0.6', SKEY = 'gambleLifeSave';
+const START = 80000, CREDIT = 10000, VERSION = '1.0.7', SKEY = 'gambleLifeSave';
 const save = Object.assign({ money: START, peak: START, rounds: 0, wins: 0, biggest: 0, deaths: 0, played: {}, bet: 1000, stress: 0, seenVersion: '', volume: 0.7, music: true, quality: 'high' },
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { return {}; } })());
 if (!save.rounds && save.money === 50000) save.money = START; // never played before 1.0.4: start with the new amount
@@ -1178,6 +1184,7 @@ function resume() { hideMenus(); if (mode === 'paused') mode = cur ? 'game' : 'f
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { Sound.init(); Sound.play('click'); const go = b.dataset.go;
   if (go === 'back') { if (b.id === 'notesOk') { save.seenVersion = VERSION; store(); } back(); } else if (go === 'resume') resume(); else showMenu(go); }));
 $('bPlay').onclick = async () => { Sound.init(); Music.start(); Sound.play('chip'); hideMenus(); mode = 'floor'; $('top').hidden = false; $('hint').hidden = false; orbit.auto = true; await flyTo(orbitPos(), orbit.target, 1.4); if (save.money < 0) lastChance(-save.money); else if (save.money === 0) lastChance(0); else if ((save.stress || 0) >= 100) cigPrompt(true); };
+$('bIntro').onclick = () => { Sound.init(); Sound.play('click'); Intro.play(); };
 $('bMenu').onclick = () => { Sound.play('click'); if (mode === 'game' && (busy || roundOpen)) { msg('Finish this round first.', 'bad'); return; } if (mode === 'game') { mode = 'paused'; } showMenu('pause'); };
 $('bList').onclick = () => { Sound.play('click'); if (mode === 'game' && (busy || roundOpen)) { msg('Finish this round first.', 'bad'); return; } if (mode === 'game') mode = 'paused'; showMenu('list'); };
 $('bTitle').onclick = () => { Sound.play('click'); if (cur) { if (cur.leave) cur.leave(); cur = null; $('gp').hidden = true; scene.userData.spot.intensity = 0; } toTitle(); };
@@ -1298,11 +1305,525 @@ function tick(now) { lastFrame = performance.now(); const dt = Math.min(0.05, (n
   LIGHTS.forEach((L, i) => L.intensity = 1.15 + Math.sin(now / 900 + i) * 0.04);
   renderer.render(scene, camera); }
 
+/* gyla-intro:start */
+// ---------- the intro cinematic (gyla-intro) ----------
+// Plays when the game opens, and again from "Watch the intro" on the title screen, cut to two drops
+// of a 128 BPM track in music/ (or, if that can't load, to a beat made in code). The roulette wheel: riding low behind the ball as it races round the track, a spinning
+// look straight down, the ball whipping past along the rim, then slow motion as it drops and clatters
+// over the dividers, and a close look down as it lands on its number. Whip pan to craps: the dice fly
+// at the lens in slow motion, crack off the back rail and come up seven. Whip pan to the Lucky 7s slot
+// machine: the reels slam to a stop, 7, 7, 7, JACKPOT, the lights strobe and gold coins pour out at you.
+// Plinko: riding down the pegs with the ball into the 18× slot. Horse racing, off from the gate as the second drop hits:
+// charging at the lens, neck and neck along the rail, a photo finish in slow motion.
+// Whip pan to blackjack: an ace and a king turn over, and the house shoves a mountain of chips across
+// the felt at you, stacks toppling in slow motion. The logo slams in, and it fades to the title.
+// Everything runs on its own timeline T (seconds), stepped from the game's frame loop, and uses the
+// casino's own roulette wheel, craps table and dice, slot machine, blackjack table, cards and worker.
+const Intro = (() => {
+  const css = document.createElement('style');
+  css.textContent = `
+  #intro { position: fixed; inset: 0; z-index: 18; pointer-events: none; display: none; overflow: hidden; }
+  #intro.on { display: block; }
+  #intro .bar { position: absolute; left: 0; right: 0; height: max(0px, calc((100vh - 100vw / 2.39) / 2)); background: #000; z-index: 3; }
+  #intro .bar.t { top: 0; } #intro .bar.b { bottom: 0; }
+  @media (max-aspect-ratio: 6/5) { #intro .bar { display: none; } }
+  #introFlash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 2; }
+  #introLogo { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; opacity: 0; z-index: 4; background: radial-gradient(ellipse at center, rgba(40, 6, 10, .55), #000 75%); }
+  #introLogo .logo { font-size: clamp(54px, 11vw, 140px); filter: drop-shadow(0 10px 40px rgba(245, 192, 74, .45)); }
+  #introLogo .lw { position: relative; }
+  #introLogo .logo.shine { position: absolute; inset: 0; margin: 0; filter: none; pointer-events: none; background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .95) 50%, transparent 60%) no-repeat; background-size: 300% 100%; background-position: 90% 0; -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #introLogo small { display: block; margin-top: 14px; font: 800 clamp(13px, 1.6vw, 18px)/1 'Barlow', Arial, sans-serif; letter-spacing: .5em; color: #c9b9a6; text-transform: uppercase; }
+  #introJack { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; z-index: 4; pointer-events: none; }
+  #introJack b { font: 400 clamp(60px, 13vw, 170px)/1 'Russo One', Impact, sans-serif; letter-spacing: .04em; background: linear-gradient(180deg, #fff7d6, #ffd34a 45%, #c27a12); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 30px rgba(255, 196, 60, .8)) drop-shadow(0 8px 0 rgba(0, 0, 0, .6)); }
+  #introSkip { position: absolute; z-index: 5; right: calc(18px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); pointer-events: auto; font: 800 13px/1 'Barlow', Arial, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #cbb89a; background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .15); border-radius: 999px; padding: 10px 16px; cursor: pointer; }
+  #introSkip:hover { color: #fff; border-color: #d9a830; }
+  #introSound { position: absolute; z-index: 5; left: calc(18px + env(safe-area-inset-left)); bottom: calc(24px + env(safe-area-inset-bottom)); font: 700 12px/1 'Barlow', Arial, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #cbb89a; opacity: .75; }`;
+  document.head.appendChild(css);
+  const el = document.createElement('div'); el.id = 'intro';
+  el.innerHTML = '<div class="bar t"></div><div class="bar b"></div><div id="introFlash"></div><div id="introLogo"><div><div class="lw"><div class="logo">Gamble<span>Your Life Away</span></div><div class="logo shine" aria-hidden="true">Gamble<span>Your Life Away</span></div></div><small>The house always wins</small></div></div><div id="introJack"><b>JACKPOT</b></div><div id="introSound">Tap anywhere for sound</div><button id="introSkip">Skip ›</button>';
+  document.body.appendChild(el);
+  const jackEl = el.querySelector('#introJack'), jackIn = jackEl.firstElementChild, flashEl = el.querySelector('#introFlash'), logoEl = el.querySelector('#introLogo'), logoIn = logoEl.firstElementChild, soundHint = el.querySelector('#introSound');
+  const logoMain = logoEl.querySelector('.logo'), shineEl = logoEl.querySelector('.shine'), tagEl = logoEl.querySelector('small');
+  addEventListener('pointerdown', () => { soundHint.style.display = 'none'; }, { once: true });
+  if (navigator.userActivation && navigator.userActivation.hasBeenActive) soundHint.style.display = 'none';
+  const black = $('black');
+  const blackNow = o => { black.style.transition = 'none'; black.style.opacity = String(o); void black.offsetWidth; black.style.transition = ''; };
+  const fadeBlack = (o, s) => { black.style.transition = `opacity ${s}s`; black.style.opacity = String(o); };
+  const SND = n => { try { Sound.play(n); } catch (e) {} };
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const nz = (t, s) => Math.sin(t * 1.7 + s) * 0.5 + Math.sin(t * 3.1 + s * 2) * 0.3 + Math.sin(t * 5.3 + s * 3) * 0.2;   // a smooth wobble for camera shake
+
+  // ---------- the music: two drops of a 128 BPM track (music/intro-1.mp3 and intro-2.mp3) ----------
+  // The intro's clock is bent a little against the song's beats so every hit lands on one: WARP pairs a beat of the
+  // drop (0 = its first beat) with the intro time T that falls on it, and between them the clock runs smoothly.
+  // The first drop plays to beat SPLICE, where the second drop (from the same bar of its own phrase) takes over for the horses and blackjack.
+  const SONG = ['music/intro-1.mp3', 'music/intro-2.mp3'], BEAT = 60 / 128, SONG_DROP = [2.10, 1.095], SPLICE = 52;   // (SONG_DROP: each clip's first drop beat, in seconds)
+  const WARP = [[-2.4, 0], [0, 1.2], [4, 3.2], [8, 5.2], [13, 7.6], [16, 9.4], [21, 12.0], [23, 13.2], [25, 14.2], [30, 16.5], [32, 17.4], [35, 19.0],
+    [41, 21.5], [45, 23.6], [48, 25.0], [52, 26.5], [56, 28.5], [60, 30.5], [61, 31.0],
+    [64, 32.5], [68, 34.5], [71, 35.7], [73, 36.7], [76, 38.0], [81.4, 40.7]];
+  const wd = WARP.slice(1).map((p, i) => (p[1] - WARP[i][1]) / (p[0] - WARP[i][0]));
+  const wm = WARP.map((p, i) => i === 0 ? wd[0] : i === wd.length ? wd[i - 1] : 2 / (1 / wd[i - 1] + 1 / wd[i]));   // (slopes that keep it smooth and never running backwards)
+  function beatT(b) {
+    const n = WARP.length - 1; if (b <= WARP[0][0]) return 0; if (b >= WARP[n][0]) return WARP[n][1] + (b - WARP[n][0]) * wd[n - 1];
+    let i = 0; while (WARP[i + 1][0] < b) i++;
+    const [b0, t0] = WARP[i], [b1, t1] = WARP[i + 1], h = b1 - b0, s = (b - b0) / h, s2 = s * s, s3 = s2 * s;
+    return (2 * s3 - 3 * s2 + 1) * t0 + (s3 - 2 * s2 + s) * h * wm[i] + (3 * s2 - 2 * s3) * t1 + (s3 - s2) * h * wm[i + 1];
+  }
+  const TofClk = c => Beat.usesSong ? beatT(c / BEAT + WARP[0][0]) : c;   // seconds since the intro started -> T
+  const clkOfT = t => { if (!Beat.usesSong) return t; let lo = 0, hi = 60; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (TofClk(m) < t) lo = m; else hi = m; } return hi; };
+
+  // ---------- the sound: the song, with hits and whooshes on top (silent until the first tap) ----------
+  const Beat = (() => {
+    let ctx = null, out = null, nb = null, ev = [], idx = 0;
+    let mast = null, sg = null, lp = null, bufs = [null, null], failed = false, use = false, srcs = [], playing = false, t0 = 0, stopped = false, muffled = false;   // (t0: the audio clock at the intro's start)
+    // the song loads as the page opens; if it can't (the page opened as a file, or offline) the beat made in code plays instead
+    SONG.forEach((u, i) => { try { fetch(u).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(a => new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 1, 44100).decodeAudioData(a)).then(b => { bufs[i] = b; }, () => { failed = true; }); } catch (e) { failed = true; } });
+    const vol = () => save.volume ?? 0.7;
+    const ensure = () => {
+      if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 5; out = ctx.createGain(); out.gain.value = 0.75 * vol(); out.connect(comp);
+        const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.12; lim.connect(ctx.destination);
+        mast = ctx.createGain(); mast.connect(lim); comp.connect(mast);
+        lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 22000; sg = ctx.createGain(); sg.gain.value = 0.0001; lp.connect(sg); sg.connect(mast);
+        nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ctx = null; }
+    };
+    addEventListener('pointerdown', ensure); addEventListener('keydown', ensure);
+    const env = (g, t, a, v, d) => { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); };
+    const osc = (t, type, f0, f1, v, a, d, filt) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + a + d); env(g, t, a, v, d);
+      if (filt) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filt; o.connect(f); f.connect(g); } else o.connect(g); g.connect(out); o.start(t); o.stop(t + a + d + 0.05); };
+    const noise = (t, type, f0, f1, v, a, d, q = 1) => { const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + a + d);
+      const g = ctx.createGain(); env(g, t, a, v, d); s.connect(f); f.connect(g); g.connect(out); s.start(t, Math.random()); s.stop(t + a + d + 0.05); };
+    const synth = f => (...a) => { if (!use) f(...a); };   // (the beat's own instruments, quiet while the song plays)
+    const S = {
+      kick: synth(t => { osc(t, 'sine', 150, 42, 0.95, 0.002, 0.32); noise(t, 'highpass', 3000, 0, 0.12, 0.001, 0.02); }),
+      clap: synth(t => { for (let i = 0; i < 3; i++) noise(t + i * 0.012, 'bandpass', 1500, 0, 0.35, 0.001, 0.07, 1.4); noise(t + 0.036, 'bandpass', 1300, 0, 0.25, 0.002, 0.18, 1); }),
+      hat: synth((t, v = 0.11) => noise(t, 'highpass', 7500, 0, v, 0.001, 0.04)),
+      bass: synth((t, f, d = 0.42) => { osc(t, 'sawtooth', f, 0, 0.3, 0.006, d, 520); osc(t, 'sine', f / 2, 0, 0.35, 0.006, d); }),
+      stab: synth((t, fs, d = 0.35, v = 0.12) => fs.forEach(f => osc(t, 'sawtooth', f, 0, v, 0.004, d, 2600))),
+      boom: (t, v = 1) => { if (use) v *= 0.7; osc(t, 'sine', 90, 28, 1.1 * v, 0.003, 1.4); noise(t, 'lowpass', 2400, 90, 0.7 * v, 0.003, 1.2); },
+      crash: t => noise(t, 'highpass', 5000, 3000, 0.22, 0.003, 1.6),
+      riser: (t, d) => { noise(t, 'bandpass', 300, 6000, 0.32, d * 0.95, 0.05, 2); if (!use) osc(t, 'sawtooth', 110, 880, 0.06, d * 0.95, 0.05, 3000); },
+      whoosh: (t, d) => noise(t, 'bandpass', 600, 4000, 0.45, d * 0.5, d * 0.5, 1.5),
+      drone: synth((t, d) => { osc(t, 'sawtooth', 55, 0, 0.14, 0.3, d, 260); osc(t, 'sine', 110, 0, 0.08, 0.3, d); noise(t, 'bandpass', 200, 1800, 0.12, d * 0.9, 0.1, 3); }),
+      chips: t => { for (let i = 0; i < 26; i++) noise(t + Math.random() * 0.9, 'bandpass', 3500 + Math.random() * 2500, 0, 0.18 * Math.random() + 0.05, 0.001, 0.03, 4); },
+    };
+    function build() {
+      use = !failed; ev = []; const at = (t, fn) => ev.push({ t, fn });
+      const RIFF = [55, 55, 65.4, 55, 73.4, 55, 65.4, 49], RIFF2 = [55, 65.4, 73.4, 82.4, 73.4, 65.4, 55, 49], beat = 0.5;
+      const drums = (a, b, { full = true, riff = RIFF, roll = false } = {}) => { for (let x = a, n = 0; x < b - 0.01; x += beat, n++) { at(x, t => S.kick(t)); if (n % 2) at(x, t => S.clap(t)); at(x + beat / 2, t => S.hat(t));
+        if (full) { at(x + beat / 4, t => S.hat(t, 0.05)); at(x + 3 * beat / 4, t => S.hat(t, 0.05)); } if (riff) { const f = riff[n % 8]; at(x, t => S.bass(t, f)); } }
+        if (roll) for (let x = b - 1; x < b - 0.01; x += 0.125) at(x, t => S.clap(t)); };
+      const hit = (t, v = 1) => at(t, u => { S.boom(u, v); S.crash(u); });
+      // roulette
+      at(0.0, t => S.riser(t, 1.2)); hit(1.2);
+      drums(1.2, 7.6); at(3.2, t => S.crash(t)); at(5.2, t => { S.crash(t); S.stab(t, [220, 261.6, 329.6]); }); at(7.1, t => S.riser(t, 0.5));
+      at(7.6, t => { S.boom(t, 0.7); S.drone(t, 1.8); });
+      at(9.4, t => { S.boom(t); S.crash(t); S.stab(t, [220, 261.6, 329.6, 440], 0.6, 0.14); });
+      for (let x = 9.4, n = 0; x < 11.4; x += 0.5, n++) { if (n % 2 === 0) at(x, t => S.kick(t)); at(x + 0.25, t => S.hat(t)); }
+      at(10.9, t => S.riser(t, 0.6)); at(11.5, t => S.whoosh(t, 0.5));
+      // craps: the throw, slow motion in the air, the crack off the rail, seven
+      hit(12.0); drums(12.0, 12.5, { riff: RIFF2 }); at(12.45, t => { S.drone(t, 0.8); S.riser(t, 0.75); });
+      at(13.2, t => { S.boom(t, 0.8); S.crash(t); }); drums(13.2, 14.2, { riff: RIFF2 });
+      at(14.2, t => { S.boom(t); S.crash(t); S.stab(t, [220, 277.2, 329.6, 440], 0.7, 0.15); }); drums(14.2, 16.0, { riff: RIFF2, roll: true });
+      at(15.5, t => S.riser(t, 0.5)); at(16.0, t => S.whoosh(t, 0.5));
+      // slots: the reels slam, the third one hangs, JACKPOT
+      hit(16.5); drums(16.5, 18.5, { riff: RIFF2 }); at(17.4, t => S.stab(t, [196, 246.9, 293.7])); at(18.0, t => S.stab(t, [220, 261.6, 329.6]));
+      at(18.4, t => S.riser(t, 0.6));
+      at(19.0, t => { S.boom(t, 1.2); S.crash(t); S.stab(t, [220, 277.2, 329.6, 440, 554.4], 1.0, 0.13); S.chips(t); S.chips(t + 0.4); }); drums(19.0, 21.0, { riff: RIFF2, roll: true });
+      at(20.5, t => S.riser(t, 0.5)); at(21.0, t => S.whoosh(t, 0.5));
+      // plinko: down the pegs, slowing into the 18×
+      hit(21.5); drums(21.5, 24.0); at(23.6, t => S.crash(t)); at(24.15, t => { S.drone(t, 0.85); S.riser(t, 0.85); });
+      at(25.0, t => { S.boom(t, 1.15); S.crash(t); S.stab(t, [196, 246.9, 293.7, 392], 0.8, 0.14); S.chips(t); }); drums(25.0, 26.0, { roll: true }); at(25.5, t => S.riser(t, 0.5)); at(26.0, t => S.whoosh(t, 0.5));
+      // the horses: off as the second drop hits, a photo finish
+      hit(26.5, 1.2); drums(26.5, 30.5, { riff: RIFF2 }); at(28.5, t => S.crash(t)); at(30.5, t => S.crash(t)); at(30.6, t => S.drone(t, 0.7));
+      at(31.0, t => { S.boom(t, 1.2); S.crash(t); S.stab(t, [220, 277.2, 329.6, 440], 0.8, 0.15); }); drums(31.3, 32.0, { roll: true }); at(31.5, t => S.riser(t, 0.5)); at(32.0, t => S.whoosh(t, 0.5));
+      // blackjack (as before, moved later): the cards, the push, slow motion, the logo
+      hit(32.5); drums(32.5, 34.5); at(33.0, t => S.stab(t, [196, 246.9, 293.7])); at(33.7, t => S.stab(t, [220, 277.2, 329.6], 0.5, 0.15));
+      hit(34.5); drums(34.5, 35.7); at(35.1, t => { S.whoosh(t, 0.6); S.chips(t); });
+      at(35.7, t => S.drone(t, 1.0)); at(36.7, t => { S.boom(t, 0.8); S.chips(t); }); drums(36.7, 38.0, { roll: true }); at(37.5, t => S.riser(t, 0.5));
+      at(38.0, t => { S.boom(t, 1.25); S.crash(t); S.stab(t, [110, 130.8, 164.8, 220], 1.6, 0.16); });
+      ev.sort((a, b) => a.t - b.t); ev.forEach(e => { e.c = clkOfT(e.t); }); idx = 0;   // (c: when it falls, in seconds since the start)
+    }
+    return {
+      ensure, build, get usesSong() { return use; },
+      reset() { idx = 0; },
+      update(clk) {   // schedule what falls due in the next moment (events whose moment passed with no sound are skipped); with the song playing, right on its beat
+        if (!ctx || ctx.state !== 'running') { while (idx < ev.length && ev[idx].c < clk) idx++; return; }
+        while (idx < ev.length && ev[idx].c <= clk + 0.12) { const e = ev[idx++]; if (e.c >= clk - 0.06) e.fn(playing ? Math.max(ctx.currentTime, t0 + e.c) : ctx.currentTime + Math.max(0, e.c - clk)); }
+      },
+      song(clk) {   // start the song where the intro is (clk seconds in), once the sound is on and the clips have loaded, so a tap halfway through comes in on the beat
+        if (!use || !bufs[0] || !bufs[1] || playing || stopped || !ctx || ctx.state !== 'running') return;
+        const t = ctx.currentTime + 0.03, b = clk / BEAT + WARP[0][0], tS = t - clk + (SPLICE - WARP[0][0]) * BEAT;   // (tS: when the second drop comes in)
+        if (SONG_DROP[1] + (b - SPLICE) * BEAT > bufs[1].duration - 1) return;
+        const play = (i, when, off, fade) => { const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = bufs[i]; s.connect(g); g.connect(lp);
+          g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(1, when + fade); s.start(when, Math.max(0, off)); srcs.push(s); return { s, g }; };
+        if (b < SPLICE) { const a = play(0, t, SONG_DROP[0] + b * BEAT, b < WARP[0][0] + 0.7 ? 0.3 : 0.06); a.g.gain.setValueAtTime(1, tS - 0.012); a.g.gain.linearRampToValueAtTime(0.0001, tS + 0.012); a.s.stop(tS + 0.05);
+          play(1, tS - 0.012, SONG_DROP[1] - 0.012, 0.024); }   // (a 24 ms crossfade, right on the bar line)
+        else play(1, t, SONG_DROP[1] + (b - SPLICE) * BEAT, 0.06);
+        sg.gain.cancelScheduledValues(t); sg.gain.setValueAtTime(Math.max(0.0001, 0.85 * vol()), t); t0 = t - clk; playing = true;
+      },
+      songClk() { return playing && ctx ? ctx.currentTime - t0 - (ctx.outputLatency || ctx.baseLatency || 0) : null; },   // where the intro is, by the song as heard
+      muffle(k) { if (!lp || k === muffled) return; muffled = k; lp.frequency.setTargetAtTime(k ? 650 : 22000, ctx.currentTime, k ? 0.07 : 0.05); },   // (slow motion: the music goes under water)
+      fade() { if (ctx && mast) { mast.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.4); srcs.forEach(s => { try { s.stop(ctx.currentTime + 2.5); } catch (e) {} }); } srcs = []; playing = false; stopped = true; },
+      restore() { stopped = false; muffled = false; if (ctx && mast) { const n = ctx.currentTime; mast.gain.cancelScheduledValues(n); mast.gain.setValueAtTime(1, n); out.gain.value = 0.75 * vol(); lp.frequency.cancelScheduledValues(n); lp.frequency.setValueAtTime(22000, n); srcs.forEach(s => { try { s.stop(); } catch (e) {} }); } srcs = []; playing = false; },
+    };
+  })();
+
+  // ---------- chips: stacks with striped edges and spotted faces, in the casino's chip colours ----------
+  const CHIP_R = 0.05, CHIP_H = 0.0095, CHIP_COL = ['#1d1d22', '#11804a', '#b4232f', '#7b3fbf', '#1f6fd1', '#1d1d22', '#b4232f'];
+  const chipSide = {}, chipTop = {};
+  const sideMat = (col, n) => chipSide[col + n] || (chipSide[col + n] = new THREE.MeshStandardMaterial({ roughness: 0.45, map: (() => { const t = canvasTex(128, 16, (g, w, h) => { g.fillStyle = col; g.fillRect(0, 0, w, h); g.fillStyle = '#f4efe2'; for (let i = 0; i < 6; i++) g.fillRect(i * w / 6 + 4, 3, w / 12, h - 5); g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, w, 1.5); }); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, n); return t; })() }));
+  const topMat = col => chipTop[col] || (chipTop[col] = new THREE.MeshStandardMaterial({ roughness: 0.4, map: canvasTex(128, 128, (g, w) => { g.translate(w / 2, w / 2); g.fillStyle = col; g.beginPath(); g.arc(0, 0, 63, 0, 7); g.fill();
+    g.fillStyle = '#f4efe2'; for (let i = 0; i < 8; i++) { g.save(); g.rotate(i * Math.PI / 4); g.fillRect(-7, -63, 14, 15); g.restore(); }
+    g.strokeStyle = 'rgba(244,239,226,.85)'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 40, 0, 7); g.stroke(); g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.arc(0, 0, 36, 0, 7); g.fill(); }) }));
+  const stackGeo = {}, chipGeo = new THREE.CylinderGeometry(CHIP_R, CHIP_R, CHIP_H, 28);
+  const makeStack = (col, n) => { const geo = stackGeo[n] || (stackGeo[n] = new THREE.CylinderGeometry(CHIP_R, CHIP_R, CHIP_H * n, 28).translate(0, CHIP_H * n / 2, 0)); const m = new THREE.Mesh(geo, [sideMat(col, n), topMat(col), topMat(col)]); m.castShadow = m.receiveShadow = true; return m; };
+  const makeChip = col => { const m = new THREE.Mesh(chipGeo, [sideMat(col, 1), topMat(col), topMat(col)]); m.castShadow = true; return m; };
+
+  // ---------- the set pieces for the blackjack shots (made when the intro starts, removed after) ----------
+  let set = null;
+  function buildSet() {
+    const B = GAMES.find(g => g.id === 'blackjack'), g = new THREE.Group(); B.g.add(g);
+    // (the player's two cards, side by side with a gap so they never pass through each other as they turn over)
+    const cards = [[{ r: 1, s: 0 }, -0.61, 0.6, -0.03], [{ r: 13, s: 0 }, -0.03, 0.62, 0.035]].map(([c, x, z, ry], i) => {
+      const m = makeCard(c); m.position.set(x, 0.985, z); m.userData.y0 = m.position.y; m.rotation.set(0, ry, Math.PI); g.add(m); return m; });
+    // the pile: rows of stacks in front of the dealer, all the house has
+    const pile = new THREE.Group(); pile.position.set(0, 0.97, -0.42); g.add(pile); const stacks = [];
+    for (let row = 0; row < 3; row++) for (let i = 0; i < 15; i++) {
+      const n = [6, 10, 14][(i + row * 2) % 3] + (row === 1 ? 2 : 0), col = CHIP_COL[(i * 3 + row) % CHIP_COL.length], s = makeStack(col, n);
+      s.position.set(-0.84 + i * 0.12 + (row % 2) * 0.06 + rand(-0.01, 0.01), 0, -0.13 + row * 0.12 + rand(-0.01, 0.01)); s.userData = { n, col, ph: rand(0, 6), row }; pile.add(s); stacks.push(s);
+    }
+    // loose chips that fly off the front stacks when the pile hits the brakes
+    const fly = []; for (let i = 0; i < 28; i++) { const c = makeChip(CHIP_COL[i % CHIP_COL.length]); c.visible = false; g.add(c); fly.push({ m: c, v: V(0, 0, 0), w: V(0, 0, 0), on: false, rest: false }); }
+    const dealer = worker(); dealer.g.scale.setScalar(0.88); dealer.g.position.set(0, 0, -1.48); g.add(dealer.g);
+    const spot = new THREE.SpotLight(0xffd9a0, 2.6, 9, 0.55, 0.5, 1.4); spot.position.set(0.4, 4.2, 1.2); spot.target.position.set(0, 0.97, -0.1); spot.castShadow = false; g.add(spot, spot.target);
+    g.updateMatrixWorld(true);   // (so the camera can be placed off it before the first frame draws it)
+    set = { B, g, cards, pile, stacks, fly, dealer, spot, flew: false };
+  }
+  function dropSet() { if (!set) return; set.B.g.remove(set.g); set = null; }
+  // craps: the table's own two dice, thrown from the player's end, coming up 3 and 4
+  let craps = null;
+  function buildCraps() {
+    const C = GAMES.find(g => g.id === 'craps'), keep = C.dice.map(d => ({ p: d.position.clone(), r: d.rotation.clone(), ir: d.userData.inner.rotation.clone() }));
+    const y0 = 0.97 + C.dice[0].userData.size / 2;
+    craps = { C, keep, vals: [3, 4], y0, spin: C.dice.map(() => V(rand(10, 16), rand(6, 10), rand(10, 16)).multiply(V(Math.sign(rand(-1, 1)) || 1, 1, 1))),
+      // (one path for both; the second die rides it 0.56 to the side the whole way, so the two never touch)
+      path: C.dice.map((d, i) => [V(1.75, 1.8, 1.05), V(0.45, y0, -0.2), V(-0.3, y0, -0.8), V(-0.1, y0, -0.42)].map(p => p.add(V(-0.55 * i, 0, 0.1 * i)))), felt: false, hit: false, seven: false };
+  }
+  function dropCraps() { if (!craps) return; craps.C.dice.forEach((d, i) => { const k = craps.keep[i]; d.position.copy(k.p); d.rotation.copy(k.r); d.userData.inner.rotation.copy(k.ir); }); craps = null; }
+  // slots: the Lucky 7s machine's own reels, its lights, and a pile of gold coins to pour out of it
+  let slots = null;
+  function buildSlots() {
+    const S7 = GAMES.find(g => g.id === 'slots'), n = STRIP.length, stepA = 2 * Math.PI / n, j7 = STRIP.indexOf(4);
+    const lights = []; S7.g.traverse(o => { if (o.isMesh && o.material && o.material.emissive && o.material.emissiveIntensity > 0) lights.push([o.material, o.material.emissiveIntensity]); });
+    // a sleeve round each reel with the strip smeared along it, seen while the reel spins too fast to read (its motion blur)
+    const W = 128, strip = document.createElement('canvas'); strip.width = n * W; strip.height = W; const sg = strip.getContext('2d');
+    STRIP.forEach((si, i) => { sg.save(); sg.translate(i * W + W / 2, W / 2); sg.rotate(Math.PI / 2); sg.drawImage(SYM_MAT[si].map.userData.c, -W / 2, -W / 2); sg.restore(); });
+    const smear = canvasTex(n * W, W, (g, w) => { const N = 28; for (let k = 0; k < N; k++) { g.globalAlpha = 1 / (k + 1); const o = (k / (N - 1) - 0.5) * W * 1.6; g.drawImage(strip, o, 0); g.drawImage(strip, o - w, 0); g.drawImage(strip, o + w, 0); } });
+    const sleeveGeo = new THREE.CylinderGeometry(0.468, 0.468, 0.34, 48, 1, true).rotateZ(Math.PI / 2);
+    const reels = S7.reels.map(r => { const sleeve = new THREE.Mesh(sleeveGeo, new THREE.MeshBasicMaterial({ map: smear, transparent: true, opacity: 0, depthWrite: false, toneMapped: false })); r.add(sleeve);
+      return { r, sleeve, target: j7 * stepA + Math.PI * 2 * 40, stopped: false }; });
+    const coinM = mat('#f2c84b', { metalness: 0.9, roughness: 0.25 }), cg = new THREE.CylinderGeometry(0.045, 0.045, 0.009, 20), g = new THREE.Group(); S7.g.add(g);
+    const coins = []; for (let i = 0; i < 80; i++) { const m = new THREE.Mesh(cg, coinM); m.castShadow = true; m.visible = false; g.add(m); coins.push({ m, v: V(0, 0, 0), w: V(0, 0, 0), t0: 19.0 + i * 0.018, on: false, rest: false }); }
+    const glow = new THREE.PointLight(0xffc04a, 0, 5, 1.6); glow.position.set(0, 1.9, 1.2); g.add(glow);
+    slots = { S7, reels, lights, g, coins, glow, stops: [17.4, 17.92, 18.95] };   // (the first two on the beat; the third hangs, then slams on the jackpot)
+  }
+  function dropSlots() { if (!slots) return; slots.reels.forEach(re => re.r.remove(re.sleeve)); slots.lights.forEach(([m, v]) => { m.emissiveIntensity = v; }); slots.S7.g.remove(slots.g); slots = null; }
+  // Plinko and the horse track: their own ball and horses, put back as they were afterwards
+  let more = null;
+  function buildMore() {
+    const P = GAMES.find(g => g.id === 'plinko'), H = GAMES.find(g => g.id === 'horses');
+    const { sx, sy, top } = P, slot = P.g.children.find(o => o.isMesh && o.material && o.material.emissive && Math.abs(o.position.x - 6 * sx) < 0.01 && Math.abs(o.position.y - (top - 12 * sy - 0.04)) < 0.01);
+    const slotMat = slot && slot.material; if (slot) slot.material = slotMat.clone();   // (its own copy, so only the 18× slot lights up)
+    // the Plinko ball's hops: off the top onto the first row, then row to row, right every time so it hugs the edge into the 18× slot, the last few slowing right down
+    const HOP = [0.24, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.22, 0.27, 0.34, 0.42], H0 = 25.0 - HOP.reduce((a, b) => a + b, 0);
+    const pts = [V(0, top + 0.18, 0.08)]; for (let r = 0; r <= 12; r++) pts.push(V(r / 2 * sx, r < 12 ? top - r * sy + 0.06 : top - 12 * sy + 0.02, 0.08));
+    const hopAt = T => { let t = T - H0; if (t <= 0) return [0, 0]; for (let h = 0; h < HOP.length; h++) { if (t < HOP[h]) return [h, t / HOP[h]]; t -= HOP[h]; } return [HOP.length, 1]; };
+    const ballAt = T => { const [h, u] = hopAt(T); return h >= HOP.length ? pts[pts.length - 1].clone() : pts[h].clone().lerp(pts[h + 1], u).add(V(0, 0.2 * u * (1 - u), 0)); };
+    // the race: lane 4 wins by a nose from lane 5, which leads most of the way; the rest strung out behind; past the line they pull up
+    const WIN = 4, FIN = 4.2, NOSE = 0.31, v0 = (3.0 - NOSE + 3.2) / (FIN - 0.35);
+    const v = SILKS.map((_, i) => v0 * (i === WIN ? 1 : i === 5 ? 0.992 : rand(0.84, 0.95))), bump = SILKS.map((_, i) => i === WIN ? -0.12 : i === 5 ? 0.06 : rand(-0.08, 0.08));
+    const horseX = (i, t) => { let x = -3.2 + v[i] * (t - 0.35 * (1 - Math.exp(-t / 0.35))) + bump[i] * Math.pow(Math.sin(Math.PI * clamp(t / FIN, 0, 1)), 2); if (x > 3.2) x = 3.2 + 0.4 * (1 - Math.exp(-(x - 3.2) / 0.4)); return x; };
+    more = { pl: { G: P, slot, slotMat, ballAt, hopAt, lastHop: 0, hit: false, camY: null },
+      hr: { G: H, x: horseX, cad: SILKS.map(() => rand(0.92, 1.08)), gal: -1, hit: false } };
+  }
+  function dropMore() { if (!more) return; const { pl, hr } = more; pl.G.ball.position.set(0, pl.G.top + 0.18, 0.08); if (pl.slot) pl.slot.material = pl.slotMat;
+    hr.G.horses.forEach(h => { h.position.x = -3.2; h.position.y = 0.34; h.userData.legs.forEach(l => { l.rotation.z = 0; }); }); more = null; }
+  // a blurred whip pan between two camera poses
+  function whip(u, p0, l0, p1, l1) {
+    const e = ss(0, 1, u), arc = Math.sin(e * Math.PI);
+    setCam(p0.clone().lerp(p1, e).add(V(0, arc * 0.9, 0)), l0.clone().lerp(l1, e).add(V(0, arc * 0.6, 0)), 50, arc * 0.4);
+    canvas.style.filter = `blur(${(arc * 10).toFixed(1)}px) brightness(${(1 + arc * 0.7).toFixed(2)})`;
+    flashEl.style.opacity = Math.max(0, (u - 0.82) / 0.18) * 0.6;
+  }
+  // the hits on the beat: a flash and a jolt of camera shake that die away
+  const impact = v => { st.imp = Math.max(st.imp || 0, v); };
+  // slow motion that eases in and out: time running at rate r from a to b (1 elsewhere), each change of speed spread over SW
+  const SW = 0.3;
+  const stepInt = (x, c) => { const u = clamp((x - c) / SW + 0.5, 0, 1); return SW * (u * u * u - u * u * u * u / 2) + Math.max(0, x - c - SW / 2); };   // (the area under a smooth step centred on c)
+  const slowTime = (t, a, b, r) => t - (1 - r) * (stepInt(t, a) - stepInt(t, b));
+  const slowRate = (t, a, b, r) => 1 - (1 - r) * (ss(a - SW / 2, a + SW / 2, t) - ss(b - SW / 2, b + SW / 2, t));
+  // the music's beat at intro time T (whole numbers are beats, 0 is the drop), and a flash on each one that dies away
+  const beatOf = T => Beat.usesSong ? clkOfT(T) / BEAT + WARP[0][0] : (T - 1.2) / 0.5;
+  const onBeat = (T, k = 6) => { const b = beatOf(T); return b < 0 ? 0 : Math.exp(-(b - Math.floor(b)) * k); };
+
+  // ---------- the timeline ----------
+  const OFF = 20.5, T_END = 40.7, SM0 = 7.6, SM1 = 9.4, SR = 0.35, SPIN = 8.6, P0 = 14.6, PS0 = 15.2, PS1 = 16.2, PR = 0.3, DRIFT = 0.15;   // (DRIFT: the wheel's idle turn; P0..PS1: blackjack times before the move; Tb = T - OFF)
+  let on = false, T = 0, clk = 0, frozen = false, lastNow = 0, drv = null;   // (clk: seconds since the start, following the song while it plays)
+  const st = {};
+  const R_ = () => GAMES.find(g => g.id === 'roulette');
+  function begin() {
+    const R = R_(); st.R = R; st.W0 = R.spinG.rotation.y; st.W1 = st.W0 + Math.PI * 2 * 2.2 + rand(0, Math.PI); st.B0 = R.ballA;
+    st.win = [17, 7, 32, 23][randi(0, 3)]; st.aw = WHEEL_ORDER.indexOf(st.win) / 37 * Math.PI * 2;
+    let B1 = st.W1 + DRIFT * SPIN + st.aw; while (B1 > st.B0 - Math.PI * 14) B1 -= Math.PI * 2; st.B1 = B1;
+    st.fadedIn = false; st.camP = camera.position.clone(); st.camL = look.clone(); st.rollT = 0; st.lastPocket = null; st.flipped = [false, false]; st.burst = false; st.pushK = 0; st.slam = false;
+    st.imp = 0; st.hits = new Set(); buildSet(); buildCraps(); buildSlots(); buildMore(); Beat.build();
+  }
+  // ball time: real time, except slowed (easing in and out) during the drop
+  const ballTime = T => Math.max(0, slowTime(T, SM0, SM1, SR) - 1.2);
+  function ball(k) {
+    const a = lerp(st.B0, st.B1, 1 - Math.pow(1 - k, 2.3));
+    // off the track and down over the dividers, in the slow motion: hops that come quicker and lower each time, skittering side to side
+    let r = lerp(0.74, 0.46, ss(0.7, 0.86, k)), hop = 0;
+    if (k > 0.7 && k < 0.92) { const s = (k - 0.7) / 0.22, q = 0.7, N = 8, qN = Math.pow(q, N), i = Math.min(N - 1, Math.floor(Math.log(1 - s * (1 - qN)) / Math.log(q)));
+      const c0 = (1 - Math.pow(q, i)) / (1 - qN), d = Math.pow(q, i) * (1 - q) / (1 - qN), u = clamp((s - c0) / d, 0, 1);
+      hop = 0.05 * Math.pow(q, 2 * i) * 4 * u * (1 - u); r += 0.012 * Math.sin(s * 19) * (1 - s); }
+    return { a, r, hop, p: V(Math.sin(a) * r, 0.21 + hop, Math.cos(a) * r), flat: V(Math.sin(a) * r, 0.21, Math.cos(a) * r), fwd: V(-Math.cos(a), 0, Math.sin(a)), out: V(Math.sin(a), 0, Math.cos(a)) };
+  }
+  function setCam(p, l, fov, roll = 0, up = null) {
+    camera.up.copy(up || V(0, 1, 0)); camera.position.copy(p); look.copy(l); camera.lookAt(look); camera.up.set(0, 1, 0);
+    if (roll) camera.rotateZ(roll);
+    if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  }
+  const shake = (amt, s) => { camera.rotateX(nz(T * 9, s) * amt); camera.rotateY(nz(T * 8, s + 3) * amt); };
+
+  function step(dt) {
+    T += dt; Beat.muffle((T >= SM0 && T < SM1) || (T >= 12.45 && T < 13.2) || (T >= 24.15 && T < 25.0) || (T >= 30.6 && T < 31.3) || (T >= OFF + PS0 && T < OFF + PS1));
+    const R = st.R, W = R.W, L = v => W.localToWorld(v.clone()), bt = ballTime(T), k = clamp(bt / SPIN, 0, 1);
+    // the wheel and the ball (the wheel keeps idling once the spin is done)
+    R.spinG.rotation.y = lerp(st.W0, st.W1, easeOut(k)) + DRIFT * bt;   // (it eases into a slow idle turn rather than stopping and starting again)
+    const b = ball(k), cap = ss(SPIN - 1.2, SPIN, bt);   // (the ball eases into its pocket and turns with the wheel)
+    if (cap > 0) { let lock = R.spinG.rotation.y + st.aw; lock += Math.round((b.a - lock) / (Math.PI * 2)) * Math.PI * 2; b.a = lerp(b.a, lock, cap); b.r = lerp(b.r, 0.46, cap); b.hop *= 1 - cap;
+      b.flat.set(Math.sin(b.a) * b.r, 0.21, Math.cos(b.a) * b.r); b.p.copy(b.flat).add(V(0, b.hop, 0)); b.fwd.set(-Math.cos(b.a), 0, Math.sin(b.a)); b.out.set(Math.sin(b.a), 0, Math.cos(b.a)); }
+    R.ball.position.copy(b.p); R.ballA = b.a; R.ballR = b.r;
+    if (T >= 1.2 && T < 11.5) {
+      if (k < 0.7) { st.rollT -= dt; if (st.rollT <= 0) { st.rollT = 1.05; SND('roll'); } }
+      else if (k < 0.92) { const pk = Math.floor(((b.a - R.spinG.rotation.y) % (Math.PI * 2) + Math.PI * 4) / (Math.PI * 2 / 37)); if (pk !== st.lastPocket) { st.lastPocket = pk; SND('tick'); } }
+    }
+    flashEl.style.opacity = 0; canvas.style.filter = '';
+    if (T < 11.5) {
+      // ---- roulette ----
+      if (T < 3.2) {            // A: riding low behind the ball, banking into the curve
+        const p = b.flat.clone().addScaledVector(b.fwd, -0.2).addScaledVector(b.out, 0.05).add(V(0, 0.062, 0)), l = b.flat.clone().addScaledVector(b.fwd, 0.18).add(V(0, 0.012, 0));
+        setCam(L(p), L(l), 56, -0.2 + 0.035 * Math.sin(T * 2.3)); shake(0.004, 1);
+      } else if (T < 5.2) {     // B: straight down on the spinning wheel, turning with it, sinking towards it
+        const u = (T - 3.2) / 2, up = V(Math.sin(R.spinG.rotation.y * 0.5), 0, Math.cos(R.spinG.rotation.y * 0.5));
+        const upW = L(up).sub(L(V(0, 0, 0))).normalize();
+        setCam(L(V(0, 1.55 - 0.35 * ss(0, 1, u), 0.001)), L(V(0, 0, 0)), 48, 0, upW);
+      } else if (T < SM0) {     // C: low at the rim, just ahead of the ball, which races at the lens
+        const u = (T - 5.2) / (SM0 - 5.2), a = b.a - 0.42 + 0.12 * u, cp = V(Math.sin(a) * 1.0, 0.27, Math.cos(a) * 1.0);
+        setCam(L(cp), L(b.flat.clone().add(V(0, 0.02, 0))), 44, 0.06); shake(0.003, 2);
+      } else if (T < SM1) {     // D: slow motion, close above and behind as it drops and clatters over the dividers
+        const u = (T - SM0) / (SM1 - SM0), p = b.flat.clone().addScaledVector(b.fwd, -0.15 - 0.03 * u).addScaledVector(b.out, 0.13).add(V(0, 0.2 + 0.04 * u, 0));
+        setCam(L(p), L(b.flat.clone().addScaledVector(b.fwd, 0.04).addScaledVector(b.out, -0.02)), 42, -0.08);
+      } else {                  // E: straight down on the ball in its pocket and the number beside it, turning with the wheel
+        const u = (T - SM1) / (11.5 - SM1), sp = R.spinG, pa = st.aw, pl = a => V(Math.sin(a) * 0.51, 0.05, Math.cos(a) * 0.51);   // (the wheel's own frame sits 0.16 up)
+        const c = sp.localToWorld(pl(pa)), outW = sp.localToWorld(V(Math.sin(pa), 0, Math.cos(pa))).sub(sp.localToWorld(V(0, 0, 0))).normalize();
+        setCam(c.clone().add(V(0, 0.5 - 0.17 * ss(0, 1, u), 0)).addScaledVector(outW, -0.001), c, 40, 0, outW);
+      }
+      for (const t0 of [1.2, 3.2, 5.2, 9.4]) if (T >= t0 && !st.hits.has(t0)) { st.hits.add(t0); impact(t0 === 1.2 ? 0.5 : 0.6); }
+      if (!st.fadedIn) { st.fadedIn = true; fadeBlack(0, 1.3); }
+      st.camP = camera.position.clone(); st.camL = look.clone();   // where the roulette shots left the camera (the whip starts there)
+    } else if (T < 16.0) {
+      // ---- craps: whip in, the dice fly at the lens in slow motion, crack off the back rail, come up seven ----
+      const c = craps, Ct = v => c.C.g.localToWorld(v.clone());
+      // dice time: quick in the air, easing right down as they pass the lens, then quick again
+      const dtau = slowTime(T, 12.45, 13.2, 0.2) - 12.0;
+      // the throw as flights under gravity: onto the felt (to DT[0]), off it into the back rail (DT[1], on the beat), a little hop back off the
+      // rail (DT[2]), then a roll that slows to a stop (DT[3]) as the shot cuts to the top; each bounce takes some of the tumble out of them too
+      const DT = [0.7, 1.116, 1.36, 1.6], fly = (a, b, d, u) => { const t = u * d, vy = (b.y - a.y + 4.9 * d * d) / d; return a.clone().lerp(b, u).setY(a.y + vy * t - 4.9 * t * t); };
+      const SPINW = [1, 0.55, 0.3], spinAt = tau => { let p = 0, t0 = 0; for (let j = 0; j < 3; j++) { p += SPINW[j] * (Math.min(tau, DT[j]) - t0); if (tau <= DT[j]) return p; t0 = DT[j]; }
+        const u = clamp((tau - DT[2]) / (DT[3] - DT[2]), 0, 1); return p + SPINW[2] * (DT[3] - DT[2]) * (u - u * u / 2); };
+      const spinAll = spinAt(DT[3]), mid = V(0, 0, 0);
+      c.C.dice.forEach((d, i) => { const [p0, b1, b2, r] = c.path[i], tau = dtau, q = b2.clone().lerp(r, 0.79);
+        const pos = tau < DT[0] ? fly(p0, b1, DT[0], clamp(tau / DT[0], 0, 1)) : tau < DT[1] ? fly(b1, b2, DT[1] - DT[0], (tau - DT[0]) / (DT[1] - DT[0]))
+          : tau < DT[2] ? fly(b2, q, DT[2] - DT[1], (tau - DT[1]) / (DT[2] - DT[1])) : q.clone().lerp(r, easeOut(clamp((tau - DT[2]) / (DT[3] - DT[2]), 0, 1)));
+        d.position.copy(pos); mid.add(pos);
+        const e = clamp(spinAt(tau) / spinAll, 0, 1), [fx, fz] = FACE_ROT[c.vals[i]], sp = c.spin[i], inn = d.userData.inner;
+        inn.rotation.set(fx + sp.x * (1 - e), sp.y * (1 - e), fz + sp.z * (1 - e)); });
+      mid.multiplyScalar(0.5);
+      if (dtau >= DT[0] && !c.felt) { c.felt = true; SND('dice'); }
+      if (dtau >= DT[1] && !c.hit) { c.hit = true; SND('dice'); impact(0.7); }
+      if (dtau >= DT[3] && !c.seven) { c.seven = true; SND('win'); burstAt(Ct(V(-0.38, 1.0, -0.37)), 0xc8901a); impact(0.8); }
+      if (T < 12.0) { whip((T - 11.5) / 0.5, st.camP, st.camL, Ct(V(-0.8, 1.21, 0.12)), Ct(c.path[0][0].clone().lerp(c.path[1][0], 0.5))); c.look = null; return finishStep(dt); }
+      if (T < 14.2) {                     // H: low at the back corner, the dice coming at the lens, the camera turning to follow them
+        c.look = c.look ? c.look.lerp(mid, 1 - Math.exp(-dt * 6)) : mid.clone(); const u = (T - 12.0) / 2.2;   // (drifting a touch, so the room slides behind them)
+        setCam(Ct(V(-0.8 + 0.08 * u, 1.21 - 0.05 * u, 0.12 + 0.06 * u)), Ct(c.look.clone().add(V(0, 0.05, 0))), 50, 0.05); shake(0.003, 5);
+      } else {             // I: straight down on the dice as they settle: three and four
+        const u = (T - 14.2) / 1.8;
+        setCam(Ct(V(-0.38, 2.15 - 0.45 * easeOut(u), -0.37 + 0.001)), Ct(V(-0.38, 1.0, -0.37)), 44, 0, V(Math.sin(0.3 * u), 0, -Math.cos(0.3 * u)).transformDirection(c.C.g.matrixWorld));   // (sinking and turning slowly)
+      }
+      st.camP = camera.position.clone(); st.camL = look.clone();
+    } else if (T < 21.0) {
+      // ---- slots: whip in, the reels slam to a stop, 7, 7, 7, JACKPOT, lights strobing, coins pouring out at you ----
+      const sl = slots, Mt = v => sl.S7.g.localToWorld(v.clone());
+      // each reel spins flat out (WS), brakes hard for DB seconds, slams in still turning (VE) just past its 7 and springs back onto it
+      sl.reels.forEach((re, i) => { const s = sl.stops[i] - T, WS = 17, DB = 0.32, VE = 6, LA = 11, WD = 34; let a, w;
+        if (s <= 0) { a = VE / WD * Math.exp(LA * s) * Math.sin(-WD * s); w = 0; }
+        else if (s < DB) { a = -(VE * s + (WS - VE) * s * s / (2 * DB)); w = VE + (WS - VE) * s / DB; }
+        else { a = -(VE * DB + (WS - VE) * DB / 2 + WS * (s - DB)); w = WS; }
+        re.r.rotation.x = re.target + a; re.sleeve.material.opacity = clamp((w - 5) / 7, 0, 0.92);
+        if (s <= 0 && !re.stopped) { re.stopped = true; SND('chip'); SND('tick'); impact(i === 2 ? 0.9 : 0.45); } });
+      const jack = ss(19.0, 19.12, T) * (1 - ss(19.95, 20.25, T));
+      jackEl.style.opacity = jack; jackIn.style.transform = `scale(${(1 + 0.5 * Math.exp(-Math.max(0, T - 19.0) * 9) + 0.06 * onBeat(T, 9) * ss(19.0, 19.3, T)).toFixed(3)}) rotate(${(-3 + Math.sin(T * 30) * 1.5 * Math.exp(-Math.max(0, T - 19) * 3)).toFixed(2)}deg)`;
+      // after the jackpot the lights flash on every beat of the music, flickering in between, and the machine glows with them
+      const pb = onBeat(T), strobe = T >= 19.0 ? 0.5 + 2.5 * pb + 0.3 * ((T * 16) % 1 < 0.5 ? 1 : 0) * (1 - pb) : null;
+      sl.lights.forEach(([m, v]) => { m.emissiveIntensity = strobe == null ? v : strobe; }); sl.glow.intensity = T >= 19.0 ? 0.6 + 2.6 * pb : 0;
+      if (T >= 19.0 && !st.hits.has('jack')) { st.hits.add('jack'); SND('big'); impact(1); burstAt(Mt(V(0, 2.4, 0.6)), 0xffd36a); burstAt(Mt(V(0, 1.6, 0.6)), 0xffffff); }
+      // the coins: out of the tray in a stream, slowed as they fly at the lens
+      const cdt = dt * slowRate(T, 19.1, 19.9, 0.3);
+      for (const c of sl.coins) {
+        if (!c.on && T >= c.t0) { c.on = true; c.m.visible = true; c.m.position.set(rand(-0.25, 0.25), 1.06, 0.66); c.v.set(rand(-0.9, 0.9), rand(1.3, 2.8), rand(1.2, 2.6)); c.w.set(rand(-14, 14), rand(-8, 8), rand(-14, 14)); }
+        if (!c.on || c.rest) continue;
+        c.v.y -= 9.8 * cdt; c.m.position.addScaledVector(c.v, cdt); c.m.rotation.x += c.w.x * cdt; c.m.rotation.y += c.w.y * cdt; c.m.rotation.z += c.w.z * cdt;
+        if (c.m.position.y < 0.0045) { c.m.position.y = 0.0045; if (Math.abs(c.v.y) > 0.7) { c.v.y *= -0.4; c.v.x *= 0.6; c.v.z *= 0.6; c.w.multiplyScalar(0.5); } else { c.rest = true; c.m.rotation.set(0, rand(0, 6), 0); } }
+      }
+      if (T < 16.5) { whip((T - 16.0) / 0.5, st.camP, st.camL, Mt(V(-0.8, 1.64, 1.08)), Mt(V(-0.45, 1.6, 0.43))); return finishStep(dt); }
+      if (T < 19.0) {                     // J: sliding along the reel window as they stop, coming to rest on the third
+        const u = ss(16.5, 18.7, T);
+        setCam(Mt(V(lerp(-0.8, 0.5, u), 1.64 - 0.03 * u, lerp(1.08, 0.86, u))), Mt(V(lerp(-0.45, 0.38, u), 1.6, 0.43)), 46, 0.06 - 0.08 * u); shake(0.002, 6);
+      } else { // K: low on the floor in front of the machine, the coins pouring at the lens
+        const u = (T - 19.0) / 2;
+        setCam(Mt(V(0.3, 0.42 + 0.06 * u, 2.25 - 0.1 * u)), Mt(V(0, 1.55, 0.4)), 52, -0.06); shake(0.008, 7);
+      }
+      st.camP = camera.position.clone(); st.camL = look.clone();
+    } else if (T < 26.0) {
+      // ---- Plinko: the ball drops through the pegs, right every time down the edge, slowing right down into the 18× slot ----
+      const m = more.pl, P = m.G, Pt = v => P.g.localToWorld(v.clone()), pos = m.ballAt(T), hop = m.hopAt(T)[0];
+      P.ball.position.copy(pos);
+      if (hop > m.lastHop) { m.lastHop = hop; SND('tick'); }
+      if (T >= 25.0 && !m.hit) { m.hit = true; SND('big'); SND('win'); impact(1); burstAt(Pt(V(6 * P.sx, 1.15, 0.2)), 0xffd36a); }
+      if (m.slot) m.slot.material.emissiveIntensity = T >= 25.0 ? 0.6 + 2.4 * onBeat(T) : 0.25;   // (the slot flashes on the beat)
+      if (T < 21.5) { whip((T - 21.0) / 0.5, st.camP, st.camL, Pt(V(0.3, P.top + 0.34, 0.8)), Pt(V(0, P.top + 0.1, 0.08))); return finishStep(dt); }
+      if (T < 23.6) {                     // N: riding down the board with the ball, the pegs streaming past
+        m.camY = m.camY == null ? pos.y : lerp(m.camY, pos.y, 1 - Math.exp(-dt * 6));
+        setCam(Pt(V(pos.x * 0.6 + 0.3, m.camY + 0.16, 0.8)), Pt(V(pos.x * 0.85, m.camY - 0.08, 0.08)), 50, 0.04); shake(0.002, 10);
+      } else {                            // O: low by the slots, looking up as it comes down at the lens and drops into the 18×
+        const k = (T - 23.6) / 2.4; setCam(Pt(V(1.2 - 0.08 * k, 0.92 + 0.03 * k, 1.35 - 0.15 * k)), Pt(V(0.78, 1.38 - 0.16 * ss(0, 0.6, k), 0.08)), 48, -0.06); shake(0.003, 11);
+      }
+      st.camP = camera.position.clone(); st.camL = look.clone();
+    } else if (T < 32.0) {
+      // ---- horse racing: off from the gate on the second drop, thundering at the lens, neck and neck along the rail, a photo finish in slow motion ----
+      const m = more.hr, H = m.G, Ht = v => H.g.localToWorld(v.clone()), ht = Math.max(0, slowTime(T, 30.6, 31.3, 0.25) - 26.5);
+      let lead = -9; H.horses.forEach((h, i) => { const x = m.x(i, ht), run = ss(0, 0.3, ht) * (1 - 0.6 * ss(4.5, 5.2, ht)); h.position.x = x; lead = Math.max(lead, x);
+        h.userData.legs.forEach((l, j) => { l.rotation.z = run * Math.sin(ht * 17 * m.cad[i] + j * 1.6) * 0.7; }); h.position.y = 0.34 + run * Math.abs(Math.sin(ht * 8.5 * m.cad[i] + i)) * 0.04; });
+      if (ht > 0 && T - m.gal > 0.42 && T < 30.6) { m.gal = T; SND('gallop'); }
+      if (T >= 31.0 && !m.hit) { m.hit = true; SND('big'); impact(1); }
+      if (T < 26.5) { whip((T - 26.0) / 0.5, st.camP, st.camL, Ht(V(lead + 1.8, 0.6, 0.3)), Ht(V(lead - 0.3, 0.52, 0.1))); return finishStep(dt); }
+      if (T < 28.5) {                     // P: low in front of the pack as it charges at the lens
+        const k = (T - 26.5) / 2; setCam(Ht(V(lead + 1.8 - 0.6 * k, 0.6, 0.3)), Ht(V(lead - 0.3, 0.52, 0.1)), 56, 0.03); shake(0.006, 12);
+      } else if (T < 30.5) {              // Q: alongside on the rail, the two leaders neck and neck
+        const k = (T - 28.5) / 2; setCam(Ht(V(lead - 0.1 + 0.08 * k, 0.7, 2.05)), Ht(V(lead + 0.25, 0.5, 0.6)), 46, -0.02); shake(0.005, 13);
+      } else {                            // R: down on the finish line, slow motion as the noses cross, then panning as they pull up
+        setCam(Ht(V(3.05, 0.55, 1.95)), Ht(V(Math.max(3.0, lead + 0.3), 0.5, 0.4)), 40, 0); shake(0.002, 14);
+      }
+      flashEl.style.opacity = Math.max(0, 1 - Math.abs(T - 31.03) / 0.09) * 0.85;   // (the photo-finish camera goes off)
+      st.camP = camera.position.clone(); st.camL = look.clone();
+    } else if (T < 38.0) {
+      const Tb = T - OFF;   // blackjack's own clock (it was written to run from 12.0)
+      const Bt = v => set.g.localToWorld(v.clone()), s = set;
+      // ---- blackjack: the cards ----
+      [12.5, 13.2].forEach((t0, i) => { const c = s.cards[i], u = clamp((Tb - t0) / 0.28, 0, 1); c.rotation.z = Math.PI * (1 - easeOut(u)); c.position.y = c.userData.y0 + 0.25 * Math.abs(Math.sin(c.rotation.z)) + Math.sin(u * Math.PI) * 0.05; /* (lifted onto its edge as it turns, so it never dips into the felt) */ if (u > 0 && !st.flipped[i]) { st.flipped[i] = true; SND('card'); } });
+      if (Tb >= 13.45 && !st.burst) { st.burst = true; burstAt(Bt(V(-0.32, 1.05, 0.6)), 0xffd36a); SND('big'); }
+      // ---- the house pushes: the dealer leans in and shoves, the pile slides at you; slow motion as it stops ----
+      const pt = slowTime(Tb, PS0, PS1, PR);   // pile time (easing into slow motion as it pulls up)
+      const lean = ss(14.1, P0, Tb), push = ss(P0, P0 + 1.25, pt);
+      s.dealer.g.rotation.x = 0.12 + 0.3 * lean - 0.18 * ss(P0 + 0.9, P0 + 1.6, pt);
+      s.dealer.armL.rotation.x = s.dealer.armR.rotation.x = -0.9 * lean - 0.55 * ss(P0, P0 + 0.5, pt) + 0.5 * ss(P0 + 0.9, P0 + 1.6, pt);
+      const pileZ = t => -0.42 + 0.5 * easeOut(ss(P0, P0 + 1.25, t));
+      s.pile.position.z = pileZ(pt);   // right up to the player's cards (and no further)
+      const jolt = Math.max(0, 1 - Math.abs(pt - (P0 + 0.62)) / 0.5);   // the stacks rock as the pile pulls up
+      const acc = (pileZ(pt - 0.02) - 2 * pileZ(pt) + pileZ(pt + 0.02)) / 0.0004, tilt = clamp(-acc * 0.03, -0.09, 0.09);   // (and lean back as it's shoved, forward as it stops)
+      s.stacks.forEach(m => { const d = m.userData, w = Math.sin(pt * 14 + d.ph) * 0.07 * jolt * (d.n / 12); m.rotation.set(w + tilt * (d.n / 12), 0, Math.cos(pt * 11 + d.ph) * 0.05 * jolt); });
+      // chips fly off the front stacks and tumble towards you (in the slowed pile time)
+      if (pt >= P0 + 0.55 && !s.flew) { s.flew = true; const front = s.stacks.filter(m => m.userData.row === 2);
+        s.fly.forEach((f, i) => { const src = front[i % front.length]; f.on = true; f.rest = false; f.m.visible = true; f.m.position.copy(src.position).add(s.pile.position).add(V(0, CHIP_H * src.userData.n - CHIP_H * (i % 3), 0));
+          f.v.set(rand(-0.5, 0.5), rand(0.8, 1.9), rand(1.4, 2.8)); f.w.set(rand(-12, 12), rand(-6, 6), rand(-12, 12)); f.m.rotation.set(rand(0, 1), rand(0, 6), rand(0, 1)); }); }
+      const fdt = dt * slowRate(Tb, PS0, PS1, PR);
+      for (const f of s.fly) if (f.on && !f.rest) { f.v.y -= 9.8 * fdt; f.m.position.addScaledVector(f.v, fdt); f.m.rotation.x += f.w.x * fdt; f.m.rotation.y += f.w.y * fdt; f.m.rotation.z += f.w.z * fdt;
+        const onTable = Math.abs(f.m.position.x) < 1.7 && Math.abs(f.m.position.z) < 1.0, onCards = s.cards.some(cd => Math.abs(f.m.position.x - cd.position.x) < 0.25 && Math.abs(f.m.position.z - cd.position.z) < 0.35);
+        const floorY = onCards ? 0.99 + CHIP_H / 2 : onTable ? 0.975 + CHIP_H / 2 : CHIP_H / 2;   // (chips that land on the cards lie on top of them)
+        if (f.m.position.y < floorY) { f.m.position.y = floorY; if (Math.abs(f.v.y) > 0.6) { f.v.y *= -0.35; f.v.x *= 0.6; f.v.z *= 0.6; f.w.multiplyScalar(0.5); } else { f.rest = true; f.m.rotation.set(0, f.m.rotation.y, 0); } } }
+      if (Tb < 12.0) { whip((Tb - 11.5) / 0.5, st.camP, st.camL, Bt(V(-0.32, 1.42, 1.4)), Bt(V(-0.32, 0.99, 0.6))); return finishStep(dt); }
+      if (Tb < 14.0) {           // F: low over the felt at the player's cards
+        const u = (Tb - 12.0) / 2;
+        setCam(Bt(V(-0.32, 1.42 - 0.12 * u, 1.4 - 0.22 * u)), Bt(V(-0.32, 0.99, 0.6)), 46, 0.03 * Math.sin(Tb * 0.8));
+      } else {                  // G: from the player's seat, eye level with the felt, the pile coming at the lens
+        const u = clamp((Tb - 14.0) / 3.5, 0, 1), hit = Math.max(0, 1 - Math.abs(pt - (P0 + 0.62)) / 0.35);
+        setCam(Bt(V(0.18 - 0.05 * u, 1.13 - 0.04 * u, 1.68 - 0.16 * ss(0, 0.3, u) + 0.14 * ss(0.33, 0.6, u))), Bt(V(0, 1.08 - 0.06 * u, -0.5)), 50, -0.04);   // (in close as the dealer shoves, rocked back by the hit)
+        shake(0.006 + 0.02 * hit, 4); if (hit > 0.9) impact(0.6);
+      }
+      flashEl.style.opacity = Math.max(0, 1 - (Tb - 12.0) / 0.18) * 0.6 + Math.max(0, 1 - Math.abs(Tb - 14.0) / 0.12) * 0.4;
+    } else {
+      // ---- the logo slams in ----
+      const u = T - 38.0;
+      if (!st.slam) { st.slam = true; flashEl.style.opacity = 1; }
+      flashEl.style.opacity = Math.max(0, 1 - u / 0.35);
+      logoEl.style.opacity = Math.min(1, u / 0.08);
+      const pb = onBeat(T, 7), sc = 1 + 0.6 * Math.exp(-u * 9) - 0.03 * u + 0.012 * pb; logoIn.style.transform = `scale(${sc.toFixed(3)}) translate(${(nz(u * 30, 1) * 8 * Math.exp(-u * 4)).toFixed(1)}px, ${(nz(u * 30, 2) * 8 * Math.exp(-u * 4)).toFixed(1)}px)`;
+      logoIn.style.filter = `blur(${Math.max(0, 6 - u * 30).toFixed(1)}px)`;
+      logoMain.style.filter = `drop-shadow(0 10px ${(40 + 30 * pb).toFixed(0)}px rgba(245, 192, 74, ${(0.45 + 0.4 * pb).toFixed(2)}))`;   // (the glow kicks on every beat)
+      shineEl.style.backgroundPosition = `${((0.9 - 0.8 * ss(0.25, 1.0, u)) * 100).toFixed(1)}% 0`;   // (a shine sweeps across the gold)
+      tagEl.style.opacity = ss(0.12, 0.45, u).toFixed(3); tagEl.style.letterSpacing = `${(0.5 + 0.6 * Math.exp(-u * 4)).toFixed(3)}em`;   // (the tagline tracks in)
+      if (u > 1.8 && black.style.opacity === '0') { fadeBlack(1, 0.8); Beat.fade(); }
+    }
+    finishStep(dt);
+  }
+  function finishStep(dt) {
+    st.imp = (st.imp || 0) * Math.exp(-dt * 9);
+    if (st.imp > 0.01) { flashEl.style.opacity = Math.max(+flashEl.style.opacity || 0, st.imp * 0.45); shake(st.imp * 0.02, 9); }
+    if (T >= T_END) finish();
+  }
+
+  function play() {
+    if (on || dead) return; on = true; T = 0; frozen = false;
+    mode = 'intro'; busy = true; hideMenus(); $('top').hidden = true; $('hint').hidden = true; $('tag').hidden = true; $('gp').hidden = true;
+    el.classList.add('on'); logoEl.style.opacity = 0; jackEl.style.opacity = 0; tagEl.style.opacity = 0; shineEl.style.backgroundPosition = '90% 0'; blackNow(1); try { Music.stop(); } catch (e) {} Beat.ensure(); Beat.restore();
+    begin(); lastNow = performance.now(); clk = 0;
+    drv = { t: 0, dur: 1e9, res: () => {}, fn: () => { const now = performance.now(), dt = Math.min(0.05, (now - lastNow) / 1000); lastNow = now; if (!on || frozen) return;
+      Beat.song(clk); const sc = Beat.songClk(); clk = sc != null ? Math.max(clk, sc) : clk + dt;
+      const to = TofClk(clk); while (on && T < to - 1e-6) step(Math.min(1 / 30, to - T)); if (on) Beat.update(clk); } };
+    TW.push(drv);
+  }
+  function finish() {
+    if (!on) return; on = false;
+    const i = TW.indexOf(drv); if (i >= 0) TW.splice(i, 1); drv = null;
+    const R = st.R; if (R) { R.ballR = 0.46; R.ball.position.set(Math.sin(R.ballA) * 0.46, 0.21, Math.cos(R.ballA) * 0.46); }
+    dropSet(); dropCraps(); dropSlots(); dropMore(); jackEl.style.opacity = 0; canvas.style.filter = ''; flashEl.style.opacity = 0; logoEl.style.opacity = 0; Beat.fade();
+    el.classList.remove('on'); busy = false; camera.up.set(0, 1, 0); camera.fov = 55; camera.updateProjectionMatrix();
+    camera.position.copy(orbitPos()); look.copy(orbit.target); camera.lookAt(look);
+    toTitle(); if (save.seenVersion !== VERSION) showMenu('notes');
+    fadeBlack(0, 0.9);
+  }
+  el.querySelector('#introSkip').addEventListener('click', e => { e.stopPropagation(); Sound.init(); SND('click'); finish(); });
+  addEventListener('keydown', e => { if (on && (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); finish(); } });
+  return {
+    play, skip: finish, get on() { return on; }, get T() { return T; },
+    // testing: freeze the clock, step it, or play up to a moment
+    freeze(v = true) { frozen = v; }, step: dt => { if (on) step(dt); },
+    seek(t) { if (!on) play(); frozen = true; while (on && T < t - 1e-6) step(Math.min(1 / 30, t - T)); clk = clkOfT(T); },
+    get clk() { return clk; }, TofClk, clkOfT, songClk: () => Beat.songClk(), get usesSong() { return Beat.usesSong; },
+  };
+})();
+if (/debug/.test(location.search)) window.__intro = { Intro, renderer, camera, get mode() { return mode; } };   // for stepping through it while testing
+/* gyla-intro:end */
+
 // ---------- boot ----------
 scene.add(camera); buildHall(); buildStations(); applyQuality(); hud();
 camera.position.copy(orbitPos()); look.copy(orbit.target); camera.lookAt(look);
 toTitle(); if (save.seenVersion !== VERSION) showMenu('notes');
 requestAnimationFrame(frame);
+if (!/nointro|debug/.test(location.search)) Intro.play(); // the intro cinematic plays as the game opens
 if (/debug/.test(location.search)) setInterval(() => { if (performance.now() - lastFrame > 150) tick(performance.now()); }, 33);
 if (/debug/.test(location.search)) window.__gl = { save, GAMES, enter: id => enterGame(GAMES.find(g => g.id === id)), leave: leaveGame, get mode() { return mode; }, get busy() { return busy; }, get roundOpen() { return roundOpen; }, get cur() { return cur; }, die, settle, camera, scene, THREE, orbit, lastChance, smoke, addStress, cigPrompt, rigged, riggedStep, PLINKO, KENO_PAY, warV, bjVal, get lcOn() { return lcOn; }, SIX, SIX_SEGS, WHEEL_ORDER, STRIP, SYMS,
   topFace(d) { d.updateMatrixWorld(true); const q = new THREE.Quaternion(); d.userData.inner.getWorldQuaternion(q); const axes = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], vals = [3, 4, 1, 6, 2, 5]; let best = 0, by = -2;
