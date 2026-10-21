@@ -126,7 +126,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-21T21:32:00+11:00',
+    updated: '2026-10-21T21:50:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -196,6 +196,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-21', game: 'cube-assault', text: 'Cube Assault 2.9.7 update: 25 more knife skins (125 in all), 10-crate openings spin one by one, practice against cubes in a multiplayer lobby while you wait, and later waves pay fewer coins.' },
   { date: '2026-10-21', game: 'cube-assault', text: 'Cube Assault 2.9.7: 50 more knife skins (100 in all), knife crates for 60 coins or 10 for 500, a new knife grip, and other players now hold their real guns and knife skins online.' },
   { date: '2026-10-21', game: 'cube-assault', text: 'Cube Assault 2.9.6: knife crates in the Shop for 75 coins. Spin for one of 50 knife skins, from Common (50%) to Legendary (0.1%), plus a new Counter-Strike style knife held sideways, and bug fixes.' },
   { date: '2026-10-21', game: 'cube-assault', text: 'Cube Assault 2.9.5: a brand new Shop with Guns and Utilities, the Revolver, the AK-47 and the Minigun, every gun except the pistol now in the Shop, your own guns in multiplayer, death replays online, 45 coins per online win and 20 new achievements.' },

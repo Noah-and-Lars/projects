@@ -696,7 +696,8 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div class="hero-guns"><i class="hcube" style="background:#7a5a1c">📦</i><i class="hcube" style="background:#3a3f46">🔪</i><i class="hcube" style="background:#6f2c6f">✨</i><i class="hcube" style="background:#1c3a7a">💎</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><i>🔪</i><span><b>100 knife skins</b>50 new ones in every tier, from Tuxedo and Denim up to Ruby, Black Pearl, Golden Cube and Void.</span></div>
+      <div><i>🔪</i><span><b>125 knife skins</b>75 new ones in every tier, from Tuxedo and Denim up to Ruby, Black Pearl, Golden Cube, Void, Diamond and Plasma Core.</span></div>
+      <div><i>🎯</i><span><b>Practice in the lobby</b>Fight cubes on the map while you wait for the round to start.</span></div>
       <div><i>📦</i><span><b>Cheaper crates</b>60 coins each, or open 10 at once for 500.</span></div>
       <div><i>✊</i><span><b>New knife grip</b>A simple fist round the grip, knuckles forward, no twisted wrist.</span></div>
       <div><i>🌐</i><span><b>See their gear</b>In multiplayer, other players hold the gun they're really using, with their own knife skin.</span></div>
@@ -728,6 +729,10 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <li>The knife is held in a simple fist with the back of the hand to you and the knuckles forward, and the wrist goes straight into the sleeve.</li>
         <li>Multiplayer: other players now hold the actual gun they're using, and their knife shows their own skin. The death replay shows the killer's knife skin too.</li>
         <li>The ADMINTEST name now needs a password.</li>
+        <li><b>25 more knife skins</b>, 125 in all, every one different: from Mint Chip and Pinstripe to Synthwave, Code Rain, Comic Pop, Nebula, Chrome, Diamond and Plasma Core.</li>
+        <li>Opening 10 crates now spins the reel for each crate in turn, with the ten filling up underneath (Skip jumps to the end), then shows all ten.</li>
+        <li><b>Practice while you wait</b>: in a multiplayer lobby, go onto the map and fight cubes until the round starts (no coins for practice). The host can start the round from the Esc menu with <b>Start round</b>.</li>
+        <li>Coins: from wave 5 on, cubes are worth less and less in single-player (half at wave 10, a quarter at wave 20).</li>
       </ul></section>
       <section><h3>v2.9.6 <span>Knife crates</span></h3><ul>
         <li>New at the top of the Shop: <b>Knife Crates</b>, 75 coins each. The reel spins through the skins and slows down on the one you get.</li>
@@ -1278,8 +1283,26 @@ let gameMode = 'classic'; // classic | campaign | mp
 const isHard = () => gameMode !== 'campaign' && settings.difficulty === 'hard';
 // 2.9.7: the ADMINTEST account needs its password; only its SHA-256 is kept here
 const ADMIN_KEY = '899ba39fe0b4ce0b8d4994cf7449cc63c2a8ade12fa77e590cfaf5999256ccf2';
-const isAdmin = () => (profile.name || '').trim() === 'ADMINTEST' && profile.adminOk === ADMIN_KEY;
-if (/^admintest$/i.test((profile.name || '').trim()) && profile.adminOk !== ADMIN_KEY) profile.name = ''; // an old ADMINTEST without the password picks a new name
+// 2.9.7: GAMETESTER (same password): a separate test profile with everything free that's never saved; changing the
+// name back puts your real profile back exactly as it was
+let testMode = false;
+const PROFILE_BASE = () => ({ coins: 0, owned: {}, best: 0, name: '', avatar: '', xp: 0, stats: { shots: 0, hits: 0, kills: 0, time: 0 }, campaign: {}, ach: {}, knives: {}, knifeSkin: '' });
+function enterTestMode() {
+  const av = profile.avatar;
+  testMode = true;
+  for (const k of Object.keys(profile)) delete profile[k];
+  Object.assign(profile, PROFILE_BASE(), { name: 'GAMETESTER', avatar: av, coins: 1000000, barricades: 99 });
+  for (const sk of KNIFE_SKINS) profile.knives[sk.id] = 1;
+}
+function exitTestMode() {
+  testMode = false;
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem('cubeAssaultProfile') || '{}'); } catch (e) {}
+  for (const k of Object.keys(profile)) delete profile[k];
+  Object.assign(profile, PROFILE_BASE(), saved);
+  profile.stats = Object.assign({ shots: 0, hits: 0, kills: 0, time: 0 }, profile.stats);
+}
+const isAdmin = () => testMode || ((profile.name || '').trim() === 'ADMINTEST' && profile.adminOk === ADMIN_KEY);
+if (/^(admintest|gametester)$/i.test((profile.name || '').trim()) && (profile.adminOk !== ADMIN_KEY || /^gametester$/i.test(profile.name.trim()))) profile.name = ''; // an old ADMINTEST without the password picks a new name
 const ownsBase = k => { if (isAdmin()) return true; const w = WEAPONS[k]; return w.price ? !!profile.owned[k] : w.unlockWave ? wave >= w.unlockWave : true; };
 const campOwns = k => (camp && camp.level === 3) ? ['pistol', 'rifle', 'sniper', 'knife'].includes(k) : k === 'rifle'; // 2.8: Level 3 has more than the rifle
 const owns = k => (gameMode === 'mp' && window.mpNet) ? (window.mpRules ? mpRules.owns(k) : mpNet.guns.includes(k)) : (gameMode === 'campaign' && state !== 'menu' && !isAdmin()) ? campOwns(k) : ownsBase(k); // mp-net hook: everyone gets the same guns in multiplayer
@@ -1313,7 +1336,7 @@ function keyName(code) {
   return N[code] || code.replace(/^Intl/, '');
 }
 function refreshKbd() { document.querySelectorAll('[data-kb]').forEach(k => { k.textContent = keyName(bindOf(k.dataset.kb)); }); }
-function saveProfile() { if (wiped) return; try { localStorage.setItem('cubeAssaultProfile', JSON.stringify(profile)); } catch (e) {} }
+function saveProfile() { if (wiped || testMode) return; try { localStorage.setItem('cubeAssaultProfile', JSON.stringify(profile)); } catch (e) {} }
 
 // ---------- Sound (synthesised, no files) ----------
 const Sound = (() => {
@@ -3689,6 +3712,37 @@ const KNIFE_SKINS = (() => {
   add('pearl', 'Black Pearl', 'legendary', gem(['#0a0614', '#3a1a5a', '#8a5ab8', '#2a6a8a', '#140a24'], '#f0e6ff'), { metal: 1, rough: 0.06, glow: 0.35, h: 0x0a0614 });
   add('goldcube', 'Golden Cube', 'legendary', (g, W, H, r) => { fade(['#a8781a', '#ffe08a', '#d4a020', '#fff2b0', '#b8861c'])(g, W, H, r); for (const [x, s] of [[120, 30], [300, 40], [440, 24]]) { g.fillStyle = 'rgba(90,60,0,.55)'; g.fillRect(x - s, 64 - s, s * 2, s * 2); g.fillStyle = '#fff6c8'; g.fillRect(x - s + 4, 64 - s + 4, s * 2 - 8, s * 2 - 8); g.fillStyle = '#a8781a'; g.fillRect(x - s * 0.5, 64 - s * 0.3, s * 0.3, s * 0.4); g.fillRect(x + s * 0.2, 64 - s * 0.3, s * 0.3, s * 0.4); } }, { metal: 1, rough: 0.1, glow: 0.25, h: 0x3a2a08 });
   add('void', 'Void', 'legendary', (g, W, H, r) => { const s = g.createRadialGradient(256, 64, 4, 256, 64, 260); s.addColorStop(0, '#000'); s.addColorStop(0.25, '#12002a'); s.addColorStop(0.5, '#6a10c8'); s.addColorStop(0.62, '#12002a'); s.addColorStop(1, '#000'); g.fillStyle = s; g.fillRect(0, 0, W, H); for (let i = 0; i < 140; i++) { g.fillStyle = '#fff'; g.globalAlpha = r(); g.fillRect(r() * W, r() * H, 1.5, 1.5); } g.globalAlpha = 1; }, { metal: 0.9, rough: 0.1, glow: 0.55, h: 0x05000c });
+  // ---------- 2.9.7 (second drop): 25 more, 125 in all ----------
+  // common
+  add('mintchip', 'Mint Chip', 'common', (g, W, H, r) => { solid('#a8e6cf', 0.04)(g, W, H, r); g.fillStyle = '#3b2416'; for (let i = 0; i < 90; i++) g.fillRect(r() * W, r() * H, 3 + r() * 4, 2 + r() * 3); }, { metal: 0.3, rough: 0.45 });
+  add('salmon', 'Salmon', 'common', solid('#f08a7e', 0.06), { metal: 0.4, rough: 0.42 });
+  add('banana', 'Banana', 'common', solid('#f3e14b', 0.06), { metal: 0.4, rough: 0.42 });
+  add('sage', 'Sage', 'common', solid('#9caf88', 0.06), { metal: 0.35, rough: 0.5 });
+  add('cobalt', 'Cobalt', 'common', solid('#0047ab', 0.07), { metal: 0.6, rough: 0.3 });
+  add('pinesplit', 'Pine Split', 'common', split('#efe6cf', '#1f4a33', 0.45), { metal: 0.35, rough: 0.45, h: 0x1f4a33 });
+  add('pinstripe', 'Pinstripe', 'common', (g, W, H, r) => { solid('#1c2742', 0.03)(g, W, H, r); g.fillStyle = 'rgba(235,235,235,.7)'; for (let x = 6; x < W; x += 14) g.fillRect(x, 0, 1.5, H); }, { metal: 0.3, rough: 0.5, h: 0x1c2742 });
+  add('terracotta', 'Terracotta', 'common', solid('#c8643c', 0.05), { metal: 0.2, rough: 0.6, h: 0x5a2a16 });
+  // uncommon
+  add('honey', 'Honeycomb', 'uncommon', (g, W, H) => { g.fillStyle = '#6a4a0a'; g.fillRect(0, 0, W, H); const s = 11; for (let y = 0, row = 0; y < H + s; y += s * 1.5, row++) for (let x = (row % 2) * s * 0.866; x < W + s; x += s * 1.732) { g.fillStyle = (x * 13 + y * 7) % 9 < 2 ? '#ffd04a' : '#e8a91c'; g.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6; g.lineTo(x + Math.cos(a) * s * 0.9, y + Math.sin(a) * s * 0.9); } g.closePath(); g.fill(); } }, { metal: 0.5, rough: 0.3, h: 0x6a4a0a });
+  add('basket', 'Basketweave', 'uncommon', (g, W, H) => { g.fillStyle = '#5a3f22'; g.fillRect(0, 0, W, H); for (let y = 0; y < H; y += 16) for (let x = 0; x < W; x += 16) { const v = ((x + y) / 16) % 2; g.fillStyle = '#c99a5c'; for (let k = 0; k < 3; k++) v ? g.fillRect(x + 1, y + 1 + k * 5, 14, 4) : g.fillRect(x + 1 + k * 5, y + 1, 4, 14); } }, { metal: 0.05, rough: 0.7, h: 0x5a3f22 });
+  add('static', 'TV Static', 'uncommon', (g, W, H, r) => { const img = g.createImageData(W, H); for (let i = 0; i < W * H; i++) { const v = r() * 255; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; } g.putImageData(img, 0, 0); g.fillStyle = 'rgba(0,0,0,.25)'; for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1); }, { metal: 0.2, rough: 0.5 });
+  add('brick', 'Brick Wall', 'uncommon', (g, W, H, r) => { g.fillStyle = '#d6cfc2'; g.fillRect(0, 0, W, H); for (let y = 0, row = 0; y < H; y += 14, row++) for (let x = (row % 2) * -18; x < W; x += 36) { g.fillStyle = ['#9c3b26', '#a8452c', '#8a3220'][(r() * 3) | 0]; g.fillRect(x + 1.5, y + 1.5, 33, 11); } }, { metal: 0.05, rough: 0.8 });
+  add('chevron', 'Chevron', 'uncommon', (g, W, H) => { g.fillStyle = '#1e2a3a'; g.fillRect(0, 0, W, H); g.strokeStyle = '#f2b134'; g.lineWidth = 7; for (let x = -40; x < W + 40; x += 34) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 22, H / 2); g.lineTo(x, H); g.stroke(); } }, { metal: 0.35, rough: 0.4, h: 0x1e2a3a });
+  add('argyle', 'Argyle', 'uncommon', (g, W, H) => { g.fillStyle = '#2d5a3d'; g.fillRect(0, 0, W, H); for (let x = 0; x < W + 40; x += 40) for (let y = 0; y < H + 40; y += 64) for (const [dx, dy, c] of [[0, 0, '#7a2a3a'], [20, 32, '#c9b27a']]) { g.fillStyle = c; g.beginPath(); g.moveTo(x + dx, y + dy - 32); g.lineTo(x + dx + 20, y + dy); g.lineTo(x + dx, y + dy + 32); g.lineTo(x + dx - 20, y + dy); g.closePath(); g.fill(); } g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; for (let x = -H; x < W; x += 20) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + H * 0.62, H); g.stroke(); g.beginPath(); g.moveTo(x + H * 0.62, 0); g.lineTo(x, H); g.stroke(); } }, { metal: 0.1, rough: 0.7, h: 0x2d5a3d });
+  add('bamboo', 'Bamboo', 'uncommon', (g, W, H, r) => { g.fillStyle = '#d9e6b0'; g.fillRect(0, 0, W, H); for (let x = 0; x < W; x += 22 + r() * 10) { g.fillStyle = '#6a9a3a'; g.fillRect(x, 0, 12, H); g.fillStyle = '#3e6a22'; for (let y = r() * 30; y < H; y += 30 + r() * 12) g.fillRect(x - 1, y, 14, 3); } }, { metal: 0.1, rough: 0.55, h: 0x3e6a22 });
+  // rare
+  add('synthwave', 'Synthwave', 'rare', (g, W, H) => { const s = g.createLinearGradient(0, 0, 0, H); s.addColorStop(0, '#2b0a4a'); s.addColorStop(0.55, '#c2185b'); s.addColorStop(1, '#14002a'); g.fillStyle = s; g.fillRect(0, 0, W, H); const sun = g.createLinearGradient(0, 20, 0, 80); sun.addColorStop(0, '#ffe46b'); sun.addColorStop(1, '#ff4f9a'); g.fillStyle = sun; g.beginPath(); g.arc(256, 70, 42, Math.PI, 0); g.fill(); g.strokeStyle = '#3ff2ff'; g.lineWidth = 1.5; for (let y = 72; y < H; y += 8) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); } for (let x = -400; x < W + 400; x += 40) { g.beginPath(); g.moveTo(256 + (x - 256) * 0.2, 72); g.lineTo(x, H); g.stroke(); } }, { metal: 0.4, rough: 0.3, glow: 0.4, h: 0x14002a });
+  add('coderain', 'Code Rain', 'rare', (g, W, H, r) => { g.fillStyle = '#020a04'; g.fillRect(0, 0, W, H); g.font = 'bold 11px monospace'; for (let x = 2; x < W; x += 9) { const len = 4 + (r() * 10 | 0), y0 = r() * H; for (let k = 0; k < len; k++) { g.fillStyle = k === len - 1 ? '#d8ffe0' : `rgba(40,255,90,${0.25 + k / len * 0.7})`; g.fillText(String.fromCharCode(0x30a0 + (r() * 90 | 0)), x, (y0 + k * 11) % (H + 11)); } } }, { metal: 0.3, rough: 0.35, glow: 0.5, h: 0x020a04 });
+  add('comic', 'Comic Pop', 'rare', (g, W, H) => { g.fillStyle = '#ffd400'; g.fillRect(0, 0, W, H); g.fillStyle = '#ff3b3b'; for (let y = 0; y < H; y += 9) for (let x = (y / 9 % 2) * 4.5; x < W; x += 9) { g.beginPath(); g.arc(x, y, 2.6 + 1.6 * Math.sin(x * 0.02), 0, 7); g.fill(); } g.fillStyle = '#fff'; g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, d = i % 2 ? 26 : 50; g.lineTo(300 + Math.cos(a) * d * 1.6, 64 + Math.sin(a) * d * 0.9); } g.closePath(); g.fill(); g.stroke(); g.font = 'bold 34px Impact, sans-serif'; g.fillStyle = '#e8131b'; g.fillText('POW!', 262, 77); }, { metal: 0.2, rough: 0.4, h: 0x111111 });
+  add('pixelhero', 'Pixel Hero', 'rare', (g, W, H) => { g.fillStyle = '#5c94fc'; g.fillRect(0, 0, W, H); g.fillStyle = '#c84c0c'; g.fillRect(0, 104, W, 24); g.fillStyle = '#fcbcb0'; for (let x = 0; x < W; x += 16) g.fillRect(x, 104, 15, 3); const P = ['..rrrr..', '.rrrrrrr', '.bbbsss.', 'bsbssss.', '.ssssss.', '..rrbr..', '.rrrbbrr', '..bb.bb.'], C = { r: '#d82800', b: '#7c3c00', s: '#fcb898' }; for (const [ox, oy] of [[60, 40], [250, 52], [420, 44]]) P.forEach((row, j) => [...row].forEach((c, i) => { if (C[c]) { g.fillStyle = C[c]; g.fillRect(ox + i * 6, oy + j * 6, 6, 6); } })); }, { metal: 0.2, rough: 0.45 });
+  add('biohazard', 'Biohazard', 'rare', (g, W, H, r) => { fade(['#1a2a08', '#3a5a0a', '#1a2a08'])(g, W, H, r); g.strokeStyle = '#b6ff2a'; g.shadowColor = '#b6ff2a'; g.shadowBlur = 10; g.lineWidth = 4; for (const cx of [100, 256, 412]) { for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2 - Math.PI / 2; g.beginPath(); g.arc(cx + Math.cos(a) * 16, 64 + Math.sin(a) * 16, 16, 0, 7); g.stroke(); } g.beginPath(); g.arc(cx, 64, 7, 0, 7); g.stroke(); } g.shadowBlur = 0; }, { metal: 0.4, rough: 0.35, glow: 0.45, h: 0x1a2a08 });
+  // super rare
+  add('nebula', 'Nebula', 'super', (g, W, H, r) => { g.fillStyle = '#070512'; g.fillRect(0, 0, W, H); for (const c of ['rgba(255,60,180,.22)', 'rgba(60,140,255,.22)', 'rgba(150,70,255,.2)']) for (let i = 0; i < 18; i++) { const x = r() * W, y = r() * H, rr = 20 + r() * 50, s = g.createRadialGradient(x, y, 0, x, y, rr); s.addColorStop(0, c); s.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = s; g.fillRect(x - rr, y - rr, rr * 2, rr * 2); } for (let i = 0; i < 120; i++) { g.fillStyle = '#fff'; g.globalAlpha = r(); g.fillRect(r() * W, r() * H, 1.4, 1.4); } g.globalAlpha = 1; }, { metal: 0.7, rough: 0.15, glow: 0.35, h: 0x070512 });
+  add('chrome', 'Chrome', 'super', fade(['#f8f8fa', '#8a8f98', '#ffffff', '#5a5f68', '#e8eaee'], 0.4), { metal: 1, rough: 0.03 });
+  add('inkwell', 'Inkwell', 'super', pix((x, y) => { const v = Math.sin(x * 0.03 + Math.sin(y * 0.08 + Math.sin(x * 0.02) * 2) * 3 + Math.sin(x * 0.011 + y * 0.04) * 2); return v > 0.15 ? [240, 238, 232] : v > -0.05 ? [90, 90, 96] : [12, 12, 16]; }), { metal: 0.6, rough: 0.2, h: 0x0c0c10 });
+  // legendary
+  add('diamond', 'Diamond', 'legendary', (g, W, H, r) => { fade(['#dff4ff', '#ffffff', '#cfe8ff', '#ffffff'])(g, W, H, r); for (let i = 0; i < 70; i++) { const x = r() * W, y = r() * H, s = 8 + r() * 20; g.strokeStyle = `hsla(${r() * 360},90%,70%,.5)`; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * 0.6, y); g.lineTo(x, y + s); g.lineTo(x - s * 0.6, y); g.closePath(); g.stroke(); } for (let i = 0; i < 40; i++) star(g, r() * W, r() * H, 3 + r() * 4, '#ffffff'); }, { metal: 1, rough: 0.02, glow: 0.3, h: 0xcfe8ff });
+  add('plasma', 'Plasma Core', 'legendary', (g, W, H, r) => { g.fillStyle = '#05001a'; g.fillRect(0, 0, W, H); for (let i = 0; i < 9; i++) { let x = 0, y = 20 + r() * 88; const pts = [[x, y]]; while (x < W) { x += 12 + r() * 20; y = Math.max(6, Math.min(H - 6, y + (r() - 0.5) * 40)); pts.push([x, y]); } glowLine(g, pts, i % 2 ? '#ff2ad4' : '#2af0ff', 3); } }, { metal: 0.8, rough: 0.1, glow: 0.65, h: 0x05001a });
   return L;
 })();
 const KSKIN = Object.fromEntries(KNIFE_SKINS.map(s => [s.id, s]));
@@ -4840,7 +4894,10 @@ function killEnemy(e) {
   profile.stats.kills++;
   addXp(T.reward * mult);
   achKill(e); // 2.8
-  const coins = T.coins || 1;
+  let coins = T.coins || 1;
+  // 2.9.7: from wave 5 on, a cube is worth less and less (wave 10: half, wave 20: a quarter, wave 40: a tenth)
+  if (gameMode === 'classic' && wave > 4) { const v = coins * Math.max(0.08, 4 / wave); coins = Math.floor(v) + (Math.random() < v % 1 ? 1 : 0); }
+  if (window.mpPractice) coins = 0;
   profile.coins += coins; runCoins += coins;
   saveProfile();
   Sound.play('kill', u.size);
@@ -5167,6 +5224,7 @@ function resetGame() {
   updateHUD();
 }
 function gameOver() {
+  if (window.mpPractice && window.practiceRespawn) { practiceRespawn(); return; } // 2.9.7: practice: back to the start
   state = 'dead';
   deathT = 0;
   releaseInput();
@@ -8549,6 +8607,7 @@ function levelInfo(xp = profile.xp) {
   return { level, into: xp, need: xpNeed(level) };
 }
 function addXp(n) {
+  if (window.mpPractice) return; // 2.9.7: no XP for practice in a lobby
   const before = levelInfo().level;
   profile.xp += n;
   const after = levelInfo().level;
@@ -8726,14 +8785,16 @@ async function submitName() {
   let n = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 16);
   if (!n) { nameInput.focus(); return; }
   // 2.9.7: ADMINTEST is password protected
-  if (/^admintest$/i.test(n)) {
+  if (/^(admintest|gametester)$/i.test(n)) {
     const pw = $('adminPw'), msg = $('adminMsg');
     if (pw.hidden) { pw.hidden = false; msg.hidden = false; msg.textContent = 'This name needs a password.'; pw.value = ''; pw.focus(); return; }
     let h = '';
     try { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw.value)); h = [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); } catch (e) {}
     if (h !== ADMIN_KEY) { msg.textContent = 'Wrong password.'; pw.value = ''; pw.focus(); Sound.play('empty'); return; }
-    n = 'ADMINTEST'; profile.adminOk = h; pw.hidden = true; msg.hidden = true; pw.value = '';
-  } else { delete profile.adminOk; $('adminPw').hidden = true; $('adminMsg').hidden = true; }
+    pw.hidden = true; msg.hidden = true; pw.value = '';
+    if (/^gametester$/i.test(n)) { if (!testMode) enterTestMode(); n = 'GAMETESTER'; }
+    else { if (testMode) exitTestMode(); n = 'ADMINTEST'; profile.adminOk = h; }
+  } else { if (testMode) exitTestMode(); delete profile.adminOk; $('adminPw').hidden = true; $('adminMsg').hidden = true; }
   const first = !profile.name;
   profile.name = n;
   if (!profile.avatar) profile.avatar = AVATARS[Math.random() * AVATARS.length | 0].key;
@@ -12389,7 +12450,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
   // ---------- the banner at the top of the Shop ----------
   const hero = document.createElement('div'); hero.id = 'kcHero';
   hero.innerHTML = `<div class="crateArt"><div class="crateBox"></div><img alt=""></div>
-    <div class="t"><small>NEW · KNIFE CRATES</small><b>Knife Crate</b><span>Open a crate for one of 100 knife skins, from plain colours to Legendary gems.</span>
+    <div class="t"><small>NEW · KNIFE CRATES</small><b>Knife Crate</b><span>Open a crate for one of 125 knife skins, from plain colours to Legendary gems.</span>
       <div class="odds">${KNIFE_TIERS.map(T => `<i style="--tc:${T.c}">${T.name} ${T.p}%</i>`).join('')}</div></div>
     <div class="b"><button class="btn" id="kcBuy"></button><button class="btn" id="kcBuy10"></button><button class="btn secondary" id="kcMine">My knives</button></div>`;
   const tabs = document.querySelector('#shop2 .s2tabs');
@@ -12461,6 +12522,24 @@ document.getElementById('achToggle').addEventListener('click', () => {
     $('kcTenAgain').textContent = can(10) ? label(10, 'Open 10 more') : `Need ${PRICE10} coins`;
     ten.querySelectorAll('.tc').forEach(b => b.classList.toggle('on', b.dataset.sk === profile.knifeSkin));
   }
+  // 2.9.7: opening 10 crates spins the reel for each one in turn (a little quicker), with a row of the ten filling up
+  // underneath; Skip jumps to the end. Everything's paid for and added before the first spin.
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  function spinOne(won, dur, skipped) {
+    return new Promise(res => {
+      const items = []; for (let i = 0; i < WIN_AT + 6; i++) items.push(i === WIN_AT ? won : roll(FILL));
+      strip.innerHTML = items.map(card).join('');
+      strip.style.transition = 'none'; strip.style.transform = 'translateX(0px)'; void strip.offsetWidth;
+      const w = reel.clientWidth, jitter = (Math.random() - 0.5) * CARD * 0.7, to = -(WIN_AT * CARD + CARD / 2 - w / 2) + jitter;
+      strip.style.transition = `transform ${dur / 1000}s cubic-bezier(0.07, 0.55, 0.11, 1)`; strip.style.transform = `translateX(${to}px)`;
+      let last = -1; const t0 = performance.now();
+      (function follow() {
+        const x = new DOMMatrixReadOnly(getComputedStyle(strip).transform).m41, i = Math.floor((-x + w / 2) / CARD);
+        if (i !== last) { last = i; tick(); }
+        if (performance.now() - t0 < dur + 120 && !skipped()) requestAnimationFrame(follow); else res();
+      })();
+    });
+  }
   function openTen() {
     if (spinning || tenBusy || !can(10)) return;
     const got = []; for (let i = 0; i < 10; i++) got.push(roll());
@@ -12469,11 +12548,31 @@ document.getElementById('achToggle').addEventListener('click', () => {
     profile.stats.crates = (profile.stats.crates || 0) + 10;
     saveProfile(); updateHUD(); achUnlock('crate'); achCheck();
     if (got.some(s => s.tier === 'legendary')) achUnlock('legend');
-    tenBusy = true; ten.hidden = false;
-    ten.querySelector('.tenGrid').innerHTML = got.map((s, i) => `<button class="tc" data-sk="${s.id}" style="--tc:${KTIER[s.tier].c};animation-delay:${i * 0.25}s">
-      <img alt="" src="${picOf(s.id)}"><em>${KTIER[s.tier].name}</em><span>${esc(s.name)}</span></button>`).join('');
-    got.forEach((s, i) => setTimeout(() => { try { Sound.play(s.tier === 'common' || s.tier === 'uncommon' ? 'tick' : 'achieve', s.tier === 'legendary' ? 'legendary' : s.tier === 'super' ? 'epic' : 'rare'); } catch (e) {} }, i * 250 + 200));
-    setTimeout(() => { tenBusy = false; paintTen(); paintHero(); }, 10 * 250 + 400);
+    tenBusy = true; spinning = true; ten.hidden = true; ov.hidden = false;
+    $('kcEquip').hidden = true; $('kcAgain').hidden = true; $('kcClose').disabled = true;
+    const hd = ov.querySelector('.hd b'), was = hd.textContent, box = ov.querySelector('.winBox');
+    let skip = false;
+    const sk = document.createElement('button'); sk.className = 'btn secondary'; sk.textContent = 'Skip';
+    sk.addEventListener('click', () => { skip = true; click(); });
+    ov.querySelector('.btns').appendChild(sk);
+    box.innerHTML = '<div class="tenRow">' + got.map(() => '<i></i>').join('') + '</div>';
+    const row = box.firstChild;
+    (async () => {
+      for (let i = 0; i < 10 && !skip; i++) {
+        hd.textContent = `Knife Crate ${i + 1} of 10`;
+        await spinOne(got[i], 2700, () => skip);
+        const s = got[i], T = KTIER[s.tier], slot = row.children[i];
+        slot.style.setProperty('--tc', T.c); slot.innerHTML = `<img alt="" src="${picOf(s.id)}">`; slot.classList.add('on'); slot.title = s.name;
+        try { Sound.play(s.tier === 'common' || s.tier === 'uncommon' ? 'tick' : 'achieve', s.tier === 'legendary' ? 'legendary' : s.tier === 'super' ? 'epic' : 'rare'); } catch (e) {}
+        if (!skip) await wait(s.tier === 'legendary' || s.tier === 'super' ? 1500 : s.tier === 'rare' ? 900 : 450);
+      }
+      sk.remove(); hd.textContent = was; spinning = false; $('kcAgain').hidden = false; $('kcClose').disabled = false; ov.hidden = true;
+      // then all ten together, to pick one to equip
+      ten.hidden = false;
+      ten.querySelector('.tenGrid').innerHTML = got.map((s, i) => `<button class="tc" data-sk="${s.id}" style="--tc:${KTIER[s.tier].c};animation-delay:${i * 0.05}s">
+        <img alt="" src="${picOf(s.id)}"><em>${KTIER[s.tier].name}</em><span>${esc(s.name)}</span></button>`).join('');
+      tenBusy = false; paintTen(); paintHero();
+    })();
     paintTen();
   }
   ten.addEventListener('click', e => { const b = e.target.closest('.tc'); if (!b || tenBusy) return; equipSkin(b.dataset.sk); paintTen(); });
@@ -12575,6 +12674,85 @@ document.getElementById('achToggle').addEventListener('click', () => {
       } catch (e) { G.userData.model = null; for (const c of G.children) c.visible = true; }
     }
   })();
+})();
+</script>
+<style id="v297b-css">
+/* 2.9.7: practice while you wait in a lobby, and the row of ten when you open 10 crates */
+#menu-pause .ppOnly { display: none; }
+body.mpPractice #menu-pause .ppOnly { display: block; }
+body.mpPractice #menu-pause .ppHost[hidden] { display: none; }
+body.mpPractice #menu-pause [data-action="quit"], body.mpPractice #menu-pause [data-action="settings"] { display: none; }
+#mpPracticeBtn { margin-top: 4px; }
+#ppNote { position: fixed; left: 50%; top: 58px; transform: translateX(-50%); z-index: 6; display: none; padding: 6px 14px; border-radius: 999px; background: rgba(10, 14, 20, .75); border: 1px solid rgba(255, 255, 255, .16);
+  font: 700 13px/1.2 system-ui, sans-serif; color: #e8eef5; pointer-events: none; white-space: nowrap; }
+body.mpPractice #ppNote { display: block; }
+#kcOpen .tenRow { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 10px 0 6px; }
+#kcOpen .tenRow i { width: 70px; height: 42px; border-radius: 6px; background: #1d2128; border-bottom: 3px solid var(--tc, #3a3f48); display: grid; place-items: center; overflow: hidden; }
+#kcOpen .tenRow i img { width: 64px; height: 34px; object-fit: contain; }
+#kcOpen .tenRow i.on { animation: kcPop .4s cubic-bezier(.2, 1.5, .4, 1); box-shadow: 0 -6px 16px -6px var(--tc) inset; }
+</style>
+<script id="v297b">
+// 2.9.7: practice while you wait. In a multiplayer lobby you can go onto the map and fight cubes until the round
+// starts. It's all on your own screen and gives no coins; the host gets a Start round button in the Esc menu, and
+// when the round starts everyone in practice goes straight into it.
+(function () {
+  const $ = id => document.getElementById(id);
+  if (!window.CAMP || !$('menu-lobby')) return;
+  const click = () => { try { Sound.init(); Sound.play('click'); } catch (e) {} };
+  window.mpPractice = false;
+  let spawn = null;
+  // the lobby button
+  const b = document.createElement('button'); b.className = 'btn secondary'; b.id = 'mpPracticeBtn';
+  b.textContent = 'Practice while you wait';
+  $('mpLeave').parentNode.insertBefore(b, $('mpLeave'));
+  // the Esc menu while practising
+  const pm = $('menu-pause'), resumeBtn = pm.querySelector('[data-action="resume"]');
+  pm.insertAdjacentHTML('beforeend', '<button class="btn ppOnly ppHost" id="ppStart">Start round</button><button class="btn secondary ppOnly" id="ppLobby">Back to lobby</button>');
+  const note = document.createElement('div'); note.id = 'ppNote'; document.body.appendChild(note);
+  function start() {
+    const s = CAMP.getSettings(); if (!s) return;
+    window.mpPractice = true; document.body.classList.add('mpPractice');
+    gameMode = 'classic';
+    try { useMap(s.mapId || 'outpost'); } catch (e) { useMap('classic'); }
+    startGame();
+    introQueue = []; if (state === 'intro') { state = 'playing'; hideMenus(); lockMouse(); } // no New enemy cards in practice
+    spawn = player.pos.clone();
+    note.textContent = CAMP.isHost() ? 'Practice · press Esc, then Start round when everyone is in' : 'Practice · the round starts when the host is ready';
+    banner('Practice', 'Waiting for the round');
+  }
+  function stop(toLobby) {
+    if (!window.mpPractice) return;
+    window.mpPractice = false; document.body.classList.remove('mpPractice');
+    if (!toLobby) return;
+    resetGame(); state = 'menu'; releaseInput();
+    showMenu('lobby');
+  }
+  b.addEventListener('click', () => { click(); start(); });
+  $('ppLobby').addEventListener('click', () => { click(); stop(true); });
+  $('ppStart').addEventListener('click', () => {
+    click();
+    const s = $('mpStart');
+    if (!CAMP.isHost() || !s) return;
+    if (s.disabled) { banner('Can’t start yet', ($('mpLNote') && $('mpLNote').textContent) || 'Check the lobby'); return; }
+    s.click();
+  });
+  // Quit in the Esc menu would leave the room; in practice it goes back to the lobby instead
+  addEventListener('click', e => {
+    if (!window.mpPractice) return;
+    if (e.target.closest && e.target.closest('#menu-pause [data-action="quit"]')) { e.stopImmediatePropagation(); e.preventDefault(); click(); stop(true); }
+  }, true);
+  // the round starts (the match set-up resets the game), or the room goes away
+  CAMP.on('matchStart', () => stop(false));
+  CAMP.on('error', () => { if (window.mpPractice) stop(true); });
+  // the host's Start round button only shows for the host; dying in practice puts you back at the start
+  setInterval(() => {
+    $('ppStart').hidden = !CAMP.isHost();
+    if (window.mpPractice && !(CAMP.inRoom && CAMP.inRoom())) stop(true);
+  }, 500);
+  window.practiceRespawn = () => {
+    player.hp = 100; if (spawn) player.pos.copy(spawn); player.vy = 0;
+    damageFlash = 0; banner('Taken out', 'Back to the start'); updateHUD();
+  };
 })();
 </script>
 <template id="caCampaignIntro">
