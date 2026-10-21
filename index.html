@@ -23,7 +23,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=12">
+<link rel="stylesheet" href="arcade.css?v=13">
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
@@ -166,7 +166,9 @@ function tile(g) {
       <p class="desc"></p>
       <div class="meta"><span class="tag"></span><span class="ctl"></span></div>
       ${stat ? '<p class="best">' + TROPHY + '<span></span></p>' : ''}
+      <p class="playing" hidden><i aria-hidden="true"></i><span><b>0</b> playing now</span></p>
     </div>`;
+  a.querySelector('.playing').dataset.g = g.id;
   a.querySelector('img').src = g.thumb;
   a.querySelector('h2').textContent = g.title;
   a.querySelector('.desc').textContent = g.description;
@@ -203,6 +205,19 @@ function render() {
   // while searching, only show the results
   document.body.classList.toggle('searching', !!q);
   $('gridTitle').textContent = q ? 'Results' : 'All games';
+  paintPlaying();
+}
+
+// How many people are playing each game, on its card (from the same live count as the one at the top)
+let live = null;
+function paintPlaying() {
+  for (const el of document.querySelectorAll('.playing[data-g]')) {
+    el.hidden = !live;
+    if (!live) continue;
+    const n = live.byGame[el.dataset.g] || 0;
+    el.classList.toggle('none', n < 1);
+    el.querySelector('b').textContent = ArcadeOnline.label(n, live);
+  }
 }
 
 $('search').addEventListener('input', render);
@@ -210,6 +225,7 @@ $('search').addEventListener('input', render);
 renderFeature(); renderRecent(); renderNews(); render();
 // Live count of everyone on the arcade (home page and every game)
 ArcadeOnline.subscribe(c => {
+  live = c; paintPlaying();
   $('online').hidden = !c || c.total < 1;
   if (!c) return;
   $('online').querySelector('b').textContent = ArcadeOnline.label(c.total, c);
