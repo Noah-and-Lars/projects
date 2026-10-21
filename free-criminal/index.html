@@ -126,6 +126,13 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 #offPop{position:fixed;inset:0;z-index:45;display:grid;place-items:center;padding:20px;background:rgba(5,7,10,.72);backdrop-filter:blur(5px)}
 #offPop[hidden]{display:none}
 #offPop .box{width:min(520px,100%);box-sizing:border-box;padding:26px 26px 22px;border-radius:18px;background:rgba(14,16,22,.94);border:1px solid var(--stroke);border-top:4px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,.5);text-align:center;animation:popIn .35s cubic-bezier(.2,.8,.2,1)}
+/* closed screen */
+#closed{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:radial-gradient(ellipse at 50% 30%,#1a1d24 0%,var(--ink) 70%)}
+#closed .box{width:min(520px,100%);box-sizing:border-box;padding:30px 28px 26px;border-radius:18px;background:rgba(14,16,22,.94);border:1px solid var(--stroke);border-top:4px solid var(--red);box-shadow:0 20px 60px rgba(0,0,0,.5);text-align:center;animation:popIn .35s cubic-bezier(.2,.8,.2,1)}
+#closed .tag{display:inline-block;padding:4px 12px 3px;border-radius:999px;background:var(--red);color:#fff;font:800 14px var(--ui);letter-spacing:.16em;text-transform:uppercase}
+#closed .logo{font-size:clamp(52px,12vw,84px);margin:14px 0 16px}
+#closed p{color:var(--fg);font-size:20px;line-height:1.4;margin:0 0 8px}#closed p.sub{color:var(--muted);font-size:17px}
+#closed .back{display:inline-block;margin-top:14px;padding:10px 22px;border-radius:12px;background:var(--gold);color:var(--ink);font:700 19px var(--ui);text-decoration:none}#closed .back:hover{filter:brightness(1.1)}
 #offPop h2{font-family:var(--display);font-weight:400;font-size:38px;text-transform:uppercase;margin:4px 0 10px;transform:skewX(-7deg)}
 #offPop p{color:var(--muted);font-size:19px;line-height:1.4;margin:0 0 8px}
 #offPop ul{text-align:left;color:var(--fg);font-size:18px;line-height:1.45;margin:6px auto 12px;padding-left:22px;max-width:400px}
@@ -404,6 +411,13 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 
 <canvas id="c" tabindex="0"></canvas>
 <div id="loading"><div>Free Criminal<p id="loadTxt">Building San Varro…</p></div></div>
+<div id="closed" hidden><div class="box">
+  <div class="tag">Closed</div>
+  <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
+  <p>Free Criminal is closed for now. San Varro is shut, online and offline, so nobody can play or join.</p>
+  <p class="sub">Keep an eye on What’s new in the arcade for news.</p>
+  <a class="back" href="../index.html" target="_top">Back to the arcade</a>
+</div></div>
 
 <div id="hud" hidden>
   <div id="help" hidden></div>
@@ -4116,8 +4130,13 @@ $('bOnline').addEventListener('click',()=>{notifyMenu('');playOnline();});
 if(new URLSearchParams(location.search).get('fcroom'))window.__fc={get player(){return player;},get state(){return state;},get note(){return noteHTML;},NET,shootRay,WPN,V3,groundY,parkCar,enterCar,punch,playerFire,equip,throwNade,explode,setYaw:v=>{yaw=v;pitch=-0.05;},get SUBE(){return SUBE;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;},get OUTT(){return OUTT;},get outride(){return OUTRIDE;}};
 
 /* ---------- boot ---------- */
+// The game is closed: CLOSED shows the closed screen instead of building the city, so nobody can play it or join the
+// online city. It stays open on localhost so it can still be tested (add ?closed to see the closed screen there).
+// Set CLOSED_NOW to false to reopen the game.
+const CLOSED_NOW=true,CLOSED=CLOSED_NOW&&(!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)||/[?&]closed\b/.test(location.search));
 async function boot(){
   try{await Promise.race([document.fonts.load('64px Anton'),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
+  if(CLOSED){$('loading').hidden=true;$('closed').hidden=false;return;}
   try{buildWorld();createPlayer();}catch(err){console.error(err);$('loadTxt').textContent='Something went wrong while building the city: '+err.message;return;}
   updChunks(0,true);applySettings();renderAvatars();refreshBadge();state='menu';$('loading').hidden=true;$('menu').hidden=false;requestAnimationFrame(frame);
   if(PROF.name&&BANNED_NAME(PROF.name)){PROF.name='';saveProfile();}if(!PROF.name)openName(true);else if(settings.seenVersion!==VERSION&&settings.seenVersion!==NEWS_VERSION)$('updPop').hidden=false;
