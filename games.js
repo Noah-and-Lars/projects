@@ -126,7 +126,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-21T13:16:00+11:00',
+    updated: '2026-10-21T19:47:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -196,6 +196,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-21', game: 'cube-assault', text: 'Cube Assault 2.9.6: knife crates in the Shop for 75 coins. Spin for one of 50 knife skins, from Common (50%) to Legendary (0.1%), plus a new Counter-Strike style knife held sideways, and bug fixes.' },
   { date: '2026-10-21', game: 'cube-assault', text: 'Cube Assault 2.9.5: a brand new Shop with Guns and Utilities, the Revolver, the AK-47 and the Minigun, every gun except the pistol now in the Shop, your own guns in multiplayer, death replays online, 45 coins per online win and 20 new achievements.' },
   { date: '2026-10-20', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.0.7: a new opening cinematic plays as you walk in, from the roulette wheel and the craps table to a 7-7-7 jackpot, Plinko, a photo finish at the horses and the house shoving every chip it has across the blackjack table. Watch it again from the main menu.' },
   { date: '2026-10-20', game: 'free-criminal', text: 'Free Criminal 1.9.4: the train to Isla Verde now crosses the bay outside, on its own track beside the bridge, with passengers you can see from the road. Subway stations are now train stations, with new departure boards. Dying or getting busted costs just $250, and 1.9.3 and older can no longer play online.' },
