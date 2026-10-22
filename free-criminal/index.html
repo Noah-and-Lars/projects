@@ -556,6 +556,8 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
   <details open><summary><b>v2.0.1</b>Lights, cars and school<span>Latest</span></summary><ul>
+    <li><b>Stairs down to the trains.</b> Walk into a train station entrance, take the stairs down under the pavement and follow the tunnel round to the platform. To leave, walk out through the exit at the back of the platform and climb the stairs to the street. There’s no fading out or jumping: it’s one walk from the pavement to the train.</li>
+    <li>Fixed: the dumpster outside the prison flickered, and the textures on things that move (the dumpster lid, gates and wind turbine blades) slid across them as they moved.</li>
     <li><b>Real lighting.</b> Street lamps, car headlights and tail lights, police lightbars, lit shop fronts, muzzle flashes and explosions are now real lights. Every surface works out, pixel by pixel, how much light reaches it from the nearest lights (up to 16 on High and Ultra, 10 on Medium, 6 on Low): the light falls off with the square of the distance, street lamps shine down and sideways but not up, headlights are a soft cone that reaches about 45 m, and lights glint off car paint and wet-looking glass. The flat yellow circles under the lamps are gone, nights are a touch darker so the lights matter, and the old painted headlight beams are gone because the real light does the work.</li>
     <li><b>Textures everywhere.</b> Concrete on pavements and buildings, brick on shops, warehouses, the prison and the school, shingles on every roof, paving slabs on the city blocks, asphalt on the roads and the bridge deck, grass on lawns, parks and the countryside, bark and leaves on the trees, drifting ripples on the sea. Nothing needed remodelling: the textures are mapped in world space.</li>
     <li><b>San Varro Motors</b>, a car dealership three blocks west of the mall (a <b>C</b> on the map), and <b>Harbor Auto Plaza</b> in Harbor City. Press <b>E</b> at the sales desk inside the glass showroom. Nine cars: Pico Hatch $3,500, Valor Sedan $6,000, Hauler Van $9,000, Bravo Pickup $11,000, Vanta Coupe $12,000, Ranger SUV $14,000, Brawler V8 $16,000, Strix GT $22,000 and the Nyx Hyper supercar $60,000, each in your choice of twelve paints. The car you buy appears in the delivery bay beside the showroom.</li>
@@ -935,6 +937,17 @@ const M={
   road:lit(new THREE.MeshLambertMaterial({vertexColors:true}),TEX.asphalt,1/6,'top'),
   mount:new THREE.MeshPhongMaterial({vertexColors:true,flatShading:true,shininess:0,fog:false})
 };
+// 2.0.1: things that move (the dumpster lid, gates, turbine blades) get the lights but not the world-space texture,
+// which stays put in the world and so slid across them as they moved
+M.plainMove=lit(new THREE.MeshLambertMaterial({vertexColors:true}));
+// 2.0.1: the stairs down to the train stations. A hole quad over each stairwell marks the stencil first (renderOrder -10);
+// the ground and the pavement don't draw where it's marked, so you see down the stairs instead of a flat pavement
+for(const k of['ground','pave'])Object.assign(M[k],{stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilFail:THREE.KeepStencilOp,stencilZFail:THREE.KeepStencilOp,stencilZPass:THREE.KeepStencilOp});
+const HOLE_MAT=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false,depthTest:false,stencilWrite:true,stencilRef:1,stencilFunc:THREE.AlwaysStencilFunc,stencilZPass:THREE.ReplaceStencilOp,stencilZFail:THREE.ReplaceStencilOp,stencilFail:THREE.ReplaceStencilOp});
+// a box without its underside (pavements): from down in a stairwell you'd otherwise see it as a lid over the opening
+function noBottom(geo){const n=geo.attributes.normal,keep=[];for(let i=0;i<n.count;i+=3)if(n.getY(i)>-0.9)keep.push(i);
+  const out=new THREE.BufferGeometry();for(const name in geo.attributes){const a=geo.attributes[name],sz=a.itemSize,arr=new a.array.constructor(keep.length*3*sz);
+    keep.forEach((v,j)=>{for(let k=0;k<3*sz;k++)arr[j*3*sz+k]=a.array[v*sz+k];});out.setAttribute(name,new THREE.BufferAttribute(arr,sz));}geo.dispose();return out;}
 const CARLIGHT_MAT=new THREE.MeshBasicMaterial({vertexColors:true});
 // 2.0.1: the old painted headlight beam on the road is gone; the light system's headlights light the road on their own
 const CAR_MAT=lit(new THREE.MeshPhongMaterial({vertexColors:true,shininess:90,specular:0x777777,envMap:ENV,combine:THREE.MixOperation,reflectivity:0.2}));
@@ -991,7 +1004,26 @@ function rayBoxes(ox,oy,oz,dx,dy,dz,maxD){RS++;const ix=1/(dx||1e-12),iy=1/(dy||
     for(let i=0;i<arr.length;i++){const b=arr[i];if(b.rs===RS)continue;b.rs=RS;if(b.ti!==undefined&&b.ti>=treeVis)continue;const h=rayBox(ox,oy,oz,ix,iy,iz,b);if(h<best)best=h;}}
   return best;}
 function losCheck(ax,ay,az,bx,by,bz){const dx=bx-ax,dy=by-ay,dz=bz-az,d=Math.hypot(dx,dy,dz)||1;return rayBoxes(ax,ay,az,dx/d,dy/d,dz/d,d)>=d-0.6;}
-function groundY(x,z){if(z<-14330&&z>-14470&&x>350&&x<850)return subGround(x,z); // 1.9.1: the subway station's platforms
+// 2.0.1: the stairwells at the train stations (an entrance's own frame: u along it, the door at u=+3.2; w across it)
+const STAIRS=[],STAIRC=new Map();
+function stairOf(x,z){const a=STAIRC.get(bkey(x,z));if(!a)return null;for(const t of a){const dx=x-t.x,dz=z-t.z,u=dx*t.ex+dz*t.ez,w=dx*t.ez+dz*t.ex;
+  if(u>-8.5&&u<3.3&&Math.abs(w)<1.65){t.u=u;t.w=w;return t;}}return null;}
+function stairY(x,z){const t=stairOf(x,z);if(!t)return null;return t.u>=-3.25?0.3:null;} // the entrance floor (the stairs and the tunnel are footY's)
+/* 2.0.1: the tunnel between the stairs and the platforms. One plan, an S-bend, is built under every entrance and behind
+   both platform exits. In its middle stretch both bends hide the ends and the two copies look exactly alike (the tunnel
+   ignores lights, so day, night and the station's lamps can't tell them apart), so you're handed from the street's copy
+   to the station's without anything changing on screen. Plan: leg 1 runs +z at x=-3.5, the middle leg runs +x at z=0,
+   leg 3 runs +z at x=+3.5; floor at 0, ceiling at 3; the handover is at x=0. */
+const TUN=[],TUN_MAT=new THREE.MeshBasicMaterial({vertexColors:true});
+const tunTpl=(t,x,z)=>{const dx=x-t.ox,dz=z-t.oz;return[dx*t.c-dz*t.s,dx*t.s+dz*t.c];};
+const tunW=(t,xl,zl)=>[t.ox+xl*t.c+zl*t.s,t.oz-xl*t.s+zl*t.c];
+const tunIn=(xl,zl)=>(xl>-4.65&&xl<-2.35&&zl>-5.15&&zl<1.15)||(xl>-4.65&&xl<4.65&&zl>-1.15&&zl<1.15)||(xl>2.35&&xl<4.65&&zl>-1.15&&zl<4.15);
+function tunSite(kind,ax,az,tx,tz,th,F,extra){const c=Math.cos(th),s=Math.sin(th);return Object.assign({kind,ox:ax-(tx*c+tz*s),oz:az-(-tx*s+tz*c),th,c,s,F},extra);}
+// where your feet are: the stairs and the tunnel under the street only count for you, and only once you're below the street
+function footY(x,z,y){const t=stairOf(x,z);if(t&&Math.abs(t.w)<1.15&&t.u<2.2&&t.u>=-2.8&&y<0.7)return 0.3-(2.2-t.u)*0.7;
+  if(y<0)for(const q of TUN)if(q.kind==='street'){const[xl,zl]=tunTpl(q,x,z);if(tunIn(xl,zl))return q.F;}return groundY(x,z);}
+function groundY(x,z){if(STAIRC.size){const sy=stairY(x,z);if(sy!==null)return sy;}
+if(z<-14330&&z>-14470&&x>350&&x<850)return subGround(x,z); // 1.9.1: the subway station's platforms
 if(x>BRX+16.8&&x<BRX+23.2&&z>BRZ0&&z<BRZ1)return trkY(z)+0.3; // 1.9.4: the train track beside the bridge
   if(x>BRX-12&&x<BRX+12&&z>BRZ0&&z<BRZ1)return deckH(z);if(BLOCKSET.has(bkey(x,z))){const lx=((x%100)+100)%100-50,lz=((z%100)+100)%100-50;if(Math.abs(lx)<43&&Math.abs(lz)<43)return 0.18;}return 0;}
 const WX=9000,WZN=10000,MEXT=10000;// mainland: x -9000..9000, z -10000 (north) to the coast at 1055; an island lies south across the strait
@@ -1471,7 +1503,7 @@ function shopDetail(s,x,z,W,D,H,kind,accent,wallC,bz,fz,czc,cw){
     for(let i=0;i<3;i++)for(let j=0;j<2;j++)addB('plain',B(0.32,0.12,0.16,'#d4af37',vx1-1.6+i*0.36,0.97+j*0.12,vz0+2.6+j*0.18));
     for(let i=0;i<4;i++)addB('plain',B(0.34,0.16,0.2,'#3f7d3a',vx1-1.7+i*0.38,0.98,vz0+3.05));
     addB('plain',B(vx1-vx0-0.4,0.04,0.4,'#fffbe8',(vx0+vx1)/2,H-0.04,(vz0+vz1)/2));
-    const gate=new THREE.Mesh(merge([...Array(9)].map((_,i)=>B(0.06,2.5,0.06,'#30343a',gx0+0.15+i*0.237,1.25,vz1)).concat([B(2.2,0.08,0.08,'#30343a',(gx0+gx1)/2,0.6,vz1),B(2.2,0.08,0.08,'#30343a',(gx0+gx1)/2,1.9,vz1),B(0.12,0.2,0.1,'#d4af37',gx1-0.3,1.25,vz1+0.06)])),M.plain);
+    const gate=new THREE.Mesh(merge([...Array(9)].map((_,i)=>B(0.06,2.5,0.06,'#30343a',gx0+0.15+i*0.237,1.25,vz1)).concat([B(2.2,0.08,0.08,'#30343a',(gx0+gx1)/2,0.6,vz1),B(2.2,0.08,0.08,'#30343a',(gx0+gx1)/2,1.9,vz1),B(0.12,0.2,0.1,'#d4af37',gx1-0.3,1.25,vz1+0.06)])),M.plainMove);
     gate.castShadow=true;scene.add(gate);
     s.vault={x:(vx0+vx1)/2+1,z:vz0+1.6,gate,cx0:gx0,cx1:gx1,cz0:vz1-0.15,cz1:vz1+0.15,coll:addColl(gx0,gx1,vz1-0.15,vz1+0.15,0,4),open:false,key:false};
     return;}
@@ -1710,7 +1742,7 @@ function updDay(dt){DAY.t=(DAY.t+dt)%DAY.len;const h=hourOf(DAY.t);
   const on=NIGHTK>0.45;for(const m of nightMeshes)m.visible=on;if(lampGlow){const k=0.6*clamp((NIGHTK-0.3)/0.3,0,1);lampGlow.material.opacity=k;lampGlow.visible=k>0.01;}}
 /* ---------- 2.0: the light list sent to the shaders every frame ---------- */
 const FCL={pool:[],extra:[]};// extra: fixed lights besides the street lamps (showroom ceilings, bridge beacons): {x,y,z,R,r,g,b,I,co (falloff), day}
-function updFCLights(){
+function updFCLights(){if(TUNNEL_IN){FCU.n.value=0;FCU.time.value=T;return;}
   const q=QUAL[settings.quality],maxN=Math.min(FCL_N,q.lights||16),cam=camera.position,night=clamp((NIGHTK-0.3)/0.3,0,1),pool=FCL.pool;let n=0;
   // (x,y,z) range, colour, intensity; a spot has a direction, the cos of its outer edge and a cone softness; an omni light passes its falloff factor as co (1 = inverse square)
   const add=(x,y,z,R,r,g,b,I,dx,dy,dz,co,cw)=>{if(I<=0.01)return;const d2=(x-cam.x)**2+(y-cam.y)**2+(z-cam.z)**2;if(d2>(R+170)**2)return;
@@ -1911,7 +1943,7 @@ let ventT=0;function updVents(dt){ventT-=dt;if(ventT>0)return;ventT=0.28;const f
 function makeBlock(cx,cz){
   const sp=SPECIAL[cx+','+cz],dist=district(cx,cz);
   const slab=dist==='industrial'?'#8a8b86':dist==='residential'?'#b9b6ac':'#b3b0a8';
-  addB('pave',B(86,0.18,86,slab,cx,0.09,cz));
+  addB('pave',noBottom(B(86,0.18,86,slab,cx,0.09,cz)));
   for(const[dx,dz,ax,az]of[[0,-41.5,0,-1],[0,41.5,0,1],[-41.5,0,-1,0],[41.5,0,1,0]]){const lx=cx+dx+rand(-18,18)*(ax===0?1:0),lz=cz+dz+rand(-18,18)*(az===0?1:0);
     addB('plain',B(0.18,7,0.18,'#3a3d40',lx,3.68,lz));addB('plain',B(ax?2.2:0.12,0.12,az?2.2:0.12,'#3a3d40',lx+ax*1.1,7.1,lz+az*1.1));LAMPQ.push([lx+ax*2.1,lz+az*2.1]);addB('plain',B(ax?0.8:0.5,0.18,az?0.8:0.5,'#efe9c8',lx+ax*2.1,7.0,lz+az*2.1));}
   BLOCKS.push({cx,cz,dist:sp&&sp.isPark?'park':dist});BLOCKSET.add(bkey(cx,cz));
@@ -2145,16 +2177,16 @@ function buildPrison(){
   bld('brick',60,12,30,-610,120,'#9a9c9e','#77797b');for(let i=-5;i<=5;i++)for(const y of[4,8])addB('plain',B(1,1.8,0.1,'#2a2d30',-610+i*5,y,135.05));
   bld('brick',24,6,18,-575,85,'#b1aea6','#77797b');
   const gg=[B(10,0.3,0.3,'#3b3f44',0,0.15,0),B(10,0.3,0.3,'#3b3f44',0,5,0),B(10,0.3,0.3,'#3b3f44',0,2.6,0)];for(let i=-4.5;i<=4.5;i+=0.9)gg.push(B(0.12,5,0.12,'#3b3f44',i,2.55,0));
-  gate=new THREE.Mesh(merge(gg),M.plain);gate.rotation.y=Math.PI/2;gate.position.set(-540.8,0,120);gate.castShadow=true;scene.add(gate);
+  gate=new THREE.Mesh(merge(gg),M.plainMove);gate.rotation.y=Math.PI/2;gate.position.set(-540.8,0,120);gate.castShadow=true;scene.add(gate);
   sign('SAN VARRO STATE PENITENTIARY','#2a2f36','#f3f1ea',9.6,1.4,-539.95,6,120,Math.PI/2);
   // v1.5: the dumpster by the gate (the guards' idea of a send-off)
-  {const X=-538.95,Z=112,c='#2f5d3a';addB('plain',B(1.6,0.08,2.3,c,X,0.12,Z));
-    addB('plain',B(0.08,1.2,2.3,c,X-0.76,0.68,Z));addB('plain',B(0.08,1.2,2.3,c,X+0.76,0.68,Z));addB('plain',B(1.6,1.2,0.08,c,X,0.68,Z-1.11));addB('plain',B(1.6,1.2,0.08,c,X,0.68,Z+1.11));
-    addB('plain',B(1.44,0.5,2.14,'#2a2d25',X,0.4,Z));addB('plain',B(0.5,0.4,0.6,'#141414',X+0.2,0.8,Z-0.45));addB('plain',B(0.45,0.35,0.5,'#1d1d1d',X-0.25,0.76,Z+0.5));
+  {const X=-538.95,Z=112,c='#2f5d3a';addB('plain',B(1.42,0.08,2.12,c,X,0.12,Z)); // 2.0.1: the parts no longer share faces, which flickered
+    addB('plain',B(0.08,1.2,2.3,c,X-0.76,0.68,Z));addB('plain',B(0.08,1.2,2.3,c,X+0.76,0.68,Z));addB('plain',B(1.43,1.2,0.08,c,X,0.68,Z-1.11));addB('plain',B(1.43,1.2,0.08,c,X,0.68,Z+1.11));
+    addB('plain',B(1.38,0.5,2.08,'#2a2d25',X,0.4,Z));addB('plain',B(0.5,0.4,0.6,'#141414',X+0.2,0.8,Z-0.45));addB('plain',B(0.45,0.35,0.5,'#1d1d1d',X-0.25,0.76,Z+0.5));
     addB('plain',B(0.06,0.06,1.7,'#9a9a9a',X+0.84,0.98,Z));addB('plain',B(0.02,0.3,1.0,'#e8e8e2',X+0.81,0.6,Z));
     for(const sz of[-1,1])for(const sx of[-1,1])addB('plain',B(0.18,0.12,0.18,'#111',X+sx*0.62,0.06,Z+sz*0.95));
     addColl(X-0.82,X+0.82,Z-1.17,Z+1.17,0,1.3);
-    dumpLid=new THREE.Group();dumpLid.position.set(X-0.8,1.3,Z);const lm=new THREE.Mesh(merge([B(1.68,0.06,2.38,'#25482d',0.84,0,0),B(1.5,0.04,0.06,'#1d3a24',0.84,0.04,-0.6),B(1.5,0.04,0.06,'#1d3a24',0.84,0.04,0.6)]),M.plain);
+    dumpLid=new THREE.Group();dumpLid.position.set(X-0.8,1.3,Z);const lm=new THREE.Mesh(merge([B(1.68,0.06,2.38,'#25482d',0.84,0,0),B(1.5,0.04,0.06,'#1d3a24',0.84,0.04,-0.6),B(1.5,0.04,0.06,'#1d3a24',0.84,0.04,0.6)]),M.plainMove);
     lm.castShadow=true;dumpLid.add(lm);scene.add(dumpLid);}
   for(const z of[108,132]){addB('plain',B(0.25,9,0.25,'#555',-537,4.5,z));addB('plain',B(1,0.4,0.6,'#ddd',-537.5,9,z));}
   addB('road',P(40,10,'#3a3c40',-520,0.045,120,Math.PI/2));addB('road',P(26,20,'#3d3f43',-525,0.05,147));
@@ -2189,7 +2221,7 @@ function buildCountry(){
   for(const[x,z]of[[-400,-850],[-280,-930],[300,-880],[420,-960],[-1100,-500],[1800,-2950],[2000,-3080],[-1600,-3000],[-2950,-1400],[2950,-1600],[3000,-400]]){
     addB('plain',CYL(0.8,1.5,44,10,'#f1f1f1',x,22,z));addColl(x-1.5,x+1.5,z-1.5,z+1.5,0,44);addB('plain',B(2.4,2.4,6,'#ececec',x,45,z));
     const bl=new THREE.Group();bl.position.set(x,45,z+3.3);const bg=merge([B(0.9,0.9,0.9,'#ddd',0,0,0),B(0.5,20,0.2,'#f5f5f5',0,10,0),G(new THREE.BoxGeometry(0.5,20,0.2),'#f5f5f5',0,0,0,0,0,2.094).translate(Math.sin(2.094)*-10,Math.cos(2.094)*10,0),G(new THREE.BoxGeometry(0.5,20,0.2),'#f5f5f5',0,0,0,0,0,-2.094).translate(Math.sin(-2.094)*-10,Math.cos(-2.094)*10,0)]);
-    bl.add(new THREE.Mesh(bg,M.plain));scene.add(bl);TURBINES.push(bl);EXCL.push([x-10,x+10,z-10,z+10]);}
+    bl.add(new THREE.Mesh(bg,M.plainMove));scene.add(bl);TURBINES.push(bl);EXCL.push([x-10,x+10,z-10,z+10]);}
   // beach, ocean
   addB('ground',B(60000,0.05,80,'#d8c793',0,0.02,1030));
   {const ring=new THREE.RingGeometry(0.93,1.02,64,1);ring.rotateX(-Math.PI/2);ring.scale(ISL.rx,1,ISL.rz);ring.translate(ISL.x,0.04,ISL.z);addB('ground',colorGeo(ring,'#d8c793'));}
@@ -2784,7 +2816,7 @@ function ejectPlayer(c,imp){if(state!=='play'||player.inCar!==c)return;const sp=
   damagePlayer(clamp(6+(imp-22)*0.7,6,32));if(state==='play')notify('You flew out of the car!',2.5);}
 function startRag(vx,vy,vz){const P=player;if(state!=='play')return;P.rag={t:0,lie:0,up:0,vx,vy,vz,spin:rand(7,11)};P.onGround=false;P.reload=0;P.vx=P.vz=P.vy=0;
   if(Math.hypot(vx,vz)>0.5)P.h=Math.atan2(vx,vz);P.pos.y+=0.9;P.m.group.visible=true;if(P.rifle)P.rifle.visible=false;robbing=null;$('prog').hidden=true;}
-function updateRag(dt){const P=player,R=P.rag,m=P.m,gy=groundY(P.pos.x,P.pos.z);R.t+=dt;m.group.rotation.y=P.h;
+function updateRag(dt){const P=player,R=P.rag,m=P.m,gy=footY(P.pos.x,P.pos.z,P.pos.y);R.t+=dt;m.group.rotation.y=P.h;
   // while ragdolled the group origin sits at the body's middle (hips lowered), so it tumbles around its centre
   if(R.up>0){R.up+=dt;const k=ss(0,0.7,R.up);m.group.rotation.x=-Math.PI/2*(1-k);P.pos.y=gy+0.22*(1-k);pose(m,0,0,'walk');m.hips.position.y=0.95*k;
     if(R.up>0.75){P.rag=null;m.group.rotation.x=0;m.hips.position.y=0.95;P.pos.y=gy;m.group.visible=!P.fp;P.onGround=true;updGunVis();}return;}
@@ -2918,13 +2950,14 @@ function updatePlayerFoot(dt){
   let sp=(keys.ShiftLeft||keys.ShiftRight||stk>0.93)?7.2:4.0;if(mouseR)sp*=0.6;if(boosted())sp*=1.2;
   const k=1-Math.exp(-12*dt);P.vx=lerp(P.vx,moving?mx*sp:0,k);P.vz=lerp(P.vz,moving?mz*sp:0,k);
   P.pos.x+=P.vx*dt;P.pos.z+=P.vz*dt;
-  const gy=groundY(P.pos.x,P.pos.z);
+  const gy=footY(P.pos.x,P.pos.z,P.pos.y);
   if(P.onGround&&keys.Space&&!P.jumpHeld){P.vy=6.2;P.onGround=false;}P.jumpHeld=!!keys.Space;
-  P.vy-=20*dt;P.pos.y+=P.vy*dt;if(P.pos.y<=gy){P.pos.y=gy;P.vy=0;P.onGround=true;}
+  P.vy-=20*dt;P.pos.y+=P.vy*dt;if(P.pos.y<=gy||(P.onGround&&P.vy<=0&&P.pos.y-gy<0.45&&stairOf(P.pos.x,P.pos.z))){P.pos.y=gy;P.vy=0;P.onGround=true;}
   collideCircle(P.pos,0.38,P.pos.y+0.9);
   const hc=INSIDE||SUBWAY?null:pushOutOfCars(P.pos,0.4);if(hc&&hc!==P.lastHitCar){const sp=Math.abs(hc.vF);P.lastHitCar=hc;setTimeout(()=>P.lastHitCar=null,800);damagePlayer(sp*0.8);
     if(state==='play'){if(sp>8){startRag(hc.vel.x*0.75,4+sp*0.12,hc.vel.y*0.75);return;}P.vx+=hc.vel.x*0.6;P.vz+=hc.vel.y*0.6;P.vy=4;P.onGround=false;}}
   if(!INSIDE&&!SUBWAY&&!OUTRIDE)clampWorld(P.pos); // 1.9.4: not while you're on the train over the bay
+  stairTick(); // 2.0.1: the doors between the stairs and the platforms
   const Wp=WPN[P.wpn],strafe=P.drawn&&(mouseR||mouseL||P.fireHold>0)||P.fp||P.punchT>0;
   if(strafe)P.h=lerpA(P.h,yaw,1-Math.exp(-20*dt));else if(moving)P.h=lerpA(P.h,Math.atan2(mx,mz),1-Math.exp(-10*dt));
   const spd=Math.hypot(P.vx,P.vz);P.phase+=dt*spd*1.9;
@@ -3061,7 +3094,7 @@ function updVault(dt){if(!VAULT)return;const s=VAULT.s;if(!vaultNear(s)||player.
     addCrime(4,18);{scare(s.cx,s.cz,70);}PROF.stats.robberies++;PROF.stats.stolen+=amt;addXp(200);
     notify(`You emptied the vault: <b>${fmt(amt)}</b>! The alarm is ringing, get out and lose the cops!`,6);}}
 function shopAt(){for(const s of SHOPS){const r=s.rect;if(player.pos.x>r[0]&&player.pos.x<r[1]&&player.pos.z>r[2]&&player.pos.z<r[3])return s;}return null;}
-function interact(){if(state!=='play'||player.inCar||player.ride||robbing||VAULT||BUSROB||player.rag||player.jack)return;if(OUTRIDE)return;if(SUBWAY){subUse();return;}{const se=subEntranceNear();if(se){enterSubway(se);return;}}if(INSIDE){if(exitNear()){$('fade').style.opacity=1;setTimeout(()=>{leaveBuilding();$('fade').style.opacity=0;},300);return;}const L=lootNear();if(L&&!CRACK)startCrack(L);return;}
+function interact(){if(state!=='play'||player.inCar||player.ride||robbing||VAULT||BUSROB||player.rag||player.jack)return;if(OUTRIDE)return;if(SUBWAY){subUse();return;}if(INSIDE){if(exitNear()){$('fade').style.opacity=1;setTimeout(()=>{leaveBuilding();$('fade').style.opacity=0;},300);return;}const L=lootNear();if(L&&!CRACK)startCrack(L);return;}
   const sh=safeNear();if(sh){useSafehouse(sh);return;}const s=shopAt();if(!s){const bz=busNear();if(bz&&!frontNear()){robBus(bz);return;}}if(!s){const f=frontNear();if(f){robFront(f);return;}const d=doorNear();if(d)enterBuilding(d);return;}
   if(vaultNear(s)){if(!VAULT)useVault(s);return;}
   if(s.clerk.dead){notify('Nobody is minding the store.',2);return;}
@@ -3272,7 +3305,11 @@ function respawn(){const list=deadKind==='wasted'?[SPAWN.hosp,...HOSPS]:[SPAWN.p
 
 /* ---------- camera ---------- */
 function camCollide(tx,ty,tz,cam){const dx=cam.x-tx,dy=cam.y-ty,dz=cam.z-tz,L=Math.hypot(dx,dy,dz)||1;const t=rayBoxes(tx,ty,tz,dx/L,dy/L,dz/L,L);
-  if(t<L){const k=Math.max(0.2,t-0.3)/L;cam.set(tx+dx*k,ty+dy*k,tz+dz*k);}if(cam.y<0.4)cam.y=0.4;}
+  if(t<L){const k=Math.max(0.2,t-0.3)/L;cam.set(tx+dx*k,ty+dy*k,tz+dz*k);}const mn=!SUBWAY&&player.pos.y<0.25?player.pos.y+0.4:0.4;if(cam.y<mn)cam.y=mn;
+  // on the stairs the camera rides a little higher, so it looks down over the top step at you
+  if(!SUBWAY&&STAIRC.size&&player.pos.y<0.25&&player.pos.y>-3.1){const tp=stairOf(player.pos.x,player.pos.z);if(tp&&Math.abs(tp.w)<1.15&&tp.u<2.2&&tp.u>-2.8)cam.y=Math.max(cam.y,Math.min(2.6,player.pos.y+2.4));}
+  // over a stairwell the camera stays either above the street or below it: in between, the pavement would draw across the view
+  if(STAIRC.size&&cam.y>-0.15&&cam.y<0.38){const t=stairOf(cam.x,cam.z);if(t&&Math.abs(t.w)<1.25&&t.u<2.3&&t.u>-3.3){const step=t.u>2.2?0.3:0.3-(2.2-Math.max(t.u,-2.8))*0.7;cam.y=player.pos.y<-0.6&&step<-0.45?-0.2:Math.min(2.6,Math.max(0.38,player.pos.y+2.6));}}}
 function updateCamera(dt){
   const P=player;let fovT=settings.fov;
   if(P.inCar){const c=P.inCar;if(T-lastMouseT>1.6){camYawOff*=Math.exp(-3*dt);camPitchOff*=Math.exp(-3*dt);}
@@ -3403,7 +3440,7 @@ function zoneOf(x,z){if(x<-535&&x>-670&&z>50&&z<190)return'State Penitentiary';i
 function showVeh(n){$('veh').textContent=n;$('veh').style.opacity=1;vehT=4;}
 function contextHint(){if(PHONE.open)return'';if(!locked&&!noLock&&state==='play')return'Click the game to control the camera.';{const sh=subHint();if(sh!==null&&state==='play')return sh;}if(state==='play'&&player.ride)return`Riding with <b>${esc(player.ride.name)}</b>. Press <b>F</b> to get out.`;if(state!=='play'||robbing||BUSROB||player.inCar)return'';
   if(INSIDE){if(CRACK)return'';if(exitNear())return'Press <b>E</b> to go back outside.';const L=lootNear();if(L)return INSIDE.door.cool>T?'Someone already cleaned this place out.':`Press <b>E</b> to rob ${L.label}.`;return'';}
-  {const se=subEntranceNear();if(se)return`Press <b>E</b> to go down to the train station: <b>${se.name}</b>.`;}
+  {const se=subEntranceNear();if(se)return`Walk in and take the stairs down to the trains: <b>${se.name}</b> station.`;}
   const sh=safeNear();if(sh)return sh.owned?`Press <b>E</b> to open your safehouse.`:`Press <b>E</b> to rent <b>${sh.name}</b> for $1,000. Guns and cash kept here are safe when you die.`;
   const s=shopAt();if(s){if(s.kind==='gun')return s.clerk.dead?'Nobody is minding the store.':'Press <b>E</b> to browse 10 guns, grenades and gear.';
     if(s.kind==='dealer')return s.clerk.dead?'Nobody is minding the showroom.':s.cool>0?'The dealer is still shaken up after the robbery.':player.drawn&&!WPN[player.wpn].melee?'Press <b>E</b> at the desk to rob the dealership (put your gun away to buy a car).':'Press <b>E</b> at the desk to buy a car, or have one of yours delivered.';
@@ -3695,7 +3732,7 @@ addEventListener('resize',resize);
 /* ---------- main loop ---------- */
 let menuA=0,lastT=performance.now();
 function frame(now){requestAnimationFrame(frame);tick(now);}
-if(/debug/.test(location.search))window.__fc={step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook,get mapPos(){return subMapPos();},get SUBE(){return SUBE;},get SUBT(){return SUBT;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;},get OUTT(){return OUTT;},get outride(){return OUTRIDE;}};
+if(/debug/.test(location.search))window.__fc={step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},shot(w){const c=renderer.domElement;if(!c.width||!c.height){renderer.setSize(800,500,false);camera.aspect=1.6;camera.updateProjectionMatrix();}updateCamera(0.016);renderer.render(scene,camera);const o=document.createElement('canvas');o.width=w||360;o.height=Math.round(o.width*c.height/c.width);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',0.55).split(',')[1];},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook,get mapPos(){return subMapPos();},get SUBE(){return SUBE;},get SUBT(){return SUBT;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;},get OUTT(){return OUTT;},get outride(){return OUTRIDE;}};
 function tick(now){
   const rdt=clamp((now-lastT)/1000,0,0.05);lastT=Math.max(lastT,now);fpsN++;fpsT+=rdt;if(fpsT>0.5){$('fps').textContent=Math.round(fpsN/fpsT)+' fps';fpsN=0;fpsT=0;}
   if(state==='loading')return;
@@ -3757,25 +3794,59 @@ function buildSubwayEntrances(){
       if(spot)break;}
     if(!spot)continue;
     const{x,z,ax,az,ex,ez}=spot,L=6.4,Wd=3.2,ry=Math.atan2(ex,ez);
-    // glass walls on a steel frame, a roof with the sign, and the door at one end
-    const steel='#2b3138',glassC='#8fb4c8';
-    addB('plain',G(new THREE.BoxGeometry(Wd,0.12,L),'#3a4048',x,0.24,z,0,ry,0));
-    for(const s of[-1,1]){addB('plain',G(new THREE.BoxGeometry(0.08,2.6,L),glassC,x+ax*0+(ez?s*Wd/2:0),1.55,z+(ex?s*Wd/2:0),0,ry,0));}
+    // glass walls on a steel frame, a roof with the sign, and the open door at one end
+    // 2.0.1: inside, stairs go down under the pavement to a passage and the doors to the platforms (no more fading out)
+    const steel='#2b3138',glassC='#8fb4c8',tile='#e8e6df',X=(u,w)=>x+ex*u+ez*w,Z=(u,w)=>z+ez*u+ex*w;
+    const lb=(sw,h,su,c,u,y,w)=>addB('plain',B(sw,h,su,c,X(u,w),y,Z(u,w),ry));
+    const lc=(u0,u1,w0,w1,y0,y1)=>{const xa=X(u0,w0),xb=X(u1,w1),za=Z(u0,w0),zb=Z(u1,w1);addColl(Math.min(xa,xb),Math.max(xa,xb),Math.min(za,zb),Math.max(za,zb),y0,y1);};
+    lb(Wd,0.12,1.0,'#3a4048',2.7,0.24,0);for(const s of[-1,1])lb(0.45,0.12,5.4,'#3a4048',-0.5,0.24,s*1.375);   // the floor around the stairwell
+    for(const s of[-1,1]){addB('plain',G(new THREE.BoxGeometry(0.08,2.6,L),glassC,x+(ez?s*Wd/2:0),1.55,z+(ex?s*Wd/2:0),0,ry,0));}
     addB('plain',G(new THREE.BoxGeometry(Wd,2.6,0.08),glassC,x-ex*L/2,1.55,z-ez*L/2,0,ry,0));
     for(const s of[-1,1])for(const k of[-1,0,1])addB('plain',G(new THREE.BoxGeometry(0.14,2.7,0.14),steel,x+ex*k*L/2+(ez?s*Wd/2:0),1.6,z+ez*k*L/2+(ex?s*Wd/2:0)));
     addB('plain',G(new THREE.BoxGeometry(Wd+0.5,0.22,L+0.5),steel,x,2.98,z,0,ry,0));
-    addB('plain',G(new THREE.BoxGeometry(2.0,2.4,0.06),'#0d0f12',x+ex*L/2,1.45,z+ez*L/2,0,ry,0));   // the dark doorway down to the station
+    for(const s of[-1,1])lb(0.6,2.6,0.08,glassC,3.2,1.55,s*1.3);                                              // glass either side of the doorway
     addB('plain',G(new THREE.BoxGeometry(Wd,0.5,0.1),steel,x+ex*L/2,2.75,z+ez*L/2,0,ry,0));
     sign('TRAINS','#1b5e3a','#fff',Wd*0.86,0.46,x+ex*(L/2+0.07),2.75,z+ez*(L/2+0.07),ry);
-    addColl(Math.min(x-ex*L/2,x+ex*L/2)-(ez?Wd/2:0.1),Math.max(x-ex*L/2,x+ex*L/2)+(ez?Wd/2:0.1),Math.min(z-ez*L/2,z+ez*L/2)-(ex?Wd/2:0.1),Math.max(z-ez*L/2,z+ez*L/2)+(ex?Wd/2:0.1),0,3.2);
+    addB('plain',CYL(0.12,0.12,0.9,10,steel,X(3.75,0),0.45,Z(3.75,0)));lc(3.6,3.9,-0.15,0.15,0,1);           // a bollard keeps cars out
+    // the stairs: 14 steps from the floor (0.3) down to the passage (-3.2), with yellow edges and handrails
+    const SN=14,tr=5/SN;for(let k=0;k<SN;k++){const top=0.3-0.25*(k+1),hi=2.2-k*tr,lo=hi-tr;lb(2.3,top+3.4,tr,'#8d9096',(hi+lo)/2,(top-3.4)/2,0);lb(2.3,0.02,0.07,'#d9b84a',lo+0.035,top+0.01,0);
+      lc(lo,hi,-1.15,1.15,-3.6,top);}lc(2.2,3.25,-1.15,1.15,-3.6,0.18); // the steps stop the camera going into them (they're too low to trip you)
+    for(const s of[-1,1])addB('plain',G(new THREE.BoxGeometry(0.06,0.06,6.1),'#b0b6bd',X(-0.3,s*1.1),-0.55,Z(-0.3,s*1.1),-Math.atan2(3.5,5),ry,0));
+    lb(2.3,3.6,0.3,'#8d9096',2.35,-1.63,0);                                                                   // the wall under the top landing
+    for(const s of[-1,1])lb(0.2,3.69,5.0,tile,-0.3,-1.555,s*1.25);                                              // the stairwell's walls
+    lb(2.3,0.55,0.2,tile,-3.1,0.025,0);                                                                       // the header over the bottom
+    buildTunnel(tunSite('street',X(-2.8,0),Z(-2.8,0),-3.5,-5.15,Math.atan2(-ex,-ez),-3.2,{city:SUB_LINE.indexOf(name)}));
+    FCL.extra.push({x:X(0.2,0),y:2.5,z:Z(0.2,0),R:10,r:1,g:0.97,b:0.9,I:10,co:0.4});
+    // walls you bump into: the glass, the edges of the stairwell, the passage
+    for(const s of[-1,1]){lc(-3.25,3.25,s>0?1.55:-1.65,s>0?1.65:-1.55,0,3.2);lc(3.15,3.25,s>0?1.0:-1.65,s>0?1.65:-1.0,0,3.2);
+      lc(-2.8,2.2,s>0?1.15:-1.6,s>0?1.6:-1.15,-4,1.3);}
+    lc(-3.25,-3.15,-1.65,1.65,0,3.2);                                                                         // the back glass
+    {const hq=new THREE.Mesh(new THREE.PlaneGeometry(2.3,5.4).rotateX(-Math.PI/2),HOLE_MAT);hq.position.set(X(-0.5,0),0.31,Z(-0.5,0));hq.rotation.y=ry;hq.renderOrder=-10;hq.matrixAutoUpdate=false;hq.updateMatrix();scene.add(hq);}
     // the sign on the roof, both sides, and a green globe lamp by the door
     for(const s of[-1,1]){const sx=x+(ez?s*(Wd/2+0.06):0),sz=z+(ex?s*(Wd/2+0.06):0);sign(name.toUpperCase()+' STATION','#1b5e3a','#fff',L*0.92,0.62,sx,3.45,sz,Math.atan2(ez?s:0,ex?s:0));}
     const lx=x+ex*(L/2+0.8)+(ez?Wd/2:0),lz=z+ez*(L/2+0.8)+(ex?Wd/2:0);
     addB('plain',CYL(0.07,0.09,2.8,8,'#1d2a22',lx,1.6,lz));addB('plain',G(new THREE.SphereGeometry(0.28,10,8),'#56d38a',lx,3.1,lz));WINQ.push(G(new THREE.SphereGeometry(0.29,10,8),'#7dffb0',lx,3.1,lz));
     SUBE.push({city:SUB_LINE.indexOf(name),name,x:x+ex*(L/2+1.0),z:z+ez*(L/2+1.0),dx:ex,dz:ez});
+    {const t={x,z,ex,ez,e:SUBE[SUBE.length-1]};STAIRS.push(t);const xs=[X(-8.6,-1.7),X(3.4,1.7)],zs=[Z(-8.6,-1.7),Z(3.4,1.7)];
+      for(let cx=Math.min(...xs);cx<=Math.max(...xs)+100;cx+=100)for(let cz=Math.min(...zs);cz<=Math.max(...zs)+100;cz+=100){const k=bkey(Math.min(cx,Math.max(...xs)),Math.min(cz,Math.max(...zs)));let a=STAIRC.get(k);if(!a)STAIRC.set(k,a=[]);if(!a.includes(t))a.push(t);}}
     BLIPS.push({x,z,type:'subway',name:name+' train station'});}}
 const subEntranceNear=()=>{if(player.inCar||SUBWAY)return null;for(const e of SUBE)if(Math.hypot(player.pos.x-e.x,player.pos.z-e.z)<2.6)return e;return null;};
 
+// 2.0.1: one copy of the tunnel (shaded by face so both copies look the same whichever way they face)
+function buildTunnel(t){const L=[],F=t.F,tile='#e8e6df';
+  const bx=(x0,x1,z0,z1,y0,y1,col,cl)=>{const[a,b]=tunW(t,x0,z0),[c,d]=tunW(t,x1,z1),X0=Math.min(a,c),X1=Math.max(a,c),Z0=Math.min(b,d),Z1=Math.max(b,d);
+    const g=B(X1-X0,y1-y0,Z1-Z0,col,(X0+X1)/2,F+(y0+y1)/2,(Z0+Z1)/2),n=g.attributes.normal,cc=g.attributes.color;
+    for(let i=0;i<n.count;i++){const ny=n.getY(i),k=ny>0.5?0.95:ny<-0.5?0.72:0.85;cc.setXYZ(i,cc.getX(i)*k,cc.getY(i)*k,cc.getZ(i)*k);}L.push(g);if(cl)addColl(X0,X1,Z0,Z1,F+y0,F+y1);};
+  for(const r of[[-4.65,-2.35,-5.15,1.15],[-2.35,4.65,-1.15,1.15],[2.35,4.65,1.15,4.15]]){bx(r[0],r[1],r[2],r[3],-0.2,0,'#9a9690');bx(r[0],r[1],r[2],r[3],3.0,3.2,'#d8d4cb',true);}
+  bx(-4.85,-4.65,-5.15,1.35,-0.2,3.0,tile,true);bx(-2.35,-2.15,-5.15,-1.15,-0.2,3.0,tile,true);bx(-4.85,2.35,1.15,1.35,-0.2,3.0,tile,true);
+  bx(-2.35,4.85,-1.35,-1.15,-0.2,3.0,tile,true);bx(4.65,4.85,-1.35,4.15,-0.2,3.0,tile,true);bx(2.15,2.35,1.15,4.15,-0.2,3.0,tile,true);
+  if(t.kind==='street')bx(2.15,4.85,4.15,4.35,-0.2,3.0,tile,true);else bx(-4.85,-2.15,-5.35,-5.15,-0.2,3.0,tile,true);  // the end nobody reaches
+  for(const r of[[-4.65,-4.62,-5.15,1.15],[-2.38,-2.35,-5.15,-1.15],[-4.65,2.35,1.12,1.15],[-2.35,4.65,-1.15,-1.12],[4.62,4.65,-1.15,4.15],[2.35,2.38,1.15,4.15]]){
+    bx(r[0],r[1],r[2],r[3],1.3,1.7,'#2f6db8');bx(r[0],r[1],r[2],r[3],1.95,2.03,'#e3c22b');}
+  bx(-3.65,-3.35,-4.2,-2.6,2.96,3.0,'#fffbe8');bx(-0.8,0.8,-0.15,0.15,2.96,3.0,'#fffbe8');bx(3.35,3.65,1.8,3.4,2.96,3.0,'#fffbe8');
+  const m=new THREE.Mesh(merge(L),TUN_MAT);m.castShadow=true;m.matrixAutoUpdate=false;scene.add(m);L.forEach(g=>g.dispose());
+  const[sx,sz]=tunW(t,0,1.1);sign('←  PLATFORMS          STREET  →','#1b5e3a','#fff',3.4,0.4,sx,F+2.45,sz,t.th+Math.PI);
+  TUN.push(t);return t;}
 // ---- the station hall ----
 function buildStation(){
   const L=[],O=SO,H=6.2,PA=-4,PB=4,BACK=11,deco=[];
@@ -3789,7 +3860,9 @@ function buildStation(){
   for(const tz of[-2.45,2.45]){for(const r of[-0.72,0.72])box(SUB_HALF*2+190,0.14,0.08,'#8a8f96',0,SUB_Y+0.07+0.1,tz+r);
     for(let x=-SUB_HALF-95;x<SUB_HALF+95;x+=0.9)box(0.24,0.1,2.1,'#3c3228',x,SUB_Y+0.05,tz);}
   // walls, ceiling and the tiled back walls with a coloured band
-  for(const s of[-1,1]){box(SUB_HALF*2,H,0.3,'#e9e6df',0,H/2,s*(BACK+0.15),true);box(SUB_HALF*2,0.5,0.04,'#2f6db8',0,2.2,s*(BACK-0.02));box(SUB_HALF*2,0.12,0.04,'#e3c22b',0,2.5,s*(BACK-0.02));
+  for(const s of[-1,1]){for(const[x0,x1]of[[-SUB_HALF,-31.2],[-28.8,SUB_HALF]]){const w=x1-x0,cx=(x0+x1)/2;   // 2.0.1: a doorway at x=-30 into the tunnel
+      box(w,H,0.3,'#e9e6df',cx,H/2,s*(BACK+0.15),true);box(w,0.5,0.04,'#2f6db8',cx,2.2,s*(BACK-0.02));box(w,0.12,0.04,'#e3c22b',cx,2.5,s*(BACK-0.02));}
+    box(2.4,H-3.0,0.3,'#e9e6df',-30,(H+3.0)/2,s*(BACK+0.15));
     for(const e of[-1,1])box(0.3,H,BACK-PB,'#e9e6df',e*(SUB_HALF+0.15),H/2,s*(BACK+PB)/2,true);}
   box(SUB_HALF*2+0.6,0.3,BACK*2+0.6,'#cfcac0',0,H+0.15,0);
   // the tunnels at both ends: a concrete tube over the tracks
@@ -3803,8 +3876,8 @@ function buildStation(){
     box(2.4,0.45,0.6,'#6b4a2c',x+3.4,0.45,s*9.9,true);box(2.4,0.6,0.08,'#6b4a2c',x+3.4,0.9,s*10.25);
     box(0.5,0.9,0.5,'#3a3d40',x-3,0.45,s*10.4,true);}
   // the stairs up to the street (west) and the passage to the other platform (east) in each back wall
-  for(const s of[-1,1]){for(let k=0;k<5;k++)box(3.8,0.06,0.04,'#5a5f66',-30,0.3+k*0.55,s*(BACK-0.12));   // the stairs going up, seen through the doorway
-    box(4.4,3.2,0.1,'#111315',-30,1.6,s*(BACK-0.05));box(4.4,3.2,0.1,'#111315',30,1.6,s*(BACK-0.05));
+  for(const s of[-1,1]){box(4.4,3.2,0.1,'#111315',30,1.6,s*(BACK-0.05));
+    buildTunnel(tunSite('station',O.x-30,O.z+s*BACK,3.5,4.15,s<0?0:Math.PI,SY,{side:s}));                     // 2.0.1: the tunnel to the stairs
     for(const ex of[-32.2,-27.8,27.8,32.2])box(0.2,3.2,1.2,'#d8d4cb',ex,1.6,s*(BACK-0.55),true);}
   // the lights in the ceiling
   const lightM=new THREE.MeshBasicMaterial({color:0xfff6e8});
@@ -4022,6 +4095,21 @@ function leaveSubway(silent){outCancel();if(!SUBWAY)return;const P=player,c=SUBW
   if(P.wasFp!==undefined){P.fp=!!P.wasFp;P.wasFp=undefined;P.m.group.visible=!P.fp;}
   for(const l of subLights)l.intensity=0;SUBWAY=null;subCrowd();if(silent)return;
   const e=SUBE.find(x=>x.city===c)||SUBE[0];P.pos.set(e.x+e.dx*0.8,groundY(e.x,e.z),e.z+e.dz*0.8);yaw=Math.atan2(e.dx,e.dz);P.h=yaw;pitch=-0.08;updChunks(0,true);}
+// 2.0.1: walking through the doors at the end of the passage takes you onto the platform, and walking out through the
+// exit at the back of the platform takes you to the bottom of the stairs. Your position, heading and speed carry over.
+const rotV=(vx,vz,d)=>{const a=Math.atan2(vx,vz)+d,l=Math.hypot(vx,vz);return[Math.sin(a)*l,Math.cos(a)*l];};
+let TUNNEL_IN=false;
+function tunSwap(a,b,xl,zl){const P=player,d=b.th-a.th,[wx,wz]=tunW(b,xl,zl);[P.vx,P.vz]=rotV(P.vx,P.vz,d);
+  if(b.kind==='station'){SUBWAY={city:a.city,plat:0};subSigns();subSchedule();subCrowd();closeMap();}else leaveSubway(true);
+  P.pos.set(wx,P.pos.y+b.F-a.F,wz);yaw+=d;P.h+=d;if(b.kind==='street')updChunks(0,true);}
+function stairTick(){const P=player;TUNNEL_IN=false;if(state!=='play'||P.inCar||P.ride||P.rag||OUTRIDE)return;
+  for(const t of TUN){if(t.kind==='station'?(!SUBWAY||Math.sign(P.pos.z-SO.z)!==t.side):(SUBWAY||P.pos.y>-1))continue;
+    const[xl,zl]=tunTpl(t,P.pos.x,P.pos.z);if(!tunIn(xl,zl))continue;TUNNEL_IN=true;
+    if(t.kind==='street'&&xl>0&&zl<1.15){const b=TUN.find(q=>q.kind==='station'&&q.side<0);if(b)tunSwap(t,b,xl,zl);}
+    else if(t.kind==='station'&&xl<0&&zl<1.15){const b=TUN.find(q=>q.kind==='street'&&q.city===SUBWAY.city);if(b)tunSwap(t,b,xl,zl);}
+    break;}
+  if(SUBWAY){let k=1;const t=TUN.find(q=>q.kind==='station'&&q.side===Math.sign(P.pos.z-SO.z));
+    if(t){const[xl,zl]=tunTpl(t,P.pos.x,P.pos.z);if(tunIn(xl,zl))k=clamp(Math.max(0,xl)/7+Math.max(0,zl-1.15)/6,0,1);}for(const l of subLights)l.intensity=0.9*k;}}
 function subMapPos(){const at=i=>SUBE.find(e=>e.city===i)||SUBE[0];if(!SUBWAY||!SUBE.length)return null;
   for(const tr of SUBT)if(tr.riding){const k=tr.phase==='depart'?0.1*tr.pt/SUB_DEP:tr.phase==='ride'?0.1+0.8*Math.min(1,tr.pt/SUB_RIDE):0.9+0.1*Math.min(1,tr.pt/SUB_ARR);
     const from=tr.phase==='arrive'||tr.phase==='dwell'?at(subNext(SUBWAY.city,-tr.dir)):at(SUBWAY.city),to=tr.phase==='arrive'||tr.phase==='dwell'?at(SUBWAY.city):at(subNext(SUBWAY.city,tr.dir));
@@ -4029,8 +4117,9 @@ function subMapPos(){const at=i=>SUBE.find(e=>e.city===i)||SUBE[0];if(!SUBWAY||!
   const e=at(SUBWAY.city);return{x:e.x,z:e.z};}
 const subZone=()=>{if(!SUBWAY)return null;const P=player.pos,lx=P.x-SO.x,lz=P.z-SO.z,back=Math.abs(lz)>9.2;if(!back)return null;if(Math.abs(lx+30)<2.3)return'exit';if(Math.abs(lx-30)<2.3)return'cross';return null;};
 function subUse(){if(subAtEdge()){subClimb();return true;}const z=subZone();if(!z)return false;$('fade').style.opacity=1;
-  setTimeout(()=>{if(!SUBWAY)return;if(z==='exit'){leaveSubway();}else{const P=player,s=P.pos.z<SO.z?1:-1;P.pos.set(SO.x+30,SY,SO.z+s*9.4);yaw=s>0?Math.PI:0;P.h=yaw;}$('fade').style.opacity=0;},300);return true;}
-function subHint(){if(OUTRIDE)return`On the train to <b>${SUB_LINE[OUTRIDE.dest]}</b>. Have a look out of the windows.`;if(!SUBWAY)return null;if(subAtEdge())return`Press <b>E</b> or jump to climb up onto <b>Platform ${player.pos.z<SO.z?1:2}</b>.`;if(subOnTracks())return'You’re on the tracks. Watch out for trains!';const z=subZone();if(z==='exit')return`Press <b>E</b> to go up to the street in <b>${SUB_LINE[SUBWAY.city]}</b>.`;
+  if(z==='exit'){$('fade').style.opacity=0;return false;}
+  setTimeout(()=>{if(!SUBWAY)return;{const P=player,s=P.pos.z<SO.z?1:-1;P.pos.set(SO.x+30,SY,SO.z+s*9.4);yaw=s>0?Math.PI:0;P.h=yaw;}$('fade').style.opacity=0;},300);return true;}
+function subHint(){if(OUTRIDE)return`On the train to <b>${SUB_LINE[OUTRIDE.dest]}</b>. Have a look out of the windows.`;if(!SUBWAY)return null;if(subAtEdge())return`Press <b>E</b> or jump to climb up onto <b>Platform ${player.pos.z<SO.z?1:2}</b>.`;if(subOnTracks())return'You’re on the tracks. Watch out for trains!';const z=subZone();if(z==='exit')return`Walk through the exit to take the stairs up to the street in <b>${SUB_LINE[SUBWAY.city]}</b>.`;
   if(z==='cross')return`Press <b>E</b> to go across to <b>Platform ${player.pos.z<SO.z?2:1}</b>.`;
   for(const tr of SUBT){if(tr.riding)return tr.phase==='ride'?`On the train to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>…`:'';
     if(tr.phase==='dwell'&&tr.opened&&Math.abs(player.pos.z-(SO.z+tr.tz))<4)return subInTrain(tr)?`Stay on board to ride to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>. The doors close soon.`:`Walk in through the open doors to ride to <b>${SUB_LINE[subNext(SUBWAY.city,tr.dir)]}</b>.`;}
