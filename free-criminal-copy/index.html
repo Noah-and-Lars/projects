@@ -1258,6 +1258,19 @@ const HOLD={
   lmg:{g:[-0.09,-0.09,0.28,0.017,0.023],f:[-0.005,0.29,0.031],sight:0.09,pos:[0.17,-0.15,-0.44]},
   gl:{g:[-0.11,-0.1,0.3,0.017,0.023],fv:[-0.025,0.28,0.1,0.015,0.017],sight:0.137,pos:[0.16,-0.14,-0.42]},
   knife:{k:[0,0.005,0.016,0.022],pos:[0.15,-0.16,-0.4]}};
+/* 2.2: guns from models/guns.fcm (Sketchfab, textured): one part per gun key. A part replaces the code-built gun of that key
+   (muzzle at +z, like the old ones); the header's meta.guns[key] can give its length (len) and where the hands hold it (hold,
+   the same shape as a HOLD entry). Keys without a part keep the old gun, so a half-finished file still works. */
+function applyGunModels(){const G=MODELS.guns;if(!G)return;const meta=G.meta&&G.meta.guns||{};
+  for(const k in WPN){const g=G[k];if(!g||!g.isBufferGeometry)continue;g.userData.model=1;WPN[k].geo=g;const m=meta[k];if(!m)continue;
+    if(m.len>0)WPN[k].len=m.len;
+    if(m.hold){const h=HOLD[k]||(HOLD[k]={});Object.assign(h,m.hold);if(m.hold.f)delete h.fv;else if(m.hold.fv)delete h.f;if(m.hold.one)delete h.k;else if(m.hold.k)delete h.one;}}}
+const GUN_MATS={};
+function gunMat(w){const t=w.geo.userData.tex;if(!t)return GUN_MAT;   // a textured model gets its own material, one per gun
+  return GUN_MATS[w.id]||(GUN_MATS[w.id]=lit(new THREE.MeshPhongMaterial({map:t,vertexColors:true,shininess:30,specular:0x222222})));}
+function gunMesh(w){return new THREE.Mesh(w.geo,gunMat(w));}
+function npcPistol(){const w=WPN.pistol;if(!w.geo.userData.model)return new THREE.Mesh(PISTOL_GEO,GUN_MAT);   // the cops' pistol: the model when loaded, else the old block one
+  const m=gunMesh(w);m.rotation.x=Math.PI/2;m.position.set(0,-0.72,0.03);m.userData.model=1;return m;}   // the model's muzzle (+z) points down the arm
 // the original hands (a sleeve and a hand for each arm), moved to where each gun is held: the right hand on its grip, the left
 // under its handguard or on its front grip. The view frame faces away from the gun's own, so gun z becomes -z here.
 function vmHands(id){const H=HOLD[id]||HOLD.rifle,sk=HANDCOL.sk,sl=HANDCOL.sl;
@@ -1306,7 +1319,7 @@ class Ped{
     this.kind=kind;this.m=makeHuman(look);scene.add(this.m.group);this.pos=this.m.group.position;this.pos.set(x,groundY(x,z),z);
     this.h=h;this.hp=kind==='cop'?110:kind==='agent'?110:100;this.dead=false;this.state=kind==='clerk'?'idle':'walk';this.phase=Math.random()*6;this.spd=0;
     this.deadT=0;this.fireCD=rand(0.4,1.2);this.los=false;this.losT=0;this.mode='walk';this.aim=0;this.flv=null;this.gone=false;
-    if(kind==='cop'||kind==='agent'){this.gun=new THREE.Mesh(PISTOL_GEO,GUN_MAT);this.m.armR.add(this.gun);this.muzzle=new THREE.Object3D();this.muzzle.position.set(0,-0.86,0.03);this.m.armR.add(this.muzzle);}
+    if(kind==='cop'||kind==='agent'){this.gun=npcPistol();this.m.armR.add(this.gun);this.muzzle=new THREE.Object3D();this.muzzle.position.set(0,this.gun.userData.model?-0.72-WPN.pistol.len:-0.86,0.03);this.m.armR.add(this.muzzle);}
     this.m.group.rotation.y=h;
   }
   remove(){if(this.gone)return;this.gone=true;scene.remove(this.m.group);this.m.geos.forEach(g=>g.dispose());}
@@ -2807,10 +2820,10 @@ function renderAvatars(){try{const r=new THREE.WebGLRenderer({antialias:true,alp
 function notify(h,t){noteHTML=h;noteT=t||5;}
 const gunNow=()=>player.owned[player.wpn];
 function setGunModel(){const P=player,w=WPN[P.wpn];if(P.rifle&&P.rifle.parent)P.rifle.parent.remove(P.rifle);
-  const r=new THREE.Mesh(w.geo,GUN_MAT);r.castShadow=true;
+  const r=gunMesh(w);r.castShadow=true;
   if(w.one){r.position.set(0,-0.68,0.04);r.rotation.x=Math.PI/2;P.m.armR.add(r);}else{r.position.set(-0.16,0.36,0.42);r.scale.setScalar(0.9);P.m.upper.add(r);}
   P.rifle=r;P.muzzle=new THREE.Object3D();P.muzzle.position.set(0,0.03,w.len);r.add(P.muzzle);
-  while(vm.children.length){const c=vm.children[0];vm.remove(c);if(c.userData.own)c.geometry.dispose();}const vg=new THREE.Mesh(w.geo,GUN_MAT);vg.rotation.y=Math.PI;vm.add(vg);const hm=new THREE.Mesh(vmHands(P.wpn),HMAT);hm.userData.own=1;vm.add(hm);
+  while(vm.children.length){const c=vm.children[0];vm.remove(c);if(c.userData.own)c.geometry.dispose();}const vg=gunMesh(w);vg.rotation.y=Math.PI;vm.add(vg);const hm=new THREE.Mesh(vmHands(P.wpn),HMAT);hm.userData.own=1;vm.add(hm);
   vmMuzzle=new THREE.Object3D();vmMuzzle.position.set(0,0.03,-w.len);vm.add(vmMuzzle);updGunVis();}
 function updGunVis(){if(player.rifle)player.rifle.visible=player.drawn&&!player.inCar&&state!=='intro';}
 function equip(k){const P=player;if(!P.owned[k])return;if(k!=='knife')P.lastGun=k;P.wpn=k;P.reload=0;P.drawn=true;P.fireT=Math.max(P.fireT,0.25);setGunModel();sfx.click();}
@@ -4114,7 +4127,7 @@ addEventListener('resize',resize);
 /* ---------- main loop ---------- */
 let menuA=0,lastT=performance.now();
 function frame(now){requestAnimationFrame(frame);tick(now);}
-if(/debug/.test(location.search))window.__fc={DAY,MODELS,get night(){return NIGHTK;},step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},WPN,GUN_MAT,setGun(k){player.wpn=k;player.drawn=true;setGunModel();updGunVis();},aim(v){mouseR=!!v;},jack(c){startJack(c);},get vm(){return vm;},view(p,t,w){const c=renderer.domElement;if(!c.width||!c.height){renderer.setSize(800,500,false);camera.aspect=1.6;camera.updateProjectionMatrix();}camera.position.set(p[0],p[1],p[2]);camera.lookAt(t[0],t[1],t[2]);renderer.render(scene,camera);const o=document.createElement('canvas');o.width=w||640;o.height=Math.round(o.width*c.height/c.width);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',0.7).split(',')[1];},CT,Car,CARS,parkCar,makeCarModel,shot(w){const c=renderer.domElement;if(!c.width||!c.height){renderer.setSize(800,500,false);camera.aspect=1.6;camera.updateProjectionMatrix();}updateCamera(0.016);renderer.render(scene,camera);const o=document.createElement('canvas');o.width=w||360;o.height=Math.round(o.width*c.height/c.width);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',0.55).split(',')[1];},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook,get mapPos(){return subMapPos();},get SUBE(){return SUBE;},get SUBT(){return SUBT;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;},get OUTT(){return OUTT;},get outride(){return OUTRIDE;}};
+if(/debug/.test(location.search))window.__fc={DAY,MODELS,get night(){return NIGHTK;},step(n,ms){for(let i=0;i<n;i++)tick(lastT+(ms||33));},WPN,GUN_MAT,HOLD,gunMesh,applyGunModels,setGun(k){player.wpn=k;player.drawn=true;setGunModel();updGunVis();},aim(v){mouseR=!!v;},jack(c){startJack(c);},get vm(){return vm;},view(p,t,w){const c=renderer.domElement;if(!c.width||!c.height){renderer.setSize(800,500,false);camera.aspect=1.6;camera.updateProjectionMatrix();}camera.position.set(p[0],p[1],p[2]);camera.lookAt(t[0],t[1],t[2]);renderer.render(scene,camera);const o=document.createElement('canvas');o.width=w||640;o.height=Math.round(o.width*c.height/c.width);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',0.7).split(',')[1];},CT,Car,CARS,parkCar,makeCarModel,shot(w){const c=renderer.domElement;if(!c.width||!c.height){renderer.setSize(800,500,false);camera.aspect=1.6;camera.updateProjectionMatrix();}updateCamera(0.016);renderer.render(scene,camera);const o=document.createElement('canvas');o.width=w||360;o.height=Math.round(o.width*c.height/c.width);o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o.toDataURL('image/jpeg',0.55).split(',')[1];},info:()=>({state,T,pos:player.pos&&player.pos.toArray().map(v=>+v.toFixed(1)),inCar:!!player.inCar,cars:CARS.length,peds:PEDS.length,wanted:W.level,hp:player.hp,cash:player.cash,calls:renderer.info.render.calls}),keys,player,CARS,W,IN,SHOPS,enter:()=>{const c=nearestCar();if(c)enterCar(c);return!!c;},get state(){return state;},set state(v){state=v;},interact,playerFire,die,copLooks,get route(){return ROUTE;},DAY,WEATHER,CHUNKS,DOORS,SAFEHOUSES,STASH,RADIO,get inside(){return INSIDE;},INT,CAMS,get camcut(){return CAMCUT;},roadAt,get clearrd(){return CLEARRD;},setRoute:(x,z)=>{ROUTE={x,z,name:zoneOf(x,z),pts:[],t:0};computeRoute();},PEDS,setYaw:v=>{yaw=v;},startIntro,FRONTS,frontNear,buyNear,frontShop,BOOST,get T(){return T;},SC,startScene,startRob,endScene,PROF,openShop,closeShop,buyItem,get dumpLid(){return dumpLid;},AVATARS,setPlayerLook,get mapPos(){return subMapPos();},get SUBE(){return SUBE;},get SUBT(){return SUBT;},get subway(){return SUBWAY;},get enterSubway(){return enterSubway;},get SO(){return SO;},get OUTT(){return OUTT;},get outride(){return OUTRIDE;}};
 function tick(now){
   const rdt=clamp((now-lastT)/1000,0,0.05);lastT=Math.max(lastT,now);fpsN++;fpsT+=rdt;if(fpsT>0.5){$('fps').textContent=Math.round(fpsN/fpsT)+' fps';fpsN=0;fpsT=0;}
   if(state==='loading')return;
@@ -4984,7 +4997,7 @@ const CLOSED_NOW=false,CLOSED=CLOSED_NOW&&(!/^(localhost|127\.0\.0\.1|\[::1\])$/
 async function boot(){
   try{await Promise.race([document.fonts.load('64px Anton'),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   if(CLOSED){$('loading').hidden=true;$('closed').hidden=false;return;}
-  $('loadTxt').textContent='Loading the cars…';await loadModels();$('loadTxt').textContent='Building San Varro…';
+  $('loadTxt').textContent='Loading the cars and guns…';await loadModels();applyGunModels();$('loadTxt').textContent='Building San Varro…';
   try{buildWorld();createPlayer();}catch(err){console.error(err);$('loadTxt').textContent='Something went wrong while building the city: '+err.message;return;}
   updChunks(0,true);applySettings();renderAvatars();refreshBadge();state='menu';$('loading').hidden=true;$('menu').hidden=false;requestAnimationFrame(frame);
   if(PROF.name&&BANNED_NAME(PROF.name)){PROF.name='';saveProfile();}if(!PROF.name)openName(true);else if(settings.seenVersion!==VERSION&&settings.seenVersion!==NEWS_VERSION)$('updPop').hidden=false;
