@@ -4231,7 +4231,7 @@ if(new URLSearchParams(location.search).get('fcroom'))window.__fc={get player(){
 // The game is closed: CLOSED shows the closed screen instead of building the city, so nobody can play it or join the
 // online city. It stays open on localhost so it can still be tested (add ?closed to see the closed screen there).
 // Set CLOSED_NOW to false to reopen the game.
-const CLOSED_NOW=true,CLOSED=CLOSED_NOW&&(!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)||/[?&]closed\b/.test(location.search));
+const CLOSED_NOW=false,CLOSED=CLOSED_NOW&&(!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)||/[?&]closed\b/.test(location.search));
 async function boot(){
   try{await Promise.race([document.fonts.load('64px Anton'),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   if(CLOSED){$('loading').hidden=true;$('closed').hidden=false;return;}
