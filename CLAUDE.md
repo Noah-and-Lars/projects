@@ -84,14 +84,28 @@ source in Settings → Pages should be switched to `main`.
   Since 2.6 it has online multiplayer. The blocks `mp-ui-css`, `mp-ui`, `mp-stub` and `CS MAP` are the lobby, HUD, results and Outpost map; the `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are Supabase Realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). The free plan caps the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`). Room chat (2.8.3): 'chat' on the room channel, `CAMP.chat()` and the 'chat' event, drawn by the `<script id="mp-chat">` block (Enter opens it).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.
 - `2048/`: sliding-number puzzle with keyboard and swipe controls.
-- `poly-racer/`: low-poly 3D time-trial racer in the style of PolyTrack (Three.js
-  copied from Cube Assault into the file). Tracks are strings of pieces in the
-  `TRACKS` list (S straight, L/R turns, BL/BR banked, HL/HR hairpins, U/D hills,
-  O loop, K + G + LAND jump, C checkpoint, F finish). Car physics is a raycast
-  vehicle against the track's own triangles. Space, S or Down brakes; braking
-  while turning at speed starts a drift (rear grip drops, steering sets the
-  rotation, slip is capped near 45 degrees) that lasts while you keep steering.
-  Best times, splits and ghosts are saved per track in localStorage.
+- `poly-racer/`: Poly Racer, a 3D time-trial racer (Three.js r128 copied from Cube Assault into the file). Since 1.1:
+  100 tracks in `TRACKS` (s = series 0-9, `par` = gold time; silver x1.12, bronze x1.3, `MEDALS`), ten `SERIES` each
+  with a world in `ENVS` (sky, sun, fog, ground colours, hills/mountains, water, tree kinds and density). The first
+  six tracks are the 1.0 ones with the same ids, so saves carry over. Tracks are strings of pieces read by
+  `buildTrack` (S straight, L/R turn, WL/WR wide turn, QL/QR 45 degrees, XL/XR chicane, BL/BR banked, HL/HR hairpin,
+  TL/TR banked bowl, U/D hill with n = height x6 m, O loop, K + G + LAND jump, C checkpoint, F finish). The 94 new ones
+  were generated piece by piece, checked never to cross themselves, and driven to the finish by a test bot in the
+  Hauler Van, Pico Hatch and Strix GT (par = the Strix GT's time); test any new track the same way (the generator and bot are kept outside the repo, in the workspace's
+  `poly-racer-tools/dev-tools.js`: load it into the game on localhost, then `dev.generate` and `dev.botRun`). Car physics is a
+  raycast vehicle against the track's triangles (`trackCollision`) and the ground (`terrain`, a warped grid, fine
+  near the track; `Collider.ray` hits both, and `hit.ground` says which). Steering asks for about the cornering the
+  tyres can give at the current speed, with stability control, anti-roll bars and downforce; S brakes, Space is the
+  handbrake (turn while holding it to drift). Off the road (wheels on the ground) you keep driving but checkpoints
+  stop counting until you respawn with R (`race.offTrack`, `#warn`); tree trunks are solid (`world.trunks`).
+  `CARS` are the 11 drivable Free Criminal cars (sizes and figures from its `CT`, turned into this game's ranges by
+  `carSpec`); `buildCarModel` builds each from an extruded side profile with a glass cabin; `buildCockpit` adds the
+  first-person interior (C cycles chase, close and cockpit; gauges on `gaugeCanvas`, mirror render on High).
+  Graphics: ACES tone mapping, a shader sky (`skyMat`) that also lights everything through PMREM, sun shadows that
+  follow the car, instanced trees in 260 m tiles with a far version (`placeInstances`), quality in `QUALITY`
+  (low/medium/high). Engine sound (`sfx`) is a harmonic tone driven by a simulated gearbox. Saves `polyracer`
+  (best, splits, bestCar, car, colors, cam, settings) and ghosts `polyracer-ghost-<id>`. On localhost `window.__pr`
+  exposes the game for tests.
 
 - `blockcraft/`: Minecraft-style voxel sandbox (Three.js copied in, WebGL 2
   required). 16x128x16 chunks, procedural 16x16 textures in a texture array,
