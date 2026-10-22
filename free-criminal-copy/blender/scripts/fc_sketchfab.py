@@ -83,11 +83,14 @@ def eval_tris(ob, depsgraph, root_inv):
     return P, tm, uv
 
 # ---------------------------------------------------------------- textures
-def img_pixels(img, size):
+TEX_FILTERS = {}   # image name -> f(px) applied to the pixels of the written texture (sampling for classification sees the original)
+
+def img_pixels(img, size, raw=False):
     """The image as (h, w, 4) float sRGB-ish values, scaled to fit size x size."""
     w, h = img.size   # read the pixels as they are in Blender (an edited image keeps its edits), then shrink with numpy
     if w == 0 or h == 0: return None
     px = np.empty(w * h * 4, dtype=np.float32); img.pixels.foreach_get(px); px = px.reshape(h, w, 4)
+    if not raw and img.name in TEX_FILTERS: px = TEX_FILTERS[img.name](px)
     while max(px.shape[0], px.shape[1]) >= 2 * size and px.shape[0] % 2 == 0 and px.shape[1] % 2 == 0:   # halve by averaging
         px = px.reshape(px.shape[0] // 2, 2, px.shape[1] // 2, 2, 4).mean(axis=(1, 3))
     s = min(1.0, size / max(px.shape[0], px.shape[1]))
@@ -128,9 +131,18 @@ def build_texture(images, has_flat, path):
 
 # ---------------------------------------------------------------- writing
 _SAMPLES = {}
+def paint_mask(img, uv, rgb, tol, share=1.0):
+    """True for triangles whose corners, edge midpoints and centre all sample within tol of rgb on img (sRGB 0-1)."""
+    if img.name not in _SAMPLES: _SAMPLES[img.name] = img_pixels(img, 1024, raw=True)
+    px = _SAMPLES[img.name]; h, w = px.shape[:2]
+    pts = np.concatenate([uv, (uv + np.roll(uv, 1, axis=1)) / 2, uv.mean(axis=1, keepdims=True)], axis=1)   # (n, 7, 2)
+    pts = pts - np.floor(pts)
+    c = px[np.clip((pts[..., 1] * h).astype(int), 0, h - 1), np.clip((pts[..., 0] * w).astype(int), 0, w - 1), :3]
+    return (np.abs(c - np.array(rgb)).max(axis=2) < tol).mean(axis=1) >= share   # share = the fraction of the 7 samples that must match
+
 def sample(img, uv):
     """Colour of img (sRGB 0-1) at each triangle's uv centre: low-poly 'palette' textures become flat vertex colours."""
-    if img.name not in _SAMPLES: _SAMPLES[img.name] = img_pixels(img, 1024)
+    if img.name not in _SAMPLES: _SAMPLES[img.name] = img_pixels(img, 1024, raw=True)
     px = _SAMPLES[img.name]; h, w = px.shape[:2]
     c = uv.mean(axis=1); c = c - np.floor(c)
     return px[np.clip((c[:, 1] * h).astype(int), 0, h - 1), np.clip((c[:, 0] * w).astype(int), 0, w - 1), :3]
@@ -152,9 +164,17 @@ def write_fcm(parts, path, tex_dir, prefix, meta=None, keep_uv=('decalR', 'decal
             fc = {}
             for m, (sel, cols) in flat.items():
                 for j, i in enumerate(np.flatnonzero(sel)): fc[i] = cols[j]
+            tp = set()
+            if o.get('texpaint') is not None and uv is not None:
+                for m in set(mats):
+                    img = mat_info(m)[0]
+                    if img is not None:
+                        sel = np.array([mm == m for mm in mats]); pm = paint_mask(img, uv[sel], o['texpaint'], o.get('tol', 0.12), o.get('texshare', 1.0))
+                        tp.update(int(i) for i in np.flatnonzero(sel)[pm])
             for i in range(len(P)):
                 img, rgb, r = mat_info(mats[i]); r = o.get('role') or r
-                if i in fc:
+                if i in tp: c = PAINT; img = None
+                elif i in fc:
                     c = tuple(fc[i]); img = None
                     if o.get('paint') is not None and np.abs(np.array(c) - o['paint']).max() < o.get('tol', 0.08): c = PAINT
                 elif r == 'paint': c = PAINT; img = None
@@ -224,7 +244,7 @@ def collect(root, part_of):
         if p is None: continue
         r = eval_tris(ob, dg, inv)
         if r is None: continue
-        parts.setdefault(p, []).append((r[0], r[1], r[2], {k: (list(ob[k]) if k == 'paint' else ob[k]) for k in ('role', 'flat', 'paint', 'tol') if k in ob}))
+        parts.setdefault(p, []).append((r[0], r[1], r[2], {k: (list(ob[k]) if k in ('paint', 'texpaint') else ob[k]) for k in ('role', 'flat', 'paint', 'tol', 'texpaint', 'texshare') if k in ob}))
     return parts
 
 # ---------------------------------------------------------------- cars
@@ -257,7 +277,8 @@ def fit_car(key, spec, ct, at):
     for n in spec['src']:
         o = bpy.data.objects[n]
         mname = o.data.materials[0].name if o.data.materials else ''
-        role = next(((p, op) for pre, p, op in spec['roles'] if mname.startswith(pre) or o.name.startswith(pre)), ('body', {}))
+        def hit(pre): return (pre[1:] in (mname + '|' + o.name).lower()) if pre.startswith('*') else (mname.startswith(pre) or o.name.startswith(pre))
+        role = spec['classify'](o.name, mname) if spec.get('classify') else next(((p, op) for pre, p, op in spec['roles'] if hit(pre)), ('body', {}))
         if role[0] is None: continue
         c = _copy(o, col, root); c['fc_part'] = role[0]
         for k, v in role[1].items(): c[k] = v
@@ -385,7 +406,7 @@ def export_car(root, path, tex_dir, decals=False, prefix=None):
         frame = ob.matrix_world.inverted() if p == 'wheel' else inv   # the wheel in its own frame (centred on its axle)
         r = eval_tris(ob, dg, frame)
         if r is None: continue
-        o = {k: (list(ob[k]) if k == 'paint' else ob[k]) for k in ('role', 'flat', 'paint', 'tol') if k in ob}
+        o = {k: (list(ob[k]) if k in ('paint', 'texpaint') else ob[k]) for k in ('role', 'flat', 'paint', 'tol', 'texpaint', 'texshare') if k in ob}
         if p == 'glass': o['role'] = 'dark'
         parts.setdefault(p, []).append((r[0], r[1], r[2], o))
     meta = json.loads(root['fc_meta'])
@@ -405,7 +426,7 @@ def fit_gun(key, src, rot, scale=1.0, grip=None, at=None, drop=(), cut=(), budge
     col = bpy.data.collections.new(name); bpy.context.scene.collection.children.link(col)
     root = bpy.data.objects.new('FG_' + key, None); col.objects.link(root)
     obs = [_copy(bpy.data.objects[n], col, root) for n in src if not any(n.startswith(d) for d in drop)]
-    _xf(obs, Matrix.Rotation(math.radians(rot), 4, 'Z'))
+    for axis, deg in (rot if isinstance(rot, (list, tuple)) else [('Z', rot)]): _xf(obs, Matrix.Rotation(math.radians(deg), 4, axis))   # rot: degrees about Z, or [(axis, deg), ...] in order
     mn, mx = _bbox(obs); c = (mn + mx) / 2
     _xf(obs, Matrix.Scale(scale, 4) @ Matrix.Translation(Vector((-c[0], -c[1], -c[2]))))
     for z0, z1, y0, y1 in cut:   # boxes (game z, y in the centred model) whose faces are removed (stray parts)
@@ -495,3 +516,80 @@ def export_guns(roots, path, tex_dir, meta):
             r = eval_tris(ob, dg, inv)
             if r is not None: parts.setdefault(key, []).append((r[0], r[1], r[2], {}))
     return write_fcm(parts, path, tex_dir, 'gun', {'guns': meta})
+
+def _mesh_obj(name, bm, col, parent, part, role='dark'):
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free(); me.materials.append(_flat_mat('fc_dark', (0.03, 0.035, 0.04)))
+    o = bpy.data.objects.new(name, me); col.objects.link(o); o.parent = parent; o['fc_part'] = part; o['role'] = role
+    return o
+
+def _tube(bm, a, b, r=0.022, seg=10):
+    """A cylinder between two game points (x, y, z) in blender coords."""
+    a = Vector((a[0], -a[2], a[1])); b = Vector((b[0], -b[2], b[1])); d = b - a
+    m = Matrix.Translation((a + b) / 2) @ d.to_track_quat('Z', 'Y').to_matrix().to_4x4() @ Matrix.Diagonal((r, r, d.length / 2, 1))
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=seg, radius1=1, radius2=1, depth=2, matrix=m)
+
+def add_police_gear(root, ct, z_bar, roof_y, lights_bottom):
+    """A slim dark light bar across the roof (its top just under the game's red/blue lamps) and a push bar at the nose."""
+    from mathutils.bvhtree import BVHTree
+    col = root.users_collection[0]
+    for o in [o for o in root.children if o.name.startswith(('lightbar', 'pushbar'))]: bpy.data.objects.remove(o)
+    body = [o for o in root.children if o.get('fc_part') == 'body' and not o.hide_render]
+    bm = bmesh.new()
+    for o in body:
+        t = o.data.copy(); t.transform(root.matrix_world.inverted() @ o.matrix_world); bm.from_mesh(t); bpy.data.meshes.remove(t)
+    tree = BVHTree.FromBMesh(bm); bm.free()
+    def roof_at(x, z):
+        h = tree.ray_cast(Vector((x, -z, roof_y + 1)), Vector((0, 0, -1)), 3)
+        return h[0].z if h[0] is not None else roof_y
+    top = lights_bottom - 0.004; h = 0.052; w = 1.12; d = 0.24
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1, matrix=Matrix.Translation((0, -z_bar, top - h / 2)) @ Matrix.Diagonal((w, d, h, 1)))
+    for x in (-0.42, 0.42):   # feet down to the roof
+        ry = roof_at(x, z_bar); bmesh.ops.create_cube(bm, size=1, matrix=Matrix.Translation((x, -z_bar, (ry + top - h) / 2)) @ Matrix.Diagonal((0.06, 0.12, max(0.01, top - h - ry + 0.006), 1)))
+    _mesh_obj('lightbar', bm, col, root, 'det')
+    # push bar: two uprights, two cross tubes, struts back into the bumper
+    zn = ct['l'] / 2; bm = bmesh.new()
+    for x in (-0.38, 0.38):
+        _tube(bm, (x, 0.30, zn + 0.09), (x, 0.82, zn + 0.09), 0.02)
+        _tube(bm, (x, 0.42, zn + 0.09), (x, 0.40, zn - 0.14), 0.016)
+        _tube(bm, (x, 0.80, zn + 0.09), (x, 0.74, zn - 0.16), 0.016)
+    _tube(bm, (-0.40, 0.56, zn + 0.09), (0.40, 0.56, zn + 0.09), 0.018)
+    _tube(bm, (-0.40, 0.76, zn + 0.09), (0.40, 0.76, zn + 0.09), 0.018)
+    _tube(bm, (-0.40, 0.36, zn + 0.09), (0.40, 0.36, zn + 0.09), 0.018)
+    _mesh_obj('pushbar', bm, col, root, 'det')
+
+def scope_tube(root, key, z, y, length=0.2, r=0.017):
+    """A plain scope on a rail: a tube (bell at the front) on two mounts; its centre line is y + 0.04 (the sight height)."""
+    col = root.users_collection[0]; cy = y + 0.04; bm = bmesh.new()
+    def cyl(zc, l, rad): bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=rad, radius2=rad, depth=l, matrix=Matrix.Translation((0, -zc, cy)) @ Matrix.Rotation(math.pi / 2, 4, 'X'))
+    cyl(z, length, r); cyl(z + length / 2 + 0.025, 0.05, r * 1.35); cyl(z - length / 2 - 0.02, 0.04, r * 1.2)
+    for zz in (z - length * 0.3, z + length * 0.3):
+        bmesh.ops.create_cube(bm, size=1, matrix=Matrix.Translation((0, -zz, (y + cy) / 2)) @ Matrix.Diagonal((0.026, 0.024, cy - y, 1)))
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.006, radius2=0.006, depth=0.03, matrix=Matrix.Translation((0, -z, cy + r + 0.012)))   # turret
+    _mesh_obj('scope_' + key, bm, col, root, key)
+    return cy
+
+def dz_classify(oname, mname):
+    """Parts of DanielZhabotinsky's cars: paint = the <code>_Bodymat material; the transparent lights-and-glass material is
+    window glass (lamp covers are left out, the game lights the lamps themselves); the opaque one is the lamps; the rest
+    (UCB_BOTTOM trims and underside, interiors, badges, plates, calipers) is textured detail."""
+    n = (oname + '|' + mname).lower(); m = mname.lower()
+    if 'bodymat' in m: return ('body', {'role': 'paint'})
+    if 'transpe' in m: return (None, {}) if ('light' in n and 'glass' in oname.lower()) or 'taillights' in n else ('glass', {})
+    if 'lights_and_glass' in m: return ('lamp', {'flat': 1})
+    return ('det', {})
+
+def dz_spec(colname, rot, extra_roles=()):
+    """A spec for one of DanielZhabotinsky's cars: parts are named <code>_<part>_<material>, with the same part names in every model."""
+    col = bpy.data.collections[colname]; ms = [o.name for o in col.all_objects if o.type == 'MESH']
+    low = lambda n: n.lower()
+    wheels = [[n] for n in ms if 'wheel' in low(n) and 'steering' not in low(n)]
+    src = [n for n in ms if n not in sum(wheels, [])]
+    roles = list(extra_roles) + [
+        ('*glass', 'glass', {}), ('*windshield', 'glass', {}), ('*rear_glass', 'glass', {}), ('*window', 'glass', {}),
+        ('*headlights_glass', None, {}), ('*taillights_glass', None, {}),
+        ('*blinker', 'lamp', {'flat': 1}), ('*brakelight', 'lamp', {'flat': 1}), ('*headlight', 'lamp', {'flat': 1}), ('*taillight', 'lamp', {'flat': 1}), ('*reverse', 'lamp', {'flat': 1}),
+        ('*interior', 'det', {}), ('*steering', 'det', {}), ('*badge', 'det', {}), ('*_np_', 'det', {}), ('*numberplate', 'det', {}), ('*mirror', 'det', {}),
+        ('*bodymat', 'body', {'role': 'paint'}), ('*hood', 'body', {'role': 'paint'}), ('*trunk', 'body', {'role': 'paint'}), ('*door', 'body', {'role': 'paint'}), ('*body', 'body', {'role': 'paint'})]
+    return dict(src=src, wheels=wheels, rot=rot, roles=roles, classify=dz_classify, kz=1.0)

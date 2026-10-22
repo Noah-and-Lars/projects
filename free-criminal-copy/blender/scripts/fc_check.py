@@ -34,7 +34,7 @@ def _mat(tex_path):
     bsdf.inputs['Roughness'].default_value = 0.5
     return m
 
-def make(name, d, tex_dir, col, mirror=False):
+def make(name, d, tex_dir, col, mirror=False, paint=None):
     P = d['pos'].copy()
     if mirror: P[:, 0] *= -1
     B = np.c_[P[:, 0], -P[:, 2], P[:, 1]]
@@ -42,7 +42,9 @@ def make(name, d, tex_dir, col, mirror=False):
     me = bpy.data.meshes.new(name); me.from_pydata(B.tolist(), [], idx.tolist())
     ca = me.color_attributes.new('col', 'FLOAT_COLOR', 'POINT')
     # colours in the file are the game's (sRGB-like) values; blender wants linear
-    lin = np.where(d['col'] <= 0.04045, d['col'] / 12.92, ((d['col'] + 0.055) / 1.055) ** 2.4)
+    cols = d['col'].copy()
+    if paint is not None: cols[(cols[:, 0] > 0.98) & (cols[:, 1] < 0.02) & (cols[:, 2] > 0.98)] = paint   # the game's paint swap
+    lin = np.where(cols <= 0.04045, cols / 12.92, ((cols + 0.055) / 1.055) ** 2.4)
     ca.data.foreach_set('color', np.c_[lin, np.ones(len(lin))].ravel().astype(np.float32))
     if d['uv'] is not None:
         uvl = me.uv_layers.new(name='uv'); li = np.empty(len(me.loops), dtype=np.int64); me.loops.foreach_get('vertex_index', li)
@@ -51,7 +53,7 @@ def make(name, d, tex_dir, col, mirror=False):
     o = bpy.data.objects.new(name, me); col.objects.link(o)
     return o
 
-def load_car(path, at, parts=('body', 'det', 'glass', 'lamp', 'wheel', 'decalR', 'decalL'), colname='check'):
+def load_car(path, at, parts=('body', 'det', 'glass', 'lamp', 'wheel', 'decalR', 'decalL'), colname='check', paint=None):
     col = bpy.data.collections.get(colname) or bpy.data.collections.new(colname)
     if col.name not in bpy.context.scene.collection.children: bpy.context.scene.collection.children.link(col)
     P, meta = read_fcm(path); tex_dir = os.path.join(os.path.dirname(path), 'tex'); name = os.path.basename(path)
@@ -60,7 +62,7 @@ def load_car(path, at, parts=('body', 'det', 'glass', 'lamp', 'wheel', 'decalR',
         if k not in P: continue
         if k == 'wheel' and meta and 'wheels' in meta:
             for i, (x, y, z) in enumerate(meta['wheels']):
-                o = make('%s.wheel%d' % (name, i), P[k], tex_dir, col, mirror=x < 0); o.parent = root; o.location = (x, -z, y)
+                o = make('%s.wheel%d' % (name, i), P[k], tex_dir, col, mirror=x < 0, paint=paint); o.parent = root; o.location = (x, -z, y)
         else:
-            o = make(name + '.' + k, P[k], tex_dir, col); o.parent = root
+            o = make(name + '.' + k, P[k], tex_dir, col, paint=paint); o.parent = root
     return root, meta

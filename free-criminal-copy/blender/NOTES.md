@@ -136,3 +136,30 @@ vertex colours on textured triangles and keeps glass untextured (the game draws 
   (under the handguard) instead of the old `fv`; sniper uses `fv` on its vertical grip. Still no dmr and gl models.
 - `models/credits.json` lists the 17 models used (titles, usernames and links from the Sketchfab API, all CC Attribution).
 - The pistol's texture shows real maker markings (logo, "Gen 5 / AUSTRIA"), the HK416 shows "HK" — told the user.
+
+**Second pass (2026-10-22, later that night):** the user tested the copy and said the cars "look like toys". Checked in the
+game (debug hooks, `__fc.parkCar(type, x, z, h, colour)` + `__fc.view(pos, target, w)` give a base64 jpeg of the scene): the
+MaG80 sedan and the Conquer pickup held up, the traffic-pack hatch/SUV, vmek3d van, Lexyc16 muscle and polyone coupe are
+cartoon models (that is what they are, plus my 10% squash to CT.ht). The user said "replace them", so the five are now
+DanielZhabotinsky's realistic made-up-brand series (all CC Attribution, same construction as the Conquer: parts named
+<code>_<part>_<material>, paint = the <code>_Bodymat material, "UCB_Lights_and_Glass_Transperent" = windows, the opaque one
+= lamps, UCB_BOTTOM = trims/underside, interiors, plates, badges; wheels WheelStock_FL etc., calipers separate): hatch =
+Milano '95 (`122a22d210234596ad23623588d0d166`), SUV = Urban '10 (`2866efdfa943484391ef8313768e074d`), van = Shvan '92
+(`09d718c9cf72401b8534d265a06a803f`), muscle = Phoenix 455 '71 (`955edc733c6d44fabc0ad7c246a15896`), coupe = Tiara GT '83
+Tuned (`59a0eaaa2af144b2956957e7032d0221`), and the NEW supercar = Saba V12 '95 (`3ab977050c334c13b6abb5de078b4957`), all
+target size = CT.l, nose +x so rot -90, kept at their real height (kz 1.0, no squash). `dz_spec`/`dz_classify` in
+fc_sketchfab.py build their specs. The old traffic pack, vmek3d van, Lexyc16, polyone and farooq.smurf downloads were removed
+from the .blend (re-download with the ids above if ever needed). The MaG80 sedan stays (police/taxi use it); the sports car
+stays donnichols.
+- Sports car now recolourable: `texpaint` on the body (triangles whose texture samples are mostly the yellow become the
+  magenta marker; triangles on the stripes keep the texture, whose yellow pixels are turned grey by a `TEX_FILTERS` entry so
+  the edges round the stripes are neutral). Checked with a blue and a red paint in fc_check (`paint=` option).
+- Police: `add_police_gear` adds a slim dark light bar across the roof (its top just under the game's red/blue lamp boxes,
+  which sit at y 1.5125-1.5875 at z -0.322) and a tubular push bar at the nose, both in the `det` part; police.fcm is its
+  own fit now (FC_police), not a copy of sedan.fcm.
+- New guns: dmr = Low-Poly SR-25 by TastyTony (`81976c51d61543a288cf135fd7485951`, came in standing on end: rot
+  [('X', 90), ('Z', 180)], a plain scope built by `scope_tube`, sight 0.111), gl = Milkor MGL (Low-Poly) by GoldbergR
+  (`f836d49f3d104b79a8f2233ee25c8aa3`, 6-shot, rot 0, `fv` on its vertical grip, sight 0.15; its barrel is 4 cm BELOW the
+  grip line: bore -0.038, the game's flash at y 0.03 will be high). All twelve guns are in guns.fcm now.
+- credits.json rewritten for this set (21 entries). Checked in the game afterwards (all eleven car types parked in a row,
+  guns.fcm with 12 parts loaded): the new cars read as real cars at street level.
