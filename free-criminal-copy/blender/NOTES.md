@@ -69,3 +69,25 @@ and game loader need texture support (uv + per-part texture file, downscale to 1
 material; HOLD positions must be re-tuned per gun. Cars: paint via the marker colour on the CarPaint material; export
 the model's own wheels + wheel positions/radius in the header; decals shrinkwrapped onto the CarPaint mesh. The `look`
 tool times out when many are requested at once — do a few at a time.
+
+## Re-downloading the Sketchfab models on another machine (instead of copying the 491 MB .blend)
+Use the Blender MCP `import_asset` tool with source `sketchfab`, these ids and target sizes (metres):
+- sedan: Medium sized sedan — MaG80 — `cb8fdecbc30d4618a6109d1de0e30a9e` — 4.6
+- traffic pack (hatch = CarBody.008, SUV = CarBody.002, small van = CarBody.010, 2-door = CarBody2): Traffic Car Pack — MaG80 — `5e795b0adcda455d9f64cb02b83f8f90` — 30 (the whole lot is 30 m across)
+- van: Free Delivery Truck Vehicle | Low Poly — vmek3d — `50cdb3c674c84224b6ebfe471ca404fe` — 5.2
+- muscle: Classic Muscle car — Lexyc16 — `641efc889e5f4543bae51d0922e6f4b3` — 4.95
+- sports: Low-Poly Sports Car Free — donnichols — `2b23201839fb43049454f431752073bb` — 4.45 (textured, not recolourable)
+- pickup: Low Poly Pickup — farooq.smurf — `cea623973cf34aeab44e2c694fcece69` — 5.1
+- spare: Free Pack - Car — polyone — `4211a47e766d4c71b3a9fd94295f4d08` — 4.5
+- rifle: HK 416 Assault Rifle - Low Poly — derek_flanagan — `fbdf159836224d67b193ca527d4f4333` — 0.9
+- carbine: AK-103 - Game Ready Assault Rifle Weapon — bogdanzloy20280 — `21b2e86d257246639ce187b904d124c8` — 0.95
+- pistol: Pistol 9mm - semi auto — Hitansh_3DArtist — `7d363c3cf2f74a9a9fb0cab9874898eb` — 0.2
+- revolver: Low Poly Revolver 45 - Game Ready — rashad-brahimli — `36fb84e52a9344a199ed97254cdaa813` — 0.27
+- smg: UMP-45mm Low Poly Game Ready — Voidren- — `2f60f6d4e3664601a1e07fd5b9d5067c` — 0.7
+- pump: Pump-Action Shotgun — brahmjots — `5f9cccbbdb5c436aa8af2bf40de5d8ad` — 1.0
+- auto: AA-12 — SKeLLeR — `ad2ff33173bd43e49133585a93d6ee5c` — 0.97
+- sniper: GM6 Lynx - Game Ready Low-poly — xivxiy — `3a362a957326476797882dd9fbb113a5` — 1.26
+- lmg: M60 Light Machine Gun — Badboy17Aiden — `cbf408387dc94a30abe11afb3698ac13` — 1.1
+- knife: Combat Knife — San.Dro — `48e00da7aeb94530a5d0e0c3d58ca274` — 0.32
+Still to find (CC Attribution only): supercar, DMR/marksman rifle, grenade launcher.
+All of the above are CC Attribution — the game must credit the authors (the cloud session is adding a credits list).
