@@ -556,7 +556,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
   <details open><summary><b>v2.0.1</b>Lights, cars and school<span>Latest</span></summary><ul>
-    <li><b>Real lighting.</b> Street lamps, car headlights and tail lights, police lightbars, lit shop fronts, muzzle flashes and explosions are now real lights. Every surface works out, pixel by pixel, how much light reaches it from the nearest lights (up to 16 on High and Ultra, 10 on Medium, 6 on Low): the light falls off with the square of the distance, street lamps shine down and sideways but not up, headlights are a soft cone that reaches about 45 m, and lights glint off car paint and wet-looking glass. The flat yellow circles under the lamps are gone, nights are a touch darker so the lights matter, and the headlight beams are fainter because the real light does the work.</li>
+    <li><b>Real lighting.</b> Street lamps, car headlights and tail lights, police lightbars, lit shop fronts, muzzle flashes and explosions are now real lights. Every surface works out, pixel by pixel, how much light reaches it from the nearest lights (up to 16 on High and Ultra, 10 on Medium, 6 on Low): the light falls off with the square of the distance, street lamps shine down and sideways but not up, headlights are a soft cone that reaches about 45 m, and lights glint off car paint and wet-looking glass. The flat yellow circles under the lamps are gone, nights are a touch darker so the lights matter, and the old painted headlight beams are gone because the real light does the work.</li>
     <li><b>Textures everywhere.</b> Concrete on pavements and buildings, brick on shops, warehouses, the prison and the school, shingles on every roof, paving slabs on the city blocks, asphalt on the roads and the bridge deck, grass on lawns, parks and the countryside, bark and leaves on the trees, drifting ripples on the sea. Nothing needed remodelling: the textures are mapped in world space.</li>
     <li><b>San Varro Motors</b>, a car dealership three blocks west of the mall (a <b>C</b> on the map), and <b>Harbor Auto Plaza</b> in Harbor City. Press <b>E</b> at the sales desk inside the glass showroom. Nine cars: Pico Hatch $3,500, Valor Sedan $6,000, Hauler Van $9,000, Bravo Pickup $11,000, Vanta Coupe $12,000, Ranger SUV $14,000, Brawler V8 $16,000, Strix GT $22,000 and the Nyx Hyper supercar $60,000, each in your choice of twelve paints. The car you buy appears in the delivery bay beside the showroom.</li>
     <li><b>Your garage.</b> Every car you buy is yours for good and saves with your game. At the desk, <b>Deliver here</b> brings any car you own to the delivery bay, repaired, from wherever you left it, or a brand-new one if it was wrecked. Up to 12 cars.</li>
@@ -936,9 +936,7 @@ const M={
   mount:new THREE.MeshPhongMaterial({vertexColors:true,flatShading:true,shininess:0,fog:false})
 };
 const CARLIGHT_MAT=new THREE.MeshBasicMaterial({vertexColors:true});
-const BEAM_TEX=canvasTex(64,128,g=>{const gr=g.createLinearGradient(0,128,0,0);gr.addColorStop(0,'rgba(255,240,200,.85)');gr.addColorStop(1,'rgba(255,240,200,0)');g.fillStyle=gr;g.beginPath();g.moveTo(22,128);g.lineTo(42,128);g.lineTo(64,0);g.lineTo(0,0);g.closePath();g.fill();});
-const BEAM_MAT=new THREE.MeshBasicMaterial({map:BEAM_TEX,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false});// 2.0: fainter, the real headlights do the work now
-const BEAM_GEO=new THREE.PlaneGeometry(5,15);BEAM_GEO.rotateX(-Math.PI/2);
+// 2.0.1: the old painted headlight beam on the road is gone; the light system's headlights light the road on their own
 const CAR_MAT=lit(new THREE.MeshPhongMaterial({vertexColors:true,shininess:90,specular:0x777777,envMap:ENV,combine:THREE.MixOperation,reflectivity:0.2}));
 const GLASS_MAT=lit(new THREE.MeshPhongMaterial({color:0x1b2733,specular:0xbbbbbb,shininess:120,envMap:ENV,combine:THREE.MixOperation,reflectivity:0.45,transparent:true,opacity:0.8}));
 const BURNT_MAT=lit(new THREE.MeshLambertMaterial({color:0x2a2826}));
@@ -1240,7 +1238,7 @@ function makeCarModel(t,color){if(t.bus)return makeBus(t,color);
   const wheels=[];
   for(const[sx,sz]of[[1,1],[-1,1],[1,-1],[-1,-1]]){const piv=new THREE.Group();piv.position.set(sx*(t.w/2-0.16),t.wr,sz*t.l*0.32);const w=new THREE.Mesh(wheelGeo(t.wr),CAR_MAT);piv.add(w);g.add(piv);wheels.push({piv,w,front:sz>0});}
   const lg=merge([...[-1,1].map(s=>B(0.4,0.15,0.03,'#fff6dc',s*t.w*0.34,top-0.18,t.l/2+0.045)),...[-1,1].map(s=>B(0.42,0.16,0.03,'#ff1e1e',s*t.w*0.34,top-0.18,-t.l/2-0.045))]);
-  const night=new THREE.Group();night.add(new THREE.Mesh(lg,CARLIGHT_MAT));const beam=new THREE.Mesh(BEAM_GEO,BEAM_MAT);beam.position.set(0,0.12,t.l/2+7.6);night.add(beam);night.visible=false;body.add(night);
+  const night=new THREE.Group();night.add(new THREE.Mesh(lg,CARLIGHT_MAT));night.visible=false;body.add(night);
   const wg=B(t.w*0.4,0.035,0.03,'#121212',t.w*0.2,0,0),wiper=new THREE.Mesh(wg,HMAT);wiper.position.set(-t.w*0.28,top+0.06,t.cz+t.cl/2+0.035);wiper.visible=false;body.add(wiper);
   return {group:g,body,bodyMesh,glass,driverMesh,lights,wheels,night,wiper,geos:[bg,glass.geometry,dg,lg,wg],top,roofY,t};
 }
@@ -1272,7 +1270,7 @@ function makeBus(t,color){
   const wheels=[];
   for(const[sx,sz]of[[1,0.31],[-1,0.31],[1,-0.29],[-1,-0.29]]){const piv=new THREE.Group();piv.position.set(sx*(Wd/2-0.22),t.wr,sz*L);const w=new THREE.Mesh(wheelGeo(t.wr),CAR_MAT);piv.add(w);g.add(piv);wheels.push({piv,w,front:sz>0});}
   const lg=merge([...[-1,1].map(s=>B(0.44,0.2,0.03,'#fff6dc',s*Wd*0.34,y0+0.55,L/2+0.045)),...[-1,1].map(s=>B(0.32,0.52,0.03,'#ff1e1e',s*Wd*0.4,y0+0.7,-L/2-0.045)),B(Wd*0.74,0.2,0.03,'#ffb347',0,roofY-0.22,L/2+0.075)]);
-  const night=new THREE.Group();night.add(new THREE.Mesh(lg,CARLIGHT_MAT));const beam=new THREE.Mesh(BEAM_GEO,BEAM_MAT);beam.position.set(0,0.12,L/2+7.6);night.add(beam);night.visible=false;body.add(night);
+  const night=new THREE.Group();night.add(new THREE.Mesh(lg,CARLIGHT_MAT));night.visible=false;body.add(night);
   const wg=B(Wd*0.4,0.035,0.03,'#121212',Wd*0.2,0,0),wiper=new THREE.Mesh(wg,HMAT);wiper.position.set(-Wd*0.28,top+0.08,L*0.495+0.03);wiper.visible=false;body.add(wiper);
   return {group:g,body,bodyMesh,glass,driverMesh,lights:null,wheels,night,wiper,geos:[bg,glass.geometry,pg,dg,dgeo,lg,wg],top,roofY,t,doors,pax,paxN};
 }
