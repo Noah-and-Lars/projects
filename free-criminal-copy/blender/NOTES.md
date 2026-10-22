@@ -163,3 +163,19 @@ stays donnichols.
   grip line: bore -0.038, the game's flash at y 0.03 will be high). All twelve guns are in guns.fcm now.
 - credits.json rewritten for this set (21 entries). Checked in the game afterwards (all eleven car types parked in a row,
   guns.fcm with 12 parts loaded): the new cars read as real cars at street level.
+
+**First-person hands (2026-10-22, late):** the user asked to "polish the gun models and fix the hands and arms to grip and
+grab the gun correctly in first person", and allowed one small edit to index.html for it. Hands are now modelled per gun in
+Blender by `scripts/fc_hands.py`: `build_hands(root, key, grip, left)` makes a right hand on the pistol grip (palm, four
+3-segment fingers wrapped round the grip's section, thumb) and a left hand under the handguard (`under`), on a vertical
+grip (`vgrip`) or cupping the right hand (`cup`, the pistols), each with a skin wrist and a sleeve forearm going back
+towards the shooter; the knife gets a hammer grip along its handle (`axis`). The grip and handguard sections are measured
+by ray casts against the fitted gun (`bvh_of`, `measure_grip`, `measure_guard`) round the HOLD positions (`holds.py` in
+the scratchpad mirrors the game's HOLD table + the meta values). Gun frame: muzzle +z, and the shooter's RIGHT is -x
+(facing +z with y up). Hands are built in game coords and converted to Blender's at the end. Colours are markers: skin =
+magenta (PAINT), sleeve = cyan (0,1,1). They export as parts `hands_<key>` in guns.fcm (600 triangles each).
+Game side (index.html, my edit, kept minimal): `handsGeo(g)` clones the part and swaps magenta -> HANDCOL.sk, cyan ->
+HANDCOL.sl; `setGunModel` uses it (rotation.y = PI like the gun) when `MODELS.guns['hands_'+key]` exists, else the old
+`vmHands` blocks. Checked in the game for all twelve guns, hip and aimed (`__fc.setGun`, `__fc.aim`, `__fc.shot` with
+`player.fp = true` after `IN.skip = true` to skip the intro). `fpv.py` (scratchpad) renders the shooter's view in Blender:
+camera at R^-1(-HOLD.pos) in the gun frame, vertical FOV 75 like the game.

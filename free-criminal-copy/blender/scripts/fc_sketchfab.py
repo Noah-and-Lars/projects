@@ -10,6 +10,7 @@ import numpy as np
 from mathutils import Vector, Matrix
 
 PAINT = (1.0, 0.0, 1.0)
+ROLE_BY_MAT = {'fc_skin': 'skin', 'fc_sleeve': 'sleeve', 'fc_dark': 'dark'}   # roles by material name (meshes with several materials)
 TEX_MAX = 1024
 
 def to_game(co): return np.c_[co[:, 0], co[:, 2], -co[:, 1]]
@@ -172,7 +173,7 @@ def write_fcm(parts, path, tex_dir, prefix, meta=None, keep_uv=('decalR', 'decal
                         sel = np.array([mm == m for mm in mats]); pm = paint_mask(img, uv[sel], o['texpaint'], o.get('tol', 0.12), o.get('texshare', 1.0))
                         tp.update(int(i) for i in np.flatnonzero(sel)[pm])
             for i in range(len(P)):
-                img, rgb, r = mat_info(mats[i]); r = o.get('role') or r
+                img, rgb, r = mat_info(mats[i]); r = o.get('role') or r or ROLE_BY_MAT.get(mats[i].name if mats[i] else '')
                 if i in tp: c = PAINT; img = None
                 elif i in fc:
                     c = tuple(fc[i]); img = None
@@ -180,6 +181,8 @@ def write_fcm(parts, path, tex_dir, prefix, meta=None, keep_uv=('decalR', 'decal
                 elif r == 'paint': c = PAINT; img = None
                 elif r == 'white': c = (1, 1, 1); img = None
                 elif r == 'dark': c = (0.03, 0.04, 0.05); img = None
+                elif r == 'skin': c = PAINT; img = None            # hands: the game swaps magenta for the player's skin colour
+                elif r == 'sleeve': c = (0.0, 1.0, 1.0); img = None   # and cyan for the sleeve
                 else: c = (1.0, 1.0, 1.0) if (img is not None and uv is not None) else tuple(lin2srgb(rgb))
                 if uv is None: img = None
                 P_all.append(P[i]); C_all.append(c); U_all.append(uv[i] if uv is not None else np.zeros((3, 2))); T_img.append(img)
@@ -512,9 +515,10 @@ def export_guns(roots, path, tex_dir, meta):
     for key, root in roots.items():
         inv = root.matrix_world.inverted()
         for ob in root.children:
-            if ob.type != 'MESH' or ob.get('fc_part') != key: continue
+            if ob.type != 'MESH' or ob.get('fc_part') not in (key, 'hands_' + key): continue
+            pk = ob['fc_part']
             r = eval_tris(ob, dg, inv)
-            if r is not None: parts.setdefault(key, []).append((r[0], r[1], r[2], {}))
+            if r is not None: parts.setdefault(pk, []).append((r[0], r[1], r[2], {}))
     return write_fcm(parts, path, tex_dir, 'gun', {'guns': meta})
 
 def _mesh_obj(name, bm, col, parent, part, role='dark'):
