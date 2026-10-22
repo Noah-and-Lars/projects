@@ -1285,6 +1285,10 @@ function npcPistol(){const w=WPN.pistol;if(!w.geo.userData.model)return new THRE
   const m=gunMesh(w);m.rotation.x=Math.PI/2;m.position.set(0,-0.72,0.03);m.userData.model=1;return m;}   // the model's muzzle (+z) points down the arm
 // the original hands (a sleeve and a hand for each arm), moved to where each gun is held: the right hand on its grip, the left
 // under its handguard or on its front grip. The view frame faces away from the gun's own, so gun z becomes -z here.
+/* 2.2: hands modelled round each gun in Blender (guns.fcm part hands_<key>, in the gun's own frame like the gun): magenta
+   vertices are the player's skin and cyan the sleeve, swapped here for the player's colours. Guns without one keep vmHands. */
+function handsGeo(g){const c=g.clone(),a=c.attributes.color.array,sk=new THREE.Color(HANDCOL.sk),sl=new THREE.Color(HANDCOL.sl);
+  for(let i=0;i<a.length;i+=3){if(a[i]>0.98&&a[i+1]<0.02&&a[i+2]>0.98){a[i]=sk.r;a[i+1]=sk.g;a[i+2]=sk.b;}else if(a[i]<0.02&&a[i+1]>0.98&&a[i+2]>0.98){a[i]=sl.r;a[i+1]=sl.g;a[i+2]=sl.b;}}return c;}
 function vmHands(id){const H=HOLD[id]||HOLD.rifle,sk=HANDCOL.sk,sl=HANDCOL.sl;
   if(H.one||H.k){const g=H.k?[-0.03,0.0]:[H.g[0],H.g[1]],dy=g[0]+0.052,dz=-(g[1]+0.026);   // the old two-handed pistol hold, moved to this grip
     return merge([B(0.09,0.1,0.32,sl,0.03,-0.15+dy,0.27+dz),B(0.08,0.09,0.09,sk,0,-0.08+dy,0.04+dz),B(0.09,0.1,0.32,sl,-0.12,-0.16+dy,0.25+dz),B(0.08,0.08,0.09,sk,-0.045,-0.1+dy,0.06+dz)]);}
@@ -2845,7 +2849,7 @@ function setGunModel(){const P=player,w=WPN[P.wpn];if(P.rifle&&P.rifle.parent)P.
   const r=gunMesh(w);r.castShadow=true;
   if(w.one){r.position.set(0,-0.68,0.04);r.rotation.x=Math.PI/2;P.m.armR.add(r);}else{r.position.set(-0.16,0.36,0.42);r.scale.setScalar(0.9);P.m.upper.add(r);}
   P.rifle=r;P.muzzle=new THREE.Object3D();P.muzzle.position.set(0,0.03,w.len);r.add(P.muzzle);
-  while(vm.children.length){const c=vm.children[0];vm.remove(c);if(c.userData.own)c.geometry.dispose();}const vg=gunMesh(w);vg.rotation.y=Math.PI;vm.add(vg);const hm=new THREE.Mesh(vmHands(P.wpn),HMAT);hm.userData.own=1;vm.add(hm);
+  while(vm.children.length){const c=vm.children[0];vm.remove(c);if(c.userData.own)c.geometry.dispose();}const vg=gunMesh(w);vg.rotation.y=Math.PI;vm.add(vg);const hg=MODELS.guns&&MODELS.guns['hands_'+P.wpn],hm=new THREE.Mesh(hg?handsGeo(hg):vmHands(P.wpn),HMAT);hm.userData.own=1;if(hg)hm.rotation.y=Math.PI;vm.add(hm);   // 2.2: hands modelled round this gun when the file has them
   vmMuzzle=new THREE.Object3D();vmMuzzle.position.set(0,0.03,-w.len);vm.add(vmMuzzle);updGunVis();}
 function updGunVis(){if(player.rifle)player.rifle.visible=player.drawn&&!player.inCar&&state!=='intro';}
 function equip(k){const P=player;if(!P.owned[k])return;if(k!=='knife')P.lastGun=k;P.wpn=k;P.reload=0;P.drawn=true;P.fireT=Math.max(P.fireT,0.25);setGunModel();sfx.click();}
