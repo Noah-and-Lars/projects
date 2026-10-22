@@ -85,12 +85,16 @@ def eval_tris(ob, depsgraph, root_inv):
 # ---------------------------------------------------------------- textures
 def img_pixels(img, size):
     """The image as (h, w, 4) float sRGB-ish values, scaled to fit size x size."""
-    im = img.copy(); w, h = im.size
+    w, h = img.size   # read the pixels as they are in Blender (an edited image keeps its edits), then shrink with numpy
     if w == 0 or h == 0: return None
-    s = min(1.0, size / max(w, h)); nw, nh = max(1, round(w * s)), max(1, round(h * s))
-    if (nw, nh) != (w, h): im.scale(nw, nh)
-    px = np.empty(nw * nh * 4, dtype=np.float32); im.pixels.foreach_get(px); bpy.data.images.remove(im)
-    return px.reshape(nh, nw, 4)
+    px = np.empty(w * h * 4, dtype=np.float32); img.pixels.foreach_get(px); px = px.reshape(h, w, 4)
+    while max(px.shape[0], px.shape[1]) >= 2 * size and px.shape[0] % 2 == 0 and px.shape[1] % 2 == 0:   # halve by averaging
+        px = px.reshape(px.shape[0] // 2, 2, px.shape[1] // 2, 2, 4).mean(axis=(1, 3))
+    s = min(1.0, size / max(px.shape[0], px.shape[1]))
+    if s < 1.0:   # what's left: nearest pixel
+        nh, nw = max(1, round(px.shape[0] * s)), max(1, round(px.shape[1] * s))
+        px = px[(np.arange(nh) * px.shape[0] // nh)][:, (np.arange(nw) * px.shape[1] // nw)]
+    return np.ascontiguousarray(px)
 
 def save_jpg(px, path, quality=88):
     h, w = px.shape[:2]
@@ -392,7 +396,7 @@ def export_car(root, path, tex_dir, decals=False, prefix=None):
 # Gun frame (game): x right, y up, z forward; muzzle at +z, the pistol grip just behind z = 0 where HOLD's g puts the hand.
 # In Blender that is: muzzle towards -y, up +z. fit_gun turns the model (rot about z, degrees), scales it (scale) and moves
 # it so that the model point 'grip' (game y, z, measured after turning) lands on the HOLD grip spot (gy, gz).
-def fit_gun(key, src, rot, scale=1.0, grip=None, at=None, drop=()):
+def fit_gun(key, src, rot, scale=1.0, grip=None, at=None, drop=(), cut=(), budget=6000):
     name = 'fg_' + key
     old = bpy.data.collections.get(name)
     if old:
@@ -404,15 +408,26 @@ def fit_gun(key, src, rot, scale=1.0, grip=None, at=None, drop=()):
     _xf(obs, Matrix.Rotation(math.radians(rot), 4, 'Z'))
     mn, mx = _bbox(obs); c = (mn + mx) / 2
     _xf(obs, Matrix.Scale(scale, 4) @ Matrix.Translation(Vector((-c[0], -c[1], -c[2]))))
+    for z0, z1, y0, y1 in cut:   # boxes (game z, y in the centred model) whose faces are removed (stray parts)
+        for o in obs:
+            bm = bmesh.new(); bm.from_mesh(o.data)
+            dead = [f for f in bm.faces if z0 < -f.calc_center_median().y < z1 and y0 < f.calc_center_median().z < y1]
+            if dead: bmesh.ops.delete(bm, geom=dead, context='FACES'); bm.to_mesh(o.data)
+            bm.free()
     if grip is not None:   # grip = (model y, model z) in game coords after centring, at = (HOLD y, HOLD z)
         _xf(obs, Matrix.Translation(Vector((0, -(at[1] - grip[1]), at[0] - grip[0]))))
     for o in obs: o['fc_part'] = key
+    tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in obs)
+    if budget and tris > budget:   # too many triangles for a hand-held gun: simplify every piece by the same ratio
+        for o in obs:
+            if len(o.data.polygons) > 60:
+                d = o.modifiers.new('slim', 'DECIMATE'); d.ratio = budget / tris; d.use_collapse_triangulate = True
     if at: root.location = (0, 0, 0)
     mn, mx = _bbox(obs)
     # game-frame facts: muzzle z (len), bore height there, top of the gun
     co = np.concatenate([np.array([v.co for v in o.data.vertices]) for o in obs])
     tip = co[co[:, 1] < mn[1] + 0.012]
-    return root, dict(len=round(float(-mn[1]), 4), bore=round(float(tip[:, 2].mean()), 4), top=round(float(mx[2]), 4),
+    return root, dict(len=round(float(-mn[1]), 4), bore=round(float(np.median(tip[:, 2])), 4), top=round(float(mx[2]), 4),
                       bottom=round(float(mn[2]), 4), back=round(float(-mx[1]), 4), width=round(float(mx[0] - mn[0]), 4))
 
 def grid_obj(col, z0=-0.4, z1=1.4, y0=-0.4, y1=0.4, step=0.01):
@@ -436,3 +451,47 @@ def grid_obj(col, z0=-0.4, z1=1.4, y0=-0.4, y1=0.4, step=0.01):
         m.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (*c, 1); me.materials.append(m)
     o = bpy.data.objects.new('grid', me); col.objects.link(o); o['fc_part'] = 'grid'
     return o
+
+def _flat_mat(name, rgb, emit=0.0):
+    m = bpy.data.materials.get(name)
+    if m is None:
+        m = bpy.data.materials.new(name); m.use_nodes = True; b = m.node_tree.nodes['Principled BSDF']
+        b.inputs['Base Color'].default_value = (*rgb, 1)
+        if emit: b.inputs['Emission Color'].default_value = (*rgb, 1); b.inputs['Emission Strength'].default_value = emit
+    return m
+
+def red_dot(root, key, z, y, length=0.05):
+    """A small open red-dot sight standing on a rail at height y (game), centred at game z: a base, a round hood and the dot.
+    Its centre (the dot) is y + 0.036, which is the gun's sight height."""
+    col = root.users_collection[0]; bm = bmesh.new(); r_out, r_in, cy = 0.021, 0.0165, y + 0.036
+    ring = []
+    for i in range(24):   # an annulus in the x-y plane, extruded along the gun
+        a = 2 * math.pi * i / 24; ring.append((math.cos(a), math.sin(a)))
+    def V(x, yy, zz): return bm.verts.new((x, -zz, yy))
+    for k0, k1 in ((r_out, r_in),):
+        f0 = [V(c * k0, cy + s_ * k0, z - length / 2) for c, s_ in ring]; f1 = [V(c * k0, cy + s_ * k0, z + length / 2) for c, s_ in ring]
+        i0 = [V(c * k1, cy + s_ * k1, z - length / 2) for c, s_ in ring]; i1 = [V(c * k1, cy + s_ * k1, z + length / 2) for c, s_ in ring]
+        for i in range(24):
+            j = (i + 1) % 24
+            bm.faces.new((f0[i], f0[j], f1[j], f1[i])); bm.faces.new((i0[j], i0[i], i1[i], i1[j]))
+            bm.faces.new((f0[j], f0[i], i0[i], i0[j])); bm.faces.new((f1[i], f1[j], i1[j], i1[i]))
+    bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation((0, -z, y + 0.008)) @ Matrix.Diagonal((0.03, length * 1.1, 0.016, 1)))
+    bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation((0, -z, y + 0.016)) @ Matrix.Diagonal((0.012, length * 0.6, 0.012, 1)))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new('reddot'); bm.to_mesh(me); bm.free(); me.materials.append(_flat_mat('fc_sight', (0.035, 0.037, 0.04)))
+    o = bpy.data.objects.new('reddot_' + key, me); col.objects.link(o); o.parent = root; o['fc_part'] = key
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=0.0022, matrix=Matrix.Translation((0, -(z + length / 2 - 0.004), cy)))
+    me = bpy.data.meshes.new('dot'); bm.to_mesh(me); bm.free(); me.materials.append(_flat_mat('fc_dot', (1.0, 0.05, 0.03), 5.0))
+    d = bpy.data.objects.new('dot_' + key, me); col.objects.link(d); d.parent = root; d['fc_part'] = key
+    return cy
+
+def export_guns(roots, path, tex_dir, meta):
+    """Every gun into one file, one part per gun key, each in its own root's frame (the root sits at the world origin)."""
+    dg = bpy.context.evaluated_depsgraph_get(); parts = {}
+    for key, root in roots.items():
+        inv = root.matrix_world.inverted()
+        for ob in root.children:
+            if ob.type != 'MESH' or ob.get('fc_part') != key: continue
+            r = eval_tris(ob, dg, inv)
+            if r is not None: parts.setdefault(key, []).append((r[0], r[1], r[2], {}))
+    return write_fcm(parts, path, tex_dir, 'gun', {'guns': meta})

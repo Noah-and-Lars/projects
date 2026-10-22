@@ -108,3 +108,31 @@ the exporter must match it exactly:
 - `models/credits.json`: either an array or `{"credits":[...]}` of `{what, title, author, url, licence}`; it replaces the
   built-in CREDITS list (Credits button on the menu, link at the end of the What's-new pop-up). URLs must start with http(s).
 - `?debug` adds `__fc.HOLD`, `__fc.gunMesh`, `__fc.applyGunModels` (re-run after swapping `MODELS.guns`).
+
+**Sketchfab export done (2026-10-22 night, the user's PC, Blender 5.2.2):** the models were re-downloaded with the add-on's
+socket (port 9876; the MCP tools weren't loaded in that session, so a small client sent the add-on's own commands:
+`download_sketchfab_model {uid, normalize_size: true, target_size}`, `execute_code {code}` whose printed output comes back).
+Exporter `scripts/fc_sketchfab.py` (run inside Blender): `fit_car(key, spec, CT[key], at)` copies a model, turns it (nose -y
+in Blender = game +z), scales it to CT.l, squashes/stretches the body (not the wheels) to CT.ht when that is within ~10%
+(van and coupe keep their own height), puts the tyres on y = 0 and finds the four wheels (or splits one mesh holding all four);
+`add_lods` (Decimate copies: mid = body, lo = body + dark glass), `add_decals` (livery panels shot onto the paint, the old UV
+layout, arches cut round the wheels), `export_car`; `fit_gun`/`red_dot`/`export_guns` for the guns; `write_fcm` packs a part's
+images into one texture (<= 1024, jpg in models/tex, reused by the LOD parts), samples "palette" textures into flat vertex
+colours (`flat`, with `paint` = the sRGB colour that becomes the magenta marker), uses a lamp's glow colour, writes white
+vertex colours on textured triangles and keeps glass untextured (the game draws car glass with its own material).
+`scripts/fc_check.py` reads an .fcm back into Blender like the game does (used to check every export by eye).
+- Cars: sedan + police (same model, livery panels; taxi uses sedan), hatch = Traffic Car Pack's blue Fiesta-like hatch
+  (empty CarBody.009), suv = its blue crossover (CarBody.002), coupe = polyone Free Pack - Car (911-like 2-door, palette
+  texture flattened, yellow = paint), sports = donnichols (textured, NOT recolourable), muscle = Lexyc16, van = vmek3d
+  (paint = Chasis_gray, real 2.46 m height kept), pickup = Conquer '89 Pickup by DanielZhabotinsky
+  (`6c48c94be8974dc7a5932f697c0ba68f`, target 5.1, rot -90; the farooq.smurf jeep was 3 m tall and is no longer used).
+  super.fcm and wheel.fcm are still the old Blender-built ones. Car files 160-980 KB, ~1 MB of car textures.
+- Guns (`models/guns.fcm`, 2 MB, <= 6000 triangles each, pistol 4500 because every cop holds it): each gun's pistol grip
+  was measured on a cm grid and moved onto the existing HOLD grip spot, so `hold.g` is unchanged; meta.guns[k] = {len
+  (muzzle + 2 cm), bore (barrel height at the muzzle), hold: {sight, f or fv}}. The game puts the muzzle flash at y = 0.03;
+  revolver (bore 0.053) and sniper (0.076) are off by 2-5 cm, so the game could use `bore` for the flash height.
+  Rifle (HK416) had no sights: a simple red dot was added (sight 0.091). Pump: the model's purple furniture was darkened to
+  black polymer in its texture. M60: a stray floating cartridge cut away. Pistol: loose bullets left out. SMG uses `f`
+  (under the handguard) instead of the old `fv`; sniper uses `fv` on its vertical grip. Still no dmr and gl models.
+- `models/credits.json` lists the 17 models used (titles, usernames and links from the Sketchfab API, all CC Attribution).
+- The pistol's texture shows real maker markings (logo, "Gen 5 / AUSTRIA"), the HK416 shows "HK" — told the user.

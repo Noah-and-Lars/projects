@@ -20,7 +20,10 @@ def read_fcm(path):
 def _mat(tex_path):
     key = 'chk:' + (os.path.basename(tex_path) if tex_path else 'plain')
     m = bpy.data.materials.get(key)
-    if m: return m
+    if m:   # a new export may have rewritten the image: load it again
+        for n in m.node_tree.nodes:
+            if n.type == 'TEX_IMAGE' and n.image: n.image.reload()
+        return m
     m = bpy.data.materials.new(key); m.use_nodes = True; nt = m.node_tree; bsdf = nt.nodes['Principled BSDF']
     vc = nt.nodes.new('ShaderNodeVertexColor'); vc.layer_name = 'col'
     if tex_path:
