@@ -151,11 +151,6 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 #plist .row.me .dot{background:#f2b134}
 #plist .st{color:var(--muted);font-size:15px}#plist .d{color:var(--muted);font-size:15px;min-width:56px;text-align:right}
 #plist .off{color:var(--muted);font-size:16px;padding:4px 2px}
-#fcChat{position:fixed;left:16px;bottom:270px;z-index:40;width:min(400px,calc(100% - 32px));font:600 16px/1.35 Barlow,Arial,sans-serif;pointer-events:none;display:none}
-#fcChat .ln{background:rgba(10,12,16,.62);color:#fff;padding:3px 9px;border-radius:6px;margin-top:3px;width:fit-content;max-width:100%;overflow-wrap:anywhere;transition:opacity .6s}
-#fcChat .ln b{color:#7fc4ff}#fcChat .ln.me b{color:#ffd166}#fcChat .ln.gone{opacity:0}#fcChat.open .ln.gone{opacity:1}
-#fcChat .hint{display:inline-block;margin-bottom:4px;padding:2px 9px 2px 4px;border-radius:999px;background:rgba(10,12,16,.55);color:#cfd6e0;font-size:14px}#fcChat .hint kbd{display:inline-block;margin-right:5px;padding:0 6px;border-radius:4px;background:#f2b134;color:#111;font:800 13px/1.4 var(--ui)}#fcChat.open .hint{display:none}
-#fcChat input{pointer-events:auto;display:none;width:100%;box-sizing:border-box;margin-top:6px;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.35);background:rgba(10,12,16,.88);color:#fff;font:inherit;outline:none}#fcChat.open input{display:block}
 #phone{--s:1;position:fixed;right:26px;bottom:20px;z-index:43;width:290px;height:580px;transform-origin:bottom right;transform:translateY(calc(100% + 60px)) scale(var(--s));transition:transform .38s cubic-bezier(.2,.85,.25,1);pointer-events:none;font:600 15px/1.3 Barlow,Arial,sans-serif;color:#f4f6fa}
 #phone.open{transform:scale(var(--s));pointer-events:auto}
 @media (max-height:720px){#phone{--s:.8}}@media (max-height:540px){#phone{--s:.62}}
@@ -209,6 +204,17 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold)}
 #phone .cmp input{flex:1;min-width:0;border-radius:18px;border:1px solid #2c3442;background:#0b0e14;color:#fff;padding:8px 12px;font:inherit;outline:none}
 #phone .cmp input:focus{border-color:#3fa0ff}
 #phone .snd{width:36px;height:36px;border-radius:50%;border:0;background:#2f7cf6;color:#fff;font-size:15px;cursor:pointer;flex:none}
+#phone .gav{background:linear-gradient(160deg,#a78bfa,#6d28d9);font-size:19px}
+#phone .sec{padding:10px 14px 4px;color:#8a93a3;font:700 12px Barlow,Arial;letter-spacing:.1em;text-transform:uppercase}
+#phone .inv{display:flex;gap:10px;align-items:center;padding:10px 14px;background:rgba(167,139,250,.12);border-bottom:1px solid rgba(255,255,255,.06)}
+#phone .inv .tx{flex:1;min-width:0}#phone .inv b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#phone .inv small{display:block;color:#a9b1c0;font-size:12px}
+#phone .ib{display:flex;gap:5px;flex:none}#phone .ib button{border:0;border-radius:9px;padding:7px 10px;font:700 13px Barlow,Arial;cursor:pointer;color:#fff}#phone .ib .ok{background:#1f8a4c}#phone .ib .no{background:#3a404c}
+#phone .who{font-size:12px;font-weight:700;margin:4px 0 -3px 8px;align-self:flex-start}
+#phone .sys{align-self:center;color:#8a93a3;font-size:12px;text-align:center;padding:0 10px}
+#phone .gin{width:100%;border-radius:10px;border:1px solid #2c3442;background:#121722;color:#fff;padding:9px 12px;font:inherit;outline:none}#phone .gin:focus{border-color:#a78bfa}
+#phone .gmr{padding:8px 2px;border-bottom:1px solid rgba(255,255,255,.06)}#phone .gmr small{color:#8a93a3;font-size:12px;margin-left:4px}
+#phone .pbtn.red{background:#c0392b;margin-bottom:12px}
+#phone .gib{font-size:18px;margin-left:auto}
 #phone .gone2{padding:12px;text-align:center;color:#8a93a3;font-size:13px;border-top:1px solid rgba(255,255,255,.08)}
 #phone .bank{flex:1;overflow:auto;padding:12px 14px}
 #phone .bcard{border-radius:18px;padding:16px;background:linear-gradient(135deg,#1d3d72,#0f2245);border:1px solid rgba(242,177,52,.5);box-shadow:0 10px 24px rgba(0,0,0,.35)}
@@ -490,7 +496,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v1.9.4</b>San Varro</div>
+    <div class="ver"><b>v2.0</b>San Varro</div>
     <nav class="nav">
       <button id="bOnline" class="online">Play online</button>
       <button id="bPlay">Play offline</button>
@@ -544,7 +550,13 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v1.9.4</b>Over the bay by train<span>Latest</span></summary><ul>
+  <details open><summary><b>v2.0</b>Group chats<span>Latest</span></summary><ul>
+    <li><b>Chat lives on your phone now.</b> The chat box above the minimap is gone. Press <b>T</b> (or <b>P</b>, then Messages) to open Messages on your phone.</li>
+    <li><b>Group chats.</b> In Messages, tap <b>New group chat</b>, give it a name and pick who to invite. Anyone in a group can invite more people from the 👥 button, up to 10 in a group.</li>
+    <li><b>Invites have to be accepted.</b> An invite shows up at the top of Messages with <b>Join</b> and <b>✕</b>. You only see a group's messages once you join, and you can leave any time.</li>
+    <li>Direct messages work as before: tap anyone online in Messages to message just them.</li>
+  </ul></details>
+  <details><summary><b>v1.9.4</b>Over the bay by train</summary><ul>
     <li><b>The train to Isla Verde runs outside.</b> Between San Varro and Isla Verde the line comes out of a tunnel and crosses the bay on its own track right beside the bridge. Ride it and look out of the windows, or stand on the bridge and watch the trains (and the people in them) go by. It's the only part of the line above ground.</li>
     <li>The subway is now the <b>train</b>: every city has a <b>train station</b> (look for the green <b>TRAINS</b> pavilion, a <b>T</b> on the map).</li>
     <li>New departure boards in the stations: this station, the clock, where each platform's trains go, the stops they call at, the time each of the next three trains gets in and a live countdown. A big departures board on the back walls shows both platforms and the whole line.</li>
@@ -675,7 +687,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <div class="row check"><label for="sMusic">Menu music</label><input type="checkbox" id="sMusic"></div>
   <div class="row check"><label for="sChatOff">Turn off chat (online)</label><input type="checkbox" id="sChatOff"></div>
   <div class="row check"><label for="sCensor">Censor chat</label><input type="checkbox" id="sCensor"></div>
-  <p class="note">Turn off chat removes the online chat and phone messages from your game: you can’t send or see any until you turn it back on. Censor chat turns swear words, sexual words and insults into ****. Both only change your own game.</p>
+  <p class="note">Turn off chat removes phone messages and group chats from your game: you can’t send or see any until you turn it back on. Censor chat turns swear words, sexual words and insults into ****. Both only change your own game.</p>
   <p class="note">Quality sets resolution, shadows, traffic, pedestrians and tree density. Ultra adds filmic colour, sharper shadows over a wider area, grass and glossier cars.</p>
 </section>
 
@@ -700,8 +712,8 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
     <kbd>R in a car</kbd><span>Change radio station</span>
     <kbd>M</kbd><span>Map: zoom, drag and set a route (M or Esc closes it)</span>
     <kbd>Tab</kbd><span>Hold to see everyone who's playing (online)</span>
-    <kbd>T</kbd><span>Chat (online): type, Enter sends, Esc cancels</span>
-    <kbd>P</kbd><span>Phone: Messages (online) and myBANK</span>
+    <kbd>T</kbd><span>Messages on your phone (online): DMs and group chats</span>
+    <kbd>P</kbd><span>Phone: Messages and group chats (online), myBANK and more</span>
     <kbd>H</kbd><span>Horn</span>
     <kbd>Esc</kbd><span>Pause</span>
   </div>
@@ -3310,7 +3322,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='1.9.4',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
+const VERSION='2.0',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3350,7 +3362,7 @@ $('bPlay').addEventListener('click',()=>{if(state!=='menu')return;initAudio();sf
 $('offNo').addEventListener('click',()=>{if(offStep===1){offAsk(2);return;}$('offPop').hidden=true;playOffline();});
 $('offOnline').addEventListener('click',()=>{$('offPop').hidden=true;notifyMenu('');playOnline();});
 $('bResume').addEventListener('click',resume);
-$('bQuit').addEventListener('click',()=>{saveGame();gameLive=false;closePhone(false);PMS.clear();if(NET.on)NET.leave();saveProfile();refreshBadge();hidePanels();closeMap();ROUTE=null;$('pause').hidden=true;$('hud').hidden=true;$('big').hidden=true;canvas.style.filter=baseFilter();if(player.inCar)exitCar(true);newGame();player.m.group.visible=false;state='menu';$('menu').hidden=false;mapOpen=false;$('bigmap').hidden=true;if(AUD.eg){AUD.eg.gain.value=0;AUD.sg.gain.value=0;AUD.tyre.gain.value=0;}menuMusic();});
+$('bQuit').addEventListener('click',()=>{saveGame();gameLive=false;closePhone(false);PMS.clear();GROUPS.clear();INVITES.clear();if(NET.on)NET.leave();saveProfile();refreshBadge();hidePanels();closeMap();ROUTE=null;$('pause').hidden=true;$('hud').hidden=true;$('big').hidden=true;canvas.style.filter=baseFilter();if(player.inCar)exitCar(true);newGame();player.m.group.visible=false;state='menu';$('menu').hidden=false;mapOpen=false;$('bigmap').hidden=true;if(AUD.eg){AUD.eg.gain.value=0;AUD.sg.gain.value=0;AUD.tyre.gain.value=0;}menuMusic();});
 function pause(){if(state!=='play')return;state='paused';if(RADIO.st>=0){RADIO.paused=RADIO.st;radioOff();}mouseL=mouseR=false;$('pause').hidden=false;if(document.pointerLockElement)document.exitPointerLock();}
 function resume(){hidePanels();closeMap();$('pause').hidden=true;state='play';lockPointer();if(RADIO.paused!==undefined&&RADIO.paused>=0&&player.inCar)radioOn(RADIO.paused);RADIO.paused=-1;}
 
@@ -3760,7 +3772,7 @@ function subHint(){if(OUTRIDE)return`On the train to <b>${SUB_LINE[OUTRIDE.dest]
    still. ?fcroom=<name> uses separate test channels. */
 const NET=(()=>{
   const SB_URL='https://fewocduisjbctoxolkjr.supabase.co',SB_KEY='sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',SB_LIB='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
-  const TEST=(new URLSearchParams(location.search).get('fcroom')||'').replace(/[^a-z0-9]/gi,'').slice(0,12).toLowerCase(),BASE=TEST?'fc-test-'+TEST:'fc194'; // 1.9.4: a new room; 1.9.3 and older stay in the old one (and get told to refresh)
+  const TEST=(new URLSearchParams(location.search).get('fcroom')||'').replace(/[^a-z0-9]/gi,'').slice(0,12).toLowerCase(),BASE=TEST?'fc-test-'+TEST:'fc200'; // 2.0: a new room (group chats); 1.9.4 and older stay in the old one (and get told to refresh)
   const MAX_HZ=6,BUDGET=30,MAX_PLAYERS=16,FULL_MS=8000;
   const myId=(Math.random().toString(36)+'0000000').slice(2,8),now=()=>performance.now();
   let client=null,libLoad=null,who=null,main=null,pipe=null,hostId=null,joinT=0,roster=[],upT=0,lastUp='',lastFull=0,fullDue=false,shots=0;
@@ -3898,7 +3910,7 @@ const NET=(()=>{
   // ---------- joining and leaving ----------
   api.join=async()=>{api.name=okName((PROF.name||'Player').replace(/[<>&"]/g,'').slice(0,16));await getClient();
     who=chan(BASE+'-who',true);who.on('presence',{event:'sync'},onPresence);
-    main=chan(BASE+'-pub');listen(main,'s',m=>{if(num(m.ts)&&hostId!==myId)syncClock(m.ts);if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'pay',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.id==='string'&&Number.isInteger(m.n)&&m.n>0&&m.n<=PAY_MAX){gotPay(m.f,nameOf(m.f),m.n,m.id);send(main,'payok',{to:m.f,id:m.id});}});listen(main,'payok',m=>{if(api.on&&m.to===myId&&typeof m.id==='string')gotPayOk(m.id);});listen(main,'pm',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.m==='string')gotPm(m.f,nameOf(m.f),m.m.slice(0,200));});listen(main,'c',m=>{if(api.on&&typeof m.m==='string'&&m.f!==myId)chatLine(nameOf(m.f),m.m.slice(0,140),false);});
+    main=chan(BASE+'-pub');listen(main,'s',m=>{if(num(m.ts)&&hostId!==myId)syncClock(m.ts);if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'pay',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.id==='string'&&Number.isInteger(m.n)&&m.n>0&&m.n<=PAY_MAX){gotPay(m.f,nameOf(m.f),m.n,m.id);send(main,'payok',{to:m.f,id:m.id});}});listen(main,'payok',m=>{if(api.on&&m.to===myId&&typeof m.id==='string')gotPayOk(m.id);});listen(main,'pm',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.m==='string')gotPm(m.f,nameOf(m.f),m.m.slice(0,200));});for(const ev of['gi','gd','gj','gl','gm','gs'])listen(main,ev,m=>{if(api.on&&typeof m.f==='string'&&m.f!==myId)gotGroup(ev,m,nameOf(m.f));});
     pipe=chan(BASE+'-p-'+myId);
     try{await Promise.all([joinChan(who,st=>{if(st==='SUBSCRIBED'&&api.on)who.track({id:myId,n:api.name,j:joinT,l:PROF.look,v:VERSION}).catch(()=>{});}),joinChan(main),joinChan(pipe)]);}
     catch(e){api.leave();throw e;}
@@ -3913,8 +3925,9 @@ const NET=(()=>{
   // 1.8.4: the Tab list: everyone online, you first
   api.players=()=>roster.map(r=>{const a=avatars.get(r.id),me=r.id===myId,last=a&&a.buf.length?a.buf[a.buf.length-1].s:null;
     return{n:me?api.name:r.n,me,host:r.id===hostId,st:me?(player.dead||state==='dead'?'Down':OUTRIDE?'On the train':SUBWAY?'Train station · '+SUB_LINE[SUBWAY.city]:player.ride?'Passenger':player.inCar?'Driving':'On foot'):!last?'Joining…':last[9]?'Down':last[13]>=0?'Train station · '+SUB_LINE[last[13]]:last[12]?'Passenger':last[6]?'Driving':'On foot',d:me||!a?null:(()=>{const m=SUBWAY&&subMapPos(),[ax,az]=mapAt(a),px=m?m.x:(player.inCar?player.inCar.pos:player.pos).x,pz=m?m.z:(player.inCar?player.inCar.pos:player.pos).z;return Math.round(Math.hypot(ax-px,az-pz));})()};}).sort((a,b)=>b.me-a.me);
-  // chat (1.8): T to talk to everyone in the online city
-  let chatT=0;api.say=t=>{t=String(t||'').replace(/[\u0000-\u001f]/g,'').trim().slice(0,140);if(!api.on||!t||settings.chatOff||now()-chatT<600)return;chatT=now();send(main,'c',{f:myId,m:t});chatLine(api.name,t,true);};
+  // 2.0: group chats live on the phone. Their messages go out like phone messages, and only the members they're for show them
+  api.gsend=(ev,p)=>api.on&&send(main,ev,Object.assign({f:myId},p));
+  api.id=()=>myId;
   api._dbg=()=>[...avatars.values()].map(a=>({n:a.name,vis:a.vis,car:a.inCar,pos:a.pos.toArray().map(v=>+v.toFixed(1)),buf:a.buf.length}));
   // 1.8.2: one clock for the whole online city. The host's clock rides along on its snapshots (no extra messages);
   // the time of day and the weather are worked out from it, so everyone sees the same hour and the same rain.
@@ -3989,27 +4002,17 @@ async function playOnline(){
   newGame();loadGame();setPlayerLook();$('menu').hidden=true;lockPointer();
   const P=player,x=SPAWN.hosp.x+rand(-6,6),z=SPAWN.hosp.z+rand(-6,6);P.pos.set(x,groundY(x,z),z);P.h=SPAWN.hosp.h||0;P.m.group.rotation.set(0,P.h,0);P.m.group.visible=!P.fp;yaw=P.h;pitch=-0.08;
   state='play';updGunVis();$('hud').hidden=false;updChunks(0,true);NET.protect();NET.syncSky(true);
-  const n=NET.count();notify(`You’re in the online city${n>1?` with <b>${n-1}</b> other player${n>2?'s':''}`:'. Nobody else is here yet'}. Other players show on your map in <b style="color:#3fa0ff">blue</b>. Shoot them, race them, or rob the town together. Press <b>T</b> to chat and <b>P</b> for your phone.${SAVED?' Your saved money and guns came with you.':''}`,9);
+  const n=NET.count();notify(`You’re in the online city${n>1?` with <b>${n-1}</b> other player${n>2?'s':''}`:'. Nobody else is here yet'}. Other players show on your map in <b style="color:#3fa0ff">blue</b>. Shoot them, race them, or rob the town together. Press <b>T</b> for messages and group chats on your phone.${SAVED?' Your saved money and guns came with you.':''}`,9);
 }
-// ---------- chat (1.8): T opens it while you're online, Enter sends, Esc cancels ----------
-// Typing keeps the mouse captured (letting go would pause the game) and the box takes the keys while it's open.
-const chatBox=document.createElement('div');chatBox.id='fcChat';chatBox.innerHTML='<div class="log"></div><input maxlength="140" placeholder="Say something… (Enter to send, Esc to cancel)" autocomplete="off" spellcheck="false">';document.body.appendChild(chatBox);
-const chatLog=chatBox.querySelector('.log'),chatIn=chatBox.querySelector('input');
-function chatLine(name,text,me){if(settings.chatOff)return;if(settings.censor){name=CENSOR(name);text=CENSOR(text);}const el=document.createElement('div');el.className='ln'+(me?' me':'');el.innerHTML=`<b>${esc(name)}:</b> ${esc(text)}`;chatLog.appendChild(el);while(chatLog.children.length>8)chatLog.firstChild.remove();setTimeout(()=>el.classList.add('gone'),10000);}
-const chatOpen=()=>chatBox.classList.contains('open');
-function openChat(){for(const k in keys)keys[k]=false;mouseL=mouseR=false;chatBox.classList.add('open');chatIn.value='';setTimeout(()=>chatIn.focus(),0);}
-function closeChat(){chatBox.classList.remove('open');chatIn.blur();}
-addEventListener('keydown',e=>{if(e.code!=='KeyT'||chatOpen()||e.repeat)return;const a=document.activeElement;if(a&&a.tagName==='INPUT')return;
-  if(settings.chatOff){if(state==='play'||state==='dead'){e.preventDefault();notify('Chat is off. Turn it back on in <b>Settings → Turn off chat</b>.',3);}return;}
-  if(!NET.on){if(state==='play'){e.preventDefault();notify('Chat is for online play. Press <b>Play online</b> on the menu to talk to everyone.',3);}return;}
-  if(state!=='play'&&state!=='dead')return;e.preventDefault();e.stopImmediatePropagation();openChat();},true);
-// 1.8.5: a hint under the chat so everyone knows T opens it, and a Chat button for phones and tablets
-const chatHint=document.createElement('div');chatHint.className='hint';chatHint.innerHTML='<kbd>T</kbd> Chat';chatBox.insertBefore(chatHint,chatBox.firstChild);
-chatIn.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Enter'){e.preventDefault();NET.say(chatIn.value);closeChat();}else if(e.code==='Escape'){e.preventDefault();closeChat();}});
-chatIn.addEventListener('keyup',e=>e.stopPropagation());
-$('tChat').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(NET.on&&!settings.chatOff&&(state==='play'||state==='dead'))openChat();});
-setInterval(()=>{$('tChat').hidden=!NET.on||!!settings.chatOff;chatBox.style.display=NET.on&&!settings.chatOff&&(state==='play'||state==='dead'||state==='shop')?'block':'none';if(!NET.on){chatLog.innerHTML='';if(chatOpen())closeChat();}},400);
-function chatSettingChanged(){if(settings.chatOff){chatLog.innerHTML='';if(chatOpen())closeChat();}if(PHONE.open)renderPhone();}
+// ---------- 2.0: chat is on the phone now. T (or the Chat button on touch screens) opens Messages ----------
+function openMessages(){if(state!=='play'&&state!=='dead')return;if(settings.chatOff){notify('Chat is off. Turn it back on in <b>Settings → Turn off chat</b>.',3);return;}
+  if(!NET.on){notify('Messages and group chats are for online play. Press <b>Play online</b> on the menu.',3);return;}
+  if(PHONE.open){PHONE.view='msgs';renderPhone();}else openPhone('msgs');}
+addEventListener('keydown',e=>{if(e.code!=='KeyT'||e.repeat)return;const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'))return;
+  if(state!=='play'&&state!=='dead')return;e.preventDefault();e.stopImmediatePropagation();openMessages();},true);
+$('tChat').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();openMessages();});
+setInterval(()=>{$('tChat').hidden=!NET.on||!!settings.chatOff;},400);
+function chatSettingChanged(){if(PHONE.open)renderPhone();}
 // 1.9: Censor chat (Settings): swear words, sexual words and insults become ****
 const CENSOR=(()=>{const lt={'0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','@':'a','$':'s','!':'i'};
   const STEM=['fuck','fuk','fck','fuq','shit','bitch','biatch','bastard','asshole','arsehole','cunt','wank','slut','whore','porn','dildo','blowjob','handjob','motherf','faggot','nigger','nigga','retard','dumbass','jackass','dipshit','bullshit','penis','vagina','pussy','pussies','boner','jizz','orgasm','masturbat','cocksuck','dickhead','skank','tranny','douche'];
@@ -4026,12 +4029,16 @@ const CENSOR=(()=>{const lt={'0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','@'
    let go so you can tap the screen. P or Esc puts it away. */
 var PHONE={open:false,view:'home',with:null,key:''};
 const PMS=new Map(); // player id -> {id, name, msgs:[{me, t, at}], unread, last}
+// 2.0: group chats. Nothing is kept on a server: each member's game holds the group, and messages go only to its members.
+// GROUPS: id -> {id, name, mem: Map(other player id -> name), pend: Set(ids you invited), left: Set, miss: Map, msgs, unread, last}
+// INVITES: group id -> {g, n, from, fromN, mem: [[id, name]], last}. An invite does nothing until it's accepted.
+const GROUPS=new Map(),INVITES=new Map(),G_MAX=8,G_SIZE=10;let NEWG={name:'',sel:new Set()};
 const BANK={bal:0,log:[]};
 const phone=document.createElement('div');phone.id='phone';phone.innerHTML='<div class="fr"><div class="sc"><div class="wall"></div><div class="notch"></div><div class="sb"><span id="phTime">12:00</span><span class="ic"><i class="sig"></i>5G<i class="bat"></i></span></div><div class="view" id="phView"></div><div class="hb" title="Put the phone away"></div></div></div>';
 document.body.appendChild(phone);
 const phView=phone.querySelector('#phView');
 function phoneTime(){const h=hourOf(DAY.t),hh=Math.floor(h),mm=Math.floor((h-hh)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
-const phoneUnread=()=>{let n=0;for(const c of PMS.values())n+=c.unread;return n;};
+const phoneUnread=()=>{let n=INVITES.size;for(const c of PMS.values())n+=c.unread;for(const G of GROUPS.values())n+=G.unread;return n;};
 const avColor=s=>{let x=0;for(const ch of String(s))x=(x*31+ch.charCodeAt(0))|0;return`hsl(${Math.abs(x)%360} 55% 42%)`;};
 const showTxt=t=>esc(settings.censor?CENSOR(t):t),showName=n=>{n=okName(n);return esc(settings.censor?CENSOR(n):n);};
 const convOf=(id,name)=>{let c=PMS.get(id);if(!c){c={id,name:name||'Player',msgs:[],unread:0,last:0};PMS.set(id,c);}return c;};
@@ -4070,16 +4077,91 @@ function gotPayOk(id){const p=PAYPEND.get(id);if(!p)return;clearTimeout(p.timer)
 function msgsHtml(){const h=phHead('Messages','home');
   if(settings.chatOff)return h+'<div class="empty">Chat is turned off, so messages are off too. Nobody’s messages reach you until you turn it back on.<button class="pbtn" data-act="chatOn">Turn chat back on</button></div>';
   if(!NET.on)return h+'<div class="empty">You’re playing offline. Play online to message other players.</div>';
-  const on=NET.people(),ids=new Set(on.map(p=>p.id)),rows=[...on.map(p=>({id:p.id,n:p.n,on:true})),...[...PMS.values()].filter(c=>!ids.has(c.id)).map(c=>({id:c.id,n:c.name,on:false}))];
-  rows.sort((a,b)=>((PMS.get(b.id)||{}).last||0)-((PMS.get(a.id)||{}).last||0));
-  if(!rows.length)return h+'<div class="empty">Nobody else is online right now. When someone joins, they’ll show up here.</div>';
-  return h+`<div class="list">${rows.map(r=>{const c=PMS.get(r.id),m=c&&c.msgs[c.msgs.length-1],nm=settings.censor?CENSOR(r.n):r.n;
-    return`<button class="pr" data-pm="${r.id}"><span class="av" style="background:${avColor(r.n)}">${esc((nm.charAt(0)||'?').toUpperCase())}</span><span class="tx"><b>${esc(nm)}</b><small>${m?(m.me?'You: ':'')+showTxt(m.t):r.on?'Online · tap to message':'Left the game'}</small></span>${c&&c.unread?`<i class="u">${c.unread}</i>`:''}</button>`;}).join('')}</div>`;}
+  const on=NET.people(),ids=new Set(on.map(p=>p.id)),rows=[...on.map(p=>({id:p.id,n:p.n,on:true,last:(PMS.get(p.id)||{}).last||0})),...[...PMS.values()].filter(c=>!ids.has(c.id)).map(c=>({id:c.id,n:c.name,on:false,last:c.last})),...[...GROUPS.values()].map(G=>({g:G,last:G.last}))];
+  rows.sort((a,b)=>b.last-a.last);
+  const inv=[...INVITES.values()].map(I=>`<div class="inv"><span class="av gav">👥</span><span class="tx"><b>${showTxt(I.n)}</b><small>${showName(I.fromN)} invited you · ${I.mem.length} ${I.mem.length===1?'person':'people'} in it</small></span><span class="ib"><button class="ok" data-iacc="${I.g}">Join</button><button class="no" data-idec="${I.g}" aria-label="Say no">✕</button></span></div>`).join('');
+  const row=r=>{if(r.g){const G=r.g,m=G.msgs[G.msgs.length-1];return`<button class="pr" data-g="${G.id}"><span class="av gav">👥</span><span class="tx"><b>${showTxt(G.name)}</b><small>${m?(m.sys?showTxt(m.t):(m.me?'You':showName(m.n))+': '+showTxt(m.t)):`${G.mem.size+1} people`}</small></span>${G.unread?`<i class="u">${G.unread}</i>`:''}</button>`;}
+    const c=PMS.get(r.id),m=c&&c.msgs[c.msgs.length-1],nm=settings.censor?CENSOR(r.n):r.n;
+    return`<button class="pr" data-pm="${r.id}"><span class="av" style="background:${avColor(r.n)}">${esc((nm.charAt(0)||'?').toUpperCase())}</span><span class="tx"><b>${esc(nm)}</b><small>${m?(m.me?'You: ':'')+showTxt(m.t):r.on?'Online · tap to message':'Left the game'}</small></span>${c&&c.unread?`<i class="u">${c.unread}</i>`:''}</button>`;};
+  return h+`<div class="list">${inv?'<div class="sec">Invites</div>'+inv:''}<button class="pr" data-app="newgrp"><span class="av" style="background:#2f7cf6">＋</span><span class="tx"><b>New group chat</b><small>Pick people to invite</small></span></button>${rows.length?rows.map(row).join(''):'<div class="empty">Nobody else is online right now. When someone joins, they’ll show up here.</div>'}</div>`;}
 function bubbles(id){const c=PMS.get(id);if(!c||!c.msgs.length)return'<div class="ts">No messages yet. Say hi!</div>';let h='',last='';
   for(const m of c.msgs){if(m.at!==last){h+=`<div class="ts">${m.at}</div>`;last=m.at;}h+=`<div class="bub${m.me?' me':''}">${showTxt(m.t)}</div>`;}return h;}
 const chatPeer=id=>NET.on?NET.people().find(q=>q.id===id):null;
 function chatHtml(id){const c=PMS.get(id),p=chatPeer(id),nm=showName(p?p.n:c?c.name:'Player');
   return phHead(`${nm}<small>${p?'Online':'Offline'}</small>`,'msgs')+`<div class="msgs" id="phMsgList">${bubbles(id)}</div>`+(p&&!settings.chatOff?`<div class="cmp"><input id="phIn" maxlength="200" placeholder="Message ${nm}" autocomplete="off" spellcheck="false"><button class="snd" data-act="send" aria-label="Send">➤</button></div>`:`<div class="gone2">${settings.chatOff?'Chat is off.':'They’ve left San Varro.'}</div>`);}
+// ---------- 2.0: group chats ----------
+const gOk=g=>typeof g==='string'&&/^[a-z0-9]{8,20}$/.test(g);
+const gName=n=>String(n||'').replace(/[\u0000-\u001f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,24);
+const nmColor=s=>{let x=0;for(const ch of String(s))x=(x*31+ch.charCodeAt(0))|0;return`hsl(${Math.abs(x)%360} 75% 72%)`;};
+const gOnline=G=>{const on=new Set(NET.on?NET.people().map(p=>p.id):[]);return[...G.mem.keys()].filter(id=>on.has(id));};
+const gMemList=G=>[[NET.id(),NET.name],...G.mem].slice(0,G_SIZE);
+function gSys(G,t){G.msgs.push({sys:true,t,at:phoneTime()});if(G.msgs.length>80)G.msgs.shift();if(PHONE.open&&PHONE.view==='grp'&&PHONE.with===G.id)updMsgs();}
+function gAdd(G,id,n){if(id===NET.id()||G.mem.has(id)||G.mem.size+1>=G_SIZE)return false;G.left.delete(id);G.pend.delete(id);G.mem.set(id,okName(String(n||'Player').slice(0,16)));return true;}
+function gInvite(G,pid){const p=NET.people().find(q=>q.id===pid);if(!p||G.mem.has(pid)||G.pend.has(pid))return;
+  if(G.mem.size+1+G.pend.size>=G_SIZE){notify(`A group can have up to ${G_SIZE} people.`,2.5);return;}
+  if(NET.gsend('gi',{to:pid,g:G.id,n:G.name,mem:gMemList(G)})){G.pend.add(pid);gSys(G,`You invited ${p.n}.`);}}
+function gCreate(){const name=gName(NEWG.name);if(!name){notify('Give the group a name first.',2.5);const i=$('phGn');if(i)i.focus();return;}
+  if(GROUPS.size>=G_MAX){notify(`You can be in up to ${G_MAX} group chats. Leave one first.`,3);return;}
+  let id='';while(id.length<12)id+=Math.random().toString(36).slice(2);id=id.slice(0,12);
+  const G={id,name,mem:new Map(),pend:new Set(),left:new Set(),miss:new Map(),msgs:[],unread:0,last:Date.now()};GROUPS.set(id,G);gSys(G,`You made ${name}.`);
+  for(const pid of NEWG.sel)gInvite(G,pid);NEWG={name:'',sel:new Set()};PHONE.view='grp';PHONE.with=id;renderPhone();}
+function gAccept(g){const I=INVITES.get(g);if(!I)return;INVITES.delete(g);
+  if(GROUPS.size>=G_MAX){notify(`You can be in up to ${G_MAX} group chats. Leave one first.`,3);NET.gsend('gd',{to:I.from,g});renderPhone();return;}
+  const G={id:g,name:I.n,mem:new Map(),pend:new Set(),left:new Set(),miss:new Map(),msgs:[],unread:0,last:Date.now()};
+  for(const[id,n]of I.mem)gAdd(G,id,n);gAdd(G,I.from,I.fromN);GROUPS.set(g,G);gSys(G,`You joined ${I.n}.`);
+  NET.gsend('gj',{to:[...G.mem.keys()],g});PHONE.view='grp';PHONE.with=g;renderPhone();}
+function gDecline(g){const I=INVITES.get(g);if(!I)return;INVITES.delete(g);NET.gsend('gd',{to:I.from,g});renderPhone();}
+function gLeave(g){const G=GROUPS.get(g);if(!G)return;NET.gsend('gl',{to:[...G.mem.keys()],g});GROUPS.delete(g);PHONE.view='msgs';PHONE.with=null;renderPhone();notify(`You left <b>${showTxt(G.name)}</b>.`,2.5);}
+let gmT=0;
+function gSend(G,t){if(!NET.on||settings.chatOff)return false;if(performance.now()-gmT<400){notify('Slow down a little.',2);return false;}
+  const to=gOnline(G);if(!to.length){notify('Nobody else in this group is online.',2);return false;}
+  if(!NET.gsend('gm',{to,g:G.id,m:t}))return false;gmT=performance.now();G.msgs.push({me:true,t,at:phoneTime()});if(G.msgs.length>80)G.msgs.shift();G.last=Date.now();return true;}
+// everything that comes in for groups: invites, declines, joins, leaves, messages and member lists
+function gotGroup(ev,m,from){if(settings.chatOff||!gOk(m.g))return;const me=NET.id(),G=GROUPS.get(m.g);
+  if(ev==='gi'){if(m.to!==me||G||INVITES.has(m.g))return;const n=gName(m.n);if(!n)return;
+    const mem=(Array.isArray(m.mem)?m.mem:[]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&typeof x[1]==='string'&&x[0]!==me).slice(0,G_SIZE).map(x=>[x[0],x[1].slice(0,16)]);
+    if(INVITES.size>=6)INVITES.delete(INVITES.keys().next().value);
+    INVITES.set(m.g,{g:m.g,n,from:m.f,fromN:from,mem,last:Date.now()});phoneBeep();
+    notify(`📱 <b>${showName(from)}</b> invited you to the group chat <b>${showTxt(n)}</b> <span style="opacity:.75">· press <b>T</b> to join or say no</span>`,7);if(PHONE.open)renderPhone();return;}
+  if(ev==='gd'){if(m.to!==me||!G||!G.pend.delete(m.f))return;gSys(G,`${from} said no to the invite.`);if(PHONE.open)renderPhone();return;}
+  if(!G||!Array.isArray(m.to)||!m.to.includes(me))return;
+  if(ev==='gj'){const mine=G.pend.has(m.f);if(gAdd(G,m.f,from))gSys(G,`${from} joined.`);
+    if(mine)NET.gsend('gs',{to:[...G.mem.keys()],g:G.id,mem:gMemList(G)}); // the inviter tells everyone who's in, so they all know each other
+    if(PHONE.open)renderPhone();return;}
+  if(!G.mem.has(m.f))return; // only members can change or talk in a group
+  if(ev==='gs'){if(!Array.isArray(m.mem))return;for(const x of m.mem.slice(0,G_SIZE))if(Array.isArray(x)&&typeof x[0]==='string'&&typeof x[1]==='string'&&!G.left.has(x[0])&&gAdd(G,x[0],x[1]))gSys(G,`${x[1].slice(0,16)} joined.`);
+    if(PHONE.open)renderPhone();return;}
+  if(ev==='gl'){G.mem.delete(m.f);G.left.add(m.f);gSys(G,`${from} left the group.`);if(PHONE.open)renderPhone();return;}
+  if(ev==='gm'&&typeof m.m==='string'){const t=m.m.replace(/[\u0000-\u001f]/g,'').slice(0,200);if(!t)return;
+    G.msgs.push({f:m.f,n:from,t,at:phoneTime()});if(G.msgs.length>80)G.msgs.shift();G.last=Date.now();phoneBeep();
+    if(PHONE.open&&PHONE.view==='grp'&&PHONE.with===G.id){updMsgs();return;}
+    G.unread++;notify(`📱 <b>${showTxt(G.name)}</b> · ${showName(from)}: ${showTxt(t.length>80?t.slice(0,80)+'…':t)} <span style="opacity:.75">· press <b>T</b> to reply</span>`,6);if(PHONE.open)renderPhone();}}
+// people who leave San Varro drop out of your groups (after a few seconds, in case it's just a blip), and offline everything goes
+setInterval(()=>{if(!NET.on){if(GROUPS.size||INVITES.size){GROUPS.clear();INVITES.clear();if(PHONE.open)renderPhone();}return;}
+  const on=new Set(NET.people().map(p=>p.id)),t=Date.now();let ch=false;
+  for(const G of GROUPS.values()){for(const[id,n]of G.mem){if(on.has(id)){G.miss.delete(id);continue;}if(!G.miss.has(id))G.miss.set(id,t);else if(t-G.miss.get(id)>8000){G.mem.delete(id);G.miss.delete(id);gSys(G,`${n} left San Varro.`);ch=true;}}
+    for(const id of G.pend)if(!on.has(id)){G.pend.delete(id);ch=true;}}
+  for(const[g,I]of INVITES)if(!on.has(I.from)&&!I.mem.some(x=>on.has(x[0]))){INVITES.delete(g);ch=true;}
+  if(ch&&PHONE.open)renderPhone();},1000);
+function gBubbles(G){if(!G)return'';if(!G.msgs.length)return'<div class="ts">No messages yet. Say hi!</div>';let h='',last='',lf='';
+  for(const m of G.msgs){if(m.at!==last){h+=`<div class="ts">${m.at}</div>`;last=m.at;lf='';}
+    if(m.sys){h+=`<div class="sys">${showTxt(m.t)}</div>`;lf='';continue;}
+    if(!m.me&&m.f!==lf)h+=`<div class="who" style="color:${nmColor(m.n)}">${showName(m.n)}</div>`;lf=m.me?'':m.f;
+    h+=`<div class="bub${m.me?' me':''}">${showTxt(m.t)}</div>`;}return h;}
+function grpHtml(id){const G=GROUPS.get(id);if(!G)return phHead('Group chat','msgs')+'<div class="empty">You’re not in this group any more.</div>';
+  return`<div class="ah"><button class="bkb" data-go="msgs">‹ Back</button><div class="at" style="margin-right:0">${showTxt(G.name)}<small>${G.mem.size+1} ${G.mem.size?'people':'person'}${G.pend.size?` · ${G.pend.size} invited`:''}</small></div><button class="bkb gib" data-go="grpinfo" aria-label="Members">👥</button></div>`+
+    `<div class="msgs" id="phMsgList">${gBubbles(G)}</div>`+(settings.chatOff?'<div class="gone2">Chat is off.</div>':G.mem.size?`<div class="cmp"><input id="phIn" maxlength="200" placeholder="Message ${showTxt(G.name)}" autocomplete="off" spellcheck="false"><button class="snd" data-act="send" aria-label="Send">➤</button></div>`:`<div class="gone2">${G.pend.size?'Waiting for the people you invited to join.':'Nobody else is in this group. Tap 👥 to invite people.'}</div>`);}
+function grpInfoHtml(id){const G=GROUPS.get(id);if(!G)return grpHtml(id);const ppl=NET.on?NET.people():[];
+  let s=phHead(`${showTxt(G.name)}<small>Members</small>`,'grp')+`<div class="pay"><div class="bl">In the group · ${G.mem.size+1}</div><div class="gmr"><b>${showName(NET.name)}</b><small>You</small></div>`+[...G.mem].map(([,n])=>`<div class="gmr"><b>${showName(n)}</b></div>`).join('');
+  if(G.pend.size)s+='<div class="bl">Invited</div>'+[...G.pend].map(pid=>{const p=ppl.find(q=>q.id===pid);return`<div class="gmr">${showName(p?p.n:'Player')}<small>Waiting for them to join</small></div>`;}).join('');
+  const cand=ppl.filter(p=>!G.mem.has(p.id)&&!G.pend.has(p.id)),room=G_SIZE-(G.mem.size+1+G.pend.size);
+  s+='<div class="bl">Invite</div>'+(!cand.length?'<div class="bn">Everyone online is already in the group or invited.</div>':room<=0?`<div class="bn">The group is full (${G_SIZE} people).</div>`:cand.map(p=>`<button class="payto" data-ginv="${p.id}">＋ ${showName(p.n)}</button>`).join('')+'<div class="bn">They get an invite on their phone and only join if they accept.</div>');
+  return s+'<button class="pbtn red" data-act="gleave">Leave group</button></div>';}
+function newGrpHtml(){const h=phHead('New group chat','msgs');if(!NET.on)return h+'<div class="empty">Group chats work online.</div>';
+  const ppl=NET.people();for(const id of[...NEWG.sel])if(!ppl.some(p=>p.id===id))NEWG.sel.delete(id);
+  return h+`<div class="pay"><div class="bl">Group name</div><input id="phGn" class="gin" maxlength="24" placeholder="e.g. Bank job crew" value="${esc(NEWG.name)}" autocomplete="off" spellcheck="false">
+    <div class="bl">Invite</div>${ppl.length?ppl.map(p=>`<button class="payto${NEWG.sel.has(p.id)?' sel':''}" data-gsel="${p.id}">${NEWG.sel.has(p.id)?'✓ ':''}${showName(p.n)}</button>`).join(''):'<div class="bn">Nobody else is online right now. You can still make the group and invite people later.</div>'}
+    <div class="bn">Everyone you pick gets an invite on their phone. They only join if they accept.</div><button class="pbtn" data-act="gcreate">Create group${NEWG.sel.size?` and invite ${NEWG.sel.size}`:''}</button></div>`;}
 function bankHtml(){const P=player,b=BANK.bal,c=P.cash,w=W.level>0;
   const btn=(op,n,lbl)=>{const ok=op==='dep'?(!w&&(n==='all'?c>0:c>=n)):(n==='all'?b>0:b>=n);return`<button class="${op}" data-bank="${op}:${n}"${ok?'':' disabled'}>${lbl}</button>`;};
   return phHead('myBANK','home','bkh')+`<div class="bank"><div class="bcard"><small>Balance</small><div class="bal">${fmt(b)}</div><div class="w">Cash on you: <b>${fmt(c)}</b></div></div>
@@ -4089,14 +4171,23 @@ function bankHtml(){const P=player,b=BANK.bal,c=P.cash,w=W.level>0;
    <div class="bn">Money in myBANK stays safe when you’re wasted or busted, and it’s saved with your game.</div>
    <div class="bl">Recent</div>${BANK.log.length?BANK.log.slice().reverse().map(l=>`<div class="lg"><span>${l.d?'Deposit':'Withdrawal'} · ${l.at}</span><span class="${l.d?'p':'m'}">${l.d?'+':'−'}${fmt(l.n)}</span></div>`).join(''):'<div class="bn">No transactions yet.</div>'}</div>`;}
 function phoneKey(){const V=PHONE.view;if(V==='trains')return V+Math.floor(Date.now()/1000)+(SUBWAY?SUBWAY.city:-1);if(V==='pay')return V+player.cash+'|'+payLeft()+'|'+payTo+'|'+PAYHIST.length+PAYHIST.map(x=>x.st||'').join()+'|'+(NET.on?NET.people().map(p=>p.id).join():'');if(V==='home')return V+phoneTime()+phoneUnread()+NET.on+settings.chatOff;if(V==='bank')return V+player.cash+'|'+BANK.bal+'|'+(W.level>0)+BANK.log.length;
-  if(V==='msgs')return V+(NET.on?NET.people().map(p=>p.id+p.n).join():'')+[...PMS.values()].map(c=>c.msgs.length+':'+c.unread).join()+settings.chatOff+settings.censor;
+  const ppl=()=>NET.on?NET.people().map(p=>p.id+p.n).join():'',G=GROUPS.get(PHONE.with);
+  if(V==='msgs')return V+ppl()+[...PMS.values()].map(c=>c.msgs.length+':'+c.unread).join()+[...GROUPS.values()].map(G=>G.id+G.msgs.length+':'+G.unread).join()+[...INVITES.keys()].join()+settings.chatOff+settings.censor;
+  if(V==='grp')return V+PHONE.with+(G?G.mem.size+'|'+G.pend.size:'x')+settings.chatOff+settings.censor;
+  if(V==='grpinfo')return V+PHONE.with+(G?[...G.mem.keys(),'|',...G.pend].join():'x')+ppl()+settings.censor;
+  if(V==='newgrp')return V+ppl()+settings.censor+settings.chatOff;
   return V+!!chatPeer(PHONE.with)+settings.chatOff+settings.censor;}
-function renderPhone(){const V=PHONE.view,old=$('phIn')?$('phIn').value:'';phView.className='view v-'+V;
-  phView.innerHTML=V==='msgs'?msgsHtml():V==='chat'?chatHtml(PHONE.with):V==='bank'?bankHtml():V==='trains'?trainsHtml():V==='pay'?payHtml():homeHtml();PHONE.key=phoneKey();$('phTime').textContent=phoneTime();
-  if(V==='chat'){const c=PMS.get(PHONE.with);if(c)c.unread=0;const L=$('phMsgList');if(L)L.scrollTop=L.scrollHeight;const i=$('phIn');
+function renderPhone(){const V=PHONE.view,old=$('phIn')&&PHONE.dk===V+PHONE.with?$('phIn').value:'';phView.className='view v-'+V;
+  if((V==='grp'||V==='grpinfo'||V==='newgrp')&&(settings.chatOff||!NET.on))PHONE.view='msgs';
+  if(PHONE.view!==V){renderPhone();return;}PHONE.dk=V+PHONE.with;
+  phView.innerHTML=V==='msgs'?msgsHtml():V==='chat'?chatHtml(PHONE.with):V==='grp'?grpHtml(PHONE.with):V==='grpinfo'?grpInfoHtml(PHONE.with):V==='newgrp'?newGrpHtml():V==='bank'?bankHtml():V==='trains'?trainsHtml():V==='pay'?payHtml():homeHtml();PHONE.key=phoneKey();$('phTime').textContent=phoneTime();
+  if(V==='newgrp'){const g=$('phGn');g.addEventListener('input',()=>{NEWG.name=g.value;});g.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Enter'){e.preventDefault();gCreate();}else if(e.code==='Escape'){e.preventDefault();g.blur();}});g.addEventListener('keyup',e=>e.stopPropagation());}
+  if(V==='chat'||V==='grp'){const c=V==='grp'?GROUPS.get(PHONE.with):PMS.get(PHONE.with);if(c)c.unread=0;const L=$('phMsgList');if(L)L.scrollTop=L.scrollHeight;const i=$('phIn');
     if(i){i.value=old;i.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Enter'){e.preventDefault();phSend();}else if(e.code==='Escape'){e.preventDefault();i.blur();}});i.addEventListener('keyup',e=>e.stopPropagation());if(!touchMode())setTimeout(()=>i.focus(),30);}}}
-function updMsgs(){const L=$('phMsgList');if(L){L.innerHTML=bubbles(PHONE.with);L.scrollTop=L.scrollHeight;}}
-function phSend(){const i=$('phIn');if(!i)return;const t=i.value.replace(/\s+/g,' ').trim();if(!t)return;const p=chatPeer(PHONE.with);
+function updMsgs(){const L=$('phMsgList');if(L){L.innerHTML=PHONE.view==='grp'?gBubbles(GROUPS.get(PHONE.with)):bubbles(PHONE.with);L.scrollTop=L.scrollHeight;}}
+function phSend(){const i=$('phIn');if(!i)return;const t=i.value.replace(/\s+/g,' ').trim();if(!t)return;
+  if(PHONE.view==='grp'){const G=GROUPS.get(PHONE.with);if(G&&gSend(G,t.slice(0,200))){i.value='';updMsgs();if(sfx.click)sfx.click();}return;}
+  const p=chatPeer(PHONE.with);
   if(p&&NET.pm(PHONE.with,t)){const c=convOf(PHONE.with,p.n);c.msgs.push({me:true,t:t.slice(0,200),at:phoneTime()});if(c.msgs.length>60)c.msgs.shift();c.last=Date.now();i.value='';updMsgs();if(sfx.click)sfx.click();}
   else notify(p?'Slow down a little.':'They’ve left San Varro.',2);}
 function gotPm(id,name,text){if(settings.chatOff)return;const c=convOf(id,name);c.name=name;c.msgs.push({me:false,t:text,at:phoneTime()});if(c.msgs.length>60)c.msgs.shift();c.last=Date.now();phoneBeep();
@@ -4107,12 +4198,17 @@ function phoneBeep(){if(!AUD.ctx)return;const t=AUD.ctx.currentTime;[[0,1320],[0
 function bankAct(a){const[op,v]=a.split(':'),P=player;let n=Math.floor(v==='all'?(op==='dep'?P.cash:BANK.bal):+v);if(!(n>0))return;
   if(op==='dep'){if(W.level>0||P.cash<n)return;giveCash(-n);BANK.bal+=n;}else{if(BANK.bal<n)return;BANK.bal-=n;giveCash(n);}
   BANK.log.push({d:op==='dep',n,at:phoneTime()});if(BANK.log.length>8)BANK.log.shift();if(sfx.buy)sfx.buy();saveGame();renderPhone();}
-function openPhone(){if(PHONE.open)return;if(chatOpen())closeChat();PHONE.open=true;PHONE.view='home';renderPhone();phone.classList.add('open');if(sfx.click)sfx.click();
+function openPhone(view){if(PHONE.open)return;PHONE.open=true;PHONE.view=view||'home';renderPhone();phone.classList.add('open');if(sfx.click)sfx.click();
   for(const k in keys)keys[k]=false;mouseL=mouseR=false;if(document.pointerLockElement)document.exitPointerLock();}
 function closePhone(relock){if(!PHONE.open)return;PHONE.open=false;phone.classList.remove('open');const a=document.activeElement;if(a&&phone.contains(a))a.blur();if(relock!==false&&state==='play')lockPointer();}
-phone.addEventListener('click',e=>{const b=e.target.closest('[data-app],[data-go],[data-pm],[data-bank],[data-act],[data-payto],[data-paysend],.hb');if(!b||b.disabled)return;
+phone.addEventListener('click',e=>{const b=e.target.closest('[data-app],[data-go],[data-pm],[data-g],[data-gsel],[data-ginv],[data-iacc],[data-idec],[data-bank],[data-act],[data-payto],[data-paysend],.hb');if(!b||b.disabled)return;
   if(b.dataset.payto){payTo=b.dataset.payto;if(sfx.click)sfx.click();renderPhone();return;}if(b.dataset.paysend){paySend(+b.dataset.paysend);return;}
   if(b.classList.contains('hb')){closePhone();return;}if(sfx.click&&!b.dataset.bank)sfx.click();
+  if(b.dataset.g){PHONE.view='grp';PHONE.with=b.dataset.g;renderPhone();return;}
+  if(b.dataset.gsel){const id=b.dataset.gsel;if(NEWG.sel.has(id))NEWG.sel.delete(id);else if(NEWG.sel.size<G_SIZE-1)NEWG.sel.add(id);renderPhone();return;}
+  if(b.dataset.ginv){const G=GROUPS.get(PHONE.with);if(G)gInvite(G,b.dataset.ginv);renderPhone();return;}
+  if(b.dataset.iacc){gAccept(b.dataset.iacc);return;}if(b.dataset.idec){gDecline(b.dataset.idec);return;}
+  if(b.dataset.act==='gcreate'){gCreate();return;}if(b.dataset.act==='gleave'){gLeave(PHONE.with);return;}
   if(b.dataset.app){PHONE.view=b.dataset.app;renderPhone();}else if(b.dataset.go){PHONE.view=b.dataset.go;renderPhone();}
   else if(b.dataset.pm){const id=b.dataset.pm,p=chatPeer(id);convOf(id,p?p.n:'Player');PHONE.view='chat';PHONE.with=id;renderPhone();}
   else if(b.dataset.bank)bankAct(b.dataset.bank);
