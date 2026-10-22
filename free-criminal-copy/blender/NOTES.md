@@ -91,3 +91,20 @@ Use the Blender MCP `import_asset` tool with source `sketchfab`, these ids and t
 - knife: Combat Knife — San.Dro — `48e00da7aeb94530a5d0e0c3d58ca274` — 0.32
 Still to find (CC Attribution only): supercar, DMR/marksman rifle, grenade launcher.
 All of the above are CC Attribution — the game must credit the authors (the cloud session is adding a credits list).
+
+**Game side for Sketchfab models (2.2.0, cloud session, index.html only):** what `free-criminal-copy/index.html` now reads, so
+the exporter must match it exactly:
+- `.fcm` header: a part may carry `"tex": "<file>"` (in `models/tex/`, loaded with THREE.TextureLoader, default flipY, default
+  encoding because the renderer outputs linear colour, anisotropy 8) next to its `uo` uv offset; the texture lands on
+  `geo.userData.tex`. A top-level `"meta"` object is passed through as `MODELS[key].meta`. `loadModels` waits for the textures.
+- `models/guns.fcm`: one part per gun key (`rifle pistol revolver smg pump carbine dmr auto sniper lmg gl knife`, muzzle at +z,
+  grip near the origin like the code-built guns); `meta.guns[key] = {len, hold}` where `hold` has the HOLD shape (`g`, `f` or
+  `fv`, `sight`, `pos`, `one` or `k`). Missing parts keep the code-built gun. `gunMesh(w)` gives a textured gun its own lit
+  MeshPhong (map + vertex colours, so export WHITE vertex colours on textured parts). Cops hold the pistol model (`npcPistol`).
+- Cars: a `wheel` part (the RIGHT-hand wheel, centred on its own axle, actual size) plus `meta.wheels = [[x,y,z]×4]` (car frame:
+  x right, y up, z forward) and `meta.wr` (tyre radius, for the blur/far code-built wheels) makes the car use its own wheels
+  (left side mirrored); without them the shared `wheel.fcm` is used as before. A textured `body`/`det` keeps its map on the
+  paint material (magenta marker still becomes the paint colour); a textured wheel gets a plain textured material.
+- `models/credits.json`: either an array or `{"credits":[...]}` of `{what, title, author, url, licence}`; it replaces the
+  built-in CREDITS list (Credits button on the menu, link at the end of the What's-new pop-up). URLs must start with http(s).
+- `?debug` adds `__fc.HOLD`, `__fc.gunMesh`, `__fc.applyGunModels` (re-run after swapping `MODELS.guns`).

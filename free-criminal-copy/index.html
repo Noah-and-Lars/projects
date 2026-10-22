@@ -453,7 +453,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.2<span>New car and gun models</span></h1><p>Real street lights and headlights, textures on every surface, a car dealership with a garage, a high school, a new rifle, and chat on your phone with group chats.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.2<span>New car and gun models</span></h1><p>Every car and gun is now a real 3D model by artists on Sketchfab, on top of 2.0’s street lights and headlights, textures, car dealership, high school and group chats.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
     <div><i>🚘</i><span><b>New car and gun models</b>The cars and guns are real 3D models by Sketchfab artists, with textures. See Credits on the menu.</span></div>
@@ -5045,7 +5045,7 @@ const CLOSED_NOW=false,CLOSED=CLOSED_NOW&&(!/^(localhost|127\.0\.0\.1|\[::1\])$/
 async function boot(){
   try{await Promise.race([document.fonts.load('64px Anton'),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   if(CLOSED){$('loading').hidden=true;$('closed').hidden=false;return;}
-  $('loadTxt').textContent='Loading the cars and guns…';await loadModels();applyGunModels();loadCredits();$('loadTxt').textContent='Building San Varro…';
+  $('loadTxt').textContent='Loading the cars and guns…';await loadModels();applyGunModels();renderCredits();loadCredits();$('loadTxt').textContent='Building San Varro…';
   try{buildWorld();createPlayer();}catch(err){console.error(err);$('loadTxt').textContent='Something went wrong while building the city: '+err.message;return;}
   updChunks(0,true);applySettings();renderAvatars();refreshBadge();state='menu';$('loading').hidden=true;$('menu').hidden=false;requestAnimationFrame(frame);
   if(PROF.name&&BANNED_NAME(PROF.name)){PROF.name='';saveProfile();}if(!PROF.name)openName(true);else if(settings.seenVersion!==VERSION&&settings.seenVersion!==NEWS_VERSION)$('updPop').hidden=false;
