@@ -12,7 +12,7 @@ The Chat tab (`chat.html`) is a global chat for everyone on the arcade; messages
 | [Cube Assault](cube-assault/) | 3D shooter | Keyboard + mouse or touch |
 | [Blocktris](block-drop/) | Falling-block puzzle | Keyboard or touch |
 | [2048](2048/) | Sliding-number puzzle | Keyboard or swipe |
-| [Poly Racer](poly-racer/) | 3D time-trial racing: 100 tracks, 11 cars, cockpit view | Keyboard, gamepad or touch |
+| [Poly Racer](poly-racer/) | 3D racing: 30 circuits against 15 drivers or online, 100 time trials, weather and night | Keyboard, gamepad or touch |
 | [Free Criminal](free-criminal/) | Open-world crime | Keyboard + mouse |
 | [Cube Tower Defense](cube-tower-defense/) | Tower defense | Mouse or touch |
 | [Blockcraft](blockcraft/) | 3D block sandbox with the Nether, the End and a public multiplayer server (survival and creative) | Keyboard + mouse or touch |

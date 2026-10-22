@@ -162,18 +162,19 @@ window.GAMES = [
     id: 'poly-racer',
     title: 'Poly Racer',
     category: 'Racing',
-    tagline: 'New: 100 tracks, 11 cars from Free Criminal, a cockpit view and all-new graphics.',
-    description: 'Time-trial racing through ten worlds, from pine forests to desert canyons, snowy peaks and a sunset coast. Drift through corners, fly through loops and jumps, chase gold medals and beat your own ghost in 11 cars from Free Criminal, from the chase camera or the driver\'s seat.',
+    tagline: 'New: races on 30 circuits against 15 drivers, online races for up to 10, weather, seasons and night.',
+    description: 'Race 15 computer drivers on 30 full-length circuits and street races, from grand prix tracks and city streets to forest trails, beaches and mountain passes, or race up to 10 friends online. Pick the laps, time of day, season and weather (and the right tyres), or chase gold in the 100 time trials. 11 cars from Free Criminal, a cockpit view, damage, and a driver of your own with 50 helmets and 50 suits.',
     controls: 'Keyboard, gamepad or touch',
     keys: [['↑ ↓ ← →', 'Drive'], ['W A S D', 'Drive'], ['S / ↓', 'Brake and reverse'], ['Space', 'Handbrake · turn while you hold it to drift'],
-           ['R', 'Respawn at the last checkpoint'], ['Backspace', 'Restart'], ['C', 'Camera: chase, close or cockpit'], ['Esc', 'Pause']],
+           ['Shift + W', 'Rev the engine'], ['R', 'Respawn'], ['Backspace', 'Restart'], ['C', 'Camera: chase, close or cockpit'], ['L', 'Driving line'], ['Esc', 'Pause']],
     path: 'poly-racer/index.html',
     thumb: 'poly-racer/thumb.jpg',
     added: '2026-10-13T16:49:58+11:00',
-    updated: '2026-10-22T16:15:00+11:00',
+    updated: '2026-10-23T12:00:00+11:00',
     stat() {
       const s = readSave('polyracer', true), n = s && s.best ? Object.keys(s.best).length : 0;
-      return n ? n + '/100 tracks finished' : null;
+      const won = s && s.stats && s.stats.results ? Object.values(s.stats.results).filter(p => p === 1).length : 0;
+      return won ? won + '/30 races won' : n ? n + '/100 tracks finished' : null;
     },
   },
   {
@@ -196,6 +197,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-23', game: 'poly-racer', text: 'Poly Racer 1.2: races! 30 full-length circuits and street races (grand prix tracks, city streets, forest trails, beaches and mountain passes) against 15 computer drivers, and online races for up to 10 in public or private rooms. Choose the laps, time of day, season and weather, and the right tyres. Plus detailed car models with damage, a new cockpit with working mirrors, profiles with 50 helmets and 50 race suits, music, a new speedometer and better engine sounds.' },
   { date: '2026-10-22', game: 'poly-racer', text: 'Poly Racer 1.1: 94 new tracks in nine new worlds (100 in all) with gold, silver and bronze times, a garage of 11 cars from Free Criminal, a first-person cockpit view, all-new realistic graphics with dense forests, smoother steering and a steadier car, new engine sounds, and a new menu. Fall off the track and you can keep driving; press R to respawn.' },
   { date: '2026-10-22', game: 'free-criminal', text: 'Free Criminal 2.0: chat moves to your phone with group chats (invites have to be accepted), real street lights and headlights, textures on every surface, a car dealership with nine cars you keep in your garage, a high school with students and school buses, a new rifle and a pile of fixes.' },
   { date: '2026-10-21', game: 'cube-assault', text: 'Cube Assault 2.9.7 update: 25 more knife skins (125 in all), 10-crate openings spin one by one, practice against cubes in a multiplayer lobby while you wait, and later waves pay fewer coins.' },
