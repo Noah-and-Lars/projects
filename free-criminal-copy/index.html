@@ -398,6 +398,8 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 .looks button.sel{border-color:var(--gold)}.looks button:disabled{cursor:default;opacity:.45}.looks button:disabled img{filter:grayscale(1) brightness(.6)}
 .looks button:not(:disabled):hover{background:rgba(255,255,255,.1)}
 .danger{margin-top:14px;border:1px solid rgba(210,59,48,.6);background:rgba(210,59,48,.15);color:#ffb3ad;border-radius:10px;padding:8px 14px;font:700 16px var(--ui);cursor:pointer}
+.credits{list-style:none;margin:0;padding:0;display:grid;gap:8px}.credits li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;background:rgba(255,255,255,.04);border:1px solid var(--stroke);border-radius:12px;padding:8px 12px;font-size:15px}
+.credits li b{font-family:var(--display);font-weight:400;color:var(--gold);font-size:18px;grid-column:1/-1}.credits li a{color:var(--fg)}.credits li small{color:var(--muted);white-space:nowrap;align-self:end}
 .notes details{background:rgba(255,255,255,.04);border:1px solid var(--stroke);border-radius:12px;padding:10px 14px;margin-bottom:8px}
 .notes summary{cursor:pointer;font-weight:800;font-size:19px;list-style:none;display:flex;gap:10px;align-items:baseline}.notes summary::-webkit-details-marker{display:none}
 .notes summary b{font-family:var(--display);font-weight:400;color:var(--gold);font-size:22px;min-width:58px}
@@ -451,9 +453,10 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.0<span>Lights, cars and group chats</span></h1><p>Real street lights and headlights, textures on every surface, a car dealership with a garage, a high school, a new rifle, and chat on your phone with group chats.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.2<span>New car and gun models</span></h1><p>Real street lights and headlights, textures on every surface, a car dealership with a garage, a high school, a new rifle, and chat on your phone with group chats.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
+    <div><i>🚘</i><span><b>New car and gun models</b>The cars and guns are real 3D models by Sketchfab artists, with textures. See Credits on the menu.</span></div>
     <div><i>⌨️</i><span><b>Chat is on your phone</b>The chat box is gone. Online, press T to open Messages (or tap Chat on a touch screen). Enter sends, Esc or P puts the phone away.</span></div>
     <div><i>👥</i><span><b>Group chats</b>In Messages, tap New group chat, name it and pick who to invite. Invites have to be accepted: tap Join or ✕.</span></div>
     <div><i>💡</i><span><b>Real lighting</b>Street lamps, headlights, tail lights, police lightbars and lit shop fronts light up the road, walls, cars and people.</span></div>
@@ -465,6 +468,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
     <div><i>🔫</i><span><b>New rifle</b>The Service Rifle has a new model: a rail, a red-dot sight, a proper magazine and stock.</span></div>
     <div><i>🛠️</i><span><b>Fixes</b>Other players’ headlights come on at night, no more stray vault messages after you die, and more.</span></div>
   </div>
+  <p class="note" style="text-align:center;margin:0">The models are by artists on Sketchfab. <button class="linkb" id="updCred">See the credits</button></p>
   <div class="row2"><button class="go sec" id="updPast">Past updates</button><button class="go" id="updOk">Let's go</button></div>
 </div></div>
 <div id="namePop" hidden><div class="box">
@@ -501,7 +505,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v2.0.1</b>San Varro</div>
+    <div class="ver"><b>v2.2.0</b>San Varro</div>
     <nav class="nav">
       <button id="bOnline" class="online">Play online</button>
       <button id="bPlay">Play offline</button>
@@ -509,8 +513,9 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
       <button data-panel="pNotes">Patch notes</button>
       <button data-panel="pSettings">Settings</button>
       <button data-panel="pControls">Controls</button>
+      <button data-panel="pCredits">Credits</button>
     </nav>
-    <div class="news"><b>New in v2.0</b><ul><li><strong>Real lighting</strong>: street lamps, headlights and sirens light the streets</li><li><strong>Textures</strong> on every surface</li><li>A <strong>car dealership</strong>: buy nine cars in any paint and keep them in your garage</li><li><strong>Westbrook High School</strong>, with students and school buses</li><li>A new <strong>rifle</strong> model and bug fixes</li></ul></div>
+    <div class="news"><b>New in v2.2</b><ul><li><strong>New car and gun models</strong> by Sketchfab artists (see Credits)</li><li><strong>Real lighting</strong>: street lamps, headlights and sirens light the streets</li><li><strong>Textures</strong> on every surface</li><li>A <strong>car dealership</strong>: buy nine cars in any paint and keep them in your garage</li><li><strong>Westbrook High School</strong>, with students and school buses</li><li>A new <strong>rifle</strong> model and bug fixes</li></ul></div>
     <p id="onlineMsg" hidden></p>
     <div class="foot">Keyboard and mouse, or touch controls on phones and tablets (Settings → Touch controls). Best in Chrome or Edge, full screen.</div>
   </div>
@@ -555,7 +560,9 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v2.0.1</b>Lights, cars and school<span>Latest</span></summary><ul>
+  <details open><summary><b>v2.2.0</b>New car and gun models<span>Latest</span></summary><ul>
+    <li><b>New car and gun models.</b> The cars and every gun are now real 3D models made by artists on Sketchfab, with textures and the cars' own wheels. Their names are in the new <b>Credits</b> on the menu.</li></ul></details>
+  <details><summary><b>v2.0.1</b>Lights, cars and school</summary><ul>
     <li><b>Stairs down to the trains.</b> Walk into a train station entrance, take the stairs down under the pavement and follow the tunnel round to the platform. To leave, walk out through the exit at the back of the platform and climb the stairs to the street. There’s no fading out or jumping: it’s one walk from the pavement to the train.</li>
     <li>Fixed: the dumpster outside the prison flickered, and the textures on things that move (the dumpster lid, gates and wind turbine blades) slid across them as they moved.</li>
     <li><b>Real lighting.</b> Street lamps, car headlights and tail lights, police lightbars, lit shop fronts, muzzle flashes and explosions are now real lights. Every surface works out, pixel by pixel, how much light reaches it from the nearest lights (up to 16 on High and Ultra, 10 on Medium, 6 on Low): the light falls off with the square of the distance, street lamps shine down and sideways but not up, headlights are a soft cone that reaches about 45 m, and lights glint off car paint and wet-looking glass. The flat yellow circles under the lamps are gone, nights are a touch darker so the lights matter, and the old painted headlight beams are gone because the real light does the work.</li>
@@ -717,6 +724,11 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <p class="note">Quality sets resolution, shadows, traffic, pedestrians and tree density. Ultra adds filmic colour, sharper shadows over a wider area, grass and glossier cars.</p>
 </section>
 
+<section class="panel" id="pCredits" hidden>
+  <h2>Credits</h2>
+  <p class="note" style="margin:0 0 12px">The cars and guns are 3D models by these artists on Sketchfab, used under their licences. Thank you.</p>
+  <ul class="credits" id="creditList"></ul>
+</section>
 <section class="panel" id="pControls" hidden>
   <h2>Controls</h2>
   <div class="keys">
@@ -4012,7 +4024,7 @@ $('sChatOff').addEventListener('change',e=>{settings.chatOff=e.target.checked;sa
 $('sCensor').addEventListener('change',e=>{settings.censor=e.target.checked;saveSettings();chatSettingChanged();});
 for(const ev of['pointerdown','keydown'])addEventListener(ev,()=>{if(state==='menu'){initAudio();menuMusic();}});
 let openPanel=null;
-const PANELS=['pSettings','pControls','pProfile','pNotes'];
+const PANELS=['pSettings','pControls','pProfile','pNotes','pCredits'];
 function showPanel(id){if(id==='pProfile')refreshProfile();PANELS.forEach(p=>$(p).hidden=p!==id||openPanel===id);openPanel=openPanel===id?null:id;
   document.querySelectorAll('[data-panel]').forEach(b=>b.classList.toggle('on',b.dataset.panel===openPanel));}
 function hidePanels(){openPanel=null;PANELS.forEach(p=>$(p).hidden=true);document.querySelectorAll('[data-panel]').forEach(b=>b.classList.remove('on'));}
@@ -4040,7 +4052,33 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='2.0.1',NEWS_VERSION='2.0.1';// 2.0.1: the rest of 2.0 (lights, cars, school) on top of the group chats; everyone gets the pop-up
+const VERSION='2.2.0',NEWS_VERSION='2.2.0';// 2.2.0: new car and gun models (Sketchfab); everyone gets the pop-up
+/* 2.2: who made the models. models/credits.json (written alongside the models) replaces this list when it exists; each entry is
+   {what, title, author, url, licence}. Shown in the Credits panel on the menu and at the end of the What's-new pop-up. */
+const CREDITS=[
+  {what:'Sedan and taxi',title:'Medium sized sedan',author:'MaG80',url:'https://sketchfab.com/3d-models/medium-sized-sedan-cb8fdecbc30d4618a6109d1de0e30a9e',licence:'CC Attribution'},
+  {what:'Hatchback, SUV, coupe and traffic cars',title:'Traffic Car Pack',author:'MaG80',url:'https://sketchfab.com/3d-models/traffic-car-pack-5e795b0adcda455d9f64cb02b83f8f90',licence:'CC Attribution'},
+  {what:'Van',title:'Free Delivery Truck Vehicle | Low Poly',author:'vmek3d',url:'https://sketchfab.com/3d-models/free-delivery-truck-vehicle-low-poly-50cdb3c674c84224b6ebfe471ca404fe',licence:'CC Attribution'},
+  {what:'Muscle car',title:'Classic Muscle car',author:'Lexyc16',url:'https://sketchfab.com/3d-models/classic-muscle-car-641efc889e5f4543bae51d0922e6f4b3',licence:'CC Attribution'},
+  {what:'Sports car',title:'Low-Poly Sports Car Free',author:'donnichols',url:'https://sketchfab.com/3d-models/low-poly-sports-car-free-2b23201839fb43049454f431752073bb',licence:'CC Attribution'},
+  {what:'Pickup',title:'Low Poly Pickup',author:'farooq.smurf',url:'https://sketchfab.com/3d-models/low-poly-pickup-cea623973cf34aeab44e2c694fcece69',licence:'CC Attribution'},
+  {what:'Service Rifle',title:'HK 416 Assault Rifle - Low Poly',author:'derek_flanagan',url:'https://sketchfab.com/3d-models/hk-416-assault-rifle-low-poly-fbdf159836224d67b193ca527d4f4333',licence:'CC Attribution'},
+  {what:'Assault Carbine',title:'AK-103 - Game Ready Assault Rifle Weapon',author:'bogdanzloy20280',url:'https://sketchfab.com/3d-models/ak-103-game-ready-assault-rifle-weapon-21b2e86d257246639ce187b904d124c8',licence:'CC Attribution'},
+  {what:'Pocket Pistol',title:'Pistol 9mm - semi auto',author:'Hitansh_3DArtist',url:'https://sketchfab.com/3d-models/pistol-9mm-semi-auto-7d363c3cf2f74a9a9fb0cab9874898eb',licence:'CC Attribution'},
+  {what:'.44 Revolver',title:'Low Poly Revolver 45 - Game Ready',author:'rashad-brahimli',url:'https://sketchfab.com/3d-models/low-poly-revolver-45-game-ready-36fb84e52a9344a199ed97254cdaa813',licence:'CC Attribution'},
+  {what:'Micro SMG',title:'UMP-45mm Low Poly Game Ready',author:'Voidren-',url:'https://sketchfab.com/3d-models/ump-45mm-low-poly-game-ready-2f60f6d4e3664601a1e07fd5b9d5067c',licence:'CC Attribution'},
+  {what:'Pump Shotgun',title:'Pump-Action Shotgun',author:'brahmjots',url:'https://sketchfab.com/3d-models/pump-action-shotgun-5f9cccbbdb5c436aa8af2bf40de5d8ad',licence:'CC Attribution'},
+  {what:'Auto Shotgun',title:'AA-12',author:'SKeLLeR',url:'https://sketchfab.com/3d-models/aa-12-ad2ff33173bd43e49133585a93d6ee5c',licence:'CC Attribution'},
+  {what:'Sniper Rifle',title:'GM6 Lynx - Game Ready Low-poly',author:'xivxiy',url:'https://sketchfab.com/3d-models/gm6-lynx-game-ready-low-poly-3a362a957326476797882dd9fbb113a5',licence:'CC Attribution'},
+  {what:'Light Machine Gun',title:'M60 Light Machine Gun',author:'Badboy17Aiden',url:'https://sketchfab.com/3d-models/m60-light-machine-gun-cbf408387dc94a30abe11afb3698ac13',licence:'CC Attribution'},
+  {what:'Knife',title:'Combat Knife',author:'San.Dro',url:'https://sketchfab.com/3d-models/combat-knife-48e00da7aeb94530a5d0e0c3d58ca274',licence:'CC Attribution'}
+];
+function renderCredits(){const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  $('creditList').innerHTML=CREDITS.map(c=>{const url=/^https?:\/\//.test(c.url||'')?esc(c.url):'';
+    return '<li><b>'+esc(c.what)+'</b><span>'+(url?'<a href="'+url+'" target="_blank" rel="noopener">'+esc(c.title)+'</a>':esc(c.title))+' by '+esc(c.author)+'</span><small>'+esc(c.licence||'')+'</small></li>';}).join('');}
+async function loadCredits(){try{const r=await fetch('models/credits.json?v='+VERSION,{cache:'no-store'});if(!r.ok)return;const j=await r.json(),list=Array.isArray(j)?j:j&&Array.isArray(j.credits)?j.credits:null;
+  if(list&&list.length){CREDITS.length=0;for(const c of list)if(c&&typeof c==='object')CREDITS.push(c);}}catch(e){}renderCredits();}
+$('updCred').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pCredits')showPanel('pCredits');});
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -5007,7 +5045,7 @@ const CLOSED_NOW=false,CLOSED=CLOSED_NOW&&(!/^(localhost|127\.0\.0\.1|\[::1\])$/
 async function boot(){
   try{await Promise.race([document.fonts.load('64px Anton'),new Promise(r=>setTimeout(r,2500))]);}catch(e){}
   if(CLOSED){$('loading').hidden=true;$('closed').hidden=false;return;}
-  $('loadTxt').textContent='Loading the cars and guns…';await loadModels();applyGunModels();$('loadTxt').textContent='Building San Varro…';
+  $('loadTxt').textContent='Loading the cars and guns…';await loadModels();applyGunModels();loadCredits();$('loadTxt').textContent='Building San Varro…';
   try{buildWorld();createPlayer();}catch(err){console.error(err);$('loadTxt').textContent='Something went wrong while building the city: '+err.message;return;}
   updChunks(0,true);applySettings();renderAvatars();refreshBadge();state='menu';$('loading').hidden=true;$('menu').hidden=false;requestAnimationFrame(frame);
   if(PROF.name&&BANNED_NAME(PROF.name)){PROF.name='';saveProfile();}if(!PROF.name)openName(true);else if(settings.seenVersion!==VERSION&&settings.seenVersion!==NEWS_VERSION)$('updPop').hidden=false;
