@@ -1503,8 +1503,11 @@ function parseFCM(buf){const dv=new DataView(buf);if(dv.getUint32(0,true)!==0x31
 async function loadModels(){await Promise.all(MODEL_NAMES.map(async k=>{try{const r=await fetch('models/'+k+'.fcm?v='+VERSION);if(!r.ok)return;MODELS[k]=parseFCM(await r.arrayBuffer());}catch(e){console.warn('model '+k,e);}}));
   await Promise.all(TEX_LOADS);}   // the textures too (a missing one only warns)
 const PAINT_MATS={};
-function carPaint(color){if(PAINT_MATS[color])return PAINT_MATS[color];const m=lit(new THREE.MeshPhongMaterial({vertexColors:true,shininess:90,specular:0x777777,envMap:ENV,combine:THREE.MixOperation,reflectivity:0.2}));
-  m.defines.FC_PAINT=1;FC_MAT.set(m,{fcPaint:{value:new THREE.Color(color)}});return PAINT_MATS[color]=m;}   // the model's magenta marker becomes this colour in the shader
+function carPaint(color,tex){const key=tex?color+'|'+tex.uuid:color;if(PAINT_MATS[key])return PAINT_MATS[key];const m=lit(new THREE.MeshPhongMaterial({map:tex||null,vertexColors:true,shininess:90,specular:0x777777,envMap:ENV,combine:THREE.MixOperation,reflectivity:0.2}));
+  m.defines.FC_PAINT=1;FC_MAT.set(m,{fcPaint:{value:new THREE.Color(color)}});return PAINT_MATS[key]=m;}   // the model's magenta marker becomes this colour in the shader (2.2: a textured body keeps its map)
+const TEX_MATS={};
+function texMat(t){return TEX_MATS[t.uuid]||(TEX_MATS[t.uuid]=lit(new THREE.MeshPhongMaterial({map:t,vertexColors:true,shininess:30,specular:0x333333})));}   // 2.2: a textured model part that isn't paint (wheels)
+function mirrorGeo(g){const m=g.clone();m.scale(-1,1,1);const ix=m.index.array;for(let i=0;i<ix.length;i+=3){const t=ix[i+1];ix[i+1]=ix[i+2];ix[i+2]=t;}return m;}   // 2.2: a right-hand part flipped to the left (faces turned back round)
 const WHEELM={};
 function wheelM(r,side){const k=r+'|'+side;if(WHEELM[k])return WHEELM[k];const g=MODELS.wheel.wheel.clone();g.scale(side,r,r);
   if(side<0){const ix=g.index.array;for(let i=0;i<ix.length;i+=3){const t=ix[i+1];ix[i+1]=ix[i+2];ix[i+2]=t;}}   // the left wheels are mirrored, so their faces are turned back round
@@ -1513,8 +1516,8 @@ const CARLAMP_MAT=new THREE.MeshBasicMaterial({vertexColors:true,polygonOffset:t
 function makeCarModelM(t,color,city,MD){
   if(!CARGLASS_MAT)CARGLASS_MAT=lit(new THREE.MeshPhongMaterial({color:0x070b0f,specular:0xb8c2cc,shininess:120,envMap:ENV,combine:THREE.MixOperation,reflectivity:0.18,transparent:true,opacity:0.93}));
   const g=new THREE.Group(),body=new THREE.Group();g.add(body);const S=carShape(t),w=t.w,yb=S.yb,roofY=S.roofY,rz=S.zRoof,sporty=S.st===CSTY.fast||S.st===CSTY.super||S.st===CSTY.muscle;
-  const PM=carPaint(color),bodyMesh=new THREE.Mesh(MD.body,PM);bodyMesh.castShadow=true;bodyMesh.receiveShadow=true;body.add(bodyMesh);
-  const detail=new THREE.Mesh(MD.det,PM);body.add(detail);const lod={body:MD.body,mid:MD.mid||MD.body,lo:MD.lo||MD.mid||MD.body};
+  const PM=carPaint(color,MD.body.userData.tex),bodyMesh=new THREE.Mesh(MD.body,PM);bodyMesh.castShadow=true;bodyMesh.receiveShadow=true;body.add(bodyMesh);
+  const detail=new THREE.Mesh(MD.det,MD.det&&MD.det.userData.tex?carPaint(color,MD.det.userData.tex):PM);body.add(detail);const lod={body:MD.body,mid:MD.mid||MD.body,lo:MD.lo||MD.mid||MD.body};
   const glass=new THREE.Mesh(MD.glass,CARGLASS_MAT);body.add(glass);
   const lamp=new THREE.Mesh(MD.lamp,CAR_MAT);body.add(lamp);
   const night=new THREE.Mesh(MD.lamp,CARLAMP_MAT);night.visible=false;body.add(night);
@@ -1529,14 +1532,21 @@ function makeCarModelM(t,color,city,MD){
   if(t.police||t.taxi){const kind=t.police?'police':'taxi',cn=city||'San Varro';livery=new THREE.Group();body.add(livery);
     for(const sd of[1,-1])livery.add(new THREE.Mesh(MD[sd>0?'decalR':'decalL'],liveryMat(kind,cn,sd,t,S)));
     if(t.taxi){if(!LIVG.top){LIVG.top=new THREE.PlaneGeometry(0.98,0.26);}for(const sd of[1,-1]){const m=new THREE.Mesh(LIVG.top,topperMat(cn));m.rotation.y=sd*Math.PI/2;m.position.set(sd*0.128,roofY+0.2,rz);livery.add(m);}}}
-  const wheels=[],wg={near:wheelM(t.wr,1),nearL:wheelM(t.wr,-1),blur:wheelGeoBlur(t.wr),far:wheelGeoFar(t.wr)},cg=calGeo(sporty||t.police?'#b3141b':'#3b3e42');
-  for(const[sx,sz]of[[1,1],[-1,1],[1,-1],[-1,-1]]){const piv=new THREE.Group();piv.position.set(sx*(t.w/2-0.1),t.wr,sz*t.l*0.32);const wm=new THREE.Mesh(sx>0?wg.near:wg.nearL,CAR_MAT);wm.castShadow=true;piv.add(wm);   // the tyre sits flush with the body side
-    const cal=new THREE.Mesh(cg,CAR_MAT);cal.position.set(sx*0.098,t.wr*0.28,-t.wr*0.28);cal.rotation.x=0.8;piv.add(cal);g.add(piv);wheels.push({piv,w:wm,cal,front:sz>0,side:sx});}
+  /* 2.2: a Sketchfab car brings its own wheels: the model's right-hand wheel part, centred on each of meta.wheels (four [x,y,z]
+     centres in the car's frame: x right, y up, z forward) and mirrored for the left side, with no caliper. The spinning and
+     far-off wheels stay the code-built ones at meta.wr, the tyre radius (a textured wheel keeps its own geometry instead,
+     because those have no uv). Without them, the shared wheel model at the game's own positions as before. */
+  const own=!!(MD.wheel&&MD.meta&&Array.isArray(MD.meta.wheels)&&MD.meta.wheels.length===4),wr=own&&MD.meta.wr>0?MD.meta.wr:t.wr,wtex=own&&MD.wheel.userData.tex;
+  const wheels=[],wg=own?{near:MD.wheel,nearL:MD.wheelL||(MD.wheelL=mirrorGeo(MD.wheel)),blur:wtex?MD.wheel:wheelGeoBlur(wr),far:wtex?MD.wheel:wheelGeoFar(wr)}
+    :{near:wheelM(t.wr,1),nearL:wheelM(t.wr,-1),blur:wheelGeoBlur(t.wr),far:wheelGeoFar(t.wr)},cg=own?null:calGeo(sporty||t.police?'#b3141b':'#3b3e42'),WM=wtex?texMat(wtex):CAR_MAT;
+  const WPOS=own?MD.meta.wheels:[[1,1],[-1,1],[1,-1],[-1,-1]].map(([sx,sz])=>[sx*(t.w/2-0.1),t.wr,sz*t.l*0.32]);   // the tyre sits flush with the body side
+  for(const[x,y,z]of WPOS){const sx=x<0?-1:1,sz=z<0?-1:1,piv=new THREE.Group();piv.position.set(x,y,z);const wm=new THREE.Mesh(sx>0?wg.near:wg.nearL,WM);wm.castShadow=true;piv.add(wm);
+    let cal=null;if(cg){cal=new THREE.Mesh(cg,CAR_MAT);cal.position.set(sx*0.098,t.wr*0.28,-t.wr*0.28);cal.rotation.x=0.8;piv.add(cal);}g.add(piv);wheels.push({piv,w:wm,cal,front:sz>0,side:sx});}
   const wgx=B(w*0.4,0.035,0.03,'#121212',w*0.2,0,0),wiper=new THREE.Mesh(wgx,HMAT);wiper.position.set(-w*0.28,yb+0.04,S.gh[0][0]-0.05);wiper.visible=false;body.add(wiper);
   return {group:g,body,bodyMesh,detail,glass,lamp,lod,driverMesh,lights,wheels,wg,night,wiper,livery,geos:extra?[dg,wgx,extra]:[dg,wgx],top:yb,roofY,t,dsc};
 }
 function makeCarModel(t,color,city){if(t.bus)return makeBus(t,color);
-  {const MD=MODELS[t.taxi?'sedan':t.key];if(MD&&MODELS.wheel)return makeCarModelM(t,color,city,MD);}
+  {const MD=MODELS[t.taxi?'sedan':t.key];if(MD&&MD.body&&(MODELS.wheel||MD.wheel&&MD.meta&&MD.meta.wheels))return makeCarModelM(t,color,city,MD);}   // 2.2: a car with its own wheels needs no shared wheel
   if(!CARGLASS_MAT)CARGLASS_MAT=lit(new THREE.MeshPhongMaterial({color:0x070b0f,specular:0xb8c2cc,shininess:120,envMap:ENV,combine:THREE.MixOperation,reflectivity:0.18,transparent:true,opacity:0.93}));
   const g=new THREE.Group(),body=new THREE.Group();g.add(body);const S=carShape(t),st=S.st,gi=S.gi,n0=S.n0;
   const L=t.l,H=S.H,w=t.w,y0=S.y0,top=S.yb,yb=S.yb,roofY=S.roofY,yn=S.yn,yt=S.yt,gw=S.gw,gh=S.gh,n=gh.length,dk='#1b1c1e',trim='#24262a',chrome='#c9ccd0',blk='#0e0f10';
