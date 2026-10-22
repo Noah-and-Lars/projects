@@ -448,17 +448,15 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v1.9<span>The big one</span></h1><p>A phone in your pocket, buses on the streets, a bank that keeps your money safe, and your game finally saves.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.0<span>Chat moves to your phone</span></h1><p>The chat box above the minimap is gone. All chat now happens in Messages on your phone, and you can make group chats with your crew.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
-    <div><i>📱</i><span><b>Your phone (P)</b>A smartphone slides up on the right. Messages lets you text any player online, privately.</span></div>
-    <div><i>🏦</i><span><b>myBANK</b>Put money in the bank from your phone. It stays safe when you’re wasted or busted.</span></div>
-    <div><i>💾</i><span><b>Your game saves</b>Cash, bank, guns, armor and safehouses are kept when you refresh or leave the page.</span></div>
-    <div><i>🚌</i><span><b>Buses</b>City buses full of passengers stop at bus stops. Hold one up with a gun for the passengers’ cash.</span></div>
-    <div><i>🚗</i><span><b>Ride together</b>Online, press F next to another player’s car to ride in the passenger seat.</span></div>
-    <div><i>💥</i><span><b>Car fights</b>Shoot players in their cars (it wrecks the car too) and crash into each other like any other car.</span></div>
-    <div><i>💬</i><span><b>Chat settings</b>Turn chat off completely, or censor swear words. Both in Settings.</span></div>
-    <div><i>🏙️</i><span><b>Busier cities</b>More people, café tables, food carts and people waiting for the bus. No more rain indoors.</span></div>
+    <div><i>⌨️</i><span><b>T opens Messages</b>Press T while you’re playing online to open Messages on your phone. P opens the phone’s home screen.</span></div>
+    <div><i>↩️</i><span><b>Enter sends, Esc closes</b>Type in a chat and press Enter to send. Esc (or P) puts the phone away.</span></div>
+    <div><i>💬</i><span><b>Direct messages</b>Tap anyone online in Messages to message just them.</span></div>
+    <div><i>👥</i><span><b>Group chats</b>Tap New group chat, give it a name and pick who to invite. Up to 10 people in a group.</span></div>
+    <div><i>✉️</i><span><b>Invites need a yes</b>Invites show at the top of Messages. Tap Join or ✕. You only see a group’s messages once you join.</span></div>
+    <div><i>📲</i><span><b>On a phone or tablet</b>Tap the Chat button at the bottom of the screen to open Messages.</span></div>
   </div>
   <div class="row2"><button class="go sec" id="updPast">Past updates</button><button class="go" id="updOk">Let's go</button></div>
 </div></div>
@@ -3322,7 +3320,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='2.0',NEWS_VERSION='1.9';// 1.9 is a major update: everyone gets the pop-up
+const VERSION='2.0',NEWS_VERSION='2.0';// 2.0: everyone gets the pop-up about chat moving to the phone
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
