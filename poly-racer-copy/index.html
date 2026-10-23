@@ -65,6 +65,8 @@
   #toast { position:absolute; bottom:22%; left:50%; transform:translateX(-50%); padding:7px 16px; background:#000b; border-radius:4px; font-size:14px; opacity:0; transition:opacity .25s; }
   #toast.show { opacity:1; }
   #keysHint { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); font-size:12px; color:#dfe6f2; background:#0c111d99; padding:6px 12px; white-space:nowrap; }
+  #photoHint { position:fixed; left:50%; bottom:12px; transform:translateX(-50%); font-size:12px; color:#dfe6f2; background:#0c111d99; padding:6px 12px; white-space:nowrap; z-index:30; }
+  body.photo :is(#hud, #fps, #keysHint, #skillPop, #revHint, #ready, #goFlash, #warn, #toast, #vignette, .screen, #tLeft, #tRight, #tBrake, #tGas, #tHand, #tPause, #tCp, #tRestart, #tCam) { visibility:hidden !important; }
   #goFlash { position:absolute; top:34%; left:50%; transform:translate(-50%,-50%); font:900 italic 64px/1 system-ui, sans-serif; color:var(--acc); text-shadow:0 4px 30px #0009; opacity:0; }
   #goFlash.show { animation:goPop .8s ease-out; }
   @keyframes goPop { 0% { opacity:1; transform:translate(-50%,-50%) scale(.7); } 30% { opacity:1; transform:translate(-50%,-50%) scale(1.05); } 100% { opacity:0; transform:translate(-50%,-50%) scale(1.25); } }
@@ -460,6 +462,7 @@
   <div id="goFlash">GO!</div>
   <div id="warn" hidden><b id="warnTitle">OFF THE TRACK</b><span id="warnText"></span></div>
   <div id="toast"></div>
+  <div id="photoHint" hidden>Photo mode · drag to orbit · wheel to zoom · Shift + wheel for the lens · Enter saves a picture · F9 to leave</div>
   <div id="keysHint"><kbd>Space</kbd> drift · <kbd>Shift</kbd> rev · <kbd>R</kbd> respawn · <kbd>Backspace</kbd> restart · <kbd>C</kbd> camera · <kbd>L</kbd> line · <kbd>Esc</kbd> pause</div>
   <div class="touch">
     <div class="tbtn" id="tLeft">◀</div>
@@ -497,6 +500,7 @@
     <div class="news panel">
       <h3>What's new in <span>2.4</span></h3>
       <ul>
+        <li>Photo mode: press F9 anywhere, orbit the car with the mouse, Enter saves a picture</li>
         <li>Polish: a real optimal lap from your best sectors, live cockpit gauges, bronze times on the track cards, clearer settings and a tidier profile</li>
         <li>Ultra graphics: real photographed skies that light the cars and show in their paint, real asphalt, grass, gravel and sand with surface relief, 4k shadows</li>
         <li>Nine real cars, modelled in detail inside and out, with proper paint, chrome and glass</li>
@@ -553,7 +557,7 @@
     <div class="btns" style="margin-top:18px"><button class="btn" data-act="home">Done</button></div>
     <p style="margin:14px 0 0;color:var(--muted);font-size:12px;font-weight:500;line-height:1.7">
       <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows drive · <kbd>S</kbd> brake and reverse · <kbd>Space</kbd> handbrake: turn while you hold it to drift ·
-      <kbd>Shift</kbd> + gas revs the engine · <kbd>R</kbd> or <kbd>Enter</kbd> respawn · <kbd>Backspace</kbd> restart · <kbd>C</kbd> or <kbd>V</kbd> camera · <kbd>L</kbd> driving line · <kbd>Esc</kbd> or <kbd>P</kbd> pause</p>
+      <kbd>Shift</kbd> + gas revs the engine · <kbd>R</kbd> or <kbd>Enter</kbd> respawn · <kbd>Backspace</kbd> restart · <kbd>C</kbd> or <kbd>V</kbd> camera · <kbd>L</kbd> driving line · <kbd>Esc</kbd> or <kbd>P</kbd> pause · <kbd>F9</kbd> photo mode</p>
     <p class="credits" id="credits"></p>
   </div></div>
 </div>
@@ -8832,8 +8836,35 @@ function goBack() {
   else if (s === 'pause') ui.resume();
 }
 
+// ---------- Photo mode (F9): the HUD goes, the world freezes, the camera orbits the car; Enter saves a picture ----------
+const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: false,
+  toggle() {
+    this.on = !this.on; document.body.classList.toggle('photo', this.on); $('photoHint').hidden = !this.on;
+    if (this.on) {
+      this.a = Math.atan2(camera.position.z - car.p.z, camera.position.x - car.p.x); this.d = Math.max(4, Math.min(30, Math.hypot(camera.position.x - car.p.x, camera.position.z - car.p.z)));
+      this.h = camera.position.y - car.p.y; this.fov = camera.fov;
+    } else { camera.clearViewOffset(); }
+  },
+  apply() {
+    const p = car.p;
+    camera.position.set(p.x + Math.cos(this.a) * this.d, p.y + this.h, p.z + Math.sin(this.a) * this.d);
+    if (terrain) camera.position.y = Math.max(camera.position.y, terrain.h(camera.position.x, camera.position.z) + 0.3);
+    camera.up.set(0, 1, 0); camera.lookAt(p.x, p.y + 0.5, p.z);
+    if (Math.abs(camera.fov - this.fov) > 0.01) { camera.fov = this.fov; camera.updateProjectionMatrix(); }
+  },
+};
+{
+  const el = renderer.domElement;
+  el.addEventListener('pointerdown', e => { if (photo.on) { photo.drag = { x: e.clientX, y: e.clientY, a: photo.a, h: photo.h }; try { el.setPointerCapture(e.pointerId); } catch (err) {} } });
+  el.addEventListener('pointermove', e => { if (photo.on && photo.drag) { photo.a = photo.drag.a - (e.clientX - photo.drag.x) * 0.006; photo.h = Math.max(-0.5, Math.min(14, photo.drag.h + (e.clientY - photo.drag.y) * 0.02)); } });
+  el.addEventListener('pointerup', () => { photo.drag = null; });
+  el.addEventListener('wheel', e => { if (!photo.on) return; e.preventDefault(); if (e.shiftKey) photo.fov = Math.max(14, Math.min(90, photo.fov + Math.sign(e.deltaY) * 2)); else photo.d = Math.max(2.5, Math.min(40, photo.d * (e.deltaY > 0 ? 1.08 : 0.93))); }, { passive: false });
+}
+
 document.addEventListener('keydown', e => {
   sfx.init();
+  if (e.code === 'F9' && race.track) { e.preventDefault(); photo.toggle(); return; }
+  if (photo.on) { if (e.code === 'Enter') { e.preventDefault(); photo.save = true; } else if (e.code === 'Escape') photo.toggle(); return; }
   if (typing()) { if (e.code === 'Enter' && document.activeElement.id === 'lobSay') { raceUI.act('lobSend'); } if (e.code === 'Escape') document.activeElement.blur(); return; }
   if (cine.on) { if (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape') { e.preventDefault(); cine.skip(); } return; }
   if (inMenu() && race.state !== 'paused' || ui.screen === 'pause') {
@@ -8942,6 +8973,7 @@ function frame(now) {
   step(dt);
 }
 function step(dt) {
+  if (photo.on) dt = 0;
   clock += dt;
   countFps(dt);
   pollGamepad(dt);
@@ -9001,8 +9033,17 @@ function step(dt) {
   updateSun(race.state === 'menu' ? car.p : _v[8].copy(car.p).addScaledVector(fwd, 25));
   skyMat.uniforms.time.value = clock;
   renderMirrors();
+  if (photo.on) photo.apply();
   skyFollow(camera);
   post.render(scene, camera);
+  if (photo.save) {
+    photo.save = false;
+    renderer.domElement.toBlob(b => {
+      if (!b) return;
+      const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'poly-racer-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.png';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }, 'image/png');
+  }
   if (camMode === 2 && running) drawGauges(Math.abs(vf) * 3.6, sfx.rpm(), sfx.state.red, car.v.dot(fwd) < -0.5 && input.brake > 0.1 ? 'R' : String(sfx.gear()), settings.units);
   ui.frame(dt);
 }
