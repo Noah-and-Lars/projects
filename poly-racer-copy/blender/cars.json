@@ -7,7 +7,15 @@
    "^Honda_Civic_Body_Silver_MAT": [
     "body",
     {
-     "kind": "paint"
+     "kind": "paint",
+     "tint": false
+    }
+   ],
+   "\\|Body_MAT$": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
     }
    ]
   }
@@ -39,6 +47,14 @@
      "kind": "paint"
     }
    ]
+  },
+  "swheel": {
+   "pos": [
+    0.35,
+    -0.14,
+    0.72
+   ],
+   "r": 0.17
   }
  },
  "coupe": {
@@ -79,8 +95,16 @@
    "amdb11_(engine|engbay|intake|radiator|strutbrace)": [
     null,
     {}
+   ],
+   "^amdb11_body_amdb11_leather": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
+    }
    ]
-  }
+  },
+  "interior_only_cockpit": true
  },
  "pickup": {
   "uid": "a6572f0fd7e8431280055be70213d225",
@@ -94,6 +118,13 @@
   "auto_paint": false,
   "classify": {
    "\\|New_Material$": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
+    }
+   ],
+   "\\|Black$": [
     "body",
     {
      "kind": "paint",

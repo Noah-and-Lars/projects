@@ -294,6 +294,35 @@ def classify_default(ob, m):
     if d['alpha'] < 0.95: return 'glass', {}
     return 'det', {}
 
+
+class PaintShell:
+    """The painted surface as a grid of cells (1.5 cm) with the paint's normal in each, to find triangles lying on it."""
+    def __init__(self, P, N, cell=0.015):
+        self.cell = cell; self.ok = len(P) > 0
+        if not self.ok: return
+        c = P.mean(axis=1); n = N.mean(axis=1); l = np.linalg.norm(n, axis=1); l[l == 0] = 1; n = n / l[:, None]
+        keys = np.round(c / cell).astype(np.int64)
+        self.cells = {}
+        for k, nn in zip(map(tuple, keys), n):
+            a = self.cells.get(k)
+            self.cells[k] = nn if a is None else a + nn
+    def on(self, P, N):
+        """Mask of triangles whose centre is within a cell of the paint and whose normal is (anti)parallel to it."""
+        if not self.ok or len(P) == 0: return np.zeros(len(P), bool)
+        c = P.mean(axis=1); n = N.mean(axis=1); l = np.linalg.norm(n, axis=1); l[l == 0] = 1; n = n / l[:, None]
+        keys = np.round(c / self.cell).astype(np.int64); out = np.zeros(len(P), bool)
+        for i, (k, nn) in enumerate(zip(map(tuple, keys), n)):
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    for dz in (-1, 0, 1):
+                        a = self.cells.get((k[0] + dx, k[1] + dy, k[2] + dz))
+                        if a is not None:
+                            la = np.linalg.norm(a)
+                            if la > 0 and abs(float(a @ nn)) / la > 0.9: out[i] = True; break
+                    if out[i]: break
+                if out[i]: break
+        return out
+
 def mesh_objects(): return [o for o in bpy.data.objects if o.type == 'MESH']
 
 def bbox(objs, dg, inv):
@@ -589,6 +618,15 @@ def build_car(spec, out_path, tex_dir, prefix):
                 hit = np.array([tuple(k) in keys for k in q])
                 if hit.mean() > 0.6:
                     cls[o.name] = (None, {}); log('duplicate skin over the paint left out: %s (%.0f%% of %d tris)' % (o.name, 100 * hit.mean(), len(hit)))
+    # the painted shell, to drop any other triangle lying on it (duplicate skins z-fight with the paint in the game)
+    shell = None
+    if spec.get('drop_skins', True):
+        pp, pn = [], []
+        for o in objs:
+            if cls[o.name][0] == 'body' and cls[o.name][1].get('kind') == 'paint':
+                r = eval_tris(o, dg, I)
+                if r is not None: pp.append(r[0]); pn.append(r[1])
+        if pp: shell = PaintShell(np.concatenate(pp), np.concatenate(pn))
     # triangle budgets: decimate the source objects of a part class that is over its budget
     tri_of = {o.name: len(o.data.polygons) * (1 if all(len(p.vertices) == 3 for p in o.data.polygons[:50]) else 2) for o in objs}
     totals = {}
@@ -629,6 +667,15 @@ def build_car(spec, out_path, tex_dir, prefix):
         if r is None: continue
         P, N, mats, uv = r
         if part == 'swheel': sw_objs.append((o, P)); parts['swheel'].add(P, N, mats, uv, opts); continue
+        if shell is not None and part in ('body', 'det', 'interior') and opts.get('kind') not in ('paint', 'lamp', 'decal'):
+            on = shell.on(P, N)
+            cc = P.mean(axis=1)   # only outside the cabin: trims inside the car may legitimately touch body-coloured parts
+            on &= ~((cc[:, 0] > cab['x0']) & (cc[:, 0] < cab['x1']) & (cc[:, 1] > cab['y0']) & (cc[:, 1] < cab['y1']) & (cc[:, 2] > cab['z0']) & (cc[:, 2] < cab['z1']))
+            if on.any():
+                keep = np.flatnonzero(~on)
+                if len(keep) == 0: continue
+                if on.sum() > 20: log('%d triangles of %s lay on the paint: left out' % (int(on.sum()), o.name[:50]))
+                P, N, mats, uv = P[keep], N[keep], [mats[i] for i in keep], (uv[keep] if uv is not None else None)
         if part in ('body', 'det') and spatial and wheels:
             # wheels found in the geometry: their triangles leave the body; the template corner becomes the wheel part
             wl = list(wheels.values()); wi = in_wheel(P.mean(axis=1), wl)
@@ -755,6 +802,7 @@ def build_car(spec, out_path, tex_dir, prefix):
     meta['cabin'] = {k: round(float(v), 3) for k, v in cab.items()}
     meta['mirror'] = dict(pos=gv(np.array([0, cab['y0'] + 0.05, H - 0.12])), nrm=gv(np.array([0, 1, -0.1])), w=0.26, h=0.07)
     if spec.get('eye'): meta['eye'] = gv(np.array(spec['eye'], dtype=np.float64)); log('eye placed by hand at', spec['eye'])
+    if spec.get('interior_only_cockpit'): meta['inOnly'] = 1   # the interior shows through the body from outside: draw it only from the driver's seat
     if spec.get('meta'): meta.update(spec['meta'])
     # LODs: body + det + glass decimated further (the interior is left out: it's behind the glass)
     lod_parts = []
