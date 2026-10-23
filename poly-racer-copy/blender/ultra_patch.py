@@ -290,7 +290,6 @@ rep("""t.encoding = linear ? THREE.LinearEncoding : THREE.sRGBEncoding; t.anisot
 rep("""  const N = 2600, box = 46, H = 26;""", """  const N = Q.ultra ? 4200 : 2600, box = 46, H = 26;""")
 rep("""loading(true, 'Graphics: ' + v, 'Restarting');""", """loading(true, 'Graphics: ' + v[0].toUpperCase() + v.slice(1), 'Restarting');""")
 
-open(p, 'w').write(s); print('ultra patch applied')
 
 # ================= Ultra, second pass: a look that is plainly different from High =================
 # ---- ambient occlusion: a half-size depth pass of the scene, occlusion from the depth around each pixel, blurred and
@@ -413,3 +412,5 @@ rep("""    // right: leaf clusters
     }
     // right: leaf clusters
     for (let i = 0; i < 2600; i++) {""")
+
+open(p, 'w').write(s); print('ultra patch applied')
