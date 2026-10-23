@@ -477,7 +477,7 @@
 <div class="screen" id="menu" hidden>
   <div class="shade"></div>
   <div class="menuSide">
-    <div class="logo"><span class="l1">POLY</span><span class="l2">RACER</span><span class="ver">2.2</span></div>
+    <div class="logo"><span class="l1">POLY</span><span class="l2">RACER</span><span class="ver">2.3</span></div>
     <nav id="mainNav">
       <button class="mbtn primary" data-go="playMenu"><span class="k">New: races</span><b>PLAY</b><small>Time trials or races against the field</small></button>
       <button class="mbtn" data-go="online"><span class="k">Up to 10</span><b>ONLINE</b><small id="onLabel">Race other players: public and private rooms</small></button>
@@ -495,8 +495,9 @@
       <div class="chip bronze"><b id="stBronze">0</b><small>Bronze</small></div>
     </div>
     <div class="news panel">
-      <h3>What's new in <span>2.2</span></h3>
+      <h3>What's new in <span>2.3</span></h3>
       <ul>
+        <li>Ultra graphics: real photographed skies that light the cars and show in their paint, real asphalt, grass, gravel and sand with surface relief, 4k shadows</li>
         <li>Nine real cars, modelled in detail inside and out, with proper paint, chrome and glass</li>
         <li>Cockpit view: sit in each car's own interior, behind its own steering wheel and mirrors</li>
         <li>Sharper shadows and a lit dashboard at night</li>
@@ -535,7 +536,7 @@
   <div class="shade"></div>
   <div class="center"><div class="panel">
     <h1 class="title" style="margin-bottom:10px">SET<span>TINGS</span></h1>
-    <div class="opt"><div><label>Graphics</label><small>Lower it if the game feels slow</small></div><div class="seg" data-set="quality"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div></div>
+    <div class="opt"><div><label>Graphics</label><small>Lower it if the game feels slow. Ultra adds real skies and road surfaces (a 20 MB download) and wants a proper graphics card</small></div><div class="seg" data-set="quality"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button><button data-v="ultra">Ultra</button></div></div>
     <div class="opt"><div><label>Camera</label><small>Change it while driving with C</small></div><div class="seg" data-set="cam"><button data-v="0">Chase</button><button data-v="1">Close</button><button data-v="2">Cockpit</button></div></div>
     <div class="opt"><div><label>Speed</label></div><div class="seg" data-set="units"><button data-v="kmh">km/h</button><button data-v="mph">mph</button></div></div>
     <div class="opt"><div><label>Ghost of your best run</label></div><div class="seg" data-set="ghost"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
@@ -738,7 +739,7 @@
 
 <script>
 'use strict';
-const VERSION = '2.2';
+const VERSION = '2.3';
 const V3 = THREE.Vector3;
 
 // ---------- Track pieces ----------
@@ -884,6 +885,8 @@ const QUALITY = {
   low:    { pr: 1,    aa: false, shadows: 0,    trees: 2500,  tufts: 0,    clouds: 0, mirror: 1, far: 2600, lights: 8,  bloom: false },
   medium: { pr: 1.5,  aa: true,  shadows: 1024, trees: 9000,  tufts: 2500, clouds: 1, mirror: 1, far: 4200, lights: 12, bloom: false },
   high:   { pr: 2,    aa: true,  shadows: 2048, trees: 18000, tufts: 6000, clouds: 1, mirror: 2, far: 5200, lights: 16, bloom: true },
+  // Ultra: everything High does, plus photographic skies and road surfaces (Poly Haven), 4k shadows and far more trees
+  ultra:  { pr: 2,    aa: true,  shadows: 4096, trees: 26000, tufts: 9000, clouds: 1, mirror: 2, far: 6200, lights: 24, bloom: true, ultra: true },
 };
 let Q = QUALITY[settings.quality] || QUALITY.high;
 
@@ -2048,6 +2051,7 @@ const SKY_VERT = `varying vec3 vDir;
 void main() { vDir = normalize((modelMatrix * vec4(position, 0.0)).xyz); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`;
 const SKY_FRAG = `uniform vec3 zenith; uniform vec3 horizon; uniform vec3 ground; uniform vec3 sunDir; uniform vec3 sunCol;
 uniform float clouds; uniform float time; uniform float night; varying vec3 vDir;
+uniform sampler2D skyTex; uniform float skyShift; uniform float skyGain; uniform vec3 fogCol; uniform float skyOn;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
@@ -2056,6 +2060,19 @@ void main() {
   vec3 d = normalize(vDir); float h = d.y;
   vec3 col = mix(horizon, zenith, pow(clamp(h, 0.0, 1.0), 0.5));
   float sd = max(dot(d, sunDir), 0.0);
+  #ifdef ULTRA
+  if (skyOn > 0.5) {
+    // the photographed sky, turned so its sun sits where the game's sun is; it fades into the fog at the horizon
+    vec2 suv = vec2(fract(atan(d.z, d.x) * 0.15915494 + 0.5 + skyShift), asin(clamp(h, -1.0, 1.0)) * 0.31830989 + 0.5);
+    vec3 pc = sRGBToLinear(texture2D(skyTex, suv)).rgb * skyGain;
+    pc = mix(pc, fogCol, smoothstep(0.1, 0.0, h) * 0.85);
+    pc = mix(pc, ground, smoothstep(0.0, -0.06, h));
+    gl_FragColor = vec4(pc, 1.0);
+    #include <tonemapping_fragment>
+    #include <encodings_fragment>
+    return;
+  }
+  #endif
   // the horizon glows more towards the sun
   col += sunCol * pow(sd, 6.0) * 0.18 * (1.0 - clamp(h * 2.0, 0.0, 1.0));
   col += sunCol * (pow(sd, 32.0) * 0.35 + pow(sd, 400.0) * 1.5);
@@ -2079,9 +2096,10 @@ void main() {
 }`;
 const skyMat = new THREE.ShaderMaterial({
   uniforms: { zenith: { value: new THREE.Color() }, horizon: { value: new THREE.Color() }, ground: { value: new THREE.Color() },
-    sunDir: { value: new V3(0, 1, 0) }, sunCol: { value: new THREE.Color() }, clouds: { value: 0.4 }, time: { value: 0 }, night: { value: 0 } },
+    sunDir: { value: new V3(0, 1, 0) }, sunCol: { value: new THREE.Color() }, clouds: { value: 0.4 }, time: { value: 0 }, night: { value: 0 },
+    skyTex: { value: null }, skyShift: { value: 0 }, skyGain: { value: 1 }, fogCol: { value: new THREE.Color() }, skyOn: { value: 0 } },
   vertexShader: SKY_VERT, fragmentShader: SKY_FRAG, side: THREE.BackSide, depthWrite: false, fog: false,
-  defines: Q.clouds ? { CLOUDS: 1 } : {},
+  defines: Object.assign(Q.clouds ? { CLOUDS: 1 } : {}, Q.ultra ? { ULTRA: 1 } : {}),
 });
 const sky = new THREE.Mesh(new THREE.SphereGeometry(100, 32, 16), skyMat);
 sky.renderOrder = -10; sky.frustumCulled = false;
@@ -2093,7 +2111,7 @@ const sun = new THREE.DirectionalLight('#ffffff', 2.5);
 sun.castShadow = !!Q.shadows;
 sun.shadow.mapSize.set(Q.shadows || 1024, Q.shadows || 1024);
 // a tighter shadow frustum on High: the 2048 map then resolves the cars' own shadows (mirrors, spoilers, wheel arches)
-{ const S = Q.shadows >= 2048 ? 48 : 70; Object.assign(sun.shadow.camera, { left: -S, right: S, top: S, bottom: -S, near: 1, far: 500 }); }
+{ const S = Q.shadows >= 4096 ? 60 : Q.shadows >= 2048 ? 48 : 70; Object.assign(sun.shadow.camera, { left: -S, right: S, top: S, bottom: -S, near: 1, far: 500 }); }
 sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.03;
 scene.add(sun, sun.target);
 const sunDir = new V3(0, 1, 0);
@@ -2115,6 +2133,7 @@ function applyEnv(name) {
   scene.fog.color.copy(C(E.sky[1])).lerp(C(E.sky[0]), 0.12);
   scene.fog.density = E.fog;
   renderer.toneMappingExposure = E.exp;
+  if (ULTRA.ready && ultraSky(E)) return;
   // reflections and soft light from this sky
   const sc = new THREE.Scene();
   const m = new THREE.Mesh(new THREE.SphereGeometry(100, 32, 16), skyMat);
@@ -2125,6 +2144,129 @@ function applyEnv(name) {
   u.clouds.value = keep;
   m.geometry.dispose();
   scene.environment = envRT.texture;
+}
+
+// ---------- Ultra: photographed skies and surfaces (Poly Haven, CC0), loaded only on the Ultra setting ----------
+// Skies come as a 2k JPG (what the player sees) and a 512x256 .hdr (what lights the scene and reflects in the paint);
+// `ultra/sky/skies.json` says where the sun is in each, so the sky can be turned to put it where the game's sun is.
+const ULTRA = { ready: false, img: {}, tex: {}, sky: {}, env: {}, info: {} };
+const ULTRA_TEX = ['road', 'tarmac', 'grass', 'gravel', 'sand', 'dirt', 'snow', 'concrete'];
+function loadImage(url) { return new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('image ' + url)); im.src = url; }); }
+// Radiance .hdr (RGBE, run-length coded) -> rows of RGBE bytes, bottom row first (how WebGL wants them)
+function parseHDR(buf) {
+  const b = new Uint8Array(buf); let p = 0, line = '';
+  const readLine = () => { line = ''; while (p < b.length && b[p] !== 10) line += String.fromCharCode(b[p++]); p++; return line; };
+  if (!readLine().startsWith('#?')) throw new Error('not an hdr');
+  while (readLine() !== '') { /* header */ }
+  const m = /-Y (\d+) \+X (\d+)/.exec(readLine()); if (!m) throw new Error('hdr layout');
+  const H = +m[1], W = +m[2], out = new Uint8Array(W * H * 4), row = new Uint8Array(W * 4);
+  for (let y = 0; y < H; y++) {
+    if (b[p] === 2 && b[p + 1] === 2 && ((b[p + 2] << 8) | b[p + 3]) === W && W >= 8 && W < 32768) {
+      p += 4;
+      for (let c = 0; c < 4; c++) {
+        let x = 0;
+        while (x < W) {
+          let n = b[p++];
+          if (n > 128) { n -= 128; const v = b[p++]; for (let i = 0; i < n; i++) row[(x++) * 4 + c] = v; }
+          else for (let i = 0; i < n; i++) row[(x++) * 4 + c] = b[p++];
+        }
+      }
+    } else { row.set(b.subarray(p, p + W * 4)); p += W * 4; }
+    out.set(row, (H - 1 - y) * W * 4);
+  }
+  return { W, H, data: out };
+}
+async function loadUltra(progress) {
+  const v = '?v=' + VERSION;
+  try {
+    ULTRA.info = await (await fetch('ultra/sky/skies.json' + v)).json();
+    const jobs = [];
+    for (const k of ULTRA_TEX) for (const t of ['diff', 'nor', 'rough']) {
+      if (t === 'rough' && k !== 'road') continue;
+      jobs.push(loadImage('ultra/tex/' + k + '_' + t + '.jpg' + v).then(im => { ULTRA.img[k + '_' + t] = im; }));
+    }
+    for (const k in ULTRA.info) {
+      jobs.push(loadImage('ultra/sky/' + k + '_sky.jpg' + v).then(im => { ULTRA.img['sky_' + k] = im; }));
+      jobs.push(fetch('ultra/sky/' + k + '_env.hdr' + v).then(r => r.arrayBuffer()).then(buf => { ULTRA.env[k] = parseHDR(buf); }));
+    }
+    let done = 0; const all = jobs.length;
+    await Promise.all(jobs.map(j => j.then(() => { done++; if (progress) progress(done, all); })));
+    ultraTextures();
+    ULTRA.ready = true;
+  } catch (e) { console.warn('Ultra assets', e); ULTRA.ready = false; }
+}
+// a photo as a grey detail map: the land's own colours (seasons, biomes) still come through the vertex colours
+function ultraDetail(im, size, mean = 0.86) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); g.drawImage(im, 0, 0, size, size);
+  const id = g.getImageData(0, 0, size, size), d = id.data; let sum = 0;
+  for (let i = 0; i < d.length; i += 4) { const l = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; d[i] = l; sum += l; }
+  const k = mean * 255 / (sum / (d.length / 4));
+  for (let i = 0; i < d.length; i += 4) { const l = Math.min(255, d[i] * k); d[i] = d[i + 1] = d[i + 2] = l; }
+  g.putImageData(id, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(16, MAX_ANISO); t.encoding = THREE.sRGBEncoding; return t;
+}
+function ultraMap(im, data) {
+  const t = new THREE.Texture(im); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(16, MAX_ANISO);
+  t.encoding = data ? THREE.LinearEncoding : THREE.sRGBEncoding; t.needsUpdate = true; return t;
+}
+function ultraTiled(im, w, h, nx, ny, data) {
+  return canvasTex(w, h, g => { for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) g.drawImage(im, i * w / nx, j * h / ny, w / nx, h / ny); }, data ? { data: 1 } : {});
+}
+function ultraTextures() {
+  const I = ULTRA.img, T = ULTRA.tex;
+  // the road: the lines are painted on it by roadTexture; normals and roughness tiled 6 x 12 over its 12 x 24 m
+  T.roadN = ultraTiled(I.road_nor, 2048, 4096, 6, 12, true); T.roadN.anisotropy = Math.min(16, MAX_ANISO);
+  T.roadR = ultraTiled(I.road_rough, 1024, 2048, 6, 12, true);
+  for (const k of ['grass', 'gravel', 'sand', 'dirt', 'snow', 'tarmac', 'concrete']) {
+    T[k] = ultraDetail(I[k + '_diff'], 1024, k === 'snow' ? 0.92 : 0.86); T[k].nmap = ultraMap(I[k + '_nor'], true);
+  }
+  T.concreteC = ultraMap(I.concrete_diff);
+  for (const k in ULTRA.info) { const t = ultraMap(I['sky_' + k]); t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping; T['sky_' + k] = t; }
+  // the game's own textures give way to the photographs
+  ribbonTextures();
+  TEX.grassD = T.grass; TEX.gravel = T.gravel; TEX.sand = T.sand; TEX.dirt = T.dirt; TEX.tarmacR = T.tarmac; TEX.snowD = T.snow;
+  if (MAT.ground) { MAT.ground.map = T.grass; MAT.ground.normalMap = T.grass.nmap; MAT.ground.normalScale = new THREE.Vector2(0.45, 0.45); MAT.ground.needsUpdate = true; }
+  if (MAT.wall) { MAT.wall.map = T.concrete; MAT.wall.needsUpdate = true; }
+  if (MAT.concrete) { MAT.concrete.map = T.concreteC; MAT.concrete.needsUpdate = true; }
+}
+// which photographed sky suits this environment: by the sun's height, the cloud cover and the weather
+function ultraSkyKey(E) {
+  const el = E.sun[0], w = E.weather, cl = E.clouds || 0;
+  if (E.night) return (w === 'cloudy' || w === 'rain' || w === 'fog' || w === 'snow' || cl > 0.6) ? 'nightcloudy' : 'moon';
+  if (w === 'snow' || (E.ice && cl > 0.5)) return 'snow';
+  if (w === 'fog') return 'fog';
+  if (w === 'rain' || cl > 0.78) return 'overcast';
+  if (w === 'cloudy' || cl > 0.5) return el < 16 ? 'cloudysunset' : 'cloudy';
+  if (el < 2) return 'dusk';
+  if (el < 16) return E.sun[1] < 180 ? 'morning' : 'sunset';
+  if (el < 46) return 'afternoon';
+  return 'noon';
+}
+const ULTRA_GAIN = { noon: 2.6, afternoon: 2.6, morning: 2.2, sunset: 2.0, dusk: 1.6, cloudy: 2.4, cloudysunset: 2.0, overcast: 2.2, fog: 2.2, snow: 2.4, moon: 0.3, nightcloudy: 0.22 };
+let ultraEnvKey = null;
+function ultraSky(E) {
+  const key = ultraSkyKey(E), info = ULTRA.info[key], tex = ULTRA.tex['sky_' + key], hdr = ULTRA.env[key];
+  if (!info || !tex || !hdr) return false;
+  const u = skyMat.uniforms;
+  // the sun's place across the picture (how three.js reads an equirect: u = atan(z, x) / 2pi + 0.5) vs. the game's sun
+  const az = E.sun[1] * Math.PI / 180, uGame = Math.atan2(Math.cos(az), Math.sin(az)) / (2 * Math.PI) + 0.5;
+  const shift = uGame - info.sunU;
+  u.skyTex.value = tex; u.skyShift.value = shift; u.skyGain.value = (ULTRA_GAIN[key] || 1) * (E.night ? 1 : 1); u.skyOn.value = 1;
+  u.fogCol.value.copy(scene.fog.color);
+  // the sky lights the scene and shows in the paint: the small HDR, turned the same way, through the PMREM filter
+  const ek = key + '|' + Math.round(shift * 64);
+  if (ek !== ultraEnvKey) {
+    ultraEnvKey = ek;
+    const W = hdr.W, H = hdr.H, roll = ((Math.round(shift * W) % W) + W) % W, d = new Uint8Array(W * H * 4);
+    for (let y = 0; y < H; y++) { const r = y * W * 4; d.set(hdr.data.subarray(r + (W - roll) * 4, r + W * 4), r); d.set(hdr.data.subarray(r, r + (W - roll) * 4), r + roll * 4); }
+    const dt = new THREE.DataTexture(d, W, H, THREE.RGBAFormat, THREE.UnsignedByteType); dt.encoding = THREE.RGBEEncoding; dt.flipY = false;
+    dt.minFilter = dt.magFilter = THREE.LinearFilter; dt.generateMipmaps = false; dt.needsUpdate = true;
+    if (envRT) envRT.dispose();
+    envRT = pmrem.fromEquirectangular(dt); dt.dispose();
+    scene.environment = envRT.texture;
+  }
+  hemi.intensity *= 0.45;   // the sky itself now gives the soft light
+  return true;
 }
 
 // ---------- Textures (drawn once on canvases) ----------
@@ -2153,7 +2295,7 @@ function canvasTex(w, h, draw, opts = {}) {
   draw(g, w, h);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = opts.clamp ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
-  t.anisotropy = Math.min(8, MAX_ANISO);
+  t.anisotropy = Math.min(Q.ultra ? 16 : 8, MAX_ANISO);
   if (!opts.data) t.encoding = THREE.sRGBEncoding;
   return t;
 }
@@ -2745,38 +2887,56 @@ function roadTexture(kind, snowy) {
   const key = 'asph_' + kind + (snowy ? '_snow' : '');
   if (TEX[key]) return TEX[key];
   const R = rng(kind.length * 17 + 3);
-  TEX[key] = canvasTex(512, 1024, (g, w, h) => {
+  const photo = ULTRA.ready && ULTRA.img.road_diff;   // Ultra: the photographed asphalt, tiled 6 x 12, under the paint
+  const TW = photo ? 2048 : 512, TH = photo ? 4096 : 1024, dash = photo ? 2048 : 512;
+  TEX[key] = canvasTex(TW, TH, (g, w, h) => {
+    let base = null;
+    if (photo) { for (let j = 0; j < 12; j++) for (let i = 0; i < 6; i++) g.drawImage(photo, i * w / 6, j * h / 12, w / 6, h / 12); base = g.getImageData(0, 0, w, h).data; }
+    const lineAt = kind === 'track' ? u => u > 0.012 && u < 0.035 || u > 0.965 && u < 0.988
+      : kind === 'city' ? u => u > 0.02 && u < 0.035 || u > 0.965 && u < 0.98 || u > 0.493 && u < 0.507
+      : u => u > 0.03 && u < 0.05 || u > 0.95 && u < 0.97 || u > 0.478 && u < 0.493 || u > 0.507 && u < 0.522;
     pixels(g, w, h, (x, y) => {
+      const u = x / w, o = (y * w + x) * 4;
+      if (base && !lineAt(u)) {
+        // the photo as it is, a shade darker where the tyres run
+        const rub = kind === 'track' ? (Math.exp(-(((u - 0.4) / 0.09) ** 2)) + Math.exp(-(((u - 0.6) / 0.09) ** 2))) * 0.1 : 0;
+        return [base[o] * (1 - rub), base[o + 1] * (1 - rub), base[o + 2] * (1 - rub)];
+      }
       const n = fbm2(N1, x / 64, y / 64, 4, 8) * 0.5 + fbm2(N2, x / 8, y / 8, 2, 64) * 0.35;
       const grain = (R() - 0.5) * 0.22 + (R() < 0.04 ? 0.25 : 0);
-      const u = x / w;
       let v = 0.28 + n * 0.06 + grain * 0.12;
       if (kind === 'track') v -= (Math.exp(-(((u - 0.4) / 0.09) ** 2)) + Math.exp(-(((u - 0.6) / 0.09) ** 2))) * 0.03;
       const line = (a, b) => u > a && u < b;
       let paint = null;
       if (kind === 'track') { if (line(0.012, 0.035) || line(0.965, 0.988)) paint = [0.82, 0.82, 0.8]; }
-      else if (kind === 'city') { if (line(0.02, 0.035) || line(0.965, 0.98)) paint = [0.8, 0.8, 0.78]; if (line(0.493, 0.507) && (y % 512) < 256) paint = [0.82, 0.82, 0.8]; }
+      else if (kind === 'city') { if (line(0.02, 0.035) || line(0.965, 0.98)) paint = [0.8, 0.8, 0.78]; if (line(0.493, 0.507) && (y % dash) < dash / 2) paint = [0.82, 0.82, 0.8]; }
       else if (kind === 'country') { if (line(0.03, 0.05) || line(0.95, 0.97)) paint = [0.8, 0.8, 0.78]; if (line(0.478, 0.493) || line(0.507, 0.522)) paint = [0.85, 0.66, 0.12]; }
-      if (paint) { const wear = 0.85 + n * 0.3 + grain * 0.2; return paint.map(c => Math.max(0, Math.min(255, c * wear * 255))); }
+      if (paint) {
+        const wear = 0.85 + n * 0.3 + grain * 0.2;
+        if (base) { const k = 0.55 + (base[o] / 255) * 0.9; return paint.map(c => Math.max(0, Math.min(255, c * wear * k * 255))); }
+        return paint.map(c => Math.max(0, Math.min(255, c * wear * 255)));
+      }
+      if (base) return [base[o], base[o + 1], base[o + 2]];
       const c = Math.max(0, Math.min(255, v * 255));
       return [c, c, c * 1.03];
     });
     // patches, cracks and tar snakes: the little things on a real road
-    for (let i = 0; i < 7; i++) {
-      const x = R() * w * 0.8 + w * 0.1, y = R() * h, pw = 30 + R() * 90, ph = 40 + R() * 160;
+    const sc = w / 512;
+    for (let i = 0; i < 7 * sc; i++) {
+      const x = R() * w * 0.8 + w * 0.1, y = R() * h, pw = (30 + R() * 90) * sc, ph = (40 + R() * 160) * sc;
       g.fillStyle = `rgba(${R() < 0.5 ? '20,20,22' : '120,120,118'},${0.12 + R() * 0.12})`; g.fillRect(x - pw / 2, y - ph / 2, pw, ph);
     }
     g.strokeStyle = 'rgba(14,14,16,0.32)'; g.lineCap = 'round';
-    for (let i = 0; i < 12; i++) {
-      let x = R() * w, y = R() * h; g.lineWidth = 0.6 + R() * 0.9; g.beginPath(); g.moveTo(x, y);
-      for (let k = 0; k < 7; k++) { x += (R() - 0.5) * 14; y += (R() - 0.3) * 16; g.lineTo(x, y); }
+    for (let i = 0; i < 12 * sc; i++) {
+      let x = R() * w, y = R() * h; g.lineWidth = (0.6 + R() * 0.9) * sc; g.beginPath(); g.moveTo(x, y);
+      for (let k = 0; k < 7; k++) { x += (R() - 0.5) * 14 * sc; y += (R() - 0.3) * 16 * sc; g.lineTo(x, y); }
       g.stroke();
     }
     // tar snakes: long sealed cracks, a little shiny and darker
     g.strokeStyle = 'rgba(8,8,10,0.28)';
-    for (let i = 0; i < 4; i++) {
-      let x = R() * w, y = R() * h; g.lineWidth = 2 + R() * 2; g.beginPath(); g.moveTo(x, y);
-      for (let k = 0; k < 10; k++) { x += (R() - 0.5) * 30; y += 20 + R() * 25; g.lineTo(x, y); }
+    for (let i = 0; i < 4 * sc; i++) {
+      let x = R() * w, y = R() * h; g.lineWidth = (2 + R() * 2) * sc; g.beginPath(); g.moveTo(x, y);
+      for (let k = 0; k < 10; k++) { x += (R() - 0.5) * 30 * sc; y += (20 + R() * 25) * sc; g.lineTo(x, y); }
       g.stroke();
     }
     // in the snow: packed snow at the edges and between the wheel tracks, slush in the tracks
@@ -2808,13 +2968,16 @@ function circuitGeometry(track, grp, E) {
   const quadC = (a, b, c, d, s) => { tri(a, b, c, s); tri(a, c, d, s); };
   // road
   const rk = def.kind === 'track' ? 'track' : city ? 'city' : 'country';
-  const roadMat = lit(new THREE.MeshStandardMaterial({ map: roadTexture(rk, E.road === 2), normalMap: TEX.asphaltN, normalScale: new THREE.Vector2(0.5, 0.5), roughness: 0.85, metalness: 0 }));
-  roadMat.userData.wetBase = 0.85;
-  const surfMat = (tex, rough, rep) => { const m = lit(new THREE.MeshStandardMaterial({ map: tex, roughness: rough, metalness: 0, vertexColors: true })); m.userData.rep = rep; return m; };
+  const roadMat = lit(new THREE.MeshStandardMaterial({ map: roadTexture(rk, E.road === 2), normalMap: ULTRA.ready ? ULTRA.tex.roadN : TEX.asphaltN, normalScale: new THREE.Vector2(ULTRA.ready ? 0.9 : 0.5, ULTRA.ready ? 0.9 : 0.5),
+    roughnessMap: ULTRA.ready ? ULTRA.tex.roadR : null, roughness: ULTRA.ready ? 1.0 : 0.85, metalness: 0 }));
+  roadMat.userData.wetBase = ULTRA.ready ? 1.0 : 0.85;
+  const surfMat = (tex, rough, rep) => {
+    const nm = tex.nmap;   // Ultra: the photograph's normal map rides along with its detail map
+    const m = lit(new THREE.MeshStandardMaterial({ map: tex, normalMap: nm || null, normalScale: new THREE.Vector2(0.7, 0.7), roughness: rough, metalness: 0, vertexColors: true })); m.userData.rep = rep; return m; };
   const MATS = {
     road: roadMat, sand: surfMat(TEX.sand, 0.95), dirt: surfMat(TEX.dirt, 0.95), gravelroad: surfMat(TEX.gravel, 0.95),
     grass: surfMat(TEX.grassD, 0.95), gravel: surfMat(TEX.gravel, 0.95), tarmac: surfMat(TEX.tarmacR, 0.85), sidewalk: surfMat(TEX.paver, 0.8),
-    kerb: lit(new THREE.MeshStandardMaterial({ map: TEX.kerb2, roughness: 0.55, metalness: 0 })), snow: surfMat(TEX.grassD, 0.7),
+    kerb: lit(new THREE.MeshStandardMaterial({ map: TEX.kerb2, roughness: 0.55, metalness: 0 })), snow: surfMat(TEX.snowD || TEX.grassD, 0.7),
   };
   const B = {}; for (const k in MATS) B[k] = new Bucket();
   const landCol = new THREE.Color(), c2 = new THREE.Color();
@@ -3626,7 +3789,7 @@ function makeHeight(E, ctr, RN, groundY, dist, seed) {
 
 // The ground mesh: a grid with fine cells near the track that get bigger towards the horizon
 function buildTerrain(E, track, ctr, span, groundY, seed, custom) {
-  const RN = span + 380, RF = Math.max(RN + 800, camera.far * 0.92), N = settings.quality === 'low' ? 220 : custom ? 340 : 300, a = 0.72;
+  const RN = span + 380, RF = Math.max(RN + 800, camera.far * 0.92), N = settings.quality === 'low' ? 220 : custom ? 340 : Q.ultra ? 380 : 300, a = 0.72;
   const dist = custom ? custom.dist : distField(track, ctr, RN + 60);
   const height = custom ? custom.height(RN) : makeHeight(E, ctr, RN, groundY, dist, seed);
   const k = RN / a * (1 - a);
@@ -4095,7 +4258,7 @@ function placeInstances(grp, list, E) {
     im.instanceMatrix.needsUpdate = true;
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
     if (mat === MAT.foliage) im.customDepthMaterial = FA.depth;
-    im.castShadow = false; im.receiveShadow = settings.quality === 'high' && t.type !== 'tuft';
+    im.castShadow = false; im.receiveShadow = Q.shadows >= 2048 && t.type !== 'tuft';
     im.userData.tile = { x: cx, z: cz, r: rad, tall: t.type !== 'tuft' && t.type !== 'rock' };
     grp.add(im);
     world.tiles.push(im);
@@ -4150,7 +4313,7 @@ function updateWorld(dt, focus) {
   for (const im of world.tiles) {
     const lod = im.userData.lod;
     if (!lod) continue;
-    const t = im.userData.tile, far = Math.hypot(t.x - cp.x, t.z - cp.z) - t.r > (settings.quality === 'high' ? 130 : 90);
+    const t = im.userData.tile, far = Math.hypot(t.x - cp.x, t.z - cp.z) - t.r > (Q.ultra ? 180 : settings.quality === 'high' ? 130 : 90);
     im.visible = !far; lod.visible = far;
   }
   if (world.water && world.water.material.normalMap) {
@@ -4706,7 +4869,7 @@ function modelTex(name, linear) {
   let done; TEX_WAIT.push(new Promise(r => (done = r)));
   const t = new THREE.TextureLoader().load('models/tex/' + name + '?v=' + VERSION, done, undefined, () => { console.warn('model texture ' + name + ' missing'); done(); });
   // colour maps are sRGB; normal and roughness/metal maps are data
-  t.encoding = linear ? THREE.LinearEncoding : THREE.sRGBEncoding; t.anisotropy = Math.min(8, MAX_ANISO);
+  t.encoding = linear ? THREE.LinearEncoding : THREE.sRGBEncoding; t.anisotropy = Math.min(Q.ultra ? 16 : 8, MAX_ANISO);
   return (MODEL_TEX[name] = t);
 }
 function parseFCM(buf) {
@@ -7179,7 +7342,7 @@ const ui = (() => {
     sfx.click();
     if (k === 'cam') { camMode = +v; saved.cam = camMode; }
     else if (k === 'quality') {
-      if (settings.quality !== v) { settings.quality = v; store(); loading(true, 'Graphics: ' + v, 'Restarting'); setTimeout(() => location.reload(), 50); return; }
+      if (settings.quality !== v) { settings.quality = v; store(); loading(true, 'Graphics: ' + v[0].toUpperCase() + v.slice(1), 'Restarting'); setTimeout(() => location.reload(), 50); return; }
     } else if (k === 'ghost' || k === 'minimap' || k === 'fps' || k === 'damage' || k === 'menuMusic') settings[k] = v === '1';
     else settings[k] = v;
     store();
@@ -8181,7 +8344,7 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 
 // ----- rain and snow: streaks or flakes in a box that moves with the camera; wet roads go dark and shiny
 const weather = (() => {
-  const N = 2600, box = 46, H = 26;
+  const N = Q.ultra ? 4200 : 2600, box = 46, H = 26;
   const pos = new Float32Array(N * 6), vel = new Float32Array(N);
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const rainMat = new THREE.LineBasicMaterial({ color: '#c8d4e2', transparent: true, opacity: 0.38, depthWrite: false });
@@ -8741,7 +8904,7 @@ if (DEV) window.__look = (ang, dist, h, fov, tx = 0, ty = -0.2, tz = 0) => {
   for (const s of ['menu', 'garage', 'tracks', 'play', 'races']) $(s).hidden = true;
 };
 ui.loading(true, 'Poly Racer', 'Loading the cars');
-loadModels().catch(e => console.warn(e)).then(() => {
+loadModels().catch(e => console.warn(e)).then(() => Q.ultra ? loadUltra((n, all) => ui.loading(true, 'Poly Racer', `Ultra textures and skies ${n} / ${all}`)) : null).then(() => {
   setPlayerCar(carById(saved.car));
   ui.loading(true, 'Poly Racer', 'Building the world');
   requestAnimationFrame(() => requestAnimationFrame(() => {
