@@ -9,13 +9,14 @@ const srv = http.createServer((req, res) => {
   fs.readFile(p, (e, d) => { if (e) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': MIME[path.extname(p)] || 'application/octet-stream' }); res.end(d); });
 });
 (async () => {
-  await new Promise(r => srv.listen(8765, '127.0.0.1', r));
+  await new Promise(r => srv.listen(+(process.env.SHOT_PORT || 8765), '127.0.0.1', r));
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--no-sandbox'] });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const page = await browser.newPage({ viewport: { width: +(process.env.SHOT_W || 1280), height: +(process.env.SHOT_H || 720) } });
+  if (process.env.SHOT_INIT) await page.addInitScript(process.env.SHOT_INIT);
   const logs = [];
   page.on('console', m => logs.push(m.type() + ': ' + m.text().slice(0, 300)));
   page.on('pageerror', e => logs.push('PAGEERROR: ' + e.message));
-  await page.goto('http://localhost:8765/index.html' + query, { waitUntil: 'load', timeout: 120000 });
+  await page.goto('http://localhost:' + (process.env.SHOT_PORT || 8765) + '/index.html' + query, { waitUntil: 'load', timeout: 120000 });
   await page.waitForTimeout(3000);
   if (js) { try { const r = await page.evaluate(js); if (r !== undefined) logs.push('JS: ' + JSON.stringify(r).slice(0, 2000)); } catch (e) { logs.push('JSERR: ' + e.message); } }
   await page.waitForTimeout(+waitMs);

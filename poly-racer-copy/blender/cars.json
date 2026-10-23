@@ -17,6 +17,13 @@
      "kind": "paint",
      "tint": false
     }
+   ],
+   "^Honda_Civic_Body_Mirror_MAT": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
+    }
    ]
   }
  },
@@ -24,7 +31,8 @@
   "uid": "dd8455bdfa3247feb906145fa2abca03",
   "len": 4.97,
   "side": "L",
-  "tint": false
+  "tint": false,
+  "paint_if_outside": "\\|Meshesrowersportdoor"
  },
  "sports": {
   "uid": "790c40ccff6843eab0b7b4bd18421ff8",
@@ -45,6 +53,24 @@
     "body",
     {
      "kind": "paint"
+    }
+   ],
+   "\\|TIRE32$": [
+    null,
+    {}
+   ],
+   "^Object_71(\\.\\d+)?\\|Material$": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
+    }
+   ],
+   "\\|Material\\.013$": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
     }
    ]
   },
@@ -102,6 +128,13 @@
      "kind": "paint",
      "tint": false
     }
+   ],
+   "\\|amdb11_roof$": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
+    }
    ]
   },
   "interior_only_cockpit": true
@@ -118,13 +151,6 @@
   "auto_paint": false,
   "classify": {
    "\\|New_Material$": [
-    "body",
-    {
-     "kind": "paint",
-     "tint": false
-    }
-   ],
-   "\\|Black$": [
     "body",
     {
      "kind": "paint",
@@ -149,6 +175,8 @@
    0.44,
    -0.9,
    1.45
-  ]
+  ],
+  "classify": {},
+  "rot": 0
  }
 }

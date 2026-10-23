@@ -169,6 +169,14 @@ def eval_tris(ob, dg, root_inv, with_normals=True):
     P = co[tri]
     if mw.determinant() < 0:
         P = P[:, ::-1]; uv = uv[:, ::-1] if uv is not None else None; N = N[:, ::-1] if N is not None else None
+    if N is not None:
+        # a panel whose winding runs against its own shading normals (a door the artist flipped) would be culled
+        # as a back face in the game: turn those triangles round so the winding agrees with the normals
+        g = np.cross(P[:, 1] - P[:, 0], P[:, 2] - P[:, 0]); bad = np.einsum('ij,ij->i', g, N.mean(axis=1)) < 0
+        if bad.any():
+            P = P.copy(); N = N.copy(); P[bad] = P[bad][:, ::-1]; N[bad] = N[bad][:, ::-1]
+            if uv is not None: uv = uv.copy(); uv[bad] = uv[bad][:, ::-1]
+            if bad.sum() > 50: log('%d of %d triangles of %s wound backwards: turned round' % (int(bad.sum()), len(P), ob.name[:40]))
     ev.to_mesh_clear()
     return P, N, tm, uv
 
@@ -296,29 +304,31 @@ def classify_default(ob, m):
 
 
 class PaintShell:
-    """The painted surface as a grid of cells (1.5 cm) with the paint's normal in each, to find triangles lying on it."""
-    def __init__(self, P, N, cell=0.015):
+    """The painted surface as a grid of cells (2 cm) with the paint's normal and centre in each, to find triangles
+    lying on it or just inside it (inner duplicate shells); trims standing proud of the paint are kept."""
+    def __init__(self, P, N, cell=0.02):
         self.cell = cell; self.ok = len(P) > 0
         if not self.ok: return
         c = P.mean(axis=1); n = N.mean(axis=1); l = np.linalg.norm(n, axis=1); l[l == 0] = 1; n = n / l[:, None]
         keys = np.round(c / cell).astype(np.int64)
         self.cells = {}
-        for k, nn in zip(map(tuple, keys), n):
+        for k, nn, cc in zip(map(tuple, keys), n, c):
             a = self.cells.get(k)
-            self.cells[k] = nn if a is None else a + nn
+            if a is None: self.cells[k] = [nn.copy(), cc.copy(), 1]
+            else: a[0] += nn; a[1] += cc; a[2] += 1
     def on(self, P, N):
-        """Mask of triangles whose centre is within a cell of the paint and whose normal is (anti)parallel to it."""
+        """Mask of triangles within a cell of the paint, facing the same way, and not standing out from it."""
         if not self.ok or len(P) == 0: return np.zeros(len(P), bool)
         c = P.mean(axis=1); n = N.mean(axis=1); l = np.linalg.norm(n, axis=1); l[l == 0] = 1; n = n / l[:, None]
         keys = np.round(c / self.cell).astype(np.int64); out = np.zeros(len(P), bool)
-        for i, (k, nn) in enumerate(zip(map(tuple, keys), n)):
+        for i, (k, nn, cc) in enumerate(zip(map(tuple, keys), n, c)):
             for dx in (-1, 0, 1):
                 for dy in (-1, 0, 1):
                     for dz in (-1, 0, 1):
                         a = self.cells.get((k[0] + dx, k[1] + dy, k[2] + dz))
-                        if a is not None:
-                            la = np.linalg.norm(a)
-                            if la > 0 and abs(float(a @ nn)) / la > 0.9: out[i] = True; break
+                        if a is None: continue
+                        pn = a[0] / max(1e-9, np.linalg.norm(a[0])); pc = a[1] / a[2]
+                        if abs(float(pn @ nn)) > 0.9 and float((cc - pc) @ pn) < 0.006: out[i] = True; break
                     if out[i]: break
                 if out[i]: break
         return out
@@ -372,7 +382,10 @@ def find_wheels_spatial(P, W, H):
         if 0.42 < ext[1] < 1.1 and 0.42 < ext[2] < 1.1 and abs(ext[1] - ext[2]) < 0.22 * max(ext[1], ext[2]) and ext[0] < 0.55:
             cands.append(dict(c=(mn + mx) / 2, r=float(ext[2] / 2), hw=float(ext[0] / 2), n=len(sel)))
     best = {}
-    for w in cands:
+    # a tyre touches the ground: its centre is one radius up. Rings higher than that (a spare, a roof vent, a seat
+    # frame, a door's window frame) are not wheels, however big; among the grounded ones the biggest wins
+    grounded = [w for w in cands if abs(w['c'][2] - w['r']) < 0.12]
+    for w in (grounded or cands):
         q = (w['c'][0] > 0, w['c'][1] > 0)
         if q not in best or w['r'] > best[q]['r']: best[q] = w
     log('spatial wheels: %d ring pieces, %d corners' % (len(cands), len(best)))
@@ -384,6 +397,7 @@ def in_wheel(c, wheels, margin=0.015):
     for i, w in enumerate(wheels):
         d = np.hypot(c[:, 1] - w['c'][1], c[:, 2] - w['c'][2])
         m = (d <= w['r'] + margin) & (np.abs(c[:, 0] - w['c'][0]) <= w['hw'] + margin)
+        m |= np.linalg.norm(c - w['c'], axis=1) <= w['r'] + 0.02   # a wheel modelled steered sticks out of the cylinder
         out[m] = i
     return out
 
@@ -568,6 +582,7 @@ def build_car(spec, out_path, tex_dir, prefix):
         tmpl = None
         if wheels:
             tmpl = min([w for q, w in wheels.items() if q[0]], key=lambda w: w['c'][1])
+            for q, w in wheels.items(): log('wheel %s: hub (%.2f, %.2f, %.2f) r %.3f half-width %.3f' % ('FR' if q == (True, False) else 'RR' if q == (True, True) else 'FL' if q == (False, False) else 'RL', *w['c'], w['r'], w['hw']))
             wheel_meta = [gv(w['c']) for w in wheels.values()]
             # z forward in the game = -y here; y up = z here: gv does that
             for i, w in enumerate(wheels.values()): wheel_meta[i][1] = round(float(w['r']), 4)
@@ -618,6 +633,19 @@ def build_car(spec, out_path, tex_dir, prefix):
                 hit = np.array([tuple(k) in keys for k in q])
                 if hit.mean() > 0.6:
                     cls[o.name] = (None, {}); log('duplicate skin over the paint left out: %s (%.0f%% of %d tris)' % (o.name, 100 * hit.mean(), len(hit)))
+    # objects named in paint_if_outside (regex on object|material) whose triangles are mostly outside the cabin box are
+    # body panels in another material (doors, bumpers): they are painted too
+    if spec.get('paint_if_outside'):
+        for o in objs:
+            m = o.data.materials[0] if o.data.materials else None
+            if cls[o.name][0] not in ('det', 'body', 'interior') or cls[o.name][1].get('kind') == 'paint': continue
+            if not re.search(spec['paint_if_outside'], o.name + '|' + (m.name if m else ''), re.I): continue
+            r = eval_tris(o, dg, I, with_normals=False)
+            if r is None: continue
+            c = r[0].mean(axis=1)
+            outside = (np.abs(c[:, 0]) > cab['x1'] - 0.03) | (c[:, 1] < cab['y0']) | (c[:, 1] > cab['y1']) | (c[:, 2] < cab['z0']) | (c[:, 2] > cab['z1'] - 0.02)
+            if outside.mean() > 0.6:
+                cls[o.name] = ('body', {'kind': 'paint', 'tint': spec.get('tint', True)}); log('painted (outside the cabin): %s' % o.name[:50])
     # the painted shell, to drop any other triangle lying on it (duplicate skins z-fight with the paint in the game)
     shell = None
     if spec.get('drop_skins', True):
@@ -666,6 +694,7 @@ def build_car(spec, out_path, tex_dir, prefix):
         r = eval_tris(o, dg, inv)
         if r is None: continue
         P, N, mats, uv = r
+        n_in = len(P); dest = {}
         if part == 'swheel': sw_objs.append((o, P)); parts['swheel'].add(P, N, mats, uv, opts); continue
         if shell is not None and part in ('body', 'det', 'interior') and opts.get('kind') not in ('paint', 'lamp', 'decal'):
             on = shell.on(P, N)
@@ -675,18 +704,22 @@ def build_car(spec, out_path, tex_dir, prefix):
                 keep = np.flatnonzero(~on)
                 if len(keep) == 0: continue
                 if on.sum() > 20: log('%d triangles of %s lay on the paint: left out' % (int(on.sum()), o.name[:50]))
+                dest['on paint'] = int(on.sum())
                 P, N, mats, uv = P[keep], N[keep], [mats[i] for i in keep], (uv[keep] if uv is not None else None)
         if part in ('body', 'det') and spatial and wheels:
             # wheels found in the geometry: their triangles leave the body; the template corner becomes the wheel part
             wl = list(wheels.values()); wi = in_wheel(P.mean(axis=1), wl)
             ti = next(i for i, w in enumerate(wl) if w is tmpl)
             sel = np.flatnonzero(wi == ti)
-            if len(sel): parts['wheel'].add(P[sel] - np.array(tmpl['c']), N[sel], [mats[i] for i in sel], uv[sel] if uv is not None else None, {})
-            keep = np.flatnonzero(wi < 0)
+            if len(sel): parts['wheel'].add(P[sel] - np.array(tmpl['c']), N[sel], [mats[i] for i in sel], uv[sel] if uv is not None else None, {'kind': 'plain'} if opts.get('kind') == 'paint' else {})
+            keep = np.flatnonzero(wi < 0); dest['in wheels'] = len(P) - len(keep)
+            if len(P) - len(keep) > 300:
+                cw = P[wi >= 0].reshape(-1, 3); log('  %s: %d tris in the wheel cylinders span x %.2f..%.2f y %.2f..%.2f z %.2f..%.2f (wheels %s)' % (o.name[:30], len(P) - len(keep), *cw.min(0)[[0]], *cw.max(0)[[0]], *cw.min(0)[[1]], *cw.max(0)[[1]], *cw.min(0)[[2]], *cw.max(0)[[2]], sorted(set(int(i) for i in wi[wi >= 0]))))
             if len(keep) == 0: continue
             P, N, mats, uv = P[keep], N[keep], [mats[i] for i in keep], (uv[keep] if uv is not None else None)
-        if part in ('body', 'det') and spec.get('split_interior', True):
-            # triangles wholly inside the cabin box go to the interior (seats, dash, door cards modelled in the same mesh)
+        if part in ('body', 'det') and opts.get('kind') != 'paint' and spec.get('split_interior', True):
+            # triangles wholly inside the cabin box go to the interior (seats, dash, door cards modelled in the same mesh);
+            # painted panels never do: a mid-engined deck or a door jamb inside the box is still the car's colour
             c = P.mean(axis=1)
             ins = (c[:, 0] > cab['x0']) & (c[:, 0] < cab['x1']) & (c[:, 1] > cab['y0']) & (c[:, 1] < cab['y1']) & (c[:, 2] > cab['z0']) & (c[:, 2] < cab['z1'])
             # ...but not the shell itself: faces whose normal points outwards through the box sides stay
@@ -697,14 +730,15 @@ def build_car(spec, out_path, tex_dir, prefix):
             if ins.any():
                 sel = np.flatnonzero(ins); msel = [mats[i] for i in sel]
                 parts['interior'].add(P[sel], N[sel], msel, uv[sel] if uv is not None else None, {})
-                keep = np.flatnonzero(~ins)
+                keep = np.flatnonzero(~ins); dest['interior'] = len(sel)
                 if len(keep) == 0: continue
                 P, N, mats, uv = P[keep], N[keep], [mats[i] for i in keep], (uv[keep] if uv is not None else None)
         if part == 'lamp': opts = dict(opts, kind='lamp'); part = 'det'
         if part == 'det' and opts.get('kind') == 'lamp':
             parts['lamp'].add(P, N, mats, uv, {'kind': 'emit'})
             continue
-        parts[part].add(P, N, mats, uv, opts)
+        parts[part].add(P, N, mats, uv, opts); dest[part] = len(P)
+        if n_in >= 400 and len(dest) > 1: log('split %s (%d tris): %s' % (o.name[:40], n_in, ', '.join('%s %d' % kv for kv in dest.items())))
     # the wheel part: the template wheel's objects, moved onto their hub
     if tmpl:
         wo = [o for o in use if src_of[o.name] in [x.name for x in tmpl['objs']]]
@@ -732,7 +766,11 @@ def build_car(spec, out_path, tex_dir, prefix):
         SP = np.concatenate([p.reshape(-1, 3) for _, p in sw_objs])
         c = (SP.min(0) + SP.max(0)) / 2; ext = SP.max(0) - SP.min(0)
         e = np.sort(ext)
-        if e[2] < 0.25 or e[1] < 0.12:   # a logo, a strip or a button named "steering": not the wheel
+        if spec.get('swheel'):   # placed by hand: the named parts go back to the interior, the hand box decides
+            for P, N, mats, uv, o in parts['swheel'].chunks: parts['interior'].add(P, N, mats, uv, o)
+            parts['swheel'] = Part('swheel'); sw_objs = []
+            cut_swheel_box(sw_box); log('named steering parts set aside: the wheel is where the spec says')
+        elif e[2] < 0.25 or e[1] < 0.12:   # a logo, a strip or a button named "steering": not the wheel
             for P, N, mats, uv, o in parts['swheel'].chunks: parts['interior'].add(P, N, mats, uv, o)
             parts['swheel'] = Part('swheel'); sw_objs = []
             log('named steering part is tiny (%.2f m): looking for the wheel the usual way' % e[2])
@@ -823,7 +861,7 @@ def build_car(spec, out_path, tex_dir, prefix):
                 # the far versions leave out the wheels (drawn separately) and the interior (behind the glass)
                 cc = P.mean(axis=1); drop = np.zeros(len(P), bool)
                 if spatial and wheels: drop |= in_wheel(cc, list(wheels.values())) >= 0
-                if part in ('body', 'det'):
+                if part in ('body', 'det') and opts.get('kind') != 'paint':
                     drop |= (cc[:, 0] > cab['x0']) & (cc[:, 0] < cab['x1']) & (cc[:, 1] > cab['y0']) & (cc[:, 1] < cab['y1']) & (cc[:, 2] > cab['z0']) & (cc[:, 2] < cab['z1'] - 0.12) & (np.abs(cc[:, 0]) < cab['x1'] - 0.12)
                 keep = np.flatnonzero(~drop)
                 if len(keep):
