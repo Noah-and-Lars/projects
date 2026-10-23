@@ -65,6 +65,7 @@
   #toast { position:absolute; bottom:22%; left:50%; transform:translateX(-50%); padding:7px 16px; background:#000b; border-radius:4px; font-size:14px; opacity:0; transition:opacity .25s; }
   #toast.show { opacity:1; }
   #keysHint { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); font-size:12px; color:#dfe6f2; background:#0c111d99; padding:6px 12px; white-space:nowrap; }
+  #lobChat:empty::before { content:'Nobody has said anything yet. Say hello.'; color:var(--muted); font-size:12px; }
   #photoHint { position:fixed; left:50%; bottom:12px; transform:translateX(-50%); font-size:12px; color:#dfe6f2; background:#0c111d99; padding:6px 12px; white-space:nowrap; z-index:30; }
   body.photo :is(#hud, #fps, #keysHint, #skillPop, #revHint, #ready, #goFlash, #warn, #toast, #vignette, .screen, #tLeft, #tRight, #tBrake, #tGas, #tHand, #tPause, #tCp, #tRestart, #tCam) { visibility:hidden !important; }
   #goFlash { position:absolute; top:34%; left:50%; transform:translate(-50%,-50%); font:900 italic 64px/1 system-ui, sans-serif; color:var(--acc); text-shadow:0 4px 30px #0009; opacity:0; }
@@ -2205,6 +2206,8 @@ async function loadUltra(progress) {
       jobs.push(loadImage('ultra/tex/' + k + '_' + t + '.jpg' + v).then(im => { ULTRA.img[k + '_' + t] = im; }));
     }
     jobs.push(loadImage('ultra/tex/twig.png' + v).then(im => { ULTRA.img.twig = im; }));
+    jobs.push(loadImage('ultra/tex/leaves.png' + v).then(im => { ULTRA.img.leaves = im; }));
+    jobs.push(loadImage('ultra/tex/grasscard.png' + v).then(im => { ULTRA.img.grasscard = im; }));
     for (const k in ULTRA.info) {
       jobs.push(loadImage('ultra/sky/' + k + '_sky.jpg' + v).then(im => { ULTRA.img['sky_' + k] = im; }));
       jobs.push(fetch('ultra/sky/' + k + '_env.hdr' + v).then(r => r.arrayBuffer()).then(buf => { ULTRA.env[k] = parseHDR(buf); }));
@@ -2245,6 +2248,10 @@ function ultraTextures() {
   }
   T.grassFar = T.grass; T.grass = T.leafy;   // lawn by the track, grass and rock on the hills
   T.concreteC = ultraMap(I.concrete_diff);
+  if (I.grasscard) {
+    const gc = ultraMap(I.grasscard); gc.wrapS = gc.wrapT = THREE.ClampToEdgeWrapping;
+    MAT.tuftU = lit(new THREE.MeshStandardMaterial({ map: gc, alphaTest: 0.45, side: THREE.DoubleSide, vertexColors: true, roughness: 0.9, metalness: 0 }));
+  }
   for (const k in ULTRA.info) { const t = ultraMap(I['sky_' + k]); t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping; T['sky_' + k] = t; }
   // the game's own textures give way to the photographs
   ribbonTextures();
@@ -4071,6 +4078,20 @@ function fern() {
   return mergeG([paint(g, (c, x, y, z) => c.copy(C('#3f7a2a')).multiplyScalar(0.7 + 0.4 * _h3(x, y, z)))]);
 }
 function tuft(hex) {
+  if (MAT.tuftU) {
+    // Ultra: three crossed cards of photographed grass, lit by the tuft colour from dark roots to bright tips
+    const pos = [], uv = [], W = 0.95, H = 0.8;
+    for (let k = 0; k < 3; k++) {
+      const a = k * Math.PI / 3, dx = Math.cos(a) * W / 2, dz = Math.sin(a) * W / 2;
+      pos.push(-dx, 0, -dz, dx, 0, dz, dx, H, dz, -dx, 0, -dz, dx, H, dz, -dx, H, -dz);
+      uv.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const out = mergeG([paint(g, (c, x, y) => c.copy(C(hex)).multiplyScalar(0.5 + y * 1.0))]);
+    out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    return out;
+  }
   const pos = [], R = rng(9);
   for (let k = 0; k < 7; k++) {
     const a = R() * Math.PI * 2, r = R() * 0.25, h = 0.35 + R() * 0.4, lean = 0.15 + R() * 0.2;
@@ -4251,6 +4272,15 @@ function foliageAtlas() {
       g.fillStyle = `rgb(${v},${v},${v})`;
       g.beginPath(); g.ellipse(x, y, 4 + R() * 4, 2 + R() * 2.5, R() * Math.PI, 0, Math.PI * 2); g.fill();
     }
+    if (ULTRA.ready && ULTRA.img.leaves) {
+      // Ultra: photographed leaves (grey, the tree's colour comes from its vertices) instead of the ellipses
+      g.clearRect(256, 56, 256, 456);
+      g.save(); g.beginPath(); g.rect(256, 56, 256, 456); g.clip();
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 2; i++) {
+        g.save(); g.translate(256 + i * 128 + 64, 56 + j * 152 + 76); g.rotate((R() - 0.5) * 1.2); g.drawImage(ULTRA.img.leaves, -100, -100, 200, 200); g.restore();
+      }
+      g.restore();
+    }
     // top right: solid, for trunks and anything without leaves
     g.fillStyle = '#ffffff'; g.fillRect(256, 0, 256, 52);
   });
@@ -4284,7 +4314,7 @@ function placeInstances(grp, list, E) {
     let rad = 0;
     t.items.forEach(it => (rad = Math.max(rad, Math.hypot(it.x - cx, it.y - cy, it.z - cz) + r * it.s * 1.5)));
     g.boundingSphere = new THREE.Sphere(new V3(cx, cy, cz), rad);
-    const mat = t.type === 'rock' ? MAT.rock : MAT.foliage;
+    const mat = t.type === 'rock' ? MAT.rock : t.type === 'tuft' && MAT.tuftU ? MAT.tuftU : MAT.foliage;
     const im = new THREE.InstancedMesh(g, mat, t.items.length);
     t.items.forEach((it, i) => {
       q.setFromAxisAngle(up, it.ry);
@@ -8839,7 +8869,9 @@ function goBack() {
 // ---------- Photo mode (F9): the HUD goes, the world freezes, the camera orbits the car; Enter saves a picture ----------
 const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: false,
   toggle() {
-    this.on = !this.on; document.body.classList.toggle('photo', this.on); $('photoHint').hidden = !this.on;
+    this.on = !this.on; document.body.classList.toggle('photo', this.on);
+    const hint = $('photoHint'); if (hint.parentNode !== document.body) document.body.appendChild(hint);   // out of the HUD, which photo mode hides
+    hint.hidden = !this.on;
     if (this.on) {
       this.a = Math.atan2(camera.position.z - car.p.z, camera.position.x - car.p.x); this.d = Math.max(4, Math.min(30, Math.hypot(camera.position.x - car.p.x, camera.position.z - car.p.z)));
       this.h = camera.position.y - car.p.y; this.fov = camera.fov;
