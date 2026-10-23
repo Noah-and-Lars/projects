@@ -2920,7 +2920,7 @@ function roadTexture(kind, snowy) {
       if (base && !lineAt(u)) {
         // the photo as it is, a shade darker where the tyres run
         const rub = kind === 'track' ? (Math.exp(-(((u - 0.4) / 0.09) ** 2)) + Math.exp(-(((u - 0.6) / 0.09) ** 2))) * 0.1 : 0;
-        const tone = c => Math.max(0, Math.min(255, ((c - 118) * 1.4 + 92) * (1 - rub)));
+        const tone = c => Math.max(0, Math.min(255, ((c - 118) * 1.15 + 96) * (1 - rub)));
         return [tone(base[o]), tone(base[o + 1]), tone(base[o + 2])];
       }
       const n = fbm2(N1, x / 64, y / 64, 4, 8) * 0.5 + fbm2(N2, x / 8, y / 8, 2, 64) * 0.35;
@@ -2989,7 +2989,7 @@ function circuitGeometry(track, grp, E) {
   const quadC = (a, b, c, d, s) => { tri(a, b, c, s); tri(a, c, d, s); };
   // road
   const rk = def.kind === 'track' ? 'track' : city ? 'city' : 'country';
-  const roadMat = lit(new THREE.MeshStandardMaterial({ map: roadTexture(rk, E.road === 2), normalMap: ULTRA.ready ? ULTRA.tex.roadN : TEX.asphaltN, normalScale: new THREE.Vector2(ULTRA.ready ? 1.5 : 0.5, ULTRA.ready ? 1.5 : 0.5),
+  const roadMat = lit(new THREE.MeshStandardMaterial({ map: roadTexture(rk, E.road === 2), normalMap: ULTRA.ready ? ULTRA.tex.roadN : TEX.asphaltN, normalScale: new THREE.Vector2(ULTRA.ready ? 0.9 : 0.5, ULTRA.ready ? 0.9 : 0.5),
     roughnessMap: ULTRA.ready ? ULTRA.tex.roadR : null, roughness: ULTRA.ready ? 1.0 : 0.85, metalness: 0 }));
   roadMat.userData.wetBase = ULTRA.ready ? 1.0 : 0.85;
   const surfMat = (tex, rough, rep) => {
@@ -8571,7 +8571,7 @@ void main() {
   float rp = radius * proj / z;   // the radius in pixels at this depth
   float n = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453) * 6.2831853;
   float occ = 0.0;
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 16; i++) {
     float a = n + float(i) * 2.399963;
     float rr = rp * (0.2 + 0.8 * fract(float(i) * 0.618034 + n * 0.1));
     vec2 o = vec2(cos(a), sin(a)) * rr * px;
@@ -8580,7 +8580,7 @@ void main() {
     float hit = step(0.04 + z * 0.004, dz) * (1.0 - smoothstep(radius * 1.5, radius * 3.0, dz));
     occ += hit;
   }
-  float ao = 1.0 - occ / 12.0 * strength;
+  float ao = 1.0 - occ / 16.0 * strength;
   gl_FragColor = vec4(vec3(clamp(ao, 0.0, 1.0)), 1.0);
 }` });
   function aoDepthFor(m) {
@@ -8606,10 +8606,12 @@ void main() {
     for (const [o, m, hidden] of swaps) { if (hidden) o.visible = true; else o.material = m; }
     const u = aoMat.uniforms; u.tD.value = dRT.texture; u.near.value = c.near; u.far.value = c.far;
     u.proj.value = 0.5 * dRT.height / Math.tan(c.fov * Math.PI / 360); u.px.value.set(1 / dRT.width, 1 / dRT.height);
-    u.radius.value = camMode === 2 ? 0.35 : 0.7; u.strength.value = 1.15;
+    u.radius.value = camMode === 2 ? 0.3 : 0.6; u.strength.value = 0.8;
     pass(aoMat, aA);
-    blur.uniforms.t.value = aA.texture; blur.uniforms.d.value.set(1 / aA.width, 0); pass(blur, aB);
-    blur.uniforms.t.value = aB.texture; blur.uniforms.d.value.set(0, 1 / aA.height); pass(blur, aA);
+    for (let i = 0; i < 2; i++) {
+      blur.uniforms.t.value = aA.texture; blur.uniforms.d.value.set(1.2 / aA.width, 0); pass(blur, aB);
+      blur.uniforms.t.value = aB.texture; blur.uniforms.d.value.set(0, 1.2 / aA.height); pass(blur, aA);
+    }
   }
   function resize(w, h) {
     const pr = renderer.getPixelRatio(), W = Math.floor(w * pr), H = Math.floor(h * pr);
