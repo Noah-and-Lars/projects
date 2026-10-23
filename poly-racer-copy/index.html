@@ -2079,7 +2079,7 @@ void main() {
     // the photographed sky, turned so its sun sits where the game's sun is; it fades into the fog at the horizon
     vec2 suv = vec2(fract(atan(d.z, d.x) * 0.15915494 + 0.5 + skyShift), asin(clamp(h, -1.0, 1.0)) * 0.31830989 + 0.5);
     vec3 pc = sRGBToLinear(texture2D(skyTex, suv)).rgb * skyGain;
-    pc = mix(pc, fogCol, smoothstep(0.1, 0.0, h) * 0.85);
+    pc = mix(pc, fogCol, smoothstep(0.06, 0.0, h) * 0.6);
     pc = mix(pc, ground, smoothstep(0.0, -0.06, h));
     gl_FragColor = vec4(pc, 1.0);
     #include <tonemapping_fragment>
@@ -2262,7 +2262,7 @@ function ultraSkyKey(E) {
   if (el < 46) return 'afternoon';
   return 'noon';
 }
-const ULTRA_GAIN = { noon: 2.6, afternoon: 2.6, morning: 2.2, sunset: 2.0, dusk: 1.6, cloudy: 2.4, cloudysunset: 2.0, overcast: 2.2, fog: 2.2, snow: 2.4, moon: 0.3, nightcloudy: 0.22 };
+const ULTRA_GAIN = { noon: 3.6, afternoon: 3.6, morning: 3.0, sunset: 2.7, dusk: 2.0, cloudy: 3.3, cloudysunset: 2.6, overcast: 3.0, fog: 3.0, snow: 3.2, moon: 0.34, nightcloudy: 0.26 };
 let ultraEnvKey = null;
 function ultraSky(E) {
   const key = ultraSkyKey(E), info = ULTRA.info[key], tex = ULTRA.tex['sky_' + key], hdr = ULTRA.env[key];
