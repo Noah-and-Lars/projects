@@ -2452,6 +2452,22 @@ function buildMaterials() {
   MAT.dark = std({ color: C('#23262b'), roughness: 0.6, metalness: 0.3 });
   MAT.paint = std({ vertexColors: true, roughness: 0.5, metalness: 0.1 });
   MAT.ground = std({ map: TEX.ground, vertexColors: true, roughness: 0.95, metalness: 0 });
+  if (Q.ultra) {
+    // Ultra: large-scale variation over the hills (patches of worn and lush ground), so the far terrain isn't one flat colour
+    MAT.ground.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vMacroP;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvMacroP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vMacroP;
+float mh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float mnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(mh(i), mh(i + vec2(1, 0)), f.x), mix(mh(i + vec2(0, 1)), mh(i + vec2(1, 1)), f.x), f.y); }`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+{ float gA = mnoise(vMacroP.xz / 37.0), gB = mnoise(vMacroP.xz / 140.0 + 7.0);   // not m1, m2: the game defines those as macros
+  diffuseColor.rgb *= 0.78 + 0.26 * gA + 0.22 * gB;
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.08, 1.0, 0.82), smoothstep(0.55, 0.8, gB) * 0.5); }`);
+    };
+    MAT.ground.customProgramCacheKey = () => 'ground-macro';
+  }
   MAT.foliage = std({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
   MAT.bark = std({ vertexColors: true, roughness: 0.95, metalness: 0 });
   MAT.rock = std({ vertexColors: true, roughness: 0.92, metalness: 0, flatShading: true });
