@@ -503,7 +503,7 @@
       <ul>
         <li>Photo mode: press F9 anywhere. Orbit the car or fly a free camera (F), pause or run the world (Space), depth of field on Ultra ([ and ]), Enter saves a picture</li>
         <li>Polish: a real optimal lap from your best sectors, live cockpit gauges, bronze times on the track cards, clearer settings and a tidier profile</li>
-        <li>Ultra graphics: real photographed skies that light the cars and show in their paint, real asphalt, grass, gravel and sand with surface relief, 4k shadows</li>
+        <li>Ultra graphics: real trees near the road, photographed skies that light the cars and show in their paint, real asphalt, grass, gravel and sand with surface relief, ambient occlusion, 4k shadows</li>
         <li>Nine real cars, modelled in detail inside and out, with proper paint, chrome and glass</li>
         <li>Cockpit view: sit in each car's own interior, behind its own steering wheel and mirrors</li>
         <li>Sharper shadows and a lit dashboard at night</li>
@@ -542,7 +542,7 @@
   <div class="shade"></div>
   <div class="center"><div class="panel">
     <h1 class="title" style="margin-bottom:10px">SET<span>TINGS</span></h1>
-    <div class="opt"><div><label>Graphics</label><small>Lower it if the game feels slow. Ultra adds real skies and road surfaces (a 20 MB download) and wants a proper graphics card</small></div><div class="seg" data-set="quality"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button><button data-v="ultra">Ultra</button></div></div>
+    <div class="opt"><div><label>Graphics</label><small>Lower it if the game feels slow. Ultra adds real skies, road surfaces and trees (about 40 MB, downloaded once) and wants a proper graphics card</small></div><div class="seg" data-set="quality"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button><button data-v="ultra">Ultra</button></div></div>
     <div class="opt"><div><label>Camera</label><small>Change it while driving with C</small></div><div class="seg" data-set="cam"><button data-v="0">Chase</button><button data-v="1">Close</button><button data-v="2">Cockpit</button></div></div>
     <div class="opt"><div><label>Speed units</label></div><div class="seg" data-set="units"><button data-v="kmh">km/h</button><button data-v="mph">mph</button></div></div>
     <div class="opt"><div><label>Ghost of your best run</label></div><div class="seg" data-set="ghost"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
@@ -2168,7 +2168,11 @@ function applyEnv(name) {
 // ---------- Ultra: photographed skies and surfaces (Poly Haven, CC0), loaded only on the Ultra setting ----------
 // Skies come as a 2k JPG (what the player sees) and a 512x256 .hdr (what lights the scene and reflects in the paint);
 // `ultra/sky/skies.json` says where the sun is in each, so the sky can be turned to put it where the game's sun is.
-const ULTRA = { ready: false, img: {}, tex: {}, sky: {}, env: {}, info: {} };
+const ULTRA = { ready: false, img: {}, tex: {}, sky: {}, env: {}, info: {}, trees: {} };
+// which real tree stands in for each of the game's tree kinds, and how tall the kind is at scale 1
+const ULTRA_TREE_OF = { pine: 'pine', fir: 'fir', snowpine: 'fir', oak: 'oak', maple: 'maple', birch: 'birch', palm: 'palm' };
+const ULTRA_TREE_H = { pine: 15, fir: 18, snowpine: 14, oak: 10, maple: 10, birch: 12, palm: 9 };
+const ULTRA_CONIFER = new Set(['pine', 'fir', 'snowpine', 'palm']);
 const ULTRA_TEX = ['road', 'tarmac', 'grass', 'leafy', 'gravel', 'sand', 'dirt', 'snow', 'concrete'];
 const ULTRA_W = new THREE.Color(1, 1, 1);
 function loadImage(url) { return new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('image ' + url)); im.src = url; }); }
@@ -2208,6 +2212,17 @@ async function loadUltra(progress) {
     jobs.push(loadImage('ultra/tex/twig.png' + v).then(im => { ULTRA.img.twig = im; }));
     jobs.push(loadImage('ultra/tex/leaves.png' + v).then(im => { ULTRA.img.leaves = im; }));
     jobs.push(loadImage('ultra/tex/grasscard.png' + v).then(im => { ULTRA.img.grasscard = im; }));
+    for (const f of new Set(Object.values(ULTRA_TREE_OF))) {
+      jobs.push(Promise.all([fetch('ultra/trees/' + f + '.fcm' + v).then(r => r.ok ? r.arrayBuffer() : null), loadImage('ultra/trees/' + f + '.png' + v)]).then(([buf, im]) => {
+        if (!buf) return;
+        const geo = parseFCM(buf).tree; if (!geo) return;
+        geo.clearGroups();   // one material for the whole tree
+        const map = new THREE.Texture(im); map.encoding = THREE.sRGBEncoding; map.anisotropy = Math.min(16, MAX_ANISO); map.needsUpdate = true;
+        const mat = lit(new THREE.MeshStandardMaterial({ map, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85, metalness: 0 }));
+        const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: 0.5, side: THREE.DoubleSide });
+        ULTRA.trees[f] = { geo, mat, depth };
+      }).catch(e => console.warn('tree ' + f, e)));
+    }
     for (const k in ULTRA.info) {
       jobs.push(loadImage('ultra/sky/' + k + '_sky.jpg' + v).then(im => { ULTRA.img['sky_' + k] = im; }));
       jobs.push(fetch('ultra/sky/' + k + '_env.hdr' + v).then(r => r.arrayBuffer()).then(buf => { ULTRA.env[k] = parseHDR(buf); }));
@@ -4331,6 +4346,22 @@ function placeInstances(grp, list, E) {
     im.userData.tile = { x: cx, z: cz, r: rad, tall: t.type !== 'tuft' && t.type !== 'rock' };
     grp.add(im);
     world.tiles.push(im);
+    // Ultra: the real tree near the camera (broadleaf kinds only in leaf, the game's own autumn and winter trees stay)
+    const hero = ULTRA.ready && ULTRA_TREE_OF[t.type] && ULTRA.trees[ULTRA_TREE_OF[t.type]] && (ULTRA_CONIFER.has(t.type) || E.leaves === 'summer' || E.leaves === 'spring') ? ULTRA.trees[ULTRA_TREE_OF[t.type]] : null;
+    if (hero) {
+      const g3 = new THREE.BufferGeometry();
+      for (const a in hero.geo.attributes) g3.setAttribute(a, hero.geo.attributes[a]);
+      g3.setIndex(hero.geo.index); g3.boundingSphere = g.boundingSphere;
+      const im3 = new THREE.InstancedMesh(g3, hero.mat, t.items.length), H = ULTRA_TREE_H[t.type] || 12;
+      t.items.forEach((it, i) => {
+        q.setFromAxisAngle(up, it.ry); const s3 = it.s * H;
+        m.compose(_q1.set(it.x, it.y - 0.1, it.z), q, _q2.set(s3, s3, s3)); im3.setMatrixAt(i, m);
+        const v = 0.9 + 0.2 * _h3(it.x, it.z, 3); im3.setColorAt(i, col.setRGB(v, v, v));
+      });
+      im3.instanceMatrix.needsUpdate = true; if (im3.instanceColor) im3.instanceColor.needsUpdate = true;
+      im3.customDepthMaterial = hero.depth; im3.castShadow = true; im3.receiveShadow = true; im3.visible = false;
+      im3.userData.tile = im.userData.tile; im.userData.hero = im3; grp.add(im3);
+    }
     if (info && info.lo) { // far version sharing the same placements
       const g2 = new THREE.BufferGeometry();
       for (const a in info.lo.attributes) g2.setAttribute(a, info.lo.attributes[a]);
@@ -4375,15 +4406,18 @@ function updateWorld(dt, focus) {
     for (const im of world.tiles) {
       const t = im.userData.tile;
       im.castShadow = t.tall && Math.hypot(t.x - focus.x, t.z - focus.z) < t.r + 50;
+      if (im.userData.hero) im.userData.hero.castShadow = im.castShadow;
     }
   }
   // far tiles use the lighter trees
   const cp = camera.position;
   for (const im of world.tiles) {
-    const lod = im.userData.lod;
-    if (!lod) continue;
-    const t = im.userData.tile, far = Math.hypot(t.x - cp.x, t.z - cp.z) - t.r > (Q.ultra ? 180 : settings.quality === 'high' ? 130 : 90);
-    im.visible = !far; lod.visible = far;
+    const lod = im.userData.lod, hero = im.userData.hero;
+    if (!lod && !hero) continue;
+    const t = im.userData.tile, d = Math.hypot(t.x - cp.x, t.z - cp.z) - t.r, far = d > (Q.ultra ? 180 : settings.quality === 'high' ? 130 : 90);
+    const near = !!hero && d < 120;
+    if (hero) hero.visible = near;
+    im.visible = !near && (!lod || !far); if (lod) lod.visible = far;
   }
   if (world.water && world.water.material.normalMap) {
     const o = world.water.material.normalMap.offset;
@@ -8053,7 +8087,7 @@ const DIFF_SKILL = { easy: 0.85, medium: 0.91, hard: 0.955, expert: 0.985 };
 // the real car behind each one, shown in the garage
 const MODEL_OF = { sedan: 'Mercedes-AMG E 63 S', hatch: 'Honda Civic Type R (EK9)', suv: 'Range Rover Supercharged', van: 'Mercedes-Benz Sprinter', muscle: 'Chevrolet Camaro ZL1',
   sports: 'Chevrolet Corvette C8 Stingray', pickup: 'Ford F-150', coupe: 'Aston Martin DB11', super: 'Lamborghini Centenario' };
-const CREDITS = 'Car models from Sketchfab, all CC Attribution, adapted for the game: "Honda Civic Type R -98" by tiedtke, "2010 Land Rover Range Rover Supercharged" by throwbackthursdaymodels, "2019 Chevrolet Corvette C8 Stingray" by Haris3D, "2012 Chevrolet Camaro ZL1" by ddiaz-design, "Lamborghini Centenario LP-770 Interior SDC" by Lambo_SC04, "Aston Martin db11" by BlackSnow02, "2013 Ford F-150" by supercarmodels, "Mercedes-AMG E 63 S (W213)" by Car2022 and "2019 Mercedes-Benz Sprinter" by tonielpro520. Sky and road textures by Poly Haven (CC0).';
+const CREDITS = 'Car models from Sketchfab, all CC Attribution, adapted for the game: "Honda Civic Type R -98" by tiedtke, "2010 Land Rover Range Rover Supercharged" by throwbackthursdaymodels, "2019 Chevrolet Corvette C8 Stingray" by Haris3D, "2012 Chevrolet Camaro ZL1" by ddiaz-design, "Lamborghini Centenario LP-770 Interior SDC" by Lambo_SC04, "Aston Martin db11" by BlackSnow02, "2013 Ford F-150" by supercarmodels, "Mercedes-AMG E 63 S (W213)" by Car2022 and "2019 Mercedes-Benz Sprinter" by tonielpro520. Trees on Ultra from Sketchfab, CC Attribution: "Pine_Tree" by IGamEFry88, "Spruce tree" by intice184, "Oak tree" by greg-l, "Birch tree" and "Coconut Palm" by evolveduk, "Maple tree" by atrodler. Skies, ground, grass and leaf textures by Poly Haven (CC0).';
 
 const raceUI = (() => {
   let kind = 'track', sel = null, tyre = 'sport', resultsFor = null, avTab = 'helmet';
