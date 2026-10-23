@@ -8638,6 +8638,7 @@ void main(){
     float z = -perspectiveDepthToViewZ(unpackRGBAToDepth(texture2D(tD, vUv)), near, far);
     float coc = smoothstep(range * 0.35, range * 1.6, abs(z - focus));
     c = mix(c, texture2D(dof, vUv).rgb, coc);
+    if (dofOn > 1.5) { gl_FragColor = vec4(vec3(fract(z / 10.0)), 1.0); return; }   // photo.dbg: the depth, for checking
   }
   c += texture2D(b, vUv).rgb * k;
   if (lens > 0.5 && sunUV.x > -1.0) {
@@ -8660,6 +8661,7 @@ void main(){
   let dRT = null, aA = null, aB = null, aoList = [], aoListT = 0, dA = null, dB = null;
   const copy = new THREE.ShaderMaterial({ uniforms: { t: { value: null } }, vertexShader: VS, depthTest: false, depthWrite: false, fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ gl_FragColor = texture2D(t, vUv); }' });
   const depthM = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  const aoSkipM = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, colorWrite: false, depthWrite: false });   // glass and the like leave no depth
   const aoMat = new THREE.ShaderMaterial({ uniforms: { tD: { value: null }, px: { value: new THREE.Vector2() }, near: { value: 0.3 }, far: { value: 1000 }, proj: { value: 1 }, radius: { value: 0.6 }, strength: { value: 1.0 } },
     vertexShader: VS, depthTest: false, depthWrite: false, fragmentShader: `#include <packing>
 uniform sampler2D tD; uniform vec2 px; uniform float near; uniform float far; uniform float proj; uniform float radius; uniform float strength; varying vec2 vUv;
@@ -8695,7 +8697,11 @@ void main() {
     }
     const swaps = [];
     for (const o of aoList) {
-      const m = o.material; if (!m || Array.isArray(m)) continue;
+      const m = o.material; if (!m) continue;
+      if (Array.isArray(m)) {   // the cars: one material per part, each swapped for its depth version
+        if (!m.aoDepth || m.aoDepth.length !== m.length) m.aoDepth = m.map(mm => mm.transparent && !mm.depthWrite ? aoSkipM : aoDepthFor(mm));
+        swaps.push([o, m, false]); o.material = m.aoDepth; continue;
+      }
       if (m.transparent && !m.depthWrite) { if (o.visible) { o.visible = false; swaps.push([o, m, true]); } continue; }
       swaps.push([o, m, false]); o.material = aoDepthFor(m);
     }
@@ -8750,7 +8756,7 @@ void main() {
       }
       // photo mode on Ultra: a soft copy of the picture for the depth of field, and the depth to judge it by
       const dofNow = AO && photo.on && photo.dof > 0;
-      comp.uniforms.dofOn.value = dofNow ? 1 : 0;
+      comp.uniforms.dofOn.value = dofNow ? (photo.dbg ? 2 : 1) : 0;
       if (dofNow) {
         // a half-size copy (the linear filter averages 2 x 2 pixels, so nothing is skipped), blurred twice
         if (!dA) { const o = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter }; dA = new THREE.WebGLRenderTarget(aA.width, aA.height, o); dB = new THREE.WebGLRenderTarget(aA.width, aA.height, o); }
