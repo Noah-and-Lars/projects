@@ -501,7 +501,7 @@
     <div class="news panel">
       <h3>What's new in <span>2.4</span></h3>
       <ul>
-        <li>Photo mode: press F9 anywhere, orbit the car with the mouse, Enter saves a picture</li>
+        <li>Photo mode: press F9 anywhere. Orbit the car or fly a free camera (F), pause or run the world (Space), depth of field on Ultra ([ and ]), Enter saves a picture</li>
         <li>Polish: a real optimal lap from your best sectors, live cockpit gauges, bronze times on the track cards, clearer settings and a tidier profile</li>
         <li>Ultra graphics: real photographed skies that light the cars and show in their paint, real asphalt, grass, gravel and sand with surface relief, 4k shadows</li>
         <li>Nine real cars, modelled in detail inside and out, with proper paint, chrome and glass</li>
@@ -8586,14 +8586,25 @@ const post = (() => {
     fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(0.72, 1.0, l), 1.0); }' });
   const blur = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, d: { value: new THREE.Vector2() } }, vertexShader: VS, depthTest: false, depthWrite: false,
     fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * 0.227; c += (texture2D(t, vUv + d * 1.385).rgb + texture2D(t, vUv - d * 1.385).rgb) * 0.316; c += (texture2D(t, vUv + d * 3.231).rgb + texture2D(t, vUv - d * 3.231).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }' });
-  const comp = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, b: { value: null }, k: { value: 0.55 }, ao: { value: null }, aoK: { value: 0 } }, vertexShader: VS, depthTest: false, depthWrite: false,
-    fragmentShader: 'uniform sampler2D t; uniform sampler2D b; uniform float k; uniform sampler2D ao; uniform float aoK; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * mix(1.0, texture2D(ao, vUv).r, aoK) + texture2D(b, vUv).rgb * k; vec2 q = vUv - 0.5; c *= 1.0 - dot(q, q) * 0.55; c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, 1.06); gl_FragColor = vec4(c, 1.0); }' });
+  const comp = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, b: { value: null }, k: { value: 0.55 }, ao: { value: null }, aoK: { value: 0 }, dof: { value: null }, tD: { value: null }, dofOn: { value: 0 }, focus: { value: 10 }, range: { value: 6 }, near: { value: 0.3 }, far: { value: 1000 } }, vertexShader: VS, depthTest: false, depthWrite: false,
+    fragmentShader: `#include <packing>
+uniform sampler2D t; uniform sampler2D b; uniform float k; uniform sampler2D ao; uniform float aoK; uniform sampler2D dof; uniform sampler2D tD; uniform float dofOn; uniform float focus; uniform float range; uniform float near; uniform float far; varying vec2 vUv;
+void main(){
+  vec3 c = texture2D(t, vUv).rgb * mix(1.0, texture2D(ao, vUv).r, aoK);
+  if (dofOn > 0.5) {
+    // depth of field: the picture goes soft away from the focus distance, like a camera with a wide aperture
+    float z = -perspectiveDepthToViewZ(unpackRGBAToDepth(texture2D(tD, vUv)), near, far);
+    float coc = smoothstep(range * 0.35, range * 1.6, abs(z - focus));
+    c = mix(c, texture2D(dof, vUv).rgb, coc);
+  }
+  c += texture2D(b, vUv).rgb * k;
+  vec2 q = vUv - 0.5; c *= 1.0 - dot(q, q) * 0.55; c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, 1.06); gl_FragColor = vec4(c, 1.0); }` });
   const quad = new THREE.Mesh(quadG, comp); quad.frustumCulled = false;
   const qs = new THREE.Scene(); qs.add(quad);
   const oc = new THREE.Camera();
   // ----- Ultra: ambient occlusion from a half-size depth pass
   const AO = !!Q.ultra;
-  let dRT = null, aA = null, aB = null, aoList = [], aoListT = 0;
+  let dRT = null, aA = null, aB = null, aoList = [], aoListT = 0, dB = null;
   const depthM = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   const aoMat = new THREE.ShaderMaterial({ uniforms: { tD: { value: null }, px: { value: new THREE.Vector2() }, near: { value: 0.3 }, far: { value: 1000 }, proj: { value: 1 }, radius: { value: 0.6 }, strength: { value: 1.0 } },
     vertexShader: VS, depthTest: false, depthWrite: false, fragmentShader: `#include <packing>
@@ -8673,6 +8684,17 @@ void main() {
         blur.uniforms.t.value = bB.texture; blur.uniforms.d.value.set(0, 1.6 / bA.height); pass(blur, bA);
       }
       comp.uniforms.t.value = rt.texture; comp.uniforms.b.value = bA.texture; comp.uniforms.k.value = ENV.night ? 0.85 : 0.5;
+      // photo mode on Ultra: a soft copy of the picture for the depth of field, and the depth to judge it by
+      const dofNow = AO && photo.on && photo.dof > 0;
+      comp.uniforms.dofOn.value = dofNow ? 1 : 0;
+      if (dofNow) {
+        blur.uniforms.t.value = rt.texture; blur.uniforms.d.value.set(1.4 / bB.width, 0); pass(blur, bB);
+        blur.uniforms.t.value = bB.texture; blur.uniforms.d.value.set(0, 1.4 / bB.height); pass(blur, dB || (dB = new THREE.WebGLRenderTarget(bB.width, bB.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter })));
+        blur.uniforms.t.value = dB.texture; blur.uniforms.d.value.set(1.4 / bB.width, 0); pass(blur, bB);
+        blur.uniforms.t.value = bB.texture; blur.uniforms.d.value.set(0, 1.4 / bB.height); pass(blur, dB);
+        comp.uniforms.dof.value = dB.texture; comp.uniforms.tD.value = dRT.texture; comp.uniforms.near.value = c.near; comp.uniforms.far.value = c.far;
+        comp.uniforms.focus.value = photo.focusDist(); comp.uniforms.range.value = photo.dof;
+      }
       pass(comp, null);
     },
   };
@@ -8867,18 +8889,45 @@ function goBack() {
 }
 
 // ---------- Photo mode (F9): the HUD goes, the world freezes, the camera orbits the car; Enter saves a picture ----------
-const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: false,
+const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: false, free: false, run: false, dof: 0, keys: {}, pos: new V3(), yaw: 0, pitch: 0,
   toggle() {
     this.on = !this.on; document.body.classList.toggle('photo', this.on);
+    if (!this.on) { this.run = false; this.free = false; this.keys = {}; }
     const hint = $('photoHint'); if (hint.parentNode !== document.body) document.body.appendChild(hint);   // out of the HUD, which photo mode hides
-    hint.hidden = !this.on;
+    hint.hidden = !this.on; if (this.on) this.hint();
     if (this.on) {
       this.a = Math.atan2(camera.position.z - car.p.z, camera.position.x - car.p.x); this.d = Math.max(4, Math.min(30, Math.hypot(camera.position.x - car.p.x, camera.position.z - car.p.z)));
       this.h = camera.position.y - car.p.y; this.fov = camera.fov;
     } else { camera.clearViewOffset(); }
   },
+  // free flight: the camera goes where the keys take it
+  setFree(on) {
+    this.free = on;
+    if (on) { this.pos.copy(camera.position); const d = camera.getWorldDirection(_v[9]); this.yaw = Math.atan2(d.x, d.z); this.pitch = Math.asin(Math.max(-1, Math.min(1, d.y))); }
+    this.hint();
+  },
+  hint() {
+    $('photoHint').textContent = (this.free ? 'Free camera · W A S D move, Q E up and down, Shift fast, drag to look' : 'Orbit · drag to orbit the car, wheel to zoom') +
+      ' · F ' + (this.free ? 'orbit' : 'free camera') + ' · Space ' + (this.run ? 'pause' : 'run') + ' the world' + (Q.ultra ? ' · [ ] depth of field' + (this.dof ? ' ' + this.dof.toFixed(0) + ' m' : ' off') : '') + ' · Shift + wheel lens · Enter saves · F9 leaves';
+  },
+  tick(dt) {
+    if (!this.free) return;
+    const k = this.keys, sp = (k.ShiftLeft || k.ShiftRight ? 32 : 9) * dt;
+    const f = _v[9].set(Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), Math.cos(this.yaw) * Math.cos(this.pitch)), r = _v[8].set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    if (k.KeyW || k.ArrowUp) this.pos.addScaledVector(f, sp); if (k.KeyS || k.ArrowDown) this.pos.addScaledVector(f, -sp);
+    if (k.KeyD || k.ArrowRight) this.pos.addScaledVector(r, sp); if (k.KeyA || k.ArrowLeft) this.pos.addScaledVector(r, -sp);
+    if (k.KeyE) this.pos.y += sp; if (k.KeyQ) this.pos.y -= sp;
+    if (terrain) this.pos.y = Math.max(this.pos.y, terrain.h(this.pos.x, this.pos.z) + 0.25);
+  },
+  focusDist() { return Math.max(1, camera.position.distanceTo(car.p)); },
   apply() {
     const p = car.p;
+    if (this.free) {
+      camera.position.copy(this.pos); camera.up.set(0, 1, 0);
+      camera.lookAt(this.pos.x + Math.sin(this.yaw) * Math.cos(this.pitch), this.pos.y + Math.sin(this.pitch), this.pos.z + Math.cos(this.yaw) * Math.cos(this.pitch));
+      if (Math.abs(camera.fov - this.fov) > 0.01) { camera.fov = this.fov; camera.updateProjectionMatrix(); }
+      return;
+    }
     camera.position.set(p.x + Math.cos(this.a) * this.d, p.y + this.h, p.z + Math.sin(this.a) * this.d);
     if (terrain) camera.position.y = Math.max(camera.position.y, terrain.h(camera.position.x, camera.position.z) + 0.3);
     camera.up.set(0, 1, 0); camera.lookAt(p.x, p.y + 0.5, p.z);
@@ -8887,8 +8936,12 @@ const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: fals
 };
 {
   const el = renderer.domElement;
-  el.addEventListener('pointerdown', e => { if (photo.on) { photo.drag = { x: e.clientX, y: e.clientY, a: photo.a, h: photo.h }; try { el.setPointerCapture(e.pointerId); } catch (err) {} } });
-  el.addEventListener('pointermove', e => { if (photo.on && photo.drag) { photo.a = photo.drag.a - (e.clientX - photo.drag.x) * 0.006; photo.h = Math.max(-0.5, Math.min(14, photo.drag.h + (e.clientY - photo.drag.y) * 0.02)); } });
+  el.addEventListener('pointerdown', e => { if (photo.on) { photo.drag = { x: e.clientX, y: e.clientY, a: photo.a, h: photo.h, yaw: photo.yaw, pitch: photo.pitch }; try { el.setPointerCapture(e.pointerId); } catch (err) {} } });
+  el.addEventListener('pointermove', e => {
+    if (!photo.on || !photo.drag) return;
+    if (photo.free) { photo.yaw = photo.drag.yaw - (e.clientX - photo.drag.x) * 0.004; photo.pitch = Math.max(-1.5, Math.min(1.5, photo.drag.pitch - (e.clientY - photo.drag.y) * 0.004)); }
+    else { photo.a = photo.drag.a - (e.clientX - photo.drag.x) * 0.006; photo.h = Math.max(-0.5, Math.min(14, photo.drag.h + (e.clientY - photo.drag.y) * 0.02)); }
+  });
   el.addEventListener('pointerup', () => { photo.drag = null; });
   el.addEventListener('wheel', e => { if (!photo.on) return; e.preventDefault(); if (e.shiftKey) photo.fov = Math.max(14, Math.min(90, photo.fov + Math.sign(e.deltaY) * 2)); else photo.d = Math.max(2.5, Math.min(40, photo.d * (e.deltaY > 0 ? 1.08 : 0.93))); }, { passive: false });
 }
@@ -8896,7 +8949,16 @@ const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: fals
 document.addEventListener('keydown', e => {
   sfx.init();
   if (e.code === 'F9' && race.track) { e.preventDefault(); photo.toggle(); return; }
-  if (photo.on) { if (e.code === 'Enter') { e.preventDefault(); photo.save = true; } else if (e.code === 'Escape') photo.toggle(); return; }
+  if (photo.on) {
+    e.preventDefault();
+    if (e.code === 'Enter') photo.save = true;
+    else if (e.code === 'Escape') photo.toggle();
+    else if (e.code === 'KeyF') photo.setFree(!photo.free);
+    else if (e.code === 'Space') { photo.run = !photo.run; photo.hint(); }
+    else if (e.code === 'BracketLeft' || e.code === 'BracketRight') { const steps = [0, 2, 4, 8, 16, 32]; let i = steps.indexOf(photo.dof); i = Math.max(0, Math.min(steps.length - 1, i + (e.code === 'BracketRight' ? 1 : -1))); photo.dof = steps[i]; photo.hint(); }
+    else photo.keys[e.code] = true;
+    return;
+  }
   if (typing()) { if (e.code === 'Enter' && document.activeElement.id === 'lobSay') { raceUI.act('lobSend'); } if (e.code === 'Escape') document.activeElement.blur(); return; }
   if (cine.on) { if (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape') { e.preventDefault(); cine.skip(); } return; }
   if (inMenu() && race.state !== 'paused' || ui.screen === 'pause') {
@@ -8920,7 +8982,7 @@ document.addEventListener('keydown', e => {
   else if (e.code === 'KeyC' || e.code === 'KeyV') setCamMode(camMode + 1);
   else if (e.code === 'KeyL') { settings.line = settings.line === 'off' ? 'full' : settings.line === 'full' ? 'brake' : 'off'; store(); ui.toast('Driving line: ' + { off: 'Off', full: 'Full', brake: 'Braking' }[settings.line]); }
 });
-document.addEventListener('keyup', e => { if (KEYMAP[e.code]) { keys[KEYMAP[e.code]] = false; e.preventDefault(); } });
+document.addEventListener('keyup', e => { photo.keys[e.code] = false; if (KEYMAP[e.code]) { keys[KEYMAP[e.code]] = false; e.preventDefault(); } });
 function releaseAll() { for (const k in keys) keys[k] = false; for (const k in touch) touch[k] = false; }
 addEventListener('blur', () => { releaseAll(); if (race.state === 'racing' && !RM.online) ui.pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { releaseAll(); if (race.state === 'racing' && !RM.online) ui.pause(); } });
@@ -9005,7 +9067,7 @@ function frame(now) {
   step(dt);
 }
 function step(dt) {
-  if (photo.on) dt = 0;
+  if (photo.on) { photo.tick(dt); if (!photo.run) dt = 0; }
   clock += dt;
   countFps(dt);
   pollGamepad(dt);
