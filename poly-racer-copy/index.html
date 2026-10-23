@@ -495,13 +495,12 @@
       <div class="chip bronze"><b id="stBronze">0</b><small>Bronze</small></div>
     </div>
     <div class="news panel">
-      <h3>What's new in <span>1.2</span></h3>
+      <h3>What's new in <span>2.0</span></h3>
       <ul>
-        <li>Races: 30 full circuits, 15 track and 15 street, against 15 drivers</li>
-        <li>Online races for up to 10, in public or private rooms</li>
-        <li>Pick the laps, time of day, season and weather (and the right tyres!)</li>
-        <li>Detailed car models, damage, a new cockpit with a working mirror</li>
-        <li>Profiles with 50 helmets and 50 race suits, music, a new speedometer</li>
+        <li>Nine real cars, modelled in detail inside and out, with proper paint, chrome and glass</li>
+        <li>Cockpit view: sit in each car's own interior, behind its own steering wheel and mirrors</li>
+        <li>Sharper shadows and a lit dashboard at night</li>
+        <li>From 1.2: 30 circuits, online races, weather and seasons</li>
       </ul>
     </div>
   </div>
@@ -739,7 +738,7 @@
 
 <script>
 'use strict';
-const VERSION = '1.2';
+const VERSION = '2.0';
 const V3 = THREE.Vector3;
 
 // ---------- Track pieces ----------
@@ -2093,8 +2092,9 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffffff', 2.5);
 sun.castShadow = !!Q.shadows;
 sun.shadow.mapSize.set(Q.shadows || 1024, Q.shadows || 1024);
-Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 500 });
-sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
+// a tighter shadow frustum on High: the 2048 map then resolves the cars' own shadows (mirrors, spoilers, wheel arches)
+{ const S = Q.shadows >= 2048 ? 48 : 70; Object.assign(sun.shadow.camera, { left: -S, right: S, top: S, bottom: -S, near: 1, far: 500 }); }
+sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.03;
 scene.add(sun, sun.target);
 const sunDir = new V3(0, 1, 0);
 scene.fog = new THREE.FogExp2('#ffffff', 0.0005);
@@ -4699,13 +4699,14 @@ function makeBlob() {
 // front is -z, so each model is turned round. Body paint is a magenta marker colour that the shader swaps for
 // the car's colour, so every car of a kind shares one mesh. Parts: body (with mid and lo versions for distance),
 // det (textured details), glass, lamp, wheel (the model's own, right-hand side; mirrored for the left).
-const MODELS = {}, MODEL_IDS = ['sedan', 'police', 'hatch', 'suv', 'van', 'muscle', 'sports', 'pickup', 'coupe', 'super', 'wheel'];
+const MODELS = {}, MODEL_IDS = ['sedan', 'hatch', 'suv', 'van', 'muscle', 'sports', 'pickup', 'coupe', 'super'];
 const MODEL_TEX = {}, TEX_WAIT = [];
-function modelTex(name) {
+function modelTex(name, linear) {
   if (MODEL_TEX[name]) return MODEL_TEX[name];
   let done; TEX_WAIT.push(new Promise(r => (done = r)));
   const t = new THREE.TextureLoader().load('models/tex/' + name + '?v=' + VERSION, done, undefined, () => { console.warn('model texture ' + name + ' missing'); done(); });
-  t.encoding = THREE.sRGBEncoding; t.anisotropy = Math.min(8, MAX_ANISO);
+  // colour maps are sRGB; normal and roughness/metal maps are data
+  t.encoding = linear ? THREE.LinearEncoding : THREE.sRGBEncoding; t.anisotropy = Math.min(8, MAX_ANISO);
   return (MODEL_TEX[name] = t);
 }
 function parseFCM(buf) {
@@ -4729,11 +4730,33 @@ function parseFCM(buf) {
     g.computeBoundingBox(); g.computeBoundingSphere();
     g.userData.shared = true;
     if (p.tex) g.userData.tex = modelTex(p.tex);
+    // 2.0 models: index ranges with their own material each (kind, colour maps, normal and roughness/metal maps)
+    if (Array.isArray(p.groups) && p.groups.length) {
+      g.userData.groups = p.groups.map(q => Object.assign({}, q));
+      g.clearGroups();
+      g.userData.groups.forEach((q, i) => {
+        if (q.tex) q.map = modelTex(q.tex);
+        if (q.ntex) q.nmap = modelTex(q.ntex, true);
+        if (q.rtex) q.rmap = modelTex(q.rtex, true);
+        g.addGroup(q.s, q.n, i);
+      });
+    }
     out[k] = g;
   }
   if (hdr.meta && typeof hdr.meta === 'object') {
     out.meta = hdr.meta;
-    if (Array.isArray(hdr.meta.wheels)) out.meta.wheels = hdr.meta.wheels.map(([x, y, z]) => [-x, y, -z]);
+    // the same turn round as the vertices for everything the header places in the car
+    const fl = v => (Array.isArray(v) && v.length === 3 ? [-v[0], v[1], -v[2]] : v);
+    if (Array.isArray(hdr.meta.wheels)) out.meta.wheels = hdr.meta.wheels.map(fl);
+    if (out.meta.eye) out.meta.eye = fl(out.meta.eye);
+    for (const k of ['swheel', 'cluster', 'mirror', 'lightbar']) {
+      const o = out.meta[k];
+      if (!o || typeof o !== 'object') continue;
+      if (o.pos) o.pos = fl(o.pos);
+      if (o.axis) o.axis = fl(o.axis);
+      if (o.nrm) o.nrm = fl(o.nrm);
+    }
+    out.meta.v2 = !!(out.body && out.body.userData.groups);
   }
   return out;
 }
@@ -4744,6 +4767,8 @@ async function loadModels() {
     catch (e) { console.warn('model ' + k, e); }
   }));
   await Promise.all(TEX_WAIT);
+  // the police cruiser is the saloon with the light bar the game adds (like the taxi) when it has no model of its own
+  if (!MODELS.police && MODELS.sedan) MODELS.police = MODELS.sedan;
   // the real size of each car from its model, so it collides where it looks like it is
   for (const t of CARS) {
     const MD = MODELS[t.taxi ? 'sedan' : t.id];
@@ -4765,7 +4790,7 @@ function modelCompile(sh) {
   sh.fragmentShader = sh.fragmentShader
     .replace('#include <common>', `#include <common>
 #ifdef FC_PAINT
-uniform vec3 fcPaint; uniform float fcPaintOn;
+uniform vec3 fcPaint; uniform float fcPaintOn; uniform vec3 fcBase;
 varying float vDmg;
 #endif
 #ifdef FC_LAMP
@@ -4777,6 +4802,14 @@ float fcPaintMask = 0.0;`)
 fcPaintMask = (vColor.r > 0.97 && vColor.g < 0.03 && vColor.b > 0.97) ? 1.0 : 0.0;
 if (fcPaintMask > 0.5) {
   diffuseColor.rgb = fcPaint;
+  #if defined(FC_TINT) && defined(USE_MAP)
+  // a painted texture: where it is the paint colour it was made in, its shading goes onto the car's colour;
+  // decals, trims and carbon baked into it keep their own colours
+  { vec4 fcTx = texture2D(map, vUv); fcTx = mapTexelToLinear(fcTx);
+    float fcL = clamp(dot(fcTx.rgb / fcBase, vec3(0.3, 0.59, 0.11)), 0.0, 1.15);
+    float fcD = distance(normalize(fcTx.rgb + 0.002), normalize(fcBase + 0.002));
+    diffuseColor.rgb = mix(fcTx.rgb, fcPaint * fcL, 1.0 - smoothstep(0.1, 0.3, fcD)); }
+  #endif
   // scratches: lighter, rougher streaks, then bare grey metal where it's worst
   float sn = fract(sin(dot(floor(vViewPosition.xy * 90.0), vec2(12.9898, 78.233))) * 43758.5453);
   diffuseColor.rgb = mix(diffuseColor.rgb, mix(diffuseColor.rgb * 0.55 + 0.25, vec3(0.42, 0.43, 0.45), smoothstep(0.55, 1.0, vDmg)), clamp(vDmg * 1.4, 0.0, 1.0) * (0.65 + 0.35 * sn));
@@ -4817,25 +4850,64 @@ function withDmg(g) {
   if (!g.attributes.dmg) g.setAttribute('dmg', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count), 1));
   return g;
 }
-function modelPaint(hex, tex) {
-  const m = new THREE.MeshPhysicalMaterial({ map: tex || null, vertexColors: true, roughness: 0.55, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.2 });
+// q: a 2.0 material group (map, nmap, rmap, base = the colour a painted texture was made in) or nothing
+function modelPaint(hex, tex, q) {
+  const tint = !!(q && q.map && q.base);
+  const m = new THREE.MeshPhysicalMaterial({ map: (q && q.map) || tex || null, normalMap: (q && q.nmap) || null, vertexColors: true, roughness: 0.55, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.2 });
   m.defines = { FC_PAINT: 1 };
-  PAINT_K.set(m, { fcPaint: { value: C(hex) }, fcPaintOn: { value: 1 } });
+  if (tint) m.defines.FC_TINT = 1;
+  const base = tint ? new THREE.Color(q.base[0], q.base[1], q.base[2]).convertSRGBToLinear() : new THREE.Color(1, 1, 1);
+  base.r = Math.max(0.03, base.r); base.g = Math.max(0.03, base.g); base.b = Math.max(0.03, base.b);
+  PAINT_K.set(m, { fcPaint: { value: C(hex) }, fcPaintOn: { value: 1 }, fcBase: { value: base } });
   m.onBeforeCompile = modelCompile;
-  m.customProgramCacheKey = () => 'fcpaint' + (tex ? 't' : '');
+  m.customProgramCacheKey = () => 'fcpaint' + (m.map ? 't' : '') + (tint ? 'i' : '') + (m.normalMap ? 'n' : '');
   lit(m);
   return m;
 }
-function modelLamp() {
-  const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.15, metalness: 0.2, emissive: '#000000' });
+// u: shared head/tail uniforms when one car's lamps are drawn with several materials (textured and plain groups)
+function modelLamp(u, q) {
+  const m = new THREE.MeshStandardMaterial({ map: (q && q.map) || null, normalMap: (q && q.nmap) || null, vertexColors: true, roughness: 0.15, metalness: 0.2, emissive: '#000000' });
   m.defines = { FC_LAMP: 1 };
-  const u = { fcHead: { value: 0 }, fcTail: { value: 0 } };
+  u = u || { fcHead: { value: 0 }, fcTail: { value: 0 } };
   PAINT_K.set(m, u);
   m.onBeforeCompile = modelCompile;
-  m.customProgramCacheKey = () => 'fclamp';
+  m.customProgramCacheKey = () => 'fclamp' + (m.map ? 't' : '') + (m.normalMap ? 'n' : '');
   lit(m);
   m.userData.k = u;
   return m;
+}
+// 2.0 models: one material per group kind, shared between cars. glass is tinted; chrome and mirrors reflect the sky;
+// everything else is a standard PBR material with the model's own colour, normal and roughness/metal maps.
+const GMAT = new Map();
+const gcol = c => (c ? new THREE.Color(c[0], c[1], c[2]).convertSRGBToLinear() : new THREE.Color(1, 1, 1));
+function groupMat(q, opts = {}) {
+  const key = [q.k, q.tex || '', q.ntex || '', q.rtex || '', q.col ? q.col.join() : '', q.r, q.m, q.a || '', q.emit ? q.emit.join() : '', opts.clear ? 'c' : ''].join('|');
+  if (GMAT.has(key)) return GMAT.get(key);
+  let m;
+  const col = gcol(q.col);
+  if (q.k === 'glass') {
+    // the model's tint, darkened; nearly clear from the driver's seat
+    const c = opts.clear ? new THREE.Color('#dfe6ee').convertSRGBToLinear() : col.clone().multiplyScalar(0.3);
+    m = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.03, metalness: 0.15, transparent: true, opacity: opts.clear ? 0.12 : Math.max(0.35, Math.min(0.8, 1 - (q.a || 0.5) * 0.5)), envMapIntensity: 1.6, clearcoat: 1, clearcoatRoughness: 0.03, depthWrite: false });
+  } else if (q.k === 'chrome' || q.k === 'mirror') {
+    m = new THREE.MeshStandardMaterial({ color: q.tex ? new THREE.Color(1, 1, 1) : col.clone().lerp(new THREE.Color(1, 1, 1), 0.3), map: q.map || null, normalMap: q.nmap || null, roughness: q.k === 'mirror' ? 0.02 : Math.max(0.06, Math.min(0.35, q.r || 0.1)), metalness: 1, envMapIntensity: 1.4, vertexColors: true });
+  } else if (q.k === 'decal') {
+    // badges, stripes and stickers on a sheet just over the paint: drawn with their texture's alpha
+    m = new THREE.MeshStandardMaterial({ map: q.map || null, transparent: true, alphaTest: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+      roughness: q.r != null ? q.r : 0.5, metalness: 0, vertexColors: true });
+  } else if (q.k === 'emit') {
+    m = new THREE.MeshStandardMaterial({ color: q.tex ? new THREE.Color(1, 1, 1) : col, map: q.map || null, emissive: gcol(q.emit || q.col), emissiveMap: q.map || null, emissiveIntensity: 0.6, roughness: 0.3, vertexColors: true });
+  } else {
+    m = new THREE.MeshStandardMaterial({ color: q.tex ? new THREE.Color(1, 1, 1) : col, map: q.map || null, normalMap: q.nmap || null, roughnessMap: q.rmap || null, metalnessMap: q.rmap || null,
+      roughness: q.rmap ? 1 : (q.r != null ? q.r : 0.6), metalness: q.rmap ? 1 : (q.m != null ? Math.min(q.m, 0.9) : 0), vertexColors: true, envMapIntensity: 1.0 });
+  }
+  lit(m);
+  GMAT.set(key, m);
+  return m;
+}
+// materials for a part with groups: the car's paint for paint groups, shared materials for the rest
+function groupMats(g, paintFor, opts) {
+  return g.userData.groups.map(q => (q.k === 'paint' ? paintFor(q) : opts && opts.lamp ? modelLamp(opts.lamp, q) : groupMat(q, opts)));
 }
 let MGLASS = null, MTRIM = null;
 const MTEX = new Map();
@@ -4878,18 +4950,42 @@ function buildModelCar(t, hex, MD, opts = {}) {
   }
   const root = new THREE.Group(), body = new THREE.Group();
   root.add(body);
-  const paint = modelPaint(hex, MD.body.userData.tex);
+  const v2 = !!(MD.meta && MD.meta.v2), M = MD.meta || {};
+  // the paint: one material per painted texture (2.0 models tint theirs), all swapped to the car's colour
+  const paints = new Map();
+  const paintFor = q => { const k = (q && q.tex) || ''; if (!paints.has(k)) paints.set(k, modelPaint(hex, q ? null : MD.body.userData.tex, q)); return paints.get(k); };
+  const paint = paintFor(null);
+  const lampU = { fcHead: { value: 0 }, fcTail: { value: 0 } };
+  const matsOf = (g, o) => (g && g.userData.groups ? groupMats(g, paintFor, o) : null);
   const geo = { body: withDmg(MD.body), mid: withDmg(MD.mid || MD.body), lo: withDmg(MD.lo || MD.mid || MD.body) };
-  const bodyMesh = new THREE.Mesh(geo.body, paint);
+  const bodyMesh = new THREE.Mesh(geo.body, matsOf(MD.body) || paint);
   bodyMesh.castShadow = true; bodyMesh.receiveShadow = true;
   body.add(bodyMesh);
-  let det = null;
-  if (MD.det) { det = new THREE.Mesh(withDmg(MD.det), MD.det.userData.tex ? modelPaint(hex, MD.det.userData.tex) : paint); det.castShadow = true; body.add(det); }
-  const glass = MD.glass ? new THREE.Mesh(MD.glass, MGLASS) : null;
+  let det = null, mid = null, lo = null, interior = null, swheel = null;
+  if (MD.det) { det = new THREE.Mesh(withDmg(MD.det), matsOf(MD.det) || (MD.det.userData.tex ? modelPaint(hex, MD.det.userData.tex) : paint)); det.castShadow = true; body.add(det); }
+  const glassMats = matsOf(MD.glass), glassMatsIn = matsOf(MD.glass, { clear: true });
+  const glass = MD.glass ? new THREE.Mesh(MD.glass, glassMats || MGLASS) : null;
   if (glass) body.add(glass);
-  const lampMat = modelLamp();
-  const lamp = MD.lamp ? new THREE.Mesh(MD.lamp, lampMat) : null;
+  const lampMat = MD.lamp && MD.lamp.userData.groups ? { userData: { k: lampU } } : modelLamp(lampU);
+  const lamp = MD.lamp ? new THREE.Mesh(MD.lamp, MD.lamp.userData.groups ? groupMats(MD.lamp, paintFor, { lamp: lampU }) : lampMat) : null;
   if (lamp) body.add(lamp);
+  if (v2) {
+    // 2.0 models: the far versions are their own meshes (with their own materials), the interior shows through the
+    // glass and is the cockpit, and the steering wheel is the model's own, turning about its column
+    if (MD.mid) { mid = new THREE.Mesh(geo.mid, matsOf(MD.mid) || paint); mid.castShadow = true; mid.visible = false; body.add(mid); }
+    if (MD.lo) { lo = new THREE.Mesh(geo.lo, matsOf(MD.lo) || paint); lo.visible = false; body.add(lo); }
+    if (MD.interior) { interior = new THREE.Mesh(MD.interior, matsOf(MD.interior) || MTRIM); body.add(interior); }
+    if (MD.swheel && M.swheel) {
+      const sw = M.swheel, pivot = new THREE.Group(), rot = new THREE.Group();
+      pivot.position.set(sw.pos[0], sw.pos[1], sw.pos[2]);
+      const axis = new V3(sw.axis[0], sw.axis[1], sw.axis[2]).normalize();
+      pivot.quaternion.setFromUnitVectors(new V3(0, 0, 1), axis);
+      const mesh = new THREE.Mesh(MD.swheel, matsOf(MD.swheel) || MTRIM);
+      mesh.quaternion.copy(pivot.quaternion).invert();
+      rot.add(mesh); pivot.add(rot); body.add(pivot);
+      swheel = { pivot, rot, mesh, r: sw.r || 0.19, axis };
+    }
+  }
   // sizes for the cockpit and the driver: from the glass (the windows) and the body
   const bb = MD.body.boundingBox, gb = MD.glass ? MD.glass.boundingBox : null;
   const roof = bb.max.y, top = Math.max(gb ? gb.min.y + 0.04 : bb.max.y - t.ch, roof - 0.62);
@@ -4927,7 +5023,8 @@ function buildModelCar(t, hex, MD, opts = {}) {
     driver.updateMatrixWorld(true);
     const fb = new THREE.Box3().setFromObject(driver), hF = fb.max.y, sc = Math.min(1, (roof - 0.12 - 0.28) / hF);
     driver.scale.setScalar(sc);
-    driver.position.set(-0.36, roof - 0.12 - hF * sc, -(ffb - 0.98));
+    // 2.0 models: in the driver's seat the header measured (behind the eye point)
+    driver.position.set(v2 && M.eye ? M.eye[0] : -0.36, roof - 0.12 - hF * sc, v2 && M.eye ? M.eye[2] + 0.08 : -(ffb - 0.98));
     inner.add(driver);
   }
   body.add(inner);
@@ -4936,13 +5033,13 @@ function buildModelCar(t, hex, MD, opts = {}) {
   const wr = own ? t.mwr : t.wr;
   const wheels = [];
   const WP = own ? t.mw : [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([sx, sz]) => [sx * (t.w / 2 - 0.1), t.wr, -sz * t.l * 0.32]);
-  const wmat = own && MD.wheel.userData.tex ? texPartMat(MD.wheel.userData.tex) : lit(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 }));
+  const wmat = own && v2 ? matsOf(MD.wheel) : own && MD.wheel.userData.tex ? texPartMat(MD.wheel.userData.tex) : lit(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 }));
   for (const [x, y, z] of WP) {
     const pivot = new THREE.Group(), spin = new THREE.Group();
     pivot.position.set(x, y, z);
     // the model's wheel parts sit at the right-front position; move them to the origin of the spin group
     // turned round, the model's right-hand wheel faces left: the right side uses the mirrored copy
-    const parts = own ? splitCaliper(MD) : null;
+    const parts = own ? (v2 ? (MD.wheelParts || (MD.wheelParts = { wheel: MD.wheel, wheelL: mirrorGeo(MD.wheel) })) : splitCaliper(MD)) : null;
     const m = own ? new THREE.Mesh(x > 0 ? parts.wheelL : parts.wheel, wmat) : new THREE.Mesh(sharedWheel(t.wr, x > 0), wmat);
     m.castShadow = true;
     spin.add(m); pivot.add(spin); root.add(pivot);
@@ -4955,7 +5052,7 @@ function buildModelCar(t, hex, MD, opts = {}) {
     inner.visible = false;
   }
   const eyeF = ffb - 0.95;
-  root.userData = { model: true, body, bodyMesh, det, glass, lamp, lampMat, geo, inner, wheels, paint, lightbar, tail: null, t, wr, top, roof, ffb, fft, frt, frb, gw, eyeF, ch: roof - top,
+  root.userData = { model: true, v2, M, body, bodyMesh, det, mid, lo, interior, swheel, glass, glassMats, glassMatsIn, lamp, lampMat, geo, inner, wheels, paint, paints, lightbar, tail: null, t, wr, top, roof, ffb, fft, frt, frb, gw, eyeF, ch: roof - top,
     xAt: y => gw / 2 * lerp(1, 0.86, Math.max(0, Math.min(1, (y - top) / Math.max(0.3, roof - top)))), y0: 0.1, wsA: Math.atan2(ffb - fft, roof - top) };
   return root;
 }
@@ -4986,6 +5083,21 @@ function makeCar(t, hex, opts = {}) {
 function carLod(model, d2) {
   const U = model.userData;
   if (!U.geo) return;
+  if (U.v2) {
+    // 2.0 models: whole meshes swap over; the interior stays while it can be seen through the glass
+    const ck = !!U.cockpitOn, lod = ck || d2 < 1600 ? 0 : d2 < 14400 ? 1 : 2;
+    const l0 = lod === 0 || (!U.mid && !U.lo), l1 = lod === 1 && !!U.mid, l2 = lod === 2 && !!U.lo;
+    U.bodyMesh.visible = l0 || (lod === 2 && !U.lo && !U.mid) || (lod === 1 && !U.mid);
+    if (U.det) U.det.visible = U.bodyMesh.visible;
+    if (U.mid) U.mid.visible = l1 || (lod === 2 && !U.lo);
+    if (U.lo) U.lo.visible = l2;
+    if (U.glass) { U.glass.visible = U.bodyMesh.visible; if (U.glassMats) { const want = ck ? U.glassMatsIn : U.glassMats; if (U.glass.material !== want) U.glass.material = want; } }
+    if (U.lamp) U.lamp.visible = lod < 2;
+    if (U.interior) U.interior.visible = ck || d2 < 4900;
+    if (U.swheel) U.swheel.pivot.visible = ck || d2 < 1600;
+    if (U.inner) U.inner.visible = !ck && d2 < 3600 && !U.noDriver;
+    return;
+  }
   if (U.cockpitOn) {
     const g = cabinCut(U.geo.body, U);
     if (U.bodyMesh.geometry !== g) U.bodyMesh.geometry = g;
@@ -5016,6 +5128,7 @@ function ownBody(U) {
   }
   if (U.det) { const g = U.det.geometry, c = g.clone(); c.attributes.position = g.attributes.position.clone(); c.attributes.dmg = g.attributes.dmg.clone(); U.det.geometry = c; U.detOwn = c; }
   U.bodyMesh.geometry = U.geo.body;
+  if (U.v2) { if (U.mid) U.mid.geometry = U.geo.mid; if (U.lo) U.lo.geometry = U.geo.lo; }
   U.ownGeo = true;
 }
 // p: where it hit, n: the direction it pushes the panel (both in the car's frame), dent: metres, scratch 0..1
@@ -5096,7 +5209,126 @@ function drawGauges(kmh, rpm, red, gear, units) {
 }
 
 let mirrorRT = null, mirrorCam = null, sideRT = null, sideCam = null;
+// hands: gloves gripping the rim at quarter to three, fingers wrapped round it, thumbs on the spokes. wheel: the
+// group that turns (its z axis is the column, towards the driver); wr: the rim radius; the arms go to the shoulders
+function cockpitHands(wheel, wr, AM, grp, dx, eyeY, eyeZ) {
+  const hands = [];
+  for (const s of [-1, 1]) {
+    const hand = new THREE.Group();
+    const ang = s < 0 ? Math.PI * 0.94 : Math.PI * 0.06;  // left hand at about 9, right at about 3
+    hand.position.set(Math.cos(ang) * wr, Math.sin(ang) * wr, 0);
+    hand.rotation.z = ang;
+    // fingers: a sleeve round the rim tube, open towards the driver's palm side
+    const fing = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.017, 8, 14, Math.PI * 1.45).rotateY(Math.PI / 2).rotateX(Math.PI * 0.62), AM.glove);
+    fing.scale.set(1.7, 1, 1); hand.add(fing);
+    for (let k = 0; k < 4; k++) { const kn = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), AM.glove); kn.position.set((k - 1.5) * 0.019, 0.004, 0.035); hand.add(kn); }
+    // the back of the hand and the palm
+    const back = new THREE.Mesh(new THREE.SphereGeometry(0.045, 14, 10).scale(1.05, 0.55, 1.05), AM.glove);
+    back.position.set(0, -0.004, 0.042); hand.add(back);
+    // the thumb, along the spoke
+    const th = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.012, 0.05, 8), AM.glove);
+    th.position.set(-s * 0.03, 0.01, -0.005); th.rotation.z = Math.PI / 2 + s * 0.4; hand.add(th);
+    // the cuff
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.04, 0.06, 12), AM.glove);
+    cuff.rotation.x = Math.PI / 2; cuff.position.set(0, -0.01, 0.1); hand.add(cuff);
+    wheel.add(hand);
+    // arm: upper arm from the shoulder to the elbow, forearm from the elbow to the wrist (two-bone IK each frame)
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.052, 1, 12).translate(0, 0.5, 0).rotateX(Math.PI / 2), AM.suit);
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.044, 1, 12).translate(0, 0.5, 0).rotateX(Math.PI / 2), AM.suit);
+    const elbowB = new THREE.Mesh(new THREE.SphereGeometry(0.046, 10, 8), AM.suit);
+    grp.add(upper, fore, elbowB);
+    // the shoulders sit behind and below the eyes, against the seat back
+    hands.push({ s, hand, ang, upper, fore, elbowB, wr, sh: new V3(dx + s * 0.2, eyeY - 0.42, eyeZ + 0.26) });
+  }
+  return hands;
+}
+// a plane of w x h at pos, facing along nrm (both in the car's frame)
+function facingPlane(w, h, pos, nrm, mat) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  m.position.set(pos[0], pos[1], pos[2]);
+  const n = new V3(nrm[0], nrm[1], nrm[2]).normalize();
+  m.quaternion.setFromUnitVectors(new V3(0, 0, 1), n);
+  return m;
+}
+// 2.0 models bring their own interior: the dashboard, seats, door cards and roof lining are the model's. The game adds
+// the live gauges over the model's cluster, the gloved hands on the model's steering wheel (which turns about its own
+// column), the mirrors with their render targets, and the arms.
+function buildCockpitV2(model) {
+  const U = model.userData, M = U.M, t = U.t, roof = U.roof;
+  const grp = new THREE.Group();
+  const S = o => lit(new THREE.MeshStandardMaterial(o));
+  const softM = S({ color: C('#303136'), roughness: 0.95 });
+  const alu = S({ color: C('#b8bdc4'), roughness: 0.28, metalness: 0.95 });
+  const leather = S({ color: C('#121212'), roughness: 0.62 });
+  const trimM = S({ color: C('#2f3136'), roughness: 0.5, metalness: 0.35 });
+  const av = profile.avatar || { helmet: 0, suit: 0 }, AM = avMats(av);
+  const eye = M.eye ? new V3(M.eye[0], M.eye[1], M.eye[2]) : new V3(-0.37, roof - 0.3, -(U.ffb - 1.02));
+  U.eye = eye;
+  const dx = eye.x, eyeY = eye.y, eyeZ = eye.z;
+  // the steering wheel: the model's own, turning about its column; else the game's wheel where the model's would be
+  let wheel, wr;
+  if (U.swheel) {
+    wheel = U.swheel.rot; wr = Math.max(0.15, Math.min(0.22, U.swheel.r - 0.015));
+  } else {
+    wheel = new THREE.Group(); wr = 0.185;
+    wheel.position.set(dx, eyeY - 0.33, eyeZ - 0.52); wheel.rotation.x = -0.42;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(wr, 0.022, 12, 48), leather); wheel.add(rim);
+    for (const a of [0, Math.PI, -Math.PI / 2]) {
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(wr - 0.04, 0.035, 0.016), alu);
+      sp.position.set(Math.cos(a) * (wr / 2 + 0.01), Math.sin(a) * (wr / 2 + 0.01), -0.01); sp.rotation.z = a; wheel.add(sp);
+    }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.064, 0.05, 24).rotateX(Math.PI / 2), leather); hub.position.z = -0.015; wheel.add(hub);
+    const column = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.42, 12).rotateX(Math.PI / 2), softM); column.position.set(0, 0, -0.24); wheel.add(column);
+    grp.add(wheel);
+  }
+  const hands = cockpitHands(wheel, wr, AM, grp, dx, eyeY, eyeZ);
+  // the live gauges, just in front of the model's instrument cluster
+  if (M.cluster) {
+    const cl = M.cluster;
+    const gauge = facingPlane(cl.w || 0.3, cl.h || 0.12, cl.pos, cl.nrm, new THREE.MeshBasicMaterial({ map: gaugeTex, toneMapped: false }));
+    gauge.position.addScaledVector(new V3(cl.nrm[0], cl.nrm[1], cl.nrm[2]).normalize(), 0.012);
+    grp.add(gauge);
+    const bezel = facingPlane((cl.w || 0.3) + 0.03, (cl.h || 0.12) + 0.03, cl.pos, cl.nrm, S({ color: C('#0a0b0d'), roughness: 0.9 }));
+    bezel.position.addScaledVector(new V3(cl.nrm[0], cl.nrm[1], cl.nrm[2]).normalize(), 0.006);
+    grp.add(bezel);
+  }
+  // the rear-view mirror: its glass gets the render target (the model's own mirror body stays)
+  const mr = M.mirror || { pos: [0.02, roof - 0.08, -(U.fft - 0.3)], nrm: [0, -0.1, 1], w: 0.26, h: 0.07 };
+  const mg = facingPlane(mr.w || 0.26, mr.h || 0.07, mr.pos, mr.nrm, new THREE.MeshBasicMaterial({ toneMapped: false, color: '#9aa3ad' }));
+  mg.position.addScaledVector(new V3(mr.nrm[0], mr.nrm[1], mr.nrm[2]).normalize(), 0.008);
+  grp.add(mg);
+  if (!M.mirror) { const mb = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, 0.035), softM); mb.position.set(mr.pos[0], mr.pos[1], mr.pos[2] - 0.02); grp.add(mb); }
+  // the door mirror outside the driver's window
+  const side = M.side === 'R' ? 1 : -1;
+  const sm = new THREE.Group();
+  sm.position.set(side * (t.w / 2 + 0.12), U.top + 0.1, -(U.ffb - 0.12));
+  const smb = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12).scale(0.1, 0.075, 0.07), U.paint || softM); sm.add(smb);
+  const smg = new THREE.Mesh(new THREE.PlaneGeometry(0.17, 0.11), new THREE.MeshBasicMaterial({ toneMapped: false, color: '#9aa3ad' })); smg.position.z = 0.075; sm.add(smg);
+  const arm2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.03, 0.05), softM); arm2.position.set(-side * 0.09, -0.04, 0); sm.add(arm2);
+  sm.rotation.y = side * 0.25;
+  grp.add(sm);
+  if (!mirrorRT) {
+    const big = Q.mirror >= 2;
+    mirrorRT = new THREE.WebGLRenderTarget(big ? 512 : 320, big ? 128 : 80, { encoding: THREE.sRGBEncoding });
+    mirrorCam = new THREE.PerspectiveCamera(30, 4, 0.5, 900);
+    sideRT = new THREE.WebGLRenderTarget(big ? 256 : 160, big ? 168 : 104, { encoding: THREE.sRGBEncoding });
+    sideCam = new THREE.PerspectiveCamera(26, 1.55, 0.5, 600);
+  }
+  for (const [rt, m] of [[mirrorRT, mg], [sideRT, smg]]) {
+    rt.texture.wrapS = THREE.RepeatWrapping; rt.texture.repeat.x = -1; rt.texture.offset.x = 1;
+    m.material.map = rt.texture; m.material.color.set('#ffffff'); m.material.needsUpdate = true;
+  }
+  // a soft light in the cabin so the dash reads at night: a little emissive lift on the interior's materials is not
+  // ours to change (shared), so the knees and the trim get it from the scene's lights only
+  grp.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+  grp.visible = false;
+  model.add(grp);
+  void trimM;
+  U.cockpit = { grp, wheel, hands, mirror: mg, side: smg, sidePos: sm.position.clone(), v2: true };
+  return U.cockpit;
+}
 function buildCockpit(model) {
+  if (model.userData.v2) return buildCockpitV2(model);
   const U = model.userData, t = U.t, top = U.top, roof = U.roof;
   const grp = new THREE.Group();
   const S = o => lit(new THREE.MeshStandardMaterial(o));
@@ -5164,34 +5396,7 @@ function buildCockpit(model) {
   for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.008), alu); p.position.set(s * 0.12, 0.02, -0.05); wheel.add(p); }
   grp.add(wheel);
 
-  // hands: gloves gripping the rim at quarter to three, fingers wrapped round it, thumbs on the spokes
-  const hands = [];
-  for (const s of [-1, 1]) {
-    const hand = new THREE.Group();
-    const ang = s < 0 ? Math.PI * 0.94 : Math.PI * 0.06;  // left hand at about 9, right at about 3
-    hand.position.set(Math.cos(ang) * wr, Math.sin(ang) * wr, 0);
-    hand.rotation.z = ang;
-    // fingers: a sleeve round the rim tube, open towards the driver's palm side
-    const fing = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.017, 8, 14, Math.PI * 1.45).rotateY(Math.PI / 2).rotateX(Math.PI * 0.62), AM.glove);
-    fing.scale.set(1.7, 1, 1); hand.add(fing);
-    for (let k = 0; k < 4; k++) { const kn = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), AM.glove); kn.position.set((k - 1.5) * 0.019, 0.004, 0.035); hand.add(kn); }
-    // the back of the hand and the palm
-    const back = new THREE.Mesh(new THREE.SphereGeometry(0.045, 14, 10).scale(1.05, 0.55, 1.05), AM.glove);
-    back.position.set(0, -0.004, 0.042); hand.add(back);
-    // the thumb, along the spoke
-    const th = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.012, 0.05, 8), AM.glove);
-    th.position.set(-s * 0.03, 0.01, -0.005); th.rotation.z = Math.PI / 2 + s * 0.4; hand.add(th);
-    // the cuff
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.04, 0.06, 12), AM.glove);
-    cuff.rotation.x = Math.PI / 2; cuff.position.set(0, -0.01, 0.1); hand.add(cuff);
-    wheel.add(hand);
-    // arm: upper arm from the shoulder to the elbow, forearm from the elbow to the wrist (two-bone IK each frame)
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.052, 1, 12).translate(0, 0.5, 0).rotateX(Math.PI / 2), AM.suit);
-    const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.044, 1, 12).translate(0, 0.5, 0).rotateX(Math.PI / 2), AM.suit);
-    const elbowB = new THREE.Mesh(new THREE.SphereGeometry(0.046, 10, 8), AM.suit);
-    grp.add(upper, fore, elbowB);
-    hands.push({ s, hand, ang, upper, fore, elbowB, sh: new V3(dx + s * 0.21, eyeY - 0.4, eyeZ + 0.12) });
-  }
+  const hands = cockpitHands(wheel, wr, AM, grp, dx, eyeY, eyeZ);
   // the floor: carpet, the footwell walls, the transmission tunnel and the pedals
   const carpetM = S({ color: C('#1c1d21'), roughness: 1 });
   const floorY = Math.max(0.24, top - 0.62);
@@ -5283,7 +5488,8 @@ function updateCockpit(model, steerAngle, dt) {
     // past a quarter turn the hands slide round the rim rather than crossing over
     const lim = 2.2, extra = Math.max(0, Math.abs(wa) - lim) * Math.sign(wa);
     H.hand.rotation.z = H.ang - extra;
-    H.hand.position.set(Math.cos(H.ang - extra) * 0.185, Math.sin(H.ang - extra) * 0.185, 0);
+    const hr = H.wr || 0.185;
+    H.hand.position.set(Math.cos(H.ang - extra) * hr, Math.sin(H.ang - extra) * hr, 0);
     // wrist (world) at the cuff
     const wrist = _ckE.set(0, -0.01, 0.12); H.hand.localToWorld(wrist);
     const sh = _ck.copy(H.sh); K.grp.localToWorld(sh);
@@ -7590,8 +7796,7 @@ const RACE_DEF_OPTS = { laps: 3, opp: 11, diff: 'medium', grid: 'back', time: 'a
 const raceOpts = Object.assign({}, RACE_DEF_OPTS, saved.raceOpts || {});
 saved.raceOpts = raceOpts;
 const DIFF_SKILL = { easy: 0.85, medium: 0.91, hard: 0.955, expert: 0.985 };
-const CREDITS = 'Car models: "Medium sized sedan" and "Traffic Car Pack" by MaG80, "Free Delivery Truck Vehicle" by vmek3d, "Classic Muscle car" by Lexyc16, ' +
-  '"Low-Poly Sports Car Free" by donnichols, "Conquer \'89 Pickup" by DanielZhabotinsky and "Free Pack - Car" by polyone, all from Sketchfab under CC Attribution, adapted for the game.';
+const CREDITS = 'Car models from Sketchfab, all CC Attribution, adapted for the game: "Honda Civic Type R -98" by tiedtke, "2010 Land Rover Range Rover Supercharged" by throwbackthursdaymodels, "2019 Chevrolet Corvette C8 Stingray" by Haris3D, "2012 Chevrolet Camaro ZL1" by ddiaz-design, "Lamborghini Centenario LP-770 Interior SDC" by Lambo_SC04, "Aston Martin db11" by BlackSnow02, "2013 Ford F-150" by supercarmodels, "Mercedes-AMG E 63 S (W213)" by Car2022 and "2019 Mercedes-Benz Sprinter" by tonielpro520. Sky and road textures by Poly Haven (CC0).';
 
 const raceUI = (() => {
   let kind = 'track', sel = null, tyre = 'sport', resultsFor = null, avTab = 'helmet';
@@ -8049,6 +8254,11 @@ function updLights(cars) {
       else add(l.x, l.y, l.z, 28, 1, 0.84, 0.6, 150 * night, 0, -1, 0, 0.03, 0.55);
     }
   }
+  // a soft glow from the dashboard in the player's cabin, so the real interior reads at night
+  if (night > 0.1 && camMode === 2 && playerModel && playerModel.userData.v2 && playerModel.userData.eye) {
+    const e = _v[9].copy(playerModel.userData.eye); e.y -= 0.25; e.z -= 0.45; playerModel.localToWorld(e);
+    add(e.x, e.y, e.z, 2.2, 1, 0.75, 0.5, 0.55 * night, 0, 0, 0, 2.5);
+  }
   if (night > 0.1) for (const c of cars) {
     const v = c.veh, fwd = _v[0].set(0, 0, -1).applyQuaternion(v.q), L = v.type.l / 2;
     const fx = v.p.x + fwd.x * (L + 0.2), fy = v.p.y + 0.1, fz = v.p.z + fwd.z * (L + 0.2);
@@ -8419,7 +8629,7 @@ resize();
 
 const sunFocus = new V3();
 function updateSun(focus) {
-  const ts = 140 / (Q.shadows || 1024);
+  const ts = (2 * sun.shadow.camera.right) / (Q.shadows || 1024);
   sunFocus.set(Math.round(focus.x / ts) * ts, Math.round(focus.y / ts) * ts, Math.round(focus.z / ts) * ts);
   sun.position.copy(sunFocus).addScaledVector(sunDir.y > 0.05 ? sunDir : _v[9].set(sunDir.x, 0.25, sunDir.z).normalize(), 220);
   sun.target.position.copy(sunFocus);

@@ -1,0 +1,123 @@
+{
+ "hatch": {
+  "uid": "b9604dd71c6546ec842702682019492a",
+  "len": 4.18,
+  "side": "L",
+  "classify": {
+   "^Honda_Civic_Body_Silver_MAT": [
+    "body",
+    {
+     "kind": "paint"
+    }
+   ]
+  }
+ },
+ "suv": {
+  "uid": "dd8455bdfa3247feb906145fa2abca03",
+  "len": 4.97,
+  "side": "L",
+  "tint": false
+ },
+ "sports": {
+  "uid": "790c40ccff6843eab0b7b4bd18421ff8",
+  "len": 4.63,
+  "side": "L"
+ },
+ "muscle": {
+  "uid": "cf2c1a032fa14828b94176ad526821f3",
+  "len": 4.84,
+  "side": "L"
+ },
+ "super": {
+  "uid": "d679af35b5694301a185c7454a700c73",
+  "len": 4.92,
+  "side": "L",
+  "classify": {
+   "\\|(Carbon_M|Carbon_R|CENTENARIO)$": [
+    "body",
+    {
+     "kind": "paint"
+    }
+   ]
+  }
+ },
+ "coupe": {
+  "uid": "0ce56f01b1ff40b3a4e36bc56873dbc7",
+  "len": 4.74,
+  "side": "L",
+  "classify": {
+   "\\|amdb11$": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
+    }
+   ],
+   "\\|amdb11_finish$": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
+    }
+   ],
+   "^amdb11_steer_": [
+    "swheel",
+    {}
+   ],
+   "\\|amdb11_glass": [
+    "glass",
+    {}
+   ],
+   "\\|amdb11_rearglass": [
+    "glass",
+    {}
+   ],
+   "^Object_4\\.": [
+    "wheelsrc",
+    {}
+   ],
+   "amdb11_(engine|engbay|intake|radiator|strutbrace)": [
+    null,
+    {}
+   ]
+  }
+ },
+ "pickup": {
+  "uid": "a6572f0fd7e8431280055be70213d225",
+  "len": 5.89,
+  "side": "L"
+ },
+ "sedan": {
+  "uid": "f61d8efb0b9b4c499fc66fcf35a4d09c",
+  "len": 4.99,
+  "side": "L",
+  "auto_paint": false,
+  "classify": {
+   "\\|New_Material$": [
+    "body",
+    {
+     "kind": "paint",
+     "tint": false
+    }
+   ]
+  }
+ },
+ "van": {
+  "uid": "5788a290ddb5483fbbd5831aeef829a1",
+  "len": 5.93,
+  "side": "L",
+  "swheel": {
+   "pos": [
+    0.44,
+    -1.4,
+    1.02
+   ],
+   "r": 0.2
+  },
+  "eye": [
+   0.44,
+   -0.9,
+   1.45
+  ]
+ }
+}
