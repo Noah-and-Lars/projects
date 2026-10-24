@@ -32,7 +32,16 @@
   "len": 4.97,
   "side": "L",
   "tint": false,
-  "paint_if_outside": "\\|Meshesrowersportdoor"
+  "paint_if_outside": "\\|Meshesrowersportdoor",
+  "swheel": {
+   "pos": [
+    0.42,
+    -0.7,
+    1.19
+   ],
+   "r": 0.18,
+   "rake": 32
+  }
  },
  "sports": {
   "uid": "790c40ccff6843eab0b7b4bd18421ff8",

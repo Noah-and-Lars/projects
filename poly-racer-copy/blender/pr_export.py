@@ -871,6 +871,11 @@ def build_car(spec, out_path, tex_dir, prefix):
         e = np.sort(ext); rr = float((e[1] + min(e[2], e[1] * 1.1)) / 4)
         if e[2] > e[1] * 1.3:   # the column: the hub is where the rim's plane is, not the box centre
             c = np.array([c[0], float(np.median(SP[:, 1])), c[2]])
+        if spec.get('swheel'):
+            # placed by hand: the hub, the radius and (given a rake) the axis are the spec's, whatever else the box caught
+            c = np.array(spec['swheel']['pos'], dtype=np.float64); rr = float(spec['swheel'].get('r', rr))
+            if 'rake' in spec['swheel']:
+                t = math.radians(spec['swheel']['rake']); axis = np.array([0.0, math.cos(t), math.sin(t)])
         meta['swheel'] = dict(pos=gv(c), axis=gv(axis), r=round(rr, 3))
         if side is None: side = 'L' if c[0] > 0 else 'R'
         # re-centre the steering wheel on its hub

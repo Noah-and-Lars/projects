@@ -517,7 +517,7 @@
         <li>Photo mode: press F9 anywhere. Orbit the car or fly a free camera (F), pause or run the world (Space), depth of field on Ultra ([ and ]), Enter saves a picture</li>
         <li>Polish: a real optimal lap from your best sectors, live cockpit gauges, bronze times on the track cards, clearer settings and a tidier profile</li>
         <li>Ultra graphics: real trees near the road, photographed skies that light the cars and show in their paint, real asphalt, grass, gravel and sand with surface relief, ambient occlusion, 4k shadows</li>
-        <li>Nine real cars, modelled in detail inside and out, with proper paint, chrome and glass</li>
+        <li>Eight real cars, modelled in detail inside and out, with proper paint, chrome and glass</li>
         <li>Cockpit view: sit in each car's own interior, behind its own steering wheel and mirrors</li>
         <li>Sharper shadows and a lit dashboard at night</li>
         <li>From 1.2: 30 circuits, online races, weather and seasons</li>
@@ -1533,7 +1533,6 @@ const CARS = [
   { id: 'taxi',   name: 'City Taxi',      cls: 'Saloon',     w: 1.86, l: 4.6,  h: 0.72, ch: 0.62, cl: 2.35, cz: -0.15, wr: 0.36, max: 46, acc: 10,  brake: 22, grip: 9,    color: '#f2c200', taxi: 1, snd: { cyl: 4, idle: 780, red: 6200, grit: 0.25 } },
   { id: 'pickup', name: 'Bravo Pickup',   cls: 'Truck',      w: 2.0,  l: 5.1,  h: 0.85, ch: 0.72, cl: 1.7,  cz: 0.35,  wr: 0.44, max: 40, acc: 9.5, brake: 20, grip: 8,    color: '#8a3b12', bed: 1, snd: { cyl: 6, idle: 700, red: 5600, grit: 0.5 } },
   { id: 'suv',    name: 'Ranger SUV',     cls: 'SUV',        w: 2.02, l: 4.85, h: 0.95, ch: 0.75, cl: 2.9,  cz: -0.35, wr: 0.43, max: 42, acc: 9.5, brake: 20, grip: 8,    color: '#2f6e3a', snd: { cyl: 6, idle: 720, red: 6000, grit: 0.4 } },
-  { id: 'van',    name: 'Hauler Van',     cls: 'Van',        w: 2.04, l: 5.2,  h: 0.9,  ch: 1.1,  cl: 1.5,  cz: 1.0,   wr: 0.4,  max: 35, acc: 7.5, brake: 18, grip: 7.5,  color: '#f2f2f0', van: 1, snd: { cyl: 4, idle: 750, red: 5000, grit: 0.45 } },
   { id: 'police', name: 'Police Cruiser', cls: 'Pursuit',    w: 1.86, l: 4.6,  h: 0.72, ch: 0.62, cl: 2.35, cz: -0.15, wr: 0.36, max: 56, acc: 14,  brake: 26, grip: 10,   color: '#151515', police: 1, snd: { cyl: 8, idle: 650, red: 6200, grit: 0.55 } },
   { id: 'coupe',  name: 'Vanta Coupe',    cls: 'Coupe',      w: 1.9,  l: 4.5,  h: 0.6,  ch: 0.5,  cl: 1.75, cz: -0.35, wr: 0.36, max: 58, acc: 14,  brake: 26, grip: 10.5, color: '#5b2a86', snd: { cyl: 6, idle: 800, red: 7200, grit: 0.3 } },
   { id: 'muscle', name: 'Brawler V8',     cls: 'Muscle',     w: 1.96, l: 4.95, h: 0.7,  ch: 0.52, cl: 1.85, cz: -0.5,  wr: 0.38, max: 60, acc: 18,  brake: 24, grip: 8.5,  color: '#b3121b', scoop: 1, snd: { cyl: 8, idle: 600, red: 6000, grit: 0.7 } },
@@ -5186,7 +5185,7 @@ function makeBlob() {
 // front is -z, so each model is turned round. Body paint is a magenta marker colour that the shader swaps for
 // the car's colour, so every car of a kind shares one mesh. Parts: body (with mid and lo versions for distance),
 // det (textured details), glass, lamp, wheel (the model's own, right-hand side; mirrored for the left).
-const MODELS = {}, MODEL_IDS = ['sedan', 'hatch', 'suv', 'van', 'muscle', 'sports', 'pickup', 'coupe', 'super'];
+const MODELS = {}, MODEL_IDS = ['sedan', 'hatch', 'suv', 'muscle', 'sports', 'pickup', 'coupe', 'super'];
 const MODEL_TEX = {}, TEX_WAIT = [];
 function modelTex(name, linear) {
   if (MODEL_TEX[name]) return MODEL_TEX[name];
@@ -5258,6 +5257,21 @@ async function loadModels() {
     try { const r = await fetch('models/' + k + '.fcm?v=' + VERSION); if (!r.ok) { console.warn('model ' + k + ': ' + r.status); return; } MODELS[k] = parseFCM(await r.arrayBuffer()); }
     catch (e) { console.warn('model ' + k, e); }
   }));
+  // the driver's glove: a right hand gripping a rim (blender/glove_grip.py); the left hand is its mirror image
+  try {
+    const r = await fetch('models/glove.fcm?v=' + VERSION);
+    if (r.ok) {
+      const G = parseFCM(await r.arrayBuffer()), g = G.glove;
+      // the baked occlusion (the colour's fourth channel) as plain colour: creases and the gaps between the fingers
+      const c4 = g.attributes.color, c3 = new Float32Array(c4.count * 3);
+      for (let i = 0; i < c4.count; i++) { const a = 0.3 + 0.7 * c4.getW(i); c3[i * 3] = c3[i * 3 + 1] = c3[i * 3 + 2] = a; }
+      g.setAttribute('color', new THREE.BufferAttribute(c3, 3));
+      const L = g.clone(); L.scale(1, -1, 1);
+      const ix = L.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
+      g.userData.shared = L.userData.shared = true;
+      MODELS.glove = { R: g, L, wrist: (G.meta && G.meta.wrist) || [0.017, 0, 0.076] };
+    }
+  } catch (e) { console.warn('glove', e); }
   await Promise.all(TEX_WAIT);
   // the police cruiser is the saloon with the light bar the game adds (like the taxi) when it has no model of its own
   if (!MODELS.police && MODELS.sedan) MODELS.police = MODELS.sedan;
@@ -5799,15 +5813,77 @@ function drawGauges(kmh, rpm, red, gear, units) {
 }
 
 let mirrorRT = null, mirrorCam = null, sideRT = null, sideCam = null;
+// a racing-suit sleeve: shoulder at z = 0, elbow at z = L1, the cuff end at L1 + L2. Skinned to two bones (upper
+// arm, forearm) that blend over the elbow, so it bends like an arm; the cloth gathers in folds at the elbow and
+// bunches at the cuff.
+function makeSleeve(mat, L1, L2) {
+  const NZ = 70, NT = 30, len = L1 + L2, pos = [], uv = [], si = [], sw = [], idx = [];
+  const fold = (t, z) => Math.sin(t * 3 + z * 41) * 0.45 + Math.sin(t * 5 - z * 23 + 1.7) * 0.3 + Math.sin(t * 2 + z * 67 + 0.4) * 0.25 + Math.sin(t * 7 + z * 97) * 0.12;
+  for (let j = 0; j <= NZ; j++) {
+    const z = len * j / NZ, u = z / len;
+    let r = z < L1 ? 0.047 - 0.008 * (z / L1) : 0.039 - 0.011 * ((z - L1) / L2);
+    if (z > len - 0.05) r += 0.004 * (1 - (len - z) / 0.05);          // a looser cuff over the glove
+    const near = Math.exp(-(((z - L1) / 0.07) ** 2)), cuff = Math.exp(-(((len - z) / 0.06) ** 2));
+    const w1 = Math.max(0, Math.min(1, (z - (L1 - 0.06)) / 0.12)), wE = w1 * w1 * (3 - 2 * w1);
+    for (let i = 0; i <= NT; i++) {
+      const t = i / NT * Math.PI * 2;
+      const rr = r * (1 + (0.05 + 0.14 * near + 0.09 * cuff) * fold(t, z));
+      pos.push(Math.cos(t) * rr, Math.sin(t) * rr, z);
+      uv.push(i / NT, 0.32 + u * 0.2);
+      si.push(0, 1, 0, 0); sw.push(1 - wE, wE, 0, 0);
+    }
+  }
+  for (let j = 0; j < NZ; j++) for (let i = 0; i < NT; i++) {
+    const a = j * (NT + 1) + i, b = a + NT + 1;
+    idx.push(a, a + 1, b, b, a + 1, b + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+  g.setIndex(idx); g.computeVertexNormals();
+  const mesh = new THREE.SkinnedMesh(g, mat), b0 = new THREE.Bone(), b1 = new THREE.Bone();
+  b1.position.set(0, 0, L1); b0.add(b1); mesh.add(b0);
+  mesh.updateMatrixWorld(true);   // the bones' rest pose, for their inverses
+  mesh.bind(new THREE.Skeleton([b0, b1]));
+  mesh.frustumCulled = false;
+  return { mesh, b0, b1, L1, L2 };
+}
 // hands: gloves gripping the rim at quarter to three, fingers wrapped round it, thumbs on the spokes. wheel: the
 // group that turns (its z axis is the column, towards the driver); wr: the rim radius; the arms go to the shoulders
-function cockpitHands(wheel, wr, AM, grp, dx, eyeY, eyeZ) {
+// the rim where a hand goes: the wheel's outermost points within a few degrees of that angle are the rim's outside
+// edge; its middle is a rim's thickness in from there, at the depth of those points (all in the wheel's turning frame)
+function rimFit(sw, ang) {
+  const P = sw.mesh.geometry.attributes.position, q = sw.mesh.quaternion, v = new V3(), pts = [];
+  let maxR = 0;
+  for (let i = 0; i < P.count; i++) {
+    v.fromBufferAttribute(P, i).applyQuaternion(q);
+    let da = Math.atan2(v.y, v.x) - ang; da = Math.atan2(Math.sin(da), Math.cos(da));
+    if (Math.abs(da) > 0.16) continue;
+    const r = Math.hypot(v.x, v.y); pts.push([r, v.z]); if (r > maxR) maxR = r;
+  }
+  if (pts.length < 8 || maxR < 0.14 || maxR > 0.26) return null;
+  const zs = pts.filter(t => t[0] > maxR - 0.03).map(t => t[1]).sort((a, b) => a - b);
+  return { r: maxR - 0.015, z: zs[zs.length >> 1] };
+}
+function cockpitHands(wheel, wr, AM, grp, dx, eyeY, eyeZ, rimSW = null) {
   const hands = [];
   for (const s of [-1, 1]) {
     const hand = new THREE.Group();
     const ang = s < 0 ? Math.PI * 0.94 : Math.PI * 0.06;  // left hand at about 9, right at about 3
-    hand.position.set(Math.cos(ang) * wr, Math.sin(ang) * wr, 0);
+    const fit = rimSW ? rimFit(rimSW, ang) : null, hr = fit ? fit.r : wr, rimZ = fit ? fit.z : 0;
+    hand.position.set(Math.cos(ang) * hr, Math.sin(ang) * hr, rimZ);
     hand.rotation.z = ang;
+    const GL = MODELS.glove;
+    if (GL) {
+      // the modelled glove: its frame has the rim's tube along y, the palm towards the wheel's centre (-x), the wrist
+      // towards the driver (+z). The left hand is the mirror image (thumb up is -y once it's turned round to 9 o'clock).
+      hand.add(new THREE.Mesh(s > 0 ? GL.R : GL.L, AM.gloveM));
+      wheel.add(hand);
+      const L1 = 0.3, L2 = 0.29, sl = makeSleeve(AM.sleeve, L1, L2);
+      grp.add(sl.mesh);
+      hands.push({ s, hand, ang, wr: hr, rz: rimZ, sleeve: sl, wristL: new V3(GL.wrist[0], s * GL.wrist[1], GL.wrist[2]), sh: new V3(dx + s * 0.2, eyeY - 0.42, eyeZ + 0.26) });
+      continue;
+    }
     // fingers: a sleeve round the rim tube, open towards the driver's palm side
     const fing = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.017, 8, 14, Math.PI * 1.45).rotateY(Math.PI / 2).rotateX(Math.PI * 0.62), AM.glove);
     fing.scale.set(1.7, 1, 1); hand.add(fing);
@@ -5856,9 +5932,10 @@ function buildCockpitV2(model) {
   U.eye = eye;
   const dx = eye.x, eyeY = eye.y, eyeZ = eye.z;
   // the steering wheel: the model's own, turning about its column; else the game's wheel where the model's would be
-  let wheel, wr;
+  let wheel, wr, rimSW = null;
   if (U.swheel) {
     wheel = U.swheel.rot; wr = Math.max(0.15, Math.min(0.22, U.swheel.r - 0.015));
+    rimSW = U.swheel;
   } else {
     wheel = new THREE.Group(); wr = 0.185;
     wheel.position.set(dx, eyeY - 0.33, eyeZ - 0.52); wheel.rotation.x = -0.42;
@@ -5871,7 +5948,7 @@ function buildCockpitV2(model) {
     const column = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.42, 12).rotateX(Math.PI / 2), softM); column.position.set(0, 0, -0.24); wheel.add(column);
     grp.add(wheel);
   }
-  const hands = cockpitHands(wheel, wr, AM, grp, dx, eyeY, eyeZ);
+  const hands = cockpitHands(wheel, wr, AM, grp, dx, eyeY, eyeZ, rimSW);
   // the live gauges, just in front of the model's instrument cluster
   if (M.cluster) {
     const cl = M.cluster;
@@ -6059,7 +6136,7 @@ function buildCockpit(model) {
 }
 
 // two-bone arm: shoulder -> elbow -> wrist, the elbow dropping down and out
-const _ck = new V3(), _ck2 = new V3(), _ck3 = new V3(), _ckE = new V3(), _ckM = new THREE.Matrix4();
+const _ck = new V3(), _ck2 = new V3(), _ck3 = new V3(), _ckE = new V3(), _ckM = new THREE.Matrix4(), _ZAX = new V3(0, 0, 1);
 function placeLimb(mesh, a, b, grpInv) {
   _ck2.copy(a).applyMatrix4(grpInv); _ck3.copy(b).applyMatrix4(grpInv);
   mesh.position.copy(_ck2);
@@ -6079,9 +6156,9 @@ function updateCockpit(model, steerAngle, dt) {
     const lim = 2.2, extra = Math.max(0, Math.abs(wa) - lim) * Math.sign(wa);
     H.hand.rotation.z = H.ang - extra;
     const hr = H.wr || 0.185;
-    H.hand.position.set(Math.cos(H.ang - extra) * hr, Math.sin(H.ang - extra) * hr, 0);
+    H.hand.position.set(Math.cos(H.ang - extra) * hr, Math.sin(H.ang - extra) * hr, H.rz || 0);
     // wrist (world) at the cuff
-    const wrist = _ckE.set(0, -0.01, 0.12); H.hand.localToWorld(wrist);
+    const wrist = H.wristL ? _ckE.copy(H.wristL) : _ckE.set(0, -0.01, 0.12); H.hand.localToWorld(wrist);
     const sh = _ck.copy(H.sh); K.grp.localToWorld(sh);
     const L1 = 0.3, L2 = 0.29, d = Math.min(L1 + L2 - 0.01, sh.distanceTo(wrist));
     // elbow: on the circle between them, pushed down and outwards
@@ -6091,6 +6168,19 @@ function updateCockpit(model, steerAngle, dt) {
     const down = new V3(0, -1, 0).applyQuaternion(model.getWorldQuaternion(new THREE.Quaternion())).add(new V3(H.s * 0.6, 0, 0).applyQuaternion(model.getWorldQuaternion(new THREE.Quaternion())));
     down.addScaledVector(dir, -down.dot(dir)).normalize();
     const elbow = mid.addScaledVector(down, h);
+    if (H.sleeve) {
+      // the sleeve ends over the glove's cuff, a few centimetres towards the hand from the cuff's edge
+      const SL = H.sleeve, handW = H.hand.getWorldPosition(_ck3), end = wrist.clone().addScaledVector(_ck2.subVectors(handW, wrist).normalize(), 0.035);
+      const s0 = sh.clone().applyMatrix4(gInv), e0 = elbow.clone().applyMatrix4(gInv), w0 = end.applyMatrix4(gInv);
+      const d1 = e0.clone().sub(s0), d2 = w0.clone().sub(e0);
+      SL.b0.position.copy(s0); SL.b0.quaternion.setFromUnitVectors(_ZAX, d1.clone().normalize()); SL.b0.scale.set(1, 1, d1.length() / SL.L1);
+      SL.b1.position.set(0, 0, SL.L1);
+      // the forearm's direction in the upper arm's frame (undoing its stretch), stretched to reach the cuff
+      const q0i = SL.b0.quaternion.clone().invert();
+      SL.b1.quaternion.setFromUnitVectors(_ZAX, d2.clone().applyQuaternion(q0i).normalize());
+      SL.b1.scale.set(1, 1, d2.length() / SL.L2 * SL.L1 / d1.length());
+      continue;
+    }
     H.elbowB.position.copy(elbow.clone().applyMatrix4(gInv));
     placeLimb(H.upper, sh, elbow, gInv);
     placeLimb(H.fore, elbow, wrist, gInv);
@@ -8204,6 +8294,24 @@ function suitTex(i) {
 // About 1.78 m tall standing, made of lathed and tapered parts with joints so it can stand or sit at a wheel.
 // Faces -z. seated: hips bent, knees up, hands forward at wheel height.
 const AV_MAT = {};
+let CLOTH_N = null;
+function clothNormal() {
+  if (CLOTH_N) return CLOTH_N;
+  const W = 256, Hh = 512, H = new Float32Array(W * Hh);
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+    const u = x / W, v = y / Hh;
+    // folds: rings round the arm that wander, about every 3-4 cm along it; then the weave
+    const fold = Math.sin(2 * Math.PI * (v * 70 + 0.6 * Math.sin(2 * Math.PI * (u * 2 + v * 9)) + 0.3 * Math.sin(2 * Math.PI * u * 5))) * (0.5 + 0.5 * Math.sin(2 * Math.PI * (u * 3 + v * 23)));
+    const weave = (Math.sin(x * 2.1) * Math.sin(y * 1.05)) * 0.12 + (Math.random() - 0.5) * 0.08;
+    H[y * W + x] = fold * 0.9 + weave;
+  }
+  CLOTH_N = canvasTex(W, Hh, (g, w, h) => pixels(g, w, h, (x, y) => {
+    const xl = (x + w - 1) % w, xr = (x + 1) % w, yu = Math.max(0, y - 1), yd = Math.min(h - 1, y + 1);
+    const nx = (H[y * w + xl] - H[y * w + xr]) * 1.2, ny = (H[yd * w + x] - H[yu * w + x]) * 1.2, inv = 1 / Math.hypot(nx, ny, 1);
+    return [(nx * inv * 0.5 + 0.5) * 255, (ny * inv * 0.5 + 0.5) * 255, (inv * 0.5 + 0.5) * 255];
+  }), { data: 1 });
+  return CLOTH_N;
+}
 function avMats(av) {
   av = av || { helmet: 0, suit: 0 };
   const k = av.helmet + '|' + av.suit;
@@ -8215,6 +8323,8 @@ function avMats(av) {
     // gloves in the suit's second colour (dark gloves vanish against the wheel)
     glove: lit(new THREE.MeshStandardMaterial({ color: C(SUITS[av.suit] ? (SUITS[av.suit].pal[1] === '#151515' ? SUITS[av.suit].pal[0] : SUITS[av.suit].pal[1]) : '#e8e8e8'), roughness: 0.7 })),
     dark: lit(new THREE.MeshStandardMaterial({ color: C('#151618'), roughness: 0.7 })),
+    gloveM: lit(new THREE.MeshPhysicalMaterial({ color: C(SUITS[av.suit] ? (SUITS[av.suit].pal[1] === '#151515' ? SUITS[av.suit].pal[0] : SUITS[av.suit].pal[1]) : '#e8e8e8'), vertexColors: true, roughness: 0.62, metalness: 0, sheen: new THREE.Color(0.22, 0.22, 0.22), side: THREE.DoubleSide })),
+    sleeve: lit(new THREE.MeshStandardMaterial({ map: suitTex(av.suit), normalMap: clothNormal(), normalScale: new THREE.Vector2(0.9, 0.9), roughness: 0.88, metalness: 0, skinning: true })),
     boot: lit(new THREE.MeshStandardMaterial({ color: C('#1b1b1d'), roughness: 0.45, metalness: 0.1 })),
   });
 }
@@ -8398,9 +8508,9 @@ const raceOpts = Object.assign({}, RACE_DEF_OPTS, saved.raceOpts || {});
 saved.raceOpts = raceOpts;
 const DIFF_SKILL = { easy: 0.85, medium: 0.91, hard: 0.955, expert: 0.985 };
 // the real car behind each one, shown in the garage
-const MODEL_OF = { sedan: 'Mercedes-AMG E 63 S', hatch: 'Honda Civic Type R (EK9)', suv: 'Range Rover Supercharged', van: 'Mercedes-Benz Sprinter', muscle: 'Chevrolet Camaro ZL1',
+const MODEL_OF = { sedan: 'Mercedes-AMG E 63 S', hatch: 'Honda Civic Type R (EK9)', suv: 'Range Rover Supercharged', muscle: 'Chevrolet Camaro ZL1',
   sports: 'Chevrolet Corvette C8 Stingray', pickup: 'Ford F-150', coupe: 'Aston Martin DB11', super: 'Lamborghini Centenario' };
-const CREDITS = 'Car models from Sketchfab, all CC Attribution, adapted for the game: "Honda Civic Type R -98" by tiedtke, "2010 Land Rover Range Rover Supercharged" by throwbackthursdaymodels, "2019 Chevrolet Corvette C8 Stingray" by Haris3D, "2012 Chevrolet Camaro ZL1" by ddiaz-design, "Lamborghini Centenario LP-770 Interior SDC" by Lambo_SC04, "Aston Martin db11" by BlackSnow02, "2013 Ford F-150" by supercarmodels, "Mercedes-AMG E 63 S (W213)" by Car2022 and "2019 Mercedes-Benz Sprinter" by tonielpro520. Trees on Ultra from Sketchfab, CC Attribution: "Pine_Tree" by IGamEFry88, "Spruce tree" by intice184, "Oak tree" by greg-l, "Birch tree" and "Coconut Palm" by evolveduk, "Maple tree" by atrodler. Skies, ground, grass and leaf textures by Poly Haven (CC0).';
+const CREDITS = 'Car models from Sketchfab, all CC Attribution, adapted for the game: "Honda Civic Type R -98" by tiedtke, "2010 Land Rover Range Rover Supercharged" by throwbackthursdaymodels, "2019 Chevrolet Corvette C8 Stingray" by Haris3D, "2012 Chevrolet Camaro ZL1" by ddiaz-design, "Lamborghini Centenario LP-770 Interior SDC" by Lambo_SC04, "Aston Martin db11" by BlackSnow02, "2013 Ford F-150" by supercarmodels and "Mercedes-AMG E 63 S (W213)" by Car2022. The driver's gloves: "Glove Rigged" by Masterbauer (Sketchfab, CC Attribution), posed for the game. Trees on Ultra from Sketchfab, CC Attribution: "Pine_Tree" by IGamEFry88, "Spruce tree" by intice184, "Oak tree" by greg-l, "Birch tree" and "Coconut Palm" by evolveduk, "Maple tree" by atrodler. Skies, ground, grass and leaf textures by Poly Haven (CC0).';
 
 const raceUI = (() => {
   let kind = 'track', sel = null, tyre = 'sport', resultsFor = null, avTab = 'helmet';
@@ -9633,7 +9743,7 @@ function step(dt) {
 // ---------- Start ----------
 const DEV = /[?&]debug/.test(location.search) || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 if (DEV) window.__pr = { race, get car() { return car; }, input, keys, get CAR() { return CAR; }, TRACKS, SERIES, CIRCUITS, loadTrack, restart, respawn, physics, tick, buildTrack, buildCircuit, setPlayerCar, carById, ui, raceUI, settings, saved, camera, renderer, scene,
-  terrain: () => terrain, world, sfx, music, ENV: () => ENV, menuCam, setCamMode, fmt, Collider, trackCollision, DT, RM, racingLine, speedProfile, makeEnv, cine, weather, profile, ST, stats, MODELS, step: (n = 1, dt = 1 / 60) => { for (let i = 0; i < n; i++) step(dt); }, net: () => window.net, studio, makeCar, makeDriverFigure, CARS, post, hud, damageCar, crackGlass, get playerModel() { return playerModel; } };
+  terrain: () => terrain, world, sfx, music, ENV: () => ENV, menuCam, setCamMode, fmt, Collider, trackCollision, DT, RM, racingLine, speedProfile, makeEnv, cine, weather, profile, ST, stats, MODELS, step: (n = 1, dt = 1 / 60) => { for (let i = 0; i < n; i++) step(dt); }, net: () => window.net, studio, makeCar, makeDriverFigure, CARS, post, hud, damageCar, crackGlass, get playerModel() { return playerModel; }, photo };
 if (DEV) window.__look = (ang, dist, h, fov, tx = 0, ty = -0.2, tz = 0) => {
   menuCam.mode = 'hold'; camera.clearViewOffset();
   const p = car.p; camera.position.set(p.x + Math.cos(ang) * dist, p.y + h, p.z + Math.sin(ang) * dist);
