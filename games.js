@@ -126,7 +126,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-21T21:50:00+11:00',
+    updated: '2026-10-24T12:00:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -197,6 +197,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-24', game: 'cube-assault', text: 'Cube Assault 2.9.8: the new 1v5 boss mode for 6 players, rooms for up to 10 players (5v5 C:S Mode), loadouts with 2 small and 3 big guns on your hotbar, a 20 second prep before fighting, match modifiers, spectating, flashbangs, smoke, medkits and a defuse kit in the Shop, shared Co-op waves, a bigger Outpost and a sniper balance change. This version prepares the game for 3.0.' },
   { date: '2026-10-23', game: 'poly-racer', text: 'Poly Racer 1.2: races! 30 full-length circuits and street races (grand prix tracks, city streets, forest trails, beaches and mountain passes) against 15 computer drivers, and online races for up to 10 in public or private rooms. Choose the laps, time of day, season and weather, and the right tyres. Plus detailed car models with damage, a new cockpit with working mirrors, profiles with 50 helmets and 50 race suits, music, a new speedometer and better engine sounds.' },
   { date: '2026-10-22', game: 'poly-racer', text: 'Poly Racer 1.1: 94 new tracks in nine new worlds (100 in all) with gold, silver and bronze times, a garage of 11 cars from Free Criminal, a first-person cockpit view, all-new realistic graphics with dense forests, smoother steering and a steadier car, new engine sounds, and a new menu. Fall off the track and you can keep driving; press R to respawn.' },
   { date: '2026-10-22', game: 'free-criminal', text: 'Free Criminal 2.0: chat moves to your phone with group chats (invites have to be accepted), real street lights and headlights, textures on every surface, a car dealership with nine cars you keep in your garage, a high school with students and school buses, a new rifle and a pile of fixes.' },
