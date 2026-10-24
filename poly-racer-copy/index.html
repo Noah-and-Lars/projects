@@ -5263,9 +5263,9 @@ async function loadModels() {
     if (r.ok) {
       const G = parseFCM(await r.arrayBuffer()), g = G.glove;
       // the baked occlusion (the colour's fourth channel) as plain colour: creases and the gaps between the fingers
-      const c4 = g.attributes.color, c3 = new Float32Array(c4.count * 3);
-      for (let i = 0; i < c4.count; i++) { const a = 0.3 + 0.7 * c4.getW(i); c3[i * 3] = c3[i * 3 + 1] = c3[i * 3 + 2] = a; }
-      g.setAttribute('color', new THREE.BufferAttribute(c3, 3));
+      const c4 = g.attributes.color, c3 = new Float32Array(c4.count * 3), gm = new Float32Array(c4.count);
+      for (let i = 0; i < c4.count; i++) { const a = 0.3 + 0.7 * c4.getW(i); c3[i * 3] = c3[i * 3 + 1] = c3[i * 3 + 2] = a; gm[i] = Math.pow(c4.getX(i), 1 / 2.2); }
+      g.setAttribute('color', new THREE.BufferAttribute(c3, 3)); g.setAttribute('gmask', new THREE.BufferAttribute(gm, 1));
       const L = g.clone(); L.scale(1, -1, 1);
       const ix = L.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
       g.userData.shared = L.userData.shared = true;
@@ -8294,6 +8294,64 @@ function suitTex(i) {
 // About 1.78 m tall standing, made of lathed and tapered parts with joints so it can stand or sit at a wheel.
 // Faces -z. seated: hips bent, knees up, hands forward at wheel height.
 const AV_MAT = {};
+// the gear's photographed materials: leather and suede for the gloves, a woven polyester for the suit
+let GEAR_U = null;
+function gearU() {
+  if (GEAR_U) return GEAR_U;
+  const t = n => { const x = modelTex('gear-' + n + '.jpg', true); x.wrapS = x.wrapT = THREE.RepeatWrapping; return { value: x }; };
+  return (GEAR_U = { gLD: t('leather-diff'), gLN: t('leather-nor'), gSD: t('suede-diff'), gSN: t('suede-nor'), gFD: t('fabric-diff'), gFN: t('fabric-nor') });
+}
+const GEAR_GLSL = `
+uniform sampler2D gLD; uniform sampler2D gLN; uniform sampler2D gSD; uniform sampler2D gSN; uniform sampler2D gFD; uniform sampler2D gFN;
+varying vec3 vGP; varying vec3 vGN; varying float vGM;
+// a tangent-space normal applied with any uv (the frame from screen derivatives)
+vec3 gPerturb(vec3 eye, vec3 n, vec3 mapN, vec2 uv) {
+  vec3 q0 = dFdx(eye), q1 = dFdy(eye); vec2 st0 = dFdx(uv), st1 = dFdy(uv);
+  vec3 q1p = cross(q1, n), q0p = cross(n, q0);
+  vec3 T = q1p * st0.x + q0p * st1.x, B = q1p * st0.y + q0p * st1.y;
+  float det = max(dot(T, T), dot(B, B)), sc = det == 0.0 ? 0.0 : inversesqrt(det);
+  return normalize(T * (mapN.x * sc) + B * (mapN.y * sc) + n * mapN.z);
+}`;
+function gearMat(m, glove) {
+  const prev = m.onBeforeCompile, key = m.customProgramCacheKey();
+  m.extensions = Object.assign({}, m.extensions, { derivatives: true });
+  m.onBeforeCompile = function (sh, r) {
+    if (prev) prev.call(this, sh, r);
+    Object.assign(sh.uniforms, gearU());
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGP; varying vec3 vGN; varying float vGM;' + (glove ? '\nattribute float gmask;' : ''))
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGP = position; vGN = normal; vGM = ' + (glove ? 'gmask' : '0.0') + ';');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>' + GEAR_GLSL)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+${glove ? `
+  // leather on the back, suede where it grips; the grain of each projected onto the glove from three sides (11 cm a tile)
+  vec3 gW = pow(abs(normalize(vGN)), vec3(4.0)); gW /= dot(gW, vec3(1.0));
+  vec2 gX = vGP.yz * 9.0, gY = vGP.zx * 9.0, gZ = vGP.xy * 9.0;
+  float gS = smoothstep(0.3, 0.7, vGM);
+  float gDl = texture2D(gLD, gX).r * gW.x + texture2D(gLD, gY).r * gW.y + texture2D(gLD, gZ).r * gW.z;
+  float gDs = texture2D(gSD, gX * 1.6).r * gW.x + texture2D(gSD, gY * 1.6).r * gW.y + texture2D(gSD, gZ * 1.6).r * gW.z;
+  vec3 gLeather = diffuseColor.rgb * (0.5 + 0.45 * gDl), gSuede = vec3(0.05) * (0.55 + 0.9 * gDs);
+  diffuseColor.rgb = mix(gLeather, gSuede, gS);
+  // the stitched seam where they meet: a fine dark line, a few pixels wide whatever the distance
+  float gSeam = 1.0 - smoothstep(0.0, max(fwidth(vGM) * 1.4, 0.012), abs(vGM - 0.5));
+  diffuseColor.rgb *= 1.0 - 0.5 * gSeam;` : `
+  // the suit's weave: three tiles round the arm, one every 7 cm along it
+  vec2 gF = vec2(vUv.x * 4.0, vGP.z / 0.055);
+  float gDf = texture2D(gFD, gF).r;
+  diffuseColor.rgb *= 0.6 + 0.55 * gDf;`}`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+${glove ? 'roughnessFactor = mix(0.36 + 0.22 * gDl, 0.93, gS);' : 'roughnessFactor = 0.74 + 0.2 * gDf;'}`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+${glove ? `{
+  vec3 nX = mix(texture2D(gLN, gX).xyz, texture2D(gSN, gX * 1.6).xyz, gS) * 2.0 - 1.0;
+  vec3 nY = mix(texture2D(gLN, gY).xyz, texture2D(gSN, gY * 1.6).xyz, gS) * 2.0 - 1.0;
+  vec3 nZ = mix(texture2D(gLN, gZ).xyz, texture2D(gSN, gZ * 1.6).xyz, gS) * 2.0 - 1.0;
+  nX.xy *= 1.8; nY.xy *= 1.8; nZ.xy *= 1.8;
+  normal = normalize(gW.x * gPerturb(-vViewPosition, normal, nX, gX) + gW.y * gPerturb(-vViewPosition, normal, nY, gY) + gW.z * gPerturb(-vViewPosition, normal, nZ, gZ));
+}` : `{ vec3 nF = texture2D(gFN, gF).xyz * 2.0 - 1.0; nF.xy *= 2.4; normal = gPerturb(-vViewPosition, normal, nF, gF); }`}`);
+  };
+  m.customProgramCacheKey = () => key + (glove ? '|gear-glove' : '|gear-sleeve');
+  return m;
+}
 let CLOTH_N = null;
 function clothNormal() {
   if (CLOTH_N) return CLOTH_N;
@@ -8323,8 +8381,8 @@ function avMats(av) {
     // gloves in the suit's second colour (dark gloves vanish against the wheel)
     glove: lit(new THREE.MeshStandardMaterial({ color: C(SUITS[av.suit] ? (SUITS[av.suit].pal[1] === '#151515' ? SUITS[av.suit].pal[0] : SUITS[av.suit].pal[1]) : '#e8e8e8'), roughness: 0.7 })),
     dark: lit(new THREE.MeshStandardMaterial({ color: C('#151618'), roughness: 0.7 })),
-    gloveM: lit(new THREE.MeshPhysicalMaterial({ color: C(SUITS[av.suit] ? (SUITS[av.suit].pal[1] === '#151515' ? SUITS[av.suit].pal[0] : SUITS[av.suit].pal[1]) : '#e8e8e8'), vertexColors: true, roughness: 0.62, metalness: 0, sheen: new THREE.Color(0.22, 0.22, 0.22), side: THREE.DoubleSide })),
-    sleeve: lit(new THREE.MeshStandardMaterial({ map: suitTex(av.suit), normalMap: clothNormal(), normalScale: new THREE.Vector2(0.9, 0.9), roughness: 0.88, metalness: 0, skinning: true })),
+    gloveM: gearMat(lit(new THREE.MeshPhysicalMaterial({ color: C(SUITS[av.suit] ? (SUITS[av.suit].pal[1] === '#151515' ? SUITS[av.suit].pal[0] : SUITS[av.suit].pal[1]) : '#e8e8e8'), vertexColors: true, roughness: 0.62, metalness: 0, sheen: new THREE.Color(0.15, 0.15, 0.15), side: THREE.DoubleSide })), true),
+    sleeve: gearMat(lit(new THREE.MeshStandardMaterial({ map: suitTex(av.suit), roughness: 0.82, metalness: 0, skinning: true })), false),
     boot: lit(new THREE.MeshStandardMaterial({ color: C('#1b1b1d'), roughness: 0.45, metalness: 0.1 })),
   });
 }
@@ -8510,7 +8568,7 @@ const DIFF_SKILL = { easy: 0.85, medium: 0.91, hard: 0.955, expert: 0.985 };
 // the real car behind each one, shown in the garage
 const MODEL_OF = { sedan: 'Mercedes-AMG E 63 S', hatch: 'Honda Civic Type R (EK9)', suv: 'Range Rover Supercharged', muscle: 'Chevrolet Camaro ZL1',
   sports: 'Chevrolet Corvette C8 Stingray', pickup: 'Ford F-150', coupe: 'Aston Martin DB11', super: 'Lamborghini Centenario' };
-const CREDITS = 'Car models from Sketchfab, all CC Attribution, adapted for the game: "Honda Civic Type R -98" by tiedtke, "2010 Land Rover Range Rover Supercharged" by throwbackthursdaymodels, "2019 Chevrolet Corvette C8 Stingray" by Haris3D, "2012 Chevrolet Camaro ZL1" by ddiaz-design, "Lamborghini Centenario LP-770 Interior SDC" by Lambo_SC04, "Aston Martin db11" by BlackSnow02, "2013 Ford F-150" by supercarmodels and "Mercedes-AMG E 63 S (W213)" by Car2022. Driver gloves: "Glove Rigged" by Masterbauer (Sketchfab, CC Attribution), posed for the game. Trees on Ultra from Sketchfab, CC Attribution: "Pine_Tree" by IGamEFry88, "Spruce tree" by intice184, "Oak tree" by greg-l, "Birch tree" and "Coconut Palm" by evolveduk, "Maple tree" by atrodler. Skies, ground, grass and leaf textures by Poly Haven (CC0).';
+const CREDITS = 'Car models from Sketchfab, all CC Attribution, adapted for the game: "Honda Civic Type R -98" by tiedtke, "2010 Land Rover Range Rover Supercharged" by throwbackthursdaymodels, "2019 Chevrolet Corvette C8 Stingray" by Haris3D, "2012 Chevrolet Camaro ZL1" by ddiaz-design, "Lamborghini Centenario LP-770 Interior SDC" by Lambo_SC04, "Aston Martin db11" by BlackSnow02, "2013 Ford F-150" by supercarmodels and "Mercedes-AMG E 63 S (W213)" by Car2022. Driver gloves: "Glove Rigged" by Masterbauer (Sketchfab, CC Attribution), posed for the game, in leather, suede and suit fabric from Poly Haven (CC0). Trees on Ultra from Sketchfab, CC Attribution: "Pine_Tree" by IGamEFry88, "Spruce tree" by intice184, "Oak tree" by greg-l, "Birch tree" and "Coconut Palm" by evolveduk, "Maple tree" by atrodler. Skies, ground, grass and leaf textures by Poly Haven (CC0).';
 
 const raceUI = (() => {
   let kind = 'track', sel = null, tyre = 'sport', resultsFor = null, avTab = 'helmet';

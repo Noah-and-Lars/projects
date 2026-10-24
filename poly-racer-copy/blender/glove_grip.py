@@ -103,6 +103,8 @@ glove.parent = None; glove.matrix_world = Matrix.Identity(4)
 for i, v in enumerate(me.vertices): v.co = Vector(Q[i])
 me.update()
 bpy.data.objects.remove(arm)
+# the full-detail glove stays, to bake its wrinkles, seams and materials onto the light one
+hi = glove.copy(); hi.data = glove.data.copy(); hi.name = 'glove_hi'; bpy.context.scene.collection.objects.link(hi)
 # lighter and tidy: about 12k triangles, normals pointing out everywhere
 for o in bpy.context.selected_objects: o.select_set(False)
 glove.select_set(True); bpy.context.view_layer.objects.active = glove
@@ -113,6 +115,89 @@ bpy.ops.object.shade_smooth()
 me = glove.data
 Q = np.array([tuple(v.co) for v in me.vertices])
 print('[gg] decimated to', len(me.polygons), 'faces')
+TEXDIR = os.environ.get('GLOVE_TEX')
+if TEXDIR:
+    PH = os.environ['PH_DIR']
+    # fresh, non-overlapping uvs for the light glove
+    for o in bpy.context.selected_objects: o.select_set(False)
+    glove.select_set(True); bpy.context.view_layer.objects.active = glove
+    bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.004)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    # the full-detail glove: normals out, and where it grips (palm and the insides of the fingers, facing the rim's
+    # axis and close to it) it is suede; the rest is leather
+    for o in bpy.context.selected_objects: o.select_set(False)
+    hi.select_set(True); bpy.context.view_layer.objects.active = hi
+    bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); bpy.ops.mesh.normals_make_consistent(inside=False); bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.shade_smooth()
+    hm = hi.data; mk = hm.color_attributes.new('mask', 'FLOAT_COLOR', 'POINT')
+    def sstep(a, b, x): t = min(1.0, max(0.0, (x - a) / (b - a))); return t * t * (3 - 2 * t)
+    pal = []
+    for v in hm.vertices:
+        px, pz = v.co.x, v.co.z; rr = math.hypot(px, pz) + 1e-6
+        facing = -(v.normal.x * px + v.normal.z * pz) / rr
+        m = sstep(0.1, 0.45, facing) * (1 - sstep(0.034, 0.05, rr))
+        pal.append(m)
+    for i, c in enumerate(mk.data): c.color = (pal[i], pal[i], pal[i], 1)
+    print('[gg] suede share', round(sum(pal) / len(pal), 2))
+    def img(name): return bpy.data.images.load(os.path.join(PH, name))
+    M = bpy.data.materials.new('gloveHi'); M.use_nodes = True; nt = M.node_tree; N = nt.nodes; Lk = nt.links
+    bsdf = N['Principled BSDF']
+    tc = N.new('ShaderNodeTexCoord')
+    def tex(fn, scale, data=False):
+        mp = N.new('ShaderNodeMapping'); mp.inputs['Scale'].default_value = (scale, scale, scale); Lk.new(tc.outputs['Object'], mp.inputs['Vector'])
+        t = N.new('ShaderNodeTexImage'); t.image = img(fn); t.projection = 'BOX'; t.projection_blend = 0.25
+        if data: t.image.colorspace_settings.name = 'Non-Color'
+        Lk.new(mp.outputs['Vector'], t.inputs['Vector']); return t
+    ld = tex('leather_white_1k_diff.jpg', 1 / 0.14); lr = tex('leather_white_1k_rough.jpg', 1 / 0.14, True); la = tex('leather_white_1k_ao.jpg', 1 / 0.14, True)
+    sd = tex('scuba_suede_1k_diff.jpg', 1 / 0.09); sr = tex('scuba_suede_1k_rough.jpg', 1 / 0.09, True); sa = tex('scuba_suede_1k_ao.jpg', 1 / 0.09, True)
+    ca = N.new('ShaderNodeVertexColor'); ca.layer_name = 'mask'
+    sep = N.new('ShaderNodeSeparateColor'); Lk.new(ca.outputs['Color'], sep.inputs['Color']); mask = sep.outputs[0]
+    # colours: the leather near white (the game tints it with the glove's colour), the suede a dark grey
+    lgray = N.new('ShaderNodeRGBToBW'); Lk.new(ld.outputs['Color'], lgray.inputs['Color'])
+    lcol = N.new('ShaderNodeMath'); lcol.operation = 'MULTIPLY_ADD'; Lk.new(lgray.outputs['Val'], lcol.inputs[0]); lcol.inputs[1].default_value = 0.35; lcol.inputs[2].default_value = 0.62
+    sgray = N.new('ShaderNodeRGBToBW'); Lk.new(sd.outputs['Color'], sgray.inputs['Color'])
+    scol = N.new('ShaderNodeMath'); scol.operation = 'MULTIPLY_ADD'; Lk.new(sgray.outputs['Val'], scol.inputs[0]); scol.inputs[1].default_value = 0.25; scol.inputs[2].default_value = 0.035
+    mixc = N.new('ShaderNodeMix'); mixc.data_type = 'FLOAT'; Lk.new(mask, mixc.inputs['Factor']); Lk.new(lcol.outputs[0], mixc.inputs['A']); Lk.new(scol.outputs[0], mixc.inputs['B'])
+    # the seam between them: a darker stitched line where the suede meets the leather
+    seam = N.new('ShaderNodeMath'); seam.operation = 'SUBTRACT'; Lk.new(mask, seam.inputs[0]); seam.inputs[1].default_value = 0.5
+    sab = N.new('ShaderNodeMath'); sab.operation = 'ABSOLUTE'; Lk.new(seam.outputs[0], sab.inputs[0])
+    sln = N.new('ShaderNodeMapRange'); Lk.new(sab.outputs[0], sln.inputs['Value']); sln.inputs['From Min'].default_value = 0.0; sln.inputs['From Max'].default_value = 0.09; sln.inputs['To Min'].default_value = 0.55; sln.inputs['To Max'].default_value = 1.0
+    cmul = N.new('ShaderNodeMath'); cmul.operation = 'MULTIPLY'; Lk.new(mixc.outputs['Result'], cmul.inputs[0]); Lk.new(sln.outputs['Result'], cmul.inputs[1])
+    Lk.new(cmul.outputs[0], bsdf.inputs['Base Color'])
+    mixr = N.new('ShaderNodeMix'); mixr.data_type = 'FLOAT'; Lk.new(mask, mixr.inputs['Factor'])
+    lrm = N.new('ShaderNodeMapRange'); Lk.new(lr.outputs['Color'], lrm.inputs['Value']); lrm.inputs['To Min'].default_value = 0.35; lrm.inputs['To Max'].default_value = 0.6
+    srm = N.new('ShaderNodeMapRange'); Lk.new(sr.outputs['Color'], srm.inputs['Value']); srm.inputs['To Min'].default_value = 0.8; srm.inputs['To Max'].default_value = 0.95
+    Lk.new(lrm.outputs['Result'], mixr.inputs['A']); Lk.new(srm.outputs['Result'], mixr.inputs['B']); Lk.new(mixr.outputs['Result'], bsdf.inputs['Roughness'])
+    # the grain: bumps from the leather's and the suede's occlusion maps
+    mixh = N.new('ShaderNodeMix'); mixh.data_type = 'FLOAT'; Lk.new(mask, mixh.inputs['Factor']); Lk.new(la.outputs['Color'], mixh.inputs['A']); Lk.new(sa.outputs['Color'], mixh.inputs['B'])
+    bump = N.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.6; bump.inputs['Distance'].default_value = 0.0006
+    Lk.new(mixh.outputs['Result'], bump.inputs['Height']); Lk.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    hm.materials.clear(); hm.materials.append(M)
+    # the light glove: one image node per bake target
+    LM = bpy.data.materials.new('gloveLo'); LM.use_nodes = True; me.materials.clear(); me.materials.append(LM)
+    ln = LM.node_tree.nodes
+    imgs = {}
+    for key, size, data in (('col', 1024, False), ('nor', 1024, True), ('rough', 512, True)):
+        im = bpy.data.images.new('glove_' + key, size, size, alpha=False)
+        if data: im.colorspace_settings.name = 'Non-Color'
+        imgs[key] = im
+    node = ln.new('ShaderNodeTexImage')
+    sc = bpy.context.scene; sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 4
+    bk = sc.render.bake; bk.use_selected_to_active = True; bk.cage_extrusion = 0.004; bk.max_ray_distance = 0.012; bk.margin = 6; bk.target = 'IMAGE_TEXTURES'
+    for o in bpy.context.selected_objects: o.select_set(False)
+    hi.select_set(True); glove.select_set(True); bpy.context.view_layer.objects.active = glove
+    for key, btype in (('col', 'DIFFUSE'), ('nor', 'NORMAL'), ('rough', 'ROUGHNESS')):
+        node.image = imgs[key]; ln.active = node
+        if btype == 'DIFFUSE':
+            bk.use_pass_direct = False; bk.use_pass_indirect = False; bk.use_pass_color = True
+        bpy.ops.object.bake(type=btype)
+        im = imgs[key]
+        im.filepath_raw = os.path.join(TEXDIR, 'glove_%s.%s' % (key, 'png' if key == 'nor' else 'jpg')); im.file_format = 'PNG' if key == 'nor' else 'JPEG'
+        im.save(); print('[gg] baked', key)
+    bpy.data.objects.remove(hi)
+else:
+    bpy.data.objects.remove(hi)
 # the rim, for the check render and the occlusion bake
 bpy.ops.mesh.primitive_cylinder_add(radius=RIM_R, depth=0.4, vertices=32, location=(0, 0, 0), rotation=(math.pi / 2, 0, 0))
 rim = bpy.context.active_object; rim.name = 'rim'
@@ -165,22 +250,38 @@ if render:
 # write the FCM part: positions, normals, colours (white) + occlusion, uvs if any
 bpy.data.objects.remove(rim)
 me.calc_loop_triangles()
-nv = len(me.vertices)
+# one vertex per position and uv (the uvs have seams)
+uvl = me.uv_layers.active.data if me.uv_layers else None
+keymap = {}; src = []; uvs = []; tri_l = []
+for t in me.loop_triangles:
+    tt = []
+    for li, vi in zip(t.loops, t.vertices):
+        u = tuple(uvl[li].uv) if uvl else (0.0, 0.0)
+        k = (vi, round(u[0], 5), round(u[1], 5))
+        if k not in keymap: keymap[k] = len(src); src.append(vi); uvs.append(u)
+        tt.append(keymap[k])
+    tri_l.append(tt)
+src = np.array(src); nv = len(src)
 # the game's loader turns models round (x and z negated), so they are written turned round already
 FL = np.array([-1, 1, -1], np.float32)
-pos = (Q * FL).astype(np.float32)
-nrm = np.array([tuple(v.normal) for v in me.vertices], np.float32) * FL
-tri = np.array([tuple(t.vertices) for t in me.loop_triangles], np.uint32)
-uv = None
-if me.uv_layers:
-    uvl = me.uv_layers.active.data; uv = np.zeros((nv, 2), np.float32)
-    for t in me.loop_triangles:
-        for li, vi in zip(t.loops, t.vertices): uv[vi] = tuple(uvl[li].uv)
+pos = (Q[src] * FL).astype(np.float32)
+nrm = (np.array([tuple(v.normal) for v in me.vertices], np.float32) * FL)[src]
+tri = np.array(tri_l, np.uint32)
+uv = np.array(uvs, np.float32) if uvl else None
+ao = ao[src]
 def al(b): return b + b'\0' * (-len(b) % 4)
-blob = b''; part = {'v': nv, 'i': int(tri.size), 'groups': [{'s': 0, 'n': int(tri.size), 'k': 'plain', 'col': [1, 1, 1], 'r': 0.7, 'm': 0}]}
+blob = b''; part = {'v': nv, 'i': int(tri.size), 'groups': [dict({'s': 0, 'n': int(tri.size), 'k': 'plain', 'col': [1, 1, 1], 'r': 0.7, 'm': 0}, **({'tex': 'glove_col.jpg', 'ntex': 'glove_nor.png', 'rtex': 'glove_rough.jpg'} if TEXDIR else {}))]}
 part['po'] = len(blob); blob += pos.tobytes(); blob = al(blob)
 part['no'] = len(blob); blob += np.clip(np.round(nrm * 127), -127, 127).astype(np.int8).tobytes(); blob = al(blob)
-part['co'] = len(blob); blob += np.full((nv, 3), 255, np.uint8).tobytes(); blob = al(blob)
+# the colour's red channel marks where the glove grips (palm and the insides of the fingers, facing the rim's axis and
+# close to it): suede there, leather elsewhere. The game reads it back (it is stored as an sRGB byte).
+rr_ = np.hypot(Q[src][:, 0], Q[src][:, 2]) + 1e-6; nq = np.array([tuple(v.normal) for v in me.vertices])[src]
+facing = -(nq[:, 0] * Q[src][:, 0] + nq[:, 2] * Q[src][:, 2]) / rr_
+def ss(a, b, x): t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
+gmask = ss(0.0, 0.25, facing) * (1 - ss(0.048, 0.06, rr_))
+print('[gg] grip share', round(float((gmask > 0.5).mean()), 3))
+col = np.full((nv, 3), 255, np.uint8); col[:, 0] = np.round(np.power(gmask, 1 / 2.2) * 255).astype(np.uint8)
+part['co'] = len(blob); blob += col.tobytes(); blob = al(blob)
 part['ao'] = len(blob); blob += np.clip(np.round(ao * 255), 0, 255).astype(np.uint8).tobytes(); blob = al(blob)
 if uv is not None: part['uo'] = len(blob); blob += uv.tobytes(); blob = al(blob)
 big = nv > 65535; part['i32'] = big
