@@ -100,7 +100,7 @@
   <p>The Arcade · <span id="count"></span></p>
 </footer>
 
-<script src="games.js?v=107"></script>
+<script src="games.js?v=108"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
@@ -126,7 +126,7 @@ function renderFeature() {
       <span class="btn big"><span aria-hidden="true">▶</span> Play now</span>
     </div>`;
   f.querySelector('img').src = g.thumb;
-  f.querySelector('.eyebrow').textContent = g.id === 'free-criminal' ? 'NEW: v1.9 · The big one' : g.id === 'russian-roulette' ? 'New gamemode: Buckshot' : g.id === 'cube-assault' ? 'NEW: v2.9.8 · 1v5, loadouts, shared Co-op' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
+  f.querySelector('.eyebrow').textContent = g.id === 'free-criminal' ? 'NEW: v1.9 · The big one' : g.id === 'russian-roulette' ? 'New gamemode: Buckshot' : g.id === 'cube-assault' ? 'NEW: v2.9.9 · The Radio, barricades online' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
   f.querySelector('h1').textContent = g.title;
   f.querySelector('.feature-tag').textContent = g.tagline;
   const meta = f.querySelector('.feature-meta');

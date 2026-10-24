@@ -666,7 +666,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <button class="uiCard" data-action="settings" data-art="settings" style="--ac:#60a5fa"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Graphics · controls · sound</em><b>Settings</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v2.9.8 · What's new</button>
+    <button class="link verLink" data-action="notes">v2.9.9 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -692,10 +692,13 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.8<span>Ready for 3.0</span></h1><p>Loadouts, 1v5, spectating, shared Co-op cubes, 5v5, grenades, a defuse kit, a bigger Outpost and the first balance change. This update prepares the game's systems and fixes bugs ahead of 3.0.</p>
-      <div class="hero-guns"><i class="hcube" style="background:#7a1c1c">👑</i><i class="hcube" style="background:#3a3f46">🎒</i><i class="hcube" style="background:#2c4a6f">👁️</i><i class="hcube" style="background:#6f5a2c">💥</i></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.9<span>Radio</span></h1><p>A radio with 10 upbeat tracks that everyone hears in sync, flashbangs and barricades you buy once, barricades online, Co-op with no time limit, and the patch notes the first time you load a new version.</p>
+      <div class="hero-guns"><i class="hcube" style="background:#7a1c1c">📻</i><i class="hcube" style="background:#3a3f46">💥</i><i class="hcube" style="background:#6f5a2c">🪵</i><i class="hcube" style="background:#2c4a6f">🤝</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
+      <div><i>📻</i><span><b>Radio · 75 coins</b>Set it down and it plays 10 upbeat tracks. In multiplayer everyone hears the same song at the same time.</span></div>
+      <div><i>💥</i><span><b>Flashbang for good</b>Buy it once and it's part of your loadout, ready again 20 seconds after each throw.</span></div>
+      <div><i>🪵</i><span><b>Barricades online</b>Bought once now, and they work in multiplayer: everyone sees the planks and can shoot through them.</span></div>
       <div><i>🎒</i><span><b>Loadouts</b>In multiplayer, pick 2 pistols and 3 main guns. They go in your hotbar in the order you pick them, on keys 1 to 5.</span></div>
       <div><i>👑</i><span><b>New mode: 1v5</b>Six players: one boss with 2000 health and a shotgun, five attackers with 3 lives each.</span></div>
       <div><i>🤝</i><span><b>Real Co-op</b>Everyone fights the same cubes and the same waves. If anyone goes down, it's game over.</span></div>
@@ -729,6 +732,22 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.9 <span>Radio</span></h3>
+        <p class="nIntro">More groundwork for Cube Assault 3.0.</p>
+        <h4 class="nBal">⚖️ Balance changes</h4><ul class="nBalList">
+        <li><b>Extreme Gun:</b> now 2500 coins (was 1000). If you already own it, it stays yours.</li>
+        <li><b>Flashbang:</b> a one-time purchase for 150 coins (was 35 per grenade). It's part of your loadout for good and recharges 20 seconds after each throw. If you had any flashbangs, you own it already.</li>
+        <li><b>Barricade:</b> a one-time purchase for 150 coins (was 45 each). Use one every 20 seconds. If you had any barricades, you own it already.</li>
+        </ul><ul>
+        <li><b>New in the Shop: the Radio</b> (75 coins). Press R with a full gun (or the knife out) to set it down in single-player or multiplayer, R next to it to pick it up, and E next to it for the next song. 10 upbeat tracks play one after another. In multiplayer everyone hears the same song at the same moment, louder the closer they are. On iPad, tap the radio button.</li>
+        <li><b>Settings: Radio music</b> On / Off, to mute every radio.</li>
+        <li><b>Barricades work in multiplayer:</b> board up a house doorway and everyone in the room sees it, bumps into it and can shoot it down.</li>
+        <li><b>Co-op has no time limit</b> any more: it goes on, wave after wave, until someone dies.</li>
+        <li><b>Co-op pause:</b> when the host pauses, the cubes stop for everyone, and nobody can hurt them (or be hurt by them) until the host comes back.</li>
+        <li>The first time you load a new version, it opens on that version's patch notes.</li>
+        <li>The FPS counter is on by default (turn it off in Settings).</li>
+        <li>Multiplayer only lets in players on v2.9.9; older copies lock themselves with error E1.</li>
+      </ul></section>
       <section><h3>v2.9.8 <span>Ready for 3.0</span></h3>
         <p class="nIntro">This version prepares the game's infrastructure and fixes bugs ahead of Cube Assault 3.0.</p>
         <h4 class="nBal">⚖️ Balance changes</h4><ul class="nBalList">
@@ -1199,6 +1218,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
     <div class="row"><label for="vol">Volume</label><input type="range" id="vol" min="0" max="100" step="1"><span class="val" id="volVal"></span></div>
     <div class="row"><label>FPS counter</label><div class="seg" id="fpsSeg"><button data-fps="on">On</button><button data-fps="off">Off</button></div></div>
     <div class="row"><label>Music</label><div class="seg" id="musicSeg"><button data-music="on">On</button><button data-music="off">Off</button></div></div>
+    <div class="row"><label>Radio music</label><div class="seg" id="radioSeg"><button data-radio="on">On</button><button data-radio="off">Off</button></div></div>
     <div class="row"><label>Scope</label><div class="seg" id="scopeSeg"><button data-scope="hold">Hold</button><button data-scope="lock">Click to lock</button></div></div>
     <div class="row"><label>Touch controls</label><div class="seg" id="touchSeg"><button data-touch="auto">Auto</button><button data-touch="on">On</button><button data-touch="off">Off</button></div></div>
     <p class="touchNote" id="touchNote"></p>
@@ -1234,7 +1254,7 @@ const WEAPONS = {
   shotgun: { slot: 3, name: 'Shotgun', dmg: 0.8, cooldown: 0.75, mag: 6,  reload: 1.8, pellets: 9, spread: 0.075, auto: false, kick: 1.6, price: 80, desc: '9 pellets. Devastating up close.' },
   sniper:  { slot: 4, name: 'Sniper',  dmg: 8,   cooldown: 1.1,  mag: 5,  reload: 2.0, pellets: 1, spread: 0.07,  auto: false, kick: 2.2, price: 150, desc: 'Headshots kill in one shot, body shots do half. Wildly inaccurate until you scope in (right-click or Z).' },
   extreme: { slot: 5, name: 'Extreme Gun', short: 'Extreme', dmg: 3, cooldown: 0.07, mag: 200, reload: 1.4, pellets: 1, spread: 0.008, auto: true, kick: 0.22, splash: 2.5, splashDmg: 2,
-             tracer: 0x22d3ee, price: 1000, desc: 'Full-auto plasma. Every shot explodes.' },
+             tracer: 0x22d3ee, price: 2500, desc: 'Full-auto plasma. Every shot explodes.' }, // 2.9.9: was 1000
   knife:   { slot: 7, name: 'Knife', dmg: 2, cooldown: 0.42, mag: Infinity, reload: 0, pellets: 1, spread: 0, auto: false, kick: 0, melee: true, price: 50,
              desc: 'Press 7, then swipe the mouse or trackpad (or click) to slash. Never runs out.' },
   rocket:  { slot: 8, name: 'Rocket Launcher', short: 'Rocket', dmg: 4, cooldown: 0.5, mag: 1, reload: 3, pellets: 1, spread: 0, auto: false, kick: 3, rocket: true, splash: 4.5, price: 250,
@@ -1579,6 +1599,7 @@ const Sound = (() => {
     init,
     music,
     setVolume(v) { if (master) master.gain.value = v; },
+    get ctx() { return ctx; }, get out() { return master; }, // 2.9.9: for the radio
     play(name, arg) { if (!ready() || !SFX[name]) return; try { SFX[name](arg); } catch (e) {} },
   };
 })();
@@ -1839,7 +1860,8 @@ scene.add = (...o) => { classicRoot.add(...o); return scene; };
 // ---------- Map ----------
 let ARENA = 40;
 const STEP = 2.1; // boxes this low can be stood on (2.7.1: up to a stack of two crates)
-const REDBARRELS = [], DOORWAYS = [], BOOMQ = [], BARRICADES = [], BARRICADE_PRICE = 45; // 2.7.2; 2.8: 45 coins each
+const REDBARRELS = [], DOORWAYS = [], BOOMQ = [], BARRICADES = [], BARRICADE_PRICE = 150; // 2.7.2; 2.8: 45 coins each; 2.9.9: 150, once
+const ownsBar = () => !!(profile.owned && profile.owned.barricade) || (profile.barricades || 0) > 0, BAR_CD = 20000; let barReadyAt = 0; // 2.9.9
 const HOP = 1.35;  // 2.7.1: cubes hop over anything this low (fences, single crates)
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshLambertMaterial({ map: tex(grassCanvas, 200, 200) }));
@@ -3239,14 +3261,15 @@ function nearDoor() {
 let BAR = null; // the boarding-up animation in progress
 function startBarricade() {
   if (state !== 'playing' || BAR) return;
-  if (gameMode !== 'classic') { banner('No barricades here', 'Only in single-player waves'); Sound.play('empty'); return; }
-  if ((profile.barricades || 0) <= 0) { banner('No barricades', `Buy them in the Shop (${BARRICADE_PRICE} coins)`); Sound.play('empty'); return; }
+  if (gameMode !== 'classic' && gameMode !== 'mp') { banner('No barricades here', 'Single-player waves and multiplayer'); Sound.play('empty'); return; } // 2.9.9: multiplayer too
+  if (!ownsBar()) { banner('No barricades', `Buy them once in the Shop (${BARRICADE_PRICE} coins)`); Sound.play('empty'); return; }
+  if (performance.now() < barReadyAt) { banner('Not yet', `Your next barricade is ready in ${Math.ceil((barReadyAt - performance.now()) / 1000)} s`); Sound.play('empty'); return; }
   const D = nearDoor();
   if (!D) { banner('No doorway here', `Stand in a house doorway and press ${keyName(bindOf('barricade'))}`); Sound.play('empty'); return; }
   // the planks go on the side you're standing on
   const side = D.horiz ? Math.sign(player.pos.z - D.z || 1) : Math.sign(player.pos.x - D.x || 1);
   BAR = { t: 0, D, side, placed: false, cue: 0 };
-  profile.barricades--; saveProfile();
+  barReadyAt = performance.now() + BAR_CD; // 2.9.9: yours for good, one every 20 seconds
   mouseDown = false; zoomed = false; reloading = 0;
   if (gunModel) gunModel.visible = false;
   if (!barVM) barVM = makeBarVM();
@@ -3274,7 +3297,7 @@ const makeBarVM = () => {
   g.traverse(o => o.layers.set(1)); g.visible = false; camera.add(g);
   return g;
 };
-function placeBarricade(D, side) {
+function placeBarricade(D, side, remote) { // 2.9.9: remote: another player's, in multiplayer
   const wood = lambert(0x8f6a46), dark = lambert(0x6e5034), W = D.gap + 0.5, off = side * (D.t / 2 + 0.05), meshes = [];
   for (const [y, tilt, mat] of [[0.55, 0.1, wood], [1.2, -0.08, dark], [1.85, 0.06, wood]]) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(W, 0.22, 0.07), mat);
@@ -3283,9 +3306,9 @@ function placeBarricade(D, side) {
   }
   const box = D.horiz ? addCollider(D.x, D.z + off, W, 0.4, 2.4) : addCollider(D.x + off, D.z, 0.4, W, 2.4);
   const B = { D, x: D.horiz ? D.x : D.x + off, z: D.horiz ? D.z + off : D.z, meshes, box, hp: 100 };
-  for (const m of meshes) m.userData.onShot = () => hitBarricade(B, Math.max(6, weapon.dmg * 12) * (weapon.pellets > 1 ? 0.6 : 1));
+  for (const m of meshes) m.userData.onShot = () => { const d = Math.max(6, weapon.dmg * 12) * (weapon.pellets > 1 ? 0.6 : 1); hitBarricade(B, d); if (window.v299) v299.barHit(B, d); };
   D.bar = B; BARRICADES.push(B);
-  achUnlock('barricade'); // 2.8
+  if (!remote) { achUnlock('barricade'); if (window.v299) v299.barPlaced(D, side); } // 2.8; 2.9.9: everyone in the room sees it
   Sound.play('deploy');
 }
 function hitBarricade(B, dmg) {
@@ -3320,9 +3343,9 @@ function updateBoom272(dt) {
     if (d < u.size * 0.5 + 1.3 && !u.T.ranged) { if (u.T.smash) { removeBarricade(B, true); break; } hitBarricade(B, u.T.melee * 1.1 * dt); if (B.hp <= 0) break; }
   }
   // "press J" when you're in a doorway with a barricade to use
-  const show = gameMode === 'classic' && state === 'playing' && !BAR && (profile.barricades || 0) > 0 && !!nearDoor();
+  const show = (gameMode === 'classic' || gameMode === 'mp') && state === 'playing' && !BAR && ownsBar() && !!nearDoor(); // 2.9.9
   const h = $('barHint'); h.classList.toggle('on', show);
-  if (show) { const txt = `<kbd>${keyName(bindOf('barricade'))}</kbd> Board up the door · ${profile.barricades} left`; if (h.innerHTML !== txt) h.innerHTML = txt; }
+  if (show) { const cd = Math.ceil((barReadyAt - performance.now()) / 1000), txt = `<kbd>${keyName(bindOf('barricade'))}</kbd> Board up the door${cd > 0 ? ` · ready in ${cd} s` : ''}`; if (h.innerHTML !== txt) h.innerHTML = txt; }
   $('tBar').hidden = !(show && touchMode());
   // the boarding-up animation
   if (BAR) {
@@ -5303,6 +5326,7 @@ function refreshSettingsUI() {
   document.querySelectorAll('#quality button').forEach(b => b.classList.toggle('sel', b.dataset.quality === settings.quality));
   document.querySelectorAll('#fpsSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.fps === 'on') === (settings.showFps !== false)));
   $('fps').classList.toggle('off', settings.showFps === false);
+  document.querySelectorAll('#radioSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.radio === 'on') === (settings.radioMusic !== false))); // 2.9.9
   document.querySelectorAll('#musicSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.music === 'on') === (settings.music !== false)));
   document.querySelectorAll('#scopeSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.scope === 'lock') === !!settings.scopeLock));
   document.querySelectorAll('.wcard').forEach(c => {
@@ -5322,6 +5346,7 @@ document.querySelectorAll('#musicSeg button').forEach(b => b.addEventListener('c
   settings.music = b.dataset.music === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI();
 }));
 document.querySelectorAll('#touchSeg button').forEach(b => b.addEventListener('click', () => { settings.touch = b.dataset.touch; saveSettings(); refreshSettingsUI(); }));
+document.querySelectorAll('#radioSeg button').forEach(b => b.addEventListener('click', () => { settings.radioMusic = b.dataset.radio === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI(); })); // 2.9.9
 document.querySelectorAll('#fpsSeg button').forEach(b => b.addEventListener('click', () => { settings.showFps = b.dataset.fps === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI(); })); // 2.8.2
 // 2.8: the keybind list. Click a control, press a key; a key that's taken swaps with the control that had it.
 var bindListen = null; // var: refreshSettingsUI can run before this line
@@ -5497,9 +5522,9 @@ document.querySelectorAll('[data-shop]').forEach(item => item.querySelector('.sh
   refreshSettingsUI(); refreshShop();
 }));
 function refreshBarricadeShop() {
-  const n = profile.barricades || 0, short = BARRICADE_PRICE - profile.coins;
-  $('buyBarricade').textContent = `Buy · ${BARRICADE_PRICE} coins`; $('buyBarricade').disabled = short > 0;
-  $('barricadeNote').textContent = `You have ${n}. ` + (short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'} for another.` : 'You can afford another.');
+  const own = ownsBar(), short = BARRICADE_PRICE - profile.coins; // 2.9.9: bought once
+  $('buyBarricade').textContent = own ? 'Owned' : `Buy · ${BARRICADE_PRICE} coins`; $('buyBarricade').disabled = own || short > 0;
+  $('barricadeNote').textContent = own ? 'Yours for good: one every 20 seconds.' : short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}.` : 'You can afford it.';
 }
 function refreshShop() {
   refreshTurretShop(); refreshBarricadeShop();
@@ -5595,8 +5620,9 @@ $('resetYes').addEventListener('click', () => {
   location.reload();
 });
 $('buyBarricade').addEventListener('click', () => {
-  if (profile.coins < BARRICADE_PRICE) return;
-  profile.coins -= BARRICADE_PRICE; profile.barricades = (profile.barricades || 0) + 1; saveProfile(); achUnlock('shop');
+  if (profile.coins < BARRICADE_PRICE || ownsBar()) return;
+  profile.coins -= BARRICADE_PRICE; profile.owned.barricade = true; // 2.9.9: once
+  saveProfile(); achUnlock('shop');
   Sound.play('buy'); refreshShop();
 });
 $('buyTurret').addEventListener('click', () => {
@@ -5949,7 +5975,7 @@ function updateEnemies(dt, t) {
     if (u.blink < 0) u.blink = 2 + Math.random() * 4;
     for (const eye of u.eyes) eye.scale.y = closed ? 0.15 : 1;
 
-    if (!cTgt && !T.ranged && u.air < 0.5 && !(u.flyY > 0.5) && dist < u.size * 0.5 + 0.7 && player.pos.y - (u.jy || 0) < u.size + 0.7 && (u.jy || 0) - player.pos.y < u.size) {
+    if (!cTgt && !(CN && CN.paused) && !T.ranged && u.air < 0.5 && !(u.flyY > 0.5) && dist < u.size * 0.5 + 0.7 && player.pos.y - (u.jy || 0) < u.size + 0.7 && (u.jy || 0) - player.pos.y < u.size) {
       player.hp -= T.melee * dt;
       damageFlash = 0.5;
       if (player.hurtCd <= 0) { player.hurtCd = 0.4; hurtFrom(e.position); Sound.play('hurt'); shake = Math.max(shake, 0.3); }
@@ -8865,9 +8891,9 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.8';
+const VERSION = '2.9.9';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
-function maybeShowNews() { if (settings.seenVersion !== NEWS_VERSION && settings.seenVersion !== VERSION) openSub('news'); }
+function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
 
@@ -10079,8 +10105,9 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
   const avatars = new Map();   // the other players, as cubes
   const vRockets = [];         // other players' rockets in flight (just for show; the host decides where they land)
   function newMatch(s) {
-    return { s: { ...s }, mode: MODES[s.mode] || MODES.tdm, P: new Map(), red: 0, blue: 0, endAt: now() + s.timeLimit * 60000,
-      rockets: [], booms: [], hits: [], fx: [], lastSnap: 0, lastKey: '', hostClk: syncClock(), rows: new Map(), timeLeft: s.timeLimit * 60,
+    return { s: { ...s }, mode: MODES[s.mode] || MODES.tdm, P: new Map(), red: 0, blue: 0, endAt: now() + (s.mode === 'coop' ? 1440 : s.timeLimit) * 60000, // 2.9.9: Co-op: no time limit
+     
+      rockets: [], booms: [], hits: [], fx: [], lastSnap: 0, lastKey: '', hostClk: syncClock(), rows: new Map(), timeLeft: (s.mode === 'coop' ? 1440 : s.timeLimit) * 60,
       life: 0, meDead: false, died: false, shots: [], pellets: [], myHist: [], lastKey2: '', corr: new THREE.Vector3(), corrAt: 0,
       prev: player.pos.clone(), vel: new THREE.Vector3(), histAt: 0, rid: 0, lastPl: 0, lastScores: 0 };
   }
@@ -11145,7 +11172,7 @@ if (!window.CAMP) window.CAMP = (() => {
     const S = $('mpSettings'); S.className = 'mpSettings' + (host ? '' : ' ro');
     S.innerHTML = seg('Mode', 'mode', MODES) + seg('Teams', 'teamSize', [[1, '1v1'], [2, '2v2'], [3, '3v3'], [4, '4v4'], [5, '5v5']], teamed(s.mode)) + seg('Map', 'mapId', s.mode === 'cs' ? MP_MAPS.filter(m => m[0] === 'outpost' || m[0] === 'dust2') : s.mode === 'coop' ? MP_MAPS.filter(m => m[0] !== 'dust2') : MP_MAPS)
       + seg('Kill limit', 'killLimit', [[10, '10'], [20, '20'], [30, '30']], s.mode !== 'coop' && s.mode !== 'cs' && s.mode !== 'boss') + seg('Rounds to win', 'winRounds', [[3, '3'], [5, '5'], [8, '8']], s.mode === 'cs')
-      + seg('Time limit', 'timeLimit', [[5, '5 min'], [10, '10 min'], [15, '15 min']])
+      + seg('Time limit', 'timeLimit', [[5, '5 min'], [10, '10 min'], [15, '15 min']], s.mode !== 'coop') // 2.9.9: Co-op goes on until someone dies
       + seg('Friendly fire', 'friendlyFire', [[false, 'Off'], [true, 'On']], s.mode !== 'ffa' && s.mode !== 'boss') + seg('Modifiers', 'mod', [['none', 'None'], ['pistols', 'Pistols only'], ['knives', 'Knives only'], ['snipers', 'Snipers only']], s.mode !== 'coop') + seg('Lock room', 'locked', [[false, 'Open'], [true, 'Locked']]); // 2.9.8: modifiers
     const why = valid();
     $('mpStart').hidden = $('mpBalance').hidden = !host; $('mpBalance').disabled = !teamed(s.mode);
@@ -11233,7 +11260,7 @@ if (!window.CAMP) window.CAMP = (() => {
     if (mode() === 'tdm') return `<span class="r">RED ${board.red}</span><span>–</span><span class="b">${board.blue} BLUE</span><span class="t">${fmtT(left)}</span>`;
     if (mode() === 'ffa') { const mine = (board.players.find(p => p.id === me) || { kills: 0 }).kills, top = Math.max(0, ...board.players.map(p => p.kills));
       return `<span>You ${mine}</span><span class="t">Leader ${top} · first to ${settings.killLimit}</span><span class="t">${fmtT(left)}</span>`; }
-    return `<span>Co-op</span><span class="t">${fmtT(left)}</span>`;
+    return `<span>Co-op</span><span class="t">Wave ${Math.max(1, wave)}</span>`; // 2.9.9: no clock
   }
   function renderBoard() {
     const me = CAMP.myId(), stat = id => board.players.find(p => p.id === id) || { kills: 0, deaths: 0 };
@@ -12173,16 +12200,18 @@ document.getElementById('achToggle').addEventListener('click', () => {
     turret: { name: 'Turret', type: 'Defence', price: () => TURRET_PRICE, owned: () => ownsTurret(), key: 'turret',
       desc: 'Set it down next to you and it shoots the nearest cube once a second; any normal cube goes down in two hits. 200 HP, and it never heals. One at a time, or two at once after wave 15.' },
     // 2.9.8: grenades, the medkit and the defuse kit
-    flash: { name: 'Flashbang', type: 'Grenade', price: () => 35, owned: () => false, count: () => profile.flash || 0, give: () => { profile.flash = (profile.flash || 0) + 1; }, key: 'flash',
-      desc: 'Throw it and a second and a half later it goes off with a blinding flash. Anyone who can see it is blinded for a few seconds (cubes in single-player are stunned). Single-player and every multiplayer mode except Co-op.' },
+    flash: { name: 'Flashbang', type: 'Loadout', price: () => 150, owned: () => !!profile.owned.flash, key: 'flash', // 2.9.9: bought once
+      desc: 'Bought once, part of your loadout for good: one flashbang, ready again 20 seconds after you throw it. A second and a half after it lands it goes off with a blinding flash. Anyone who can see it is blinded for a few seconds (cubes in single-player are stunned). Single-player and every multiplayer mode except Co-op.' },
     smoke: { name: 'Smoke Grenade', type: 'Grenade', price: () => 35, owned: () => false, count: () => profile.smoke || 0, give: () => { profile.smoke = (profile.smoke || 0) + 1; }, key: 'smoke',
       desc: 'Throw it to fill the area with thick smoke for about 12 seconds that nobody can see through. Single-player and every multiplayer mode except Co-op.' },
     medkit: { name: 'Medkit', type: 'Consumable', price: () => 60, owned: () => false, count: () => profile.medkit || 0, give: () => { profile.medkit = (profile.medkit || 0) + 1; }, key: 'medkit',
       desc: 'Heals 50 health in one go. Single-player and multiplayer Co-op only.' },
     defuse: { name: 'Defuse Kit', type: 'C:S Mode', price: () => 300, owned: () => !!profile.owned.defuseKit, key: 'use',
       desc: 'A one-time purchase that stays on your account. It ONLY works in multiplayer C:S Mode, when you are a Counter-Terrorist: you defuse the bomb in 6 seconds instead of 12. It does nothing anywhere else.' },
-    barricade: { name: 'Barricade', type: 'Consumable', price: () => BARRICADE_PRICE, owned: () => false, count: () => profile.barricades || 0, give: () => { profile.barricades = (profile.barricades || 0) + 1; }, key: 'barricade',
-      desc: 'Stand in a house doorway and board it up with planks. Cubes have to break through it (100 HP), and so do your bullets. One use each, buy as many as you like.' },
+    barricade: { name: 'Barricade', type: 'Defence', price: () => BARRICADE_PRICE, owned: () => ownsBar(), key: 'barricade', // 2.9.9: bought once, and online too
+      desc: 'Bought once, yours for good. Stand in a house doorway and board it up with planks: cubes and players have to break through it (100 HP). One every 20 seconds, in single-player waves and in multiplayer, where everyone in the room sees it.' },
+    radio: { name: 'Radio', type: 'Music', price: () => 75, owned: () => !!profile.owned.radio, key: 'reload', // 2.9.9
+      desc: 'Set it down in single-player or multiplayer and it plays 10 upbeat tracks, one after another. Press R when your gun is full to put it down (or pick it up again), and E next to it for the next song. In multiplayer everyone near it hears the same song at the same moment. Mute it in Settings.' },
   };
   // ---------- big pictures, drawn with the game's own renderer ----------
   const pics = {};
@@ -12254,7 +12283,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
     else if (k === 'defuse' && !own) { btn = `<button class="btn" data-buy="defuse"${short > 0 ? ' disabled' : ''}>Buy · ${price} coins</button>`; note = (short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. ` : '') + 'One-time purchase. Only for C:S Mode, as a Counter-Terrorist.'; }
     else if (k === 'defuse') { btn = '<button class="btn" disabled>Owned</button>'; note = 'On your account. In C:S Mode as a Counter-Terrorist, you defuse in 6 seconds.'; }
     else if (!own) { btn = `<button class="btn" data-buy="${k}"${short > 0 ? ' disabled' : ''}>Buy · ${price} coins</button>`; note = short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. Destroy cubes or win online matches to earn them.` : 'You can afford it.'; }
-    else if (util) { btn = '<button class="btn" disabled>Owned</button>'; note = `Press ${key} during a game to set it down.`; }
+    else if (util) { btn = '<button class="btn" disabled>Owned</button>'; note = k === 'radio' ? `Press ${key} with a full gun to set it down, and E next to it for the next song.` : k === 'flash' ? `Press ${key} to throw it. It's ready again 20 seconds later.` : k === 'barricade' ? `Press ${key} in a house doorway. One every 20 seconds.` : `Press ${key} during a game to set it down.`; } // 2.9.9
     else if (settings.weapon !== k) { btn = `<button class="btn" data-equip="${k}">Set as starting weapon</button>`; note = `Owned. Press ${key} during a game to use it.`; }
     else { btn = '<button class="btn" disabled>Starting weapon</button>'; note = `Owned, and you start every game with it. Press ${key} to switch back to it.`; }
     const pic = k === 'barricade' ? barPic() : `<img alt="" src="${picOf(k)}">`;
@@ -12983,7 +13012,7 @@ body.touch #hotbar { display: none !important; }
     const D = { pistol: '12 rounds', revolver: '6 heavy rounds', rifle: 'Full-auto, scoped', shotgun: 'Deadly up close', sniper: 'Headshots kill', ak47: 'Full-auto, 30 rounds', minigun: '400 rounds, overheats', rocket: 'Splash damage' };
     box.innerHTML = `<h4>Pistols · pick up to 2</h4><div class="loRow">${sm.length ? sm.map(k => btn(k, D[k])).join('') : '<div class="none">' + (modOf() === 'snipers' ? 'Snipers only this match.' : 'None this match.') + '</div>'}</div>
       <h4>Main guns · pick up to 3</h4><div class="loRow">${bg.length ? bg.map(k => btn(k, D[k])).join('') : '<div class="none">' + (modOf() === 'pistols' ? 'Pistols only this match.' : 'You don\'t own any yet. Buy them in the Shop.') + '</div>'}</div>
-      <div id="loFoot"><small>Number keys follow your slots. The knife is always your last slot.</small><button class="btn" id="loDeploy">Deploy</button></div>`;
+      <div id="loFoot"><small>Number keys follow your slots. The knife is always your last slot.${profile.owned && profile.owned.flash ? ' Your flashbang (G) comes with every loadout.' : ''}</small><button class="btn" id="loDeploy">Deploy</button></div>`;
     const p = box.parentNode.querySelector('p');
     if (p) p.textContent = modOf() === 'knives' ? 'Knives only this match.' : 'Pick up to 2 pistols and 3 main guns. The order you pick them is the order of your hotbar slots (keys 1, 2, 3…).';
   }
@@ -13022,7 +13051,7 @@ body.touch #hotbar { display: none !important; }
   }
   function paintUtil() {
     const can = utilAllowed(), parts = [];
-    if (can.nade) { if (profile.flash) parts.push(`<span><kbd>${keyName(bindOf('flash'))}</kbd>Flashbang ×${profile.flash}</span>`); if (profile.smoke) parts.push(`<span><kbd>${keyName(bindOf('smoke'))}</kbd>Smoke ×${profile.smoke}</span>`); }
+    if (can.nade) { if (profile.owned && profile.owned.flash) { const l = Math.ceil((flashAt - performance.now()) / 1000); parts.push(`<span><kbd>${keyName(bindOf('flash'))}</kbd>Flashbang ${l > 0 ? l + ' s' : 'ready'}</span>`); } if (profile.smoke) parts.push(`<span><kbd>${keyName(bindOf('smoke'))}</kbd>Smoke ×${profile.smoke}</span>`); }
     if (can.med && profile.medkit) parts.push(`<span><kbd>${keyName(bindOf('medkit'))}</kbd>Medkit ×${profile.medkit}</span>`);
     const html = parts.join(''); util.classList.toggle('on', !!html && state === 'playing');
     if (util._h !== html) { util._h = html; util.innerHTML = html; }
@@ -13062,10 +13091,13 @@ body.touch #hotbar { display: none !important; }
     packInto(S2) {
       S2.cb = enemies.map(e => { const u = e.userData; if (!u.nid) u.nid = ++this.nid; return [u.nid, ENEMY_KEYS.indexOf(u.key), r2(e.position.x), r2(e.position.z), r2(u.jy || 0), Math.round(u.hp * 10) / 10, u.maxHp, r2(u.size), u.gen || 0]; });
       S2.wv = wave;
+      S2.cp = state === 'paused' ? 1 : 0; // 2.9.9: the host has paused: the cubes stop for everyone
       if (this.credits.length) S2.ck = this.credits.splice(0);
     },
     unpack(S2) {
       if (!this.client || !Array.isArray(S2.cb)) return;
+      const was = !!this.paused; this.paused = !!S2.cp; // 2.9.9
+      if (this.paused !== was && state === 'playing') { banner(this.paused ? 'The host paused' : 'Back to it', this.paused ? 'The cubes are frozen and can\'t be hurt until they come back' : 'The cubes are moving again'); }
       if (typeof S2.wv === 'number' && S2.wv !== wave) {
         wave = S2.wv; const healed = Math.round(Math.min(100, player.hp + 25) - player.hp); player.hp = Math.min(100, player.hp + 25);
         banner('Wave ' + wave, healed > 0 ? `+${healed} HP` : 'Full health'); try { Sound.play('wave'); } catch (e) {} updateHUD();
@@ -13091,11 +13123,12 @@ body.touch #hotbar { display: none !important; }
       const k = Math.min(1, dt * 10); e.position.x += (u.netX - e.position.x) * k; e.position.z += (u.netZ - e.position.z) * k; u.jy = u.netJy || 0;
     },
     collect() { // the damage this screen did to its copies since the last frame
+      if (this.paused) { for (const e of enemies) { const u = e.userData; if (u.nid && u.netHp != null) u.hp = u.netHp; } return; } // 2.9.9: the host has paused: no damage
       for (const e of enemies) { const u = e.userData; if (u.nid && u.netHp != null && u.hp < u.netHp) { this.pend.set(u.nid, (this.pend.get(u.nid) || 0) + (u.netHp - u.hp)); u.netHp = u.hp; } }
     },
     hasHits() { this.collect(); return this.pend.size > 0; },
     takeHits() { const out = [...this.pend].map(([id, d]) => [id, Math.round(d * 100) / 100]); this.pend.clear(); return out; },
-    localKill(e) { const u = e.userData; if (u.nid) { if (u.netHp != null && u.hp < u.netHp) this.pend.set(u.nid, (this.pend.get(u.nid) || 0) + (u.netHp - u.hp) + 1); this.gone.add(u.nid); } this.removeLocal(e); },
+    localKill(e) { const u = e.userData; if (this.paused && u.nid) { u.hp = u.netHp != null ? u.netHp : u.maxHp; return; } if (u.nid) { if (u.netHp != null && u.hp < u.netHp) this.pend.set(u.nid, (this.pend.get(u.nid) || 0) + (u.netHp - u.hp) + 1); this.gone.add(u.nid); } this.removeLocal(e); },
     removeLocal(e) {
       if (!enemies.includes(e)) return;
       const u = e.userData, T = u.T, c = e.position.clone();
@@ -13104,7 +13137,7 @@ body.touch #hotbar { display: none !important; }
       try { Sound.play('kill', u.size); } catch (er) {}
     },
     hostHits(from, list) {
-      if (!this.host) return;
+      if (!this.host || state === 'paused') return; // 2.9.9: nothing gets hurt while the host has paused
       for (const h of list.slice(0, 40)) {
         if (!Array.isArray(h)) continue;
         const [id, d] = h; if (!Number.isFinite(d) || d <= 0) continue;
@@ -13164,6 +13197,7 @@ body.touch #hotbar { display: none !important; }
     NADES.push({ kind, m, v: v.clone(), t: 0, fuse: kind === 'flash' ? 1.5 : 1.3, remote });
     if (!remote) try { Sound.play('equip', 'pistol'); } catch (e) {}
   }
+  let flashAt = 0; const FLASH_CD = 20000; // 2.9.9: the flashbang is bought once and recharges
   function useUtil(kind) {
     const can = utilAllowed();
     if (kind === 'medkit') {
@@ -13175,8 +13209,11 @@ body.touch #hotbar { display: none !important; }
     const key = kind === 'flash' ? 'flash' : 'smoke';
     if (!can.nade) { if (state === 'playing') banner('No grenades here', gameMode === 'mp' ? 'Not in Co-op' : ''); return; }
     if (inMp() && C.prepLeft && C.prepLeft() > 0) { banner('Not yet', 'Wait for the fighting to start'); return; }
-    if (!profile[key]) { banner(kind === 'flash' ? 'No flashbangs' : 'No smoke grenades', 'Buy them in the Shop'); return; }
-    profile[key]--; saveProfile();
+    if (key === 'flash') {
+      if (!(profile.owned && profile.owned.flash)) { banner('No flashbang', 'Buy it once in the Shop'); return; }
+      const left = flashAt - performance.now(); if (left > 0) { banner('Flashbang recharging', Math.ceil(left / 1000) + ' s'); return; }
+      flashAt = performance.now() + FLASH_CD;
+    } else { if (!profile[key]) { banner('No smoke grenades', 'Buy them in the Shop'); return; } profile[key]--; saveProfile(); }
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion), o = camera.position.clone().addScaledVector(dir, 0.6).add(new THREE.Vector3(0, -0.15, 0));
     const v = dir.multiplyScalar(15).add(new THREE.Vector3(0, 3.5, 0));
     nadeThrow(key, o, v, false);
@@ -13312,6 +13349,289 @@ body.touch #hotbar { display: none !important; }
     } catch (e) { console.error(e); }
   })();
   window.v298 = { coopNet, renderPicker, useUtil, nadeThrow, get lo() { return lo; } };
+})();
+</script>
+<style id="v299css">
+/* 2.9.9: the radio */
+#radioTag { position: fixed; left: 50%; top: 150px; transform: translateX(-50%); z-index: 6; display: none; font: 700 12px/1 system-ui, sans-serif; color: #e8eef5; text-shadow: 0 1px 3px #000;
+  background: rgba(10, 14, 20, .55); border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; padding: 5px 11px; pointer-events: none; white-space: nowrap; }
+#radioTag.on { display: block; }
+#radioTag kbd { font: 800 11px/1 system-ui, sans-serif; background: rgba(255, 255, 255, .15); border-radius: 4px; padding: 2px 5px; margin: 0 2px; }
+#tRadio { position: fixed; right: 18px; top: 42%; z-index: 7; width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); background: rgba(10, 14, 20, .5);
+  font-size: 26px; color: #fff; display: none; touch-action: manipulation; }
+#tRadio.on { display: block; }
+</style>
+<script id="v299">
+// 2.9.9: the radio (10 upbeat tracks, in sync for everyone in a multiplayer room), barricades online,
+// and the one-time moves for this update (the FPS counter on, flashbangs and barricades bought once).
+(function () {
+  const $ = id => document.getElementById(id);
+  const C = window.CAMP;
+  const inMp = () => gameMode === 'mp' && !!C && C.inRoom && C.inRoom();
+  const me = () => (C && C.myId && C.myId()) || 'me';
+  const r2 = v => Math.round(v * 100) / 100;
+  const say = (a, b) => { try { banner(a, b || ''); } catch (e) {} };
+
+  // ---------- one-time moves ----------
+  try {
+    if (!settings.v299) { settings.v299 = 1; settings.showFps = true; saveSettings(); refreshSettingsUI(); }
+    profile.owned = profile.owned || {};
+    let ch = false;
+    if ((profile.flash || 0) > 0 && !profile.owned.flash) { profile.owned.flash = true; ch = true; } // grenades you'd already bought: the flashbang is yours for good
+    if ((profile.barricades || 0) > 0 && !profile.owned.barricade) { profile.owned.barricade = true; ch = true; }
+    if (ch) saveProfile();
+  } catch (e) {}
+
+  // ---------- the music: 10 tracks, each made up from a few numbers ----------
+  // [name, bpm, root note, minor?, chord progression (scale degrees), drums, lead sound, melody seed]
+  const TRACKS = [
+    ['Cube Rush', 128, 45, 1, [0, 5, 3, 4], 'four', 'square', 11],
+    ['Neon Arena', 124, 48, 0, [0, 4, 5, 3], 'four', 'sawtooth', 23],
+    ['Headshot Hustle', 140, 50, 1, [0, 3, 6, 4], 'break', 'square', 37],
+    ['Loot Crate Funk', 112, 43, 0, [0, 3, 0, 4], 'funk', 'triangle', 41],
+    ['Outpost Sunset', 118, 47, 1, [0, 6, 5, 6], 'four', 'sawtooth', 53],
+    ['Respawn Run', 150, 52, 0, [0, 5, 3, 4], 'break', 'square', 67],
+    ['Knife Party', 132, 46, 1, [0, 0, 5, 6], 'four', 'square', 71],
+    ['Wave 99', 136, 44, 0, [5, 3, 0, 4], 'break', 'sawtooth', 83],
+    ['Victory Lap', 126, 49, 0, [0, 4, 5, 4], 'funk', 'triangle', 97],
+    ['Final Cube', 145, 42, 1, [0, 5, 6, 4], 'four', 'sawtooth', 101],
+  ].map(([name, bpm, root, minor, prog, drums, lead, seed]) => ({ name, bpm, root, minor, prog, drums, lead, seed }));
+  const BARS = 32, STEPS = BARS * 16; // 4 sections of 8 bars: intro, full, breakdown, full again
+  const SCALES = [[0, 2, 4, 5, 7, 9, 11], [0, 2, 3, 5, 7, 8, 10]];
+  const DRUMS = {
+    four: { k: [0, 4, 8, 12], s: [4, 12], g: [], h: [2, 6, 10, 14], b: [2, 6, 10, 14] },
+    break: { k: [0, 7, 10], s: [4, 12], g: [15], h: [0, 2, 4, 6, 8, 10, 12, 14], b: [0, 3, 7, 10] },
+    funk: { k: [0, 3, 8, 10], s: [4, 12], g: [7, 15], h: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], b: [0, 3, 6, 8, 11, 14] },
+  };
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  const note = (T, d, oct) => { const sc = SCALES[T.minor ? 1 : 0], n = ((d % 7) + 7) % 7; return mtof(T.root + sc[n] + 12 * (Math.floor(d / 7) + oct)); };
+  const stepDur = T => 60 / T.bpm / 4;
+  // two 4-bar melodies per track, made up once from its seed, so every player hears the same tune
+  function melody(T) {
+    if (T.mel) return T.mel;
+    let s = T.seed * 7919 + 13;
+    const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    T.mel = [0, 1].map(() => {
+      const m = new Map(); let d = 4, i = 0;
+      while (i < 64) {
+        const chord = T.prog[i >> 4], strong = i % 4 === 0;
+        if (rnd() < (strong ? 0.85 : i % 2 === 0 ? 0.5 : 0.18)) {
+          if (strong) { d = chord + [0, 2, 4][Math.floor(rnd() * 3)]; while (d > 11) d -= 7; while (d < 3) d += 7; }
+          else d = Math.max(2, Math.min(12, d + [-2, -1, -1, 1, 1, 2][Math.floor(rnd() * 6)]));
+          const len = [1, 2, 2, 3, 4][Math.floor(rnd() * 5)];
+          m.set(i, [d, len]); i += len;
+        } else i++;
+      }
+      return m;
+    });
+    return T.mel;
+  }
+
+  // ---------- the instruments ----------
+  let noise = null;
+  function noiseBuf(c) {
+    if (noise && noise.sampleRate === c.sampleRate) return noise;
+    noise = c.createBuffer(1, c.sampleRate, c.sampleRate); const d = noise.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return noise;
+  }
+  function env(c, g, t, vol, dur) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.setValueAtTime(vol, Math.max(t + 0.01, t + dur * 0.55)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+  function tone(R, f, t, dur, type, vol, cut) {
+    const c = R.ctx, o = c.createOscillator(), fl = c.createBiquadFilter(), g = c.createGain();
+    o.type = type; o.frequency.value = f; fl.type = 'lowpass'; fl.frequency.value = cut;
+    env(c, g, t, vol, dur); o.connect(fl); fl.connect(g); g.connect(R.bus); o.start(t); o.stop(t + dur + 0.03);
+  }
+  function kick(R, t) {
+    const c = R.ctx, o = c.createOscillator(), g = c.createGain();
+    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    o.connect(g); g.connect(R.bus); o.start(t); o.stop(t + 0.32);
+  }
+  function hiss(R, t, vol, dur, hp) {
+    const c = R.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = noiseBuf(c); f.type = 'highpass'; f.frequency.value = hp;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(R.bus); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+  }
+  const snare = (R, t, v) => { hiss(R, t, 0.42 * v, 0.15, 1300); tone(R, 190, t, 0.09, 'triangle', 0.12 * v, 2000); };
+  const hat = (R, t, v) => hiss(R, t, 0.22 * v, 0.035, 7000);
+  // everything that plays on one sixteenth-note step
+  function step(R, T, k, t) {
+    const bar = Math.floor(k / 16), st = k % 16, sec = Math.floor(bar / 8), chord = T.prog[bar % 4], D = DRUMS[T.drums], sd = stepDur(T);
+    const brk = sec === 2, intro = sec === 0;
+    if ((!brk || bar % 8 >= 6) && D.k.includes(st)) kick(R, t);
+    if (!(intro && bar < 4)) { if (D.s.includes(st)) snare(R, t, 1); if (D.g.includes(st)) snare(R, t, 0.35); }
+    if (D.h.includes(st)) hat(R, t, st % 4 === 2 ? 0.55 : 0.3);
+    if (!brk && D.b.includes(st)) tone(R, note(T, chord, -2), t, sd * 1.6, 'sawtooth', 0.2, 650);
+    if (st === 0) for (const c of [0, 2, 4]) tone(R, note(T, chord + c, -1), t, sd * (brk ? 15 : 2.5), brk ? 'triangle' : 'square', brk ? 0.07 : 0.04, brk ? 1600 : 2400);
+    if (!brk && !intro && (st === 6 || st === 10)) for (const c of [0, 2, 4]) tone(R, note(T, chord + c, -1), t, sd * 1.2, 'square', 0.03, 2400);
+    if ((brk || sec === 3) && st % 2 === 1) tone(R, note(T, chord + [0, 2, 4, 7][(st >> 1) % 4], 0), t, sd * 0.9, 'triangle', 0.05, 4000);
+    if (sec === 1 || sec === 3) { const n = melody(T)[(bar >> 2) & 1].get((bar % 4) * 16 + st); if (n) tone(R, note(T, n[0], 0), t, n[1] * sd * 0.95, T.lead, 0.075, 3200); }
+  }
+
+  // ---------- radios: yours, and other players' ----------
+  const radios = new Map(); // owner id -> radio
+  const ownsRadio = () => !!(profile.owned && profile.owned.radio);
+  const radioOk = () => state === 'playing' && (gameMode === 'classic' || inMp());
+  function radioModel() {
+    const g = new THREE.Group(), body = new THREE.MeshStandardMaterial({ color: 0xb8322a, roughness: 0.55 }), dark = new THREE.MeshStandardMaterial({ color: 0x1d1f23, roughness: 0.7 }),
+      steel = new THREE.MeshStandardMaterial({ color: 0xc9ced4, metalness: 0.9, roughness: 0.3 });
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.16), body));
+    for (const x of [-0.13, 0.13]) {
+      const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.02, 24), dark); sp.rotation.x = Math.PI / 2; sp.position.set(x, -0.025, 0.08); g.add(sp);
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.024, 16), steel); cone.rotation.x = Math.PI / 2; cone.position.set(x, -0.025, 0.083); g.add(cone);
+      g.userData.cones = (g.userData.cones || []).concat(cone);
+    }
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.01), new THREE.MeshBasicMaterial({ color: 0x9be7ff })); panel.position.set(0, 0.095, 0.081); g.add(panel);
+    for (const x of [-0.19, 0.19]) { const kn = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.025, 14), steel); kn.rotation.x = Math.PI / 2; kn.position.set(x, 0.095, 0.085); g.add(kn); }
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.014, 8, 20, Math.PI), steel); handle.position.y = 0.15; g.add(handle);
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.45, 6), steel); ant.position.set(0.24, 0.36, -0.04); ant.rotation.z = -0.35; g.add(ant);
+    for (const x of [-0.19, 0.19]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.14), dark); f.position.set(x, -0.165, 0); g.add(f); }
+    return g;
+  }
+  if (window.UTIL_MODELS) UTIL_MODELS.radio = () => { const g = new THREE.Group(), r = radioModel(); r.rotation.y = 2.1; g.add(r); return g; }; // (turned to face the Shop's camera)
+
+  function audioFor(R) {
+    if (R.ctx || !Sound.ctx || !Sound.out) return;
+    const c = R.ctx = Sound.ctx;
+    R.bus = c.createGain(); R.bus.gain.value = 0.5;
+    R.vol = c.createGain(); R.vol.gain.value = 0;
+    R.pan = c.createStereoPanner ? c.createStereoPanner() : null;
+    if (R.pan) { R.bus.connect(R.pan); R.pan.connect(R.vol); } else R.bus.connect(R.vol);
+    R.vol.connect(Sound.out);
+    R.t0 = c.currentTime + 0.05 - (R.want || 0); R.want = 0; R.next = Math.max(0, Math.ceil((c.currentTime + 0.05 - R.t0) / stepDur(TRACKS[R.tr])));
+  }
+  const posOf = R => R.ctx ? R.ctx.currentTime - R.t0 : (R.want || 0);
+  function setPos(R, tr, pos) {
+    tr = ((tr | 0) % TRACKS.length + TRACKS.length) % TRACKS.length;
+    if (!R.ctx) { R.tr = tr; R.want = pos; return; }
+    if (R.tr === tr && Math.abs(posOf(R) - pos) < 0.3) return;
+    R.tr = tr; R.t0 = R.ctx.currentTime - pos; R.next = Math.max(0, Math.ceil(pos / stepDur(TRACKS[tr])));
+  }
+  function pump(R) {
+    audioFor(R); if (!R.ctx) return;
+    const c = R.ctx; let guard = 0;
+    while (guard++ < 64) {
+      const T = TRACKS[R.tr], sd = stepDur(T);
+      if (R.next >= STEPS) { R.t0 += STEPS * sd; R.next = 0; R.tr = (R.tr + 1) % TRACKS.length; if (R.own) send(R); continue; } // the next track on the list
+      const t = R.t0 + R.next * sd;
+      if (t > c.currentTime + (document.hidden ? 1.5 : 0.25)) break; // a hidden tab only wakes up about once a second
+      if (t >= c.currentTime - 0.03) try { step(R, T, R.next, Math.max(t, c.currentTime)); } catch (e) {}
+      R.next++;
+    }
+  }
+  function make(id, x, y, z, yaw, own) {
+    const m = radioModel(); m.scale.setScalar(1.5); m.position.set(x, y + 0.27, z); m.rotation.y = yaw;
+    m.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    scene.add(m);
+    const R = { id, own, m, x, y, z, yaw, tr: 0, want: 0, heard: performance.now(), map: mapId, mode: gameMode };
+    radios.set(id, R); return R;
+  }
+  function drop(R) {
+    radios.delete(R.id); scene.remove(R.m);
+    R.m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    if (R.vol) { try { R.vol.gain.setTargetAtTime(0, R.ctx.currentTime, 0.05); const v = R.vol; setTimeout(() => { try { v.disconnect(); } catch (e) {} }, 400); } catch (e) {} }
+  }
+  function send(R, off) {
+    if (!inMp() || !C.fx) return;
+    if (off) { C.fx('radio', { off: 1 }); return; }
+    C.fx('radio', { o: [r2(R.x), r2(R.y), r2(R.z)], r: r2(R.yaw), tr: R.tr, p: r2(posOf(R)) });
+    R.sent = performance.now();
+  }
+  function place() {
+    if (!ownsRadio()) return;
+    Sound.init();
+    const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
+    const R = make(me(), player.pos.x + fx * 1.3, player.pos.y, player.pos.z + fz * 1.3, player.yaw, true);
+    R.tr = Math.floor(Math.random() * TRACKS.length); audioFor(R);
+    if (R.ctx) setPos(R, R.tr, 0);
+    try { Sound.play('deploy'); } catch (e) {}
+    say('📻 Radio on', `${TRACKS[R.tr].name} · ${keyName(bindOf('use'))} next song, ${keyName(bindOf('reload'))} to pick it up`);
+    send(R);
+  }
+  function nextSong(R) {
+    if (R.own) { setPos(R, R.tr + 1, 0); send(R); }
+    else if (inMp() && C.fx) C.fx('radioN', { to: R.id, tr: (R.tr + 1) % TRACKS.length });
+    else return;
+    if (R.own) say('📻 ' + TRACKS[R.tr].name, `Song ${R.tr + 1} of ${TRACKS.length}`);
+    try { Sound.play('click'); } catch (e) {}
+  }
+  const distTo = R => Math.hypot(player.pos.x - R.x, player.pos.z - R.z);
+  function nearest(max) { let best = null, bd = max; for (const R of radios.values()) { const d = distTo(R); if (d < bd) { bd = d; best = R; } } return best; }
+  // R with nothing to reload: set the radio down, or pick it back up. E next to a radio: the next song.
+  function radioKey() {
+    const mine = radios.get(me());
+    if (!mine) { place(); return true; }
+    if (distTo(mine) < 3) { drop(mine); send(mine, true); say('📻 Radio picked up', ''); try { Sound.play('equip', 'pistol'); } catch (e) {} return true; }
+    say('Your radio is over there', `Walk up to it and press ${keyName(bindOf('reload'))} to pick it up`); return true;
+  }
+  addEventListener('keydown', e => {
+    if (e.repeat || !radioOk()) return;
+    const k = mapKey(e.code);
+    if (k === BIND_DEFAULTS.reload && ownsRadio() && (weapon.melee || (reloading <= 0 && ammo[weaponKey] === weapon.mag))) { if (radioKey()) e.stopImmediatePropagation(); return; }
+    if (k === BIND_DEFAULTS.use) { const R = nearest(2.5); if (R) { e.stopImmediatePropagation(); nextSong(R); } }
+  }, true);
+  // iPad: a radio button
+  const tb = document.createElement('button'); tb.id = 'tRadio'; tb.textContent = '📻'; document.body.appendChild(tb);
+  tb.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); if (!radioOk()) return; const R = nearest(2.5); if (R && !(R.own && distTo(R) < 1.2)) nextSong(R); else radioKey(); }, { passive: false });
+  // other players' radios (and their song changes), and barricades set up or hit by other players
+  const doorAt = (x, z) => DOORWAYS.find(D => Math.abs(D.x - x) < 0.05 && Math.abs(D.z - z) < 0.05 && inPlay(D.ref));
+  if (C) C.on('ufx', d => {
+    if (!d || !d.d || !inMp() || typeof d.id !== 'string') return;
+    const v = d.d;
+    if (d.t === 'radio') {
+      let R = radios.get(d.id);
+      if (v.off) { if (R && !R.own) drop(R); return; }
+      if (!Array.isArray(v.o) || !v.o.every(Number.isFinite)) return;
+      if (R && (Math.abs(R.x - v.o[0]) > 0.05 || Math.abs(R.z - v.o[2]) > 0.05)) { drop(R); R = null; }
+      if (!R) R = make(d.id, v.o[0], v.o[1], v.o[2], +v.r || 0, false);
+      R.heard = performance.now();
+      setPos(R, +v.tr || 0, Math.max(0, +v.p || 0));
+    } else if (d.t === 'radioN') {
+      const R = radios.get(me()); if (R && v.to === me()) { setPos(R, +v.tr || 0, 0); send(R); say('📻 ' + TRACKS[R.tr].name, 'Someone changed the song'); }
+    } else if (d.t === 'bar') {
+      const D = doorAt(+v.x, +v.z); if (D && !D.bar) placeBarricade(D, v.s > 0 ? 1 : -1, true);
+    } else if (d.t === 'barh') {
+      const D = doorAt(+v.x, +v.z); if (D && D.bar) hitBarricade(D.bar, Math.max(0, Math.min(200, +v.d || 0)));
+    }
+  });
+  // new players in the room hear your radio straight away: you send it again every few seconds anyway
+  setInterval(() => {
+    for (const R of [...radios.values()]) {
+      // gone when you leave the game, change map or leave the room; other players' when they stop sending
+      if (R.own ? (state === 'menu' || R.map !== mapId || R.mode !== gameMode || (R.mode === 'mp' && !inMp())) : (!inMp() || R.map !== mapId || performance.now() - R.heard > 10000)) { if (R.own) send(R, true); drop(R); continue; }
+      if (R.ctx) pump(R); else audioFor(R);
+      if (R.own && inMp() && performance.now() - (R.sent || 0) > 3000) send(R);
+    }
+  }, 50);
+  const _v = new THREE.Vector3();
+  function frame() {
+    requestAnimationFrame(frame);
+    for (const R of [...radios.values()]) {
+      if (!R.ctx || !radios.has(R.id)) continue;
+      const d = camera.position.distanceTo(_v.set(R.x, R.y + 0.4, R.z)), near = Math.max(0, 1 - d / 55);
+      const vol = settings.radioMusic === false || $('verLock') ? 0 : 0.85 * near * near;
+      R.vol.gain.setTargetAtTime(vol, R.ctx.currentTime, 0.08);
+      if (R.pan) { _v.sub(camera.position).applyQuaternion(camera.quaternion.clone().invert()); R.pan.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, _v.x / Math.max(1, _v.length()))), R.ctx.currentTime, 0.08); }
+      // the speakers bounce on the beat
+      const sd = stepDur(TRACKS[R.tr]), ph = (posOf(R) / (sd * 4)) % 1, pulse = 1 + 0.25 * Math.exp(-ph * 8);
+      for (const c of R.m.userData.cones || []) c.scale.set(pulse, 1, pulse);
+    }
+    // the hint over a radio, and the iPad button
+    const R = radioOk() ? nearest(2.5) : null, tag = $('radioTag');
+    const txt = R ? `📻 ${TRACKS[R.tr].name} · <kbd>${keyName(bindOf('use'))}</kbd> next song${R.own ? ` · <kbd>${keyName(bindOf('reload'))}</kbd> pick up` : ''}${settings.radioMusic === false ? ' · muted in Settings' : ''}` : '';
+    tag.classList.toggle('on', !!txt); if (tag._h !== txt) { tag._h = txt; tag.innerHTML = txt; }
+    tb.classList.toggle('on', radioOk() && ownsRadio() && touchMode());
+  }
+  const tag = document.createElement('div'); tag.id = 'radioTag'; document.body.appendChild(tag);
+  requestAnimationFrame(frame);
+
+  window.v299 = {
+    radios, tracks: TRACKS.map(T => T.name),
+    // barricades online: everyone in the room boards up the same door and sees the hits on it
+    barPlaced(D, side) { if (inMp() && C.fx) C.fx('bar', { x: D.x, z: D.z, s: side }); },
+    barHit(B, dmg) { if (inMp() && C.fx) C.fx('barh', { x: B.D.x, z: B.D.z, d: Math.round(dmg) }); },
+  };
 })();
 </script>
 <template id="caCampaignIntro">
