@@ -664,9 +664,10 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div class="homeRow">
         <button class="uiCard" data-action="shop" data-art="shop" style="--ac:#4ade80"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Guns &amp; gear</em><b>Shop</b></span></button>
         <button class="uiCard" data-action="settings" data-art="settings" style="--ac:#60a5fa"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Graphics · controls · sound</em><b>Settings</b></span></button>
+        <button class="uiCard" id="homeFriends" data-art="friends" style="--ac:#f472b6"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Online</em><b>Friends</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v2.9.9 · What's new</button>
+    <button class="link verLink" data-action="notes">v2.9.10 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -692,10 +693,13 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.9<span>Radio</span></h1><p>A radio with 10 upbeat tracks that everyone hears in sync, flashbangs and barricades you buy once, barricades online, Co-op with no time limit, and the patch notes the first time you load a new version.</p>
-      <div class="hero-guns"><i class="hcube" style="background:#7a1c1c">📻</i><i class="hcube" style="background:#3a3f46">💥</i><i class="hcube" style="background:#6f5a2c">🪵</i><i class="hcube" style="background:#2c4a6f">🤝</i></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.10<span>Friends &amp; bombs</span></h1><p>A friends list with invites and player profiles, a new Bombs section in the Shop with the grenade and the landmine, a bomb slot in your multiplayer loadout, a scope on the Extreme Gun, cheaper crates and a round of fixes.</p>
+      <div class="hero-guns"><i class="hcube" style="background:#7a1c4f">👥</i><i class="hcube" style="background:#3a3f46">💣</i><i class="hcube" style="background:#2c4a6f">🔭</i><i class="hcube" style="background:#6f5a2c">📦</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
+      <div><i>👥</i><span><b>Friends</b>Click a name in a multiplayer lobby to see their profile and add them. Invite your friends to your games from the Friends button.</span></div>
+      <div><i>💣</i><span><b>Bombs</b>A new Shop section: the Grenade (pull the pin, click to throw, it blows up on impact) and the Landmine. Pick one as your bomb in the multiplayer loadout.</span></div>
+      <div><i>🔭</i><span><b>Extreme Gun scope</b>Right-click or Z to look down a new scope.</span></div>
       <div><i>📻</i><span><b>Radio · 75 coins</b>Set it down and it plays 10 upbeat tracks. In multiplayer everyone hears the same song at the same time.</span></div>
       <div><i>💥</i><span><b>Flashbang for good</b>Buy it once and it's part of your loadout, ready again 20 seconds after each throw.</span></div>
       <div><i>🪵</i><span><b>Barricades online</b>Bought once now, and they work in multiplayer: everyone sees the planks and can shoot through them.</span></div>
@@ -732,6 +736,24 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.10 <span>Friends &amp; bombs</span></h3>
+        <p class="nIntro">More groundwork for Cube Assault 3.0: friends, bombs and fixes.</p>
+        <h4 class="nBal">⚖️ Balance changes</h4><ul class="nBalList">
+        <li><b>Extreme Gun:</b> now has a scope (right-click or Z). Scoped in, it zooms like the Sniper Rifle and its shots go dead straight.</li>
+        </ul><ul>
+        <li><b>Friends list:</b> a new Friends button on the main menu. In a multiplayer lobby, click anyone's name to see their profile picture, level, achievements and stats, and add them as a friend. When you're in a lobby, invite any friend who's online; they get a pop-up to join you.</li>
+        <li><b>New in the Shop: Bombs</b>, between Guns and Utilities. The <b>Grenade</b> (120 coins): press B to pull the pin, click to throw, and it blows up the moment it hits the ground, a wall, a cube or a player. The <b>Landmine</b> (150 coins): press N to set it down; it blows up when a cube or an enemy player steps on it. Both are bought once and recharge.</li>
+        <li><b>Multiplayer loadout:</b> a new Bomb section. Pick one bomb to take into the match.</li>
+        <li>Knife crates are cheaper: <b>50 coins</b>, or 10 for <b>400</b>.</li>
+        <li>Multiplayer: picking Classic Village now warns that it isn't recommended for online matches.</li>
+        <li>Fixed: public lobbies sometimes said there were none when there were. The list now waits for the lobbies to arrive, and hosts keep their lobby listed after a connection drop.</li>
+        <li>An out-of-date copy now shows error E1 when an online match ends. A match that's already going finishes first.</li>
+        <li>Frontier: cubes no longer spawn behind the mountains.</li>
+        <li>Fixed: the house door frames flickered against the walls, and the Outpost pump house floor flickered through the sand.</li>
+        <li>The Apex Support mission picture now shows the scam cubes, without the floating clouds.</li>
+        <li>The flashbang is multiplayer only now; it no longer shows up in single-player.</li>
+        <li>Settings: the Starting weapon section is gone.</li>
+      </ul></section>
       <section><h3>v2.9.9 <span>Radio</span></h3>
         <p class="nIntro">More groundwork for Cube Assault 3.0.</p>
         <h4 class="nBal">⚖️ Balance changes</h4><ul class="nBalList">
@@ -1228,8 +1250,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
     <p class="touchNote">Click a control, then press the key you want for it. If that key is already used, the two controls swap. Esc cancels. Mouse buttons stay the same.</p>
     <div class="binds" id="bindList"></div>
     <button class="btn secondary" id="bindReset">Reset keybinds to default</button>
-    <div class="section">Starting weapon</div>
-    <div class="weapons" id="weaponCards"></div>
+    <div class="weapons" id="weaponCards" hidden></div>
     <div class="section">Data</div>
     <button class="btn danger" data-action="reset">Reset all data</button>
     <button class="btn" data-action="back">Back</button>
@@ -1254,7 +1275,7 @@ const WEAPONS = {
   shotgun: { slot: 3, name: 'Shotgun', dmg: 0.8, cooldown: 0.75, mag: 6,  reload: 1.8, pellets: 9, spread: 0.075, auto: false, kick: 1.6, price: 80, desc: '9 pellets. Devastating up close.' },
   sniper:  { slot: 4, name: 'Sniper',  dmg: 8,   cooldown: 1.1,  mag: 5,  reload: 2.0, pellets: 1, spread: 0.07,  auto: false, kick: 2.2, price: 150, desc: 'Headshots kill in one shot, body shots do half. Wildly inaccurate until you scope in (right-click or Z).' },
   extreme: { slot: 5, name: 'Extreme Gun', short: 'Extreme', dmg: 3, cooldown: 0.07, mag: 200, reload: 1.4, pellets: 1, spread: 0.008, auto: true, kick: 0.22, splash: 2.5, splashDmg: 2,
-             tracer: 0x22d3ee, price: 2500, desc: 'Full-auto plasma. Every shot explodes.' }, // 2.9.9: was 1000
+             tracer: 0x22d3ee, price: 2500, desc: 'Full-auto plasma. Every shot explodes. Right-click (or Z) for the scope.' }, // 2.9.9: was 1000
   knife:   { slot: 7, name: 'Knife', dmg: 2, cooldown: 0.42, mag: Infinity, reload: 0, pellets: 1, spread: 0, auto: false, kick: 0, melee: true, price: 50,
              desc: 'Press 7, then swipe the mouse or trackpad (or click) to slash. Never runs out.' },
   rocket:  { slot: 8, name: 'Rocket Launcher', short: 'Rocket', dmg: 4, cooldown: 0.5, mag: 1, reload: 3, pellets: 1, spread: 0, auto: false, kick: 3, rocket: true, splash: 4.5, price: 250,
@@ -1359,9 +1380,10 @@ function saveSettings() { if (wiped) return; try { localStorage.setItem('cubeAss
 const BIND_DEFAULTS = { forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', sprint: 'ShiftLeft', jump: 'Space', reload: 'KeyR', use: 'KeyE', lastWeapon: 'KeyQ', scope: 'KeyZ',
   pistol: 'Digit1', rifle: 'Digit2', shotgun: 'Digit3', sniper: 'Digit4', extreme: 'Digit5', turret: 'Digit6', knife: 'Digit7', rocket: 'Digit8', barricade: 'KeyJ',
   revolver: 'Digit9', ak47: 'Digit0', minigun: 'Minus', // 2.9.5
-  flash: 'KeyG', smoke: 'KeyX', medkit: 'KeyH' }; // 2.9.8
+  flash: 'KeyG', smoke: 'KeyX', medkit: 'KeyH', // 2.9.8
+  grenade: 'KeyB', landmine: 'KeyN' }; // 2.9.10
 const BIND_LABELS = { forward: 'Move forward', back: 'Move back', left: 'Move left', right: 'Move right', sprint: 'Sprint', jump: 'Jump', reload: 'Reload', use: 'Use (hold in Missions)',
-  lastWeapon: 'Last weapon', scope: 'Scope on / off (rifle, sniper)', pistol: 'Pistol', rifle: 'Sniper rifle', shotgun: 'Shotgun', sniper: 'Sniper', revolver: 'Revolver', ak47: 'AK-47', minigun: 'Minigun', extreme: 'Extreme Gun', turret: 'Place turret', knife: 'Knife', rocket: 'Rocket launcher', barricade: 'Board up a door', flash: 'Throw a flashbang', smoke: 'Throw a smoke grenade', medkit: 'Use a medkit' };
+  lastWeapon: 'Last weapon', scope: 'Scope on / off (rifle, sniper, Extreme Gun)', pistol: 'Pistol', rifle: 'Sniper rifle', shotgun: 'Shotgun', sniper: 'Sniper', revolver: 'Revolver', ak47: 'AK-47', minigun: 'Minigun', extreme: 'Extreme Gun', turret: 'Place turret', knife: 'Knife', rocket: 'Rocket launcher', barricade: 'Board up a door', flash: 'Throw a flashbang', smoke: 'Throw a smoke grenade', grenade: 'Grenade: pull the pin', landmine: 'Set down a landmine', medkit: 'Use a medkit' };
 if (!settings.binds || typeof settings.binds !== 'object') settings.binds = {};
 const bindOf = a => settings.binds[a] || BIND_DEFAULTS[a];
 // the key you pressed -> the default key of the action it's bound to
@@ -1927,8 +1949,8 @@ function house(cx, cz, w, d, door, wallC, roofC) {
       for (const s of [-1, 1]) horiz ? addBox(x + s * off, z, seg, H, t, 0, { mat: wm }) : addBox(x, z + s * off, t, H, seg, 0, { mat: wm });
       horiz ? addBox(x, z, gap, H - 2.3, t, 0, { mat: wm, y: 2.3, collide: false }) : addBox(x, z, t, H - 2.3, gap, 0, { mat: wm, y: 2.3, collide: false });
       // door frame
-      for (const s of [-1, 1]) horiz ? addBox(x + s * (gap / 2 + 0.08), z, 0.16, 2.4, t + 0.12, 0, { mat: wood, ...deco })
-                                     : addBox(x, z + s * (gap / 2 + 0.08), t + 0.12, 2.4, 0.16, 0, { mat: wood, ...deco });
+      for (const s of [-1, 1]) horiz ? addBox(x + s * (gap / 2 + 0.065), z, 0.16, 2.4, t + 0.12, 0, { mat: wood, ...deco }) // 2.9.10: 1.5 cm into the doorway, so the frame
+                                     : addBox(x, z + s * (gap / 2 + 0.065), t + 0.12, 2.4, 0.16, 0, { mat: wood, ...deco }); // covers the wall's end instead of fighting it
       // the header sits a hair below the wall above the door, so their undersides don't fight
       const hdr = horiz ? addBox(x, z, gap + 0.32, 0.16, t + 0.12, 0, { mat: wood, y: 2.28, ...deco }) : addBox(x, z, t + 0.12, 0.16, gap + 0.32, 0, { mat: wood, y: 2.28, ...deco });
       DOORWAYS.push({ x, z, horiz, gap, t, ref: hdr, bar: null }); // 2.7.2: for barricades
@@ -2868,6 +2890,7 @@ function buildOutpost() {
     }
     // the pump house in mid: walk through it east-west, shoot through its windows north-south
     house(0, 0, 6, 5, 'w', 0xe8d8b0, 0x8a4b2f);
+    root.children.forEach(o => { if (o.isMesh && o.geometry && o.geometry.type === 'PlaneGeometry' && Math.abs(o.position.y - 0.015) < 1e-4 && Math.abs(o.position.x) < 1e-3 && Math.abs(o.position.z) < 1e-3) o.position.y = 0.04; }); // 2.9.10: its floor above the sand
     houseRects.push({ x: 0, z: 0, hx: 3, hz: 2.5 });
     addBox(4.6, 0, 0.8, 1.1, 2.4, 0, { mat: darkStone });             // low cover outside the east door
     // two watchtowers on the long sightlines (not climbable, just cover and a landmark)
@@ -3996,8 +4019,12 @@ const GUN_MODELS = {
     for (const m of [shell, core]) { m.position.set(0, -0.07, -0.065); mag.add(m); }
     for (const y of [-0.03, -0.11]) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.017, 0.008, 24), GM.sciDark); cap.position.set(0, y, -0.065); mag.add(cap); }
     g.add(mag);
-    // holo sight
-    g.add(box(0.036, 0.006, 0.03, GM.sciDark, 0, 0.073, 0.05));
+    // 2.9.10: a scope on two rings on the top rail (it was a small holo sight)
+    for (const u of [-0.02, 0.09]) { S27ring(g, u); }
+    g.add(lathe([[0.011, -0.07], [0.0185, -0.065], [0.019, -0.06], [0.019, -0.035], [0.0145, -0.022], [0.0135, -0.01], [0.0135, 0.09], [0.0165, 0.105],
+      [0.0225, 0.13], [0.0225, 0.158], [0.021, 0.161], [0.011, 0.162]], GM.sciDark, 0.089));
+    g.add(cylU(0.0228, 0.0228, 0.135, 0.145, 0.089, GM.glow));
+    g.add(lens(0.0205, GM.glass, 0.089, 0.161, false), lens(0.0175, GM.glass, 0.089, -0.069, true));
     for (const s of [-1, 1]) g.add(box(0.003, 0.03, 0.01, GM.sciDark, s * 0.0165, 0.089, 0.058));
     g.add(box(0.036, 0.003, 0.01, GM.sciDark, 0, 0.105, 0.058));
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.026), GM.holo); pane.position.set(0, 0.089, -0.058); g.add(pane);
@@ -4708,7 +4735,8 @@ function spawnEnemy(key, at, opt) {
     const big = mapId !== 'classic' && mapId !== 'outpost', R = big ? 30 + Math.random() * 20 : ARENA - 2;
     x = Math.max(-ARENA + 2, Math.min(ARENA - 2, (big ? player.pos.x : 0) + Math.cos(a) * R));
     z = Math.max(-ARENA + 2, Math.min(ARENA - 2, (big ? player.pos.z : 0) + Math.sin(a) * R));
-  } while (Math.hypot(x - player.pos.x, z - player.pos.z) < 18 && ++tries < 50);
+  } while ((Math.hypot(x - player.pos.x, z - player.pos.z) < 18 || (mapId === 'big' && x > 34 && z < -30)) && ++tries < 80); // 2.9.10: not behind Frontier's mountains
+  if (mapId === 'big' && x > 34 && z < -30) { x = Math.max(-ARENA + 2, Math.min(30, player.pos.x - 30)); z = Math.max(-ARENA + 2, Math.min(ARENA - 2, player.pos.z + 30)); }
   if (mapId === 'outpost' && MAPS.outpost) { const far = MAPS.outpost.spawns.ffa.filter(p => Math.hypot(p.x - player.pos.x, p.z - player.pos.z) > 18), p = far[Math.floor(Math.random() * far.length)] || MAPS.outpost.spawns.ffa[0]; x = p.x + (Math.random() - .5) * 2; z = p.z + (Math.random() - .5) * 2; }
   if (at && typeof at === 'object' && Number.isFinite(at.x) && Number.isFinite(at.z)) { x = at.x; z = at.z; }
   g.position.set(x, size / 2, z);
@@ -5670,7 +5698,7 @@ addEventListener('keydown', e => {
   const code = mapKey(e.code); // 2.8: keybinds
   keys[code] = true;
   if (code === 'KeyR') reload();
-  if (code === 'KeyZ' && (weapon === WEAPONS.sniper || weapon === WEAPONS.rifle) && reloading <= 0) zoomed = !zoomed; // 2.9.1: scope key
+  if (code === 'KeyZ' && (weapon === WEAPONS.sniper || weapon === WEAPONS.rifle || weapon === WEAPONS.extreme) && reloading <= 0) zoomed = !zoomed; // 2.9.1: scope key
   if (code === 'KeyQ' && lastWeapon && owns(lastWeapon)) setWeapon(lastWeapon);
   const hb = gameMode === 'mp' && window.mpHotbar ? mpHotbar() : null; // 2.9.8: in multiplayer the number keys are your loadout slots
   if (hb) { const dg = /^(?:Digit|Numpad)(\d)$/.exec(e.code); if (dg) { const k = hb[+dg[1] - 1]; if (k && k !== weaponKey && owns(k)) setWeapon(k); } }
@@ -5706,7 +5734,7 @@ canvas.addEventListener('mousedown', e => {
   if (state !== 'playing') return;
   if (!isLocked()) lockMouse();
   if (e.button === 0) { mouseDown = true; shoot(); }
-  if (e.button === 2 && (weapon === WEAPONS.sniper || weapon === WEAPONS.rifle) && reloading <= 0) zoomed = settings.scopeLock ? !zoomed : true; // 2.7: the rifle has a scope too; 2.7.2: scope lock
+  if (e.button === 2 && (weapon === WEAPONS.sniper || weapon === WEAPONS.rifle || weapon === WEAPONS.extreme) && reloading <= 0) zoomed = settings.scopeLock ? !zoomed : true; // 2.7: the rifle has a scope too; 2.7.2: scope lock
 });
 addEventListener('mouseup', e => {
   if (e.button === 0) mouseDown = false;
@@ -5751,7 +5779,7 @@ touchButton('tFire', e => { TC.fireX = e.clientX; TC.fireY = e.clientY; mouseDow
   e => { lookBy((e.clientX - TC.fireX) * TOUCH_LOOK, (e.clientY - TC.fireY) * TOUCH_LOOK); TC.fireX = e.clientX; TC.fireY = e.clientY; });
 touchButton('tJump', () => { keys.Space = true; }, () => { keys.Space = false; });
 touchButton('tReload', () => reload());
-touchButton('tAim', () => { if ((weapon === WEAPONS.sniper || weapon === WEAPONS.rifle) && reloading <= 0) zoomed = !zoomed; });
+touchButton('tAim', () => { if ((weapon === WEAPONS.sniper || weapon === WEAPONS.rifle || weapon === WEAPONS.extreme) && reloading <= 0) zoomed = !zoomed; });
 touchButton('tUse', () => { keys.KeyE = true; }, () => { keys.KeyE = false; });
 touchButton('tTurret', () => deployTurret());
 touchButton('tBar', () => startBarricade());
@@ -5807,7 +5835,7 @@ function updateTouchUI() {
     TC.wkey = key;
     $('tWeapons').replaceChildren(...list.map(k => { const d = document.createElement('div'); d.dataset.w = k; d.textContent = WEAPONS[k].short || WEAPONS[k].name; d.classList.toggle('sel', k === weaponKey); return d; }));
   }
-  $('tAim').hidden = weapon !== WEAPONS.sniper && weapon !== WEAPONS.rifle; $('tAim').classList.toggle('on', zoomed);
+  $('tAim').hidden = weapon !== WEAPONS.sniper && weapon !== WEAPONS.rifle && weapon !== WEAPONS.extreme; $('tAim').classList.toggle('on', zoomed);
   $('tUse').hidden = gameMode !== 'campaign' && !(gameMode === 'mp' && window.mpRules && mpRules.cs());
   $('tTurret').hidden = !ownsTurret() || (gameMode === 'mp' && !(window.mpRules && mpRules.turret()));
   $('tReload').hidden = !!weapon.melee;
@@ -6263,7 +6291,7 @@ function tick() {
     if (state === 'dead') { deathT += dt; const k = Math.min(1, deathT / 0.9); y = player.pos.y + EYE - k * k * 1.2; roll = k * 0.45; }
     camera.position.set(player.pos.x + (Math.random() - .5) * sh * 0.3, y + (Math.random() - .5) * sh * 0.3, player.pos.z + (Math.random() - .5) * sh * 0.3);
     camera.rotation.set(player.pitch + kick * 0.03, player.yaw, roll);
-    const targetFov = zoomed ? settings.fov / (weapon === WEAPONS.rifle ? 2.6 : 4) : settings.fov; // 2.7: the rifle's scope zooms less than the sniper's
+    const targetFov = zoomed ? settings.fov / (weapon === WEAPONS.rifle || weapon === WEAPONS.extreme ? 2.6 : 4) : settings.fov; // 2.9.10: the Extreme Gun's scope zooms like the rifle's // 2.7: the rifle's scope zooms less than the sniper's
     curFov += (targetFov - curFov) * Math.min(1, dt * 15);
     if (Math.abs(camera.fov - curFov) > 0.01) { camera.fov = curFov; camera.updateProjectionMatrix(); }
     const scoped = zoomed && curFov < settings.fov / 2;
@@ -8891,7 +8919,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.9';
+const VERSION = '2.9.10';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -9869,7 +9897,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
   }
   function presList() {
     const st = room.ch ? room.ch.presenceState() : {}, out = [];
-    for (const k in st) { const m = st[k] && st[k][0]; if (m && m.id) out.push({ id: String(m.id), n: m.n, j: +m.j || 0, ks: String(m.ks || '').slice(0, 20), dk: m.dk ? 1 : 0 }); } // 2.9.7: ks; 2.9.8: dk, the defuse kit
+    for (const k in st) { const m = st[k] && st[k][0]; if (m && m.id) out.push({ id: String(m.id), n: m.n, j: +m.j || 0, ks: String(m.ks || '').slice(0, 20), dk: m.dk ? 1 : 0, pf: m.pf && typeof m.pf === 'object' ? m.pf : null }); } // 2.9.7: ks; 2.9.8: dk, the defuse kit
     if (room.tracked && !out.some(m => m.id === myId)) out.push({ id: myId, n: room.name, j: room.j });
     return out.sort((a, b) => a.j - b.j || (a.id < b.id ? -1 : 1));
   }
@@ -9954,7 +9982,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
     room.trouble = setTimeout(() => { if (room && !room.closed) { teardown(); emit('error', 'offline'); } }, 8000);
   }
   const waitSync = ms => Promise.race([room.sync, new Promise(r => setTimeout(r, ms))]);
-  async function track() { room.tracked = true; await room.ch.track({ id: myId, n: room.name, j: room.j, ks: String(profile.knifeSkin || '').slice(0, 20), dk: profile.owned && profile.owned.defuseKit ? 1 : 0 }); } // 2.9.7: ks, your knife skin; 2.9.8: dk
+  async function track() { room.tracked = true; await room.ch.track({ id: myId, n: room.name, j: room.j, ks: String(profile.knifeSkin || '').slice(0, 20), dk: profile.owned && profile.owned.defuseKit ? 1 : 0, pf: window.caMyCard ? caMyCard() : undefined }); } // 2.9.10: pf, your profile card // 2.9.7: ks, your knife skin; 2.9.8: dk
 
   async function createRoom({ name, password } = {}) {
     if (room) leaveRoom();
@@ -10216,6 +10244,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
     P.clk.sample(m.t, t);
     if (match.mode.rounds) P.use = m.e === 1;
     if (Array.isArray(m.cb) && window.coopNet) coopNet.hostHits(id, m.cb); // 2.9.8: co-op: the damage they did to the cubes
+    if (Array.isArray(m.bm)) for (const b of m.bm.slice(0, 3)) bombHost(P, b); // 2.9.10: their grenade or landmine went off
     if (match.mode.selfHp) {
       if (num(m.h)) P.hp = clamp(m.h, 0, 100);
       if (num(m.k)) P.kills = Math.max(0, m.k | 0);
@@ -10378,6 +10407,19 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
       if (Q === owner || !Q.alive || !Q.known || !match.mode.hurts(owner, Q, match.s)) continue; // no hurting yourself, as in single-player
       const dd = Math.hypot(Q.x - P.x, Q.y + 0.9 - P.y, Q.z - P.z);
       if (dd < RAD) hurt(Q, Math.round(Math.max(20, DMG.rocket * (1 - dd / RAD))), owner, 'rocket');
+    }
+  }
+  // 2.9.10: a grenade or landmine went off where its owner's screen says; it hurts the other side (not its owner)
+  function bombHost(P, b) {
+    if (!match || !match.mode.pvp || !P || !Array.isArray(b)) return;
+    const [k, x, y, z] = b, t = now();
+    if ((k !== 'g' && k !== 'm') || ![x, y, z].every(num) || Math.hypot(P.x - x, P.z - z) > 70 || t - (P.bombAt || 0) < 700) return;
+    P.bombAt = t;
+    const RAD = k === 'm' ? 3.5 : 4.5, MAX = k === 'm' ? 120 : 95;
+    for (const Q of [...match.P.values()]) {
+      if (Q === P || !Q.alive || !Q.known || !match.mode.hurts(P, Q, match.s)) continue;
+      const dd = Math.hypot(Q.x - x, Q.y + 0.9 - y, Q.z - z);
+      if (dd < RAD) hurt(Q, Math.round(Math.max(15, MAX * (1 - dd / RAD))), P, 'rocket');
     }
   }
   function snapshot(t) {
@@ -10608,9 +10650,11 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
     const key = JSON.stringify([m.p, m.w, m.h, m.k, m.d, m.l, m.e]);
     if (match.shots.length) m.s = match.shots.splice(0, 24);
     const cbs = window.coopNet && coopNet.client && coopNet.hasHits(); // 2.9.8: co-op: damage to the host's cubes rides along like a shot
-    if (!due && !((m.s || cbs) && (t - room.lastSend >= 1000 / room.hz || t - (match.lastShotUp || 0) >= 1000 / room.hz))) { if (m.s) match.shots.unshift(...m.s); return; } // 2.6.3: a new burst goes at once
-    if (!m.s && !cbs && key === match.lastKey2 && t - room.lastSend < IDLE_MS) return; // standing still: stay quiet
+    const bms = !!(match.bm && match.bm.length); // 2.9.10: grenades and landmines too
+    if (!due && !((m.s || cbs || bms) && (t - room.lastSend >= 1000 / room.hz || t - (match.lastShotUp || 0) >= 1000 / room.hz))) { if (m.s) match.shots.unshift(...m.s); return; } // 2.6.3: a new burst goes at once
+    if (!m.s && !cbs && !bms && key === match.lastKey2 && t - room.lastSend < IDLE_MS) return; // standing still: stay quiet
     if (cbs) m.cb = coopNet.takeHits();
+    if (bms) m.bm = match.bm.splice(0, 3);
     match.lastKey2 = key; room.lastSend = t; if (m.s) match.lastShotUp = t;
     if (m.p) { match.myHist.push([m.t, player.pos.x, player.pos.y, player.pos.z]); while (match.myHist.length > 40) match.myHist.shift(); }
     send(room.up, 'i', m);
@@ -10799,7 +10843,8 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
   }
 
   // ---------- the interface the lobby is written against ----------
-  window.mpNet = { guns: GUNS, pellet, fired, slash: slashHook, rocket: rocketHook, addFx: f => { if (match) addFx(myId, f); } }; // 2.9.8: addFx
+  window.mpNet = { guns: GUNS, pellet, fired, slash: slashHook, rocket: rocketHook, addFx: f => { if (match) addFx(myId, f); }, // 2.9.8: addFx
+    bomb(k, p) { if (!match || match.meDead) return; const b = [k, r2(p.x), r2(p.y), r2(p.z)]; if (isHost()) bombHost(match.P.get(myId), b); else (match.bm = match.bm || []).push(b); } }; // 2.9.10
   window.CAMP = {
     createRoom, joinRoom, leaveRoom, startMatch, kick,
     isHost, myId: () => myId,
@@ -10848,6 +10893,9 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
     getCs: () => match && match.csV ? { ...match.csV } : null,
     // 2.9.8: how long until the fighting starts (ms), and a grenade or other effect for everyone else in the room
     prepLeft: () => match ? Math.max(0, (match.prepAt || 0) - now()) : 0,
+    // 2.9.10: a player's profile card (from their presence), and whether a match is being played
+    profileOf: id => { const m = room && presList().find(p => p.id === id); return m ? { name: m.n || 'Player', ...(m.pf || {}) } : null; },
+    matchOn: () => !!match,
     fx(t, d) { if (room) send(room.ch, 'ufx', { id: myId, t: String(t).slice(0, 12), d }); },
   };
 })();
@@ -11154,7 +11202,7 @@ if (!window.CAMP) window.CAMP = (() => {
   }
   function row(p, host, me) {
     const kick = host && p.id !== me ? `<button class="kick" data-kick="${esc(p.id)}">Kick</button>` : '';
-    return `<div class="mpP"><span class="dot ${p.team || ''}"></span><span class="nm${p.id === me ? ' me' : ''}">${p.isHost ? '👑 ' : ''}${esc(p.name)}${p.id === me ? ' (you)' : ''}</span><span class="ping">${p.ping != null ? p.ping + ' ms' : ''}</span>${kick}</div>`;
+    return `<div class="mpP"><span class="dot ${p.team || ''}"></span><span class="nm${p.id === me ? ' me' : ''}" data-pid="${esc(p.id)}">${p.isHost ? '👑 ' : ''}${esc(p.name)}${p.id === me ? ' (you)' : ''}</span><span class="ping">${p.ping != null ? p.ping + ' ms' : ''}</span>${kick}</div>`;
   }
   function renderLobby() {
     if (!inRoom || !settings) return;
@@ -11708,6 +11756,7 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
   const MODE_NAME = { tdm: 'Team Deathmatch', ffa: 'Free-for-all', coop: 'Co-op', cs: 'C:S Mode', boss: '1v5' }, MAP_NAME = { classic: 'Classic Village', big: 'Frontier', outpost: 'Outpost', dust2: 'Dust II' };
   const MAXP = 10, pubRooms = new Set(), pwRooms = new Set(); // 2.9.8: 10
   let wantPublic = true, pending = null, lob = null, lobReady = null, hosting = null, lastKey = '', browsing = false, matchLive = false, thumbs = {};
+  let lobSynced = false, leaving = null, lastTrack = 0; // 2.9.10: the list waits for the first presence sync; a channel being left is waited for
   const lobbyClient = () => {
     try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(c); } catch (e) {}
     if (window.caSupabase) return Promise.resolve(window.caSupabase);
@@ -11715,10 +11764,10 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
   };
   function lobbyChan() {
     if (lobReady) return lobReady;
-    lobReady = lobbyClient().then(c => new Promise((res, rej) => {
+    lobReady = (leaving || Promise.resolve()).then(lobbyClient).then(c => new Promise((res, rej) => {
       const ch = c.channel('ca-lobby', { config: { presence: { key: 'l' + Math.random().toString(36).slice(2, 11) } } });
       let ok = false;
-      ch.on('presence', { event: 'sync' }, () => { if (browsing) renderBrowse(); });
+      ch.on('presence', { event: 'sync' }, () => { lobSynced = true; if (browsing) renderBrowse(); });
       ch.subscribe(st => {
         if (st === 'SUBSCRIBED') { ok = true; lob = ch; res(ch); if (hosting) ch.track(hosting).catch(() => {}); }
         else if ((st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') && !ok) rej('offline');
@@ -11730,8 +11779,8 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
   // nobody here is hosting or looking at the list: leave the channel so it costs nothing
   function lobbyIdle() {
     if (!lob || browsing || hosting) return;
-    const ch = lob; lob = null; lobReady = null;
-    lobbyClient().then(c => { try { c.removeChannel(ch); } catch (e) { try { ch.unsubscribe(); } catch (e2) {} } }).catch(() => {});
+    const ch = lob; lob = null; lobReady = null; lobSynced = false;
+    leaving = lobbyClient().then(c => { try { return c.removeChannel(ch); } catch (e) { try { return ch.unsubscribe(); } catch (e2) {} } }).catch(() => {}).then(() => { leaving = null; });
   }
   // the host keeps their listing up to date: players, map, mode, in a match or not; it goes when the room does
   function syncListing() {
@@ -11757,6 +11806,14 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
     C.on('matchEnd', () => { matchLive = false; setTimeout(syncListing, 0); });
   }
   setInterval(syncListing, 1500);
+  // 2.9.10: the host sends its listing again now and then (a dropped connection used to lose it for good), and the list
+  // repaints while it's open, joining again if its channel was closed
+  setInterval(() => {
+    if (hosting && lob && Date.now() - lastTrack > 20000) { lastTrack = Date.now(); lob.track(hosting).catch(() => {}); }
+    if (!browsing) return;
+    if (lob && lob.state && lob.state !== 'joined' && lob.state !== 'joining') { lob = null; lobReady = null; lobSynced = false; lobbyChan().then(renderBrowse).catch(() => {}); return; }
+    renderBrowse();
+  }, 2000);
   // the Create screen: Public (recommended) or Private
   const cpass = $('mpCPass');
   if (cpass) {
@@ -11800,6 +11857,7 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
   function renderBrowse() {
     const list = $('mpBList'), rows = listings();
     if (!lob) return;
+    if (!rows.length && !lobSynced) { $('mpBStatus').textContent = 'Looking for lobbies…'; list.innerHTML = ''; return; } // 2.9.10: not "none" before the list has arrived
     $('mpBStatus').innerHTML = `<i></i>Live · ${rows.length} public ${rows.length === 1 ? 'lobby' : 'lobbies'}`;
     if (!rows.length) { list.innerHTML = `<div class="mpBEmpty">No public lobbies right now.<br>Create one: it's recommended, and other players will see it here and can join you.</div>`; return; }
     list.innerHTML = rows.map(m => {
@@ -11815,7 +11873,7 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
     $('mpBStatus').textContent = 'Looking for lobbies…'; $('mpBList').innerHTML = '';
     try { if (!thumbs.dust2) thumbs.dust2 = mapShot('dust2', DUST_SHOT[0], DUST_SHOT[1]); } catch (e) {} // 2.9.3
     try { if (!thumbs.outpost) thumbs.outpost = mapShot('outpost', [20, 15, 34], [2, 0, -6]); if (!thumbs.classic) thumbs.classic = mapShot('classic', [-22, 9, 27], [2, 1.5, 0]); if (!thumbs.big && $('prevBig')) thumbs.big = $('prevBig').toDataURL(); } catch (e) {}
-    lobbyChan().then(renderBrowse).catch(() => { $('mpBStatus').textContent = ''; $('mpBList').innerHTML = `<div class="mpBEmpty">Public lobbies can't be reached right now.<br>You can still create a match or join one with a code.</div>`; });
+    lobbyChan().then(() => { renderBrowse(); setTimeout(() => { lobSynced = true; if (browsing) renderBrowse(); }, 3000); }).catch(() => { $('mpBStatus').textContent = ''; $('mpBList').innerHTML = `<div class="mpBEmpty">Public lobbies can't be reached right now.<br>You can still create a match or join one with a code.</div>`; });
   }
   bb.addEventListener('click', () => { Sound.init(); Sound.play('click'); openBrowse(); });
   $('mpBCreate').addEventListener('click', () => { browsing = false; wantPublic = true; if ($('mpCPub')) $('mpCPub').querySelector('[data-pub="1"]').click(); cb.click(); });
@@ -11969,6 +12027,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
   const $ = id => document.getElementById(id);
   function shot(id, pos, look, W, H) {
     const prev = mapId, ships = (window.menuReel && menuReel.ships) || []; ships.forEach(h => h.group.visible = false); useMap(id); // 2.9.2: no helicopters in the pictures
+    const undoArt = window.caArtExtras && caArtExtras[id] ? caArtExtras[id](pos, look) : null; // 2.9.10: extra things in some pictures
     const cam = new THREE.PerspectiveCamera(46, W / H, 0.1, 900); cam.position.set(...pos); cam.lookAt(...look); cam.updateMatrixWorld(true);
     const keepSky = sky.position.clone(), keepSh = shadowCenter.clone();
     sky.position.copy(cam.position); shadowCenter.set(look[0], 0, look[2]); sun.target.position.copy(shadowCenter); sun.position.copy(shadowCenter).addScaledVector(SUN_DIR, 80);
@@ -11979,6 +12038,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
     for (let y = 0; y < H; y++) img.data.set(buf.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), y * W * 4);
     g.putImageData(img, 0, 0);
     const out = document.createElement('canvas'); out.width = W / 2; out.height = H / 2; out.getContext('2d').drawImage(big, 0, 0, W / 2, H / 2);
+    if (undoArt) undoArt();
     sky.position.copy(keepSky); shadowCenter.copy(keepSh); useMap(prev); ships.forEach(h => h.group.visible = true);
     return out.toDataURL('image/jpeg', 0.84);
   }
@@ -11992,7 +12052,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
     multi: ['outpost', [-26, 13, -22], [0, 1, 6]],
     missions: ['c1', [0, 10, 20], [0, 0, -20]],
     c1: ['c1', [0, 10, 20], [0, 0, -20]],
-    c2: ['c2', [-34, -11, 26], [0, 4, 0]],
+    c2: ['c2', [-34, -12, 26], [0, -8, 0]], // 2.9.10: a little lower, so the scam cubes in the street are in it
     c3: ['c3', [-7, 5, 12], [3, 0.5, -18]],
   };
   const done = {}, queue = [];
@@ -12101,6 +12161,15 @@ document.getElementById('achToggle').addEventListener('click', () => {
     const m = e.target.closest && e.target.closest('#menu-mpjoin, #menu-mpcreate'); if (!m || (!outdated && Date.now() - okAt < 60000)) return;
     const b = m.querySelector('#mpJGo, #mpCGo'); if (b) guard(e, b);
   }, true);
+  // 2.9.10: in a room, keep checking; a newer version found mid-match lets the match finish, then locks (error E1)
+  let lateV = null;
+  const inMatchNow = () => window.CAMP && CAMP.matchOn && CAMP.matchOn();
+  setInterval(() => {
+    if (outdated || !(window.CAMP && CAMP.inRoom && CAMP.inRoom())) return;
+    check().then(v => { if (!v) return; lateV = v; if (!inMatchNow()) lock(v); });
+  }, 45000);
+  const lock = v => { block(v); try { if (CAMP.inRoom()) CAMP.leaveRoom(); } catch (e) {} }; // and leave the room, so the old copy doesn't hold a place in it
+  if (window.CAMP && CAMP.on) CAMP.on('matchEnd', () => { const go = v => setTimeout(() => lock(v), 3500); if (lateV) go(lateV); else check().then(v => { if (v) go(v); }); });
   $('vbLater').addEventListener('click', () => { $('verBlock').hidden = true; if (/^mp/.test(currentMenu || '') && currentMenu !== 'mpresults') showMenu('play'); });
   $('vbRefresh').addEventListener('click', () => location.reload());
   addEventListener('keydown', e => { if (e.code === 'Escape' && !$('verBlock').hidden) { e.stopImmediatePropagation(); $('vbLater').click(); } }, true);
@@ -12115,7 +12184,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
 #shop2 .s2head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 #shop2 .s2eye { font-size: 12px; font-weight: 800; letter-spacing: 3px; color: var(--gold); }
 #shop2 .s2head h2 { margin: 0; font-size: 44px; line-height: 1; }
-#shop2 .s2tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#shop2 .s2tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; } /* 2.9.10: Guns, Bombs, Utilities */
 #shop2 .s2tabs button { font: inherit; color: var(--ink); cursor: pointer; display: grid; grid-template-columns: 54px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 12px;
   text-align: left; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(160deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02)); transition: transform .15s, border-color .15s, background .15s; }
 #shop2 .s2tabs button:hover { transform: translateY(-2px); border-color: rgba(245, 184, 46, .5); }
@@ -12201,7 +12270,12 @@ document.getElementById('achToggle').addEventListener('click', () => {
       desc: 'Set it down next to you and it shoots the nearest cube once a second; any normal cube goes down in two hits. 200 HP, and it never heals. One at a time, or two at once after wave 15.' },
     // 2.9.8: grenades, the medkit and the defuse kit
     flash: { name: 'Flashbang', type: 'Loadout', price: () => 150, owned: () => !!profile.owned.flash, key: 'flash', // 2.9.9: bought once
-      desc: 'Bought once, part of your loadout for good: one flashbang, ready again 20 seconds after you throw it. A second and a half after it lands it goes off with a blinding flash. Anyone who can see it is blinded for a few seconds (cubes in single-player are stunned). Single-player and every multiplayer mode except Co-op.' },
+      desc: 'Bought once, part of your multiplayer loadout for good: one flashbang, ready again 20 seconds after you throw it. A second and a half after it lands it goes off with a blinding flash, and anyone who can see it is blinded for a few seconds. Multiplayer only, every mode except Co-op.' },
+    // 2.9.10: bombs, in their own section of the Shop
+    grenade: { name: 'Grenade', type: 'Bomb', bomb: true, price: () => 120, owned: () => !!profile.owned.grenade, key: 'grenade',
+      desc: 'Press B to pull the pin, then click to throw it where you are looking. It blows up the instant it hits the ground, a wall, a cube or a player. Bought once, ready again 15 seconds after each throw. Single-player waves and multiplayer (pick it as your bomb in the loadout).' },
+    landmine: { name: 'Landmine', type: 'Bomb', bomb: true, price: () => 150, owned: () => !!profile.owned.landmine, key: 'landmine',
+      desc: 'Press N to set it down in front of you. A second and a half later it is armed, and it blows up when a cube or an enemy player steps on it. Bought once, one every 20 seconds, two down at a time. Single-player waves and multiplayer (pick it as your bomb in the loadout).' },
     smoke: { name: 'Smoke Grenade', type: 'Grenade', price: () => 35, owned: () => false, count: () => profile.smoke || 0, give: () => { profile.smoke = (profile.smoke || 0) + 1; }, key: 'smoke',
       desc: 'Throw it to fill the area with thick smoke for about 12 seconds that nobody can see through. Single-player and every multiplayer mode except Co-op.' },
     medkit: { name: 'Medkit', type: 'Consumable', price: () => 60, owned: () => false, count: () => profile.medkit || 0, give: () => { profile.medkit = (profile.medkit || 0) + 1; }, key: 'medkit',
@@ -12248,10 +12322,10 @@ document.getElementById('achToggle').addEventListener('click', () => {
   const menu = $('menu-shop');
   const root = document.createElement('div'); root.id = 'shop2';
   root.innerHTML = `<div class="s2head"><div><div class="s2eye">ARMS DEALER</div><h2>Shop</h2></div><div class="wallet"><span class="coin"></span><b class="coinTotal">0</b> coins</div></div>
-    <div class="s2tabs"><button data-tab="guns"><i>🔫</i><b>Guns</b><span>Pistols, rifles, heavy weapons</span></button><button data-tab="util"><i>🧰</i><b>Utilities</b><span>Turret, grenades and kits</span></button></div>
+    <div class="s2tabs"><button data-tab="guns"><i>🔫</i><b>Guns</b><span>Pistols, rifles, heavy weapons</span></button><button data-tab="bombs"><i>💣</i><b>Bombs</b><span>Grenade and landmine</span></button><button data-tab="util"><i>🧰</i><b>Utilities</b><span>Turret, flashbang, smoke and kits</span></button></div>
     <div class="s2body"><div class="s2grid" id="s2grid"></div><div class="s2show" id="s2show"></div></div>`;
   menu.insertBefore(root, menu.querySelector('[data-action="back"]'));
-  let tab = 'guns', sel = { guns: 'revolver', util: 'turret' };
+  let tab = 'guns', sel = { guns: 'revolver', util: 'turret', bombs: 'grenade' };
   const isUtil = k => !!UTIL[k];
   const priceOf = k => isUtil(k) ? UTIL[k].price() : WEAPONS[k].price || 0;
   const ownedOf = k => isUtil(k) ? UTIL[k].owned() : ownsBase(k);
@@ -12266,7 +12340,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
   }
   function render() {
     document.querySelectorAll('#shop2 .s2tabs button').forEach(b => b.classList.toggle('sel', b.dataset.tab === tab));
-    const list = tab === 'guns' ? SHOP_GUNS : Object.keys(UTIL), cur = sel[tab];
+    const list = tab === 'guns' ? SHOP_GUNS : tab === 'bombs' ? Object.keys(UTIL).filter(k => UTIL[k].bomb) : Object.keys(UTIL).filter(k => !UTIL[k].bomb), cur = sel[tab];
     $('s2grid').innerHTML = list.map(k => {
       const own = ownedOf(k), price = priceOf(k), eq = !isUtil(k) && settings.weapon === k, name = isUtil(k) ? UTIL[k].name : WEAPONS[k].name;
       const pr = eq ? '<span class="pr eq">Equipped</span>' : own ? `<span class="pr own">${k === 'turret' || k === 'pistol' ? 'Owned' : 'Owned'}</span>` : `<span class="pr"><span class="coin"></span>${price}</span>`;
@@ -12283,7 +12357,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
     else if (k === 'defuse' && !own) { btn = `<button class="btn" data-buy="defuse"${short > 0 ? ' disabled' : ''}>Buy · ${price} coins</button>`; note = (short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. ` : '') + 'One-time purchase. Only for C:S Mode, as a Counter-Terrorist.'; }
     else if (k === 'defuse') { btn = '<button class="btn" disabled>Owned</button>'; note = 'On your account. In C:S Mode as a Counter-Terrorist, you defuse in 6 seconds.'; }
     else if (!own) { btn = `<button class="btn" data-buy="${k}"${short > 0 ? ' disabled' : ''}>Buy · ${price} coins</button>`; note = short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. Destroy cubes or win online matches to earn them.` : 'You can afford it.'; }
-    else if (util) { btn = '<button class="btn" disabled>Owned</button>'; note = k === 'radio' ? `Press ${key} with a full gun to set it down, and E next to it for the next song.` : k === 'flash' ? `Press ${key} to throw it. It's ready again 20 seconds later.` : k === 'barricade' ? `Press ${key} in a house doorway. One every 20 seconds.` : `Press ${key} during a game to set it down.`; } // 2.9.9
+    else if (util) { btn = '<button class="btn" disabled>Owned</button>'; note = k === 'radio' ? `Press ${key} with a full gun to set it down, and E next to it for the next song.` : k === 'flash' ? `Press ${key} in multiplayer to throw it. It's ready again 20 seconds later.` : k === 'grenade' ? `Press ${key} to pull the pin, then click to throw. Ready again 15 seconds later.` : k === 'landmine' ? `Press ${key} to set it down. One every 20 seconds.` : k === 'barricade' ? `Press ${key} in a house doorway. One every 20 seconds.` : `Press ${key} during a game to set it down.`; } // 2.9.9
     else if (settings.weapon !== k) { btn = `<button class="btn" data-equip="${k}">Set as starting weapon</button>`; note = `Owned. Press ${key} during a game to use it.`; }
     else { btn = '<button class="btn" disabled>Starting weapon</button>'; note = `Owned, and you start every game with it. Press ${key} to switch back to it.`; }
     const pic = k === 'barricade' ? barPic() : `<img alt="" src="${picOf(k)}">`;
@@ -12566,7 +12640,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
 (function () {
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const PRICE = 60, PRICE10 = 500; // 2.9.7: 60 coins each, or 10 for 500
+  const PRICE = 50, PRICE10 = 400; // 2.9.7: 60 coins each, or 10 for 500; 2.9.10: 50, or 10 for 400
   const cost = n => isAdmin() ? 0 : n === 10 ? PRICE10 : PRICE; // the ADMINTEST account opens as many as it likes
   const can = n => profile.coins >= cost(n);
   const label = (n, t) => isAdmin() ? `${t} · free` : `${t} · ${cost(n)} coins`;
@@ -13012,7 +13086,7 @@ body.touch #hotbar { display: none !important; }
     const D = { pistol: '12 rounds', revolver: '6 heavy rounds', rifle: 'Full-auto, scoped', shotgun: 'Deadly up close', sniper: 'Headshots kill', ak47: 'Full-auto, 30 rounds', minigun: '400 rounds, overheats', rocket: 'Splash damage' };
     box.innerHTML = `<h4>Pistols · pick up to 2</h4><div class="loRow">${sm.length ? sm.map(k => btn(k, D[k])).join('') : '<div class="none">' + (modOf() === 'snipers' ? 'Snipers only this match.' : 'None this match.') + '</div>'}</div>
       <h4>Main guns · pick up to 3</h4><div class="loRow">${bg.length ? bg.map(k => btn(k, D[k])).join('') : '<div class="none">' + (modOf() === 'pistols' ? 'Pistols only this match.' : 'You don\'t own any yet. Buy them in the Shop.') + '</div>'}</div>
-      <div id="loFoot"><small>Number keys follow your slots. The knife is always your last slot.${profile.owned && profile.owned.flash ? ' Your flashbang (G) comes with every loadout.' : ''}</small><button class="btn" id="loDeploy">Deploy</button></div>`;
+      ${window.v2910 ? v2910.bombPick() : ''}<div id="loFoot"><small>Number keys follow your slots. The knife is always your last slot.${profile.owned && profile.owned.flash ? ' Your flashbang (G) comes with every loadout.' : ''}</small><button class="btn" id="loDeploy">Deploy</button></div>`;
     const p = box.parentNode.querySelector('p');
     if (p) p.textContent = modOf() === 'knives' ? 'Knives only this match.' : 'Pick up to 2 pistols and 3 main guns. The order you pick them is the order of your hotbar slots (keys 1, 2, 3…).';
   }
@@ -13051,7 +13125,7 @@ body.touch #hotbar { display: none !important; }
   }
   function paintUtil() {
     const can = utilAllowed(), parts = [];
-    if (can.nade) { if (profile.owned && profile.owned.flash) { const l = Math.ceil((flashAt - performance.now()) / 1000); parts.push(`<span><kbd>${keyName(bindOf('flash'))}</kbd>Flashbang ${l > 0 ? l + ' s' : 'ready'}</span>`); } if (profile.smoke) parts.push(`<span><kbd>${keyName(bindOf('smoke'))}</kbd>Smoke ×${profile.smoke}</span>`); }
+    if (can.nade) { if (gameMode === 'mp' && profile.owned && profile.owned.flash) { const l = Math.ceil((flashAt - performance.now()) / 1000); parts.push(`<span><kbd>${keyName(bindOf('flash'))}</kbd>Flashbang ${l > 0 ? l + ' s' : 'ready'}</span>`); } if (profile.smoke) parts.push(`<span><kbd>${keyName(bindOf('smoke'))}</kbd>Smoke ×${profile.smoke}</span>`); }
     if (can.med && profile.medkit) parts.push(`<span><kbd>${keyName(bindOf('medkit'))}</kbd>Medkit ×${profile.medkit}</span>`);
     const html = parts.join(''); util.classList.toggle('on', !!html && state === 'playing');
     if (util._h !== html) { util._h = html; util.innerHTML = html; }
@@ -13210,6 +13284,7 @@ body.touch #hotbar { display: none !important; }
     if (!can.nade) { if (state === 'playing') banner('No grenades here', gameMode === 'mp' ? 'Not in Co-op' : ''); return; }
     if (inMp() && C.prepLeft && C.prepLeft() > 0) { banner('Not yet', 'Wait for the fighting to start'); return; }
     if (key === 'flash') {
+      if (gameMode !== 'mp') return; // 2.9.10: multiplayer only
       if (!(profile.owned && profile.owned.flash)) { banner('No flashbang', 'Buy it once in the Shop'); return; }
       const left = flashAt - performance.now(); if (left > 0) { banner('Flashbang recharging', Math.ceil(left / 1000) + ' s'); return; }
       flashAt = performance.now() + FLASH_CD;
@@ -13632,6 +13707,464 @@ body.touch #hotbar { display: none !important; }
     barPlaced(D, side) { if (inMp() && C.fx) C.fx('bar', { x: D.x, z: D.z, s: side }); },
     barHit(B, dmg) { if (inMp() && C.fx) C.fx('barh', { x: B.D.x, z: B.D.z, d: Math.round(dmg) }); },
   };
+})();
+</script>
+<style id="v2910css">
+/* 2.9.10: three buttons under Play, still centred */
+.homeRow { grid-template-columns: 1fr 1fr 1fr !important; }
+/* friends, profiles, invites, the Classic Village warning */
+.fModal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(4, 6, 10, .74); backdrop-filter: blur(5px); }
+.fModal[hidden] { display: none; }
+.fBox { width: min(480px, 100%); max-height: calc(100vh - 32px); overflow: auto; border-radius: 18px; background: #12151c; border: 1px solid rgba(255, 255, 255, .12); border-top: 4px solid var(--ac, var(--gold));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .6); padding: 22px; color: #eef1f6; text-align: center; animation: menuIn .25s ease; }
+.fBox .fTag { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, .08); color: var(--ac, var(--gold)); font-weight: 800; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; }
+.fBox h3 { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 8px 0 6px; }
+.fBox p { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 0 0 8px; } .fBox p b { color: #fff; }
+.fBtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; } .fBtns .btn { width: auto; min-width: 150px; margin: 0; padding-left: 22px; padding-right: 22px; }
+.pfHead { display: flex; align-items: center; gap: 14px; text-align: left; margin-top: 4px; }
+.pfHead img, .frRow img { object-fit: cover; background: #0b0d12; border: 2px solid rgba(255, 255, 255, .15); }
+.pfHead img { width: 76px; height: 76px; border-radius: 16px; } .pfHead b { display: block; font-size: 24px; } .pfHead span { color: var(--muted); font-size: 14px; }
+.pfLvl { display: inline-block; margin-top: 4px; padding: 3px 9px; border-radius: 999px; background: rgba(245, 184, 46, .16); color: var(--gold); font-weight: 800; font-size: 12px; }
+.pfStats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.pfStats div { background: rgba(255, 255, 255, .05); border-radius: 10px; padding: 10px 6px; } .pfStats b { display: block; font-size: 20px; } .pfStats span { font-size: 12px; color: var(--muted); }
+.frList { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; text-align: left; }
+.frRow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .05); }
+.frRow img { width: 42px; height: 42px; border-radius: 10px; flex: none; }
+.frRow .nm { flex: 1; min-width: 0; } .frRow .nm b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .frRow .nm span { font-size: 12px; color: var(--muted); } .frRow .nm span.on { color: #4ade80; }
+.frRow button { font: 700 13px/1 system-ui, sans-serif; color: #fff; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .16); border-radius: 9px; padding: 8px 10px; cursor: pointer; }
+.frRow button.go { background: #db2777; border-color: #db2777; } .frRow button:disabled { opacity: .45; cursor: default; }
+.frEmpty { padding: 18px 10px; color: var(--muted); font-size: 14px; line-height: 1.5; text-align: center; }
+#fInvite { position: fixed; top: 16px; right: 16px; z-index: 80; width: min(330px, calc(100vw - 32px)); border-radius: 14px; background: #12151c; border: 1px solid rgba(255, 255, 255, .14);
+  border-left: 4px solid #f472b6; box-shadow: 0 16px 50px rgba(0, 0, 0, .55); padding: 14px; color: #eef1f6; font: 14px/1.4 system-ui, sans-serif; animation: menuIn .25s ease; }
+#fInvite[hidden] { display: none; } #fInvite b { color: #fff; } #fInvite .row { display: flex; gap: 8px; margin-top: 10px; }
+#fInvite button { flex: 1; font: 700 14px/1 system-ui, sans-serif; border-radius: 9px; padding: 10px; cursor: pointer; border: 1px solid rgba(255, 255, 255, .16); color: #fff; background: rgba(255, 255, 255, .08); }
+#fInvite button.go { background: #db2777; border-color: #db2777; }
+.mpP .nm[data-pid] { cursor: pointer; } .mpP .nm[data-pid]:hover { text-decoration: underline; }
+.classicNote { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; background: rgba(250, 204, 21, .12); border: 1px solid rgba(250, 204, 21, .35); color: #fde68a; font-size: 13px; text-align: left; }
+/* bombs: the hint, and the iPad buttons */
+#bombBar { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 6; display: none; gap: 10px; font: 700 12px/1 system-ui, sans-serif; color: #e8eef5; text-shadow: 0 1px 3px #000; pointer-events: none; white-space: nowrap; }
+#bombBar.on { display: flex; }
+#bombBar span { background: rgba(10, 14, 20, .55); border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; padding: 4px 9px; } #bombBar span.hold { border-color: #f59e0b; color: #fde68a; }
+#bombBar kbd { font: 800 11px/1 system-ui, sans-serif; background: rgba(255, 255, 255, .15); border-radius: 4px; padding: 2px 5px; margin-right: 4px; }
+.tBomb { position: fixed; right: 18px; z-index: 7; width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); background: rgba(10, 14, 20, .5); font-size: 24px; color: #fff; display: none; touch-action: manipulation; }
+.tBomb.on { display: block; } #tGrenade { top: calc(42% + 66px); } #tMine { top: calc(42% + 132px); }
+.mpLoad.lo .loRow .bombI { font-style: normal; font-size: 34px; line-height: 54px; height: 54px; display: block; }
+</style>
+<script id="v2910">
+// 2.9.10: friends (a list, profiles from the lobby, invites), bombs (the grenade and the landmine, single-player and
+// online), the Classic Village warning in multiplayer, and the scam cubes in the Apex Support picture.
+(function () {
+  const $ = id => document.getElementById(id);
+  const C = window.CAMP;
+  const inMp = () => gameMode === 'mp' && !!C && C.inRoom && C.inRoom();
+  const S = () => (C && C.getSettings && C.getSettings()) || {};
+  const me = () => (C && C.myId && C.myId()) || 'me';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const click = () => { try { Sound.init(); Sound.play('click'); } catch (e) {} };
+  const say = (a, b) => { try { banner(a, b || ''); } catch (e) {} };
+  const r2 = v => Math.round(v * 100) / 100;
+  const avUrl = k => { try { return (avatarOf(k) || {}).url || ''; } catch (e) { return ''; } };
+
+  // ================= friends =================
+  // Your friend id: random, made once and kept with your profile.
+  const fid = () => { if (!profile.fid) { profile.fid = Math.random().toString(36).slice(2, 10).toUpperCase(); try { saveProfile(); } catch (e) {} } return profile.fid; };
+  const friends = () => (profile.friends = Array.isArray(profile.friends) ? profile.friends : []);
+  const isFriend = f => friends().some(x => x.f === f);
+  // the card other players see when they click your name in a lobby
+  window.caMyCard = () => {
+    const st = profile.stats || {};
+    return { f: fid(), a: String(profile.avatar || '').slice(0, 40), l: levelInfo().level, k: st.kills | 0, b: profile.best | 0, ac: Object.keys(profile.ach || {}).length,
+      sh: st.shots | 0, h: st.hits | 0, t: Math.round(st.time || 0) };
+  };
+  const ACH_N = (() => { try { return ACHIEVEMENTS.length; } catch (e) { return 0; } })();
+  const fmtTime = s => { s = Math.max(0, s | 0); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return h ? `${h} h ${m} min` : `${m} min`; };
+
+  function modal(id, html, ac) {
+    let m = $(id);
+    if (!m) { m = document.createElement('div'); m.id = id; m.className = 'fModal'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) m.hidden = true; }); }
+    m.innerHTML = `<div class="fBox" style="--ac:${ac || 'var(--gold)'}">${html}</div>`; m.hidden = false;
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+    return m;
+  }
+  // a player's profile: theirs from the lobby, or a friend's (live if they're online)
+  function showProfile(card, name) {
+    const c = card || {}, acc = c.sh ? Math.round((c.h || 0) / c.sh * 100) + '%' : '–', mine = c.f && c.f === fid(), fr = c.f && isFriend(c.f);
+    const m = modal('pfModal', `<span class="fTag">Player profile</span>
+      <div class="pfHead"><img alt="" src="${esc(avUrl(c.a))}"><div><b>${esc(name || 'Player')}</b><span class="pfLvl">Level ${c.l || 1}</span></div></div>
+      <div class="pfStats"><div><b>${(c.k || 0).toLocaleString()}</b><span>Cubes destroyed</span></div><div><b>${c.b || 0}</b><span>Best wave</span></div><div><b>${c.ac || 0}/${ACH_N}</b><span>Achievements</span></div>
+        <div><b>${acc}</b><span>Accuracy</span></div><div><b>${(c.sh || 0).toLocaleString()}</b><span>Shots fired</span></div><div><b>${fmtTime(c.t)}</b><span>Played</span></div></div>
+      <div class="fBtns">${mine ? '' : !c.f ? '<button class="btn" disabled>Can\'t add (older version)</button>' : fr ? '<button class="btn secondary" data-pf="rm">Remove friend</button>' : '<button class="btn" data-pf="add">Add friend</button>'}<button class="btn secondary" data-pf="close">Close</button></div>`, '#f472b6');
+    m.querySelector('.fBox').onclick = e => {
+      const b = e.target.closest('[data-pf]'); if (!b) return; click();
+      if (b.dataset.pf === 'close') { m.hidden = true; return; }
+      if (b.dataset.pf === 'add' && c.f && !isFriend(c.f) && friends().length < 60) { friends().push({ f: c.f, n: String(name || 'Player').slice(0, 16), a: c.a || '', l: c.l || 1, card: c }); saveProfile(); say('Friend added', name); }
+      if (b.dataset.pf === 'rm') { profile.friends = friends().filter(x => x.f !== c.f); saveProfile(); }
+      showProfile(c, name); paintFriends();
+    };
+  }
+  // the lobby: click a name
+  document.addEventListener('click', e => {
+    const n = e.target.closest && e.target.closest('.mpP .nm[data-pid]'); if (!n || !C || !C.profileOf) return;
+    click(); const p = C.profileOf(n.dataset.pid); if (!p) return;
+    if (p.f && isFriend(p.f)) { const F = friends().find(x => x.f === p.f); F.n = String(p.name).slice(0, 16); F.a = p.a || F.a; F.l = p.l || F.l; F.card = { ...p }; saveProfile(); }
+    showProfile(p, p.name);
+  });
+
+  // who's online: one shared presence channel; each player is there under their friend id
+  let fch = null, fState = {}, fTracked = '';
+  const fClient = () => {
+    try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(c); } catch (e) {}
+    if (window.caSupabase) return Promise.resolve(window.caSupabase);
+    return new Promise((res, rej) => { let n = 0; const t = setInterval(() => { if (window.caSupabase) { clearInterval(t); res(window.caSupabase); } else if (++n > 60) { clearInterval(t); rej('offline'); } }, 500); });
+  };
+  const roomCode = () => (C && C.inRoom && C.inRoom() && (($('mpLCode') || {}).textContent || '').trim()) || '';
+  const roomPw = () => { try { const r = C._debug && C._debug.room(); return (r && r.pw) || ''; } catch (e) { return ''; } };
+  function myPresence() { return { f: fid(), n: String(profile.name || 'Player').slice(0, 16), a: String(profile.avatar || '').slice(0, 40), l: levelInfo().level, r: roomCode(), v: VERSION }; }
+  function joinFriends() {
+    fClient().then(c => {
+      const ch = c.channel('ca-friends', { config: { presence: { key: fid() }, broadcast: { self: false } } });
+      ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(), o = {}; for (const k in st) { const m = st[k] && st[k][0]; if (m && m.f) o[m.f] = m; } fState = o; paintFriends(); });
+      ch.on('broadcast', { event: 'inv' }, ({ payload: p }) => { if (p && p.to === fid() && /^[A-Z2-9]{5}$/.test(p.code || '')) showInvite(p); });
+      ch.subscribe(st => { if (st === 'SUBSCRIBED') { fch = ch; fTracked = ''; retrack(); } });
+    }).catch(() => {});
+  }
+  function retrack() { if (!fch) return; const p = myPresence(), k = JSON.stringify(p); if (k === fTracked) return; fTracked = k; fch.track(p).catch(() => { fTracked = ''; }); }
+  setTimeout(joinFriends, 2500);
+  setInterval(retrack, 4000);
+
+  function invite(F) {
+    const code = roomCode(); if (!fch || !code) return;
+    fch.send({ type: 'broadcast', event: 'inv', payload: { to: F.f, from: fid(), n: String(profile.name || 'Player').slice(0, 16), code, pw: roomPw().slice(0, 24), v: VERSION } }).catch(() => {});
+    say('Invite sent', F.n);
+  }
+  function showInvite(p) {
+    let t = $('fInvite'); if (!t) { t = document.createElement('div'); t.id = 'fInvite'; document.body.appendChild(t); }
+    const known = isFriend(p.from), old = p.v && p.v !== VERSION;
+    t.innerHTML = `📨 <b>${esc(p.n)}</b>${known ? '' : ' (not on your list)'} invited you to their multiplayer lobby <b>${esc(p.code)}</b>.${old ? '<br><small>They are on a different version.</small>' : ''}<div class="row"><button class="go" data-iv="join">Join</button><button data-iv="no">Not now</button></div>`;
+    t.hidden = false; try { Sound.play('buy'); } catch (e) {}
+    clearTimeout(t._tm); t._tm = setTimeout(() => { t.hidden = true; }, 30000);
+    t.onclick = e => { const b = e.target.closest('[data-iv]'); if (!b) return; click(); t.hidden = true; if (b.dataset.iv === 'join') joinRoom(p.code, p.pw); };
+  }
+  // joining goes through the normal Join screen, like typing the code in
+  function joinRoom(code, pw) {
+    if (roomCode() === code) return;
+    if (C.inRoom && C.inRoom()) { try { C.leaveRoom(); } catch (e) {} }
+    if (state !== 'menu') { try { quitToMenu(); } catch (e) {} }
+    $('friendsModal') && ($('friendsModal').hidden = true);
+    showMenu('mp');
+    setTimeout(() => {
+      $('mpJoinBtn').click();
+      let n = 0; const t = setInterval(() => {
+        if (currentMenu !== 'mpjoin' && ++n < 40) return; clearInterval(t);
+        const ci = $('mpJCode'); ci.value = code; ci.dispatchEvent(new Event('input'));
+        if (pw) { if ($('mpJPassBox').hidden) $('mpJPassToggle').click(); $('mpJPass').value = pw; $('mpJPass').dispatchEvent(new Event('input')); }
+        setTimeout(() => $('mpJGo').click(), 120);
+      }, 150);
+    }, 150);
+  }
+  // the Friends screen
+  function paintFriends() {
+    const m = $('friendsModal'); if (!m || m.hidden) return;
+    const list = friends(), code = roomCode();
+    const rows = list.map((F, i) => {
+      const on = fState[F.f], inMine = on && code && on.r === code;
+      if (on) { F.n = on.n || F.n; F.a = on.a || F.a; F.l = on.l || F.l; }
+      const status = !on ? '<span>Offline</span>' : inMine ? '<span class="on">In your lobby</span>' : on.r ? '<span class="on">Online · in a lobby</span>' : '<span class="on">Online</span>';
+      return `<div class="frRow"><img alt="" src="${esc(avUrl(F.a))}"><div class="nm"><b>${esc(F.n)}</b>${status} · <span>Level ${F.l || 1}</span></div>
+        <button data-fr="view" data-i="${i}">Profile</button><button class="go" data-fr="inv" data-i="${i}"${on && code && !inMine ? '' : ' disabled'} title="${code ? '' : 'Join or create a multiplayer lobby first'}">Invite</button><button data-fr="rm" data-i="${i}" title="Remove">✕</button></div>`;
+    }).join('');
+    m.querySelector('.frList').innerHTML = rows || '<div class="frEmpty">No friends yet.<br>In a multiplayer lobby, click a player\'s name to see their profile and add them.</div>';
+    m.querySelector('.frNote').innerHTML = code ? `You're in lobby <b>${esc(code)}</b>: invite any friend who's online.` : 'Join or create a multiplayer lobby, then invite friends who are online.';
+  }
+  function openFriends() {
+    const m = modal('friendsModal', `<span class="fTag">Friends</span><h3>Your friends</h3><p class="frNote"></p><div class="frList"></div><div class="fBtns"><button class="btn secondary" data-fr="close">Close</button></div>`, '#f472b6');
+    m.querySelector('.fBox').onclick = e => {
+      const b = e.target.closest('[data-fr]'); if (!b || b.disabled) return; click();
+      const F = friends()[+b.dataset.i];
+      if (b.dataset.fr === 'close') { m.hidden = true; return; }
+      if (!F) return;
+      if (b.dataset.fr === 'inv') invite(F);
+      if (b.dataset.fr === 'rm') { profile.friends = friends().filter(x => x !== F); saveProfile(); }
+      if (b.dataset.fr === 'view') { const on = fState[F.f]; showProfile({ ...(F.card || {}), f: F.f, a: (on && on.a) || F.a, l: (on && on.l) || F.l }, F.n); return; }
+      paintFriends();
+    };
+    paintFriends();
+  }
+  $('homeFriends').addEventListener('click', () => { click(); openFriends(); });
+  addEventListener('keydown', e => { if (e.code === 'Escape') for (const id of ['pfModal', 'friendsModal', 'classicWarn']) { const m = $(id); if (m && !m.hidden) { m.hidden = true; e.stopImmediatePropagation(); return; } } }, true);
+  setInterval(paintFriends, 3000);
+  // the Friends button's picture
+  try { if (window.__v29shot) __v29shot('friends', 'dust2', [-30, 9, 18], [0, 1.5, 0]); } catch (e) {}
+
+  // ================= Classic Village isn't recommended online =================
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('#mpSettings [data-set="mapId"][data-val="classic"]');
+    if (!b || b.disabled || b.classList.contains('sel') || !C || !C.isHost || !C.isHost() || e.__ok) return;
+    e.stopImmediatePropagation(); e.preventDefault(); click();
+    const m = modal('classicWarn', `<span class="fTag">Not recommended</span><h3>Classic Village</h3>
+      <p>Classic Village is the small original map from single-player. It isn't built for online matches: the spawns are close together and the open middle makes team games lopsided.</p>
+      <p><b>Outpost</b> or <b>Dust II</b> are recommended for multiplayer.</p>
+      <div class="fBtns"><button class="btn" data-cw="no">Keep the current map</button><button class="btn secondary" data-cw="yes">Use Classic anyway</button></div>`, '#facc15');
+    m.querySelector('.fBox').onclick = ev => { const x = ev.target.closest('[data-cw]'); if (!x) return; click(); m.hidden = true; if (x.dataset.cw === 'yes') C.updateSettings({ mapId: 'classic' }); };
+  }, true);
+  setInterval(() => {
+    const box = $('mpSettings'); if (!box || !inMp()) return;
+    const want = S().mapId === 'classic', note = box.querySelector('.classicNote');
+    if (want && !note) box.insertAdjacentHTML('afterbegin', '<div class="classicNote">⚠️ Classic Village isn\'t recommended for multiplayer. Outpost or Dust II play much better.</div>');
+    if (!want && note) note.remove();
+  }, 500);
+
+  // ================= the Apex Support picture: scam cubes in the street, no floating clouds =================
+  function decoCube(color, size) {
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(size, size, size), new THREE.MeshLambertMaterial({ color, map: bevelTex })));
+    for (const s of [-1, 1]) {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(size * 0.22, size * 0.22, 0.05), eyeMat); w.position.set(s * size * 0.22, size * 0.15, size / 2 + 0.01); g.add(w);
+      const p = new THREE.Mesh(new THREE.BoxGeometry(size * 0.1, size * 0.1, 0.05), pupilMat); p.position.set(s * size * 0.22, size * 0.12, size / 2 + 0.03); g.add(p);
+    }
+    return g;
+  }
+  setTimeout(() => { try { if (window.__v29shot) __v29shot('c2', 'c2', [-34, -12, 26], [0, -8, 0]); } catch (e) {} }, 0); // the picture again, now with the cubes (it may have been taken before this ran)
+  window.caArtExtras = {
+    c2(pos, look) {
+      const hidden = clouds.filter(c => c.visible); hidden.forEach(c => c.visible = false);
+      // and the tree right in front of the camera, which hid the street and half the tower
+      const bb = new THREE.Box3(), c = new THREE.Vector3(), sz = new THREE.Vector3();
+      scene.traverse(o => { if (!o.isMesh || !o.visible || !o.geometry) return; bb.setFromObject(o); bb.getCenter(c); bb.getSize(sz);
+        if (Math.max(sz.x, sz.z) < 12 && Math.hypot(c.x - pos[0], c.z - pos[2]) < 12) hidden.push(o); });
+      hidden.forEach(o => o.visible = false);
+      const zeroed = [], M4 = new THREE.Matrix4(), Z = new THREE.Matrix4().makeScale(0, 0, 0), ip = new THREE.Vector3(); // trees are instanced: shrink the ones by the camera
+      scene.traverse(o => { if (!o.isInstancedMesh || !o.visible) return; let ch = false;
+        for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, M4); ip.setFromMatrixPosition(M4).applyMatrix4(o.matrixWorld); if (Math.hypot(ip.x - pos[0], ip.z - pos[2]) < 12) { zeroed.push([o, i, M4.clone()]); o.setMatrixAt(i, Z); ch = true; } }
+        if (ch) o.instanceMatrix.needsUpdate = true; });
+      const add = [], ray = new THREE.Raycaster(), cam = new THREE.Vector3(...pos), cols = [0xfacc15, 0xfacc15, 0xdc2626, 0xfacc15, 0x22c55e, 0xfacc15, 0x3b82f6];
+      // along the street in front of the camera, sitting on whatever is below
+      [[16, -3], [18, 2], [21, -6], [22, 4.5], [24, -1], [19, 7], [26, 2.5]].forEach(([d, side], i) => {
+        const fw = new THREE.Vector3(look[0] - pos[0], 0, look[2] - pos[2]).normalize(), rt = new THREE.Vector3(-fw.z, 0, fw.x);
+        const p = cam.clone().addScaledVector(fw, d).addScaledVector(rt, side); p.y = cam.y + 3; // from just above the street, under the tower's floors
+        ray.set(p, new THREE.Vector3(0, -1, 0)); ray.far = 120; ray.camera = camera;
+        let hits = []; try { hits = ray.intersectObjects(scene.children, true); } catch (e) {}
+        const hit = hits.find(h => h.object.isMesh && h.object.visible && !(h.object.material && h.object.material.transparent));
+        if (!hit) return;
+        const sz = i === 2 ? 2.4 : 1.3 + (i % 3) * 0.25, c = decoCube(cols[i], sz);
+        c.position.set(p.x, hit.point.y + sz / 2, p.z); c.lookAt(cam.x, hit.point.y + sz / 2, cam.z);
+        sceneAdd(c); add.push(c);
+      });
+      return () => { hidden.forEach(c => c.visible = true); for (const [o, i, m] of zeroed) { o.setMatrixAt(i, m); o.instanceMatrix.needsUpdate = true; } for (const c of add) { scene.remove(c); c.traverse(o => { if (o.isMesh) { o.geometry.dispose(); if (o.material !== eyeMat && o.material !== pupilMat) o.material.dispose(); } }); } };
+    },
+  };
+
+  // ================= bombs: the grenade and the landmine =================
+  const BOMBS = ['grenade', 'landmine'], CD = { grenade: 15000, landmine: 20000 };
+  const owns = k => !!(profile.owned && profile.owned[k]);
+  const readyAt = { grenade: 0, landmine: 0 };
+  let mpBomb = null;
+  try { mpBomb = localStorage.getItem('cubeAssaultMpBomb') || null; } catch (e) {}
+  const myTeam = () => ((C && C.getPlayers && C.getPlayers() || []).find(p => p.id === me()) || {}).team;
+  function bombOk(k) {
+    if (!owns(k) || state !== 'playing') return false;
+    if (gameMode === 'classic') return true;
+    if (!inMp()) return false;
+    const s = S();
+    if (s.mode === 'coop') return true;
+    if ((s.mod || 'none') !== 'none' || (s.mode === 'boss' && myTeam() === 'red')) return false;
+    return mpBomb === k;
+  }
+  const prepOn = () => inMp() && C.prepLeft && C.prepLeft() > 0;
+  // the loadout picker's Bomb section
+  const NAME = { grenade: 'Grenade', landmine: 'Landmine' }, ICON = { grenade: '💣', landmine: '🧨' }, DESC = { grenade: 'Pull the pin, click to throw', landmine: 'Blows up when stepped on' };
+  function bombPick() {
+    const mod = (S().mod || 'none') !== 'none', own = BOMBS.filter(owns);
+    if (mpBomb && !own.includes(mpBomb)) mpBomb = null;
+    const body = mod ? '<div class="none">No bombs with a modifier on.</div>' : !own.length ? '<div class="none">You don\'t have a bomb yet. Buy one in the Shop\'s Bombs section.</div>'
+      : own.map(k => `<button data-bomb="${k}" class="${mpBomb === k ? 'sel' : ''}">${mpBomb === k ? `<span class="sl">${esc(keyName(bindOf(k)))}</span>` : ''}<i class="bombI">${ICON[k]}</i><b>${NAME[k]}</b><span>${DESC[k]}</span></button>`).join('');
+    return `<h4>Bomb · pick 1</h4><div class="loRow">${body}</div>`;
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('#mpLoad [data-bomb]'); if (!b) return;
+    e.stopImmediatePropagation(); click();
+    mpBomb = mpBomb === b.dataset.bomb ? null : b.dataset.bomb;
+    try { if (mpBomb) localStorage.setItem('cubeAssaultMpBomb', mpBomb); else localStorage.removeItem('cubeAssaultMpBomb'); } catch (er) {}
+    if (window.v298 && v298.renderPicker) v298.renderPicker();
+  }, true);
+
+  // models: the shop pictures and the ones in the world
+  function grenadeModel() {
+    const g = new THREE.Group(), body = new THREE.MeshStandardMaterial({ color: 0x4f5b34, roughness: 0.7 }), dark = new THREE.MeshStandardMaterial({ color: 0x2b2f33, metalness: 0.5, roughness: 0.4 }),
+      steel = new THREE.MeshStandardMaterial({ color: 0xc9ced4, metalness: 1, roughness: 0.25 });
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), body); b.scale.y = 1.2; g.add(b);
+    for (let i = 0; i < 4; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.004, 6, 20), body); r.rotation.x = Math.PI / 2; r.position.y = -0.03 + i * 0.02; r.scale.setScalar(Math.cos((-0.03 + i * 0.02) / 0.06) * 1.02); g.add(r); }
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.03, 12), dark); top.position.y = 0.068; g.add(top);
+    const lever = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.09, 0.008), steel); lever.position.set(0.03, 0.04, 0); lever.rotation.z = -0.25; g.add(lever);
+    const pin = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.003, 6, 16), steel); pin.position.set(-0.026, 0.075, 0); pin.rotation.y = Math.PI / 2; g.add(pin);
+    g.userData.pin = pin; return g;
+  }
+  function mineModel() {
+    const g = new THREE.Group(), body = new THREE.MeshStandardMaterial({ color: 0x3f4a2c, roughness: 0.8 }), dark = new THREE.MeshStandardMaterial({ color: 0x23262b, metalness: 0.4, roughness: 0.5 });
+    const d = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 0.05, 24), body); g.add(d);
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 20), dark); plate.position.y = 0.033; g.add(plate);
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2a2a })); led.position.set(0.11, 0.03, 0); g.add(led);
+    g.userData.led = led; return g;
+  }
+  if (window.UTIL_MODELS) { UTIL_MODELS.grenade = grenadeModel; UTIL_MODELS.landmine = () => { const g = mineModel(); g.rotation.x = 0.35; return g; }; }
+
+  // remote explosions are only a picture and a sound: the damage is done by the thrower's screen and the host
+  function fxBoom(P) {
+    const d0 = P.distanceTo(camera.position);
+    glowFlash(P, 0xffa23a, 9, 0.35); glowFlash(P, 0xfff1c0, 4, 0.15); sparks(P, 0xffc060, 16, 12);
+    for (let i = 0; i < 5; i++) puff(P.clone().add(new THREE.Vector3((Math.random() - .5) * 2.5, Math.random() * 1.5, (Math.random() - .5) * 2.5)), 0x8f8b84, 2.6, 1.2);
+    try { Sound.play('boom', d0); } catch (e) {}
+    shake = Math.max(shake, Math.max(0.15, 1.1 - d0 / 25));
+  }
+  function goBoom(kind, P, mine) {
+    explode(P); // cubes in range are hurt (co-op: your copies, which tells the host), and you get shoved
+    if (inMp()) { if (window.mpNet && mpNet.bomb) mpNet.bomb(kind === 'landmine' ? 'm' : 'g', P); if (C.fx) C.fx('bomb', { p: [r2(P.x), r2(P.y), r2(P.z)], m: mine || 0 }); }
+  }
+
+  // the grenade in your hand: B pulls the pin, a click throws it
+  let held = null, heldVM = null;
+  function holdGrenade() {
+    if (held) { putAway(); return; }
+    if (!owns('grenade')) { say('No grenade', 'Buy it once in the Shop\'s Bombs section'); return; }
+    if (!bombOk('grenade')) { if (inMp()) say('Not in your loadout', 'Pick the Grenade as your bomb before the match'); return; }
+    if (prepOn()) { say('Not yet', 'Wait for the fighting to start'); return; }
+    const left = readyAt.grenade - performance.now(); if (left > 0) { say('Grenade not ready', Math.ceil(left / 1000) + ' s'); return; }
+    if (!heldVM) { heldVM = grenadeModel(); heldVM.traverse(o => o.layers.set(1)); camera.add(heldVM); }
+    heldVM.position.set(0.2, -0.22, -0.42); heldVM.rotation.set(0, 0, 0); heldVM.scale.setScalar(1.15); heldVM.visible = true;
+    const pin = heldVM.userData.pin; pin.visible = true; pin.position.set(-0.026, 0.075, 0);
+    held = { t: 0, key: weaponKey }; zoomed = false; mouseDown = false;
+    if (gunModel) gunModel.visible = false;
+    try { Sound.play('reload'); } catch (e) {}
+  }
+  function putAway() { held = null; if (heldVM) heldVM.visible = false; if (gunModel) gunModel.visible = true; }
+  const flying = [];
+  function throwGrenade() {
+    if (!held) return;
+    putAway(); readyAt.grenade = performance.now() + CD.grenade;
+    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    const o = camera.position.clone().addScaledVector(dir, 0.6).add(new THREE.Vector3(0, -0.12, 0)), v = dir.multiplyScalar(19).add(new THREE.Vector3(0, 3, 0));
+    launch(o, v, false);
+    if (inMp() && C.fx) C.fx('gren', { o: [r2(o.x), r2(o.y), r2(o.z)], v: [r2(v.x), r2(v.y), r2(v.z)] });
+    try { Sound.play('equip', 'pistol'); } catch (e) {}
+  }
+  function launch(o, v, remote) {
+    const m = grenadeModel(); m.scale.setScalar(2.2); m.position.copy(o); sceneAdd(m);
+    flying.push({ m, v: v.clone(), t: 0, remote, map: mapId });
+  }
+  addEventListener('mousedown', e => {
+    if (!held || e.button !== 0 || state !== 'playing') return;
+    e.stopImmediatePropagation(); e.preventDefault(); throwGrenade();
+  }, true);
+  const ray = new THREE.Raycaster(), _d = new THREE.Vector3();
+  function stepFlying(dt) {
+    for (let i = flying.length - 1; i >= 0; i--) {
+      const F = flying[i], p = F.m.position; F.t += dt;
+      if (F.map !== mapId || F.t > 6) { scene.remove(F.m); flying.splice(i, 1); continue; }
+      const step = F.v.length() * dt; _d.copy(F.v).normalize();
+      let hitP = null;
+      ray.set(p, _d); ray.far = step + 0.15; ray.camera = camera;
+      let h = null; try { h = ray.intersectObjects(solids, false)[0]; } catch (e) {} if (h) hitP = h.point.clone().addScaledVector(_d, -0.15);
+      if (!hitP && p.y + F.v.y * dt <= floorBase + 0.08) hitP = new THREE.Vector3(p.x + F.v.x * dt, floorBase + 0.1, p.z + F.v.z * dt);
+      if (!hitP) for (const e of enemies) if (e.position.distanceTo(p) < e.userData.size * 0.5 + 0.35) { hitP = p.clone(); break; }
+      if (!hitP && inMp() && F.t > 0.12) for (const w of (C.getViews ? C.getViews() : [])) if (Math.hypot(w.x - p.x, w.z - p.z) < 0.7 && p.y > w.y && p.y < w.y + 1.9) { hitP = p.clone(); break; }
+      if (hitP) { scene.remove(F.m); flying.splice(i, 1); if (!F.remote) goBoom('grenade', hitP); continue; }
+      F.v.y -= 18 * dt; p.addScaledVector(F.v, dt); F.m.rotation.x += dt * 9; F.m.rotation.z += dt * 5;
+    }
+  }
+
+  // landmines: N sets one down; armed after 1.5 s; cubes (and, online, players on the other side) set it off
+  const mines = [];
+  function placeMine() {
+    if (!owns('landmine')) { say('No landmine', 'Buy it once in the Shop\'s Bombs section'); return; }
+    if (!bombOk('landmine')) { if (inMp()) say('Not in your loadout', 'Pick the Landmine as your bomb before the match'); return; }
+    if (prepOn()) { say('Not yet', 'Wait for the fighting to start'); return; }
+    const left = readyAt.landmine - performance.now(); if (left > 0) { say('Landmine not ready', Math.ceil(left / 1000) + ' s'); return; }
+    if (!player.onGround) { say('Stand on the ground', 'to set a landmine down'); return; }
+    readyAt.landmine = performance.now() + CD.landmine;
+    const x = player.pos.x - Math.sin(player.yaw) * 1.2, z = player.pos.z - Math.cos(player.yaw) * 1.2, y = player.pos.y;
+    const own = mines.filter(M => M.own); if (own.length >= 2) dropMine(own[0]);
+    const id = Math.random().toString(36).slice(2, 8);
+    addMine(id, me(), x, y, z, true);
+    if (inMp() && C.fx) C.fx('mine', { id, p: [r2(x), r2(y), r2(z)] });
+    try { Sound.play('deploy'); } catch (e) {}
+    say('Landmine down', 'Armed in 1.5 seconds');
+  }
+  function addMine(id, owner, x, y, z, own) {
+    const m = mineModel(); m.scale.setScalar(1.6); m.position.set(x, y + 0.04, z); sceneAdd(m);
+    mines.push({ id, owner, own, m, x, y, z, armAt: performance.now() + 1500, map: mapId, mode: gameMode });
+  }
+  function dropMine(M) { const i = mines.indexOf(M); if (i >= 0) mines.splice(i, 1); scene.remove(M.m); }
+  function stepMines() {
+    const t = performance.now();
+    for (const M of [...mines]) {
+      if (M.map !== mapId || M.mode !== gameMode || state === 'menu' || (M.mode === 'mp' && !inMp())) { dropMine(M); continue; }
+      M.m.userData.led.visible = t < M.armAt ? true : Math.floor(t / 500) % 2 === 0;
+      if (!M.own || t < M.armAt) continue;
+      let go = false;
+      for (const e of enemies) { const u = e.userData; if (Math.hypot(e.position.x - M.x, e.position.z - M.z) < u.size * 0.5 + 0.55 && !(u.flyY > 0.5) && (u.air || 0) < 0.5) { go = true; break; } }
+      if (!go && inMp() && S().mode !== 'coop') {
+        const s = S(), mine = myTeam(), pl = C.getPlayers ? C.getPlayers() : [];
+        for (const w of (C.getViews ? C.getViews() : [])) {
+          const p = pl.find(q => q.id === w.id), foe = s.mode === 'ffa' || !p || !mine || p.team !== mine;
+          if (foe && Math.hypot(w.x - M.x, w.z - M.z) < 0.85 && Math.abs(w.y - M.y) < 1) { go = true; break; }
+        }
+      }
+      if (go) { dropMine(M); goBoom('landmine', new THREE.Vector3(M.x, M.y + 0.3, M.z), M.id); }
+    }
+  }
+  // what other players do with theirs
+  if (C) C.on('ufx', d => {
+    if (!d || !d.d || !inMp()) return;
+    const v = d.d, ok = a => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+    if (d.t === 'gren' && ok(v.o) && ok(v.v)) launch(new THREE.Vector3(...v.o), new THREE.Vector3(...v.v), true);
+    else if (d.t === 'bomb' && ok(v.p)) {
+      const P = new THREE.Vector3(...v.p);
+      const g = flying.filter(F => F.remote).sort((a, b) => a.m.position.distanceTo(P) - b.m.position.distanceTo(P))[0]; if (g && g.m.position.distanceTo(P) < 6) { scene.remove(g.m); flying.splice(flying.indexOf(g), 1); }
+      if (v.m) { const M = mines.find(x => x.id === v.m); if (M) dropMine(M); }
+      fxBoom(P);
+    } else if (d.t === 'mine' && ok(v.p) && typeof v.id === 'string') { if (!mines.some(M => M.id === v.id)) addMine(v.id.slice(0, 8), d.id, v.p[0], v.p[1], v.p[2], false); }
+  });
+  if (C && C.on) C.on('matchStart', () => { for (const M of [...mines]) dropMine(M); for (const F of flying) scene.remove(F.m); flying.length = 0; readyAt.grenade = readyAt.landmine = 0; });
+
+  addEventListener('keydown', e => {
+    if (state !== 'playing' || e.repeat) return;
+    const k = mapKey(e.code);
+    if (k === BIND_DEFAULTS.grenade) { e.stopImmediatePropagation(); holdGrenade(); }
+    else if (k === BIND_DEFAULTS.landmine) { e.stopImmediatePropagation(); placeMine(); }
+    else if (held && (k === 'Escape' || /^Digit|^Minus/.test(k))) putAway();
+  }, true);
+  // iPad: a grenade button (throws straight away) and a landmine button
+  const tg = document.createElement('button'); tg.id = 'tGrenade'; tg.className = 'tBomb'; tg.textContent = '💣'; document.body.appendChild(tg);
+  const tm = document.createElement('button'); tm.id = 'tMine'; tm.className = 'tBomb'; tm.textContent = '🧨'; document.body.appendChild(tm);
+  tg.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); if (!held) holdGrenade(); if (held) throwGrenade(); }, { passive: false });
+  tm.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); placeMine(); }, { passive: false });
+  const bar = document.createElement('div'); bar.id = 'bombBar'; document.body.appendChild(bar);
+
+  let last = performance.now();
+  function frame() {
+    requestAnimationFrame(frame);
+    const t = performance.now(), dt = Math.min(0.05, (t - last) / 1000); last = t;
+    if (state === 'playing') stepFlying(dt);
+    stepMines();
+    if (held) {
+      held.t += dt;
+      if (state !== 'playing' || weaponKey !== held.key) putAway();
+      else { const pin = heldVM.userData.pin, k = Math.min(1, held.t / 0.3); pin.position.set(-0.026 - k * 0.08, 0.075 + k * 0.05, 0); pin.visible = k < 1; heldVM.rotation.z = -0.2 * k; }
+    }
+    // the hint along the bottom
+    const parts = [];
+    if (state === 'playing') for (const k of BOMBS) if (bombOk(k)) {
+      const l = Math.ceil((readyAt[k] - t) / 1000);
+      parts.push(`<span${held && k === 'grenade' ? ' class="hold"' : ''}><kbd>${esc(keyName(bindOf(k)))}</kbd>${held && k === 'grenade' ? 'Click to throw' : NAME[k] + (l > 0 ? ' ' + l + ' s' : ' ready')}</span>`);
+    }
+    const html = parts.join(''); bar.classList.toggle('on', !!html); if (bar._h !== html) { bar._h = html; bar.innerHTML = html; }
+    const touch = (() => { try { return touchMode(); } catch (e) { return false; } })();
+    tg.classList.toggle('on', touch && state === 'playing' && bombOk('grenade'));
+    tm.classList.toggle('on', touch && state === 'playing' && bombOk('landmine'));
+  }
+  requestAnimationFrame(frame);
+
+  window.v2910 = { bombPick, friends, openFriends, showProfile, holdGrenade, throwGrenade, placeMine, mines, flying, get fState() { return fState; }, invite, joinRoom };
 })();
 </script>
 <template id="caCampaignIntro">
