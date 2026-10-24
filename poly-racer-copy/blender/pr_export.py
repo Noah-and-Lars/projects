@@ -198,8 +198,39 @@ def kind_of(m, opts):
     if d['emit'] is not None: return 'emit'
     return 'plain'
 
+
+def bake_vertex_ao(targets, occluders, samples=24, distance=1.6):
+    """Ambient occlusion baked into vertex colours in Cycles. targets: {name: (vpos (n,3), inv (m,))}; occluders: list of
+    (n,3,3) triangle arrays. All in the same frame. Returns {name: ao (n,) in 0..1}."""
+    import bmesh
+    sc = bpy.context.scene; objs = []
+    def mesh_obj(name, verts, faces):
+        me = bpy.data.meshes.new(name); me.from_pydata([tuple(v) for v in verts], [], [tuple(f) for f in faces]); me.update()
+        ob = bpy.data.objects.new(name, me); sc.collection.objects.link(ob); return ob
+    for i, T in enumerate(occluders):
+        T = T.reshape(-1, 3); mesh_obj('ao_occ%d' % i, T, np.arange(len(T)).reshape(-1, 3))
+        objs.append(bpy.data.objects['ao_occ%d' % i])
+    out = {}
+    old_engine = sc.render.engine; sc.render.engine = 'CYCLES'; sc.cycles.samples = samples; sc.cycles.device = 'CPU'
+    if sc.world is None: sc.world = bpy.data.worlds.new('ao_world')
+    sc.world.light_settings.distance = distance
+    sc.render.bake.use_selected_to_active = False; sc.render.bake.target = 'VERTEX_COLORS'
+    for name, (vpos, inv) in targets.items():
+        ob = mesh_obj('ao_' + name, vpos, inv.reshape(-1, 3)); objs.append(ob)
+        ob.data.color_attributes.new('ao', 'FLOAT_COLOR', 'POINT')
+        for o in bpy.data.objects: o.select_set(False)
+        ob.select_set(True); bpy.context.view_layer.objects.active = ob
+        bpy.ops.object.bake(type='AO', target='VERTEX_COLORS')
+        ca = ob.data.color_attributes['ao']; n = len(ob.data.vertices); vals = np.empty(n * 4); ca.data.foreach_get('color', vals)
+        out[name] = np.clip(vals.reshape(n, 4)[:, 0], 0, 1)
+    for ob in objs:
+        me = ob.data; bpy.data.objects.remove(ob); bpy.data.meshes.remove(me)
+    sc.render.engine = old_engine
+    return out
+
 def write_fcm(parts, path, prefix, meta=None):
     hdr = {'parts': {}}; blobs = []; off = 0
+    built = []   # (pname, vpos, vn, vc, vu, inv, groups)
     for part in parts:
         if not part.chunks: continue
         pname = part.name; size = TEX_MAX.get(pname, 1024)
@@ -253,6 +284,25 @@ def write_fcm(parts, path, prefix, meta=None):
         keyv = np.c_[np.round(pos * 4000), np.round(nor * 60), np.round(cols * 255), np.round(uvs * 4000)]
         _, first, inv = np.unique(keyv, axis=0, return_index=True, return_inverse=True); inv = inv.reshape(-1).astype(np.int64)
         vpos = pos[first]; vn = nor[first]; vc = cols[first]; vu = uvs[first]
+        built.append((pname, vpos, vn, vc, vu, inv, groups))
+    # ambient occlusion in the vertices of the body and the detail, with the whole car (wheels on their hubs) as occluder
+    ao_of = {}
+    if not os.environ.get('PR_NO_AO'):
+        occ = {}
+        for pname, vpos, vn, vc, vu, inv, groups in built:
+            if pname in ('mid', 'lo', 'swheel'): continue
+            T = vpos[inv].reshape(-1, 3, 3)
+            if pname == 'wheel' and meta and meta.get('wheels'):
+                for i, (x, r, z) in enumerate(meta['wheels']):
+                    W = T.copy(); W[:, :, 0] = np.where(x < 0, -W[:, :, 0], W[:, :, 0]) + x; W[:, :, 1] += r; W[:, :, 2] += z; occ['wheel%d' % i] = W
+            else: occ[pname] = T
+        for pname, vpos, vn, vc, vu, inv, groups in built:
+            if pname not in ('body', 'det'): continue
+            try:   # the part occludes itself through its own mesh; the other parts are added as occluders
+                ao_of.update(bake_vertex_ao({pname: (vpos, inv)}, [T for k, T in occ.items() if k != pname]))
+                log('ambient occlusion baked into %s (mean %.2f)' % (pname, float(ao_of[pname].mean())))
+            except Exception as e: log('ambient occlusion bake failed:', e)
+    for pname, vpos, vn, vc, vu, inv, groups in built:
         blob = bytearray()
         o_pos = len(blob); blob += vpos.astype('<f4').tobytes()
         o_nor = len(blob); blob += np.clip(np.round(vn * 127), -127, 127).astype(np.int8).tobytes()
@@ -264,6 +314,10 @@ def write_fcm(parts, path, prefix, meta=None):
         blob += (inv.astype('<u4') if big else inv.astype('<u2')).tobytes()
         while len(blob) % 4: blob += b'\0'
         m = dict(v=int(len(vpos)), i=int(len(inv)), po=o_pos + off, no=o_nor + off, co=o_col + off, uo=o_uv + off, io=o_idx + off, i32=big, groups=groups)
+        if pname in ao_of:
+            o_ao = len(blob); blob += np.clip(np.round(ao_of[pname] * 255), 0, 255).astype(np.uint8).tobytes()
+            while len(blob) % 4: blob += b'\0'
+            m['ao'] = o_ao + off
         hdr['parts'][pname] = m; blobs.append(bytes(blob)); off += len(blob)
         log('part %-9s %7d tris %7d verts %2d groups %s' % (pname, len(inv) // 3, len(vpos), len(groups), ' '.join(sorted(set(g['k'] for g in groups)))))
     if meta: hdr['meta'] = meta
