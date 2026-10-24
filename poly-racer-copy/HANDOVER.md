@@ -19,17 +19,31 @@ changing anything here. The tool details for the car pipeline are in `blender/RE
 
 | Path | Size | What |
 |---|---|---|
-| `index.html` | 1.2 MB | the whole game, Three.js r128 inlined |
-| `models/` | 38 MB | nine cars (`<id>.fcm` + `tex/`), `credits.json` (generated) |
+| `index.html` | 1.3 MB | the whole game, Three.js r128 inlined |
+| `models/` | 30 MB | nine cars (`<id>.fcm` + `tex/`), `credits.json` (generated) |
 | `ultra/sky/` | 8 MB | photographed skies: `<key>_sky.jpg`, `<key>_env.hdr` (512x256 RGBE), `skies.json` |
 | `ultra/tex/` | 14 MB | Poly Haven ground and road textures (`_diff`, `_nor`, `_rough`), leaf, twig and grass cards |
-| `ultra/trees/` | 18 MB | six real trees (`.fcm` + atlas `.png`) |
+| `ultra/trees/` | 16 MB | six real trees (`.fcm` + atlas `.png`) |
 | `blender/` | <1 MB | every build tool and every patch script that changed `index.html` |
 
-Players on Low, Medium or High download about 39 MB. Ultra loads `ultra/` on top, about 78 MB in all.
+Players on Low, Medium or High download about 31 MB. Ultra loads `ultra/` on top, about 69 MB in all.
 
 ### Features added since 1.2, newest first
 
+- **Smaller models**: car and tree `.fcm` files store positions and uvs as 16-bit steps across each part's range
+  (`pq`, `uq` in the part header). `blender/fcm_pack.py` packs a built file; the loader reads both forms. A fresh
+  Blender export is unpacked until it is run through the packer.
+- **Photo mode on touch**: a Photo mode button in the pause menu; an on-screen bar and hold-to-move arrows; pinch.
+- **Motion blur on Ultra** (setting `mblur`): per-pixel camera motion from the depth and last frame's view, in the
+  composite pass. Off near the camera so your own car stays sharp.
+- **Headlights** (High and Ultra): a real `SpotLight` (`HEAD`) on the player's car at night, shadowed on Ultra, plus
+  a visible beam (`BEAM`) in rain, fog and snow. The light system's own soft headlight stays for the long throw.
+  The spotlight is always in the scene (dark by day) so the shaders never recompile.
+- **Damage look**: scratches fixed to the panels (streaks along the car, scuff, bare metal with a ragged edge) and
+  cracked glass on hard hits near a window (`crackGlass`, per-car glass materials with up to four impacts).
+- **Ultra reflections and rain**: screen-space reflections (`SSR_U`, `reflective(mat, kind)`) on the water and on
+  wet roads, from the Ultra depth pass and last frame's picture (reprojected). Rain adds puddles with raindrop
+  rings, rings on the water, darker and glossier kerbs, verges and ground (every tier), and more spray.
 - **Ultra water**: depth map of the terrain under it, pale clear shallows, moving shore foam, crossing wave
   layers, swell in deep water, Fresnel. Non-Ultra keeps the flat water. (`makeWater`, `WATER_U`)
 - **Ultra soft shadows**: percentage-closer soft shadows patched into `THREE.ShaderChunk.shadowmap_pars_fragment`
@@ -76,8 +90,11 @@ SHOT_INIT="localStorage.setItem('polyracer', JSON.stringify({settings:{quality:'
   pine forest track).
 - In the page, `__pr` is the debug handle (car, scene, camera, setPlayerCar, carById, loadTrack and more) and
   `__look(angle, dist, height, fov, tx, ty, tz)` holds the camera around the car.
-- **Known pitfall**: race views at High or Ultra crash the software renderer (swiftshader runs out). This is not a
-  game bug. Take garage-world shots with `__look` instead, or race views at Low/Medium.
+- **Known pitfalls**: `__pr.step(n)` runs whole frames, so a big `n` at High or Ultra takes many minutes in the
+  software renderer, and on a circuit it never returns before the race has started. To show a moving car, set
+  `race.state = 'racing'` on a time-trial track and give `__pr.car.v` a speed, then wait. A circuit loads with
+  `__pr.RM.load(def, opts)` and `__pr.RM.grid([...])` (see the rain test in the git history) and renders fine in
+  its ready state, HUD and all.
 - Nothing has been tested on a real GPU or a real phone. Frame rate is unknown.
 
 ## Pitfalls already hit (don't repeat them)
@@ -98,16 +115,17 @@ SHOT_INIT="localStorage.setItem('polyracer', JSON.stringify({settings:{quality:'
 
 Ranked by how much it changes what you see.
 
-1. **Reflections of cars and trees in the water and on wet roads.** Biggest remaining visual win.
-2. **Wet surfaces in rain**: darker asphalt, puddles, spray. The weather exists; surfaces don't react yet.
-3. **Headlight beams at night** that light the road with shadows.
-4. **Visible damage**: scratched paint and cracked glass where the car was hit.
-5. **Motion blur** while driving.
-6. **Small material fixes**: the Centenario (`super`) still has a leftover orange trim accent.
+Done since the first version of this file: reflections, rain surfaces, headlights, damage, motion blur, the
+Centenario trim, photo mode on touch and smaller models. Still open:
+
+1. **Reflections off-screen**: screen-space reflections can't show what isn't on screen (the sky's env map fills
+   in). Planar reflections for the water would fix that at the cost of a second render.
+6. **Van side window**: a jagged white patch shows in the window behind the van's front door (there since 2.3).
+   It is not the packing and not the cabin split: a rebuild with a narrower cabin box left it and added artifacts,
+   so it was reverted. Raycasts put it on body triangles at x 0.81..0.86, y 1.39..1.80, z 0.59..1.63 (game frame);
+   look at the source model's sliding door next.
 
 Not graphics:
 
 - **Publish** the copy to the site, alongside 1.2 (e.g. `poly-racer-copy/`) or replacing it. Ask the owner first.
-- **Photo mode on touch.**
-- **Smaller car downloads**: quantised geometry could roughly halve the 30 MB of `.fcm`.
 - **Test on a real GPU and phone**, especially Ultra's soft shadows and water.
