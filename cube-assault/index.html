@@ -697,7 +697,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div class="hero-guns"><i class="hcube" style="background:#7a1c4f">👥</i><i class="hcube" style="background:#3a3f46">💣</i><i class="hcube" style="background:#2c4a6f">🔭</i><i class="hcube" style="background:#6f5a2c">📦</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
-      <div><i>👥</i><span><b>Friends</b>Click a name in a multiplayer lobby to see their profile and add them. Invite your friends to your games from the Friends button.</span></div>
+      <div><i>👥</i><span><b>Friends</b>Click a name in a multiplayer lobby to see their profile and send a friend request. Invite your friends to your games from the Friends button.</span></div>
       <div><i>💣</i><span><b>Bombs</b>A new Shop section: the Grenade (pull the pin, click to throw, it blows up on impact) and the Landmine. Pick one as your bomb in the multiplayer loadout.</span></div>
       <div><i>🔭</i><span><b>Extreme Gun scope</b>Right-click or Z to look down a new scope.</span></div>
       <div><i>📻</i><span><b>Radio · 75 coins</b>Set it down and it plays 10 upbeat tracks. In multiplayer everyone hears the same song at the same time.</span></div>
@@ -741,7 +741,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <h4 class="nBal">⚖️ Balance changes</h4><ul class="nBalList">
         <li><b>Extreme Gun:</b> now has a scope (right-click or Z). Scoped in, it zooms like the Sniper Rifle and its shots go dead straight.</li>
         </ul><ul>
-        <li><b>Friends list:</b> a new Friends button on the main menu. In a multiplayer lobby, click anyone's name to see their profile picture, level, achievements and stats, and add them as a friend. When you're in a lobby, invite any friend who's online; they get a pop-up to join you.</li>
+        <li><b>Friends list:</b> a new Friends button on the main menu. In a multiplayer lobby, click anyone's name to see their profile picture, level, achievements and stats, and send them a friend request. They get a pop-up in the top right to Accept or Decline, and you only become friends if they accept. When you're in a lobby, invite any friend who's online; they get a pop-up to join you.</li>
         <li><b>New in the Shop: Bombs</b>, between Guns and Utilities. The <b>Grenade</b> (120 coins): press B to pull the pin, click to throw, and it blows up the moment it hits the ground, a wall, a cube or a player. The <b>Landmine</b> (150 coins): press N to set it down; it blows up when a cube or an enemy player steps on it. Both are bought once and recharge.</li>
         <li><b>Multiplayer loadout:</b> a new Bomb section. Pick one bomb to take into the match.</li>
         <li>Knife crates are cheaper: <b>50 coins</b>, or 10 for <b>400</b>.</li>
@@ -13739,6 +13739,11 @@ body.touch #hotbar { display: none !important; }
 #fInvite[hidden] { display: none; } #fInvite b { color: #fff; } #fInvite .row { display: flex; gap: 8px; margin-top: 10px; }
 #fInvite button { flex: 1; font: 700 14px/1 system-ui, sans-serif; border-radius: 9px; padding: 10px; cursor: pointer; border: 1px solid rgba(255, 255, 255, .16); color: #fff; background: rgba(255, 255, 255, .08); }
 #fInvite button.go { background: #db2777; border-color: #db2777; }
+.fReqBox { position: fixed; top: 16px; right: 16px; z-index: 81; width: min(330px, calc(100vw - 32px)); border-radius: 14px; background: #12151c; border: 1px solid rgba(255, 255, 255, .14);
+  border-left: 4px solid #f472b6; box-shadow: 0 16px 50px rgba(0, 0, 0, .55); padding: 14px; color: #eef1f6; font: 14px/1.4 system-ui, sans-serif; animation: menuIn .25s ease; }
+.fReqBox[hidden] { display: none; } .fReqBox b { color: #fff; } .fReqBox .row { display: flex; gap: 8px; margin-top: 10px; }
+.fReqBox button { flex: 1; font: 700 14px/1 system-ui, sans-serif; border-radius: 9px; padding: 10px; cursor: pointer; border: 1px solid rgba(255, 255, 255, .16); color: #fff; background: rgba(255, 255, 255, .08); }
+.fReqBox button.go { background: #16a34a; border-color: #16a34a; } .fReqBox button.no { background: #b91c1c; border-color: #b91c1c; }
 .mpP .nm[data-pid] { cursor: pointer; } .mpP .nm[data-pid]:hover { text-decoration: underline; }
 .classicNote { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; background: rgba(250, 204, 21, .12); border: 1px solid rgba(250, 204, 21, .35); color: #fde68a; font-size: 13px; text-align: left; }
 /* bombs: the hint, and the iPad buttons */
@@ -13793,11 +13798,11 @@ body.touch #hotbar { display: none !important; }
       <div class="pfHead"><img alt="" src="${esc(avUrl(c.a))}"><div><b>${esc(name || 'Player')}</b><span class="pfLvl">Level ${c.l || 1}</span></div></div>
       <div class="pfStats"><div><b>${(c.k || 0).toLocaleString()}</b><span>Cubes destroyed</span></div><div><b>${c.b || 0}</b><span>Best wave</span></div><div><b>${c.ac || 0}/${ACH_N}</b><span>Achievements</span></div>
         <div><b>${acc}</b><span>Accuracy</span></div><div><b>${(c.sh || 0).toLocaleString()}</b><span>Shots fired</span></div><div><b>${fmtTime(c.t)}</b><span>Played</span></div></div>
-      <div class="fBtns">${mine ? '' : !c.f ? '<button class="btn" disabled>Can\'t add (older version)</button>' : fr ? '<button class="btn secondary" data-pf="rm">Remove friend</button>' : '<button class="btn" data-pf="add">Add friend</button>'}<button class="btn secondary" data-pf="close">Close</button></div>`, '#f472b6');
+      <div class="fBtns">${mine ? '' : !c.f ? '<button class="btn" disabled>Can\'t add (older version)</button>' : fr ? '<button class="btn secondary" data-pf="rm">Remove friend</button>' : sent.has(c.f) ? '<button class="btn" disabled>Request sent</button>' : '<button class="btn" data-pf="add">Add friend</button>'}<button class="btn secondary" data-pf="close">Close</button></div>`, '#f472b6');
     m.querySelector('.fBox').onclick = e => {
       const b = e.target.closest('[data-pf]'); if (!b) return; click();
       if (b.dataset.pf === 'close') { m.hidden = true; return; }
-      if (b.dataset.pf === 'add' && c.f && !isFriend(c.f) && friends().length < 60) { friends().push({ f: c.f, n: String(name || 'Player').slice(0, 16), a: c.a || '', l: c.l || 1, card: c }); saveProfile(); say('Friend added', name); }
+      if (b.dataset.pf === 'add' && c.f && !isFriend(c.f)) sendRequest(c.f, name);
       if (b.dataset.pf === 'rm') { profile.friends = friends().filter(x => x.f !== c.f); saveProfile(); }
       showProfile(c, name); paintFriends();
     };
@@ -13825,6 +13830,10 @@ body.touch #hotbar { display: none !important; }
       const ch = c.channel('ca-friends', { config: { presence: { key: fid() }, broadcast: { self: false } } });
       ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(), o = {}; for (const k in st) { const m = st[k] && st[k][0]; if (m && m.f) o[m.f] = m; } fState = o; paintFriends(); });
       ch.on('broadcast', { event: 'inv' }, ({ payload: p }) => { if (p && p.to === fid() && /^[A-Z2-9]{5}$/.test(p.code || '')) showInvite(p); });
+      const forMe = p => p && p.to === fid() && typeof p.from === 'string' && p.from.length <= 12;
+      ch.on('broadcast', { event: 'freq' }, ({ payload: p }) => { if (forMe(p)) showRequest(p); });
+      ch.on('broadcast', { event: 'facc' }, ({ payload: p }) => { if (forMe(p) && sent.has(p.from)) { sent.delete(p.from); addFriend(p.from, p.n, p.card); if ($('pfModal')) $('pfModal').hidden = true; say('Friend request accepted', p.n + ' is now your friend'); } });
+      ch.on('broadcast', { event: 'fdec' }, ({ payload: p }) => { if (forMe(p) && sent.has(p.from)) { sent.delete(p.from); say('Friend request declined', p.n); } });
       ch.subscribe(st => { if (st === 'SUBSCRIBED') { fch = ch; fTracked = ''; retrack(); } });
     }).catch(() => {});
   }
@@ -13832,6 +13841,32 @@ body.touch #hotbar { display: none !important; }
   setTimeout(joinFriends, 2500);
   setInterval(retrack, 4000);
 
+  // friend requests: Add friend sends one; the other player gets a pop-up with Accept and Decline, and only Accept
+  // makes you friends (on both lists)
+  const sent = new Set();
+  const addFriend = (f, n, card) => { if (!f || isFriend(f) || f === fid() || friends().length >= 60) return; friends().push({ f, n: String(n || 'Player').slice(0, 16), a: (card && card.a) || '', l: (card && card.l) || 1, card: card || {} }); saveProfile(); paintFriends(); };
+  const fsend = (event, payload) => { if (fch) fch.send({ type: 'broadcast', event, payload: { ...payload, from: fid(), n: String(profile.name || 'Player').slice(0, 16), card: caMyCard() } }).catch(() => {}); };
+  function sendRequest(f, name) {
+    if (!fch) { say('Can\'t send it right now', 'Friends are offline. Try again in a moment'); return; }
+    sent.add(f); fsend('freq', { to: f }); say('Friend request sent', name);
+  }
+  function showRequest(p) {
+    if (isFriend(p.from)) { fsend('facc', { to: p.from }); return; } // already friends on this side: just say yes
+    let t = $('fReq'); if (!t) { t = document.createElement('div'); t.id = 'fReq'; t.className = 'fReqBox'; document.body.appendChild(t); }
+    const ask = () => {
+      t.innerHTML = `👥 <b>${esc(p.n)}</b> sent you a friend request.<div class="row"><button class="go" data-rq="yes">Accept</button><button data-rq="no">Decline</button></div>`;
+      t.onclick = e => { const b = e.target.closest('[data-rq]'); if (!b) return; click();
+        if (b.dataset.rq === 'yes') { addFriend(p.from, p.n, p.card); fsend('facc', { to: p.from }); t.hidden = true; say('Friend added', p.n); }
+        else sure(); };
+    };
+    const sure = () => {
+      t.innerHTML = `<b>Are you sure?</b><br>Having friends is better: you can invite <b>${esc(p.n)}</b> to your games and see when they're online.<div class="row"><button data-rq="back">Go back</button><button class="no" data-rq="dec">Yes, decline</button></div>`;
+      t.onclick = e => { const b = e.target.closest('[data-rq]'); if (!b) return; click();
+        if (b.dataset.rq === 'back') ask(); else { fsend('fdec', { to: p.from }); t.hidden = true; } };
+    };
+    ask(); t.hidden = false; try { Sound.play('buy'); } catch (e) {}
+    try { if (document.pointerLockElement && state !== 'playing') document.exitPointerLock(); } catch (e) {}
+  }
   function invite(F) {
     const code = roomCode(); if (!fch || !code) return;
     fch.send({ type: 'broadcast', event: 'inv', payload: { to: F.f, from: fid(), n: String(profile.name || 'Player').slice(0, 16), code, pw: roomPw().slice(0, 24), v: VERSION } }).catch(() => {});
@@ -14164,7 +14199,7 @@ body.touch #hotbar { display: none !important; }
   }
   requestAnimationFrame(frame);
 
-  window.v2910 = { bombPick, friends, openFriends, showProfile, holdGrenade, throwGrenade, placeMine, mines, flying, get fState() { return fState; }, invite, joinRoom };
+  window.v2910 = { sendRequest, bombPick, friends, openFriends, showProfile, holdGrenade, throwGrenade, placeMine, mines, flying, get fState() { return fState; }, invite, joinRoom };
 })();
 </script>
 <template id="caCampaignIntro">
