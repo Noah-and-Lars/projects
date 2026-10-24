@@ -66,6 +66,11 @@
   #toast.show { opacity:1; }
   #keysHint { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); font-size:12px; color:#dfe6f2; background:#0c111d99; padding:6px 12px; white-space:nowrap; }
   #lobChat:empty::before { content:'Nobody has said anything yet. Say hello.'; color:var(--muted); font-size:12px; }
+  #photoBar { position:fixed; left:50%; bottom:40px; transform:translateX(-50%); display:flex; gap:6px; flex-wrap:wrap; justify-content:center; z-index:31; max-width:calc(100vw - 32px); }
+  #photoBar button, #photoPad button { font:600 13px/1 system-ui, sans-serif; color:#fff; background:#0c111dcc; border:1px solid #ffffff33; padding:10px 12px; min-height:40px; touch-action:none; }
+  #photoBar button.on { background:#2a5bd7; }
+  #photoPad { position:fixed; right:16px; bottom:96px; display:grid; grid-template-columns:repeat(3, 48px); gap:6px; z-index:31; }
+  #photoPad button { width:48px; height:48px; padding:0; font-size:16px; }
   #photoHint { position:fixed; left:50%; bottom:12px; transform:translateX(-50%); font-size:12px; color:#dfe6f2; background:#0c111d99; padding:6px 12px; white-space:nowrap; z-index:30; }
   body.photo :is(#hud, #fps, #keysHint, #skillPop, #revHint, #ready, #goFlash, #warn, #toast, #vignette, .screen, #tLeft, #tRight, #tBrake, #tGas, #tHand, #tPause, #tCp, #tRestart, #tCam) { visibility:hidden !important; }
   #goFlash { position:absolute; top:34%; left:50%; transform:translate(-50%,-50%); font:900 italic 64px/1 system-ui, sans-serif; color:var(--acc); text-shadow:0 4px 30px #0009; opacity:0; }
@@ -463,7 +468,15 @@
   <div id="goFlash">GO!</div>
   <div id="warn" hidden><b id="warnTitle">OFF THE TRACK</b><span id="warnText"></span></div>
   <div id="toast"></div>
-  <div id="photoHint" hidden>Photo mode · drag to orbit · wheel to zoom · Shift + wheel for the lens · Enter saves a picture · F9 to leave</div>
+  <div id="photoBar" hidden>
+  <button data-ph="close">Close</button><button data-ph="free">Free camera</button><button data-ph="run">Run the world</button>
+  <button data-ph="dof-" class="ultraOnly">Focus blur &minus;</button><button data-ph="dof+" class="ultraOnly">Focus blur +</button><button data-ph="save">Save picture</button>
+</div>
+<div id="photoPad" hidden>
+  <button data-hold="KeyQ" title="Down">&#8595;</button><button data-hold="KeyW" title="Forward">&#9650;</button><button data-hold="KeyE" title="Up">&#8593;</button>
+  <button data-hold="KeyA" title="Left">&#9664;</button><button data-hold="KeyS" title="Back">&#9660;</button><button data-hold="KeyD" title="Right">&#9654;</button>
+</div>
+<div id="photoHint" hidden>Photo mode · drag to orbit · wheel to zoom · Shift + wheel for the lens · Enter saves a picture · F9 to leave</div>
   <div id="keysHint"><kbd>Space</kbd> drift · <kbd>Shift</kbd> rev · <kbd>R</kbd> respawn · <kbd>Backspace</kbd> restart · <kbd>C</kbd> camera · <kbd>L</kbd> line · <kbd>Esc</kbd> pause</div>
   <div class="touch">
     <div class="tbtn" id="tLeft">◀</div>
@@ -550,6 +563,7 @@
     <div class="opt"><div><label>Speedometer</label><small>The dial, or the digital one from before</small></div><div class="seg" data-set="speedo"><button data-v="analog">Dial</button><button data-v="digital">Digital</button></div></div>
     <div class="opt"><div><label>FPS counter</label></div><div class="seg" data-set="fps"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
     <div class="opt"><div><label>Driving line</label><small>Arrows on the road in races: when to brake and turn (L while driving)</small></div><div class="seg" data-set="line"><button data-v="full">Full</button><button data-v="brake">Braking</button><button data-v="off">Off</button></div></div>
+    <div class="opt"><div><label>Motion blur</label><small>Ultra only: the scenery streaks past at speed</small></div><div class="seg" data-set="mblur"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
     <div class="opt"><div><label>Damage</label><small>Scratches and dents (looks only)</small></div><div class="seg" data-set="damage"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
     <div class="opt"><div><label>Menu music</label></div><div class="seg" data-set="menuMusic"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
     <div class="opt"><div><label>Race music</label><small>Plays from the start of a race</small></div><select id="raceSong" style="font:inherit;background:#0d1220;color:#fff;border:1px solid #ffffff26;padding:6px"></select></div>
@@ -572,6 +586,7 @@
       <button class="btn" data-act="resume">Resume</button>
       <button class="btn ghost" data-act="restart">Restart</button>
       <button class="btn ghost" data-act="cam">Camera</button>
+      <button class="btn ghost" data-act="photo">Photo mode</button>
       <button class="btn ghost" data-act="settings" id="pauseSettings">Settings</button>
       <button class="btn ghost" data-act="tracks" id="pauseTracks">Tracks</button>
       <button class="btn ghost" data-act="home">Menu</button>
@@ -898,7 +913,7 @@ function saveGhost(id, g) {
 
 const COARSE = matchMedia('(pointer: coarse)').matches;
 const settings = Object.assign({ quality: COARSE ? 'medium' : 'high', volume: 0.8, units: 'kmh', ghost: true, minimap: true,
-  speedo: 'analog', fps: false, line: 'brake', damage: true, menuMusic: true, raceSong: 'shuffle', musicVol: 0.55 }, saved.settings || {});
+  speedo: 'analog', fps: false, line: 'brake', damage: true, mblur: true, menuMusic: true, raceSong: 'shuffle', musicVol: 0.55 }, saved.settings || {});
 saved.settings = settings;
 const QUALITY = {
   low:    { pr: 1,    aa: false, shadows: 0,    trees: 2500,  tufts: 0,    clouds: 0, mirror: 1, far: 2600, lights: 8,  bloom: false },
@@ -5189,7 +5204,9 @@ function parseFCM(buf) {
   const lin = new Float32Array(256); for (let i = 0; i < 256; i++) lin[i] = Math.pow(i / 255, 2.2);
   for (const k in hdr.parts) {
     const p = hdr.parts[k], n = p.v;
-    const pos = new Float32Array(buf.slice(base + p.po, base + p.po + n * 12)), ni = new Int8Array(buf, base + p.no, n * 3), ci = new Uint8Array(buf, base + p.co, n * 3);
+    // packed models keep positions and uvs as 16-bit steps across the part's range (pq, uq: the minimum, then the step)
+    const deq = (off, cnt, c, q) => { const u = new Uint16Array(buf.slice(off, off + cnt * c * 2)), f = new Float32Array(cnt * c); for (let i = 0; i < cnt * c; i++) { const a = i % c; f[i] = q[a] + u[i] * q[c + a]; } return f; };
+    const pos = p.pq ? deq(base + p.po, n, 3, p.pq) : new Float32Array(buf.slice(base + p.po, base + p.po + n * 12)), ni = new Int8Array(buf, base + p.no, n * 3), ci = new Uint8Array(buf, base + p.co, n * 3);
     const nor = new Float32Array(n * 3), ao = p.ao !== undefined ? new Uint8Array(buf, base + p.ao, n) : null, colr = new Float32Array(n * (ao ? 4 : 3));
     for (let i = 0; i < n * 3; i++) nor[i] = ni[i] / 127;
     // vertex colours (made linear); with baked occlusion they carry it in a fourth channel
@@ -5200,7 +5217,7 @@ function parseFCM(buf) {
     const idx = p.i32 ? new Uint32Array(buf.slice(base + p.io, base + p.io + p.i * 4)) : new Uint16Array(buf.slice(base + p.io, base + p.io + p.i * 2));
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.BufferAttribute(colr, ao ? 4 : 3));
-    if (p.uo !== undefined) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(buf.slice(base + p.uo, base + p.uo + n * 8)), 2));
+    if (p.uo !== undefined) g.setAttribute('uv', new THREE.BufferAttribute(p.uq ? deq(base + p.uo, n, 2, p.uq) : new Float32Array(buf.slice(base + p.uo, base + p.uo + n * 8)), 2));
     g.setIndex(new THREE.BufferAttribute(idx, 1));
     g.computeBoundingBox(); g.computeBoundingSphere();
     g.userData.shared = true;
@@ -7751,7 +7768,7 @@ const ui = (() => {
     if (k === 'cam') { camMode = +v; saved.cam = camMode; }
     else if (k === 'quality') {
       if (settings.quality !== v) { settings.quality = v; store(); loading(true, 'Graphics: ' + v[0].toUpperCase() + v.slice(1), 'Restarting'); setTimeout(() => location.reload(), 50); return; }
-    } else if (k === 'ghost' || k === 'minimap' || k === 'fps' || k === 'damage' || k === 'menuMusic') settings[k] = v === '1';
+    } else if (k === 'ghost' || k === 'minimap' || k === 'fps' || k === 'damage' || k === 'menuMusic' || k === 'mblur') settings[k] = v === '1';
     else settings[k] = v;
     store();
     if (k === 'menuMusic') music.screen(cur);
@@ -7810,6 +7827,7 @@ const ui = (() => {
         if (cur === 'garage' && garageFrom === 'lobby') { show('lobby'); break; }
         home(); break;
       case 'resume': resume(); break;
+      case 'photo': if (race.track) photo.toggle(); break;
       case 'restart': if (RM.online) { ui.toast('No restarts in an online race'); break; } music.duck(false); restart(); snapCamera(); break;
       case 'cam': setCamMode(camMode + 1); break;
       case 'next': play(Math.min(TRACKS.length - 1, race.idx + 1)); break;
@@ -8950,10 +8968,11 @@ const post = (() => {
     fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(0.72, 1.0, l), 1.0); }' });
   const blur = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, d: { value: new THREE.Vector2() } }, vertexShader: VS, depthTest: false, depthWrite: false,
     fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * 0.227; c += (texture2D(t, vUv + d * 1.385).rgb + texture2D(t, vUv - d * 1.385).rgb) * 0.316; c += (texture2D(t, vUv + d * 3.231).rgb + texture2D(t, vUv - d * 3.231).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }' });
-  const comp = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, b: { value: null }, k: { value: 0.55 }, ao: { value: null }, aoK: { value: 0 }, dof: { value: null }, tD: { value: null }, dofOn: { value: 0 }, focus: { value: 10 }, range: { value: 6 }, near: { value: 0.3 }, far: { value: 1000 }, lens: { value: 0 }, sunUV: { value: new THREE.Vector2(-9, -9) }, sunCol: { value: new THREE.Color() }, time: { value: 0 }, res: { value: new THREE.Vector2(1, 1) } }, vertexShader: VS, depthTest: false, depthWrite: false,
+  const comp = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, b: { value: null }, k: { value: 0.55 }, ao: { value: null }, aoK: { value: 0 }, dof: { value: null }, tD: { value: null }, dofOn: { value: 0 }, focus: { value: 10 }, range: { value: 6 }, near: { value: 0.3 }, far: { value: 1000 }, lens: { value: 0 }, mb: { value: 0 }, mbIP: { value: new THREE.Matrix4() }, mbIV: { value: new THREE.Matrix4() }, mbPrev: { value: new THREE.Matrix4() }, sunUV: { value: new THREE.Vector2(-9, -9) }, sunCol: { value: new THREE.Color() }, time: { value: 0 }, res: { value: new THREE.Vector2(1, 1) } }, vertexShader: VS, depthTest: false, depthWrite: false,
     fragmentShader: `#include <packing>
 uniform sampler2D t; uniform sampler2D b; uniform float k; uniform sampler2D ao; uniform float aoK; uniform sampler2D dof; uniform sampler2D tD; uniform float dofOn; uniform float focus; uniform float range; uniform float near; uniform float far; varying vec2 vUv;
 uniform float lens; uniform vec2 sunUV; uniform vec3 sunCol; uniform float time; uniform vec2 res;
+uniform float mb; uniform mat4 mbIP; uniform mat4 mbIV; uniform mat4 mbPrev;
 float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main(){
   vec3 c;
@@ -8962,6 +8981,19 @@ void main(){
     vec2 off = (vUv - 0.5) * 0.0022;
     c = vec3(texture2D(t, vUv + off).r, texture2D(t, vUv).g, texture2D(t, vUv - off).b);
   } else c = texture2D(t, vUv).rgb;
+  if (mb > 0.0) {
+    // where this pixel was last frame: its depth back to a world point, then through the last frame's camera
+    float dd = unpackRGBAToDepth(texture2D(tD, vUv));
+    vec4 vp = mbIP * vec4(vUv * 2.0 - 1.0, dd * 2.0 - 1.0, 1.0); vp /= vp.w;
+    vec4 pc = mbPrev * (mbIV * vp);
+    vec2 vel = (vUv - (pc.xy / pc.w * 0.5 + 0.5)) * mb * smoothstep(7.0, 16.0, -vp.z);
+    float vl = length(vel); if (vl > 0.035) vel *= 0.035 / vl;
+    if (vl > 0.0015 && pc.w > 0.0) {
+      vec3 acc = c;
+      for (int i = 1; i < 8; i++) acc += texture2D(t, vUv - vel * (float(i) / 7.0 - 0.5)).rgb;
+      c = acc / 8.0;
+    }
+  }
   c *= mix(1.0, texture2D(ao, vUv).r, aoK);
   if (dofOn > 0.5) {
     // depth of field: the picture goes soft away from the focus distance, like a camera with a wide aperture
@@ -9080,6 +9112,9 @@ void main() {
         // keep this picture and where it was seen from, for the next frame's reflections
         SSR_U.ssrOn.value = 0;
         copy.uniforms.t.value = rt.texture; pass(copy, sC); sFilled = true;
+        const mbU = comp.uniforms, moving = settings.mblur && race.state === 'racing' && !photo.on && !cine.on;
+        mbU.mb.value = moving && sFilled ? 0.55 : 0;
+        if (mbU.mb.value) { mbU.mbPrev.value.copy(SSR_U.ssrPVP.value); mbU.mbIP.value.copy(c.projectionMatrixInverse); mbU.mbIV.value.copy(c.matrixWorld); }
         SSR_U.ssrPVP.value.multiplyMatrices(c.projectionMatrix, sVP.copy(c.matrixWorldInverse));
       }
       bright.uniforms.t.value = rt.texture; pass(bright, bA);
@@ -9311,6 +9346,9 @@ const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: fals
     if (!this.on) { this.run = false; this.free = false; this.keys = {}; }
     const hint = $('photoHint'); if (hint.parentNode !== document.body) document.body.appendChild(hint);   // out of the HUD, which photo mode hides
     hint.hidden = !this.on; if (this.on) this.hint();
+    for (const id of ['photoBar', 'photoPad']) { const el = $(id); if (el.parentNode !== document.body) document.body.appendChild(el); }
+    $('photoBar').hidden = !this.on; $('photoPad').hidden = !this.on || !this.free;
+    for (const b of document.querySelectorAll('#photoBar .ultraOnly')) b.hidden = !Q.ultra;
     if (this.on) {
       this.a = Math.atan2(camera.position.z - car.p.z, camera.position.x - car.p.x); this.d = Math.max(4, Math.min(30, Math.hypot(camera.position.x - car.p.x, camera.position.z - car.p.z)));
       this.h = camera.position.y - car.p.y; this.fov = camera.fov;
@@ -9319,10 +9357,15 @@ const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: fals
   // free flight: the camera goes where the keys take it
   setFree(on) {
     this.free = on;
+    $('photoPad').hidden = !this.on || !on;
     if (on) { this.pos.copy(camera.position); const d = camera.getWorldDirection(_v[9]); this.yaw = Math.atan2(d.x, d.z); this.pitch = Math.asin(Math.max(-1, Math.min(1, d.y))); }
     this.hint();
   },
+  dofStep(d) { const steps = [0, 2, 4, 8, 16, 32]; let i = steps.indexOf(this.dof); i = Math.max(0, Math.min(steps.length - 1, i + d)); this.dof = steps[i]; this.hint(); },
   hint() {
+    const fb = document.querySelector('#photoBar [data-ph=free]'), rb = document.querySelector('#photoBar [data-ph=run]');
+    if (fb) { fb.textContent = this.free ? 'Orbit camera' : 'Free camera'; rb.textContent = this.run ? 'Pause the world' : 'Run the world'; rb.classList.toggle('on', this.run); }
+    if (COARSE) { $('photoHint').textContent = (this.free ? 'Drag to look · arrows to move · pinch to fly' : 'Drag to orbit · pinch to zoom') + (Q.ultra && this.dof ? ' · focus blur ' + this.dof + ' m' : ''); return; }
     $('photoHint').textContent = (this.free ? 'Free camera · W A S D move, Q E up and down, Shift fast, drag to look' : 'Orbit · drag to orbit the car, wheel to zoom') +
       ' · F ' + (this.free ? 'orbit' : 'free camera') + ' · Space ' + (this.run ? 'pause' : 'run') + ' the world' + (Q.ultra ? ' · [ ] depth of field' + (this.dof ? ' ' + this.dof.toFixed(0) + ' m' : ' off') : '') + ' · Shift + wheel lens · Enter saves · F9 leaves';
   },
@@ -9359,6 +9402,35 @@ const photo = { on: false, a: 2.3, h: 0.9, d: 8, fov: 34, drag: null, save: fals
     else { photo.a = photo.drag.a - (e.clientX - photo.drag.x) * 0.006; photo.h = Math.max(-0.5, Math.min(14, photo.drag.h + (e.clientY - photo.drag.y) * 0.02)); }
   });
   el.addEventListener('pointerup', () => { photo.drag = null; });
+  const pts = new Map(); let pinch = 0;
+  el.addEventListener('pointerdown', e => { if (photo.on) pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
+  el.addEventListener('pointermove', e => {
+    if (!photo.on || !pts.has(e.pointerId)) return;
+    pts.get(e.pointerId).x = e.clientX; pts.get(e.pointerId).y = e.clientY;
+    if (pts.size !== 2) { pinch = 0; return; }
+    photo.drag = null;
+    const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinch) {
+      if (photo.free) photo.pos.addScaledVector(_v[9].set(Math.sin(photo.yaw) * Math.cos(photo.pitch), Math.sin(photo.pitch), Math.cos(photo.yaw) * Math.cos(photo.pitch)), (d - pinch) * 0.03);
+      else photo.d = Math.max(2.5, Math.min(40, photo.d * pinch / d));
+    }
+    pinch = d;
+  });
+  for (const ev of ['pointerup', 'pointercancel']) el.addEventListener(ev, e => { pts.delete(e.pointerId); pinch = 0; });
+  // the bar and the arrows
+  $('photoBar').addEventListener('click', e => {
+    const b = e.target.closest('[data-ph]'); if (!b) return;
+    const k = b.dataset.ph;
+    if (k === 'close') photo.toggle();
+    else if (k === 'free') photo.setFree(!photo.free);
+    else if (k === 'run') { photo.run = !photo.run; photo.hint(); }
+    else if (k === 'dof-' || k === 'dof+') photo.dofStep(k === 'dof+' ? 1 : -1);
+    else if (k === 'save') photo.save = true;
+  });
+  for (const b of document.querySelectorAll('#photoPad [data-hold]')) {
+    const on = e => { e.preventDefault(); photo.keys[b.dataset.hold] = true; }, off = () => { photo.keys[b.dataset.hold] = false; };
+    b.addEventListener('pointerdown', on); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, off);
+  }
   el.addEventListener('wheel', e => { if (!photo.on) return; e.preventDefault(); if (e.shiftKey) photo.fov = Math.max(14, Math.min(90, photo.fov + Math.sign(e.deltaY) * 2)); else photo.d = Math.max(2.5, Math.min(40, photo.d * (e.deltaY > 0 ? 1.08 : 0.93))); }, { passive: false });
 }
 
@@ -9371,7 +9443,7 @@ document.addEventListener('keydown', e => {
     else if (e.code === 'Escape') photo.toggle();
     else if (e.code === 'KeyF') photo.setFree(!photo.free);
     else if (e.code === 'Space') { photo.run = !photo.run; photo.hint(); }
-    else if (e.code === 'BracketLeft' || e.code === 'BracketRight') { const steps = [0, 2, 4, 8, 16, 32]; let i = steps.indexOf(photo.dof); i = Math.max(0, Math.min(steps.length - 1, i + (e.code === 'BracketRight' ? 1 : -1))); photo.dof = steps[i]; photo.hint(); }
+    else if (e.code === 'BracketLeft' || e.code === 'BracketRight') photo.dofStep(e.code === 'BracketRight' ? 1 : -1);
     else photo.keys[e.code] = true;
     return;
   }
