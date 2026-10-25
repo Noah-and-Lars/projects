@@ -14,6 +14,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'football',
+    title: 'Football',
+    category: 'Sports',
+    tagline: 'Realistic 11 v 11 football with broadcast cameras, replays, Ultimate Team and skill games.',
+    description: 'A full 3D football game. Play a Kick Off match between national teams in the morning, afternoon or evening, with broadcast cameras, goal and foul replays, celebrations, fouls, cards, offside and penalties. Build a club in Ultimate Team with packs and a squad, and train in 9 skill games with bronze, silver and gold targets. Keyboard and DualShock 4 controllers are supported, with controls you can change in Settings. Version 1.0 is a work in progress.',
+    controls: 'Keyboard or controller',
+    keys: [['Arrow keys', 'Move'], ['Shift', 'Sprint'], ['S', 'Pass'], ['W', 'Through ball'], ['A', 'Cross or lob'], ['D', 'Shoot'], ['Q', 'Switch player'], ['Space', 'Skip intro or replay'], ['Esc', 'Pause'], ['Controller', 'DualShock 4 layout (change it in Settings)']],
+    path: 'football/index.html',
+    thumb: 'football/thumb.jpg?v=1',
+    added: '2026-10-25T18:00:00+11:00',
+    updated: '2026-10-25T18:00:00+11:00',
+    stat() { const p = readSave('soccer.profile', true); return p && p.played ? p.played + ' matches played' : null; },
+  },
+  {
     id: 'havoc-bay',
     title: 'Havoc Bay',
     category: 'Action',
@@ -197,6 +211,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-25', game: 'football', text: 'New game: Football 1.0! Realistic 11 v 11 matches with broadcast cameras, replays and celebrations, fouls, cards and penalties, morning, afternoon and evening kick offs, Ultimate Team with packs and a squad, 9 skill games, menu music, profiles and controller support. It is a work in progress and will keep improving.' },
   { date: '2026-10-25', game: 'cube-assault', text: 'Cube Assault 2.9.10: a friends list with friend requests (accept or decline), player profiles and invites, a new Bombs section in the Shop with the grenade and the landmine, a bomb slot in the multiplayer loadout, a scope on the Extreme Gun, knife crates for 50 coins or 10 for 400, and fixes for public lobbies, door frames, the Outpost floor and Frontier spawns.' },
   { date: '2026-10-24', game: 'cube-assault', text: 'Cube Assault 2.9.9: a Radio in the Shop with 10 upbeat tracks that everyone in a match hears in sync, flashbangs and barricades you buy once, barricades in multiplayer, Co-op with no time limit that freezes when the host pauses, the Extreme Gun now 2500 coins, the FPS counter on by default and the patch notes on first load.' },
   { date: '2026-10-24', game: 'cube-assault', text: 'Cube Assault 2.9.8: the new 1v5 boss mode for 6 players, rooms for up to 10 players (5v5 C:S Mode), loadouts with 2 small and 3 big guns on your hotbar, a 20 second prep before fighting, match modifiers, spectating, flashbangs, smoke, medkits and a defuse kit in the Shop, shared Co-op waves, a bigger Outpost and a sniper balance change. This version prepares the game for 3.0.' },
