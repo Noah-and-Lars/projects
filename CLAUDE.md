@@ -125,6 +125,19 @@ source in Settings → Pages should be switched to `main`.
   `polyracer-ghost-<id>`. The file is built from split sources kept outside the repo in the workspace's
   `poly-racer-tools/src-1.2/` (`build.py`); edit those and rebuild, or edit `index.html` directly. On localhost
   `window.__pr` exposes the game for tests (`__pr.step(n)` runs frames without the browser's frame loop).
+  Since 2.4 (built in the work branch `claude/fervent-keller-pjhnvh`, folder `poly-racer-copy/`, where
+  `HANDOVER.md` and the `blender/` tools live): eight real Sketchfab cars (CC Attribution, credits in `CREDITS` and
+  `models/credits.json`) with interiors, baked ambient occlusion and the model's own steering wheel; the van is gone.
+  The cockpit hands are a posed glove model (`models/glove.fcm`, `cockpitHands`, `rimFit`) with skinned sleeves
+  (`makeSleeve`) and photographed leather, suede and suit fabric (`gearMat`, `models/tex/gear-*`). The Ultra setting
+  loads `ultra/` (skies, ground textures, trees; about 37 MB, only on Ultra): screen-space reflections (`SSR_U`), water
+  (`makeWater`), rain puddles, soft shadows, motion blur (setting `mblur`), a lens look. Headlights (`HEAD`, `BEAM`),
+  damage scratches and cracked glass (`crackGlass`), photo mode (`photo`, F9 or the pause menu, a touch bar).
+  Every open copy looks at the published `VERSION` 20 s after it starts and then every 2 minutes (`updater`) and,
+  when it is newer, reloads straight away (even mid-race) with the version in its address so the cache can't serve
+  the old page: bump `VERSION` with every release. The home page's entry opens `poly-racer/index.html?v=<version>`.
+  Models are packed (16-bit positions and uvs, `pq`/`uq` in the part header). `poly-racer-copy/` on this branch only
+  redirects here (it held the 2.4 preview for a day).
 
 - `blockcraft/`: Minecraft-style voxel sandbox (Three.js copied in, WebGL 2
   required). 16x128x16 chunks, procedural 16x16 textures in a texture array,

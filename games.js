@@ -176,15 +176,15 @@ window.GAMES = [
     id: 'poly-racer',
     title: 'Poly Racer',
     category: 'Racing',
-    tagline: 'New: races on 30 circuits against 15 drivers, online races for up to 10, weather, seasons and night.',
-    description: 'Race 15 computer drivers on 30 full-length circuits and street races, from grand prix tracks and city streets to forest trails, beaches and mountain passes, or race up to 10 friends online. Pick the laps, time of day, season and weather (and the right tyres), or chase gold in the 100 time trials. 11 cars from Free Criminal, a cockpit view, damage, and a driver of your own with 50 helmets and 50 suits.',
+    tagline: 'New in 2.4: real cars inside and out, Ultra graphics, rain and reflections, headlights and photo mode.',
+    description: 'Race 15 computer drivers on 30 full-length circuits and street races, from grand prix tracks and city streets to forest trails, beaches and mountain passes, or race up to 10 friends online. Pick the laps, time of day, season and weather (and the right tyres), or chase gold in the 100 time trials. Eight real cars modelled inside and out, a cockpit with your gloved hands on the wheel, damage you can see, a photo mode, and an Ultra graphics setting with photographed skies, real trees, reflections and rain. A driver of your own with 50 helmets and 50 suits.',
     controls: 'Keyboard, gamepad or touch',
     keys: [['↑ ↓ ← →', 'Drive'], ['W A S D', 'Drive'], ['S / ↓', 'Brake and reverse'], ['Space', 'Handbrake · turn while you hold it to drift'],
-           ['Shift + W', 'Rev the engine'], ['R', 'Respawn'], ['Backspace', 'Restart'], ['C', 'Camera: chase, close or cockpit'], ['L', 'Driving line'], ['Esc', 'Pause']],
-    path: 'poly-racer/index.html',
+           ['Shift + W', 'Rev the engine'], ['R', 'Respawn'], ['Backspace', 'Restart'], ['C', 'Camera: chase, close or cockpit'], ['L', 'Driving line'], ['F9', 'Photo mode (also in the pause menu)'], ['Esc', 'Pause']],
+    path: 'poly-racer/index.html?v=2.4',   // the version in the address: nobody gets an old copy from their browser's cache
     thumb: 'poly-racer/thumb.jpg',
     added: '2026-10-13T16:49:58+11:00',
-    updated: '2026-10-23T12:00:00+11:00',
+    updated: '2026-10-26T10:08:00+11:00',
     stat() {
       const s = readSave('polyracer', true), n = s && s.best ? Object.keys(s.best).length : 0;
       const won = s && s.stats && s.stats.results ? Object.values(s.stats.results).filter(p => p === 1).length : 0;
@@ -211,6 +211,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-26', game: 'poly-racer', text: 'Poly Racer 2.4: eight real cars modelled inside and out, with proper paint, chrome, glass and their own dashboards, and your gloved hands on the wheel in the cockpit. A new Ultra graphics setting adds photographed skies and road surfaces, real trees, reflections in the water and on wet roads, puddles and spray in the rain, soft shadows and motion blur. Headlights that light the road at night, scrapes and cracked glass after a crash, and a photo mode (F9 or the pause menu, touch too). The van has left the garage.' },
   { date: '2026-10-25', game: 'football', text: 'New game: Football 1.0! Realistic 11 v 11 matches with broadcast cameras, replays and celebrations, fouls, cards and penalties, morning, afternoon and evening kick offs, Ultimate Team with packs and a squad, 9 skill games, menu music, profiles and controller support. It is a work in progress and will keep improving.' },
   { date: '2026-10-25', game: 'cube-assault', text: 'Cube Assault 2.9.10: a friends list with friend requests (accept or decline), player profiles and invites, a new Bombs section in the Shop with the grenade and the landmine, a bomb slot in the multiplayer loadout, a scope on the Extreme Gun, knife crates for 50 coins or 10 for 400, and fixes for public lobbies, door frames, the Outpost floor and Frontier spawns.' },
   { date: '2026-10-24', game: 'cube-assault', text: 'Cube Assault 2.9.9: a Radio in the Shop with 10 upbeat tracks that everyone in a match hears in sync, flashbangs and barricades you buy once, barricades in multiplayer, Co-op with no time limit that freezes when the host pauses, the Extreme Gun now 2500 coins, the FPS counter on by default and the patch notes on first load.' },
