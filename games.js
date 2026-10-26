@@ -24,7 +24,7 @@ window.GAMES = [
     path: 'football/index.html',
     thumb: 'football/thumb.jpg?v=1',
     added: '2026-10-25T18:00:00+11:00',
-    updated: '2026-10-25T18:00:00+11:00',
+    updated: '2026-10-26T12:00:00+11:00',
     stat() { const p = readSave('soccer.profile', true); return p && p.played ? p.played + ' matches played' : null; },
   },
   {
@@ -211,6 +211,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-26', game: 'football', text: 'Football 1.0.1: change any key you like. Open Customise and pick Keyboard Keys, click an action and press the new key (two actions swap if the key is taken). Works with both the FIFA and Classic layouts, and the hints in matches show your own keys.' },
   { date: '2026-10-26', game: 'poly-racer', text: 'Poly Racer 2.4: eight real cars modelled inside and out, with proper paint, chrome, glass and their own dashboards, and your gloved hands on the wheel in the cockpit. A new Ultra graphics setting adds photographed skies and road surfaces, real trees, reflections in the water and on wet roads, puddles and spray in the rain, soft shadows and motion blur. Headlights that light the road at night, scrapes and cracked glass after a crash, and a photo mode (F9 or the pause menu, touch too). The van has left the garage.' },
   { date: '2026-10-25', game: 'football', text: 'New game: Football 1.0! Realistic 11 v 11 matches with broadcast cameras, replays and celebrations, fouls, cards and penalties, morning, afternoon and evening kick offs, Ultimate Team with packs and a squad, 9 skill games, menu music, profiles and controller support. It is a work in progress and will keep improving.' },
   { date: '2026-10-25', game: 'cube-assault', text: 'Cube Assault 2.9.10: a friends list with friend requests (accept or decline), player profiles and invites, a new Bombs section in the Shop with the grenade and the landmine, a bomb slot in the multiplayer loadout, a scope on the Extreme Gun, knife crates for 50 coins or 10 for 400, and fixes for public lobbies, door frames, the Outpost floor and Frontier spawns.' },

@@ -525,7 +525,7 @@ function bestXI(nid, form = '4-3-3') {
 const teamOvr = ids => Math.round(ids.reduce((a, id) => a + PLAYER[id].ovr, 0) / ids.length);
 
 // ---------- Saved settings and profile ----------
-const VERSION = '1.0';
+const VERSION = '1.0.1';
 const load = k => { try { return JSON.parse(localStorage.getItem(k) || 'null') || {}; } catch (e) { return {}; } };
 const settings = Object.assign({ camera: 'broadcast', diff: 1, halfMin: 4, volume: 0.7, replays: true, seenDisclaimer: '', tod: 'afternoon', controls: 'fifa', music: true }, load('soccer.settings'));
 const today = new Date();
@@ -997,7 +997,40 @@ const LAYOUTS = {
     label: { skip: 'Space', S: 'J', A: 'L', D: 'U', W: 'E', Z: 'Z', Q: 'X', space: 'K', sprint: 'Shift', switch: 'Q', rmb: 'R', lmb: 'Left click', move: 'WASD' } },
 };
 const COMMON_KEYS = { Escape: ['pause'], KeyP: ['pause'], KeyC: ['camera'], Enter: ['skip'] };
-const layout = () => LAYOUTS[settings.controls] || LAYOUTS.fifa;
+// your own keys: settings.keyCustom[layout][action] = key code, laid over the chosen layout
+const KEY_ACTIONS = [['up', 'Move up'], ['down', 'Move down'], ['left', 'Move left'], ['right', 'Move right'], ['sprint', 'Sprint'], ['switch', 'Change player'],
+  ['S', 'Ground pass / sliding tackle'], ['A', 'Through pass / rush keeper'], ['D', 'Lob, cross / tackle'], ['W', 'Shield / jockey'], ['space', 'Shoot / tackle'],
+  ['Z', 'Finesse shot'], ['Q', 'Driven ground pass'], ['rmb', 'Contain']];
+const KEY_NAMES = { Space: 'Space', ShiftLeft: 'L-Shift', ShiftRight: 'R-Shift', ControlLeft: 'L-Ctrl', ControlRight: 'R-Ctrl', AltLeft: 'L-Alt', AltRight: 'R-Alt', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+  Enter: 'Enter', Tab: 'Tab', CapsLock: 'Caps', Backspace: 'Backspace', Backquote: '`', Comma: ',', Period: '.', Slash: '/', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']', Backslash: '\\', Minus: '-', Equal: '=' };
+const keyName = code => !code ? '–' : KEY_NAMES[code] || code.replace(/^Key|^Digit/, '').replace(/^Numpad/, 'Num ');
+let layoutCache = null, layoutSig = '';
+function layout() {
+  const custom = (settings.keyCustom || {})[settings.controls] || {}, sig = settings.controls + JSON.stringify(custom);
+  if (layoutCache && sig === layoutSig) return layoutCache;
+  const base = LAYOUTS[settings.controls] || LAYOUTS.fifa;
+  const L = { move: JSON.parse(JSON.stringify(base.move)), keys: JSON.parse(JSON.stringify(base.keys)), label: { ...base.label } };
+  for (const [a, code] of Object.entries(custom)) {
+    // the key is taken away from whatever had it before
+    for (const d in L.move) L.move[d] = L.move[d].filter(c => c !== code);
+    if (L.keys[code]) L.keys[code] = L.keys[code].filter(x => x === 'skip');
+    if (a in L.move) L.move[a] = [code];
+    else { for (const c in L.keys) L.keys[c] = L.keys[c].filter(x => x !== a); (L.keys[code] = L.keys[code] || []).push(a); }
+  }
+  // labels from the keys as they are now
+  for (const [a] of KEY_ACTIONS) if (!(a in L.move)) { const codes = Object.keys(L.keys).filter(c => L.keys[c].includes(a)); if (codes.length) L.label[a] = codes.length > 1 && codes.every(c => /^Shift/.test(c)) ? 'Shift' : keyName(codes[0]); else if (a !== 'rmb') L.label[a] = '–'; }
+  const mv = ['up', 'left', 'down', 'right'].map(d => L.move[d][0]);
+  L.label.move = mv.join() === 'KeyW,KeyA,KeyS,KeyD' ? 'WASD' : mv.join() === 'ArrowUp,ArrowLeft,ArrowDown,ArrowRight' ? '← ↑ → ↓' : mv.map(keyName).join(' ');
+  layoutSig = sig; return (layoutCache = L);
+}
+// the key an action is on right now
+const keyFor = a => { const L = layout(); return a in L.move ? L.move[a][0] : Object.keys(L.keys).find(c => L.keys[c].includes(a)); };
+function bindKey(a, code) {
+  const all = settings.keyCustom || (settings.keyCustom = {}), m = all[settings.controls] || (all[settings.controls] = {});
+  const old = keyFor(a), others = KEY_ACTIONS.map(x => x[0]).filter(b => b !== a && keyFor(b) === code);
+  m[a] = code; for (const b of others) if (old) m[b] = old; // swap: whatever had the key gets this action's old key
+  saveSettings();
+}
 const inp = { keys: {}, held: {}, pressed: {}, released: {}, stick: { x: 0, y: 0 }, touch: { x: 0, y: 0, on: false }, padPrev: {}, padAct: {}, device: 'kb', attacking: true };
 const press = a => { if (!inp.held[a]) inp.pressed[a] = true; inp.held[a] = true; };
 const release = a => { if (inp.held[a]) inp.released[a] = true; inp.held[a] = false; };
@@ -2457,7 +2490,7 @@ const MENUS = (() => {
     if (t === 'home') $('pane-home').innerHTML = `
       <button class="tile" data-go="quick"><h2>Quick Match</h2><p>Two random national teams, straight onto the pitch.</p><div class="arr">▶</div></button>
       <button class="tile" data-go="ult"><h2>Ultimate Team</h2><p>Open packs, collect real players and build your dream squad. ${profile.cards.length} cards in your club.</p><div class="val">${fmt(profile.coins)} ◉</div></button>
-      <button class="tile" data-go="news"><h2>Football ${VERSION}</h2><p>The first version of Football. It's a work in progress: more modes, teams and features are on the way.</p><div class="val">New</div></button>
+      <button class="tile" data-go="news"><h2>Football ${VERSION}</h2><p>New: change any key in Customise → Keyboard Keys. Still a work in progress, with more on the way.</p><div class="val">New</div></button>
       <button class="tile" data-go="kick"><h2>Kick Off</h2><p>Classic: pick any two teams and play one match.</p><div class="arr">▶</div></button>
       <button class="tile" data-go="profile"><h2>Your Profile</h2><p>Level ${profile.level} · ${profile.played} matches played · ${profile.wins} won.</p><div class="val">LVL ${profile.level}</div></button>
       <button class="tile" data-go="controls"><h2>Controls</h2><p>Keyboard, gamepad and touch.</p><div class="arr">▶</div></button>`;
@@ -2479,6 +2512,7 @@ const MENUS = (() => {
   function paintCustom() {
     $('pane-custom').innerHTML = Object.entries(OPTS).map(([k, o]) => `<button class="tile" data-opt="${k}"><h2>${o.label}</h2><p>Click (or press Enter) to change.</p><div class="val">${o.show(settings[k])}</div><div class="arr">⟳</div></button>`).join('')
       + `<button class="tile" data-go="pad"><h2>Controller</h2><p>DualShock 4 layout, button symbols and your own button mapping.</p><div class="val">${(PAD_PRESETS[settings.padPreset] || PAD_PRESETS.fifa).name}${settings.padCustom ? ' *' : ''}</div><div class="arr">▶</div></button>`
+      + `<button class="tile" data-go="keys"><h2>Keyboard Keys</h2><p>Change any key to the one you want.</p><div class="val">${(settings.keyCustom || {})[settings.controls] && Object.keys(settings.keyCustom[settings.controls]).length ? 'Custom' : 'Default'}</div><div class="arr">▶</div></button>`
       + `<button class="tile" data-go="controls"><h2>Controls</h2><p>See every key and button.</p><div class="arr">▶</div></button>`;
   }
   function cycleOpt(k) { const o = OPTS[k], i = o.vals.indexOf(settings[k]); settings[k] = o.vals[(i + 1) % o.vals.length]; saveSettings(); if (k === 'volume') sfx.setVolume(settings.volume); if (k === 'music') { settings.music ? MUSIC.start() : MUSIC.stop(); } if (tab === 'custom' && screen === 'main') { paintCustom(); animateIn(); } }
@@ -2497,6 +2531,7 @@ const MENUS = (() => {
     else if (go === 'tSkill' || go === 'skills') swap(() => SKILLS.open());
     else if (go === 'tTour' || go === 'soon') toast('Coming in a future update');
     else if (go === 'pad') padPage();
+    else if (go === 'keys') keysPage();
     else if (go === 'news') disclaimer(true);
     else if (go === 'profile') swap(profilePage);
   });
@@ -2576,8 +2611,40 @@ const MENUS = (() => {
       <div class="keys" style="margin-top:10px"><kbd>C</kbd><span>Change camera</span><kbd>Esc / P</kbd><span>Pause</span><kbd>Space / Enter</kbd><span>Skip replays and celebrations</span>
       <kbd>Controller</kbd><span>Plug in a DualShock 4 (or any controller) and press a button. Change its layout in Customise → Controller.</span><kbd>iPad</kbd><span>Stick on the left, buttons on the right</span></div>
       <p style="margin-top:10px">Tip: press pass or shoot just before a pass reaches you to play it first time.</p>
-      <div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn" data-ok>Got it</button></div>`);
+      <div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn" data-ok>Got it</button><button class="btn alt" data-keys>Change keys</button></div>`);
     o.querySelector('[data-ok]').onclick = () => { click(); o.remove(); };
+    o.querySelector('[data-keys]').onclick = () => { click(); o.remove(); keysPage(() => controls()); };
+  }
+  // ---------- the keyboard: change any key ----------
+  function keysPage(after) {
+    let waiting = null;
+    const paint = () => {
+      const L = layout(), custom = (settings.keyCustom || {})[settings.controls] || {};
+      const row = ([a, l]) => `<button class="btn alt padRow${waiting === a ? ' focus' : ''}" data-key="${a}"><span>${l}</span><kbd>${waiting === a ? 'Press a key…' : a === 'rmb' && !keyFor('rmb') ? 'Right click' : keyName(keyFor(a))}${a === 'space' && !custom.space && settings.controls === 'fifa' ? ' / Left click' : ''}</kbd></button>`;
+      const half = Math.ceil(KEY_ACTIONS.length / 2);
+      o.querySelector('.box').innerHTML = `<h2>Keyboard Keys</h2><p>Click an action, then press the key you want for it. If another action already uses that key, the two swap. Esc cancels.</p>
+        <div class="row" style="justify-content:flex-start;margin-bottom:8px"><button class="btn${settings.controls === 'fifa' ? '' : ' alt'}" data-lay="fifa">FIFA layout</button><button class="btn${settings.controls === 'classic' ? '' : ' alt'}" data-lay="classic">Classic layout</button></div>
+        <div class="padCols"><div>${KEY_ACTIONS.slice(0, half).map(row).join('')}</div><div>${KEY_ACTIONS.slice(half).map(row).join('')}</div></div>
+        <p style="margin-top:8px">Always: <b>Esc / P</b> pause · <b>C</b> camera · <b>Enter</b> skip. Contain also works with the right mouse button${settings.controls === 'fifa' ? ', and shoot with the left' : ''}.</p>
+        <div class="row" style="justify-content:flex-start"><button class="btn" data-x>Done</button><button class="btn alt" data-reset>Reset keys</button></div>`;
+    };
+    const o = overlay('');
+    const grab = e => {
+      if (!waiting) return; e.preventDefault(); e.stopImmediatePropagation();
+      if (e.code !== 'Escape' && e.code) bindKey(waiting, e.code);
+      waiting = null; click(); paint();
+    };
+    addEventListener('keydown', grab, true);
+    const close = () => { removeEventListener('keydown', grab, true); o.remove(); if (after) after(); else if (tab === 'custom' && screen === 'main') paintCustom(); };
+    o.onclick = e => {
+      const b = e.target.closest('button'); if (!b) return; click();
+      if (b.dataset.x !== undefined) { close(); return; }
+      if (b.dataset.lay) { settings.controls = b.dataset.lay; saveSettings(); }
+      if (b.dataset.reset !== undefined && settings.keyCustom) { delete settings.keyCustom[settings.controls]; saveSettings(); }
+      if (b.dataset.key) { waiting = b.dataset.key; }
+      paint();
+    };
+    paint();
   }
   // ---------- your profile: name, level, favourite team, stats and how you're doing ----------
   function overall() {
