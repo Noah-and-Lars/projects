@@ -14,6 +14,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'rocket-rivals',
+    title: 'Rocket Rivals',
+    category: 'Sports',
+    tagline: 'Rocket-powered car football. Boost, jump, flip and fly to score in 1v1, 2v2 and 3v3.',
+    description: 'Drive rocket cars around a walled arena and knock a giant ball into the other goal. Boost, double jump, flip, drive up the walls and onto the ceiling, fly for aerials and demolish opponents at supersonic speed. Play 1v1 to 4v4 against bots, ranked playlists, a season and tournaments, Snow Day, Rumble and Heatseeker, and training packs. Customise ten cars with decals, paints, wheels, boosts, toppers and fifteen goal explosions, and work through the Rivals Pass. Online play against real people comes later.',
+    controls: 'Keyboard + mouse or controller',
+    keys: [['W / S', 'Drive and reverse (pitch in the air)'], ['A / D', 'Steer'], ['Right click', 'Jump (twice to flip)'], ['Left click', 'Boost'], ['Left Shift', 'Powerslide / air roll'], ['Q / E', 'Air roll'], ['Space', 'Ball cam'], ['Tab', 'Scoreboard'], ['Esc', 'Pause'], ['Controller', 'DualShock 4 layout (change it in Settings)']],
+    path: 'rocket-rivals/index.html',
+    thumb: 'rocket-rivals/thumb.jpg?v=1',
+    added: '2026-10-26T14:00:00+11:00',
+    updated: '2026-10-26T14:00:00+11:00',
+    stat() { const p = readSave('rivals.profile', true); return p && p.stats && p.stats.matches ? 'Level ' + p.level + ' · ' + p.stats.wins + ' wins' : null; },
+  },
+  {
     id: 'football',
     title: 'Football',
     category: 'Sports',
@@ -211,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-26', game: 'rocket-rivals', text: 'New game: Rocket Rivals 1.0! Rocket-powered car football with boost, flips, wall driving and aerials. Ten cars to customise, fifteen goal explosions, six arenas, ranked playlists, Snow Day, Rumble and Heatseeker, a season, tournaments, training and the Rivals Pass. Online opponents are bots for now.' },
   { date: '2026-10-26', game: 'football', text: 'Football 1.0.1: change any key you like. Open Customise and pick Keyboard Keys, click an action and press the new key (two actions swap if the key is taken). Works with both the FIFA and Classic layouts, and the hints in matches show your own keys.' },
   { date: '2026-10-26', game: 'poly-racer', text: 'Poly Racer 2.4: eight real cars modelled inside and out, with proper paint, chrome, glass and their own dashboards, and your gloved hands on the wheel in the cockpit. A new Ultra graphics setting adds photographed skies and road surfaces, real trees, reflections in the water and on wet roads, puddles and spray in the rain, soft shadows and motion blur. Headlights that light the road at night, scrapes and cracked glass after a crash, and a photo mode (F9 or the pause menu, touch too). The van has left the garage.' },
   { date: '2026-10-25', game: 'football', text: 'New game: Football 1.0! Realistic 11 v 11 matches with broadcast cameras, replays and celebrations, fouls, cards and penalties, morning, afternoon and evening kick offs, Ultimate Team with packs and a squad, 9 skill games, menu music, profiles and controller support. It is a work in progress and will keep improving.' },
