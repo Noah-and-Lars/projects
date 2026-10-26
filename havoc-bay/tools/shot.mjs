@@ -20,9 +20,10 @@ pg.on('pageerror', e => console.log('pageerror', e.message)); pg.on('console', m
 await pg.addInitScript(q => { try { localStorage.setItem('havocbay.settings.v1', JSON.stringify({ quality: q })); } catch (e) {} }, quality);
 await pg.goto(`http://127.0.0.1:${srv.address().port}/index.html`);
 await pg.waitForTimeout(+waitMs);
+if (process.env.HB_PRE) await pg.evaluate(process.env.HB_PRE);   // optional setup code (sets window.__shots etc.)
 const res = await pg.evaluate(`(async () => { ${fs.readFileSync(testf, 'utf8')} })()`);
 for (const [k, v] of Object.entries(res || {})) {
-  if (typeof v === 'string' && v.startsWith('data:image')) { fs.writeFileSync(`${outp}-${k}.png`, Buffer.from(v.split(',')[1], 'base64')); console.log('wrote', `${outp}-${k}.png`); }
+  if (typeof v === 'string' && v.startsWith('data:image')) { fs.writeFileSync(`${outp}-${k}.${v.startsWith('data:image/jpeg') ? 'jpg' : 'png'}`, Buffer.from(v.split(',')[1], 'base64')); console.log('wrote', k); }
   else console.log(k, JSON.stringify(v));
 }
 await b.close(); srv.close();

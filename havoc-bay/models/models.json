@@ -1,0 +1,421 @@
+{
+ "fighter": {
+  "file": "fighter.glb",
+  "lo": "fighter-lo.glb",
+  "tint": 0,
+  "keep": "glass|canopy|cockpit|tyre|tire|rubber|pilot",
+  "flames": [
+   [
+    0,
+    -1.03,
+    -6.55
+   ]
+  ],
+  "flameSize": 0.55,
+  "sound": "jet",
+  "credit": {
+   "what": "Fighter (F-16E/F Fighting Falcon)",
+   "title": "Lockheed Martin F-16e/f \"Fighting Falcon\"",
+   "author": "andertan",
+   "url": "https://sketchfab.com/3d-models/lockheed-martin-f-16ef-fighting-falcon-d54c72e055a647ad9173e01548e50db3",
+   "licence": "CC Attribution"
+  }
+ },
+ "jet": {
+  "file": "jet.glb",
+  "lo": "jet-lo.glb",
+  "tint": 0,
+  "keep": "glass|canopy|cockpit|tyre|tire|rubber|pilot",
+  "flames": [
+   [
+    0.45,
+    -0.12,
+    -7.25
+   ],
+   [
+    -0.45,
+    -0.12,
+    -7.25
+   ]
+  ],
+  "flameSize": 0.55,
+  "sound": "jet",
+  "credit": {
+   "what": "Jet (F/A-18E/F Super Hornet)",
+   "title": "Boeing F/A-18E/F \"Super Hornet\"",
+   "author": "andertan",
+   "url": "https://sketchfab.com/3d-models/boeing-fa-18ef-super-hornet-f71e9fea01e24fea9b1b380161d21d38",
+   "licence": "CC Attribution"
+  }
+ },
+ "bomber": {
+  "file": "bomber.glb",
+  "lo": "bomber-lo.glb",
+  "tint": 0,
+  "keep": "glass|canopy|cockpit|tyre|tire|rubber",
+  "sound": "jet",
+  "credit": {
+   "what": "Bomber (B-2 Spirit)",
+   "title": "[PBR] B-2 Spirit",
+   "author": "Immersive3A",
+   "url": "https://sketchfab.com/3d-models/pbr-b-2-spirit-b16592b1083948a49ae2afa90d190a08",
+   "licence": "CC Attribution"
+  }
+ },
+ "ship_jetski": {
+  "file": "ship_jetski.glb",
+  "lo": "ship_jetski-lo.glb",
+  "tint": 0,
+  "guns": [
+   "hide"
+  ],
+  "credit": {
+   "what": "Jet Ski",
+   "title": "Kawasaki 310XUltra Jet Ski",
+   "author": "XOIAL",
+   "url": "https://sketchfab.com/3d-models/kawasaki-310xultra-jet-ski-37a2348f02da472d98310fd5621307c6",
+   "licence": "CC Attribution"
+  }
+ },
+ "ship_gunboat": {
+  "file": "ship_gunboat.glb",
+  "lo": "ship_gunboat-lo.glb",
+  "tint": 0,
+  "guns": [
+   {
+    "at": [
+     0,
+     2.45,
+     6.85
+    ],
+    "scale": 0.8
+   },
+   {
+    "at": [
+     0,
+     2.35,
+     -6.6
+    ],
+    "scale": 0.8
+   }
+  ],
+  "credit": {
+   "what": "Turret Boat (M21 patrol boat)",
+   "title": "M21 Patrol Boat",
+   "author": "agt14032013",
+   "url": "https://sketchfab.com/3d-models/m21-patrol-boat-598d3938b4214f2e9f385c29b3a3744a",
+   "licence": "CC Attribution"
+  }
+ },
+ "ship_destroyer": {
+  "file": "ship_destroyer.glb",
+  "lo": "ship_destroyer-lo.glb",
+  "tint": 0,
+  "guns": [
+   {
+    "at": [
+     0,
+     2.5,
+     13.8
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     0,
+     1.95,
+     -17.6
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     0,
+     3.8,
+     9.1
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     0,
+     3.8,
+     -8.9
+    ],
+    "scale": 0.45
+   }
+  ],
+  "credit": {
+   "what": "Destroyer (Arleigh Burke class)",
+   "title": "1:1 Low poly US NAVY DDG-51 USS Arleigh Burke.",
+   "author": "WTigerTw",
+   "url": "https://sketchfab.com/3d-models/11-low-poly-us-navy-ddg-51-uss-arleigh-burke-17be09c31c6047e4a5969b68c29eba03",
+   "licence": "CC Attribution"
+  }
+ },
+ "gun_aa": {
+  "file": "gun_aa.glb",
+  "lo": null,
+  "pivot": [
+   0,
+   2.185,
+   -0.096
+  ],
+  "muzzles": [
+   [
+    0,
+    2.148,
+    1.487
+   ]
+  ],
+  "tint": 0,
+  "credit": {
+   "what": "Anti-air gun (Phalanx CIWS)",
+   "title": "Phalanx CIWS",
+   "author": "Lemper_Studio",
+   "url": "https://sketchfab.com/3d-models/phalanx-ciws-b811949a2ba543aab5fde70ecdf0bf6d",
+   "licence": "CC Attribution"
+  }
+ },
+ "gun_main": {
+  "file": "gun_main.glb",
+  "lo": null,
+  "tint": 0,
+  "pivot": [
+   0,
+   0.68,
+   0.42
+  ],
+  "muzzles": [
+   [
+    0,
+    0.98,
+    2.13
+   ]
+  ],
+  "credit": {
+   "what": "Naval gun (5-inch Mk 45, from the destroyer)",
+   "title": "1:1 Low poly US NAVY DDG-51 USS Arleigh Burke.",
+   "author": "WTigerTw",
+   "url": "https://sketchfab.com/3d-models/11-low-poly-us-navy-ddg-51-uss-arleigh-burke-17be09c31c6047e4a5969b68c29eba03",
+   "licence": "CC Attribution"
+  }
+ },
+ "gun_mg": {
+  "file": "gun_mg.glb",
+  "lo": null,
+  "pivot": [
+   0.002,
+   -0.03,
+   -0.132
+  ],
+  "muzzles": [
+   [
+    -0.037,
+    0.152,
+    1.1
+   ]
+  ],
+  "tint": 0,
+  "credit": {
+   "what": "Machine gun (M2 Browning)",
+   "title": "M2 Browning",
+   "author": "Tnkii",
+   "url": "https://sketchfab.com/3d-models/m2-browning-7b83ca60e6c9451f9f23d2d0bc0e4710",
+   "licence": "CC Attribution"
+  }
+ },
+ "rifle": {
+  "file": "rifle.glb",
+  "lo": null,
+  "tint": 0,
+  "hold": [
+   0,
+   -2.35,
+   0.35
+  ],
+  "credit": {
+   "what": "Soldier rifle (HK416 A7)",
+   "title": "HK 416 A7 (free download)",
+   "author": "r4m",
+   "url": "https://sketchfab.com/3d-models/hk-416-a7-free-download-a16768f0ffa24737a4fe324a411cfbd9",
+   "licence": "CC Attribution"
+  }
+ },
+ "ship_carrier": {
+  "file": "ship_carrier.glb",
+  "lo": "ship_carrier-lo.glb",
+  "tint": 0,
+  "deck": 5.35,
+  "guns": [
+   {
+    "at": [
+     8.6,
+     5.3,
+     -45.6
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     -9.2,
+     5.3,
+     -45.6
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     11,
+     5.3,
+     14
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     11.3,
+     5.3,
+     -2
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     11,
+     5.3,
+     -33
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     -11,
+     5.3,
+     12
+    ],
+    "scale": 0.45
+   },
+   {
+    "at": [
+     -11.3,
+     5.3,
+     -18
+    ],
+    "scale": 0.45
+   }
+  ],
+  "credit": {
+   "what": "Aircraft Carrier (USS Gerald R. Ford)",
+   "title": "Gerald R Ford aircraft Carrier",
+   "author": "waelXcm",
+   "url": "https://sketchfab.com/3d-models/gerald-r-ford-aircraft-carrier-562bf516e1494df38d8f222504dc798b",
+   "licence": "CC Attribution"
+  }
+ },
+ "ship_battleship": {
+  "file": "ship_battleship.glb",
+  "lo": "ship_battleship-lo.glb",
+  "tint": 0,
+  "guns": [
+   {
+    "at": [
+     0,
+     1.63,
+     16.4
+    ],
+    "scale": 1
+   },
+   {
+    "at": [
+     0,
+     2.44,
+     10
+    ],
+    "scale": 1
+   },
+   {
+    "at": [
+     0,
+     1.75,
+     -19.15
+    ],
+    "scale": 1
+   },
+   {
+    "at": [
+     1.9,
+     5,
+     1.62
+    ],
+    "scale": 0.4
+   },
+   {
+    "at": [
+     -1.6,
+     5,
+     1.62
+    ],
+    "scale": 0.4
+   },
+   {
+    "at": [
+     1.9,
+     5,
+     -6.75
+    ],
+    "scale": 0.4
+   },
+   {
+    "at": [
+     -1.6,
+     5,
+     -6.75
+    ],
+    "scale": 0.4
+   }
+  ],
+  "missile": "hide",
+  "credit": {
+   "what": "Battleship (USS Missouri, 1991)",
+   "title": "USS Missouri (BB-63) 1991",
+   "author": "lxyun_2",
+   "url": "https://sketchfab.com/3d-models/uss-missouri-bb-63-1991-ec23c03e8c4d4e74925117ff88dde598",
+   "licence": "CC Attribution"
+  }
+ },
+ "gun_big": {
+  "file": "gun_big.glb",
+  "lo": null,
+  "tint": 0,
+  "pivot": [
+   0,
+   0.47,
+   1.5
+  ],
+  "muzzles": [
+   [
+    -0.62,
+    0.47,
+    5.66
+   ],
+   [
+    0,
+    0.47,
+    5.66
+   ],
+   [
+    0.62,
+    0.47,
+    5.66
+   ]
+  ],
+  "credit": {
+   "what": "Battleship turret (USS Missouri, 16-inch)",
+   "title": "USS Missouri (BB-63) 1991",
+   "author": "lxyun_2",
+   "url": "https://sketchfab.com/3d-models/uss-missouri-bb-63-1991-ec23c03e8c4d4e74925117ff88dde598",
+   "licence": "CC Attribution"
+  }
+ }
+}

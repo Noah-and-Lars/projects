@@ -772,12 +772,14 @@ const C = { white: 0xf3f4f6, grey: 0x9aa1aa, dgrey: 0x5d636b, steel: 0x7e868f, b
 /* ==========================================================================
    Real models: Sketchfab aircraft and rifles (CC Attribution)
    models/models.json lists them; tools/build.mjs builds them (see tools/README.md). On Medium and High
-   graphics the planes and the soldiers' rifles use them. On Low, while a file is still loading, or if it
-   fails, the block models below are used, and anything built before a model arrives is swapped over when
-   it does (REAL.onReady). Credits come from models/models.json and show in Settings.
+   graphics the planes, ship hulls, ship and harbor guns and the soldiers' rifles use them, each file
+   downloading the first time something needs it. On Low, while a file is still loading, or if it fails,
+   the block models below are used, and anything built before a model arrives is swapped over when it does
+   (REAL.onReady). Models keep their own colours (no team tint). Credits come from models/models.json and
+   show in Settings.
    ========================================================================== */
 const REAL = (() => {
-  const L = {}, wait = {}, tints = {};
+  const L = {}, wait = {}, tints = {}, loading = {};
   let list = null, listed = false, envTex = null;
   const on = () => qualityLevel() !== 'low' && !!THREE.GLTFLoader && location.protocol !== 'file:';
   // reflections: the game's own sky above and the sea below, blurred by PMREM
@@ -793,6 +795,9 @@ const REAL = (() => {
       c.lerp(U.bot.value, 1 - smooth(-0.01, 0.16, h));
       if (h < -0.02) c.lerp(sea, smooth(-0.02, -0.25, h));
       c.add(new THREE.Color().copy(sunC).multiplyScalar(Math.pow(sn, 60) * 0.8));
+      // mostly grey: the game's hemisphere light already brings the sky's blue, and a blue reflection on top
+      // turned grey paint pale blue
+      const lum = c.r * 0.3 + c.g * 0.59 + c.b * 0.11; c.lerp(new THREE.Color(lum, lum, lum), 0.8);
       col.push(c.r, c.g, c.b);
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -818,7 +823,9 @@ const REAL = (() => {
         for (const k of ['map', 'emissiveMap']) if (m[k]) { m[k].encoding = THREE.LinearEncoding; m[k].anisotropy = 4; }
         if (m.color) m.color.convertLinearToSRGB();
         if (m.emissive) m.emissive.convertLinearToSRGB();
-        if ('envMap' in m) { m.envMap = env(); m.envMapIntensity = info.env || 1; }
+        if ('envMap' in m) { m.envMap = env(); m.envMapIntensity = info.env || 0.5; }
+        // no mirror-bright metal: a fully metallic part only shows the (sky) reflection
+        if ('metalness' in m && !m.metalnessMap) m.metalness = Math.min(m.metalness, info.metal || 0.55);
         m.userData.keep = m.transparent || !!(keep && keep.test(m.name || ''));
       }
     });
@@ -845,7 +852,7 @@ const REAL = (() => {
   function load() {
     if (list || !on()) return;
     list = {};
-    fetch('models/models.json').then(r => r.ok ? r.json() : {}).then(j => { list = j || {}; listed = true; showCredits(); for (const id in list) loadOne(id, list[id]); queue(); })
+    fetch('models/models.json').then(r => r.ok ? r.json() : {}).then(j => { list = j || {}; listed = true; showCredits(); queue(); })
       .catch(() => { list = {}; listed = true; queue(); });
   }
   // a team's copy of a material: the paint multiplied toward the team colour, glass and tyres left alone
@@ -889,8 +896,10 @@ const REAL = (() => {
   }
   // onReady calls made before models.json arrives wait here, since only the list says which ids exist
   const early = [];
+  // each model downloads the first time something asks for it (the battleship's is big; most matches never need it)
   function want(ids, f) {
     const id = ids.find(i => list[i]); if (!id) return;
+    if (!loading[id]) { loading[id] = true; loadOne(id, list[id]); }
     if (L[id]) f(id); else (wait[id] = wait[id] || []).push(() => f(id));
   }
   function queue() { const q = early.splice(0); q.forEach(([ids, f]) => want(ids, f)); }
@@ -1242,15 +1251,21 @@ function buildShipModel(type, team) {
   return M;
 }
 // swap a ship's block hull for the Sketchfab one; models.json can move each gun mount onto the real ship's
-// gun spots (guns: [[x, y, z] | "hide" | null, ...] in the order of SHIP_TYPES[type].guns) and hide the missile box
+// gun spots (guns: [[x, y, z] | { at, scale } | "hide" | null, ...] in the order of SHIP_TYPES[type].guns), move or
+// hide the missile box (missile) and give the real flight deck's height (deck)
 function useRealShip(M, type, team) {
   const R = REAL.make('ship_' + type, team); if (!R) return;
   M.group.remove(M.hullMesh); M.group.add(R.obj); M.hullMesh = R.obj;
   const I = R.info;
+  // the real flight deck's height, where planes launch from (Low never gets here, so the block carrier keeps its own)
+  if (I.deck) SHIP_TYPES[type].deck = I.deck;
   (I.guns || []).forEach((p, i) => {
     const g = M.guns[i]; if (!g || !p) return;
     if (p === 'hide') { g.yaw.traverse(o => { if (o.isMesh) o.visible = false; }); return; }
-    g.yaw.position.set(p[0], p[1], p[2]);
+    // [x, y, z], or { at: [x, y, z], scale } to size the mount to the ship (its muzzles scale with it)
+    const at = Array.isArray(p) ? p : p.at;
+    if (at) g.yaw.position.set(at[0], at[1], at[2]);
+    if (p.scale) g.yaw.scale.setScalar(p.scale);
   });
   if (M.missile && I.missile) { if (I.missile === 'hide') M.missile.visible = false; else M.missile.position.set(...I.missile); }
 }

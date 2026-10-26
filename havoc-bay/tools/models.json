@@ -1,42 +1,817 @@
 {
  "_doc": "One entry per game model; see README.md. uid: Sketchfab model. rot: degrees [x, y, z] turning the download so the nose/barrel points +z and +y is up. size: [axis, length in game units] after rotating. align: 'center' (default) or 'bottom' (stands on y = 0), then moved by origin. tris/lo: triangle targets (near, far; lo 0 = no far version). tex/loTex: largest texture side. drop: regex on node, mesh or material names to leave out. spin / pitch: regex for parts the game moves (propellers; a gun's elevating part). game: copied into ../models/models.json for the game.",
-
- "fighter": { "what": "Fighter (F-16)", "uid": "ea8edb08d79e4eafa9c794c581f88cf3",
-  "rot": [0, 0, 0], "size": ["z", 13.5], "tris": 26000, "lo": 3500, "tex": 1024, "loTex": 256, "drop": "",
-  "game": { "tint": 0.3, "keep": "glass|canopy|cockpit|tyre|tire|rubber|pilot", "flames": [] } },
- "jet": { "what": "Jet (F/A-18E/F Super Hornet)", "uid": "f71e9fea01e24fea9b1b380161d21d38",
-  "rot": [0, 0, 0], "size": ["z", 15], "tris": 28000, "lo": 3500, "tex": 1024, "loTex": 256, "drop": "",
-  "game": { "tint": 0.3, "keep": "glass|canopy|cockpit|tyre|tire|rubber|pilot", "flames": [] } },
- "bomber": { "what": "Bomber (B-2 Spirit)", "uid": "b16592b1083948a49ae2afa90d190a08",
-  "rot": [0, 0, 0], "size": ["x", 26], "tris": 24000, "lo": 3000, "tex": 1024, "loTex": 256, "drop": "",
-  "game": { "tint": 0.3, "keep": "glass|canopy|cockpit|tyre|tire|rubber" } },
-
- "ship_jetski": { "what": "Jet Ski", "uid": "37a2348f02da472d98310fd5621307c6",
-  "rot": [0, 0, 0], "size": ["z", 4.6], "align": "bottom", "origin": [0, -0.4, 0], "tris": 8000, "lo": 1500, "tex": 1024, "loTex": 256, "drop": "",
-  "game": { "tint": 0.3 } },
- "ship_gunboat": { "what": "Turret Boat (M21 patrol boat)", "uid": "598d3938b4214f2e9f385c29b3a3744a",
-  "rot": [0, 0, 0], "size": ["z", 17], "align": "bottom", "origin": [0, -1, 0], "tris": 30000, "lo": 4000, "tex": 1024, "loTex": 256, "drop": "",
-  "game": { "tint": 0.3 } },
- "ship_destroyer": { "what": "Destroyer (Arleigh Burke class)", "uid": "17be09c31c6047e4a5969b68c29eba03",
-  "rot": [0, 0, 0], "size": ["z", 46], "align": "bottom", "origin": [0, -2.2, 0], "tris": 45000, "lo": 6000, "tex": 2048, "loTex": 512, "drop": "",
-  "game": { "tint": 0.3 } },
- "ship_battleship": { "what": "Battleship (USS Missouri, 1991)", "uid": "ec23c03e8c4d4e74925117ff88dde598",
-  "rot": [0, 0, 0], "size": ["z", 78], "align": "bottom", "origin": [0, -3.6, 0], "tris": 70000, "lo": 8000, "tex": 2048, "loTex": 512, "drop": "",
-  "game": { "tint": 0.3 } },
- "ship_carrier": { "what": "Aircraft Carrier (USS Gerald R. Ford)", "uid": "562bf516e1494df38d8f222504dc798b",
-  "rot": [0, 0, 0], "size": ["z", 96], "align": "bottom", "origin": [0, -4, 0], "tris": 70000, "lo": 8000, "tex": 2048, "loTex": 512, "drop": "",
-  "game": { "tint": 0.3 } },
-
- "gun_aa": { "what": "Anti-air gun (Phalanx CIWS)", "uid": "b811949a2ba543aab5fde70ecdf0bf6d",
-  "rot": [0, 0, 0], "size": ["y", 3.4], "align": "bottom", "tris": 8000, "lo": 0, "tex": 1024, "loTex": 0, "drop": "", "pitch": "",
-  "game": { "tint": 0.25 } },
- "gun_main": { "what": "Naval gun (76 mm OTO Melara)", "uid": "a3736060c2cc498dbe9c3ac82ab3f606",
-  "rot": [0, 0, 0], "size": ["z", 7.5], "align": "bottom", "tris": 6000, "lo": 0, "tex": 1024, "loTex": 0, "drop": "", "pitch": "",
-  "game": { "tint": 0.25 } },
- "gun_mg": { "what": "Machine gun (M2 Browning)", "uid": "7b83ca60e6c9451f9f23d2d0bc0e4710",
-  "rot": [0, 0, 0], "size": ["z", 2.2], "tris": 5000, "lo": 0, "tex": 1024, "loTex": 0, "drop": "", "pitch": "",
-  "game": { "tint": 0 } },
- "rifle": { "what": "Soldier rifle (HK416 A7)", "uid": "a16768f0ffa24737a4fe324a411cfbd9",
-  "rot": [0, 0, 0], "size": ["z", 1.35], "tris": 3500, "lo": 0, "tex": 512, "loTex": 0, "drop": "",
-  "game": { "tint": 0 } }
+ "fighter": {
+  "what": "Fighter (F-16E/F Fighting Falcon)",
+  "uid": "d54c72e055a647ad9173e01548e50db3",
+  "rot": [
+   0,
+   -90,
+   0
+  ],
+  "size": [
+   "z",
+   13.5
+  ],
+  "tris": 30000,
+  "lo": 3500,
+  "tex": 1024,
+  "loTex": 256,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "keep": "glass|canopy|cockpit|tyre|tire|rubber|pilot",
+   "flames": [
+    [
+     0,
+     -1.03,
+     -6.55
+    ]
+   ],
+   "flameSize": 0.55,
+   "sound": "jet"
+  }
+ },
+ "jet": {
+  "what": "Jet (F/A-18E/F Super Hornet)",
+  "uid": "f71e9fea01e24fea9b1b380161d21d38",
+  "rot": [
+   0,
+   -90,
+   0
+  ],
+  "size": [
+   "z",
+   15
+  ],
+  "tris": 28000,
+  "lo": 3500,
+  "tex": 1024,
+  "loTex": 256,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "keep": "glass|canopy|cockpit|tyre|tire|rubber|pilot",
+   "flames": [
+    [
+     0.45,
+     -0.12,
+     -7.25
+    ],
+    [
+     -0.45,
+     -0.12,
+     -7.25
+    ]
+   ],
+   "flameSize": 0.45,
+   "sound": "jet"
+  }
+ },
+ "bomber": {
+  "what": "Bomber (B-2 Spirit)",
+  "uid": "b16592b1083948a49ae2afa90d190a08",
+  "rot": [
+   0,
+   180,
+   0
+  ],
+  "size": [
+   "x",
+   26
+  ],
+  "tris": 24000,
+  "lo": 3000,
+  "tex": 1024,
+  "loTex": 256,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "keep": "glass|canopy|cockpit|tyre|tire|rubber",
+   "sound": "jet"
+  },
+  "crop": [
+   [
+    -60,
+    2.6,
+    -30
+   ],
+   [
+    60,
+    20,
+    30
+   ]
+  ]
+ },
+ "ship_jetski": {
+  "what": "Jet Ski",
+  "uid": "37a2348f02da472d98310fd5621307c6",
+  "rot": [
+   0,
+   -90,
+   0
+  ],
+  "size": [
+   "z",
+   4.6
+  ],
+  "align": "bottom",
+  "origin": [
+   0,
+   -0.4,
+   0
+  ],
+  "tris": 8000,
+  "lo": 1500,
+  "tex": 1024,
+  "loTex": 256,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "guns": [
+    "hide"
+   ]
+  }
+ },
+ "ship_gunboat": {
+  "what": "Turret Boat (M21 patrol boat)",
+  "uid": "598d3938b4214f2e9f385c29b3a3744a",
+  "rot": [
+   0,
+   0,
+   0
+  ],
+  "size": [
+   "z",
+   17
+  ],
+  "align": "bottom",
+  "origin": [
+   0,
+   -1.6,
+   0
+  ],
+  "tris": 30000,
+  "lo": 4000,
+  "tex": 1024,
+  "loTex": 256,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "guns": [
+    {
+     "at": [
+      0,
+      2.45,
+      6.85
+     ],
+     "scale": 0.8
+    },
+    {
+     "at": [
+      0,
+      2.35,
+      -6.6
+     ],
+     "scale": 0.8
+    }
+   ]
+  },
+  "cut": [
+   [
+    [
+     -0.7,
+     2.2,
+     6.1
+    ],
+    [
+     0.7,
+     2.9,
+     7.6
+    ]
+   ],
+   [
+    [
+     -0.8,
+     1.85,
+     -7.4
+    ],
+    [
+     0.8,
+     2.75,
+     -4.2
+    ]
+   ]
+  ]
+ },
+ "ship_destroyer": {
+  "what": "Destroyer (Arleigh Burke class)",
+  "uid": "17be09c31c6047e4a5969b68c29eba03",
+  "rot": [
+   0,
+   0,
+   0
+  ],
+  "size": [
+   "z",
+   46
+  ],
+  "align": "keep",
+  "origin": [
+   0,
+   0,
+   0
+  ],
+  "tris": 45000,
+  "lo": 6000,
+  "tex": 2048,
+  "loTex": 512,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "guns": [
+    {
+     "at": [
+      0,
+      2.5,
+      13.8
+     ],
+     "scale": 1
+    },
+    {
+     "at": [
+      0,
+      1.95,
+      -17.6
+     ],
+     "scale": 1
+    },
+    {
+     "at": [
+      0,
+      3.8,
+      9.1
+     ],
+     "scale": 0.45
+    },
+    {
+     "at": [
+      0,
+      3.8,
+      -8.9
+     ],
+     "scale": 0.45
+    }
+   ]
+  },
+  "cut": [
+   [
+    [
+     -1.1,
+     2.5,
+     12.7
+    ],
+    [
+     1.1,
+     3.9,
+     16.4
+    ]
+   ],
+   [
+    [
+     -0.7,
+     3.75,
+     8.6
+    ],
+    [
+     0.7,
+     5.0,
+     9.6
+    ]
+   ],
+   [
+    [
+     -0.7,
+     3.7,
+     -9.4
+    ],
+    [
+     0.7,
+     5.0,
+     -8.4
+    ]
+   ]
+  ]
+ },
+ "ship_battleship": {
+  "what": "Battleship (USS Missouri, 1991)",
+  "uid": "ec23c03e8c4d4e74925117ff88dde598",
+  "rot": [
+   0,
+   0,
+   0
+  ],
+  "size": [
+   "z",
+   78
+  ],
+  "align": "bottom",
+  "origin": [
+   0,
+   -3.2,
+   0
+  ],
+  "tris": 2000000,
+  "lo": 14000,
+  "tex": 2048,
+  "loTex": 512,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "guns": [
+    {
+     "at": [
+      0,
+      1.63,
+      16.4
+     ],
+     "scale": 1
+    },
+    {
+     "at": [
+      0,
+      2.44,
+      10.0
+     ],
+     "scale": 1
+    },
+    {
+     "at": [
+      0,
+      1.75,
+      -19.15
+     ],
+     "scale": 1
+    },
+    {
+     "at": [
+      1.9,
+      5.0,
+      1.62
+     ],
+     "scale": 0.4
+    },
+    {
+     "at": [
+      -1.6,
+      5.0,
+      1.62
+     ],
+     "scale": 0.4
+    },
+    {
+     "at": [
+      1.9,
+      5.0,
+      -6.75
+     ],
+     "scale": 0.4
+    },
+    {
+     "at": [
+      -1.6,
+      5.0,
+      -6.75
+     ],
+     "scale": 0.4
+    }
+   ],
+   "missile": "hide"
+  },
+  "cut": [
+   [
+    [
+     -2.0,
+     1.6,
+     13.7
+    ],
+    [
+     2.0,
+     2.62,
+     22.3
+    ]
+   ],
+   [
+    [
+     -2.0,
+     2.4,
+     7.4
+    ],
+    [
+     2.0,
+     3.45,
+     15.9
+    ]
+   ],
+   [
+    [
+     -2.0,
+     1.72,
+     -25.0
+    ],
+    [
+     2.0,
+     2.8,
+     -16.5
+    ]
+   ],
+   [
+    [
+     1.2,
+     4.95,
+     1.1
+    ],
+    [
+     2.6,
+     6.6,
+     2.2
+    ]
+   ],
+   [
+    [
+     -2.6,
+     4.95,
+     1.1
+    ],
+    [
+     -0.6,
+     6.6,
+     2.2
+    ]
+   ],
+   [
+    [
+     1.2,
+     4.95,
+     -7.2
+    ],
+    [
+     2.6,
+     6.6,
+     -6.2
+    ]
+   ],
+   [
+    [
+     -2.6,
+     4.95,
+     -7.2
+    ],
+    [
+     -0.6,
+     6.6,
+     -6.2
+    ]
+   ]
+  ],
+  "loFrom": {
+   "uid": "a15fd7f36eda4be28f2b3b6d7ccb10d0",
+   "rot": [
+    0,
+    0,
+    0
+   ],
+   "size": [
+    "z",
+    78
+   ],
+   "align": "bottom",
+   "origin": [
+    0,
+    -3.2,
+    0
+   ],
+   "cut": [],
+   "crop": null,
+   "drop": ""
+  }
+ },
+ "ship_carrier": {
+  "what": "Aircraft Carrier (USS Gerald R. Ford)",
+  "uid": "562bf516e1494df38d8f222504dc798b",
+  "rot": [
+   0,
+   0,
+   0
+  ],
+  "size": [
+   "z",
+   96
+  ],
+  "align": "bottom",
+  "origin": [
+   0,
+   -3.5,
+   0
+  ],
+  "tris": 70000,
+  "lo": 8000,
+  "tex": 1024,
+  "loTex": 512,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "deck": 5.35,
+   "guns": [
+    {
+     "at": [
+      8.6,
+      5.3,
+      -45.6
+     ],
+     "scale": 1
+    },
+    {
+     "at": [
+      -9.2,
+      5.3,
+      -45.6
+     ],
+     "scale": 1
+    },
+    {
+     "at": [
+      11.0,
+      5.3,
+      14
+     ],
+     "scale": 0.45
+    },
+    {
+     "at": [
+      11.3,
+      5.3,
+      -2
+     ],
+     "scale": 0.45
+    },
+    {
+     "at": [
+      11.0,
+      5.3,
+      -33
+     ],
+     "scale": 0.45
+    },
+    {
+     "at": [
+      -11.0,
+      5.3,
+      12
+     ],
+     "scale": 0.45
+    },
+    {
+     "at": [
+      -11.3,
+      5.3,
+      -18
+     ],
+     "scale": 0.45
+    }
+   ]
+  }
+ },
+ "gun_aa": {
+  "what": "Anti-air gun (Phalanx CIWS)",
+  "uid": "b811949a2ba543aab5fde70ecdf0bf6d",
+  "rot": [
+   0,
+   0,
+   0
+  ],
+  "size": [
+   "y",
+   3.6
+  ],
+  "align": "bottom",
+  "tris": 8000,
+  "lo": 0,
+  "tex": 1024,
+  "loTex": 0,
+  "drop": "",
+  "pitch": "^Rotate_x$",
+  "game": {
+   "tint": 0
+  },
+  "muzzle": "^Gun_Mat"
+ },
+ "gun_main": {
+  "what": "Naval gun (5-inch Mk 45, from the destroyer)",
+  "uid": "17be09c31c6047e4a5969b68c29eba03",
+  "rot": [
+   0,
+   0,
+   0
+  ],
+  "size": [
+   "z",
+   46
+  ],
+  "align": "keep",
+  "origin": [
+   0,
+   -2.5,
+   -13.8
+  ],
+  "keepBox": [
+   [
+    -0.6,
+    0.04,
+    -1.0
+   ],
+   [
+    0.6,
+    1.6,
+    2.3
+   ]
+  ],
+  "tris": 2000000,
+  "lo": 0,
+  "tex": 2048,
+  "loTex": 0,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "pivot": [
+    0,
+    0.68,
+    0.42
+   ],
+   "muzzles": [
+    [
+     0,
+     0.98,
+     2.13
+    ]
+   ]
+  },
+  "pitchBox": [
+   [
+    -0.16,
+    0.5,
+    0.42
+   ],
+   [
+    0.16,
+    1.15,
+    2.4
+   ]
+  ]
+ },
+ "gun_mg": {
+  "what": "Machine gun (M2 Browning)",
+  "uid": "7b83ca60e6c9451f9f23d2d0bc0e4710",
+  "rot": [
+   0,
+   180,
+   0
+  ],
+  "size": [
+   "z",
+   2.2
+  ],
+  "tris": 5000,
+  "lo": 0,
+  "tex": 1024,
+  "loTex": 0,
+  "drop": "",
+  "pitch": "blinn2SG",
+  "game": {
+   "tint": 0
+  },
+  "crop": [
+   [
+    -1,
+    -0.2,
+    -2
+   ],
+   [
+    1,
+    1,
+    2
+   ]
+  ],
+  "muzzle": "blinn2SG"
+ },
+ "rifle": {
+  "what": "Soldier rifle (HK416 A7)",
+  "uid": "a16768f0ffa24737a4fe324a411cfbd9",
+  "rot": [
+   0,
+   90,
+   0
+  ],
+  "size": [
+   "z",
+   1.35
+  ],
+  "tris": 3500,
+  "lo": 0,
+  "tex": 512,
+  "loTex": 0,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "hold": [
+    0,
+    -2.35,
+    0.35
+   ]
+  },
+  "crop": [
+   [
+    -50,
+    -1,
+    -3
+   ],
+   [
+    50,
+    30,
+    5
+   ]
+  ]
+ },
+ "gun_big": {
+  "what": "Battleship turret (USS Missouri, 16-inch)",
+  "uid": "ec23c03e8c4d4e74925117ff88dde598",
+  "rot": [
+   0,
+   0,
+   0
+  ],
+  "size": [
+   "z",
+   78
+  ],
+  "align": "bottom",
+  "origin": [
+   0,
+   -4.83,
+   -16.4
+  ],
+  "keepBox": [
+   [
+    -1.95,
+    -0.05,
+    -2.5
+   ],
+   [
+    1.95,
+    0.91,
+    5.9
+   ]
+  ],
+  "pitchBox": [
+   [
+    -1.6,
+    0.2,
+    1.9
+   ],
+   [
+    1.6,
+    0.8,
+    5.95
+   ]
+  ],
+  "tris": 2000000,
+  "lo": 0,
+  "tex": 2048,
+  "loTex": 0,
+  "drop": "",
+  "game": {
+   "tint": 0,
+   "pivot": [
+    0,
+    0.47,
+    1.5
+   ],
+   "muzzles": [
+    [
+     -0.62,
+     0.47,
+     5.66
+    ],
+    [
+     0,
+     0.47,
+     5.66
+    ],
+    [
+     0.62,
+     0.47,
+     5.66
+    ]
+   ]
+  }
+ }
 }
