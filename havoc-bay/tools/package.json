@@ -1,0 +1,14 @@
+{
+  "name": "havoc-bay-model-tools",
+  "private": true,
+  "type": "module",
+  "description": "Builds havoc-bay/models/*.glb from Sketchfab downloads. See README.md.",
+  "dependencies": {
+    "@gltf-transform/core": "^4.2.0",
+    "@gltf-transform/extensions": "^4.2.0",
+    "@gltf-transform/functions": "^4.2.0",
+    "meshoptimizer": "^0.22.0",
+    "sharp": "^0.34.0",
+    "three": "0.128.0"
+  }
+}
