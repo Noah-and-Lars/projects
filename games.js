@@ -154,7 +154,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-25T12:00:00+11:00',
+    updated: '2026-10-26T13:00:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-26', game: 'cube-assault', text: 'Cube Assault 2.9.11: the Halloween 2026 Event! The first Battle Pass (the button in the bottom right of the home screen) has 50 levels of coins and knife crates, with two Halloween knives you can only get this week: Jacks Grin at level 25 and Reapers Lantern at level 50. The event ends at the same time for everyone. Team Deathmatch and C:S Mode rooms now grow to fit up to 5v5.' },
   { date: '2026-10-26', game: 'football', text: 'Football 1.0.2: the Laws of the Game. Assistant referees flag offsides, the fourth official shows added time, VAR checks goals and penalties, handballs, indirect free kicks, dropped balls, penalty shootouts (turn on Penalties for draws), and players keep their distance at free kicks, goal kicks and kick-offs. Hold a pass button for a harder pass, your passes always reach your player, keepers are better and the computer makes mistakes too.' },
   { date: '2026-10-26', game: 'rocket-rivals', text: 'New game: Rocket Rivals 1.0! Rocket-powered car football with boost, flips, wall driving and aerials. Ten cars to customise, fifteen goal explosions, six arenas, ranked playlists, Snow Day, Rumble and Heatseeker, a season, tournaments, training and the Rivals Pass. Online opponents are bots for now.' },
   { date: '2026-10-26', game: 'football', text: 'Football 1.0.1: change any key you like. Open Customise and pick Keyboard Keys, click an action and press the new key (two actions swap if the key is taken). Works with both the FIFA and Classic layouts, and the hints in matches show your own keys.' },

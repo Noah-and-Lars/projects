@@ -667,7 +667,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <button class="uiCard" id="homeFriends" data-art="friends" style="--ac:#f472b6"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Online</em><b>Friends</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v2.9.10 · What's new</button>
+    <button class="link verLink" data-action="notes">v2.9.11 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -693,10 +693,13 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.10<span>Friends &amp; bombs</span></h1><p>A friends list with invites and player profiles, a new Bombs section in the Shop with the grenade and the landmine, a bomb slot in your multiplayer loadout, a scope on the Extreme Gun, cheaper crates and a round of fixes.</p>
-      <div class="hero-guns"><i class="hcube" style="background:#7a1c4f">👥</i><i class="hcube" style="background:#3a3f46">💣</i><i class="hcube" style="background:#2c4a6f">🔭</i><i class="hcube" style="background:#6f5a2c">📦</i></div>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.11<span>Halloween 2026 Event</span></h1><p>The Battle Pass is here: 50 levels to climb by playing and unlocking achievements, with coins, knife crates and two spooky Halloween knives you can only get this week. Plus up to 5v5 in every team mode.</p>
+      <div class="hero-guns"><i class="hcube" style="background:#7a3a0a">🎃</i><i class="hcube" style="background:#3a1a5a">💀</i><i class="hcube" style="background:#6f5a2c">📦</i><i class="hcube" style="background:#2c4a6f">👥</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
+      <div><i>🎃</i><span><b>Battle Pass: Halloween 2026 Event</b>The button in the bottom right of the home screen. 50 levels of coins and knife crates. It ends at the same time for everyone, a week from now.</span></div>
+      <div><i>💀</i><span><b>Halloween knives</b>Jack's Grin at level 25 and Reaper's Lantern at level 50. Only in this event, never in crates.</span></div>
+      <div><i>👥</i><span><b>Up to 10 players</b>Team Deathmatch and C:S Mode rooms grow to fit everyone, up to 5v5.</span></div>
       <div><i>👥</i><span><b>Friends</b>Click a name in a multiplayer lobby to see their profile and send a friend request. Invite your friends to your games from the Friends button.</span></div>
       <div><i>💣</i><span><b>Bombs</b>A new Shop section: the Grenade (pull the pin, click to throw, it blows up on impact) and the Landmine. Pick one as your bomb in the multiplayer loadout.</span></div>
       <div><i>🔭</i><span><b>Extreme Gun scope</b>Right-click or Z to look down a new scope.</span></div>
@@ -736,6 +739,14 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.11 <span>Halloween 2026 Event</span></h3>
+        <p class="nIntro">The first Battle Pass, and bigger rooms.</p><ul>
+        <li><b>Battle Pass:</b> press the new 🎃 Battle Pass button in the bottom right of the home screen. The pass has 50 levels in a straight line. Level up by playing: 3 XP for every coin you earn, 15 XP for every 10 seconds in a game, and 400 XP for every new achievement (250 XP a level).</li>
+        <li>Levels give <b>coins</b> and <b>knife crates</b> (open them from the pass), and some levels give nothing. Level 25 gives <b>Jack's Grin</b>, a carved pumpkin knife with glowing faces, and level 50 gives <b>Reaper's Lantern</b>, a black blade in green ghost-fire with burning skulls, bats and a blood-red edge.</li>
+        <li>Season knives are only in their season and never in knife crates. Once you have one, it's yours to keep.</li>
+        <li>The event lasts <b>one week</b> and the timer is the same for everyone. When it runs out, a new season starts back at level 1 with two new knives.</li>
+        <li><b>Up to 10 players:</b> Team Deathmatch and C:S Mode rooms now grow to fit everyone who joins, up to 5v5 (1v5 is still exactly 6 players). Free-for-all and Co-op take up to 10.</li>
+      </ul></section>
       <section><h3>v2.9.10 <span>Friends &amp; bombs</span></h3>
         <p class="nIntro">More groundwork for Cube Assault 3.0: friends, bombs and fixes.</p>
         <h4 class="nBal">⚖️ Balance changes</h4><ul class="nBalList">
@@ -8919,7 +8930,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.10';
+const VERSION = '2.9.11';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -11891,7 +11902,7 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
   addEventListener('keydown', e => { if (e.code === 'Escape' && currentMenu === 'mpbrowse') { showMenu('mp'); } });
 })();
 </script>
-<div id="ca30Pop" role="dialog" aria-modal="true" aria-labelledby="ca30T">
+<div id="ca30Pop" hidden role="dialog" aria-modal="true" aria-labelledby="ca30T"> <!-- 2.9.11: no longer shown -->
   <div class="c30box">
     <div class="c30img"><img src="thumb.jpg" alt="Cube Assault"></div>
     <div class="c30body">
@@ -12569,6 +12580,88 @@ document.getElementById('achToggle').addEventListener('click', () => {
   (function recTick() { requestAnimationFrame(recTick); try { record(); if (KC && (state !== 'dead' || gameMode !== 'mp')) stopReplay(); } catch (e) {} })();
   window.v295 = { picOf, render, startReplay, rec, get KC() { return KC; } };
 })();
+</script>
+<script id="v2911-knives">
+// 2.9.11: season knives. Every season of the Season Pass has two knives of its own, unlocked at levels 25 and 50.
+// They are never in knife crates: they go in KSKIN (so they can be equipped and other players see them online) but
+// not in KNIFE_SKINS (the crate pool and the collection). Seasons are a week long and the same for everyone (UTC).
+const SEASON_EPOCH = Date.UTC(2026, 9, 26, 2, 0, 0), SEASON_MS = 7 * 864e5;
+const seasonNow = () => Math.max(1, Math.floor((Date.now() - SEASON_EPOCH) / SEASON_MS) + 1);
+const seasonEnds = n => SEASON_EPOCH + n * SEASON_MS;
+KTIER.season = { k: 'season', name: 'Season', p: 0, c: '#ff8a1e' };
+const seasonName = n => n === 1 ? 'Halloween 2026 Event' : 'Season ' + n; // season 1 is the Halloween event
+const SEASON_KNIVES = (() => {
+  const L = [];
+  const glowLine = (g, pts, col, w, blur = 16) => { g.save(); g.strokeStyle = col; g.shadowColor = col; g.shadowBlur = blur; g.lineWidth = w; g.lineJoin = g.lineCap = 'round'; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke(); g.restore(); };
+  // ---------- the Halloween 2026 Event (season 1) ----------
+  // level 25: Jack's Grin. A carved pumpkin: ribbed orange rind, glowing jack-o'-lantern faces, a curly vine.
+  L.push({ id: 's1_pumpkin', name: "Jack's Grin", tier: 'season', season: 1, lvl: 25, metal: 0.25, rough: 0.5, h: 0x2d4a16, glow: 0.45,
+    paint(g, W, H, r) {
+      const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#ff9a2e'); bg.addColorStop(0.5, '#e8650c'); bg.addColorStop(1, '#8a2e04'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      for (let x = 0; x < W; x += 22) { const s = g.createLinearGradient(x, 0, x + 22, 0); s.addColorStop(0, 'rgba(80,20,0,.35)'); s.addColorStop(0.5, 'rgba(255,200,120,.12)'); s.addColorStop(1, 'rgba(80,20,0,.35)'); g.fillStyle = s; g.fillRect(x, 0, 22, H); }
+      const face = (cx, cy, k) => { g.save(); g.translate(cx, cy); g.scale(k, k); g.fillStyle = '#ffe680'; g.shadowColor = '#ffb000'; g.shadowBlur = 18;
+        for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(sx * 18, -14); g.lineTo(sx * 6, -14); g.lineTo(sx * 12, -26); g.closePath(); g.fill(); }
+        g.beginPath(); g.moveTo(-3, -6); g.lineTo(3, -6); g.lineTo(0, -12); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(-26, 2); for (let i = 0; i <= 8; i++) g.lineTo(-26 + i * 6.5, i % 2 ? 8 : 14); g.lineTo(26, 2); g.quadraticCurveTo(0, 26, -26, 2); g.fill(); g.restore(); };
+      face(110, 66, 1.15); face(300, 70, 1); face(450, 64, 0.8);
+      g.save(); g.strokeStyle = '#2f6a1a'; g.lineWidth = 3; g.beginPath(); for (let x = 0; x < W; x += 4) g.lineTo(x, 9 + Math.sin(x * 0.08) * 5); g.stroke();
+      for (let x = 30; x < W; x += 60) { g.beginPath(); g.arc(x, 15, 6, 0, Math.PI * 1.6); g.stroke(); } g.restore();
+    } });
+  // level 50: Reaper's Lantern. A black blade wrapped in green ghost-fire, with skulls whose eyes burn, bats, a cobweb
+  // on the spine and a blood-red edge. The rarest thing you can get this season.
+  L.push({ id: 's1_reaper', name: "Reaper's Lantern", tier: 'season', season: 1, lvl: 50, metal: 0.8, rough: 0.12, h: 0x1a0a24, glow: 1.0,
+    paint(g, W, H, r) {
+      const bg = g.createLinearGradient(0, 0, W, 0); bg.addColorStop(0, '#07020c'); bg.addColorStop(0.5, '#1a0730'); bg.addColorStop(1, '#05010a'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      // a purple mist, then soft green ghost-fire curling up from the edge in layers
+      for (let i = 0; i < 14; i++) { const x = r() * W, y = H * (0.2 + r() * 0.6), rad = 30 + r() * 50, m = g.createRadialGradient(x, y, 0, x, y, rad); m.addColorStop(0, 'rgba(150,60,255,.22)'); m.addColorStop(1, 'rgba(150,60,255,0)'); g.fillStyle = m; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+      g.save(); g.globalCompositeOperation = 'lighter';
+      for (const [n, hMax, a, wd] of [[22, 95, 0.18, 26], [30, 70, 0.28, 16], [36, 45, 0.45, 9]]) for (let i = 0; i < n; i++) {
+        const x = r() * W, h = hMax * (0.5 + r() * 0.5), sway = (r() - 0.5) * 30;
+        const fl = g.createLinearGradient(0, H, 0, H - h); fl.addColorStop(0, `rgba(120,255,150,${a * 2})`); fl.addColorStop(0.45, `rgba(40,230,110,${a})`); fl.addColorStop(1, 'rgba(10,120,60,0)');
+        g.fillStyle = fl; g.beginPath(); g.moveTo(x - wd, H);
+        g.bezierCurveTo(x - wd * 0.9, H - h * 0.4, x + sway - wd * 0.3, H - h * 0.7, x + sway, H - h);
+        g.bezierCurveTo(x + sway + wd * 0.2, H - h * 0.65, x + wd * 0.9, H - h * 0.35, x + wd, H); g.fill(); }
+      g.restore();
+      // skulls with burning eyes
+      const skull = (cx, cy, k) => { g.save(); g.translate(cx, cy); g.scale(k, k);
+        g.fillStyle = '#ece6d8'; g.shadowColor = '#b6ffcf'; g.shadowBlur = 12; g.beginPath(); g.arc(0, -4, 17, Math.PI * 0.95, Math.PI * 0.05); g.lineTo(11, 12); g.lineTo(-11, 12); g.closePath(); g.fill();
+        g.shadowBlur = 0; g.fillStyle = '#15081f'; for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(sx * 7, -3, 5, 6, 0, 0, Math.PI * 2); g.fill(); }
+        g.fillStyle = '#5cff8a'; g.shadowColor = '#5cff8a'; g.shadowBlur = 16; for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * 7, -3, 2.2, 0, Math.PI * 2); g.fill(); }
+        g.shadowBlur = 0; g.fillStyle = '#15081f'; g.beginPath(); g.moveTo(0, 2); g.lineTo(-3, 7); g.lineTo(3, 7); g.fill(); for (let i = -2; i <= 2; i++) g.fillRect(i * 4 - 1, 9, 2, 4); g.restore(); };
+      skull(95, 62, 1.15); skull(260, 58, 1.3); skull(420, 62, 1.0);
+      // bats
+      const bat = (x, y, k) => { g.save(); g.translate(x, y); g.scale(k, k); g.fillStyle = '#000'; g.shadowColor = '#b05cff'; g.shadowBlur = 8; g.beginPath(); g.moveTo(0, 0);
+        g.quadraticCurveTo(-8, -10, -20, -4); g.quadraticCurveTo(-14, -2, -12, 4); g.quadraticCurveTo(-6, 0, 0, 6); g.quadraticCurveTo(6, 0, 12, 4); g.quadraticCurveTo(14, -2, 20, -4); g.quadraticCurveTo(8, -10, 0, 0); g.fill(); g.restore(); };
+      bat(175, 30, 0.9); bat(345, 26, 0.7); bat(480, 34, 0.6); bat(30, 36, 0.6);
+      // a cobweb on the spine
+      g.save(); g.strokeStyle = 'rgba(230,230,255,.55)'; g.lineWidth = 1; const ox = 0, oy = 0;
+      for (let a = 0; a <= 6; a++) { const t = a / 6 * Math.PI / 2; g.beginPath(); g.moveTo(ox, oy); g.lineTo(ox + Math.cos(t) * 80, oy + Math.sin(t) * 60); g.stroke(); }
+      for (let k = 1; k <= 4; k++) { g.beginPath(); for (let a = 0; a <= 6; a++) { const t = a / 6 * Math.PI / 2; g.lineTo(ox + Math.cos(t) * 20 * k, oy + Math.sin(t) * 15 * k); } g.stroke(); } g.restore();
+      // the blood-red cutting edge
+      const ed = g.createLinearGradient(0, H - 16, 0, H); ed.addColorStop(0, 'rgba(160,0,20,0)'); ed.addColorStop(1, 'rgba(255,20,50,.95)'); g.fillStyle = ed; g.fillRect(0, H - 16, W, 16);
+      glowLine(g, [[0, H - 3], [W, H - 3]], '#ff2340', 2, 14);
+    } });
+  // later seasons: two new knives each week, made from the season number so everyone gets the same ones
+  const ADJ = ['Frostbite', 'Ember', 'Stormcaller', 'Venom', 'Solar', 'Lunar', 'Phantom', 'Crystal', 'Thunder', 'Shadow', 'Neon', 'Royal', 'Tidal', 'Inferno', 'Glacier', 'Nova'];
+  const NOUN = ['Fang', 'Edge', 'Talon', 'Claw', 'Shard', 'Spire', 'Reaper', 'Warden', 'Comet', 'Viper', 'Halo', 'Rift'];
+  const PAL = [['#06121f', '#3de8ff', '#e8fbff'], ['#1a0505', '#ff4d1a', '#ffd25a'], ['#0a0418', '#b05cff', '#ff7ae6'], ['#031a0c', '#2dff8a', '#d9ff6a'], ['#170f02', '#ffb000', '#fff3c0'],
+    ['#02060f', '#5a8cff', '#c9d8ff'], ['#160418', '#ff2d95', '#ffd0ea'], ['#041615', '#00e0c0', '#bafff2']];
+  const make = (n, k) => {
+    let s = (n * 7919 + k * 104729) >>> 0; const rr = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const p = PAL[(n * 3 + k * 5) % PAL.length], name = ADJ[(n * 5 + k * 7) % ADJ.length] + ' ' + NOUN[(n * 3 + k * 11) % NOUN.length], style = (n + k) % 3;
+    return { id: `s${n}_${k ? 'b' : 'a'}`, name, tier: 'season', season: n, lvl: k ? 50 : 25, metal: 0.6, rough: 0.22, h: parseInt(p[0].slice(1), 16) + 0x101010, glow: k ? 0.85 : 0.55,
+      paint(g, W, H, r) {
+        g.fillStyle = p[0]; g.fillRect(0, 0, W, H);
+        if (style === 0) for (let i = 0; i < 7; i++) { const pts = []; let x = 0, y = rr() * H; while (x < W) { x += 10 + rr() * 22; y = Math.max(6, Math.min(H - 6, y + (rr() - 0.5) * 40)); pts.push([x, y]); } glowLine(g, pts, p[1], 3, 20); glowLine(g, pts, p[2], 1, 4); }
+        if (style === 1) for (let x = -H; x < W + H; x += 26) { glowLine(g, [[x, 0], [x + H, H]], p[1], 4, 18); if (k) glowLine(g, [[x + 13, 0], [x + 13 + H, H]], p[2], 1.5, 6); }
+        if (style === 2) for (let i = 0; i < 26; i++) { const x = rr() * W, y = rr() * H, rad = 6 + rr() * 16; g.save(); g.strokeStyle = p[1]; g.shadowColor = p[1]; g.shadowBlur = 14; g.lineWidth = 2.5; g.beginPath(); for (let j = 0; j < 6; j++) { const a = j / 6 * Math.PI * 2; g.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); } g.closePath(); g.stroke(); g.restore(); }
+        if (k) { g.save(); g.fillStyle = p[2]; g.shadowColor = p[2]; g.shadowBlur = 12; g.font = 'bold 44px sans-serif'; g.globalAlpha = 0.85; g.fillText('S' + n, W * 0.62, H * 0.66); g.restore(); }
+      } };
+  };
+  for (let n = 2; n <= seasonNow(); n++) L.push(make(n, 0), make(n, 1));
+  return L;
+})();
+for (const s of SEASON_KNIVES) KSKIN[s.id] = s;
 </script>
 <style id="v296-css">
 /* 2.9.6: knife crates */
@@ -14200,6 +14293,156 @@ body.touch #hotbar { display: none !important; }
   requestAnimationFrame(frame);
 
   window.v2910 = { sendRequest, bombPick, friends, openFriends, showProfile, holdGrenade, throwGrenade, placeMine, mines, flying, get fState() { return fState; }, invite, joinRoom };
+})();
+</script>
+<style id="v2911css">
+/* 2.9.11: the Season Pass (the Halloween 2026 Event): a card in the bottom right of the home screen and the full pass */
+#spCard { position: fixed; right: 18px; bottom: 16px; z-index: 30; display: none; align-items: center; gap: 9px; padding: 9px 16px 9px 12px; border-radius: 12px; cursor: pointer; font: inherit; color: #fff;
+  background: linear-gradient(135deg, #3a1204, #2a0a3c); border: 1px solid rgba(255,138,30,.7); box-shadow: 0 8px 22px rgba(0,0,0,.45); animation: spIn .4s cubic-bezier(.2,.9,.25,1); transition: transform .15s, box-shadow .15s; }
+#spCard.show { display: flex; }
+#spCard:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.5), 0 0 0 2px rgba(255,160,60,.55); }
+#spCard i { font-style: normal; font-size: 20px; } #spCard b { font-size: 15px; letter-spacing: .3px; } #spCard em { font-style: normal; font-size: 12px; font-weight: 800; color: #1a0a00; background: #ffb547; border-radius: 6px; padding: 2px 7px; }
+.spBar { height: 8px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; } .spBar i { display: block; height: 100%; background: linear-gradient(90deg, #ff6a00, #ffcf4a); border-radius: 6px; box-shadow: 0 0 10px rgba(255,140,0,.7); }
+@keyframes spIn { from { opacity: 0; transform: translateY(14px); } }
+#spPanel { position: fixed; inset: 0; z-index: 80; display: none; align-items: center; justify-content: center; background: rgba(4,2,10,.72); backdrop-filter: blur(4px); }
+#spPanel.show { display: flex; }
+#spPanel .box { width: min(1080px, 96vw); max-height: 92vh; overflow: auto; border-radius: 18px; padding: 20px 22px; color: #fff; animation: spIn .35s cubic-bezier(.2,.9,.25,1);
+  background: radial-gradient(ellipse at 80% 0%, rgba(255,110,10,.25), transparent 55%), radial-gradient(ellipse at 0% 100%, rgba(120,40,200,.3), transparent 55%), #0e0716; border: 1px solid rgba(255,138,30,.45); }
+#spPanel .hd { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+#spPanel .hd .nm small { display: block; font-size: 12px; letter-spacing: 2.4px; font-weight: 800; color: #ffae4a; } #spPanel .hd .nm b { font-size: 34px; line-height: 1.05; }
+#spPanel .hd .tm { margin-left: auto; text-align: right; } #spPanel .hd .tm small { display: block; font-size: 11px; letter-spacing: 1.6px; color: #bfb0dc; } #spPanel .hd .tm b { font-size: 24px; color: #ffcf7a; font-variant-numeric: tabular-nums; }
+#spPanel .spLvl { display: flex; align-items: center; gap: 14px; margin: 14px 0 6px; } #spPanel .spLvl b { font-size: 22px; white-space: nowrap; } #spPanel .spLvl .spBar { flex: 1; height: 12px; } #spPanel .spLvl span { font-size: 13px; color: #d6c9ef; white-space: nowrap; }
+#spPanel .how { font-size: 13px; color: #c7bbe0; margin-bottom: 12px; }
+#spTrack { display: flex; gap: 8px; overflow-x: auto; padding: 6px 2px 12px; scroll-behavior: smooth; }
+.spT { flex: 0 0 96px; height: 132px; border-radius: 12px; position: relative; padding: 22px 6px 6px; text-align: center; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); }
+.spT .n { position: absolute; left: 7px; top: 4px; font-size: 13px; font-weight: 800; color: #bfb0dc; }
+.spT .ic { font-size: 30px; height: 46px; display: grid; place-items: center; } .spT img { width: 84px; height: 46px; object-fit: contain; }
+.spT .w { font-size: 11.5px; line-height: 1.2; color: #eee4ff; margin-top: 6px; } .spT.none .w { color: #7f7598; } .spT.none .ic { opacity: .35; }
+.spT.got { border-color: rgba(255,175,70,.75); background: rgba(255,140,30,.12); } .spT.got::after { content: '✓'; position: absolute; right: 7px; top: 3px; color: #ffcf7a; font-weight: 900; }
+.spT.cur { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.35), 0 0 18px rgba(255,150,40,.4); }
+.spT.knife { flex-basis: 130px; background: linear-gradient(160deg, rgba(255,120,20,.22), rgba(110,30,180,.25)); border-color: rgba(255,138,30,.7); } .spT.knife img { width: 118px; height: 56px; }
+.spT.lock { filter: saturate(.55) brightness(.8); } .spT.lock.knife { filter: none; }
+#spPanel .knv { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+#spPanel .kn { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,138,30,.4); }
+#spPanel .kn img { width: 170px; height: 80px; object-fit: contain; } #spPanel .kn small { display: block; font-size: 11px; letter-spacing: 1.5px; color: #ffae4a; font-weight: 800; } #spPanel .kn b { font-size: 17px; display: block; margin-bottom: 6px; }
+#spPanel .kn .btn { padding: 6px 14px; font-size: 13px; }
+#spPanel .ft { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+#spToast { position: fixed; left: 50%; top: 14%; transform: translateX(-50%); z-index: 90; padding: 12px 22px; border-radius: 14px; color: #fff; text-align: center; pointer-events: none;
+  background: linear-gradient(135deg, rgba(60,18,4,.95), rgba(40,10,60,.95)); border: 1px solid rgba(255,150,40,.7); box-shadow: 0 10px 30px rgba(0,0,0,.5); animation: spIn .4s; }
+#spToast small { display: block; font-size: 11px; letter-spacing: 2px; color: #ffae4a; font-weight: 800; } #spToast b { font-size: 20px; }
+@media (max-width: 700px) { #spCard { right: 10px; bottom: 10px; } #spPanel .knv { grid-template-columns: 1fr; } }
+</style>
+<script id="v2911">
+// 2.9.11: the Season Pass. Season 1 is the Halloween 2026 Event. 50 levels in a straight line; you level up by playing
+// (coins you earn, time in games) and by unlocking achievements. Levels give coins and knife crates, some give nothing,
+// and levels 25 and 50 give that season's own knives. A season lasts a week and ends at the same moment for everyone,
+// then the pass starts again from level 1 (the knives you got are yours to keep).
+// Also: Team Deathmatch and C:S Mode rooms grow to fit everyone, up to 5v5.
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const click = () => { try { Sound.init(); Sound.play('click'); } catch (e) {} };
+  const LEVELS = 50, XP_PER = 250;
+  // ---------- the rewards on each level ----------
+  const EMPTY = new Set([4, 8, 13, 17, 22, 28, 33, 37, 42, 47]);
+  function reward(lvl, season) {
+    if (lvl === 25 || lvl === 50) { const k = SEASON_KNIVES.find(s => s.season === season && s.lvl === lvl); return { kind: 'knife', id: k ? k.id : '', name: k ? k.name : 'Season knife' }; }
+    if (lvl % 5 === 0) return { kind: 'crate', n: lvl === 20 || lvl === 40 ? 3 : lvl === 45 ? 2 : 1 };
+    if (EMPTY.has(lvl)) return { kind: 'none' };
+    return { kind: 'coins', n: Math.round((20 + lvl * 2.5) / 5) * 5 };
+  }
+  const label = R => R.kind === 'knife' ? R.name : R.kind === 'crate' ? `${R.n} knife crate${R.n > 1 ? 's' : ''}` : R.kind === 'coins' ? `${R.n} coins` : 'Nothing';
+  // ---------- your progress ----------
+  const P = () => {
+    if (!profile.sp || typeof profile.sp !== 'object') profile.sp = { s: seasonNow(), xp: 0, lvl: 0, crates: 0, knives: [], coinsSeen: profile.coins | 0, achSeen: Object.keys(profile.ach || {}).length, t: 0 };
+    const sp = profile.sp; if (!Array.isArray(sp.knives)) sp.knives = [];
+    if (sp.s !== seasonNow()) { sp.s = seasonNow(); sp.xp = 0; sp.lvl = 0; } // a new season: back to level 1 (crates you haven't opened stay)
+    return sp;
+  };
+  function toast(top, main) {
+    const old = $('spToast'); if (old) old.remove();
+    const t = document.createElement('div'); t.id = 'spToast'; t.innerHTML = `<small>${esc(top)}</small><b>${esc(main)}</b>`; document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3200);
+  }
+  function addXp(n) {
+    const sp = P(); if (sp.lvl >= LEVELS) { sp.xp = Math.max(sp.xp, LEVELS * XP_PER); return; }
+    sp.xp += n; const want = Math.min(LEVELS, Math.floor(sp.xp / XP_PER));
+    while (sp.lvl < want) {
+      sp.lvl++; const R = reward(sp.lvl, sp.s);
+      if (R.kind === 'coins') { profile.coins += R.n; sp.coinsSeen += R.n; } // (pass coins don't earn more XP)
+      if (R.kind === 'crate') sp.crates += R.n;
+      if (R.kind === 'knife' && R.id && !sp.knives.includes(R.id)) sp.knives.push(R.id);
+      toast(`${seasonName(sp.s)} · level ${sp.lvl}`, R.kind === 'none' ? 'Level up!' : R.kind === 'knife' ? `New knife: ${R.name}` : label(R));
+      try { Sound.play('achieve', R.kind === 'knife' ? 'legendary' : 'rare'); } catch (e) {}
+    }
+    saveProfile(); try { updateHUD(); } catch (e) {} paint();
+  }
+  // XP: 3 for every coin you earn, 400 for each new achievement, and 15 for every 10 seconds you spend in a game
+  let tick = 0;
+  setInterval(() => {
+    if (typeof testMode !== 'undefined' && testMode) return;
+    const sp = P(); let xp = 0;
+    const c = profile.coins | 0; if (c > sp.coinsSeen) xp += (c - sp.coinsSeen) * 3; sp.coinsSeen = c;
+    const a = Object.keys(profile.ach || {}).length; if (a > sp.achSeen) xp += (a - sp.achSeen) * 400; sp.achSeen = a;
+    if (state === 'playing' && ++tick >= 10) { tick = 0; xp += 15; }
+    if (xp) addXp(xp); else paintTime();
+  }, 1000);
+  // ---------- the card in the bottom right of the home screen ----------
+  const card = document.createElement('button'); card.id = 'spCard'; document.body.appendChild(card);
+  const pic = (id, W, H) => { try { return window.v296 ? v296.picOf(id, W, H) : ''; } catch (e) { return ''; } };
+  const left = () => { const ms = Math.max(0, seasonEnds(seasonNow()) - Date.now()), d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
+    return { short: d ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`, long: `${d}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s` }; };
+  function paintCard() { const sp = P(); card.innerHTML = `<i>🎃</i><b>Battle Pass</b><em>LV ${sp.lvl}</em>`; card.title = `${seasonName(sp.s)} · ends in ${left().short}`; }
+  // only on the home screen
+  setInterval(() => { const o = $('overlay'), on = o && o.style.display !== 'none' && o.classList.contains('home') && state === 'menu'; card.classList.toggle('show', !!on); }, 250);
+  card.addEventListener('click', () => { click(); open(); });
+  // ---------- the full pass ----------
+  const panel = document.createElement('div'); panel.id = 'spPanel'; document.body.appendChild(panel);
+  function paint() { paintCard(); if (panel.classList.contains('show')) paintPanel(); }
+  function paintTime() { const el = panel.querySelector('.tm b'); if (el) el.textContent = left().long; if (card.classList.contains('show')) paintCard(); }
+  function paintPanel() {
+    const sp = P(), keep = $('spTrack') ? $('spTrack').scrollLeft : null;
+    const tiles = []; for (let l = 1; l <= LEVELS; l++) { const R = reward(l, sp.s), got = l <= sp.lvl;
+      const ic = R.kind === 'knife' ? `<img alt="" src="${pic(R.id, 236, 112)}">` : R.kind === 'crate' ? '📦' : R.kind === 'coins' ? '🪙' : '·';
+      tiles.push(`<div class="spT ${R.kind}${got ? ' got' : ' lock'}${l === sp.lvl + 1 ? ' cur' : ''}"><span class="n">${l}</span><div class="ic">${ic}</div><div class="w">${esc(label(R))}</div></div>`); }
+    const ks = SEASON_KNIVES.filter(s => s.season === sp.s);
+    panel.innerHTML = `<div class="box"><div class="hd"><div class="nm"><small>🎃 BATTLE PASS · SEASON ${sp.s}</small><b>${esc(seasonName(sp.s))}</b></div>
+        <div class="tm"><small>ENDS IN (THE SAME FOR EVERYONE)</small><b>${left().long}</b></div></div>
+      <div class="spLvl"><b>Level ${sp.lvl} / ${LEVELS}</b><div class="spBar"><i style="width:${sp.lvl >= LEVELS ? 100 : (sp.xp % XP_PER) / XP_PER * 100}%"></i></div><span>${sp.lvl >= LEVELS ? 'Pass complete!' : `${sp.xp % XP_PER} / ${XP_PER} XP to level ${sp.lvl + 1}`}</span></div>
+      <div class="how">Earn XP by playing: <b>3 XP</b> for every coin you earn, <b>15 XP</b> for every 10 seconds in a game, and <b>400 XP</b> for every new achievement. When the timer runs out, a new season starts at level 1.</div>
+      <div id="spTrack">${tiles.join('')}</div>
+      <div class="knv">${ks.map(k => { const have = sp.knives.includes(k.id), on = profile.knifeSkin === k.id;
+        return `<div class="kn"><img alt="" src="${pic(k.id, 340, 160)}"><div><small>LEVEL ${k.lvl} · SEASON KNIFE</small><b>${esc(k.name)}</b>${have ? `<button class="btn${on ? ' secondary' : ''}" data-eq="${k.id}">${on ? 'Equipped' : 'Equip'}</button>` : `<span style="font-size:12.5px;color:#bfb0dc">🔒 Reach level ${k.lvl}. Only in this season, never in crates.</span>`}</div></div>`; }).join('')}</div>
+      <div class="ft">${sp.crates ? `<button class="btn" id="spOpen">Open a knife crate (${sp.crates})</button>` : ''}<button class="btn secondary" id="spClose">Close</button></div></div>`;
+    const tr = $('spTrack'); if (keep != null) tr.scrollLeft = keep; else { const cur = tr.querySelector('.cur') || tr.lastElementChild; tr.scrollLeft = Math.max(0, cur.offsetLeft - tr.clientWidth / 2); }
+  }
+  function open() { panel.classList.add('show'); paintPanel(); }
+  function close() { panel.classList.remove('show'); paintCard(); }
+  panel.addEventListener('click', e => {
+    if (e.target === panel || e.target.id === 'spClose') { click(); close(); return; }
+    const eq = e.target.closest('[data-eq]'); if (eq) { click(); profile.knifeSkin = eq.dataset.eq; saveProfile(); try { if (weaponKey === 'knife' && rig) setWeapon('knife'); } catch (er) {} paintPanel(); return; }
+    if (e.target.id === 'spOpen') { // a free crate: the usual crate opening, paid for by the pass
+      const sp = P(); if (!sp.crates || !window.v296) return; click();
+      const free = typeof isAdmin === 'function' && isAdmin();
+      if (!free) { profile.coins += 50; sp.coinsSeen += 50; }
+      const before = profile.stats.crates || 0; v296.openCrate();
+      if ((profile.stats.crates || 0) > before) { sp.crates--; saveProfile(); close(); } else if (!free) { profile.coins -= 50; sp.coinsSeen -= 50; }
+      sp.coinsSeen = profile.coins | 0;
+    }
+  });
+  addEventListener('keydown', e => { if (e.code === 'Escape' && panel.classList.contains('show')) { e.stopImmediatePropagation(); close(); } }, true);
+  P(); saveProfile(); paintCard();
+  // ---------- multiplayer: Team Deathmatch and C:S Mode rooms grow to fit everyone (up to 5v5) ----------
+  setInterval(() => {
+    try {
+      if (!window.CAMP || !CAMP.isHost || !CAMP.isHost() || currentMenu !== 'lobby') return;
+      const s = CAMP.getSettings && CAMP.getSettings(); if (!s || (s.mode !== 'tdm' && s.mode !== 'cs')) return;
+      const ps = CAMP.getPlayers() || [], r = ps.filter(p => p.team === 'red').length, b = ps.filter(p => p.team === 'blue').length;
+      const need = Math.min(5, Math.max(r, b, Math.ceil(ps.length / 2)));
+      if (need > (s.teamSize || 1)) CAMP.updateSettings({ teamSize: need });
+    } catch (e) {}
+  }, 800);
+  window.v2911 = { addXp, open, P, reward };
 })();
 </script>
 <template id="caCampaignIntro">
