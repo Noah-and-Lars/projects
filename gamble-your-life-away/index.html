@@ -231,7 +231,7 @@
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
     <button class="btn sec" id="bIntro">Watch the intro</button>
-    <button class="link" data-go="notes">v1.0.7 · Patch notes</button>
+    <button class="link" data-go="notes">v1.0.8 · Patch notes</button>
   </div>
 
   <div class="menu wide" id="m-list">
@@ -289,6 +289,10 @@
       <div><i>🎷</i><span><b>Lounge music</b>A smooth jazz loop while you lose everything.</span></div>
     </div>
     <div class="box notes">
+      <h3>v1.0.8 <span>Update</span></h3>
+      <ul>
+        <li>Bug fixes, improvements and an enhanced user experience.</li>
+      </ul>
       <h3>v1.0.7 <span>Opening cinematic</span></h3>
       <ul>
         <li>A new opening cinematic plays as you walk in: the roulette ball racing round the wheel, dice cracking off the craps rail, 7-7-7 on the Lucky 7s, a Plinko ball dropping into the 18× slot, a photo finish at the horse track, and the house shoving every chip it has across the blackjack table.</li>
@@ -387,7 +391,7 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.f
 const weighted = list => { let r = Math.random() * list.reduce((s, x) => s + x.w, 0); for (const x of list) { r -= x.w; if (r <= 0) return x; } return list[list.length - 1]; };
 
 // ---------- save ----------
-const START = 80000, CREDIT = 10000, VERSION = '1.0.7', SKEY = 'gambleLifeSave';
+const START = 80000, CREDIT = 10000, VERSION = '1.0.8', SKEY = 'gambleLifeSave';
 const save = Object.assign({ money: START, peak: START, rounds: 0, wins: 0, biggest: 0, deaths: 0, played: {}, bet: 1000, stress: 0, seenVersion: '', volume: 0.7, music: true, quality: 'high' },
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { return {}; } })());
 if (!save.rounds && save.money === 50000) save.money = START; // never played before 1.0.4: start with the new amount
@@ -532,10 +536,11 @@ async function rollDice(dice, values, spots, { from = [1.4, 1.5, 0.6], dur = 1.1
 // ---------- the odds: every game, every bet wins 40% of the time and loses 60% ----------
 // The result is decided first (win or lose), then a natural outcome of that kind is drawn and animated,
 // so what you see is always exactly what you're paid.
-const WIN_RATE = 0.4;
-function rigged(gen, isWin, rate = WIN_RATE) { const want = Math.random() < rate; let o = gen(); for (let i = 0; i < 4000 && isWin(o) !== want; i++) o = gen(); return o; }
-// one step of a climb (a guess, a tile, a door) goes your way 40% of the time
-const riggedStep = () => Math.random() < WIN_RATE;
+const WIN_RATE = 0.4; // (1.0.8: no longer used for the odds; kept for anything that still reads it)
+const HOUSE_TILT = 0.05; // 1.0.8: real odds, and a win turns into a loss this often
+function rigged(gen, isWin) { let o = gen(); if (isWin(o) && Math.random() < HOUSE_TILT) for (let i = 0; i < 4000 && isWin(o); i++) o = gen(); return o; }
+// one step of a climb (a guess, a tile, a door) goes your way with its real chance, less the house's edge
+const riggedStep = (p = 0.5) => Math.random() < p * (1 - HOUSE_TILT);
 
 // ---------- the casino state ----------
 const GAMES = [], STATIONS = [];
@@ -636,10 +641,10 @@ defGame({ id: 'slots', name: 'Lucky 7s', icon: '🎰', type: 'machine', blurb: '
     await spinReels(this.reels, r); const [m, why] = this.pay(r); settle(b * m, b, why); }); } });
 
 defGame({ id: 'slots5', name: 'Diamond Deluxe', icon: '💎', type: 'machine', blurb: '5-reel slots, big jackpots',
-  rules: 'Matching symbols from the left on the middle line. 3 / 4 / 5 in a row pay: 💎 110× / 550× / 2,750× · 7 55× / 275× / 1,375× · BAR 22× / 110× / 550× · 🔔 11× / 55× / 275× · 🍋 7× / 35× / 175× · 🍒 4× / 20× / 100×.',
+  rules: 'Matching symbols from the left on the middle line. 3 / 4 / 5 in a row pay: 💎 94× / 470× / 2,350× · 7 47× / 235× / 1,175× · BAR 19× / 95× / 475× · 🔔 9× / 45× / 225× · 🍋 6× / 30× / 150× · 🍒 3.5× / 17.5× / 87.5×.',
   build(g) { cabinet(g, '#1f4fa8', { w: 2.1, title: 'DIAMOND DELUXE', win: [1.86, 0.6, 1.6] }); this.reels = [-0.74, -0.37, 0, 0.37, 0.74].map(x => makeReel(g, x, 1.6, 0.475 - 0.52)); },
   enter() { buildBets(); btn(ctl(), '💎 SPIN', () => this.spin(), 'go'); msg('Line up 3, 4 or 5 from the left.'); },
-  pay(r) { let n = 1; while (n < 5 && r[n] === r[0]) n++; const base = [4, 7, 11, 22, 55, 110][r[0]], m = n >= 5 ? base * 25 : n === 4 ? base * 5 : n === 3 ? base : 0; return [m, m ? `${n} × ${SYMS[r[0]].e} in a row!` : 'No line.']; },
+  pay(r) { let n = 1; while (n < 5 && r[n] === r[0]) n++; const base = [3.5, 6, 9, 19, 47, 94][r[0]], m = n >= 5 ? base * 25 : n === 4 ? base * 5 : n === 3 ? base : 0; return [m, m ? `${n} × ${SYMS[r[0]].e} in a row!` : 'No line.']; },
   spin() { return run(async () => { const b = bet(); if (!stake(b)) return; const r = rigged(() => [0, 1, 2, 3, 4].map(() => SYMS.indexOf(weighted(SYMS))), r => this.pay(r)[0] > 1);
     await spinReels(this.reels, r); const [m, why] = this.pay(r); settle(b * m, b, why); }); } });
 
@@ -768,10 +773,10 @@ defGame({ id: 'sicbo', name: 'Sic Bo', icon: '🎲', type: 'table', blurb: 'Thre
     settle(ok ? b * (this.choice === 'triple' ? 34 : 2) : 0, b, `${v.join(' · ')} = ${s}${tri ? ', a triple' : ''}.`); }); } });
 
 // ---------- big six wheel ----------
-const SIX = [{ k: '1', n: 24, pay: 1.5, c: '#2f7dd1' }, { k: '2', n: 15, pay: 2, c: '#e8b020' }, { k: '5', n: 7, pay: 4, c: '#b4232f' }, { k: '10', n: 4, pay: 7, c: '#11804a' }, { k: '20', n: 2, pay: 12, c: '#7b3fbf' }, { k: '★', n: 1, pay: 25, c: '#f2f2f2', t: '#c0182b' }, { k: '☠', n: 1, pay: 25, c: '#111111' }]; // 1.0.6: nerfed
+const SIX = [{ k: '1', n: 24, pay: 2, c: '#2f7dd1' }, { k: '2', n: 15, pay: 3, c: '#e8b020' }, { k: '5', n: 7, pay: 6, c: '#b4232f' }, { k: '10', n: 4, pay: 11, c: '#11804a' }, { k: '20', n: 2, pay: 22, c: '#7b3fbf' }, { k: '★', n: 1, pay: 45, c: '#f2f2f2', t: '#c0182b' }, { k: '☠', n: 1, pay: 45, c: '#111111' }]; // 1.0.6: nerfed
 const SIX_SEGS = (() => { const a = []; SIX.forEach((s, si) => { for (let i = 0; i < s.n; i++) a.push({ si, f: (i + 0.37 * si) / s.n }); }); a.sort((x, y) => x.f - y.f); return a.map(x => x.si); })();
 defGame({ id: 'bigsix', name: 'Big Six Wheel', icon: '🎡', type: 'wheel', blurb: 'Spin the giant money wheel',
-  rules: 'Bet on a symbol, then spin. Where the pointer stops pays: $1 1.5× · $2 2× · $5 4× · $10 7× · $20 12× · ★ or ☠ 25×. Your symbol comes up about 1 spin in 5.',
+  rules: 'Bet on a symbol, then spin. Where the pointer stops pays: $1 2× · $2 3× · $5 6× · $10 11× · $20 22× · ★ or ☠ 45×. The bigger the payout, the fewer spaces it has on the wheel.',
   build(g) { for (const s of [-1, 1]) box(0.16, 2.2, 0.16, '#2a160c', s * 0.5, 1.1, -0.25, g); box(1.4, 0.16, 0.8, '#2a160c', 0, 0.08, -0.25, g);
     const W = new THREE.Group(); W.position.set(0, 2.25, 0); g.add(W); this.W = W; const n = SIX_SEGS.length, s = Math.PI * 2 / n;
     const tex = canvasTex(1024, 1024, (c, w) => { const R = w / 2; c.translate(R, R); SIX_SEGS.forEach((si, i) => { c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, R - 4, -(i + 1) * s, -i * s); c.closePath(); c.fillStyle = SIX[si].c; c.fill(); c.strokeStyle = '#f5d48a'; c.lineWidth = 3; c.stroke();
@@ -781,7 +786,7 @@ defGame({ id: 'bigsix', name: 'Big Six Wheel', icon: '🎡', type: 'wheel', blur
     cyl(1.66, 1.66, 0.1, 96, GOLD(), 0, 0, 0, W).rotation.x = Math.PI / 2; for (let i = 0; i < n; i++) { const a = i * s, p = cyl(0.02, 0.02, 0.12, 6, GOLD(), Math.cos(a) * 1.58, Math.sin(a) * 1.58, 0.1, W); p.rotation.x = Math.PI / 2; }
     this.flap = new THREE.Group(); this.flap.position.set(0, 2.25 + 1.78, 0.14); g.add(this.flap); const f = box(0.08, 0.3, 0.03, '#b4232f', 0, -0.12, 0, this.flap); box(0.3, 0.12, 0.2, GOLD(), 0, 0.06, -0.05, this.flap); this.n = n; this.s = s; },
   enter() { buildBets(); const c = ctl(); this.choice = this.choice ?? 0; group(c, SIX.map((x, i) => [i, (x.k === '★' || x.k === '☠' ? x.k : '$' + x.k) + ` · ${x.pay}×`]), this.choice, v => this.choice = +v); btn(c, '🎡 SPIN', () => this.spin(), 'go'); msg('Pick a symbol and spin the wheel.'); },
-  spin() { return run(async () => { const b = bet(); if (!stake(b)) return; const s = this.s, i = rigged(() => randi(0, this.n - 1), i => SIX_SEGS[i] === this.choice, 0.2), R0 = this.W.rotation.z, base = Math.PI / 2 - (i + 0.5 + rand(-0.35, 0.35)) * s;
+  spin() { return run(async () => { const b = bet(); if (!stake(b)) return; const s = this.s, i = rigged(() => randi(0, this.n - 1), i => SIX_SEGS[i] === this.choice), R0 = this.W.rotation.z, base = Math.PI / 2 - (i + 0.5 + rand(-0.35, 0.35)) * s;
     const R1 = base - Math.PI * 2 * Math.ceil((base - (R0 - Math.PI * 7)) / (Math.PI * 2)); let last = null;
     await tween(6.5, k => { this.W.rotation.z = lerp(R0, R1, easeOut(k)); const idx = Math.floor((((Math.PI / 2 - this.W.rotation.z) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / s);
       if (idx !== last) { last = idx; Sound.play('tick'); this.flap.rotation.z = 0.35; } this.flap.rotation.z *= 0.85; });
@@ -927,7 +932,7 @@ defGame({ id: 'crash', name: 'Crash', icon: '🚀', type: 'machine', blurb: 'Cas
     c.font = "700 30px 'Barlow', Arial"; c.fillStyle = '#9fe8c2'; c.textAlign = 'left'; c.fillText('Last: ' + this.hist.map(x => x.toFixed(2) + '×').join('  '), 24, 34); }); },
   enter() { buildBets(); const c = ctl(); this.bGo = btn(c, '🚀 LAUNCH', () => this.launch(), 'go'); this.bOut = btn(c, '💰 CASH OUT', () => this.cashOut(), 'grn'); this.sync(); msg('Launch, then cash out before it crashes.'); },
   sync() { const f = !!this.flying; this.bGo.disabled = f || roundOpen; this.bOut.disabled = !f; },
-  launch() { return run(async () => { const b = bet(); if (!stake(b)) return; roundOpen = true; this.put = b; this.cp = Math.random() >= WIN_RATE ? 1 + randi(0, 7) / 100 : Math.max(1.1, Math.floor(100 * 0.97 / (1 - Math.random())) / 100); this.t = 0; this.m = 1; this.flying = true; this.flame.visible = true; }); },
+  launch() { return run(async () => { const b = bet(); if (!stake(b)) return; roundOpen = true; this.put = b; this.cp = Math.random() < 0.03 ? 1 : Math.max(1, Math.floor(100 * 0.97 / (1 - Math.random())) / 100); this.t = 0; this.m = 1; this.flying = true; this.flame.visible = true; }); },
   cashOut() { if (!this.flying) return; this.flying = false; this.flame.visible = false; const m = this.m; this.hist.unshift(this.cp); this.hist.length = Math.min(6, this.hist.length); settle(this.put * m, this.put, `Cashed out at ${m.toFixed(2)}× (it would have crashed at ${this.cp.toFixed(2)}×).`); this.land(); this.sync(); },
   land() { const r = this.rocket, y0 = r.position.y; tween(0.6, k => { r.position.y = lerp(y0, 1.12, k); r.rotation.z = 0; }); },
   update(dt) { if (!this.rocket) return; if (this.flying) { this.t += dt; this.m = Math.exp(0.11 * this.t); if (Math.random() < 0.3) Sound.play('rocket'); this.flame.scale.set(0.25 + Math.random() * 0.1, 0.4 + Math.random() * 0.2, 1);
@@ -1021,27 +1026,27 @@ defGame({ id: 'shell', name: 'Shell Game', icon: '🥤', type: 'table', blurb: '
       Sound.play('tick'); await tween(d, k => { const e = ease(k); A.position.x = lerp(xa, xb, e); B.position.x = lerp(xb, xa, e); A.position.z = 0.1 + Math.sin(k * Math.PI) * 0.25; B.position.z = 0.1 - Math.sin(k * Math.PI) * 0.25; });
       A.userData.slot = bb; B.userData.slot = a; }
     roundOpen = true; msg('Which cup has the ball?'); }); },
-  choose(i) { return run(async () => { const c = this.cupAt(i); this.ballCup = Math.random() < WIN_RATE ? c : pick(this.cups.filter(x => x !== c)); const win = c === this.ballCup; this.ball.position.x = this.ballCup.position.x; this.ball.visible = true; await this.lift(c, true); if (!win) await this.lift(this.ballCup, true);
+  choose(i) { return run(async () => { const c = this.cupAt(i); this.ballCup = Math.random() < (1 - HOUSE_TILT) / this.cups.length ? c : pick(this.cups.filter(x => x !== c)); const win = c === this.ballCup; this.ball.position.x = this.ballCup.position.x; this.ball.visible = true; await this.lift(c, true); if (!win) await this.lift(this.ballCup, true);
     settle(win ? this.put * 2.85 : 0, this.put, win ? 'Found it!' : 'Wrong cup.'); await wait(0.6); this.cups.forEach(cc => this.lift(cc, false)); this.ball.visible = false; }); } });
 
 // ---------- dragon tiger ----------
 defGame({ id: 'dragon', name: 'Dragon Tiger', icon: '🐉', type: 'table', blurb: 'One card each, bet the bigger',
-  rules: 'One card to Dragon, one to Tiger. Bet the higher one for 2×, or a Tie for 12×. If they tie, Dragon and Tiger bets get half back. Aces are low.',
+  rules: 'One card to Dragon, one to Tiger. Bet the higher one for 2×, or a Tie for 15×. If they tie, Dragon and Tiger bets get half back. Aces are low.',
   build(g) { feltTable(g, 3.0, 1.9, '#7a1018'); shoe(g, 1.2, -0.6); feltText(g, '🐉 DRAGON', -0.65, 0.6, 1.0, 0.24, { font: "400 64px 'Russo One', serif" }); feltText(g, 'TIGER 🐯', 0.65, 0.6, 1.0, 0.24, { font: "400 64px 'Russo One', serif" }); feltText(g, 'TIE PAYS 11 TO 1', 0, -0.62, 1.1, 0.16); this.ms = []; },
   enter() { buildBets(); const c = ctl(); this.choice = this.choice || 'dragon'; group(c, [['dragon', '🐉 Dragon 2×'], ['tie', 'Tie 12×'], ['tiger', '🐯 Tiger 2×']], this.choice, v => this.choice = v); btn(c, 'DEAL', () => this.play(), 'go'); msg('Dragon or Tiger?'); },
   play() { return run(async () => { await sweep(this.g, this.ms); const b = bet(); if (!stake(b)) return; const [d, t] = rigged(() => { const dk = newDeck(1); return [dk.pop(), dk.pop()]; }, ([d, t]) => (d.r > t.r ? 'dragon' : t.r > d.r ? 'tiger' : 'tie') === this.choice);
     this.ms.push(await deal(this.g, d, -0.65, 0.1, { from: [1.2, 1.1, -0.6] })); this.ms.push(await deal(this.g, t, 0.65, 0.1, { from: [1.2, 1.1, -0.6] }));
     const w = d.r > t.r ? 'dragon' : t.r > d.r ? 'tiger' : 'tie', s = `Dragon ${RANKS[d.r]}, Tiger ${RANKS[t.r]}.`;
-    if (w === 'tie' && this.choice !== 'tie') return settle(b / 2, b, s + ' Tie.'); settle(w === this.choice ? b * (w === 'tie' ? 12 : 2) : 0, b, s); }); } });
+    if (w === 'tie' && this.choice !== 'tie') return settle(b / 2, b, s + ' Tie.'); settle(w === this.choice ? b * (w === 'tie' ? 15 : 2) : 0, b, s); }); } });
 
 // ---------- limbo ----------
 defGame({ id: 'limbo', name: 'Limbo', icon: '📈', type: 'machine', blurb: 'Pick a target, hope it goes higher',
-  rules: 'Pick a target of 1.5× or 2× (2× is the most you can ever win here). A random multiplier is rolled: if it reaches your target, you win your bet times the target. The house always wins at Limbo.',
+  rules: 'Pick a target of 1.5× or 2× (2× is the most you can ever win here). A random multiplier is rolled: if it reaches your target, you win your bet times the target.',
   build(g) { const f = cabinet(g, '#e8902a', { w: 1.7, title: 'LIMBO', screen: [1.5, 0.9, 1.6] }); this.scr = screenTex(768, 460); plane(1.5, 0.9, this.scr, 0, 1.6, f, g); this.target = Math.min(2, this.target || 2); this.paint(1, null); },
   paint(v, ok) { drawScreen(this.scr, (c, w, h) => { c.fillStyle = '#1a0f02'; c.fillRect(0, 0, w, h); c.fillStyle = '#f5c04a'; c.font = "700 34px 'Barlow', Arial"; c.textAlign = 'center'; c.fillText('TARGET ' + this.target.toFixed(2) + '×', w / 2, 60);
     c.fillStyle = ok == null ? '#fff' : ok ? '#3ddc84' : '#ff4d5e'; c.font = "400 150px 'Russo One', Impact"; c.textBaseline = 'middle'; c.fillText(v.toFixed(2) + '×', w / 2, h / 2 + 30); }); },
   enter() { buildBets(); const c = ctl(); el('span', 'lbl', 'Target', c); if (this.target > 2) this.target = 2; group(c, [1.5, 2].map(x => [x, x + '×']), this.target, v => { this.target = +v; this.paint(1, null); }); btn(c, '📈 ROLL', () => this.roll(), 'go'); msg('Pick a target and roll.'); },
-  roll() { return run(async () => { const b = bet(); if (!stake(b)) return; const r = rigged(() => Math.max(1, Math.floor(100 * 0.97 / (1 - Math.random())) / 100), r => r >= this.target, 0), show = Math.min(r, 10000); // 1.0.6: Limbo never pays
+  roll() { return run(async () => { const b = bet(); if (!stake(b)) return; const r = rigged(() => Math.max(1, Math.floor(100 * 0.97 / (1 - Math.random())) / 100), r => r >= this.target), show = Math.min(r, 10000); // 1.0.6: Limbo never pays
     await tween(0.9, k => { this.paint(1 + (show - 1) * easeOut(k) * (k < 1 ? Math.random() * 0.1 + 0.9 : 1), null); if (Math.random() < 0.4) Sound.play('tick'); }); const ok = r >= this.target; this.paint(r, ok);
     settle(ok ? b * this.target : 0, b, `Rolled ${r.toFixed(2)}×.`); }); } });
 
@@ -1057,7 +1062,7 @@ defGame({ id: 'tower', name: 'Tower', icon: '🗼', type: 'machine', blurb: 'Cli
   sync() { const open = roundOpen && cur === this; this.bGo.disabled = open; this.dB.forEach(b => b.disabled = !open); this.bCash.disabled = !open || !this.floor; },
   reset3d() { this.doors.flat().forEach(m => m.material = mat('#5a4a8a', { roughness: 0.4 })); this.climber.position.set(0, 0.2, 0.32); },
   start() { return run(async () => { const b = bet(); if (!stake(b)) return; roundOpen = true; this.put = b; this.floor = 0; this.trap = [...Array(8)].map(() => randi(0, 2)); this.reset3d(); msg(this.status()); }); },
-  pickDoor(d) { return run(async () => { const f = this.floor; if (riggedStep()) { if (this.trap[f] === d) this.trap[f] = (d + randi(1, 2)) % 3; } else this.trap[f] = d; const safe = this.trap[f] !== d, m = this.doors[f][d], c = this.climber, x0 = c.position.x, y0 = c.position.y;
+  pickDoor(d) { return run(async () => { const f = this.floor; if (riggedStep(2 / 3)) { if (this.trap[f] === d) this.trap[f] = (d + randi(1, 2)) % 3; } else this.trap[f] = d; const safe = this.trap[f] !== d, m = this.doors[f][d], c = this.climber, x0 = c.position.x, y0 = c.position.y;
     await tween(0.35, k => { c.position.x = lerp(x0, m.position.x, k); c.position.y = lerp(y0, m.position.y, k) + Math.sin(k * Math.PI) * 0.15; });
     this.doors[f].forEach((o, i) => o.material = mat(i === this.trap[f] ? '#b4232f' : '#1f9a63', { roughness: 0.4, emissive: i === this.trap[f] ? '#5a0a10' : '#0a3a20' }));
     if (!safe) { Sound.play('boom'); await tween(0.5, k => c.position.y = lerp(m.position.y, 0.2, k * k)); return settle(0, this.put, `Trap door on floor ${f + 1}.`); }

@@ -667,7 +667,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <button class="uiCard" id="homeFriends" data-art="friends" style="--ac:#f472b6"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Online</em><b>Friends</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v2.9.11 · What's new</button>
+    <button class="link verLink" data-action="notes">v2.9.12 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -693,10 +693,12 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.11<span>Halloween 2026 Event</span></h1><p>The Battle Pass is here: 50 levels to climb by playing and unlocking achievements, with coins, knife crates and two spooky Halloween knives you can only get this week. Plus up to 5v5 in every team mode.</p>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.12<span>Limited Edition</span></h1><p>Show off your best knife on your profile. The Halloween 2026 Event locks when its timer runs out, and its two knives become Limited Edition, with their own section in My knives.</p>
       <div class="hero-guns"><i class="hcube" style="background:#7a3a0a">🎃</i><i class="hcube" style="background:#3a1a5a">💀</i><i class="hcube" style="background:#6f5a2c">📦</i><i class="hcube" style="background:#2c4a6f">👥</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
+      <div><i>🔪</i><span><b>Knife showcase</b>Pick a knife you own to show near the top of your profile. Anyone who opens your profile sees it.</span></div>
+      <div><i>🔒</i><span><b>Limited Edition</b>When the Halloween 2026 Event ends, the pass locks and Jack's Grin and Reaper's Lantern can't be unlocked any more.</span></div>
       <div><i>🎃</i><span><b>Battle Pass: Halloween 2026 Event</b>The button in the bottom right of the home screen. 50 levels of coins and knife crates. It ends at the same time for everyone, a week from now.</span></div>
       <div><i>💀</i><span><b>Halloween knives</b>Jack's Grin at level 25 and Reaper's Lantern at level 50. Only in this event, never in crates.</span></div>
       <div><i>👥</i><span><b>Up to 10 players</b>Team Deathmatch and C:S Mode rooms grow to fit everyone, up to 5v5.</span></div>
@@ -739,6 +741,12 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.12 <span>Limited Edition</span></h3><ul>
+        <li><b>Knife showcase:</b> your profile has a new spot under your level bar. Click it to pick any knife you own, and it shows on your profile. Other players see it when they click your name in a lobby or open your profile from their friends list.</li>
+        <li><b>The Halloween 2026 Event ends for good:</b> when its timer runs out, the Battle Pass locks and stops giving XP. No new season starts after it.</li>
+        <li><b>Limited Edition knives:</b> Jack's Grin and Reaper's Lantern become Limited Edition once the event is over. If you got them, they're yours to keep; nobody can unlock them after that.</li>
+        <li><b>My knives</b> has a new <b>Limited Edition</b> section, right under Stock.</li>
+      </ul></section>
       <section><h3>v2.9.11 <span>Halloween 2026 Event</span></h3>
         <p class="nIntro">The first Battle Pass, and bigger rooms.</p><ul>
         <li><b>Battle Pass:</b> press the new 🎃 Battle Pass button in the bottom right of the home screen. The pass has 50 levels in a straight line. Level up by playing: 3 XP for every coin you earn, 15 XP for every 10 seconds in a game, and 400 XP for every new achievement (250 XP a level).</li>
@@ -8930,7 +8938,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.11';
+const VERSION = '2.9.12';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -12586,9 +12594,11 @@ document.getElementById('achToggle').addEventListener('click', () => {
 // They are never in knife crates: they go in KSKIN (so they can be equipped and other players see them online) but
 // not in KNIFE_SKINS (the crate pool and the collection). Seasons are a week long and the same for everyone (UTC).
 const SEASON_EPOCH = Date.UTC(2026, 9, 26, 2, 0, 0), SEASON_MS = 7 * 864e5;
-const seasonNow = () => Math.max(1, Math.floor((Date.now() - SEASON_EPOCH) / SEASON_MS) + 1);
+const SEASON_LAST = 1; // 2.9.12: there is one season (the Halloween 2026 Event). When it ends the pass locks; no new season starts
+const seasonNow = () => Math.max(1, Math.min(SEASON_LAST, Math.floor((Date.now() - SEASON_EPOCH) / SEASON_MS) + 1));
+const seasonLocked = () => Date.now() >= SEASON_EPOCH + SEASON_LAST * SEASON_MS;
 const seasonEnds = n => SEASON_EPOCH + n * SEASON_MS;
-KTIER.season = { k: 'season', name: 'Season', p: 0, c: '#ff8a1e' };
+KTIER.season = { k: 'season', name: 'Limited Edition', p: 0, c: '#ff8a1e' }; // 2.9.12
 const seasonName = n => n === 1 ? 'Halloween 2026 Event' : 'Season ' + n; // season 1 is the Halloween event
 const SEASON_KNIVES = (() => {
   const L = [];
@@ -12658,7 +12668,7 @@ const SEASON_KNIVES = (() => {
         if (k) { g.save(); g.fillStyle = p[2]; g.shadowColor = p[2]; g.shadowBlur = 12; g.font = 'bold 44px sans-serif'; g.globalAlpha = 0.85; g.fillText('S' + n, W * 0.62, H * 0.66); g.restore(); }
       } };
   };
-  for (let n = 2; n <= seasonNow(); n++) L.push(make(n, 0), make(n, 1));
+  // 2.9.12: no later seasons for now (make() stays for when there are)
   return L;
 })();
 for (const s of SEASON_KNIVES) KSKIN[s.id] = s;
@@ -13889,6 +13899,7 @@ body.touch #hotbar { display: none !important; }
     const c = card || {}, acc = c.sh ? Math.round((c.h || 0) / c.sh * 100) + '%' : '–', mine = c.f && c.f === fid(), fr = c.f && isFriend(c.f);
     const m = modal('pfModal', `<span class="fTag">Player profile</span>
       <div class="pfHead"><img alt="" src="${esc(avUrl(c.a))}"><div><b>${esc(name || 'Player')}</b><span class="pfLvl">Level ${c.l || 1}</span></div></div>
+      ${window.caShowcaseHtml && c.sc ? caShowcaseHtml(String(c.sc).slice(0, 24)) : ''}
       <div class="pfStats"><div><b>${(c.k || 0).toLocaleString()}</b><span>Cubes destroyed</span></div><div><b>${c.b || 0}</b><span>Best wave</span></div><div><b>${c.ac || 0}/${ACH_N}</b><span>Achievements</span></div>
         <div><b>${acc}</b><span>Accuracy</span></div><div><b>${(c.sh || 0).toLocaleString()}</b><span>Shots fired</span></div><div><b>${fmtTime(c.t)}</b><span>Played</span></div></div>
       <div class="fBtns">${mine ? '' : !c.f ? '<button class="btn" disabled>Can\'t add (older version)</button>' : fr ? '<button class="btn secondary" data-pf="rm">Remove friend</button>' : sent.has(c.f) ? '<button class="btn" disabled>Request sent</button>' : '<button class="btn" data-pf="add">Add friend</button>'}<button class="btn secondary" data-pf="close">Close</button></div>`, '#f472b6');
@@ -14357,6 +14368,7 @@ body.touch #hotbar { display: none !important; }
     if (!profile.sp || typeof profile.sp !== 'object') profile.sp = { s: seasonNow(), xp: 0, lvl: 0, crates: 0, knives: [], coinsSeen: profile.coins | 0, achSeen: Object.keys(profile.ach || {}).length, t: 0 };
     const sp = profile.sp; if (!Array.isArray(sp.knives)) sp.knives = [];
     if (sp.s !== seasonNow()) { sp.s = seasonNow(); sp.xp = 0; sp.lvl = 0; } // a new season: back to level 1 (crates you haven't opened stay)
+    sp.locked = seasonLocked(); // 2.9.12: the event is over: no more XP
     return sp;
   };
   function toast(top, main) {
@@ -14365,6 +14377,7 @@ body.touch #hotbar { display: none !important; }
     setTimeout(() => t.remove(), 3200);
   }
   function addXp(n) {
+    if (seasonLocked()) return; // 2.9.12: the event is over
     const sp = P(); if (sp.lvl >= LEVELS) { sp.xp = Math.max(sp.xp, LEVELS * XP_PER); return; }
     sp.xp += n; const want = Math.min(LEVELS, Math.floor(sp.xp / XP_PER));
     while (sp.lvl < want) {
@@ -14392,14 +14405,14 @@ body.touch #hotbar { display: none !important; }
   const pic = (id, W, H) => { try { return window.v296 ? v296.picOf(id, W, H) : ''; } catch (e) { return ''; } };
   const left = () => { const ms = Math.max(0, seasonEnds(seasonNow()) - Date.now()), d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
     return { short: d ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`, long: `${d}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s` }; };
-  function paintCard() { const sp = P(); card.innerHTML = `<i>🎃</i><b>Battle Pass</b><em>LV ${sp.lvl}</em>`; card.title = `${seasonName(sp.s)} · ends in ${left().short}`; }
+  function paintCard() { const sp = P(); card.innerHTML = `<i>${seasonLocked() ? '🔒' : '🎃'}</i><b>Battle Pass</b><em>LV ${sp.lvl}</em>`; card.title = seasonLocked() ? `${seasonName(sp.s)} · ended` : `${seasonName(sp.s)} · ends in ${left().short}`; }
   // only on the home screen
   setInterval(() => { const o = $('overlay'), on = o && o.style.display !== 'none' && o.classList.contains('home') && state === 'menu'; card.classList.toggle('show', !!on); }, 250);
   card.addEventListener('click', () => { click(); open(); });
   // ---------- the full pass ----------
   const panel = document.createElement('div'); panel.id = 'spPanel'; document.body.appendChild(panel);
   function paint() { paintCard(); if (panel.classList.contains('show')) paintPanel(); }
-  function paintTime() { const el = panel.querySelector('.tm b'); if (el) el.textContent = left().long; if (card.classList.contains('show')) paintCard(); }
+  function paintTime() { const el = panel.querySelector('.tm b'); if (el && !seasonLocked()) el.textContent = left().long; if (card.classList.contains('show')) paintCard(); }
   function paintPanel() {
     const sp = P(), keep = $('spTrack') ? $('spTrack').scrollLeft : null;
     const tiles = []; for (let l = 1; l <= LEVELS; l++) { const R = reward(l, sp.s), got = l <= sp.lvl;
@@ -14407,12 +14420,12 @@ body.touch #hotbar { display: none !important; }
       tiles.push(`<div class="spT ${R.kind}${got ? ' got' : ' lock'}${l === sp.lvl + 1 ? ' cur' : ''}"><span class="n">${l}</span><div class="ic">${ic}</div><div class="w">${esc(label(R))}</div></div>`); }
     const ks = SEASON_KNIVES.filter(s => s.season === sp.s);
     panel.innerHTML = `<div class="box"><div class="hd"><div class="nm"><small>🎃 BATTLE PASS · SEASON ${sp.s}</small><b>${esc(seasonName(sp.s))}</b></div>
-        <div class="tm"><small>ENDS IN (THE SAME FOR EVERYONE)</small><b>${left().long}</b></div></div>
+        <div class="tm"><small>${seasonLocked() ? 'THE EVENT IS OVER' : 'ENDS IN (THE SAME FOR EVERYONE)'}</small><b>${seasonLocked() ? '🔒 Locked' : left().long}</b></div></div>
       <div class="spLvl"><b>Level ${sp.lvl} / ${LEVELS}</b><div class="spBar"><i style="width:${sp.lvl >= LEVELS ? 100 : (sp.xp % XP_PER) / XP_PER * 100}%"></i></div><span>${sp.lvl >= LEVELS ? 'Pass complete!' : `${sp.xp % XP_PER} / ${XP_PER} XP to level ${sp.lvl + 1}`}</span></div>
-      <div class="how">Earn XP by playing: <b>3 XP</b> for every coin you earn, <b>15 XP</b> for every 10 seconds in a game, and <b>400 XP</b> for every new achievement. When the timer runs out, a new season starts at level 1.</div>
+      <div class="how">Earn XP by playing: <b>3 XP</b> for every coin you earn, <b>15 XP</b> for every 10 seconds in a game, and <b>400 XP</b> for every new achievement. ${seasonLocked() ? '</div><div class="how" style="color:#ffb36b"><b>The Halloween 2026 Event has ended.</b> The pass is locked: no more XP. Its knives are now Limited Edition and can\'t be unlocked any more. Crates you haven\'t opened are still yours.' : 'When the timer runs out the pass locks, and its two knives become Limited Edition.'}</div>
       <div id="spTrack">${tiles.join('')}</div>
       <div class="knv">${ks.map(k => { const have = sp.knives.includes(k.id), on = profile.knifeSkin === k.id;
-        return `<div class="kn"><img alt="" src="${pic(k.id, 340, 160)}"><div><small>LEVEL ${k.lvl} · SEASON KNIFE</small><b>${esc(k.name)}</b>${have ? `<button class="btn${on ? ' secondary' : ''}" data-eq="${k.id}">${on ? 'Equipped' : 'Equip'}</button>` : `<span style="font-size:12.5px;color:#bfb0dc">🔒 Reach level ${k.lvl}. Only in this season, never in crates.</span>`}</div></div>`; }).join('')}</div>
+        return `<div class="kn"><img alt="" src="${pic(k.id, 340, 160)}"><div><small>LEVEL ${k.lvl} · LIMITED EDITION</small><b>${esc(k.name)}</b>${have ? `<button class="btn${on ? ' secondary' : ''}" data-eq="${k.id}">${on ? 'Equipped' : 'Equip'}</button>` : `<span style="font-size:12.5px;color:#bfb0dc">${seasonLocked() ? '🔒 Limited Edition: no longer available.' : `🔒 Reach level ${k.lvl}. Only in this event, never in crates.`}</span>`}</div></div>`; }).join('')}</div>
       <div class="ft">${sp.crates ? `<button class="btn" id="spOpen">Open a knife crate (${sp.crates})</button>` : ''}<button class="btn secondary" id="spClose">Close</button></div></div>`;
     const tr = $('spTrack'); if (keep != null) tr.scrollLeft = keep; else { const cur = tr.querySelector('.cur') || tr.lastElementChild; tr.scrollLeft = Math.max(0, cur.offsetLeft - tr.clientWidth / 2); }
   }
@@ -14443,6 +14456,78 @@ body.touch #hotbar { display: none !important; }
     } catch (e) {}
   }, 800);
   window.v2911 = { addXp, open, P, reward };
+})();
+</script>
+<style id="v2912css">
+/* 2.9.12: limited edition knives, and a knife showcase on profiles */
+#kcInv h4.ltd { --tc: #ff8a1e; } #kcInv .sk.ltd { border-color: rgba(255,138,30,.65); }
+#kcInv .sk.ltd em { background: #ff8a1e; color: #1a0a00; }
+.shc { display: flex; align-items: center; gap: 14px; width: 100%; margin: 10px 0 4px; padding: 10px 14px; border-radius: 14px; text-align: left; cursor: pointer; font: inherit; color: #fff;
+  background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); border: 1px solid var(--tc, rgba(255,255,255,.18)); box-shadow: inset 0 0 22px color-mix(in srgb, var(--tc, #fff) 18%, transparent); }
+.shc img { width: 150px; height: 72px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
+.shc small { display: block; font-size: 11px; letter-spacing: 1.6px; font-weight: 800; color: var(--tc, #ffc53d); text-transform: uppercase; } .shc b { font-size: 18px; display: block; } .shc span { font-size: 12.5px; color: #b9c1cf; }
+button.shc:hover { filter: brightness(1.12); }
+.shc.empty { justify-content: center; color: #b9c1cf; min-height: 64px; border-style: dashed; }
+#shcPick .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 56vh; overflow: auto; margin: 8px 0 12px; }
+#shcPick .grid button { border-radius: 12px; padding: 6px; background: rgba(255,255,255,.05); border: 1px solid var(--tc, rgba(255,255,255,.2)); color: #fff; font: inherit; cursor: pointer; text-align: center; }
+#shcPick .grid button.on { box-shadow: 0 0 0 2px #fff; } #shcPick .grid img { width: 100%; height: 62px; object-fit: contain; } #shcPick .grid span { font-size: 12px; display: block; } #shcPick .grid em { font-style: normal; font-size: 10.5px; color: var(--tc); font-weight: 800; letter-spacing: 1px; }
+</style>
+<script id="v2912">
+// 2.9.12: when the Halloween 2026 Event ends, the Battle Pass locks (no more XP) and its knives become Limited Edition.
+// My knives gets a Limited Edition section. And your profile can showcase one knife you own, near the top; people who
+// open your profile from a lobby (or your friends list) see it too.
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const click = () => { try { Sound.init(); Sound.play('click'); } catch (e) {} };
+  const pic = (id, W, H) => { try { return v296.picOf(id, W, H); } catch (e) { return ''; } };
+  const ownedSeason = () => (profile.sp && Array.isArray(profile.sp.knives) ? profile.sp.knives : []).filter(id => KSKIN[id]);
+  const ownsKnife = id => !id || (profile.knives && profile.knives[id] > 0 && KSKIN[id]) || ownedSeason().includes(id);
+  const tierOf = id => { const s = KSKIN[id]; return s ? KTIER[s.tier] || KTIER.common : { name: 'Stock', c: '#8a929c' }; };
+  // ---------- My knives: the Limited Edition section ----------
+  const inv = $('kcInv');
+  function addLimited() {
+    const list = inv && inv.querySelector('.list'); if (!list || list.querySelector('h4.ltd')) return;
+    const mine = ownedSeason();
+    const html = `<h4 class="ltd" style="--tc:#ff8a1e">Limited Edition · Halloween 2026${seasonLocked() ? ' · no longer available' : ' · from the Battle Pass'}</h4><div class="grid">` + SEASON_KNIVES.map(s => {
+      const have = mine.includes(s.id), on = profile.knifeSkin === s.id;
+      return `<button class="sk ltd${have ? '' : ' lock'}${on ? ' on' : ''}" data-sk="${have ? s.id : '-'}" style="--tc:#ff8a1e"><img alt="" src="${pic(s.id)}">${have ? `<em>${on ? 'Equipped' : 'Limited'}</em>` : ''}<span>${have ? esc(s.name) : '🔒 ' + esc(s.name)}</span></button>`;
+    }).join('') + '</div>';
+    const stock = list.querySelector('.grid'); // straight after Stock, before Legendary
+    if (stock) stock.insertAdjacentHTML('afterend', html); else list.insertAdjacentHTML('afterbegin', html);
+  }
+  if (inv) new MutationObserver(addLimited).observe(inv.querySelector('.list'), { childList: true });
+  // ---------- the showcase ----------
+  const show = () => (ownsKnife(profile.showcase) ? profile.showcase || '' : '');
+  const card = (id, btn) => {
+    if (!id || !KSKIN[id]) return btn ? `<button class="shc empty" id="shcBtn">🔪 Showcase a knife on your profile</button>` : '';
+    const T = tierOf(id), tag = KSKIN[id].tier === 'season' ? 'Limited Edition' : T.name;
+    return `<${btn ? 'button id="shcBtn"' : 'div'} class="shc" style="--tc:${T.c}"><img alt="" src="${pic(id, 300, 144)}"><div><small>Showcased knife · ${esc(tag)}</small><b>${esc(KSKIN[id].name)}</b>${btn ? '<span>Click to change it</span>' : ''}</div></${btn ? 'button' : 'div'}>`;
+  };
+  window.caShowcaseHtml = id => card(id, false); // used by the profile pop-up (2.9.10 block)
+  const baseCard = window.caMyCard;
+  if (baseCard) window.caMyCard = () => ({ ...baseCard(), sc: show() });
+  // your own profile: under your level bar
+  const lvl = document.querySelector('#menu-profile .level'), slot = document.createElement('div'); slot.id = 'shcSlot';
+  if (lvl) lvl.insertAdjacentElement('afterend', slot);
+  const paintSlot = () => { slot.innerHTML = card(show(), true); };
+  slot.addEventListener('click', e => { if (e.target.closest('#shcBtn')) { click(); picker(); } });
+  const baseMenu = showMenu;
+  showMenu = function (name) { const r = baseMenu.apply(this, arguments); if (name === 'profile') { try { paintSlot(); } catch (e) { console.error(e); } } return r; };
+  function picker() {
+    let m = $('shcPick');
+    if (!m) { m = document.createElement('div'); m.id = 'shcPick'; m.className = 'fModal'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) m.hidden = true; }); }
+    const ids = [...ownedSeason(), ...KNIFE_SKINS.filter(s => profile.knives && profile.knives[s.id] > 0).sort((a, b) => KNIFE_TIERS.findIndex(t => t.k === b.tier) - KNIFE_TIERS.findIndex(t => t.k === a.tier)).map(s => s.id)];
+    m.innerHTML = `<div class="fBox" style="--ac:var(--gold);width:min(760px,100%)"><span class="fTag">Your profile</span><h3>Showcase a knife</h3>
+      <p>${ids.length ? 'Pick a knife you own. Everyone who opens your profile sees it.' : 'You don\'t own any knife skins yet. Open knife crates in the Shop, or reach level 25 in the Battle Pass.'}</p>
+      <div class="grid"><button data-pick="" style="--tc:#8a929c" class="${!show() ? 'on' : ''}"><div style="height:62px;display:grid;place-items:center;font-size:26px">✕</div><span>No showcase</span></button>${ids.map(id => { const T = tierOf(id), s = KSKIN[id];
+        return `<button data-pick="${id}" style="--tc:${T.c}" class="${show() === id ? 'on' : ''}"><img alt="" src="${pic(id)}"><em>${s.tier === 'season' ? 'LIMITED' : T.name.toUpperCase()}</em><span>${esc(s.name)}</span></button>`; }).join('')}</div>
+      <div class="fBtns"><button class="btn secondary" data-pick-close>Close</button></div></div>`;
+    m.hidden = false;
+    m.querySelector('.fBox').onclick = e => { const b = e.target.closest('[data-pick],[data-pick-close]'); if (!b) return; click();
+      if (b.dataset.pick !== undefined) { profile.showcase = b.dataset.pick; saveProfile(); paintSlot(); } m.hidden = true; };
+  }
+  window.v2912 = { picker, addLimited };
 })();
 </script>
 <template id="caCampaignIntro">

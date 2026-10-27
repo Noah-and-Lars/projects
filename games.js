@@ -109,7 +109,7 @@ window.GAMES = [
     path: 'gamble-your-life-away/index.html',
     thumb: 'gamble-your-life-away/thumb.jpg',
     added: '2026-10-15T10:15:00+11:00',
-    updated: '2026-10-20T16:40:00+11:00',
+    updated: '2026-10-27T12:58:00+11:00',
     stat() { const s = readSave('gambleLifeSave', true); return s && s.rounds ? 'Richest ' + '$' + Math.round(s.peak).toLocaleString('en-US') : null; },
   },
   {
@@ -130,7 +130,7 @@ window.GAMES = [
     id: 'free-criminal',
     title: 'Free Criminal',
     category: 'Action',
-    tagline: 'Fresh out of prison and thrown in a dumpster. Steal cars, rob stores and outrun the cops. New in 2.0: real lighting, a car dealership and group chats.',
+    tagline: 'Fresh out of prison and thrown in a dumpster. Steal cars, rob stores and outrun the cops. Online play shuts down on October 29, 2026; offline stays fully playable.',
     description: 'Open-world 3D crime game. Walk out of the penitentiary into a busy San Varro, steal any car, rob stores, the bank and the mall, pick from 10 guns and grenades at the gun stores and stay ahead of the police, who only spot you when you are in front of them. Crash hard and you fly out of the car. Every purchase and robbery plays its own cutscene, and your profile tracks your level, stats and outfits.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Walk / drive'], ['Mouse', 'Look'], ['Click', 'Fire'], ['Right-click', 'Aim'], ['R', 'Reload'], ['Shift', 'Sprint'],
@@ -139,7 +139,7 @@ window.GAMES = [
     path: 'free-criminal/index.html',
     thumb: 'free-criminal/thumb.jpg?v=2',
     added: '2026-10-13T21:33:00+11:00',
-    updated: '2026-10-22T12:00:00+11:00',
+    updated: '2026-10-27T12:57:00+11:00',
     stat() { const p = readSave('freecriminal.profile.v1', true); return p && p.xp ? 'Level ' + (1 + Math.floor(Math.sqrt(p.xp / 150))) : null; },
   },
   {
@@ -154,7 +154,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-26T13:00:00+11:00',
+    updated: '2026-10-27T13:00:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -225,6 +225,9 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-27', game: 'cube-assault', text: 'Cube Assault 2.9.12: show off a knife you own on your profile, and other players see it when they open your profile. When the Halloween 2026 Event ends, its Battle Pass locks and its two knives become Limited Edition, with their own section in My knives.' },
+  { date: '2026-10-27', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.0.8: bug fixes, improvements and an enhanced user experience.' },
+  { date: '2026-10-27', game: 'free-criminal', text: 'Free Criminal 2.0.2: Play (offline) is the main mode again. Online play shuts down on October 29, 2026: until then it still works, and after the countdown all online play is terminated. Offline play remains fully functional.' },
   { date: '2026-10-26', game: 'cube-assault', text: 'Cube Assault 2.9.11: the Halloween 2026 Event! The first Battle Pass (the button in the bottom right of the home screen) has 50 levels of coins and knife crates, with two Halloween knives you can only get this week: Jacks Grin at level 25 and Reapers Lantern at level 50. The event ends at the same time for everyone. Team Deathmatch and C:S Mode rooms now grow to fit up to 5v5.' },
   { date: '2026-10-26', game: 'football', text: 'Football 1.0.2: the Laws of the Game. Assistant referees flag offsides, the fourth official shows added time, VAR checks goals and penalties, handballs, indirect free kicks, dropped balls, penalty shootouts (turn on Penalties for draws), and players keep their distance at free kicks, goal kicks and kick-offs. Hold a pass button for a harder pass, your passes always reach your player, keepers are better and the computer makes mistakes too.' },
   { date: '2026-10-26', game: 'rocket-rivals', text: 'New game: Rocket Rivals 1.0! Rocket-powered car football with boost, flips, wall driving and aerials. Ten cars to customise, fifteen goal explosions, six arenas, ranked playlists, Snow Day, Rumble and Heatseeker, a season, tournaments, training and the Rivals Pass. Online opponents are bots for now.' },

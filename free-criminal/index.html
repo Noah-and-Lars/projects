@@ -493,6 +493,23 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="fade"></div>
 <div id="fps" hidden></div>
 
+<style id="fc202css">
+/* 2.0.2: Play (offline) first; the online shutdown notice */
+.nav button.mainPlay{border-color:var(--red);background:linear-gradient(135deg,rgba(214,40,40,.35),rgba(214,40,40,.12));font-size:1.15em}
+.nav button.closing{border-color:#e0a030;color:#ffe2a8}.nav button.closing small{display:block;font:700 12px var(--ui);letter-spacing:.06em;color:#ffb347;margin-top:2px}
+.nav button.closing:disabled{opacity:.55;cursor:default}
+#olBanner{margin:14px 0 0;max-width:430px;padding:12px 14px;border-radius:12px;background:rgba(120,20,10,.55);border:2px solid #ff7a3a;color:#ffe6d6;font:600 14px/1.45 var(--ui);box-shadow:0 0 24px rgba(255,90,40,.25)}
+#olBanner b{display:block;font-size:17px;color:#fff;letter-spacing:.03em;text-transform:uppercase;margin-bottom:3px}#olBanner .cd{display:block;margin-top:6px;font:800 20px var(--ui);color:#ffb347;font-variant-numeric:tabular-nums}
+#olPop{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.72)}#olPop[hidden]{display:none}
+#olPop .box{width:min(560px,100%);border-radius:16px;padding:22px 24px;background:#16110e;border:3px solid #ff6a2a;color:#f3e8e0;font:16px/1.5 var(--ui);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+#olPop .kick{display:inline-block;padding:4px 10px;border-radius:999px;background:#ff6a2a;color:#1a0800;font-weight:800;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+#olPop h2{margin:10px 0 6px;font-size:30px;line-height:1.1;color:#fff}#olPop .cd{font:800 34px var(--ui);color:#ffb347;margin:6px 0 10px;font-variant-numeric:tabular-nums}
+#olPop .row2{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}#olPop button{flex:1;min-width:150px;padding:12px;border-radius:10px;border:0;font:800 16px var(--ui);cursor:pointer}
+#olPop .go1{background:#d62828;color:#fff}#olPop .go2{background:#333;color:#fff}
+</style>
+<div id="olPop" hidden><div class="box"><span class="kick">Disclaimer</span><h2 id="olTitle">Online is shutting down</h2>
+  <p id="olText">Online play for Free Criminal shuts down on <b>October 29, 2026</b>. After the countdown, all online play for Free Criminal will be terminated. Offline play remains fully functional.</p>
+  <div class="cd" id="olCd"></div><div class="row2"><button class="go1" id="olOff">Play offline</button><button class="go2" id="olOn">Play online until then</button></div></div></div>
 <div id="offPop" hidden><div class="box">
   <div class="kick" id="offKick">Offline mode</div><h2 id="offTitle">Not recommended</h2><div id="offBody"></div>
   <div class="row2"><button class="go sec" id="offNo">Play offline</button><button class="go" id="offOnline">Play online instead</button></div>
@@ -501,10 +518,10 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v2.0.1</b>San Varro</div>
+    <div class="ver"><b>v2.0.2</b>San Varro</div>
     <nav class="nav">
-      <button id="bOnline" class="online">Play online</button>
-      <button id="bPlay">Play offline</button>
+      <button id="bPlay" class="mainPlay">Play</button>
+      <button id="bOnline" class="closing">Play online <small id="olLeft"></small></button>
       <button id="bNews">What's new</button>
       <button data-panel="pNotes">Patch notes</button>
       <button data-panel="pSettings">Settings</button>
@@ -555,7 +572,11 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v2.0.1</b>Lights, cars and school<span>Latest</span></summary><ul>
+  <details open><summary><b>v2.0.2</b>Online is closing<span>Latest</span></summary><ul>
+    <li><b>Play</b> (offline) is the main button on the menu again, and it takes you straight into San Varro.</li>
+    <li><b>Online play shuts down on October 29, 2026.</b> Until then Play online still works, with a countdown on the menu. When the countdown ends, all online play for Free Criminal is terminated.</li>
+    <li>Offline play stays fully functional, and your offline save is kept.</li></ul></details>
+  <details><summary><b>v2.0.1</b>Lights, cars and school</summary><ul>
     <li><b>Stairs down to the trains.</b> Walk into a train station entrance, take the stairs down under the pavement and follow the tunnel round to the platform. To leave, walk out through the exit at the back of the platform and climb the stairs to the street. There’s no fading out or jumping: it’s one walk from the pavement to the train.</li>
     <li>Fixed: the dumpster outside the prison flickered, and the textures on things that move (the dumpster lid, gates and wind turbine blades) slid across them as they moved.</li>
     <li><b>Real lighting.</b> Street lamps, car headlights and tail lights, police lightbars, lit shop fronts, muzzle flashes and explosions are now real lights. Every surface works out, pixel by pixel, how much light reaches it from the nearest lights (up to 16 on High and Ultra, 10 on Medium, 6 on Low): the light falls off with the square of the distance, street lamps shine down and sideways but not up, headlights are a soft cone that reaches about 45 m, and lights glint off car paint and wet-looking glass. The flat yellow circles under the lamps are gone, nights are a touch darker so the lights matter, and the old painted headlight beams are gone because the real light does the work.</li>
@@ -3635,7 +3656,7 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='2.0.1',NEWS_VERSION='2.0.1';// 2.0.1: the rest of 2.0 (lights, cars, school) on top of the group chats; everyone gets the pop-up
+const VERSION='2.0.2',NEWS_VERSION='2.0.1';// 2.0.2: offline is the main mode; online shuts down on October 29, 2026// 2.0.1: the rest of 2.0 (lights, cars, school) on top of the group chats; everyone gets the pop-up
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3671,7 +3692,7 @@ function offAsk(step){offStep=step;const pop=$('offPop');
   if(step===1){$('offKick').textContent='Offline mode';$('offTitle').textContent='Not recommended';$('offBody').innerHTML='<p>Playing offline isn’t recommended. Free Criminal is best played online.</p>';$('offNo').textContent='Play offline anyway';}
   else{$('offKick').textContent='Are you sure?';$('offTitle').textContent='Online is better';$('offBody').innerHTML='<p>Online mode is the more supported, better mode for Free Criminal:</p><ul><li>One San Varro shared with everyone who’s playing</li><li>Race, fight or rob the town with other players</li><li>Chat with <b>T</b></li><li>New features and fixes come to online first</li></ul>';$('offNo').textContent='Yes, play offline';}
   pop.hidden=false;}
-$('bPlay').addEventListener('click',()=>{if(state!=='menu')return;initAudio();sfx.click&&sfx.click();offAsk(1);});
+$('bPlay').addEventListener('click',()=>{if(state!=='menu')return;initAudio();sfx.click&&sfx.click();playOffline();}); // 2.0.2: straight into offline, no more "not recommended"
 $('offNo').addEventListener('click',()=>{if(offStep===1){offAsk(2);return;}$('offPop').hidden=true;playOffline();});
 $('offOnline').addEventListener('click',()=>{$('offPop').hidden=true;notifyMenu('');playOnline();});
 $('bResume').addEventListener('click',resume);
@@ -4360,12 +4381,12 @@ setInterval(()=>{if(!NET.on)return;liveVersion().then(v=>{if(v&&verNewer(v,VERSI
 async function playOnline(){
   if(state!=='menu')return;
   if(outdatedTo){notifyMenu(`A new version of Free Criminal (v${outdatedTo}) is out. Refresh the page to update; online only lets in the latest version.`);return;}
-  {const b=$('bOnline');b.disabled=true;b.textContent='Checking version…';const v=await liveVersion();b.disabled=false;b.textContent='Play online';
+  {const b=$('bOnline');b.disabled=true;b.textContent='Checking version…';const v=await liveVersion();b.disabled=false;b.innerHTML='Play online <small id="olLeft"></small>';
     if(v&&verNewer(v,VERSION)){outdatedTo=v;notifyMenu(`A new version of Free Criminal (v${v}) is out. Refresh the page to update; online only lets in the latest version.`);return;}}initAudio();if(RADIO.st===MENU_ST)radioOff();hidePanels();
   const b=$('bOnline');b.disabled=true;b.textContent='Connecting…';
-  try{await NET.join();}catch(e){b.disabled=false;b.textContent='Play online';notifyMenu(e==='full'?'The online city is full right now (16 players). Try again soon.':'Couldn’t connect to the online city. Check your internet and try again.');return;}
-  await new Promise(r=>setTimeout(r,0));if(outdatedTo){if(NET.on)NET.leave();b.disabled=false;b.textContent='Play online';notifyMenu(`A new version of Free Criminal (v${outdatedTo}) is out. Refresh the page to update; online only lets in the latest version.`);return;} // 1.9.2
-  b.disabled=false;b.textContent='Play online';
+  try{await NET.join();}catch(e){b.disabled=false;b.innerHTML='Play online <small id="olLeft"></small>';notifyMenu(e==='full'?'The online city is full right now (16 players). Try again soon.':'Couldn’t connect to the online city. Check your internet and try again.');return;}
+  await new Promise(r=>setTimeout(r,0));if(outdatedTo){if(NET.on)NET.leave();b.disabled=false;b.innerHTML='Play online <small id="olLeft"></small>';notifyMenu(`A new version of Free Criminal (v${outdatedTo}) is out. Refresh the page to update; online only lets in the latest version.`);return;} // 1.9.2
+  b.disabled=false;b.innerHTML='Play online <small id="olLeft"></small>';
   newGame();loadGame();setPlayerLook();$('menu').hidden=true;lockPointer();
   const P=player,x=SPAWN.hosp.x+rand(-6,6),z=SPAWN.hosp.z+rand(-6,6);P.pos.set(x,groundY(x,z),z);P.h=SPAWN.hosp.h||0;P.m.group.rotation.set(0,P.h,0);P.m.group.visible=!P.fp;yaw=P.h;pitch=-0.08;
   state='play';updGunVis();$('hud').hidden=false;updChunks(0,true);NET.protect();NET.syncSky(true);
@@ -4606,6 +4627,36 @@ async function boot(){
   updChunks(0,true);applySettings();renderAvatars();refreshBadge();state='menu';$('loading').hidden=true;$('menu').hidden=false;requestAnimationFrame(frame);
   if(PROF.name&&BANNED_NAME(PROF.name)){PROF.name='';saveProfile();}if(!PROF.name)openName(true);else if(settings.seenVersion!==VERSION&&settings.seenVersion!==NEWS_VERSION)$('updPop').hidden=false;
 }
+// ---- 2.0.2: online shutdown ----
+// 2.0.2: online play shuts down at midnight starting October 29, 2026 (Sydney time, 13:00 UTC on the 28th), the same
+// moment for everyone. Until then it works as before, behind a disclaimer; after it, it's closed and anyone still
+// online is taken back to the menu. Offline play is untouched.
+(function(){
+  const END=Date.UTC(2026,9,28,13,0,0),over=()=>Date.now()>=END;
+  const left=()=>{const ms=Math.max(0,END-Date.now()),d=Math.floor(ms/864e5),h=Math.floor(ms/36e5)%24,m=Math.floor(ms/6e4)%60,sec=Math.floor(ms/1e3)%60;return `${d}d ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`;};
+  const nav=document.querySelector('#menu .nav'),ban=document.createElement('div');ban.id='olBanner';if(nav)nav.insertAdjacentElement('afterend',ban);
+  const pop=$('olPop');let go=false;
+  function paint(){
+    const done=over();
+    ban.innerHTML=done?'<b>Online has shut down</b>Online play for Free Criminal ended on October 29, 2026. Offline play remains fully functional.'
+      :`<b>⚠ Online shuts down October 29, 2026</b>After the countdown, all online play for Free Criminal will be terminated. Offline play remains fully functional.<span class="cd">${left()}</span>`;
+    const b=$('bOnline');if(b&&done){b.disabled=true;b.textContent='Online has shut down';}
+    const ol=$('olLeft');if(ol&&!done)ol.textContent=`Shuts down in ${left()}`;
+    if(!pop.hidden)$('olCd').textContent=done?'Online has shut down.':left();
+    // the moment it ends, anyone still online goes back to the menu
+    if(done&&typeof NET!=='undefined'&&NET.on){if(state==='menu')NET.leave();else{$('bQuit').click();}notifyMenu('Online play for Free Criminal has shut down. Offline play remains fully functional.');}
+  }
+  setInterval(paint,1000);paint();
+  // Play online: the disclaimer first, every time
+  $('bOnline').addEventListener('click',e=>{if(go){go=false;return;}e.stopImmediatePropagation();e.preventDefault();
+    if(over()){paint();notifyMenu('Online play for Free Criminal has shut down. Offline play remains fully functional.');return;}
+    pop.hidden=false;paint();},true);
+  $('olOn').addEventListener('click',()=>{pop.hidden=true;if(over()){paint();return;}go=true;$('bOnline').click();});
+  $('olOff').addEventListener('click',()=>{pop.hidden=true;$('bPlay').click();});
+  // and the old "Play online instead" button can't get round it
+  const oo=$('offOnline');if(oo)oo.addEventListener('click',e=>{if(over()){e.stopImmediatePropagation();$('offPop').hidden=true;paint();}},true);
+  addEventListener('keydown',e=>{if(e.key==='Escape'&&!pop.hidden){pop.hidden=true;e.stopPropagation();}},true);
+})();
 setTimeout(boot,30);
 })();
 </script>
