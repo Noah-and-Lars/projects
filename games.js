@@ -150,11 +150,11 @@ window.GAMES = [
     description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and level up, unlock weapons from a knife to a rocket launcher that blows holes in buildings, and play the campaign: hold the birch road in Russia, 1944, then raid a scam call centre in Mumbai, 2009, then go over the top on the Western Front, 1916. Earn achievements and badges, and find public lobbies online.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right-click', 'Zoom'], ['Space', 'Jump'],
-           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns (all keys can be changed in Settings)'], ['6', 'Turret'], ['J', 'Barricade a door'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['E', 'Claim flag (campaign), plant or defuse the bomb (C:S Mode)'], ['1 / 2', 'Make your choice (campaign)'], ['Esc', 'Pause'], ['Tab', 'Scoreboard (multiplayer)'], ['Touch', 'Joystick to move, drag to look, on-screen buttons']],
+           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns (all keys can be changed in Settings)'], ['6', 'Turret'], ['J', 'Barricade a door'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['=', 'Pumpkin Launcher'], ['E', 'Claim flag (campaign), plant or defuse the bomb (C:S Mode)'], ['1 / 2', 'Make your choice (campaign)'], ['Esc', 'Pause'], ['Tab', 'Scoreboard (multiplayer)'], ['Touch', 'Joystick to move, drag to look, on-screen buttons']],
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-10-27T13:00:00+11:00',
+    updated: '2026-10-27T13:10:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-27', game: 'cube-assault', text: 'Cube Assault 2.9.13 Halloween update: three new maps. Seaside (a beach town with a long pier), Forest (dark, dense woods, hard) and Mall (a huge three floor shopping mall with escalators, 45 shops, a carpark and shoppers running from the cubes, very hard). Every map but Classic is decorated for Halloween while the event is on, every map shows its difficulty and your best wave, and Classic has moved to a Legacy section. The Battle Pass now gives Jacks Grin at level 10, Reapers Lantern at level 25 and a new Limited Edition gun at level 50: the Pumpkin Launcher.' },
   { date: '2026-10-27', game: 'cube-assault', text: 'Cube Assault 2.9.12: show off a knife you own on your profile, and other players see it when they open your profile. When the Halloween 2026 Event ends, its Battle Pass locks and its two knives become Limited Edition, with their own section in My knives.' },
   { date: '2026-10-27', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.0.8: bug fixes, improvements and an enhanced user experience.' },
   { date: '2026-10-27', game: 'free-criminal', text: 'Free Criminal 2.0.2: Play (offline) is the main mode again. Online play shuts down on October 29, 2026: until then it still works, and after the countdown all online play is terminated. Offline play remains fully functional.' },

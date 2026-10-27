@@ -401,6 +401,17 @@
   .mapcard b { font-family: var(--display); font-weight: 400; font-size: 21px; display: flex; align-items: center; gap: 8px; }
   .mapcard span { font-size: 13px; color: var(--muted); line-height: 1.4; }
   .mapcard.loading { opacity: .6; pointer-events: none; }
+  /* 2.9.13: difficulty, your best wave on each map, and the Legacy section */
+  .mapcard .mDiff { margin-left: auto; font: 800 10.5px/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; font-style: normal; padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+  .mDiff.d1 { background: rgba(34,197,94,.16); color: #4ade80; } .mDiff.d2 { background: rgba(245,158,11,.16); color: #fbbf24; }
+  .mDiff.d3 { background: rgba(239,68,68,.18); color: #f87171; } .mDiff.d4 { background: rgba(168,85,247,.2); color: #c084fc; }
+  .mapcard .mBest { display: block; margin-top: 6px; font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--gold); }
+  .mapcard .mBest.none { color: var(--muted); font-weight: 500; }
+  .mapsLegacy { width: 100%; margin: 4px 0 12px; padding-top: 12px; border-top: 1px dashed #3a4350; }
+  .mapsLegacy .lgHead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .mapsLegacy .lgHead b { font-family: var(--display); font-weight: 400; font-size: 20px; color: #9aa3ae; }
+  .mapsLegacy .lgHead span { font-size: 12.5px; color: var(--muted); }
+  .mapcard.legacy { opacity: .72; filter: saturate(.7); } .mapcard.legacy:hover { opacity: 1; filter: none; }
   .wip { font-family: var(--body); font-weight: 800; font-size: 11px; letter-spacing: 1px; color: #1a1205; background: #f59e0b; border-radius: 4px; padding: 2px 6px; }
   @media (max-width: 520px) { .maps { grid-template-columns: 1fr; } }
 
@@ -667,7 +678,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <button class="uiCard" id="homeFriends" data-art="friends" style="--ac:#f472b6"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Online</em><b>Friends</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v2.9.12 · What's new</button>
+    <button class="link verLink" data-action="notes">v2.9.13 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -693,14 +704,19 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.12<span>Limited Edition</span></h1><p>Show off your best knife on your profile. The Halloween 2026 Event locks when its timer runs out, and its two knives become Limited Edition, with their own section in My knives.</p>
+    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.13<span>Halloween maps</span></h1><p>Three new maps: Seaside, a dark Forest and a huge three-floor Mall full of shoppers. Every map but Classic is decorated for Halloween, and level 50 of the Battle Pass now gives the Pumpkin Launcher.</p>
       <div class="hero-guns"><i class="hcube" style="background:#7a3a0a">🎃</i><i class="hcube" style="background:#3a1a5a">💀</i><i class="hcube" style="background:#6f5a2c">📦</i><i class="hcube" style="background:#2c4a6f">👥</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
+      <div><i>🛍️</i><span><b>New map: Mall</b>Three floors of shops round a glass-roofed atrium, escalators, a carpark and shoppers who run from the cubes. Very hard.</span></div>
+      <div><i>🌲</i><span><b>New map: Forest</b>Dense, dark woods under the moon, with a camp, a cabin and a ruined chapel. Hard.</span></div>
+      <div><i>🏖️</i><span><b>New map: Seaside</b>A beach, a pier, the ocean, beach houses and a town. Cubes never come out of the sea.</span></div>
+      <div><i>🎃</i><span><b>Pumpkin Launcher</b>Level 50 of the Battle Pass: a launcher that fires flaming jack-o'-lanterns, with a much bigger blast than the rocket launcher. Limited Edition.</span></div>
+      <div><i>🦇</i><span><b>Halloween on every map</b>Jack-o'-lanterns, lights, ghosts, bats and orange trees on every map but Classic, while the event is on.</span></div>
       <div><i>🔪</i><span><b>Knife showcase</b>Pick a knife you own to show near the top of your profile. Anyone who opens your profile sees it.</span></div>
       <div><i>🔒</i><span><b>Limited Edition</b>When the Halloween 2026 Event ends, the pass locks and Jack's Grin and Reaper's Lantern can't be unlocked any more.</span></div>
       <div><i>🎃</i><span><b>Battle Pass: Halloween 2026 Event</b>The button in the bottom right of the home screen. 50 levels of coins and knife crates. It ends at the same time for everyone, a week from now.</span></div>
-      <div><i>💀</i><span><b>Halloween knives</b>Jack's Grin at level 25 and Reaper's Lantern at level 50. Only in this event, never in crates.</span></div>
+      <div><i>💀</i><span><b>Halloween knives</b>Jack's Grin at level 10 and Reaper's Lantern at level 25. Only in this event, never in crates.</span></div>
       <div><i>👥</i><span><b>Up to 10 players</b>Team Deathmatch and C:S Mode rooms grow to fit everyone, up to 5v5.</span></div>
       <div><i>👥</i><span><b>Friends</b>Click a name in a multiplayer lobby to see their profile and send a friend request. Invite your friends to your games from the Friends button.</span></div>
       <div><i>💣</i><span><b>Bombs</b>A new Shop section: the Grenade (pull the pin, click to throw, it blows up on impact) and the Landmine. Pick one as your bomb in the multiplayer loadout.</span></div>
@@ -741,6 +757,20 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.13 <span>Halloween maps</span></h3><ul>
+        <li><b>New map: Mall.</b> A huge indoor shopping mall on three floors round a tall atrium with a glass roof, and an outdoor carpark. Escalators go up from the atrium to the 1st floor, and from the 1st floor to the 2nd; bridges cross the atrium. 45 shops, each with its own sign and fittings: clothes rails and fitting rooms, shoe walls, a supermarket with aisles, checkouts and fridges, a furniture store, a food court, a cinema, two arcades, a gym, cafes and more.</li>
+        <li><b>Shoppers:</b> people walk round the Mall, look in the windows and run when a cube gets close. Some cubes go after them. One hit kills them, and that includes yours, so watch where you shoot.</li>
+        <li><b>New map: Forest.</b> Hundreds of trees close together in the dark, under the moon: a camp in the middle, an old cabin, a ruined chapel with a graveyard, a black pond, fireflies and glowing mushrooms. The cubes are tougher and quicker here.</li>
+        <li><b>New map: Seaside.</b> A beach with umbrellas, huts and a lifeguard tower, a long pier out over the ocean, a neighbourhood of beach houses (every front door can be barricaded) and a town of tall buildings. Cubes spawn anywhere on land, never in the water.</li>
+        <li><b>Smarter cubes:</b> on the new maps the cubes find their way round walls, through doorways and up the escalators instead of getting stuck.</li>
+        <li><b>Barricades in the Mall</b> fit every shop doorway, however wide (the planks stretch to fit), on every floor.</li>
+        <li><b>Difficulty:</b> every map shows how hard it is: Classic is easy, Frontier, Outpost and Seaside are medium, Forest is hard and the Mall is very hard.</li>
+        <li><b>Best wave on each map:</b> the map screen shows your best wave on every map. It's no longer on your profile.</li>
+        <li><b>Legacy:</b> Classic Village has moved to a Legacy section at the bottom of the map screen. It's still there, but the newer maps are better.</li>
+        <li><b>Halloween decorations</b> on every map but Classic, single-player and multiplayer, while the Halloween 2026 Event is on: jack-o'-lanterns by the front doors, strings of lights round the houses, cobwebs, little graveyards, scarecrows, ghosts and bats, orange trees and a spooky sunset sky.</li>
+        <li><b>Battle Pass:</b> Jack's Grin is now at level 10 and Reaper's Lantern at level 25. If you were already past those levels, you get them now.</li>
+        <li><b>Pumpkin Launcher</b> at level 50: a dark grey launcher with two grips and a carved, glowing jack-o'-lantern on the front. It works like the rocket launcher, but it fires flaming pumpkins that leave purple smoke and burst into a much bigger blast with bats and a ghost. Press = to use it. Only in this event: get it before the event ends and it's yours for good; after that it's Limited Edition. It isn't in multiplayer.</li>
+      </ul></section>
       <section><h3>v2.9.12 <span>Limited Edition</span></h3><ul>
         <li><b>Knife showcase:</b> your profile has a new spot under your level bar. Click it to pick any knife you own, and it shows on your profile. Other players see it when they click your name in a lobby or open your profile from their friends list.</li>
         <li><b>The Halloween 2026 Event ends for good:</b> when its timer runs out, the Battle Pass locks and stops giving XP. No new season starts after it.</li>
@@ -1225,12 +1255,20 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       </div>
     </div>
     <div class="maps">
-      <button class="mapcard" data-map="classic"><canvas width="320" height="320" id="prevClassic"></canvas>
-        <b>Classic Village</b><span>The original walled village from before v1.7. Small, tight and fast.</span></button>
       <button class="mapcard" data-map="big"><canvas width="320" height="320" id="prevBig"></canvas>
-        <b>Frontier</b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm.</span></button>
+        <b>Frontier <em class="mDiff d2">Medium</em></b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm.</span><i class="mBest" data-best="big"></i></button>
       <button class="mapcard" data-map="outpost"><canvas width="320" height="320" id="prevOutpost"></canvas>
-        <b>Outpost</b><span>A walled desert compound built for team fights: two sites, three lanes and plenty of cover.</span></button>
+        <b>Outpost <em class="mDiff d2">Medium</em></b><span>A walled desert compound built for team fights: two sites, three lanes and plenty of cover.</span><i class="mBest" data-best="outpost"></i></button>
+      <button class="mapcard" data-map="seaside"><canvas width="320" height="320" id="prevSeaside"></canvas>
+        <b>Seaside <em class="mDiff d2">Medium</em></b><span>A beach town: sand, a long pier, the ocean, beach houses and a block of tall buildings. Cubes come from the land, never the sea.</span><i class="mBest" data-best="seaside"></i></button>
+      <button class="mapcard" data-map="forest"><canvas width="320" height="320" id="prevForest"></canvas>
+        <b>Forest <em class="mDiff d3">Hard</em></b><span>Dark, dense woods under the moon. You won't see the cubes until they're close, and they're tougher and quicker here.</span><i class="mBest" data-best="forest"></i></button>
+      <button class="mapcard" data-map="mall"><canvas width="320" height="320" id="prevMall"></canvas>
+        <b>Mall <em class="mDiff d4">Very hard</em></b><span>A huge shopping mall on three floors, with escalators, 45 shops, a carpark and shoppers running for their lives. Cubes come from every floor.</span><i class="mBest" data-best="mall"></i></button>
+    </div>
+    <div class="mapsLegacy"><div class="lgHead"><b>Legacy</b><span>No longer recommended. Kept for old times' sake; the maps above are better.</span></div>
+      <div class="maps"><button class="mapcard legacy" data-map="classic"><canvas width="320" height="320" id="prevClassic"></canvas>
+        <b>Classic Village <em class="mDiff d1">Easy</em></b><span>The original walled village from before v1.7. Small, tight and fast.</span><i class="mBest" data-best="classic"></i></button></div>
     </div>
     <button class="btn secondary" data-action="back">Back</button>
   </div>
@@ -1306,6 +1344,9 @@ const WEAPONS = {
              desc: 'The classic Kalashnikov. Full-auto, 30 rounds, hits harder than the rifle.' },
   minigun: { slot: '-', name: 'Minigun', dmg: 0.9, cooldown: 0.05, mag: 400, reload: 4, pellets: 1, spread: 0.03, auto: true, kick: 0.15, heat: 0.014, price: 500,
              desc: 'Six spinning barrels and 400 rounds. Hold to spin up and fire, but keep firing too long and it overheats.' },
+  // 2.9.13: the Halloween 2026 Event's own gun, level 50 of the Battle Pass. Never sold; after the event it's Limited Edition
+  pumpkin: { slot: '=', name: 'Pumpkin Launcher', short: 'Pumpkin', dmg: 4, cooldown: 0.5, mag: 1, reload: 3, pellets: 1, spread: 0, auto: false, kick: 3.2, rocket: true, splash: 7.5, event: true,
+             tracer: 0xff7a1a, desc: 'Fires a flaming jack-o\'-lantern. Works like the rocket launcher, with a much bigger blast. Only from the Halloween 2026 Event Battle Pass.' },
 };
 const WEAPON_KEYS = Object.keys(WEAPONS);
 
@@ -1388,7 +1429,7 @@ function exitTestMode() {
 }
 const isAdmin = () => testMode || ((profile.name || '').trim() === 'ADMINTEST' && profile.adminOk === ADMIN_KEY);
 if (/^(admintest|gametester)$/i.test((profile.name || '').trim()) && (profile.adminOk !== ADMIN_KEY || /^gametester$/i.test(profile.name.trim()))) profile.name = ''; // an old ADMINTEST without the password picks a new name
-const ownsBase = k => { if (isAdmin()) return true; const w = WEAPONS[k]; return w.price ? !!profile.owned[k] : w.unlockWave ? wave >= w.unlockWave : true; };
+const ownsBase = k => { if (isAdmin()) return true; const w = WEAPONS[k]; return w.event ? !!profile.owned[k] : w.price ? !!profile.owned[k] : w.unlockWave ? wave >= w.unlockWave : true; };
 const campOwns = k => (camp && camp.level === 3) ? ['pistol', 'rifle', 'sniper', 'knife'].includes(k) : k === 'rifle'; // 2.8: Level 3 has more than the rifle
 const owns = k => (gameMode === 'mp' && window.mpNet) ? (window.mpRules ? mpRules.owns(k) : mpNet.guns.includes(k)) : (gameMode === 'campaign' && state !== 'menu' && !isAdmin()) ? campOwns(k) : ownsBase(k); // mp-net hook: everyone gets the same guns in multiplayer
 const ownsTurret = () => isAdmin() || !!profile.owned.turret;
@@ -1398,11 +1439,11 @@ function saveSettings() { if (wiped) return; try { localStorage.setItem('cubeAss
 // 2.8: keybinds. Every keyboard control can go on any key; the game itself still thinks in the default keys.
 const BIND_DEFAULTS = { forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', sprint: 'ShiftLeft', jump: 'Space', reload: 'KeyR', use: 'KeyE', lastWeapon: 'KeyQ', scope: 'KeyZ',
   pistol: 'Digit1', rifle: 'Digit2', shotgun: 'Digit3', sniper: 'Digit4', extreme: 'Digit5', turret: 'Digit6', knife: 'Digit7', rocket: 'Digit8', barricade: 'KeyJ',
-  revolver: 'Digit9', ak47: 'Digit0', minigun: 'Minus', // 2.9.5
+  revolver: 'Digit9', ak47: 'Digit0', minigun: 'Minus', pumpkin: 'Equal', // 2.9.5; 2.9.13: the Pumpkin Launcher
   flash: 'KeyG', smoke: 'KeyX', medkit: 'KeyH', // 2.9.8
   grenade: 'KeyB', landmine: 'KeyN' }; // 2.9.10
 const BIND_LABELS = { forward: 'Move forward', back: 'Move back', left: 'Move left', right: 'Move right', sprint: 'Sprint', jump: 'Jump', reload: 'Reload', use: 'Use (hold in Missions)',
-  lastWeapon: 'Last weapon', scope: 'Scope on / off (rifle, sniper, Extreme Gun)', pistol: 'Pistol', rifle: 'Sniper rifle', shotgun: 'Shotgun', sniper: 'Sniper', revolver: 'Revolver', ak47: 'AK-47', minigun: 'Minigun', extreme: 'Extreme Gun', turret: 'Place turret', knife: 'Knife', rocket: 'Rocket launcher', barricade: 'Board up a door', flash: 'Throw a flashbang', smoke: 'Throw a smoke grenade', grenade: 'Grenade: pull the pin', landmine: 'Set down a landmine', medkit: 'Use a medkit' };
+  lastWeapon: 'Last weapon', scope: 'Scope on / off (rifle, sniper, Extreme Gun)', pistol: 'Pistol', rifle: 'Sniper rifle', shotgun: 'Shotgun', sniper: 'Sniper', revolver: 'Revolver', ak47: 'AK-47', minigun: 'Minigun', pumpkin: 'Pumpkin Launcher', extreme: 'Extreme Gun', turret: 'Place turret', knife: 'Knife', rocket: 'Rocket launcher', barricade: 'Board up a door', flash: 'Throw a flashbang', smoke: 'Throw a smoke grenade', grenade: 'Grenade: pull the pin', landmine: 'Set down a landmine', medkit: 'Use a medkit' };
 if (!settings.binds || typeof settings.binds !== 'object') settings.binds = {};
 const bindOf = a => settings.binds[a] || BIND_DEFAULTS[a];
 // the key you pressed -> the default key of the action it's bound to
@@ -3193,6 +3234,7 @@ function useMap(id) {
   if (id === 'c3' && !MAPS.c3) buildCampaign3();
   if (id === 'outpost' && !MAPS.outpost) buildOutpost();
   if (id === 'dust2' && !MAPS.dust2) buildDust2(); // 2.9.3
+  if (!MAPS[id] && window.caBuildMap) caBuildMap(id); // 2.9.13: Seaside, Forest and the Mall
   const M = MAPS[id];
   // weather: grey snow for Russia, warm haze for Mumbai; the tower map has its own street level, so the shared floor hides
   floor.visible = !M.hideFloor;
@@ -3209,6 +3251,7 @@ function useMap(id) {
   ARENA = M.arena;
   for (const [arr, src] of [[boxes, M.boxes], [solids, M.solids], [noGrass, M.noGrass], [houseRects, M.houseRects]]) { arr.length = 0; arr.push(...src); }
   grass = M.grass; flowers = M.flowers; moreGrass = M.moreGrass;
+  if (window.caAfterMap) caAfterMap(id, M); // 2.9.13: floors, pathfinding, the light, Halloween
   applyQuality();
 }
 
@@ -3231,6 +3274,7 @@ function collide(pos, r, y = 0) {
       }
     }
   }
+  if (XB.length) xbCollide(pos, r, y); // 2.9.13
   const lim = ARENA - 0.5 - r;
   pos.x = Math.max(-lim, Math.min(lim, pos.x));
   pos.z = Math.max(-lim, Math.min(lim, pos.z));
@@ -3242,6 +3286,7 @@ function cubeGround(pos, y, r) {
     if (b.h > STEP || b.h > y + 0.3) continue;
     if (Math.abs(pos.x - b.x) < b.hx + r * 0.6 && Math.abs(pos.z - b.z) < b.hz + r * 0.6) g = Math.max(g, b.h);
   }
+  if (PLATS.length || XB.length) g = xbGround(pos, y, g, r * 0.6, 0.3); // 2.9.13: floors and ramps
   return g;
 }
 // a fence or crate just ahead that a cube can hop over
@@ -3251,12 +3296,14 @@ function lowBoxAhead(pos, mx, mz, d) {
   return null;
 }
 let floorBase = 0; // ground height; the Apex Support ending is played down on the street
+const XB = [], PLATS = []; // 2.9.13: colliders that fill only part of the height (the Mall's floors), and raised floors and ramps (see the v2913-maps block)
 function groundAt(pos, prevY) {
   let g = floorBase;
   for (const b of boxes) {
     if (b.h > STEP || b.h > prevY + 0.25) continue;
     if (Math.abs(pos.x - b.x) < b.hx + 0.2 && Math.abs(pos.z - b.z) < b.hz + 0.2) g = Math.max(g, b.h);
   }
+  if (PLATS.length || XB.length) g = xbGround(pos, prevY, g, 0.2, 0.25); // 2.9.13: floors and ramps
   return g;
 }
 
@@ -3293,11 +3340,11 @@ function explodeBarrel(rb) {
 function boomNearby(P) {
   if (!live272()) return;
   for (const rb of REDBARRELS) if (!rb.gone && inPlay(rb.m) && Math.hypot(rb.x - P.x, rb.z - P.z) < 3.6 && !BOOMQ.some(q => q.rb === rb)) BOOMQ.push({ rb, t: -0.18 });
-  for (const B of BARRICADES) { const d = Math.hypot(B.x - P.x, B.z - P.z); if (d < 4.5) hitBarricade(B, 60 * (1 - d / 4.5) + 40); }
+  for (const B of BARRICADES) { const d = Math.hypot(B.x - P.x, B.z - P.z); if (d < 4.5 && Math.abs((B.D.y || 0) + 1 - P.y) < 4) hitBarricade(B, 60 * (1 - d / 4.5) + 40); }
 }
 function nearDoor() {
   let best = null, bd = 2.4;
-  for (const D of DOORWAYS) { if (D.bar || !inPlay(D.ref)) continue; const d = Math.hypot(player.pos.x - D.x, player.pos.z - D.z); if (d < bd) { bd = d; best = D; } }
+  for (const D of DOORWAYS) { if (D.bar || !inPlay(D.ref) || Math.abs((D.y || 0) - player.pos.y) > 2) continue; const d = Math.hypot(player.pos.x - D.x, player.pos.z - D.z); if (d < bd) { bd = d; best = D; } } // 2.9.13: on your floor
   return best;
 }
 let BAR = null; // the boarding-up animation in progress
@@ -3343,10 +3390,11 @@ function placeBarricade(D, side, remote) { // 2.9.9: remote: another player's, i
   const wood = lambert(0x8f6a46), dark = lambert(0x6e5034), W = D.gap + 0.5, off = side * (D.t / 2 + 0.05), meshes = [];
   for (const [y, tilt, mat] of [[0.55, 0.1, wood], [1.2, -0.08, dark], [1.85, 0.06, wood]]) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(W, 0.22, 0.07), mat);
-    if (D.horiz) { m.position.set(D.x, y, D.z + off); m.rotation.z = tilt; } else { m.position.set(D.x + off, y, D.z); m.rotation.set(0, Math.PI / 2, tilt); }
+    if (D.horiz) { m.position.set(D.x, y + (D.y || 0), D.z + off); m.rotation.z = tilt; } else { m.position.set(D.x + off, y + (D.y || 0), D.z); m.rotation.set(0, Math.PI / 2, tilt); } // 2.9.13: + the floor it's on
     m.castShadow = m.receiveShadow = true; scene.add(m); solids.push(m); meshes.push(m);
   }
   const box = D.horiz ? addCollider(D.x, D.z + off, W, 0.4, 2.4) : addCollider(D.x + off, D.z, 0.4, W, 2.4);
+  if (D.band) { dropBox(box); box.y0 = D.y || 0; XB.push(box); xbInsert(box); } // 2.9.13: only on its own floor
   const B = { D, x: D.horiz ? D.x : D.x + off, z: D.horiz ? D.z + off : D.z, meshes, box, hp: 100 };
   for (const m of meshes) m.userData.onShot = () => { const d = Math.max(6, weapon.dmg * 12) * (weapon.pellets > 1 ? 0.6 : 1); hitBarricade(B, d); if (window.v299) v299.barHit(B, d); };
   D.bar = B; BARRICADES.push(B);
@@ -3362,7 +3410,7 @@ function hitBarricade(B, dmg) {
 }
 function removeBarricade(B, broken) {
   for (const m of B.meshes) { dropSolid(m); scene.remove(m); }
-  dropBox(B.box); B.D.bar = null; B.hp = 0;
+  dropBox(B.box); if (B.box.y0 !== undefined) xbDrop(B.box); B.D.bar = null; B.hp = 0;
   const i = BARRICADES.indexOf(B); if (i >= 0) BARRICADES.splice(i, 1);
   if (broken) { banner('Barricade broken!', 'The cubes are coming in'); Sound.play('crumble'); }
 }
@@ -3382,7 +3430,7 @@ function updateBoom272(dt) {
   // cubes break barricades (the Angry Cube goes straight through)
   for (const B of [...BARRICADES]) for (const e of enemies) {
     const u = e.userData, d = Math.hypot(e.position.x - B.x, e.position.z - B.z);
-    if (d < u.size * 0.5 + 1.3 && !u.T.ranged) { if (u.T.smash) { removeBarricade(B, true); break; } hitBarricade(B, u.T.melee * 1.1 * dt); if (B.hp <= 0) break; }
+    if (d < u.size * 0.5 + 1.3 && !u.T.ranged && Math.abs((B.D.y || 0) - (u.jy || 0)) < 2) { if (u.T.smash) { removeBarricade(B, true); break; } hitBarricade(B, u.T.melee * 1.1 * dt); if (B.hp <= 0) break; }
   }
   // "press J" when you're in a doorway with a barricade to use
   const show = (gameMode === 'classic' || gameMode === 'mp') && state === 'playing' && !BAR && ownsBar() && !!nearDoor(); // 2.9.9
@@ -4224,7 +4272,70 @@ const GUN_MODELS = {
     return { g, mag, magDir: [0, 0, -1], loadable: true, view: { pos: [0.2, -0.17, -0.52], scale: 0.95, yaw: 0.06, pitch: 0.03, roll: -0.03 },
              muzzle: [0, 0.04, 0.56], eject: null };
   },
+
+  // 2.9.13: the Pumpkin Launcher. A dark grey launcher tube with a wide flared back end, a heat guard, a sight, and the
+  // rocket launcher's two black pistol grips in the same places (so your hands hold it the same way). The round is a
+  // carved jack-o'-lantern seated on the front, glowing from inside; it flies off when you fire and a new one goes on.
+  pumpkin() {
+    const g = new THREE.Group(), mag = new THREE.Group(), K = pumpkinGunMats();
+    g.add(cylU(0.06, 0.06, -0.44, 0.44, 0.04, K.tube, 0, 24));
+    g.add(lathe([[0.055, -0.44], [0.064, -0.5], [0.082, -0.56], [0.1, -0.62], [0.106, -0.63], [0.106, -0.612], [0.09, -0.575], [0.07, -0.5], [0.061, -0.44]], K.dark, 0.04));
+    g.add(lathe([[0.03, -0.6], [0.05, -0.6]], GM.bore, 0.04));
+    for (const u of [-0.38, -0.22, 0.28, 0.4]) g.add(cylU(0.064, 0.064, u, u + 0.02, 0.04, K.dark, 0, 24));
+    g.add(cylU(0.069, 0.069, -0.1, 0.2, 0.04, K.guard, 0, 24));
+    for (const u of [-0.08, 0.18]) g.add(cylU(0.071, 0.071, u, u + 0.012, 0.04, K.dark, 0, 24));
+    g.add(lathe([[0.06, 0.43], [0.074, 0.44], [0.077, 0.48], [0.066, 0.49]], K.dark, 0.04));
+    g.add(extrudeSide([[0.04, -0.012], [0.072, -0.012], [0.062, -0.12], [0.026, -0.12]], 0.03, GM.rubber));
+    g.add(guardAt(0.12, 0.074, -0.012, -0.046, GM.dark));
+    g.add(triggerAt(0.09, -0.01, GM.dark));
+    g.add(extrudeSide([[0.276, -0.012], [0.31, -0.012], [0.31, -0.11], [0.276, -0.11]], 0.03, GM.rubber));
+    g.add(box(0.026, 0.044, 0.1, K.dark, 0, 0.12, 0.13)); g.add(lens(0.011, GM.glass, 0.124, 0.181, false));
+    g.add(box(0.008, 0.032, 0.01, K.dark, 0, 0.112, 0.415)); g.add(box(0.03, 0.006, 0.05, K.dark, 0, 0.1, -0.3));
+    const pk = pumpkinMesh(0.104); pk.position.set(0, 0.04, -0.585); mag.add(pk);
+    g.add(mag);
+    return { g, mag, magDir: [0, 0, -1], loadable: true, view: { pos: [0.2, -0.17, -0.52], scale: 0.95, yaw: 0.06, pitch: 0.03, roll: -0.03 },
+             muzzle: [0, 0.04, 0.6], eject: null };
+  },
 };
+// 2.9.13: a carved jack-o'-lantern (the Pumpkin Launcher's round and the Halloween decorations): a ribbed pumpkin with
+// a stem, and a face cut in one side that glows from inside. The face looks down -z. Made once and shared.
+let PK_ASSETS = null;
+function pumpkinAssets() {
+  if (PK_ASSETS) return PK_ASSETS;
+  const geo = new THREE.SphereGeometry(1, 36, 22), p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), k = 0.9 + 0.1 * Math.sqrt(Math.abs(Math.cos(a * 5)));
+    const dip = y > 0.8 ? (y - 0.8) * 1.1 : y < -0.85 ? (y + 0.85) * 0.6 : 0;
+    p.setXYZ(i, x * k, (y - dip) * 0.78, z * k);
+  }
+  geo.computeVertexNormals();
+  const W = 512, H = 256, face = (g, fill, glow) => {
+    g.save(); g.fillStyle = fill; if (glow) { g.shadowColor = '#ffcf5a'; g.shadowBlur = 14; }
+    const cx = W * 0.75, tri = (pts) => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(cx + x, y) : g.moveTo(cx + x, y)); g.closePath(); g.fill(); };
+    tri([[-46, 112], [-14, 112], [-30, 74]]); tri([[14, 112], [46, 112], [30, 74]]); tri([[-8, 132], [8, 132], [0, 118]]);
+    g.beginPath(); g.moveTo(cx - 62, 146); g.quadraticCurveTo(cx, 200, cx + 62, 146); g.lineTo(cx + 44, 154); g.lineTo(cx + 36, 146); g.lineTo(cx + 24, 160); g.lineTo(cx + 12, 150);
+    g.lineTo(cx, 164); g.lineTo(cx - 12, 150); g.lineTo(cx - 24, 160); g.lineTo(cx - 36, 146); g.lineTo(cx - 44, 154); g.closePath(); g.fill(); g.restore();
+  };
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#c4500c'); gr.addColorStop(0.25, '#ff8a1e'); gr.addColorStop(0.6, '#f07614'); gr.addColorStop(1, '#a5400a'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  for (let k = 0; k < 10; k++) { const x = (0.05 + k * 0.1) * W, s = g.createLinearGradient(x - 26, 0, x + 26, 0); s.addColorStop(0, 'rgba(120,40,0,0)'); s.addColorStop(0.5, 'rgba(120,40,0,.5)'); s.addColorStop(1, 'rgba(120,40,0,0)'); g.fillStyle = s; g.fillRect(x - 26, 0, 52, H); }
+  for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(255,${180 + Math.random() * 60},90,${Math.random() * 0.12})`; g.fillRect(Math.random() * W, Math.random() * H, 2 + Math.random() * 10, 1 + Math.random() * 2); }
+  face(g, '#ffd04a', true);
+  const em = document.createElement('canvas'); em.width = W; em.height = H; const ge = em.getContext('2d'); ge.fillStyle = '#000'; ge.fillRect(0, 0, W, H); face(ge, '#ffffff', true);
+  const map = new THREE.CanvasTexture(cv), emissiveMap = new THREE.CanvasTexture(em);
+  const mat = new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0xffa526, emissiveIntensity: 1.5, roughness: 0.55, metalness: 0 });
+  const stemGeo = new THREE.CylinderGeometry(0.08, 0.14, 0.34, 6).translate(0, 0.17, 0).applyMatrix4(new THREE.Matrix4().makeRotationZ(0.25)).translate(0, 0.66, 0);
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x4d5a22, roughness: 0.9 });
+  return (PK_ASSETS = { geo, mat, stemGeo, stemMat });
+}
+function pumpkinMesh(r) { const A = pumpkinAssets(), g = new THREE.Group(); g.add(new THREE.Mesh(A.geo, A.mat), new THREE.Mesh(A.stemGeo, A.stemMat)); g.scale.setScalar(r); return g; }
+let PK_GUN = null;
+function pumpkinGunMats() {
+  if (PK_GUN) return PK_GUN;
+  const std = o => new THREE.MeshStandardMaterial(Object.assign({ envMap: gunEnv, envMapIntensity: 1.3, side: THREE.DoubleSide }, o));
+  return (PK_GUN = { tube: std({ color: 0x3a3d42, metalness: 0.55, roughness: 0.46, map: GT.wear, roughnessMap: GT.rough }), dark: std({ color: 0x1d1e21, metalness: 0.6, roughness: 0.5, map: GT.wear }),
+    guard: std({ color: 0x2b2d31, metalness: 0.2, roughness: 0.8, bumpMap: GT.stipple, bumpScale: 0.25 }) });
+}
 
 // ---- spent shells ----
 const SHELL_GEO = (() => {
@@ -4379,6 +4490,10 @@ const ARM_POSES = {
     right: { c: [0, -0.008, 0.07], rot: [0, 0, 0], elbow: [-0.17, -0.24, 0.2], hand: { fist: true } }, // 2.9.7: a plain fist round the grip (see buildFist)
   },
   rocket: {
+    right: { c: [0, -0.066, -0.049], rot: [-0.11, 0, 0], elbow: [0.1, -0.32, 0.25], trigger: [0, -0.022, -0.096], hand: { rx: 0.015, rz: 0.019, top: 0.02 } },
+    left: { c: [0, -0.061, -0.293], rot: [0, 0, 0], mirror: true, elbow: [-0.2, -0.3, 0.0], hand: { rx: 0.015, rz: 0.017, top: 0.035 } },
+  },
+  pumpkin: { // 2.9.13: its grips are where the rocket launcher's are
     right: { c: [0, -0.066, -0.049], rot: [-0.11, 0, 0], elbow: [0.1, -0.32, 0.25], trigger: [0, -0.022, -0.096], hand: { rx: 0.015, rz: 0.019, top: 0.02 } },
     left: { c: [0, -0.061, -0.293], rot: [0, 0, 0], mirror: true, elbow: [-0.2, -0.3, 0.0], hand: { rx: 0.015, rz: 0.017, top: 0.035 } },
   },
@@ -4757,9 +4872,10 @@ function spawnEnemy(key, at, opt) {
   } while ((Math.hypot(x - player.pos.x, z - player.pos.z) < 18 || (mapId === 'big' && x > 34 && z < -30)) && ++tries < 80); // 2.9.10: not behind Frontier's mountains
   if (mapId === 'big' && x > 34 && z < -30) { x = Math.max(-ARENA + 2, Math.min(30, player.pos.x - 30)); z = Math.max(-ARENA + 2, Math.min(ARENA - 2, player.pos.z + 30)); }
   if (mapId === 'outpost' && MAPS.outpost) { const far = MAPS.outpost.spawns.ffa.filter(p => Math.hypot(p.x - player.pos.x, p.z - player.pos.z) > 18), p = far[Math.floor(Math.random() * far.length)] || MAPS.outpost.spawns.ffa[0]; x = p.x + (Math.random() - .5) * 2; z = p.z + (Math.random() - .5) * 2; }
-  if (at && typeof at === 'object' && Number.isFinite(at.x) && Number.isFinite(at.z)) { x = at.x; z = at.z; }
-  g.position.set(x, size / 2, z);
-  for (let i = 0; i < 3; i++) collide(g.position, size * 0.55);
+  let sy = 0; { const SM = MAPS[mapId]; if (SM && SM.spawnAt && gameMode !== 'mp') { const sp = SM.spawnAt(size); if (sp) { x = sp.x; z = sp.z; sy = sp.y || 0; } } } // 2.9.13: the new maps pick their own spots (any floor, never the sea)
+  if (at && typeof at === 'object' && Number.isFinite(at.x) && Number.isFinite(at.z)) { x = at.x; z = at.z; sy = 0; }
+  g.position.set(x, size / 2 + sy, z);
+  for (let i = 0; i < 3; i++) collide(g.position, size * 0.55, sy);
   g.scale.setScalar(0.01);
   scene.add(g);
   simplify(g);
@@ -4774,7 +4890,9 @@ function spawnEnemy(key, at, opt) {
     slamCd: 3.5, slam: 0, air: 0, gen: (opt && opt.gen) || 0,
   };
   if (opt && opt.gen) g.userData.speed += opt.gen * 0.7;
-  puff(new THREE.Vector3(x, 0.4, z), 0xcfc4ad, 2.2 * size, 0.8);
+  if (sy) g.userData.jy = sy; // 2.9.13: on an upper floor
+  { const DM = MAPS[mapId] && MAPS[mapId].diff; if (DM && gameMode === 'classic') { const U = g.userData; U.hp = U.maxHp = Math.round(U.hp * DM.hp); U.speed *= DM.speed; } } // 2.9.13: the harder maps
+  puff(new THREE.Vector3(x, 0.4 + sy, z), 0xcfc4ad, 2.2 * size, 0.8);
   enemies.push(g);
 }
 
@@ -5301,6 +5419,7 @@ function pause() {
 }
 function quitToMenu() {
   if (state !== 'menu' && gameMode !== 'campaign') profile.best = Math.max(profile.best, wave);
+  if (state !== 'menu' && window.caMapBest) caMapBest(wave); // 2.9.13: your best on this map
   gameMode = 'classic';
   saveProfile();
   resetGame();
@@ -5317,6 +5436,7 @@ function resetGame() {
   for (const k in keys) keys[k] = false;
   mouseDown = false; swipe = 0;
   player.pos.set(0, 0, 5); player.vy = 0; player.hp = 100; player.yaw = 0; player.pitch = 0;
+  { const SM = MAPS[mapId]; if (SM && SM.start && gameMode === 'classic') { player.pos.set(SM.start[0], SM.start[1] || 0, SM.start[2]); player.yaw = SM.start[3] || 0; } } // 2.9.13
   for (const k of WEAPON_KEYS) ammo[k] = WEAPONS[k].mag;
   setWeapon(settings.weapon);
   score = 0; wave = 0; runCoins = 0; damageFlash = 0; nextWaveIn = 0; deathT = 0; kick = 0; shake = 0;
@@ -5341,14 +5461,15 @@ function gameOver() {
   releaseInput();
   Sound.play('death');
   const story = gameMode === 'campaign';
-  const newBest = !story && wave > profile.best;
+  const mapBest = window.caBestOf ? caBestOf(mapId) : profile.best, newBest = !story && gameMode === 'classic' && wave > mapBest; // 2.9.13: per map
   if (!story) profile.best = Math.max(profile.best, wave);
+  if (!story && window.caMapBest) caMapBest(wave);
   saveProfile();
   $('deadTitle').textContent = story ? 'Mission failed' : 'Game over';
   $('deadPlay').textContent = story ? 'Retry level' : 'Play again';
   document.querySelectorAll('#menu-dead [data-action="shop"], #menu-dead [data-action="quit"]').forEach(b => b.style.display = '');
   $('finalScore').innerHTML = story ? (LEVELS[camp ? camp.level : 1] || LEVELS[1]).fail
-    : newBest ? '<span class="newbest">New best wave!</span>' : `Your best: wave ${profile.best}`;
+    : newBest ? '<span class="newbest">New best wave on this map!</span>' : `Your best on this map: wave ${Math.max(mapBest, wave)}`;
   const acc = shotsFired ? Math.round(shotsHit / shotsFired * 100) + '%' : '–';
   $('stats').innerHTML = [['Score', score], ['Wave', wave], ['Kills', kills], ['Accuracy', acc], ['Best combo', bestCombo + '×'], ['Coins earned', runCoins]]
     .map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
@@ -5595,10 +5716,11 @@ document.querySelectorAll('.mapcard').forEach(b => b.addEventListener('click', (
   Sound.init(); Sound.play('click');
   const id = b.dataset.map;
   gameMode = 'classic';
-  if (id === 'big' && !MAPS.big) {
-    // building Frontier takes a moment the first time
-    b.classList.add('loading'); $('bigDesc').textContent = 'Building the map…';
-    setTimeout(() => { useMap(id); b.classList.remove('loading'); $('bigDesc').textContent = 'Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm.'; startGame(); }, 30);
+  if (!MAPS[id]) {
+    // building a big map takes a moment the first time (2.9.13: Frontier, Seaside, Forest and the Mall)
+    const d = b.querySelector('span'), was = d.textContent;
+    b.classList.add('loading'); d.textContent = 'Building the map…';
+    setTimeout(() => { useMap(id); b.classList.remove('loading'); d.textContent = was; startGame(); }, 30);
   } else { useMap(id); startGame(); }
 }));
 
@@ -5725,6 +5847,7 @@ addEventListener('keydown', e => {
   const dm = /^(?:Digit|Numpad)(\d)$/.exec(code), n = dm ? +dm[1] : NaN, slot = WEAPON_KEYS.find(k => WEAPONS[k].slot === n);
   if (slot && owns(slot) && slot !== weaponKey) setWeapon(slot);
   if (code === 'Minus' && owns('minigun') && weaponKey !== 'minigun') setWeapon('minigun'); // 2.9.5
+  if (code === 'Equal' && owns('pumpkin') && weaponKey !== 'pumpkin') setWeapon('pumpkin'); // 2.9.13
   if (code === 'Digit6' || code === 'Numpad6') deployTurret();
   }
   if (code === 'KeyJ') startBarricade();
@@ -5898,6 +6021,7 @@ function updatePlayer(dt) {
   player.vy -= 20 * dt;
   player.pos.y += player.vy * dt;
   const ground = groundAt(player.pos, prevY);
+  if (PLATS.length && player.onGround && vyBefore <= 0 && player.pos.y > ground && player.pos.y - ground < 0.45) player.pos.y = ground; // 2.9.13: walk down ramps and escalators
   if (player.pos.y <= ground) {
     if (!player.onGround && vyBefore < -4) { landDip = Math.min(0.18, -vyBefore * 0.018); Sound.play('land'); }
     player.pos.y = ground; player.vy = 0; player.onGround = true;
@@ -5915,6 +6039,7 @@ function updateEnemies(dt, t) {
     const dx = player.pos.x - e.position.x, dz = player.pos.z - e.position.z;
     const dist = Math.hypot(dx, dz) || 0.001;
     let mx = dx / dist, mz = dz / dist, spd = u.speed;
+    if (window.navSteer) { const nv = navSteer(e, u, dist); if (nv) { mx = nv[0]; mz = nv[1]; } } // 2.9.13: the way round walls, through doors and up escalators
     u.spawnT = Math.min(1, u.spawnT + dt * 2);
     if (u.spawnT < 1) spd = 0;
     if (u.wake > 0) { u.wake -= dt; spd = 0; } // still getting up from a desk
@@ -5971,7 +6096,7 @@ function updateEnemies(dt, t) {
     const jr = u.size * 0.55;
     if (u.jy <= cubeGround(e.position, u.jy, jr) + 0.01 && u.jv <= 0 && spd > 0 && !T.boss && !u.slam) {
       const ahead = lowBoxAhead(e.position, mx, mz, jr + 0.45);
-      if (ahead || (player.pos.y > u.jy + 0.4 && dist < u.size * 0.5 + 2.4)) { u.jv = 7.8; }
+      if (ahead || (player.pos.y > u.jy + 0.4 && player.pos.y < u.jy + 2.6 && dist < u.size * 0.5 + 2.4)) { u.jv = 7.8; } // 2.9.13: not at you on the floor above
     }
     collide(e.position, jr, u.jy);
     if (T.smash && spd > 0) {
@@ -5986,7 +6111,7 @@ function updateEnemies(dt, t) {
     { const g = cubeGround(e.position, u.jy, jr);
       if (u.jv !== 0 || u.jy > g) { u.jv -= 20 * dt; u.jy += u.jv * dt; if (u.jy <= g) { u.jy = g; u.jv = 0; } } else u.jy = g; }
     for (const o of enemies) {
-      if (o === e) continue;
+      if (o === e || Math.abs((o.userData.jy || 0) - (u.jy || 0)) > 2.5) continue; // 2.9.13: cubes on other floors don't push
       const ox = e.position.x - o.position.x, oz = e.position.z - o.position.z;
       const od = Math.hypot(ox, oz), min = (u.size + o.userData.size) * 0.5;
       if (od < min && od > 0.001) {
@@ -8811,6 +8936,7 @@ const AVATARS = (() => {
     { key: 'revolver', label: 'Revolver', make: gunPic('revolver'), dir: SIDE, zoom: 0.8 },
     { key: 'ak47', label: 'AK-47', make: gunPic('ak47'), dir: SIDE, zoom: 0.58 },
     { key: 'minigun', label: 'Minigun', make: gunPic('minigun'), dir: SIDE, zoom: 0.62 }, // 2.9.5
+    { key: 'pumpkin', label: 'Pumpkin Launcher', make: gunPic('pumpkin'), dir: [0.85, 0.32, -0.75], zoom: 0.92 }, // 2.9.13
     { key: 'shell', label: 'Shell', make: () => {
       const g = new THREE.Group();
       g.add(new THREE.Mesh(SHELL_GEO.shotBase, GM.brass), new THREE.Mesh(SHELL_GEO.shotHull, GM.hull));
@@ -8877,7 +9003,7 @@ function refreshProfile() {
   $('pXpFill').style.width = L.into / L.need * 100 + '%';
   const acc = st.shots ? (st.hits / st.shots * 100).toFixed(1) + '%' : '–';
   $('pStats').innerHTML = [['Level', L.level], ['Accuracy', acc], ['Shots fired', st.shots.toLocaleString()],
-    ['Cubes killed', st.kills.toLocaleString()], ['Time played', fmtTime(st.time)], ['Best wave', profile.best]]
+    ['Cubes killed', st.kills.toLocaleString()], ['Time played', fmtTime(st.time)]] // 2.9.13: best wave is on the map screen now, for each map
     .map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
   renderAch(); // 2.8
   const grid = $('avatarGrid');
@@ -8938,7 +9064,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.12';
+const VERSION = '2.9.13';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -12280,10 +12406,10 @@ document.getElementById('achToggle').addEventListener('click', () => {
   const $ = id => document.getElementById(id);
   const click = () => { try { Sound.init(); Sound.play('click'); } catch (e) {} };
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const SHOP_GUNS = ['pistol', 'revolver', 'shotgun', 'ak47', 'rifle', 'sniper', 'knife', 'rocket', 'minigun', 'extreme'];
+  const SHOP_GUNS = ['pistol', 'revolver', 'shotgun', 'ak47', 'rifle', 'sniper', 'knife', 'rocket', 'minigun', 'extreme', 'pumpkin']; // 2.9.13: + the Pumpkin Launcher (not for sale)
   const BUY_GUNS = SHOP_GUNS.filter(k => WEAPONS[k].price);
-  const TYPE = { pistol: 'Handgun', revolver: 'Handgun', shotgun: 'Shotgun', ak47: 'Assault rifle', rifle: 'Scoped rifle', sniper: 'Sniper', knife: 'Melee', rocket: 'Explosive', minigun: 'Heavy', extreme: 'Special' };
-  const GLOW = { extreme: 'rgba(34,211,238,.3)', minigun: 'rgba(239,68,68,.25)', rocket: 'rgba(249,115,22,.25)', knife: 'rgba(148,163,184,.25)' };
+  const TYPE = { pistol: 'Handgun', revolver: 'Handgun', shotgun: 'Shotgun', ak47: 'Assault rifle', rifle: 'Scoped rifle', sniper: 'Sniper', knife: 'Melee', rocket: 'Explosive', minigun: 'Heavy', extreme: 'Special', pumpkin: 'Limited Edition' };
+  const GLOW = { pumpkin: 'rgba(255,122,26,.35)', extreme: 'rgba(34,211,238,.3)', minigun: 'rgba(239,68,68,.25)', rocket: 'rgba(249,115,22,.25)', knife: 'rgba(148,163,184,.25)' };
   const UTIL = {
     turret: { name: 'Turret', type: 'Defence', price: () => TURRET_PRICE, owned: () => ownsTurret(), key: 'turret',
       desc: 'Set it down next to you and it shoots the nearest cube once a second; any normal cube goes down in two hits. 200 HP, and it never heals. One at a time, or two at once after wave 15.' },
@@ -12362,7 +12488,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
     const list = tab === 'guns' ? SHOP_GUNS : tab === 'bombs' ? Object.keys(UTIL).filter(k => UTIL[k].bomb) : Object.keys(UTIL).filter(k => !UTIL[k].bomb), cur = sel[tab];
     $('s2grid').innerHTML = list.map(k => {
       const own = ownedOf(k), price = priceOf(k), eq = !isUtil(k) && settings.weapon === k, name = isUtil(k) ? UTIL[k].name : WEAPONS[k].name;
-      const pr = eq ? '<span class="pr eq">Equipped</span>' : own ? `<span class="pr own">${k === 'turret' || k === 'pistol' ? 'Owned' : 'Owned'}</span>` : `<span class="pr"><span class="coin"></span>${price}</span>`;
+      const pr = eq ? '<span class="pr eq">Equipped</span>' : own ? `<span class="pr own">${k === 'turret' || k === 'pistol' ? 'Owned' : 'Owned'}</span>` : k === 'pumpkin' ? '<span class="pr">🎃 Event</span>' : `<span class="pr"><span class="coin"></span>${price}</span>`;
       const pic = k === 'barricade' ? barPic() : `<img alt="" src="${picOf(k)}">`;
       return `<button class="s2card${k === cur ? ' sel' : ''}${!own && profile.coins < price ? ' short' : ''}" data-k="${k}"><div class="pic">${pic}</div>${pr}<b>${esc(name)}</b><span class="ty">${isUtil(k) ? UTIL[k].type : TYPE[k]}</span></button>`;
     }).join('');
@@ -12375,6 +12501,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
     if (util && UTIL[k].count) { btn = `<button class="btn" data-buy="${k}"${short > 0 ? ' disabled' : ''}>Buy · ${price} coins</button>`; note = `You have ${UTIL[k].count()}. ` + (short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'} for another.` : 'Press ' + key + (k === 'barricade' ? ' in a doorway to use one.' : ' to use one.')); }
     else if (k === 'defuse' && !own) { btn = `<button class="btn" data-buy="defuse"${short > 0 ? ' disabled' : ''}>Buy · ${price} coins</button>`; note = (short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. ` : '') + 'One-time purchase. Only for C:S Mode, as a Counter-Terrorist.'; }
     else if (k === 'defuse') { btn = '<button class="btn" disabled>Owned</button>'; note = 'On your account. In C:S Mode as a Counter-Terrorist, you defuse in 6 seconds.'; }
+    else if (k === 'pumpkin' && !own) { const over = (() => { try { return seasonLocked(); } catch (e) { return true; } })(); btn = `<button class="btn" disabled>${over ? '🔒 Limited Edition' : '🎃 Battle Pass level 50'}</button>`; note = over ? 'Limited Edition: it was only in the Halloween 2026 Event, and it can\'t be unlocked any more.' : 'Only from the Halloween 2026 Event: reach level 50 of the Battle Pass before the event ends and it\'s yours to keep. It can\'t be bought.'; }
     else if (!own) { btn = `<button class="btn" data-buy="${k}"${short > 0 ? ' disabled' : ''}>Buy · ${price} coins</button>`; note = short > 0 ? `You need ${short} more coin${short === 1 ? '' : 's'}. Destroy cubes or win online matches to earn them.` : 'You can afford it.'; }
     else if (util) { btn = '<button class="btn" disabled>Owned</button>'; note = k === 'radio' ? `Press ${key} with a full gun to set it down, and E next to it for the next song.` : k === 'flash' ? `Press ${key} in multiplayer to throw it. It's ready again 20 seconds later.` : k === 'grenade' ? `Press ${key} to pull the pin, then click to throw. Ready again 15 seconds later.` : k === 'landmine' ? `Press ${key} to set it down. One every 20 seconds.` : k === 'barricade' ? `Press ${key} in a house doorway. One every 20 seconds.` : `Press ${key} during a game to set it down.`; } // 2.9.9
     else if (settings.weapon !== k) { btn = `<button class="btn" data-equip="${k}">Set as starting weapon</button>`; note = `Owned. Press ${key} during a game to use it.`; }
@@ -12605,7 +12732,8 @@ const SEASON_KNIVES = (() => {
   const glowLine = (g, pts, col, w, blur = 16) => { g.save(); g.strokeStyle = col; g.shadowColor = col; g.shadowBlur = blur; g.lineWidth = w; g.lineJoin = g.lineCap = 'round'; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke(); g.restore(); };
   // ---------- the Halloween 2026 Event (season 1) ----------
   // level 25: Jack's Grin. A carved pumpkin: ribbed orange rind, glowing jack-o'-lantern faces, a curly vine.
-  L.push({ id: 's1_pumpkin', name: "Jack's Grin", tier: 'season', season: 1, lvl: 25, metal: 0.25, rough: 0.5, h: 0x2d4a16, glow: 0.45,
+  L.push({ id: 's1_pumpkin', name: "Jack's Grin", tier: 'season', season: 1, lvl: 10, // 2.9.13: was level 25
+    metal: 0.25, rough: 0.5, h: 0x2d4a16, glow: 0.45,
     paint(g, W, H, r) {
       const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#ff9a2e'); bg.addColorStop(0.5, '#e8650c'); bg.addColorStop(1, '#8a2e04'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
       for (let x = 0; x < W; x += 22) { const s = g.createLinearGradient(x, 0, x + 22, 0); s.addColorStop(0, 'rgba(80,20,0,.35)'); s.addColorStop(0.5, 'rgba(255,200,120,.12)'); s.addColorStop(1, 'rgba(80,20,0,.35)'); g.fillStyle = s; g.fillRect(x, 0, 22, H); }
@@ -12619,7 +12747,8 @@ const SEASON_KNIVES = (() => {
     } });
   // level 50: Reaper's Lantern. A black blade wrapped in green ghost-fire, with skulls whose eyes burn, bats, a cobweb
   // on the spine and a blood-red edge. The rarest thing you can get this season.
-  L.push({ id: 's1_reaper', name: "Reaper's Lantern", tier: 'season', season: 1, lvl: 50, metal: 0.8, rough: 0.12, h: 0x1a0a24, glow: 1.0,
+  L.push({ id: 's1_reaper', name: "Reaper's Lantern", tier: 'season', season: 1, lvl: 25, // 2.9.13: was level 50
+    metal: 0.8, rough: 0.12, h: 0x1a0a24, glow: 1.0,
     paint(g, W, H, r) {
       const bg = g.createLinearGradient(0, 0, W, 0); bg.addColorStop(0, '#07020c'); bg.addColorStop(0.5, '#1a0730'); bg.addColorStop(1, '#05010a'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
       // a purple mist, then soft green ghost-fire curling up from the edge in layers
@@ -13900,7 +14029,7 @@ body.touch #hotbar { display: none !important; }
     const m = modal('pfModal', `<span class="fTag">Player profile</span>
       <div class="pfHead"><img alt="" src="${esc(avUrl(c.a))}"><div><b>${esc(name || 'Player')}</b><span class="pfLvl">Level ${c.l || 1}</span></div></div>
       ${window.caShowcaseHtml && c.sc ? caShowcaseHtml(String(c.sc).slice(0, 24)) : ''}
-      <div class="pfStats"><div><b>${(c.k || 0).toLocaleString()}</b><span>Cubes destroyed</span></div><div><b>${c.b || 0}</b><span>Best wave</span></div><div><b>${c.ac || 0}/${ACH_N}</b><span>Achievements</span></div>
+      <div class="pfStats"><div><b>${(c.k || 0).toLocaleString()}</b><span>Cubes destroyed</span></div><div><b>${c.ac || 0}/${ACH_N}</b><span>Achievements</span></div>
         <div><b>${acc}</b><span>Accuracy</span></div><div><b>${(c.sh || 0).toLocaleString()}</b><span>Shots fired</span></div><div><b>${fmtTime(c.t)}</b><span>Played</span></div></div>
       <div class="fBtns">${mine ? '' : !c.f ? '<button class="btn" disabled>Can\'t add (older version)</button>' : fr ? '<button class="btn secondary" data-pf="rm">Remove friend</button>' : sent.has(c.f) ? '<button class="btn" disabled>Request sent</button>' : '<button class="btn" data-pf="add">Add friend</button>'}<button class="btn secondary" data-pf="close">Close</button></div>`, '#f472b6');
     m.querySelector('.fBox').onclick = e => {
@@ -14333,6 +14462,8 @@ body.touch #hotbar { display: none !important; }
 .spT.cur { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.35), 0 0 18px rgba(255,150,40,.4); }
 .spT.knife { flex-basis: 130px; background: linear-gradient(160deg, rgba(255,120,20,.22), rgba(110,30,180,.25)); border-color: rgba(255,138,30,.7); } .spT.knife img { width: 118px; height: 56px; }
 .spT.lock { filter: saturate(.55) brightness(.8); } .spT.lock.knife { filter: none; }
+.spT.gun { flex-basis: 130px; background: linear-gradient(160deg, rgba(255,120,20,.32), rgba(60,20,90,.35)); border-color: rgba(255,160,40,.9); box-shadow: 0 0 18px rgba(255,122,26,.35); } .spT.gun img { width: 118px; height: 64px; object-fit: contain; } .spT.lock.gun { filter: none; }
+#spPanel .kn.gunk { border-color: rgba(255,140,30,.8); } #spPanel .kn.gunk img { object-fit: contain; }
 #spPanel .knv { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
 #spPanel .kn { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,138,30,.4); }
 #spPanel .kn img { width: 170px; height: 80px; object-fit: contain; } #spPanel .kn small { display: block; font-size: 11px; letter-spacing: 1.5px; color: #ffae4a; font-weight: 800; } #spPanel .kn b { font-size: 17px; display: block; margin-bottom: 6px; }
@@ -14357,18 +14488,21 @@ body.touch #hotbar { display: none !important; }
   // ---------- the rewards on each level ----------
   const EMPTY = new Set([4, 8, 13, 17, 22, 28, 33, 37, 42, 47]);
   function reward(lvl, season) {
-    if (lvl === 25 || lvl === 50) { const k = SEASON_KNIVES.find(s => s.season === season && s.lvl === lvl); return { kind: 'knife', id: k ? k.id : '', name: k ? k.name : 'Season knife' }; }
+    if (lvl === 10 || lvl === 25) { const k = SEASON_KNIVES.find(s => s.season === season && s.lvl === lvl); return { kind: 'knife', id: k ? k.id : '', name: k ? k.name : 'Season knife' }; } // 2.9.13: was 25 and 50
+    if (lvl === 50 && season === 1) return { kind: 'gun', id: 'pumpkin', name: 'Pumpkin Launcher' }; // 2.9.13: the event's own gun
     if (lvl % 5 === 0) return { kind: 'crate', n: lvl === 20 || lvl === 40 ? 3 : lvl === 45 ? 2 : 1 };
     if (EMPTY.has(lvl)) return { kind: 'none' };
     return { kind: 'coins', n: Math.round((20 + lvl * 2.5) / 5) * 5 };
   }
-  const label = R => R.kind === 'knife' ? R.name : R.kind === 'crate' ? `${R.n} knife crate${R.n > 1 ? 's' : ''}` : R.kind === 'coins' ? `${R.n} coins` : 'Nothing';
+  const label = R => R.kind === 'knife' || R.kind === 'gun' ? R.name : R.kind === 'crate' ? `${R.n} knife crate${R.n > 1 ? 's' : ''}` : R.kind === 'coins' ? `${R.n} coins` : 'Nothing';
   // ---------- your progress ----------
   const P = () => {
     if (!profile.sp || typeof profile.sp !== 'object') profile.sp = { s: seasonNow(), xp: 0, lvl: 0, crates: 0, knives: [], coinsSeen: profile.coins | 0, achSeen: Object.keys(profile.ach || {}).length, t: 0 };
     const sp = profile.sp; if (!Array.isArray(sp.knives)) sp.knives = [];
     if (sp.s !== seasonNow()) { sp.s = seasonNow(); sp.xp = 0; sp.lvl = 0; } // a new season: back to level 1 (crates you haven't opened stay)
     sp.locked = seasonLocked(); // 2.9.12: the event is over: no more XP
+    // 2.9.13: the rewards moved: anyone already past level 10, 25 or 50 gets what's there now
+    if (sp.s === 1) { if (sp.lvl >= 10 && !sp.knives.includes('s1_pumpkin')) sp.knives.push('s1_pumpkin'); if (sp.lvl >= 25 && !sp.knives.includes('s1_reaper')) sp.knives.push('s1_reaper'); if (sp.lvl >= 50 && profile.owned && !profile.owned.pumpkin) profile.owned.pumpkin = true; }
     return sp;
   };
   function toast(top, main) {
@@ -14385,8 +14519,9 @@ body.touch #hotbar { display: none !important; }
       if (R.kind === 'coins') { profile.coins += R.n; sp.coinsSeen += R.n; } // (pass coins don't earn more XP)
       if (R.kind === 'crate') sp.crates += R.n;
       if (R.kind === 'knife' && R.id && !sp.knives.includes(R.id)) sp.knives.push(R.id);
-      toast(`${seasonName(sp.s)} · level ${sp.lvl}`, R.kind === 'none' ? 'Level up!' : R.kind === 'knife' ? `New knife: ${R.name}` : label(R));
-      try { Sound.play('achieve', R.kind === 'knife' ? 'legendary' : 'rare'); } catch (e) {}
+      if (R.kind === 'gun') { profile.owned[R.id] = true; try { refreshSettingsUI(); refreshShop(); } catch (e) {} } // 2.9.13: yours for good
+      toast(`${seasonName(sp.s)} · level ${sp.lvl}`, R.kind === 'none' ? 'Level up!' : R.kind === 'knife' ? `New knife: ${R.name}` : R.kind === 'gun' ? `New gun: ${R.name}!` : label(R));
+      try { Sound.play('achieve', R.kind === 'knife' || R.kind === 'gun' ? 'legendary' : 'rare'); } catch (e) {}
     }
     saveProfile(); try { updateHUD(); } catch (e) {} paint();
   }
@@ -14403,6 +14538,7 @@ body.touch #hotbar { display: none !important; }
   // ---------- the card in the bottom right of the home screen ----------
   const card = document.createElement('button'); card.id = 'spCard'; document.body.appendChild(card);
   const pic = (id, W, H) => { try { return window.v296 ? v296.picOf(id, W, H) : ''; } catch (e) { return ''; } };
+  const gunPicUrl = k => { try { return avatarOf(k).url || ''; } catch (e) { return ''; } }; // 2.9.13
   const left = () => { const ms = Math.max(0, seasonEnds(seasonNow()) - Date.now()), d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
     return { short: d ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`, long: `${d}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s` }; };
   function paintCard() { const sp = P(); card.innerHTML = `<i>${seasonLocked() ? '🔒' : '🎃'}</i><b>Battle Pass</b><em>LV ${sp.lvl}</em>`; card.title = seasonLocked() ? `${seasonName(sp.s)} · ended` : `${seasonName(sp.s)} · ends in ${left().short}`; }
@@ -14416,16 +14552,18 @@ body.touch #hotbar { display: none !important; }
   function paintPanel() {
     const sp = P(), keep = $('spTrack') ? $('spTrack').scrollLeft : null;
     const tiles = []; for (let l = 1; l <= LEVELS; l++) { const R = reward(l, sp.s), got = l <= sp.lvl;
-      const ic = R.kind === 'knife' ? `<img alt="" src="${pic(R.id, 236, 112)}">` : R.kind === 'crate' ? '📦' : R.kind === 'coins' ? '🪙' : '·';
+      const ic = R.kind === 'gun' ? `<img alt="" src="${gunPicUrl(R.id)}">` : R.kind === 'knife' ? `<img alt="" src="${pic(R.id, 236, 112)}">` : R.kind === 'crate' ? '📦' : R.kind === 'coins' ? '🪙' : '·';
       tiles.push(`<div class="spT ${R.kind}${got ? ' got' : ' lock'}${l === sp.lvl + 1 ? ' cur' : ''}"><span class="n">${l}</span><div class="ic">${ic}</div><div class="w">${esc(label(R))}</div></div>`); }
     const ks = SEASON_KNIVES.filter(s => s.season === sp.s);
     panel.innerHTML = `<div class="box"><div class="hd"><div class="nm"><small>🎃 BATTLE PASS · SEASON ${sp.s}</small><b>${esc(seasonName(sp.s))}</b></div>
         <div class="tm"><small>${seasonLocked() ? 'THE EVENT IS OVER' : 'ENDS IN (THE SAME FOR EVERYONE)'}</small><b>${seasonLocked() ? '🔒 Locked' : left().long}</b></div></div>
       <div class="spLvl"><b>Level ${sp.lvl} / ${LEVELS}</b><div class="spBar"><i style="width:${sp.lvl >= LEVELS ? 100 : (sp.xp % XP_PER) / XP_PER * 100}%"></i></div><span>${sp.lvl >= LEVELS ? 'Pass complete!' : `${sp.xp % XP_PER} / ${XP_PER} XP to level ${sp.lvl + 1}`}</span></div>
-      <div class="how">Earn XP by playing: <b>3 XP</b> for every coin you earn, <b>15 XP</b> for every 10 seconds in a game, and <b>400 XP</b> for every new achievement. ${seasonLocked() ? '</div><div class="how" style="color:#ffb36b"><b>The Halloween 2026 Event has ended.</b> The pass is locked: no more XP. Its knives are now Limited Edition and can\'t be unlocked any more. Crates you haven\'t opened are still yours.' : 'When the timer runs out the pass locks, and its two knives become Limited Edition.'}</div>
+      <div class="how">Earn XP by playing: <b>3 XP</b> for every coin you earn, <b>15 XP</b> for every 10 seconds in a game, and <b>400 XP</b> for every new achievement. ${seasonLocked() ? '</div><div class="how" style="color:#ffb36b"><b>The Halloween 2026 Event has ended.</b> The pass is locked: no more XP. Its knives and the Pumpkin Launcher are now Limited Edition and can\'t be unlocked any more. Crates you haven\'t opened are still yours.' : 'When the timer runs out the pass locks, and its two knives and the Pumpkin Launcher become Limited Edition.'}</div>
       <div id="spTrack">${tiles.join('')}</div>
       <div class="knv">${ks.map(k => { const have = sp.knives.includes(k.id), on = profile.knifeSkin === k.id;
         return `<div class="kn"><img alt="" src="${pic(k.id, 340, 160)}"><div><small>LEVEL ${k.lvl} · LIMITED EDITION</small><b>${esc(k.name)}</b>${have ? `<button class="btn${on ? ' secondary' : ''}" data-eq="${k.id}">${on ? 'Equipped' : 'Equip'}</button>` : `<span style="font-size:12.5px;color:#bfb0dc">${seasonLocked() ? '🔒 Limited Edition: no longer available.' : `🔒 Reach level ${k.lvl}. Only in this event, never in crates.`}</span>`}</div></div>`; }).join('')}</div>
+      <div class="knv">${(() => { const have = !!(profile.owned && profile.owned.pumpkin), on = settings.weapon === 'pumpkin';
+        return `<div class="kn gunk"><img alt="" src="${gunPicUrl('pumpkin')}"><div><small>LEVEL 50 · LIMITED EDITION GUN</small><b>Pumpkin Launcher</b>${have ? `<button class="btn${on ? ' secondary' : ''}" data-eqgun="pumpkin">${on ? 'Starting weapon' : 'Set as starting weapon'}</button><span style="font-size:12px;color:#bfb0dc;display:block;margin-top:4px">Yours for good. Press ${keyName(bindOf('pumpkin'))} in a game.</span>` : `<span style="font-size:12.5px;color:#bfb0dc">${seasonLocked() ? '🔒 Limited Edition: no longer available.' : '🔒 Reach level 50 before the event ends and it\'s yours to keep. Like the rocket launcher, with a much bigger blast.'}</span>`}</div></div>`; })()}</div>
       <div class="ft">${sp.crates ? `<button class="btn" id="spOpen">Open a knife crate (${sp.crates})</button>` : ''}<button class="btn secondary" id="spClose">Close</button></div></div>`;
     const tr = $('spTrack'); if (keep != null) tr.scrollLeft = keep; else { const cur = tr.querySelector('.cur') || tr.lastElementChild; tr.scrollLeft = Math.max(0, cur.offsetLeft - tr.clientWidth / 2); }
   }
@@ -14433,6 +14571,7 @@ body.touch #hotbar { display: none !important; }
   function close() { panel.classList.remove('show'); paintCard(); }
   panel.addEventListener('click', e => {
     if (e.target === panel || e.target.id === 'spClose') { click(); close(); return; }
+    const eg = e.target.closest('[data-eqgun]'); if (eg) { click(); try { equip(eg.dataset.eqgun); } catch (er) {} paintPanel(); return; } // 2.9.13
     const eq = e.target.closest('[data-eq]'); if (eq) { click(); profile.knifeSkin = eq.dataset.eq; saveProfile(); try { if (weaponKey === 'knife' && rig) setWeapon('knife'); } catch (er) {} paintPanel(); return; }
     if (e.target.id === 'spOpen') { // a free crate: the usual crate opening, paid for by the pass
       const sp = P(); if (!sp.crates || !window.v296) return; click();
@@ -14519,7 +14658,7 @@ button.shc:hover { filter: brightness(1.12); }
     if (!m) { m = document.createElement('div'); m.id = 'shcPick'; m.className = 'fModal'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) m.hidden = true; }); }
     const ids = [...ownedSeason(), ...KNIFE_SKINS.filter(s => profile.knives && profile.knives[s.id] > 0).sort((a, b) => KNIFE_TIERS.findIndex(t => t.k === b.tier) - KNIFE_TIERS.findIndex(t => t.k === a.tier)).map(s => s.id)];
     m.innerHTML = `<div class="fBox" style="--ac:var(--gold);width:min(760px,100%)"><span class="fTag">Your profile</span><h3>Showcase a knife</h3>
-      <p>${ids.length ? 'Pick a knife you own. Everyone who opens your profile sees it.' : 'You don\'t own any knife skins yet. Open knife crates in the Shop, or reach level 25 in the Battle Pass.'}</p>
+      <p>${ids.length ? 'Pick a knife you own. Everyone who opens your profile sees it.' : 'You don\'t own any knife skins yet. Open knife crates in the Shop, or reach level 10 in the Battle Pass.'}</p>
       <div class="grid"><button data-pick="" style="--tc:#8a929c" class="${!show() ? 'on' : ''}"><div style="height:62px;display:grid;place-items:center;font-size:26px">✕</div><span>No showcase</span></button>${ids.map(id => { const T = tierOf(id), s = KSKIN[id];
         return `<button data-pick="${id}" style="--tc:${T.c}" class="${show() === id ? 'on' : ''}"><img alt="" src="${pic(id)}"><em>${s.tier === 'season' ? 'LIMITED' : T.name.toUpperCase()}</em><span>${esc(s.name)}</span></button>`; }).join('')}</div>
       <div class="fBtns"><button class="btn secondary" data-pick-close>Close</button></div></div>`;
@@ -14528,6 +14667,1521 @@ button.shc:hover { filter: brightness(1.12); }
       if (b.dataset.pick !== undefined) { profile.showcase = b.dataset.pick; saveProfile(); paintSlot(); } m.hidden = true; };
   }
   window.v2912 = { picker, addLimited };
+})();
+</script>
+<script id="v2913-maps">
+// ===== 2.9.13: the Halloween update. New maps (Seaside, Forest and the Mall), raised floors and ramps, pathfinding for
+// the cubes, shoppers in the Mall, Halloween decorations on every map but Classic, and the Pumpkin Launcher =====
+
+// ---------- colliders that fill only part of the height (the Mall's floors), raised floors and ramps ----------
+// XB holds { x, z, hx, hz, y0, h } boxes; a lookup grid keeps collide() quick with thousands of them.
+const XBG = new Map(), XBC = 4, XB_NONE = [];
+const xbKey = (ix, iz) => (ix + 512) * 1024 + iz + 512;
+function xbInsert(b) {
+  const e = 2.6;
+  for (let ix = Math.floor((b.x - b.hx - e) / XBC); ix <= Math.floor((b.x + b.hx + e) / XBC); ix++)
+    for (let iz = Math.floor((b.z - b.hz - e) / XBC); iz <= Math.floor((b.z + b.hz + e) / XBC); iz++) {
+      const k = xbKey(ix, iz); let a = XBG.get(k); if (!a) XBG.set(k, a = []); a.push(b);
+    }
+}
+function xbIndex() { XBG.clear(); for (const b of XB) xbInsert(b); }
+function xbDrop(b) { const i = XB.indexOf(b); if (i < 0) return; XB.splice(i, 1); for (const a of XBG.values()) { const j = a.indexOf(b); if (j >= 0) a.splice(j, 1); } }
+const xbNear = (x, z) => XBG.get(xbKey(Math.floor(x / XBC), Math.floor(z / XBC))) || XB_NONE;
+// collide() calls this for the part-height boxes: only the ones level with you push you out
+function xbCollide(pos, r, y) {
+  for (const b of xbNear(pos.x, pos.z)) {
+    if (y + 1.7 <= b.y0 || y >= b.y0 + b.h - (b.h <= STEP ? 0.25 : 0.02)) continue;
+    const cx = Math.max(b.x - b.hx, Math.min(pos.x, b.x + b.hx)), cz = Math.max(b.z - b.hz, Math.min(pos.z, b.z + b.hz));
+    const dx = pos.x - cx, dz = pos.z - cz, d2 = dx * dx + dz * dz;
+    if (d2 >= r * r) continue;
+    if (d2 > 1e-6) { const d = Math.sqrt(d2), push = (r - d) / d; pos.x += dx * push; pos.z += dz * push; }
+    else {
+      const ox = b.hx + r - Math.abs(pos.x - b.x), oz = b.hz + r - Math.abs(pos.z - b.z);
+      if (ox < oz) pos.x += Math.sign(pos.x - b.x || 1) * ox; else pos.z += Math.sign(pos.z - b.z || 1) * oz;
+    }
+  }
+}
+// a ramp's height where you stand (escalators, the pier steps)
+function rampY(p, x, z) { const R = p.ramp, c = R.ax === 'x' ? x : z, t = Math.max(0, Math.min(1, (c - R.a0) / (R.a1 - R.a0))); return R.y0 + (R.y1 - R.y0) * t; }
+// groundAt() and cubeGround() call this: raised floors, ramps, and low part-height boxes you can stand on
+function xbGround(pos, prevY, g, m, tol) {
+  for (const p of PLATS) {
+    if (pos.x < p.x0 - m || pos.x > p.x1 + m || pos.z < p.z0 - m || pos.z > p.z1 + m) continue;
+    const h = p.ramp ? rampY(p, pos.x, pos.z) : p.y;
+    if (h > g && h <= prevY + (p.ramp ? 0.65 : tol)) g = h;
+  }
+  if (XB.length) for (const b of xbNear(pos.x, pos.z)) {
+    if (b.h > STEP) continue;
+    const top = b.y0 + b.h;
+    if (top <= g || top > prevY + tol) continue;
+    if (Math.abs(pos.x - b.x) < b.hx + m && Math.abs(pos.z - b.z) < b.hz + m) g = top;
+  }
+  return g;
+}
+
+// ---------- merged meshes: thousands of boxes coloured per vertex, in a handful of draw calls ----------
+// Split into tiles so the parts off screen (and out of the shadow) are skipped.
+const _bm = new THREE.Matrix4(), _bm2 = new THREE.Matrix4(), _bv = new THREE.Vector3(), _bn = new THREE.Vector3(), _bc = new THREE.Color();
+// each face: its normal, then its corners counter-clockwise from outside
+const BOX_FACES = [
+  [[1, 0, 0], [1, -1, 1], [1, -1, -1], [1, 1, -1], [1, 1, 1]], [[-1, 0, 0], [-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1]],
+  [[0, 1, 0], [-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]], [[0, -1, 0], [-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]],
+  [[0, 0, 1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]], [[0, 0, -1], [1, -1, -1], [-1, -1, -1], [-1, 1, -1], [1, 1, -1]]];
+class Batch {
+  constructor(bin = 32, uvScale = 0) { this.bin = bin; this.uvs = uvScale; this.parts = new Map(); this.count = 0; }
+  part(x, y, z) {
+    const k = Math.floor(x / this.bin) + ',' + Math.floor(z / this.bin) + ',' + Math.floor(y / 6);
+    let p = this.parts.get(k); if (!p) this.parts.set(k, p = { pos: [], nor: [], col: [], uv: [], idx: [] }); return p;
+  }
+  // a box by its centre, turned rx about x and then ry about y; faces: a bit mask (+x -x +y -y +z -z)
+  boxC(cx, cy, cz, w, h, d, color, rx = 0, ry = 0, faces = 63) {
+    const p = this.part(cx, cy, cz), c = _bc.set(color), X = w / 2, Y = h / 2, Z = d / 2, turned = rx || ry;
+    if (turned) _bm.makeRotationY(ry).multiply(_bm2.makeRotationX(rx));
+    for (let f = 0; f < 6; f++) {
+      if (!(faces & (1 << f))) continue;
+      const F = BOX_FACES[f], base = p.pos.length / 3;
+      _bn.set(F[0][0], F[0][1], F[0][2]); if (turned) _bn.transformDirection(_bm);
+      for (let k = 1; k <= 4; k++) {
+        const q = F[k]; _bv.set(q[0] * X, q[1] * Y, q[2] * Z); if (turned) _bv.applyMatrix4(_bm);
+        const wx = cx + _bv.x, wy = cy + _bv.y, wz = cz + _bv.z;
+        p.pos.push(wx, wy, wz); p.nor.push(_bn.x, _bn.y, _bn.z); p.col.push(c.r, c.g, c.b);
+        if (this.uvs) p.uv.push((f < 2 ? wz : wx) * this.uvs, (f === 2 || f === 3 ? wz : wy) * this.uvs);
+        else p.uv.push(k === 2 || k === 3 ? 1 : 0, k >= 3 ? 1 : 0);
+      }
+      p.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+    this.count++;
+  }
+  // by its bottom (most props stand on a floor)
+  box(x, y, z, w, h, d, color, ry = 0, faces = 63) { this.boxC(x, y + h / 2, z, w, h, d, color, 0, ry, faces); }
+  // an upright cylinder (or a cone, with r1 at the top), bottom at y
+  cyl(x, y, z, r0, r1, h, color, seg = 10, caps = true) {
+    const p = this.part(x, y, z), c = _bc.set(color);
+    for (let i = 0; i < seg; i++) {
+      const a0 = i / seg * Math.PI * 2, a1 = (i + 1) / seg * Math.PI * 2, base = p.pos.length / 3;
+      const ny = (r0 - r1) / h;
+      for (const [a, r, yy] of [[a0, r0, 0], [a1, r0, 0], [a1, r1, h], [a0, r1, h]]) {
+        p.pos.push(x + Math.cos(a) * r, y + yy, z + Math.sin(a) * r); _bn.set(Math.cos(a), ny, Math.sin(a)).normalize(); p.nor.push(_bn.x, _bn.y, _bn.z); p.col.push(c.r, c.g, c.b); p.uv.push(0, 0);
+      }
+      p.idx.push(base, base + 2, base + 1, base, base + 3, base + 2);
+      if (caps && r1 > 0) { const b2 = p.pos.length / 3; p.pos.push(x, y + h, z, x + Math.cos(a0) * r1, y + h, z + Math.sin(a0) * r1, x + Math.cos(a1) * r1, y + h, z + Math.sin(a1) * r1); for (let k = 0; k < 3; k++) { p.nor.push(0, 1, 0); p.col.push(c.r, c.g, c.b); p.uv.push(0, 0); } p.idx.push(b2, b2 + 2, b2 + 1); }
+    }
+    this.count++;
+  }
+  // a ball (low poly), centre at y
+  ball(x, y, z, r, color, sy = 1) {
+    const p = this.part(x, y, z), c = _bc.set(color), g = new THREE.IcosahedronGeometry(r, 1).toNonIndexed(), P = g.attributes.position, base = p.pos.length / 3;
+    g.computeVertexNormals(); const N = g.attributes.normal;
+    for (let i = 0; i < P.count; i++) { p.pos.push(x + P.getX(i), y + P.getY(i) * sy, z + P.getZ(i)); p.nor.push(N.getX(i), N.getY(i), N.getZ(i)); p.col.push(c.r, c.g, c.b); p.uv.push(0, 0); p.idx.push(base + i); }
+    g.dispose(); this.count++;
+  }
+  build(mat, parent, { shadow = false, receive = true, order } = {}) {
+    const out = [];
+    for (const p of this.parts.values()) {
+      if (!p.idx.length) continue;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(p.pos, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(p.nor, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(p.col, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(p.uv, 2));
+      geo.setIndex(p.idx); geo.computeBoundingSphere();
+      const m = new THREE.Mesh(geo, mat); m.castShadow = shadow; m.receiveShadow = receive; m.userData.noBreak = true; m.matrixAutoUpdate = false;
+      if (order !== undefined) m.renderOrder = order;
+      parent.add(m); out.push(m);
+    }
+    this.parts.clear();
+    return out;
+  }
+}
+
+// ---------- quick bullet hits: one object that answers the raycaster with plain box tests ----------
+// The Mall has thousands of walls, shelves and floors; testing boxes is far quicker than testing their triangles.
+class RayBoxes extends THREE.Object3D {
+  constructor() { super(); this.a = []; this.userData.noBreak = true; }
+  put(x0, y0, z0, x1, y1, z1) { this.a.push(Math.min(x0, x1), Math.min(y0, y1), Math.min(z0, z1), Math.max(x0, x1), Math.max(y0, y1), Math.max(z0, z1)); }
+  seal() { this.f = new Float32Array(this.a); this.a = null; }
+  raycast(rc, out) {
+    const f = this.f; if (!f) return;
+    const o = rc.ray.origin, d = rc.ray.direction, ix = 1 / d.x, iy = 1 / d.y, iz = 1 / d.z;
+    let best = rc.far, axis = -1, sgn = 0;
+    for (let i = 0; i < f.length; i += 6) {
+      let t1 = (f[i] - o.x) * ix, t2 = (f[i + 3] - o.x) * ix, tmin = Math.min(t1, t2), tmax = Math.max(t1, t2), ax = 0;
+      t1 = (f[i + 1] - o.y) * iy; t2 = (f[i + 4] - o.y) * iy;
+      let a = Math.min(t1, t2), b = Math.max(t1, t2); if (a > tmin) { tmin = a; ax = 1; } if (b < tmax) tmax = b;
+      t1 = (f[i + 2] - o.z) * iz; t2 = (f[i + 5] - o.z) * iz;
+      a = Math.min(t1, t2); b = Math.max(t1, t2); if (a > tmin) { tmin = a; ax = 2; } if (b < tmax) tmax = b;
+      if (tmax < tmin || tmin <= Math.max(rc.near, 1e-4) || tmin >= best) continue;
+      best = tmin; axis = ax; sgn = -Math.sign(ax === 0 ? d.x : ax === 1 ? d.y : d.z) || 1;
+    }
+    if (axis < 0) return;
+    const n = new THREE.Vector3(axis === 0 ? sgn : 0, axis === 1 ? sgn : 0, axis === 2 ? sgn : 0);
+    out.push({ distance: best, point: o.clone().addScaledVector(d, best), object: this, face: { a: 0, b: 0, c: 0, normal: n, materialIndex: 0 }, faceIndex: 0 });
+  }
+}
+
+// ---------- pathfinding: a 1 m grid on every floor, and a flow field towards you ----------
+// Every walkable spot (on the ground, a raised floor or a ramp) is a node. Walls, shelves and railings block the nodes
+// they cover (grown by a cube's width). Every few tenths of a second the distances to you are worked out from every node,
+// and each cube heads for the furthest node down that path it can walk to in a straight line.
+const NAV = { on: false, time: 0 }; // time: game seconds (caTick adds to it), so a paused game doesn't count
+function navBuild(M) {
+  const A = M.arena, CS = 1, n = Math.ceil(A * 2 / CS), x0 = -A, z0 = -A, R = M.navR || 0.5;
+  const S = 4, hs = new Float32Array(n * n * S).fill(NaN), ok = new Uint8Array(n * n * S);
+  const plats = M.plats || [], xb = M.xb || [];
+  for (let cz = 0; cz < n; cz++) for (let cx = 0; cx < n; cx++) {
+    const x = x0 + (cx + 0.5) * CS, z = z0 + (cz + 0.5) * CS, i = (cz * n + cx) * S;
+    const sf = [];
+    for (const p of plats) if (x >= p.x0 && x <= p.x1 && z >= p.z0 && z <= p.z1) sf.push(p.ramp ? rampY(p, x, z) : p.y);
+    if (!M.navGround || M.navGround(x, z)) if (!sf.some(h => h < 2.2)) sf.push(0);
+    sf.sort((a, b) => a - b);
+    for (let k = 0, m = 0; k < sf.length && m < S; k++) { if (m && sf[k] - hs[i + m - 1] < 0.3) continue; hs[i + m] = sf[k]; ok[i + m] = 1; m++; }
+  }
+  // what's in the way
+  const block = (bx, bz, hx, hz, y0, y1) => {
+    const ax = Math.max(0, Math.floor((bx - hx - R - x0) / CS)), bx1 = Math.min(n - 1, Math.floor((bx + hx + R - x0) / CS));
+    const az = Math.max(0, Math.floor((bz - hz - R - z0) / CS)), bz1 = Math.min(n - 1, Math.floor((bz + hz + R - z0) / CS));
+    for (let cz = az; cz <= bz1; cz++) for (let cx = ax; cx <= bx1; cx++) {
+      const x = x0 + (cx + 0.5) * CS, z = z0 + (cz + 0.5) * CS;
+      if (Math.abs(x - bx) > hx + R || Math.abs(z - bz) > hz + R) continue;
+      const i = (cz * n + cx) * S;
+      for (let k = 0; k < S; k++) { const h = hs[i + k]; if (h === h && y1 > h + 0.3 && y0 < h + 1.6) ok[i + k] = 0; }
+    }
+  };
+  for (const b of M.boxes) if (b.h > HOP) block(b.x, b.z, b.hx, b.hz, 0, b.h);
+  for (const b of xb) block(b.x, b.z, b.hx, b.hz, b.y0, b.y0 + b.h);
+  // nodes, and who they connect to
+  const cellFirst = new Int32Array(n * n), cellCnt = new Uint8Array(n * n), nY = [], nC = [];
+  for (let c = 0; c < n * n; c++) { cellFirst[c] = nY.length; for (let k = 0; k < S; k++) if (ok[c * S + k]) { nY.push(hs[c * S + k]); nC.push(c); } cellCnt[c] = nY.length - cellFirst[c]; }
+  const N = nY.length, Y = new Float32Array(nY), C = new Int32Array(nC);
+  const near = (c, h) => { let best = -1, bd = 0.8; for (let j = cellFirst[c], e = j + cellCnt[c]; j < e; j++) { const d = Math.abs(Y[j] - h); if (d <= bd) { bd = d; best = j; } } return best; };
+  const adjS = new Int32Array(N + 1), adj = [], adjW = [];
+  const D8 = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
+  for (let j = 0; j < N; j++) {
+    adjS[j] = adj.length;
+    const c = C[j], cx = c % n, cz = (c / n) | 0, h = Y[j];
+    for (const [dx, dz, w] of D8) {
+      const nx = cx + dx, nz = cz + dz; if (nx < 0 || nz < 0 || nx >= n || nz >= n) continue;
+      const t = near(nz * n + nx, h); if (t < 0) continue;
+      if (dx && dz && (near(cz * n + nx, h) < 0 || near(nz * n + cx, h) < 0)) continue; // no cutting corners
+      adj.push(t); adjW.push(w);
+    }
+  }
+  adjS[N] = adj.length;
+  M.nav = { n, x0, z0, CS, N, Y, C, cellFirst, cellCnt, adjS, adj: new Int32Array(adj), adjW: new Uint8Array(adjW), near, dist: new Float32Array(N).fill(Infinity), t: -1e9, from: -1 };
+  // the nodes you can actually get to from the start (spawns only go there)
+  const st = M.start || [0, 0, 5], s0 = navNode(M.nav, st[0], st[1] || 0, st[2]);
+  if (s0 >= 0) { navField(M.nav, s0); const reach = []; for (let j = 0; j < N; j++) if (M.nav.dist[j] < Infinity) reach.push(j); M.nav.reach = reach; }
+  else M.nav.reach = [];
+  return M.nav;
+}
+function navNode(G, x, y, z) {
+  const cx = Math.floor((x - G.x0) / G.CS), cz = Math.floor((z - G.z0) / G.CS);
+  for (let r = 0; r <= 2; r++) {
+    let best = -1, bd = 1e9;
+    for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+      if (r && Math.abs(dx) !== r && Math.abs(dz) !== r) continue;
+      const nx = cx + dx, nz = cz + dz; if (nx < 0 || nz < 0 || nx >= G.n || nz >= G.n) continue;
+      const c = nz * G.n + nx;
+      for (let j = G.cellFirst[c], e = j + G.cellCnt[c]; j < e; j++) { const dy = Math.abs(G.Y[j] - y); if (dy > 1.6) continue; const d = dy * 2 + Math.abs(dx) + Math.abs(dz); if (d < bd) { bd = d; best = j; } }
+    }
+    if (best >= 0) return best;
+  }
+  return -1;
+}
+// distances from one node to all the others (Dijkstra with a binary heap)
+function navField(G, src) {
+  const dist = G.dist; dist.fill(Infinity); dist[src] = 0;
+  let hk = new Float32Array(1024), hv = new Int32Array(1024), hn = 0;
+  const push = (k, v) => {
+    if (hn >= hk.length) { const k2 = new Float32Array(hk.length * 2), v2 = new Int32Array(hk.length * 2); k2.set(hk); v2.set(hv); hk = k2; hv = v2; }
+    let i = hn++; while (i > 0) { const p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hv[i] = hv[p]; i = p; } hk[i] = k; hv[i] = v;
+  };
+  const pop = () => {
+    const v = hv[0], lk = hk[--hn], lv = hv[hn]; let i = 0;
+    while (true) { let c = i * 2 + 1; if (c >= hn) break; if (c + 1 < hn && hk[c + 1] < hk[c]) c++; if (hk[c] >= lk) break; hk[i] = hk[c]; hv[i] = hv[c]; i = c; }
+    hk[i] = lk; hv[i] = lv; return v;
+  };
+  push(0, src);
+  const { adjS, adj, adjW } = G;
+  while (hn) {
+    const k0 = hk[0], u = pop(); if (k0 > dist[u]) continue;
+    for (let e = adjS[u], end = adjS[u + 1]; e < end; e++) { const v = adj[e], nd = k0 + adjW[e]; if (nd < dist[v]) { dist[v] = nd; push(nd, v); } }
+  }
+  G.from = src;
+}
+const navCenter = (G, j, out) => { const c = G.C[j]; out[0] = G.x0 + ((c % G.n) + 0.5) * G.CS; out[1] = G.Y[j]; out[2] = G.z0 + (((c / G.n) | 0) + 0.5) * G.CS; return out; };
+// can a cube walk in a straight line from (x, y, z) to node j, on the same floor (or up a ramp)?
+function navClear(G, x, y, z, tx, tz) {
+  const L = Math.hypot(tx - x, tz - z), steps = Math.ceil(L / 0.5);
+  let h = y;
+  for (let s = 1; s <= steps; s++) {
+    const k = s / steps, px = x + (tx - x) * k, pz = z + (tz - z) * k;
+    const cx = Math.floor((px - G.x0) / G.CS), cz = Math.floor((pz - G.z0) / G.CS);
+    if (cx < 0 || cz < 0 || cx >= G.n || cz >= G.n) return false;
+    const t = G.near(cz * G.n + cx, h); if (t < 0) return false;
+    h = G.Y[t];
+  }
+  return true;
+}
+const _nc = [0, 0, 0];
+// updateEnemies() asks this which way a cube should go. null: straight at you, as on the other maps.
+function navSteer(e, u, dist) {
+  const M = MAPS[mapId], G = M && M.nav;
+  if (!G || !NAV.on || gameMode === 'mp') return null;
+  const now = NAV.time * 1000, y = u.jy || 0;
+  if (u.hunt === undefined) u.hunt = !!M.shoppers && !u.T.ranged && !u.T.boss && Math.random() < 0.4;
+  // a few of the Mall's cubes go after the shoppers near them
+  if (u.hunt && window.caNpcNear) {
+    const h = caNpcNear(e.position.x, y, e.position.z, 14);
+    if (h && Math.hypot(h.x - e.position.x, h.z - e.position.z) < dist && navClear(G, e.position.x, y, e.position.z, h.x, h.z)) {
+      const dx = h.x - e.position.x, dz = h.z - e.position.z, l = Math.hypot(dx, dz) || 1; u.navDir = null; return [dx / l, dz / l];
+    }
+  }
+  if (u.detour > 0.3) u.detour = 0.3; // the path already goes round things
+  // the field towards you
+  if (now - G.t > 400) {
+    const p = navNode(G, player.pos.x, player.pos.y, player.pos.z);
+    if (p >= 0) { if (p !== G.from || now - G.t > 1500) navField(G, p); G.t = now; }
+  }
+  if (u.navDir && now - u.navT < 150) return u.navDir;
+  u.navT = now;
+  // close and nothing in the way: straight at you
+  if (dist < 40 && Math.abs(player.pos.y - y) < 1.4 && navClear(G, e.position.x, y, e.position.z, player.pos.x, player.pos.z)) { u.navDir = null; return null; }
+  const s = navNode(G, e.position.x, y, e.position.z);
+  if (s < 0 || G.dist[s] === Infinity) { u.navDir = null; return null; }
+  let cur = s, pick = -1, first = -1;
+  for (let k = 0; k < 10; k++) {
+    let b = -1, bd = G.dist[cur];
+    for (let i = G.adjS[cur], end = G.adjS[cur + 1]; i < end; i++) { const v = G.adj[i]; if (G.dist[v] < bd) { bd = G.dist[v]; b = v; } }
+    if (b < 0) break;
+    cur = b; if (first < 0) first = b;
+    navCenter(G, cur, _nc);
+    if (navClear(G, e.position.x, y, e.position.z, _nc[0], _nc[2])) pick = cur; else if (k > 1) break;
+  }
+  if (pick < 0) pick = first;
+  if (pick < 0) { u.navDir = null; return null; }
+  navCenter(G, pick, _nc);
+  const dx = _nc[0] - e.position.x, dz = _nc[2] - e.position.z, l = Math.hypot(dx, dz);
+  if (l < 0.05) { u.navDir = null; return null; }
+  return (u.navDir = [dx / l, dz / l]);
+}
+// a spot for a new cube: somewhere you can be reached from, not too close and not too far
+function navSpawn(M, near, far) {
+  const G = M.nav; if (!G || !G.reach.length) return null;
+  for (let k = 0; k < 60; k++) {
+    const j = G.reach[(Math.random() * G.reach.length) | 0]; navCenter(G, j, _nc);
+    if (M.spawnOk && !M.spawnOk(_nc[0], _nc[2], _nc[1])) continue;
+    const d = Math.hypot(_nc[0] - player.pos.x, (_nc[1] - player.pos.y) * 2, _nc[2] - player.pos.z);
+    if (d < near || d > far) continue;
+    return { x: _nc[0] + (Math.random() - 0.5) * 0.6, y: _nc[1], z: _nc[2] + (Math.random() - 0.5) * 0.6 };
+  }
+  return null;
+}
+
+// ---------- textures the new maps share ----------
+const CA_TEX = {};
+// shelves full of things: each row of the picture is a different kind of product, drawn as many small packs
+function caProductTex() {
+  if (CA_TEX.prod) return CA_TEX.prod;
+  const cv = makeCanvas(512, (g, S) => {
+    const R = S / 8, pick = a => a[(rand() * a.length) | 0];
+    const rows = [
+      ['#e63946', '#f4a261', '#2a9d8f', '#e9c46a', '#264653', '#ffffff', '#8ecae6', '#fb8500'], // groceries
+      ['#7f1d1d', '#1e3a8a', '#14532d', '#78350f', '#4c1d95', '#0f766e', '#9a3412', '#1f2937'], // book spines
+      ['#ef4444', '#3b82f6', '#111827', '#f5f5f4', '#22c55e', '#a855f7', '#f59e0b', '#64748b'], // hanging clothes
+      ['#fca5a5', '#93c5fd', '#d6d3d1', '#1f2937', '#86efac', '#fde68a', '#c4b5fd', '#94a3b8'], // folded clothes
+      ['#111827', '#f8fafc', '#dc2626', '#2563eb', '#a16207', '#16a34a', '#9ca3af', '#f97316'], // shoes
+      ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#ff924c', '#f15bb5', '#00bbf9'], // toys and sweets
+      ['#fdf2f8', '#e0f2fe', '#ecfccb', '#fef9c3', '#f5d0fe', '#ffffff', '#fecaca', '#bae6fd'], // bottles
+      ['#0f172a', '#1e293b', '#334155', '#f8fafc', '#38bdf8', '#e2e8f0', '#020617', '#64748b'], // electronics
+    ];
+    for (let r = 0; r < 8; r++) {
+      const y0 = r * R, pal = rows[r];
+      g.fillStyle = r === 2 ? '#d4d4d8' : '#e7e5e4'; g.fillRect(0, y0, S, R);
+      if (r === 2) { // hangers on a rail, then garments
+        g.fillStyle = '#a1a1aa'; g.fillRect(0, y0 + 3, S, 3);
+        for (let x = 0; x < S;) { const w = 6 + rand() * 8; g.fillStyle = pick(pal); g.fillRect(x, y0 + 8, w - 1, R - 10 - rand() * 14); g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(x + w - 2, y0 + 8, 1, R - 12); x += w; }
+        continue;
+      }
+      if (r === 3) { for (let x = 0; x < S;) { const w = 20 + rand() * 12; let y = y0 + R - 4; while (y > y0 + 10) { const h = 4 + rand() * 3; g.fillStyle = pick(pal); g.fillRect(x + 1, y - h, w - 2, h - 1); y -= h; } x += w; } continue; }
+      if (r === 1) { for (let x = 0; x < S;) { const w = 4 + rand() * 7, h = R * (0.6 + rand() * 0.38); g.fillStyle = pick(pal); g.fillRect(x, y0 + R - h, w - 0.6, h); g.fillStyle = 'rgba(255,230,160,.6)'; g.fillRect(x + 1, y0 + R - h + 6, w - 2.6, 2); x += w; } continue; }
+      if (r === 6) { for (let x = 2; x < S;) { const w = 7 + rand() * 6, h = R * (0.4 + rand() * 0.45); g.fillStyle = pick(pal); g.fillRect(x, y0 + R - h, w, h); g.fillRect(x + w * 0.3, y0 + R - h - 6, w * 0.4, 6); g.fillStyle = pick(['#ec4899', '#22c55e', '#3b82f6', '#f59e0b']); g.fillRect(x, y0 + R - h * 0.6, w, h * 0.22); x += w + 2; } continue; }
+      for (let x = 1; x < S;) {
+        const w = 8 + rand() * 18, h = R * (0.35 + rand() * 0.55);
+        g.fillStyle = pick(pal); g.fillRect(x, y0 + R - h - 2, w - 1.5, h);
+        g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x + 2, y0 + R - h + 3, w - 6, 2);
+        if (rand() < 0.6) { g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(x + 2, y0 + R - h * 0.55, w - 6, h * 0.18); }
+        x += w;
+      }
+    }
+  });
+  const t = new THREE.CanvasTexture(cv); t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4;
+  return (CA_TEX.prod = t);
+}
+function caTileTex() {
+  if (CA_TEX.tile) return CA_TEX.tile;
+  const t = tex(makeCanvas(256, (g, S) => {
+    g.fillStyle = '#f2efe8'; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${150 + rand() * 60},${140 + rand() * 60},${130 + rand() * 60},.08)`; g.fillRect(rand() * S, rand() * S, 6 + rand() * 30, 1 + rand() * 2); }
+    g.strokeStyle = 'rgba(120,110,100,.35)'; g.lineWidth = 2; g.strokeRect(1, 1, S - 2, S - 2);
+    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; g.strokeRect(3, 3, S - 6, S - 6);
+  }));
+  return (CA_TEX.tile = t);
+}
+function caAsphaltTex() {
+  if (CA_TEX.asph) return CA_TEX.asph;
+  const t = tex(makeCanvas(256, (g, S) => {
+    g.fillStyle = '#4a4d52'; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 4000; i++) { const v = 50 + rand() * 60; g.fillStyle = `rgba(${v},${v},${v + 4},.5)`; g.fillRect(rand() * S, rand() * S, 1 + rand() * 2, 1 + rand() * 2); }
+    for (let i = 0; i < 6; i++) { g.strokeStyle = 'rgba(25,25,28,.45)'; g.lineWidth = 1; g.beginPath(); let x = rand() * S, y = rand() * S; g.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (rand() - 0.5) * 50; y += (rand() - 0.5) * 50; g.lineTo(x, y); } g.stroke(); }
+  }), 60, 60);
+  return (CA_TEX.asph = t);
+}
+// signs: one big picture with a slot for every sign, so all the shop signs are one draw call
+function caSignAtlas() {
+  const cv = document.createElement('canvas'); cv.width = 2048; cv.height = 2048;
+  const g = cv.getContext('2d'), SW = 512, SH = 128; let n = 0;
+  const A = { cv, g, tex: null, slot(draw) { const i = n++, x = (i % 4) * SW, y = Math.floor(i / 4) * SH; g.save(); g.translate(x, y); g.beginPath(); g.rect(0, 0, SW, SH); g.clip(); draw(g, SW, SH); g.restore(); return i; },
+    uv(i) { const x = (i % 4) * SW, y = Math.floor(i / 4) * SH; return [x / 2048, 1 - (y + SH) / 2048, (x + SW) / 2048, 1 - y / 2048]; } };
+  return A;
+}
+function caSignDraw(name, color, icon, dark) {
+  return (g, W, H) => {
+    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, color); gr.addColorStop(1, shade(color, -0.25)); g.fillStyle = dark ? '#16181d' : gr; g.fillRect(0, 0, W, H);
+    g.strokeStyle = dark ? color : 'rgba(255,255,255,.35)'; g.lineWidth = 6; g.strokeRect(5, 5, W - 10, H - 10);
+    g.font = '64px "Apple Color Emoji","Segoe UI Emoji",sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'center'; g.fillText(icon || '', 64, H / 2 + 4);
+    let fs = 60; g.font = `800 ${fs}px Barlow, "Arial Black", Arial, sans-serif`;
+    while (g.measureText(name).width > W - 150 && fs > 26) { fs -= 2; g.font = `800 ${fs}px Barlow, "Arial Black", Arial, sans-serif`; }
+    g.fillStyle = dark ? color : '#ffffff'; g.shadowColor = dark ? color : 'rgba(0,0,0,.45)'; g.shadowBlur = dark ? 18 : 6; g.textAlign = 'left'; g.fillText(name, 118, H / 2 + 3);
+  };
+  function shade(hex, k) { const c = new THREE.Color(hex); c.offsetHSL(0, 0, k); return '#' + c.getHexString(); }
+}
+// flat quads that show one slot of a sign atlas
+class SignQuads {
+  constructor(atlas) { this.A = atlas; this.pos = []; this.uv = []; this.idx = []; }
+  // centre, size, facing along +x/-x/+z/-z (nx, nz)
+  add(cx, cy, cz, w, h, nx, nz, slot) {
+    const [u0, v0, u1, v1] = this.A.uv(slot), base = this.pos.length / 3, rx = nz, rz = -nx; // "right" when you face the sign
+    for (const [a, b, u, v] of [[-1, -1, u0, v0], [1, -1, u1, v0], [1, 1, u1, v1], [-1, 1, u0, v1]]) {
+      this.pos.push(cx + rx * a * w / 2 + nx * 0.02, cy + b * h / 2, cz + rz * a * w / 2 + nz * 0.02); this.uv.push(u, v);
+    }
+    this.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+  build(parent) {
+    const t = new THREE.CanvasTexture(this.A.cv); t.anisotropy = 8; t.needsUpdate = true;
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2)); geo.setIndex(this.idx); geo.computeBoundingSphere();
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t })); m.userData.noBreak = true; parent.add(m); return m;
+  }
+}
+
+// ---------- the Mall ----------
+// A huge indoor shopping centre on three floors (0, 6 and 12 m up), round a tall atrium with a glass roof, plus an
+// outdoor carpark. Escalators climb through the atrium (the ground to the 1st floor on the south side, the 1st to the
+// 2nd from the north gallery onto a landing), and bridges cross it on the upper floors. Every shop has its own
+// sign and fittings; every shop doorway can be barricaded (the planks stretch to fit). Shoppers walk around and run
+// from the cubes, and some cubes go after them. Very hard: the cubes come from every floor.
+const MALL = { FL: [0, 6, 12], ROOF: 18, X0: -64, X1: 64, Z0: -74, Z1: 10, VX: 36, VZ0: -44, VZ1: -20 };
+function buildMall() {
+  const root = new THREE.Group(); sceneAdd(root);
+  const keepSeed = seed; seed = 777123;
+  const A = 90; ARENA = A;
+  boxes.length = solids.length = noGrass.length = houseRects.length = 0;
+  scene.add = (...o) => { root.add(...o); return scene; };
+  try {
+    const { FL, ROOF, X0, X1, Z0, Z1, VX, VZ0, VZ1 } = MALL;
+    const xb = [], plats = [], rays = new RayBoxes(), shops = [];
+    const C = new Batch(32), S = new Batch(32), P = new Batch(24), Q = new Batch(24), E = new Batch(32), G = new Batch(48), T = new Batch(48, 0.5);
+    const atlas = caSignAtlas(), SQ = new SignQuads(atlas);
+    // collider + bullet box helpers
+    const coll = (x0, z0, x1, z1, y0, h) => { const b = { x: (x0 + x1) / 2, z: (z0 + z1) / 2, hx: Math.abs(x1 - x0) / 2, hz: Math.abs(z1 - z0) / 2, y0, h }; xb.push(b); return b; };
+    const full = (x0, z0, x1, z1, h) => { const b = { x: (x0 + x1) / 2, z: (z0 + z1) / 2, hx: Math.abs(x1 - x0) / 2, hz: Math.abs(z1 - z0) / 2, h }; boxes.push(b); return b; };
+    const ray = (x0, y0, z0, x1, y1, z1) => rays.put(x0, y0, z0, x1, y1, z1);
+    // a solid box: drawn, blocks you on its floor, and stops bullets
+    const solid = (B, x, y, z, w, h, d, color, ry = 0) => {
+      B.box(x, y, z, w, h, d, color, ry);
+      const sw = ry ? Math.abs(Math.cos(ry)) * w + Math.abs(Math.sin(ry)) * d : w, sd = ry ? Math.abs(Math.sin(ry)) * w + Math.abs(Math.cos(ry)) * d : d;
+      coll(x - sw / 2, z - sd / 2, x + sw / 2, z + sd / 2, y, h); ray(x - sw / 2, y, z - sd / 2, x + sw / 2, y + h, z + sd / 2);
+    };
+    // a wall along x or z (by its two ends), on one floor or all the way up
+    const wallX = (x0, x1, z, y, h, t, color, faces) => { C.box((x0 + x1) / 2, y, z, x1 - x0, h, t, color, 0, faces); coll(x0, z - t / 2, x1, z + t / 2, y, h); ray(x0, y, z - t / 2, x1, y + h, z + t / 2); };
+    const wallZ = (z0, z1, x, y, h, t, color, faces) => { C.box(x, y, (z0 + z1) / 2, t, h, z1 - z0, color, 0, faces); coll(x - t / 2, z0, x + t / 2, z1, y, h); ray(x - t / 2, y, z0, x + t / 2, y + h, z1); };
+    const glassX = (x0, x1, z, y, h) => { if (x1 - x0 < 0.05) return; G.box((x0 + x1) / 2, y, z, x1 - x0, h, 0.06, 0xa9d8f0); coll(x0, z - 0.1, x1, z + 0.1, y, 2.6); };
+    const glassZ = (z0, z1, x, y, h) => { if (z1 - z0 < 0.05) return; G.box(x, y, (z0 + z1) / 2, 0.06, h, z1 - z0, 0xa9d8f0); coll(x - 0.1, z0, x + 0.1, z1, y, 2.6); };
+    const sign = (name, color, icon, dark) => atlas.slot(caSignDraw(name, color, icon, dark));
+    const fall = (() => { try { return !seasonLocked(); } catch (e) { return false; } })(), leaf = (k = 0) => fall ? [0xd9541e, 0xe8771f, 0xf2a03d, 0xb83a1b, 0xc9871f][k % 5] : [0x3f8f3a, 0x4b9a44][k % 2]; // orange for Halloween
+
+    // ---- the ground, the floors, the roof ----
+    // the carpark and the paths round the building
+    { const asph = new THREE.Mesh(new THREE.PlaneGeometry(A * 2, A - Z1), new THREE.MeshLambertMaterial({ map: caAsphaltTex(), polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+      asph.material.map.repeat.set(30, 14); asph.rotation.x = -Math.PI / 2; asph.position.set(0, 0.012, (A + Z1) / 2); asph.receiveShadow = true; asph.userData.noBreak = true; scene.add(asph);
+      noGrass.push({ x: 0, z: (A + Z1) / 2, hx: A, hz: (A - Z1) / 2 }); }
+    P.box(0, 0, Z1 + 3.2, (X1 - X0) + 8, 0.06, 6.4, 0xb9b6ae); // pavement along the front
+    for (const s of [-1, 1]) P.box(s * (X1 + 3.2), 0, (Z0 + Z1) / 2, 6.4, 0.06, Z1 - Z0 + 6.4, 0xb9b6ae);
+    P.box(0, 0, Z0 - 3.2, (X1 - X0) + 12.8, 0.06, 6.4, 0xb9b6ae);
+    const tileMat = new THREE.MeshLambertMaterial({ map: caTileTex(), vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    // the slab at each floor (and its ceiling underneath), leaving the atrium open
+    const slabs = [[X0, Z0, X1, VZ0], [X0, VZ1, X1, Z1], [X0, VZ0, -VX, VZ1], [VX, VZ0, X1, VZ1], [-3, VZ0, 3, VZ1]];
+    const slab = (x0, z0, x1, z1, y, tint = 0xf4f1ea) => {
+      if (y > 0) { S.box((x0 + x1) / 2, y - 0.4, (z0 + z1) / 2, x1 - x0, 0.4, z1 - z0, 0xe8e6e1, 0, 59); ray(x0, y - 0.4, z0, x1, y, z1); plats.push({ x0, x1, z0, z1, y }); }
+      T.box((x0 + x1) / 2, y, (z0 + z1) / 2, x1 - x0, 0.001, z1 - z0, tint, 0, 4);
+    };
+    T.box((X0 + X1) / 2, 0.004, (Z0 + Z1) / 2, X1 - X0, 0.001, Z1 - Z0, 0xf4f1ea, 0, 4);
+    for (const y of [6, 12]) for (const s of slabs) slab(...s, y);
+    for (const s of [-1, 1]) slab(s < 0 ? -17 : 11, -32, s < 0 ? -11 : 17, VZ1, 12); // the landings the upper escalators arrive on
+    // the roof, with a skylight over the atrium
+    for (const s of slabs.slice(0, 4)) { S.box((s[0] + s[2]) / 2, ROOF - 0.5, (s[1] + s[3]) / 2, s[2] - s[0], 0.5, s[3] - s[1], 0xdedbd4, 0, 59); ray(s[0], ROOF - 0.5, s[1], s[2], ROOF, s[3]); C.box((s[0] + s[2]) / 2, ROOF, (s[1] + s[3]) / 2, s[2] - s[0], 0.01, s[3] - s[1], 0x8b8e94, 0, 4); }
+    G.box(0, ROOF - 0.1, (VZ0 + VZ1) / 2, VX * 2, 0.06, VZ1 - VZ0, 0xcfeaff);
+    for (let x = -VX; x <= VX; x += 4) C.box(x, ROOF - 0.4, (VZ0 + VZ1) / 2, 0.18, 0.3, VZ1 - VZ0, 0x9aa1aa);
+    for (let z = VZ0; z <= VZ1; z += 4) C.box(0, ROOF - 0.35, z, VX * 2, 0.22, 0.14, 0x9aa1aa);
+    // rooftop: plant boxes and a parapet
+    for (const [x, z, w, d] of [[-50, -64, 8, 6], [-20, -66, 6, 5], [24, -62, 9, 6], [52, -8, 6, 8], [-52, -2, 7, 5], [40, -68, 5, 4]]) C.box(x, ROOF, z, w, 2.2, d, 0xa7adb5);
+    for (const [x0, z0, x1, z1] of [[X0, Z0, X1, Z0 + 0.6], [X0, Z1 - 0.6, X1, Z1], [X0, Z0, X0 + 0.6, Z1], [X1 - 0.6, Z0, X1, Z1]]) C.box((x0 + x1) / 2, ROOF, (z0 + z1) / 2, x1 - x0, 1, z1 - z0, 0xc9ccd1);
+
+    // ---- outside walls: all the way up (the front has the doors on the ground floor) ----
+    const ext = 0xd8d3c8, extH = ROOF + 1;
+    const extWallX = (x0, x1, z) => { C.box((x0 + x1) / 2, 0, z, x1 - x0, extH, 0.6, ext); full(x0, z - 0.3, x1, z + 0.3, extH); ray(x0, 0, z - 0.3, x1, extH, z + 0.3); };
+    const extWallZ = (z0, z1, x) => { C.box(x, 0, (z0 + z1) / 2, 0.6, extH, z1 - z0, ext); full(x - 0.3, z0, x + 0.3, z1, extH); ray(x - 0.3, 0, z0, x + 0.3, extH, z1); };
+    extWallX(X0, X1, Z0); extWallZ(Z0, Z1, X0); extWallZ(Z0, Z1, X1);
+    extWallX(X0, -5, Z1); extWallX(5, X1, Z1);
+    C.box(0, 6, Z1, 10, extH - 6, 0.6, ext); coll(-5, Z1 - 0.3, 5, Z1 + 0.3, 6, extH - 6); ray(-5, 6, Z1 - 0.3, 5, extH, Z1 + 0.3);
+    // stripes and windows on the outside
+    for (const y of [5.7, 11.7, 17.4]) { C.box(0, y, Z0 - 0.33, X1 - X0, 0.35, 0.08, 0x9a958b); C.box(0, y, Z1 + 0.33, X1 - X0, 0.35, 0.08, 0x9a958b); for (const s of [-1, 1]) C.box(s * (X1 + 0.33), y, (Z0 + Z1) / 2, 0.08, 0.35, Z1 - Z0, 0x9a958b); }
+    // the glass front over the doors
+    G.box(0, 6.3, Z1 + 0.34, 30, 11, 0.08, 0x7fb9dc);
+    for (let x = -15; x <= 15; x += 3) C.box(x, 6.3, Z1 + 0.4, 0.14, 11, 0.12, 0x5b6470);
+    // the entrance canopy, and the big sign
+    C.box(0, 5.2, Z1 + 4, 18, 0.35, 8, 0xe5e7eb); E.box(0, 5.18, Z1 + 4, 16, 0.02, 6.4, 0xfff7e0);
+    for (const x of [-8.5, 8.5]) { C.cyl(x, 0, Z1 + 7.6, 0.22, 0.22, 5.2, 0x6b7280); full(x - 0.25, Z1 + 7.35, x + 0.25, Z1 + 7.85, 5.2); }
+    const mallSign = atlas.slot((g, W, H) => { g.fillStyle = '#10151d'; g.fillRect(0, 0, W, H); g.font = '900 78px Barlow, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffd36b'; g.shadowColor = '#ffb020'; g.shadowBlur = 22; g.fillText('GRAND PLAZA', W / 2, H / 2 + 4); });
+    SQ.add(0, 14.6, Z1 + 0.45, 18, 4.5, 0, 1, mallSign);
+    for (const s of [-1, 1]) SQ.add(s * (X1 + 0.45), 14.6, -30, 18, 4.5, s, 0, mallSign);
+    // the doors (sliding glass, open)
+    for (const s of [-1, 1]) { G.box(s * 4.2, 0, Z1 + 0.1, 1.4, 3, 0.05, 0x9fd0ee); C.box(s * 5.1, 0, Z1 + 0.1, 0.25, 3.2, 0.3, 0x4b5563); }
+    C.box(0, 3, Z1 + 0.1, 10.4, 0.3, 0.32, 0x4b5563);
+
+    // ---- columns round the atrium ----
+    for (const x of [-VX, -26, -7, 7, 26, VX]) for (const z of [VZ0, VZ1]) { C.cyl(x, 0, z, 0.5, 0.5, ROOF, 0xeeeae2, 14, false); full(x - 0.5, z - 0.5, x + 0.5, z + 0.5, ROOF); ray(x - 0.45, 0, z - 0.45, x + 0.45, ROOF, z + 0.45); }
+
+    // ---- escalators: ground to 1st floor (south side) and 1st to 2nd (north side, onto a landing) ----
+    const escal = (xc, za, zb, ya, yb) => { // a 6 m wide pair: bottom at za, top at zb (zb > za)
+      const L = zb - za, rise = yb - ya, ang = Math.atan2(rise, L), len = Math.hypot(L, rise), zc = (za + zb) / 2, yc = (ya + yb) / 2;
+      plats.push({ x0: xc - 3, x1: xc + 3, z0: za, z1: zb, ramp: { ax: 'z', a0: za, a1: zb, y0: ya, y1: yb } });
+      // steps (dark, with yellow edges), the sides, the handrails and the glass
+      P.boxC(xc, yc - 0.08, zc, 5.6, 0.16, len, 0x3a3d42, -ang);
+      for (let k = 0.5; k < len - 0.3; k += 0.42) { const t = k / len; P.boxC(xc, ya + rise * t - 0.0, za + L * t, 5.5, 0.02, 0.05, 0xfacc15, -ang); }
+      P.boxC(xc, yc - 0.9, zc, 6.2, 1.3, len + 0.4, 0xb8bec6, -ang, 59);               // the underside
+      for (const s of [-1, 0, 1]) {
+        const x = xc + s * 2.9;
+        P.boxC(x, yc + 0.45, zc, s ? 0.24 : 0.5, 0.9, len, 0xc3c8cf, -ang);              // the side skirt
+        G.boxC(x, yc + 1.1, zc, 0.05, 0.9, len, 0xbfe6ff, -ang);
+        P.boxC(x, yc + 1.6, zc, 0.12, 0.1, len + 0.6, 0x111827, -ang);                    // handrail
+      }
+      // walls along the sides (in steps, following the slope), and the end under the top
+      for (let k = 0; k < 4; k++) { const z0 = za + L * k / 4, z1 = za + L * (k + 1) / 4, top = ya + rise * (k + 1) / 4 + 1.2; for (const s of [-1, 1]) coll(xc + s * 3 - 0.15, z0, xc + s * 3 + 0.15, z1, ya, top - ya); }
+      if (ya === 0) coll(xc - 3.1, zb - 0.6, xc + 3.1, zb, 0, yb - 0.9);
+    };
+    for (const s of [-1, 1]) { escal(s * 14, -32, VZ1, 0, 6); escal(s * 14, VZ0, -32, 6, 12); }
+    // ---- railings round the atrium on the upper floors (glass, with a steel rail on top) ----
+    const railX = (x0, x1, z, y) => { if (x1 - x0 < 0.1) return; G.box((x0 + x1) / 2, y, z, x1 - x0, 1.05, 0.05, 0xbfe6ff); C.box((x0 + x1) / 2, y + 1.05, z, x1 - x0, 0.07, 0.12, 0x9ca3af); coll(x0, z - 0.12, x1, z + 0.12, y, 2.2); };
+    const railZ = (z0, z1, x, y) => { if (z1 - z0 < 0.1) return; G.box(x, y, (z0 + z1) / 2, 0.05, 1.05, z1 - z0, 0xbfe6ff); C.box(x, y + 1.05, (z0 + z1) / 2, 0.12, 0.07, z1 - z0, 0x9ca3af); coll(x - 0.12, z0, x + 0.12, z1, y, 2.2); };
+    const runX = (z, y, gaps) => { let x = -VX; for (const [a, b] of gaps) { railX(x, a, z, y); x = b; } railX(x, VX, z, y); };
+    const ESC = [[-17, -11], [11, 17]], BRIDGE = [-3, 3];
+    runX(VZ0, 6, [ESC[0], BRIDGE, ESC[1]]); runX(VZ1, 6, [ESC[0], BRIDGE, ESC[1]]);
+    runX(VZ0, 12, [BRIDGE]); runX(VZ1, 12, [ESC[0], BRIDGE, ESC[1]]);
+    for (const y of [6, 12]) { railZ(VZ0, VZ1, -VX, y); railZ(VZ0, VZ1, VX, y); railZ(VZ0, VZ1, -3, y); railZ(VZ0, VZ1, 3, y); }
+    for (const [a, b] of ESC) { railZ(-32, VZ1, a, 12); railZ(-32, VZ1, b, 12); }
+    // slab edges round the void (so the floors have a visible thickness)
+    for (const y of [6, 12]) { for (const z of [VZ0, VZ1]) C.box(0, y - 0.5, z, VX * 2, 0.5, 0.06, 0xd1d5db); for (const x of [-VX, VX]) C.box(x, y - 0.5, (VZ0 + VZ1) / 2, 0.06, 0.5, VZ1 - VZ0, 0xd1d5db); }
+
+    // ---- the shops ----
+    const STORES = [
+      // [name, layout, colour, icon, extra]
+      [['Pumpkin & Co.', 'shelves', '#ff7a1a', '🎃', { row: 5 }], ['Threadline', 'racks', '#2563eb', '👕'], ['Volt Electronics', 'electronics', '#eab308', '📺'], ['Stride Shoes', 'shelves', '#ef4444', '👟', { row: 4 }], ['Page Turner', 'shelves', '#7c3aed', '📚', { row: 1 }], ['Toy Planet', 'shelves', '#16a34a', '🧸', { row: 5 }]],
+      [['Urban Threads', 'racks', '#334155', '🧥'], ['Kicks', 'shelves', '#dc2626', '👟', { row: 4 }], ['Pixel Games', 'electronics', '#8b5cf6', '🎮'], ['Sound Wave', 'shelves', '#0891b2', '🎧', { row: 7 }], ['Bloom Beauty', 'shelves', '#db2777', '💄', { row: 6 }], ['Little Ones', 'racks', '#f59e0b', '🍼']],
+      [['Fit Life Gym', 'gym', '#15803d', '🏋️'], ['Art Supply', 'shelves', '#d97706', '🎨', { row: 5 }], ['Phone Fix', 'cases', '#2563eb', '🔧'], ['Hobby Haven', 'shelves', '#65a30d', '🚂', { row: 5 }], ['Watch Works', 'cases', '#525252', '⌚'], ['Sweet Treats', 'cafe', '#ec4899', '🍦']],
+    ];
+    const SOUTH = [
+      [['Bean There Cafe', 'cafe', '#92400e', '☕'], ['Glow Pharmacy', 'aisles', '#059669', '💊', { row: 6 }], ['Gadget Hub', 'cases', '#0284c7', '📱'], null, ['Jewel Box', 'cases', '#be185d', '💎'], ['Sport Zone', 'sports', '#ea580c', '⚽'], ['Petal & Stem', 'florist', '#e11d48', '💐']],
+      [['Brew & Bite', 'cafe', '#78350f', '🥐'], ['Snap Camera', 'cases', '#475569', '📷'], ['Comfy Sleep', 'furniture', '#4f46e5', '🛏️', { beds: true }], ['Spooky Costumes', 'racks', '#7e22ce', '👻'], ['Gift Galaxy', 'shelves', '#e11d48', '🎁', { row: 5 }], ['Optic Eyewear', 'cases', '#0d9488', '👓'], ['Bag Shack', 'racks', '#a855f7', '👜']],
+      [['Noodle Bar', 'cafe', '#b91c1c', '🍜'], ['Game Arena', 'arcade', '#6d28d9', '🕹️'], ['Pet Pals', 'shelves', '#16a34a', '🐶', { row: 0 }], ['Sky Lounge', 'cafe', '#0369a1', '🍹'], ['Book Nook', 'shelves', '#854d0e', '📖', { row: 1 }], ['Music Box', 'shelves', '#be123c', '🎸', { row: 7 }], ['Card Shop', 'shelves', '#0f766e', '🃏', { row: 1 }]],
+    ];
+    const ANCHOR = [[['FreshMart Supermarket', 'aisles', '#15803d', '🛒', { big: true, row: 0 }], ['Homestyle Furniture', 'furniture', '#a16207', '🛋️']],
+      [['Grand Department Store', 'dept', '#9f1239', '🛍️'], ['Food Court', 'foodcourt', '#ea580c', '🍔']],
+      [['Starlight Cinema', 'cinema', '#312e81', '🎬'], ['Arcade Zone', 'arcade', '#be185d', '👾']]];
+    const NX = [-42, -28, -14, 0, 14, 28, 42], SX = [-42, -29, -16, -5, 5, 16, 29, 42];
+    const wallC = 0xf3f0ea, fasc = 0xfbfaf7;
+    for (let f = 0; f < 3; f++) {
+      const y = FL[f];
+      // dividing walls between the shops
+      for (const x of NX.slice(1, -1)) wallZ(Z0, -50, x, y, 6, 0.3, wallC);
+      for (const x of SX.slice(1, -1)) wallZ(-14, Z1, x, y, 6, 0.3, wallC);
+      // shop fronts: glass with an open doorway in the middle, a fascia above with the sign
+      const front = (x0, x1, z, dir, st, open) => {
+        const W = x1 - x0, ew = open ? W - 1 : Math.min(7, W - 5), cx = (x0 + x1) / 2;
+        C.box(cx, y + 3.6, z, W, 2.4 - 0.4, 0.4, fasc); ray(x0, y + 3.6, z - 0.2, x1, y + 5.6, z + 0.2); coll(x0, z - 0.2, x1, z + 0.2, y + 3.6, 2.4);
+        for (const px of [x0 + 0.3, x1 - 0.3]) { C.box(px, y, z, 0.6, 3.6, 0.5, 0xe2ded6); coll(px - 0.3, z - 0.25, px + 0.3, z + 0.25, y, 3.6); ray(px - 0.3, y, z - 0.25, px + 0.3, y + 3.6, z + 0.25); }
+        if (!open) { glassX(x0 + 0.6, cx - ew / 2, z, y + 0.1, 3.5); glassX(cx + ew / 2, x1 - 0.6, z, y + 0.1, 3.5);
+          for (let mx = x0 + 2.6; mx < x1 - 1; mx += 2.4) if (Math.abs(mx - cx) > ew / 2 + 0.2) C.box(mx, y, z, 0.08, 3.6, 0.1, 0x9ca3af);
+          C.box(cx, y + 3.45, z, ew + 0.3, 0.15, 0.3, 0x6b7280); for (const s of [-1, 1]) C.box(cx + s * (ew / 2 + 0.06), y, z, 0.12, 3.5, 0.3, 0x6b7280); }
+        if (st) { const sw = Math.min(W - 2, 7.6); SQ.add(cx, y + 4.6, z + dir * 0.22, sw, sw / 4, 0, dir, st.slot); E.box(cx, y + 5.65, z + dir * 0.25, W - 1, 0.06, 0.06, new THREE.Color(st.color).getHex()); }
+        return { cx, ew };
+      };
+      const frontZ = (z0, z1, x, dir, st, doors) => {
+        C.box(x, y + 3.6, (z0 + z1) / 2, 0.4, 2.0, z1 - z0, fasc); ray(x - 0.2, y + 3.6, z0, x + 0.2, y + 5.6, z1); coll(x - 0.2, z0, x + 0.2, z1, y + 3.6, 2.4);
+        let z = z0;
+        for (const dz of doors) { glassZ(z, dz - 3, x, y + 0.1, 3.5); for (const s of [-1, 1]) C.box(x, y, dz + s * 3.06, 0.3, 3.5, 0.12, 0x6b7280); C.box(x, y + 3.45, dz, 0.3, 0.15, 6.3, 0x6b7280); z = dz + 3; }
+        glassZ(z, z1, x, y + 0.1, 3.5);
+        for (let mz = z0 + 2.4; mz < z1; mz += 2.4) if (doors.every(dz => Math.abs(mz - dz) > 3.2)) C.box(x, y, mz, 0.1, 3.6, 0.08, 0x9ca3af);
+        if (st) for (const dz of doors) SQ.add(x + dir * 0.22, y + 4.6, dz, 7.6, 1.9, dir, 0, st.slot);
+      };
+      // north row (fronts face south onto the north gallery)
+      STORES[f].forEach((d, i) => {
+        const x0 = NX[i], x1 = NX[i + 1], st = { name: d[0], kind: d[1], color: d[2], icon: d[3], o: d[4] || {} }; st.slot = sign(st.name, st.color, st.icon);
+        const fr = front(x0, x1, -50, 1, st);
+        shops.push(Object.assign(st, { f, y, x0, x1, z0: Z0, z1: -50, face: 's', door: { x: fr.cx, z: -50, horiz: true, gap: fr.ew } }));
+      });
+      // south row (fronts face north onto the south gallery); the middle one on the ground floor is the way in
+      SOUTH[f].forEach((d, i) => {
+        const x0 = SX[i], x1 = SX[i + 1];
+        if (!d) { front(x0, x1, -14, -1, null, true); return; }
+        const st = { name: d[0], kind: d[1], color: d[2], icon: d[3], o: d[4] || {} }; st.slot = sign(st.name, st.color, st.icon);
+        const fr = front(x0, x1, -14, -1, st);
+        shops.push(Object.assign(st, { f, y, x0, x1, z0: -14, z1: Z1, face: 'n', door: { x: fr.cx, z: -14, horiz: true, gap: fr.ew } }));
+      });
+      // the two big stores at the ends, with two doorways each onto the side galleries
+      ANCHOR[f].forEach((d, i) => {
+        const s = i ? 1 : -1, x = s * 42, st = { name: d[0], kind: d[1], color: d[2], icon: d[3], o: d[4] || {} }; st.slot = sign(st.name, st.color, st.icon);
+        wallZ(Z0, -50, x, y, 6, 0.3, wallC); wallZ(-14, Z1, x, y, 6, 0.3, wallC);
+        frontZ(-50, -14, x, -s, st, [-40, -24]);
+        shops.push(Object.assign(st, { f, y, x0: s < 0 ? X0 : 42, x1: s < 0 ? -42 : X1, z0: Z0, z1: Z1, face: s < 0 ? 'e' : 'w', doors: [-40, -24].map(dz => ({ x, z: dz, horiz: false, gap: 6 })) }));
+      });
+    }
+    // the entrance hall's walls on the ground floor are the shop walls either side; a directory board in it
+    P.box(0, 0, -2, 2.4, 2.4, 0.3, 0x1f2937); E.box(0, 0.4, -1.84, 2.1, 1.8, 0.02, 0x93c5fd); coll(-1.2, -2.15, 1.2, -1.85, 0, 2.4); ray(-1.2, 0, -2.15, 1.2, 2.4, -1.85);
+    for (const s of [-1, 1]) { P.box(s * 3.4, 0, 4, 0.6, 0.45, 2.4, 0x6b4f3a); coll(s * 3.4 - 0.3, 2.8, s * 3.4 + 0.3, 5.2, 0, 0.45); }
+
+    // ---- inside each shop ----
+    for (const st of shops) {
+      const W = (st.face === 'e' || st.face === 'w') ? st.z1 - st.z0 : st.x1 - st.x0, D = (st.face === 'e' || st.face === 'w') ? st.x1 - st.x0 : st.z1 - st.z0;
+      // local (u across, v in from the front) to the world
+      const toW = (u, v) => st.face === 's' ? [st.x0 + u, st.z1 - v] : st.face === 'n' ? [st.x0 + u, st.z0 + v] : st.face === 'e' ? [st.x1 - v, st.z0 + u] : [st.x0 + v, st.z0 + u];
+      const turn = st.face === 's' ? 0 : st.face === 'n' ? Math.PI : st.face === 'e' ? -Math.PI / 2 : Math.PI / 2;
+      const swap = st.face === 'e' || st.face === 'w';
+      // keep a clear way in: down the middle of a shop, or in from each doorway of the big ones (and across them)
+      const mid = W / 2, keep = [];
+      if (st.doors) { for (const d of st.doors) { const ud = d.z - st.z0; keep.push([ud - 2.6, ud + 2.6, -1, D / 2]); } keep.push([-1, W + 1, D / 2 - 1.5, D / 2 + 1.5]); keep.push([-1, W + 1, -1, 2.2]); }
+      else keep.push([mid - 1.7, mid + 1.7, -1, D - 2.6]);
+      const free = (u, v, w, d) => keep.every(([a, b, c, e]) => u + w / 2 <= a || u - w / 2 >= b || v + d / 2 <= c || v - d / 2 >= e);
+      const L = {
+        W, D, y: st.y, free,
+        box(B, u, h0, v, w, h, d, color, ry = 0) { if (!free(u, v, w, d)) return; const [x, z] = toW(u, v); B.box(x, st.y + h0, z, swap ? d : w, h, swap ? w : d, color, ry); },
+        solid(B, u, h0, v, w, h, d, color) { if (!free(u, v, w, d)) return; const [x, z] = toW(u, v); solid(B, x, st.y + h0, z, swap ? d : w, h, swap ? w : d, color); },
+        cyl(B, u, h0, v, r0, r1, h, color, seg) { if (!free(u, v, r0 * 2, r0 * 2)) return; const [x, z] = toW(u, v); B.cyl(x, st.y + h0, z, r0, r1, h, color, seg); },
+        ball(B, u, h0, v, r, color) { if (!free(u, v, r * 2, r * 2)) return; const [x, z] = toW(u, v); B.ball(x, st.y + h0, z, r, color); },
+        coll(u, v, w, d, h0, h) { if (!free(u, v, w, d)) return; const [x, z] = toW(u, v), hw = (swap ? d : w) / 2, hd = (swap ? w : d) / 2; coll(x - hw, z - hd, x + hw, z + hd, st.y + h0, h); ray(x - hw, st.y + h0, z - hd, x + hw, st.y + h0 + h, z + hd); },
+        prod(u, h0, v, w, h, d, row) { if (!free(u, v, w, d)) return; const [x, z] = toW(u, v); caProdBox(Q, x, st.y + h0, z, swap ? d : w, h, swap ? w : d, row); },
+        // a sign facing the door (on the back wall, a stall, a screen door)
+        sign(u, h0, v, w, h, name, color, icon, dark) { const [x, z] = toW(u, v), n = { s: [0, 1], n: [0, -1], e: [1, 0], w: [-1, 0] }[st.face]; SQ.add(x, st.y + h0, z, w, h, n[0], n[1], sign(name, color, icon, dark)); },
+        turn,
+      };
+      // the floor, the walls' colour and the lights
+      const tint = new THREE.Color(st.color).lerp(new THREE.Color(0xf4f1ea), 0.82).getHex();
+      { const [ax, az] = toW(0.15, 0.15), [bx, bz] = toW(W - 0.15, D - 0.15); T.box((ax + bx) / 2, st.y + 0.014, (az + bz) / 2, Math.abs(bx - ax), 0.001, Math.abs(bz - az), tint, 0, 4); }
+      const accent = new THREE.Color(st.color).lerp(new THREE.Color(0xffffff), 0.35).getHex();
+      L.box(P, W / 2, 0.15, D - 0.36, W - 0.6, 3.6, 0.04, accent);
+      for (let u = 2; u < W - 1; u += 4) for (let v = 3; v < D - 1; v += 4.5) L.box(E, u + 0.5, 5.55, v, 1.4, 0.02, 0.6, 0xfffdf5);
+      L.box(E, W / 2, 0.01, 0.5, W - 0.8, 0.01, 0.12, new THREE.Color(st.color).getHex()); // a coloured strip at the door
+      caFitShop(L, st, P, Q, E, G);
+      houseRects.push(f0(st));
+      // barricades fit every doorway (the planks stretch to the doorway's width)
+      for (const d of st.door ? [st.door] : st.doors) { const ref = new THREE.Object3D(); root.add(ref); DOORWAYS.push({ x: d.x, z: d.z, horiz: d.horiz, gap: d.gap, t: 0.3, ref, bar: null, y: st.y, band: true }); }
+    }
+    function f0(st) { return { x: (st.x0 + st.x1) / 2, z: (st.z0 + st.z1) / 2, hx: (st.x1 - st.x0) / 2, hz: (st.z1 - st.z0) / 2, f: st.f }; }
+
+    // ---- the atrium floor: fountains, benches, planters, kiosks, a big directory ----
+    for (const s of [-1, 1]) {
+      const x = s * 27, z = -32;
+      P.cyl(x, 0, z, 3.6, 3.6, 0.6, 0xd6d3cd, 24); E.cyl(x, 0.5, z, 3.2, 3.2, 0.05, 0x5fb4e6, 24); P.cyl(x, 0, z, 0.5, 0.35, 2.4, 0xd6d3cd, 12); E.cyl(x, 2.3, z, 1.1, 0.2, 0.3, 0x9edcff, 12);
+      coll(x - 3.6, z - 3.6, x + 3.6, z + 3.6, 0, 0.6); ray(x - 3.4, 0, z - 3.4, x + 3.4, 0.6, z + 3.4);
+      for (const a of [0, 1, 2, 3]) { const bx = x + Math.cos(a * Math.PI / 2 + 0.785) * 5.6, bz = z + Math.sin(a * Math.PI / 2 + 0.785) * 5.6; P.box(bx, 0, bz, 1.8, 0.45, 0.6, 0x7c5a3a, a * Math.PI / 2 + 0.785 + Math.PI / 2); }
+    }
+    for (const [x, z] of [[-31, -40], [-31, -24], [31, -40], [31, -24], [-7, -38], [7, -38], [-7, -26], [7, -26]]) { P.box(x, 0, z, 1.8, 0.8, 1.8, 0x9ca3af); coll(x - 0.9, z - 0.9, x + 0.9, z + 0.9, 0, 0.8); ray(x - 0.9, 0, z - 0.9, x + 0.9, 0.8, z + 0.9); P.cyl(x, 0.8, z, 0.12, 0.1, 1.6, 0x5b3b22, 6); P.ball(x, 2.8, z, 1.2, leaf(Math.abs(x + z) | 0), 1.1); }
+    for (const [x, z, c] of [[-22, -40, '#f97316'], [22, -24, '#0ea5e9']]) { solid(P, x, 0, z, 2.6, 1.1, 1.6, 0xf1f5f9); P.box(x, 1.1, z, 2.6, 1.3, 0.08, 0xe5e7eb); P.box(x, 2.4, z, 3, 0.2, 2, new THREE.Color(c).getHex()); E.box(x, 1.12, z - 0.81, 2.2, 0.3, 0.02, new THREE.Color(c).getHex()); }
+    // banners hanging in the atrium
+    const banner1 = atlas.slot((g, W, H) => { g.fillStyle = '#1a0b2e'; g.fillRect(0, 0, W, H); g.font = '900 54px Barlow, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ff8a1e'; g.shadowColor = '#ff8a1e'; g.shadowBlur = 18; g.fillText('🎃 HALLOWEEN SALE 🎃', W / 2, H / 2 + 3); });
+    const banner2 = atlas.slot((g, W, H) => { const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#0ea5e9'); gr.addColorStop(1, '#6366f1'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.font = '900 52px Barlow, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText('WELCOME TO GRAND PLAZA', W / 2, H / 2 + 3); });
+    for (const [x, sl] of [[-20, banner1], [20, banner1], [0, banner2]]) { SQ.add(x, 15.2, VZ0 + 0.3, 12, 3, 0, 1, sl); SQ.add(x, 15.2, VZ1 - 0.3, 12, 3, 0, -1, sl); }
+
+    // ---- outside: the carpark ----
+    const carCols = [0xb91c1c, 0x1d4ed8, 0xf8fafc, 0x111827, 0x6b7280, 0x065f46, 0xca8a04, 0x9ca3af, 0x7c2d12, 0x334155];
+    const carAt = (x, z, along) => {
+      const c = carCols[(rand() * carCols.length) | 0], ry = along ? 0 : Math.PI / 2, fl = rand() < 0.5 ? 1 : -1;
+      P.boxC(x, 0.62, z, 1.9, 0.7, 4.4, c, 0, ry); P.boxC(x, 1.25, z + (along ? 0.15 * fl : 0), 1.72, 0.58, 2.3, 0x1f2937, 0, ry);
+      for (const sx of [-1, 1]) for (const sz of [-1.4, 1.4]) { const [ox, oz] = along ? [sx * 0.86, sz] : [sz, sx * 0.86]; P.boxC(x + ox, 0.36, z + oz, along ? 0.28 : 0.72, 0.72, along ? 0.72 : 0.28, 0x111111); }
+      const [fx, fz] = along ? [0, 2.21 * fl] : [2.21 * fl, 0];
+      for (const s of [-0.6, 0.6]) { const [ox, oz] = along ? [s, 0] : [0, s]; E.boxC(x + fx + ox, 0.75, z + fz + oz, along ? 0.3 : 0.04, 0.12, along ? 0.04 : 0.3, 0xfff6d5); E.boxC(x - fx + ox, 0.75, z - fz + oz, along ? 0.3 : 0.04, 0.12, along ? 0.04 : 0.3, 0xdc2626); }
+      const b = along ? full(x - 0.95, z - 2.2, x + 0.95, z + 2.2, 1.6) : full(x - 2.2, z - 0.95, x + 2.2, z + 0.95, 1.6); ray(b.x - b.hx, 0, b.z - b.hz, b.x + b.hx, 1.5, b.z + b.hz);
+    };
+    for (const zc of [26, 46, 66]) {
+      for (let x = -82; x <= 82; x += 2.8) {
+        if (Math.abs(x) < 8) continue;
+        for (const s of [-1, 1]) { P.box(x - 1.4, 0.013, zc + s * 2.6, 0.1, 0.01, 5, 0xf5f5f4); if (rand() < 0.5) carAt(x, zc + s * 2.6, true); }
+      }
+      P.box(0, 0.013, zc, 164, 0.01, 0.1, 0xf5f5f4);
+      for (const x of [-60, -30, 30, 60]) { C.cyl(x, 0, zc, 0.14, 0.12, 8, 0x4b5563, 8); C.box(x, 8, zc, 2.6, 0.18, 0.4, 0x374151); E.box(x, 7.98, zc, 2.2, 0.02, 0.3, 0xfff3c4); full(x - 0.2, zc - 0.2, x + 0.2, zc + 0.2, 8); }
+      for (const x of [-45, 45]) { P.box(x, 0, zc, 3.2, 1.1, 1.2, 0x9ca3af); coll(x - 1.6, zc - 0.6, x + 1.6, zc + 0.6, 0, 1.1); } // trolley bays
+    }
+    for (let z = 14; z < 88; z += 6) { P.box(-0.1, 0.013, z, 0.15, 0.01, 3, 0xfacc15); }
+    // a bus stop and a few taxis by the door
+    P.box(-14, 0, 17, 4, 0.1, 1.6, 0x9ca3af); G.box(-14, 0.1, 17.7, 4, 2.3, 0.05, 0xbfe6ff); P.box(-14, 2.4, 17, 4.3, 0.12, 1.8, 0x1f2937); coll(-16, 17.6, -12, 17.8, 0, 2.4);
+    for (const x of [10, 15]) { carAt(x, 15.5, false); }
+    // trees in planters round the carpark (their leaves turn orange for Halloween)
+    const trees = [];
+    for (const z of [16, 36, 56, 76]) for (const x of [-86, 86]) trees.push([x, z]);
+    for (let x = -80; x <= 80; x += 16) trees.push([x, 87]);
+    for (const [x, z] of [[-74, -84], [-40, -84], [-6, -84], [30, -84], [64, -84], [-84, -60], [-84, -30], [84, -60], [84, -30], [-84, -4], [84, -4]]) trees.push([x, z]);
+    for (const [x, z] of trees) { const k = Math.abs(x * 3 + z) | 0; P.cyl(x, 0, z, 0.2, 0.16, 2.4, 0x5b3b22, 7); P.ball(x, 3.4, z, 1.7, leaf(k), 1.05); P.ball(x + 0.6, 4.1, z + 0.3, 1.1, leaf(k + 1)); full(x - 0.3, z - 0.3, x + 0.3, z + 0.3, 3); }
+    // the loading bay at the back
+    for (const [x, c] of [[-30, 0xe5e7eb], [-16, 0xdc2626]]) { solid(P, x, 0, Z0 - 9, 2.5, 3.4, 8, c); solid(P, x, 0, Z0 - 4, 2.4, 2.4, 2, 0x1f2937); }
+    for (const x of [6, 9]) solid(P, x, 0, Z0 - 2, 2, 1.4, 1.2, 0x166534);
+
+    // ---- the arena wall all round, as on the other maps ----
+    addBox(0, -A, A * 2, 4, 1, 0, { mat: wallMat }); addBox(0, A, A * 2, 4, 1, 0, { mat: wallMat }); addBox(-A, 0, 1, 4, A * 2, 0, { mat: wallMat }); addBox(A, 0, 1, 4, A * 2, 0, { mat: wallMat });
+    for (let i = -A; i <= A; i += 15) for (const [x, z] of [[i, -A], [i, A], [-A, i], [A, i]]) { addBox(x, z, 1.6, 4.6, 1.6, 0, { mat: pillarMat, collide: false }); addBox(x, z, 1.9, 0.3, 1.9, 0x7b8086, { y: 4.6, collide: false }); }
+
+    // ---- make it all ----
+    const matV = new THREE.MeshLambertMaterial({ vertexColors: true });
+    // the floors and the roof cast shadows (so things upstairs don't throw shadows on the shops below); the sun only gets in through the glass roof
+    C.build(matV, root, { shadow: false }); S.build(matV, root, { shadow: true }); P.build(matV, root, { shadow: true });
+    T.build(tileMat, root, { shadow: false });
+    { const qm = new THREE.MeshLambertMaterial({ map: caProductTex(), vertexColors: true }); Q.build(qm, root, { shadow: false }); }
+    E.build(new THREE.MeshBasicMaterial({ vertexColors: true }), root, {});
+    G.build(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }), root, { order: 2 });
+    SQ.build(root);
+    rays.seal(); root.add(rays); solids.push(rays);
+    const M = MAPS.mall = { root, arena: A, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(),
+      grass: dummyLayer(), flowers: dummyLayer(), moreGrass: dummyLayer(), xb, plats, id: 'mall', name: 'Mall', shops,
+      weather: { fog: 0xd7dde6, top: 0x5b8fd6, ground: 0xc4c9cf }, fogScale: 1.7, indoor: true, start: [0, 0, -26, 0], navR: 0.55, shoppers: true,
+      diff: { hp: 1.15, speed: 1.06 },
+      spawnAt: () => navSpawn(M, 24, 75) };
+    root.traverse(o => { o.userData.noBreak = true; });
+    navBuild(M);
+    caNpcSetup(M);
+  } finally {
+    delete scene.add;
+    seed = keepSeed;
+  }
+}
+// products on a shelf: a box whose sides show a row of the products picture
+const _pm = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
+function caProdBox(Q, x, y, z, w, h, d, row) {
+  const p = Q.part(x, y, z), v0 = 1 - (row + 1) / 8 + 0.004, v1 = 1 - row / 8 - 0.004;
+  for (let f = 0; f < 6; f++) {
+    const F = BOX_FACES[f], base = p.pos.length / 3, len = f < 2 ? d : w;
+    for (let k = 1; k <= 4; k++) {
+      const q = F[k]; p.pos.push(x + q[0] * w / 2, y + h / 2 + q[1] * h / 2, z + q[2] * d / 2); p.nor.push(F[0][0], F[0][1], F[0][2]); p.col.push(1, 1, 1);
+      if (f === 2 || f === 3) p.uv.push(0.001, v0 + 0.002); else p.uv.push((k === 2 || k === 3) ? len / 1.6 : 0, k >= 3 ? v1 : v0);
+    }
+    p.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+  void _pm;
+}
+
+// ---- shop fittings, by kind of shop ----
+// Laid out in rows across the whole shop; anything that would sit in the way in (see "keep" above) is left out.
+function caFitShop(L, st, P, Q, E, G) {
+  const W = L.W, D = L.D, row = (st.o && st.o.row) !== undefined ? st.o.row : 5, col = new THREE.Color(st.color).getHex(), mid = W / 2;
+  const light = k => new THREE.Color(st.color).lerp(new THREE.Color(0xffffff), k).getHex();
+  const counter = (u, v) => { if (!L.free(u, v, 2.7, 1)) return; L.solid(P, u, 0, v, 2.6, 1.05, 0.9, 0xf1f5f9); L.box(P, u, 1.05, v, 2.7, 0.06, 1, 0x1f2937); L.box(P, u - 0.6, 1.11, v, 0.4, 0.3, 0.3, 0x111827); L.box(E, u - 0.6, 1.3, v - 0.16, 0.34, 0.22, 0.02, 0x7dd3fc); L.box(P, u, 0.05, v - 0.47, 2.6, 0.9, 0.04, col); };
+  const shelfRun = (u, v, w, d, rowK, alongU) => { // a tall shelf against a wall, full of products
+    L.solid(P, u, 0, v, w, 2.4, d, 0xe7e5e4);
+    for (const h of [0.15, 0.75, 1.35, 1.95]) alongU ? L.prod(u, h, v - d / 2 - 0.03, w - 0.2, 0.42, 0.06, rowK) : L.prod(u + (u < mid ? w / 2 + 0.03 : -w / 2 - 0.03), h, v, 0.06, 0.42, d - 0.2, rowK);
+  };
+  const wallShelves = rowK => {
+    for (let u = 1; u < W - 1; u += 4) shelfRun(Math.min(u + 1.9, W - 2.9), D - 0.65, 3.8, 0.6, rowK, true);
+    for (const s of [0, 1]) for (let v = 2.6; v < D - 2.5; v += 4) { const u = s ? W - 0.55 : 0.55, len = Math.min(3.8, D - 1.4 - v); if (len > 1) { L.solid(P, u, 0, v + len / 2, 0.6, 2.4, len, 0xe7e5e4); for (const h of [0.15, 0.75, 1.35, 1.95]) L.prod(s ? u - 0.33 : u + 0.33, h, v + len / 2, 0.06, 0.42, len - 0.2, rowK); } }
+  };
+  const gondola = (u, v0, v1, rowK) => {
+    const v = (v0 + v1) / 2, len = v1 - v0; if (!L.free(u, v, 1.2, len)) return;
+    L.solid(P, u, 0, v, 1.1, 1.5, len, 0xd6d3d1);
+    for (const h of [0.12, 0.6, 1.06]) for (const s of [-1, 1]) L.prod(u + s * 0.57, h, v, 0.05, 0.38, len - 0.1, rowK);
+    L.box(P, u, 1.5, v, 1.2, 0.05, len + 0.1, col);
+  };
+  const gondolas = (rowK, v0, v1, step = 3.3, seg = 6) => { for (let u = 2.6; u < W - 2; u += step) for (let v = v0; v < v1 - 1; v += seg + 1.6) gondola(u, v, Math.min(v + seg, v1), Array.isArray(rowK) ? rowK[Math.round(u) % rowK.length] : rowK); };
+  const rack = (u, v) => { if (!L.free(u, v, 1.7, 0.7)) return; L.box(P, u, 0, v, 1.6, 0.05, 0.6, 0x9ca3af); for (const s of [-0.75, 0.75]) L.box(P, u + s, 0, v, 0.05, 1.7, 0.05, 0xd1d5db); L.box(P, u, 1.68, v, 1.6, 0.04, 0.04, 0xd1d5db); L.prod(u, 0.55, v, 1.45, 1.1, 0.42, 2); L.coll(u, v, 1.6, 0.6, 0, 1.7); };
+  const racks = (v0, v1) => { for (let u = 2.4; u < W - 2; u += 2.9) for (let v = v0; v < v1; v += 2.8) rack(u, v); };
+  const mannequin = (u, v, c) => { if (!L.free(u, v, 0.6, 0.6)) return; L.box(P, u, 0, v, 0.5, 0.05, 0.5, 0x6b7280); L.cyl(P, u, 0.05, v, 0.05, 0.05, 0.85, 0xe5e7eb, 6); L.box(P, u, 0.9, v, 0.42, 0.62, 0.24, c); L.box(P, u, 1.52, v, 0.2, 0.24, 0.2, 0xf5f5f4); L.coll(u, v, 0.5, 0.5, 0, 1.8); };
+  const table = (u, v, w, d, c) => L.solid(P, u, 0, v, w, 0.78, d, c);
+  const roundTable = (u, v, cc = col) => { if (!L.free(u, v, 2.2, 1.1)) return; L.cyl(P, u, 0, v, 0.08, 0.08, 0.72, 0x374151, 6); L.cyl(P, u, 0.72, v, 0.5, 0.5, 0.05, 0xf5f5f4, 12); L.coll(u, v, 1, 1, 0, 0.77); for (const s of [-1, 1]) { L.box(P, u + s * 0.8, 0, v, 0.42, 0.45, 0.42, cc); L.box(P, u + s * 0.98, 0.45, v, 0.06, 0.45, 0.42, cc); } };
+  const kind = st.kind;
+  // the shop's name on the back wall too
+  if (W < 30) L.sign(mid, 3.2, D - 0.42, Math.min(W - 3, 6), Math.min(W - 3, 6) / 4, st.name, st.color, st.icon, true);
+  if (kind === 'shelves') {
+    wallShelves(row); gondolas(row, 3, D - 3.2); counter(1.8, 1.6);
+    if (st.name === 'Pumpkin & Co.') for (let i = 0; i < 10; i++) L.ball(P, 1.2 + i * 0.4, 2.6, D - 0.7, 0.17, 0xff7a1a);
+  } else if (kind === 'racks') {
+    for (const s of [0, 1]) for (let v = 2.6; v < D - 2.5; v += 4) { const u = s ? W - 0.45 : 0.45, len = Math.min(3.8, D - 1.4 - v); if (len < 1) continue; L.box(P, u, 1.7, v + len / 2, 0.06, 0.05, len, 0xd1d5db); L.prod(s ? u - 0.25 : u + 0.25, 0.55, v + len / 2, 0.45, 1.12, len - 0.2, 2); L.coll(s ? u - 0.25 : u + 0.25, v + len / 2, 0.6, len, 0, 1.8); }
+    racks(4, D - 4);
+    table(mid + 3, 2.4, 1.8, 1.0, 0xe7e5e4); L.prod(mid + 3, 0.78, 2.4, 1.6, 0.25, 0.85, 3);
+    for (const [u, c] of [[1.4, col], [W - 1.4, 0x111827], [2.5, 0xf5f5f4], [W - 2.5, light(0.3)]]) mannequin(u, 0.9, c);
+    for (let i = 0; i < 3; i++) { const u = 1.2 + i * 1.5; L.box(P, u, 0, D - 1.2, 0.06, 2.3, 1.8, 0xd6d3d1); L.box(P, u + 0.75, 2.1, D - 2.1, 1.5, 0.06, 0.06, 0x6b7280); L.box(P, u + 0.75, 0.2, D - 2.1, 1.4, 1.9, 0.03, col); }
+    L.coll(2.6, D - 1.2, 4.6, 1.8, 0, 2.3);
+    counter(W - 2.2, D - 3.4);
+  } else if (kind === 'electronics') {
+    for (let u = 1.4; u < W - 1.2; u += 1.7) { L.solid(P, u, 0, D - 0.5, 1.7, 0.9, 0.5, 0x1f2937); for (const h of [1.3, 2.5]) { L.box(P, u, h, D - 0.36, 1.55, 0.92, 0.06, 0x0b0f17); L.box(E, u, h + 0.04, D - 0.4, 1.45, 0.82, 0.02, [0x38bdf8, 0x22c55e, 0xf97316, 0xa855f7, 0xef4444][(Math.round(u) + (h > 2 ? 2 : 0)) % 5]); } }
+    for (let u = 2.6; u < W - 2; u += 3.4) for (let v = 3; v < D - 3.5; v += 3.2) { if (!L.free(u, v, 2.1, 1.1)) continue; table(u, v, 2.0, 1.0, 0xf8fafc); for (const k of [-0.55, 0.55]) { L.box(P, u + k, 0.78, v + 0.1, 0.5, 0.02, 0.36, 0x9ca3af); L.box(E, u + k, 0.8, v - 0.12, 0.5, 0.32, 0.02, 0x93c5fd); } }
+    for (const s of [0, 1]) for (let v = 2.6; v < D - 3; v += 4) shelfRun(s ? W - 0.55 : 0.55, v + 1.6, 0.6, 3.4, 7, false);
+    counter(1.8, 1.6);
+  } else if (kind === 'cases') {
+    const glow = st.icon === '💎' || st.icon === '⌚' ? 0xfde68a : 0xbae6fd;
+    const caseAt = (u, v, w, d) => { if (!L.free(u, v, w, d)) return; L.solid(P, u, 0, v, w, 0.9, d, 0x1f2937); L.box(G, u, 0.9, v, w, 0.32, d, 0xffffff); for (let k = 0; k < Math.floor(w / 0.35); k++) L.box(E, u - w / 2 + 0.2 + k * 0.35, 0.92, v, 0.12, 0.06, 0.12, glow); for (let k = 0; k < Math.floor(d / 0.35); k++) L.box(E, u, 0.92, v - d / 2 + 0.2 + k * 0.35, 0.1, 0.05, 0.1, glow); };
+    for (const s of [0, 1]) for (let v = 2.6; v < D - 2.5; v += 3.4) caseAt(s ? W - 0.75 : 0.75, v + 1.4, 1.0, 2.8);
+    for (let u = 1.5; u < W - 1; u += 3.4) caseAt(u + 1.4, D - 1.2, 2.8, 1.0);
+    for (let u = 3; u < W - 2.5; u += 3.6) for (let v = 4; v < D - 4; v += 4) caseAt(u, v, 1.2, 2.4);
+    L.box(E, mid, 2.0, D - 0.33, Math.min(W - 3, 10), 1.2, 0.02, light(0.5));
+    counter(1.8, 1.8);
+  } else if (kind === 'cafe') {
+    L.solid(P, mid, 0, D - 2.0, W - 3, 1.05, 0.9, 0x6b4f3a); L.box(P, mid, 1.05, D - 2.0, W - 2.9, 0.06, 1.0, 0xf5f5f4);
+    L.box(G, mid - 1.5, 1.11, D - 2.0, 2, 0.5, 0.8, 0xffffff); for (let k = 0; k < 5; k++) L.ball(P, mid - 2.3 + k * 0.4, 1.25, D - 2.0, 0.12, [0xf59e0b, 0xb45309, 0xfde68a, 0xf472b6, 0x92400e][k]);
+    L.box(P, mid + 1.6, 1.11, D - 2.0, 0.7, 0.6, 0.5, 0x9ca3af);
+    for (let k = 0; k < 3; k++) { L.box(E, mid - 2.4 + k * 2.4, 2.0, D - 0.36, 2.1, 1.0, 0.02, 0x1f2937); L.box(E, mid - 2.4 + k * 2.4, 2.75, D - 0.38, 1.8, 0.12, 0.02, light(0.4)); }
+    for (let u = 2; u < W - 1.5; u += 3.0) for (let v = 2.6; v < D - 4; v += 2.6) roundTable(u, v);
+  } else if (kind === 'aisles') {
+    const big = st.o && st.o.big;
+    gondolas(row === 6 ? 6 : [0, 5, 7, 0, 6], big ? 6.5 : 3, D - (big ? 3.4 : 3), 3.3, big ? 5 : 6);
+    if (big) {
+      for (let u = 2; u < W - 2; u += 2.2) { if (!L.free(u, D - 0.55, 2.1, 0.9)) continue; L.solid(P, u, 0, D - 0.55, 2.1, 2.3, 0.9, 0xe5e7eb); L.box(G, u, 0.1, D - 1.03, 2.0, 2.1, 0.04, 0xdbeafe); L.box(E, u, 2.2, D - 1.0, 1.9, 0.06, 0.04, 0xe0f2fe); L.prod(u, 0.2, D - 0.7, 1.9, 1.8, 0.5, 6); }
+      for (const u of [8, 12, 16, 22, 62, 68, 72, 76]) { L.solid(P, u, 0, 3.6, 2.4, 0.95, 0.9, 0x374151); L.box(P, u, 0.95, 3.6, 2.4, 0.04, 0.6, 0x111827); L.box(E, u + 0.9, 1.3, 3.2, 0.3, 0.25, 0.02, 0x86efac); }
+    } else { counter(W - 2.2, 1.8); wallShelves(row); }
+  } else if (kind === 'furniture') {
+    const beds = st.o && st.o.beds;
+    for (let u = 3, k = 0; u < W - 2.5; u += 4.6, k++) for (let v = 3.6; v < D - 2.5; v += 4.2) {
+      if (!L.free(u, v, 3.4, 3)) continue;
+      const c = [0x6b7280, 0x1e3a8a, 0x7c2d12, 0x065f46, 0x9a3412][(k + Math.round(v)) % 5];
+      L.box(P, u, 0.005, v, 3.2, 0.01, 2.6, [0xe7e5e4, 0xd6d3d1, 0xfef3c7][k % 3]);
+      if (beds) { L.solid(P, u, 0, v, 2.0, 0.45, 2.3, 0x78350f); L.box(P, u, 0.45, v, 1.9, 0.22, 2.2, 0xf8fafc); L.box(P, u, 0.67, v + 0.8, 1.7, 0.12, 0.5, c); for (const q of [-0.5, 0.5]) L.box(P, u + q, 0.67, v - 0.85, 0.7, 0.14, 0.4, 0xffffff); L.box(P, u, 0, v - 1.2, 2.0, 1.2, 0.12, 0x78350f); }
+      else { L.solid(P, u, 0, v, 2.4, 0.45, 0.95, c); L.box(P, u, 0.45, v + 0.38, 2.4, 0.5, 0.22, c); for (const q of [-1.1, 1.1]) L.box(P, u + q, 0.45, v, 0.22, 0.25, 0.95, c); L.solid(P, u, 0, v - 1.3, 1.2, 0.42, 0.6, 0x92400e); L.cyl(P, u + 1.5, 0, v + 0.3, 0.05, 0.05, 1.5, 0x111827, 6); L.cyl(E, u + 1.5, 1.5, v + 0.3, 0.28, 0.2, 0.3, 0xfef3c7, 8); }
+    }
+    counter(W - 2.2, D - 1.4);
+  } else if (kind === 'dept') {
+    racks(5, D - 3);
+    for (const u of [6, 14, 22, 62, 70, 78]) { if (!L.free(u, 3.4, 3, 1)) continue; L.solid(P, u, 0, 3.4, 3, 1, 0.8, 0xfdf2f8); L.box(G, u, 1, 3.4, 3, 0.3, 0.8, 0xffffff); L.prod(u, 1.0, 3.4, 2.8, 0.25, 0.5, 6); }
+    for (let u = 1; u < W - 1; u += 4) shelfRun(Math.min(u + 1.9, W - 2.9), D - 0.65, 3.8, 0.6, 3, true);
+    for (let k = 0; k < 8; k++) mannequin(30 + k * 1.2, 1, [0x9f1239, 0x111827, 0xf5f5f4, 0x1d4ed8][k % 4]);
+    counter(W - 2.2, D - 2.4); counter(2.2, D - 2.4);
+  } else if (kind === 'foodcourt') {
+    const names = [['Burger Barn', '#dc2626', '🍔'], ['Taco Town', '#ea580c', '🌮'], ['Pizza Place', '#16a34a', '🍕'], ['Sushi Go', '#0ea5e9', '🍣'], ['Wok Star', '#b91c1c', '🥡'], ['Juice Bar', '#65a30d', '🥤'], ['Curry House', '#ca8a04', '🍛'], ['Donut Den', '#db2777', '🍩'], ['Kebab King', '#9a3412', '🥙'], ['Salad Bowl', '#15803d', '🥗']];
+    const n = names.length, sw = (W - 2) / n;
+    names.forEach(([nm, c, ic], i) => {
+      const u = 1 + sw * (i + 0.5), cc = new THREE.Color(c).getHex();
+      L.solid(P, u, 0, D - 3.2, sw - 0.8, 1.05, 0.9, 0xf8fafc); L.box(P, u, 0.05, D - 3.67, sw - 0.8, 0.9, 0.04, cc);
+      L.box(P, u, 0, D - 0.9, sw - 0.3, 3, 0.1, 0xd1d5db); L.box(E, u, 1.6, D - 1.0, sw - 1.4, 1.0, 0.02, 0x1f2937);
+      L.sign(u, 3.5, D - 3.2, sw - 1, (sw - 1) / 4, nm, c, ic);
+      for (const q of [-1, 1]) L.box(P, u + q * (sw / 2 - 0.2), 0, D - 2, 0.1, 3.4, 2.6, 0xe5e7eb);
+    });
+    for (let u = 3; u < W - 2; u += 3.2) for (let v = 3; v < D - 5.5; v += 2.6) roundTable(u, v, [0xef4444, 0xf59e0b, 0x22c55e, 0x3b82f6][Math.round(u + v) % 4]);
+  } else if (kind === 'cinema') {
+    L.box(P, mid, 0.02, D / 2, W - 1, 0.01, D - 1, 0x7f1d1d);
+    for (const u of [10, 22]) { L.solid(P, u, 0, 6, 5, 1.1, 1, 0x111827); L.box(E, u, 1.1, 5.5, 4.6, 0.5, 0.02, 0xfbbf24); L.sign(u, 2.6, 6.6, 4.6, 1.15, 'Tickets', '#fbbf24', '🎟️', true); }
+    for (const u of [62, 74]) { L.solid(P, u, 0, 6, 5, 1.1, 1, 0x111827); L.box(G, u - 1.2, 1.1, 6, 1, 1.0, 0.8, 0xffffff); L.box(E, u - 1.2, 1.2, 6, 0.9, 0.5, 0.7, 0xfde047); L.sign(u, 2.6, 6.6, 4.6, 1.15, 'Snacks', '#f97316', '🍿', true); }
+    for (let i = 0; i < 6; i++) { const u = 6 + i * (W - 12) / 5; L.solid(P, u, 0, D - 0.4, 3, 3, 0.25, 0x1f2937); L.sign(u, 3.6, D - 0.6, 2.8, 0.7, 'Screen ' + (i + 1), '#ef4444', '🎬', true); }
+    for (let u = 4; u < W - 3; u += 7) for (const v of [11, 15]) { if (!L.free(u, v, 1.6, 2.5)) continue; L.box(E, u, 1.0, v, 1.6, 2.4, 0.02, [0xf97316, 0x7c3aed, 0x0ea5e9, 0xdc2626, 0x16a34a][Math.round(u / 7 + v) % 5]); }
+    for (let u = 4; u < W - 3; u += 2.4) for (const v of [9, 13]) L.cyl(P, u, 0, v, 0.06, 0.06, 1, 0xd4af37, 6);
+  } else if (kind === 'arcade') {
+    const cab = (u, v, c) => { if (!L.free(u, v, 0.95, 1.4)) return; L.solid(P, u, 0, v, 0.9, 1.9, 0.9, 0x111827); L.box(E, u, 1.0, v - 0.46, 0.7, 0.55, 0.02, c); L.box(E, u, 1.75, v - 0.46, 0.8, 0.18, 0.02, 0xfef08a); L.box(P, u, 0.85, v - 0.6, 0.85, 0.08, 0.3, 0x374151); };
+    const cols = [0x22d3ee, 0xf472b6, 0xa3e635, 0xfb923c, 0x818cf8];
+    for (let v = 4, k = 0; v < D - 3; v += 3.4, k++) for (let u = 1.2; u < W - 1; u += 1.05) cab(u, v, cols[(k + Math.round(u)) % 5]);
+    for (let u = 3; u < W - 2; u += 9) { if (!L.free(u, 1.6, 1.4, 1.4)) continue; L.solid(P, u, 0, 1.6, 1.3, 0.9, 1.3, 0xdc2626); L.box(G, u, 0.9, 1.6, 1.3, 1.2, 1.3, 0xffffff); L.ball(P, u, 1.15, 1.6, 0.25, 0xfde047); }
+    L.box(E, mid, 3.3, D - 0.35, W - 2, 0.12, 0.02, 0xe879f9); L.box(E, mid, 0.1, D - 0.35, W - 2, 0.06, 0.02, 0x22d3ee);
+    counter(W - 2.4, D - 1.6);
+  } else if (kind === 'gym') {
+    for (let u = 1.5; u < W - 1; u += 1.6) { if (!L.free(u, 3.2, 0.9, 2.2)) continue; L.solid(P, u, 0, 3.2, 0.8, 0.3, 2, 0x111827); L.box(P, u, 0.3, 2.3, 0.7, 1.1, 0.08, 0x374151); L.box(E, u, 1.25, 2.3, 0.4, 0.25, 0.02, 0x38bdf8); }
+    for (let u = 2.4; u < W - 2; u += 4) for (let v = 7; v < D - 2.5; v += 3.5) { if (!L.free(u, v, 2.4, 0.6)) continue; L.solid(P, u, 0, v, 1.6, 0.5, 0.5, 0x1f2937); L.box(P, u, 1.0, v, 2.2, 0.05, 0.05, 0x9ca3af); for (const q of [-1, 1]) L.cyl(P, u + q * 1.0, 0.75, v, 0.28, 0.28, 0.08, 0x111827, 10); }
+    L.box(G, mid, 0.2, D - 0.4, W - 1, 2.6, 0.04, 0xe5e7eb);
+    L.box(P, mid, 0.02, D / 2, W - 1, 0.01, D - 2, 0x1f2937);
+  } else if (kind === 'sports') {
+    wallShelves(4);
+    for (let u = 2.6; u < W - 2; u += 3.3) for (let v = 3.5; v < D - 3.5; v += 3.2) { if (!L.free(u, v, 1.5, 1.5)) continue; L.solid(P, u, 0, v, 1.4, 0.9, 1.4, 0x1f2937); for (let k = 0; k < 4; k++) L.ball(P, u + (k % 2 - 0.5) * 0.6, 1.1, v + (k < 2 ? -0.3 : 0.3), 0.22, [0xf97316, 0xffffff, 0x111827, 0xfacc15][k]); }
+    counter(1.8, 1.6);
+  } else if (kind === 'florist') {
+    for (let u = 2.2; u < W - 1.5; u += 1.3) for (let v = 2.5; v < D - 3; v += 1.4) { if (!L.free(u, v, 0.7, 0.7)) continue; L.cyl(P, u, 0, v, 0.28, 0.32, 0.5, 0x6b7280, 8); for (let k = 0; k < 4; k++) L.ball(P, u + (k % 2 - 0.5) * 0.25, 0.7 + (k >> 1) * 0.15, v + (k % 2 ? 0.1 : -0.1), 0.16, [0xf472b6, 0xfacc15, 0xef4444, 0xffffff, 0xa855f7][(k + Math.round(u + v)) % 5]); L.coll(u, v, 0.6, 0.6, 0, 0.9); }
+    counter(W - 2.2, D - 1.6);
+  }
+}
+// ---------- shoppers ----------
+// They walk between points on their own floor, stop to look in windows, and run when a cube gets close. One hit kills
+// them (yours too: be careful where you shoot). Some cubes go after them. More come in now and then.
+const CA_NPC = { list: [], pts: [], M: null, next: 0 };
+function caNpcSetup(M) {
+  const G = M.nav, pts = [];
+  // points on a 4 m lattice on every floor (not on the escalators), and the links between them you can walk in a straight line
+  for (const y of [0, 6, 12]) for (let z = -86; z <= 86; z += 4) for (let x = -86; x <= 86; x += 4) {
+    const j = navNode(G, x, y, z); if (j < 0 || Math.abs(G.Y[j] - y) > 0.05 || G.dist[j] === Infinity) continue;
+    navCenter(G, j, _nc); if (pts.some(p => p.y === y && Math.abs(p.x - _nc[0]) < 1 && Math.abs(p.z - _nc[2]) < 1)) continue;
+    pts.push({ x: _nc[0], y, z: _nc[2], nb: [] });
+  }
+  for (let i = 0; i < pts.length; i++) for (let k = i + 1; k < pts.length; k++) {
+    const a = pts[i], b = pts[k]; if (a.y !== b.y || Math.abs(a.x - b.x) > 5.7 || Math.abs(a.z - b.z) > 5.7) continue;
+    if (navClear(G, a.x, a.y, a.z, b.x, b.z)) { a.nb.push(k); b.nb.push(i); }
+  }
+  M.npcPts = pts.filter(p => p.nb.length);
+  M.npcPts.forEach((p, i) => p.i = i);
+  const idx = new Map(pts.map((p, i) => [i, p])); for (const p of M.npcPts) p.nb = p.nb.map(k => idx.get(k)).filter(q => q.nb.length);
+}
+const NPC_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
+function caPartGeo(fn) { const B = new Batch(1000); fn(B); const p = B.parts.values().next().value, geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(p.pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(p.nor, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(p.col, 3)); geo.setIndex(p.idx); geo.computeBoundingSphere(); return geo; }
+function caMakeShopper() {
+  const pick = a => a[(Math.random() * a.length) | 0];
+  const skin = pick([0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac, 0x6b4423]), shirt = pick([0xef4444, 0x3b82f6, 0x22c55e, 0xf59e0b, 0xa855f7, 0xf8fafc, 0x111827, 0xec4899, 0x14b8a6, 0x64748b]);
+  const pants = pick([0x1e3a8a, 0x111827, 0x57534e, 0x7c2d12, 0x334155, 0xd6d3d1]), hair = pick([0x111111, 0x3b2314, 0x7c4a1e, 0xd6b25e, 0x9ca3af, 0x7f1d1d]);
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(caPartGeo(B => { B.box(0, 0.86, 0, 0.44, 0.18, 0.26, pants); B.box(0, 1.02, 0, 0.5, 0.6, 0.28, shirt); B.box(0, 1.62, 0, 0.12, 0.06, 0.12, skin); B.box(0, 1.66, 0, 0.27, 0.29, 0.27, skin); B.box(0, 1.9, 0.02, 0.29, 0.1, 0.29, hair); B.box(0, 1.72, 0.12, 0.29, 0.22, 0.06, hair); B.box(-0.06, 1.8, -0.14, 0.05, 0.04, 0.02, 0x111111); B.box(0.06, 1.8, -0.14, 0.05, 0.04, 0.02, 0x111111); if (Math.random() < 0.4) B.box(0.33, 0.55, 0.05, 0.3, 0.38, 0.16, pick([0xffffff, 0xfacc15, 0xdc2626, 0x7c3aed])); }), NPC_MAT);
+  const leg = () => { const m = new THREE.Mesh(caPartGeo(B => { B.box(0, -0.84, 0, 0.19, 0.74, 0.2, pants); B.box(0, -0.9, -0.04, 0.2, 0.1, 0.28, 0x1f2937); }), NPC_MAT); return m; };
+  const arm = () => new THREE.Mesh(caPartGeo(B => { B.box(0, -0.5, 0, 0.14, 0.5, 0.16, shirt); B.box(0, -0.62, 0, 0.13, 0.12, 0.14, skin); }), NPC_MAT);
+  const l1 = leg(), l2 = leg(), a1 = arm(), a2 = arm();
+  l1.position.set(-0.11, 0.9, 0); l2.position.set(0.11, 0.9, 0); a1.position.set(-0.32, 1.6, 0); a2.position.set(0.32, 1.6, 0);
+  g.add(body, l1, l2, a1, a2);
+  body.castShadow = true;
+  return { g, body, legs: [l1, l2], arms: [a1, a2] };
+}
+function caNpcSpawn(M, far) {
+  const pts = M.npcPts; if (!pts || !pts.length) return;
+  let p = null;
+  for (let k = 0; k < 30; k++) { const q = pts[(Math.random() * pts.length) | 0]; if (!far || Math.hypot(q.x - player.pos.x, q.z - player.pos.z) > 22 || Math.abs(q.y - player.pos.y) > 3) { p = q; break; } }
+  if (!p) return;
+  const m = caMakeShopper(), h = { ...m, x: p.x, y: p.y, z: p.z, at: p, to: p.nb[(Math.random() * p.nb.length) | 0], hp: 1, mode: 'walk', wait: Math.random() * 2, ph: Math.random() * 6, spd: 1.1 + Math.random() * 0.4, dead: 0 };
+  m.g.position.set(h.x, h.y, h.z); M.root.add(m.g);
+  m.body.userData.onShot = () => caNpcKill(h, 'you');
+  solids.push(m.body); CA_NPC.list.push(h);
+}
+function caNpcClear() { for (const h of CA_NPC.list) { if (h.g.parent) h.g.parent.remove(h.g); dropSolid(h.body); h.g.traverse(o => o.geometry && o.geometry.dispose()); } CA_NPC.list.length = 0; }
+function caNpcReset() {
+  caNpcClear();
+  const M = MAPS[mapId]; if (!M || !M.shoppers || gameMode !== 'classic') return;
+  for (let i = 0; i < 28; i++) caNpcSpawn(M, true);
+  CA_NPC.next = performance.now() + 6000;
+}
+function caNpcKill(h, by) {
+  if (h.hp <= 0) return;
+  h.hp = 0; h.dead = 0.001; h.by = by; dropSolid(h.body);
+  const p = new THREE.Vector3(h.x, h.y + 1.2, h.z);
+  debris(p, 0x9f1239, 4, 0.6);
+  if (by === 'you') { popNumber(p.clone().setY(p.y + 0.6), 0, true, 'Civilian'); if (!CA_NPC.warned) { CA_NPC.warned = true; banner('You hit a shopper!', 'Watch where you shoot'); } Sound.play('hurt'); }
+}
+// the nearest shopper (for the cubes that hunt them)
+function caNpcNear(x, y, z, R) {
+  let best = null, bd = R;
+  for (const h of CA_NPC.list) { if (h.hp <= 0 || Math.abs(h.y - y) > 2) continue; const d = Math.hypot(h.x - x, h.z - z); if (d < bd) { bd = d; best = h; } }
+  return best;
+}
+const _np = new THREE.Vector3();
+function caNpcUpdate(dt, t) {
+  const M = MAPS[mapId]; if (!M || !M.shoppers || state !== 'playing') return;
+  if (performance.now() > CA_NPC.next && CA_NPC.list.filter(h => h.hp > 0).length < 28) { CA_NPC.next = performance.now() + 5000; caNpcSpawn(M, true); }
+  for (let i = CA_NPC.list.length - 1; i >= 0; i--) {
+    const h = CA_NPC.list[i];
+    if (h.hp <= 0) {
+      // falls over, then fades away
+      h.dead += dt; const k = Math.min(1, h.dead / 0.45);
+      h.g.rotation.x = -k * Math.PI / 2 * 0.98; h.g.position.y = h.y + 0.12 * k;
+      h.arms[0].rotation.z = h.arms[1].rotation.z = 0;
+      if (h.dead > 9) { h.g.parent && h.g.parent.remove(h.g); h.g.traverse(o => o.geometry && o.geometry.dispose()); CA_NPC.list.splice(i, 1); }
+      continue;
+    }
+    // the nearest cube on this floor: too close and it gets you, close and you run
+    let th = null, td = 13;
+    for (const e of enemies) {
+      const u = e.userData; if (Math.abs((u.jy || 0) - h.y) > 2.2 || u.spawnT < 1) continue;
+      const d = Math.hypot(e.position.x - h.x, e.position.z - h.z);
+      if (d < u.size * 0.5 + 0.45 && !u.T.ranged) { caNpcKill(h, 'cube'); break; }
+      if (d < td) { td = d; th = e; }
+    }
+    if (h.hp <= 0) continue;
+    const scared = !!th;
+    if (scared && h.mode !== 'run') { h.mode = 'run'; h.wait = 0; h.to = caNpcAway(h, th); }
+    if (!scared && h.mode === 'run') h.mode = 'walk';
+    if (h.wait > 0) { h.wait -= dt; h.legs[0].rotation.x *= 0.8; h.legs[1].rotation.x *= 0.8; h.arms[0].rotation.x *= 0.8; h.arms[1].rotation.x *= 0.8; continue; }
+    const to = h.to || h.at, dx = to.x - h.x, dz = to.z - h.z, d = Math.hypot(dx, dz), spd = scared ? 4.3 : h.spd;
+    if (d < 0.5) {
+      h.at = to;
+      h.to = scared ? caNpcAway(h, th) : (() => { const nb = to.nb.filter(q => q !== h.from); return (nb.length ? nb : to.nb)[(Math.random() * (nb.length || to.nb.length)) | 0]; })();
+      h.from = to;
+      if (!scared && Math.random() < 0.25) h.wait = 1 + Math.random() * 3;
+      continue;
+    }
+    h.x += dx / d * spd * dt; h.z += dz / d * spd * dt;
+    _np.set(h.x, h.y, h.z); collide(_np, 0.3, h.y); h.x = _np.x; h.z = _np.z;
+    h.g.position.set(h.x, h.y, h.z);
+    const want = Math.atan2(-dx, -dz); let dr = want - h.g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); h.g.rotation.y += dr * Math.min(1, dt * 10);
+    h.ph += dt * spd * 3.2;
+    const sw = Math.sin(h.ph) * (scared ? 0.9 : 0.5);
+    h.legs[0].rotation.x = sw; h.legs[1].rotation.x = -sw;
+    if (scared) { h.arms[0].rotation.x = h.arms[1].rotation.x = -2.6 + Math.sin(h.ph * 2) * 0.3; h.arms[0].rotation.z = -0.3; h.arms[1].rotation.z = 0.3; }
+    else { h.arms[0].rotation.x = -sw * 0.7; h.arms[1].rotation.x = sw * 0.7; h.arms[0].rotation.z = h.arms[1].rotation.z = 0; }
+  }
+}
+// the next point that takes you furthest from the cube
+function caNpcAway(h, e) {
+  const p = h.at || h.to; if (!p || !p.nb.length) return p;
+  let best = p.nb[0], bd = -1;
+  for (const q of p.nb) { const d = Math.hypot(q.x - e.position.x, q.z - e.position.z) + Math.random() * 1.5; if (d > bd) { bd = d; best = q; } }
+  return best;
+}
+
+// ---------- shapes merged into one (palms, dead trees) ----------
+function caMerge(geos) {
+  const pos = [], nor = [];
+  for (let g of geos) { g = g.index ? g.toNonIndexed() : g; g.computeVertexNormals(); const P = g.attributes.position, N = g.attributes.normal; for (let i = 0; i < P.count; i++) { pos.push(P.getX(i), P.getY(i), P.getZ(i)); nor.push(N.getX(i), N.getY(i), N.getZ(i)); } }
+  const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); out.computeBoundingSphere(); return out;
+}
+const caM4 = (x, y, z, rx = 0, ry = 0, rz = 0, s = 1) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(s, s, s));
+// a palm: a leaning trunk in segments, and a crown of drooping fronds
+const PALM = (() => { let m = null; return () => m || (m = (() => {
+  const trunk = [], crown = [];
+  let x = 0, y = 0, lean = 0;
+  for (let i = 0; i < 7; i++) { const h = 0.9, r = 0.24 - i * 0.015; const g = new THREE.CylinderGeometry(r * 0.92, r, h, 7); g.applyMatrix4(caM4(x, y + h / 2, 0, 0, 0, -lean)); trunk.push(g); y += h * Math.cos(lean); x += h * Math.sin(lean); lean += 0.045; }
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; for (let k = 0; k < 3; k++) { const g = new THREE.BoxGeometry(0.5 - k * 0.12, 0.05, 1.1); g.applyMatrix4(caM4(0, 0, 0.55 + k * 0.95, 0.35 + k * 0.38, 0, 0)); g.applyMatrix4(caM4(x, y + 0.1, 0, 0, a, 0)); crown.push(g); } }
+  crown.push(new THREE.SphereGeometry(0.32, 8, 6).applyMatrix4(caM4(x, y - 0.1, 0)));
+  return { trunk: caMerge(trunk), crown: caMerge(crown) };
+})()); })();
+// a dead tree: a bare trunk with crooked branches
+const DEADTREE = (() => { let m = null; return () => m || (m = (() => {
+  const gs = [new THREE.CylinderGeometry(0.18, 0.32, 4.2, 6).applyMatrix4(caM4(0, 2.1, 0))];
+  for (const [y, a, t, l] of [[2.6, 0.3, 0.9, 1.8], [3.2, 2.4, 0.8, 1.5], [3.7, 4.2, 0.7, 1.4], [2.1, 5.3, 1.0, 1.3], [4.0, 1.4, 0.5, 1.1]]) {
+    const g = new THREE.CylinderGeometry(0.05, 0.11, l, 5); g.applyMatrix4(caM4(0, l / 2, 0)); g.applyMatrix4(caM4(0, 0, 0, 0, 0, t)); g.applyMatrix4(caM4(0, y, 0, 0, a, 0)); gs.push(g);
+    const g2 = new THREE.CylinderGeometry(0.02, 0.05, l * 0.6, 4); g2.applyMatrix4(caM4(0, l * 0.3, 0)); g2.applyMatrix4(caM4(0, 0, 0, 0.6, 0, t + 0.5)); g2.applyMatrix4(caM4(Math.cos(a) * Math.sin(t) * l * -0.0, 0, 0)); g2.applyMatrix4(caM4(0, y + l * 0.7, 0, 0, a, 0)); gs.push(g2);
+  }
+  return caMerge(gs);
+})()); })();
+// grass that landed somewhere it shouldn't (scatter() gives up after a few tries): hide it
+function caTidyGrass(mesh) {
+  const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), Z = new THREE.Matrix4().makeScale(0, 0, 0);
+  for (let i = 0; i < mesh.count; i++) { mesh.getMatrixAt(i, m); m.decompose(p, q, sc); if (grassBlocked(p.x, p.z)) mesh.setMatrixAt(i, Z); }
+  mesh.instanceMatrix.needsUpdate = true;
+}
+function caGroundTex(base, spots) {
+  return makeCanvas(256, (g, S) => { g.fillStyle = base; g.fillRect(0, 0, S, S); for (let i = 0; i < 2600; i++) { g.fillStyle = spots[(rand() * spots.length) | 0]; g.fillRect(rand() * S, rand() * S, 1 + rand() * 3, 1 + rand() * 3); } });
+}
+
+// ---------- Seaside ----------
+// A beach town. The ocean along the south edge (cubes never come out of the water), a sandy beach with umbrellas,
+// beach huts, a lifeguard tower and a long pier; the promenade road; a neighbourhood of beach houses with gardens
+// (every front door can be barricaded); and in the north, a block of tall buildings, shops and a plaza.
+function buildSeaside() {
+  const root = new THREE.Group(); sceneAdd(root);
+  const keepSeed = seed; seed = 61616;
+  const A = 80; ARENA = A;
+  boxes.length = solids.length = noGrass.length = houseRects.length = 0;
+  scene.add = (...o) => { root.add(...o); return scene; };
+  try {
+    const xb = [], plats = [], P = new Batch(32), E = new Batch(48), SHORE = 44;
+    const std = color => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 1 });
+    // walls on the land sides; the sea side is open (an invisible line in the shallows keeps everyone in)
+    addBox(0, -A, A * 2, 4, 1, 0, { mat: wallMat });
+    addBox(-A, -15, 1, 4, 130, 0, { mat: wallMat }); addBox(A, -15, 1, 4, 130, 0, { mat: wallMat });
+    for (let i = -A; i <= A; i += 10) for (const [x, z] of [[i, -A], [-A, i], [A, i]]) { if (z > 50) continue; addBox(x, z, 1.6, 4.6, 1.6, 0, { mat: pillarMat, collide: false }); addBox(x, z, 1.9, 0.3, 1.9, 0x7b8086, { y: 4.6, collide: false }); }
+    addCollider(-22, 50, 116, 0.6, 4); addCollider(61, 50, 38, 0.6, 4);
+    // sand and sea
+    const sandT = tex(caGroundTex('#e3cf9f', ['rgba(190,160,110,.35)', 'rgba(250,240,210,.4)', 'rgba(170,140,95,.25)']), 40, 14);
+    const sand = new THREE.Mesh(new THREE.PlaneGeometry(320, 70), new THREE.MeshLambertMaterial({ map: sandT, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0.014, 17 + 35); sand.receiveShadow = true; scene.add(sand);
+    noGrass.push({ x: 0, z: 50, hx: A + 2, hz: 42 });
+    const waterT = new THREE.CanvasTexture(makeCanvas(256, (g, S) => { g.fillStyle = '#2b7fb3'; g.fillRect(0, 0, S, S); for (let i = 0; i < 500; i++) { g.strokeStyle = `rgba(${200 + rand() * 55},${230 + rand() * 25},255,${0.08 + rand() * 0.18})`; g.lineWidth = 1 + rand() * 2; const x = rand() * S, y = rand() * S; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 8, y - 3, x + 16 + rand() * 10, y); g.stroke(); } }));
+    waterT.wrapS = waterT.wrapT = THREE.RepeatWrapping; waterT.repeat.set(160, 90);
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(1800, 1000), new THREE.MeshPhongMaterial({ map: waterT, color: 0x8fd0ff, shininess: 90, specular: 0x88aacc, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+    water.rotation.x = -Math.PI / 2; water.position.set(0, 0.07, SHORE + 500); water.userData.noBreak = true; scene.add(water);
+    const foam = new THREE.Mesh(new THREE.PlaneGeometry(400, 1.6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
+    foam.rotation.x = -Math.PI / 2; foam.position.set(0, 0.09, SHORE + 0.4); scene.add(foam);
+    // the promenade: road, pavement, a low sea wall with gaps down to the beach
+    ground(0, 11.5, A * 2, 7, 0x4a4d52, 0.03); for (let x = -A + 3; x < A; x += 6) ground(x, 11.5, 2.6, 0.18, 0xf5f5f4, 0.05);
+    ground(0, 16.1, A * 2, 2.2, 0xcfc8b8, 0.035);
+    noGrass.push({ x: 0, z: 13, hx: A, hz: 4.5 });
+    for (let x = -A + 1; x < A - 1; x += 16) { const w = Math.min(12, A - 1 - x); if (w < 1) continue; addBox(x + w / 2, 17.4, w, 0.55, 0.5, 0, { mat: plaster(0xe8e2d4) }); }
+    // the streets of the neighbourhood and the town
+    for (const z of [-17, -43]) { ground(0, z, A * 2, 6, 0x4a4d52, 0.03); for (let x = -A + 3; x < A; x += 6) ground(x, z, 2.6, 0.16, 0xf5f5f4, 0.05); noGrass.push({ x: 0, z, hx: A, hz: 3.4 }); }
+    for (const x of [-40, 0, 40]) { ground(x, -16, 6, 54, 0x4a4d52, 0.031); noGrass.push({ x, z: -16, hx: 3.4, hz: 27 }); }
+    ground(0, -62, A * 2, 36, 0x9a9da3, 0.02); noGrass.push({ x: 0, z: -62, hx: A, hz: 18.5 });
+    // the beach houses: two rows on each block, front doors onto the streets
+    const pastel = [0xf9d5a7, 0xbfe3e0, 0xf6c6c6, 0xd9e8c4, 0xfff1b8, 0xcfd8f6, 0xf3d1ef, 0xe8e0d0], roofs = [0x2f5d8a, 0xb4532a, 0x3f6b4f, 0x6b3b2a, 0x8a2f2f, 0x41526b];
+    let hi = 0;
+    for (const bx of [-60, -20, 20, 60]) for (const [hz, door] of [[-28, 's'], [-5, 'n']]) for (const s of [-1, 1]) {
+      const x = bx + s * 8.5, w = 8 + (hi % 3), d = 7;
+      house(x, hz, w, d, door, pastel[hi % pastel.length], roofs[hi % roofs.length]);
+      // the garden: a fence along the back and sides, a mailbox, maybe a car in the drive
+      const fz = door === 's' ? hz + 6.2 : hz - 6.2, back = door === 's' ? hz - 6.5 : hz + 6.5;
+      fence(x - 8, back, x + 8, back);
+      P.box(x + w / 2 + 1.2, 0, fz, 0.14, 1.0, 0.14, 0x6b4423); P.box(x + w / 2 + 1.2, 1.0, fz, 0.3, 0.25, 0.45, [0x1d4ed8, 0xdc2626, 0x111827][hi % 3]);
+      if (hi % 3 === 0) car(x - w / 2 - 2.2, fz + (door === 's' ? -1.4 : 1.4), false, [0xc0392b, 0x2f6fb0, 0xe6b422, 0x6b7280, 0xf8fafc][hi % 5]);
+      if (hi % 2 === 0) tree(x + (s * 5.5), back + (door === 's' ? 2.4 : -2.4), 0.9 + rand() * 0.3, false);
+      // a hedge along the front
+      for (const q of [-1, 1]) { const hx = x + q * (w / 2 + 0.4); P.box(hx - q * 1.6, 0, fz + (door === 's' ? 0.4 : -0.4), 3.2, 0.9, 0.7, 0x3f7d36); }
+      hi++;
+    }
+    // a pool in a back garden
+    E.box(-11.5, 0.02, -36.6, 4.5, 0.02, 2.6, 0x38bdf8); P.box(-11.5, 0, -36.6, 5.3, 0.03, 3.4, 0xf5f5f4);
+    // the town: tall buildings, a row of shops with awnings, a plaza with a fountain
+    [[-64, -62, 20, 22, 14, 0xe9d5b5], [-38, -64, 16, 20, 22, 0xc9d6e3], [16, -62, 18, 22, 18, 0xdcc9e8], [40, -66, 14, 18, 26, 0xb9d3c2], [64, -62, 20, 22, 12, 0xf0d9a8]]
+      .forEach(([x, z, w, d, h, c]) => building(x, z, w, d, h, c));
+    for (let i = 0; i < 4; i++) { const x = -24 + i * 6.2; addBox(x, -70, 6, 4.2, 10, 0, { mat: plaster([0xf5e6c8, 0xe0ecf5, 0xf5d6d6, 0xe3f0d8][i]) }); P.box(x, 3.0, -64.2, 6, 0.12, 1.6, [0xdc2626, 0x2563eb, 0x16a34a, 0xf59e0b][i]); E.box(x, 0.4, -64.97, 4.6, 2.2, 0.04, 0xfef3c7); }
+    { const fx = -10, fz = -54; addBox(fx, fz, 5, 0.6, 5, 0, { mat: plaster(0xd6d3cd) }); E.box(fx, 0.62, fz, 4.4, 0.02, 4.4, 0x7dd3fc); P.cyl(fx, 0.6, fz, 0.4, 0.3, 1.8, 0xd6d3cd, 10); }
+    for (const [x, z] of [[-50, -46.6], [-30, -46.6], [6, -46.6], [28, -46.6], [52, -46.6]]) car(x, z, true, [0xc0392b, 0x2f6fb0, 0xe6b422, 0x6b7280, 0xf8fafc][(x / 2 & 7) % 5]);
+    for (const x of [-70, -50, -30, -10, 10, 30, 50, 70]) { lamp(x, -39.5); lamp(x + 5, 15.2); }
+    // palms along the promenade and on the beach
+    const palms = [];
+    for (let x = -74; x <= 74; x += 13) palms.push([x, 15.6 + (rand() - 0.5) * 0.4, 1 + rand() * 0.25, rand() * 6]);
+    for (const [x, z] of [[-66, 30], [-28, 27], [8, 36], [58, 29], [-8, 22], [70, 38]]) palms.push([x, z, 0.9 + rand() * 0.3, rand() * 6]);
+    for (const p of palms) p.push(addCollider(p[0], p[1], 0.6, 0.6, 6));
+    const pT = instances(PALM().trunk, std(0x8b6b4a), palms), pC = instances(PALM().crown, std(0xffffff), palms, 0, c => c.setHSL(0.3 + rand() * 0.05, 0.55, 0.3 + rand() * 0.08));
+    solids.push(pT);
+    // the beach: umbrellas, towels, chairs, huts, a lifeguard tower, a volleyball net, boats on the sand
+    const ucol = [0xef4444, 0xf59e0b, 0x3b82f6, 0x22c55e, 0xec4899, 0xffffff];
+    for (let i = 0; i < 16; i++) {
+      const x = -72 + i * 9.4 + (rand() - 0.5) * 3, z = 24 + rand() * 14; if (Math.abs(x - 39) < 5) continue;
+      P.cyl(x, 0, z, 0.05, 0.05, 2.4, 0xe5e7eb, 6); P.cyl(x, 2.0, z, 1.6, 0.05, 0.6, ucol[i % ucol.length], 10);
+      P.box(x + 1.2, 0.02, z + 0.4, 0.9, 0.02, 1.9, ucol[(i + 2) % ucol.length]);
+      if (i % 3 === 0) { P.box(x - 1.2, 0.3, z + 0.3, 0.6, 0.06, 1.7, 0xffffff); P.box(x - 1.2, 0.3, z - 0.55, 0.6, 0.6, 0.06, 0xffffff); }
+      addCollider(x, z, 0.3, 0.3, 2.4);
+    }
+    for (let i = 0; i < 5; i++) { const x = -74 + i * 4.2; addBox(x, 21.5, 3.2, 2.6, 2.6, 0, { mat: plaster([0xef4444, 0x3b82f6, 0xfacc15, 0x22c55e, 0xec4899][i]) }); P.box(x, 2.6, 21.5, 3.6, 0.2, 3.0, 0xf8fafc); P.box(x, 0.1, 22.82, 1, 1.9, 0.04, 0x7c4a1e); }
+    { const lx = -20, lz = 33; for (const sx of [-1, 1]) for (const sz of [-1, 1]) P.box(lx + sx * 0.9, 0, lz + sz * 0.9, 0.16, 2.2, 0.16, 0xf8fafc); P.box(lx, 2.2, lz, 2.4, 0.15, 2.4, 0xf8fafc); P.box(lx, 2.35, lz, 2.2, 1.4, 2.2, 0xdc2626); P.box(lx, 3.75, lz, 2.8, 0.2, 2.8, 0xf8fafc); P.box(lx, 0.1, lz + 1.6, 0.6, 2.2, 0.08, 0xf8fafc); addCollider(lx, lz, 2.2, 2.2, 2.4); }
+    { const nx = -46, nz = 33; for (const s of [-1, 1]) { P.cyl(nx + s * 4.5, 0, nz, 0.06, 0.06, 2.5, 0x9ca3af, 6); addCollider(nx + s * 4.5, nz, 0.3, 0.3, 2.5); } P.box(nx, 1.6, nz, 9, 0.8, 0.02, 0xf5f5f4); P.ball(nx + 2, 0.22, nz + 3, 0.22, 0xfacc15); }
+    for (const [x, z, r] of [[14, 40, 0.3], [-58, 41, -0.5]]) { P.boxC(x, 0.35, z, 1.6, 0.7, 4.6, 0xf8fafc, 0, r); P.boxC(x, 0.75, z, 1.3, 0.12, 3.8, 0x1d4ed8, 0, r); addCollider(x, z, 2.6, 2.6, 0.9); }
+    for (const [x, z] of [[-34, 39], [26, 26], [-2, 31]]) { P.cyl(x, 0, z, 0.8, 0.5, 0.5, 0xd8c08e, 8); P.cyl(x, 0.5, z, 0.45, 0.2, 0.5, 0xd8c08e, 8); P.cyl(x, 1.0, z, 0.15, 0.05, 0.3, 0xd8c08e, 6); }
+    for (const [x, z, c] of [[30, 22, 0xfacc15], [31, 22.2, 0x0ea5e9], [-38, 23, 0xef4444]]) P.boxC(x, 1.0, z, 0.55, 2.1, 0.08, c, 0.15, 0.4);
+    // the pier: up a ramp from the sand, out over the sea, with a little shop at the end
+    const plank = new THREE.MeshLambertMaterial({ map: retex(plankTex, 2, 12), color: 0xc4a07a });
+    { const deck = addBox(39, 58, 6, 1.0, 36, 0, { mat: plank }); deck.receiveShadow = true;
+      plats.push({ x0: 36, x1: 42, z0: 36, z1: 40, ramp: { ax: 'z', a0: 36, a1: 40, y0: 0, y1: 1.0 } });
+      P.boxC(39, 0.42, 38, 6, 0.12, 4.12, 0xb08a64, Math.atan2(1, 4) * -1 * -1 * 0 - Math.atan2(1, 4) * 0, 0);
+      for (let z = 42; z <= 76; z += 4) for (const x of [36.4, 41.6]) P.cyl(x, -2, z, 0.22, 0.22, 3.0, 0x5b4632, 8);
+      for (const x of [36.1, 41.9]) { P.box(x, 1.0, 58, 0.1, 1.0, 36, 0x8b6b4a); for (let z = 40; z <= 76; z += 2) P.box(x, 1.0, z, 0.14, 1.05, 0.14, 0x6b4f3a); addCollider(x, 58, 0.3, 36, 2.4); }
+      P.box(39, 1.0, 76, 6, 1.0, 0.1, 0x8b6b4a); addCollider(39, 76, 6, 0.3, 2.4);
+      P.box(39, 1.0, 72.5, 4, 2.6, 3, 0xf8fafc); P.box(39, 3.6, 72.5, 4.6, 0.3, 3.6, 0x1d4ed8); E.box(39, 1.8, 70.98, 2.4, 0.9, 0.04, 0xfef3c7); xb.push({ x: 39, z: 72.5, hx: 2, hz: 1.5, y0: 1.0, h: 2.6 });
+      P.box(37.2, 1.0, 64, 0.5, 0.45, 1.6, 0x7c4a1e); P.box(40.8, 1.0, 52, 0.5, 0.45, 1.6, 0x7c4a1e);
+      for (const z of [46, 60, 74]) { P.cyl(41.4, 1.0, z, 0.06, 0.06, 3, 0x111827, 6); E.ball(41.4, 4.05, z, 0.2, 0xfff3c4); }
+    }
+    // out at sea: boats, buoys, a lighthouse on the rocks
+    for (const [x, z, r, s] of [[-30, 95, 0.4, 1], [24, 140, -0.3, 1.4], [-80, 180, 1.2, 1.6], [70, 110, 2.0, 1.1], [52, 64, 0.2, 0.9]]) {
+      P.boxC(x, 0.4, z, 2.2 * s, 0.9 * s, 6 * s, 0xf8fafc, 0, r); P.boxC(x, 0.92 * s, z, 1.6 * s, 0.1, 5 * s, 0x7c4a1e, 0, r);
+      P.cyl(x, 0.9 * s, z, 0.07, 0.05, 6 * s, 0xd1d5db, 6); P.boxC(x + Math.cos(r) * 0.0, 3.6 * s, z, 0.05, 4.6 * s, 2.4 * s, 0xffffff, 0, r);
+    }
+    for (let x = -70; x <= 70; x += 14) { if (Math.abs(x - 39) < 6) continue; P.ball(x, 0.2, 57, 0.4, x % 28 ? 0xef4444 : 0xffffff); }
+    { const lx = 72, lz = 78; for (let i = 0; i < 9; i++) rock(lx + (rand() - 0.5) * 12, lz + (rand() - 0.5) * 10, 1.6 + rand() * 1.8);
+      for (let i = 0; i < 6; i++) P.cyl(lx, 1 + i * 2.2, lz, 1.9 - i * 0.12, 1.9 - (i + 1) * 0.12, 2.2, i % 2 ? 0xdc2626 : 0xf8fafc, 14);
+      P.cyl(lx, 14.2, lz, 1.1, 1.1, 1.6, 0x1f2937, 10); E.cyl(lx, 14.4, lz, 0.9, 0.9, 1.2, 0xfff3c4, 10); P.cyl(lx, 15.8, lz, 1.4, 0.2, 1.2, 0xdc2626, 10);
+      const beam = sprite(glowTex, 0xfff1b0, 9, true, 0.9); beam.position.set(lx, 15, lz); scene.add(beam); }
+    // benches and bins on the promenade
+    for (let x = -66; x <= 66; x += 26) { P.box(x, 0, 16.4, 2, 0.45, 0.6, 0x7c4a1e); P.box(x, 0.45, 16.68, 2, 0.5, 0.08, 0x7c4a1e); P.cyl(x + 1.8, 0, 16.4, 0.25, 0.25, 0.9, 0x166534, 8); }
+    // distant hills behind the town
+    const hill = new THREE.MeshStandardMaterial({ color: 0x6b9a5c, flatShading: true, roughness: 1 });
+    for (let i = 0; i < 12; i++) { const a = Math.PI + i / 11 * Math.PI, r = 170 + rand() * 30; const m = new THREE.Mesh(new THREE.IcosahedronGeometry(30 + rand() * 22, 1), hill); m.scale.y = 0.35 + rand() * 0.25; m.position.set(Math.cos(a) * r, -3, Math.sin(a) * r * 0.7 - 30); if (m.position.z < 40) scene.add(m); }
+    // grass in the gardens
+    const g1 = grassLayer(22000), f1 = flowerLayer(1400), g2 = grassLayer(22000, false);
+    for (const L of [g1, f1, g2]) caTidyGrass(L); // none on the sand or the roads
+    P.build(new THREE.MeshLambertMaterial({ vertexColors: true }), root, { shadow: true });
+    E.build(new THREE.MeshBasicMaterial({ vertexColors: true }), root, {});
+    for (const o of root.children) if (o.isMesh && o.geometry && o.geometry.type === 'BufferGeometry' && o.material.vertexColors) o.userData.noBreak = true;
+    const M = MAPS.seaside = { root, arena: A, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(),
+      grass: g1, flowers: f1, moreGrass: g2, forest: [{ meshes: [pT, pC], items: palms, colors: [0x8b6b4a, 0x3f8f3a] }], xb, plats, id: 'seaside', name: 'Seaside',
+      weather: { fog: 0xcde7f5, top: 0x3f8fe0, ground: 0xd9c9a0 }, noMountains: true, fogScale: 1.25, start: [0, 0, 11.5, 0], navR: 0.5,
+      water, foam, navGround: (x, z) => z < 50, spawnOk: (x, z) => z < SHORE - 1.5 && !(x > 35 && x < 43 && z > 34),
+      spawnAt: () => navSpawn(M, 26, 52) };
+    navBuild(M);
+  } finally {
+    delete scene.add;
+    seed = keepSeed;
+  }
+}
+
+// ---------- Forest ----------
+// Dark, dense woods under the moon: hundreds of pines, birches and dead trees close together, so you never see the
+// cubes coming until they're near. A clearing in the middle with a campfire, an old cabin, a ruined chapel with a
+// graveyard, a black pond, fallen logs, glowing mushrooms and fireflies. Hard: the cubes are tougher and quicker.
+function buildForest() {
+  const root = new THREE.Group(); sceneAdd(root);
+  const keepSeed = seed; seed = 13013;
+  const A = 70; ARENA = A;
+  boxes.length = solids.length = noGrass.length = houseRects.length = 0;
+  scene.add = (...o) => { root.add(...o); return scene; };
+  try {
+    const P = new Batch(32), E = new Batch(48);
+    const std = color => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 1 });
+    // the forest floor
+    const floorT = tex(caGroundTex('#2c3a22', ['rgba(60,45,25,.5)', 'rgba(20,30,15,.5)', 'rgba(90,70,40,.35)', 'rgba(40,60,30,.4)']), 70, 70);
+    const ff = new THREE.Mesh(new THREE.PlaneGeometry(A * 2 + 120, A * 2 + 120), new THREE.MeshLambertMaterial({ map: floorT, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    ff.rotation.x = -Math.PI / 2; ff.position.y = 0.012; ff.receiveShadow = true; ff.userData.noBreak = true; scene.add(ff);
+    // clearings and the paths between them stay open
+    const CLEAR = [[0, 0, 11], [-38, 30, 10], [40, -36, 12], [30, 40, 9], [-42, -40, 7]];
+    const PATHS = [[[0, 0], [-38, 30]], [[0, 0], [40, -36]], [[0, 0], [30, 40]], [[0, 0], [-42, -40]], [[-38, 30], [-60, 62]], [[40, -36], [64, -64]]];
+    const segD = (x, z, [ax, az], [bx, bz]) => { const vx = bx - ax, vz = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / (vx * vx + vz * vz))); return Math.hypot(x - ax - vx * t, z - az - vz * t); };
+    const open = (x, z, m = 0) => CLEAR.some(([cx, cz, r]) => Math.hypot(x - cx, z - cz) < r + m) || PATHS.some(([a, b]) => segD(x, z, a, b) < 2.2 + m);
+    for (const [a, b] of PATHS) { const len = Math.hypot(b[0] - a[0], b[1] - a[1]), m = new THREE.Mesh(new THREE.PlaneGeometry(3, len), new THREE.MeshLambertMaterial({ color: 0x4a3a28, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.atan2(b[0] - a[0], b[1] - a[1]); m.position.set((a[0] + b[0]) / 2, 0.02, (a[1] + b[1]) / 2); scene.add(m); }
+    // the trees: pines, birches and dead ones, as close together as they can go
+    const pines = [], birches = [], dead = [], pts = [];
+    const grid = new Map(), gk = (x, z) => Math.floor(x / 4) * 1000 + Math.floor(z / 4);
+    const free = (x, z, d) => { for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const [px, pz] of grid.get(gk(x + i * 4, z + j * 4)) || []) if ((px - x) ** 2 + (pz - z) ** 2 < d * d) return false; return true; };
+    for (let tries = 0; pts.length < 640 && tries < 20000; tries++) {
+      const x = (rand() * 2 - 1) * (A - 2), z = (rand() * 2 - 1) * (A - 2);
+      if (open(x, z) || !free(x, z, 3.1)) continue;
+      pts.push([x, z]); const k = gk(x, z); if (!grid.has(k)) grid.set(k, []); grid.get(k).push([x, z]);
+      const r = rand(), t = [x, z, 0.9 + rand() * 0.8, rand() * 6, 0.95 + rand() * 0.4];
+      (r < 0.62 ? pines : r < 0.82 ? birches : dead).push(t);
+      t.push(addCollider(x, z, 0.75 * t[2], 0.75 * t[2], 7));
+    }
+    const pineTrunk = new THREE.CylinderGeometry(0.25, 0.38, 3, 6).translate(0, 1.5, 0);
+    const pineC1 = new THREE.ConeGeometry(2.3, 4.4, 7).translate(0, 4.2, 0), pineC2 = new THREE.ConeGeometry(1.7, 3.6, 7).translate(0, 6.6, 0), pineC3 = new THREE.ConeGeometry(1.0, 2.6, 7).translate(0, 8.6, 0);
+    const pT = instances(pineTrunk, std(0x3a2a1c), pines); solids.push(pT);
+    const pC1 = instances(pineC1, std(0xffffff), pines, 0, c => c.setHSL(0.32 + rand() * 0.05, 0.38, 0.13 + rand() * 0.05));
+    const pC2 = instances(pineC2, std(0xffffff), pines, 0, c => c.setHSL(0.32 + rand() * 0.05, 0.38, 0.15 + rand() * 0.05));
+    const pC3 = instances(pineC3, std(0xffffff), pines, 0, c => c.setHSL(0.32 + rand() * 0.05, 0.38, 0.17 + rand() * 0.05));
+    const bT = instances(new THREE.CylinderGeometry(0.16, 0.24, 5.5, 6).translate(0, 2.75, 0), std(0xd8d4c8), birches); solids.push(bT);
+    const bC = instances(new THREE.IcosahedronGeometry(1.9, 0).translate(0, 5.6, 0), std(0xffffff), birches, 0, c => c.setHSL(0.22 + rand() * 0.08, 0.4, 0.2 + rand() * 0.08));
+    const dT = instances(DEADTREE(), std(0x3b3128), dead); solids.push(dT);
+    // a ring of trees outside, so the woods go on for ever
+    const outer = [];
+    for (let i = 0; i < 700; i++) { const a = rand() * Math.PI * 2, r = A + 3 + Math.pow(rand(), 0.8) * 70; outer.push([Math.cos(a) * r, Math.sin(a) * r, 1 + rand() * 1.1, rand() * 6, 0.95 + rand() * 0.4]); }
+    instances(pineTrunk, std(0x2e2218), outer); instances(pineC1, std(0xffffff), outer, 0, c => c.setHSL(0.33, 0.35, 0.1 + rand() * 0.05)); instances(pineC2, std(0xffffff), outer, 0, c => c.setHSL(0.33, 0.35, 0.12 + rand() * 0.05));
+    // undergrowth (you can walk through it), mushrooms that glow, fallen logs and rocks
+    const bushes = [], shrooms = [];
+    for (let i = 0; i < 520; i++) { const x = (rand() * 2 - 1) * (A - 1), z = (rand() * 2 - 1) * (A - 1); if (open(x, z, -1)) continue; bushes.push([x, z, 0.5 + rand() * 0.7, rand() * 6, 0.6]); }
+    instances(new THREE.IcosahedronGeometry(1, 0).translate(0, 0.4, 0), std(0xffffff), bushes, 0, c => c.setHSL(0.27 + rand() * 0.06, 0.4, 0.12 + rand() * 0.06));
+    for (let i = 0; i < 160; i++) { const x = (rand() * 2 - 1) * (A - 1), z = (rand() * 2 - 1) * (A - 1); shrooms.push([x, z, 0.6 + rand() * 0.8, rand() * 6]); }
+    instances(new THREE.CylinderGeometry(0.04, 0.05, 0.2, 5).translate(0, 0.1, 0), std(0xe7e5e4), shrooms);
+    const sm = instances(new THREE.SphereGeometry(0.13, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.2, 0), new THREE.MeshBasicMaterial({ color: 0xffffff }), shrooms, 0, c => c.setHex([0x7cf7c4, 0x9ae6ff, 0xc4a1ff, 0xb6ff8a][(rand() * 4) | 0]));
+    sm.castShadow = false;
+    for (let i = 0; i < 26; i++) { const x = (rand() * 2 - 1) * (A - 4), z = (rand() * 2 - 1) * (A - 4); if (open(x, z, 1) || clearance(x, z) < 2.5) continue; const turn = rand() * 3, log = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 4.6, 8), flat(0x3f2d1e)); log.rotation.set(0, turn, Math.PI / 2); log.position.set(x, 0.4, z); log.castShadow = log.receiveShadow = true; scene.add(log); solids.push(log); addCollider(x, z, 2.6, 2.6, 0.85); }
+    for (let i = 0; i < 30; i++) { const x = (rand() * 2 - 1) * (A - 4), z = (rand() * 2 - 1) * (A - 4); if (open(x, z, 0.5) || clearance(x, z) < 2) continue; rock(x, z, 0.7 + rand() * 1.2); }
+    // the clearing in the middle: a campfire, logs to sit on, a tent
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; P.boxC(Math.cos(a) * 0.9, 0.12, Math.sin(a) * 0.9, 0.9, 0.18, 0.18, 0x3f2d1e, 0.3, a); }
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; P.ball(Math.cos(a) * 1.25, 0.1, Math.sin(a) * 1.25, 0.22, 0x6b7280); }
+    addCollider(0, 0, 2.2, 2.2, 0.4);
+    for (const [x, z, r] of [[-4.5, 2, 0.3], [4, 3.2, -0.4], [0.5, -4.6, 1.5]]) { P.boxC(x, 0.32, z, 2.6, 0.5, 0.5, 0x4a3524, 0, r); }
+    { const fire = sprite(glowTex, 0xff8a2a, 3.6, true, 0.95); fire.position.set(0, 0.8, 0); scene.add(fire); const glow = sprite(glowTex, 0xff6a1a, 12, true, 0.35); glow.position.set(0, 0.6, 0); scene.add(glow); root.userData.fire = [fire, glow]; }
+    P.boxC(6.5, 0.9, -3.5, 2.6, 1.8, 3.2, 0x7c5a2a, 0, 0.4); E.box(6.5, 0.02, -3.5, 1.4, 0.02, 1.0, 0x1f2937);
+    addCollider(6.5, -3.5, 3, 3, 1.8);
+    // the old cabin
+    house(-38, 30, 8, 7, 'e', 0x5b4632, 0x2b2420);
+    // the ruined chapel and its graveyard
+    { const cx = 40, cz = -36, stone = plaster(0x8d8a84);
+      const wallSeg = (x0, z0, x1, z1, h) => { const w = Math.max(0.7, Math.abs(x1 - x0)), d = Math.max(0.7, Math.abs(z1 - z0)); addBox((x0 + x1) / 2, (z0 + z1) / 2, w, h, d, 0, { mat: stone }); };
+      wallSeg(cx - 5, cz - 7, cx - 1, cz - 7, 3.2); wallSeg(cx + 2, cz - 7, cx + 5, cz - 7, 5.5); wallSeg(cx - 5, cz - 7, cx - 5, cz + 1, 4.2); wallSeg(cx + 5, cz - 7, cx + 5, cz - 2, 2.4); wallSeg(cx - 5, cz + 4, cx - 5, cz + 7, 1.6);
+      for (let i = 0; i < 3; i++) P.box(cx + 4.4, 5.5 + i * 0.5, cz - 7, 0.6 - i * 0.15, 0.5, 0.7, 0x8d8a84);
+      for (let i = 0; i < 14; i++) { const gx = cx - 9 + (i % 7) * 2.6, gz = cz + 9 + Math.floor(i / 7) * 3; P.boxC(gx, 0.45, gz, 0.8, 0.9, 0.2, 0x9ca3af, 0, (rand() - 0.5) * 0.3); P.boxC(gx, 0.02, gz + 1, 0.9, 0.04, 1.7, 0x3a2f24, 0, 0); }
+      houseRects.push({ x: cx, z: cz, hx: 5, hz: 7 }); }
+    // the black pond
+    { const pond = new THREE.Mesh(new THREE.CircleGeometry(7, 28), new THREE.MeshPhongMaterial({ color: 0x0b1a22, shininess: 120, specular: 0x5577aa })); pond.rotation.x = -Math.PI / 2; pond.position.set(30, 0.03, 40); scene.add(pond);
+      for (let i = 0; i < 40; i++) { const a = rand() * Math.PI * 2, r = 6.4 + rand() * 1.4; P.cyl(30 + Math.cos(a) * r, 0, 40 + Math.sin(a) * r, 0.03, 0.01, 0.8 + rand() * 0.8, 0x4a5d2a, 4, false); }
+      addCollider(30, 40, 10, 10, 0.2); }
+    // a hunter's stand
+    { const hx = -42, hz = -40; for (const sx of [-1, 1]) for (const sz of [-1, 1]) P.box(hx + sx * 0.9, 0, hz + sz * 0.9, 0.16, 3.4, 0.16, 0x4a3524); P.box(hx, 3.4, hz, 2.3, 0.15, 2.3, 0x5b4632); P.box(hx, 3.55, hz, 2.3, 1, 0.08, 0x5b4632); addCollider(hx, hz, 2.2, 2.2, 3.4); }
+    // fireflies
+    { const n = 160, geo = new THREE.BufferGeometry(), pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = (rand() * 2 - 1) * A; pos[i * 3 + 1] = 0.5 + rand() * 3; pos[i * 3 + 2] = (rand() * 2 - 1) * A; } geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const flies = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd9ff7a, size: 0.22, map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); scene.add(flies); root.userData.flies = flies; }
+    // the moon
+    { const moon = sprite(glowTex, 0xdfe8ff, 60, true, 0.9); moon.position.set(-120, 140, -260); moon.material.fog = false; scene.add(moon); const disc = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({ color: 0xf2f5ff, fog: false })); disc.position.copy(moon.position); disc.lookAt(0, 0, 0); scene.add(disc); }
+    const g1 = grassLayer(16000), g2 = grassLayer(16000, false);
+    for (const g of [g1, g2]) { const c = new THREE.Color(); for (let i = 0; i < g.count; i++) { c.setHSL(0.26 + rand() * 0.06, 0.35, 0.16 + rand() * 0.08); g.setColorAt(i, c); } g.instanceColor.needsUpdate = true; }
+    P.build(new THREE.MeshLambertMaterial({ vertexColors: true }), root, { shadow: true });
+    E.build(new THREE.MeshBasicMaterial({ vertexColors: true }), root, {});
+    const M = MAPS.forest = { root, arena: A, boxes: boxes.slice(), solids: solids.slice(), noGrass: noGrass.slice(), houseRects: houseRects.slice(),
+      grass: g1, flowers: dummyLayer(), moreGrass: g2, id: 'forest', name: 'Forest',
+      forest: [{ meshes: [pT, pC1, pC2, pC3], items: pines, colors: [0x3a2a1c, 0x1f3a24] }, { meshes: [bT, bC], items: birches, colors: [0xd8d4c8, 0x2f4a24] }, { meshes: [dT], items: dead, colors: [0x3b3128, 0x3b3128] }],
+      weather: { fog: 0x0f1c1a, top: 0x070b16, ground: 0x111a14 }, fogScale: 0.42, dark: true, noClouds: true, start: [0, 0, 5, 0], navR: 0.55,
+      diff: { hp: 1.25, speed: 1.12 },
+      spawnAt: () => navSpawn(M, 22, 46) };
+    navBuild(M);
+  } finally {
+    delete scene.add;
+    seed = keepSeed;
+  }
+}
+
+// ---------- building the new maps, and what changes when you switch maps ----------
+function caBuildMap(id) {
+  if (id === 'mall') buildMall();
+  else if (id === 'seaside') buildSeaside();
+  else if (id === 'forest') buildForest();
+}
+const caOn = () => { try { return !seasonLocked(); } catch (e) { return false; } }; // the Halloween 2026 Event is still on
+const CA_LIGHT = { hemi: [hemi.color.getHex(), hemi.groundColor.getHex(), hemi.intensity], sun: [sun.color.getHex(), sun.intensity] };
+function caAfterMap(id, M) {
+  XB.length = 0; PLATS.length = 0;
+  if (M.xb) XB.push(...M.xb); if (M.plats) PLATS.push(...M.plats);
+  xbIndex();
+  NAV.on = !!M.nav;
+  if (id !== 'mall') caNpcClear();
+  // the light: the dark woods under the moon, or ordinary daylight
+  hemi.color.setHex(CA_LIGHT.hemi[0]); hemi.groundColor.setHex(CA_LIGHT.hemi[1]); hemi.intensity = CA_LIGHT.hemi[2];
+  sun.color.setHex(CA_LIGHT.sun[0]); sun.intensity = CA_LIGHT.sun[1];
+  if (M.indoor) { hemi.groundColor.setHex(0xcfcac0); hemi.intensity = 0.95; } // light bouncing off the Mall's pale floors
+  if (M.dark) { hemi.color.setHex(0x8796c4); hemi.groundColor.setHex(0x161c16); hemi.intensity = 0.36; sun.color.setHex(0xa9bcff); sun.intensity = 0.34; }
+  // Halloween: every map but Classic (and the story missions) gets decorated while the event is on
+  const hw = caOn() && id !== 'classic' && !/^c\d/.test(id);
+  if (hw && !M.decor) { try { caDecorate(M); } catch (e) { console.error('Halloween decorations', e); } }
+  if (M.decor) M.decor.visible = hw;
+  if (hw && !M.dark) {
+    // a spooky sunset: an orange haze low down, a purple sky above, warm light
+    const W = M.weather || {}, fog = new THREE.Color(W.fog || HORIZON).lerp(new THREE.Color(0xe08a4f), id === 'mall' ? 0.15 : 0.3);
+    scene.fog.color.copy(fog); sky.material.uniforms.horizon.value.copy(fog);
+    sky.material.uniforms.top.value.setHex(W.top || 0x3d7fd1).lerp(new THREE.Color(0x3b2a66), 0.45);
+    sun.color.setHex(0xffd0a0); hemi.color.setHex(0xe9dcff);
+  }
+}
+const caRootOf = o => { while (o && o.parent && o.parent !== scene) o = o.parent; return o; };
+
+// ---------- the Halloween decorations ----------
+function caWebTex() { return CA_TEX.web || (CA_TEX.web = new THREE.CanvasTexture(makeCanvas(128, (g, S) => {
+  g.strokeStyle = 'rgba(240,240,255,.8)'; g.lineWidth = 1.4; const c = 4;
+  for (let i = 0; i < 7; i++) { const a = i / 6 * Math.PI / 2; g.beginPath(); g.moveTo(c, c); g.lineTo(c + Math.cos(a) * S, c + Math.sin(a) * S); g.stroke(); }
+  for (let r = 18; r < S * 1.3; r += 16) { g.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI / 2, rr = r * (i % 2 ? 0.92 : 1); i ? g.lineTo(c + Math.cos(a) * rr, c + Math.sin(a) * rr) : g.moveTo(c + Math.cos(a) * rr, c + Math.sin(a) * rr); } g.stroke(); }
+}))); }
+function caGhostTex() { return CA_TEX.ghost || (CA_TEX.ghost = new THREE.CanvasTexture(makeCanvas(128, (g, S) => {
+  g.fillStyle = 'rgba(245,248,255,.92)'; g.beginPath(); g.moveTo(24, 120); g.lineTo(24, 56); g.arc(64, 56, 40, Math.PI, 0); g.lineTo(104, 120);
+  for (let i = 0; i < 5; i++) g.quadraticCurveTo(104 - i * 16 - 8, 104, 104 - (i + 1) * 16, 120); g.fill();
+  g.fillStyle = '#1b1530'; for (const x of [50, 78]) { g.beginPath(); g.ellipse(x, 58, 7, 11, 0, 0, Math.PI * 2); g.fill(); } g.beginPath(); g.ellipse(64, 84, 8, 10, 0, 0, Math.PI * 2); g.fill();
+}))); }
+function caBatTex() { return CA_TEX.bat || (CA_TEX.bat = new THREE.CanvasTexture(makeCanvas(128, (g, S) => {
+  g.fillStyle = '#120a1c'; g.beginPath(); g.moveTo(64, 52); g.quadraticCurveTo(40, 30, 6, 44); g.quadraticCurveTo(22, 52, 18, 66); g.quadraticCurveTo(30, 58, 38, 70); g.quadraticCurveTo(48, 60, 58, 74);
+  g.lineTo(64, 66); g.lineTo(70, 74); g.quadraticCurveTo(80, 60, 90, 70); g.quadraticCurveTo(98, 58, 110, 66); g.quadraticCurveTo(106, 52, 122, 44); g.quadraticCurveTo(88, 30, 64, 52); g.fill();
+  g.beginPath(); g.ellipse(64, 56, 8, 12, 0, 0, Math.PI * 2); g.fill(); g.beginPath(); g.moveTo(57, 46); g.lineTo(59, 36); g.lineTo(62, 46); g.moveTo(66, 46); g.lineTo(69, 36); g.lineTo(71, 46); g.fill();
+  g.fillStyle = '#ff9a2e'; for (const x of [60, 68]) g.fillRect(x - 1.5, 52, 3, 3);
+}))); }
+const CA_DECOR = { anim: [] };
+function caDecorate(M) {
+  const g = new THREE.Group(); g.name = 'halloween'; M.root.add(g); M.decor = g;
+  const keepSeed = seed; seed = 9000 + (M.id || '').length * 77 + (M.arena | 0);
+  const add = scene.add; scene.add = (...o) => { g.add(...o); return scene; };
+  try {
+    const A = M.arena, P = new Batch(32), pk = [], lights = [], anim = [];
+    const isMall = M.id === 'mall', inRect = (x, z, m = 0.6) => M.houseRects.some(r => Math.abs(x - r.x) < r.hx + m && Math.abs(z - r.z) < r.hz + m);
+    // 1. jack-o'-lanterns by every front door (and every shop door in the Mall)
+    for (const D of DOORWAYS) {
+      if (caRootOf(D.ref) !== M.root) continue;
+      const r = M.houseRects.find(h => Math.abs(D.x - h.x) <= h.hx + 0.6 && Math.abs(D.z - h.z) <= h.hz + 0.6);
+      const out = r ? (D.horiz ? Math.sign(D.z - r.z) : Math.sign(D.x - r.x)) || 1 : 1, y = D.y || 0;
+      for (const s of [-1, 1]) {
+        const along = D.gap / 2 + 0.55 + rand() * 0.2, k = 0.28 + rand() * 0.14;
+        const x = D.horiz ? D.x + s * along : D.x + out * 0.75, z = D.horiz ? D.z + out * 0.75 : D.z + s * along;
+        pk.push([x, y, z, k, Math.atan2(D.horiz ? 0 : -out, D.horiz ? -out : 0) + (rand() - 0.5) * 0.6]);
+        if (rand() < 0.5) pk.push([x + (D.horiz ? s * 0.45 : out * 0.3), y, z + (D.horiz ? out * 0.3 : s * 0.45), k * 0.6, rand() * 6]);
+      }
+    }
+    // 2. pumpkins along walls and fences round the map
+    if (!isMall) for (let i = 0, n = 0; i < 1500 && n < 46; i++) {
+      const x = (rand() * 2 - 1) * (A - 2), z = (rand() * 2 - 1) * (A - 2), c = clearance(x, z);
+      if (c < 0.45 || c > 1.3 || inRect(x, z) || (M.spawnOk && !M.spawnOk(x, z))) continue;
+      const k = 0.25 + rand() * 0.25; pk.push([x, 0, z, k, rand() * 6]); if (rand() < 0.4) pk.push([x + 0.5, 0, z + 0.3, k * 0.6, rand() * 6]); n++;
+    }
+    // 3. strings of orange, purple and green lights round the houses
+    if (!isMall) for (const r of M.houseRects) {
+      if (r.hx > 12 || r.hz > 12 || !DOORWAYS.some(D => caRootOf(D.ref) === M.root && Math.abs(D.x - r.x) <= r.hx + 0.6 && Math.abs(D.z - r.z) <= r.hz + 0.6)) continue;
+      const per = [[r.x - r.hx - 0.22, r.z - r.hz - 0.22, r.x + r.hx + 0.22, r.z - r.hz - 0.22], [r.x + r.hx + 0.22, r.z - r.hz - 0.22, r.x + r.hx + 0.22, r.z + r.hz + 0.22], [r.x + r.hx + 0.22, r.z + r.hz + 0.22, r.x - r.hx - 0.22, r.z + r.hz + 0.22], [r.x - r.hx - 0.22, r.z + r.hz + 0.22, r.x - r.hx - 0.22, r.z - r.hz - 0.22]];
+      for (const [x0, z0, x1, z1] of per) { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / 0.7); for (let i = 0; i <= n; i++) { const t = i / n, sag = Math.sin(((i % 4) / 4) * Math.PI) * 0.18; lights.push([x0 + (x1 - x0) * t, 2.78 - sag, z0 + (z1 - z0) * t, lights.length % 3]); } }
+      // a cobweb in two corners
+      for (const [sx, sz] of [[-1, -1], [1, 1]]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), new THREE.MeshBasicMaterial({ map: caWebTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: true })); w.position.set(r.x + sx * (r.hx + 0.03), 2.2, r.z + sz * (r.hz - 0.7)); w.rotation.y = Math.PI / 2 * sx; w.scale.x = sz; scene.add(w); }
+    }
+    // the Mall: lanterns over the atrium, bunting along the galleries, giant pumpkins by the doors, webs in the windows
+    if (isMall) {
+      for (let i = 0; i < 22; i++) { const x = -32 + (i % 11) * 6.4, z = i < 11 ? -38 : -26, y = 13.5 + rand() * 2.5; pk.push([x, y, z, 0.42, rand() * 6]); P.box(x, y + 0.6, z, 0.02, 17.6 - y, 0.02, 0x111827); }
+      for (const y of [11.3, 17]) for (const z of [-44.3, -19.7]) for (let x = -35.5; x < 35.5; x += 0.9) P.boxC(x, y - (Math.abs(Math.sin((x + 36) / 7.2 * Math.PI)) * 0.5) - 0.2, z, 0.42, 0.4, 0.02, [0xff7a1a, 0x7c3aed, 0x111111][Math.round(x / 0.9) % 3 & 3] || 0xff7a1a, 0, 0);
+      pk.push([-8.6, 0, 14.6, 2.0, 0.2], [8.6, 0, 14.6, 1.7, -0.3], [0, 0, -6.5, 1.2, 0]);
+      for (const st of M.shops) for (const s of [-1, 1]) if (rand() < 0.5) { const d = st.door || st.doors[0], y = st.y; const w = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), new THREE.MeshBasicMaterial({ map: caWebTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide })); if (d.horiz) { w.position.set(d.x + s * (d.gap / 2 + 1.2), y + 2.9, d.z); w.scale.x = s; } else { w.position.set(d.x, y + 2.9, d.z + s * (d.gap / 2 + 1.2)); w.rotation.y = Math.PI / 2; w.scale.x = s; } scene.add(w); }
+    }
+    // 4. a little graveyard or two, and scarecrows with pumpkin heads, out in the open
+    if (!isMall) {
+      const spots = [];
+      for (let i = 0; i < 4000 && spots.length < (A > 60 ? 4 : 2); i++) { const x = (rand() * 2 - 1) * (A - 8), z = (rand() * 2 - 1) * (A - 8); if (clearance(x, z) < 5.5 || inRect(x, z, 3) || (M.spawnOk && !M.spawnOk(x, z)) || spots.some(s => Math.hypot(s[0] - x, s[1] - z) < 18) || Math.hypot(x - ((M.start || [0, 0, 5])[0]), z - ((M.start || [0, 0, 5])[2])) < 6) continue; spots.push([x, z]); }
+      spots.forEach(([x, z], si) => {
+        if (si % 2 === 0) {
+          for (let i = 0; i < 7; i++) { const gx = x - 3 + (i % 4) * 2, gz = z - 1.5 + Math.floor(i / 4) * 3, t = (rand() - 0.5) * 0.25;
+            if (i % 3 === 2) { P.boxC(gx, 0.55, gz, 0.14, 1.1, 0.14, 0x6b7280, t, 0); P.boxC(gx, 0.8, gz, 0.6, 0.14, 0.14, 0x6b7280, t, 0); }
+            else { P.boxC(gx, 0.42, gz, 0.7, 0.84, 0.18, 0x9ca3af, t, 0); P.boxC(gx, 0.86, gz, 0.5, 0.1, 0.18, 0x9ca3af, t, 0); }
+            P.box(gx, 0.005, gz + 0.9, 0.8, 0.03, 1.5, 0x3a2f24); }
+          for (let k = -4; k <= 4; k += 0.8) for (const s of [-1, 1]) P.box(x + k, 0, z + s * 3.4, 0.08, 0.9, 0.08, 0x2b2b2b);
+          const dtm = new THREE.Mesh(DEADTREE(), flat(0x3b3128)); dtm.position.set(x + 4.5, 0, z); dtm.scale.setScalar(0.8); dtm.castShadow = true; scene.add(dtm);
+          for (let k = 0; k < 3; k++) { const f = sprite(smokeTex, 0xcfd6ff, 5, false, 0.16); f.position.set(x + (rand() - 0.5) * 6, 0.5, z + (rand() - 0.5) * 4); scene.add(f); }
+          anim.push({ ghost: caGhost(x, z, 2.6) });
+        } else {
+          P.box(x, 0, z, 0.14, 2.3, 0.14, 0x6b4423); P.box(x, 1.55, z, 1.9, 0.12, 0.12, 0x6b4423);
+          P.box(x, 1.0, z, 0.62, 0.8, 0.32, 0x8b5a2b); P.box(x, 0.6, z, 0.5, 0.45, 0.3, 0x2f4f7f);
+          for (const s of [-1, 1]) P.box(x + s * 0.6, 1.45, z, 0.5, 0.3, 0.28, 0x8b5a2b);
+          pk.push([x, 1.85, z, 0.34, 0]); P.cyl(x, 2.33, z, 0.5, 0.5, 0.04, 0x3b2b1b, 10); P.cyl(x, 2.36, z, 0.24, 0.04, 0.5, 0x3b2b1b, 8);
+          for (let k = 0; k < 4; k++) pk.push([x + Math.cos(k * 1.6) * 1.4, 0, z + Math.sin(k * 1.6) * 1.4, 0.3 + rand() * 0.15, rand() * 6]);
+          P.cyl(x + 2, 0, z - 1.2, 0.6, 0.6, 1.1, 0xd8b65a, 12);
+        }
+      });
+    }
+    // 5. ghosts drifting about, and bats circling overhead
+    const nG = isMall ? 5 : A > 60 ? 8 : 5;
+    for (let i = 0; i < nG; i++) {
+      let x, z, y = isMall ? [2.5, 8.5, 14.5][i % 3] : 2.4 + rand() * 2;
+      if (isMall) { x = -30 + rand() * 60; z = -40 + rand() * 16; } else { x = (rand() * 2 - 1) * (A - 10); z = (rand() * 2 - 1) * (A - 10); if (M.spawnOk && !M.spawnOk(x, z)) z = -Math.abs(z); }
+      anim.push({ ghost: caGhost(x, z, y) });
+    }
+    const nB = isMall ? 14 : 22;
+    for (let i = 0; i < nB; i++) {
+      const b = sprite(caBatTex(), 0xffffff, 1.0, false, 1); b.material.fog = true; scene.add(b);
+      const cx = isMall ? (rand() - 0.5) * 50 : (rand() * 2 - 1) * A * 0.6, cz = isMall ? -32 + (rand() - 0.5) * 12 : (rand() * 2 - 1) * A * 0.6;
+      anim.push({ bat: b, cx, cz, r: 4 + rand() * (isMall ? 6 : 14), y: isMall ? 9 + rand() * 7 : 9 + rand() * 9, w: (0.5 + rand() * 0.7) * (rand() < 0.5 ? -1 : 1), a: rand() * 6, f: 8 + rand() * 6 });
+    }
+    // 6. the trees turn orange: the round-topped ones mostly, and a few of the pines
+    const autumn = [0xd9541e, 0xe8771f, 0xf2a03d, 0xb83a1b, 0xc9871f, 0x8a3b12, 0x6b2f6e];
+    const c = new THREE.Color();
+    for (const f of M.forest || []) {
+      if (M.id === 'seaside') continue; // palms stay green
+      const pine = f.meshes.length >= 3;
+      for (let k = 1; k < f.meshes.length; k++) { const m = f.meshes[k]; if (!m.instanceColor) continue; for (let i = 0; i < m.count; i++) { if (pine ? rand() < 0.75 : rand() < 0.12) continue; c.setHex(autumn[(rand() * autumn.length) | 0]); if (M.dark) c.multiplyScalar(0.45); m.setColorAt(i, c); } m.instanceColor.needsUpdate = true; }
+    }
+    M.root.traverse(o => {
+      if (!o.isMesh || o.isInstancedMesh || !o.material || !o.material.color || caRootOf(o) !== M.root || o.parent === g) return;
+      const t = o.geometry && o.geometry.type, hx = o.material.color.getHex();
+      if (t === 'IcosahedronGeometry' && LEAF.includes(hx)) o.material = flat(autumn[(Math.abs(Math.round(o.position.x * 7 + o.position.z * 13))) % autumn.length]);
+      else if (t === 'ConeGeometry' && (hx === 0x2f6b3a || hx === 0x2a5f34) && (Math.abs(Math.round(o.position.x * 3 + o.position.z * 5)) % 3 === 0)) o.material = flat(0x9a4a1c);
+    });
+    // make it all: the pumpkins as two instanced meshes (rind and stem), the lights as one
+    if (pk.length) {
+      const PA = pumpkinAssets(), body = new THREE.InstancedMesh(PA.geo, PA.mat, pk.length), stem = new THREE.InstancedMesh(PA.stemGeo, PA.stemMat, pk.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), v = new THREE.Vector3(), sc = new THREE.Vector3();
+      pk.forEach(([x, y, z, k, ry], i) => { m4.compose(v.set(x, y + k * 0.78, z), q.setFromAxisAngle(up, ry), sc.set(k, k, k)); body.setMatrixAt(i, m4); stem.setMatrixAt(i, m4); body.setColorAt(i, c.setHSL(0.07 + rand() * 0.03, 0.9, 0.5 + rand() * 0.12)); });
+      body.castShadow = stem.castShadow = true; body.userData.noBreak = stem.userData.noBreak = true; g.add(body, stem);
+    }
+    if (lights.length) {
+      const lm = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }), lights.length), m4 = new THREE.Matrix4();
+      const LC = [0xff8a1e, 0x9b5cff, 0x7cff6b].map(h => new THREE.Color(h));
+      lights.forEach(([x, y, z, k], i) => { m4.makeTranslation(x, y, z); lm.setMatrixAt(i, m4); lm.setColorAt(i, LC[k]); });
+      lm.userData.noBreak = true; g.add(lm); g.userData.lights = lm;
+    }
+    P.build(new THREE.MeshLambertMaterial({ vertexColors: true }), g, { shadow: true });
+    g.traverse(o => { o.userData.noBreak = true; });
+    g.userData.anim = anim;
+  } finally {
+    scene.add = add; if (scene.add === add && add === THREE.Object3D.prototype.add) delete scene.add;
+    seed = keepSeed;
+  }
+}
+function caGhost(x, z, y) {
+  const s = sprite(caGhostTex(), 0xffffff, 1.6, false, 0.82); s.position.set(x, y, z); scene.add(s);
+  return { s, x, z, y, a: Math.random() * 6, r: 1.5 + Math.random() * 3 };
+}
+
+// ---------- every frame (in a game): shoppers, the decorations moving, the Pumpkin Launcher's trail ----------
+function caTick(dt, t) {
+  NAV.time += dt;
+  const M = MAPS[mapId]; if (!M) return;
+  if (M.shoppers) caNpcUpdate(dt, t);
+  const g = M.decor;
+  if (g && g.visible && g.userData.anim) for (const a of g.userData.anim) {
+    if (a.ghost) { const G = a.ghost; G.a += dt * 0.4; G.s.position.set(G.x + Math.cos(G.a) * G.r, G.y + Math.sin(t * 1.7 + G.a * 3) * 0.35, G.z + Math.sin(G.a) * G.r); G.s.material.opacity = 0.55 + Math.sin(t * 2.3 + G.a) * 0.25; }
+    else if (a.bat) { a.a += dt * a.w; a.bat.position.set(a.cx + Math.cos(a.a) * a.r, a.y + Math.sin(t * 2 + a.a) * 0.6, a.cz + Math.sin(a.a) * a.r); a.bat.scale.set(1.0 * (0.35 + Math.abs(Math.sin(t * a.f))), 0.6, 1); }
+  }
+  if (g && g.visible && g.userData.lights) { const L = g.userData.lights; L.material.color.setScalar(0.75 + Math.sin(t * 3) * 0.25); }
+  if (M.water) { M.water.material.map.offset.set(t * 0.004, t * 0.01); M.foam.material.opacity = 0.35 + Math.sin(t * 1.3) * 0.2; M.foam.position.z = 44.4 + Math.sin(t * 1.3) * 0.5; }
+  if (M.root.userData.fire) { const [f, gl] = M.root.userData.fire; f.scale.setScalar(3.2 + Math.sin(t * 17) * 0.3 + Math.sin(t * 7.3) * 0.4); gl.material.opacity = 0.3 + Math.sin(t * 11) * 0.06; }
+  if (M.root.userData.flies) { const f = M.root.userData.flies; f.material.opacity = 0.6 + Math.sin(t * 3) * 0.4; f.rotation.y = Math.sin(t * 0.05) * 0.05; }
+  // the Pumpkin Launcher's pumpkins in flight: they spin, burn and leave purple smoke
+  for (const R of rockets) if (R.pk) {
+    if (R.pm) R.pm.rotation.z += dt * 7;
+    R.trail = (R.trail || 0) - dt;
+    if (R.trail <= 0) { R.trail = 0.03; puff(R.g.position.clone(), Math.random() < 0.5 ? 0x7c3aed : 0x2a1144, 0.7, 0.8); if (Math.random() < 0.5) sparks(R.g.position, Math.random() < 0.5 ? 0xff8a1e : 0x9dff6a, 1, 2); }
+  }
+}
+
+// ---------- the Pumpkin Launcher: a jack-o'-lantern instead of a rocket, and a much bigger, spookier blast ----------
+const PKS = { pk: false, rk: false, at: 0 };
+{
+  const fire0 = fireRocket;
+  fireRocket = function () {
+    fire0.apply(this, arguments);
+    if (weaponKey !== 'pumpkin') return;
+    const R = rockets[rockets.length - 1]; if (!R || R.pk) return;
+    R.pk = true;
+    for (const c of [...R.g.children]) if (c !== R.fire) R.g.remove(c);
+    R.pm = pumpkinMesh(0.26); R.g.add(R.pm);
+    R.fire.material.color.setHex(0xff7a1a); R.fire.scale.setScalar(1.3); R.fire.position.z = 0.32;
+    R.v.multiplyScalar(0.9);
+    // a puff of purple and orange at the muzzle, and a cackle of sparks
+    const p = R.g.position.clone();
+    glowFlash(p, 0xff8a1e, 3.2, 0.25); glowFlash(p, 0x9b5cff, 2.4, 0.35);
+    for (let i = 0; i < 5; i++) puff(p.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.6)), i % 2 ? 0x7c3aed : 0xff8a1e, 1.1, 0.7);
+    sparks(p, 0x9dff6a, 6, 5); sparks(p, 0xff8a1e, 6, 6);
+  };
+  const remove0 = removeRocket;
+  removeRocket = function (i) { const R = rockets[i]; PKS.pk = !!(R && R.pk); PKS.rk = !!R; PKS.at = performance.now(); return remove0.apply(this, arguments); };
+  const explode0 = explode;
+  explode = function (P) {
+    const fresh = performance.now() - PKS.at < 40, pk = fresh && PKS.pk, rk = fresh && PKS.rk; PKS.pk = PKS.rk = false;
+    let RAD = WEAPONS.rocket.splash;
+    if (pk) { const keep = WEAPONS.rocket.splash; WEAPONS.rocket.splash = RAD = WEAPONS.pumpkin.splash; try { explode0.apply(this, arguments); } finally { WEAPONS.rocket.splash = keep; } caPumpkinBoom(P, RAD); }
+    else explode0.apply(this, arguments);
+    // shoppers caught in it
+    for (const h of CA_NPC.list) if (h.hp > 0 && Math.hypot(h.x - P.x, h.y + 0.9 - P.y, h.z - P.z) < RAD) caNpcKill(h, rk ? 'you' : 'boom');
+  };
+  const slash0 = slash;
+  slash = function () {
+    const r = slash0.apply(this, arguments);
+    if (CA_NPC.list.length) { const f = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)); for (const h of CA_NPC.list) { if (h.hp <= 0 || Math.abs(h.y - player.pos.y) > 1.5) continue; const dx = h.x - player.pos.x, dz = h.z - player.pos.z, d = Math.hypot(dx, dz); if (d < 2.1 && (dx * f.x + dz * f.z) / (d || 1) > 0.55) caNpcKill(h, 'you'); } }
+    return r;
+  };
+  const ue0 = updateEnemies;
+  updateEnemies = function (dt, t) { ue0.apply(this, arguments); try { caTick(dt, t); } catch (e) { console.error(e); } };
+  const reset0 = resetGame;
+  resetGame = function () { const r = reset0.apply(this, arguments); try { caNpcReset(); } catch (e) { console.error(e); } return r; };
+}
+function caPumpkinBoom(P, RAD) {
+  glowFlash(P, 0x9b5cff, RAD * 2.4, 0.55); glowFlash(P, 0x7cff6b, RAD * 1.1, 0.35); glowFlash(P, 0xff8a1e, RAD * 1.6, 0.4);
+  sparks(P, 0xff8a1e, 18, 14); sparks(P, 0x9b5cff, 14, 11); sparks(P, 0x9dff6a, 10, 9);
+  for (let i = 0; i < 10; i++) puff(P.clone().add(new THREE.Vector3((Math.random() - 0.5) * RAD, Math.random() * 2, (Math.random() - 0.5) * RAD)), i % 3 ? 0x4c1d95 : 0x1f1030, 3.2, 1.6);
+  debris(P, 0xff7a1a, 10, 1.1); debris(P, 0x2d4a16, 3, 0.8);
+  shake = Math.max(shake, 1.1);
+  // bats burst out of the blast, and a ghost rises from it
+  for (let i = 0; i < 9 && !busy(); i++) {
+    const b = sprite(caBatTex(), 0xffffff, 0.8, false, 1), a = i / 9 * Math.PI * 2 + Math.random() * 0.4, v = new THREE.Vector3(Math.cos(a) * (6 + Math.random() * 4), 3 + Math.random() * 4, Math.sin(a) * (6 + Math.random() * 4)), f = 14 + Math.random() * 8;
+    b.position.copy(P);
+    addFx(b, 1.3 + Math.random() * 0.5, (o, k, dt) => { o.position.addScaledVector(v, dt); v.y += 2 * dt; o.scale.set(0.9 * (0.3 + Math.abs(Math.sin(k * f * 4))), 0.55, 1); o.material.opacity = 1 - k * k; });
+  }
+  if (!busy()) { const gh = sprite(caGhostTex(), 0xffffff, 2.2, false, 0.9); gh.position.copy(P).setY(P.y + 0.5); addFx(gh, 1.8, (o, k, dt) => { o.position.y += dt * 2.4; o.material.opacity = 0.9 * (1 - k); o.scale.setScalar(2.2 + k * 1.4); }); }
+}
+
+// ---------- the map screen: pictures of the new maps, and your best wave on each one ----------
+function caBestOf(id) { const b = profile.bestMap; return (b && b[id]) | 0; }
+function caMapBest(w) { if (gameMode !== 'classic' || !w) return; profile.bestMap = profile.bestMap && typeof profile.bestMap === 'object' ? profile.bestMap : {}; if (w > (profile.bestMap[mapId] | 0)) profile.bestMap[mapId] = w; }
+function caPaintBest() { document.querySelectorAll('.mBest[data-best]').forEach(el => { const b = caBestOf(el.dataset.best); el.textContent = b ? `Best: wave ${b}` : 'Not played yet'; el.classList.toggle('none', !b); }); }
+(function () {
+  const base = showMenu;
+  showMenu = function (name) { const r = base.apply(this, arguments); if (name === 'maps') { try { caPaintBest(); } catch (e) {} } return r; };
+  const pr = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+  const setup = (id, A) => { const cv = document.getElementById(id); if (!cv) return null; const g = cv.getContext('2d'), S = cv.width, k = S / (A * 2 + 6), X = v => (v + A + 3) * k; return { g, S, k, X, rect: (x, z, w, d, c) => { g.fillStyle = c; g.fillRect(X(x - w / 2), X(z - d / 2), w * k, d * k); }, dot: (x, z, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(X(x), X(z), r * k, 0, 7); g.fill(); } }; };
+  const label = (P, txt, x, z) => { const g = P.g; g.font = '700 14px Barlow, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#fff'; g.shadowColor = 'rgba(0,0,0,.85)'; g.shadowBlur = 4; g.fillText(txt, P.X(x), P.X(z)); g.shadowBlur = 0; };
+  // Seaside
+  { const P = setup('prevSeaside', 80); if (P) { const { g, S, rect, dot } = P;
+    g.fillStyle = '#2b7fb3'; g.fillRect(0, 0, S, S); rect(0, -18, 160, 124, '#5f9a4c'); rect(0, -62, 160, 36, '#9a9da3'); rect(0, 30, 160, 28, '#e3cf9f'); rect(0, 47, 160, 6, '#cfe6f0');
+    for (const z of [-17, -43]) rect(0, z, 160, 6, '#4a4d52'); for (const x of [-40, 0, 40]) rect(x, -16, 6, 54, '#4a4d52'); rect(0, 11.5, 160, 7, '#4a4d52');
+    const pastel = ['#f9d5a7', '#bfe3e0', '#f6c6c6', '#d9e8c4', '#fff1b8', '#cfd8f6']; let i = 0;
+    for (const bx of [-60, -20, 20, 60]) for (const hz of [-28, -5]) for (const s of [-1, 1]) rect(bx + s * 8.5, hz, 9, 7, pastel[i++ % pastel.length]);
+    for (const [x, z, w, d] of [[-64, -62, 20, 22], [-38, -64, 16, 20], [16, -62, 18, 22], [40, -66, 14, 18], [64, -62, 20, 22]]) rect(x, z, w, d, '#6b7280');
+    rect(39, 58, 6, 36, '#a07a54'); for (let x = -74; x <= 74; x += 13) dot(x, 15.6, 1.4, '#2f6b3a');
+    for (let k = 0; k < 14; k++) dot(-72 + k * 10.5, 24 + (k * 37 % 14), 1.6, ['#ef4444', '#f59e0b', '#3b82f6', '#ec4899'][k % 4]);
+    label(P, 'Town', 0, -58); label(P, 'Houses', 0, -24); label(P, 'Beach', -30, 34); label(P, 'Pier', 39, 70); label(P, 'Sea', -20, 62);
+    g.strokeStyle = '#9aa0a8'; g.lineWidth = 2; g.strokeRect(P.X(-80), P.X(-80), 160 * P.k, 130 * P.k); } }
+  // Forest
+  { const P = setup('prevForest', 70); if (P) { const { g, S, rect, dot, X } = P;
+    g.fillStyle = '#0c140f'; g.fillRect(0, 0, S, S); rect(0, 0, 140, 140, '#1c2a1d');
+    for (const [a, b] of [[[0, 0], [-38, 30]], [[0, 0], [40, -36]], [[0, 0], [30, 40]], [[0, 0], [-42, -40]], [[-38, 30], [-60, 62]], [[40, -36], [64, -64]]]) { g.strokeStyle = '#4a3a28'; g.lineWidth = 3 * P.k; g.beginPath(); g.moveTo(X(a[0]), X(a[1])); g.lineTo(X(b[0]), X(b[1])); g.stroke(); }
+    for (const [x, z, r] of [[0, 0, 11], [-38, 30, 10], [40, -36, 12], [30, 40, 9], [-42, -40, 7]]) dot(x, z, r, '#2a3a26');
+    for (let k = 0; k < 520; k++) { const x = (pr() * 2 - 1) * 68, z = (pr() * 2 - 1) * 68; if ([[0, 0, 11], [-38, 30, 10], [40, -36, 12], [30, 40, 9], [-42, -40, 7]].some(([cx, cz, r]) => Math.hypot(x - cx, z - cz) < r)) continue; dot(x, z, 1.5, pr() < 0.15 ? '#c2611e' : pr() < 0.5 ? '#0f2416' : '#163220'); }
+    dot(30, 40, 7, '#081018'); rect(-38, 30, 8, 7, '#5b4632'); rect(40, -36, 10, 14, '#6b6862'); dot(0, 0, 1.6, '#ff8a2a');
+    const gr = g.createRadialGradient(S * 0.2, S * 0.15, 2, S * 0.2, S * 0.15, S * 0.22); gr.addColorStop(0, 'rgba(220,232,255,.55)'); gr.addColorStop(1, 'rgba(220,232,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, S, S);
+    label(P, 'Camp', 0, 8); label(P, 'Cabin', -38, 41); label(P, 'Chapel', 40, -46); label(P, 'Pond', 30, 52); } }
+  // Mall
+  { const P = setup('prevMall', 90); if (P) { const { g, S, rect, dot } = P;
+    g.fillStyle = '#5f9a4c'; g.fillRect(0, 0, S, S); rect(0, 50, 180, 80, '#4a4d52'); rect(0, -32, 128, 84, '#efece5');
+    const cols = ['#ff7a1a', '#2563eb', '#eab308', '#ef4444', '#7c3aed', '#16a34a', '#92400e', '#059669', '#0284c7', '#be185d', '#ea580c', '#e11d48'];
+    let i = 0; for (let x = -42; x < 42; x += 14) rect(x + 7, -62, 13.4, 23.4, cols[i++ % cols.length]);
+    for (const [a, b] of [[-42, -29], [-29, -16], [-16, -5], [5, 16], [16, 29], [29, 42]]) rect((a + b) / 2, -2, b - a - 0.6, 23.4, cols[i++ % cols.length]);
+    rect(-53, -32, 21.4, 83.4, '#15803d'); rect(53, -32, 21.4, 83.4, '#a16207');
+    rect(0, -32, 72, 24, '#bfe6ff'); for (const x of [-14, 14]) rect(x, -32, 6, 24, '#4b5563'); rect(0, -32, 6, 24, '#d1d5db'); for (const x of [-27, 27]) dot(x, -32, 3.6, '#5fb4e6');
+    for (const zc of [26, 46, 66]) for (let x = -82; x <= 82; x += 2.8) if (Math.abs(x) > 8 && pr() < 0.5) rect(x, zc + (pr() < 0.5 ? -2.6 : 2.6), 1.9, 4.2, ['#b91c1c', '#1d4ed8', '#f8fafc', '#111827', '#6b7280'][(pr() * 5) | 0]);
+    label(P, 'Atrium', 0, -38); label(P, 'Carpark', 0, 58); label(P, '3 floors', 0, -16); } }
+  try { caPaintBest(); } catch (e) {}
 })();
 </script>
 <template id="caCampaignIntro">
