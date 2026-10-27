@@ -4872,7 +4872,7 @@ function spawnEnemy(key, at, opt) {
   } while ((Math.hypot(x - player.pos.x, z - player.pos.z) < 18 || (mapId === 'big' && x > 34 && z < -30)) && ++tries < 80); // 2.9.10: not behind Frontier's mountains
   if (mapId === 'big' && x > 34 && z < -30) { x = Math.max(-ARENA + 2, Math.min(30, player.pos.x - 30)); z = Math.max(-ARENA + 2, Math.min(ARENA - 2, player.pos.z + 30)); }
   if (mapId === 'outpost' && MAPS.outpost) { const far = MAPS.outpost.spawns.ffa.filter(p => Math.hypot(p.x - player.pos.x, p.z - player.pos.z) > 18), p = far[Math.floor(Math.random() * far.length)] || MAPS.outpost.spawns.ffa[0]; x = p.x + (Math.random() - .5) * 2; z = p.z + (Math.random() - .5) * 2; }
-  let sy = 0; { const SM = MAPS[mapId]; if (SM && SM.spawnAt && gameMode !== 'mp') { const sp = SM.spawnAt(size); if (sp) { x = sp.x; z = sp.z; sy = sp.y || 0; } } } // 2.9.13: the new maps pick their own spots (any floor, never the sea)
+  let sy = 0; { const SM = MAPS[mapId]; if (SM && SM.spawnAt) { const sp = SM.spawnAt(size); if (sp) { x = sp.x; z = sp.z; sy = sp.y || 0; } } } // 2.9.13: the new maps pick their own spots (any floor, never the sea)
   if (at && typeof at === 'object' && Number.isFinite(at.x) && Number.isFinite(at.z)) { x = at.x; z = at.z; sy = 0; }
   g.position.set(x, size / 2 + sy, z);
   for (let i = 0; i < 3; i++) collide(g.position, size * 0.55, sy);
@@ -9889,7 +9889,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
   const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
   const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0, O, 1, I or L
   const DEFAULTS = { mode: 'tdm', teamSize: 3, mapId: 'outpost', killLimit: 20, timeLimit: 10, friendlyFire: false, locked: false, winRounds: 5, mod: 'none' };
-  const ALLOWED = { mod: ['none', 'pistols', 'knives', 'snipers'], mode: ['tdm', 'ffa', 'coop', 'cs', 'boss'], teamSize: [1, 2, 3, 4, 5], mapId: ['classic', 'big', 'outpost', 'dust2'], killLimit: [10, 20, 30], timeLimit: [5, 10, 15], friendlyFire: [false, true], locked: [false, true], winRounds: [3, 5, 8] };
+  const ALLOWED = { mod: ['none', 'pistols', 'knives', 'snipers'], mode: ['tdm', 'ffa', 'coop', 'cs', 'boss'], teamSize: [1, 2, 3, 4, 5], mapId: ['classic', 'big', 'outpost', 'dust2', 'seaside', 'forest', 'mall'], killLimit: [10, 20, 30], timeLimit: [5, 10, 15], friendlyFire: [false, true], locked: [false, true], winRounds: [3, 5, 8] };
   const SPAWNS = { red: [[-6, -30], [0, -31], [6, -30], [-12, -30], [12, -30]], blue: [[6, 30], [0, 31], [-6, 30], [12, 30], [-12, 30]], ffa: [[0, -30], [0, 30], [-30, 0], [30, 0], [-12, 12], [12, -12], [-28, -28], [28, 28], [-28, 28], [28, -28]] }; // Classic and Frontier, as in mp-ui
   const COLORS = { red: 0xdc2626, blue: 0x3b82f6, none: 0x9b7bd6 };
   const CS_COLORS = { red: 0xd97706, blue: 0x2563eb }; // C:S Mode: Terrorists are 'red' and Counter-Terrorists 'blue' underneath
@@ -10408,7 +10408,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
       const dt = Math.min(Math.max(0, (m.t - P.lastT) / 1000), (t - P.lastRecv) / 1000 + 0.5);
       if (Math.hypot(nx - P.x, nz - P.z) > MAX_SPEED * 1.3 * dt + 1.6) { P.lastT = m.t; P.lastRecv = t; P.bad = (P.bad || 0) + 1; return; } // too fast: stays put, and the snapshot pulls them back
     }
-    P.x = nx; P.y = clamp(y, -1, 6); P.z = nz; P.yaw = yaw; P.pitch = clamp(pitch, -1.6, 1.6);
+    P.x = nx; P.y = clamp(y, -1, 15); P.z = nz; // 2.9.13: up to the Mall's top floor P.yaw = yaw; P.pitch = clamp(pitch, -1.6, 1.6);
     P.vx = clamp(vx, -15, 15); P.vy = clamp(vy, -30, 15); P.vz = clamp(vz, -15, 15);
     if (num(m.w) && GUNS.includes(WEAPON_KEYS[m.w])) P.w = m.w;
     P.known = true; P.lastT = m.t; P.lastRecv = t;
@@ -11227,7 +11227,7 @@ if (!window.CAMP) window.CAMP = (() => {
 (() => {
   const CAMP = window.CAMP;
   if (!CAMP) return;
-  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost'], ['dust2', 'Dust II']]; // 2.9.3: Dust II
+  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost'], ['dust2', 'Dust II'], ['seaside', 'Seaside'], ['forest', 'Forest'], ['mall', 'Mall']]; // 2.9.3: Dust II; 2.9.13: Seaside, Forest, Mall
   const MODES = [['tdm', 'Team Deathmatch'], ['cs', 'C:S Mode'], ['ffa', 'Free-for-all'], ['coop', 'Co-op'], ['boss', '1v5']]; // 2.9.8: 1v5
   const teamed = m => m === 'tdm' || m === 'cs';
   // C:S Mode calls the teams Terrorists ('red') and Counter-Terrorists ('blue')
@@ -11898,7 +11898,7 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
   // Built on top of the multiplayer, not inside it: a host who picks "Public" posts a small listing (code, map, mode, players)
   // on a shared Supabase presence channel, 'ca-lobby', over the connection the game already has. Joining from the list
   // fills in the normal Join screen and presses Join, so every join goes through the same code as typing the code in.
-  const MODE_NAME = { tdm: 'Team Deathmatch', ffa: 'Free-for-all', coop: 'Co-op', cs: 'C:S Mode', boss: '1v5' }, MAP_NAME = { classic: 'Classic Village', big: 'Frontier', outpost: 'Outpost', dust2: 'Dust II' };
+  const MODE_NAME = { tdm: 'Team Deathmatch', ffa: 'Free-for-all', coop: 'Co-op', cs: 'C:S Mode', boss: '1v5' }, MAP_NAME = { classic: 'Classic Village', big: 'Frontier', outpost: 'Outpost', dust2: 'Dust II', seaside: 'Seaside', forest: 'Forest', mall: 'Mall' }; // 2.9.13
   const MAXP = 10, pubRooms = new Set(), pwRooms = new Set(); // 2.9.8: 10
   let wantPublic = true, pending = null, lob = null, lobReady = null, hosting = null, lastKey = '', browsing = false, matchLive = false, thumbs = {};
   let lobSynced = false, leaving = null, lastTrack = 0; // 2.9.10: the list waits for the first presence sync; a channel being left is waited for
@@ -12017,6 +12017,7 @@ function mpCutsceneCs(on) { cs = on ? { kind: 'mpwin' } : null; }
     showMenu('mpbrowse');
     $('mpBStatus').textContent = 'Looking for lobbies…'; $('mpBList').innerHTML = '';
     try { if (!thumbs.dust2) thumbs.dust2 = mapShot('dust2', DUST_SHOT[0], DUST_SHOT[1]); } catch (e) {} // 2.9.3
+    try { for (const [k, cv] of [['seaside', 'prevSeaside'], ['forest', 'prevForest'], ['mall', 'prevMall']]) if (!thumbs[k] && $(cv)) thumbs[k] = $(cv).toDataURL(); } catch (e) {} // 2.9.13
     try { if (!thumbs.outpost) thumbs.outpost = mapShot('outpost', [20, 15, 34], [2, 0, -6]); if (!thumbs.classic) thumbs.classic = mapShot('classic', [-22, 9, 27], [2, 1.5, 0]); if (!thumbs.big && $('prevBig')) thumbs.big = $('prevBig').toDataURL(); } catch (e) {}
     lobbyChan().then(() => { renderBrowse(); setTimeout(() => { lobSynced = true; if (browsing) renderBrowse(); }, 3000); }).catch(() => { $('mpBStatus').textContent = ''; $('mpBList').innerHTML = `<div class="mpBEmpty">Public lobbies can't be reached right now.<br>You can still create a match or join one with a code.</div>`; });
   }
@@ -14927,7 +14928,7 @@ const _nc = [0, 0, 0];
 // updateEnemies() asks this which way a cube should go. null: straight at you, as on the other maps.
 function navSteer(e, u, dist) {
   const M = MAPS[mapId], G = M && M.nav;
-  if (!G || !NAV.on || gameMode === 'mp') return null;
+  if (!G || !NAV.on) return null; // (in Co-op too: the host runs the cubes)
   const now = NAV.time * 1000, y = u.jy || 0;
   if (u.hunt === undefined) u.hunt = !!M.shoppers && !u.T.ranged && !u.T.boss && Math.random() < 0.4;
   // a few of the Mall's cubes go after the shoppers near them
@@ -14965,11 +14966,28 @@ function navSteer(e, u, dist) {
   if (l < 0.05) { u.navDir = null; return null; }
   return (u.navDir = [dx / l, dz / l]);
 }
+// multiplayer spawn points: the nearest open spot on the ground to each of the given places, facing the other side
+function caMpSpawns(M, red, blue, ffa) {
+  const G = M.nav, out = list => list.map(([ax, az, fx = 0, fz = 0]) => {
+    for (let r = 0; r < 12; r += 0.5) for (let a = 0; a < 6.28; a += r ? 0.5 / r : 7) {
+      const x = ax + Math.cos(a) * r, z = az + Math.sin(a) * r, j = navNode(G, x, 0, z);
+      if (j < 0 || G.Y[j] > 0.05 || G.dist[j] === Infinity || clearance(x, z) < 1.4) continue;
+      if ((M.xb || []).some(b => b.y0 < 1.8 && Math.abs(x - b.x) < b.hx + 1 && Math.abs(z - b.z) < b.hz + 1)) continue;
+      return { x: +x.toFixed(2), z: +z.toFixed(2), yaw: Math.atan2(x - fx, z - fz) };
+    }
+    return { x: ax, z: az, yaw: Math.atan2(ax - fx, az - fz) };
+  });
+  const c = (L, w) => w || [L.reduce((s, p) => s + p[0], 0) / L.length, L.reduce((s, p) => s + p[1], 0) / L.length];
+  const rc = c(red), bc = c(blue);
+  M.spawns = { red: out(red.map(p => [p[0], p[1], bc[0], bc[1]])), blue: out(blue.map(p => [p[0], p[1], rc[0], rc[1]])), ffa: out(ffa.map(p => [p[0], p[1], 0, 0])) };
+}
 // a spot for a new cube: somewhere you can be reached from, not too close and not too far
 function navSpawn(M, near, far) {
   const G = M.nav; if (!G || !G.reach.length) return null;
+  const ground = gameMode === 'mp'; // in Co-op the cubes start on the ground floor
   for (let k = 0; k < 60; k++) {
     const j = G.reach[(Math.random() * G.reach.length) | 0]; navCenter(G, j, _nc);
+    if (ground && _nc[1] > 0.5) continue;
     if (M.spawnOk && !M.spawnOk(_nc[0], _nc[2], _nc[1])) continue;
     const d = Math.hypot(_nc[0] - player.pos.x, (_nc[1] - player.pos.y) * 2, _nc[2] - player.pos.z);
     if (d < near || d > far) continue;
@@ -15367,6 +15385,9 @@ function buildMall() {
     root.traverse(o => { o.userData.noBreak = true; });
     navBuild(M);
     caNpcSetup(M);
+    // multiplayer: one team in the carpark, the other in the north gallery; free-for-all all over the ground floor
+    caMpSpawns(M, [[-24, 80], [-12, 82], [0, 82], [12, 82], [24, 80]], [[-24, -47], [-12, -47], [0, -47], [12, -47], [24, -47]],
+      [[0, -32], [-30, -30], [30, -30], [-39, -17], [39, -17], [-39, -47], [39, -47], [0, 0], [0, 36], [-50, 56], [50, 56], [-76, -20], [76, -20], [0, -82]]);
   } finally {
     delete scene.add;
     seed = keepSeed;
@@ -15787,6 +15808,9 @@ function buildSeaside() {
       water, foam, navGround: (x, z) => z < 50, spawnOk: (x, z) => z < SHORE - 1.5 && !(x > 35 && x < 43 && z > 34),
       spawnAt: () => navSpawn(M, 26, 52) };
     navBuild(M);
+    // multiplayer: one team in the town, the other on the promenade; free-for-all round the streets and the beach
+    caMpSpawns(M, [[-30, -43], [-10, -43], [10, -43], [30, -43], [0, -43]], [[-30, 11.5], [-10, 11.5], [10, 11.5], [30, 11.5], [0, 11.5]],
+      [[-60, -17], [60, -17], [-20, -17], [20, -17], [0, 11.5], [-50, 11.5], [50, 11.5], [-40, -30], [40, -5], [-60, -43], [60, -43], [-20, 30], [20, 30], [0, -43]]);
   } finally {
     delete scene.add;
     seed = keepSeed;
@@ -15890,6 +15914,9 @@ function buildForest() {
       diff: { hp: 1.25, speed: 1.12 },
       spawnAt: () => navSpawn(M, 22, 46) };
     navBuild(M);
+    // multiplayer: one team by the cabin, the other by the chapel; free-for-all in the clearings and along the paths
+    caMpSpawns(M, [[-30, 24], [-30, 36], [-46, 24], [-46, 37], [-38, 40]], [[32, -26], [48, -26], [30, -44], [50, -44], [40, -24]],
+      [[0, 6], [-6, -4], [6, 4], [-38, 41], [40, -24], [30, 31], [-42, -34], [-20, 16], [20, -18], [15, 20], [-21, -20], [-50, 48], [54, -52]]);
   } finally {
     delete scene.add;
     seed = keepSeed;
