@@ -678,7 +678,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <button class="uiCard" id="homeFriends" data-art="friends" style="--ac:#f472b6"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Online</em><b>Friends</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v2.9.14 · What's new</button>
+    <button class="link verLink" data-action="notes">v2.9.15 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -704,7 +704,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.9.14<span>New cubes</span></h1><p>Four new cubes: the Bomber, the Medic, the Shield and the Swarm. Buildings you can go into (and bring down) on Frontier and Seaside, a much bigger Forest, a busier Mall, and rocket jumping.</p>
+    <div class="hero"><div class="ribbon">CRITICAL UPDATE</div><h1>v2.9.15<span>Seaside closed</span></h1><p>Seaside is down and under construction for now. It can't be played in single-player or multiplayer until it's back in a future update.</p>
       <div class="hero-guns"><i class="hcube" style="background:#7a3a0a">🎃</i><i class="hcube" style="background:#3a1a5a">💀</i><i class="hcube" style="background:#6f5a2c">📦</i><i class="hcube" style="background:#2c4a6f">👥</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
@@ -763,6 +763,10 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.15 <span>Critical update</span></h3><ul>
+        <li><b>Seaside is down and under construction.</b> The map can't be played for now, in single-player or multiplayer. It will be back in a future update.</li>
+        <li>Older copies of the game can't join multiplayer games until they refresh.</li>
+      </ul></section>
       <section><h3>v2.9.14 <span>New cubes</span></h3><ul>
         <li><b>Bomber Cube</b> (from wave 10): a black cube with a lit fuse. It sprints at you and blows up when it gets close, and it blows up barricades too. Shoot it early: when it dies it explodes anyway and hurts every cube round it.</li>
         <li><b>Medic Cube</b> (from wave 20): a pink cube with white crosses. It keeps its distance and heals the hurt cubes near it with a pink beam. Take it out first.</li>
@@ -1278,7 +1282,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <b>Frontier <em class="mDiff d2">Medium</em></b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm.</span><i class="mBest" data-best="big"></i></button>
       <button class="mapcard" data-map="outpost"><canvas width="320" height="320" id="prevOutpost"></canvas>
         <b>Outpost <em class="mDiff d2">Medium</em></b><span>A walled desert compound built for team fights: two sites, three lanes and plenty of cover.</span><i class="mBest" data-best="outpost"></i></button>
-      <button class="mapcard" data-map="seaside"><canvas width="320" height="320" id="prevSeaside"></canvas>
+      <button class="mapcard closed" data-map="seaside"><span class="mClosed">🚧 Under construction</span><canvas width="320" height="320" id="prevSeaside"></canvas>
         <b>Seaside <em class="mDiff d2">Medium</em></b><span>A beach town: sand, a long pier, the ocean, beach houses and a block of tall buildings. Cubes come from the land, never the sea.</span><i class="mBest" data-best="seaside"></i></button>
       <button class="mapcard" data-map="forest"><canvas width="320" height="320" id="prevForest"></canvas>
         <b>Forest <em class="mDiff d3">Hard</em></b><span>Dark, dense woods under the moon. You won't see the cubes until they're close, and they're tougher and quicker here.</span><i class="mBest" data-best="forest"></i></button>
@@ -9096,7 +9100,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.14';
+const VERSION = '2.9.15';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -11260,7 +11264,7 @@ if (!window.CAMP) window.CAMP = (() => {
 (() => {
   const CAMP = window.CAMP;
   if (!CAMP) return;
-  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost'], ['dust2', 'Dust II'], ['seaside', 'Seaside'], ['forest', 'Forest'], ['mall', 'Mall']]; // 2.9.3: Dust II; 2.9.13: Seaside, Forest, Mall
+  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost'], ['dust2', 'Dust II'], ['forest', 'Forest'], ['mall', 'Mall']]; // 2.9.3: Dust II; 2.9.13: Forest, Mall; 2.9.15: Seaside is closed for now
   const MODES = [['tdm', 'Team Deathmatch'], ['cs', 'C:S Mode'], ['ffa', 'Free-for-all'], ['coop', 'Co-op'], ['boss', '1v5']]; // 2.9.8: 1v5
   const teamed = m => m === 'tdm' || m === 'cs';
   // C:S Mode calls the teams Terrorists ('red') and Counter-Terrorists ('blue')
@@ -16861,6 +16865,39 @@ function caPaintBest() { document.querySelectorAll('.mBest[data-best]').forEach(
     for (const zc of [26, 46, 66]) for (let x = -82; x <= 82; x += 2.8) if (Math.abs(x) > 8 && pr() < 0.5) rect(x, zc + (pr() < 0.5 ? -2.6 : 2.6), 1.9, 4.2, ['#b91c1c', '#1d4ed8', '#f8fafc', '#111827', '#6b7280'][(pr() * 5) | 0]);
     label(P, 'Atrium', 0, -38); label(P, 'Carpark', 0, 58); label(P, '3 floors', 0, -16); } }
   try { caPaintBest(); } catch (e) {}
+})();
+</script>
+<style id="v2915css">
+/* 2.9.15: Seaside is closed */
+.mapcard.closed { position: relative; filter: grayscale(.85) brightness(.7); }
+.mapcard.closed .mClosed { position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(-3deg); z-index: 2; background: repeating-linear-gradient(45deg, #facc15 0 14px, #111 14px 28px); color: #fff; font: 900 15px/1 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; padding: 10px 16px; border-radius: 8px; text-shadow: 0 2px 4px #000, 0 0 2px #000; box-shadow: 0 6px 20px rgba(0,0,0,.5); white-space: nowrap; }
+#closedPop { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center; padding: 16px; background: rgba(4,6,10,.86); backdrop-filter: blur(6px); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+#closedPop[hidden] { display: none; }
+#closedPop .box { width: min(480px, 100%); border-radius: 18px; overflow: hidden; background: #12151c; border: 1px solid rgba(250,204,21,.6); color: #eef1f6; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
+#closedPop .tape { height: 22px; background: repeating-linear-gradient(45deg, #facc15 0 18px, #111 18px 36px); }
+#closedPop .in { padding: 22px 22px 20px; }
+#closedPop i { font-style: normal; font-size: 54px; display: block; }
+#closedPop h2 { margin: 6px 0 8px; font-size: 26px; } #closedPop p { margin: 0 0 18px; color: #b9c1cf; line-height: 1.5; }
+#closedPop button { font: 700 15px system-ui, sans-serif; padding: 12px 22px; border-radius: 12px; border: 0; background: #facc15; color: #111; cursor: pointer; }
+</style>
+<div id="closedPop" hidden role="alertdialog" aria-modal="true" aria-labelledby="closedT"><div class="box"><div class="tape"></div><div class="in"><i>🚧</i>
+  <h2 id="closedT">Seaside is under construction</h2>
+  <p>This map is down for now while it's being rebuilt, so it can't be played. It'll be back in a future update. Pick another map for now.</p>
+  <button id="closedBack">Back to maps</button></div><div class="tape"></div></div></div>
+<script id="v2915">
+// 2.9.15: Seaside is down and under construction. Its map card opens a popup you can't play past (there's no way round
+// it: only "Back to maps"), and it's gone from the multiplayer map list.
+(function () {
+  const pop = document.getElementById('closedPop');
+  const card = document.querySelector('.mapcard[data-map="seaside"]');
+  if (card) card.addEventListener('click', e => { e.stopImmediatePropagation(); e.preventDefault(); try { Sound.init(); Sound.play('empty'); } catch (er) {} pop.hidden = false; document.getElementById('closedBack').focus(); }, true);
+  document.getElementById('closedBack').addEventListener('click', () => { pop.hidden = true; try { Sound.play('click'); } catch (er) {} });
+  // no other way out: Escape, clicks outside and keys don't close it or reach the game underneath
+  for (const ev of ['keydown', 'keyup']) addEventListener(ev, e => { if (!pop.hidden && e.target.id !== 'closedBack') { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  pop.addEventListener('click', e => { if (e.target === pop) e.stopPropagation(); });
+  // and if anything ever asks for it anyway, it isn't built
+  const um = useMap;
+  useMap = function (id) { if (id === 'seaside') { pop.hidden = false; id = 'big'; } return um.call(this, id); };
 })();
 </script>
 <template id="caCampaignIntro">
