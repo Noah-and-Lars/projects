@@ -678,7 +678,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <button class="uiCard" id="homeFriends" data-art="friends" style="--ac:#f472b6"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Online</em><b>Friends</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v2.9.15 · What's new</button>
+    <button class="link verLink" data-action="notes">v2.9.17 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -704,7 +704,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">CRITICAL UPDATE</div><h1>v2.9.15<span>Seaside closed</span></h1><p>Seaside is down and under construction for now. It can't be played in single-player or multiplayer until it's back in a future update.</p>
+    <div class="hero"><div class="ribbon">ANTI-CHEAT UPDATE</div><h1>v2.9.17<span>Seaside is back</span></h1><p>Seaside is open again in single-player and multiplayer, and every map now has laws against playing from places you shouldn't be.</p>
       <div class="hero-guns"><i class="hcube" style="background:#7a3a0a">🎃</i><i class="hcube" style="background:#3a1a5a">💀</i><i class="hcube" style="background:#6f5a2c">📦</i><i class="hcube" style="background:#2c4a6f">👥</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
@@ -763,6 +763,15 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.17 <span>Anti-cheat update</span></h3><ul>
+        <li><b>Seaside is back</b>, in single-player and multiplayer.</li>
+        <li><b>New law: no shooting from out of bounds.</b> If you get illegally past a barrier of the map (inside a wall, over the edge, out in the sea, or anywhere the map doesn't let you walk to), your shots can't get through to the other side. An OUT OF BOUNDS warning shows while it's happening.</li>
+        <li><b>New law: the cubes come for you.</b> If you get somewhere the cubes can't walk to, they stop going round things and come straight through the barriers (and up to your level) for you.</li>
+        <li>Stay out of bounds for 5 seconds and the map puts you back where you last stood.</li>
+        <li>Fixed on Seaside: standing out on the pier made you untouchable, because the cubes couldn't walk onto it. They can now.</li>
+        <li>Fixed on Seaside: a rocket jump could carry you over the line in the shallows (or the pier rails) and out into the sea.</li>
+        <li>Older copies of the game can't join multiplayer games until they refresh.</li>
+      </ul></section>
       <section><h3>v2.9.15 <span>Critical update</span></h3><ul>
         <li><b>Seaside is down and under construction.</b> The map can't be played for now, in single-player or multiplayer. It will be back in a future update.</li>
         <li>Older copies of the game can't join multiplayer games until they refresh.</li>
@@ -1282,7 +1291,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <b>Frontier <em class="mDiff d2">Medium</em></b><span id="bigDesc">Four times bigger: the village in the middle, a dense forest, a mountain range, a town and a farm.</span><i class="mBest" data-best="big"></i></button>
       <button class="mapcard" data-map="outpost"><canvas width="320" height="320" id="prevOutpost"></canvas>
         <b>Outpost <em class="mDiff d2">Medium</em></b><span>A walled desert compound built for team fights: two sites, three lanes and plenty of cover.</span><i class="mBest" data-best="outpost"></i></button>
-      <button class="mapcard closed" data-map="seaside"><span class="mClosed">🚧 Under construction</span><canvas width="320" height="320" id="prevSeaside"></canvas>
+      <button class="mapcard" data-map="seaside"><canvas width="320" height="320" id="prevSeaside"></canvas>
         <b>Seaside <em class="mDiff d2">Medium</em></b><span>A beach town: sand, a long pier, the ocean, beach houses and a block of tall buildings. Cubes come from the land, never the sea.</span><i class="mBest" data-best="seaside"></i></button>
       <button class="mapcard" data-map="forest"><canvas width="320" height="320" id="prevForest"></canvas>
         <b>Forest <em class="mDiff d3">Hard</em></b><span>Dark, dense woods under the moon. You won't see the cubes until they're close, and they're tougher and quicker here.</span><i class="mBest" data-best="forest"></i></button>
@@ -9100,7 +9109,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.16';
+const VERSION = '2.9.17';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -11265,7 +11274,7 @@ if (!window.CAMP) window.CAMP = (() => {
 (() => {
   const CAMP = window.CAMP;
   if (!CAMP) return;
-  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost'], ['dust2', 'Dust II'], ['forest', 'Forest'], ['mall', 'Mall']]; // 2.9.3: Dust II; 2.9.13: Forest, Mall; 2.9.15: Seaside is closed for now
+  const MP_MAPS = [['classic', 'Classic Village'], ['big', 'Frontier'], ['outpost', 'Outpost'], ['dust2', 'Dust II'], ['seaside', 'Seaside'], ['forest', 'Forest'], ['mall', 'Mall']]; // 2.9.3: Dust II; 2.9.13: Forest, Mall; 2.9.15: Seaside closed; 2.9.17: Seaside is back
   const MODES = [['tdm', 'Team Deathmatch'], ['cs', 'C:S Mode'], ['ffa', 'Free-for-all'], ['coop', 'Co-op'], ['boss', '1v5']]; // 2.9.8: 1v5
   const teamed = m => m === 'tdm' || m === 'cs';
   // C:S Mode calls the teams Terrorists ('red') and Counter-Terrorists ('blue')
@@ -16868,37 +16877,130 @@ function caPaintBest() { document.querySelectorAll('.mBest[data-best]').forEach(
   try { caPaintBest(); } catch (e) {}
 })();
 </script>
-<style id="v2915css">
-/* 2.9.15: Seaside is closed */
-.mapcard.closed { position: relative; filter: grayscale(.85) brightness(.7); }
-.mapcard.closed .mClosed { position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(-3deg); z-index: 2; background: repeating-linear-gradient(45deg, #facc15 0 14px, #111 14px 28px); color: #fff; font: 900 15px/1 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; padding: 10px 16px; border-radius: 8px; text-shadow: 0 2px 4px #000, 0 0 2px #000; box-shadow: 0 6px 20px rgba(0,0,0,.5); white-space: nowrap; }
-#closedPop { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center; padding: 16px; background: rgba(4,6,10,.86); backdrop-filter: blur(6px); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-#closedPop[hidden] { display: none; }
-#closedPop .box { width: min(480px, 100%); border-radius: 18px; overflow: hidden; background: #12151c; border: 1px solid rgba(250,204,21,.6); color: #eef1f6; box-shadow: 0 30px 80px rgba(0,0,0,.6); text-align: center; }
-#closedPop .tape { height: 22px; background: repeating-linear-gradient(45deg, #facc15 0 18px, #111 18px 36px); }
-#closedPop .in { padding: 22px 22px 20px; }
-#closedPop i { font-style: normal; font-size: 54px; display: block; }
-#closedPop h2 { margin: 6px 0 8px; font-size: 26px; } #closedPop p { margin: 0 0 18px; color: #b9c1cf; line-height: 1.5; }
-#closedPop button { font: 700 15px system-ui, sans-serif; padding: 12px 22px; border-radius: 12px; border: 0; background: #facc15; color: #111; cursor: pointer; }
+<style id="v2917css">
+/* 2.9.17: out of bounds */
+#lawWarn { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 60; pointer-events: none; text-align: center; font: 900 26px/1.1 'Russo One', system-ui, sans-serif; letter-spacing: .08em; color: #ff4d4d; text-shadow: 0 0 12px rgba(255,40,40,.7), 0 2px 4px #000; animation: lawB .8s ease-in-out infinite; }
+#lawWarn small { display: block; margin-top: 6px; font: 700 14px/1.4 system-ui, sans-serif; letter-spacing: 0; color: #fff; text-shadow: 0 1px 3px #000; }
+#lawWarn[hidden] { display: none; }
+@keyframes lawB { 50% { opacity: .55; } }
 </style>
-<div id="closedPop" hidden role="alertdialog" aria-modal="true" aria-labelledby="closedT"><div class="box"><div class="tape"></div><div class="in"><i>🚧</i>
-  <h2 id="closedT">Seaside is under construction</h2>
-  <p>This map is down for now while it's being rebuilt, so it can't be played. It'll be back in a future update. Pick another map for now.</p>
-  <button id="closedBack">Back to maps</button></div><div class="tape"></div></div></div>
-<script id="v2915">
-// 2.9.15: Seaside is down and under construction. Its map card opens a popup you can't play past (there's no way round
-// it: only "Back to maps"), and it's gone from the multiplayer map list.
+<div id="lawWarn" hidden>OUT OF BOUNDS<small id="lawWhy">Your shots are blocked and the cubes can reach you. Get back into the map.</small></div>
+<script id="v2917">
+// ===== 2.9.17: the map's laws (anti-cheat), and Seaside is back =====
+// Law 1: a player who is illegally past a barrier of the map (inside a wall, over the edge, in the sea, or in a part of the
+//        map nobody can walk to) can't shoot: their bullets can't pass through to the other side.
+// Law 2: if a player gets somewhere the cubes can't walk to (out of bounds, or a spot their pathfinding can't reach),
+//        the cubes stop going round things and come straight through the barriers for them.
+// And if you stay out of bounds, the map puts you back where you last stood legally.
 (function () {
-  const pop = document.getElementById('closedPop');
-  const card = document.querySelector('.mapcard[data-map="seaside"]');
-  if (card) card.addEventListener('click', e => { e.stopImmediatePropagation(); e.preventDefault(); try { Sound.init(); Sound.play('empty'); } catch (er) {} pop.hidden = false; document.getElementById('closedBack').focus(); }, true);
-  document.getElementById('closedBack').addEventListener('click', () => { pop.hidden = true; try { Sound.play('click'); } catch (er) {} });
-  // no other way out: Escape, clicks outside and keys don't close it or reach the game underneath
-  for (const ev of ['keydown', 'keyup']) addEventListener(ev, e => { if (!pop.hidden && e.target.id !== 'closedBack') { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
-  pop.addEventListener('click', e => { if (e.target === pop) e.stopPropagation(); });
-  // and if anything ever asks for it anyway, it isn't built
+  const LAW = window.caLaw = { illegal: false, unreach: false, why: '', badT: 0, unT: 0, okT: 0, inE: false, last: null, maps: {} };
+  const $ = id => document.getElementById(id);
+
+  // ---------- Seaside fixes ----------
+  // The pier deck past the shoreline wasn't on the cubes' map at all, so standing out on the pier (over the sea) made you
+  // untouchable. It's a floor they can walk on now. The invisible line in the shallows and the pier rails are also much
+  // taller, so a rocket jump can't carry you over them into the sea.
+  const bs0 = buildSeaside;
+  buildSeaside = function () {
+    const r = bs0.apply(this, arguments), M = MAPS.seaside;
+    if (M && !M.law17) {
+      M.law17 = true;
+      M.plats.push({ x0: 36.3, x1: 41.7, z0: 40, z1: 76, y: 1.0 });
+      for (const b of M.boxes) if ((b.z === 50 && b.hz < 0.5 && b.h <= 4) || ((b.x === 36.1 || b.x === 41.9) && b.hz > 10) || (b.z === 76 && b.x === 39)) b.h = 40;
+      // the gaps beside the pier shop are narrower than you, so squeezing through pushed you into the pocket behind it,
+      // where nothing could reach you: the shop now fills the end of the pier from rail to rail
+      M.boxes.push({ x: 39, z: 73.4, hx: 2.75, hz: 2.45, h: 40 });
+      M.lawOut = (x, z, y) => z > 50.35 && !(x > 36.25 && x < 41.75 && z < 76.2 && y > 0.7) ? 'in the sea' : '';
+      navBuild(M);
+    }
+    return r;
+  };
+
+  // ---------- where a player can legally be, per map ----------
+  // A walkable graph built for a player (anything up to STEP high can be climbed) from where they started. Anywhere
+  // that isn't connected to it is past a barrier.
+  function lawGraph(M) {
+    const key = mapId; let L = LAW.maps[key];
+    if (L && L.M === M) return L.G;
+    const P = { arena: M.arena, boxes: M.boxes.filter(b => b.h > STEP), xb: (M.xb || []).filter(b => b.h > STEP), plats: M.plats || [], navGround: M.navGround, navR: 0.2, // a little lenient, so gaps just wide enough for you stay open
+      start: [player.pos.x, Math.max(0, player.pos.y), player.pos.z] };
+    let G = null;
+    try { G = navBuild(P); } catch (e) { G = null; }
+    if (G) { G.ok = new Uint8Array(G.N); for (const j of G.reach) G.ok[j] = 1; if (G.reach.length < 30) G = null; }
+    LAW.maps[key] = { M, G }; return G;
+  }
+  // is there a node of graph G the player could be standing on (on the floor, or on a crate above it)?
+  function onGraph(G, flags, x, y, z) {
+    for (const dy of [0, 1.0, 2.2]) { const j = navNode(G, x, y - dy, z); if (j >= 0 && flags[j]) return true; }
+    return false;
+  }
+  function cubeFlags(G) { if (!G.ok17) { G.ok17 = new Uint8Array(G.N); for (const j of G.reach || []) G.ok17[j] = 1; } return G.ok17; }
+
+  function check(dt) {
+    const M = MAPS[mapId], p = player.pos, y = p.y;
+    // (not in the story missions: they're scripted, and some are played at a different ground level)
+    if (state !== 'playing' || !M || player.hp <= 0 || gameMode === 'campaign' || floorBase !== 0) { LAW.illegal = LAW.unreach = false; LAW.badT = LAW.unT = 0; const w = $('lawWarn'); if (w) w.hidden = true; return; }
+    let why = '';
+    // over the edge of the map
+    if (Math.abs(p.x) > ARENA - 0.5 || Math.abs(p.z) > ARENA - 0.5) why = 'past the edge of the map';
+    // inside a wall
+    if (!why) for (const b of boxes) {
+      if (b.h <= STEP && y >= b.h - 0.3) continue; if (y >= b.h) continue;
+      if (Math.abs(p.x - b.x) < b.hx - 0.12 && Math.abs(p.z - b.z) < b.hz - 0.12) { why = 'inside a wall'; break; }
+    }
+    if (!why && XB.length) for (const b of xbNear(p.x, p.z)) {
+      if (b.h <= STEP || y + 1.6 <= b.y0 || y >= b.y0 + b.h - 0.05) continue;
+      if (Math.abs(p.x - b.x) < b.hx - 0.12 && Math.abs(p.z - b.z) < b.hz - 0.12) { why = 'inside a wall'; break; }
+    }
+    // map rules (Seaside: the sea)
+    if (!why && M.lawOut) why = M.lawOut(p.x, p.z, y);
+    // somewhere nobody can walk to (judged on the ground, not mid-jump)
+    if (!why && player.onGround) { const G = lawGraph(M); if (G && !onGraph(G, G.ok, p.x, y, p.z)) why = 'somewhere the map doesn’t let you go'; }
+    // hold the verdict for a moment so a single odd frame never counts
+    if (why) { LAW.badT += dt; LAW.okT = 0; } else { LAW.okT += dt; if (LAW.okT > 0.25) LAW.badT = 0; }
+    const wasIllegal = LAW.illegal;
+    LAW.illegal = LAW.badT > 0.35; if (why) LAW.why = why;
+    // remember the last place you stood legally, and put you back there if you stay out of bounds
+    if (!why && player.onGround && LAW.okT > 0.5) LAW.last = { x: p.x, y: p.y, z: p.z, m: mapId };
+    if (LAW.illegal && LAW.badT > 5 && LAW.last && LAW.last.m === mapId) {
+      p.set(LAW.last.x, LAW.last.y, LAW.last.z); player.vy = 0; LAW.badT = 0; LAW.illegal = false;
+      try { banner('Back in bounds', 'You can’t play from outside the map'); } catch (e) {}
+    }
+    // can the cubes walk to you?
+    let un = LAW.illegal;
+    if (!un && NAV.on && M.nav && player.onGround) { const G = M.nav; un = !onGraph(G, cubeFlags(G), p.x, y, p.z); }
+    if (un) LAW.unT += dt; else LAW.unT = Math.max(0, LAW.unT - dt * 2);
+    LAW.unreach = LAW.illegal || LAW.unT > 1.2;
+    const w = $('lawWarn'); if (w) { w.hidden = !LAW.illegal; if (LAW.illegal && !wasIllegal) $('lawWhy').textContent = `You’re ${LAW.why}. Your shots are blocked and the cubes can reach you. Get back into the map.`; }
+  }
+
+  // ---------- Law 1: no shooting from out of bounds ----------
+  const sh0 = shoot;
+  shoot = function () {
+    if (LAW.illegal && state === 'playing') { if (fireCooldown <= 0) { try { Sound.play('empty'); } catch (e) {} fireCooldown = 0.25; } return; }
+    return sh0.apply(this, arguments);
+  };
+
+  // ---------- Law 2: the cubes come through the barriers for you ----------
+  // the verdict is made every frame you play, in every mode (multiplayer without cubes too)
+  const up0 = updatePlayer;
+  updatePlayer = function (dt) { const r = up0.apply(this, arguments); try { check(dt); } catch (e) { console.error('law', e); } return r; };
+  const ue = updateEnemies;
+  updateEnemies = function (dt) {
+    LAW.inE = LAW.unreach;
+    try { return ue.apply(this, arguments); } finally { LAW.inE = false; }
+  };
+  const ns0 = navSteer;
+  navSteer = function () { if (LAW.inE) return null; return ns0.apply(this, arguments); }; // straight at you
+  const co0 = collide;
+  collide = function (pos, r) { if (LAW.inE && r !== 0.45) return; return co0.apply(this, arguments); }; // walls don't stop them (the player still collides)
+  const cg0 = cubeGround;
+  cubeGround = function (pos, y, r) { const g = cg0.apply(this, arguments); return LAW.inE && Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z) < 6 ? Math.max(g, player.pos.y - 0.2) : g; }; // the ones near you rise to your level
+  const los0 = hasLOS;
+  hasLOS = function () { if (LAW.unreach) return true; return los0.apply(this, arguments); }; // the shooting cubes see you through it
+  // a fresh map starts with a fresh verdict
   const um = useMap;
-  useMap = function (id) { if (id === 'seaside') { pop.hidden = false; id = 'big'; } return um.call(this, id); };
+  useMap = function () { LAW.illegal = LAW.unreach = false; LAW.badT = LAW.unT = 0; LAW.last = null; const r = um.apply(this, arguments); const w = $('lawWarn'); if (w) w.hidden = true; return r; };
 })();
 </script>
 <template id="caCampaignIntro">
