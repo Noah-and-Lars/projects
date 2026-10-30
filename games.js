@@ -102,14 +102,14 @@ window.GAMES = [
     id: 'gamble-your-life-away',
     title: 'Gamble Your Life Away',
     category: 'Casino',
-    tagline: 'A 3D casino with 24 games and $80,000. Just do not end up in debt.',
-    description: 'Walk into a 3D casino with $80,000 and try 24 games: slots, roulette, blackjack, baccarat, craps, video poker, plinko, crash, mines, horse racing, keno, scratch cards and more. The house lends you a little credit, but end a round in debt and the casino kills you.',
+    tagline: 'A 3D casino with 44 games, Texas Hold’em included, and $80,000. Just do not end up in debt.',
+    description: 'Walk into a 3D casino with $80,000 and try 44 games: slots, roulette, blackjack, Texas Hold’em, baccarat, craps, video poker, plinko, crash, mines, balloon pop, bowling, darts, horse racing, keno, bingo and more. The house lends you a little credit, but end a round in debt and the casino kills you.',
     controls: 'Mouse or touch',
     keys: [['Drag', 'Look around the casino'], ['Click a game', 'Sit down and play'], ['Chips', 'Pick your bet'], ['Esc', 'Back to the casino floor']],
     path: 'gamble-your-life-away/index.html',
     thumb: 'gamble-your-life-away/thumb.jpg',
     added: '2026-10-15T10:15:00+11:00',
-    updated: '2026-10-27T12:58:00+11:00',
+    updated: '2026-11-01T01:30:00+11:00',
     stat() { const s = readSave('gambleLifeSave', true); return s && s.rounds ? 'Richest ' + '$' + Math.round(s.peak).toLocaleString('en-US') : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-01', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.1: 20 new games on a bigger casino floor, including Texas Hold’em, Three Card Poker, three new slot machines, Balloon Pop, Bowling and Darts, plus a balance pass and bug fixes for the original 24.' },
   { date: '2026-10-31', game: 'free-criminal', text: 'Free Criminal 2.0.3: online play is back for everyone. The shutdown is cancelled, there is a new Everyone chat pinned at the top of Messages on your phone, and a warning before joining that online chat is not moderated.' },
   { date: '2026-10-31', text: 'All online play on the arcade (multiplayer, the on now counters and Global chat) moved to new servers with much more room, so online games should stay up and feel smoother. Your saves are not affected.' },
   { date: '2026-10-30', game: 'cube-assault', text: 'Cube Assault 2.9.15, critical update: the Seaside map is down and under construction for now. It cannot be played in single-player or multiplayer until it returns in a future update.' },
