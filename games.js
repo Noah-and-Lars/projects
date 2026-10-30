@@ -46,14 +46,14 @@ window.GAMES = [
     title: 'Havoc Bay',
     category: 'Action',
     tagline: 'Red vs Blue sea battle. Command warships, fly planes and destroy the enemy harbor, online or against bots.',
-    description: 'A Roblox-style naval battle. Blue and Red each have a harbor with 25,000 health. Sail jet skis, turret boats, destroyers, battleships and aircraft carriers, fly fighters, jets and bombers, man the harbor guns, and claim five islands for turrets, forward spawns and gold. Play on the shared online server, where you take a bot\'s place, in a private room with friends, or offline against bots. The losing harbor gets a visit from a B-52.',
+    description: 'A naval battle. Blue and Red each have a harbor with 25,000 health. Sail jet skis, turret boats, destroyers, battleships and aircraft carriers, fly fighters, jets and bombers, man the harbor guns, and claim five islands for turrets, forward spawns and gold. Play on the shared online server, where you take a bot\'s place, in a private room with friends, or offline against bots. The losing harbor gets a visit from a B-52.',
     controls: 'Keyboard + mouse or touch',
-    keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['F', 'Torpedo or drop a bomb'], ['R', 'Missile (jet, battleship)'],
+    keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['F', 'Torpedo or drop a bomb'], ['R', 'Missile (jet, battleship)'], ['Enter', 'Deploy again (in the deploy menu)'],
            ['E', 'Use pads and turrets, get in and out'], ['Space', 'Jump, or level out a plane'], ['Shift', 'Sprint'], ['B', 'Deploy menu, or launch a plane from your carrier'], ['M', 'Map'], ['Tab', 'Scoreboard'], ['Esc', 'Pause']],
     path: 'havoc-bay/index.html',
     thumb: 'havoc-bay/thumb.svg',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-10-19T17:29:00+11:00',
+    updated: '2026-11-01T02:30:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-01', game: 'havoc-bay', text: 'Havoc Bay 1.1: a new, more realistic look (real shading, weathered surfaces, a deeper sea and a hazy sky), working nose guns on the bomber, a lead marker for dogfights, a PULL UP warning, Deploy again, a field of view setting and a marker showing how far the enemy harbor is.' },
   { date: '2026-11-01', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.1: 20 new games on a bigger casino floor, including Texas Hold’em, Three Card Poker, three new slot machines, Balloon Pop, Bowling and Darts, plus a balance pass and bug fixes for the original 24.' },
   { date: '2026-10-31', game: 'free-criminal', text: 'Free Criminal 2.0.3: online play is back for everyone. The shutdown is cancelled, there is a new Everyone chat pinned at the top of Messages on your phone, and a warning before joining that online chat is not moderated.' },
   { date: '2026-10-31', text: 'All online play on the arcade (multiplayer, the on now counters and Global chat) moved to new servers with much more room, so online games should stay up and feel smoother. Your saves are not affected.' },

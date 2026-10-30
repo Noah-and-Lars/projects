@@ -66,7 +66,11 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;paddin
 .mk{position:absolute;left:0;top:0;pointer-events:none;will-change:transform}
 #nose{width:18px;height:18px;border:2px solid #9effa0;border-radius:3px;transform-origin:center;box-shadow:0 0 2px #000}
 #bombm{width:26px;height:26px;border:2px dashed #ffe066;border-radius:50%}
-#leadm{width:14px;height:14px;border:2px solid #ffe066;border-radius:50%}
+#leadm{width:14px;height:14px;border:2px solid #ffe066;border-radius:50%;box-shadow:0 0 3px #000}
+#leadm:after{content:"";position:absolute;left:4px;top:4px;width:2px;height:2px;background:#ffe066;border-radius:50%}
+#harm{font:800 12px/1 system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;padding:3px 7px;border-radius:9px;background:rgba(200,40,30,.55);border:1px solid rgba(255,140,120,.8)}
+#pullup{position:absolute;left:50%;top:62%;transform:translateX(-50%);font:900 30px/1 system-ui,sans-serif;letter-spacing:.12em;color:#ff4a3a;text-shadow:0 0 10px rgba(255,60,40,.8),0 2px 4px #000;animation:pullb .5s steps(2) infinite;pointer-events:none}
+@keyframes pullb{50%{opacity:.25}}
 #lockm{width:40px;height:40px;border:2px solid #ff5a4a;border-radius:4px}
 #tags{position:absolute;inset:0;overflow:hidden}
 .tag{position:absolute;left:0;top:0;transform-origin:50% 100%;text-align:center;white-space:nowrap;font-size:12px;font-weight:800;will-change:transform}
@@ -272,6 +276,9 @@ body.touch #throttle{top:40%}
   <div id="nose" class="mk" style="display:none"></div>
   <div id="bombm" class="mk" style="display:none"></div>
   <div id="lockm" class="mk" style="display:none"></div>
+  <div id="leadm" class="mk" style="display:none"></div>
+  <div id="harm" class="mk" style="display:none"></div>
+  <div id="pullup" class="hidden">PULL UP</div>
   <canvas id="mini" width="420" height="300"></canvas>
   <div id="spd" class="hidden"></div>
   <div id="keys"></div>
@@ -346,6 +353,7 @@ body.touch #throttle{top:40%}
   <div class="panel ts" style="width:min(460px,100%)">
     <h2>Settings</h2>
     <div class="opt">Mouse sensitivity <input type="range" id="sSens" min="0.3" max="2.5" step="0.05"></div>
+    <div class="opt">Field of view <span id="sFovV" style="margin-left:auto;margin-right:8px;opacity:.7"></span><input type="range" id="sFov" min="60" max="100" step="1"></div>
     <div class="opt">Volume <input type="range" id="sVol" min="0" max="1" step="0.05"></div>
     <div class="opt">Invert look <div class="seg" id="sInv"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Graphics <div class="seg" id="sQual"><button class="btn" data-v="auto">Auto</button><button class="btn" data-v="low">Low</button><button class="btn" data-v="medium">Med</button><button class="btn" data-v="high">High</button></div></div>
@@ -439,7 +447,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.0';
+const VERSION = '1.1';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -571,17 +579,18 @@ const renderer = new THREE.WebGLRenderer({ antialias: QL !== 'low', powerPrefere
 renderer.domElement.id = 'gl';
 document.body.prepend(renderer.domElement);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.32; // 1.1: filmic, so colours stop looking like plastic toys
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.3, 7000);
 camera.rotation.order = 'YXZ';
-const FOG_COL = new THREE.Color(0xcde9f7);
+const FOG_COL = new THREE.Color(0xc4d6e2); // 1.1: hazier
 scene.fog = new THREE.Fog(FOG_COL, 900, 4300);
 scene.background = FOG_COL;
 
 const SUN_DIR = new V3(0.42, 0.78, 0.46).normalize();
-const hemi = new THREE.HemisphereLight(0xe4f3ff, 0xa8946a, 0.62);
+const hemi = new THREE.HemisphereLight(0xd8e6f2, 0x6e6250, 0.5); // 1.1: less flat fill, more sun
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xfff4e0, 0.72);
+const sun = new THREE.DirectionalLight(0xffe9cc, 1.0);
 sun.shadow.camera.left = -170; sun.shadow.camera.right = 170; sun.shadow.camera.top = 170; sun.shadow.camera.bottom = -170;
 sun.shadow.camera.near = 10; sun.shadow.camera.far = 1200; sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
 scene.add(sun); scene.add(sun.target);
@@ -602,7 +611,7 @@ function applyQuality() {
 
 // sky dome with a soft sun
 const skyMat = new THREE.ShaderMaterial({
-  uniforms: { top: { value: new THREE.Color(0x2f86e3) }, mid: { value: new THREE.Color(0x86c6f4) }, bot: { value: FOG_COL.clone() }, sunDir: { value: SUN_DIR } },
+  uniforms: { top: { value: new THREE.Color(0x3a6ea8) }, mid: { value: new THREE.Color(0x8fb4d2) }, bot: { value: FOG_COL.clone() }, sunDir: { value: SUN_DIR } },
   vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
   fragmentShader: `uniform vec3 top, mid, bot, sunDir; varying vec3 vDir;
     void main(){ vec3 d = normalize(vDir); float h = d.y;
@@ -630,7 +639,7 @@ const waterMat = new THREE.ShaderMaterial({
   uniforms: {
     time: { value: 0 }, depthTex: { value: depthTex },
     mapMin: { value: new THREE.Vector2(MAP.x0, MAP.z0) }, mapSize: { value: new THREE.Vector2(MAP.w, MAP.h) },
-    deep: { value: new THREE.Color(0x1f8fdc) }, shallow: { value: new THREE.Color(0x58dbe3) }, skyc: { value: new THREE.Color(0xbfe4fb) },
+    deep: { value: new THREE.Color(0x14507a) }, shallow: { value: new THREE.Color(0x3fa6ad) }, skyc: { value: new THREE.Color(0xa9c3d6) },
     sunDir: { value: SUN_DIR }, camPos: { value: new V3() },
     fogColor: { value: FOG_COL }, fogNear: { value: 900 }, fogFar: { value: 4300 },
   },
@@ -748,10 +757,31 @@ class Builder {
   get empty() { return this.pos.length === 0; }
 }
 
+// 1.1: the world is drawn with physically based materials and a world-space wear pattern (dirt, weathering and fine
+// grain), so parts stop looking like flat plastic. Low graphics keeps the old, cheaper look.
+function weathered(m, o) {
+  m.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWear;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvWear = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vWear;
+float wh(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float wn(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(wh(i), wh(i + vec3(1,0,0)), f.x), mix(wh(i + vec3(0,1,0)), wh(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(wh(i + vec3(0,0,1)), wh(i + vec3(1,0,1)), f.x), mix(wh(i + vec3(0,1,1)), wh(i + vec3(1,1,1)), f.x), f.y), f.z); }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+{ float big = wn(vWear * ${o.big.toFixed(3)}), mid = wn(vWear * ${o.mid.toFixed(3)} + 17.0), fine = wh(floor(vWear * ${o.fine.toFixed(2)}));
+  float wear = (big - 0.5) * ${o.amt.toFixed(3)} + (mid - 0.5) * ${(o.amt * 0.6).toFixed(3)} + (fine - 0.5) * 0.035;
+  float grey = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(grey), ${o.desat.toFixed(3)}) * (1.0 + wear); }`);
+  };
+  m.customProgramCacheKey = () => 'wear' + o.big + o.amt;
+  return m;
+}
+const HIQ = qualityLevel() !== 'low';
 const MAT = {
-  solid: new THREE.MeshLambertMaterial({ vertexColors: true }),
+  solid: HIQ ? weathered(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0.12 }), { big: 0.09, mid: 0.6, fine: 6, amt: 0.22, desat: 0.16 }) : new THREE.MeshLambertMaterial({ vertexColors: true }),
   glow: new THREE.MeshBasicMaterial({ vertexColors: true }),
-  terrain: new THREE.MeshLambertMaterial({ vertexColors: true }),
+  terrain: HIQ ? weathered(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }), { big: 0.025, mid: 0.18, fine: 2, amt: 0.3, desat: 0.12 }) : new THREE.MeshLambertMaterial({ vertexColors: true }),
   cloud: new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x8f9aa6 }),
 };
 
@@ -1090,7 +1120,7 @@ function buildShipModel(type, team) {
 const PLANE_TYPES = {
   fighter: { name: 'Fighter', icon: '✈️', cost: 0, hp: 600, min: 40, max: 92, turn: 1.35, r: 5.5, guns: [[2.2, -0.2, 2], [-2.2, -0.2, 2]], bombs: 2, missiles: 0, cam: 18, kill: 60, sound: 'plane', desc: 'The basic gunner: two machine guns and 2 small bombs.' },
   jet: { name: 'Jet', icon: '🛩️', cost: 450, hp: 650, min: 58, max: 140, turn: 1.25, r: 6, guns: [[0.9, -0.3, 4], [-0.9, -0.3, 4]], bombs: 0, missiles: 4, cam: 20, kill: 90, sound: 'jet', desc: 'Very fast, with machine guns and 4 homing missiles.' },
-  bomber: { name: 'Bomber', icon: '💣', cost: 600, hp: 2000, min: 38, max: 72, turn: 0.75, r: 9.5, guns: [], bombs: 10, missiles: 0, rear: true, cam: 30, kill: 130, sound: 'plane', desc: '10 heavy bombs and a rear gunner. Flattens harbors.' },
+  bomber: { name: 'Bomber', icon: '💣', cost: 600, hp: 2000, min: 38, max: 72, turn: 0.75, r: 9.5, guns: [[0.6, -0.5, 6.9], [-0.6, -0.5, 6.9]], bombs: 10, missiles: 0, rear: true, cam: 30, kill: 130, sound: 'plane', desc: '10 heavy bombs, two nose guns and a rear gunner. Flattens harbors.' }, // 1.1: nose guns (Click did nothing before)
 };
 const PLANE_ORDER = ['fighter', 'jet', 'bomber'];
 
@@ -3406,7 +3436,7 @@ function updateCamera(dt) {
   cam.pitch = clamp(cam.pitch, pMin, pMax);
   setAimDir();
   const zoom = (cam.zoom || IN.rmb) && mode !== 'dead' && mode !== 'demo';
-  const fov = zoom ? (mode === 'plane' ? 45 : 30) : 70;
+  const base = clamp(+settings.fov || 70, 60, 100), fov = zoom ? (mode === 'plane' ? 45 : 30) * base / 70 : base;
   if (Math.abs(camera.fov - fov) > 0.1) { camera.fov = damp(camera.fov, fov, 10, dt); camera.updateProjectionMatrix(); }
   if (mode === 'foot' && e) {
     _ct.set(e.pos.x, e.pos.y + 2.1, e.pos.z);
@@ -3583,7 +3613,7 @@ function updateHUD(dt) {
       if (mode === 'foot') keys = '<div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div>';
       else if (mode === 'ship' && !e.alive) keys = '<div><kbd>E</kbd>Jump overboard</div>';
       else if (mode === 'ship') keys = `<div><kbd>W</kbd><kbd>S</kbd>Throttle <kbd>A</kbd><kbd>D</kbd>Steer</div><div><kbd>Click</kbd>Fire</div>${e.S.torps ? '<div><kbd>F</kbd>Torpedo</div>' : ''}${e.S.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}${e.S.carrier ? '<div><kbd>B</kbd>Launch a plane</div>' : ''}<div><kbd>E</kbd>Get out</div>`;
-      else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div><div><kbd>Click</kbd>Guns</div>${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>Space</kbd>Level out</div><div><kbd>E</kbd>Bail out</div>`;
+      else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div>${e.P.guns.length ? '<div><kbd>Click</kbd>Guns</div>' : ''}${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>Space</kbd>Level out</div><div><kbd>E</kbd>Bail out</div>`;
       else if (mode === 'turret') keys = '<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>Leave</div>';
     }
     setHTML('keys', keys);
@@ -3629,7 +3659,23 @@ function updateHUD(dt) {
       _v2.set(e.pos.x + e.fwd.x * e.speed * t, 0, e.pos.z + e.fwd.z * e.speed * t); _v2.y = Math.max(0, landH(_v2.x, _v2.z));
       placeMk('bombm', _v2);
     } else placeMk('bombm', null);
-  } else { placeMk('nose', null); placeMk('bombm', null); }
+  } else { placeMk('nose', null); placeMk('bombm', null); placeMk('leadm', null); }
+  // 1.1: where to aim to hit the enemy plane closest to your nose, a pull-up warning, and the enemy harbor's distance
+  let lead = null, pull = false;
+  if (mode === 'plane' && e && e.alive) {
+    let best = null, bs = 0.5;
+    for (const o of ENTS) { if (!o.alive || o.kind !== 'plane' || o.team === PLAYER.team || o.team < 0) continue; _v3.copy(o.pos).sub(e.pos); const d = _v3.length(); if (d > 700 || d < 15) continue; const a = _v3.normalize().angleTo(e.fwd); if (a < bs) { bs = a; best = o; } }
+    if (best) lead = leadPoint(_v2, e.pos, best, WEAP.mg.speed + e.speed * 0.6, 0);
+    const alt = e.pos.y - Math.max(0, landH(e.pos.x, e.pos.z)), vy = e.fwd.y * e.speed;
+    pull = (vy < -2 && alt / -vy < 3.2 && alt < 160) || (alt < 16 && e.fwd.y < -0.05);
+  }
+  placeMk('leadm', lead);
+  setShow('pullup', pull); if (pull && (!PLAYER.pullT || performance.now() - PLAYER.pullT > 450)) { PLAYER.pullT = performance.now(); Sound.play('lock'); }
+  const EH = HARBORS[1 - PLAYER.team];
+  if (EH && EH.center && e && e.alive && (mode === 'ship' || mode === 'plane' || mode === 'foot' || mode === 'turret') && !overlayOpen()) {
+    const d = camera.position.distanceTo(EH.center); _v3.copy(EH.center).setY(EH.center.y + 45);
+    if (d > 350 && placeMk('harm', _v3)) setText('harm', `🎯 ${TEAM[1 - PLAYER.team].name} harbor · ${d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}`); else placeMk('harm', null);
+  } else placeMk('harm', null);
   const lockOk = PLAYER.lock && PLAYER.lock.alive;
   placeMk('lockm', lockOk ? PLAYER.lock.hitCenter() : null);
   if (lockOk && PLAYER.lock !== PLAYER.lastLock) Sound.play('lock');
@@ -3780,6 +3826,13 @@ function renderDeploy() {
   $('dPlanes').innerHTML = PLANE_ORDER.map(t => card('plane', t, PLANE_TYPES[t])).join('');
   setShow('dFootWrap', !pad && DEPLOY.reason !== 'menu' && !atCarrier);
   $('dFoot').innerHTML = `<button class="card free" data-k="foot" data-t="foot" ${DEPLOY.locked ? 'disabled' : ''}><div class="em">🚶</div><div class="nm">On foot</div><div class="ds">Walk around your base, man turrets and pick vehicles from the pads.</div><div class="pr">FREE</div></button>`;
+  // 1.1: Deploy again
+  let ag = $('dAgain'); if (!ag) { ag = document.createElement('button'); ag.id = 'dAgain'; ag.className = 'btn'; ag.style.cssText = 'display:block;margin:6px auto 10px;font-weight:800'; $('dgold').after(ag); ag.onclick = () => deployAgain(); }
+  const L = PLAYER.lastDeploy, LD = L && (L.kind === 'boat' ? SHIP_TYPES[L.type] : L.kind === 'plane' ? PLANE_TYPES[L.type] : null);
+  const okKind = L && (!kind || kind === L.kind) && !(L.kind === 'boat' && atCarrier) && !(L.kind === 'plane' && atIsland);
+  const canAgain = !!(LD && okKind && !DEPLOY.locked && PLAYER.gold >= LD.cost);
+  ag.style.display = LD && okKind ? 'block' : 'none'; ag.disabled = !canAgain;
+  if (LD) ag.innerHTML = `↻ Deploy again: ${LD.icon} ${LD.name}${LD.cost ? ` · <span class="coin"></span>${fmt(LD.cost)}` : ''} <span style="opacity:.6;font-weight:600">(Enter)</span>`;
   setShow('dClose', DEPLOY.closable);
   setText('dGoldN', fmt(PLAYER.gold));
   setShow('dwait', DEPLOY.locked);
@@ -3792,8 +3845,11 @@ $('deploy').addEventListener('click', e => {
   deploy(c.dataset.k, c.dataset.t);
 });
 $('dClose').onclick = closeDeploy;
+function deployAgain() { const L = PLAYER.lastDeploy, b = $('dAgain'); if (!L || !b || b.disabled || b.style.display === 'none') return; deploy(L.kind, L.type); }
+addEventListener('keydown', e => { if (e.key === 'Enter' && !$('deploy').classList.contains('hidden') && !(document.activeElement && document.activeElement.tagName === 'INPUT')) { e.preventDefault(); deployAgain(); } });
 function deploy(kind, type) {
   const team = PLAYER.team;
+  if (kind === 'boat' || kind === 'plane') PLAYER.lastDeploy = { kind, type }; // 1.1: for Deploy again
   const loc = DEPLOY.pad ? (DEPLOY.pad.island || 'harbor') : (ISLANDS.find(i => i.name === DEPLOY.loc && i.owner === PLAYER.team) || 'harbor');
   const carrier = !DEPLOY.pad ? teamCarriers(team).find(c => 'c' + c.id === DEPLOY.loc) : null;
   const D = kind === 'boat' ? SHIP_TYPES[type] : kind === 'plane' ? PLANE_TYPES[type] : { cost: 0 };
@@ -3846,12 +3902,13 @@ function segBind(id, key, after) {
   mark();
 }
 function openSettings() {
-  $('sSens').value = settings.sens; $('sVol').value = settings.volume;
+  $('sSens').value = settings.sens; $('sVol').value = settings.volume; $('sFov').value = settings.fov || 70; $('sFovV').textContent = (settings.fov || 70) + '°';
   $('settings').classList.remove('hidden');
 }
 function closeSettings() { $('settings').classList.add('hidden'); }
 $('sDone').onclick = closeSettings;
 $('sSens').oninput = e => { settings.sens = +e.target.value; saveObj(SET_KEY, settings); };
+$('sFov').oninput = e => { settings.fov = +e.target.value; $('sFovV').textContent = settings.fov + '°'; saveObj(SET_KEY, settings); }; // 1.1
 $('sVol').oninput = e => { settings.volume = +e.target.value; Sound.setVolume(settings.volume); saveObj(SET_KEY, settings); };
 
 function updateProfileText() {
