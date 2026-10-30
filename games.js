@@ -31,14 +31,14 @@ window.GAMES = [
     id: 'football',
     title: 'Football',
     category: 'Sports',
-    tagline: 'Realistic 11 v 11 football with broadcast cameras, replays, Ultimate Team and skill games.',
-    description: 'A full 3D football game. Play a Kick Off match between national teams in the morning, afternoon or evening, with broadcast cameras, goal and foul replays, celebrations, fouls, cards, offside and penalties. Build a club in Ultimate Team with packs and a squad, and train in 9 skill games with bronze, silver and gold targets. Keyboard and DualShock 4 controllers are supported, with controls you can change in Settings. Version 1.0 is a work in progress.',
+    tagline: 'Realistic 11 v 11 football: a 48-team World Cup, online matches against a friend, Ultimate Team and skill games.',
+    description: 'A full 3D football game. Win the World Cup with any of its 48 national teams, play a friend online, or play a Kick Off match between national teams in the morning, afternoon or evening, with broadcast cameras, goal and foul replays, celebrations, fouls, cards, offside and penalties. Build a club in Ultimate Team with packs and a squad, and train in 9 skill games with bronze, silver and gold targets. Keyboard and DualShock 4 controllers are supported, with controls you can change in Settings. Version 1.0 is a work in progress.',
     controls: 'Keyboard or controller',
     keys: [['Arrow keys', 'Move'], ['Shift', 'Sprint'], ['S', 'Pass'], ['W', 'Through ball'], ['A', 'Cross or lob'], ['D', 'Shoot'], ['Q', 'Switch player'], ['Space', 'Skip intro or replay'], ['Esc', 'Pause'], ['Controller', 'DualShock 4 layout (change it in Settings)']],
     path: 'football/index.html',
-    thumb: 'football/thumb.jpg?v=1',
+    thumb: 'football/thumb.jpg?v=2',
     added: '2026-10-25T18:00:00+11:00',
-    updated: '2026-10-26T18:00:00+11:00',
+    updated: '2026-11-01T16:00:00+11:00',
     stat() { const p = readSave('soccer.profile', true); return p && p.played ? p.played + ' matches played' : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-01', game: 'football', text: 'Football 1.1: the World Cup is here, with all 48 teams, 12 groups, a Round of 32, extra time and penalties. And online play: Friendlies and Ultimate Team against a friend, with the host setting the rules.' },
   { date: '2026-11-01', game: 'cube-assault', text: 'Cube Assault 2.9.17: Seaside is back in single-player and multiplayer, and every map now has anti-cheat laws. Get out of bounds and your shots are blocked, the cubes come straight through the walls for you, and after 5 seconds you are put back. The pier on Seaside is no longer a safe spot.' },
   { date: '2026-11-01', game: 'havoc-bay', text: 'Havoc Bay 1.1: a new, more realistic look (real shading, weathered surfaces, a deeper sea and a hazy sky), working nose guns on the bomber, a lead marker for dogfights, a PULL UP warning, Deploy again, a field of view setting and a marker showing how far the enemy harbor is.' },
   { date: '2026-11-01', game: 'gamble-your-life-away', text: 'Gamble Your Life Away 1.1: 20 new games on a bigger casino floor, including Texas Hold’em, Three Card Poker, three new slot machines, Balloon Pop, Bowling and Darts, plus a balance pass and bug fixes for the original 24.' },

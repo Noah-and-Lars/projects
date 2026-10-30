@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Football</title>
-<meta name="description" content="Football 1.0: classic matches and Ultimate Team, in 3D in your browser.">
+<meta name="description" content="Football 1.1: World Cup, online friendlies, Ultimate Team and classic matches, in 3D in your browser.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap" rel="stylesheet">
 <style>
@@ -156,6 +156,29 @@ body.menu #glare { opacity: 1; }
 .opt { background: rgba(255,255,255,.1); padding: 8px 12px; border: 0; color: #fff; text-align: left; } .opt small { display: block; font-size: 13px; letter-spacing: 1.5px; color: #b6bdd6; text-transform: uppercase; font-weight: 600; }
 .opt b { font-size: 22px; font-weight: 700; } .opt:hover { background: rgba(255,255,255,.2); }
 
+/* ================= 1.1: World Cup and online ================= */
+.wcSub { color: #c9d0e6; font-size: 16px; margin: 4px 0 10px; max-width: 900px; text-align: center; }
+.wcFlag { display: inline-block; width: 22px; height: 14px; margin: 0 6px; vertical-align: -2px; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+.wcConfs { display: grid; grid-template-columns: repeat(3, minmax(240px, 1fr)); gap: 10px; width: min(1180px, 100%); margin: 8px 0 14px; }
+.wcConf h4 { margin: 0 0 6px; color: var(--lime); letter-spacing: 2px; font-size: 14px; }
+.wcTeams { display: flex; flex-direction: column; gap: 3px; }
+.wcTeam { display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,.08); border: 0; color: #fff; padding: 5px 8px; font-size: 16px; text-align: left; cursor: pointer; }
+.wcTeam b { flex: 1; font-weight: 700; } .wcTeam span { opacity: .7; font-weight: 700; } .wcTeam:hover { background: rgba(255,255,255,.18); } .wcTeam.on { background: var(--lime); color: var(--ink); }
+.wcCols { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; width: min(1180px, 100%); margin: 12px 0; align-items: start; }
+.wcNext { background: rgba(255,255,255,.08); padding: 14px 18px; margin-bottom: 12px; text-align: center; } .wcNext small { color: var(--lime); letter-spacing: 2px; font-weight: 700; text-transform: uppercase; }
+.wcVs { display: flex; align-items: center; justify-content: center; gap: 28px; margin: 10px 0; } .wcVs div { display: flex; flex-direction: column; align-items: center; } .wcVs img { width: 80px; height: 92px; object-fit: contain; }
+.wcVs b { font-size: 22px; text-transform: uppercase; } .wcVs span { opacity: .7; font-weight: 700; } .wcVs i { font-size: 44px; font-weight: 900; font-style: italic; }
+.wcBig { text-align: center; font-size: 60px; padding: 16px; background: rgba(255,255,255,.08); margin-bottom: 12px; } .wcBig h2 { font-size: 32px; margin: 6px 0; } .wcBig p { font-size: 18px; }
+.wcTable { width: 100%; border-collapse: collapse; background: rgba(255,255,255,.06); font-size: 15px; } .wcTable th { text-align: left; color: var(--lime); padding: 4px 6px; font-size: 13px; letter-spacing: 1px; }
+.wcTable td { padding: 4px 6px; border-top: 1px solid rgba(255,255,255,.08); } .wcTable tr.me td { background: rgba(200,255,80,.18); font-weight: 700; } .wcTable tr.q0 td:first-child, .wcTable tr.q1 td:first-child { box-shadow: inset 3px 0 0 #31b04a; } .wcTable tr.q2 td:first-child { box-shadow: inset 3px 0 0 #f5b82e; }
+.wcRound h4, .wcCol h4 { margin: 0 0 6px; color: var(--lime); letter-spacing: 2px; font-size: 14px; text-transform: uppercase; }
+.wcFx { display: grid; grid-template-columns: 1fr 90px 1fr; align-items: center; padding: 4px 6px; background: rgba(255,255,255,.06); margin-bottom: 3px; font-size: 15px; } .wcFx span:first-child { text-align: right; } .wcFx b { text-align: center; } .wcFx.me { background: rgba(200,255,80,.18); font-weight: 700; }
+.wcGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: min(1180px, 100%); margin: 10px 0; }
+.wcBr { display: grid; grid-template-columns: repeat(6, minmax(170px, 1fr)); gap: 8px; width: min(1280px, 100%); margin: 10px 0; overflow-x: auto; } .wcBr .wcFx { grid-template-columns: 1fr 64px 1fr; font-size: 12px; }
+.onBox { display: flex; flex-direction: column; align-items: center; gap: 12px; background: rgba(255,255,255,.08); padding: 20px 26px; margin: 12px 0; }
+.onJoin { display: flex; gap: 8px; } .onJoin input { width: 150px; font: 800 26px var(--font, inherit); letter-spacing: 6px; text-align: center; text-transform: uppercase; padding: 6px; border: 0; }
+.onCode { background: #fff; color: var(--ink); padding: 0 12px; letter-spacing: 6px; font-style: normal; }
+@media (max-width: 900px) { .wcConfs, .wcCols, .wcGrid { grid-template-columns: 1fr; } }
 /* ================= HUD ================= */
 #hud { pointer-events: none; }
 #sb { position: absolute; left: 22px; top: 18px; display: flex; align-items: stretch; height: 30px; font-size: 21px; font-weight: 700; letter-spacing: .5px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
@@ -331,7 +354,7 @@ body.drill #sb, body.drill #clk, body.drill .tag { display: none; }
   <div class="btns"><button data-a="W">SHIELD</button><button data-a="D">LOB</button><button data-a="A">THRU</button><button data-a="switch">SWITCH</button><button data-a="Z">FINESSE</button><button data-a="sprint">SPRINT</button><button data-a="S">PASS</button><button data-a="space">SHOOT</button></div>
 </div>
 
-<div id="boot" class="layer"><div class="bootIn"><div class="bootLogo"><div class="s">1.0</div><b>FOOT<span>BALL</span></b></div><div class="bootTag">The beautiful game, in your browser</div>
+<div id="boot" class="layer"><div class="bootIn"><div class="bootLogo"><div class="s">1.1</div><b>FOOT<span>BALL</span></b></div><div class="bootTag">The beautiful game, in your browser</div>
   <button id="bootPlay"><span>PLAY</span></button><div class="bootHint">Press <b>Enter</b> or <b>✕</b></div></div></div>
 <div id="mainMenu" class="layer" hidden>
   <div id="topbar"><div class="bar"><span>LVL: <b id="lvl">1</b></span><span id="xpTxt">0 / 1,300</span><span><i class="coin"></i><b id="coinTxt">0</b></span><span class="cart" id="cartBtn" title="Store">🛒</span></div><div class="me" id="meBtn" title="Profile">👤</div></div>
@@ -339,7 +362,7 @@ body.drill #sb, body.drill #clk, body.drill .tag { display: none; }
     <div id="tabs"><button data-tab="home">Home</button><button data-tab="play" class="on">Play</button><button data-tab="online">Online</button><button data-tab="custom">Customise</button></div>
     <div id="pane-play">
       <div id="grid">
-        <button class="tile" id="tCareer"><h2>Continue<br>Career</h2><div class="rk">- 1ST</div><div class="ring"><img id="carCrest" alt=""></div><div class="next">Next Match:<b id="carNext">FRANCE (A)</b><img id="carNextC" alt=""></div><span class="wip">COMING SOON</span><div class="dots"><i class="on"></i><i></i><i></i></div></button>
+        <button class="tile" id="tCareer"><h2>World<br>Cup</h2><div class="rk">48 TEAMS · 2026</div><div class="ring"><img id="carCrest" alt=""></div><div class="next">Next Match:<b id="carNext">PICK A TEAM</b><img id="carNextC" alt=""></div><span class="wip" style="background:#31b04a">NEW</span><div class="dots"><i class="on"></i><i></i><i></i></div></button>
         <button class="tile" id="tUlt"><h2>Ultimate Team</h2><div class="club"><img id="clubCrest" alt=""><div><b id="clubName">Your FC</b><span id="clubEst">EST. Oct 2026</span></div></div>
           <div class="packs"><div class="pack silver"><b>FOOTBALL</b><small>Ultimate Team</small></div><div class="pack gold"><b>FOOTBALL</b><small>Ultimate Team</small></div><div class="pack bronze"><b>FOOTBALL</b><small>Ultimate Team</small></div></div></button>
         <button class="tile" id="tKick"><h2>Kick Off</h2>
@@ -355,7 +378,7 @@ body.drill #sb, body.drill #clk, body.drill .tag { display: none; }
     <div id="pane-custom" class="tabPane" hidden></div>
   </div>
   <div id="mmFoot"><span class="xbtn">✕</span>Select</div>
-  <div id="logo"><div class="s">1.0</div><b>FOOT<span>BALL</span></b></div>
+  <div id="logo"><div class="s">1.1</div><b>FOOT<span>BALL</span></b></div>
 </div>
 <div id="ui"></div>
 <div id="toast" hidden></div>
@@ -482,6 +505,78 @@ const NATION_COLORS = { ENG: ['#ffffff', '#c8102e'], FRA: ['#0055a4', '#ffffff',
   CRO: ['#ff0000', '#ffffff', '#171796'], USA: ['#b22234', '#ffffff', '#3c3b6e'], MEX: ['#006847', '#ffffff', '#ce1126'], JPN: ['#ffffff', '#bc002d'], MAR: ['#c1272d', '#006233'],
   CAN: ['#d52b1e', '#ffffff'], SCO: ['#005eb8', '#ffffff'], WAL: ['#d30b2a', '#00b140'], AUS: ['#00843d', '#ffcd00'] };
 
+// 1.1: the rest of the World Cup's 48 teams (real players; ratings are our own estimates).
+// [id, name, rank, flag colours, home kit [shirt, trim, shorts, socks, number, pattern], away kit, keeper, 'Name|POS|ovr|no; ...']
+const MORE_NATIONS = [
+  ['AUT', 'Austria', 22, ['#ed2939', '#ffffff', '#ed2939'], ['#e2001a', '#ffffff', '#ffffff', '#e2001a', '#ffffff'], ['#f4f5f7', '#e2001a', '#f4f5f7', '#f4f5f7', '#e2001a'], '#2ecc71',
+    'Patrick Pentz|GK|76|13;Alexander Schlager|GK|74|1;Stefan Posch|RB|77|5;Kevin Danso|CB|79|4;Philipp Lienhart|CB|78|15;David Alaba|CB|82|8;Phillipp Mwene|LB|74|16;Alexander Prass|LB|74|26;Nicolas Seiwald|CDM|78|6;Konrad Laimer|CM|82|20;Xaver Schlager|CM|79|14;Marcel Sabitzer|CAM|82|9;Christoph Baumgartner|CAM|80|19;Romano Schmid|CAM|75|18;Patrick Wimmer|RW|74|10;Marko Arnautović|ST|77|7;Michael Gregoritsch|ST|75|11'],
+  ['BIH', 'Bosnia and Herzegovina', 70, ['#002395', '#fecb00', '#ffffff'], ['#1c3f94', '#fecb00', '#1c3f94', '#1c3f94', '#fecb00'], ['#f4f5f7', '#1c3f94', '#f4f5f7', '#f4f5f7', '#1c3f94'], '#ff7043',
+    'Nikola Vasilj|GK|74|1;Ibrahim Šehić|GK|68|12;Amar Dedić|RB|76|22;Jusuf Gazibegović|RB|71|2;Nikola Katić|CB|72|4;Tarik Muharemović|CB|72|3;Dennis Hadžikadunić|CB|70|5;Sead Kolašinac|LB|74|21;Benjamin Tahirović|CM|73|8;Amir Hadžiahmetović|CDM|72|6;Ivan Bašić|CM|70|15;Armin Gigović|CM|70|14;Esmir Bajraktarević|RW|72|17;Ermedin Demirović|ST|79|9;Edin Džeko|ST|76|11;Haris Tabaković|ST|72|18'],
+  ['CZE', 'Czechia', 40, ['#ffffff', '#d7141a', '#11457e'], ['#d7141a', '#ffffff', '#ffffff', '#11457e', '#ffffff'], ['#f4f5f7', '#d7141a', '#11457e', '#f4f5f7', '#d7141a'], '#ffd54f',
+    'Matěj Kovář|GK|76|1;Jindřich Staněk|GK|74|16;Vladimír Coufal|RB|77|5;Robin Hranáč|CB|75|4;Tomáš Holeš|CB|74|3;Ladislav Krejčí|CB|76|6;David Jurásek|LB|72|18;Tomáš Souček|CDM|80|22;Lukáš Provod|CM|76|14;Lukáš Červ|CM|72|8;Pavel Šulc|CAM|77|11;Antonín Barák|CAM|74|7;Václav Černý|RW|75|17;Adam Hložek|LW|77|19;Patrik Schick|ST|82|10;Tomáš Chorý|ST|74|9'],
+  ['NOR', 'Norway', 35, ['#ba0c2f', '#ffffff', '#00205b'], ['#c8102e', '#ffffff', '#ffffff', '#1b2a5c', '#ffffff'], ['#f4f5f7', '#c8102e', '#1b2a5c', '#f4f5f7', '#c8102e'], '#29b6f6',
+    'Ørjan Nyland|GK|74|1;Egil Selvik|GK|72|12;Julian Ryerson|RB|77|14;Kristoffer Ajer|CB|76|3;Leo Østigård|CB|77|4;Torbjørn Heggem|CB|74|5;David Møller Wolfe|LB|74|15;Sander Berge|CDM|79|6;Patrick Berg|CDM|75|16;Fredrik Aursnes|CM|79|8;Morten Thorsby|CM|74|18;Martin Ødegaard|CAM|88|10;Oscar Bobb|RW|77|17;Antonio Nusa|LW|79|11;Erling Haaland|ST|91|9;Alexander Sørloth|ST|83|7;Jørgen Strand Larsen|ST|78|20'],
+  ['SWE', 'Sweden', 28, ['#006aa7', '#fecc00'], ['#fecc00', '#006aa7', '#006aa7', '#fecc00', '#006aa7'], ['#0b2d6b', '#fecc00', '#0b2d6b', '#0b2d6b', '#fecc00'], '#e53935',
+    'Robin Olsen|GK|76|1;Viktor Johansson|GK|74|12;Emil Krafth|RB|74|2;Victor Lindelöf|CB|79|4;Isak Hien|CB|79|3;Gustaf Lagerbielke|CB|74|14;Gabriel Gudmundsson|LB|76|5;Hugo Larsson|CM|79|8;Lucas Bergvall|CM|77|16;Jens Cajuste|CM|75|6;Mattias Svanberg|CM|75|18;Yasin Ayari|CAM|74|20;Dejan Kulusevski|RW|85|21;Anthony Elanga|LW|81|11;Alexander Isak|ST|88|9;Viktor Gyökeres|ST|87|17'],
+  ['SUI', 'Switzerland', 19, ['#d52b1e', '#ffffff'], ['#d52b1e', '#ffffff', '#ffffff', '#d52b1e', '#ffffff'], ['#f4f5f7', '#d52b1e', '#d52b1e', '#f4f5f7', '#d52b1e'], '#1e88e5',
+    'Gregor Kobel|GK|87|1;Yvon Mvogo|GK|76|12;Silvan Widmer|RB|76|3;Manuel Akanji|CB|85|5;Nico Elvedi|CB|80|4;Fabian Schär|CB|78|22;Ricardo Rodríguez|LB|78|13;Granit Xhaka|CDM|85|10;Denis Zakaria|CDM|80|6;Remo Freuler|CM|80|8;Michel Aebischer|CM|77|20;Fabian Rieder|CAM|76|16;Dan Ndoye|RW|80|19;Rubén Vargas|LW|79|17;Breel Embolo|ST|79|7;Zeki Amdouni|ST|76|9'],
+  ['TUR', 'Türkiye', 26, ['#e30a17', '#ffffff'], ['#e30a17', '#ffffff', '#e30a17', '#e30a17', '#ffffff'], ['#f4f5f7', '#e30a17', '#f4f5f7', '#f4f5f7', '#e30a17'], '#43a047',
+    'Uğurcan Çakır|GK|81|1;Altay Bayındır|GK|76|23;Zeki Çelik|RB|77|2;Merih Demiral|CB|80|3;Abdülkerim Bardakcı|CB|79|14;Çağlar Söyüncü|CB|76|4;Ferdi Kadıoğlu|LB|81|20;Hakan Çalhanoğlu|CDM|86|10;İsmail Yüksek|CDM|77|16;Orkun Kökçü|CM|82|6;Salih Özcan|CM|76|5;Arda Güler|CAM|84|8;Barış Alper Yılmaz|RW|79|21;Kenan Yıldız|LW|84|19;Kerem Aktürkoğlu|LW|80|7;Enes Ünal|ST|75|9;Deniz Gül|ST|73|17'],
+  ['ALG', 'Algeria', 37, ['#006233', '#ffffff', '#d21034'], ['#f4f5f7', '#006233', '#f4f5f7', '#f4f5f7', '#006233'], ['#006233', '#f4f5f7', '#006233', '#006233', '#f4f5f7'], '#fdd835',
+    'Anthony Mandréa|GK|72|23;Luca Zidane|GK|70|16;Youcef Atal|RB|75|20;Aïssa Mandi|CB|76|2;Ramy Bensebaini|CB|79|21;Mohamed Amine Tougai|CB|73|4;Rayan Aït-Nouri|LB|82|15;Ramiz Zerrouki|CDM|74|6;Ismaël Bennacer|CM|80|22;Nabil Bentaleb|CM|74|19;Houssem Aouar|CAM|77|8;Riyad Mahrez|RW|81|7;Saïd Benrahma|LW|77|10;Mohamed Amoura|ST|80|9;Baghdad Bounedjah|ST|73|11'],
+  ['CPV', 'Cabo Verde', 70, ['#003893', '#ffffff', '#cf2027'], ['#1b4fa0', '#ffffff', '#1b4fa0', '#1b4fa0', '#ffffff'], ['#f4f5f7', '#cf2027', '#f4f5f7', '#f4f5f7', '#1b4fa0'], '#ffb300',
+    'Vozinha|GK|70|1;Márcio Rosa|GK|66|12;Steven Moreira|RB|70|2;Logan Costa|CB|74|4;Roberto Lopes|CB|70|3;Pico|CB|68|5;Stopira|LB|68|13;Kevin Pina|CM|70|8;Jamiro Monteiro|CM|72|10;Deroy Duarte|CM|69|6;Ryan Mendes|RW|71|20;Garry Rodrigues|LW|71|11;Jovane Cabral|LW|71|7;Bebé|ST|70|9;Dailon Livramento|ST|72|19'],
+  ['COD', 'Congo DR', 60, ['#007fff', '#f7d618', '#ce1021'], ['#1e73d2', '#ce1021', '#1e73d2', '#1e73d2', '#f7d618'], ['#f4f5f7', '#1e73d2', '#f4f5f7', '#f4f5f7', '#1e73d2'], '#26a69a',
+    'Lionel Mpasi|GK|72|1;Dimitry Bertaud|GK|70|16;Aaron Wan-Bissaka|RB|80|2;Chancel Mbemba|CB|78|22;Axel Tuanzebe|CB|74|4;Arthur Masuaku|LB|75|26;Joris Kayembe|LB|72|3;Charles Pickel|CDM|73|6;Samuel Moutoussamy|CM|74|8;Edo Kayembe|CM|73|14;Gaël Kakuta|CAM|72|10;Théo Bongonda|RW|75|7;Meschack Elia|LW|72|11;Yoane Wissa|ST|82|9;Cédric Bakambu|ST|75|17;Fiston Mayele|ST|73|19'],
+  ['CIV', "Côte d'Ivoire", 40, ['#f77f00', '#ffffff', '#009e60'], ['#f77f00', '#ffffff', '#f4f5f7', '#009e60', '#ffffff'], ['#f4f5f7', '#f77f00', '#009e60', '#f4f5f7', '#f77f00'], '#3949ab',
+    'Yahia Fofana|GK|75|1;Badra Ali Sangaré|GK|70|23;Wilfried Singo|RB|78|17;Evan Ndicka|CB|80|21;Odilon Kossounou|CB|78|7;Willy Boly|CB|74|5;Ghislain Konan|LB|74|3;Ibrahim Sangaré|CDM|79|18;Franck Kessié|CM|80|8;Seko Fofana|CM|78|6;Jean Michaël Seri|CM|73|14;Amad Diallo|RW|81|15;Nicolas Pépé|RW|76|19;Simon Adingra|LW|78|24;Sébastien Haller|ST|76|22;Evann Guessand|ST|76|9;Oumar Diakité|ST|72|11'],
+  ['EGY', 'Egypt', 33, ['#ce1126', '#ffffff', '#000000'], ['#ce1126', '#ffffff', '#f4f5f7', '#1b1b1f', '#ffffff'], ['#f4f5f7', '#ce1126', '#1b1b1f', '#f4f5f7', '#ce1126'], '#ffca28',
+    'Mohamed El Shenawy|GK|75|1;Mostafa Shobeir|GK|70|16;Mohamed Hany|RB|70|3;Mohamed Abdelmonem|CB|74|6;Ramy Rabia|CB|72|5;Yasser Ibrahim|CB|71|4;Ahmed Fatouh|LB|70|13;Marwan Attia|CDM|72|8;Hamdy Fathy|CM|71|14;Emam Ashour|CM|74|17;Mostafa Fathi|RW|71|11;Trézéguet|LW|73|7;Mohamed Salah|RW|88|10;Omar Marmoush|ST|84|22;Mostafa Mohamed|ST|74|9'],
+  ['GHA', 'Ghana', 70, ['#ce1126', '#fcd116', '#006b3f'], ['#f4f5f7', '#1b1b1f', '#f4f5f7', '#f4f5f7', '#1b1b1f'], ['#c8102e', '#fcd116', '#c8102e', '#c8102e', '#fcd116'], '#00897b',
+    'Lawrence Ati-Zigi|GK|72|1;Benjamin Asare|GK|68|16;Alidu Seidu|RB|73|2;Mohammed Salisu|CB|77|23;Alexander Djiku|CB|75|4;Jerome Opoku|CB|72|5;Gideon Mensah|LB|72|14;Thomas Partey|CDM|79|5;Salis Abdul Samed|CM|73|8;Elisha Owusu|CM|72|6;Mohammed Kudus|RW|83|20;Ernest Nuamah|RW|73|17;Antoine Semenyo|LW|81|11;Kamaldeen Sulemana|LW|74|7;Iñaki Williams|ST|77|9;Jordan Ayew|ST|74|10'],
+  ['SEN', 'Senegal', 19, ['#00853f', '#fdef42', '#e31b23'], ['#f4f5f7', '#00853f', '#f4f5f7', '#f4f5f7', '#00853f'], ['#00853f', '#fdef42', '#00853f', '#00853f', '#fdef42'], '#ff7043',
+    'Édouard Mendy|GK|80|16;Yehvann Diouf|GK|72|1;Krépin Diatta|RB|75|15;Kalidou Koulibaly|CB|80|3;Moussa Niakhaté|CB|78|19;Abdou Diallo|CB|75|22;El Hadji Malick Diouf|LB|75|24;Ismail Jakobs|LB|75|14;Idrissa Gueye|CDM|78|5;Pape Matar Sarr|CM|80|17;Lamine Camara|CM|77|8;Pape Gueye|CM|76|26;Ismaïla Sarr|RW|79|18;Iliman Ndiaye|LW|80|13;Sadio Mané|LW|81|10;Nicolas Jackson|ST|80|11;Boulaye Dia|ST|76|9'],
+  ['RSA', 'South Africa', 57, ['#007749', '#ffb81c', '#de3831', '#002395'], ['#ffd100', '#007749', '#007749', '#ffd100', '#007749'], ['#f4f5f7', '#007749', '#f4f5f7', '#f4f5f7', '#007749'], '#e53935',
+    'Ronwen Williams|GK|76|1;Veli Mothwa|GK|68|16;Khuliso Mudau|RB|70|20;Mothobi Mvala|CB|70|5;Siyabonga Ngezana|CB|70|14;Nkosinathi Sibisi|CB|69|4;Aubrey Modiba|LB|71|6;Teboho Mokoena|CDM|73|4;Sphephelo Sithole|CM|70|8;Themba Zwane|CAM|71|11;Oswin Appollis|RW|71|10;Percy Tau|LW|71|7;Relebohile Mofokeng|LW|70|19;Lyle Foster|ST|73|9;Evidence Makgopa|ST|69|17'],
+  ['TUN', 'Tunisia', 45, ['#e70013', '#ffffff'], ['#e70013', '#ffffff', '#f4f5f7', '#e70013', '#ffffff'], ['#f4f5f7', '#e70013', '#e70013', '#f4f5f7', '#e70013'], '#3949ab',
+    'Aymen Dahmen|GK|72|16;Bechir Ben Saïd|GK|69|1;Yan Valery|RB|72|2;Montassar Talbi|CB|74|3;Dylan Bronn|CB|72|6;Yassine Meriah|CB|71|4;Ali Abdi|LB|73|12;Ellyes Skhiri|CDM|77|17;Aïssa Laïdouni|CM|74|14;Mohamed Ali Ben Romdhane|CM|73|8;Hannibal Mejbri|CAM|74|20;Elias Achouri|RW|73|11;Naïm Sliti|LW|70|13;Youssef Msakni|LW|70|7;Seifeddine Jaziri|ST|70|9'],
+  ['IRN', 'Iran', 20, ['#239f40', '#ffffff', '#da0000'], ['#f4f5f7', '#da0000', '#f4f5f7', '#f4f5f7', '#da0000'], ['#da0000', '#f4f5f7', '#da0000', '#da0000', '#f4f5f7'], '#43a047',
+    'Alireza Beiranvand|GK|73|1;Hossein Hosseini|GK|69|22;Sadegh Moharrami|RB|70|2;Shojae Khalilzadeh|CB|70|4;Hossein Kanaanizadegan|CB|70|13;Majid Hosseini|CB|71|19;Milad Mohammadi|LB|70|5;Saeid Ezatolahi|CDM|72|6;Saman Ghoddos|CM|71|14;Mohammad Ghorbani|CM|69|8;Ali Gholizadeh|RW|72|17;Alireza Jahanbakhsh|RW|72|7;Mohammad Mohebi|LW|71|11;Mehdi Taremi|ST|79|9;Sardar Azmoun|ST|76|20'],
+  ['IRQ', 'Iraq', 58, ['#ce1126', '#ffffff', '#000000', '#007a3d'], ['#0f7a3a', '#f4f5f7', '#f4f5f7', '#0f7a3a', '#f4f5f7'], ['#f4f5f7', '#0f7a3a', '#0f7a3a', '#f4f5f7', '#0f7a3a'], '#ffb300',
+    'Jalal Hassan|GK|70|12;Fahad Talib|GK|67|1;Hussein Ali|RB|69|2;Rebin Sulaka|CB|69|3;Zaid Tahseen|CB|68|5;Merchas Doski|LB|69|23;Amir Al-Ammari|CM|70|6;Zidane Iqbal|CM|70|8;Osama Rashid|CDM|67|14;Ibrahim Bayesh|CAM|70|10;Youssef Amyn|RW|68|7;Ali Jasim|LW|70|11;Aymen Hussein|ST|73|18;Ali Al-Hamadi|ST|71|19;Mohanad Ali|ST|70|9'],
+  ['JOR', 'Jordan', 64, ['#000000', '#ffffff', '#007a3d', '#ce1126'], ['#f4f5f7', '#ce1126', '#f4f5f7', '#f4f5f7', '#ce1126'], ['#ce1126', '#f4f5f7', '#ce1126', '#ce1126', '#f4f5f7'], '#1e88e5',
+    'Yazeed Abulaila|GK|70|1;Abdallah Al-Fakhouri|GK|65|22;Ehsan Haddad|RB|67|23;Yazan Al-Arab|CB|70|5;Abdallah Nasib|CB|67|3;Mohammad Abu Hashish|LB|67|13;Nizar Al-Rashdan|CM|67|21;Noor Al-Rawabdeh|CM|68|8;Ibrahim Saadeh|CM|66|15;Musa Al-Taamari|RW|76|10;Mahmoud Al-Mardi|LW|69|17;Mohammad Abu Zrayq|LW|66|7;Yazan Al-Naimat|ST|72|11;Ali Olwan|ST|69|9'],
+  ['KOR', 'Korea Republic', 23, ['#ffffff', '#cd2e3a', '#0047a0'], ['#d6001c', '#1b1b1f', '#1b1b1f', '#d6001c', '#ffffff'], ['#f4f5f7', '#1b1b1f', '#f4f5f7', '#f4f5f7', '#d6001c'], '#43a047',
+    'Jo Hyeon-woo|GK|74|21;Kim Seung-gyu|GK|72|1;Seol Young-woo|RB|73|22;Kim Min-jae|CB|85|4;Cho Yu-min|CB|71|3;Jeong Seung-hyun|CB|70|15;Lee Myung-jae|LB|69|13;Hwang In-beom|CM|78|6;Paik Seung-ho|CM|72|8;Lee Jae-sung|CAM|75|10;Lee Kang-in|CAM|81|18;Hwang Hee-chan|RW|76|11;Bae Jun-ho|RW|72|17;Son Heung-min|LW|84|7;Oh Hyeon-gyu|ST|73|9;Cho Gue-sung|ST|72|19'],
+  ['QAT', 'Qatar', 53, ['#ffffff', '#8a1538'], ['#8a1538', '#f4f5f7', '#f4f5f7', '#8a1538', '#f4f5f7'], ['#f4f5f7', '#8a1538', '#8a1538', '#f4f5f7', '#8a1538'], '#26a69a',
+    'Meshaal Barsham|GK|70|22;Saad Al-Sheeb|GK|66|1;Pedro Miguel|RB|68|2;Boualem Khoukhi|CB|70|16;Lucas Mendes|CB|69|5;Tarek Salman|CB|67|15;Homam Ahmed|LB|67|14;Karim Boudiaf|CDM|68|12;Abdulaziz Hatem|CM|68|6;Jassem Gaber|CM|67|8;Hassan Al-Haydos|CAM|68|10;Ahmed Al-Ganehi|RW|67|7;Akram Afif|LW|77|11;Almoez Ali|ST|74|19;Yusuf Abdurisag|ST|67|9'],
+  ['KSA', 'Saudi Arabia', 59, ['#006c35', '#ffffff'], ['#f4f5f7', '#006c35', '#f4f5f7', '#f4f5f7', '#006c35'], ['#006c35', '#f4f5f7', '#006c35', '#006c35', '#f4f5f7'], '#ff7043',
+    'Mohammed Al-Owais|GK|73|21;Nawaf Al-Aqidi|GK|70|1;Saud Abdulhamid|RB|73|12;Ali Al-Bulaihi|CB|70|5;Hassan Tambakti|CB|71|17;Abdulelah Al-Amri|CB|70|4;Yasser Al-Shahrani|LB|69|13;Nasser Al-Dawsari|CDM|70|16;Mohamed Kanno|CM|72|23;Musab Al-Juwayr|CAM|71|8;Marwan Al-Sahafi|RW|68|7;Salem Al-Dawsari|LW|77|10;Abdulrahman Ghareeb|LW|70|11;Firas Al-Buraikan|ST|73|9;Saleh Al-Shehri|ST|70|19'],
+  ['UZB', 'Uzbekistan', 55, ['#0099b5', '#ffffff', '#1eb53a'], ['#f4f5f7', '#0099b5', '#f4f5f7', '#f4f5f7', '#0099b5'], ['#0b5fa8', '#f4f5f7', '#0b5fa8', '#0b5fa8', '#f4f5f7'], '#ffb300',
+    'Utkir Yusupov|GK|70|1;Abduvohid Nematov|GK|67|12;Khojiakbar Alijonov|RB|68|2;Abdukodir Khusanov|CB|78|4;Rustam Ashurmatov|CB|70|5;Umar Eshmurodov|CB|68|3;Farrukh Sayfiev|LB|67|13;Otabek Shukurov|CDM|71|7;Odiljon Hamrobekov|CM|69|6;Abbosbek Fayzullaev|CAM|73|8;Oston Urunov|RW|70|11;Jaloliddin Masharipov|LW|72|10;Khojimat Erkinov|LW|69|17;Eldor Shomurodov|ST|74|14;Igor Sergeev|ST|69|9'],
+  ['COL', 'Colombia', 13, ['#fcd116', '#003893', '#ce1126'], ['#fcd116', '#003893', '#003893', '#fcd116', '#003893'], ['#7a1f2b', '#fcd116', '#7a1f2b', '#7a1f2b', '#fcd116'], '#1b1b1f',
+    'Camilo Vargas|GK|77|12;Álvaro Montero|GK|72|1;Daniel Muñoz|RB|81|21;Davinson Sánchez|CB|78|23;Jhon Lucumí|CB|79|2;Yerry Mina|CB|75|13;Johan Mojica|LB|76|17;Jefferson Lerma|CDM|78|16;Richard Ríos|CM|79|6;Kevin Castaño|CM|75|5;James Rodríguez|CAM|80|10;Jhon Arias|RW|80|11;Luis Díaz|LW|87|7;Jhon Córdoba|ST|77|24;Luis Suárez|ST|77|9;Rafael Santos Borré|ST|74|19'],
+  ['ECU', 'Ecuador', 25, ['#ffd100', '#034ea2', '#ef3340'], ['#ffd100', '#034ea2', '#034ea2', '#ef3340', '#034ea2'], ['#034ea2', '#ffd100', '#034ea2', '#034ea2', '#ffd100'], '#43a047',
+    'Hernán Galíndez|GK|74|1;Moisés Ramírez|GK|72|22;Ángelo Preciado|RB|74|17;Willian Pacho|CB|83|6;Piero Hincapié|CB|82|3;Félix Torres|CB|74|2;Pervis Estupiñán|LB|81|7;Moisés Caicedo|CDM|86|23;Alan Franco|CM|75|21;Pedro Vite|CM|72|15;Kendry Páez|CAM|75|10;Gonzalo Plata|RW|75|19;John Yeboah|RW|72|20;Jeremy Sarmiento|LW|73|16;Enner Valencia|ST|75|13;Kevin Rodríguez|ST|72|9'],
+  ['PAR', 'Paraguay', 40, ['#d52b1e', '#ffffff', '#0038a8'], ['#d52b1e', '#f4f5f7', '#0038a8', '#0038a8', '#1b1b1f', 'stripes'], ['#1b2a5c', '#d52b1e', '#1b2a5c', '#1b2a5c', '#f4f5f7'], '#ffca28',
+    'Roberto Fernández|GK|73|1;Orlando Gill|GK|72|12;Juan Cáceres|RB|72|4;Gustavo Gómez|CB|77|15;Omar Alderete|CB|77|6;Fabián Balbuena|CB|73|3;Júnior Alonso|LB|73|13;Andrés Cubas|CDM|74|14;Diego Gómez|CM|76|8;Mathías Villasanti|CM|74|23;Alejandro Romero Gamarra|CAM|72|16;Julio Enciso|CAM|77|19;Miguel Almirón|RW|77|10;Ramón Sosa|LW|75|11;Antonio Sanabria|ST|75|9;Gabriel Ávalos|ST|72|18'],
+  ['URU', 'Uruguay', 15, ['#ffffff', '#0038a8', '#fcd116'], ['#5cb8e6', '#1b1b1f', '#1b1b1f', '#1b1b1f', '#1b1b1f'], ['#f4f5f7', '#5cb8e6', '#5cb8e6', '#f4f5f7', '#1b1b1f'], '#ff7043',
+    'Sergio Rochet|GK|79|23;Santiago Mele|GK|72|1;Nahitan Nández|RB|78|8;Ronald Araújo|CB|84|4;José María Giménez|CB|82|2;Sebastián Cáceres|CB|76|3;Mathías Olivera|LB|79|16;Manuel Ugarte|CDM|81|5;Federico Valverde|CM|88|15;Rodrigo Bentancur|CM|81|6;Nicolás de la Cruz|CAM|79|7;Giorgian de Arrascaeta|CAM|79|10;Facundo Pellistri|RW|76|11;Maximiliano Araújo|LW|77|20;Darwin Núñez|ST|82|19;Rodrigo Aguirre|ST|73|9'],
+  ['CUW', 'Curaçao', 82, ['#002b7f', '#f9e814', '#ffffff'], ['#1b4fa0', '#f9e814', '#1b4fa0', '#1b4fa0', '#f9e814'], ['#f9e814', '#1b4fa0', '#f9e814', '#f9e814', '#1b4fa0'], '#e53935',
+    'Eloy Room|GK|70|1;Trevor Doornbusch|GK|64|23;Shurandy Sambo|RB|66|2;Armando Obispo|CB|70|4;Roshon van Eijma|CB|66|3;Sherel Floranus|LB|66|5;Juninho Bacuna|CM|70|10;Leandro Bacuna|CM|68|7;Livano Comenencia|CM|66|6;Kenji Gorré|RW|68|11;Tahith Chong|LW|70|8;Sontje Hansen|LW|68|17;Jürgen Locadia|ST|66|9;Gervane Kastaneer|ST|66|19;Jearl Margaritha|ST|65|18'],
+  ['HAI', 'Haiti', 84, ['#00209f', '#d21034'], ['#1b3f94', '#d21034', '#1b3f94', '#d21034', '#f4f5f7'], ['#d21034', '#1b3f94', '#d21034', '#d21034', '#f4f5f7'], '#fdd835',
+    'Johny Placide|GK|68|1;Alexandre Pierre|GK|64|12;Carlens Arcus|RB|68|2;Ricardo Adé|CB|68|4;Jean-Kévin Duverne|CB|66|5;Garven Metusala|CB|65|3;Duke Lacroix|LB|64|13;Leverton Pierre|CDM|65|6;Danley Jean Jacques|CM|67|8;Bryan Alceus|CM|65|14;Derrick Etienne|RW|67|7;Louicius Deedson|LW|67|11;Ruben Providence|LW|66|17;Frantzdy Pierrot|ST|70|9;Duckens Nazon|ST|68|10'],
+  ['PAN', 'Panama', 30, ['#ffffff', '#da121a', '#072357'], ['#da121a', '#f4f5f7', '#da121a', '#da121a', '#f4f5f7'], ['#f4f5f7', '#da121a', '#072357', '#f4f5f7', '#da121a'], '#1e88e5',
+    'Orlando Mosquera|GK|70|1;Luis Mejía|GK|67|12;Michael Murillo|RB|72|23;Fidel Escobar|CB|70|4;José Córdoba|CB|71|3;Andrés Andrade|CB|69|5;Eric Davis|LB|68|15;Aníbal Godoy|CDM|69|20;Adalberto Carrasquilla|CM|74|8;Cristian Martínez|CM|68|6;Ismael Díaz|RW|70|11;Édgar Bárcenas|RW|69|10;José Luis Rodríguez|LW|70|17;José Fajardo|ST|69|9;Cecilio Waterman|ST|68|18'],
+  ['NZL', 'New Zealand', 86, ['#00247d', '#cc142b', '#ffffff'], ['#f4f5f7', '#1b1b1f', '#f4f5f7', '#f4f5f7', '#1b1b1f'], ['#1b1b1f', '#f4f5f7', '#1b1b1f', '#1b1b1f', '#f4f5f7'], '#43a047',
+    'Max Crocombe|GK|70|1;Alex Paulsen|GK|66|12;Tim Payne|RB|67|2;Michael Boxall|CB|68|5;Tyler Bindon|CB|70|4;Finn Surman|CB|67|15;Liberato Cacace|LB|73|13;Joe Bell|CDM|71|6;Marko Stamenić|CM|72|8;Matthew Garbett|CM|70|10;Matthew Ridenton|CM|66|14;Sarpreet Singh|CAM|68|7;Elijah Just|RW|67|17;Kosta Barbarouses|LW|67|11;Chris Wood|ST|79|9;Ben Waine|ST|66|19'],
+];
+for (const [id, name, rank, flag, h, a, gk, pl] of MORE_NATIONS) {
+  const kit = k => ({ shirt: k[0], trim: k[1], shorts: k[2], socks: k[3], num: k[4], pattern: k[5] || 'plain' });
+  NATIONS.push({ id, name, rank, kit: kit(h), away: kit(a), gk, players: pl.split(';').map(s => { const [n, p, o, no] = s.split('|'); return [n, p, +o, +no]; }) });
+  NATION_COLORS[id] = flag; NATION[id] = NATIONS[NATIONS.length - 1];
+}
+
 // a seeded random, so a player's stats are the same every time
 function seeded(str) { let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; }
 // PAC SHO PAS DRI DEF PHY (and diving etc. for keepers), from the position and overall rating
@@ -525,7 +620,7 @@ function bestXI(nid, form = '4-3-3') {
 const teamOvr = ids => Math.round(ids.reduce((a, id) => a + PLAYER[id].ovr, 0) / ids.length);
 
 // ---------- Saved settings and profile ----------
-const VERSION = '1.0.2';
+const VERSION = '1.1';
 const load = k => { try { return JSON.parse(localStorage.getItem(k) || 'null') || {}; } catch (e) { return {}; } };
 const settings = Object.assign({ camera: 'broadcast', diff: 1, halfMin: 4, volume: 0.7, replays: true, seenDisclaimer: '', tod: 'afternoon', controls: 'fifa', music: true, pens: false }, load('soccer.settings'));
 const today = new Date();
@@ -781,7 +876,7 @@ function updateCrowd(t) {
 // ---------- LED boards round the pitch ----------
 const boards = [];
 function buildBoards() {
-  const ads = [['FOOTBALL 1.0', '#7a2bd8', '#ffffff'], ['PLAY THE BEAUTIFUL GAME', '#0fb5a8', '#06212a'], ['ULTIMATE TEAM', '#e5245e', '#ffffff'], ['THE ARCADE', '#f5b82e', '#1b1b1f'], ['KICK OFF', '#1b2a5c', '#7ff5ff']];
+  const ads = [['FOOTBALL 1.1', '#7a2bd8', '#ffffff'], ['PLAY THE BEAUTIFUL GAME', '#0fb5a8', '#06212a'], ['ULTIMATE TEAM', '#e5245e', '#ffffff'], ['THE ARCADE', '#f5b82e', '#1b1b1f'], ['KICK OFF', '#1b2a5c', '#7ff5ff']];
   const tex = canvasTex(2048, 64, (g, w, h) => {
     let x = 0, i = 0;
     while (x < w) { const [t, bg, fg] = ads[i % ads.length]; const seg = 410; g.fillStyle = bg; g.fillRect(x, 0, seg, h); g.fillStyle = fg; g.font = 'italic 900 38px "Barlow Condensed", Arial Narrow, Arial, sans-serif'; g.textBaseline = 'middle';
@@ -1418,6 +1513,8 @@ function newMatch(cfg) {
   REPLAY.reset(); makeOfficials(); M.so = null; M.pens = null; M.varOff = null; M.ballNoGoal = null;
   setKickoff(0);
   M.ctrl = M.teams[0].players.find(p => p.role === 'ST') || M.teams[0].players[9];
+  NET.ctrls = [M.ctrl, M.teams[1].players.find(p => p.role === 'ST') || M.teams[1].players[9]]; NET.ch = [{}, {}];
+  if (NET.guest) { M.user = 1; M.ctrl = NET.ctrls[1]; } // 1.1 online: your friend's screen is team 2
   M.phase = 'intro'; M.pt = 0;
   return M;
 }
@@ -1449,7 +1546,7 @@ function setKickoff(ti) {
   if (fw[1]) place(fw[1], -T.dir * 1.2, 3.5);
   B.pos.set(0, BALL_R, 0); B.vel.set(0, 0, 0); B.owner = null; B.held = false; B.pass = B.shot = null; B.last = null;
   M.restart = { type: 'kickoff', team: T, x: 0, z: 0, taker: fw[0], t: 0 };
-  if (T.i === M.user) { M.ctrl = fw[0]; HUD.hint('kickoff'); } else HUD.hint(null);
+  if (userTeam(T.i)) { setCtrl(T.i, fw[0]); HUD.hint(T.i === M.user ? 'kickoff' : null); } else HUD.hint(null);
   M.phase = M.phase === 'intro' ? 'intro' : 'restart';
 }
 
@@ -1466,13 +1563,13 @@ function simStep(dt) {
   if (ph === 'var' || ph === 'so') { M.simT += dt; for (const T of M.teams) teamAI(T, dt); for (const P of M.all) if (!P.off) movePlayer(P, dt); separate(); refStep(dt); officialsStep(dt); }
   if (ph === 'play' || ph === 'restart' || ph === 'goal' || ph === 'celebrate' || ph === 'foul') {
     M.simT += dt; // match time for the replays (runs through goals and celebrations too)
-    userInput(dt);
-    for (const T of M.teams) teamAI(T, dt);
+    if (NET.two) { for (const T of M.teams) seat(T.i, () => { userInput(dt); teamAI(T, dt); }); NET.gin.pressed = {}; NET.gin.released = {}; } // 1.1 online: both humans
+    else { userInput(dt); for (const T of M.teams) teamAI(T, dt); }
     for (const P of M.all) if (!P.off) movePlayer(P, dt);
     separate();
     if (M.phase === 'play') { ballStep(dt); possessionCheck(); gkLogic(dt); refBall(); if (M.drill) { drillRules(); SKILLS.step(dt); } else { rulesCheck(); soStep(dt); } }
     else if (M.drill && M.phase === 'restart') { restartStep(dt); SKILLS.step(dt, true); }
-    else if (M.phase === 'restart') restartStep(dt);
+    else if (M.phase === 'restart') { if (NET.two && M.restart) seat(M.restart.team.i, () => restartStep(dt)); else restartStep(dt); }
     else if (ph === 'goal' || ph === 'celebrate') { ballStep(dt); celebrateStep(dt); }
     else if (ph === 'foul') { ballStep(dt); if (M.pt > 2.2) afterFoul(); }
     refStep(dt); officialsStep(dt);
@@ -1491,15 +1588,24 @@ function lineUp() {
 function endIntro() { setKickoff(0); M.phase = 'restart'; M.pt = 0; whistle(0.5); HUD.banner(null); HUD.lineup(null); HUD.hint(M.restart && human(M.restart.team) ? 'kickoff' : null); }
 function checkTime() {
   if (M.drill) return;
-  const end = M.half === 1 ? 2700 : 5400;
+  const end = M.half === 1 ? 2700 : M.half === 2 ? 5400 : M.half === 3 ? 6300 : 7200;
   if (M.so) return;
   if (M.clock >= end && !M.stop) { M.stop = 1 + ((Math.random() * 3) | 0) + Math.min(2, (M.goals.length + M.teams[0].stats.fouls + M.teams[1].stats.fouls) / 6 | 0); HUD.stoppage(M.stop); showBoard(M.stop); }
   if (M.stop && M.clock >= end + M.stop * 60 && M.phase === 'play') {
     whistle(1.6, 3); M.stop = 0; HUD.stoppage(0);
+    const level = M.teams[0].score === M.teams[1].score;
     if (M.half === 1) { M.phase = 'halftime'; M.pt = 0; MENUS.halftime(); }
-    else if (settings.pens && M.cfg.mode !== 'ultimate' && M.teams[0].score === M.teams[1].score) startShootout();
+    else if (M.half === 3) etHalf(4);
+    else if (M.half === 2 && M.cfg.ko && level) etHalf(3); // 1.1: a knockout can't end in a draw
+    else if (level && (M.half === 4 || (M.cfg.mode !== 'ultimate' && M.cfg.mode !== 'worldcup' && (M.cfg.mode === 'online' ? M.cfg.pens : settings.pens)))) startShootout();
     else { M.phase = 'fulltime'; M.pt = 0; MENUS.fulltime(); }
   }
+}
+function etHalf(n) {
+  M.et = true; M.half = n; M.clock = n === 3 ? 5400 : 6300;
+  for (const T of M.teams) T.dir *= -1;
+  setKickoff(n === 3 ? 0 : 1); M.phase = 'restart'; M.pt = 0; whistle(0.5);
+  HUD.banner('EXTRA TIME', n === 3 ? 'Two halves of 15 minutes, then penalties' : 'Second half of extra time', 'foul');
 }
 function secondHalf() {
   M.half = 2; M.clock = 2700;
@@ -1510,6 +1616,7 @@ function secondHalf() {
 // ---------- you ----------
 function inputDir() {
   // stick (screen) -> world, using the camera's ground directions
+  if (NET.useGuestDir) return V3(NET.gin.dx, 0, NET.gin.dz); // 1.1 online: your friend's stick, already turned to the pitch on their screen
   const f = _v.set(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0; f.normalize();
   const r = _w.set(-f.z, 0, f.x);
   const x = inp.stick.x, y = inp.stick.y;
@@ -1664,7 +1771,7 @@ function doPass(P, dir, kind, R, pw = 0.3) {
   M.ball.pass = { from: P, to: R, kind, t: M.simT, off, tgt, margin, safe: you };
   R.recv = tgt; R.recvT = 2.5;
   P.team.stats.passes++;
-  if (P.team.i === M.user && !R.gk && !(M.drill && M.drill.lockCtrl)) M.ctrl = R;
+  if (userTeam(P.team.i) && !R.gk && !(M.drill && M.drill.lockCtrl)) setCtrl(P.team.i, R);
   if (M.drill) SKILLS.ev('pass', { P, R, kind });
 }
 function shoot(P, power, dir, finesse) {
@@ -1708,7 +1815,7 @@ function tryTackle(D, C, cpu) {
   const sk = stat(D, 'def') * (cpu ? M.diff.tackle : 1.05), win = 0.42 + (sk - stat(C, 'dri')) / 110 - (behind ? 0.12 : 0) - (C.shield ? 0.22 : 0) + (D.jockey ? 0.1 : 0);
   const r = Math.random();
   if (r < 0.05 + (behind ? 0.12 : 0) + (cpu ? 0 : 0.02)) { foulCommitted(D, C, behind ? 0.45 : 0.15); return; }
-  if (r < win) { M.ball.owner = D; M.ball.last = D; C.cool = 0.7; C.busy = 0.25; sfx.kick(0.3); if (D.team.i === M.user) M.ctrl = D; }
+  if (r < win) { M.ball.owner = D; M.ball.last = D; C.cool = 0.7; C.busy = 0.25; sfx.kick(0.3); if (userTeam(D.team.i)) setCtrl(D.team.i, D); }
 }
 function startSlide(P, dir) {
   if (P.busy > 0 || P.slide) return;
@@ -1773,7 +1880,7 @@ function afterFoul() {
   else go();
 }
 function bench(P) { P.off = true; P.mesh.visible = false; P.blob.visible = false; if (M.ball.owner === P) M.ball.owner = null; }
-function sendOff(P) { P.off = true; P.mesh.visible = false; if (M.ctrl === P) M.ctrl = null; if (M.ball.owner === P) M.ball.owner = null; }
+function sendOff(P) { P.off = true; P.mesh.visible = false; if (M.ctrl === P) M.ctrl = null; NET.ctrls = NET.ctrls.map(c => c === P ? null : c); if (M.ball.owner === P) M.ball.owner = null; }
 
 // ---------- headers ----------
 function header(P, wantGoal) {
@@ -1875,7 +1982,7 @@ function gain(P) {
   B.owner = P; B.last = P; B.pass = null; B.vel.set(0, 0, 0); B.held = false;
   if (B.shot && B.shot.team !== P.team) B.shot = null;
   P.recv = null; B.curve = null;
-  if (P.team.i === M.user && !P.gk && !(M.drill && M.drill.lockCtrl)) { M.ctrl = P; if (M.buf) firstTime(P); }
+  if (userTeam(P.team.i) && !P.gk && !(M.drill && M.drill.lockCtrl)) { setCtrl(P.team.i, P); if (M.buf && P.team.i === M.user) firstTime(P); }
   else if (P === M.ctrl && M.buf) firstTime(P);
   if (M.drill) SKILLS.ev('gain', P);
 }
@@ -1987,7 +2094,7 @@ function goal(T, s) {
   const B = M.ball, sc = B.last && B.last.team === T ? B.last : null, og = !sc;
   const scorer = sc || (B.last ? B.last : active(T)[9]);
   T.score++; if (B.shot) T.stats.onTarget++;
-  const min = Math.min(M.half === 1 ? 45 : 90, Math.floor(M.clock / 60) + 1);
+  const min = Math.min(M.half === 1 ? 45 : M.half === 2 ? 90 : M.half === 3 ? 105 : 120, Math.floor(M.clock / 60) + 1);
   M.goals.push({ team: T.i, name: scorer.d.short, min, og });
   M.phase = 'goal'; M.pt = 0; M.goalT = M.simT; M.scorer = og ? active(T).filter(p => !p.gk).sort((a, b) => a.pos.distanceTo(B.pos) - b.pos.distanceTo(B.pos))[0] : scorer;
   M.concede = T.opp; M.cele = null;
@@ -2043,7 +2150,7 @@ function startRestart(type, T, x, z, indirect) {
   if (type === 'freekick' || type === 'penalty') { _v.set(T.dir * PL - x, 0, -z).normalize(); into.copy(_v); }
   place(K, x - into.x * (type === 'throw' ? 0.3 : 1.1), z - into.z * (type === 'throw' ? 0.3 : 1.1)); K.face = angTo(into.x, into.z);
   if (type === 'throw') { K.anim = ANIM.throw; K.at = 0; }
-  if (T.i === M.user && !K.gk) M.ctrl = K;
+  if (userTeam(T.i) && !K.gk) setCtrl(T.i, K);
   // set pieces: everyone gets into position straight away
   if (type === 'corner' || type === 'penalty' || type === 'freekick' || type === 'goalkick') {
     const box = T.dir * (PL - 9);
@@ -2111,7 +2218,7 @@ function restartInput(dt) {
   else if (inp.pressed.D) { beginPlay(); throwOrPass(K, d, 'lob'); }
 }
 function throwOrPass(K, d, kind) {
-  if (M.restart && M.restart.type === 'throw') { const R = pickReceiver(K, d, 'ground'); const tgt = R ? R.pos : K.pos.clone().add(V3(Math.sin(K.face) * 10, 0, Math.cos(K.face) * 10)); const v = passVel(M.ball.pos, tgt, 'lob', 80); v.multiplyScalar(0.8); v.y = Math.min(v.y, 6); kickBall(K, v); K.anim = ANIM.throw; K.at = 0.25; if (R) { M.ball.pass = { from: K, to: R, kind: 'throw', t: M.simT, off: false }; if (K.team.i === M.user) M.ctrl = R; } }
+  if (M.restart && M.restart.type === 'throw') { const R = pickReceiver(K, d, 'ground'); const tgt = R ? R.pos : K.pos.clone().add(V3(Math.sin(K.face) * 10, 0, Math.cos(K.face) * 10)); const v = passVel(M.ball.pos, tgt, 'lob', 80); v.multiplyScalar(0.8); v.y = Math.min(v.y, 6); kickBall(K, v); K.anim = ANIM.throw; K.at = 0.25; if (R) { M.ball.pass = { from: K, to: R, kind: 'throw', t: M.simT, off: false }; if (userTeam(K.team.i)) setCtrl(K.team.i, R); } }
   else doPass(K, d, kind);
 }
 function beginPlay() {
@@ -2235,7 +2342,7 @@ function soNext() {
   const S = M.so; if (!S || !M) return;
   const ti = S.turn % 2, T = M.teams[ti], taker = S.order[ti][S.n[ti] % S.order[ti].length];
   startRestart('penalty', T, T.dir * (PL - 11), 0);
-  if (M.restart.taker !== taker) { const R = M.restart, K = taker; place(K, R.taker.pos.x, R.taker.pos.z); K.face = R.taker.face; const old = R.taker; place(old, T.dir * (PL - 24), (Math.random() - 0.5) * 20); R.taker = K; if (T.i === M.user) M.ctrl = K; }
+  if (M.restart.taker !== taker) { const R = M.restart, K = taker; place(K, R.taker.pos.x, R.taker.pos.z); K.face = R.taker.face; const old = R.taker; place(old, T.dir * (PL - 24), (Math.random() - 0.5) * 20); R.taker = K; if (userTeam(T.i)) setCtrl(T.i, K); }
   S.kick = { T, t: 0 };
 }
 function soResult(scored) {
@@ -2571,7 +2678,7 @@ const HUD = (() => {
     if (!M) return;
     const [H, A] = M.teams;
     $('sbS').textContent = `${H.score} - ${A.score}`;
-    const c = Math.floor(M.clock), half = M.half === 1 ? 2700 : 5400, shown = Math.min(c, half);
+    const c = Math.floor(M.clock), half = M.half === 1 ? 2700 : M.half === 2 ? 5400 : M.half === 3 ? 6300 : 7200, shown = Math.min(c, half);
     $('clkT').textContent = `${String(Math.floor(shown / 60)).padStart(2, '0')}:${String(shown % 60).padStart(2, '0')}`;
     $('introB').hidden = !(M.phase === 'intro' && (M.pt < 2.6 || M.pt > 9.8));
     // minimap: home circles, away triangles
@@ -2684,7 +2791,7 @@ const MENUS = (() => {
   }
   function showMainNow() {
     screen = 'main'; paused = false; if (SKILLS.on) SKILLS.end(); document.body.className = 'menu'; $('mainMenu').hidden = false; $('hud').hidden = true; $('touchUI').hidden = true; ui.innerHTML = '';
-    refreshTop(); refreshTiles(); setTab(tab); if (M) { disposeMatch(); } setTimeOfDay('afternoon'); MUSIC.start();
+    refreshTop(); refreshTiles(); WC.tile(); setTab(tab); if (M) { disposeMatch(); } setTimeOfDay('afternoon'); MUSIC.start();
   }
   function setTab(t) {
     tab = t;
@@ -2693,11 +2800,12 @@ const MENUS = (() => {
     if (t === 'home') $('pane-home').innerHTML = `
       <button class="tile" data-go="quick"><h2>Quick Match</h2><p>Two random national teams, straight onto the pitch.</p><div class="arr">▶</div></button>
       <button class="tile" data-go="ult"><h2>Ultimate Team</h2><p>Open packs, collect real players and build your dream squad. ${profile.cards.length} cards in your club.</p><div class="val">${fmt(profile.coins)} ◉</div></button>
-      <button class="tile" data-go="news"><h2>Football ${VERSION}</h2><p>New: the Laws of the Game (officials, VAR, offside, handball, indirect free kicks, dropped balls, shootouts), hold-to-power passing and better keepers.</p><div class="val">New</div></button>
+      <button class="tile" data-go="news"><h2>Football ${VERSION}</h2><p>New: the World Cup with all 48 teams, and online play: Friendlies and Ultimate Team against a friend.</p><div class="val">New</div></button>
       <button class="tile" data-go="kick"><h2>Kick Off</h2><p>Classic: pick any two teams and play one match.</p><div class="arr">▶</div></button>
       <button class="tile" data-go="profile"><h2>Your Profile</h2><p>Level ${profile.level} · ${profile.played} matches played · ${profile.wins} won.</p><div class="val">LVL ${profile.level}</div></button>
       <button class="tile" data-go="controls"><h2>Controls</h2><p>Keyboard, gamepad and touch.</p><div class="arr">▶</div></button>`;
-    if (t === 'online') $('pane-online').innerHTML = ['Online Seasons', 'Online Friendlies', 'Co-op Seasons'].map(n => `<button class="tile" data-go="soon"><h2>${n}</h2><p>Play other people online. This is coming in a future update.</p><span class="wip">COMING SOON</span></button>`).join('');
+    if (t === 'online') $('pane-online').innerHTML = `<button class="tile" data-go="onFriend"><h2>Online Friendlies</h2><p>Play a friend: make a room, send the code, pick your teams. The host sets the rules.</p><div class="val">Live</div><div class="arr">▶</div></button>
+      <button class="tile" data-go="onUlt"><h2>Ultimate Team Online</h2><p>Your Ultimate Team squad against a friend's, with your club's kit and crest.</p><div class="val">Live</div><div class="arr">▶</div></button>` + ['Online Seasons'].map(n => `<button class="tile" data-go="soon"><h2>${n}</h2><p>Play other people online. This is coming in a future update.</p><span class="wip">COMING SOON</span></button>`).join('');
     if (t === 'custom') paintCustom();
     focus(null); animateIn();
   }
@@ -2731,7 +2839,9 @@ const MENUS = (() => {
     else if (go === 'tUlt' || go === 'ult') swap(() => ULT.open());
     else if (go === 'quick') { const ids = NATIONS.map(n => n.id).sort(() => Math.random() - 0.5); profile.last = { home: ids[0], away: ids[1] }; startClassic(); }
     else if (go === 'controls') controls();
-    else if (go === 'tCareer') toast('Career mode is coming in a future update');
+    else if (go === 'tCareer') WC.open();
+    else if (go === 'onFriend') swap(() => ONLINE.menu('friendly'));
+    else if (go === 'onUlt') swap(() => ONLINE.menu('ultimate'));
     else if (go === 'tSkill' || go === 'skills') swap(() => SKILLS.open());
     else if (go === 'tTour' || go === 'soon') toast('Coming in a future update');
     else if (go === 'pad') padPage();
@@ -2793,7 +2903,7 @@ const MENUS = (() => {
   function disclaimer(again) {
     const o = overlay(`<span class="wipTag">WORK IN PROGRESS</span><h2>Football ${VERSION}</h2>
       <p>Welcome to Football. This game is a <b>work in progress</b> and needs time to improve: the <b>gameplay</b>, the <b>players</b>, the <b>graphics</b> and the <b>mechanics</b> will all keep getting better with updates. You'll find bugs and things that change along the way.</p>
-      <p>Career, Tournaments and Online are coming in later updates.</p>
+      <p>New in 1.1: the <b>World Cup</b> (all 48 teams) and <b>online play</b> against a friend. Career and Tournaments are coming in later updates.</p>
       <p>Player names are used for fun in this fan-made game; ratings are our own estimates. Football isn't connected to any real league, club or federation.</p>
       <div class="row" style="justify-content:flex-start"><button class="btn" data-ok>I understand</button></div>`);
     o.querySelector('[data-ok]').onclick = () => { click(); settings.seenDisclaimer = VERSION; saveSettings(); o.remove(); };
@@ -2944,7 +3054,7 @@ const MENUS = (() => {
 
   // ---------- pause, half time, full time ----------
   function pause() {
-    if (!M || paused) return; paused = true; M.paused = true;
+    if (!M || paused) return; if (NET.on) return ONLINE.pauseMenu(); paused = true; M.paused = true;
     const o = overlay(`<h2>Paused</h2><div class="scoreLine"><img src="${M.teams[0].crest}">${M.teams[0].score} - ${M.teams[1].score}<img src="${M.teams[1].crest}"></div>
       <div class="menuList"><button class="btn" data-p="resume">Resume</button><button class="btn alt" data-p="cam">Camera: ${CAMS[M.cam]}</button><button class="btn alt" data-p="keys">Controls</button>
       <button class="btn alt" data-p="restart">${M.cfg.mode === 'skill' ? 'Restart drill' : 'Restart match'}</button><button class="btn alt" data-p="quit">${M.cfg.mode === 'skill' ? 'Back to Skill Games' : 'Quit to main menu'}</button></div>`);
@@ -2962,11 +3072,13 @@ const MENUS = (() => {
       ${row('Passes', H.stats.passes, A.stats.passes)}${row('Fouls', H.stats.fouls, A.stats.fouls)}${row('Corners', H.stats.corners, A.stats.corners)}${row('Offsides', H.stats.offsides, A.stats.offsides)}${row('Yellow cards', H.stats.yellow, A.stats.yellow)}${row('Red cards', H.stats.red, A.stats.red)}</table>`;
   }
   function halftime() {
+    if (NET.on) return ONLINE.halftime();
     HUD.hint(null);
     const o = overlay(`<h2>Half Time</h2>${statsTable()}<div class="row" style="justify-content:flex-start"><button class="btn" data-h="go">Second Half ▶</button></div>`);
     o.querySelector('[data-h]').onclick = () => { click(); o.remove(); secondHalf(); };
   }
   function fulltime() {
+    if (NET.on) return ONLINE.fulltime();
     HUD.hint(null);
     const [H, A] = M.teams, me = M.teams[M.user], P2 = M.pens, won = me.score > me.opp.score || !!(P2 && P2[me.i] > P2[me.opp.i]), draw = me.score === me.opp.score && !P2, ult = M.cfg.mode === 'ultimate';
     const coins = ult ? (won ? 1500 : draw ? 700 : 300) + me.score * 100 + (M.cfg.bonus || 0) * (won ? 1 : 0) : (won ? 400 : draw ? 200 : 100) + me.score * 50;
@@ -2974,14 +3086,15 @@ const MENUS = (() => {
     profile.coins += coins; profile.played++; if (won) profile.wins++; else if (draw) profile.draws = (profile.draws || 0) + 1; else profile.losses = (profile.losses || 0) + 1;
     profile.gf = (profile.gf || 0) + me.score; profile.ga = (profile.ga || 0) + me.opp.score; if (!me.opp.score) profile.cs = (profile.cs || 0) + 1;
     const margin = me.score - me.opp.score; if (won && (!profile.best || margin > profile.best.m)) profile.best = { m: margin, s: `${me.score}-${me.opp.score}`, vs: me.opp.name };
-    profile.history = [{ r: won ? 'W' : draw ? 'D' : 'L', s: `${me.score}-${me.opp.score}`, vs: me.opp.short, mode: ult ? 'UT' : 'KO' }, ...(profile.history || [])].slice(0, 10);
+    profile.history = [{ r: won ? 'W' : draw ? 'D' : 'L', s: `${me.score}-${me.opp.score}`, vs: me.opp.short, mode: ult ? 'UT' : M.cfg.mode === 'worldcup' ? 'WC' : 'KO' }, ...(profile.history || [])].slice(0, 10);
     if (!ult) { const f = formOf(H.nation); f.shift(); f.push(won ? 'W' : draw ? 'D' : 'L'); }
     const up = addXp(xp); saveProfile();
+    const wc = M.cfg.mode === 'worldcup'; if (wc) WC.record(M);
     const o = overlay(`<h2>Full Time</h2>${P2 ? `<p style="margin:0 0 8px;font-size:20px"><b>${M.teams[P2[0] > P2[1] ? 0 : 1].name}</b> win ${Math.max(...P2)}-${Math.min(...P2)} on penalties</p>` : ''}${statsTable()}<div class="reward">Coins <span>+${fmt(coins)}</span> XP <span>+${fmt(xp)}</span>${up ? ` <span>LEVEL UP!</span>` : ''}</div>
-      <div class="row" style="justify-content:flex-start"><button class="btn" data-f="menu">${ult ? 'Back to Ultimate Team' : 'Main Menu'}</button><button class="btn alt" data-f="again">Rematch</button></div>`);
-    o.onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; click(); o.remove(); if (b.dataset.f === 'again') startMatch(M.cfg); else if (ult) ULT.open(); else showMain(); };
+      <div class="row" style="justify-content:flex-start">${wc ? '<button class="btn" data-f="wc">Continue World Cup ▶</button>' : `<button class="btn" data-f="menu">${ult ? 'Back to Ultimate Team' : 'Main Menu'}</button><button class="btn alt" data-f="again">Rematch</button>`}</div>`);
+    o.onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; click(); o.remove(); if (b.dataset.f === 'wc') { if (M) disposeMatch(); WC.after(); } else if (b.dataset.f === 'again') startMatch(M.cfg); else if (ult) ULT.open(); else showMain(); };
   }
-  return { boot, showMain, showMainNow, swap, animateIn, startMatch, halftime, fulltime, overlay, get paused() { return paused; }, get screen() { return screen; }, set screen(v) { screen = v; }, refreshTop };
+  return { boot, showMain, showMainNow, swap, animateIn, startMatch, halftime, fulltime, overlay, statsTable, get paused() { return paused; }, get screen() { return screen; }, set screen(v) { screen = v; }, refreshTop };
 })();
 
 // a player portrait (for the Story tile), rendered with the game's own renderer
@@ -3381,6 +3494,488 @@ const SKILLS = (() => {
   return { open, start, step, ev, end, get on() { return !!D; }, DRILLS };
 })();
 
+
+// ---------- 1.1: the World Cup (48 teams, single-player) ----------
+// The 2026 format: 12 groups of 4 (one match against each team in your group), then the top two of every group and the
+// 8 best third-placed teams go into a Round of 32. From there it's knockout: Round of 32, Round of 16, quarter-finals,
+// semi-finals, a third-place play-off and the final. A knockout match can't end in a draw: 30 minutes of extra time,
+// then penalties. Every match you don't play is simulated from the two teams' strength.
+const WC = (() => {
+  const TEAMS = ['MEX', 'CAN', 'USA', 'AUT', 'BEL', 'BIH', 'CRO', 'CZE', 'ENG', 'FRA', 'GER', 'NED', 'NOR', 'POR', 'SCO', 'ESP', 'SWE', 'SUI', 'TUR',
+    'ALG', 'CPV', 'COD', 'CIV', 'EGY', 'GHA', 'MAR', 'SEN', 'RSA', 'TUN', 'AUS', 'IRN', 'IRQ', 'JPN', 'JOR', 'KOR', 'QAT', 'KSA', 'UZB',
+    'ARG', 'BRA', 'COL', 'ECU', 'PAR', 'URU', 'CUW', 'HAI', 'PAN', 'NZL'];
+  const CONF = { MEX: 'CONCACAF', CAN: 'CONCACAF', USA: 'CONCACAF', CUW: 'CONCACAF', HAI: 'CONCACAF', PAN: 'CONCACAF', ALG: 'CAF', CPV: 'CAF', COD: 'CAF', CIV: 'CAF', EGY: 'CAF', GHA: 'CAF', MAR: 'CAF',
+    SEN: 'CAF', RSA: 'CAF', TUN: 'CAF', AUS: 'AFC', IRN: 'AFC', IRQ: 'AFC', JPN: 'AFC', JOR: 'AFC', KOR: 'AFC', QAT: 'AFC', KSA: 'AFC', UZB: 'AFC', ARG: 'CONMEBOL', BRA: 'CONMEBOL', COL: 'CONMEBOL',
+    ECU: 'CONMEBOL', PAR: 'CONMEBOL', URU: 'CONMEBOL', NZL: 'OFC' };
+  const conf = id => CONF[id] || 'UEFA';
+  const G12 = 'ABCDEFGHIJKL'.split('');
+  const STAGES = { G: 'Group stage', R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarter-final', SF: 'Semi-final', '3P': 'Third-place play-off', F: 'Final' };
+  // the Round of 32, as in the 2026 bracket (3:XYZ = a third-placed team from one of those groups)
+  const R32 = [['2A', '2B'], ['1E', '3:ABCDF'], ['1F', '2C'], ['1C', '2F'], ['1I', '3:CDFGH'], ['2E', '2I'], ['1A', '3:CEFHI'], ['1L', '3:EHIJK'],
+    ['1D', '3:BEFIJ'], ['1G', '3:AEHIJ'], ['2K', '2L'], ['1H', '2J'], ['1B', '3:EFGIJ'], ['1J', '2H'], ['1K', '3:DEIJL'], ['2D', '2G']];
+  const NEXT = { R16: [[1, 4], [0, 2], [3, 5], [6, 7], [10, 11], [8, 9], [13, 15], [12, 14]], QF: [[0, 1], [4, 5], [2, 3], [6, 7]], SF: [[0, 1], [2, 3]] };
+  const str = {}; const strength = id => str[id] || (str[id] = teamOvr(bestXI(id)));
+  const name = id => NATION[id].name, ui = () => document.getElementById('ui');
+  const click = () => { try { sfx.init(); sfx.click(); } catch (e) {} };
+  let W = profile.wc || null; // the tournament in progress (saved with your profile)
+  const save = () => { profile.wc = W; saveProfile(); };
+
+  // ---------- the draw: four pots by ranking, hosts in A, B and D, at most one team per confederation in a group (two for Europe) ----------
+  function draw() {
+    const sorted = TEAMS.slice().sort((a, b) => NATION[a].rank - NATION[b].rank), hosts = ['MEX', 'CAN', 'USA'];
+    const pot1 = hosts.concat(sorted.filter(t => !hosts.includes(t)).slice(0, 9)), rest = sorted.filter(t => !pot1.includes(t));
+    const pots = [pot1, rest.slice(0, 12), rest.slice(12, 24), rest.slice(24, 36)];
+    for (let tries = 0; tries < 400; tries++) {
+      const g = G12.map(() => []); let ok = true;
+      g[0].push('MEX'); g[1].push('CAN'); g[3].push('USA');
+      const p1 = shuffle(pot1.filter(t => !hosts.includes(t))); for (let i = 0, k = 0; i < 12; i++) if (!g[i].length) g[i].push(p1[k++]);
+      for (let p = 1; p < 4 && ok; p++) {
+        for (const t of shuffle(pots[p].slice())) {
+          const fits = G12.map((_, i) => i).filter(i => g[i].length === p && (conf(t) === 'UEFA' ? g[i].filter(x => conf(x) === 'UEFA').length < 2 : !g[i].some(x => conf(x) === conf(t))));
+          if (!fits.length) { ok = false; break; }
+          g[fits[Math.floor(Math.random() * fits.length)]].push(t);
+        }
+      }
+      if (ok) return g;
+    }
+    return G12.map((_, i) => sorted.slice(i * 4, i * 4 + 4)); // (never needed: a draw that fits is found long before this)
+  }
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function start(team) {
+    const groups = draw(), fx = [];
+    groups.forEach((g, gi) => [[0, 1, 1], [2, 3, 1], [0, 2, 2], [3, 1, 2], [3, 0, 3], [1, 2, 3]].forEach(([a, b, md]) => fx.push({ id: fx.length, st: 'G', g: gi, md, h: g[a], a: g[b] })));
+    W = { team, groups, fx, stage: 'G', md: 1, out: false, champ: null, v: 1 }; save();
+  }
+
+  // ---------- results ----------
+  function simGoals(a, b) { const d = strength(a) - strength(b), l = Math.max(0.25, Math.min(3.6, 1.32 * Math.exp(d / 13))); let k = 0, p = Math.exp(-l), s = p, u = Math.random(); while (u > s && k < 9) { k++; p *= l / k; s += p; } return k; }
+  function simulate(f) {
+    f.hs = simGoals(f.h, f.a); f.as = simGoals(f.a, f.h);
+    if (f.st !== 'G' && f.hs === f.as) { f.et = true; f.hs += Math.random() < 0.3 ? 1 : 0; f.as += Math.random() < 0.3 ? 1 : 0; if (f.hs === f.as) f.pens = shootout(f.h, f.a); }
+    f.played = true;
+  }
+  function shootout(a, b) {
+    const pa = 0.74 + (strength(a) - strength(b)) / 400, pb = 0.74 + (strength(b) - strength(a)) / 400; let x = 0, y = 0;
+    for (let i = 0; i < 5; i++) { if (Math.random() < pa) x++; if (Math.random() < pb) y++; }
+    while (x === y) { const s = Math.random() < pa, t = Math.random() < pb; x += s; y += t; }
+    return [x, y];
+  }
+  const winner = f => f.hs > f.as ? f.h : f.as > f.hs ? f.a : f.pens ? (f.pens[0] > f.pens[1] ? f.h : f.a) : null;
+  const loser = f => { const w = winner(f); return w === f.h ? f.a : f.h; };
+
+  // ---------- tables: points, then head-to-head among the tied teams, then goal difference and goals overall ----------
+  function table(gi) {
+    const ts = W.groups[gi], row = id => ({ id, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }), R = Object.fromEntries(ts.map(t => [t, row(t)]));
+    const ms = W.fx.filter(f => f.st === 'G' && f.g === gi && f.played);
+    for (const f of ms) { const H = R[f.h], A = R[f.a]; H.p++; A.p++; H.gf += f.hs; H.ga += f.as; A.gf += f.as; A.ga += f.hs;
+      if (f.hs > f.as) { H.w++; A.l++; H.pts += 3; } else if (f.hs < f.as) { A.w++; H.l++; A.pts += 3; } else { H.d++; A.d++; H.pts++; A.pts++; } }
+    const h2h = (ids, id) => { let pts = 0, gd = 0, gf = 0; for (const f of ms) { if (!ids.includes(f.h) || !ids.includes(f.a)) continue; const me = f.h === id ? [f.hs, f.as] : f.a === id ? [f.as, f.hs] : null; if (!me) continue; gf += me[0]; gd += me[0] - me[1]; pts += me[0] > me[1] ? 3 : me[0] === me[1] ? 1 : 0; } return [pts, gd, gf]; };
+    const rows = Object.values(R);
+    rows.sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      const tied = rows.filter(r => r.pts === a.pts).map(r => r.id), x = h2h(tied, a.id), y = h2h(tied, b.id);
+      for (let i = 0; i < 3; i++) if (y[i] !== x[i]) return y[i] - x[i];
+      return (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || NATION[a.id].rank - NATION[b.id].rank;
+    });
+    return rows;
+  }
+  function bestThirds() {
+    const th = G12.map((L, gi) => ({ ...table(gi)[2], g: L }));
+    th.sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || NATION[a.id].rank - NATION[b.id].rank);
+    return th.slice(0, 8);
+  }
+  // put the 8 third-placed teams into the 8 places they're allowed in
+  function placeThirds(th) {
+    const slots = R32.map((m, i) => m[1].startsWith('3:') ? { i, from: m[1].slice(2) } : null).filter(Boolean), used = new Set(), out = {};
+    const go = k => { if (k === slots.length) return true; const s = slots[k];
+      for (const t of th) if (!used.has(t.g) && s.from.includes(t.g)) { used.add(t.g); out[s.i] = t.id; if (go(k + 1)) return true; used.delete(t.g); }
+      return false; };
+    if (!go(0)) { const left = th.map(t => t.id); slots.forEach(s => { out[s.i] = left.shift(); }); }
+    return out;
+  }
+  function makeKnockout(st) {
+    if (st === 'R32') {
+      const pos = (c) => table(G12.indexOf(c[1]))[+c[0] - 1].id, thirds = placeThirds(bestThirds());
+      R32.forEach(([x, y], i) => W.fx.push({ id: W.fx.length, st: 'R32', n: i, h: pos(x), a: y.startsWith('3:') ? thirds[i] : pos(y) }));
+    } else if (st === '3P' || st === 'F') {
+      const sf = W.fx.filter(f => f.st === 'SF').sort((a, b) => a.n - b.n);
+      W.fx.push({ id: W.fx.length, st: '3P', n: 0, h: loser(sf[0]), a: loser(sf[1]) }); W.fx.push({ id: W.fx.length, st: 'F', n: 0, h: winner(sf[0]), a: winner(sf[1]) });
+    } else {
+      const prev = { R16: 'R32', QF: 'R16', SF: 'QF' }[st], pm = W.fx.filter(f => f.st === prev).sort((a, b) => a.n - b.n);
+      NEXT[st].forEach(([x, y], i) => W.fx.push({ id: W.fx.length, st, n: i, h: winner(pm[x]), a: winner(pm[y]) }));
+    }
+  }
+  // the matches in the round being played now
+  const current = () => W.fx.filter(f => f.st === W.stage && (W.stage !== 'G' || f.md === W.md));
+  function advance() {
+    // simulate what's left in this round, then move on
+    for (const f of inRound()) if (!f.played) simulate(f);
+    if (W.stage === 'G' && W.md < 3) { W.md++; }
+    else if (W.stage === 'G') { W.stage = 'R32'; makeKnockout('R32'); if (!W.fx.some(f => f.st === 'R32' && (f.h === W.team || f.a === W.team))) W.out = W.out || 'G'; }
+    else if (W.stage === 'SF') { W.stage = 'FINALS'; makeKnockout('F'); }
+    else if (W.stage === 'FINALS') { const fin = W.fx.find(f => f.st === 'F'); W.champ = winner(fin); W.stage = 'DONE'; }
+    else { const nx = { R32: 'R16', R16: 'QF', QF: 'SF' }[W.stage]; const mine = W.fx.find(f => f.st === W.stage && (f.h === W.team || f.a === W.team)); if (mine && winner(mine) !== W.team) W.out = W.out || W.stage; W.stage = nx; makeKnockout(nx); }
+    save();
+  }
+  // FINALS covers the third-place play-off and the final together
+  const inRound = () => W.stage === 'FINALS' ? W.fx.filter(f => f.st === '3P' || f.st === 'F') : current();
+  const myNext = () => { if (!W || W.stage === 'DONE') return null; return inRound().find(f => !f.played && (f.h === W.team || f.a === W.team)) || null; };
+
+  // ---------- playing your match ----------
+  function play(f) {
+    const me = W.team, opp = f.h === me ? f.a : f.h, ko = f.st !== 'G';
+    W.playing = f.id; save();
+    MENUS.startMatch({ mode: 'worldcup', ko, wc: f.id, home: { nation: me, ids: bestXI(me) }, away: { nation: opp, ids: bestXI(opp) }, halfMin: settings.halfMin, diff: settings.diff });
+  }
+  // called at full time (from the full-time screen)
+  function record(Mt) {
+    if (!W || W.playing == null) return null;
+    const f = W.fx[W.playing], me = Mt.teams[0], op = Mt.teams[1], P = Mt.pens;
+    const ms = me.score, os = op.score;
+    if (f.h === W.team) { f.hs = ms; f.as = os; } else { f.hs = os; f.as = ms; }
+    if (P) f.pens = f.h === W.team ? [P[0], P[1]] : [P[1], P[0]];
+    f.et = !!Mt.et; f.played = true; W.playing = null;
+    // the round's other matches
+    for (const g of inRound()) if (!g.played && g.id !== f.id && !(g.h === W.team || g.a === W.team)) simulate(g);
+    save(); return f;
+  }
+  // after the full-time screen: on to the next round if everyone's played
+  function after() {
+    if (!myNext()) { if (W.stage === 'FINALS') { for (const g of inRound()) if (!g.played) simulate(g); } advance(); }
+    MENUS.swap(hub);
+  }
+
+  // ---------- screens ----------
+  const flag = id => `<span class="wcFlag" style="background:${flagCss(id)}"></span>`;
+  function pickTeam() {
+    MENUS.screen = 'wc'; document.getElementById('mainMenu').hidden = true;
+    let sel = W && W.team || profile.fav || 'ENG';
+    const confs = ['UEFA', 'CONMEBOL', 'CONCACAF', 'CAF', 'AFC', 'OFC'];
+    const paint = () => {
+      ui().innerHTML = `<div class="panel" id="wcPick"><div class="eyebrow">World Cup 2026</div><h1>Pick your team</h1><p class="wcSub">48 teams. 12 groups. One trophy. You play every match of your team; the rest are simulated.</p>
+        <div class="wcConfs">${confs.map(c => `<div class="wcConf"><h4>${c}</h4><div class="wcTeams">${TEAMS.filter(t => conf(t) === c).sort((a, b) => NATION[a].rank - NATION[b].rank).map(t => `<button class="wcTeam${t === sel ? ' on' : ''}" data-t="${t}">${flag(t)}<b>${name(t)}</b><span>${strength(t)}</span></button>`).join('')}</div></div>`).join('')}</div>
+        <div class="row"><button class="btn alt" data-w="back">Back</button><button class="btn" data-w="go">Start with ${name(sel)} ▶</button></div></div>`;
+    };
+    paint(); MENUS.animateIn();
+    ui().onclick = e => { const b = e.target.closest('button'); if (!b) return; click();
+      if (b.dataset.t) { sel = b.dataset.t; paint(); }
+      else if (b.dataset.w === 'back') MENUS.swap(MENUS.showMainNow);
+      else if (b.dataset.w === 'go') { start(sel); MENUS.swap(hub); } };
+  }
+  function tableHTML(gi, mini) {
+    const rows = table(gi);
+    return `<table class="wcTable"><tr><th colspan="2">Group ${G12[gi]}</th>${mini ? '' : '<th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th>'}<th>GD</th><th>Pts</th></tr>${rows.map((r, i) => `<tr class="${r.id === W.team ? 'me' : ''} q${i}"><td>${i + 1}</td><td>${flag(r.id)}${mini ? r.id : name(r.id)}</td>${mini ? '' : `<td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td>`}<td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td><b>${r.pts}</b></td></tr>`).join('')}</table>`;
+  }
+  const score = f => f.played ? `${f.hs} - ${f.as}${f.pens ? ` <small>(${f.pens[0]}-${f.pens[1]} p)</small>` : f.et ? ' <small>aet</small>' : ''}` : 'v';
+  const fxRow = f => `<div class="wcFx${f.h === W.team || f.a === W.team ? ' me' : ''}"><span>${name(f.h)} ${flag(f.h)}</span><b>${score(f)}</b><span>${flag(f.a)} ${name(f.a)}</span></div>`;
+  function hub() {
+    if (!W) return pickTeam();
+    MENUS.screen = 'wc'; document.getElementById('mainMenu').hidden = true;
+    const myG = W.groups.findIndex(g => g.includes(W.team)), nx = myNext(), stageName = W.stage === 'G' ? `Group stage · Matchday ${W.md} of 3` : W.stage === 'FINALS' ? 'Final weekend' : W.stage === 'DONE' ? 'Tournament over' : STAGES[W.stage];
+    let main = '';
+    if (W.stage === 'DONE') main = `<div class="wcBig">${W.champ === W.team ? `🏆<h2>${name(W.team)} are world champions!</h2>` : `<h2>${name(W.champ)} won the World Cup</h2><p>${name(W.team)} ${W.out ? 'went out in the ' + (W.out === 'G' ? 'group stage' : STAGES[W.out].toLowerCase()) : 'finished the tournament'}.</p>`}</div>`;
+    else if (nx) { const opp = nx.h === W.team ? nx.a : nx.h; main = `<div class="wcNext"><small>${STAGES[nx.st]}${nx.st === 'G' ? ' · Group ' + G12[nx.g] : ''}</small><div class="wcVs"><div><img src="${crest(W.team)}"><b>${name(W.team)}</b><span>${strength(W.team)} OVR</span></div><i>V</i><div><img src="${crest(opp)}"><b>${name(opp)}</b><span>${strength(opp)} OVR</span></div></div>
+      <div class="row"><button class="btn" data-w="play">Play match ▶</button><button class="btn alt" data-w="sim">Simulate it</button></div>${nx.st !== 'G' ? '<p class="wcSub">Knockout: a draw goes to 30 minutes of extra time, then penalties.</p>' : ''}</div>`; }
+    else main = `<div class="wcNext"><small>${stageName}</small><h2>${W.out ? `${name(W.team)} are out` : 'Waiting for the other matches'}</h2><div class="row"><button class="btn" data-w="next">${W.out ? 'Simulate the next round ▶' : 'Continue ▶'}</button></div></div>`;
+    const round = (W.stage === 'G' ? W.fx.filter(f => f.st === 'G' && f.md === W.md) : W.stage === 'DONE' ? W.fx.filter(f => f.st === 'F' || f.st === '3P') : inRound());
+    ui().innerHTML = `<div class="panel" id="wcHub"><div class="eyebrow">World Cup 2026 · ${name(W.team)}</div><h1>${stageName}</h1>
+      <div class="wcCols"><div>${main}${myG >= 0 ? tableHTML(myG) : ''}</div><div class="wcRound"><h4>${W.stage === 'G' ? 'This matchday' : 'This round'}</h4>${round.map(fxRow).join('')}</div></div>
+      <div class="row"><button class="btn alt" data-w="menu">Main menu</button><button class="btn alt" data-w="groups">All groups</button><button class="btn alt" data-w="bracket"${W.fx.some(f => f.st === 'R32') ? '' : ' disabled'}>Knockout bracket</button><button class="btn alt" data-w="new">New World Cup</button></div></div>`;
+    MENUS.animateIn();
+    ui().onclick = e => { const b = e.target.closest('button'); if (!b) return; click(); const w = b.dataset.w;
+      if (w === 'play' && nx) play(nx);
+      else if (w === 'sim' && nx) { simulate(nx); for (const g of inRound()) if (!g.played) simulate(g); if (!myNext()) advance(); hub(); }
+      else if (w === 'next') { advance(); hub(); }
+      else if (w === 'groups') groupsPage();
+      else if (w === 'bracket') bracketPage();
+      else if (w === 'menu') MENUS.swap(MENUS.showMainNow);
+      else if (w === 'new') { const o = MENUS.overlay(`<h2>Start a new World Cup?</h2><p>This one will be lost.</p><div class="row" style="justify-content:flex-start"><button class="btn" data-y>Start again</button><button class="btn alt" data-n>Cancel</button></div>`);
+        o.onclick = ev => { const x = ev.target.closest('button'); if (!x) return; click(); o.remove(); if (x.dataset.y !== undefined) { W = null; save(); pickTeam(); } }; } };
+  }
+  function groupsPage() {
+    ui().innerHTML = `<div class="panel" id="wcGroups"><div class="eyebrow">World Cup 2026</div><h1>Groups</h1><div class="wcGrid">${G12.map((_, i) => tableHTML(i, true)).join('')}</div>
+      <p class="wcSub">The top two in every group and the 8 best third-placed teams reach the Round of 32.</p><div class="row"><button class="btn" data-w="back">Back</button></div></div>`;
+    MENUS.animateIn(); ui().onclick = e => { const b = e.target.closest('button'); if (b) { click(); hub(); } };
+  }
+  function bracketPage() {
+    const col = st => `<div class="wcCol"><h4>${STAGES[st]}</h4>${W.fx.filter(f => f.st === st).sort((a, b) => a.n - b.n).map(fxRow).join('') || '<p class="wcSub">To be decided</p>'}</div>`;
+    ui().innerHTML = `<div class="panel" id="wcBracket"><div class="eyebrow">World Cup 2026</div><h1>Knockout stage</h1><div class="wcBr">${['R32', 'R16', 'QF', 'SF', 'F', '3P'].map(col).join('')}</div>
+      <div class="row"><button class="btn" data-w="back">Back</button></div></div>`;
+    MENUS.animateIn(); ui().onclick = e => { const b = e.target.closest('button'); if (b) { click(); hub(); } };
+  }
+  // the main menu tile
+  function tile() {
+    const t = document.getElementById('tCareer'); if (!t) return;
+    const nx = W && myNext(), opp = nx ? (nx.h === W.team ? nx.a : nx.h) : null;
+    document.getElementById('carCrest').src = W ? crest(W.team) : crest('USA');
+    t.querySelector('h2').innerHTML = W ? (W.stage === 'DONE' ? 'World Cup<br>Results' : 'Continue<br>World Cup') : 'World<br>Cup';
+    t.querySelector('.rk').textContent = W ? (W.stage === 'DONE' ? (W.champ === W.team ? 'CHAMPIONS' : 'FINISHED') : W.stage === 'G' ? `GROUP ${G12[W.groups.findIndex(g => g.includes(W.team))]} · MD ${W.md}` : (STAGES[W.stage] || 'FINALS').toUpperCase()) : '48 TEAMS · 2026';
+    document.getElementById('carNext').textContent = opp ? name(opp).toUpperCase() : W ? '—' : 'PICK A TEAM';
+    document.getElementById('carNextC').src = opp ? crest(opp) : crest('MEX');
+  }
+  function open() { if (W) MENUS.swap(hub); else MENUS.swap(pickTeam); }
+  return { open, hub, record, after, tile, get state() { return W; }, _sim: { simulate, advance, table, bestThirds, myNext, start, inRound } };
+})();
+
+
+// ---------- 1.1: online (Friendlies and Ultimate Team) ----------
+// Two players in a room on the arcade's realtime server. The host's game runs the whole match: both humans' controls
+// (yours from the keyboard, your friend's from the network), the AI, the ball and the referee. Your friend's game
+// sends its controls about 15 times a second and draws the match from the host's snapshots, so the ball, every goal,
+// card and whistle are the same on both screens.
+const NET = { on: false, host: false, guest: false, two: false, ctrls: [null, null], ch: [{}, {}], gin: { held: {}, pressed: {}, released: {}, stick: { x: 0, y: 0 }, dx: 0, dz: 0 }, useGuestDir: false };
+// a team's controlled player, for whichever human it belongs to
+function setCtrl(i, P) { if (NET.two) { NET.ctrls[i] = P; if (i === M.user) M.ctrl = P; } else M.ctrl = P; }
+const userTeam = i => NET.two ? true : i === M.user;
+// run fn as if team i were the one at the keyboard (its controlled player, its charge, its controls)
+function seat(i, fn) {
+  const was = M.user, guest = i === 1 && NET.host;
+  NET.ctrls[was] = M.ctrl; NET.ch[was] = { charging: M.charging, chargeT: M.chargeT, chargeKind: M.chargeKind, buf: M.buf };
+  M.user = i; M.ctrl = NET.ctrls[i]; Object.assign(M, NET.ch[i] || {});
+  let keep = null;
+  if (guest) { keep = { held: inp.held, pressed: inp.pressed, released: inp.released }; inp.held = NET.gin.held; inp.pressed = NET.gin.pressed; inp.released = NET.gin.released; NET.useGuestDir = true; }
+  try { fn(); } finally {
+    NET.ctrls[i] = M.ctrl; NET.ch[i] = { charging: M.charging, chargeT: M.chargeT, chargeKind: M.chargeKind, buf: M.buf };
+    if (keep) { inp.held = keep.held; inp.pressed = keep.pressed; inp.released = keep.released; NET.useGuestDir = false; }
+    M.user = was; M.ctrl = NET.ctrls[was]; Object.assign(M, NET.ch[was] || {});
+  }
+}
+
+const ONLINE = (() => {
+  const RT = 'https://noah-and-lars.github.io/projects/rt.js?v=1', ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const ui = () => document.getElementById('ui'), click = () => { try { sfx.init(); sfx.click(); } catch (e) {} };
+  const myId = Math.random().toString(36).slice(2, 10);
+  let client = null, room = null, lastSnap = 0, lastIn = 0, inKey = '', snaps = [], outP = {}, outR = {};
+  const HELD = ['A', 'W', 'Z', 'S', 'D', 'Q', 'lmb', 'rmb', 'space', 'sprint'];
+  const myName = () => (profile.club && profile.club.name) || 'Player';
+  // the realtime client (loaded the first time you go online)
+  function getClient() {
+    if (client) return Promise.resolve(client);
+    return new Promise((res, rej) => {
+      const go = () => { try { client = window.supabase.createClient(); res(client); } catch (e) { rej(e); } };
+      if (window.supabase && window.supabase.createClient) return go();
+      const s = document.createElement('script'); s.src = RT; s.onload = go; s.onerror = () => rej('offline'); document.head.appendChild(s);
+    });
+  }
+
+  // ---------- rooms ----------
+  function sideFor(mode) {
+    if (mode === 'ultimate') {
+      const S = ULT_SQUAD(); if (!S) return null;
+      return S;
+    }
+    const nid = (room && room.pick) || profile.fav || profile.last.home || 'ENG';
+    return { nation: nid, ids: bestXI(nid) };
+  }
+  async function enter(code, host, mode) {
+    const c = await getClient();
+    const ch = c.channel('fb-room-' + code, { config: { broadcast: { self: false }, presence: { key: myId } } });
+    room = { code, ch, host, mode, peer: null, set: { halfMin: 4, pens: true, tod: 'evening' }, sides: [null, null], pick: profile.fav || profile.last.home || 'ENG', playing: false };
+    ch.on('presence', { event: 'sync' }, onPresence);
+    ch.on('broadcast', { event: '*' }, m => onMsg(m.event, m.payload || {}));
+    await new Promise((res, rej) => { const to = setTimeout(() => rej('timeout'), 9000); ch.subscribe(s => { if (s === 'SUBSCRIBED') { clearTimeout(to); res(); } }); });
+    await ch.track({ id: myId, n: myName(), host, mode, t: Date.now() });
+    await new Promise(r => setTimeout(r, 700));
+    const others = Object.keys(ch.presenceState()).filter(k => k !== myId);
+    if (!host && !others.length) { leave(); throw 'not_found'; }
+    if (others.length > 1) { leave(); throw 'full'; }
+    room.sides[host ? 0 : 1] = sideFor(mode);
+    if (!host) send('side', { side: room.sides[1], n: myName() });
+    else sendLobby();
+  }
+  function send(ev, payload) { if (room) try { room.ch.send({ type: 'broadcast', event: ev, payload }); } catch (e) {} }
+  function leave() {
+    if (!room) return; const r = room; room = null; NET.on = NET.host = NET.guest = NET.two = false;
+    try { r.ch.send({ type: 'broadcast', event: 'bye', payload: {} }); } catch (e) {}
+    setTimeout(() => { try { client.removeChannel(r.ch); } catch (e) {} }, 200);
+  }
+  function onPresence() {
+    if (!room) return;
+    const st = room.ch.presenceState(), ids = Object.keys(st).filter(k => k !== myId), p = ids.length ? st[ids[0]][0] : null;
+    const had = room.peer; room.peer = p ? { id: p.id, n: p.n } : null;
+    if (had && !p) { peerLeft(); return; }
+    if (room.host && p && !had) sendLobby();
+    if (MENUS.screen === 'lobby') lobby();
+  }
+  function peerLeft() {
+    if (!room) return;
+    room.sides[room.host ? 1 : 0] = room.host ? null : room.sides[0];
+    if (room.playing) { room.playing = false; NET.on = NET.two = false; const o = MENUS.overlay(`<h2>Your opponent left</h2><p>The match is over.</p><div class="row" style="justify-content:flex-start"><button class="btn" data-x>Back</button></div>`);
+      o.onclick = e => { if (e.target.closest('[data-x]')) { click(); o.remove(); const host = room && room.host; if (host) lobby(); else { leave(); MENUS.showMain(); } } }; }
+    else if (!room.host) { toast('The host closed the room'); leave(); MENUS.swap(MENUS.showMainNow); }
+    else if (MENUS.screen === 'lobby') lobby();
+  }
+  function sendLobby() { if (room && room.host) send('lobby', { set: room.set, mode: room.mode, sides: room.sides, hn: myName() }); }
+  function onMsg(ev, d) {
+    if (!room) return;
+    if (ev === 'bye') { peerLeft(); return; }
+    if (ev === 'side' && room.host) { room.sides[1] = d.side || null; room.peerName = d.n; sendLobby(); if (MENUS.screen === 'lobby') lobby(); return; }
+    if (ev === 'lobby' && !room.host) { room.set = d.set; room.mode = d.mode; room.sides[0] = d.sides[0]; room.hostName = d.hn; if (MENUS.screen === 'lobby') lobby(); return; }
+    if (ev === 'go' && !room.host) { startGuest(d.cfg); return; }
+    if (ev === 'i' && room.host) { gotInput(d); return; }
+    if (ev === 's' && NET.guest) { snaps.push(d); if (snaps.length > 30) snaps.shift(); return; }
+    if (ev === 'e' && NET.guest) { replayEvent(d); return; }
+    if (ev === 'ht' && NET.guest) { halftime(d); return; }
+    if (ev === 'ft' && NET.guest) { fulltime(d); return; }
+    if (ev === 'lobbyBack' && !room.host) { room.playing = false; NET.on = NET.guest = false; document.querySelectorAll('.ov').forEach(o => o.remove()); MENUS.swap(lobby); return; }
+  }
+
+  // ---------- screens: the menu, the lobby ----------
+  function menu(mode) {
+    MENUS.screen = 'online'; document.getElementById('mainMenu').hidden = true;
+    const ult = mode === 'ultimate';
+    ui().innerHTML = `<div class="panel" id="onMenu"><div class="eyebrow">Online · ${ult ? 'Ultimate Team' : 'Friendlies'}</div><h1>${ult ? 'Ultimate Team Online' : 'Online Friendlies'}</h1>
+      <p class="wcSub">${ult ? 'Your Ultimate Team squad against a friend’s.' : 'Pick any national team and play a friend.'} One of you makes a room and sends the code; the other joins with it.</p>
+      <div class="onBox"><button class="btn" data-o="create">Create a room</button><div class="onJoin"><input id="onCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="btn alt" data-o="join">Join</button></div>
+      <p class="wcSub" id="onErr"></p></div><div class="row"><button class="btn alt" data-o="back">Back</button></div></div>`;
+    MENUS.animateIn();
+    const inp2 = document.getElementById('onCode'); inp2.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') join(); }); inp2.addEventListener('input', () => { inp2.value = inp2.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+    const err = t => { document.getElementById('onErr').textContent = t; };
+    async function join() { const code = inp2.value.trim(); if (code.length !== 5) return err('Room codes are 5 letters.'); err('Joining…');
+      try { await enter(code, false, mode); MENUS.swap(lobby); } catch (e) { err(e === 'full' ? 'That room is full.' : e === 'not_found' ? 'No room with that code.' : 'Couldn’t connect. Check your internet and try again.'); } }
+    ui().onclick = async e => { const b = e.target.closest('button'); if (!b) return; click();
+      if (b.dataset.o === 'back') MENUS.swap(MENUS.showMainNow);
+      else if (b.dataset.o === 'join') join();
+      else if (b.dataset.o === 'create') {
+        if (ult && !ULT_SQUAD()) return err('Your Ultimate Team needs a full starting XI first.');
+        err('Creating a room…'); let code = ''; for (let i = 0; i < 5; i++) code += ALPH[Math.floor(Math.random() * ALPH.length)];
+        try { await enter(code, true, mode); MENUS.swap(lobby); } catch (er) { err('Couldn’t connect. Check your internet and try again.'); }
+      } };
+  }
+  const OPT = { halfMin: [[2, '2 min'], [3, '3 min'], [4, '4 min'], [6, '6 min'], [8, '8 min'], [10, '10 min']], pens: [[true, 'Penalties'], [false, 'Draw']], tod: [['afternoon', 'Afternoon'], ['evening', 'Evening'], ['morning', 'Morning']] };
+  const OPTL = { halfMin: 'Half length', pens: 'If it’s a draw', tod: 'Time of day' };
+  function sideCard(i) {
+    const s = room.sides[i], who = i === 0 ? (room.host ? 'YOU · HOST' : (room.hostName || 'HOST')) : room.host ? (room.peer ? room.peerName || room.peer.n : 'WAITING…') : 'YOU';
+    if (!s) return `<div class="tcard"><div class="who">${who}</div><h3 style="margin-top:110px">${room.peer || i === 0 ? '…' : 'Waiting for a friend'}</h3><p class="wcSub" style="color:#444">Send them the room code</p></div>`;
+    const ovr = teamOvr(s.ids), mine = (i === 0) === room.host, nat = s.nation && NATION[s.nation];
+    return `<div class="tcard"><div class="who">${who}</div><img src="${s.crestNid ? crest('CLUB', { colors: s.crestCols, text: s.short }) : crest(s.nation)}"><h3>${s.name || nat.name}</h3><div class="ovr"><span><b>${ovr}</b>OVR</span></div>
+      ${mine && room.mode !== 'ultimate' ? `<div class="arrows"><button data-ch="-1">‹</button><button data-ch="1">›</button></div>` : ''}</div>`;
+  }
+  function lobby() {
+    if (!room) return MENUS.showMain();
+    MENUS.screen = 'lobby'; document.getElementById('mainMenu').hidden = true; document.getElementById('hud').hidden = true; document.getElementById('touchUI').hidden = true; document.body.className = 'menu'; if (M) disposeMatch();
+    const H = room.host, ready = room.sides[0] && room.sides[1] && room.peer;
+    ui().innerHTML = `<div class="panel" id="ts"><div class="eyebrow">Online · ${room.mode === 'ultimate' ? 'Ultimate Team' : 'Friendlies'}</div><h1>Room <span class="onCode">${room.code}</span></h1>
+      <div class="teams">${sideCard(0)}<div class="vsBig">V</div>${sideCard(1)}</div>
+      <div class="opts">${Object.keys(OPT).map(k => { const v = OPT[k].find(x => x[0] === room.set[k]) || OPT[k][0]; return `<button class="opt" data-set="${k}"${H ? '' : ' disabled'}><small>${OPTL[k]}${H ? '' : ' · host'}</small><b>${v[1]}</b></button>`; }).join('')}<button class="opt" disabled><small>Rules</small><b>Full Laws</b></button></div>
+      <p class="wcSub">${H ? (ready ? 'Both teams are in. Set the rules, then kick off.' : 'Send your friend the code: ' + room.code) : 'The host sets the rules and kicks off.'}</p>
+      <div class="row"><button class="btn alt" data-l="leave">Leave room</button>${H ? `<button class="btn" data-l="go"${ready ? '' : ' disabled'}>Kick Off ▶</button>` : ''}</div></div>`;
+    MENUS.animateIn();
+    ui().onclick = e => { const b = e.target.closest('button'); if (!b || b.disabled) return; click();
+      if (b.dataset.l === 'leave') { leave(); MENUS.swap(MENUS.showMainNow); }
+      else if (b.dataset.set && H) { const k = b.dataset.set, L = OPT[k], i = L.findIndex(x => x[0] === room.set[k]); room.set[k] = L[(i + 1) % L.length][0]; sendLobby(); lobby(); }
+      else if (b.dataset.ch) { const ids = NATIONS.map(n => n.id), i = ids.indexOf(room.pick); room.pick = ids[(i + +b.dataset.ch + ids.length) % ids.length]; room.sides[H ? 0 : 1] = sideFor(room.mode); if (H) sendLobby(); else send('side', { side: room.sides[1], n: myName() }); lobby(); }
+      else if (b.dataset.l === 'go' && H) startHost(); };
+  }
+
+  // ---------- the match ----------
+  function matchCfg() {
+    const mk = s => s.crestNid ? { nation: s.nation, ids: s.ids, name: s.name, short: s.short, kit: s.kit, gk: s.gk, crest: crest('CLUB', { colors: s.crestCols, text: s.short }), formation: s.formation, chem: s.chem, fit: s.fit } : { nation: s.nation, ids: s.ids };
+    return { mode: 'online', online: room.mode, home: mk(room.sides[0]), away: mk(room.sides[1]), halfMin: room.set.halfMin, diff: 2, tod: room.set.tod, pens: room.set.pens };
+  }
+  function startHost() {
+    const cfg = matchCfg(); room.playing = true; NET.on = NET.host = NET.two = true; NET.guest = false; NET.gin = { held: {}, pressed: {}, released: {}, stick: { x: 0, y: 0 }, dx: 0, dz: 0 };
+    send('go', { cfg: { ...cfg, home: { ...cfg.home, crest: null }, away: { ...cfg.away, crest: null } }, sides: room.sides });
+    MENUS.startMatch(cfg);
+  }
+  function startGuest(cfg) {
+    const fix = (c, s) => s && s.crestNid ? { ...c, crest: crest('CLUB', { colors: s.crestCols, text: s.short }) } : c;
+    cfg.home = fix(cfg.home, room.sides[0]); cfg.away = fix(cfg.away, room.sides[1]);
+    room.playing = true; NET.on = NET.guest = true; NET.host = false; NET.two = false; snaps = []; outP = {}; outR = {};
+    document.querySelectorAll('.ov').forEach(o => o.remove());
+    MENUS.startMatch(cfg);
+  }
+  // host: the guest's controls arrive
+  function gotInput(d) {
+    const G = NET.gin; G.held = {}; for (const k of d.h || []) G.held[k] = true;
+    for (const k of d.p || []) G.pressed[k] = true; for (const k of d.r || []) G.released[k] = true;
+    G.dx = (d.d && d.d[0]) || 0; G.dz = (d.d && d.d[1]) || 0;
+  }
+  const r2 = v => Math.round(v * 100) / 100;
+  // host: send the match about 15 times a second
+  function hostFrame() {
+    if (!NET.host || !M || !room) return;
+    const now = performance.now(); if (now - lastSnap < 66) return; lastSnap = now;
+    const p = []; for (const P of M.all) p.push(r2(P.pos.x), r2(P.pos.z), r2(P.face), P.anim, r2(P.at), r2(P.spd || 0), (P.off ? 1 : 0) | (P.shield ? 2 : 0) | (P.jockey ? 4 : 0) | (P.dive && P.dive.side < 0 ? 8 : 0), r2(P.pos.y || 0));
+    const R = M.ref.userData.p, B = M.ball, ci = c => c ? M.all.indexOf(c) : -1;
+    send('s', { t: now, p, b: [r2(B.pos.x), r2(B.pos.y), r2(B.pos.z)], r: [r2(R.pos.x), r2(R.pos.z), r2(R.face), r2(Math.min(1, R.vel.length() / 8.5))], sc: [M.teams[0].score, M.teams[1].score],
+      c: Math.round(M.clock), h: M.half, ph: M.phase, st: M.stop || 0, k: [ci(NET.ctrls[0]), ci(NET.ctrls[1])], ex: r2(crowd.excite), pw: M.charging === NET.ctrls[1] ? r2(M.chargeT) : r2((NET.ch[1] && NET.ch[1].charging) ? NET.ch[1].chargeT : 0),
+      pens: M.pens || null, so: M.so ? M.so.score || null : null, g: M.goals.length });
+  }
+  // guest: send my controls, draw the host's match
+  function guestFrame(dt) {
+    if (!M || !room) return;
+    for (const k in inp.pressed) if (inp.pressed[k]) outP[k] = 1; for (const k in inp.released) if (inp.released[k]) outR[k] = 1;
+    const d = inputDir(), h = HELD.filter(k => inp.held[k]), now = performance.now(), key = h.join() + '|' + Object.keys(outP).join() + '|' + Math.round(d.x * 10) + ',' + Math.round(d.z * 10);
+    if ((key !== inKey && now - lastIn > 50) || now - lastIn > 400) { send('i', { d: [r2(d.x), r2(d.z)], h, p: Object.keys(outP), r: Object.keys(outR) }); outP = {}; outR = {}; lastIn = now; inKey = key; }
+    clearPressed();
+    // draw ~110 ms behind the newest snapshot, between the two around that moment
+    if (!snaps.length) return;
+    const tgt = snaps[snaps.length - 1].t - 110; let a = snaps[0], b = snaps[0];
+    for (let i = 0; i < snaps.length; i++) { if (snaps[i].t <= tgt) a = snaps[i]; if (snaps[i].t >= tgt) { b = snaps[i]; break; } b = snaps[i]; }
+    const k = b.t > a.t ? Math.max(0, Math.min(1, (tgt - a.t) / (b.t - a.t))) : 1, L = (x, y) => x + (y - x) * k, LA = (x, y) => x + wrapA(y - x) * k;
+    M.all.forEach((P, i) => { const o = i * 8, A = a.p, Bp = b.p; if (!A || !Bp || Bp.length < o + 8) return;
+      P.pos.set(L(A[o], Bp[o]), L(A[o + 7], Bp[o + 7]), L(A[o + 1], Bp[o + 1])); P.face = LA(A[o + 2], Bp[o + 2]); P.anim = Bp[o + 3]; P.at = Bp[o + 4]; P.spd = L(A[o + 5], Bp[o + 5]);
+      const f = Bp[o + 6], off = !!(f & 1); if (off !== P.off) { P.off = off; P.mesh.visible = !off; P.blob.visible = !off; } P.shield = !!(f & 2); P.jockey = !!(f & 4); P.dive = P.anim === ANIM.dive ? { side: f & 8 ? -1 : 1 } : null; P.ph += dt * 0; });
+    M.ball.pos.set(L(a.b[0], b.b[0]), L(a.b[1], b.b[1]), L(a.b[2], b.b[2]));
+    const R = M.ref.userData.p; R.pos.set(L(a.r[0], b.r[0]), 0, L(a.r[1], b.r[1])); R.face = LA(a.r[2], b.r[2]); R.vel.set(b.r[3] * 8.5, 0, 0);
+    const s = snaps[snaps.length - 1]; M.teams[0].score = s.sc[0]; M.teams[1].score = s.sc[1]; M.clock = s.c; M.half = s.h; M.stop = s.st; crowd.excite = Math.max(crowd.excite * 0.98, s.ex); M.pens = s.pens;
+    if (s.ph !== M.phase) { M.phase = s.ph; if (s.ph === 'play' || s.ph === 'restart') document.querySelectorAll('.ov.onHt').forEach(o => o.remove()); }
+    M.ctrl = s.k[1] >= 0 ? M.all[s.k[1]] : null; M.charging = s.pw > 0 ? M.ctrl : null; M.chargeT = s.pw; M.chargeKind = 'power';
+    drawMatch();
+  }
+  // host: the HUD moments (goals, cards, banners, the whistle) go to the guest too
+  const pack = a => a.map(x => x && x.players && x.opp ? { T: x.i } : x && x.d && x.team ? { P: M.all.indexOf(x) } : x);
+  const unpack = a => (a || []).map(x => x && typeof x === 'object' && 'T' in x ? M.teams[x.T] : x && typeof x === 'object' && 'P' in x ? M.all[x.P] : x);
+  function ev(k, a) { if (NET.host && NET.two && room) send('e', { k, a: pack(a) }); }
+  function replayEvent(d) {
+    if (!M) return; const a = unpack(d.a);
+    try {
+      if (d.k === 'whistle') sfx.whistle(...a);
+      else if (d.k === 'goalSfx') { sfx.goal(...a); crowd.excite = 1; }
+      else if (d.k === 'net') netHit(...a);
+      else if (HUD[d.k]) HUD[d.k](...a);
+    } catch (e) {}
+  }
+  function hookHost() {
+    for (const k of ['banner', 'lineup', 'stoppage', 'goal', 'card']) { const f = HUD[k]; HUD[k] = function (...a) { ev(k, a); return f.apply(this, a); }; }
+    const w = sfx.whistle; sfx.whistle = function (...a) { ev('whistle', a); return w.apply(this, a); };
+    const g = sfx.goal; sfx.goal = function (...a) { ev('goalSfx', a); return g.apply(this, a); };
+  }
+  // half time and full time online: both see the stats; the second half starts by itself
+  function halftime(d) {
+    if (NET.host) { send('ht', {}); }
+    const o = MENUS.overlay(`<h2>Half Time</h2>${MENUS.statsTable()}<p class="wcSub" id="htT">The second half starts in 8…</p>`); o.classList.add('onHt');
+    let n = 8; const iv = setInterval(() => { n--; const el = o.querySelector('#htT'); if (el) el.textContent = `The second half starts in ${n}…`; if (n <= 0 || !o.isConnected) { clearInterval(iv); if (NET.host && o.isConnected) { o.remove(); secondHalf(); } } }, 1000);
+  }
+  function fulltime(d) {
+    if (!M) return;
+    if (NET.host) send('ft', { sc: [M.teams[0].score, M.teams[1].score], pens: M.pens || null, goals: M.goals, stats: M.teams.map(T => T.stats) });
+    else if (d) { M.teams[0].score = d.sc[0]; M.teams[1].score = d.sc[1]; M.pens = d.pens; M.goals = d.goals || M.goals; (d.stats || []).forEach((s, i) => { M.teams[i].stats = s; }); M.phase = 'fulltime'; }
+    const me = M.teams[NET.host ? 0 : 1], op = me.opp, P2 = M.pens, won = me.score > op.score || !!(P2 && P2[me.i] > P2[op.i]), draw = me.score === op.score && !P2;
+    const coins = won ? 600 : draw ? 300 : 150; profile.coins += coins; profile.played++; if (won) profile.wins++; addXp(won ? 400 : 250); saveProfile();
+    document.querySelectorAll('.ov').forEach(o => o.remove());
+    const o = MENUS.overlay(`<h2>Full Time</h2><p style="margin:0 0 8px;font-size:22px"><b>${won ? 'You win!' : draw ? 'A draw.' : 'You lose.'}</b>${P2 ? ` (${Math.max(...P2)}-${Math.min(...P2)} on penalties)` : ''}</p>${MENUS.statsTable()}<div class="reward">Coins <span>+${fmt(coins)}</span></div>
+      <div class="row" style="justify-content:flex-start">${NET.host ? '<button class="btn" data-f="lobby">Back to the lobby</button>' : '<p class="wcSub">The host can start a rematch from the lobby.</p>'}<button class="btn alt" data-f="leave">Leave room</button></div>`);
+    o.onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; click(); o.remove();
+      if (b.dataset.f === 'lobby') { room.playing = false; NET.on = NET.host = NET.two = false; send('lobbyBack', {}); MENUS.swap(lobby); }
+      else { leave(); MENUS.showMain(); } };
+  }
+  function pauseMenu() {
+    const o = MENUS.overlay(`<h2>Online match</h2><p>The match keeps going while this is open.</p><div class="menuList"><button class="btn" data-p="back">Back to the match</button><button class="btn alt" data-p="leave">Leave the match</button></div>`);
+    o.onclick = e => { const b = e.target.closest('[data-p]'); if (!b) return; click(); o.remove(); if (b.dataset.p === 'leave') { leave(); MENUS.showMain(); } };
+  }
+  return { menu, hostFrame, guestFrame, hookHost, halftime, fulltime, pauseMenu, leave, get room() { return room; } };
+})();
+// your Ultimate Team squad as a team for an online match (null if the XI isn't full)
+function ULT_SQUAD() {
+  const ids = (profile.squad || []).map(u => { const c = (profile.cards || []).find(x => x.u === u); return c ? c.id : null; });
+  if (ids.length < 11 || ids.some(x => !x || !PLAYER[x])) return null;
+  const k = profile.club.kit;
+  return { nation: PLAYER[ids[0]].nation, ids, name: profile.club.name, short: profile.club.short, kit: k, gk: profile.club.gk, formation: profile.formation || '4-3-3', crestNid: 'CLUB', crestCols: [k.shirt, k.trim, k.shirt] };
+}
+
 // ---------- Start-up and the main loop ----------
 buildStadium(['#c8102e', '#ffffff', '#1c3f94'], ['#f5b82e', '#1b1b1f']); buildBoards(); buildTouch();
 let lastT = performance.now(), simAcc = 0, clockT = 0;
@@ -3389,17 +3984,20 @@ function frame(now) {
   const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now; clockT += dt;
   pollInput(dt);
   const playing = MENUS.screen === 'game' && M;
-  if (playing && !M.paused && M.phase !== 'halftime' && M.phase !== 'fulltime') {
+  if (playing && NET.guest) { ONLINE.guestFrame(dt); updateCamera(dt); } // 1.1 online: your friend's screen draws the host's match
+  else if (playing && !M.paused && M.phase !== 'halftime' && M.phase !== 'fulltime') {
     simAcc += dt; let n = 0;
     while (simAcc >= 1 / 60 && n < 6) { simStep(1 / 60); simAcc -= 1 / 60; n++; if (n === 1) clearPressed(); }
     if (M.phase !== 'replay') drawMatch();
     updateCamera(dt);
+    if (NET.host) ONLINE.hostFrame();
   } else if (!playing) { menuCam(clockT); ctrlMarker.visible = false; ball3D.position.set(-4, BALL_R, 6); clearPressed(); }
   else clearPressed();
   if (playing) HUD.update(dt);
   updateNets(dt); updateCrowd(clockT); updateBoards(dt); sfx.tick(crowd.excite, !!playing);
   renderer.render(scene, camera); FPS.tick(now);
 }
+ONLINE.hookHost();
 MENUS.boot();
 requestAnimationFrame(frame);
 
