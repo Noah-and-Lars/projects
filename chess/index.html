@@ -70,6 +70,7 @@
   .seg { display: flex; background: var(--panel2); border-radius: 6px; padding: 3px; gap: 3px; }
   .seg button { flex: 1; border: 0; background: none; color: var(--muted); font-weight: 700; font-size: 14px; padding: 8px 4px; border-radius: 4px; }
   .seg button.on { background: #3c3a37; color: var(--ink); }
+  #levelSeg { flex-wrap: wrap; } #levelSeg button { flex: 1 0 30%; } /* 1.3: six levels, three to a row */
   .bigbtn { display: block; width: 100%; border: 0; border-radius: 8px; padding: 13px; font-size: 18px; font-weight: 800; color: #fff; background: var(--green); box-shadow: 0 4px 0 #45753c; }
   .bigbtn:hover { background: var(--green-hi); } .bigbtn:active { transform: translateY(2px); box-shadow: 0 2px 0 #45753c; }
   #moves { flex: 1; min-height: 120px; max-height: 300px; overflow-y: auto; font-size: 14px; }
@@ -123,7 +124,7 @@
   </div>
   <aside id="side">
     <div class="head"><img id="logo" alt=""><span id="headT">Play the computer</span></div>
-    <div class="sect offline-only"><h4>Computer</h4><div class="seg" id="levelSeg"><button data-v="easy">Easy</button><button data-v="medium">Medium</button><button data-v="hard">Hard</button></div></div>
+    <div class="sect offline-only"><h4>Computer</h4><div class="seg" id="levelSeg"><button data-v="easy">Easy</button><button data-v="casual">Casual</button><button data-v="medium">Medium</button><button data-v="advanced">Advanced</button><button data-v="hard">Hard</button><button data-v="master">Master</button></div></div>
     <div class="sect offline-only"><h4>Play as</h4><div class="seg" id="colorSeg"><button data-v="w">White</button><button data-v="r">Random</button><button data-v="b">Black</button></div></div>
     <div class="sect offline-only"><button class="bigbtn" id="newBtn">New game</button></div>
     <div class="sect" id="netBox"><h4>Play online</h4>
@@ -148,7 +149,12 @@
 </div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.2</span></summary>
+    <summary>Patch notes <span>v1.3</span></summary>
+    <h3>v1.3 <small>Six levels</small></h3>
+    <ul>
+      <li>Three new computer levels on top of the old ones, so there's one that fits how you play: <b>Casual</b> (between Easy and Medium), <b>Advanced</b> (between Medium and Hard) and <b>Master</b> (harder than Hard: it thinks for 4 seconds and looks deeper).</li>
+      <li>Your record is kept for each of the six levels.</li>
+    </ul>
     <h3>v1.2 <small>Chat</small></h3>
     <ul>
       <li>Chat with your opponent in online games: type in the box under Play online and press Enter.</li>
@@ -431,6 +437,19 @@ function pickMove(fen, level, history) {
     S.noQs = true; const sc = rootScores(G, 0, S), top = sc[0].v;
     return uci(rnd(sc.filter(x => x.v >= top - 150)).m);
   }
+  if (level === 'casual') {
+    // 1.3: between Easy and Medium: sees captures and threats one move deep, and now and then plays a loose move
+    if (Math.random() < 0.1) return uci(rnd(moves));
+    const sc = rootScores(G, 1, S), top = sc[0].v;
+    if (top > MATE / 2) return uci(sc[0].m);
+    return uci(rnd(sc.filter(x => x.v >= top - 60)).m);
+  }
+  if (level === 'advanced') {
+    // 1.3: between Medium and Hard: always plays the best move it finds, thinking for about 0.8 seconds
+    S.end = Date.now() + 800; let best = moves[0];
+    for (let d = 1; d <= 5; d++) { const sc = rootScores(G, d, S); if (sc.length && (!S.stop || d === 1)) best = sc[0].m; if (S.stop || (sc[0] && sc[0].v > MATE / 2)) break; }
+    return uci(best);
+  }
   if (level === 'medium') {
     // a club player: looks 3 moves ahead, and sometimes picks a slightly weaker move
     S.end = Date.now() + 3000;
@@ -441,9 +460,10 @@ function pickMove(fen, level, history) {
     const pool = sc.filter(x => x.v >= top - (Math.random() < 0.12 ? 60 : 15));
     return uci(rnd(pool).m);
   }
-  // hard: look as deep as it can in about 1.6 seconds
-  S.end = Date.now() + 1600; let best = moves[0];
-  for (let d = 1; d <= 8; d++) {
+  // hard: look as deep as it can in about 1.6 seconds (1.3: Master thinks for 4 seconds and goes deeper)
+  const master = level === 'master';
+  S.end = Date.now() + (master ? 4000 : 1600); let best = moves[0];
+  for (let d = 1; d <= (master ? 12 : 8); d++) {
     let alpha = -INF, bestHere = null;
     for (const m of sortMoves(legal(G), S, 0, best)) {
       make(G, m); const v = -search(G, d - 1, -INF, -alpha, 1, S); unmake(G);
@@ -463,7 +483,8 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.2';
+const VERSION = '1.3';
+const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
 // ---------- the pieces: flat 2D shapes, drawn here so the game needs no image files ----------
@@ -492,9 +513,9 @@ const SAVE_KEY = 'chessSave';
 const save = { level: 'medium', color: 'w', hints: true, sound: true, stats: {}, game: null, name: '', online: { w: 0, l: 0, d: 0 } };
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
 if (!save.online || typeof save.online !== 'object') save.online = {}; for (const k of ['w', 'l', 'd']) save.online[k] = Math.max(0, save.online[k] | 0);
-if (!['easy', 'medium', 'hard'].includes(save.level)) save.level = 'medium';
+if (!LEVELS.includes(save.level)) save.level = 'medium';
 if (!['w', 'b', 'r'].includes(save.color)) save.color = 'w';
-for (const l of ['easy', 'medium', 'hard']) { const s = save.stats[l] || {}; save.stats[l] = { w: +s.w || 0, l: +s.l || 0, d: +s.d || 0 }; }
+for (const l of LEVELS) { const s = save.stats[l] || {}; save.stats[l] = { w: +s.w || 0, l: +s.l || 0, d: +s.d || 0 }; }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
 // ---------- sound ----------
@@ -682,7 +703,7 @@ boardEl.addEventListener('pointercancel', e => { if (drag && e.pointerId === dra
 boardEl.addEventListener('contextmenu', e => e.preventDefault());
 
 // ---------- the side panel ----------
-const LV = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+const LV = { easy: 'Easy', casual: 'Casual', medium: 'Medium', advanced: 'Advanced', hard: 'Hard', master: 'Master' };
 function captured(forWhite) { // pieces of the other colour this side has taken, and the material lead
   const start = { P: 8, N: 2, B: 2, R: 2, Q: 1 }, have = { w: { P: 0, N: 0, B: 0, R: 0, Q: 0 }, b: { P: 0, N: 0, B: 0, R: 0, Q: 0 } };
   for (const p of G.b) if (p && p.toUpperCase() !== 'K') have[isW(p) ? 'w' : 'b'][p.toUpperCase()]++;
@@ -905,7 +926,7 @@ function leaveOnline() {
   // back to your game against the computer
   if (save.game && Array.isArray(save.game.moves)) {
     reqId++; aiBusy = false; $('result').hidden = true;
-    player = save.game.player === 'b' ? 'b' : 'w'; level = ['easy', 'medium', 'hard'].includes(save.game.level) ? save.game.level : 'medium'; over = null;
+    player = save.game.player === 'b' ? 'b' : 'w'; level = LEVELS.includes(save.game.level) ? save.game.level : 'medium'; over = null;
     replay(save.game.moves); buildSquares(); renderAll(); checkEnd(); renderSide();
     if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
   } else newGame();
@@ -958,7 +979,7 @@ $('netName').value = save.name || '';
 // ---------- start: carry on a saved game, or start a new one ----------
 resize();
 if (save.game && Array.isArray(save.game.moves)) {
-  player = save.game.player === 'b' ? 'b' : 'w'; level = ['easy', 'medium', 'hard'].includes(save.game.level) ? save.game.level : 'medium';
+  player = save.game.player === 'b' ? 'b' : 'w'; level = LEVELS.includes(save.game.level) ? save.game.level : 'medium';
   replay(save.game.moves); buildSquares(); renderAll(); checkEnd(); renderSide();
   if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
 } else newGame();

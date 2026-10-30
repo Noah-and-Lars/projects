@@ -81,7 +81,7 @@ window.GAMES = [
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-10-18T18:23:51+11:00',
+    updated: '2026-11-01T18:00:00+11:00',
     stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = ['easy', 'medium', 'hard'].reduce((n, l) => n + ((s.stats[l] && s.stats[l].w) || 0), 0); return w ? w + (w === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-01', game: 'chess', text: 'Chess 1.3: three new computer levels on top of the old ones. Casual sits between Easy and Medium, Advanced between Medium and Hard, and Master is harder than Hard.' },
   { date: '2026-11-01', game: 'football', text: 'Football 1.1: the World Cup is here, with all 48 teams, 12 groups, a Round of 32, extra time and penalties. And online play: Friendlies and Ultimate Team against a friend, with the host setting the rules.' },
   { date: '2026-11-01', game: 'cube-assault', text: 'Cube Assault 2.9.17: Seaside is back in single-player and multiplayer, and every map now has anti-cheat laws. Get out of bounds and your shots are blocked, the cubes come straight through the walls for you, and after 5 seconds you are put back. The pier on Seaside is no longer a safe spot.' },
   { date: '2026-11-01', game: 'havoc-bay', text: 'Havoc Bay 1.1: a new, more realistic look (real shading, weathered surfaces, a deeper sea and a hazy sky), working nose guns on the bomber, a lead marker for dogfights, a PULL UP warning, Deploy again, a field of view setting and a marker showing how far the enemy harbor is.' },
