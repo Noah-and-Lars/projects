@@ -12107,7 +12107,7 @@ function runCommand(text) {
 const MP_SEED = 1414213562;
 const MP = (() => {
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
-  const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=1';
   const ROOM = (new URLSearchParams(location.search).get('mproom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
   const BASE = ROOM ? 'bc-test-' + ROOM : 'bc-public';
   const INFO = { id: ROOM ? 'mp-test-' + ROOM : 'mp-public', name: ROOM ? 'Test Server ' + ROOM : 'Public Server', seed: MP_SEED, mode: 'survival', mp: true };

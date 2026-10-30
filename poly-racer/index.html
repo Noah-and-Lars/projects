@@ -9856,7 +9856,7 @@ loadModels().catch(e => console.warn(e)).then(() => Q.ultra ? loadUltra((n, all)
 // picks the rate: 2 players 8/s, 4 players 6/s, 6 players 3/s, 10 players 2/s.
 const net = (() => {
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
-  const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=1';
   const MAXP = 10, ROOM_BUDGET = 60, MAX_HZ = 8, NET_V = 12;
   const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const qs = new URLSearchParams(location.search), TEST = (qs.get('prroom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 16);

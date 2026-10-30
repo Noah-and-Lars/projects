@@ -60,9 +60,9 @@
   </form>
 </div>
 
-<script src="games.js?v=105"></script>
+<script src="games.js?v=121"></script>
 <script>
-// Global chat: everyone on this page talks in one Supabase Realtime channel (arcade-chat).
+// Global chat: everyone on this page talks in one realtime channel (arcade-chat), on the arcade's Cloudflare server.
 // Nothing is stored on a server. Each browser keeps the last KEEP messages in its own localStorage,
 // and when someone arrives, whoever has been in the chat longest sends them the recent ones.
 // ?chatroom=<name> uses a separate test channel and history, so tests never reach the real chat.

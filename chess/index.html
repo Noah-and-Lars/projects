@@ -794,7 +794,7 @@ addEventListener('resize', resize);
 // Leaving the table loses the game. ?chroom=<name> uses separate test channels.
 const Net = (() => {
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
-  const SB_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=1';
   const TEST = (new URLSearchParams(location.search).get('chroom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
   const BASE = TEST ? 'ch-test-' + TEST : 'ch';
   const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';

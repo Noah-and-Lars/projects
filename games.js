@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-31', text: 'All online play on the arcade (multiplayer, the on now counters and Global chat) moved to new servers with much more room, so online games should stay up and feel smoother. Your saves are not affected.' },
   { date: '2026-10-30', game: 'cube-assault', text: 'Cube Assault 2.9.15, critical update: the Seaside map is down and under construction for now. It cannot be played in single-player or multiplayer until it returns in a future update.' },
   { date: '2026-10-28', game: 'cube-assault', text: 'Cube Assault 2.9.14: four new cubes. The Bomber (explodes), the Medic (heals other cubes), the Shield (bullets bounce off) and Swarm packs of eight tiny fast cubes. Frontier and Seaside now have buildings you can go into, with stairs up to the roof, and they collapse if too many cubes crowd round them. The Forest is much bigger, the Mall is busier and livelier, and the Rocket and Pumpkin Launchers can rocket jump.' },
   { date: '2026-10-27', game: 'cube-assault', text: 'Cube Assault 2.9.13 Halloween update: three new maps. Seaside (a beach town with a long pier), Forest (dark, dense woods, hard) and Mall (a huge three floor shopping mall with escalators, 45 shops, a carpark and shoppers running from the cubes, very hard). Every map but Classic is decorated for Halloween while the event is on, every map shows its difficulty and your best wave, and Classic has moved to a Legacy section. The Battle Pass now gives Jacks Grin at level 10, Reapers Lantern at level 25 and a new Limited Edition gun at level 50: the Pumpkin Launcher. The three new maps work in multiplayer too (every mode but C:S Mode).' },
@@ -358,17 +359,15 @@ window.Arcade = {
 
 // Live "on now" counter, using Supabase Realtime Presence (the arcade's Supabase project).
 // Every open arcade page joins one presence channel and says which game it's on ('home' for the home page).
-// Nothing is saved: Supabase only sees who's connected right now. If it can't be reached (offline,
-// blocked network, project paused after a quiet week) the counter just stays hidden.
+// Nothing is saved: the realtime server (our Cloudflare Worker, see rt.js) only sees who's connected right now.
+// If it can't be reached (offline, blocked network) the counter just stays hidden.
 // play.html shares its connection with the game in its frame through window.ArcadeOnline,
 // so a player is only counted once. The publishable key is meant to be public.
 // Each browser keeps one id (arcade-online-id), so moving between pages or having two tabs open
 // counts as one person, and changes only show once they've held for a couple of seconds.
 window.ArcadeOnline = (() => {
-  const URL = 'https://fewocduisjbctoxolkjr.supabase.co';
-  const KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
-  const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
-  const CAP = 200; // the free plan's limit on simultaneous connections
+  const LIB = 'rt.js?v=1'; // the arcade's realtime client (Cloudflare), a drop-in for supabase-js
+  const CAP = 200; // counts show as "200+" from here
   const SETTLE = 2500; // ms a new count has to hold before it's shown, so quick page changes don't flicker
   let counts = null, started = false, timer = 0, client = null, settled = false;
   const listeners = [], waiting = [];
@@ -399,7 +398,7 @@ window.ArcadeOnline = (() => {
       lib.onerror = () => { emit(null); opened(null); };
       lib.onload = () => {
         try {
-          opened(window.supabase.createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } }));
+          opened(window.supabase.createClient());
           const ch = client.channel('online:arcade', { config: { presence: { key: browserId() } } });
           ch.on('presence', { event: 'sync' }, () => {
             // one entry per browser; if it has several pages open, count it on a game over the home page
@@ -419,9 +418,9 @@ window.ArcadeOnline = (() => {
     },
     // Called with { total, byGame, full } on every change, or null when the counter can't connect.
     subscribe(f) { listeners.push(f); if (counts) f(counts); },
-    // "12", or "200+" once the free plan is full
+    // "12", or "200+" once there are that many
     label(n, c) { return c && c.full ? n + '+' : String(n); },
-    // The Supabase connection, once it's open (null until then). Cube Assault's multiplayer shares it,
+    // The realtime connection, once it's open (null until then). Cube Assault's multiplayer shares it,
     // so a player in a match still uses just one connection.
     client() { return client; },
     // Calls f with the connection as soon as it's open, or with null if it can't be reached

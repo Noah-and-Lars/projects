@@ -9100,7 +9100,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '2.9.15';
+const VERSION = '2.9.16';
 const NEWS_VERSION = '2.8'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -9830,8 +9830,9 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
 })();
 </script>
 <!-- menu-reel:end -->
+<script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script><!-- realtime: Cloudflare stand-in for supabase-js, must load before the counter and mp-net -->
 <script>
-// ---------- Live player counter (Supabase Realtime Presence) ----------
+// ---------- Live player counter (realtime presence) ----------
 // On the arcade's play page, the page around the game already keeps the count (window.ArcadeOnline),
 // so the game just reads it. Opened on its own, the game joins the same channel itself.
 // If Supabase can't be reached, the counter stays hidden and the game is unaffected.
@@ -9849,7 +9850,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
 
   const CAP = 200; // the free plan's limit on simultaneous connections
   const lib = document.createElement('script');
-  lib.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  lib.src = 'https://noah-and-lars.github.io/projects/rt.js?v=1';
   lib.async = true;
   lib.onerror = () => show(null);
   lib.onload = () => {

@@ -4157,7 +4157,7 @@ function subHint(){if(OUTRIDE)return`On the train to <b>${SUB_LINE[OUTRIDE.dest]
    3n - 2 messages for n players, so the rate drops as more join (MAX_HZ, BUDGET), and nothing goes out while you stand
    still. ?fcroom=<name> uses separate test channels. */
 const NET=(()=>{
-  const SB_URL='https://fewocduisjbctoxolkjr.supabase.co',SB_KEY='sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',SB_LIB='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  const SB_URL='https://fewocduisjbctoxolkjr.supabase.co',SB_KEY='sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d',SB_LIB='https://noah-and-lars.github.io/projects/rt.js?v=1';
   const TEST=(new URLSearchParams(location.search).get('fcroom')||'').replace(/[^a-z0-9]/gi,'').slice(0,12).toLowerCase(),BASE=TEST?'fc-test-'+TEST:'fc201'; // 2.0.1: a new room (new car types); 2.0 and older stay in the old one (and get told to refresh)
   const MAX_HZ=6,BUDGET=30,MAX_PLAYERS=16,FULL_MS=8000;
   const myId=(Math.random().toString(36)+'0000000').slice(2,8),now=()=>performance.now();
