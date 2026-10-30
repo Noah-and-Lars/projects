@@ -451,9 +451,12 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="bigmap" hidden><canvas id="bm" width="1100" height="1100"></canvas><p>M — close map</p></div>
 <div id="camFlash"></div>
 <div id="updPop" hidden><div class="box">
-  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.0<span>Lights, cars and group chats</span></h1><p>Real street lights and headlights, textures on every surface, a car dealership with a garage, a high school, a new rifle, and chat on your phone with group chats.</p><div class="heroDump"><i></i></div>
+  <div class="hero"><div class="ribbon">NEW UPDATE</div><h1>v2.0.3<span>Online is back</span></h1><p>The online shutdown is cancelled. San Varro is open to everyone again, with an Everyone chat on your phone. Also in v2.0: real lighting, textures, a car dealership, a high school and group chats.</p><div class="heroDump"><i></i></div>
     <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:18%;top:76%;animation-delay:1.5s"></span></div>
   <div class="feat">
+    <div><i>🌆</i><span><b>Online is back</b>Play online takes you into the shared San Varro again, on new, faster servers.</span></div>
+    <div><i>🌐</i><span><b>Everyone chat</b>A group chat with every player online, pinned at the top of Messages. Press T (or tap Chat) to open it.</span></div>
+    <div><i>⚠️</i><span><b>Chat is not moderated</b>You see a warning before joining. Censor chat and Turn off chat are in Settings.</span></div>
     <div><i>⌨️</i><span><b>Chat is on your phone</b>The chat box is gone. Online, press T to open Messages (or tap Chat on a touch screen). Enter sends, Esc or P puts the phone away.</span></div>
     <div><i>👥</i><span><b>Group chats</b>In Messages, tap New group chat, name it and pick who to invite. Invites have to be accepted: tap Join or ✕.</span></div>
     <div><i>💡</i><span><b>Real lighting</b>Street lamps, headlights, tail lights, police lightbars and lit shop fronts light up the road, walls, cars and people.</span></div>
@@ -494,7 +497,7 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 <div id="fps" hidden></div>
 
 <style id="fc202css">
-/* 2.0.2: Play (offline) first; the online shutdown notice */
+/* 2.0.2: Play (offline) first. 2.0.3: the popup before Play online is the chat warning */
 .nav button.mainPlay{border-color:var(--red);background:linear-gradient(135deg,rgba(214,40,40,.35),rgba(214,40,40,.12));font-size:1.15em}
 .nav button.closing{border-color:#e0a030;color:#ffe2a8}.nav button.closing small{display:block;font:700 12px var(--ui);letter-spacing:.06em;color:#ffb347;margin-top:2px}
 .nav button.closing:disabled{opacity:.55;cursor:default}
@@ -506,10 +509,15 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 #olPop h2{margin:10px 0 6px;font-size:30px;line-height:1.1;color:#fff}#olPop .cd{font:800 34px var(--ui);color:#ffb347;margin:6px 0 10px;font-variant-numeric:tabular-nums}
 #olPop .row2{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}#olPop button{flex:1;min-width:150px;padding:12px;border-radius:10px;border:0;font:800 16px var(--ui);cursor:pointer}
 #olPop .go1{background:#d62828;color:#fff}#olPop .go2{background:#333;color:#fff}
+#olPop .olList{margin:6px 0 0;padding-left:20px;color:#e9d9cf}#olPop .olList li{margin:4px 0}
+/* 2.0.3: the Everyone chat, pinned at the top of Messages */
+#phone .pr.pin{background:rgba(22,163,74,.16);border:1px solid rgba(74,222,128,.35)}#phone .pr.pin .av{background:#16a34a}
+#phone .allnote{margin:6px 10px 2px;padding:6px 9px;border-radius:9px;background:rgba(255,170,60,.14);color:#ffd9a0;font-size:11.5px;line-height:1.35;text-align:center}
 </style>
-<div id="olPop" hidden><div class="box"><span class="kick">Disclaimer</span><h2 id="olTitle">Online is shutting down</h2>
-  <p id="olText">Online play for Free Criminal shuts down on <b>October 29, 2026</b>. After the countdown, all online play for Free Criminal will be terminated. Offline play remains fully functional.</p>
-  <div class="cd" id="olCd"></div><div class="row2"><button class="go1" id="olOff">Play offline</button><button class="go2" id="olOn">Play online until then</button></div></div></div>
+<div id="olPop" hidden><div class="box"><span class="kick">Warning</span><h2 id="olTitle">Online chat is not moderated</h2>
+  <p id="olText">Online, anyone in San Varro can message you: private messages, group chats and the <b>Everyone</b> chat that every player online can read. <b>Nobody checks or moderates what people send.</b></p>
+  <ul class="olList"><li>Never share your real name, address, school, phone number or passwords.</li><li>Turn on <b>Settings → Censor chat</b> to hide swear words, or <b>Turn off chat</b> to hide all messages.</li><li>If someone makes you uncomfortable, leave and tell an adult you trust.</li></ul>
+  <div class="row2"><button class="go1" id="olOn">I understand, play online</button><button class="go2" id="olOff">Play offline</button></div></div></div>
 <div id="offPop" hidden><div class="box">
   <div class="kick" id="offKick">Offline mode</div><h2 id="offTitle">Not recommended</h2><div id="offBody"></div>
   <div class="row2"><button class="go sec" id="offNo">Play offline</button><button class="go" id="offOnline">Play online instead</button></div>
@@ -518,10 +526,10 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   <button id="profBtn" aria-label="Open your profile"><img id="pbImg" alt=""><span><b id="pbName">Player</b><small id="pbLevel">Level 1</small></span></button>
   <div class="mcol">
     <h1 class="logo"><span>Free</span><span class="l2">Criminal</span></h1>
-    <div class="ver"><b>v2.0.2</b>San Varro</div>
+    <div class="ver"><b>v2.0.3</b>San Varro</div>
     <nav class="nav">
       <button id="bPlay" class="mainPlay">Play</button>
-      <button id="bOnline" class="closing">Play online <small id="olLeft"></small></button>
+      <button id="bOnline">Play online <small id="olLeft"></small></button>
       <button id="bNews">What's new</button>
       <button data-panel="pNotes">Patch notes</button>
       <button data-panel="pSettings">Settings</button>
@@ -572,7 +580,12 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
 </section>
 <section class="panel notes" id="pNotes" hidden>
   <h2>Patch notes</h2>
-  <details open><summary><b>v2.0.2</b>Online is closing<span>Latest</span></summary><ul>
+  <details open><summary><b>v2.0.3</b>Online is back<span>Latest</span></summary><ul>
+    <li><b>Online play is back</b> for everyone. The shutdown is cancelled: <b>Play online</b> takes you into the shared San Varro again, now on new, faster servers.</li>
+    <li>Before you join, a warning explains that <b>online chat is not moderated</b>, with tips to stay safe (Censor chat and Turn off chat are in Settings).</li>
+    <li><b>Everyone chat</b>: a group chat with every player online, pinned at the top of <b>Messages</b> on your phone (<b>T</b>, or tap Chat on a touch screen). Up to 5 messages every 10 seconds, and floods from other players are ignored.</li>
+    <li>The shutdown countdown on the menu is gone. Offline play and your saves are unchanged.</li></ul></details>
+  <details><summary><b>v2.0.2</b>Online is closing</summary><ul>
     <li><b>Play</b> (offline) is the main button on the menu again, and it takes you straight into San Varro.</li>
     <li><b>Online play shuts down on October 29, 2026.</b> Until then Play online still works, with a countdown on the menu. When the countdown ends, all online play for Free Criminal is terminated.</li>
     <li>Offline play stays fully functional, and your offline save is kept.</li></ul></details>
@@ -3656,7 +3669,8 @@ function updTouch(){const tm=touchMode(),on=tm&&state==='play';document.body.cla
   if(!on)return;if(innerHeight>innerWidth*1.1){pause();return;}
   $('touch').classList.toggle('car',!!player.inCar);$('tRld').textContent=player.inCar?'Radio':'Reload';
   for(const d of $('tBar').children){const k=d.dataset.k;d.classList.toggle('on',(k==='Digit1'&&player.drawn&&player.wpn!=='knife')||(k==='Digit2'&&player.drawn&&player.wpn==='knife'));}}
-const VERSION='2.0.2',NEWS_VERSION='2.0.1';// 2.0.2: offline is the main mode; online shuts down on October 29, 2026// 2.0.1: the rest of 2.0 (lights, cars, school) on top of the group chats; everyone gets the pop-up
+const VERSION='2.0.3',NEWS_VERSION='2.0.3';// 2.0.3: online is back, with an unmoderated-chat warning and the Everyone chat on the phone
+// 2.0.2: offline is the main mode; online shuts down on October 29, 2026// 2.0.1: the rest of 2.0 (lights, cars, school) on top of the group chats; everyone gets the pop-up
 $('updOk').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();});
 $('updPast').addEventListener('click',()=>{$('updPop').hidden=true;settings.seenVersion=VERSION;saveSettings();if(openPanel!=='pNotes')showPanel('pNotes');});
 $('bNews').addEventListener('click',()=>{$('updPop').hidden=false;});
@@ -3696,7 +3710,7 @@ $('bPlay').addEventListener('click',()=>{if(state!=='menu')return;initAudio();sf
 $('offNo').addEventListener('click',()=>{if(offStep===1){offAsk(2);return;}$('offPop').hidden=true;playOffline();});
 $('offOnline').addEventListener('click',()=>{$('offPop').hidden=true;notifyMenu('');playOnline();});
 $('bResume').addEventListener('click',resume);
-$('bQuit').addEventListener('click',()=>{saveGame();gameLive=false;closePhone(false);PMS.clear();GROUPS.clear();INVITES.clear();if(NET.on)NET.leave();saveProfile();refreshBadge();hidePanels();closeMap();ROUTE=null;$('pause').hidden=true;$('hud').hidden=true;$('big').hidden=true;canvas.style.filter=baseFilter();if(player.inCar)exitCar(true);newGame();player.m.group.visible=false;state='menu';$('menu').hidden=false;mapOpen=false;$('bigmap').hidden=true;if(AUD.eg){AUD.eg.gain.value=0;AUD.sg.gain.value=0;AUD.tyre.gain.value=0;}menuMusic();});
+$('bQuit').addEventListener('click',()=>{saveGame();gameLive=false;closePhone(false);PMS.clear();GROUPS.clear();INVITES.clear();ALL.msgs=[];ALL.unread=0;if(NET.on)NET.leave();saveProfile();refreshBadge();hidePanels();closeMap();ROUTE=null;$('pause').hidden=true;$('hud').hidden=true;$('big').hidden=true;canvas.style.filter=baseFilter();if(player.inCar)exitCar(true);newGame();player.m.group.visible=false;state='menu';$('menu').hidden=false;mapOpen=false;$('bigmap').hidden=true;if(AUD.eg){AUD.eg.gain.value=0;AUD.sg.gain.value=0;AUD.tyre.gain.value=0;}menuMusic();});
 function pause(){if(state!=='play')return;state='paused';if(RADIO.st>=0){RADIO.paused=RADIO.st;radioOff();}mouseL=mouseR=false;$('pause').hidden=false;if(document.pointerLockElement)document.exitPointerLock();}
 function resume(){hidePanels();closeMap();$('pause').hidden=true;state='play';lockPointer();if(RADIO.paused!==undefined&&RADIO.paused>=0&&player.inCar)radioOn(RADIO.paused);RADIO.paused=-1;}
 
@@ -4298,7 +4312,7 @@ const NET=(()=>{
   // ---------- joining and leaving ----------
   api.join=async()=>{api.name=okName((PROF.name||'Player').replace(/[<>&"]/g,'').slice(0,16));await getClient();
     who=chan(BASE+'-who',true);who.on('presence',{event:'sync'},onPresence);
-    main=chan(BASE+'-pub');listen(main,'s',m=>{if(num(m.ts)&&hostId!==myId)syncClock(m.ts);if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'pay',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.id==='string'&&Number.isInteger(m.n)&&m.n>0&&m.n<=PAY_MAX){gotPay(m.f,nameOf(m.f),m.n,m.id);send(main,'payok',{to:m.f,id:m.id});}});listen(main,'payok',m=>{if(api.on&&m.to===myId&&typeof m.id==='string')gotPayOk(m.id);});listen(main,'pm',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.m==='string')gotPm(m.f,nameOf(m.f),m.m.slice(0,200));});for(const ev of['gi','gd','gj','gl','gm','gs'])listen(main,ev,m=>{if(api.on&&typeof m.f==='string'&&m.f!==myId)gotGroup(ev,m,nameOf(m.f));});
+    main=chan(BASE+'-pub');listen(main,'s',m=>{if(num(m.ts)&&hostId!==myId)syncClock(m.ts);if(Array.isArray(m.p))for(const e of m.p)if(Array.isArray(e)&&typeof e[0]==='string')gotState(e[0],e.slice(1),false);});listen(main,'h',onHit);listen(main,'k',onKill);listen(main,'pay',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.id==='string'&&Number.isInteger(m.n)&&m.n>0&&m.n<=PAY_MAX){gotPay(m.f,nameOf(m.f),m.n,m.id);send(main,'payok',{to:m.f,id:m.id});}});listen(main,'payok',m=>{if(api.on&&m.to===myId&&typeof m.id==='string')gotPayOk(m.id);});listen(main,'pm',m=>{if(api.on&&m.to===myId&&typeof m.f==='string'&&m.f!==myId&&typeof m.m==='string')gotPm(m.f,nameOf(m.f),m.m.slice(0,200));});for(const ev of['gi','gd','gj','gl','gm','gs'])listen(main,ev,m=>{if(api.on&&typeof m.f==='string'&&m.f!==myId)gotGroup(ev,m,nameOf(m.f));});listen(main,'am',m=>{if(api.on&&typeof m.f==='string'&&m.f!==myId&&typeof m.m==='string')gotAll(m.f,nameOf(m.f),m.m);});
     pipe=chan(BASE+'-p-'+myId);
     try{await Promise.all([joinChan(who,st=>{if(st==='SUBSCRIBED'&&api.on)who.track({id:myId,n:api.name,j:joinT,l:PROF.look,v:VERSION}).catch(()=>{});}),joinChan(main),joinChan(pipe)]);}
     catch(e){api.leave();throw e;}
@@ -4421,12 +4435,14 @@ const PMS=new Map(); // player id -> {id, name, msgs:[{me, t, at}], unread, last
 // GROUPS: id -> {id, name, mem: Map(other player id -> name), pend: Set(ids you invited), left: Set, miss: Map, msgs, unread, last}
 // INVITES: group id -> {g, n, from, fromN, mem: [[id, name]], last}. An invite does nothing until it's accepted.
 const GROUPS=new Map(),INVITES=new Map(),G_MAX=8,G_SIZE=10;let NEWG={name:'',sel:new Set()};
+// 2.0.3: the Everyone chat: one group every player online is in. Like the rest, nothing is kept on a server.
+const ALL={id:'everyone',name:'Everyone',msgs:[],unread:0,last:0},ALL_SENT=[],ALL_FLOOD=new Map();
 const BANK={bal:0,log:[]};
 const phone=document.createElement('div');phone.id='phone';phone.innerHTML='<div class="fr"><div class="sc"><div class="wall"></div><div class="notch"></div><div class="sb"><span id="phTime">12:00</span><span class="ic"><i class="sig"></i>5G<i class="bat"></i></span></div><div class="view" id="phView"></div><div class="hb" title="Put the phone away"></div></div></div>';
 document.body.appendChild(phone);
 const phView=phone.querySelector('#phView');
 function phoneTime(){const h=hourOf(DAY.t),hh=Math.floor(h),mm=Math.floor((h-hh)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
-const phoneUnread=()=>{let n=INVITES.size;for(const c of PMS.values())n+=c.unread;for(const G of GROUPS.values())n+=G.unread;return n;};
+const phoneUnread=()=>{let n=INVITES.size+ALL.unread;for(const c of PMS.values())n+=c.unread;for(const G of GROUPS.values())n+=G.unread;return n;};
 const avColor=s=>{let x=0;for(const ch of String(s))x=(x*31+ch.charCodeAt(0))|0;return`hsl(${Math.abs(x)%360} 55% 42%)`;};
 const showTxt=t=>esc(settings.censor?CENSOR(t):t),showName=n=>{n=okName(n);return esc(settings.censor?CENSOR(n):n);};
 const convOf=(id,name)=>{let c=PMS.get(id);if(!c){c={id,name:name||'Player',msgs:[],unread:0,last:0};PMS.set(id,c);}return c;};
@@ -4471,12 +4487,26 @@ function msgsHtml(){const h=phHead('Messages','home');
   const row=r=>{if(r.g){const G=r.g,m=G.msgs[G.msgs.length-1];return`<button class="pr" data-g="${G.id}"><span class="av gav">👥</span><span class="tx"><b>${showTxt(G.name)}</b><small>${m?(m.sys?showTxt(m.t):(m.me?'You':showName(m.n))+': '+showTxt(m.t)):`${G.mem.size+1} people`}</small></span>${G.unread?`<i class="u">${G.unread}</i>`:''}</button>`;}
     const c=PMS.get(r.id),m=c&&c.msgs[c.msgs.length-1],nm=settings.censor?CENSOR(r.n):r.n;
     return`<button class="pr" data-pm="${r.id}"><span class="av" style="background:${avColor(r.n)}">${esc((nm.charAt(0)||'?').toUpperCase())}</span><span class="tx"><b>${esc(nm)}</b><small>${m?(m.me?'You: ':'')+showTxt(m.t):r.on?'Online · tap to message':'Left the game'}</small></span>${c&&c.unread?`<i class="u">${c.unread}</i>`:''}</button>`;};
-  return h+`<div class="list">${inv?'<div class="sec">Invites</div>'+inv:''}<button class="pr" data-app="newgrp"><span class="av" style="background:#2f7cf6">＋</span><span class="tx"><b>New group chat</b><small>Pick people to invite</small></span></button>${rows.length?rows.map(row).join(''):'<div class="empty">Nobody else is online right now. When someone joins, they’ll show up here.</div>'}</div>`;}
+  const am=ALL.msgs[ALL.msgs.length-1],pin=`<button class="pr pin" data-app="all"><span class="av gav">🌐</span><span class="tx"><b>Everyone in San Varro</b><small>${am?(am.sys?showTxt(am.t):(am.me?'You':showName(am.n))+': '+showTxt(am.t)):`All ${on.length+1} player${on.length?'s':''} online · tap to chat`}</small></span>${ALL.unread?`<i class="u">${ALL.unread>99?'99+':ALL.unread}</i>`:''}</button>`;
+  return h+`<div class="list">${pin}${inv?'<div class="sec">Invites</div>'+inv:''}<button class="pr" data-app="newgrp"><span class="av" style="background:#2f7cf6">＋</span><span class="tx"><b>New group chat</b><small>Pick people to invite</small></span></button>${rows.length?rows.map(row).join(''):'<div class="empty">Nobody else is online right now. When someone joins, they’ll show up here.</div>'}</div>`;}
 function bubbles(id){const c=PMS.get(id);if(!c||!c.msgs.length)return'<div class="ts">No messages yet. Say hi!</div>';let h='',last='';
   for(const m of c.msgs){if(m.at!==last){h+=`<div class="ts">${m.at}</div>`;last=m.at;}h+=`<div class="bub${m.me?' me':''}">${showTxt(m.t)}</div>`;}return h;}
 const chatPeer=id=>NET.on?NET.people().find(q=>q.id===id):null;
 function chatHtml(id){const c=PMS.get(id),p=chatPeer(id),nm=showName(p?p.n:c?c.name:'Player');
   return phHead(`${nm}<small>${p?'Online':'Offline'}</small>`,'msgs')+`<div class="msgs" id="phMsgList">${bubbles(id)}</div>`+(p&&!settings.chatOff?`<div class="cmp"><input id="phIn" maxlength="200" placeholder="Message ${nm}" autocomplete="off" spellcheck="false"><button class="snd" data-act="send" aria-label="Send">➤</button></div>`:`<div class="gone2">${settings.chatOff?'Chat is off.':'They’ve left San Varro.'}</div>`);}
+// ---------- 2.0.3: the Everyone chat ----------
+function allHtml(){const n=NET.on?NET.people().length+1:1;
+  return phHead(`Everyone<small>${n} ${n===1?'player':'players'} online</small>`,'msgs')+`<div class="allnote">Everyone online can read this chat. It’s not moderated: never share personal details.</div><div class="msgs" id="phMsgList">${gBubbles(ALL)}</div>`+(settings.chatOff?'<div class="gone2">Chat is off.</div>':`<div class="cmp"><input id="phIn" maxlength="200" placeholder="Message everyone" autocomplete="off" spellcheck="false"><button class="snd" data-act="send" aria-label="Send">➤</button></div>`);}
+// up to 5 messages in 10 seconds each; someone sending more than 8 in 10 seconds is ignored for a bit
+function aSend(t){if(!NET.on||settings.chatOff)return false;const n=performance.now();while(ALL_SENT.length&&n-ALL_SENT[0]>10000)ALL_SENT.shift();
+  if(ALL_SENT.length>=5||(ALL_SENT.length&&n-ALL_SENT[ALL_SENT.length-1]<400)){notify('Slow down a little.',2);return false;}
+  if(!NET.gsend('am',{m:t}))return false;ALL_SENT.push(n);ALL.msgs.push({me:true,t,at:phoneTime()});if(ALL.msgs.length>100)ALL.msgs.shift();ALL.last=Date.now();return true;}
+function gotAll(f,name,text){if(settings.chatOff)return;const t=String(text).replace(/[\u0000-\u001f]/g,'').replace(/\s+/g,' ').trim().slice(0,200);if(!t)return;
+  const n=performance.now(),q=(ALL_FLOOD.get(f)||[]).filter(x=>n-x<10000);q.push(n);ALL_FLOOD.set(f,q);if(q.length>8)return;
+  ALL.msgs.push({f,n:name,t,at:phoneTime()});if(ALL.msgs.length>100)ALL.msgs.shift();ALL.last=Date.now();
+  if(PHONE.open&&PHONE.view==='all'){updMsgs();return;}
+  ALL.unread++;phoneBeep();notify(`🌐 <b>Everyone</b> · ${showName(name)}: ${showTxt(t.length>80?t.slice(0,80)+'…':t)} <span style="opacity:.75">· press <b>T</b> to reply</span>`,4);if(PHONE.open)renderPhone();}
+setInterval(()=>{if(!NET.on&&(ALL.msgs.length||ALL.unread)){ALL.msgs=[];ALL.unread=0;ALL_FLOOD.clear();if(PHONE.open)renderPhone();}},1000);
 // ---------- 2.0: group chats ----------
 const gOk=g=>typeof g==='string'&&/^[a-z0-9]{8,20}$/.test(g);
 const gName=n=>String(n||'').replace(/[\u0000-\u001f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,24);
@@ -4560,20 +4590,22 @@ function bankHtml(){const P=player,b=BANK.bal,c=P.cash,w=W.level>0;
    <div class="bl">Recent</div>${BANK.log.length?BANK.log.slice().reverse().map(l=>`<div class="lg"><span>${l.d?'Deposit':'Withdrawal'} · ${l.at}</span><span class="${l.d?'p':'m'}">${l.d?'+':'−'}${fmt(l.n)}</span></div>`).join(''):'<div class="bn">No transactions yet.</div>'}</div>`;}
 function phoneKey(){const V=PHONE.view;if(V==='trains')return V+Math.floor(Date.now()/1000)+(SUBWAY?SUBWAY.city:-1);if(V==='pay')return V+player.cash+'|'+payLeft()+'|'+payTo+'|'+PAYHIST.length+PAYHIST.map(x=>x.st||'').join()+'|'+(NET.on?NET.people().map(p=>p.id).join():'');if(V==='home')return V+phoneTime()+phoneUnread()+NET.on+settings.chatOff;if(V==='bank')return V+player.cash+'|'+BANK.bal+'|'+(W.level>0)+BANK.log.length;
   const ppl=()=>NET.on?NET.people().map(p=>p.id+p.n).join():'',G=GROUPS.get(PHONE.with);
-  if(V==='msgs')return V+ppl()+[...PMS.values()].map(c=>c.msgs.length+':'+c.unread).join()+[...GROUPS.values()].map(G=>G.id+G.msgs.length+':'+G.unread).join()+[...INVITES.keys()].join()+settings.chatOff+settings.censor;
+  if(V==='all')return V+ppl()+settings.chatOff+settings.censor;
+  if(V==='msgs')return V+ppl()+ALL.msgs.length+':'+ALL.unread+[...PMS.values()].map(c=>c.msgs.length+':'+c.unread).join()+[...GROUPS.values()].map(G=>G.id+G.msgs.length+':'+G.unread).join()+[...INVITES.keys()].join()+settings.chatOff+settings.censor;
   if(V==='grp')return V+PHONE.with+(G?G.mem.size+'|'+G.pend.size:'x')+settings.chatOff+settings.censor;
   if(V==='grpinfo')return V+PHONE.with+(G?[...G.mem.keys(),'|',...G.pend].join():'x')+ppl()+settings.censor;
   if(V==='newgrp')return V+ppl()+settings.censor+settings.chatOff;
   return V+!!chatPeer(PHONE.with)+settings.chatOff+settings.censor;}
 function renderPhone(){const V=PHONE.view,old=$('phIn')&&PHONE.dk===V+PHONE.with?$('phIn').value:'';phView.className='view v-'+V;
-  if((V==='grp'||V==='grpinfo'||V==='newgrp')&&(settings.chatOff||!NET.on))PHONE.view='msgs';
+  if((V==='grp'||V==='grpinfo'||V==='newgrp'||V==='all')&&(settings.chatOff||!NET.on))PHONE.view='msgs';
   if(PHONE.view!==V){renderPhone();return;}PHONE.dk=V+PHONE.with;
-  phView.innerHTML=V==='msgs'?msgsHtml():V==='chat'?chatHtml(PHONE.with):V==='grp'?grpHtml(PHONE.with):V==='grpinfo'?grpInfoHtml(PHONE.with):V==='newgrp'?newGrpHtml():V==='bank'?bankHtml():V==='trains'?trainsHtml():V==='pay'?payHtml():homeHtml();PHONE.key=phoneKey();$('phTime').textContent=phoneTime();
+  phView.innerHTML=V==='all'?allHtml():V==='msgs'?msgsHtml():V==='chat'?chatHtml(PHONE.with):V==='grp'?grpHtml(PHONE.with):V==='grpinfo'?grpInfoHtml(PHONE.with):V==='newgrp'?newGrpHtml():V==='bank'?bankHtml():V==='trains'?trainsHtml():V==='pay'?payHtml():homeHtml();PHONE.key=phoneKey();$('phTime').textContent=phoneTime();
   if(V==='newgrp'){const g=$('phGn');g.addEventListener('input',()=>{NEWG.name=g.value;});g.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Enter'){e.preventDefault();gCreate();}else if(e.code==='Escape'){e.preventDefault();g.blur();}});g.addEventListener('keyup',e=>e.stopPropagation());}
-  if(V==='chat'||V==='grp'){const c=V==='grp'?GROUPS.get(PHONE.with):PMS.get(PHONE.with);if(c)c.unread=0;const L=$('phMsgList');if(L)L.scrollTop=L.scrollHeight;const i=$('phIn');
+  if(V==='chat'||V==='grp'||V==='all'){const c=V==='all'?ALL:V==='grp'?GROUPS.get(PHONE.with):PMS.get(PHONE.with);if(c)c.unread=0;const L=$('phMsgList');if(L)L.scrollTop=L.scrollHeight;const i=$('phIn');
     if(i){i.value=old;i.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Enter'){e.preventDefault();phSend();}else if(e.code==='Escape'){e.preventDefault();i.blur();}});i.addEventListener('keyup',e=>e.stopPropagation());if(!touchMode())setTimeout(()=>i.focus(),30);}}}
-function updMsgs(){const L=$('phMsgList');if(L){L.innerHTML=PHONE.view==='grp'?gBubbles(GROUPS.get(PHONE.with)):bubbles(PHONE.with);L.scrollTop=L.scrollHeight;}}
+function updMsgs(){const L=$('phMsgList');if(L){L.innerHTML=PHONE.view==='all'?gBubbles(ALL):PHONE.view==='grp'?gBubbles(GROUPS.get(PHONE.with)):bubbles(PHONE.with);L.scrollTop=L.scrollHeight;}}
 function phSend(){const i=$('phIn');if(!i)return;const t=i.value.replace(/\s+/g,' ').trim();if(!t)return;
+  if(PHONE.view==='all'){if(aSend(t.slice(0,200))){i.value='';updMsgs();if(sfx.click)sfx.click();}return;}
   if(PHONE.view==='grp'){const G=GROUPS.get(PHONE.with);if(G&&gSend(G,t.slice(0,200))){i.value='';updMsgs();if(sfx.click)sfx.click();}return;}
   const p=chatPeer(PHONE.with);
   if(p&&NET.pm(PHONE.with,t)){const c=convOf(PHONE.with,p.n);c.msgs.push({me:true,t:t.slice(0,200),at:phoneTime()});if(c.msgs.length>60)c.msgs.shift();c.last=Date.now();i.value='';updMsgs();if(sfx.click)sfx.click();}
@@ -4627,34 +4659,14 @@ async function boot(){
   updChunks(0,true);applySettings();renderAvatars();refreshBadge();state='menu';$('loading').hidden=true;$('menu').hidden=false;requestAnimationFrame(frame);
   if(PROF.name&&BANNED_NAME(PROF.name)){PROF.name='';saveProfile();}if(!PROF.name)openName(true);else if(settings.seenVersion!==VERSION&&settings.seenVersion!==NEWS_VERSION)$('updPop').hidden=false;
 }
-// ---- 2.0.2: online shutdown ----
-// 2.0.2: online play shuts down at midnight starting October 29, 2026 (Sydney time, 13:00 UTC on the 28th), the same
-// moment for everyone. Until then it works as before, behind a disclaimer; after it, it's closed and anyone still
-// online is taken back to the menu. Offline play is untouched.
+// ---- 2.0.3: online is back. Play online shows the unmoderated-chat warning first, every time ----
 (function(){
-  const END=Date.UTC(2026,9,28,13,0,0),over=()=>Date.now()>=END;
-  const left=()=>{const ms=Math.max(0,END-Date.now()),d=Math.floor(ms/864e5),h=Math.floor(ms/36e5)%24,m=Math.floor(ms/6e4)%60,sec=Math.floor(ms/1e3)%60;return `${d}d ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`;};
-  const nav=document.querySelector('#menu .nav'),ban=document.createElement('div');ban.id='olBanner';if(nav)nav.insertAdjacentElement('afterend',ban);
   const pop=$('olPop');let go=false;
-  function paint(){
-    const done=over();
-    ban.innerHTML=done?'<b>Online has shut down</b>Online play for Free Criminal ended on October 29, 2026. Offline play remains fully functional.'
-      :`<b>⚠ Online shuts down October 29, 2026</b>After the countdown, all online play for Free Criminal will be terminated. Offline play remains fully functional.<span class="cd">${left()}</span>`;
-    const b=$('bOnline');if(b&&done){b.disabled=true;b.textContent='Online has shut down';}
-    const ol=$('olLeft');if(ol&&!done)ol.textContent=`Shuts down in ${left()}`;
-    if(!pop.hidden)$('olCd').textContent=done?'Online has shut down.':left();
-    // the moment it ends, anyone still online goes back to the menu
-    if(done&&typeof NET!=='undefined'&&NET.on){if(state==='menu')NET.leave();else{$('bQuit').click();}notifyMenu('Online play for Free Criminal has shut down. Offline play remains fully functional.');}
-  }
-  setInterval(paint,1000);paint();
-  // Play online: the disclaimer first, every time
-  $('bOnline').addEventListener('click',e=>{if(go){go=false;return;}e.stopImmediatePropagation();e.preventDefault();
-    if(over()){paint();notifyMenu('Online play for Free Criminal has shut down. Offline play remains fully functional.');return;}
-    pop.hidden=false;paint();},true);
-  $('olOn').addEventListener('click',()=>{pop.hidden=true;if(over()){paint();return;}go=true;$('bOnline').click();});
+  $('bOnline').addEventListener('click',e=>{if(go){go=false;return;}e.stopImmediatePropagation();e.preventDefault();if(state!=='menu')return;pop.hidden=false;},true);
+  $('olOn').addEventListener('click',()=>{pop.hidden=true;go=true;$('bOnline').click();});
   $('olOff').addEventListener('click',()=>{pop.hidden=true;$('bPlay').click();});
-  // and the old "Play online instead" button can't get round it
-  const oo=$('offOnline');if(oo)oo.addEventListener('click',e=>{if(over()){e.stopImmediatePropagation();$('offPop').hidden=true;paint();}},true);
+  // the old "Play online instead" button goes through the warning too
+  const oo=$('offOnline');if(oo)oo.addEventListener('click',e=>{e.stopImmediatePropagation();$('offPop').hidden=true;pop.hidden=false;},true);
   addEventListener('keydown',e=>{if(e.key==='Escape'&&!pop.hidden){pop.hidden=true;e.stopPropagation();}},true);
 })();
 setTimeout(boot,30);

@@ -130,16 +130,16 @@ window.GAMES = [
     id: 'free-criminal',
     title: 'Free Criminal',
     category: 'Action',
-    tagline: 'Fresh out of prison and thrown in a dumpster. Steal cars, rob stores and outrun the cops. Online play shuts down on October 29, 2026; offline stays fully playable.',
+    tagline: 'Fresh out of prison and thrown in a dumpster. Steal cars, rob stores and outrun the cops, alone or online with everyone in one shared city.',
     description: 'Open-world 3D crime game. Walk out of the penitentiary into a busy San Varro, steal any car, rob stores, the bank and the mall, pick from 10 guns and grenades at the gun stores and stay ahead of the police, who only spot you when you are in front of them. Crash hard and you fly out of the car. Every purchase and robbery plays its own cutscene, and your profile tracks your level, stats and outfits.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Walk / drive'], ['Mouse', 'Look'], ['Click', 'Fire'], ['Right-click', 'Aim'], ['R', 'Reload'], ['Shift', 'Sprint'],
            ['Space', 'Jump / handbrake'], ['F', 'Carjack or enter a car'], ['1', 'Take out / put away gun'], ['Q / Wheel', 'Switch gun'], ['G', 'Throw grenade'], ['E', 'Shop, or rob a store with a gun out'],
-           ['V', 'First / third person'], ['M', 'Map (zoom and set a route)'], ['Tab', 'See who is playing online'], ['T', 'Chat (online)'], ['H', 'Horn'], ['Esc', 'Pause']],
+           ['V', 'First / third person'], ['M', 'Map (zoom and set a route)'], ['Tab', 'See who is playing online'], ['T', 'Messages and Everyone chat (online)'], ['H', 'Horn'], ['Esc', 'Pause']],
     path: 'free-criminal/index.html',
     thumb: 'free-criminal/thumb.jpg?v=2',
     added: '2026-10-13T21:33:00+11:00',
-    updated: '2026-10-27T12:57:00+11:00',
+    updated: '2026-10-31T23:30:00+11:00',
     stat() { const p = readSave('freecriminal.profile.v1', true); return p && p.xp ? 'Level ' + (1 + Math.floor(Math.sqrt(p.xp / 150))) : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-10-31', game: 'free-criminal', text: 'Free Criminal 2.0.3: online play is back for everyone. The shutdown is cancelled, there is a new Everyone chat pinned at the top of Messages on your phone, and a warning before joining that online chat is not moderated.' },
   { date: '2026-10-31', text: 'All online play on the arcade (multiplayer, the on now counters and Global chat) moved to new servers with much more room, so online games should stay up and feel smoother. Your saves are not affected.' },
   { date: '2026-10-30', game: 'cube-assault', text: 'Cube Assault 2.9.15, critical update: the Seaside map is down and under construction for now. It cannot be played in single-player or multiplayer until it returns in a future update.' },
   { date: '2026-10-28', game: 'cube-assault', text: 'Cube Assault 2.9.14: four new cubes. The Bomber (explodes), the Medic (heals other cubes), the Shield (bullets bounce off) and Swarm packs of eight tiny fast cubes. Frontier and Seaside now have buildings you can go into, with stairs up to the roof, and they collapse if too many cubes crowd round them. The Forest is much bigger, the Mall is busier and livelier, and the Rocket and Pumpkin Launchers can rocket jump.' },
