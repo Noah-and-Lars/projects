@@ -53,7 +53,7 @@ window.GAMES = [
     path: 'havoc-bay/index.html',
     thumb: 'havoc-bay/thumb.jpg?v=1',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-11-01T14:00:00+11:00',
+    updated: '2026-11-01T15:00:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-01', game: 'havoc-bay', text: 'Havoc Bay 1.2.1: a missile computer in the command room of each harbor. Log on, pick an island and the strike wipes it out (one missile every 2.5 minutes). Planes can now land on carriers and runways to repair, teammates can ride as gunners in a Dual Gunner, Crown Isle has runways, the islands are livelier and plane crashes hit twice as hard. Plus bug fixes for the Public Battle.' },
   { date: '2026-11-01', game: 'havoc-bay', text: 'Havoc Bay 1.2: a cleaner menu with its own sea-battle theme, a settings button and full patch notes. Pick a side to join the public battle (no more bots online). Ships are 10% faster, islands are full of trees, and there are four new guns on foot plus a dual gunner plane. Press C for a cockpit view. Shot-down planes now glide down with you so you can bail out or kamikaze, and crashes hit hard.' },
   { date: '2026-11-01', game: 'chess', text: 'Chess 1.3: three new computer levels on top of the old ones. Casual sits between Easy and Medium, Advanced between Medium and Hard, and Master is harder than Hard.' },
   { date: '2026-11-01', game: 'football', text: 'Football 1.1: the World Cup is here, with all 48 teams, 12 groups, a Round of 32, extra time and penalties. And online play: Friendlies and Ultimate Team against a friend, with the host setting the rules.' },
