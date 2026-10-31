@@ -21,11 +21,18 @@ const MAX_SOCKETS = 400;      // per room
 const STALE_MS = 90 * 1000;   // a socket that hasn't pinged for this long is gone
 const SWEEP_MS = 5 * 60 * 1000;
 
+// Online play is for the official arcade only. The browser sets the Origin header on the WebSocket
+// handshake and page code can't forge it, so a downloaded/edited copy (origin null) or a copy re-hosted
+// elsewhere is refused here, on the server, where a cheater can't edit this rule.
+const ALLOWED_ORIGINS = ['https://noah-and-lars.github.io'];
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname !== '/ws') return new Response('arcade realtime ok', { headers: { 'content-type': 'text/plain' } });
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426 });
+    const origin = req.headers.get('Origin') || '';
+    if (!ALLOWED_ORIGINS.includes(origin)) return new Response('online play is only available on the official website', { status: 403 });
     const topic = url.searchParams.get('topic') || '';
     if (!topic || topic.length > MAX_TOPIC) return new Response('bad topic', { status: 400 });
     return env.ROOMS.get(env.ROOMS.idFromName(topic)).fetch(req);

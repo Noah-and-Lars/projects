@@ -763,6 +763,9 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v2.9.17b</h3><ul>
+        <li>HTML external file downloads of Cube Assault no longer can connect to any online servers.</li>
+      </ul></section>
       <section><h3>v2.9.17a</h3><ul>
         <li>Bug fixes and improvements</li>
       </ul></section>
@@ -1489,6 +1492,48 @@ const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
   window.__cg2.bust = bust;
   setInterval(run, 250);
   requestAnimationFrame(function loop() { run(); requestAnimationFrame(loop); });
+})();
+</script>
+<script id="ca-weblock">
+// Online play (multiplayer, friends, the leaderboard) is for the real website only. A downloaded HTML file can still
+// play single-player, but any attempt to go online shows the "play on the website" popup (error E3). This is just the
+// friendly front door; the real wall is on the server (the Worker only accepts connections from the official site).
+(() => {
+  // the only place online is allowed to run (localhost/127.0.0.1 are kept for local development; the server still blocks them)
+  window.caOnlineOK = (() => {
+    try {
+      const h = location.hostname;
+      return h === 'noah-and-lars.github.io' || h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+    } catch (e) { return false; }
+  })();
+
+  // the E3 popup; returns true when online is allowed (so callers can `if (!caNeedWebsite()) return;`)
+  window.caNeedWebsite = () => {
+    if (window.caOnlineOK) return true;
+    if (document.getElementById('caE3')) return false;
+    const SITE = 'https://noah-and-lars.github.io/projects/cube-assault/index.html';
+    const d = document.createElement('div'); d.id = 'caE3';
+    d.style.cssText = 'position:fixed;inset:0;z-index:2147483646;background:rgba(6,10,18,.82);display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif';
+    d.innerHTML = '<div style="max-width:460px;width:100%;background:#141a24;border:1px solid #273142;border-radius:16px;padding:26px 24px;text-align:center;color:#eaf0f8;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
+      + '<div style="font-size:34px;margin-bottom:6px">🌐</div>'
+      + '<div style="font-size:22px;font-weight:800;margin-bottom:10px">Play on the website</div>'
+      + '<div style="font-size:15px;line-height:1.5;color:#b8c2d0">Online play — multiplayer, friends and the leaderboard — only works on the official Cube Assault website. This downloaded copy can play single-player only.</div>'
+      + '<a href="' + SITE + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:16px;background:#3fa0ff;color:#06101e;font-weight:800;text-decoration:none;padding:11px 20px;border-radius:10px">Go to the website</a>'
+      + '<div style="margin-top:12px"><button id="caE3X" style="background:none;border:0;color:#8c97a6;font:600 14px system-ui;cursor:pointer">Close</button></div>'
+      + '<div style="margin-top:14px;font:700 12px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:3px;color:#5c6676">ERROR E3</div>'
+      + '</div>';
+    d.addEventListener('click', e => { if (e.target === d || e.target.id === 'caE3X') d.remove(); });
+    document.body.appendChild(d);
+    try { Sound.play('empty'); } catch (e) {}
+    return false;
+  };
+
+  // catch the online buttons before their own handlers run (Multiplayer, Friends, and anything marked data-online-only, e.g. a future leaderboard)
+  document.addEventListener('click', e => {
+    if (window.caOnlineOK) return;
+    const t = e.target && e.target.closest && e.target.closest('#mpMenuBtn, #homeFriends, [data-online-only]');
+    if (t) { e.stopImmediatePropagation(); e.preventDefault(); window.caNeedWebsite(); }
+  }, true);
 })();
 </script>
 <script>
@@ -9913,6 +9958,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
     box.hidden = n < 1;
     num.textContent = c && c.full ? n + '+' : String(n);
   };
+  if (!window.caOnlineOK) { show(null); return; } // online counter: website only
   try {
     if (window.parent !== window && window.parent.ArcadeOnline) { window.parent.ArcadeOnline.subscribe(show); return; }
   } catch (e) {}
@@ -10085,6 +10131,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
   // opened on its own, use the one the game's counter made. Only if neither is there do we open one.
   let client = null, libLoad = null;
   function getClient() {
+    if (!window.caOnlineOK) return Promise.reject('website'); // multiplayer: website only
     if (client) return Promise.resolve(client);
     try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(client = c); } catch (e) {}
     if (window.caSupabase) return Promise.resolve(client = window.caSupabase);
@@ -14159,6 +14206,7 @@ body.touch #hotbar { display: none !important; }
   // who's online: one shared presence channel; each player is there under their friend id
   let fch = null, fState = {}, fTracked = '';
   const fClient = () => {
+    if (!window.caOnlineOK) return Promise.reject('website'); // friends: website only
     try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(c); } catch (e) {}
     if (window.caSupabase) return Promise.resolve(window.caSupabase);
     return new Promise((res, rej) => { let n = 0; const t = setInterval(() => { if (window.caSupabase) { clearInterval(t); res(window.caSupabase); } else if (++n > 60) { clearInterval(t); rej('offline'); } }, 500); });
