@@ -1436,6 +1436,62 @@ const ENEMY_TYPES = {
 const TYPE_CAP = n => ({ blue: 2 + Math.floor(Math.max(0, n - 7) / 3), purple: 1 + Math.floor(Math.max(0, n - 10) / 3), bomber: 2 + Math.floor(Math.max(0, n - 10) / 4), medic: 1 + Math.floor(Math.max(0, n - 20) / 10), shield: 1 + Math.floor(Math.max(0, n - 25) / 6) }); // 2.9.14: + the new cubes
 const DROP_CHANCE = { bomber: 0.12, medic: 0.3, shield: 0.3, swarm: 0.02, angry: 0.3, splitter: 0.15,  red: 0.08, green: 0.08, blue: 0.15, purple: 0.3, king: 1, rifle: 0.12, scam: 0.1, german: 0.22 };
 const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
+</script>
+<script id="ca-guard2">
+// Anti-cheat (second, independent checkpoint). Sits far from the main guard and is also called from inside the core game
+// loop, so removing one guard still leaves the other. Same rule: every gun, cube and player value, reference kept as
+// salted hashes only, instant error E2 and the IMACHEATER name lock. ADMINTEST and GAMETESTER are exempt.
+(() => {
+  const prim = v => { const t = typeof v; return t === 'number' || t === 'boolean' || t === 'string'; };
+  const SALT = 'cb7q' + ((Date.now() * 40503) >>> 0).toString(36) + Math.random().toString(36).slice(2, 7);
+  const H = (tag, key, field, v) => { let h = 2166136261; const s = SALT + ':' + tag + ':' + key + ':' + field + ':' + String(v); for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); };
+  const REF = new Set();
+  const ref = (tag, tbl) => { const keys = Object.keys(tbl), cnt = {}; for (const k of keys) { let n = 0; for (const f in tbl[k]) if (prim(tbl[k][f])) { n++; REF.add(H(tag, k, f, tbl[k][f])); } cnt[k] = n; REF.add(H(tag, k, '#', n)); } REF.add(H(tag, '#', 'n', keys.length)); return { keys, cnt }; };
+  const G = ref('w', WEAPONS), E = ref('e', ENEMY_TYPES);
+  const okT = (tag, tbl, R) => { const keys = Object.keys(tbl); if (keys.length !== R.keys.length || !REF.has(H(tag, '#', 'n', keys.length))) return false; for (const k of R.keys) { const o = tbl[k]; if (!o || typeof o !== 'object') return false; let n = 0; for (const f in o) { const v = o[f]; if (prim(v)) { n++; if (!REF.has(H(tag, k, f, v))) return false; } } if (n !== R.cnt[k] || !REF.has(H(tag, k, '#', n))) return false; } return true; };
+
+  const nameOf = () => (typeof profile !== 'undefined' && (profile.name || '').trim()) || '';
+  const exempt = () => { try { return (testMode && nameOf() === 'GAMETESTER') || (nameOf() === 'ADMINTEST' && profile.adminOk === ADMIN_KEY); } catch (e) { return false; } };
+  function clean() {
+    try {
+      if (typeof WEAPONS === 'undefined') return true;
+      if (!okT('w', WEAPONS, G) || !okT('e', ENEMY_TYPES, E)) return false;
+      if (typeof weapon !== 'undefined' && typeof weaponKey !== 'undefined' && weapon !== WEAPONS[weaponKey]) return false;
+      if (typeof ammo !== 'undefined') for (const k of G.keys) { const a = ammo[k]; if (a !== undefined && (typeof a !== 'number' || Number.isNaN(a) || a > WEAPONS[k].mag + 0.001)) return false; }
+      if (typeof gameMode !== 'undefined' && gameMode !== 'mp' && typeof player !== 'undefined') { const hp = player.hp; if (typeof hp === 'number' && (hp > 100.5 || hp === Infinity)) return false; }
+    } catch (e) { return true; }
+    return true;
+  }
+  let locked = false;
+  function screen() {
+    if (document.getElementById('caE2Lock')) return;
+    const d = document.createElement('div'); d.id = 'caE2Lock';
+    d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;cursor:default';
+    d.innerHTML = '<div style="font-size:clamp(28px,5vw,56px);font-weight:800;letter-spacing:1px;color:#ff3b3b">CHEATS DETECTED!</div><div style="position:absolute;bottom:22px;left:0;right:0;font:700 14px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:4px;color:#888">ERROR E2</div>';
+    for (const ev of ['keydown', 'keyup', 'mousedown', 'mouseup', 'pointerdown', 'click', 'wheel', 'touchstart', 'contextmenu']) d.addEventListener(ev, e => { e.stopPropagation(); e.preventDefault(); }, true);
+    document.body.appendChild(d);
+    addEventListener('keydown', e => { if (e.code !== 'F5' && !(e.metaKey || e.ctrlKey)) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  }
+  function bust() {
+    if (locked || exempt()) return; locked = true; window.__caLock = 1;
+    try { localStorage.setItem('caE2', '1'); } catch (e) {}
+    try { document.cookie = 'caE2=1; max-age=315360000; path=/; SameSite=Lax'; } catch (e) {}
+    try { profile.e2 = 1; profile.name = 'IMACHEATER'; delete profile.adminOk; saveProfile(); refreshProfile(); } catch (e) {}
+    try { if (window.CAMP && CAMP.inRoom && CAMP.inRoom()) CAMP.leaveRoom(); } catch (e) {}
+    try { if (document.pointerLockElement) document.exitPointerLock(); state = 'menu'; Sound.music(false); } catch (e) {}
+    screen();
+  }
+  // grace: just after an exempt session ends, the main guard puts shipped values back; don't bust during that moment
+  let exAt = 0;
+  const grace = () => Date.now() - Math.max(exAt, window.__caExemptAt || 0) < 700;
+  const run = () => { if (locked) return; if (exempt()) { exAt = Date.now(); return; } if (grace()) { try { window.__caRestore && window.__caRestore(); } catch (e) {} return; } if (!clean()) bust(); };
+  window.__cg2 = () => { try { if (locked) return false; if (exempt()) { exAt = Date.now(); return true; } return grace() || clean(); } catch (e) { return true; } };
+  window.__cg2.bust = bust;
+  setInterval(run, 250);
+  requestAnimationFrame(function loop() { run(); requestAnimationFrame(loop); });
+})();
+</script>
+<script>
 
 // ---------- Saved settings & profile ----------
 const settings = { fov: 75, sens: 1, weapon: 'pistol', volume: 0.6, quality: 'high', music: true, touch: 'auto', scopeLock: false };
@@ -6241,6 +6297,7 @@ function updateShots(dt) {
 
 let profileSaveT = 15;
 function update(dt, t) {
+  if (window.__cg2 && !__cg2()) __cg2.bust(); // anti-cheat: second checkpoint, inside the core loop
   profile.stats.time += dt;
   if ((profileSaveT -= dt) <= 0) { profileSaveT = 15; saveProfile(); }
   updatePlayer(dt);
@@ -18938,40 +18995,57 @@ window.startIntro = function (post) {
   ok.addEventListener('click',close);addEventListener('keydown',function(e){if(!p.hidden&&(e.key==='Escape'||e.key==='Enter')){e.preventDefault();e.stopPropagation();close();}},true);setTimeout(function(){ok.focus();},50);})();
 </script>
 <script id="ca-guard">
-// Anti-cheat: gun stats, ammo and coins are checked all the time, in single-player and multiplayer. A cheat locks the
-// game to a black screen (error E2) until a refresh, and the profile's name becomes IMACHEATER for good.
-// ADMINTEST and GAMETESTER are left alone. Not in the patch notes on purpose.
+// Anti-cheat (primary). Every value of every gun, every cube and the player is checked constantly, in single-player and
+// multiplayer. The reference values are kept only as salted hashes, never as plain numbers, so a cheat can't read or edit
+// the "correct" values. A cheat locks the game to a black CHEATS DETECTED! screen (error E2) at once, and after a refresh
+// the name is IMACHEATER for good. ADMINTEST and GAMETESTER are left alone. Not described in the patch notes.
 (() => {
   const NAME = 'IMACHEATER', FLAG = 'caE2', LEDGER = 'caLedger';
-  const COIN_JUMP = 10000;  // more than the whole Battle Pass pays out; nothing in the game gives this much at once
-  const COIN_LOAD = 25000;  // coins on opening the game above what was last saved
+  const COIN_JUMP = 10000, COIN_LOAD = 25000;
   const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; };
-  const prim = v => v === null || /^(number|boolean|string|undefined)$/.test(typeof v);
-  const same = (a, b) => a === b || (Number.isNaN(a) && Number.isNaN(b));
+  const prim = v => { const t = typeof v; return t === 'number' || t === 'boolean' || t === 'string'; };
 
-  // the guns as the game ships them
-  const SNAP = {};
-  for (const k of WEAPON_KEYS) { const o = {}; for (const [f, v] of Object.entries(WEAPONS[k])) if (prim(v)) o[f] = v; SNAP[k] = o; }
-  const restoreGuns = () => { for (const k of WEAPON_KEYS) Object.assign(WEAPONS[k], SNAP[k]); for (const k of WEAPON_KEYS) if (ammo[k] > SNAP[k].mag) ammo[k] = SNAP[k].mag; };
+  // one salted hash of a value, so the reference table holds no readable numbers
+  const SALT = 'ca9k' + ((Date.now() * 2654435761) >>> 0).toString(36) + Math.random().toString(36).slice(2, 7);
+  const H = (tag, key, field, v) => { let h = 2166136261; const s = SALT + '|' + tag + '|' + key + '|' + field + '|' + String(v); for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); };
+
+  // build the hashed reference from the guns and cubes as they ship, plus a frozen copy used only to put guns back after test mode
+  const REF = new Set();
+  const refTable = (tag, tbl) => { const keys = Object.keys(tbl), cnt = {}; for (const k of keys) { let n = 0; for (const f in tbl[k]) if (prim(tbl[k][f])) { n++; REF.add(H(tag, k, f, tbl[k][f])); } cnt[k] = n; REF.add(H(tag, k, '#', n)); } REF.add(H(tag, '#', 'n', keys.length)); return { keys, cnt }; };
+  const GUNS = refTable('w', WEAPONS), CUBES = refTable('e', ENEMY_TYPES);
+  const freezeSnap = tbl => { const S = {}; for (const k of Object.keys(tbl)) { const o = {}; for (const [f, v] of Object.entries(tbl[k])) if (prim(v)) o[f] = v; S[k] = Object.freeze(o); } return Object.freeze(S); };
+  const SNAP = freezeSnap(WEAPONS), CSNAP = freezeSnap(ENEMY_TYPES);
+  const restoreGuns = () => { for (const k of GUNS.keys) if (WEAPONS[k]) Object.assign(WEAPONS[k], SNAP[k]); for (const k of GUNS.keys) if (ammo[k] > SNAP[k].mag) ammo[k] = SNAP[k].mag; };
+  const restoreCubes = () => { for (const k of CUBES.keys) if (ENEMY_TYPES[k]) Object.assign(ENEMY_TYPES[k], CSNAP[k]); };
+  const clampHp = () => { try { if (typeof gameMode !== 'undefined' && gameMode !== 'mp' && player.hp > 100) player.hp = 100; } catch (e) {} };
+  // put everything back to the way it shipped (used when a tester or admin returns to a normal profile)
+  window.__caRestore = () => { restoreGuns(); restoreCubes(); clampHp(); };
+
+  // true when a table still matches its hashes exactly (no changed, added or removed value)
+  const okTable = (tag, tbl, R) => {
+    const keys = Object.keys(tbl); if (keys.length !== R.keys.length || !REF.has(H(tag, '#', 'n', keys.length))) return false;
+    for (const k of R.keys) { const o = tbl[k]; if (!o || typeof o !== 'object') return false; let n = 0; for (const f in o) { const v = o[f]; if (prim(v)) { n++; if (!REF.has(H(tag, k, f, v))) return false; } } if (n !== R.cnt[k] || !REF.has(H(tag, k, '#', n))) return false; }
+    return true;
+  };
+  function clean() {
+    if (typeof weapon !== 'undefined' && weapon !== WEAPONS[weaponKey]) return false;
+    if (!okTable('w', WEAPONS, GUNS)) return false;
+    if (!okTable('e', ENEMY_TYPES, CUBES)) return false;
+    for (const k of GUNS.keys) { const a = ammo[k]; if (a !== undefined && (typeof a !== 'number' || Number.isNaN(a) || a > WEAPONS[k].mag + 0.001)) return false; }
+    if (typeof gameMode !== 'undefined' && gameMode !== 'mp') { const hp = player.hp; if (typeof hp === 'number' && (hp > 100.5 || hp === Infinity)) return false; } // mp health is the host's call
+    return true;
+  }
 
   const exempt = () => (testMode && (profile.name || '').trim() === 'GAMETESTER') || ((profile.name || '').trim() === 'ADMINTEST' && profile.adminOk === ADMIN_KEY);
   const hasCookie = () => /(?:^|;\s*)caE2=1/.test(document.cookie);
-  const flagged = () => profile.e2 === 1 || ls(FLAG) === '1' || hasCookie();
-  function markFlag() {
-    ls(FLAG, '1');
-    try { document.cookie = 'caE2=1; max-age=315360000; path=/; SameSite=Lax'; } catch (e) {}
-  }
-  function unflag() { // only after a real ADMINTEST or GAMETESTER login
-    ls(FLAG, null);
-    try { document.cookie = 'caE2=; max-age=0; path=/'; } catch (e) {}
-    delete profile.e2;
-    try { const p = JSON.parse(ls('cubeAssaultProfile') || '{}'); if (p.e2) { delete p.e2; ls('cubeAssaultProfile', JSON.stringify(p)); } } catch (e) {}
-  }
+  const flagged = () => profile.e2 === 1 || ls(FLAG) === '1' || hasCookie() || (window.__caLock === 1);
+  function markFlag() { window.__caLock = 1; ls(FLAG, '1'); try { document.cookie = 'caE2=1; max-age=315360000; path=/; SameSite=Lax'; } catch (e) {} }
+  function unflag() { window.__caLock = 0; ls(FLAG, null); try { document.cookie = 'caE2=; max-age=0; path=/'; } catch (e) {} delete profile.e2; try { const p = JSON.parse(ls('cubeAssaultProfile') || '{}'); if (p.e2) { delete p.e2; ls('cubeAssaultProfile', JSON.stringify(p)); } } catch (e) {} }
 
-  // the coins last saved, so coins edited into storage are caught when the game opens
-  const sig = c => { let h = 2166136261; for (const ch of 'cg' + c + 'E2') h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return (h >>> 0).toString(36); };
+  const sig = c => { let h = 2166136261; for (const ch of SALT + 'c' + c) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return (h >>> 0).toString(36); };
+  const sigOld = c => { let h = 2166136261; for (const ch of 'cg' + c + 'E2') h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return (h >>> 0).toString(36); }; // the 2.9.17 ledger, so old saves still read
   function writeLedger() { if (testMode) return; const c = Math.max(0, Math.floor(Number(profile.coins) || 0)); ls(LEDGER, c + '.' + sig(c)); }
-  function readLedger() { const v = ls(LEDGER) || '', i = v.indexOf('.'); if (i < 0) return null; const c = +v.slice(0, i); return Number.isFinite(c) && v.slice(i + 1) === sig(c) ? c : null; }
+  function readLedger() { const v = ls(LEDGER) || '', i = v.indexOf('.'); if (i < 0) return null; const c = +v.slice(0, i), t = v.slice(i + 1); return Number.isFinite(c) && (t === sig(c) || t === sigOld(c)) ? c : null; }
 
   const save0 = saveProfile;
   let locked = false, busy = false, lastCoins = Number(profile.coins) || 0, wasExempt = exempt(), adminTry = false;
@@ -18989,40 +19063,19 @@ window.startIntro = function (post) {
   }
   function caught() {
     if (locked || exempt()) return;
-    locked = true;
-    markFlag();
+    locked = true; markFlag();
     profile.e2 = 1; profile.name = NAME; delete profile.adminOk;
-    try { save0(); } catch (e) {}
-    writeLedger();
+    try { save0(); } catch (e) {} writeLedger();
     try { if (window.CAMP && CAMP.inRoom && CAMP.inRoom()) CAMP.leaveRoom(); } catch (e) {}
     try { mouseDown = false; for (const k in keys) keys[k] = false; } catch (e) {}
     try { if (document.pointerLockElement) document.exitPointerLock(); state = 'menu'; Sound.music(false); } catch (e) {}
     blackScreen();
   }
 
-  function badGun() {
-    if (weapon !== WEAPONS[weaponKey]) return true;
-    if (Object.keys(WEAPONS).length !== WEAPON_KEYS.length) return true;
-    for (const k of WEAPON_KEYS) {
-      const W = WEAPONS[k], S = SNAP[k];
-      if (!W || typeof W !== 'object') return true;
-      for (const f in S) if (!same(W[f], S[f])) return true;
-      for (const f of Object.keys(W)) if (!(f in S) && prim(W[f])) return true;
-      const a = ammo[k];
-      if (a !== undefined && (typeof a !== 'number' || Number.isNaN(a) || a > S.mag)) return true;
-    }
-    return false;
-  }
-  function badCoins() {
-    const c = Number(profile.coins);
-    if (Number.isNaN(c)) return false;
-    if (c === Infinity || c - lastCoins > COIN_JUMP) { profile.coins = lastCoins; return true; } // the cheated coins go
-    lastCoins = c; return false;
-  }
+  function badCoins() { const c = Number(profile.coins); if (Number.isNaN(c)) return false; if (c === Infinity || c - lastCoins > COIN_JUMP) { profile.coins = lastCoins; return true; } lastCoins = c; return false; }
 
   function tick() {
-    if (busy || locked) return;
-    busy = true;
+    if (busy || locked) return; busy = true;
     try {
       const ex = exempt();
       if (flagged()) {
@@ -19033,32 +19086,27 @@ window.startIntro = function (post) {
           try { save0(); refreshProfile(); } catch (e) {}
         }
       }
-      if (ex) { lastCoins = Number(profile.coins) || 0; wasExempt = true; return; }
-      if (wasExempt) { restoreGuns(); lastCoins = Number(profile.coins) || 0; wasExempt = false; } // the test tools' changes don't follow you out
-      if (badGun() || badCoins()) caught();
+      if (ex) { lastCoins = Number(profile.coins) || 0; wasExempt = true; window.__caExemptAt = Date.now(); return; }
+      if (wasExempt) { restoreGuns(); restoreCubes(); clampHp(); lastCoins = Number(profile.coins) || 0; wasExempt = false; window.__caExemptAt = Date.now(); } // the test tools' changes don't follow you out
+      if (!clean() || badCoins()) caught();
     } finally { busy = false; }
   }
+  window.__caChk = () => { try { return exempt() || (clean() && !(Number(profile.coins) - lastCoins > COIN_JUMP)); } catch (e) { return true; } };
+  window.__caBust = () => { try { tick(); if (!exempt()) caught(); } catch (e) {} };
 
-  // every save is checked first, and the coins it saves are remembered
   saveProfile = function () { tick(); const r = save0.apply(this, arguments); writeLedger(); return r; };
-  // the guns are checked before every game starts
   const start0 = startGame; startGame = function () { tick(); if (locked) return; return start0.apply(this, arguments); };
   const reset0 = resetGame; resetGame = function () { tick(); if (locked) return; return reset0.apply(this, arguments); };
+  // leaving test mode (or renaming away from it) puts the guns and cubes back at once, before any check runs
+  if (typeof exitTestMode === 'function') { const exit0 = exitTestMode; exitTestMode = function () { const r = exit0.apply(this, arguments); try { restoreGuns(); restoreCubes(); clampHp(); window.__caExemptAt = Date.now(); } catch (e) {} return r; }; }
 
-  // opening the game
   (function boot() {
-    if (flagged()) {
-      markFlag(); profile.e2 = 1; profile.name = NAME; delete profile.adminOk;
-      try { save0(); refreshProfile(); } catch (e) {}
-      try { if (currentMenu === 'name') showMenu('main'); } catch (e) {}
-    }
+    if (flagged()) { markFlag(); profile.e2 = 1; profile.name = NAME; delete profile.adminOk; try { save0(); refreshProfile(); } catch (e) {} try { if (currentMenu === 'name') showMenu('main'); } catch (e) {} }
     const was = readLedger(), c = Number(profile.coins) || 0;
     if (!exempt() && was !== null && (c === Infinity || c - was > COIN_LOAD)) { profile.coins = was; lastCoins = was; caught(); return; }
-    lastCoins = c; writeLedger();
-    tick();
+    lastCoins = c; writeLedger(); tick();
   })();
 
-  // the name can't be changed any more (the ADMINTEST / GAMETESTER passwords still work)
   const nameLocked = () => flagged() && !/^(admintest|gametester)$/i.test(($('nameInput').value || '').trim());
   const stopName = e => {
     if (!flagged()) return;
@@ -19070,7 +19118,10 @@ window.startIntro = function (post) {
   document.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('#nameOk')) stopName(e); }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && (e.target.id === 'nameInput' || e.target.id === 'adminPw')) stopName(e); }, true);
 
+  // checked all the time (every frame), and a guaranteed full sweep once a minute while a match is on
   setInterval(tick, 200);
+  let matchMin = 0;
+  setInterval(() => { try { const inMatch = state === 'playing' || (window.CAMP && CAMP.matchOn && CAMP.matchOn()); if (inMatch) { matchMin++; tick(); } else matchMin = 0; } catch (e) {} }, 60000);
   (function loop() { tick(); requestAnimationFrame(loop); })();
 })();
 </script>
