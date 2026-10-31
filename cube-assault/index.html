@@ -18934,5 +18934,142 @@ window.startIntro = function (post) {
 (function(){var p=document.getElementById('ca30Pop'),ok=document.getElementById('ca30Ok');function close(){p.hidden=true;}
   ok.addEventListener('click',close);addEventListener('keydown',function(e){if(!p.hidden&&(e.key==='Escape'||e.key==='Enter')){e.preventDefault();e.stopPropagation();close();}},true);setTimeout(function(){ok.focus();},50);})();
 </script>
+<script id="ca-guard">
+// Anti-cheat: gun stats, ammo and coins are checked all the time, in single-player and multiplayer. A cheat locks the
+// game to a black screen (error E2) until a refresh, and the profile's name becomes IMACHEATER for good.
+// ADMINTEST and GAMETESTER are left alone. Not in the patch notes on purpose.
+(() => {
+  const NAME = 'IMACHEATER', FLAG = 'caE2', LEDGER = 'caLedger';
+  const COIN_JUMP = 10000;  // more than the whole Battle Pass pays out; nothing in the game gives this much at once
+  const COIN_LOAD = 25000;  // coins on opening the game above what was last saved
+  const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; };
+  const prim = v => v === null || /^(number|boolean|string|undefined)$/.test(typeof v);
+  const same = (a, b) => a === b || (Number.isNaN(a) && Number.isNaN(b));
+
+  // the guns as the game ships them
+  const SNAP = {};
+  for (const k of WEAPON_KEYS) { const o = {}; for (const [f, v] of Object.entries(WEAPONS[k])) if (prim(v)) o[f] = v; SNAP[k] = o; }
+  const restoreGuns = () => { for (const k of WEAPON_KEYS) Object.assign(WEAPONS[k], SNAP[k]); for (const k of WEAPON_KEYS) if (ammo[k] > SNAP[k].mag) ammo[k] = SNAP[k].mag; };
+
+  const exempt = () => (testMode && (profile.name || '').trim() === 'GAMETESTER') || ((profile.name || '').trim() === 'ADMINTEST' && profile.adminOk === ADMIN_KEY);
+  const hasCookie = () => /(?:^|;\s*)caE2=1/.test(document.cookie);
+  const flagged = () => profile.e2 === 1 || ls(FLAG) === '1' || hasCookie();
+  function markFlag() {
+    ls(FLAG, '1');
+    try { document.cookie = 'caE2=1; max-age=315360000; path=/; SameSite=Lax'; } catch (e) {}
+  }
+  function unflag() { // only after a real ADMINTEST or GAMETESTER login
+    ls(FLAG, null);
+    try { document.cookie = 'caE2=; max-age=0; path=/'; } catch (e) {}
+    delete profile.e2;
+    try { const p = JSON.parse(ls('cubeAssaultProfile') || '{}'); if (p.e2) { delete p.e2; ls('cubeAssaultProfile', JSON.stringify(p)); } } catch (e) {}
+  }
+
+  // the coins last saved, so coins edited into storage are caught when the game opens
+  const sig = c => { let h = 2166136261; for (const ch of 'cg' + c + 'E2') h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return (h >>> 0).toString(36); };
+  function writeLedger() { if (testMode) return; const c = Math.max(0, Math.floor(Number(profile.coins) || 0)); ls(LEDGER, c + '.' + sig(c)); }
+  function readLedger() { const v = ls(LEDGER) || '', i = v.indexOf('.'); if (i < 0) return null; const c = +v.slice(0, i); return Number.isFinite(c) && v.slice(i + 1) === sig(c) ? c : null; }
+
+  const save0 = saveProfile;
+  let locked = false, busy = false, lastCoins = Number(profile.coins) || 0, wasExempt = exempt(), adminTry = false;
+
+  function blackScreen() {
+    if (document.getElementById('caE2Lock')) return;
+    const d = document.createElement('div'); d.id = 'caE2Lock';
+    d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;cursor:default';
+    d.innerHTML = '<div style="font-size:clamp(28px,5vw,56px);font-weight:800;letter-spacing:1px;color:#ff3b3b">CHEATS DETECTED!</div>'
+      + '<div style="position:absolute;bottom:22px;left:0;right:0;font:700 14px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:4px;color:#888">ERROR E2</div>';
+    for (const ev of ['keydown', 'keyup', 'mousedown', 'mouseup', 'pointerdown', 'click', 'wheel', 'touchstart', 'contextmenu']) d.addEventListener(ev, e => { e.stopPropagation(); e.preventDefault(); }, true);
+    document.body.appendChild(d);
+    addEventListener('keydown', e => { if (e.code !== 'F5' && !(e.metaKey || e.ctrlKey)) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    addEventListener('keyup', e => { e.stopImmediatePropagation(); }, true);
+  }
+  function caught() {
+    if (locked || exempt()) return;
+    locked = true;
+    markFlag();
+    profile.e2 = 1; profile.name = NAME; delete profile.adminOk;
+    try { save0(); } catch (e) {}
+    writeLedger();
+    try { if (window.CAMP && CAMP.inRoom && CAMP.inRoom()) CAMP.leaveRoom(); } catch (e) {}
+    try { mouseDown = false; for (const k in keys) keys[k] = false; } catch (e) {}
+    try { if (document.pointerLockElement) document.exitPointerLock(); state = 'menu'; Sound.music(false); } catch (e) {}
+    blackScreen();
+  }
+
+  function badGun() {
+    if (weapon !== WEAPONS[weaponKey]) return true;
+    if (Object.keys(WEAPONS).length !== WEAPON_KEYS.length) return true;
+    for (const k of WEAPON_KEYS) {
+      const W = WEAPONS[k], S = SNAP[k];
+      if (!W || typeof W !== 'object') return true;
+      for (const f in S) if (!same(W[f], S[f])) return true;
+      for (const f of Object.keys(W)) if (!(f in S) && prim(W[f])) return true;
+      const a = ammo[k];
+      if (a !== undefined && (typeof a !== 'number' || Number.isNaN(a) || a > S.mag)) return true;
+    }
+    return false;
+  }
+  function badCoins() {
+    const c = Number(profile.coins);
+    if (Number.isNaN(c)) return false;
+    if (c === Infinity || c - lastCoins > COIN_JUMP) { profile.coins = lastCoins; return true; } // the cheated coins go
+    lastCoins = c; return false;
+  }
+
+  function tick() {
+    if (busy || locked) return;
+    busy = true;
+    try {
+      const ex = exempt();
+      if (flagged()) {
+        if (ex && adminTry) unflag();
+        else if (profile.name !== NAME || profile.adminOk) {
+          profile.name = NAME; delete profile.adminOk; profile.e2 = 1;
+          if (testMode) { try { exitTestMode(); } catch (e) {} profile.name = NAME; profile.e2 = 1; }
+          try { save0(); refreshProfile(); } catch (e) {}
+        }
+      }
+      if (ex) { lastCoins = Number(profile.coins) || 0; wasExempt = true; return; }
+      if (wasExempt) { restoreGuns(); lastCoins = Number(profile.coins) || 0; wasExempt = false; } // the test tools' changes don't follow you out
+      if (badGun() || badCoins()) caught();
+    } finally { busy = false; }
+  }
+
+  // every save is checked first, and the coins it saves are remembered
+  saveProfile = function () { tick(); const r = save0.apply(this, arguments); writeLedger(); return r; };
+  // the guns are checked before every game starts
+  const start0 = startGame; startGame = function () { tick(); if (locked) return; return start0.apply(this, arguments); };
+  const reset0 = resetGame; resetGame = function () { tick(); if (locked) return; return reset0.apply(this, arguments); };
+
+  // opening the game
+  (function boot() {
+    if (flagged()) {
+      markFlag(); profile.e2 = 1; profile.name = NAME; delete profile.adminOk;
+      try { save0(); refreshProfile(); } catch (e) {}
+      try { if (currentMenu === 'name') showMenu('main'); } catch (e) {}
+    }
+    const was = readLedger(), c = Number(profile.coins) || 0;
+    if (!exempt() && was !== null && (c === Infinity || c - was > COIN_LOAD)) { profile.coins = was; lastCoins = was; caught(); return; }
+    lastCoins = c; writeLedger();
+    tick();
+  })();
+
+  // the name can't be changed any more (the ADMINTEST / GAMETESTER passwords still work)
+  const nameLocked = () => flagged() && !/^(admintest|gametester)$/i.test(($('nameInput').value || '').trim());
+  const stopName = e => {
+    if (!flagged()) return;
+    if (!nameLocked()) { adminTry = true; return; }
+    e.stopImmediatePropagation(); e.preventDefault();
+    const m = $('adminMsg'); if (m) { m.hidden = false; m.textContent = 'Your name is locked.'; }
+    try { Sound.play('empty'); } catch (er) {}
+  };
+  document.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('#nameOk')) stopName(e); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && (e.target.id === 'nameInput' || e.target.id === 'adminPw')) stopName(e); }, true);
+
+  setInterval(tick, 200);
+  (function loop() { tick(); requestAnimationFrame(loop); })();
+})();
+</script>
 </body>
 </html>
