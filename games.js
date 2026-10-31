@@ -46,14 +46,14 @@ window.GAMES = [
     title: 'Havoc Bay',
     category: 'Action',
     tagline: 'Red vs Blue sea battle. Command warships, fly planes and destroy the enemy harbor, online or against bots.',
-    description: 'A naval battle. Blue and Red each have a harbor with 25,000 health. Sail jet skis, turret boats, destroyers, battleships and aircraft carriers, fly fighters, jets and bombers, man the harbor guns, and claim five islands for turrets, forward spawns and gold. Play on the shared online server, where you take a bot\'s place, in a private room with friends, or offline against bots. The losing harbor gets a visit from a B-52.',
+    description: 'A naval battle. Blue and Red each have a harbor with 25,000 health. Sail jet skis, turret boats, destroyers, battleships and aircraft carriers, fly fighters, dual gunners, jets and bombers from a chase view or the cockpit, fight on foot with five guns, and claim five islands for turrets, forward spawns and gold. Pick a side in the public battle, play in a private room with friends, or practice offline against bots. The losing harbor gets a visit from a B-52.',
     controls: 'Keyboard + mouse or touch',
-    keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['F', 'Torpedo or drop a bomb'], ['R', 'Missile (jet, battleship)'], ['Enter', 'Deploy again (in the deploy menu)'],
+    keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['1 to 5', 'Switch guns on foot'], ['C', 'Cockpit or chase view in a plane'], ['F', 'Torpedo or drop a bomb'], ['R', 'Missile (jet, battleship)'], ['Enter', 'Deploy again (in the deploy menu)'],
            ['E', 'Use pads and turrets, get in and out'], ['Space', 'Jump, or level out a plane'], ['Shift', 'Sprint'], ['B', 'Deploy menu, or launch a plane from your carrier'], ['M', 'Map'], ['Tab', 'Scoreboard'], ['Esc', 'Pause']],
     path: 'havoc-bay/index.html',
-    thumb: 'havoc-bay/thumb.svg',
+    thumb: 'havoc-bay/thumb.jpg?v=1',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-11-01T02:30:00+11:00',
+    updated: '2026-11-01T14:00:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -225,6 +225,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-01', game: 'havoc-bay', text: 'Havoc Bay 1.2: a cleaner menu with its own sea-battle theme, a settings button and full patch notes. Pick a side to join the public battle (no more bots online). Ships are 10% faster, islands are full of trees, and there are four new guns on foot plus a dual gunner plane. Press C for a cockpit view. Shot-down planes now glide down with you so you can bail out or kamikaze, and crashes hit hard.' },
   { date: '2026-11-01', game: 'chess', text: 'Chess 1.3: three new computer levels on top of the old ones. Casual sits between Easy and Medium, Advanced between Medium and Hard, and Master is harder than Hard.' },
   { date: '2026-11-01', game: 'football', text: 'Football 1.1: the World Cup is here, with all 48 teams, 12 groups, a Round of 32, extra time and penalties. And online play: Friendlies and Ultimate Team against a friend, with the host setting the rules.' },
   { date: '2026-11-01', game: 'cube-assault', text: 'Cube Assault 2.9.17: Seaside is back in single-player and multiplayer, and every map now has anti-cheat laws. Get out of bounds and your shots are blocked, the cubes come straight through the walls for you, and after 5 seconds you are put back. The pier on Seaside is no longer a safe spot.' },

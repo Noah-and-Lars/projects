@@ -122,6 +122,29 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;paddin
 #playBtn{font-size:26px;min-height:62px}
 #prof{font-size:13px;font-weight:800;opacity:.85}
 #title .credits{font-size:12px;opacity:.7;margin-top:auto}
+/* 1.2: the new menu */
+#title .side{width:min(440px,100%);gap:10px;padding:calc(22px + env(safe-area-inset-top)) 22px 18px calc(22px + env(safe-area-inset-left));background:linear-gradient(90deg,rgba(7,14,28,.86),rgba(7,14,28,.62) 78%,rgba(7,14,28,0));backdrop-filter:blur(3px);overflow:auto;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#title .tagline{font-weight:600;font-size:14px;opacity:.85;margin:0 0 4px;line-height:1.4}
+#title .mode{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 28px rgba(0,0,0,.25)}
+#title .mode header{display:flex;align-items:center;gap:10px}
+#title .mode header b{display:block;font-size:17px;font-weight:800;letter-spacing:.2px}
+#title .mode header small{display:block;font-size:12px;font-weight:600;opacity:.7;margin-top:1px}
+#title .mi{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:20px;background:rgba(255,255,255,.1);flex:none}
+#title .pub{border-color:rgba(255,210,58,.45);background:linear-gradient(135deg,rgba(255,210,58,.14),rgba(255,255,255,.04))}
+#title .pub .mi{background:rgba(255,210,58,.22)}
+#title .live{margin-left:auto;font-size:10px;font-weight:900;letter-spacing:1.5px;padding:3px 7px;border-radius:6px;background:#2fc24a;color:#06210c}
+#title .mlbl{font-size:11px;font-weight:800;opacity:.65;text-transform:uppercase;letter-spacing:1.3px;margin-bottom:4px}
+#title .sides{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#title .sides .btn{min-height:50px;font-size:17px}
+#title .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+#title .grid2 .seg{gap:4px}#title .grid2 .seg .btn{min-height:32px;font-size:13px;padding:4px 9px;flex:1}
+#title .btn{font-family:inherit;border-radius:10px;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+#title .btn.wide{width:100%;min-height:44px}
+#title .foot{display:flex;gap:6px;margin-top:2px}#title .foot .btn{flex:1;min-height:38px;font-size:13px;padding:6px 8px;background:rgba(255,255,255,.1);box-shadow:none}
+#title #playMsg{font-size:12px;font-weight:600;opacity:.8;margin:0}
+#title #prof{font-size:12px;opacity:.7}
+.notesPanel{width:min(620px,100%);text-align:left}.notesPanel h3{margin:14px 0 6px;font-size:18px}.notesPanel h3 small{opacity:.6;font-size:13px;margin-left:6px}.notesPanel ul{margin:0;padding-left:20px;line-height:1.45;font-size:14px}.notesPanel li{margin:3px 0}
+@media (max-height:640px){#title .tagline{display:none}#title .mode{padding:9px 11px;gap:6px}#title .sides .btn{min-height:40px}}
 
 #deploy .panel{width:min(760px,100%)}
 .dsec{margin:10px 0 4px;font-weight:900;font-size:14px;opacity:.85;text-transform:uppercase;letter-spacing:1px}
@@ -302,27 +325,64 @@ body.touch #throttle{top:40%}
 <div id="cine" class="hidden"><div id="cineFlash"></div><div class="lb t"></div><div class="lb b"></div><div id="cineCap"></div><div id="cineSkip">Click or press Space to skip</div></div>
 
 <div id="title" class="ov hidden">
-  <div class="side ts">
+  <div class="side">
     <div class="logo"><span class="l1">⚓ HAVOC</span><span class="l2">BAY</span></div>
-    <div class="tagline">Red vs Blue sea battle. Fly planes, command warships, man the turrets and destroy the enemy harbor.</div>
-    <button class="btn go" id="playBtn">▶ PLAY</button>
-    <div id="playMsg">Join the online battle. Real players take the place of bots.</div>
-    <div class="seg"><button class="btn" id="practiceBtn">🤖 Practice vs bots</button><button class="btn blue" id="onlineBtn">🔒 Private room</button></div>
-    <div class="lbl" id="pracLbl">Practice and private room settings</div>
-    <div class="lbl">Your team</div>
-    <div class="seg" id="teamSeg"><button class="btn blue" data-v="0">Blue</button><button class="btn red" data-v="1">Red</button></div>
-    <div class="lbl">Bots</div>
-    <div class="seg" id="diffSeg"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div>
-    <div class="lbl">Players per team</div>
-    <div class="seg" id="botSeg"><button class="btn" data-v="4">4</button><button class="btn" data-v="6">6</button><button class="btn" data-v="8">8</button><button class="btn" data-v="10">10</button></div>
-    <div class="lbl">Match time</div>
-    <div class="seg" id="timeSeg"><button class="btn" data-v="10">10 min</button><button class="btn" data-v="15">15 min</button><button class="btn" data-v="20">20 min</button></div>
-    <div class="seg"><button class="btn" id="helpBtn">How to play</button><button class="btn" id="setBtn">Settings</button></div>
+    <div class="tagline">Red vs Blue sea battle. Fly planes, command warships, man the guns and destroy the enemy harbor.</div>
+    <section class="mode pub">
+      <header><span class="mi">🌐</span><div><b>Public Battle</b><small>One big online battle · real players only</small></div><span class="live">ONLINE</span></header>
+      <div class="mlbl">Pick your side</div>
+      <div class="sides"><button class="btn blue" id="joinBlue">⚓ Join Blue</button><button class="btn red" id="joinRed">⚓ Join Red</button></div>
+      <button class="hidden" id="playBtn"></button>
+      <div id="playMsg">Everyone online plays in the same battle.</div>
+    </section>
+    <section class="mode prac">
+      <header><span class="mi">🤖</span><div><b>Practice vs bots</b><small>Offline · you and the computer's crews</small></div></header>
+      <div class="grid2">
+        <div><div class="mlbl">Your team</div><div class="seg" id="teamSeg"><button class="btn blue" data-v="0">Blue</button><button class="btn red" data-v="1">Red</button></div></div>
+        <div><div class="mlbl">Bots</div><div class="seg" id="diffSeg"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div></div>
+        <div><div class="mlbl">Players per team</div><div class="seg" id="botSeg"><button class="btn" data-v="4">4</button><button class="btn" data-v="6">6</button><button class="btn" data-v="8">8</button><button class="btn" data-v="10">10</button></div></div>
+        <div><div class="mlbl">Match time</div><div class="seg" id="timeSeg"><button class="btn" data-v="10">10m</button><button class="btn" data-v="15">15m</button><button class="btn" data-v="20">20m</button></div></div>
+      </div>
+      <button class="btn go wide" id="practiceBtn">▶ Start practice</button>
+    </section>
+    <section class="mode priv">
+      <header><span class="mi">🔒</span><div><b>Private room</b><small>Online with friends · share a room code</small></div></header>
+      <button class="btn wide" id="onlineBtn">Create or join a room</button>
+    </section>
+    <nav class="foot"><button class="btn" id="helpBtn">How to play</button><button class="btn" id="setBtn">Settings</button><button class="btn" id="notesBtn">Patch notes</button></nav>
     <div id="prof"></div>
-    <div class="credits">Made for The Arcade.</div>
   </div>
 </div>
-
+<div id="notes" class="ov dim hidden">
+  <div class="panel ts notesPanel">
+    <h2>Patch notes</h2>
+    <h3>v1.2 <small>The big overhaul</small></h3>
+    <ul>
+      <li><b>A new menu</b>: clearer and cleaner, with the three ways to play kept apart: the Public Battle, Practice vs bots and Private rooms.</li>
+      <li><b>One public battle, real players only.</b> Pick Blue or Red when you join. Bots are now only in Practice, never online.</li>
+      <li><b>Menu music</b>: an original sea-battle theme. Turn it off in Settings.</li>
+      <li><b>New plane: the Dual Gunner</b>, with two forward guns and gunners on top and underneath.</li>
+      <li><b>Cockpit view</b>: press <b>C</b> in a plane to fly from inside the cockpit, and again to go back.</li>
+      <li><b>Planes go down instead of blowing up.</b> When a plane runs out of health its engine dies and it falls with you in it: bail out with E, or aim it at something.</li>
+      <li><b>Kamikaze</b>: crashing a plane into a ship takes 45% of its health (a ship at full health survives), and the blast hurts turrets and sailors nearby. Crashes make much bigger explosions.</li>
+      <li>A plane that crashes into the sea doesn't explode any more: it splashes in and sinks.</li>
+      <li><b>New guns on foot</b>, from Cube Assault: Pistol, Shotgun, Sniper Rifle (with a scope) and Rocket Launcher, next to the Rifle. Keys 1 to 5.</li>
+      <li><b>Spawn anywhere you own</b>: planes now take off over your islands, and ships can launch beside your team's aircraft carriers.</li>
+      <li>Warships are 10% faster.</li>
+      <li>The islands are much fuller: trees, bushes, grass and flowers.</li>
+    </ul>
+    <h3>v1.1 <small>New look</small></h3>
+    <ul>
+      <li>A more realistic look: real shading, weathered surfaces, a deeper sea and a hazy sky.</li>
+      <li>The bomber got working nose guns. A lead marker for dogfights, a PULL UP warning, Deploy again (Enter), a field of view setting and a marker for the enemy harbor.</li>
+    </ul>
+    <h3>v1.0 <small>First release</small></h3>
+    <ul>
+      <li>Red vs Blue sea battles: jet skis, turret boats, destroyers, battleships and aircraft carriers; fighters, jets and bombers; harbor guns; five islands to claim; gold to spend; online play and Practice vs bots.</li>
+    </ul>
+    <div class="btns"><button class="btn go" id="notesDone">Close</button></div>
+  </div>
+</div>
 <div id="deploy" class="ov dim hidden">
   <div class="panel ts">
     <h2 id="dTitle">Deploy</h2>
@@ -358,6 +418,7 @@ body.touch #throttle{top:40%}
     <div class="opt">Invert look <div class="seg" id="sInv"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Graphics <div class="seg" id="sQual"><button class="btn" data-v="auto">Auto</button><button class="btn" data-v="low">Low</button><button class="btn" data-v="medium">Med</button><button class="btn" data-v="high">High</button></div></div>
     <div class="opt">Your name (online) <input class="inp" id="sName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Captain" style="width:170px;min-height:36px;padding:4px 10px;font-size:15px"></div>
+    <div class="opt">Menu music <div class="seg" id="sMusic"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Touch controls <div class="seg" id="sTouch"><button class="btn" data-v="auto">Auto</button><button class="btn" data-v="on">On</button><button class="btn" data-v="off">Off</button></div></div>
     <div class="btns"><button class="btn go" id="sDone">Done</button></div>
   </div>
@@ -368,7 +429,7 @@ body.touch #throttle{top:40%}
     <h2>How to play</h2>
     <p>Two teams, Blue and Red, each have a harbor with <b>25,000</b> health. Sink ships, shoot down planes and bomb the enemy harbor. The first harbor to hit zero loses. When time runs out, the healthier harbor wins.</p>
     <p>Earn <span class="coin" style="width:14px;height:14px"></span> gold by doing damage, getting kills and claiming islands, then spend it on bigger warships and planes. Claim the five neutral islands by parking ships next to them: each one gives your team turrets, a forward spawn and more gold. An aircraft carrier is a floating airfield: while it is afloat, everyone on your team can launch planes from it.</p>
-    <p><b>Online:</b> ▶ PLAY puts you in the one shared battle. It is always full of bots, and each real player who joins takes a bot's place on the side with fewer real players. When a match ends, the next one starts by itself. 🔒 Private room makes a room just for you and friends (send them its code), and 🤖 Practice is offline against bots.</p>
+    <p><b>Online:</b> the <b>Public Battle</b> is one big battle for everyone online: pick Blue or Red and you're in. It's real players only; bots are just for <b>Practice vs bots</b> (offline). <b>Private room</b> makes a room for you and your friends with a code. When a match ends, the next one starts by itself.</p>
     <table>
       <tr><td>W A S D</td><td>Walk · throttle and steer ships · plane throttle and turn</td></tr>
       <tr><td>Mouse</td><td>Look and aim. Planes fly toward where you aim</td></tr>
@@ -419,7 +480,7 @@ body.touch #throttle{top:40%}
 <div id="lobby" class="ov dim hidden">
   <div class="panel ts">
     <div class="lhead"><div><div class="lbl">Room code</div><div id="lCode">-----</div></div><button class="btn" id="lCopy">Copy</button></div>
-    <div id="lInfo">Send the code to your friends. Bots fill the empty places on both teams.</div>
+    <div id="lInfo">Send the code to your friends. Online rooms are real players only: bots are for Practice.</div>
     <div class="lteams" id="lTeams"></div>
     <div id="lSet">
       <div class="opt">Bots <div class="seg" id="lDiff"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div></div>
@@ -447,7 +508,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.1';
+const VERSION = '1.2';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -847,9 +908,9 @@ function makeAvatar(team, gun = true) {
     const b = new Builder();
     // built along the arm (-y), so it points forward when the arm is raised
     b.box(0.32, 2.6, 0.45, 0x2b2b2b, 0, -2.6, 0.32); b.box(0.18, 1.1, 0.18, 0x1a1a1a, 0, -4.4, 0.4); b.box(0.28, 0.9, 0.4, 0x5a3b1e, 0, -1.2, 0.3); b.box(0.26, 0.4, 0.75, 0x2b2b2b, 0, -2.5, -0.2);
-    armR.add(b.mesh());
+    g.userData.rifle = b.mesh(); armR.add(g.userData.rifle);
   }
-  return { group: g, body, head, armL, armR, legL, legR, t: 0 };
+  return { group: g, body, head, armL, armR, legL, legR, t: 0, rifle: g.userData.rifle || null };
 }
 function poseAvatar(av, mode, dt, speed = 0) {
   av.t += dt * (2 + speed * 0.9);
@@ -1116,13 +1177,18 @@ function buildShipModel(type, team) {
   return { group, guns, rider, hullMesh };
 }
 
+for (const k in SHIP_TYPES) SHIP_TYPES[k].speed = Math.round(SHIP_TYPES[k].speed * 1.1 * 10) / 10; // 1.2: every warship is 10% faster
 /* ---------------- planes ---------------- */
 const PLANE_TYPES = {
   fighter: { name: 'Fighter', icon: '✈️', cost: 0, hp: 600, min: 40, max: 92, turn: 1.35, r: 5.5, guns: [[2.2, -0.2, 2], [-2.2, -0.2, 2]], bombs: 2, missiles: 0, cam: 18, kill: 60, sound: 'plane', desc: 'The basic gunner: two machine guns and 2 small bombs.' },
   jet: { name: 'Jet', icon: '🛩️', cost: 450, hp: 650, min: 58, max: 140, turn: 1.25, r: 6, guns: [[0.9, -0.3, 4], [-0.9, -0.3, 4]], bombs: 0, missiles: 4, cam: 20, kill: 90, sound: 'jet', desc: 'Very fast, with machine guns and 4 homing missiles.' },
   bomber: { name: 'Bomber', icon: '💣', cost: 600, hp: 2000, min: 38, max: 72, turn: 0.75, r: 9.5, guns: [[0.6, -0.5, 6.9], [-0.6, -0.5, 6.9]], bombs: 10, missiles: 0, rear: true, cam: 30, kill: 130, sound: 'plane', desc: '10 heavy bombs, two nose guns and a rear gunner. Flattens harbors.' }, // 1.1: nose guns (Click did nothing before)
 };
-const PLANE_ORDER = ['fighter', 'jet', 'bomber'];
+PLANE_TYPES.dual = { name: 'Dual Gunner', icon: '🛩️', cost: 300, hp: 950, min: 42, max: 96, turn: 1.15, r: 6.5, guns: [[1.9, -0.2, 2.4], [-1.9, -0.2, 2.4]], bombs: 0, missiles: 0,
+  gunners: [[0, 1.75, -2.0], [0, -1.05, -1.2]], cam: 22, kill: 85, sound: 'plane', desc: 'Two forward guns, plus a gunner on top and one underneath who shoot at any plane in range.' }; // 1.2
+const PLANE_ORDER = ['fighter', 'jet', 'bomber', 'dual'];
+// 1.2: where your eyes are in each cockpit (plane space: +z forward)
+const COCKPIT_EYE = { fighter: [0, 1.05, 0.35], jet: [0, 1.0, 2.0], bomber: [0, 1.35, 5.6], dual: [0, 1.1, 0.7] };
 
 // flat polygon (x,z points) extruded by thickness t in y
 function slabGeo(pts, t) {
@@ -1159,6 +1225,26 @@ function buildPlaneModel(type, team) {
     b.ball(0.38, C.black, 1.5, -1.5, 1.4, 8); b.ball(0.38, C.black, -1.5, -1.5, 1.4, 8);
     b.box(0.12, 1, 0.12, C.dgrey, 1.5, -1, 1.4); b.box(0.12, 1, 0.12, C.dgrey, -1.5, -1, 1.4);
     prop(0, 0, 4.95, 1);
+  } else if (type === 'dual') { // 1.2: a heavier two-gun fighter with a gunner's turret on top and underneath
+    b.cyl(1.0, 8.4, T.hull, 0, 0, 0.3, Math.PI / 2, 0, 0, 12, 1.0);
+    b.cyl(1.0, 2.6, T.hull, 0, 0.05, -4.9, Math.PI / 2, 0, 0, 12, 0.35);
+    b.cyl(1.05, 1.2, C.dgrey, 0, 0, 4.8, Math.PI / 2, 0, 0, 12);
+    b.box(14.2, 0.3, 2.6, T.hull, 0, -0.4, 1.2);
+    b.box(1.5, 0.31, 2.62, T.dark, 6.9, -0.4, 1.2); b.box(1.5, 0.31, 2.62, T.dark, -6.9, -0.4, 1.2);
+    for (const sx of [-1, 1]) { b.cyl(0.62, 2.6, C.dgrey, sx * 3.4, -0.45, 2.0, Math.PI / 2, 0, 0, 10); b.cyl(0.25, 1.0, C.black, sx * 1.9, -0.25, 2.9, Math.PI / 2, 0, 0, 6); }
+    b.box(5.0, 0.22, 1.4, T.hull, 0, 0.2, -5.3);
+    b.box(0.24, 2.1, 1.7, T.hull, 0, 1.2, -5.4); b.box(0.26, 0.5, 1.72, C.white, 0, 1.95, -5.4);
+    b.box(1.15, 0.85, 2.2, C.glass, 0, 0.95, 0.6); b.box(1.2, 0.12, 2.25, C.dgrey, 0, 1.42, 0.6);
+    b.box(1.0, 0.2, 4.6, C.white, 0, 1.0, -1.9);
+    // the two gunners' turrets, each with twin guns pointing back
+    b.ball(0.7, C.glass, 0, 1.25, -2.0, 10, 0.55); b.cyl(0.75, 0.25, T.dark, 0, 1.0, -2.0, 0, 0, 0, 12);
+    for (const sx of [-1, 1]) b.cyl(0.07, 1.4, C.black, sx * 0.22, 1.35, -2.8, Math.PI / 2, 0, 0, 6);
+    b.ball(0.62, C.glass, 0, -1.0, -1.2, 10, 0.55); b.cyl(0.66, 0.22, T.dark, 0, -0.78, -1.2, 0, 0, 0, 12);
+    for (const sx of [-1, 1]) b.cyl(0.07, 1.3, C.black, sx * 0.2, -1.1, -1.95, Math.PI / 2, 0, 0, 6);
+    roundel(4.8, -0.24, 1.2, 0.9); roundel(-4.8, -0.24, 1.2, 0.9);
+    b.ball(0.42, C.black, 1.7, -1.6, 1.5, 8); b.ball(0.42, C.black, -1.7, -1.6, 1.5, 8);
+    b.box(0.13, 1.05, 0.13, C.dgrey, 1.7, -1.05, 1.5); b.box(0.13, 1.05, 0.13, C.dgrey, -1.7, -1.05, 1.5);
+    prop(0, 0, 5.5, 1.1);
   } else if (type === 'jet') {
     b.box(1.4, 1.3, 9, T.hull, 0, 0, -0.5);
     b.add(cylGeo(0, 1, 10), C.white, 0, 0, 5.2, Math.PI / 2, 0, 0, 0.7, 2.4, 0.7);
@@ -1241,6 +1327,52 @@ function addPalm(b, x, y, z, s, R) {
     const cx = px + Math.sin(a) * Math.cos(droop) * len / 2, cz = pz + Math.cos(a) * Math.cos(droop) * len / 2, cy = py - Math.sin(droop) * len / 2 + 0.2;
     b.box(1.5 * s, 0.14 * s, len, i % 2 ? 0x3faa3a : 0x2f9636, cx, cy, cz, droop, a, 0);
   }
+}
+// 1.2: fuller islands: broadleaf trees, bushes, grass and flowers
+function addTree(b, x, y, z, s, R) {
+  const h = (4.2 + R() * 2.4) * s;
+  b.cyl(0.38 * s, h, 0x6d4a2a, x, y + h / 2, z, (R() - 0.5) * 0.12, 0, (R() - 0.5) * 0.12, 7, 0.26 * s);
+  const greens = [0x3f8f3a, 0x357f33, 0x4c9c3f, 0x2f7230];
+  for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + R(), r = (1.1 + R() * 0.6) * s; b.ball(r * 1.25, greens[i % 4], x + Math.cos(a) * r * 0.7, y + h + (R() - 0.3) * r * 0.6, z + Math.sin(a) * r * 0.7, 8, r); }
+  b.ball(1.8 * s, greens[(R() * 4) | 0], x, y + h + 1.1 * s, z, 8, 1.4 * s);
+}
+function addBush(b, x, y, z, s, R) {
+  const c = R() < 0.5 ? 0x3d8a35 : 0x4a9a3c;
+  for (let i = 0; i < 3; i++) b.ball((0.6 + R() * 0.5) * s, i ? c : 0x346f2e, x + (R() - 0.5) * 1.1 * s, y + 0.35 * s, z + (R() - 0.5) * 1.1 * s, 7, (0.45 + R() * 0.25) * s);
+  if (R() < 0.35) for (let i = 0; i < 3; i++) b.ball(0.13 * s, [0xff5d73, 0xffd23a, 0xffffff][(R() * 3) | 0], x + (R() - 0.5) * 1.2 * s, y + 0.8 * s, z + (R() - 0.5) * 1.2 * s, 5);
+}
+function addTuft(b, x, y, z, s, R) {
+  for (let i = 0; i < 4; i++) { const a = R() * TAU; b.box(0.08 * s, (0.5 + R() * 0.5) * s, 0.24 * s, R() < 0.5 ? 0x5fb043 : 0x6cc24c, x + Math.cos(a) * 0.2 * s, y + 0.25 * s, z + Math.sin(a) * 0.2 * s, (R() - 0.5) * 0.6, a, (R() - 0.5) * 0.6); }
+}
+function addFlowers(b, x, y, z, R) {
+  const c = [0xff5d73, 0xffd23a, 0xffffff, 0xb57bff, 0xff9a3c][(R() * 5) | 0];
+  for (let i = 0; i < 5; i++) { const fx = x + (R() - 0.5) * 1.6, fz = z + (R() - 0.5) * 1.6; b.cyl(0.03, 0.4, 0x4f9a35, fx, y + 0.2, fz, 0, 0, 0, 4); b.ball(0.12, c, fx, y + 0.42, fz, 5); }
+}
+// scatter them over an island, keeping clear of buildings, pads, turrets and the flag
+function decorateIsland(I) {
+  const b = new Builder(), R = rng((I.seed || 1) * 97 + I.x * 0.01), r = I.r, harbor = I.type === 'harbor';
+  const clear = (wx, wz, m) => {
+    for (const B of collidersIn(wx - m, wz - m, wx + m, wz + m)) if (B.solid && wx > B.minX - m && wx < B.maxX + m && wz > B.minZ - m && wz < B.maxZ + m) return false;
+    for (const P of PADS) if (Math.hypot(P.pos.x - wx, P.pos.z - wz) < m + 6) return false;
+    for (const T of TURRET_SPOTS) { if (!T.site) continue; const [tx, tz] = T.site.wx(T.lx, T.lz); if (Math.hypot(tx - wx, tz - wz) < m + 6) return false; }
+    if (!harbor && Math.hypot(wx - I.x, wz - I.z) < 14) return false;
+    return true;
+  };
+  const place = (n, minH, m, fn) => {
+    for (let i = 0, tries = 0; i < n && tries < n * 6; tries++) {
+      const a = R() * TAU, d = harbor ? 140 + R() * 80 : r * Math.sqrt(R()) * 0.92, x = Math.cos(a) * d, z = Math.sin(a) * d, wx = I.x + x, wz = I.z + z, h = landH(wx, wz);
+      if (h < minH || !clear(wx, wz, m)) continue;
+      fn(x, h, z); i++;
+    }
+  };
+  const k = harbor ? 1.1 : I.type === 'deco' ? 0.8 : 1;
+  place(Math.round(r / 5 * k), 1.6, 3, (x, h, z) => addTree(b, x, h - 0.2, z, 0.85 + R() * 0.45, R));
+  place(Math.round(r / 7 * k), 1.0, 2.5, (x, h, z) => addPalm(b, x, h - 0.3, z, 0.8 + R() * 0.5, R));
+  place(Math.round(r * 0.7 * k), 0.7, 1.5, (x, h, z) => addBush(b, x, h - 0.1, z, 0.9 + R() * 0.7, R));
+  place(Math.round(r * 1.4 * k), 0.5, 1, (x, h, z) => addTuft(b, x, h - 0.05, z, 0.9 + R() * 0.6, R));
+  place(Math.round(r / 3 * k), 1.0, 1, (x, h, z) => addFlowers(b, x, h - 0.02, z, R));
+  if (b.empty) return;
+  const m = b.mesh(); m.position.set(I.x, 0, I.z); scene.add(m);
 }
 function addRock(b, x, y, z, s, R) { b.add(icoGeo(0), R() < 0.5 ? 0x8f8f8c : 0x7d7d7a, x, y, z, R() * 3, R() * 3, R() * 3, s * (1 + R() * 0.5), s * (0.6 + R() * 0.4), s * (1 + R() * 0.5)); }
 function addCrate(b, x, y, z, s, rot = 0) { b.box(s, s, s, 0xa87a45, x, y + s / 2, z, 0, rot, 0); b.box(s * 1.02, s * 0.14, s * 1.02, 0x7a5530, x, y + s * 0.5, z, 0, rot, 0); }
@@ -1672,6 +1804,7 @@ function buildWorld() {
   for (const I of ISLES) buildTerrain(I);
   buildHarbor(0); buildHarbor(1);
   for (const I of ISLES) { if (I.type === 'claim') buildClaimIsland(I); else if (I.type === 'deco') buildDecoIsland(I); }
+  for (const I of ISLES) decorateIsland(I); // 1.2: trees, bushes, grass and flowers everywhere
   for (const P of PADS) { P.group = buildPad(P.team, P.kind); P.group.position.copy(P.pos); scene.add(P.group); }
   buildDepthTexture();
   clouds = buildClouds(); scene.add(clouds);
@@ -1787,6 +1920,27 @@ const WEAP = {
   torpedo: { speed: 46, dmg: 1150, life: 24, grav: 0, splash: 6, model: 'torp', snd: 'torp', range: 900, vs: { ship: 1, harbor: 0.5, turret: 0.5, plane: 0, soldier: 1 } },
   missile: { speed: 215, dmg: 380, life: 6.5, grav: 0, splash: 5, model: 'missile', homing: 2.6, snd: 'missile', range: 900, vs: { plane: 1.3, ship: 0.9, turret: 1, harbor: 0.5, soldier: 1 } },
 };
+// 1.2: sailors' guns (the models come from Cube Assault)
+Object.assign(WEAP, {
+  pistol: { speed: 480, dmg: 34, life: 0.9, grav: 0, tracer: 0xfff2b0, len: 2.6, w: 0.12, snd: 'rifle', rof: 3.4, spread: 0.006, range: 320, vs: { soldier: 1, ship: 0.25, plane: 0.5, turret: 0.2, harbor: 0.01 } },
+  shotgun: { speed: 430, dmg: 15, life: 0.45, grav: 0, tracer: 0xffd890, len: 2, w: 0.1, snd: 'rifle', rof: 1.1, spread: 0.055, pellets: 8, range: 140, vs: { soldier: 1, ship: 0.3, plane: 0.6, turret: 0.25, harbor: 0.01 } },
+  sniper: { speed: 950, dmg: 115, life: 1.2, grav: 0, tracer: 0xffffff, len: 7, w: 0.12, snd: 'rifle', rof: 0.75, spread: 0, range: 950, vs: { soldier: 1, ship: 0.3, plane: 0.7, turret: 0.3, harbor: 0.01 } },
+  rpg: { speed: 140, dmg: 300, life: 5, grav: 0, splash: 6, model: 'missile', snd: 'missile', rof: 0.6, range: 600, vs: { ship: 0.9, plane: 1, turret: 1, harbor: 0.4, soldier: 1 } },
+});
+const FOOT_GUNS = ['rifle', 'pistol', 'shotgun', 'sniper', 'rpg'], FOOT_GUN_NAME = { rifle: 'Rifle', pistol: 'Pistol', shotgun: 'Shotgun', sniper: 'Sniper Rifle', rpg: 'Rocket Launcher' };
+const FOOT_GUN_MODEL = { pistol: 'pistol', shotgun: 'shotgun', sniper: 'sniper', rpg: 'rocket' };
+// put the right gun in a sailor's hand (the rifle is part of the arm; the others are Cube Assault's models)
+function setFootGun(s, wk) {
+  if (!s || !s.av || s.gunShown === wk) return; s.gunShown = wk;
+  const av = s.av; if (av.rifle) av.rifle.visible = wk === 'rifle';
+  if (av.caGun) { av.armR.remove(av.caGun); av.caGun = null; }
+  if (wk !== 'rifle' && typeof CA_GUNS !== 'undefined' && CA_GUNS[FOOT_GUN_MODEL[wk]]) {
+    const M = CA_GUNS[FOOT_GUN_MODEL[wk]](), g = new THREE.Group(); g.add(M.g);
+    M.g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    g.rotation.x = -Math.PI / 2; g.scale.setScalar(wk === 'pistol' ? 6 : 4.4); g.position.set(0, -2.0, 0.42);
+    av.armR.add(g); av.caGun = g;
+  }
+}
 const PROJS = [];
 // instanced tracers and shells
 const tracerMesh = new THREE.InstancedMesh(boxGeo(), new THREE.MeshBasicMaterial(), 900);
@@ -1995,6 +2149,7 @@ function applyDamage(e, amount, src) {
   if (!e.alive || amount <= 0 || GAME.over) return;
   if (e.team === src.team || e.team < 0) return;
   if (e.invuln > 0) return;
+  if (e.kind === 'plane' && e.disabled) return; // 1.2: already going down
   e.hp -= amount; e.hitT = 0.2;
   const own = src.owner;
   if (own) {
@@ -2005,6 +2160,11 @@ function applyDamage(e, amount, src) {
   e.lastHit = own;
   if (e.driver && e.driver.isPlayer) playerHurt(amount);
   if (e.kind === 'harbor') harborDamaged(e);
+  if (e.kind === 'plane' && e.hp <= 0 && !e.crashed) { // 1.2: it stops working and falls; it's killed when it hits something
+    e.hp = 1; e.disabled = true; e.disabledBy = own;
+    if (e.driver && e.driver.isPlayer) showMsg('', 'Your plane is going down! Bail out with <b>E</b>, or crash it into a ship');
+    return;
+  }
   if (e.hp <= 0) { e.hp = 0; killEnt(e, own); }
 }
 function killEnt(e, killer) {
@@ -2346,6 +2506,11 @@ class Plane extends Ent {
     const P = this.P;
     if (this.invuln > 0) this.invuln -= dt;
     this.spin(dt);
+    if (!this.alive && this.sinking) { // 1.2: slips under the waves
+      this.pos.y -= dt * 1.6; this.bank += dt * 0.3; this.fwd.y = Math.max(-0.7, this.fwd.y - dt * 0.4); this.fwd.normalize(); this.orient(dt);
+      if (this.pos.y < -14) { scene.remove(this.group); this.remove(); this.gone = true; }
+      return;
+    }
     if (!this.alive) {
       this.vel.y -= 26 * dt; this.pos.addScaledVector(this.vel, dt);
       this.bank += dt * 3; this.fwd.copy(this.vel).normalize(); this.orient(dt);
@@ -2354,13 +2519,19 @@ class Plane extends Ent {
       if (this.pos.y < gh + 0.5) { explode(this.pos, 7); scene.remove(this.group); this.remove(); this.gone = true; }
       return;
     }
+    // 1.2: going down: no engine, no guns, heavy smoke, and the nose drops (you can still steer it a little)
+    if (!this.disabled && NET.client && this.hp <= 1 && this.maxHp > 1) this.disabled = true;
+    if (this.disabled) {
+      this.thr = 0; this.trigger = false; this.desired.y = Math.min(this.desired.y, this.fwd.y - 0.05, -0.2);
+      this.dfx = (this.dfx || 0) - dt; if (this.dfx <= 0) { this.dfx = 0.05; smokePuff(this.pos, 2.6, true); firePuff(this.pos, 2.2); }
+    }
     // steer toward the desired direction
     const d = this.desired;
     if (d.y > 0.88) d.y = 0.88; if (d.y < -0.88) d.y = -0.88; d.normalize();
     const ang = this.fwd.angleTo(d);
     if (ang > 1e-4) {
       const ax = _v3.crossVectors(this.fwd, d);
-      if (ax.lengthSq() > 1e-8) { ax.normalize(); this.fwd.applyAxisAngle(ax, Math.min(ang, P.turn * dt * clamp(this.speed / P.min, 0.7, 1.15))); }
+      if (ax.lengthSq() > 1e-8) { ax.normalize(); this.fwd.applyAxisAngle(ax, Math.min(ang, P.turn * dt * clamp(this.speed / P.min, 0.7, 1.15) * (this.disabled ? 0.45 : 1))); }
     }
     if (this.fwd.y > 0.9) { this.fwd.y = 0.9; this.fwd.normalize(); }
     if (this.fwd.y < -0.9) { this.fwd.y = -0.9; this.fwd.normalize(); }
@@ -2375,15 +2546,21 @@ class Plane extends Ent {
     this.orient(dt);
     // crashing into the ground, water or buildings
     const gh = landH(this.pos.x, this.pos.z);
-    let crash = this.pos.y < Math.max(gh, 0) + 1.2;
+    let crash = this.pos.y < Math.max(gh, 0) + 1.2, solid = false, hitShip = null;
     if (!crash && this.pos.y < 60) {
       const l = collidersIn(this.pos.x - 3, this.pos.z - 3, this.pos.x + 3, this.pos.z + 3);
-      for (const B of l) if (this.pos.x > B.minX - 2 && this.pos.x < B.maxX + 2 && this.pos.z > B.minZ - 2 && this.pos.z < B.maxZ + 2 && this.pos.y < B.maxY + 1 && this.pos.y > B.minY) { crash = true; break; }
+      for (const B of l) if (this.pos.x > B.minX - 2 && this.pos.x < B.maxX + 2 && this.pos.z > B.minZ - 2 && this.pos.z < B.maxZ + 2 && this.pos.y < B.maxY + 1 && this.pos.y > B.minY) { crash = true; solid = true; break; }
     }
+    // 1.2: flying into a ship counts as a crash too (kamikaze)
+    if (!crash && this.pos.y < 40) hitShip = shipUnder(this.pos, 1.5);
+    if (hitShip) crash = true;
     if (crash) {
+      const water = !hitShip && !solid && gh < -0.5;
       this.pos.y = Math.max(gh, 0) + 0.5;
-      this.crashed = true; this.invuln = 0;
-      killEnt(this, this.lastHit && this.lastHit.team !== this.team ? this.lastHit : null);
+      this.crashed = true; this.crashWater = water; this.invuln = 0;
+      if (!water) planeImpact(this, hitShip);
+      const by = this.disabledBy && this.disabledBy.team !== this.team ? this.disabledBy : this.lastHit && this.lastHit.team !== this.team ? this.lastHit : null;
+      killEnt(this, by);
       return;
     }
     this.smoke(dt);
@@ -2404,7 +2581,7 @@ class Plane extends Ent {
   weapons(dt, rear = true) {
     const P = this.P;
     if (this.gunCd > 0) this.gunCd -= dt; if (this.bombCd > 0) this.bombCd -= dt; if (this.misCd > 0) this.misCd -= dt;
-    if (this.trigger && this.gunCd <= 0 && P.guns.length) {
+    if (this.trigger && this.gunCd <= 0 && P.guns.length && !this.disabled) {
       const g = P.guns[this.gi++ % P.guns.length];
       _v1.set(g[0], g[1], g[2]).applyMatrix4(this.group.matrixWorld);
       const sp = 0.012; _v2.copy(this.fwd).add(_v3.set(rand(-sp, sp), rand(-sp, sp), rand(-sp, sp))).normalize();
@@ -2413,19 +2590,20 @@ class Plane extends Ent {
       this.gunCd = 1 / 13;
     }
     if ((this.bombs < P.bombs || this.missiles < P.missiles)) { this.rearm += dt; if (this.rearm > (P.bombs > 4 ? 4 : 9)) { this.rearm = 0; if (this.bombs < P.bombs) this.bombs++; if (this.missiles < P.missiles) this.missiles++; } }
-    // the bomber's tail gunner looks after itself
-    if (P.rear && rear) {
-      if (this.rearCd > 0) this.rearCd -= dt;
-      else {
+    // gunners look after themselves: the bomber's tail gunner, and the Dual Gunner's two (1.2)
+    const GN = P.gunners || (P.rear ? [[0, 1.4, -3]] : null);
+    if (GN && rear && !this.disabled) {
+      this.gcd = this.gcd || GN.map(() => 0);
+      GN.forEach((gp, k) => {
+        if (this.gcd[k] > 0) { this.gcd[k] -= dt; return; }
         const t = autoTarget(null, this.team, this.pos, true, false, 420);
-        if (t) {
-          _v1.set(0, 1.4, -3).applyMatrix4(this.group.matrixWorld);
-          leadPoint(_v2, _v1, t, WEAP.mg.speed, 0); _v2.sub(_v1).normalize();
-          _v2.x += rand(-0.03, 0.03); _v2.y += rand(-0.03, 0.03); _v2.z += rand(-0.03, 0.03); _v2.normalize();
-          fire('mg', this, _v1, _v2, { vel: _v3.copy(this.fwd).multiplyScalar(this.speed * 0.5), gi: 1 });
-          this.rearCd = 0.11;
-        } else this.rearCd = 0.4;
-      }
+        if (!t) { this.gcd[k] = 0.4; return; }
+        _v1.set(gp[0], gp[1], gp[2]).applyMatrix4(this.group.matrixWorld);
+        leadPoint(_v2, _v1, t, WEAP.mg.speed, 0); _v2.sub(_v1).normalize();
+        _v2.x += rand(-0.03, 0.03); _v2.y += rand(-0.03, 0.03); _v2.z += rand(-0.03, 0.03); _v2.normalize();
+        fire('mg', this, _v1, _v2, { vel: _v3.copy(this.fwd).multiplyScalar(this.speed * 0.5), gi: 1, silent: k > 0 });
+        this.gcd[k] = 0.11 + k * 0.02;
+      });
     }
   }
   dropBomb() {
@@ -2443,7 +2621,12 @@ class Plane extends Ent {
     return true;
   }
   onDeath() {
-    if (this.crashed) { explode(this.pos, 8); scene.remove(this.group); this.remove(); this.gone = true; }
+    const water = this.crashWater ?? (this.crashed && landH(this.pos.x, this.pos.z) < -0.5 && this.pos.y < 4 && !shipUnder(this.pos, 6));
+    if (this.crashed && water) { // 1.2: into the sea: a splash, then it sinks
+      for (let i = 0; i < 14; i++) fxSmoke.spawn(this.pos.x + rand(-3, 3), 0.3, this.pos.z + rand(-3, 3), rand(-3, 3), rand(5, 12), rand(-3, 3), 0.9, 1.1, 0.2, 0xffffff, 0xd8f2ff, 18);
+      Sound.play('splash', this.pos); this.sinking = true; this.vel.set(0, 0, 0); this.pos.y = Math.min(this.pos.y, 0.4);
+    }
+    else if (this.crashed) { explode(this.pos, 16); if (camera.position.distanceTo(this.pos) < 260) camShake = Math.max(camShake, 1.2); scene.remove(this.group); this.remove(); this.gone = true; } // 1.2: a much bigger blast
     else { explode(this.pos, 5); this.vel.copy(this.fwd).multiplyScalar(this.speed * 0.8); }
     if (this.driver) vehicleLost(this.driver, this);
     this.driver = null;
@@ -2511,6 +2694,30 @@ class Turret extends Ent {
   }
 }
 
+// 1.2: the ship whose hull a point is inside (or within pad metres of)
+function shipUnder(p, pad) {
+  for (const s of ENTS) {
+    if (s.kind !== 'ship' || !s.alive) continue;
+    const dx = p.x - s.pos.x, dz = p.z - s.pos.z, L = s.S.len / 2 + pad;
+    if (dx * dx + dz * dz > (L + s.S.wid) * (L + s.S.wid)) continue;
+    const sn = Math.sin(s.heading), cs = Math.cos(s.heading), along = dx * sn + dz * cs, side = dx * cs - dz * sn;
+    if (Math.abs(along) < L && Math.abs(side) < s.S.wid / 2 + pad && p.y < (s.S.top || 8) + pad) return s;
+  }
+  return null;
+}
+// 1.2: kamikaze. A plane that crashes hurts what it hits: a ship loses 45% of its full health (so one at full health
+// survives), and turrets, sailors, other ships and harbor buildings nearby are damaged by the blast.
+function planeImpact(pl, ship) {
+  const src = { team: pl.team, owner: pl.driver || null, W: WEAP.bomb, wn: 'bomb' };
+  if (ship && ship.team !== pl.team) applyDamage(ship, ship.maxHp * 0.45, src);
+  for (const e of ENTS) {
+    if (!e.alive || e === ship || e === pl || e.team === pl.team || e.team < 0 || e.kind === 'harbor') continue;
+    const d = e.hitCenter().distanceTo(pl.pos); if (d > 24) continue;
+    const f = 1 - d / 24;
+    applyDamage(e, (e.kind === 'ship' ? e.maxHp * 0.15 : e.kind === 'turret' ? e.maxHp * 0.6 : 450) * f, src);
+  }
+  for (const H of HARBORS) if (H.ent && H.team !== pl.team && Math.hypot(H.center.x - pl.pos.x, H.center.z - pl.pos.z) < 130) applyDamage(H.ent, 700, src);
+}
 /* ---------------- the player on foot ---------------- */
 class Soldier extends Ent {
   constructor(team, driver) {
@@ -2637,7 +2844,7 @@ function makeBots() {
   GAME.bots = [];
   const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
   for (let t = 0; t < 2; t++) {
-    const n = GAME.demo ? GAME.perTeam : GAME.perTeam - (NET.on ? NET.humans(t) : t === PLAYER.team ? 1 : 0); // bots fill the places real players don't
+    const n = GAME.demo ? GAME.perTeam : NET.on ? 0 : GAME.perTeam - (t === PLAYER.team ? 1 : 0); // bots fill the places real players don't (1.2: offline only)
     for (let i = 0; i < n; i++) GAME.bots.push(new Bot(t, names.pop() || 'Bot' + i, (i % 5) < 3 ? 'navy' : 'air'));
   }
 }
@@ -3119,6 +3326,8 @@ function onKey(code) {
   }
   if (!playing() || GAME.over) return;
   if (code === 'KeyM') { toggleMap(); return; }
+  if (PLAYER.mode === 'foot' && /^Digit[1-5]$/.test(code)) { PLAYER.wpn = +code[5] - 1; Sound.play('ui'); showMsg('', FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn]]); return; } // 1.2
+  if (code === 'KeyC' && PLAYER.mode === 'plane') { settings.planeCam = settings.planeCam === 'cockpit' ? 'chase' : 'cockpit'; saveObj(SET_KEY, settings); showMsg('', settings.planeCam === 'cockpit' ? 'Cockpit view · press C to switch back' : 'Chase view'); return; } // 1.2
   if (code === 'Tab') { drawBoard(); $('board').classList.remove('hidden'); return; }
   if (overlayOpen()) return;
   if (code === 'KeyE') useKey();
@@ -3310,15 +3519,20 @@ function playerFoot(s, dt, c) {
   s.group.position.copy(s.pos); s.group.rotation.y = s.yaw;
   poseAvatar(s.av, s.chute ? 'chute' : s.swim ? 'swim' : !s.onGround ? 'fall' : moving > 0.6 ? 'walk' : 'idle', dt, moving);
   if (s.swim) s.av.body.rotation.x = 0.9; else s.av.body.rotation.x = 0;
-  // rifle
+  // your gun (1.2: five of them, keys 1 to 5)
+  const wk = FOOT_GUNS[PLAYER.wpn || 0] || 'rifle', W = WEAP[wk];
+  setFootGun(s, wk);
   if (s.cd > 0) s.cd -= dt;
   if (c.fire && s.cd <= 0 && !s.swim && !s.chute) {
     const aim = PLAYER.aimPt;
     _v1.set(s.pos.x - Math.cos(s.yaw) * 0.6 + Math.sin(s.yaw) * 1.2, s.pos.y + 1.55, s.pos.z + Math.sin(s.yaw) * 0.6 + Math.cos(s.yaw) * 1.2);
-    _v2.copy(aim).sub(_v1).normalize();
-    fire('rifle', s, _v1, _v2.add(_v3.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(WEAP.rifle.spread)).normalize());
-    muzzleFlash(_v1, 0.4);
-    s.cd = 1 / WEAP.rifle.rof;
+    for (let k = 0; k < (W.pellets || 1); k++) {
+      _v2.copy(aim).sub(_v1).normalize();
+      fire(wk, s, _v1, _v2.add(_v3.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(W.spread || 0)).normalize(), k ? { silent: true } : undefined);
+    }
+    muzzleFlash(_v1, wk === 'rpg' ? 1 : wk === 'shotgun' ? 0.7 : 0.4);
+    if (wk === 'rpg' || wk === 'sniper') camShake = Math.max(camShake, 0.35);
+    s.cd = 1 / W.rof;
   }
   PLAYER.interact = findInteract(s);
 }
@@ -3423,7 +3637,36 @@ PLAYER.aimPt = new V3();
 
 const _ct = new V3(), _cp = new V3();
 let titleCam = { t: 0, target: null, ang: 0 };
+const COCKPIT = (() => {
+  const g = new THREE.Group(), dark = new THREE.MeshBasicMaterial({ color: 0x23272e }), mid = new THREE.MeshBasicMaterial({ color: 0x3a414c }), rim = new THREE.MeshBasicMaterial({ color: 0x15181d });
+  const bx = (w, h, d, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); g.add(o); return o; };
+  // dashboard across the bottom, with a padded top edge
+  bx(2.2, 0.42, 0.5, dark, 0, -0.78, -1.05); bx(2.2, 0.08, 0.56, rim, 0, -0.56, -1.0);
+  // dials
+  const dial = canvasTex(128, 128, (x) => { x.fillStyle = '#0d0f12'; x.beginPath(); x.arc(64, 64, 60, 0, TAU); x.fill(); x.strokeStyle = '#d8dee8'; x.lineWidth = 4; x.stroke();
+    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; x.beginPath(); x.moveTo(64 + Math.cos(a) * 48, 64 + Math.sin(a) * 48); x.lineTo(64 + Math.cos(a) * 56, 64 + Math.sin(a) * 56); x.stroke(); }
+    x.strokeStyle = '#ffb03a'; x.lineWidth = 5; x.beginPath(); x.moveTo(64, 64); x.lineTo(100, 40); x.stroke(); });
+  const dm = new THREE.MeshBasicMaterial({ map: dial });
+  for (const dx of [-0.6, -0.3, 0.3, 0.6]) { const d = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), dm); d.position.set(dx, -0.7, -0.79); d.rotation.x = -0.35; g.add(d); }
+  // canopy frame: thin side pillars and a bar overhead, kept to the edges so the view stays clear
+  for (const sx of [-1, 1]) { bx(0.05, 1.6, 0.05, rim, sx * 1.05, 0.05, -1.0, 0, 0, -sx * 0.32); bx(0.04, 0.04, 1.6, rim, sx * 0.86, 0.72, -0.4); }
+  bx(1.6, 0.05, 0.05, rim, 0, 0.78, -1.0);
+  // a reflector gunsight in the middle
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.045, 0.052, 32), new THREE.MeshBasicMaterial({ color: 0xffb03a, transparent: true, opacity: 0.85, depthTest: false }));
+  ring.position.set(0, -0.08, -1.2); g.add(ring); bx(0.12, 0.12, 0.08, mid, 0, -0.5, -1.1);
+  g.traverse(o => { if (o.isMesh) { o.renderOrder = 20; o.frustumCulled = false; } });
+  g.visible = false; let hidden = null;
+  function tick() {
+    const e = PLAYER.ent, on = PLAYER.mode === 'plane' && e && e.alive && settings.planeCam === 'cockpit' && !CINE.on;
+    if (!g.parent) { camera.add(g); if (!camera.parent) scene.add(camera); }
+    g.visible = !!on;
+    if (hidden && hidden !== (on ? e : null)) { if (hidden.group) hidden.group.visible = true; hidden = null; }
+    if (on) { e.group.visible = false; hidden = e; }
+  }
+  return { tick };
+})();
 function updateCamera(dt) {
+  COCKPIT.tick();
   // mouse and touch look
   const sens = 0.0023 * settings.sens * (cam.zoom ? 0.45 : 1), inv = settings.invert ? -1 : 1;
   cam.yaw -= (IN.mdx * sens + TOUCH.lx * sens * 2.2);
@@ -3452,6 +3695,9 @@ function updateCamera(dt) {
     _cp.copy(_ct).addScaledVector(aimDir, -dist); _cp.y += e.S.cam * 0.12;
     _cp.y = Math.max(_cp.y, 1.6, landH(_cp.x, _cp.z) + 1);
     camera.position.copy(_cp);
+  } else if (mode === 'plane' && e && settings.planeCam === 'cockpit' && e.alive) { // 1.2: the cockpit view
+    const o = COCKPIT_EYE[e.type] || [0, 1, 0.4];
+    e.group.updateMatrixWorld(true); _cp.set(o[0], o[1], o[2]).applyMatrix4(e.group.matrixWorld); camera.position.copy(_cp);
   } else if (mode === 'plane' && e) {
     const dist = e.P.cam * (zoom ? 0.7 : 1);
     _cp.copy(e.pos).addScaledVector(aimDir, -dist); _cp.y += e.P.cam * 0.22;
@@ -3610,10 +3856,10 @@ function updateHUD(dt) {
     // bottom-right key hints
     let keys = '';
     if (!touchOn()) {
-      if (mode === 'foot') keys = '<div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div>';
+      if (mode === 'foot') keys = `<div><kbd>1</kbd>-<kbd>5</kbd>${FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn || 0]]}</div><div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div>`;
       else if (mode === 'ship' && !e.alive) keys = '<div><kbd>E</kbd>Jump overboard</div>';
       else if (mode === 'ship') keys = `<div><kbd>W</kbd><kbd>S</kbd>Throttle <kbd>A</kbd><kbd>D</kbd>Steer</div><div><kbd>Click</kbd>Fire</div>${e.S.torps ? '<div><kbd>F</kbd>Torpedo</div>' : ''}${e.S.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}${e.S.carrier ? '<div><kbd>B</kbd>Launch a plane</div>' : ''}<div><kbd>E</kbd>Get out</div>`;
-      else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div>${e.P.guns.length ? '<div><kbd>Click</kbd>Guns</div>' : ''}${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>Space</kbd>Level out</div><div><kbd>E</kbd>Bail out</div>`;
+      else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div>${e.P.guns.length ? '<div><kbd>Click</kbd>Guns</div>' : ''}${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>Space</kbd>Level out</div><div><kbd>C</kbd>Cockpit view</div><div><kbd>E</kbd>Bail out</div>`;
       else if (mode === 'turret') keys = '<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>Leave</div>';
     }
     setHTML('keys', keys);
@@ -3641,7 +3887,7 @@ function updateHUD(dt) {
   const cls = (mode === 'ship' ? 'dot' : mode === 'plane' ? 'ring' : '') + (cvis ? '' : ' hidden');
   if (cross.className !== cls) cross.className = cls;
   setShow('clickLock', playing() && !IN.locked && !touchOn() && !overlayOpen() && !GAME.over && PLAYER.mode !== 'dead');
-  setShow('scope', (cam.zoom || IN.rmb) && mode === 'turret');
+  setShow('scope', (cam.zoom || IN.rmb) && (mode === 'turret' || (mode === 'foot' && FOOT_GUNS[PLAYER.wpn || 0] === 'sniper')));
   // prompt
   let prompt = '';
   if (mode === 'foot' && PLAYER.interact) prompt = (touchOn() ? '<kbd>E</kbd>' : '<kbd>E</kbd>') + PLAYER.interact.text;
@@ -3820,9 +4066,9 @@ function renderDeploy() {
     const free = !D.cost, can = !DEPLOY.locked && PLAYER.gold >= D.cost;
     return `<button class="card ${free ? 'free' : ''}" data-k="${k}" data-t="${t}" ${can ? '' : 'disabled'}><div class="em">${D.icon}</div><div class="nm">${D.name}</div><div class="ds">${D.desc}</div><div class="pr">${free ? 'FREE' : '<span class="coin"></span>' + fmt(D.cost)}</div></button>`;
   };
-  setShow('dBoatWrap', (!kind || kind === 'boat') && !atCarrier);
+  setShow('dBoatWrap', (!kind || kind === 'boat')); // 1.2: ships can launch beside a carrier too
   $('dBoats').innerHTML = SHIP_ORDER.map(t => card('boat', t, SHIP_TYPES[t])).join('');
-  setShow('dPlaneWrap', (!kind || kind === 'plane') && !atIsland);
+  setShow('dPlaneWrap', (!kind || kind === 'plane')); // 1.2: and planes take off over your islands
   $('dPlanes').innerHTML = PLANE_ORDER.map(t => card('plane', t, PLANE_TYPES[t])).join('');
   setShow('dFootWrap', !pad && DEPLOY.reason !== 'menu' && !atCarrier);
   $('dFoot').innerHTML = `<button class="card free" data-k="foot" data-t="foot" ${DEPLOY.locked ? 'disabled' : ''}><div class="em">🚶</div><div class="nm">On foot</div><div class="ds">Walk around your base, man turrets and pick vehicles from the pads.</div><div class="pr">FREE</div></button>`;
@@ -3855,7 +4101,10 @@ function deploy(kind, type) {
   const D = kind === 'boat' ? SHIP_TYPES[type] : kind === 'plane' ? PLANE_TYPES[type] : { cost: 0 };
   if (PLAYER.gold < D.cost) { Sound.play('deny'); return; }
   let ent = null;
-  if (kind === 'boat') {
+  if (kind === 'boat' && carrier) { // 1.2: in the water beside the carrier
+    const rx = Math.cos(carrier.heading), rz = -Math.sin(carrier.heading), off = carrier.S.wid / 2 + (D.wid || 6) / 2 + 12;
+    ent = spawnShip(type, team, { spawn: new V3(carrier.pos.x + rx * off, 0, carrier.pos.z + rz * off), heading: carrier.heading }, null);
+  } else if (kind === 'boat') {
     let pads = PADS.filter(p => p.kind === 'boat' && p.team === team && (loc === 'harbor' ? !p.island : p.island === loc));
     if (DEPLOY.pad && padFree(DEPLOY.pad, D.len)) pads = [DEPLOY.pad];
     const free = pads.filter(p => padFree(p, D.len));
@@ -3864,6 +4113,10 @@ function deploy(kind, type) {
     ent = spawnShip(type, team, pad, null);
   } else if (kind === 'plane') {
     if (carrier) ent = launchFromCarrier(type, team, carrier, null);
+    else if (loc !== 'harbor' && !DEPLOY.pad) { // 1.2: already flying, over one of your islands, heading for the enemy
+      const eh = HARBORS[1 - team].center, hd = Math.atan2(eh.x - loc.x, eh.z - loc.z);
+      ent = new Plane(type, team, new V3(loc.x - Math.sin(hd) * 30, Math.max(loc.top || 10, 10) + 60, loc.z - Math.cos(hd) * 30), hd, 0, null);
+    }
     else {
       const pads = PADS.filter(p => p.kind === 'plane' && p.team === team);
       const pad = DEPLOY.pad && DEPLOY.pad.kind === 'plane' ? DEPLOY.pad : pick(pads);
@@ -3893,6 +4146,65 @@ $('pSet').onclick = openSettings;
 $('pQuit').onclick = () => { $('pause').classList.add('hidden'); GAME.paused = false; if (NET.inRoom()) NET.quit(); else toTitle(); };
 $('hDone').onclick = () => $('help').classList.add('hidden');
 $('helpBtn').onclick = () => $('help').classList.remove('hidden');
+// 1.2: patch notes, and joining the public battle on the side you pick
+$('notesBtn').onclick = () => { Sound.init(); Sound.play('ui'); $('notes').classList.remove('hidden'); };
+$('notesDone').onclick = () => $('notes').classList.add('hidden');
+for (const [id, t] of [['joinBlue', 0], ['joinRed', 1]]) $(id).onclick = () => { settings.worldTeam = t; saveObj(SET_KEY, settings); $('playBtn').click(); };
+// 1.2: the menu music, a sea-battle theme in D minor made in code: a jig-like hook over a marching bass, squeezebox
+// chords and war drums. It plays on the menus and fades out when a match starts.
+const MENU_MUSIC = (() => {
+  let ctx = null, out = null, step = 0, nextT = 0, timer = 0, on = false;
+  const BPM = 138, S16 = 60 / BPM / 4, f = n => 440 * Math.pow(2, (n - 69) / 12);
+  const CH = [[62, 65, 69], [62, 65, 69], [58, 62, 65], [60, 64, 67], [62, 65, 69], [65, 69, 72], [60, 64, 67], [57, 61, 64]];
+  const BASS = [38, 38, 34, 36, 38, 41, 36, 33];
+  const MEL = [[74, 0, 69, 0, 74, 0, 77, 0, 76, 0, 74, 0, 72, 0, 69, 0], [74, 0, 77, 0, 81, 0, 79, 0, 77, 76, 77, 0, 74, 0, 0, 0], [70, 0, 74, 0, 77, 0, 74, 0, 70, 0, 72, 0, 74, 0, 77, 0], [76, 0, 72, 0, 67, 0, 72, 0, 76, 0, 79, 0, 76, 0, 72, 0],
+    [74, 0, 69, 0, 74, 0, 77, 0, 76, 0, 74, 0, 72, 0, 69, 0], [77, 0, 81, 0, 84, 0, 81, 0, 79, 77, 79, 0, 77, 0, 0, 0], [76, 0, 79, 0, 76, 0, 72, 0, 74, 0, 76, 0, 72, 0, 69, 0], [73, 0, 76, 0, 81, 0, 79, 0, 76, 0, 73, 0, 69, 0, 0, 0]];
+  let noise = null;
+  function tone(type, freq, t, dur, vol, cut = 3000, det = 0) {
+    const o = ctx.createOscillator(), g = ctx.createGain(), fl = ctx.createBiquadFilter(); o.type = type; o.frequency.value = freq; o.detune.value = det;
+    fl.type = 'lowpass'; fl.frequency.value = cut; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(fl); fl.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function hit(t, vol, freq, dur, hp) {
+    const src = ctx.createBufferSource(), g = ctx.createGain(), fl = ctx.createBiquadFilter(); src.buffer = noise; fl.type = hp ? 'highpass' : 'bandpass'; fl.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); src.connect(fl); fl.connect(g); g.connect(out); src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.05);
+  }
+  function kick(t, v = 0.5, f0 = 120) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.18); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.35); }
+  function play(n, t) {
+    const bar = Math.floor(n / 16) % 8, st = n % 16, loop = Math.floor(n / 128);
+    const m = MEL[bar][st];
+    if (m) { const v = loop % 2 ? 0.075 : 0.065; tone('square', f(m), t, S16 * 1.7, v, 2600); tone('triangle', f(m), t, S16 * 2.2, v * 0.8, 4000, 6); if (loop % 2) tone('triangle', f(m - 12), t, S16 * 1.8, 0.04, 1800); }
+    if (st === 0 || st === 8) for (const c of CH[bar]) { tone('sawtooth', f(c - 12), t, S16 * 7.5, 0.016, 1300, -7); tone('sawtooth', f(c - 12), t, S16 * 7.5, 0.016, 1300, 7); }
+    if (st === 0 || st === 6 || st === 8 || st === 12) tone('sawtooth', f(BASS[bar] + (st === 12 ? 7 : 0)), t, S16 * 2.6, 0.11, 650);
+    if (st === 0 || st === 8) kick(t);
+    if (st === 4 || st === 12) hit(t, 0.22, 1900, 0.16);
+    if (st % 2 === 0) hit(t, 0.04, 7000, 0.04, true);
+    if (bar === 7 && st >= 8 && st % 2 === 0) kick(t, 0.32, 200 - (st - 8) * 14); // war toms into the next round
+    if (n % 128 === 0) hit(t, 0.12, 5000, 1.4, true); // a cymbal at the top
+  }
+  function start() {
+    if (on) return; on = true;
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { on = false; return; }
+      noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    if (ctx.state === 'suspended') ctx.resume();
+    out = ctx.createGain(); out.gain.value = 0.0001; out.connect(ctx.destination); out.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.55 * settings.volume), ctx.currentTime + 1.5);
+    step = 0; nextT = ctx.currentTime + 0.1;
+    timer = setInterval(() => { while (nextT < ctx.currentTime + 0.3) { play(step++, nextT); nextT += S16; } }, 60);
+  }
+  function stop() {
+    if (!on) return; on = false; clearInterval(timer); const o = out;
+    try { o.gain.cancelScheduledValues(ctx.currentTime); o.gain.setValueAtTime(o.gain.value, ctx.currentTime); o.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1); } catch (e) {}
+    setTimeout(() => o.disconnect(), 1300);
+  }
+  let unlocked = false;
+  addEventListener('pointerdown', () => { unlocked = true; }, true); addEventListener('keydown', () => { unlocked = true; }, true);
+  setInterval(() => {
+    const menu = !playing() && (!$('title').classList.contains('hidden') || !$('online').classList.contains('hidden') || !$('lobby').classList.contains('hidden'));
+    if (menu && unlocked && settings.menuMusic !== 0) start(); else stop();
+    if (on && out) out.gain.setTargetAtTime(Math.max(0.0002, 0.55 * settings.volume), ctx.currentTime, 0.3);
+  }, 400);
+  return { start, stop };
+})();
 $('setBtn').onclick = openSettings;
 
 function segBind(id, key, after) {
@@ -4500,6 +4812,8 @@ function boot() {
   buildMapBase();
   document.body.classList.toggle('touch', touchOn());
   segBind('teamSeg', 'team'); segBind('diffSeg', 'difficulty'); segBind('botSeg', 'bots'); segBind('timeSeg', 'minutes');
+  if (settings.menuMusic === undefined) settings.menuMusic = 1;
+  segBind('sMusic', 'menuMusic'); // 1.2
   segBind('sInv', 'invert'); segBind('sQual', 'quality', applyQuality); segBind('sTouch', 'touch', () => document.body.classList.toggle('touch', touchOn()));
   // jump the demo battle ahead a little so the title screen has action in it
   toTitle();
@@ -4511,6 +4825,320 @@ setTimeout(() => {
   try { boot(); }
   catch (err) { $('loadTxt').textContent = 'Something went wrong while loading: ' + err.message; console.error(err); }
 }, 30);
+</script>
+<script id="hb-guns">
+'use strict';
+// =====================================================================
+//  1.2: guns for sailors on foot, ported from Cube Assault (the pistol, shotgun, sniper rifle and rocket launcher),
+//  built to real-world size in metres. Forward is -z.
+// =====================================================================
+const CA_GUNS = (() => {
+  const rand = () => Math.random();
+  function makeCanvas(size, draw) { const c = document.createElement('canvas'); c.width = c.height = size; draw(c.getContext('2d'), size); return c; }
+  function tex(cnv, rx = 1, ry = 1) { const t = new THREE.CanvasTexture(cnv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4; return t; }
+const gunEnv = (() => {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  const sky = g.createLinearGradient(0, 0, 0, 256);
+  sky.addColorStop(0, '#4f8bd0'); sky.addColorStop(0.46, '#dce8f1'); sky.addColorStop(0.5, '#9fae8e'); sky.addColorStop(0.62, '#5d6b49'); sky.addColorStop(1, '#3a4430');
+  g.fillStyle = sky; g.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 14; i++) {
+    const x = rand() * 512, y = 30 + rand() * 70, r = 20 + rand() * 40;
+    const cl = g.createRadialGradient(x, y, 0, x, y, r); cl.addColorStop(0, 'rgba(255,255,255,.7)'); cl.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = cl; g.fillRect(0, 0, 512, 256);
+  }
+  g.fillStyle = '#2e4a2a';
+  for (let x = 0; x < 512; x += 6) { const h = 6 + rand() * 12; g.fillRect(x, 128 - h, 6, h); }
+  const sx = (Math.atan2(SUN_DIR.z, SUN_DIR.x) / (Math.PI * 2) + 0.5) * 512, sy = (0.5 - Math.asin(SUN_DIR.y) / Math.PI) * 256;
+  const sunG = g.createRadialGradient(sx, sy, 0, sx, sy, 40); sunG.addColorStop(0, '#ffffff'); sunG.addColorStop(0.15, 'rgba(255,248,225,.95)'); sunG.addColorStop(1, 'rgba(255,240,200,0)');
+  g.fillStyle = sunG; g.fillRect(0, 0, 512, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.mapping = THREE.EquirectangularReflectionMapping;
+  const pm = new THREE.PMREMGenerator(renderer);
+  const env = pm.fromEquirectangular(t).texture;
+  pm.dispose(); t.dispose();
+  return env;
+})();
+
+// worn finishes, grip stippling, knurling and wood grain
+const GT = (() => {
+  const wear = makeCanvas(256, (g, s) => {
+    g.fillStyle = '#c4c4c4'; g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 5000; i++) { const v = 170 + rand() * 60 | 0; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(rand() * s, rand() * s, 1.5, 1.5); }
+    g.lineCap = 'round';
+    for (let i = 0; i < 140; i++) {
+      const x = rand() * s, y = rand() * s, a = rand() * Math.PI, l = 3 + rand() * 18;
+      g.strokeStyle = `rgba(255,255,255,${0.15 + rand() * 0.45})`; g.lineWidth = 0.5 + rand() * 0.7;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+    }
+    for (let i = 0; i < 25; i++) { g.fillStyle = 'rgba(60,60,60,.12)'; g.beginPath(); g.arc(rand() * s, rand() * s, 3 + rand() * 9, 0, 7); g.fill(); }
+  });
+  const rough = makeCanvas(128, (g, s) => {
+    const img = g.createImageData(s, s);
+    for (let i = 0; i < s * s; i++) { const v = 150 + rand() * 105; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
+    g.putImageData(img, 0, 0);
+  });
+  const stipple = makeCanvas(128, (g, s) => {
+    g.fillStyle = '#808080'; g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 2600; i++) { g.fillStyle = rand() < .5 ? '#b8b8b8' : '#404040'; g.beginPath(); g.arc(rand() * s, rand() * s, 0.8 + rand() * 1.1, 0, 7); g.fill(); }
+  });
+  const knurl = makeCanvas(64, (g, s) => {
+    g.fillStyle = '#7a7a7a'; g.fillRect(0, 0, s, s);
+    g.strokeStyle = '#e0e0e0'; g.lineWidth = 1.4;
+    for (let i = -s; i < s * 2; i += 6) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + s, s); g.stroke(); g.beginPath(); g.moveTo(i, s); g.lineTo(i + s, 0); g.stroke(); }
+  });
+  const wood = makeCanvas(256, (g, s) => {
+    const base = g.createLinearGradient(0, 0, 0, s); base.addColorStop(0, '#7a4a24'); base.addColorStop(0.5, '#8d5a2e'); base.addColorStop(1, '#6e4220');
+    g.fillStyle = base; g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 70; i++) {
+      const y0 = rand() * s, amp = 2 + rand() * 6, f = 0.01 + rand() * 0.02, ph = rand() * 6;
+      g.strokeStyle = `rgba(${rand() < .5 ? '45,25,10' : '160,110,60'},${0.15 + rand() * 0.3})`; g.lineWidth = 0.6 + rand() * 1.8;
+      g.beginPath();
+      for (let x = 0; x <= s; x += 4) { const y = y0 + Math.sin(x * f + ph) * amp; x ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke();
+    }
+    for (let i = 0; i < 3; i++) { const x = rand() * s, y = rand() * s; const k = g.createRadialGradient(x, y, 0, x, y, 10); k.addColorStop(0, 'rgba(40,20,8,.6)'); k.addColorStop(1, 'rgba(40,20,8,0)'); g.fillStyle = k; g.fillRect(x - 12, y - 12, 24, 24); }
+  });
+  return {
+    wear: tex(wear, 9, 9), rough: tex(rough, 14, 14), stipple: tex(stipple, 22, 22), knurl: tex(knurl, 18, 18),
+    wood: tex(wood, 9, 9), woodBump: tex(wood, 9, 9),
+  };
+})();
+
+const GM = (() => {
+  const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ envMap: gunEnv, envMapIntensity: 1.6, side: THREE.DoubleSide }, o));
+  const phys = (o) => new THREE.MeshPhysicalMaterial(Object.assign({ envMap: gunEnv, envMapIntensity: 1.6, side: THREE.DoubleSide }, o));
+  const worn = { map: GT.wear, roughnessMap: GT.rough };
+  return {
+    slide: std({ color: 0x1e2023, metalness: 0.55, roughness: 0.42, ...worn, envMapIntensity: 1.4 }),
+    pframe: std({ color: 0x6b5c43, metalness: 0, roughness: 0.62, envMapIntensity: 0.5 }),
+    pgrip: std({ color: 0x5e5140, metalness: 0, roughness: 0.85, bumpMap: GT.stipple, bumpScale: 0.5, envMapIntensity: 0.5 }),
+    dark: std({ color: 0x1c1d20, metalness: 0.6, roughness: 0.5, ...worn }),
+    bright: std({ color: 0xa8adb3, metalness: 1, roughness: 0.22, envMapIntensity: 1.2 }),
+    alu: std({ color: 0x27292d, metalness: 0.7, roughness: 0.42, ...worn }),
+    park: std({ color: 0x2f302e, metalness: 0.5, roughness: 0.62, ...worn }),
+    blued: std({ color: 0x1c2534, metalness: 0.9, roughness: 0.26, ...worn, envMapIntensity: 1.3 }),
+    scope: std({ color: 0x151619, metalness: 0.5, roughness: 0.32, envMapIntensity: 1.1 }),
+    knurl: std({ color: 0x1b1c1f, metalness: 0.7, roughness: 0.45, bumpMap: GT.knurl, bumpScale: 0.6 }),
+    polymer: std({ color: 0x222327, metalness: 0, roughness: 0.6 }),
+    stipple: std({ color: 0x222327, metalness: 0, roughness: 0.8, bumpMap: GT.stipple, bumpScale: 0.5 }),
+    olive: std({ color: 0x4b5637, metalness: 0, roughness: 0.78, bumpMap: GT.stipple, bumpScale: 0.12 }),
+    mag: std({ color: 0x2a2826, metalness: 0.05, roughness: 0.6 }),
+    rubber: std({ color: 0x121212, metalness: 0, roughness: 0.95, bumpMap: GT.stipple, bumpScale: 0.3 }),
+    wood: phys({ color: 0x8f6a4e, map: GT.wood, bumpMap: GT.woodBump, bumpScale: 0.15, roughness: 0.5, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
+    brass: std({ color: 0xc9a04a, metalness: 1, roughness: 0.28, envMapIntensity: 1.3 }),
+    hull: std({ color: 0xa1201a, metalness: 0, roughness: 0.45 }),
+    glass: phys({ color: 0x1d3a4c, metalness: 0.1, roughness: 0.03, clearcoat: 1, envMapIntensity: 2.2, transparent: true, opacity: 0.88 }),
+    bore: new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.DoubleSide }),
+    white: new THREE.MeshBasicMaterial({ color: 0xf0f0e8 }),
+    redDot: new THREE.MeshBasicMaterial({ color: 0xff3030 }),
+    sciWhite: phys({ color: 0xc9ced4, metalness: 0.1, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.15 }),
+    sciDark: std({ color: 0x1a1d22, metalness: 0.65, roughness: 0.32, ...worn }),
+    glow: new THREE.MeshBasicMaterial({ color: 0x22d3ee }),
+    glow2: new THREE.MeshBasicMaterial({ color: 0xf0abfc }),
+    cell: phys({ color: 0xbff6ff, metalness: 0, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.35, envMapIntensity: 2 }),
+    holo: new THREE.MeshBasicMaterial({ color: 0x7fe8ff, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }),
+  };
+})();
+
+// ---- shape helpers (model space: forward is -z, so "u" = distance forward) ----
+function curvePath(target, pts) {
+  target.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i];
+    p.length === 4 ? target.quadraticCurveTo(p[0], p[1], p[2], p[3]) : target.lineTo(p[0], p[1]);
+  }
+  return target;
+}
+// a side profile (u forward, v up) extruded sideways with rounded edges
+function extrudeSide(pts, thick, mat, { holes = [], bevel, x = 0 } = {}) {
+  const sh = curvePath(new THREE.Shape(), pts);
+  holes.forEach(h => sh.holes.push(curvePath(new THREE.Path(), h)));
+  const b = bevel !== undefined ? bevel : Math.min(0.0022, thick * 0.18);
+  const depth = Math.max(0.0004, thick - b * 2);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b * 0.8, bevelSegments: 2, curveSegments: 10 });
+  geo.translate(0, 0, -depth / 2);
+  geo.rotateY(Math.PI / 2);
+  const m = new THREE.Mesh(geo, mat); m.position.x = x;
+  return m;
+}
+// cylinder along the barrel axis from u0 to u1
+function cylU(rBack, rFront, u0, u1, y, mat, x = 0, seg = 28) {
+  const g = new THREE.CylinderGeometry(rBack, rFront, u1 - u0, seg);
+  g.rotateX(Math.PI / 2);
+  const m = new THREE.Mesh(g, mat); m.position.set(x, y, -(u0 + u1) / 2);
+  return m;
+}
+// turned part from [radius, u] pairs
+function lathe(pts, mat, y, x = 0, seg = 32) {
+  const g = new THREE.LatheGeometry(pts.map(([r, u]) => new THREE.Vector2(r, u)), seg);
+  g.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(g, mat); m.position.set(x, y, 0);
+  return m;
+}
+function box(w, h, d, mat, x, y, u) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, -u); return m; }
+function ball(r, mat, x, y, u) { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), mat); m.position.set(x, y, -u); return m; }
+function rail(u0, u1, y, mat, w = 0.021) {
+  const g = new THREE.Group();
+  g.add(box(w * 0.75, 0.004, u1 - u0, mat, 0, y + 0.002, (u0 + u1) / 2));
+  for (let u = u0 + 0.004; u < u1 - 0.003; u += 0.01) g.add(box(w, 0.0035, 0.0052, mat, 0, y + 0.0055, u));
+  return g;
+}
+function lens(r, mat, y, u, facingBack) {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 32), mat);
+  if (!facingBack) m.rotation.y = Math.PI;
+  m.position.set(0, y, -u);
+  return m;
+}
+function triggerAt(u, v, mat) {
+  return extrudeSide([[u + 0.006, v], [u + 0.01, v - 0.008], [u + 0.008, v - 0.019], [u + 0.003, v - 0.021], [u + 0.002, v - 0.009], [u, v]], 0.006, mat, { bevel: 0.001 });
+}
+function guardAt(front, back, top, bottom, mat, thick = 0.012) {
+  const o = [[front, top], [front + 0.002, bottom + 0.004, front - 0.004, bottom], [back + 0.006, bottom], [back - 0.006, top]];
+  const t = 0.0045;
+  const i = [[front - t, top - 0.003], [front - t, bottom + t + 0.002, front - t - 0.004, bottom + t], [back + 0.008, bottom + t], [back + 0.001, top - 0.003]];
+  return extrudeSide(o, thick, mat, { holes: [i], bevel: 0.0012 });
+}
+
+// a scope ring clamped to a picatinny rail (2.7, for the rifle's scope)
+function S27ring(g, u) { g.add(cylU(0.0165, 0.0165, u - 0.005, u + 0.005, 0.089, GM.alu)); g.add(box(0.02, 0.03, 0.012, GM.alu, 0, 0.068, u)); }
+// ---- 2.9.5: rounded boxes (as in Russian Roulette) and the finishes for the revolver, AK-47 and minigun ----
+function rbox(w, h, d, r, seg = 3) {
+  const b = Math.min(r, w / 2 - 1e-4, h / 2 - 1e-4, d / 2 - 1e-4);
+  const iw = w - 2 * b, ih = h - 2 * b, cr = Math.min(b, iw / 2, ih / 2) * 0.9;
+  const s = new THREE.Shape(), x0 = -iw / 2, y0 = -ih / 2;
+  s.moveTo(x0 + cr, y0); s.lineTo(x0 + iw - cr, y0); s.quadraticCurveTo(x0 + iw, y0, x0 + iw, y0 + cr); s.lineTo(x0 + iw, y0 + ih - cr);
+  s.quadraticCurveTo(x0 + iw, y0 + ih, x0 + iw - cr, y0 + ih); s.lineTo(x0 + cr, y0 + ih); s.quadraticCurveTo(x0, y0 + ih, x0, y0 + ih - cr); s.lineTo(x0, y0 + cr); s.quadraticCurveTo(x0, y0, x0 + cr, y0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: Math.max(1e-4, d - 2 * b), bevelEnabled: true, bevelThickness: b, bevelSize: b, bevelSegments: seg, curveSegments: 3 });
+  g.center(); g.computeVertexNormals(); return g;
+}
+  const GUN_MODELS = {
+  pistol() {
+    const g = new THREE.Group(), slide = new THREE.Group(), mag = new THREE.Group();
+    slide.add(extrudeSide([[-0.045, 0.018], [0.141, 0.018], [0.141, 0.042], [0.136, 0.048], [-0.04, 0.048], [-0.045, 0.043]], 0.0254, GM.slide));
+    for (let i = 0; i < 7; i++) slide.add(box(0.0264, 0.021, 0.0014, GM.bore, 0, 0.0325, -0.04 + i * 0.0034));
+    slide.add(box(0.0118, 0.0014, 0.034, GM.bright, 0, 0.0484, 0.03));
+    slide.add(box(0.0014, 0.012, 0.034, GM.bore, 0.0123, 0.04, 0.03));
+    for (const s of [-1, 1]) {
+      slide.add(box(0.0045, 0.0062, 0.0065, GM.dark, s * 0.0062, 0.0508, -0.036));
+      slide.add(ball(0.0011, GM.white, s * 0.0062, 0.0518, -0.0394));
+    }
+    slide.add(box(0.0034, 0.0065, 0.006, GM.dark, 0, 0.0508, 0.131), ball(0.0011, GM.white, 0, 0.0522, 0.1278));
+    slide.add(cylU(0.0077, 0.0077, 0.139, 0.1425, 0.033, GM.bright), cylU(0.0046, 0.0046, 0.14, 0.1432, 0.033, GM.bore));
+    for (let i = 0; i < 4; i++) slide.add(box(0.0264, 0.018, 0.0014, GM.bore, 0, 0.0335, 0.112 + i * 0.0034));
+    slide.add(box(0.012, 0.008, 0.03, GM.bright, 0.0035, 0.044, 0.03));
+    g.add(slide);
+    g.add(box(0.022, 0.006, 0.05, GM.pframe, 0, 0.003, 0.105));
+    for (let i = 0; i < 3; i++) g.add(box(0.0232, 0.0028, 0.006, GM.dark, 0, -0.0005, 0.088 + i * 0.016));
+    g.add(extrudeSide([[-0.05, 0.02], [-0.078, 0.008], [-0.074, 0.0], [-0.052, 0.008]], 0.026, GM.pframe, { bevel: 0.0015 }));
+    g.add(extrudeSide([[-0.026, -0.112], [-0.074, -0.11], [-0.078, -0.12], [-0.024, -0.122]], 0.031, GM.pframe, { bevel: 0.0015 }));
+    // frame with trigger guard, dust cover and angled grip
+    g.add(extrudeSide([[-0.05, 0.018], [0.132, 0.018], [0.136, 0.006], [0.06, 0.0], [0.056, -0.006], [0.058, -0.03, 0.046, -0.034],
+      [0.006, -0.034], [-0.012, -0.024], [-0.03, -0.12], [-0.034, -0.128], [-0.072, -0.126], [-0.061, -0.03], [-0.072, -0.002, -0.058, 0.01], [-0.05, 0.018]],
+      0.027, GM.pframe, { holes: [[[0.049, -0.006], [0.05, -0.024, 0.042, -0.028], [0.006, -0.028], [-0.003, -0.02], [-0.002, -0.006]]] }));
+    g.add(extrudeSide([[-0.016, -0.032], [-0.03, -0.114], [-0.068, -0.113], [-0.058, -0.032]], 0.0288, GM.pgrip, { bevel: 0.001 }));
+    for (let i = 0; i < 3; i++) g.add(box(0.0275, 0.0018, 0.012, GM.bore, 0, 0.0025, 0.08 + i * 0.016));
+    g.add(triggerAt(0.006, -0.004, GM.dark));
+    g.add(box(0.0016, 0.0042, 0.016, GM.dark, -0.0142, 0.0135, 0.012), box(0.0016, 0.003, 0.009, GM.dark, -0.0142, 0.0115, 0.046));
+    mag.add(extrudeSide([[-0.031, -0.035], [-0.033, -0.127], [-0.069, -0.127], [-0.059, -0.035]], 0.021, GM.dark));
+    mag.add(extrudeSide([[-0.032, -0.126], [-0.073, -0.125], [-0.075, -0.135], [-0.031, -0.136]], 0.027, GM.pframe));
+    g.add(mag);
+    return { g, mag, slide, magDir: [0, -1, 0.3], view: { pos: [0.19, -0.17, -0.42], scale: 1.4, yaw: 0.1, pitch: 0.04, roll: -0.03 },
+             muzzle: [0, 0.033, 0.146], eject: [0.014, 0.05, 0.03], shell: 'pistol', slideTravel: 0.028 };
+  },
+
+  shotgun() {
+    const g = new THREE.Group(), pump = new THREE.Group();
+    g.add(extrudeSide([[-0.06, -0.005], [0.15, -0.005], [0.15, 0.046], [0.005, 0.05], [-0.05, 0.042], [-0.062, 0.025]], 0.03, GM.blued));
+    g.add(box(0.02, 0.002, 0.07, GM.bore, 0, -0.0058, 0.09));
+    g.add(box(0.0012, 0.02, 0.06, GM.bore, 0.0152, 0.026, 0.08));
+    g.add(cylU(0.0115, 0.0112, 0.15, 0.62, 0.032, GM.blued));
+    g.add(box(0.008, 0.0025, 0.47, GM.blued, 0, 0.0475, 0.385));
+    for (let u = 0.165; u < 0.61; u += 0.03) g.add(box(0.004, 0.004, 0.003, GM.blued, 0, 0.0445, u));
+    g.add(ball(0.0022, GM.brass, 0, 0.0512, 0.614));
+    g.add(cylU(0.0105, 0.0105, 0.15, 0.555, 0.004, GM.blued));
+    g.add(lathe([[0.0105, 0.555], [0.0122, 0.557], [0.0122, 0.575], [0.009, 0.58], [0.0, 0.58]], GM.blued, 0.004));
+    g.add(box(0.014, 0.04, 0.012, GM.blued, 0, 0.018, 0.54));
+    g.add(guardAt(0.04, -0.022, -0.005, -0.042, GM.alu));
+    g.add(triggerAt(0.012, -0.005, GM.bright));
+    g.add(extrudeSide([[-0.06, 0.038], [-0.36, 0.046], [-0.405, 0.052], [-0.41, -0.105], [-0.37, -0.11], [-0.15, -0.056], [-0.12, -0.074], [-0.085, -0.064], [-0.06, -0.006]], 0.036, GM.wood));
+    g.add(extrudeSide([[-0.405, 0.052], [-0.425, 0.053], [-0.43, -0.106], [-0.41, -0.105]], 0.038, GM.rubber, { bevel: 0.002 }));
+    // ribbed wooden pump with action bars
+    const pts = [[0.011, 0], [0.019, 0.004]];
+    for (let i = 0; i < 9; i++) { const u = 0.012 + i * 0.014; pts.push([0.021, u], [0.021, u + 0.009], [0.0188, u + 0.0105], [0.0188, u + 0.0125], [0.021, u + 0.014]); }
+    pts.push([0.021, 0.14], [0.019, 0.146], [0.011, 0.148]);
+    const fore = lathe(pts, GM.wood, 0.004); fore.scale.y = 1.15; pump.add(fore);
+    for (const s of [-1, 1]) pump.add(box(0.002, 0.006, 0.13, GM.bright, s * 0.0108, 0.004, -0.055));
+    pump.position.z = -0.205;
+    g.add(pump);
+    return { g, pump, pumpTravel: 0.075, view: { pos: [0.21, -0.225, -0.5], scale: 0.85, yaw: 0.1, pitch: 0.1, roll: -0.22 },
+             muzzle: [0, 0.032, 0.62], eject: [0.016, 0.03, 0.07], shell: 'shotgun' };
+  },
+
+  sniper() {
+    const g = new THREE.Group(), bolt = new THREE.Group(), mag = new THREE.Group();
+    // thumbhole stock
+    g.add(extrudeSide([[0.385, 0.012], [-0.065, 0.012], [-0.14, 0.032], [-0.42, 0.036], [-0.445, 0.042], [-0.445, -0.12], [-0.41, -0.125], [-0.2, -0.075],
+      [-0.12, -0.13], [-0.075, -0.13], [-0.05, -0.05], [0.07, -0.05], [0.09, -0.03], [0.38, -0.026]], 0.042, GM.olive,
+      { holes: [[[-0.085, -0.012], [-0.08, -0.06], [-0.1, -0.086], [-0.18, -0.055], [-0.17, -0.015]]] }));
+    g.add(extrudeSide([[-0.445, 0.043], [-0.462, 0.043], [-0.465, -0.12], [-0.445, -0.121]], 0.044, GM.rubber, { bevel: 0.002 }));
+    g.add(guardAt(0.035, -0.03, -0.045, -0.072, GM.dark));
+    g.add(triggerAt(0.008, -0.045, GM.bright));
+    // action, rail, barrel and muzzle brake
+    g.add(cylU(0.017, 0.017, -0.07, 0.12, 0.03, GM.dark));
+    g.add(rail(-0.06, 0.11, 0.046, GM.dark));
+    g.add(box(0.0012, 0.012, 0.05, GM.bore, 0.0168, 0.035, 0.02));
+    g.add(cylU(0.012, 0.0092, 0.12, 0.68, 0.03, GM.dark));
+    g.add(lathe([[0.0098, 0.68], [0.0135, 0.682], [0.0135, 0.742], [0.0115, 0.745], [0.0055, 0.745], [0.0055, 0.735]], GM.dark, 0.03));
+    for (let i = 0; i < 3; i++) for (const s of [-1, 1]) g.add(box(0.0016, 0.009, 0.009, GM.bore, s * 0.0136, 0.03, 0.695 + i * 0.016));
+    // scope
+    for (const u of [-0.025, 0.065]) { g.add(cylU(0.0185, 0.0185, u - 0.006, u + 0.006, 0.085, GM.dark)); g.add(box(0.02, 0.026, 0.014, GM.dark, 0, 0.06, u)); }
+    g.add(lathe([[0.012, -0.125], [0.0205, -0.12], [0.0215, -0.115], [0.0215, -0.075], [0.017, -0.06], [0.015, -0.045], [0.015, 0.075], [0.018, 0.095],
+      [0.0255, 0.135], [0.0255, 0.172], [0.024, 0.176], [0.012, 0.177]], GM.scope, 0.085));
+    g.add(cylU(0.0222, 0.0222, -0.108, -0.086, 0.085, GM.knurl));
+    const tu = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.016, 28), GM.knurl); tu.position.set(0, 0.108, 0.02); g.add(tu);
+    const tw = tu.clone(); tw.rotation.z = Math.PI / 2; tw.position.set(-0.023, 0.085, 0.02); g.add(tw);
+    const tp = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.012, 24), GM.knurl); tp.rotation.z = Math.PI / 2; tp.position.set(0.021, 0.085, 0.02); g.add(tp);
+    g.add(lens(0.0236, GM.glass, 0.085, 0.176, false), lens(0.0196, GM.glass, 0.085, -0.124, true));
+    // bolt (pivots around the bore axis)
+    bolt.add(lathe([[0.0, -0.104], [0.013, -0.1], [0.0155, -0.094], [0.0155, -0.072], [0.009, -0.07]], GM.dark, 0));
+    bolt.add(cylU(0.0092, 0.0092, -0.075, -0.035, 0, GM.bright));
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.036, 12), GM.bright);
+    arm.rotation.z = -Math.PI / 2 + 0.35; arm.position.set(0.025, -0.006, 0.045);
+    bolt.add(arm, ball(0.0085, GM.dark, 0.043, -0.012, -0.045));
+    bolt.position.y = 0.03;
+    g.add(bolt);
+    // detachable magazine and folded bipod
+    mag.add(extrudeSide([[0.055, -0.048], [0.0, -0.048], [0.002, -0.086], [0.055, -0.086]], 0.028, GM.dark));
+    g.add(mag);
+    for (const s of [-1, 1]) g.add(cylU(0.0045, 0.0045, 0.2, 0.36, -0.034, GM.dark, s * 0.012));
+    g.add(box(0.034, 0.014, 0.02, GM.dark, 0, -0.026, 0.37));
+    return { g, bolt, mag, magDir: [0, -1, 0], view: { pos: [0.2, -0.215, -0.5], scale: 0.85, yaw: 0.09, pitch: 0.08, roll: -0.15 },
+             muzzle: [0, 0.03, 0.745], eject: [0.018, 0.048, 0.02], shell: 'sniper' };
+  },
+
+  rocket() {
+    const g = new THREE.Group(), mag = new THREE.Group();
+    g.add(cylU(0.058, 0.058, -0.45, 0.5, 0.04, GM.olive, 0, 20));
+    g.add(lathe([[0.052, -0.47], [0.066, -0.56], [0.078, -0.56], [0.078, -0.53], [0.058, -0.45]], GM.dark, 0.04));
+    g.add(lathe([[0.058, 0.48], [0.067, 0.48], [0.067, 0.52], [0.058, 0.52]], GM.dark, 0.04));
+    for (const u of [-0.27, 0.12, 0.34]) g.add(cylU(0.061, 0.061, u, u + 0.025, 0.04, GM.dark, 0, 20));
+    g.add(extrudeSide([[0.04, -0.012], [0.072, -0.012], [0.062, -0.12], [0.026, -0.12]], 0.03, GM.stipple));
+    g.add(guardAt(0.12, 0.074, -0.012, -0.046, GM.dark));
+    g.add(triggerAt(0.09, -0.01, GM.dark));
+    g.add(extrudeSide([[0.276, -0.012], [0.31, -0.012], [0.31, -0.11], [0.276, -0.11]], 0.03, GM.polymer));
+    g.add(box(0.026, 0.04, 0.09, GM.dark, 0, 0.115, 0.14));
+    g.add(lens(0.011, GM.glass, 0.118, 0.186, false));
+    mag.add(lathe([[0.046, 0.5], [0.05, 0.53], [0.05, 0.6], [0.032, 0.68], [0.008, 0.73], [0, 0.735]], GM.mag, 0.04));
+    mag.add(lathe([[0.051, 0.55], [0.053, 0.555], [0.053, 0.575], [0.051, 0.58]], GM.brass, 0.04));
+    g.add(mag);
+    return { g, mag, magDir: [0, 0, -1], loadable: true, view: { pos: [0.2, -0.17, -0.52], scale: 0.95, yaw: 0.06, pitch: 0.03, roll: -0.03 },
+             muzzle: [0, 0.04, 0.56], eject: null };
+  },
+
+  };
+  return GUN_MODELS;
+})();
 </script>
 <script id="hb-net">
 'use strict';
@@ -4552,7 +5180,7 @@ setTimeout(() => {
   const IDLE_MS = 2000;      // in the lobby, one "still here" this often
   const SILENT_MS = 10000;   // the host drops anyone it hasn't heard from for this long
   const MAX_PLAYERS = 6;     // in a private room
-  const WORLD_MAX = 8;       // on the shared server
+  const WORLD_MAX = 10;      // on the shared server (1.2: was 8)
   const WORLD = { difficulty: 1, bots: 6, minutes: 15 }; // the shared server's matches
   const NEXT_MS = 30000;     // shared server: the next match starts this long after the result (the ending plays first)
   const EASE_MS = 150;       // corrections are smoothed out over this long
@@ -4648,7 +5276,7 @@ setTimeout(() => {
   const isHost = () => !!room && room.hostId === myId;
   function newRoom(code, name, topic) {
     let synced; const sync = new Promise(r => synced = r);
-    return { code, topic: topic || 'hb-room-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
+    return { code, topic: topic || 'hb-room12-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
       roster: new Map(), names: new Map(), settings: { ...DEFAULTS }, pings: {}, acks: {}, myPing: null, seen: new Set(),
       ups: new Map(), lastHeard: new Map(), hz: MAX_HZ, stDue: false, lastSt: 0, lastSend: 0, sync, synced, trouble: 0, waitAcc: null, matchOn: false, infoAt: 0 };
   }
@@ -4708,7 +5336,7 @@ setTimeout(() => {
     room.ups = new Map();
     const r = room;
     if (!room.up) { room.up = chan(room.topic + '-' + myId); wireMine(room.up); try { await joinChan(room.up, trouble); } catch (e) {} }
-    if (room === r) send(room.ch, 'hello', { id: myId, n: room.name }); // the answer brings their match
+    if (room === r) send(room.ch, 'hello', { id: myId, n: room.name, t: settings.worldTeam === 1 ? 1 : 0 }); // the answer brings their match
   }
   // say hello until the host answers
   function askHost() {
@@ -4718,7 +5346,7 @@ setTimeout(() => {
       const tick = () => {
         if (!room || room.waitAcc !== got) return;
         if (n++ >= 5) { room.waitAcc = null; rej('not_found'); return; }
-        send(room.ch, 'hello', { id: myId, n: room.name });
+        send(room.ch, 'hello', { id: myId, n: room.name, t: settings.worldTeam === 1 ? 1 : 0 });
         room.helloT = setTimeout(tick, 2000);
       };
       room.waitAcc = got; tick();
@@ -4814,7 +5442,7 @@ setTimeout(() => {
   async function joinWorld(name) {
     if (room) leaveRoom();
     await getClient();
-    room = newRoom('WORLD', name, 'hb-world'); room.world = true; room.settings = { ...WORLD };
+    room = newRoom('WORLD', name, 'hb-world-12'); // 1.2: a new channel, so older copies can't join this version's battle room.world = true; room.settings = { ...WORLD };
     try {
       room.ch = chan(room.topic, true); wireRoom(room.ch);
       await joinChan(room.ch, trouble);
@@ -4830,7 +5458,7 @@ setTimeout(() => {
       startPump();
       const first = presList()[0];
       if (!first || first.id === myId) { // nobody is running it: we are, with a fresh match
-        room.hostId = myId; room.roster.set(myId, Math.random() < 0.5 ? 0 : 1); room.accepted = true;
+        room.hostId = myId; room.roster.set(myId, settings.worldTeam === 1 ? 1 : 0); room.accepted = true;
         dropChan(room.up); room.up = null;
         startMatchHost();
         return;
@@ -4868,7 +5496,7 @@ setTimeout(() => {
     openUp(id).then(up => {
       if (room !== r) return;
       if (no) { send(up, 'acc', { no }); setTimeout(() => closeUp(id), 1500); return; }
-      if (!room.roster.has(id)) room.roster.set(id, smallerTeam());
+      if (!room.roster.has(id)) room.roster.set(id, room.world && (d.t === 0 || d.t === 1) ? d.t : smallerTeam()); // 1.2: the side you picked
       room.lastHeard.set(id, now());
       const acc = { ok: 1, h: myId, s: room.settings, r: [...room.roster] };
       if (M && M.host) { addPeer(id); acc.go = goInfo(); }
@@ -4916,7 +5544,7 @@ setTimeout(() => {
     if (Array.isArray(mine) && !M) ping(now() - mine[0] - mine[1]);
     // the host doesn't know us (two hosts met and one stepped down): introduce ourselves again. A real
     // removal comes as a 'kick' on our pipe.
-    if (!room.roster.has(myId) && room.accepted && now() - (room.reHello || 0) > 3000) { room.reHello = now(); send(room.ch, 'hello', { id: myId, n: room.name }); }
+    if (!room.roster.has(myId) && room.accepted && now() - (room.reHello || 0) > 3000) { room.reHello = now(); send(room.ch, 'hello', { id: myId, n: room.name, t: settings.worldTeam === 1 ? 1 : 0 }); }
     renderLobby();
   }
   const ping = ms => { if (!(ms >= 0 && ms < 5000)) return; room.myPing = Math.round(room.myPing == null ? ms : room.myPing * 0.7 + ms * 0.3); };
@@ -4998,7 +5626,7 @@ setTimeout(() => {
       GAME.over = true; GAME.noResult = true; GAME.winner = -1; GAME.why = 'A match just ended.'; GAME.ending = 0.05;
       return;
     }
-    showMsg('Destroy the enemy harbor!', room.world ? 'Real players take the place of bots. Claim islands and sink ships' : asHost ? 'You are the host. Bots fill the empty places' : 'Claim islands, sink ships, and protect your own harbor');
+    showMsg('Destroy the enemy harbor!', room.world ? 'Real players only. Claim islands and sink ships' : asHost ? 'You are the host. Claim islands and sink ships' : 'Claim islands, sink ships, and protect your own harbor');
     openDeploy('start');
   }
   // stop playing online (the room stays)
@@ -5074,7 +5702,7 @@ setTimeout(() => {
   // bots fill the places real players don't (a bot that has to make way finishes its current life first)
   function fillBots() {
     for (const t of [0, 1]) {
-      const want = Math.max(0, GAME.perTeam - humans(t)), live = GAME.bots.filter(b => b.team === t && !b.retire);
+      const want = 0, live = GAME.bots.filter(b => b.team === t && !b.retire); // 1.2: no bots online, only in Practice
       for (const b of GAME.bots) if (live.length < want && b.team === t && b.retire) { b.retire = false; live.push(b); }
       while (live.length < want) {
         const used = new Set(GAME.bots.map(b => b.name)), b = new Bot(t, BOT_NAMES.find(n => !used.has(n)) || 'Bot' + botSeq, live.filter(x => x.role === 'air').length * 5 < live.length * 2 ? 'air' : 'navy');
@@ -5209,7 +5837,7 @@ setTimeout(() => {
   function peerShot(P, s) {
     if (!Array.isArray(s) || !nums(s, 0, 7)) return;
     const wn = WN[s[0]], W = WEAP[wn];
-    if (!W || !W.splash) return;
+    if (!W || !(W.splash || wn === 'pistol' || wn === 'shotgun' || wn === 'sniper')) return; // 1.2: sailors' new guns come exactly too
     const pos = new V3(s[1], s[2], s[3]), vel = new V3(s[4], s[5], s[6]);
     const src = P.ent && P.ent.alive ? P.ent : { team: P.team, driver: P };
     if (src.pos && src.pos.distanceTo(pos) > 160) return; // not from where they are
@@ -5659,7 +6287,7 @@ setTimeout(() => {
       return;
     }
     if (M.applying || !src || src !== PLAYER.ent) return;
-    if (p.W.splash) M.shots.push([WN.indexOf(p.wn), r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.vel.x), r2(p.vel.y), r2(p.vel.z), refOf(p.target)]);
+    if (p.W.splash || p.wn === 'pistol' || p.wn === 'shotgun' || p.wn === 'sniper') M.shots.push([WN.indexOf(p.wn), r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.vel.x), r2(p.vel.y), r2(p.vel.z), refOf(p.target)]);
     else M.myFire |= 1 << ((opts && opts.gi) | 0);
   }
   function killed(e, killer) {
@@ -5842,7 +6470,7 @@ setTimeout(() => {
     if (!room) return;
     Sound.init(); Sound.play('ui');
     if (isHost()) startMatchHost();
-    else send(room.ch, 'hello', { id: myId, n: room.name }); // a match is on: ask to jump in
+    else send(room.ch, 'hello', { id: myId, n: room.name, t: settings.worldTeam === 1 ? 1 : 0 }); // a match is on: ask to jump in
   };
   $('lLeave').onclick = () => { Sound.play('ui'); quit(); };
   $('lTeams').addEventListener('click', e => { const b = e.target.closest('[data-team]'); if (b && !b.disabled) pickTeam(+b.dataset.team); });
