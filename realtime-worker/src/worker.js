@@ -135,12 +135,18 @@ export class Room extends DurableObject {
      PUT  /acct/game?g=id {d, h, base, force} -> {at}   (409 if the cloud copy changed since base, unless force)
      POST /acct/password {old, key}           -> {token}   (other devices signed out)
      POST /acct/logout
+     POST /acct/delete {key}                  -> {deleted}  (the player deletes their own account)
+     POST /acct/admin {pw, op: 'info'|'delete', name}      the owner's tools (the same password as Cube Assault's
+                                              ADMINTEST; only its SHA-256 is here; 5 wrong tries lock it for 15 minutes)
+   Deleting an account wipes its object, so the name can be registered again.
    ========================================================================== */
 const ACCT_ORIGINS = ['https://noah-and-lars.github.io'];
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gametester|imacheater|^system$|^support$|^server$|^null$|^undefined$|^guest$|^anonymous$/;
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
+const ADMIN_HASH = '899ba39fe0b4ce0b8d4994cf7449cc63c2a8ade12fa77e590cfaf5999256ccf2';
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete']; // what a browser may ask an account for
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
 function nameProblem(n) {
@@ -157,6 +163,7 @@ async function accounts(req, env, url) {
   const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const route = url.pathname.slice(6);
+  if (route !== 'admin' && !ROUTES.includes(route)) return out({ error: 'not_found' }, 404);
   let name = '', body = null;
   if (req.method === 'POST' || req.method === 'PUT') {
     const len = +(req.headers.get('content-length') || 0);
@@ -164,6 +171,7 @@ async function accounts(req, env, url) {
     try { body = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
     if (!body || typeof body !== 'object') return out({ error: 'bad' }, 400);
   }
+  if (route === 'admin') return admin(env, body, out);
   if (route === 'check') name = String(url.searchParams.get('name') || '');
   else if (route === 'signup' || route === 'login' || route === 'recover') name = String(body && body.name || '');
   else {
@@ -176,6 +184,18 @@ async function accounts(req, env, url) {
   const stub = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + name.toLowerCase()));
   const r = await stub.fetch(new Request('https://acct/' + route + url.search, { method: req.method, headers: { 'authorization': req.headers.get('Authorization') || '', 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }));
   return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
+}
+// the owner's tools: the password is checked (and wrong tries counted) by one guard object, then the account's own
+// object is asked through a header only this Worker ever sets
+async function admin(env, body, out) {
+  const name = String(body.name || ''), op = body.op;
+  if (op !== 'info' && op !== 'delete') return out({ error: 'bad' }, 400);
+  const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
+  const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
+  if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
+  if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
+  const r = await call('u:' + name.toLowerCase(), op === 'info' ? 'admininfo' : 'adminwipe');
+  return out(await r.json().catch(() => ({})), r.status);
 }
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 const sha = async s => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
@@ -190,6 +210,7 @@ export class Account extends DurableObject {
     const url = new URL(req.url), route = url.pathname.slice(1), S = this.ctx.storage, now = Date.now();
     const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
     const body = req.method === 'GET' ? null : await req.json().catch(() => ({}));
+    if (req.headers.get('x-arcade-admin') === '1') return this.admin(route, body, j, now);
     let a = await S.get('acct');
     if (route === 'check') return j({ free: !a });
     if (route === 'signup') {
@@ -226,6 +247,10 @@ export class Account extends DurableObject {
       a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = [];
       const token = await this.session(a); await S.put('acct', a); return j({ token });
     }
+    if (route === 'delete') { // the player deletes their own account (they type their password again)
+      if (!KEY_RE.test(body.key || '') || !same(await sha(a.salt + body.key), a.h)) return j({ error: 'wrong' }, 401);
+      await S.deleteAll(); return j({ deleted: true });
+    }
     if (route === 'sync') return j({ name: a.name, created: a.created, games: a.games || {} });
     if (route === 'game') {
       const g = url.searchParams.get('g') || '';
@@ -257,6 +282,25 @@ export class Account extends DurableObject {
         return j({ at });
       }
     }
+    return j({ error: 'not_found' }, 404);
+  }
+  // the owner's tools (only reachable through admin() in the Worker)
+  async admin(route, body, j, now) {
+    const S = this.ctx.storage;
+    if (route === 'guard') {
+      const g = (await S.get('guard')) || { fails: 0, lockUntil: 0 };
+      if (g.lockUntil > now) return j({ error: 'locked', wait: Math.ceil((g.lockUntil - now) / 1000) }, 429);
+      if (!same(await sha(String(body.pw || '')), ADMIN_HASH)) { g.fails++; if (g.fails >= 5) { g.fails = 0; g.lockUntil = now + 15 * 60 * 1000; } await S.put('guard', g); return j({ error: 'wrong' }, 401); }
+      if (g.fails) { g.fails = 0; await S.put('guard', g); }
+      return j({ ok: true });
+    }
+    const a = await S.get('acct');
+    if (!a) return j({ error: 'no_account' }, 404);
+    if (route === 'admininfo') {
+      const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
+      return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games });
+    }
+    if (route === 'adminwipe') { await S.deleteAll(); return j({ deleted: true, name: a.name }); }
     return j({ error: 'not_found' }, 404);
   }
   // a new signed-in device: the token is the name plus a random part; only a hash of that part is kept

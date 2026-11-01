@@ -73,6 +73,9 @@ source in Settings → Pages should be switched to `main`.
   in on a device with its own progress merges game by game; logging out clears this device's copy. `play.html`
   waits up to 4 s for the first sync before loading the game, and reloads the game if its saves change.
   On localhost, `localStorage['arcade-acct-api']` points it at a local copy of the server (tests only).
+  Players can delete their own account in the panel (password again; this device keeps a local copy). The owner's
+  tools: open the site with `?admin` to look up or delete any account with the Cube Assault ADMINTEST password
+  (checked on the server against its SHA-256; 5 wrong tries lock it for 15 minutes). A deleted name is free again.
 - Player names: every game with a name (Cube Assault, Cube Tower Defense, Havoc Bay, Rocket Rivals, Football,
   Poly Racer, Chess, Russian Roulette, Free Criminal, Blockcraft's server name) has a `<script id="arcade-name">`
   block at the top of `<head>`: it writes the account's (or local account's) name into the game's save before the
