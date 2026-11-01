@@ -1455,13 +1455,18 @@ const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
 
   const nameOf = () => (typeof profile !== 'undefined' && (profile.name || '').trim()) || '';
   const exempt = () => { try { return (testMode && nameOf() === 'GAMETESTER') || (nameOf() === 'ADMINTEST' && profile.adminOk === ADMIN_KEY); } catch (e) { return false; } };
+  let mpSeen = false, badAt = 0;
+  const afterMp = () => { try { if (gameMode === 'mp') { mpSeen = true; return; } if (mpSeen) { mpSeen = false; if (player.hp > 100) player.hp = 100; } } catch (e) {} };
+  const soloPlay = () => { try { return gameMode !== 'mp' && state === 'playing' && !(window.CAMP && CAMP.matchOn && CAMP.matchOn()); } catch (e) { return false; } };
+  const confirmed = bad => { if (!bad) { badAt = 0; return false; } const t = performance.now(); if (!badAt) { badAt = t; return false; } return t - badAt >= 150; };
   function clean() {
+    afterMp();
     try {
       if (typeof WEAPONS === 'undefined') return true;
       if (!okT('w', WEAPONS, G) || !okT('e', ENEMY_TYPES, E)) return false;
       if (typeof weapon !== 'undefined' && typeof weaponKey !== 'undefined' && weapon !== WEAPONS[weaponKey]) return false;
       if (typeof ammo !== 'undefined') for (const k of G.keys) { const a = ammo[k]; if (a !== undefined && (typeof a !== 'number' || Number.isNaN(a) || a > WEAPONS[k].mag + 0.001)) return false; }
-      if (typeof gameMode !== 'undefined' && gameMode !== 'mp' && typeof player !== 'undefined') { const hp = player.hp; if (typeof hp === 'number' && (hp > 100.5 || hp === Infinity)) return false; }
+      if (typeof player !== 'undefined' && soloPlay()) { const hp = player.hp; if (typeof hp === 'number' && (hp > 100.5 || hp === Infinity)) return false; }
     } catch (e) { return true; }
     return true;
   }
@@ -1487,8 +1492,8 @@ const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
   // grace: just after an exempt session ends, the main guard puts shipped values back; don't bust during that moment
   let exAt = 0;
   const grace = () => Date.now() - Math.max(exAt, window.__caExemptAt || 0) < 700;
-  const run = () => { if (locked) return; if (exempt()) { exAt = Date.now(); return; } if (grace()) { try { window.__caRestore && window.__caRestore(); } catch (e) {} return; } if (!clean()) bust(); };
-  window.__cg2 = () => { try { if (locked) return false; if (exempt()) { exAt = Date.now(); return true; } return grace() || clean(); } catch (e) { return true; } };
+  const run = () => { if (locked) return; if (exempt()) { exAt = Date.now(); return; } if (grace()) { try { window.__caRestore && window.__caRestore(); } catch (e) {} return; } if (confirmed(!clean())) bust(); };
+  window.__cg2 = () => { try { if (locked) return false; if (exempt()) { exAt = Date.now(); return true; } return grace() || !confirmed(!clean()); } catch (e) { return true; } };
   window.__cg2.bust = bust;
   setInterval(run, 250);
   requestAnimationFrame(function loop() { run(); requestAnimationFrame(loop); });
@@ -1577,6 +1582,19 @@ function exitTestMode() {
   profile.stats = Object.assign({ shots: 0, hits: 0, kills: 0, time: 0 }, profile.stats);
 }
 const isAdmin = () => testMode || ((profile.name || '').trim() === 'ADMINTEST' && profile.adminOk === ADMIN_KEY);
+// everyone the anti-cheat flagged before 2026-11-01 starts clean, once (the Pumpkin Launcher was setting it off by mistake):
+// the flags go and an IMACHEATER name is cleared so they pick a new one
+try {
+  if (localStorage.getItem('caReset1') !== '1') {
+    if (profile.e2 === 1 || localStorage.getItem('caE2') === '1' || /(?:^|;\s*)caE2=1/.test(document.cookie)) {
+      delete profile.e2; localStorage.removeItem('caE2'); document.cookie = 'caE2=; max-age=0; path=/';
+      if ((profile.name || '').trim() === 'IMACHEATER') profile.name = '';
+      const sv = JSON.parse(localStorage.getItem('cubeAssaultProfile') || 'null');
+      if (sv && typeof sv === 'object') { delete sv.e2; if ((sv.name || '').trim() === 'IMACHEATER') sv.name = ''; localStorage.setItem('cubeAssaultProfile', JSON.stringify(sv)); }
+    }
+    localStorage.setItem('caReset1', '1');
+  }
+} catch (e) { /* storage blocked */ }
 if (/^(admintest|gametester)$/i.test((profile.name || '').trim()) && (profile.adminOk !== ADMIN_KEY || /^gametester$/i.test(profile.name.trim()))) profile.name = ''; // an old ADMINTEST without the password picks a new name
 const ownsBase = k => { if (isAdmin()) return true; const w = WEAPONS[k]; return w.event ? !!profile.owned[k] : w.price ? !!profile.owned[k] : w.unlockWave ? wave >= w.unlockWave : true; };
 const campOwns = k => (camp && camp.level === 3) ? ['pistol', 'rifle', 'sniper', 'knife'].includes(k) : k === 'rifle'; // 2.8: Level 3 has more than the rifle
@@ -2953,8 +2971,9 @@ function updateRockets(dt) {
     if ((R.smoke -= dt) <= 0) { R.smoke = 0.025; puff(R.g.position.clone(), 0xb8b4ac, 0.55, 0.9); }
   }
 }
+let explodeR = 0; // a bigger blast for one explosion (the Pumpkin Launcher's), without touching any gun's own values
 function explode(P) {
-  const RAD = WEAPONS.rocket.splash, d0 = P.distanceTo(player.pos);
+  const RAD = explodeR || WEAPONS.rocket.splash, d0 = P.distanceTo(player.pos);
   glowFlash(P, 0xffa23a, 9, 0.35); glowFlash(P, 0xfff1c0, 4, 0.15);
   sparks(P, 0xffc060, 16, 12);
   for (let i = 0; i < 6; i++) puff(P.clone().add(new THREE.Vector3((Math.random() - .5) * 2.5, Math.random() * 1.5, (Math.random() - .5) * 2.5)), 0x8f8b84, 2.6, 1.2);
@@ -16896,7 +16915,7 @@ const PKS = { pk: false, rk: false, at: 0 }, _rj = new THREE.Vector3();
   explode = function (P) {
     const fresh = performance.now() - PKS.at < 40, pk = fresh && PKS.pk, rk = fresh && PKS.rk; PKS.pk = PKS.rk = false;
     let RAD = WEAPONS.rocket.splash;
-    if (pk) { const keep = WEAPONS.rocket.splash; WEAPONS.rocket.splash = RAD = WEAPONS.pumpkin.splash; try { explode0.apply(this, arguments); } finally { WEAPONS.rocket.splash = keep; } caPumpkinBoom(P, RAD); }
+    if (pk) { explodeR = RAD = WEAPONS.pumpkin.splash; try { explode0.apply(this, arguments); } finally { explodeR = 0; } caPumpkinBoom(P, RAD); } // (this used to swap the rocket's splash, which the anti-cheat saw)
     else explode0.apply(this, arguments);
     // shoppers caught in it
     for (const h of CA_NPC.list) if (h.hp > 0 && Math.hypot(h.x - P.x, h.y + 0.9 - P.y, h.z - P.z) < RAD) caNpcKill(h, rk ? 'you' : 'boom');
@@ -19075,12 +19094,20 @@ window.startIntro = function (post) {
     for (const k of R.keys) { const o = tbl[k]; if (!o || typeof o !== 'object') return false; let n = 0; for (const f in o) { const v = o[f]; if (prim(v)) { n++; if (!REF.has(H(tag, k, f, v))) return false; } } if (n !== R.cnt[k] || !REF.has(H(tag, k, '#', n))) return false; }
     return true;
   };
+  // after a multiplayer match (a Boss can have 2000 health) health goes back to normal before anything is checked
+  let mpSeen = false;
+  const afterMp = () => { try { if (gameMode === 'mp') { mpSeen = true; return; } if (mpSeen) { mpSeen = false; if (player.hp > 100) player.hp = 100; } } catch (e) {} };
+  const soloPlay = () => { try { return gameMode !== 'mp' && state === 'playing' && !(window.CAMP && CAMP.matchOn && CAMP.matchOn()); } catch (e) { return false; } };
+  // something only counts once it has stayed wrong across two checks at least 150 ms apart
+  let badAt = 0;
+  const confirmed = bad => { if (!bad) { badAt = 0; return false; } const t = performance.now(); if (!badAt) { badAt = t; return false; } return t - badAt >= 150; };
   function clean() {
+    afterMp();
     if (typeof weapon !== 'undefined' && weapon !== WEAPONS[weaponKey]) return false;
     if (!okTable('w', WEAPONS, GUNS)) return false;
     if (!okTable('e', ENEMY_TYPES, CUBES)) return false;
     for (const k of GUNS.keys) { const a = ammo[k]; if (a !== undefined && (typeof a !== 'number' || Number.isNaN(a) || a > WEAPONS[k].mag + 0.001)) return false; }
-    if (typeof gameMode !== 'undefined' && gameMode !== 'mp') { const hp = player.hp; if (typeof hp === 'number' && (hp > 100.5 || hp === Infinity)) return false; } // mp health is the host's call
+    if (soloPlay()) { const hp = player.hp; if (typeof hp === 'number' && (hp > 100.5 || hp === Infinity)) return false; } // mp health is the host's call
     return true;
   }
 
@@ -19136,11 +19163,11 @@ window.startIntro = function (post) {
       }
       if (ex) { lastCoins = Number(profile.coins) || 0; wasExempt = true; window.__caExemptAt = Date.now(); return; }
       if (wasExempt) { restoreGuns(); restoreCubes(); clampHp(); lastCoins = Number(profile.coins) || 0; wasExempt = false; window.__caExemptAt = Date.now(); } // the test tools' changes don't follow you out
-      if (!clean() || badCoins()) caught();
+      if (confirmed(!clean()) || badCoins()) caught();
     } finally { busy = false; }
   }
   window.__caChk = () => { try { return exempt() || (clean() && !(Number(profile.coins) - lastCoins > COIN_JUMP)); } catch (e) { return true; } };
-  window.__caBust = () => { try { tick(); if (!exempt()) caught(); } catch (e) {} };
+  window.__caBust = () => { try { tick(); } catch (e) {} }; // only ever bans through the confirmed check
 
   saveProfile = function () { tick(); const r = save0.apply(this, arguments); writeLedger(); return r; };
   const start0 = startGame; startGame = function () { tick(); if (locked) return; return start0.apply(this, arguments); };
