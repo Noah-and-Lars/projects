@@ -60,7 +60,8 @@
   </form>
 </div>
 
-<script src="games.js?v=129"></script>
+<script src="games.js?v=130"></script>
+<script src="account.js?v=1"></script>
 <script>
 // Global chat: everyone on this page talks in one realtime channel (arcade-chat), on the arcade's Cloudflare server.
 // Nothing is stored on a server. Each browser keeps the last KEEP messages in its own localStorage,
@@ -83,7 +84,7 @@ const tidy = s => String(s).replace(/\s+/g, ' ').trim().replace(BAD, w => w[0] +
 
 let me = load('id', null);
 if (!me) { me = rid(); store('id', me); }
-let name = load('name', '');
+let name = (window.ArcadeAccount && ArcadeAccount.name()) || load('name', ''); // your arcade account's name when you have one
 let log = load('log', []);
 let muted = load('muted', {}); // id -> name, only on this device
 let clearedAt = load('cleared', 0);
@@ -318,7 +319,7 @@ $('nameForm').addEventListener('submit', e => {
   $('msg').focus();
 });
 $('nameBox').addEventListener('keydown', e => { if (e.key === 'Escape' && name) $('nameBox').hidden = true; });
-$('meBtn').onclick = () => askName(false);
+$('meBtn').onclick = () => { if (window.ArcadeAccount && ArcadeAccount.name()) ArcadeAccount.open(); else askName(false); }; // with an account the name is set on the account
 
 $('clear').onclick = () => {
   if (!confirm('Clear the chat history saved on this device? Other people keep their own copies.')) return;
@@ -329,8 +330,12 @@ $('clear').onclick = () => {
 
 $('meBtn').textContent = name || 'Pick a name';
 render(); toBottom(); people();
-if (!name) askName(true);
+if (!name) {
+  if (window.ArcadeAccount) { // the arcade's account popup asks for a name first; the chat uses it once it's there
+    const w = setInterval(() => { const n = ArcadeAccount.name(); if (!n) return; clearInterval(w); name = n; $('meBtn').textContent = name; if (joined) ch.track({ n: name, at: joinedAt }); status(); }, 500);
+  } else askName(true);
+}
 </script>
-<script src="tos.js?v=1"></script>
+<script src="tos.js?v=2"></script>
 </body>
 </html>

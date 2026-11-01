@@ -58,6 +58,26 @@ source in Settings → Pages should be switched to `main`.
   `arcade.css` (`.notice`, `.notice-box`, `.notice-ok`) are still used by the
   chat's name box.
 - `arcade.css`: shared styles for the pages above.
+- `account.js` (since 2026-11-01): Arcade accounts and cloud saves, loaded by `index.html`, `play.html` and
+  `chat.html` (bump `account.js?v=N` in all three when it changes). It adds the account button to the header
+  (`#acctBtn`, the panel shows each game's `stat()`), and on a first visit (after the Terms) a popup that asks
+  everyone to make an account; "Use a local account instead" takes three "are you sure" popups, then a name kept
+  in `arcade-local`. An online account is a unique username (3-16 letters, numbers, `_`; case doesn't count;
+  reserved and rude names are refused by the server) and a password. The browser stretches the password with
+  PBKDF2 (150k rounds, salted with the lower-case name) and sends only that key. A recovery code shown once at
+  sign-up resets a forgotten password (`recover`). The account is `arcade-acct` ({name, token}); the last synced
+  state is `arcade-acct-sync`. Sync: every game's localStorage entries are grouped by `GROUPS` (a regex per
+  game; anything unknown goes to `misc`, and `NEVER` lists this device's own keys). On load, every 45 s when a
+  group changed, and when the page is hidden, groups move to or from the account; a group changed on both sides
+  keeps the copy with more progress (`score()`). Signing up uploads everything already on the device; logging
+  in on a device with its own progress merges game by game; logging out clears this device's copy. `play.html`
+  waits up to 4 s for the first sync before loading the game, and reloads the game if its saves change.
+  On localhost, `localStorage['arcade-acct-api']` points it at a local copy of the server (tests only).
+- Player names: every game with a name (Cube Assault, Cube Tower Defense, Havoc Bay, Rocket Rivals, Football,
+  Poly Racer, Chess, Russian Roulette, Free Criminal, Blockcraft's server name) has a `<script id="arcade-name">`
+  block at the top of `<head>`: it writes the account's (or local account's) name into the game's save before the
+  game reads it and keeps the game's name box on that name, read-only. Cube Assault and Havoc Bay still let the
+  test names (GAMETESTER, ADMINTEST) be typed, since those ask for their password. The chat uses the account name too.
 - `tos.js`: the Terms of Service pop-up, loaded by `index.html`, `play.html` and
   `chat.html`. It shows until the visitor ticks the box and agrees; agreeing is
   remembered in localStorage (`arcade-tos-agreed`, set to `TOS_VERSION`). Change
@@ -65,6 +85,10 @@ source in Settings → Pages should be switched to `main`.
   (for screenshots and tests only).
   `index.html`, `play.html` and `chat.html` load it and `games.js` with `?v=N`. GitHub Pages lets browsers cache
   files for 10 minutes, so bump N in all three pages whenever either file changes.
+- Accounts server: the same Worker answers `/acct/*` (see the comment block in `realtime-worker/src/worker.js`):
+  one `Account` Durable Object per lower-case username (so a name can only be registered once), holding the
+  password check, the recovery code hash, signed-in devices (hashed tokens) and each game's saves in 40,000-char
+  chunks (5 MB a game, 20 MB an account). Only the official origin may call it. Deployed with the Worker.
 - Realtime server (since 2026-10-31; it used to be Supabase Realtime): a Cloudflare Worker,
   `arcade-realtime` at `wss://arcade-realtime.arcade-realtime.workers.dev/ws`, source in
   `realtime-worker/`. Each channel topic is one Durable Object, each browser channel is one
@@ -248,7 +272,9 @@ source in Settings → Pages should be switched to `main`.
 
 ## Conventions
 
-- Games save progress only in the player's own browser (`localStorage`, wrapped
-  in try/catch). No accounts or data collection. The only server is the realtime Worker on Cloudflare (the live "on now"
-  counter, the Global chat, the games' online rooms and Blockcraft's public server), which passes messages along and stores
-  nothing. Blockcraft's shared world is saved in each player's browser.
+- Games save progress in the player's own browser (`localStorage`, wrapped in try/catch), exactly as before;
+  `account.js` copies those saves to the player's Arcade account when they have one (2026-11-01). A game never
+  talks to the accounts server itself. When a game adds a save key, make sure `GROUPS` in `account.js` puts it
+  with that game (a new game's keys otherwise land in `misc`, which still syncs). The Worker on Cloudflare runs the
+  live "on now" counter, the Global chat, the games' online rooms, Blockcraft's public server and the accounts;
+  apart from accounts it passes messages along and stores nothing. No email or other personal data is collected.

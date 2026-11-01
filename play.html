@@ -59,7 +59,8 @@
   <section id="more" class="grid small"></section>
 </main>
 
-<script src="games.js?v=129"></script>
+<script src="games.js?v=130"></script>
+<script src="account.js?v=1"></script>
 <script>
 const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('game');
@@ -92,7 +93,12 @@ if (!game) {
     $('loading').classList.add('done');
     try { frame.contentWindow.focus(); } catch (e) {}
   });
-  frame.src = game.path;
+  // with an account, the game waits (a few seconds at most) for its progress to arrive from the cloud first
+  const start = () => { if (!frame.src) frame.src = game.path; };
+  if (window.ArcadeAccount) {
+    ArcadeAccount.ready().then(start);
+    ArcadeAccount.onPulled(g => { if (g.includes(game.id) && frame.src) try { frame.contentWindow.location.reload(); } catch (e) { frame.src = game.path; } });
+  } else start();
   $('newtab').href = game.path;
 
   const next = GAMES[(index + 1) % GAMES.length];
@@ -129,6 +135,6 @@ if (!game) {
   }
 }
 </script>
-<script src="tos.js?v=1"></script>
+<script src="tos.js?v=2"></script>
 </body>
 </html>

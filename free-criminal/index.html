@@ -779,6 +779,47 @@ body.touch #help{max-width:min(390px,40vw);font-size:16px}
   </div>
 </section>
 
+<script id="arcade-name">
+// Your name in this game is your arcade account's name (made on the arcade's home page, or your local account's).
+// It's put into the save before the game reads it, and the name box can't be changed here.
+(() => {
+  let n = '';
+  try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'), l = JSON.parse(localStorage.getItem('arcade-local') || 'null'); n = String((a && a.name) || (l && l.name) || ''); } catch (e) {}
+  window.ARCADE_NAME = n;
+  if (!n) return;
+  const put = (key, path, skip) => {
+    try {
+      const raw = localStorage.getItem(key); if (raw == null) return;
+      const o = JSON.parse(raw); if (!o || typeof o !== 'object' || (skip && skip(o))) return;
+      let t = o; for (let i = 0; i < path.length - 1; i++) { if (!t[path[i]] || typeof t[path[i]] !== 'object') t[path[i]] = {}; t = t[path[i]]; }
+      if (t[path[path.length - 1]] !== n) { t[path[path.length - 1]] = n; localStorage.setItem(key, JSON.stringify(o)); }
+    } catch (e) {}
+  };
+  put("freecriminal.profile.v1", ["name"]);
+  const IDS = ["npName"], ALLOW = []; // ALLOW: test names that can still be typed in (they ask for their password)
+  const allowed = v => ALLOW.some(a => a.toLowerCase() === v.trim().toLowerCase());
+  const partOf = v => !v.trim() || ALLOW.some(a => a.toLowerCase().startsWith(v.trim().toLowerCase()));
+  const set = el => { if (el.value !== n) { el.value = n; el.dispatchEvent(new Event('input', { bubbles: true })); } };
+  const fix = () => {
+    for (const id of IDS) {
+      const el = document.getElementById(id); if (!el) continue;
+      if (!el.dataset.arcadeName) {
+        el.dataset.arcadeName = 1; el.title = 'Your name comes from your arcade account. Change it on the arcade home page.';
+        if (!ALLOW.length) el.readOnly = true;
+        else {
+          el.addEventListener('input', () => { if (el.value !== n && !partOf(el.value)) set(el); }, true);
+          el.addEventListener('blur', () => { if (!allowed(el.value)) set(el); });
+        }
+      }
+      if (document.activeElement !== el || !ALLOW.length) { if (!allowed(el.value)) set(el); }
+    }
+  };
+  // a name typed in the box is only taken if it's one of the test names
+  for (const id of []) document.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('#' + id)) for (const i of IDS) { const el = document.getElementById(i); if (el && !allowed(el.value)) set(el); } }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && IDS.includes(e.target.id) && !allowed(e.target.value)) set(e.target); }, true);
+  setInterval(fix, 250); document.addEventListener('DOMContentLoaded', fix);
+})();
+</script>
 <script>
 /* three.js r128 (MIT License), embedded so the game works offline */
 /**

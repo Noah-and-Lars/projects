@@ -2,7 +2,7 @@
 // tick the box and agree. Agreeing is remembered in this browser under TOS_KEY; change TOS_VERSION to ask everyone
 // again after the terms change.
 (function () {
-  var TOS_VERSION = '2026-10-20', TOS_KEY = 'arcade-tos-agreed';
+  var TOS_VERSION = '2026-11-01', TOS_KEY = 'arcade-tos-agreed';
   try { if (localStorage.getItem(TOS_KEY) === TOS_VERSION) return; } catch (e) {}
   if (/[?&]notos=1/.test(location.search)) return;
 
@@ -29,7 +29,8 @@
        'This includes removing pages, games, the Global chat or any online feature, changing the Site\'s address, or ending the Site entirely. Nobody is owed any warning, explanation, refund or compensation if this happens.',
        'Online features depend on services run by other companies. They may stop working, be limited or go offline at any time, and the creators are not responsible when that happens.']],
     ['6. Your data',
-      ['The Site does not ask you to make an account. Your names, settings, saves, scores and chat history are kept in your own browser\'s storage. Clearing your browser data, using a different browser or device, or an update to a game can delete them, and they cannot be recovered.',
+      ['You can make a free Arcade account with a username and a password (no email). If you do, your username, a scrambled (hashed) form of your password, and the saves, scores and settings from the games are stored on an online service (Cloudflare) so your progress follows you to other devices. Your username is public: it is your name in the games and in chat, so do not use your real name. Keep your recovery code safe; without it a forgotten password cannot be reset. Accounts and the progress saved in them may be removed at any time, for example if the Site shuts down.',
+       'If you use a local account instead, your names, settings, saves and scores are kept only in your own browser\'s storage. Clearing your browser data, using a different browser or device, or an update to a game can delete them, and they cannot be recovered. Chat history is always kept only in your own browser.',
        'When you use online features, what you send (such as your player name, chat messages and in-game actions) is sent through an online service so other players can see it. Do not send anything you would not want other people to see.']],
     ['7. No warranty',
       ['The Site and everything on it is provided "as is" and "as available", for free and for fun, without any warranty of any kind. The creators do not promise that the Site will be safe, secure, error-free, always available, or that bugs will be fixed.',
@@ -62,7 +63,7 @@
     var d = document.createElement('div'); d.id = 'tosPop'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'tosTitle');
     var body = TERMS.map(function (s) { return '<h3>' + esc(s[0]) + '</h3>' + s[1].map(function (p) { return '<p>' + esc(p) + '</p>'; }).join(''); }).join('');
     d.innerHTML = '<div class="tbox"><div class="thead"><small>The Arcade</small><h2 id="tosTitle">Terms of Service</h2>' +
-      '<p>Please read these terms before using the site. Last updated 20 October 2026.</p></div>' +
+      '<p>Please read these terms before using the site. Last updated 1 November 2026.</p></div>' +
       '<div class="tbody" tabindex="0">' + body + '</div>' +
       '<div class="tfoot"><label><input type="checkbox" id="tosCheck"><span>I have read and I agree to the Terms of Service. I understand that everything I say in chat is my own responsibility, that games can be changed or removed at any time, and that the site can be changed, taken down or terminated at any time.</span></label>' +
       '<span class="thint" id="tosHint">Tick the box to continue.</span><button id="tosOk" disabled>Agree and continue</button></div></div>';
