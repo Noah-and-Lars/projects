@@ -3764,8 +3764,10 @@ const WC = (() => {
 // ---------- 1.1: online (Friendlies and Ultimate Team) ----------
 // Two players in a room on the arcade's realtime server. The host's game runs the whole match: both humans' controls
 // (yours from the keyboard, your friend's from the network), the AI, the ball and the referee. Your friend's game
-// sends its controls about 15 times a second and draws the match from the host's snapshots, so the ball, every goal,
-// card and whistle are the same on both screens.
+// sends its controls the moment they change and draws the match from the host's snapshots (30 a second), so the ball,
+// every goal, card and whistle are the same on both screens. 1.1.1: the friend's screen plays the snapshots back on a
+// smooth clock (not one jump per snapshot), runs the leg and kick animations itself, and moves its own player straight
+// away from its own controls (then eases into wherever the host says he is), so it no longer feels laggy.
 const NET = { on: false, host: false, guest: false, two: false, ctrls: [null, null], ch: [{}, {}], gin: { held: {}, pressed: {}, released: {}, stick: { x: 0, y: 0 }, dx: 0, dz: 0 }, useGuestDir: false };
 // a team's controlled player, for whichever human it belongs to
 function setCtrl(i, P) { if (NET.two) { NET.ctrls[i] = P; if (i === M.user) M.ctrl = P; } else M.ctrl = P; }
@@ -3788,7 +3790,7 @@ const ONLINE = (() => {
   const RT = 'https://noah-and-lars.github.io/projects/rt.js?v=1', ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const ui = () => document.getElementById('ui'), click = () => { try { sfx.init(); sfx.click(); } catch (e) {} };
   const myId = Math.random().toString(36).slice(2, 10);
-  let client = null, room = null, lastSnap = 0, lastIn = 0, inKey = '', snaps = [], outP = {}, outR = {};
+  let client = null, room = null, lastSnap = 0, lastIn = 0, inKey = '', snaps = [], outP = {}, outR = {}, lastAi = 0;
   const HELD = ['A', 'W', 'Z', 'S', 'D', 'Q', 'lmb', 'rmb', 'space', 'sprint'];
   const myName = () => (profile.club && profile.club.name) || 'Player';
   // the realtime client (loaded the first time you go online)
@@ -3856,7 +3858,7 @@ const ONLINE = (() => {
     if (ev === 'lobby' && !room.host) { room.set = d.set; room.mode = d.mode; room.sides[0] = d.sides[0]; room.hostName = d.hn; if (MENUS.screen === 'lobby') lobby(); return; }
     if (ev === 'go' && !room.host) { startGuest(d.cfg); return; }
     if (ev === 'i' && room.host) { gotInput(d); return; }
-    if (ev === 's' && NET.guest) { snaps.push(d); if (snaps.length > 30) snaps.shift(); return; }
+    if (ev === 's' && NET.guest) { gotSnap(d); return; }
     if (ev === 'e' && NET.guest) { replayEvent(d); return; }
     if (ev === 'ht' && NET.guest) { halftime(d); return; }
     if (ev === 'ft' && NET.guest) { fulltime(d); return; }
@@ -3924,7 +3926,7 @@ const ONLINE = (() => {
   function startGuest(cfg) {
     const fix = (c, s) => s && s.crestNid ? { ...c, crest: crest('CLUB', { colors: s.crestCols, text: s.short }) } : c;
     cfg.home = fix(cfg.home, room.sides[0]); cfg.away = fix(cfg.away, room.sides[1]);
-    room.playing = true; NET.on = NET.guest = true; NET.host = false; NET.two = false; snaps = []; outP = {}; outR = {};
+    room.playing = true; NET.on = NET.guest = true; NET.host = false; NET.two = false; snaps = []; outP = {}; outR = {}; G = newG();
     document.querySelectorAll('.ov').forEach(o => o.remove());
     MENUS.startMatch(cfg);
   }
@@ -3932,40 +3934,102 @@ const ONLINE = (() => {
   function gotInput(d) {
     const G = NET.gin; G.held = {}; for (const k of d.h || []) G.held[k] = true;
     for (const k of d.p || []) G.pressed[k] = true; for (const k of d.r || []) G.released[k] = true;
-    G.dx = (d.d && d.d[0]) || 0; G.dz = (d.d && d.d[1]) || 0;
+    G.dx = (d.d && d.d[0]) || 0; G.dz = (d.d && d.d[1]) || 0; if (d.n) lastAi = d.n;
   }
   const r2 = v => Math.round(v * 100) / 100;
-  // host: send the match about 15 times a second
+  // host: send the match 30 times a second
   function hostFrame() {
     if (!NET.host || !M || !room) return;
-    const now = performance.now(); if (now - lastSnap < 66) return; lastSnap = now;
+    const now = performance.now(); if (now - lastSnap < 28) return; lastSnap = now;
     const p = []; for (const P of M.all) p.push(r2(P.pos.x), r2(P.pos.z), r2(P.face), P.anim, r2(P.at), r2(P.spd || 0), (P.off ? 1 : 0) | (P.shield ? 2 : 0) | (P.jockey ? 4 : 0) | (P.dive && P.dive.side < 0 ? 8 : 0), r2(P.pos.y || 0));
     const R = M.ref.userData.p, B = M.ball, ci = c => c ? M.all.indexOf(c) : -1;
     send('s', { t: now, p, b: [r2(B.pos.x), r2(B.pos.y), r2(B.pos.z)], r: [r2(R.pos.x), r2(R.pos.z), r2(R.face), r2(Math.min(1, R.vel.length() / 8.5))], sc: [M.teams[0].score, M.teams[1].score],
       c: Math.round(M.clock), h: M.half, ph: M.phase, st: M.stop || 0, k: [ci(NET.ctrls[0]), ci(NET.ctrls[1])], ex: r2(crowd.excite), pw: M.charging === NET.ctrls[1] ? r2(M.chargeT) : r2((NET.ch[1] && NET.ch[1].charging) ? NET.ch[1].chargeT : 0),
-      pens: M.pens || null, so: M.so ? M.so.score || null : null, g: M.goals.length });
+      pens: M.pens || null, so: M.so ? M.so.score || null : null, g: M.goals.length, o: ci(M.ball.owner), ai: lastAi });
+  }
+  // ---------- guest: playing the host's match back ----------
+  // G keeps the playback clock (host time = my time + off), how late snapshots tend to run, how long my controls take to
+  // come back in a snapshot (the round trip), my recent controls, and the smoothing for my own player
+  const newG = () => ({ off: null, late: 30, delay: 90, rtt: 120, ai: 0, hist: [], err: { x: 0, z: 0 }, w: 0, who: -1, last: null, base: null, face: null, off2: null });
+  let G = newG();
+  function gotSnap(d) {
+    const now = performance.now(), smp = d.t - now; d.rx = now;
+    if (G.off === null) G.off = smp;
+    else if (smp > G.off) G.off += (smp - G.off) * 0.25; // a quicker one than usual: the clocks are closer than we thought
+    else G.off += (smp - G.off) * 0.003;                 // and creep back slowly, as clocks wander a little
+    const late = Math.max(0, G.off - smp); G.late += (late - G.late) * (late > G.late ? 0.25 : 0.02);
+    if (d.ai && d.ai !== G.ai) { G.ai = d.ai; const r = now - d.ai; if (r > 0 && r < 2000) G.rtt += (r - G.rtt) * (r < G.rtt ? 0.3 : 0.08); }
+    if (snaps.length && d.t <= snaps[snaps.length - 1].t) return;
+    snaps.push(d); if (snaps.length > 60) snaps.shift();
   }
   // guest: send my controls, draw the host's match
   function guestFrame(dt) {
     if (!M || !room) return;
+    const now = performance.now();
+    // my controls go the moment they change (a press straight away, a new stick direction within 33 ms), and every 200 ms anyway
     for (const k in inp.pressed) if (inp.pressed[k]) outP[k] = 1; for (const k in inp.released) if (inp.released[k]) outR[k] = 1;
-    const d = inputDir(), h = HELD.filter(k => inp.held[k]), now = performance.now(), key = h.join() + '|' + Object.keys(outP).join() + '|' + Math.round(d.x * 10) + ',' + Math.round(d.z * 10);
-    if ((key !== inKey && now - lastIn > 50) || now - lastIn > 400) { send('i', { d: [r2(d.x), r2(d.z)], h, p: Object.keys(outP), r: Object.keys(outR) }); outP = {}; outR = {}; lastIn = now; inKey = key; }
+    const d = inputDir(), h = HELD.filter(k => inp.held[k]), key = h.join() + '|' + Object.keys(outP).join() + '|' + Math.round(d.x * 10) + ',' + Math.round(d.z * 10);
+    const press = Object.keys(outP).length + Object.keys(outR).length > 0;
+    if ((key !== inKey && (press || now - lastIn > 33)) || now - lastIn > 200) { send('i', { d: [r2(d.x), r2(d.z)], h, p: Object.keys(outP), r: Object.keys(outR), n: Math.round(now) }); outP = {}; outR = {}; lastIn = now; inKey = key; }
+    G.hist.push({ t: now, x: r2(d.x), z: r2(d.z), sp: !!inp.held.sprint, W: !!inp.held.W }); while (G.hist.length > 2 && G.hist[1].t < now - 1500) G.hist.shift();
     clearPressed();
-    // draw ~110 ms behind the newest snapshot, between the two around that moment
     if (!snaps.length) return;
-    const tgt = snaps[snaps.length - 1].t - 110; let a = snaps[0], b = snaps[0];
-    for (let i = 0; i < snaps.length; i++) { if (snaps[i].t <= tgt) a = snaps[i]; if (snaps[i].t >= tgt) { b = snaps[i]; break; } b = snaps[i]; }
-    const k = b.t > a.t ? Math.max(0, Math.min(1, (tgt - a.t) / (b.t - a.t))) : 1, L = (x, y) => x + (y - x) * k, LA = (x, y) => x + wrapA(y - x) * k;
-    M.all.forEach((P, i) => { const o = i * 8, A = a.p, Bp = b.p; if (!A || !Bp || Bp.length < o + 8) return;
-      P.pos.set(L(A[o], Bp[o]), L(A[o + 7], Bp[o + 7]), L(A[o + 1], Bp[o + 1])); P.face = LA(A[o + 2], Bp[o + 2]); P.anim = Bp[o + 3]; P.at = Bp[o + 4]; P.spd = L(A[o + 5], Bp[o + 5]);
-      const f = Bp[o + 6], off = !!(f & 1); if (off !== P.off) { P.off = off; P.mesh.visible = !off; P.blob.visible = !off; } P.shield = !!(f & 2); P.jockey = !!(f & 4); P.dive = P.anim === ANIM.dive ? { side: f & 8 ? -1 : 1 } : null; P.ph += dt * 0; });
-    M.ball.pos.set(L(a.b[0], b.b[0]), L(a.b[1], b.b[1]), L(a.b[2], b.b[2]));
-    const R = M.ref.userData.p; R.pos.set(L(a.r[0], b.r[0]), 0, L(a.r[1], b.r[1])); R.face = LA(a.r[2], b.r[2]); R.vel.set(b.r[3] * 8.5, 0, 0);
-    const s = snaps[snaps.length - 1]; M.teams[0].score = s.sc[0]; M.teams[1].score = s.sc[1]; M.clock = s.c; M.half = s.h; M.stop = s.st; crowd.excite = Math.max(crowd.excite * 0.98, s.ex); M.pens = s.pens;
-    if (s.ph !== M.phase) { M.phase = s.ph; if (s.ph === 'play' || s.ph === 'restart') document.querySelectorAll('.ov.onHt').forEach(o => o.remove()); }
+    // play back a little behind the host's clock (just enough to have the next snapshot in hand), moving every frame
+    G.delay += (Math.max(45, Math.min(260, G.late + 52)) - G.delay) * Math.min(1, dt * 1.5);
+    const rt = now + G.off - G.delay, N = snaps.length;
+    let a, b, k;
+    if (rt >= snaps[N - 1].t) { b = snaps[N - 1]; a = N > 1 ? snaps[N - 2] : b; k = b.t > a.t && b.t - a.t < 250 ? (Math.min(rt, b.t + 120) - a.t) / (b.t - a.t) : 1; } // running late: carry on for up to 0.12 s
+    else if (rt <= snaps[0].t) { a = b = snaps[0]; k = 1; }
+    else { let i = N - 1; while (i > 1 && snaps[i - 1].t > rt) i--; a = snaps[i - 1]; b = snaps[i]; k = b.t - a.t > 250 ? 1 : (rt - a.t) / (b.t - a.t); }
+    const L = (x, y) => x + (y - x) * k, LA = (x, y) => x + wrapA(y - x) * Math.min(1, k), S = k < 0.5 ? a : b, ahead = (rt - S.t) / 1000;
+    M.all.forEach((P, i) => { const o = i * 8, A = a.p, Bp = b.p, Sp = S.p; if (!A || !Bp || Bp.length < o + 8 || A.length < o + 8) return;
+      P.pos.set(L(A[o], Bp[o]), Math.max(0, L(A[o + 7], Bp[o + 7])), L(A[o + 1], Bp[o + 1])); P.face = LA(A[o + 2], Bp[o + 2]);
+      P.anim = Sp[o + 3]; P.at = Math.max(0, Sp[o + 4] + ahead); P.spd = Math.max(0, Math.min(1, L(A[o + 5], Bp[o + 5])));
+      const f = Sp[o + 6], off = !!(f & 1); if (off !== P.off) { P.off = off; P.mesh.visible = !off; P.blob.visible = !off; } P.shield = !!(f & 2); P.jockey = !!(f & 4); P.dive = P.anim === ANIM.dive ? { side: f & 8 ? -1 : 1 } : null; });
+    M.ball.pos.set(L(a.b[0], b.b[0]), Math.max(0, L(a.b[1], b.b[1])), L(a.b[2], b.b[2]));
+    const R = M.ref.userData.p; R.pos.set(L(a.r[0], b.r[0]), 0, L(a.r[1], b.r[1])); R.face = LA(a.r[2], b.r[2]); R.vel.set(Math.max(0, L(a.r[3], b.r[3])) * 8.5, 0, 0);
+    const s = snaps[N - 1]; M.teams[0].score = s.sc[0]; M.teams[1].score = s.sc[1]; M.clock = s.c; M.half = s.h; M.stop = s.st; crowd.excite = Math.max(crowd.excite * 0.98, s.ex); M.pens = s.pens;
+    if (s.ph !== M.phase) { M.phase = s.ph; M.pt = 0; if (s.ph === 'play' || s.ph === 'restart') document.querySelectorAll('.ov.onHt').forEach(o => o.remove()); } else M.pt += dt;
     M.ctrl = s.k[1] >= 0 ? M.all[s.k[1]] : null; M.charging = s.pw > 0 ? M.ctrl : null; M.chargeT = s.pw; M.chargeKind = 'power';
+    predictMe(M.ctrl, s, dt, now);
+    // the legs run here, from each player's speed (the host only sends where they are)
+    for (const P of M.all) P.ph += P.spd * 8.5 * dt * 2.35;
+    R.ph += R.vel.x * dt * 2.35;
     drawMatch();
+  }
+  // my own player moves the moment I push the stick: start from where the newest snapshot has him, replay the controls
+  // the host hasn't seen yet (about one round trip's worth) with the host's own running rules, and ease out the difference
+  // whenever a new snapshot comes in. Only while he's simply running in open play; anything else is the host's to show.
+  function predictMe(P, s, dt, now) {
+    const i = P ? M.all.indexOf(P) : -1, o = i * 8, Sp = s.p;
+    if (i !== G.who) { G.who = i; G.err.x = G.err.z = 0; G.w = 0; G.last = null; G.face = null; G.off2 = null; }
+    const ok = i >= 0 && !P.off && M.phase === 'play' && Sp && Sp.length >= o + 8 && Sp[o + 3] === ANIM.run && !P.gk;
+    G.w = Math.max(0, Math.min(1, G.w + (ok ? dt * 5 : -dt * 6)));
+    if (!ok) { G.last = null; if (G.off2 && G.w > 0) { P.pos.x += G.off2.x * G.w; P.pos.z += G.off2.z * G.w; } return; } // fading back to the host's position
+    // where he is and how fast he's going in the newest snapshot
+    const prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
+    let x = Sp[o], z = Sp[o + 1], vx = 0, vz = 0;
+    if (prev && prev.p && prev.p.length >= o + 8 && s.t - prev.t > 0 && s.t - prev.t < 250) { const q = (s.t - prev.t) / 1000; vx = (Sp[o] - prev.p[o]) / q; vz = (Sp[o + 1] - prev.p[o + 1]) / q; }
+    // replay my controls from one round trip before that snapshot arrived, up to now (at most half a second)
+    const has = s.o === i, ms = maxSpeed(P), H = G.hist, t0 = s.rx - G.rtt, steps = Math.max(0, Math.min(30, Math.round((now - t0) / (1000 / 60))));
+    for (let n = 0, j = 0; n < steps; n++) {
+      const tt = t0 + (n + 0.5) * (1000 / 60); while (j + 1 < H.length && H[j + 1].t <= tt) j++;
+      const c = H[j], mv = c && c.x * c.x + c.z * c.z > 0.01;
+      let sp = ms * (c && c.sp ? 1 : 0.74) * (has ? 0.95 : 1); if (c && c.W) sp = ms * (has ? 0.4 : 0.52);
+      let ax = (mv ? c.x * sp : 0) - vx, az = (mv ? c.z * sp : 0) - vz; const l = Math.hypot(ax, az), acc = 34 / 60; if (l > acc) { ax *= acc / l; az *= acc / l; }
+      vx += ax; vz += az; x = Math.max(-PL - 6, Math.min(PL + 6, x + vx / 60)); z = Math.max(-PW - 4, Math.min(PW + 4, z + vz / 60));
+    }
+    // a new snapshot moved the starting point: keep him where he was heading and ease the difference out
+    if (G.last && G.base !== s) { G.err.x += G.last.x + G.last.vx * dt - x; G.err.z += G.last.z + G.last.vz * dt - z; if (Math.hypot(G.err.x, G.err.z) > 4) G.err.x = G.err.z = 0; }
+    G.base = s; G.last = { x, z, vx, vz };
+    const dec = Math.exp(-dt * 8); G.err.x *= dec; G.err.z *= dec;
+    const w = G.w, bx = P.pos.x, bz = P.pos.z, ox = (x + G.err.x - bx) * w, oz = (z + G.err.z - bz) * w;
+    P.pos.x += ox; P.pos.z += oz; G.off2 = { x: x + G.err.x - bx, z: z + G.err.z - bz };
+    const v = Math.hypot(vx, vz); if (G.face === null) G.face = P.face;
+    G.face += wrapA((v > 0.8 ? angTo(vx, vz) : P.face) - G.face) * Math.min(1, dt * 16); P.face += wrapA(G.face - P.face) * w;
+    P.spd += (Math.min(1, v / 8.5) - P.spd) * w;
+    // the ball at my feet comes with me
+    const Bl = M.ball.pos; if (has && Math.hypot(Bl.x - bx, Bl.z - bz) < 2.5) { Bl.x += ox; Bl.z += oz; }
   }
   // host: the HUD moments (goals, cards, banners, the whistle) go to the guest too
   const pack = a => a.map(x => x && x.players && x.opp ? { T: x.i } : x && x.d && x.team ? { P: M.all.indexOf(x) } : x);
