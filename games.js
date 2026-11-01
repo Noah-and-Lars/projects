@@ -14,6 +14,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'uno',
+    title: 'UNO!',
+    category: 'Card',
+    tagline: 'The classic card game for 2 to 10, against bots or online. Classic, No Mercy and Flip.',
+    description: 'Play UNO with 2 to 10 players against bots, or online with friends. Match the pile by colour, number or symbol, drop Skips, Reverses and Draw Twos, choose a colour with a Wild and bluff with a Wild Draw Four (challenge it if you dare). Call UNO on your last card or get caught. Three modes: Classic (first to 500 points), No Mercy (stack the +2/+4/+6/+10, 0s pass hands, 7s swap, draw till you can play, and 25 cards knocks you out) and Flip, where a Flip card turns the whole deck over to the dark side with harsher cards. Make a room, share the code, and fill empty seats with bots.',
+    controls: 'Mouse or touch',
+    keys: [['Click a card', 'Play it, if it matches'], ['Draw pile', 'Draw when you can’t play'], ['UNO button', 'Call UNO on your last card'], ['Colour wheel', 'Pick a colour for a Wild'], ['Challenge', 'Call a Wild Draw Four bluff']],
+    path: 'uno/index.html',
+    thumb: 'uno/thumb.jpg',
+    added: '2026-11-01T22:00:00+11:00',
+    updated: '2026-11-01T22:00:00+11:00',
+    stat() { const s = readSave('uno.stats', true); return s && s.wins ? s.wins + (s.wins === 1 ? ' win' : ' wins') : null; },
+  },
+  {
     id: 'rocket-rivals',
     title: 'Rocket Rivals',
     category: 'Sports',
@@ -225,6 +239,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-01', game: 'uno', text: 'New game: UNO! 1.0. The classic card game for 2 to 10 players, against bots or online with friends. Match by colour, number or symbol, play Skips, Reverses, Draw Twos and Wilds, and call UNO on your last card. Three modes: Classic (first to 500), No Mercy (stack the +2/+4/+6/+10, 0s pass hands, 7s swap and 25 cards knocks you out) and Flip, where a Flip card turns the whole deck over to the dark side. Make a room, share the code, and fill the empty seats with bots.' },
   { date: '2026-11-01', game: 'football', text: 'Football 1.1.1: much smoother online play for the player who joins a room. The match now updates 30 times a second instead of 15 and plays back smoothly between updates, legs and kicks animate properly, and your own player reacts to your controls straight away instead of a moment later. Your inputs also reach the host faster.' },
   { date: '2026-11-01', game: 'cube-assault', text: 'Arcade accounts are here! Make a free account (just a username and a password) and your progress in every game is saved online, so you can play on any device. Your username is your name in every game, and nobody else can ever take it. Everything you already have moves into your account when you make one.' },
   { date: '2026-11-01', game: 'havoc-bay', text: 'Havoc Bay 1.2.1: a missile computer in the command room of each harbor. Log on, pick an island and the strike wipes it out (one missile every 2.5 minutes). Planes can now land on carriers and runways to repair, teammates can ride as gunners in a Dual Gunner, Crown Isle has runways, the islands are livelier and plane crashes hit twice as hard. Plus bug fixes for the Public Battle.' },

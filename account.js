@@ -27,6 +27,7 @@
 
   /* ---------- which saved entries belong to which game ---------- */
   var GROUPS = [
+    ['uno', /^uno\./],
     ['cube-assault', /^(cubeAssault|caE2$)/],
     ['havoc-bay', /^havocbay\./],
     ['rocket-rivals', /^rivals\./],

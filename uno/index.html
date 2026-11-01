@@ -1,0 +1,1278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2a0606">
+<title>UNO!</title>
+<script id="arcade-name">
+// your name in this game is your arcade account's name (set on the arcade home page, or your local account's).
+(() => {
+  let n = '';
+  try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'), l = JSON.parse(localStorage.getItem('arcade-local') || 'null'); n = String((a && a.name) || (l && l.name) || ''); } catch (e) {}
+  window.ARCADE_NAME = n;
+})();
+</script>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#1a0303;font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;color:#fff;user-select:none;-webkit-user-select:none}
+#app{position:fixed;inset:0}
+
+/* ---------- colour tokens ---------- */
+.c-r{--cc:#e6352b;--cc2:#b31e16}
+.c-y{--cc:#f3b900;--cc2:#c98f00}
+.c-g{--cc:#38a948;--cc2:#1f7a2c}
+.c-b{--cc:#1f74e0;--cc2:#124fa3}
+.c-o{--cc:#f0761e;--cc2:#c5540a}
+.c-p{--cc:#e0348f;--cc2:#ab1e6a}
+.c-u{--cc:#7b40ef;--cc2:#5a24bf}
+.c-t{--cc:#15b2a4;--cc2:#0a8176}
+.c-w{--cc:#2b2b36;--cc2:#15151d}
+
+/* ---------- table ---------- */
+#table{position:absolute;inset:0;overflow:hidden;
+  background:radial-gradient(130% 110% at 50% 42%,#7a1410 0%,#55100d 32%,#380a09 62%,#1d0505 100%);
+  transition:background .8s ease}
+#table.dark{background:radial-gradient(130% 110% at 50% 42%,#241a52 0%,#1a1340 34%,#120d2e 64%,#070512 100%)}
+#table::before{content:"";position:absolute;inset:-20%;
+  background:repeating-conic-gradient(from 0deg at 50% 44%,rgba(255,255,255,.04) 0deg 6deg,transparent 6deg 12deg);
+  opacity:.5;animation:spinbg 90s linear infinite;pointer-events:none}
+@keyframes spinbg{to{transform:rotate(360deg)}}
+#felt{position:absolute;left:50%;top:44%;width:min(74vw,620px);height:min(74vw,620px);transform:translate(-50%,-50%);
+  border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.06),transparent 70%);pointer-events:none}
+
+/* ---------- centre piles ---------- */
+#center{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:clamp(14px,5vw,46px);z-index:4}
+.pile{position:relative;--cw:clamp(52px,13.5vw,86px);--ch:calc(var(--cw)*1.5);width:var(--cw);height:var(--ch)}
+#discard .card{position:absolute;left:0;top:0}
+#drawpile{cursor:pointer}
+#drawpile .back{position:absolute;left:0;top:0}
+#drawpile.can::after{content:"";position:absolute;inset:-7px;border-radius:16px;border:3px solid #fff8;animation:pulse 1.1s infinite}
+@keyframes pulse{0%,100%{opacity:.25;transform:scale(1)}50%{opacity:.9;transform:scale(1.04)}}
+#drawcount{position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);font-size:12px;color:#ffffffaa;font-weight:700;white-space:nowrap}
+
+/* direction arrow */
+#dir{position:absolute;left:50%;top:44%;width:min(46vw,380px);height:min(46vw,380px);transform:translate(-50%,-50%);pointer-events:none;z-index:2;opacity:.55}
+#dir svg{width:100%;height:100%;animation:arcspin 14s linear infinite}
+#table.rev #dir svg{animation-direction:reverse}
+@keyframes arcspin{to{transform:rotate(360deg)}}
+
+/* ---------- a card ---------- */
+.card{--cw:clamp(52px,13.5vw,86px);--ch:calc(var(--cw)*1.5);width:var(--cw);height:var(--ch);border-radius:calc(var(--cw)*.16);
+  background:#fff;box-shadow:0 3px 7px rgba(0,0,0,.45);position:relative;overflow:hidden;flex:0 0 auto}
+.card .face{position:absolute;inset:7%;border-radius:calc(var(--cw)*.11);background:var(--cc);overflow:hidden}
+.card .oval{position:absolute;left:50%;top:50%;width:118%;height:62%;transform:translate(-50%,-50%) rotate(-32deg);
+  background:#fff;border-radius:50%}
+.card .big{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--cc);
+  font-size:calc(var(--cw)*.6);text-shadow:none;z-index:2}
+.card .big.sym{font-size:calc(var(--cw)*.44)}
+.card .cnr{position:absolute;font-weight:900;color:#fff;font-size:calc(var(--cw)*.26);z-index:3;line-height:1;text-shadow:0 1px 1px #0006}
+.card .cnr.tl{left:8%;top:6%}
+.card .cnr.br{right:8%;bottom:6%;transform:rotate(180deg)}
+.card.wild .face{background:conic-gradient(#e6352b 0 90deg,#1f74e0 90deg 180deg,#f3b900 180deg 270deg,#38a948 270deg)}
+.card.wild.dside .face{background:conic-gradient(#f0761e 0 90deg,#15b2a4 90deg 180deg,#e0348f 180deg 270deg,#7b40ef 270deg)}
+.card.wild .oval{width:70%;height:70%;border-radius:50%;background:#1a1a22}
+.card.wild .big{color:#fff;font-size:calc(var(--cw)*.34)}
+.card.wild .cnr{color:#fff}
+.card .plus{position:absolute;right:6%;top:6%;background:#0007;color:#fff;border-radius:40%;padding:1px 4px;font-size:calc(var(--cw)*.24);font-weight:900;z-index:4}
+.back{--cw:clamp(52px,13.5vw,86px);--ch:calc(var(--cw)*1.5);width:var(--cw);height:var(--ch);border-radius:calc(var(--cw)*.16);
+  background:linear-gradient(145deg,#2a2a33,#15151c);box-shadow:0 3px 7px rgba(0,0,0,.45);position:relative;overflow:hidden;flex:0 0 auto}
+.back::after{content:"UNO";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-20deg);
+  font-weight:900;font-style:italic;color:#e6352b;font-size:calc(var(--cw)*.42);
+  -webkit-text-stroke:calc(var(--cw)*.02) #fff;text-shadow:0 2px 4px #0008}
+.back.dark::after{color:#7b40ef}
+
+/* ---------- opponents ---------- */
+.seat{position:absolute;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:4px;transition:opacity .3s}
+.seat.turn .av{box-shadow:0 0 0 3px #fff,0 0 22px 5px #ffd34d}
+.seat.out{opacity:.32;filter:grayscale(1)}
+.seat .av{width:clamp(40px,11vw,58px);height:clamp(40px,11vw,58px);border-radius:50%;background:linear-gradient(160deg,#ff8a5c,#d9452a);
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:clamp(16px,4.6vw,24px);color:#fff;position:relative;
+  border:2px solid #ffffff55;box-shadow:0 3px 8px #0007}
+.seat .nm{font-size:clamp(10px,2.8vw,13px);font-weight:700;max-width:88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:#0006;padding:1px 7px;border-radius:9px}
+.seat .cnt{position:absolute;right:-7px;bottom:-5px;min-width:19px;height:19px;border-radius:10px;background:#111;border:2px solid #fff;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;padding:0 3px}
+.seat .mini{display:flex;height:16px;margin-top:1px}
+.seat .mini i{display:block;width:5px;height:15px;border-radius:2px;background:#1b1b22;margin-left:-3px;border:1px solid #000}
+.seat .uno{position:absolute;left:50%;top:-14px;transform:translateX(-50%);background:#e6352b;color:#fff;font-weight:900;
+  font-size:10px;padding:1px 6px;border-radius:7px;font-style:italic;box-shadow:0 2px 5px #0008;animation:pop .3s}
+.seat .catch{position:absolute;left:50%;top:-16px;transform:translateX(-50%);background:#ffd34d;color:#201500;font-weight:900;
+  font-size:10px;padding:2px 7px;border-radius:9px;cursor:pointer;box-shadow:0 2px 6px #0009}
+@keyframes pop{from{transform:translateX(-50%) scale(.4)}to{transform:translateX(-50%) scale(1)}}
+.bubble{position:absolute;left:50%;bottom:calc(100% + 4px);transform:translateX(-50%);background:#fff;color:#111;font-size:11px;font-weight:800;
+  padding:3px 8px;border-radius:9px;white-space:nowrap;box-shadow:0 2px 6px #0007;opacity:0;pointer-events:none;transition:opacity .2s}
+.bubble.show{opacity:1}
+.bubble::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#fff}
+
+/* ---------- my hand ---------- */
+#me{position:absolute;left:0;right:0;bottom:0;z-index:6;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#meInfo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:2px}
+#meInfo .av{width:34px;height:34px;border-radius:50%;background:linear-gradient(160deg,#6cc0ff,#2f6fe0);display:flex;align-items:center;justify-content:center;font-weight:900;border:2px solid #fff6;font-size:15px}
+#meInfo.turn .av{box-shadow:0 0 0 2px #fff,0 0 16px 3px #ffd34d}
+#meInfo .nm{font-weight:800;font-size:13px;background:#0005;padding:2px 10px;border-radius:10px}
+#hand{display:flex;justify-content:center;align-items:flex-end;height:calc(var(--ch) + 20px);padding:0 8px;overflow:visible}
+#hand .slot{transition:transform .18s ease}
+#hand .card{cursor:pointer;transition:transform .16s ease,box-shadow .16s;will-change:transform}
+#hand .card.ok{}
+#hand .card.no{filter:brightness(.6) saturate(.6)}
+#hand .card.sel{transform:translateY(-22px) scale(1.04)}
+#hand.myturn .card.ok:hover{transform:translateY(-16px)}
+
+/* ---------- UNO call + draw buttons ---------- */
+#unoBtn{position:absolute;right:14px;bottom:calc(var(--ch) + 46px);z-index:7;width:66px;height:66px;border-radius:50%;border:none;cursor:pointer;
+  background:radial-gradient(circle at 40% 35%,#ff6a3d,#e6352b 60%,#9c160f);color:#fff;font-weight:900;font-style:italic;font-size:19px;
+  box-shadow:0 5px 14px #000a, inset 0 2px 3px #ffffff55;transform:rotate(-12deg);display:none}
+#unoBtn.show{display:block;animation:unopulse 1s infinite}
+@keyframes unopulse{0%,100%{box-shadow:0 5px 14px #000a,0 0 0 0 #ffd34d00}50%{box-shadow:0 5px 14px #000a,0 0 0 9px #ffd34d55}}
+.pill{position:absolute;left:50%;transform:translateX(-50%);background:#ffffff;color:#1a1a1a;font-weight:800;padding:10px 20px;border-radius:24px;
+  box-shadow:0 5px 16px #0008;cursor:pointer;z-index:7;font-size:15px;border:none}
+#drawBtn{bottom:calc(var(--ch) + 46px)}
+
+/* ---------- overlays / menus ---------- */
+.ov{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:18px;
+  background:rgba(8,2,2,.72);backdrop-filter:blur(3px)}
+.panel{width:min(460px,94vw);max-height:92vh;overflow:auto;background:linear-gradient(170deg,#2a0c0c,#1a0606);border:1px solid #ffffff1a;
+  border-radius:20px;padding:22px 20px;box-shadow:0 18px 50px #000b}
+.logo{font-weight:900;font-style:italic;font-size:46px;letter-spacing:-1px;text-align:center;line-height:1;margin-bottom:2px;
+  color:#f3b900;-webkit-text-stroke:2px #fff;text-shadow:0 4px 0 #b31e16,0 6px 10px #0009;transform:rotate(-4deg)}
+.logo span{color:#e6352b}
+.sub{text-align:center;color:#ffffffb0;font-size:13px;margin-bottom:16px}
+h2{font-size:19px;margin-bottom:4px}
+.eyebrow{text-transform:uppercase;letter-spacing:2px;font-size:11px;color:#f3b900;font-weight:800;text-align:center;margin-bottom:6px}
+.btn{display:block;width:100%;padding:14px;margin-top:10px;border:none;border-radius:13px;font-size:16px;font-weight:800;cursor:pointer;
+  background:linear-gradient(#f3b900,#d99400);color:#2a1800;box-shadow:0 4px 0 #a06c00;transition:transform .08s}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #a06c00}
+.btn.red{background:linear-gradient(#ff5a4d,#e6352b);color:#fff;box-shadow:0 4px 0 #9c160f}
+.btn.blue{background:linear-gradient(#4a93ff,#1f74e0);color:#fff;box-shadow:0 4px 0 #124fa3}
+.btn.ghost{background:#ffffff14;color:#fff;box-shadow:0 4px 0 #0005}
+.btn.sm{padding:10px;font-size:14px;margin-top:0}
+.row{display:flex;gap:10px}
+.row .btn{margin-top:10px}
+.field{width:100%;padding:13px;border-radius:12px;border:2px solid #ffffff2a;background:#0003;color:#fff;font-size:17px;font-weight:800;
+  text-align:center;letter-spacing:3px;text-transform:uppercase;margin-top:10px}
+.field::placeholder{letter-spacing:2px;color:#ffffff55}
+.note{font-size:12px;color:#ffffff8c;margin-top:8px;text-align:center;min-height:16px}
+.opt{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.opt button{flex:1 1 30%;padding:11px 6px;border-radius:11px;border:2px solid #ffffff22;background:#ffffff0d;color:#fff;font-weight:800;font-size:13px;cursor:pointer}
+.opt button.on{border-color:#f3b900;background:#f3b90022;color:#f3b900}
+.lab{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#ffffff9c;font-weight:800;margin-top:16px}
+.modecard{text-align:left}
+.modecard small{display:block;color:#ffffff9c;font-weight:600;font-size:12px;margin-top:2px;letter-spacing:0;text-transform:none}
+.plist{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.plist .pr{display:flex;align-items:center;gap:9px;background:#ffffff0d;border-radius:11px;padding:8px 11px;font-weight:700;font-size:14px}
+.plist .pr .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(160deg,#ff8a5c,#d9452a);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;border:2px solid #fff5}
+.plist .pr.bot .av{background:linear-gradient(160deg,#9aa0ad,#5b616e)}
+.plist .pr .tag{margin-left:auto;font-size:11px;color:#ffffff8c;font-weight:700}
+.rm{margin-left:auto;background:#ffffff18;border:none;color:#fff;width:26px;height:26px;border-radius:7px;cursor:pointer;font-weight:900}
+
+/* colour picker */
+#colorPick .wheel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+#colorPick .cp{height:84px;border-radius:16px;border:none;cursor:pointer;box-shadow:0 5px 14px #0008;font-weight:900;color:#fff;font-size:15px;
+  text-shadow:0 1px 3px #0009;transition:transform .1s}
+#colorPick .cp:active{transform:scale(.95)}
+
+/* swap target pick */
+#swapPick .plist .pr{cursor:pointer}
+#swapPick .plist .pr:hover{background:#ffffff1a}
+
+/* toast + banners */
+#toast{position:absolute;left:50%;top:14%;transform:translateX(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
+.tmsg{background:#000b;border:1px solid #ffffff22;padding:8px 16px;border-radius:20px;font-weight:700;font-size:13px;animation:tin .25s;max-width:86vw;text-align:center}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}}
+#bigword{position:absolute;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#bigword b{font-weight:900;font-style:italic;font-size:17vw;color:#f3b900;-webkit-text-stroke:3px #fff;text-shadow:0 6px 0 #b31e16,0 10px 20px #0009;
+  opacity:0;transform:scale(.4) rotate(-8deg)}
+#bigword b.go{animation:bw 1.1s ease}
+@keyframes bw{15%{opacity:1;transform:scale(1.1) rotate(-6deg)}70%{opacity:1;transform:scale(1) rotate(-6deg)}100%{opacity:0;transform:scale(1) rotate(-6deg)}}
+
+/* flyers */
+.flyer{position:fixed;z-index:50;pointer-events:none;transition:transform .34s cubic-bezier(.3,.8,.3,1),opacity .34s}
+
+/* top bar */
+#top{position:absolute;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
+#top .tt{font-weight:900;font-style:italic;font-size:17px;color:#f3b900;-webkit-text-stroke:1px #fff}
+#top .mode{font-size:11px;background:#0006;padding:3px 9px;border-radius:9px;font-weight:700;color:#ffd}
+#menuBtn{margin-left:auto;background:#0006;border:none;color:#fff;width:34px;height:34px;border-radius:9px;font-size:17px;cursor:pointer}
+#roomTag{font-size:11px;background:#0006;padding:3px 9px;border-radius:9px;font-weight:800;letter-spacing:1px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="table">
+    <div id="felt"></div>
+    <div id="dir"><svg viewBox="0 0 100 100"><defs><marker id="ah" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fff"/></marker></defs>
+      <path d="M50,8 A42,42 0 0 1 92,50" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)"/>
+      <path d="M50,92 A42,42 0 0 1 8,50" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)"/></svg></div>
+    <div id="seats"></div>
+    <div id="center">
+      <div class="pile" id="drawpile"><div id="drawcount"></div></div>
+      <div class="pile" id="discard"></div>
+    </div>
+  </div>
+
+  <div id="top" class="hide">
+    <span class="tt">UNO!</span><span class="mode" id="modeTag"></span><span id="roomTag" class="hide"></span>
+    <button id="menuBtn">☰</button>
+  </div>
+
+  <div id="me" class="hide">
+    <div id="meInfo"><div class="av" id="meAv">U</div><div class="nm" id="meName">You</div></div>
+    <div id="hand"></div>
+  </div>
+  <button id="unoBtn">UNO</button>
+  <button id="drawBtn" class="pill hide">Draw a card</button>
+
+  <div id="toast"></div>
+  <div id="bigword"><b id="bw"></b></div>
+  <div id="overlay"></div>
+</div>
+
+<script>
+"use strict";
+/* ======================================================================
+   UNO!  —  arcade edition, v1.0
+   classic / no-mercy / flip  ·  2–10 players  ·  bots + online
+   host-authoritative engine; the host runs the game and broadcasts state,
+   guests render it and send their moves back.
+   ====================================================================== */
+const $ = s => document.querySelector(s);
+const el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+const rnd = n => Math.floor(Math.random() * n);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+/* ---------------- card model ----------------
+   a physical card has a light face and a dark face (only flip mode uses dark).
+   face = { c:colour, k:kind, n:number|drawAmount }
+   colours: r y g b (light) · o p u t (dark) · w (wild/no colour)
+   kinds: num skip rev draw skipall discardall wild wilddraw wildcolor flip
+*/
+const LIGHT = ['r', 'y', 'g', 'b'], DARK = ['o', 'p', 'u', 't'];
+const CNAME = { r: 'Red', y: 'Yellow', g: 'Green', b: 'Blue', o: 'Orange', p: 'Pink', u: 'Purple', t: 'Teal' };
+const HEX = { r: '#e6352b', y: '#f3b900', g: '#38a948', b: '#1f74e0', o: '#f0761e', p: '#e0348f', u: '#7b40ef', t: '#15b2a4' };
+const SYM = { skip: '⦸', rev: '⇄', skipall: '⦸⦸', discardall: '≣', flip: '⟲', wild: '', wildcolor: '◉' };
+
+function card(light, dark) { return { id: uid(), l: light, d: dark || light }; }
+function face(cd, side) { return cd[side]; }
+function points(f) {
+  if (f.k === 'num') return f.n;
+  if (f.k === 'wild' || f.k === 'wilddraw' || f.k === 'wildcolor') return 50;
+  if (f.k === 'draw') return f.n >= 4 ? 40 : 20;
+  if (f.k === 'discardall') return 30;
+  if (f.k === 'skipall') return 30;
+  if (f.k === 'flip') return 20;
+  return 20; // skip / rev
+}
+const isWild = f => f.k === 'wild' || f.k === 'wilddraw' || f.k === 'wildcolor';
+const drawAmt = f => (f.k === 'draw' || f.k === 'wilddraw') ? f.n : 0;
+
+/* ---------------- deck builders ---------------- */
+function buildClassic() {
+  const d = [];
+  for (const c of LIGHT) {
+    d.push(card({ c, k: 'num', n: 0 }));
+    for (let n = 1; n <= 9; n++) { d.push(card({ c, k: 'num', n })); d.push(card({ c, k: 'num', n })); }
+    for (let i = 0; i < 2; i++) { d.push(card({ c, k: 'skip' })); d.push(card({ c, k: 'rev' })); d.push(card({ c, k: 'draw', n: 2 })); }
+  }
+  for (let i = 0; i < 4; i++) { d.push(card({ c: 'w', k: 'wild' })); d.push(card({ c: 'w', k: 'wilddraw', n: 4 })); }
+  return d;
+}
+function buildNoMercy() {
+  const d = [];
+  for (const c of LIGHT) {
+    for (let i = 0; i < 2; i++) d.push(card({ c, k: 'num', n: 0 }));
+    for (let n = 1; n <= 9; n++) { d.push(card({ c, k: 'num', n })); d.push(card({ c, k: 'num', n })); }
+    for (let i = 0; i < 2; i++) { d.push(card({ c, k: 'skip' })); d.push(card({ c, k: 'rev' })); d.push(card({ c, k: 'draw', n: 2 })); }
+    d.push(card({ c, k: 'skipall' }));
+    d.push(card({ c, k: 'draw', n: 4 }));
+    d.push(card({ c, k: 'discardall' }));
+  }
+  for (let i = 0; i < 4; i++) d.push(card({ c: 'w', k: 'wild' }));
+  for (let i = 0; i < 2; i++) { d.push(card({ c: 'w', k: 'wilddraw', n: 6 })); d.push(card({ c: 'w', k: 'wildcolor' })); }
+  d.push(card({ c: 'w', k: 'wilddraw', n: 10 }));
+  for (let i = 0; i < 2; i++) d.push(card({ c: 'w', k: 'wilddraw', n: 4, rev: true })); // wild reverse draw 4
+  return d;
+}
+function buildFlip() {
+  // each physical card has a light face and a dark face.
+  const d = [], li = [], da = [];
+  // number cards: pair a light number with a random dark number
+  for (const c of LIGHT) { li.push({ c, k: 'num', n: 0 }); for (let n = 1; n <= 9; n++) { li.push({ c, k: 'num', n }); li.push({ c, k: 'num', n }); } }
+  for (const c of DARK) { da.push({ c, k: 'num', n: 0 }); for (let n = 1; n <= 9; n++) { da.push({ c, k: 'num', n }); da.push({ c, k: 'num', n }); } }
+  // action cards light/dark
+  for (const c of LIGHT) for (let i = 0; i < 2; i++) { li.push({ c, k: 'draw', n: 1 }); li.push({ c, k: 'skip' }); li.push({ c, k: 'rev' }); li.push({ c, k: 'flip' }); }
+  for (const c of DARK) for (let i = 0; i < 2; i++) { da.push({ c, k: 'draw', n: 5 }); da.push({ c, k: 'skipall' }); da.push({ c, k: 'rev' }); da.push({ c, k: 'flip' }); }
+  // wilds
+  for (let i = 0; i < 4; i++) { li.push({ c: 'w', k: 'wild' }); li.push({ c: 'w', k: 'wilddraw', n: 2 }); da.push({ c: 'w', k: 'wild' }); da.push({ c: 'w', k: 'wildcolor' }); }
+  // shuffle the two face-lists independently, then zip into physical cards
+  shuffle(li); shuffle(da);
+  const n = Math.min(li.length, da.length);
+  for (let i = 0; i < n; i++) d.push(card(li[i], da[i]));
+  return d;
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ---------------- mode rules ---------------- */
+const MODES = {
+  classic: { name: 'Classic', deck: buildClassic, colors: LIGHT, stack: false, challenge: true, mercy: 0, zero: false, seven: false, drawToPlay: false, target: 500, win: 'points', max: 10, blurb: 'The original. Match colour, number or symbol. First to 500 points.' },
+  nomercy: { name: 'No Mercy', deck: buildNoMercy, colors: LIGHT, stack: true, challenge: false, mercy: 25, zero: true, seven: true, drawToPlay: true, target: 1000, win: 'last', max: 8, blurb: 'Stack the +2/+4/+6/+10, 0s pass hands, 7s swap. Hit 25 cards and you’re OUT.' },
+  flip: { name: 'Flip', deck: buildFlip, colors: LIGHT, stack: false, challenge: false, mercy: 0, zero: false, seven: false, drawToPlay: false, flip: true, target: 500, win: 'points', max: 10, blurb: 'Light side & dark side. A Flip card turns the whole deck over — darker colours, harsher cards.' }
+};
+
+/* ============================================================
+   ENGINE  —  pure-ish state the host owns
+   ============================================================ */
+function newGame(cfg) {
+  // cfg: { mode, players:[{id,name,bot}], target }
+  const R = MODES[cfg.mode];
+  const S = {
+    mode: cfg.mode, side: 'l', dir: 1, turn: 0, phase: 'deal',
+    players: cfg.players.map(p => ({ id: p.id, name: p.name, bot: !!p.bot, hand: [], score: 0, alive: true, saidUno: false })),
+    draw: [], discard: [], color: null, pend: 0, pendLast: 0,
+    target: cfg.target || R.target, winMode: R.win, roundWinner: null, gameWinner: null,
+    needColor: false, needSwap: false, needChallenge: false, roulette: 0, seq: 0, last: null
+  };
+  startRound(S, true);
+  return S;
+}
+function aliveIdx(S) { return S.players.map((p, i) => p.alive ? i : -1).filter(i => i >= 0); }
+function nextAlive(S, from, step) {
+  let i = from;
+  do { i = (i + step + S.players.length) % S.players.length; } while (!S.players[i].alive);
+  return i;
+}
+function startRound(S, first) {
+  const R = MODES[S.mode];
+  S.side = 'l'; S.dir = 1; S.pend = 0; S.pendLast = 0; S.needColor = S.needSwap = S.needChallenge = false; S.roundWinner = null;
+  for (const p of S.players) { p.hand = []; p.saidUno = false; }
+  S.draw = shuffle(R.deck()); S.discard = [];
+  const n = aliveIdx(S).length;
+  for (let r = 0; r < 7; r++) for (const i of aliveIdx(S)) S.players[i].hand.push(S.draw.pop());
+  // flip the first card; a wild-4 / wildcolor restart is re-drawn
+  let top;
+  while (true) {
+    top = S.draw.pop();
+    const f = face(top, S.side);
+    if (f.k === 'wilddraw' || f.k === 'wildcolor') { S.draw.unshift(top); shuffle(S.draw); continue; }
+    break;
+  }
+  S.discard.push(top);
+  const tf = face(top, S.side);
+  S.color = isWild(tf) ? R.colors[rnd(R.colors.length)] : tf.c;
+  // first player = dealer's left (index after a random dealer). we just start at 0, then apply opening action.
+  S.turn = aliveIdx(S)[0];
+  S.phase = 'play';
+  applyOpening(S, tf);
+}
+function applyOpening(S, tf) {
+  // opening action card affects the first player (classic rules)
+  if (tf.k === 'skip' || tf.k === 'skipall') { S.turn = nextAlive(S, S.turn, S.dir); }
+  else if (tf.k === 'rev') { S.dir *= -1; if (aliveIdx(S).length > 2) S.turn = nextAlive(S, S.turn, S.dir); }
+  else if (tf.k === 'draw') { drawCards(S, S.turn, tf.n); S.turn = nextAlive(S, S.turn, S.dir); }
+  else if (tf.k === 'flip') { doFlip(S); }
+  // wild handled by needColor on first turn? first player simply plays on chosen colour already set randomly.
+}
+function topFace(S) { return face(S.discard[S.discard.length - 1], S.side); }
+function drawCards(S, pi, n) {
+  for (let k = 0; k < n; k++) {
+    if (!S.draw.length) refill(S);
+    if (!S.draw.length) break;
+    S.players[pi].hand.push(S.draw.pop());
+  }
+  S.players[pi].saidUno = false;
+  checkMercy(S, pi);
+}
+function refill(S) {
+  if (S.discard.length <= 1) return;
+  const top = S.discard.pop();
+  S.draw = shuffle(S.discard);
+  S.discard = [top];
+}
+function checkMercy(S, pi) {
+  const R = MODES[S.mode];
+  if (R.mercy && S.players[pi].alive && S.players[pi].hand.length >= R.mercy) {
+    S.players[pi].alive = false; S.players[pi].out = true;
+    S.last = { ev: 'mercy', pi };
+    // last-standing: eliminating down to one survivor ends the whole game now
+    if (R.win === 'last') {
+      const alive = aliveIdx(S);
+      if (alive.length <= 1) { S.gameWinner = alive[0]; S.phase = 'game'; }
+    }
+  }
+}
+// legal plays for player pi (array of hand indices)
+function legalPlays(S, pi) {
+  const R = MODES[S.mode], p = S.players[pi], out = [];
+  for (let i = 0; i < p.hand.length; i++) if (canPlay(S, p.hand[i])) out.push(i);
+  return out;
+}
+function canPlay(S, cd) {
+  const R = MODES[S.mode], f = face(cd, S.side), t = topFace(S);
+  if (S.pend > 0) { // must stack a draw of >= value (only when stacking on)
+    if (!R.stack) return false;
+    const a = drawAmt(f); return a > 0 && a >= S.pendLast;
+  }
+  if (f.k === 'flip') return true;
+  if (isWild(f)) {
+    if (f.k === 'wilddraw' && R.challenge && !f.rev) {
+      // classic wild-4: legal only if you have no card of the current colour (soft-enforced; challengeable)
+      return true;
+    }
+    return true;
+  }
+  if (f.c === S.color) return true;
+  if (f.k === 'num' && t.k === 'num' && f.n === t.n) return true;
+  if (f.k !== 'num' && f.k === t.k) return true;
+  return false;
+}
+// does pi hold a non-wild card matching the current colour? (for wild-4 challenge)
+function hasColorMatch(S, pi, color) {
+  return S.players[pi].hand.some(cd => { const f = face(cd, S.side); return !isWild(f) && f.c === color; });
+}
+function doFlip(S) {
+  S.side = S.side === 'l' ? 'd' : 'l';
+  const tf = topFace(S);
+  S.color = isWild(tf) ? MODES[S.mode].colors[rnd(4)] : tf.c;
+  S.last = { ev: 'flip', side: S.side };
+}
+
+/* ---- the core move: player pi plays hand[idx] ---- */
+function playCard(S, pi, idx, opt) {
+  opt = opt || {};
+  const R = MODES[S.mode], p = S.players[pi];
+  const cd = p.hand[idx]; if (!cd) return false;
+  const f = face(cd, S.side);
+  // remove, discard
+  p.hand.splice(idx, 1);
+  S.discard.push(cd);
+  S.color = isWild(f) ? (opt.color || R.colors[0]) : f.c;
+  S.last = { ev: 'play', pi, cardId: cd.id, color: S.color };
+  S.lastPlayer = pi;
+  if (p.hand.length !== 1) p.saidUno = false;
+  // win?
+  if (p.hand.length === 0) { finishRound(S, pi); return true; }
+
+  const colorsOf = c => c; // noop
+
+  // apply the card's effect, then pass the turn
+  let skipNext = false, extraTurn = false;
+  switch (f.k) {
+    case 'num':
+      if (R.zero && f.n === 0) { passHands(S); }
+      else if (R.seven && f.n === 7) { S.needSwap = { by: pi }; return true; } // wait for target
+      break;
+    case 'skip': skipNext = true; break;
+    case 'skipall': extraTurn = true; break; // skip everyone -> you go again
+    case 'rev':
+      S.dir *= -1;
+      if (aliveIdx(S).length === 2) skipNext = true; // 2-player reverse = skip
+      break;
+    case 'discardall': {
+      const col = f.c;
+      p.hand = p.hand.filter(c => { const ff = face(c, S.side); if (!isWild(ff) && ff.c === col) { S.discard.push(c); return false; } return true; });
+      if (p.hand.length === 0) { finishRound(S, pi); return true; }
+      break;
+    }
+    case 'flip': doFlip(S); break;
+    case 'draw':
+      S.pend += f.n; S.pendLast = f.n;
+      if (!R.stack) { // classic: next player just draws and is skipped
+        const nx = nextAlive(S, pi, S.dir);
+        drawCards(S, nx, S.pend); S.pend = 0; S.pendLast = 0; skipNext = true;
+      }
+      break;
+    case 'wild': break;
+    case 'wildcolor': { // roulette: next player draws until the chosen colour
+      const nx = nextAlive(S, pi, S.dir);
+      let drawn = 0;
+      while (drawn < 40) { if (!S.draw.length) refill(S); if (!S.draw.length) break; const c2 = S.draw.pop(); S.players[nx].hand.push(c2); drawn++; if (face(c2, S.side).c === S.color) break; }
+      checkMercy(S, nx); skipNext = true;
+      break;
+    }
+    case 'wilddraw':
+      if (f.rev) S.dir *= -1; // wild reverse draw 4
+      S.pend += f.n; S.pendLast = f.n;
+      if (R.challenge && !f.rev) {
+        // classic wild-4 -> next player may challenge
+        const nx = nextAlive(S, pi, S.dir);
+        S.needChallenge = { by: pi, victim: nx, amount: f.n, prevColor: S.lastColorBefore };
+      } else if (!R.stack) {
+        const nx = nextAlive(S, pi, S.dir);
+        drawCards(S, nx, S.pend); S.pend = 0; S.pendLast = 0; skipNext = true;
+      }
+      break;
+  }
+  if (S.needChallenge) return true; // pause for challenge
+  // advance turn
+  let step = S.dir;
+  let nt = nextAlive(S, pi, step);
+  if (skipNext) nt = nextAlive(S, nt, step);
+  if (extraTurn) nt = pi;
+  S.turn = nt;
+  // if we left a pending stack, the next player must now respond
+  return true;
+}
+
+function passHands(S) {
+  const ids = aliveIdx(S);
+  const hands = ids.map(i => S.players[i].hand);
+  // pass in play direction
+  for (let k = 0; k < ids.length; k++) {
+    const from = ids[k], toPos = (k + (S.dir === 1 ? 1 : ids.length - 1)) % ids.length, to = ids[toPos];
+    S.players[to]._nh = hands[k];
+  }
+  for (const i of ids) { S.players[i].hand = S.players[i]._nh; delete S.players[i]._nh; S.players[i].saidUno = S.players[i].hand.length === 1; }
+  S.last = { ev: 'zero' };
+}
+function doSwap(S, by, target) {
+  const a = S.players[by].hand, b = S.players[target].hand;
+  S.players[by].hand = b; S.players[target].hand = a;
+  S.players[by].saidUno = S.players[by].hand.length === 1;
+  S.players[target].saidUno = S.players[target].hand.length === 1;
+  S.needSwap = false;
+  S.last = { ev: 'swap', by, target };
+  S.turn = nextAlive(S, by, S.dir);
+}
+// a player who can't/won't play draws
+function pullOne(S, pi) {
+  if (!S.draw.length) refill(S);
+  if (!S.draw.length) return null;
+  const c = S.players[pi].hand[S.players[pi].hand.length] = S.draw.pop();
+  return c;
+}
+
+/* resolve a facing pending stack when a player can't stack */
+function takePending(S, pi) {
+  drawCards(S, pi, S.pend); S.pend = 0; S.pendLast = 0;
+  S.turn = nextAlive(S, pi, S.dir);
+}
+
+function resolveChallenge(S, challenge, doChallenge) {
+  const { by, victim, amount, prevColor } = challenge;
+  S.needChallenge = false;
+  if (doChallenge) {
+    const guilty = hasColorMatch(S, by, prevColor); // player had a matching colour -> illegal
+    if (guilty) { drawCards(S, by, amount); S.last = { ev: 'chalWin', by: victim, loser: by }; S.turn = nextAlive(S, by, S.dir); S.turn = nextAlive(S, victim, S.dir); return; }
+    else { drawCards(S, victim, amount + 2); S.last = { ev: 'chalLose', by: victim }; S.turn = nextAlive(S, victim, S.dir); return; }
+  }
+  drawCards(S, victim, amount); S.pend = 0; S.pendLast = 0;
+  S.turn = nextAlive(S, victim, S.dir);
+}
+
+function finishRound(S, winner) {
+  const R = MODES[S.mode];
+  let pts = 0;
+  for (let i = 0; i < S.players.length; i++) if (i !== winner && S.players[i].alive) for (const c of S.players[i].hand) pts += points(face(c, S.side));
+  S.players[winner].score += pts;
+  S.roundWinner = winner; S.phase = 'round';
+  // win conditions
+  if (R.win === 'last') {
+    // mercy-elimination mode: round winner stays; losers already dropped by mercy. check survivors.
+    const alive = aliveIdx(S);
+    if (alive.length <= 1) { S.gameWinner = alive[0] ?? winner; S.phase = 'game'; }
+  } else {
+    if (S.players[winner].score >= S.target) { S.gameWinner = winner; S.phase = 'game'; }
+  }
+}
+
+/* ============================================================
+   CONTROLLER  —  wires engine to UI, bots, and the network
+   ============================================================ */
+const APP = {
+  S: null, mode: 'classic', online: false, host: false, meId: uid(), meName: (window.ARCADE_NAME || '').trim() || 'You',
+  room: null, ch: null, client: null, seats: [], botTimer: null, animLock: false, unoArmed: false,
+  catchWindow: null
+};
+
+/* ---------- rendering ---------- */
+function colorClass(c) { return 'c-' + (c || 'w'); }
+function faceGlyph(f) {
+  if (f.k === 'num') return f.n;
+  if (f.k === 'draw') return '+' + f.n;
+  if (f.k === 'wilddraw') return (f.rev ? '⇄+' : '+') + f.n;
+  if (f.k === 'wild') return '';
+  if (f.k === 'wildcolor') return '◉';
+  return SYM[f.k] || '?';
+}
+function renderCardFace(f, side) {
+  const wild = isWild(f);
+  const cd = el('div', 'card ' + (wild ? 'wild ' + (side === 'd' ? 'dside ' : '') : '') + colorClass(wild ? 'w' : f.c));
+  const fc = el('div', 'face'); cd.appendChild(fc);
+  if (!wild) { const ov = el('div', 'oval'); fc.appendChild(ov); }
+  const big = el('div', 'big' + (f.k !== 'num' ? ' sym' : ''));
+  big.textContent = faceGlyph(f); cd.appendChild(big);
+  const g = faceGlyph(f);
+  const tl = el('div', 'cnr tl'), br = el('div', 'cnr br'); tl.textContent = g; br.textContent = g; cd.appendChild(tl); cd.appendChild(br);
+  if (f.k === 'draw' || f.k === 'wilddraw') { const pl = el('div', 'plus'); pl.textContent = '+' + f.n; /* already shown big */ }
+  return cd;
+}
+
+function seatPos(slot, total) {
+  // slot 0 is "me" (bottom) handled separately; opponents fill the arc across the top.
+  // returns {x%, y%} for an opponent given its position among opponents (0..opp-1)
+  const opp = total - 1;
+  // spread across top arc from ~200deg to ~-20deg (i.e. left, top, right)
+  const t = opp === 1 ? 0.5 : (slot) / (opp - 1);
+  const ang = Math.PI * (1.12 - 1.24 * t); // radians; left->right over the top
+  const rx = 42, ry = 34, cx = 50, cy = 40;
+  return { x: cx + rx * Math.cos(ang), y: cy - ry * Math.sin(ang) };
+}
+
+function render() {
+  const S = APP.S; if (!S) return;
+  const meIdx = S.players.findIndex(p => p.id === APP.meId);
+  const me = S.players[meIdx];
+  $('#table').className = (S.side === 'd' ? 'dark ' : '') + (S.dir === -1 ? 'rev' : '');
+  $('#modeTag').textContent = MODES[S.mode].name;
+  // ----- discard pile -----
+  const dp = $('#discard'); dp.innerHTML = '';
+  const show = S.discard.slice(-4);
+  show.forEach((cd, i) => { const c = renderCardFace(face(cd, S.side), S.side); c.style.transform = `rotate(${(cd._rot ?? (cd._rot = rnd(30) - 15))}deg)`; c.style.zIndex = i; dp.appendChild(c); });
+  // active colour tint ring
+  dp.style.filter = `drop-shadow(0 0 10px ${HEX[S.color] || '#fff'}aa)`;
+  // ----- draw pile -----
+  const draw = $('#drawpile'); draw.querySelectorAll('.back').forEach(b => b.remove());
+  const stackN = Math.min(4, Math.max(1, Math.ceil(S.draw.length / 8)));
+  for (let i = 0; i < stackN; i++) { const b = el('div', 'back' + (S.side === 'd' ? ' dark' : '')); b.style.transform = `translate(${i * 2}px,${-i * 2}px)`; b.style.zIndex = i; draw.appendChild(b); }
+  $('#drawcount').textContent = S.draw.length + ' in pile';
+  const myTurn = meIdx === S.turn && S.phase === 'play' && me && me.alive;
+  const legal = myTurn ? legalPlays(S, meIdx) : [];
+  draw.classList.toggle('can', myTurn && !S.needSwap && !S.needChallenge);
+
+  // ----- seats (opponents) -----
+  const seats = $('#seats'); seats.innerHTML = '';
+  const order = [];
+  for (let k = 1; k < S.players.length; k++) order.push((meIdx + k) % S.players.length);
+  order.forEach((pi, slot) => {
+    const p = S.players[pi], pos = seatPos(slot, S.players.length);
+    const s = el('div', 'seat' + (pi === S.turn ? ' turn' : '') + (!p.alive ? ' out' : ''));
+    s.style.left = pos.x + '%'; s.style.top = pos.y + '%';
+    const av = el('div', 'av'); av.textContent = (p.name || '?').slice(0, 1).toUpperCase();
+    if (p.bot) av.style.background = 'linear-gradient(160deg,#9aa0ad,#5b616e)';
+    const cnt = el('div', 'cnt'); cnt.textContent = p.alive ? p.hand.length : '✕'; av.appendChild(cnt);
+    s.appendChild(av);
+    // uno / catch badge
+    if (p.alive && p.hand.length === 1) {
+      if (p.saidUno) { const u = el('div', 'uno'); u.textContent = 'UNO'; av.appendChild(u); }
+      else if (APP.catchWindow && APP.catchWindow.pi === pi) { const cb = el('div', 'catch'); cb.textContent = 'CATCH!'; cb.onclick = () => catchPlayer(pi); av.appendChild(cb); }
+    }
+    if (p.out) { const u = el('div', 'uno'); u.style.background = '#555'; u.textContent = 'OUT'; av.appendChild(u); }
+    const nm = el('div', 'nm'); nm.textContent = p.name + (p.bot ? '' : ''); s.appendChild(nm);
+    s.dataset.pi = pi;
+    seats.appendChild(s);
+  });
+
+  // ----- my hand -----
+  $('#meName').textContent = me ? me.name : 'You';
+  $('#meAv').textContent = (me ? me.name : 'U').slice(0, 1).toUpperCase();
+  $('#meInfo').className = myTurn ? 'turn' : '';
+  const hand = $('#hand'); hand.innerHTML = '';
+  hand.classList.toggle('myturn', myTurn);
+  if (me) {
+    const legalSet = new Set(legal);
+    const n = me.hand.length, cw = Math.min(86, Math.max(40, (window.innerWidth - 24) / Math.max(7, n) * 1.0));
+    const overlap = n > 7 ? Math.min(0, -(cw * (n - 7) / n) - 4) : 2;
+    me.hand.forEach((cd, i) => {
+      const c = renderCardFace(face(cd, S.side), S.side);
+      c.style.setProperty('--cw', cw + 'px');
+      if (i > 0) c.style.marginLeft = overlap + 'px';
+      const ok = myTurn && legalSet.has(i) && !S.needSwap && !S.needChallenge;
+      c.classList.add(ok ? 'ok' : 'no');
+      c.dataset.idx = i;
+      if (ok) c.onclick = () => tryPlay(i);
+      hand.appendChild(c);
+    });
+  }
+  // ----- buttons -----
+  const canDrawPile = myTurn && !S.needSwap && !S.needChallenge;
+  $('#drawpile').onclick = canDrawPile ? onDrawClick : null;
+  const unoBtn = $('#unoBtn');
+  const showUno = me && me.alive && (me.hand.length === 2 && myTurn && legal.length) || (APP.catchWindow && APP.catchWindow.pi === meIdx);
+  unoBtn.classList.toggle('show', !!showUno);
+  unoBtn.onclick = () => { APP.unoArmed = true; if (APP.catchWindow && APP.catchWindow.pi === meIdx) sayUnoNow(); toast('You called UNO!'); };
+  // draw button when it's your turn and you have no legal play (or pending you can't beat)
+  const db = $('#drawBtn');
+  const mustDraw = myTurn && !S.needSwap && !S.needChallenge && legal.length === 0;
+  db.classList.toggle('hide', !mustDraw);
+  db.textContent = S.pend > 0 ? `Take +${S.pend}` : 'Draw a card';
+  db.onclick = onDrawClick;
+}
+
+/* ---------- player actions (routed through dispatch) ---------- */
+function tryPlay(idx) {
+  const S = APP.S, meIdx = S.players.findIndex(p => p.id === APP.meId);
+  if (S.turn !== meIdx || APP.animLock) return;
+  const cd = S.players[meIdx].hand[idx], f = face(cd, S.side);
+  // classic wild-4 soft rule: warn if you actually have a colour match (still allowed, but challengeable)
+  if (isWild(f)) {
+    const colors = MODES[S.mode].colors;
+    // remember colour before the wild for challenge resolution
+    pendingColorPick(idx, f);
+    return;
+  }
+  dispatch({ t: 'play', idx, cardId: cd.id });
+}
+function pendingColorPick(idx, f) {
+  openColorPicker(color => {
+    const S = APP.S, meIdx = S.players.findIndex(p => p.id === APP.meId);
+    S.lastColorBefore = S.color; // colour that was active before this wild
+    dispatch({ t: 'play', idx, cardId: S.players[meIdx].hand[idx] && S.players[meIdx].hand[idx].id, color });
+  });
+}
+function onDrawClick() {
+  const S = APP.S, meIdx = S.players.findIndex(p => p.id === APP.meId);
+  if (S.turn !== meIdx || APP.animLock || S.needSwap || S.needChallenge) return;
+  dispatch({ t: 'draw' });
+}
+function sayUnoNow() {
+  const S = APP.S, meIdx = S.players.findIndex(p => p.id === APP.meId);
+  dispatch({ t: 'uno' });
+}
+function catchPlayer(pi) { dispatch({ t: 'catch', target: pi }); }
+
+/* dispatch: host applies locally; guest sends to host */
+function dispatch(action) {
+  if (APP.online && !APP.host) { netSend('act', { from: APP.meId, action }); return; }
+  applyAction(APP.meId, action);
+}
+
+/* the authority applies an action from player with id `fromId` */
+async function applyAction(fromId, action) {
+  const S = APP.S; if (!S) return;
+  const pi = S.players.findIndex(p => p.id === fromId);
+  if (pi < 0) return;
+
+  if (action.t === 'uno') { if (S.players[pi].hand.length === 1) S.players[pi].saidUno = true; afterChange(); return; }
+  if (action.t === 'catch') {
+    const tgt = action.target;
+    if (APP.catchWindow && APP.catchWindow.pi === tgt && !S.players[tgt].saidUno && S.players[tgt].hand.length === 1) {
+      drawCards(S, tgt, MODES[S.mode].mercy ? 4 : 2); clearCatch(); toast(`${S.players[pi].name} caught ${S.players[tgt].name}! +${MODES[S.mode].mercy ? 4 : 2}`);
+    }
+    afterChange(); return;
+  }
+  if (action.t === 'challenge' || action.t === 'decline') {
+    if (S.needChallenge && S.needChallenge.victim === pi) { resolveChallenge(S, S.needChallenge, action.t === 'challenge'); afterChange(); }
+    return;
+  }
+  if (action.t === 'swap') {
+    if (S.needSwap && S.needSwap.by === pi) { doSwap(S, pi, action.target); afterChange(); }
+    return;
+  }
+  if (S.turn !== pi || S.phase !== 'play' || S.needSwap || S.needChallenge) return;
+
+  if (action.t === 'draw') {
+    if (S.pend > 0) { // take the stacked pile
+      await animDrawTo(pi, S.pend);
+      takePending(S, pi);
+    } else {
+      await animDrawTo(pi, 1);
+      if (!S.draw.length) refill(S);
+      const c = S.draw.pop(); if (!c) { S.turn = nextAlive(S, pi, S.dir); afterChange(); return; }
+      S.players[pi].hand.push(c); S.players[pi].saidUno = false;
+      // drawToPlay (no mercy): keep drawing until you can play, then you may play it
+      if (MODES[S.mode].drawToPlay && !canPlay(S, c)) {
+        let guard = 0;
+        while (guard++ < 30) { if (!S.draw.length) refill(S); if (!S.draw.length) break; const c2 = S.draw.pop(); S.players[pi].hand.push(c2); if (canPlay(S, c2)) break; }
+        checkMercy(S, pi);
+      }
+      // if the (last) drawn card is playable, it stays their choice; otherwise pass
+      const canNow = canPlay(S, S.players[pi].hand[S.players[pi].hand.length - 1]);
+      if (!canNow || !S.players[pi].alive) { S.turn = nextAlive(S, pi, S.dir); }
+      // if canNow and it's a bot, the bot loop will play it; a human sees it as playable
+    }
+    afterChange(); return;
+  }
+
+  if (action.t === 'play') {
+    const idx = S.players[pi].hand.findIndex(c => c.id === action.cardId);
+    if (idx < 0) return;
+    if (!canPlay(S, S.players[pi].hand[idx])) return;
+    const f = face(S.players[pi].hand[idx], S.side);
+    if (isWild(f) && pi !== S.players.findIndex(p => p.id === APP.meId)) S.lastColorBefore = S.color;
+    else if (isWild(f)) S.lastColorBefore = S.lastColorBefore ?? S.color;
+    // auto-uno for bots / honour armed flag for me
+    const willBeOne = S.players[pi].hand.length === 2;
+    await animPlay(pi, S.players[pi].hand[idx]);
+    const said = S.players[pi].bot ? true : APP.unoArmed;
+    playCard(S, pi, idx, { color: action.color });
+    APP.unoArmed = false;
+    if (willBeOne && S.players[pi].alive && S.players[pi].hand.length === 1) {
+      S.players[pi].saidUno = said;
+      if (!said) openCatch(pi);
+    }
+    afterChange(); return;
+  }
+}
+
+/* after any state change: broadcast (host), render, drive bots, handle pauses */
+function afterChange() {
+  const S = APP.S;
+  S.seq++;
+  if (APP.online && APP.host) netSend('state', packState(S));
+  render();
+  // round / game end
+  if (S.phase === 'round' || S.phase === 'game') { showRoundEnd(); return; }
+  // paused for a human choice?
+  if (S.needSwap) { maybeAskSwap(); return; }
+  if (S.needChallenge) { maybeAskChallenge(); return; }
+  // drive the current player if it's a bot (host only / offline)
+  scheduleBot();
+}
+
+function scheduleBot() {
+  clearTimeout(APP.botTimer);
+  const S = APP.S; if (!S || S.phase !== 'play') return;
+  if (APP.online && !APP.host) return;
+  const p = S.players[S.turn];
+  if (!p || !p.bot || !p.alive) return;
+  APP.botTimer = setTimeout(() => botMove(S.turn), 650 + rnd(500));
+}
+
+/* ---------- bot brain ---------- */
+function botMove(pi) {
+  const S = APP.S; if (!S || S.turn !== pi || S.phase !== 'play') return;
+  if (S.needSwap && S.needSwap.by === pi) { botSwap(pi); return; }
+  const legal = legalPlays(S, pi);
+  if (!legal.length) { applyAction(S.players[pi].id, { t: 'draw' }); return; }
+  // pick the best card
+  const hand = S.players[pi].hand;
+  const nextP = S.players[nextAlive(S, pi, S.dir)];
+  let best = legal[0], bestScore = -1e9;
+  for (const i of legal) {
+    const f = face(hand[i], S.side); let sc = 0;
+    if (f.k === 'num') sc = 10 - f.n * 0.1;
+    else if (f.k === 'skip' || f.k === 'skipall') sc = 24;
+    else if (f.k === 'rev') sc = 18;
+    else if (f.k === 'draw') sc = 30 + f.n * 2;
+    else if (f.k === 'discardall') sc = 40;
+    else if (f.k === 'flip') sc = 16;
+    else if (f.k === 'wildcolor') sc = 20;
+    else if (f.k === 'wilddraw') sc = 12 + f.n; // keep wild+ for when needed
+    else if (f.k === 'wild') sc = 8;
+    // be nastier to a player on low cards
+    if (nextP && nextP.hand.length <= 2 && (f.k === 'draw' || f.k === 'skip' || f.k === 'skipall' || f.k === 'wilddraw' || f.k === 'wildcolor')) sc += 30;
+    // if stacking, favour the smallest legal stack
+    if (S.pend > 0) sc = 100 - drawAmt(f);
+    if (sc > bestScore) { bestScore = sc; best = i; }
+  }
+  const f = face(hand[best], S.side);
+  // arm uno for the bot if going to 1
+  if (isWild(f)) {
+    const colors = MODES[S.mode].colors;
+    const cnt = {}; for (const c of colors) cnt[c] = 0;
+    for (const c of hand) { const ff = face(c, S.side); if (cnt[ff.c] != null) cnt[ff.c]++; }
+    let col = colors[0]; for (const c of colors) if (cnt[c] > cnt[col]) col = c;
+    S.lastColorBefore = S.color;
+    applyAction(S.players[pi].id, { t: 'play', idx: best, cardId: hand[best].id, color: col });
+  } else {
+    applyAction(S.players[pi].id, { t: 'play', idx: best, cardId: hand[best].id });
+  }
+}
+function botSwap(pi) {
+  const S = APP.S, ids = aliveIdx(S).filter(i => i !== pi);
+  let tgt = ids[0]; for (const i of ids) if (S.players[i].hand.length < S.players[tgt].hand.length) tgt = i;
+  applyAction(S.players[pi].id, { t: 'swap', target: tgt });
+}
+
+/* ---------- UNO catch window ---------- */
+function openCatch(pi) {
+  clearCatch();
+  APP.catchWindow = { pi };
+  render();
+  // bots may catch; and the window closes after a bit (then the player is safe)
+  const S = APP.S;
+  // a random alert bot catches
+  const botCatcher = S.players.find(p => p.bot && p.alive && p.id !== S.players[pi].id);
+  const t1 = setTimeout(() => {
+    const cw = APP.catchWindow; if (!cw || cw.pi !== pi) return;
+    if (!S.players[pi].saidUno && S.players[pi].hand.length === 1 && Math.random() < 0.85 && botCatcher) {
+      applyAction(botCatcher.id, { t: 'catch', target: pi });
+    }
+  }, 900 + rnd(700));
+  const t2 = setTimeout(() => { if (APP.catchWindow && APP.catchWindow.pi === pi) { clearCatch(); render(); } }, 2600);
+  APP.catchWindow.timers = [t1, t2];
+}
+function clearCatch() { if (APP.catchWindow && APP.catchWindow.timers) APP.catchWindow.timers.forEach(clearTimeout); APP.catchWindow = null; }
+
+/* ---------- animations (flyers) ---------- */
+function rectCenter(node) { const r = node.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }
+function seatCenterFor(pi) {
+  const S = APP.S, meIdx = S.players.findIndex(p => p.id === APP.meId);
+  if (pi === meIdx) { const r = $('#hand').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+  const node = $('#seats').querySelector(`.seat[data-pi="${pi}"] .av`);
+  if (node) return rectCenter(node);
+  return { x: innerWidth / 2, y: innerHeight / 2 };
+}
+async function animPlay(pi, cd) {
+  const S = APP.S; APP.animLock = true;
+  const from = seatCenterFor(pi), to = rectCenter($('#discard'));
+  const fl = renderCardFace(face(cd, S.side), S.side); fl.classList.add('flyer');
+  const cw = parseFloat(getComputedStyle($('#discard .card') || $('#discard')).width) || 70;
+  fl.style.width = cw + 'px'; fl.style.height = cw * 1.5 + 'px';
+  fl.style.left = (from.x - cw / 2) + 'px'; fl.style.top = (from.y - cw * .75) + 'px';
+  document.body.appendChild(fl);
+  await sleep(10);
+  fl.style.transform = `translate(${to.x - from.x}px,${to.y - from.y}px) rotate(${rnd(24) - 12}deg)`;
+  await sleep(300); fl.remove(); APP.animLock = false;
+}
+async function animDrawTo(pi, n) {
+  APP.animLock = true;
+  const from = rectCenter($('#drawpile')), to = seatCenterFor(pi);
+  const k = Math.min(n, 3);
+  for (let i = 0; i < k; i++) {
+    const b = el('div', 'back flyer' + (APP.S.side === 'd' ? ' dark' : ''));
+    b.style.left = (from.x - 32) + 'px'; b.style.top = (from.y - 48) + 'px';
+    document.body.appendChild(b);
+    requestAnimationFrame(() => { b.style.transform = `translate(${to.x - from.x}px,${to.y - from.y}px) scale(.8)`; b.style.opacity = '.2'; });
+    setTimeout(() => b.remove(), 360);
+    await sleep(90);
+  }
+  await sleep(120); APP.animLock = false;
+}
+
+/* ---------- toasts / big word ---------- */
+function toast(msg) { const t = el('div', 'tmsg'); t.textContent = msg; $('#toast').appendChild(t); setTimeout(() => t.remove(), 2200); }
+function bigWord(txt) { const b = $('#bw'); b.textContent = txt; b.classList.remove('go'); void b.offsetWidth; b.classList.add('go'); }
+
+/* process engine "last event" for flourishes */
+let lastSeqSeen = -1;
+function flourish() {
+  const S = APP.S; if (!S || !S.last) return;
+  const L = S.last;
+  if (L.ev === 'flip') bigWord('FLIP!');
+  if (L.ev === 'mercy') toast(`${S.players[L.pi].name} hit the mercy limit — OUT!`);
+  if (L.ev === 'swap') toast(`${S.players[L.by].name} swapped hands with ${S.players[L.target].name}`);
+  if (L.ev === 'zero') toast('Zero! Everyone passes their hand');
+  if (L.ev === 'chalWin') toast('Challenge won — bluff caught!');
+  if (L.ev === 'chalLose') toast('Challenge failed — +6!');
+}
+
+/* ---------- colour picker / swap / challenge overlays ---------- */
+function openColorPicker(cb) {
+  const colors = MODES[APP.S.mode].colors; // current side's colours
+  const side = APP.S.side;
+  const cols = side === 'd' ? DARK : LIGHT;
+  const ov = el('div', 'ov'); ov.id = 'colorPick';
+  const p = el('div', 'panel');
+  p.innerHTML = `<div class="eyebrow">Pick a colour</div><h2 style="text-align:center">Choose the next colour</h2><div class="wheel"></div>`;
+  const wheel = p.querySelector('.wheel');
+  cols.forEach(c => { const b = el('button', 'cp'); b.style.background = HEX[c]; b.textContent = CNAME[c]; b.onclick = () => { ov.remove(); cb(c); }; wheel.appendChild(b); });
+  ov.appendChild(p); $('#overlay').appendChild(ov);
+}
+function maybeAskSwap() {
+  const S = APP.S, meIdx = S.players.findIndex(p => p.id === APP.meId);
+  if (S.needSwap.by !== meIdx) { // it's someone else's swap; if host & bot, bot handles; just wait
+    if ((!APP.online || APP.host) && S.players[S.needSwap.by].bot) botSwap(S.needSwap.by);
+    return;
+  }
+  const ov = el('div', 'ov'); ov.id = 'swapPick';
+  const p = el('div', 'panel');
+  p.innerHTML = `<div class="eyebrow">Seven</div><h2 style="text-align:center">Swap hands with…</h2><div class="plist"></div>`;
+  const list = p.querySelector('.plist');
+  aliveIdx(S).filter(i => i !== meIdx).forEach(i => {
+    const r = el('div', 'pr' + (S.players[i].bot ? ' bot' : '')); const av = el('div', 'av'); av.textContent = S.players[i].name.slice(0, 1).toUpperCase();
+    r.appendChild(av); const nm = el('span'); nm.textContent = S.players[i].name; r.appendChild(nm);
+    const tag = el('span', 'tag'); tag.textContent = S.players[i].hand.length + ' cards'; r.appendChild(tag);
+    r.onclick = () => { ov.remove(); dispatch({ t: 'swap', target: i }); }; list.appendChild(r);
+  });
+  ov.appendChild(p); $('#overlay').appendChild(ov);
+}
+function maybeAskChallenge() {
+  const S = APP.S, meIdx = S.players.findIndex(p => p.id === APP.meId);
+  const ch = S.needChallenge;
+  if (ch.victim !== meIdx) {
+    if ((!APP.online || APP.host) && S.players[ch.victim].bot) {
+      // bot decides: challenge if it suspects a bluff (random-ish, stronger when it has many cards)
+      const doIt = Math.random() < 0.22;
+      setTimeout(() => { if (APP.S.needChallenge) resolveChallenge(APP.S, APP.S.needChallenge, doIt), afterChange(); }, 700);
+    }
+    return;
+  }
+  const ov = el('div', 'ov');
+  const p = el('div', 'panel');
+  p.innerHTML = `<div class="eyebrow">Wild Draw Four</div><h2 style="text-align:center">${S.players[ch.by].name} played +4</h2>
+    <p class="sub">Think it was a bluff? Challenge it. If they had a matching colour, they draw ${ch.amount}. If not, you draw ${ch.amount + 2}.</p>
+    <button class="btn red" id="chY">Challenge!</button><button class="btn blue" id="chN">Take the +${ch.amount}</button>`;
+  ov.appendChild(p); $('#overlay').appendChild(ov);
+  p.querySelector('#chY').onclick = () => { ov.remove(); dispatch({ t: 'challenge' }); };
+  p.querySelector('#chN').onclick = () => { ov.remove(); dispatch({ t: 'decline' }); };
+}
+
+/* ---------- round / game end ---------- */
+function recordGame(S) {
+  try {
+    const w = S.players[S.gameWinner], s = JSON.parse(localStorage.getItem('uno.stats') || '{}');
+    s.games = (s.games || 0) + 1; if (w && w.id === APP.meId) s.wins = (s.wins || 0) + 1;
+    localStorage.setItem('uno.stats', JSON.stringify(s));
+  } catch (e) {}
+}
+function showRoundEnd() {
+  clearTimeout(APP.botTimer); clearCatch();
+  const S = APP.S;
+  if (S.phase === 'game' && !S._recorded) { S._recorded = true; recordGame(S); }
+  const ov = el('div', 'ov'); const p = el('div', 'panel');
+  if (S.phase === 'game') {
+    const w = S.players[S.gameWinner];
+    p.innerHTML = `<div class="logo">UN<span>O</span>!</div><div class="eyebrow">Game over</div>
+      <h2 style="text-align:center;margin:8px 0">🏆 ${w.name} wins!</h2>${scoreTable(S)}
+      ${(APP.online && !APP.host) ? '<p class="sub">Waiting for the host…</p>' : '<button class="btn" id="again">Play again</button>'}
+      <button class="btn ghost" id="menu">Main menu</button>`;
+  } else {
+    const w = S.players[S.roundWinner];
+    p.innerHTML = `<div class="eyebrow">Round over</div><h2 style="text-align:center;margin:6px 0">${w.name} went out!</h2>${scoreTable(S)}
+      <p class="sub">First to ${S.winMode === 'last' ? 'be the last standing' : S.target + ' points'} wins.</p>
+      ${(APP.online && !APP.host) ? '<p class="sub">Waiting for the host to deal…</p>' : '<button class="btn" id="next">Next round</button>'}
+      <button class="btn ghost" id="menu">Leave</button>`;
+  }
+  ov.appendChild(p); $('#overlay').appendChild(ov);
+  const go = p.querySelector('#next') || p.querySelector('#again');
+  if (go) go.onclick = () => { ov.remove(); if (S.phase === 'game') { startRound(S, true); S.phase = 'play'; } else { startRound(S, false); } afterChange(); if (S.phase === 'play') flourish(); };
+  const mn = p.querySelector('#menu'); if (mn) mn.onclick = () => { ov.remove(); leaveToMenu(); };
+}
+function scoreTable(S) {
+  const rows = S.players.map(p => `<div class="pr${p.bot ? ' bot' : ''}"><div class="av">${p.name.slice(0, 1).toUpperCase()}</div><span>${p.name}${p.alive ? '' : ' (out)'}</span><span class="tag">${p.score} pts</span></div>`).join('');
+  return `<div class="plist">${rows}</div>`;
+}
+
+/* ---------- state packing for the network ----------
+   guests get the full state; their UI only reveals their own hand. */
+function packState(S) {
+  return JSON.stringify({
+    mode: S.mode, side: S.side, dir: S.dir, turn: S.turn, phase: S.phase, color: S.color, pend: S.pend, pendLast: S.pendLast,
+    target: S.target, winMode: S.winMode, roundWinner: S.roundWinner, gameWinner: S.gameWinner, seq: S.seq, last: S.last,
+    needSwap: S.needSwap, needChallenge: S.needChallenge, lastColorBefore: S.lastColorBefore,
+    players: S.players.map(p => ({ id: p.id, name: p.name, bot: p.bot, score: p.score, alive: p.alive, out: p.out, saidUno: p.saidUno, hand: p.hand })),
+    discard: S.discard.slice(-5), drawCount: S.draw.length
+  });
+}
+function unpackState(str) {
+  const o = JSON.parse(str);
+  const prev = APP.S;
+  APP.S = {
+    ...o, draw: new Array(o.drawCount).fill(0).map(() => ({ id: 'x', l: { c: 'w', k: 'wild' }, d: { c: 'w', k: 'wild' } })),
+    players: o.players
+  };
+  // detect "catch" opportunity locally for rendering
+  if (o.last && o.last.ev === 'play' && o.players[o.last.pi] && o.players[o.last.pi].hand.length === 1 && !o.players[o.last.pi].saidUno) {
+    APP.catchWindow = { pi: o.last.pi }; setTimeout(() => { if (APP.catchWindow && APP.catchWindow.pi === o.last.pi) { APP.catchWindow = null; render(); } }, 2600);
+  }
+  render();
+  if (prev == null || (o.last && o.seq !== (prev && prev.seq))) flourish();
+  const myIdx = o.players.findIndex(p => p.id === APP.meId);
+  if (o.phase === 'round' || o.phase === 'game') showRoundEnd();
+  else if (o.needChallenge && o.needChallenge.victim === myIdx) maybeAskChallenge();
+  else if (o.needSwap && o.needSwap.by === myIdx) maybeAskSwap();
+  else { document.querySelectorAll('#overlay .ov').forEach(x => { if (x.id !== 'colorPick' && x.id !== 'swapPick') x.remove(); }); }
+}
+
+/* ============================================================
+   NETWORK  (rt.js — supabase-emulating realtime over the Worker)
+   ============================================================ */
+const RT_SRC = 'https://noah-and-lars.github.io/projects/rt.js?v=1';
+const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function roomCode() { let s = ''; for (let i = 0; i < 5; i++) s += ALPH[rnd(ALPH.length)]; return s; }
+function getClient() {
+  if (APP.client) return Promise.resolve(APP.client);
+  return new Promise((res, rej) => {
+    const go = () => { try { APP.client = window.supabase.createClient(); res(APP.client); } catch (e) { rej(e); } };
+    if (window.supabase && window.supabase.createClient) return go();
+    const s = document.createElement('script'); s.src = RT_SRC; s.onload = go; s.onerror = () => rej('offline'); document.head.appendChild(s);
+  });
+}
+function netSend(ev, payload) { if (APP.ch) try { APP.ch.send({ type: 'broadcast', event: ev, payload }); } catch (e) {} }
+
+async function enterRoom(code, host) {
+  const c = await getClient();
+  const ch = c.channel('uno-' + code, { config: { broadcast: { self: false }, presence: { key: APP.meId } } });
+  APP.ch = ch; APP.room = code; APP.host = host; APP.online = true;
+  ch.on('presence', { event: 'sync' }, onPresence);
+  ch.on('broadcast', { event: '*' }, m => onNet(m.event, m.payload || {}));
+  await new Promise((res, rej) => { const to = setTimeout(() => rej('timeout'), 9000); ch.subscribe(s => { if (s === 'SUBSCRIBED') { clearTimeout(to); res(); } }); });
+  await ch.track({ id: APP.meId, n: APP.meName, host, t: Date.now() });
+  await sleep(600);
+  const others = Object.keys(ch.presenceState()).filter(k => k !== APP.meId);
+  if (!host && !others.length) { leaveRoom(); throw 'not_found'; }
+  LOBBY = { code, host, mode: 'classic', players: [] };
+  if (host) hostSyncLobby(); else netSend('hello', { id: APP.meId, n: APP.meName });
+}
+function leaveRoom() {
+  if (APP.ch) { try { netSend('bye', { id: APP.meId }); } catch (e) {} const ch = APP.ch; APP.ch = null; setTimeout(() => { try { APP.client.removeChannel(ch); } catch (e) {} }, 150); }
+  APP.online = false; APP.host = false; APP.room = null;
+}
+function presentIds() { const st = APP.ch.presenceState(); return Object.keys(st).map(k => ({ key: k, meta: st[k][0] })); }
+function onPresence() {
+  if (!APP.ch) return;
+  if (APP.host) hostSyncLobby();
+  if (LOBBY && !APP.S) renderLobby();
+}
+function onNet(ev, d) {
+  if (ev === 'hello' && APP.host) { hostSyncLobby(); return; }
+  if (ev === 'bye') { if (APP.host) hostSyncLobby(); else { /* host might have left */ } return; }
+  if (ev === 'lobby' && !APP.host) { LOBBY = d.lobby; if (!APP.S) renderLobby(); return; }
+  if (ev === 'start' && !APP.host) { startFromState(d.state); return; }
+  if (ev === 'state' && !APP.host) { unpackState(d.state); return; }
+  if (ev === 'act' && APP.host) { applyAction(d.from, d.action); return; }
+}
+
+/* ---------- lobby ---------- */
+let LOBBY = null;
+function hostSyncLobby() {
+  if (!LOBBY) return;
+  const present = presentIds();
+  // humans = everyone present; keep existing bots
+  const humans = present.map(p => ({ id: p.meta.id || p.key, name: p.meta.n || 'Player', bot: false }));
+  const bots = (LOBBY.players || []).filter(p => p.bot);
+  LOBBY.players = [...humans, ...bots].slice(0, MODES[LOBBY.mode].max);
+  netSend('lobby', { lobby: LOBBY });
+  if (!APP.S) renderLobby();
+}
+
+/* ============================================================
+   MENUS / SCREENS
+   ============================================================ */
+function overlay(html) { const ov = el('div', 'ov'); const p = el('div', 'panel'); p.innerHTML = html; ov.appendChild(p); $('#overlay').innerHTML = ''; $('#overlay').appendChild(ov); return p; }
+function clearOverlay() { $('#overlay').innerHTML = ''; }
+function showGameChrome(on) { $('#top').classList.toggle('hide', !on); $('#me').classList.toggle('hide', !on); }
+
+function mainMenu() {
+  showGameChrome(false); $('#roomTag').classList.add('hide');
+  APP.S = null; APP.online = false; APP.host = false; LOBBY = null;
+  const p = overlay(`
+    <div class="logo">UN<span>O</span>!</div>
+    <div class="sub">2–10 players · classic rules, No Mercy & Flip</div>
+    <button class="btn" id="solo">Play vs Bots</button>
+    <button class="btn blue" id="online">Play Online</button>
+    <button class="btn ghost" id="rules">How to play</button>
+    <div class="note">Signed in as <b>${APP.meName}</b></div>`);
+  p.querySelector('#solo').onclick = soloSetup;
+  p.querySelector('#online').onclick = onlineMenu;
+  p.querySelector('#rules').onclick = rulesScreen;
+}
+
+function modePicker(current, onPick) {
+  return Object.keys(MODES).map(k => `<button class="opt-mode${k === current ? ' on' : ''}" data-m="${k}" style="display:block;width:100%;text-align:left;margin-top:8px;padding:12px 14px;border-radius:13px;border:2px solid ${k === current ? '#f3b900' : '#ffffff22'};background:${k === current ? '#f3b90018' : '#ffffff0b'};color:#fff;cursor:pointer">
+    <b style="font-size:15px">${MODES[k].name}</b><small style="display:block;color:#ffffffa0;font-size:12px;margin-top:3px;font-weight:600">${MODES[k].blurb}</small></button>`).join('');
+}
+
+function soloSetup() {
+  let mode = 'classic', bots = 3;
+  function draw() {
+    const p = overlay(`<div class="eyebrow">Vs Bots</div><h2 style="text-align:center">Set up your game</h2>
+      <div class="lab">Mode</div><div id="modes">${modePicker(mode)}</div>
+      <div class="lab">Opponents</div><div class="opt" id="bots"></div>
+      <button class="btn" id="start">Start game</button>
+      <button class="btn ghost" id="back">Back</button>`);
+    p.querySelector('#modes').onclick = e => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; if (bots + 1 > MODES[mode].max) bots = MODES[mode].max - 1; draw(); };
+    const bo = p.querySelector('#bots'); const maxB = MODES[mode].max - 1;
+    for (let i = 1; i <= maxB; i++) { const b = el('button'); b.textContent = i; b.className = i === bots ? 'on' : ''; b.onclick = () => { bots = i; draw(); }; bo.appendChild(b); }
+    p.querySelector('#back').onclick = mainMenu;
+    p.querySelector('#start').onclick = () => startSolo(mode, bots);
+  }
+  draw();
+}
+const BOTNAMES = ['Luna', 'Dusty', 'Pudding', 'Vex', 'Angst', 'Pixel', 'Rook', 'Momo', 'Cleo', 'Biscuit'];
+function startSolo(mode, bots) {
+  const players = [{ id: APP.meId, name: APP.meName, bot: false }];
+  const names = shuffle(BOTNAMES.slice());
+  for (let i = 0; i < bots; i++) players.push({ id: uid(), name: names[i], bot: true });
+  APP.online = false; APP.host = true;
+  clearOverlay(); showGameChrome(true);
+  APP.S = newGame({ mode, players });
+  afterChange(); flourish();
+  bigWord('UNO!');
+}
+
+function onlineMenu() {
+  const p = overlay(`<div class="eyebrow">Online</div><h2 style="text-align:center">Play with friends</h2>
+    <p class="sub">One of you creates a room and shares the 5-letter code. Up to 10 can join; fill the rest with bots.</p>
+    <button class="btn" id="create">Create a room</button>
+    <div class="row"><input class="field" id="code" placeholder="CODE" maxlength="5" autocomplete="off" spellcheck="false"></div>
+    <button class="btn blue" id="join">Join a room</button>
+    <div class="note" id="err"></div>
+    <button class="btn ghost" id="back">Back</button>`);
+  const err = t => $('#err').textContent = t || '';
+  const inp = p.querySelector('#code'); inp.addEventListener('input', () => inp.value = inp.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') join(); });
+  p.querySelector('#back').onclick = mainMenu;
+  p.querySelector('#create').onclick = async () => {
+    err('Creating room…');
+    try { await enterRoom(roomCode(), true); renderLobby(); } catch (e) { err('Couldn’t connect. Check your internet.'); }
+  };
+  async function join() {
+    const code = inp.value.trim(); if (code.length !== 5) return err('Codes are 5 characters.');
+    err('Joining…');
+    try { await enterRoom(code, false); renderLobby(); } catch (e) { err(e === 'not_found' ? 'No room with that code.' : 'Couldn’t connect.'); }
+  }
+  p.querySelector('#join').onclick = join;
+}
+
+function renderLobby() {
+  if (!LOBBY || APP.S) return;
+  showGameChrome(false);
+  const host = APP.host, L = LOBBY, max = MODES[L.mode].max;
+  const slots = L.players.length, canStart = slots >= 2;
+  const rows = L.players.map((p, i) => `<div class="pr${p.bot ? ' bot' : ''}"><div class="av">${(p.name || '?').slice(0, 1).toUpperCase()}</div>
+    <span>${p.name}${p.id === APP.meId ? ' (you)' : ''}</span>
+    <span class="tag">${p.bot ? 'bot' : (i === 0 ? 'host' : 'player')}</span>
+    ${host && p.bot ? `<button class="rm" data-rm="${i}">✕</button>` : ''}</div>`).join('');
+  const p = overlay(`<div class="eyebrow">Room</div><h2 style="text-align:center">Code <span style="color:#f3b900;letter-spacing:3px">${L.code}</span></h2>
+    <p class="sub">${host ? 'Share the code. Add bots to fill seats.' : 'Waiting for the host to start…'}</p>
+    ${host ? `<div class="lab">Mode</div><div id="modes">${modePicker(L.mode)}</div>` : `<div class="note">Mode: <b>${MODES[L.mode].name}</b></div>`}
+    <div class="lab">Players (${slots}/${max})</div><div class="plist">${rows}</div>
+    ${host ? `<div class="row">${slots < max ? '<button class="btn sm ghost" id="addbot">+ Add bot</button>' : ''}</div>
+      <button class="btn" id="start"${canStart ? '' : ' disabled style=opacity:.5'}>Start game</button>` : ''}
+    <button class="btn ghost" id="leave">Leave room</button>`);
+  p.querySelector('#leave').onclick = () => { leaveRoom(); mainMenu(); };
+  if (host) {
+    p.querySelector('#modes').onclick = e => { const b = e.target.closest('[data-m]'); if (!b) return; L.mode = b.dataset.m; L.players = L.players.slice(0, MODES[L.mode].max); hostSyncLobby(); renderLobby(); };
+    const ab = p.querySelector('#addbot'); if (ab) ab.onclick = () => { const used = L.players.map(x => x.name); const name = BOTNAMES.find(n => !used.includes(n)) || ('Bot' + rnd(99)); L.players.push({ id: uid(), name, bot: true }); netSend('lobby', { lobby: L }); renderLobby(); };
+    p.querySelector('#modes').querySelectorAll('[data-rm]');
+    $('#overlay').querySelectorAll('[data-rm]').forEach(b => b.onclick = e => { e.stopPropagation(); L.players.splice(+b.dataset.rm, 1); netSend('lobby', { lobby: L }); renderLobby(); });
+    const st = p.querySelector('#start'); if (st && canStart) st.onclick = startOnline;
+  }
+}
+function startOnline() {
+  const L = LOBBY; APP.S = newGame({ mode: L.mode, players: L.players.map(p => ({ id: p.id, name: p.name, bot: p.bot })) });
+  clearOverlay(); showGameChrome(true); $('#roomTag').textContent = 'ROOM ' + L.code; $('#roomTag').classList.remove('hide');
+  netSend('start', { state: packState(APP.S) });
+  afterChange(); flourish(); bigWord('UNO!');
+}
+function startFromState(str) {
+  clearOverlay(); showGameChrome(true); $('#roomTag').textContent = 'ROOM ' + (APP.room || ''); $('#roomTag').classList.remove('hide');
+  unpackState(str); bigWord('UNO!');
+}
+
+function leaveToMenu() {
+  clearTimeout(APP.botTimer); clearCatch();
+  if (APP.online) leaveRoom();
+  mainMenu();
+}
+function rulesScreen() {
+  const p = overlay(`<div class="eyebrow">How to play</div><h2 style="text-align:center">UNO! in 30 seconds</h2>
+    <div style="text-align:left;font-size:13.5px;line-height:1.5;color:#ffffffcf;margin-top:8px">
+    <p><b>Goal.</b> Be the first to empty your hand each round, and reach the points target to win.</p>
+    <p style="margin-top:8px"><b>Your turn.</b> Play a card that matches the pile by <b>colour</b>, <b>number</b> or <b>symbol</b>, or a <b>Wild</b>. No match? Draw one.</p>
+    <p style="margin-top:8px"><b>Action cards.</b> Skip, Reverse, +2, Wild, and Wild +4 (challenge a bluff!).</p>
+    <p style="margin-top:8px"><b>UNO!</b> Down to one card? Tap the big UNO button or you can be caught for +2.</p>
+    <p style="margin-top:8px"><b>No Mercy.</b> Stack +2/+4/+6/+10, 0s pass hands, 7s swap, draw till you can play — and 25 cards knocks you OUT.</p>
+    <p style="margin-top:8px"><b>Flip.</b> A Flip card turns the whole deck over to the dark side: new colours, nastier cards.</p>
+    </div><button class="btn" id="ok">Got it</button>`);
+  p.querySelector('#ok').onclick = mainMenu;
+}
+
+/* ---------- menu button in game ---------- */
+$('#menuBtn').onclick = () => {
+  const p = overlay(`<h2 style="text-align:center">Menu</h2>
+    <button class="btn" id="resume">Resume</button>
+    <button class="btn ghost" id="quit">${APP.online ? 'Leave game' : 'Quit to menu'}</button>`);
+  p.querySelector('#resume').onclick = () => { clearOverlay(); };
+  p.querySelector('#quit').onclick = leaveToMenu;
+};
+
+window.addEventListener('resize', () => { if (APP.S) render(); });
+mainMenu();
+</script>
+</body>
+</html>

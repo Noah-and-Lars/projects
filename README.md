@@ -9,6 +9,7 @@ The Chat tab (`chat.html`) is a global chat for everyone on the arcade; messages
 
 | Game | Type | Controls |
 |---|---|---|
+| [UNO!](uno/) | Card game (classic, No Mercy, Flip) for 2–10, bots or online | Mouse or touch |
 | [Cube Assault](cube-assault/) | 3D shooter | Keyboard + mouse or touch |
 | [Blocktris](block-drop/) | Falling-block puzzle | Keyboard or touch |
 | [2048](2048/) | Sliding-number puzzle | Keyboard or swipe |
