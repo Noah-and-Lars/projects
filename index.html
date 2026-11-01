@@ -113,8 +113,8 @@ $('count').textContent = GAMES.length + (GAMES.length === 1 ? ' game' : ' games'
 
 // Featured: whichever game arrived or changed most recently
 function renderFeature() {
-  // Pinned: Cube Assault is in the banner even when another game is updated more recently
-  const g = GAMES.find(x => x.id === 'cube-assault') || [...GAMES].sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))[0];
+  // Pinned: UNO! is in the banner to show off the newest game
+  const g = GAMES.find(x => x.id === 'uno') || [...GAMES].sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))[0];
   const badge = Arcade.badge(g), stat = Arcade.stat(g);
   const f = $('feature');
   f.href = playUrl(g);
@@ -127,7 +127,7 @@ function renderFeature() {
       <span class="btn big"><span aria-hidden="true">▶</span> Play now</span>
     </div>`;
   f.querySelector('img').src = g.thumb;
-  f.querySelector('.eyebrow').textContent = g.id === 'free-criminal' ? 'NEW: v1.9 · The big one' : g.id === 'russian-roulette' ? 'New gamemode: Buckshot' : g.id === 'rocket-rivals' ? 'NEW GAME: Rocket Rivals 1.0' : g.id === 'football' ? 'NEW: Football 1.0.1 · Change your keys' : g.id === 'cube-assault' ? 'NEW: v2.9.17 · Seaside is back, plus anti-cheat' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
+  f.querySelector('.eyebrow').textContent = g.id === 'uno' ? 'NEW GAME: UNO! 1.0' : g.id === 'free-criminal' ? 'NEW: v1.9 · The big one' : g.id === 'russian-roulette' ? 'New gamemode: Buckshot' : g.id === 'rocket-rivals' ? 'NEW GAME: Rocket Rivals 1.0' : g.id === 'football' ? 'NEW: Football 1.0.1 · Change your keys' : g.id === 'cube-assault' ? 'NEW: v2.9.17 · Seaside is back, plus anti-cheat' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
   f.querySelector('h1').textContent = g.title;
   f.querySelector('.feature-tag').textContent = g.tagline;
   const meta = f.querySelector('.feature-meta');
@@ -195,7 +195,7 @@ function renderNews() {
 function render() {
   const q = $('search').value.trim().toLowerCase();
   // the order of the All games grid: these first (rows of four), then everything else as listed in games.js
-  const FIRST = ['cube-assault', 'russian-roulette', 'free-criminal', 'gamble-your-life-away', 'havoc-bay', 'football', 'chess', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop'];
+  const FIRST = ['uno', 'cube-assault', 'russian-roulette', 'free-criminal', 'gamble-your-life-away', 'havoc-bay', 'football', 'chess', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop'];
   const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
   const list = [...GAMES].sort((a, b) => rank(a) - rank(b)).filter(g =>
     (active === 'All' || g.category === active) &&
