@@ -116,20 +116,24 @@ for i, L in enumerate(J['lights']):
     wall = L['style'] in ('sconce', 'lamp', 'lantern')
     ld = bpy.data.lights.new('L%d' % i, 'POINT' if wall else 'SPOT')
     # daytime: the fittings look whiter next to daylight
-    ld.color = tuple(0.55 * c + 0.45 for c in (L['r'] / I, L['g'] / I, L['b'] / I))
-    ld.energy = I * (140.0 if wall else 190.0)
+    ld.color = tuple(0.5 * c + 0.5 for c in (L['r'] / I, L['g'] / I, L['b'] / I))
+    ld.energy = I * (240.0 if wall else 330.0)  # fittings strong enough to light a windowless room by day
     ld.shadow_soft_size = 0.15
     if not wall: ld.spot_size = math.radians(165); ld.spot_blend = 0.6
     ob = bpy.data.objects.new('L%d' % i, ld); ob.location = (L['x'], -L['z'], L['y'] - 0.1)
     # ceiling fixtures shine down (spot rotation 0 points down -Z)
     sc.collection.objects.link(ob)
-# daylight: a bright sky and a low warm sun through the windows and doors
-w = bpy.data.worlds.new('day'); w.use_nodes = True
-w.node_tree.nodes['Background'].inputs['Color'].default_value = (0.55, 0.68, 0.86, 1)
-w.node_tree.nodes['Background'].inputs['Strength'].default_value = 2.4
+# daylight from a real sky: an HDR image (CC0, Poly Haven) lights the windows and doors, plus a matching sun
+HDRI = os.environ.get('SG_HDRI', '/home/user/tools/hdri/sky.hdr')
+w = bpy.data.worlds.new('day'); w.use_nodes = True; wn = w.node_tree
+bg = wn.nodes['Background']; bg.inputs['Strength'].default_value = 1.6
+if os.path.exists(HDRI):
+    et = wn.nodes.new('ShaderNodeTexEnvironment'); et.image = bpy.data.images.load(HDRI); wn.links.new(et.outputs['Color'], bg.inputs['Color'])
+else:
+    bg.inputs['Color'].default_value = (0.55, 0.68, 0.86, 1)
 sc.world = w
-sun = bpy.data.objects.new('sun', bpy.data.lights.new('sun', 'SUN')); sun.data.energy = 3.0; sun.data.angle = math.radians(1.5)
-sun.data.color = (1.0, 0.94, 0.84); sun.rotation_euler = (math.radians(52), 0, math.radians(35)); sc.collection.objects.link(sun)
+sun = bpy.data.objects.new('sun', bpy.data.lights.new('sun', 'SUN')); sun.data.energy = 2.6; sun.data.angle = math.radians(2.0)
+sun.data.color = (1.0, 0.96, 0.9); sun.rotation_euler = (math.radians(50), 0, math.radians(35)); sc.collection.objects.link(sun)
 print(f'SGBAKE scene ready {time.time() - T0:.1f}s', flush=True)
 
 # ----- bake -----
@@ -139,13 +143,27 @@ for o in bake_obs: o.select_set(True)
 bpy.context.view_layer.objects.active = bake_obs[0]
 bpy.ops.object.bake(type='DIFFUSE', pass_filter={'DIRECT', 'INDIRECT'}, target='VERTEX_COLORS')
 print(f'SGBAKE baked {time.time() - T0:.1f}s', flush=True)
+# contact shadows: ambient occlusion within half a metre, into a second colour layer
+for o in bake_obs:
+    lit_now = o.data.color_attributes['Lit']
+    ao = o.data.color_attributes.new('AO', 'FLOAT_COLOR', 'POINT'); o.data.color_attributes.active_color = ao
+sc.world.light_settings.distance = 0.5
+sc.cycles.samples = max(32, SAMPLES // 2)
+bpy.ops.object.bake(type='AO', target='VERTEX_COLORS')
+for o in bake_obs: o.data.color_attributes.active_color = o.data.color_attributes['Lit']
+print(f'SGBAKE ao {time.time() - T0:.1f}s', flush=True)
 
 def lit(ob):
     ca = ob.data.color_attributes['Lit']; a = np.zeros(len(ca.data) * 4, np.float32); ca.data.foreach_get('color', a)
-    return a.reshape(-1, 4)[:, :3]
+    L = a.reshape(-1, 4)[:, :3]
+    ao = ob.data.color_attributes.get('AO')
+    if ao:
+        b = np.zeros(len(ao.data) * 4, np.float32); ao.data.foreach_get('color', b); occ = b.reshape(-1, 4)[:, :1]
+        L = L * (0.5 + 0.5 * occ)  # corners, skirting and the floor under furniture darken
+    return L
 
 # ----- calibrate to the game's brightness: game = amb + k * baked, matched on the static meshes -----
-amb = np.array([0.21, 0.21, 0.22], np.float32)  # daytime: no room is ever dark
+amb = np.array([0.15, 0.15, 0.16], np.float32)  # a fill so no corner is black (readability)
 gl, bl = [], []
 res = []
 def weld(b, m):
@@ -154,20 +172,41 @@ def weld(b, m):
     _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel()
     s = np.zeros((inv.max() + 1, 3)); np.add.at(s, inv, b); c = np.bincount(inv).astype(np.float64)
     return (s / c[:, None])[inv].astype(np.float32)
+def planar_smooth(b, m, cell=0.3, rad=2):
+    pos = arr(m['pos'], np.float32).reshape(-1, 3); nor = arr(m['nor'], np.float32).reshape(-1, 3)
+    ax = np.argmax(np.abs(nor), 1); sg = np.sign(nor[np.arange(len(nor)), ax]).astype(np.int64)
+    flat = np.abs(nor[np.arange(len(nor)), ax]) > 0.97
+    d = np.round(pos[np.arange(len(pos)), ax] / 0.03).astype(np.int64)
+    oth = np.array([[1, 2], [0, 2], [0, 1]])[ax]
+    ia = np.floor(pos[np.arange(len(pos)), oth[:, 0]] / cell).astype(np.int64); ib = np.floor(pos[np.arange(len(pos)), oth[:, 1]] / cell).astype(np.int64)
+    key = lambda A, B: (((ax * 3 + (sg + 1)) * 100003 + d) * 1000003 + A) * 1000003 + B
+    k0 = key(ia, ib); uk, inv = np.unique(k0, return_inverse=True); inv = inv.ravel()
+    S = np.zeros((len(uk), 3)); np.add.at(S, inv, b); C = np.bincount(inv, minlength=len(uk)).astype(np.float64)
+    acc = np.zeros((len(b), 3)); W = np.zeros(len(b))
+    for da in range(-rad, rad + 1):
+        for db in range(-rad, rad + 1):
+            w = np.exp(-(da * da + db * db) / (rad * rad))
+            kk = key(ia + da, ib + db); pos_i = np.searchsorted(uk, kk); pos_i = np.clip(pos_i, 0, len(uk) - 1); ok = uk[pos_i] == kk
+            acc[ok] += S[pos_i[ok]] * w; W[ok] += C[pos_i[ok]] * w
+    out = b.copy(); sel = flat & (W > 0)
+    out[sel] = (acc[sel] / W[sel, None]).astype(np.float32)
+    return out
 for ob, m in targets:
-    b = weld(lit(ob), m); g = arr(m['col'], np.float32).reshape(-1, 3)
+    b = weld(lit(ob), m)
+    if m['k'].startswith('st:'): b = planar_smooth(b, m)
+    g = arr(m['col'], np.float32).reshape(-1, 3)
     res.append((m['k'], b))
     if m['k'].startswith('st:'):
         gl.append(g.mean(1)); bl.append(b.mean(1))
 gl = np.concatenate(gl); bl = np.concatenate(bl)
-TARGET = 0.5  # a bright daytime interior (the night version matched the game's median, about 0.3)
+TARGET = 0.4  # a bright daytime interior (the night version matched the game's median, about 0.3)
 k = float((TARGET - amb.mean()) / max(np.median(bl), 1e-5))
 print(f'SGBAKE game median {np.median(gl):.3f} baked median {np.median(bl):.4f} k {k:.2f}', flush=True)
 
 def final(b):
     # soft roll-off of hot spots (the game caps at 1.6)
     x = k * b
-    return amb[None] + 0.95 * (1 - np.exp(-x / 0.95))  # daylight: a tighter shoulder so sun patches don't burn out
+    return amb[None] * (0.6 + 0.4 * np.clip(x / max(TARGET, 1e-3), 0, 1)) + 1.0 * (1 - np.exp(-x / 1.0))  # the fill dims in shadowed corners too
 
 segs, blobs = [], []
 for kk, b in res:

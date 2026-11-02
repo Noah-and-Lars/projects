@@ -75,3 +75,18 @@ without personal names, as the arcade's rules ask.
   vignette, grain and a touch of edge fringing. Low skips it.
 - Sound: `saGun` layers each shot (crack, body, thump, action) and `saVerb` adds a room echo; far sounds lose their top.
 - Checks: `fxshot.js` (a burst, an explosion and a smoke grenade through the post pass).
+
+## Lighting pass 3, the Blender rifles and sleeves
+
+- Light (`sg_bake.py`): a CC0 HDR sky (Poly Haven `aristea_wreck_puresky`, path in `SG_HDRI`, default
+  `/home/user/tools/hdri/sky.hdr`) plus a matching sun; fittings strong enough for windowless rooms; a short-range AO
+  pass for contact shadows; exposure set to a moderate fixed level (`TARGET`) with a fill (`amb`) that dims in corners;
+  the result is smoothed across each flat surface (`planar_smooth`) to take the noise out. Floors and ceilings are built
+  at 0.5 m (`gb.face(..., 0.5)`) so light pools and sun patches have more detail. Post: bloom only on real lights.
+- Rifles: `sg_carbine.py` (a modern carbine, replaces the drawn `rifle` model) and `sg_rifle2.py` (a classic
+  stamped-receiver rifle, replaces `ak47`). Both are modelled on the drawn rifles' anchor points (bore, muzzle, grip,
+  trigger, handguard, magazine well, ejection port), so hands, reloads, flashes and shells line up. Edge wear, scuffs
+  and AO are baked into one 2048 atlas; the magazine is its own part. In the game `sgxLoadGun()` loads them and
+  `GUN_MODELS.rifle` / `.ak47` build their rigs from them, falling back to the drawn rifles.
+- Sleeves: `tex_sleeve.py` makes `assets/tex/hand_sleeve*` (folds bunching at the joints, a stitched seam, canvas
+  weave), wrapped once round each sleeve. (`sg_sleeve.py` is a Blender bake of the same idea; its result was too faint.)
