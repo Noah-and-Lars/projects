@@ -113,8 +113,25 @@
       .then(function (k) { return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('arcade-account:' + n.toLowerCase()), iterations: 150000 }, k, 256); })
       .then(function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return x.toString(16).padStart(2, '0'); }).join(''); });
   }
+  // The owner's name is off-limits as a username, in any disguise. Kept as char codes so the name itself
+  // never appears in the source. norm() folds case, common leet swaps, spaces and punctuation away first.
+  function norm(n) {
+    return String(n || '').toLowerCase()
+      .replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't').replace(/@/g, 'a')
+      .replace(/[^a-z]/g, '');
+  }
+  var OWN_FIRST = String.fromCharCode(110, 111, 97, 104), OWN_LAST = String.fromCharCode(116, 97, 106, 101, 114);
+  // the full name, in any form — blocked for everyone, including accounts that already have it (they get locked out)
+  function reservedName(n) {
+    var s = norm(n);
+    if (s === OWN_FIRST) return false; // the one reserved first name is allowed (that account is the owner's)
+    return s.indexOf(OWN_FIRST + OWN_LAST) !== -1 || (s.indexOf(OWN_FIRST) !== -1 && s.indexOf(OWN_LAST) !== -1);
+  }
+  // the bare first name is reserved to the owner: nobody new may take it
+  function ownerOnly(n) { return norm(n) === OWN_FIRST; }
   function nameError(n) {
     if (!/^[A-Za-z0-9_]{3,16}$/.test(n)) return 'Use 3 to 16 letters, numbers or underscores (no spaces).';
+    if (reservedName(n) || ownerOnly(n)) return 'That name isn’t allowed. Pick another.';
     return '';
   }
   var WHY = { format: 'Use 3 to 16 letters, numbers or underscores (no spaces).', reserved: 'That name is reserved. Pick another.', rude: 'Pick a different name.', taken: 'That username is taken. Pick another.' };
@@ -464,10 +481,31 @@
     b.onclick = openPanel; top.appendChild(b); refresh();
   }
 
+  // This account's name isn't allowed: block the whole site until it's changed. Local accounts can rename
+  // right here; online names can't be edited, so the only way out is a new account with an allowed name.
+  function enforceName() {
+    if (!name() || !reservedName(name())) return false;
+    css();
+    var k = kind(), html = '<div class="big">🔒</div><h2>Change your name to keep playing</h2>' +
+      '<p>This account’s name isn’t allowed on the Arcade. You’re locked out until it’s changed.</p>';
+    if (k === 'local') html += '<form id="acF" autocomplete="off"><label for="acN">New name</label><input type="text" id="acN" maxlength="16" spellcheck="false" autocapitalize="off"><div class="err" id="acE"></div><button class="go">Save new name</button></form>';
+    else html += '<div class="warn">Online account names can’t be edited. Log out and make a new account with an allowed name — everything else about the account would be the same.</div><button class="go" id="acZ">Log out</button>';
+    overlay(html, false);
+    if (k === 'local') $('acF').onsubmit = function (e) {
+      e.preventDefault(); var v = $('acN').value.trim(), bad = nameError(v);
+      if (!bad && /admin|moderator|^mods?$|official|staff|gametester|imacheater/i.test(v)) bad = WHY.reserved;
+      if (bad) { $('acE').textContent = bad; return; }
+      setLocal(v); closeOv();
+    };
+    else $('acZ').onclick = function () { logout(); };
+    return true;
+  }
+
   /* ---------- start ---------- */
   var readyRes, ready = new Promise(function (r) { readyRes = r; });
   function start() {
     addButton();
+    if (enforceName()) return; // locked out until the name is changed; nothing else runs
     // first visit (after the Terms): ask everyone to make an account
     if (/[?&]admin\b/.test(location.search)) { var adm = function () { if ($('tosPop')) return setTimeout(adm, 500); openAdmin(); }; setTimeout(adm, 300); return finishStart(); }
     var ask = function () {
