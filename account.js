@@ -27,6 +27,7 @@
 
   /* ---------- which saved entries belong to which game ---------- */
   var GROUPS = [
+    ['siege', /^siege\./],
     ['uno', /^uno\./],
     ['cube-assault', /^(cubeAssault|caE2$)/],
     ['havoc-bay', /^havocbay\./],
@@ -72,6 +73,7 @@
     try {
       switch (g) {
         case 'cube-assault': { var p = J('cubeAssaultProfile'); return N(p.xp) + N(p.best) * 50 + N(p.stats && p.stats.kills) + N(p.coins) * 0.2 + Object.keys(p.owned || {}).length * 100; }
+        case 'siege': { var sg = J('siege.profile'); return N(sg.xp) + N(sg.matches) * 50; }
         case 'havoc-bay': { var h = J('havocbay.profile.v1'); return N(h.matches) * 100 + N(h.kills) + N(h.wins) * 50; }
         case 'rocket-rivals': { var r = J('rivals.profile'); return N(r.level) * 1000 + N(r.xp) + N(r.stats && r.stats.matches) * 10; }
         case 'football': { var f = J('soccer.profile'); return N(f.played) * 100 + N(f.wins) * 10 + JSON.stringify(f).length * 0.01; }

@@ -14,6 +14,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'siege',
+    title: 'Siege',
+    category: 'Shooter',
+    tagline: '5v5 tactical shooter: drone, breach and defuse, or reinforce, barricade and hold. One life a round.',
+    description: 'Attackers against defenders, five on five, one life each round. Attackers scout the building with drones to find the bomb site, then breach in and plant the defuser. Defenders reinforce walls with steel, barricade doors and windows, watch the cameras and set traps. Walls, floors and barricades break, bullets go through drywall, and only hard breachers get through steel. 20 operators with their own guns and gadgets, three dark indoor maps (Marlowe Hotel, Port Authority and Ashgrove Manor), bots you can add to any room, and online play for up to 10.',
+    controls: 'Keyboard + mouse',
+    keys: [['W A S D', 'Move'], ['Mouse', 'Aim and shoot (right-click to aim down sights)'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Q / E', 'Lean'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary gun'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant or disable the defuser'], ['5', 'Drones (attack) or cameras (defence)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter', 'Chat'], ['Esc', 'Menu']],
+    path: 'siege/index.html',
+    thumb: 'siege/thumb.jpg',
+    added: '2026-11-02T21:00:00+11:00',
+    updated: '2026-11-02T21:00:00+11:00',
+    stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
+  },
+  {
     id: 'uno',
     title: 'UNO!',
     category: 'Card',
@@ -160,11 +174,11 @@ window.GAMES = [
     id: 'cube-assault',
     title: 'Cube Assault',
     category: 'Shooter',
-    tagline: 'New in 3.0: Siege, a 5v5 tactical mode with breakable walls, drones and 20 operators. Plus waves of cubes, a story campaign and online play.',
-    description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and level up, unlock weapons from a knife to a rocket launcher that blows holes in buildings, and play the campaign: hold the birch road in Russia, 1944, then raid a scam call centre in Mumbai, 2009, then go over the top on the Western Front, 1916. Earn achievements and badges, and find public lobbies online. New in 3.0: Siege, a 5v5 attack and defend mode on three dark indoor maps, with one life a round, walls you can shoot through and blow open, reinforcements, barricades, drones, cameras and 20 operators with their own gadgets.',
+    tagline: 'Hold the line against waves of cubes, play the story campaign, or play online with up to 10 friends.',
+    description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and level up, unlock weapons from a knife to a rocket launcher that blows holes in buildings, and play the campaign: hold the birch road in Russia, 1944, then raid a scam call centre in Mumbai, 2009, then go over the top on the Western Front, 1916. Earn achievements and badges, and find public lobbies online. Siege, the 5v5 tactical mode from 3.0, is now its own game on the arcade.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right-click', 'Zoom'], ['Space', 'Jump'],
-           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns (all keys can be changed in Settings)'], ['6', 'Turret'], ['J', 'Barricade a door'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['=', 'Pumpkin Launcher'], ['E', 'Claim flag (campaign), plant or defuse the bomb (C:S Mode)'], ['1 / 2', 'Make your choice (campaign)'], ['Esc', 'Pause'], ['Tab', 'Scoreboard (multiplayer)'], ['Q / E', 'Lean (Siege)'], ['X / G', 'Operator and secondary gadget (Siege)'], ['F (hold)', 'Reinforce, barricade, plant (Siege)'], ['5', 'Drones or cameras (Siege)'], ['Touch', 'Joystick to move, drag to look, on-screen buttons']],
+           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns (all keys can be changed in Settings)'], ['6', 'Turret'], ['J', 'Barricade a door'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['=', 'Pumpkin Launcher'], ['E', 'Claim flag (campaign), plant or defuse the bomb (C:S Mode)'], ['1 / 2', 'Make your choice (campaign)'], ['Esc', 'Pause'], ['Tab', 'Scoreboard (multiplayer)'], ['Touch', 'Joystick to move, drag to look, on-screen buttons']],
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
@@ -239,6 +253,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-02', game: 'siege', text: 'New game: Siege 1.0. The 5v5 tactical mode from Cube Assault 3.0 is now a game of its own, with a cleaner menu, its own profile and levels, settings and patch notes. Rooms no longer fill up with bots by themselves: the host adds bots to either team, one at a time, or leaves the slots open for friends. Vs bots still starts as a full 5v5.' },
   { date: '2026-11-02', game: 'cube-assault', text: 'Cube Assault 3.0: Siege! A brand-new 5v5 tactical mode. Attackers drone the building, breach in and plant the defuser; defenders reinforce walls, barricade doors and set traps. One life a round, walls you can shoot through and blow open, 20 operators with their own guns and gadgets, and three new dark indoor maps: Marlowe Hotel, Port Authority and Ashgrove Manor. Play against bots or online with up to 10 players.' },
   { date: '2026-11-01', game: 'uno', text: 'New game: UNO! 1.0. The classic card game for 2 to 10 players, against bots or online with friends. Match by colour, number or symbol, play Skips, Reverses, Draw Twos and Wilds, and call UNO on your last card. Three modes: Classic (first to 500), No Mercy (stack the +2/+4/+6/+10, 0s pass hands, 7s swap and 25 cards knocks you out) and Flip, where a Flip card turns the whole deck over to the dark side. Make a room, share the code, and fill the empty seats with bots.' },
   { date: '2026-11-01', game: 'football', text: 'Football 1.1.1: much smoother online play for the player who joins a room. The match now updates 30 times a second instead of 15 and plays back smoothly between updates, legs and kicks animate properly, and your own player reacts to your controls straight away instead of a moment later. Your inputs also reach the host faster.' },
