@@ -1526,7 +1526,7 @@ function sgxLoadHands() {
   return Promise.all(['hand_glove', 'hand_glove_nrm', 'hand_sleeve', 'hand_sleeve_nrm'].map(n => img(SGX.base + 'tex/' + n + '.jpg'))).then(([g, gn, sl, sln]) => {
     const set = (m, map, nrm, col, ns) => { m.map = map; m.normalMap = nrm; m.normalScale.set(ns, ns); m.bumpMap = null; m.color.setHex(col); m.needsUpdate = true; };
     const G = tex(g, 2, 2), GN = tex(gn, 2, 2), S = tex(sl, 1, 1), SN = tex(sln, 1, 1); // the sleeve texture wraps once: folds, seam and weave are in it
-    SGX.hand = { glove: [G, GN, 0x8a7458, 0.7], strap: [G, GN, 0x454a3a, 0.5], sleeve: [S, SN, 0x8a8e7a, 1.0], cuff: [S, SN, 0x63675a, 1.0] };
+    SGX.hand = { glove: [G, GN, 0x3a3836, 0.8], strap: [G, GN, 0x2a2b28, 0.5], sleeve: [S, SN, 0x4a4d46, 1.0], cuff: [S, SN, 0x34362f, 1.0] };
     for (const k in SGX.hand) { HM[k].name = 'hm_' + k; set(HM[k], ...SGX.hand[k]); }
     // gun rigs built before this: their materials are copies
     for (const key in VM_CACHE) VM_CACHE[key].g.traverse(o => { const k = o.material && o.material.name && o.material.name.slice(3); if (k && SGX.hand[k]) set(o.material, ...SGX.hand[k]); });
@@ -1877,7 +1877,7 @@ const KINDS = {
 // ---------- the world: map parsing, geometry, destruction, collision, rays, navigation ----------
 let W = null; // the current map
 const sgScene = new THREE.Scene();
-sgScene.fog = new THREE.FogExp2(0xb4bcc4, 0.011); // daytime: a light haze
+sgScene.fog = new THREE.FogExp2(0x8a9098, 0.004); // daytime: only a trace of haze, far away
 const sgAmbient = new THREE.AmbientLight(0xffffff, 1);
 sgScene.add(sgAmbient);
 const RAIL_KINDS = new Set(['gallery', 'stairhall', 'hall', 'hallm', 'stairs', 'warehouse', 'garage', 'lobby', 'foyer']);
@@ -3347,24 +3347,30 @@ function fxCloud(x, y, z, color, life, r, opacity = 0.75) {
     for (const s of g.children) { s.material.opacity = opacity * 0.85 * o; s.material.rotation += s.userData.sp * dt; s.position.y += Math.sin(f.life * 0.7 + s.userData.ph) * 0.0025; s.position.x += Math.cos(f.life * 0.5 + s.userData.ph) * 0.002; }
   });
 }
-// bullet holes: a few hundred, the oldest go first; holes in a wall piece go when the piece breaks
-const DECALS = [], DECAL_GEO = new THREE.PlaneGeometry(1, 1); DECAL_GEO.shared = true;
-const DECAL_MAT = {};
+// bullet holes: one instanced mesh per tint (a single draw each), a ring of 220; holes in a wall piece go when it breaks
+const DECAL_GEO = new THREE.PlaneGeometry(1, 1), DECAL_N = 220, DECALS = {}, _dm4 = new THREE.Matrix4(), _dq = new THREE.Quaternion(), _ds = new THREE.Vector3(), _do = new THREE.Object3D();
 function fxDecal(x, y, z, n, size, tint, panel, chunk) {
   if (!W || settings.quality === 'low') return;
-  const key = tint;
-  const m = DECAL_MAT[key] || (DECAL_MAT[key] = new THREE.MeshBasicMaterial({ map: SFX.hole, color: tint, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
-  const o = new THREE.Mesh(DECAL_GEO, m);
-  o.position.set(x + n[0] * 0.004, y + n[1] * 0.004, z + n[2] * 0.004);
-  _v3a.set(x + n[0], y + n[1], z + n[2]); o.lookAt(_v3a); o.rotateZ(Math.random() * 6.28);
-  o.scale.setScalar(size * (0.8 + Math.random() * 0.4)); o.matrixAutoUpdate = false; o.updateMatrix();
-  W.group.add(o); DECALS.push({ o, panel, chunk, M: W });
-  while (DECALS.length > 220) { const d = DECALS.shift(); d.M.group.remove(d.o); }
+  let D = DECALS[tint];
+  if (!D || D.M !== W) {
+    if (D && D.M) D.M.group.remove(D.im);
+    const m = new THREE.MeshBasicMaterial({ map: SFX.hole, color: tint, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    const im = new THREE.InstancedMesh(DECAL_GEO, m, DECAL_N); im.frustumCulled = false;
+    for (let i = 0; i < DECAL_N; i++) im.setMatrixAt(i, _zero);
+    W.group.add(im); D = DECALS[tint] = { im, M: W, next: 0, owner: new Array(DECAL_N).fill(null) };
+  }
+  const i = D.next; D.next = (D.next + 1) % DECAL_N;
+  _do.position.set(x + n[0] * 0.004, y + n[1] * 0.004, z + n[2] * 0.004); _v3a.set(x + n[0], y + n[1], z + n[2]); _do.lookAt(_v3a); _do.rotateZ(Math.random() * 6.28);
+  _do.scale.setScalar(size * (0.8 + Math.random() * 0.4)); _do.updateMatrix();
+  D.im.setMatrixAt(i, _do.matrix); D.im.instanceMatrix.needsUpdate = true; D.owner[i] = panel ? [panel, chunk] : null;
 }
+let _decalTick = 0;
 function fxDecalsUpdate() {
-  for (let i = DECALS.length - 1; i >= 0; i--) {
-    const d = DECALS[i];
-    if (d.M !== W || (d.panel && !d.panel.alive[d.chunk])) { d.M.group.remove(d.o); DECALS.splice(i, 1); }
+  if ((_decalTick = (_decalTick + 1) % 10)) return; // a few times a second is plenty
+  for (const k in DECALS) {
+    const D = DECALS[k]; if (D.M !== W) continue; let dirty = false;
+    for (let i = 0; i < DECAL_N; i++) { const o = D.owner[i]; if (o && !o[0].alive[o[1]]) { D.im.setMatrixAt(i, _zero); D.owner[i] = null; dirty = true; } }
+    if (dirty) D.im.instanceMatrix.needsUpdate = true;
   }
 }
 
@@ -4985,7 +4991,7 @@ function sgViewUpdate(dt) {
     vmDir.color.setRGB(1, 0.94 - (VA.flashLit || 0) * 0.15, 0.86 - (VA.flashLit || 0) * 0.3);
     vmDevice.userData.screen.material.color.setHex(P.cutter ? 0xff8030 : 0x40ffa0);
   }
-  vmCam2.fov = 57; vmCam2.aspect = innerWidth / innerHeight; vmCam2.updateProjectionMatrix();
+  vmCam2.fov = 64; vmCam2.aspect = innerWidth / innerHeight; vmCam2.updateProjectionMatrix();
   sgCam.aspect = innerWidth / innerHeight;
 }
 // the mirror is see-through from the side it faces
@@ -5955,16 +5961,16 @@ const SGPOST = (() => {
       gl_FragColor = vec4(c, 1.0); }`, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } });
   const fin = sh(`uniform sampler2D tScene, tBloomA, tBloomB; uniform float uBloom, uTime, uVig, uGrain, uCA; uniform vec2 uRes; varying vec2 vUv;
     float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-    vec3 shoulder(vec3 c) { vec3 x = max(c - 0.78, 0.0); return min(c, 0.78) + 0.24 * (1.0 - exp(-x / 0.24)); }
+    vec3 shoulder(vec3 c) { vec3 x = max(c - 0.86, 0.0); return min(c, 0.86) + 0.16 * (1.0 - exp(-x / 0.16)); }
     void main() {
       vec2 d = vUv - 0.5; float r2 = dot(d, d);
       vec3 c = vec3(texture2D(tScene, vUv - d * uCA * r2).r, texture2D(tScene, vUv).g, texture2D(tScene, vUv + d * uCA * r2).b);
-      c = c * 0.94 + (texture2D(tBloomA, vUv).rgb * 0.35 + texture2D(tBloomB, vUv).rgb * 0.25) * uBloom; // a touch lower exposure
+      c += (texture2D(tBloomA, vUv).rgb * 0.35 + texture2D(tBloomB, vUv).rgb * 0.25) * uBloom;
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-      c = mix(vec3(l), c, 1.07);                                                   // a little richer colour
+      c = mix(vec3(l), c, 1.12);                                                   // richer colour
       c += vec3(-0.010, 0.0, 0.016) * (1.0 - smoothstep(0.0, 0.32, l));            // cooler shadows
       c *= vec3(0.955, 0.985, 1.045);                                              // a neutral daylight balance
-      c = (c - 0.45) * 1.07 + 0.45;                                                // contrast
+      c = (c - 0.38) * 1.16 + 0.38;                                                // contrast: deeper shadows, firmer highlights
       c = shoulder(max(c, 0.0));
       c *= 1.0 - uVig * smoothstep(0.12, 0.7, r2 * 1.6);
       c += (hash(vUv * uRes + fract(uTime) * 61.0) - 0.5) * uGrain;
@@ -5976,7 +5982,7 @@ const SGPOST = (() => {
     [rt, b1, b2, b3, b4].forEach(t => t && t.dispose());
     const gl2 = r.capabilities.isWebGL2, half = gl2 && r.extensions.get('EXT_color_buffer_float');
     const o = { format: THREE.RGBAFormat, type: half ? THREE.HalfFloatType : THREE.UnsignedByteType, depthBuffer: true };
-    if (gl2 && THREE.WebGLMultisampleRenderTarget) { rt = new THREE.WebGLMultisampleRenderTarget(w, h, o); rt.samples = q === 'high' ? 4 : 2; }
+    if (gl2 && THREE.WebGLMultisampleRenderTarget) { rt = new THREE.WebGLMultisampleRenderTarget(w, h, o); rt.samples = 2; }
     else rt = new THREE.WebGLRenderTarget(w, h, o);
     const ob = { format: THREE.RGBAFormat, type: o.type, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
     b1 = new THREE.WebGLRenderTarget(w >> 1, h >> 1, ob); b2 = new THREE.WebGLRenderTarget(w >> 1, h >> 1, ob);
@@ -5990,6 +5996,8 @@ const SGPOST = (() => {
       if (q === 'low' || broken) { r.setRenderTarget(null); draw(); return; }
       try {
         r.getDrawingBufferSize(size);
+        // a capped pixel density for the post pass: full retina resolution with MSAA and bloom is too much fill
+        if (r.getPixelRatio() > (q === 'high' ? 1.35 : 1.0)) { r.setPixelRatio(q === 'high' ? 1.35 : 1.0); r.getDrawingBufferSize(size); }
         if (size.x !== W0 || size.y !== H0 || q !== Q || !rt) targets(r, size.x, size.y, q);
         r.setRenderTarget(rt); draw();
         const bloom = q === 'high';

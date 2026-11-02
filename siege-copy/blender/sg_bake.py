@@ -126,13 +126,13 @@ for i, L in enumerate(J['lights']):
 # daylight from a real sky: an HDR image (CC0, Poly Haven) lights the windows and doors, plus a matching sun
 HDRI = os.environ.get('SG_HDRI', '/home/user/tools/hdri/sky.hdr')
 w = bpy.data.worlds.new('day'); w.use_nodes = True; wn = w.node_tree
-bg = wn.nodes['Background']; bg.inputs['Strength'].default_value = 1.6
+bg = wn.nodes['Background']; bg.inputs['Strength'].default_value = 1.25
 if os.path.exists(HDRI):
     et = wn.nodes.new('ShaderNodeTexEnvironment'); et.image = bpy.data.images.load(HDRI); wn.links.new(et.outputs['Color'], bg.inputs['Color'])
 else:
     bg.inputs['Color'].default_value = (0.55, 0.68, 0.86, 1)
 sc.world = w
-sun = bpy.data.objects.new('sun', bpy.data.lights.new('sun', 'SUN')); sun.data.energy = 2.6; sun.data.angle = math.radians(2.0)
+sun = bpy.data.objects.new('sun', bpy.data.lights.new('sun', 'SUN')); sun.data.energy = 3.8; sun.data.angle = math.radians(1.2)
 sun.data.color = (1.0, 0.96, 0.9); sun.rotation_euler = (math.radians(50), 0, math.radians(35)); sc.collection.objects.link(sun)
 print(f'SGBAKE scene ready {time.time() - T0:.1f}s', flush=True)
 
@@ -159,11 +159,11 @@ def lit(ob):
     ao = ob.data.color_attributes.get('AO')
     if ao:
         b = np.zeros(len(ao.data) * 4, np.float32); ao.data.foreach_get('color', b); occ = b.reshape(-1, 4)[:, :1]
-        L = L * (0.5 + 0.5 * occ)  # corners, skirting and the floor under furniture darken
+        L = L * (0.3 + 0.7 * occ)  # corners, skirting and the floor under furniture darken
     return L
 
 # ----- calibrate to the game's brightness: game = amb + k * baked, matched on the static meshes -----
-amb = np.array([0.15, 0.15, 0.16], np.float32)  # a fill so no corner is black (readability)
+amb = np.array([0.075, 0.075, 0.08], np.float32)  # a small fill: corners stay readable but the light has shape
 gl, bl = [], []
 res = []
 def weld(b, m):
@@ -199,13 +199,14 @@ for ob, m in targets:
     if m['k'].startswith('st:'):
         gl.append(g.mean(1)); bl.append(b.mean(1))
 gl = np.concatenate(gl); bl = np.concatenate(bl)
-TARGET = 0.4  # a bright daytime interior (the night version matched the game's median, about 0.3)
+TARGET = {'port': 0.4}.get(KEY, 0.36)  # the port is mostly windowless warehouse: a little more exposure  # a bright daytime interior (the night version matched the game's median, about 0.3)
 k = float((TARGET - amb.mean()) / max(np.median(bl), 1e-5))
 print(f'SGBAKE game median {np.median(gl):.3f} baked median {np.median(bl):.4f} k {k:.2f}', flush=True)
 
 def final(b):
     # soft roll-off of hot spots (the game caps at 1.6)
     x = k * b
+    if KEY == 'port': x = TARGET * np.power(np.maximum(x, 0) / TARGET, 0.62)  # lift the windowless warehouse without flattening the lit rooms
     return amb[None] * (0.6 + 0.4 * np.clip(x / max(TARGET, 1e-3), 0, 1)) + 1.0 * (1 - np.exp(-x / 1.0))  # the fill dims in shadowed corners too
 
 segs, blobs = [], []
