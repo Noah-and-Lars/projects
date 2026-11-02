@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0';
+const VERSION = '1.0.1';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 const settings = Object.assign({ sens: 1, fov: 78, volume: 0.7, quality: 'high', seenNotes: '' }, (() => { try { return JSON.parse(localStorage.getItem('siege.settings') || '{}'); } catch (e) { return {}; } })());
@@ -1608,6 +1608,18 @@ function sgBuildMap(key) {
     const top = d[0] ? [d[0] > 0 ? S.x + S.l : S.x - 1, S.z] : [S.x, d[1] > 0 ? S.z + S.l : S.z - 1];
     M.stairs.push({ S, steps, cells, bot, top, f: S.f });
   }
+  // the ends of every flight are open: no railing or wall across the top or the bottom step
+  for (const st of M.stairs) {
+    const S = st.S, d = SIDE[S.dir], o = d[0] ? [0, 1] : [1, 0];
+    for (let k = 0; k < S.w; k++) {
+      const tx = st.top[0] + o[0] * k, tz = st.top[1] + o[1] * k, bx = st.bot[0] + o[0] * k, bz = st.bot[1] + o[1] * k;
+      const lx = tx - d[0], lz = tz - d[1], fx = bx + d[0], fz = bz + d[1]; // last and first stair cells
+      const edgeBetween = (f, ax, az, bx2, bz2) => ax !== bx2 ? M.EV(f, Math.max(ax, bx2), az) : M.EH(f, ax, Math.max(az, bz2));
+      const top = edgeBetween(S.f + 1, tx, tz, lx, lz), bot = edgeBetween(S.f, bx, bz, fx, fz);
+      if (top) top.t = 'none';
+      if (bot && bot.t !== 'none') bot.t = 'none';
+    }
+  }
   M.stairCell = new Set(); for (const st of M.stairs) for (const [x, z] of st.cells) M.stairCell.add(st.f * NC + z * Wd + x);
   // ----- floor slabs -----
   // slab at level L (floor L's floor) under cell, if floor L has floor there, or the floor below is enclosed (a ceiling/roof)
@@ -1670,7 +1682,7 @@ function sgBuildMap(key) {
         const mats = { a: mA || mB, b: mB || mA };
         ebox(s0, s0 + JAMB, y0, y1, WALL_T, mats, hardOb);
         ebox(s1 - JAMB, s1, y0, y1, WALL_T, mats, hardOb);
-        ebox(s0 + JAMB, s1 - JAMB, y0 + top, y1, WALL_T, mats, hardOb);
+        ebox(s0 + JAMB, s1 - JAMB, y0 + top, y1, WALL_T, mats, { m: 0, b: 1, k: 'hard' }); // the header stops bullets, not your head when you vault
         if (sill > 0) ebox(s0 + JAMB, s1 - JAMB, y0, y0 + sill, WALL_T, { ...mats, top: 'trim' }, hardOb);
         // frame trim
         const ft = 0.06, fd = WALL_T + 0.05;
@@ -1788,6 +1800,7 @@ function sgBuildMap(key) {
   sgBuildPanelMeshes(M);
   sgBuildDecor(M);
   sgBuildNav(M);
+  sgPruneNav(M);
   sgScene.add(M.group);
   return M;
 }
@@ -1829,7 +1842,7 @@ function sgLights(M, rnd) {
     const col = new THREE.Color(K.lc);
     for (const p of pts) {
       // a few lights are dead or dim, it is a building at night
-      let I = K.li * 1.3 * (0.85 + rnd() * 0.3);
+      let I = K.li * 1.5 * (0.85 + rnd() * 0.3);
       if (rnd() < 0.12) I *= 0.35;
       const radius = K.ls === 'sconce' || K.ls === 'lamp' ? 6.5 : K.ls === 'chand' ? 11 : K.ls === 'sodium' ? 10 : 8;
       M.lights.push({ x: p.x, y: p.y, z: p.z, r: col.r * I, g: col.g * I, b: col.b * I, R: radius, f: R.f, room: R.id, style: K.ls, wall: p.wall, dim: I < 0.5 * K.li, tall: p.tall });
@@ -1873,7 +1886,7 @@ function sgFloorOf(y) { // floor index for a height
 const _LC = [0, 0, 0];
 function sgLightAt(px, py, pz, nx, ny, nz) {
   const M = W, A = M.D.amb;
-  let r = A[0] * 1.5, g = A[1] * 1.5, b = A[2] * 1.5;
+  let r = A[0] * 2.1 + 0.02, g = A[1] * 2.1 + 0.02, b = A[2] * 2.1 + 0.025; // 1.0.1: a little brighter
   const qx = px + nx * 0.06, qy = py + ny * 0.06, qz = pz + nz * 0.06;
   const cx = Math.floor(qx / CELL), cz = Math.floor(qz / CELL);
   if (cx < 0 || cz < 0 || cx >= M.Wd || cz >= M.Hd) { _LC[0] = r; _LC[1] = g; _LC[2] = b; return _LC; }
@@ -2208,6 +2221,22 @@ function sgBuildNav(M) {
     for (const o of M.cellObs[c]) if (o.m && o.k === 'prop' && o.y0 < fy + 1.4 && o.y1 > fy + STEP_UP && cx > o.x0 - 0.12 && cx < o.x1 + 0.12 && cz > o.z0 - 0.12 && cz < o.z1 + 0.12) blocked = true;
     if (!blocked) M.navOk[f * NC + c] = 1;
   }
+  // furniture that reaches across from one cell into the next blocks the way between them
+  M.navBlock = new Set();
+  const blockedAt = (f, x, z) => {
+    const fy = M.floors[f].y, c = Math.floor(z / CELL) * Wd + Math.floor(x / CELL);
+    for (const o of M.cellObs[c] || []) if (o.m && (o.k === 'prop' || o.k === 'step') && o.y1 > fy + STEP_UP && o.y0 < fy + 1.5 && x > o.x0 - 0.24 && x < o.x1 + 0.24 && z > o.z0 - 0.24 && z < o.z1 + 0.24) return true;
+    return false;
+  };
+  for (let f = 0; f < M.nf; f++) for (let c = 0; c < NC; c++) {
+    const a = f * NC + c; if (!M.navOk[a]) continue;
+    const x = c % Wd, z = (c / Wd) | 0;
+    for (const [dx, dz] of [[1, 0], [0, 1]]) {
+      if (x + dx >= Wd || z + dz >= Hd) continue;
+      const b = a + dz * Wd + dx; if (!M.navOk[b]) continue;
+      for (const k of [0.3, 0.5, 0.7]) if (blockedAt(f, (x + 0.5 + dx * k) * CELL, (z + 0.5 + dz * k) * CELL)) { M.navBlock.add(a + ',' + b); break; }
+    }
+  }
   M.navLinks = []; // extra links: stairs
   for (const st of M.stairs) {
     const a = st.f * NC + st.bot[1] * Wd + st.bot[0], b = (st.f + 1) * NC + st.top[1] * Wd + st.top[0];
@@ -2219,6 +2248,24 @@ function sgBuildNav(M) {
   }
 }
 // can a bot walk across this edge right now? returns cost or 0. who: 'atk'|'def'
+function sgPruneNav(M) {
+  const Wd = M.Wd, NC = Wd * M.Hd, seen = new Uint8Array(M.navOk.length), q = [];
+  for (const S of M.D.spawns) { const n = S.f * NC + S.z * Wd + S.x; if (M.navOk[n]) { seen[n] = 1; q.push(n); } }
+  while (q.length) {
+    const cur = q.pop(), f = (cur / NC) | 0, c = cur % NC, x = c % Wd, z = (c / Wd) | 0;
+    const nb = [];
+    if (x > 0) nb.push([cur - 1, M.EV(f, x, z)]); if (x < Wd - 1) nb.push([cur + 1, M.EV(f, x + 1, z)]);
+    if (z > 0) nb.push([cur - Wd, M.EH(f, x, z)]); if (z < M.Hd - 1) nb.push([cur + Wd, M.EH(f, x, z + 1)]);
+    for (const L of M.navLinks) { if (L.a === cur) nb.push([L.b, null]); else if (L.b === cur) nb.push([L.a, null]); }
+    for (const [n, e] of nb) {
+      if (seen[n] || !M.navOk[n]) continue;
+      if (e && !['none', 'door', 'window'].includes(e.t)) continue;
+      if (M.navBlock.has(Math.min(cur, n) + ',' + Math.max(cur, n))) continue;
+      seen[n] = 1; q.push(n);
+    }
+  }
+  for (let i = 0; i < seen.length; i++) if (!seen[i]) M.navOk[i] = 0;
+}
 function sgEdgeCost(e, who) {
   if (!e) return 0;
   switch (e.t) {
@@ -2259,6 +2306,7 @@ function sgPath(a, b, who, maxN = 4000) {
     const H = M.hatchAt.get(cur); if (H && H.panel && H.panel.alive.every(v => !v) && f > 0) nb.push([cur - NC, null, 2]);
     for (const [n, e, lc] of nb) {
       if (!M.navOk[n] && n !== g) continue;
+      if (M.navBlock.has(Math.min(cur, n) + ',' + Math.max(cur, n))) continue;
       const ec = lc !== undefined ? lc : sgEdgeCost(e, who);
       if (!ec) continue;
       const nc = cost.get(cur) + ec;
@@ -2847,7 +2895,7 @@ function sgTintPerson(M, light) {
 const _lightC = new THREE.Color();
 function sgLightProbe(x, y, z) {
   const a = sgLightAt(x, y + 1.2, z, 0, 1, 0), b = sgLightAt(x, y + 1.0, z, 1, 0, 0), c = sgLightAt(x, y + 1.0, z, -1, 0, 0);
-  _lightC.setRGB((a[0] + b[0] + c[0]) / 3 * 1.35 + 0.05, (a[1] + b[1] + c[1]) / 3 * 1.35 + 0.05, (a[2] + b[2] + c[2]) / 3 * 1.35 + 0.05);
+  _lightC.setRGB((a[0] + b[0] + c[0]) / 3 * 1.35 + 0.08, (a[1] + b[1] + c[1]) / 3 * 1.35 + 0.08, (a[2] + b[2] + c[2]) / 3 * 1.35 + 0.08);
   return _lightC;
 }
 function sgAnimPerson(M, dt, speed, crouch, lean, pitch, dead) {
@@ -4355,10 +4403,12 @@ function botThink(P, dt, t) {
       P.pitch *= 0.9;
       inp.f = Math.abs(angDiff(want, P.yaw)) < 0.9 ? 1 : 0.2;
       inp.run = G.phase === 'prep' || (side === 'atk' && d > 3 && !A.careful) || (side === 'def' && A.urgent);
+      const f = sgFloorOf(P.y + 0.5), cx = Math.floor(P.x / CELL), cz = Math.floor(P.z / CELL), nx = Math.floor(wp.x / CELL), nz = Math.floor(wp.z / CELL);
+      const e = d < 1.6 ? (nx > cx ? W.EV(f, cx + 1, cz) : nx < cx ? W.EV(f, cx, cz) : nz > cz ? W.EH(f, cx, cz + 1) : nz < cz ? W.EH(f, cx, cz) : null) : null;
+      // climb through open windows
+      if (e && e.t === 'window' && !(e.bar && e.bar.active && e.bar.alive.some(v => v)) && d < 1.45) { inp.jump = true; inp.f = 1; }
       // a barricade in the way: break it
       if (side === 'atk' && d < 1.6) {
-        const f = sgFloorOf(P.y + 0.5), cx = Math.floor(P.x / CELL), cz = Math.floor(P.z / CELL), nx = Math.floor(wp.x / CELL), nz = Math.floor(wp.z / CELL);
-        const e = nx > cx ? W.EV(f, cx + 1, cz) : nx < cx ? W.EV(f, cx, cz) : nz > cz ? W.EH(f, cx, cz + 1) : nz < cz ? W.EH(f, cx, cz) : null;
         if (e && e.bar && e.bar.active && e.bar.alive.some(v => v)) {
           // swing at the planks that are left (the lowest first)
           const b = e.bar, i = b.alive.findIndex(v => v), cb = chunkBox(b, i, 0, [0, 0, 0, 0, 0, 0]);
@@ -4682,6 +4732,14 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.1', t: 'Map fixes and drones upstairs', d: '2 November 2026', intro: 'A round of fixes for the maps, found by sending a test walker on hundreds of routes through every building.', items: [
+    ['Stairs', 'The top and bottom of every staircase were blocked by a railing, so you had to jump to get on or off. They are open now.'],
+    ['Drones upstairs', 'Drones can now drive up and down every staircase to scout the other floors.'],
+    ['Windows', 'You can jump through open windows again without your head catching on the frame. Bots climb through them too.'],
+    ['Furniture', 'Bots no longer get stuck on chairs, tables and stalls that stick out into a doorway or a gap, and nobody spawns in a corner boxed in by furniture.'],
+    ['Lighting', 'Every map is a little brighter, so you can see into the corners without losing the night-time feel.'],
+    ['Cube Assault', 'Siege can no longer be started from Cube Assault. Its Siege button now sends you here.'],
+  ] },
   { v: '1.0', t: 'Siege is its own game', d: '2 November 2026', intro: 'Siege started as a mode inside Cube Assault 3.0. It now has a home of its own on the arcade, with its own menus, profile and patch notes.', items: [
     ['Its own game', 'Siege is now a separate game on the arcade. Your name comes from your arcade account, and your Siege profile is saved to it like every other game.'],
     ['Bots are up to you', 'Rooms start with no bots. The host adds them one at a time to either team with Add bot, and removes them with the cross next to their name. Vs bots still starts as a full 5v5, and you can take bots out before you start.'],
@@ -5269,7 +5327,7 @@ function sgBoot() {
 sgInputInit();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sgBoot); else sgBoot();
 // test handle, only on a local copy
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay };
 
 })();
 </script>

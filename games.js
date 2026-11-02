@@ -24,7 +24,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-02T21:00:00+11:00',
+    updated: '2026-11-02T23:00:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -253,6 +253,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-02', game: 'siege', text: 'Siege 1.0.1: map fixes. The ends of every staircase are open (no more jumping on and off), drones can drive upstairs and downstairs, you can jump through open windows again, bots stop getting stuck on furniture, and every map is a little brighter.' },
   { date: '2026-11-02', game: 'siege', text: 'New game: Siege 1.0. The 5v5 tactical mode from Cube Assault 3.0 is now a game of its own, with a cleaner menu, its own profile and levels, settings and patch notes. Rooms no longer fill up with bots by themselves: the host adds bots to either team, one at a time, or leaves the slots open for friends. Vs bots still starts as a full 5v5.' },
   { date: '2026-11-02', game: 'cube-assault', text: 'Cube Assault 3.0: Siege! A brand-new 5v5 tactical mode. Attackers drone the building, breach in and plant the defuser; defenders reinforce walls, barricade doors and set traps. One life a round, walls you can shoot through and blow open, 20 operators with their own guns and gadgets, and three new dark indoor maps: Marlowe Hotel, Port Authority and Ashgrove Manor. Play against bots or online with up to 10 players.' },
   { date: '2026-11-01', game: 'uno', text: 'New game: UNO! 1.0. The classic card game for 2 to 10 players, against bots or online with friends. Match by colour, number or symbol, play Skips, Reverses, Draw Twos and Wilds, and call UNO on your last card. Three modes: Classic (first to 500), No Mercy (stack the +2/+4/+6/+10, 0s pass hands, 7s swap and 25 cards knocks you out) and Flip, where a Flip card turns the whole deck over to the dark side. Make a room, share the code, and fill the empty seats with bots.' },

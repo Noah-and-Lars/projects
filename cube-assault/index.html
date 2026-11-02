@@ -720,7 +720,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
         <button class="uiCard" id="homeFriends" data-art="friends" style="--ac:#f472b6"><span class="uiArt"></span><span class="uiShade"></span><span class="uiTxt"><em>Online</em><b>Friends</b></span></button>
       </div>
     </div>
-    <button class="link verLink" data-action="notes">v3.0.1 · What's new</button>
+    <button class="link verLink" data-action="notes">v3.0.2 · What's new</button>
   </div>
 
   <div class="menu" id="menu-play">
@@ -746,7 +746,7 @@ body.touch.mpOn #mpBoardBtn { display: block; }
   </div>
 
   <div class="menu" id="menu-notes">
-    <div class="hero"><div class="ribbon">MOVING DAY</div><h1>v3.0.1<span>Siege has its own game</span></h1><p>Siege, the 5v5 tactical mode from 3.0, now lives in its own game on the arcade, with a cleaner menu, its own profile and patch notes, and bots that only join when the host adds them. The Siege button here takes you straight to it.</p>
+    <div class="hero"><div class="ribbon">MOVING DAY</div><h1>v3.0.2<span>Siege has its own game</span></h1><p>Siege, the 5v5 tactical mode from 3.0, now lives in its own game on the arcade, with a cleaner menu, its own profile and patch notes, and bots that only join when the host adds them. The Siege button here takes you straight to it.</p>
       <div class="hero-guns"><i class="hcube" style="background:#ff7a1a">T</i><i class="hcube" style="background:#4cc9f0">S</i><i class="hcube" style="background:#9ad1d4">G</i><i class="hcube" style="background:#457b9d">B</i></div>
       <span class="spark" style="right:8%;top:16%"></span><span class="spark" style="right:22%;top:44%;animation-delay:.8s"></span><span class="spark" style="right:12%;top:72%;animation-delay:1.5s"></span><span class="spark" style="right:34%;top:12%;animation-delay:1.1s"></span></div>
     <div class="feat">
@@ -814,6 +814,9 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v3.0.2 <span>Siege lives on its own</span></h3><ul>
+        <li>The Siege button now tells you Siege is its own game and takes you there. Siege can't be played from inside Cube Assault any more, so old copies with Siege built in are asked to update.</li>
+      </ul></section>
       <section><h3>v3.0.1 <span>Siege has its own game</span></h3><ul>
         <li><b>Siege has moved</b> into its own game on the arcade, with a new menu, its own profile and levels, settings and patch notes. The Siege button on the home and Play screens now opens it.</li>
         <li>In the new Siege, rooms no longer fill up with bots by themselves: the host adds bots to either team, one at a time, and can remove them.</li>
@@ -9305,8 +9308,8 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '3.0.1';
-const NEWS_VERSION = '3.0.1'; // the update the "What's new" popup is about (small fix updates don't get one)
+const VERSION = '3.0.2';
+const NEWS_VERSION = '3.0.2'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
 $('newsOk').addEventListener('click', () => { Sound.init(); closeNews(); });
@@ -17203,7 +17206,7 @@ function caPaintBest() { document.querySelectorAll('.mBest[data-best]').forEach(
 })();
 </script>
 <script id="siege-link">
-// 3.0.1: Siege is its own game on the arcade now. This card on the home and Play screens opens it.
+// 3.0.1: Siege is its own game on the arcade now. 3.0.2: the card shows a popup and sends you to it (Siege can't be played here).
 (() => {
   const go = () => {
     try { if (window.top !== window && window.top.location.pathname) { window.top.location.href = new URL('../play.html?game=siege', location.href).href; return; } } catch (e) {}
@@ -17217,10 +17220,26 @@ function caPaintBest() { document.querySelectorAll('.mBest[data-best]').forEach(
   .sgCard em{display:block;font-style:normal;font-size:11px;letter-spacing:.3em;color:#ffb066;text-transform:uppercase}
   .sgCard b{display:block;font:400 26px 'Russo One',sans-serif;letter-spacing:.08em}
   .sgCard small{display:block;font-size:12.5px;color:#b8bfc7;margin-top:2px}
-  .sgCard .sgNew{margin-left:auto;background:#ff8a1a;color:#140a00;font-weight:800;font-size:11px;letter-spacing:.15em;padding:4px 8px;border-radius:4px;white-space:nowrap}`;
+  .sgCard .sgNew{margin-left:auto;background:#ff8a1a;color:#140a00;font-weight:800;font-size:11px;letter-spacing:.15em;padding:4px 8px;border-radius:4px;white-space:nowrap}
+  #sgMoved{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:16px;background:rgba(4,6,10,.8);backdrop-filter:blur(6px)}
+  #sgMoved[hidden]{display:none}
+  #sgMoved .box{width:min(440px,100%);background:#11141a;border:1px solid rgba(255,138,26,.4);border-radius:16px;padding:26px;color:#eef1f6;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  #sgMoved .hex{width:64px;height:64px;margin:0 auto 12px;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:linear-gradient(160deg,#ff8a1a,#5a2a00);display:grid;place-items:center;font:400 30px 'Russo One',sans-serif;color:#140a00}
+  #sgMoved h2{margin:0 0 8px;font:400 26px 'Russo One',sans-serif;letter-spacing:.04em}
+  #sgMoved p{margin:0 0 18px;color:#b8bfc7;line-height:1.5;font-size:15px}
+  #sgMoved .go{display:block;width:100%;padding:14px;border:0;border-radius:10px;background:#ff8a1a;color:#140a00;font-family:inherit;font-size:16px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+  #sgMoved .no{margin-top:10px;background:none;border:0;color:#8d96a0;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px}`;
   document.head.appendChild(css);
-  const mk = () => { const b = document.createElement('button'); b.className = 'sgCard'; b.innerHTML = '<span class="sgHex">S</span><span><em>Now its own game</em><b>SIEGE</b><small>The 5v5 tactical mode has moved to its own game on the arcade.</small></span><span class="sgNew">PLAY ›</span>'; b.onclick = () => { try { Sound.play('click'); } catch (e) {} go(); }; return b; };
+  // Siege isn't played inside Cube Assault any more: the card explains that and sends you to the game
+  const pop = document.createElement('div'); pop.id = 'sgMoved'; pop.hidden = true; pop.setAttribute('role', 'dialog');
+  pop.innerHTML = '<div class="box"><div class="hex">S</div><h2>Siege is its own game now</h2><p>Siege can\'t be played from Cube Assault any more. It has moved to its own game on the arcade, with its own menu, profile and patch notes. Your friends are playing it there.</p><button class="go">Go to Siege</button><button class="no">Back</button></div>';
+  pop.querySelector('.go').onclick = () => go();
+  pop.querySelector('.no').onclick = () => { pop.hidden = true; };
+  pop.addEventListener('click', e => { if (e.target === pop) pop.hidden = true; });
+  addEventListener('keydown', e => { if (!pop.hidden && e.key === 'Escape') { e.stopImmediatePropagation(); pop.hidden = true; } }, true);
+  const mk = () => { const b = document.createElement('button'); b.className = 'sgCard'; b.innerHTML = '<span class="sgHex">S</span><span><em>Now its own game</em><b>SIEGE</b><small>The 5v5 tactical mode has moved to its own game on the arcade.</small></span><span class="sgNew">OPEN ›</span>'; b.onclick = () => { try { Sound.play('click'); } catch (e) {} pop.hidden = false; }; return b; };
   const add = () => {
+    document.body.appendChild(pop);
     const play = document.getElementById('homePlay'); if (play) play.insertAdjacentElement('afterend', mk());
     const pl = document.querySelector('#menu-play .playList'); if (pl) pl.insertAdjacentElement('afterbegin', mk());
   };
