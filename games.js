@@ -160,15 +160,15 @@ window.GAMES = [
     id: 'cube-assault',
     title: 'Cube Assault',
     category: 'Shooter',
-    tagline: 'Hold the line against waves of cubes, play the story campaign, or play online with up to 6 friends.',
-    description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and level up, unlock weapons from a knife to a rocket launcher that blows holes in buildings, and play the campaign: hold the birch road in Russia, 1944, then raid a scam call centre in Mumbai, 2009, then go over the top on the Western Front, 1916. Earn achievements and badges, and find public lobbies online.',
+    tagline: 'New in 3.0: Siege, a 5v5 tactical mode with breakable walls, drones and 20 operators. Plus waves of cubes, a story campaign and online play.',
+    description: 'First-person 3D shooter. Defend the village from waves of cubes, earn coins and level up, unlock weapons from a knife to a rocket launcher that blows holes in buildings, and play the campaign: hold the birch road in Russia, 1944, then raid a scam call centre in Mumbai, 2009, then go over the top on the Western Front, 1916. Earn achievements and badges, and find public lobbies online. New in 3.0: Siege, a 5v5 attack and defend mode on three dark indoor maps, with one life a round, walls you can shoot through and blow open, reinforcements, barricades, drones, cameras and 20 operators with their own gadgets.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right-click', 'Zoom'], ['Space', 'Jump'],
-           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns (all keys can be changed in Settings)'], ['6', 'Turret'], ['J', 'Barricade a door'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['=', 'Pumpkin Launcher'], ['E', 'Claim flag (campaign), plant or defuse the bomb (C:S Mode)'], ['1 / 2', 'Make your choice (campaign)'], ['Esc', 'Pause'], ['Tab', 'Scoreboard (multiplayer)'], ['Touch', 'Joystick to move, drag to look, on-screen buttons']],
+           ['Shift', 'Sprint'], ['R', 'Reload'], ['1–5', 'Guns (all keys can be changed in Settings)'], ['6', 'Turret'], ['J', 'Barricade a door'], ['7', 'Knife'], ['8', 'Rocket launcher'], ['=', 'Pumpkin Launcher'], ['E', 'Claim flag (campaign), plant or defuse the bomb (C:S Mode)'], ['1 / 2', 'Make your choice (campaign)'], ['Esc', 'Pause'], ['Tab', 'Scoreboard (multiplayer)'], ['Q / E', 'Lean (Siege)'], ['X / G', 'Operator and secondary gadget (Siege)'], ['F (hold)', 'Reinforce, barricade, plant (Siege)'], ['5', 'Drones or cameras (Siege)'], ['Touch', 'Joystick to move, drag to look, on-screen buttons']],
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-11-01T04:00:00+11:00',
+    updated: '2026-11-02T18:00:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -239,6 +239,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-02', game: 'cube-assault', text: 'Cube Assault 3.0: Siege! A brand-new 5v5 tactical mode. Attackers drone the building, breach in and plant the defuser; defenders reinforce walls, barricade doors and set traps. One life a round, walls you can shoot through and blow open, 20 operators with their own guns and gadgets, and three new dark indoor maps: Marlowe Hotel, Port Authority and Ashgrove Manor. Play against bots or online with up to 10 players.' },
   { date: '2026-11-01', game: 'uno', text: 'New game: UNO! 1.0. The classic card game for 2 to 10 players, against bots or online with friends. Match by colour, number or symbol, play Skips, Reverses, Draw Twos and Wilds, and call UNO on your last card. Three modes: Classic (first to 500), No Mercy (stack the +2/+4/+6/+10, 0s pass hands, 7s swap and 25 cards knocks you out) and Flip, where a Flip card turns the whole deck over to the dark side. Make a room, share the code, and fill the empty seats with bots.' },
   { date: '2026-11-01', game: 'football', text: 'Football 1.1.1: much smoother online play for the player who joins a room. The match now updates 30 times a second instead of 15 and plays back smoothly between updates, legs and kicks animate properly, and your own player reacts to your controls straight away instead of a moment later. Your inputs also reach the host faster.' },
   { date: '2026-11-01', game: 'cube-assault', text: 'Arcade accounts are here! Make a free account (just a username and a password) and your progress in every game is saved online, so you can play on any device. Your username is your name in every game, and nobody else can ever take it. Everything you already have moves into your account when you make one.' },

@@ -88,6 +88,20 @@ Since 2.6.2 the rifle is a fourth choice in C:S Mode, and every choice shows a 3
 
 Other players show up as low-poly people. There are six looks, and everyone in a room gets their own (in the order they joined), with a band in their team colour; enemies have a red dot above their name. When someone wins a match, a short victory scene plays on the map for everyone: the winners celebrate up front with the losers standing behind them, under VICTORY or DEFEAT, and then the scores show (click, tap or press Space to skip). Winning an online match, as a team or on your own, earns 50 coins.
 
+## Siege (3.0)
+
+Press **Siege** on the home screen. It is its own mode with its own maps, operators and rules, and has nothing in common with the other modes apart from your name, settings and coins.
+
+- **5v5, one life a round.** Attackers against defenders. First to 4 rounds (3 or 5 in private rooms); sides swap at half time. Empty slots are filled with bots (Recruit, Regular or Veteran).
+- **A round:** 20 s to pick an operator (and, for attackers, a spawn), 45 s of prep, 3 minutes of action. Attackers win by planting the defuser next to a bomb and keeping it running for 45 s, or by taking out every defender. Defenders win when time runs out, by taking out every attacker, or by disabling a planted defuser.
+- **Prep:** attackers drive drones to find the bomb site (it only shows up for their team once someone has seen it) and mark defenders. Defenders reinforce walls and hatches (2 each), barricade doors and windows (2 each), place gadgets, and shoot drones.
+- **Destruction:** soft walls, barricades and hatches are built from pieces that break one by one. Bullets go through drywall. Reinforced steel only gives way to the Thermal Lance, the Piston Breacher and the Cutting Torch.
+- **Operators:** attack: Torch, Static, Spike, Wisp, Tripwire, Oracle, Hex, Breaker, Vesper, Mirage. Defence: Glass, Volt, Shoji, Hush, Murk, Warden, Bramble, Dread, Bulwark, Mender. Each has a speed and armour rating (100, 110 or 125 health), a primary and a secondary gun, one unique gadget (X) and one secondary gadget (G).
+- **Maps:** Marlowe Hotel, Port Authority (with a basement) and Ashgrove Manor. Indoor, dark, three bomb sites each, with stairs, hatches and defender cameras. The maps are made from a cell grid in `SG_MAPS` (rooms as rectangles, walls between rooms appear by themselves, doors and windows listed per edge); furniture is placed from a seed so every player gets the same rooms, and lighting is baked into the walls when the map loads.
+- **Keys:** WASD, Shift sprint, C / Ctrl crouch, Q / E lean, mouse to shoot and aim, R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 for drones (attack) or cameras (defence), V melee, Tab scoreboard, Enter chat, Esc menu. Keyboard and mouse only.
+- **Online:** quick match, private rooms with a 5-letter code and a public room list. Siege uses its own rooms on the arcade's realtime server (`csiege-lobby` and `csiege-<code>`), not the `mp-net` netcode: the host runs the clock, the bots and the round result, every player owns their own movement, shots and health, and if the host leaves the next player takes over. Like the rest of the game's online play it only works on the official website.
+- **Code:** everything is in `<script id="siege">`, one closure (its data is frozen and nothing is exposed on `window` except `sgOpen`, plus a test handle `__sg` on localhost copies only). Wins are worth 60 coins online plus 3 per kill (half against bots).
+
 ## Barrels, barricades and scope lock (2.7.2)
 
 Red barrels are full of fuel: shoot one and it starts leaking, shoot it again and it explodes, hurting cubes and you nearby (rockets set them off too). **Barricades** cost 100 coins in the Shop: stand in a house doorway and press **J**, and your hands screw planks over the door. A barricade has 100 HP; cubes batter it down, the Angry Cube goes straight through, and your bullets break it too. **Settings → Scope → Click to lock** makes one right-click (or tap) scope in until you click again.
