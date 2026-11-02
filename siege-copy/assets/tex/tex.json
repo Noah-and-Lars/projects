@@ -1,0 +1,97 @@
+{
+ "wood": {
+  "rep": 2.0,
+  "src": "polyhaven",
+  "id": "wood_floor_worn"
+ },
+ "marble": {
+  "rep": 2.4,
+  "src": "polyhaven",
+  "id": "marble_01"
+ },
+ "carpet": {
+  "rep": 1.2,
+  "src": "ambientcg",
+  "id": "Carpet008"
+ },
+ "carpetB": {
+  "rep": 1.0,
+  "src": "ambientcg",
+  "id": "Carpet012"
+ },
+ "concrete": {
+  "rep": 3.0,
+  "src": "polyhaven",
+  "id": "concrete_floor_worn_001"
+ },
+ "tile": {
+  "rep": 2.0,
+  "src": "polyhaven",
+  "id": "checkered_pavement_tiles"
+ },
+ "whiteTile": {
+  "rep": 1.2,
+  "src": "polyhaven",
+  "id": "long_white_tiles"
+ },
+ "plaster": {
+  "rep": 2.5,
+  "src": "polyhaven",
+  "id": "plastered_wall_02"
+ },
+ "damask": {
+  "rep": 2.2,
+  "src": "polyhaven",
+  "id": "plastered_wall_02"
+ },
+ "stripes": {
+  "rep": 1.6,
+  "src": "polyhaven",
+  "id": "plastered_wall_02"
+ },
+ "panel": {
+  "rep": 2.0,
+  "src": "polyhaven",
+  "id": "wooden_panels"
+ },
+ "brick": {
+  "rep": 1.6,
+  "src": "polyhaven",
+  "id": "red_brick_03"
+ },
+ "block": {
+  "rep": 1.8,
+  "src": "polyhaven",
+  "id": "concrete_block_wall"
+ },
+ "metal": {
+  "rep": 1.5,
+  "src": "polyhaven",
+  "id": "metal_plate_02"
+ },
+ "plank": {
+  "rep": 1.2,
+  "src": "polyhaven",
+  "id": "weathered_planks"
+ },
+ "ceiling": {
+  "rep": 1.2,
+  "src": "polyhaven",
+  "id": "ceiling_interior"
+ },
+ "stone": {
+  "rep": 2.2,
+  "src": "polyhaven",
+  "id": "patterned_cobblestone"
+ },
+ "grate": {
+  "rep": 1.0,
+  "src": "polyhaven",
+  "id": "metal_grate_rusty"
+ },
+ "asphalt": {
+  "rep": 4.0,
+  "src": "polyhaven",
+  "id": "asphalt_02"
+ }
+}

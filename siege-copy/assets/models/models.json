@@ -1,0 +1,236 @@
+{
+ "sofa": {
+  "id": "Sofa_01",
+  "name": "Sofa 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "sofa2": {
+  "id": "sofa_02",
+  "name": "Sofa 02",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "sofa3": {
+  "id": "sofa_03",
+  "name": "Sofa 03",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "armchair": {
+  "id": "ArmChair_01",
+  "name": "Arm Chair 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "officechair": {
+  "id": "modern_arm_chair_01",
+  "name": "Modern Arm Chair 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "coffeetable": {
+  "id": "modern_coffee_table_01",
+  "name": "Modern Coffee Table 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "plant": {
+  "id": "potted_plant_02",
+  "name": "Potted Plant 02",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "plant2": {
+  "id": "potted_plant_04",
+  "name": "Potted Plant 04",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "steelshelf": {
+  "id": "steel_frame_shelves_01",
+  "name": "Steel Frame Shelves 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "steelshelf2": {
+  "id": "steel_frame_shelves_03",
+  "name": "Steel Frame Shelves 03",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "desk": {
+  "id": "metal_office_desk",
+  "name": "Metal Office Desk",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "rtable": {
+  "id": "round_wooden_table_01",
+  "name": "Round Wooden Table 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "dchair": {
+  "id": "dining_chair_02",
+  "name": "Dining Chair 02",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "bartable": {
+  "id": "side_table_tall_01",
+  "name": "Side Table Tall 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "barstool": {
+  "id": "bar_chair_round_01",
+  "name": "Bar Chair Round 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "crate": {
+  "id": "wooden_crate_01",
+  "name": "Wooden Crate 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "crate2": {
+  "id": "wooden_crate_02",
+  "name": "Wooden Crate 02",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "milcrate": {
+  "id": "wooden_military_crate",
+  "name": "Wooden Military Crate",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "box": {
+  "id": "cardboard_box_01",
+  "name": "Cardboard Box 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "barrel": {
+  "id": "Barrel_01",
+  "name": "Barrel_01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "barrel2": {
+  "id": "barrel_03",
+  "name": "Barrel 03",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "bed": {
+  "id": "GothicBed_01",
+  "name": "Gothic Bed 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "nightstand": {
+  "id": "ClassicNightstand_01",
+  "name": "Classic Nightstand 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "wardrobe": {
+  "id": "GothicCabinet_01",
+  "name": "Gothic Cabinet 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "vcabinet": {
+  "id": "vintage_cabinet_01",
+  "name": "Vintage Cabinet 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "commode": {
+  "id": "GothicCommode_01",
+  "name": "Gothic Commode 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "console": {
+  "id": "ClassicConsole_01",
+  "name": "Classic Console 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "mcabinet": {
+  "id": "modern_wooden_cabinet",
+  "name": "Modern Wooden Cabinet",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "gclock": {
+  "id": "vintage_grandfather_clock_01",
+  "name": "Vintage Grandfather Clock 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "generator": {
+  "id": "portable_generator",
+  "name": "Portable Generator",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "cart": {
+  "id": "industrial_storage_cart",
+  "name": "Industrial Storage Cart",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "car": {
+  "id": "covered_car",
+  "name": "Covered Car",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "stove": {
+  "id": "electric_stove",
+  "name": "Electric Stove",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "frame": {
+  "id": "fancy_picture_frame_01",
+  "name": "Fancy Picture Frame 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "frame2": {
+  "id": "hanging_picture_frame_02",
+  "name": "Hanging Picture Frame 02",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "chandelier": {
+  "id": "Chandelier_01",
+  "name": "Chandelier 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "tv": {
+  "id": "television_02",
+  "name": "Television 02",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "trash": {
+  "id": "metal_trash_can",
+  "name": "Metal Trash Can",
+  "src": "Poly Haven",
+  "license": "CC0"
+ },
+ "wetsign": {
+  "id": "WetFloorSign_01",
+  "name": "Wet Floor Sign 01",
+  "src": "Poly Haven",
+  "license": "CC0"
+ }
+}
