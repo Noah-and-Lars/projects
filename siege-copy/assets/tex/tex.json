@@ -1,8 +1,8 @@
 {
  "wood": {
-  "rep": 2.0,
+  "rep": 2.2,
   "src": "polyhaven",
-  "id": "wood_floor_worn"
+  "id": "oak_wood_planks"
  },
  "marble": {
   "rep": 2.4,
@@ -36,23 +36,23 @@
  },
  "plaster": {
   "rep": 2.5,
-  "src": "polyhaven",
-  "id": "plastered_wall_02"
+  "src": "ambientcg",
+  "id": "PaintedPlaster017"
  },
  "damask": {
   "rep": 2.2,
-  "src": "polyhaven",
-  "id": "plastered_wall_02"
+  "src": "ambientcg",
+  "id": "PaintedPlaster017"
  },
  "stripes": {
   "rep": 1.6,
-  "src": "polyhaven",
-  "id": "plastered_wall_02"
+  "src": "ambientcg",
+  "id": "PaintedPlaster017"
  },
  "panel": {
-  "rep": 2.0,
+  "rep": 1.6,
   "src": "polyhaven",
-  "id": "wooden_panels"
+  "id": "herringbone_parquet"
  },
  "brick": {
   "rep": 1.6,

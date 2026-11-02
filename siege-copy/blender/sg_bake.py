@@ -115,18 +115,21 @@ for i, L in enumerate(J['lights']):
     I = max(L['r'], L['g'], L['b'], 1e-3)
     wall = L['style'] in ('sconce', 'lamp', 'lantern')
     ld = bpy.data.lights.new('L%d' % i, 'POINT' if wall else 'SPOT')
-    ld.color = (L['r'] / I, L['g'] / I, L['b'] / I)
+    # daytime: the fittings look whiter next to daylight
+    ld.color = tuple(0.55 * c + 0.45 for c in (L['r'] / I, L['g'] / I, L['b'] / I))
     ld.energy = I * (140.0 if wall else 190.0)
     ld.shadow_soft_size = 0.15
     if not wall: ld.spot_size = math.radians(165); ld.spot_blend = 0.6
     ob = bpy.data.objects.new('L%d' % i, ld); ob.location = (L['x'], -L['z'], L['y'] - 0.1)
     # ceiling fixtures shine down (spot rotation 0 points down -Z)
     sc.collection.objects.link(ob)
-# night sky through the windows: a faint blue world
-w = bpy.data.worlds.new('night'); w.use_nodes = True
-w.node_tree.nodes['Background'].inputs['Color'].default_value = (0.05, 0.065, 0.1, 1)
-w.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.6
+# daylight: a bright sky and a low warm sun through the windows and doors
+w = bpy.data.worlds.new('day'); w.use_nodes = True
+w.node_tree.nodes['Background'].inputs['Color'].default_value = (0.55, 0.68, 0.86, 1)
+w.node_tree.nodes['Background'].inputs['Strength'].default_value = 2.4
 sc.world = w
+sun = bpy.data.objects.new('sun', bpy.data.lights.new('sun', 'SUN')); sun.data.energy = 3.0; sun.data.angle = math.radians(1.5)
+sun.data.color = (1.0, 0.94, 0.84); sun.rotation_euler = (math.radians(52), 0, math.radians(35)); sc.collection.objects.link(sun)
 print(f'SGBAKE scene ready {time.time() - T0:.1f}s', flush=True)
 
 # ----- bake -----
@@ -142,7 +145,7 @@ def lit(ob):
     return a.reshape(-1, 4)[:, :3]
 
 # ----- calibrate to the game's brightness: game = amb + k * baked, matched on the static meshes -----
-amb = np.array(J['amb'], np.float32) * 2.1 + np.array([0.02, 0.02, 0.025], np.float32)
+amb = np.array([0.21, 0.21, 0.22], np.float32)  # daytime: no room is ever dark
 gl, bl = [], []
 res = []
 def weld(b, m):
@@ -157,13 +160,14 @@ for ob, m in targets:
     if m['k'].startswith('st:'):
         gl.append(g.mean(1)); bl.append(b.mean(1))
 gl = np.concatenate(gl); bl = np.concatenate(bl)
-k = 0.9 * float(np.median(np.maximum(gl - amb.mean(), 0.02)) / max(np.median(bl), 1e-5))
+TARGET = 0.5  # a bright daytime interior (the night version matched the game's median, about 0.3)
+k = float((TARGET - amb.mean()) / max(np.median(bl), 1e-5))
 print(f'SGBAKE game median {np.median(gl):.3f} baked median {np.median(bl):.4f} k {k:.2f}', flush=True)
 
 def final(b):
     # soft roll-off of hot spots (the game caps at 1.6)
     x = k * b
-    return amb[None] + 1.45 * (1 - np.exp(-x / 1.45))
+    return amb[None] + 0.95 * (1 - np.exp(-x / 0.95))  # daylight: a tighter shoulder so sun patches don't burn out
 
 segs, blobs = [], []
 for kk, b in res:
@@ -185,11 +189,11 @@ if probe_ob:
     sm = np.zeros_like(pb)
     for i in range(len(Pp)):
         acc = np.zeros(3); n = 0
-        for da in (-1, 0, 1):
-            for db in (-1, 0, 1):
+        for da in (-2, -1, 0, 1, 2):
+            for db in (-2, -1, 0, 1, 2):
                 e = buckets.get((ax[i], sg[i], d[i], ia[i] + da, ib[i] + db))
                 if e is not None:
-                    w = 2.0 if (da == 0 and db == 0) else 1.0
+                    w = 3.0 if (da == 0 and db == 0) else (1.5 if abs(da) + abs(db) == 1 else 0.6)
                     acc += e[0] * w; n += e[1] * w
         sm[i] = acc / n
     pb = sm.astype(np.float32)

@@ -57,3 +57,21 @@ without personal names, as the arcade's rules ask.
   draw; reloads move the magazine (`rig.mag`/`magDir`) and the free hand (`rig.arms.left`), shotguns load shells at the
   port, slides/pumps/bolts cycle after shots. Gloves and sleeves use `assets/tex/hand_*` (leather, canvas, normal maps).
 - Checks: `charshot.js` (operators line-up), `vmtest.js` (the held gun through a reload, no match needed), `smoke.js`.
+
+## Daylight look, trims, effects, post-processing, sound
+
+- Bright residential style: `tex_pack.py` now uses light oak planks, smooth painted plaster (tinted per room by the
+  `plaster*` materials), soft wallpapers and herringbone panelling. `sg_trim.py` (Blender) models a panelled dado with
+  skirting and chair rail, and a crown moulding, and bakes their normals and AO; `tex_trim.py` turns them into
+  `assets/tex/wainscot*` and `crown*`. The wall shader (`worldUV`) lays them by height above each floor on the keys in
+  `SGX_TRIM_KEYS`, so they also sit on the breakable wall pieces.
+- Daytime: a light haze (`sgScene.fog`), a daytime skyline (`sgxDaySkyline`), and `sg_bake.py` bakes a sky and a low sun
+  through the windows, with the fittings whitened, to a fixed bright target. People and the held gun use `sgLightAt`,
+  lifted to match.
+- Effects (`SFX`, `fxTracer`, `fxSpark`, `fxPuff`, `fxExplosion`, `fxCloud`, `fxDecal`): drawn smoke, flash and fire
+  textures, streak tracers and sparks, bullet holes (gone when their wall piece breaks), layered explosions. First person:
+  muzzle flash on the gun's own muzzle and cases out of its port (`sgxMuzzle`, `sgxShell`).
+- `SGPOST`: the frame is drawn to a multisampled target, then bloom (High), a soft highlight shoulder, a light grade,
+  vignette, grain and a touch of edge fringing. Low skips it.
+- Sound: `saGun` layers each shot (crack, body, thump, action) and `saVerb` adds a room echo; far sounds lose their top.
+- Checks: `fxshot.js` (a burst, an explosion and a smoke grenade through the post pass).

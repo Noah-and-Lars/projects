@@ -23,10 +23,10 @@ def bright(k, sat=1.0):
         return ImageEnhance.Color(im).enhance(sat)
     return f
 def stripes(im):  # painted stripes on plaster
-    im = tint((88, 104, 92))(im); d = ImageDraw.Draw(im, 'RGBA')
+    im = tint((222, 216, 200), 0.85)(im); d = ImageDraw.Draw(im, 'RGBA')
     for x in range(0, S, 128):
-        d.rectangle([x + 80, 0, x + 127, S], fill=(30, 44, 36, 70))
-        d.rectangle([x + 78, 0, x + 80, S], fill=(200, 180, 120, 40))
+        d.rectangle([x + 80, 0, x + 127, S], fill=(160, 170, 182, 60))
+        d.rectangle([x + 78, 0, x + 80, S], fill=(255, 255, 255, 40))
     return im
 def ceiling_grid(im):  # suspended ceiling tiles, 2 x 2 per texture
     im = bright(1.05, 0.6)(im); d = ImageDraw.Draw(im, 'RGBA')
@@ -42,7 +42,7 @@ def ceiling_grid_n(nrm):  # grooves in the normal map too
         d.rectangle([p - 7, 0, p - 5, S], fill=60); d.rectangle([p + 5, 0, p + 7, S], fill=196)
     return nrm
 def damask(im):  # burgundy plaster with a woven damask motif (2 x 4 per tile, like the original drawing)
-    im = tint((104, 40, 44), 0.92)(im); im = ImageEnhance.Brightness(im).enhance(0.8)
+    im = tint((214, 204, 184), 0.85)(im); im = ImageEnhance.Brightness(im).enhance(1.05)
     ov = Image.new('RGBA', (S, S), (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
     for i in range(2):
         for j in range(4):
@@ -51,12 +51,12 @@ def damask(im):  # burgundy plaster with a woven damask motif (2 x 4 per tile, l
                 x = (cx + k) % (S + 1) if cx + 0 > S else cx
                 for dx in (-S, 0, S):
                     X = cx + dx
-                    d.ellipse([X - 44, cy - 88, X + 44, cy + 88], fill=(214, 168, 104, 40))
-                    d.ellipse([X - 26, cy - 60, X + 26, cy + 60], fill=(60, 14, 16, 46))
-                    d.ellipse([X - 16, cy - 128, X + 16, cy - 72], fill=(214, 168, 104, 40))
-                    d.ellipse([X - 16, cy + 72, X + 16, cy + 128], fill=(214, 168, 104, 40))
+                    d.ellipse([X - 44, cy - 88, X + 44, cy + 88], fill=(255, 250, 238, 34))
+                    d.ellipse([X - 26, cy - 60, X + 26, cy + 60], fill=(150, 136, 112, 26))
+                    d.ellipse([X - 16, cy - 128, X + 16, cy - 72], fill=(255, 250, 238, 34))
+                    d.ellipse([X - 16, cy + 72, X + 16, cy + 128], fill=(255, 250, 238, 34))
                 break
-    for x in range(0, S, 64): d.rectangle([x, 0, x + 3, S], fill=(0, 0, 0, 30))
+    for x in range(0, S, 64): d.rectangle([x, 0, x + 2, S], fill=(0, 0, 0, 10))
     return Image.alpha_composite(im.convert('RGBA'), ov).convert('RGB')
 def hazard(im):  # reinforcement plate with a hazard band at the bottom
     im = bright(1.15, 0.7)(im); d = ImageDraw.Draw(im, 'RGBA')
@@ -65,17 +65,17 @@ def hazard(im):  # reinforcement plate with a hazard band at the bottom
     return im
 
 KEYS = {
-    'wood':      ('wood_floor_worn', 2.0, bright(0.66, 0.85)),
-    'marble':    ('marble_01', 2.4, bright(0.74, 0.8)),
-    'carpet':    ('Carpet008', 1.2, tint((150, 40, 44), 0.85)),
+    'wood':      ('oak_wood_planks', 2.2, bright(1.0, 0.95)),
+    'marble':    ('marble_01', 2.4, bright(1.0, 0.75)),
+    'carpet':    ('Carpet008', 1.2, tint((150, 118, 96), 0.55)),
     'carpetB':   ('Carpet012', 1.0, bright(0.95)),
     'concrete':  ('concrete_floor_worn_001', 3.0, bright(0.85)),
     'tile':      ('checkered_pavement_tiles', 2.0, bright(1.25, 0.7)),
     'whiteTile': ('long_white_tiles', 1.2, bright(0.95)),
-    'plaster':   ('plastered_wall_02', 2.5, bright(0.92, 0.3)),
-    'damask':    ('plastered_wall_02', 2.2, damask),
-    'stripes':   ('plastered_wall_02', 1.6, stripes),
-    'panel':     ('wooden_panels', 2.0, bright(0.72)),
+    'plaster':   ('PaintedPlaster017', 2.5, bright(1.12, 0.2)),
+    'damask':    ('PaintedPlaster017', 2.2, damask),
+    'stripes':   ('PaintedPlaster017', 1.6, stripes),
+    'panel':     ('herringbone_parquet', 1.6, bright(1.0, 0.9)),
     'brick':     ('red_brick_03', 1.6, bright(0.95)),
     'block':     ('concrete_block_wall', 1.8, lambda im: ImageEnhance.Color(ImageEnhance.Brightness(im).enhance(1.45)).enhance(0.35)),
     'metal':     ('metal_plate_02', 1.5, hazard),
