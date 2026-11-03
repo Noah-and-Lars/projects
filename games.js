@@ -14,6 +14,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'card-royale',
+    title: 'Card Royale',
+    category: 'Strategy',
+    tagline: 'Real-time card battles, 1v1 online: drop troops, cast spells and knock down the enemy towers.',
+    description: 'Two players, three towers each, three minutes on the clock. Spend Elixir to drop troops, buildings and spells from your 8-card deck, push down a lane and destroy more towers than your opponent, or take the King Tower for an instant three-crown win. Press Battle to quick-match against another player online. 50 cards from Knights and Archers to Golems, Lava Beasts and Mega Knights, chests to unlock, 3 free chests every day, a shop, King levels that reward chests, emotes and chat in battle, overtime and tiebreakers.',
+    controls: 'Mouse or touch',
+    keys: [['Drag a card', 'Place it on your side of the arena'], ['Tap card, then arena', 'Same as dragging'], ['Speech bubble', 'Emotes and chat'], ['Battle', 'Quick match against another player']],
+    path: 'card-royale/index.html',
+    thumb: 'card-royale/thumb.jpg',
+    added: '2026-11-03T12:00:00+11:00',
+    updated: '2026-11-03T12:00:00+11:00',
+    stat() { const s = readSave('cardroyale.save', true); return s && (s.wins || s.losses || s.draws) ? (s.tr || 0) + ' trophies' : null; },
+  },
+  {
     id: 'siege',
     title: 'Siege',
     category: 'Shooter',
@@ -253,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-03', game: 'card-royale', text: 'New game: Card Royale 1.0! Real-time 1v1 card battles online. Press Battle to find an opponent, drop troops and spells with Elixir, and knock down more towers than them in three minutes (or the King Tower for an instant win). 50 cards to collect from chests, 3 free chests every day, a shop, King levels that give you chests, trophies and arenas, plus emotes and chat during battles.' },
   { date: '2026-11-02', game: 'siege', text: 'Siege 1.0.1: map fixes. The ends of every staircase are open (no more jumping on and off), drones can drive upstairs and downstairs, you can jump through open windows again, bots stop getting stuck on furniture, and every map is a little brighter.' },
   { date: '2026-11-02', game: 'siege', text: 'New game: Siege 1.0. The 5v5 tactical mode from Cube Assault 3.0 is now a game of its own, with a cleaner menu, its own profile and levels, settings and patch notes. Rooms no longer fill up with bots by themselves: the host adds bots to either team, one at a time, or leaves the slots open for friends. Vs bots still starts as a full 5v5.' },
   { date: '2026-11-02', game: 'cube-assault', text: 'Cube Assault 3.0: Siege! A brand-new 5v5 tactical mode. Attackers drone the building, breach in and plant the defuser; defenders reinforce walls, barricade doors and set traps. One life a round, walls you can shoot through and blow open, 20 operators with their own guns and gadgets, and three new dark indoor maps: Marlowe Hotel, Port Authority and Ashgrove Manor. Play against bots or online with up to 10 players.' },

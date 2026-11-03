@@ -28,6 +28,7 @@
   /* ---------- which saved entries belong to which game ---------- */
   var GROUPS = [
     ['siege', /^siege\./],
+    ['card-royale', /^cardroyale\./],
     ['uno', /^uno\./],
     ['cube-assault', /^(cubeAssault|caE2$)/],
     ['havoc-bay', /^havocbay\./],
@@ -82,6 +83,7 @@
         case 'russian-roulette': { var x = J('russianRouletteSave'); return N(x.best) * 10 + N(x.games) + N(x.onGames); }
         case 'gamble-your-life-away': { var y = J('gambleLifeSave'); return N(y.rounds) + N(y.peak) * 1e-6; }
         case 'cube-tower-defense': { var t = J('cubeTDProfile'); return N(t.level) * 1000 + N(t.best) * 10 + N(t.xp); }
+        case 'card-royale': { var cr = J('cardroyale.save'), cn = 0; for (var ck in (cr.cards || {})) cn += 10 + N(cr.cards[ck].lv) * 5; return N(cr.kl) * 1000 + N(cr.xp) + N(cr.tr) + cn + N(cr.wins) + N(cr.losses); }
         case 'block-drop': return N(d['blockdrop-best']);
         case '2048': return N(d['2048-best']);
         case 'poly-racer': { var q = J('polyracer'); return Object.keys(q.best || {}).length * 1000 + JSON.stringify(q).length * 0.001; }
