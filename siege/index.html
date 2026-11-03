@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.5';
+const VERSION = '1.0.6';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -1052,6 +1052,7 @@ const HCOLS = 3;                            // chunks per side in a hatch
 const BCOLS = 4, BROWS = 4;                 // barricade planks
 // 1.0.3: every defender has 3 reinforcements and 5 barricades (it was 2 of each, too few for the doors and windows round a site)
 const REINF_N = 3, BARR_N = 5;
+const BAR_HP = 110; // 1.0.6: a barricade breaks all at once: about 3 rifle shots, 2 melee hits, one shotgun blast or any explosive
 const PREP_S = 45, ACTION_S = 180, DEFUSE_S = 45, PICK_S = 20, END_S = 7, PLANT_S = 7, DISABLE_S = 7;
 // 1.0.5: a lethal body hit puts you down (not out) while a teammate is still up; you bleed out unless revived
 const DOWN_HP = 25, DOWN_BLEED = 1, REVIVE_S = 4, REINF_TEAM = 10;
@@ -1774,7 +1775,7 @@ function sgBuildMap(key) {
         ebox(s0 + JAMB - ft, s1 - JAMB + ft, y0 + top, y0 + top + ft, fd, { a: 'trim', b: 'trim' });
         if (sill) ebox(s0 + JAMB - ft, s1 - JAMB + ft, y0 + sill - 0.04, y0 + sill + 0.02, fd + 0.06, { a: 'trim', b: 'trim' });
         if (e.t === 'door' || e.t === 'window') {
-          e.bar = newPanel({ k: 'bar', f, ax, c, s0: s0 + JAMB, w: DOOR_W, y0: y0 + (e.t === 'door' ? 0.12 : sill), h: e.t === 'door' ? 2.0 : top - sill, cols: BCOLS, rows: e.t === 'door' ? BROWS : 3, hp0: 55, edge: e, ra: e.a, rb: e.b, win: e.t === 'window' });
+          e.bar = newPanel({ k: 'bar', f, ax, c, s0: s0 + JAMB, w: DOOR_W, y0: y0 + (e.t === 'door' ? 0.28 : sill), h: e.t === 'door' ? 1.85 : top - sill, cols: BCOLS, rows: e.t === 'door' ? BROWS : 3, hp0: 55, edge: e, ra: e.a, rb: e.b, win: e.t === 'window' });
         }
         if (e.t === 'sealed' || e.t === 'glass') {
           e.glass = newPanel({ k: 'glass', f, ax, c, s0: s0 + JAMB, w: DOOR_W, y0: y0 + sill, h: top - sill, cols: 1, rows: 1, hp0: 1, edge: e, sealed: e.t === 'sealed' });
@@ -2140,12 +2141,14 @@ function sgNear(x, z, r, fn) {
 }
 const _seenOb = new Set(), _seenP = new Set(), _box = [0, 0, 0, 0, 0, 0];
 // push a cylinder (feet y, height h, radius r) out of walls, chunks and props. dyn: extra boxes (gadgets, shields)
-function sgCollide(pos, r, h, dyn) {
+// 1.0.6: only furniture and stairs (things you can stand on) are stepped over. Walls, planks and sills used to be
+// skipped too if they were low enough, which let a hopping drone slip through the bottom of a wall.
+function sgCollide(pos, r, h, dyn, step = STEP_UP) {
   const M = W;
   for (let it = 0; it < 3; it++) {
     _seenOb.clear(); _seenP.clear();
     let moved = false;
-    const yLo = pos.y + STEP_UP, yHi = pos.y + h;
+    const yLo = pos.y + step, yFeet = pos.y + 0.02, yHi = pos.y + h;
     const push = (x0, x1, z0, z1) => {
       const qx = Math.max(x0, Math.min(pos.x, x1)), qz = Math.max(z0, Math.min(pos.z, z1));
       let dx = pos.x - qx, dz = pos.z - qz; const d2 = dx * dx + dz * dz;
@@ -2159,22 +2162,22 @@ function sgCollide(pos, r, h, dyn) {
     sgNear(pos.x, pos.z, r + 0.2, c => {
       for (const o of M.cellObs[c]) {
         if (!o.m || _seenOb.has(o)) continue; _seenOb.add(o);
-        if (o.y1 <= yLo || o.y0 >= yHi) continue;
+        if (o.y0 >= yHi || o.y1 <= ((o.k === 'step' || o.k === 'prop' || o.k === 'top') ? yLo : yFeet)) continue;
         push(o.x0, o.x1, o.z0, o.z1);
       }
       for (const p of M.cellPan[c]) {
         if (_seenP.has(p) || !p.active || p.k === 'hatch') continue; _seenP.add(p);
         if (p.k === 'glass') { if (!p.alive[0] || p.sealed) continue; }
-        if (p.y0 >= yHi || p.y0 + p.h <= yLo) continue;
+        if (p.y0 >= yHi || p.y0 + p.h <= yFeet) continue;
         for (let i = 0; i < p.n; i++) {
           if (!p.alive[i]) continue;
           const b = chunkBox(p, i, 0, _box);
-          if (b[4] <= yLo || b[1] >= yHi) continue;
+          if (b[4] <= yFeet || b[1] >= yHi) continue;
           push(b[0], b[3], b[2], b[5]);
         }
       }
     });
-    if (dyn) for (const b of dyn) { if (b.y1 <= yLo || b.y0 >= yHi) continue; push(b.x0, b.x1, b.z0, b.z1); }
+    if (dyn) for (const b of dyn) { if (b.y1 <= yFeet || b.y0 >= yHi) continue; push(b.x0, b.x1, b.z0, b.z1); }
     if (!moved) break;
   }
 }
@@ -2312,6 +2315,11 @@ function sgBlast(P, r, opts = {}) {
       if (_seenP.has(p) || !p.active) continue; _seenP.add(p);
       if (p.reinf && !opts.hard && p.k !== 'bar') continue;
       if (opts.only && opts.only !== p) continue;
+      if (p.k === 'bar') { // a blast that reaches a barricade takes all of it
+        let hit = false; for (let i = 0; i < p.n && !hit; i++) { if (!p.alive[i]) continue; const b = chunkBox(p, i, 0, _box); hit = Math.hypot((b[0] + b[3]) / 2 - P.x, ((b[1] + b[4]) / 2 - P.y) * (opts.flat ? 0.6 : 1), (b[2] + b[5]) / 2 - P.z) <= r; }
+        if (hit) for (let i = 0; i < p.n; i++) if (p.alive[i]) { p.alive[i] = 0; out.push([p.id, i]); }
+        continue;
+      }
       for (let i = 0; i < p.n; i++) {
         if (!p.alive[i]) continue;
         const b = chunkBox(p, i, 0, _box), cx = (b[0] + b[3]) / 2, cy = (b[1] + b[4]) / 2, cz = (b[2] + b[5]) / 2;
@@ -3160,9 +3168,9 @@ function sgArm(P) {
 }
 const gunOf = P => SG_GUNS[P.w.keys[P.slot]];
 function eyeOf(P, out) {
-  const h = P.down ? 0.45 : P.crouch > 0.5 ? 1.08 : 1.6;
+  const h = P.down ? 0.45 : P.crouch > 0.5 ? 1.08 : 1.6, ln = P.leanV !== undefined ? P.leanV : P.lean;
   const rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
-  out.x = P.x + rx * P.lean * 0.36; out.y = P.y + h - Math.abs(P.lean) * 0.06; out.z = P.z + rz * P.lean * 0.36;
+  out.x = P.x + rx * ln * 0.36; out.y = P.y + h - Math.abs(ln) * 0.06; out.z = P.z + rz * ln * 0.36;
   return out;
 }
 function dirOf(yaw, pitch, out) { out.x = -Math.sin(yaw) * Math.cos(pitch); out.y = Math.sin(pitch); out.z = -Math.cos(yaw) * Math.cos(pitch); return out; }
@@ -3249,9 +3257,10 @@ function sgRayEnts(o, d, maxT, skip) {
   let best = null;
   const test = (t, rec) => { if (t >= 0 && t < maxT && (!best || t < best.t)) best = { t, ...rec }; };
   const sph = (cx, cy, cz, r) => { const ox = o.x - cx, oy = o.y - cy, oz = o.z - cz, b = ox * d.x + oy * d.y + oz * d.z, c = ox * ox + oy * oy + oz * oz - r * r, h = b * b - c; if (h < 0) return -1; const t = -b - Math.sqrt(h); return t >= 0 ? t : -1; };
+  const pe = { x: 0, y: 0, z: 0 }; // 1.0.6: its own eye, not the shared _e (that is often the ray's own origin: melee and the Skeleton Key always missed)
   for (const P of G.P.values()) {
     if (!P.alive || P === skip) continue;
-    eyeOf(P, _e);
+    const _e = eyeOf(P, pe);
     const ht = sph(_e.x, _e.y + 0.04, _e.z, 0.15);
     if (ht >= 0) test(ht, { P, hs: true, kind: 'p' });
     if (P.down) { const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, P.x - 0.45, P.y, P.z - 0.45, P.x + 0.45, P.y + 0.45, P.z + 0.45, maxT); if (t >= 0) test(t, { P, hs: false, kind: 'p', limb: false }); continue; }
@@ -3341,6 +3350,12 @@ function sgTrace(P, o, d, dmg, G0, first) {
       const p = h.p;
       if (p.k === 'glass') { emit('wd', { c: [[p.id, 0]] }); snd('glass', end, 0.8); o = { x: end.x + d.x * 0.05, y: end.y + d.y * 0.05, z: end.z + d.z * 0.05 }; left -= h.t; continue; }
       if (p.reinf && p.k !== 'bar') { fxSpark(end.x, end.y, end.z, 0xffe0a0, 5); snd('metal', end, 0.5); return end; }
+      if (p.k === 'bar') { // the shot goes on through the planks
+        emit('bhit', { p: p.id, d: Math.round(dm * (G0.pel ? 1.6 : 1)) });
+        fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 3, 0x7a5532, 0.05, 2); snd('wood', end, 0.45);
+        if (pierce++ < 2) { dm *= 0.7; o = { x: end.x + d.x * 0.12, y: end.y + d.y * 0.12, z: end.z + d.z * 0.12 }; left -= h.t + 0.12; continue; }
+        return end;
+      }
       const mult = p.k === 'hatch' ? 0.12 : (G0.pel ? 1.6 : 1);
       const broke = sgHitChunk(p, h.i, dm * mult);
       fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 2, p.k === 'bar' || p.k === 'hatch' ? 0x7a5532 : 0xcfc8b8, 0.05, 2);
@@ -3382,9 +3397,19 @@ EV.reinf = (d) => {
   snd('clank', chunkCenter(p), 0.8);
   G.reinfLeft = Math.max(0, (G.reinfLeft ?? REINF_TEAM) - 1); // 1.0.5: the defending team shares 10
 };
+EV.bhit = (d) => {
+  const p = W && W.panels[d.p]; if (!p || p.k !== 'bar' || !p.active || !p.alive.some(v => v)) return;
+  p.barHp = (p.barHp ?? BAR_HP) - d.d;
+  if (p.barHp <= 0) sgBreakBar(p);
+};
+function sgBreakBar(p) {
+  for (let i = 0; i < p.n; i++) p.alive[i] = 0;
+  sgPanelDraw(p); const c = chunkCenter(p);
+  fxDebris(c.x, c.y, c.z, 14, 0x7a5532, 0.09, 4); fxPuff(c.x, c.y, c.z, 0x6a4a2a, 0.9, 0.6, 0.1); snd('crumble', c, 0.9);
+}
 EV.barr = (d) => {
   const p = W.panels[d.p]; if (!p || p.active && p.alive.some(v => v)) return;
-  p.active = true; p.side = d.s; for (let i = 0; i < p.n; i++) { p.alive[i] = 1; p.hp[i] = p.hp0; }
+  p.active = true; p.side = d.s; p.barHp = BAR_HP; for (let i = 0; i < p.n; i++) { p.alive[i] = 1; p.hp[i] = p.hp0; }
   sgPanelDraw(p); snd('hammer', chunkCenter(p), 0.7);
   const P = G.P.get(d.o); if (P && auth(P)) P.barr = Math.max(0, P.barr - 1); // only one that really went up counts
 };
@@ -4191,8 +4216,17 @@ function sgMove(P, inp, dt) {
   if (head && P.vy > 0) P.vy = 0;
   P.x = pos.x; P.z = pos.z; P.y = ny;
   if (P.y < -40) { P.y = 0; }
-  // keep the lean from poking through walls
-  if (P.lean) { eyeOf(P, _e); const ex = P.x, ey = P.y + 1.5, ez = P.z; if (!sgClear({ x: ex, y: ey, z: ez }, _e)) P.lean *= 0.5; }
+  // 1.0.6: the lean eases over instead of snapping, and stops short of whatever is beside you (a wall, a door
+  // barricade): you used to be able to lean your head through the planks
+  let lt = P.down ? 0 : P.lean;
+  if (lt) {
+    const sg = Math.sign(lt), rx = Math.cos(P.yaw) * sg, rz = -Math.sin(P.yaw) * sg, ey = P.y + (P.crouch > 0.5 ? 1.08 : 1.6) - 0.06;
+    let room = 0.36;
+    for (const dy of [0, -0.25, 0.15]) { const hh = sgRay(P.x, ey + dy, P.z, rx, 0, rz, 0.36 + 0.22); if (hh) room = Math.min(room, hh.t - 0.22); }
+    lt = sg * Math.max(0, Math.min(1, room / 0.36));
+  }
+  P.leanV = (P.leanV || 0) + (lt - (P.leanV || 0)) * Math.min(1, dt * 9);
+  if (Math.abs(P.leanV) < 0.002 && !lt) P.leanV = 0;
 }
 // drones: tiny, fast, fit through small holes
 function sgMoveDrone(P, D, inp, dt) {
@@ -4203,8 +4237,8 @@ function sgMoveDrone(P, D, inp, dt) {
   if (inp.jump && D.onGround) { D.vy = 3.6; D.onGround = false; } // 1.0.4: drones can hop (Space); people can't jump
   D.vy -= 16 * dt;
   const pos = { x: D.x + D.vx * dt, y: D.y, z: D.z + D.vz * dt };
-  sgCollide(pos, 0.13, 0.2, sgGadBoxes());
-  let ny = D.y + D.vy * dt; const gy = sgGround(pos.x, pos.z, Math.max(D.y, ny) + 0.02, 0.05);
+  sgCollide(pos, 0.13, 0.2, sgGadBoxes(), 0.24);
+  let ny = D.y + D.vy * dt; const gy = sgGround(pos.x, pos.z, Math.max(D.y, ny) + 0.02 - (STEP_UP - 0.24), 0.05); // a drone climbs a stair step, not a 45 cm ledge
   if (ny <= gy) { ny = gy; D.vy = 0; D.onGround = true; } else D.onGround = false;
   D.x = pos.x; D.z = pos.z; D.y = ny;
   if (Math.hypot(D.vx, D.vz) > 1 && Math.random() < dt * 6) snd('drone', null, 0.4);
@@ -4357,13 +4391,16 @@ function sgUseUnique(P) {
 }
 // melee: knock out planks and drywall, hurt people
 function sgMelee(P) {
-  if (P.meleeT > now()) return; P.meleeT = now() + 0.7;
+  if (P.meleeT > now() || P.down) return; P.meleeT = now() + 0.7;
   snd('melee', P.id === G.myId ? null : P, 0.7);
+  if (P.id === G.myId) { vmT.mel = 0.38; window.sgAds = false; IN.adsT = false; } // the gun-butt swing
+  P.meleeAt = now();
   eyeOf(P, _e); dirOf(P.yaw, P.pitch, _d);
   const he = sgRayEnts(_e, _d, 1.7, P);
-  if (he && he.kind === 'p' && he.P.team !== P.team) { sgDealHit(P, he.P, 45, false, 'Melee'); return; }
+  if (he && he.kind === 'p' && he.P.team !== P.team) { sgDealHit(P, he.P, 55, false, 'Melee'); fxSpark(_e.x + _d.x * he.t, _e.y + _d.y * he.t, _e.z + _d.z * he.t, 0xffffff, 3); return; }
   const h = sgRay(_e.x, _e.y, _e.z, _d.x, _d.y, _d.z, 1.7);
   for (const g of G.gad.values()) if ((g.k === 'wire' || g.k === 'foam') && g.side !== sideOf(P) && Math.hypot(g.x - (_e.x + _d.x), g.z - (_e.z + _d.z)) < 1.1) { emit('gdel', { id: g.id, why: 'shot' }); return; }
+  if (h && h.k === 'panel' && h.p.k === 'bar') { const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t }; emit('bhit', { p: h.p.id, d: 60 }); snd('wood', pt, 0.9); fxDebris(pt.x, pt.y, pt.z, 5, 0x7a5532, 0.08, 3); return; }
   if (h && h.k === 'panel' && !h.p.reinf) {
     const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t };
     const c = sgBlast(pt, h.p.k === 'hatch' ? 0.3 : 0.5, { only: h.p });
@@ -4380,6 +4417,7 @@ function sgCutter(P, dt) {
   if (P.cutT > 0) return; P.cutT = 0.32;
   const p = h.p; eyeOf(P, _e); dirOf(P.yaw, P.pitch, _d);
   const hit = sgRay(_e.x, _e.y, _e.z, _d.x, _d.y, _d.z, 1.6);
+  if (hit && hit.p === p && p.k === 'bar') { emit('bhit', { p: p.id, d: 30 }); return; }
   if (hit && hit.p === p && p.alive[hit.i]) { p.alive[hit.i] = 0; sgPanelDraw(p); emit('wd', { c: [[p.id, hit.i]] }); }
 }
 function sgTaser(P) {
@@ -4598,7 +4636,7 @@ function sgViewUpdate(dt) {
     eyeOf(P, _e);
     eyeSmooth += (_e.y - eyeSmooth) * Math.min(1, dt * 18); if (Math.abs(eyeSmooth - _e.y) > 1) eyeSmooth = _e.y;
     vx = _e.x; vy = eyeSmooth; vz = _e.z; yaw = P.yaw; pitch = P.pitch;
-    camRoll += (-P.lean * 0.16 - camRoll) * Math.min(1, dt * 10); roll = camRoll;
+    camRoll += (-(P.leanV || 0) * 0.16 - camRoll) * Math.min(1, dt * 10); roll = camRoll;
     showVm = G.phase !== 'post' || P.alive;
     if (window.sgAds) fov = fov / (gunOf(P).t === 'DMR' ? 2.2 : 1.35);
   }
@@ -4621,8 +4659,9 @@ function sgViewUpdate(dt) {
     const relK = P.w.rel > 0 ? Math.sin(Math.min(1, 1 - P.w.rel / gunOf(P).rel) * Math.PI) : 0;
     const ads = window.sgAds ? 1 : 0; vmT.ads = (vmT.ads || 0) + (ads - (vmT.ads || 0)) * Math.min(1, dt * 14);
     const ax = vp[0] * (1 - vmT.ads), ay = vp[1] + (0.06 * vmT.ads), az = vp[2] + 0.06 * vmT.ads;
-    vm.g.position.set(ax + bx - relK * 0.05, ay + by - relK * 0.12 - vmT.sw * 0.3 - P.crouch * 0.01, az + vmT.rec * 0.05);
-    vm.g.rotation.set((rig.view.pitch || 0) + vmT.rec * 0.08 + relK * 0.5, rig.view.yaw * (1 - vmT.ads) + relK * 0.2, (rig.view.roll || 0) * (1 - vmT.ads) + relK * 0.5 + (P.slug ? 0.25 : 0));
+    vmT.mel = Math.max(0, (vmT.mel || 0) - dt); const mk = vmT.mel > 0 ? Math.sin((1 - vmT.mel / 0.38) * Math.PI) : 0; // melee: shove the gun forward and turn it
+    vm.g.position.set(ax + bx - relK * 0.05 - mk * 0.1, ay + by - relK * 0.12 - vmT.sw * 0.3 - P.crouch * 0.01 + mk * 0.04, az + vmT.rec * 0.05 - mk * 0.32);
+    vm.g.rotation.set((rig.view.pitch || 0) + vmT.rec * 0.08 + relK * 0.5 - mk * 0.35, rig.view.yaw * (1 - vmT.ads) + relK * 0.2, (rig.view.roll || 0) * (1 - vmT.ads) + relK * 0.5 + (P.slug ? 0.25 : 0));
     const L = sgLightProbe(P.x, P.y, P.z);
     vmAmb.intensity = 0.25 + (L.r + L.g + L.b) / 3 * 0.9; vmDir.intensity = 0.15 + (L.r + L.g + L.b) / 3 * 0.6;
     vmDevice.userData.screen.material.color.setHex(P.cutter ? 0xff8030 : 0x40ffa0);
@@ -5088,7 +5127,7 @@ function snState(d, bot) {
   const t = now();
   P.buf.push({ t, x: d.p[0], y: d.p[1], z: d.p[2], yaw: d.r[0], pitch: d.r[1] });
   if (P.buf.length > 12) P.buf.shift();
-  P.crouch = d.c; P.lean = d.l; P.slot = d.s || 0; P.mode = d.m || 'body'; P.act = d.a || ''; P.shieldUp = !!d.su; P.sonar = !!d.so; P.down = !!d.dn;
+  P.crouch = d.c; P.lean = d.l; P.leanV = (P.leanV || 0) + (d.l - (P.leanV || 0)) * 0.6; P.slot = d.s || 0; P.mode = d.m || 'body'; P.act = d.a || ''; P.shieldUp = !!d.su; P.sonar = !!d.so; P.down = !!d.dn;
   if (typeof d.h === 'number' && P.alive) P.hp = d.h;
   if (d.k && !P.op) P.op = d.k;
   P.vx = d.v ? d.v[0] : 0; P.vz = d.v ? d.v[1] : 0;
@@ -5128,7 +5167,7 @@ function snSendStates(dt) {
 }
 function snPack(P) {
   const r = v => Math.round(v * 100) / 100;
-  const o = { i: P.id, p: [r(P.x), r(P.y), r(P.z)], r: [r(P.yaw), r(P.pitch)], c: P.crouch > 0.5 ? 1 : 0, l: P.lean, s: P.slot, m: P.mode, a: P.act, h: Math.round(P.hp), k: P.op, v: [r(P.vx), r(P.vz)], n: P.shots };
+  const o = { i: P.id, p: [r(P.x), r(P.y), r(P.z)], r: [r(P.yaw), r(P.pitch)], c: P.crouch > 0.5 ? 1 : 0, l: r(P.leanV || 0), s: P.slot, m: P.mode, a: P.act, h: Math.round(P.hp), k: P.op, v: [r(P.vx), r(P.vz)], n: P.shots };
   if (P.lastShot) o.e = [r(P.lastShot.x), r(P.lastShot.y), r(P.lastShot.z)];
   if (P.shieldUp) o.su = 1; if (P.sonar) o.so = 1; if (P.down) o.dn = 1;
   if (P.drones.length) o.d = P.drones.map(D => D.alive && !D.held ? [r(D.x), r(D.y), r(D.z), r(D.yaw)] : 0);
@@ -5162,6 +5201,14 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.6', t: 'Melee, barricades, drones and leaning', d: '4 November 2026', intro: 'Fixes for barricades, melee, drones and leaning.', items: [
+    ['Melee fixed', 'V swings your gun butt at whatever is in front of you (you can see the swing now). It used to miss almost every time; it now hurts enemies (55 damage) and breaks barricades. Breaker\'s Skeleton Key had the same bug and now hits properly too. Bots can finally bash their way through barricades.'],
+    ['Barricades', 'A barricade now comes down all at once instead of plank by plank: about 3 rifle shots, 2 melee hits, one shotgun blast or any explosive.'],
+    ['Drones under doors', 'Door barricades leave a gap at the bottom that drones can drive under.'],
+    ['No more drones through walls', 'A hopping drone could slip through the bottom of a wall. Drones (and people) now only step over furniture and stairs, never over walls, planks or window sills.'],
+    ['Smooth leaning', 'Q and E ease you into and out of a lean instead of snapping.'],
+    ['No leaning through barricades', 'A lean now stops short of a wall or barricade beside you, so your head and camera can no longer poke through the planks.'],
+  ] },
   { v: '1.0.5', t: 'Down but not out', d: '4 November 2026', intro: 'New round rules, a riot shield fix, and the new map has its final name: Oregons.', items: [
     ['Down but not out', 'A hit that would kill you, if it isn\'t to the head, puts you on the floor instead while a teammate is still standing. You can crawl and look around but not shoot. You bleed out in 25 seconds unless a teammate holds F next to you for 4 seconds to get you up. If you\'re the last one standing, or the shot is a headshot, you\'re out straight away. A team with everyone down or out loses the round. Bots go down too, and pick each other up.'],
     ['Team reinforcements', 'Defenders share 10 reinforcements as a team instead of each having their own.'],
@@ -5692,7 +5739,7 @@ function sgRenderEnts(dt) {
       if (P.model.g.visible && Math.hypot(P.x - cp.x, P.z - cp.z) < 0.42 && cp.y > P.y - 0.1 && cp.y < P.y + 1.95) P.model.g.visible = false; // the camera is inside this body
       if (P.model.g.visible) {
         P.model.g.position.set(P.x, P.y, P.z); P.model.g.rotation.y = P.yaw;
-        sgAnimPerson(P.model, dt, Math.hypot(P.vx, P.vz), P.crouch > 0.5, P.lean, P.pitch, !P.alive, P.down);
+        sgAnimPerson(P.model, dt, Math.hypot(P.vx, P.vz), P.crouch > 0.5, P.leanV !== undefined ? P.leanV : P.lean, P.pitch, !P.alive, P.down);
         if (relight) sgTintPerson(P.model, sgLightProbe(P.x, P.y, P.z));
         if (P.flashT > 0) { P.flashT -= dt; if (P.flashT <= 0) P.model.flash.visible = false; }
         if (P.model.shield) P.model.shield.visible = !!P.shieldUp;
@@ -5860,7 +5907,7 @@ function sgBoot() {
 sgInputInit();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sgBoot); else sgBoot();
 // test handle, only on a local copy
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch };
 
 })();
 </script>

@@ -291,6 +291,9 @@ source in Settings → Pages should be switched to `main`.
   shield is up. Sky/ground materials are cached (`skyMat`). Long test runs: step in chunks with pauses (one huge blocking
   loop makes headless Chrome's GPU fall over and look like shader errors). Home page: Siege, Cube Assault, Havoc Bay,
   Gamble first in `FIRST`, Siege pinned in the banner (`renderFeature`).
+  1.0.6: barricades have one pool of hit points (`BAR_HP`, event 'bhit', `sgBreakBar`) and door ones start 28 cm up so drones
+  fit under; `sgCollide(pos, r, h, dyn, step)` only steps over 'step'/'prop'/'top' obstacles; `sgRayEnts` uses its own
+  eye object (it used to overwrite the shared `_e`, so melee and the Skeleton Key missed); lean eases via `P.leanV`.
 
 ## Adding a game
 
