@@ -285,6 +285,12 @@ source in Settings → Pages should be switched to `main`.
   1.0.4: fourth map `ranch` (Ridgeback Ranch, original layout, daylight): map flags `day`, `fog`, `ground`, `ext` (outside wall
   material) and room flag `sky` (no ceiling over that yard: `M.underSky`); top bar = your team (health bars) left, enemy as ?
   until spotted right; 3-2-1 countdown `#sgCd`; drones hop with Space; out of drones in prep = mode `dspec` (watch team drones).
+  1.0.5: map `ranch` is named Oregons; down-but-not-out (`P.down`, events 'dn'/'rev', `sgDownTick` bleed, DOWN_HP 25,
+  REVIVE_S 4; the downed don't count in `sgAlive`), team reinforcement pool `G.reinfLeft` (REINF_TEAM 10, in the 'ph'
+  snapshot as `rf`), overtime `sgGoal()` (sides swap every OT round), plant/disable 7 s, `sgFire` refuses while the riot
+  shield is up. Sky/ground materials are cached (`skyMat`). Long test runs: step in chunks with pauses (one huge blocking
+  loop makes headless Chrome's GPU fall over and look like shader errors). Home page: Siege, Cube Assault, Havoc Bay,
+  Gamble first in `FIRST`, Siege pinned in the banner (`renderFeature`).
 
 ## Adding a game
 
