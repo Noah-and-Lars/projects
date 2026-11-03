@@ -232,15 +232,15 @@ window.GAMES = [
     id: 'poly-racer',
     title: 'Poly Racer',
     category: 'Racing',
-    tagline: 'New in 2.4: real cars inside and out, Ultra graphics, rain and reflections, headlights and photo mode.',
+    tagline: 'New in 1.4: steady wheels and a fixed cockpit view, plus real cars inside and out and Ultra graphics.',
     description: 'Race 15 computer drivers on 30 full-length circuits and street races, from grand prix tracks and city streets to forest trails, beaches and mountain passes, or race up to 10 friends online. Pick the laps, time of day, season and weather (and the right tyres), or chase gold in the 100 time trials. Eight real cars modelled inside and out, a cockpit with your gloved hands on the wheel, damage you can see, a photo mode, and an Ultra graphics setting with photographed skies, real trees, reflections and rain. A driver of your own with 50 helmets and 50 suits.',
     controls: 'Keyboard, gamepad or touch',
     keys: [['↑ ↓ ← →', 'Drive'], ['W A S D', 'Drive'], ['S / ↓', 'Brake and reverse'], ['Space', 'Handbrake · turn while you hold it to drift'],
            ['Shift + W', 'Rev the engine'], ['R', 'Respawn'], ['Backspace', 'Restart'], ['C', 'Camera: chase, close or cockpit'], ['L', 'Driving line'], ['F9', 'Photo mode (also in the pause menu)'], ['Esc', 'Pause']],
-    path: 'poly-racer/index.html?v=2.4',   // the version in the address: nobody gets an old copy from their browser's cache
+    path: 'poly-racer/index.html?v=1.4',   // the version in the address: nobody gets an old copy from their browser's cache
     thumb: 'poly-racer/thumb.jpg',
     added: '2026-10-13T16:49:58+11:00',
-    updated: '2026-10-26T10:08:00+11:00',
+    updated: '2026-11-04T08:27:00+11:00',
     stat() {
       const s = readSave('polyracer', true), n = s && s.best ? Object.keys(s.best).length : 0;
       const won = s && s.stats && s.stats.results ? Object.values(s.stats.results).filter(p => p === 1).length : 0;
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-04', game: 'poly-racer', text: 'Poly Racer 1.4: the wheels no longer wobble when you drive (the brake calipers stay still and stray parts that swung round the axles are gone), and the cockpit view is fixed: you sit where a driver\u2019s eyes are, and dashboards, pillars and seats are no longer see-through.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.5: down but not out! A lethal hit that isn\u2019t a headshot puts you on the floor while a teammate is still up, and they can revive you before you bleed out. Defenders share 10 reinforcements, 3-3 goes to overtime (first to 5), planting takes 7 seconds, a raised riot shield means no gun, and the new map is now called Oregons.' },
   { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.4: a new map, Ridgeback Ranch! A survivalist compound on the plains in broad daylight, with a chapel hall, two towers, bunk rooms and cellars. Every map is brighter, there is a new top bar (your team\u2019s health, the enemy hidden until spotted), a big 3-2-1 before each round, drones can hop again, and losing your drones in prep lets you watch your team\u2019s.' },
   { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.3: fixes and no jumping. Bots only see and shoot you with a real line of sight and aim like people (a moment to react, shaky aim that settles, recoil). Right click now toggles aiming (Hold is in Settings), nobody can be hurt in the prep phase, defenders get 5 barricades and 3 reinforcements, and walls and floors no longer turn black or patchy. There is no jump any more: you climb over windows, counters and low furniture by walking into them.' },

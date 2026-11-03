@@ -173,8 +173,16 @@ source in Settings → Pages should be switched to `main`.
   (`makeWater`), rain puddles, soft shadows, motion blur (setting `mblur`), a lens look. Headlights (`HEAD`, `BEAM`),
   damage scratches and cracked glass (`crackGlass`), photo mode (`photo`, F9 or the pause menu, a touch bar).
   Every open copy looks at the published `VERSION` 20 s after it starts and then every 2 minutes (`updater`) and,
-  when it is newer, reloads straight away (even mid-race) with the version in its address so the cache can't serve
-  the old page: bump `VERSION` with every release. The home page's entry opens `poly-racer/index.html?v=<version>`.
+  when it is different (since 1.4; before, only a higher number counted), reloads straight away (even mid-race) with
+  the version in its address so the cache can't serve the old page: change `VERSION` with every release. The home
+  page's entry opens `poly-racer/index.html?v=<version>`.
+  1.4 (named by the owner; it follows 2.4, and copies still open on 2.4 only pick it up when reopened): steady wheels.
+  `wheelSplit` squares each model's wheel on its axle (the Nyx's was modelled turned 25°) and sorts the wheel part's
+  pieces: tyre, rim, disc and nuts turn; the caliper and what sits on it and anything reaching in past the tyre steer
+  but don't turn (the `fixed` mesh on the pivot); pieces outside the tyre are dropped. Each wheel is scaled to its own
+  radius (`parts.r` is the template tyre's). `rimBits` moves rim pieces that some models keep in `det`/`interior`
+  (the sedan's spokes) onto their wheels. The cockpit eye is checked against the cabin (`seatEye`: seat back, cushion,
+  roof lining), and interior materials are double-sided (the Ultra depth pass has `depthM2` for them).
   Models are packed (16-bit positions and uvs, `pq`/`uq` in the part header). `poly-racer-copy/` on this branch only
   redirects here (it held the 2.4 preview for a day).
 

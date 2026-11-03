@@ -536,7 +536,7 @@
 <div class="screen" id="menu" hidden>
   <div class="shade"></div>
   <div class="menuSide">
-    <div class="logo"><span class="l1">POLY</span><span class="l2">RACER</span><span class="ver">2.4</span></div>
+    <div class="logo"><span class="l1">POLY</span><span class="l2">RACER</span><span class="ver">1.4</span></div>
     <nav id="mainNav">
       <button class="mbtn primary" data-go="playMenu"><span class="k">New: Ultra graphics</span><b>PLAY</b><small>Time trials or races against the field</small></button>
       <button class="mbtn" data-go="online"><span class="k">Up to 10</span><b>ONLINE</b><small id="onLabel">Race other players: public and private rooms</small></button>
@@ -554,15 +554,17 @@
       <div class="chip bronze"><b id="stBronze">0</b><small>Bronze</small></div>
     </div>
     <div class="news panel">
-      <h3>What's new in <span>2.4</span></h3>
+      <h3>What's new in <span>1.4</span></h3>
       <ul>
+        <li>Steady wheels: the brake calipers stay put instead of turning with the wheels, and stray pieces that swung round the axles are gone, so the wheels no longer wobble</li>
+        <li>Cockpit view fixed: you sit where a driver's eyes are (out of the headrest and off the roof lining, lower in the pickup), and dashboards, pillars and seats are no longer see-through</li>
         <li>Photo mode: press F9 anywhere. Orbit the car or fly a free camera (F), pause or run the world (Space), depth of field on Ultra ([ and ]), Enter saves a picture</li>
         <li>Polish: a real optimal lap from your best sectors, live cockpit gauges, bronze times on the track cards, clearer settings and a tidier profile</li>
         <li>Ultra graphics: real trees near the road, photographed skies that light the cars and show in their paint, real asphalt, grass, gravel and sand with surface relief, ambient occlusion, 4k shadows</li>
         <li>Eight real cars, modelled in detail inside and out, with proper paint, chrome and glass</li>
         <li>Cockpit view: sit in each car's own interior, behind its own steering wheel and mirrors</li>
         <li>Sharper shadows and a lit dashboard at night</li>
-        <li>From 1.2: 30 circuits, online races, weather and seasons</li>
+        <li>Still here: 30 circuits, online races, weather and seasons, eight real cars, Ultra graphics and photo mode (F9)</li>
       </ul>
     </div>
   </div>
@@ -802,7 +804,7 @@
 
 <script>
 'use strict';
-const VERSION = '2.4';
+const VERSION = '1.4';
 const V3 = THREE.Vector3;
 
 // ---------- Track pieces ----------
@@ -5315,6 +5317,7 @@ async function loadModels() {
     }
   } catch (e) { console.warn('glove', e); }
   await Promise.all(TEX_WAIT);
+  for (const k of MODEL_IDS) if (MODELS[k] && MODELS[k].meta && MODELS[k].meta.v2) rimBits(MODELS[k]);
   // the police cruiser is the saloon with the light bar the game adds (like the taxi) when it has no model of its own
   if (!MODELS.police && MODELS.sedan) MODELS.police = MODELS.sedan;
   { const missing = MODEL_IDS.filter(k => !MODELS[k]); if (missing.length) setTimeout(() => { try { ui.toast('Some car models did not load (' + missing.join(', ') + '): simpler cars stand in'); } catch (e) {} }, 2500); }
@@ -5471,6 +5474,9 @@ function groupMat(q, opts = {}) {
       m.metalnessMap = null; m.metalness = Math.min(0.2, q.m != null ? q.m : 0); m.roughness = Math.max(0.55, q.rmap ? 0.7 : (q.r != null ? q.r : 0.6)); m.roughnessMap = null; m.envMapIntensity = 0.35;
     }
   }
+  // 1.4: a cabin is seen from inside, and many of the models' interior faces point the other way (dashboards, pillar
+  // trims, seats): drawn one-sided they went missing and the cockpit looked see-through
+  if (opts.interior) m.side = THREE.DoubleSide;
   lit(m);
   GMAT.set(key, m);
   return m;
@@ -5512,6 +5518,172 @@ function splitCaliper(MD) {
   const make = list => { const n = new THREE.BufferGeometry(); for (const a in g.attributes) n.setAttribute(a, g.attributes[a]); n.setIndex(new THREE.BufferAttribute(g.attributes.position.count > 65535 ? new Uint32Array(list) : new Uint16Array(list), 1)); n.computeBoundingSphere(); n.userData.shared = true; return n; };
   const w = make(wheel), c = cal.length ? make(cal) : null;
   return (MD.wheelParts = { wheel: w, wheelL: mirrorGeo(w), cal: c, calL: c ? mirrorGeo(c) : null });
+}
+
+// 1.4: the real cars' wheel parts hold more than the wheel: the brake caliper, bits of the suspension and, on some
+// models, stray pieces of the body, and one (the Nyx) has its wheel modelled turned a quarter of the way to full lock.
+// All of it turned about the car's axle line, so the tilted wheel swashed and the other pieces swung round the axle:
+// the wheels looked like they wobbled. The wheel is first set square on its axle (from the tyre itself), then each
+// connected piece is sorted once: the tyre, rim, disc and nuts turn; the caliper (the biggest one-off lump between
+// hub and rim) and what sits on it, and anything reaching in past the tyre, steer with the wheel but don't turn;
+// pieces outside the tyre are left out.
+function wheelSplit(MD) {
+  if (MD.wheelSplit) return MD.wheelSplit;
+  let g = MD.wheel;
+  const ix = g.index.array, n = g.attributes.position.count, nt = ix.length / 3;
+  const wr = (MD.meta && MD.meta.wr) || g.boundingSphere.radius;
+  // pieces: triangles joined through shared corners (corners at the same place count as one, across uv seams)
+  const P0 = g.attributes.position.array, weld = new Int32Array(n), seen = new Map();
+  for (let i = 0; i < n; i++) { const k = Math.round(P0[i * 3] * 2000) + ',' + Math.round(P0[i * 3 + 1] * 2000) + ',' + Math.round(P0[i * 3 + 2] * 2000); if (!seen.has(k)) seen.set(k, i); weld[i] = seen.get(k); }
+  const par = new Int32Array(n); for (let i = 0; i < n; i++) par[i] = i;
+  const find = a => { while (par[a] !== a) a = par[a] = par[par[a]]; return a; };
+  for (let t = 0; t < ix.length; t += 3) { const a = find(weld[ix[t]]); par[find(weld[ix[t + 1]])] = a; par[find(weld[ix[t + 2]])] = a; }
+  const byRoot = new Map(), list = [];
+  for (let t = 0; t < nt; t++) {
+    const root = find(weld[ix[t * 3]]);
+    let c = byRoot.get(root);
+    if (!c) { byRoot.set(root, c = { t: [] }); list.push(c); }
+    c.t.push(t);
+  }
+  // each piece's reach about the axle line (x): radius, sides, the angles it covers and where its middle is
+  const measure = P => {
+    for (const c of list) {
+      c.rmin = 1e9; c.rmax = 0; c.xmin = 1e9; c.xmax = -1e9; c.bins = new Uint8Array(72); c.angs = []; c.kind = 'spin';
+      let sy = 0, sz = 0, cnt = 0;
+      for (const t of c.t) for (let k = 0; k < 3; k++) {
+        const v = ix[t * 3 + k], x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2], r = Math.hypot(y, z);
+        if (r < c.rmin) c.rmin = r; if (r > c.rmax) c.rmax = r; if (x < c.xmin) c.xmin = x; if (x > c.xmax) c.xmax = x;
+        if (r > 0.01) { const a = Math.atan2(z, y); c.bins[Math.floor((a + Math.PI) / (2 * Math.PI) * 72) % 72] = 1; c.angs.push(a); }
+        sy += y; sz += z; cnt++;
+      }
+      let s = 0; for (const b of c.bins) s += b;
+      c.cov = s / 72; c.off = Math.hypot(sy, sz) / cnt; c.mid = Math.atan2(sz, sy);
+    }
+  };
+  measure(P0);
+  // the tyre: the whole rings out at the tread. Its real axle is the direction it is thinnest in (area-weighted spread
+  // of its triangles) and its centre their middle; a wheel more than a degree or a few mm off is turned and moved onto x
+  let tyreR = 0;
+  for (const c of list) if (c.cov > 0.8 && c.rmax < wr * 1.06 && c.rmax > tyreR) tyreR = c.rmax;
+  {
+    const ring = list.filter(c => c.cov > 0.8 && c.rmax < wr * 1.06 && c.rmax > tyreR * 0.9);
+    const m = new V3(), Cv = [0, 0, 0, 0, 0, 0, 0, 0, 0], a = new V3(), b = new V3(), cc = new V3(), q = new V3(), pts = [];
+    let W = 0;
+    for (const c of ring) for (const t of c.t) {
+      a.fromArray(P0, ix[t * 3] * 3); b.fromArray(P0, ix[t * 3 + 1] * 3); cc.fromArray(P0, ix[t * 3 + 2] * 3);
+      const ar = q.subVectors(b, a).cross(_v[0].subVectors(cc, a)).length() / 2, cen = a.add(b).add(cc).multiplyScalar(1 / 3);
+      pts.push(cen.x, cen.y, cen.z, ar); m.addScaledVector(cen, ar); W += ar;
+    }
+    if (W > 0) {
+      m.multiplyScalar(1 / W);
+      for (let i = 0; i < pts.length; i += 4) { const d = [pts[i] - m.x, pts[i + 1] - m.y, pts[i + 2] - m.z]; for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) Cv[r * 3 + k] += d[r] * d[k] * pts[i + 3]; }
+      // the smallest spread: power steps on (trace - C), starting from the axle line
+      const tr = Cv[0] + Cv[4] + Cv[8], ax = new V3(1, 0, 0), nx = new V3();
+      for (let it = 0; it < 80; it++) {
+        nx.set(tr * ax.x - (Cv[0] * ax.x + Cv[1] * ax.y + Cv[2] * ax.z), tr * ax.y - (Cv[3] * ax.x + Cv[4] * ax.y + Cv[5] * ax.z), tr * ax.z - (Cv[6] * ax.x + Cv[7] * ax.y + Cv[8] * ax.z));
+        if (nx.lengthSq() < 1e-30) break;
+        ax.copy(nx).normalize();
+      }
+      if (ax.x < 0) ax.negate();
+      const tilt = Math.acos(Math.min(1, ax.x)), offYZ = Math.hypot(m.y, m.z);
+      if (tilt > 0.017 || offYZ > 0.004) {
+        // about the tyre's centre: square it to x, then its centre onto the axle line (along the axle it stays put)
+        const M = new THREE.Matrix4().makeTranslation(m.x, 0, 0)
+          .multiply(new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(ax, new V3(1, 0, 0))))
+          .multiply(new THREE.Matrix4().makeTranslation(-m.x, -m.y, -m.z));
+        const ud = g.userData; g = g.clone(); g.applyMatrix4(M); g.userData = ud;
+        measure(g.attributes.position.array);
+      }
+    }
+  }
+  // the tyre's sides
+  let tx0 = 1e9, tx1 = -1e9;
+  for (const c of list) if (c.cov > 0.8 && c.rmax > wr * 0.9 && c.rmax < wr * 1.06) { tx0 = Math.min(tx0, c.xmin); tx1 = Math.max(tx1, c.xmax); }
+  if (tx0 > tx1) { tx0 = -0.15; tx1 = 0.15; }
+  tyreR = 0;
+  for (const c of list) if (c.cov > 0.8 && c.rmax < wr * 1.06 && c.rmax > tyreR) tyreR = c.rmax;
+  for (const c of list) {
+    if (c.rmax > wr * 1.06 || c.xmin > tx1 + 0.45 || c.xmax < tx0 - 0.45) c.kind = 'drop';
+    else if (c.xmin < tx0 - 0.04 || c.xmax > tx1 + 0.04) c.kind = 'fixed';
+  }
+  // the caliper: no copies of it round the axle (spokes and nuts come in sets), off to one side, between hub and rim
+  const same = (a, b) => Math.abs(a.t.length - b.t.length) <= Math.max(1, a.t.length * 0.1) && Math.abs(a.rmin - b.rmin) < 0.012 && Math.abs(a.rmax - b.rmax) < 0.012 && Math.abs(a.xmin - b.xmin) < 0.012 && Math.abs(a.xmax - b.xmax) < 0.012;
+  let cal = null;
+  for (const c of list) {
+    if (c.kind !== 'spin' || c.t.length < 40 || c.cov > 0.45 || c.off < wr * 0.25 || c.rmin < wr * 0.15 || c.rmax > wr * 0.85) continue;
+    if (list.some(o => o !== c && same(c, o))) continue;
+    if (!cal || c.t.length > cal.t.length) cal = c;
+  }
+  if (cal) {
+    // the sector it covers (padded); pieces wholly inside it and its space go with it (badges, bolts, pads)
+    const rel = a => Math.atan2(Math.sin(a - cal.mid), Math.cos(a - cal.mid));
+    let a0 = 1e9, a1 = -1e9; for (const a of cal.angs) { const d = rel(a); if (d < a0) a0 = d; if (d > a1) a1 = d; }
+    a0 -= 0.06; a1 += 0.06;
+    for (const c of list) if (c === cal || (c.kind === 'spin' && c.cov < 0.3 && c.rmin > cal.rmin - 0.02 && c.rmax < cal.rmax + 0.02 && c.xmin > cal.xmin - 0.02 && c.xmax < cal.xmax + 0.02 && c.angs.every(a => { const d = rel(a); return d >= a0 && d <= a1; }))) c.kind = 'fixed';
+  }
+  const kindOf = new Uint8Array(nt);   // 0 spin, 1 fixed, 2 left out
+  for (const c of list) { const k = c.kind === 'spin' ? 0 : c.kind === 'fixed' ? 1 : 2; for (const t of c.t) kindOf[t] = k; }
+  // two geometries sharing the wheel's vertices, each with the wheel's material groups
+  const groups = MD.wheel.groups.length ? MD.wheel.groups : [{ start: 0, count: ix.length, materialIndex: 0 }];
+  const make = kind => {
+    const out = [], ng = new THREE.BufferGeometry();
+    for (const a in g.attributes) ng.setAttribute(a, g.attributes[a]);
+    for (const q of groups) {
+      const s = out.length;
+      for (let i = q.start; i < q.start + q.count; i += 3) if (kindOf[i / 3] === kind) out.push(ix[i], ix[i + 1], ix[i + 2]);
+      if (MD.wheel.groups.length && out.length > s) ng.addGroup(s, out.length - s, q.materialIndex);
+    }
+    if (!out.length) return null;
+    ng.setIndex(new THREE.BufferAttribute(n > 65535 ? new Uint32Array(out) : new Uint16Array(out), 1));
+    ng.userData = MD.wheel.userData; ng.computeBoundingBox(); ng.computeBoundingSphere();
+    return ng;
+  };
+  const w = make(0) || g, f = make(1);
+  return (MD.wheelSplit = { wheel: w, wheelL: mirrorGeo(w), fixed: f, fixedL: f ? mirrorGeo(f) : null, r: tyreR > wr * 0.8 ? tyreR : wr });
+}
+// 1.4: some models keep part of a rim (spoke faces, nuts) in the detail or interior parts, so it stood still on a
+// turning wheel. Pieces of those parts wholly inside a wheel on its outer half are moved to that wheel (in the
+// wheel's own frame, centred on its hub) and turn with it; the inner half (hub carriers, arms) stays on the body.
+function rimBits(MD) {
+  const W = MD.meta.wheels;
+  if (!Array.isArray(W) || W.length !== 4 || !MD.wheel) return;
+  MD.rims = W.map(() => []);
+  for (const part of ['det', 'interior']) {
+    const g = MD[part];
+    if (!g || !g.index) continue;
+    const P = g.attributes.position.array, ix = g.index.array, nt = ix.length / 3, owner = new Int8Array(nt).fill(-1);
+    const inWheel = (v, w) => { const [wx, wy, wz] = w, x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2]; const o = (x - wx) * Math.sign(wx); return Math.hypot(y - wy, z - wz) < wy * 0.8 && o > 0 && o < 0.16; };
+    let any = false;
+    for (let t = 0; t < nt; t++) for (let i = 0; i < 4; i++) if (inWheel(ix[t * 3], W[i]) && inWheel(ix[t * 3 + 1], W[i]) && inWheel(ix[t * 3 + 2], W[i])) { owner[t] = i; any = true; break; }
+    if (!any) continue;
+    const groups = g.groups.length ? g.groups : [{ start: 0, count: ix.length, materialIndex: 0 }];
+    // the part keeps the rest, in the same material groups
+    const keep = [], kg = [];
+    for (const q of groups) { const s = keep.length; for (let i = q.start; i < q.start + q.count; i += 3) if (owner[i / 3] < 0) keep.push(ix[i], ix[i + 1], ix[i + 2]); if (keep.length > s) kg.push([s, keep.length - s, q.materialIndex]); }
+    g.setIndex(new THREE.BufferAttribute(P.length / 3 > 65535 ? new Uint32Array(keep) : new Uint16Array(keep), 1));
+    if (g.groups.length) { g.clearGroups(); for (const [s, c, m] of kg) g.addGroup(s, c, m); }
+    // each wheel's pieces: their own small geometry, centred on the hub
+    for (let i = 0; i < 4; i++) {
+      const map = new Map(), out = [], og = [];
+      for (const q of groups) {
+        const s = out.length;
+        for (let k = q.start; k < q.start + q.count; k += 3) if (owner[k / 3] === i) for (let j = 0; j < 3; j++) { const v = ix[k + j]; if (!map.has(v)) map.set(v, map.size); out.push(map.get(v)); }
+        if (out.length > s) og.push([s, out.length - s, q.materialIndex]);
+      }
+      if (!out.length) continue;
+      const ng = new THREE.BufferGeometry(), verts = [...map.keys()];
+      for (const a in g.attributes) {
+        const A = g.attributes[a], n = A.itemSize, arr = new Float32Array(verts.length * n);
+        verts.forEach((v, j) => { for (let c = 0; c < n; c++) arr[j * n + c] = A.array[v * n + c]; });
+        if (a === 'position') for (let j = 0; j < verts.length; j++) { arr[j * 3] -= W[i][0]; arr[j * 3 + 1] -= W[i][1]; arr[j * 3 + 2] -= W[i][2]; }
+        ng.setAttribute(a, new THREE.BufferAttribute(arr, n, A.normalized));
+      }
+      ng.setIndex(out);
+      if (g.groups.length) for (const [s, c, m] of og) ng.addGroup(s, c, m);
+      ng.computeBoundingBox(); ng.computeBoundingSphere(); ng.userData = { shared: true };
+      MD.rims[i].push({ part, geo: ng });
+    }
+  }
 }
 function buildModelCar(t, hex, MD, opts = {}) {
   if (!MGLASS) {
@@ -5609,18 +5781,30 @@ function buildModelCar(t, hex, MD, opts = {}) {
   const wheels = [];
   const WP = own ? t.mw : [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([sx, sz]) => [sx * (t.w / 2 - 0.1), t.wr, -sz * t.l * 0.32]);
   const wmat = own && v2 ? matsOf(MD.wheel) : own && MD.wheel.userData.tex ? texPartMat(MD.wheel.userData.tex) : lit(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 }));
-  for (const [x, y, z] of WP) {
+  WP.forEach(([x, y, z], wi) => {
     const pivot = new THREE.Group(), spin = new THREE.Group();
     pivot.position.set(x, y, z);
     // the model's wheel parts sit at the right-front position; move them to the origin of the spin group
     // turned round, the model's right-hand wheel faces left: the right side uses the mirrored copy
-    const parts = own ? (v2 ? (MD.wheelParts || (MD.wheelParts = { wheel: MD.wheel, wheelL: mirrorGeo(MD.wheel) })) : splitCaliper(MD)) : null;
+    const parts = own ? (v2 ? wheelSplit(MD) : splitCaliper(MD)) : null;
     const m = own ? new THREE.Mesh(x > 0 ? parts.wheelL : parts.wheel, wmat) : new THREE.Mesh(sharedWheel(t.wr, x > 0), wmat);
     m.castShadow = true;
     spin.add(m); pivot.add(spin); root.add(pivot);
-    // (the model's own caliper is left off: on some models it hangs below the tyre)
+    // 2.0 models: the caliper and the suspension bits steer with the wheel but don't turn with it
+    // (the older models' caliper is left off: on some of them it hangs below the tyre)
+    let fixed = null;
+    if (own && v2 && parts.fixed) { fixed = new THREE.Mesh(x > 0 ? parts.fixedL : parts.fixed, wmat); fixed.castShadow = true; pivot.add(fixed); }
+    // the one wheel model serves all four: sized so each tyre meets the road (some cars have bigger wheels at the back)
+    const r0 = own && parts.r ? parts.r : wr;
+    const k = own && r0 > 0 && Math.abs(y / r0 - 1) > 0.01 ? y / r0 : 1;
+    if (k !== 1) { spin.scale.setScalar(k); if (fixed) fixed.scale.setScalar(k); }
+    // this wheel's own rim pieces from the body parts (already its true size)
+    if (own && MD.rims && MD.rims[wi]) for (const R of MD.rims[wi]) {
+      const rm = new THREE.Mesh(R.geo, matsOf(MD[R.part], R.part === 'interior' ? { interior: true } : undefined) || wmat);
+      rm.scale.setScalar(1 / k); rm.castShadow = true; spin.add(rm);
+    }
     wheels.push({ pivot, spin, x, z, y, front: z < 0, mesh: m });
-  }
+  });
   if (opts.ghost) {
     const gm = new THREE.MeshStandardMaterial({ color: C('#bfe2ff'), transparent: true, opacity: 0.32, depthWrite: false, roughness: 0.4, emissive: C('#2a4a66'), emissiveIntensity: 0.6 });
     root.traverse(o => { if (o.isMesh) { o.material = gm; o.castShadow = false; } });
@@ -5961,6 +6145,45 @@ function facingPlane(w, h, pos, nrm, mat) {
 // 2.0 models bring their own interior: the dashboard, seats, door cards and roof lining are the model's. The game adds
 // the live gauges over the model's cluster, the gloved hands on the model's steering wheel (which turns about its own
 // column), the mirrors with their render targets, and the arms.
+// 1.4: each model's eye point was put a fixed 0.6 m behind its steering wheel and 0.33 m above it, so in some cars the
+// camera sat in the headrest or against the roof lining, and in the tall pickup well above a seated driver's head.
+// It is checked against the cabin itself: at least 12 cm in front of the seat back, 15 cm under the roof lining and no
+// more than 80 cm above the seat cushion, and never closer than half a metre to the steering wheel.
+function seatEye(U, eye) {
+  const geos = m => (m && m.geometry && m.geometry.index ? [m.geometry] : []);
+  const cabin = geos(U.interior), shell = [...geos(U.interior), ...geos(U.bodyMesh), ...geos(U.det), ...geos(U.glass)];
+  const a = new V3(), b = new V3(), c = new V3(), e1 = new V3(), e2 = new V3(), p = new V3(), q = new V3(), s = new V3();
+  // distance along d to the nearest triangle from either side (model space: the cabin parts sit unmoved in the car)
+  const cast = (o, d, list) => {
+    let best = Infinity;
+    for (const g of list) {
+      const P = g.attributes.position.array, ix = g.index.array;
+      for (let i = 0; i < ix.length; i += 3) {
+        a.fromArray(P, ix[i] * 3); b.fromArray(P, ix[i + 1] * 3); c.fromArray(P, ix[i + 2] * 3);
+        e1.subVectors(b, a); e2.subVectors(c, a); p.crossVectors(d, e2);
+        const det = e1.dot(p); if (Math.abs(det) < 1e-9) continue;
+        s.subVectors(o, a); const u = s.dot(p) / det; if (u < 0 || u > 1) continue;
+        q.crossVectors(s, e1); const v = d.dot(q) / det; if (v < 0 || u + v > 1) continue;
+        const t = e2.dot(q) / det; if (t > 0.005 && t < best) best = t;
+      }
+    }
+    return best;
+  };
+  const e = eye.clone(), BACK = new V3(0, 0, 1), UP = new V3(0, 1, 0), DOWN = new V3(0, -1, 0);
+  // the seat back, at head and neck height, from a little in front of the eye
+  const sb = Math.min(cast(new V3(e.x, e.y - 0.05, e.z - 0.3), BACK, cabin), cast(new V3(e.x, e.y - 0.15, e.z - 0.3), BACK, cabin));
+  if (sb < 1) { const z = e.z - 0.3 + sb; if (z - e.z < 0.12) e.z = z - 0.12; }
+  const sw = U.M && U.M.swheel && U.M.swheel.pos;
+  if (sw) e.z = Math.max(e.z, sw[2] + 0.5);
+  // the seat cushion under the eye and a little forward of it (behind it is the backrest; a hit more than about a
+  // metre down is the floor)
+  const cu = Math.min(cast(e, DOWN, cabin), cast(new V3(e.x, e.y, e.z - 0.1), DOWN, cabin));
+  if (cu > 0.82 && cu < 1.05) e.y -= cu - 0.8;
+  // the roof lining
+  const up = cast(e, UP, shell);
+  if (up < 0.15) e.y -= 0.15 - up;
+  return e;
+}
 function buildCockpitV2(model) {
   const U = model.userData, M = U.M, t = U.t, roof = U.roof;
   const grp = new THREE.Group();
@@ -5970,7 +6193,7 @@ function buildCockpitV2(model) {
   const leather = S({ color: C('#121212'), roughness: 0.62 });
   const trimM = S({ color: C('#2f3136'), roughness: 0.5, metalness: 0.35 });
   const av = profile.avatar || { helmet: 0, suit: 0 }, AM = avMats(av);
-  const eye = M.eye ? new V3(M.eye[0], M.eye[1], M.eye[2]) : new V3(-0.37, roof - 0.3, -(U.ffb - 1.02));
+  const eye = seatEye(U, M.eye ? new V3(M.eye[0], M.eye[1], M.eye[2]) : new V3(-0.37, roof - 0.3, -(U.ffb - 1.02)));
   U.eye = eye;
   const dx = eye.x, eyeY = eye.y, eyeZ = eye.z;
   // the steering wheel: the model's own, turning about its column; else the game's wheel where the model's would be
@@ -6770,9 +6993,9 @@ class CarView {
       if (!wh) return;
       const hitT = wh.contact ? wh.hitT : c.C.rest + c.C.radius;
       const wy = w.y != null ? w.y : U.wr;
-      w.pivot.position.y = Math.min(wy + 0.12, Math.max(wy - 0.18, c.C.mountY - hitT + U.wr + rh));
+      w.pivot.position.y = Math.min(wy + 0.12, Math.max(wy - 0.18, c.C.mountY - hitT + wy + rh));
       w.pivot.rotation.y = w.front ? c.steer : 0;
-      wh.spin -= vf / U.wr * dt;
+      wh.spin -= vf / (w.y || U.wr) * dt;
       w.spin.rotation.x = wh.spin;
     });
     // lights: tail lights brighter when braking, headlights at night
@@ -9234,6 +9457,7 @@ void main(){
   const sVP = new THREE.Matrix4();
   const copy = new THREE.ShaderMaterial({ uniforms: { t: { value: null } }, vertexShader: VS, depthTest: false, depthWrite: false, fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ gl_FragColor = texture2D(t, vUv); }' });
   const depthM = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  const depthM2 = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, side: THREE.DoubleSide });   // for two-sided surfaces (the cabins)
   const aoSkipM = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, colorWrite: false, depthWrite: false });   // glass and the like leave no depth
   const aoMat = new THREE.ShaderMaterial({ uniforms: { tD: { value: null }, px: { value: new THREE.Vector2() }, near: { value: 0.3 }, far: { value: 1000 }, proj: { value: 1 }, radius: { value: 0.6 }, strength: { value: 1.0 } },
     vertexShader: VS, depthTest: false, depthWrite: false, fragmentShader: `#include <packing>
@@ -9261,7 +9485,7 @@ void main() {
     // leaves and fences keep their cut-outs in the depth pass; everything else is solid
     if (!m) return depthM;
     if (m.map && m.alphaTest > 0) { if (!m.userData.aoDepth) m.userData.aoDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: m.map, alphaTest: m.alphaTest, side: m.side }); return m.userData.aoDepth; }
-    return depthM;
+    return m.side === THREE.DoubleSide ? depthM2 : depthM;
   }
   function aoDepthPass(s, c) {
     if (performance.now() - aoListT > 1500) {
@@ -9551,13 +9775,13 @@ function goBack() {
 
 // ---------- Photo mode (F9): the HUD goes, the world freezes, the camera orbits the car; Enter saves a picture ----------
 const updater = (() => {
-  const newer = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+  // any change of the published VERSION reloads (1.4 came after 2.4, so it can't be "higher is newer")
   const u = { ready: false,
     check() {
       if (/^(localhost|127\.)/.test(location.hostname) || location.protocol === 'file:') return;
       fetch(location.pathname.replace(/[^/]*$/, '') + 'index.html?u=' + Date.now(), { cache: 'no-store' }).then(r => (r.ok ? r.text() : '')).then(t => {
         const m = /VERSION = '([0-9.]+)'/.exec(t);
-        if (m && newer(m[1], VERSION)) { u.ready = true; const q = new URLSearchParams(location.search); q.set('v', m[1]); location.replace(location.pathname + '?' + q + location.hash); }   // the new version in the address, so the reload can't come from the cache
+        if (m && m[1] !== VERSION) { u.ready = true; const q = new URLSearchParams(location.search); q.set('v', m[1]); location.replace(location.pathname + '?' + q + location.hash); }   // the new version in the address, so the reload can't come from the cache
       }).catch(() => {});
     },
     frame() {},
