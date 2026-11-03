@@ -398,6 +398,11 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.2.2 <small>Chat</small></h3>
+    <ul>
+      <li><b>Chat online.</b> In the Public Battle and in private rooms, press <b>Enter</b> or <b>T</b> to talk to everyone, or <b>Y</b> to talk to your own team only. <b>Tab</b> switches between the two while you type, Enter sends and Esc cancels. On a touch screen, tap 💬.</li>
+      <li>It works in the lobby too, and swear words are starred out.</li>
+    </ul>
     <h3>v1.2.1 <small>Missiles and landings</small></h3>
     <ul>
       <li><b>The missile computer.</b> Each harbor's keep now has a command room inside, full of servers, with a computer on the desk. Log on, wait for it to boot, press <b>Send Missile</b> and pick an island on the map. Everyone sees the missile streak across the sky, and the blast wipes out everyone on that island. Each team starts with one missile and gets another every 2.5 minutes. Harbors can't be targeted, and you can only launch from your own computer.</li>
@@ -497,6 +502,7 @@ body.touch #throttle{top:40%}
       <tr><td>B</td><td>Deploy menu, or launch a plane from your carrier</td></tr>
       <tr><td>M</td><td>Map</td></tr>
       <tr><td>Tab</td><td>Scoreboard</td></tr>
+      <tr><td>Enter / T, Y</td><td>Chat to everyone, or to your team (online)</td></tr>
       <tr><td>Esc</td><td>Pause</td></tr>
     </table>
     <div class="btns"><button class="btn go" id="hDone">Got it</button></div>
@@ -562,7 +568,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.2.1';
+const VERSION = '1.2.2';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -6409,6 +6415,7 @@ function rbox(w, h, d, r, seg = 3) {
     listen(ch, 'go', fromHost(d => beginMatch(d, false)));
     listen(ch, 'S', fromHost(onSnap));
     listen(ch, 'end', fromHost(onEnd));
+    listen(ch, 'chat', onChat); // 1.2.2
   }
   function wireMine(ch) {
     listen(ch, 'acc', d => {
@@ -7578,8 +7585,108 @@ function rbox(w, h, d, r, seg = 3) {
     ].join('\n');
   }
 
+  // ---------- chat (1.2.2) ----------
+  // Enter or T talks to everyone in the room (or on the online server), Y to your own team only; Tab in the
+  // box switches between the two, and on touch screens the 💬 button opens it. A message is 'chat' on the
+  // room channel: { id, m: the text, tm: 1 for team only, t: the sender's team }. Team messages travel on the
+  // same channel and the other team's screens just don't show them. Text goes through tidy() (the Global
+  // chat's filter) and is only ever shown with textContent. Sending is limited to 5 messages in 10 seconds,
+  // and anyone sending more than 8 in 10 seconds is ignored. Nothing is stored.
+  const CHAT_LEN = 120, CHAT_LINES = 8, CHAT_FADE = 10000;
+  const BAD = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;
+  const tidy = s => String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().replace(BAD, w => w[0] + '*'.repeat(w.length - 1));
+  const teamOf = id => room && room.roster.has(id) ? room.roster.get(id) : id === myId ? PLAYER.team : -1;
+  const CH = { open: false, team: false, room: null, sent: [], heard: new Map() };
+  const chatCss = document.createElement('style');
+  chatCss.textContent = `#hbChat{position:fixed;left:calc(12px + env(safe-area-inset-left));bottom:calc(172px + env(safe-area-inset-bottom));z-index:19;width:min(400px,calc(100% - 24px));font-size:14px;font-weight:700;line-height:1.35;pointer-events:none;display:none}
+#hbChat.on{display:block}#hbChat.lob{bottom:calc(14px + env(safe-area-inset-bottom))}#hbChat.open,#hbChat.lob{z-index:25}
+#hbChat .ln{background:rgba(14,18,28,.66);border-radius:6px;padding:3px 9px;margin-top:3px;width:fit-content;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;text-shadow:0 1px 2px #000;transition:opacity .6s}
+#hbChat .ln.old{opacity:0}#hbChat.open .ln.old{opacity:1}
+#hbChat .ln .tm{color:#9effa0;margin-right:5px}#hbChat .ln.me{box-shadow:inset 3px 0 0 #ffd23a}#hbChat .ln.sys{color:#ffd23a}
+#hbChat .row{display:none;margin-top:6px;gap:6px;pointer-events:auto}#hbChat.open .row{display:flex}
+#hbChat .to{flex:none;align-self:stretch;min-width:58px;border:2px solid #fff;border-radius:8px;background:#2f7df6;color:#fff;font-family:inherit;font-weight:900;font-size:12px;line-height:1;padding:0 10px;cursor:pointer;letter-spacing:.5px}
+#hbChat.team .to{background:#2f9e44}
+#hbChat input{flex:1;min-width:0;box-sizing:border-box;padding:9px 11px;border-radius:8px;border:2px solid rgba(255,255,255,.85);background:rgba(14,18,28,.88);color:#fff;font-family:inherit;font-weight:700;font-size:15px;outline:none;-webkit-user-select:text;user-select:text}
+#hbChat .hint{margin-top:4px;font-size:12px;color:rgba(255,255,255,.7);text-shadow:0 1px 2px #000}#hbChat.open .hint,#hbChat.lob .hint{display:none}
+#hbChatBtn{position:fixed;left:calc(10px + env(safe-area-inset-left));top:calc(64px + env(safe-area-inset-top));z-index:25;width:42px;height:42px;border-radius:50%;background:rgba(20,26,38,.55);border:2px solid rgba(255,255,255,.85);font-size:18px;display:none;place-items:center;padding:0;color:#fff}`;
+  document.head.appendChild(chatCss);
+  const chatEl = document.createElement('div'); chatEl.id = 'hbChat';
+  chatEl.innerHTML = '<div class="log"></div><div class="row"><button type="button" class="to"></button><input maxlength="' + CHAT_LEN + '" autocomplete="off" spellcheck="false" enterkeyhint="send"></div><div class="hint">Enter / T: chat · Y: team chat</div>';
+  const chatBtn = document.createElement('button'); chatBtn.id = 'hbChatBtn'; chatBtn.type = 'button'; chatBtn.textContent = '💬'; chatBtn.title = 'Chat';
+  document.body.append(chatEl, chatBtn);
+  const chatLog = chatEl.querySelector('.log'), chatIn = chatEl.querySelector('input'), chatTo = chatEl.querySelector('.to');
+  function chatLine(name, text, t, teamOnly, mine) {
+    const el = document.createElement('div'); el.className = 'ln' + (mine ? ' me' : '') + (name ? '' : ' sys');
+    if (teamOnly) { const i = document.createElement('span'); i.className = 'tm'; i.textContent = '[TEAM]'; el.appendChild(i); }
+    if (name) { const b = document.createElement('b'); b.textContent = name + ': '; b.style.color = TEAM[t] ? TEAM[t].light : '#fff'; el.appendChild(b); }
+    el.appendChild(document.createTextNode(text));
+    chatLog.appendChild(el); while (chatLog.children.length > CHAT_LINES) chatLog.firstChild.remove();
+    setTimeout(() => el.classList.add('old'), CHAT_FADE);
+  }
+  function onChat(d) {
+    const id = String(d.id || '');
+    if (!/^[0-9a-z]{6}$/.test(id) || id === myId || typeof d.m !== 'string') return;
+    const text = tidy(d.m).slice(0, CHAT_LEN); if (!text) return;
+    const t = now(), h = (CH.heard.get(id) || []).filter(x => t - x < 10000); h.push(t); CH.heard.set(id, h);
+    if (h.length > 8) return; // flooding
+    let team = teamOf(id); if (team < 0 && (d.t === 0 || d.t === 1)) team = d.t;
+    if (d.tm && team !== teamOf(myId)) return; // the other team's team chat
+    chatLine(tidy(nameOf(id)) || 'Player', text, team, !!d.tm, false);
+    Sound.play('ui');
+  }
+  function say(text, teamOnly) {
+    if (!room || !room.ch) return false;
+    text = tidy(text).slice(0, CHAT_LEN); if (!text) return false;
+    const t = now(); CH.sent = CH.sent.filter(x => t - x < 10000);
+    if (CH.sent.length >= 5) { chatLine('', 'Slow down: 5 messages every 10 seconds.', -1, false, false); return false; }
+    CH.sent.push(t);
+    const mine = teamOf(myId);
+    send(room.ch, 'chat', { id: myId, m: text, tm: teamOnly ? 1 : 0, t: mine });
+    chatLine(room.name, text, mine, !!teamOnly, true);
+    return true;
+  }
+  function chatMode(team) { CH.team = !!team; chatTo.textContent = team ? 'TEAM' : 'ALL'; chatEl.classList.toggle('team', CH.team); chatIn.placeholder = team ? 'Message your team…' : 'Message everyone…'; }
+  function openChat(team) {
+    if (!room) return;
+    for (const k in KEYS) KEYS[k] = false; IN.lmb = IN.rmb = false;
+    if (IN.locked) { GAME.skipPause = true; try { document.exitPointerLock(); } catch (e) {} } // typing doesn't pause the game
+    CH.open = true; chatMode(team); chatEl.classList.add('open'); chatIn.value = '';
+    chatIn.focus(); setTimeout(() => CH.open && chatIn.focus(), 0);
+  }
+  function closeChat(relock) {
+    if (!CH.open) return;
+    CH.open = false; chatEl.classList.remove('open'); chatIn.blur();
+    if (relock && M) resumeLock();
+  }
+  const chatBlocked = () => !room || CINE.on || PC.on || MCAM.m || ['settings', 'help', 'bigmapWrap', 'pause'].some(id => !$(id).classList.contains('hidden'));
+  addEventListener('keydown', e => {
+    if (CH.open || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.code, enter = k === 'Enter' || k === 'NumpadEnter';
+    if (!enter && k !== 'KeyT' && k !== 'KeyY') return;
+    const a = document.activeElement; if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) return;
+    if (chatBlocked() || (enter && !$('deploy').classList.contains('hidden'))) return; // Enter redeploys in the deploy menu
+    e.preventDefault(); e.stopImmediatePropagation(); openChat(k === 'KeyY');
+  }, true);
+  chatIn.addEventListener('keydown', e => {
+    e.stopPropagation(); // the game doesn't see what you type
+    if (e.key === 'Enter') { e.preventDefault(); if (chatIn.value.trim()) say(chatIn.value, CH.team); closeChat(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeChat(false); }
+    else if (e.key === 'Tab') { e.preventDefault(); chatMode(!CH.team); }
+  });
+  chatIn.addEventListener('blur', () => setTimeout(() => { if (CH.open && document.activeElement !== chatIn) closeChat(false); }, 150));
+  chatTo.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); chatMode(!CH.team); chatIn.focus(); });
+  chatBtn.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (CH.open) closeChat(false); else openChat(false); });
+  setInterval(() => {
+    const on = !!room && !room.closed;
+    if (room !== CH.room) { CH.room = room; chatLog.textContent = ''; CH.heard.clear(); }
+    if (!on && CH.open) closeChat(false);
+    chatEl.classList.toggle('on', on); chatEl.classList.toggle('lob', on && !M);
+    chatBtn.style.display = on && touchOn() && !CINE.on ? 'grid' : 'none';
+    chatEl.querySelector('.hint').style.display = touchOn() ? 'none' : '';
+  }, 300);
+
   // for testing from the console
-  window.HBNet = { get room() { return room; }, get match() { return M; }, myId, stats, createRoom, joinRoom, joinWorld, playWorld, leaveRoom, startMatchHost, toLobby, quit };
+  window.HBNet = { get room() { return room; }, get match() { return M; }, myId, stats, say, openChat, createRoom, joinRoom, joinWorld, playWorld, leaveRoom, startMatchHost, toLobby, quit };
 })();
 </script>
 <!-- hb-reel:start -->

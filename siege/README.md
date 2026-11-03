@@ -42,7 +42,7 @@ Each has three pairs of bomb sites, stairs, hatches and five defender cameras.
 
 ## Keys
 
-WASD move, Shift sprint, C / Ctrl crouch, Q / E lean, mouse to shoot (right-click to aim), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras, V melee, Tab scoreboard, Enter chat, Esc menu.
+WASD move, Shift sprint, C / Ctrl crouch, Q / E lean, mouse to shoot (right-click to aim), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras, V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
 
 ## Playing
 
@@ -55,4 +55,5 @@ WASD move, Shift sprint, C / Ctrl crouch, Q / E lean, mouse to shoot (right-clic
 - One HTML file: three.js r128 (MIT) and the Russo One and Barlow fonts (SIL OFL) embedded, `<script id="sg-base">` (renderer, saves, sound, the online check), `<script id="sg-guns">` (first-person guns and hands, shared with Cube Assault) and `<script id="siege">` (the game, in one closure; its data tables are frozen).
 - Maps are cell grids in `SG_MAPS`: rooms as rectangles, walls between rooms appear by themselves, doors and windows are listed per edge. Furniture is placed from a seed so every player gets the same rooms, and the lighting is baked into the walls when a map loads.
 - Online: rooms `csiege-lobby` and `csiege-<code>` on the arcade's realtime server (`rt.js`). The host runs the clock, the bots and the round result; every player owns their own movement, shots and health.
+- Chat (1.0.2): 'chat' on the room channel, `{ i, m, tm }` (`tm` = team only; the other team's screens drop it). Works in the lobby, operator pick and the round. `sgSay()` sends, `EV.chat` receives, `window.sgChat` draws (textContent only). `sgTidy()` is the Global chat's swear filter; 5 messages per 10 s to send, more than 8 per 10 s from someone is ignored.
 - On a local copy (localhost), `window.__sg` is a test handle: `__sg.step(n)` advances the game by n frames.
