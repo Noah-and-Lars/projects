@@ -41,12 +41,13 @@ Everyone also has a secondary gadget (G): breach charges, frags, smoke or stun g
 - **Marlowe Hotel:** grand lobby with a gallery, bar, kitchen, restaurant, ballroom, penthouse office and records room. Two floors.
 - **Port Authority:** customs offices, a bonded warehouse and a basement with the vault. Basement and ground floor.
 - **Ashgrove Manor:** an old family house with a garage, greenhouse, billiards room, dining room and bedrooms upstairs.
+- **Ridgeback Ranch** (1.0.4, daylight): a survivalist compound on the plains. Chapel hall, mess hall and kitchen, a silo stair tower and a lookout tower, bunk rooms and a nursery upstairs, a wash room, canning store and furnace room in the cellars, and a storm tunnel under the scrap yard.
 
 Each has three pairs of bomb sites, stairs, hatches and five defender cameras.
 
 ## Keys
 
-WASD move, Shift sprint, C / Ctrl crouch, Q / E lean, mouse to shoot (right-click to aim: a click toggles it, or hold it if you pick Hold in Settings), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras, V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
+WASD move, Shift sprint, C / Ctrl crouch, Q / E lean, mouse to shoot (right-click to aim: a click toggles it, or hold it if you pick Hold in Settings), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras (Space hops a drone), V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
 
 ## Playing
 

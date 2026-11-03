@@ -282,6 +282,9 @@ source in Settings → Pages should be switched to `main`.
   toggle or hold), no damage outside the action phase, textures are `stableTex` DataTextures (canvases can be wiped by
   the browser), old maps/gadgets/bodies are freed with `sgDispose`, and furniture that would box off part of a room is
   taken out again (`placeChecked`). On localhost `__sg` exposes `botSees`, `sgVaultCheck`, `sgLightAt` for tests.
+  1.0.4: fourth map `ranch` (Ridgeback Ranch, original layout, daylight): map flags `day`, `fog`, `ground`, `ext` (outside wall
+  material) and room flag `sky` (no ceiling over that yard: `M.underSky`); top bar = your team (health bars) left, enemy as ?
+  until spotted right; 3-2-1 countdown `#sgCd`; drones hop with Space; out of drones in prep = mode `dspec` (watch team drones).
 
 ## Adding a game
 
