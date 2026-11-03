@@ -106,6 +106,12 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;paddin
 #hitm:after{transform:rotate(-45deg)}
 #hitm.kill:before,#hitm.kill:after{background:#ff4a3a}
 .mk{position:absolute;left:0;top:0;pointer-events:none;will-change:transform}
+#freeze{display:none;align-items:center;gap:6px;padding:4px 8px 4px 6px;border-radius:9px;background:#071422d9;border:1px solid #7fd8ff55;color:#d8f3ff;font-weight:900;font-size:12px;white-space:nowrap;box-shadow:0 2px 8px #0008}
+#freeze .fi{font-size:15px;line-height:1}
+#freeze .fb{width:96px;height:9px;border-radius:5px;background:#10263a;overflow:hidden}
+#freeze .fb i{display:block;height:100%;width:100%;transform-origin:left center;background:linear-gradient(90deg,#4fb8ff,#bfeaff,#ffffff)}
+#freeze.hot{border-color:#ff7a6a;animation:frzHot .45s ease-in-out infinite alternate}
+@keyframes frzHot{to{background:#3a1520e6}}
 #nose{width:18px;height:18px;border:2px solid #9effa0;border-radius:3px;transform-origin:center;box-shadow:0 0 2px #000}
 #bombm{width:26px;height:26px;border:2px dashed #ffe066;border-radius:50%}
 #leadm{width:14px;height:14px;border:2px solid #ffe066;border-radius:50%;box-shadow:0 0 3px #000}
@@ -338,6 +344,7 @@ body.touch #throttle{top:40%}
   <div id="prompt" class="hidden"></div>
   <div id="cross"></div>
   <div id="hitm"></div>
+  <div id="freeze" class="mk"><span class="fi">❄</span><div class="fb"><i id="freezeFill"></i></div><b id="freezeTxt"></b></div>
   <div id="nose" class="mk" style="display:none"></div>
   <div id="bombm" class="mk" style="display:none"></div>
   <div id="lockm" class="mk" style="display:none"></div>
@@ -398,6 +405,11 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.2.3 <small>Cold water and the Map app</small></h3>
+    <ul>
+      <li><b>The water is freezing.</b> A freeze meter shows over your head while you swim. After 30 seconds in the water you freeze to death, so swim for land or a ship. Out of the water you warm up again three times as fast.</li>
+      <li><b>Map app.</b> The computer in your harbor's keep now has two apps. <b>Missiles</b> works as before, and <b>Map</b> shows every ship, plane and soldier in the battle live, with real players' names. It only shows on that computer.</li>
+    </ul>
     <h3>v1.2.2 <small>Chat</small></h3>
     <ul>
       <li><b>Chat online.</b> In the Public Battle and in private rooms, press <b>Enter</b> or <b>T</b> to talk to everyone, or <b>Y</b> to talk to your own team only. <b>Tab</b> switches between the two while you type, Enter sends and Esc cancels. On a touch screen, tap 💬.</li>
@@ -568,7 +580,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.2.2';
+const VERSION = '1.2.3';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -750,6 +762,7 @@ scene.add(sky);
 // The map area and the shallow-water texture (filled in once islands exist)
 const MAP = { x0: -2500, z0: -1850, w: 5000, h: 3700 };
 const BOUND = { x: 2300, z: 1650 };
+const FREEZE_S = 30;   // 1.2.3: seconds in the water before you freeze
 const DEPTH_W = 768, DEPTH_H = 568;
 const depthData = new Uint8Array(DEPTH_W * DEPTH_H * 4);
 const depthTex = new THREE.DataTexture(depthData, DEPTH_W, DEPTH_H, THREE.RGBAFormat);
@@ -3596,6 +3609,15 @@ function playerFoot(s, dt, c) {
   else s.onGround = s.pos.y - g < 0.06;
   s.swim = false;
   if (g < -1 && s.pos.y <= -1) { s.swim = true; s.pos.y = -1; s.vel.y = 0; s.onGround = false; if (s.chute) s.setChute(false); }
+  // 1.2.3: the water is cold. FREEZE_S seconds of swimming freezes you to death (the meter over your head fills);
+  // out of the water you warm up again three times as fast. Online it goes to the host like a fall (NET.selfHurt).
+  if (s.swim) s.cold = (s.cold || 0) + dt; else if (s.cold) s.cold = Math.max(0, s.cold - dt * 3);
+  if (s.swim && s.cold >= FREEZE_S) {
+    s.cold = FREEZE_S; s.invuln = 0;
+    if (!s.froze) { s.froze = true; showMsg('You froze to death', 'The water is too cold to swim in for long'); }
+    applyDamage(s, 999, { team: -2, owner: null, W: WEAP.rifle });
+  } else if (s.swim && s.cold > FREEZE_S - 10 && !s.coldWarn) { s.coldWarn = true; showMsg('You’re freezing!', 'Get out of the water'); }
+  if (!s.swim && s.cold < FREEZE_S - 12) s.coldWarn = false;
   // facing and animation
   const moving = Math.hypot(s.vel.x, s.vel.z);
   const aiming = c.fire || IN.rmb;
@@ -3899,9 +3921,21 @@ function placeMk(id, v) { const el = $(id); if (v && screenPos(v, _sp)) { el.sty
 
 const fmtClock = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 let hudT = 0, miniT = 0;
+// 1.2.3: the freeze meter, over your head while you're cold
+function updateFreeze(show) {
+  const s = PLAYER.soldier, el = $('freeze');
+  const cold = show && PLAYER.mode === 'foot' && s && s.alive && s.cold > 0.05 ? s.cold / FREEZE_S : 0;
+  if (!cold || !screenPos(_v1.set(s.pos.x, s.pos.y + 3.3, s.pos.z), _sp)) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.style.transform = `translate(${_sp.x}px,${_sp.y}px) translate(-50%,-100%)`;
+  $('freezeFill').style.transform = `scaleX(${Math.min(1, cold)})`;
+  setText('freezeTxt', s.swim ? Math.max(0, Math.ceil(FREEZE_S - s.cold)) + ' s' : 'Warming');
+  el.classList.toggle('hot', s.swim && cold > 0.66);
+}
 function updateHUD(dt) {
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) $('msg').style.opacity = 0; }
   const show = GAME.on && !GAME.demo && !CINE.on;
+  updateFreeze(show);
   if (CINE.on) setShow('clickLock', false);
   setShow('hud', show);
   setShow('touch', show && touchOn() && PLAYER.mode !== 'dead' && !overlayOpen());
@@ -5358,7 +5392,7 @@ function closePC() {
   if (PLAYER.soldier) PLAYER.soldier.group.visible = true;
 }
 // screen layout (canvas pixels)
-const BTN_SEND = [136, 132, 240, 76], BTN_OFF = [418, 34, 82, 26], BTN_BACK = [12, 286, 80, 26];
+const BTN_SEND = [70, 52, 180, 148], BTN_MAP = [262, 52, 180, 148], BTN_OFF = [418, 34, 82, 26], BTN_BACK = [12, 286, 80, 26];   // 1.2.3: two apps, Missiles and Map
 const inBox = (b, x, y) => x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3];
 const MAPV = { cx: 256, cy: 166, s: 0.068 };
 const mapXY = (x, z) => [MAPV.cx + x * MAPV.s, MAPV.cy + z * MAPV.s];
@@ -5381,7 +5415,8 @@ function pcStep(dt) {
     if (inBox(BTN_OFF, PC.cx, PC.cy) && PC.st !== 'boot') { closePC(); return; }
     if (PC.st === 'home' && inBox(BTN_SEND, PC.cx, PC.cy)) {
       if (MIS.n[pc.H.team] > 0) { PC.st = 'map'; Sound.play('ui'); } else { Sound.play('deny'); PC.note = 'No missile ready yet'; PC.noteT = 2; }
-    } else if ((PC.st === 'map' || PC.st === 'sent') && inBox(BTN_BACK, PC.cx, PC.cy)) { PC.st = 'home'; Sound.play('ui'); }
+    } else if (PC.st === 'home' && inBox(BTN_MAP, PC.cx, PC.cy)) { PC.st = 'radar'; Sound.play('ui'); }
+    else if ((PC.st === 'map' || PC.st === 'sent' || PC.st === 'radar') && inBox(BTN_BACK, PC.cx, PC.cy)) { PC.st = 'home'; Sound.play('ui'); }
     else if (PC.st === 'map' && PC.hover >= 0) {
       if (!isTarget(PC.hover)) { Sound.play('deny'); PC.note = 'Harbors can’t be targeted'; PC.noteT = 2; }
       else if (MIS.n[pc.H.team] <= 0) { Sound.play('deny'); PC.st = 'home'; }
@@ -5410,18 +5445,22 @@ function drawPC(pc) {
     for (let i = 0; i < Math.min(lines.length, Math.floor(f * lines.length) + 1); i++) x.fillText('> ' + lines[i], 112, 204 + i * 18);
   } else {
     x.fillStyle = TEAM[t].css; x.fillRect(0, 0, w, 24);
-    x.fillStyle = '#fff'; x.font = 'bold 14px system-ui,sans-serif'; x.textAlign = 'left'; x.fillText(TEAM[t].name.toUpperCase() + ' COMMAND · MISSILE CONTROL', 10, 12);
+    x.fillStyle = '#fff'; x.font = 'bold 14px system-ui,sans-serif'; x.textAlign = 'left'; x.fillText(TEAM[t].name.toUpperCase() + ' COMMAND · ' + (PC.st === 'radar' ? 'MAP' : PC.st === 'home' || PC.st === 'denied' ? 'HAVOC OS' : 'MISSILE CONTROL'), 10, 12);
     x.textAlign = 'right'; x.fillText(fmtClock(GAME.clock), w - 10, 12);
     button(x, BTN_OFF, 'LOG OFF', '#2a3442', '#cfd8e3', 13);
     if (PC.st === 'denied') {
       x.textAlign = 'center'; x.fillStyle = '#ff4a3a'; x.font = 'bold 40px system-ui,sans-serif'; x.fillText('ACCESS DENIED', w / 2, 140);
       x.fillStyle = '#9fb0c2'; x.font = '16px system-ui,sans-serif'; x.fillText(`This is ${TEAM[t].name}'s computer. Use your own harbor's.`, w / 2, 184);
     } else if (PC.st === 'home') {
+      // 1.2.3: the desktop has two apps
       const n = MIS.n[t];
-      button(x, BTN_SEND, '🚀 SEND MISSILE', n > 0 ? '#d42d22' : '#3a2a2a', n > 0 ? '#fff' : '#8a7a7a', 24, inBox(BTN_SEND, PC.cx, PC.cy) && n > 0);
-      x.textAlign = 'center'; x.font = 'bold 18px system-ui,sans-serif'; x.fillStyle = n > 0 ? '#ffb4a8' : '#7f8b99';
-      x.fillText(n > 0 ? `${n} missile${n > 1 ? 's' : ''} ready` : 'No missile ready', w / 2, 236);
-      x.font = '15px system-ui,sans-serif'; x.fillStyle = '#9fb0c2'; x.fillText(`Next missile in ${fmtClock(MIS.t[t])}`, w / 2, 262);
+      appTile(x, BTN_SEND, '🚀', 'MISSILES', n > 0 ? `${n} ready` : 'None ready', n > 0 ? '#d42d22' : '#3a2a2a', n > 0 ? '#fff' : '#8a7a7a', inBox(BTN_SEND, PC.cx, PC.cy) && n > 0);
+      appTile(x, BTN_MAP, '🗺️', 'MAP', 'Where everyone is', '#1f5f8f', '#fff', inBox(BTN_MAP, PC.cx, PC.cy));
+      x.textAlign = 'center'; x.font = '15px system-ui,sans-serif'; x.fillStyle = '#9fb0c2'; x.fillText(`Next missile in ${fmtClock(MIS.t[t])}`, w / 2, 236);
+      x.font = '12px system-ui,sans-serif'; x.fillStyle = '#6f7f91'; x.fillText('Click an app to open it', w / 2, 262);
+    } else if (PC.st === 'radar') {
+      drawRadar(x, t);
+      button(x, BTN_BACK, '◀ BACK', '#2a3442', '#cfd8e3', 13);
     } else { // the map: pick an island
       x.strokeStyle = '#173048'; x.lineWidth = 1;
       for (let gx = -2400; gx <= 2400; gx += 400) { const [a] = mapXY(gx, 0); x.beginPath(); x.moveTo(a, 40); x.lineTo(a, 292); x.stroke(); }
@@ -5458,6 +5497,63 @@ function drawPC(pc) {
   x.fillStyle = '#fff'; x.strokeStyle = '#000'; x.lineWidth = 1.5;
   x.beginPath(); x.moveTo(PC.cx, PC.cy); x.lineTo(PC.cx, PC.cy + 17); x.lineTo(PC.cx + 4.5, PC.cy + 13); x.lineTo(PC.cx + 8, PC.cy + 20); x.lineTo(PC.cx + 10.5, PC.cy + 19); x.lineTo(PC.cx + 7.5, PC.cy + 12); x.lineTo(PC.cx + 12.5, PC.cy + 12); x.closePath(); x.fill(); x.stroke();
   pc.tex.needsUpdate = true;
+}
+// 1.2.3: an app on the computer's desktop: a big icon, its name and a line under it
+function appTile(x, b, icon, label, sub, bg, fg, hot) {
+  button(x, b, '', bg, fg, 12, hot);
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = fg;
+  x.font = '44px system-ui,sans-serif'; x.fillText(icon, b[0] + b[2] / 2, b[1] + 50);
+  x.font = 'bold 20px system-ui,sans-serif'; x.fillText(label, b[0] + b[2] / 2, b[1] + 98);
+  x.font = '13px system-ui,sans-serif'; x.globalAlpha = 0.85; x.fillText(sub, b[0] + b[2] / 2, b[1] + 122); x.globalAlpha = 1;
+}
+// 1.2.3: the Map app: everyone in the match, live, on this computer only. Ships are squares, planes triangles
+// pointing where they fly, people on foot dots; real players have their name, and you are ringed.
+function drawRadar(x, t) {
+  x.strokeStyle = '#173048'; x.lineWidth = 1;
+  for (let gx = -2400; gx <= 2400; gx += 400) { const [a] = mapXY(gx, 0); x.beginPath(); x.moveTo(a, 32); x.lineTo(a, 280); x.stroke(); }
+  for (let gz = -1600; gz <= 1600; gz += 400) { const [, b] = mapXY(0, gz); x.beginPath(); x.moveTo(98, b); x.lineTo(414, b); x.stroke(); }
+  ISLES.forEach(I => {
+    const [px, py] = mapXY(I.x, I.z), r = Math.max(3, I.r * MAPV.s), isl = ISLANDS.find(q => q.I === I);
+    x.fillStyle = I.type === 'harbor' ? (I.team === 0 ? '#1d3f80' : '#7e1d18') : isl && isl.owner >= 0 ? (isl.owner === 0 ? '#2c5592' : '#923a32') : '#3d5f3a';
+    x.beginPath(); x.arc(px, py, r, 0, TAU); x.fill();
+    if (I.name) { x.fillStyle = '#7f91a3'; x.font = '10px system-ui,sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(I.name, px, py + r + 8); }
+  });
+  const me = PLAYER.ent, labels = [], cnt = [{ ship: 0, plane: 0, soldier: 0 }, { ship: 0, plane: 0, soldier: 0 }];
+  let hov = null, hd = 12;
+  for (const e of ENTS) {
+    if (!e.alive || e.team < 0 || (e.kind !== 'ship' && e.kind !== 'plane' && e.kind !== 'soldier')) continue;
+    if (e.kind === 'ship' && !e.driver) continue;   // empty hulls at the pads are not people
+    const [px, py] = mapXY(e.pos.x, e.pos.z);
+    if (px < 96 || px > 416 || py < 30 || py > 282) continue;
+    cnt[e.team][e.kind]++;
+    x.fillStyle = e.team === 0 ? '#7db3ff' : '#ff8a80';
+    if (e.kind === 'ship') x.fillRect(px - 3, py - 3, 6, 6);
+    else if (e.kind === 'plane') {
+      const yaw = e.fwd ? Math.atan2(e.fwd.x, e.fwd.z) : 0, ca = Math.cos(yaw), sa = Math.sin(yaw), P = (fx, fz) => [px + (fx * ca + fz * sa), py + (-fx * sa + fz * ca)];
+      x.beginPath(); x.moveTo(...P(0, 5)); x.lineTo(...P(-3.5, -3.5)); x.lineTo(...P(3.5, -3.5)); x.closePath(); x.fill();
+    } else { x.beginPath(); x.arc(px, py, 2, 0, TAU); x.fill(); }
+    const d = e.driver, human = !!(d && (d.isPlayer || d.human || d.peer));
+    if (e === me) { x.strokeStyle = '#ffffff'; x.lineWidth = 1.5; x.beginPath(); x.arc(px, py, 7 + Math.sin(performance.now() / 180) * 1.5, 0, TAU); x.stroke(); }
+    if (human) labels.push([px, py, e === me ? 'YOU' : String(d.name || 'Player').slice(0, 14), e.team]);
+    const dh = Math.hypot(PC.cx - px, PC.cy - py); if (dh < hd) { hd = dh; hov = e; }
+  }
+  x.font = 'bold 10px system-ui,sans-serif'; x.textAlign = 'left'; x.textBaseline = 'middle';
+  for (const [px, py, n, tm] of labels) { x.fillStyle = '#000a'; x.fillText(n, px + 7, py - 7); x.fillStyle = tm === 0 ? '#cfe2ff' : '#ffd6d0'; x.fillText(n, px + 6, py - 8); }
+  // the counts down the sides, and what the cursor is on
+  x.font = 'bold 11px system-ui,sans-serif'; x.textBaseline = 'middle';
+  [0, 1].forEach(tm => {
+    const xx = tm === 0 ? 10 : 422, c = cnt[tm];
+    x.textAlign = 'left'; x.fillStyle = tm === 0 ? '#7db3ff' : '#ff8a80'; x.fillText(TEAM[tm].name.toUpperCase(), xx, 82);
+    x.fillStyle = '#b9c6d4'; x.font = '11px system-ui,sans-serif';
+    x.fillText(`■ Ships ${c.ship}`, xx, 102); x.fillText(`▲ Planes ${c.plane}`, xx, 120); x.fillText(`● On foot ${c.soldier}`, xx, 138);
+    x.font = 'bold 11px system-ui,sans-serif';
+  });
+  x.textAlign = 'left'; x.font = 'bold 13px system-ui,sans-serif';
+  if (hov) {
+    const d = hov.driver, who = hov === me ? 'You' : d && d.name ? d.name : 'A bot';
+    const what = hov.kind === 'ship' ? (hov.S && hov.S.name) || 'Ship' : hov.kind === 'plane' ? (hov.P && hov.P.name) || 'Plane' : 'On foot';
+    x.fillStyle = hov.team === 0 ? '#9cc6ff' : '#ffa69c'; x.fillText(`${who} · ${what}`, 104, 300);
+  } else { x.fillStyle = '#9fb0c2'; x.fillText('Live positions of every player and bot', 104, 300); }
 }
 function button(x, b, label, bg, fg, size, hot) {
   x.fillStyle = hot ? '#ff5040' : bg;
