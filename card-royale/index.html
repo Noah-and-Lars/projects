@@ -232,6 +232,31 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 #search .t{font-size:26px}#search .s{font-size:14px;color:#bfe0ff;font-family:system-ui,sans-serif;font-weight:600;max-width:280px}
 #toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:70;background:rgba(10,20,40,.92);border:2px solid #061c34;border-radius:10px;padding:8px 14px;font-size:15px;pointer-events:none;opacity:0;transition:opacity .25s;max-width:90%;text-align:center}
 #toast.show{opacity:1}
+
+/* ---------- 1.0.1: chunky buttons like the real thing: dark outline, a raised lip, a glossy top, they press down ---------- */
+:root{--lip:0 4px 0 #14141e,0 7px 10px rgba(0,0,0,.38);--gloss:inset 0 3px 0 rgba(255,255,255,.5),inset 0 13px 0 rgba(255,255,255,.13),inset 0 -4px 0 rgba(0,0,0,.25)}
+.btn,.sb,.gear,.mbox .x,#emoBtn,#emoPanel button:not(.mute),.res .plus{border:2.5px solid #14141e!important;box-shadow:var(--gloss),var(--lip)!important;transition:transform .07s,box-shadow .07s}
+.btn:active:not(:disabled),.sb:active,.gear:active,.mbox .x:active,#emoBtn:active,#emoPanel button:not(.mute):active{transform:translateY(3px);box-shadow:inset 0 3px 0 rgba(255,255,255,.5),inset 0 13px 0 rgba(255,255,255,.13),inset 0 -2px 0 rgba(0,0,0,.25),0 1px 0 #14141e!important}
+.res .plus{box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 2px 0 #14141e!important;border-width:1.5px!important}
+.battleBtn{border:3.5px solid #14141e;box-shadow:inset 0 4px 0 rgba(255,255,255,.6),inset 0 22px 0 rgba(255,255,255,.14),inset 0 -6px 0 rgba(150,60,0,.45),0 6px 0 #14141e,0 10px 16px rgba(0,0,0,.45);transition:transform .07s,box-shadow .07s}
+.battleBtn:active{transform:translateY(4px);box-shadow:inset 0 4px 0 rgba(255,255,255,.6),inset 0 22px 0 rgba(255,255,255,.14),inset 0 -3px 0 rgba(150,60,0,.45),0 2px 0 #14141e}
+.slot:not(.empty),.offer,.free,.crownc,.prof,.panel,.trbox,.plate,.jrow,.tr,.stats div,.wood,.coll{box-shadow:inset 0 2px 0 rgba(255,255,255,.22),0 4px 0 rgba(10,10,20,.55),0 6px 10px rgba(0,0,0,.28)}
+.slot:not(.empty),.offer,.free,.crownc{border-color:#14141e;transition:transform .07s,box-shadow .07s}
+.slot:not(.empty):active,.offer:active,.free:active,.crownc:active{transform:translateY(3px);box-shadow:inset 0 2px 0 rgba(255,255,255,.22),0 1px 0 rgba(10,10,20,.55)}
+.plate{border-color:#14141e;box-shadow:inset 0 3px 0 rgba(255,255,255,.5),0 4px 0 #14141e}
+.card{box-shadow:0 3px 0 rgba(10,10,20,.6),0 5px 8px rgba(0,0,0,.35)}
+.card .fr{box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.hcard .card{box-shadow:0 4px 0 rgba(10,10,20,.7),0 8px 12px rgba(0,0,0,.45)}
+.hcard.sel .card{box-shadow:0 0 0 3px #ffe27a,0 10px 16px rgba(0,0,0,.5)}
+#nav button{box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 0 rgba(0,0,0,.25)}
+#nav button.on{box-shadow:inset 0 3px 0 rgba(255,255,255,.45),inset 0 16px 0 rgba(255,255,255,.12),inset 0 -4px 0 rgba(0,0,0,.25),0 -3px 0 #14141e;border:2px solid #14141e;border-bottom:0;border-radius:10px 10px 0 0;margin-top:-6px}
+.cost,#elxDrop,#x2{box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 2px 0 rgba(20,0,30,.6)}
+.timer,.crowns{box-shadow:inset 0 2px 0 rgba(255,255,255,.2),0 3px 0 rgba(10,10,20,.6)}
+#hand{box-shadow:0 -4px 12px rgba(0,0,0,.35)}
+#elxBar{box-shadow:inset 0 3px 4px rgba(0,0,0,.5)}
+#elxFill{box-shadow:inset 0 3px 0 rgba(255,255,255,.4),inset 0 -2px 0 rgba(90,0,110,.4)}
+.lvl:before{filter:drop-shadow(0 2px 0 #062040) drop-shadow(0 0 1px #14141e)}
+.xpbar,.res{box-shadow:inset 0 2px 3px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -281,7 +306,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 /* ============================================================
    CARD ROYALE: data (cards, arenas, chests, progression)
    ============================================================ */
-const GAME_VER = '1.0';
+const GAME_VER = '1.0.1';
 const W = 18, H = 32, RIVER_Y0 = 15, RIVER_Y1 = 17, MID = 16;
 const BRIDGES = [3.5, 14.5], BRIDGE_HW = 1.15;
 const TICK = 0.05;
@@ -1361,7 +1386,7 @@ function portrait(id) {
   const g = c.getContext('2d'), [a, b] = RAR_BG[d.rar] || RAR_BG.C;
   const gr = g.createRadialGradient(60, 50, 10, 60, 72, 100); gr.addColorStop(0, a); gr.addColorStop(1, b); g.fillStyle = gr; g.fillRect(0, 0, 120, 144);
   g.globalAlpha = 0.18; for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(60, 72); g.arc(60, 72, 120, i * 0.785, i * 0.785 + 0.39); g.closePath(); g.fillStyle = '#fff'; g.fill(); } g.globalAlpha = 1;
-  ell(g, 60, 122, 36, 9, 'rgba(0,0,0,.25)');
+  softShadow(g, 66, 123, 42, 11, 0.4);
   const sh = d.art.shape;
   g.save();
   if (d.type === 'spell') { g.translate(60, 70); drawSpellIcon(g, sh, 62); }
@@ -1378,90 +1403,244 @@ function portrait(id) {
 }
 function portraitURL(id) { const c = portrait(id); return c._url || (c._url = c.toDataURL()); }
 
-/* ---------- towers ---------- */
-function drawTower(g, e, s, team, t) {
-  const T = TEAM[team], king = e.tw === 'king', w = (king ? 3.9 : 3.0) * s, h = (king ? 1.7 : 1.9) * s;
-  if (e.hp <= 0) { // rubble
-    ell(g, 0, 0, w * 0.5, w * 0.3, '#6a6058');
-    for (let i = 0; i < 9; i++) { const a = i * 2.4, r = (i % 3) * 0.12 + 0.12; rr(g, Math.cos(a) * w * 0.3 - s * 0.2, Math.sin(a) * w * 0.15 - s * 0.3, s * (0.35 + r), s * (0.25 + r * 0.5), s * 0.06, i % 2 ? '#9a9088' : '#857a70', INK, s * 0.02); }
-    return;
+/* ---------- soft shadows (light comes from the top left) ---------- */
+function softShadow(g, x, y, rx, ry, a) {
+  if (rx < 0.5 || ry < 0.5) return;
+  g.save(); g.translate(x, y); g.scale(1, ry / rx);
+  const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+  gr.addColorStop(0, 'rgba(15,25,10,' + a + ')'); gr.addColorStop(0.55, 'rgba(15,25,10,' + (a * 0.75) + ')'); gr.addColorStop(1, 'rgba(15,25,10,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rx, 0, Math.PI * 2); g.fill(); g.restore();
+}
+
+/* ---------- towers ----------
+   Same view as before: the platform on top, the stone front below it. The still parts are painted
+   once into a cached layer per tower type, team and size; the figures, flags and cannon move on top. */
+const TOWER_CACHE = {};
+function towerGeo(tw, s) {
+  const king = tw === 'king', w = (king ? 3.9 : 3.0) * s, h = (king ? 1.7 : 1.9) * s, top = -h - w * 0.35;
+  return { king, w, h, top, L: -w / 2, R: w / 2, rimH: w * 0.55, bottom: top + h + w * 0.4 };
+}
+function towerLayer(tw, team, s, part) {
+  const dpr = (typeof DPR !== 'undefined' && DPR) || 1, key = tw + team + part + s.toFixed(2) + dpr;
+  if (TOWER_CACHE[key]) return TOWER_CACHE[key];
+  const G = towerGeo(tw, s), ox = G.w / 2 + s * 1.2, oy = -G.top + s * 1.0;
+  const c = document.createElement('canvas'); c.width = Math.ceil((G.w + s * 3.4) * dpr); c.height = Math.ceil((oy + G.bottom + s * 2) * dpr);
+  const g = c.getContext('2d'); g.scale(dpr, dpr); g.translate(ox, oy);
+  const rnd = mkRng(tw === 'king' ? 11 : 5);
+  if (part === 'dead') paintRubble(g, G, s, rnd); else paintTower(g, G, s, team, rnd);
+  return (TOWER_CACHE[key] = { c, ox, oy, w: c.width / dpr, h: c.height / dpr });
+}
+function merlon(g, x, y, m, s) {
+  rr(g, x - m / 2, y, m, m * 0.5, s * 0.05, '#aaa093', INK, s * 0.035);
+  rr(g, x - m / 2, y - m * 0.42, m, m * 0.55, s * 0.06, '#e2d9cc', INK, s * 0.035);
+  line(g, x - m / 2 + s * 0.07, y - m * 0.33, x + m / 2 - s * 0.09, y - m * 0.33, 'rgba(255,255,255,.6)', s * 0.03);
+}
+function stoneWall(g, x0, y0, w, h, rows, base, s, rnd, ink) {
+  rr(g, x0, y0, w, h, s * 0.12, shade(base, -0.2), ink === false ? null : INK, s * 0.05);
+  g.save(); rr(g, x0, y0, w, h, s * 0.12); g.clip();
+  const bh = h / rows;
+  for (let r = 0; r < rows; r++) {
+    let x = x0 + s * 0.06 - (r % 2 ? s * 0.27 : 0);
+    while (x < x0 + w) {
+      const bw = s * (0.46 + rnd() * 0.2), a = Math.max(x, x0 + s * 0.06), b = Math.min(x + bw - s * 0.07, x0 + w - s * 0.06);
+      if (b - a > s * 0.1) {
+        rr(g, a, y0 + r * bh + s * 0.05, b - a, bh - s * 0.09, s * 0.05, shade(base, (rnd() - 0.5) * 0.18));
+        line(g, a + s * 0.04, y0 + r * bh + s * 0.08, b - s * 0.04, y0 + r * bh + s * 0.08, 'rgba(255,255,255,.3)', s * 0.03);
+        line(g, a + s * 0.04, y0 + (r + 1) * bh - s * 0.06, b - s * 0.04, y0 + (r + 1) * bh - s * 0.06, 'rgba(0,0,0,.2)', s * 0.03);
+        if (rnd() < 0.12) line(g, a + (b - a) * 0.3, y0 + r * bh + s * 0.1, a + (b - a) * 0.5, y0 + (r + 1) * bh - s * 0.1, 'rgba(40,30,20,.35)', s * 0.025);
+      }
+      x += bw;
+    }
   }
-  ell(g, 0, w * 0.08, w * 0.56, w * 0.3, 'rgba(0,0,0,.25)');
-  // stone block: top face + front face
-  const top = -h - w * 0.35;
-  rr(g, -w / 2, top + w * 0.2, w, h + w * 0.2, s * 0.12, '#8d8378', INK, s * 0.05);
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) rr(g, -w / 2 + s * 0.12 + c * (w - s * 0.24) / 4 + (r % 2) * s * 0.18, top + w * 0.28 + r * h * 0.3, (w - s * 0.24) / 4 - s * 0.08, h * 0.26, s * 0.04, r % 2 ? '#a89e92' : '#9e9488');
-  rr(g, -w / 2 - s * 0.05, top, w + s * 0.1, w * 0.55, s * 0.16, '#c8beb2', INK, s * 0.05);
-  rr(g, -w / 2 + s * 0.2, top + s * 0.18, w - s * 0.4, w * 0.55 - s * 0.36, s * 0.1, king ? T.d : '#b0a698');
-  // team trim and crenellations
-  rr(g, -w / 2 - s * 0.05, top + w * 0.5, w + s * 0.1, s * 0.22, s * 0.06, T.m, INK, s * 0.035);
-  for (let i = 0; i < (king ? 5 : 4); i++) { const n = king ? 5 : 4, x = -w / 2 + (i + 0.5) * w / n; rr(g, x - s * 0.18, top - s * 0.28, s * 0.36, s * 0.36, s * 0.06, '#d6ccc0', INK, s * 0.035); }
+  let gr = g.createLinearGradient(x0, 0, x0 + w, 0); gr.addColorStop(0, 'rgba(255,255,255,.12)'); gr.addColorStop(0.5, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.25)'); g.fillStyle = gr; g.fillRect(x0, y0, w, h);
+  gr = g.createLinearGradient(0, y0, 0, y0 + h); gr.addColorStop(0.55, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.32)'); g.fillStyle = gr; g.fillRect(x0, y0, w, h);
+  for (let i = 0; i < 5; i++) ell(g, x0 + rnd() * w, y0 + h - s * 0.05, s * (0.12 + rnd() * 0.16), s * 0.08, 'rgba(90,145,50,.75)');
+  g.restore();
+}
+function paintTower(g, G, s, team, rnd) {
+  const T = TEAM[team], { king, w, h, top, L, R, rimH, bottom } = G;
+  // the shadow it casts (light from the top left) and where it meets the ground
+  g.save(); g.filter = 'blur(' + Math.max(1, s * 0.2).toFixed(1) + 'px)';
+  poly(g, [[L + s * 0.2, bottom - s * 0.15], [L + s * 0.9, bottom + s * 0.75], [R + s * 1.1, bottom + s * 0.75], [R + s * 1.1, top + rimH + s * 0.4], [R, top + rimH * 0.4]], 'rgba(10,25,5,.3)');
+  g.restore();
+  softShadow(g, s * 0.25, bottom - s * 0.05, w * 0.6, s * 0.42, 0.45);
+  // the front wall, with darker corner stones
+  const wy = top + w * 0.2;
+  stoneWall(g, L, wy, w, bottom - wy, 4, '#a3998c', s, rnd);
+  for (const cx of [L, R - s * 0.42]) { g.save(); rr(g, L, wy, w, bottom - wy, s * 0.12); g.clip(); for (let k = 0; k < 4; k++) { const yy = wy + rimH + k * (bottom - wy - rimH) / 4; rr(g, cx + (k % 2 ? s * 0.06 : 0), yy + s * 0.04, s * 0.36, (bottom - wy - rimH) / 4 - s * 0.08, s * 0.05, k % 2 ? '#8a8073' : '#958b7e', 'rgba(30,25,20,.4)', s * 0.02); } g.restore(); }
+  const face0 = top + rimH, faceH = bottom - face0;
+  // banners, arrow slits, the king's door and crest
+  const banner = (cx, bw, bh) => {
+    softShadow(g, cx + s * 0.12, face0 + bh * 0.55, bw * 0.55, bh * 0.5, 0.25);
+    poly(g, [[cx - bw / 2, face0], [cx + bw / 2, face0], [cx + bw / 2, face0 + bh], [cx, face0 + bh - s * 0.2], [cx - bw / 2, face0 + bh]], T.m, INK, s * 0.035);
+    line(g, cx - bw / 2 + s * 0.08, face0 + s * 0.04, cx - bw / 2 + s * 0.08, face0 + bh - s * 0.08, '#ffd34a', s * 0.045);
+    line(g, cx + bw / 2 - s * 0.08, face0 + s * 0.04, cx + bw / 2 - s * 0.08, face0 + bh - s * 0.08, '#ffd34a', s * 0.045);
+    poly(g, [[cx, face0 + bh * 0.2], [cx + bw * 0.2, face0 + bh * 0.42], [cx, face0 + bh * 0.64], [cx - bw * 0.2, face0 + bh * 0.42]], '#ffe27a', INK, s * 0.025);
+    const gr = g.createLinearGradient(cx - bw / 2, 0, cx + bw / 2, 0); gr.addColorStop(0, 'rgba(255,255,255,.18)'); gr.addColorStop(1, 'rgba(0,0,0,.22)'); g.fillStyle = gr; g.fillRect(cx - bw / 2, face0, bw, bh * 0.82);
+  };
+  const slit = (cx, cy) => { rr(g, cx - s * 0.08, cy, s * 0.16, s * 0.42, s * 0.08, '#2a221c', INK, s * 0.025); line(g, cx - s * 0.05, cy + s * 0.06, cx - s * 0.05, cy + s * 0.36, 'rgba(255,255,255,.12)', s * 0.02); };
   if (king) {
-    // the king, sitting (asleep) until his tower is hit
-    const awake = e.active, ky = top + w * 0.2;
-    g.save(); g.translate(0, ky + (awake ? 0 : s * 0.1));
-    drawHuman(g, { body: T.m, skin: '#f2c08f', beard: '#f0f0f0', helm: 'crown', w: 'none' }, s * 1.25, team, { look: 0 });
-    g.restore();
-    if (!awake) { g.fillStyle = '#fff'; g.font = 'bold ' + (s * 0.55 | 0) + 'px "Lilita One",sans-serif'; g.fillText('z', s * 0.6, ky - s * 1.2 - Math.sin(t * 2) * s * 0.15); g.fillText('z', s * 0.95, ky - s * 1.7 - Math.sin(t * 2 + 1) * s * 0.15); }
-    else { g.save(); g.translate(w * 0.32, top + w * 0.15); g.rotate(e.aim || 0); rr(g, -s * 0.2, -s * 0.85, s * 0.4, s * 0.9, s * 0.14, '#3a3f48', INK, s * 0.035); circ(g, 0, -s * 0.82, s * 0.13, '#15171c'); g.restore(); }
+    banner(L + w * 0.22, s * 0.6, faceH * 0.72); banner(R - w * 0.22, s * 0.6, faceH * 0.72);
+    rr(g, -s * 0.48, face0 + faceH * 0.3, s * 0.96, faceH * 0.7, [s * 0.48, s * 0.48, 0, 0], '#3a2a1e', INK, s * 0.04);
+    for (let i = 0; i < 4; i++) line(g, -s * 0.3 + i * s * 0.2, face0 + faceH * 0.36, -s * 0.3 + i * s * 0.2, bottom - s * 0.04, '#24170e', s * 0.03);
+    line(g, -s * 0.48, face0 + faceH * 0.62, s * 0.48, face0 + faceH * 0.62, '#6a6f78', s * 0.06);
+    circ(g, 0, face0 + faceH * 0.15, s * 0.34, '#ffd34a', INK, s * 0.04); circ(g, 0, face0 + faceH * 0.15, s * 0.25, '#f0b020');
+    poly(g, [[-s * 0.17, face0 + faceH * 0.22], [-s * 0.19, face0 + faceH * 0.06], [-s * 0.07, face0 + faceH * 0.13], [0, face0 + faceH * 0.01], [s * 0.07, face0 + faceH * 0.13], [s * 0.19, face0 + faceH * 0.06], [s * 0.17, face0 + faceH * 0.22]], '#fff3a0', INK, s * 0.02);
   } else {
-    g.save(); g.translate(0, top + w * 0.3);
-    drawHuman(g, { body: T.m, skin: '#f7c9a0', hair: '#ffd34a', helm: 'hood', w: 'bow', fem: 1 }, s * 0.95, team, { look: 0, sw: e.sw || 0 });
-    g.restore();
-    // flags
-    for (const k of [-1, 1]) { line(g, k * w * 0.42, top - s * 0.2, k * w * 0.42, top - s * 1.2, '#6a4a2a', s * 0.06); poly(g, [[k * w * 0.42, top - s * 1.2], [k * w * 0.42 + k * s * 0.55, top - s * 1.0 + Math.sin(t * 4 + k) * s * 0.06], [k * w * 0.42, top - s * 0.8]], T.m, INK, s * 0.02); }
+    banner(0, s * 0.62, faceH * 0.66);
+    slit(L + w * 0.22, face0 + faceH * 0.3); slit(R - w * 0.22, face0 + faceH * 0.3);
+  }
+  // the stone rim of the platform
+  rr(g, L - s * 0.05, top, w + s * 0.1, rimH, s * 0.16, '#d2c8bb', INK, s * 0.05);
+  for (let k = 1; k < 6; k++) { line(g, L + w * k / 6, top + s * 0.02, L + w * k / 6, top + s * 0.16, 'rgba(90,80,70,.35)', s * 0.025); line(g, L + w * k / 6, top + rimH - s * 0.16, L + w * k / 6, top + rimH - s * 0.02, 'rgba(90,80,70,.35)', s * 0.025); }
+  let gr = g.createLinearGradient(L, top, R, top + rimH); gr.addColorStop(0, 'rgba(255,255,255,.32)'); gr.addColorStop(1, 'rgba(0,0,0,.14)'); rr(g, L - s * 0.02, top + s * 0.02, w + s * 0.04, rimH - s * 0.04, s * 0.15, gr);
+  // the floor inside
+  const fx = L + s * 0.2, fy = top + s * 0.18, fw = w - s * 0.4, fh = rimH - s * 0.36;
+  g.save(); rr(g, fx, fy, fw, fh, s * 0.1); g.clip();
+  if (king) { const ts = s * 0.48; for (let yy = 0; yy * ts < fh; yy++) for (let xx = 0; xx * ts < fw; xx++) { g.fillStyle = (xx + yy) % 2 ? T.d : shade(T.m, -0.1); g.fillRect(fx + xx * ts, fy + yy * ts, ts + 0.5, ts + 0.5); } }
+  else { g.fillStyle = '#a87443'; g.fillRect(fx, fy, fw, fh); for (let xx = 0; xx * s * 0.38 < fw; xx++) { g.fillStyle = shade('#b07a45', (rnd() - 0.5) * 0.22); g.fillRect(fx + xx * s * 0.38 + s * 0.02, fy, s * 0.34, fh); circ(g, fx + xx * s * 0.38 + s * 0.19, fy + fh * 0.3, s * 0.025, '#5a3a1e'); circ(g, fx + xx * s * 0.38 + s * 0.19, fy + fh * 0.8, s * 0.025, '#5a3a1e'); } }
+  gr = g.createLinearGradient(0, fy, 0, fy + s * 0.4); gr.addColorStop(0, 'rgba(0,0,0,.42)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(fx, fy, fw, s * 0.4);
+  gr = g.createLinearGradient(fx, 0, fx + s * 0.35, 0); gr.addColorStop(0, 'rgba(0,0,0,.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(fx, fy, s * 0.35, fh);
+  g.restore();
+  rr(g, fx, fy, fw, fh, s * 0.1, null, 'rgba(40,30,20,.55)', s * 0.035);
+  // the team trim with gold studs
+  rr(g, L - s * 0.05, top + w * 0.5, w + s * 0.1, s * 0.24, s * 0.06, T.m, INK, s * 0.035);
+  line(g, L + s * 0.05, top + w * 0.5 + s * 0.06, R - s * 0.05, top + w * 0.5 + s * 0.06, 'rgba(255,255,255,.3)', s * 0.035);
+  for (let k = 0; k < (king ? 8 : 6); k++) circ(g, L + s * 0.25 + k * (w - s * 0.5) / ((king ? 8 : 6) - 1), top + w * 0.5 + s * 0.12, s * 0.05, '#ffd34a', INK, s * 0.015);
+  // crenellations along the back
+  const n = king ? 5 : 4, m = s * 0.38;
+  for (let i = 0; i < n; i++) merlon(g, L + (i + 0.5) * w / n, top - s * 0.24, m, s);
+}
+function paintRubble(g, G, s, rnd) {
+  const { w, L, R, h } = G, base = s * 0.2;
+  softShadow(g, s * 0.3, base, w * 0.62, w * 0.3, 0.4);
+  ell(g, 0, base - s * 0.2, w * 0.5, w * 0.26, '#5e554c'); ell(g, 0, base - s * 0.25, w * 0.38, w * 0.18, '#4a423b');
+  const stubH = h * 0.45, y0 = base - stubH;
+  g.save(); g.beginPath(); g.moveTo(L, base); for (let i = 0; i <= 8; i++) g.lineTo(L + w * i / 8, y0 + (i % 2 ? s * 0.3 : -s * 0.05) * (0.5 + rnd())); g.lineTo(R, base); g.closePath(); g.clip();
+  stoneWall(g, L, y0 - s * 0.3, w, stubH + s * 0.3, 2, '#9a9083', s, rnd, false); g.restore();
+  for (let i = 0; i < 14; i++) {
+    const a = rnd() * Math.PI * 2, r = rnd() * w * 0.45, x = Math.cos(a) * r, y = base - s * 0.3 + Math.sin(a) * r * 0.45, sz = s * (0.22 + rnd() * 0.3);
+    rr(g, x - sz / 2, y - sz * 0.15, sz, sz * 0.55, s * 0.05, '#7d7368', INK, s * 0.03); rr(g, x - sz / 2, y - sz * 0.6, sz, sz * 0.5, s * 0.06, i % 3 ? '#b4aa9c' : '#c8beb0', INK, s * 0.03);
+  }
+}
+function drawTower(g, e, s, team, t) {
+  const G = towerGeo(e.tw, s), T = TEAM[team], { king, w, top } = G;
+  const Ly = towerLayer(e.tw, team, s, e.hp <= 0 ? 'dead' : 'live'); g.drawImage(Ly.c, -Ly.ox, -Ly.oy, Ly.w, Ly.h);
+  if (e.hp <= 0) return;
+  if (king) {
+    const awake = e.active, ky = top + w * 0.2;
+    softShadow(g, s * 0.2, ky + s * 0.1, s * 0.6, s * 0.22, 0.35);
+    g.save(); g.translate(0, ky + (awake ? 0 : s * 0.1)); drawHuman(g, { body: T.m, skin: '#f2c08f', beard: '#f0f0f0', helm: 'crown', w: 'none', cape: 1 }, s * 1.25, team, { look: 0 }); g.restore();
+    if (!awake) { g.fillStyle = '#fff'; g.font = 'bold ' + (s * 0.55 | 0) + 'px "Lilita One",sans-serif'; g.fillText('z', s * 0.6, ky - s * 1.2 - Math.sin(t * 2) * s * 0.15); g.fillText('z', s * 0.95, ky - s * 1.7 - Math.sin(t * 2 + 1) * s * 0.15); }
+    else { const cx = w * 0.32, cy = top + w * 0.15; softShadow(g, cx + s * 0.12, cy + s * 0.1, s * 0.4, s * 0.16, 0.35); circ(g, cx, cy, s * 0.3, '#6a6f78', INK, s * 0.035); g.save(); g.translate(cx, cy); g.rotate(e.aim || 0); rr(g, -s * 0.2, -s * 0.85, s * 0.4, s * 0.9, s * 0.14, '#3a3f48', INK, s * 0.035); line(g, -s * 0.09, -s * 0.75, -s * 0.09, -s * 0.12, 'rgba(255,255,255,.25)', s * 0.05); rr(g, -s * 0.23, -s * 0.5, s * 0.46, s * 0.1, s * 0.04, '#c8a040'); circ(g, 0, -s * 0.82, s * 0.13, '#15171c'); g.restore(); }
+  } else {
+    const py = top + w * 0.3;
+    softShadow(g, s * 0.15, py + s * 0.05, s * 0.42, s * 0.16, 0.35);
+    g.save(); g.translate(0, py); drawHuman(g, { body: T.m, skin: '#f7c9a0', hair: '#ffd34a', helm: 'hood', w: 'bow', fem: 1 }, s * 0.95, team, { look: 0, sw: e.sw || 0 }); g.restore();
+    for (const k of [-1, 1]) { const fx = k * w * 0.42; line(g, fx, top - s * 0.2, fx, top - s * 1.2, '#6a4a2a', s * 0.07); poly(g, [[fx, top - s * 1.2], [fx + k * s * 0.55, top - s * 1.0 + Math.sin(t * 4 + k) * s * 0.06], [fx + k * s * 0.45, top - s * 0.9], [fx, top - s * 0.8]], T.m, INK, s * 0.025); line(g, fx, top - s * 1.12, fx + k * s * 0.5, top - s * 0.97 + Math.sin(t * 4 + k) * s * 0.06, '#ffd34a', s * 0.03); circ(g, fx, top - s * 1.23, s * 0.06, '#ffd34a'); }
   }
 }
 
 /* ---------- the arena background ---------- */
 function drawArenaBG(g, T, ox, oy, cw, ch, arena) {
-  const A = ARENAS[arena || 0];
-  // outside: grass, trees, tents
-  g.fillStyle = '#4f7a2e'; g.fillRect(0, 0, cw, ch);
-  const X = x => ox + x * T, Y = y => oy + y * T;
-  const rnd = mkRng(7);
-  for (let i = 0; i < 140; i++) { const x = rnd() * cw, y = rnd() * ch; circ(g, x, y, T * (0.3 + rnd() * 0.5), rnd() < 0.5 ? '#3f6a26' : '#5a8a36'); }
-  // stone wall around the field
-  rr(g, X(-1.1), Y(-1.3), T * (W + 2.2), T * (H + 2.6), T * 0.6, '#9a8e78', INK, T * 0.08);
-  rr(g, X(-0.55), Y(-0.7), T * (W + 1.1), T * (H + 1.4), T * 0.4, '#b3a68a');
-  // field tiles
+  const X = x => ox + x * T, Y = y => oy + y * T, rnd = mkRng(7);
+  // outside the walls: grass, bushes, flowers
+  let gr = g.createLinearGradient(0, 0, 0, ch); gr.addColorStop(0, '#4c7d2c'); gr.addColorStop(1, '#3e6c25'); g.fillStyle = gr; g.fillRect(0, 0, cw, ch);
+  for (let i = 0; i < 320; i++) { const x = rnd() * cw, y = rnd() * ch; circ(g, x, y, T * (0.15 + rnd() * 0.45), rnd() < 0.5 ? 'rgba(40,80,25,.55)' : 'rgba(110,160,60,.35)'); }
+  for (let i = 0; i < 60; i++) { const x = rnd() * cw, y = rnd() * ch; circ(g, x, y, T * 0.07, ['#ffe27a', '#ffffff', '#ff9ab8'][i % 3]); }
+  // the stone wall around the field, with crenellations
+  const wx0 = X(-1.2), wy0 = Y(-1.4), ww = T * (W + 2.4), wh = T * (H + 2.8);
+  softShadow(g, wx0 + ww / 2 + T * 0.5, wy0 + wh / 2 + T * 0.5, ww * 0.56, wh * 0.53, 0.35);
+  rr(g, wx0, wy0, ww, wh, T * 0.6, '#8a7f6b', INK, T * 0.08);
+  for (let yy = wy0 + T * 0.1; yy < wy0 + wh - T * 0.2; yy += T * 0.5) for (let xx = wx0 + T * 0.1 + ((yy / T | 0) % 2) * T * 0.3; xx < wx0 + ww - T * 0.3; xx += T * 0.62) { if (xx > X(-0.6) && xx < X(W + 0.4) && yy > Y(-0.8) && yy < Y(H + 0.6)) continue; rr(g, xx, yy, T * 0.56, T * 0.44, T * 0.08, shade('#a39780', (rnd() - 0.5) * 0.16)); }
+  for (const [x, y, vert] of [[-0.85, -1.2, 0], [-0.85, H + 1.0, 0], [-1.0, -1.1, 1], [W + 0.75, -1.1, 1]]) {
+    const len = vert ? H + 2.2 : W + 1.7;
+    for (let k = 0; k < len; k += 1.3) { const mx = X(vert ? x : x + k + 0.3), my = Y(vert ? y + k + 0.3 : y); rr(g, mx, my - T * 0.18, T * 0.42, T * 0.36, T * 0.06, '#c8bca4', INK, T * 0.035); }
+  }
+  rr(g, X(-0.6), Y(-0.8), T * (W + 1.2), T * (H + 1.6), T * 0.4, '#b8ab8f', INK, T * 0.05);
+  // field tiles, with a little grass and the odd flower
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const light = (x + y) % 2 === 0, top = y < MID;
-    let c = light ? '#a9c45f' : '#a1bb58';
-    if (top) c = light ? '#a4bf5c' : '#9cb655';
-    g.fillStyle = c; g.fillRect(X(x), Y(y), T + 0.6, T + 0.6);
+    let c = top ? (light ? '#a6c15d' : '#9db857') : (light ? '#abc661' : '#a2bd5a');
+    g.fillStyle = shade(c, (rnd() - 0.5) * 0.05); g.fillRect(X(x), Y(y), T + 0.6, T + 0.6);
+    for (let k = 0; k < 3; k++) { const bx = X(x + rnd()), by = Y(y + rnd()); line(g, bx, by, bx + T * 0.05, by - T * 0.14, rnd() < 0.5 ? 'rgba(70,110,30,.45)' : 'rgba(210,235,140,.4)', Math.max(1, T * 0.035)); }
+    if (rnd() < 0.05) { const fx = X(x + 0.2 + rnd() * 0.6), fy = Y(y + 0.2 + rnd() * 0.6); for (let k = 0; k < 4; k++) circ(g, fx + Math.cos(k * 1.57) * T * 0.05, fy + Math.sin(k * 1.57) * T * 0.05, T * 0.045, '#fff'); circ(g, fx, fy, T * 0.04, '#ffd34a'); }
   }
-  // paths (lanes to the bridges, and in front of the king towers)
-  const path = (x0, y0, x1, y1) => { for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { g.fillStyle = (x + y) % 2 ? '#d6c48c' : '#dccb94'; g.fillRect(X(x), Y(y), T + 0.6, T + 0.6); } };
-  path(2, 6, 5, 15); path(13, 6, 16, 15); path(2, 17, 5, 26); path(13, 17, 16, 26);
-  path(2, 5, 16, 7); path(2, 25, 16, 27);
-  // a subtle tint to the enemy half
-  g.fillStyle = 'rgba(120,60,20,.04)'; g.fillRect(X(0), Y(0), T * W, T * MID);
-  // river
-  const rg = g.createLinearGradient(0, Y(RIVER_Y0), 0, Y(RIVER_Y1)); rg.addColorStop(0, '#3c8fc8'); rg.addColorStop(0.5, '#56aee0'); rg.addColorStop(1, '#3c8fc8');
-  g.fillStyle = rg; g.fillRect(X(-0.55), Y(RIVER_Y0), T * (W + 1.1), T * (RIVER_Y1 - RIVER_Y0));
-  g.globalAlpha = 0.35; for (let i = 0; i < 24; i++) line(g, X(i * 0.8 - 0.3), Y(MID - 0.4 + (i % 3) * 0.35), X(i * 0.8 + 0.2), Y(MID - 0.4 + (i % 3) * 0.35), '#bfe6ff', T * 0.06); g.globalAlpha = 1;
-  g.fillStyle = '#8a7a62'; g.fillRect(X(-0.55), Y(RIVER_Y0) - T * 0.18, T * (W + 1.1), T * 0.2); g.fillRect(X(-0.55), Y(RIVER_Y1) - T * 0.02, T * (W + 1.1), T * 0.2);
-  // bridges
+  // cobbled paths: lanes to the bridges and in front of the towers
+  const path = (x0, y0, x1, y1) => {
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      g.fillStyle = (x + y) % 2 ? '#d2bf88' : '#d9c792'; g.fillRect(X(x), Y(y), T + 0.6, T + 0.6);
+      for (let k = 0; k < 3; k++) { const sx = X(x + 0.15 + rnd() * 0.7), sy = Y(y + 0.15 + rnd() * 0.7), r = T * (0.1 + rnd() * 0.08); ell(g, sx + T * 0.03, sy + T * 0.03, r, r * 0.7, 'rgba(120,100,60,.3)'); ell(g, sx, sy, r, r * 0.7, shade('#e2d3a4', (rnd() - 0.5) * 0.2)); }
+    }
+  };
+  path(2, 6, 5, 15); path(13, 6, 16, 15); path(2, 17, 5, 26); path(13, 17, 16, 26); path(2, 5, 16, 7); path(2, 25, 16, 27);
+  // soft shade along the inside of the walls
+  const edge = (x0, y0, x1, y1, w, h) => { const gg = g.createLinearGradient(x0, y0, x1, y1); gg.addColorStop(0, 'rgba(20,30,10,.3)'); gg.addColorStop(1, 'rgba(20,30,10,0)'); g.fillStyle = gg; g.fillRect(Math.min(x0, x1) - (w ? 0 : 0), Math.min(y0, y1), w || Math.abs(x1 - x0), h || Math.abs(y1 - y0)); };
+  edge(X(0), Y(0), X(0), Y(0.8), T * W, 0); edge(X(0), Y(0), X(0.8), Y(0), 0, T * H); edge(X(W), Y(0), X(W - 0.8), Y(0), 0, T * H);
+  // the river: deep water, stone banks, lily pads
+  const r0 = Y(RIVER_Y0), r1 = Y(RIVER_Y1);
+  gr = g.createLinearGradient(0, r0, 0, r1); gr.addColorStop(0, '#2f7fb8'); gr.addColorStop(0.25, '#4aa2d8'); gr.addColorStop(0.5, '#5cb4e6'); gr.addColorStop(0.75, '#4aa2d8'); gr.addColorStop(1, '#2f7fb8');
+  g.fillStyle = gr; g.fillRect(X(-0.6), r0, T * (W + 1.2), r1 - r0);
+  g.fillStyle = 'rgba(10,40,80,.25)'; g.fillRect(X(-0.6), r0, T * (W + 1.2), T * 0.25);
+  for (let i = 0; i < 6; i++) { const lx = X(1 + rnd() * (W - 2)), ly = Y(MID - 0.5 + rnd()); if (BRIDGES.some(b => Math.abs((lx - ox) / T - b) < BRIDGE_HW + 0.5)) continue; ell(g, lx, ly, T * 0.26, T * 0.17, '#4f9a3a', 'rgba(20,60,20,.6)', 1); poly(g, [[lx, ly], [lx + T * 0.26, ly - T * 0.05], [lx + T * 0.26, ly + T * 0.05]], '#4aa2d8'); if (i % 2) circ(g, lx - T * 0.05, ly - T * 0.04, T * 0.07, '#ffb6d0'); }
+  for (const yy of [r0, r1]) for (let x = -0.6; x < W + 0.6; x += 0.42) { const sx = X(x), r = T * (0.17 + rnd() * 0.06); ell(g, sx, yy + (yy === r0 ? -T * 0.02 : T * 0.02), r * 1.15, r * 0.75, shade('#9a8c74', (rnd() - 0.5) * 0.25), 'rgba(40,30,20,.5)', 1); }
+  // bridges: planks, nails, rails and their shadow on the water
   for (const b of BRIDGES) {
-    rr(g, X(b - BRIDGE_HW), Y(RIVER_Y0 - 0.35), T * BRIDGE_HW * 2, T * (RIVER_Y1 - RIVER_Y0 + 0.7), T * 0.1, '#a8703c', INK, T * 0.06);
-    for (let i = 0; i < 7; i++) line(g, X(b - BRIDGE_HW + 0.1), Y(RIVER_Y0 - 0.2 + i * 0.4), X(b + BRIDGE_HW - 0.1), Y(RIVER_Y0 - 0.2 + i * 0.4), '#8a5a2e', T * 0.05);
-    line(g, X(b - BRIDGE_HW), Y(RIVER_Y0 - 0.35), X(b - BRIDGE_HW), Y(RIVER_Y1 + 0.35), '#6a4a2a', T * 0.14);
-    line(g, X(b + BRIDGE_HW), Y(RIVER_Y0 - 0.35), X(b + BRIDGE_HW), Y(RIVER_Y1 + 0.35), '#6a4a2a', T * 0.14);
+    const bx0 = X(b - BRIDGE_HW), bw = T * BRIDGE_HW * 2, by0 = Y(RIVER_Y0 - 0.45), bh = T * (RIVER_Y1 - RIVER_Y0 + 0.9);
+    g.fillStyle = 'rgba(0,20,50,.35)'; g.fillRect(bx0 + T * 0.35, r0, bw, r1 - r0);
+    rr(g, bx0, by0, bw, bh, T * 0.1, '#7a4f2a', INK, T * 0.06);
+    for (let i = 0; i < 8; i++) { const py = by0 + T * 0.08 + i * (bh - T * 0.16) / 8; rr(g, bx0 + T * 0.18, py, bw - T * 0.36, (bh - T * 0.16) / 8 - T * 0.05, T * 0.04, shade('#b07a45', (rnd() - 0.5) * 0.2)); line(g, bx0 + T * 0.22, py + T * 0.04, bx0 + bw - T * 0.22, py + T * 0.04, 'rgba(255,255,255,.18)', 1); circ(g, bx0 + T * 0.3, py + T * 0.12, T * 0.03, '#3a2a1e'); circ(g, bx0 + bw - T * 0.3, py + T * 0.12, T * 0.03, '#3a2a1e'); }
+    for (const sx of [bx0, bx0 + bw]) { rr(g, sx - T * 0.1, by0 - T * 0.1, T * 0.2, bh + T * 0.2, T * 0.08, '#6a4426', INK, T * 0.04); for (let k = 0; k < 3; k++) rr(g, sx - T * 0.14, by0 + k * bh / 2 - T * 0.12, T * 0.28, T * 0.28, T * 0.06, '#5a381e', INK, T * 0.03); }
   }
-  // fence posts along the river banks
-  for (let x = 0; x <= W; x += 1.5) { if (BRIDGES.some(b => Math.abs(x - b) < BRIDGE_HW + 0.3)) continue; rr(g, X(x - 0.12), Y(RIVER_Y0 - 0.6), T * 0.24, T * 0.42, T * 0.06, '#8a6a4a', INK, T * 0.03); rr(g, X(x - 0.12), Y(RIVER_Y1 + 0.2), T * 0.24, T * 0.42, T * 0.06, '#8a6a4a', INK, T * 0.03); }
-  // tents and banners outside the walls: red at the top (the enemy), blue at the bottom (you)
-  for (const [y0, team] of [[1, 1], [9, 1], [20, 0], [27, 0]]) for (const sx of [-1, 1]) {
-    const cx = sx < 0 ? X(-1.9) : X(W + 1.9), cy = Y(y0 + 1);
-    if (cx < -T || cx > cw + T) continue;
-    rr(g, cx - T * 0.9, cy - T * 0.2, T * 1.8, T * 1.6, T * 0.15, '#7a5a3a', INK, T * 0.05);
-    poly(g, [[cx - T * 1.1, cy], [cx, cy - T * 1.3], [cx + T * 1.1, cy]], TEAM[team].roof, INK, T * 0.05);
-    line(g, cx - T * 0.5, cy - T * 0.6, cx + T * 0.5, cy - T * 0.6, shade(TEAM[team].roof, 0.25), T * 0.08);
+  // fence posts with rope along the banks
+  for (const fy of [RIVER_Y0 - 0.55, RIVER_Y1 + 0.25]) {
+    let px = null;
+    for (let x = 0.2; x <= W; x += 1.2) {
+      if (BRIDGES.some(b => Math.abs(x - b) < BRIDGE_HW + 0.35)) { px = null; continue; }
+      const sx = X(x), sy = Y(fy);
+      if (px != null) { g.beginPath(); g.moveTo(px, sy + T * 0.1); g.quadraticCurveTo((px + sx) / 2, sy + T * 0.24, sx, sy + T * 0.1); g.strokeStyle = '#d8c090'; g.lineWidth = T * 0.05; g.stroke(); }
+      softShadow(g, sx + T * 0.15, sy + T * 0.42, T * 0.18, T * 0.08, 0.35);
+      rr(g, sx - T * 0.11, sy, T * 0.22, T * 0.42, T * 0.06, '#8a6a4a', INK, T * 0.03); ell(g, sx, sy, T * 0.11, T * 0.05, '#b08a60');
+      px = sx;
+    }
   }
-  // corner trees
-  for (const [x, y] of [[-1.6, H + 1.4], [W + 1.6, H + 1.4], [-1.6, -1.6], [W + 1.6, -1.6], [-2.2, MID], [W + 2.2, MID]]) { circ(g, X(x), Y(y) + T * 0.3, T * 1.2, '#2f5a1e'); circ(g, X(x), Y(y), T * 1.15, '#3d7a2a', INK, T * 0.05); circ(g, X(x) - T * 0.35, Y(y) - T * 0.35, T * 0.5, '#5a9a3a'); }
-  void A;
+  // tents, barrels and hay outside the walls: red at the top (the enemy), blue at the bottom (you)
+  for (const [y0, team] of [[1, 1], [8.5, 1], [20.5, 0], [27.5, 0]]) for (const sx of [-1, 1]) {
+    const cx = sx < 0 ? X(-2.4) : X(W + 2.4), cy = Y(y0 + 1);
+    if (cx < -T * 1.5 || cx > cw + T * 1.5) continue;
+    softShadow(g, cx + T * 0.6, cy + T * 1.5, T * 1.4, T * 0.5, 0.35);
+    rr(g, cx - T * 0.95, cy - T * 0.1, T * 1.9, T * 1.55, T * 0.12, '#7a5a3a', INK, T * 0.05);
+    rr(g, cx - T * 0.3, cy + T * 0.55, T * 0.6, T * 0.9, [T * 0.3, T * 0.3, 0, 0], '#3a2a1e');
+    poly(g, [[cx - T * 1.2, cy + T * 0.05], [cx, cy - T * 1.35], [cx + T * 1.2, cy + T * 0.05]], TEAM[team].roof, INK, T * 0.05);
+    for (const k of [-0.6, 0, 0.6]) line(g, cx + k * T * 0.3, cy - T * 1.1 + Math.abs(k) * T * 0.5, cx + k * T * 1.3, cy + T * 0.02, shade(TEAM[team].roof, 0.25), T * 0.07);
+    line(g, cx, cy - T * 1.35, cx, cy - T * 1.95, '#6a4a2a', T * 0.06); poly(g, [[cx, cy - T * 1.95], [cx + T * 0.5, cy - T * 1.8], [cx, cy - T * 1.65]], TEAM[team].m, INK, T * 0.02);
+    const bx = cx + sx * T * 1.5, by = cy + T * 1.5;
+    softShadow(g, bx + T * 0.2, by + T * 0.15, T * 0.35, T * 0.14, 0.35);
+    rr(g, bx - T * 0.25, by - T * 0.45, T * 0.5, T * 0.55, T * 0.12, '#9a6a3a', INK, T * 0.04); line(g, bx - T * 0.25, by - T * 0.3, bx + T * 0.25, by - T * 0.3, '#5a3a1e', T * 0.05); ell(g, bx, by - T * 0.45, T * 0.25, T * 0.08, '#b88a5a', INK, T * 0.03);
+    rr(g, bx - sx * T * 0.9 - T * 0.35, by - T * 0.25, T * 0.7, T * 0.42, T * 0.1, '#e0c060', INK, T * 0.04); line(g, bx - sx * T * 0.9 - T * 0.3, by - T * 0.05, bx - sx * T * 0.9 + T * 0.3, by - T * 0.05, '#b8983a', T * 0.04);
+  }
+  // trees with shadows
+  for (const [x, y, k] of [[-1.9, H + 1.6, 1.2], [W + 1.9, H + 1.6, 1.2], [-1.9, -1.8, 1.2], [W + 1.9, -1.8, 1.2], [-2.4, MID, 1.05], [W + 2.4, MID, 1.05], [-2.6, 5, 0.85], [W + 2.6, 26, 0.85], [-2.6, 24, 0.9], [W + 2.6, 7, 0.9]]) {
+    const tx = X(x), ty = Y(y), r = T * k;
+    if (tx < -r * 2 || tx > cw + r * 2) continue;
+    softShadow(g, tx + r * 0.6, ty + r * 0.75, r * 1.25, r * 0.6, 0.45);
+    rr(g, tx - r * 0.13, ty, r * 0.26, r * 0.7, r * 0.08, '#6a4426', INK, T * 0.04);
+    circ(g, tx, ty - r * 0.15, r, '#2f6a22', INK, T * 0.05); circ(g, tx - r * 0.35, ty - r * 0.4, r * 0.6, '#3d8a2c'); circ(g, tx + r * 0.3, ty - r * 0.55, r * 0.5, '#4c9a36'); circ(g, tx - r * 0.45, ty - r * 0.6, r * 0.25, 'rgba(255,255,255,.18)');
+  }
+  void arena;
+}
+// moving glints on the river, drawn every frame
+function drawWater(g, T, ox, oy, t) {
+  const r0 = oy + RIVER_Y0 * T, r1 = oy + RIVER_Y1 * T;
+  g.save(); g.beginPath(); g.rect(ox - T * 0.6, r0 + T * 0.15, T * (W + 1.2), r1 - r0 - T * 0.3);
+  for (const b of BRIDGES) g.rect(ox + (b + BRIDGE_HW) * T, r0 - T, -BRIDGE_HW * 2 * T, r1 - r0 + 2 * T);
+  g.clip('evenodd');
+  g.lineWidth = Math.max(1, T * 0.06); g.lineCap = 'round';
+  for (let i = 0; i < 16; i++) {
+    const x = ox + (((i * 2.37 + t * (0.35 + (i % 3) * 0.12)) % (W + 2)) - 1) * T, y = r0 + T * (0.4 + (i * 0.37 % 1.3)), a = 0.18 + 0.15 * Math.sin(t * 2 + i);
+    g.strokeStyle = 'rgba(230,248,255,' + a.toFixed(2) + ')'; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + T * 0.25, y - T * 0.08, x + T * 0.5, y); g.stroke();
+  }
+  g.restore();
 }
 
 /* ---------- projectiles & effects ---------- */
@@ -1820,6 +1999,7 @@ function frame(nowMs) {
   let shx = 0, shy = 0; if (BT.shake > 0) { BT.shake -= dt; shx = (Math.random() - 0.5) * TS * 0.5 * BT.shake / 0.5; shy = (Math.random() - 0.5) * TS * 0.5 * BT.shake / 0.5; }
   g.setTransform(DPR, 0, 0, DPR, shx * DPR, shy * DPR);
   if (BG) g.drawImage(BG, 0, 0, VW, VH);
+  drawWater(g, TS, OX, OY, now);
   // ground spells (poison) and deploy zone
   for (const v of BT.view) if (v.k === 's' && v.c === 'poison') drawPoison(v, now);
   for (const f of BT.fx) if (f.k === 'boom' && f.bk === 'freeze') drawFreezeArea(f);
@@ -1843,7 +2023,9 @@ function drawShadow(v) {
   if (v.k === 't') return;
   const [x, y] = toScreen(v.x, v.y), r = (v.r || 0.45) * TS;
   if (v.tunnel) return;
-  ell(g, x, y, r * (v.air ? 0.8 : 1.05), r * (v.air ? 0.4 : 0.5), v.air ? 'rgba(0,0,0,.18)' : 'rgba(0,0,0,.25)');
+  // a soft shadow cast to the lower right (further away for flyers)
+  const big = v.k === 'b' ? 1.25 : 1, off = v.air ? TS * 0.55 : TS * 0.12 * big;
+  softShadow(g, x + off, y + off * 0.55, r * (v.air ? 1.05 : 1.35) * big, r * (v.air ? 0.5 : 0.62) * big, v.air ? 0.28 : 0.42);
   // a ring in the team's colour so you can tell whose troop it is
   ell(g, x, y, r * 1.08, r * 0.54, null, v.side === BT.side ? 'rgba(70,160,255,.75)' : 'rgba(255,70,60,.75)', Math.max(1.5, TS * 0.07));
 }
@@ -1950,7 +2132,7 @@ function drawFx(dt, now) {
       const [tx, ty] = fxTarget(f);
       if (f.lob) {
         const p = Math.min(1, f.t / f.lob), x = f.sx + (tx - f.sx) * p, y = f.sy + (ty - f.sy) * p, z = Math.sin(p * Math.PI) * TS * 2.5;
-        const [px, py] = toScreen(x, y); drawProj(g, f.pk, px, py, 0, TS, now, z + TS * 0.4);
+        const [px, py] = toScreen(x, y); softShadow(g, px + z * 0.3, py + z * 0.15, TS * 0.25, TS * 0.12, 0.35); drawProj(g, f.pk, px, py, 0, TS, now, z + TS * 0.4);
         if (p < 1) keep.push(f);
       } else {
         const dx = tx - f.x, dy = ty - f.y, L = Math.hypot(dx, dy), s = f.spd * dt;
@@ -1997,6 +2179,7 @@ function drawSpellFly(f, p, now) {
   const [sx, sy] = toScreen(f.sx, f.sy), [x, y] = toScreen(f.x, f.y);
   const cx = sx + (x - sx) * p, cy = sy + (y - sy) * p - Math.sin(p * Math.PI) * TS * 4;
   const d = DEF[f.c];
+  if (f.c === 'fireball' || f.c === 'rocket' || f.c === 'goblin_barrel') { const gx = sx + (x - sx) * p, gy = sy + (y - sy) * p, hz = Math.sin(p * Math.PI) * TS * 4; softShadow(g, gx + hz * 0.3, gy + hz * 0.15, TS * (0.5 + p * 0.3), TS * (0.25 + p * 0.15), 0.25 + p * 0.2); }
   if (d.sp && d.sp.r && f.side === BT.side && !d.sp.log) { g.globalAlpha = 0.5 * (1 - p); ell(g, x, y, d.sp.r * TS, d.sp.r * TS, null, '#fff', 2); g.globalAlpha = 1; }
   switch (f.c) {
     case 'fireball': circ(g, cx, cy, TS * 0.7, 'rgba(255,120,30,.55)'); circ(g, cx, cy, TS * 0.42, '#ffcf4a'); for (let i = 1; i < 5; i++) { const q = Math.max(0, p - i * 0.04); circ(g, sx + (x - sx) * q, sy + (y - sy) * q - Math.sin(q * Math.PI) * TS * 4, TS * 0.4 * (1 - i * 0.18), 'rgba(255,150,50,' + (0.4 - i * 0.08) + ')'); } break;
@@ -2728,6 +2911,15 @@ window.afterBattle = function (r) {
 load();
 renderAll();
 if (!SAVE.tut) setTimeout(() => openHelp(true), 400);
+else if (SAVE.ver !== GAME_VER) setTimeout(openPatch, 400);
+SAVE.ver = GAME_VER; save();
+function openPatch() {
+  modal('<h2>Update ' + GAME_VER + '</h2>' +
+    '<p>🏰 More detailed towers: stone bricks, banners, arrow slits, the King\u2019s gate and crest, a wooden floor for the Princesses and royal tiles for the King.</p>' +
+    '<p>🌑 Shadows everywhere: towers, troops, flyers, buildings, trees, and fireballs as they fly.</p>' +
+    '<p>🌳 A more detailed arena: cobbled paths, grass and flowers, stone river banks with lily pads, sparkling water, sturdier bridges, rope fences, tents, barrels and hay.</p>' +
+    '<p>🔘 Chunkier buttons with outlines and shadows that press down when you tap them.</p>');
+}
 document.fonts && document.fonts.ready.then(() => { for (const k in PORTRAIT) delete PORTRAIT[k]; if (PAGE !== 'battle') renderPage(); });
 addEventListener('visibilitychange', () => { if (!document.hidden && !BT) { dailyReset(); renderAll(); } });
 </script>
