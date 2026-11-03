@@ -38,7 +38,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-04T07:41:00+11:00',
+    updated: '2026-11-04T08:15:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -268,6 +268,7 @@ window.GAMES = [
 // What's new on the home page, newest first
 window.NEWS = [
   { date: '2026-11-04', game: 'poly-racer', text: 'Poly Racer 1.4: the wheels no longer wobble when you drive (the brake calipers stay still and stray parts that swung round the axles are gone), and the cockpit view is fixed: you sit where a driver\u2019s eyes are, and dashboards, pillars and seats are no longer see-through.' },
+  { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.6: melee (V) now really hits: it hurts enemies and smashes barricades, which now break all at once after a few hits. Drones can drive under door barricades but can no longer slip through walls, and leaning is smooth and can\u2019t poke through barricades any more.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.5: down but not out! A lethal hit that isn\u2019t a headshot puts you on the floor while a teammate is still up, and they can revive you before you bleed out. Defenders share 10 reinforcements, 3-3 goes to overtime (first to 5), planting takes 7 seconds, a raised riot shield means no gun, and the new map is now called Oregons.' },
   { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.4: a new map, Ridgeback Ranch! A survivalist compound on the plains in broad daylight, with a chapel hall, two towers, bunk rooms and cellars. Every map is brighter, there is a new top bar (your team\u2019s health, the enemy hidden until spotted), a big 3-2-1 before each round, drones can hop again, and losing your drones in prep lets you watch your team\u2019s.' },
   { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.3: fixes and no jumping. Bots only see and shoot you with a real line of sight and aim like people (a moment to react, shaky aim that settles, recoil). Right click now toggles aiming (Hold is in Settings), nobody can be hurt in the prep phase, defenders get 5 barricades and 3 reinforcements, and walls and floors no longer turn black or patchy. There is no jump any more: you climb over windows, counters and low furniture by walking into them.' },
