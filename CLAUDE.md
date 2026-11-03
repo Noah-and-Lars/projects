@@ -277,6 +277,11 @@ source in Settings → Pages should be switched to `main`.
 
 - `siege/`: Siege, a 5v5 tactical shooter split out of Cube Assault 3.0 (see `siege/README.md`). Online rooms `csiege-<code>` on the
   realtime server; room chat (1.0.2): Enter or T to everyone, Y to your team, in the lobby, operator pick and the round.
+  1.0.3: no jumping (walking into a sill, counter, rail or low furniture vaults over it: `sgVaultCheck`, `VAULT_H`), bots
+  need a real line of sight (`botSees`/`botLine`, checked again before each shot), right-click aim toggles (setting `ads`:
+  toggle or hold), no damage outside the action phase, textures are `stableTex` DataTextures (canvases can be wiped by
+  the browser), old maps/gadgets/bodies are freed with `sgDispose`, and furniture that would box off part of a room is
+  taken out again (`placeChecked`). On localhost `__sg` exposes `botSees`, `sgVaultCheck`, `sgLightAt` for tests.
 
 ## Adding a game
 

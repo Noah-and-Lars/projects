@@ -74,10 +74,11 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
-const settings = Object.assign({ sens: 1, fov: 78, volume: 0.7, quality: 'high', seenNotes: '' }, (() => { try { return JSON.parse(localStorage.getItem('siege.settings') || '{}'); } catch (e) { return {}; } })());
+// ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
+const settings = Object.assign({ sens: 1, fov: 78, volume: 0.7, quality: 'high', seenNotes: '', ads: 'toggle' },(() => { try { return JSON.parse(localStorage.getItem('siege.settings') || '{}'); } catch (e) { return {}; } })());
 function saveSettings() { try { localStorage.setItem('siege.settings', JSON.stringify(settings)); } catch (e) {} }
 const profile = Object.assign({ name: '', xp: 0, matches: 0, wins: 0, losses: 0, kills: 0, deaths: 0, rounds: 0, fav: {} }, (() => { try { return JSON.parse(localStorage.getItem('siege.profile') || '{}'); } catch (e) { return {}; } })());
 function saveProfile() { try { localStorage.setItem('siege.profile', JSON.stringify(profile)); } catch (e) {} }
@@ -89,7 +90,11 @@ window.caOnlineOK = /^(noah-and-lars\.github\.io|localhost|127\.0\.0\.1)$/.test(
 window.caNeedWebsite = () => { if (window.sgToast) sgToast('ONLINE PLAY ONLY WORKS ON THE ARCADE WEBSITE', '#ffb066'); const n = $id('sgNote'); if (n) n.textContent = 'Online play only works on the arcade website. Vs bots works anywhere.'; };
 
 // ---------- renderer ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); }
+catch (e) { const b = document.querySelector('#boot small'); if (b) b.textContent = '3D graphics could not start. Reload the page or try another browser.'; throw e; } // 1.0.3: no endless loading screen
+// the graphics card was reset (sleep, a driver update): three.js puts everything back; if it can't, say so
+renderer.domElement.addEventListener('webglcontextlost', () => setTimeout(() => { if (renderer.getContext().isContextLost() && window.sgToast) sgToast('THE GRAPHICS STOPPED · RELOAD THE PAGE', '#ff6b6b'); }, 5000));
 const applyQuality = () => renderer.setPixelRatio(Math.min(devicePixelRatio || 1, settings.quality === 'high' ? 2 : settings.quality === 'medium' ? 1.25 : 0.85));
 applyQuality();
 renderer.setSize(innerWidth, innerHeight);
@@ -117,7 +122,16 @@ let seed = 1337;
 const rand = () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
 function makeCanvas(size, draw) { const c = document.createElement('canvas'); c.width = c.height = size; draw(c.getContext('2d'), size); return c; }
-function tex(cnv, rx = 1, ry = 1) { const t = new THREE.CanvasTexture(cnv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = maxAniso; return t; }
+// 1.0.3: textures keep their pixels in memory. A canvas can be wiped by the browser (a GPU reset, the Mac waking up,
+// memory running low) and the game then uploaded a blank one again: walls and floors went black or patchy.
+function stableTex(c) {
+  const w = c.width, h = c.height, src = c.getContext('2d').getImageData(0, 0, w, h).data, data = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) data.set(src.subarray((h - 1 - y) * w * 4, (h - y) * w * 4), y * w * 4); // the same way up as a canvas texture
+  const t = new THREE.DataTexture(data, w, h, THREE.RGBAFormat);
+  t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true;
+  return t;
+}
+function tex(cnv, rx = 1, ry = 1) { const t = stableTex(cnv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = maxAniso; return t; }
 function simplify() {}
 
 </script>
@@ -1036,6 +1050,8 @@ const CELL = 1.5, FLOOR_H = 3.4, WALL_T = 0.16;
 const PCOLS = 5, PROWS = 7;                 // chunks in a soft wall panel
 const HCOLS = 3;                            // chunks per side in a hatch
 const BCOLS = 4, BROWS = 4;                 // barricade planks
+// 1.0.3: every defender has 3 reinforcements and 5 barricades (it was 2 of each, too few for the doors and windows round a site)
+const REINF_N = 3, BARR_N = 5;
 const PREP_S = 45, ACTION_S = 180, DEFUSE_S = 45, PICK_S = 20, END_S = 7, PLANT_S = 6, DISABLE_S = 6;
 const freezeDeep = o => { if (o && typeof o === 'object' && !Object.isFrozen(o)) { Object.freeze(o); for (const k in o) freezeDeep(o[k]); } return o; };
 
@@ -1298,7 +1314,7 @@ const SG_TEX = {};
 function sgTextures() {
   if (SG_TEX.ready) return SG_TEX;
   sgRand = mulberry(99);
-  const T = (c, rep) => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.userData = { rep }; return t; };
+  const T = (c, rep) => { const t = stableTex(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); t.userData = { rep }; return t; };
   // [texture, metres per tile]
   SG_TEX.wood = T(cnv(512, 512, (g, w, h) => { // floor planks
     const pw = w / 6;
@@ -1417,7 +1433,7 @@ function sgMat(key) {
   }[key] || [null, 0x888888];
   const o = { color: spec[1], vertexColors: true };
   if (spec[0]) o.map = X[spec[0]];
-  const m = new THREE.MeshLambertMaterial(o);
+  const m = new THREE.MeshLambertMaterial(o); m.userData.keep = true;
   if (spec[0]) worldUV(m, X[spec[0]].userData.rep);
   return SG_MATS[key] = m;
 }
@@ -1425,18 +1441,18 @@ function sgMat(key) {
 const SG_GLOW = {};
 function glowMat(hex, opacity) {
   const k = hex + '/' + (opacity || 1);
-  if (!SG_GLOW[k]) SG_GLOW[k] = new THREE.MeshBasicMaterial(opacity ? { color: hex, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending } : { color: hex });
+  if (!SG_GLOW[k]) { SG_GLOW[k] = new THREE.MeshBasicMaterial(opacity ? { color: hex, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending } : { color: hex }); SG_GLOW[k].userData.keep = true; }
   return SG_GLOW[k];
 }
 let SG_CONE_TEX = null, SG_DOT_TEX = null;
 function coneTex() {
   if (SG_CONE_TEX) return SG_CONE_TEX;
-  SG_CONE_TEX = new THREE.CanvasTexture(cnv(64, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); const gx = g.createLinearGradient(0, 0, w, 0); gx.addColorStop(0, 'rgba(0,0,0,1)'); gx.addColorStop(0.5, 'rgba(0,0,0,0)'); gx.addColorStop(1, 'rgba(0,0,0,1)'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = gx; g.fillRect(0, 0, w, h); }));
+  SG_CONE_TEX = stableTex(cnv(64, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); const gx = g.createLinearGradient(0, 0, w, 0); gx.addColorStop(0, 'rgba(0,0,0,1)'); gx.addColorStop(0.5, 'rgba(0,0,0,0)'); gx.addColorStop(1, 'rgba(0,0,0,1)'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = gx; g.fillRect(0, 0, w, h); }));
   return SG_CONE_TEX;
 }
 function dotTex() {
   if (SG_DOT_TEX) return SG_DOT_TEX;
-  SG_DOT_TEX = new THREE.CanvasTexture(cnv(64, 64, (g, w) => { const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); }));
+  SG_DOT_TEX = stableTex(cnv(64, 64, (g, w) => { const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); }));
   return SG_DOT_TEX;
 }
 
@@ -1634,8 +1650,10 @@ function sgBuildMap(key) {
 
   const gb = new GB();
   const wallMat = r => r >= 0 ? M.rooms[r].K.wl : r === -2 ? null : 'brick';
+  // the wall material seen from a cell: open air over a taller room below (an atrium) takes that room's walls
+  const wallMatAt = (f, x, z) => { for (let g = f; g >= 0; g--) { const r = cellAt(g, x, z); if (r >= 0) return M.rooms[r].K.wl; if (r !== -2) return r === -1 ? 'brick' : null; } return null; };
   const addOb = (o) => { // register a static obstacle in every cell it touches
-    M.obs.push(o);
+    M.obs.push(o); if (M.journal) M.journal.push(o);
     const cx0 = Math.max(0, Math.floor(o.x0 / CELL - 0.01)), cx1 = Math.min(Wd - 1, Math.floor(o.x1 / CELL + 0.01)), cz0 = Math.max(0, Math.floor(o.z0 / CELL - 0.01)), cz1 = Math.min(Hd - 1, Math.floor(o.z1 / CELL + 0.01));
     for (let x = cx0; x <= cx1; x++) for (let z = cz0; z <= cz1; z++) M.cellObs[z * Wd + x].push(o);
     return o;
@@ -1657,7 +1675,7 @@ function sgBuildMap(key) {
     for (const e of edges) {
       if (e.t === 'none') continue;
       const ax = e.o === 'h' ? 'x' : 'z', c = (e.o === 'h' ? e.z : e.x) * CELL, s0 = (e.o === 'h' ? e.x : e.z) * CELL, s1 = s0 + CELL;
-      const mA = wallMat(e.a), mB = wallMat(e.b);
+      const mA = e.a === -2 ? wallMatAt(f, e.o === 'v' ? e.x - 1 : e.x, e.o === 'v' ? e.z : e.z - 1) : wallMat(e.a), mB = e.b === -2 ? wallMatAt(f, e.x, e.z) : wallMat(e.b);
       // box helper in edge space: along [a0,a1], height [h0,h1], depth [-t/2,t/2]; matA faces side A
       const ebox = (a0, a1, h0, h1, t, mats, ob) => {
         const half = t / 2;
@@ -1707,7 +1725,7 @@ function sgBuildMap(key) {
         ebox(s0, s1, y0 + 0.98, y0 + 1.06, 0.09, { a: 'trim', b: 'trim', s: 'trim', top: 'trim' }, { m: 0, b: 1, k: 'rail' });
         for (let k = 0; k < 4; k++) { const a = s0 + 0.18 + k * 0.38; ebox(a, a + 0.05, y0, y0 + 0.98, 0.05, { a: 'trim', b: 'trim' }); }
         ebox(s0, s1, y0, y0 + 0.1, 0.12, { a: 'trim', b: 'trim', s: 'trim' });
-        // collision only (bullets pass): you can still jump over it
+        // collision only (bullets pass): you can still climb over it
         let x0, x1, z0, z1; if (ax === 'x') { x0 = s0; x1 = s1; z0 = c - 0.06; z1 = c + 0.06; } else { z0 = s0; z1 = s1; x0 = c - 0.06; x1 = c + 0.06; }
         addOb({ x0, x1, z0, z1, y0, y1: y0 + 1.05, m: 1, b: 0, k: 'rail' });
       }
@@ -1720,9 +1738,10 @@ function sgBuildMap(key) {
       const es = [z < Hd ? EV(f, x, z) : null, z > 0 ? EV(f, x, z - 1) : null, x < Wd ? EH(f, x, z) : null, x > 0 ? EH(f, x - 1, z) : null].filter(Boolean);
       const solid = es.filter(e => e.t !== 'none' && e.t !== 'rail' && e.t !== 'counter');
       if (solid.length < 1) continue;
-      const hx = x * CELL, hz = z * CELL, h = WALL_T / 2 + 0.005;
-      const mats = solid.map(e => wallMat(e.a) || wallMat(e.b)).filter(Boolean);
-      gb.box(mats[0] || 'plaster', hx - h, y0, hz - h, hx + h, y0 + FLOOR_H, hz + h, 'yY');
+      // 1.0.3: a hair inside the walls (they used to stick out and show a stripe of brick every 1.5 m), each side in its room's walls
+      const hx = x * CELL, hz = z * CELL, h = WALL_T / 2 - 0.003;
+      const pm = (a, b) => wallMatAt(f, a[0], a[1]) || wallMatAt(f, b[0], b[1]) || 'plaster';
+      gb.box({ x: pm([x - 1, z - 1], [x - 1, z]), X: pm([x, z - 1], [x, z]), z: pm([x - 1, z - 1], [x, z - 1]), Z: pm([x - 1, z], [x, z]), y: 'plaster', Y: 'plaster' }, hx - h, y0, hz - h, hx + h, y0 + FLOOR_H, hz + h, 'yY');
       addOb({ x0: hx - h, x1: hx + h, z0: hz - h, z1: hz + h, y0, y1: y0 + FLOOR_H, m: 1, b: 1, k: 'hard' });
     }
   }
@@ -1751,6 +1770,19 @@ function sgBuildMap(key) {
       if (L > 0 && down !== -1) {
         const cm = isRoom(down) ? M.rooms[down].K.cl : (cellAt(L - 2, x, z) >= 0 ? M.rooms[cellAt(L - 2, x, z)].K.cl : 'plasterW');
         gb.face(cm, [x0, y - 0.2, z0], [CELL, 0, 0], [0, 0, CELL], [0, -1, 0], 0.75);
+      }
+      // 1.0.3: the edge of the slab where it stops (galleries, stairwells): without it you saw through a black slit
+      if (L > 0) {
+        const em = isRoom(down) ? M.rooms[down].K.cl : 'concrete', t = 0.2;
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, nz = z + dz;
+          if (nx < 0 || nz < 0 || nx >= Wd || nz >= Hd || M.slab(L, nx, nz) || hatchAt.has(L * NC + nz * Wd + nx)) continue;
+          if (cellAt(L - 1, nx, nz) === -1 && (L >= M.nf || cellAt(L, nx, nz) === -1)) continue; // solid on that side: nobody sees it
+          if (dx > 0) gb.face(em, [x1, y - t, z1], [0, 0, -CELL], [0, t, 0], [1, 0, 0]);
+          else if (dx < 0) gb.face(em, [x0, y - t, z0], [0, 0, CELL], [0, t, 0], [-1, 0, 0]);
+          else if (dz > 0) gb.face(em, [x0, y - t, z1], [CELL, 0, 0], [0, t, 0], [0, 0, 1]);
+          else gb.face(em, [x1, y - t, z0], [-CELL, 0, 0], [0, t, 0], [0, 0, -1]);
+        }
       }
     }
   }
@@ -1805,6 +1837,16 @@ function sgBuildMap(key) {
   return M;
 }
 
+// 1.0.3: free what a map (or a gadget, or a body) put on the graphics card when it goes. Every round builds the map
+// again, and the old copies used to pile up until the card ran short and textures started to fail.
+function sgDispose(root) {
+  if (!root) return;
+  root.traverse(o => {
+    if (o.geometry && o.geometry !== UNIT_BOX && !o.geometry.shared && !o.geometry.userData.keep) o.geometry.dispose();
+    const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of ms) if (!m.userData.keep && !m.shared) m.dispose();
+  });
+}
 // ---------- light fixtures ----------
 function sgLights(M, rnd) {
   const Wd = M.Wd;
@@ -1868,6 +1910,9 @@ function sgSeeFlat(f, ax, az, bx, bz) {
   let tmz = dz !== 0 ? ((sz > 0 ? (z + 1) * CELL - az : az - z * CELL) / Math.abs(dz)) : 1e9;
   let vis = 1;
   for (let n = 0; n < 64 && (x !== tx || z !== tz); n++) {
+    // 1.0.3: stop at the end of the line. A point right on a cell edge used to send the walk on past it into
+    // the next wall, so corners of floors, walls and ceilings came out dark at random: patchy, blotchy rooms
+    if (Math.min(tmx, tmz) >= 1 - 1e-9) break;
     let e;
     if (tmx < tmz) { e = M.EV(f, sx > 0 ? x + 1 : x, z); x += sx; tmx += ddx; } else { e = M.EH(f, x, sz > 0 ? z + 1 : z); z += sz; tmz += ddz; }
     if (!e) return 0;
@@ -2511,6 +2556,61 @@ function sgFurnish(M, gb, rnd) {
     plinth: F => { lb(F, -0.3, 0.3, 0, 1.0, -0.3, 0.3, 'white'); lb(F, -0.15, 0.15, 1.0, 1.4, -0.12, 0.12, pick(['brass', 'stone', 'black']), null); },
     piano: F => { lb(F, -0.75, 0.75, 0, 1.25, B, B + 0.6, 'black'); lb(F, -0.7, 0.7, 0.72, 0.76, B + 0.6, B + 0.85, 'white', null); },
   };
+  // ----- 1.0.3: furniture never boxes off part of a room -----
+  // (a truck in Port's loading dock sealed off a corner of it, racks and tanks walled in single cells). Each item is
+  // built, and taken out again if a part of the room you could walk to before can't be reached any more. Its random
+  // numbers are still used, so every other piece of furniture stays where it always was.
+  const PASS = ['none', 'door', 'window'];
+  const openAt = (f, c) => {
+    if (M.stairCell.has(f * NC + c)) return false;
+    const cx = (c % Wd + 0.5) * CELL, cz = (((c / Wd) | 0) + 0.5) * CELL, fy = M.floors[f].y;
+    for (const o of M.cellObs[c]) if (o.m && o.k === 'prop' && o.y0 < fy + 1.4 && o.y1 > fy + STEP_UP && cx > o.x0 - 0.12 && cx < o.x1 + 0.12 && cz > o.z0 - 0.12 && cz < o.z1 + 0.12) return false;
+    return true;
+  };
+  const crossBlocked = (f, x, z, dx, dz) => { // can a body (0.3 m round) get from this cell into the next along any lane?
+    const fy = M.floors[f].y;
+    const hit = (px, pz) => { const c = Math.floor(pz / CELL) * Wd + Math.floor(px / CELL); for (const o of M.cellObs[c] || []) if (o.m && (o.k === 'prop' || o.k === 'step') && o.y1 > fy + STEP_UP && o.y0 < fy + 1.5 && px > o.x0 - 0.3 && px < o.x1 + 0.3 && pz > o.z0 - 0.3 && pz < o.z1 + 0.3) return true; return false; };
+    lanes: for (const l of [0, -0.2, 0.2]) {
+      for (const k of [0.25, 0.5, 0.75]) { const px = (x + 0.5 + dx * k + (dz ? l : 0)) * CELL, pz = (z + 0.5 + dz * k + (dx ? l : 0)) * CELL; if (hit(px, pz)) continue lanes; }
+      return false;
+    }
+    return true;
+  };
+  const edgeTo = (f, x, z, dx, dz) => dx > 0 ? M.EV(f, x + 1, z) : dx < 0 ? M.EV(f, x, z) : dz > 0 ? M.EH(f, x, z + 1) : M.EH(f, x, z);
+  const reachIn = R => { // room cells you can walk to from its doors, windows and openings
+    const f = R.f, inR = new Set(R.cells), seen = new Set(), q = [];
+    for (const c of R.cells) {
+      if (!openAt(f, c)) continue;
+      const x = c % Wd, z = (c / Wd) | 0;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const e = edgeTo(f, x, z, dx, dz); if (e && PASS.includes(e.t) && !inR.has(c + dz * Wd + dx) && x + dx >= 0 && x + dx < Wd && z + dz >= 0 && z + dz < Hd) { seen.add(c); q.push(c); break; } }
+    }
+    while (q.length) {
+      const c = q.pop(), x = c % Wd, z = (c / Wd) | 0;
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const n = c + dz * Wd + dx, e = edgeTo(f, x, z, dx, dz);
+        if (!inR.has(n) || seen.has(n) || !e || !PASS.includes(e.t) || !openAt(f, n) || crossBlocked(f, x, z, dx, dz)) continue;
+        seen.add(n); q.push(n);
+      }
+    }
+    return seen;
+  };
+  const placeChecked = (R, build) => {
+    const before = reachIn(R), cp = { gb: {}, obs: M.obs.length, glows: M.glows.length, paintings: M.paintings.length, fires: (M.fires || []).length };
+    for (const k in gb.m) cp.gb[k] = gb.m[k].p.length;
+    M.journal = [];
+    build();
+    const added = M.journal; M.journal = null;
+    if (!added.length) return;
+    const after = reachIn(R);
+    let boxedIn = false;
+    for (const c of before) if (!after.has(c) && openAt(R.f, c)) { boxedIn = true; break; }
+    if (!boxedIn) return;
+    (M.removed = M.removed || []).push(R.n); // test handle: what was taken out
+    for (const k in gb.m) { if (cp.gb[k] === undefined) delete gb.m[k]; else { gb.m[k].p.length = cp.gb[k]; gb.m[k].n.length = cp.gb[k]; } }
+    const gone = new Set(added);
+    M.obs.length = cp.obs; for (const o of added) sgNear((o.x0 + o.x1) / 2, (o.z0 + o.z1) / 2, Math.max(o.x1 - o.x0, o.z1 - o.z0) / 2 + CELL, c => { M.cellObs[c] = M.cellObs[c].filter(q => !gone.has(q)); });
+    M.glows.length = cp.glows; M.paintings.length = cp.paintings; if (M.fires) M.fires.length = cp.fires;
+  };
   // ----- place -----
   for (const R of M.rooms) {
     const rec = RECIPES[R.K.f] || RECIPES.none, fy = M.floors[R.f].y;
@@ -2528,7 +2628,7 @@ function sgFurnish(M, gb, rnd) {
         }
         used[R.f * NC + c] = 1;
         if (!ITEMS[item]) continue;
-        ITEMS[item](frame(x, z, fy, s));
+        placeChecked(R, () => ITEMS[item](frame(x, z, fy, s)));
       }
     }
     // middle items: need a free cell whose neighbours inside the room are also free (so paths stay open)
@@ -2548,7 +2648,7 @@ function sgFurnish(M, gb, rnd) {
         if (item !== 'rug') { for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const q = (z + dz) * Wd + x + dx; if (M.cellAt(R.f, x + dx, z + dz) === R.id && !big) used[R.f * NC + q] = 1; } }
         if (big) for (const dz of [-1, 1]) used[R.f * NC + (z + dz) * Wd + x] = 1;
         // centred frame: facing +z, so long items run along z
-        ITEMS[item]({ cx: (x + 0.5) * CELL, cz: (z + 0.5) * CELL, fy, fw: [0, 1], rt: [1, 0], P(u, v) { return [this.cx + u, this.cz + v]; } });
+        placeChecked(R, () => ITEMS[item]({ cx: (x + 0.5) * CELL, cz: (z + 0.5) * CELL, fy, fw: [0, 1], rt: [1, 0], P(u, v) { return [this.cx + u, this.cz + v]; } }));
       }
     }
   }
@@ -2633,8 +2733,10 @@ function sgBuildDecor(M) {
   M.dust = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffe8c0, size: 0.025, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
   add(M.dust);
 }
-function skylineTex(tint) {
-  return new THREE.CanvasTexture(cnv(2048, 512, (g, w, h) => {
+const SKY_TEX = {};
+function skylineTex(tint) { return SKY_TEX[tint] || (SKY_TEX[tint] = skylineMake(tint)); } // one per map, not a new one every round
+function skylineMake(tint) {
+  return stableTex(cnv(2048, 512, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#020306'); gr.addColorStop(0.55, '#0b1220'); gr.addColorStop(0.75, '#1a1a24'); gr.addColorStop(1, '#050507');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
     const r = mulberry(5);
@@ -2939,7 +3041,7 @@ const uid = () => G.myId.slice(0, 4) + (++G.seq).toString(36);
 function sgNewPlayer(id, name, team, bot) {
   return {
     id, name, team, bot: !!bot, op: null, sp: 0, hp: 100, max: 100, alive: false, x: 0, y: 0, z: 0, vy: 0, vx: 0, vz: 0, yaw: 0, pitch: 0,
-    crouch: 0, lean: 0, onGround: true, mode: 'body', kills: 0, deaths: 0, score: 0, slot: 0, w: null, gu: 0, gs: 0, reinf: 2, barr: 2,
+    crouch: 0, lean: 0, onGround: true, mode: 'body', kills: 0, deaths: 0, score: 0, slot: 0, w: null, gu: 0, gs: 0, reinf: REINF_N, barr: BARR_N,
     drones: [], cam: 0, holo: null, shieldUp: false, sonar: false, slug: false, act: '', actT: 0, slow: 0, stun: 0, blind: 0, dread: 0, spottedUntil: 0,
     model: null, buf: [], netAt: 0, shots: 0, lastShot: null, scanCd: 0, uLast: 0, ready: false, ping: 0,
   };
@@ -2950,7 +3052,7 @@ function sgArm(P) {
   const k0 = O.guns[0], k1 = O.sec2[0];
   P.w = { keys: [k0, k1], ammo: [SG_GUNS[k0].mag, SG_GUNS[k1].mag], res: [SG_GUNS[k0].mag * 4, SG_GUNS[k1].mag * 4], rel: 0, cd: 0, rec: 0, bloom: 0, trig: false };
   P.gu = O.g.n0; P.gs = SG_SEC[O.sec[0]].n0; P.secKey = O.sec[0];
-  P.max = P.hp = opHp(P.op); P.reinf = 2; P.barr = 2;
+  P.max = P.hp = opHp(P.op); P.reinf = REINF_N; P.barr = BARR_N;
   P.slot = 0; P.shieldUp = false; P.sonar = false; P.slug = false; P.holo = null; P.slow = P.stun = P.blind = P.dread = 0;
   P.drones = sideOf(P) === 'atk' ? [{ x: 0, y: 0, z: 0, yaw: 0, vy: 0, alive: true, jam: 0 }, { x: 0, y: 0, z: 0, yaw: 0, vy: 0, alive: true, jam: 0, held: true }] : [];
 }
@@ -2984,7 +3086,7 @@ EV.hit = (d) => {
 };
 function sgApplyDamage(T, dmg, aId, hs, w, dx, dz) {
   if (!T.alive) return;
-  if (G.phase !== 'action' && G.phase !== 'prep') return;
+  if (G.phase !== 'action') return; // 1.0.3: nobody can be hurt in the prep phase (attackers are out on their drones)
   const dealt = hs ? T.hp : Math.min(T.hp, dmg);
   T.hp -= hs ? 9999 : dmg;
   if (T.id === G.myId && window.sgHurt) sgHurt(dealt, dx, dz);
@@ -2992,7 +3094,7 @@ function sgApplyDamage(T, dmg, aId, hs, w, dx, dz) {
 }
 // a hit seen by the shooter: tell the target's owner
 function sgDealHit(A, T, dmg, hs, w) {
-  if (!T.alive) return;
+  if (!T.alive || G.phase !== 'action') return;
   if (A && A.id === G.myId && window.sgHitMarker) sgHitMarker(hs, T.hp - (hs ? 999 : dmg) <= 0);
   const dx = T.x - (A ? A.x : T.x), dz = T.z - (A ? A.z : T.z);
   emit('hit', { t: T.id, a: A ? A.id : '', d: Math.round(dmg), hs: hs ? 1 : 0, w, dx: +dx.toFixed(2), dz: +dz.toFixed(2) });
@@ -3154,6 +3256,7 @@ EV.barr = (d) => {
   const p = W.panels[d.p]; if (!p || p.active && p.alive.some(v => v)) return;
   p.active = true; p.side = d.s; for (let i = 0; i < p.n; i++) { p.alive[i] = 1; p.hp[i] = p.hp0; }
   sgPanelDraw(p); snd('hammer', chunkCenter(p), 0.7);
+  const P = G.P.get(d.o); if (P && auth(P)) P.barr = Math.max(0, P.barr - 1); // only one that really went up counts
 };
 function chunkCenter(p) { if (p.ax === 'y') return { x: p.x0 + p.w / 2, y: p.y0, z: p.z0 + p.w / 2 }; const s = p.s0 + p.w / 2, y = p.y0 + p.h / 2; return p.ax === 'x' ? { x: s, y, z: p.c } : { x: p.c, y, z: s }; }
 
@@ -3347,18 +3450,18 @@ EV.gadd = (d) => {
 };
 function sgRemoveGadget(id, why) {
   const g = G.gad.get(id); if (!g) return;
-  sgScene.remove(g.mesh); G.gad.delete(id);
+  sgScene.remove(g.mesh); sgDispose(g.mesh); G.gad.delete(id);
   if (why === 'shot' || why === 'boom' || why === 'zap') { fxSpark(g.x, g.y, g.z, 0xffffff, 5); snd(why === 'zap' ? 'zap' : 'chip', g, 0.6); }
   if (g.k === 'mirror' && W.panels[g.p]) { /* leaves a hole */ }
 }
 EV.gdel = (d) => sgRemoveGadget(d.id, d.why);
 EV.gact = (d) => {
   const g = G.gad.get(d.id); if (!g) return;
-  if (g.k === 'gas') { g.cloudUntil = now() + 12; fxCloud(g.x, g.y - 0.3, g.z, 0x7aa83a, 12, 4, 0.5); snd('hiss', g, 1); G.clouds.push({ x: g.x, y: g.y, z: g.z, r: 4, until: now() + 12, k: 'gas', o: g.o }); sgScene.remove(g.mesh); G.gad.delete(g.id); }
-  else if (g.k === 'fear') { fxCloud(g.x, g.y, g.z, 0x050508, 5, 3.2, 0.92); snd('hiss', g, 0.6); G.clouds.push({ x: g.x, y: g.y, z: g.z, r: 3.2, until: now() + 5, k: 'fear', o: g.o }); g.uses--; g.cool = now() + 6; if (g.uses <= 0) { sgScene.remove(g.mesh); G.gad.delete(g.id); } }
+  if (g.k === 'gas') { g.cloudUntil = now() + 12; fxCloud(g.x, g.y - 0.3, g.z, 0x7aa83a, 12, 4, 0.5); snd('hiss', g, 1); G.clouds.push({ x: g.x, y: g.y, z: g.z, r: 4, until: now() + 12, k: 'gas', o: g.o }); sgScene.remove(g.mesh); sgDispose(g.mesh); G.gad.delete(g.id); }
+  else if (g.k === 'fear') { fxCloud(g.x, g.y, g.z, 0x050508, 5, 3.2, 0.92); snd('hiss', g, 0.6); G.clouds.push({ x: g.x, y: g.y, z: g.z, r: 3.2, until: now() + 5, k: 'fear', o: g.o }); g.uses--; g.cool = now() + 6; if (g.uses <= 0) { sgScene.remove(g.mesh); sgDispose(g.mesh); G.gad.delete(g.id); } }
   else if (g.k === 'alarm') { g.ringUntil = now() + 3; }
   else if (g.k === 'thorn') { g.fuse = now() + 1.5; snd('beep2', g, 1); }
-  else if (g.k === 'gust') { fxPuff(g.x, g.y, g.z, 0xd0e0d0, 1.4, 0.4, 0); snd('thunk', g, 1); sgScene.remove(g.mesh); G.gad.delete(g.id); const T = G.P.get(d.t); if (T && auth(T)) { const dx = T.x - g.x, dz = T.z - g.z, dd = Math.hypot(dx, dz) || 1; T.vx += dx / dd * 9; T.vz += dz / dd * 9; T.vy = 4; T.onGround = false; T.stun = 1.2; sgApplyDamage(T, 15, g.o, false, 'Gust Mine'); emit('spot', { t: T.id, by: g.o, d: 4 }); } }
+  else if (g.k === 'gust') { fxPuff(g.x, g.y, g.z, 0xd0e0d0, 1.4, 0.4, 0); snd('thunk', g, 1); sgScene.remove(g.mesh); sgDispose(g.mesh); G.gad.delete(g.id); const T = G.P.get(d.t); if (T && auth(T)) { const dx = T.x - g.x, dz = T.z - g.z, dd = Math.hypot(dx, dz) || 1; T.vx += dx / dd * 9; T.vz += dz / dd * 9; T.vy = 4; T.onGround = false; T.stun = 1.2; sgApplyDamage(T, 15, g.o, false, 'Gust Mine'); emit('spot', { t: T.id, by: g.o, d: 4 }); } }
 };
 // EMP: knocks out electronics near it for 12 s
 EV.emp = (d) => {
@@ -3369,7 +3472,7 @@ EV.emp = (d) => {
 // Warden's active defense eats a projectile
 EV.adsz = (d) => {
   const g = G.gad.get(d.g), p = G.proj.get(d.p);
-  if (p) { fxSpark(p.x, p.y, p.z, 0x60e0ff, 8); fxFlash(p.x, p.y, p.z, 0x60e0ff, 0.8, 0.1); sgScene.remove(p.mesh); G.proj.delete(d.p); }
+  if (p) { fxSpark(p.x, p.y, p.z, 0x60e0ff, 8); fxFlash(p.x, p.y, p.z, 0x60e0ff, 0.8, 0.1); sgScene.remove(p.mesh); sgDispose(p.mesh); G.proj.delete(d.p); }
   if (g) { g.charges = Math.max(0, (g.charges || 0) - 1); g.recharge = now() + 10; snd('zap', g, 0.8); if (g.mesh) { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(g.x, g.y, g.z), new THREE.Vector3(p ? p.x : g.x, p ? p.y : g.y, p ? p.z : g.z)]), new THREE.LineBasicMaterial({ color: 0x80e8ff })); fxAdd(l, 0.12); } }
 };
 EV.scan = (d) => { G.scan = { at: now() + 2, until: now() + 5, o: d.o }; snd('scan', null, 0.8); if (window.sgToast) sgToast(me() && sideOf(me()) === 'def' ? 'PULSE SCAN INCOMING — DON\'T MOVE' : 'PULSE SCAN', '#c77dff'); };
@@ -3428,18 +3531,18 @@ function sgProjUpdate(dt) {
     // the thrower decides when it goes off
     const O = G.P.get(p.o);
     if (FUSE[p.k] && age >= FUSE[p.k] && O && auth(O)) {
-      G.proj.delete(p.id); sgScene.remove(p.mesh);
+      G.proj.delete(p.id); sgScene.remove(p.mesh); sgDispose(p.mesh);
       if (p.k === 'frag') sgBoom('frag', p.x, p.y + 0.1, p.z, p.o);
       else emit('nade', { k: p.k, x: +p.x.toFixed(2), y: +(p.y + 0.1).toFixed(2), z: +p.z.toFixed(2), o: p.o, id: p.id });
     }
-    if (age > 12) { G.proj.delete(p.id); sgScene.remove(p.mesh); }
+    if (age > 12) { G.proj.delete(p.id); sgScene.remove(p.mesh); sgDispose(p.mesh); }
   }
 }
 // what a sticky projectile does when it lands (only the thrower acts on it)
 function sgProjLanded(p) {
   const O = G.P.get(p.o);
   if (!O || !auth(O)) return;
-  G.proj.delete(p.id); sgScene.remove(p.mesh);
+  G.proj.delete(p.id); sgScene.remove(p.mesh); sgDispose(p.mesh);
   const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) };
   if (p.k === 'impact') { emit('pgone', { id: p.id }); sgBoom('impact', p.x, p.y, p.z, p.o); return; }
   if (p.k === 'kunai') { // foam barrier: on a wall it covers the wall, on the floor it stands up facing the thrower
@@ -3450,10 +3553,10 @@ function sgProjLanded(p) {
   emit('pgone', { id: p.id });
   emit('gadd', { id: p.id, k: p.k, o: p.o, ...pos, n: p.n.map(v => +v.toFixed(2)), p: p.panel });
 }
-EV.pgone = (d) => { const p = G.proj.get(d.id); if (p) { sgScene.remove(p.mesh); G.proj.delete(d.id); } };
+EV.pgone = (d) => { const p = G.proj.get(d.id); if (p) { sgScene.remove(p.mesh); sgDispose(p.mesh); G.proj.delete(d.id); } };
 // smoke, stun and EMP grenades going off
 EV.nade = (d) => {
-  const p = G.proj.get(d.id); if (p) { sgScene.remove(p.mesh); G.proj.delete(d.id); }
+  const p = G.proj.get(d.id); if (p) { sgScene.remove(p.mesh); sgDispose(p.mesh); G.proj.delete(d.id); }
   if (d.k === 'smoke') { fxCloud(d.x, d.y - 0.1, d.z, 0xb8b4ac, 13, 3.6, 0.82); snd('hiss', d, 0.9); G.clouds.push({ x: d.x, y: d.y, z: d.z, r: 3.6, until: now() + 13, k: 'smoke' }); }
   else if (d.k === 'flash') {
     fxFlash(d.x, d.y, d.z, 0xffffff, 4, 0.2); fxLight(d.x, d.y, d.z, 0xffffff, 8, 14, 0.3); snd('flashbang', d, 1.3);
@@ -3464,7 +3567,7 @@ EV.nade = (d) => {
       dirOf(T.yaw, T.pitch, _d); const facing = ((d.x - ey.x) * _d.x + (d.y - ey.y) * _d.y + (d.z - ey.z) * _d.z) / dist;
       T.blind = Math.max(T.blind, (facing > 0.2 ? 4 : 1.5) * (1 - dist / 12));
     }
-  } else if (d.k === 'emp') emit('emp', { x: d.x, y: d.y, z: d.z });
+  } else if (d.k === 'emp') EV.emp({ x: d.x, y: d.y, z: d.z });
 };
 
 // ---------- per-frame gadget logic ----------
@@ -3480,7 +3583,7 @@ function sgGadgetsUpdate(dt) {
       const jam = [...G.gad.values()].some(j => j.k === 'jammer' && !(j.off > t) && Math.hypot(j.x - g.x, j.z - g.z) < 4);
       if (O && auth(O)) {
         if (shock) { emit('gdel', { id: g.id, why: 'zap' }); continue; }
-        if (!jam) { g.burn += dt; if (g.burn >= 5) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgBoom('lance', g.x, g.y, g.z, g.o, { panel: g.p, self: g.id }); emit('gdel', { id: g.id }); continue; } }
+        if (!jam) { g.burn += dt; if (g.burn >= 5) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgDispose(g.mesh); sgBoom('lance', g.x, g.y, g.z, g.o, { panel: g.p, self: g.id }); emit('gdel', { id: g.id }); continue; } }
       }
       if (!jam && Math.random() < dt * 30) fxSpark(g.x + (Math.random() - 0.5) * 0.8, g.y + (Math.random() - 0.5) * 1.4, g.z + (Math.random() - 0.5) * 0.3, 0xffa040, 1);
       if (!jam && Math.random() < dt * 3) snd('torch', g, 0.6);
@@ -3489,7 +3592,7 @@ function sgGadgetsUpdate(dt) {
       if (shock && O && auth(O)) { emit('gdel', { id: g.id, why: 'zap' }); continue; }
       if (g.k === 'piston' && O && auth(O)) {
         const jam = [...G.gad.values()].some(j => j.k === 'jammer' && !(j.off > t) && Math.hypot(j.x - g.x, j.z - g.z) < 4);
-        if (!jam) { g.wait -= dt; if (g.wait <= 0) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgBoom('piston', g.x - (g.n ? g.n[0] : 0) * 0.1, g.y, g.z - (g.n ? g.n[2] : 0) * 0.1, g.o, { self: g.id }); emit('gdel', { id: g.id }); continue; } }
+        if (!jam) { g.wait -= dt; if (g.wait <= 0) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgDispose(g.mesh); sgBoom('piston', g.x - (g.n ? g.n[0] : 0) * 0.1, g.y, g.z - (g.n ? g.n[2] : 0) * 0.1, g.o, { self: g.id }); emit('gdel', { id: g.id }); continue; } }
       }
     } else if (g.k === 'ads' && !off && O && auth(O)) {
       if (g.charges < 2 && g.recharge && t > g.recharge) { g.charges++; g.recharge = g.charges < 2 ? t + 10 : 0; }
@@ -3502,7 +3605,7 @@ function sgGadgetsUpdate(dt) {
       g.mesh.rotation.y += dt;
     } else if (g.k === 'thorn' && g.fuse && t > g.fuse) {
       g.fuse = 0;
-      if (O && auth(O)) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgBoom('thorn', g.x, g.y + 0.1, g.z, g.o, { self: g.id }); emit('gdel', { id: g.id }); continue; }
+      if (O && auth(O)) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgDispose(g.mesh); sgBoom('thorn', g.x, g.y + 0.1, g.z, g.o, { self: g.id }); emit('gdel', { id: g.id }); continue; }
     } else if (g.k === 'alarm' && g.ringUntil > t) { if (Math.random() < dt * 5) snd('beep', g, 1.2); }
   }
   // victims check the traps around them
@@ -3516,7 +3619,7 @@ function sgGadgetsUpdate(dt) {
       else if (g.k === 'fear' && d < 3 && !(g.cool > t) && sgClear(g, { x: T.x, y: T.y + 1, z: T.z })) emit('gact', { id: g.id, t: T.id });
       else if (g.k === 'alarm' && d < 3.2 && !(g.ringUntil > t)) { emit('gact', { id: g.id }); emit('spot', { t: T.id, by: g.o, d: 3 }); }
       else if (g.k === 'gust' && d < 2.2) emit('gact', { id: g.id, t: T.id });
-      else if (g.k === 'claymore' && d < 2.4 && sgClear(g, { x: T.x, y: T.y + 0.5, z: T.z })) { G.gad.delete(g.id); sgScene.remove(g.mesh); emit('gdel', { id: g.id }); sgBoom('claymore', g.x, g.y + 0.2, g.z, g.o); }
+      else if (g.k === 'claymore' && d < 2.4 && sgClear(g, { x: T.x, y: T.y + 0.5, z: T.z })) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgDispose(g.mesh); emit('gdel', { id: g.id }); sgBoom('claymore', g.x, g.y + 0.2, g.z, g.o); }
       else if (g.k === 'shock' && d < 1.1) { if (Math.random() < dt * 3) snd('zap', g, 0.5); sgApplyDamage(T, 8 * dt, g.o, false, 'Shock Rods'); }
     }
     // barbed wire slows you; med stations heal you; clouds hurt
@@ -3573,7 +3676,7 @@ function sgApplyRoster(rs) {
   }
   for (const id of [...G.P.keys()]) if (!seen.has(id) && id !== G.myId) sgDropPlayer(id);
 }
-function sgDropPlayer(id) { const P = G.P.get(id); if (!P) return; if (P.model) sgScene.remove(P.model.g); if (P.droneMesh) P.droneMesh.forEach(m => sgScene.remove(m)); if (P.holoModel) sgScene.remove(P.holoModel.g); G.P.delete(id); if (G.dfz.holder === id) { G.dfz.holder = null; G.dfz.drop = { x: P.x, y: P.y, z: P.z }; } }
+function sgDropPlayer(id) { const P = G.P.get(id); if (!P) return; if (P.model) { sgScene.remove(P.model.g); sgDispose(P.model.g); } if (P.droneMesh) P.droneMesh.forEach(m => sgScene.remove(m)); if (P.holoModel) sgScene.remove(P.holoModel.g); G.P.delete(id); if (G.dfz.holder === id) { G.dfz.holder = null; G.dfz.drop = { x: P.x, y: P.y, z: P.z }; } }
 EV.ph = (d) => {
   const key = d.ph + ':' + d.rnd, changed = key !== G.phKey;
   G.phKey = key;
@@ -3607,11 +3710,11 @@ EV.rend = (d) => {
 
 // ---------- entering phases (every client) ----------
 function sgResetRound() {
-  for (const g of G.gad.values()) sgScene.remove(g.mesh);
-  for (const p of G.proj.values()) sgScene.remove(p.mesh);
+  for (const g of G.gad.values()) { sgScene.remove(g.mesh); sgDispose(g.mesh); }
+  for (const p of G.proj.values()) { sgScene.remove(p.mesh); sgDispose(p.mesh); }
   G.gad.clear(); G.proj.clear(); G.clouds = []; G.scan = null; G.hackUntil = 0;
   G.dfz = { holder: null, drop: null, planted: null }; G.ending = false; G.found = false;
-  if (W) sgScene.remove(W.group);
+  if (W) { sgScene.remove(W.group); sgDispose(W.group); }
   sgBuildMap(G.set.map);
   sgSetupCams();
   sgBombMeshes();
@@ -3639,7 +3742,8 @@ function sgEnterAction() {
   const m = me();
   for (const P of G.P.values()) {
     if (!P.alive) continue;
-    if (sideOf(P) === 'atk' && auth(P)) { sgSpawn(P); P.mode = 'body'; P.drones.forEach(D => { if (!D.alive || D.held) return; }); }
+    if (sideOf(P) === 'atk' && auth(P)) { sgSpawn(P); P.mode = 'body'; }
+    else if (sideOf(P) === 'atk') P.drones.forEach(D => { D.alive = true; D.held = true; });
   }
   if (m && m.mode === 'drone') sgExitDrone(m);
   if (window.sgToast) sgToast(m && sideOf(m) === 'atk' ? 'ACTION PHASE — FIND AND SECURE THE BOMB' : 'ACTION PHASE — DEFEND THE BOMBS', '#ffffff');
@@ -3684,8 +3788,11 @@ function sgSpawn(P) {
     // face the building: towards the middle of the map
     P.yaw = Math.atan2(-(W.Wd * CELL / 2 - x), -(W.Hd * CELL / 2 - z));
   }
-  P.x = x + (Math.random() - 0.5) * 0.2; P.z = z + (Math.random() - 0.5) * 0.2; P.y = W.floors[f].y + 0.02; P.vy = P.vx = P.vz = 0; P.pitch = 0; P.crouch = 0; P.lean = 0;
-  P.drones.forEach((D, n) => { D.x = P.x; D.y = P.y; D.z = P.z; D.yaw = P.yaw; D.alive = true; D.held = n > 0 || G.phase === 'action'; D.vy = 0; });
+  P.x = x + (Math.random() - 0.5) * 0.2; P.z = z + (Math.random() - 0.5) * 0.2; P.y = W.floors[f].y + 0.02; P.vy = P.vx = P.vz = 0; P.pitch = 0; P.crouch = 0; P.lean = 0; P.vault = null; P.blockT = 0;
+  P.drones.forEach((D, n) => {
+    D.x = P.x; D.y = P.y; D.z = P.z; D.yaw = P.yaw; D.alive = true; D.held = n > 0 || G.phase === 'action'; D.vy = 0; D.vx = D.vz = 0; D.jam = 0;
+    if (!D.held) { const c = { x: P.x - Math.sin(P.yaw) * 0.9, y: P.y, z: P.z - Math.cos(P.yaw) * 0.9 }; sgCollide(c, 0.13, 0.2); if (sgClear({ x: P.x, y: P.y + 0.3, z: P.z }, { x: c.x, y: P.y + 0.3, z: c.z })) { D.x = c.x; D.z = c.z; } }
+  });
 }
 // bombs: two red cases in the site rooms
 let BOMB_MESHES = [];
@@ -3707,7 +3814,7 @@ function sgBombMeshes() {
 function sgShowBombs() { BOMB_MESHES.forEach((m, i) => { m.visible = ((i / 2) | 0) === G.site; }); }
 let DEFUSER_MESH = null;
 function sgDefuserMesh(d) {
-  if (DEFUSER_MESH) sgScene.remove(DEFUSER_MESH);
+  if (DEFUSER_MESH) { sgScene.remove(DEFUSER_MESH); sgDispose(DEFUSER_MESH); }
   const g = new THREE.Group(); g.position.set(d.x, d.y, d.z);
   const b = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.22), new THREE.MeshLambertMaterial({ color: 0x3a3a2a })); b.position.y = 0.1; g.add(b);
   const a = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.4), new THREE.MeshLambertMaterial({ color: 0x111111 })); a.position.set(0.1, 0.4, 0); g.add(a);
@@ -3783,7 +3890,7 @@ const vmScene = new THREE.Scene(), vmCam2 = new THREE.PerspectiveCamera(70, inne
 const vmAmb = new THREE.AmbientLight(0xffffff, 0.5), vmDir = new THREE.DirectionalLight(0xfff0dd, 0.6); vmDir.position.set(0.3, 1, 0.4);
 vmScene.add(vmAmb, vmDir, vmCam2);
 const vmRoot = new THREE.Group(); vmCam2.add(vmRoot);
-const IN = { keys: {}, lmb: false, rmb: false, mx: 0, my: 0, held: {} };
+const IN = { keys: {}, lmb: false, rmb: false, adsT: false, mx: 0, my: 0, held: {} }; // adsT: aim switched on with a click (toggle mode)
 window.sgAds = false;
 let vm = { key: null, g: null, rig: null }, vmT = { bob: 0, rec: 0, sw: 0, swx: 0, swy: 0, rel: 0 };
 let shake = 0, hurtT = 0, camRoll = 0, eyeSmooth = 0, specIdx = 0, holdF = 0, holdTarget = null, lastStep = 0, actMsg = '';
@@ -3822,9 +3929,80 @@ const vmShield = (() => { const g = new THREE.Group(); const m = new THREE.Mesh(
 const vmDevice = (() => { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.24), new THREE.MeshLambertMaterial({ color: 0x22262b })); g.add(b); const s = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.002, 0.16), new THREE.MeshBasicMaterial({ color: 0x40ffa0 })); s.position.y = 0.051; g.add(s); g.position.set(0.12, -0.2, -0.38); g.rotation.x = 0.6; g.visible = false; vmCam2.add(g); g.userData.screen = s; return g; })();
 
 // ---------- movement (shared with bots) ----------
-// inp: {f, s (strafe), run, crouch, jump}
+// inp: {f, s (strafe), run, crouch}. There is no jumping in Siege (1.0.3): walking into a window sill or
+// anything low enough (VAULT_H) climbs over it on its own, so every place you could jump to is still reachable.
+const VAULT_H = 1.12;
+// is a cylinder (feet y, height h) free of walls, chunks, props and gadget boxes?
+function sgFits(x, y, z, r, h, dyn) {
+  const M = W; let ok = true;
+  _seenOb.clear(); _seenP.clear();
+  const hit = (x0, x1, z0, z1) => { const qx = Math.max(x0, Math.min(x, x1)), qz = Math.max(z0, Math.min(z, z1)); return (x - qx) ** 2 + (z - qz) ** 2 < r * r; };
+  sgNear(x, z, r + 0.2, c => {
+    if (!ok) return;
+    for (const o of M.cellObs[c]) { if (!o.m || _seenOb.has(o)) continue; _seenOb.add(o); if (o.y1 > y + 0.02 && o.y0 < y + h && hit(o.x0, o.x1, o.z0, o.z1)) { ok = false; return; } }
+    for (const p of M.cellPan[c]) {
+      if (_seenP.has(p) || !p.active || p.k === 'hatch') continue; _seenP.add(p);
+      if (p.k === 'glass' && (!p.alive[0] || p.sealed)) continue;
+      for (let i = 0; i < p.n; i++) { if (!p.alive[i]) continue; const b = chunkBox(p, i, 0, _box); if (b[4] > y + 0.02 && b[1] < y + h && hit(b[0], b[3], b[2], b[5])) { ok = false; return; } }
+    }
+  });
+  if (ok && dyn) for (const b of dyn) if (b.y1 > y + 0.02 && b.y0 < y + h && hit(b.x0, b.x1, b.z0, b.z1)) return false;
+  return ok;
+}
+// something low in front (a sill, a counter, a bed, a deployable shield)? returns the vault, or null
+function sgVaultCheck(P, dx, dz) {
+  const M = W, y = P.y, dyn = sgGadBoxes();
+  let top = -1, far = 0;
+  for (const k of [0.36, 0.48, 0.62]) {
+    const px = P.x + dx * k, pz = P.z + dz * k;
+    let found = false;
+    _seenOb.clear(); _seenP.clear();
+    let bad = false;
+    sgNear(px, pz, 0.15, c => {
+      for (const o of M.cellObs[c]) {
+        if (!o.m || _seenOb.has(o)) continue; _seenOb.add(o);
+        if (o.y1 <= y + STEP_UP || o.y0 >= y + 1.78) continue;
+        if (px < o.x0 - 0.06 || px > o.x1 + 0.06 || pz < o.z0 - 0.06 || pz > o.z1 + 0.06) continue;
+        if (o.y1 > y + VAULT_H || o.k === 'bars') { bad = true; continue; }
+        found = true; top = Math.max(top, o.y1); far = Math.max(far, k);
+      }
+      for (const p of M.cellPan[c]) { // walls and barricades are not climbed: break them first
+        if (_seenP.has(p) || !p.active || p.k === 'hatch' || p.k === 'glass') continue; _seenP.add(p);
+        for (let i = 0; i < p.n; i++) { if (!p.alive[i]) continue; const b = chunkBox(p, i, 0, _box); if (b[4] > y + STEP_UP && b[1] < y + 1.78 && px > b[0] - 0.06 && px < b[3] + 0.06 && pz > b[2] - 0.06 && pz < b[5] + 0.06) bad = true; }
+      }
+    });
+    for (const b of dyn) if (b.y1 > y + STEP_UP && b.y0 < y + 1.78 && px > b.x0 - 0.06 && px < b.x1 + 0.06 && pz > b.z0 - 0.06 && pz < b.z1 + 0.06) { if (b.y1 > y + VAULT_H) bad = true; else { found = true; top = Math.max(top, b.y1); far = Math.max(far, k); } }
+    if (bad) return null;
+    if (!found && top >= 0) break;
+  }
+  if (top < 0) return null;
+  const over = top + 0.05;
+  // the way over: room for a crouched body all along it, then somewhere to stand on the far side
+  for (let s = far + 0.12; s <= far + 1.7; s += 0.1) {
+    const qx = P.x + dx * s, qz = P.z + dz * s;
+    for (let u = 0.15; u < s; u += 0.15) if (!sgFits(P.x + dx * u, over, P.z + dz * u, 0.24, 1.15, dyn)) return null;
+    if (!sgFits(qx, over, qz, 0.3, 1.15, dyn)) return null;
+    const gy = sgGround(qx, qz, over, 0.18);
+    if (gy < y - 4 || gy > over) continue;
+    if (!sgFits(qx, Math.max(gy, y) , qz, 0.3, Math.min(1.7, over + 1.15 - Math.max(gy, y)), dyn)) continue; // stand there (or drop down to it)
+    const d = Math.hypot(qx - P.x, qz - P.z);
+    if (G.phase === 'prep' && sideOf(P) === 'def' && !P.bot) { const R = sgRoomAt(qx, P.y + 0.5, qz); if (R && R.out) return null; }
+    return { x0: P.x, z0: P.z, y0: P.y, over, tx: qx, tz: qz, t: 0, T: 0.34 + d * 0.22 + (over - P.y) * 0.18 };
+  }
+  return null;
+}
+function sgVaultStep(P, dt) {
+  const V = P.vault; V.t += dt;
+  const k = Math.min(1, V.t / V.T), m = Math.min(1, k / 0.8), e = m * m * (3 - 2 * m);
+  // up first, then across, then let go and drop to the floor
+  P.x = V.x0 + (V.tx - V.x0) * Math.max(0, (e - 0.15) / 0.85); P.z = V.z0 + (V.tz - V.z0) * Math.max(0, (e - 0.15) / 0.85);
+  P.y = V.y0 + (V.over - V.y0) * Math.min(1, k / 0.38);
+  P.vx = (V.tx - V.x0) / V.T; P.vz = (V.tz - V.z0) / V.T; P.vy = 0;
+  if (k >= 0.8) { P.x = V.tx; P.z = V.tz; P.y = V.over; P.vault = null; P.onGround = false; P.vx *= 0.4; P.vz *= 0.4; if (P.id === G.myId) snd('step', null, 0.6); }
+}
 function sgMove(P, inp, dt) {
   const ctl = P.stun > 0 ? 0 : 1;
+  if (P.vault) { if (ctl && P.alive) { sgVaultStep(P, dt); return; } P.vault = null; }
   P.crouch += ((inp.crouch ? 1 : 0) - P.crouch) * Math.min(1, dt * 10);
   const isAds = P.id === G.myId && window.sgAds;
   let sp = (inp.run && inp.f > 0 && !isAds && P.crouch < 0.5 ? 5.4 : 3.3) * opSpeed(P.op);
@@ -3842,11 +4020,19 @@ function sgMove(P, inp, dt) {
   const acc = P.onGround ? 14 : 3;
   P.vx += (wx * sp * ctl - P.vx) * Math.min(1, dt * acc);
   P.vz += (wz * sp * ctl - P.vz) * Math.min(1, dt * acc);
-  if (inp.jump && P.onGround && P.crouch < 0.5 && ctl) { P.vy = 5.6; P.onGround = false; }
   P.vy -= 16 * dt;
   const pos = { x: P.x + P.vx * dt, y: P.y, z: P.z + P.vz * dt };
   const h = P.crouch > 0.5 ? 1.25 : 1.78;
   sgCollide(pos, 0.3, h, sgGadBoxes());
+  // pushing forward into something low: climb over it
+  const WL = Math.hypot(wx, wz);
+  if (P.id !== 'holo' && P.onGround && ctl && inp.f > 0 && WL > 0.3 && sp > 0 && P.act === '') {
+    const ux = wx / WL, uz = wz / WL, want = sp * dt * WL, got = (pos.x - P.x) * ux + (pos.z - P.z) * uz;
+    if (got < want * 0.4 && (fx * ux + fz * uz) > 0.7) {
+      P.blockT = (P.blockT || 0) + dt;
+      if (P.blockT > 0.1) { P.blockT = 0; const V = sgVaultCheck(P, ux, uz); if (V) { P.vault = V; sgVaultStep(P, dt); return; } }
+    } else P.blockT = 0;
+  } else P.blockT = 0;
   // people don't walk through each other
   if (P.id !== 'holo') for (const Q of G.P.values()) {
     if (Q === P || !Q.alive || Math.abs(Q.y - P.y) > 1.5) continue;
@@ -3876,7 +4062,6 @@ function sgMoveDrone(P, D, inp, dt) {
   const sp = 4.6, fx = -Math.sin(D.yaw), fz = -Math.cos(D.yaw), rx = Math.cos(D.yaw), rz = -Math.sin(D.yaw);
   D.vx = (D.vx || 0) + ((fx * inp.f + rx * inp.s) * sp - (D.vx || 0)) * Math.min(1, dt * 8);
   D.vz = (D.vz || 0) + ((fz * inp.f + rz * inp.s) * sp - (D.vz || 0)) * Math.min(1, dt * 8);
-  if (inp.jump && D.onGround) { D.vy = 3.6; D.onGround = false; }
   D.vy -= 16 * dt;
   const pos = { x: D.x + D.vx * dt, y: D.y, z: D.z + D.vz * dt };
   sgCollide(pos, 0.13, 0.2, sgGadBoxes());
@@ -3955,7 +4140,7 @@ function sgFinishInteract(P, T) {
     emit('reinf', { p: p.id, s, o: P.id });
   } else if (T.k === 'barr') {
     const p = T.p; let s = 1; if (p.ax === 'x') s = P.z < p.c ? 1 : 2; else s = P.x < p.c ? 1 : 2;
-    emit('barr', { p: p.id, s }); P.barr--;
+    emit('barr', { p: p.id, s, o: P.id });
   } else if (T.k === 'plant') emit('plant', { i: P.id, s: T.s, x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2) });
   else if (T.k === 'disarm') emit('disarm', { i: P.id });
   else if (T.k === 'hangup') emit('hangup', { i: P.id });
@@ -3985,7 +4170,7 @@ function sgUseSecondary(P) {
     if (mine.length) {
       const g = mine[mine.length - 1];
       if (jammedAt(g.x, g.z)) return sgToast('JAMMED', '#ff6b6b');
-      G.gad.delete(g.id); sgScene.remove(g.mesh); emit('gdel', { id: g.id });
+      G.gad.delete(g.id); sgScene.remove(g.mesh); sgDispose(g.mesh); emit('gdel', { id: g.id });
       sgBoom(k, g.x, g.y, g.z, P.id, { panel: g.p >= 0 ? g.p : undefined, self: g.id });
       return;
     }
@@ -4054,7 +4239,7 @@ function sgCutter(P, dt) {
 }
 function sgTaser(P) {
   if ((P.taseT || 0) > now()) return; P.taseT = now() + 0.5;
-  snd('zap', null, 0.5);
+  snd('zap', P.id === G.myId ? null : { x: P.x, y: P.y + 1.2, z: P.z }, 0.5);
   eyeOf(P, _e);
   for (const T of G.P.values()) {
     if (!T.alive || T.team === P.team) continue;
@@ -4134,11 +4319,12 @@ function sgLocalUpdate(dt) {
   P.stun = Math.max(0, P.stun - dt); P.slow = Math.max(0, P.slow - dt); P.blind = Math.max(0, P.blind - dt); P.dread = Math.max(0, P.dread - dt);
   const mx = IN.mx, my = IN.my; IN.mx = IN.my = 0;
   const sens = 0.0022 * (settings.sens || 1) * (window.sgAds ? 0.7 : 1);
-  if (!inPlay) { sgWeaponTick(P, dt); return; }
+  if (!inPlay) { IN.adsT = false; window.sgAds = false; sgWeaponTick(P, dt); return; }
   const K = IN.keys;
-  const inp = { f: (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), s: (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0), run: K.ShiftLeft || K.ShiftRight, crouch: K.ControlLeft || P.crouchT, jump: K.Space };
+  const inp = { f: (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), s: (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0), run: K.ShiftLeft || K.ShiftRight, crouch: K.ControlLeft || P.crouchT };
   // prep: attackers can only drive drones; defenders can't leave the building yet
   if (G.phase === 'prep' && sideOf(P) === 'atk' && P.mode !== 'drone') { const n = P.drones.findIndex(D => D.alive); if (n >= 0) sgEnterDrone(P, n, true); }
+  if (P.mode !== 'body') { IN.adsT = false; window.sgAds = false; }
   if (P.mode === 'drone') {
     const D = P.drones[P.droneN];
     if (!D || !D.alive) { P.mode = 'body'; return; }
@@ -4187,7 +4373,10 @@ function sgLocalUpdate(dt) {
   // scans and hacks
   if (sideOf(P) === 'def' && G.scan && t > G.scan.at && t < G.scan.until && Math.hypot(P.vx, P.vz) > 0.9 && !jammedAt(P.x, P.z) && P.spottedUntil < t + 0.5) emit('spot', { t: P.id, by: G.scan.o, d: 3 });
   if (sideOf(P) === 'def' && P.ringUntil > t && !jammedAt(P.x, P.z)) { if (P.spottedUntil < t + 0.3) emit('spot', { t: P.id, by: '', d: 1 }); if (Math.random() < dt * 1.6) emit('ringfx', { i: P.id }); }
+  const px = P.x, pz = P.z;
+  if (G.phase === 'prep' && sideOf(P) === 'atk') { inp.f = inp.s = 0; if (t > (P.waitMsgT || 0)) { P.waitMsgT = t + 6; sgToast('NO DRONES LEFT · WAIT FOR THE ACTION PHASE', '#ffcf5a'); } }
   sgMove(P, inp, dt);
+  if (G.phase === 'prep' && sideOf(P) === 'def') { const R2 = sgRoomAt(P.x, P.y + 0.5, P.z); if (R2 && R2.out) { P.x = px; P.z = pz; P.vault = null; if (t > (P.waitMsgT || 0)) { P.waitMsgT = t + 4; sgToast('STAY INSIDE UNTIL THE ACTION PHASE', '#ffcf5a'); } } }
   // footsteps you can hear
   const spd = Math.hypot(P.vx, P.vz);
   if (P.onGround && spd > 1 && P.crouch < 0.5) { lastStep -= dt * spd; if (lastStep <= 0) { lastStep = 2.1; snd(spd > 4.5 ? 'stepRun' : 'step', null, 0.35); P.stepN = (P.stepN || 0) + 1; } }
@@ -4195,8 +4384,9 @@ function sgLocalUpdate(dt) {
   // weapons
   sgWeaponTick(P, dt);
   const G0 = gunOf(P);
-  window.sgAds = IN.rmb && P.w.rel <= 0 && !P.shieldUp && !P.sonar;
-  const canShoot = P.act === '' && !P.sonar && P.stun <= 0 && (G.phase === 'action' || sideOf(P) === 'def');
+  if (P.shieldUp || P.sonar || P.cutter || P.slug || P.vault || (inp.run && inp.f > 0 && P.crouch < 0.5)) IN.adsT = false; // sprinting or a gadget ends a toggled aim
+  window.sgAds = (settings.ads === 'hold' ? IN.rmb : IN.adsT) && P.w.rel <= 0 && !P.shieldUp && !P.sonar && !P.vault;
+  const canShoot = P.act === '' && !P.sonar && P.stun <= 0 && !P.vault && (G.phase === 'action' || sideOf(P) === 'def');
   if (P.shieldUp) { if (IN.lmb && canShoot) sgTaser(P); }
   else if (P.cutter) { if (IN.lmb && canShoot) sgCutter(P, dt); }
   else if (P.slug) { if (IN.lmbPress && canShoot) sgSlugShot(P); }
@@ -4214,7 +4404,7 @@ EV.ringfx = d => { const P = G.P.get(d.i); if (P && P.alive) snd('ring', { x: P.
 // hurt and hit feedback
 window.sgHurt = (dmg, dx, dz) => { hurtT = Math.min(1, hurtT + dmg / 50); snd('hurt', null, 0.6); shake = Math.max(shake, 0.15); if (window.sgHudHurt) sgHudHurt(dx, dz); };
 window.sgHitMarker = (hs, kill) => { snd(hs ? 'head' : 'hit', null, 0.7); if (window.sgHudHit) sgHudHit(hs, kill); };
-window.sgOnDeath = (K, d) => { window.sgAds = false; specIdx = 0; if (window.sgHudDeath) sgHudDeath(K, d); };
+window.sgOnDeath = (K, d) => { window.sgAds = false; IN.adsT = false; specIdx = 0; if (window.sgHudDeath) sgHudDeath(K, d); };
 
 // ---------- camera and viewmodel ----------
 function sgSpectateTarget(P) {
@@ -4306,10 +4496,13 @@ function sgLookForBombs(o) {
 EV.found = d => { if (G.found || d.s !== G.site) return; G.found = true; G.foundBy = d; const P = me(); if (P && sideOf(P) === 'atk') { sgToast('BOMB SITE FOUND: ' + W.sites[G.site].n.toUpperCase(), '#ffcf5a'); snd('beep2', null, 0.7); } };
 
 // ---------- bots (run by the host) ----------
+// 1.0.3: bots play like people. They only see what is in front of them with nothing in the way (checked again
+// before every shot), take a moment to react, start off with shaky aim that settles while they track you, feel
+// their gun's recoil, fire in bursts at range and only go for the head on Veteran. react s, err degrees, turn rad/s.
 const DIFF = [
-  { react: 0.75, err: 4.2, turn: 3.2, name: 'Recruit' },
-  { react: 0.45, err: 2.4, turn: 5.5, name: 'Regular' },
-  { react: 0.28, err: 1.3, turn: 8.5, name: 'Veteran' },
+  { react: 0.85, err: 5.5, turn: 2.6, head: 0, name: 'Recruit' },
+  { react: 0.55, err: 3.6, turn: 4.0, head: 0.08, name: 'Regular' },
+  { react: 0.36, err: 2.2, turn: 5.8, head: 0.3, name: 'Veteran' },
 ];
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 function sgBotsUpdate(dt) {
@@ -4324,17 +4517,27 @@ function sgBotsUpdate(dt) {
   }
 }
 function botEnemies(P) { return [...G.P.values()].filter(Q => Q.alive && Q.team !== P.team); }
-function botSees(P, Q) {
-  eyeOf(P, _e);
-  const tgt = { x: Q.x, y: Q.y + (Q.crouch > 0.5 ? 0.9 : 1.35), z: Q.z };
-  const dx = tgt.x - _e.x, dz = tgt.z - _e.z, d = Math.hypot(dx, dz);
-  if (d > 38) return false;
+// a clear line from an eye to a point: walls, furniture, closed glass and gadget shields all block it
+function botLine(o, tg) {
+  const dx = tg.x - o.x, dy = tg.y - o.y, dz = tg.z - o.z, d = Math.hypot(dx, dy, dz);
+  if (d < 1e-3) return true;
+  if (!sgClear(o, tg)) return false;
+  return !rayGadBoxes(o, { x: dx / d, y: dy / d, z: dz / d }, d);
+}
+// which part of Q this bot can see right now (chest, head or legs), or null
+function botSees(P, Q, wide) {
+  if (P.blind > 0.5 || P.dread > 0.5) return null;
+  const e = eyeOf(P, { x: 0, y: 0, z: 0 });
+  const cr = Q.crouch > 0.5, dx = Q.x - e.x, dz = Q.z - e.z, d = Math.hypot(dx, dz);
+  if (d > 38) return null;
+  // a field of view, not eyes in the back of the head (someone right next to you is felt, not seen)
   const a = Math.abs(angDiff(Math.atan2(-dx, -dz), P.yaw));
-  if (a > 1.05 && d > 2.5) return false;
-  if (P.blind > 0.5) return false;
+  if (a > (wide ? 1.2 : 0.95) && d > 1.1) return null;
   // smoke and dread fog hide people
-  for (const c of G.clouds) if (c.k !== 'gas' && Math.hypot(c.x - (P.x + Q.x) / 2, c.z - (P.z + Q.z) / 2) < c.r) return false;
-  return sgClear(_e, tgt) && !rayGadBoxes(_e, { x: dx / Math.hypot(dx, tgt.y - _e.y, dz), y: (tgt.y - _e.y) / Math.hypot(dx, tgt.y - _e.y, dz), z: dz / Math.hypot(dx, tgt.y - _e.y, dz) }, Math.hypot(dx, tgt.y - _e.y, dz));
+  for (const c of G.clouds) if (c.k !== 'gas' && Math.hypot(c.x - (P.x + Q.x) / 2, c.z - (P.z + Q.z) / 2) < c.r) return null;
+  const pts = [cr ? 0.8 : 1.2, cr ? 1.08 : 1.62, cr ? 0.4 : 0.6];
+  for (const h of pts) { const tg = { x: Q.x, y: Q.y + h, z: Q.z }; if (botLine(e, tg)) return h; }
+  return null;
 }
 function botGoTo(P, x, y, z) {
   const A = P.ai, p = sgPath(P, { x, y, z }, sideOf(P));
@@ -4342,39 +4545,77 @@ function botGoTo(P, x, y, z) {
   return !!p;
 }
 function botThink(P, dt, t) {
-  const A = P.ai, D = DIFF[G.set.diff] || DIFF[1], side = sideOf(P);
-  // ----- perception -----
+  const A = P.ai, D = DIFF[G.set.diff] || DIFF[1], side = sideOf(P), fight = G.phase === 'action';
+  A.heard = A.heard || {};
+  // ----- perception (only in the action phase: nobody fights during prep) -----
   A.think -= dt;
   if (A.think <= 0) {
-    A.think = 0.18 + Math.random() * 0.08;
-    let best = null, bd = 1e9;
-    for (const Q of botEnemies(P)) {
+    A.think = 0.16 + Math.random() * 0.08;
+    let best = null, bd = 1e9, bh = 0;
+    if (fight) for (const Q of botEnemies(P)) {
       const d = Math.hypot(Q.x - P.x, Q.z - P.z);
-      if (d < bd && botSees(P, Q)) { bd = d; best = Q; }
+      if (d >= bd) continue;
+      const h = botSees(P, Q, Q.id === A.target);
+      if (h !== null) { bd = d; best = Q; bh = h; }
     }
-    if (best && (!A.target || A.target !== best.id)) { A.target = best.id; A.react = t + D.react * (0.8 + Math.random() * 0.5) + (bd > 15 ? 0.15 : 0); }
-    if (!best) { if (A.target) { const Q = G.P.get(A.target); if (Q) A.lastSeen = { x: Q.x, y: Q.y, z: Q.z, t }; } A.target = null; }
-    // hearing: turn towards close footsteps and gunfire
-    if (!best) for (const Q of botEnemies(P)) { const d = Math.hypot(Q.x - P.x, Q.z - P.z); if ((d < 7 && Math.hypot(Q.vx, Q.vz) > 2.5) || (Q.shots !== Q.aiShots && d < 18)) { Q.aiShots = Q.shots; A.look = Math.atan2(-(Q.x - P.x), -(Q.z - P.z)); A.lookT = t + 1.5; } }
+    if (best) {
+      if (A.target !== best.id) {
+        // reacting takes time: longer for someone far off to the side, shorter for someone you just lost sight of
+        const off = Math.abs(angDiff(Math.atan2(-(best.x - P.x), -(best.z - P.z)), P.yaw));
+        const again = A.lastSeen && A.lastSeen.id === best.id && t - A.lastSeen.t < 1.5;
+        A.target = best.id; A.acq = t; A.react = t + (D.react * (0.8 + Math.random() * 0.5) + off * 0.25 + (bd > 15 ? 0.15 : 0)) * (again ? 0.55 : 1);
+        A.burst = 0; A.pauseT = 0; A.head = Math.random() < D.head;
+      }
+      A.seenT = t; A.aimH = bh; A.lastSeen = { id: best.id, x: best.x, y: best.y, z: best.z, t };
+    } else if (A.target) {
+      // lost them: keep the gun on the spot where they went out of sight for a few seconds
+      const L = A.lastSeen; A.target = null;
+      if (L) { A.look = Math.atan2(-(L.x - P.x), -(L.z - P.z)); A.lookT = t + 3; }
+    }
+    // hearing: turn towards close footsteps and gunfire (each bot hears for itself)
+    if (!best && fight) for (const Q of botEnemies(P)) {
+      const d = Math.hypot(Q.x - P.x, Q.z - P.z), shot = Q.shots !== A.heard[Q.id];
+      A.heard[Q.id] = Q.shots;
+      if ((d < 7 && Math.hypot(Q.vx, Q.vz) > 2.5 && Q.crouch < 0.5) || (shot && d < 18)) { A.look = Math.atan2(-(Q.x - P.x), -(Q.z - P.z)) + (Math.random() - 0.5) * 0.5; A.lookT = t + 1.5; }
+    }
   }
   const T = A.target ? G.P.get(A.target) : null;
-  let inp = { f: 0, s: 0, run: false, crouch: false, jump: false };
+  let inp = { f: 0, s: 0, run: false, crouch: false };
   // ----- fighting -----
-  if (T && T.alive) {
+  if (T && T.alive && fight) {
     eyeOf(P, _e);
-    if (A.errT < t) { A.errT = t + 0.45; const e = D.err * Math.PI / 180 * (1 + (Math.hypot(T.vx, T.vz) > 1 ? 0.6 : 0)); A.err = [(Math.random() - 0.5) * 2 * e, (Math.random() - 0.5) * 2 * e]; }
-    const head = G.set.diff >= 2 && Math.random() < 0.5;
-    const ty = T.y + (T.crouch > 0.5 ? (head ? 1.08 : 0.8) : (head ? 1.62 : 1.2));
+    // aim error: wide when they first show up, settling the longer the bot tracks them; worse on the move
+    if (A.errT < t) {
+      A.errT = t + 0.3 + Math.random() * 0.25;
+      const settle = 1 + 2.2 * Math.exp(-(t - A.acq) / 0.7), mv = (Math.hypot(T.vx, T.vz) > 1 ? 1.6 : 1) * (Math.hypot(P.vx, P.vz) > 1 ? 1.3 : 1);
+      const e = D.err * Math.PI / 180 * settle * mv;
+      A.err = [(Math.random() - 0.5) * 2 * e, (Math.random() - 0.5) * 2 * e * 0.7];
+    }
+    A.errC = A.errC || [0, 0];
+    A.errC[0] += (A.err[0] - A.errC[0]) * Math.min(1, dt * 5); A.errC[1] += (A.err[1] - A.errC[1]) * Math.min(1, dt * 5);
+    const hv = A.head ? (T.crouch > 0.5 ? 1.08 : 1.62) : (A.aimH || (T.crouch > 0.5 ? 0.8 : 1.2));
+    const ty = T.y + hv;
     const dx = T.x - _e.x, dy = ty - _e.y, dz = T.z - _e.z, d = Math.hypot(dx, dz);
-    const wantYaw = Math.atan2(-dx, -dz) + A.err[0], wantPitch = Math.atan2(dy, d) + A.err[1];
-    const turn = D.turn * dt;
-    P.yaw += Math.max(-turn, Math.min(turn, angDiff(wantYaw, P.yaw)));
-    P.pitch += Math.max(-turn, Math.min(turn, wantPitch - P.pitch));
-    const onAim = Math.abs(angDiff(wantYaw, P.yaw)) < 0.06 && Math.abs(wantPitch - P.pitch) < 0.06;
-    if (t > A.react && onAim && P.act === '' && (G.phase === 'action' || side === 'def')) {
-      const G0 = gunOf(P);
-      if (P.w.ammo[P.slot] <= 0) { if (P.w.res[P.slot] > 0) sgReload(P); else sgSwitch(P, 1); }
-      else if (!G0.semi || (P.semiT || 0) < t) { sgFire(P, G.set.diff === 0 ? 1.5 : 0.5); if (G0.semi) P.semiT = t + 0.18 + Math.random() * 0.15; }
+    const wantYaw = Math.atan2(-dx, -dz) + A.errC[0], wantPitch = Math.atan2(dy, d) + A.errC[1];
+    // turning eases in like a hand on a mouse, up to the bot's top speed
+    const turn = D.turn * dt, ay = angDiff(wantYaw, P.yaw), ap = wantPitch - P.pitch;
+    P.yaw += Math.max(-turn, Math.min(turn, ay * Math.min(1, dt * 9)));
+    P.pitch += Math.max(-turn, Math.min(turn, ap * Math.min(1, dt * 9)));
+    const onAim = Math.abs(angDiff(wantYaw, P.yaw)) < 0.05 && Math.abs(wantPitch - P.pitch) < 0.05;
+    const G0 = gunOf(P);
+    if (A.burst <= 0 && !G0.semi && d > 12 && !(A.pauseT > t)) A.burst = 3 + ((Math.random() * 4) | 0);
+    if (P.shieldUp && d > 6) P.shieldUp = false; // a riot shield only tasers up close: lower it to shoot
+    if (t > A.react && onAim && P.act === '' && !(A.pauseT > t) && t - (A.seenT || 0) < 0.25) {
+      if (P.shieldUp) sgTaser(P);
+      else if (P.w.ammo[P.slot] <= 0) { if (P.w.res[P.slot] > 0) sgReload(P); else sgSwitch(P, 1); }
+      else if ((!G0.semi || (P.semiT || 0) < t) && botLine(_e, { x: T.x, y: ty, z: T.z })) { // the wall check again, right before the trigger
+        if (sgFire(P, G.set.diff === 0 ? 1.4 : 0.6)) {
+          if (G0.semi) P.semiT = t + 0.22 + Math.random() * 0.2;
+          // recoil kicks the bot's aim up too; it pulls back down at its turn speed
+          P.pitch += (0.007 + Math.random() * 0.004) * G0.rec; P.yaw += (Math.random() - 0.5) * 0.006 * G0.rec;
+          if (d > 12 && !G0.semi && --A.burst <= 0) A.pauseT = t + 0.22 + Math.random() * 0.25;
+        }
+      }
     }
     // strafe a little while shooting, crouch at range
     if (A.strafeT < t) { A.strafeT = t + 0.5 + Math.random() * 0.8; A.strafe = Math.random() < 0.6 ? (Math.random() < 0.5 ? -1 : 1) : 0; A.crouch = d > 10 && Math.random() < 0.4; }
@@ -4383,6 +4624,7 @@ function botThink(P, dt, t) {
     sgMove(P, inp, dt); sgWeaponTick(P, dt);
     return;
   }
+  if (T && !fight) A.target = null;
   if (P.w.ammo[P.slot] < gunOf(P).mag * 0.3 && P.w.res[P.slot] > 0 && P.w.rel <= 0) sgReload(P);
   // ----- jobs -----
   if (A.busy && A.busy.until > t) { // reinforcing, barricading, planting...
@@ -4405,8 +4647,8 @@ function botThink(P, dt, t) {
       inp.run = G.phase === 'prep' || (side === 'atk' && d > 3 && !A.careful) || (side === 'def' && A.urgent);
       const f = sgFloorOf(P.y + 0.5), cx = Math.floor(P.x / CELL), cz = Math.floor(P.z / CELL), nx = Math.floor(wp.x / CELL), nz = Math.floor(wp.z / CELL);
       const e = d < 1.6 ? (nx > cx ? W.EV(f, cx + 1, cz) : nx < cx ? W.EV(f, cx, cz) : nz > cz ? W.EH(f, cx, cz + 1) : nz < cz ? W.EH(f, cx, cz) : null) : null;
-      // climb through open windows
-      if (e && e.t === 'window' && !(e.bar && e.bar.active && e.bar.alive.some(v => v)) && d < 1.45) { inp.jump = true; inp.f = 1; }
+      // climb through open windows (walking into the sill vaults over it)
+      if (e && e.t === 'window' && !(e.bar && e.bar.active && e.bar.alive.some(v => v)) && d < 1.45) { inp.f = 1; inp.run = false; P.yaw = want; }
       // a barricade in the way: break it
       if (side === 'atk' && d < 1.6) {
         if (e && e.bar && e.bar.active && e.bar.alive.some(v => v)) {
@@ -4421,7 +4663,7 @@ function botThink(P, dt, t) {
     }
     // stuck?
     A.stuckT += dt;
-    if (A.stuckT > 1.4) { if (Math.hypot(P.x - A.lx, P.z - A.lz) < 0.3) { A.path = null; inp.jump = true; inp.s = Math.random() < 0.5 ? -1 : 1; } A.stuckT = 0; A.lx = P.x; A.lz = P.z; }
+    if (A.stuckT > 1.4) { if (Math.hypot(P.x - A.lx, P.z - A.lz) < 0.3 && !P.vault) { A.path = null; inp.s = Math.random() < 0.5 ? -1 : 1; } A.stuckT = 0; A.lx = P.x; A.lz = P.z; }
   } else if (A.lookT > t) P.yaw += angDiff(A.look, P.yaw) * Math.min(1, dt * 4);
   else if (Math.random() < dt * 0.4) { A.look = P.yaw + (Math.random() - 0.5) * 2.5; A.lookT = t + 1.2; }
   sgMove(P, inp, dt); sgWeaponTick(P, dt);
@@ -4457,7 +4699,7 @@ function botDefend(P, A, t) {
       const job = botBarrJob(P, S);
       if (job) {
         const d = Math.hypot(job.x - P.x, job.z - P.z);
-        if (d < 0.55) { job.e.bar.claim = P.id; A.busy = { k: 'barr', until: t + 1.5, yaw: job.yaw, done: () => { if (P.alive && !(job.e.bar.active && job.e.bar.alive.some(v => v))) { emit('barr', { p: job.e.bar.id, s: job.s }); P.barr--; } } }; return; }
+        if (d < 0.55) { job.e.bar.claim = P.id; A.busy = { k: 'barr', until: t + 1.5, yaw: job.yaw, done: () => { if (P.alive && !(job.e.bar.active && job.e.bar.alive.some(v => v))) emit('barr', { p: job.e.bar.id, s: job.s, o: P.id }); } }; return; }
         if (!botGoTo(P, job.x, job.y, job.z)) A.noBarr = true; else { job.e.bar.claim = P.id; return; }
       } else A.noBarr = true;
     }
@@ -4692,7 +4934,7 @@ function snState(d, bot) {
     if (k && P.op && P.w) for (let i = 0; i < k; i++) setTimeout(() => snRemoteShot(P, d.e), i * 70);
     else if (k && P.op) for (let i = 0; i < k; i++) setTimeout(() => snRemoteShot(P, d.e), i * 70);
   }
-  if (d.d) d.d.forEach((x, n) => { if (!P.drones[n]) P.drones[n] = { alive: true }; const D = P.drones[n]; if (x) { D.x = x[0]; D.y = x[1]; D.z = x[2]; D.yaw = x[3]; D.held = false; } else D.held = true; });
+  if (d.d) d.d.forEach((x, n) => { if (!P.drones[n]) P.drones[n] = { alive: true, x: 0, y: 0, z: 0, yaw: 0 }; const D = P.drones[n]; if (x) { if (D.held || D.nx === undefined) D.snap = true; D.nx = x[0]; D.ny = x[1]; D.nz = x[2]; D.nyaw = x[3]; D.held = false; } else D.held = true; });
   if (d.ho) { if (!P.holo) P.holo = {}; P.holo.x = d.ho[0]; P.holo.y = d.ho[1]; P.holo.z = d.ho[2]; P.holo.yaw = d.ho[3]; P.holo.until = now() + 1; } else if (P.holo && !bot) P.holo = null;
   P.netAt = t;
 }
@@ -4756,6 +4998,16 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.3', t: 'Fair bots, no jumping and fixes', d: '3 November 2026', intro: 'A round of fixes for things players reported, and one rule change: there is no jumping in Siege any more.', items: [
+    ['No jumping', 'The jump key is gone, for players and bots. Walk into an open window, a counter, a railing or anything low and you climb over it by yourself, so every place in every map can still be reached.'],
+    ['Bots play fair', 'Bots only see and shoot you when they really have a line on you (no more tracking or shooting through walls), they take a moment to react, their aim starts shaky and settles, they feel recoil and fire in bursts at range. Only Veteran bots go for heads.'],
+    ['Aim toggle', 'Right click now switches aiming on and off, which is much easier on a Mac trackpad. Prefer holding? Pick Hold under Settings (or in the Esc menu).'],
+    ['Safe prep phase', 'Nobody can be hurt during the prep phase, so attackers out on their drones can no longer be killed before the round starts. Defenders stay inside until the action phase, and attackers who lose both drones wait at their spawn.'],
+    ['More barricades', 'Every defender now has 5 barricades and 3 reinforcements (it was 2 of each). Two defenders barricading the same door no longer both lose one.'],
+    ['Textures', 'Walls and floors could turn black or patchy after a few rounds, or after the computer slept. Textures now survive that, and each round frees the memory the last one used. The edges of floors round stairwells and galleries no longer show black gaps.'],
+    ['Drones', 'Your first drone starts in front of you, not inside your own legs. Other players\' drones move smoothly instead of jumping, and drones that broke during prep work again for everyone in the action phase.'],
+    ['Smaller fixes', 'An EMP no longer goes off once for every player in the room, and if the game can\'t start 3D graphics it says so instead of loading forever.'],
+  ] },
   { v: '1.0.2', t: 'Chat', d: '3 November 2026', intro: 'Online rooms have a proper chat now.', items: [
     ['Everyone or your team', 'Press Enter or T to talk to everyone in the room, or Y to talk to your own team only. Tab switches between the two while you type, Enter sends and Esc cancels.'],
     ['In the lobby too', 'Chat works in the room lobby and while you pick your operator, not just during a round.'],
@@ -4814,7 +5066,7 @@ function sgUiBuild() {
       <div class="howGrid">
         <div><b>The round</b><p>20 seconds to pick an operator, 45 seconds of prep, then 3 minutes of action. One life each. First team to 4 rounds wins; sides swap at half time.</p></div>
         <div><b>Attack</b><p>In prep you drive drones: find the bomb site (it only shows up for your team once someone has seen it) and click to mark defenders. Then breach in. Whoever carries the defuser holds F next to a bomb to plant it, and it has to run for 45 seconds.</p></div>
-        <div><b>Defence</b><p>Hold F on walls and hatches to reinforce them with steel, and on doors and windows to barricade them (2 of each). Place your gadgets, watch the cameras (5), shoot drones. Disable a planted defuser with F.</p></div>
+        <div><b>Defence</b><p>Hold F on walls and hatches to reinforce them with steel, and on doors and windows to barricade them (3 reinforcements and 5 barricades each). Place your gadgets, watch the cameras (5), shoot drones. Disable a planted defuser with F.</p></div>
         <div><b>Breaking in</b><p>Drywall, barricades and hatches break piece by piece and bullets go through them. Reinforced steel only gives way to the Thermal Lance, the Piston Breacher and the Cutting Torch. Shock rods and jammers stop charges; an EMP shuts defender electronics down.</p></div>
       </div>
       <h3>Keys</h3><div class="keys" id="sgKeysHow"></div>
@@ -4826,6 +5078,7 @@ function sgUiBuild() {
       <div class="setRow"><label>Field of view <span id="stFovV"></span></label><input type="range" id="stFov" min="60" max="100" step="1"></div>
       <div class="setRow"><label>Volume <span id="stVolV"></span></label><input type="range" id="stVol" min="0" max="1" step="0.05"></div>
       <div class="setRow"><label>Graphics</label><div class="seg" id="stQ"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div></div>
+      <div class="setRow"><label>Aim (right mouse)</label><div class="seg" id="stAds"><button data-v="toggle">Click to toggle</button><button data-v="hold">Hold</button></div></div>
     </div></section>
     <section class="pane" id="pProfile"><div class="paneIn narrow" id="sgProfile"></div></section>
   </div>
@@ -4878,12 +5131,13 @@ function sgUiBuild() {
   <div class="chat" id="sgChatBox"><div class="log" id="sgChatLog"></div><div class="row"><button type="button" class="to" id="sgChatTo">ALL</button><input id="sgChatIn" maxlength="120" autocomplete="off" spellcheck="false"></div><div class="hint">Enter / T: chat · Y: team chat</div></div>
   <div class="pause" id="sgPause"><div class="pauseIn"><h2>PAUSED</h2>
     <div class="set" style="margin-bottom:10px"><label>Look speed <span id="sgSensV"></span></label><input type="range" id="sgSens" min="0.2" max="3" step="0.1"></div>
+    <div class="set" style="margin-bottom:10px"><label>Aim (right mouse)</label><div class="seg" id="sgAdsM"><button data-v="toggle">Click to toggle</button><button data-v="hold">Hold</button></div></div>
     <div class="keys" id="sgKeys"></div>
     <button class="mBtn prime" id="sgResume"><span><b>Resume</b></span></button>
     <button class="mBtn" id="sgQuit"><span><b>Leave match</b></span></button></div></div>
   <div class="over" id="sgOver"><div class="overIn"><div class="kick" id="sgOverK">Match over</div><h1 id="sgOverT">VICTORY</h1><div class="coinsWon" id="sgOverC"></div><div id="sgOverSb"></div></div></div>`;
   document.body.appendChild(d);
-  const keys = [['WASD', 'Move'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Q / E', 'Lean left / right'], ['Mouse', 'Fire, aim (right)'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant, disable'], ['5 / B', 'Drone (attack) · cameras (defence)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat'], ['Y', 'Team chat'], ['Esc', 'Menu']].map(([k, v]) => `<kbd>${k}</kbd><span>${v}</span>`).join('');
+  const keys = [['WASD', 'Move'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Q / E', 'Lean left / right'], ['Mouse', 'Fire, aim (right click)'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant, disable'], ['5 / B', 'Drone (attack) · cameras (defence)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat'], ['Y', 'Team chat'], ['Esc', 'Menu']].map(([k, v]) => `<kbd>${k}</kbd><span>${v}</span>`).join('');
   $s('sgKeys').innerHTML = keys; $s('sgKeysHow').innerHTML = keys;
   $s('sgNotes').innerHTML = '<h2>Patch notes</h2>' + NOTES.map((N, i) => `<article class="note1 ${i ? '' : 'latest'}"><div class="nHead"><span class="nV">v${N.v}</span><b>${esc(N.t)}</b><small>${esc(N.d)}</small></div><p class="nIntro">${esc(N.intro)}</p><ul>${N.items.map(([a, b]) => `<li><b>${esc(a)}.</b> ${esc(b)}</li>`).join('')}</ul></article>`).join('');
   // top navigation
@@ -4901,11 +5155,13 @@ function sgUiBuild() {
     $s('stFov').value = settings.fov; $s('stFovV').textContent = settings.fov + '°';
     $s('stVol').value = settings.volume; $s('stVolV').textContent = Math.round(settings.volume * 100) + '%';
     $s('stQ').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === settings.quality));
+    for (const id of ['stAds', 'sgAdsM']) $s(id).querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === (settings.ads === 'hold' ? 'hold' : 'toggle')));
   };
   $s('stSens').oninput = e => { settings.sens = +e.target.value; saveSettings(); setUI(); };
   $s('stFov').oninput = e => { settings.fov = +e.target.value; saveSettings(); setUI(); };
   $s('stVol').oninput = e => { settings.volume = +e.target.value; Sound.setVolume(settings.volume); saveSettings(); setUI(); };
   $s('stQ').querySelectorAll('button').forEach(b => b.onclick = () => { settings.quality = b.dataset.v; applyQuality(); renderer.setSize(innerWidth, innerHeight); saveSettings(); setUI(); });
+  for (const id of ['stAds', 'sgAdsM']) $s(id).querySelectorAll('button').forEach(b => b.onclick = () => { settings.ads = b.dataset.v; IN.adsT = false; saveSettings(); setUI(); });
   setUI();
   // name
   const takeName = () => { const v = $s('sgNameIn').value.trim().replace(/\s+/g, ' ').slice(0, 16); if (v.length < 2) return; profile.name = v; saveProfile(); sgShow('home'); sgMeChip(); };
@@ -5222,10 +5478,11 @@ function sgRenderEnts(dt) {
   entLightT -= dt; const relight = entLightT <= 0; if (relight) entLightT = 0.2;
   for (const P of G.P.values()) {
     const showBody = P.op && (P.alive || (P.diedAt && G.phase !== 'pick')) && (P.id !== G.myId || P.mode !== 'body' || !P.alive) && G.phase !== 'pick' && G.phase !== 'lobby';
-    if (showBody && (!P.model || P.modelOp !== P.op)) { if (P.model) sgScene.remove(P.model.g); P.model = sgPerson(P.op); P.modelOp = P.op; sgScene.add(P.model.g); }
+    if (showBody && (!P.model || P.modelOp !== P.op)) { if (P.model) { sgScene.remove(P.model.g); sgDispose(P.model.g); } P.model = sgPerson(P.op); P.modelOp = P.op; sgScene.add(P.model.g); }
     if (P.model) {
       P.model.g.visible = !!showBody && !(P.id === G.myId && P.alive && P.mode === 'body') && !(mine && !mine.alive && G.phase === 'action' && sgSpectateTarget(mine) === P);
-      if (P.model.g.visible && Math.hypot(P.x - sgCam.position.x, P.y + 1 - sgCam.position.y, P.z - sgCam.position.z) < 0.75) P.model.g.visible = false; // right on top of the camera
+      const cp = sgCam.position;
+      if (P.model.g.visible && Math.hypot(P.x - cp.x, P.z - cp.z) < 0.42 && cp.y > P.y - 0.1 && cp.y < P.y + 1.95) P.model.g.visible = false; // the camera is inside this body
       if (P.model.g.visible) {
         P.model.g.position.set(P.x, P.y, P.z); P.model.g.rotation.y = P.yaw;
         sgAnimPerson(P.model, dt, Math.hypot(P.vx, P.vz), P.crouch > 0.5, P.lean, P.pitch, !P.alive);
@@ -5241,6 +5498,11 @@ function sgRenderEnts(dt) {
       let m = P.droneMesh[n];
       const vis = D.alive && !D.held && (G.phase === 'prep' || G.phase === 'action') && !(P.id === G.myId && P.mode === 'drone' && P.droneN === n);
       if (vis && !m) { m = P.droneMesh[n] = DRONE_GEO.clone(); sgScene.add(m); }
+      if (vis && !auth(P) && D.nx !== undefined) {
+        const k = Math.min(1, dt * 14);
+        if (D.snap || Math.hypot(D.nx - D.x, D.nz - D.z) > 3) { D.x = D.nx; D.y = D.ny; D.z = D.nz; D.yaw = D.nyaw; D.snap = false; }
+        else { D.x += (D.nx - D.x) * k; D.y += (D.ny - D.y) * k; D.z += (D.nz - D.z) * k; D.yaw += angDiff(D.nyaw, D.yaw) * k; }
+      }
       if (m) { m.visible = vis; if (vis) { m.position.set(D.x, D.y, D.z); m.rotation.y = D.yaw; } }
     });
     // Mirage's hologram flickers a little
@@ -5250,7 +5512,7 @@ function sgRenderEnts(dt) {
       H.g.traverse(o => { if (o.material && o.material.opacity !== undefined) o.material.opacity = 0.82 + Math.sin(t * 30) * 0.08; });
       sgAnimPerson(H, dt, 2, false, 0, 0, false);
       if (relight) sgTintPerson(H, sgLightProbe(P.holo.x, P.holo.y, P.holo.z));
-    } else if (P.holoModel) { sgScene.remove(P.holoModel.g); P.holoModel = null; }
+    } else if (P.holoModel) { sgScene.remove(P.holoModel.g); sgDispose(P.holoModel.g); P.holoModel = null; }
   }
   // the defuser on the floor, and the planted one blinking
   if (G.dfz.drop && !G.dfz.holder) {
@@ -5354,7 +5616,7 @@ function sgInputInit() {
     saInit();
     if (document.pointerLockElement !== canvas) { if (!$s('sgPause').classList.contains('on')) sgLockSoon(); return; }
     if (e.button === 0) { IN.lmb = true; IN.lmbPress = true; }
-    if (e.button === 2) IN.rmb = true;
+    if (e.button === 2) { IN.rmb = true; IN.adsT = !IN.adsT; }
   }, true);
   addEventListener('mouseup', e => { if (!G.on) return; if (e.button === 0) IN.lmb = false; if (e.button === 2) IN.rmb = false; }, true);
   addEventListener('contextmenu', e => { if (G.on) e.preventDefault(); }, true);
@@ -5372,8 +5634,8 @@ function sgInputInit() {
 function sgMenuMap(key) {
   if (W && W.key === key) return;
   G.set.map = key;
-  for (const g of G.gad.values()) sgScene.remove(g.mesh); G.gad.clear();
-  if (W) sgScene.remove(W.group);
+  for (const g of G.gad.values()) { sgScene.remove(g.mesh); sgDispose(g.mesh); } G.gad.clear();
+  if (W) { sgScene.remove(W.group); sgDispose(W.group); }
   sgBuildMap(key); sgSetupCams(); sgBombMeshes();
 }
 function sgBoot() {
@@ -5390,7 +5652,7 @@ function sgBoot() {
 sgInputInit();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sgBoot); else sgBoot();
 // test handle, only on a local copy
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat };
 
 })();
 </script>

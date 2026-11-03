@@ -38,7 +38,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-03T10:22:00+11:00',
+    updated: '2026-11-03T19:54:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.3: fixes and no jumping. Bots only see and shoot you with a real line of sight and aim like people (a moment to react, shaky aim that settles, recoil). Right click now toggles aiming (Hold is in Settings), nobody can be hurt in the prep phase, defenders get 5 barricades and 3 reinforcements, and walls and floors no longer turn black or patchy. There is no jump any more: you climb over windows, counters and low furniture by walking into them.' },
   { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.2: chat! In an online room, press Enter or T to talk to everyone, or Y to talk to your own team only (Tab switches while you type). It works in the lobby and while you pick your operator too, and swear words are starred out.' },
   { date: '2026-11-03', game: 'havoc-bay', text: 'Havoc Bay 1.2.2: chat! In the Public Battle and in private rooms, press Enter or T to talk to everyone, or Y to talk to your own team only (Tab switches while you type). On a touch screen, tap the 💬 button. It works in the lobby too, and swear words are starred out.' },
   { date: '2026-11-03', game: 'card-royale', text: 'Card Royale 1.0.1: a new look. More detailed towers (stone bricks, banners, arrow slits, the King\u2019s gate and crest), shadows on everything, a more detailed arena with cobbled paths, flowers, lily pads, sparkling water, sturdier bridges and rope fences, and chunkier buttons that press down when you tap them.' },
