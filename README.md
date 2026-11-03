@@ -9,7 +9,7 @@ The Chat tab (`chat.html`) is a global chat for everyone on the arcade; messages
 
 | Game | Type | Controls |
 |---|---|---|
-| [Card Royale](card-royale/) | Real-time 1v1 card battles online: 50 cards, chests, trophies | Mouse or touch |
+| [Card Royale](card-royale/) | Real-time 1v1 card battles online (or vs bots for trophies): 50 cards, chests, arenas | Mouse or touch |
 | [UNO!](uno/) | Card game (classic, No Mercy, Flip) for 2–10, bots or online | Mouse or touch |
 | [Cube Assault](cube-assault/) | 3D shooter | Keyboard + mouse or touch |
 | [Blocktris](block-drop/) | Falling-block puzzle | Keyboard or touch |

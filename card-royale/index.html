@@ -257,6 +257,18 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 #elxFill{box-shadow:inset 0 3px 0 rgba(255,255,255,.4),inset 0 -2px 0 rgba(90,0,110,.4)}
 .lvl:before{filter:drop-shadow(0 2px 0 #062040) drop-shadow(0 0 1px #14141e)}
 .xpbar,.res{box-shadow:inset 0 2px 3px rgba(0,0,0,.5)}
+
+/* ---------- 1.0.2: a wooden card tray, like a real table edge ---------- */
+#hand{background-color:#4b2f1a;background-image:linear-gradient(rgba(255,255,255,.07),rgba(0,0,0,.22)),repeating-linear-gradient(0deg,transparent 0 21px,rgba(0,0,0,.28) 21px 23px),repeating-linear-gradient(90deg,rgba(255,220,170,.035) 0 2px,transparent 2px 9px);
+  border-top:0;padding:12px 9px 9px;box-shadow:inset 0 0 0 3px #22130a,inset 0 0 0 7px #8f5c30,inset 0 0 0 9px #22130a,inset 0 12px 14px rgba(0,0,0,.35),0 -4px 12px rgba(0,0,0,.4)}
+#hand:before{content:"";position:absolute;left:0;right:0;top:-7px;height:11px;background:linear-gradient(#c08a50,#8a5a30 60%,#6a4020);border:2px solid #22130a;border-left:0;border-right:0;box-shadow:0 3px 5px rgba(0,0,0,.35)}
+#handRow{position:relative;background:rgba(20,10,4,.35);border-radius:8px;padding:5px 4px 9px;box-shadow:inset 0 2px 6px rgba(0,0,0,.55)}
+#nextBox{color:#ffe7b0}
+#elxRow{margin-top:8px}
+#elxBar{background:#1c0c1e;border-color:#0c0408}
+#elxMax{color:#ffd7a0}
+.timer{background:rgba(20,20,30,.82)}
+.timer .lab{background:rgba(70,70,90,.9);color:#ffb070}
 </style>
 </head>
 <body>
@@ -306,7 +318,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 /* ============================================================
    CARD ROYALE: data (cards, arenas, chests, progression)
    ============================================================ */
-const GAME_VER = '1.0.1';
+const GAME_VER = '1.0.2';
 const W = 18, H = 32, RIVER_Y0 = 15, RIVER_Y1 = 17, MID = 16;
 const BRIDGES = [3.5, 14.5], BRIDGE_HW = 1.15;
 const TICK = 0.05;
@@ -938,11 +950,12 @@ function snapshot(B) {
    BOT
    ============================================================ */
 function cardValue(c) { const d = DEF[c]; if (!d) return 1; const parent = d.token ? 2 : (d.cost || 1); return parent / (d.count || 1); }
-function mkBot(side, level) { return { side, next: 1.2, lvl: level || 1, lastTank: -99, plan: null }; }
+// slow: extra seconds between a bot's moves (ranked bots are slower at low trophies, so the first arenas are gentle)
+function mkBot(side, level, slow) { return { side, next: 1.2, lvl: level || 1, slow: Math.max(0, slow || 0), lastTank: -99, plan: null }; }
 function botThink(B, bot) {
   if (B.phase !== 'play') return;
   if (B.t < bot.next) return;
-  bot.next = B.t + 0.45 + B.rng() * 0.5;
+  bot.next = B.t + 0.45 + B.rng() * 0.5 + (bot.slow || 0) * (0.6 + B.rng() * 0.8);
   const s = bot.side, opp = 1 - s, P = B.P[s], elx = B.elx[s], my = s === 0 ? (y => y >= MID) : (y => y < MID);
   const fwd = s === 0 ? -1 : 1; // direction toward the enemy
   const enemies = B.ents.filter(e => e.side === opp && (e.k === 'u' || e.k === 'b') && e.hp > 0);
@@ -1541,103 +1554,133 @@ function drawTower(g, e, s, team, t) {
   }
 }
 
-/* ---------- the arena background ---------- */
+/* ---------- the arena background ----------
+   1.0.2: every arena has a theme: a checkered field, dirt paths from each King to the bridges, a river that runs
+   off both edges, and its own border (fences behind the Kings, blocky trees, rocks). Drawn once per layout. */
+const THEMES = {
+  grass:  { f: ['#8fce4e', '#82c246'], f2: ['#8ccb4b', '#7fbf43'], path: '#e0bd7e', pathD: '#bb915a', out: ['#66ab3e', '#559a33'], blob: ['rgba(35,85,20,.32)', 'rgba(160,215,95,.22)'], liq: 'water', lc: ['#1e74bc', '#38a6e4', '#86d8fb'], bank: '#a87a48', leaf: ['#2d7428', '#3d9433', '#62bc4a'], trunk: '#7a4f2a', rock: '#a0a6ac', wood: '#b47d48', tufts: 1, flowers: 1 },
+  dry:    { f: ['#c9cb6c', '#bdbf60'], f2: ['#c6c86a', '#babc5e'], path: '#e8cc92', pathD: '#c09a5e', out: ['#b9a75c', '#a38f4a'], blob: ['rgba(110,85,40,.28)', 'rgba(240,220,150,.22)'], liq: 'water', lc: ['#2a7ab0', '#44a6d8', '#8ad4f4'], bank: '#9a7040', leaf: ['#5c6e26', '#7a8e34', '#a2b44a'], trunk: '#6a4426', rock: '#b8a68a', wood: '#a8743e', tufts: 1 },
+  bone:   { f: ['#adb38e', '#a1a782'], f2: ['#aab08b', '#9ea47f'], path: '#d4c8a8', pathD: '#a89a78', out: ['#7d7b66', '#6a6855'], blob: ['rgba(40,38,30,.3)', 'rgba(200,200,170,.16)'], liq: 'water', lc: ['#2a6070', '#3a8a98', '#7ac0c8'], bank: '#6a5e4a', leaf: ['#4e4a3e', '#68624e', '#8a8268'], trunk: '#5a4a3a', rock: '#c8c2b0', wood: '#8a7458', bones: 1 },
+  magic:  { f: ['#93cf98', '#86c38c'], f2: ['#90cc95', '#83c089'], path: '#dccbec', pathD: '#a88ac4', out: ['#5d8f80', '#4c7d6e'], blob: ['rgba(40,30,80,.28)', 'rgba(220,180,255,.2)'], liq: 'water', lc: ['#3a4ab8', '#5a7ae0', '#b0c0ff'], bank: '#6a5a8a', leaf: ['#5a2c8c', '#7a42b8', '#a878e0'], trunk: '#5a3a5a', rock: '#a8a0c0', wood: '#9a6aa0', tufts: 1, flowers: 1 },
+  snow:   { f: ['#eaf5fc', '#dbebf6'], f2: ['#e6f2fa', '#d6e7f3'], path: '#bcd4e8', pathD: '#8eaecc', out: ['#f4faff', '#dbe9f5'], blob: ['rgba(120,160,200,.18)', 'rgba(255,255,255,.5)'], liq: 'ice', lc: ['#5a9ed0', '#8cc8ec', '#e2f6ff'], bank: '#9ab8d4', leaf: ['#1f5a4c', '#2e7a64', '#f4fbff'], trunk: '#6a4a36', rock: '#c8d6e4', wood: '#9a7a5a', pines: 1 },
+  jungle: { f: ['#72bb4c', '#65ad42'], f2: ['#6fb84a', '#62aa40'], path: '#cfaa6c', pathD: '#9a7646', out: ['#3c8c36', '#2d7529'], blob: ['rgba(15,60,15,.35)', 'rgba(120,200,90,.2)'], liq: 'water', lc: ['#1a7a8a', '#2a9aa8', '#7ad0d4'], bank: '#7a5a34', leaf: ['#1a6326', '#2a8432', '#4caa44'], trunk: '#6a4426', rock: '#8a9a7a', wood: '#8a5a30', tufts: 1, flowers: 1 },
+  lava:   { f: ['#918d88', '#827e79'], f2: ['#8d8984', '#7e7a75'], tiles: 1, path: '#6e6a66', pathD: '#4e4a46', out: ['#4a3a34', '#33261f'], blob: ['rgba(10,5,5,.35)', 'rgba(255,110,40,.10)'], liq: 'lava', lc: ['#a8200a', '#ff5a14', '#ffd24a'], bank: '#3a2e2a', leaf: null, trunk: '#3a2a22', rock: '#6a5e58', wood: '#5a4a44', embers: 1 }
+};
+const ARENA_THEME = ['grass', 'grass', 'bone', 'dry', 'magic', 'dry', 'grass', 'snow', 'jungle', 'lava'];
+function themeOf(a) { return THEMES[ARENA_THEME[Math.max(0, Math.min(ARENA_THEME.length - 1, a | 0))]] || THEMES.grass; }
+let CUR_THEME = THEMES.grass;
+// a chunky square bush: the blocky trees around the arena
+function cubeBush(g, x, y, sz, P, T) {
+  softShadow(g, x + sz * 0.35, y + sz * 0.05, sz * 0.75, sz * 0.32, 0.4);
+  rr(g, x - sz / 2, y - sz, sz, sz, sz * 0.2, P[1], 'rgba(15,40,10,.65)', Math.max(1, T * 0.04));
+  rr(g, x - sz / 2 + sz * 0.06, y - sz + sz * 0.06, sz * 0.88, sz * 0.36, sz * 0.15, P[2]);
+  rr(g, x - sz / 2 + sz * 0.06, y - sz * 0.3, sz * 0.88, sz * 0.24, sz * 0.12, shade(P[0], 0.02));
+  circ(g, x - sz * 0.22, y - sz * 0.8, sz * 0.07, 'rgba(255,255,255,.35)');
+}
+function cubeTree(g, x, y, k, P, trunk, T) {
+  const r = T * k;
+  rr(g, x - r * 0.14, y - r * 0.55, r * 0.28, r * 0.6, r * 0.06, trunk, INK, T * 0.035);
+  cubeBush(g, x - r * 0.42, y - r * 0.45, r * 0.95, P, T); cubeBush(g, x + r * 0.42, y - r * 0.4, r * 0.9, P, T); cubeBush(g, x, y - r * 0.95, r * 1.05, P, T);
+}
+function pineTree(g, x, y, k, P, trunk, T) {
+  const r = T * k;
+  softShadow(g, x + r * 0.45, y + r * 0.1, r * 0.8, r * 0.3, 0.35);
+  rr(g, x - r * 0.12, y - r * 0.4, r * 0.24, r * 0.45, r * 0.05, trunk, INK, T * 0.035);
+  for (let i = 0; i < 3; i++) {
+    const yy = y - r * (0.3 + i * 0.55), ww = r * (0.95 - i * 0.22);
+    poly(g, [[x - ww, yy], [x, yy - r * 0.9], [x + ww, yy]], i % 2 ? P[1] : P[0], INK, T * 0.035);
+    poly(g, [[x - ww * 0.55, yy - r * 0.38], [x, yy - r * 0.9], [x + ww * 0.55, yy - r * 0.38], [x + ww * 0.2, yy - r * 0.3], [x - ww * 0.2, yy - r * 0.42]], P[2]);
+  }
+}
+function rock(g, x, y, sz, col, T, rnd) {
+  softShadow(g, x + sz * 0.3, y + sz * 0.1, sz * 0.7, sz * 0.26, 0.4);
+  const w = sz * (0.9 + rnd() * 0.4), h = sz * (0.6 + rnd() * 0.3);
+  rr(g, x - w / 2, y - h, w, h, sz * 0.18, shade(col, -0.18), INK, Math.max(1, T * 0.035));
+  rr(g, x - w / 2 + sz * 0.05, y - h + sz * 0.05, w - sz * 0.1, h * 0.45, sz * 0.14, shade(col, 0.1));
+  line(g, x - w * 0.1, y - h * 0.55, x + w * 0.05, y - h * 0.25, 'rgba(0,0,0,.25)', Math.max(1, T * 0.03));
+}
+function fenceRun(g, x0, x1, y, col, T) {
+  softShadow(g, (x0 + x1) / 2 + T * 0.2, y + T * 0.08, (x1 - x0) / 2 + T * 0.3, T * 0.18, 0.3);
+  for (const ry of [y - T * 0.5, y - T * 0.22]) rr(g, x0 - T * 0.1, ry, x1 - x0 + T * 0.2, T * 0.16, T * 0.05, shade(col, 0.05), INK, Math.max(1, T * 0.03));
+  for (let x = x0; x <= x1 + 0.5; x += T * 0.9) { rr(g, x - T * 0.1, y - T * 0.72, T * 0.2, T * 0.76, T * 0.05, shade(col, -0.12), INK, Math.max(1, T * 0.03)); line(g, x - T * 0.05, y - T * 0.66, x - T * 0.05, y - T * 0.1, 'rgba(255,255,255,.25)', Math.max(1, T * 0.03)); }
+}
 function drawArenaBG(g, T, ox, oy, cw, ch, arena) {
-  const X = x => ox + x * T, Y = y => oy + y * T, rnd = mkRng(7);
-  // outside the walls: grass, bushes, flowers
-  let gr = g.createLinearGradient(0, 0, 0, ch); gr.addColorStop(0, '#4c7d2c'); gr.addColorStop(1, '#3e6c25'); g.fillStyle = gr; g.fillRect(0, 0, cw, ch);
-  for (let i = 0; i < 320; i++) { const x = rnd() * cw, y = rnd() * ch; circ(g, x, y, T * (0.15 + rnd() * 0.45), rnd() < 0.5 ? 'rgba(40,80,25,.55)' : 'rgba(110,160,60,.35)'); }
-  for (let i = 0; i < 60; i++) { const x = rnd() * cw, y = rnd() * ch; circ(g, x, y, T * 0.07, ['#ffe27a', '#ffffff', '#ff9ab8'][i % 3]); }
-  // the stone wall around the field, with crenellations
-  const wx0 = X(-1.2), wy0 = Y(-1.4), ww = T * (W + 2.4), wh = T * (H + 2.8);
-  softShadow(g, wx0 + ww / 2 + T * 0.5, wy0 + wh / 2 + T * 0.5, ww * 0.56, wh * 0.53, 0.35);
-  rr(g, wx0, wy0, ww, wh, T * 0.6, '#8a7f6b', INK, T * 0.08);
-  for (let yy = wy0 + T * 0.1; yy < wy0 + wh - T * 0.2; yy += T * 0.5) for (let xx = wx0 + T * 0.1 + ((yy / T | 0) % 2) * T * 0.3; xx < wx0 + ww - T * 0.3; xx += T * 0.62) { if (xx > X(-0.6) && xx < X(W + 0.4) && yy > Y(-0.8) && yy < Y(H + 0.6)) continue; rr(g, xx, yy, T * 0.56, T * 0.44, T * 0.08, shade('#a39780', (rnd() - 0.5) * 0.16)); }
-  for (const [x, y, vert] of [[-0.85, -1.2, 0], [-0.85, H + 1.0, 0], [-1.0, -1.1, 1], [W + 0.75, -1.1, 1]]) {
-    const len = vert ? H + 2.2 : W + 1.7;
-    for (let k = 0; k < len; k += 1.3) { const mx = X(vert ? x : x + k + 0.3), my = Y(vert ? y + k + 0.3 : y); rr(g, mx, my - T * 0.18, T * 0.42, T * 0.36, T * 0.06, '#c8bca4', INK, T * 0.035); }
-  }
-  rr(g, X(-0.6), Y(-0.8), T * (W + 1.2), T * (H + 1.6), T * 0.4, '#b8ab8f', INK, T * 0.05);
-  // field tiles, with a little grass and the odd flower
+  const P = themeOf(arena); CUR_THEME = P;
+  const X = x => ox + x * T, Y = y => oy + y * T, rnd = mkRng(7 + (arena | 0));
+  // the ground around the field
+  let gr = g.createLinearGradient(0, 0, 0, ch); gr.addColorStop(0, P.out[0]); gr.addColorStop(1, P.out[1]); g.fillStyle = gr; g.fillRect(0, 0, cw, ch);
+  for (let i = 0; i < 300; i++) { const x = rnd() * cw, y = rnd() * ch; ell(g, x, y, T * (0.2 + rnd() * 0.6), T * (0.15 + rnd() * 0.35), P.blob[i % 2]); }
+  if (P.embers) for (let i = 0; i < 40; i++) { const x = rnd() * cw, y = rnd() * ch, l = T * (0.4 + rnd() * 1.2), a = rnd() * 3; line(g, x, y, x + Math.cos(a) * l, y + Math.sin(a) * l, 'rgba(255,' + (90 + rnd() * 80 | 0) + ',30,.55)', Math.max(1, T * 0.06)); }
+  if (P.flowers) for (let i = 0; i < 50; i++) { const x = rnd() * cw, y = rnd() * ch; circ(g, x, y, T * 0.07, ['#ffe27a', '#ffffff', '#ff9ab8'][i % 3]); }
+  // the field sits a little above the ground: a dark lip and a shadow around it
+  softShadow(g, X(W / 2) + T * 0.3, Y(H / 2) + T * 0.4, T * (W / 2 + 1.2), T * (H / 2 + 1.2), 0.35);
+  rr(g, X(-0.3), Y(-0.3), T * (W + 0.6), T * (H + 0.6), T * 0.3, shade(P.out[1], -0.3), INK, T * 0.06);
+  // checkered field
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const light = (x + y) % 2 === 0, top = y < MID;
-    let c = top ? (light ? '#a6c15d' : '#9db857') : (light ? '#abc661' : '#a2bd5a');
-    g.fillStyle = shade(c, (rnd() - 0.5) * 0.05); g.fillRect(X(x), Y(y), T + 0.6, T + 0.6);
-    for (let k = 0; k < 3; k++) { const bx = X(x + rnd()), by = Y(y + rnd()); line(g, bx, by, bx + T * 0.05, by - T * 0.14, rnd() < 0.5 ? 'rgba(70,110,30,.45)' : 'rgba(210,235,140,.4)', Math.max(1, T * 0.035)); }
-    if (rnd() < 0.05) { const fx = X(x + 0.2 + rnd() * 0.6), fy = Y(y + 0.2 + rnd() * 0.6); for (let k = 0; k < 4; k++) circ(g, fx + Math.cos(k * 1.57) * T * 0.05, fy + Math.sin(k * 1.57) * T * 0.05, T * 0.045, '#fff'); circ(g, fx, fy, T * 0.04, '#ffd34a'); }
+    const pal = y < MID ? P.f : P.f2, c = pal[(x + y) % 2];
+    g.fillStyle = shade(c, (rnd() - 0.5) * 0.04); g.fillRect(X(x), Y(y), T + 0.6, T + 0.6);
+    if (P.tiles) { rr(g, X(x) + T * 0.04, Y(y) + T * 0.04, T * 0.92, T * 0.92, T * 0.08, null, 'rgba(40,35,30,.45)', Math.max(1, T * 0.05)); line(g, X(x) + T * 0.1, Y(y) + T * 0.1, X(x) + T * 0.9, Y(y) + T * 0.1, 'rgba(255,255,255,.18)', Math.max(1, T * 0.04)); if (rnd() < 0.12) line(g, X(x + 0.2 + rnd() * 0.3), Y(y + 0.2), X(x + 0.5 + rnd() * 0.3), Y(y + 0.7), 'rgba(30,25,20,.35)', Math.max(1, T * 0.03)); }
+    else if (P.tufts) for (let k = 0; k < 2; k++) { const bx = X(x + rnd()), by = Y(y + rnd()); line(g, bx, by, bx + T * 0.05, by - T * 0.13, rnd() < 0.5 ? 'rgba(50,110,25,.4)' : 'rgba(220,245,150,.4)', Math.max(1, T * 0.035)); }
+    if (P.flowers && rnd() < 0.035) { const fx = X(x + 0.2 + rnd() * 0.6), fy = Y(y + 0.2 + rnd() * 0.6); for (let k = 0; k < 4; k++) circ(g, fx + Math.cos(k * 1.57) * T * 0.05, fy + Math.sin(k * 1.57) * T * 0.05, T * 0.045, '#fff'); circ(g, fx, fy, T * 0.04, '#ffd34a'); }
+    if (P.bones && rnd() < 0.03) { const bx = X(x + 0.5), by = Y(y + 0.5); line(g, bx - T * 0.2, by, bx + T * 0.2, by, '#f4efe0', T * 0.07); for (const k of [-1, 1]) { circ(g, bx + k * T * 0.22, by - T * 0.04, T * 0.05, '#f4efe0'); circ(g, bx + k * T * 0.22, by + T * 0.04, T * 0.05, '#f4efe0'); } }
   }
-  // cobbled paths: lanes to the bridges and in front of the towers
-  const path = (x0, y0, x1, y1) => {
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-      g.fillStyle = (x + y) % 2 ? '#d2bf88' : '#d9c792'; g.fillRect(X(x), Y(y), T + 0.6, T + 0.6);
-      for (let k = 0; k < 3; k++) { const sx = X(x + 0.15 + rnd() * 0.7), sy = Y(y + 0.15 + rnd() * 0.7), r = T * (0.1 + rnd() * 0.08); ell(g, sx + T * 0.03, sy + T * 0.03, r, r * 0.7, 'rgba(120,100,60,.3)'); ell(g, sx, sy, r, r * 0.7, shade('#e2d3a4', (rnd() - 0.5) * 0.2)); }
-    }
-  };
-  path(2, 6, 5, 15); path(13, 6, 16, 15); path(2, 17, 5, 26); path(13, 17, 16, 26); path(2, 5, 16, 7); path(2, 25, 16, 27);
-  // soft shade along the inside of the walls
-  const edge = (x0, y0, x1, y1, w, h) => { const gg = g.createLinearGradient(x0, y0, x1, y1); gg.addColorStop(0, 'rgba(20,30,10,.3)'); gg.addColorStop(1, 'rgba(20,30,10,0)'); g.fillStyle = gg; g.fillRect(Math.min(x0, x1) - (w ? 0 : 0), Math.min(y0, y1), w || Math.abs(x1 - x0), h || Math.abs(y1 - y0)); };
-  edge(X(0), Y(0), X(0), Y(0.8), T * W, 0); edge(X(0), Y(0), X(0.8), Y(0), 0, T * H); edge(X(W), Y(0), X(W - 0.8), Y(0), 0, T * H);
-  // the river: deep water, stone banks, lily pads
+  // dirt paths: in front of each King, then down each lane to the bridges
+  const paths = [[[BRIDGES[0], RIVER_Y0], [BRIDGES[0], 4.4], [BRIDGES[1], 4.4], [BRIDGES[1], RIVER_Y0]], [[BRIDGES[0], RIVER_Y1], [BRIDGES[0], 29.4], [BRIDGES[1], 29.4], [BRIDGES[1], RIVER_Y1]]];
+  const stroke = (pts, col, w) => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))); g.strokeStyle = col; g.lineWidth = w; g.lineJoin = 'round'; g.lineCap = 'butt'; g.stroke(); };
+  for (const pts of paths) { stroke(pts, P.pathD, T * 1.05); stroke(pts, P.path, T * 0.82); }
+  for (const pts of paths) for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[i + 1], n = Math.round(hyp(bx - ax, by - ay) * 1.6);
+    for (let k = 0; k < n; k++) { const f = rnd(), px = ax + (bx - ax) * f + (rnd() - 0.5) * 0.6, py = ay + (by - ay) * f + (rnd() - 0.5) * 0.6; ell(g, X(px), Y(py), T * 0.07, T * 0.05, rnd() < 0.5 ? shade(P.path, -0.15) : shade(P.path, 0.12)); }
+  }
+  // a soft shade along the inside edges of the field
+  const edge = (x0, y0, x1, y1, w, h) => { const gg = g.createLinearGradient(x0, y0, x1, y1); gg.addColorStop(0, 'rgba(20,30,10,.22)'); gg.addColorStop(1, 'rgba(20,30,10,0)'); g.fillStyle = gg; g.fillRect(Math.min(x0, x1), Math.min(y0, y1), w || Math.abs(x1 - x0), h || Math.abs(y1 - y0)); };
+  edge(X(0), Y(0), X(0), Y(0.7), T * W, 0); edge(X(0), Y(0), X(0.7), Y(0), 0, T * H); edge(X(W), Y(0), X(W - 0.7), Y(0), 0, T * H);
+  // the river runs right across, off both edges
   const r0 = Y(RIVER_Y0), r1 = Y(RIVER_Y1);
-  gr = g.createLinearGradient(0, r0, 0, r1); gr.addColorStop(0, '#2f7fb8'); gr.addColorStop(0.25, '#4aa2d8'); gr.addColorStop(0.5, '#5cb4e6'); gr.addColorStop(0.75, '#4aa2d8'); gr.addColorStop(1, '#2f7fb8');
-  g.fillStyle = gr; g.fillRect(X(-0.6), r0, T * (W + 1.2), r1 - r0);
-  g.fillStyle = 'rgba(10,40,80,.25)'; g.fillRect(X(-0.6), r0, T * (W + 1.2), T * 0.25);
-  for (let i = 0; i < 6; i++) { const lx = X(1 + rnd() * (W - 2)), ly = Y(MID - 0.5 + rnd()); if (BRIDGES.some(b => Math.abs((lx - ox) / T - b) < BRIDGE_HW + 0.5)) continue; ell(g, lx, ly, T * 0.26, T * 0.17, '#4f9a3a', 'rgba(20,60,20,.6)', 1); poly(g, [[lx, ly], [lx + T * 0.26, ly - T * 0.05], [lx + T * 0.26, ly + T * 0.05]], '#4aa2d8'); if (i % 2) circ(g, lx - T * 0.05, ly - T * 0.04, T * 0.07, '#ffb6d0'); }
-  for (const yy of [r0, r1]) for (let x = -0.6; x < W + 0.6; x += 0.42) { const sx = X(x), r = T * (0.17 + rnd() * 0.06); ell(g, sx, yy + (yy === r0 ? -T * 0.02 : T * 0.02), r * 1.15, r * 0.75, shade('#9a8c74', (rnd() - 0.5) * 0.25), 'rgba(40,30,20,.5)', 1); }
-  // bridges: planks, nails, rails and their shadow on the water
+  g.fillStyle = shade(P.bank, -0.25); g.fillRect(0, r0 - T * 0.28, cw, r1 - r0 + T * 0.56);
+  g.fillStyle = P.bank; g.fillRect(0, r0 - T * 0.22, cw, T * 0.22); g.fillRect(0, r1, cw, T * 0.2);
+  gr = g.createLinearGradient(0, r0, 0, r1); gr.addColorStop(0, P.lc[0]); gr.addColorStop(0.3, P.lc[1]); gr.addColorStop(0.55, shade(P.lc[1], 0.08)); gr.addColorStop(1, P.lc[0]);
+  g.fillStyle = gr; g.fillRect(0, r0, cw, r1 - r0);
+  g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(0, r0, cw, T * 0.22);
+  if (P.liq === 'lava') { for (let i = 0; i < 26; i++) { const x = rnd() * cw, y = r0 + T * (0.3 + rnd() * 1.4); ell(g, x, y, T * (0.3 + rnd() * 0.5), T * 0.12, 'rgba(255,220,90,.45)'); } const gl = g.createLinearGradient(0, r0 - T, 0, r0); gl.addColorStop(0, 'rgba(255,120,30,0)'); gl.addColorStop(1, 'rgba(255,120,30,.35)'); g.fillStyle = gl; g.fillRect(0, r0 - T, cw, T); }
+  else if (P.liq === 'ice') { for (let i = 0; i < 18; i++) { const x = rnd() * cw, y = r0 + T * (0.3 + rnd() * 1.4); line(g, x, y, x + T * (0.4 + rnd()), y + T * (rnd() - 0.5) * 0.6, 'rgba(255,255,255,.55)', Math.max(1, T * 0.04)); } }
+  else for (let i = 0; i < 7; i++) { const lx = X(1 + rnd() * (W - 2)), ly = Y(MID - 0.5 + rnd()); if (BRIDGES.some(b => Math.abs((lx - ox) / T - b) < BRIDGE_HW + 0.5)) continue; ell(g, lx, ly, T * 0.26, T * 0.17, '#4f9a3a', 'rgba(20,60,20,.6)', 1); poly(g, [[lx, ly], [lx + T * 0.26, ly - T * 0.05], [lx + T * 0.26, ly + T * 0.05]], P.lc[1]); if (i % 2) circ(g, lx - T * 0.05, ly - T * 0.04, T * 0.07, '#ffb6d0'); }
+  // bridges: planks (stone slabs over lava), rails, and their shadow on the river
+  const stone = P.liq === 'lava';
   for (const b of BRIDGES) {
     const bx0 = X(b - BRIDGE_HW), bw = T * BRIDGE_HW * 2, by0 = Y(RIVER_Y0 - 0.45), bh = T * (RIVER_Y1 - RIVER_Y0 + 0.9);
     g.fillStyle = 'rgba(0,20,50,.35)'; g.fillRect(bx0 + T * 0.35, r0, bw, r1 - r0);
-    rr(g, bx0, by0, bw, bh, T * 0.1, '#7a4f2a', INK, T * 0.06);
-    for (let i = 0; i < 8; i++) { const py = by0 + T * 0.08 + i * (bh - T * 0.16) / 8; rr(g, bx0 + T * 0.18, py, bw - T * 0.36, (bh - T * 0.16) / 8 - T * 0.05, T * 0.04, shade('#b07a45', (rnd() - 0.5) * 0.2)); line(g, bx0 + T * 0.22, py + T * 0.04, bx0 + bw - T * 0.22, py + T * 0.04, 'rgba(255,255,255,.18)', 1); circ(g, bx0 + T * 0.3, py + T * 0.12, T * 0.03, '#3a2a1e'); circ(g, bx0 + bw - T * 0.3, py + T * 0.12, T * 0.03, '#3a2a1e'); }
-    for (const sx of [bx0, bx0 + bw]) { rr(g, sx - T * 0.1, by0 - T * 0.1, T * 0.2, bh + T * 0.2, T * 0.08, '#6a4426', INK, T * 0.04); for (let k = 0; k < 3; k++) rr(g, sx - T * 0.14, by0 + k * bh / 2 - T * 0.12, T * 0.28, T * 0.28, T * 0.06, '#5a381e', INK, T * 0.03); }
+    rr(g, bx0, by0, bw, bh, T * 0.1, stone ? '#4a4440' : shade(P.wood, -0.35), INK, T * 0.06);
+    for (let i = 0; i < 8; i++) { const py = by0 + T * 0.08 + i * (bh - T * 0.16) / 8; rr(g, bx0 + T * 0.18, py, bw - T * 0.36, (bh - T * 0.16) / 8 - T * 0.05, T * 0.04, shade(stone ? '#8a847e' : P.wood, (rnd() - 0.5) * 0.2)); line(g, bx0 + T * 0.22, py + T * 0.04, bx0 + bw - T * 0.22, py + T * 0.04, 'rgba(255,255,255,.2)', 1); if (!stone) { circ(g, bx0 + T * 0.3, py + T * 0.12, T * 0.03, '#3a2a1e'); circ(g, bx0 + bw - T * 0.3, py + T * 0.12, T * 0.03, '#3a2a1e'); } }
+    for (const sx of [bx0, bx0 + bw]) { rr(g, sx - T * 0.1, by0 - T * 0.1, T * 0.2, bh + T * 0.2, T * 0.08, stone ? '#3a3430' : shade(P.wood, -0.45), INK, T * 0.04); for (let k = 0; k < 3; k++) rr(g, sx - T * 0.14, by0 + k * bh / 2 - T * 0.12, T * 0.28, T * 0.28, T * 0.06, stone ? '#5a524c' : shade(P.wood, -0.55), INK, T * 0.03); }
   }
-  // fence posts with rope along the banks
-  for (const fy of [RIVER_Y0 - 0.55, RIVER_Y1 + 0.25]) {
-    let px = null;
-    for (let x = 0.2; x <= W; x += 1.2) {
-      if (BRIDGES.some(b => Math.abs(x - b) < BRIDGE_HW + 0.35)) { px = null; continue; }
-      const sx = X(x), sy = Y(fy);
-      if (px != null) { g.beginPath(); g.moveTo(px, sy + T * 0.1); g.quadraticCurveTo((px + sx) / 2, sy + T * 0.24, sx, sy + T * 0.1); g.strokeStyle = '#d8c090'; g.lineWidth = T * 0.05; g.stroke(); }
-      softShadow(g, sx + T * 0.15, sy + T * 0.42, T * 0.18, T * 0.08, 0.35);
-      rr(g, sx - T * 0.11, sy, T * 0.22, T * 0.42, T * 0.06, '#8a6a4a', INK, T * 0.03); ell(g, sx, sy, T * 0.11, T * 0.05, '#b08a60');
-      px = sx;
-    }
-  }
-  // tents, barrels and hay outside the walls: red at the top (the enemy), blue at the bottom (you)
-  for (const [y0, team] of [[1, 1], [8.5, 1], [20.5, 0], [27.5, 0]]) for (const sx of [-1, 1]) {
-    const cx = sx < 0 ? X(-2.4) : X(W + 2.4), cy = Y(y0 + 1);
-    if (cx < -T * 1.5 || cx > cw + T * 1.5) continue;
-    softShadow(g, cx + T * 0.6, cy + T * 1.5, T * 1.4, T * 0.5, 0.35);
-    rr(g, cx - T * 0.95, cy - T * 0.1, T * 1.9, T * 1.55, T * 0.12, '#7a5a3a', INK, T * 0.05);
-    rr(g, cx - T * 0.3, cy + T * 0.55, T * 0.6, T * 0.9, [T * 0.3, T * 0.3, 0, 0], '#3a2a1e');
-    poly(g, [[cx - T * 1.2, cy + T * 0.05], [cx, cy - T * 1.35], [cx + T * 1.2, cy + T * 0.05]], TEAM[team].roof, INK, T * 0.05);
-    for (const k of [-0.6, 0, 0.6]) line(g, cx + k * T * 0.3, cy - T * 1.1 + Math.abs(k) * T * 0.5, cx + k * T * 1.3, cy + T * 0.02, shade(TEAM[team].roof, 0.25), T * 0.07);
-    line(g, cx, cy - T * 1.35, cx, cy - T * 1.95, '#6a4a2a', T * 0.06); poly(g, [[cx, cy - T * 1.95], [cx + T * 0.5, cy - T * 1.8], [cx, cy - T * 1.65]], TEAM[team].m, INK, T * 0.02);
-    const bx = cx + sx * T * 1.5, by = cy + T * 1.5;
-    softShadow(g, bx + T * 0.2, by + T * 0.15, T * 0.35, T * 0.14, 0.35);
-    rr(g, bx - T * 0.25, by - T * 0.45, T * 0.5, T * 0.55, T * 0.12, '#9a6a3a', INK, T * 0.04); line(g, bx - T * 0.25, by - T * 0.3, bx + T * 0.25, by - T * 0.3, '#5a3a1e', T * 0.05); ell(g, bx, by - T * 0.45, T * 0.25, T * 0.08, '#b88a5a', INK, T * 0.03);
-    rr(g, bx - sx * T * 0.9 - T * 0.35, by - T * 0.25, T * 0.7, T * 0.42, T * 0.1, '#e0c060', INK, T * 0.04); line(g, bx - sx * T * 0.9 - T * 0.3, by - T * 0.05, bx - sx * T * 0.9 + T * 0.3, by - T * 0.05, '#b8983a', T * 0.04);
-  }
-  // trees with shadows
-  for (const [x, y, k] of [[-1.9, H + 1.6, 1.2], [W + 1.9, H + 1.6, 1.2], [-1.9, -1.8, 1.2], [W + 1.9, -1.8, 1.2], [-2.4, MID, 1.05], [W + 2.4, MID, 1.05], [-2.6, 5, 0.85], [W + 2.6, 26, 0.85], [-2.6, 24, 0.9], [W + 2.6, 7, 0.9]]) {
+  // big stones where the river leaves the field
+  for (const x of [-0.75, W + 0.75]) for (const y of [RIVER_Y0 - 0.15, RIVER_Y1 + 0.35]) rock(g, X(x), Y(y), T * 0.75, P.rock, T, rnd);
+  // fences behind the Kings, either side of them
+  for (const y of [-0.5, H + 0.95]) { fenceRun(g, X(1.0), X(6.4), Y(y), P.wood, T); fenceRun(g, X(11.6), X(17.0), Y(y), P.wood, T); }
+  // trees, bushes and rocks outside the field
+  const deco = [[-1.7, -1.2, 1.1], [W + 1.7, -1.2, 1.1], [-1.9, 3.2, 0.9], [W + 1.9, 4.0, 0.95], [-1.6, 9.5, 0.85], [W + 1.6, 10.5, 0.8], [-2.0, 13.0, 0.75], [W + 2.0, 12.6, 0.8],
+    [-2.0, 20.0, 0.8], [W + 2.0, 19.6, 0.75], [-1.6, 23.5, 0.85], [W + 1.6, 22.5, 0.85], [-1.9, 28.0, 0.95], [W + 1.9, 28.6, 0.9], [-1.7, H + 2.0, 1.1], [W + 1.7, H + 2.0, 1.1], [3.8, -1.6, 0.8], [W - 3.8, -1.6, 0.8], [3.8, H + 2.4, 0.8], [W - 3.8, H + 2.4, 0.8]];
+  for (const [x, y, k] of deco) {
     const tx = X(x), ty = Y(y), r = T * k;
-    if (tx < -r * 2 || tx > cw + r * 2) continue;
-    softShadow(g, tx + r * 0.6, ty + r * 0.75, r * 1.25, r * 0.6, 0.45);
-    rr(g, tx - r * 0.13, ty, r * 0.26, r * 0.7, r * 0.08, '#6a4426', INK, T * 0.04);
-    circ(g, tx, ty - r * 0.15, r, '#2f6a22', INK, T * 0.05); circ(g, tx - r * 0.35, ty - r * 0.4, r * 0.6, '#3d8a2c'); circ(g, tx + r * 0.3, ty - r * 0.55, r * 0.5, '#4c9a36'); circ(g, tx - r * 0.45, ty - r * 0.6, r * 0.25, 'rgba(255,255,255,.18)');
+    if (tx < -r * 2 || tx > cw + r * 2 || ty < -r * 2 || ty > ch + r * 3) continue;
+    if (!P.leaf) { rock(g, tx, ty, r * 1.1, P.rock, T, rnd); if (rnd() < 0.6) rock(g, tx + r * 0.7, ty + r * 0.35, r * 0.6, P.rock, T, rnd); continue; }
+    if (P.pines) pineTree(g, tx, ty, k, P.leaf, P.trunk, T); else cubeTree(g, tx, ty, k, P.leaf, P.trunk, T);
+    if (rnd() < 0.5) rock(g, tx + r * 0.9, ty + r * 0.3, r * 0.45, P.rock, T, rnd);
   }
-  void arena;
+  if (P.leaf) for (const [x, y] of [[-0.9, 6.5], [W + 0.9, 7.2], [-0.9, 25.2], [W + 0.9, 24.8]]) cubeBush(g, X(x), Y(y), T * 0.7, P.leaf, T);
 }
-// moving glints on the river, drawn every frame
+// moving glints on the river, drawn every frame (bubbles on lava)
 function drawWater(g, T, ox, oy, t) {
-  const r0 = oy + RIVER_Y0 * T, r1 = oy + RIVER_Y1 * T;
-  g.save(); g.beginPath(); g.rect(ox - T * 0.6, r0 + T * 0.15, T * (W + 1.2), r1 - r0 - T * 0.3);
+  const P = CUR_THEME, r0 = oy + RIVER_Y0 * T, r1 = oy + RIVER_Y1 * T, x0 = -ox / T - 1, span = W + 2 * ox / T + 2;
+  g.save(); g.beginPath(); g.rect(0, r0 + T * 0.15, ox * 2 + W * T, r1 - r0 - T * 0.3);
   for (const b of BRIDGES) g.rect(ox + (b + BRIDGE_HW) * T, r0 - T, -BRIDGE_HW * 2 * T, r1 - r0 + 2 * T);
   g.clip('evenodd');
   g.lineWidth = Math.max(1, T * 0.06); g.lineCap = 'round';
-  for (let i = 0; i < 16; i++) {
-    const x = ox + (((i * 2.37 + t * (0.35 + (i % 3) * 0.12)) % (W + 2)) - 1) * T, y = r0 + T * (0.4 + (i * 0.37 % 1.3)), a = 0.18 + 0.15 * Math.sin(t * 2 + i);
+  const n = Math.round(16 * span / (W + 2));
+  for (let i = 0; i < n; i++) {
+    const x = ox + (((i * 2.37 + t * (0.35 + (i % 3) * 0.12)) % span) + x0) * T, y = r0 + T * (0.4 + (i * 0.37 % 1.3)), a = 0.18 + 0.15 * Math.sin(t * 2 + i);
+    if (P.liq === 'lava') { const p = (t * 0.6 + i * 0.37) % 1; circ(g, x, y, T * (0.06 + p * 0.14), 'rgba(255,' + (200 - p * 80 | 0) + ',60,' + (0.7 * (1 - p)).toFixed(2) + ')'); continue; }
     g.strokeStyle = 'rgba(230,248,255,' + a.toFixed(2) + ')'; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + T * 0.25, y - T * 0.08, x + T * 0.5, y); g.stroke();
   }
   g.restore();
@@ -1728,7 +1771,7 @@ function startBattle(o) {
   if (o.mode !== 'guest') {
     const p0 = o.side === 0 ? o.me : o.opp, p1 = o.side === 0 ? o.opp : o.me;
     BT.B = newBattle(p0, p1, o.seed);
-    if (o.mode === 'bot') BT.bot = mkBot(1 - o.side);
+    if (o.mode === 'bot') BT.bot = mkBot(1 - o.side, o.botLvl, o.botSlow);
   }
   $('#menu').classList.add('hide'); $('#battle').classList.remove('hide');
   $('#oppName').textContent = o.opp.name; $('#oppTr').textContent = o.opp.tr || 0; $('#oppLv').textContent = 'Lv ' + (o.opp.kl || 1);
@@ -2308,16 +2351,21 @@ const NET = (() => {
   }
 
   /* ---------- the queue ---------- */
+  let gen = 0; // bumped by cancel(), so a search that was cancelled while connecting stops instead of joining the queue
   async function search(profile, onStatus) {
     cancel();
+    const my = gen;
     prof = profile; myId = profile.id; cb = onStatus; matched = null; inviting = null; ended = false;
     cb({ s: 'connecting' });
     await getClient();
-    q = client.channel('cr-queue' + SUF, { config: { broadcast: { self: false }, presence: { key: myId } } });
-    q.on('presence', { event: 'sync' }, consider);
-    q.on('broadcast', { event: '*' }, m => onQueue(m.event, m.payload || {}));
-    await sub(q);
-    await q.track({ id: myId, n: prof.name, tr: prof.tr, v: GAME_VER, t: Date.now() });
+    if (my !== gen) return;
+    const c = q = client.channel('cr-queue' + SUF, { config: { broadcast: { self: false }, presence: { key: myId } } });
+    c.on('presence', { event: 'sync' }, consider);
+    c.on('broadcast', { event: '*' }, m => onQueue(m.event, m.payload || {}));
+    await sub(c);
+    if (my !== gen) return;
+    await c.track({ id: myId, n: prof.name, tr: prof.tr, v: GAME_VER, t: Date.now() });
+    if (my !== gen) { try { c.untrack(); } catch (e) {} return; }
     cb({ s: 'searching' });
     clearInterval(poll); poll = setInterval(consider, 1500);
   }
@@ -2350,7 +2398,7 @@ const NET = (() => {
     }
   }
   function leaveQueue() { clearInterval(poll); if (q) { const c = q; q = null; try { c.untrack(); } catch (e) {} setTimeout(() => { try { client.removeChannel(c); } catch (e) {} }, 200); } }
-  function cancel() { leaveQueue(); leaveMatch(); matched = null; inviting = null; cb = null; }
+  function cancel() { gen++; leaveQueue(); leaveMatch(); matched = null; inviting = null; cb = null; }
 
   /* ---------- the match ---------- */
   async function enterMatch() {
@@ -2489,13 +2537,43 @@ function drawChest(g, type, w, h, open) {
   }
   void hi;
 }
+// the arena on the Battle tab: a little floating island with the arena on it, in that arena's colors (1.0.2)
 function arenaCanvas(a) {
-  const c = document.createElement('canvas'); c.width = 300; c.height = 230; const g = c.getContext('2d'), A = ARENAS[a];
-  ell(g, 150, 200, 130, 22, 'rgba(0,0,0,.3)');
-  ell(g, 150, 150, 128, 62, '#7a7e86', INK, 3); rr(g, 22, 110, 256, 44, 6, '#8a8e96'); ell(g, 150, 112, 128, 60, '#a8acb4', INK, 3);
-  ell(g, 150, 112, 104, 46, A.c2, INK, 2.5); ell(g, 150, 114, 80, 32, A.c1); rr(g, 147, 84, 6, 60, 2, '#8a6a4a');
-  for (const k of [-1, 1]) { poly(g, [[150 + k * 112, 120], [150 + k * 150, 40], [150 + k * 128, 116]], '#f2ead8', INK, 2.5); poly(g, [[150 + k * 92, 92], [150 + k * 110, 22], [150 + k * 106, 96]], '#f2ead8', INK, 2.5); }
-  for (const [x, col] of [[110, '#d8403a'], [190, '#3d7bdc']]) { line(g, x, 92, x, 30, '#6a4a2a', 4); poly(g, [[x, 32], [x + (x < 150 ? -34 : 34), 42], [x, 60]], col, INK, 2); }
+  const c = document.createElement('canvas'); c.width = 300; c.height = 230; const g = c.getContext('2d'), P = themeOf(a), rnd = mkRng(31 + a), T = 12;
+  const lerp = (p, q, t) => p + (q - p) * t;
+  ell(g, 150, 212, 118, 14, 'rgba(0,0,0,.28)');
+  // the island's underside: layers of earth and rock
+  const dirt = shade(P.bank, -0.05);
+  g.beginPath(); g.moveTo(20, 118); g.bezierCurveTo(30, 175, 95, 206, 150, 208); g.bezierCurveTo(205, 206, 270, 175, 280, 118); g.closePath();
+  g.fillStyle = dirt; g.fill(); g.strokeStyle = INK; g.lineWidth = 3; g.stroke();
+  for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(30 + i * 8, 140 + i * 16); g.quadraticCurveTo(150, 168 + i * 14, 270 - i * 8, 140 + i * 16); g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 2; g.stroke(); }
+  for (let i = 0; i < 9; i++) { const x = 50 + rnd() * 200, y = 140 + rnd() * 45; rr(g, x - 7, y - 5, 14, 10, 3, shade(P.rock, -0.1 + rnd() * 0.2), 'rgba(20,15,10,.55)', 1.5); }
+  // the top
+  ell(g, 150, 118, 130, 64, P.out[0], INK, 3);
+  ell(g, 150, 114, 122, 56, shade(P.out[0], 0.06));
+  // the back wall of stakes
+  const rimY = x => 118 - 64 * Math.sqrt(Math.max(0, 1 - Math.pow((x - 150) / 130, 2)));
+  const stake = (x, y, h, col) => { poly(g, [[x - 5, y], [x - 5, y - h + 5], [x, y - h], [x + 5, y - h + 5], [x + 5, y]], col, INK, 1.8); line(g, x - 2, y - h + 7, x - 2, y - 2, 'rgba(255,255,255,.25)', 1.5); };
+  for (let x = 44; x <= 256; x += 9) stake(x, rimY(x) + 14, 22 + rnd() * 6, shade(P.wood, (rnd() - 0.5) * 0.2));
+  // the field: checkered, in perspective
+  const q = [[98, 72], [202, 72], [228, 164], [72, 164]];
+  const at = (u, v) => [lerp(lerp(q[0][0], q[1][0], u), lerp(q[3][0], q[2][0], u), v), lerp(q[0][1], q[3][1], v)];
+  const quad = (u0, v0, u1, v1, col) => poly(g, [at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)], col);
+  softShadow(g, 156, 124, 92, 52, 0.35);
+  const NU = 8, NV = 12;
+  for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) quad(i / NU, j / NV, (i + 1) / NU + 0.002, (j + 1) / NV + 0.004, (j < NV / 2 ? P.f : P.f2)[(i + j) % 2]);
+  quad(0, 0.46, 1, 0.54, P.lc[1]); quad(0, 0.46, 1, 0.48, P.lc[0]);
+  for (const u of [0.2, 0.8]) { quad(u - 0.07, 0.44, u + 0.07, 0.56, P.liq === 'lava' ? '#8a847e' : P.wood); poly(g, [at(u - 0.07, 0.44), at(u + 0.07, 0.44), at(u + 0.07, 0.56), at(u - 0.07, 0.56)], null, 'rgba(30,20,10,.6)', 1.2); }
+  poly(g, q, null, INK, 2.5);
+  // tiny towers
+  const tower = (u, v, k, team) => { const [x, y] = at(u, v), w = 13 * k, h = 15 * k; softShadow(g, x + 3, y + 2, w * 0.8, 4, 0.4); rr(g, x - w / 2, y - h, w, h, 2, '#a3998c', INK, 1.6); rr(g, x - w / 2 - 1.5, y - h - 5 * k, w + 3, 6 * k, 2, TEAM[team].m, INK, 1.6); line(g, x - w / 2 + 2, y - h + 3, x + w / 2 - 2, y - h + 3, 'rgba(255,255,255,.3)', 1.5); };
+  tower(0.5, 0.1, 1.25, 1); tower(0.2, 0.24, 1, 1); tower(0.8, 0.24, 1, 1);
+  tower(0.2, 0.84, 1.1, 0); tower(0.8, 0.84, 1.1, 0); tower(0.5, 0.99, 1.35, 0);
+  // stakes along the front sides, trees or rocks either side
+  for (const x of [34, 43, 52, 61, 239, 248, 257, 266]) { const y = 118 + 64 * Math.sqrt(Math.max(0, 1 - Math.pow((x - 150) / 130, 2))) - 8; stake(x, y, 18 + rnd() * 5, shade(P.wood, (rnd() - 0.5) * 0.2)); }
+  for (const [x, y, k] of [[38, 104, 1.6], [262, 104, 1.6], [56, 84, 1.2], [246, 84, 1.2]]) { if (!P.leaf) rock(g, x, y, T * k * 0.9, P.rock, T, rnd); else if (P.pines) pineTree(g, x, y, k * 0.9, P.leaf, P.trunk, T); else cubeTree(g, x, y, k * 0.85, P.leaf, P.trunk, T); }
+  // flags on the back wall
+  for (const [x, team] of [[112, 1], [188, 0]]) { const y = rimY(x) + 4; line(g, x, y, x, y - 46, '#6a4a2a', 3); poly(g, [[x, y - 46], [x + (x < 150 ? -30 : 30), y - 38], [x, y - 28]], TEAM[team].m, INK, 2); }
   return c;
 }
 
@@ -2547,7 +2625,7 @@ function renderBattle() {
     '<button class="battleBtn o" id="bBattle">Battle</button><div class="slots" id="bSlots"></div>';
   $('#cvFree').getContext('2d').drawImage(chestCanvas('free', 48), 0, 0); $('#cvCrown').getContext('2d').drawImage(chestCanvas('crown', 48), 0, 0);
   const ar = $('#bArena'); ar.appendChild(arenaCanvas(a)); ar.insertAdjacentHTML('beforeend', '<div class="plate o">Arena ' + (a + 1) + '</div>');
-  ar.onclick = openTraining; // the hidden way to play bots: tap the arena
+  ar.onclick = openTraining; // tap the arena to battle a bot straight away (ranked or practice)
   $('#bBattle').onclick = () => { sfx('click'); startSearch(); };
   $('#bFree').onclick = openFree; $('#bCrown').onclick = openCrown;
   $('#bGear').onclick = openSettings; $('#bHelp').onclick = () => openHelp();
@@ -2819,7 +2897,7 @@ function renderInfo() {
   const p = $('#pg-info'), total = SAVE.wins + SAVE.losses + SAVE.draws;
   p.innerHTML = '<div class="ptitle o">Stats</div><div class="panel o">' +
     [['King Level', SAVE.kl], ['Trophies', SAVE.tr], ['Best trophies', SAVE.best], ['Arena', (arena() + 1) + ' · ' + ARENAS[arena()].n], ['Wins', SAVE.wins], ['Losses', SAVE.losses], ['Draws', SAVE.draws], ['Three-crown wins', SAVE.three], ['Win rate', total ? Math.round(SAVE.wins / total * 100) + '%' : '—'], ['Cards found', Object.keys(SAVE.cards).length + '/' + CARDS.length]].map(r => '<div class="stat"><span>' + r[0] + '</span>' + r[1] + '</div>').join('') +
-    '</div><div class="panel o" id="blog"><h3>Battle Log</h3>' + (SAVE.log.length ? SAVE.log.map(l => '<div class="log ' + l.r[0] + '"><b>' + (l.r === 'win' ? 'Win' : l.r === 'loss' ? 'Loss' : 'Draw') + '</b><span class="cr">' + l.c[0] + ' - ' + l.c[1] + '</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ' + esc(l.o) + '</span><span>' + (l.t > 0 ? '+' : '') + l.t + '</span><span class="troph"></span></div>').join('') : '<p style="text-shadow:none">No battles yet. Press Battle!</p>') + '</div>' +
+    '</div><div class="panel o" id="blog"><h3>Battle Log</h3>' + (SAVE.log.length ? SAVE.log.map(l => '<div class="log ' + l.r[0] + '"><b>' + (l.r === 'win' ? 'Win' : l.r === 'loss' ? 'Loss' : 'Draw') + '</b><span class="cr">' + l.c[0] + ' - ' + l.c[1] + '</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ' + esc(l.o) + (l.b ? ' 🤖' : '') + '</span><span>' + (l.t > 0 ? '+' : '') + l.t + '</span><span class="troph"></span></div>').join('') : '<p style="text-shadow:none">No battles yet. Press Battle!</p>') + '</div>' +
     '<div class="panel o" id="road"><h3>Trophy Road</h3><div id="roadL"></div></div>' +
     '<div class="mrow" style="margin-bottom:10px"><button class="btn blue" id="iHelp">How to play</button><button class="btn grey" id="iSnd">Sound: ' + (SAVE.snd ? 'On' : 'Off') + '</button></div>';
   const rl = $('#roadL');
@@ -2845,25 +2923,46 @@ function openHelp(first) {
     '<p>🃏 Drag a card from your hand onto your side of the arena (or tap the card, then tap the arena). Spells can go anywhere. Knock down a Princess Tower and you can place troops further forward on that side.</p>' +
     '<p>🏰 Princess Towers shoot anything on your side of the river. The King wakes up when a Princess Tower falls or he gets hit.</p>' +
     '<p>⏱️ A tie after 3 minutes goes to Overtime: the first tower to fall wins. Still tied? The tower with the lowest health falls and that side loses.</p>' +
-    '<p>🎁 Win battles for chests, open 3 free chests every day, and win crowns for the Crown Chest. New cards come from chests, and level ups give you more.</p>', first ? { onClose: () => { SAVE.tut = true; save(); } } : null);
+    '<p>🎁 Win battles for chests, open 3 free chests every day, and win crowns for the Crown Chest. New cards come from chests, and level ups give you more.</p>' +
+    '<p>🤖 Nobody online? After a few seconds of searching a bot takes the battle, and it still counts for trophies. Tap the arena picture to battle a bot straight away.</p>', first ? { onClose: () => { SAVE.tut = true; save(); } } : null);
 }
 
 /* ---------- battles ---------- */
-let searchT0 = 0, searchTick = 0;
+// Battle looks for a real player first. If nobody turns up within BOT_WAIT seconds (or online play can't connect),
+// a bot takes the battle instead, and it counts like any battle: trophies, gold, crowns and a chest for a win.
+const BOT_WAIT = 8;
+let searchT0 = 0, searchTick = 0, searchRun = 0;
 function startSearch() {
   if (SAVE.deck.length !== 8) { toast('Your deck needs 8 cards'); goPage('cards'); return; }
   const s = $('#search'); s.classList.remove('hide');
   searchT0 = Date.now();
+  const run = ++searchRun;
+  let shownSecs = -1;
   const paint = (st) => {
-    const secs = Math.floor((Date.now() - searchT0) / 1000);
-    const t = st.s === 'connecting' ? 'Connecting…' : st.s === 'found' || st.s === 'start' ? 'Opponent found!' : st.s === 'error' ? 'Can’t connect' : 'Searching for an opponent…';
-    s.innerHTML = '<div class="sw">⚔️</div><div class="t o">' + t + '</div><div class="s">' + (st.s === 'error' ? 'Online battles only work on the Arcade website. Check your connection and try again.' : st.s === 'searching' ? fmtT(secs) + (st.n > 1 ? ' · ' + st.n + ' players searching' : '') + (secs > 45 ? '<br><br>Not many players online right now. Keep waiting, or tap the arena for some practice.' : '') : '') + '</div>' +
-      (st.s === 'found' || st.s === 'start' ? '' : '<button class="btn red" id="sCancel" style="margin-top:14px">Cancel</button>');
-    const c = $('#sCancel'); if (c) c.onclick = () => { sfx('click'); NET.cancel(); clearInterval(searchTick); s.classList.add('hide'); };
+    if (run !== searchRun) return;
+    const secs = Math.floor((Date.now() - searchT0) / 1000); shownSecs = secs;
+    const found = st.s === 'found' || st.s === 'start' || st.s === 'bot';
+    const t = found ? 'Opponent found!' : st.s === 'connecting' ? 'Connecting…' : 'Searching for an opponent…';
+    const sub = st.s === 'bot' ? 'Nobody else is online right now, so you’re battling a bot. It still counts for trophies!'
+      : found ? '' : fmtT(secs) + (st.n > 1 ? ' · ' + st.n + ' players searching' : '') + '<br><br>No one around? A bot will take the battle in a few seconds.';
+    s.innerHTML = '<div class="sw">⚔️</div><div class="t o">' + t + '</div><div class="s">' + sub + '</div>' +
+      (found ? '' : '<button class="btn red" id="sCancel" style="margin-top:14px">Cancel</button>');
+    const c = $('#sCancel'); if (c) c.onclick = () => { sfx('click'); searchRun++; NET.cancel(); clearInterval(searchTick); s.classList.add('hide'); };
   };
   let last = { s: 'connecting' }; paint(last);
-  clearInterval(searchTick); searchTick = setInterval(() => { if (last.s === 'searching') paint(last); }, 1000);
-  NET.search(profile(), st => { last = st; paint(st); if (st.s === 'start') { clearInterval(searchTick); setTimeout(() => s.classList.add('hide'), 300); } }).catch(() => { last = { s: 'error' }; paint(last); });
+  const toBot = () => {
+    clearInterval(searchTick); NET.cancel(); last = { s: 'bot' }; paint(last); sfx('deploy');
+    setTimeout(() => { if (run !== searchRun) return; s.classList.add('hide'); startBotBattle(true); }, 1100);
+  };
+  clearInterval(searchTick); searchTick = setInterval(() => {
+    if (run !== searchRun) { clearInterval(searchTick); return; }
+    if (last.s === 'found' || last.s === 'start' || last.s === 'bot') return;
+    const secs = (Date.now() - searchT0) / 1000;
+    if (secs >= BOT_WAIT || (last.s === 'error' && secs >= 2)) return toBot();
+    if (Math.floor(secs) !== shownSecs) paint(last);
+  }, 200);
+  NET.search(profile(), st => { if (run !== searchRun || last.s === 'bot') return; last = st; paint(st); if (st.s === 'start') { clearInterval(searchTick); setTimeout(() => s.classList.add('hide'), 300); } })
+    .catch(() => { if (run !== searchRun || last.s === 'bot') return; last = { s: 'error' }; });
 }
 function startOnline(mode, side, me, opp, seed) {
   $('#search').classList.add('hide'); closeModal();
@@ -2871,20 +2970,34 @@ function startOnline(mode, side, me, opp, seed) {
 }
 function openTraining() {
   sfx('click');
-  const b = modal('<h2>Training Camp</h2><div style="text-align:center;font-size:56px">🤖</div><p style="text-align:center">Practice against a bot. No trophies or chests, just a little XP.</p><div class="mrow"><button class="btn" id="tGo">Battle</button></div>');
-  b.querySelector('#tGo').onclick = () => { closeModal(); startTraining(); };
+  if (SAVE.deck.length !== 8) { toast('Your deck needs 8 cards'); goPage('cards'); return; }
+  const b = modal('<h2>Bot Battle</h2><div style="text-align:center;font-size:56px">🤖</div>' +
+    '<p style="text-align:center"><b style="color:#ffe27a">Ranked:</b> battle a bot right now. It counts like any battle: win trophies, gold, crowns and a chest (and lose trophies if you lose).</p>' +
+    '<p style="text-align:center"><b style="color:#9cd8ff">Practice:</b> just for fun. No trophies or chests, a little XP.</p>' +
+    '<div class="mrow"><button class="btn" id="tGo">🏆 Ranked</button><button class="btn blue" id="tPr">Practice</button></div>');
+  b.querySelector('#tGo').onclick = () => { sfx('click'); closeModal(); startBotBattle(true); };
+  b.querySelector('#tPr').onclick = () => { sfx('click'); closeModal(); startBotBattle(false); };
 }
 const BOT_NAMES = ['Trainer Cheddar', 'Trainer Tobi', 'Trainer Pip', 'Trainer Gus', 'Trainer Mo', 'Trainer Lulu'];
-function startTraining() {
+// ranked bots get made-up player names
+const BOT_A = ['Sneaky', 'Mighty', 'Royal', 'Lucky', 'Crazy', 'Golden', 'Brave', 'Silent', 'Turbo', 'Sir', 'Captain', 'Tiny', 'Mega', 'Shadow', 'Frosty', 'Rusty', 'Grumpy', 'Happy', 'Wild', 'Epic'];
+const BOT_B = ['Goblin', 'Knight', 'Wizard', 'Archer', 'Dragon', 'Muffin', 'Pickle', 'Hammer', 'Bandit', 'Badger', 'Comet', 'Falcon', 'Noodle', 'Pirate', 'Viking', 'Waffle', 'Ninja', 'Tiger', 'Biscuit', 'Rocket'];
+function botName() { const n = BOT_A[rint(0, BOT_A.length - 1)] + BOT_B[rint(0, BOT_B.length - 1)]; return Math.random() < 0.55 ? n + rint(1, 99) : n; }
+function startBotBattle(ranked) {
   const me = profile(), avg = me.deck.reduce((a, c) => a + me.lv[c], 0) / 8;
   const bd = botDeck(Math.random, arena(), avg);
-  const opp = { name: BOT_NAMES[rint(0, BOT_NAMES.length - 1)], tr: SAVE.tr, kl: SAVE.kl, deck: bd.deck, lv: bd.lv, bot: true };
-  startBattle({ mode: 'bot', side: 0, seed: (Math.random() * 2 ** 31) | 0, me, opp, arena: arena(), onEnd: (out, mc, oc) => applyResult(out, mc, oc, opp, true) });
+  const opp = ranked
+    ? { name: botName(), tr: Math.max(0, SAVE.tr + rint(-20, 20)), kl: Math.max(1, Math.min(MAX_KL, SAVE.kl + rint(-1, SAVE.tr < 300 ? 0 : 1))), deck: bd.deck, lv: bd.lv, bot: true }
+    : { name: BOT_NAMES[rint(0, BOT_NAMES.length - 1)], tr: SAVE.tr, kl: SAVE.kl, deck: bd.deck, lv: bd.lv, bot: true };
+  // ranked bots think more slowly at low trophies and play at full speed from about 1500
+  const slow = ranked ? Math.max(0, 1.2 - SAVE.tr / 1250) : 0;
+  startBattle({ mode: 'bot', side: 0, seed: (Math.random() * 2 ** 31) | 0, me, opp, arena: arena(), botLvl: arena() + 1, botSlow: slow, onEnd: (out, mc, oc) => applyResult(out, mc, oc, opp, !ranked) });
 }
+function startTraining() { startBotBattle(false); }
 function applyResult(out, myCr, oppCr, opp, training) {
   const r = { out };
   if (training) {
-    SAVE.training++; r.xp = 5; r.note = 'Training: no trophies';
+    SAVE.training++; r.xp = 5; r.note = 'Practice: no trophies';
   } else {
     const diff = Math.max(-6, Math.min(6, Math.round(((opp.tr || 0) - SAVE.tr) / 25)));
     r.tr = out === 'win' ? 30 + diff : out === 'loss' ? -Math.min(SAVE.tr, 30 - diff) : 0;
@@ -2894,7 +3007,7 @@ function applyResult(out, myCr, oppCr, opp, training) {
     else { SAVE.draws++; r.xp = 12; r.gold = 5; }
     SAVE.crowns = Math.min(10, SAVE.crowns + myCr);
     SAVE.gold += r.gold || 0;
-    SAVE.log.unshift({ r: out, c: [myCr, oppCr], o: opp.name, t: r.tr, at: Date.now() }); SAVE.log = SAVE.log.slice(0, 15);
+    SAVE.log.unshift({ r: out, c: [myCr, oppCr], o: opp.name, t: r.tr, at: Date.now(), b: opp.bot ? 1 : 0 }); SAVE.log = SAVE.log.slice(0, 15);
   }
   r.prevArena = arena();
   save();
@@ -2915,10 +3028,11 @@ else if (SAVE.ver !== GAME_VER) setTimeout(openPatch, 400);
 SAVE.ver = GAME_VER; save();
 function openPatch() {
   modal('<h2>Update ' + GAME_VER + '</h2>' +
-    '<p>🏰 More detailed towers: stone bricks, banners, arrow slits, the King\u2019s gate and crest, a wooden floor for the Princesses and royal tiles for the King.</p>' +
-    '<p>🌑 Shadows everywhere: towers, troops, flyers, buildings, trees, and fireballs as they fly.</p>' +
-    '<p>🌳 A more detailed arena: cobbled paths, grass and flowers, stone river banks with lily pads, sparkling water, sturdier bridges, rope fences, tents, barrels and hay.</p>' +
-    '<p>🔘 Chunkier buttons with outlines and shadows that press down when you tap them.</p>');
+    '<p>🤖 Bots now give trophies! Press Battle: if no one else is online, a bot takes the battle after a few seconds, and it counts like any battle: trophies, gold, crowns and a chest when you win. Bots get tougher as you climb.</p>' +
+    '<p>🏆 Tap the arena picture for a Bot Battle straight away: Ranked (trophies and chests) or Practice (just for fun).</p>' +
+    '<p>🌳 A new look for the arena: a checkered field, dirt paths from the Kings to the bridges, a river that runs off both edges, fences behind the Kings, and blocky trees, bushes and rocks around the edge.</p>' +
+    '<p>🌋 Every arena has its own colors: grass, dusty bone fields, dry plains, a magic valley, snow with a frozen river, jungle, and stone with a river of lava.</p>' +
+    '<p>🪵 A wooden card tray, and a floating island for the arena on the Battle tab.</p>');
 }
 document.fonts && document.fonts.ready.then(() => { for (const k in PORTRAIT) delete PORTRAIT[k]; if (PAGE !== 'battle') renderPage(); });
 addEventListener('visibilitychange', () => { if (!document.hidden && !BT) { dailyReset(); renderAll(); } });

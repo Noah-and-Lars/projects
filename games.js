@@ -18,13 +18,13 @@ window.GAMES = [
     title: 'Card Royale',
     category: 'Strategy',
     tagline: 'Real-time card battles, 1v1 online: drop troops, cast spells and knock down the enemy towers.',
-    description: 'Two players, three towers each, three minutes on the clock. Spend Elixir to drop troops, buildings and spells from your 8-card deck, push down a lane and destroy more towers than your opponent, or take the King Tower for an instant three-crown win. Press Battle to quick-match against another player online. 50 cards from Knights and Archers to Golems, Lava Beasts and Mega Knights, chests to unlock, 3 free chests every day, a shop, King levels that reward chests, emotes and chat in battle, overtime and tiebreakers.',
+    description: 'Two players, three towers each, three minutes on the clock. Spend Elixir to drop troops, buildings and spells from your 8-card deck, push down a lane and destroy more towers than your opponent, or take the King Tower for an instant three-crown win. Press Battle to quick-match against another player online; if nobody is around, a bot takes the battle and it still counts for trophies. 50 cards from Knights and Archers to Golems, Lava Beasts and Mega Knights, chests to unlock, 3 free chests every day, a shop, King levels that reward chests, emotes and chat in battle, overtime and tiebreakers.',
     controls: 'Mouse or touch',
-    keys: [['Drag a card', 'Place it on your side of the arena'], ['Tap card, then arena', 'Same as dragging'], ['Speech bubble', 'Emotes and chat'], ['Battle', 'Quick match against another player']],
+    keys: [['Drag a card', 'Place it on your side of the arena'], ['Tap card, then arena', 'Same as dragging'], ['Speech bubble', 'Emotes and chat'], ['Battle', 'Quick match (a bot if nobody is online)'], ['Tap the arena', 'Bot Battle: ranked or practice']],
     path: 'card-royale/index.html',
     thumb: 'card-royale/thumb.jpg',
     added: '2026-11-03T12:00:00+11:00',
-    updated: '2026-11-03T15:00:00+11:00',
+    updated: '2026-11-04T09:10:00+11:00',
     stat() { const s = readSave('cardroyale.save', true); return s && (s.wins || s.losses || s.draws) ? (s.tr || 0) + ' trophies' : null; },
   },
   {
@@ -268,6 +268,7 @@ window.GAMES = [
 // What's new on the home page, newest first
 window.NEWS = [
   { date: '2026-11-04', game: 'poly-racer', text: 'Poly Racer 1.4: the wheels no longer wobble when you drive (the brake calipers stay still and stray parts that swung round the axles are gone), and the cockpit view is fixed: you sit where a driver\u2019s eyes are, and dashboards, pillars and seats are no longer see-through.' },
+  { date: '2026-11-04', game: 'card-royale', text: 'Card Royale 1.0.2: bots give trophies! If nobody else is online, a bot takes your battle after a few seconds and it counts like any battle: trophies, gold, crowns and chests. Tap the arena picture for a Bot Battle straight away (ranked or practice). Plus a new look: a checkered field with dirt paths, a river that runs off both edges, fences, blocky trees and rocks, a wooden card tray, a floating island on the Battle tab, and every arena in its own colors, from snow with a frozen river to stone with a river of lava.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.6: melee (V) now really hits: it hurts enemies and smashes barricades, which now break all at once after a few hits. Drones can drive under door barricades but can no longer slip through walls, and leaning is smooth and can\u2019t poke through barricades any more.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.5: down but not out! A lethal hit that isn\u2019t a headshot puts you on the floor while a teammate is still up, and they can revive you before you bleed out. Defenders share 10 reinforcements, 3-3 goes to overtime (first to 5), planting takes 7 seconds, a raised riot shield means no gun, and the new map is now called Oregons.' },
   { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.4: a new map, Ridgeback Ranch! A survivalist compound on the plains in broad daylight, with a chapel hall, two towers, bunk rooms and cellars. Every map is brighter, there is a new top bar (your team\u2019s health, the enemy hidden until spotted), a big 3-2-1 before each round, drones can hop again, and losing your drones in prep lets you watch your team\u2019s.' },
