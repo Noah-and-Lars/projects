@@ -1052,7 +1052,10 @@ const HCOLS = 3;                            // chunks per side in a hatch
 const BCOLS = 4, BROWS = 4;                 // barricade planks
 // 1.0.3: every defender has 3 reinforcements and 5 barricades (it was 2 of each, too few for the doors and windows round a site)
 const REINF_N = 3, BARR_N = 5;
-const BAR_HP = 110; // 1.0.6: a barricade breaks all at once: about 3 rifle shots, 2 melee hits, one shotgun blast or any explosive
+const BAR_HP = 110; // 1.0.6: a barricade breaks all at once (1.0.7: 2 melee hits, a lot of bullets, or any explosive)
+// 1.0.7: a barricade is one solid board (its own plank texture, BAR_PX pixels a metre). Bullets punch holes in it
+// that you can see and shoot through; when about half of it is holes it falls apart.
+const BAR_PX = 80, BAR_OPEN = 0.5;
 const PREP_S = 45, ACTION_S = 180, DEFUSE_S = 45, PICK_S = 20, END_S = 7, PLANT_S = 7, DISABLE_S = 7;
 // 1.0.5: a lethal body hit puts you down (not out) while a teammate is still up; you bleed out unless revived
 const DOWN_HP = 25, DOWN_BLEED = 1, REVIVE_S = 4, REINF_TEAM = 10;
@@ -1910,7 +1913,7 @@ function sgDispose(root) {
   root.traverse(o => {
     if (o.geometry && o.geometry !== UNIT_BOX && !o.geometry.shared && !o.geometry.userData.keep) o.geometry.dispose();
     const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
-    for (const m of ms) if (!m.userData.keep && !m.shared) m.dispose();
+    for (const m of ms) if (!m.userData.keep && !m.shared) { if (m.userData.ownTex) m.userData.ownTex.dispose(); m.dispose(); }
   });
 }
 // ---------- light fixtures ----------
@@ -2066,7 +2069,6 @@ function sgBuildPanelMeshes(M) {
   for (const p of M.panels) {
     if (p.k === 'wall') { want(p.ma, p.n); want(p.mb, p.n); want('metal', p.n * 2); }
     else if (p.k === 'hatch') { want('plank', p.n); want('metal', p.n); }
-    else if (p.k === 'bar') want('plank', p.n);
   }
   M.inst = {};
   for (const mk in need) {
@@ -2080,6 +2082,7 @@ function sgBuildPanelMeshes(M) {
   const take = (mk, n) => { const m = M.inst[mk], s = m.userData.next; m.userData.next += n; return s; };
   const col = new THREE.Color();
   for (const p of M.panels) {
+    if (p.k === 'bar') { barBuild(M, p); continue; }
     if (p.k === 'glass') {
       const b = chunkBox(p, 0, 0, _cb);
       const g = new THREE.Mesh(UNIT_BOX, new THREE.MeshBasicMaterial({ color: p.sealed ? 0x6a8aa8 : 0x9ab8c8, transparent: true, opacity: p.sealed ? 0.16 : 0.12, depthWrite: false }));
@@ -2117,6 +2120,7 @@ function sgBuildPanelMeshes(M) {
 function sgPanelDraw(p) {
   const M = W;
   if (p.k === 'glass') { p.mesh.visible = !!p.alive[0]; return; }
+  if (p.k === 'bar') { barDraw(p); return; }
   for (const h in p.ii) {
     const I = p.ii[h], mesh = M.inst[I.mk], steel = I.steel !== undefined ? M.inst.metal : null;
     // a reinforced wall: the side it was reinforced from turns to steel (hatches: the whole thing)
@@ -2130,6 +2134,70 @@ function sgPanelDraw(p) {
     M.dirty.add(mesh); if (steel) M.dirty.add(steel);
   }
 }
+// ----- 1.0.7: barricade boards -----
+// two thin faces 7 cm apart, each the whole opening; the texture's alpha is the holes (alphaTest), and sgRay asks the
+// same texture whether a ray meets wood or a hole, so what you see through is what you can shoot through
+const BAR_GEO = new THREE.PlaneGeometry(1, 1); BAR_GEO.userData.keep = true;
+function barBuild(M, p) {
+  const L1 = sgLightAt(...barMid(p, 0.12), ...barNrm(p, 1)), L2 = sgLightAt(...barMid(p, -0.12), ...barNrm(p, -1));
+  const col = new THREE.Color((L1[0] + L2[0]) / 2, (L1[1] + L2[1]) / 2, (L1[2] + L2[2]) / 2);
+  const TW = Math.max(8, Math.round(p.w * BAR_PX)), TH = Math.max(8, Math.round(p.h * BAR_PX));
+  const tex = new THREE.DataTexture(new Uint8Array(TW * TH * 4), TW, TH, THREE.RGBAFormat);
+  tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false; tex.encoding = THREE.sRGBEncoding;
+  const mat = new THREE.MeshLambertMaterial({ map: tex, color: col, alphaTest: 0.5, side: THREE.DoubleSide });
+  mat.userData.ownTex = tex;
+  const g = new THREE.Group();
+  for (const s of [-1, 1]) { const m = new THREE.Mesh(BAR_GEO, mat); m.position.z = s * 0.035; g.add(m); }
+  g.visible = false; M.group.add(g);
+  p.mesh = g; p.tex = tex; p.TW = TW; p.TH = TH; p.open = 0;
+}
+function barNrm(p, s) { return p.ax === 'x' ? [0, 0, s] : [s, 0, 0]; }
+function barOff(p) { return p.side === 1 ? -0.1 : 0.1; }
+function barMid(p, o = 0) { const a = p.s0 + p.w / 2, y = p.y0 + p.h / 2, c = p.c + barOff(p) + o; return p.ax === 'x' ? [a, y, c] : [c, y, a]; }
+function barDraw(p) {
+  const g = p.mesh; if (!g) return;
+  g.visible = !!(p.active && p.alive.some(v => v));
+  if (!g.visible) return;
+  const [x, y, z] = barMid(p);
+  g.position.set(x, y, z); g.rotation.set(0, p.ax === 'x' ? 0 : -Math.PI / 2, 0); g.scale.set(p.w, p.h, 1);
+}
+// fresh planks: boards across the opening, each its own shade with grain, dark seams and nails at the ends
+function barPlanks(p) {
+  const T = p.tex, D = T.image.data, TW = p.TW, TH = p.TH, R = mulberry((p.id + 1) * 7919 + (G.round | 0) * 131);
+  let y = 0;
+  while (y < TH) {
+    const bh = Math.min(TH - y, Math.round(BAR_PX * (0.12 + R() * 0.05))), base = 0.75 + R() * 0.3, tilt = (R() - 0.5) * 0.02;
+    for (let j = 0; j < bh; j++) for (let i = 0; i < TW; i++) {
+      const k = ((y + j) * TW + i) * 4, grain = 0.88 + 0.12 * Math.sin((i * 0.35 + j * 2.1 + tilt * i * 40) + Math.sin(i * 0.07 + y) * 3), seam = j === 0 || j === bh - 1 ? 0.55 : 1;
+      const nail = (i < 6 || i > TW - 7) && Math.abs(j - bh / 2) < 1.2 && (i === 3 || i === TW - 4) ? 0.35 : 1;
+      const v = base * grain * seam * nail * (0.93 + R() * 0.07);
+      D[k] = Math.min(255, 150 * v); D[k + 1] = Math.min(255, 104 * v); D[k + 2] = Math.min(255, 62 * v); D[k + 3] = 255;
+    }
+    y += bh;
+  }
+  p.open = 0; T.needsUpdate = true;
+}
+// punch a hole: rm metres across the middle, u/v across the board from its start and bottom (0..1); a ring of torn,
+// darker wood round it
+function barHole(p, u, v, rm) {
+  if (!p.tex) return;
+  const D = p.tex.image.data, TW = p.TW, TH = p.TH, cx = u * TW, cy = v * TH, r = Math.max(1.2, rm * BAR_PX), R = mulberry(Math.round(u * 9973 + v * 7741) + 1);
+  const x0 = Math.max(0, Math.floor(cx - r - 3)), x1 = Math.min(TW - 1, Math.ceil(cx + r + 3)), y0 = Math.max(0, Math.floor(cy - r - 3)), y1 = Math.min(TH - 1, Math.ceil(cy + r + 3));
+  for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) {
+    const k = (j * TW + i) * 4, d = Math.hypot(i + 0.5 - cx, (j + 0.5 - cy) * 0.85) - R() * 0.9;
+    if (d <= r) { if (D[k + 3]) { D[k + 3] = 0; p.open++; } }
+    else if (d <= r + 2.2 && D[k + 3]) { D[k] *= 0.55; D[k + 1] *= 0.55; D[k + 2] *= 0.55; }
+  }
+  p.tex.needsUpdate = true;
+}
+// does a ray at (u, v) on this barricade meet a hole?
+function barOpenAt(p, u, v) {
+  if (!p.tex) return false;
+  const i = Math.min(p.TW - 1, Math.max(0, Math.floor(u * p.TW))), j = Math.min(p.TH - 1, Math.max(0, Math.floor(v * p.TH)));
+  return p.tex.image.data[(j * p.TW + i) * 4 + 3] === 0;
+}
+// where on a barricade a world point is (u along it from s0, v up from y0)
+function barUV(p, x, y, z) { return [((p.ax === 'x' ? x : z) - p.s0) / p.w, (y - p.y0) / p.h]; }
 function sgFlushPanels() { for (const m of W.dirty) m.instanceMatrix.needsUpdate = true; W.dirty.clear(); }
 
 // ---------- queries ----------
@@ -2258,6 +2326,7 @@ function sgRay(ox, oy, oz, dx, dy, dz, maxT, opts = {}) {
         if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
         const i = Math.floor(v * p.rows) * p.cols + Math.floor(u * p.cols);
         if (!p.alive[i]) continue;
+        if (p.k === 'bar' && barOpenAt(p, u, v)) continue; // 1.0.7: through a hole in the barricade
         if (opts.skipChunk && opts.skipChunk(p, i)) continue;
         best = t; bk = 'panel'; bp = p; bi = i; bo = null;
         bax = p.ax === 'y' ? (dy > 0 ? -2 : 2) : p.ax === 'x' ? (dz > 0 ? -3 : 3) : (dx > 0 ? -1 : 1);
@@ -3350,8 +3419,9 @@ function sgTrace(P, o, d, dmg, G0, first) {
       const p = h.p;
       if (p.k === 'glass') { emit('wd', { c: [[p.id, 0]] }); snd('glass', end, 0.8); o = { x: end.x + d.x * 0.05, y: end.y + d.y * 0.05, z: end.z + d.z * 0.05 }; left -= h.t; continue; }
       if (p.reinf && p.k !== 'bar') { fxSpark(end.x, end.y, end.z, 0xffe0a0, 5); snd('metal', end, 0.5); return end; }
-      if (p.k === 'bar') { // the shot goes on through the planks
-        emit('bhit', { p: p.id, d: Math.round(dm * (G0.pel ? 1.6 : 1)) });
+      if (p.k === 'bar') { // the shot goes on through the planks, and leaves a hole (1.0.7)
+        const [u, v] = barUV(p, end.x, end.y, end.z);
+        emit('bhit', { p: p.id, d: Math.round(dm * (G0.pel ? 0.5 : 0.08) * 10) / 10, u: Math.round(u * 1000) / 1000, v: Math.round(v * 1000) / 1000, r: G0.pel ? 0.045 : G0.t === 'DMR' ? 0.04 : G0.t === 'HG' || G0.t === 'MP' ? 0.028 : 0.032 });
         fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 3, 0x7a5532, 0.05, 2); snd('wood', end, 0.45);
         if (pierce++ < 2) { dm *= 0.7; o = { x: end.x + d.x * 0.12, y: end.y + d.y * 0.12, z: end.z + d.z * 0.12 }; left -= h.t + 0.12; continue; }
         return end;
@@ -3399,8 +3469,9 @@ EV.reinf = (d) => {
 };
 EV.bhit = (d) => {
   const p = W && W.panels[d.p]; if (!p || p.k !== 'bar' || !p.active || !p.alive.some(v => v)) return;
-  p.barHp = (p.barHp ?? BAR_HP) - d.d;
-  if (p.barHp <= 0) sgBreakBar(p);
+  if (d.u != null) barHole(p, +d.u, +d.v, Math.min(0.3, +d.r || 0.03));
+  p.barHp = (p.barHp ?? BAR_HP) - (+d.d || 0);
+  if (p.barHp <= 0 || p.open > p.TW * p.TH * BAR_OPEN) sgBreakBar(p);
 };
 function sgBreakBar(p) {
   for (let i = 0; i < p.n; i++) p.alive[i] = 0;
@@ -3410,6 +3481,7 @@ function sgBreakBar(p) {
 EV.barr = (d) => {
   const p = W.panels[d.p]; if (!p || p.active && p.alive.some(v => v)) return;
   p.active = true; p.side = d.s; p.barHp = BAR_HP; for (let i = 0; i < p.n; i++) { p.alive[i] = 1; p.hp[i] = p.hp0; }
+  barPlanks(p);
   sgPanelDraw(p); snd('hammer', chunkCenter(p), 0.7);
   const P = G.P.get(d.o); if (P && auth(P)) P.barr = Math.max(0, P.barr - 1); // only one that really went up counts
 };
@@ -4400,7 +4472,7 @@ function sgMelee(P) {
   if (he && he.kind === 'p' && he.P.team !== P.team) { sgDealHit(P, he.P, 55, false, 'Melee'); fxSpark(_e.x + _d.x * he.t, _e.y + _d.y * he.t, _e.z + _d.z * he.t, 0xffffff, 3); return; }
   const h = sgRay(_e.x, _e.y, _e.z, _d.x, _d.y, _d.z, 1.7);
   for (const g of G.gad.values()) if ((g.k === 'wire' || g.k === 'foam') && g.side !== sideOf(P) && Math.hypot(g.x - (_e.x + _d.x), g.z - (_e.z + _d.z)) < 1.1) { emit('gdel', { id: g.id, why: 'shot' }); return; }
-  if (h && h.k === 'panel' && h.p.k === 'bar') { const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t }; emit('bhit', { p: h.p.id, d: 60 }); snd('wood', pt, 0.9); fxDebris(pt.x, pt.y, pt.z, 5, 0x7a5532, 0.08, 3); return; }
+  if (h && h.k === 'panel' && h.p.k === 'bar') { const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t }, [u, v] = barUV(h.p, pt.x, pt.y, pt.z); emit('bhit', { p: h.p.id, d: 60, u: Math.round(u * 1000) / 1000, v: Math.round(v * 1000) / 1000, r: 0.13 }); snd('wood', pt, 0.9); fxDebris(pt.x, pt.y, pt.z, 5, 0x7a5532, 0.08, 3); return; }
   if (h && h.k === 'panel' && !h.p.reinf) {
     const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t };
     const c = sgBlast(pt, h.p.k === 'hatch' ? 0.3 : 0.5, { only: h.p });
@@ -4417,7 +4489,7 @@ function sgCutter(P, dt) {
   if (P.cutT > 0) return; P.cutT = 0.32;
   const p = h.p; eyeOf(P, _e); dirOf(P.yaw, P.pitch, _d);
   const hit = sgRay(_e.x, _e.y, _e.z, _d.x, _d.y, _d.z, 1.6);
-  if (hit && hit.p === p && p.k === 'bar') { emit('bhit', { p: p.id, d: 30 }); return; }
+  if (hit && hit.p === p && p.k === 'bar') { const [u, v] = barUV(p, _e.x + _d.x * hit.t, _e.y + _d.y * hit.t, _e.z + _d.z * hit.t); emit('bhit', { p: p.id, d: 30, u: Math.round(u * 1000) / 1000, v: Math.round(v * 1000) / 1000, r: 0.06 }); return; }
   if (hit && hit.p === p && p.alive[hit.i]) { p.alive[hit.i] = 0; sgPanelDraw(p); emit('wd', { c: [[p.id, hit.i]] }); }
 }
 function sgTaser(P) {
@@ -5907,7 +5979,7 @@ function sgBoot() {
 sgInputInit();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sgBoot); else sgBoot();
 // test handle, only on a local copy
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, barOpenAt, barUV };
 
 })();
 </script>
