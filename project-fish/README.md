@@ -48,6 +48,7 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 | `src/viewmodel/motion.js` | Weapon physics: how the hands and gun move, with all the tuning values in `MOTION` |
 | `src/viewmodel/pistol.js` | The pistol's side profiles (shared with Blender) and a simple built-in pistol |
 | `src/viewmodel/arms.js` | The hand pose around the grip (shared with Blender) and simple built-in hands |
+| `src/viewmodel/supportHand.js` | The support hand's finger joints and hand shapes, so it can let go, hold a magazine and grip again |
 | `src/viewmodel/sdf.js` | Turns blended shapes into smooth meshes (used for the hands and sleeves) |
 | `assets/pistol.glb`, `assets/arms.glb` | The detailed pistol, gloves and sleeves, made in Blender |
 | `tools/` | The Blender build scripts that make the files in `assets/` (see below) |
@@ -82,6 +83,8 @@ The pistol, gloves and sleeves you see are detailed models made in Blender: `ass
 
 They're drawn in their own layer on top of the world, so the gun never pokes into walls and its size on screen doesn't change with the field of view. That layer has its own sun shadows (the hands shade the gun), sky-and-ground reflections that turn with your view, and film-like tone mapping. Where the gun is held is `HIP_POSITION` and `HIP_ROTATION` in `src/viewmodel/viewmodel.js`.
 
+The support glove is modelled holding the gun. When the game loads it gets a skeleton (three bones in each finger and the thumb), and every point on the glove follows the bones nearest it, shared across each joint so the knuckles bend smoothly. That's what lets the hand open, grip the magazine and take hold of the gun again during a reload (`src/viewmodel/supportHand.js`).
+
 If the model files can't be loaded, the game falls back to the simpler hands and pistol built into the code, so it always works.
 
 ### Aiming down the sights
@@ -98,7 +101,7 @@ The pistol is semi-automatic: one shot per click, up to 500 a minute (clicks mad
 - **Muzzle flash:** a brief, irregular fireball of hot gas bursting out round the front of the slide, a short flame plume and a few burning powder sparks, different every shot (now and then barely visible), lighting the hands and surroundings for an instant (`src/effects/muzzleFlash.js`).
 - **Smoke:** a wisp from the muzzle on every shot. Each shot also heats the barrel, which cools over a few seconds; after a few quick shots, thin smoke keeps curling off the muzzle and out of the ejection port (`HEAT` in `src/main.js`).
 - **Sound:** a 9mm report built in code sample by sample (pressure spike, bright blast, low punch, ground bounce, slide clack) with outdoor echoes, a click when the gun is empty, and reload sounds (`src/effects/audio.js`).
-- **Reloading (R):** the gun comes up and in, tipped so the magazine well faces you, and the old magazine slides out along the grip and falls away (without its top round if it was empty). The support hand lets go and drops to the belt for a fresh magazine, brings it back up held in its fingers, lines it up under the magazine well and pushes it in until it clicks (the gun jolts as it seats), then slides back up onto the grip; from empty, the slide is then released forward. 1.8 s, or 2.2 s from empty. The hand's path is `HAND_PATH` in `src/viewmodel/viewmodel.js` and the timings are `RELOAD_STEPS` in `src/weapon.js`. The ammo counter is bottom right.
+- **Reloading (R):** the gun comes up and in, tipped so the magazine well faces the support hand, and the old magazine slides out along the grip and falls away (without its top round if it was empty). The support hand's fingers lift off the grip and open, and it drops to the belt, closes round a fresh magazine and brings it back up held in its fingers (wrapped round the front of the magazine, thumb along its side). It lines the magazine up under the well, lifts its thumb off and pushes it partway in, then lets go, opens its fingers, turns palm up and slaps it home with the heel of its hand (the gun jolts as it clicks in). Then it comes back up beside the grip, fingers open, and closes round it again; from empty, the slide is then released forward. 1.8 s, or 2.2 s from empty. The hand's movements are `HAND_KEYS` in `src/viewmodel/viewmodel.js`, its hand shapes are in `src/viewmodel/supportHand.js`, and the timings are `RELOAD_STEPS` in `src/weapon.js`. The ammo counter is bottom right.
 
 ### Weapon physics
 

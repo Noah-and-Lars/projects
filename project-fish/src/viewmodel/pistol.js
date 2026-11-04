@@ -19,6 +19,22 @@ export const GRIP = {
 };
 GRIP.front = new THREE.Vector3().crossVectors(new THREE.Vector3(1, 0, 0), GRIP.down).normalize();
 
+// The magazine, seated (gun space). Its body runs along the grip, a little in
+// front of the grip's centre line, and a slice across it is a rounded
+// rectangle. Distances along the grip (u) are from GRIP.top along GRIP.down;
+// the grip ends, and the magazine well opens, at GRIP.bottom. The Blender
+// magazine (build_pistol.py) matches.
+export const MAGAZINE = {
+  forward: 0.0063, // its centre line is this far in front of the grip's, along GRIP.front
+  halfWidth: 0.011,
+  halfDepth: 0.0146,
+  cornerRadius: 0.003,
+  top: -0.0404, // u of the top of the body (the feed lips)
+  bottom: 0.0673, // u of the bottom of the body, where the baseplate starts
+  base: 0.0752, // u of the bottom of the baseplate
+};
+GRIP.bottom = 0.0678;
+
 // The iron sights (gun space). Looking down the sights, the three dots line up
 // at this height: the two on the back of the rear sight and the one on the
 // back of the front sight. The Blender pistol (build_pistol.py) matches.

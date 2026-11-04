@@ -4,13 +4,14 @@
 
 import { PISTOL } from './shared/config.js';
 
-// When things happen during a reload, as a fraction of its length.
+// When things happen during a reload, as a fraction of its length. The
+// support hand's movements in between are keyframed in
+// src/viewmodel/viewmodel.js (HAND_KEYS).
 export const RELOAD_STEPS = {
-  magOut: 0.1, // magazine release pressed: the old one drops out
-  handOff: 0.1, // support hand lets go of the gun...
-  magGrab: 0.4, // ...grabs a fresh magazine from the belt...
-  magIn: 0.68, // ...and pushes it in until it clicks
-  handOn: 0.78, // support hand back on the grip
+  magOut: 0.1, // magazine release pressed: the old one drops out, the support hand lets go
+  magGrab: 0.355, // the hand closes round a fresh magazine on the belt
+  magIn: 0.69, // the palm slaps it home and it clicks
+  handOn: 0.81, // the support hand is back round the grip
   slideRelease: 0.84, // (empty reloads) slide snaps forward
 };
 
