@@ -287,6 +287,13 @@ source in Settings → Pages should be switched to `main`.
   bomber 700; the bomber's tail gunner (`REAR_RANGE`, `REAR_HIT` 0.75) leads with the bomber's own speed. Bots: half
   are 'air' (`i % 2`), and `botLand` brings a bot home when fuel runs low (`bot.rtb`; tryLand works for it). The cockpit
   (`COCKPIT`) draws its panel on a canvas at 10 Hz (`drawPanel`), the jet's HUD (`drawHUD`), and moves `stick`/`yoke`/`thr`.
+  1.2.6: ship gunners. `Seat` also works on a ship (`seat.ship`; `.plane` is then the ship and `k` the index of one of its
+  `auto` AA guns). `seatPlanes()` lists teammates' crewed ships with a free AA gun (one deploy card per ship). The local
+  gunner turns the gun with `g.track` and fires `g.shoot(1, seat)` (shots belong to the gunner); `shipGuns` skips a
+  manned gun, and the host runs `peerShipSeat` for a gunner on another screen (also for a stand-in ship, whose manned
+  guns it no longer takes from the driver). Ship rows carry seat keys at index 15 (`e.seatKeys` on puppets and on the
+  driver's own ship). A blast of size >= 6 within `size * 0.9` of your gun kills you (`explode`); a sunk ship drops
+  you in the water (`bailOut`).
 - `card-royale/`: Card Royale (1.0.2), a real-time 1v1 card battler (towers, lanes, Elixir, 50 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by
   `build.sh`): data, `20-sim.js` (the battle: `newBattle`, `step` at 20 ticks a second, `play`, `canDeploy`, the bot in
