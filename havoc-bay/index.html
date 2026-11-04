@@ -64,6 +64,9 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;paddin
 .tb.r i{background:linear-gradient(#ff7466,#cc2a21);transform-origin:right center}
 .tb span{position:relative;display:block;text-align:center;font-weight:800;font-size:14px;line-height:22px;letter-spacing:.3px}
 #clock{min-width:64px;height:30px;padding:0 8px;border-radius:7px;background:rgba(14,18,28,.8);border:2px solid #fff;font-weight:800;font-size:16px;line-height:26px;text-align:center}
+#tod{position:absolute;top:calc(10px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));display:flex;align-items:center;gap:5px;height:26px;padding:0 9px 0 7px;border-radius:13px;background:rgba(14,18,28,.62);border:2px solid rgba(255,255,255,.85);font-weight:800;font-size:14px}
+#tod #todI{color:#ffd23a;font-size:15px}#tod.nt #todI{color:#cfe0ff}
+@media (max-width:760px){#tod{top:calc(42px + env(safe-area-inset-top));height:22px;font-size:12px;padding:0 7px 0 5px}}
 #sub{position:absolute;top:calc(44px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center}
 #isl{display:flex;gap:5px}
 .pip{width:15px;height:15px;border-radius:50%;border:2px solid #fff;background:#c9c9c9;box-shadow:0 1px 0 rgba(0,0,0,.35)}
@@ -329,6 +332,7 @@ body.touch #throttle{top:40%}
     <div id="clock">15:00</div>
     <div class="tb r"><i id="hpR"></i><span id="hpRt">25000/25000</span></div>
   </div>
+  <div id="tod" title="Time of day"><span id="todI">☀</span><span id="todT">07:00</span></div>
   <div id="sub"><div id="isl"></div><div id="goldbox"><span class="coin"></span><span id="gold">0</span></div></div>
   <div id="cap" class="hidden"><span id="capTxt"></span><div class="cb"><i id="capFill"></i></div></div>
   <div id="stats">
@@ -405,6 +409,11 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.2.4 <small>Day and night</small></h3>
+    <ul>
+      <li><b>Day and night.</b> Every battle starts in the morning and the sun moves across the sky: 3 minutes of daylight, then a sunset, 1.5 minutes of moonlit night with stars, and a sunrise. The time of day shows in the top right corner.</li>
+      <li><b>Guns held the right way up.</b> The pistol, shotgun, sniper rifle and rocket launcher were all upside down in the sailors' blocky hands. Now they sit upright with the grip in the hand.</li>
+    </ul>
     <h3>v1.2.3 <small>Cold water and the Map app</small></h3>
     <ul>
       <li><b>The water is freezing.</b> A freeze meter shows over your head while you swim. After 30 seconds in the water you freeze to death, so swim for land or a ship. Out of the water you warm up again three times as fast.</li>
@@ -580,7 +589,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.2.3';
+const VERSION = '1.2.4';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -744,14 +753,19 @@ function applyQuality() {
 
 // sky dome with a soft sun
 const skyMat = new THREE.ShaderMaterial({
-  uniforms: { top: { value: new THREE.Color(0x3a6ea8) }, mid: { value: new THREE.Color(0x8fb4d2) }, bot: { value: FOG_COL.clone() }, sunDir: { value: SUN_DIR } },
+  uniforms: { top: { value: new THREE.Color(0x3a6ea8) }, mid: { value: new THREE.Color(0x8fb4d2) }, bot: { value: FOG_COL.clone() }, sunDir: { value: SUN_DIR },
+    sunCol: { value: new THREE.Color(1.0, 0.96, 0.85) }, glowK: { value: 1 }, night: { value: 0 } },
   vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-  fragmentShader: `uniform vec3 top, mid, bot, sunDir; varying vec3 vDir;
+  fragmentShader: `uniform vec3 top, mid, bot, sunDir, sunCol; uniform float glowK, night; varying vec3 vDir;
     void main(){ vec3 d = normalize(vDir); float h = d.y;
       vec3 c = mix(mid, top, smoothstep(0.02, 0.6, h));
       c = mix(bot, c, smoothstep(-0.01, 0.16, h));
       float s = max(dot(d, sunDir), 0.0);
-      c += vec3(1.0, 0.96, 0.85) * (pow(s, 900.0) * 1.6 + pow(s, 14.0) * 0.16);
+      c += sunCol * (pow(s, 900.0) * 1.6 + pow(s, 14.0) * 0.16 * glowK);
+      if (night > 0.0) { // 1.2.4: stars
+        vec3 q = floor(d * 320.0); float hs = fract(sin(dot(q, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        c += vec3(0.85, 0.9, 1.0) * step(0.9965, hs) * (0.45 + 0.55 * fract(hs * 97.0)) * night * smoothstep(0.02, 0.25, h);
+      }
       gl_FragColor = vec4(c, 1.0); }`,
   side: THREE.BackSide, depthWrite: false, fog: false,
 });
@@ -774,13 +788,13 @@ const waterMat = new THREE.ShaderMaterial({
     time: { value: 0 }, depthTex: { value: depthTex },
     mapMin: { value: new THREE.Vector2(MAP.x0, MAP.z0) }, mapSize: { value: new THREE.Vector2(MAP.w, MAP.h) },
     deep: { value: new THREE.Color(0x14507a) }, shallow: { value: new THREE.Color(0x3fa6ad) }, skyc: { value: new THREE.Color(0xa9c3d6) },
-    sunDir: { value: SUN_DIR }, camPos: { value: new V3() },
+    sunDir: { value: SUN_DIR }, camPos: { value: new V3() }, sunCol: { value: new THREE.Color(0.9, 0.873, 0.81) },
     fogColor: { value: FOG_COL }, fogNear: { value: 900 }, fogFar: { value: 4300 },
   },
   vertexShader: `varying vec3 vW; varying float vDepth;
     void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vec4 mv = viewMatrix * w; vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
   fragmentShader: `uniform float time; uniform sampler2D depthTex; uniform vec2 mapMin, mapSize;
-    uniform vec3 deep, shallow, skyc, sunDir, camPos, fogColor; uniform float fogNear, fogFar;
+    uniform vec3 deep, shallow, skyc, sunDir, camPos, fogColor, sunCol; uniform float fogNear, fogFar;
     varying vec3 vW; varying float vDepth;
     void wave(vec2 p, vec2 dir, float f, float a, float s, inout vec2 g){ float ph = dot(dir, p) * f + time * s; g += dir * (f * a * cos(ph)); }
     void main(){
@@ -800,7 +814,7 @@ const waterMat = new THREE.ShaderMaterial({
       vec3 col = mix(deep, shallow, sh * 0.9);
       col = mix(col, skyc, clamp(fres * 0.7, 0.0, 0.55));
       vec3 H = normalize(sunDir + V);
-      col += vec3(1.0, 0.97, 0.9) * pow(max(dot(n, H), 0.0), 220.0) * 0.9;
+      col += sunCol * pow(max(dot(n, H), 0.0), 220.0);
       float foam = smoothstep(0.075, 0.0, d) * (0.65 + 0.35 * sin(time * 2.2 + d * 95.0 + p.x * 0.05));
       col = mix(col, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.85);
       col = mix(col, fogColor, smoothstep(fogNear, fogFar, vDepth));
@@ -810,6 +824,53 @@ const waterMat = new THREE.ShaderMaterial({
 const water = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000, 1, 1), waterMat);
 water.rotation.x = -Math.PI / 2; water.frustumCulled = false;
 scene.add(water);
+
+/* ---------------- 1.2.4: day and night ----------------
+   One day is DAY_CYCLE seconds of match time: DAY_S of daylight (06:00 to 18:00) and NIGHT_S of night (18:00 to 06:00),
+   with the sun rising and setting smoothly in between. It runs off the match clock, so every screen in an online match
+   agrees. The sun follows an arc whose top is the old fixed sun (SUN_DIR at noon); at night the moon takes over the
+   one directional light, and SUN_DIR follows whichever is up (the sky draws its disc, the water its glint). */
+const DAY_S = 180, NIGHT_S = 90, DAY_CYCLE = DAY_S + NIGHT_S, DAY_START = 15; // a match starts at 07:00
+const NOON_DIR = SUN_DIR.clone(), EAST_DIR = new V3().crossVectors(NOON_DIR, new V3(0, 1, 0)).normalize();
+const DN = {
+  day: { top: 0x3a6ea8, mid: 0x8fb4d2, fog: 0xc4d6e2, hs: 0xd8e6f2, hg: 0x6e6250, deep: 0x14507a, shallow: 0x3fa6ad, skyc: 0xa9c3d6, cloud: 0x8f9aa6 },
+  dusk: { top: 0x3c4c86, mid: 0xe8a27a, fog: 0xd9a888, hs: 0xe8c4a8, hg: 0x5a4a40, deep: 0x1d3e62, shallow: 0x3a7f8c, skyc: 0xd9a888, cloud: 0xb07860 },
+  night: { top: 0x040915, mid: 0x0d1830, fog: 0x121b2c, hs: 0x41557c, hg: 0x15171f, deep: 0x05162a, shallow: 0x0e3540, skyc: 0x1a283c, cloud: 0x1c2232 },
+};
+for (const k in DN) for (const c in DN[k]) DN[k][c] = new THREE.Color(DN[k][c]);
+const _dnA = new THREE.Color(), _dnB = new THREE.Color(), _sunD = new V3();
+let dnLast = -1;
+function dayClock() { // match seconds into the current day
+  const el = GAME.on && !GAME.demo && GAME.clock0 ? GAME.clock0 - GAME.clock : 40; // the title screen's demo stays in the morning
+  return ((el + DAY_START) % DAY_CYCLE + DAY_CYCLE) % DAY_CYCLE;
+}
+function timeOfDay() { const c = dayClock(); return c < DAY_S ? 6 + c / DAY_S * 12 : (18 + (c - DAY_S) / NIGHT_S * 12) % 24; }
+function fmtTOD(h) { const m = Math.floor(h * 60) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+function updateDayNight() {
+  const c = dayClock(); if (Math.abs(c - dnLast) < 0.04) return; dnLast = c;
+  // the sun's angle: 0 at sunrise, half pi at noon, pi at sunset. Night is half as long as the day, so there the sun
+  // goes down slowly at first and comes up slowly at the end, which keeps dusk and dawn as long as in the day
+  let a;
+  if (c < DAY_S) a = c / DAY_S * Math.PI;
+  else { const u = (c - DAY_S) / NIGHT_S, w = Math.asin(Math.sin(Math.PI * u) ** 2) / Math.PI; a = Math.PI * (1 + (u <= 0.5 ? w : 1 - w)); }
+  _sunD.copy(EAST_DIR).multiplyScalar(Math.cos(a)).addScaledVector(NOON_DIR, Math.sin(a));
+  const sy = _sunD.y, ss = (x0, x1, x) => { const t = clamp((x - x0) / (x1 - x0), 0, 1); return t * t * (3 - 2 * t); };
+  const dayK = ss(-0.12, 0.2, sy), duskK = clamp(sy >= 0.05 ? 1 - (sy - 0.05) / 0.2 : 1 + (sy - 0.05) / 0.13, 0, 1) * 0.85, nightK = 1 - ss(-0.2, 0.02, sy);
+  const mix = (key, out) => out.copy(DN.night[key]).lerp(DN.day[key], dayK).lerp(DN.dusk[key], duskK);
+  if (sy > -0.03) { SUN_DIR.copy(_sunD); sun.intensity = ss(-0.03, 0.2, sy) * 1.0; sun.color.setRGB(1, 0.91, 0.8).lerp(_dnA.setRGB(1, 0.6, 0.32), duskK); }
+  else { SUN_DIR.copy(_sunD).negate(); sun.intensity = ss(-0.03, -0.22, sy) * 0.3; sun.color.setRGB(0.62, 0.72, 0.98); }
+  renderer.toneMappingExposure = 1.0 + 0.32 * dayK; // night is darker overall (lamps and glows stay bright)
+  mix('fog', FOG_COL); skyMat.uniforms.bot.value.copy(FOG_COL);
+  mix('top', skyMat.uniforms.top.value); mix('mid', skyMat.uniforms.mid.value);
+  mix('hs', hemi.color); mix('hg', hemi.groundColor); hemi.intensity = 0.26 + 0.24 * dayK;
+  mix('deep', waterMat.uniforms.deep.value); mix('shallow', waterMat.uniforms.shallow.value); mix('skyc', waterMat.uniforms.skyc.value);
+  mix('cloud', MAT.cloud.emissive); MAT.cloud.color.setScalar(0.35 + 0.65 * dayK);
+  const up = sy > -0.03; // the disc in the sky and the glint on the water: a warm sun, or a small pale moon
+  skyMat.uniforms.sunCol.value.setRGB(1, 0.96, 0.85).lerp(_dnB.setRGB(1, 0.62, 0.35), duskK).multiplyScalar(up ? ss(-0.03, 0.06, sy) : 0.55 * ss(-0.03, -0.12, sy));
+  skyMat.uniforms.glowK.value = up ? 1 + duskK * 2.5 : 0.3;
+  waterMat.uniforms.sunCol.value.copy(skyMat.uniforms.sunCol.value).multiplyScalar(up ? 0.9 : 0.8);
+  skyMat.uniforms.night.value = nightK;
+}
 
 /* ---------------- geometry helpers: a Roblox-style "part" builder ---------------- */
 const GEO = {};
@@ -2006,6 +2067,8 @@ Object.assign(WEAP, {
 });
 const FOOT_GUNS = ['rifle', 'pistol', 'shotgun', 'sniper', 'rpg'], FOOT_GUN_NAME = { rifle: 'Rifle', pistol: 'Pistol', shotgun: 'Shotgun', sniper: 'Sniper Rifle', rpg: 'Rocket Launcher' };
 const FOOT_GUN_MODEL = { pistol: 'pistol', shotgun: 'shotgun', sniper: 'sniper', rpg: 'rocket' };
+// 1.2.4: how each one sits in the hand: scale, and where its grip is in the model (metres; forward is -z, up is +y)
+const FOOT_GUN_HOLD = { pistol: [6, 0.045, -0.07], shotgun: [4.4, 0.09, -0.05], sniper: [4.4, 0.05, -0.07], rpg: [4.4, -0.05, -0.07] };
 // put the right gun in a sailor's hand (the rifle is part of the arm; the others are Cube Assault's models)
 function setFootGun(s, wk) {
   if (!s || !s.av || s.gunShown === wk) return; s.gunShown = wk;
@@ -2014,7 +2077,10 @@ function setFootGun(s, wk) {
   if (wk !== 'rifle' && typeof CA_GUNS !== 'undefined' && CA_GUNS[FOOT_GUN_MODEL[wk]]) {
     const M = CA_GUNS[FOOT_GUN_MODEL[wk]](), g = new THREE.Group(); g.add(M.g);
     M.g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    g.rotation.x = -Math.PI / 2; g.scale.setScalar(wk === 'pistol' ? 6 : 4.4); g.position.set(0, -2.0, 0.42);
+    // 1.2.4: the model's forward (-z) runs down the arm (-y) and its top (+y) faces the arm's +z, which is up when the arm
+    // is raised (it used to face down, so every gun but the rifle was held upside down); the grip sits in the hand
+    const [sc, gz, gy] = FOOT_GUN_HOLD[wk];
+    g.rotation.set(Math.PI / 2, Math.PI, 0); g.scale.setScalar(sc); g.position.set(0, -1.74 - sc * gz, -sc * gy);
     av.armR.add(g); av.caGun = g;
   }
 }
@@ -3312,7 +3378,7 @@ function startMatch(demo) {
   GAME.on = false; GAME.demo = !!demo; GAME.over = false; GAME.winner = -1; GAME.ending = 0; GAME.noResult = false;
   GAME.diff = demo ? 1 : cfg.difficulty;
   GAME.perTeam = demo ? 5 : cfg.bots;
-  GAME.clock = demo ? 1e9 : cfg.minutes * 60;
+  GAME.clock = demo ? 1e9 : cfg.minutes * 60; GAME.clock0 = GAME.clock; dnLast = -1; // 1.2.4: the day starts with the match
   resetWorld();
   reset121();
   Object.assign(PLAYER, { name: !demo && NET.on ? NET.name : 'You', team: demo ? -1 : cfg.team, kills: 0, deaths: 0, damage: 0, gold: 300, earned: 0, spent: 0, caps: 0, ent: null, soldier: null, mode: demo ? 'demo' : 'dead', respawn: 0 });
@@ -3948,6 +4014,7 @@ function updateHUD(dt) {
     $('hpB').style.transform = `scaleX(${hb.hp / hb.maxHp})`; $('hpR').style.transform = `scaleX(${hr.hp / hr.maxHp})`;
     setText('hpBt', fmt(hb.hp) + '/' + fmt(hb.maxHp)); setText('hpRt', fmt(hr.hp) + '/' + fmt(hr.maxHp));
     setText('clock', fmtClock(GAME.clock));
+    { const h = timeOfDay(), up = h >= 6 && h < 18; setText('todT', fmtTOD(h)); setText('todI', up ? '☀' : '☾'); $('tod').className = up ? '' : 'nt'; } // 1.2.4
     setHTML('isl', ISLANDS.map(i => `<div class="pip ${i.owner >= 0 ? 't' + i.owner : ''}" title="${i.name}"></div>`).join(''));
     setText('gold', isTester() ? '∞' : fmt(PLAYER.gold));
     // health and ammo
@@ -4932,6 +4999,7 @@ function frame(now) {
   sky.position.copy(camera.position);
   if (clouds) clouds.position.x = Math.sin(GAME.time * 0.003) * 500;
   const f = PLAYER.ent && PLAYER.ent.alive ? PLAYER.ent.pos : camera.position;
+  updateDayNight();
   sun.target.position.set(f.x, 0, f.z); sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 500);
   if (!(window.hbReel && hbReel.covering)) renderer.render(scene, camera); // the title reel covers the demo battle
 }
@@ -9139,11 +9207,13 @@ let lastQ = null;
 const wanted = () => typeof GAME !== 'undefined' && GAME.demo && quality() !== 'low' && !document.getElementById('title').classList.contains('hidden');
 function loop(now) {
   requestAnimationFrame(loop);
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  // 1.2.4: never negative (the first frame's time can be a little before the script's own start time, which made
+  // the first shot index -1 and threw)
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
   const want = wanted();
   if (want && !R) { try { build(); } catch (e) { console.error('title reel disabled:', e); window.hbReel = null; return; } }
   if (want !== on) { on = want; if (R) { canvas.style.display = shade.style.display = on ? 'block' : 'none'; vignette.style.display = on && !post ? 'block' : 'none'; } if (on) { elapsed = 0; lastIdx = -1; } }
-  if (!on) return;
+  if (!on || !shots.length) return;
   const q = quality(); if (q !== lastQ) { lastQ = q; R.setPixelRatio(q === 'high' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1); resize(); }
   const step = window.hbReel && hbReel.hold ? 0 : dt;
   frameAt(elapsed + step, step);
