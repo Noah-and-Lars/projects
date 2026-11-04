@@ -23,6 +23,7 @@ Click to lock the mouse to the game. Press Esc to get the mouse back.
 | WASD | Move |
 | Mouse | Look |
 | Space | Jump |
+| Right mouse (hold) | Aim down the iron sights |
 | Esc | Release the mouse |
 
 The top-left corner shows the frame rate, your speed and whether you're on the ground or in the air.
@@ -79,6 +80,10 @@ The pistol, gloves and sleeves you see are detailed models made in Blender: `ass
 They're drawn in their own layer on top of the world, so the gun never pokes into walls and its size on screen doesn't change with the field of view. That layer has its own sun shadows (the hands shade the gun), sky-and-ground reflections that turn with your view, and film-like tone mapping. Where the gun is held is `HIP_POSITION` and `HIP_ROTATION` in `src/viewmodel/viewmodel.js`.
 
 If the model files can't be loaded, the game falls back to the simpler hands and pistol built into the code, so it always works.
+
+### Aiming down the sights
+
+Hold the right mouse button and the pistol comes up in about 0.28 s, with a slight swoop and a small settle at the end, until the line through its three sight dots runs straight through your eye: the front dot sits exactly where the centre dot was. The world zooms in a little, the centre dot fades out, and you walk at 55% speed (`aimSpeedFactor` in `src/shared/config.js`). The arm physics keeps working while you aim, but gentler, so the sights lag a little behind fast turns and drift back; on top of that there's a slow figure-of-eight from breathing and a faint tremor. The timing, distance and zoom are `AIM` in `src/viewmodel/viewmodel.js`; the wobble and how much of each movement is kept while aiming are `aiming`, `aimWobble` and `aimSettle` in `MOTION`. The sight positions are `SIGHTS` in `src/viewmodel/pistol.js`.
 
 ### Weapon physics
 

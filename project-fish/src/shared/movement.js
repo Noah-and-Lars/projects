@@ -8,6 +8,7 @@ import { MOVEMENT, PLAYER, WORLD } from './config.js';
 import { COLLIDERS } from './map.js';
 
 export const BUTTON_JUMP = 1 << 0;
+export const BUTTON_AIM = 1 << 1;
 
 export function createPlayerState() {
   return {
@@ -51,10 +52,11 @@ export function simulatePlayer(s, cmd, dt) {
   const wishX = -sin * f + cos * r;
   const wishZ = -cos * f - sin * r;
   const hasInput = len > 0.001;
+  const topSpeed = MOVEMENT.walkSpeed * (cmd.buttons & BUTTON_AIM ? MOVEMENT.aimSpeedFactor : 1);
 
   if (s.grounded) {
-    const targetX = wishX * MOVEMENT.walkSpeed;
-    const targetZ = wishZ * MOVEMENT.walkSpeed;
+    const targetX = wishX * topSpeed;
+    const targetZ = wishZ * topSpeed;
     const accel = hasInput ? MOVEMENT.groundAccel : MOVEMENT.groundDecel;
     moveVelocityTowards(s, targetX, targetZ, accel * dt);
 
@@ -66,7 +68,7 @@ export function simulatePlayer(s, cmd, dt) {
   } else if (hasInput) {
     // In the air you can steer, but not speed up beyond your current
     // speed (or walking speed, whichever is higher).
-    const speed = Math.max(Math.hypot(s.vx, s.vz), MOVEMENT.walkSpeed);
+    const speed = Math.max(Math.hypot(s.vx, s.vz), topSpeed);
     moveVelocityTowards(s, wishX * speed, wishZ * speed, MOVEMENT.airAccel * dt);
   }
 

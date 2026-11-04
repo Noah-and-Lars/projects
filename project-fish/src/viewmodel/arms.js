@@ -138,11 +138,16 @@ function rightHandPose() {
     curledFinger(0.037, -15, 0.018, ring.lengths, ring.radius),
     curledFinger(0.055, -12, 0.017, little.lengths, little.radius),
   ];
+  // The thumb's base is buried in the thumb muscle behind the grip; the thumb
+  // itself runs forward along the left side, so from behind it's foreshortened.
   const thumb = {
-    joints: [V(0.03, -0.06, 0.075), V(-0.012, -0.03, 0.052), V(-0.0235, -0.023, 0.018), V(-0.0235, -0.021, -0.01)],
-    radii: [0.0122, 0.0114, 0.0104, 0.0094],
+    joints: [V(-0.004, -0.061, 0.071), V(-0.019, -0.036, 0.041), V(-0.0235, -0.025, 0.012), V(-0.0235, -0.0215, -0.0145)],
+    radii: [0.0116, 0.0108, 0.01, 0.0091],
   };
-  return { fingers, thumb, wrist: V(0.04, -0.098, 0.1), elbow: V(0.17, -0.2, 0.32), awayFromGrip: V(1, 0, 0) };
+  // The web between thumb and index finger sits high on the back of the grip,
+  // just under the beavertail.
+  const web = { center: V(0.006, -0.037, 0.043), radii: [0.019, 0.0085, 0.012] };
+  return { fingers, thumb, web, wrist: V(0.024, -0.1, 0.098), elbow: V(0.17, -0.2, 0.32), awayFromGrip: V(1, 0, 0) };
 }
 
 // Left (support) hand: palm heel on the left side of the grip over the right
@@ -193,8 +198,9 @@ function buildHand(pose, colors, { pads: withPads = true } = {}) {
   palm.push(roundCone(wrist, wrist.clone().addScaledVector(forearm, 0.06), 0.0255, 0.028));
 
   // Thumb muscle, between the thumb's base and the index knuckle.
-  const thenarCenter = thumb.joints[0].clone().lerp(thumb.joints[1], 0.45).lerp(palmCenter, 0.35);
-  palm.push(ellipsoid(thenarCenter, 0.027, 0.016, 0.014, basis(thumb.joints[1].clone().sub(thumb.joints[0]), back)));
+  const thenarCenter = thumb.joints[0].clone().lerp(thumb.joints[1], 0.45).lerp(palmCenter, 0.3);
+  palm.push(ellipsoid(thenarCenter, 0.028, 0.018, 0.016, basis(thumb.joints[1].clone().sub(thumb.joints[0]), back)));
+  if (pose.web) palm.push(ellipsoid(pose.web.center, ...pose.web.radii, basis(V(1, 0, 0), V(0, 1, 0))));
 
   // Moulded knuckle pads on the back of the glove.
   const pads = mcps.map((mcp, i) => ellipsoid(

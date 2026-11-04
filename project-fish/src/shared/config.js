@@ -13,6 +13,7 @@ export const PLAYER = {
 
 export const MOVEMENT = {
   walkSpeed: 5.0, // m/s
+  aimSpeedFactor: 0.55, // walking speed while aiming down the sights, as a fraction of walkSpeed
   groundAccel: 50, // m/s², how hard you speed up or change direction on the ground
   groundDecel: 40, // m/s², how hard you stop when you let go of the keys
   airAccel: 12, // m/s², how much you can steer in the air

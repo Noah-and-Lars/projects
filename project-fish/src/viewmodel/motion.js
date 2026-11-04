@@ -22,6 +22,11 @@ export const MOTION = {
   landing: { drop: 0.045, nod: 0.22 }, // shove when landing, per m/s of fall
   breath: { speed: 1.4, up: 0.0007, pitch: 0.002, drift: 0.0015 },
   wall: { far: 0.85, near: 0.35, back: 0.12, down: 0.025, tip: 0.4 },
+  // Aiming down the sights: how much of each movement is left (1 = all of it),
+  // and the hold wobble: a slow figure-of-eight from breathing plus a faint tremor.
+  aiming: { look: 0.35, inertia: 0.4, lean: 0.3, bob: 0.25, wall: 0.5 },
+  aimWobble: { speed: 0.8, pitch: 0.0035, yaw: 0.0048, tremor: 0.0007 },
+  aimSettle: { nod: 0.35, roll: 0.4 }, // little shove as the sights come up or go down
 };
 
 const MAX_STEP = 1 / 240; // springs are stepped at least this finely, so they stay stable
@@ -70,13 +75,22 @@ export class ViewmodelMotion {
     this.wall = 0;
   }
 
+  // The sights just came up (+1) or went down (-1): a small shove, so the gun
+  // settles into place instead of stopping dead.
+  settle(direction) {
+    this.rotation.velocity.x += MOTION.aimSettle.nod * direction;
+    this.rotation.velocity.z -= MOTION.aimSettle.roll * direction;
+  }
+
   // dt: seconds since the last frame. player: movement state. yaw, pitch: where
   // the player looks. wallDistance: metres to whatever is straight ahead.
-  update(dt, player, yaw, pitch, wallDistance) {
+  // aim: 0 at the hip, 1 fully aiming down the sights.
+  update(dt, player, yaw, pitch, wallDistance, aim = 0) {
     dt = Math.min(dt, 0.05);
     if (dt <= 0) return;
     this.time += dt;
     const M = MOTION;
+    const keep = (k) => 1 - (1 - M.aiming[k]) * aim; // how much of a movement is left while aiming
     const target = new THREE.Vector3();
     const targetRot = new THREE.Vector3();
     const force = new THREE.Vector3();
@@ -92,10 +106,10 @@ export class ViewmodelMotion {
     this.turn.x += (dYaw / dt - this.turn.x) * smooth;
     this.turn.y += (dPitch / dt - this.turn.y) * smooth;
     const clamp = (v, m) => Math.max(-m, Math.min(m, v));
-    targetRot.y += clamp(-this.turn.x * M.look.trail, M.look.max);
-    targetRot.x += clamp(-this.turn.y * M.look.trail, M.look.max);
-    target.x += clamp(this.turn.x * M.look.sideways, 0.02);
-    target.y -= clamp(this.turn.y * M.look.sideways, 0.02);
+    targetRot.y += clamp(-this.turn.x * M.look.trail, M.look.max) * keep('look');
+    targetRot.x += clamp(-this.turn.y * M.look.trail, M.look.max) * keep('look');
+    target.x += clamp(this.turn.x * M.look.sideways, 0.02) * keep('look');
+    target.y -= clamp(this.turn.y * M.look.sideways, 0.02) * keep('look');
 
     // Moving: speeding up or slowing down shoves the gun the other way.
     const sin = Math.sin(yaw);
@@ -108,23 +122,24 @@ export class ViewmodelMotion {
     this.lastVelocity.set(right, forward);
     this.accel.x += (ax - this.accel.x) * (1 - Math.exp(-dt / 0.04));
     this.accel.y += (af - this.accel.y) * (1 - Math.exp(-dt / 0.04));
-    force.x -= this.accel.x * M.inertia.position;
-    force.z += this.accel.y * M.inertia.position;
-    torque.x += this.accel.y * M.inertia.rotation;
-    torque.z += this.accel.x * M.inertia.rotation;
-    torque.y += this.accel.x * M.inertia.rotation * 0.4;
-    targetRot.z -= right * M.lean;
+    const shove = keep('inertia');
+    force.x -= this.accel.x * M.inertia.position * shove;
+    force.z += this.accel.y * M.inertia.position * shove;
+    torque.x += this.accel.y * M.inertia.rotation * shove;
+    torque.z += this.accel.x * M.inertia.rotation * shove;
+    torque.y += this.accel.x * M.inertia.rotation * 0.4 * shove;
+    targetRot.z -= right * M.lean * keep('lean');
 
     // Walking: a figure-of-eight in step with the feet, and a little bounce at each footstep.
     const speed = player.grounded ? Math.hypot(player.vx, player.vz) : 0;
     this.bobAmount += (Math.min(speed / 5, 1) - this.bobAmount) * Math.min(1, dt * 8);
     const before = Math.floor(this.bobPhase / Math.PI);
     this.bobPhase += speed * dt * M.bob.stepsPerMetre * Math.PI;
+    const b = this.bobAmount * keep('bob');
     if (Math.floor(this.bobPhase / Math.PI) !== before) {
-      this.position.velocity.y -= M.bob.footstep * this.bobAmount;
-      this.rotation.velocity.x -= M.bob.nod * this.bobAmount;
+      this.position.velocity.y -= M.bob.footstep * b;
+      this.rotation.velocity.x -= M.bob.nod * b;
     }
-    const b = this.bobAmount;
     target.x += Math.sin(this.bobPhase) * M.bob.side * b;
     target.y -= Math.abs(Math.cos(this.bobPhase)) * M.bob.up * b;
     targetRot.z += Math.sin(this.bobPhase) * M.bob.roll * b;
@@ -150,8 +165,16 @@ export class ViewmodelMotion {
     targetRot.x += Math.sin(t + 1) * M.breath.pitch;
     targetRot.y += Math.sin(t * 0.5) * M.breath.drift;
 
+    // Holding the sights up: a slow figure-of-eight as you breathe, and a faint
+    // tremor from the arms holding the weight out.
+    const ws = this.time * M.aimWobble.speed * 2 * Math.PI;
+    targetRot.x += aim * (Math.sin(ws) * M.aimWobble.pitch
+      + (Math.sin(this.time * 17.3) + Math.sin(this.time * 23.9 + 1.3)) * 0.5 * M.aimWobble.tremor);
+    targetRot.y += aim * (Math.sin(ws * 0.5 + 0.7) * M.aimWobble.yaw
+      + (Math.sin(this.time * 19.1 + 2.1) + Math.sin(this.time * 29.7)) * 0.5 * M.aimWobble.tremor);
+
     // Close to a wall: pull the gun back and tip it up.
-    const w = smoothstep(M.wall.far, M.wall.near, wallDistance);
+    const w = smoothstep(M.wall.far, M.wall.near, wallDistance) * keep('wall');
     this.wall += (w - this.wall) * Math.min(1, dt * 10);
     target.z += M.wall.back * this.wall;
     target.y -= M.wall.down * this.wall;

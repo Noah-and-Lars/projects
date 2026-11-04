@@ -10,7 +10,7 @@ import { PLAYER, TICK_DT } from './shared/config.js';
 import { createPlayerState, emptyCommand, simulatePlayer } from './shared/movement.js';
 import { raycastColliders } from './shared/map.js';
 import { createWorld, SUN_DIRECTION } from './world.js';
-import { Viewmodel } from './viewmodel/viewmodel.js';
+import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
 import { Hud } from './hud.js';
 import { settings } from './settings.js';
@@ -53,16 +53,27 @@ const cmd = emptyCommand();
 
 // --- Window size and field of view ---
 
+// three.js wants the vertical FOV. Work it out from the horizontal FOV on a
+// 16:9 screen, so wider screens see more at the sides instead of less above
+// and below. `zoom` > 1 narrows it, for aiming down the sights.
+function setWorldFov(zoom) {
+  const halfHorizontal = (settings.fov * Math.PI) / 360;
+  const fov = (2 * Math.atan((Math.tan(halfHorizontal) * (9 / 16)) / zoom) * 180) / Math.PI;
+  if (fov !== camera.fov) {
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+  }
+}
+
+let aimAmount = 0;
+
 function resize() {
   const width = window.innerWidth;
   const height = window.innerHeight;
   renderer.setSize(width, height);
   camera.aspect = width / height;
-  // three.js wants the vertical FOV. Work it out from the horizontal FOV on a
-  // 16:9 screen, so wider screens see more at the sides instead of less above and below.
-  const halfHorizontal = (settings.fov * Math.PI) / 360;
-  camera.fov = (2 * Math.atan(Math.tan(halfHorizontal) * (9 / 16)) * 180) / Math.PI;
   camera.updateProjectionMatrix();
+  setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
   viewmodel.setAspect(width / height);
 }
 window.addEventListener('resize', resize);
@@ -119,7 +130,9 @@ renderer.setAnimationLoop((time) => {
 
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
-  viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance);
+  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming);
+  setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
+  document.body.classList.toggle('aiming', aimAmount > 0.4);
 
   hud.update(frameSeconds, player);
   renderer.clear();

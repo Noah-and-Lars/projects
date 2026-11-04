@@ -19,6 +19,15 @@ export const GRIP = {
 };
 GRIP.front = new THREE.Vector3().crossVectors(new THREE.Vector3(1, 0, 0), GRIP.down).normalize();
 
+// The iron sights (gun space). Looking down the sights, the three dots line up
+// at this height: the two on the back of the rear sight and the one on the
+// back of the front sight. The Blender pistol (build_pistol.py) matches.
+export const SIGHTS = {
+  height: 0.01975, // of the dots above the bore
+  rearZ: 0.0248, // back face of the rear sight
+  frontZ: -0.1376, // back face of the front sight
+};
+
 const SLIDE_PROFILE = [
   [-0.032, -0.0105], [0.152, -0.0105], [0.152, 0.009], [0.146, 0.0165], [-0.03, 0.0165], [-0.032, 0.012],
 ];

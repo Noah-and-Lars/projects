@@ -1,7 +1,7 @@
 // Keyboard and mouse. Keys are read by their physical position (KeyW etc.),
 // so WASD works on any keyboard layout.
 
-import { BUTTON_JUMP } from './shared/movement.js';
+import { BUTTON_AIM, BUTTON_JUMP } from './shared/movement.js';
 import { settings } from './settings.js';
 
 const DEGREES_PER_COUNT = 0.022;
@@ -49,6 +49,20 @@ export class Input {
       this.held.delete(e.code);
     });
 
+    // Mouse buttons count as keys called Mouse0 (left), Mouse2 (right).
+    document.addEventListener('mousedown', (e) => {
+      if (!this.locked) return;
+      this.held.add('Mouse' + e.button);
+      this.tapped.add('Mouse' + e.button);
+    });
+    document.addEventListener('mouseup', (e) => {
+      this.held.delete('Mouse' + e.button);
+    });
+    // Right-click aims, so don't open the browser's menu.
+    document.addEventListener('contextmenu', (e) => {
+      if (this.locked) e.preventDefault();
+    });
+
     // Don't keep walking if the window loses focus while a key is down.
     window.addEventListener('blur', () => this.releaseAll());
   }
@@ -75,6 +89,11 @@ export class Input {
     }
   }
 
+  // Holding the right mouse button aims down the sights.
+  get aiming() {
+    return this.locked && this.held.has('Mouse2');
+  }
+
   // Fills `cmd` with this tick's input.
   sample(cmd) {
     const down = (code) => (this.held.has(code) || this.tapped.has(code) ? 1 : 0);
@@ -82,7 +101,7 @@ export class Input {
     cmd.right = down('KeyD') - down('KeyA');
     cmd.yaw = this.yaw;
     cmd.pitch = this.pitch;
-    cmd.buttons = down('Space') ? BUTTON_JUMP : 0;
+    cmd.buttons = (down('Space') ? BUTTON_JUMP : 0) | (this.held.has('Mouse2') ? BUTTON_AIM : 0);
     this.tapped.clear();
     return cmd;
   }

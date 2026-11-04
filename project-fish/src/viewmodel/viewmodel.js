@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { createPistol } from './pistol.js';
+import { createPistol, SIGHTS } from './pistol.js';
 import { createArms } from './arms.js';
 import { ViewmodelMotion } from './motion.js';
 
@@ -21,6 +21,19 @@ const VIEW_FOV = 52; // vertical, degrees
 // out, pistol a little right of centre, pointing straight ahead.
 const HIP_POSITION = new THREE.Vector3(0.075, -0.07, -0.5);
 const HIP_ROTATION = new THREE.Euler(0, 0.02, 0, 'YXZ');
+
+// Aiming down the sights: the gun comes up so the line through the three
+// sight dots runs straight through the eye, with the rear sight this far away.
+export const AIM = {
+  time: 0.28, // seconds to bring the sights up (or down)
+  eyeToRearSight: 0.24, // metres
+  viewFov: 44, // the gun layer's vertical field of view while aiming (makes the sights a bit bigger)
+  zoom: 1.15, // how much the world zooms in while aiming
+  arc: { down: 0.012, roll: 0.07 }, // the slight swoop the gun makes on the way up
+};
+const AIM_POSITION = new THREE.Vector3(0, -SIGHTS.height, -(AIM.eyeToRearSight + SIGHTS.rearZ));
+const AIM_ROTATION = new THREE.Quaternion();
+const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 
 // The arms swing about this point between the wrists (gun space), not the eye.
 const PIVOT = new THREE.Vector3(0, -0.085, 0.07);
@@ -93,15 +106,18 @@ export class Viewmodel {
     this.sunDirection = sunDirection;
 
     // holder: sits at the pivot and moves with the weapon physics.
-    // gun: the pistol and arms, placed so they're held at the hip pose.
-    this.pivot = PIVOT.clone().applyEuler(HIP_ROTATION).add(HIP_POSITION);
+    // gun: the pistol and arms, placed so they're held in the current pose
+    // (somewhere between the hip and aiming down the sights).
     this.holder = new THREE.Group();
     this.gun = new THREE.Group();
-    this.gun.position.copy(HIP_POSITION).sub(this.pivot);
-    this.gun.rotation.copy(HIP_ROTATION);
     this.holder.add(this.gun);
     this.scene.add(this.holder);
     this.motion = new ViewmodelMotion();
+    this.aimProgress = 0; // 0 = at the hip, 1 = aiming down the sights
+    this.wasAiming = false;
+    this.posePosition = new THREE.Vector3();
+    this.poseQuaternion = new THREE.Quaternion();
+    this.pivot = new THREE.Vector3();
 
     // Resolves once the pistol and hands are loaded and in place.
     this.ready = Promise.all([loadModel(PISTOL_MODEL, createPistol), loadModel(ARMS_MODEL, createArms)]).then(([pistol, arms]) => {
@@ -119,17 +135,46 @@ export class Viewmodel {
   // frameSeconds: time since the last frame. player: movement state.
   // yaw / pitch: where the player is looking. cameraQuaternion: the world
   // camera's rotation. wallDistance: metres to whatever is straight ahead.
-  update(frameSeconds, player, yaw, pitch, cameraQuaternion, wallDistance = Infinity) {
-    this.motion.update(frameSeconds, player, yaw, pitch, wallDistance);
+  // aiming: whether the aim button is held. Returns how far into aiming the
+  // gun is (0..1, eased), for zooming the world.
+  update(frameSeconds, player, yaw, pitch, cameraQuaternion, wallDistance = Infinity, aiming = false) {
+    // Bring the sights up or down at a steady pace, eased at both ends.
+    const dt = Math.min(frameSeconds, 0.05);
+    this.aimProgress = Math.min(1, Math.max(0, this.aimProgress + (aiming ? dt : -dt) / AIM.time));
+    const p = this.aimProgress;
+    const aim = p * p * (3 - 2 * p);
+    if (aiming !== this.wasAiming) this.motion.settle(aiming ? 1 : -1);
+    this.wasAiming = aiming;
+
+    // The pose for this much aiming, with a slight swoop on the way.
+    const swoop = Math.sin(Math.PI * aim);
+    this.posePosition.lerpVectors(HIP_POSITION, AIM_POSITION, aim);
+    this.posePosition.y -= AIM.arc.down * swoop;
+    this.poseQuaternion.slerpQuaternions(HIP_QUATERNION, AIM_ROTATION, aim);
+    this.poseQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), AIM.arc.roll * swoop));
+    this.pivot.copy(PIVOT).applyQuaternion(this.poseQuaternion).add(this.posePosition);
+
+    // Weapon physics move the whole posed gun about the pivot between the wrists.
+    this.motion.update(frameSeconds, player, yaw, pitch, wallDistance, aim);
     this.holder.position.copy(this.pivot).add(this.motion.position.value);
     const r = this.motion.rotation.value;
     this.holder.rotation.set(r.x, r.y, r.z);
+    this.gun.position.copy(this.posePosition).sub(this.pivot);
+    this.gun.quaternion.copy(this.poseQuaternion);
+
+    const fov = VIEW_FOV + (AIM.viewFov - VIEW_FOV) * aim;
+    if (fov !== this.camera.fov) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
+    this.sun.target.position.copy(this.posePosition);
 
     // Light and reflections come from where the sun and sky are, relative to
     // where the player looks.
     const inverse = cameraQuaternion.clone().invert();
     this.sun.position.copy(this.sunDirection).applyQuaternion(inverse).add(this.sun.target.position);
     this.scene.environmentRotation.setFromQuaternion(inverse);
+    return aim;
   }
 
   render(renderer) {

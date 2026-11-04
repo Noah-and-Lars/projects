@@ -31,6 +31,15 @@ body:not(.playing) #crosshair {
   display: none;
 }
 
+/* Aiming down the sights: the sights take over from the dot. */
+#crosshair {
+  transition: opacity 0.12s;
+}
+
+body.aiming #crosshair {
+  opacity: 0;
+}
+
 #debug {
   position: fixed;
   left: 12px;
