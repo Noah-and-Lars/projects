@@ -142,6 +142,7 @@ function spread(direction, degrees) {
 function shoot() {
   viewmodel.fire(aimAmount);
   playGunshot();
+  heat += HEAT.perShot;
 
   // Where the shot goes: through the sights when aiming, roughly at the
   // centre from the hip, straying more from the hip and while moving.
@@ -170,6 +171,25 @@ function shoot() {
   viewKick.vx += (RECOIL.kick + Math.random() * RECOIL.kickRandom) * k;
   viewKick.vy += (Math.random() * 2 - 1) * RECOIL.sideways * k;
   input.pitch = Math.min(1.55, input.pitch + RECOIL.climb * k);
+}
+
+// --- Barrel heat ---
+
+// Each shot heats the barrel; it cools over a few seconds. Once it's warm,
+// thin smoke curls off the muzzle and out of the ejection port.
+const HEAT = { perShot: 1, coolPerSecond: 0.45, smokeFrom: 2, full: 8, puffsPerSecond: 9 };
+let heat = 0;
+let smokeTimer = 0;
+
+function updateBarrelSmoke(dt) {
+  heat = Math.max(0, heat - HEAT.coolPerSecond * dt);
+  if (heat < HEAT.smokeFrom) return;
+  const amount = Math.min(1, (heat - HEAT.smokeFrom) / (HEAT.full - HEAT.smokeFrom));
+  smokeTimer -= dt;
+  if (smokeTimer > 0) return;
+  smokeTimer = 1 / (HEAT.puffsPerSecond * (0.4 + 0.6 * amount));
+  const from = Math.random() < 0.7 ? viewmodel.muzzlePoint() : viewmodel.portPoint();
+  effects.barrelSmoke(gunPointToWorld(from), amount);
 }
 
 // --- Ammo counter ---
@@ -241,11 +261,15 @@ renderer.setAnimationLoop((time) => {
   document.body.classList.toggle('aiming', aimAmount > 0.4);
   for (const event of events) {
     if (event === 'shot') shoot();
-    else if (event === 'dry') playDryFire();
+    else if (event === 'dry') {
+      playDryFire();
+      viewmodel.dryFire();
+    }
     else if (event === 'magOut') playMagOut();
     else if (event === 'magIn') playMagIn();
     else if (event === 'slideRelease') playSlideRelease();
   }
+  updateBarrelSmoke(frameSeconds);
   effects.update(frameSeconds);
   updateAmmo();
 

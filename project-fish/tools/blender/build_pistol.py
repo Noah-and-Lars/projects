@@ -13,6 +13,9 @@ the hands still fit, and adds:
 - Real cuts: ejection port with the barrel hood inside, angled cocking
   serrations front and back, recessed barrel crown and bore, rear sight notch,
   accessory rail slots under the frame.
+- A separate barrel that stays put while the slide recoils (and tips its
+  back end down, done in the game), so with the slide locked back it pokes
+  out of the front and the chamber shows.
 - Small parts: three-dot sights, extractor, striker plate, slide stop,
   takedown levers, magazine release, pins, trigger with safety blade.
 - Engraved markings: model name and serial number (made up, no real brands),
@@ -255,14 +258,18 @@ def build_slide(p):
     engrave(slide, 'PF-9', 0.0056, (-SLIDE_HALF, 0.072, 0.0025), (0, -1, 0), (0, 0, 1))
 
     parts = []
-    # Barrel: hood in the ejection port, crown and bore at the muzzle.
+    # Barrel: its own part, because it doesn't ride all the way back with the
+    # slide. The hood shows in the ejection port; the tube runs inside the
+    # slide to the crown and bore at the muzzle.
     hood = box('hood', -0.0056, 0.0056, 0.0066, 0.0436, -0.004, 0.0122)
     engrave(hood, '9x19', 0.0034, (0.0, 0.025, 0.0122), (1, 0, 0), (0, 1, 0), depth=0.0002)
-    parts.append(hood)
-    barrel = cylinder('barrel', 0.0065, 0.13, 0.1505)
-    cut(barrel, cylinder('bore', 0.0046, 0.12, 0.16))
-    bevel(barrel, 0.0004, 2)
-    parts.append(barrel)
+    tube = cylinder('barrel', 0.0065, 0.04, 0.1505)
+    cut(tube, cylinder('bore', 0.0046, 0.12, 0.16))
+    bevel(tube, 0.0004, 2)
+    barrel = join(tube, hood)
+    barrel.name = barrel.data.name = 'barrel'
+    sharp_edges(barrel)
+    plain_material(barrel, BARREL, 0.3, metallic=1.0)
     # Rear sight with a U notch, front sight post.
     rear = box('rear_sight', -0.0082, 0.0082, -0.0248, -0.0168, SLIDE_TOP - 0.001, SLIDE_TOP + 0.0058)
     cut(rear, box('notch', -0.0018, 0.0018, -0.03, -0.01, SLIDE_TOP + 0.0026, 0.04))
@@ -287,7 +294,7 @@ def build_slide(p):
     sight_dots.name = 'sight_dots'
     sight_dots.data.name = 'sight_dots'
     plain_material(sight_dots, DOT, 0.4, emission=0.6)
-    return slide, sight_dots
+    return slide, sight_dots, barrel
 
 
 def build_frame(p):
@@ -525,7 +532,7 @@ def main():
         profiles = json.load(f)
 
     log('slide')
-    slide, dots = build_slide(profiles)
+    slide, dots, barrel = build_slide(profiles)
     log('frame')
     frame = build_frame(profiles)
     small = build_small_parts(profiles)
@@ -546,7 +553,7 @@ def main():
 
     # Hierarchy: the slide (with its sight dots) moves on its own when firing.
     root = link(bpy.data.objects.new('pistol', None))
-    for obj in (slide, frame, *small):
+    for obj in (slide, barrel, frame, *small):
         obj.parent = root
     dots.parent = slide
 

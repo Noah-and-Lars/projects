@@ -25,6 +25,7 @@ Click to lock the mouse to the game. Press Esc to get the mouse back.
 | Space | Jump |
 | Left mouse | Fire |
 | Right mouse (hold) | Aim down the iron sights |
+| Q | Aim: click to toggle, or hold to aim until you let go |
 | R | Reload |
 | Esc | Release the mouse |
 
@@ -85,7 +86,7 @@ If the model files can't be loaded, the game falls back to the simpler hands and
 
 ### Aiming down the sights
 
-Hold the right mouse button and the pistol comes up in about 0.28 s, with a slight swoop and a small settle at the end, until the line through its three sight dots runs straight through your eye: the front dot sits exactly where the centre dot was. The world zooms in a little, the centre dot fades out, and you walk at 55% speed (`aimSpeedFactor` in `src/shared/config.js`). The arm physics keeps working while you aim, so the sights trail behind turns and swing back, and they sway: slow, uneven drifts from breathing and tired arms that never quite repeat, plus a faint tremor. The sway is about 2.4 times worse just after the sights come up and calms down over a second, and it's worse while you walk. The timing, distance and zoom are `AIM` in `src/viewmodel/viewmodel.js`; the wobble and how much of each movement is kept while aiming are `aiming`, `aimWobble` and `aimSettle` in `MOTION`. The sight positions are `SIGHTS` in `src/viewmodel/pistol.js`.
+Hold the right mouse button (or click Q to toggle, or hold Q) and the pistol comes up in about 0.28 s, with a slight swoop and a small settle at the end, until the line through its three sight dots runs straight through your eye: the front dot sits exactly where the centre dot was. The world zooms in a little, the centre dot fades out, and you walk at 55% speed (`aimSpeedFactor` in `src/shared/config.js`). The arm physics keeps working while you aim, so the sights trail behind turns and swing back, and they sway: slow, uneven drifts from breathing and tired arms that never quite repeat, plus a faint tremor. The sway is about 2.4 times worse just after the sights come up and calms down over a second, and it's worse while you walk. The timing, distance and zoom are `AIM` in `src/viewmodel/viewmodel.js`; the wobble and how much of each movement is kept while aiming are `aiming`, `aimWobble` and `aimSettle` in `MOTION`. The sight positions are `SIGHTS` in `src/viewmodel/pistol.js`.
 
 ### Firing
 
@@ -93,7 +94,9 @@ The pistol is semi-automatic: one shot per click, up to 500 a minute (clicks mad
 
 - **Where shots go:** through the sights when aiming (so the sway matters), roughly at the centre from the hip, straying more from the hip and while moving. They hit the ground and the house (`raycastWorld` in `src/shared/map.js`) and leave a bullet hole and a puff of dust.
 - **Kick:** the gun flips up and shoves back into the hands on the arm springs (`recoil` in `MOTION`), and the view kicks up and springs back with a little lasting climb you pull down against (`RECOIL` in `src/main.js`). Both are gentler while aiming.
-- **The gun:** the slide cycles on each shot and locks back on the last round; a muzzle flash lights the hands, gun and surroundings for a moment; smoke drifts from the muzzle; the spent case flies out of the ejection port, spins, bounces and pings on the ground.
+- **The gun:** the trigger comes back and resets; the slide cycles on each shot (with a second, smaller jolt as it slams home) and locks back on the last round. The barrel is its own part: it only follows the slide a few millimetres and its back end tips down, like a real pistol's, so with the slide locked back the barrel pokes out of the front. The spent case flies out of the ejection port, spins, bounces and pings on the ground.
+- **Muzzle flash:** a brief, irregular fireball of hot gas bursting out round the front of the slide, a short flame plume and a few burning powder sparks, different every shot (now and then barely visible), lighting the hands and surroundings for an instant (`src/effects/muzzleFlash.js`).
+- **Smoke:** a wisp from the muzzle on every shot. Each shot also heats the barrel, which cools over a few seconds; after a few quick shots, thin smoke keeps curling off the muzzle and out of the ejection port (`HEAT` in `src/main.js`).
 - **Sound:** a 9mm report built in code sample by sample (pressure spike, bright blast, low punch, ground bounce, slide clack) with outdoor echoes, a click when the gun is empty, and reload sounds (`src/effects/audio.js`).
 - **Reloading (R):** the gun tips towards the support hand, which lets go to fetch a magazine; the old one drops out and the new one clicks in; from empty, the slide is released forward too. 1.55 s, or 1.95 s from empty. The ammo counter is bottom right.
 

@@ -18,6 +18,10 @@ import { RELOAD_STEPS } from '../weapon.js';
 const MUZZLE = [0, 0, -0.1545];
 const PORT = [0.008, 0.017, -0.025];
 const SLIDE_TRAVEL = 0.028; // how far the slide goes back when firing (metres)
+// The barrel only follows the slide a little way, and its back end tips down
+// as it unlocks (pivoting near the muzzle), like a real pistol's.
+const BARREL = { travel: 0.0035, tilt: 0.0105, muzzleZ: -0.15 };
+const TRIGGER_TRAVEL = 0.0032;
 
 // Detailed models made in Blender (see tools/blender/).
 const PISTOL_MODEL = new URL('../../assets/pistol.glb', import.meta.url);
@@ -145,6 +149,9 @@ export class Viewmodel {
 
     this.flash = new MuzzleFlash(MUZZLE);
     this.slideTime = 1; // seconds since the slide last went back
+    this.triggerTime = 1; // seconds since the trigger was last pulled
+    this.slammed = true;
+    this.lastAim = 0;
     this.pistol = null;
 
     // Resolves once the pistol and hands are loaded and in place.
@@ -154,6 +161,10 @@ export class Viewmodel {
       this.pistol = pistol;
       this.slide = pistol.getObjectByName('slide');
       this.slideRest = this.slide ? this.slide.position.z : 0;
+      this.trigger = pistol.getObjectByName('trigger');
+      this.triggerRest = this.trigger ? this.trigger.position.z : 0;
+      this.barrel = pistol.getObjectByName('barrel');
+      if (this.barrel) this.barrelRest = { position: this.barrel.position.clone(), tilt: this.barrel.rotation.x };
       this.magazine = pistol.getObjectByName('magazine');
       this.magazineRest = this.magazine ? this.magazine.position.clone() : null;
       this.leftArm = leftArmOf(arms);
@@ -172,6 +183,14 @@ export class Viewmodel {
     this.motion.kick(aim);
     this.flash.fire();
     this.slideTime = 0;
+    this.triggerTime = 0;
+    this.slammed = false;
+  }
+
+  // The trigger pulled on an empty gun: it moves, nothing else happens.
+  dryFire() {
+    this.triggerTime = 0;
+    this.motion.twitch();
   }
 
   // Where a point on the gun (gun space) is in the gun layer's camera space.
@@ -206,6 +225,7 @@ export class Viewmodel {
     this.aimProgress = Math.min(1, Math.max(0, this.aimProgress + (aiming ? dt : -dt) / AIM.time));
     const p = this.aimProgress;
     const aim = p * p * (3 - 2 * p);
+    this.lastAim = aim;
     if (aiming !== this.wasAiming) this.motion.settle(aiming ? 1 : -1);
     this.wasAiming = aiming;
 
@@ -253,6 +273,12 @@ export class Viewmodel {
     this.flash.update(dt);
     if (!this.pistol) return;
 
+    // The trigger comes back as it breaks, then resets.
+    this.triggerTime += dt;
+    const tt = this.triggerTime;
+    const pull = tt < 0.03 ? tt / 0.03 : tt < 0.11 ? 1 - (tt - 0.03) / 0.08 : 0;
+    if (this.trigger) this.trigger.position.z = this.triggerRest + TRIGGER_TRAVEL * pull;
+
     // The slide snaps back on a shot and returns, or stays back on an empty gun.
     this.slideTime += dt;
     const locked = gun && gun.slideLocked;
@@ -261,6 +287,20 @@ export class Viewmodel {
     else if (this.slideTime < 0.075) back = locked ? 1 : 1 - (this.slideTime - 0.025) / 0.05;
     else back = locked ? 1 : 0;
     if (this.slide) this.slide.position.z = this.slideRest + SLIDE_TRAVEL * back;
+    if (this.barrel) {
+      const tilt = BARREL.tilt * back;
+      this.barrel.rotation.x = this.barrelRest.tilt + tilt;
+      this.barrel.position.set(
+        this.barrelRest.position.x,
+        this.barrelRest.position.y + BARREL.muzzleZ * Math.sin(tilt),
+        this.barrelRest.position.z + BARREL.travel * back,
+      );
+    }
+    // The slide slamming home jolts the gun again.
+    if (!this.slammed && this.slideTime >= 0.06) {
+      this.slammed = true;
+      if (!locked) this.motion.slam(this.lastAim);
+    }
 
     // The support hand lets go to fetch a magazine, then comes back.
     const S = RELOAD_STEPS;

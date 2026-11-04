@@ -8,7 +8,11 @@ const DEGREES_PER_COUNT = 0.022;
 const MAX_PITCH = (89 * Math.PI) / 180;
 
 // Keys the game uses; the browser's default action for them is blocked while playing.
-const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR']);
+const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ']);
+
+// Q aims: a quick click turns aiming on or off; holding it aims until you let go.
+const AIM_KEY = 'KeyQ';
+const AIM_CLICK_MS = 250; // a press shorter than this counts as a click
 
 export class Input {
   constructor(element) {
@@ -23,6 +27,9 @@ export class Input {
     // Presses not yet handled by the frame loop (firing, reloading): how many of each.
     this.pressed = new Map();
     this.onLockChange = null;
+    this.aimKeyOn = false; // aiming with Q
+    this.aimKeyDown = 0; // when Q was pressed
+    this.aimKeyWasOn = false; // whether it was already on when Q was pressed
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.element;
@@ -44,6 +51,11 @@ export class Input {
       if (!this.locked) return;
       if (GAME_KEYS.has(e.code)) e.preventDefault();
       this.held.add(e.code);
+      if (e.code === AIM_KEY && !e.repeat) {
+        this.aimKeyWasOn = this.aimKeyOn;
+        this.aimKeyOn = true;
+        this.aimKeyDown = performance.now();
+      }
       if (!e.repeat) {
         this.tapped.add(e.code);
         this.pressed.set(e.code, (this.pressed.get(e.code) || 0) + 1);
@@ -52,6 +64,11 @@ export class Input {
 
     document.addEventListener('keyup', (e) => {
       this.held.delete(e.code);
+      if (e.code === AIM_KEY) {
+        const click = performance.now() - this.aimKeyDown < AIM_CLICK_MS;
+        // A click while aiming turns it off; letting go after holding stops too.
+        if (this.aimKeyWasOn || !click) this.aimKeyOn = false;
+      }
     });
 
     // Mouse buttons count as keys called Mouse0 (left), Mouse2 (right).
@@ -74,6 +91,7 @@ export class Input {
   }
 
   releaseAll() {
+    this.aimKeyOn = false;
     this.held.clear();
     this.tapped.clear();
     this.pressed.clear();
@@ -103,9 +121,9 @@ export class Input {
     }
   }
 
-  // Holding the right mouse button aims down the sights.
+  // Holding the right mouse button, or Q (click or hold), aims down the sights.
   get aiming() {
-    return this.locked && this.held.has('Mouse2');
+    return this.locked && (this.held.has('Mouse2') || this.aimKeyOn);
   }
 
   // Fills `cmd` with this tick's input.
@@ -115,7 +133,7 @@ export class Input {
     cmd.right = down('KeyD') - down('KeyA');
     cmd.yaw = this.yaw;
     cmd.pitch = this.pitch;
-    cmd.buttons = (down('Space') ? BUTTON_JUMP : 0) | (this.held.has('Mouse2') ? BUTTON_AIM : 0);
+    cmd.buttons = (down('Space') ? BUTTON_JUMP : 0) | (this.aiming ? BUTTON_AIM : 0);
     this.tapped.clear();
     return cmd;
   }

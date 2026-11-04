@@ -38,6 +38,7 @@ export const MOTION = {
   // Each shot: the muzzle flips up and the gun shoves back into the hands
   // (spring speeds, radians or metres a second), a bit less while aiming.
   recoil: { flip: 3.1, flipRandom: 0.6, yaw: 0.6, roll: 0.9, back: 0.55, up: 0.12, aimed: 0.55 },
+  slam: { dip: 0.9, forward: 0.12 }, // the smaller jolt as the slide slams home a moment later
 };
 
 const MAX_STEP = 1 / 240; // springs are stepped at least this finely, so they stay stable
@@ -105,6 +106,18 @@ export class ViewmodelMotion {
     this.rotation.velocity.z += random() * R.roll * k;
     this.position.velocity.z += R.back * k;
     this.position.velocity.y += R.up * k;
+  }
+
+  // The slide slamming home just after a shot: a smaller jolt the other way.
+  slam(aim) {
+    const k = 1 - (1 - MOTION.recoil.aimed) * aim;
+    this.rotation.velocity.x -= MOTION.slam.dip * k;
+    this.position.velocity.z -= MOTION.slam.forward * k;
+  }
+
+  // Pulling the trigger on an empty gun: just a twitch.
+  twitch() {
+    this.rotation.velocity.x += 0.15;
   }
 
   // dt: seconds since the last frame. player: movement state. yaw, pitch: where
