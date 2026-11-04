@@ -117,14 +117,14 @@ window.GAMES = [
     title: 'Chess',
     category: 'Board',
     tagline: 'Classic chess against the computer, or online against a real person.',
-    description: 'Play chess against the computer on a classic green board. Pick Easy, Medium or Hard, play as White, Black or a random colour, and drag or click your pieces. Every rule is in: castling, en passant, promotion, checkmate, stalemate and draws. Your game is saved, and your wins, losses and draws are kept for each level.',
+    description: 'Play chess against the computer on a classic green board. Pick Easy, Medium or Hard, play as White, Black or a random colour, and drag or click your pieces. Every rule is in: castling, en passant, promotion, checkmate, stalemate and draws. Your game is saved, and your wins, losses and draws are kept for each level. Online games are rated the way chess.com rates them (Glicko), and your rating shows on your profile.',
     controls: 'Mouse or touch',
     keys: [['Drag or click', 'Move a piece'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-11-01T18:00:00+11:00',
-    stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = ['easy', 'medium', 'hard'].reduce((n, l) => n + ((s.stats[l] && s.stats[l].w) || 0), 0); return w ? w + (w === 1 ? ' win' : ' wins') : null; },
+    updated: '2026-11-05T04:20:00+11:00',
+    stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rating.n > 0 && isFinite(s.rating.r) ? 'Rating ' + Math.round(s.rating.r) : ''; return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
     id: 'russian-roulette',
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-05', game: 'chess', text: 'Chess 1.4: ratings. Online games are now rated the way chess.com does it (Glicko): pick how well you play to get your starting rating, then win, lose or draw against real people to move it. Games against the computer stay unrated. Your rating shows under Play online and on your Arcade profile.' },
   { date: '2026-11-05', game: 'havoc-bay', text: 'Havoc Bay 1.2.7: the harbors are 35% further apart on bigger islands with six more guns each, and a claimed island\'s burnt ground and fires are cleared.' },
   { date: '2026-11-05', game: 'havoc-bay', text: 'Havoc Bay 1.2.6: spawn as an anti-aircraft gunner on any teammate\'s Destroyer, Battleship or Carrier and shoot down planes for them. Watch out for kamikazes.' },
   { date: '2026-11-05', game: 'havoc-bay', text: 'Havoc Bay 1.2.5: planes need fuel now. Land on a runway or your carrier and sit 8 seconds to refuel, rearm and repair. Planes only take off from runways, the Jet costs 800 with a one-minute wait, the Bomber 700 with a sharper tail gunner, and the cockpit has real gauges.' },

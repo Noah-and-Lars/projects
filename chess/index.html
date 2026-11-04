@@ -140,6 +140,14 @@
   .txt:focus { outline: none; border-color: var(--green); }
   .bigbtn.net { margin-top: 8px; font-size: 16px; padding: 11px; }
   .netbtn { display: block; width: 100%; margin-top: 8px; border: 0; border-radius: 6px; background: #3c3a37; color: var(--ink); font-weight: 700; font-size: 14px; padding: 10px; } .netbtn:hover { background: #484643; }
+  #netCancel[hidden], #rateCard[hidden], #rateLevel[hidden] { display: none; } /* 1.4: .netbtn and the card's flex used to override hidden (Cancel always showed) */
+  /* 1.4: your rating */
+  #rateCard { background: var(--panel2); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  #rateCard b { font-size: 24px; color: #ffd166; } #rateCard .rl { font-size: 12px; color: var(--muted); font-weight: 700; } #rateCard .vs { width: 100%; font-size: 13px; color: var(--ink); }
+  #rateLevel { margin-bottom: 8px; } #rateLevel p { margin: 0 0 6px; font-size: 13px; color: var(--muted); } #rateLevel .lv { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  #rateLevel .lv button { border: 0; border-radius: 6px; background: #3c3a37; color: var(--ink); font-weight: 700; font-size: 13px; padding: 8px 4px; } #rateLevel .lv button:hover { background: #484643; }
+  #rateLevel .lv button small { display: block; color: var(--muted); font-weight: 600; } #rateLevel .lv button:last-child { grid-column: 1 / -1; }
+  #resR { margin: -4px 0 12px; font-weight: 800; color: #ffd166; } #resR:empty { display: none; } #resR.dn { color: #ff8a80; }
   .netrow { display: flex; gap: 6px; margin-top: 8px; } .netrow .txt { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .2em; text-align: center; } .netrow .netbtn { flex: 1.4; margin: 0; }
   #netStatus { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--green-hi); } #netStatus:empty { display: none; } #netStatus.bad { color: #ff8a80; }
   #chatBox { display: none; margin-bottom: 8px; } body.online #chatBox { display: block; }
@@ -160,7 +168,7 @@
   <div id="left">
     <div class="player" id="topBar"><div class="avatar">🤖</div><div style="min-width:0"><div class="pname" id="topName">Computer</div><div class="caps" id="topCaps"></div></div><div class="thinking" id="thinking" hidden><i></i><i></i><i></i></div></div>
     <div id="board"><div id="squares"></div><div id="pieces"></div><div id="promo" hidden></div>
-      <div id="result" hidden><div class="card"><h2 id="resT"></h2><p id="resP"></p><button class="bigbtn" id="resNew">New game</button><button class="link" id="resView" style="margin-top:10px;background:none;border:0;color:var(--muted);font-weight:700">View the board</button></div></div>
+      <div id="result" hidden><div class="card"><h2 id="resT"></h2><p id="resP"></p><p id="resR"></p><button class="bigbtn" id="resNew">New game</button><button class="link" id="resView" style="margin-top:10px;background:none;border:0;color:var(--muted);font-weight:700">View the board</button></div></div>
     </div>
     <div class="player" id="botBar"><div class="avatar you">🙂</div><div style="min-width:0"><div class="pname" id="botName">You</div><div class="caps" id="botCaps"></div></div></div>
   </div>
@@ -170,7 +178,12 @@
     <div class="sect offline-only"><h4>Play as</h4><div class="seg" id="colorSeg"><button data-v="w">White</button><button data-v="r">Random</button><button data-v="b">Black</button></div></div>
     <div class="sect offline-only"><button class="bigbtn" id="newBtn">New game</button></div>
     <div class="sect" id="netBox"><h4>Play online</h4>
+      <div id="rateCard" hidden></div>
       <div id="netPick">
+        <div id="rateLevel" hidden><p>Online games are rated, like on chess.com. How well do you play? This sets your starting rating.</p><div class="lv">
+          <button data-lv="new">New to chess<small>400</small></button><button data-lv="beginner">Beginner<small>800</small></button>
+          <button data-lv="intermediate">Intermediate<small>1200</small></button><button data-lv="advanced">Advanced<small>1600</small></button>
+          <button data-lv="expert">Expert<small>2000</small></button></div></div>
         <input id="netName" class="txt" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false">
         <button class="bigbtn net" data-net="quick">Quick match</button>
         <button class="netbtn" data-net="create">Create a private table</button>
@@ -525,7 +538,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.3';
+const VERSION = '1.4';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -552,12 +565,14 @@ document.head.insertAdjacentHTML('beforeend', `<link rel="icon" href="${IMG.N}">
 
 // ---------- saving ----------
 const SAVE_KEY = 'chessSave';
-const save = { level: 'medium', color: 'w', hints: true, sound: true, stats: {}, game: null, name: '', online: { w: 0, l: 0, d: 0 } };
+const save = { level: 'medium', color: 'w', hints: true, sound: true, stats: {}, game: null, name: '', online: { w: 0, l: 0, d: 0 }, rating: null };
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
 if (!save.online || typeof save.online !== 'object') save.online = {}; for (const k of ['w', 'l', 'd']) save.online[k] = Math.max(0, save.online[k] | 0);
 if (!LEVELS.includes(save.level)) save.level = 'medium';
 if (!['w', 'b', 'r'].includes(save.color)) save.color = 'w';
 for (const l of LEVELS) { const s = save.stats[l] || {}; save.stats[l] = { w: +s.w || 0, l: +s.l || 0, d: +s.d || 0 }; }
+// 1.4: the online rating: r and rd (Glicko), when the last rated game was (at, ms), rated games (n), best rating (peak)
+{ const R = save.rating; save.rating = R && typeof R === 'object' && isFinite(R.r) && isFinite(R.rd) ? { r: Math.min(3500, Math.max(100, +R.r)), rd: Math.min(350, Math.max(30, +R.rd)), at: +R.at || 0, n: Math.max(0, R.n | 0), peak: +R.peak || +R.r } : null; }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
 // ---------- sound ----------
@@ -655,8 +670,24 @@ function checkEnd() {
 }
 function finish() {
   // online games have their own record, and leave your saved game against the computer alone
-  const st = online.on ? save.online : save.stats[level]; if (!over.winner) st.d++; else if (over.winner === player) st.w++; else st.l++;
-  if (!online.on) save.game = null; persist();
+  const st = online.on ? save.online : save.stats[level], aborted = online.on && hist.length < 2; // 1.4: an aborted online game doesn't count at all
+  if (!aborted) { if (!over.winner) st.d++; else if (over.winner === player) st.w++; else st.l++; }
+  if (!online.on) save.game = null;
+  // 1.4: rated: an online game against a person in which both of you moved (one that ends sooner is aborted, as on chess.com)
+  $('resR').textContent = ''; $('resR').className = '';
+  if (online.on && save.rating) {
+    if (aborted) $('resR').textContent = 'Game aborted: not rated';
+    else if (!online.oppRate) $('resR').textContent = 'Not rated: your opponent’s copy of the game is out of date';
+    else {
+      const R = save.rating, before = Math.round(R.r), sc = !over.winner ? 0.5 : over.winner === player ? 1 : 0;
+      const res = glicko(R.r, rdNow(R), online.oppRate.r, online.oppRate.rd, sc);
+      R.r = Math.min(3500, Math.max(RATE.floor, res.r)); R.rd = Math.max(RATE.rdMin, res.rd); R.at = Date.now(); R.n++; R.peak = Math.max(R.peak || 0, R.r);
+      const d = Math.round(R.r) - before; online.delta = d;
+      $('resR').textContent = `Rating ${showR(R.r)} (${d >= 0 ? '+' : ''}${d})`; $('resR').className = d < 0 ? 'dn' : '';
+      Net.retrack();
+    }
+  }
+  persist();
   const won = over.winner === player;
   $('resT').textContent = !over.winner ? 'Draw' : won ? 'You won!' : 'You lost';
   $('resP').textContent = over.left ? `${oppName()} left the table. You win.` : over.oppResigned ? `${oppName()} resigned` : over.resigned ? 'You resigned' : (over.winner ? (won ? 'You won ' : (online.on ? oppName() : 'The computer') + ' won ') : 'Drawn ') + over.why;
@@ -756,9 +787,11 @@ function captured(forWhite) { // pieces of the other colour this side has taken,
 }
 function capsHTML(white) { const c = captured(white); return c.out.map(p => `<img alt="" src="${IMG[p]}">`).join('') + (c.lead > 0 ? `<span>+${c.lead}</span>` : ''); }
 function renderSide() {
+  if (typeof renderRate === 'function') try { renderRate(); } catch (e) {} // 1.4
   const topIsWhite = flip(), aiColor = player === 'w' ? 'b' : 'w';
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const nameFor = col => col === player ? 'You' : online.on ? `${esc(oppName())}<small>Online</small>` : `Computer<small>${LV[level]}</small>`;
+  // 1.4: online, both names carry their rating, as on chess.com
+  const nameFor = col => col === player ? 'You' + (online.on && save.rating ? `<small>${showR(save.rating.r)}</small>` : '') : online.on ? `${esc(oppName())}<small>${online.oppRate ? showR(online.oppRate.r) : 'Online'}</small>` : `Computer<small>${LV[level]}</small>`;
   const oppFace = online.on ? '👤' : '🤖';
   const topCol = topIsWhite ? 'w' : 'b', botCol = topIsWhite ? 'b' : 'w';
   $('topName').innerHTML = nameFor(topCol); $('botName').innerHTML = nameFor(botCol);
@@ -855,6 +888,24 @@ addEventListener('resize', resize);
 // The host plays White in the first game and the colours swap with every rematch. A move is 'mv' with its number
 // (n) and the move in UCI (u); the other side checks it's legal before playing it. 'resign', and 'again' for a rematch.
 // Leaving the table loses the game. ?chroom=<name> uses separate test channels.
+// ---------- 1.4: ratings, the way chess.com does them ----------
+// chess.com rates with the Glicko system: every player has a rating and a rating deviation (RD), how sure the system is
+// of that rating. You start at the level you pick (400 new to chess, 800 beginner, 1200 intermediate, 1600 advanced,
+// 2000 expert) with RD 350, so your first games move it a lot; each game lowers your RD, and time away raises it again.
+// Each game is its own rating period (Glickman's Glicko formulas). Only online games against a person are rated.
+const RATE = { start: { new: 400, beginner: 800, intermediate: 1200, advanced: 1600, expert: 2000 }, rd0: 350, rdMin: 30, c: 18, floor: 100, prov: 110 };
+const GQ = Math.log(10) / 400, gRD = rd => 1 / Math.sqrt(1 + 3 * GQ * GQ * rd * rd / (Math.PI * Math.PI));
+// RD grows while you don't play: about a year away takes a settled rating back to RD 350
+function rdNow(R, t = Date.now()) { if (!R) return RATE.rd0; const days = R.at ? Math.max(0, (t - R.at) / 864e5) : 0; return Math.min(RATE.rd0, Math.sqrt(R.rd * R.rd + RATE.c * RATE.c * days)); }
+// one game against an opponent rated ro with deviation rdo; s = 1 win, 0.5 draw, 0 loss
+function glicko(r, rd, ro, rdo, s) {
+  const g = gRD(rdo), E = 1 / (1 + Math.pow(10, -g * (r - ro) / 400)), d2 = 1 / (GQ * GQ * g * g * E * (1 - E));
+  const k = 1 / (1 / (rd * rd) + 1 / d2);
+  return { r: r + GQ * k * g * (s - E), rd: Math.sqrt(k), E };
+}
+const showR = r => String(Math.round(r));
+const myRating = () => save.rating ? { r: Math.round(save.rating.r), rd: Math.round(rdNow(save.rating)) } : {};
+
 const Net = (() => {
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
   const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=1';
@@ -896,8 +947,11 @@ const Net = (() => {
     for (const ev of ['mv', 'resign', 'again', 'chat']) table.on('broadcast', { event: ev }, m => { const p = m.payload || {}; if (api.opp && p.f === api.opp.id) emit(ev, p); });
     table.on('presence', { event: 'sync' }, onTable);
     await joinChan(table);
-    await table.track({ id: myId, n: api.name, h: host === myId });
+    await table.track(Object.assign({ id: myId, n: api.name, h: host === myId }, api.myRating ? api.myRating() : {})); // 1.4: with your rating
   }
+  // 1.4: after a rated game, tell the table your new rating (for the rematch)
+  api.retrack = () => { if (table && table.state === 'joined') { try { const p = table.track(Object.assign({ id: myId, n: api.name, h: hostId === myId }, api.myRating ? api.myRating() : {})); if (p && p.catch) p.catch(() => {}); } catch (e) {} } };
+  const rateOf = m => { const r = +m.r, rd = +m.rd; return isFinite(r) && isFinite(rd) && r >= 100 && r <= 3500 && rd >= 30 && rd <= 350 ? { r, rd } : null; };
   function onTable() {
     const others = members(table).filter(m => m.id !== myId);
     if (!api.opp) {
@@ -905,9 +959,10 @@ const Net = (() => {
       if (!hostId && others.length > 1) { emit('error', 'That table is full.'); api.leave(); return; }
       if (!c) return;
       if (!hostId) hostId = c.id;
-      api.opp = { id: c.id, name: api.cleanName(c.n) || 'Opponent' };
+      api.opp = { id: c.id, name: api.cleanName(c.n) || 'Opponent', rate: rateOf(c) };
       clearTimeout(waitTimer); emit('matched', api.opp);
     } else if (!others.some(m => m.id === api.opp.id) && !api.left) { api.left = true; emit('left', api.opp); }
+    else { const o = others.find(m => m.id === api.opp.id); if (o) { api.opp.rate = rateOf(o); emit('rate'); } }
   }
   api.quick = async (name, again) => {
     api.name = api.cleanName(name) || 'Player'; api.on = true;
@@ -947,6 +1002,7 @@ const Net = (() => {
     waitTimer = setTimeout(() => { if (!api.opp && api.on) { emit('error', 'Nobody is at table ' + code + '.'); api.leave(); } }, 6000);
   };
   api.leave = () => { api.on = false; clearTimeout(waitTimer); const a = lobby, b = table; lobby = table = null; api.opp = null; hostId = null; drop(a); drop(b); };
+  api.myRating = myRating;
   return api;
 })();
 
@@ -958,11 +1014,15 @@ function startOnline() {
   reqId++; aiBusy = false; $('thinking').hidden = true; $('result').hidden = true; $('promo').hidden = true;
   // the host is White in odd games, Black in even ones
   player = (online.gameNo % 2 === 0) === Net.isHost() ? 'w' : 'b'; online.gameNo++; online.meAgain = online.oppAgain = false;
+  // 1.4: the ratings this game is played for (an opponent on an older copy of the game has none: unrated)
+  online.oppRate = Net.opp.rate ? { r: Net.opp.rate.r, rd: Net.opp.rate.rd } : null; online.delta = null;
   G = fromFEN(START_FEN); hist = []; keys = [posKey(G)]; legalNow = legal(G); over = null; selected = -1; resignArm = 0; flipped = false;
   document.body.classList.add('online');
   buildSquares(); renderAll(); renderSide(); Sound.start();
 }
 function leaveOnline() {
+  // 1.4: walking out of a game you've both moved in loses it, as on chess.com
+  if (online.on && !over && hist.length >= 2) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true }; try { Net.send('resign', {}); } catch (e) {} finish(); }
   Net.leave(); online.on = false; online.gameNo = 0; document.body.classList.remove('online');
   netWaiting(false); netStatus('');
   // back to your game against the computer
@@ -1006,6 +1066,7 @@ $('netBox').addEventListener('click', e => {
   const go = b.dataset.net, name = Net.cleanName($('netName').value);
   if (go === 'cancel') { Net.leave(); netWaiting(false); netStatus(''); return; }
   if (go === 'leave') { leaveOnline(); return; }
+  if (!save.rating) { netStatus('Pick how well you play first: it sets your starting rating.', true); return; } // 1.4
   if (!name) { netStatus('Type your name first.', true); $('netName').focus(); return; }
   save.name = name; persist(); netWaiting(true);
   if (go === 'quick') { netStatus('Looking for someone to play…'); Net.quick(name).catch(netFail); }
@@ -1017,6 +1078,22 @@ $('netBox').addEventListener('click', e => {
   }
 });
 $('netName').value = save.name || '';
+// 1.4: the level you start from (once), and the rating card
+$('rateLevel').addEventListener('click', e => {
+  const b = e.target.closest('button[data-lv]'); if (!b || save.rating) return;
+  const r = RATE.start[b.dataset.lv]; if (!r) return;
+  save.rating = { r, rd: RATE.rd0, at: 0, n: 0, peak: r }; persist(); netStatus(''); renderRate();
+});
+function renderRate() {
+  const R = save.rating, card = $('rateCard'), esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  $('rateLevel').hidden = !!R || online.on; card.hidden = !R;
+  if (!R) return;
+  const prov = rdNow(R) > RATE.prov; // like chess.com, a rating it isn't sure of yet gets a question mark
+  let h = `<span class="rl">Rating</span><b>${showR(R.r)}${prov ? '?' : ''}</b><span class="rl">${R.n ? R.n + ' rated game' + (R.n === 1 ? '' : 's') + ' · best ' + showR(R.peak) : 'No rated games yet'}${prov ? ' · provisional' : ''}</span>`;
+  if (online.on && Net.opp) h += `<div class="vs">Playing ${esc(oppName())} ${online.oppRate ? '(' + showR(online.oppRate.r) + (online.oppRate.rd > RATE.prov ? '?' : '') + ')' : '(unrated game)'}${online.delta !== null && online.delta !== undefined && over ? ` · this game ${online.delta >= 0 ? '+' : ''}${online.delta}` : ''}</div>`;
+  card.innerHTML = h;
+}
+Net.onEvent('rate', () => { if (online.on && !hist.length && Net.opp && Net.opp.rate) { online.oppRate = { r: Net.opp.rate.r, rd: Net.opp.rate.rd }; renderRate(); } }); // their new rating arrives for a rematch
 
 // ---------- start: carry on a saved game, or start a new one ----------
 resize();

@@ -79,7 +79,7 @@
         case 'rocket-rivals': { var r = J('rivals.profile'); return N(r.level) * 1000 + N(r.xp) + N(r.stats && r.stats.matches) * 10; }
         case 'football': { var f = J('soccer.profile'); return N(f.played) * 100 + N(f.wins) * 10 + JSON.stringify(f).length * 0.01; }
         case 'bull-run': { var b = J('bullRunSave'); return N(b.stats && b.stats.best) + N(b.day) * 10; }
-        case 'chess': { var c = J('chessSave'), n = 0; Object.keys(c.stats || {}).forEach(function (l) { var s = c.stats[l] || {}; n += N(s.w) + N(s.l) + N(s.d); }); return n; }
+        case 'chess': { var c = J('chessSave'), n = 0, o = c.online || {}; Object.keys(c.stats || {}).forEach(function (l) { var s = c.stats[l] || {}; n += N(s.w) + N(s.l) + N(s.d); }); return n + N(o.w) + N(o.l) + N(o.d) + (c.rating ? N(c.rating.n) : 0); }
         case 'russian-roulette': { var x = J('russianRouletteSave'); return N(x.best) * 10 + N(x.games) + N(x.onGames); }
         case 'gamble-your-life-away': { var y = J('gambleLifeSave'); return N(y.rounds) + N(y.peak) * 1e-6; }
         case 'cube-tower-defense': { var t = J('cubeTDProfile'); return N(t.level) * 1000 + N(t.best) * 10 + N(t.xp); }

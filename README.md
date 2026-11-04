@@ -19,7 +19,7 @@ The Chat tab (`chat.html`) is a global chat for everyone on the arcade; messages
 | [Cube Tower Defense](cube-tower-defense/) | Tower defense | Mouse or touch |
 | [Blockcraft](blockcraft/) | 3D block sandbox with the Nether, the End and a public multiplayer server (survival and creative) | Keyboard + mouse or touch |
 | [Russian Roulette](russian-roulette/) | First-person thriller | Mouse, keyboard or touch |
-| [Chess](chess/) | Chess against the computer (Easy, Medium, Hard) | Mouse or touch |
+| [Chess](chess/) | Chess against the computer (six levels), or rated online games against real people (Glicko, like chess.com) | Mouse or touch |
 | [Stocks Game](bull-run/) | Stock-trading strategy | Mouse, keyboard or touch |
 | [Havoc Bay](havoc-bay/) | Red vs Blue sea battle with warships, planes and islands, online or against bots | Keyboard + mouse or touch |
 

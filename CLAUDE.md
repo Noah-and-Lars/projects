@@ -254,6 +254,13 @@ source in Settings → Pages should be switched to `main`.
   on the other side. The host is White in the first game and colours swap each rematch. `online.on` is true at a
   table: the computer, undo and saving the game are off then, and the record is `save.online`. Chat (1.2) is 'chat' at the table, in the box under Play online. `?chroom=<name>`
   uses separate test channels.
+  Ratings (1.4): Glicko like chess.com (`glicko`, `rdNow`, `RATE`): `save.rating` {r, rd, at, n, peak}, started once from
+  the level picker (`#rateLevel`: 400/800/1200/1600/2000, RD 350); RD grows while inactive (`RATE.c` per day, back to
+  350 in about a year), floor 30, rating floor 100, '?' while RD > 110. Each screen rates itself: presence on the
+  table carries `r`/`rd` (`Net.myRating`, `Net.retrack()` after a game, `Net.opp.rate`, the 'rate' event), the
+  game is played for `online.oppRate` taken at its start. Only online games where both sides moved count (fewer is
+  "aborted": no record, no rating); leaving mid-game is a loss; an opponent without a rating (an older copy) is unrated.
+  `stat()` in games.js shows the rating, and account.js `score()` counts online games.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
