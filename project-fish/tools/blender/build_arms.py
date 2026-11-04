@@ -185,6 +185,33 @@ def glove_maps(p, hand, grip):
     color[pad_stitch] = thread
     height += np.where(pad_stitch, 0.0001, 0)
 
+    # Creases where the fabric bunches up on the inside of each bent joint (and
+    # at the base of each finger), and fainter stretch lines over the back.
+    joint_cums = {}
+    for b in bones:
+        if b['bone'] in (1, 2):
+            joint_cums.setdefault(b['chain'], []).append(b['cum'])
+        if b['bone'] == 0 and not b['thumb']:
+            joint_cums.setdefault(b['chain'], []).append(0.0045)
+    rng = np.random.default_rng(41)
+    inside_bend = smoothstep(math.radians(85), math.radians(125), abs_theta)
+    outside_bend = smoothstep(math.radians(65), math.radians(25), abs_theta)
+    crease = np.zeros(n)
+    for chain, cums in joint_cums.items():
+        mine = on_finger & (chain_of == chain)
+        for jc in cums:
+            u_j = length - jc
+            near = mine & (np.abs(u_j) < 0.0065)
+            if not near.any():
+                continue
+            for offset in rng.uniform(-0.0036, 0.0036, 4):
+                wobble = 0.0005 * np.sin(theta * rng.uniform(2, 4) + rng.uniform(0, 2 * math.pi))
+                crease += np.where(near, rng.uniform(0.55, 1.0) * inside_bend * near_line(u_j - offset - wobble, 0.00028), 0)
+            for offset in (-0.0013, 0.0013):
+                crease += np.where(near & ~cap, 0.35 * outside_bend * (1 - pad) * near_line(u_j - offset, 0.0003), 0)
+    height -= 0.00028 * crease
+    color *= (1 - 0.22 * np.clip(crease, 0, 1))[:, None]
+
     # Back of the hand: ribbed flex panel below the knuckle guard, and the seam
     # where the back panel meets the palm.
     on_hand = ~on_finger
@@ -200,6 +227,15 @@ def glove_maps(p, hand, grip):
     edge_stitch = on_hand & (np.abs(edge_dist - 0.0011) < 0.0002) & dashes(a + c, 0.0024, 0.55)
     color[edge_stitch] = thread
     height += np.where(edge_stitch, 0.00012, 0)
+
+    # Fabric bunched up just above the wrist on the back of the hand.
+    bunch = np.zeros(n)
+    for a0, amp in ((0.006, 1.0), (0.0135, 0.7), (0.021, 0.45)):
+        wobble = 0.0018 * np.sin(c * 160 + a0 * 900) + 0.001 * low_noise(p, 0.01, int(a0 * 1e4))
+        bunch += amp * near_line(a - a0 - wobble, 0.0011)
+    back_side = on_hand & ~palm_side & (np.abs(c) < 0.03)
+    height += np.where(back_side, 0.00022 * bunch, 0)
+    color[back_side] *= (1 - 0.12 * np.clip(bunch[back_side], 0, 1))[:, None]
 
     # Elastic cuff round the wrist.
     w = (p - wrist) @ forearm

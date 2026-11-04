@@ -51,14 +51,15 @@ def near_line(d, width):
     return np.exp(-(d / width) ** 2)
 
 
-def low_noise(p, wavelength, seed):
-    """Smooth, cheap 3D noise from a few crossed waves (range about -1..1)."""
+def low_noise(p, wavelength, seed, waves=16):
+    """Smooth 3D noise (roughly -1..1): many waves in random directions, so it
+    looks like natural blotches rather than stripes."""
     rng = np.random.default_rng(seed)
     total = np.zeros(len(p))
-    for _ in range(5):
-        k = unit(rng.normal(size=3)) * (2 * math.pi / wavelength) * rng.uniform(0.7, 1.4)
+    for _ in range(waves):
+        k = unit(rng.normal(size=3)) * (2 * math.pi / wavelength) * rng.uniform(0.6, 1.6)
         total += np.sin(p @ k + rng.uniform(0, 2 * math.pi))
-    return total / 2.2
+    return total / (1.5 * math.sqrt(waves / 2))
 
 
 # --- Scene and objects --------------------------------------------------------

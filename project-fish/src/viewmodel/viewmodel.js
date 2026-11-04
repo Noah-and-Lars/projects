@@ -9,6 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createPistol } from './pistol.js';
 import { createArms } from './arms.js';
+import { ViewmodelMotion } from './motion.js';
 
 // Detailed models made in Blender (see tools/blender/).
 const PISTOL_MODEL = new URL('../../assets/pistol.glb', import.meta.url);
@@ -21,10 +22,8 @@ const VIEW_FOV = 52; // vertical, degrees
 const HIP_POSITION = new THREE.Vector3(0.075, -0.07, -0.5);
 const HIP_ROTATION = new THREE.Euler(0, 0.02, 0, 'YXZ');
 
-// How the gun moves (all small, in metres and radians).
-const SWAY = { perRadian: 0.14, max: 0.045, return: 9 };
-const BOB = { stepsPerMetre: 0.75, side: 0.0045, up: 0.0035, tilt: 0.012 };
-const BREATH = { speed: 1.4, amount: 0.0008 };
+// The arms swing about this point between the wrists (gun space), not the eye.
+const PIVOT = new THREE.Vector3(0, -0.085, 0.07);
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
@@ -93,13 +92,16 @@ export class Viewmodel {
     this.scene.add(this.sun, this.sun.target);
     this.sunDirection = sunDirection;
 
-    // holder: moves with sway and bob. gun: the pistol and arms, at the hip pose.
+    // holder: sits at the pivot and moves with the weapon physics.
+    // gun: the pistol and arms, placed so they're held at the hip pose.
+    this.pivot = PIVOT.clone().applyEuler(HIP_ROTATION).add(HIP_POSITION);
     this.holder = new THREE.Group();
     this.gun = new THREE.Group();
-    this.gun.position.copy(HIP_POSITION);
+    this.gun.position.copy(HIP_POSITION).sub(this.pivot);
     this.gun.rotation.copy(HIP_ROTATION);
     this.holder.add(this.gun);
     this.scene.add(this.holder);
+    this.motion = new ViewmodelMotion();
 
     // Resolves once the pistol and hands are loaded and in place.
     this.ready = Promise.all([loadModel(PISTOL_MODEL, createPistol), loadModel(ARMS_MODEL, createArms)]).then(([pistol, arms]) => {
@@ -107,13 +109,6 @@ export class Viewmodel {
       this.gun.add(shadowed(pistol), shadowed(arms));
     });
 
-    this.lastYaw = null;
-    this.lastPitch = 0;
-    this.swayYaw = 0;
-    this.swayPitch = 0;
-    this.bobPhase = 0;
-    this.bobAmount = 0;
-    this.time = 0;
   }
 
   setAspect(aspect) {
@@ -122,38 +117,13 @@ export class Viewmodel {
   }
 
   // frameSeconds: time since the last frame. player: movement state.
-  // yaw / pitch: where the player is looking. cameraQuaternion: the world camera's rotation.
-  update(frameSeconds, player, yaw, pitch, cameraQuaternion) {
-    const dt = Math.min(frameSeconds, 0.05);
-    this.time += dt;
-
-    // Sway: the gun lags a little behind fast mouse movements, then catches up.
-    if (this.lastYaw === null) this.lastYaw = yaw;
-    let dYaw = yaw - this.lastYaw;
-    dYaw = Math.atan2(Math.sin(dYaw), Math.cos(dYaw));
-    const dPitch = pitch - this.lastPitch;
-    this.lastYaw = yaw;
-    this.lastPitch = pitch;
-    const clamp = (v) => Math.max(-SWAY.max, Math.min(SWAY.max, v));
-    this.swayYaw = clamp(this.swayYaw - dYaw * SWAY.perRadian);
-    this.swayPitch = clamp(this.swayPitch - dPitch * SWAY.perRadian);
-    const settle = Math.exp(-SWAY.return * dt);
-    this.swayYaw *= settle;
-    this.swayPitch *= settle;
-
-    // Bob: a figure-of-eight in step with walking, fading in and out with speed.
-    const speed = player.grounded ? Math.hypot(player.vx, player.vz) : 0;
-    this.bobAmount += (Math.min(speed / 5, 1) - this.bobAmount) * Math.min(1, dt * 8);
-    this.bobPhase += speed * dt * BOB.stepsPerMetre * Math.PI;
-    const bobX = Math.sin(this.bobPhase) * BOB.side * this.bobAmount;
-    const bobY = -Math.abs(Math.cos(this.bobPhase)) * BOB.up * this.bobAmount;
-    const breath = Math.sin(this.time * BREATH.speed) * BREATH.amount;
-
-    // In the air the gun lags behind: it dips as you rise and floats up as you fall.
-    const air = player.grounded ? 0 : Math.max(-0.012, Math.min(0.008, -player.vy * 0.0012));
-
-    this.holder.position.set(bobX, bobY + breath + air, 0);
-    this.holder.rotation.set(this.swayPitch, this.swayYaw, Math.sin(this.bobPhase) * BOB.tilt * this.bobAmount);
+  // yaw / pitch: where the player is looking. cameraQuaternion: the world
+  // camera's rotation. wallDistance: metres to whatever is straight ahead.
+  update(frameSeconds, player, yaw, pitch, cameraQuaternion, wallDistance = Infinity) {
+    this.motion.update(frameSeconds, player, yaw, pitch, wallDistance);
+    this.holder.position.copy(this.pivot).add(this.motion.position.value);
+    const r = this.motion.rotation.value;
+    this.holder.rotation.set(r.x, r.y, r.z);
 
     // Light and reflections come from where the sun and sky are, relative to
     // where the player looks.

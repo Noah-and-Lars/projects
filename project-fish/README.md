@@ -2,7 +2,7 @@
 
 A fast-paced multiplayer first-person shooter for the browser, built from scratch with [three.js](https://threejs.org).
 
-**Status: phase 1.** A flat grey baseplate where you can look around, walk and jump, with a small house in front of you so you can see yourself moving. You see your gloved hands holding a pistol out in front of you, which sways as you look around and bobs as you walk. Shooting, the map and multiplayer come later.
+**Status: phase 1.** A flat grey baseplate where you can look around, walk and jump, with a small house in front of you so you can see yourself moving. You see your gloved hands holding a worn pistol out in front of you. The arms have weight: they trail behind turns, lean into strafes, bounce with your steps, dip when you land, and pull the gun back when you walk up to a wall. Shooting, the map and multiplayer come later.
 
 ## Play it locally
 
@@ -40,7 +40,8 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 | `src/shared/config.js` | Movement values: speeds, jump height, gravity, tick rate |
 | `src/shared/movement.js` | Player movement, including bumping into walls |
 | `src/shared/map.js` | Where the house is, and the solid boxes the player collides with |
-| `src/viewmodel/viewmodel.js` | Loads and draws the hands and gun on top of the world; where they're held, lighting, sway and bob |
+| `src/viewmodel/viewmodel.js` | Loads and draws the hands and gun on top of the world; where they're held, and lighting |
+| `src/viewmodel/motion.js` | Weapon physics: how the hands and gun move, with all the tuning values in `MOTION` |
 | `src/viewmodel/pistol.js` | The pistol's side profiles (shared with Blender) and a simple built-in pistol |
 | `src/viewmodel/arms.js` | The hand pose around the grip (shared with Blender) and simple built-in hands |
 | `src/viewmodel/sdf.js` | Turns blended shapes into smooth meshes (used for the hands and sleeves) |
@@ -71,13 +72,17 @@ Mouse sensitivity and field of view are in `src/settings.js`.
 
 The pistol, gloves and sleeves you see are detailed models made in Blender: `assets/pistol.glb` (about 0.2 MB) and `assets/arms.glb` (about 1.2 MB).
 
-- **Pistol:** rounded machined edges, chamfered slide, real ejection port with the barrel hood inside, cut cocking serrations, recessed crown and bore, notched rear sight and three-dot sights, rail slots, pins, slide stop, takedown levers, magazine release, rounded stippled grip, and bare metal showing through on worn edges.
-- **Gloves:** moulded hard knuckle guard, stitched seams down every finger, leather fingertip caps and palm, padded finger knuckles, ribbed flex panel on the back of the hand, elastic cuff, and a velcro wrist strap with a rubber pull tab.
+- **Pistol:** rounded machined edges, chamfered slide, real ejection port with the barrel hood inside, cut cocking serrations, recessed crown and bore, notched rear sight and three-dot sights, rail slots, pins, slide stop, takedown levers, magazine release, a rounded stippled grip, and engraved markings (the model name "PF-9", "9x19" on the barrel and a made-up serial number). It has a well-used finish: bare steel on worn edges and high points, holster wear rubbed along the slide, scratches through the finish, scuffed polymer, and the grip worn smoother where it's held.
+- **Gloves:** a natural two-handed grip, with every finger at real bone lengths curled tight round the grip (the support hand over the shooting hand, the trigger finger on the trigger), knuckle bumps on the finger joints, fabric creases where the fingers bend, a moulded hard knuckle guard, stitched seams down every finger, leather fingertip caps and palm, padded finger knuckles, ribbed flex panel on the back of the hand, fabric bunched at the wrist, elastic cuff, and a velcro wrist strap with a rubber pull tab.
 - **Sleeves:** open cuff with a double-stitched hem, uneven folds bunched up at the wrist, ripstop weave, a stitched forearm seam and a velcro cuff tab.
 
 They're drawn in their own layer on top of the world, so the gun never pokes into walls and its size on screen doesn't change with the field of view. That layer has its own sun shadows (the hands shade the gun), sky-and-ground reflections that turn with your view, and film-like tone mapping. Where the gun is held is `HIP_POSITION` and `HIP_ROTATION` in `src/viewmodel/viewmodel.js`.
 
 If the model files can't be loaded, the game falls back to the simpler hands and pistol built into the code, so it always works.
+
+### Weapon physics
+
+The hands and gun hang on springs (`src/viewmodel/motion.js`), so they have weight. Turning makes them trail behind and swing back past centre when you stop; speeding up or stopping shoves them the other way; strafing leans them into the turn; each footstep gives a small bounce; jumping and landing make them dip and nod; breathing keeps them from ever being perfectly still. Close to a wall (a ray straight ahead hits something under 85 cm away) the gun is pulled back and tipped up. They swing about a point between the wrists, not the eye, so they move like arms. Every value is in `MOTION` at the top of the file, with a comment saying what it does.
 
 ### Rebuilding the models
 

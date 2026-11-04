@@ -15,8 +15,12 @@ the hands still fit, and adds:
   accessory rail slots under the frame.
 - Small parts: three-dot sights, extractor, striker plate, slide stop,
   takedown levers, magazine release, pins, trigger with safety blade.
-- Textures: worn bare-metal edges on the slide, stippled grip, slightly
-  glossier worn edges on the polymer, and baked ambient occlusion.
+- Engraved markings: model name and serial number (made up, no real brands),
+  calibre on the barrel.
+- A well-used finish: bare steel on worn edges and high points, holster wear
+  rubbed lengthwise along the slide, scratches through the finish, scuffed
+  polymer, and the grip worn smoother where it's held; and baked ambient
+  occlusion.
 
 Profiles are in game units: (s, y) with s = distance forward (-z) and y up.
 In Blender that's simply (x, y, z) = (side, s, y).
@@ -31,7 +35,7 @@ import time
 import bpy
 import bmesh
 import numpy as np
-from mathutils import Matrix
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
@@ -52,6 +56,8 @@ POLYMER = '#1d1e21'
 DARK_STEEL = '#16171a'
 BARREL = '#5d5a54'
 DOT = '#f2f2e6'
+WORN_FINISH = '#4c4f54'  # finish rubbed thin, not quite down to bare steel
+POLYMER_SCUFF = '#4a4945'
 
 SLIDE_TOP = 0.0165
 # Outline of the rounded grip shell: the frame's grip, half a millimetre bigger.
@@ -164,6 +170,38 @@ def triangulate(obj):
     apply_modifiers(obj)
 
 
+def engrave(obj, text, size, center, x_axis, y_axis, depth=0.00028):
+    """Cuts `text` into obj's surface. center: where the middle of the text
+    sits on the surface; x_axis: the reading direction; y_axis: up the letters."""
+    curve = bpy.data.curves.new('text', 'FONT')
+    curve.body = text
+    curve.size = size
+    curve.extrude = depth
+    curve.align_x = 'CENTER'
+    curve.align_y = 'CENTER'
+    letters = link(bpy.data.objects.new('text', curve))
+    x, y = Vector(x_axis).normalized(), Vector(y_axis).normalized()
+    z = x.cross(y)
+    rotation = Matrix((x, y, z)).transposed().to_4x4()
+    letters.matrix_world = Matrix.Translation(center) @ rotation
+    bpy.context.view_layer.update()
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    cutter = link(bpy.data.objects.new('engraving', bpy.data.meshes.new_from_object(letters.evaluated_get(depsgraph))))
+    cutter.matrix_world = letters.matrix_world
+    bpy.data.objects.remove(letters)
+    # If the cut goes wrong (it can with some letter shapes), keep the surface as it was.
+    before = obj.data.copy()
+    faces = len(obj.data.polygons)
+    cut(obj, cutter)
+    if len(obj.data.polygons) < faces * 0.9:
+        log('engraving', repr(text), 'failed; leaving it out')
+        old = obj.data
+        obj.data = before
+        bpy.data.meshes.remove(old)
+    else:
+        bpy.data.meshes.remove(before)
+
+
 def sharp_edges(obj, angle=35):
     """Smooth shading, but crisp where faces meet at more than `angle` degrees."""
     bm = bmesh.new()
@@ -213,10 +251,14 @@ def build_slide(p):
     # Recess at the muzzle for the barrel crown.
     cutters.append(cylinder('recess', 0.0069, 0.1475, 0.16))
     cut(slide, *cutters)
+    # Markings: the model name on the left side, read from the left (muzzle first).
+    engrave(slide, 'PF-9', 0.0056, (-SLIDE_HALF, 0.072, 0.0025), (0, -1, 0), (0, 0, 1))
 
     parts = []
     # Barrel: hood in the ejection port, crown and bore at the muzzle.
-    parts.append(box('hood', -0.0056, 0.0056, 0.0066, 0.0436, -0.004, 0.0122))
+    hood = box('hood', -0.0056, 0.0056, 0.0066, 0.0436, -0.004, 0.0122)
+    engrave(hood, '9x19', 0.0034, (0.0, 0.025, 0.0122), (1, 0, 0), (0, 1, 0), depth=0.0002)
+    parts.append(hood)
     barrel = cylinder('barrel', 0.0065, 0.13, 0.1505)
     cut(barrel, cylinder('bore', 0.0046, 0.12, 0.16))
     bevel(barrel, 0.0004, 2)
@@ -255,6 +297,7 @@ def build_frame(p):
     rail = [box('rail_slot', -0.02, 0.02, s, s + 0.0032, -0.03, -0.0255) for s in (0.098, 0.1155)]
     side_grooves = [box('rail_groove', side * FRAME_HALF - 0.0008, side * FRAME_HALF + 0.002, 0.09, 0.14, -0.0232, -0.0214) for side in (-1, 1)]
     cut(frame, guard, *rail, *side_grooves)
+    engrave(frame, 'PF 04217', 0.0027, (FRAME_HALF, 0.072, -0.0168), (0, 1, 0), (0, 0, 1), depth=0.00022)
 
     # A rounded grip shell over the frame's square-edged grip, so it fills the hand.
     grip = prism('grip', GRIP_SHELL, p['grip']['width'])
@@ -323,23 +366,93 @@ def convexity(p, n):
     return (total / np.maximum(count, 1)).reshape(-1)
 
 
-def slide_maps(p, n):
+def lerp_color(color, target_hex, amount):
+    amount = np.clip(amount, 0, 1)[:, None]
+    return color * (1 - amount) + srgb_to_linear(target_hex) * amount
+
+
+def surface_coords(p, n):
+    """2D coordinates on each texel's surface, picked by which way it faces:
+    sides use (forward, up), top and bottom (side, forward), ends (side, up)."""
+    ax = np.argmax(np.abs(n), axis=1)
+    u = np.where(ax == 0, p[:, 1], p[:, 0])
+    v = np.where(ax == 2, p[:, 1], p[:, 2])
+    return ax, u, v
+
+
+def scratches(p, n, count, seed, along_bias=0.8):
+    """Thin random scratches (0..1). Most run lengthwise, like holster wear."""
+    rng = np.random.default_rng(seed)
+    ax, u, v = surface_coords(p, n)
+    out = np.zeros(len(p))
+    lo, hi = p.min(axis=0), p.max(axis=0)
+    for _ in range(count):
+        face = rng.choice([0, 2, 1], p=[0.7, 0.25, 0.05])
+        mine = ax == face
+        if face == 0:
+            cu, cv = rng.uniform(lo[1], hi[1]), rng.uniform(lo[2], hi[2])
+        elif face == 2:
+            cu, cv = rng.uniform(lo[0], hi[0]), rng.uniform(lo[1], hi[1])
+        else:
+            cu, cv = rng.uniform(lo[0], hi[0]), rng.uniform(lo[2], hi[2])
+        length = rng.uniform(0.002, 0.014)
+        lengthwise = rng.random() < along_bias
+        angle = rng.normal(0, 0.18) if lengthwise else rng.uniform(0, math.pi)
+        if face == 2 and lengthwise:
+            angle += math.pi / 2  # on the top, "lengthwise" is along v
+        du, dv = math.cos(angle) * length / 2, math.sin(angle) * length / 2
+        near = mine & (np.abs(u - cu) < abs(du) + 0.001) & (np.abs(v - cv) < abs(dv) + 0.001)
+        if not near.any():
+            continue
+        pu, pv = u[near] - (cu - du), v[near] - (cv - dv)
+        t = np.clip((pu * 2 * du + pv * 2 * dv) / (4 * (du * du + dv * dv)), 0, 1)
+        dist = np.hypot(pu - t * 2 * du, pv - t * 2 * dv)
+        width = rng.uniform(0.00006, 0.00014)
+        strength = rng.uniform(0.4, 1.0) * np.sin(np.pi * t) ** 0.5  # fades out at both ends
+        out[near] = np.maximum(out[near], strength * smoothstep(width, 0, dist))
+    return out
+
+
+def slide_maps(p, n, ao):
     count = len(p)
     metal, steel = srgb_to_linear(SLIDE_METAL), srgb_to_linear(BARE_STEEL)
     curve = convexity(p, n)
-    # Bare steel where the finish has worn off the sharpest edges, a bit patchy.
-    patchy = 0.55 + 0.45 * low_noise(p, 0.006, 21)
-    wear = np.clip(smoothstep(250, 900, curve) * patchy, 0, 1)
+    # Bare steel where the finish has worn off edges and high points (serration
+    # ridges, chamfers, the muzzle end), in uneven patches.
+    patchy = 0.6 + 0.4 * low_noise(p, 0.006, 21)
+    wear = np.clip(smoothstep(180, 750, curve) * patchy, 0, 1)
     color = metal * (1 - wear[:, None]) + steel * wear[:, None]
     rough = 0.36 * (1 - wear) + 0.2 * wear
     # Fine lengthwise polishing marks and slight unevenness.
-    rough += 0.035 * low_noise(p * np.array([30, 1, 30]), 0.02, 22)
-    color *= (1 + 0.04 * low_noise(p, 0.03, 23))[:, None]
+    rough += 0.03 * low_noise(p * np.array([30, 1, 30]), 0.02, 22)
+    color *= (1 + 0.03 * low_noise(p, 0.03, 23))[:, None]
     # Striker plate at the back is polymer.
     plate = (p[:, 1] < -0.0302) & (np.abs(p[:, 0]) < 0.0078)
     color[plate] = srgb_to_linear(POLYMER)
     rough[plate] = 0.6
-    return color, np.clip(rough, 0.05, 1), np.zeros(count)
+    height = np.zeros(count)
+
+    # Holster wear: the finish rubbed thin along the sides, in long lengthwise
+    # marks, most towards the muzzle and the bottom edge.
+    side = np.abs(n[:, 0]) > 0.7
+    towards_muzzle = 0.3 + 0.7 * smoothstep(0.02, 0.14, p[:, 1])
+    low_on_side = 0.45 + 0.55 * smoothstep(0.006, -0.008, p[:, 2])
+    rubbed = smoothstep(0.1, 0.9, 0.5 + 0.5 * low_noise(p * np.array([1, 0.1, 1]), 0.0022, 66))
+    holster = side * ~plate * towards_muzzle * low_on_side * rubbed * 0.6
+    color = lerp_color(color, WORN_FINISH, holster)
+    rough = rough * (1 - holster) + 0.27 * holster
+    # The top wears where the hand and holster brush it, along both edges.
+    top = n[:, 2] > 0.7
+    near_edge = smoothstep(0.004, 0.0085, np.abs(p[:, 0]))
+    top_wear = top * near_edge * rubbed * 0.45
+    color = lerp_color(color, WORN_FINISH, top_wear)
+
+    # Scratches through the finish, mostly lengthwise like holster draws.
+    scratch = scratches(p, n, 260, 61) * ~plate
+    color = lerp_color(color, BARE_STEEL, scratch * 0.8)
+    rough = rough * (1 - scratch) + 0.18 * scratch
+    height -= 0.00003 * scratch
+    return color, np.clip(rough, 0.05, 1), height
 
 
 def inside_polygon(xs, ys, polygon):
@@ -370,7 +483,7 @@ def stipple(u, v, cell=0.0009, seed=5):
     return smoothstep(cell * 0.42, cell * 0.12, nearest)
 
 
-def frame_maps(p, n, profiles):
+def frame_maps(p, n, ao, profiles):
     count = len(p)
     color = np.tile(srgb_to_linear(POLYMER), (count, 1))
     curve = convexity(p, n)
@@ -390,6 +503,16 @@ def frame_maps(p, n, profiles):
     height += np.where(in_panel, 0.00011 * dots * fade, 0)
     rough = np.where(in_panel, rough + 0.12, rough)
     color = np.where(in_panel[:, None], color * (0.95 + 0.1 * dots[:, None]), color)
+
+    # Worn: scuffs and scratches, edges rubbed smooth, and the grip worn
+    # smoother and shinier where the hands hold it.
+    scuff = scratches(p, n, 180, 71, along_bias=0.5)
+    color = lerp_color(color, POLYMER_SCUFF, scuff * 0.6)
+    rough = rough * (1 - scuff) + 0.8 * scuff
+    held = in_panel * smoothstep(-0.2, 0.8, low_noise(p, 0.01, 73))
+    rough -= 0.14 * held
+    height *= 1 - 0.5 * held  # stippling worn down a little
+    color *= (1 + 0.08 * held)[:, None]
     return color, np.clip(rough, 0.05, 1), height
 
 
@@ -407,17 +530,17 @@ def main():
     frame = build_frame(profiles)
     small = build_small_parts(profiles)
 
-    for obj, make_maps, metallic in ((slide, lambda p, n: slide_maps(p, n), 1.0),
-                                     (frame, lambda p, n: frame_maps(p, n, profiles), 0.0)):
+    for obj, make_maps, metallic in ((slide, lambda p, n, ao: slide_maps(p, n, ao), 1.0),
+                                     (frame, lambda p, n, ao: frame_maps(p, n, ao, profiles), 0.0)):
         log('textures for', obj.name, f'({sum(len(f.vertices) - 2 for f in obj.data.polygons)} triangles)')
         triangulate(obj)
         sharp_edges(obj, 35 if obj is slide else 40)
         uv_unwrap(obj)
         p = bake_positions(obj)
         n = bake_world_normals(obj)
-        color, rough, height = make_maps(p, n)
-        normal_image = bake_normal_from_height(obj, height)
         ao = bake_ao(obj)
+        color, rough, height = make_maps(p, n, ao)
+        normal_image = bake_normal_from_height(obj, height)
         color = color * (0.35 + 0.65 * ao)[:, None]
         textured_material(obj, color, rough, normal_image, metallic=metallic)
 

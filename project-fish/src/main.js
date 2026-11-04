@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { PLAYER, TICK_DT } from './shared/config.js';
 import { createPlayerState, emptyCommand, simulatePlayer } from './shared/movement.js';
+import { raycastColliders } from './shared/map.js';
 import { createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
@@ -86,6 +87,7 @@ viewmodel.ready.then(() => {
 
 let lastTime = null;
 let accumulator = 0;
+const lookDirection = new THREE.Vector3();
 
 renderer.setAnimationLoop((time) => {
   const frameSeconds = lastTime === null ? 0 : Math.min((time - lastTime) / 1000, MAX_FRAME_SECONDS);
@@ -115,7 +117,9 @@ renderer.setAnimationLoop((time) => {
   );
   camera.rotation.set(input.pitch, input.yaw, 0);
 
-  viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion);
+  camera.getWorldDirection(lookDirection);
+  const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
+  viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance);
 
   hud.update(frameSeconds, player);
   renderer.clear();

@@ -16,37 +16,99 @@ const DEG = Math.PI / 180;
 const HAND_STEP = 0.0018;
 const SLEEVE_STEP = 0.003;
 
-// A point around the grip: `u` metres down from its top, at angle `deg` around
-// it (0 = right side, 90 = front strap, 180 = left side), `offset` metres out
-// from its surface.
-function aroundGrip(u, deg, offset) {
-  const a = GRIP.halfWidth;
-  const b = GRIP.halfDepth;
-  const c = Math.cos(deg * DEG);
-  const s = Math.sin(deg * DEG);
-  let nx = c / a;
-  let nf = s / b;
-  const len = Math.hypot(nx, nf);
-  nx /= len;
-  nf /= len;
-  return GRIP.top.clone()
-    .addScaledVector(GRIP.down, u)
-    .addScaledVector(RIGHT, a * c + nx * offset)
-    .addScaledVector(GRIP.front, b * s + nf * offset);
+// A slice across the grip is a rounded rectangle. gripSurface(deg) gives the
+// point on it at angle `deg` round the grip (0 = right side, 90 = front strap,
+// 180 = left side) and the direction straight out of the surface there, as
+// 2D coordinates [right, front].
+function gripSurface(deg) {
+  const { halfWidth: a, halfDepth: b, cornerRadius: r } = GRIP;
+  const distance = (x, y) => {
+    const qx = Math.abs(x) - (a - r);
+    const qy = Math.abs(y) - (b - r);
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+  };
+  const dx = Math.cos(deg * DEG);
+  const dy = Math.sin(deg * DEG);
+  let inside = 0;
+  let outside = 0.08;
+  for (let i = 0; i < 40; i++) {
+    const mid = (inside + outside) / 2;
+    if (distance(dx * mid, dy * mid) < 0) inside = mid;
+    else outside = mid;
+  }
+  const x = dx * inside;
+  const y = dy * inside;
+  const e = 1e-6;
+  const nx = distance(x + e, y) - distance(x - e, y);
+  const ny = distance(x, y + e) - distance(x, y - e);
+  const len = Math.hypot(nx, ny);
+  return { x, y, nx: nx / len, ny: ny / len };
 }
 
-// A finger wrapped around the grip: joints at the given angles and offsets.
-function wrappedFinger(u, angles, offsets, radius) {
-  return {
-    joints: angles.map((deg, i) => aroundGrip(u, deg, offsets[i])),
-    radii: [radius * 1.08, radius, radius * 0.94, radius * 0.86],
-  };
+// A point round the grip: `u` metres down from its top, at angle `deg`,
+// `offset` metres out from its surface.
+function aroundGrip(u, deg, offset) {
+  const p = gripSurface(deg);
+  return GRIP.top.clone()
+    .addScaledVector(GRIP.down, u)
+    .addScaledVector(RIGHT, p.x + p.nx * offset)
+    .addScaledVector(GRIP.front, p.y + p.ny * offset);
 }
+
+// A finger curled round the grip. Its knuckle is at angle `startDeg`,
+// `knuckleOffset` out from the grip; each next joint is one bone length further
+// round (direction +1 = towards the front strap from the right side, -1 = from
+// the left side), resting on the grip, or on whatever `under` metres thick lies
+// in between (the other hand's fingers). Fingers press in very slightly.
+function curledFinger(u, startDeg, knuckleOffset, lengths, radius, direction = 1, under = 0) {
+  const radii = [radius * 1.08, radius, radius * 0.94, radius * 0.86];
+  const joints = [aroundGrip(u, startDeg, knuckleOffset)];
+  let deg = startDeg;
+  for (let i = 0; i < 3; i++) {
+    const offset = under + radii[i + 1] * 0.92;
+    const previous = joints[i];
+    let near = deg;
+    let far = deg + direction * 170;
+    for (let k = 0; k < 40; k++) {
+      const mid = (near + far) / 2;
+      if (aroundGrip(u, mid, offset).distanceTo(previous) < lengths[i]) near = mid;
+      else far = mid;
+    }
+    deg = (near + far) / 2;
+    joints.push(aroundGrip(u, deg, offset));
+  }
+  return { joints, radii };
+}
+
+// Bone lengths (knuckle to middle joint, middle to last joint, last joint to
+// tip) and thickness of each finger, for a gloved adult hand, in metres.
+const FINGERS = {
+  index: { lengths: [0.046, 0.027, 0.022], radius: 0.0094 },
+  middle: { lengths: [0.05, 0.031, 0.024], radius: 0.0098 },
+  ring: { lengths: [0.047, 0.029, 0.023], radius: 0.0094 },
+  little: { lengths: [0.037, 0.021, 0.02], radius: 0.0085 },
+};
 
 function bones(finger) {
   const out = [];
   for (let i = 0; i < finger.joints.length - 1; i++) {
     out.push(roundCone(finger.joints[i], finger.joints[i + 1], finger.radii[i], finger.radii[i + 1]));
+  }
+  return out;
+}
+
+// The knuckle bumps on the back of a finger's middle and last joints. The back
+// of a finger faces away from the grip's centre line.
+function knuckleBumps(finger) {
+  const out = [];
+  for (const j of [1, 2]) {
+    const joint = finger.joints[j];
+    const axis = finger.joints[j + 1].clone().sub(finger.joints[j - 1]).normalize();
+    const onAxis = GRIP.top.clone().addScaledVector(GRIP.down, joint.clone().sub(GRIP.top).dot(GRIP.down));
+    const away = joint.clone().sub(onAxis);
+    const back = away.addScaledVector(axis, -away.dot(axis)).normalize();
+    const r = finger.radii[j];
+    out.push(ellipsoid(joint.clone().addScaledVector(back, r * 0.72), r * 0.5, r * 0.42, r * 0.7, basis(axis, back)));
   }
   return out;
 }
@@ -61,18 +123,20 @@ function basis(x, yHint) {
 
 // --- Poses -------------------------------------------------------------------
 
-// Right (shooting) hand: palm on the right side and back of the grip, middle,
-// ring and little fingers around the front, index finger on the trigger,
-// thumb over the back and forward along the left side of the frame.
+// Right (shooting) hand: a high grip, palm on the right side and back of the
+// grip, middle, ring and little fingers curled round the front strap (the
+// middle finger tucked up under the trigger guard), index finger on the
+// trigger, thumb over the back and forward along the left side of the frame.
 function rightHandPose() {
+  const { index, middle, ring, little } = FINGERS;
   const fingers = [
     { // index, on the trigger
       joints: [V(0.03, -0.052, 0.002), V(0.024, -0.047, -0.04), V(0.0095, -0.05, -0.066), V(-0.006, -0.0515, -0.0695)],
-      radii: [0.0104, 0.0097, 0.0091, 0.0083],
+      radii: [index.radius * 1.1, index.radius * 1.03, index.radius * 0.97, index.radius * 0.88],
     },
-    wrappedFinger(0.022, [-10, 70, 132, 172], [0.0185, 0.0098, 0.0098, 0.009], 0.0098),
-    wrappedFinger(0.041, [-10, 68, 128, 166], [0.018, 0.0094, 0.0094, 0.0087], 0.0094),
-    wrappedFinger(0.059, [-10, 62, 116, 150], [0.017, 0.0086, 0.0086, 0.008], 0.0086),
+    curledFinger(0.018, -15, 0.0185, middle.lengths, middle.radius),
+    curledFinger(0.037, -15, 0.018, ring.lengths, ring.radius),
+    curledFinger(0.055, -12, 0.017, little.lengths, little.radius),
   ];
   const thumb = {
     joints: [V(0.03, -0.06, 0.075), V(-0.012, -0.03, 0.052), V(-0.0235, -0.023, 0.018), V(-0.0235, -0.021, -0.01)],
@@ -81,16 +145,18 @@ function rightHandPose() {
   return { fingers, thumb, wrist: V(0.04, -0.098, 0.1), elbow: V(0.17, -0.2, 0.32), awayFromGrip: V(1, 0, 0) };
 }
 
-// Left (support) hand: palm on the left side over the right hand's fingertips,
-// fingers wrapped around the front over the right hand's fingers, thumb
+// Left (support) hand: palm heel on the left side of the grip over the right
+// hand's fingertips, fingers curled round the front on top of the right
+// hand's fingers (the index finger just under the trigger guard), thumb
 // forward along the left side under the right thumb.
 function leftHandPose() {
-  const out = (r) => 0.0195 + r; // outside the right hand's fingers
+  const { index, middle, ring, little } = FINGERS;
+  const over = 0.0195; // the right hand's fingers are this thick
   const fingers = [
-    wrappedFinger(0.014, [196, 145, 104, 74], [0.03, out(0.0094), out(0.0094), out(0.0087)], 0.0094),
-    wrappedFinger(0.032, [196, 142, 98, 66], [0.031, out(0.0098), out(0.0098), out(0.009)], 0.0098),
-    wrappedFinger(0.05, [194, 142, 100, 70], [0.03, out(0.0094), out(0.0094), out(0.0087)], 0.0094),
-    wrappedFinger(0.066, [190, 146, 110, 84], [0.028, out(0.0086), out(0.0086), out(0.008)], 0.0086),
+    curledFinger(0.024, 200, 0.031, index.lengths, index.radius, -1, over),
+    curledFinger(0.041, 200, 0.032, middle.lengths, middle.radius, -1, over),
+    curledFinger(0.057, 198, 0.031, ring.lengths, ring.radius, -1, over),
+    curledFinger(0.071, 194, 0.029, little.lengths, little.radius, -1, over * 0.8),
   ];
   const thumb = {
     joints: [V(-0.044, -0.082, 0.07), V(-0.031, -0.053, 0.04), V(-0.025, -0.0425, 0.006), V(-0.0245, -0.0405, -0.023)],
@@ -139,8 +205,8 @@ function buildHand(pose, colors, { pads: withPads = true } = {}) {
   // Joints within a finger blend smoothly, the fingers and thumb melt into
   // the palm, but neighbouring fingers stay separate, with a crease between.
   const palmFn = blend(palm, 0.012);
-  const thumbFn = blend(bones(thumb), 0.004);
-  const fingerFns = fingers.map((f) => blend(bones(f), 0.004));
+  const thumbFn = blend([...bones(thumb), ...knuckleBumps(thumb)], 0.004);
+  const fingerFns = fingers.map((f) => blend([...bones(f), ...knuckleBumps(f)], 0.004));
   const padFn = withPads ? blend(pads, 0.002) : () => 1;
   const glove = (x, y, z) => {
     let f = Infinity;

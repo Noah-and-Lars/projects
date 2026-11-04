@@ -12,8 +12,10 @@ import * as THREE from 'three';
 export const GRIP = {
   top: new THREE.Vector3(0, -0.058, 0.004), // centre of the grip just under the trigger guard
   down: new THREE.Vector3(0, -0.062, 0.022).normalize(), // along the grip, towards the magazine
-  halfWidth: 0.0155,
-  halfDepth: 0.028,
+  // A slice across the grip is a rounded rectangle (the grip shell made in Blender):
+  halfWidth: 0.0153, // side to side
+  halfDepth: 0.0275, // front strap to back strap
+  cornerRadius: 0.0055,
 };
 GRIP.front = new THREE.Vector3().crossVectors(new THREE.Vector3(1, 0, 0), GRIP.down).normalize();
 
