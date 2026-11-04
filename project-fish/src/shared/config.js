@@ -25,3 +25,15 @@ export const MOVEMENT = {
 export const WORLD = {
   size: 2000, // m, the baseplate is size × size, centred on 0,0
 };
+
+// The pistol. Times in seconds, angles in degrees, distances in metres.
+export const PISTOL = {
+  fireInterval: 0.12, // fastest the trigger can be pulled again (500 rounds a minute)
+  magazine: 12,
+  reserve: 60,
+  reloadTime: 1.55, // with a round still in the gun
+  emptyReloadTime: 1.95, // from empty: the slide has to be released too
+  range: 150,
+  // How far shots can stray from where the gun points (half the cone's angle).
+  spread: { hip: 1.8, aim: 0.12, moving: 1.2 }, // moving is added at full walking speed
+};

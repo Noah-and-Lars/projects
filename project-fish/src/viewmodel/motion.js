@@ -35,6 +35,9 @@ export const MOTION = {
     moving: 0.8, // extra sway while walking with the sights up
   },
   aimSettle: { nod: 0.9, roll: 0.8 }, // the shove as the sights come up or go down
+  // Each shot: the muzzle flips up and the gun shoves back into the hands
+  // (spring speeds, radians or metres a second), a bit less while aiming.
+  recoil: { flip: 3.1, flipRandom: 0.6, yaw: 0.6, roll: 0.9, back: 0.55, up: 0.12, aimed: 0.55 },
 };
 
 const MAX_STEP = 1 / 240; // springs are stepped at least this finely, so they stay stable
@@ -90,6 +93,18 @@ export class ViewmodelMotion {
     this.rotation.velocity.x += MOTION.aimSettle.nod * direction;
     this.rotation.velocity.z -= MOTION.aimSettle.roll * direction;
     if (direction > 0) this.unsteady = 1;
+  }
+
+  // A shot's kick. aim: 0 at the hip, 1 aiming down the sights.
+  kick(aim) {
+    const R = MOTION.recoil;
+    const k = 1 - (1 - R.aimed) * aim;
+    const random = () => Math.random() * 2 - 1;
+    this.rotation.velocity.x += (R.flip + Math.random() * R.flipRandom) * k;
+    this.rotation.velocity.y += random() * R.yaw * k;
+    this.rotation.velocity.z += random() * R.roll * k;
+    this.position.velocity.z += R.back * k;
+    this.position.velocity.y += R.up * k;
   }
 
   // dt: seconds since the last frame. player: movement state. yaw, pitch: where

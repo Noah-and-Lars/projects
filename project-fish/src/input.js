@@ -8,7 +8,7 @@ const DEGREES_PER_COUNT = 0.022;
 const MAX_PITCH = (89 * Math.PI) / 180;
 
 // Keys the game uses; the browser's default action for them is blocked while playing.
-const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space']);
+const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR']);
 
 export class Input {
   constructor(element) {
@@ -20,6 +20,8 @@ export class Input {
     // Keys pressed since the last tick. A quick tap can start and end between
     // two ticks (or during a slow frame); this makes sure it still counts.
     this.tapped = new Set();
+    // Presses not yet handled by the frame loop (firing, reloading).
+    this.pressed = new Set();
     this.onLockChange = null;
 
     document.addEventListener('pointerlockchange', () => {
@@ -42,7 +44,10 @@ export class Input {
       if (!this.locked) return;
       if (GAME_KEYS.has(e.code)) e.preventDefault();
       this.held.add(e.code);
-      if (!e.repeat) this.tapped.add(e.code);
+      if (!e.repeat) {
+        this.tapped.add(e.code);
+        this.pressed.add(e.code);
+      }
     });
 
     document.addEventListener('keyup', (e) => {
@@ -54,6 +59,7 @@ export class Input {
       if (!this.locked) return;
       this.held.add('Mouse' + e.button);
       this.tapped.add('Mouse' + e.button);
+      this.pressed.add('Mouse' + e.button);
     });
     document.addEventListener('mouseup', (e) => {
       this.held.delete('Mouse' + e.button);
@@ -70,6 +76,14 @@ export class Input {
   releaseAll() {
     this.held.clear();
     this.tapped.clear();
+    this.pressed.clear();
+  }
+
+  // Whether `code` was pressed since the last time this asked about it.
+  wasPressed(code) {
+    const yes = this.pressed.has(code);
+    this.pressed.delete(code);
+    return yes;
   }
 
   // Locks the mouse to the game. Must be called from a click.

@@ -1,0 +1,233 @@
+// Gun sounds, made in code with the Web Audio API (no sound files).
+//
+// The 9mm shot is built sample by sample, the way a real one is shaped: a
+// near-instant pressure spike, a short bright blast (a pistol pops, it doesn't
+// boom like a rifle), a short low punch for body, the same sound bouncing off
+// the ground a few milliseconds later, and the slide clacking back and
+// slamming home. Outdoor echoes come from a generated reverb: distinct
+// reflections off things far away, then a rolling tail that loses its highs.
+
+let context = null;
+let master = null;
+let echo = null;
+let noise = null;
+let shots = [];
+
+const SHOT_VARIANTS = 5;
+
+// One-pole filters, for building sounds sample by sample.
+function lowpass(data, hz, rate) {
+  const a = 1 - Math.exp((-2 * Math.PI * hz) / rate);
+  let y = 0;
+  for (let i = 0; i < data.length; i++) data[i] = y += a * (data[i] - y);
+  return data;
+}
+function highpass(data, hz, rate) {
+  const low = lowpass(Float32Array.from(data), hz, rate);
+  for (let i = 0; i < data.length; i++) data[i] -= low[i];
+  return data;
+}
+
+// A ringing metal part: a few damped tones.
+function ring(out, rate, at, freqs, decay, volume) {
+  const start = Math.floor(at * rate);
+  for (let i = start; i < out.length; i++) {
+    const t = (i - start) / rate;
+    const env = Math.exp(-t / decay) * volume;
+    if (env < 1e-4) break;
+    let v = 0;
+    for (const f of freqs) v += Math.sin(2 * Math.PI * f * t);
+    out[i] += (v / freqs.length) * env;
+  }
+}
+
+function makeShot(rate) {
+  const length = Math.floor(rate * 0.4);
+  const out = new Float32Array(length);
+  const r = (a, b) => a + Math.random() * (b - a);
+
+  // Muzzle blast: broadband noise with a very fast decay and a short tail.
+  const blast = new Float32Array(length);
+  const fast = r(0.0045, 0.0065);
+  const tail = r(0.03, 0.045);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    blast[i] = (Math.random() * 2 - 1) * (Math.exp(-t / fast) + 0.3 * Math.exp(-t / tail));
+  }
+  highpass(lowpass(blast, r(5000, 6500), rate), 260, rate);
+
+  // The pressure spike at the very start (an N-shaped wave, about 1.3 ms).
+  const spike = Math.floor(rate * r(0.0011, 0.0015));
+  for (let i = 0; i < spike; i++) out[i] += 1.4 * (1 - (2 * i) / spike);
+
+  // Low punch: a damped tone sliding down.
+  let phase = 0;
+  const boom = r(105, 125);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    phase += (2 * Math.PI * (boom * Math.exp(-t * 9) + 52)) / rate;
+    out[i] += Math.sin(phase) * Math.exp(-t / 0.042) * Math.min(1, t / 0.0015) * 0.75;
+  }
+  for (let i = 0; i < length; i++) out[i] += blast[i] * 1.6;
+
+  // The slide: back (a sharp metallic click) and home (a heavier clack).
+  ring(out, rate, r(0.019, 0.024), [2900, 4700, 6300].map((f) => f * r(0.95, 1.05)), 0.007, 0.13);
+  ring(out, rate, r(0.052, 0.062), [1800, 3300, 5100].map((f) => f * r(0.95, 1.05)), 0.011, 0.17);
+
+  // The same sound bouncing off the ground just after, duller.
+  const delay = Math.floor(rate * r(0.004, 0.0055));
+  const bounce = lowpass(Float32Array.from(out), 2500, rate);
+  for (let i = length - 1; i >= delay; i--) out[i] += bounce[i - delay] * 0.42;
+
+  // Loud and a bit gritty, like a real shot heard up close: soft clipping.
+  const drive = 1.9;
+  const norm = Math.tanh(drive);
+  for (let i = 0; i < length; i++) out[i] = Math.tanh(out[i] * drive) / norm;
+  return out;
+}
+
+// Outdoor echo: a few distinct reflections off things far away, then a
+// rolling tail that loses its highs, a little different in each ear.
+function makeEcho(rate) {
+  const length = Math.floor(rate * 2);
+  const buffer = context.createBuffer(2, length, rate);
+  for (let c = 0; c < 2; c++) {
+    const data = buffer.getChannelData(c);
+    for (const [at, level] of [[0.055, 0.5], [0.105, 0.38], [0.17, 0.32], [0.26, 0.24], [0.39, 0.17], [0.6, 0.1]]) {
+      const start = Math.floor((at + (c ? 0.007 : 0) + Math.random() * 0.01) * rate);
+      for (let i = 0; i < rate * 0.03 && start + i < length; i++) {
+        data[start + i] += (Math.random() * 2 - 1) * level * Math.exp(-i / (rate * 0.008));
+      }
+    }
+    for (let i = 0; i < length; i++) {
+      const t = i / rate;
+      data[i] += (Math.random() * 2 - 1) * 0.09 * Math.exp(-t / 0.5) * Math.min(1, t / 0.04);
+    }
+    lowpass(data, 2200, rate);
+  }
+  return buffer;
+}
+
+// Browsers only allow sound after the player clicks; call this from the click.
+export function startAudio() {
+  if (!context) {
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return;
+    context = new Context();
+    // A compressor keeps shots punchy without crackling.
+    const squash = context.createDynamicsCompressor();
+    squash.threshold.value = -12;
+    squash.ratio.value = 4;
+    squash.attack.value = 0.002;
+    squash.release.value = 0.2;
+    squash.connect(context.destination);
+    master = context.createGain();
+    master.gain.value = 0.6;
+    master.connect(squash);
+
+    // One second of white noise, reused by every sound.
+    noise = context.createBuffer(1, context.sampleRate, context.sampleRate);
+    const data = noise.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+    echo = context.createConvolver();
+    echo.buffer = makeEcho(context.sampleRate);
+    const echoLevel = context.createGain();
+    echoLevel.gain.value = 0.55;
+    echo.connect(echoLevel).connect(master);
+
+    // A few slightly different shots, picked at random, so no two sound the same.
+    shots = [];
+    for (let i = 0; i < SHOT_VARIANTS; i++) {
+      const buffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.4), context.sampleRate);
+      buffer.copyToChannel(makeShot(context.sampleRate), 0);
+      shots.push(buffer);
+    }
+  }
+  if (context.state === 'suspended') context.resume();
+}
+
+// A burst of noise through a filter, with a sharp start and a falling volume.
+function burst({ at = 0, type = 'lowpass', from, to = from, q = 0.7, volume, attack = 0.001, decay, out = master, reverb = 0 }) {
+  if (!context) return;
+  const t = context.currentTime + at;
+  const source = context.createBufferSource();
+  source.buffer = noise;
+  source.playbackRate.value = 0.8 + Math.random() * 0.4;
+  const filter = context.createBiquadFilter();
+  filter.type = type;
+  filter.Q.value = q;
+  filter.frequency.setValueAtTime(from, t);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + decay);
+  const gain = context.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(volume, t + attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+  source.connect(filter).connect(gain).connect(out);
+  if (reverb) {
+    const send = context.createGain();
+    send.gain.value = reverb;
+    gain.connect(send).connect(echo);
+  }
+  source.start(t, Math.random() * 0.5);
+  source.stop(t + decay + 0.05);
+}
+
+// A short tone sliding in pitch (the thump, metallic pings).
+function tone({ at = 0, from, to = from, volume, decay, type = 'sine' }) {
+  if (!context) return;
+  const t = context.currentTime + at;
+  const osc = context.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, t);
+  osc.frequency.exponentialRampToValueAtTime(to, t + decay);
+  const gain = context.createGain();
+  gain.gain.setValueAtTime(volume, t);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+  osc.connect(gain).connect(master);
+  osc.start(t);
+  osc.stop(t + decay + 0.02);
+}
+
+const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
+
+export function playGunshot() {
+  if (!context || !shots.length) return;
+  const source = context.createBufferSource();
+  source.buffer = shots[Math.floor(Math.random() * shots.length)];
+  source.playbackRate.value = vary(1, 0.03);
+  const level = context.createGain();
+  level.gain.value = 0.9;
+  source.connect(level).connect(master);
+  const send = context.createGain();
+  send.gain.value = 0.5;
+  level.connect(send).connect(echo);
+  source.start();
+}
+
+export function playDryFire() {
+  burst({ type: 'bandpass', from: 3200, q: 6, volume: 0.25, decay: 0.02 });
+}
+
+// A spent case landing: a few bright metallic pings.
+export function playCasing(volume = 1) {
+  const base = vary(4200, 0.15);
+  for (let i = 0; i < 3; i++) {
+    tone({ at: i * vary(0.07, 0.4), from: base * (1 + i * 0.37), volume: 0.05 * volume / (i + 1), decay: 0.09 });
+  }
+}
+
+export function playMagOut() {
+  burst({ type: 'bandpass', from: 2400, q: 5, volume: 0.3, decay: 0.03 }); // release button
+  burst({ at: 0.05, type: 'bandpass', from: 900, to: 600, q: 2, volume: 0.25, decay: 0.12 }); // slides out
+}
+
+export function playMagIn() {
+  burst({ type: 'bandpass', from: 1200, to: 800, q: 2, volume: 0.2, decay: 0.08 });
+  burst({ at: 0.07, type: 'bandpass', from: 2200, q: 6, volume: 0.45, decay: 0.04 }); // clicks home
+}
+
+export function playSlideRelease() {
+  burst({ type: 'bandpass', from: 1800, q: 4, volume: 0.5, decay: 0.05 });
+  burst({ at: 0.012, type: 'bandpass', from: 3000, q: 6, volume: 0.25, decay: 0.03 });
+}
