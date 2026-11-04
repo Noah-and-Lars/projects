@@ -101,7 +101,7 @@ function leftHandPose() {
 
 // --- Building ---------------------------------------------------------------
 
-function buildHand(pose, colors) {
+function buildHand(pose, colors, { pads: withPads = true } = {}) {
   const { fingers, thumb, wrist } = pose;
   const mcps = fingers.map((f) => f.joints[0]);
   const index = mcps[0];
@@ -141,13 +141,13 @@ function buildHand(pose, colors) {
   const palmFn = blend(palm, 0.012);
   const thumbFn = blend(bones(thumb), 0.004);
   const fingerFns = fingers.map((f) => blend(bones(f), 0.004));
-  const padFn = blend(pads, 0.002);
+  const padFn = withPads ? blend(pads, 0.002) : () => 1;
   const glove = (x, y, z) => {
     let f = Infinity;
     for (const fn of fingerFns) f = Math.min(f, fn(x, y, z));
     let d = smoothMin(palmFn(x, y, z), thumbFn(x, y, z), 0.01);
     d = smoothMin(d, f, 0.007);
-    return smoothMin(d, padFn(x, y, z), 0.003);
+    return withPads ? smoothMin(d, padFn(x, y, z), 0.003) : d;
   };
 
   // Colours: fabric on the back, darker synthetic leather on the palm side, black pads.
@@ -168,10 +168,10 @@ function buildHand(pose, colors) {
   const strap = roundCone(strapA, strapA.clone().addScaledVector(forearm, 0.022), 0.0282, 0.0292);
   const strapGeometry = meshFromDistance(blend([strap], 0.001), boundsOf([strap], 0.004), 0.002);
 
-  return { gloveGeometry, strapGeometry, forearm };
+  return { gloveGeometry, strapGeometry, forearm, frame: { along, across, back, palmCenter } };
 }
 
-function buildSleeve(pose, forearm) {
+function buildSleeve(pose, forearm, { folds: withFolds = true } = {}) {
   const start = pose.wrist.clone().addScaledVector(forearm, 0.034);
   const end = pose.wrist.clone().addScaledVector(forearm, 0.27);
   const arm = roundCone(start, end, 0.036, 0.045);
@@ -189,11 +189,32 @@ function buildSleeve(pose, forearm) {
     // Soft folds that wander round the arm, bunched up more near the cuff.
     const folds = Math.sin(t * 85 + 1.6 * Math.sin(around * 3 + t * 18)) * 0.0016
       + Math.sin(t * 150 + around * 2 + 1.3) * 0.0012 * Math.exp(-Math.max(t - 0.02, 0) * 14);
+    if (!withFolds) return base(x, y, z);
     return base(x, y, z) - (t > 0.016 ? folds : folds * Math.max(t, 0) / 0.016);
   };
   return meshFromDistance(fn, boundsOf(shapes, 0.008), SLEEVE_STEP);
 }
 
+const COLORS = { fabric: 0x232427, palm: 0x1c1a18, pads: 0x121212 };
+
+// The posed shapes for both arms. The game uses them as they are; the Blender
+// tools (tools/) use the plain versions (no knuckle pads or folds) as the
+// starting point for the detailed models in assets/arms.glb.
+export function buildArmParts({ plain = false } = {}) {
+  return [['right', rightHandPose()], ['left', leftHandPose()]].map(([side, pose]) => {
+    const hand = buildHand(pose, COLORS, { pads: !plain });
+    return {
+      side,
+      pose,
+      frame: { ...hand.frame, forearm: hand.forearm },
+      glove: hand.gloveGeometry,
+      strap: hand.strapGeometry,
+      sleeve: buildSleeve(pose, hand.forearm, { folds: !plain }),
+    };
+  });
+}
+
+// Simple built-in arms, used if assets/arms.glb can't be loaded.
 export function createArms() {
   const arms = new THREE.Group();
   arms.name = 'arms';
@@ -201,16 +222,14 @@ export function createArms() {
   const glove = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 });
   const strap = new THREE.MeshStandardMaterial({ color: 0x191919, roughness: 0.95, metalness: 0 });
   const sleeve = new THREE.MeshStandardMaterial({ color: 0x4d533f, roughness: 0.96, metalness: 0 });
-  const colors = { fabric: 0x232427, palm: 0x1c1a18, pads: 0x121212 };
 
-  for (const [name, pose] of [['right', rightHandPose()], ['left', leftHandPose()]]) {
-    const hand = buildHand(pose, colors);
+  for (const part of buildArmParts()) {
     const group = new THREE.Group();
-    group.name = name + 'Arm';
+    group.name = part.side + 'Arm';
     group.add(
-      new THREE.Mesh(hand.gloveGeometry, glove),
-      new THREE.Mesh(hand.strapGeometry, strap),
-      new THREE.Mesh(buildSleeve(pose, hand.forearm), sleeve),
+      new THREE.Mesh(part.glove, glove),
+      new THREE.Mesh(part.strap, strap),
+      new THREE.Mesh(part.sleeve, sleeve),
     );
     arms.add(group);
   }

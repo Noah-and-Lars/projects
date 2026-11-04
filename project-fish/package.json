@@ -1,0 +1,12 @@
+{
+  "name": "project-fish",
+  "private": true,
+  "type": "module",
+  "description": "Only the tools in tools/ use this. The game itself needs no install or build step.",
+  "scripts": {
+    "export-arm-base": "node tools/export-arm-base.mjs"
+  },
+  "devDependencies": {
+    "three": "0.184.0"
+  }
+}
