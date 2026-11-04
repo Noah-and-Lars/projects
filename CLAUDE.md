@@ -316,6 +316,9 @@ source in Settings → Pages should be switched to `main`.
   the Cutting Torch and `aimSurface`: a swing or a charge isn't stopped by a hole). It breaks at `BAR_HP` or when
   `BAR_OPEN` of it is holes. Attackers' path cost through a barricade is lower, and a bot breaking one keeps at it
   (`A.breakBar`, `A.breakT`). The chunks are still there for collisions. `__sg` also has snPractice, sgStartMatch.
+  1.0.8: `sgMoveDrone` moves in 4 cm steps (a whole 50 ms frame took a drone through a 16 cm wall) and a hop under a
+  barricade stops at its planks; one drone per attacker; Shift boosts it (`DRONE_SP`, `DRONE_BOOST_SP`, `D.boosts`,
+  `D.boostT`, `DRONE_BOOSTS` a round of `DRONE_BOOST_S` seconds).
 
 ## Adding a game
 

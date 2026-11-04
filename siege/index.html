@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.7';
+const VERSION = '1.0.8';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -1056,6 +1056,8 @@ const BAR_HP = 110; // 1.0.6: a barricade breaks all at once (1.0.7: 2 melee hit
 // 1.0.7: a barricade is one solid board (its own plank texture, BAR_PX pixels a metre). Bullets punch holes in it
 // that you can see and shoot through; when about half of it is holes it falls apart.
 const BAR_PX = 80, BAR_OPEN = 0.5;
+// 1.0.8: drones are slower, and Shift boosts one for DRONE_BOOST_S seconds, DRONE_BOOSTS times a round
+const DRONE_SP = 3.8, DRONE_BOOST_SP = 6.6, DRONE_BOOSTS = 3, DRONE_BOOST_S = 5;
 const PREP_S = 45, ACTION_S = 180, DEFUSE_S = 45, PICK_S = 20, END_S = 7, PLANT_S = 7, DISABLE_S = 7;
 // 1.0.5: a lethal body hit puts you down (not out) while a teammate is still up; you bleed out unless revived
 const DOWN_HP = 25, DOWN_BLEED = 1, REVIVE_S = 4, REINF_TEAM = 10;
@@ -3234,7 +3236,8 @@ function sgArm(P) {
   P.gu = O.g.n0; P.gs = SG_SEC[O.sec[0]].n0; P.secKey = O.sec[0];
   P.max = P.hp = opHp(P.op); P.reinf = REINF_N; P.barr = BARR_N;
   P.slot = 0; P.shieldUp = false; P.sonar = false; P.slug = false; P.holo = null; P.down = false; P.slow = P.stun = P.blind = P.dread = 0;
-  P.drones = sideOf(P) === 'atk' ? [{ x: 0, y: 0, z: 0, yaw: 0, vy: 0, alive: true, jam: 0 }, { x: 0, y: 0, z: 0, yaw: 0, vy: 0, alive: true, jam: 0, held: true }] : [];
+  // 1.0.8: one drone each (it was two), with three 5 s boosts (Shift)
+  P.drones = sideOf(P) === 'atk' ? [{ x: 0, y: 0, z: 0, yaw: 0, vy: 0, alive: true, jam: 0, boosts: DRONE_BOOSTS, boostT: 0 }] : [];
 }
 const gunOf = P => SG_GUNS[P.w.keys[P.slot]];
 function eyeOf(P, out) {
@@ -3976,7 +3979,7 @@ function sgEnterAction() {
   for (const P of G.P.values()) {
     if (!P.alive) continue;
     if (sideOf(P) === 'atk' && auth(P)) { sgSpawn(P); P.mode = 'body'; }
-    else if (sideOf(P) === 'atk') P.drones.forEach(D => { D.alive = true; D.held = true; });
+    else if (sideOf(P) === 'atk') P.drones.forEach(D => { D.alive = true; D.held = true; D.boosts = DRONE_BOOSTS; D.boostT = 0; });
   }
   if (m && m.mode === 'drone') sgExitDrone(m);
   if (window.sgToast) sgToast(m && sideOf(m) === 'atk' ? 'ACTION PHASE — FIND AND SECURE THE BOMB' : 'ACTION PHASE — DEFEND THE BOMBS', '#ffffff');
@@ -4303,15 +4306,27 @@ function sgMove(P, inp, dt) {
 }
 // drones: tiny, fast, fit through small holes
 function sgMoveDrone(P, D, inp, dt) {
+  if (D.boostT > 0) D.boostT = Math.max(0, D.boostT - dt);
   if (D.jam > now()) return;
-  const sp = 4.6, fx = -Math.sin(D.yaw), fz = -Math.cos(D.yaw), rx = Math.cos(D.yaw), rz = -Math.sin(D.yaw);
+  const sp = D.boostT > 0 ? DRONE_BOOST_SP : DRONE_SP, fx = -Math.sin(D.yaw), fz = -Math.cos(D.yaw), rx = Math.cos(D.yaw), rz = -Math.sin(D.yaw);
   D.vx = (D.vx || 0) + ((fx * inp.f + rx * inp.s) * sp - (D.vx || 0)) * Math.min(1, dt * 8);
   D.vz = (D.vz || 0) + ((fz * inp.f + rz * inp.s) * sp - (D.vz || 0)) * Math.min(1, dt * 8);
   if (inp.jump && D.onGround) { D.vy = 3.6; D.onGround = false; } // 1.0.4: drones can hop (Space); people can't jump
   D.vy -= 16 * dt;
-  const pos = { x: D.x + D.vx * dt, y: D.y, z: D.z + D.vz * dt };
-  sgCollide(pos, 0.13, 0.2, sgGadBoxes(), 0.24);
+  // 1.0.7: in steps of at most 4 cm. A whole slow frame (up to 23 cm) took the drone's middle past the middle of a
+  // 16 cm wall, and the push-out then put it on the far side: drones went through walls on slower computers
+  const mx = D.vx * dt, mz = D.vz * dt, ns = Math.max(1, Math.ceil(Math.hypot(mx, mz) / 0.04)), gb = sgGadBoxes();
+  const pos = { x: D.x, y: D.y, z: D.z };
+  for (let k = 0; k < ns; k++) { pos.x += mx / ns; pos.z += mz / ns; sgCollide(pos, 0.13, 0.2, gb, 0.24); }
   let ny = D.y + D.vy * dt; const gy = sgGround(pos.x, pos.z, Math.max(D.y, ny) + 0.02 - (STEP_UP - 0.24), 0.05); // a drone climbs a stair step, not a 45 cm ledge
+  // 1.0.7: under a barricade (the gap at the bottom of a door) a hop stops at the planks instead of rising into them
+  if (D.vy > 0) sgNear(pos.x, pos.z, 0.35, c => {
+    for (const p of W.cellPan[c]) {
+      if (p.k !== 'bar' || !p.active || !p.alive.some(v => v) || D.y + 0.2 > p.y0 + 0.02 || ny + 0.2 <= p.y0) continue;
+      const off = barOff(p), lo = p.c + off - 0.035 - 0.13, hi = p.c + off + 0.035 + 0.13, a = p.ax === 'x' ? pos.x : pos.z, n = p.ax === 'x' ? pos.z : pos.x;
+      if (n > lo && n < hi && a > p.s0 - 0.13 && a < p.s0 + p.w + 0.13) { ny = Math.min(ny, p.y0 - 0.2); D.vy = Math.min(D.vy, 0); }
+    }
+  });
   if (ny <= gy) { ny = gy; D.vy = 0; D.onGround = true; } else D.onGround = false;
   D.x = pos.x; D.z = pos.z; D.y = ny;
   if (Math.hypot(D.vx, D.vz) > 1 && Math.random() < dt * 6) snd('drone', null, 0.4);
@@ -4327,7 +4342,7 @@ function sgEnterDrone(P, n, prep) {
   return true;
 }
 function sgExitDrone(P) { P.mode = 'body'; }
-window.sgDroneLost = () => { const P = me(); if (!P) return; sgToast('DRONE DESTROYED', '#ff6b6b'); if (G.phase === 'prep') { const n = P.drones.findIndex(D => D.alive); if (n >= 0) { sgEnterDrone(P, n, true); return; } P.mode = 'dspec'; P.dspecI = 0; sgToast('NO DRONES LEFT · WATCHING YOUR TEAM\'S DRONES', '#ffcf5a'); return; } P.mode = 'body'; };
+window.sgDroneLost = () => { const P = me(); if (!P) return; sgToast('DRONE DESTROYED', '#ff6b6b'); if (G.phase === 'prep') { const n = P.drones.findIndex(D => D.alive); if (n >= 0) { sgEnterDrone(P, n, true); return; } P.mode = 'dspec'; P.dspecI = 0; sgToast('WATCHING YOUR TEAM\'S DRONES', '#ffcf5a'); return; } P.mode = 'body'; };
 // the drones your teammates are driving right now (to watch once yours are gone)
 function dspecList(P) { const L = []; for (const Q of G.P.values()) if (Q !== P && Q.team === P.team && Q.alive && Q.mode === 'drone') { const D = Q.drones[Q.droneN || 0]; if (D && D.alive && !D.held) L.push({ Q, D, n: Q.droneN || 0 }); } return L; }
 function dspecCur(P) { const L = dspecList(P); if (!L.length) return null; return L[(((P.dspecI || 0) % L.length) + L.length) % L.length]; }
@@ -4592,6 +4607,9 @@ function sgLocalUpdate(dt) {
     if (!D || !D.alive) { P.mode = 'body'; return; }
     D.yaw -= mx * sens; P.dronePitch = Math.max(-1.2, Math.min(1.0, (P.dronePitch || 0) - my * sens));
     if (D.jam > t || jammedAt(D.x, D.z)) { D.jam = t + 0.5; if (Math.random() < dt * 3) snd('zap', null, 0.3); }
+    // 1.0.8: Shift starts a boost (one press, one boost)
+    if (inp.run && !P.droneShift && !(D.boostT > 0) && (D.boosts ?? DRONE_BOOSTS) > 0) { D.boosts = (D.boosts ?? DRONE_BOOSTS) - 1; D.boostT = DRONE_BOOST_S; snd('beep2', null, 0.4); }
+    P.droneShift = !!inp.run;
     sgMoveDrone(P, D, { ...inp, jump: K.Space }, dt);
     sgLookForBombs({ x: D.x, y: D.y + 0.14, z: D.z });
     if (IN.lmbPress) { IN.lmbPress = false; const o = { x: D.x, y: D.y + 0.12, z: D.z }; dirOf(D.yaw, P.dronePitch, _d); const T = sgTrySpot(P, o, { ..._d }, 'atk'); snd(T ? 'beep2' : 'click', null, 0.4); }
@@ -5276,6 +5294,12 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.8', t: 'Drones', d: '4 November 2026', intro: 'Drones stay out of walls, and they have a boost now.', items: [
+    ['No more drones through walls', 'On a slower computer a drone could drive or hop straight through a wall. It now stops at every wall and barricade, however low the frame rate.'],
+    ['Under barricades, not through them', 'A drone still fits under a door barricade, but a hop under it now stops at the planks instead of going through them.'],
+    ['One drone each', 'Every attacker has one drone (it was two). Lose it in the prep phase and you watch your team\'s drones.'],
+    ['Boost', 'Drones are a little slower, and Shift gives a 5 second boost, three times a round. The drone screen shows how many boosts are left.'],
+  ] },
   { v: '1.0.7', t: 'Solid barricades', d: '4 November 2026', intro: 'Barricades are one solid board now, and bullets leave holes in them.', items: [
     ['One solid board', 'A barricade is a single board of planks with no gaps between them, so you can no longer see through it until someone shoots it.'],
     ['Bullet holes', 'Every shot that goes through a barricade leaves a hole, and you can see and shoot through the holes. Shotguns tear bigger ones. Once about half of it is holes, it falls apart.'],
@@ -5758,8 +5782,8 @@ function sgHudUpdate(dt) {
   const camOn = P.alive && (P.mode === 'drone' || P.mode === 'cam' || P.mode === 'holo' || P.mode === 'dspec');
   $s('sgCamFx').classList.toggle('on', camOn);
   if (camOn) {
-    if (P.mode === 'drone') { const D = P.drones[P.droneN]; $s('sgCamLbl').textContent = `DRONE ${P.droneN + 1}` + (D && D.jam > t ? ' · JAMMED' : ''); $s('sgCamHint').textContent = G.phase === 'prep' ? 'PREP PHASE · FIND THE BOMBS · CLICK TO MARK DEFENDERS · 5 NEXT DRONE' : 'CLICK TO MARK · 5 BACK TO YOUR BODY'; }
-    else if (P.mode === 'dspec') { const it = UI.dspec; $s('sgCamLbl').textContent = it ? `${it.Q.name.toUpperCase()}'S DRONE` : 'NO TEAM DRONES OUT'; $s('sgCamHint').textContent = 'YOUR DRONES ARE GONE · YOU ARE SAFE UNTIL THE ROUND STARTS · A / D SWITCH'; }
+    if (P.mode === 'drone') { const D = P.drones[P.droneN]; $s('sgCamLbl').textContent = 'DRONE' + (D && D.jam > t ? ' · JAMMED' : D && D.boostT > 0 ? ` · ⚡ BOOST ${D.boostT.toFixed(1)} s` : D ? ` · ⚡ ${D.boosts ?? DRONE_BOOSTS} BOOST${(D.boosts ?? DRONE_BOOSTS) === 1 ? '' : 'S'} LEFT` : ''); $s('sgCamHint').textContent = (G.phase === 'prep' ? 'PREP PHASE · FIND THE BOMBS · CLICK TO MARK DEFENDERS' : 'CLICK TO MARK · 5 BACK TO YOUR BODY') + ' · SHIFT BOOST · SPACE HOP'; }
+    else if (P.mode === 'dspec') { const it = UI.dspec; $s('sgCamLbl').textContent = it ? `${it.Q.name.toUpperCase()}'S DRONE` : 'NO TEAM DRONES OUT'; $s('sgCamHint').textContent = 'YOUR DRONE IS GONE · YOU ARE SAFE UNTIL THE ROUND STARTS · A / D SWITCH'; }
     else if (P.mode === 'cam') { const C = curCam(P); $s('sgCamLbl').textContent = 'CAMERA ' + (C && C.bc ? '(BULLETPROOF)' : '') + (C && C.off > t ? ' · NO SIGNAL' : ''); $s('sgCamHint').textContent = 'A / D SWITCH · CLICK TO MARK · 5 EXIT'; }
     else { $s('sgCamLbl').textContent = 'HOLO DOUBLE · ' + Math.max(0, Math.ceil((P.holo ? P.holo.until : t) - t)) + 's'; $s('sgCamHint').textContent = 'X TO END'; }
   }

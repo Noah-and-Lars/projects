@@ -7,7 +7,7 @@ Play it at https://noah-and-lars.github.io/projects/siege/ (or from the arcade).
 ## A round
 
 - **Operator pick (20 s):** choose one of your side's 10 operators (each one once per team). Attackers also choose a spawn.
-- **Prep (45 s):** attackers drive drones (press 5 for the next one). The bomb site only shows up for their team once a drone or an attacker has seen it. Click to mark defenders. Defenders reinforce walls and hatches (hold F, 10 for the team), barricade doors and windows (hold F, 5 each), place gadgets, watch the cameras (5) and shoot drones.
+- **Prep (45 s):** attackers drive their drone (one each; Shift boosts it for 5 seconds, three times a round, and Space hops). The bomb site only shows up for their team once a drone or an attacker has seen it. Click to mark defenders. Defenders reinforce walls and hatches (hold F, 10 for the team), barricade doors and windows (hold F, 5 each), place gadgets, watch the cameras (5) and shoot drones.
 - **Action (3 min):** whoever carries the defuser plants it next to a bomb (hold F, 7 s). It drops where its carrier goes down. Attackers win if it runs for 45 s or every defender is out; defenders win when time runs out, every attacker is out, or they disable it (hold F, 7 s).
 - First to 4 rounds (3 or 5 in private rooms); sides swap at half time.
 
