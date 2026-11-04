@@ -2,7 +2,7 @@
 
 A fast-paced multiplayer first-person shooter for the browser, built from scratch with [three.js](https://threejs.org).
 
-**Status: step 1 of phase 1.** A flat grey baseplate where you can look around, walk and jump, with a small house in front of you so you can see yourself moving. The gun, shooting, the map and multiplayer come later.
+**Status: phase 1.** A flat grey baseplate where you can look around, walk and jump, with a small house in front of you so you can see yourself moving. You see your gloved hands holding a pistol, which sways as you look around and bobs as you walk. Shooting, the map and multiplayer come later.
 
 ## Play it locally
 
@@ -40,6 +40,10 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 | `src/shared/config.js` | Movement values: speeds, jump height, gravity, tick rate |
 | `src/shared/movement.js` | Player movement, including bumping into walls |
 | `src/shared/map.js` | Where the house is, and the solid boxes the player collides with |
+| `src/viewmodel/viewmodel.js` | Draws the hands and gun on top of the world; where they're held, sway and bob |
+| `src/viewmodel/pistol.js` | The pistol, built to real dimensions |
+| `src/viewmodel/arms.js` | The gloved hands and sleeves, posed around the pistol's grip |
+| `src/viewmodel/sdf.js` | Turns blended shapes into smooth meshes (used for the hands and sleeves) |
 
 Everything in `src/shared/` is plain JavaScript with no three.js or browser code. When multiplayer is added, the server will run the same movement code, so players move identically on the server and in the game.
 
@@ -61,9 +65,13 @@ All movement values are in `src/shared/config.js`:
 
 Mouse sensitivity and field of view are in `src/settings.js`.
 
-## Models
+## Hands and gun
 
-3D models will be made in Blender and exported as `.glb` files.
+The hands, sleeves and pistol are built in code when the game loads, so there are no model files yet. The hands are shaped from rounded bones blended together like clay and turned into a smooth mesh; that takes about half a second while the page says "Loading…".
+
+They're drawn in their own layer on top of the world, so the gun never pokes into walls, and its size on screen doesn't change with the field of view. Where the gun is held is `HIP_POSITION` and `HIP_ROTATION` in `src/viewmodel/viewmodel.js`.
+
+When models are made in Blender, export them as `.glb` files and they can replace `createPistol()` and `createArms()`. Keep the pistol's scale (metres) and orientation (muzzle towards -Z) so the hands still fit.
 
 ## Credits
 

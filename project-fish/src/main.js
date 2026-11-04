@@ -8,7 +8,8 @@
 import * as THREE from 'three';
 import { PLAYER, TICK_DT } from './shared/config.js';
 import { createPlayerState, emptyCommand, simulatePlayer } from './shared/movement.js';
-import { createWorld } from './world.js';
+import { createWorld, SUN_DIRECTION } from './world.js';
+import { Viewmodel } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
 import { Hud } from './hud.js';
 import { settings } from './settings.js';
@@ -31,11 +32,13 @@ try {
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.autoClear = false; // the world and the gun are drawn one after the other
 container.appendChild(renderer.domElement);
 
 const scene = createWorld();
 const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 1500);
 camera.rotation.order = 'YXZ'; // turn left/right first, then look up/down
+const viewmodel = new Viewmodel(renderer, SUN_DIRECTION);
 
 const input = new Input(renderer.domElement);
 const hud = new Hud(document.getElementById('debug'));
@@ -56,6 +59,7 @@ function resize() {
   const halfHorizontal = (settings.fov * Math.PI) / 360;
   camera.fov = (2 * Math.atan(Math.tan(halfHorizontal) * (9 / 16)) * 180) / Math.PI;
   camera.updateProjectionMatrix();
+  viewmodel.setAspect(width / height);
 }
 window.addEventListener('resize', resize);
 resize();
@@ -102,6 +106,10 @@ renderer.setAnimationLoop((time) => {
   );
   camera.rotation.set(input.pitch, input.yaw, 0);
 
+  viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion);
+
   hud.update(frameSeconds, player);
+  renderer.clear();
   renderer.render(scene, camera);
+  viewmodel.render(renderer);
 });
