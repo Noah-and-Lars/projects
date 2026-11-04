@@ -98,7 +98,7 @@ The pistol is semi-automatic: one shot per click, up to 500 a minute (clicks mad
 - **Muzzle flash:** a brief, irregular fireball of hot gas bursting out round the front of the slide, a short flame plume and a few burning powder sparks, different every shot (now and then barely visible), lighting the hands and surroundings for an instant (`src/effects/muzzleFlash.js`).
 - **Smoke:** a wisp from the muzzle on every shot. Each shot also heats the barrel, which cools over a few seconds; after a few quick shots, thin smoke keeps curling off the muzzle and out of the ejection port (`HEAT` in `src/main.js`).
 - **Sound:** a 9mm report built in code sample by sample (pressure spike, bright blast, low punch, ground bounce, slide clack) with outdoor echoes, a click when the gun is empty, and reload sounds (`src/effects/audio.js`).
-- **Reloading (R):** the gun tips towards the support hand, which lets go to fetch a magazine; the old one drops out and the new one clicks in; from empty, the slide is released forward too. 1.55 s, or 1.95 s from empty. The ammo counter is bottom right.
+- **Reloading (R):** the gun comes up and in, tipped so the magazine well faces you, and the old magazine slides out along the grip and falls away (without its top round if it was empty). The support hand lets go and drops to the belt for a fresh magazine, brings it back up held in its fingers, lines it up under the magazine well and pushes it in until it clicks (the gun jolts as it seats), then slides back up onto the grip; from empty, the slide is then released forward. 1.8 s, or 2.2 s from empty. The hand's path is `HAND_PATH` in `src/viewmodel/viewmodel.js` and the timings are `RELOAD_STEPS` in `src/weapon.js`. The ammo counter is bottom right.
 
 ### Weapon physics
 

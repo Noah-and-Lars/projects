@@ -31,8 +31,8 @@ export const PISTOL = {
   fireInterval: 0.12, // fastest the trigger can be pulled again (500 rounds a minute)
   magazine: 12,
   reserve: 60,
-  reloadTime: 1.55, // with a round still in the gun
-  emptyReloadTime: 1.95, // from empty: the slide has to be released too
+  reloadTime: 1.8, // with a round still in the gun
+  emptyReloadTime: 2.2, // from empty: the slide has to be released too
   range: 150,
   // How far shots can stray from where the gun points (half the cone's angle).
   spread: { hip: 1.8, aim: 0.12, moving: 1.2 }, // moving is added at full walking speed

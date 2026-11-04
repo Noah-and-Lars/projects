@@ -11,7 +11,7 @@ import { createPlayerState, emptyCommand, horizontalSpeed, simulatePlayer } from
 import { raycastColliders, raycastWorld } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
-import { playDryFire, playGunshot, playMagIn, playMagOut, playSlideRelease, startAudio } from './effects/audio.js';
+import { playDryFire, playGunshot, playMagGrab, playMagIn, playMagOut, playSlideRelease, startAudio } from './effects/audio.js';
 import { createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
@@ -255,6 +255,7 @@ renderer.setAnimationLoop((time) => {
     slideLocked: weapon.slideLocked,
     reloadProgress: weapon.reloadProgress,
     reloadSeconds: weapon.reload ? weapon.reload.duration : 0,
+    reloadEmpty: weapon.reload ? weapon.reload.empty : false,
   };
   aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
@@ -266,7 +267,11 @@ renderer.setAnimationLoop((time) => {
       viewmodel.dryFire();
     }
     else if (event === 'magOut') playMagOut();
-    else if (event === 'magIn') playMagIn();
+    else if (event === 'magGrab') playMagGrab();
+    else if (event === 'magIn') {
+      playMagIn();
+      viewmodel.seatMagazine();
+    }
     else if (event === 'slideRelease') playSlideRelease();
   }
   updateBarrelSmoke(frameSeconds);

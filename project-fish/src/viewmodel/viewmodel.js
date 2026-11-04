@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { createPistol, SIGHTS } from './pistol.js';
+import { createPistol, GRIP, SIGHTS } from './pistol.js';
 import { createArms } from './arms.js';
 import { ViewmodelMotion } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
@@ -22,6 +22,47 @@ const SLIDE_TRAVEL = 0.028; // how far the slide goes back when firing (metres)
 // as it unlocks (pivoting near the muzzle), like a real pistol's.
 const BARREL = { travel: 0.0035, tilt: 0.0105, muzzleZ: -0.15 };
 const TRIGGER_TRAVEL = 0.0032;
+
+// Where the gun goes while reloading, relative to how it's held: up, in and
+// tipped (radians: muzzle up, muzzle left, top towards the right).
+const RELOAD_POSE = { position: new THREE.Vector3(-0.035, 0.075, 0.09), turn: [0.22, -0.18, -0.55] };
+
+// The support hand's path during a reload (gun space; reload progress, how far
+// the hand is from its place on the grip, how much it's turned). It peels off,
+// drops to the belt for a fresh magazine, brings it back up under the
+// magazine well and pushes it in along the grip, then slides back up to grip.
+// It holds the new magazine a little higher than where it grips the gun, so
+// the magazine is seated while the hand is still under the grip.
+const HOLD_BELOW = 0.03; // metres along the grip
+const HAND_PATH = [
+  [0.1, [0, 0, 0], 0],
+  [0.18, [-0.02, -0.06, 0.03], 0.1],
+  [0.32, [-0.09, -0.36, 0.2], 0.45],
+  [0.44, [-0.09, -0.36, 0.2], 0.45],
+  [0.56, [-0.03, -0.15, 0.07], 0.15],
+  [0.63, GRIP.down.clone().multiplyScalar(HOLD_BELOW + 0.06).toArray(), 0],
+  [0.68, GRIP.down.clone().multiplyScalar(HOLD_BELOW).toArray(), 0],
+  [0.78, [0, 0, 0], 0],
+];
+
+// Where the hand is along HAND_PATH at reload progress r.
+function handAt(r) {
+  if (r <= HAND_PATH[0][0] || r >= HAND_PATH[HAND_PATH.length - 1][0]) return { offset: new THREE.Vector3(), turn: 0 };
+  let i = 0;
+  while (r > HAND_PATH[i + 1][0]) i++;
+  const [r0, a, t0] = HAND_PATH[i];
+  const [r1, b, t1] = HAND_PATH[i + 1];
+  const k = smoothstepLocal(r0, r1, r);
+  return {
+    offset: new THREE.Vector3(...a).lerp(new THREE.Vector3(...b), k),
+    turn: t0 + (t1 - t0) * k,
+  };
+}
+
+function smoothstepLocal(e0, e1, x) {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+}
 
 // Detailed models made in Blender (see tools/blender/).
 const PISTOL_MODEL = new URL('../../assets/pistol.glb', import.meta.url);
@@ -167,7 +208,16 @@ export class Viewmodel {
       if (this.barrel) this.barrelRest = { position: this.barrel.position.clone(), tilt: this.barrel.rotation.x };
       this.magazine = pistol.getObjectByName('magazine');
       this.magazineRest = this.magazine ? this.magazine.position.clone() : null;
+      this.magazineRound = this.magazine ? this.magazine.getObjectByName('magazine_round') : null;
       this.leftArm = leftArmOf(arms);
+      // The fresh magazine the support hand brings back during a reload.
+      if (this.magazine) {
+        this.handMagazine = this.magazine.clone();
+        this.handMagazine.position.copy(this.magazineRest).addScaledVector(GRIP.down, -HOLD_BELOW);
+        this.handMagazine.visible = false;
+        shadowed(this.handMagazine);
+        this.leftArm.add(this.handMagazine);
+      }
       this.flash.attachTo(pistol);
     });
 
@@ -185,6 +235,12 @@ export class Viewmodel {
     this.slideTime = 0;
     this.triggerTime = 0;
     this.slammed = false;
+  }
+
+  // The palm seating the new magazine jolts the gun up a little.
+  seatMagazine() {
+    this.motion.rotation.velocity.x += 0.5;
+    this.motion.position.velocity.y += 0.06;
   }
 
   // The trigger pulled on an empty gun: it moves, nothing else happens.
@@ -235,12 +291,13 @@ export class Viewmodel {
     this.posePosition.y -= AIM.arc.down * swoop;
     this.poseQuaternion.slerpQuaternions(HIP_QUATERNION, AIM_ROTATION, aim);
     this.poseQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), AIM.arc.roll * swoop));
-    // Reloading: the gun tips towards the support hand so it can reach the magazine well.
+    // Reloading: the gun comes up and in, tipped so the magazine well faces
+    // you, so you can watch the support hand bring the new magazine in.
     const reload = gun ? gun.reloadProgress : -1;
     const tilt = reload < 0 ? 0 : smoothstep(0, 0.14, reload) * (1 - smoothstep(0.84, 1, reload));
     if (tilt > 0) {
-      this.posePosition.add(new THREE.Vector3(-0.015, -0.035, 0.03).multiplyScalar(tilt));
-      this.poseQuaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.32 * tilt, -0.12 * tilt, -0.5 * tilt)));
+      this.posePosition.add(RELOAD_POSE.position.clone().multiplyScalar(tilt));
+      this.poseQuaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...RELOAD_POSE.turn.map((a) => a * tilt))));
     }
     this.pivot.copy(PIVOT).applyQuaternion(this.poseQuaternion).add(this.posePosition);
     this.animateGun(dt, gun, reload);
@@ -302,23 +359,28 @@ export class Viewmodel {
       if (!locked) this.motion.slam(this.lastAim);
     }
 
-    // The support hand lets go to fetch a magazine, then comes back.
+    // The support hand lets go, fetches a fresh magazine and brings it back.
     const S = RELOAD_STEPS;
-    const away = reload < 0 ? 0 : smoothstep(S.handOff, S.handOff + 0.1, reload) * (1 - smoothstep(S.handOn - 0.18, S.handOn, reload));
+    const hand = handAt(reload);
     if (this.leftArm) {
-      this.leftArm.position.set(-0.05 * away, -0.22 * away, 0.08 * away);
-      this.leftArm.rotation.set(0.4 * away, 0, 0);
+      this.leftArm.position.copy(hand.offset);
+      this.leftArm.rotation.set(hand.turn, 0, 0);
     }
+    if (this.handMagazine) this.handMagazine.visible = reload >= S.magGrab && reload < S.magIn;
 
-    // The old magazine drops out; the new one comes up and clicks in.
+    // The old magazine slides out along the grip and falls away; once the new
+    // one clicks in, the one in the gun is the new (full) one.
     if (this.magazine && this.magazineRest) {
-      const m = this.magazine.position.copy(this.magazineRest);
-      if (reload >= S.magOut && reload < S.magIn - 0.12) {
+      const falling = reload >= S.magOut && reload < S.magIn;
+      this.magazine.position.copy(this.magazineRest);
+      if (falling) {
         const t = (reload - S.magOut) * gun.reloadSeconds;
-        m.y -= Math.min(0.6, 0.5 * 9.8 * t * t);
-      } else if (reload >= S.magIn - 0.12 && reload < S.magIn) {
-        m.y -= 0.1 * (1 - smoothstep(S.magIn - 0.12, S.magIn, reload));
+        const drop = 0.4 * t + 0.5 * 9.8 * t * t;
+        this.magazine.position.addScaledVector(GRIP.down, Math.min(drop, 1));
       }
+      this.magazine.visible = !falling || (reload - S.magOut) * gun.reloadSeconds < 0.6;
+      // An emptied magazine drops without a round on top.
+      if (this.magazineRound) this.magazineRound.visible = !(falling && gun.reloadEmpty);
     }
   }
 

@@ -6,11 +6,12 @@ import { PISTOL } from './shared/config.js';
 
 // When things happen during a reload, as a fraction of its length.
 export const RELOAD_STEPS = {
-  handOff: 0.12, // support hand leaves the gun
-  magOut: 0.22, // magazine drops out
-  magIn: 0.6, // new magazine clicks in
-  slideRelease: 0.8, // (empty reloads) slide snaps forward
-  handOn: 0.82, // support hand back on the gun
+  magOut: 0.1, // magazine release pressed: the old one drops out
+  handOff: 0.1, // support hand lets go of the gun...
+  magGrab: 0.4, // ...grabs a fresh magazine from the belt...
+  magIn: 0.68, // ...and pushes it in until it clicks
+  handOn: 0.78, // support hand back on the grip
+  slideRelease: 0.84, // (empty reloads) slide snaps forward
 };
 
 export class Pistol {
@@ -35,8 +36,8 @@ export class Pistol {
   // dt: seconds since the last frame. trigger: how many times the fire button
   // was pressed this frame (a pull while the gun isn't ready yet is kept for a
   // moment, so quick taps are never lost). reloadKey: the reload key was pressed.
-  // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magIn',
-  // 'slideRelease', 'reloaded'.
+  // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magGrab',
+  // 'magIn', 'slideRelease', 'reloaded'.
   update(dt, trigger, reloadKey) {
     this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 0.25);
     for (let i = 0; i < trigger; i++) this.pulls.push(0);
@@ -50,7 +51,7 @@ export class Pistol {
     if (this.reload) {
       this.reload.time += dt;
       const p = this.reloadProgress;
-      for (const step of ['magOut', 'magIn', 'slideRelease']) {
+      for (const step of ['magOut', 'magGrab', 'magIn', 'slideRelease']) {
         if (step === 'slideRelease' && !this.reload.empty) continue;
         if (p >= RELOAD_STEPS[step] && !this.reload.done.has(step)) {
           this.reload.done.add(step);

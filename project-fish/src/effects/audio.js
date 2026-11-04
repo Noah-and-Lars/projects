@@ -222,6 +222,12 @@ export function playMagOut() {
   burst({ at: 0.05, type: 'bandpass', from: 900, to: 600, q: 2, volume: 0.80, decay: 0.12 }); // slides out
 }
 
+// Pulling a fresh magazine from its pouch: a soft scuff of fabric.
+export function playMagGrab() {
+  burst({ type: 'bandpass', from: 700, to: 450, q: 1.2, volume: 0.35, attack: 0.02, decay: 0.16 });
+  burst({ at: 0.05, type: 'bandpass', from: 1500, q: 2, volume: 0.2, decay: 0.06 });
+}
+
 export function playMagIn() {
   burst({ type: 'bandpass', from: 1200, to: 800, q: 2, volume: 0.64, decay: 0.08 });
   burst({ at: 0.07, type: 'bandpass', from: 2200, q: 6, volume: 1.00, decay: 0.04 }); // clicks home

@@ -16,6 +16,8 @@ the hands still fit, and adds:
 - A separate barrel that stays put while the slide recoils (and tips its
   back end down, done in the game), so with the slide locked back it pokes
   out of the front and the chamber shows.
+- A whole magazine (steel body with witness holes, baseplate, top round),
+  hidden in the grip until it drops out during a reload.
 - Small parts: three-dot sights, extractor, striker plate, slide stop,
   takedown levers, magazine release, pins, trigger with safety blade.
 - Engraved markings: model name and serial number (made up, no real brands),
@@ -106,11 +108,13 @@ def box(name, x0, x1, s0, s1, y0, y1):
     return obj
 
 
-def cylinder(name, radius, start, end, axis='s', at=(0.0, 0.0), segments=40):
+def cylinder(name, radius, start, end, axis='s', at=(0.0, 0.0), segments=40, end_radius=None):
     """A cylinder from start to end along s (forward) or x (sideways).
-    `at` is where its axis is: (x, y) for an s cylinder, (s, y) for an x one."""
+    `at` is where its axis is: (x, y) for an s cylinder, (s, y) for an x one.
+    end_radius makes it a cone (narrower or wider at the end)."""
     bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, segments=segments, radius1=radius, radius2=radius, depth=end - start)
+    r2 = radius if end_radius is None else end_radius
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=segments, radius1=radius, radius2=r2, depth=end - start)
     # create_cone makes it along Z, centred on 0.
     middle = (start + end) / 2
     if axis == 's':
@@ -314,6 +318,51 @@ def build_frame(p):
     return frame
 
 
+# The magazine body: a steel box at the grip's angle (about 19 degrees), hidden
+# inside the grip when it's in, from the baseplate up to just under the slide.
+MAG_SLOPE = 0.35  # forward per metre up, the grip's angle
+MAG_BODY = [(-0.005, -0.1235), (0.0305, -0.022), (-0.0005, -0.022), (-0.036, -0.1235)]
+MAG_WIDTH = 0.022
+
+
+def build_magazine(p):
+    """The whole magazine, so it looks right when it drops out or goes in:
+    steel body with witness holes down both sides, polymer baseplate, and the
+    top round (brass case, copper bullet) showing in the feed lips."""
+    body = prism('mag_body', MAG_BODY, MAG_WIDTH)
+    bevel(body, 0.0012, 3)
+    holes = []
+    for k in range(6):
+        y = -0.112 + k * 0.0155
+        s_back = MAG_BODY[3][0] + MAG_SLOPE * (y - MAG_BODY[3][1])
+        for side in (-1, 1):
+            x = side * MAG_WIDTH / 2
+            holes.append(cylinder('witness_hole', 0.00135, x - 0.0011, x + 0.0011, axis='x', at=(s_back + 0.0065, y), segments=16))
+    cut(body, *holes)
+    sharp_edges(body)
+    plain_material(body, '#1b1c1f', 0.42, metallic=0.75)
+
+    base = prism('mag_base', p['magazine']['points'], p['magazine']['width'])
+    bevel(base, 0.0012, 3)
+    sharp_edges(base)
+    plain_material(base, POLYMER, 0.6)
+    magazine = join(base, body)
+    magazine.name = magazine.data.name = 'magazine'
+
+    # The top round. Its own part, so an emptied magazine can drop without it.
+    case = cylinder('case', 0.0049, 0.004, 0.0232, at=(0.0, -0.0176), segments=24)
+    bevel(case, 0.0004, 2)
+    plain_material(case, '#c9a04a', 0.3, metallic=0.85)
+    bullet = cylinder('bullet', 0.0045, 0.0232, 0.0262, at=(0.0, -0.0176), segments=24)
+    tip = cylinder('tip', 0.0045, 0.0262, 0.0322, at=(0.0, -0.0176), segments=24, end_radius=0.0013)
+    bullet = join(bullet, tip)
+    plain_material(bullet, '#b8733a', 0.35, metallic=0.9)
+    round_ = join(case, bullet)
+    round_.name = round_.data.name = 'magazine_round'
+    round_.parent = magazine
+    return magazine
+
+
 def build_small_parts(p):
     trigger = prism('trigger', p['trigger']['points'], p['trigger']['width'])
     bevel(trigger, 0.0007, 2)
@@ -323,10 +372,7 @@ def build_small_parts(p):
     sharp_edges(trigger)
     plain_material(trigger, POLYMER, 0.55)
 
-    magazine = prism('magazine', p['magazine']['points'], p['magazine']['width'])
-    bevel(magazine, 0.0012, 3)
-    sharp_edges(magazine)
-    plain_material(magazine, POLYMER, 0.6)
+    magazine = build_magazine(p)
 
     controls = [
         box('slide_stop', -FRAME_HALF - 0.0021, -FRAME_HALF + 0.0004, -0.007, 0.0135, -0.0168, -0.0118),
