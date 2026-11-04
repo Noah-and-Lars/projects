@@ -328,6 +328,12 @@ source in Settings → Pages should be switched to `main`.
   outside, Pulse Scan and Signal Hack for every player this screen has `auth` over (it was the local player only, so
   bots were never found); bots hang up after 2-4 s. Murk: X with canisters out sets them off, Shift + X throws another.
   Traps check their line from just off the surface they sit on (`ge` in `sgGadgetsUpdate`). `__sg` has more handles.
+  1.0.11: loadouts: `P.ld` (bit 1 = second gun, bit 2 = second gadget), in the 'op' event and the roster (7th field),
+  chosen on the pick screen (`.ldB`, kept per operator in `settings.ld`), bots random in `sgFreeOp`; `sgArm` uses it.
+  Claymore is `side: 'both'` and several defenders' gadget pairs have claymores or shields. Rappelling: `P.rope`
+  (`sgRopeStart` on Space facing an outside wall in the action phase, attackers only; `sgRopeStep` from `sgMove`;
+  `ropeWallAt`; `sgRopeWindow` on F kicks a barricade in and vaults inside). The maps have few tall outside walls under
+  open sky (covered yards stop the climb at their ceiling), so roofs are the next step.
 
 ## Adding a game
 

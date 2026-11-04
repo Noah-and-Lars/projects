@@ -19,6 +19,10 @@ Sounds that tell you something (gunfire, explosions, footsteps, ringing phones, 
 
 Press 5 to switch between watching your teammates and the cameras (defenders: the map cameras and bulletproof cameras; attackers: the team's drones). A / D switch, the mouse looks round, and a click marks the enemy you are looking at. Attacking bots shoot out cameras they see.
 
+## Loadouts and rappelling
+
+On the operator screen, choose one of each operator's two primary guns and one of their two gadgets (kept for next time). Attackers can rappel: Space facing an outside wall, W / S up and down, A / D along the wall, shoot as usual, F at a window to go in (kicking any barricade through), Space to let go.
+
 ## Down but not out
 
 Since 1.0.5 a lethal hit that isn't a headshot puts you down while a teammate is still standing: crawl, bleed out in 25 s, or get revived by a teammate holding F for 4 s. The last one standing goes straight out. Overtime: at 3 all the match goes to first to 5, with sides swapping every round.
@@ -59,7 +63,7 @@ Each has three pairs of bomb sites, stairs, hatches and five defender cameras.
 
 ## Keys
 
-WASD move, Shift sprint, C / Ctrl crouch, Q / E lean, mouse to shoot (right-click to aim: a click toggles it, or hold it if you pick Hold in Settings), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras (Space hops a drone), V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
+WASD move, Shift sprint, Space rappel (attackers, at an outside wall), C / Ctrl crouch, Q / E lean, mouse to shoot (right-click to aim: a click toggles it, or hold it if you pick Hold in Settings), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras (Space hops a drone), V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
 
 ## Playing
 
