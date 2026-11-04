@@ -279,6 +279,14 @@ source in Settings → Pages should be switched to `main`.
   Colours blend between `DN.day/dusk/night` (fog, sky, hemi, water, clouds), the sky shader draws stars (`night`),
   exposure drops to 1.0 at night. `#tod` (top right) shows the time. Foot guns: `FOOT_GUN_HOLD` (scale and grip point
   per model) and the mount rotation (pi/2, pi, 0), so they are upright with the grip in the hand.
+  1.2.5: planes. `PLANE_FUEL` (seconds at full throttle, burning 35% at idle) in `Plane.update`; empty, `thr` is 0 and the
+  nose can't rise above a glide. `landedRepair` is now a service: parked (speed < 6) for `SERVICE_S` (8) seconds gives a
+  full tank, full bombs/missiles and `SERVICE_HEAL` (half) health, once per landing (`svcT`, `svcDone`; the host runs it
+  for a landed player's stand-in, flag 16). `planeSpotOk`: planes deploy only at the airfield, a plane pad, Crown Isle
+  (the island with `I.rw`) or a carrier. Jet 800 with `JET_WAIT` (`PLAYER.jetAt`, match seconds from `matchEl()`),
+  bomber 700; the bomber's tail gunner (`REAR_RANGE`, `REAR_HIT` 0.75) leads with the bomber's own speed. Bots: half
+  are 'air' (`i % 2`), and `botLand` brings a bot home when fuel runs low (`bot.rtb`; tryLand works for it). The cockpit
+  (`COCKPIT`) draws its panel on a canvas at 10 Hz (`drawPanel`), the jet's HUD (`drawHUD`), and moves `stick`/`yoke`/`thr`.
 - `card-royale/`: Card Royale (1.0.2), a real-time 1v1 card battler (towers, lanes, Elixir, 50 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by
   `build.sh`): data, `20-sim.js` (the battle: `newBattle`, `step` at 20 ticks a second, `play`, `canDeploy`, the bot in

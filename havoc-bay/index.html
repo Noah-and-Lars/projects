@@ -82,6 +82,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;paddin
 #hpBar i{background:linear-gradient(#7be35a,#36a321)}
 #a1Bar i{background:linear-gradient(#ff7b6b,#d22f25)}
 #a2Bar i{background:linear-gradient(#ffe066,#e9a514)}
+#fuelBar i{background:linear-gradient(#7fd0ff,#2f86d6)}#fuelRow.low #fuelBar i{background:linear-gradient(#ff9d6b,#e0452c)}#fuelRow.low .ico{animation:fuelBlink .8s steps(2) infinite}
+@keyframes fuelBlink{50%{opacity:.35}}
 #vname{font-weight:800;font-size:13px;opacity:.95;margin-top:1px}
 #throttle{position:absolute;left:calc(16px + env(safe-area-inset-left));top:52%;transform:translateY(-50%);width:24px;height:150px;border-radius:6px;border:2px solid #fff;background:linear-gradient(#e8433a 0 14%,#ff9d2e 14% 40%,#ffd23a 40% 78%,#78c94a 78% 100%);box-shadow:0 2px 0 rgba(0,0,0,.35)}
 #thrMark{position:absolute;left:-7px;right:-7px;height:9px;margin-top:-4px;background:#fff;border:2px solid #1b1f28;border-radius:3px}
@@ -206,6 +208,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;paddin
 .card .em{font-size:30px;line-height:1}
 .card .nm{font-weight:900;font-size:16px;margin-top:4px}
 .card .ds{font-size:12px;opacity:.82;margin-top:2px;line-height:1.25}
+.card .fu{white-space:nowrap;font-weight:800;opacity:.95}
 .card .pr{position:absolute;top:8px;right:9px;font-weight:900;font-size:14px;display:flex;align-items:center;gap:4px}
 .card .pr .coin{width:14px;height:14px}
 .card.free .pr{color:#7be35a}
@@ -339,6 +342,7 @@ body.touch #throttle{top:40%}
     <div class="row"><span class="ico" style="background:#2e9d2b">+</span><div class="bar" id="hpBar"><i></i><b>100/100</b></div></div>
     <div class="row" id="a1Row"><span class="ico" style="background:#c62f26" id="a1Ico">●</span><div class="bar" id="a1Bar"><i></i><b></b></div></div>
     <div class="row" id="a2Row"><span class="ico" style="background:#d39a0c" id="a2Ico">!</span><div class="bar" id="a2Bar"><i></i><b></b></div></div>
+    <div class="row hidden" id="fuelRow"><span class="ico" style="background:#3a7bd5">⛽</span><div class="bar" id="fuelBar"><i></i><b></b></div></div>
     <div id="vname"></div>
   </div>
   <div id="throttle" class="hidden"><div id="thrMark"></div><div id="thrTxt"></div></div>
@@ -409,6 +413,15 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.2.5 <small>Planes: fuel, runways and a new cockpit</small></h3>
+    <ul>
+      <li><b>Fuel.</b> Every plane has its own tank (the Jet's is the smallest, the Bomber's the biggest), shown under your health and on the deploy cards. Flying throttled back saves fuel. When it runs out the engine stops and the plane glides down, so you can still bring it in.</li>
+      <li><b>Refuel on a runway.</b> Land on your airfield, Crown Isle or your carrier and stay parked for 8 seconds: you get a full tank, bombs and missiles, and half your health back.</li>
+      <li><b>Planes take off from runways only</b>: your harbor's airfield, Crown Isle when your team holds it, or your carrier. Islands without a runway no longer launch planes.</li>
+      <li><b>Jet: 800 gold</b>, and ready one minute into the battle and one minute after each time you take one. <b>Bomber: 700 gold</b>, and its tail gunner now hits three shots in four within range.</li>
+      <li><b>A proper cockpit.</b> Press C in a plane: live airspeed, attitude, altitude, compass and fuel gauges, warning lamps, a stick (or the Bomber's yoke) and a throttle lever that move with you, and a head-up display in the Jet.</li>
+      <li><b>Bots</b> split evenly between ships and planes, and bot pilots fly home to refuel when they run low.</li>
+    </ul>
     <h3>v1.2.4 <small>Day and night</small></h3>
     <ul>
       <li><b>Day and night.</b> Every battle starts in the morning and the sun moves across the sky: 3 minutes of daylight, then a sunset, 1.5 minutes of moonlit night with stars, and a sunrise. The time of day shows in the top right corner.</li>
@@ -517,7 +530,7 @@ body.touch #throttle{top:40%}
       <tr><td>F</td><td>Torpedo (ships) · drop bomb (planes)</td></tr>
       <tr><td>R</td><td>Missile (jets, battleship)</td></tr>
       <tr><td>E</td><td>Use a spawn pad, turret or the missile computer · get in or out</td></tr>
-      <tr><td>S (plane)</td><td>Lowest speed: touch down on your carrier or a runway to land</td></tr>
+      <tr><td>S (plane)</td><td>Lowest speed: touch down on your carrier or a runway to land. Stay parked 8 seconds to refuel, rearm and repair</td></tr>
       <tr><td>Space</td><td>Jump · plane: level out</td></tr>
       <tr><td>Shift</td><td>Sprint</td></tr>
       <tr><td>B</td><td>Deploy menu, or launch a plane from your carrier</td></tr>
@@ -589,7 +602,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.2.4';
+const VERSION = '1.2.5';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -860,6 +873,7 @@ function updateDayNight() {
   if (sy > -0.03) { SUN_DIR.copy(_sunD); sun.intensity = ss(-0.03, 0.2, sy) * 1.0; sun.color.setRGB(1, 0.91, 0.8).lerp(_dnA.setRGB(1, 0.6, 0.32), duskK); }
   else { SUN_DIR.copy(_sunD).negate(); sun.intensity = ss(-0.03, -0.22, sy) * 0.3; sun.color.setRGB(0.62, 0.72, 0.98); }
   renderer.toneMappingExposure = 1.0 + 0.32 * dayK; // night is darker overall (lamps and glows stay bright)
+  DN.k = dayK;
   mix('fog', FOG_COL); skyMat.uniforms.bot.value.copy(FOG_COL);
   mix('top', skyMat.uniforms.top.value); mix('mid', skyMat.uniforms.mid.value);
   mix('hs', hemi.color); mix('hg', hemi.groundColor); hemi.intensity = 0.26 + 0.24 * dayK;
@@ -1315,12 +1329,18 @@ for (const k in SHIP_TYPES) SHIP_TYPES[k].speed = Math.round(SHIP_TYPES[k].speed
 /* ---------------- planes ---------------- */
 const PLANE_TYPES = {
   fighter: { name: 'Fighter', icon: '✈️', cost: 0, hp: 600, min: 40, max: 92, turn: 1.35, r: 5.5, guns: [[2.2, -0.2, 2], [-2.2, -0.2, 2]], bombs: 2, missiles: 0, cam: 18, kill: 60, sound: 'plane', desc: 'The basic gunner: two machine guns and 2 small bombs.' },
-  jet: { name: 'Jet', icon: '🛩️', cost: 450, hp: 650, min: 58, max: 140, turn: 1.25, r: 6, guns: [[0.9, -0.3, 4], [-0.9, -0.3, 4]], bombs: 0, missiles: 4, cam: 20, kill: 90, sound: 'jet', desc: 'Very fast, with machine guns and 4 homing missiles.' },
-  bomber: { name: 'Bomber', icon: '💣', cost: 600, hp: 2000, min: 38, max: 72, turn: 0.75, r: 9.5, guns: [[0.6, -0.5, 6.9], [-0.6, -0.5, 6.9]], bombs: 10, missiles: 0, rear: true, cam: 30, kill: 130, sound: 'plane', desc: '10 heavy bombs, two nose guns and a rear gunner. Flattens harbors.' }, // 1.1: nose guns (Click did nothing before)
+  jet: { name: 'Jet', icon: '🛩️', cost: 800, hp: 650, min: 58, max: 140, turn: 1.25, r: 6, guns: [[0.9, -0.3, 4], [-0.9, -0.3, 4]], bombs: 0, missiles: 4, cam: 20, kill: 90, sound: 'jet', desc: 'Very fast, with machine guns and 4 homing missiles.' },
+  bomber: { name: 'Bomber', icon: '💣', cost: 700, hp: 2000, min: 38, max: 72, turn: 0.75, r: 9.5, guns: [[0.6, -0.5, 6.9], [-0.6, -0.5, 6.9]], bombs: 10, missiles: 0, rear: true, cam: 30, kill: 130, sound: 'plane', desc: '10 heavy bombs, two nose guns and a rear gunner. Flattens harbors.' }, // 1.1: nose guns (Click did nothing before)
 };
 PLANE_TYPES.dual = { name: 'Dual Gunner', icon: '🛩️', cost: 300, hp: 950, min: 42, max: 96, turn: 1.15, r: 6.5, guns: [[1.9, -0.2, 2.4], [-1.9, -0.2, 2.4]], bombs: 0, missiles: 0,
   gunners: [[0, 1.75, -2.0], [0, -1.05, -1.2]], cam: 22, kill: 85, sound: 'plane', desc: 'Two forward guns, plus a gunner on top and one underneath who shoot at any plane in range.' }; // 1.2
 const PLANE_ORDER = ['fighter', 'jet', 'bomber', 'dual'];
+// 1.2.5: fuel, in seconds of flying at full throttle (it burns slower throttled back). Empty, the engine stops and the
+// plane glides down. Parked on a runway or your carrier for SERVICE_S seconds it is refuelled, rearmed and patched up.
+const PLANE_FUEL = { fighter: 150, jet: 110, bomber: 220, dual: 170 };
+for (const k in PLANE_FUEL) PLANE_TYPES[k].fuel = PLANE_FUEL[k];
+const SERVICE_S = 8, SERVICE_HEAL = 0.5, JET_WAIT = 60; // JET_WAIT: a jet is ready a minute into the match, and a minute after each one
+const REAR_RANGE = 340, REAR_HIT = 0.75; // 1.2.5: the bomber's tail gunner hits three shots in four within range
 // 1.2: where your eyes are in each cockpit (plane space: +z forward)
 const COCKPIT_EYE = { fighter: [0, 1.05, 0.35], jet: [0, 1.0, 2.0], bomber: [0, 1.35, 5.6], dual: [0, 1.1, 0.7] };
 
@@ -2631,6 +2651,7 @@ class Plane extends Ent {
     this.speed = P.max * 0.8; this.thr = 0.75; this.bank = 0; this.rollIn = 0; this.prevYaw = heading;
     this.bombs = P.bombs; this.missiles = P.missiles; this.bombCd = 0; this.misCd = 0; this.gunCd = 0; this.gi = 0; this.rearm = 0;
     this.trigger = false; this.invuln = 3; this.falling = false; this.fxT = 0; this.rearCd = 0;
+    this.fuelMax = P.fuel || 150; this.fuel = this.fuelMax; this.svcT = 0; this.svcDone = false; // 1.2.5
     const M = buildPlaneModel(type, team); this.model = M; this.group = M.group; scene.add(this.group);
     this.right = new V3(1, 0, 0); this.up = new V3(0, 1, 0);
     this.orient(0);
@@ -2670,6 +2691,15 @@ class Plane extends Ent {
       this.thr = 0; this.trigger = false; this.desired.y = Math.min(this.desired.y, this.fwd.y - 0.05, -0.2);
       this.dfx = (this.dfx || 0) - dt; if (this.dfx <= 0) { this.dfx = 0.05; smokePuff(this.pos, 2.6, true); firePuff(this.pos, 2.2); }
     }
+    // 1.2.5: fuel. Empty, the engine stops: no throttle, and the nose can't come above a gentle glide
+    if (!this.disabled && this.fuel > 0) {
+      this.fuel = Math.max(0, this.fuel - dt * (0.35 + 0.65 * Math.max(0, this.thr)));
+      if (this.driver === PLAYER) {
+        if (this.fuel <= 0) { showMsg('Out of fuel', 'The engine has stopped. Glide down onto a runway or your carrier to refuel'); Sound.play('deny'); }
+        else if (this.fuel < this.fuelMax * 0.2 && !this.lowFuel) { this.lowFuel = true; showMsg('Low fuel', 'Land on a runway or your carrier to refuel'); }
+      }
+    }
+    if (this.fuel <= 0) { this.thr = 0; this.desired.y = Math.min(this.desired.y, -0.07); }
     // steer toward the desired direction
     const d = this.desired;
     if (d.y > 0.88) d.y = 0.88; if (d.y < -0.88) d.y = -0.88; d.normalize();
@@ -2689,7 +2719,7 @@ class Plane extends Ent {
     const yaw = Math.atan2(this.fwd.x, this.fwd.z), yr = dt > 0 ? wrapA(yaw - this.prevYaw) / dt : 0; this.prevYaw = yaw;
     this.bank = damp(this.bank, clamp(-yr * 0.9, -1.25, 1.25) + this.rollIn, 4, dt);
     this.orient(dt);
-    if (this.driver === PLAYER && !this.disabled && tryLand(this)) return; // 1.2.1: at the lowest speed over a deck or runway
+    if ((this.driver === PLAYER || (this.driver && this.driver.rtb)) && !this.disabled && tryLand(this)) return; // 1.2.1: at the lowest speed over a deck or runway (1.2.5: bots coming in to refuel too)
     // crashing into the ground, water or buildings
     const gh = landH(this.pos.x, this.pos.z);
     let crash = this.pos.y < Math.max(gh, 0) + 1.2, solid = false, hitShip = null;
@@ -2715,7 +2745,7 @@ class Plane extends Ent {
   }
   // propellers and the jet's afterburner
   spin(dt) {
-    for (const p of this.model.props) p.rotation.z += dt * (this.alive ? 40 : 6);
+    for (const p of this.model.props) p.rotation.z += dt * (this.alive && this.fuel !== 0 ? 40 : 4); // 1.2.5: windmilling with no fuel
     if (this.model.group.userData.glow) this.model.group.userData.glow.scale.set(0.5, 0.8 + this.thr * 1.6, 0.5);
   }
   // smoke when damaged
@@ -2744,11 +2774,20 @@ class Plane extends Ent {
       GN.forEach((gp, k) => {
         if (this.gcd[k] > 0) { this.gcd[k] -= dt; return; }
         if (peerSeatFire(this, k)) return; // 1.2.1: a player is in this seat
-        const t = autoTarget(null, this.team, this.pos, true, false, 420);
+        const tail = !P.gunners; // the bomber's tail gunner (1.2.5: a better shot)
+        const t = autoTarget(null, this.team, this.pos, true, false, tail ? REAR_RANGE : 420);
         if (!t) { this.gcd[k] = 0.4; return; }
         _v1.set(gp[0], gp[1], gp[2]).applyMatrix4(this.group.matrixWorld);
-        leadPoint(_v2, _v1, t, WEAP.mg.speed, 0); _v2.sub(_v1).normalize();
-        _v2.x += rand(-0.03, 0.03); _v2.y += rand(-0.03, 0.03); _v2.z += rand(-0.03, 0.03); _v2.normalize();
+        if (tail) { // lead it allowing for the bomber's own speed, which the bullets carry half of
+          const c = t.hitCenter(); _v2.copy(c);
+          for (let i = 0; i < 3; i++) { const tt = Math.min(6, _v1.distanceTo(_v2) / WEAP.mg.speed); _v2.copy(c).addScaledVector(t.vel, tt).addScaledVector(this.vel, -0.5 * tt); }
+        } else leadPoint(_v2, _v1, t, WEAP.mg.speed, 0);
+        _v2.sub(_v1).normalize();
+        if (tail) { // three in four on target, the rest just wide of it
+          const miss = Math.random() > REAR_HIT, r = miss ? (t.rad || 4) * 2.4 / Math.max(30, _v1.distanceTo(t.pos)) : 0.0015, a = Math.random() * TAU;
+          _v3.crossVectors(_v2, UP).normalize(); _v2.addScaledVector(_v3, Math.cos(a) * r); _v3.crossVectors(_v3, _v2).normalize(); _v2.addScaledVector(_v3, Math.sin(a) * r);
+        } else { _v2.x += rand(-0.03, 0.03); _v2.y += rand(-0.03, 0.03); _v2.z += rand(-0.03, 0.03); }
+        _v2.normalize();
         fire('mg', this, _v1, _v2, { vel: _v3.copy(this.fwd).multiplyScalar(this.speed * 0.5), gi: 1, silent: k > 0 });
         this.gcd[k] = 0.11 + k * 0.02;
       });
@@ -2993,7 +3032,7 @@ function makeBots() {
   const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
   for (let t = 0; t < 2; t++) {
     const n = GAME.demo ? GAME.perTeam : NET.on ? 0 : GAME.perTeam - (t === PLAYER.team ? 1 : 0); // bots fill the places real players don't (1.2: offline only)
-    for (let i = 0; i < n; i++) GAME.bots.push(new Bot(t, names.pop() || 'Bot' + i, (i % 5) < 3 ? 'navy' : 'air'));
+    for (let i = 0; i < n; i++) GAME.bots.push(new Bot(t, names.pop() || 'Bot' + i, i % 2 ? 'air' : 'navy')); // 1.2.5: half fly planes
   }
 }
 
@@ -3048,7 +3087,7 @@ function spawnBot(bot) {
     if (carriers.length && Math.random() < 0.6) bot.ent = launchFromCarrier(type, team, pick(carriers), bot);
     else bot.ent = spawnPlane(type, team, pick(PADS.filter(p => p.kind === 'plane' && p.team === team)), bot);
   }
-  bot.mission = null; bot.state = 'approach'; bot.stateT = 0; bot.target = null; bot.stuck = 0; bot.reverseT = 0; bot.flanked = false; bot.flankSide = undefined;
+  bot.mission = null; bot.state = 'approach'; bot.stateT = 0; bot.target = null; bot.stuck = 0; bot.reverseT = 0; bot.flanked = false; bot.flankSide = undefined; bot.rtb = null;
 }
 
 function vehicleLost(driver, ent) {
@@ -3273,6 +3312,14 @@ function botPlane(bot, p, dt) {
   const P = p.P, D = p.desired, sk = BOT_SKILL();
   bot.think -= dt; bot.stateT -= dt;
   p.trigger = false;
+  // 1.2.5: parked on the airfield: wait for the refuel, then take off again
+  if (p.landed) { p.thr = p.svcDone ? 1 : 0; if (p.svcDone) bot.rtb = null; return; }
+  // 1.2.5: low on fuel (enough left to get home, and a bit): fly back to the harbor's airfield and land
+  if (!bot.rtb) {
+    const R = RUNWAYS.find(r => r.team === bot.team);
+    if (R && (p.fuel <= 0 || p.fuel < Math.hypot(R.x - p.pos.x, R.z - p.pos.z) / (P.max * 0.7) + 25)) bot.rtb = { R, s: 0, ph: 0, t: 0 };
+  }
+  if (bot.rtb) { botLand(bot, p, dt); return; }
   if (bot.think <= 0) {
     bot.think = 0.5;
     if (p.type === 'bomber') {
@@ -3357,6 +3404,37 @@ function botPlane(bot, p, dt) {
   D.normalize();
 }
 
+// 1.2.5: a bot bringing its plane in: out to a point 700 m off the end of the runway, then down a gentle glide path
+// along it with the throttle closed, until tryLand puts it down. Too far off the line, or past the runway: go round.
+function botLand(bot, p, dt) {
+  const D = p.desired, L = bot.rtb, R = L.R, sn = Math.sin(R.h), cs = Math.cos(R.h);
+  L.t += dt;
+  if (!L.s) L.s = ((p.pos.x - R.x) * sn + (p.pos.z - R.z) * cs) < 0 ? 1 : -1; // come in from the end we're nearer
+  const lx = sn * L.s, lz = cs * L.s;                       // the way we land
+  const tx = R.x - lx * (R.hl - 30), tz = R.z - lz * (R.hl - 30); // touchdown point
+  const rx = p.pos.x - tx, rz = p.pos.z - tz, along = -(rx * lx + rz * lz), side = rx * lz - rz * lx;
+  const gy = R.y + (GEAR[p.type] || 2), fuel = p.fuel > 0;
+  if (L.ph === 0) {
+    const ax = tx - lx * 700, az = tz - lz * 700, hx = ax - p.pos.x, hz = az - p.pos.z, hd = Math.hypot(hx, hz) || 1;
+    D.set(hx / hd, clamp((gy + 75 - p.pos.y) * 0.012, -0.3, 0.3), hz / hd);
+    p.thr = fuel ? 0.75 : 0;
+    if (hd < 130 || (along > 350 && along < 900 && Math.abs(side) < 50 && p.fwd.x * lx + p.fwd.z * lz > 0.8)) L.ph = 1;
+    // the usual care near the ground
+    const gh = Math.max(0, landH(p.pos.x + p.fwd.x * p.speed * 1.8, p.pos.z + p.fwd.z * p.speed * 1.8), landH(p.pos.x, p.pos.z));
+    if (p.pos.y < gh + 25) D.y = Math.max(D.y, 0.5);
+  } else {
+    const want = gy + Math.max(0, along) * 0.1 + 1;
+    const lat = clamp(-side * 0.014, -0.45, 0.45);
+    D.set(lx + lz * lat, clamp((want - p.pos.y) * 0.03, -0.22, 0.12), lz - lx * lat);
+    p.thr = fuel && along > 800 ? 0.35 : 0;
+    // something in the way that isn't the runway, way off the line, or past it: round again
+    const gh = landH(p.pos.x + lx * 40, p.pos.z + lz * 40);
+    if (along < -(R.hl * 2 - 60) || Math.abs(side) > 110 || (!onRunway(p.pos.x + lx * 40, p.pos.z + lz * 40) && gh > p.pos.y - 8)) { L.ph = 0; L.s = 0; D.y = Math.max(D.y, 0.35); }
+  }
+  if (Math.abs(p.pos.x) > BOUND.x - 150 || Math.abs(p.pos.z) > BOUND.z - 150) D.set(-p.pos.x, 0.05, -p.pos.z);
+  D.normalize();
+}
+
 /* ---------------- match flow ---------------- */
 function clearDynamic() {
   for (const e of ENTS.slice()) if (e.kind === 'ship' || e.kind === 'plane' || e.kind === 'soldier') { scene.remove(e.group); e.remove(); }
@@ -3381,7 +3459,7 @@ function startMatch(demo) {
   GAME.clock = demo ? 1e9 : cfg.minutes * 60; GAME.clock0 = GAME.clock; dnLast = -1; // 1.2.4: the day starts with the match
   resetWorld();
   reset121();
-  Object.assign(PLAYER, { name: !demo && NET.on ? NET.name : 'You', team: demo ? -1 : cfg.team, kills: 0, deaths: 0, damage: 0, gold: 300, earned: 0, spent: 0, caps: 0, ent: null, soldier: null, mode: demo ? 'demo' : 'dead', respawn: 0 });
+  Object.assign(PLAYER, { name: !demo && NET.on ? NET.name : 'You', team: demo ? -1 : cfg.team, kills: 0, deaths: 0, damage: 0, gold: 300, earned: 0, spent: 0, caps: 0, ent: null, soldier: null, mode: demo ? 'demo' : 'dead', respawn: 0, jetAt: JET_WAIT });
   CREW.forEach(c => { c.kills = 0; c.deaths = 0; c.damage = 0; });
   if (!demo && NET.client) GAME.bots = []; // the host's screen runs the bots
   else makeBots();
@@ -3809,36 +3887,147 @@ PLAYER.aimPt = new V3();
 
 const _ct = new V3(), _cp = new V3();
 let titleCam = { t: 0, target: null, ang: 0 };
+// 1.2.5: the cockpit you fly from (C): an instrument panel with live gauges (airspeed, attitude, altitude, heading,
+// fuel, throttle, warning lights), a stick (or the bomber's yoke) and a throttle lever that move with you, side
+// consoles, a framed canopy with a mirror, and in the jet a head-up display. Drawn in camera space on top of the world.
 const COCKPIT = (() => {
-  const g = new THREE.Group(), dark = new THREE.MeshBasicMaterial({ color: 0x23272e }), mid = new THREE.MeshBasicMaterial({ color: 0x3a414c }), rim = new THREE.MeshBasicMaterial({ color: 0x15181d });
-  const bx = (w, h, d, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); g.add(o); return o; };
-  // dashboard across the bottom, with a padded top edge
-  bx(2.2, 0.42, 0.5, dark, 0, -0.78, -1.05); bx(2.2, 0.08, 0.56, rim, 0, -0.56, -1.0);
-  // dials
-  const dial = canvasTex(128, 128, (x) => { x.fillStyle = '#0d0f12'; x.beginPath(); x.arc(64, 64, 60, 0, TAU); x.fill(); x.strokeStyle = '#d8dee8'; x.lineWidth = 4; x.stroke();
-    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; x.beginPath(); x.moveTo(64 + Math.cos(a) * 48, 64 + Math.sin(a) * 48); x.lineTo(64 + Math.cos(a) * 56, 64 + Math.sin(a) * 56); x.stroke(); }
-    x.strokeStyle = '#ffb03a'; x.lineWidth = 5; x.beginPath(); x.moveTo(64, 64); x.lineTo(100, 40); x.stroke(); });
-  const dm = new THREE.MeshBasicMaterial({ map: dial });
-  for (const dx of [-0.6, -0.3, 0.3, 0.6]) { const d = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), dm); d.position.set(dx, -0.7, -0.79); d.rotation.x = -0.35; g.add(d); }
-  // canopy frame: thin side pillars and a bar overhead, kept to the edges so the view stays clear
-  for (const sx of [-1, 1]) { bx(0.05, 1.6, 0.05, rim, sx * 1.05, 0.05, -1.0, 0, 0, -sx * 0.32); bx(0.04, 0.04, 1.6, rim, sx * 0.86, 0.72, -0.4); }
-  bx(1.6, 0.05, 0.05, rim, 0, 0.78, -1.0);
-  // a reflector gunsight in the middle
+  const g = new THREE.Group(), mats = [];
+  const M = c => { const m = new THREE.MeshBasicMaterial({ color: c }); m.userData.base = new THREE.Color(c); mats.push(m); return m; };
+  const dark = M(0x262b33), mid = M(0x3a414c), rim = M(0x14171c), metal = M(0x6a727d), red = M(0xb3261e), yel = M(0xd8b02a), blk = M(0x0c0d10), leather = M(0x4a3426);
+  const bx = (w, h, d, m, x, y, z, rx = 0, ry = 0, rz = 0, p = g) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); p.add(o); return o; };
+  const cy = (r, h, m, x, y, z, rx = 0, ry = 0, rz = 0, p = g, seg = 10) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); p.add(o); return o; };
+  // ---- the instrument panel: a canvas redrawn ten times a second ----
+  const PW = 1024, PH = 320, cv = document.createElement('canvas'); cv.width = PW; cv.height = PH;
+  const X = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+  // (the bottom fifth of the view: its top edge is about 22 degrees below the middle of the screen)
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.96, 0.3), new THREE.MeshBasicMaterial({ map: tex })); face.position.set(0, -0.445, -0.76); face.rotation.x = -0.16; g.add(face);
+  bx(1.04, 0.36, 0.16, dark, 0, -0.46, -0.85, -0.16);           // the panel's body
+  bx(1.1, 0.045, 0.22, rim, 0, -0.282, -0.8, -0.1);             // padded glare shield over it
+  bx(1.1, 0.025, 0.025, leather, 0, -0.268, -0.69, 0);          // its leather edge
+  for (const sx of [-1, 1]) bx(0.07, 0.34, 0.14, mid, sx * 0.52, -0.45, -0.79, -0.16);
+  for (const sx of [-1, 1]) {                                    // side consoles with rows of switches
+    bx(0.3, 0.16, 1.0, mid, sx * 0.7, -0.9, -0.42); bx(0.31, 0.02, 1.01, rim, sx * 0.7, -0.81, -0.42);
+    for (let k = 0; k < 5; k++) { bx(0.03, 0.05, 0.03, k % 2 ? metal : yel, sx * 0.64, -0.79, -0.72 + k * 0.1, -0.4); bx(0.03, 0.05, 0.03, metal, sx * 0.76, -0.79, -0.72 + k * 0.1, 0.3); }
+    bx(0.08, 0.04, 0.06, red, sx * 0.7, -0.795, -0.12);
+  }
+  // throttle quadrant on the left, the lever travels with the throttle
+  bx(0.1, 0.06, 0.3, rim, -0.47, -0.56, -0.52);
+  const thr = new THREE.Group(); thr.position.set(-0.47, -0.54, -0.52); g.add(thr);
+  cy(0.012, 0.2, metal, 0, 0.1, 0, 0, 0, 0, thr, 6); bx(0.07, 0.05, 0.08, blk, 0, 0.21, 0.01, 0, 0, 0, thr); bx(0.02, 0.02, 0.03, red, 0.03, 0.235, 0.01, 0, 0, 0, thr);
+  // stick between the knees (the bomber flies with a yoke instead)
+  const stick = new THREE.Group(); stick.position.set(0.02, -0.86, -0.5); g.add(stick);
+  cy(0.016, 0.42, metal, 0, 0.21, 0, 0, 0, 0, stick, 8); cy(0.03, 0.12, blk, 0, 0.46, 0, 0, 0, 0, stick, 8); bx(0.02, 0.025, 0.02, red, 0, 0.5, -0.03, 0, 0, 0, stick);
+  bx(0.11, 0.03, 0.11, leather, 0, 0.02, 0, 0, 0, 0, stick);
+  const yoke = new THREE.Group(); yoke.position.set(0, -0.5, -0.56); g.add(yoke);
+  cy(0.02, 0.3, metal, 0, -0.15, 0.08, 0.5, 0, 0, yoke, 8);
+  bx(0.34, 0.035, 0.035, blk, 0, 0.0, 0, 0, 0, 0, yoke); for (const sx of [-1, 1]) bx(0.035, 0.12, 0.035, blk, sx * 0.17, 0.05, 0, 0, 0, 0, yoke);
+  // canopy frame: a bow over the windscreen, side rails, a rear arch, and a mirror
+  for (const sx of [-1, 1]) { bx(0.045, 1.5, 0.045, rim, sx * 1.02, 0.08, -1.02, 0, 0, -sx * 0.34); bx(0.04, 0.04, 1.7, rim, sx * 0.84, 0.74, -0.3); bx(0.04, 0.9, 0.04, rim, sx * 0.9, 0.3, 0.42, 0, 0, -sx * 0.2); bx(0.03, 0.03, 1.4, rim, sx * 1.08, -0.42, -0.4); }
+  bx(1.62, 0.05, 0.05, rim, 0, 0.66, -1.0); bx(1.62, 0.045, 0.045, rim, 0, 0.82, 0.42); bx(0.04, 0.04, 1.4, rim, 0, 0.7, -0.3);
+  bx(0.24, 0.07, 0.015, rim, 0, 0.6, -0.98); bx(0.22, 0.055, 0.01, M(0x8fa6b8), 0, 0.6, -0.972);
+  // gunsight: a reflector ring and its bead
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.045, 0.052, 32), new THREE.MeshBasicMaterial({ color: 0xffb03a, transparent: true, opacity: 0.85, depthTest: false }));
-  ring.position.set(0, -0.08, -1.2); g.add(ring); bx(0.12, 0.12, 0.08, mid, 0, -0.5, -1.1);
+  ring.position.set(0, -0.08, -1.2); g.add(ring); bx(0.1, 0.05, 0.08, mid, 0, -0.245, -0.86);
+  // the jet's head-up display: a glass plate with green symbols
+  const hcv = document.createElement('canvas'); hcv.width = 512; hcv.height = 384; const HX = hcv.getContext('2d'), htex = new THREE.CanvasTexture(hcv);
+  const hud = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.33), new THREE.MeshBasicMaterial({ map: htex, transparent: true, depthTest: false, toneMapped: false }));
+  hud.position.set(0, -0.1, -1.05); g.add(hud);
+  const hudFrame = bx(0.46, 0.02, 0.06, rim, 0, -0.265, -0.95);
   g.traverse(o => { if (o.isMesh) { o.renderOrder = 20; o.frustumCulled = false; } });
-  g.visible = false; let hidden = null;
-  function tick() {
+  g.visible = false; let hidden = null, drawT = 0, lastType = null;
+  // ---- drawing the gauges ----
+  function dial(x, y, r, label) {
+    X.fillStyle = '#0b0d10'; X.beginPath(); X.arc(x, y, r + 6, 0, TAU); X.fill();
+    X.strokeStyle = '#59616c'; X.lineWidth = 4; X.stroke();
+    X.fillStyle = '#9aa3ad'; X.font = '700 15px system-ui,sans-serif'; X.textAlign = 'center'; X.fillText(label, x, y + r + 21);
+  }
+  function ticks(x, y, r, n, a0, a1, big) { X.strokeStyle = '#d8dee8'; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n, l = i % big ? 7 : 13; X.lineWidth = i % big ? 2 : 3; X.beginPath(); X.moveTo(x + Math.cos(a) * (r - l), y + Math.sin(a) * (r - l)); X.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); X.stroke(); } }
+  function needle(x, y, r, a, col = '#ffb03a') { X.strokeStyle = col; X.lineWidth = 5; X.lineCap = 'round'; X.beginPath(); X.moveTo(x - Math.cos(a) * 10, y - Math.sin(a) * 10); X.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); X.stroke(); X.fillStyle = '#2a2f36'; X.beginPath(); X.arc(x, y, 7, 0, TAU); X.fill(); }
+  function lamp(x, y, txt, on, col) { X.fillStyle = on ? col : '#2a2e35'; X.fillRect(x - 46, y - 16, 92, 32); X.strokeStyle = '#0b0d10'; X.lineWidth = 3; X.strokeRect(x - 46, y - 16, 92, 32); X.fillStyle = on ? '#111' : '#5a616b'; X.font = '800 17px system-ui,sans-serif'; X.textAlign = 'center'; X.fillText(txt, x, y + 6); }
+  function drawPanel(e, t) {
+    const P = e.P, sp = e.speed * 3.6, alt = Math.max(0, e.pos.y), hd = (Math.atan2(e.fwd.x, e.fwd.z) * 180 / Math.PI + 360) % 360, pitch = Math.asin(clamp(e.fwd.y, -1, 1));
+    const fuel = e.fuel / e.fuelMax, hp = e.hp / e.maxHp;
+    X.fillStyle = '#1d2128'; X.fillRect(0, 0, PW, PH);
+    X.strokeStyle = '#2c323a'; X.lineWidth = 2; for (const lx of [205, 410, 615, 820]) { X.beginPath(); X.moveTo(lx, 10); X.lineTo(lx, PH - 10); X.stroke(); }
+    X.fillStyle = '#4a515b'; for (const [sx, sy] of [[14, 14], [PW - 14, 14], [14, PH - 14], [PW - 14, PH - 14], [512, 12]]) { X.beginPath(); X.arc(sx, sy, 5, 0, TAU); X.fill(); }
+    const Y = 104, R = 66;
+    // airspeed
+    dial(103, Y, R, 'AIRSPEED km/h'); ticks(103, Y, R, 12, Math.PI * 0.75, Math.PI * 2.25, 2);
+    needle(103, Y, R - 14, Math.PI * 0.75 + clamp(sp / 600, 0, 1) * Math.PI * 1.5);
+    X.fillStyle = '#fff'; X.font = '800 22px system-ui,sans-serif'; X.textAlign = 'center'; X.fillText(Math.round(sp), 103, Y + 40);
+    // attitude: the horizon tilts with the bank and moves with the pitch
+    dial(308, Y, R, 'ATTITUDE');
+    X.save(); X.beginPath(); X.arc(308, Y, R, 0, TAU); X.clip(); X.translate(308, Y); X.rotate(-(e.bank || 0)); X.translate(0, pitch * 120);
+    X.fillStyle = '#3a78c8'; X.fillRect(-200, -400, 400, 400); X.fillStyle = '#7a5530'; X.fillRect(-200, 0, 400, 400);
+    X.strokeStyle = '#fff'; X.lineWidth = 3; X.beginPath(); X.moveTo(-200, 0); X.lineTo(200, 0); X.stroke();
+    X.lineWidth = 2; for (let k = -3; k <= 3; k++) if (k) { X.beginPath(); X.moveTo(-18, -k * 21); X.lineTo(18, -k * 21); X.stroke(); }
+    X.restore();
+    X.strokeStyle = '#ffd23a'; X.lineWidth = 5; X.beginPath(); X.moveTo(308 - 44, Y); X.lineTo(308 - 14, Y); X.lineTo(308, Y + 10); X.lineTo(308 + 14, Y); X.lineTo(308 + 44, Y); X.stroke();
+    // altimeter
+    dial(513, Y, R, 'ALTITUDE m'); ticks(513, Y, R, 10, -Math.PI / 2, Math.PI * 1.5, 1);
+    needle(513, Y, R - 12, -Math.PI / 2 + (alt % 1000) / 1000 * TAU); needle(513, Y, R - 40, -Math.PI / 2 + (alt % 100) / 100 * TAU, '#e8eef6');
+    X.fillStyle = '#fff'; X.font = '800 22px system-ui,sans-serif'; X.textAlign = 'center'; X.fillText(Math.round(alt), 513, Y + 40);
+    // heading: a compass card that turns
+    dial(718, Y, R, 'HEADING');
+    X.save(); X.translate(718, Y); X.rotate(-hd * Math.PI / 180);
+    X.fillStyle = '#d8dee8'; X.font = '800 18px system-ui,sans-serif'; X.textAlign = 'center';
+    ['N', 'E', 'S', 'W'].forEach((c, i) => { X.save(); X.rotate(i * Math.PI / 2); X.fillStyle = i ? '#d8dee8' : '#ff6a5a'; X.fillText(c, 0, -R + 30); X.restore(); });
+    X.strokeStyle = '#d8dee8'; for (let i = 0; i < 36; i++) { X.save(); X.rotate(i * Math.PI / 18); X.lineWidth = i % 3 ? 2 : 3; X.beginPath(); X.moveTo(0, -R + 2); X.lineTo(0, -R + (i % 3 ? 8 : 13)); X.stroke(); X.restore(); }
+    X.restore();
+    X.fillStyle = '#ffb03a'; X.beginPath(); X.moveTo(718, Y - 30); X.lineTo(708, Y + 12); X.lineTo(718, Y + 4); X.lineTo(728, Y + 12); X.closePath(); X.fill();
+    X.fillStyle = '#fff'; X.font = '800 20px system-ui,sans-serif'; X.fillText(String(Math.round(hd)).padStart(3, '0') + '°', 718, Y + 40);
+    // fuel and throttle
+    dial(923, Y, R, 'FUEL'); ticks(923, Y, R, 8, Math.PI * 0.8, Math.PI * 2.2, 2);
+    X.strokeStyle = '#d23a2a'; X.lineWidth = 8; X.beginPath(); X.arc(923, Y, R - 10, Math.PI * 0.8, Math.PI * 0.8 + Math.PI * 1.4 * 0.2); X.stroke();
+    needle(923, Y, R - 14, Math.PI * 0.8 + clamp(fuel, 0, 1) * Math.PI * 1.4, fuel < 0.2 ? '#ff5a4a' : '#ffb03a');
+    X.fillStyle = '#fff'; X.font = '800 18px system-ui,sans-serif'; X.textAlign = 'center'; X.fillText(e.fuel > 0 ? fmtClock(e.fuel) : 'EMPTY', 923, Y + 38);
+    // a row of lamps and readouts along the bottom
+    const by = 226, blink = (t * 2.5 | 0) % 2 === 0;
+    lamp(70, by, 'FUEL', fuel < 0.2 && (e.fuel > 0 || blink), e.fuel > 0 ? '#ffb02a' : '#ff4a3a');
+    lamp(175, by, 'DAMAGE', hp < 0.35 && blink, '#ff4a3a');
+    lamp(280, by, e.landed ? 'PARKED' : 'GEAR UP', !!e.landed, '#5ae06a');
+    lamp(385, by, 'ENGINE', e.fuel <= 0 || e.disabled, '#ff4a3a');
+    X.fillStyle = '#0b0d10'; X.fillRect(450, by - 18, 250, 36); X.fillStyle = '#7dffa0'; X.font = '800 19px ui-monospace,monospace'; X.textAlign = 'left';
+    X.fillText(e.landed ? (e.svcDone ? 'SERVICE DONE' : 'SERVICE ' + Math.max(0, SERVICE_S - (e.svcT || 0)).toFixed(0) + 's') : (P.bombs ? 'BOMB ' + e.bombs + '/' + P.bombs : '') + (P.missiles ? 'MSL ' + e.missiles + '/' + P.missiles : '') + (!P.bombs && !P.missiles ? 'GUNS ARMED' : ''), 462, by + 7);
+    // throttle bar
+    X.fillStyle = '#0b0d10'; X.fillRect(730, by - 18, 280, 36); X.fillStyle = e.fuel > 0 ? '#ffb03a' : '#5a616b'; X.fillRect(734, by - 14, 272 * clamp(e.thr, 0, 1), 28);
+    X.fillStyle = '#fff'; X.font = '800 17px system-ui,sans-serif'; X.textAlign = 'center'; X.fillText('THROTTLE ' + Math.round(clamp(e.thr, 0, 1) * 100) + '%', 870, by + 6);
+    tex.needsUpdate = true;
+  }
+  function drawHUD(e) {
+    const W2 = 512, H2 = 384, c = '#5dff8a', pitch = Math.asin(clamp(e.fwd.y, -1, 1)), sp = e.speed * 3.6;
+    HX.clearRect(0, 0, W2, H2); HX.strokeStyle = c; HX.fillStyle = c; HX.lineWidth = 3; HX.font = '700 22px ui-monospace,monospace';
+    HX.shadowColor = 'rgba(0,30,10,.85)'; HX.shadowBlur = 5; // readable against a bright sky
+    HX.save(); HX.translate(W2 / 2, H2 / 2); HX.rotate(-(e.bank || 0));
+    for (let k = -4; k <= 4; k++) { const y = (k * 10 * Math.PI / 180 - pitch) * -420; if (Math.abs(y) > 160) continue; HX.beginPath(); HX.moveTo(-110, y); HX.lineTo(-40, y); HX.moveTo(40, y); HX.lineTo(110, y); HX.stroke(); if (k) { HX.textAlign = 'left'; HX.fillText(String(k * 10), 116, y + 8); } }
+    HX.restore();
+    HX.beginPath(); HX.arc(W2 / 2, H2 / 2, 9, 0, TAU); HX.moveTo(W2 / 2 - 30, H2 / 2); HX.lineTo(W2 / 2 - 9, H2 / 2); HX.moveTo(W2 / 2 + 9, H2 / 2); HX.lineTo(W2 / 2 + 30, H2 / 2); HX.stroke();
+    HX.textAlign = 'left'; HX.strokeRect(14, H2 / 2 - 18, 80, 36); HX.fillText(String(Math.round(sp)), 22, H2 / 2 + 8);
+    HX.textAlign = 'right'; HX.strokeRect(W2 - 94, H2 / 2 - 18, 80, 36); HX.fillText(String(Math.round(Math.max(0, e.pos.y))), W2 - 22, H2 / 2 + 8);
+    HX.textAlign = 'center'; HX.fillText(String(Math.round((Math.atan2(e.fwd.x, e.fwd.z) * 180 / Math.PI + 360) % 360)).padStart(3, '0'), W2 / 2, 30);
+    if (e.fuel / e.fuelMax < 0.2) HX.fillText(e.fuel > 0 ? 'LOW FUEL' : 'NO FUEL', W2 / 2, H2 - 24);
+    htex.needsUpdate = true;
+  }
+  function tick(dt = 0) {
     const e = PLAYER.ent, on = PLAYER.mode === 'plane' && e && e.alive && settings.planeCam === 'cockpit' && !CINE.on;
     if (!g.parent) { camera.add(g); if (!camera.parent) scene.add(camera); }
     g.visible = !!on;
     if (hidden && hidden !== (on ? e : null)) { if (hidden.group) hidden.group.visible = true; hidden = null; }
-    if (on) { e.group.visible = false; hidden = e; }
+    if (!on) return;
+    e.group.visible = false; hidden = e;
+    if (lastType !== e.type) { lastType = e.type; const jet = e.type === 'jet', bomber = e.type === 'bomber'; hud.visible = hudFrame.visible = jet; ring.visible = !jet; stick.visible = !bomber; yoke.visible = bomber; }
+    // the stick leans into the turn and moves with the climb; the yoke turns; the throttle lever slides
+    const turn = clamp(-(e.bank || 0) * 0.5, -0.45, 0.45), climb = clamp((e.desired.y - e.fwd.y) * 2, -0.35, 0.35);
+    stick.rotation.set(-climb, 0, turn); yoke.rotation.set(0, 0, turn * 1.4); yoke.position.z = -0.56 + climb * 0.06;
+    thr.rotation.x = -0.55 + clamp(e.thr, 0, 1) * 1.1;
+    // structure follows the light outside; the panel and HUD are lit from inside
+    const k = 0.4 + 0.6 * (DN.k ?? 1); for (const m of mats) m.color.copy(m.userData.base).multiplyScalar(k);
+    drawT -= dt; if (drawT <= 0) { drawT = 0.1; drawPanel(e, GAME.time); if (hud.visible) drawHUD(e); }
   }
   return { tick };
 })();
 function updateCamera(dt) {
-  COCKPIT.tick();
+  COCKPIT.tick(dt);
   if (camera121(dt)) { camera.updateMatrixWorld(); Sound.listener.copy(camera.position); return; } // 1.2.1: at the computer, or riding a missile
   // mouse and touch look
   const sens = 0.0023 * settings.sens * (cam.zoom ? 0.45 : 1), inv = settings.invert ? -1 : 1;
@@ -4017,6 +4206,7 @@ function updateHUD(dt) {
     { const h = timeOfDay(), up = h >= 6 && h < 18; setText('todT', fmtTOD(h)); setText('todI', up ? '☀' : '☾'); $('tod').className = up ? '' : 'nt'; } // 1.2.4
     setHTML('isl', ISLANDS.map(i => `<div class="pip ${i.owner >= 0 ? 't' + i.owner : ''}" title="${i.name}"></div>`).join(''));
     setText('gold', isTester() ? '∞' : fmt(PLAYER.gold));
+    if (!$('deploy').classList.contains('hidden') && jetWait() > 0 && (deployTick = (deployTick || 0) + 1) % 10 === 0) renderDeploy(); // 1.2.5: the jet's countdown
     // health and ammo
     if (e && e.alive) {
       setBar('#hpBar', e.hp / e.maxHp, fmt(e.hp) + '/' + fmt(e.maxHp));
@@ -4026,6 +4216,8 @@ function updateHUD(dt) {
       else if (mode === 'turret') { name = e.TT.name; const g = e.gun; a1 = ['●', g.W.reload ? 1 - Math.max(0, g.cd) / g.W.reload : 1, g.W.reload ? (g.cd > 0 ? 'Reloading' : 'Ready') : 'Ready']; }
       else if (mode === 'foot') { name = PLAYER.soldier && PLAYER.soldier.swim ? 'Swimming' : 'On foot'; }
       else if (mode === 'gunner') name = SEAT_NAME[e.k] + ' · Dual Gunner';
+      // 1.2.5: fuel
+      { const fr = $('fuelRow'), on = mode === 'plane'; setShow('fuelRow', on); if (on) { const f = e.fuel / e.fuelMax; setBar('#fuelBar', f, e.fuel > 0 ? 'Fuel ' + fmtClock(e.fuel) : 'No fuel'); fr.classList.toggle('low', f < 0.2); } }
       setShow('a1Row', !!a1); setShow('a2Row', !!a2);
       if (a1) { setText('a1Ico', a1[0]); setBar('#a1Bar', a1[1], a1[2]); }
       if (a2) { setText('a2Ico', a2[0]); setBar('#a2Bar', a2[1], a2[2]); }
@@ -4086,7 +4278,7 @@ function updateHUD(dt) {
   else if (mode === 'foot' && PLAYER.interact) prompt = (touchOn() ? '<kbd>E</kbd>' : '<kbd>E</kbd>') + PLAYER.interact.text;
   else if (mode === 'foot' && PLAYER.soldier && PLAYER.soldier.chute) prompt = 'Parachuting…';
   else if (mode === 'ship' && e && !e.alive) prompt = '<kbd>E</kbd>Jump overboard';
-  else if (mode === 'plane' && e && e.alive && e.landed) prompt = '<kbd>W</kbd>Take off' + (e.hp < e.maxHp - 1 ? ' · repairing…' : '');
+  else if (mode === 'plane' && e && e.alive && e.landed) prompt = e.svcDone ? '<kbd>W</kbd>Take off · refuelled' : e.fuel > 0 ? `<kbd>W</kbd>Take off · refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s` : `Refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s`; // 1.2.5
   else if (mode === 'plane' && e && e.alive && landHint(e)) prompt = '<kbd>S</kbd>Lowest speed, then touch down gently to land';
   else if (MCAM.m) prompt = '<kbd>E</kbd>Skip';
   else if (mode === 'foot' && PLAYER.soldier && PLAYER.soldier.swim && !nearOwnBase(PLAYER.soldier.pos)) prompt = `<kbd>${touchOn() ? 'E' : 'B'}</kbd>Redeploy, or swim to land`;
@@ -4231,6 +4423,17 @@ function drawBoard() {
    Menus
    ========================================================================== */
 const DEPLOY = { reason: '', pad: null, loc: 'harbor', locked: false, closable: true };
+let deployTick = 0;
+// 1.2.5: match seconds so far; how long until you can take a jet again
+const matchEl = () => GAME.clock0 ? GAME.clock0 - GAME.clock : 0;
+const jetWait = () => Math.max(0, (PLAYER.jetAt || 0) - matchEl());
+// 1.2.5: planes only take off from a runway: your harbor's airfield, an island of yours with one (Crown Isle), a
+// plane pad, or a carrier's deck
+function planeSpotOk(pad, locObj) {
+  if (pad) return pad.kind === 'plane';
+  if (!locObj || locObj.id === 'harbor' || locObj.carrier) return true;
+  return !!(locObj.isl && locObj.isl.I && locObj.isl.I.rw);
+}
 function openDeploy(reason, pad) {
   DEPLOY.reason = reason; DEPLOY.pad = pad || null; DEPLOY.closable = reason !== 'dead' && reason !== 'start';
   DEPLOY.locked = (reason === 'dead' || reason === 'redeploy') && PLAYER.respawn > 0;
@@ -4259,21 +4462,25 @@ function renderDeploy() {
   const locObj = locs.find(l => l.id === DEPLOY.loc);
   const atCarrier = !pad && !!(locObj && locObj.carrier);
   const atIsland = (!pad && !!(locObj && locObj.isl)) || !!(pad && pad.island);
+  const rwOk = planeSpotOk(pad, locObj); // 1.2.5
   const card = (k, t, D) => {
-    const free = !D.cost, can = !DEPLOY.locked && PLAYER.gold >= D.cost;
-    return `<button class="card ${free ? 'free' : ''}" data-k="${k}" data-t="${t}" ${can ? '' : 'disabled'}><div class="em">${D.icon}</div><div class="nm">${D.name}</div><div class="ds">${D.desc}</div><div class="pr">${free ? 'FREE' : '<span class="coin"></span>' + fmt(D.cost)}</div></button>`;
+    const free = !D.cost, wait = k === 'plane' && t === 'jet' ? jetWait() : 0, noRw = k === 'plane' && !rwOk;
+    const can = !DEPLOY.locked && PLAYER.gold >= D.cost && !wait && !noRw;
+    const fuel = k === 'plane' ? ` <span class="fu">⛽ ${fmtClock(D.fuel)}</span>` : '';
+    const pr = noRw ? 'No runway here' : wait ? '⏱ Ready in ' + fmtClock(wait) : free ? 'FREE' : '<span class="coin"></span>' + fmt(D.cost);
+    return `<button class="card ${free ? 'free' : ''}" data-k="${k}" data-t="${t}" ${can ? '' : 'disabled'}><div class="em">${D.icon}</div><div class="nm">${D.name}</div><div class="ds">${D.desc}${fuel}</div><div class="pr">${pr}</div></button>`;
   };
   setShow('dBoatWrap', (!kind || kind === 'boat')); // 1.2: ships can launch beside a carrier too
   $('dBoats').innerHTML = SHIP_ORDER.map(t => card('boat', t, SHIP_TYPES[t])).join('');
-  setShow('dPlaneWrap', (!kind || kind === 'plane')); // 1.2: and planes take off over your islands
+  setShow('dPlaneWrap', (!kind || kind === 'plane')); // 1.2.5: only from a runway (the cards say so elsewhere)
   $('dPlanes').innerHTML = PLANE_ORDER.map(t => card('plane', t, PLANE_TYPES[t])).join('');
   setShow('dFootWrap', !pad && DEPLOY.reason !== 'menu' && !atCarrier);
   $('dFoot').innerHTML = `<button class="card free" data-k="foot" data-t="foot" ${DEPLOY.locked ? 'disabled' : ''}><div class="em">🚶</div><div class="nm">On foot</div><div class="ds">Walk around your base, man turrets and pick vehicles from the pads.</div><div class="pr">FREE</div></button>`;
   // 1.1: Deploy again
   let ag = $('dAgain'); if (!ag) { ag = document.createElement('button'); ag.id = 'dAgain'; ag.className = 'btn'; ag.style.cssText = 'display:block;margin:6px auto 10px;font-weight:800'; $('dgold').after(ag); ag.onclick = () => deployAgain(); }
   const L = PLAYER.lastDeploy, LD = L && (L.kind === 'boat' ? SHIP_TYPES[L.type] : L.kind === 'plane' ? PLANE_TYPES[L.type] : null);
-  const okKind = L && (!kind || kind === L.kind) && !(L.kind === 'boat' && atCarrier) && !(L.kind === 'plane' && atIsland);
-  const canAgain = !!(LD && okKind && !DEPLOY.locked && PLAYER.gold >= LD.cost);
+  const okKind = L && (!kind || kind === L.kind) && !(L.kind === 'boat' && atCarrier);
+  const canAgain = !!(LD && okKind && !DEPLOY.locked && PLAYER.gold >= LD.cost && !(L.kind === 'plane' && (!rwOk || (L.type === 'jet' && jetWait()))));
   ag.style.display = LD && okKind ? 'block' : 'none'; ag.disabled = !canAgain;
   if (LD) ag.innerHTML = `↻ Deploy again: ${LD.icon} ${LD.name}${LD.cost ? ` · <span class="coin"></span>${fmt(LD.cost)}` : ''} <span style="opacity:.6;font-weight:600">(Enter)</span>`;
   setShow('dClose', DEPLOY.closable);
@@ -4299,6 +4506,11 @@ function deploy(kind, type) {
   const carrier = !DEPLOY.pad ? teamCarriers(team).find(c => 'c' + c.id === DEPLOY.loc) : null;
   const D = kind === 'boat' ? SHIP_TYPES[type] : kind === 'plane' ? PLANE_TYPES[type] : { cost: 0 };
   if (PLAYER.gold < D.cost) { Sound.play('deny'); return; }
+  if (kind === 'plane') { // 1.2.5
+    const locObj = DEPLOY.pad ? null : deployLocations().find(l => l.id === DEPLOY.loc);
+    if (!planeSpotOk(DEPLOY.pad, locObj)) { showMsg('', 'Planes take off from a runway: your airfield, Crown Isle or a carrier'); Sound.play('deny'); return; }
+    if (type === 'jet' && jetWait() > 0) { showMsg('', 'The jet is ready in ' + fmtClock(jetWait())); Sound.play('deny'); return; }
+  }
   let ent = null;
   if (kind === 'boat' && carrier) { // 1.2: in the water beside the carrier
     const rx = Math.cos(carrier.heading), rz = -Math.sin(carrier.heading), off = carrier.S.wid / 2 + (D.wid || 6) / 2 + 12;
@@ -4312,11 +4524,7 @@ function deploy(kind, type) {
     ent = spawnShip(type, team, pad, null);
   } else if (kind === 'plane') {
     if (carrier) ent = launchFromCarrier(type, team, carrier, null);
-    else if (loc !== 'harbor' && !DEPLOY.pad && loc.I.rw) ent = runwaySpawn(type, team, null); // 1.2.1: on Crown Isle's runway
-    else if (loc !== 'harbor' && !DEPLOY.pad) { // 1.2: already flying, over one of your islands, heading for the enemy
-      const eh = HARBORS[1 - team].center, hd = Math.atan2(eh.x - loc.x, eh.z - loc.z);
-      ent = new Plane(type, team, new V3(loc.x - Math.sin(hd) * 30, Math.max(loc.top || 10, 10) + 60, loc.z - Math.cos(hd) * 30), hd, 0, null);
-    }
+    else if (loc !== 'harbor' && !DEPLOY.pad) ent = runwaySpawn(type, team, null); // 1.2.1: on Crown Isle's runway (1.2.5: the only island with one)
     else {
       const pads = PADS.filter(p => p.kind === 'plane' && p.team === team && !p.island); // (1.2.1: the harbor's own airfield)
       const pad = DEPLOY.pad && DEPLOY.pad.kind === 'plane' ? DEPLOY.pad : pick(pads);
@@ -4324,6 +4532,7 @@ function deploy(kind, type) {
     }
   }
   PLAYER.gold -= D.cost; PLAYER.spent += D.cost;
+  if (kind === 'plane' && type === 'jet') PLAYER.jetAt = matchEl() + JET_WAIT; // 1.2.5
   // let go of whatever you were driving before
   freeOld(); // 1.2.1: also gets you out of a gunner seat
   Sound.play(D.cost ? 'buy' : 'ui');
@@ -5154,9 +5363,10 @@ function tryLand(pl) {
   if (pl.pos.y > gy + 3 || pl.pos.y < gy - 4) return false;
   const base = f.ship ? f.ship.heading : f.R.h;
   pl.landed = { ship: f.ship || null, R: f.R || null, a: f.a, s: f.s, ly: wrapA(Math.atan2(pl.fwd.x, pl.fwd.z) - base), park: 0, rearm: 0 };
+  pl.svcT = 0; pl.svcDone = false; // 1.2.5: the 8 second service starts once it has stopped
   pl.bank = 0; pl.rollIn = 0;
   Sound.play('thud', pl.pos); smokePuff(_v1.copy(pl.pos).setY(gy - 1.6), 2.4);
-  if (pl.driver === PLAYER) showMsg(f.ship ? 'Landed on the carrier' : 'Landed', 'Repairing and rearming. Hold W to take off');
+  if (pl.driver === PLAYER) showMsg(f.ship ? 'Landed on the carrier' : 'Landed', `Stay parked ${SERVICE_S} seconds to refuel, rearm and repair`);
   return true;
 }
 function landedUpdate(pl, dt) {
@@ -5167,7 +5377,7 @@ function landedUpdate(pl, dt) {
     if (!c.alive || ENTS.indexOf(c) < 0) { pl.landed = null; pl.speed = P.min * 0.8; return; } // the deck sank under it
     F = { x: c.pos.x, z: c.pos.z, h: c.heading, y: c.S.deck + 0.3 + c.bob - c.sink, a0: -45, a1: 43, s0: -5.5, s1: 11, vx: c.vel.x, vz: c.vel.z };
   } else { const R = L.R; F = { x: R.x, z: R.z, h: R.h, y: R.y, a0: -R.hl + 2, a1: R.hl - 2, s0: -R.hw + 1, s1: R.hw - 1, vx: 0, vz: 0 }; }
-  const go = pl.thr > 0.3 && !pl.disabled;
+  const go = pl.thr > 0.3 && !pl.disabled && pl.fuel > 0; // 1.2.5: an empty tank waits for the refuel
   // the nose swings round to the bow (or along the runway) as it rolls
   const goal = L.ship ? 0 : Math.abs(wrapA(L.ly)) < Math.PI / 2 ? 0 : Math.PI;
   L.ly += wrapA(goal - L.ly) * (1 - Math.exp(-3 * dt));
@@ -5182,7 +5392,7 @@ function landedUpdate(pl, dt) {
   pl.bank = damp(pl.bank, 0, 6, dt); pl.rollIn = 0;
   pl.vel.copy(pl.fwd).multiplyScalar(pl.speed); pl.vel.x += F.vx; pl.vel.z += F.vz;
   pl.orient(dt);
-  if (pl.speed < 6) landedRepair(pl, dt);
+  if (pl.speed < 6) landedRepair(pl, dt); else if (!pl.svcDone) pl.svcT = 0;
   pl.smoke(dt); pl.weapons(dt);
   if (go && (pl.speed >= P.min * 0.9 || end)) { // off it goes
     pl.landed = null; pl.speed = Math.max(pl.speed, P.min); pl.fwd.y = 0.22; pl.fwd.normalize(); pl.desired.copy(pl.fwd); pl.pos.y += 1.5; pl.invuln = Math.max(pl.invuln, 1.5);
@@ -5204,13 +5414,17 @@ function landHint(pl) {
   }
   return false;
 }
-// repairs and rearming while parked (online, the host heals the stand-in of a landed player's plane)
+// 1.2.5: parked for SERVICE_S seconds: a full tank, full bombs and missiles, and half its health back (online, the
+// host also runs this for the stand-in of a landed player's plane, which is where its health lives)
 function landedRepair(pl, dt) {
   const P = pl.P;
-  if (pl.disabled) return;
-  pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * 0.08 * dt);
-  pl.rearmL = (pl.rearmL || 0) + dt;
-  if (pl.rearmL > 1.2) { pl.rearmL = 0; if (pl.bombs < P.bombs) pl.bombs++; if (pl.missiles < P.missiles) pl.missiles++; }
+  if (pl.disabled || pl.svcDone) return;
+  pl.svcT = (pl.svcT || 0) + dt;
+  if (pl.svcT < SERVICE_S) return;
+  pl.svcDone = true;
+  pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * SERVICE_HEAL);
+  pl.fuel = pl.fuelMax; pl.lowFuel = false; pl.bombs = P.bombs; pl.missiles = P.missiles;
+  if (pl.driver === PLAYER) { showMsg('Refuelled', 'Rearmed and repaired. Hold W to take off'); Sound.play('buy'); }
 }
 
 /* ---------------- Dual Gunner seats ---------------- */
@@ -6915,7 +7129,7 @@ function rbox(w, h, d, r, seg = 3) {
       const want = 0, live = GAME.bots.filter(b => b.team === t && !b.retire); // 1.2: no bots online, only in Practice
       for (const b of GAME.bots) if (live.length < want && b.team === t && b.retire) { b.retire = false; live.push(b); }
       while (live.length < want) {
-        const used = new Set(GAME.bots.map(b => b.name)), b = new Bot(t, BOT_NAMES.find(n => !used.has(n)) || 'Bot' + botSeq, live.filter(x => x.role === 'air').length * 5 < live.length * 2 ? 'air' : 'navy');
+        const used = new Set(GAME.bots.map(b => b.name)), b = new Bot(t, BOT_NAMES.find(n => !used.has(n)) || 'Bot' + botSeq, live.filter(x => x.role === 'air').length * 2 < live.length ? 'air' : 'navy');
         b.respawn = rand(2, 5); GAME.bots.push(b); live.push(b);
       }
       while (live.length > want) {
@@ -7140,7 +7354,8 @@ function rbox(w, h, d, r, seg = 3) {
       e.spin(dt); e.orient(dt); e.smoke(dt);
       e.trigger = !!(f & 1);
       if (!real) e.seatKeys = a.sk || null; // 1.2.1
-      else if (a.f & 16) landedRepair(e, dt); // 1.2.1: parked on a deck or runway on their screen
+      else if (a.f & 16) { if (sp < 6) landedRepair(e, dt); } // 1.2.1: parked on a deck or runway on their screen
+      else { e.svcT = 0; e.svcDone = false; }
       e.weapons(dt, real || !!(f & 2)); // the bomber's tail gunner looks after itself on the host's screen
     } else if (e.kind === 'soldier') {
       const sp = lerp(a.sp, b.sp, k);

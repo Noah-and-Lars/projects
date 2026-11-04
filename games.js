@@ -95,7 +95,7 @@ window.GAMES = [
     path: 'havoc-bay/index.html',
     thumb: 'havoc-bay/thumb.jpg?v=1',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-11-04T23:55:00+11:00',
+    updated: '2026-11-05T01:30:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-05', game: 'havoc-bay', text: 'Havoc Bay 1.2.5: planes need fuel now. Land on a runway or your carrier and sit 8 seconds to refuel, rearm and repair. Planes only take off from runways, the Jet costs 800 with a one-minute wait, the Bomber 700 with a sharper tail gunner, and the cockpit has real gauges.' },
   { date: '2026-11-04', game: 'havoc-bay', text: 'Havoc Bay 1.2.4: day and night. The sun crosses the sky during a battle, with a sunset, a moonlit night and a sunrise, and the time shows in the corner. Guns are held the right way up now.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.14: smarter bots. Defenders hold angles on the ways into the site and peek, bots only know where you are if they see or hear you, they spray through drywall at noises and use their operators\' gadgets. And you can go prone with Z.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.13: wallbangs. Bullets go through drywall and hurt whoever is behind it, leaving bullet holes on both sides; walls wear down instead of losing a piece to every bullet, and a punch knocks out a small hole to see through. Reinforced walls stop everything.' },
