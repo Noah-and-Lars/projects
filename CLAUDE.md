@@ -334,6 +334,13 @@ source in Settings → Pages should be switched to `main`.
   (`sgRopeStart` on Space facing an outside wall in the action phase, attackers only; `sgRopeStep` from `sgMove`;
   `ropeWallAt`; `sgRopeWindow` on F kicks a barricade in and vaults inside). The maps have few tall outside walls under
   open sky (covered yards stop the climb at their ceiling), so roofs are the next step.
+  1.0.12: roofs. `M.roofAt(L, x, z)` (the slab over a room that isn't a sky yard, with nothing on floor L there: the top
+  of the building or a lower wing) gets a concrete top face and a 0.55 m parapet (obstacle `k: 'parapet'`, vaulted)
+  where it drops away; `sgGround` stands on it, `M.onRoof` / `M.roofRoom` make `sgRoomAt` call it outside (and
+  `sgLightAt` lights it as open sky: sun, or moonlight at night, never the lamps below). `M.roofHatches`: two per map
+  over the top floor's biggest rooms (same hatch panels as `D.hatches`). The rope climbs onto a roof at the top of a wall
+  (vault in `sgRopeStep`) and starts down the outside from a parapet (`sgRopeStart`). Yards made `sky: 1`: hotel K and
+  g, port D and Y, manor T (renamed Terrace, spawn too). Grenades have models (`gmesh` frag/smoke/flash/emp/impact).
 
 ## Adding a game
 

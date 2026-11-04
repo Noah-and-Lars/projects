@@ -21,7 +21,7 @@ Press 5 to switch between watching your teammates and the cameras (defenders: th
 
 ## Loadouts and rappelling
 
-On the operator screen, choose one of each operator's two primary guns and one of their two gadgets (kept for next time). Attackers can rappel: Space facing an outside wall, W / S up and down, A / D along the wall, shoot as usual, F at a window to go in (kicking any barricade through), Space to let go.
+On the operator screen, choose one of each operator's two primary guns and one of their two gadgets (kept for next time). Attackers can rappel: Space facing an outside wall, W / S up and down, A / D along the wall, shoot as usual, F at a window to go in (kicking any barricade through), Space to let go. W at the top of a wall climbs onto the roof (since 1.0.12 every roof is walkable, with two hatches into the top floor); Space at a roof's edge takes you back down the outside.
 
 ## Down but not out
 
@@ -53,6 +53,8 @@ Drywall and hatches are made of pieces that break one by one, and bullets go thr
 Everyone also has a secondary gadget (G): breach charges, frags, smoke or stun grenades, claymores, barbed wire, deployable shields, impact grenades, nitro cells, bulletproof cameras or proximity alarms.
 
 ## Maps
+
+Since 1.0.12 some attackers' yards are open to the sky (hotel: Service Dock, Upper Parking; port: Loading Dock, Customs Yard; manor: Terrace), so their walls can be climbed to the roof.
 
 - **Marlowe Hotel:** grand lobby with a gallery, bar, kitchen, restaurant, ballroom, penthouse office and records room. Two floors.
 - **Port Authority:** customs offices, a bonded warehouse and a basement with the vault. Basement and ground floor.

@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.11';
+const VERSION = '1.0.12';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -1185,7 +1185,7 @@ const SG_MAPS = freezeDeep({
           ['d', 23, 11, 'e'], ['d', 6, 10, 's'], ['d', 10, 10, 's'], ['o', 13, 10, 's', 2], ['d', 8, 14, 'e'], ['d', 17, 15, 'e'],
           ['d', 12, 16, 's'], ['d', 16, 16, 's'], ['d', 10, 18, 'e'], ['d', 6, 16, 's'], ['d', 21, 16, 's'], ['o', 24, 16, 's', 2]],
         rooms: {
-          G: { n: 'Valet Garage', k: 'garage', out: 1 }, K: { n: 'Service Dock', k: 'dock', out: 1 },
+          G: { n: 'Valet Garage', k: 'garage', out: 1 }, K: { n: 'Service Dock', k: 'dock', out: 1, sky: 1 },
           L: { n: 'Grand Lobby', k: 'lobby' }, R: { n: 'Reception', k: 'reception' }, M: { n: 'Manager\'s Office', k: 'office' },
           E: { n: 'Restaurant', k: 'dining' }, J: { n: 'Kitchen', k: 'kitchen' }, F: { n: 'Cold Storage', k: 'freezer' },
           P: { n: 'Staff Stairs', k: 'stairs' }, C: { n: 'Main Hall', k: 'hall' }, N: { n: 'Library', k: 'library' },
@@ -1204,7 +1204,7 @@ const SG_MAPS = freezeDeep({
           ['d', 21, 10, 's'], ['d', 23, 15, 'e'], ['d', 19, 13, 'e'], ['d', 6, 15, 's'], ['d', 13, 18, 'e'], ['d', 17, 16, 's'], ['d', 23, 18, 'e'],
           ['x', 15, 1, 'n', 2], ['x', 19, 1, 'n', 2], ['x', 23, 1, 'n', 4], ['x', 27, 2, 'e', 2], ['o', 12, 8, 's', 2]],
         rooms: {
-          g: { n: 'Upper Parking', k: 'garage', out: 1 }, Y: { n: 'Gallery', k: 'gallery' }, A: { n: 'Ballroom', k: 'ballroom' },
+          g: { n: 'Upper Parking', k: 'garage', out: 1, sky: 1 }, Y: { n: 'Gallery', k: 'gallery' }, A: { n: 'Ballroom', k: 'ballroom' },
           O: { n: 'Penthouse Office', k: 'exec' }, X: { n: 'Records', k: 'archive' }, H: { n: 'Upper Hall', k: 'hall' },
           1: { n: 'Suite 101', k: 'bedroom' }, 2: { n: 'Suite Bath', k: 'bath' }, 3: { n: 'Master Suite', k: 'bedroom' },
           Z: { n: 'Server Room', k: 'server' }, P: { n: 'Staff Stairs', k: 'stairs' }, T: { n: 'Storage Loft', k: 'storage' },
@@ -1249,7 +1249,7 @@ const SG_MAPS = freezeDeep({
           ['d', 19, 7, 's'], ['d', 16, 11, 'e'], ['d', 22, 12, 'e'], ['d', 17, 14, 's'], ['d', 26, 14, 's'], ['d', 20, 19, 'e'], ['d', 16, 17, 'e'],
           ['x', 5, 1, 'n', 4], ['x', 19, 1, 'n', 4], ['x', 25, 1, 'n', 3], ['x', 28, 2, 'e', 3], ['g', 18, 3, 'w', 2], ['g', 13, 3, 's', 3]],
         rooms: {
-          D: { n: 'Loading Dock', k: 'dock', out: 1 }, Y: { n: 'Customs Yard', k: 'yard', out: 1 },
+          D: { n: 'Loading Dock', k: 'dock', out: 1, sky: 1 }, Y: { n: 'Customs Yard', k: 'yard', out: 1, sky: 1 },
           W: { n: 'Bonded Warehouse', k: 'warehouse' }, L: { n: 'Entrance Hall', k: 'lobbyc' }, C: { n: 'East Corridor', k: 'hall' },
           I: { n: 'Inspection', k: 'office' }, K: { n: 'Break Room', k: 'breakroom' }, X: { n: 'Customs Office', k: 'openoffice' },
           O: { n: 'Chief\'s Office', k: 'exec' }, H: { n: 'North Hall', k: 'hall' }, E: { n: 'Evidence', k: 'evidence' },
@@ -1281,7 +1281,7 @@ const SG_MAPS = freezeDeep({
           ['d', 20, 6, 's'], ['d', 9, 10, 'e'], ['d', 8, 8, 'w'], ['d', 8, 13, 'w'], ['d', 9, 13, 's'], ['d', 16, 10, 'e'], ['d', 13, 13, 's'],
           ['d', 18, 12, 's'], ['d', 21, 12, 's'], ['d', 18, 15, 's'], ['d', 16, 17, 'e'], ['d', 19, 17, 'e'], ['d', 7, 16, 'e']],
         rooms: {
-          G: { n: 'Garage', k: 'garage', out: 1 }, Q: { n: 'Greenhouse', k: 'greenhouse', out: 1 }, T: { n: 'Covered Terrace', k: 'terrace', out: 1 },
+          G: { n: 'Garage', k: 'garage', out: 1 }, Q: { n: 'Greenhouse', k: 'greenhouse', out: 1 }, T: { n: 'Terrace', k: 'terrace', out: 1, sky: 1 },
           F: { n: 'Foyer', k: 'foyer' }, L: { n: 'Living Room', k: 'living' }, B: { n: 'Library', k: 'library' }, S: { n: 'Red Stairs', k: 'stairhall' },
           H: { n: 'Main Hallway', k: 'hallm' }, D: { n: 'Dining Room', k: 'diningm' }, K: { n: 'Kitchen', k: 'kitchen' }, P: { n: 'Pantry', k: 'pantry' },
           U: { n: 'Servant Stairs', k: 'stairs' }, O: { n: 'Old Office', k: 'study' }, R: { n: 'Billiards Room', k: 'billiards' }, X: { n: 'Storage', k: 'storage' } } },
@@ -1303,7 +1303,7 @@ const SG_MAPS = freezeDeep({
       { n: 'Master Bedroom / Study', a: { f: 1, r: 'M' }, b: { f: 1, r: 'Y' } },
       { n: 'Kitchen / Dining Room', a: { f: 0, r: 'K' }, b: { f: 0, r: 'D' } },
       { n: 'Billiards Room / Old Office', a: { f: 0, r: 'R' }, b: { f: 0, r: 'O' } }],
-    spawns: [{ n: 'Garage', f: 0, x: 2, z: 12 }, { n: 'Greenhouse', f: 0, x: 25, z: 4 }, { n: 'Covered Terrace', f: 0, x: 13, z: 20 }],
+    spawns: [{ n: 'Garage', f: 0, x: 2, z: 12 }, { n: 'Greenhouse', f: 0, x: 25, z: 4 }, { n: 'Terrace', f: 0, x: 13, z: 20 }],
     cams: [{ f: 0, x: 5, z: 1 }, { f: 0, x: 8, z: 13 }, { f: 0, x: 22, z: 12 }, { f: 1, x: 22, z: 7 }, { f: 1, x: 5, z: 18 }],
   },
 
@@ -1718,6 +1718,19 @@ function sgBuildMap(key) {
     return false;
   };
   M.levelY = L => L < M.nf ? M.floors[L].y : M.floors[M.nf - 1].y + FLOOR_H;
+  // 1.0.12: roofs you can walk on: the slab over a room (not a yard open to the sky) with nothing on that floor above it
+  // (the top of the building, or a lower wing). On a roof you are outside: sgRoomAt gives M.roofRoom.
+  M.roofAt = (L, x, z) => {
+    if (L < 1 || L > M.nf || x < 0 || z < 0 || x >= Wd || z >= Hd) return false;
+    if (L < M.nf && cellAt(L, x, z) !== -1) return false;
+    const b = cellAt(L - 1, x, z); return b >= 0 && !M.rooms[b].sky && M.slab(L, x, z);
+  };
+  M.onRoof = (x, y, z) => {
+    const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let L = M.nf; L >= 1; L--) { const ly = M.levelY(L); if (y >= ly - 0.3 && y < ly + FLOOR_H - 0.6 && M.roofAt(L, cx, cz)) return L; }
+    return -1;
+  };
+  M.roofRoom = { id: -9, ch: '^', f: M.nf, n: 'Roof', k: 'roof', K: KINDS.yard, out: true, sky: true, cells: [], bb: [0, 0, 0, 0], cx: 0, cz: 0 };
 
   const gb = new GB();
   const wallMat = r => r >= 0 ? M.rooms[r].K.wl : r === -2 ? null : (D.ext || 'brick');
@@ -1819,6 +1832,23 @@ function sgBuildMap(key) {
   // ----- floors, ceilings, hatches -----
   const hatchAt = new Map();
   for (const H of D.hatches || []) hatchAt.set(H.f * NC + H.z * Wd + H.x, { ...H });
+  // 1.0.12: two hatches in the roof, over the biggest rooms of the top floor, at least 6 m apart
+  M.roofHatches = [];
+  {
+    const top = M.nf, big = M.rooms.filter(R => R.f === top - 1 && !R.out && !R.sky && R.k !== 'stairs' && R.cells.length >= 6).sort((a, b) => b.cells.length - a.cells.length);
+    for (const R of big) {
+      if (M.roofHatches.length >= 2) break;
+      let best = null, bd = 1e9;
+      for (const c of R.cells) {
+        const x = c % Wd, z = (c / Wd) | 0;
+        if (!M.roofAt(top, x, z) || M.stairCell.has(R.f * NC + c) || hatchAt.has(R.f * NC + c) || hatchAt.has(top * NC + c)) continue;
+        const d = Math.hypot(x - R.cx, z - R.cz); if (d < bd) { bd = d; best = [x, z]; }
+      }
+      if (best && M.roofHatches.every(H => Math.hypot(H.x - best[0], H.z - best[1]) * CELL >= 6)) {
+        const H = { f: top, x: best[0], z: best[1], roof: true }; M.roofHatches.push(H); hatchAt.set(top * NC + best[1] * Wd + best[0], { ...H });
+      }
+    }
+  }
   for (let L = 0; L <= M.nf; L++) {
     const y = M.levelY(L);
     for (let z = 0; z < Hd; z++) for (let x = 0; x < Wd; x++) {
@@ -1838,6 +1868,19 @@ function sgBuildMap(key) {
         continue;
       }
       if (isRoom(up)) gb.face(M.rooms[up].K.fl, [x0, y, z1], [CELL, 0, 0], [0, 0, -CELL], [0, 1, 0], 0.75);
+      else if (M.roofAt(L, x, z)) {
+        gb.face('concrete', [x0, y, z1], [CELL, 0, 0], [0, 0, -CELL], [0, 1, 0], 0.75);
+        // 1.0.12: a low parapet where the roof drops away (you vault it); none against a wall or more roof
+        const ph = 0.55, pt = 0.18, pm = { x: D.ext || 'brick', X: D.ext || 'brick', z: D.ext || 'brick', Z: D.ext || 'brick', Y: 'concrete', y: D.ext || 'brick' };
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, nz = z + dz;
+          if (M.roofAt(L, nx, nz) || (L < M.nf && nx >= 0 && nz >= 0 && nx < Wd && nz < Hd && cellAt(L, nx, nz) >= 0)) continue;
+          const a = dx > 0 ? x1 - pt : x0, b = dz > 0 ? z1 - pt : z0, c2 = dx < 0 ? x0 + pt : x1, d = dz < 0 ? z0 + pt : z1;
+          const bx0 = dx ? a : x0, bx1 = dx ? c2 : x1, bz0 = dz ? b : z0, bz1 = dz ? d : z1;
+          gb.box(pm, bx0, y, bz0, bx1, y + ph, bz1);
+          addOb({ x0: bx0, x1: bx1, z0: bz0, z1: bz1, y0: y, y1: y + ph, m: 1, b: 1, k: 'parapet' });
+        }
+      }
       if (L > 0 && down !== -1) {
         const cm = isRoom(down) ? M.rooms[down].K.cl : (cellAt(L - 2, x, z) >= 0 ? M.rooms[cellAt(L - 2, x, z)].K.cl : 'plasterW');
         gb.face(cm, [x0, y - 0.2, z0], [CELL, 0, 0], [0, 0, CELL], [0, -1, 0], 0.75);
@@ -2010,10 +2053,12 @@ function sgLightAt(px, py, pz, nx, ny, nz) {
   const cx = Math.floor(qx / CELL), cz = Math.floor(qz / CELL);
   if (cx < 0 || cz < 0 || cx >= M.Wd || cz >= M.Hd) { if (M.D.day) { r += 0.7; g += 0.68; b += 0.62; } _LC[0] = r; _LC[1] = g; _LC[2] = b; return _LC; }
   const f = sgFloorOf(qy);
-  if (M.D.day) {
-    const rr = M.cellAt(f, cx, cz), open = (rr >= 0 && M.rooms[rr].sky) || (rr === -2 && M.underSky(f + 1, cx, cz));
-    if (open) { const sun = 0.55 + Math.max(0, nx * SUN_DIR.x + ny * SUN_DIR.y + nz * SUN_DIR.z) * 0.35; r += 0.72 * sun + 0.12; g += 0.69 * sun + 0.12; b += 0.6 * sun + 0.14; }
-  }
+  // open to the sky: a yard, the air over one, or a roof (1.0.12: at night the moon; on a roof the lamps below don't reach)
+  const roofL = M.onRoof ? M.onRoof(qx, qy, qz) : -1, rr0 = M.cellAt(f, cx, cz);
+  const open = roofL > 0 || (rr0 >= 0 && M.rooms[rr0].sky) || (rr0 === -2 && M.underSky(f + 1, cx, cz));
+  if (open && M.D.day) { const sun = 0.55 + Math.max(0, nx * SUN_DIR.x + ny * SUN_DIR.y + nz * SUN_DIR.z) * 0.35; r += 0.72 * sun + 0.12; g += 0.69 * sun + 0.12; b += 0.6 * sun + 0.14; }
+  else if (open) { const moon = 0.7 + Math.max(0, ny) * 0.3; r += 0.11 * moon; g += 0.13 * moon; b += 0.19 * moon; }
+  if (roofL > 0) { _LC[0] = Math.min(1.6, r); _LC[1] = Math.min(1.6, g); _LC[2] = Math.min(1.6, b); return _LC; }
   for (const L of M.lightGrid[cz * M.Wd + cx]) {
     // lights on another floor only reach through open air (atriums)
     let ff = f;
@@ -2267,6 +2312,14 @@ function sgGround(x, z, y, r = 0) {
     }
     best = fy;
   }
+  // 1.0.12: roofs
+  for (let L = 1; L <= M.nf; L++) {
+    const fy = M.levelY(L);
+    if (fy > y + STEP_UP || fy <= best || !M.roofAt(L, cx, cz)) continue;
+    const H = M.hatchAt.get(L * M.Wd * M.Hd + cz * Wd + cx);
+    if (H && H.panel) { const p = H.panel, lx = x - p.x0, lz = z - p.z0; if (lx >= 0 && lz >= 0 && lx < p.w && lz < p.w) { const i = Math.floor(lz / (p.w / p.cols)) * p.cols + Math.floor(lx / (p.w / p.cols)); if (!p.alive[i]) continue; } }
+    best = fy;
+  }
   _seenOb.clear();
   sgNear(x, z, r, c => {
     for (const o of M.cellObs[c]) {
@@ -2362,6 +2415,7 @@ function sgClear(a, b, opts) {
 }
 function sgRoomAt(x, y, z) {
   const M = W; if (!M) return null;
+  if (M.onRoof && M.onRoof(x, y, z) > 0) return M.roofRoom; // 1.0.12
   const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL), f = sgFloorOf(y);
   const r = M.cellAt(f, cx, cz);
   return r >= 0 ? M.rooms[r] : null;
@@ -2600,7 +2654,7 @@ function sgFurnish(M, gb, rnd) {
     const d = SIDE[st.S.dir], o = d[0] ? [0, 1] : [1, 0];
     for (let k = 0; k < st.S.w; k++) { res(st.f, st.bot[0] + o[0] * k, st.bot[1] + o[1] * k); res(st.f, st.bot[0] - d[0] + o[0] * k, st.bot[1] - d[1] + o[1] * k); res(st.f + 1, st.top[0] + o[0] * k, st.top[1] + o[1] * k); res(st.f + 1, st.top[0] + d[0] + o[0] * k, st.top[1] + d[1] + o[1] * k); }
   }
-  for (const H of M.D.hatches || []) { res(H.f, H.x, H.z); res(H.f - 1, H.x, H.z); }
+  for (const H of (M.D.hatches || []).concat(M.roofHatches || [])) { if (H.f < M.nf) res(H.f, H.x, H.z); res(H.f - 1, H.x, H.z); }
   for (const S of M.D.spawns) for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) res(S.f, S.x + dx, S.z + dz);
   // ----- bombs: two per site, near the middle of each room -----
   M.sites = M.D.sites.map((S, si) => {
@@ -3645,7 +3699,31 @@ function gmesh(k, side) {
     case 'bcam': case 'cam': g.add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), L(0x1a1c20))); addLed(0, 0, 0.09); break;
     case 'alarm': box(0.14, 0.14, 0.05, L(0xd0d0c0)); addLed(0, 0, 0.03, 0.03); break;
     case 'gust': box(0.14, 0.14, 0.08, L(0x3a6a3a)); addLed(0, 0, 0.05); break;
-    case 'emp': case 'frag': case 'smoke': case 'flash': case 'impact': g.add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), L(k === 'emp' ? 0x2a6aa8 : k === 'smoke' ? 0x8a8a8a : k === 'flash' ? 0xd0d0d0 : 0x3a4a2a))); break;
+    case 'emp': case 'frag': case 'smoke': case 'flash': case 'impact': {
+      // 1.0.12: real grenades (they were plain balls): a body, the fuze on top with its lever down the side and the ring
+      const metal = L(0x6e7276), dark = L(0x1c1e20), add = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+      let top = 0.05;
+      if (k === 'frag') { // M67-style: a ribbed olive egg
+        const b = add(new THREE.SphereGeometry(0.032, 12, 10), L(0x3d4a2c)); b.scale.set(1, 1.15, 1);
+        for (const y of [-0.012, 0.01]) add(new THREE.TorusGeometry(0.031, 0.0025, 4, 16), L(0x2f3a22), 0, y, 0).rotation.x = Math.PI / 2;
+        top = 0.037;
+      } else if (k === 'impact') { // a squat ribbed ball
+        const b = add(new THREE.SphereGeometry(0.03, 12, 10), L(0x2f3528)); b.scale.set(1, 0.9, 1);
+        add(new THREE.TorusGeometry(0.03, 0.004, 4, 16), L(0xb08a3a), 0, 0, 0).rotation.x = Math.PI / 2;
+        top = 0.028;
+      } else { // canisters: smoke (grey-green, a coloured band), stun (black with vent holes), EMP (blue, glowing bands)
+        const col = k === 'smoke' ? 0x5c6650 : k === 'flash' ? 0x26292c : 0x234e7a;
+        add(new THREE.CylinderGeometry(0.027, 0.027, 0.1, 12), L(col));
+        if (k === 'smoke') add(new THREE.CylinderGeometry(0.0275, 0.0275, 0.016, 12), L(0xd8c040), 0, 0.02, 0);
+        if (k === 'flash') for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; for (const y of [-0.025, 0.012]) add(new THREE.BoxGeometry(0.008, 0.012, 0.006), dark, Math.cos(a) * 0.026, y, Math.sin(a) * 0.026).rotation.y = -a; }
+        if (k === 'emp') for (const y of [-0.028, 0.018]) add(new THREE.CylinderGeometry(0.0285, 0.0285, 0.006, 12), glowMat(0x60b0ff), 0, y, 0);
+        top = 0.05;
+      }
+      add(new THREE.CylinderGeometry(0.009, 0.011, 0.022, 8), metal, 0, top + 0.009, 0);                  // the fuze
+      const lever = add(new THREE.BoxGeometry(0.012, 0.075, 0.004), metal, 0.014, top - 0.02, 0); lever.rotation.z = -0.12; // the spoon
+      add(new THREE.TorusGeometry(0.011, 0.0018, 4, 12), metal, -0.016, top + 0.012, 0).rotation.y = Math.PI / 2;       // the pull ring
+      break;
+    }
     case 'shock': box(0.06, 0.4, 0.06, L(0x303030)); addLed(0, 0.2, 0.03, 0.03); break;
     case 'kunai': box(0.04, 0.04, 0.25, L(0x222222)); break;
     case 'foam': box(1.3, 1.15, 0.24, L(0x8a8270)); break;
@@ -4281,6 +4359,18 @@ function sgRopeStart(P) {
   if (P.rope || P.vault || !P.alive || P.down || sideOf(P) !== 'atk' || G.phase !== 'action') return false;
   const R = sgRoomAt(P.x, P.y + 0.5, P.z); if (!R || !R.out) return false;
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+  // 1.0.12: at a roof's parapet, facing out: down the outside of the wall below it
+  if (R === W.roofRoom) {
+    const ph = sgRay(P.x, P.y + 0.35, P.z, fx, 0, fz, 1.1);
+    if (!ph || !ph.o || ph.o.k !== 'parapet' || (!ph.n[0] && !ph.n[2])) return false;
+    const n = [-ph.n[0], -ph.n[2]], o = ph.o, face = n[0] ? (n[0] > 0 ? o.x1 : o.x0) : (n[1] > 0 ? o.z1 : o.z0);
+    const c = face + (n[0] || n[1]) * ROPE_OFF, hx = n[0] ? c : P.x + fx * ph.t, hz = n[0] ? P.z + fz * ph.t : c, hy = P.y - 1.5;
+    if (!ropeWallAt(hx, hy, hz, n)) return false;
+    P.rope = { n, c }; P.x = hx; P.z = hz; P.y = hy;
+    P.vx = P.vz = P.vy = 0; P.onGround = false; P.crouchT = false; P.lean = 0;
+    snd('clank', P.id === G.myId ? null : P, 0.5);
+    return true;
+  }
   const h = sgRay(P.x, P.y + 1.2, P.z, fx, 0, fz, 1.1, { solidBar: true });
   if (!h || Math.abs(h.n[1]) > 0.5 || (!h.n[0] && !h.n[2])) return false;
   const n = [h.n[0], h.n[2]];
@@ -4303,6 +4393,17 @@ function sgRopeStep(P, inp, dt) {
   if (up > 0) {
     const ny = P.y + up, roof = sgRay(P.x, P.y + 1.8, P.z, 0, 1, 0, up + 0.08);
     if (!roof && ropeWallAt(P.x, ny, P.z, n)) P.y = ny;
+    else if (!roof) {
+      // 1.0.12: the top of the wall: over the parapet onto the roof behind it
+      const qx = P.x - n[0] * (ROPE_OFF + 0.55), qz = P.z - n[1] * (ROPE_OFF + 0.55), cx = Math.floor(qx / CELL), cz = Math.floor(qz / CELL);
+      for (let L = W.nf; L >= 1; L--) {
+        const ly = W.levelY(L);
+        if (ly > P.y + 2.1 || ly < P.y - 0.6 || !W.roofAt(L, cx, cz)) continue;
+        P.rope = null;
+        P.vault = { x0: P.x, z0: P.z, y0: P.y, over: ly + 0.62, tx: P.x - n[0] * (ROPE_OFF + 0.95), tz: P.z - n[1] * (ROPE_OFF + 0.95), t: 0, T: 0.8 };
+        return;
+      }
+    }
   } else if (up < 0) {
     const ny = P.y + up, g = sgGround(P.x, P.z, P.y + 0.05, 0.2);
     if (ny <= g + 0.02) { P.y = g; sgRopeEnd(P); P.onGround = true; return; } // feet on the ground: off the rope
@@ -5425,10 +5526,16 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.12', t: 'Roofs and hatches', d: '4 November 2026', intro: 'Climb onto the roof and come in from above.', items: [
+    ['Roofs', 'Every building\'s roof is now somewhere you can stand, with a low wall round the edge. Rappel up an outside wall and press W at the top to climb onto it; at the edge, Space takes you back down the outside.'],
+    ['Roof hatches', 'Each map has two hatches in the roof over the top floor. Shoot them, breach them or use the Skeleton Key to drop in. Defenders can reinforce them from below like any hatch.'],
+    ['Open yards', 'Some yards are open to the sky now: the hotel\'s Service Dock and Upper Parking, the port\'s Loading Dock and Customs Yard, and the manor\'s Terrace. Their walls go all the way up.'],
+    ['Grenades', 'Frags, smoke, stun, EMP and impact grenades are real grenades now (fuze, lever and ring), not glowing balls.'],
+  ] },
   { v: '1.0.11', t: 'Loadouts and rappelling', d: '4 November 2026', intro: 'Choose your gun and gadget, and climb the outside walls.', items: [
     ['Loadouts', 'Every operator has two primary guns and two gadgets to choose from on the operator screen. Your choice is kept for next time.'],
     ['Defender utilities', 'More defenders can take a claymore or a deployable shield as their gadget.'],
-    ['Rappelling', 'Attackers: press Space facing an outside wall to go up on a rope. W / S climb and go down, A / D move along the wall, and you can look round and shoot. F at a window goes in, kicking any barricade through. Space lets go. Walkable roofs are coming next.'],
+    ['Rappelling', 'Attackers: press Space facing an outside wall to go up on a rope. W / S climb and go down, A / D move along the wall, and you can look round and shoot. F at a window goes in, kicking any barricade through. Space lets go.'],
   ] },
   { v: '1.0.10', t: 'Abilities and sound icons', d: '4 November 2026', intro: 'Operator abilities that didn\'t work now do, and you can see sounds as well as hear them.', items: [
     ['Sound icons', 'Sounds that tell you something show an icon on the exact spot they come from: gunfire, explosions, footsteps, ringing phones, alarms, beeping traps, torches, hammering and more, within the distance you would hear them. Play without sound and you still know what is going on. Turn them off in Settings.'],
@@ -5954,7 +6061,7 @@ function sgHudUpdate(dt) {
   if (P.alive && P.down) spec.innerHTML = `YOU ARE DOWN<b>${Math.ceil(P.hp)}s</b>CRAWL TO COVER · A TEAMMATE CAN REVIVE YOU (HOLD F)`;
   else if (!P.alive && G.phase === 'action' && specCams) { const C = deadCam(P); spec.innerHTML = C ? `WATCHING<b>${esc(C.n)}${C.off > t ? ' · NO SIGNAL' : ''}</b>A / D TO SWITCH · MOUSE TO LOOK · CLICK TO MARK AN ENEMY · 5 BACK TO YOUR TEAM` : `NO ${sideOf(P) === 'def' ? 'CAMERAS' : 'DRONES'} LEFT<b>&nbsp;</b>5 BACK TO YOUR TEAM`; }
   else if (!P.alive && G.phase === 'action') { const S = sgSpectateTarget(P); spec.innerHTML = S ? `SPECTATING<b>${esc(S.name)}</b>A / D TO SWITCH · 5 ${sideOf(P) === 'def' ? 'CAMERAS' : 'DRONES'}` : `YOU ARE OUT<b>&nbsp;</b>5 ${sideOf(P) === 'def' ? 'CAMERAS' : 'DRONES'}`; } else spec.innerHTML = '';
-  $s('sgHint').textContent = P.rope ? 'ON THE ROPE · W / S UP AND DOWN · A / D ALONG THE WALL · F IN THROUGH A WINDOW · SPACE LET GO' : G.phase === 'prep' && sideOf(P) === 'def' ? 'PREP PHASE · REINFORCE WALLS AND BARRICADE (HOLD F) · PLACE GADGETS (X / G)' : '';
+  $s('sgHint').textContent = P.rope ? 'ROPE · W / S CLIMB · A / D SIDEWAYS · F IN AT A WINDOW · SPACE LET GO' : sgRoomAt(P.x, P.y + 0.5, P.z) === (W && W.roofRoom) && sideOf(P) === 'atk' ? 'ROOF · SPACE AT THE EDGE TO RAPPEL DOWN · BREAK A HATCH TO DROP IN' : G.phase === 'prep' && sideOf(P) === 'def' ? 'PREP PHASE · REINFORCE WALLS AND BARRICADE (HOLD F) · PLACE GADGETS (X / G)' : '';
   // scoreboard
   const sb = $s('sgSb'); const showSb = IN.keys.Tab;
   sb.classList.toggle('on', !!showSb); if (showSb && hudSlow === 0.25) sb.innerHTML = sbTable();
