@@ -13,7 +13,7 @@ import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix } from './supportH
 import { ShootingHand } from './shootingHand.js';
 import { ViewmodelMotion } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
-import { RELOAD_STEPS } from '../weapon.js';
+import { RELOAD_STEPS, CATCH_GAP, magazineFall } from '../weapon.js';
 
 // Points on the pistol (gun space): the muzzle, and the ejection port the
 // spent case comes out of.
@@ -45,11 +45,10 @@ const RELOAD_POSE = { position: new THREE.Vector3(-0.04, 0.15, 0.11), turn: [0.4
 // beside the grip, and closes round it again.
 
 // How far the magazine is from fully home (metres along the grip) when its
-// top is at the mouth of the magazine well, and when the old one lands in
-// the hand waiting under the grip (far enough out for the fingers to close
-// on it below the grip; it falls that far by RELOAD_STEPS.catching.magCaught).
+// top is at the mouth of the magazine well. (With rounds left, the old one
+// lands in the hand waiting CATCH_GAP below, far enough out for the fingers
+// to close on it below the grip; see weapon.js.)
 const MAG_AT_WELL = GRIP.bottom - MAGAZINE.top;
-const CATCH_GAP = 0.09;
 // An empty magazine that's dropped is handed over to the world (where it
 // lands on the ground and stays) once it has fallen this far, out of view.
 const HAND_TO_WORLD = 0.3;
@@ -62,9 +61,6 @@ const MAGAZINE_TURN = (() => {
   return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, new THREE.Vector3().crossVectors(x, y)));
 })();
 const MAGAZINE_FRAME = new THREE.Matrix4().compose(MAGAZINE_CENTER, MAGAZINE_TURN, new THREE.Vector3(1, 1, 1));
-// How far a released magazine has fallen (metres) t seconds after the
-// release is pressed: it's pushed out a little, then gravity takes it.
-const fallen = (t) => 0.4 * t + 0.5 * 9.8 * t * t;
 
 const NONE = new THREE.Quaternion();
 const turned = (x, y, z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
@@ -552,7 +548,7 @@ export class Viewmodel {
     // goes the fresh one, carried in the support hand from the belt.
     const seconds = gun ? gun.reloadSeconds : 1;
     const out = reload >= S.magOut && reload < S.magIn;
-    const fall = out ? fallen((reload - S.magOut) * seconds) : 0;
+    const fall = out ? magazineFall((reload - S.magOut) * seconds) : 0;
     let inGun = !out; // the gun's own magazine, seated (or on its way out)
     let inHand = reload >= FRESH_IN_HAND[kind] && reload < S.magIn;
     let round = true;

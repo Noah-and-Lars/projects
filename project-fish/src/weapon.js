@@ -10,6 +10,15 @@ import { PISTOL } from './shared/config.js';
 // it comes out and swaps it for a fresh one at the pouch, so the rounds left
 // in it are kept. The hands' movements in between are keyframed in
 // src/viewmodel/viewmodel.js (HAND_PATHS).
+// A released magazine is pushed out a little, then gravity takes it: how far
+// it has fallen (metres) t seconds after the release is pressed, and how long
+// it takes to fall a distance.
+export const magazineFall = (t) => 0.4 * t + 0.5 * 9.8 * t * t;
+const fallTime = (distance) => (-0.4 + Math.sqrt(0.16 + 2 * 9.8 * distance)) / 9.8;
+// With rounds left, the old magazine falls this far (metres) into the
+// support hand waiting under the grip.
+export const CATCH_GAP = 0.09;
+
 export const RELOAD_STEPS = {
   empty: {
     magOut: 0.1, // the thumb presses the magazine release: the empty one drops free
@@ -20,7 +29,7 @@ export const RELOAD_STEPS = {
   },
   catching: {
     magOut: 0.165, // the thumb presses the magazine release: the old one drops into the waiting hand
-    magCaught: 0.221, // it lands in the palm (it's fallen CATCH_GAP in src/viewmodel/viewmodel.js)
+    magCaught: 0.165 + fallTime(CATCH_GAP) / PISTOL.reloadTime, // it lands in the palm
     magGrab: 0.385, // swapped for a fresh one at the pouch
     magIn: 0.63,
     handOn: 0.84,
