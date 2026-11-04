@@ -5,34 +5,91 @@
 // screen doesn't change with the player's field of view.
 
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createPistol } from './pistol.js';
 import { createArms } from './arms.js';
 
+// Detailed models made in Blender (see tools/blender/).
+const PISTOL_MODEL = new URL('../../assets/pistol.glb', import.meta.url);
+const ARMS_MODEL = new URL('../../assets/arms.glb', import.meta.url);
+
 const VIEW_FOV = 52; // vertical, degrees
 
-// Where the gun sits in front of the camera when held at the hip.
-const HIP_POSITION = new THREE.Vector3(0.11, -0.065, -0.32);
-const HIP_ROTATION = new THREE.Euler(0.04, 0.25, 0.08, 'YXZ'); // muzzle turned in towards the crosshair
+// Where the gun sits in front of the camera when held at the hip: arms pushed
+// out, pistol a little right of centre, pointing straight ahead.
+const HIP_POSITION = new THREE.Vector3(0.075, -0.07, -0.5);
+const HIP_ROTATION = new THREE.Euler(0, 0.02, 0, 'YXZ');
 
 // How the gun moves (all small, in metres and radians).
-const SWAY = { perRadian: 0.18, max: 0.06, return: 9 };
+const SWAY = { perRadian: 0.14, max: 0.045, return: 9 };
 const BOB = { stepsPerMetre: 0.75, side: 0.0045, up: 0.0035, tilt: 0.012 };
 const BREATH = { speed: 1.4, amount: 0.0008 };
+
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+
+// Reflections: an outdoor sky over grey ground with the sun in it, matching the
+// world, so metal shows the sky above and the ground below, like outside.
+function outdoorEnvironment(renderer, sunDirection) {
+  const scene = new THREE.Scene();
+  const dome = new THREE.SphereGeometry(10, 64, 32);
+  const sky = new THREE.Color(0x8fadd0);
+  const horizon = new THREE.Color(0xdde4ea);
+  const ground = new THREE.Color(0x5e5e5e);
+  const colors = [];
+  const position = dome.attributes.position;
+  for (let i = 0; i < position.count; i++) {
+    const up = position.getY(i) / 10;
+    const c = up > 0 ? horizon.clone().lerp(sky, Math.pow(up, 0.5)) : horizon.clone().lerp(ground, Math.min(1, -up * 8));
+    colors.push(c.r, c.g, c.b);
+  }
+  dome.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  scene.add(new THREE.Mesh(dome, new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true })));
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(14, 13, 12) }));
+  sun.position.copy(sunDirection).multiplyScalar(9);
+  scene.add(sun);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const texture = pmrem.fromScene(scene, 0).texture;
+  pmrem.dispose();
+  return texture;
+}
+
+// Everything in a loaded model casts and catches shadows.
+function shadowed(model) {
+  model.traverse((o) => {
+    if (o.isMesh) o.castShadow = o.receiveShadow = true;
+  });
+  return model;
+}
+
+// Loads a model made in Blender. If it can't be loaded, uses the simpler
+// built-in one instead, so the game still works.
+async function loadModel(url, fallback) {
+  try {
+    return (await loader.loadAsync(url.href)).scene;
+  } catch (error) {
+    console.warn(`Couldn't load ${url.pathname}; using the built-in model instead.`, error);
+    return fallback();
+  }
+}
 
 export class Viewmodel {
   constructor(renderer, sunDirection) {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(VIEW_FOV, 1, 0.01, 3);
 
-    // Soft studio-style reflections so metal and polymer look like metal and polymer.
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.55;
-    pmrem.dispose();
+    this.scene.environment = outdoorEnvironment(renderer, sunDirection);
+    this.scene.environmentIntensity = 0.9;
 
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x6a6a6a, 1.0));
-    this.sun = new THREE.DirectionalLight(0xffffff, 1.7);
+    this.scene.add(new THREE.HemisphereLight(0xdfe8f2, 0x55554f, 0.35));
+    // The sun, with its own small, sharp shadow map: the hands shade the gun and each other.
+    this.sun = new THREE.DirectionalLight(0xfff4e6, 2.4);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(this.sun.shadow.camera, { left: -0.24, right: 0.24, top: 0.24, bottom: -0.24, near: 0.05, far: 2 });
+    this.sun.shadow.bias = -0.0002;
+    this.sun.shadow.normalBias = 0.0012;
+    this.sun.target.position.copy(HIP_POSITION);
     this.scene.add(this.sun, this.sun.target);
     this.sunDirection = sunDirection;
 
@@ -41,9 +98,14 @@ export class Viewmodel {
     this.gun = new THREE.Group();
     this.gun.position.copy(HIP_POSITION);
     this.gun.rotation.copy(HIP_ROTATION);
-    this.gun.add(createPistol(), createArms());
     this.holder.add(this.gun);
     this.scene.add(this.holder);
+
+    // Resolves once the pistol and hands are loaded and in place.
+    this.ready = Promise.all([loadModel(PISTOL_MODEL, createPistol), loadModel(ARMS_MODEL, createArms)]).then(([pistol, arms]) => {
+      arms.name = 'arms';
+      this.gun.add(shadowed(pistol), shadowed(arms));
+    });
 
     this.lastYaw = null;
     this.lastPitch = 0;
@@ -93,9 +155,11 @@ export class Viewmodel {
     this.holder.position.set(bobX, bobY + breath + air, 0);
     this.holder.rotation.set(this.swayPitch, this.swayYaw, Math.sin(this.bobPhase) * BOB.tilt * this.bobAmount);
 
-    // Light the gun from wherever the sun is, relative to where the player looks.
+    // Light and reflections come from where the sun and sky are, relative to
+    // where the player looks.
     const inverse = cameraQuaternion.clone().invert();
-    this.sun.position.copy(this.sunDirection).applyQuaternion(inverse);
+    this.sun.position.copy(this.sunDirection).applyQuaternion(inverse).add(this.sun.target.position);
+    this.scene.environmentRotation.setFromQuaternion(inverse);
   }
 
   render(renderer) {

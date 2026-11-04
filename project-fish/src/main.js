@@ -33,6 +33,9 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.autoClear = false; // the world and the gun are drawn one after the other
+// Film-like tone mapping: bright highlights roll off softly instead of clipping.
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
 container.appendChild(renderer.domElement);
 
 const scene = createWorld();
@@ -66,12 +69,18 @@ resize();
 
 // --- Click to play / Esc to release the mouse ---
 
-overlay.addEventListener('click', () => input.lock());
+let loaded = false;
+overlay.addEventListener('click', () => {
+  if (loaded) input.lock();
+});
 input.onLockChange = (locked) => {
   overlay.hidden = locked;
   document.body.classList.toggle('playing', locked);
 };
-overlayStatus.textContent = 'Click to play';
+viewmodel.ready.then(() => {
+  loaded = true;
+  overlayStatus.textContent = 'Click to play';
+});
 
 // --- Game loop ---
 

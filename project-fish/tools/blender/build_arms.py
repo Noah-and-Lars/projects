@@ -16,8 +16,8 @@ Starting from the posed hands and sleeves exported from the game, it:
   into textures: stitched seams down the sides of every finger, leather
   fingertip caps and palm, padded finger knuckles with a flex groove, ribbed
   flex panel on the back of the hand, elastic wrist cuff.
-- Sleeves: adds fabric folds bunched up at the cuff and a velcro cuff tab as
-  geometry, and bakes ripstop weave, a double-stitched hem and a stitched
+- Sleeves: builds an open fabric tube with a hem, uneven folds bunched up at
+  the cuff and long soft folds up the forearm, and a velcro cuff tab, and bakes ripstop weave, a double-stitched hem and a stitched
   seam along the forearm into textures.
 - Bakes ambient occlusion with the pistol and both hands in place, so the
   creases between fingers and where they press on the gun are shaded.
@@ -32,19 +32,22 @@ import json
 import math
 import os
 import sys
-import tempfile
 import time
 
 import bpy
 import numpy as np
 from mathutils import Vector, noise
-from mathutils.bvhtree import BVHTree
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from common import (
+    SETTINGS, log, to_blender, unit, srgb_to_linear, linear_to_srgb, smoothstep, dashes, near_line, low_noise, reset_scene, read_obj, mesh_object, apply_modifiers, triangle_count, decimate, select_only, uv_unwrap, bvh, grid_patch, new_image, bake, pixels, set_pixels, bake_positions, bake_world_normals, bake_normal_from_height, bake_ao, textured_material, plain_material,
+)
 
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
 BASE_DIR, OUT_GLB = ARGS[0], ARGS[1]
 BLEND = ARGS[ARGS.index('--blend') + 1] if '--blend' in ARGS else None
-SIZE = int(ARGS[ARGS.index('--size') + 1]) if '--size' in ARGS else 1024
-AO_SAMPLES = int(ARGS[ARGS.index('--ao-samples') + 1]) if '--ao-samples' in ARGS else 48
+SETTINGS['size'] = int(ARGS[ARGS.index('--size') + 1]) if '--size' in ARGS else 1024
+SETTINGS['ao_samples'] = int(ARGS[ARGS.index('--ao-samples') + 1]) if '--ao-samples' in ARGS else 48
 
 GLOVE_TRIANGLES = 16000
 SLEEVE_TRIANGLES = 20000
@@ -53,327 +56,13 @@ SLEEVE_TRIANGLES = 20000
 GLOVE_FABRIC = '#2a2b2e'
 GLOVE_LEATHER = '#201f1e'
 GLOVE_PAD = '#161718'
-GLOVE_THREAD = '#56564f'
+GLOVE_THREAD = '#3d3e3b'
 GLOVE_RIB = '#1d1e20'
 SLEEVE_FABRIC = '#4d533f'
-SLEEVE_THREAD = '#61654f'
+SLEEVE_THREAD = '#5a5e4a'
 ARMOR = '#121314'
 STRAP = '#1b1b1d'
 TAB = '#141415'
-
-
-def log(*args):
-    print(f'[{time.strftime("%H:%M:%S")}]', *args, flush=True)
-
-
-def to_blender(v):
-    return np.array([v[0], -v[2], v[1]], dtype=np.float64)
-
-
-def unit(v):
-    return v / np.linalg.norm(v)
-
-
-def srgb_to_linear(hex_color):
-    c = np.array([int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5)])
-    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
-
-
-def linear_to_srgb(c):
-    c = np.clip(c, 0, 1)
-    return np.where(c <= 0.0031308, c * 12.92, 1.055 * np.power(c, 1 / 2.4) - 0.055)
-
-
-def smoothstep(e0, e1, x):
-    t = np.clip((x - e0) / (e1 - e0), 0, 1)
-    return t * t * (3 - 2 * t)
-
-
-def dashes(x, period, duty=0.62):
-    return (np.mod(x, period) / period) < duty
-
-
-def near_line(d, width):
-    """1 on a line (d = distance from it), fading out over `width`."""
-    return np.exp(-(d / width) ** 2)
-
-
-def low_noise(p, wavelength, seed):
-    """Smooth, cheap 3D noise from a few crossed waves (range about -1..1)."""
-    rng = np.random.default_rng(seed)
-    total = np.zeros(len(p))
-    for _ in range(5):
-        k = unit(rng.normal(size=3)) * (2 * math.pi / wavelength) * rng.uniform(0.7, 1.4)
-        total += np.sin(p @ k + rng.uniform(0, 2 * math.pi))
-    return total / 2.2
-
-
-# --- Scene and objects --------------------------------------------------------
-
-def reset_scene():
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    scene = bpy.context.scene
-    scene.render.engine = 'CYCLES'
-    scene.cycles.device = 'CPU'
-    scene.render.bake.margin = 12
-    scene.render.bake.margin_type = 'EXTEND'
-    world = bpy.data.worlds.new('World')
-    world.light_settings.distance = 0.04  # ambient occlusion reach: 4 cm
-    scene.world = world
-    return scene
-
-
-def read_obj(path):
-    verts, faces = [], []
-    with open(path) as f:
-        for line in f:
-            if line.startswith('v '):
-                x, y, z = map(float, line.split()[1:4])
-                verts.append((x, -z, y))
-            elif line.startswith('f '):
-                faces.append([int(p.split('/')[0]) - 1 for p in line.split()[1:]])
-    return verts, faces
-
-
-def mesh_object(name, verts, faces):
-    mesh = bpy.data.meshes.new(name)
-    mesh.from_pydata(verts, [], faces)
-    mesh.validate()
-    mesh.polygons.foreach_set('use_smooth', [True] * len(mesh.polygons))
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.scene.collection.objects.link(obj)
-    return obj
-
-
-def apply_modifiers(obj):
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    mesh = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
-    obj.modifiers.clear()
-    old = obj.data
-    obj.data = mesh
-    bpy.data.meshes.remove(old)
-    mesh.polygons.foreach_set('use_smooth', [True] * len(mesh.polygons))
-
-
-def triangle_count(obj):
-    return sum(len(p.vertices) - 2 for p in obj.data.polygons)
-
-
-def decimate(obj, triangles):
-    mod = obj.modifiers.new('Decimate', 'DECIMATE')
-    mod.ratio = min(1.0, triangles / triangle_count(obj))
-    apply_modifiers(obj)
-
-
-def voxel_remesh(obj, size):
-    mod = obj.modifiers.new('Remesh', 'REMESH')
-    mod.mode = 'VOXEL'
-    mod.voxel_size = size
-    apply_modifiers(obj)
-
-
-def select_only(obj):
-    for o in bpy.context.scene.objects:
-        o.select_set(False)
-    obj.select_set(True)
-    bpy.context.view_layer.objects.active = obj
-
-
-def uv_unwrap(obj):
-    select_only(obj)
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.select_all(action='SELECT')
-    bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.006, area_weight=0.0)
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-
-def bvh(obj):
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    return BVHTree.FromObject(obj, depsgraph)
-
-
-def vertex_array(obj):
-    co = np.empty(len(obj.data.vertices) * 3)
-    obj.data.vertices.foreach_get('co', co)
-    return co.reshape(-1, 3)
-
-
-def set_vertex_array(obj, co):
-    obj.data.vertices.foreach_set('co', co.reshape(-1))
-    obj.data.update()
-
-
-def vertex_normals(obj):
-    n = np.empty(len(obj.data.vertices) * 3)
-    obj.data.vertices.foreach_get('normal', n)
-    return n.reshape(-1, 3)
-
-
-def grid_patch(name, rows, cols, point_at):
-    """A grid surface; point_at(i, j) gives each vertex (or None to leave it out)."""
-    verts, index = [], {}
-    for i in range(rows):
-        for j in range(cols):
-            p = point_at(i, j)
-            if p is not None:
-                index[i, j] = len(verts)
-                verts.append(tuple(p))
-    faces = []
-    for i in range(rows - 1):
-        for j in range(cols - 1):
-            quad = [(i, j), (i, j + 1), (i + 1, j + 1), (i + 1, j)]
-            if all(q in index for q in quad):
-                faces.append([index[q] for q in quad])
-    return mesh_object(name, verts, faces)
-
-
-# --- Baking -------------------------------------------------------------------
-
-def new_image(name, float_buffer=False, color=False):
-    image = bpy.data.images.new(name, SIZE, SIZE, alpha=False, float_buffer=float_buffer)
-    image.colorspace_settings.name = 'sRGB' if color else 'Non-Color'
-    return image
-
-
-def bake(obj, image, kind, build_nodes=None, samples=1):
-    """Bakes `kind` (EMIT, NORMAL, AO) of obj into image, using a temporary
-    material whose nodes build_nodes(nodes, links) sets up."""
-    mat = bpy.data.materials.new(f'bake_{obj.name}_{kind}')
-    mat.use_nodes = True
-    nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    nodes.clear()
-    out = nodes.new('ShaderNodeOutputMaterial')
-    shader = build_nodes(nodes, links) if build_nodes else nodes.new('ShaderNodeBsdfDiffuse').outputs[0]
-    links.new(shader, out.inputs['Surface'])
-    target = nodes.new('ShaderNodeTexImage')
-    target.image = image
-    nodes.active = target
-    obj.data.materials.clear()
-    obj.data.materials.append(mat)
-    bpy.context.scene.cycles.samples = samples
-    select_only(obj)
-    if kind == 'NORMAL':
-        bpy.ops.object.bake(type='NORMAL', normal_space='TANGENT')
-    else:
-        bpy.ops.object.bake(type=kind)
-    obj.data.materials.clear()
-    bpy.data.materials.remove(mat)
-
-
-def pixels(image):
-    a = np.empty(SIZE * SIZE * 4, np.float32)
-    image.pixels.foreach_get(a)
-    return a.reshape(SIZE, SIZE, 4)
-
-
-def set_pixels(image, rgb):
-    rgba = np.ones((SIZE, SIZE, 4), np.float32)
-    rgba[..., :3] = rgb.reshape(SIZE, SIZE, -1)
-    image.pixels.foreach_set(rgba.reshape(-1))
-    image.update()
-
-
-def bake_positions(obj):
-    """World position of every texel."""
-    image = new_image(f'{obj.name}_position', float_buffer=True)
-
-    def nodes_for(nodes, links):
-        geo = nodes.new('ShaderNodeNewGeometry')
-        scale = nodes.new('ShaderNodeVectorMath')
-        scale.operation = 'MULTIPLY_ADD'
-        scale.inputs[1].default_value = (0.5, 0.5, 0.5)
-        scale.inputs[2].default_value = (0.5, 0.5, 0.5)
-        links.new(geo.outputs['Position'], scale.inputs[0])
-        emit = nodes.new('ShaderNodeEmission')
-        links.new(scale.outputs[0], emit.inputs['Color'])
-        return emit.outputs[0]
-
-    bake(obj, image, 'EMIT', nodes_for)
-    p = (pixels(image)[..., :3].astype(np.float64) - 0.5) * 2
-    bpy.data.images.remove(image)
-    return p.reshape(-1, 3)
-
-
-def bake_normal_from_height(obj, height):
-    """Turns a height map (metres) into a tangent-space normal map."""
-    h_image = new_image(f'{obj.name}_height', float_buffer=True)
-    set_pixels(h_image, np.repeat(height.reshape(-1, 1), 3, axis=1))
-    n_image = new_image(f'{obj.name}_normal')
-
-    def nodes_for(nodes, links):
-        tex = nodes.new('ShaderNodeTexImage')
-        tex.image = h_image
-        tex.interpolation = 'Linear'
-        bump = nodes.new('ShaderNodeBump')
-        bump.inputs['Strength'].default_value = 1.0
-        bump.inputs['Distance'].default_value = 1.0
-        links.new(tex.outputs['Color'], bump.inputs['Height'])
-        bsdf = nodes.new('ShaderNodeBsdfDiffuse')
-        links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
-        return bsdf.outputs[0]
-
-    bake(obj, n_image, 'NORMAL', nodes_for)
-    bpy.data.images.remove(h_image)
-    return n_image
-
-
-def bake_ao(obj):
-    image = new_image(f'{obj.name}_ao', float_buffer=True)
-    bake(obj, image, 'AO', samples=AO_SAMPLES)
-    ao = pixels(image)[..., 0].astype(np.float64)
-    bpy.data.images.remove(image)
-    # Soften the sampling noise a little.
-    blurred = ao.copy()
-    for axis in (0, 1):
-        blurred = (np.roll(blurred, 1, axis) + 2 * blurred + np.roll(blurred, -1, axis)) / 4
-    return blurred.reshape(-1)
-
-
-def textured_material(obj, color, roughness, normal_image):
-    """Final material: base colour, roughness and normal map."""
-    name = obj.name
-    color_image = new_image(f'{name}_color', color=True)
-    set_pixels(color_image, linear_to_srgb(color))
-    rough_image = new_image(f'{name}_roughness')
-    set_pixels(rough_image, np.repeat(roughness.reshape(-1, 1), 3, axis=1))
-
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
-    nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    bsdf = nodes['Principled BSDF']
-    bsdf.inputs['Metallic'].default_value = 0.0
-    c = nodes.new('ShaderNodeTexImage')
-    c.image = color_image
-    links.new(c.outputs['Color'], bsdf.inputs['Base Color'])
-    r = nodes.new('ShaderNodeTexImage')
-    r.image = rough_image
-    links.new(r.outputs['Color'], bsdf.inputs['Roughness'])
-    n = nodes.new('ShaderNodeTexImage')
-    n.image = normal_image
-    nm = nodes.new('ShaderNodeNormalMap')
-    links.new(n.outputs['Color'], nm.inputs['Color'])
-    links.new(nm.outputs['Normal'], bsdf.inputs['Normal'])
-    obj.data.materials.clear()
-    obj.data.materials.append(mat)
-
-    # Save the images next to each other so the exporter (and the .blend) can find them.
-    folder = os.path.join(tempfile.gettempdir(), 'project-fish-textures')
-    os.makedirs(folder, exist_ok=True)
-    for image in (color_image, rough_image, normal_image):
-        image.filepath_raw = os.path.join(folder, image.name + '.png')
-        image.file_format = 'PNG'
-        image.save()
-
-
-def plain_material(obj, hex_color, roughness):
-    mat = bpy.data.materials.new(obj.name)
-    mat.use_nodes = True
-    bsdf = mat.node_tree.nodes['Principled BSDF']
-    bsdf.inputs['Base Color'].default_value = (*srgb_to_linear(hex_color), 1)
-    bsdf.inputs['Roughness'].default_value = roughness
-    bsdf.inputs['Metallic'].default_value = 0.0
-    obj.data.materials.clear()
-    obj.data.materials.append(mat)
 
 
 # --- Gloves -------------------------------------------------------------------
@@ -463,7 +152,7 @@ def glove_maps(p, hand, grip):
     color[cap] = leather
     rough[cap] = 0.62
     height -= np.where(tip_bone, 0.00022 * near_line(cap_along, 0.00035), 0)
-    cap_stitch = tip_bone & ~palm_side & (np.abs(cap_along + 0.0011) < 0.00024) & dashes(theta * radius, 0.0026)
+    cap_stitch = tip_bone & ~palm_side & (np.abs(cap_along + 0.0011) < 0.0002) & dashes(theta * radius, 0.0026)
     color[cap_stitch] = thread
     height += np.where(cap_stitch, 0.00012, 0)
 
@@ -471,7 +160,7 @@ def glove_maps(p, hand, grip):
     seam = math.radians(100)
     seam_dist = (abs_theta - seam) * radius
     height -= np.where(on_finger, 0.00022 * near_line(seam_dist, 0.00035), 0)
-    side_stitch = on_finger & ~cap & (np.abs(seam_dist + 0.0011) < 0.00024) & dashes(length, 0.0026)
+    side_stitch = on_finger & ~cap & (np.abs(seam_dist + 0.0011) < 0.0002) & dashes(length, 0.0024, 0.55)
     color[side_stitch] = thread
     rough[side_stitch] = 0.72
     height += np.where(side_stitch, 0.00013, 0)
@@ -492,7 +181,7 @@ def glove_maps(p, hand, grip):
     color = color * (1 - pad[:, None]) + pad_c * pad[:, None]
     rough = rough * (1 - pad) + 0.52 * pad
     height += 0.00055 * pad - 0.00028 * pad * near_line(u, 0.00035)
-    pad_stitch = in_pad & (np.abs(pad_sd + 0.0009) < 0.0002) & dashes(u + v, 0.0024)
+    pad_stitch = in_pad & (np.abs(pad_sd + 0.0009) < 0.00018) & dashes(u + v, 0.0022, 0.55)
     color[pad_stitch] = thread
     height += np.where(pad_stitch, 0.0001, 0)
 
@@ -508,7 +197,7 @@ def glove_maps(p, hand, grip):
     color[ribs] *= (0.85 + 0.15 * rib_shape[ribs])[:, None]
     edge_dist = side_of_hand + 0.003
     height -= np.where(on_hand, 0.0002 * near_line(edge_dist, 0.00035), 0)
-    edge_stitch = on_hand & (np.abs(edge_dist - 0.0011) < 0.00024) & dashes(a + c, 0.0026)
+    edge_stitch = on_hand & (np.abs(edge_dist - 0.0011) < 0.0002) & dashes(a + c, 0.0024, 0.55)
     color[edge_stitch] = thread
     height += np.where(edge_stitch, 0.00012, 0)
 
@@ -583,7 +272,7 @@ def wrist_strap(name, hand):
     e2 = np.cross(forearm, e1)
     # The glove's wrist is a cone from radius 25.5 mm (at the wrist) to 28 mm (6 cm along).
     glove_r = lambda w: 0.0255 + 0.0025 * w / 0.06
-    start, end = 0.013, 0.035
+    start, end = 0.012, 0.033
     rows, cols = 18, 96
 
     def band(i, j):
@@ -614,7 +303,7 @@ def wrist_strap(name, hand):
         shape = abs(u) ** 4 + abs(v) ** 4
         if shape > 1:
             return None
-        w = (start + end) / 2 + u * 0.012
+        w = 0.0195 + u * 0.0085
         ang = tab_center + v * 0.016 / 0.03
         lift = 0.0014 * smoothstep(1.0, 0.5, shape) + 0.0009 * smoothstep(0.3, 0.9, v) * smoothstep(1.0, 0.6, shape)
         r = glove_r(w) + 0.0021 + lift
@@ -628,9 +317,13 @@ def wrist_strap(name, hand):
 
 # --- Sleeves ------------------------------------------------------------------
 
+SLEEVE_START = 0.03  # where the cuff opening sits, metres from the wrist along the forearm
+SLEEVE_LENGTH = 0.27
+
+
 def sleeve_frame(hand, side):
     wrist, forearm = to_blender(hand['wrist']), unit(to_blender(hand['forearm']))
-    start = wrist + forearm * 0.034
+    start = wrist + forearm * SLEEVE_START
     # e1 points to the outside of the arm and up; the seam runs along the opposite side.
     outward = to_blender([1.0 if side == 'right' else -1.0, 0.7, 0.0])
     e1 = unit(outward - forearm * (outward @ forearm))
@@ -638,23 +331,63 @@ def sleeve_frame(hand, side):
     return start, forearm, e1, e2
 
 
-def add_folds(obj, frame):
-    """Pushes the sleeve surface in and out into fabric folds."""
+def sleeve_radius(t):
+    """Radius of the sleeve t metres up from the cuff: snug at the cuff, looser up the arm."""
+    snug = 0.0325 + 0.0045 * smoothstep(0.0, 0.035, t)
+    return snug + (0.045 - 0.037) * np.clip(t / SLEEVE_LENGTH, 0, 1) + 0.0007 * (t < 0.019)
+
+
+def fold_offset(t, around, p, seed):
+    """How far the fabric is pushed out (+) or in (-) by folds."""
+    rng = np.random.default_rng(seed)
+    out = np.zeros_like(t)
+    # A few uneven folds where the sleeve bunches up against the glove: each is
+    # a ridge with a crease after it, strongest on one side of the arm.
+    for t0, amp in ((0.024, 0.0036), (0.041, 0.003), (0.062, 0.0022), (0.088, 0.0015)):
+        phase = rng.uniform(-math.pi, math.pi)
+        wander = 0.004 * np.sin(around * rng.integers(1, 3) + phase) + 0.003 * np.array([noise.noise(Vector(c * 40 + t0 * 100)) for c in p])
+        x = (t - t0 - wander) / 0.0042
+        ridge = np.exp(-x ** 2) - 0.55 * np.exp(-(x - 1.5) ** 2)
+        side = 0.35 + 0.65 * (0.5 + 0.5 * np.cos(around - phase))
+        out += amp * ridge * side
+    # Long, soft diagonal folds from the forearm twisting inside the sleeve.
+    for k in range(3):
+        a0 = rng.uniform(-math.pi, math.pi)
+        slope = rng.uniform(5, 9) * (1 if k % 2 else -1)
+        d = np.angle(np.exp(1j * (around - a0 - slope * t)))
+        out += 0.0019 * np.exp(-(d / 0.35) ** 2) * smoothstep(0.05, 0.1, t) * smoothstep(0.27, 0.2, t)
+    out += 0.0007 * np.array([noise.noise(Vector(c * 22 + 3.1)) for c in p])
+    return out * smoothstep(0.016, 0.022, t)  # the hem is stiff
+
+
+def build_sleeve(name, frame, seed):
+    """An open tube of fabric from the cuff up the forearm, with folds and a hem."""
     start, f, e1, e2 = frame
-    co = vertex_array(obj)
-    nrm = vertex_normals(obj)
-    r = co - start
-    t = r @ f
-    around = np.arctan2(r @ e2, r @ e1)
-    wobble = np.array([noise.noise(Vector(c * 60)) for c in co])
-    wobble2 = np.array([noise.noise(Vector(c * 25 + 7.3)) for c in co])
-    # Rings of bunched fabric just above the cuff, fading further up the arm.
-    bunch = np.exp(-np.maximum(t - 0.025, 0) / 0.05) * np.sin(2 * math.pi * t / 0.011 + 1.1 * np.sin(around * 2 + t * 40) + 1.5 * wobble)
-    # Long diagonal folds from the forearm twisting.
-    twist = np.sin(around * 3 + t * 55 + 2.2 * wobble2) * smoothstep(0.03, 0.08, t)
-    amount = 0.0021 * bunch + 0.0014 * twist + 0.0008 * wobble2
-    amount *= smoothstep(0.019, 0.03, t)  # the hem stays stiff and smooth
-    set_vertex_array(obj, co + nrm * amount[:, None])
+    rings, around_n = 220, 120
+    t = (np.linspace(0, 1, rings) ** 1.6) * SLEEVE_LENGTH  # more rings near the cuff
+    ang = np.linspace(-math.pi, math.pi, around_n, endpoint=False)
+    T, A = np.meshgrid(t, ang, indexing='ij')
+    radial = np.cos(A)[..., None] * e1 + 0.9 * np.sin(A)[..., None] * e2  # forearms are a little flat
+    base = start + T[..., None] * f + radial * sleeve_radius(T)[..., None]
+    p = base.reshape(-1, 3)
+    normal = unit_rows(np.cos(A)[..., None] * e1 / 1.0 + np.sin(A)[..., None] * e2 / 0.9).reshape(-1, 3)
+    p = p + normal * fold_offset(T.reshape(-1), A.reshape(-1), p, seed)[:, None]
+    faces = []
+    for i in range(rings - 1):
+        for j in range(around_n):
+            a, b = i * around_n + j, i * around_n + (j + 1) % around_n
+            faces.append([a, b, b + around_n, a + around_n])
+    obj = mesh_object(name, [tuple(v) for v in p], faces)
+    # Give the cloth some thickness, so the open cuff shows a lip.
+    mod = obj.modifiers.new('Thickness', 'SOLIDIFY')
+    mod.thickness = 0.0013
+    mod.offset = -1
+    apply_modifiers(obj)
+    return obj
+
+
+def unit_rows(v):
+    return v / np.linalg.norm(v, axis=-1, keepdims=True)
 
 
 def sleeve_maps(p, frame):
@@ -668,15 +401,15 @@ def sleeve_maps(p, frame):
     t = r @ f
     around = np.arctan2(r @ e2, r @ e1)
     radius = np.linalg.norm(r - t[:, None] * f, axis=1)
-    s = around * radius  # distance round the arm
+    s = around * 0.037  # distance round the arm (at a fixed radius, so the weave lines stay straight)
 
     # Ripstop: a grid of thicker threads every 5.5 mm.
     grid = 0.0055
     dt = np.abs(np.mod(t / grid + 0.5, 1) - 0.5) * grid
     ds = np.abs(np.mod(s / grid + 0.5, 1) - 0.5) * grid
     lines = np.maximum(near_line(dt, 0.0002), near_line(ds, 0.0002))
-    height += 0.0001 * lines
-    color *= (1 + 0.08 * lines)[:, None]
+    height += 0.00008 * lines
+    color *= (1 + 0.06 * lines)[:, None]
 
     # Hem at the cuff: a fold line and two rows of stitching.
     hem = t < 0.02
@@ -753,9 +486,7 @@ def main():
 
         log(side, 'sleeve')
         frame = sleeve_frame(hand, side)
-        sleeve = mesh_object(f'{side}_sleeve', *read_obj(os.path.join(BASE_DIR, f'{side}_sleeve.obj')))
-        voxel_remesh(sleeve, 0.0015)
-        add_folds(sleeve, frame)
+        sleeve = build_sleeve(f'{side}_sleeve', frame, seed=11 if side == 'right' else 23)
         decimate(sleeve, SLEEVE_TRIANGLES)
         uv_unwrap(sleeve)
         keep += [sleeve, cuff_tab(f'{side}_cuff_tab', sleeve, frame)]

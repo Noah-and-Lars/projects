@@ -1,12 +1,12 @@
-// Exports the posed hands, sleeves and pistol from the game's code, as the
+// Exports the posed hands and the pistol from the game's code, as the
 // starting point for the detailed Blender models (tools/blender/build_arms.py).
 //
 //   cd project-fish && npm install && node tools/export-arm-base.mjs <out-dir>
 //
 // Writes, in gun space (metres, Y up, muzzle towards -Z):
-//   right_glove.obj, left_glove.obj, right_sleeve.obj, left_sleeve.obj,
-//   right_strap.obj, left_strap.obj, pistol.obj
+//   right_glove.obj, left_glove.obj, pistol.obj
 //   rig.json: finger joints, wrists, elbows and hand directions.
+//   pistol.json: the pistol's side profiles and thicknesses.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,7 +19,7 @@ const fakeContext = new Proxy({}, { get: () => () => fakeContext });
 globalThis.document = { createElement: () => ({ getContext: () => fakeContext }) };
 
 const { buildArmParts } = await import('../src/viewmodel/arms.js');
-const { createPistol, GRIP } = await import('../src/viewmodel/pistol.js');
+const { createPistol, GRIP, PROFILES } = await import('../src/viewmodel/pistol.js');
 
 const out = process.argv[2] || 'arm-base';
 fs.mkdirSync(out, { recursive: true });
@@ -36,8 +36,6 @@ const v = (vec) => vec.toArray().map((n) => +n.toFixed(6));
 const rig = { grip: { top: v(GRIP.top), down: v(GRIP.down), front: v(GRIP.front), halfWidth: GRIP.halfWidth, halfDepth: GRIP.halfDepth } };
 for (const part of buildArmParts({ plain: true })) {
   write(`${part.side}_glove.obj`, mesh(part.glove));
-  write(`${part.side}_sleeve.obj`, mesh(part.sleeve));
-  write(`${part.side}_strap.obj`, mesh(part.strap));
   const chain = (f) => ({ joints: f.joints.map(v), radii: f.radii });
   rig[part.side] = {
     fingers: part.pose.fingers.map(chain),
@@ -56,4 +54,5 @@ const pistol = createPistol();
 pistol.updateMatrixWorld(true);
 write('pistol.obj', pistol);
 fs.writeFileSync(path.join(out, 'rig.json'), JSON.stringify(rig, null, 1));
+fs.writeFileSync(path.join(out, 'pistol.json'), JSON.stringify(PROFILES, null, 1));
 console.log('Wrote', fs.readdirSync(out).join(', '), 'to', out);

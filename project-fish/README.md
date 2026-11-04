@@ -2,7 +2,7 @@
 
 A fast-paced multiplayer first-person shooter for the browser, built from scratch with [three.js](https://threejs.org).
 
-**Status: phase 1.** A flat grey baseplate where you can look around, walk and jump, with a small house in front of you so you can see yourself moving. You see your gloved hands holding a pistol, which sways as you look around and bobs as you walk. Shooting, the map and multiplayer come later.
+**Status: phase 1.** A flat grey baseplate where you can look around, walk and jump, with a small house in front of you so you can see yourself moving. You see your gloved hands holding a pistol out in front of you, which sways as you look around and bobs as you walk. Shooting, the map and multiplayer come later.
 
 ## Play it locally
 
@@ -40,10 +40,12 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 | `src/shared/config.js` | Movement values: speeds, jump height, gravity, tick rate |
 | `src/shared/movement.js` | Player movement, including bumping into walls |
 | `src/shared/map.js` | Where the house is, and the solid boxes the player collides with |
-| `src/viewmodel/viewmodel.js` | Draws the hands and gun on top of the world; where they're held, sway and bob |
-| `src/viewmodel/pistol.js` | The pistol, built to real dimensions |
-| `src/viewmodel/arms.js` | The gloved hands and sleeves, posed around the pistol's grip |
+| `src/viewmodel/viewmodel.js` | Loads and draws the hands and gun on top of the world; where they're held, lighting, sway and bob |
+| `src/viewmodel/pistol.js` | The pistol's side profiles (shared with Blender) and a simple built-in pistol |
+| `src/viewmodel/arms.js` | The hand pose around the grip (shared with Blender) and simple built-in hands |
 | `src/viewmodel/sdf.js` | Turns blended shapes into smooth meshes (used for the hands and sleeves) |
+| `assets/pistol.glb`, `assets/arms.glb` | The detailed pistol, gloves and sleeves, made in Blender |
+| `tools/` | The Blender build scripts that make the files in `assets/` (see below) |
 
 Everything in `src/shared/` is plain JavaScript with no three.js or browser code. When multiplayer is added, the server will run the same movement code, so players move identically on the server and in the game.
 
@@ -67,12 +69,33 @@ Mouse sensitivity and field of view are in `src/settings.js`.
 
 ## Hands and gun
 
-The hands, sleeves and pistol are built in code when the game loads, so there are no model files yet. The hands are shaped from rounded bones blended together like clay and turned into a smooth mesh; that takes a second or so while the page says "Loading…".
+The pistol, gloves and sleeves you see are detailed models made in Blender: `assets/pistol.glb` (about 0.2 MB) and `assets/arms.glb` (about 1.2 MB).
 
-They're drawn in their own layer on top of the world, so the gun never pokes into walls, and its size on screen doesn't change with the field of view. Where the gun is held is `HIP_POSITION` and `HIP_ROTATION` in `src/viewmodel/viewmodel.js`.
+- **Pistol:** rounded machined edges, chamfered slide, real ejection port with the barrel hood inside, cut cocking serrations, recessed crown and bore, notched rear sight and three-dot sights, rail slots, pins, slide stop, takedown levers, magazine release, rounded stippled grip, and bare metal showing through on worn edges.
+- **Gloves:** moulded hard knuckle guard, stitched seams down every finger, leather fingertip caps and palm, padded finger knuckles, ribbed flex panel on the back of the hand, elastic cuff, and a velcro wrist strap with a rubber pull tab.
+- **Sleeves:** open cuff with a double-stitched hem, uneven folds bunched up at the wrist, ripstop weave, a stitched forearm seam and a velcro cuff tab.
 
-When models are made in Blender, export them as `.glb` files and they can replace `createPistol()` and `createArms()`. Keep the pistol's scale (metres) and orientation (muzzle towards -Z) so the hands still fit.
+They're drawn in their own layer on top of the world, so the gun never pokes into walls and its size on screen doesn't change with the field of view. That layer has its own sun shadows (the hands shade the gun), sky-and-ground reflections that turn with your view, and film-like tone mapping. Where the gun is held is `HIP_POSITION` and `HIP_ROTATION` in `src/viewmodel/viewmodel.js`.
+
+If the model files can't be loaded, the game falls back to the simpler hands and pistol built into the code, so it always works.
+
+### Rebuilding the models
+
+The models are made by scripts, so they can be changed and rebuilt. You need [Node.js](https://nodejs.org) and [Blender](https://www.blender.org) (tested with 5.2, with `blender` on your PATH). From the `project-fish` folder:
+
+```bash
+npm install
+```
+
+```bash
+npm run build-models
+```
+
+This takes a couple of minutes. It exports the hand pose and pistol profiles from the game's code, builds and textures the models in Blender (`tools/blender/build_pistol.py` and `build_arms.py`), compresses them, and writes `assets/pistol.glb` and `assets/arms.glb`. It also saves `build/pistol.blend` and `build/arms.blend`, which you can open in Blender to look at or keep working on the models by hand. `npm run build-pistol` and `npm run build-arms` rebuild one at a time.
+
+If a model made by hand in Blender replaces one of these files, keep the same scale (metres) and orientation (muzzle towards -Z, Y up), and keep the pistol's parts named `slide`, `frame`, `trigger` and `magazine` so they can be animated later.
 
 ## Credits
 
 - [three.js](https://threejs.org) r184, MIT License, loaded from the jsDelivr CDN.
+- Models and textures made from scratch by the scripts in `tools/`.

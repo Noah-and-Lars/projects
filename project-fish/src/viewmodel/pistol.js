@@ -43,6 +43,16 @@ const TRIGGER_PROFILE = [
 
 const MAG_BASE = [[0.007, -0.1235], [0.008, -0.131], [-0.051, -0.131], [-0.05, -0.1235]];
 
+// The side profiles and their thicknesses (metres), shared with the Blender
+// pistol (tools/blender/build_pistol.py) so both have exactly the same shape.
+export const PROFILES = {
+  slide: { points: SLIDE_PROFILE, width: 0.0245 },
+  frame: { points: FRAME_PROFILE, width: 0.0235, holes: [TRIGGER_GUARD_HOLE] },
+  grip: { points: GRIP_PANEL, width: 0.0305 },
+  trigger: { points: TRIGGER_PROFILE, width: 0.0065 },
+  magazine: { points: MAG_BASE, width: 0.0295 },
+};
+
 // Pushes a side profile out to `width` (centred on x = 0) with rounded edges.
 function profile(points, width, bevel, holes = []) {
   const shape = new THREE.Shape(points.map(([s, y]) => new THREE.Vector2(s, y)));
