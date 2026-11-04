@@ -22,11 +22,19 @@ export const MOTION = {
   landing: { drop: 0.045, nod: 0.22 }, // shove when landing, per m/s of fall
   breath: { speed: 1.4, up: 0.0007, pitch: 0.002, drift: 0.0015 },
   wall: { far: 0.85, near: 0.35, back: 0.12, down: 0.025, tip: 0.4 },
-  // Aiming down the sights: how much of each movement is left (1 = all of it),
-  // and the hold wobble: a slow figure-of-eight from breathing plus a faint tremor.
-  aiming: { look: 0.35, inertia: 0.4, lean: 0.3, bob: 0.25, wall: 0.5 },
-  aimWobble: { speed: 0.8, pitch: 0.0035, yaw: 0.0048, tremor: 0.0007 },
-  aimSettle: { nod: 0.35, roll: 0.4 }, // little shove as the sights come up or go down
+  // Aiming down the sights: how much of each movement is left (1 = all of it).
+  aiming: { look: 0.75, inertia: 0.5, lean: 0.35, bob: 0.4, wall: 0.5 },
+  // Hold sway while aiming: a few slow, uneven drifts (radians, cycles a second)
+  // that never quite repeat, like breathing and tired arms, plus a faint tremor.
+  aimWobble: {
+    pitch: [[0.0055, 0.27], [0.0028, 0.61], [0.0012, 1.3]],
+    yaw: [[0.0075, 0.19], [0.0036, 0.47], [0.0015, 1.1]],
+    tremor: 0.0012,
+    unsteady: 1.4, // extra sway just after the sights come up (1.4 = 2.4 times as much)...
+    steadyTime: 1.1, // ...calming down over about this many seconds
+    moving: 0.8, // extra sway while walking with the sights up
+  },
+  aimSettle: { nod: 0.9, roll: 0.8 }, // the shove as the sights come up or go down
 };
 
 const MAX_STEP = 1 / 240; // springs are stepped at least this finely, so they stay stable
@@ -73,6 +81,7 @@ export class ViewmodelMotion {
     this.wasGrounded = true;
     this.lastFall = 0;
     this.wall = 0;
+    this.unsteady = 0;
   }
 
   // The sights just came up (+1) or went down (-1): a small shove, so the gun
@@ -80,6 +89,7 @@ export class ViewmodelMotion {
   settle(direction) {
     this.rotation.velocity.x += MOTION.aimSettle.nod * direction;
     this.rotation.velocity.z -= MOTION.aimSettle.roll * direction;
+    if (direction > 0) this.unsteady = 1;
   }
 
   // dt: seconds since the last frame. player: movement state. yaw, pitch: where
@@ -165,13 +175,17 @@ export class ViewmodelMotion {
     targetRot.x += Math.sin(t + 1) * M.breath.pitch;
     targetRot.y += Math.sin(t * 0.5) * M.breath.drift;
 
-    // Holding the sights up: a slow figure-of-eight as you breathe, and a faint
-    // tremor from the arms holding the weight out.
-    const ws = this.time * M.aimWobble.speed * 2 * Math.PI;
-    targetRot.x += aim * (Math.sin(ws) * M.aimWobble.pitch
-      + (Math.sin(this.time * 17.3) + Math.sin(this.time * 23.9 + 1.3)) * 0.5 * M.aimWobble.tremor);
-    targetRot.y += aim * (Math.sin(ws * 0.5 + 0.7) * M.aimWobble.yaw
-      + (Math.sin(this.time * 19.1 + 2.1) + Math.sin(this.time * 29.7)) * 0.5 * M.aimWobble.tremor);
+    // Holding the sights up: slow uneven sway from breathing and the arms
+    // holding the weight out, worst just after raising the gun and when moving,
+    // plus a faint tremor.
+    const W = M.aimWobble;
+    this.unsteady *= Math.exp(-dt / W.steadyTime);
+    const sway = aim * (1 + W.unsteady * this.unsteady + W.moving * this.bobAmount);
+    const drift = (waves, phase) => waves.reduce((sum, [amount, hz], i) =>
+      sum + amount * Math.sin(this.time * hz * 2 * Math.PI + phase + i * 1.7), 0);
+    const tremor = (phase) => (Math.sin(this.time * 51.3 + phase) + Math.sin(this.time * 67.9 + phase * 2)) * 0.5 * W.tremor;
+    targetRot.x += sway * (drift(W.pitch, 0.3) + tremor(0));
+    targetRot.y += sway * (drift(W.yaw, 2.1) + tremor(1.3));
 
     // Close to a wall: pull the gun back and tip it up.
     const w = smoothstep(M.wall.far, M.wall.near, wallDistance) * keep('wall');
