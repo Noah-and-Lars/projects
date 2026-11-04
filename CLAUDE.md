@@ -322,6 +322,12 @@ source in Settings → Pages should be switched to `main`.
   1.0.9: out of the round, 5 toggles `specCams` (`deadCams`/`deadCam`: defenders' cameras and bulletproof cameras, or
   the attackers' deployed drones), A / D cycle `specIdx`, the mouse turns `specLook`, a click spots (`sgTrySpot`).
   Attacking bots out of a fight shoot cameras they can see (`A.camI`, `A.camScanT` in `botThink`).
+  1.0.10: sound icons: `snd(name, pos, vol, src)` also calls `sndIcon`, which keeps `SVIS` entries for the sounds in
+  `SND_ICON` ([icon, metres, seconds]; the source's own team is skipped) and `sgMarkers` draws them (`.mk.snd`); setting
+  `sndIcons`. `sgStepSounds` plays everyone else's footsteps (not crouched). `sgGiveAway` (in `sgFrame`) does being
+  outside, Pulse Scan and Signal Hack for every player this screen has `auth` over (it was the local player only, so
+  bots were never found); bots hang up after 2-4 s. Murk: X with canisters out sets them off, Shift + X throws another.
+  Traps check their line from just off the surface they sit on (`ge` in `sgGadgetsUpdate`). `__sg` has more handles.
 
 ## Adding a game
 

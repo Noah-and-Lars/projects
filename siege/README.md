@@ -11,6 +11,10 @@ Play it at https://noah-and-lars.github.io/projects/siege/ (or from the arcade).
 - **Action (3 min):** whoever carries the defuser plants it next to a bomb (hold F, 7 s). It drops where its carrier goes down. Attackers win if it runs for 45 s or every defender is out; defenders win when time runs out, every attacker is out, or they disable it (hold F, 7 s).
 - First to 4 rounds (3 or 5 in private rooms); sides swap at half time.
 
+## Sound icons
+
+Sounds that tell you something (gunfire, explosions, footsteps, ringing phones, alarms, beeping traps, torches, hammering) show an icon on the exact spot they come from, within the distance you would hear them, so you can play without sound. Settings turns them off. Crouch to move without footsteps.
+
 ## When you are out
 
 Press 5 to switch between watching your teammates and the cameras (defenders: the map cameras and bulletproof cameras; attackers: the team's drones). A / D switch, the mouse looks round, and a click marks the enemy you are looking at. Attacking bots shoot out cameras they see.
@@ -35,7 +39,7 @@ Drywall and hatches are made of pieces that break one by one, and bullets go thr
 | Static | EMP Grenade | Volt | Shock Rods: electrify a wall or hatch |
 | Spike | Piston Breacher: a walk-through hole, even in steel | Shoji | Foam Kunai: bulletproof foam barriers |
 | Wisp | Cutting Torch: melts steel and planks piece by piece | Hush | Signal Jammer |
-| Tripwire | Gust Mines: blast defenders off their feet | Murk | Toxic Canister: remote poison gas |
+| Tripwire | Gust Mines: blast defenders off their feet | Murk | Toxic Canister: remote poison gas (X sets them off, Shift + X throws another) |
 | Oracle | Pulse Scan: shows defenders who move | Warden | Active Defense: shoots down grenades |
 | Hex | Signal Hack: phones ring, and Hex can watch the cameras | Bramble | Thorn Bloom: proximity spike mine |
 | Breaker | Skeleton Key: under-barrel breaching shotgun | Dread | Dread Mine: blinding black fog |

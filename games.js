@@ -38,7 +38,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-04T12:57:00+11:00',
+    updated: '2026-11-04T13:45:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.10: see sounds as well as hear them. Gunfire, footsteps, ringing phones, alarms and traps show an icon on the exact spot they come from, so you can play without sound. Plus operator fixes: Pulse Scan and Signal Hack now find bots, Murk\u2019s canisters go off with X, and traps on furniture work.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.9: once you are out, press 5 to watch the cameras (defenders) or your team\u2019s drones (attackers) and click to mark enemies for your team. Attacking bots now shoot out cameras they see.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.8: drones. They can no longer drive or hop through walls and barricades, every attacker has one drone, and Shift gives it a 5 second boost three times a round.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.7: solid barricades. A barricade is now one board with no gaps, and every bullet that goes through it leaves a hole you can see and shoot through. Two melee hits or a shotgun blast bring it down, and attacking bots now break through barricades instead of walking round them.' },
