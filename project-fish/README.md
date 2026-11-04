@@ -2,7 +2,7 @@
 
 A fast-paced multiplayer first-person shooter for the browser, built from scratch with [three.js](https://threejs.org).
 
-**Status: step 1 of phase 1.** A flat grey baseplate where you can look around, walk and jump. The gun, shooting, the map and multiplayer come later.
+**Status: step 1 of phase 1.** A flat grey baseplate where you can look around, walk and jump, with a small house in front of you so you can see yourself moving. The gun, shooting, the map and multiplayer come later.
 
 ## Play it locally
 
@@ -33,12 +33,13 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 |---|---|
 | `index.html`, `style.css` | The page, the click-to-play screen and the on-screen readouts |
 | `src/main.js` | Sets up rendering and runs the game loop |
-| `src/world.js` | The baseplate, sky and lighting |
+| `src/world.js` | The baseplate, sky, lighting and the house |
 | `src/input.js` | Keyboard and mouse |
 | `src/hud.js` | The top-left readout |
 | `src/settings.js` | Mouse sensitivity and field of view |
 | `src/shared/config.js` | Movement values: speeds, jump height, gravity, tick rate |
-| `src/shared/movement.js` | Player movement |
+| `src/shared/movement.js` | Player movement, including bumping into walls |
+| `src/shared/map.js` | Where the house is, and the solid boxes the player collides with |
 
 Everything in `src/shared/` is plain JavaScript with no three.js or browser code. When multiplayer is added, the server will run the same movement code, so players move identically on the server and in the game.
 

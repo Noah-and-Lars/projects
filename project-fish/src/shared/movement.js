@@ -5,6 +5,7 @@
 // when turning left (the same convention as three.js cameras).
 
 import { MOVEMENT, PLAYER, WORLD } from './config.js';
+import { COLLIDERS } from './map.js';
 
 export const BUTTON_JUMP = 1 << 0;
 
@@ -84,6 +85,8 @@ export function simulatePlayer(s, cmd, dt) {
     s.grounded = true;
   }
 
+  for (const box of COLLIDERS) collideWithBox(s, box);
+
   // Invisible walls at the edges of the baseplate.
   const limit = WORLD.size / 2 - PLAYER.radius;
   if (s.x > limit) { s.x = limit; s.vx = Math.min(s.vx, 0); }
@@ -92,6 +95,45 @@ export function simulatePlayer(s, cmd, dt) {
   if (s.z < -limit) { s.z = -limit; s.vz = Math.max(s.vz, 0); }
 
   s.jumpBufferTimer = Math.max(0, s.jumpBufferTimer - dt);
+}
+
+// Pushes the player (a circle of PLAYER.radius seen from above) out of a box,
+// and removes the part of their velocity going into it, so they slide along walls.
+function collideWithBox(s, box) {
+  if (s.y >= box.maxY || s.y + PLAYER.height <= box.minY) return;
+
+  // Closest point of the box to the player's centre, seen from above.
+  const cx = Math.max(box.minX, Math.min(s.x, box.maxX));
+  const cz = Math.max(box.minZ, Math.min(s.z, box.maxZ));
+  let nx = s.x - cx;
+  let nz = s.z - cz;
+  const dist = Math.hypot(nx, nz);
+  if (dist >= PLAYER.radius) return;
+
+  let push;
+  if (dist > 1e-9) {
+    nx /= dist;
+    nz /= dist;
+    push = PLAYER.radius - dist;
+  } else {
+    // Centre inside the box: leave by the nearest side.
+    const exits = [
+      [s.x - box.minX, -1, 0],
+      [box.maxX - s.x, 1, 0],
+      [s.z - box.minZ, 0, -1],
+      [box.maxZ - s.z, 0, 1],
+    ].sort((a, b) => a[0] - b[0]);
+    [push, nx, nz] = exits[0];
+    push += PLAYER.radius;
+  }
+  s.x += nx * push;
+  s.z += nz * push;
+
+  const into = s.vx * nx + s.vz * nz;
+  if (into < 0) {
+    s.vx -= into * nx;
+    s.vz -= into * nz;
+  }
 }
 
 // Changes the horizontal velocity towards (tx, tz) by at most maxDelta.
