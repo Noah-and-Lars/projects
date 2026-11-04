@@ -109,7 +109,7 @@ export class WorldEffects {
   // A thin curl of smoke off a hot barrel. heat: 0..1, how hot.
   barrelSmoke(position, heat) {
     const v = new THREE.Vector3((Math.random() - 0.5) * 0.04, 0.05 + Math.random() * 0.06, (Math.random() - 0.5) * 0.04);
-    this.puff(position, v, { color: 0xc9c9c4, opacity: 0.05 + 0.09 * heat, size: 0.012, grow: 0.05, life: 1.6 + Math.random() * 1.0, drag: 0.8, rise: 0.04 });
+    this.puff(position, v, { color: 0xc9c9c4, opacity: 0.05 + 0.09 * heat, size: 0.012, grow: 0.05, life: 0.9 + Math.random() * 0.6, drag: 0.8, rise: 0.04 });
   }
 
   // A spent case flying out of the ejection port.

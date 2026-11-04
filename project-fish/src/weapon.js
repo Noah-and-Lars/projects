@@ -9,10 +9,10 @@ import { PISTOL } from './shared/config.js';
 // src/viewmodel/viewmodel.js (HAND_KEYS).
 export const RELOAD_STEPS = {
   magOut: 0.1, // magazine release pressed: the old one drops out, the support hand lets go
-  magGrab: 0.355, // the hand closes round a fresh magazine on the belt
-  magIn: 0.69, // the palm slaps it home and it clicks
-  handOn: 0.81, // the support hand is back round the grip
-  slideRelease: 0.84, // (empty reloads) slide snaps forward
+  magGrab: 0.36, // the hand closes round a fresh magazine on the belt
+  magIn: 0.63, // the palm pushes it home and it clicks
+  handOn: 0.84, // the support hand is back round the grip
+  slideRelease: 0.87, // (empty reloads) slide snaps forward
 };
 
 export class Pistol {

@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createPistol, GRIP, SIGHTS, MAGAZINE } from './pistol.js';
 import { createArms } from './arms.js';
-import { SupportHand, MAG_IN_HAND, WRIST, ALONG, PALM_NORMAL, PALM_HEEL } from './supportHand.js';
+import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix } from './supportHand.js';
 import { ViewmodelMotion } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { RELOAD_STEPS } from '../weapon.js';
@@ -24,86 +24,57 @@ const SLIDE_TRAVEL = 0.028; // how far the slide goes back when firing (metres)
 const BARREL = { travel: 0.0035, tilt: 0.0105, muzzleZ: -0.15 };
 const TRIGGER_TRAVEL = 0.0032;
 
-// Where the gun goes while reloading, relative to how it's held: up, in and
-// tipped so the magazine well faces the support hand, clear of the shooting
-// hand's wrist (radians: muzzle up, muzzle right, top towards the right).
-const RELOAD_POSE = { position: new THREE.Vector3(-0.04, 0.08, 0.09), turn: [0.22, -0.18, -0.9] };
+// Where the gun goes while reloading, relative to how it's held: brought up
+// and in, muzzle tipped up so the magazine well comes into view, and canted
+// a little towards the support hand (radians: muzzle up, muzzle right, top
+// towards the right).
+const RELOAD_POSE = { position: new THREE.Vector3(-0.04, 0.15, 0.11), turn: [0.45, -0.1, -0.35] };
 
 // --- The support hand during a reload ---------------------------------------
 //
-// It lets go of the gun, fingers opening, drops to the belt and closes round a
-// fresh magazine, brings it back up and lines it up under the magazine well,
-// lifts its thumb off and pushes the magazine in until it reaches the bottom
-// of the grip. There it lets go, turns its palm up under the magazine
-// and slaps it home, then slides back up the grip and closes round it again.
+// Its fingers lift off the grip and open, and it drops to the belt and closes
+// round a fresh magazine. It brings it up turned palm up, baseplate in the
+// palm and index finger along the front, lines it up under the magazine well
+// and pushes it straight in: the fingers slide off the front as it goes up
+// into the grip, and the palm pushes it home. Then the hand drops away,
+// turns back and comes up beside the grip, and closes round it again.
 
-// How far the magazine is from home (metres along the grip) when its top is
-// at the mouth of the magazine well, and when the hand lets go of it: as far
-// in as the hand can push it before its thumb and palm reach the bottom of
-// the grip.
+// How far the magazine is from fully home (metres along the grip) when its
+// top is at the mouth of the magazine well.
 const MAG_AT_WELL = GRIP.bottom - MAGAZINE.top;
-const RELEASE_GAP = 0.086;
 
-// Where the hand goes to hold the magazine `gap` metres out of the gun.
-const holding = (gap) => GRIP.down.clone().multiplyScalar(gap).sub(MAG_IN_HAND);
-
-// Palm up, to slap the magazine home: the palm faces up the grip, the wrist
-// bent back a little so the fingers point away from the gun (forward and to
-// the right), out of the way of the shooting hand.
-const RIGHT = new THREE.Vector3(1, 0, 0);
-const PALM_UP = (() => {
-  const frame = (x, y) => {
-    const X = x.clone().normalize();
-    const Z = new THREE.Vector3().crossVectors(X, y).normalize();
-    return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, new THREE.Vector3().crossVectors(Z, X), Z));
-  };
-  const fingers = RIGHT.clone().multiplyScalar(0.55).addScaledVector(GRIP.front, 0.75).addScaledVector(GRIP.down, 0.25);
-  return frame(fingers, GRIP.down.clone().negate()).multiply(frame(ALONG, PALM_NORMAL).invert());
-})();
-// Where the hand goes to push on the bottom of the magazine `gap` metres out
-// of the gun with the heel of its palm. The palm is curved: the middle of it
-// rises a little above the heel.
-const PALM_RISE = 0.0125;
-const pushing = (gap) => {
-  const base = GRIP.top.clone().addScaledVector(GRIP.front, MAGAZINE.forward).addScaledVector(GRIP.down, MAGAZINE.base + gap + PALM_RISE);
-  const heel = PALM_HEEL.clone().sub(WRIST).applyQuaternion(PALM_UP).add(WRIST);
-  return base.sub(heel);
-};
-const PALM_HALF = new THREE.Quaternion().slerp(PALM_UP, 0.5);
 const NONE = new THREE.Quaternion();
 const turned = (x, y, z) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
+const between = (a, b, k) => new THREE.Quaternion().slerpQuaternions(a, b, k);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const S = RELOAD_STEPS;
+const AT_BELT = turned(0.5, 0, 0.2);
 
 // Keyframes: reload progress, where the hand is (from where it holds the gun),
 // how it's turned (about the wrist), its hand shape (supportHand.js), and
 // whether it stops there (otherwise it flows through).
 const HAND_KEYS = [
   { r: S.magOut, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
-  { r: 0.13, at: V(-0.012, -0.014, 0.008), turn: NONE, hand: 'loose' }, // fingers lift off the grip...
-  { r: 0.17, at: V(-0.06, -0.06, 0.035), turn: turned(0.1, 0, 0.12), hand: 'open' }, // ...and it lets go
-  { r: 0.27, at: V(-0.09, -0.36, 0.2), turn: turned(0.5, 0, 0.2), hand: 'relaxed' }, // down to the belt
-  { r: 0.31, at: V(-0.095, -0.38, 0.21), turn: turned(0.55, 0, 0.2), hand: 'open', stop: true, name: 'reach' },
-  { r: S.magGrab, at: V(-0.095, -0.385, 0.21), turn: turned(0.55, 0, 0.2), hand: 'magazine', stop: true, name: 'grab' }, // closes round a fresh magazine
-  { r: 0.4, at: V(-0.085, -0.33, 0.19), turn: turned(0.45, 0, 0.15), hand: 'magazine' }, // pulls it out of the pouch
-  { r: 0.49, at: holding(MAG_AT_WELL + 0.04).add(V(-0.02, -0.02, 0.035)), turn: turned(0.22, 0.05, 0.05), hand: 'magazine' },
-  { r: 0.545, at: holding(MAG_AT_WELL + 0.006), turn: NONE, hand: 'feeding', stop: true }, // lined up under the well, thumb off
-  { r: 0.59, at: holding(RELEASE_GAP), turn: NONE, hand: 'feeding', stop: true, name: 'letGo' }, // pushed in as far as the hand can
-  { r: 0.61, at: holding(RELEASE_GAP), turn: NONE, hand: 'released', stop: true }, // fingers open off it
-  { r: 0.63, at: holding(RELEASE_GAP).addScaledVector(GRIP.down, 0.03).add(V(-0.03, 0, 0)), turn: PALM_HALF, hand: 'flat' }, // drops away, turning palm up...
-  { r: 0.647, at: pushing(RELEASE_GAP).addScaledVector(GRIP.down, 0.015), turn: PALM_UP, hand: 'flat' }, // ...and comes up under it
-  { r: 0.66, at: pushing(RELEASE_GAP), turn: PALM_UP, hand: 'flat', stop: true, name: 'slap' }, // palm under the magazine
-  { r: S.magIn, at: pushing(0), turn: PALM_UP, hand: 'flat', stop: true }, // slapped home
-  { r: 0.72, at: pushing(0).addScaledVector(GRIP.down, 0.025).add(V(-0.012, 0, 0)), turn: PALM_HALF, hand: 'open' },
-  { r: 0.755, at: V(-0.045, -0.04, 0.012), turn: NONE, hand: 'open' }, // comes back up beside the grip
-  { r: 0.785, at: V(-0.007, -0.01, 0.004), turn: NONE, hand: 'loose' }, // fingers round it...
+  { r: 0.13, at: V(-0.012, -0.012, 0.01), turn: NONE, hand: 'loose' }, // fingers lift off the grip...
+  { r: 0.18, at: V(-0.06, -0.07, 0.04), turn: turned(0.12, 0, 0.12), hand: 'reaching' }, // ...and it lets go
+  { r: 0.28, at: V(-0.09, -0.36, 0.2), turn: AT_BELT, hand: 'relaxed' }, // down to the belt
+  { r: 0.305, at: V(-0.095, -0.38, 0.21), turn: AT_BELT, hand: 'open', stop: true, name: 'reach' },
+  { r: S.magGrab, at: V(-0.095, -0.385, 0.21), turn: AT_BELT, hand: 'magazine', stop: true, name: 'grab' }, // closes round a fresh magazine
+  { r: 0.43, at: V(-0.08, -0.25, 0.15), turn: between(AT_BELT, HOLD_TURN, 0.5), hand: 'magazine' }, // pulls it out, turning it up
+  { r: 0.5, at: holdingAt(MAG_AT_WELL + 0.05).add(V(-0.03, -0.02, 0.04)), turn: HOLD_TURN, hand: 'magazine' },
+  { r: 0.545, at: holdingAt(MAG_AT_WELL + 0.008), turn: HOLD_TURN, hand: 'magazine', stop: true }, // lined up under the well
+  { r: 0.59, at: holdingAt(0.055), turn: HOLD_TURN, hand: 'pushing' }, // in it goes, the fingers sliding off its front...
+  { r: S.magIn, at: holdingAt(0), turn: HOLD_TURN, hand: 'flat', stop: true }, // ...and the palm pushes it home
+  { r: 0.665, at: holdingAt(0).addScaledVector(GRIP.down, 0.022).add(V(-0.008, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' },
+  { r: 0.725, at: V(-0.045, -0.07, 0.022), turn: between(HOLD_TURN, NONE, 0.62), hand: 'reaching' }, // turning back
+  { r: 0.79, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // beside the grip
+  { r: 0.815, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' }, // fingers round it...
   { r: S.handOn, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true }, // ...and closed on it
 ];
 const keyAt = (name) => HAND_KEYS.find((key) => key.name === name).r;
-// The fingers close on the fresh magazine at the belt (it appears in them
-// halfway), and let go of it under the gun; the palm pushes it home.
-const MAG_IN_FINGERS = [(keyAt('reach') + keyAt('grab')) / 2, keyAt('letGo')];
-const PUSH = [keyAt('slap'), S.magIn];
+// The fresh magazine appears in the hand as its fingers close on it at the
+// belt, and is in the hand until it's home.
+const MAG_IN_HAND_FROM = (keyAt('reach') + keyAt('grab')) / 2;
 
 // Where the hand is at reload progress r: offset, turn, and hand shapes to
 // blend between. The path is a smooth curve through the keyframes (stopping
@@ -138,7 +109,9 @@ export function handAt(r) {
     .addScaledVector(slope(i), (t3 - 2 * t2 + t) * span)
     .addScaledVector(b.at, -2 * t3 + 3 * t2)
     .addScaledVector(slope(i + 1), (t3 - t2) * span);
-  const k = t2 * (3 - 2 * t);
+  // The turn and the hand shape ease in and out of keys the hand stops at,
+  // and flow straight through the others.
+  const k = -2 * t3 + 3 * t2 + (a.stop ? 0 : t3 - 2 * t2 + t) + (b.stop ? 0 : t3 - t2);
   out.turn.slerpQuaternions(a.turn, b.turn, k);
   out.from = a.hand;
   out.to = b.hand;
@@ -301,8 +274,12 @@ export class Viewmodel {
       }
       // The fresh magazine the support hand brings back during a reload.
       if (this.magazine) {
+        // Where it sits in the hand: where the seated magazine is, relative to
+        // the hand pushing it home.
         this.handMagazine = this.magazine.clone();
-        this.handMagazine.position.copy(this.magazineRest).add(MAG_IN_HAND);
+        this.magazine.updateMatrix();
+        handMatrix(holdingAt(0), HOLD_TURN).invert().multiply(this.magazine.matrix)
+          .decompose(this.handMagazine.position, this.handMagazine.quaternion, this.handMagazine.scale);
         this.handMagazine.visible = false;
         shadowed(this.handMagazine);
         this.leftArm.add(this.handMagazine);
@@ -456,27 +433,20 @@ export class Viewmodel {
       this.leftArm.position.copy(WRIST).applyQuaternion(hand.turn).negate().add(WRIST).add(hand.offset);
     }
     if (this.hand) this.hand.set(hand.from, hand.to, hand.k);
-    if (this.handMagazine) this.handMagazine.visible = reload >= MAG_IN_FINGERS[0] && reload < MAG_IN_FINGERS[1];
+    if (this.handMagazine) this.handMagazine.visible = reload >= MAG_IN_HAND_FROM && reload < S.magIn;
 
-    // The old magazine slides out along the grip and falls away. The new one
-    // is in the hand until the hand lets go of it partway in; it stays there
-    // until the palm pushes it home.
+    // The old magazine slides out along the grip and falls away; once the
+    // new one is home, the one in the gun is the new (full) one.
     if (this.magazine && this.magazineRest) {
       this.magazine.position.copy(this.magazineRest);
-      let visible = true;
-      let round = true;
-      if (reload >= S.magOut && reload < MAG_IN_FINGERS[1]) {
+      const falling = reload >= S.magOut && reload < S.magIn;
+      if (falling) {
         const t = (reload - S.magOut) * gun.reloadSeconds;
-        const drop = 0.4 * t + 0.5 * 9.8 * t * t;
-        this.magazine.position.addScaledVector(GRIP.down, Math.min(drop, 1));
-        visible = t < 0.6;
-        round = !gun.reloadEmpty; // an emptied magazine drops without a round on top
-      } else if (reload >= MAG_IN_FINGERS[1] && reload < S.magIn) {
-        const pushed = reload < PUSH[0] ? 0 : smoothstep(PUSH[0], PUSH[1], reload);
-        this.magazine.position.addScaledVector(GRIP.down, RELEASE_GAP * (1 - pushed));
+        this.magazine.position.addScaledVector(GRIP.down, Math.min(0.4 * t + 0.5 * 9.8 * t * t, 1));
       }
-      this.magazine.visible = visible;
-      if (this.magazineRound) this.magazineRound.visible = round;
+      this.magazine.visible = !falling || (reload - S.magOut) * gun.reloadSeconds < 0.6;
+      // An emptied magazine drops without a round on top.
+      if (this.magazineRound) this.magazineRound.visible = !(falling && gun.reloadEmpty);
     }
   }
 

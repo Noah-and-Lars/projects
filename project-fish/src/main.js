@@ -142,7 +142,7 @@ function spread(direction, degrees) {
 function shoot() {
   viewmodel.fire(aimAmount);
   playGunshot();
-  heat += HEAT.perShot;
+  heat = Math.min(HEAT.max, heat + HEAT.perShot);
 
   // Where the shot goes: through the sights when aiming, roughly at the
   // centre from the hip, straying more from the hip and while moving.
@@ -175,9 +175,11 @@ function shoot() {
 
 // --- Barrel heat ---
 
-// Each shot heats the barrel; it cools over a few seconds. Once it's warm,
-// thin smoke curls off the muzzle and out of the ejection port.
-const HEAT = { perShot: 1, coolPerSecond: 0.45, smokeFrom: 2, full: 8, puffsPerSecond: 9 };
+// Each shot heats the barrel (up to `max`), and it cools over a few seconds.
+// Once it's warm, thin smoke curls off the muzzle and out of the ejection
+// port, most when it's at `full`. After a whole magazine fired fast, it
+// smokes for about three seconds.
+const HEAT = { perShot: 1, max: 6, coolPerSecond: 1.3, smokeFrom: 2, full: 6, puffsPerSecond: 8 };
 let heat = 0;
 let smokeTimer = 0;
 

@@ -32,6 +32,8 @@ export const MAGAZINE = {
   top: -0.0404, // u of the top of the body (the feed lips)
   bottom: 0.0673, // u of the bottom of the body, where the baseplate starts
   base: 0.0752, // u of the bottom of the baseplate
+  baseHalfWidth: 0.0148, // the baseplate is wider and longer than the body
+  baseHalfDepth: 0.0278,
 };
 GRIP.bottom = 0.0678;
 

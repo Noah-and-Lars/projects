@@ -19,9 +19,8 @@ const SLEEVE_STEP = 0.003;
 // A slice across the grip is a rounded rectangle. sectionSurface(section, deg)
 // gives the point on it at angle `deg` round it (0 = right side, 90 = front,
 // 180 = left side) and the direction straight out of the surface there, as
-// 2D coordinates [right, front]. `section` is the grip (GRIP) or anything else
-// the hands take hold of the same way (a magazine): { top, down, front,
-// halfWidth, halfDepth, cornerRadius }.
+// 2D coordinates [right, front]. `section` is the grip (GRIP), or anything
+// shaped like it: { top, down, front, halfWidth, halfDepth, cornerRadius }.
 function sectionSurface(section, deg) {
   const { halfWidth: a, halfDepth: b, cornerRadius: r } = section;
   const distance = (x, y) => {
@@ -59,53 +58,28 @@ function around(section, u, deg, offset) {
 
 const aroundGrip = (u, deg, offset) => around(GRIP, u, deg, offset);
 
-// How far a point is outside a section (negative inside), measured across it.
-function outsideSection(section, point) {
-  const rel = point.clone().sub(section.top);
-  const { halfWidth: a, halfDepth: b, cornerRadius: r } = section;
-  const qx = Math.abs(rel.dot(RIGHT)) - (a - r);
-  const qy = Math.abs(rel.dot(section.front)) - (b - r);
-  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
-}
-
-// A finger curled round a section (the grip, a magazine) from its knuckle.
-// Each next joint is one bone length further round (direction +1 = from the
-// right side towards the front, -1 = from the left side), resting on the
-// surface, or on whatever `under` metres thick lies in between (the other
-// hand's fingers). Fingers press in very slightly. `startDeg`: roughly where
-// round the section the knuckle is (worked out if not given). With `clear`,
-// a bone that would cut across a corner of something small (a magazine)
-// sits further out instead, so it lies over the corner.
-export function curlRound(section, knuckle, lengths, radii, direction = 1, under = 0, startDeg = null, clear = false) {
+// A finger curled round a section from its knuckle. Each next joint is one
+// bone length further round (direction +1 = from the right side towards the
+// front, -1 = from the left side), resting on the surface, or on whatever
+// `under` metres thick lies in between (the other hand's fingers). Fingers
+// press in very slightly. `startDeg`: roughly where round the section the
+// knuckle is (worked out if not given).
+function curlRound(section, knuckle, lengths, radii, direction = 1, under = 0, startDeg = null) {
   const rel = knuckle.clone().sub(section.top);
   const u = rel.dot(section.down);
   let deg = startDeg ?? Math.atan2(rel.dot(section.front), rel.dot(RIGHT)) / DEG;
   const joints = [knuckle.clone()];
   for (let i = 0; i < 3; i++) {
+    const offset = under + radii[i + 1] * 0.92;
     const previous = joints[i];
-    let offset = under + radii[i + 1] * 0.92;
-    let found = deg;
-    for (let attempt = 0; attempt < (clear ? 8 : 1); attempt++) {
-      let near = deg;
-      let far = deg + direction * 170;
-      for (let k = 0; k < 40; k++) {
-        const mid = (near + far) / 2;
-        if (around(section, u, mid, offset).distanceTo(previous) < lengths[i]) near = mid;
-        else far = mid;
-      }
-      found = (near + far) / 2;
-      if (!clear) break;
-      // How far the bone sinks in anywhere along its length.
-      const end = around(section, u, found, offset);
-      let sink = 0;
-      for (let t = 0.1; t < 0.95; t += 0.1) {
-        const radius = radii[i] + (radii[i + 1] - radii[i]) * t;
-        sink = Math.max(sink, under + radius * 0.92 - outsideSection(section, previous.clone().lerp(end, t)));
-      }
-      if (sink < 0.0002) break;
-      offset += sink;
+    let near = deg;
+    let far = deg + direction * 170;
+    for (let k = 0; k < 40; k++) {
+      const mid = (near + far) / 2;
+      if (around(section, u, mid, offset).distanceTo(previous) < lengths[i]) near = mid;
+      else far = mid;
     }
-    deg = found;
+    deg = (near + far) / 2;
     joints.push(around(section, u, deg, offset));
   }
   return { joints, radii };
