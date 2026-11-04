@@ -20,6 +20,7 @@ export class Pistol {
     this.cooldown = 0;
     this.slideLocked = false; // the slide stays back after the last round
     this.reload = null; // { time, duration, empty, done: Set of steps reached }
+    this.pulls = []; // trigger pulls waiting for the gun to be ready (seconds waited)
   }
 
   get reloading() {
@@ -31,11 +32,18 @@ export class Pistol {
     return this.reload ? Math.min(1, this.reload.time / this.reload.duration) : -1;
   }
 
-  // dt: seconds since the last frame. trigger: the fire button was pressed
-  // this frame. reloadKey: the reload key was pressed this frame.
+  // dt: seconds since the last frame. trigger: how many times the fire button
+  // was pressed this frame (a pull while the gun isn't ready yet is kept for a
+  // moment, so quick taps are never lost). reloadKey: the reload key was pressed.
   // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magIn',
   // 'slideRelease', 'reloaded'.
   update(dt, trigger, reloadKey) {
+    this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 0.25);
+    for (let i = 0; i < trigger; i++) this.pulls.push(0);
+    return this.step(dt, reloadKey);
+  }
+
+  step(dt, reloadKey) {
     const events = [];
     this.cooldown = Math.max(0, this.cooldown - dt);
 
@@ -66,10 +74,12 @@ export class Pistol {
       const empty = this.ammo === 0;
       this.reload = { time: 0, duration: empty ? PISTOL.emptyReloadTime : PISTOL.reloadTime, empty, done: new Set() };
       events.push('reload');
+      this.pulls = [];
       return events;
     }
 
-    if (trigger && this.cooldown === 0) {
+    if (this.pulls.length && this.cooldown === 0) {
+      this.pulls.shift();
       if (this.ammo > 0) {
         this.ammo--;
         this.cooldown = PISTOL.fireInterval;

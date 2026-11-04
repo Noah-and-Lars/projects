@@ -20,8 +20,8 @@ export class Input {
     // Keys pressed since the last tick. A quick tap can start and end between
     // two ticks (or during a slow frame); this makes sure it still counts.
     this.tapped = new Set();
-    // Presses not yet handled by the frame loop (firing, reloading).
-    this.pressed = new Set();
+    // Presses not yet handled by the frame loop (firing, reloading): how many of each.
+    this.pressed = new Map();
     this.onLockChange = null;
 
     document.addEventListener('pointerlockchange', () => {
@@ -46,7 +46,7 @@ export class Input {
       this.held.add(e.code);
       if (!e.repeat) {
         this.tapped.add(e.code);
-        this.pressed.add(e.code);
+        this.pressed.set(e.code, (this.pressed.get(e.code) || 0) + 1);
       }
     });
 
@@ -59,7 +59,7 @@ export class Input {
       if (!this.locked) return;
       this.held.add('Mouse' + e.button);
       this.tapped.add('Mouse' + e.button);
-      this.pressed.add('Mouse' + e.button);
+      this.pressed.set('Mouse' + e.button, (this.pressed.get('Mouse' + e.button) || 0) + 1);
     });
     document.addEventListener('mouseup', (e) => {
       this.held.delete('Mouse' + e.button);
@@ -79,11 +79,11 @@ export class Input {
     this.pressed.clear();
   }
 
-  // Whether `code` was pressed since the last time this asked about it.
-  wasPressed(code) {
-    const yes = this.pressed.has(code);
+  // How many times `code` was pressed since the last time this asked about it.
+  presses(code) {
+    const n = this.pressed.get(code) || 0;
     this.pressed.delete(code);
-    return yes;
+    return n;
   }
 
   // Locks the mouse to the game. Must be called from a click.

@@ -40,6 +40,51 @@ body.aiming #crosshair {
   opacity: 0;
 }
 
+/* Ammo counter, bottom right: rounds in the magazine, then the reserve. */
+#ammo {
+  position: fixed;
+  right: 28px;
+  bottom: 22px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: 600 16px/1 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+#ammo .mag {
+  font-size: 40px;
+  font-variant-numeric: tabular-nums;
+}
+
+#ammo .reserve {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+#ammo .reserve::before {
+  content: '/ ';
+}
+
+#ammo .hint {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  white-space: nowrap;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+#ammo.low .mag {
+  color: #ff8f7a;
+}
+
+body:not(.playing) #ammo {
+  display: none;
+}
+
 #debug {
   position: fixed;
   left: 12px;

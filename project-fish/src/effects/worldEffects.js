@@ -62,7 +62,8 @@ export class WorldEffects {
 
     // Spent cases: little brass tubes.
     this.caseGeometry = new THREE.CylinderGeometry(0.0049, 0.0049, 0.019, 12);
-    this.caseMaterial = new THREE.MeshStandardMaterial({ color: 0xc9a04a, metalness: 1, roughness: 0.32 });
+    // Not fully metallic: the world has no reflections for pure metal to show, so it would look black.
+    this.caseMaterial = new THREE.MeshStandardMaterial({ color: 0xd4a84e, metalness: 0.35, roughness: 0.35 });
     this.cases = [];
 
     // Bullet holes.

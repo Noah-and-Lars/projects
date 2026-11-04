@@ -206,7 +206,7 @@ export function playGunshot() {
 }
 
 export function playDryFire() {
-  burst({ type: 'bandpass', from: 3200, q: 6, volume: 0.25, decay: 0.02 });
+  burst({ type: 'bandpass', from: 3200, q: 6, volume: 0.80, decay: 0.02 });
 }
 
 // A spent case landing: a few bright metallic pings.
@@ -218,16 +218,16 @@ export function playCasing(volume = 1) {
 }
 
 export function playMagOut() {
-  burst({ type: 'bandpass', from: 2400, q: 5, volume: 0.3, decay: 0.03 }); // release button
-  burst({ at: 0.05, type: 'bandpass', from: 900, to: 600, q: 2, volume: 0.25, decay: 0.12 }); // slides out
+  burst({ type: 'bandpass', from: 2400, q: 5, volume: 0.96, decay: 0.03 }); // release button
+  burst({ at: 0.05, type: 'bandpass', from: 900, to: 600, q: 2, volume: 0.80, decay: 0.12 }); // slides out
 }
 
 export function playMagIn() {
-  burst({ type: 'bandpass', from: 1200, to: 800, q: 2, volume: 0.2, decay: 0.08 });
-  burst({ at: 0.07, type: 'bandpass', from: 2200, q: 6, volume: 0.45, decay: 0.04 }); // clicks home
+  burst({ type: 'bandpass', from: 1200, to: 800, q: 2, volume: 0.64, decay: 0.08 });
+  burst({ at: 0.07, type: 'bandpass', from: 2200, q: 6, volume: 1.00, decay: 0.04 }); // clicks home
 }
 
 export function playSlideRelease() {
-  burst({ type: 'bandpass', from: 1800, q: 4, volume: 0.5, decay: 0.05 });
-  burst({ at: 0.012, type: 'bandpass', from: 3000, q: 6, volume: 0.25, decay: 0.03 });
+  burst({ type: 'bandpass', from: 1800, q: 4, volume: 1.00, decay: 0.05 });
+  burst({ at: 0.012, type: 'bandpass', from: 3000, q: 6, volume: 0.80, decay: 0.03 });
 }

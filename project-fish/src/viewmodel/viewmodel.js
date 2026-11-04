@@ -10,6 +10,14 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createPistol, SIGHTS } from './pistol.js';
 import { createArms } from './arms.js';
 import { ViewmodelMotion } from './motion.js';
+import { MuzzleFlash } from '../effects/muzzleFlash.js';
+import { RELOAD_STEPS } from '../weapon.js';
+
+// Points on the pistol (gun space): the muzzle, and the ejection port the
+// spent case comes out of.
+const MUZZLE = [0, 0, -0.1545];
+const PORT = [0.008, 0.017, -0.025];
+const SLIDE_TRAVEL = 0.028; // how far the slide goes back when firing (metres)
 
 // Detailed models made in Blender (see tools/blender/).
 const PISTOL_MODEL = new URL('../../assets/pistol.glb', import.meta.url);
@@ -66,6 +74,22 @@ function outdoorEnvironment(renderer, sunDirection) {
   return texture;
 }
 
+const smoothstep = (e0, e1, x) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+
+// The support (left) arm as one group, so it can let go during a reload.
+function leftArmOf(arms) {
+  const existing = arms.getObjectByName('leftArm');
+  if (existing) return existing;
+  const group = new THREE.Group();
+  group.name = 'leftArm';
+  for (const part of arms.children.filter((c) => c.name.startsWith('left'))) group.add(part);
+  arms.add(group);
+  return group;
+}
+
 // Everything in a loaded model casts and catches shadows.
 function shadowed(model) {
   model.traverse((o) => {
@@ -119,10 +143,21 @@ export class Viewmodel {
     this.poseQuaternion = new THREE.Quaternion();
     this.pivot = new THREE.Vector3();
 
+    this.flash = new MuzzleFlash(MUZZLE);
+    this.slideTime = 1; // seconds since the slide last went back
+    this.pistol = null;
+
     // Resolves once the pistol and hands are loaded and in place.
     this.ready = Promise.all([loadModel(PISTOL_MODEL, createPistol), loadModel(ARMS_MODEL, createArms)]).then(([pistol, arms]) => {
       arms.name = 'arms';
       this.gun.add(shadowed(pistol), shadowed(arms));
+      this.pistol = pistol;
+      this.slide = pistol.getObjectByName('slide');
+      this.slideRest = this.slide ? this.slide.position.z : 0;
+      this.magazine = pistol.getObjectByName('magazine');
+      this.magazineRest = this.magazine ? this.magazine.position.clone() : null;
+      this.leftArm = leftArmOf(arms);
+      this.flash.attachTo(pistol);
     });
 
   }
@@ -132,12 +167,40 @@ export class Viewmodel {
     this.camera.updateProjectionMatrix();
   }
 
+  // A shot: the gun kicks, the muzzle flashes and the slide cycles.
+  fire(aim) {
+    this.motion.kick(aim);
+    this.flash.fire();
+    this.slideTime = 0;
+  }
+
+  // Where a point on the gun (gun space) is in the gun layer's camera space.
+  pointOnGun([x, y, z]) {
+    this.scene.updateMatrixWorld();
+    return this.gun.localToWorld(new THREE.Vector3(x, y, z));
+  }
+
+  muzzlePoint() {
+    return this.pointOnGun(MUZZLE);
+  }
+
+  portPoint() {
+    return this.pointOnGun(PORT);
+  }
+
+  // Where the front sight is on screen (-1..1 each way), so shots go where the
+  // sights point.
+  sightOnScreen() {
+    return this.pointOnGun([0, SIGHTS.height, SIGHTS.frontZ]).project(this.camera);
+  }
+
   // frameSeconds: time since the last frame. player: movement state.
   // yaw / pitch: where the player is looking. cameraQuaternion: the world
   // camera's rotation. wallDistance: metres to whatever is straight ahead.
-  // aiming: whether the aim button is held. Returns how far into aiming the
-  // gun is (0..1, eased), for zooming the world.
-  update(frameSeconds, player, yaw, pitch, cameraQuaternion, wallDistance = Infinity, aiming = false) {
+  // aiming: whether the aim button is held. gun: { slideLocked,
+  // reloadProgress (0..1, or -1), reloadSeconds }. Returns how far into
+  // aiming the gun is (0..1, eased), for zooming the world.
+  update(frameSeconds, player, yaw, pitch, cameraQuaternion, wallDistance = Infinity, aiming = false, gun = null) {
     // Bring the sights up or down at a steady pace, eased at both ends.
     const dt = Math.min(frameSeconds, 0.05);
     this.aimProgress = Math.min(1, Math.max(0, this.aimProgress + (aiming ? dt : -dt) / AIM.time));
@@ -152,7 +215,15 @@ export class Viewmodel {
     this.posePosition.y -= AIM.arc.down * swoop;
     this.poseQuaternion.slerpQuaternions(HIP_QUATERNION, AIM_ROTATION, aim);
     this.poseQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), AIM.arc.roll * swoop));
+    // Reloading: the gun tips towards the support hand so it can reach the magazine well.
+    const reload = gun ? gun.reloadProgress : -1;
+    const tilt = reload < 0 ? 0 : smoothstep(0, 0.14, reload) * (1 - smoothstep(0.84, 1, reload));
+    if (tilt > 0) {
+      this.posePosition.add(new THREE.Vector3(-0.015, -0.035, 0.03).multiplyScalar(tilt));
+      this.poseQuaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.32 * tilt, -0.12 * tilt, -0.5 * tilt)));
+    }
     this.pivot.copy(PIVOT).applyQuaternion(this.poseQuaternion).add(this.posePosition);
+    this.animateGun(dt, gun, reload);
 
     // Weapon physics move the whole posed gun about the pivot between the wrists.
     this.motion.update(frameSeconds, player, yaw, pitch, wallDistance, aim);
@@ -175,6 +246,40 @@ export class Viewmodel {
     this.sun.position.copy(this.sunDirection).applyQuaternion(inverse).add(this.sun.target.position);
     this.scene.environmentRotation.setFromQuaternion(inverse);
     return aim;
+  }
+
+  // The slide, the support hand and the magazine.
+  animateGun(dt, gun, reload) {
+    this.flash.update(dt);
+    if (!this.pistol) return;
+
+    // The slide snaps back on a shot and returns, or stays back on an empty gun.
+    this.slideTime += dt;
+    const locked = gun && gun.slideLocked;
+    let back = 0;
+    if (this.slideTime < 0.025) back = this.slideTime / 0.025;
+    else if (this.slideTime < 0.075) back = locked ? 1 : 1 - (this.slideTime - 0.025) / 0.05;
+    else back = locked ? 1 : 0;
+    if (this.slide) this.slide.position.z = this.slideRest + SLIDE_TRAVEL * back;
+
+    // The support hand lets go to fetch a magazine, then comes back.
+    const S = RELOAD_STEPS;
+    const away = reload < 0 ? 0 : smoothstep(S.handOff, S.handOff + 0.1, reload) * (1 - smoothstep(S.handOn - 0.18, S.handOn, reload));
+    if (this.leftArm) {
+      this.leftArm.position.set(-0.05 * away, -0.22 * away, 0.08 * away);
+      this.leftArm.rotation.set(0.4 * away, 0, 0);
+    }
+
+    // The old magazine drops out; the new one comes up and clicks in.
+    if (this.magazine && this.magazineRest) {
+      const m = this.magazine.position.copy(this.magazineRest);
+      if (reload >= S.magOut && reload < S.magIn - 0.12) {
+        const t = (reload - S.magOut) * gun.reloadSeconds;
+        m.y -= Math.min(0.6, 0.5 * 9.8 * t * t);
+      } else if (reload >= S.magIn - 0.12 && reload < S.magIn) {
+        m.y -= 0.1 * (1 - smoothstep(S.magIn - 0.12, S.magIn, reload));
+      }
+    }
   }
 
   render(renderer) {

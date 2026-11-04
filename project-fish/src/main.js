@@ -6,9 +6,12 @@
 // applied every frame, straight from the mouse, so aiming never lags.
 
 import * as THREE from 'three';
-import { PLAYER, TICK_DT } from './shared/config.js';
-import { createPlayerState, emptyCommand, simulatePlayer } from './shared/movement.js';
-import { raycastColliders } from './shared/map.js';
+import { MOVEMENT, PISTOL, PLAYER, TICK_DT } from './shared/config.js';
+import { createPlayerState, emptyCommand, horizontalSpeed, simulatePlayer } from './shared/movement.js';
+import { raycastColliders, raycastWorld } from './shared/map.js';
+import { Pistol } from './weapon.js';
+import { WorldEffects } from './effects/worldEffects.js';
+import { playDryFire, playGunshot, playMagIn, playMagOut, playSlideRelease, startAudio } from './effects/audio.js';
 import { createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
@@ -50,6 +53,8 @@ const hud = new Hud(document.getElementById('debug'));
 const player = createPlayerState();
 const previous = { x: player.x, y: player.y, z: player.z };
 const cmd = emptyCommand();
+const weapon = new Pistol();
+const effects = new WorldEffects(scene);
 
 // --- Window size and field of view ---
 
@@ -83,6 +88,7 @@ resize();
 
 let loaded = false;
 overlay.addEventListener('click', () => {
+  startAudio(); // browsers only allow sound after a click
   if (loaded) input.lock();
 });
 input.onLockChange = (locked) => {
@@ -93,6 +99,96 @@ viewmodel.ready.then(() => {
   loaded = true;
   overlayStatus.textContent = 'Click to play';
 });
+
+// --- Shooting ---
+
+// The view kicks up with each shot and springs back, and a little of the
+// climb stays, so you pull down to stay on target. Radians.
+const RECOIL = { kick: 0.42, kickRandom: 0.12, sideways: 0.12, climb: 0.0045, aimed: 0.7, stiffness: 160, damping: 0.72 };
+const viewKick = { x: 0, y: 0, vx: 0, vy: 0 };
+
+function updateViewKick(dt) {
+  const c = 2 * RECOIL.damping * Math.sqrt(RECOIL.stiffness);
+  const steps = Math.max(1, Math.ceil(dt * 240));
+  const h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    viewKick.vx += (-RECOIL.stiffness * viewKick.x - c * viewKick.vx) * h;
+    viewKick.vy += (-RECOIL.stiffness * viewKick.y - c * viewKick.vy) * h;
+    viewKick.x += viewKick.vx * h;
+    viewKick.y += viewKick.vy * h;
+  }
+}
+
+// A point in the gun layer's camera space, as a position in the world. The
+// gun layer has its own field of view, so x and y are scaled to keep the
+// point in the same place on screen.
+function gunPointToWorld(p) {
+  const scale = Math.tan((camera.fov * Math.PI) / 360) / Math.tan((viewmodel.camera.fov * Math.PI) / 360);
+  return new THREE.Vector3(p.x * scale, p.y * scale, p.z).applyQuaternion(camera.quaternion).add(camera.position);
+}
+
+// Tips a direction by a random angle of up to `degrees`.
+function spread(direction, degrees) {
+  const angle = (degrees * Math.PI) / 180 * Math.sqrt(Math.random());
+  const around = Math.random() * Math.PI * 2;
+  const side = new THREE.Vector3().crossVectors(direction, Math.abs(direction.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)).normalize();
+  const up = new THREE.Vector3().crossVectors(side, direction);
+  return direction.clone().multiplyScalar(Math.cos(angle))
+    .addScaledVector(side, Math.sin(angle) * Math.cos(around))
+    .addScaledVector(up, Math.sin(angle) * Math.sin(around))
+    .normalize();
+}
+
+function shoot() {
+  viewmodel.fire(aimAmount);
+  playGunshot();
+
+  // Where the shot goes: through the sights when aiming, roughly at the
+  // centre from the hip, straying more from the hip and while moving.
+  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  const sight = viewmodel.sightOnScreen();
+  const throughSights = new THREE.Vector3(sight.x, sight.y, 0.5).unproject(camera).sub(camera.position).normalize();
+  const moving = Math.min(1, horizontalSpeed(player) / MOVEMENT.walkSpeed);
+  const stray = (PISTOL.spread.hip + PISTOL.spread.moving * moving) * (1 - aimAmount) + PISTOL.spread.aim * aimAmount;
+  const direction = spread(forward.clone().lerp(throughSights, aimAmount).normalize(), stray);
+  const hit = raycastWorld(camera.position.x, camera.position.y, camera.position.z, direction.x, direction.y, direction.z, PISTOL.range);
+  if (hit) effects.impact(hit, hit.what === 'ground' ? 0x8c8c8c : 0xcfc6b6);
+
+  // Flash, smoke and the spent case, where the gun is.
+  const muzzle = gunPointToWorld(viewmodel.muzzlePoint());
+  effects.flash(muzzle);
+  effects.smoke(muzzle, direction);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  const caseVelocity = right.multiplyScalar(1.6 + Math.random() * 0.8)
+    .addScaledVector(up, 2 + Math.random() * 0.8)
+    .addScaledVector(forward, -0.4)
+    .add(new THREE.Vector3(player.vx, player.vy, player.vz));
+  effects.ejectCase(gunPointToWorld(viewmodel.portPoint()), caseVelocity);
+
+  const k = 1 - (1 - RECOIL.aimed) * aimAmount;
+  viewKick.vx += (RECOIL.kick + Math.random() * RECOIL.kickRandom) * k;
+  viewKick.vy += (Math.random() * 2 - 1) * RECOIL.sideways * k;
+  input.pitch = Math.min(1.55, input.pitch + RECOIL.climb * k);
+}
+
+// --- Ammo counter ---
+
+const ammo = document.getElementById('ammo');
+const ammoMag = ammo.querySelector('.mag');
+const ammoReserve = ammo.querySelector('.reserve');
+const ammoHint = ammo.querySelector('.hint');
+let shownAmmo = '';
+
+function updateAmmo() {
+  const state = `${weapon.ammo}/${weapon.reserve}/${weapon.reloading}`;
+  if (state === shownAmmo) return;
+  shownAmmo = state;
+  ammoMag.textContent = weapon.ammo;
+  ammoReserve.textContent = weapon.reserve;
+  ammo.classList.toggle('low', weapon.ammo <= 3);
+  ammoHint.textContent = weapon.reloading ? 'Reloading' : weapon.ammo === 0 && weapon.reserve > 0 ? 'Press R to reload' : weapon.ammo === 0 ? 'Out of ammo' : '';
+}
 
 // --- Game loop ---
 
@@ -126,13 +222,32 @@ renderer.setAnimationLoop((time) => {
     previous.y + (player.y - previous.y) * alpha + PLAYER.eyeHeight,
     previous.z + (player.z - previous.z) * alpha,
   );
-  camera.rotation.set(input.pitch, input.yaw, 0);
+  updateViewKick(frameSeconds);
+  camera.rotation.set(input.pitch + viewKick.x, input.yaw + viewKick.y, 0);
 
+  // The pistol: trigger and reload key, then the gun's pose, then what happened.
+  const events = input.locked
+    ? weapon.update(frameSeconds, input.presses('Mouse0'), input.presses('KeyR') > 0)
+    : weapon.update(frameSeconds, 0, false);
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
-  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming);
+  const gunState = {
+    slideLocked: weapon.slideLocked,
+    reloadProgress: weapon.reloadProgress,
+    reloadSeconds: weapon.reload ? weapon.reload.duration : 0,
+  };
+  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
   document.body.classList.toggle('aiming', aimAmount > 0.4);
+  for (const event of events) {
+    if (event === 'shot') shoot();
+    else if (event === 'dry') playDryFire();
+    else if (event === 'magOut') playMagOut();
+    else if (event === 'magIn') playMagIn();
+    else if (event === 'slideRelease') playSlideRelease();
+  }
+  effects.update(frameSeconds);
+  updateAmmo();
 
   hud.update(frameSeconds, player);
   renderer.clear();

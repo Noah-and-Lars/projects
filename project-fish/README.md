@@ -23,7 +23,9 @@ Click to lock the mouse to the game. Press Esc to get the mouse back.
 | WASD | Move |
 | Mouse | Look |
 | Space | Jump |
+| Left mouse | Fire |
 | Right mouse (hold) | Aim down the iron sights |
+| R | Reload |
 | Esc | Release the mouse |
 
 The top-left corner shows the frame rate, your speed and whether you're on the ground or in the air.
@@ -84,6 +86,16 @@ If the model files can't be loaded, the game falls back to the simpler hands and
 ### Aiming down the sights
 
 Hold the right mouse button and the pistol comes up in about 0.28 s, with a slight swoop and a small settle at the end, until the line through its three sight dots runs straight through your eye: the front dot sits exactly where the centre dot was. The world zooms in a little, the centre dot fades out, and you walk at 55% speed (`aimSpeedFactor` in `src/shared/config.js`). The arm physics keeps working while you aim, so the sights trail behind turns and swing back, and they sway: slow, uneven drifts from breathing and tired arms that never quite repeat, plus a faint tremor. The sway is about 2.4 times worse just after the sights come up and calms down over a second, and it's worse while you walk. The timing, distance and zoom are `AIM` in `src/viewmodel/viewmodel.js`; the wobble and how much of each movement is kept while aiming are `aiming`, `aimWobble` and `aimSettle` in `MOTION`. The sight positions are `SIGHTS` in `src/viewmodel/pistol.js`.
+
+### Firing
+
+The pistol is semi-automatic: one shot per click, up to 500 a minute (clicks made faster than that wait their turn for a moment instead of being lost). It holds 12 rounds with 60 in reserve; the numbers are `PISTOL` in `src/shared/config.js`, and the rules are in `src/weapon.js`.
+
+- **Where shots go:** through the sights when aiming (so the sway matters), roughly at the centre from the hip, straying more from the hip and while moving. They hit the ground and the house (`raycastWorld` in `src/shared/map.js`) and leave a bullet hole and a puff of dust.
+- **Kick:** the gun flips up and shoves back into the hands on the arm springs (`recoil` in `MOTION`), and the view kicks up and springs back with a little lasting climb you pull down against (`RECOIL` in `src/main.js`). Both are gentler while aiming.
+- **The gun:** the slide cycles on each shot and locks back on the last round; a muzzle flash lights the hands, gun and surroundings for a moment; smoke drifts from the muzzle; the spent case flies out of the ejection port, spins, bounces and pings on the ground.
+- **Sound:** a 9mm report built in code sample by sample (pressure spike, bright blast, low punch, ground bounce, slide clack) with outdoor echoes, a click when the gun is empty, and reload sounds (`src/effects/audio.js`).
+- **Reloading (R):** the gun tips towards the support hand, which lets go to fetch a magazine; the old one drops out and the new one clicks in; from empty, the slide is released forward too. 1.55 s, or 1.95 s from empty. The ammo counter is bottom right.
 
 ### Weapon physics
 
