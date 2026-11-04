@@ -1,11 +1,30 @@
 // Effects out in the world: the flash lighting up the surroundings, smoke
-// from the muzzle, spent brass bouncing on the ground, and bullet impacts
-// (a puff of dust and a hole left behind).
+// from the muzzle, spent brass bouncing on the ground, dropped magazines,
+// and bullet impacts (a puff of dust and a hole left behind).
 
 import * as THREE from 'three';
-import { playCasing } from './audio.js';
+import { playCasing, playMagDrop } from './audio.js';
+import { MAGAZINE } from '../viewmodel/pistol.js';
 
 const GRAVITY = 9.8;
+const MAX_MAGAZINES = 12; // dropped magazines left lying about (the oldest go first)
+
+// A dropped magazine's shape for landing on the ground, in its own frame
+// (centred, Y up along it, X across its width): the corners of its body and
+// of its wider baseplate.
+const MAGAZINE_CORNERS = (() => {
+  const half = (MAGAZINE.base - MAGAZINE.top) / 2;
+  const bodyBottom = half - (MAGAZINE.bottom - MAGAZINE.top);
+  const corners = [];
+  for (const [x, z, y0, y1] of [
+    [MAGAZINE.halfWidth, MAGAZINE.halfDepth, bodyBottom, half],
+    [MAGAZINE.baseHalfWidth, MAGAZINE.baseHalfDepth, -half, bodyBottom],
+  ]) {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (const y of [y0, y1]) corners.push(new THREE.Vector3(sx * x, y, sz * z));
+  }
+  return corners;
+})();
+const DOWN = new THREE.Vector3(0, -1, 0);
 
 function softDot(inner = 'rgba(255,255,255,1)') {
   const size = 64;
@@ -73,6 +92,8 @@ export class WorldEffects {
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
     });
     this.holes = [];
+
+    this.magazines = [];
   }
 
   flash(position) {
@@ -127,6 +148,57 @@ export class WorldEffects {
     }
   }
 
+  // A dropped magazine: `object` (centred on the magazine, see
+  // MAGAZINE_CORNERS) falling from `position`, turned `quaternion`, at
+  // `velocity`. It tumbles a little, clatters as it lands, settles on its
+  // side and stays.
+  dropMagazine(object, position, quaternion, velocity) {
+    object.position.copy(position);
+    object.quaternion.copy(quaternion);
+    this.scene.add(object);
+    const spin = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(6);
+    this.magazines.push({ object, velocity: velocity.clone(), spin, bounces: 0, settling: false, resting: false });
+    if (this.magazines.length > MAX_MAGAZINES) this.scene.remove(this.magazines.shift().object);
+  }
+
+  updateMagazine(m, dt) {
+    const { object, velocity, spin } = m;
+    velocity.y -= GRAVITY * dt;
+    object.position.addScaledVector(velocity, dt);
+    const rate = spin.length();
+    if (rate > 1e-4) object.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(spin.clone().divideScalar(rate), rate * dt));
+
+    // How far its lowest corner has gone below the ground.
+    let lowest = Infinity;
+    for (const c of MAGAZINE_CORNERS) lowest = Math.min(lowest, c.clone().applyQuaternion(object.quaternion).add(object.position).y);
+    if (lowest < 0 || m.settling) object.position.y -= lowest;
+    if (lowest < 0 && velocity.y < 0) {
+      const speed = -velocity.y;
+      if (speed > 0.25) playMagDrop(Math.min(1, speed / 4));
+      velocity.y = speed * 0.22;
+      velocity.x *= 0.45;
+      velocity.z *= 0.45;
+      // Hitting the ground on a corner knocks it over a bit.
+      spin.multiplyScalar(0.35).add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(speed * 3));
+      m.bounces++;
+      if (speed < 0.9 || m.bounces > 3) m.settling = true;
+    }
+
+    // Settling: it tips over onto whichever side is lowest and comes to rest.
+    if (m.settling) {
+      const side = new THREE.Vector3(1, 0, 0).applyQuaternion(object.quaternion);
+      const down = side.y < 0 ? side : side.negate();
+      const rest = new THREE.Quaternion().setFromUnitVectors(down, DOWN).multiply(object.quaternion);
+      object.quaternion.slerp(rest, 1 - Math.exp(-12 * dt));
+      velocity.multiplyScalar(Math.exp(-9 * dt));
+      spin.multiplyScalar(Math.exp(-12 * dt));
+      if (object.quaternion.angleTo(rest) < 0.005 && velocity.lengthSq() < 1e-4) {
+        object.quaternion.copy(rest);
+        m.resting = true;
+      }
+    }
+  }
+
   // Where a bullet hit: a hole and a puff of dust (and a few grains of grit).
   impact(hit, color) {
     const normal = new THREE.Vector3(hit.nx, hit.ny, hit.nz);
@@ -170,6 +242,8 @@ export class WorldEffects {
       p.sprite.scale.setScalar(p.size + p.grow * p.age);
       p.sprite.material.opacity = p.opacity * (1 - t) * Math.min(1, p.age * 30);
     }
+
+    for (const m of this.magazines) if (!m.resting) this.updateMagazine(m, dt);
 
     for (const c of this.cases) {
       c.age += dt;

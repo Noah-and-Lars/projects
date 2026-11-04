@@ -4,15 +4,27 @@
 
 import { PISTOL } from './shared/config.js';
 
-// When things happen during a reload, as a fraction of its length. The
-// support hand's movements in between are keyframed in
-// src/viewmodel/viewmodel.js (HAND_KEYS).
+// When things happen during a reload, as a fraction of its length. There are
+// two kinds: from empty, the empty magazine is dropped and the slide released
+// at the end; with rounds left, the support hand catches the old magazine as
+// it comes out and swaps it for a fresh one at the pouch, so the rounds left
+// in it are kept. The hands' movements in between are keyframed in
+// src/viewmodel/viewmodel.js (HAND_PATHS).
 export const RELOAD_STEPS = {
-  magOut: 0.1, // magazine release pressed: the old one drops out, the support hand lets go
-  magGrab: 0.36, // the hand closes round a fresh magazine on the belt
-  magIn: 0.63, // the palm pushes it home and it clicks
-  handOn: 0.84, // the support hand is back round the grip
-  slideRelease: 0.87, // (empty reloads) slide snaps forward
+  empty: {
+    magOut: 0.1, // the thumb presses the magazine release: the empty one drops free
+    magGrab: 0.36, // the support hand closes round a fresh magazine on the belt
+    magIn: 0.63, // the palm pushes it home and it clicks
+    handOn: 0.84, // the support hand is back round the grip
+    slideRelease: 0.87, // the slide snaps forward
+  },
+  catching: {
+    magOut: 0.165, // the thumb presses the magazine release: the old one drops into the waiting hand
+    magCaught: 0.221, // it lands in the palm (it's fallen CATCH_GAP in src/viewmodel/viewmodel.js)
+    magGrab: 0.385, // swapped for a fresh one at the pouch
+    magIn: 0.63,
+    handOn: 0.84,
+  },
 };
 
 export class Pistol {
@@ -37,8 +49,8 @@ export class Pistol {
   // dt: seconds since the last frame. trigger: how many times the fire button
   // was pressed this frame (a pull while the gun isn't ready yet is kept for a
   // moment, so quick taps are never lost). reloadKey: the reload key was pressed.
-  // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magGrab',
-  // 'magIn', 'slideRelease', 'reloaded'.
+  // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magCaught',
+  // 'magGrab', 'magIn', 'slideRelease', 'reloaded'.
   update(dt, trigger, reloadKey) {
     this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 0.25);
     for (let i = 0; i < trigger; i++) this.pulls.push(0);
@@ -52,9 +64,10 @@ export class Pistol {
     if (this.reload) {
       this.reload.time += dt;
       const p = this.reloadProgress;
-      for (const step of ['magOut', 'magGrab', 'magIn', 'slideRelease']) {
-        if (step === 'slideRelease' && !this.reload.empty) continue;
-        if (p >= RELOAD_STEPS[step] && !this.reload.done.has(step)) {
+      const steps = RELOAD_STEPS[this.reload.empty ? 'empty' : 'catching'];
+      for (const [step, at] of Object.entries(steps)) {
+        if (step === 'handOn') continue;
+        if (p >= at && !this.reload.done.has(step)) {
           this.reload.done.add(step);
           events.push(step);
           if (step === 'slideRelease') this.slideLocked = false;

@@ -228,6 +228,21 @@ export function playMagGrab() {
   burst({ at: 0.05, type: 'bandpass', from: 1500, q: 2, volume: 0.2, decay: 0.06 });
 }
 
+// The old magazine landing in the support hand: a soft, muffled slap.
+export function playMagCatch() {
+  burst({ type: 'lowpass', from: 900, to: 300, volume: 0.45, attack: 0.002, decay: 0.07 });
+  burst({ at: 0.004, type: 'bandpass', from: 1700, q: 3, volume: 0.18, decay: 0.03 });
+}
+
+// A dropped magazine hitting the ground: a hollow polymer knock and the steel
+// body rattling. volume: 0..1, how hard it landed.
+export function playMagDrop(volume = 1) {
+  burst({ type: 'bandpass', from: 650, to: 380, q: 2.5, volume: 0.7 * volume, attack: 0.001, decay: 0.06 });
+  burst({ at: 0.003, type: 'bandpass', from: 2300, q: 5, volume: 0.45 * volume, decay: 0.04 });
+  tone({ at: 0.004, from: vary(2900, 0.1), volume: 0.03 * volume, decay: 0.08, type: 'triangle' });
+  burst({ at: vary(0.05, 0.3), type: 'bandpass', from: 1500, q: 4, volume: 0.2 * volume, decay: 0.03 });
+}
+
 export function playMagIn() {
   burst({ type: 'bandpass', from: 1200, to: 800, q: 2, volume: 0.64, decay: 0.08 });
   burst({ at: 0.07, type: 'bandpass', from: 2200, q: 6, volume: 1.00, decay: 0.04 }); // clicks home

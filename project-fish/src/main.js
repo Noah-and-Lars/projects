@@ -11,7 +11,7 @@ import { createPlayerState, emptyCommand, horizontalSpeed, simulatePlayer } from
 import { raycastColliders, raycastWorld } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
-import { playDryFire, playGunshot, playMagGrab, playMagIn, playMagOut, playSlideRelease, startAudio } from './effects/audio.js';
+import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playSlideRelease, startAudio } from './effects/audio.js';
 import { createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
@@ -269,12 +269,23 @@ renderer.setAnimationLoop((time) => {
       viewmodel.dryFire();
     }
     else if (event === 'magOut') playMagOut();
+    else if (event === 'magCaught') playMagCatch();
     else if (event === 'magGrab') playMagGrab();
     else if (event === 'magIn') {
       playMagIn();
       viewmodel.seatMagazine();
     }
     else if (event === 'slideRelease') playSlideRelease();
+  }
+  // An empty magazine dropped out of view in the gun layer carries on falling in the world.
+  const dropped = viewmodel.takeDroppedMagazine();
+  if (dropped) {
+    effects.dropMagazine(
+      dropped.object,
+      gunPointToWorld(dropped.position),
+      camera.quaternion.clone().multiply(dropped.quaternion),
+      dropped.velocity.applyQuaternion(camera.quaternion).add(new THREE.Vector3(player.vx, player.vy, player.vz)),
+    );
   }
   updateBarrelSmoke(frameSeconds);
   effects.update(frameSeconds);
