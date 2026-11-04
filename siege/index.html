@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.14';
+const VERSION = '1.0.15';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -2166,6 +2166,45 @@ function holeTrace(o, e, G0) {
     ox = ex + dx * 0.2; oy = ey + dy * 0.2; oz = ez + dz * 0.2; left -= h.t + 0.2;
   }
 }
+// 1.0.15: the far side of a reinforced wall shows the steel's bolts poking through: dark star-shaped marks dotted
+// across it (every other chunk, nudged a little), so attackers can tell from their side. Only the marks: the wall
+// keeps its own look. One InstancedMesh per map with a slot for every wall chunk; sgPanelDraw sets them.
+const STAR_GEO = new THREE.PlaneGeometry(1, 1); STAR_GEO.userData.keep = true;
+let STAR_MAT = null;
+function starMat() {
+  if (STAR_MAT) return STAR_MAT;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  g.translate(32, 32);
+  const star = () => { g.beginPath(); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, c = Math.cos(a), sn = Math.sin(a), p = (x, y) => g.lineTo(x * c - y * sn, x * sn + y * c); p(-4.5, -4); p(-1.2, -28); p(1.2, -28); p(4.5, -4); } g.closePath(); };
+  g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = '#8a857c'; star(); g.stroke(); // a thin steel edge, so it reads on dark walls too
+  g.fillStyle = '#1b1917'; star(); g.fill();                                           // four tapered arms
+  g.beginPath(); g.arc(0, 0, 7.5, 0, 7); g.fill(); g.strokeStyle = '#8a857c'; g.lineWidth = 2; g.stroke();
+  g.fillStyle = '#4a4640'; g.beginPath(); g.arc(-1.5, -1.5, 3, 0, 7); g.fill();           // the bolt head
+  const t = stableTex(c); t.userData = { keep: true };
+  STAR_MAT = new THREE.MeshBasicMaterial({ map: t, alphaTest: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  STAR_MAT.userData.keep = true;
+  return STAR_MAT;
+}
+const _sq = new THREE.Quaternion(), _sp = new THREE.Vector3(), _ss = new THREE.Vector3(), _se = new THREE.Euler(), _sc = new THREE.Color();
+function starMarks(p) {
+  const M = W, S = M.stars; if (!S || p.k !== 'wall' || p.star === undefined) return;
+  const show = p.reinf && p.active, oh = 3 - (p.reinf || 1); // the half that wasn't reinforced
+  for (let i = 0; i < p.n; i++) {
+    const col = i % p.cols, row = (i / p.cols) | 0;
+    if (!show || !p.alive[i] || (col + row) % 2) { S.setMatrixAt(p.star + i, _zero); continue; }
+    const b = chunkBox(p, i, oh, _cb), r = k => { const x = Math.sin((p.id * 131 + i * 17 + k * 7) * 12.9898) * 43758.5453; return x - Math.floor(x); };
+    const nrm = oh === 1 ? -1 : 1, edge = col === 0 || col === p.cols - 1;
+    let x = (b[0] + b[3]) / 2, y = (b[1] + b[4]) / 2 + (r(1) - 0.5) * 0.18, z = (b[2] + b[5]) / 2, yaw;
+    if (p.ax === 'x') { x += (r(2) - 0.5) * 0.1; z = (nrm < 0 ? b[2] : b[5]) + nrm * 0.004; yaw = nrm < 0 ? Math.PI : 0; }
+    else { z += (r(2) - 0.5) * 0.1; x = (nrm < 0 ? b[0] : b[3]) + nrm * 0.004; yaw = nrm < 0 ? -Math.PI / 2 : Math.PI / 2; }
+    const sz = (edge ? 0.22 : 0.16) * (0.85 + r(3) * 0.3);
+    _sq.setFromEuler(_se.set(0, yaw, (r(4) - 0.5) * 0.5, 'YXZ'));
+    S.setMatrixAt(p.star + i, _m4.compose(_sp.set(x, y, z), _sq, _ss.set(sz, sz, 1)));
+    // as bright as the wall around it
+    const I = p.ii[oh]; M.inst[I.mk].getColorAt(I.base + i, _sc); S.setColorAt(p.star + i, _sc.multiplyScalar(1.25)); S.userData.colDirty = true;
+  }
+  M.dirty.add(S);
+}
 function sgBuildPanelMeshes(M) {
   holeBuild(M);
   // count instances per material
@@ -2186,6 +2225,14 @@ function sgBuildPanelMeshes(M) {
   }
   const take = (mk, n) => { const m = M.inst[mk], s = m.userData.next; m.userData.next += n; return s; };
   const col = new THREE.Color();
+  { // 1.0.15: slots for the reinforced walls' bolt marks
+    const n = M.panels.reduce((a, p) => a + (p.k === 'wall' ? p.n : 0), 0);
+    const S = M.stars = new THREE.InstancedMesh(STAR_GEO, starMat(), Math.max(1, n));
+    S.instanceMatrix.setUsage(THREE.DynamicDrawUsage); S.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, n) * 3).fill(1), 3);
+    S.frustumCulled = false; for (let i = 0; i < n; i++) S.setMatrixAt(i, _zero);
+    let k = 0; for (const p of M.panels) if (p.k === 'wall') { p.star = k; k += p.n; }
+    M.group.add(S);
+  }
   for (const p of M.panels) {
     if (p.k === 'bar') { barBuild(M, p); continue; }
     if (p.k === 'glass') {
@@ -2239,6 +2286,7 @@ function sgPanelDraw(p) {
     }
     M.dirty.add(mesh); if (steel) M.dirty.add(steel);
   }
+  if (p.k === 'wall') starMarks(p); // 1.0.15
 }
 // ----- 1.0.7: barricade boards -----
 // two thin faces 7 cm apart, each the whole opening; the texture's alpha is the holes (alphaTest), and sgRay asks the
@@ -2304,7 +2352,7 @@ function barOpenAt(p, u, v) {
 }
 // where on a barricade a world point is (u along it from s0, v up from y0)
 function barUV(p, x, y, z) { return [((p.ax === 'x' ? x : z) - p.s0) / p.w, (y - p.y0) / p.h]; }
-function sgFlushPanels() { for (const m of W.dirty) m.instanceMatrix.needsUpdate = true; W.dirty.clear(); }
+function sgFlushPanels() { for (const m of W.dirty) { m.instanceMatrix.needsUpdate = true; if (m.userData.colDirty && m.instanceColor) { m.instanceColor.needsUpdate = true; m.userData.colDirty = false; } } W.dirty.clear(); }
 
 // ---------- queries ----------
 // static obstacles and live chunks near a point
@@ -3651,6 +3699,7 @@ function sgBoom(kind, x, y, z, ownerId, extra = {}) {
   else if (B.wr) c = sgBlast({ x, y, z }, B.wr, { hard: B.hard, only: B.panelOnly && extra.panel !== undefined ? W.panels[extra.panel] : null });
   const kills = [];
   for (const g of G.gad.values()) { const dd = Math.hypot(g.x - x, g.y - y, g.z - z); if (dd < (kind === 'slug' ? 0.6 : B.r * 0.6) && g.id !== extra.self && g.boomable !== false) kills.push(g.id); }
+  for (const [pid] of c) W.panels[pid].dirtyDraw = true; // 1.0.15: the chunks are already marked gone here, so EV.boom wouldn't redraw them on this screen
   emit('boom', { k: kind, x: +x.toFixed(2), y: +y.toFixed(2), z: +z.toFixed(2), o: ownerId, c, gk: kills });
 }
 EV.boom = (d, local) => {
@@ -4752,7 +4801,7 @@ function sgMelee(P) {
     const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t };
     // 1.0.13: a punch knocks out the one piece of drywall you hit (a small hole to see and shoot through)
     const c = h.p.k === 'wall' ? (h.p.alive[h.i] ? [[h.p.id, h.i]] : []) : sgBlast(pt, 0.3, { only: h.p });
-    if (h.p.k === 'wall' && c.length) { h.p.alive[h.i] = 0; sgPanelDraw(h.p); }
+    if (c.length) { if (h.p.k === 'wall') h.p.alive[h.i] = 0; sgPanelDraw(h.p); } // 1.0.15: a punched hatch redraws here too
     if (c.length) { emit('wd', { c }); snd(h.p.k === 'wall' ? 'crumble' : 'wood', pt, 0.8); fxDebris(pt.x, pt.y, pt.z, 6, h.p.k === 'wall' ? 0xcfc8b8 : 0x7a5532, 0.08, 3); }
   }
 }
@@ -5727,6 +5776,10 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.15', t: 'Reinforced walls show it', d: '5 November 2026', intro: 'You can tell a wall is reinforced from the other side.', items: [
+    ['Bolts through the wall', 'The side of a reinforced wall that wasn\'t reinforced now shows the steel\'s bolts poking through: dark star-shaped marks dotted across the wall. The wall keeps its own look.'],
+    ['Breaches show up', 'A breach charge, Thermal Lance or punch now breaks the wall on the screen of whoever set it off too (it only broke on everyone else\'s).'],
+  ] },
   { v: '1.0.14', t: 'Smarter bots', d: '4 November 2026', intro: 'The bots play more like people, and you can lie down.', items: [
     ['Prone', 'Z lies you down: a low target that crawls slowly and makes no footsteps. Z again, C, or sprinting gets you up. (Murk\'s canisters are set off with X, as the card says.)'],
     ['Bots hold angles', 'Defending bots pick a spot a few metres back from a door or window into the site and watch it, standing, crouched or lying down, and lean out to peek now and then.'],

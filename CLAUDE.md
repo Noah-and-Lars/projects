@@ -385,6 +385,10 @@ source in Settings → Pages should be switched to `main`.
   for shots), and `botGadgets` (attackers: hack, scan, sonar, EMP near the site, frag/flash where they lost you; defenders:
   gas/kunai/claymores on the site's doorways, Volt rods on reinforced walls, Murk sets gas off). Test-clock caveat: `now()`
   is real time + `SG_TOFF`, so a slow headless step can expire hold/bang timers early.
+  1.0.15: the half of a reinforced wall that wasn't reinforced (`3 - p.reinf`) shows bolt marks: `W.stars` (one
+  InstancedMesh per map, a slot per wall chunk at `p.star`), set by `starMarks(p)` from `sgPanelDraw` (every other
+  chunk, jittered, `starMat()` canvas star, lit like the chunk). `sgBoom` marks the panels it hit `dirtyDraw` (it zeroes
+  `alive` itself, so `EV.boom` used to skip the redraw on the screen that set the charge off); a punched hatch redraws too.
 
 ## Adding a game
 
