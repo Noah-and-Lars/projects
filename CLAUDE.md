@@ -341,6 +341,10 @@ source in Settings → Pages should be switched to `main`.
   over the top floor's biggest rooms (same hatch panels as `D.hatches`). The rope climbs onto a roof at the top of a wall
   (vault in `sgRopeStep`) and starts down the outside from a parapet (`sgRopeStart`). Yards made `sky: 1`: hotel K and
   g, port D and Y, manor T (renamed Terrace, spawn too). Grenades have models (`gmesh` frag/smoke/flash/emp/impact).
+  1.0.13: wallbangs. In `sgTrace` a drywall chunk takes `dm * 0.15` (0.3 for pellets; hp0 34) and the shot always goes on
+  (two walls, `dm *= 0.6` each). `holeShot` puts marks on both faces (an InstancedMesh per map, `holeBuild`, `HOLE_MAX`,
+  owned per chunk and cleared in `sgPanelDraw` when the chunk goes); remote shots stamp them with `holeTrace` along the
+  line from `snRemoteShot`. A punch removes just the chunk it hits. Ray hits on a panel are at its middle plane.
 
 ## Adding a game
 

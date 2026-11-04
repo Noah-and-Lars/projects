@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.12';
+const VERSION = '1.0.13';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -2109,7 +2109,65 @@ function setInst(mesh, idx, b, shrink) {
   _v3.set((b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2); _s3.set(b[3] - b[0] - s, b[4] - b[1] - s, b[5] - b[2] - s);
   _m4.compose(_v3, _q0, _s3); mesh.setMatrixAt(idx, _m4);
 }
+// ----- 1.0.13: bullet holes in walls -----
+// A shot through drywall leaves a mark on both faces (the chunk wears down; only enough of them knock it out, which
+// opens a real hole). Marks belong to their chunk and go when it does. Remote players' shots stamp them too.
+const HOLE_MAX = 700, HOLE_GEO = new THREE.PlaneGeometry(1, 1); HOLE_GEO.userData.keep = true;
+let HOLE_TEX = null;
+function holeTex() {
+  if (HOLE_TEX) return HOLE_TEX;
+  HOLE_TEX = stableTex(cnv(32, 32, (g, w) => { const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, 'rgba(8,6,5,1)'); gr.addColorStop(0.32, 'rgba(10,8,6,1)'); gr.addColorStop(0.42, 'rgba(60,52,44,.85)'); gr.addColorStop(0.7, 'rgba(90,82,72,.35)'); gr.addColorStop(1, 'rgba(90,82,72,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); }));
+  return HOLE_TEX;
+}
+function holeBuild(M) {
+  const mat = new THREE.MeshBasicMaterial({ map: holeTex(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  mat.userData.keep = false;
+  const mesh = new THREE.InstancedMesh(HOLE_GEO, mat, HOLE_MAX); mesh.frustumCulled = false; mesh.renderOrder = 2;
+  for (let i = 0; i < HOLE_MAX; i++) mesh.setMatrixAt(i, _zero);
+  M.group.add(mesh); M.holes = { mesh, n: 0, own: new Int32Array(HOLE_MAX).fill(-1), byKey: new Map() };
+}
+const _hq = new THREE.Quaternion(), _hn = new THREE.Vector3(), _hz = new THREE.Vector3(0, 0, 1);
+function holeAdd(p, ci, x, y, z, nx, ny, nz, size) {
+  const H = W && W.holes; if (!H) return;
+  const i = H.n++ % HOLE_MAX, key = p.id * 64 + ci;
+  if (H.own[i] >= 0) { const L = H.byKey.get(H.own[i]); if (L) { const k = L.indexOf(i); if (k >= 0) L.splice(k, 1); } }
+  _hn.set(nx, ny, nz); _hq.setFromUnitVectors(_hz, _hn);
+  _v3.set(x + nx * 0.004, y + ny * 0.004, z + nz * 0.004); _s3.set(size, size, 1);
+  _m4.compose(_v3, _hq, _s3); H.mesh.setMatrixAt(i, _m4); H.mesh.instanceMatrix.needsUpdate = true;
+  H.own[i] = key; (H.byKey.get(key) || H.byKey.set(key, []).get(key)).push(i);
+}
+function holeClearChunk(p, ci) {
+  const H = W && W.holes; if (!H) return;
+  const L = H.byKey.get(p.id * 64 + ci); if (!L || !L.length) return;
+  for (const i of L) { H.mesh.setMatrixAt(i, _zero); H.own[i] = -1; }
+  L.length = 0; H.mesh.instanceMatrix.needsUpdate = true;
+}
+// a shot's marks on a wall it went through: the face it went in and the one it came out of
+function holeShot(p, i, end, d, n, G0) {
+  if (p.k !== 'wall') return;
+  // the ray meets a panel at its middle plane: the marks go on the two faces either side of it
+  const sz = G0.pel ? 0.035 : G0.t === 'DMR' ? 0.06 : 0.05, h = WALL_T / 2 + 0.002, dn = p.ax === 'x' ? d.z : d.x, k = Math.abs(dn) > 0.05 ? h / Math.abs(dn) : 0;
+  const ix = end.x - d.x * k, iy = end.y - d.y * k, iz = end.z - d.z * k, ox = end.x + d.x * k, oy = end.y + d.y * k, oz = end.z + d.z * k;
+  const fi = p.c + (p.ax === 'x' ? n[2] : n[0]) * h, fo = p.c - (p.ax === 'x' ? n[2] : n[0]) * h;
+  if (p.ax === 'x') { holeAdd(p, i, ix, iy, fi, n[0], n[1], n[2], sz); holeAdd(p, i, ox, oy, fo, -n[0], -n[1], -n[2], sz * 1.3); }
+  else { holeAdd(p, i, fi, iy, iz, n[0], n[1], n[2], sz); holeAdd(p, i, fo, oy, oz, -n[0], -n[1], -n[2], sz * 1.3); }
+}
+// another player's shot: the same marks along its line (no damage: that is the shooter's to work out)
+function holeTrace(o, e, G0) {
+  if (!W) return;
+  let dx = e.x - o.x, dy = e.y - o.y, dz = e.z - o.z; const L = Math.hypot(dx, dy, dz); if (L < 0.1) return;
+  dx /= L; dy /= L; dz /= L;
+  let ox = o.x, oy = o.y, oz = o.z, left = L;
+  for (let n = 0; n < 3 && left > 0.05; n++) {
+    const h = sgRay(ox, oy, oz, dx, dy, dz, left); if (!h) return;
+    const ex = ox + dx * h.t, ey = oy + dy * h.t, ez = oz + dz * h.t;
+    if (h.k !== 'panel' || h.p.k !== 'wall' || h.p.reinf) return;
+    holeShot(h.p, h.i, { x: ex, y: ey, z: ez }, { x: dx, y: dy, z: dz }, h.n, G0);
+    ox = ex + dx * 0.2; oy = ey + dy * 0.2; oz = ez + dz * 0.2; left -= h.t + 0.2;
+  }
+}
 function sgBuildPanelMeshes(M) {
+  holeBuild(M);
   // count instances per material
   const need = {};
   const want = (mk, n) => { need[mk] = (need[mk] || 0) + n; };
@@ -2166,6 +2224,7 @@ function sgBuildPanelMeshes(M) {
 // refresh how a panel's chunks are drawn (after damage, reinforcement or a barricade)
 function sgPanelDraw(p) {
   const M = W;
+  if (p.k === 'wall' && M.holes) for (let i = 0; i < p.n; i++) if (!p.alive[i] || p.reinf) holeClearChunk(p, i);
   if (p.k === 'glass') { p.mesh.visible = !!p.alive[0]; return; }
   if (p.k === 'bar') { barDraw(p); return; }
   for (const h in p.ii) {
@@ -3507,8 +3566,17 @@ function sgTrace(P, o, d, dmg, G0, first) {
         if (pierce++ < 2) { dm *= 0.7; o = { x: end.x + d.x * 0.12, y: end.y + d.y * 0.12, z: end.z + d.z * 0.12 }; left -= h.t + 0.12; continue; }
         return end;
       }
-      const mult = p.k === 'hatch' ? 0.12 : (G0.pel ? 1.6 : 1);
+      // 1.0.13: drywall: the shot goes through (wallbang, a bit weaker for each wall) and wears the chunk down; it took a
+      // whole chunk out with every bullet before. Hatches are tougher and stop it.
+      const mult = p.k === 'hatch' ? 0.12 : (G0.pel ? 0.3 : 0.15);
       const broke = sgHitChunk(p, h.i, dm * mult);
+      if (p.k === 'wall') {
+        if (!broke) holeShot(p, h.i, end, d, h.n, G0);
+        fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 2, 0xcfc8b8, 0.05, 2); snd('chip', end, 0.4);
+        if (broke) { _wd.push([p.id, h.i]); sgPanelDraw(p); }
+        if (pierce++ < 2) { dm *= 0.6; o = { x: end.x + d.x * 0.2, y: end.y + d.y * 0.2, z: end.z + d.z * 0.2 }; left -= h.t + 0.2; continue; }
+        return end;
+      }
       fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 2, p.k === 'bar' || p.k === 'hatch' ? 0x7a5532 : 0xcfc8b8, 0.05, 2);
       fxPuff(end.x, end.y, end.z, p.k === 'bar' ? 0x6a4a2a : 0xb8b0a0, 0.3, 0.5, 0.1);
       snd(p.k === 'bar' || p.k === 'hatch' ? 'wood' : 'chip', end, 0.45);
@@ -4681,7 +4749,9 @@ function sgMelee(P) {
   if (h && h.k === 'panel' && h.p.k === 'bar') { const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t }, [u, v] = barUV(h.p, pt.x, pt.y, pt.z); emit('bhit', { p: h.p.id, d: 60, u: Math.round(u * 1000) / 1000, v: Math.round(v * 1000) / 1000, r: 0.13 }); snd('wood', pt, 0.9); fxDebris(pt.x, pt.y, pt.z, 5, 0x7a5532, 0.08, 3); return; }
   if (h && h.k === 'panel' && !h.p.reinf) {
     const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t };
-    const c = sgBlast(pt, h.p.k === 'hatch' ? 0.3 : 0.5, { only: h.p });
+    // 1.0.13: a punch knocks out the one piece of drywall you hit (a small hole to see and shoot through)
+    const c = h.p.k === 'wall' ? (h.p.alive[h.i] ? [[h.p.id, h.i]] : []) : sgBlast(pt, 0.3, { only: h.p });
+    if (h.p.k === 'wall' && c.length) { h.p.alive[h.i] = 0; sgPanelDraw(h.p); }
     if (c.length) { emit('wd', { c }); snd(h.p.k === 'wall' ? 'crumble' : 'wood', pt, 0.8); fxDebris(pt.x, pt.y, pt.z, 6, h.p.k === 'wall' ? 0xcfc8b8 : 0x7a5532, 0.08, 3); }
   }
 }
@@ -5472,6 +5542,7 @@ function snRemoteShot(P, e) {
   eyeOf(P, _e);
   snd(G0.t, { x: P.x, y: P.y + 1.4, z: P.z }, 1, P);
   if (e && Math.random() < 0.6) fxTracer({ x: _e.x, y: _e.y - 0.1, z: _e.z }, { x: e[0], y: e[1], z: e[2] });
+  if (e) holeTrace({ x: _e.x, y: _e.y, z: _e.z }, { x: e[0], y: e[1], z: e[2] }, G0);
   if (P.model) { P.model.flash.visible = true; P.flashT = 0.05; }
 }
 // what we send about ourselves, 12 times a second (less when standing still)
@@ -5526,6 +5597,12 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.13', t: 'Wallbangs', d: '4 November 2026', intro: 'Shoot through the drywall.', items: [
+    ['Wallbang', 'Bullets go through drywall (up to two walls, a bit weaker each time) and hurt whoever is behind it. Every shot leaves a bullet hole on both sides of the wall.'],
+    ['Walls wear down', 'A wall no longer loses a whole piece to every bullet. About five rifle rounds or a shotgun blast in the same place knock a piece out, and then you can see through.'],
+    ['Punch a hole', 'Melee (V) on drywall knocks out just the piece you hit: a small hole to look and shoot through.'],
+    ['Reinforced walls', 'Steel still stops every bullet, punch and breach charge.'],
+  ] },
   { v: '1.0.12', t: 'Roofs and hatches', d: '4 November 2026', intro: 'Climb onto the roof and come in from above.', items: [
     ['Roofs', 'Every building\'s roof is now somewhere you can stand, with a low wall round the edge. Rappel up an outside wall and press W at the top to climb onto it; at the edge, Space takes you back down the outside.'],
     ['Roof hatches', 'Each map has two hatches in the roof over the top floor. Shoot them, breach them or use the Skeleton Key to drop in. Defenders can reinforce them from below like any hatch.'],
