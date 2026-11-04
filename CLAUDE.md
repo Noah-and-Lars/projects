@@ -294,6 +294,9 @@ source in Settings → Pages should be switched to `main`.
   guns it no longer takes from the driver). Ship rows carry seat keys at index 15 (`e.seatKeys` on puppets and on the
   driver's own ship). A blast of size >= 6 within `size * 0.9` of your gun kills you (`explode`); a sunk ship drops
   you in the water (`bailOut`).
+  1.2.7: `HARBOR_X` 2126 (was 1575) and harbor islands `r` 290 (was 225); `MAP`, `BOUND` (x 2950), `DEPTH_W`, `MINI` and
+  the PC map's `MAPV.s` grew to match. Each harbor has six more turret spots on the new land (4 AA, 2 cannons).
+  `restoreIsland` (called by `setIslandOwner` when a team claims it) removes `SCORCHES` and `EMITTERS` on that island.
 - `card-royale/`: Card Royale (1.0.2), a real-time 1v1 card battler (towers, lanes, Elixir, 50 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by
   `build.sh`): data, `20-sim.js` (the battle: `newBattle`, `step` at 20 ticks a second, `play`, `canDeploy`, the bot in

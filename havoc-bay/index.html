@@ -413,6 +413,13 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.2.7 <small>Bigger bases, further apart</small></h3>
+    <ul>
+      <li><b>The harbors are 35% further apart</b>, so there's more sea to fight over between the bases and the islands in the middle.</li>
+      <li><b>Bigger base islands</b> with more room, and six more guns on each: four anti-aircraft guns (at the ends of the airfield and on the sea side) and two coastal cannons on the flanks.</li>
+      <li><b>Islands recover.</b> When a team claims an island, its burnt ground and the fires left by crashes, bombs and missiles are cleared, and its turrets are rebuilt.</li>
+      <li>The minimap and the Map app on the missile computer show the whole wider map.</li>
+    </ul>
     <h3>v1.2.6 <small>Ship gunners</small></h3>
     <ul>
       <li><b>Man a teammate's guns.</b> The deploy menu now lists your teammates' Destroyers, Battleships and Carriers that have a free anti-aircraft gun. Pick one to spawn on that gun: aim with the mouse, click to fire, and every hit and kill counts for you. E jumps off into the water.</li>
@@ -608,7 +615,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.2.6';
+const VERSION = '1.2.7';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -793,10 +800,10 @@ sky.renderOrder = -10; sky.frustumCulled = false;
 scene.add(sky);
 
 // The map area and the shallow-water texture (filled in once islands exist)
-const MAP = { x0: -2500, z0: -1850, w: 5000, h: 3700 };
-const BOUND = { x: 2300, z: 1650 };
+const MAP = { x0: -3150, z0: -1850, w: 6300, h: 3700 }; // 1.2.7: wider, the harbors are further apart
+const BOUND = { x: 2950, z: 1650 };
 const FREEZE_S = 30;   // 1.2.3: seconds in the water before you freeze
-const DEPTH_W = 768, DEPTH_H = 568;
+const DEPTH_W = 968, DEPTH_H = 568;
 const depthData = new Uint8Array(DEPTH_W * DEPTH_H * 4);
 const depthTex = new THREE.DataTexture(depthData, DEPTH_W, DEPTH_H, THREE.RGBAFormat);
 depthTex.magFilter = depthTex.minFilter = THREE.LinearFilter; depthTex.generateMipmaps = false;
@@ -1576,10 +1583,10 @@ function buildPad(team, kind) {
 /* ==========================================================================
    World: islands, terrain, harbors, colliders
    ========================================================================== */
-const HARBOR_X = 1575, G = 3.2;
+const HARBOR_X = 2126, G = 3.2; // 1.2.7: 35% further apart (it was 1575)
 const ISLES = [
-  { id: 'hb', name: 'Blue Harbor', x: -HARBOR_X, z: 0, r: 225, h: G, n: 0.03, seed: 1.3, type: 'harbor', team: 0 },
-  { id: 'hr', name: 'Red Harbor', x: HARBOR_X, z: 0, r: 225, h: G, n: 0.03, seed: 1.3, type: 'harbor', team: 1, flip: true },
+  { id: 'hb', name: 'Blue Harbor', x: -HARBOR_X, z: 0, r: 290, h: G, n: 0.03, seed: 1.3, type: 'harbor', team: 0 }, // 1.2.7: r 225 -> 290
+  { id: 'hr', name: 'Red Harbor', x: HARBOR_X, z: 0, r: 290, h: G, n: 0.03, seed: 1.3, type: 'harbor', team: 1, flip: true },
   { id: 'crown', name: 'Crown Isle', x: 0, z: 0, r: 105, h: 13, n: 0.13, seed: 2.2, type: 'claim', rw: true }, // rw: 1.2.1, two runways
   { id: 'gull', name: 'Gull Rock', x: -90, z: -810, r: 78, h: 11, n: 0.17, seed: 5.5, type: 'claim' },
   { id: 'turtle', name: 'Turtle Cay', x: 90, z: 810, r: 78, h: 11, n: 0.17, seed: 5.5, type: 'claim', flip: true },
@@ -1826,6 +1833,9 @@ function buildHarbor(team) {
   TURRET_SPOTS.push({ type: 'cannon', team, site: s, lx: 118, ly: G + 16, lz: -58, owner: H });
   TURRET_SPOTS.push({ type: 'cannon', team, site: s, lx: 118, ly: G + 16, lz: 58, owner: H });
   for (const [x, z] of [[36, -84], [36, 84], [-72, -30], [-72, 30]]) TURRET_SPOTS.push({ type: 'aa', team, site: s, lx: x, ly: G, lz: z, owner: H });
+  // 1.2.7: the bigger island has room for more: AA guns at the ends of the airfield and on the sea side, cannons on the flanks
+  for (const [x, z] of [[-215, -150], [-215, 150], [130, -200], [130, 200]]) TURRET_SPOTS.push({ type: 'aa', team, site: s, lx: x, ly: G, lz: z, owner: H });
+  for (const z of [-250, 250]) TURRET_SPOTS.push({ type: 'cannon', team, site: s, lx: -60, ly: G, lz: z, owner: H });
   // palms and rocks around the beach
   const R = rng(team ? 19 : 11);
   for (let i = 0; i < 46; i++) {
@@ -2996,6 +3006,7 @@ function setIslandOwner(isl, team) {
     t.setTeam(team);
   }
   for (const P of isl.pads) { P.team = team; scene.remove(P.group); P.group = buildPad(team, P.kind); P.group.position.copy(P.pos); scene.add(P.group); }
+  if (team >= 0) restoreIsland(isl); // 1.2.7
   if (GAME.demo || !GAME.on) return;
   if (team >= 0) {
     const mine = team === PLAYER.team;
@@ -4358,7 +4369,7 @@ function updateHUD(dt) {
 }
 
 /* ---------- minimap ---------- */
-const MINI = { x0: -2330, z0: -1710, w: 4660, h: 3420 };
+const MINI = { x0: -2980, z0: -2187, w: 5960, h: 4374 }; // 1.2.7: the whole wider map, same shape as the minimap
 let mapBase = null;
 function buildMapBase() {
   const W = 620, H = 460, c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -5729,7 +5740,7 @@ function closePC() {
 // screen layout (canvas pixels)
 const BTN_SEND = [70, 52, 180, 148], BTN_MAP = [262, 52, 180, 148], BTN_OFF = [418, 34, 82, 26], BTN_BACK = [12, 286, 80, 26];   // 1.2.3: two apps, Missiles and Map
 const inBox = (b, x, y) => x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3];
-const MAPV = { cx: 256, cy: 166, s: 0.068 };
+const MAPV = { cx: 256, cy: 166, s: 0.053 }; // 1.2.7: fits the wider map
 const mapXY = (x, z) => [MAPV.cx + x * MAPV.s, MAPV.cy + z * MAPV.s];
 function pcStep(dt) {
   const pc = PC.on, mine = pc.H.team === PLAYER.team;
@@ -5798,7 +5809,7 @@ function drawPC(pc) {
       button(x, BTN_BACK, '◀ BACK', '#2a3442', '#cfd8e3', 13);
     } else { // the map: pick an island
       x.strokeStyle = '#173048'; x.lineWidth = 1;
-      for (let gx = -2400; gx <= 2400; gx += 400) { const [a] = mapXY(gx, 0); x.beginPath(); x.moveTo(a, 40); x.lineTo(a, 292); x.stroke(); }
+      for (let gx = -2800; gx <= 2800; gx += 400) { const [a] = mapXY(gx, 0); x.beginPath(); x.moveTo(a, 40); x.lineTo(a, 292); x.stroke(); }
       for (let gz = -1600; gz <= 1600; gz += 400) { const [, b] = mapXY(0, gz); x.beginPath(); x.moveTo(98, b); x.lineTo(414, b); x.stroke(); }
       ISLES.forEach((I, i) => {
         const [px, py] = mapXY(I.x, I.z), r = Math.max(3, I.r * MAPV.s), tgt = isTarget(i), hov = PC.hover === i && PC.st === 'map';
@@ -5845,7 +5856,7 @@ function appTile(x, b, icon, label, sub, bg, fg, hot) {
 // pointing where they fly, people on foot dots; real players have their name, and you are ringed.
 function drawRadar(x, t) {
   x.strokeStyle = '#173048'; x.lineWidth = 1;
-  for (let gx = -2400; gx <= 2400; gx += 400) { const [a] = mapXY(gx, 0); x.beginPath(); x.moveTo(a, 32); x.lineTo(a, 280); x.stroke(); }
+  for (let gx = -2800; gx <= 2800; gx += 400) { const [a] = mapXY(gx, 0); x.beginPath(); x.moveTo(a, 32); x.lineTo(a, 280); x.stroke(); }
   for (let gz = -1600; gz <= 1600; gz += 400) { const [, b] = mapXY(0, gz); x.beginPath(); x.moveTo(98, b); x.lineTo(414, b); x.stroke(); }
   ISLES.forEach(I => {
     const [px, py] = mapXY(I.x, I.z), r = Math.max(3, I.r * MAPV.s), isl = ISLANDS.find(q => q.I === I);
@@ -6034,6 +6045,12 @@ function scorch(cx, cz, r, alpha) {
   m.position.set(cx, 0, cz); m.renderOrder = 2; scene.add(m);
   SCORCHES.push(m);
   if (SCORCHES.length > 24) { const o = SCORCHES.shift(); scene.remove(o); o.geometry.dispose(); o.material.dispose(); }
+}
+// 1.2.7: a claimed island is cleaned up: its burnt ground and the fires still burning on it go
+function restoreIsland(isl) {
+  const R = isl.I.r * (1 + isl.I.n) + 30, inside = p => Math.hypot(p.x - isl.x, p.z - isl.z) < R;
+  for (let i = SCORCHES.length - 1; i >= 0; i--) { const o = SCORCHES[i]; if (!inside(o.position)) continue; scene.remove(o); o.geometry.dispose(); o.material.dispose(); SCORCHES.splice(i, 1); }
+  for (let i = EMITTERS.length - 1; i >= 0; i--) if (inside(EMITTERS[i].pos)) EMITTERS.splice(i, 1);
 }
 // a plane that hits land leaves a crater, fires and burnt ground (1.2.1)
 function crashScar(pos) {
