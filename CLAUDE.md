@@ -304,7 +304,7 @@ source in Settings → Pages should be switched to `main`.
   1.2.7: `HARBOR_X` 2126 (was 1575) and harbor islands `r` 290 (was 225); `MAP`, `BOUND` (x 2950), `DEPTH_W`, `MINI` and
   the PC map's `MAPV.s` grew to match. Each harbor has six more turret spots on the new land (4 AA, 2 cannons).
   `restoreIsland` (called by `setIslandOwner` when a team claims it) removes `SCORCHES` and `EMITTERS` on that island.
-- `card-royale/`: Card Royale (1.0.2), a real-time 1v1 card battler (towers, lanes, Elixir, 50 cards in `CARDS`, plus `TOKENS`
+- `card-royale/`: Card Royale (1.1), a real-time 1v1 card battler (towers, lanes, Elixir, 75 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by
   `build.sh`): data, `20-sim.js` (the battle: `newBattle`, `step` at 20 ticks a second, `play`, `canDeploy`, the bot in
   `botThink`, `snapshot`), art (everything drawn with canvas paths, card portraits cached by `portrait()`), the battle screen,
@@ -314,7 +314,7 @@ source in Settings → Pages should be switched to `main`.
   the guest draws them ~140 ms behind and sends 'play'. Emotes 'emo', chat 'chat' (through the swear filter). A player who
   leaves ('bye' or gone from Presence for 9 s) forfeits. `?crroom=<name>` uses test channels; to test online on localhost run
   a copy of the Worker with localhost in ALLOWED_ORIGINS and set `localStorage['arcade-rt-url']`. Bots (1.0.2): Battle searches
-  for `BOT_WAIT` (8) seconds, or 2 s if it can't connect, and then a bot takes the battle (`startSearch` -> `startBotBattle(true)`);
+  for `BOT_WAIT` (10 since 1.1) seconds, or 2 s if it can't connect, and then a bot takes the battle (`startSearch` -> `startBotBattle(true)`);
   ranked bot battles go through `applyResult` like online ones (trophies, gold, crowns, chest; the log entry gets `b: 1`, shown as
   🤖). Tapping the arena picture opens Bot Battle: Ranked or Practice (no trophies or chests). Ranked bots get made-up names
   (`botName`), trophies near yours and a reaction delay `mkBot(..., slow)` of 1.2 s at 0 trophies down to 0 at 1500. `NET.search`
@@ -322,6 +322,21 @@ source in Settings → Pages should be switched to `main`.
   `ARENA_THEME` (one theme per arena: grass, bone, dry, magic, snow, jungle, lava) drive `drawArenaBG`, `drawWater` (via
   `CUR_THEME`) and the floating-island `arenaCanvas` on the Battle tab; the card tray is wood (CSS block marked 1.0.2).
   1.0.2 was edited directly in `card-royale/index.html`: copy the changes into the parts in `src` before the next `build.sh`.
+  1.1 (also edited directly in `index.html`; copy into `src` before the next `build.sh`): 25 new cards at the end of `CARDS`
+  (a card's place in `CARDS` is its id online, so only ever add at the end; new tokens `wolf`, `hornet` at the end of `TOKENS`;
+  cards with `tok` copy that token's stats). New card fields: `heal` {r, amt, every} (an aura on a troop or building, `healAround`),
+  `stunHit` (its shots stun), `sp.heal` (a healing spell over `sp.dur`), `sp.push` (Gust: a strong knockback), `sp.slow`, `sp.ground`
+  (misses flyers), `sp.wait` (lands after that long; Meteor and Rockslide show a ring to both players), `sp.noSlow`, `art.barH`.
+  Fixed in `updSpell`: instant spells (Zap) never went off, and The Log's start hit every enemy on the map. Troops and buildings
+  take `DEPLOY_T` (1.5 s) to arrive and are drawn as an outline (`outlineSprite`, cached) with a ring that fills; card names show
+  on hand cards (`cardEl(id, { name: 1 })`, `nameFit`), over the drag ghost and over each play (`nameTag`, fx 'tag'), and under
+  collection tiles. Chat is sent as typed and filtered on the viewer's screen only when Settings > Chat filter is on (`SAVE.censor`,
+  `chatText`); names still go through `tidy`. Music: `MUSIC` plays `card-royale/music/menu.mp3` in the menus and `battle1.mp3`
+  in a battle (streamed, looped, faded; nothing loads before the first tap; a missing file is just silent; `SAVE.music`).
+  Profiles: `SAVE.tag`, `SAVE.used` (plays per card, for the favourite), `myStats()` goes with the profile as `st` (checked in
+  `clean`), bots get `botStats`; each log entry keeps the opponent's profile in `p` (log holds 25); `openProfile`, `openLog`,
+  `logRow`. Tapping the arena opens `openRoad` (the Trophy Road overlay `#roadOv`); the Bot Battle modal and practice mode are gone
+  and `BOT_WAIT` is 10. Queue presence carries `v: GAME_VER`, so 1.0.2 and 1.1 players never meet.
 
 - `siege/`: Siege, a 5v5 tactical shooter split out of Cube Assault 3.0 (see `siege/README.md`). Online rooms `csiege-<code>` on the
   realtime server; room chat (1.0.2): Enter or T to everyone, Y to your team, in the lobby, operator pick and the round.

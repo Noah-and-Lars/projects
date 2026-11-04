@@ -18,13 +18,13 @@ window.GAMES = [
     title: 'Card Royale',
     category: 'Strategy',
     tagline: 'Real-time card battles, 1v1 online: drop troops, cast spells and knock down the enemy towers.',
-    description: 'Two players, three towers each, three minutes on the clock. Spend Elixir to drop troops, buildings and spells from your 8-card deck, push down a lane and destroy more towers than your opponent, or take the King Tower for an instant three-crown win. Press Battle to quick-match against another player online; if nobody is around, a bot takes the battle and it still counts for trophies. 50 cards from Knights and Archers to Golems, Lava Beasts and Mega Knights, chests to unlock, 3 free chests every day, a shop, King levels that reward chests, emotes and chat in battle, overtime and tiebreakers.',
+    description: 'Two players, three towers each, three minutes on the clock. Spend Elixir to drop troops, buildings and spells from your 8-card deck, push down a lane and destroy more towers than your opponent, or take the King Tower for an instant three-crown win. Press Battle to quick-match against another player online; if nobody turns up within 10 seconds, a bot takes the battle and it still counts for trophies. 75 cards from Knights and Archers to Ballistas, Wolf Dens, Meteors and the Mimic, a Trophy Road through ten arenas, player profiles from your battle log, chests to unlock, 3 free chests every day, a shop, King levels that reward chests, emotes and chat in battle, overtime and tiebreakers.',
     controls: 'Mouse or touch',
-    keys: [['Drag a card', 'Place it on your side of the arena'], ['Tap card, then arena', 'Same as dragging'], ['Speech bubble', 'Emotes and chat'], ['Battle', 'Quick match (a bot if nobody is online)'], ['Tap the arena', 'Bot Battle: ranked or practice']],
+    keys: [['Drag a card', 'Place it on your side of the arena'], ['Tap card, then arena', 'Same as dragging'], ['Speech bubble', 'Emotes and chat'], ['Battle', 'Quick match (a bot after 10 seconds if nobody is online)'], ['Tap the arena', 'Trophy Road'], ['Tap a battle in the log', 'That player\u2019s profile']],
     path: 'card-royale/index.html',
     thumb: 'card-royale/thumb.jpg',
     added: '2026-11-03T12:00:00+11:00',
-    updated: '2026-11-04T09:10:00+11:00',
+    updated: '2026-11-05T08:45:00+11:00',
     stat() { const s = readSave('cardroyale.save', true); return s && (s.wins || s.losses || s.draws) ? (s.tr || 0) + ' trophies' : null; },
   },
   {
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-05', game: 'card-royale', text: 'Card Royale 1.1: 25 new cards (troops, towers and spells, from the Wolf Pack and the Ballista to Meteor and the Mimic), and troops now take 1.5 seconds to arrive, showing their outline until they land. Card names on every card, in your hand and in your collection. Tap a battle in your Battle Log to see that player\u2019s profile, and tap the arena for the Trophy Road. A bot takes over after 10 seconds of searching. Battle chat is unfiltered unless you turn the filter on in Settings. Plus a cleaner look, and fixes for Zap and The Log.' },
   { date: '2026-11-05', game: 'chess', text: 'Chess 1.4: ratings. Online games are now rated the way chess.com does it (Glicko): pick how well you play to get your starting rating, then win, lose or draw against real people to move it. Games against the computer stay unrated. Your rating shows under Play online and on your Arcade profile.' },
   { date: '2026-11-05', game: 'havoc-bay', text: 'Havoc Bay 1.2.7: the harbors are 35% further apart on bigger islands with six more guns each, and a claimed island\'s burnt ground and fires are cleared.' },
   { date: '2026-11-05', game: 'havoc-bay', text: 'Havoc Bay 1.2.6: spawn as an anti-aircraft gunner on any teammate\'s Destroyer, Battleship or Carrier and shoot down planes for them. Watch out for kamikazes.' },
