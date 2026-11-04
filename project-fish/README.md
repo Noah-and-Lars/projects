@@ -67,7 +67,7 @@ Mouse sensitivity and field of view are in `src/settings.js`.
 
 ## Hands and gun
 
-The hands, sleeves and pistol are built in code when the game loads, so there are no model files yet. The hands are shaped from rounded bones blended together like clay and turned into a smooth mesh; that takes about half a second while the page says "Loading…".
+The hands, sleeves and pistol are built in code when the game loads, so there are no model files yet. The hands are shaped from rounded bones blended together like clay and turned into a smooth mesh; that takes a second or so while the page says "Loading…".
 
 They're drawn in their own layer on top of the world, so the gun never pokes into walls, and its size on screen doesn't change with the field of view. Where the gun is held is `HIP_POSITION` and `HIP_ROTATION` in `src/viewmodel/viewmodel.js`.
 
