@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Project Fish</title>
+    <link rel="stylesheet" href="style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="crosshair"></div>
+    <pre id="debug"></pre>
+
+    <div id="overlay">
+      <div class="panel">
+        <h1>Project Fish</h1>
+        <p id="overlay-status">Loading…</p>
+        <table class="controls">
+          <tr><td>WASD</td><td>Move</td></tr>
+          <tr><td>Mouse</td><td>Look</td></tr>
+          <tr><td>Space</td><td>Jump</td></tr>
+          <tr><td>Esc</td><td>Release the mouse</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <script
+      type="module"
+      src="src/main.js"
+      onerror="document.getElementById('overlay-status').textContent = 'The game couldn’t load. Check your internet connection and refresh.'"
+    ></script>
+  </body>
+</html>
