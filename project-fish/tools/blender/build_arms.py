@@ -40,7 +40,7 @@ from mathutils import Vector, noise
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (
-    SETTINGS, log, to_blender, unit, srgb_to_linear, linear_to_srgb, smoothstep, dashes, near_line, low_noise, reset_scene, read_obj, mesh_object, apply_modifiers, triangle_count, decimate, select_only, uv_unwrap, bvh, grid_patch, new_image, bake, pixels, set_pixels, bake_positions, bake_world_normals, bake_normal_from_height, bake_ao, textured_material, plain_material,
+    SETTINGS, log, to_blender, unit, srgb_to_linear, linear_to_srgb, smoothstep, dashes, near_line, low_noise, reset_scene, read_obj, mesh_object, apply_modifiers, triangle_count, decimate, select_only, uv_unwrap, bvh, new_image, bake, pixels, set_pixels, bake_positions, bake_world_normals, bake_normal_from_height, bake_ao, textured_material, plain_material,
 )
 
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
@@ -257,6 +257,51 @@ def glove_maps(p, hand, grip):
     return color, rough, height
 
 
+def rounded_patch(name, place, thickness, cols, rows, size, exponent=4.0, round_over=0.0015, sink=0.0005):
+    """A solid piece lying on a surface (a knuckle guard, a tab), with a smooth
+    rounded outline, a rounded-over top edge and real thickness at its rim.
+
+    place(u, v, h): the point h metres off the surface at patch coordinates
+    (u, v) in [-1, 1]. thickness(u, v): how thick the piece is there. size:
+    half its width and height in metres. The outline is |u|^e + |v|^e = 1; the
+    underside is sunk `sink` into the surface, so no gap shows round the edge."""
+    def uv(i, j):
+        s_, t_ = -1 + 2 * j / (cols - 1), -1 + 2 * i / (rows - 1)
+        m = max(abs(s_), abs(t_))
+        if m == 0:
+            return 0.0, 0.0, s_, t_
+        k = m / ((abs(s_) ** exponent + abs(t_) ** exponent) ** (1 / exponent))
+        return s_ * k, t_ * k, s_, t_
+
+    verts, index = [], {}
+    for i in range(rows):
+        for j in range(cols):
+            u, v, s_, t_ = uv(i, j)
+            to_edge = min((1 - abs(s_)) * size[0], (1 - abs(t_)) * size[1])
+            h = thickness(u, v) * (0.35 + 0.65 * smoothstep(0.0, round_over, to_edge))
+            index[i, j] = len(verts)
+            verts.append(tuple(place(u, v, h)))
+    faces = [[index[i, j], index[i, j + 1], index[i + 1, j + 1], index[i + 1, j]]
+             for i in range(rows - 1) for j in range(cols - 1)]
+    # The rim: round the outline (anticlockwise in u, v), down to the sunk underside.
+    loop = [(0, j) for j in range(cols - 1)] + [(i, cols - 1) for i in range(rows - 1)] + \
+           [(rows - 1, j) for j in range(cols - 1, 0, -1)] + [(i, 0) for i in range(rows - 1, 0, -1)]
+    bottom = []
+    for i, j in loop:
+        u, v, _, _ = uv(i, j)
+        bottom.append(len(verts))
+        verts.append(tuple(place(u, v, -sink)))
+    n = len(loop)
+    for k in range(n):
+        faces.append([index[loop[k]], bottom[k], bottom[(k + 1) % n], index[loop[(k + 1) % n]]])
+    # Make every face point away from the surface.
+    a, b, c = (np.array(verts[index[q]]) for q in ((0, 0), (0, 1), (1, 0)))
+    up = np.array(place(0, 0, 0.001)) - np.array(place(0, 0, 0))
+    if np.cross(b - a, c - a) @ up < 0:
+        faces = [f[::-1] for f in faces]
+    return mesh_object(name, verts, faces)
+
+
 def knuckle_guard(name, glove, hand):
     """A moulded hard shell over the four knuckles, sitting on the glove."""
     back, along = unit(to_blender(hand['back'])), unit(to_blender(hand['along']))
@@ -274,28 +319,23 @@ def knuckle_guard(name, glove, hand):
     # Where each knuckle and the gaps between them sit across the guard.
     k_pos = [((k - center) @ across) / half_w for k in knuckles]
     gaps = [(k_pos[i] + k_pos[i + 1]) / 2 for i in range(len(k_pos) - 1)]
-    rows, cols = 26, 110
 
-    def point(i, j):
-        a = -1 + 2 * j / (cols - 1)
-        b = -1 + 2 * i / (rows - 1)
-        shape = abs(a) ** 5 + abs(b) ** 4
-        if shape > 1:
-            return None
-        q = center + across * (a * half_w) + along * (b * half_h)
+    def place(u, v, h):
+        q = center + across * (u * half_w) + along * (v * half_h)
         hit, normal, _, _ = tree.ray_cast(Vector(q + back * 0.04), Vector(-back), 0.08)
         if hit is None:
-            return None
-        hit, normal = np.array(hit), np.array(normal)
-        thickness = 0.0016 * smoothstep(1.0, 0.55, shape)
-        for kp, r in zip(k_pos, radii):
-            thickness += 0.0016 * math.exp(-((a - kp) * half_w) ** 2 / (2 * 0.0052 ** 2)) * smoothstep(1.0, 0.4, abs(b))
-        for g in gaps:
-            thickness -= 0.0007 * math.exp(-(((a - g) * half_w) / 0.0006) ** 2) * smoothstep(1.0, 0.6, shape)
-        return hit + normal * (0.0003 + max(thickness, 0))
+            return q + back * h
+        return np.array(hit) + np.array(normal) * (0.0003 + h)
 
-    obj = grid_patch(name, rows, cols, point)
-    obj.data.polygons.foreach_set('use_smooth', [True] * len(obj.data.polygons))
+    def thickness(u, v):
+        t = 0.0016
+        for kp in k_pos:
+            t += 0.0016 * math.exp(-((u - kp) * half_w) ** 2 / (2 * 0.0052 ** 2)) * smoothstep(1.0, 0.4, abs(v))
+        for g in gaps:
+            t -= 0.0008 * math.exp(-(((u - g) * half_w) / 0.0008) ** 2) * smoothstep(1.0, 0.7, abs(v))
+        return max(t, 0.0004)
+
+    obj = rounded_patch(name, place, thickness, 110, 26, (half_w, half_h), exponent=4.5)
     plain_material(obj, ARMOR, 0.42)
     return obj
 
@@ -333,20 +373,13 @@ def wrist_strap(name, hand):
     # Pull tab: the strap's loose end, lying over the band towards the thumb side.
     tab_center = 0.62  # angle (radians) round from the back of the wrist
 
-    def tab(i, j):
-        u = -1 + 2 * i / 15
-        v = -1 + 2 * j / 23
-        shape = abs(u) ** 4 + abs(v) ** 4
-        if shape > 1:
-            return None
+    def place(u, v, h):
         w = 0.0195 + u * 0.0085
         ang = tab_center + v * 0.016 / 0.03
-        lift = 0.0014 * smoothstep(1.0, 0.5, shape) + 0.0009 * smoothstep(0.3, 0.9, v) * smoothstep(1.0, 0.6, shape)
-        r = glove_r(w) + 0.0021 + lift
-        return wrist + forearm * w + (e1 * math.cos(ang) + e2 * math.sin(ang)) * r
+        return wrist + forearm * w + (e1 * math.cos(ang) + e2 * math.sin(ang)) * (glove_r(w) + 0.002 + h)
 
-    pull = grid_patch(name + '_tab', 16, 24, tab)
-    pull.data.polygons.foreach_set('use_smooth', [True] * len(pull.data.polygons))
+    # A little thicker at its free end, where the rubber pull loop is.
+    pull = rounded_patch(name + '_tab', place, lambda u, v: 0.0015 + 0.0009 * smoothstep(0.3, 0.9, v), 18, 24, (0.0085, 0.016))
     plain_material(pull, TAB, 0.5)
     return strap, pull
 
@@ -477,24 +510,16 @@ def cuff_tab(name, sleeve, frame):
     tree = bvh(sleeve)
     center_angle = 0.25
 
-    def point(i, j):
-        u = -1 + 2 * i / 17
-        v = -1 + 2 * j / 21
-        shape = abs(u) ** 4 + (abs(v) ** 3 if v > 0 else abs(v) ** 6)
-        if shape > 1:
-            return None
+    def place(u, v, h):
         t = 0.017 + u * 0.014
         ang = center_angle + v * 0.4
         d = e1 * math.cos(ang) + e2 * math.sin(ang)
-        origin = start + f * t + d * 0.08
-        hit, normal, _, _ = tree.ray_cast(Vector(origin), Vector(-d), 0.1)
+        hit, normal, _, _ = tree.ray_cast(Vector(start + f * t + d * 0.08), Vector(-d), 0.1)
         if hit is None:
-            return None
-        lift = 0.0004 + 0.0014 * smoothstep(1.0, 0.6, shape)
-        return np.array(hit) + np.array(normal) * lift
+            return start + f * t + d * (0.035 + h)
+        return np.array(hit) + np.array(normal) * h
 
-    tab = grid_patch(name, 18, 22, point)
-    tab.data.polygons.foreach_set('use_smooth', [True] * len(tab.data.polygons))
+    tab = rounded_patch(name, place, lambda u, v: 0.0016, 22, 24, (0.014, 0.015))
     plain_material(tab, '#454b38', 0.95)
     return tab
 

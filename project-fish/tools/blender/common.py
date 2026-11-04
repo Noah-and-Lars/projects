@@ -140,26 +140,6 @@ def bvh(obj):
     return BVHTree.FromObject(obj, depsgraph)
 
 
-def grid_patch(name, rows, cols, point_at):
-    """A grid surface; point_at(i, j) gives each vertex (or None to leave it out)."""
-    verts, index = [], {}
-    for i in range(rows):
-        for j in range(cols):
-            p = point_at(i, j)
-            if p is not None:
-                index[i, j] = len(verts)
-                verts.append(tuple(p))
-    faces = []
-    for i in range(rows - 1):
-        for j in range(cols - 1):
-            quad = [(i, j), (i, j + 1), (i + 1, j + 1), (i + 1, j)]
-            if all(q in index for q in quad):
-                faces.append([index[q] for q in quad])
-    return mesh_object(name, verts, faces)
-
-
-# --- Baking -------------------------------------------------------------------
-
 def new_image(name, float_buffer=False, color=False):
     image = bpy.data.images.new(name, SETTINGS['size'], SETTINGS['size'], alpha=False, float_buffer=float_buffer)
     image.colorspace_settings.name = 'sRGB' if color else 'Non-Color'
