@@ -319,6 +319,9 @@ source in Settings → Pages should be switched to `main`.
   1.0.8: `sgMoveDrone` moves in 4 cm steps (a whole 50 ms frame took a drone through a 16 cm wall) and a hop under a
   barricade stops at its planks; one drone per attacker; Shift boosts it (`DRONE_SP`, `DRONE_BOOST_SP`, `D.boosts`,
   `D.boostT`, `DRONE_BOOSTS` a round of `DRONE_BOOST_S` seconds).
+  1.0.9: out of the round, 5 toggles `specCams` (`deadCams`/`deadCam`: defenders' cameras and bulletproof cameras, or
+  the attackers' deployed drones), A / D cycle `specIdx`, the mouse turns `specLook`, a click spots (`sgTrySpot`).
+  Attacking bots out of a fight shoot cameras they can see (`A.camI`, `A.camScanT` in `botThink`).
 
 ## Adding a game
 

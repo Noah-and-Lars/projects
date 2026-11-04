@@ -38,7 +38,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-04T12:52:00+11:00',
+    updated: '2026-11-04T12:57:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.9: once you are out, press 5 to watch the cameras (defenders) or your team\u2019s drones (attackers) and click to mark enemies for your team. Attacking bots now shoot out cameras they see.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.8: drones. They can no longer drive or hop through walls and barricades, every attacker has one drone, and Shift gives it a 5 second boost three times a round.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.7: solid barricades. A barricade is now one board with no gaps, and every bullet that goes through it leaves a hole you can see and shoot through. Two melee hits or a shotgun blast bring it down, and attacking bots now break through barricades instead of walking round them.' },
   { date: '2026-11-04', game: 'havoc-bay', text: 'Havoc Bay 1.2.3: the water is freezing! A freeze meter shows over your head while you swim, and after 30 seconds in the water you freeze to death. The computer in your harbor\u2019s keep has a new Map app that shows every ship, plane and soldier in the battle live.' },

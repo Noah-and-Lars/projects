@@ -11,6 +11,10 @@ Play it at https://noah-and-lars.github.io/projects/siege/ (or from the arcade).
 - **Action (3 min):** whoever carries the defuser plants it next to a bomb (hold F, 7 s). It drops where its carrier goes down. Attackers win if it runs for 45 s or every defender is out; defenders win when time runs out, every attacker is out, or they disable it (hold F, 7 s).
 - First to 4 rounds (3 or 5 in private rooms); sides swap at half time.
 
+## When you are out
+
+Press 5 to switch between watching your teammates and the cameras (defenders: the map cameras and bulletproof cameras; attackers: the team's drones). A / D switch, the mouse looks round, and a click marks the enemy you are looking at. Attacking bots shoot out cameras they see.
+
 ## Down but not out
 
 Since 1.0.5 a lethal hit that isn't a headshot puts you down while a teammate is still standing: crawl, bleed out in 25 s, or get revived by a teammate holding F for 4 s. The last one standing goes straight out. Overtime: at 3 all the match goes to first to 5, with sides swapping every round.

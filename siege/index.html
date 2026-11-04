@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.8';
+const VERSION = '1.0.9';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -4132,6 +4132,9 @@ const IN = { keys: {}, lmb: false, rmb: false, adsT: false, mx: 0, my: 0, held: 
 window.sgAds = false;
 let vm = { key: null, g: null, rig: null }, vmT = { bob: 0, rec: 0, sw: 0, swx: 0, swy: 0, rel: 0 };
 let shake = 0, hurtT = 0, camRoll = 0, eyeSmooth = 0, specIdx = 0, holdF = 0, holdTarget = null, lastStep = 0, actMsg = '';
+// 1.0.8: out of the round, 5 switches between your teammates and the cameras (defenders: the cameras; attackers: the
+// team's drones), which you can look round with the mouse and click to mark enemies from
+let specCams = false, specLook = { yaw: 0, pitch: 0 };
 const sgShake = k => { shake = Math.max(shake, k); };
 
 // a viewmodel for a gun: the game's own model and gloved hands, darker to suit the rooms
@@ -4542,7 +4545,7 @@ function sgKeyDown(e) {
   saInit();
   const playing = P.alive && (G.phase === 'prep' || G.phase === 'action');
   if (e.code === 'Tab') return;
-  if (!playing) { if (!P.alive && (e.code === 'Space' || e.code === 'ArrowRight' || e.code === 'KeyD')) specIdx++; if (!P.alive && (e.code === 'ArrowLeft' || e.code === 'KeyA')) specIdx--; return; }
+  if (!playing) { if (!P.alive && (e.code === 'Space' || e.code === 'ArrowRight' || e.code === 'KeyD')) { specIdx++; specLook.yaw = specLook.pitch = 0; } if (!P.alive && (e.code === 'ArrowLeft' || e.code === 'KeyA')) { specIdx--; specLook.yaw = specLook.pitch = 0; } if (!P.alive && (e.code === 'Digit5' || e.code === 'KeyB')) { specCams = !specCams; specIdx = 0; specLook.yaw = specLook.pitch = 0; snd('click', null, 0.4); } return; }
   if (P.mode === 'drone') {
     if (e.code === 'Digit5' || e.code === 'KeyB') { if (G.phase === 'prep') { const n = P.drones.findIndex((D, i) => D.alive && i !== P.droneN); if (n >= 0) sgEnterDrone(P, n); } else sgExitDrone(P); }
     return;
@@ -4592,7 +4595,15 @@ function sgLocalUpdate(dt) {
   P.stun = Math.max(0, P.stun - dt); P.slow = Math.max(0, P.slow - dt); P.blind = Math.max(0, P.blind - dt); P.dread = Math.max(0, P.dread - dt);
   const mx = IN.mx, my = IN.my; IN.mx = IN.my = 0;
   const sens = 0.0022 * (settings.sens || 1) * (window.sgAds ? 0.7 : 1);
-  if (!inPlay) { IN.adsT = false; window.sgAds = false; sgWeaponTick(P, dt); return; }
+  if (!inPlay) {
+    IN.adsT = false; window.sgAds = false; sgWeaponTick(P, dt);
+    if (!P.alive && specCams && (G.phase === 'prep' || G.phase === 'action')) {
+      const C = deadCam(P);
+      specLook.yaw = Math.max(-1.3, Math.min(1.3, specLook.yaw - mx * sens)); specLook.pitch = Math.max(-0.9, Math.min(0.7, specLook.pitch - my * sens));
+      if (C && IN.lmbPress) { IN.lmbPress = false; if (!(C.off > t)) { dirOf(C.yaw + specLook.yaw, C.pitch + specLook.pitch, _d); const T = sgTrySpot(P, { x: C.x, y: C.y, z: C.z }, { ..._d }, sideOf(P)); snd(T ? 'beep2' : 'click', null, 0.4); } }
+    }
+    return;
+  }
   const K = IN.keys;
   const inp = { f: (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), s: (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0), run: K.ShiftLeft || K.ShiftRight, crouch: K.ControlLeft || P.crouchT };
   // prep: attackers can only drive drones; defenders can't leave the building yet
@@ -4684,9 +4695,16 @@ EV.ringfx = d => { const P = G.P.get(d.i); if (P && P.alive) snd('ring', { x: P.
 // hurt and hit feedback
 window.sgHurt = (dmg, dx, dz) => { hurtT = Math.min(1, hurtT + dmg / 50); snd('hurt', null, 0.6); shake = Math.max(shake, 0.15); if (window.sgHudHurt) sgHudHurt(dx, dz); };
 window.sgHitMarker = (hs, kill) => { snd(hs ? 'head' : 'hit', null, 0.7); if (window.sgHudHit) sgHudHit(hs, kill); };
-window.sgOnDeath = (K, d) => { window.sgAds = false; IN.adsT = false; specIdx = 0; if (window.sgHudDeath) sgHudDeath(K, d); };
+window.sgOnDeath = (K, d) => { window.sgAds = false; IN.adsT = false; specIdx = 0; specCams = false; specLook.yaw = specLook.pitch = 0; if (window.sgHudDeath) sgHudDeath(K, d); };
 
 // ---------- camera and viewmodel ----------
+function deadCams(P) {
+  const L = [];
+  if (sideOf(P) === 'def') for (const { C, i } of camList(P)) L.push({ x: C.x, y: C.y - 0.12, z: C.z, yaw: C.yaw, pitch: C.pitch || 0, off: C.off, n: C.bc ? 'BULLETPROOF CAMERA' : 'CAMERA ' + (typeof i === 'number' ? i + 1 : '') });
+  else for (const Q of G.P.values()) if (Q.team === P.team) for (const D of Q.drones) if (D.alive && !D.held) L.push({ x: D.x, y: D.y + 0.14, z: D.z, yaw: D.yaw, pitch: 0, n: (Q.name || 'TEAM').toUpperCase() + '\'S DRONE' });
+  return L;
+}
+function deadCam(P) { const L = deadCams(P); return L.length ? L[((specIdx % L.length) + L.length) % L.length] : null; }
 function sgSpectateTarget(P) {
   const team = [...G.P.values()].filter(Q => Q.team === P.team && Q.alive && Q !== P);
   if (!team.length) return null;
@@ -4708,6 +4726,8 @@ function sgViewUpdate(dt) {
       W.shot = { x: (best % W.Wd + 0.5) * CELL, z: (((best / W.Wd) | 0) + 0.5) * CELL, y: W.floors[R.f].y + 1.75, yaw: Math.random() * 6.28, t0: t, until: t + 14 };
     }
     vx = W.shot.x; vy = W.shot.y; vz = W.shot.z; yaw = W.shot.yaw + (t - W.shot.t0) * 0.07; pitch = -0.06;
+  } else if (!P.alive && G.phase !== 'post' && specCams && deadCam(P)) {
+    const C = deadCam(P); vx = C.x; vy = C.y; vz = C.z; yaw = C.yaw + specLook.yaw; pitch = C.pitch + specLook.pitch; fov = 85;
   } else if (!P.alive && G.phase !== 'post') {
     const S = sgSpectateTarget(P);
     if (S) { eyeOf(S, _e); vx = _e.x; vy = _e.y; vz = _e.z; yaw = S.yaw; pitch = S.pitch; }
@@ -4912,6 +4932,33 @@ function botThink(P, dt, t) {
     return;
   }
   if (T && !fight) A.target = null;
+  // 1.0.8: an attacker who isn't in a fight shoots out the defenders' cameras it can see (in front of it, in reach)
+  if (fight && side === 'atk' && !A.busy && P.act === '') {
+    if (!(A.camScanT > t)) {
+      A.camScanT = t + 0.4; A.camI = -1; eyeOf(P, _e);
+      let bd = 22;
+      G.cams.forEach((C, i) => {
+        if (!C.alive || Math.abs(C.y - _e.y) > 4) return;
+        const d = Math.hypot(C.x - _e.x, C.z - _e.z); if (d > bd) return;
+        if (Math.abs(angDiff(Math.atan2(-(C.x - _e.x), -(C.z - _e.z)), P.yaw)) > 1.2) return;
+        if (!sgClear(_e, { x: C.x, y: C.y, z: C.z })) return;
+        bd = d; A.camI = i;
+      });
+    }
+    const C = A.camI >= 0 ? G.cams[A.camI] : null;
+    if (C && C.alive) {
+      eyeOf(P, _e);
+      const dx = C.x - _e.x, dz = C.z - _e.z, d = Math.hypot(dx, dz), wy = Math.atan2(-dx, -dz), wp = Math.atan2(C.y - _e.y, d), turn = D.turn * dt;
+      P.yaw += Math.max(-turn, Math.min(turn, angDiff(wy, P.yaw) * Math.min(1, dt * 9)));
+      P.pitch += Math.max(-turn, Math.min(turn, (wp - P.pitch) * Math.min(1, dt * 9)));
+      if (Math.abs(angDiff(wy, P.yaw)) < 0.03 && Math.abs(wp - P.pitch) < 0.03 && !(P.semiT > t)) {
+        if (P.w.ammo[P.slot] <= 0) { if (P.w.res[P.slot] > 0) sgReload(P); }
+        else if (sgFire(P, 0.3)) P.semiT = t + 0.25;
+      }
+      sgMove(P, inp, dt); sgWeaponTick(P, dt);
+      return;
+    }
+  }
   if (P.w.ammo[P.slot] < gunOf(P).mag * 0.3 && P.w.res[P.slot] > 0 && P.w.rel <= 0) sgReload(P);
   // ----- jobs -----
   if (G.phase === 'action' && !A.busy) {
@@ -5294,6 +5341,11 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.9', t: 'Cameras when you are out', d: '4 November 2026', intro: 'Help your team after you go down for good.', items: [
+    ['Watch the cameras', 'Once you are out, press 5 to switch between your teammates and the cameras: defenders get the map cameras and bulletproof cameras, attackers get the team\'s drones. A / D switch, the mouse looks round.'],
+    ['Mark enemies', 'Click while watching a camera or a drone to mark the enemy you are looking at for your team.'],
+    ['Bots shoot cameras', 'Attacking bots now shoot out the defenders\' cameras when they see them.'],
+  ] },
   { v: '1.0.8', t: 'Drones', d: '4 November 2026', intro: 'Drones stay out of walls, and they have a boost now.', items: [
     ['No more drones through walls', 'On a slower computer a drone could drive or hop straight through a wall. It now stops at every wall and barricade, however low the frame rate.'],
     ['Under barricades, not through them', 'A drone still fits under a door barricade, but a hop under it now stops at the planks instead of going through them.'],
@@ -5790,7 +5842,8 @@ function sgHudUpdate(dt) {
   // spectating
   const spec = $s('sgSpec');
   if (P.alive && P.down) spec.innerHTML = `YOU ARE DOWN<b>${Math.ceil(P.hp)}s</b>CRAWL TO COVER · A TEAMMATE CAN REVIVE YOU (HOLD F)`;
-  else if (!P.alive && G.phase === 'action') { const S = sgSpectateTarget(P); spec.innerHTML = S ? `SPECTATING<b>${esc(S.name)}</b>A / D TO SWITCH` : 'YOU ARE OUT'; } else spec.innerHTML = '';
+  else if (!P.alive && G.phase === 'action' && specCams) { const C = deadCam(P); spec.innerHTML = C ? `WATCHING<b>${esc(C.n)}${C.off > t ? ' · NO SIGNAL' : ''}</b>A / D TO SWITCH · MOUSE TO LOOK · CLICK TO MARK AN ENEMY · 5 BACK TO YOUR TEAM` : `NO ${sideOf(P) === 'def' ? 'CAMERAS' : 'DRONES'} LEFT<b>&nbsp;</b>5 BACK TO YOUR TEAM`; }
+  else if (!P.alive && G.phase === 'action') { const S = sgSpectateTarget(P); spec.innerHTML = S ? `SPECTATING<b>${esc(S.name)}</b>A / D TO SWITCH · 5 ${sideOf(P) === 'def' ? 'CAMERAS' : 'DRONES'}` : `YOU ARE OUT<b>&nbsp;</b>5 ${sideOf(P) === 'def' ? 'CAMERAS' : 'DRONES'}`; } else spec.innerHTML = '';
   $s('sgHint').textContent = G.phase === 'prep' && sideOf(P) === 'def' ? 'PREP PHASE · REINFORCE WALLS AND BARRICADE (HOLD F) · PLACE GADGETS (X / G)' : '';
   // scoreboard
   const sb = $s('sgSb'); const showSb = IN.keys.Tab;
@@ -6012,7 +6065,7 @@ function sgBoot() {
 sgInputInit();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sgBoot); else sgBoot();
 // test handle, only on a local copy
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, barOpenAt, barUV };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, barOpenAt, barUV, sgClear };
 
 })();
 </script>
