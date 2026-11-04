@@ -310,6 +310,12 @@ source in Settings → Pages should be switched to `main`.
   1.0.6: barricades have one pool of hit points (`BAR_HP`, event 'bhit', `sgBreakBar`) and door ones start 28 cm up so drones
   fit under; `sgCollide(pos, r, h, dyn, step)` only steps over 'step'/'prop'/'top' obstacles; `sgRayEnts` uses its own
   eye object (it used to overwrite the shared `_e`, so melee and the Skeleton Key missed); lean eases via `P.leanV`.
+  1.0.7: a barricade is one board (`barBuild`, `barDraw`, `barPlanks`: two faces with the panel's own RGBA DataTexture,
+  `BAR_PX` px a metre, alphaTest). Bullets punch holes (`barHole`; 'bhit' carries u, v and r so every screen stamps the
+  same ones) and `sgRay` lets rays through where the texture is clear (`barOpenAt`), unless `opts.solidBar` (melee,
+  the Cutting Torch and `aimSurface`: a swing or a charge isn't stopped by a hole). It breaks at `BAR_HP` or when
+  `BAR_OPEN` of it is holes. Attackers' path cost through a barricade is lower, and a bot breaking one keeps at it
+  (`A.breakBar`, `A.breakT`). The chunks are still there for collisions. `__sg` also has snPractice, sgStartMatch.
 
 ## Adding a game
 

@@ -21,7 +21,7 @@ There is no jumping (since 1.0.3). Walk into an open window, a counter, a railin
 
 ## Destruction
 
-Drywall, barricades and hatches are made of pieces that break one by one, and bullets go through drywall. Explosives open whole sections. Reinforced steel only gives way to the Thermal Lance, the Piston Breacher and the Cutting Torch. Shock rods destroy charges on their wall, jammers block them and kill drones, and an EMP shuts defender electronics down for 12 s.
+Drywall and hatches are made of pieces that break one by one, and bullets go through drywall. A barricade is one solid board (since 1.0.7): every bullet through it leaves a hole you can see and shoot through, two melee hits or a shotgun blast or two bring it down, and it falls apart once about half of it is holes. Explosives open whole sections. Reinforced steel only gives way to the Thermal Lance, the Piston Breacher and the Cutting Torch. Shock rods destroy charges on their wall, jammers block them and kill drones, and an EMP shuts defender electronics down for 12 s.
 
 ## Operators
 

@@ -38,7 +38,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-04T08:15:00+11:00',
+    updated: '2026-11-04T12:45:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.7: solid barricades. A barricade is now one board with no gaps, and every bullet that goes through it leaves a hole you can see and shoot through. Two melee hits or a shotgun blast bring it down, and attacking bots now break through barricades instead of walking round them.' },
   { date: '2026-11-04', game: 'havoc-bay', text: 'Havoc Bay 1.2.3: the water is freezing! A freeze meter shows over your head while you swim, and after 30 seconds in the water you freeze to death. The computer in your harbor\u2019s keep has a new Map app that shows every ship, plane and soldier in the battle live.' },
   { date: '2026-11-04', game: 'poly-racer', text: 'Poly Racer 1.4: the wheels no longer wobble when you drive (the brake calipers stay still and stray parts that swung round the axles are gone), and the cockpit view is fixed: you sit where a driver\u2019s eyes are, and dashboards, pillars and seats are no longer see-through.' },
   { date: '2026-11-04', game: 'card-royale', text: 'Card Royale 1.0.2: bots give trophies! If nobody else is online, a bot takes your battle after a few seconds and it counts like any battle: trophies, gold, crowns and chests. Tap the arena picture for a Bot Battle straight away (ranked or practice). Plus a new look: a checkered field with dirt paths, a river that runs off both edges, fences, blocky trees and rocks, a wooden card tray, a floating island on the Battle tab, and every arena in its own colors, from snow with a frozen river to stone with a river of lava.' },
