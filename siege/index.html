@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.13';
+const VERSION = '1.0.14';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -3371,13 +3371,13 @@ function sgArm(P) {
   P.w = { keys: [k0, k1], ammo: [SG_GUNS[k0].mag, SG_GUNS[k1].mag], res: [SG_GUNS[k0].mag * 4, SG_GUNS[k1].mag * 4], rel: 0, cd: 0, rec: 0, bloom: 0, trig: false };
   P.gu = O.g.n0; P.gs = SG_SEC[O.sec[si]].n0; P.secKey = O.sec[si];
   P.max = P.hp = opHp(P.op); P.reinf = REINF_N; P.barr = BARR_N;
-  P.slot = 0; P.shieldUp = false; P.sonar = false; P.slug = false; P.holo = null; P.down = false; P.rope = null; P.slow = P.stun = P.blind = P.dread = 0;
+  P.slot = 0; P.shieldUp = false; P.sonar = false; P.slug = false; P.holo = null; P.down = false; P.rope = null; P.prone = false; P.slow = P.stun = P.blind = P.dread = 0;
   // 1.0.8: one drone each (it was two), with three 5 s boosts (Shift)
   P.drones = sideOf(P) === 'atk' ? [{ x: 0, y: 0, z: 0, yaw: 0, vy: 0, alive: true, jam: 0, boosts: DRONE_BOOSTS, boostT: 0 }] : [];
 }
 const gunOf = P => SG_GUNS[P.w.keys[P.slot]];
 function eyeOf(P, out) {
-  const h = P.down ? 0.45 : P.crouch > 0.5 ? 1.08 : 1.6, ln = P.leanV !== undefined ? P.leanV : P.lean;
+  const h = P.down ? 0.45 : P.prone ? 0.42 : P.crouch > 0.5 ? 1.08 : 1.6, ln = P.leanV !== undefined ? P.leanV : P.lean;
   const rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
   out.x = P.x + rx * ln * 0.36; out.y = P.y + h - Math.abs(ln) * 0.06; out.z = P.z + rz * ln * 0.36;
   return out;
@@ -3472,7 +3472,7 @@ function sgRayEnts(o, d, maxT, skip) {
     const _e = eyeOf(P, pe);
     const ht = sph(_e.x, _e.y + 0.04, _e.z, 0.15);
     if (ht >= 0) test(ht, { P, hs: true, kind: 'p' });
-    if (P.down) { const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, P.x - 0.45, P.y, P.z - 0.45, P.x + 0.45, P.y + 0.45, P.z + 0.45, maxT); if (t >= 0) test(t, { P, hs: false, kind: 'p', limb: false }); continue; }
+    if (P.down || P.prone) { const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, P.x - 0.45, P.y, P.z - 0.45, P.x + 0.45, P.y + 0.45, P.z + 0.45, maxT); if (t >= 0) test(t, { P, hs: false, kind: 'p', limb: false }); continue; }
     const cr = P.crouch > 0.5, lx = _e.x - P.x, lz = _e.z - P.z;
     // torso shifts with the lean, legs stay put
     let t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, P.x + lx * 0.7 - 0.24, P.y + (cr ? 0.55 : 0.85), P.z + lz * 0.7 - 0.24, P.x + lx * 0.7 + 0.24, P.y + (cr ? 0.98 : 1.45), P.z + lz * 0.7 + 0.24, maxT);
@@ -3691,7 +3691,7 @@ function sgTrySpot(viewer, o, dir, sideOfViewer) {
   let best = null, ba = 0.05;
   for (const T of G.P.values()) {
     if (!T.alive || sideOf(T) === sideOfViewer) continue;
-    const t = { x: T.x, y: T.y + (T.crouch > 0.5 ? 0.8 : 1.2), z: T.z };
+    const t = { x: T.x, y: T.y + (T.down || T.prone ? 0.35 : T.crouch > 0.5 ? 0.8 : 1.2), z: T.z };
     const dx = t.x - o.x, dy = t.y - o.y, dz = t.z - o.z, dist = Math.hypot(dx, dy, dz);
     if (dist > 40) continue;
     const a = Math.acos(Math.max(-1, Math.min(1, (dx * dir.x + dy * dir.y + dz * dir.z) / dist)));
@@ -4499,8 +4499,9 @@ function sgMove(P, inp, dt) {
   if (P.rope) { if (P.alive && !P.down && P.mode === 'body') { sgRopeStep(P, inp, dt); return; } sgRopeEnd(P); }
   P.crouch += ((inp.crouch ? 1 : 0) - P.crouch) * Math.min(1, dt * 10);
   const isAds = P.id === G.myId && window.sgAds;
-  let sp = (inp.run && inp.f > 0 && !isAds && P.crouch < 0.5 ? 5.4 : 3.3) * opSpeed(P.op);
+  let sp = (inp.run && inp.f > 0 && !isAds && P.crouch < 0.5 && !P.prone ? 5.4 : 3.3) * opSpeed(P.op);
   if (P.crouch > 0.5) sp = 1.8;
+  if (P.prone) sp = 0.9; // 1.0.14: crawling
   if (isAds) sp *= 0.62;
   if (P.shieldUp) sp *= 0.65;
   if (P.sonar) sp *= 0.7;
@@ -4517,11 +4518,11 @@ function sgMove(P, inp, dt) {
   P.vz += (wz * sp * ctl - P.vz) * Math.min(1, dt * acc);
   P.vy -= 16 * dt;
   const pos = { x: P.x + P.vx * dt, y: P.y, z: P.z + P.vz * dt };
-  const h = P.down ? 0.6 : P.crouch > 0.5 ? 1.25 : 1.78;
+  const h = P.down || P.prone ? 0.6 : P.crouch > 0.5 ? 1.25 : 1.78;
   sgCollide(pos, 0.3, h, sgGadBoxes());
   // pushing forward into something low: climb over it
   const WL = Math.hypot(wx, wz);
-  if (P.id !== 'holo' && P.onGround && ctl && inp.f > 0 && WL > 0.3 && sp > 0 && P.act === '') {
+  if (P.id !== 'holo' && P.onGround && ctl && inp.f > 0 && WL > 0.3 && sp > 0 && P.act === '' && !P.prone) {
     const ux = wx / WL, uz = wz / WL, want = sp * dt * WL, got = (pos.x - P.x) * ux + (pos.z - P.z) * uz;
     if (got < want * 0.4 && (fx * ux + fz * uz) > 0.7) {
       P.blockT = (P.blockT || 0) + dt;
@@ -4550,7 +4551,7 @@ function sgMove(P, inp, dt) {
   if (P.y < -40) { P.y = 0; }
   // 1.0.6: the lean eases over instead of snapping, and stops short of whatever is beside you (a wall, a door
   // barricade): you used to be able to lean your head through the planks
-  let lt = P.down ? 0 : P.lean;
+  let lt = P.down || P.prone ? 0 : P.lean;
   if (lt) {
     const sg = Math.sign(lt), rx = Math.cos(P.yaw) * sg, rz = -Math.sin(P.yaw) * sg, ey = P.y + (P.crouch > 0.5 ? 1.08 : 1.6) - 0.06;
     let room = 0.36;
@@ -4823,14 +4824,14 @@ function sgKeyDown(e) {
   switch (e.code) {
     case 'KeyQ': P.lean = P.lean === -1 ? 0 : -1; break;
     case 'KeyE': P.lean = P.lean === 1 ? 0 : 1; break;
-    case 'KeyC': P.crouchT = !P.crouchT; break;
+    case 'KeyC': if (P.prone) { P.prone = false; P.crouchT = true; } else P.crouchT = !P.crouchT; break;
     case 'KeyR': sgReload(P); break;
     case 'Digit1': sgSwitch(P, 0); break;
     case 'Digit2': sgSwitch(P, 1); break;
     case 'KeyV': if (canAct) sgMelee(P); break;
     case 'KeyG': if (canAct) sgUseSecondary(P); break;
     case 'KeyX': if (canAct) sgUseUnique(P); break;
-    case 'KeyZ': if (SG_OPS[P.op].g.k === 'gas') { const mine = [...G.gad.values()].filter(g => g.o === P.id && g.k === 'gas'); mine.forEach(g => emit('gact', { id: g.id })); } break;
+    case 'KeyZ': if (P.rope || P.vault) break; P.prone = !P.prone; if (P.prone) P.crouchT = false; snd('step', null, 0.5); break; // 1.0.14: prone (Murk sets canisters off with X)
     case 'Digit5': case 'KeyB':
       if (side === 'atk' && G.phase === 'action') { const n = P.drones.findIndex(D => D.alive && !D.held); const m = n >= 0 ? n : P.drones.findIndex(D => D.alive); if (m >= 0) sgEnterDrone(P, m); else sgToast('NO DRONES LEFT', '#888'); }
       else if (side === 'def' || P.op === 'hex') { P.mode = 'cam'; if (P.cam === undefined || !curCam(P)) P.cam = 0; sgNextCam(P, 0); if (P.mode === 'cam' && !camList(P).length) P.mode = 'body'; }
@@ -4865,6 +4866,7 @@ function sgLocalUpdate(dt) {
     return;
   }
   const K = IN.keys;
+  if (P.prone && (K.ShiftLeft || K.ShiftRight) && K.KeyW) P.prone = false; // sprint to get up
   const inp = { f: (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), s: (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0), run: K.ShiftLeft || K.ShiftRight, crouch: K.ControlLeft || P.crouchT };
   // prep: attackers can only drive drones; defenders can't leave the building yet
   if (G.phase === 'prep' && sideOf(P) === 'atk' && P.mode !== 'drone') { const n = P.drones.findIndex(D => D.alive); if (n >= 0) sgEnterDrone(P, n, true); else P.mode = 'dspec'; }
@@ -4925,7 +4927,7 @@ function sgLocalUpdate(dt) {
   if (G.phase === 'prep' && sideOf(P) === 'def') { const R2 = sgRoomAt(P.x, P.y + 0.5, P.z); if (R2 && R2.out) { P.x = px; P.z = pz; P.vault = null; if (t > (P.waitMsgT || 0)) { P.waitMsgT = t + 4; sgToast('STAY INSIDE UNTIL THE ACTION PHASE', '#ffcf5a'); } } }
   // footsteps you can hear
   const spd = Math.hypot(P.vx, P.vz);
-  if (P.onGround && spd > 1 && P.crouch < 0.5) { lastStep -= dt * spd; if (lastStep <= 0) { lastStep = 2.1; snd(spd > 4.5 ? 'stepRun' : 'step', null, 0.35); P.stepN = (P.stepN || 0) + 1; } }
+  if (P.onGround && spd > 1 && P.crouch < 0.5 && !P.prone) { lastStep -= dt * spd; if (lastStep <= 0) { lastStep = 2.1; snd(spd > 4.5 ? 'stepRun' : 'step', null, 0.35); P.stepN = (P.stepN || 0) + 1; } }
   if (P.inWire && spd > 0.5 && Math.random() < dt * 4) snd('wire', null, 0.5);
   // weapons
   sgWeaponTick(P, dt);
@@ -4938,7 +4940,7 @@ function sgLocalUpdate(dt) {
   else if (P.slug) { if (IN.lmbPress && canShoot) sgSlugShot(P); }
   else if (canShoot && IN.lmb && (!G0.semi || IN.lmbPress)) {
     if (sgFire(P)) {
-      const r = G0.rec * (window.sgAds ? 0.55 : 0.8) * (P.crouch > 0.5 ? 0.8 : 1);
+      const r = G0.rec * (window.sgAds ? 0.55 : 0.8) * (P.prone ? 0.6 : P.crouch > 0.5 ? 0.8 : 1);
       P.pitch = Math.min(1.45, P.pitch + 0.009 * r + Math.random() * 0.004 * r); P.yaw += (Math.random() - 0.45) * 0.006 * r;
       vmT.rec = Math.min(1.5, vmT.rec + 0.5); shake = Math.max(shake, 0.05);
       fxLight(_e.x, _e.y, _e.z, 0xffb060, 1.6, 6, 0.05);
@@ -5061,9 +5063,9 @@ EV.found = d => { if (G.found || d.s !== G.site) return; G.found = true; G.found
 // before every shot), take a moment to react, start off with shaky aim that settles while they track you, feel
 // their gun's recoil, fire in bursts at range and only go for the head on Veteran. react s, err degrees, turn rad/s.
 const DIFF = [
-  { react: 0.85, err: 5.5, turn: 2.6, head: 0, name: 'Recruit' },
-  { react: 0.55, err: 3.6, turn: 4.0, head: 0.08, name: 'Regular' },
-  { react: 0.36, err: 2.2, turn: 5.8, head: 0.3, name: 'Veteran' },
+  { react: 0.85, err: 5.5, turn: 2.6, head: 0, bang: 0.03, name: 'Recruit' },
+  { react: 0.55, err: 3.6, turn: 4.0, head: 0.08, bang: 0.07, name: 'Regular' },
+  { react: 0.36, err: 2.2, turn: 5.8, head: 0.3, bang: 0.12, name: 'Veteran' },
 ];
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 function sgBotsUpdate(dt) {
@@ -5075,6 +5077,96 @@ function sgBotsUpdate(dt) {
     if (!P.alive || !P.w || (G.phase !== 'prep' && G.phase !== 'action')) continue;
     if (!P.ai || P.ai.round !== G.round) P.ai = { round: G.round, path: null, pi: 0, think: 0, react: 0, target: null, task: null, stuckT: 0, lx: P.x, lz: P.z, look: P.yaw, lookT: 0, role: Math.random() < 0.3 ? 'roam' : 'anchor', err: [0, 0], errT: 0, strafe: 0, strafeT: 0, done: new Set() };
     botThink(P, dt, t);
+  }
+}
+// ----- 1.0.14: smarter bots -----
+// the doors and windows into a room: points on the doorway, and a point just inside it
+function roomEntrances(R) {
+  if (R._ent) return R._ent;
+  const out = [], Wd = W.Wd, f = R.f, y = W.floors[f].y, inR = new Set(R.cells);
+  for (const c of R.cells) {
+    const x = c % Wd, z = (c / Wd) | 0, cx = (x + 0.5) * CELL, cz = (z + 0.5) * CELL;
+    for (const [e, ex, ez, nc] of [[W.EV(f, x, z), x * CELL, cz, c - 1], [W.EV(f, x + 1, z), (x + 1) * CELL, cz, c + 1], [W.EH(f, x, z), cx, z * CELL, c - Wd], [W.EH(f, x, z + 1), cx, (z + 1) * CELL, c + Wd]])
+      if (e && (e.t === 'door' || e.t === 'window') && !inR.has(nc)) out.push({ x: ex, y, z: ez, ix: ex + (cx - ex) * 0.55, iz: ez + (cz - ez) * 0.55, e, c });
+  }
+  return (R._ent = out);
+}
+// somewhere to hold in a room: 2.5-8 m back from one of its ways in, with a clear view of it, facing it
+function botHoldSpot(R) {
+  const ents = roomEntrances(R); if (!ents.length) return null;
+  const E = ents[(Math.random() * ents.length) | 0], NC = W.Wd * W.Hd;
+  let best = null, bs = -1;
+  // not on a spot a deployed shield (or a teammate's hold) already takes
+  const taken = [...G.gad.values()].filter(g => g.k === 'shield').map(g => [g.x, g.z, 1.1]).concat([...G.P.values()].filter(Q => Q.ai && Q.ai.hold).map(Q => [Q.ai.hold.x, Q.ai.hold.z, 1.6]));
+  for (const c of R.cells) {
+    if (!W.navOk[R.f * NC + c]) continue;
+    const x = (c % W.Wd + 0.5) * CELL, z = (((c / W.Wd) | 0) + 0.5) * CELL, d = Math.hypot(x - E.ix, z - E.iz);
+    if (d < 2.5 || d > 8 || taken.some(([tx, tz, r]) => Math.hypot(tx - x, tz - z) < r) || !sgClear({ x, y: E.y + 1.2, z }, { x: E.ix, y: E.y + 1.2, z: E.iz })) continue;
+    const st = { x, y: E.y, z }; sgCollide(st, 0.3, 1.8, null); if (Math.hypot(st.x - x, st.z - z) > 0.05) continue; // furniture right there
+    const sc = d + Math.random() * 2; if (sc > bs) { bs = sc; best = { x, z }; }
+  }
+  if (!best) return null;
+  const r = Math.random();
+  return { x: best.x, y: E.y, z: best.z, yaw: Math.atan2(-(E.ix - best.x), -(E.iz - best.z)), crouch: r < 0.6, prone: r > 0.85, E };
+}
+// is the only thing between here and there drywall (one or two walls)? Then a shot goes through it
+function botWallOnly(o, tg) {
+  let dx = tg.x - o.x, dy = tg.y - o.y, dz = tg.z - o.z; const L = Math.hypot(dx, dy, dz); if (L < 0.5) return false;
+  dx /= L; dy /= L; dz /= L;
+  let ox = o.x, oy = o.y, oz = o.z, left = L, walls = 0;
+  for (let n = 0; n < 3; n++) {
+    const h = sgRay(ox, oy, oz, dx, dy, dz, left); if (!h) return walls > 0;
+    if (h.k !== 'panel' || h.p.k !== 'wall' || h.p.reinf) return false;
+    walls++; ox += dx * (h.t + 0.2); oy += dy * (h.t + 0.2); oz += dz * (h.t + 0.2); left -= h.t + 0.2;
+  }
+  return false;
+}
+// operator gadgets and grenades
+function botGadgets(P, A, t) {
+  if (A.gadT > t || A.busy) return; A.gadT = t + 0.5;
+  const side = sideOf(P), k = SG_OPS[P.op].g.k, S = W.sites[G.site], act = G.phase === 'action', sk = P.secKey, D = DIFF[G.set.diff] || DIFF[1];
+  const aimAt = (x, y, z, up = 0) => { eyeOf(P, _e); const dx = x - _e.x, dz = z - _e.z, d = Math.hypot(dx, dz); P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(y - _e.y, d) + up; return d; };
+  if (act && !A.actT0) A.actT0 = t;
+  if (side === 'atk') {
+    if (!act) return;
+    const B = S[A.bomb || 'a'], dB = Math.hypot(B.x - P.x, B.z - P.z), sameF = Math.abs(B.y - P.y) < 1.5;
+    if (k === 'hack' && P.gu > 0 && t - A.actT0 > 8 + (A.r1 = A.r1 ?? Math.random()) * 20 && !(A.hackT > t)) { emit('hack', { o: P.id }); P.gu--; A.hackT = t + 40; }
+    else if (k === 'scan' && P.gu > 0 && dB < 16 && !(P.scanCd > t)) { emit('scan', { o: P.id }); P.gu--; P.scanCd = t + 25; }
+    else if (k === 'sonar' && dB < 16 && !(A.sonT > t)) { A.sonT = t + 18; for (const Q of botEnemies(P)) if (Math.hypot(Q.x - P.x, Q.z - P.z) < 18) emit('spot', { t: Q.id, by: P.id, d: 3 }); }
+    else if (k === 'emp' && P.gu > 0 && dB < 11 && sameF && !(A.empT > t)) { aimAt(B.x, B.y + 1, B.z, 0.25); sgThrow(P, 'emp', 13); P.gu--; A.empT = t + 20; }
+    // a frag or a stun where an enemy just went out of sight
+    const L = A.lastSeen;
+    if ((sk === 'frag' || sk === 'flash') && P.gs > 0 && L && !A.target && t - L.t > 0.6 && t - L.t < 3 && !(A.nadeT > t) && Math.random() < 0.5 + D.bang * 2) {
+      const d = Math.hypot(L.x - P.x, L.z - P.z);
+      if (d > 4 && d < 13) { aimAt(L.x, L.y + 0.5, L.z, 0.16 + d * 0.012); sgThrow(P, sk, 12); P.gs--; A.nadeT = t + 14; }
+    }
+    return;
+  }
+  // defenders: set up the site's doorways in the prep phase (and the first seconds of the action)
+  const R = A.siteR || (A.siteR = Math.random() < 0.5 ? S.a.room : S.b.room), ents = roomEntrances(R);
+  if ((A.defTries || 0) < 12 && (G.phase === 'prep' || (act && t - A.actT0 < 15))) {
+    A.defTries = (A.defTries || 0) + 1;
+    eyeOf(P, _e);
+    const near = ents.filter(E => Math.hypot(E.ix - P.x, E.iz - P.z) < 9 && Math.abs(E.y - P.y) < 1 && sgClear(_e, { x: E.ix, y: E.y + 0.4, z: E.iz }));
+    if ((k === 'gas' || k === 'kunai') && P.gu > (k === 'gas' ? 1 : 2) && near.length) { const E = near[(Math.random() * near.length) | 0]; aimAt(E.ix, E.y + 0.1, E.iz, k === 'kunai' ? 0.04 : 0.12); sgThrow(P, k, k === 'kunai' ? 14 : 9); P.gu--; }
+    if (sk === 'claymore' && P.gs > 0 && near.length) {
+      const E = near[0], ix = E.ix + (E.ix - E.x) * 0.6, iz = E.iz + (E.iz - E.z) * 0.6;
+      emit('gadd', { id: uid(), k: 'claymore', o: P.id, x: r2(ix), y: r2(sgGround(ix, iz, E.y + 0.5)), z: r2(iz), n: [0, 1, 0], p: -1, yaw: r2(Math.atan2(-(E.x - ix), -(E.z - iz))) }); P.gs--;
+    }
+    if (k === 'shock' && P.gu > 2 && act) { // Volt: rods on reinforced walls round the site
+      for (const p of W.panels) {
+        if (P.gu <= 2) break;
+        if (p.k !== 'wall' || !p.reinf || p.f !== R.f || [...G.gad.values()].some(g => g.k === 'shock' && g.p === p.id)) continue;
+        const a = p.s0 + p.w / 2, me = p.ax === 'x' ? P.z : P.x, s = me > p.c ? 1 : -1, x = p.ax === 'x' ? a : p.c + s * 0.1, z = p.ax === 'x' ? p.c + s * 0.1 : a;
+        if (Math.hypot(x - P.x, z - P.z) > 10) continue;
+        emit('gadd', { id: uid(), k: 'shock', o: P.id, x: r2(x), y: r2(p.y0 + 1.1), z: r2(z), n: p.ax === 'x' ? [0, 0, s] : [s, 0, 0], p: p.id }); P.gu--;
+      }
+    }
+  }
+  // Murk sets the canisters off when an attacker comes near one
+  if (k === 'gas') for (const g of G.gad.values()) {
+    if (g.o !== P.id || g.k !== 'gas' || g.off > t) continue;
+    if (botEnemies(P).some(Q => Math.hypot(Q.x - g.x, Q.z - g.z) < 3.5 && Math.abs(Q.y - g.y) < 2)) { emit('gact', { id: g.id }); break; }
   }
 }
 function botEnemies(P) { return [...G.P.values()].filter(Q => Q.alive && Q.team !== P.team); }
@@ -5096,7 +5188,7 @@ function botSees(P, Q, wide) {
   if (a > (wide ? 1.2 : 0.95) && d > 1.1) return null;
   // smoke and dread fog hide people
   for (const c of G.clouds) if (c.k !== 'gas' && Math.hypot(c.x - (P.x + Q.x) / 2, c.z - (P.z + Q.z) / 2) < c.r) return null;
-  const pts = Q.down ? [0.3, 0.45] : [cr ? 0.8 : 1.2, cr ? 1.08 : 1.62, cr ? 0.4 : 0.6];
+  const pts = Q.down || Q.prone ? [0.3, 0.45] : [cr ? 0.8 : 1.2, cr ? 1.08 : 1.62, cr ? 0.4 : 0.6];
   for (const h of pts) { const tg = { x: Q.x, y: Q.y + h, z: Q.z }; if (botLine(e, tg)) return h; }
   return null;
 }
@@ -5132,13 +5224,22 @@ function botThink(P, dt, t) {
     } else if (A.target) {
       // lost them: keep the gun on the spot where they went out of sight for a few seconds
       const L = A.lastSeen; A.target = null;
-      if (L) { A.look = Math.atan2(-(L.x - P.x), -(L.z - P.z)); A.lookT = t + 3; }
+      if (L) {
+        A.look = Math.atan2(-(L.x - P.x), -(L.z - P.z)); A.lookT = t + 3;
+        // 1.0.14: lean out towards the side they went, for a moment
+        const rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw); A.peekS = ((L.x - P.x) * rx + (L.z - P.z) * rz) > 0 ? 1 : -1; A.peekT = t + 0.35; A.peekEnd = t + 1.6;
+      }
     }
     // hearing: turn towards close footsteps and gunfire (each bot hears for itself)
     if (!best && fight) for (const Q of botEnemies(P)) {
-      const d = Math.hypot(Q.x - P.x, Q.z - P.z), shot = Q.shots !== A.heard[Q.id];
+      const d = Math.hypot(Q.x - P.x, Q.z - P.z), shot = Q.shots !== A.heard[Q.id], mv = Math.hypot(Q.vx, Q.vz), quiet = Q.crouch > 0.5 || Q.prone;
       A.heard[Q.id] = Q.shots;
-      if ((d < 7 && Math.hypot(Q.vx, Q.vz) > 2.5 && Q.crouch < 0.5) || (shot && d < 18)) { A.look = Math.atan2(-(Q.x - P.x), -(Q.z - P.z)) + (Math.random() - 0.5) * 0.5; A.lookT = t + 1.5; }
+      // 1.0.14: they don't know where you are unless they see you or you're loud: running within 7 m, walking upright
+      // within 4 m, shooting within 18 m. Then they turn to the sound, and through drywall they may shoot at it
+      if ((d < 7 && mv > 2.5 && !quiet) || (d < 4 && mv > 1 && !quiet) || (shot && d < 18)) {
+        A.look = Math.atan2(-(Q.x - P.x), -(Q.z - P.z)) + (Math.random() - 0.5) * 0.5; A.lookT = t + 1.5;
+        if (d < 12 && !(A.bang && A.bang.until > t) && Math.random() < D.bang * (shot ? 3 : 0.5)) { const e = eyeOf(P, { x: 0, y: 0, z: 0 }), tg = { x: Q.x, y: Q.y + (quiet ? 0.7 : 1.15), z: Q.z }; if (botWallOnly(e, tg)) A.bang = { x: tg.x + (Math.random() - 0.5) * 1.6, y: tg.y + (Math.random() - 0.5) * 0.5, z: tg.z + (Math.random() - 0.5) * 1.6, until: t + 0.7 + Math.random() * 0.6 }; } // a guess at where the sound was, not a lock
+      }
     }
   }
   const T = A.target ? G.P.get(A.target) : null;
@@ -5155,7 +5256,7 @@ function botThink(P, dt, t) {
     }
     A.errC = A.errC || [0, 0];
     A.errC[0] += (A.err[0] - A.errC[0]) * Math.min(1, dt * 5); A.errC[1] += (A.err[1] - A.errC[1]) * Math.min(1, dt * 5);
-    const hv = T.down ? 0.35 : A.head ? (T.crouch > 0.5 ? 1.08 : 1.62) : (A.aimH || (T.crouch > 0.5 ? 0.8 : 1.2));
+    const hv = T.down || T.prone ? 0.35 : A.head ? (T.crouch > 0.5 ? 1.08 : 1.62) : (A.aimH || (T.crouch > 0.5 ? 0.8 : 1.2));
     const ty = T.y + hv;
     const dx = T.x - _e.x, dy = ty - _e.y, dz = T.z - _e.z, d = Math.hypot(dx, dz);
     const wantYaw = Math.atan2(-dx, -dz) + A.errC[0], wantPitch = Math.atan2(dy, d) + A.errC[1];
@@ -5187,6 +5288,18 @@ function botThink(P, dt, t) {
     return;
   }
   if (T && !fight) A.target = null;
+  botGadgets(P, A, t);
+  // 1.0.14: lean out to peek (after losing someone, or now and then while holding a spot)
+  if (A.peekEnd > t && t > A.peekT && !(A.path && A.pi < A.path.length)) P.lean = A.peekS; else if (P.lean && !(A.peekEnd > t)) P.lean = 0;
+  // 1.0.14: a burst through the drywall at a sound
+  if (fight && !T && A.bang && t < A.bang.until && !A.busy && P.act === '') {
+    eyeOf(P, _e);
+    const B = A.bang, dx = B.x - _e.x, dz = B.z - _e.z, d = Math.hypot(dx, dz), wy = Math.atan2(-dx, -dz) + Math.sin(t * 7 + P.x) * 0.06, wp = Math.atan2(B.y - _e.y, d), turn = D.turn * dt;
+    P.yaw += Math.max(-turn, Math.min(turn, angDiff(wy, P.yaw) * Math.min(1, dt * 9))); P.pitch += Math.max(-turn, Math.min(turn, (wp - P.pitch) * Math.min(1, dt * 9)));
+    if (Math.abs(angDiff(wy, P.yaw)) < 0.06 && !(P.semiT > t)) { if (P.w.ammo[P.slot] <= 0) { if (P.w.res[P.slot] > 0) sgReload(P); } else if (sgFire(P, 1)) P.semiT = t + (gunOf(P).semi ? 0.25 : 0); }
+    inp.crouch = A.crouch; sgMove(P, inp, dt); sgWeaponTick(P, dt);
+    return;
+  }
   // 1.0.8: an attacker who isn't in a fight shoots out the defenders' cameras it can see (in front of it, in reach)
   if (fight && side === 'atk' && !A.busy && P.act === '') {
     if (!(A.camScanT > t)) {
@@ -5234,6 +5347,7 @@ function botThink(P, dt, t) {
   if (!breaking) { A.breakBar = null; if (side === 'def') botDefend(P, A, t); else botAttack(P, A, t); }
   // ----- walking the path -----
   if (A.path && A.pi < A.path.length) {
+    P.prone = false;
     const wp = A.path[A.pi];
     const dx = wp.x - P.x, dz = wp.z - P.z, d = Math.hypot(dx, dz);
     if (d < 0.45 || (A.pi < A.path.length - 1 && d < 0.8)) A.pi++;
@@ -5263,6 +5377,12 @@ function botThink(P, dt, t) {
     A.stuckT += dt;
     if (A.stuckT > 1.4) { if (Math.hypot(P.x - A.lx, P.z - A.lz) < 0.3 && !P.vault) { A.path = null; inp.s = Math.random() < 0.5 ? -1 : 1; } A.stuckT = 0; A.lx = P.x; A.lz = P.z; }
   } else if (A.lookT > t) P.yaw += angDiff(A.look, P.yaw) * Math.min(1, dt * 4);
+  else if (A.hold && Math.hypot(A.hold.x - P.x, A.hold.z - P.z) < 0.9) {
+    // 1.0.14: holding: watch the way in, crouched or lying down, with a peek now and then
+    P.yaw += angDiff(A.hold.yaw + Math.sin(t * 0.6 + P.x) * 0.22, P.yaw) * Math.min(1, dt * 3); P.pitch *= 0.95;
+    inp.crouch = A.hold.crouch; P.prone = !!A.hold.prone;
+    if (!(A.peekEnd > t) && Math.random() < dt * 0.12) { A.peekS = Math.random() < 0.5 ? -1 : 1; A.peekT = t; A.peekEnd = t + 0.9; }
+  }
   else if (Math.random() < dt * 0.4) { A.look = P.yaw + (Math.random() - 0.5) * 2.5; A.lookT = t + 1.2; }
   sgMove(P, inp, dt); sgWeaponTick(P, dt);
 }
@@ -5302,12 +5422,21 @@ function botDefend(P, A, t) {
       } else A.noBarr = true;
     }
   }
+  // 1.0.14: lost the way to the hold spot (stuck on furniture)? go again, or give it up after a few tries
+  if (A.hold && Math.hypot(A.hold.x - P.x, A.hold.z - P.z) > 0.9 && (!A.holdT || t < A.holdT)) {
+    if ((A.holdTries = (A.holdTries || 0) + 1) > 4 || !botGoTo(P, A.hold.x, A.hold.y, A.hold.z)) { A.hold = null; A.holdTries = 0; }
+    return;
+  }
   // hold a spot in one of the bomb rooms, or roam the rooms next to it
   if (!A.holdT || t > A.holdT) {
+    A.holdTries = 0;
     A.holdT = t + (A.role === 'roam' ? 8 + Math.random() * 8 : 15 + Math.random() * 15);
     let R;
     if (A.role === 'roam' && G.phase === 'action') { const near = W.rooms.filter(r => !r.out && Math.abs(r.f - S.a.f) <= 1 && Math.hypot(r.cx * CELL - S.a.x, r.cz * CELL - S.a.z) < 18); R = near[(Math.random() * near.length) | 0]; }
-    else R = Math.random() < 0.5 ? S.a.room : S.b.room;
+    else R = A.siteR || (Math.random() < 0.5 ? S.a.room : S.b.room);
+    A.hold = null;
+    // 1.0.14: an anchor holds a spot watching a way into the site (and stays there longer)
+    if (R && A.role !== 'roam') { const H = botHoldSpot(R); if (H && botGoTo(P, H.x, H.y, H.z)) { A.hold = H; A.holdT = t + 30 + Math.random() * 30; return; } }
     if (R) { const cells = R.cells.filter(c => W.navOk[R.f * W.Wd * W.Hd + c]); const c = cells[(Math.random() * cells.length) | 0]; if (c !== undefined) botGoTo(P, (c % W.Wd + 0.5) * CELL, W.floors[R.f].y, (((c / W.Wd) | 0) + 0.5) * CELL); }
   }
 }
@@ -5368,6 +5497,7 @@ function botAttack(P, A, t) {
   if (!G.found && Math.hypot(B.x - P.x, B.z - P.z) < 8 && Math.abs(B.y - P.y) < 1.5) emit('found', { s: G.site, by: P.id });
   const d = Math.hypot(B.x - P.x, B.z - P.z), sameFloor = Math.abs(B.y - P.y) < 1.2;
   if (G.dfz.holder === P.id && d < 2.4 && sameFloor) {
+    if (P.secKey === 'smoke' && P.gs > 0) { P.pitch = -1; sgThrow(P, 'smoke', 5); P.gs--; } // 1.0.14: smoke to plant in
     A.busy = { k: 'plant', until: t + PLANT_S, done: () => { if (P.alive && G.dfz.holder === P.id && !G.dfz.planted) emit('plant', { i: P.id, s: A.bomb, x: r2(P.x), y: r2(P.y), z: r2(P.z) }); } };
     return;
   }
@@ -5522,7 +5652,7 @@ function snState(d, bot) {
   const t = now();
   P.buf.push({ t, x: d.p[0], y: d.p[1], z: d.p[2], yaw: d.r[0], pitch: d.r[1] });
   if (P.buf.length > 12) P.buf.shift();
-  P.crouch = d.c; P.lean = d.l; P.leanV = (P.leanV || 0) + (d.l - (P.leanV || 0)) * 0.6; P.slot = d.s || 0; P.mode = d.m || 'body'; P.act = d.a || ''; P.shieldUp = !!d.su; P.sonar = !!d.so; P.down = !!d.dn;
+  P.crouch = d.c; P.prone = !!d.pr; P.lean = d.l; P.leanV = (P.leanV || 0) + (d.l - (P.leanV || 0)) * 0.6; P.slot = d.s || 0; P.mode = d.m || 'body'; P.act = d.a || ''; P.shieldUp = !!d.su; P.sonar = !!d.so; P.down = !!d.dn;
   if (typeof d.h === 'number' && P.alive) P.hp = d.h;
   if (d.k && !P.op) P.op = d.k;
   P.vx = d.v ? d.v[0] : 0; P.vz = d.v ? d.v[1] : 0;
@@ -5563,7 +5693,7 @@ function snSendStates(dt) {
 }
 function snPack(P) {
   const r = v => Math.round(v * 100) / 100;
-  const o = { i: P.id, p: [r(P.x), r(P.y), r(P.z)], r: [r(P.yaw), r(P.pitch)], c: P.crouch > 0.5 ? 1 : 0, l: r(P.leanV || 0), s: P.slot, m: P.mode, a: P.act, h: Math.round(P.hp), k: P.op, v: [r(P.vx), r(P.vz)], n: P.shots };
+  const o = { i: P.id, p: [r(P.x), r(P.y), r(P.z)], r: [r(P.yaw), r(P.pitch)], c: P.crouch > 0.5 ? 1 : 0, pr: P.prone ? 1 : 0, l: r(P.leanV || 0), s: P.slot, m: P.mode, a: P.act, h: Math.round(P.hp), k: P.op, v: [r(P.vx), r(P.vz)], n: P.shots };
   if (P.lastShot) o.e = [r(P.lastShot.x), r(P.lastShot.y), r(P.lastShot.z)];
   if (P.shieldUp) o.su = 1; if (P.sonar) o.so = 1; if (P.down) o.dn = 1;
   if (P.drones.length) o.d = P.drones.map(D => D.alive && !D.held ? [r(D.x), r(D.y), r(D.z), r(D.yaw)] : 0);
@@ -5597,6 +5727,13 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.14', t: 'Smarter bots', d: '4 November 2026', intro: 'The bots play more like people, and you can lie down.', items: [
+    ['Prone', 'Z lies you down: a low target that crawls slowly and makes no footsteps. Z again, C, or sprinting gets you up. (Murk\'s canisters are set off with X, as the card says.)'],
+    ['Bots hold angles', 'Defending bots pick a spot a few metres back from a door or window into the site and watch it, standing, crouched or lying down, and lean out to peek now and then.'],
+    ['Bots don\'t know where you are', 'They only find you by seeing you (in front of them, not behind) or hearing you: running nearby, walking right next to them, or shooting. Crouch or crawl and they won\'t hear your steps.'],
+    ['Bots wallbang', 'A bot that hears you on the other side of drywall may spray through it at where it thinks you are.'],
+    ['Bots use their gadgets', 'Bots throw their grenades where they lost you, scan, hack and sonar near the site, set off gas, put claymores and traps on the doorways, and lean round corners after you.'],
+  ] },
   { v: '1.0.13', t: 'Wallbangs', d: '4 November 2026', intro: 'Shoot through the drywall.', items: [
     ['Wallbang', 'Bullets go through drywall (up to two walls, a bit weaker each time) and hurt whoever is behind it. Every shot leaves a bullet hole on both sides of the wall.'],
     ['Walls wear down', 'A wall no longer loses a whole piece to every bullet. About five rifle rounds or a shotgun blast in the same place knock a piece out, and then you can see through.'],
@@ -5804,7 +5941,7 @@ function sgUiBuild() {
     <button class="mBtn" id="sgQuit"><span><b>Leave match</b></span></button></div></div>
   <div class="over" id="sgOver"><div class="overIn"><div class="kick" id="sgOverK">Match over</div><h1 id="sgOverT">VICTORY</h1><div class="coinsWon" id="sgOverC"></div><div id="sgOverSb"></div></div></div>`;
   document.body.appendChild(d);
-  const keys = [['WASD', 'Move'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Q / E', 'Lean left / right'], ['Mouse', 'Fire, aim (right click)'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant, disable'], ['5 / B', 'Drone (attack) · cameras (defence)'], ['Space', 'Drone hop (people can\'t jump)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat'], ['Y', 'Team chat'], ['Esc', 'Menu']].map(([k, v]) => `<kbd>${k}</kbd><span>${v}</span>`).join('');
+  const keys = [['WASD', 'Move'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Z', 'Prone (lie down)'], ['Q / E', 'Lean left / right'], ['Mouse', 'Fire, aim (right click)'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant, disable'], ['5 / B', 'Drone (attack) · cameras (defence)'], ['Space', 'Drone hop (people can\'t jump)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat'], ['Y', 'Team chat'], ['Esc', 'Menu']].map(([k, v]) => `<kbd>${k}</kbd><span>${v}</span>`).join('');
   $s('sgKeys').innerHTML = keys; $s('sgKeysHow').innerHTML = keys;
   $s('sgNotes').innerHTML = '<h2>Patch notes</h2>' + NOTES.map((N, i) => `<article class="note1 ${i ? '' : 'latest'}"><div class="nHead"><span class="nV">v${N.v}</span><b>${esc(N.t)}</b><small>${esc(N.d)}</small></div><p class="nIntro">${esc(N.intro)}</p><ul>${N.items.map(([a, b]) => `<li><b>${esc(a)}.</b> ${esc(b)}</li>`).join('')}</ul></article>`).join('');
   // top navigation
@@ -6193,7 +6330,7 @@ function sgRenderEnts(dt) {
       if (P.model.g.visible && Math.hypot(P.x - cp.x, P.z - cp.z) < 0.42 && cp.y > P.y - 0.1 && cp.y < P.y + 1.95) P.model.g.visible = false; // the camera is inside this body
       if (P.model.g.visible) {
         P.model.g.position.set(P.x, P.y, P.z); P.model.g.rotation.y = P.yaw;
-        sgAnimPerson(P.model, dt, Math.hypot(P.vx, P.vz), P.crouch > 0.5, P.leanV !== undefined ? P.leanV : P.lean, P.pitch, !P.alive, P.down);
+        sgAnimPerson(P.model, dt, Math.hypot(P.vx, P.vz), P.crouch > 0.5, P.leanV !== undefined ? P.leanV : P.lean, P.pitch, !P.alive, P.down || P.prone);
         if (relight) sgTintPerson(P.model, sgLightProbe(P.x, P.y, P.z));
         if (P.flashT > 0) { P.flashT -= dt; if (P.flashT <= 0) P.model.flash.visible = false; }
         if (P.model.shield) P.model.shield.visible = !!P.shieldUp;
@@ -6251,7 +6388,7 @@ function sgStepSounds() {
     if (Q === P || !Q.alive) { if (Q) Q._sx = undefined; continue; }
     if (Q._sx === undefined) { Q._sx = Q.x; Q._sz = Q.z; Q._sd = 0; continue; }
     const d = Math.hypot(Q.x - Q._sx, Q.z - Q._sz); Q._sx = Q.x; Q._sz = Q.z;
-    if (d > 1.5 || Q.crouch > 0.5 || Q.down || Q.mode === 'drone' && sideOf(Q) === 'atk' && G.phase === 'prep') { Q._sd = 0; continue; }
+    if (d > 1.5 || Q.crouch > 0.5 || Q.down || Q.prone || Q.mode === 'drone' && sideOf(Q) === 'atk' && G.phase === 'prep') { Q._sd = 0; continue; }
     Q._sd += d;
     if (Q._sd > 0.65) { Q._sd = 0; if (Math.hypot(Q.x - L.x, Q.z - L.z) < 12 && Math.abs(Q.y - L.y) < 4) snd('step', { x: Q.x, y: Q.y, z: Q.z }, 0.45, Q); }
   }
@@ -6396,7 +6533,7 @@ function sgBoot() {
 sgInputInit();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sgBoot); else sgBoot();
 // test handle, only on a local copy
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, barOpenAt, barUV, sgClear, sgArm, sgCutter, sgSlugShot, sgTaser, chunkCenter };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, barOpenAt, barUV, sgClear, sgArm, sgCutter, sgSlugShot, sgTaser, chunkCenter, botWallOnly, botHoldSpot, roomEntrances, eyeOf };
 
 })();
 </script>

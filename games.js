@@ -34,11 +34,11 @@ window.GAMES = [
     tagline: '5v5 tactical shooter: drone, breach and defuse, or reinforce, barricade and hold. One life a round.',
     description: 'Attackers against defenders, five on five, one life each round. Attackers scout the building with drones to find the bomb site, then breach in and plant the defuser. Defenders reinforce walls with steel, barricade doors and windows, watch the cameras and set traps. Walls, floors and barricades break, bullets go through drywall, and only hard breachers get through steel. 20 operators with their own guns and gadgets, three dark indoor maps (Marlowe Hotel, Port Authority and Ashgrove Manor), bots you can add to any room, and online play for up to 10.',
     controls: 'Keyboard + mouse',
-    keys: [['W A S D', 'Move'], ['Mouse', 'Aim and shoot (right-click to aim down sights)'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Q / E', 'Lean'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary gun'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant or disable the defuser'], ['5', 'Drones (attack) or cameras (defence)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat (online)'], ['Y', 'Team chat (online)'], ['Esc', 'Menu']],
+    keys: [['W A S D', 'Move'], ['Mouse', 'Aim and shoot (right-click to aim down sights)'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Z', 'Prone'], ['Q / E', 'Lean'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary gun'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant or disable the defuser'], ['5', 'Drones (attack) or cameras (defence)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat (online)'], ['Y', 'Team chat (online)'], ['Esc', 'Menu']],
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-04T21:41:00+11:00',
+    updated: '2026-11-04T23:20:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.14: smarter bots. Defenders hold angles on the ways into the site and peek, bots only know where you are if they see or hear you, they spray through drywall at noises and use their operators\' gadgets. And you can go prone with Z.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.13: wallbangs. Bullets go through drywall and hurt whoever is behind it, leaving bullet holes on both sides; walls wear down instead of losing a piece to every bullet, and a punch knocks out a small hole to see through. Reinforced walls stop everything.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.12: roofs! Rappel up an outside wall and climb onto the roof, then come in from above through one of the two roof hatches on every map. Some yards are open to the sky now, and grenades look like real grenades.' },
   { date: '2026-11-04', game: 'siege', text: 'Siege 1.0.11: loadouts and rappelling. Choose between two guns and two gadgets for every operator, defenders can take claymores and deployable shields, and attackers can rappel up outside walls (Space), shoot on the rope and go in through windows (F).' },

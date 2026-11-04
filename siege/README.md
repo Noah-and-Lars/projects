@@ -31,6 +31,12 @@ Since 1.0.5 a lethal hit that isn't a headshot puts you down while a teammate is
 
 There is no jumping (since 1.0.3). Walk into an open window, a counter, a railing or low furniture and you climb over it on your own, so every place in every map is reachable on foot. Nobody can be hurt during the prep phase.
 
+Since 1.0.14, Z lies you down (prone): you crawl slowly, make no footsteps and are a low target. Z again, C or sprinting gets you up.
+
+## Bots
+
+Bots see in a cone in front of them and need a clear line to you; otherwise they only know where you are from noise (running within 7 m, walking right next to them, shooting within 18 m; crouching or crawling is silent). Since 1.0.14 defending bots hold a spot watching a door or window into the site (standing, crouched or prone) and peek out now and then, may spray through drywall at a noise, and every bot uses its operator's gadget and its grenades.
+
 ## Destruction
 
 Drywall and hatches are made of pieces that break one by one. Bullets go through drywall (up to two walls, weaker each time) and leave holes on both sides; about five rifle rounds knock a piece out, and a punch (V) knocks out just the piece you hit. A barricade is one solid board (since 1.0.7): every bullet through it leaves a hole you can see and shoot through, two melee hits or a shotgun blast or two bring it down, and it falls apart once about half of it is holes. Explosives open whole sections. Reinforced steel only gives way to the Thermal Lance, the Piston Breacher and the Cutting Torch. Shock rods destroy charges on their wall, jammers block them and kill drones, and an EMP shuts defender electronics down for 12 s.
@@ -65,7 +71,7 @@ Each has three pairs of bomb sites, stairs, hatches and five defender cameras.
 
 ## Keys
 
-WASD move, Shift sprint, Space rappel (attackers, at an outside wall), C / Ctrl crouch, Q / E lean, mouse to shoot (right-click to aim: a click toggles it, or hold it if you pick Hold in Settings), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras (Space hops a drone), V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
+WASD move, Shift sprint, Space rappel (attackers, at an outside wall), C / Ctrl crouch, Z prone, Q / E lean, mouse to shoot (right-click to aim: a click toggles it, or hold it if you pick Hold in Settings), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras (Space hops a drone), V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
 
 ## Playing
 

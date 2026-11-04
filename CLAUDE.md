@@ -345,6 +345,14 @@ source in Settings → Pages should be switched to `main`.
   (two walls, `dm *= 0.6` each). `holeShot` puts marks on both faces (an InstancedMesh per map, `holeBuild`, `HOLE_MAX`,
   owned per chunk and cleared in `sgPanelDraw` when the chunk goes); remote shots stamp them with `holeTrace` along the
   line from `snRemoteShot`. A punch removes just the chunk it hits. Ray hits on a panel are at its middle plane.
+  1.0.14: smarter bots and prone. `P.prone` (Z; eye 0.42, speed 0.9, a low hit box like `P.down`, `pr` in the snapshot);
+  Murk's canisters are X only. Bots: `botHoldSpot(R)` (a cell 2.5-8 m back from one of `roomEntrances(R)` with a view of it,
+  not on furniture, a shield or a teammate's spot; `A.hold` with yaw/crouch/prone, re-pathed up to 4 times), peeking
+  (`A.peekS`/`peekT`/`peekEnd` set `P.lean`), hearing (run < 7 m, walk < 4 m, shots < 18 m; crouched/prone are quiet),
+  wallbang bursts (`A.bang`, a guess near the sound, only if `botWallOnly` finds just drywall; chance `DIFF[].bang`, x3
+  for shots), and `botGadgets` (attackers: hack, scan, sonar, EMP near the site, frag/flash where they lost you; defenders:
+  gas/kunai/claymores on the site's doorways, Volt rods on reinforced walls, Murk sets gas off). Test-clock caveat: `now()`
+  is real time + `SG_TOFF`, so a slow headless step can expire hold/bang timers early.
 
 ## Adding a game
 
