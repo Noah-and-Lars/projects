@@ -9,6 +9,34 @@
   if (window.supabase && window.supabase.arcadeRealtime) return;
   var WS = 'wss://arcade-realtime.arcade-realtime.workers.dev/ws';
   try { if (window.ARCADE_RT_URL) WS = window.ARCADE_RT_URL; } catch (e) {}
+  // Online play needs an online Arcade account (2026-11-06): without one (no account, or a local account), every
+  // channel except the site's "on now" counter fails to connect and a popup asks the player to make an account.
+  // The game then behaves as if it were offline (most fall back to bots or offline play).
+  var FREE = /^online:arcade$/;
+  function hasAccount() { try { var a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return !!(a && a.name && a.token); } catch (e) { return false; } }
+  var askedAt = 0;
+  function askForAccount() {
+    if (Date.now() - askedAt < 20000) return;
+    askedAt = Date.now();
+    try { if (window.top !== window && window.top.ArcadeAccount && window.top.ArcadeAccount.welcome) { window.top.ArcadeAccount.welcome('signup', 'You need an online account to play online. Make one (free, just a username and a password) or log in.'); return; } } catch (e) {}
+    try { if (window.ArcadeAccount && window.ArcadeAccount.welcome) { window.ArcadeAccount.welcome('signup', 'You need an online account to play online. Make one (free, just a username and a password) or log in.'); return; } } catch (e) {}
+    var show = function () {
+      if (document.getElementById('rtAcct')) return;
+      var d = document.createElement('div'); d.id = 'rtAcct';
+      d.style.cssText = 'position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#000a;font:15px/1.45 system-ui,sans-serif';
+      var b = document.createElement('div');
+      b.style.cssText = 'max-width:360px;margin:16px;padding:22px;border-radius:16px;background:#1b1835;color:#f1effa;text-align:center;border:1px solid #6c5ce7';
+      var h = document.createElement('h2'); h.textContent = 'Online play needs an account'; h.style.margin = '0 0 8px';
+      var p = document.createElement('p'); p.textContent = 'Make a free Arcade account (just a username and a password) or log in on The Arcade to play online. Playing offline and against bots still works.'; p.style.margin = '0 0 14px';
+      var a = document.createElement('a'); a.href = 'https://noah-and-lars.github.io/projects/'; a.target = '_top'; a.textContent = 'Make an account';
+      a.style.cssText = 'display:inline-block;padding:9px 16px;border-radius:10px;background:#6c5ce7;color:#fff;font-weight:700;text-decoration:none;margin:0 6px';
+      var x = document.createElement('button'); x.textContent = 'Not now';
+      x.style.cssText = 'padding:9px 16px;border-radius:10px;border:1px solid #ffffff33;background:none;color:#f1effa;font:inherit;cursor:pointer;margin:0 6px';
+      x.onclick = function () { d.remove(); };
+      b.appendChild(h); b.appendChild(p); b.appendChild(a); b.appendChild(x); d.appendChild(b); document.body.appendChild(d);
+    };
+    if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+  }
   var PING_MS = 25000, DEAD_MS = 120000, JOIN_MS = 10000, BACKOFF = [1000, 2000, 5000, 10000];
 
   function Channel(client, name, opts) {
@@ -44,6 +72,12 @@
   Channel.prototype.subscribe = function (cb) {
     if (cb) this.cb = cb;
     if (this.gone || this.ws) return this;
+    if (!FREE.test(this.subTopic) && !hasAccount()) { // no online account: refuse, like a server that can't be reached
+      var self = this;
+      this.state = 'errored';
+      setTimeout(function () { askForAccount(); self.emit('CHANNEL_ERROR', new Error('an online account is needed to play online')); }, 0);
+      return this;
+    }
     this.connect();
     return this;
   };

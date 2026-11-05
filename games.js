@@ -450,7 +450,7 @@ window.Arcade = {
 // Each browser keeps one id (arcade-online-id), so moving between pages or having two tabs open
 // counts as one person, and changes only show once they've held for a couple of seconds.
 window.ArcadeOnline = (() => {
-  const LIB = 'rt.js?v=1'; // the arcade's realtime client (Cloudflare), a drop-in for supabase-js
+  const LIB = 'rt.js?v=2'; // the arcade's realtime client (Cloudflare), a drop-in for supabase-js
   const CAP = 200; // counts show as "200+" from here
   const SETTLE = 2500; // ms a new count has to hold before it's shown, so quick page changes don't flicker
   let counts = null, started = false, timer = 0, client = null, settled = false, names = {};

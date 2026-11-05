@@ -3787,7 +3787,7 @@ function seat(i, fn) {
 }
 
 const ONLINE = (() => {
-  const RT = 'https://noah-and-lars.github.io/projects/rt.js?v=1', ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const RT = 'https://noah-and-lars.github.io/projects/rt.js?v=2', ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const ui = () => document.getElementById('ui'), click = () => { try { sfx.init(); sfx.click(); } catch (e) {} };
   const myId = Math.random().toString(36).slice(2, 10);
   let client = null, room = null, lastSnap = 0, lastIn = 0, inKey = '', snaps = [], outP = {}, outR = {}, lastAi = 0;

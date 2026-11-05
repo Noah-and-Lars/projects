@@ -2880,7 +2880,7 @@ function battleOver(res) {
    match channel 'cr-m-<code>'. The host runs the battle and sends snapshots ('s') ten times a second.
    ?crroom=<name> uses separate test channels.
    ============================================================ */
-const RT_SRC = 'https://noah-and-lars.github.io/projects/rt.js?v=1';
+const RT_SRC = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
 const NET = (() => {
   const room = (location.search.match(/[?&]crroom=([\w-]{1,24})/) || [])[1];
   const SUF = room ? '-t-' + room : '';

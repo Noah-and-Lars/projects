@@ -10038,7 +10038,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
 })();
 </script>
 <!-- menu-reel:end -->
-<script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script><!-- realtime: Cloudflare stand-in for supabase-js, must load before the counter and mp-net -->
+<script src="https://noah-and-lars.github.io/projects/rt.js?v=2"></script><!-- realtime: Cloudflare stand-in for supabase-js, must load before the counter and mp-net -->
 <script>
 // ---------- Live player counter (realtime presence) ----------
 // On the arcade's play page, the page around the game already keeps the count (window.ArcadeOnline),
@@ -10059,7 +10059,7 @@ window.menuReel = { place: safePlace, active, get elapsed() { return elapsed; },
 
   const CAP = 200; // the free plan's limit on simultaneous connections
   const lib = document.createElement('script');
-  lib.src = 'https://noah-and-lars.github.io/projects/rt.js?v=1';
+  lib.src = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
   lib.async = true;
   lib.onerror = () => show(null);
   lib.onload = () => {

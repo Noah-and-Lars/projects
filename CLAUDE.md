@@ -105,7 +105,11 @@ source in Settings → Pages should be switched to `main`.
   copies work too) where they used to load supabase-js; the old `SB_URL`/`SB_KEY` lines are
   unused. Cube Assault loads it with a plain script tag before the counter, so `mp-net` finds
   `window.supabase` already there and never loads supabase-js (mp-net itself was not changed).
-  Bump `rt.js?v=N` everywhere when rt.js changes. Deploy the Worker with `npx wrangler deploy`
+  Bump `rt.js?v=N` everywhere when rt.js changes. Since 2026-11-06 (rt.js v=2) online play needs an online
+  account: without `arcade-acct` (no account or a local account) every channel except `online:arcade` (the on-now
+  counter) reports CHANNEL_ERROR without connecting and `askForAccount()` opens the account popup (the top window's
+  `ArcadeAccount.welcome`, or its own box when a game runs on its own). Games then act as if offline. It's a
+  client-side check, not enforced on the server. Deploy the Worker with `npx wrangler deploy`
   in `realtime-worker/` (owner's Cloudflare account). Free plan: 100,000 Durable Object requests
   a day (incoming WebSocket messages count 20 to 1, outgoing are free), reset at 00:00 UTC.
 - Live "on now" counter: `ArcadeOnline` in `games.js` joins one realtime
