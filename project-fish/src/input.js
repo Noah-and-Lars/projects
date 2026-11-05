@@ -8,7 +8,7 @@ const DEGREES_PER_COUNT = 0.022;
 const MAX_PITCH = (89 * Math.PI) / 180;
 
 // Keys the game uses; the browser's default action for them is blocked while playing.
-const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'KeyF', 'Digit1', 'Digit2', 'ShiftLeft', 'ShiftRight']);
+const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'KeyF', 'Digit1', 'Digit2', 'KeyB', 'ShiftLeft', 'ShiftRight']);
 
 // Q aims: a quick click turns aiming on or off; holding it aims until you let go.
 const AIM_KEY = 'KeyQ';
@@ -149,7 +149,12 @@ export class Input {
     return n;
   }
 
-  // Locks the mouse to the game. Must be called from a click.
+  // Lets go of the mouse (for a menu).
+  unlock() {
+    if (document.pointerLockElement === this.element) document.exitPointerLock();
+  }
+
+  // Locks the mouse to the game. Must be called from a click or key press.
   async lock() {
     try {
       // Raw mouse input, without the operating system's mouse acceleration.

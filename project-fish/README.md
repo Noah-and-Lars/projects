@@ -30,6 +30,7 @@ Click to lock the mouse to the game. Press Esc to get the mouse back.
 | R | Reload |
 | F | Inspect the gun |
 | 1 / 2, mouse wheel | Switch guns: the PF-9 and the PF-45 |
+| B | Loadout menu: choose each gun's attachments (B or Esc closes it) |
 | Esc | Release the mouse |
 
 The top-left corner shows the frame rate, your speed and whether you're on the ground or in the air.
@@ -56,6 +57,7 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 | `src/viewmodel/handRig.js` | Finger joints for the gloves (a skeleton fitted when the game loads) |
 | `src/viewmodel/supportHand.js` | The support hand's shapes and how it holds a magazine |
 | `src/viewmodel/shootingHand.js` | The shooting hand's thumb pressing each gun's magazine release |
+| `src/attachments.js`, `src/loadoutMenu.js` | Which attachments each gun has on, and the loadout menu (B) to choose them |
 | `src/effects/audio.js` | The sounds: made in code, and the PF-45's recordings in `assets/sounds/` |
 | `src/viewmodel/sdf.js` | Turns blended shapes into smooth meshes (used for the hands and sleeves) |
 | `assets/pistol.glb`, `assets/pistol45.glb`, `assets/arms.glb` | The detailed pistols, gloves and sleeves, made in Blender |

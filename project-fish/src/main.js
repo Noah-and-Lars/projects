@@ -17,6 +17,8 @@ import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
 import { GpuTimer, Hud } from './hud.js';
 import { settings } from './settings.js';
+import { Loadout } from './attachments.js';
+import { LoadoutMenu } from './loadoutMenu.js';
 
 // Never run more than this much game time in one frame (e.g. after switching
 // tabs), so the game doesn't freeze trying to catch up.
@@ -95,6 +97,14 @@ function switchGun(key) {
 }
 const effects = new WorldEffects(scene);
 
+// The attachments on each gun, and the loadout menu (B) to choose them. If
+// closing the menu can't take the mouse back, the click-to-play screen shows.
+const loadout = new Loadout();
+const menu = new LoadoutMenu(document.getElementById('loadout'), loadout, input, () => held);
+menu.onFailedLock = () => {
+  overlay.hidden = false;
+};
+
 // --- Window size and field of view ---
 
 // three.js wants the vertical FOV. Work it out from the horizontal FOV on a
@@ -131,7 +141,7 @@ overlay.addEventListener('click', () => {
   if (loaded) input.lock();
 });
 input.onLockChange = (locked) => {
-  overlay.hidden = locked;
+  overlay.hidden = locked || menu.open;
   document.body.classList.toggle('playing', locked);
 };
 viewmodel.ready.then(() => {
@@ -303,6 +313,9 @@ renderer.setAnimationLoop((time) => {
   );
   updateViewKick(frameSeconds);
   camera.rotation.set(input.pitch + viewKick.x, input.yaw + viewKick.y, 0);
+
+  // The loadout menu: B.
+  if (input.locked && input.presses('KeyB') > 0) menu.show();
 
   // Switching guns: 1 and 2, or the mouse wheel.
   if (input.locked) {
