@@ -265,8 +265,12 @@ function pressCheckAt(time) {
 // OVER_SLIDE moved by `shift` (its slide is lower or narrower than the first
 // pistol's) and goes back `travel` metres when it fires, and whose magazine
 // goes in along `down`.
+// It takes hold of the slide at its back (pinched over the top behind the
+// ejection port, at the back serrations), within easy reach of the
+// soldier's arm: this far back from where it would over the front.
+const CHECK_REAR = V(0, 0.004, 0.1);
 const inspectCheck = (shift, travel, down, seat) => {
-  const over = OVER_SLIDE.clone().add(shift);
+  const over = OVER_SLIDE.clone().add(shift).add(CHECK_REAR);
   const PULLED = over.clone().add(V(0, 0, travel * PRESS_CHECK));
   return [
   { r: INSPECT.magIn + 0.075, at: holdingAt(0, down, seat).addScaledVector(down, 0.022).add(V(-0.008, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' }, // away from the magazine...
@@ -444,7 +448,7 @@ const STILL = { gun: [0, 0, 0], elbow: [0, 0, 0] };
 const MAGAZINE_CHECK = { at: [-0.04, 0.12, 0.05], turn: RELOAD_POSE.turn, ...STILL };
 // Checking the chamber, the gun is turned muzzle right, a little up, so the
 // top and right side of the slide, with the ejection port, face you.
-const CHAMBER_CHECK = { at: [-0.04, 0.07, 0.03], turn: [0.45, -0.75, 0.15], ...STILL };
+const CHAMBER_CHECK = { at: [-0.075, 0.06, 0.08], turn: [0.45, -0.6, 0.15], ...STILL };
 const poseKey = (t, key, stop = true) => ({ t, ...key, stop });
 // A pose moved and turned a little from another (so a hold isn't frozen).
 const nudged = (key, at, turn) => ({ ...key, at: key.at.map((a, i) => a + at[i]), turn: key.turn.map((a, i) => a + turn[i]) });
