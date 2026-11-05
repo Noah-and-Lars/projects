@@ -453,7 +453,10 @@ window.ArcadeOnline = (() => {
   const LIB = 'rt.js?v=1'; // the arcade's realtime client (Cloudflare), a drop-in for supabase-js
   const CAP = 200; // counts show as "200+" from here
   const SETTLE = 2500; // ms a new count has to hold before it's shown, so quick page changes don't flicker
-  let counts = null, started = false, timer = 0, client = null, settled = false;
+  let counts = null, started = false, timer = 0, client = null, settled = false, names = {};
+  const nameListeners = [];
+  // the online account's name goes with the presence, so the Players page can show who's online
+  const acctName = () => { const a = readSave('arcade-acct', true); return a && a.token && typeof a.name === 'string' ? a.name : ''; };
   const listeners = [], waiting = [];
   // the connection is open (or failed, with null): hand it to whoever asked through ready()
   const opened = c => { client = c; settled = true; for (const f of waiting.splice(0)) try { f(c); } catch (e) {} };
@@ -487,13 +490,16 @@ window.ArcadeOnline = (() => {
           ch.on('presence', { event: 'sync' }, () => {
             // one entry per browser; if it has several pages open, count it on a game over the home page
             const state = ch.presenceState(), byGame = {};
+            names = {}; // signed-in players online now: lower-case name -> the game they're on (for the Players page)
+            for (const k in state) for (const m of state[k]) if (typeof m.n === 'string' && /^[A-Za-z0-9_]{3,16}$/.test(m.n)) { const l = m.n.toLowerCase(); if (!names[l] || names[l] === 'home') names[l] = m.game || 'home'; }
+            for (const f of nameListeners) try { f(names); } catch (e) {}
             for (const k in state) {
               const gs = state[k].map(m => m.game || 'home'), g = gs.find(x => x !== 'home') || 'home';
               byGame[g] = (byGame[g] || 0) + 1;
             }
             emit({ total: Object.keys(state).length, byGame, full: Object.keys(state).length >= CAP });
           }).subscribe(status => {
-            if (status === 'SUBSCRIBED') ch.track({ game: where }).catch(() => emit(null));
+            if (status === 'SUBSCRIBED') ch.track(acctName() ? { game: where, n: acctName() } : { game: where }).catch(() => emit(null));
             else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') emit(null);
           });
         } catch (e) { emit(null); if (!settled) opened(null); }
@@ -510,6 +516,8 @@ window.ArcadeOnline = (() => {
     // Calls f with the connection as soon as it's open, or with null if it can't be reached
     // (the global chat opens its own channel on it). Call start() first.
     ready(f) { if (settled) f(client); else waiting.push(f); },
+    // Calls f({ lowerName: game }) for the signed-in players online now, on every change
+    onNames(f) { nameListeners.push(f); f(names); },
   };
 })();
 

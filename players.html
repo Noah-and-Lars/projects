@@ -37,6 +37,8 @@
 .plist .tx small { color: var(--muted); font-size: 12px; }
 .plist .tag { flex: none; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: #00d2a822; color: var(--accent-2); }
 .plist .tag.req { background: #f2b13433; color: #f2b134; }
+.dot-on { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); flex: none; }
+.on-now { color: var(--accent-2) !important; font-weight: 700; }
 .plist .un { flex: none; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--accent-2); color: #04211b; font-size: 11px; font-weight: 800; text-align: center; }
 .plist .none, .plist .more { cursor: default; color: var(--muted); font-size: 13px; padding: 14px 8px; display: block; }
 .plist .more { cursor: pointer; text-align: center; color: var(--text); text-decoration: underline; }
@@ -116,7 +118,7 @@
   </div>
 </main>
 
-<script src="games.js?v=165"></script>
+<script src="games.js?v=166"></script>
 <script src="account.js?v=7"></script>
 <script>
 // Players (2026-11-06): every account on the arcade, their best score in each game, friends and private messages.
@@ -139,6 +141,8 @@ const joined = ts => ts ? 'Joined ' + new Date(ts).toLocaleDateString([], { day:
 const clock = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const ago = ts => { const d = (Date.now() - ts) / 1000; return d < 60 ? 'now' : d < 3600 ? Math.floor(d / 60) + 'm' : d < 86400 ? Math.floor(d / 3600) + 'h' : Math.floor(d / 86400) + 'd'; };
 
+let online = {};           // lower-case name -> game id, from the arcade's presence channel
+const where = g => g === 'home' || g === 'players' || g === 'chat' ? (g === 'chat' ? 'In the Global chat' : 'Online') : 'Playing ' + ((GAMES.find(x => x.id === g) || {}).title || 'a game');
 let players = [];          // [[name, created, hasScores], ...]
 let soc = null;            // { f, c, b } for the signed-in player
 let view = 'all', limit = 200, cur = null; // cur = { kind: 'p' | 'dm', k, n }
@@ -157,6 +161,8 @@ function item(n, sub, extra) {
   tx.append(el('b', '', n));
   if (sub) tx.append(el('small', '', sub));
   li.append(avatar(n), tx);
+  if (online[lc(n)] && tx.lastChild.tagName === 'SMALL') { tx.lastChild.textContent = where(online[lc(n)]); tx.lastChild.className = 'on-now'; }
+  if (online[lc(n)]) { const d = el('span', 'dot-on'); d.title = 'Online now'; li.append(d); }
   if (extra) li.append(extra);
   return li;
 }
@@ -177,8 +183,10 @@ function renderList() {
   let rows = [];
   if (view === 'all') {
     rows = players.filter(p => !q || lc(p[0]).includes(q)).sort((a, b) => (lc(a[0]) === lc(q)) * -1 + (lc(b[0]) === lc(q)) || lc(a[0]).localeCompare(lc(b[0])))
+      .sort((a, b) => !!online[lc(b[0])] - !!online[lc(a[0])]) // online players first
       .map(p => ({ k: lc(p[0]), n: p[0], sub: (lc(p[0]) === lc(myName()) ? 'You · ' : '') + joined(p[1]), kind: 'p' }));
-    $('plCount').textContent = players.length ? (q ? rows.length + ' of ' : '') + players.length + (players.length === 1 ? ' player' : ' players') : 'No players yet';
+    const on = players.filter(p => online[lc(p[0])]).length;
+    $('plCount').textContent = players.length ? (q ? rows.length + ' of ' : '') + players.length + (players.length === 1 ? ' player' : ' players') + ' · ' + on + ' online' : 'No players yet';
   } else if (!signedIn()) {
     $('plCount').textContent = '';
     ul.replaceChildren(el('li', 'none', 'Sign in to an online account to add friends and send messages.'));
@@ -250,7 +258,9 @@ function openProfile(n) {
 }
 function drawProfile(box, r) {
   const k = lc(r.n), mine = k === lc(myName()), head = el('div', 'prof-head'), t = el('div');
-  t.append(el('h1', '', r.n), el('p', '', [joined(r.c), mine ? 'This is you' : ''].filter(Boolean).join(' · ')));
+  const st = el('p', '', [joined(r.c), mine ? 'This is you' : ''].filter(Boolean).join(' · '));
+  if (online[k]) { const o = el('span', 'on-now', ' · ● ' + where(online[k])); st.append(o); }
+  t.append(el('h1', '', r.n), st);
   head.append(backBtn(), avatar(r.n), t);
   const acts = el('div', 'prof-acts');
   const btn = (text, cls, fn) => { const b = el('button', 'btn' + (cls ? ' ' + cls : ''), text); b.type = 'button'; b.onclick = () => { b.disabled = true; Promise.resolve(fn()).finally(() => { b.disabled = false; }); }; acts.append(b); return b; };
@@ -429,6 +439,9 @@ function live() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && dm && cur && cur.kind === 'dm' && soc && soc.c[dm.k] && soc.c[dm.k].un) openDm(dm.n); });
 
+ArcadeOnline.start('players');
+let onT = 0;
+ArcadeOnline.onNames(n => { online = n; clearTimeout(onT); onT = setTimeout(() => { renderList(); }, 300); });
 loadPlayers().then(route);
 loadSocial();
 live();
