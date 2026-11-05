@@ -28,6 +28,9 @@ export const BUTTON_AIM = 1 << 1;
 export const BUTTON_SPRINT = 1 << 2;
 export const BUTTON_CROUCH = 1 << 3;
 export const BUTTON_PRONE = 1 << 4;
+// The Shift key itself, held (BUTTON_SPRINT is Shift when sprinting is
+// allowed: not while aiming or just after a shot). Double taps go by this.
+export const BUTTON_SPRINT_KEY = 1 << 5;
 
 export function createPlayerState() {
   return {
@@ -43,6 +46,7 @@ export function createPlayerState() {
     stamina: 1, // tactical sprint, 0..1
     staminaWait: 0, // s before it starts coming back
     sprintTime: 0, // s of sprinting so far
+    sprintHeld: false, // Shift is still down from a sprint that C crouched out of
     stance: 'stand', // 'stand', 'crouch' or 'prone'
     move: 'ground', // 'ground', 'air', 'slide', 'supine', 'rise', 'dive', 'mantle'
     moveTime: 0, // s in this move
@@ -120,9 +124,16 @@ export function simulatePlayer(s, cmd, dt) {
   // Shift soon after letting it go is a tactical sprint, while stamina lasts.
   const free = s.move === 'ground' || s.move === 'air';
   const wantsSprint = Boolean(cmd.buttons & BUTTON_SPRINT) && !aiming && cmd.forward > 0 && free;
-  if ((pressed & BUTTON_SPRINT) && s.sprintTap < MOVEMENT.doubleTap && s.stamina >= MOVEMENT.tacSprintMinStamina) s.tacSprint = true;
-  if (released & BUTTON_SPRINT) s.sprintTap = s.sprinting ? 0 : 9;
-  const sprinting = wantsSprint && (s.grounded || s.sprinting);
+  // (The double tap is of the Shift key itself, so aiming for a moment
+  // while sprinting doesn't count as one. A command without the key's own
+  // bit, from older code, uses the sprint button.)
+  const key = cmd.buttons & (BUTTON_SPRINT_KEY | BUTTON_SPRINT) ? (cmd.buttons & BUTTON_SPRINT_KEY ? BUTTON_SPRINT_KEY : BUTTON_SPRINT) : BUTTON_SPRINT_KEY;
+  if ((pressed & key) && s.sprintTap < MOVEMENT.doubleTap && s.stamina >= MOVEMENT.tacSprintMinStamina) s.tacSprint = true;
+  if (released & key) s.sprintTap = s.sprinting ? 0 : 9;
+  // C while sprinting that can't slide yet crouches you, and holding Shift
+  // doesn't stand you straight back up: press it again to sprint.
+  if (pressed & key) s.sprintHeld = false;
+  const sprinting = wantsSprint && !s.sprintHeld && (s.grounded || s.sprinting);
   if (sprinting && s.stance !== 'stand') {
     // Sprinting gets you up (if there's room).
     if (fits(s.x, s.y, s.z, PLAYER.heights.stand)) s.stance = 'stand';
@@ -147,13 +158,18 @@ export function simulatePlayer(s, cmd, dt) {
     s.crouchTap = 0;
     if (s.sprinting && s.grounded && s.sprintTime >= MOVEMENT.slideMinSprintTime && speed >= MOVEMENT.slideMinSpeed && s.slideCooldown === 0) {
       startSlide(s, speed, false);
+    } else if (s.sprinting && s.move === 'ground') {
+      // Too soon into the sprint to slide: crouch, and stop sprinting.
+      s.stance = 'crouch';
+      s.sprinting = s.tacSprint = false;
+      s.sprintHeld = true;
     } else if (s.move === 'slide' && doubleTap && s.moveTime < 0.25) {
       // The second tap of a double tap, just into a slide: onto your back.
       startSlide(s, Math.hypot(s.vx, s.vz) / MOVEMENT.slideBoost, true);
     } else if (s.move === 'ground') {
       if (s.stance === 'crouch') {
         if (fits(s.x, s.y, s.z, PLAYER.heights.stand)) s.stance = 'stand';
-      } else {
+      } else if (s.stance === 'stand' || fits(s.x, s.y, s.z, PLAYER.heights.crouch)) {
         s.stance = 'crouch';
       }
     }
@@ -239,6 +255,7 @@ export function simulatePlayer(s, cmd, dt) {
   if (!s.grounded) {
     s.y += s.vy * dt - 0.5 * MOVEMENT.gravity * dt * dt;
     s.vy -= MOVEMENT.gravity * dt;
+    s.fallFrom = Math.max(s.fallFrom, s.y); // a fall is from its highest point
   }
   for (const box of COLLIDERS) collideWithBox(s, box);
   const floor = floorAt(s.x, s.z, s.y + PLAYER.stepHeight);
@@ -249,6 +266,8 @@ export function simulatePlayer(s, cmd, dt) {
       s.vy = 0;
       s.fallFrom = s.y;
       if (s.move === 'ground') setMove(s, 'air');
+      // (A slide carries on over a small drop: gravity takes it down and it
+      // keeps sliding when it lands.)
     } else {
       s.y = floor; // steps up anything low enough
     }
@@ -318,6 +337,7 @@ function land(s, wasGrounded) {
     return;
   }
   if (s.move === 'air') setMove(s, 'ground');
+  if (s.move === 'slide' || s.move === 'supine') return; // landed still sliding
   const keep = s.sprinting ? MOVEMENT.sprintLandKeep : 0;
   if (fall >= MOVEMENT.hardLandFall) {
     s.landSlow = MOVEMENT.hardLand.time;
@@ -358,12 +378,12 @@ function stepSlide(s, cmd, pressed, wishX, wishZ, hasInput, dt) {
     const turn = (side * MOVEMENT.slideSteer * dt) / Math.max(speed, 1);
     const c = Math.cos(turn);
     const sn = Math.sin(turn);
-    [dx, dz] = [dx * c + dz * sn, -dx * sn + dz * c];
+    [dx, dz] = [dx * c - dz * sn, dx * sn + dz * c];
   }
   s.vx = dx * speed;
   s.vz = dz * speed;
   const duration = supine ? MOVEMENT.supineTime : MOVEMENT.slideTime;
-  if (!supine && s.jumpBufferTimer > 0 && s.moveTime >= MOVEMENT.slideJumpDelay && fits(s.x, s.y, s.z, PLAYER.heights.stand)) {
+  if (!supine && s.grounded && s.jumpBufferTimer > 0 && s.moveTime >= MOVEMENT.slideJumpDelay && fits(s.x, s.y, s.z, PLAYER.heights.stand)) {
     // Out of the slide at speed: a slide cancel.
     s.stance = 'stand';
     s.slideCooldown = MOVEMENT.slideCooldown;
@@ -378,14 +398,17 @@ function stepSlide(s, cmd, pressed, wishX, wishZ, hasInput, dt) {
   if (s.moveTime >= duration || speed < MOVEMENT.walkSpeed * MOVEMENT.crouchSpeedFactor) {
     s.slideCooldown = MOVEMENT.slideCooldown;
     if (supine) {
-      s.stance = 'crouch';
-      setMove(s, 'rise');
+      // Up off your back (if there's room to crouch; else onto your front).
+      if (fits(s.x, s.y, s.z, PLAYER.heights.crouch)) {
+        s.stance = 'crouch';
+        setMove(s, 'rise');
+      } else {
+        s.stance = 'prone';
+        setMove(s, 'ground');
+      }
     } else {
-      setMove(s, 'ground');
+      setMove(s, s.grounded ? 'ground' : 'air');
     }
-  }
-  if (!s.grounded) {
-    s.move = 'air';
   }
 }
 

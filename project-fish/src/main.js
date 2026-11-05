@@ -128,8 +128,11 @@ function applyLoadout(key) {
   const g = viewmodel.guns[key];
   if (weapons[key] && g) weapons[key].chamberCheck = g.points.chamberCheck !== false;
 }
+const pendingLoadout = new Set();
 loadout.onChange((key) => {
-  if (loaded) applyLoadout(key);
+  if (!loaded) return;
+  if (key === held && (weapon.reloading || weapon.inspect)) pendingLoadout.add(key);
+  else applyLoadout(key);
 });
 menu.onFailedLock = () => {
   overlay.hidden = false;
@@ -418,9 +421,10 @@ renderer.setAnimationLoop((time) => {
   // How far we are between the last tick and the next one (0..1).
   const alpha = accumulator / TICK_DT;
   const feetY = previous.y + (player.y - previous.y) * alpha;
+  const eyeNow = previous.eye + (player.eye - previous.eye) * alpha;
   camera.position.set(
     previous.x + (player.x - previous.x) * alpha,
-    feetY + previous.eye + (player.eye - previous.eye) * alpha,
+    feetY + eyeNow,
     previous.z + (player.z - previous.z) * alpha,
   );
   updateViewKick(frameSeconds);
@@ -428,14 +432,21 @@ renderer.setAnimationLoop((time) => {
   camera.rotation.set(input.pitch + viewKick.x + moveFeel.pitch, input.yaw + viewKick.y, moveFeel.roll);
 
   // The loadout menu: B.
-  if (input.locked && input.presses('KeyB') > 0) menu.show();
+  if (input.locked && input.presses('KeyB') > 0) {
+    menu.show();
+    if (weapon.inspect) weapon.inspect.cut = true; // put the gun back in the hold first
+  }
+  // A loadout change to the gun in the hands waits for its reload or
+  // inspect to end.
+  if (pendingLoadout.has(held) && !weapon.reloading && !weapon.inspect) {
+    pendingLoadout.delete(held);
+    applyLoadout(held);
+  }
   // The light and laser: T.
-  if (input.locked && input.presses('KeyT') > 0) {
+  if (input.locked && input.presses('KeyT') > 0 && (viewmodel.points.light || viewmodel.points.laser)) {
     lightsOn = !lightsOn;
-    if (viewmodel.points.light || viewmodel.points.laser) {
-      playSwitchClick();
-      viewmodel.flickSwitch();
-    }
+    playSwitchClick();
+    viewmodel.flickSwitch();
   }
 
   // Switching guns: 1 and 2, or the mouse wheel.
@@ -457,13 +468,15 @@ renderer.setAnimationLoop((time) => {
   // Climbing, diving through the air or getting up off your back, the gun
   // can't fire (aiming, it can while climbing).
   const cantFire = (player.move === 'mantle' && !input.aiming) || player.move === 'rise' || (player.move === 'dive' && !player.grounded);
+  // (Clicks while it can't fire are dropped, not kept for later.)
+  const clicks = input.locked ? input.presses('Mouse0') : 0;
   if (input.locked && input.presses('KeyR') > 0) asked.reload = true;
   if (input.locked && input.presses('KeyF') > 0) asked.inspect = true;
   const reloadNow = asked.reload && !switching;
   const inspectNow = asked.inspect && !switching;
   if (!switching || !input.locked) asked.reload = asked.inspect = false;
   const events = input.locked
-    ? weapon.update(frameSeconds, cantFire ? 0 : input.presses('Mouse0'), reloadNow, viewmodel.readyToFire, inspectNow, busy)
+    ? weapon.update(frameSeconds, cantFire ? 0 : clicks, reloadNow, viewmodel.readyToFire, inspectNow, busy)
     : weapon.update(frameSeconds, 0, false, viewmodel.readyToFire, false, busy);
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
@@ -506,7 +519,7 @@ renderer.setAnimationLoop((time) => {
   updateBarrelSmoke(frameSeconds);
   effects.update(frameSeconds);
   soldier.update(frameSeconds);
-  body.update(new THREE.Vector3(camera.position.x, feetY, camera.position.z), input.yaw, input.pitch, player, frameSeconds);
+  body.update(new THREE.Vector3(camera.position.x, feetY, camera.position.z), input.yaw, input.pitch, player, frameSeconds, eyeNow);
   if (fpArms && body.model && loaded) fpArms.update(camera);
   updateAmmo();
 

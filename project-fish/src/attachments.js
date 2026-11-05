@@ -136,7 +136,9 @@ export class Loadout {
     if (id !== null) {
       for (const [need, ids] of Object.entries(option(gun, slot, id).needs || {})) {
         if (ids.includes(on[need])) continue;
-        const pick = ids.find((other) => !clash(gun, slot, id, need, other));
+        // (The first that fits with everything on, if one does.)
+        const pick = ids.find((other) => Object.entries(on).every(([s2, id2]) => s2 === need || !clash(gun, need, other, s2, id2)))
+          || ids.find((other) => !clash(gun, slot, id, need, other));
         if (pick) {
           on[need] = pick;
           chosen.add(need);

@@ -99,12 +99,17 @@ export class PlayerBody {
   // feet: where the player stands (world); yaw, pitch: where they look;
   // player: the movement state (crouching lowers his hips; sliding, lying,
   // diving and climbing aren't posed yet, so he's left out then).
-  update(feet, yaw, pitch, player = null, dt = 0) {
+  update(feet, yaw, pitch, player = null, dt = 0, eye = player ? player.eye : PLAYER.eyeHeight) {
     const model = this.model;
     if (!model) return;
     // The walking cycle.
     const speed = player && player.grounded ? Math.hypot(player.vx, player.vz) : 0;
-    this.phase = (this.phase || 0) + speed * dt * GAIT.stepsPerMetre * Math.PI;
+    // (At low speeds a foot stays down so long that a full stride would be
+    // too long: the cycle shortens so each step is no longer than he can
+    // take, still keeping the planted foot put.)
+    const stanceNow = THREE.MathUtils.lerp(GAIT.stance[0], GAIT.stance[1], THREE.MathUtils.clamp(speed / 5, 0, 1));
+    this.cycle = Math.min(2 / GAIT.stepsPerMetre, (GAIT.maxStride * 2) / stanceNow);
+    this.phase = (this.phase || 0) + (speed * dt * 2 * Math.PI) / this.cycle;
     const k = 1 - Math.exp(-dt * GAIT.ease);
     this.walk = (this.walk || 0) + ((speed > 0.3 ? 1 : 0) - (this.walk || 0)) * k;
     this.air = (this.air || 0) + ((player && !player.grounded && player.move !== 'mantle' ? 1 : 0) - (this.air || 0)) * k;
@@ -113,7 +118,7 @@ export class PlayerBody {
     // need them.)
     const posed = !player || !(isLow(player) || player.move === 'mantle');
     this.setShown(posed);
-    const crouch = player ? Math.max(0, PLAYER.eyeHeight - player.eye) : 0;
+    const crouch = Math.max(0, PLAYER.eyeHeight - eye); // (the camera's eye height this frame)
     model.position.copy(feet);
     model.rotation.set(0, yaw + Math.PI, 0); // he faces +Z
     for (const [bone, rest] of this.rest) {
@@ -130,8 +135,7 @@ export class PlayerBody {
     if (this.walk > 0.01 || this.air > 0.01) {
       const run = THREE.MathUtils.clamp(speed / 5, 0, 1);
       const stance = THREE.MathUtils.lerp(GAIT.stance[0], GAIT.stance[1], run);
-      const cycle = 2 / GAIT.stepsPerMetre; // metres
-      const stride = Math.min(GAIT.maxStride * 2, cycle * stance); // how far a foot goes back while down
+      const stride = this.cycle * stance; // how far a foot goes back while it's down
       const lift = THREE.MathUtils.lerp(GAIT.lift[0], GAIT.lift[1], run) * (player && player.stance === 'crouch' ? 0.6 : 1);
       const dir = new THREE.Vector3(Math.sin(this.heading || 0), 0, Math.cos(this.heading || 0));
       planted.forEach((foot, i) => {

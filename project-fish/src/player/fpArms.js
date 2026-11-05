@@ -43,7 +43,6 @@ export class FirstPersonArms {
     this.viewmodel = viewmodel;
     this.ready = false;
     this.meshes = [];
-    this.pull = v();
   }
 
   // Once both are loaded: his arm bones, the calibration between his hands
@@ -144,12 +143,16 @@ export class FirstPersonArms {
     const Cq = camera.getWorldQuaternion(q());
     const toView = C.clone().invert();
 
-    // How far each hand is past his reach: draw the gun in by that much.
+    // How far each hand is past his reach: draw the gun in by that much. (The
+    // gun already has last frame's pull; the wrists are measured without it.
+    // The viewmodel adds the pull from the next frame on, so everything that
+    // reads the gun's place, the muzzle flash and the shots, agrees.)
     viewmodel.scene.updateMatrixWorld(true);
     const pull = v();
+    const had = viewmodel.reachPull.clone();
     for (const arm of Object.values(this.arms)) {
       const shoulder = arm.upper.getWorldPosition(v()).applyMatrix4(toView);
-      const wrist = arm.wristAt.clone().applyMatrix4(arm.rig.root.matrixWorld);
+      const wrist = arm.wristAt.clone().applyMatrix4(arm.rig.root.matrixWorld).sub(had);
       const d = wrist.distanceTo(shoulder);
       const k = THREE.MathUtils.smoothstep(d / arm.reach, REACH.start, REACH.full + 0.02);
       const excess = Math.max(0, d - arm.reach * REACH.start) * k;
@@ -158,8 +161,9 @@ export class FirstPersonArms {
       pull.addScaledVector(shoulder.sub(wrist).normalize(), excess * w);
     }
     if (pull.length() > 0.25) pull.setLength(0.25);
-    this.pull.lerp(pull, 0.5);
-    viewmodel.holder.position.add(this.pull);
+    viewmodel.reachPull.lerp(pull, 0.5);
+    // (This frame's gun moves by the change straight away.)
+    viewmodel.holder.position.add(viewmodel.reachPull.clone().sub(had));
     viewmodel.scene.updateMatrixWorld(true);
 
     for (const arm of Object.values(this.arms)) {

@@ -294,6 +294,7 @@ const RACK_PULL = 0.006; // metres further back than locked
 function rackFromBehind(E, shift, down, seat) {
   const rear = OVER_SLIDE.clone().add(shift).add(RACK_REAR);
   const pulled = rear.clone().add(V(0, 0, RACK_PULL));
+  const back = E.handOn - E.slideRelease; // from letting go to holding the grip again
   return [
     { r: E.magIn + 0.03, at: holdingAt(0, down, seat).addScaledVector(down, 0.025).add(V(-0.01, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' }, // off the magazine...
     { r: E.rackGrab - 0.06, at: rear.clone().add(V(-0.05, 0.03, 0.03)), turn: between(HOLD_TURN, OVER_TURN, 0.6), hand: 'open' }, // ...up and over...
@@ -301,10 +302,11 @@ function rackFromBehind(E, shift, down, seat) {
     { r: E.rackGrab, at: rear, turn: OVER_TURN, hand: 'slide', stop: true }, // ...and takes hold
     { r: E.rackPull, at: pulled, turn: OVER_TURN, hand: 'slide', stop: true }, // pulls it back
     { r: E.slideRelease, at: pulled, turn: OVER_TURN, hand: 'slide', stop: true },
-    { r: E.slideRelease + 0.02, at: pulled.clone().add(V(-0.015, 0.012, 0.012)), turn: OVER_TURN, hand: 'open' }, // lets go: it slams home
-    { r: E.slideRelease + 0.06, at: pulled.clone().add(V(-0.04, 0.03, 0.02)), turn: between(OVER_TURN, NONE, 0.3), hand: 'open' },
-    { r: E.handOn - 0.075, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // back down beside the grip
-    { r: E.handOn - 0.035, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' },
+    // (Spaced through the time left, so they never bunch up.)
+    { r: E.slideRelease + 0.15 * back, at: pulled.clone().add(V(-0.015, 0.012, 0.012)), turn: OVER_TURN, hand: 'open' }, // lets go: it slams home
+    { r: E.slideRelease + 0.38 * back, at: pulled.clone().add(V(-0.04, 0.02, 0.02)), turn: between(OVER_TURN, NONE, 0.3), hand: 'open' },
+    { r: E.slideRelease + 0.68 * back, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // back down beside the grip
+    { r: E.slideRelease + 0.84 * back, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' },
     { r: E.handOn, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
   ];
 }
@@ -693,6 +695,9 @@ export class Viewmodel {
     this.switching = null; // { to }: putting it away to draw another
     this.lowered = 0; // how far down out of view it is while switching (0..1)
     this.aimPosition = new THREE.Vector3();
+    // How far the gun is drawn in so the soldier's arms reach it (set by
+    // src/player/fpArms.js).
+    this.reachPull = new THREE.Vector3();
 
     // Resolves once the pistols and hands are loaded and in place.
     const kinds = Object.keys(GUN_KINDS);
@@ -916,7 +921,7 @@ export class Viewmodel {
     // The hand that checks the chamber takes hold of the slide over its
     // front: not with the clamp mount or box suppressor in the way. With the
     // rail cover on, it takes hold of that.
-    if (ids.has('clamp') || ids.has('can_box')) points.chamberCheck = false;
+    if (['clamp', 'can_box'].some((id) => ids.has(id) && g.attachments[id])) points.chamberCheck = false;
     if (ids.has('cover') && extra.cover) {
       points.slideTop = extra.cover.slide.top;
       points.slideHalfWidth = extra.cover.slide.halfWidth;
@@ -1199,7 +1204,7 @@ export class Viewmodel {
     // Weapon physics move the whole posed gun about the pivot between the wrists.
     // Sprinting tips the gun down, except while reloading, inspecting or aiming.
     this.motion.update(frameSeconds, player, yaw, pitch, wallDistance, aim, Boolean(player.sprinting) && reload < 0 && inspect < 0 && !aiming);
-    this.holder.position.copy(this.pivot).add(this.motion.position.value);
+    this.holder.position.copy(this.pivot).add(this.motion.position.value).add(this.reachPull);
     const r = this.motion.rotation.value;
     this.holder.rotation.set(r.x, r.y, r.z);
     this.gun.position.copy(this.posePosition).sub(this.pivot);
