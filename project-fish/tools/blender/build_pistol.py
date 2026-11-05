@@ -19,8 +19,12 @@ the hands still fit, and adds:
   out of the front and the chamber shows.
 - A whole magazine (steel body with witness holes, baseplate, top round),
   hidden in the grip until it drops out during a reload.
-- Small parts: three-dot sights, extractor, striker plate, slide stop,
-  takedown levers, magazine release, pins, trigger with safety blade.
+- Small parts: three-dot sights (anti-glare grooves on the rear one) in
+  dovetails, extractor, striker plate with its seam, a slide stop with a
+  ridged pad, ridged takedown levers and magazine release, three pins, a
+  steel serial plate, trigger with safety blade.
+- Thumb-rest scallops above the trigger guard, a relief cut along the bottom
+  front of the slide, and a (made-up) fish emblem on the grip.
 - Engraved markings: model name and serial number (made up, no real brands),
   calibre on the barrel.
 - Coarse stippling all round the grip, inside a smooth border.
@@ -112,6 +116,26 @@ GRIP_SHELL = filleted([(0.0265, -0.0575, 0.003), (0.0205, -0.075, 0.012), (0.011
 # a little further at the front and back.
 MAGWELL = [(0.0049, -0.1165), (0.0047, -0.1248), (-0.0485, -0.1248), (-0.0525, -0.1168), (-0.0515, -0.1135), (0.0042, -0.1135)]
 SLIDE_HALF = 0.0245 / 2
+# The emblem on the grip: a fish facing forward (a made-up mark, not a real
+# maker's), centred here (s, y) inside a smooth round patch in the stippling.
+EMBLEM = (-0.011, -0.069)
+EMBLEM_PATCH = 0.0072  # radius of the smooth patch
+
+
+def fish_outline(cs, cy, length=0.0105, height=0.0052):
+    """The fish's outline (s, y): an almond-shaped body, head forward, and a
+    forked tail at the back."""
+    pts = []
+    body = length * 0.72
+    for k in range(17):
+        t = math.pi * k / 16  # along the top of the body, head to tail
+        pts.append((cs + body / 2 * math.cos(t), cy + height / 2 * math.sin(t) * (0.75 + 0.25 * math.cos(t))))
+    tail = cs - body / 2
+    pts += [(tail - length * 0.2, cy + height * 0.45), (tail - length * 0.13, cy), (tail - length * 0.2, cy - height * 0.45)]
+    for k in range(1, 16):
+        t = math.pi + math.pi * k / 16
+        pts.append((cs + body / 2 * math.cos(t), cy + height / 2 * math.sin(t) * (0.75 + 0.25 * math.cos(t))))
+    return pts[::-1] if sum((x1 - x0) * (y1 + y0) for (x0, y0), (x1, y1) in zip(pts, pts[1:] + pts[:1])) > 0 else pts
 FRAME_HALF = 0.0235 / 2
 
 
@@ -180,6 +204,15 @@ def wedge(name, tri_xy, s0, s1):
         j = (i + 1) % 3
         bm.faces.new((a[i], a[j], b[j], b[i]))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return from_bmesh(name, bm)
+
+
+def ellipsoid(name, center, radii, segments=32):
+    """An ellipsoid at center (x, s, y) with radii (x, s, y)."""
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=segments // 2, radius=1.0)
+    for v in bm.verts:
+        v.co = Vector((center[0] + v.co.x * radii[0], center[1] + v.co.y * radii[1], center[2] + v.co.z * radii[2]))
     return from_bmesh(name, bm)
 
 
@@ -330,6 +363,15 @@ def build_slide(p):
         cutters.append(from_bmesh('bottom_chamfer', bm))
     nose = [(0.1455, -0.0112), (0.1535, -0.0112), (0.1535, -0.0076)]
     cutters.append(prism('nose_slope', nose, 0.03))
+    # A relief cut along the bottom of each side at the front: the slide steps
+    # in a little there.
+    for side in (-1, 1):
+        x_in, x_out = side * (SLIDE_HALF - 0.0007), side * (SLIDE_HALF + 0.002)
+        cutters.append(box('relief', min(x_in, x_out), max(x_in, x_out), 0.088, 0.16, -0.0115, -0.0074))
+    # The seam round the back plate, on the back face.
+    for x0, x1, y0, y1 in ((-0.0082, -0.0077, -0.0087, 0.0113), (0.0077, 0.0082, -0.0087, 0.0113),
+                           (-0.0082, 0.0082, -0.0087, -0.0083), (-0.0082, 0.0082, 0.0109, 0.0113)):
+        cutters.append(box('plate_seam', x0, x1, -0.034, -0.0314, y0, y1))
     # Recess at the muzzle for the barrel crown.
     cutters.append(cylinder('recess', 0.0069, 0.1475, 0.16))
     cut(slide, *cutters)
@@ -355,14 +397,24 @@ def build_slide(p):
     rear = box('rear_sight', -0.0082, 0.0082, -0.0248, -0.0168, SLIDE_TOP - 0.001, SLIDE_TOP + 0.0058)
     cut(rear, box('notch', -0.0018, 0.0018, -0.03, -0.01, SLIDE_TOP + 0.0026, 0.04))
     bevel(rear, 0.0004, 2)
+    # Fine horizontal grooves across its back face so it doesn't catch the
+    # light, above and below the dots.
+    cut(rear, *[box('anti_glare', -0.009, 0.009, -0.0252, -0.0243, SLIDE_TOP + h, SLIDE_TOP + h + 0.00055)
+                for h in (0.0001, 0.0011, 0.0043, 0.0052)])
     front = box('front_sight', -0.0017, 0.0017, 0.1376, 0.1438, SLIDE_TOP - 0.001, SLIDE_TOP + 0.0052)
     bevel(front, 0.0004, 2)
+    # The sights sit in dovetails: their bases show as low, wider blocks
+    # across the top of the slide.
+    rear_base = box('rear_base', -0.0098, 0.0098, -0.0254, -0.0161, SLIDE_TOP - 0.0008, SLIDE_TOP + 0.0007)
+    bevel(rear_base, 0.0003, 2)
+    front_base = box('front_base', -0.0034, 0.0034, 0.1358, 0.1456, SLIDE_TOP - 0.0008, SLIDE_TOP + 0.0006)
+    bevel(front_base, 0.0003, 2)
     # Extractor on the right, striker plate at the back.
     extractor = box('extractor', 0.0115, 0.0129, 0.009, 0.031, 0.0035, 0.0082)
     bevel(extractor, 0.0003, 2)
     plate = box('striker_plate', -0.0076, 0.0076, -0.0326, -0.0306, -0.0082, 0.0108)
     bevel(plate, 0.0004, 2)
-    parts += [rear, front, extractor, plate]
+    parts += [rear, front, rear_base, front_base, extractor, plate]
     join(slide, *parts)
     sharp_edges(slide)
 
@@ -384,12 +436,19 @@ def build_frame(p):
     guard = prism('guard_hole', p['frame']['holes'][0], 0.05)
     rail = [box('rail_slot', -0.02, 0.02, s, s + 0.0032, -0.03, -0.0255) for s in (0.098, 0.1155)]
     side_grooves = [box('rail_groove', side * FRAME_HALF - 0.0008, side * FRAME_HALF + 0.002, 0.09, 0.14, -0.0232, -0.0214) for side in (-1, 1)]
-    cut(frame, guard, *rail, *side_grooves)
-    engrave(frame, 'PF 04217', 0.0027, (FRAME_HALF, 0.072, -0.0168), (0, 1, 0), (0, 0, 1), depth=0.00022)
+    # Shallow thumb-rest scallops on both sides, above the trigger guard.
+    scallops = [ellipsoid('thumb_rest', (side * (FRAME_HALF + 0.0036), 0.032, -0.026), (0.0043, 0.016, 0.0045)) for side in (-1, 1)]
+    cut(frame, guard, *rail, *side_grooves, *scallops)
 
     # A rounded grip shell over the frame's square-edged grip, so it fills the hand.
     grip = prism('grip', GRIP_SHELL, p['grip']['width'])
     bevel(grip, 0.0055, 6, 25)
+    # The fish emblem, cut into both sides of the grip.
+    half = p['grip']['width'] / 2
+    for side in (-1, 1):
+        fish = prism('emblem', fish_outline(*EMBLEM), 0.0016)
+        fish.data.transform(Matrix.Translation((side * (half + 0.0005), 0, 0)))
+        cut(grip, fish)
     # The magazine well flares out at the bottom of the grip, front and back.
     flare = prism('magwell', MAGWELL, p['grip']['width'] + 0.0024)
     bevel(flare, 0.0022, 4, 25)
@@ -455,22 +514,38 @@ def build_small_parts(p):
     magazine = build_magazine(p)
 
     controls = [
-        box('slide_stop', -FRAME_HALF - 0.0021, -FRAME_HALF + 0.0004, -0.007, 0.0135, -0.0168, -0.0118),
-        box('slide_stop_pad', -FRAME_HALF - 0.0029, -FRAME_HALF, -0.006, 0.0, -0.0166, -0.0122),
+        box('slide_stop', -FRAME_HALF - 0.0021, -FRAME_HALF + 0.0004, -0.009, 0.0145, -0.0168, -0.0118),
+        box('slide_stop_pad', -FRAME_HALF - 0.0031, -FRAME_HALF, -0.0075, 0.0005, -0.0167, -0.0119),
         box('takedown_l', -FRAME_HALF - 0.0014, -FRAME_HALF + 0.0004, 0.0425, 0.052, -0.0178, -0.0142),
         box('takedown_r', FRAME_HALF - 0.0004, FRAME_HALF + 0.0014, 0.0425, 0.052, -0.0178, -0.0142),
         box('mag_release', -FRAME_HALF - 0.0018, -FRAME_HALF + 0.0004, 0.0198, 0.026, -0.0435, -0.0365),
     ]
     for c in controls:
         bevel(c, 0.00035, 2)
+    # Grip ridges: across the slide stop's pad, the takedown levers and the
+    # magazine release button.
+    ridges = [box('stop_ridge', -FRAME_HALF - 0.0035, -FRAME_HALF - 0.0029, s, s + 0.0007, -0.0164, -0.0122) for s in (-0.0066, -0.0046, -0.0026, -0.0006)]
+    for side in (-1, 1):
+        x_in, x_out = side * (FRAME_HALF + 0.0012), side * (FRAME_HALF + 0.0018)
+        ridges += [box('takedown_ridge', min(x_in, x_out), max(x_in, x_out), s, s + 0.0007, -0.0175, -0.0145) for s in (0.0443, 0.0469, 0.0495)]
+    ridges += [box('release_ridge', -FRAME_HALF - 0.0022, -FRAME_HALF - 0.0016, 0.0201, 0.0257, y, y + 0.0004) for y in (-0.0427, -0.0414, -0.0401, -0.0388, -0.0375)]
+    for r in ridges:
+        bevel(r, 0.00012, 1)
+    controls += ridges
     controls_obj = join(controls[0], *controls[1:])
     controls_obj.name = controls_obj.data.name = 'controls'
     sharp_edges(controls_obj)
     plain_material(controls_obj, DARK_STEEL, 0.42, metallic=0.7)
 
+    # Three pins through the frame: trigger, locking block, trigger housing.
     pins = [cylinder('pin', 0.0013, -FRAME_HALF - 0.0003, FRAME_HALF + 0.0003, axis='x', at=(s, y), segments=18)
-            for s, y in ((0.041, -0.0176), (0.0122, -0.0206))]
-    pins_obj = join(pins[0], *pins[1:])
+            for s, y in ((0.041, -0.0176), (0.0122, -0.0206), (-0.0225, -0.0185))]
+    # A steel serial plate set into the right of the frame above the trigger
+    # guard, with the (made-up) serial number on it.
+    plate = box('serial_plate', FRAME_HALF - 0.0003, FRAME_HALF + 0.00035, 0.0615, 0.0825, -0.0196, -0.0142)
+    bevel(plate, 0.0002, 2)
+    engrave(plate, 'PF 04217', 0.0024, (FRAME_HALF + 0.00035, 0.072, -0.0169), (0, 1, 0), (0, 0, 1), depth=0.0002)
+    pins_obj = join(pins[0], *pins[1:], plate)
     pins_obj.name = pins_obj.data.name = 'pins'
     sharp_edges(pins_obj)
     plain_material(pins_obj, '#4a4b4f', 0.35, metallic=1.0)
@@ -556,14 +631,16 @@ def slide_maps(p, n, ao):
     wear = np.clip(smoothstep(180, 750, curve) * patchy, 0, 1)
     color = metal * (1 - wear[:, None]) + steel * wear[:, None]
     rough = 0.36 * (1 - wear) + 0.2 * wear
-    # Fine lengthwise polishing marks and slight unevenness.
-    rough += 0.03 * low_noise(p * np.array([30, 1, 30]), 0.02, 22)
-    color *= (1 + 0.03 * low_noise(p, 0.03, 23))[:, None]
+    # Fine lengthwise machining marks (a faint grain you see in the light) and
+    # slight unevenness.
+    marks = low_noise(p * np.array([40, 1, 40]), 0.03, 22)
+    rough += 0.05 * marks
+    color *= (1 + 0.03 * low_noise(p, 0.03, 23) + 0.025 * marks)[:, None]
     # Striker plate at the back is polymer.
     plate = (p[:, 1] < -0.0302) & (np.abs(p[:, 0]) < 0.0078)
     color[plate] = srgb_to_linear(POLYMER)
     rough[plate] = 0.6
-    height = np.zeros(count)
+    height = 0.000006 * marks
 
     # Holster wear: the finish rubbed thin along the sides, in long lengthwise
     # marks, most towards the muzzle and the bottom edge.
@@ -648,11 +725,22 @@ def frame_maps(p, n, ao, profiles):
     u = np.where(side_facing, p[:, 1], p[:, 0])
     v = p[:, 2]
     dots = stipple(u, v, cell=0.0013)
-    fade = smoothstep(0.0, 0.0015, np.minimum(np.abs(p[:, 0]) - FRAME_HALF, 1)) * border
+    # A smooth round patch for the emblem on each side.
+    patch = side_facing * smoothstep(EMBLEM_PATCH - 0.0005, EMBLEM_PATCH, np.hypot(p[:, 1] - EMBLEM[0], p[:, 2] - EMBLEM[1]))
+    patch = np.where(side_facing, patch, 1.0)
+    fade = smoothstep(0.0, 0.0015, np.minimum(np.abs(p[:, 0]) - FRAME_HALF, 1)) * border * patch
     height += np.where(in_panel, 0.00019 * dots * fade, 0)
     # The smooth border is a touch lower than the stippled panel, with a crisp edge.
     height -= np.where(in_panel, 0.00008 * (1 - border), 0)
-    rough = np.where(in_panel, rough + 0.12, rough)
+    rough = np.where(in_panel, rough + 0.12 * patch, rough)
+    # The emblem's fish is cut in and a little darker, so it reads as a shape.
+    fish = side_facing & inside_polygon(p[:, 1], p[:, 2], fish_outline(*EMBLEM))
+    color = np.where(fish[:, None], color * 0.6, color)
+    rough = np.where(fish, rough + 0.1, rough)
+    # The polymer has a fine grain everywhere, so it isn't plastic-smooth.
+    grain = low_noise(p, 0.0016, 33)
+    height += 0.000012 * grain
+    rough += 0.04 * grain
     color = np.where(in_panel[:, None], color * (0.95 + 0.1 * dots[:, None]), color)
 
     # Worn: scuffs and scratches, edges rubbed smooth, and the grip worn

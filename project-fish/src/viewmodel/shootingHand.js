@@ -9,9 +9,10 @@ import { HandRig } from './handRig.js';
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // The magazine release button, on the left of the frame just behind the
-// trigger guard (gun space): the middle of its face, and how far it presses
-// in (towards +X). The Blender pistol (build_pistol.py) matches.
-export const MAG_RELEASE = { face: V(-0.01355, -0.04, -0.0229), travel: 0.0015 };
+// trigger guard (gun space): the middle of its face (the tops of its grip
+// ridges), and how far it presses in (towards +X). The Blender pistol
+// (build_pistol.py) matches.
+export const MAG_RELEASE = { face: V(-0.0139, -0.04, -0.0229), travel: 0.0015 };
 
 // Moves a chain of joints so its end reaches `target`, keeping every bone its
 // length and the first joint where it is, changing it as little as it can
