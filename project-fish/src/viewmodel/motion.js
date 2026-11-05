@@ -25,9 +25,13 @@ export const MOTION = {
   wall: { far: 0.85, near: 0.35, back: 0.12, down: 0.025, tip: 0.4 },
   // Sprinting: the hands bend down at the wrists, tipping the gun muzzle down
   // (`bend`, radians; the forearms stay put), and the arms come in a little
-  // lower and closer (metres), canted in a touch. The strides are longer and
-  // swing it more. `ease`: how quickly it goes into the pose and back out.
-  sprint: { bend: 0.6, tip: 0.05, back: 0.05, up: 0.015, inward: 0.015, roll: 0.05, stride: 0.75, bob: 1.8, ease: 7 },
+  // closer (metres), turned so the muzzle points a little in across the body
+  // (`yaw`) with the top canted in (`roll`). The line the wrists bend about
+  // runs slightly downhill to the support hand, so on its own the bend would
+  // swing the muzzle out to the right; the turn makes up for that. The
+  // strides are longer and swing it more. `ease`: how quickly it goes into
+  // the pose and back out.
+  sprint: { bend: 0.6, tip: 0.05, back: 0.05, up: 0.015, inward: 0.015, roll: 0.14, yaw: 0.28, stride: 0.75, bob: 1.8, ease: 7 },
   // Aiming down the sights: how much of each movement is left (1 = all of it).
   aiming: { look: 0.75, inertia: 0.5, lean: 0.35, bob: 0.4, wall: 0.5 },
   // Hold sway while aiming: a few slow, uneven drifts (radians, cycles a second)
@@ -242,6 +246,7 @@ export class ViewmodelMotion {
     target.x -= M.sprint.inward * run;
     targetRot.x -= M.sprint.tip * run;
     targetRot.z += M.sprint.roll * run;
+    targetRot.y += M.sprint.yaw * run;
 
     this.position.step(dt, target, force);
     this.rotation.step(dt, targetRot, torque);
