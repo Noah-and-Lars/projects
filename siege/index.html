@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=1"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.15';
+const VERSION = '1.0.16';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -5728,15 +5728,25 @@ function snRemoteShot(P, e) {
 function snSendStates(dt) {
   if (!G.online || !SN.room) return;
   const t = now(), P = me();
+  // 1.0.16: less traffic (the realtime server's free daily allowance ran out). 8 a second while you move, aim or
+  // shoot, once a second while nothing about you changes, once a second in operator pick
   if (P && (P.alive || G.phase === 'pick') && t > SN.sendAt) {
-    const still = Math.hypot(P.vx, P.vz) < 0.05 && P.mode === 'body' && P.shots === SN.sentShots;
-    SN.sentShots = P.shots;
-    SN.sendAt = t + (still ? 0.25 : 1 / 12);
-    NET.send('s', snPack(P));
+    const o = snPack(P), key = JSON.stringify([o.p, o.r, o.c, o.pr, o.l, o.s, o.m, o.a, o.h, o.su, o.so, o.dn, o.d, o.ho]);
+    const same = key === SN.lastKey && P.shots === SN.sentShots;
+    if (!same || t > SN.lastSend + 1 || G.phase === 'pick') {
+      NET.send('s', o); SN.lastKey = key; SN.sentShots = P.shots; SN.lastSend = t;
+      SN.sendAt = t + (G.phase === 'pick' ? 1 : 1 / 8);
+    } else SN.sendAt = t + 1 / 8;
   }
+  // bots: 5 a second, and only the ones that moved or changed (and each one at least once a second)
   if (G.host && t > SN.botAt) {
-    SN.botAt = t + 0.1;
-    const b = [...G.P.values()].filter(Q => Q.bot && Q.alive).map(snPack);
+    SN.botAt = t + 0.2; SN.botKeys = SN.botKeys || {};
+    const b = [];
+    for (const Q of G.P.values()) {
+      if (!Q.bot || !Q.alive) continue;
+      const o = snPack(Q), key = JSON.stringify([o.p, o.r, o.c, o.pr, o.s, o.a, o.h, o.su, o.dn, o.n]), k = SN.botKeys[Q.id];
+      if (!k || k.key !== key || t > k.t + 1) { b.push(o); SN.botKeys[Q.id] = { key, t }; }
+    }
     if (b.length) NET.send('bs', { b });
   }
 }
@@ -5749,11 +5759,11 @@ function snPack(P) {
   if (P.holo) o.ho = [r(P.holo.x), r(P.holo.y), r(P.holo.z), r(P.holo.yaw)];
   return o;
 }
-// play other players back 100 ms behind, smoothly
+// play other players back a little behind (160 ms, bots 260 ms), smoothly
 function snInterp() {
-  const t = now() - 0.1;
   for (const P of G.P.values()) {
     if (auth(P) || !P.buf.length) continue;
+    const t = now() - (P.bot ? 0.26 : 0.16); // a little further behind than the update rate, so there are always two to blend
     const B = P.buf;
     let a = B[0], b = B[B.length - 1];
     for (let i = 0; i < B.length - 1; i++) if (B[i].t <= t && B[i + 1].t >= t) { a = B[i]; b = B[i + 1]; break; }
@@ -5776,6 +5786,10 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.16', t: 'Lighter online traffic', d: '5 November 2026', intro: 'Online play went down for a morning because the arcade\'s realtime server ran out of its daily allowance, and Siege matches were the biggest users. Siege now sends far fewer messages.', items: [
+    ['Fewer messages', 'You send your position 8 times a second while you move, aim or shoot (it was 12), and only once a second while you stand still. Bots are sent 5 times a second (it was 10), and only the ones that moved.'],
+    ['Still smooth', 'Other players and bots are drawn a fraction of a second behind and blended between updates, so they move as smoothly as before.'],
+  ] },
   { v: '1.0.15', t: 'Reinforced walls show it', d: '5 November 2026', intro: 'You can tell a wall is reinforced from the other side.', items: [
     ['Bolts through the wall', 'The side of a reinforced wall that wasn\'t reinforced now shows the steel\'s bolts poking through: dark star-shaped marks dotted across the wall. The wall keeps its own look.'],
     ['Breaches show up', 'A breach charge, Thermal Lance or punch now breaks the wall on the screen of whoever set it off too (it only broke on everyone else\'s).'],

@@ -38,7 +38,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-05T05:10:00+11:00',
+    updated: '2026-11-05T12:13:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -267,6 +267,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-05', game: 'siege', text: 'Siege 1.0.16: lighter online traffic. Online play went down for a morning when the arcade\u2019s realtime server ran out of its daily allowance, and Siege matches were the biggest users; Siege now sends far fewer messages, and other players and bots still move smoothly.' },
   { date: '2026-11-05', game: 'siege', text: 'Siege 1.0.15: a reinforced wall shows its bolts on the other side, so attackers can tell it\'s reinforced. Breaches also show up properly for whoever set them off.' },
   { date: '2026-11-05', game: 'chess', text: 'Chess 1.4: ratings. Online games are now rated the way chess.com does it (Glicko): pick how well you play to get your starting rating, then win, lose or draw against real people to move it. Games against the computer stay unrated. Your rating shows under Play online and on your Arcade profile.' },
   { date: '2026-11-05', game: 'havoc-bay', text: 'Havoc Bay 1.2.7: the harbors are 35% further apart on bigger islands with six more guns each, and a claimed island\'s burnt ground and fires are cleared.' },

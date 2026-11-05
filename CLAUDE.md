@@ -401,6 +401,9 @@ source in Settings → Pages should be switched to `main`.
 
 ## Conventions
 
+  1.0.16 (after the 2026-11-05 outage, when the Worker hit the free plan's Durable Objects limit): `snSendStates` sends your
+  state 8/s only when something changed (else 1/s), bots 5/s and only changed ones; `snInterp` draws people 160 ms and bots
+  260 ms behind. Keep Siege's message rate low.
 - Games save progress in the player's own browser (`localStorage`, wrapped in try/catch), exactly as before;
   `account.js` copies those saves to the player's Arcade account when they have one (2026-11-01). A game never
   talks to the accounts server itself. When a game adds a save key, make sure `GROUPS` in `account.js` puts it
