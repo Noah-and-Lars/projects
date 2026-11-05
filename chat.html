@@ -15,6 +15,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
 <link rel="stylesheet" href="arcade.css?v=13">
+<style>
+.mh a.who { color: hsl(var(--h) 85% 76%); font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mh a.who:hover { text-decoration: underline; }
+.msg.me .mh a.who { color: #ffd166; }
+.mh .guest, .people li em { color: var(--muted); font-style: normal; font-size: 11px; }
+.people li span a.who { color: inherit; }
+</style>
 </head>
 <body>
 <header class="top">
@@ -22,6 +29,7 @@
   <nav class="tabs" aria-label="Sections">
     <a class="tab" href="index.html">Games</a>
     <a class="tab on" href="chat.html" aria-current="page"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
+    <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
   </nav>
 </header>
 
@@ -39,12 +47,12 @@
         <input id="msg" class="field" maxlength="200" placeholder="Say something to everyone…" aria-label="Message" enterkeyhint="send" spellcheck="true">
         <button id="sendBtn" class="btn" type="submit">Send</button>
       </form>
-      <p class="chat-note">Be kind. Never share your full name, address, school or passwords. Messages are kept only in the browsers of the people in the chat, never on a server.</p>
+      <p class="chat-note">Be kind. Never share your full name, address, school or passwords. The newest 150 messages are kept on the arcade’s server so everyone sees the same chat. Players with an account chat under their account name; others show as guests.</p>
     </section>
     <aside class="chat-side" aria-labelledby="peopleT">
       <h2 class="sec-h" id="peopleT">In the chat <b id="count">0</b></h2>
       <ul id="people" class="people"></ul>
-      <button id="clear" class="linkish" type="button">Clear the chat history on this device</button>
+      <button id="clear" class="linkish" type="button">Hide the chat history on this device</button>
     </aside>
   </div>
 </main>
@@ -60,61 +68,50 @@
   </form>
 </div>
 
-<script src="games.js?v=164"></script>
-<script src="account.js?v=6"></script>
+<script src="games.js?v=165"></script>
+<script src="account.js?v=7"></script>
 <script>
-// Global chat: everyone on this page talks in one realtime channel (arcade-chat), on the arcade's Cloudflare server.
-// Nothing is stored on a server. Each browser keeps the last KEEP messages in its own localStorage,
-// and when someone arrives, whoever has been in the chat longest sends them the recent ones.
-// ?chatroom=<name> uses a separate test channel and history, so tests never reach the real chat.
+// Global chat (rebuilt 2026-11-06): one chat room on the arcade's Cloudflare server (the Chat object in
+// realtime-worker). The server keeps the newest 150 messages, so everyone sees the same chat, even people who
+// arrive later. Signed-in players chat under their account name (the server checks it); everyone else is a guest.
+// This browser keeps a copy of the last messages to show while offline. ?chatroom=<name> uses a separate test room.
 const $ = id => document.getElementById(id);
 
 const ROOM = (new URLSearchParams(location.search).get('chatroom') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
-const CHANNEL = ROOM ? 'arcade-chat-test-' + ROOM : 'arcade-chat';
 const PREFIX = ROOM ? 'arcade-chat-test-' + ROOM + '-' : 'arcade-chat-';
-const KEEP = 200, HISTORY = 100, MAX_LEN = 200, NAME_LEN = 20;
+const ADMIN = /[?&]admin\b/.test(location.search);
+const MAX_LEN = 200, NAME_LEN = 20;
 
 const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(PREFIX + k)); return v == null ? d : v; } catch (e) { return d; } };
 const store = (k, v) => { try { localStorage.setItem(PREFIX + k, JSON.stringify(v)); } catch (e) {} };
 const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
-// Stars out swear words and slurs, in messages and names
+// Stars out swear words and slurs, in messages and names (the server does the same)
 const BAD = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;
+const plain = s => String(s).replace(/\s+/g, ' ').trim(); // messages are shown uncensored; names are filtered
 const tidy = s => String(s).replace(/\s+/g, ' ').trim().replace(BAD, w => w[0] + '*'.repeat(w.length - 1));
 
-let me = load('id', null);
-if (!me) { me = rid(); store('id', me); }
+let guestId = load('id', null);
+if (!guestId) { guestId = rid(); store('id', guestId); }
+const acctName = () => (window.ArcadeAccount && ArcadeAccount.kind() === 'online' && ArcadeAccount.name()) || '';
 let name = (window.ArcadeAccount && ArcadeAccount.name()) || load('name', ''); // your arcade account's name when you have one
-let log = load('log', []);
+let me = acctName() ? 'a:' + acctName().toLowerCase() : 'g:' + guestId; // the server's id for you (from 'hello')
+let log = load('srv-log', []);
 let muted = load('muted', {}); // id -> name, only on this device
 let clearedAt = load('cleared', 0);
-const failed = new Set(); // ids of my messages that didn't go out
-let ch = null, joined = false, broken = false, asked = false, unread = 0;
-const joinedAt = Date.now();
+let ws = null, joined = false, broken = false, unread = 0, tries = 0, who = [];
+const pending = new Map(); // k -> timer for messages waiting for the server's echo
 
-// A message from the network or from storage, checked and tidied, or null
+// A message from the server or from storage, checked and tidied, or null
 function clean(m) {
   if (!m || typeof m.id !== 'string' || typeof m.u !== 'string' || typeof m.n !== 'string' || typeof m.t !== 'string') return null;
-  if (m.id.length > 24 || m.u.length > 24 || typeof m.ts !== 'number' || !isFinite(m.ts)) return null;
-  const n = tidy(m.n).slice(0, NAME_LEN), t = tidy(m.t).slice(0, MAX_LEN);
+  if (typeof m.ts !== 'number' || !isFinite(m.ts)) return null;
+  const n = tidy(m.n).slice(0, NAME_LEN), t = plain(m.t).slice(0, MAX_LEN);
   if (!n || !t) return null;
-  return { id: m.id, u: m.u, n, t, ts: Math.min(m.ts, Date.now() + 60000) };
+  return { id: m.id, u: m.u, n, a: m.a ? 1 : 0, t, ts: m.ts };
 }
 log = log.map(clean).filter(Boolean);
-
-// Adds messages (deduplicated by id), keeps the newest KEEP in time order and saves them on this device
-function add(msgs) {
-  const before = log.length ? log[log.length - 1] : null, byId = new Map(log.map(m => [m.id, m]));
-  let fresh = [];
-  for (const m of msgs) if (m && m.ts > clearedAt && !byId.has(m.id)) { byId.set(m.id, m); fresh.push(m); }
-  if (!fresh.length) return [];
-  log = [...byId.values()].sort((a, b) => a.ts - b.ts || (a.id < b.id ? -1 : 1)).slice(-KEEP);
-  store('log', log);
-  // one new message at the end (the usual case) is appended; anything else redraws the list
-  if (fresh.length === 1 && log[log.length - 1] === fresh[0] && before && log[log.length - 2] === before) append(fresh[0]);
-  else render();
-  return fresh;
-}
+const keep = () => store('srv-log', log.slice(-150));
 
 const hue = id => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 const clock = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -139,26 +136,34 @@ function muteButton(id, n) {
   b.onclick = () => { if (muted[id]) delete muted[id]; else muted[id] = n; store('muted', muted); render(); people(); };
   return b;
 }
+// an account's name opens their profile on the Players page; guests get a small tag
+function nameEl(u, n, isAcct, you) {
+  const el = document.createElement(isAcct ? 'a' : 'b');
+  el.textContent = you ? n + ' (you)' : n;
+  if (isAcct) { el.href = 'players.html#p=' + encodeURIComponent(n); el.className = 'who'; el.title = n + '’s profile'; }
+  return el;
+}
 function row(m, cont) {
-  const div = document.createElement('div');
-  div.className = 'msg' + (m.u === me ? ' me' : '') + (cont ? ' cont' : '') + (failed.has(m.id) ? ' failed' : '');
+  const div = document.createElement('div'), mine = m.u === me;
+  div.className = 'msg' + (mine ? ' me' : '') + (cont ? ' cont' : '');
   div.style.setProperty('--h', hue(m.u));
   div.dataset.id = m.id;
-  const body = document.createElement('div'), head = document.createElement('div'), who = document.createElement('b'), time = document.createElement('time'), p = document.createElement('p');
+  const body = document.createElement('div'), head = document.createElement('div'), time = document.createElement('time'), p = document.createElement('p');
   head.className = 'mh';
-  who.textContent = m.u === me ? m.n + ' (you)' : m.n;
   time.dateTime = new Date(m.ts).toISOString(); time.textContent = clock(m.ts);
-  head.append(who, time);
-  if (m.u !== me) head.append(muteButton(m.u, m.n));
+  head.append(nameEl(m.u, m.n, m.a, mine));
+  if (!m.a) { const g = document.createElement('em'); g.className = 'guest'; g.textContent = 'guest'; head.append(g); }
+  head.append(time);
+  if (!mine) head.append(muteButton(m.u, m.n));
+  if (ADMIN) { const d = document.createElement('button'); d.type = 'button'; d.className = 'mute'; d.textContent = 'Delete'; d.onclick = () => adminDelete(m); head.append(d); }
   p.textContent = m.t;
   if (cont) div.title = m.n + ' · ' + clock(m.ts);
   body.append(head, p);
-  if (failed.has(m.id)) { const s = document.createElement('span'); s.className = 'nsent'; s.textContent = 'Not sent. Check your connection.'; body.append(s); }
   div.append(avatar(m.u, m.n), body);
   return div;
 }
 function dayLine(ts) { const d = document.createElement('div'); d.className = 'day'; d.textContent = dayName(ts); return d; }
-const shown = () => log.filter(m => !muted[m.u]);
+const shown = () => log.filter(m => !muted[m.u] && m.ts > clearedAt);
 const nearBottom = () => { const el = $('log'); return el.scrollHeight - el.scrollTop - el.clientHeight < 90; };
 const toBottom = () => { const el = $('log'); el.scrollTop = el.scrollHeight; $('jump').hidden = true; };
 
@@ -180,7 +185,7 @@ function render() {
   if (stick) toBottom();
 }
 function append(m) {
-  if (muted[m.u]) return;
+  if (muted[m.u] || m.ts <= clearedAt) return;
   const el = $('log'), stick = nearBottom() || m.u === me, list = shown(), prev = list[list.length - 2];
   el.querySelector('.chat-empty')?.remove();
   if (!prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString()) el.append(dayLine(m.ts));
@@ -190,53 +195,95 @@ function append(m) {
 $('jump').onclick = toBottom;
 $('log').addEventListener('scroll', () => { if (nearBottom()) $('jump').hidden = true; });
 
-// Who's in the chat right now (Presence on the chat channel; the key is each browser's chat id)
-const since = metas => Math.min(...metas.map(x => +x.at || Infinity));
-function present() {
-  const st = ch && joined ? ch.presenceState() : {};
-  return Object.keys(st).map(id => ({ id, n: tidy(st[id][0].n || 'Player').slice(0, NAME_LEN) || 'Player', at: since(st[id]) }));
-}
+// Who's in the chat right now: the server's list, [id, name, isAccount, since]
 function people() {
-  const list = present().sort((a, b) => (b.id === me) - (a.id === me) || a.at - b.at);
+  const list = who.map(([id, n, a, at]) => ({ id, n: tidy(n).slice(0, NAME_LEN) || 'Guest', a, at })).sort((x, y) => (y.id === me) - (x.id === me) || x.at - y.at);
   $('count').textContent = list.length;
   $('people').replaceChildren(...list.map(p => {
     const li = document.createElement('li'), s = document.createElement('span');
-    s.textContent = p.n;
+    s.append(nameEl(p.id, p.n, p.a, false));
     li.append(avatar(p.id, p.n), s);
     if (p.id === me) { const e = document.createElement('em'); e.textContent = 'you'; li.append(e); }
-    else { if (muted[p.id]) li.className = 'muted'; li.append(muteButton(p.id, p.n)); }
+    else { if (!p.a) { const g = document.createElement('em'); g.textContent = 'guest'; li.append(g); } if (muted[p.id]) li.className = 'muted'; li.append(muteButton(p.id, p.n)); }
     return li;
   }));
   if (!list.length) $('people').innerHTML = '<li class="people-none">' + (broken ? 'Not connected' : 'Connecting…') + '</li>';
   status();
 }
 function status() {
-  const el = $('status'), n = present().length;
+  const el = $('status'), n = who.length;
   el.className = 'chat-status' + (joined ? ' ok' : broken ? ' off' : '');
-  el.lastChild.textContent = joined ? n + ' in the chat' : broken ? "Can't connect. Showing messages saved here." : 'Connecting…';
+  el.lastChild.textContent = joined ? n + ' in the chat' : broken ? "Can't connect. Trying again…" : 'Connecting…';
   $('msg').disabled = $('sendBtn').disabled = !joined || !name;
   $('msg').placeholder = joined ? 'Say something to everyone…' : broken ? 'The chat is offline right now' : 'Connecting…';
 }
 
-// Sending: at most 5 messages in 10 seconds, and not two within 0.7 s
+// The connection: one WebSocket, a ping every 25 s (answered by Cloudflare without waking the room), and
+// reconnecting with a growing wait when it drops. Signed-in players send their token as the second subprotocol.
+let pingT = 0, retryT = 0;
+function connect() {
+  clearTimeout(retryT);
+  if (ws) { const old = ws; ws = null; try { old.close(); } catch (e) {} }
+  const base = ((window.ArcadeAccount && ArcadeAccount.server) || 'https://arcade-realtime.arcade-realtime.workers.dev').replace(/^http/, 'ws');
+  const tok = window.ArcadeAccount && ArcadeAccount.token ? ArcadeAccount.token() : '';
+  const q = new URLSearchParams({ room: ROOM, u: guestId, n: tok ? '' : name });
+  let s;
+  try { s = new WebSocket(base + '/chat/ws?' + q, tok ? ['arcade', tok] : ['arcade']); } catch (e) { dropped(); return; }
+  ws = s;
+  let heard = Date.now();
+  s.onmessage = ev => {
+    heard = Date.now();
+    if (ev.data === 'pong') return;
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m.t === 'hello') {
+      joined = true; broken = false; tries = 0;
+      me = m.you.u;
+      if (m.you.a) name = m.you.n;
+      $('meBtn').textContent = name || 'Pick a name';
+      log = (m.log || []).map(clean).filter(Boolean); keep();
+      who = m.who || [];
+      render(); toBottom(); people();
+    } else if (m.t === 'msg') {
+      const x = clean(m.m);
+      if (m.k && pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); }
+      if (!x || log.some(y => y.id === x.id)) return;
+      log.push(x); if (log.length > 150) log.splice(0, log.length - 150); keep();
+      append(x);
+      if (document.hidden && !muted[x.u] && x.u !== me) document.title = '(' + ++unread + ') ' + TITLE;
+    } else if (m.t === 'who') { who = m.who || []; people(); }
+    else if (m.t === 'del') { log = log.filter(x => x.id !== m.id); keep(); render(); }
+    else if (m.t === 'slow') { if (pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); } flash('Slow down a little.'); }
+  };
+  s.onclose = () => { if (ws === s) dropped(); };
+  s.onerror = () => {};
+  clearInterval(pingT);
+  pingT = setInterval(() => {
+    if (ws !== s) return;
+    if (Date.now() - heard > 120000) { try { s.close(); } catch (e) {} dropped(); return; }
+    if (s.readyState === 1) try { s.send('ping'); } catch (e) {}
+  }, 25000);
+}
+function dropped() {
+  ws = null; joined = false; broken = true; who = [];
+  clearInterval(pingT);
+  people();
+  retryT = setTimeout(connect, [1000, 2000, 5000, 10000, 20000][Math.min(tries++, 4)]);
+}
+
+// Sending: at most 5 messages in 10 seconds (the server checks too), and not two within 0.7 s
 let sentAt = [];
 $('send').addEventListener('submit', e => {
   e.preventDefault();
-  const text = tidy($('msg').value).slice(0, MAX_LEN), now = Date.now();
-  if (!text || !joined || !name) return;
+  const text = plain($('msg').value).slice(0, MAX_LEN), now = Date.now();
+  if (!text || !joined || !name || !ws) return;
   sentAt = sentAt.filter(t => now - t < 10000);
   if (sentAt.length >= 5 || now - (sentAt[sentAt.length - 1] || 0) < 700) { flash('Slow down a little.'); return; }
   sentAt.push(now);
-  const m = { id: rid(), u: me, n: name, t: text, ts: now };
+  const k = rid();
+  try { ws.send(JSON.stringify({ t: 'say', text, k })); } catch (err) { flash('Not sent. Check your connection.'); return; }
   $('msg').value = '';
-  add([m]);
-  ch.send({ type: 'broadcast', event: 'msg', payload: m }).then(r => { if (r !== 'ok') notSent(m); }, () => notSent(m));
+  pending.set(k, setTimeout(() => { pending.delete(k); flash('Not sent. Check your connection.'); if (!$('msg').value) $('msg').value = text; }, 6000));
 });
-function notSent(m) {
-  failed.add(m.id);
-  const el = $('log').querySelector(`[data-id="${m.id}"]`);
-  if (el) el.replaceWith(row(m, el.classList.contains('cont')));
-}
 let flashT = 0;
 function flash(text) {
   const el = $('status');
@@ -244,57 +291,21 @@ function flash(text) {
   clearTimeout(flashT); flashT = setTimeout(status, 1800);
 }
 
-// Someone sending too fast (more than 8 messages in 10 seconds) is ignored for a moment
-const heard = {};
-function flood(id) {
-  const now = Date.now(), list = (heard[id] = (heard[id] || []).filter(t => now - t < 10000));
-  list.push(now);
-  return list.length > 8;
+// The owner's tools (?admin): take a message out of the chat for everyone
+let adminPw = '';
+function adminDelete(m) {
+  if (!adminPw) adminPw = prompt('Admin password') || '';
+  if (!adminPw || !confirm('Delete this message for everyone?\n\n' + m.n + ': ' + m.t)) return;
+  ArcadeAccount.api('admin', { method: 'POST', body: { pw: adminPw, op: 'chatdel', id: m.id } }).then(r => { if (r.status !== 200) { adminPw = ''; alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').'); } });
 }
 
 // New messages while the tab is in the background show as a count in its title
 const TITLE = document.title;
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { unread = 0; document.title = TITLE; } });
 
-// Asks whoever has been here longest for the messages since the newest one this device has
-function askHistory() {
-  if (asked || !joined || present().every(p => p.id === me)) return;
-  asked = true;
-  const newest = log.length ? log[log.length - 1].ts : 0;
-  ch.send({ type: 'broadcast', event: 'hreq', payload: { u: me, since: Math.max(clearedAt, newest - 10 * 60000) } });
-}
+ArcadeOnline.start('chat'); // so the home page's chat tab can show how many are here
 
-ArcadeOnline.start('chat');
-ArcadeOnline.ready(client => {
-  if (!client) { broken = true; people(); return; }
-  ch = client.channel(CHANNEL, { config: { broadcast: { self: false }, presence: { key: me } } });
-  ch.on('broadcast', { event: 'msg' }, ({ payload }) => {
-    const m = clean(payload);
-    if (!m || flood(m.u)) return;
-    if (add([m]).length && document.hidden && !muted[m.u]) document.title = '(' + ++unread + ') ' + TITLE;
-  });
-  ch.on('broadcast', { event: 'hreq' }, ({ payload: p }) => {
-    if (!p || typeof p.u !== 'string' || p.u === me) return;
-    // only the person who has been in the chat longest answers, so a newcomer gets one copy
-    const first = present().filter(x => x.id !== p.u).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1))[0];
-    if (!first || first.id !== me) return;
-    const after = typeof p.since === 'number' ? p.since : 0, msgs = log.filter(m => m.ts > after).slice(-HISTORY);
-    if (msgs.length) ch.send({ type: 'broadcast', event: 'hist', payload: { to: p.u, msgs } });
-  });
-  ch.on('broadcast', { event: 'hist' }, ({ payload: p }) => {
-    if (p && Array.isArray(p.msgs)) add(p.msgs.slice(-HISTORY).map(clean).filter(Boolean));
-  });
-  ch.on('presence', { event: 'sync' }, () => { people(); askHistory(); });
-  ch.subscribe(st => {
-    if (st === 'SUBSCRIBED') {
-      joined = true; broken = false; asked = false;
-      ch.track({ n: name || 'Someone new', at: joinedAt });
-    } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { joined = false; broken = true; }
-    people();
-  });
-});
-
-// Chat name: asked for on the first visit, changed with the button next to the message box
+// Chat name for guests: asked for on the first visit, changed with the button next to the message box
 function askName(first) {
   $('nameT').textContent = first ? 'Pick a chat name' : 'Change your chat name';
   $('nameForm').querySelector('.notice-ok').textContent = first ? 'Join the chat' : 'Save';
@@ -314,27 +325,28 @@ $('nameForm').addEventListener('submit', e => {
   name = v; store('name', name);
   $('meBtn').textContent = name;
   $('nameBox').hidden = $('nameErr').hidden = true;
-  if (joined) ch.track({ n: name, at: joinedAt });
-  status();
+  connect(); // a guest's name is set when connecting
   $('msg').focus();
 });
 $('nameBox').addEventListener('keydown', e => { if (e.key === 'Escape' && name) $('nameBox').hidden = true; });
 $('meBtn').onclick = () => { if (window.ArcadeAccount && ArcadeAccount.name()) ArcadeAccount.open(); else askName(false); }; // with an account the name is set on the account
 
 $('clear').onclick = () => {
-  if (!confirm('Clear the chat history saved on this device? Other people keep their own copies.')) return;
+  if (!confirm('Hide the chat history on this device? Messages from now on still show.')) return;
   clearedAt = Date.now(); store('cleared', clearedAt);
-  log = []; store('log', log);
   render();
 };
 
 $('meBtn').textContent = name || 'Pick a name';
 render(); toBottom(); people();
-if (!name) {
-  if (window.ArcadeAccount) { // the arcade's account popup asks for a name first; the chat uses it once it's there
-    const w = setInterval(() => { const n = ArcadeAccount.name(); if (!n) return; clearInterval(w); name = n; $('meBtn').textContent = name; if (joined) ch.track({ n: name, at: joinedAt }); status(); }, 500);
-  } else askName(true);
-}
+connect();
+// signing in (or making a local account) while the page is open: reconnect with the new name
+let lastAcct = acctName();
+setInterval(() => {
+  const n = window.ArcadeAccount ? ArcadeAccount.name() : '';
+  if (acctName() !== lastAcct || (n && !name)) { lastAcct = acctName(); name = n || name; $('meBtn').textContent = name || 'Pick a name'; connect(); }
+}, 1000);
+if (!name && !window.ArcadeAccount) askName(true);
 </script>
 <script src="tos.js?v=2"></script>
 </body>

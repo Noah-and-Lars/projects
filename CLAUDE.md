@@ -16,27 +16,30 @@ source in Settings → Pages should be switched to `main`.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
-- The header of the home page and the chat page has two tabs, Games
-  (`index.html`) and Global chat (`chat.html`). On the home page the chat tab
-  shows how many people are in the chat (`byGame.chat` from `ArcadeOnline`).
-- `chat.html`: the Global chat. One realtime channel, `arcade-chat`:
-  'msg' broadcasts are messages ({ id, u, n, t, ts }: message id, sender's chat
-  id, name, text, time), Presence is the "In the chat" list (key = the
-  browser's chat id, with the name and when they arrived). Nothing is stored on
-  a server: each browser keeps the newest 200 messages in its own localStorage
-  (`arcade-chat-log`; also `-id`, `-name`, `-muted`, `-cleared`). A newcomer
-  sends 'hreq' with the time of its newest message, and only the person who has
-  been in the chat longest answers with up to 100 newer messages ('hist'), so
-  the history carries on as long as someone is around. Messages and names go
-  through `tidy()` (whitespace, length, a swear-word filter) and are only ever
-  shown with textContent. Sending is limited to 5 messages in 10 seconds, other
-  people's floods (more than 8 in 10 seconds) are ignored, and Mute hides a
-  person on this device only. Names: 2-20 characters, no swear words, and words
-  like admin, mod or staff are reserved. It reuses the arcade's connection
-  (`ArcadeOnline.ready()`). `?chatroom=<name>` uses its own test channel and
-  storage: test with that, never in the real chat. To be two people in one
-  browser, open the test room on http://localhost:8765 and on
-  http://127.0.0.1:8765 (two origins, so two separate storages).
+- The header of the home, chat and Players pages has three tabs: Games (`index.html`), Global chat (`chat.html`)
+  and Players (`players.html`). The home page's chat tab shows how many are in the chat (`byGame.chat`); the Players
+  tab's `#plN` count (friend requests + unread messages) is set by account.js from the `soc` field of the sync answer.
+- `chat.html`: the Global chat (rebuilt 2026-11-06; before, messages lived only in browsers and history passed peer
+  to peer, so people not online together never saw each other's messages). One WebSocket to the Worker's `/chat/ws`
+  (`Chat` Durable Object `chat:global`), which keeps the newest 150 messages (one stored value, `log`) and sends
+  'hello' {you, log, who}, then 'msg', 'who' ([id, name, isAccount, since]), 'del', 'slow'. Signed-in players send
+  their token as the second WebSocket subprotocol (`['arcade', token]`) and chat under their checked account name
+  (id `a:<lower>`, links to their profile); others are guests (`g:<chat id>`, tagged "guest"). Message text in the
+  chat and in DMs is NOT swear-filtered (the owner asked for uncensored chats, 2026-11-06); names still are, and all
+  text is shown with textContent only. 5 messages in 10 s per connection (server-checked). Mute and "Hide the chat
+  history" are per device. `?admin` adds Delete (admin password; `/acct/admin` op `chatdel`). A local copy for
+  offline display is `arcade-chat-srv-log`. `?chatroom=<name>` is a test room (`chat:test-<name>`): test there.
+- `players.html` (2026-11-06): every account (`/acct/players`, the `Directory` object: [[name, created, hasScores]]),
+  search, and All / Friends / Requests / Chats. A profile (`#p=<name>`, `/acct/player`) shows the best in every game:
+  each signed-in browser sends its own `stat()` results after a sync, only when changed (`/acct/profile`, last sent
+  in `arcade-acct-prof`). Friends `/acct/friend` {op: add | remove} (add accepts an incoming request), `/acct/block`.
+  Private messages (`#dm=<name>`): `/acct/dm` GET ?with=&before=<seq>, POST {to, text}; anyone can message anyone
+  unless blocked (the sender isn't told). Stored in each Account object (`soc`, `m:<friend>:<seq>`, last 300 per chat,
+  both sides keep a copy). While open, the page holds a hibernating WebSocket to the player's own Account object
+  (`/acct/ws`) for live 'dm', 'friend', 'read', 'social' pushes. Accounts made before 2026-11-06 join the list when
+  next used (`a.listed`). Local accounts aren't listed and can't use friends or DMs. Keep all of this cheap (the free
+  plan's Durable Objects limit took online down on 2026-11-05): no polling, hibernating sockets only.
+  `~/Downloads/arcade-realtime/tools/social-test.mjs` tests these routes against a local `wrangler dev`.
 - `play.html?game=<id>`: plays a game in an iframe with a loading screen,
   the player's best next to the title, "How to play" keys, Next game,
   fullscreen and a "more games" row. Opening it marks the game as played.

@@ -292,6 +292,7 @@ window.NEWS = [
   { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.3: fixes and no jumping. Bots only see and shoot you with a real line of sight and aim like people (a moment to react, shaky aim that settles, recoil). Right click now toggles aiming (Hold is in Settings), nobody can be hurt in the prep phase, defenders get 5 barricades and 3 reinforcements, and walls and floors no longer turn black or patchy. There is no jump any more: you climb over windows, counters and low furniture by walking into them.' },
   { date: '2026-11-03', game: 'siege', text: 'Siege 1.0.2: chat! In an online room, press Enter or T to talk to everyone, or Y to talk to your own team only (Tab switches while you type). It works in the lobby and while you pick your operator too, and swear words are starred out.' },
   { date: '2026-11-03', game: 'havoc-bay', text: 'Havoc Bay 1.2.2: chat! In the Public Battle and in private rooms, press Enter or T to talk to everyone, or Y to talk to your own team only (Tab switches while you type). On a touch screen, tap the 💬 button. It works in the lobby too, and swear words are starred out.' },
+  { date: '2026-11-06', game: 'card-royale', text: 'The Global chat is fixed: everyone now sees the same messages, kept on the server. New Players tab: search every player, see their best scores, add friends and send private messages.' },
   { date: '2026-11-03', game: 'card-royale', text: 'Card Royale 1.0.1: a new look. More detailed towers (stone bricks, banners, arrow slits, the King\u2019s gate and crest), shadows on everything, a more detailed arena with cobbled paths, flowers, lily pads, sparkling water, sturdier bridges and rope fences, and chunkier buttons that press down when you tap them.' },
   { date: '2026-11-03', game: 'card-royale', text: 'New game: Card Royale 1.0! Real-time 1v1 card battles online. Press Battle to find an opponent, drop troops and spells with Elixir, and knock down more towers than them in three minutes (or the King Tower for an instant win). 50 cards to collect from chests, 3 free chests every day, a shop, King levels that give you chests, trophies and arenas, plus emotes and chat during battles.' },
   { date: '2026-11-02', game: 'siege', text: 'Siege 1.0.1: map fixes. The ends of every staircase are open (no more jumping on and off), drones can drive upstairs and downstairs, you can jump through open windows again, bots stop getting stuck on furniture, and every map is a little brighter.' },
@@ -514,7 +515,14 @@ window.ArcadeOnline = (() => {
 
 // Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
 // localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
-const SITE_NOTICE = null; // online is back (2026-11-05 12:00 Sydney). The last notice, kept for reuse:
+const SITE_NOTICE = { // 2026-11-06: the rebuilt Global chat and the new Players tab (popup only, no banner)
+  id: 'chat-fixed-2026-11-06',
+  tag: 'Fixed',
+  title: 'The Global chat is fixed!',
+  text: 'Messages now go through the arcade’s server, so everyone sees the same chat, even if they arrive later. The newest 150 messages stay there for everyone.',
+  items: ['<b>New: Players tab.</b> Find any player, see their best score in every game, add friends and send private messages.', '<b>Chat names:</b> with an account you chat under your username; without one you show as a guest.'],
+};
+// The last notice, kept for reuse:
 const SITE_NOTICE_OLD = {
   id: 'cf-outage-2026-11-05',
   tag: 'Server issue',

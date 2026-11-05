@@ -191,6 +191,8 @@
       });
       return chain.then(function () {
         saveSync(); state.last = Date.now(); setStatus('ok');
+        if (meta.soc) setSocial(meta.soc);
+        sendProfile();
         if (pulled.length) pulledHandlers.forEach(function (f) { try { f(pulled); } catch (e) {} });
         return pulled;
       });
@@ -207,6 +209,24 @@
       return;
     }
     sync('push');
+  }
+
+  /* ---------- the Players page: friend requests, unread messages, best scores (2026-11-06) ---------- */
+  // the sync answer carries how many friend requests and unread messages are waiting (no extra request)
+  var social = null, socialHandlers = [];
+  function setSocial(c) {
+    social = { req: +c.req || 0, un: +c.un || 0 };
+    var n = social.req + social.un, el = $('plN'); // the count on the Players tab in the header
+    if (el) { el.textContent = n > 99 ? '99+' : n; el.hidden = !n; el.title = social.req + ' friend request(s), ' + social.un + ' unread message(s)'; }
+    socialHandlers.forEach(function (f) { try { f(social); } catch (e) {} });
+  }
+  // everyone's best in each game (games.js stat(), worked out here from this device's saves), sent only when it changed
+  function sendProfile() {
+    if (!acct || !window.GAMES || !window.Arcade) return;
+    var s = {}; GAMES.forEach(function (g) { var v = Arcade.stat(g); if (v) s[g.id] = String(v); });
+    var j = JSON.stringify(s), last = ls.get('arcade-acct-prof');
+    if (last === acct.name.toLowerCase() + j) return;
+    api('profile', { method: 'PUT', auth: true, body: { s: s } }).then(function (r) { if (r.status === 200) ls.set('arcade-acct-prof', acct.name.toLowerCase() + j); });
   }
 
   /* ---------- signing up, in and out ---------- */
@@ -531,6 +551,10 @@
   window.ArcadeAccount = {
     name: name, kind: kind, ready: function () { return ready; }, sync: sync, open: openPanel, welcome: openWelcome,
     onPulled: function (f) { pulledHandlers.push(f); }, onReady: null,
+    // for the Players page and the chat: the server's address, the sign-in token, requests to the account
+    server: API.replace(/\/acct\/$/, ''), token: function () { return acct ? acct.token : ''; },
+    api: function (path, opt) { return api(path, opt); },
+    social: function () { return social; }, onSocial: function (f) { socialHandlers.push(f); if (social) f(social); }, setSocial: setSocial,
     _test: { groupOf: groupOf, localGroups: localGroups, hash: hash, score: score, syncMap: function () { return syncMap; } }
   };
 })();

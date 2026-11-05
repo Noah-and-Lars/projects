@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Players · The Arcade</title>
+<meta name="description" content="Everyone on The Arcade: find players, see their best scores, add friends and send messages.">
+<meta name="theme-color" content="#0f0d1f">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Arcade">
+<link rel="stylesheet" href="arcade.css?v=13">
+<style>
+.pl { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 18px; margin-top: 20px; height: calc(100vh - 150px); height: calc(100dvh - 150px); min-height: 460px; }
+.pl-side, .pl-main { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid #ffffff14; border-radius: 18px; overflow: hidden; }
+.pl-side { padding: 12px; gap: 10px; }
+.pl-side .field { width: 100%; flex: none; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: #ffffff08; }
+.seg button { position: relative; padding: 7px 4px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--accent); color: #fff; }
+.seg .n { margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--accent-2); color: #04211b; font-size: 11px; }
+.seg .n[hidden] { display: none; }
+.pl-count { margin: 0 2px; color: var(--muted); font-size: 12px; }
+.plist { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; }
+.plist li { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; cursor: pointer; }
+.plist li:hover, .plist li:focus-visible { background: #ffffff0d; outline: none; }
+.plist li.sel { background: #6c5ce733; }
+.plist .av { width: 32px; height: 32px; font-size: 14px; flex: none; }
+.plist .tx { flex: 1; min-width: 0; }
+.plist .tx b, .plist .tx small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plist .tx small { color: var(--muted); font-size: 12px; }
+.plist .tag { flex: none; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: #00d2a822; color: var(--accent-2); }
+.plist .tag.req { background: #f2b13433; color: #f2b134; }
+.plist .un { flex: none; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--accent-2); color: #04211b; font-size: 11px; font-weight: 800; text-align: center; }
+.plist .none, .plist .more { cursor: default; color: var(--muted); font-size: 13px; padding: 14px 8px; display: block; }
+.plist .more { cursor: pointer; text-align: center; color: var(--text); text-decoration: underline; }
+.pl-empty { margin: auto; padding: 30px; text-align: center; color: var(--muted); }
+.pl-empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
+.pl-empty .btn { margin-top: 14px; }
+.prof { overflow-y: auto; padding: 22px; }
+.prof-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.prof-head .av { width: 64px; height: 64px; font-size: 28px; flex: none; }
+.prof-head h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.prof-head p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.prof-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.prof-acts .btn { padding: 8px 14px; font-size: 14px; }
+.btn.ghost2 { background: transparent; border: 1px solid #ffffff2a; color: var(--text); box-shadow: none; }
+.btn.danger { background: transparent; border: 1px solid #e5484d66; color: #ff8a8a; box-shadow: none; }
+.prof h2 { margin: 26px 0 10px; font-size: 16px; }
+.scores { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.score { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: #ffffff08; border: 1px solid #ffffff0f; min-width: 0; }
+.score img { width: 64px; height: 36px; object-fit: cover; border-radius: 6px; flex: none; background: #0004; }
+.score b, .score span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score b { font-size: 13px; }
+.score span { color: #ffd166; font-size: 13px; font-weight: 700; }
+.score.no span { color: var(--muted); font-weight: 500; }
+.score > div { min-width: 0; }
+.note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+.dm-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #ffffff12; }
+.dm-head .av { width: 32px; height: 32px; font-size: 14px; }
+.dm-head a { font-weight: 800; font-size: 17px; }
+.dm-head a:hover { text-decoration: underline; }
+.back { display: none; padding: 6px 10px; border-radius: 9px; border: 1px solid #ffffff22; background: none; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.dm-log { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.bub { max-width: min(75%, 520px); padding: 7px 11px; border-radius: 14px; background: #ffffff10; align-self: flex-start; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.4; }
+.bub.me { align-self: flex-end; background: var(--accent); color: #fff; }
+.bub time { display: block; font-size: 11px; opacity: .65; margin-top: 2px; }
+.dm-day { align-self: center; color: var(--muted); font-size: 12px; margin: 10px 0 4px; }
+.dm-send { display: flex; gap: 8px; padding: 10px; border-top: 1px solid #ffffff12; background: #ffffff05; }
+.dm-send .field { flex: 1; min-width: 0; }
+.dm-send .btn:disabled { opacity: .5; cursor: default; }
+.dm-note { margin: 0; padding: 0 14px 10px; background: #ffffff05; color: var(--muted); font-size: 12px; }
+.dm-older { align-self: center; margin-bottom: 6px; }
+@media (max-width: 760px) {
+  .pl { grid-template-columns: minmax(0, 1fr); height: calc(100vh - 128px); height: calc(100dvh - 128px); margin-top: 12px; }
+  .pl.detail .pl-side { display: none; }
+  .pl:not(.detail) .pl-main { display: none; }
+  .back { display: inline-block; }
+  .prof { padding: 16px; }
+  .prof-head .back { order: -1; width: 100%; max-width: 90px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">The Arcade</a>
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab" href="index.html">Games</a>
+    <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
+    <a class="tab on" href="players.html" aria-current="page">Players <b id="plN" class="tab-n" hidden></b></a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="pl" id="pl">
+    <aside class="pl-side" aria-label="Players">
+      <input id="q" class="field" type="search" placeholder="Search players…" aria-label="Search players" autocomplete="off" spellcheck="false">
+      <div class="seg" role="tablist">
+        <button type="button" data-v="all" class="on" role="tab">All</button>
+        <button type="button" data-v="friends" role="tab">Friends</button>
+        <button type="button" data-v="req" role="tab">Requests<span class="n" id="nReq" hidden></span></button>
+        <button type="button" data-v="dm" role="tab">Chats<span class="n" id="nUn" hidden></span></button>
+      </div>
+      <p class="pl-count" id="plCount" role="status">Loading players…</p>
+      <ul class="plist" id="list"></ul>
+    </aside>
+    <section class="pl-main" id="main" aria-live="polite">
+      <div class="pl-empty"><b>Find a player</b>Pick someone from the list to see their best score in every game.</div>
+    </section>
+  </div>
+</main>
+
+<script src="games.js?v=165"></script>
+<script src="account.js?v=7"></script>
+<script>
+// Players (2026-11-06): every account on the arcade, their best score in each game, friends and private messages.
+// Everything comes from the arcade's server (realtime-worker: /acct/players, /acct/player, /acct/social,
+// /acct/friend, /acct/block, /acct/dm, and a hibernating WebSocket at /acct/ws for live updates while this page is
+// open). Nothing here polls. Text from other players is only ever shown with textContent.
+const $ = id => document.getElementById(id);
+const A = window.ArcadeAccount;
+const api = (p, o) => A.api(p, o);
+const signedIn = () => A.kind() === 'online';
+const myName = () => (signedIn() && A.name()) || '';
+const lc = s => String(s).toLowerCase();
+const BAD = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;
+const tidy = s => String(s).replace(/\s+/g, ' ').trim().replace(BAD, w => w[0] + '*'.repeat(w.length - 1));
+const plain = s => String(s).replace(/\s+/g, ' ').trim(); // messages are shown uncensored
+const hue = id => { let h = 0; for (const c of lc(id)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+function avatar(n) { const s = el('span', 'av', (n.match(/[a-z0-9]/i) || [n[0]])[0].toUpperCase()); s.setAttribute('aria-hidden', 'true'); s.style.setProperty('--h', hue(n)); return s; }
+const joined = ts => ts ? 'Joined ' + new Date(ts).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+const clock = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const ago = ts => { const d = (Date.now() - ts) / 1000; return d < 60 ? 'now' : d < 3600 ? Math.floor(d / 60) + 'm' : d < 86400 ? Math.floor(d / 3600) + 'h' : Math.floor(d / 86400) + 'd'; };
+
+let players = [];          // [[name, created, hasScores], ...]
+let soc = null;            // { f, c, b } for the signed-in player
+let view = 'all', limit = 200, cur = null; // cur = { kind: 'p' | 'dm', k, n }
+const nameOf = k => { const p = players.find(x => lc(x[0]) === k); return p ? p[0] : (soc && ((soc.f[k] && soc.f[k].n) || (soc.c[k] && soc.c[k].n))) || k; };
+
+// ---------- the list on the left ----------
+function counts() {
+  const req = soc ? Object.values(soc.f).filter(x => x.st === 'in').length : 0, un = soc ? Object.values(soc.c).reduce((n, c) => n + (c.un || 0), 0) : 0;
+  $('nReq').textContent = req; $('nReq').hidden = !req;
+  $('nUn').textContent = un; $('nUn').hidden = !un;
+  if (soc) A.setSocial({ req, un });
+}
+function item(n, sub, extra) {
+  const li = el('li'), tx = el('div', 'tx');
+  li.tabIndex = 0;
+  tx.append(el('b', '', n));
+  if (sub) tx.append(el('small', '', sub));
+  li.append(avatar(n), tx);
+  if (extra) li.append(extra);
+  return li;
+}
+function tagFor(k) {
+  const f = soc && soc.f[k];
+  if (!f) return null;
+  return f.st === 'f' ? el('span', 'tag', 'Friend') : f.st === 'in' ? el('span', 'tag req', 'Wants to be friends') : el('span', 'tag req', 'Sent');
+}
+function needAccount(what) {
+  const d = el('div', 'pl-empty');
+  d.append(el('b', '', 'Make an account first'), document.createTextNode('You need an online Arcade account to ' + what + '. It’s free: just a username and a password.'));
+  const b = el('button', 'btn', 'Make an account'); b.type = 'button'; b.onclick = () => A.welcome('signup');
+  d.append(el('br'), b);
+  return d;
+}
+function renderList() {
+  const q = lc($('q').value.trim()), out = [], ul = $('list');
+  let rows = [];
+  if (view === 'all') {
+    rows = players.filter(p => !q || lc(p[0]).includes(q)).sort((a, b) => (lc(a[0]) === lc(q)) * -1 + (lc(b[0]) === lc(q)) || lc(a[0]).localeCompare(lc(b[0])))
+      .map(p => ({ k: lc(p[0]), n: p[0], sub: (lc(p[0]) === lc(myName()) ? 'You · ' : '') + joined(p[1]), kind: 'p' }));
+    $('plCount').textContent = players.length ? (q ? rows.length + ' of ' : '') + players.length + (players.length === 1 ? ' player' : ' players') : 'No players yet';
+  } else if (!signedIn()) {
+    $('plCount').textContent = '';
+    ul.replaceChildren(el('li', 'none', 'Sign in to an online account to add friends and send messages.'));
+    return;
+  } else if (view === 'friends' || view === 'req') {
+    rows = Object.entries(soc ? soc.f : {}).filter(([k, f]) => (view === 'friends' ? f.st === 'f' : f.st !== 'f') && (!q || k.includes(q)))
+      .sort((a, b) => (view === 'req' ? (a[1].st === 'in' ? 0 : 1) - (b[1].st === 'in' ? 0 : 1) : 0) || a[0].localeCompare(b[0]))
+      .map(([k, f]) => ({ k, n: f.n, sub: f.st === 'in' ? 'Wants to be your friend' : f.st === 'out' ? 'Request sent' : '', kind: 'p' }));
+    $('plCount').textContent = view === 'friends' ? rows.length + (rows.length === 1 ? ' friend' : ' friends') : rows.length ? 'Friend requests' : '';
+  } else {
+    rows = Object.entries(soc ? soc.c : {}).filter(([k]) => !q || k.includes(q)).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0))
+      .map(([k, c]) => ({ k, n: c.n, sub: (c.me ? 'You: ' : '') + plain(c.t || ''), kind: 'dm', un: c.un, ts: c.ts }));
+    $('plCount').textContent = rows.length ? 'Private chats' : '';
+  }
+  for (const r of rows.slice(0, limit)) {
+    let extra = null;
+    if (r.kind === 'dm') { extra = r.un ? el('span', 'un', r.un) : el('small', 'pl-count', ago(r.ts)); }
+    else if (view === 'all') extra = tagFor(r.k);
+    const li = item(r.n, r.sub, extra);
+    if (cur && cur.k === r.k && (cur.kind === r.kind || view === 'all')) li.classList.add('sel');
+    li.onclick = () => go(r.kind, r.n);
+    li.onkeydown = e => { if (e.key === 'Enter') go(r.kind, r.n); };
+    out.push(li);
+  }
+  if (rows.length > limit) { const m = el('li', 'more', 'Show more (' + (rows.length - limit) + ')'); m.onclick = () => { limit += 300; renderList(); }; out.push(m); }
+  if (!rows.length) out.push(el('li', 'none', view === 'all' ? (players.length ? 'Nobody matches that.' : '') : view === 'friends' ? 'No friends yet. Find someone in All and press Add friend.' : view === 'req' ? 'No friend requests right now.' : 'No private chats yet. Open someone’s profile and press Message.'));
+  ul.replaceChildren(...out);
+}
+for (const b of document.querySelectorAll('.seg button')) b.onclick = () => setView(b.dataset.v);
+function setView(v) {
+  view = v; limit = 200;
+  for (const b of document.querySelectorAll('.seg button')) b.classList.toggle('on', b.dataset.v === v);
+  renderList();
+}
+$('q').addEventListener('input', () => { limit = 200; renderList(); });
+
+// ---------- a player's profile ----------
+const backBtn = () => { const b = el('button', 'back', '← Back'); b.type = 'button'; b.onclick = () => { history.replaceState(null, '', location.pathname + location.search); cur = null; $('pl').classList.remove('detail'); renderList(); }; return b; };
+function go(kind, n) {
+  const h = '#' + kind + '=' + encodeURIComponent(n);
+  if (location.hash !== h) history.replaceState(null, '', h);
+  route();
+}
+function route() {
+  const m = location.hash.match(/^#(p|dm)=([^&]+)/);
+  if (!m) { cur = null; $('pl').classList.remove('detail'); return; }
+  let n = ''; try { n = decodeURIComponent(m[2]); } catch (e) {}
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(n)) return;
+  $('pl').classList.add('detail');
+  if (m[1] === 'dm') openDm(n); else openProfile(n);
+}
+addEventListener('hashchange', route);
+
+let profSeq = 0;
+function openProfile(n) {
+  const k = lc(n), seq = ++profSeq;
+  cur = { kind: 'p', k, n: nameOf(k) };
+  renderList();
+  const box = el('div', 'prof');
+  box.append(el('p', 'note', 'Loading ' + nameOf(k) + '…'));
+  $('main').replaceChildren(box);
+  api('player?name=' + encodeURIComponent(n)).then(r => {
+    if (seq !== profSeq) return;
+    if (r.status === 404) { box.replaceChildren(backBtn(), el('div', 'pl-empty', 'There’s no player called ' + n + '.')); return; }
+    if (r.status !== 200) { box.replaceChildren(backBtn(), el('div', 'pl-empty', 'Couldn’t load this profile. Check your connection.')); return; }
+    cur.n = r.n;
+    drawProfile(box, r);
+  });
+}
+function drawProfile(box, r) {
+  const k = lc(r.n), mine = k === lc(myName()), head = el('div', 'prof-head'), t = el('div');
+  t.append(el('h1', '', r.n), el('p', '', [joined(r.c), mine ? 'This is you' : ''].filter(Boolean).join(' · ')));
+  head.append(backBtn(), avatar(r.n), t);
+  const acts = el('div', 'prof-acts');
+  const btn = (text, cls, fn) => { const b = el('button', 'btn' + (cls ? ' ' + cls : ''), text); b.type = 'button'; b.onclick = () => { b.disabled = true; Promise.resolve(fn()).finally(() => { b.disabled = false; }); }; acts.append(b); return b; };
+  if (!mine) {
+    if (!signedIn()) btn('Add friend', '', () => A.welcome('signup'));
+    else {
+      const f = soc && soc.f[k], blocked = soc && soc.b[k];
+      if (!f) btn('Add friend', '', () => friend(r.n, 'add'));
+      else if (f.st === 'in') { btn('Accept friend request', '', () => friend(r.n, 'add')); btn('Decline', 'ghost2', () => friend(r.n, 'remove')); }
+      else if (f.st === 'out') btn('Cancel friend request', 'ghost2', () => friend(r.n, 'remove'));
+      else btn('Remove friend', 'ghost2', () => { if (confirm('Remove ' + r.n + ' from your friends?')) return friend(r.n, 'remove'); });
+      btn('Message', blocked ? 'ghost2' : '', () => go('dm', r.n));
+      btn(blocked ? 'Unblock' : 'Block', 'danger', () => { if (blocked || confirm('Block ' + r.n + '? They won’t be able to message you or send you friend requests. They aren’t told.')) return block(r.n, !blocked); });
+    }
+  }
+  const s = r.s || {}, have = GAMES.filter(g => s[g.id]), not = GAMES.filter(g => !s[g.id]);
+  const grid = el('div', 'scores');
+  const card = (g, text) => {
+    const a = el('a', 'score' + (text ? '' : ' no')), img = el('img'), d = el('div');
+    a.href = 'play.html?game=' + encodeURIComponent(g.id); img.src = g.thumb; img.alt = ''; img.loading = 'lazy';
+    d.append(el('b', '', g.title), el('span', '', text || 'Not played yet'));
+    a.append(img, d); return a;
+  };
+  for (const g of have) grid.append(card(g, tidy(s[g.id])));
+  for (const g of not) grid.append(card(g, ''));
+  const h2 = el('h2', '', 'Best scores');
+  box.replaceChildren(head);
+  if (acts.childNodes.length) box.append(acts);
+  box.append(h2, grid);
+  box.append(el('p', 'note', !r.at ? (mine ? 'Your scores show up here after your account syncs. Play a game and come back.' : r.n + ' hasn’t synced any scores yet. They show up the next time ' + r.n + ' visits the arcade.')
+    : 'Updated ' + new Date(r.at).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '. Scores come from the player’s own saves.'));
+}
+function friend(n, op) {
+  return api('friend', { method: 'POST', auth: true, body: { op, name: n } }).then(r => {
+    if (r.status !== 200) { alert(r.error === 'too_many' ? 'You have the most friends allowed (300).' : r.error === 'no_account' ? 'That account doesn’t exist any more.' : 'Couldn’t do that. Check your connection and try again.'); return; }
+    if (soc) { if (r.v) soc.f[lc(n)] = r.v; else delete soc.f[lc(n)]; if (op === 'add') delete soc.b[lc(n)]; }
+    refreshCur();
+  });
+}
+function block(n, on) {
+  return api('block', { method: 'POST', auth: true, body: { name: n, on } }).then(r => {
+    if (r.status !== 200) { alert('Couldn’t do that. Check your connection and try again.'); return; }
+    return loadSocial();
+  });
+}
+function refreshCur() {
+  counts(); renderList();
+  if (cur && cur.kind === 'p') { const box = $('main').querySelector('.prof'); api('player?name=' + encodeURIComponent(cur.n)).then(r => { if (r.status === 200 && cur && cur.k === lc(r.n) && cur.kind === 'p' && box.isConnected) drawProfile(box, r); }); }
+}
+
+// ---------- private messages ----------
+let dm = null; // { k, n, msgs, more, log }
+function openDm(n) {
+  const k = lc(n);
+  cur = { kind: 'dm', k, n: nameOf(k) };
+  renderList();
+  if (!signedIn()) { $('main').replaceChildren(needAccount('send private messages')); return; }
+  const head = el('div', 'dm-head'), link = el('a', '', nameOf(k)), log = el('div', 'dm-log'), form = el('form', 'dm-send'), inp = el('input', 'field'), send = el('button', 'btn', 'Send');
+  link.href = '#p=' + encodeURIComponent(nameOf(k));
+  head.append(backBtn(), avatar(nameOf(k)), link);
+  inp.maxLength = 500; inp.placeholder = 'Message ' + nameOf(k) + '…'; inp.setAttribute('aria-label', 'Message'); inp.autocomplete = 'off'; inp.enterKeyHint = 'send';
+  send.type = 'submit';
+  form.append(inp, send);
+  const note = el('p', 'dm-note', soc && soc.b[k] ? 'You blocked ' + nameOf(k) + '. Unblock them on their profile to send messages.' : 'Only you and ' + nameOf(k) + ' can see this chat. Be kind, and never share passwords or personal details.');
+  $('main').replaceChildren(head, log, form, note);
+  log.append(el('p', 'note', 'Loading…'));
+  dm = { k, n: nameOf(k), msgs: [], more: false, log };
+  api('dm?with=' + encodeURIComponent(n), { auth: true }).then(r => {
+    if (!dm || dm.k !== k) return;
+    if (r.status !== 200) { log.replaceChildren(el('p', 'note', r.status === 404 ? 'There’s no player called ' + n + '.' : 'Couldn’t load the messages. Check your connection.')); return; }
+    dm.n = r.n; dm.msgs = r.msgs; dm.more = r.more;
+    link.textContent = r.n;
+    if (soc && soc.c[k]) { soc.c[k].un = 0; counts(); renderList(); }
+    drawDm(true);
+  });
+  let sending = false;
+  form.onsubmit = e => {
+    e.preventDefault();
+    const text = plain(inp.value).slice(0, 500);
+    if (!text || sending) return;
+    sending = true; send.disabled = true;
+    api('dm', { method: 'POST', auth: true, body: { to: dm.n, text } }).then(r => {
+      sending = false; send.disabled = false;
+      if (r.status !== 200) { alert(r.error === 'slow' ? 'Slow down a little.' : r.error === 'you_blocked' ? 'You blocked this player. Unblock them on their profile first.' : r.error === 'no_account' ? 'That account doesn’t exist any more.' : 'Not sent. Check your connection and try again.'); return; }
+      inp.value = '';
+      gotDm(k, r.n, r.m);
+      inp.focus();
+    });
+  };
+  setTimeout(() => inp.focus(), 50);
+}
+function drawDm(bottom) {
+  const log = dm.log, frag = document.createDocumentFragment();
+  if (dm.more) { const b = el('button', 'btn ghost2 dm-older', 'Load older messages'); b.type = 'button'; b.onclick = older; frag.append(b); }
+  let day = '';
+  for (const m of dm.msgs) {
+    const d = new Date(m.ts).toDateString();
+    if (d !== day) { day = d; frag.append(el('div', 'dm-day', new Date(m.ts).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }))); }
+    const b = el('div', 'bub' + (m.f ? ' me' : ''), plain(m.t)), t = el('time', '', clock(m.ts));
+    b.append(t); frag.append(b);
+  }
+  if (!dm.msgs.length) frag.append(el('p', 'note', 'No messages yet. Say hi!'));
+  const keepFrom = log.scrollHeight - log.scrollTop;
+  log.replaceChildren(frag);
+  if (bottom) log.scrollTop = log.scrollHeight; else log.scrollTop = log.scrollHeight - keepFrom;
+}
+function older() {
+  const d = dm, first = d.msgs[0];
+  if (!first) return;
+  api('dm?with=' + encodeURIComponent(d.n) + '&before=' + first.q, { auth: true }).then(r => {
+    if (dm !== d || r.status !== 200) return;
+    d.msgs = r.msgs.concat(d.msgs); d.more = r.more; drawDm(false);
+  });
+}
+let readT = 0;
+function gotDm(k, n, m) {
+  if (soc) {
+    const c = soc.c[k] || (soc.c[k] = { n, un: 0 });
+    c.n = n; c.ts = m.ts; c.t = m.t.slice(0, 80); c.me = m.f;
+    const open = dm && dm.k === k && cur && cur.kind === 'dm' && !document.hidden;
+    if (!m.f && !open) c.un = (c.un || 0) + 1;
+    if (!m.f && open) { clearTimeout(readT); readT = setTimeout(() => api('dm?with=' + encodeURIComponent(n) + '&before=1', { auth: true }), 1500); } // marks it read
+  }
+  if (dm && dm.k === k && !dm.msgs.some(x => x.id === m.id && x.f === m.f)) {
+    const near = dm.log.scrollHeight - dm.log.scrollTop - dm.log.clientHeight < 120;
+    dm.msgs.push(m); drawDm(near || m.f);
+  }
+  counts(); renderList();
+}
+
+// ---------- loading, and live updates over the account's WebSocket ----------
+function loadPlayers() {
+  return api('players').then(r => {
+    if (r.status !== 200) { $('plCount').textContent = r.status === 0 ? 'Can’t reach the server. Check your connection.' : 'Couldn’t load the players.'; return; }
+    players = r.players || []; renderList();
+  });
+}
+function loadSocial() {
+  if (!signedIn()) { soc = null; counts(); renderList(); return Promise.resolve(); }
+  return api('social', { auth: true }).then(r => { if (r.status === 200) { soc = { f: r.f || {}, c: r.c || {}, b: r.b || {} }; refreshCur(); } });
+}
+let ws = null, wsTries = 0, wsPing = 0, wsFor = '';
+function live() {
+  const tok = signedIn() ? A.token() : '';
+  if (wsFor === tok && ws) return;
+  if (ws) { const o = ws; ws = null; try { o.close(); } catch (e) {} }
+  wsFor = tok;
+  if (!tok) return;
+  let s; try { s = new WebSocket(A.server.replace(/^http/, 'ws') + '/acct/ws', ['arcade', tok]); } catch (e) { return; }
+  ws = s;
+  let heard = Date.now(), opened = false;
+  s.onopen = () => { opened = true; if (wsTries) loadSocial(); wsTries = 0; }; // after a reconnect, catch up on anything missed
+  s.onmessage = ev => {
+    heard = Date.now();
+    if (ev.data === 'pong') return;
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (!soc) return;
+    if (m.t === 'dm' && m.m) gotDm(m.k, m.n, m.m);
+    else if (m.t === 'friend') { if (m.v) soc.f[m.k] = m.v; else delete soc.f[m.k]; refreshCur(); }
+    else if (m.t === 'read') { if (soc.c[m.k]) soc.c[m.k].un = 0; counts(); renderList(); }
+    else if (m.t === 'social') loadSocial();
+  };
+  s.onclose = () => {
+    clearInterval(wsPing);
+    if (ws !== s) return;
+    ws = null;
+    if (!opened && wsTries > 4) return; // can't get a live connection: the page still works, just without live updates
+    setTimeout(() => { wsFor = ''; live(); }, [2000, 5000, 10000, 30000, 60000][Math.min(wsTries++, 4)]);
+  };
+  clearInterval(wsPing);
+  wsPing = setInterval(() => {
+    if (ws !== s) return;
+    if (Date.now() - heard > 120000) { try { s.close(); } catch (e) {} return; }
+    if (s.readyState === 1) try { s.send('ping'); } catch (e) {}
+  }, 25000);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && dm && cur && cur.kind === 'dm' && soc && soc.c[dm.k] && soc.c[dm.k].un) openDm(dm.n); });
+
+loadPlayers().then(route);
+loadSocial();
+live();
+// signing in or out while the page is open
+let lastName = myName();
+setInterval(() => { if (myName() !== lastName) { lastName = myName(); loadSocial(); live(); if (cur) route(); } }, 1000);
+</script>
+<script src="tos.js?v=2"></script>
+</body>
+</html>

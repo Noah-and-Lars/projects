@@ -17,3 +17,15 @@ class_name = "Account"
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Account"]
+
+[[durable_objects.bindings]]
+name = "CHAT"
+class_name = "Chat"
+
+[[durable_objects.bindings]]
+name = "DIR"
+class_name = "Directory"
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Chat", "Directory"]

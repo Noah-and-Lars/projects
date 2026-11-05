@@ -67,6 +67,7 @@
   <nav class="tabs" aria-label="Sections">
     <a class="tab on" href="index.html" aria-current="page">Games</a>
     <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span> <b id="chatN" class="tab-n" hidden></b></a>
+    <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
   </nav>
   <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
 </header>
@@ -100,8 +101,8 @@
   <p>The Arcade · <span id="count"></span></p>
 </footer>
 
-<script src="games.js?v=164"></script>
-<script src="account.js?v=6"></script>
+<script src="games.js?v=165"></script>
+<script src="account.js?v=7"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
