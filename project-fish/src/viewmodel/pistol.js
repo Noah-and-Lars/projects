@@ -37,6 +37,18 @@ export const MAGAZINE = {
 };
 GRIP.bottom = 0.0678;
 
+// The slide (gun space, slide forward): a box in front of the frame, from its
+// back face to the muzzle, and the front serrations near the muzzle that a
+// hand takes hold of to ease it back. The Blender pistol matches.
+export const SLIDE = {
+  halfWidth: 0.01225,
+  top: 0.0165,
+  bottom: -0.0105,
+  front: -0.152, // the muzzle end (z)
+  back: 0.032,
+  frontSerrations: [-0.128, -0.106], // z, front to back
+};
+
 // The iron sights (gun space). Looking down the sights, the three dots line up
 // at this height: the two on the back of the rear sight and the one on the
 // back of the front sight. The Blender pistol (build_pistol.py) matches.

@@ -264,7 +264,8 @@ renderer.setAnimationLoop((time) => {
     reloadEmpty: weapon.reload ? weapon.reload.empty : false,
     ammo: weapon.ammo,
     reserve: weapon.reserve,
-    inspectProgress: weapon.inspectProgress,
+    inspectTime: weapon.inspectTime,
+    inspectCheck: weapon.inspectCheck,
     inspectAmount: weapon.inspectAmount,
   };
   aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading && !weapon.inspecting, gunState);

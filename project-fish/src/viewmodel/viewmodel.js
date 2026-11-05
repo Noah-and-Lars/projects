@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createPistol, GRIP, SIGHTS, MAGAZINE } from './pistol.js';
 import { createArms, rightHandPose } from './arms.js';
-import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix } from './supportHand.js';
+import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix, OVER_TURN, OVER_SLIDE } from './supportHand.js';
 import { ShootingHand } from './shootingHand.js';
 import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
@@ -97,7 +97,7 @@ const BELT = V(-0.095, -0.38, 0.21);
 // space, after being held palm up) as the hand holds it up to look at.
 const LOW = V(-0.088, -0.34, 0.195);
 const AT_LOW = turned(0.48, 0, 0.19);
-const CAUGHT = INSPECT_STEPS.magCaught * INSPECT.time;
+const CAUGHT = INSPECT_STEPS.magCaught;
 const LOOK = [
   { center: MAGAZINE_CENTER.clone().addScaledVector(GRIP.down, MAG_AT_WELL + 0.02).add(V(-0.07, 0.07, 0.07)), turn: turned(0.55, 0.25, 0) },
   { center: MAGAZINE_CENTER.clone().addScaledVector(GRIP.down, MAG_AT_WELL + 0.02).add(V(-0.075, 0.075, 0.075)), turn: turned(0.6, -0.1, 0) },
@@ -127,6 +127,56 @@ const freshMagazine = (S, turn) => [
   { r: 0.79, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // beside the grip
   { r: 0.815, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' }, // fingers round it...
   { r: S.handOn, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true }, // ...and closed on it
+];
+
+// The inspect's keys (seconds) up to the magazine going back in, and the
+// chamber check after it. A key from the end of a reload, moved to the same
+// time after the magazine goes in as it is there.
+const inInspect = (key) => ({ ...key, r: INSPECT.magIn + (key.r - RELOAD_STEPS.catching.magIn) * PISTOL.reloadTime });
+const INSPECT_HEAD = [
+  { r: 0, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
+  { r: 0.08, at: V(-0.012, -0.014, 0.008), turn: NONE, hand: 'loose' }, // fingers lift off the grip...
+  { r: 0.15, at: V(-0.022, -0.03, -0.012), turn: turned(0.08, 0, 0.05), hand: 'loose' }, // ...off the front of the grip...
+  { r: 0.27, at: V(-0.055, -0.18, 0.095), turn: turned(0.3, 0, 0.14), hand: 'reaching' }, // ...and away
+  { r: 0.5, at: LOW, turn: AT_LOW, hand: 'relaxed', stop: true }, // down out of the way
+  { r: 2.75, at: LOW, turn: AT_LOW, hand: 'relaxed', stop: true },
+  { r: 3.05, at: V(-0.07, -0.2, 0.1), turn: between(AT_LOW, HOLD_TURN, 0.55), hand: 'reaching' }, // back up, turning palm up
+  { r: INSPECT.magOut - 0.08, at: holdingAt(CATCH_GAP), turn: HOLD_TURN, hand: 'flat', stop: true }, // under the magazine
+  { r: CAUGHT, at: holdingAt(CATCH_GAP), turn: HOLD_TURN, hand: 'flat', stop: true }, // it drops in...
+  { r: CAUGHT + 0.08, at: holdingAt(CATCH_GAP + 0.008), turn: HOLD_TURN, hand: 'pushing' }, // ...the hand gives a little and the fingers close...
+  { r: CAUGHT + 0.16, at: holdingAt(MAG_AT_WELL + 0.03), turn: HOLD_TURN, hand: 'magazine' }, // ...pulling it out
+  { r: CAUGHT + 0.42, ...holdingMagazine(LOOK[0]), hand: 'magazine' }, // held up to look at...
+  { r: INSPECT.magIn - 0.43, ...holdingMagazine(LOOK[1]), hand: 'magazine', stop: true }, // ...turning it a little
+  // Lined up under the well, and in it goes.
+  ...freshMagazine(RELOAD_STEPS.catching, HOLD_TURN).slice(3, 6).map(inInspect),
+];
+// How far back the slide is eased to check the chamber (metres): half way.
+const PRESS_CHECK = SLIDE_TRAVEL / 2;
+const PULLED = OVER_SLIDE.clone().add(V(0, 0, PRESS_CHECK));
+// Let go, the slide snaps forward in this long (seconds).
+const PRESS_SNAP = 0.035;
+// How far back the slide is (a fraction of its full travel) `time` seconds
+// into an inspect that checks the chamber: eased back as the hand moves it
+// (the hand's keys there are stops, so its move is this same smoothstep),
+// held, then snapping forward.
+function pressCheckAt(time) {
+  const half = PRESS_CHECK / SLIDE_TRAVEL;
+  if (time < INSPECT.pull) return 0;
+  if (time < INSPECT.release) return half * smoothstep(INSPECT.pull, INSPECT.pulled, time);
+  return half * Math.max(0, 1 - (time - INSPECT.release) / PRESS_SNAP);
+}
+const INSPECT_CHECK = [
+  { r: INSPECT.magIn + 0.075, at: holdingAt(0).addScaledVector(GRIP.down, 0.022).add(V(-0.008, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' }, // away from the magazine...
+  { r: 5.07, at: OVER_SLIDE.clone().add(V(-0.05, -0.05, 0.03)), turn: between(HOLD_TURN, OVER_TURN, 0.55), hand: 'open' }, // ...up to the slide...
+  { r: 5.26, at: OVER_SLIDE.clone().add(V(-0.004, 0.012, 0.004)), turn: OVER_TURN, hand: 'open', stop: true }, // ...over it...
+  { r: INSPECT.pull, at: OVER_SLIDE, turn: OVER_TURN, hand: 'slide', stop: true }, // ...and takes hold of it
+  { r: INSPECT.pulled, at: PULLED, turn: OVER_TURN, hand: 'slide', stop: true }, // eases it back half way...
+  { r: INSPECT.release, at: PULLED, turn: OVER_TURN, hand: 'slide', stop: true }, // ...holds it while the chamber's checked...
+  { r: INSPECT.release + 0.06, at: PULLED.clone().add(V(-0.004, 0.01, 0.004)), turn: OVER_TURN, hand: 'open' }, // ...and lets go: it snaps forward
+  { r: 6.4, at: V(-0.05, -0.045, 0.035), turn: between(OVER_TURN, NONE, 0.6), hand: 'reaching' }, // back down...
+  { r: 6.54, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // ...beside the grip
+  { r: 6.59, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' }, // fingers round it...
+  { r: 6.64, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true }, // ...and closed on it
 ];
 
 // The support hand's keyframes for each kind of reload: reload progress,
@@ -164,28 +214,16 @@ const HAND_PATHS = (() => {
       { r: 0.36, at: BELT, turn: HOLD_TURN, hand: 'open', stop: true, name: 'reach' }, // ...and on to the belt
       ...freshMagazine(C, HOLD_TURN),
     ],
-    // Inspecting (times in seconds here, turned into fractions below): off
-    // the grip and down out of view while the shooting hand turns the gun,
-    // then back up, palm up under the grip, to catch the magazine as it
-    // drops. Out with it, held up to look at, then back in and back round
-    // the grip (as at the end of a reload).
-    inspect: [
-      { r: 0, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
-      { r: 0.08, at: V(-0.012, -0.014, 0.008), turn: NONE, hand: 'loose' }, // fingers lift off the grip...
-      { r: 0.15, at: V(-0.022, -0.03, -0.012), turn: turned(0.08, 0, 0.05), hand: 'loose' }, // ...off the front of the grip...
-      { r: 0.27, at: V(-0.055, -0.18, 0.095), turn: turned(0.3, 0, 0.14), hand: 'reaching' }, // ...and away
-      { r: 0.5, at: LOW, turn: AT_LOW, hand: 'relaxed', stop: true }, // down out of the way
-      { r: 2.75, at: LOW, turn: AT_LOW, hand: 'relaxed', stop: true },
-      { r: 3.05, at: V(-0.07, -0.2, 0.1), turn: between(AT_LOW, HOLD_TURN, 0.55), hand: 'reaching' }, // back up, turning palm up
-      { r: INSPECT.magOut - 0.08, at: holdingAt(CATCH_GAP), turn: HOLD_TURN, hand: 'flat', stop: true }, // under the magazine
-      { r: CAUGHT, at: holdingAt(CATCH_GAP), turn: HOLD_TURN, hand: 'flat', stop: true }, // it drops in...
-      { r: CAUGHT + 0.08, at: holdingAt(CATCH_GAP + 0.008), turn: HOLD_TURN, hand: 'pushing' }, // ...the hand gives a little and the fingers close...
-      { r: CAUGHT + 0.16, at: holdingAt(MAG_AT_WELL + 0.03), turn: HOLD_TURN, hand: 'magazine' }, // ...pulling it out
-      { r: CAUGHT + 0.42, ...holdingMagazine(LOOK[0]), hand: 'magazine' }, // held up to look at...
-      { r: INSPECT.magIn - 0.43, ...holdingMagazine(LOOK[1]), hand: 'magazine', stop: true }, // ...turning it a little
-      // Lined up under the well, in it goes, and back round the grip.
-      ...freshMagazine(C, HOLD_TURN).slice(3).map((key) => ({ ...key, r: INSPECT.magIn + (key.r - C.magIn) * PISTOL.reloadTime })),
-    ].map((key) => ({ ...key, r: key.r / INSPECT.time })),
+    // Inspecting (times in seconds): off the grip and down out of view while
+    // the shooting hand turns the gun, then back up, palm up under the grip,
+    // to catch the magazine as it drops. Out with it, held up to look at,
+    // and back in. Then up over the top of the slide, eases it back half way
+    // (the slide follows the hand), holds it there while the chamber's
+    // checked, and lets go so it snaps forward; and back round the grip.
+    inspect: [...INSPECT_HEAD, ...INSPECT_CHECK],
+    // With the slide locked back, no chamber check: straight back round the
+    // grip once the magazine is in (as at the end of a reload).
+    inspectShort: [...INSPECT_HEAD, ...freshMagazine(C, HOLD_TURN).slice(6).map(inInspect)],
   };
 })();
 const keyAt = (kind, name) => HAND_PATHS[kind].find((key) => key.name === name).r;
@@ -222,7 +260,8 @@ function thumbAt(r, S, scale = 1) {
 // the shooting hand brings the gun up and turns it to show its right side
 // (ejection port, loaded-chamber indicator), then turns it over to show its
 // left (slide stop, markings). Then the gun comes upright and up as for a
-// reload, and the support hand comes back to check the magazine.
+// reload, and the support hand comes back to check the magazine; then,
+// tipped so the ejection port faces you, the chamber.
 //
 // Keyframes, at seconds into the inspect: where the whole gun and both arms
 // go (`at`, added to where the gun is held, and `turn`, radians: muzzle up,
@@ -233,22 +272,40 @@ function thumbAt(r, S, scale = 1) {
 // the forearm twisting about its own length (so the sleeve stays where it
 // is), the rest at the wrist. The movement is a smooth curve through the
 // keys, easing in and out of the ones marked stop.
-const INSPECT_POSES = [
-  { t: 0, at: [0, 0, 0], turn: [0, 0, 0], gun: [0, 0, 0], elbow: [0, 0, 0], stop: true },
-  { t: 0.2, at: [-0.005, 0.01, 0.02], turn: [0, 0, 0], gun: [0.08, 0, 0.1], elbow: [0.01, 0, 0] }, // the support hand is off
-  { t: 0.8, at: [-0.05, 0.04, 0.15], turn: [0, 0, 0], gun: [0.85, 0, 1.2], elbow: [0, 0, 0], stop: true }, // the right side: forearm rolled over
-  { t: 1.55, at: [-0.048, 0.045, 0.15], turn: [0, 0, 0], gun: [0.9, 0.05, 1.27], elbow: [0.02, 0, 0], stop: true },
-  { t: 2.2, at: [0.01, 0.02, 0.14], turn: [0, 0, 0], gun: [0.35, 0.75, -0.5], elbow: [0.12, 0.35, 0], stop: true }, // turned over: the left side, muzzle to the left
-  { t: 2.85, at: [0.008, 0.025, 0.14], turn: [0, 0, 0], gun: [0.4, 0.8, -0.56], elbow: [0.13, 0.36, 0], stop: true },
-  { t: 3.25, at: RELOAD_POSE.position.toArray(), turn: RELOAD_POSE.turn, gun: [0, 0, 0], elbow: [0, 0, 0], stop: true }, // up for the magazine check
-  { t: 5.22, at: RELOAD_POSE.position.toArray(), turn: RELOAD_POSE.turn, gun: [0, 0, 0], elbow: [0, 0, 0], stop: true }, // the support hand is back on
-  { t: INSPECT.time, at: [0, 0, 0], turn: [0, 0, 0], gun: [0, 0, 0], elbow: [0, 0, 0], stop: true },
-].map((key) => ({ t: key.t, stop: key.stop, v: [...key.at, ...key.turn, ...key.gun, ...key.elbow] }));
+const STILL = { gun: [0, 0, 0], elbow: [0, 0, 0] };
+const MAGAZINE_CHECK = { at: [-0.04, 0.12, 0.05], turn: RELOAD_POSE.turn, ...STILL };
+const CHAMBER_CHECK = { at: [-0.035, 0.1, 0.05], turn: [0.5, 0.12, 0.3], ...STILL };
+const poseKey = (t, key, stop = true) => ({ t, ...key, stop });
+const INSPECT_POSE_HEAD = [
+  poseKey(0, { at: [0, 0, 0], turn: [0, 0, 0], ...STILL }),
+  poseKey(0.2, { at: [-0.005, 0.01, 0.01], turn: [0, 0, 0], gun: [0.08, 0, 0.1], elbow: [0.01, 0, 0] }, false), // the support hand is off
+  poseKey(0.8, { at: [-0.05, 0.035, 0.07], turn: [0, 0, 0], gun: [0.85, 0, 1.2], elbow: [0, 0, 0] }), // the right side: forearm rolled over
+  poseKey(1.55, { at: [-0.048, 0.04, 0.07], turn: [0, 0, 0], gun: [0.9, 0.05, 1.27], elbow: [0.02, 0, 0] }),
+  poseKey(2.2, { at: [0.01, 0.015, 0.06], turn: [0, 0, 0], gun: [0.35, 0.75, -0.5], elbow: [0.12, 0.35, 0] }), // turned over: the left side, muzzle to the left
+  poseKey(2.85, { at: [0.008, 0.02, 0.06], turn: [0, 0, 0], gun: [0.4, 0.8, -0.56], elbow: [0.13, 0.36, 0] }),
+  poseKey(3.25, MAGAZINE_CHECK), // up for the magazine check
+  poseKey(4.8, MAGAZINE_CHECK),
+];
+const keyed = (keys) => keys.map((key) => ({ t: key.t, stop: key.stop, v: [...key.at, ...key.turn, ...key.gun, ...key.elbow] }));
+const INSPECT_POSES = {
+  // Tipped so the ejection port faces you while the slide's eased back.
+  check: keyed([
+    ...INSPECT_POSE_HEAD,
+    poseKey(5.3, CHAMBER_CHECK),
+    poseKey(INSPECT.release + 0.05, { ...CHAMBER_CHECK, at: [-0.033, 0.103, 0.05], turn: [0.53, 0.1, 0.33] }),
+    poseKey(INSPECT.time, { at: [0, 0, 0], turn: [0, 0, 0], ...STILL }),
+  ]),
+  short: keyed([
+    ...INSPECT_POSE_HEAD,
+    poseKey(5.22, MAGAZINE_CHECK), // the support hand is back on
+    poseKey(INSPECT.shortTime, { at: [0, 0, 0], turn: [0, 0, 0], ...STILL }),
+  ]),
+};
 
-// The inspect pose `time` seconds in.
+// The inspect pose `time` seconds in (`check`: with the chamber check).
 const inspectPose = { at: new THREE.Vector3(), turn: [0, 0, 0], gun: [0, 0, 0], elbow: [0, 0, 0] };
-function inspectPoseAt(time) {
-  const keys = INSPECT_POSES;
+function inspectPoseAt(time, check = true) {
+  const keys = check ? INSPECT_POSES.check : INSPECT_POSES.short;
   const t = Math.min(Math.max(time, 0), keys[keys.length - 1].t - 1e-6);
   let i = 0;
   while (t >= keys[i + 1].t) i++;
@@ -503,6 +560,9 @@ export class Viewmodel {
       this.slideStopRest = restOf(this.slideStop);
       this.extractor = pistol.getObjectByName('extractor');
       this.extractorRest = this.extractor ? this.extractor.position.x : 0;
+      this.chamberRound = pistol.getObjectByName('chamber_round');
+      this.chamberRoundRest = this.chamberRound ? this.chamberRound.position.clone() : null;
+      this.pressSnapped = false;
       this.safetyBlade = pistol.getObjectByName('safety_blade');
       this.safetyBladeRest = this.safetyBlade ? this.safetyBlade.position.z : 0;
       this.stopLift = 0;
@@ -669,8 +729,9 @@ export class Viewmodel {
   // camera's rotation. wallDistance: metres to whatever is straight ahead.
   // aiming: whether the aim button is held. gun: { slideLocked,
   // reloadProgress (0..1, or -1), reloadSeconds, reloadEmpty, ammo, reserve,
-  // inspectProgress (0..1, or -1), inspectAmount (1, going to 0 when an
-  // inspect is cut short) }. Returns how far into aiming the gun is (0..1,
+  // inspectTime (seconds, or -1), inspectCheck (whether the inspect checks
+  // the chamber), inspectAmount (1, going to 0 when an inspect is cut
+  // short) }. Returns how far into aiming the gun is (0..1,
   // eased), for zooming the world.
   update(frameSeconds, player, yaw, pitch, cameraQuaternion, wallDistance = Infinity, aiming = false, gun = null) {
     // Bring the sights up or down at a steady pace, eased at both ends.
@@ -698,15 +759,16 @@ export class Viewmodel {
     }
     // Inspecting: the gun is brought up and turned over (all of it scaled
     // down as it goes back to the hold when it's cut short).
-    const inspect = gun && gun.inspectProgress >= 0 && reload < 0 ? gun.inspectProgress : -1;
+    const inspect = gun && gun.inspectTime >= 0 && reload < 0 ? gun.inspectTime : -1;
+    const check = Boolean(gun && gun.inspectCheck);
     const amount = inspect < 0 ? 0 : smoothstep(0, 1, gun.inspectAmount);
-    const pose = inspectPoseAt(inspect * INSPECT.time);
+    const pose = inspectPoseAt(inspect, check);
     if (amount > 0) {
       this.posePosition.addScaledVector(pose.at, amount);
       this.poseQuaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...pose.turn.map((a) => a * amount))));
     }
     this.pivot.copy(PIVOT).applyQuaternion(this.poseQuaternion).add(this.posePosition);
-    this.animateGun(dt, gun, reload, inspect, amount);
+    this.animateGun(dt, gun, reload, inspect, amount, check);
 
     // Weapon physics move the whole posed gun about the pivot between the wrists.
     // Sprinting tips the gun down, except while reloading, inspecting or aiming.
@@ -735,10 +797,11 @@ export class Viewmodel {
     return aim;
   }
 
-  // The slide, the support hand and the magazine. reload and inspect: how far
-  // through each (0..1, or -1); amount: how much of the inspect there is (it
-  // goes to 0 when it's cut short).
-  animateGun(dt, gun, reload, inspect = -1, amount = 0) {
+  // The slide, the support hand and the magazine. reload: how far through a
+  // reload (0..1, or -1); inspect: how far into an inspect (seconds, or -1);
+  // amount: how much of the inspect there is (it goes to 0 when it's cut
+  // short); check: whether the inspect checks the chamber.
+  animateGun(dt, gun, reload, inspect = -1, amount = 0, check = false) {
     this.flash.update(dt);
     if (!this.pistol) return;
 
@@ -764,6 +827,14 @@ export class Viewmodel {
     if (this.slideTime < 0.025) back = this.slideTime / 0.025;
     else if (this.slideTime < 0.075) back = locked ? 1 : 1 - (this.slideTime - 0.025) / 0.05;
     else back = locked ? 1 : 0;
+    // Checking the chamber in an inspect, the support hand eases the slide
+    // back half way and holds it, then lets go and it snaps forward.
+    const pressed = reload < 0 && check && amount > 0 ? pressCheckAt(inspect) : 0;
+    back = Math.max(back, pressed);
+    if (reload < 0 && check && inspect >= INSPECT.release + PRESS_SNAP) {
+      if (!this.pressSnapped) this.motion.slam(this.lastAim);
+      this.pressSnapped = true;
+    } else this.pressSnapped = false;
     if (this.slide) this.slide.position.z = this.slideRest + SLIDE_TRAVEL * back;
     if (this.barrel) {
       turnAbout(this.barrel, this.barrelRest, BARREL.pivot, BARREL.tilt * back);
@@ -774,16 +845,25 @@ export class Viewmodel {
       this.slammed = true;
       if (!locked) this.motion.slam(this.lastAim);
     }
+    // The round in the chamber, if there is one (not while the slide is
+    // cycling: the spent case is flying out then). Eased back, the extractor
+    // draws it back with the slide, so its brass shows in the ejection port.
+    if (this.chamberRound) {
+      const ammo = gun && gun.ammo !== undefined ? gun.ammo : PISTOL.magazine;
+      this.chamberRound.visible = !locked && ammo > 0 && this.slideTime >= 0.075;
+      this.chamberRound.position.z = this.chamberRoundRest.z + (SLIDE_TRAVEL - BARREL.travel) * pressed;
+    }
 
     // The hands. A reload (its kind decides the support hand's path) or an
     // inspect, which is followed the same way, with its own path.
     const inspecting = reload < 0 && inspect >= 0;
-    const kind = inspecting ? 'inspect' : gun && gun.reloadEmpty ? 'empty' : 'catching';
+    const kind = inspecting ? (check ? 'inspect' : 'inspectShort') : gun && gun.reloadEmpty ? 'empty' : 'catching';
     const S = inspecting ? INSPECT_STEPS : RELOAD_STEPS[kind];
     const r = inspecting ? inspect : reload;
     // Cut short, the hands go back to holding the gun from wherever they are.
     const returning = inspecting ? 1 - amount : 0;
-    if (this.shooter) this.shooter.set(...thumbAt(r, S, inspecting ? PISTOL.reloadTime / INSPECT.time : 1), 'grip', returning);
+    // (The inspect's times are in seconds; the thumb's are fractions of a reload.)
+    if (this.shooter) this.shooter.set(...thumbAt(r, S, inspecting ? PISTOL.reloadTime : 1), 'grip', returning);
     const hand = handAt(r, kind);
     if (returning > 0) {
       hand.offset.multiplyScalar(1 - returning);
@@ -800,7 +880,7 @@ export class Viewmodel {
     // The magazines. Out comes the old one when the release is pressed; in
     // goes the fresh one, carried in the support hand from the belt. (In an
     // inspect, the old one goes back in.)
-    const seconds = inspecting ? INSPECT.time : gun ? gun.reloadSeconds : 1;
+    const seconds = inspecting ? 1 : gun ? gun.reloadSeconds : 1;
     const out = r >= S.magOut && r < S.magIn;
     const fall = out ? magazineFall((r - S.magOut) * seconds) : 0;
     let inGun = !out; // the gun's own magazine, seated (or on its way out)

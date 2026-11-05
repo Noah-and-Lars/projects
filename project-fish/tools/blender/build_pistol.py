@@ -26,8 +26,9 @@ the hands still fit, and adds:
   match how many rounds are in it.
 - Separate small parts the game moves: the slide stop (rises into its notch
   when the slide locks back), the extractor (stands out with a round in the
-  chamber: the loaded-chamber indicator) and the trigger's safety blade
-  (presses in on the pull).
+  chamber: the loaded-chamber indicator), the trigger's safety blade
+  (presses in on the pull), and the round in the chamber (seen through the
+  ejection port when the slide is eased back; the slide is hollow there).
 - Small parts: three-dot sights (anti-glare grooves on the rear one) in
   dovetails, extractor, striker plate with its seam, a slide stop with a
   ridged pad, ridged takedown levers and magazine release, three pins, a
@@ -348,6 +349,12 @@ def build_slide(p):
         cutters.append(wedge('chamfer', tri if side > 0 else tri[::-1], -0.04, 0.16))
     # Ejection port: top and right side, with the barrel hood showing inside.
     cutters.append(box('port', -0.0034, 0.02, 0.006, 0.044, 0.0062, 0.03))
+    # Under the port the slide is hollow where the barrel hood sits, down past
+    # the chamber, so with the slide pulled back you can see into the gap
+    # between the breech face and the barrel: the round in the chamber, or
+    # the empty chamber with the slide locked back. With the slide forward
+    # the hood fills it.
+    cutters.append(box('breech', -0.0056, 0.0056, 0.006, 0.044, -0.0065, 0.0064))
     # Cocking serrations, front and back, both sides: deep flat-bottomed
     # grooves with sloped walls, eight at each end, stopping short of the top
     # chamfer.
@@ -431,8 +438,30 @@ def build_slide(p):
     bevel(tube, 0.0004, 2)
     barrel = join(tube, hood)
     barrel.name = barrel.data.name = 'barrel'
+    # The chamber, open at the back of the hood.
+    cut(barrel, cylinder('chamber', 0.0051, 0.0055, 0.037))
     sharp_edges(barrel)
     plain_material(barrel, BARREL, 0.3, metallic=1.0)
+    # The round in the chamber: its own part, so the game can show it only
+    # when there's one chambered, and draw it back with the slide (the
+    # extractor holds its rim) when the slide is eased back to check. Brass
+    # case with its rim, extractor groove and primer, and the bullet ahead of
+    # it inside the barrel.
+    rim = cylinder('rim', 0.0049, 0.0069, 0.008, segments=28)
+    groove = cylinder('groove', 0.0042, 0.008, 0.0092, segments=28)
+    body = cylinder('case_body', 0.0049, 0.0092, 0.0261, segments=28, end_radius=0.00485)
+    bevel(rim, 0.0003, 2)
+    case = join(rim, groove, body)
+    plain_material(case, '#c9a04a', 0.3, metallic=0.85)
+    primer = cylinder('primer', 0.0019, 0.00685, 0.0071, segments=20)
+    plain_material(primer, '#b9b4aa', 0.35, metallic=0.9)
+    bullet = cylinder('bullet', 0.0045, 0.0261, 0.0291, segments=24)
+    tip = cylinder('tip', 0.0045, 0.0291, 0.0351, segments=24, end_radius=0.0013)
+    bullet = join(bullet, tip)
+    plain_material(bullet, '#b8733a', 0.35, metallic=0.9)
+    chamber_round = join(case, primer, bullet)
+    chamber_round.name = chamber_round.data.name = 'chamber_round'
+    chamber_round.parent = barrel
     # Rear sight with a U notch, front sight post.
     rear = box('rear_sight', -0.0082, 0.0082, -0.0248, -0.0168, SLIDE_TOP - 0.001, SLIDE_TOP + 0.0058)
     cut(rear, box('notch', -0.0018, 0.0018, -0.03, -0.01, SLIDE_TOP + 0.0026, 0.04))

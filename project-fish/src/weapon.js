@@ -38,26 +38,35 @@ export const RELOAD_STEPS = {
 
 // Inspecting: the shooting hand turns the gun to show its right side, then
 // its left, and then the magazine is checked: the support hand catches it as
-// it drops out, holds it up to look at, and pushes it back in. The hands' and
-// gun's movements are keyframed in src/viewmodel/viewmodel.js
-// (INSPECT_POSES and HAND_PATHS.inspect); these are the times things happen
-// (seconds from the start), for the sounds and the magazine.
+// it drops out, holds it up to look at, and pushes it back in. Then the
+// chamber: the support hand eases the slide back half way so the round in
+// the chamber shows through the ejection port, and lets it snap forward
+// (with the slide locked back on an empty gun the chamber is plain to see,
+// so that's left out). The hands' and gun's movements are keyframed in
+// src/viewmodel/viewmodel.js (INSPECT_POSES and HAND_PATHS.inspect); these
+// are the times things happen (seconds from the start), for the sounds, the
+// magazine and the slide.
 export const INSPECT = {
-  time: 5.8, // the whole thing
+  checkChamber: false, // the chamber check isn't finished yet (the hand's grip on the slide), so it's left out for now
+  time: 7.2, // the whole thing
+  shortTime: 5.8, // without the chamber check
   // Cut short (by firing, aiming, reloading or sprinting), it goes back to
   // the hold this quickly, from wherever it's got to...
   fade: 0.25,
-  // ...but with the magazine out, it's put back in first, the rest played
-  // this many times faster.
+  // ...but with the magazine out or the slide held back, that's finished
+  // first, the rest played this many times faster.
   hurry: 4,
   magOut: 3.38, // the thumb presses the release; the magazine drops into the support hand
   magIn: 4.78, // the palm pushes it back home
+  pull: 5.36, // the support hand, holding the slide, starts easing it back...
+  pulled: 5.62, // ...and has it half way back
+  release: 6.2, // it lets go and the slide snaps forward
 };
-const inspectAt = (seconds) => seconds / INSPECT.time;
 export const INSPECT_STEPS = {
-  magOut: inspectAt(INSPECT.magOut),
-  magCaught: inspectAt(INSPECT.magOut + fallTime(CATCH_GAP)), // it lands in the palm
-  magIn: inspectAt(INSPECT.magIn),
+  magOut: INSPECT.magOut,
+  magCaught: INSPECT.magOut + fallTime(CATCH_GAP), // it lands in the palm
+  magIn: INSPECT.magIn,
+  slideRelease: INSPECT.release, // only with the chamber check
 };
 
 export class Pistol {
@@ -67,7 +76,7 @@ export class Pistol {
     this.cooldown = 0;
     this.slideLocked = false; // the slide stays back after the last round
     this.reload = null; // { time, duration, empty, done: Set of steps reached }
-    this.inspect = null; // { time, done: Set of steps reached, cut: cut short, fade: 1 → 0 when it's going back }
+    this.inspect = null; // { time, done: Set of steps reached, check: with the chamber check, cut: cut short, fade: 1 → 0 when it's going back }
     this.reloadWaiting = false; // the reload key was pressed while inspecting
     this.pulls = []; // trigger pulls waiting for the gun to be ready (seconds waited)
   }
@@ -91,9 +100,18 @@ export class Pistol {
     return this.inspect !== null;
   }
 
-  // How far through the inspect (0..1), or -1 if not inspecting.
-  get inspectProgress() {
-    return this.inspect ? Math.min(1, this.inspect.time / INSPECT.time) : -1;
+  // How far into the inspect (seconds), or -1 if not inspecting.
+  get inspectTime() {
+    return this.inspect ? Math.min(this.inspect.time, this.inspectLength) : -1;
+  }
+
+  // Whether this inspect checks the chamber (not with the slide locked back).
+  get inspectCheck() {
+    return this.inspect ? this.inspect.check : false;
+  }
+
+  get inspectLength() {
+    return this.inspect && this.inspect.check ? INSPECT.time : INSPECT.shortTime;
   }
 
   // How much of the inspect pose there is: 1, going down to 0 when it's cut
@@ -132,18 +150,19 @@ export class Pistol {
       if (reloadKey && this.ammo < PISTOL.magazine && this.reserve > 0) this.reloadWaiting = true;
       const inspect = this.inspect;
       if (this.pulls.length || this.reloadWaiting || busy) inspect.cut = true;
-      const p = inspect.time / INSPECT.time;
-      const magazineOut = p >= INSPECT_STEPS.magOut && p < INSPECT_STEPS.magIn;
-      if (inspect.cut && !magazineOut) inspect.fade -= dt / INSPECT.fade;
+      const t = inspect.time;
+      const magazineOut = t >= INSPECT.magOut && t < INSPECT.magIn;
+      const slideHeld = inspect.check && t >= INSPECT.pull && t < INSPECT.release;
+      if (inspect.cut && !magazineOut && !slideHeld) inspect.fade -= dt / INSPECT.fade;
       else inspect.time += dt * (inspect.cut ? INSPECT.hurry : 1);
-      const now = inspect.time / INSPECT.time;
       for (const [step, at] of Object.entries(INSPECT_STEPS)) {
-        if (now >= at && !inspect.done.has(step)) {
+        if (step === 'slideRelease' && !inspect.check) continue;
+        if (inspect.time >= at && !inspect.done.has(step)) {
           inspect.done.add(step);
           events.push(step);
         }
       }
-      if (now < 1 && inspect.fade > 0) return events;
+      if (inspect.time < this.inspectLength && inspect.fade > 0) return events;
       this.inspect = null;
       events.push('inspected');
     }
@@ -185,7 +204,7 @@ export class Pistol {
     }
 
     if (inspectKey && ready && !busy && !this.pulls.length && this.cooldown === 0) {
-      this.inspect = { time: 0, done: new Set(), cut: false, fade: 1 };
+      this.inspect = { time: 0, done: new Set(), check: INSPECT.checkChamber && !this.slideLocked, cut: false, fade: 1 };
       events.push('inspect');
       return events;
     }

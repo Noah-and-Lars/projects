@@ -3,7 +3,7 @@
 // in handRig.js), and how it holds a magazine.
 
 import * as THREE from 'three';
-import { GRIP, MAGAZINE } from './pistol.js';
+import { GRIP, MAGAZINE, SLIDE } from './pistol.js';
 import { leftHandPose, handShapes } from './arms.js';
 import { HandRig, chained } from './handRig.js';
 
@@ -104,6 +104,60 @@ export function outsideMagazine(p) {
   );
 }
 
+// --- Easing the slide back (the press check in an inspect) -------------------
+//
+// Over the slide in front of the ejection port: the palm against its left
+// side, the fingers up over the top and down its right side onto the front
+// serrations, the thumb along its left side. The forearm comes up from
+// below and behind on the left, as when holding the gun.
+export const OVER_TURN = frameOf(V(0.35, 0.75, -0.45), V(0.85, -0.4, 0)).multiply(frameOf(ALONG, PALM_NORMAL).invert());
+
+// How far a point (gun space) is outside the slide (or the frame's dust cover
+// under its front), with the slide pulled back `back` metres.
+export function outsideSlide(p, back = 0) {
+  const box = (halfWidth, y0, y1, z0, z1, r) => {
+    const qx = Math.abs(p.x) - (halfWidth - r);
+    const qy = Math.abs(p.y - (y0 + y1) / 2) - ((y1 - y0) / 2 - r);
+    const across = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+    const along = Math.max(z0 - p.z, p.z - z1);
+    return Math.hypot(Math.max(across, 0), Math.max(along, 0)) + Math.min(Math.max(across, along), 0);
+  };
+  return Math.min(
+    box(SLIDE.halfWidth, SLIDE.bottom, SLIDE.top, SLIDE.front + back, SLIDE.back + back, 0.0015),
+    box(SLIDE.halfWidth - 0.0005, -0.027, SLIDE.bottom, -0.137, -0.03, 0.001),
+  );
+}
+
+// Where the hand goes (offset from where it holds the gun) to take hold of
+// the slide: its middle knuckle at the slide's top left edge, at the front
+// serrations, then moved in from the left until the palm just rests against
+// the slide's side.
+export const OVER_SLIDE = (() => {
+  const knuckle = REST.fingers[1].joints[0];
+  const target = V(-SLIDE.halfWidth - 0.008, SLIDE.top + 0.002, (SLIDE.frontSerrations[0] + SLIDE.frontSerrations[1]) / 2 + 0.008);
+  const offset = target.clone().sub(WRIST).sub(knuckle.clone().sub(WRIST).applyQuaternion(OVER_TURN));
+  // How far the glove is from the slide's left side (or into it, if
+  // negative): feel for it across the side of the slide.
+  const toHand = handMatrix(offset, OVER_TURN).invert();
+  const glove = REST_SHAPES.glove;
+  const p = new THREE.Vector3();
+  let gap = Infinity;
+  for (let i = 0; i <= 6; i++) {
+    for (let j = 0; j <= 8; j++) {
+      const y = SLIDE.bottom - 0.012 + (i / 6) * (SLIDE.top - SLIDE.bottom + 0.012);
+      const z = SLIDE.front + 0.004 + (j / 8) * 0.09;
+      for (let u = -0.01; u < 0.04; u += 0.0005) {
+        p.set(-SLIDE.halfWidth - u, y, z).applyMatrix4(toHand);
+        if (glove(p.x, p.y, p.z) < 0) {
+          gap = Math.min(gap, u);
+          break;
+        }
+      }
+    }
+  }
+  return offset.add(V(gap - PRESS, 0, 0));
+})();
+
 const rotated = (v, axis, angle) => v.clone().applyAxisAngle(axis, angle);
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -173,37 +227,49 @@ export class SupportHand extends HandRig {
     // Holding the magazine: each finger closes until it touches it (the index
     // finger stays nearly straight along its front), and the thumb comes over
     // until it touches its side.
-    const held = handMatrix(holdingAt(0), HOLD_TURN);
-    const clearance = (joints, radii) => {
+    // How far a finger (its joints, as modelled) is from touching something
+    // (`outside`, gun space) with the hand placed by `held`.
+    const clearance = (joints, radii, held, outside) => {
       let least = Infinity;
       for (let k = 0; k < 3; k++) {
         for (let t = 0; t <= 1.001; t += 0.125) {
           const p = joints[k].clone().lerp(joints[k + 1], t).applyMatrix4(held);
-          least = Math.min(least, outsideMagazine(p) - lerp(radii[k], radii[k + 1], t) * 0.92);
+          least = Math.min(least, outside(p) - lerp(radii[k], radii[k + 1], t) * 0.92);
         }
       }
       return least;
     };
     // Closes a finger (make(0) open, make(1) as closed as it goes) until it
     // just touches.
-    const closeOn = (make, radii) => {
+    const closeOn = (make, radii, held, outside) => {
       let open = 0;
       let shut = 1;
-      if (clearance(make(1), radii) > 0) return make(1);
+      if (clearance(make(1), radii, held, outside) > 0) return make(1);
       for (let i = 0; i < 20; i++) {
         const mid = (open + shut) / 2;
-        if (clearance(make(mid), radii) > 0.0004) open = mid;
+        if (clearance(make(mid), radii, held, outside) > 0.0004) open = mid;
         else shut = mid;
       }
       return make(open);
     };
     const FIST = [[115, 40, 18], [110, 70, 38], [110, 80, 44], [110, 90, 50]];
     const START = [[10, 8, 4], [12, 10, 5], [14, 12, 6], [16, 14, 7]];
+    const onMagazine = handMatrix(holdingAt(0), HOLD_TURN);
     const heldFingers = fingers.map((chain, i) => closeOn(
-      (s) => bent(i, SPREAD[i] * 0.4, START[i].map((a, j) => lerp(a, FIST[i][j], s))), chain.radii,
+      (s) => bent(i, SPREAD[i] * 0.4, START[i].map((a, j) => lerp(a, FIST[i][j], s))), chain.radii, onMagazine, outsideMagazine,
     ));
-    const heldThumb = closeOn((s) => thumbOut(lerp(18, -30, s), lerp(-10, 55, s)), thumb.radii);
+    const heldThumb = closeOn((s) => thumbOut(lerp(18, -30, s), lerp(-10, 55, s)), thumb.radii, onMagazine, outsideMagazine);
     this.addPose('magazine', [...heldFingers, heldThumb]);
+
+    // Holding the slide: the fingers close over its top and down its right
+    // side, and the thumb comes down its left side.
+    const onSlide = handMatrix(OVER_SLIDE, OVER_TURN);
+    const outside = (p) => outsideSlide(p);
+    const slideFingers = fingers.map((chain, i) => closeOn(
+      (s) => bent(i, SPREAD[i] * 0.3, START[i].map((a, j) => lerp(a, FIST[i][j], s))), chain.radii, onSlide, outside,
+    ));
+    const slideThumb = closeOn((s) => thumbOut(lerp(20, -5, s), lerp(-10, 75, s)), thumb.radii, onSlide, outside);
+    this.addPose('slide', [...slideFingers, slideThumb]);
     // Pushing it in: the fingers slide off its front as it goes up into the
     // grip, leaving the palm to push.
     this.addBlend('pushing', 'magazine', 'flat', 0.48);
