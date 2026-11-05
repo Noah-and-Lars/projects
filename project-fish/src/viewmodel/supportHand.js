@@ -81,8 +81,10 @@ const SEATED = (() => {
 
 // Where the hand goes to hold the magazine `gap` metres short of fully home
 // (for a magazine that slides in along `down`; most follow the grip).
-export function holdingAt(gap, down = GRIP.down) {
-  return SEATED.clone().addScaledVector(down, gap);
+// `seat`: how much higher this gun's magazine bottom is than the grip's
+// usual one (metres along the grip), so the palm meets it.
+export function holdingAt(gap, down = GRIP.down, seat = 0) {
+  return SEATED.clone().addScaledVector(GRIP.down, -seat).addScaledVector(down, gap);
 }
 
 // How far a point (gun space) is outside the seated magazine: its body, and
