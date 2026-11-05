@@ -269,6 +269,8 @@ export class Account extends DurableObject {
     if (route === 'ws' && req.headers.get('Upgrade') === 'websocket') {
       const pair = new WebSocketPair();
       this.ctx.acceptWebSocket(pair[1]);
+      // "last online" on the Players page: every site page opens this socket, so tell the list at most every 5 minutes
+      if (now - (a.seenAt || 0) > 5 * 60000) { a.seenAt = now; await S.put('acct', a); this.ctx.waitUntil(dirCall(this.env, 'seen', { n: a.name }).catch(() => null)); }
       return new Response(null, { status: 101, webSocket: pair[0], headers: { 'Sec-WebSocket-Protocol': 'arcade' } });
     }
     if (['social', 'friend', 'block', 'dm', 'profile'].includes(route)) return this.social(route, req, url, body, a, j, now);
@@ -607,7 +609,7 @@ export class Chat extends DurableObject {
 }
 
 // Every account ever made (since the list started: older accounts join when they're next used), for the Players
-// page. The list [[name, created, hasScores], ...] is kept in memory and stored as a few big values ('L:0', 'L:1',
+// page. The list [[name, created, hasScores, lastSeen], ...] is kept in memory and stored as a few big values ('L:0', 'L:1',
 // ...), so reading it costs a handful of rows; each player's scores are their own value ('u:<lower>').
 const DIR_CHUNK = 100000;
 export class Directory extends DurableObject {
@@ -636,7 +638,7 @@ export class Directory extends DurableObject {
       const e = list.find(x => x[0].toLowerCase() === k);
       if (!e) return j({ error: 'no_account' }, 404);
       const u = (await S.get('u:' + k)) || {};
-      return j({ n: e[0], c: e[1], s: u.s || {}, at: u.at || 0 });
+      return j({ n: e[0], c: e[1], s: u.s || {}, at: u.at || 0, seen: e[3] || 0 });
     }
     if (req.headers.get('x-arcade-int') !== '1') return j({ error: 'not_found' }, 404);
     const b = await req.json().catch(() => ({})), n = String(b.n || ''), k = n.toLowerCase();
@@ -645,10 +647,11 @@ export class Directory extends DurableObject {
     if (route === 'add' || route === 'stats') {
       const has = route === 'stats' && Object.keys(b.s || {}).length ? 1 : i >= 0 ? list[i][2] : 0;
       if (i < 0) { list.push([n, +b.c || Date.now(), has]); await this.saveNames(); }
-      else if (list[i][2] !== has || list[i][0] !== n) { list[i] = [n, list[i][1], has]; await this.saveNames(); }
+      else if (list[i][2] !== has || list[i][0] !== n) { list[i] = [n, list[i][1], has, list[i][3] || 0]; await this.saveNames(); }
       if (route === 'stats') await S.put('u:' + k, { s: b.s || {}, at: Date.now() });
       return j({ ok: true });
     }
+    if (route === 'seen') { if (i >= 0) { list[i][3] = Date.now(); await this.saveNames(); } return j({ ok: true }); }
     if (route === 'del') {
       if (i >= 0) { list.splice(i, 1); await this.saveNames(); }
       await S.delete('u:' + k);

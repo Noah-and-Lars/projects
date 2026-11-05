@@ -40,6 +40,11 @@ source in Settings → Pages should be switched to `main`.
   next used (`a.listed`). Local accounts aren't listed and can't use friends or DMs. Keep all of this cheap (the free
   plan's Durable Objects limit took online down on 2026-11-05): no polling, hibernating sockets only.
   `~/Downloads/arcade-realtime/tools/social-test.mjs` tests these routes against a local `wrangler dev`.
+  Pop-ups (2026-11-06): account.js holds that `/acct/ws` socket on every site page (index, play, chat, players;
+  `liveConnect`), and a private message or friend request shows a toast in the top right (`toast()`, `#acctToasts`),
+  except for the chat open on the Players page (`window.ArcadeDmOpen`). The Players page listens via `onLive()`.
+  The Global chat gives no pop-ups. Last online: the Account object tells the Directory when a socket opens (at most
+  every 5 minutes, `a.seenAt`), stored as the 4th field of each list entry; offline players show "Last online ...".
 - `play.html?game=<id>`: plays a game in an iframe with a loading screen,
   the player's best next to the title, "How to play" keys, Next game,
   fullscreen and a "more games" row. Opening it marks the game as played.

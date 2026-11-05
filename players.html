@@ -118,8 +118,8 @@
   </div>
 </main>
 
-<script src="games.js?v=167"></script>
-<script src="account.js?v=7"></script>
+<script src="games.js?v=168"></script>
+<script src="account.js?v=8"></script>
 <script>
 // Players (2026-11-06): every account on the arcade, their best score in each game, friends and private messages.
 // Everything comes from the arcade's server (realtime-worker: /acct/players, /acct/player, /acct/social,
@@ -139,6 +139,8 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls)
 function avatar(n) { const s = el('span', 'av', (n.match(/[a-z0-9]/i) || [n[0]])[0].toUpperCase()); s.setAttribute('aria-hidden', 'true'); s.style.setProperty('--h', hue(n)); return s; }
 const joined = ts => ts ? 'Joined ' + new Date(ts).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 const clock = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const lastOn = ts => { if (!ts) return ''; const d = (Date.now() - ts) / 60000; return 'Last online ' + (d < 10 ? 'just now' : d < 60 ? Math.round(d) + ' min ago' : d < 1440 ? Math.round(d / 60) + (Math.round(d / 60) === 1 ? ' hour ago' : ' hours ago') : Math.round(d / 1440) < 2 ? 'yesterday' : Math.round(d / 1440) + ' days ago'); };
+const seenOf = k => { const p = players.find(x => lc(x[0]) === k); return p ? p[3] || 0 : 0; };
 const ago = ts => { const d = (Date.now() - ts) / 1000; return d < 60 ? 'now' : d < 3600 ? Math.floor(d / 60) + 'm' : d < 86400 ? Math.floor(d / 3600) + 'h' : Math.floor(d / 86400) + 'd'; };
 
 let online = {};           // lower-case name -> game id, from the arcade's presence channel
@@ -184,7 +186,7 @@ function renderList() {
   if (view === 'all') {
     rows = players.filter(p => !q || lc(p[0]).includes(q)).sort((a, b) => (lc(a[0]) === lc(q)) * -1 + (lc(b[0]) === lc(q)) || lc(a[0]).localeCompare(lc(b[0])))
       .sort((a, b) => !!online[lc(b[0])] - !!online[lc(a[0])]) // online players first
-      .map(p => ({ k: lc(p[0]), n: p[0], sub: (lc(p[0]) === lc(myName()) ? 'You · ' : '') + joined(p[1]), kind: 'p' }));
+      .map(p => ({ k: lc(p[0]), n: p[0], sub: (lc(p[0]) === lc(myName()) ? 'You · ' : '') + (lastOn(p[3]) || joined(p[1])), kind: 'p' }));
     const on = players.filter(p => online[lc(p[0])]).length;
     $('plCount').textContent = players.length ? (q ? rows.length + ' of ' : '') + players.length + (players.length === 1 ? ' player' : ' players') + ' · ' + on + ' online' : 'No players yet';
   } else if (!signedIn()) {
@@ -260,6 +262,7 @@ function drawProfile(box, r) {
   const k = lc(r.n), mine = k === lc(myName()), head = el('div', 'prof-head'), t = el('div');
   const st = el('p', '', [joined(r.c), mine ? 'This is you' : ''].filter(Boolean).join(' · '));
   if (online[k]) { const o = el('span', 'on-now', ' · ● ' + where(online[k])); st.append(o); }
+  else if (r.seen && !mine) st.append(document.createTextNode(' · ' + lastOn(r.seen)));
   t.append(el('h1', '', r.n), st);
   head.append(backBtn(), avatar(r.n), t);
   const acts = el('div', 'prof-acts');
@@ -402,41 +405,16 @@ function loadSocial() {
   if (!signedIn()) { soc = null; counts(); renderList(); return Promise.resolve(); }
   return api('social', { auth: true }).then(r => { if (r.status === 200) { soc = { f: r.f || {}, c: r.c || {}, b: r.b || {} }; refreshCur(); } });
 }
-let ws = null, wsTries = 0, wsPing = 0, wsFor = '';
-function live() {
-  const tok = signedIn() ? A.token() : '';
-  if (wsFor === tok && ws) return;
-  if (ws) { const o = ws; ws = null; try { o.close(); } catch (e) {} }
-  wsFor = tok;
-  if (!tok) return;
-  let s; try { s = new WebSocket(A.server.replace(/^http/, 'ws') + '/acct/ws', ['arcade', tok]); } catch (e) { return; }
-  ws = s;
-  let heard = Date.now(), opened = false;
-  s.onopen = () => { opened = true; if (wsTries) loadSocial(); wsTries = 0; }; // after a reconnect, catch up on anything missed
-  s.onmessage = ev => {
-    heard = Date.now();
-    if (ev.data === 'pong') return;
-    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-    if (!soc) return;
-    if (m.t === 'dm' && m.m) gotDm(m.k, m.n, m.m);
-    else if (m.t === 'friend') { if (m.v) soc.f[m.k] = m.v; else delete soc.f[m.k]; refreshCur(); }
-    else if (m.t === 'read') { if (soc.c[m.k]) soc.c[m.k].un = 0; counts(); renderList(); }
-    else if (m.t === 'social') loadSocial();
-  };
-  s.onclose = () => {
-    clearInterval(wsPing);
-    if (ws !== s) return;
-    ws = null;
-    if (!opened && wsTries > 4) return; // can't get a live connection: the page still works, just without live updates
-    setTimeout(() => { wsFor = ''; live(); }, [2000, 5000, 10000, 30000, 60000][Math.min(wsTries++, 4)]);
-  };
-  clearInterval(wsPing);
-  wsPing = setInterval(() => {
-    if (ws !== s) return;
-    if (Date.now() - heard > 120000) { try { s.close(); } catch (e) {} return; }
-    if (s.readyState === 1) try { s.send('ping'); } catch (e) {}
-  }, 25000);
-}
+// live updates come over account.js's connection (one per page)
+A.onLive(m => {
+  if (!soc) return;
+  if (m.t === 'dm' && m.m) gotDm(m.k, m.n, m.m);
+  else if (m.t === 'friend') { if (m.v) soc.f[m.k] = m.v; else delete soc.f[m.k]; refreshCur(); }
+  else if (m.t === 'read') { if (soc.c[m.k]) soc.c[m.k].un = 0; counts(); renderList(); }
+  else if (m.t === 'social') loadSocial();
+});
+// the chat open on screen gets no pop-up from account.js
+setInterval(() => { window.ArcadeDmOpen = dm && cur && cur.kind === 'dm' && !document.hidden ? dm.k : ''; }, 300);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && dm && cur && cur.kind === 'dm' && soc && soc.c[dm.k] && soc.c[dm.k].un) openDm(dm.n); });
 
 ArcadeOnline.start('players');
@@ -444,10 +422,9 @@ let onT = 0;
 ArcadeOnline.onNames(n => { online = n; clearTimeout(onT); onT = setTimeout(() => { renderList(); }, 300); });
 loadPlayers().then(route);
 loadSocial();
-live();
 // signing in or out while the page is open
 let lastName = myName();
-setInterval(() => { if (myName() !== lastName) { lastName = myName(); loadSocial(); live(); if (cur) route(); } }, 1000);
+setInterval(() => { if (myName() !== lastName) { lastName = myName(); loadSocial(); if (cur) route(); } }, 1000);
 </script>
 <script src="tos.js?v=2"></script>
 </body>

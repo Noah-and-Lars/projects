@@ -229,6 +229,66 @@
     api('profile', { method: 'PUT', auth: true, body: { s: s } }).then(function (r) { if (r.status === 200) ls.set('arcade-acct-prof', acct.name.toLowerCase() + j); });
   }
 
+  /* ---------- live updates and message pop-ups (2026-11-06) ----------
+     Every site page holds one WebSocket to the player's own Account object (/acct/ws, the token as the second
+     subprotocol). It sleeps on the server between messages (pings are answered by Cloudflare), so it costs one
+     request per page view. A private message (not the Global chat) or friend request shows a pop-up in the top right;
+     the Players page listens through onLive() instead of opening its own. */
+  var live = null, liveTok = '', liveTries = 0, livePing = 0, liveHandlers = [];
+  function liveConnect() {
+    var tok = acct ? acct.token : '';
+    if (tok === liveTok && (live || !tok)) return;
+    if (live) { var o = live; live = null; try { o.close(); } catch (e) {} }
+    liveTok = tok;
+    if (!tok || typeof WebSocket === 'undefined') return;
+    var s; try { s = new WebSocket(API.replace(/^http/, 'ws') + 'ws', ['arcade', tok]); } catch (e) { return; }
+    live = s;
+    var heard = Date.now(), opened = false;
+    s.onopen = function () { opened = true; if (liveTries) liveHandlers.forEach(function (f) { try { f({ t: 'social' }); } catch (e) {} }); liveTries = 0; };
+    s.onmessage = function (ev) {
+      heard = Date.now();
+      if (ev.data === 'pong') return;
+      var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      liveHandlers.forEach(function (f) { try { f(m); } catch (e) {} });
+      var c = social || { req: 0, un: 0 };
+      if (m.t === 'dm' && m.m && !m.m.f) {
+        if (window.ArcadeDmOpen !== m.k) { setSocial({ req: c.req, un: c.un + 1 }); toast(m.n, m.m.t, 'players.html#dm=' + encodeURIComponent(m.n)); }
+      } else if (m.t === 'friend' && m.v && m.v.st === 'in') {
+        setSocial({ req: c.req + 1, un: c.un }); toast(m.v.n, 'wants to be your friend', 'players.html#p=' + encodeURIComponent(m.v.n));
+      } else if (m.t === 'friend' && m.v && m.v.st === 'f') toast(m.v.n, 'is now your friend', 'players.html#p=' + encodeURIComponent(m.v.n));
+    };
+    s.onclose = function () {
+      clearInterval(livePing);
+      if (live !== s) return;
+      live = null;
+      if (!opened && liveTries > 4) return; // the page still works without live updates
+      setTimeout(function () { liveTok = ''; liveConnect(); }, [2000, 5000, 10000, 30000, 60000][Math.min(liveTries++, 4)]);
+    };
+    clearInterval(livePing);
+    livePing = setInterval(function () {
+      if (live !== s) return;
+      if (Date.now() - heard > 120000) { try { s.close(); } catch (e) {} return; }
+      if (s.readyState === 1) try { s.send('ping'); } catch (e) {}
+    }, 25000);
+  }
+  // a pop-up in the top right; other players' text only ever goes in with textContent
+  function toast(who, text, href) {
+    css();
+    var box = $('acctToasts');
+    if (!box) { box = document.createElement('div'); box.id = 'acctToasts'; document.body.appendChild(box); }
+    var t = document.createElement('a'); t.className = 'acToast'; t.href = href;
+    var av = document.createElement('span'); av.className = 'av'; av.textContent = String(who).charAt(0).toUpperCase();
+    var tx = document.createElement('span'), b = document.createElement('b'), p = document.createElement('span');
+    b.textContent = who; p.textContent = String(text).length > 120 ? String(text).slice(0, 120) + '…' : text;
+    tx.appendChild(b); tx.appendChild(p); t.appendChild(av); t.appendChild(tx);
+    var x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Close');
+    x.onclick = function (e) { e.preventDefault(); e.stopPropagation(); t.remove(); };
+    t.appendChild(x);
+    box.appendChild(t);
+    while (box.children.length > 3) box.firstChild.remove();
+    setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, 7000);
+  }
+
   /* ---------- signing up, in and out ---------- */
   function signup(n, pw) {
     return stretch(n, pw).then(function (key) { return api('signup', { method: 'POST', body: { name: n, key: key } }); }).then(function (r) {
@@ -285,6 +345,12 @@
 
   /* ---------- the look ---------- */
   var CSS = '' +
+    '#acctToasts{position:fixed;top:calc(max(12px,env(safe-area-inset-top)) + 58px);right:14px;z-index:2147483000;display:flex;flex-direction:column;gap:8px;width:min(340px,calc(100vw - 28px));pointer-events:none}' +
+    '.acToast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:14px;background:rgba(27,24,53,.96);border:1px solid #6c5ce7;box-shadow:0 12px 36px #000a;color:#f1effa;font:14px/1.35 system-ui,sans-serif;text-decoration:none;animation:acT .3s ease-out;transition:opacity .4s,transform .4s}' +
+    '.acToast.out{opacity:0;transform:translateX(20px)}@keyframes acT{from{opacity:0;transform:translateX(30px)}}' +
+    '.acToast .av{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#6c5ce7,#00d2a8);font-weight:800}' +
+    '.acToast>span:nth-child(2){flex:1;min-width:0}.acToast b{display:block}.acToast>span>span{display:block;color:#a9a3c9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+    '.acToast button{flex:none;width:26px;height:26px;border-radius:7px;border:0;background:#ffffff14;color:#f1effa;font-size:16px;line-height:1;cursor:pointer}' +
     '#acctBtn{margin-left:10px;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid #ffffff22;background:#1b1835;color:#f1effa;font:600 14px system-ui,sans-serif;cursor:pointer;white-space:nowrap;flex:none}' +
     '#acctBtn:hover{border-color:#6c5ce7}#acctBtn .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#6c5ce7,#00d2a8);font-weight:800;color:#fff}' +
     '#acctBtn .dot{width:8px;height:8px;border-radius:50%;background:#00d2a8}#acctBtn .dot.local{background:#f5b041}#acctBtn .dot.sync{background:#6cb6ff;animation:acctP 1s infinite}#acctBtn .dot.err{background:#ff6b6b}' +
@@ -540,6 +606,7 @@
   }
   function finishStart() {
     if (acct) sync('load').then(function () { readyRes(); }); else readyRes();
+    liveConnect(); setInterval(liveConnect, 2000); // (re)connects when the player signs in or out
     setTimeout(readyRes, 4000); // never hold a game back for long
     setInterval(function () { push(false); }, 45000);
     setInterval(function () { if (acct && !document.hidden) sync('poll'); }, 5 * 60000);
@@ -554,6 +621,7 @@
     // for the Players page and the chat: the server's address, the sign-in token, requests to the account
     server: API.replace(/\/acct\/$/, ''), token: function () { return acct ? acct.token : ''; },
     api: function (path, opt) { return api(path, opt); },
+    onLive: function (f) { liveHandlers.push(f); }, toast: toast,
     social: function () { return social; }, onSocial: function (f) { socialHandlers.push(f); if (social) f(social); }, setSocial: setSocial,
     _test: { groupOf: groupOf, localGroups: localGroups, hash: hash, score: score, syncMap: function () { return syncMap; } }
   };
