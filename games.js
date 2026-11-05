@@ -509,3 +509,30 @@ window.ArcadeOnline = (() => {
     ready(f) { if (settled) f(client); else waiting.push(f); },
   };
 })();
+
+// Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
+// localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
+const SITE_NOTICE = {
+  id: 'cf-outage-2026-11-05',
+  tag: 'Server issue',
+  title: 'Online play is down for now',
+  text: 'The cloud servers our online games run on (Cloudflare) are having issues, so online matches, the global chat, the player counter and account sign-in and cloud saves aren’t working at the moment.',
+  items: ['<b>Still working:</b> every game offline and against bots. Your progress on this device is safe.', '<b>Online:</b> should be back to normal shortly. No need to do anything; just come back a bit later.'],
+};
+(() => {
+  if (!SITE_NOTICE) return;
+  let closed = ''; try { closed = localStorage.getItem('arcade-notice-closed') || ''; } catch (e) {}
+  if (closed === SITE_NOTICE.id) return;
+  const show = () => {
+    const d = document.createElement('div'); d.className = 'notice'; d.style.zIndex = 2147483600; d.setAttribute('role', 'dialog'); // above the account popup (#acctOv) d.setAttribute('aria-modal', 'true');
+    const box = document.createElement('div'); box.className = 'notice-box'; d.appendChild(box);
+    const tag = document.createElement('div'); tag.className = 'notice-tag'; tag.textContent = SITE_NOTICE.tag; box.appendChild(tag);
+    const h = document.createElement('h2'); h.textContent = SITE_NOTICE.title; box.appendChild(h);
+    const p = document.createElement('p'); p.textContent = SITE_NOTICE.text; box.appendChild(p);
+    const ul = document.createElement('ul'); for (const it of SITE_NOTICE.items) { const li = document.createElement('li'); li.innerHTML = it; ul.appendChild(li); } box.appendChild(ul);
+    const ok = document.createElement('button'); ok.className = 'notice-ok'; ok.textContent = 'OK'; box.appendChild(ok);
+    ok.onclick = () => { d.remove(); try { localStorage.setItem('arcade-notice-closed', SITE_NOTICE.id); } catch (e) {} };
+    document.body.appendChild(d);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+})();
