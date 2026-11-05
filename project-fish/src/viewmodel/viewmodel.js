@@ -167,16 +167,17 @@ function pressCheckAt(time) {
 }
 const INSPECT_CHECK = [
   { r: INSPECT.magIn + 0.075, at: holdingAt(0).addScaledVector(GRIP.down, 0.022).add(V(-0.008, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' }, // away from the magazine...
-  { r: 5.07, at: OVER_SLIDE.clone().add(V(-0.05, -0.05, 0.03)), turn: between(HOLD_TURN, OVER_TURN, 0.55), hand: 'open' }, // ...up to the slide...
-  { r: 5.26, at: OVER_SLIDE.clone().add(V(-0.004, 0.012, 0.004)), turn: OVER_TURN, hand: 'open', stop: true }, // ...over it...
+  { r: 5.07, at: OVER_SLIDE.clone().add(V(-0.045, -0.05, 0.03)), turn: between(HOLD_TURN, OVER_TURN, 0.55), hand: 'open' }, // ...up to the slide...
+  { r: 5.26, at: OVER_SLIDE.clone().add(V(-0.014, -0.006, 0.004)), turn: OVER_TURN, hand: 'open', stop: true }, // ...beside it, open...
   { r: INSPECT.pull, at: OVER_SLIDE, turn: OVER_TURN, hand: 'slide', stop: true }, // ...and takes hold of it
   { r: INSPECT.pulled, at: PULLED, turn: OVER_TURN, hand: 'slide', stop: true }, // eases it back half way...
-  { r: INSPECT.release, at: PULLED, turn: OVER_TURN, hand: 'slide', stop: true }, // ...holds it while the chamber's checked...
-  { r: INSPECT.release + 0.06, at: PULLED.clone().add(V(-0.004, 0.01, 0.004)), turn: OVER_TURN, hand: 'open' }, // ...and lets go: it snaps forward
-  { r: 6.4, at: V(-0.05, -0.045, 0.035), turn: between(OVER_TURN, NONE, 0.6), hand: 'reaching' }, // back down...
-  { r: 6.54, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // ...beside the grip
-  { r: 6.59, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' }, // fingers round it...
-  { r: 6.64, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true }, // ...and closed on it
+  { r: INSPECT.release - 0.05, at: PULLED, turn: OVER_TURN, hand: 'slide', stop: true }, // ...holds it while the chamber's checked...
+  { r: INSPECT.release + 0.03, at: PULLED.clone().add(V(-0.012, 0.004, 0.004)), turn: OVER_TURN, hand: 'open' }, // ...and lets go (the fingers just ahead of it): it snaps forward
+  { r: INSPECT.release + 0.15, at: PULLED.clone().add(V(-0.04, 0.02, 0.012)), turn: OVER_TURN, hand: 'open' }, // up and off it, clear of the top...
+  { r: 6.5, at: V(-0.06, -0.045, 0.035), turn: between(OVER_TURN, NONE, 0.6), hand: 'reaching' }, // ...back down...
+  { r: 6.62, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // ...beside the grip
+  { r: 6.67, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' }, // fingers round it...
+  { r: 6.72, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true }, // ...and closed on it
 ];
 
 // The support hand's keyframes for each kind of reload: reload progress,
@@ -274,8 +275,12 @@ function thumbAt(r, S, scale = 1) {
 // keys, easing in and out of the ones marked stop.
 const STILL = { gun: [0, 0, 0], elbow: [0, 0, 0] };
 const MAGAZINE_CHECK = { at: [-0.04, 0.12, 0.05], turn: RELOAD_POSE.turn, ...STILL };
-const CHAMBER_CHECK = { at: [-0.035, 0.1, 0.05], turn: [0.5, 0.12, 0.3], ...STILL };
+// Checking the chamber, the gun is turned muzzle right, a little up, so the
+// top and right side of the slide, with the ejection port, face you.
+const CHAMBER_CHECK = { at: [-0.04, 0.07, 0.03], turn: [0.45, -0.75, 0.15], ...STILL };
 const poseKey = (t, key, stop = true) => ({ t, ...key, stop });
+// A pose moved and turned a little from another (so a hold isn't frozen).
+const nudged = (key, at, turn) => ({ ...key, at: key.at.map((a, i) => a + at[i]), turn: key.turn.map((a, i) => a + turn[i]) });
 const INSPECT_POSE_HEAD = [
   poseKey(0, { at: [0, 0, 0], turn: [0, 0, 0], ...STILL }),
   poseKey(0.2, { at: [-0.005, 0.01, 0.01], turn: [0, 0, 0], gun: [0.08, 0, 0.1], elbow: [0.01, 0, 0] }, false), // the support hand is off
@@ -292,7 +297,7 @@ const INSPECT_POSES = {
   check: keyed([
     ...INSPECT_POSE_HEAD,
     poseKey(5.3, CHAMBER_CHECK),
-    poseKey(INSPECT.release + 0.05, { ...CHAMBER_CHECK, at: [-0.033, 0.103, 0.05], turn: [0.53, 0.1, 0.33] }),
+    poseKey(INSPECT.release + 0.05, nudged(CHAMBER_CHECK, [0.002, 0.003, 0], [0.03, -0.02, 0.03])),
     poseKey(INSPECT.time, { at: [0, 0, 0], turn: [0, 0, 0], ...STILL }),
   ]),
   short: keyed([

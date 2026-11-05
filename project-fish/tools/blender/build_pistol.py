@@ -355,6 +355,9 @@ def build_slide(p):
     # the empty chamber with the slide locked back. With the slide forward
     # the hood fills it.
     cutters.append(box('breech', -0.0056, 0.0056, 0.006, 0.044, -0.0065, 0.0064))
+    # At the back of the port the right side is cut lower, by the extractor's
+    # claw, so the brass of the round in the chamber shows from the side too.
+    cutters.append(box('port_low', 0.0055, 0.02, 0.006, 0.016, 0.0004, 0.0064))
     # Cocking serrations, front and back, both sides: deep flat-bottomed
     # grooves with sloped walls, eight at each end, stopping short of the top
     # chamfer.

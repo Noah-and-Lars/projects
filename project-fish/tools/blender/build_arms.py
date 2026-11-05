@@ -387,7 +387,10 @@ def wrist_strap(name, hand):
 # --- Sleeves ------------------------------------------------------------------
 
 SLEEVE_START = 0.03  # where the cuff opening sits, metres from the wrist along the forearm
-SLEEVE_LENGTH = 0.27
+# How far the sleeve runs up the arm. Further than the forearm is long, so its
+# end stays off screen even when a hand reaches out to the front of the gun.
+SLEEVE_LENGTH = 0.55
+FOREARM_LENGTH = 0.27  # the sleeve gets looser up to here
 
 
 def sleeve_frame(hand, side):
@@ -403,7 +406,7 @@ def sleeve_frame(hand, side):
 def sleeve_radius(t):
     """Radius of the sleeve t metres up from the cuff: snug at the cuff, looser up the arm."""
     snug = 0.0325 + 0.0045 * smoothstep(0.0, 0.035, t)
-    return snug + (0.045 - 0.037) * np.clip(t / SLEEVE_LENGTH, 0, 1) + 0.0007 * (t < 0.019)
+    return snug + (0.045 - 0.037) * np.clip(t / FOREARM_LENGTH, 0, 1) + 0.0007 * (t < 0.019)
 
 
 def fold_offset(t, around, p, seed):

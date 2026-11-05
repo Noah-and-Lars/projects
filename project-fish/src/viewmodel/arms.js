@@ -275,7 +275,8 @@ function buildHand(pose, colors, { pads: withPads = true } = {}) {
 
 function buildSleeve(pose, forearm, { folds: withFolds = true } = {}) {
   const start = pose.wrist.clone().addScaledVector(forearm, 0.034);
-  const end = pose.wrist.clone().addScaledVector(forearm, 0.27);
+  // Further up the arm than the forearm is long, so its end stays off screen.
+  const end = pose.wrist.clone().addScaledVector(forearm, 0.55);
   const arm = roundCone(start, end, 0.036, 0.045);
   const cuff = roundCone(start, start.clone().addScaledVector(forearm, 0.018), 0.0375, 0.038);
 

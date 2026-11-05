@@ -47,7 +47,6 @@ export const RELOAD_STEPS = {
 // are the times things happen (seconds from the start), for the sounds, the
 // magazine and the slide.
 export const INSPECT = {
-  checkChamber: false, // the chamber check isn't finished yet (the hand's grip on the slide), so it's left out for now
   time: 7.2, // the whole thing
   shortTime: 5.8, // without the chamber check
   // Cut short (by firing, aiming, reloading or sprinting), it goes back to
@@ -204,7 +203,7 @@ export class Pistol {
     }
 
     if (inspectKey && ready && !busy && !this.pulls.length && this.cooldown === 0) {
-      this.inspect = { time: 0, done: new Set(), check: INSPECT.checkChamber && !this.slideLocked, cut: false, fade: 1 };
+      this.inspect = { time: 0, done: new Set(), check: !this.slideLocked, cut: false, fade: 1 };
       events.push('inspect');
       return events;
     }
