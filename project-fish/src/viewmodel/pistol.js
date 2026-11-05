@@ -98,8 +98,9 @@ function filleted(points) {
 // The frame, with smooth curves: dust cover, trigger guard (squared off at the
 // front, its bottom curving up into the front strap under a small undercut),
 // the front strap, and the beavertail sweeping back over the web of the hand.
+// Its top sits 0.4 mm under the slide, so a dark line shows between them.
 const FRAME_PROFILE = filleted([
-  [-0.024, -0.0105, 0], [0.137, -0.0105, 0.0012], [0.137, -0.027, 0.0018], [0.088, -0.027, 0.0022],
+  [-0.024, -0.0109, 0], [0.137, -0.0109, 0.0012], [0.137, -0.027, 0.0018], [0.088, -0.027, 0.0022],
   [0.0855, -0.0635, 0.0068], [0.04, -0.0702, 0.004], [0.0305, -0.0668, 0.003], [0.026, -0.058, 0.0035],
   [0.02, -0.075, 0.012], [0.011, -0.1, 0.02], [0.0035, -0.1215, 0.003], [0.002, -0.124, 0.0012],
   [-0.046, -0.124, 0.0018], [-0.05, -0.118, 0.004], [-0.034, -0.058, 0.012], [-0.031, -0.042, 0.007],

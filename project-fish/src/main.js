@@ -260,6 +260,8 @@ renderer.setAnimationLoop((time) => {
     reloadProgress: weapon.reloadProgress,
     reloadSeconds: weapon.reload ? weapon.reload.duration : 0,
     reloadEmpty: weapon.reload ? weapon.reload.empty : false,
+    ammo: weapon.ammo,
+    reserve: weapon.reserve,
   };
   aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount);

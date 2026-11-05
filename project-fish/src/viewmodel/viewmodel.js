@@ -14,6 +14,7 @@ import { ShootingHand } from './shootingHand.js';
 import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall } from '../weapon.js';
+import { PISTOL } from '../shared/config.js';
 
 // Points on the pistol (gun space): the muzzle, and the ejection port the
 // spent case comes out of.
@@ -22,8 +23,29 @@ const PORT = [0.008, 0.017, -0.025];
 const SLIDE_TRAVEL = 0.028; // how far the slide goes back when firing (metres)
 // The barrel only follows the slide a little way, and its back end tips down
 // as it unlocks (pivoting near the muzzle), like a real pistol's.
-const BARREL = { travel: 0.0035, tilt: 0.0105, muzzleZ: -0.15 };
+const BARREL = { travel: 0.0035, tilt: 0.0105, pivot: new THREE.Vector3(0, 0, -0.15) };
 const TRIGGER_TRAVEL = 0.0032;
+// Small moving parts: the slide stop turns up (radians) about the pin at its
+// back end (gun space; the Blender pistol matches) into the slide's notch
+// when the slide locks back empty; how far the extractor's loaded-chamber
+// bump sinks in (metres) when there's no round in the chamber; how far the
+// trigger's safety blade presses in as the trigger is pulled.
+const SLIDE_STOP = { lift: 0.12, pivot: new THREE.Vector3(0, -0.0143, 0.0085) };
+const INDICATOR_TRAVEL = 0.0006;
+const BLADE_TRAVEL = 0.0009;
+
+// Turns a part `angle` radians about the line across the gun (along X)
+// through `pivot` (in its parent's space), starting from where it rests. The
+// model file doesn't keep the origins its parts were made about (compressing
+// it moves them to each part's middle), so this goes by the pivot instead.
+const ACROSS = new THREE.Vector3(1, 0, 0);
+const turning = new THREE.Quaternion();
+function turnAbout(part, rest, pivot, angle) {
+  turning.setFromAxisAngle(ACROSS, angle);
+  part.position.copy(rest.position).sub(pivot).applyQuaternion(turning).add(pivot);
+  part.quaternion.copy(turning).multiply(rest.quaternion);
+}
+const restOf = (part) => part && { position: part.position.clone(), quaternion: part.quaternion.clone() };
 
 // Where the gun goes while reloading, relative to how it's held: brought up
 // and in, muzzle tipped up so the magazine well comes into view, and canted
@@ -253,6 +275,22 @@ const smoothstep = (e0, e1, x) => {
   return t * t * (3 - 2 * t);
 };
 
+// Shows what's in a magazine with `rounds` rounds: the top round and the one
+// staggered under it, brass behind each pair of witness holes down to the
+// level the rounds reach (the top pair from 2, the bottom pair only when
+// full), and the follower when it's empty.
+function showRounds(magazine, rounds) {
+  if (!magazine) return;
+  const set = (name, on) => {
+    const part = magazine.getObjectByName(name);
+    if (part) part.visible = on;
+  };
+  set('magazine_round', rounds >= 1);
+  set('magazine_second_round', rounds >= 2);
+  set('magazine_follower', rounds === 0);
+  for (let k = 1; k <= 6; k++) set(`magazine_rounds_${k}`, rounds >= (k * PISTOL.magazine) / 6);
+}
+
 // The support (left) arm as one group, so it can let go during a reload.
 function leftArmOf(arms) {
   const existing = arms.getObjectByName('leftArm');
@@ -337,10 +375,17 @@ export class Viewmodel {
       this.trigger = pistol.getObjectByName('trigger');
       this.triggerRest = this.trigger ? this.trigger.position.z : 0;
       this.barrel = pistol.getObjectByName('barrel');
-      if (this.barrel) this.barrelRest = { position: this.barrel.position.clone(), tilt: this.barrel.rotation.x };
+      this.barrelRest = restOf(this.barrel);
       this.magazine = pistol.getObjectByName('magazine');
       this.magazineRest = this.magazine ? this.magazine.position.clone() : null;
-      this.magazineRound = this.magazine ? this.magazine.getObjectByName('magazine_round') : null;
+      this.slideStop = pistol.getObjectByName('slide_stop');
+      this.slideStopRest = restOf(this.slideStop);
+      this.extractor = pistol.getObjectByName('extractor');
+      this.extractorRest = this.extractor ? this.extractor.position.x : 0;
+      this.safetyBlade = pistol.getObjectByName('safety_blade');
+      this.safetyBladeRest = this.safetyBlade ? this.safetyBlade.position.z : 0;
+      this.stopLift = 0;
+      this.chambered = 1;
       this.leftArm = leftArmOf(arms);
       // The support glove gets finger joints, so it can let go and take hold.
       let glove = this.leftArm.getObjectByName('left_glove');
@@ -374,8 +419,7 @@ export class Viewmodel {
       // middle of the magazine and lined up with it (see MAGAZINE_FRAME).
       if (this.magazine) {
         const copy = this.magazine.clone();
-        const round = copy.getObjectByName('magazine_round');
-        if (round) round.visible = false;
+        showRounds(copy, 0); // it's empty
         this.magazine.updateMatrix();
         MAGAZINE_FRAME.clone().invert().multiply(this.magazine.matrix).decompose(copy.position, copy.quaternion, copy.scale);
         copy.visible = true;
@@ -539,6 +583,15 @@ export class Viewmodel {
     const tt = this.triggerTime;
     const pull = tt < 0.03 ? tt / 0.03 : tt < 0.11 ? 1 - (tt - 0.03) / 0.08 : 0;
     if (this.trigger) this.trigger.position.z = this.triggerRest + TRIGGER_TRAVEL * pull;
+    // The safety blade in its face presses in first, as the finger takes up the slack.
+    if (this.safetyBlade) this.safetyBlade.position.z = this.safetyBladeRest + BLADE_TRAVEL * Math.min(1, pull * 3);
+    // With the slide locked back on an empty magazine, the slide stop is up in
+    // its notch, and the extractor's bump sits flush (nothing in the chamber).
+    const quick = Math.min(1, dt * 40);
+    this.stopLift += ((gun && gun.slideLocked ? 1 : 0) - this.stopLift) * quick;
+    if (this.slideStop) turnAbout(this.slideStop, this.slideStopRest, SLIDE_STOP.pivot, SLIDE_STOP.lift * this.stopLift);
+    this.chambered += ((gun && gun.slideLocked ? 0 : 1) - this.chambered) * quick;
+    if (this.extractor) this.extractor.position.x = this.extractorRest - INDICATOR_TRAVEL * (1 - this.chambered);
 
     // The slide snaps back on a shot and returns, or stays back on an empty gun.
     this.slideTime += dt;
@@ -549,13 +602,8 @@ export class Viewmodel {
     else back = locked ? 1 : 0;
     if (this.slide) this.slide.position.z = this.slideRest + SLIDE_TRAVEL * back;
     if (this.barrel) {
-      const tilt = BARREL.tilt * back;
-      this.barrel.rotation.x = this.barrelRest.tilt + tilt;
-      this.barrel.position.set(
-        this.barrelRest.position.x,
-        this.barrelRest.position.y + BARREL.muzzleZ * Math.sin(tilt),
-        this.barrelRest.position.z + BARREL.travel * back,
-      );
+      turnAbout(this.barrel, this.barrelRest, BARREL.pivot, BARREL.tilt * back);
+      this.barrel.position.z += BARREL.travel * back;
     }
     // The slide slamming home jolts the gun again.
     if (!this.slammed && this.slideTime >= 0.06) {
@@ -583,7 +631,15 @@ export class Viewmodel {
     const fall = out ? magazineFall((reload - S.magOut) * seconds) : 0;
     let inGun = !out; // the gun's own magazine, seated (or on its way out)
     let inHand = reload >= FRESH_IN_HAND[kind] && reload < S.magIn;
-    let round = true;
+    // Rounds in the magazines: one of the gun's rounds is in the chamber, the
+    // rest in the magazine; a fresh one from the pouch is full (or has what's
+    // left in reserve).
+    const ammo = gun && gun.ammo !== undefined ? gun.ammo : PISTOL.magazine;
+    const reserve = gun && gun.reserve !== undefined ? gun.reserve : PISTOL.reserve;
+    const inMagazine = gun && gun.slideLocked ? 0 : Math.max(0, ammo - 1);
+    const fresh = Math.min(PISTOL.magazine, reserve);
+    let gunRounds = reload >= 0 && reload >= S.magIn ? fresh : inMagazine;
+    let handRounds = fresh;
     this.magazine.position.copy(this.magazineRest);
     if (!out) this.dropDone = false;
     if (out && kind === 'empty') {
@@ -591,7 +647,7 @@ export class Viewmodel {
       // it's handed over to the world.
       this.magazine.position.addScaledVector(GRIP.down, Math.min(fall, HAND_TO_WORLD));
       inGun = fall < HAND_TO_WORLD;
-      round = false;
+      gunRounds = 0;
       if (!inGun && !this.dropDone) {
         this.dropDone = true;
         const t = (reload - S.magOut) * seconds;
@@ -604,10 +660,14 @@ export class Viewmodel {
     } else if (out && reload < keyAt('catching', 'stow')) {
       // ...which takes it down to the pouch.
       inHand = true;
+      handRounds = inMagazine;
     }
     this.magazine.visible = inGun;
-    if (this.magazineRound) this.magazineRound.visible = round;
-    if (this.handMagazine) this.handMagazine.visible = inHand;
+    showRounds(this.magazine, gunRounds);
+    if (this.handMagazine) {
+      this.handMagazine.visible = inHand;
+      showRounds(this.handMagazine, handRounds);
+    }
   }
 
   // The dropped magazine as it leaves the gun: where it is, which way it's
