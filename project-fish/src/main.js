@@ -253,7 +253,7 @@ renderer.setAnimationLoop((time) => {
   // what happened. Aiming or sprinting stops an inspect.
   const busy = input.aiming || Boolean(player.sprinting);
   const events = input.locked
-    ? weapon.update(frameSeconds, input.presses('Mouse0'), input.presses('KeyR') > 0, viewmodel.readyToFire, input.presses('KeyI') > 0, busy)
+    ? weapon.update(frameSeconds, input.presses('Mouse0'), input.presses('KeyR') > 0, viewmodel.readyToFire, input.presses('KeyF') > 0, busy)
     : weapon.update(frameSeconds, 0, false, viewmodel.readyToFire, false, busy);
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
