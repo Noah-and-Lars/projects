@@ -23,7 +23,9 @@ export { GRIP };
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
-// Points on the game's model (gun space): the muzzle and the ejection port;
+// Points on the game's model (gun space; the converter's OFFSET puts the gun
+// 10.5 mm higher and 3.7 mm further forward than at first, so these moved
+// with it): the muzzle and the ejection port;
 // the sight line (the top of the front blade, level with the bottom of the
 // rear notch: its height, and the back faces of both sights); how far the
 // slide goes back when it fires; the barrel, which tips down at the back as
@@ -32,16 +34,16 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // and cocked back this far (radians) about its pin; and the magazine
 // release's face (pressed towards +X).
 export const MODEL45 = {
-  muzzle: [0, -0.0159, -0.1604],
-  port: [0.008, -0.002, -0.05],
-  sights: { height: -0.0002, rearZ: 0.0133, frontZ: -0.1412 },
+  muzzle: [0, -0.0054, -0.1641],
+  port: [0.008, 0.0085, -0.0537],
+  sights: { height: 0.0103, rearZ: 0.0096, frontZ: -0.1449 },
   slideTravel: 0.03,
-  slideTop: -0.004, // top of the slide (without the sights), and its half width
+  slideTop: 0.0065, // top of the slide (without the sights), and its half width
   slideHalfWidth: 0.0113,
-  barrel: { travel: 0.0035, tilt: 0.011, pivot: V(0, -0.0159, -0.155) },
-  slideStop: { lift: -0.12, pivot: V(0, -0.0316, -0.0516) },
-  hammer: { pivot: V(0, -0.0362, 0.0349), cocked: 0.9 },
-  magRelease: { face: V(-0.0125, -0.0603, -0.0194), travel: 0.0017 },
+  barrel: { travel: 0.0035, tilt: 0.011, pivot: V(0, -0.0054, -0.1587) },
+  slideStop: { lift: -0.12, pivot: V(0, -0.0211, -0.0553) },
+  hammer: { pivot: V(0, -0.0257, 0.0312), cocked: 0.9 },
+  magRelease: { face: V(-0.0125, -0.0498, -0.0231), travel: 0.0017 },
 };
 
 // The slide: flat sided with a rounded top, from its back face to the muzzle.

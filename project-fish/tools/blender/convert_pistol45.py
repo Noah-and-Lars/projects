@@ -59,9 +59,10 @@ RAISE = float(ARGS[ARGS.index('--raise') + 1]) if '--raise' in ARGS else 0.0
 # side towards +Z. This scale makes it 216 mm long, the real gun's length.
 SCALE = 0.08896
 # Where it goes after turning and scaling (gun space, metres): centred side
-# to side, and moved so the front strap and trigger guard sit where the
-# hands expect a pistol's grip.
-OFFSET = (-0.0101, -0.0527, -0.0478)
+# to side, with its grip where the hands hold a pistol's: the front strap on
+# the grip line, and high in the hand so the web of the hand is under the
+# beavertail, as a 1911 is held (contacts like the first pistol's).
+OFFSET = (-0.0101, -0.0422, -0.0515)
 # The grip panels' outsides are pushed out to this far from the middle.
 GRIP_HALF_WIDTH = 0.0150 * GROW
 FRAME_HALF_WIDTH = 0.0103 * GROW  # where the panels sit on the frame
