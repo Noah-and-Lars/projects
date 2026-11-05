@@ -102,9 +102,15 @@ export class Input {
       if (!this.locked) return;
       e.preventDefault();
       // Line or page scrolling (some mice) counts a notch per line.
-      this.wheel += e.deltaMode === 0 ? e.deltaY : Math.sign(e.deltaY) * WHEEL_STEP;
+      const delta = e.deltaMode === 0 ? e.deltaY : Math.sign(e.deltaY) * WHEEL_STEP;
       const now = performance.now();
-      if (Math.abs(this.wheel) >= WHEEL_STEP && now - this.lastWheelStep > WHEEL_GAP_MS) {
+      // Scrolling during the gap after a step is let go (so a fast flick is
+      // one step, and nothing is left over), and so is anything left from
+      // scrolling the other way.
+      if (now - this.lastWheelStep <= WHEEL_GAP_MS || Math.sign(delta) !== Math.sign(this.wheel)) this.wheel = 0;
+      if (now - this.lastWheelStep <= WHEEL_GAP_MS) return;
+      this.wheel += delta;
+      if (Math.abs(this.wheel) >= WHEEL_STEP) {
         this.wheelSteps_ += Math.sign(this.wheel);
         this.lastWheelStep = now;
         this.wheel = 0;

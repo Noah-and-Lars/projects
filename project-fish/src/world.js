@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { WORLD } from './shared/config.js';
-import { HOUSE, SOLDIER } from './shared/map.js';
+import { COLLIDERS, HOUSE, SOLDIER, SOLDIER_BOX } from './shared/map.js';
 
 const SKY_COLOR = 0xb8c6d4;
 const FLOOR_COLOR = 0x8c8c8c;
@@ -146,7 +146,7 @@ export function outdoorEnvironment(renderer, sunDirection) {
 const SOLDIER_MODEL = new URL('../assets/soldier.glb', import.meta.url);
 const SOLDIER_SKY = 1; // how strongly the sky lights him
 
-export function addSoldier(scene, renderer) {
+export function addSoldier(scene, renderer, camera) {
   const soldier = { mixer: null, update(dt) { if (this.mixer) this.mixer.update(dt); } };
   // Lit by the outdoor sky too, as the gun is (the world's plain lights alone
   // leave his dark olive kit nearly black).
@@ -166,11 +166,26 @@ export function addSoldier(scene, renderer) {
       // bind pose's bounds would say he's off screen.
       o.frustumCulled = false;
     });
-    scene.add(model);
-    if (gltf.animations.length) {
-      soldier.mixer = new THREE.AnimationMixer(model);
-      soldier.mixer.clipAction(gltf.animations[0]).play();
-    }
-  }).catch((error) => console.warn(`Couldn't load ${SOLDIER_MODEL.pathname}; the soldier is left out.`, error));
+    // Get his materials and textures ready before he appears, so the frame he
+    // turns up in doesn't stall.
+    return renderer.compileAsync(model, camera, scene).then(() => {
+      model.traverse((o) => {
+        if (!o.isMesh) return;
+        for (const material of [].concat(o.material)) {
+          for (const value of Object.values(material)) if (value && value.isTexture) renderer.initTexture(value);
+        }
+      });
+      scene.add(model);
+      if (gltf.animations.length) {
+        soldier.mixer = new THREE.AnimationMixer(model);
+        soldier.mixer.clipAction(gltf.animations[0]).play();
+      }
+    });
+  }).catch((error) => {
+    console.warn(`Couldn't load ${SOLDIER_MODEL.pathname}; the soldier is left out.`, error);
+    // Nobody there to bump into or shoot.
+    const i = COLLIDERS.indexOf(SOLDIER_BOX);
+    if (i >= 0) COLLIDERS.splice(i, 1);
+  });
   return soldier;
 }

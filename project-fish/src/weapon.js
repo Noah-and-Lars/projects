@@ -75,6 +75,12 @@ export const INSPECT_HOLDS = {
   chamber: [INSPECT.pulled, INSPECT.release - 0.05], // only with the chamber check
 };
 
+const HOLD_EASE = 0.15; // seconds (of the inspect) to slow into and out of a hold
+const smoothstep = (e0, e1, x) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+
 export const INSPECT_STEPS = {
   magOut: INSPECT.magOut,
   magCaught: INSPECT.magOut + fallTime(CATCH_GAP), // it lands in the palm
@@ -242,12 +248,22 @@ export class Pistol {
   }
 
   // How far an inspect moves on in dt seconds: slower through the holds
-  // this gun makes longer (INSPECT_HOLDS).
+  // this gun makes longer (INSPECT_HOLDS). It slows down and speeds up again
+  // smoothly over HOLD_EASE at each end of a hold (a hand may still be moving
+  // into it), and just enough in between that the hold lasts its extra
+  // seconds.
   inspectStep(inspect, dt) {
     const extra = this.spec.inspectHolds || {};
     for (const [name, [from, to]] of Object.entries(INSPECT_HOLDS)) {
       if (name === 'chamber' && !inspect.check) continue;
-      if (extra[name] > 0 && inspect.time >= from && inspect.time < to) return (dt * (to - from)) / (to - from + extra[name]);
+      if (!(extra[name] > 0) || inspect.time < from || inspect.time >= to) continue;
+      const ease = Math.min(HOLD_EASE, (to - from) / 2);
+      const t = inspect.time;
+      const bump = smoothstep(from, from + ease, t) * (1 - smoothstep(to - ease, to, t));
+      // Real seconds per inspect second: 1 + slow * bump, which adds up to
+      // the extra time over the whole hold.
+      const slow = extra[name] / (to - from - ease);
+      return dt / (1 + slow * bump);
     }
     return dt;
   }

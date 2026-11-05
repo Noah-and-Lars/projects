@@ -17,6 +17,9 @@ export const HOUSE = {
 // players will have in multiplayer, shown here until then. x / z: where he
 // stands; facing: his turn about the vertical (radians, 0 = facing +Z).
 export const SOLDIER = { x: 3.1, z: -12.6, facing: -0.24 };
+// His box (about as wide as his shoulders and gear). Shots that hit it report
+// 'soldier'. If his model can't be loaded, the world takes it out again.
+export const SOLDIER_BOX = { minX: SOLDIER.x - 0.32, maxX: SOLDIER.x + 0.32, minY: 0, maxY: 1.8, minZ: SOLDIER.z - 0.22, maxZ: SOLDIER.z + 0.22, what: 'soldier' };
 
 // Solid boxes the player can't walk through: { minX, minY, minZ, maxX, maxY, maxZ }.
 export const COLLIDERS = [
@@ -28,8 +31,7 @@ export const COLLIDERS = [
     minZ: HOUSE.z - HOUSE.depth / 2,
     maxZ: HOUSE.z + HOUSE.depth / 2,
   },
-  // The soldier (about as wide as his shoulders and gear).
-  { minX: SOLDIER.x - 0.32, maxX: SOLDIER.x + 0.32, minY: 0, maxY: 1.8, minZ: SOLDIER.z - 0.22, maxZ: SOLDIER.z + 0.22 },
+  SOLDIER_BOX,
 ];
 
 // Where a ray (origin o, direction d of length 1) enters a box, or null:
@@ -70,7 +72,8 @@ export function raycastColliders(ox, oy, oz, dx, dy, dz, maxDistance) {
 
 // What a shot along the ray hits first: the ground or a collider. Returns
 // { distance, x, y, z, nx, ny, nz (the surface's outward direction), what:
-// 'ground' or 'wall' }, or null if nothing is within maxDistance.
+// 'ground', 'wall' or a box's own `what` }, or null if nothing is within
+// maxDistance.
 export function raycastWorld(ox, oy, oz, dx, dy, dz, maxDistance) {
   let best = null;
   let nearest = maxDistance;
@@ -87,7 +90,7 @@ export function raycastWorld(ox, oy, oz, dx, dy, dz, maxDistance) {
     nearest = hit.t;
     const n = [0, 0, 0];
     n[hit.axis] = -Math.sign([dx, dy, dz][hit.axis]);
-    best = { distance: hit.t, nx: n[0], ny: n[1], nz: n[2], what: 'wall' };
+    best = { distance: hit.t, nx: n[0], ny: n[1], nz: n[2], what: b.what || 'wall' };
   }
   if (best) {
     best.x = ox + dx * best.distance;

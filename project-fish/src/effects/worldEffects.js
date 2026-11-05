@@ -199,18 +199,21 @@ export class WorldEffects {
     }
   }
 
-  // Where a bullet hit: a hole and a puff of dust (and a few grains of grit).
-  impact(hit, color) {
+  // Where a bullet hit: a hole (unless `hole` is false) and a puff of dust
+  // (and a few grains of grit).
+  impact(hit, color, withHole = true) {
     const normal = new THREE.Vector3(hit.nx, hit.ny, hit.nz);
     const point = new THREE.Vector3(hit.x, hit.y, hit.z);
-    const hole = new THREE.Mesh(this.holeGeometry, this.holeMaterial);
-    hole.position.copy(point).addScaledVector(normal, 0.001);
-    hole.lookAt(point.clone().add(normal));
-    hole.rotateZ(Math.random() * Math.PI * 2);
-    hole.scale.setScalar(0.8 + Math.random() * 0.4);
-    this.scene.add(hole);
-    this.holes.push(hole);
-    if (this.holes.length > 80) this.scene.remove(this.holes.shift());
+    if (withHole) {
+      const hole = new THREE.Mesh(this.holeGeometry, this.holeMaterial);
+      hole.position.copy(point).addScaledVector(normal, 0.001);
+      hole.lookAt(point.clone().add(normal));
+      hole.rotateZ(Math.random() * Math.PI * 2);
+      hole.scale.setScalar(0.8 + Math.random() * 0.4);
+      this.scene.add(hole);
+      this.holes.push(hole);
+      if (this.holes.length > 80) this.scene.remove(this.holes.shift());
+    }
 
     for (let i = 0; i < 7; i++) {
       const v = normal.clone().multiplyScalar(0.6 + Math.random() * 1.4)

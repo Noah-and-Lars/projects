@@ -43,9 +43,9 @@ renderer.toneMappingExposure = 1.1;
 container.appendChild(renderer.domElement);
 
 const scene = createWorld();
-const soldier = addSoldier(scene, renderer);
 const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 1500);
 camera.rotation.order = 'YXZ'; // turn left/right first, then look up/down
+const soldier = addSoldier(scene, renderer, camera);
 const viewmodel = new Viewmodel(renderer, SUN_DIRECTION);
 
 const input = new Input(renderer.domElement);
@@ -64,8 +64,29 @@ let weapon = weapons[held];
 
 const asked = { reload: false, inspect: false }; // keys pressed while switching guns
 
+// What the hands show of a gun (see Viewmodel.update).
+function gunStateOf(w) {
+  return {
+    slideLocked: w.slideLocked,
+    reloadProgress: w.reloadProgress,
+    reloadSeconds: w.reload ? w.reload.duration : 0,
+    reloadEmpty: w.reload ? w.reload.empty : false,
+    ammo: w.ammo,
+    reserve: w.reserve,
+    inspectTime: w.inspectTime,
+    inspectCheck: w.inspectCheck,
+    inspectAmount: w.inspectAmount,
+  };
+}
+
+// The gun being put away, as it was when the switch began: the hands keep
+// showing it like that (mid-reload, mid-inspect) while it goes down out of
+// view, rather than snapping back to the hold.
+let outgoing = null;
+
 function switchGun(key) {
   if (key === held || !weapons[key]) return;
+  if (!outgoing || outgoing.key !== viewmodel.shownGun) outgoing = { key: held, state: gunStateOf(weapon) };
   weapon.holster();
   asked.reload = asked.inspect = false;
   held = key;
@@ -114,6 +135,15 @@ input.onLockChange = (locked) => {
   document.body.classList.toggle('playing', locked);
 };
 viewmodel.ready.then(() => {
+  // A dropped magazine is handed over to the world: get its materials ready
+  // now, so the first empty reload doesn't stall.
+  const drops = Object.values(viewmodel.guns).map((g) => g.dropModel).filter(Boolean).map((m) => m.clone(true));
+  for (const d of drops) {
+    d.position.set(0, -50, 0);
+    scene.add(d);
+  }
+  renderer.compile(scene, camera);
+  for (const d of drops) scene.remove(d);
   loaded = true;
   overlayStatus.textContent = 'Click to play';
 });
@@ -161,7 +191,7 @@ function shoot() {
   const gun = weapon.spec;
   viewmodel.fire(aimAmount);
   playGunshot(held);
-  heat = Math.min(HEAT.max, heat + HEAT.perShot);
+  barrels[held].heat = Math.min(HEAT.max, barrels[held].heat + HEAT.perShot);
 
   // Where the shot goes: through the sights when aiming, roughly at the
   // centre from the hip, straying more from the hip and while moving.
@@ -172,7 +202,8 @@ function shoot() {
   const stray = (gun.spread.hip + gun.spread.moving * moving) * (1 - aimAmount) + gun.spread.aim * aimAmount;
   const direction = spread(forward.clone().lerp(throughSights, aimAmount).normalize(), stray);
   const hit = raycastWorld(camera.position.x, camera.position.y, camera.position.z, direction.x, direction.y, direction.z, gun.range);
-  if (hit) effects.impact(hit, hit.what === 'ground' ? 0x8c8c8c : 0xcfc6b6);
+  if (hit && hit.what === 'soldier') effects.impact(hit, 0x6b6e58, false); // cloth: no hole (his box is only roughly his shape)
+  else if (hit) effects.impact(hit, hit.what === 'ground' ? 0x8c8c8c : 0xcfc6b6);
 
   // Flash, smoke and the spent case, where the gun is.
   const muzzle = gunPointToWorld(viewmodel.muzzlePoint());
@@ -198,17 +229,19 @@ function shoot() {
 // Once it's warm, thin smoke curls off the muzzle and out of the ejection
 // port, most when it's at `full`. After a whole magazine fired fast, it
 // smokes for about three seconds.
+// Each gun has its own barrel: they all cool, and only the one in the hands
+// smokes.
 const HEAT = { perShot: 1, max: 6, coolPerSecond: 1.3, smokeFrom: 2, full: 6, puffsPerSecond: 8 };
-let heat = 0;
-let smokeTimer = 0;
+const barrels = Object.fromEntries(LOADOUT.map((key) => [key, { heat: 0, smokeTimer: 0 }]));
 
 function updateBarrelSmoke(dt) {
-  heat = Math.max(0, heat - HEAT.coolPerSecond * dt);
-  if (heat < HEAT.smokeFrom) return;
-  const amount = Math.min(1, (heat - HEAT.smokeFrom) / (HEAT.full - HEAT.smokeFrom));
-  smokeTimer -= dt;
-  if (smokeTimer > 0) return;
-  smokeTimer = 1 / (HEAT.puffsPerSecond * (0.4 + 0.6 * amount));
+  for (const b of Object.values(barrels)) b.heat = Math.max(0, b.heat - HEAT.coolPerSecond * dt);
+  const barrel = barrels[viewmodel.shownGun];
+  if (!barrel || barrel.heat < HEAT.smokeFrom) return;
+  const amount = Math.min(1, (barrel.heat - HEAT.smokeFrom) / (HEAT.full - HEAT.smokeFrom));
+  barrel.smokeTimer -= dt;
+  if (barrel.smokeTimer > 0) return;
+  barrel.smokeTimer = 1 / (HEAT.puffsPerSecond * (0.4 + 0.6 * amount));
   const from = Math.random() < 0.7 ? viewmodel.muzzlePoint() : viewmodel.portPoint();
   effects.barrelSmoke(gunPointToWorld(from), amount);
 }
@@ -298,19 +331,10 @@ renderer.setAnimationLoop((time) => {
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
   // The gun the hands are holding (while switching, the one being put away
-  // until it's out of view).
-  const shown = weapons[viewmodel.shownGun];
-  const gunState = {
-    slideLocked: shown.slideLocked,
-    reloadProgress: shown.reloadProgress,
-    reloadSeconds: shown.reload ? shown.reload.duration : 0,
-    reloadEmpty: shown.reload ? shown.reload.empty : false,
-    ammo: shown.ammo,
-    reserve: shown.reserve,
-    inspectTime: shown.inspectTime,
-    inspectCheck: shown.inspectCheck,
-    inspectAmount: shown.inspectAmount,
-  };
+  // until it's out of view, as it was when the switch began).
+  const shownKey = viewmodel.shownGun;
+  if (outgoing && (outgoing.key !== shownKey || shownKey === held)) outgoing = null;
+  const gunState = outgoing ? outgoing.state : gunStateOf(weapons[shownKey]);
   aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading && !weapon.inspecting && !switching, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
   document.body.classList.toggle('aiming', aimAmount > 0.4);
