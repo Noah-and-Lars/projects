@@ -108,6 +108,45 @@ function makeEcho(rate) {
   return buffer;
 }
 
+// Recorded sounds (in assets/sounds/), loaded once sound is allowed. The
+// second pistol's: its slide pulled back and snapping forward; its magazine
+// released, empty or with rounds in it; and a magazine pushed home (two
+// takes, picked at random).
+const SAMPLE_FILES = {
+  slide45Back: 'pf45-slide-back.wav',
+  slide45Forward: 'pf45-slide-forward.wav',
+  mag45OutEmpty: 'pf45-mag-out-empty.wav',
+  mag45Out: 'pf45-mag-out.wav',
+  mag45In1: 'pf45-mag-in-1.wav',
+  mag45In2: 'pf45-mag-in-2.wav',
+};
+const samples = {};
+
+function loadSamples() {
+  for (const [name, file] of Object.entries(SAMPLE_FILES)) {
+    fetch(new URL(`../../assets/sounds/${file}`, import.meta.url))
+      .then((response) => response.arrayBuffer())
+      .then((data) => context.decodeAudioData(data))
+      .then((buffer) => {
+        samples[name] = buffer;
+      })
+      .catch((error) => console.warn(`Couldn't load the sound ${file}.`, error));
+  }
+}
+
+// Plays a recorded sound; false if it isn't loaded (yet).
+function playSample(name, volume = 1) {
+  if (!context || !samples[name]) return false;
+  const source = context.createBufferSource();
+  source.buffer = samples[name];
+  source.playbackRate.value = vary(1, 0.02);
+  const level = context.createGain();
+  level.gain.value = volume;
+  source.connect(level).connect(master);
+  source.start();
+  return true;
+}
+
 // Browsers only allow sound after the player clicks; call this from the click.
 export function startAudio() {
   if (!context) {
@@ -143,6 +182,7 @@ export function startAudio() {
       buffer.copyToChannel(makeShot(context.sampleRate), 0);
       shots.push(buffer);
     }
+    loadSamples();
   }
   if (context.state === 'suspended') context.resume();
 }
@@ -191,13 +231,18 @@ function tone({ at = 0, from, to = from, volume, decay, type = 'sine' }) {
 
 const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 
-export function playGunshot() {
+// Each gun's shot: the .45 is the same recording slowed down a little, so
+// it's deeper, and a bit louder.
+const GUNSHOT = { pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 } };
+
+export function playGunshot(gun = 'pistol') {
   if (!context || !shots.length) return;
+  const sound = GUNSHOT[gun] || GUNSHOT.pistol;
   const source = context.createBufferSource();
   source.buffer = shots[Math.floor(Math.random() * shots.length)];
-  source.playbackRate.value = vary(1, 0.03);
+  source.playbackRate.value = vary(sound.rate, 0.03);
   const level = context.createGain();
-  level.gain.value = 0.9;
+  level.gain.value = sound.volume;
   source.connect(level).connect(master);
   const send = context.createGain();
   send.gain.value = 0.5;
@@ -217,7 +262,10 @@ export function playCasing(volume = 1) {
   }
 }
 
-export function playMagOut() {
+// The magazine release pressed and the magazine coming out. empty: whether
+// there are any rounds in it (the second pistol's sound differs).
+export function playMagOut(gun = 'pistol', empty = false) {
+  if (gun === 'pistol45' && playSample(empty ? 'mag45OutEmpty' : 'mag45Out', 1)) return;
   burst({ type: 'bandpass', from: 2400, q: 5, volume: 0.96, decay: 0.03 }); // release button
   burst({ at: 0.05, type: 'bandpass', from: 900, to: 600, q: 2, volume: 0.80, decay: 0.12 }); // slides out
 }
@@ -243,12 +291,22 @@ export function playMagDrop(volume = 1) {
   burst({ at: vary(0.05, 0.3), type: 'bandpass', from: 1500, q: 4, volume: 0.2 * volume, decay: 0.03 });
 }
 
-export function playMagIn() {
+export function playMagIn(gun = 'pistol') {
+  if (gun === 'pistol45' && playSample(Math.random() < 0.5 ? 'mag45In1' : 'mag45In2', 1)) return;
   burst({ type: 'bandpass', from: 1200, to: 800, q: 2, volume: 0.64, decay: 0.08 });
   burst({ at: 0.07, type: 'bandpass', from: 2200, q: 6, volume: 1.00, decay: 0.04 }); // clicks home
 }
 
-export function playSlideRelease() {
+// The slide pulled back by hand (checking the chamber). Only the second
+// pistol has a sound for it, recorded.
+export function playSlideBack(gun = 'pistol') {
+  if (gun === 'pistol45') playSample('slide45Back', 0.85);
+}
+
+// The slide snapping forward when it's let go (or the slide stop releases
+// it). The second pistol's is recorded.
+export function playSlideRelease(gun = 'pistol') {
+  if (gun === 'pistol45' && playSample('slide45Forward', 0.95)) return;
   burst({ type: 'bandpass', from: 1800, q: 4, volume: 1.00, decay: 0.05 });
   burst({ at: 0.012, type: 'bandpass', from: 3000, q: 6, volume: 0.80, decay: 0.03 });
 }

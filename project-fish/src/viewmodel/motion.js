@@ -107,10 +107,11 @@ export class ViewmodelMotion {
     if (direction > 0) this.unsteady = 1;
   }
 
-  // A shot's kick. aim: 0 at the hip, 1 aiming down the sights.
-  kick(aim) {
+  // A shot's kick. aim: 0 at the hip, 1 aiming down the sights. strength:
+  // how hard this gun kicks (1 for the first pistol).
+  kick(aim, strength = 1) {
     const R = MOTION.recoil;
-    const k = 1 - (1 - R.aimed) * aim;
+    const k = (1 - (1 - R.aimed) * aim) * strength;
     const random = () => Math.random() * 2 - 1;
     this.rotation.velocity.x += (R.flip + Math.random() * R.flipRandom) * k;
     this.rotation.velocity.y += random() * R.yaw * k;

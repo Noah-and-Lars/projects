@@ -8,7 +8,7 @@ const DEGREES_PER_COUNT = 0.022;
 const MAX_PITCH = (89 * Math.PI) / 180;
 
 // Keys the game uses; the browser's default action for them is blocked while playing.
-const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'KeyF', 'ShiftLeft', 'ShiftRight']);
+const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'KeyF', 'Digit1', 'Digit2', 'ShiftLeft', 'ShiftRight']);
 
 // Q aims: a quick click turns aiming on or off; holding it aims until you let go.
 const AIM_KEY = 'KeyQ';
@@ -17,6 +17,12 @@ const AIM_CLICK_MS = 250; // a press shorter than this counts as a click
 // Holding Shift sprints. Firing stops it; it carries on this long after the
 // last shot if Shift is still held.
 const SPRINT_AFTER_SHOT_MS = 400;
+
+// The mouse wheel switches guns: one step per notch (a touchpad's smooth
+// scrolling adds up to a step every this many pixels), and no more than one
+// step this often.
+const WHEEL_STEP = 50;
+const WHEEL_GAP_MS = 120;
 
 export class Input {
   constructor(element) {
@@ -36,6 +42,9 @@ export class Input {
     this.aimKeyWasOn = false; // whether it was already on when Q was pressed
     this.lastShot = -Infinity; // when the fire button was last pressed (ms)
     this.sprintBlocked = false; // set by the game while a shot is waiting to go off
+    this.wheel = 0; // scrolled since the last step (pixels)
+    this.wheelSteps_ = 0; // steps not yet handled (+1 down, -1 up)
+    this.lastWheelStep = -Infinity;
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.element;
@@ -88,6 +97,20 @@ export class Input {
     document.addEventListener('mouseup', (e) => {
       this.held.delete('Mouse' + e.button);
     });
+    // The wheel: in whole steps.
+    document.addEventListener('wheel', (e) => {
+      if (!this.locked) return;
+      e.preventDefault();
+      // Line or page scrolling (some mice) counts a notch per line.
+      this.wheel += e.deltaMode === 0 ? e.deltaY : Math.sign(e.deltaY) * WHEEL_STEP;
+      const now = performance.now();
+      if (Math.abs(this.wheel) >= WHEEL_STEP && now - this.lastWheelStep > WHEEL_GAP_MS) {
+        this.wheelSteps_ += Math.sign(this.wheel);
+        this.lastWheelStep = now;
+        this.wheel = 0;
+      }
+    }, { passive: false });
+
     // Right-click aims, so don't open the browser's menu.
     document.addEventListener('contextmenu', (e) => {
       if (this.locked) e.preventDefault();
@@ -99,9 +122,18 @@ export class Input {
 
   releaseAll() {
     this.aimKeyOn = false;
+    this.wheel = 0;
+    this.wheelSteps_ = 0;
     this.held.clear();
     this.tapped.clear();
     this.pressed.clear();
+  }
+
+  // Mouse wheel steps since the last time this asked (+ down, - up).
+  wheelSteps() {
+    const n = this.wheelSteps_;
+    this.wheelSteps_ = 0;
+    return n;
   }
 
   // How many times `code` was pressed since the last time this asked about it.

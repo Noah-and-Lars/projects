@@ -40,15 +40,21 @@ function reach(joints, target) {
 export class ShootingHand extends HandRig {
   constructor() {
     super('right', rightHandPose());
-    // The thumb's tip, pad down on the button, then pressing it in. The rest
-    // of the hand stays as it is.
+    this.addRelease('', MAG_RELEASE);
+    this.set('grip');
+  }
+
+  // The thumb on another gun's magazine release (`release` as MAG_RELEASE):
+  // poses 'onRelease' + suffix and 'pressRelease' + suffix. The thumb's
+  // tip, pad down on the button, then pressing it in; the rest of the hand
+  // stays as it is.
+  addRelease(suffix, release) {
     const thumb = this.rest.thumb;
     const tip = thumb.radii[3] * 0.92;
-    const onButton = MAG_RELEASE.face.clone().add(V(-tip, 0, 0));
-    const pressed = onButton.clone().add(V(MAG_RELEASE.travel, 0, 0));
+    const onButton = release.face.clone().add(V(-tip, 0, 0));
+    const pressed = onButton.clone().add(V(release.travel, 0, 0));
     const fingers = this.rest.fingers.map((f) => f.joints);
-    this.addPose('onRelease', [...fingers, reach(thumb.joints, onButton)]);
-    this.addPose('pressRelease', [...fingers, reach(thumb.joints, pressed)]);
-    this.set('grip');
+    this.addPose('onRelease' + suffix, [...fingers, reach(thumb.joints, onButton)]);
+    this.addPose('pressRelease' + suffix, [...fingers, reach(thumb.joints, pressed)]);
   }
 }

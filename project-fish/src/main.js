@@ -6,12 +6,12 @@
 // applied every frame, straight from the mouse, so aiming never lags.
 
 import * as THREE from 'three';
-import { MOVEMENT, PISTOL, PLAYER, TICK_DT } from './shared/config.js';
+import { GUNS, LOADOUT, MOVEMENT, PLAYER, TICK_DT } from './shared/config.js';
 import { createPlayerState, emptyCommand, horizontalSpeed, simulatePlayer } from './shared/movement.js';
 import { raycastColliders, raycastWorld } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
-import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playSlideRelease, startAudio } from './effects/audio.js';
+import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playSlideBack, playSlideRelease, startAudio } from './effects/audio.js';
 import { createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
@@ -53,7 +53,23 @@ const hud = new Hud(document.getElementById('debug'));
 const player = createPlayerState();
 const previous = { x: player.x, y: player.y, z: player.z };
 const cmd = emptyCommand();
-const weapon = new Pistol();
+// The guns the player carries (src/shared/config.js), and the one in hand:
+// switching to another happens at once here (its keys and its ammo), while
+// the hands put the old one away and draw the new one.
+const weapons = Object.fromEntries(LOADOUT.map((key) => [key, new Pistol(GUNS[key])]));
+let held = LOADOUT[0];
+let weapon = weapons[held];
+
+const asked = { reload: false, inspect: false }; // keys pressed while switching guns
+
+function switchGun(key) {
+  if (key === held || !weapons[key]) return;
+  weapon.holster();
+  asked.reload = asked.inspect = false;
+  held = key;
+  weapon = weapons[key];
+  viewmodel.switchTo(key);
+}
 const effects = new WorldEffects(scene);
 
 // --- Window size and field of view ---
@@ -140,8 +156,9 @@ function spread(direction, degrees) {
 }
 
 function shoot() {
+  const gun = weapon.spec;
   viewmodel.fire(aimAmount);
-  playGunshot();
+  playGunshot(held);
   heat = Math.min(HEAT.max, heat + HEAT.perShot);
 
   // Where the shot goes: through the sights when aiming, roughly at the
@@ -150,9 +167,9 @@ function shoot() {
   const sight = viewmodel.sightOnScreen();
   const throughSights = new THREE.Vector3(sight.x, sight.y, 0.5).unproject(camera).sub(camera.position).normalize();
   const moving = Math.min(1, horizontalSpeed(player) / MOVEMENT.walkSpeed);
-  const stray = (PISTOL.spread.hip + PISTOL.spread.moving * moving) * (1 - aimAmount) + PISTOL.spread.aim * aimAmount;
+  const stray = (gun.spread.hip + gun.spread.moving * moving) * (1 - aimAmount) + gun.spread.aim * aimAmount;
   const direction = spread(forward.clone().lerp(throughSights, aimAmount).normalize(), stray);
-  const hit = raycastWorld(camera.position.x, camera.position.y, camera.position.z, direction.x, direction.y, direction.z, PISTOL.range);
+  const hit = raycastWorld(camera.position.x, camera.position.y, camera.position.z, direction.x, direction.y, direction.z, gun.range);
   if (hit) effects.impact(hit, hit.what === 'ground' ? 0x8c8c8c : 0xcfc6b6);
 
   // Flash, smoke and the spent case, where the gun is.
@@ -167,7 +184,7 @@ function shoot() {
     .add(new THREE.Vector3(player.vx, player.vy, player.vz));
   effects.ejectCase(gunPointToWorld(viewmodel.portPoint()), caseVelocity);
 
-  const k = 1 - (1 - RECOIL.aimed) * aimAmount;
+  const k = (1 - (1 - RECOIL.aimed) * aimAmount) * gun.recoil;
   viewKick.vx += (RECOIL.kick + Math.random() * RECOIL.kickRandom) * k;
   viewKick.vy += (Math.random() * 2 - 1) * RECOIL.sideways * k;
   input.pitch = Math.min(1.55, input.pitch + RECOIL.climb * k);
@@ -197,15 +214,17 @@ function updateBarrelSmoke(dt) {
 // --- Ammo counter ---
 
 const ammo = document.getElementById('ammo');
+const ammoName = ammo.querySelector('.name');
 const ammoMag = ammo.querySelector('.mag');
 const ammoReserve = ammo.querySelector('.reserve');
 const ammoHint = ammo.querySelector('.hint');
 let shownAmmo = '';
 
 function updateAmmo() {
-  const state = `${weapon.ammo}/${weapon.reserve}/${weapon.reloading}`;
+  const state = `${held}/${weapon.ammo}/${weapon.reserve}/${weapon.reloading}`;
   if (state === shownAmmo) return;
   shownAmmo = state;
+  if (ammoName) ammoName.textContent = weapon.spec.name;
   ammoMag.textContent = weapon.ammo;
   ammoReserve.textContent = weapon.reserve;
   ammo.classList.toggle('low', weapon.ammo <= 3);
@@ -249,26 +268,47 @@ renderer.setAnimationLoop((time) => {
   updateViewKick(frameSeconds);
   camera.rotation.set(input.pitch + viewKick.x, input.yaw + viewKick.y, 0);
 
-  // The pistol: trigger, reload and inspect keys, then the gun's pose, then
-  // what happened. Aiming or sprinting stops an inspect.
+  // Switching guns: 1 and 2, or the mouse wheel.
+  if (input.locked) {
+    LOADOUT.forEach((key, i) => {
+      if (input.presses(`Digit${i + 1}`) > 0) switchGun(key);
+    });
+    const steps = input.wheelSteps();
+    if (steps) switchGun(LOADOUT[(LOADOUT.indexOf(held) + steps % LOADOUT.length + LOADOUT.length) % LOADOUT.length]);
+  }
+
+  // The gun in hand: trigger, reload and inspect keys, then the gun's pose,
+  // then what happened. Aiming or sprinting stops an inspect. While the
+  // hands are switching guns, it can't be reloaded, inspected or aimed (a
+  // trigger pull waits until it's up).
+  // (A reload or inspect asked for then is kept until it's up.)
+  const switching = Boolean(viewmodel.switching);
   const busy = input.aiming || Boolean(player.sprinting);
+  if (input.locked && input.presses('KeyR') > 0) asked.reload = true;
+  if (input.locked && input.presses('KeyF') > 0) asked.inspect = true;
+  const reloadNow = asked.reload && !switching;
+  const inspectNow = asked.inspect && !switching;
+  if (!switching || !input.locked) asked.reload = asked.inspect = false;
   const events = input.locked
-    ? weapon.update(frameSeconds, input.presses('Mouse0'), input.presses('KeyR') > 0, viewmodel.readyToFire, input.presses('KeyF') > 0, busy)
+    ? weapon.update(frameSeconds, input.presses('Mouse0'), reloadNow, viewmodel.readyToFire, inspectNow, busy)
     : weapon.update(frameSeconds, 0, false, viewmodel.readyToFire, false, busy);
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
+  // The gun the hands are holding (while switching, the one being put away
+  // until it's out of view).
+  const shown = weapons[viewmodel.shownGun];
   const gunState = {
-    slideLocked: weapon.slideLocked,
-    reloadProgress: weapon.reloadProgress,
-    reloadSeconds: weapon.reload ? weapon.reload.duration : 0,
-    reloadEmpty: weapon.reload ? weapon.reload.empty : false,
-    ammo: weapon.ammo,
-    reserve: weapon.reserve,
-    inspectTime: weapon.inspectTime,
-    inspectCheck: weapon.inspectCheck,
-    inspectAmount: weapon.inspectAmount,
+    slideLocked: shown.slideLocked,
+    reloadProgress: shown.reloadProgress,
+    reloadSeconds: shown.reload ? shown.reload.duration : 0,
+    reloadEmpty: shown.reload ? shown.reload.empty : false,
+    ammo: shown.ammo,
+    reserve: shown.reserve,
+    inspectTime: shown.inspectTime,
+    inspectCheck: shown.inspectCheck,
+    inspectAmount: shown.inspectAmount,
   };
-  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading && !weapon.inspecting, gunState);
+  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading && !weapon.inspecting && !switching, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
   document.body.classList.toggle('aiming', aimAmount > 0.4);
   document.body.classList.toggle('sprinting', viewmodel.motion.sprint > 0.4);
@@ -278,14 +318,15 @@ renderer.setAnimationLoop((time) => {
       playDryFire();
       viewmodel.dryFire();
     }
-    else if (event === 'magOut') playMagOut();
+    else if (event === 'magOut') playMagOut(held, (weapon.slideLocked ? 0 : weapon.ammo - 1) <= 0); // empty, or with rounds in it
     else if (event === 'magCaught') playMagCatch();
     else if (event === 'magGrab') playMagGrab();
     else if (event === 'magIn') {
-      playMagIn();
+      playMagIn(held);
       viewmodel.seatMagazine();
     }
-    else if (event === 'slideRelease') playSlideRelease();
+    else if (event === 'slidePull') playSlideBack(held);
+    else if (event === 'slideRelease') playSlideRelease(held);
   }
   // An empty magazine dropped out of view in the gun layer carries on falling in the world.
   const dropped = viewmodel.takeDroppedMagazine();

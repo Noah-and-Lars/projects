@@ -1,6 +1,7 @@
-// The pistol's rules: one shot per trigger pull, a short wait between shots,
+// A pistol's rules: one shot per trigger pull, a short wait between shots,
 // a magazine, and reloading. It doesn't draw or play anything; it reports
 // what happened (events) so the effects, sounds and gun animation can follow.
+// Each gun has its own (its numbers are in src/shared/config.js).
 
 import { PISTOL } from './shared/config.js';
 
@@ -65,13 +66,16 @@ export const INSPECT_STEPS = {
   magOut: INSPECT.magOut,
   magCaught: INSPECT.magOut + fallTime(CATCH_GAP), // it lands in the palm
   magIn: INSPECT.magIn,
-  slideRelease: INSPECT.release, // only with the chamber check
+  slidePull: INSPECT.pull, // the slide starts to come back (only with the chamber check)
+  slideRelease: INSPECT.release, // it's let go (only with the chamber check)
 };
 
 export class Pistol {
-  constructor() {
-    this.ammo = PISTOL.magazine;
-    this.reserve = PISTOL.reserve;
+  // spec: the gun's numbers (PISTOL or PISTOL45 in src/shared/config.js).
+  constructor(spec = PISTOL) {
+    this.spec = spec;
+    this.ammo = spec.magazine;
+    this.reserve = spec.reserve;
     this.cooldown = 0;
     this.slideLocked = false; // the slide stays back after the last round
     this.reload = null; // { time, duration, empty, done: Set of steps reached }
@@ -127,7 +131,8 @@ export class Pistol {
   // inspect key was pressed. busy: aiming or sprinting, which stops an
   // inspect (or keeps one from starting).
   // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magCaught',
-  // 'magGrab', 'magIn', 'slideRelease', 'reloaded', 'inspect', 'inspected'.
+  // 'magGrab', 'magIn', 'slidePull', 'slideRelease', 'reloaded', 'inspect',
+  // 'inspected'.
   update(dt, trigger, reloadKey, ready = true, inspectKey = false, busy = false) {
     for (let i = 0; i < trigger; i++) this.pulls.push(0);
     const events = this.step(dt, reloadKey, ready, inspectKey, busy);
@@ -146,7 +151,7 @@ export class Pistol {
     if (this.inspect) {
       // Firing, reloading, aiming or sprinting cuts it short, and what was
       // asked for happens once the gun is back in the hold.
-      if (reloadKey && this.ammo < PISTOL.magazine && this.reserve > 0) this.reloadWaiting = true;
+      if (reloadKey && this.ammo < this.spec.magazine && this.reserve > 0) this.reloadWaiting = true;
       const inspect = this.inspect;
       if (this.pulls.length || this.reloadWaiting || busy) inspect.cut = true;
       const t = inspect.time;
@@ -155,7 +160,7 @@ export class Pistol {
       if (inspect.cut && !magazineOut && !slideHeld) inspect.fade -= dt / INSPECT.fade;
       else inspect.time += dt * (inspect.cut ? INSPECT.hurry : 1);
       for (const [step, at] of Object.entries(INSPECT_STEPS)) {
-        if (step === 'slideRelease' && !inspect.check) continue;
+        if ((step === 'slidePull' || step === 'slideRelease') && !inspect.check) continue;
         if (inspect.time >= at && !inspect.done.has(step)) {
           inspect.done.add(step);
           events.push(step);
@@ -179,7 +184,7 @@ export class Pistol {
         }
       }
       if (p >= 1) {
-        const taken = Math.min(PISTOL.magazine - this.ammo, this.reserve);
+        const taken = Math.min(this.spec.magazine - this.ammo, this.reserve);
         this.ammo += taken;
         this.reserve -= taken;
         this.slideLocked = false;
@@ -189,14 +194,14 @@ export class Pistol {
       return events;
     }
 
-    const canReload = this.ammo < PISTOL.magazine && this.reserve > 0;
+    const canReload = this.ammo < this.spec.magazine && this.reserve > 0;
     if (this.reloadWaiting) {
       reloadKey = true;
       this.reloadWaiting = false;
     }
     if (reloadKey && canReload) {
       const empty = this.ammo === 0;
-      this.reload = { time: 0, duration: empty ? PISTOL.emptyReloadTime : PISTOL.reloadTime, empty, done: new Set() };
+      this.reload = { time: 0, duration: empty ? this.spec.emptyReloadTime : this.spec.reloadTime, empty, done: new Set() };
       events.push('reload');
       this.pulls = [];
       return events;
@@ -212,14 +217,32 @@ export class Pistol {
       this.pulls.shift();
       if (this.ammo > 0) {
         this.ammo--;
-        this.cooldown = PISTOL.fireInterval;
+        this.cooldown = this.spec.fireInterval;
         if (this.ammo === 0) this.slideLocked = true;
         events.push('shot');
       } else {
-        this.cooldown = PISTOL.fireInterval;
+        this.cooldown = this.spec.fireInterval;
         events.push('dry');
       }
     }
     return events;
+  }
+
+  // Putting the gun away: an inspect stops, and so does a reload, unless the
+  // fresh magazine is already in (then it counts, slide released and all).
+  // Trigger pulls waiting to fire are dropped.
+  holster() {
+    this.inspect = null;
+    this.reloadWaiting = false;
+    this.pulls = [];
+    if (!this.reload) return;
+    const steps = RELOAD_STEPS[this.reload.empty ? 'empty' : 'catching'];
+    if (this.reloadProgress >= steps.magIn) {
+      const taken = Math.min(this.spec.magazine - this.ammo, this.reserve);
+      this.ammo += taken;
+      this.reserve -= taken;
+      this.slideLocked = false;
+    }
+    this.reload = null;
   }
 }

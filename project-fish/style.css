@@ -55,6 +55,13 @@ body.sprinting #crosshair {
   pointer-events: none;
 }
 
+/* The gun's name, small, before the count. */
+#ammo .name {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
 #ammo .mag {
   font-size: 40px;
   font-variant-numeric: tabular-nums;
@@ -143,6 +150,16 @@ body:not(.playing) #ammo {
 .controls td {
   padding: 3px 10px;
   text-align: left;
+}
+
+#overlay .credits {
+  margin: 20px 0 0;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+#overlay .credits a {
+  color: inherit;
 }
 
 .controls td:first-child {

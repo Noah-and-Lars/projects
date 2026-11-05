@@ -27,8 +27,10 @@ export const WORLD = {
   size: 2000, // m, the baseplate is size × size, centred on 0,0
 };
 
-// The pistol. Times in seconds, angles in degrees, distances in metres.
+// The guns. Times in seconds, angles in degrees, distances in metres.
+// The first pistol: a 9 mm.
 export const PISTOL = {
+  name: 'PF-9',
   fireInterval: 0.12, // fastest the trigger can be pulled again (500 rounds a minute)
   magazine: 12,
   reserve: 60,
@@ -37,4 +39,24 @@ export const PISTOL = {
   range: 150,
   // How far shots can stray from where the gun points (half the cone's angle).
   spread: { hip: 1.8, aim: 0.12, moving: 1.2 }, // moving is added at full walking speed
+  recoil: 1, // how hard it kicks (the view and the gun)
 };
+
+// The second pistol: a .45 in the style of the 1911. Fewer, slower, harder-
+// kicking shots. (Its reload times match the first pistol's for now: the
+// hands' reload is shared, see src/viewmodel/viewmodel.js.)
+export const PISTOL45 = {
+  name: 'PF-45',
+  fireInterval: 0.17, // 350 rounds a minute at most
+  magazine: 7,
+  reserve: 35,
+  reloadTime: 2.1,
+  emptyReloadTime: 2.5,
+  range: 150,
+  spread: { hip: 2.1, aim: 0.14, moving: 1.4 },
+  recoil: 1.5,
+};
+
+// The guns the player carries, in the order of their keys (1, 2).
+export const LOADOUT = ['pistol', 'pistol45'];
+export const GUNS = { pistol: PISTOL, pistol45: PISTOL45 };

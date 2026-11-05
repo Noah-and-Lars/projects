@@ -1,18 +1,48 @@
 // The second pistol: a classic single-action .45 in the style of the
-// full-size 1911 "Government" pistol, built to real dimensions: 216 mm long
-// with a 127 mm barrel, about 14 cm tall. Its grip,
-// trigger and magazine release sit where the first pistol's do, so the same
-// hands hold it.
+// full-size 1911 "Government" pistol, 216 mm long with a 127 mm barrel.
 //
-// Gun space as in pistol.js: metres, +X right, +Y up, -Z forward, the bore
-// along Z at y = 0. Side profiles are traced in (s, y), s = -z the distance
-// forward, and pushed out sideways to their thickness. The Blender model
-// (tools/blender/build_pistol45.py) is built from these same profiles.
+// The game's model (assets/pistol45.glb) is made from a downloaded model by
+// tools/blender/convert_pistol45.py, which puts its grip where the hands hold
+// a pistol (GRIP in pistol.js). MODEL45 below is measured from it: where its
+// muzzle, sights and moving parts are.
+//
+// The rest of this file is an earlier 1911-style pistol made from side
+// profiles: a simpler built-in version of it is used if the model file can't
+// be loaded (with FALLBACK45 instead of MODEL45), and the Blender script
+// tools/blender/build_pistol45.py builds the full one from the same profiles.
+// It's to real dimensions too, but with its bore higher above the grip.
+//
+// Gun space as in pistol.js: metres, +X right, +Y up, -Z forward. For the
+// profiles the bore is along Z at y = 0; they're traced in (s, y), s = -z the
+// distance forward, and pushed out sideways to their thickness.
 
 import * as THREE from 'three';
 import { GRIP, filleted, profile } from './pistol.js';
 
 export { GRIP };
+
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// Points on the game's model (gun space): the muzzle and the ejection port;
+// the sight line (the top of the front blade, level with the bottom of the
+// rear notch: its height, and the back faces of both sights); how far the
+// slide goes back when it fires; the barrel, which tips down at the back as
+// it unlocks, about a point near the muzzle; the slide stop, whose thumb pad
+// (behind its pin) rises when the slide locks back; the hammer, modelled down
+// and cocked back this far (radians) about its pin; and the magazine
+// release's face (pressed towards +X).
+export const MODEL45 = {
+  muzzle: [0, -0.0159, -0.1604],
+  port: [0.008, -0.002, -0.05],
+  sights: { height: -0.0002, rearZ: 0.0133, frontZ: -0.1412 },
+  slideTravel: 0.03,
+  slideTop: -0.004, // top of the slide (without the sights), and its half width
+  slideHalfWidth: 0.0113,
+  barrel: { travel: 0.0035, tilt: 0.011, pivot: V(0, -0.0159, -0.155) },
+  slideStop: { lift: -0.12, pivot: V(0, -0.0316, -0.0516) },
+  hammer: { pivot: V(0, -0.0362, 0.0349), cocked: 0.9 },
+  magRelease: { face: V(-0.0125, -0.0603, -0.0194), travel: 0.0017 },
+};
 
 // The slide: flat sided with a rounded top, from its back face to the muzzle.
 // In front of the frame its nose drops down round the recoil spring plug.
@@ -161,6 +191,20 @@ export const PROFILES = {
   thumbSafety: { points: THUMB_SAFETY_PROFILE, width: 0.0022 },
   slideStop: { points: SLIDE_STOP_PROFILE, width: 0.0026 },
   magazine: { body: MAG_BODY, base: MAG_BASE, width: MAGAZINE.halfWidth * 2, baseWidth: MAGAZINE.baseHalfWidth * 2, ...MAGAZINE_SHAPE },
+};
+
+// The same points on the built-in version (see the top of this file).
+export const FALLBACK45 = {
+  muzzle: [0, 0, -0.164],
+  port: [0.008, 0.017, -0.03],
+  sights: SIGHTS,
+  slideTravel: SLIDE.travel,
+  slideTop: SLIDE.top,
+  slideHalfWidth: SLIDE.halfWidth,
+  barrel: null,
+  slideStop: null,
+  hammer: { pivot: HAMMER.pivot, cocked: HAMMER.cocked },
+  magRelease: MAG_RELEASE,
 };
 
 // A simpler built-in version, used if the model file can't be loaded.
