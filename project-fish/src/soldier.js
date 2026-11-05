@@ -14,12 +14,14 @@ export const SOLDIER_MODEL = new URL('../assets/soldier.glb', import.meta.url);
 
 let loading = null;
 
-// Resolves to { gltf, player }: the loaded file and a copy of the model for
-// the player (its own bones; the same geometry and textures).
+// Resolves to { gltf, player, arms }: the loaded file, a copy of the model
+// for the player's body, and one more for the player's arms holding the gun
+// (src/player/fpArms.js). Each copy has its own bones; they share the
+// geometry and textures.
 export function loadSoldier() {
   if (!loading) {
     loading = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(SOLDIER_MODEL.href)
-      .then((gltf) => ({ gltf, player: clone(gltf.scene) }));
+      .then((gltf) => ({ gltf, player: clone(gltf.scene), arms: clone(gltf.scene) }));
   }
   return loading;
 }

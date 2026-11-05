@@ -34,13 +34,14 @@ const LEGS = ['L', 'R'].map((s) => [`CC_Base_${s}_Thigh`, `CC_Base_${s}_Calf`, `
 // Walking and running: two steps a cycle, as many steps a metre as the
 // gun's bob (so the feet land with its footstep jolts); the part of the
 // cycle each foot is on the ground (more walking slowly, less running), how
-// high it lifts, how far the hips drop at each step, and how far apart the
-// feet go side to side. In the air the feet tuck up.
+// high it lifts, how far the hips drop at each step, how far a foot goes
+// either side of him at most (shorter strides make more steps), and how far
+// he leans into it moving fast. In the air the feet tuck up.
 // Sliding: where his feet go (metres ahead of where he is, and to his
 // left), how far he leans back (radians), how low his hips can go, and how
 // far further back his eyes are (so you look down past his chest).
 const SLIDE_POSE = { lead: [0.8, 0.08], tucked: [0.35, -0.13], lean: -0.3, lowestHip: 0.14, back: 0.32 };
-const GAIT = { stepsPerMetre: 0.75, stance: [0.62, 0.36], lift: [0.06, 0.16], bob: 0.03, maxStride: 0.55, tuck: 0.22, ease: 10 };
+const GAIT = { stepsPerMetre: 0.75, stance: [0.6, 0.32], lift: [0.06, 0.12], bob: 0.018, maxStride: 0.36, tuck: 0.22, ease: 10, runLean: 0.12 };
 
 // Leaves a material's mesh out of the picture, keeping its shadow: every
 // vertex is put outside the view (the shadow is drawn with a material of its
@@ -68,7 +69,13 @@ function bend(bone, rest, angle) {
 export class PlayerBody {
   constructor(scene, renderer, camera) {
     this.model = null;
-    this.ready = loadSoldier().then(({ player }) => this.setUp(player, scene, renderer, camera)).catch((error) => {
+    // (The second copy of the model is for the arms holding the gun,
+    // src/player/fpArms.js.)
+    this.armsModel = null;
+    this.ready = loadSoldier().then(({ player, arms }) => {
+      this.armsModel = arms;
+      return this.setUp(player, scene, renderer, camera);
+    }).catch((error) => {
       console.warn('No body for the player (the soldier model didn\'t load).', error);
     });
   }
@@ -171,7 +178,9 @@ export class PlayerBody {
         foot.position.set(feet.x, feet.y + 0.12, feet.z).addScaledVector(ahead, out).addScaledVector(side, across);
       });
     }
-    const lean = sliding ? SLIDE_POSE.lean : pitch < 0 ? Math.min(LEAN.maxDown, -pitch * LEAN.down) : -Math.min(LEAN.maxUp, pitch * LEAN.up);
+    // (Moving fast, he leans into it a little.)
+    const runLean = GAIT.runLean * (this.walk || 0) * THREE.MathUtils.clamp((speed - 2) / 5, 0, 1);
+    const lean = sliding ? SLIDE_POSE.lean : (pitch < 0 ? Math.min(LEAN.maxDown, -pitch * LEAN.down) : -Math.min(LEAN.maxUp, pitch * LEAN.up)) + runLean;
     const neckTurn = -pitch - lean;
     for (const [name, share] of SPINE) {
       const bone = this.bones[name];
