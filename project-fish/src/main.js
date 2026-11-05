@@ -429,7 +429,10 @@ renderer.setAnimationLoop((time) => {
   // The light and laser: T.
   if (input.locked && input.presses('KeyT') > 0) {
     lightsOn = !lightsOn;
-    if (viewmodel.points.light || viewmodel.points.laser) playSwitchClick();
+    if (viewmodel.points.light || viewmodel.points.laser) {
+      playSwitchClick();
+      viewmodel.flickSwitch();
+    }
   }
 
   // Switching guns: 1 and 2, or the mouse wheel.

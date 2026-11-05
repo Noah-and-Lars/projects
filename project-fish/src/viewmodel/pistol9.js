@@ -24,7 +24,8 @@
 //   iron sights).
 // - muzzle: the suppressors' fronts.
 // - lens / emitter: where a light's beam and the laser come from (they point
-//   straight ahead, along -Z).
+//   straight ahead, along -Z); switch: where the support hand presses to
+//   switch it on or off.
 // - on: the mounts each can sit on (the node is moved by `offset` for a
 //   mount other than the one it's modelled on).
 // - slide: the rail cover's top and half width (the chamber check takes
@@ -65,13 +66,15 @@ export const MODEL9 = {
     light_long: {
       // Modelled on the clamp mount's bottom rail.
       lens: [0, -0.0667, -0.1543],
+      switch: [-0.009, -0.058, -0.084], // the support hand's index finger flicks it
       on: { clamp: { offset: [0, 0, 0] }, frame: { offset: [0, 0.0115, 0] }, can_box: { offset: [0, -0.0243, 0] } },
     },
     light_compact: {
       // Modelled on the frame's rail.
       lens: [0, -0.049, -0.1326],
+      switch: [-0.0125, -0.05, -0.073], // its paddle beside the trigger guard
       on: { frame: { offset: [0, 0, 0] }, clamp: { offset: [0, -0.0115, 0] }, can_box: { offset: [0, -0.0358, 0] } },
     },
-    laser: { emitter: [-0.0303, -0.0209, -0.121] },
+    laser: { emitter: [-0.0303, -0.0209, -0.121], switch: [-0.027, -0.036, -0.063] }, // at its lower back corner
   },
 };

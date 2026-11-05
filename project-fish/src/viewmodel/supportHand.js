@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { GRIP, MAGAZINE, SLIDE } from './pistol.js';
 import { leftHandPose, handShapes } from './arms.js';
-import { HandRig, chained } from './handRig.js';
+import { HandRig, reach, chained } from './handRig.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const RIGHT = V(1, 0, 0);
@@ -259,5 +259,17 @@ export class SupportHand extends HandRig {
     // Pushing it in: the fingers slide off its front as it goes up into the
     // grip, leaving the palm to push.
     this.addBlend('pushing', 'magazine', 'flat', 0.48);
+  }
+
+  // A finger (index) or the thumb reaching out to press an attachment's
+  // switch at `at` (gun space): hand shape `name`, the rest of the hand
+  // holding on as it does.
+  addSwitch(name, at, finger = 'index') {
+    const chains = [...this.rest.fingers, this.rest.thumb].map((c) => c.joints);
+    const c = finger === 'thumb' ? 4 : 0;
+    const tip = (finger === 'thumb' ? this.rest.thumb : this.rest.fingers[0]).radii[3] * 0.9;
+    const to = at.clone().add(new THREE.Vector3(-tip, 0, 0));
+    chains[c] = reach(chains[c], to);
+    this.addPose(name, chains);
   }
 }

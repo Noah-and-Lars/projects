@@ -42,6 +42,29 @@ export function chained(chain, dirs) {
   return joints;
 }
 
+// Moves a chain of joints so its end reaches `target`, keeping every bone its
+// length and the first joint where it is, changing it as little as it can
+// (FABRIK: pull the chain to the target from the tip, then back to its root,
+// a few times over).
+export function reach(joints, target) {
+  const lengths = joints.slice(1).map((j, i) => j.distanceTo(joints[i]));
+  const out = joints.map((j) => j.clone());
+  const root = out[0].clone();
+  for (let pass = 0; pass < 30; pass++) {
+    out[out.length - 1].copy(target);
+    for (let i = out.length - 2; i >= 0; i--) {
+      const along = out[i].clone().sub(out[i + 1]).setLength(lengths[i]);
+      out[i].copy(out[i + 1]).add(along);
+    }
+    out[0].copy(root);
+    for (let i = 0; i < out.length - 1; i++) {
+      const along = out[i + 1].clone().sub(out[i]).setLength(lengths[i]);
+      out[i + 1].copy(out[i]).add(along);
+    }
+  }
+  return out;
+}
+
 export class HandRig {
   // side: 'left' or 'right'. rest: the hand's pose as modelled (arms.js).
   constructor(side, rest) {

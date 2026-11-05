@@ -51,7 +51,10 @@ export const MOTION = {
   slam: { dip: 0.9, forward: 0.12 }, // the smaller jolt as the slide slams home a moment later
   // How it moves with the player's moves (src/shared/movement.js).
   // Tactical sprint: longer, harder strides (on top of the sprint pose).
-  tacSprint: { bob: 1.35, stride: 0.9 },
+  // The gun comes up close in front of the chest, muzzle up (the wrists bend
+  // back `bend`, radians, instead of down), as pistols are carried running
+  // flat out.
+  tacSprint: { bob: 1.35, stride: 0.9, bend: -0.25, up: 0.07, back: 0.08, inward: 0.015, tip: 0.1, roll: -0.25, yaw: 0.25 },
   // Sliding (or on your back): lowered, canted over and tipped up a little,
   // with a fine judder from the ground.
   slide: { down: 0.035, left: 0.015, roll: 0.32, tip: -0.06, judder: 0.0025, ease: 10 },
@@ -297,12 +300,15 @@ export class ViewmodelMotion {
 
     // Sprinting: the arms come in a little lower and closer, tipped and
     // canted a touch (the wrists bend the rest of the way; see viewmodel.js).
-    target.z += M.sprint.back * run;
-    target.y += M.sprint.up * run;
-    target.x -= M.sprint.inward * run;
-    targetRot.x -= M.sprint.tip * run;
-    targetRot.z += M.sprint.roll * run;
-    targetRot.y += M.sprint.yaw * run;
+    // On a tactical sprint it comes up close instead, muzzle up.
+    const plain = run * (1 - this.tac);
+    const tac = this.tac;
+    target.z += M.sprint.back * plain + M.tacSprint.back * tac;
+    target.y += M.sprint.up * plain + M.tacSprint.up * tac;
+    target.x -= M.sprint.inward * plain + M.tacSprint.inward * tac;
+    targetRot.x += -M.sprint.tip * plain + M.tacSprint.tip * tac;
+    targetRot.z += M.sprint.roll * plain + M.tacSprint.roll * tac;
+    targetRot.y += M.sprint.yaw * plain + M.tacSprint.yaw * tac;
 
     this.position.step(dt, target, force);
     this.rotation.step(dt, targetRot, torque);

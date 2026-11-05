@@ -326,6 +326,9 @@ const FRESH_IN_HAND = {
 // pressed, is on the button this long before, and is back this long after
 // (fractions of the reload).
 const THUMB = { start: 0.08, on: 0.035, back: 0.06 };
+// Pressing an attachment's switch: how long (seconds), and the fractions of
+// that taken reaching it and holding it down.
+const FLICK = { time: 0.34, reach: 0.4, hold: 0.6 };
 // The same for the slide stop at the end of an empty reload.
 const STOP_THUMB = { start: 0.07, on: 0.025, back: 0.07 };
 
@@ -613,6 +616,7 @@ export class Viewmodel {
     this.flash = null; // the gun in the hands' muzzle flash
     this.slideTime = 1; // seconds since the slide last went back
     this.triggerTime = 1; // seconds since the trigger was last pulled
+    this.flick = null; // seconds into pressing a switch (see flickSwitch)
     this.slammed = true;
     this.lastAim = 0;
     this.pistol = null;
@@ -822,6 +826,18 @@ export class Viewmodel {
       }
       if (e.emitter) points.laser = e.emitter;
     }
+    // The switch the support hand's index finger presses with T: the
+    // laser's if there is one, else the light's.
+    g.switchPose = null;
+    const switchOf = ids.has('laser') && extra.laser && extra.laser.switch ? ['laser', 'index']
+      : ['light_long', 'light_compact'].filter((id) => ids.has(id) && extra[id] && extra[id].switch).map((id) => [id, 'index'])[0];
+    if (switchOf && this.hand) {
+      const [id, finger] = switchOf;
+      const [x, y, z] = extra[id].switch;
+      const [ox, oy, oz] = id === 'laser' ? [0, 0, 0] : place(extra[id], sitsOn[id]);
+      g.switchPose = 'switch_' + key;
+      this.hand.addSwitch(g.switchPose, new THREE.Vector3(x + ox, y + oy, z + oz), finger);
+    }
     // The hand that checks the chamber takes hold of the slide over its
     // front: not with the clamp mount or box suppressor in the way. With the
     // rail cover on, it takes hold of that.
@@ -857,6 +873,11 @@ export class Viewmodel {
     this.stopLift = 0;
     this.chambered = 1;
     this.dropDone = false;
+  }
+
+  // The support hand presses the gun's light or laser switch (T).
+  flickSwitch() {
+    if (this.current && this.current.switchPose) this.flick = 0;
   }
 
   // Aiming down the sights, the gun comes up so the line through its sights
@@ -1045,6 +1066,10 @@ export class Viewmodel {
   update(frameSeconds, player, yaw, pitch, cameraQuaternion, wallDistance = Infinity, aiming = false, gun = null) {
     // Bring the sights up or down at a steady pace, eased at both ends.
     const dt = Math.min(frameSeconds, 0.05);
+    if (this.flick !== null) {
+      this.flick += dt;
+      if (this.flick >= FLICK.time) this.flick = null;
+    }
     this.aimProgress = Math.min(1, Math.max(0, this.aimProgress + (aiming ? dt : -dt) / AIM.time));
     const p = this.aimProgress;
     const aim = p * p * (3 - 2 * p);
@@ -1095,7 +1120,7 @@ export class Viewmodel {
     this.holder.rotation.set(r.x, r.y, r.z);
     this.gun.position.copy(this.posePosition).sub(this.pivot);
     this.gun.quaternion.copy(this.poseQuaternion);
-    this.poseArms(MOTION.sprint.bend * this.motion.sprint, pose, amount);
+    this.poseArms(MOTION.sprint.bend * this.motion.sprint * (1 - this.motion.tac) + MOTION.tacSprint.bend * this.motion.tac, pose, amount);
     if (this.dropping && this.dropModel) this.dropMagazine(this.dropping);
     this.dropping = null;
 
@@ -1217,6 +1242,13 @@ export class Viewmodel {
       this.leftArm.position.copy(WRIST).applyQuaternion(hand.turn).negate().add(WRIST).add(hand.offset);
     }
     if (this.hand) this.hand.set(hand.from, hand.to, hand.k, 'grip', returning);
+    // Pressing an attachment's switch (T): a quick reach and back, while
+    // the hand's holding the gun.
+    if (this.hand && this.flick !== null && this.current.switchPose && hand.from === 'grip' && hand.to === 'grip' && returning === 0 && r < 0) {
+      const t = this.flick / FLICK.time;
+      const k = t < FLICK.reach ? smoothstep(0, FLICK.reach, t) : t < FLICK.hold ? 1 : 1 - smoothstep(FLICK.hold, 1, t);
+      this.hand.set('grip', this.current.switchPose, k);
+    }
     if (!this.magazine || !this.magazineRest) return;
 
     // The magazines. Out comes the old one when the release is pressed; in
