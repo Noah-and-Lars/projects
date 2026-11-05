@@ -33,7 +33,12 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // (behind its pin) rises when the slide locks back; the hammer, modelled down
 // and cocked back this far (radians) about its pin; and the magazine
 // release's face (pressed towards +X).
+// Reloading, the PF-45 comes up turned further over (canted towards the
+// support hand) than the first pistol, so the magazine well faces it.
+const RELOAD_POSE45 = { position: V(-0.05, 0.15, 0.11), turn: [0.5, -0.12, -0.62] };
+
 export const MODEL45 = {
+  reloadPose: RELOAD_POSE45,
   muzzle: [0, -0.0054, -0.1641],
   port: [0.008, 0.0085, -0.0537],
   sights: { height: 0.0103, rearZ: 0.0096, frontZ: -0.1449 },
@@ -197,6 +202,7 @@ export const PROFILES = {
 
 // The same points on the built-in version (see the top of this file).
 export const FALLBACK45 = {
+  reloadPose: RELOAD_POSE45,
   muzzle: [0, 0, -0.164],
   port: [0.008, 0.017, -0.03],
   sights: SIGHTS,

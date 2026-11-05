@@ -37,6 +37,12 @@ export const RELOAD_STEPS = {
   },
 };
 
+// A gun's own times for a reload (its spec's reloadSteps change some of
+// them; a gun that's racked by hand from empty has rackGrab and rackPull).
+export function reloadSteps(spec, kind) {
+  return { ...RELOAD_STEPS[kind], ...((spec && spec.reloadSteps && spec.reloadSteps[kind]) || {}) };
+}
+
 // Inspecting: the shooting hand turns the gun to show its right side, then
 // its left, and then the magazine is checked: the support hand catches it as
 // it drops out, holds it up to look at, and pushes it back in. Then the
@@ -194,7 +200,7 @@ export class Pistol {
     if (this.reload) {
       this.reload.time += dt;
       const p = this.reloadProgress;
-      const steps = RELOAD_STEPS[this.reload.empty ? 'empty' : 'catching'];
+      const steps = reloadSteps(this.spec, this.reload.empty ? 'empty' : 'catching');
       for (const [step, at] of Object.entries(steps)) {
         if (step === 'handOn') continue;
         if (p >= at && !this.reload.done.has(step)) {
@@ -277,7 +283,7 @@ export class Pistol {
     this.reloadWaiting = false;
     this.pulls = [];
     if (!this.reload) return;
-    const steps = RELOAD_STEPS[this.reload.empty ? 'empty' : 'catching'];
+    const steps = reloadSteps(this.spec, this.reload.empty ? 'empty' : 'catching');
     if (this.reloadProgress >= steps.magIn) {
       const taken = Math.min(this.spec.magazine - this.ammo, this.reserve);
       this.ammo += taken;

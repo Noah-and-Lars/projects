@@ -114,7 +114,14 @@ export const PISTOL45 = {
   magazine: 7,
   reserve: 35,
   reloadTime: 2.1,
-  emptyReloadTime: 2.5,
+  // From empty the support hand racks the slide (overhand, from the back)
+  // after the magazine goes in, rather than the thumb dropping the slide
+  // stop: a little longer. (Fractions of the reload; see RELOAD_STEPS in
+  // src/weapon.js.)
+  emptyReloadTime: 2.9,
+  reloadSteps: {
+    empty: { magOut: 0.086, magGrab: 0.31, magIn: 0.543, rackGrab: 0.69, rackPull: 0.735, slideRelease: 0.76, handOn: 0.9 },
+  },
   range: 150,
   spread: { hip: 2.1, aim: 0.14, moving: 1.4 },
   recoil: 1.5,

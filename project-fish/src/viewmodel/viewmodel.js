@@ -16,7 +16,7 @@ import { ShootingHand, MAG_RELEASE } from './shootingHand.js';
 import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
-import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS } from '../weapon.js';
+import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS, reloadSteps } from '../weapon.js';
 import { PISTOL, PISTOL45, LOADOUT } from '../shared/config.js';
 
 // Points on the built-in first pistol (gun space; used if its model file
@@ -284,21 +284,50 @@ const inspectCheck = (shift, travel, down, seat) => {
   ];
 };
 
+// Racking the slide from behind, after an empty reload on a gun that's
+// done that way (its reload steps have rackGrab): off the magazine, up and
+// over the back of the slide, takes hold of it (palm on top, fingers over
+// its right side, thumb along its left), pulls it back the last bit and lets
+// go so it slingshots forward, and back round the grip.
+const RACK_REAR = V(0, 0.004, 0.105); // from where it takes hold of the slide's front
+const RACK_PULL = 0.006; // metres further back than locked
+function rackFromBehind(E, shift, down, seat) {
+  const rear = OVER_SLIDE.clone().add(shift).add(RACK_REAR);
+  const pulled = rear.clone().add(V(0, 0, RACK_PULL));
+  return [
+    { r: E.magIn + 0.03, at: holdingAt(0, down, seat).addScaledVector(down, 0.025).add(V(-0.01, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' }, // off the magazine...
+    { r: E.rackGrab - 0.06, at: rear.clone().add(V(-0.05, 0.03, 0.03)), turn: between(HOLD_TURN, OVER_TURN, 0.6), hand: 'open' }, // ...up and over...
+    { r: E.rackGrab - 0.02, at: rear.clone().add(V(-0.012, 0.008, 0.002)), turn: OVER_TURN, hand: 'open', stop: true }, // ...onto the back of the slide...
+    { r: E.rackGrab, at: rear, turn: OVER_TURN, hand: 'slide', stop: true }, // ...and takes hold
+    { r: E.rackPull, at: pulled, turn: OVER_TURN, hand: 'slide', stop: true }, // pulls it back
+    { r: E.slideRelease, at: pulled, turn: OVER_TURN, hand: 'slide', stop: true },
+    { r: E.slideRelease + 0.02, at: pulled.clone().add(V(-0.015, 0.012, 0.012)), turn: OVER_TURN, hand: 'open' }, // lets go: it slams home
+    { r: E.slideRelease + 0.06, at: pulled.clone().add(V(-0.04, 0.03, 0.02)), turn: between(OVER_TURN, NONE, 0.3), hand: 'open' },
+    { r: E.handOn - 0.075, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // back down beside the grip
+    { r: E.handOn - 0.035, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' },
+    { r: E.handOn, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
+  ];
+}
+
 // The support hand's keyframes for each kind of reload: reload progress,
 // where the hand is (from where it holds the gun), how it's turned (about
 // the wrist), its hand shape (supportHand.js), and whether it stops there
 // (otherwise it flows through).
 // For a gun with these points (see POINTS9).
-function handPaths(points) {
-  const E = RELOAD_STEPS.empty;
-  const C = RELOAD_STEPS.catching;
+function handPaths(points, rules = null) {
+  const E = reloadSteps(rules, 'empty');
+  const C = reloadSteps(rules, 'catching');
+  // (A gun with a longer empty reload has its first part played at the
+  // usual pace: the keys up to the magazine going in are moved earlier.)
+  const early = E.magIn / RELOAD_STEPS.empty.magIn;
+  const sooner = (keys) => keys.map((key) => ({ ...key, r: key.r * early }));
   const shift = V(SLIDE.halfWidth - points.slideHalfWidth, points.slideTop - SLIDE.top, 0);
   const down = points.magDown || GRIP.down;
   const seat = points.seat || 0;
   return {
     // From empty: off the grip and straight down to the belt, as the thumb
     // presses the release and the empty magazine falls.
-    empty: [
+    empty: E.rackGrab === undefined ? [
       { r: 0, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
       { r: 0.035, at: V(-0.012, -0.014, 0.008), turn: NONE, hand: 'loose' }, // fingers lift off the grip...
       { r: 0.06, at: V(-0.022, -0.03, -0.012), turn: turned(0.08, 0, 0.05), hand: 'loose' }, // ...off the front of the grip...
@@ -306,6 +335,17 @@ function handPaths(points) {
       { r: 0.2, at: V(-0.088, -0.34, 0.195), turn: turned(0.48, 0, 0.19), hand: 'relaxed' }, // down to the belt
       { r: 0.305, at: BELT, turn: AT_BELT, hand: 'open', stop: true, name: 'reach' },
       ...freshMagazine(E, AT_BELT, down, seat),
+    ] : [
+      ...sooner([
+        { r: 0, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
+        { r: 0.035, at: V(-0.012, -0.014, 0.008), turn: NONE, hand: 'loose' }, // fingers lift off the grip...
+        { r: 0.06, at: V(-0.022, -0.03, -0.012), turn: turned(0.08, 0, 0.05), hand: 'loose' }, // ...off the front of the grip...
+        { r: 0.105, at: V(-0.055, -0.18, 0.095), turn: turned(0.3, 0, 0.14), hand: 'reaching' }, // ...and it's away
+        { r: 0.2, at: V(-0.088, -0.34, 0.195), turn: turned(0.48, 0, 0.19), hand: 'relaxed' }, // down to the belt
+        { r: 0.305, at: BELT, turn: AT_BELT, hand: 'open', stop: true, name: 'reach' },
+      ]),
+      ...sooner(freshMagazine(RELOAD_STEPS.empty, AT_BELT, down, seat).slice(0, 6)),
+      ...rackFromBehind(E, shift, down, seat),
     ],
     // With rounds left: palm up under the grip to catch the old magazine,
     // out with it, put it away on the way down, and on to the belt for a
@@ -339,10 +379,11 @@ const HAND_PATHS = handPaths(POINTS9);
 const keyAt = (kind, name) => HAND_PATHS[kind].find((key) => key.name === name).r;
 // The fresh magazine appears in the hand as its fingers close on it at the
 // belt, and is in the hand until it's home.
-const FRESH_IN_HAND = {
-  empty: (keyAt('empty', 'reach') + keyAt('empty', 'grab')) / 2,
-  catching: (keyAt('catching', 'reach') + keyAt('catching', 'grab')) / 2,
+const freshInHand = (paths) => {
+  const at = (kind, name) => paths[kind].find((key) => key.name === name).r;
+  return { empty: (at('empty', 'reach') + at('empty', 'grab')) / 2, catching: (at('catching', 'reach') + at('catching', 'grab')) / 2 };
 };
+const FRESH_IN_HAND = freshInHand(HAND_PATHS);
 
 // The shooting hand's thumb: it starts down this long before the release is
 // pressed, is on the button this long before, and is back this long after
@@ -721,7 +762,8 @@ export class Viewmodel {
     // one, measured from the model: the support palm pushes it home there.
     const magazinePart = part('magazine');
     const points = { ...given, seat: magazinePart ? magazineSeat(pistol, magazinePart) : 0 };
-    const g = { key, rules: kind.rules, base: points, points, pistol, paths: handPaths(points), release: '', on: {} };
+    const g = { key, rules: kind.rules, base: points, points, pistol, paths: handPaths(points, kind.rules), release: '', on: {} };
+    g.freshInHand = freshInHand(g.paths);
     const slide = part('slide');
     const trigger = part('trigger');
     const magazine = part('magazine');
@@ -746,7 +788,7 @@ export class Viewmodel {
       g.grip = 'grip' + g.release;
       this.shooter.addGun(g.release, triggerFace(pistol, trigger), TRIGGER_TRAVEL, points.magRelease || MAG_RELEASE);
       const stop = part('slide_stop');
-      if (stop) {
+      if (stop && reloadSteps(kind.rules, 'empty').rackGrab === undefined) {
         const box = partBox(pistol, stop);
         this.shooter.addSlideStop(g.release, new THREE.Vector3(box.min.x + 0.002, box.max.y + 0.0012, (box.min.z + box.max.z) / 2));
         g.thumbStop = true;
@@ -880,7 +922,8 @@ export class Viewmodel {
       points.slideHalfWidth = extra.cover.slide.halfWidth;
     }
     g.points = points;
-    g.paths = handPaths(points);
+    g.paths = handPaths(points, g.rules);
+    g.freshInHand = freshInHand(g.paths);
     g.flash.setMuzzle(points.muzzle, Boolean(points.suppressed));
     if (g === this.current) this.aimAt(points.sights);
   }
@@ -1125,10 +1168,12 @@ export class Viewmodel {
     // Reloading: the gun comes up and in, tipped so the magazine well faces
     // you, so you can watch the support hand bring the new magazine in.
     const reload = gun ? gun.reloadProgress : -1;
-    const tilt = reload < 0 ? 0 : smoothstep(0, 0.14, reload) * (1 - smoothstep(0.84, 1, reload));
+    const ends = gun && gun.reloadEmpty ? reloadSteps(this.current && this.current.rules, 'empty').handOn : 0.84;
+    const tilt = reload < 0 ? 0 : smoothstep(0, 0.14, reload) * (1 - smoothstep(ends, 1, reload));
     if (tilt > 0) {
-      this.posePosition.add(RELOAD_POSE.position.clone().multiplyScalar(tilt));
-      this.poseQuaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...RELOAD_POSE.turn.map((a) => a * tilt))));
+      const pose = this.points.reloadPose || RELOAD_POSE;
+      this.posePosition.add(pose.position.clone().multiplyScalar(tilt));
+      this.poseQuaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...pose.turn.map((a) => a * tilt))));
     }
     // Inspecting: the gun is brought up and turned over (all of it scaled
     // down as it goes back to the hold when it's cut short).
@@ -1219,7 +1264,14 @@ export class Viewmodel {
       if (!this.pressSnapped) this.motion.slam(this.lastAim);
       this.pressSnapped = true;
     } else this.pressSnapped = false;
-    if (this.slide) this.slide.position.z = this.slideRest + points.slideTravel * back;
+    // Racking it from behind (a gun whose empty reload ends that way), the
+    // hand pulls the locked-back slide the last bit further before letting go.
+    let racked = 0;
+    if (reload >= 0 && gun && gun.reloadEmpty && locked) {
+      const R = reloadSteps(rules, 'empty');
+      if (R.rackGrab !== undefined) racked = smoothstep(R.rackGrab, R.rackPull, reload) * RACK_PULL;
+    }
+    if (this.slide) this.slide.position.z = this.slideRest + points.slideTravel * back + racked;
     const barrel = points.barrel;
     if (this.barrel && barrel) {
       turnAbout(this.barrel, this.barrelRest, barrel.pivot, barrel.tilt * back);
@@ -1257,7 +1309,7 @@ export class Viewmodel {
     // inspect, which is followed the same way, with its own path.
     const inspecting = reload < 0 && inspect >= 0;
     const kind = inspecting ? (check ? 'inspect' : 'inspectShort') : gun && gun.reloadEmpty ? 'empty' : 'catching';
-    const S = inspecting ? INSPECT_STEPS : RELOAD_STEPS[kind];
+    const S = inspecting ? INSPECT_STEPS : reloadSteps(rules, kind);
     const r = inspecting ? inspect : reload;
     // Cut short, the hands go back to holding the gun from wherever they are.
     const returning = inspecting ? 1 - amount : 0;
@@ -1300,7 +1352,7 @@ export class Viewmodel {
     const out = r >= S.magOut && r < S.magIn;
     const fall = out ? magazineFall((r - S.magOut) * seconds) : 0;
     let inGun = !out; // the gun's own magazine, seated (or on its way out)
-    let inHand = !inspecting && r >= FRESH_IN_HAND[kind] && r < S.magIn;
+    let inHand = !inspecting && r >= (this.current.freshInHand || FRESH_IN_HAND)[kind] && r < S.magIn;
     // Rounds in the magazines: one of the gun's rounds is in the chamber, the
     // rest in the magazine; a fresh one from the pouch is full (or has what's
     // left in reserve).

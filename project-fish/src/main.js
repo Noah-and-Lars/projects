@@ -485,7 +485,7 @@ renderer.setAnimationLoop((time) => {
     }
     else if (event === 'magOut') playMagOut(held, (weapon.slideLocked ? 0 : weapon.ammo - 1) <= 0); // empty, or with rounds in it
     else if (event === 'magCaught') playMagCatch();
-    else if (event === 'magGrab') playMagGrab();
+    else if (event === 'magGrab' || event === 'rackGrab') playMagGrab();
     else if (event === 'magIn') {
       playMagIn(held);
       viewmodel.seatMagazine();
