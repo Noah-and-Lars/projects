@@ -14,6 +14,7 @@ import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix, OVER_TURN, OVER_S
 import { ShootingHand } from './shootingHand.js';
 import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
+import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS } from '../weapon.js';
 import { PISTOL, PISTOL45, LOADOUT } from '../shared/config.js';
 
@@ -455,32 +456,6 @@ const RIGHT_ELBOW = rightHandPose().elbow;
 const FOREARM = RIGHT_ELBOW.clone().sub(RIGHT_WRIST).normalize();
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-
-// Reflections: an outdoor sky over grey ground with the sun in it, matching the
-// world, so metal shows the sky above and the ground below, like outside.
-function outdoorEnvironment(renderer, sunDirection) {
-  const scene = new THREE.Scene();
-  const dome = new THREE.SphereGeometry(10, 64, 32);
-  const sky = new THREE.Color(0x8fadd0);
-  const horizon = new THREE.Color(0xdde4ea);
-  const ground = new THREE.Color(0x5e5e5e);
-  const colors = [];
-  const position = dome.attributes.position;
-  for (let i = 0; i < position.count; i++) {
-    const up = position.getY(i) / 10;
-    const c = up > 0 ? horizon.clone().lerp(sky, Math.pow(up, 0.5)) : horizon.clone().lerp(ground, Math.min(1, -up * 8));
-    colors.push(c.r, c.g, c.b);
-  }
-  dome.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  scene.add(new THREE.Mesh(dome, new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true })));
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(14, 13, 12) }));
-  sun.position.copy(sunDirection).multiplyScalar(9);
-  scene.add(sun);
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const texture = pmrem.fromScene(scene, 0).texture;
-  pmrem.dispose();
-  return texture;
-}
 
 const smoothstep = (e0, e1, x) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));

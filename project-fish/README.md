@@ -40,7 +40,7 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 |---|---|
 | `index.html`, `style.css` | The page, the click-to-play screen and the on-screen readouts |
 | `src/main.js` | Sets up rendering and runs the game loop |
-| `src/world.js` | The baseplate, sky, lighting and the house |
+| `src/world.js` | The baseplate, sky, lighting, the house and the soldier standing by it |
 | `src/input.js` | Keyboard and mouse |
 | `src/hud.js` | The top-left readout |
 | `src/settings.js` | Mouse sensitivity and field of view |
@@ -59,11 +59,18 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 | `src/effects/audio.js` | The sounds: made in code, and the PF-45's recordings in `assets/sounds/` |
 | `src/viewmodel/sdf.js` | Turns blended shapes into smooth meshes (used for the hands and sleeves) |
 | `assets/pistol.glb`, `assets/pistol45.glb`, `assets/arms.glb` | The detailed pistols, gloves and sleeves, made in Blender |
+| `assets/soldier.glb` | The soldier: the character model for multiplayer |
 | `tools/` | The Blender build scripts that make the files in `assets/` (see below) |
 
 Everything in `src/shared/` is plain JavaScript with no three.js or browser code. When multiplayer is added, the server will run the same movement code, so players move identically on the server and in the game.
 
 The game logic runs at a fixed 60 ticks per second, whatever the screen's frame rate. The camera is drawn smoothly between ticks, and mouse look is applied every frame so aiming never lags.
+
+## The soldier
+
+A soldier in full tactical gear stands beside the house door, facing where you start, in his idle pose (breathing, shifting his weight). He's the character players will be when multiplayer arrives; until then he's there to look at. You can't walk through him, and shots stop on him. His model is `assets/soldier.glb` (3.2 MB), made from "Soldier Full Tactical Gear" by DanlyVostok (see Credits): 84,000 triangles with a full skeleton (fingers, face and twist bones) and its idle animation. Where he stands is `SOLDIER` in `src/shared/map.js`. The world lights him with the same outdoor sky reflections the gun uses, so his dark olive kit reads in daylight.
+
+`tools/soldier/build_soldier.mjs` makes the file from the download: it rubs the lettering off his chest and back patches (`tools/soldier/remove_patch_text.py`), drops texture coordinates no material uses, shrinks the textures from 4096 px to 1024 (the colour and normal maps; the rest to 512) as WebP, and compresses the meshes. At 1024 px he looks nearly the same as with the full 4K textures at any distance you'd see him from, and takes a quarter of the graphics memory of 2048 px. To rebuild it, download the model's glTF version from Sketchfab, unzip it into `build/soldier-source` (so the folder holds `scene.gltf`, `scene.bin` and `textures/`) and run `npm run build-soldier` (it needs Python 3 with numpy and Pillow).
 
 ## Tuning movement
 
@@ -156,4 +163,5 @@ If a model made by hand in Blender replaces one of these files, keep the same sc
 - [three.js](https://threejs.org) r184, MIT License, loaded from the jsDelivr CDN.
 - The first pistol, the hands and arms: models and textures made from scratch by the scripts in `tools/`.
 - The PF-45's slide sound is cut from "1911 Pistol Cocking" by freesound_community on [Pixabay](https://pixabay.com), under the [Pixabay Content License](https://pixabay.com/service/license-summary/). Its magazine sounds (`weapon_gun_1911_A_3`, `_4` and `_5`) were supplied for the project.
+- The soldier is based on ["Soldier Full Tactical Gear"](https://sketchfab.com/3d-models/soldier-full-tactical-gear-850593a8c7114c188395ba1849a66eb9) by [DanlyVostok](https://sketchfab.com/1799danly), licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Changes made: the lettering on the chest and back patches removed; unused texture coordinates dropped; textures shrunk to 1024 px and stored as WebP; meshes compressed.
 - The second pistol is based on ["Colt m1911"](https://sketchfab.com/3d-models/colt-m1911-2cfbca3cd37a426c8dbf6474504703e8) by [neyr](https://sketchfab.com/neyr), licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Changes made: turned, scaled and placed for the game's hands; pieces grouped into moving parts; thicker grip panels; added the middle of the barrel, a round in the chamber and a magazine follower; the maker's name replaced by a made-up marking; the steel darkened a little; textures halved to 2048 px.

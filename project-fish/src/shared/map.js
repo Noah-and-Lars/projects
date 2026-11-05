@@ -13,6 +13,11 @@ export const HOUSE = {
   roofHeight: 1.8, // m from the top of the walls to the ridge
 };
 
+// A soldier standing beside the door, facing the spawn: the character model
+// players will have in multiplayer, shown here until then. x / z: where he
+// stands; facing: his turn about the vertical (radians, 0 = facing +Z).
+export const SOLDIER = { x: 3.1, z: -12.6, facing: -0.24 };
+
 // Solid boxes the player can't walk through: { minX, minY, minZ, maxX, maxY, maxZ }.
 export const COLLIDERS = [
   {
@@ -23,6 +28,8 @@ export const COLLIDERS = [
     minZ: HOUSE.z - HOUSE.depth / 2,
     maxZ: HOUSE.z + HOUSE.depth / 2,
   },
+  // The soldier (about as wide as his shoulders and gear).
+  { minX: SOLDIER.x - 0.32, maxX: SOLDIER.x + 0.32, minY: 0, maxY: 1.8, minZ: SOLDIER.z - 0.22, maxZ: SOLDIER.z + 0.22 },
 ];
 
 // Where a ray (origin o, direction d of length 1) enters a box, or null:

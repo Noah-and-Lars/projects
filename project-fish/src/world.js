@@ -1,9 +1,12 @@
 // The baseplate: one large, flat, plain grey surface under a plain sky,
-// plus a small house to show movement until the real map arrives.
+// plus a small house to show movement until the real map arrives, and a
+// soldier standing by it.
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { WORLD } from './shared/config.js';
-import { HOUSE } from './shared/map.js';
+import { HOUSE, SOLDIER } from './shared/map.js';
 
 const SKY_COLOR = 0xb8c6d4;
 const FLOOR_COLOR = 0x8c8c8c;
@@ -106,4 +109,68 @@ function createHouse() {
   add(new THREE.BoxGeometry(1.4, 0.15, 0.6), mat(0x9a948a), -0.6, 0.075, front + 0.3);
 
   return house;
+}
+
+// Reflections: an outdoor sky over grey ground with the sun in it, matching the
+// world, so metal shows the sky above and the ground below, like outside. The
+// gun layer and the soldier use it.
+export function outdoorEnvironment(renderer, sunDirection) {
+  const scene = new THREE.Scene();
+  const dome = new THREE.SphereGeometry(10, 64, 32);
+  const sky = new THREE.Color(0x8fadd0);
+  const horizon = new THREE.Color(0xdde4ea);
+  const ground = new THREE.Color(0x5e5e5e);
+  const colors = [];
+  const position = dome.attributes.position;
+  for (let i = 0; i < position.count; i++) {
+    const up = position.getY(i) / 10;
+    const c = up > 0 ? horizon.clone().lerp(sky, Math.pow(up, 0.5)) : horizon.clone().lerp(ground, Math.min(1, -up * 8));
+    colors.push(c.r, c.g, c.b);
+  }
+  dome.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  scene.add(new THREE.Mesh(dome, new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true })));
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(14, 13, 12) }));
+  sun.position.copy(sunDirection).multiplyScalar(9);
+  scene.add(sun);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const texture = pmrem.fromScene(scene, 0).texture;
+  pmrem.dispose();
+  return texture;
+}
+
+// The soldier (assets/soldier.glb, made from a downloaded model by
+// tools/soldier/build_soldier.mjs; see README.md, Credits): the character
+// players will be in multiplayer, standing by the house in his idle pose
+// until then. It loads in the background; if it can't be loaded the world
+// just goes without him. Call update(dt) every frame to play his idle.
+const SOLDIER_MODEL = new URL('../assets/soldier.glb', import.meta.url);
+const SOLDIER_SKY = 1; // how strongly the sky lights him
+
+export function addSoldier(scene, renderer) {
+  const soldier = { mixer: null, update(dt) { if (this.mixer) this.mixer.update(dt); } };
+  // Lit by the outdoor sky too, as the gun is (the world's plain lights alone
+  // leave his dark olive kit nearly black).
+  const sky = outdoorEnvironment(renderer, SUN_DIRECTION);
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(SOLDIER_MODEL.href).then((gltf) => {
+    const model = gltf.scene;
+    model.position.set(SOLDIER.x, 0, SOLDIER.z);
+    model.rotation.y = SOLDIER.facing;
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = o.receiveShadow = true;
+      for (const material of [].concat(o.material)) {
+        material.envMap = sky;
+        material.envMapIntensity = SOLDIER_SKY;
+      }
+      // Skinned meshes move as he breathes; keep him drawn even when the
+      // bind pose's bounds would say he's off screen.
+      o.frustumCulled = false;
+    });
+    scene.add(model);
+    if (gltf.animations.length) {
+      soldier.mixer = new THREE.AnimationMixer(model);
+      soldier.mixer.clipAction(gltf.animations[0]).play();
+    }
+  }).catch((error) => console.warn(`Couldn't load ${SOLDIER_MODEL.pathname}; the soldier is left out.`, error));
+  return soldier;
 }

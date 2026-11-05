@@ -12,7 +12,7 @@ import { raycastColliders, raycastWorld } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
 import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playSlideBack, playSlideRelease, startAudio } from './effects/audio.js';
-import { createWorld, SUN_DIRECTION } from './world.js';
+import { addSoldier, createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
 import { GpuTimer, Hud } from './hud.js';
@@ -43,6 +43,7 @@ renderer.toneMappingExposure = 1.1;
 container.appendChild(renderer.domElement);
 
 const scene = createWorld();
+const soldier = addSoldier(scene, renderer);
 const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 1500);
 camera.rotation.order = 'YXZ'; // turn left/right first, then look up/down
 const viewmodel = new Viewmodel(renderer, SUN_DIRECTION);
@@ -342,6 +343,7 @@ renderer.setAnimationLoop((time) => {
   }
   updateBarrelSmoke(frameSeconds);
   effects.update(frameSeconds);
+  soldier.update(frameSeconds);
   updateAmmo();
 
   gpuTimer.begin();
