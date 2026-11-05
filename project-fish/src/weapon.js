@@ -62,6 +62,19 @@ export const INSPECT = {
   pulled: 5.62, // ...and has it half way back
   release: 6.2, // it lets go and the slide snaps forward
 };
+// The stretches of an inspect where the gun is held still to be looked at
+// (seconds into it; they match the keys in src/viewmodel/viewmodel.js): its
+// right side, its left side, the magazine held up, and the slide held back
+// over the chamber. A gun can make these last longer (its inspectHolds in
+// src/shared/config.js: extra seconds for each). Time in the inspect then
+// runs slower through them, so the moves between stay just as quick.
+export const INSPECT_HOLDS = {
+  right: [0.8, 1.55],
+  left: [2.2, 2.85],
+  magazine: [INSPECT.magOut + fallTime(CATCH_GAP) + 0.42, INSPECT.magIn - 0.43],
+  chamber: [INSPECT.pulled, INSPECT.release - 0.05], // only with the chamber check
+};
+
 export const INSPECT_STEPS = {
   magOut: INSPECT.magOut,
   magCaught: INSPECT.magOut + fallTime(CATCH_GAP), // it lands in the palm
@@ -158,7 +171,7 @@ export class Pistol {
       const magazineOut = t >= INSPECT.magOut && t < INSPECT.magIn;
       const slideHeld = inspect.check && t >= INSPECT.pull && t < INSPECT.release;
       if (inspect.cut && !magazineOut && !slideHeld) inspect.fade -= dt / INSPECT.fade;
-      else inspect.time += dt * (inspect.cut ? INSPECT.hurry : 1);
+      else inspect.time += inspect.cut ? dt * INSPECT.hurry : this.inspectStep(inspect, dt);
       for (const [step, at] of Object.entries(INSPECT_STEPS)) {
         if ((step === 'slidePull' || step === 'slideRelease') && !inspect.check) continue;
         if (inspect.time >= at && !inspect.done.has(step)) {
@@ -226,6 +239,17 @@ export class Pistol {
       }
     }
     return events;
+  }
+
+  // How far an inspect moves on in dt seconds: slower through the holds
+  // this gun makes longer (INSPECT_HOLDS).
+  inspectStep(inspect, dt) {
+    const extra = this.spec.inspectHolds || {};
+    for (const [name, [from, to]] of Object.entries(INSPECT_HOLDS)) {
+      if (name === 'chamber' && !inspect.check) continue;
+      if (extra[name] > 0 && inspect.time >= from && inspect.time < to) return (dt * (to - from)) / (to - from + extra[name]);
+    }
+    return dt;
   }
 
   // Putting the gun away: an inspect stops, and so does a reload, unless the

@@ -48,6 +48,11 @@ from shapes import inside_polygon, join, link  # noqa: E402
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
 SOURCE, OUT_GLB = ARGS[0], ARGS[1]
 BLEND = ARGS[ARGS.index('--blend') + 1] if '--blend' in ARGS else None
+# For trying out other sizes and holds: --grow k makes it k times bigger about
+# the middle of the grip (GROW_ABOUT), and --raise d moves it d metres up in
+# the hand.
+GROW = float(ARGS[ARGS.index('--grow') + 1]) if '--grow' in ARGS else 1.0
+RAISE = float(ARGS[ARGS.index('--raise') + 1]) if '--raise' in ARGS else 0.0
 
 # --- Placing it ---------------------------------------------------------------
 # The download is in its own units with the muzzle towards -X and its left
@@ -58,8 +63,10 @@ SCALE = 0.08896
 # hands expect a pistol's grip.
 OFFSET = (-0.0101, -0.0527, -0.0478)
 # The grip panels' outsides are pushed out to this far from the middle.
-GRIP_HALF_WIDTH = 0.0150
-FRAME_HALF_WIDTH = 0.0103  # where the panels sit on the frame
+GRIP_HALF_WIDTH = 0.0150 * GROW
+FRAME_HALF_WIDTH = 0.0103 * GROW  # where the panels sit on the frame
+# The middle of the grip (gun space), which --grow scales about.
+GROW_ABOUT = (0.0, -0.0863, 0.014)
 
 # The download's pieces (by the start of their node names) and the part each
 # becomes.
@@ -122,6 +129,11 @@ def import_source():
     # (forward, -Z in the game), a quarter turn about Z.
     place = (Matrix.Translation((OFFSET[0], -OFFSET[2], OFFSET[1])) @ Matrix.Rotation(-math.pi / 2, 4, 'Z')
              @ Matrix.Scale(SCALE, 4))
+    if GROW != 1.0 or RAISE:
+        about = Vector((GROW_ABOUT[0], -GROW_ABOUT[2], GROW_ABOUT[1]))
+        place = (Matrix.Translation((0, 0, RAISE)) @ Matrix.Translation(about) @ Matrix.Scale(GROW, 4)
+                 @ Matrix.Translation(-about) @ place)
+        log(f'grown {GROW}x about the grip, raised {RAISE * 1000:.1f} mm')
     for obj in pieces:
         obj.data.transform(place)
     return pieces

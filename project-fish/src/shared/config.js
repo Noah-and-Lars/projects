@@ -55,6 +55,9 @@ export const PISTOL45 = {
   range: 150,
   spread: { hip: 2.1, aim: 0.14, moving: 1.4 },
   recoil: 1.5,
+  // Its inspect lingers longer on each thing it shows (extra seconds; see
+  // INSPECT_HOLDS in src/weapon.js): 10.4 s in all instead of 7.2.
+  inspectHolds: { right: 0.9, left: 0.9, magazine: 0.8, chamber: 0.6 },
 };
 
 // The guns the player carries, in the order of their keys (1, 2).
