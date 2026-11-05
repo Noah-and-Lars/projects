@@ -43,7 +43,9 @@ from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import linear_to_srgb, log, plain_material  # noqa: E402
-from shapes import inside_polygon, join, link  # noqa: E402
+from shapes import join, link  # noqa: E402
+from texture_edit import (box_blur, engrave, image_array, letters, load_image, measure_engrave_sign,  # noqa: E402
+                          store, text_mask, to_linear)
 
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
 SOURCE, OUT_GLB = ARGS[0], ARGS[1]
@@ -250,149 +252,7 @@ def follower(magazine):
 
 
 # --- Textures -----------------------------------------------------------------
-
-def to_linear(c):
-    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
-
-
-def load_image(name):
-    """The imported texture (the one its material uses) for a file name."""
-    stem = os.path.splitext(name)[0]
-    for image in bpy.data.images:
-        if image.users and (image.name.startswith(stem) or os.path.basename(image.filepath) == name):
-            return image
-    raise SystemExit(f'texture {name} not found')
-
-
-def image_array(image):
-    """An image's pixels, rows from the top (Blender's run from the bottom)."""
-    w, h = image.size
-    a = np.empty(w * h * 4, np.float32)
-    image.pixels.foreach_get(a)
-    return a.reshape(h, w, 4)[::-1].copy()
-
-
-def store(image, a):
-    image.pixels.foreach_set(np.ascontiguousarray(a[::-1]).reshape(-1))
-    image.update()
-
-
-def box_blur(a, r):
-    """Mean over a (2r+1) square, per channel (edges clamped)."""
-    out = a
-    for axis in (0, 1):
-        pad = [(0, 0)] * a.ndim
-        pad[axis] = (r + 1, r)
-        c = np.cumsum(np.pad(out, pad, mode='edge'), axis=axis, dtype=np.float64)
-        n = out.shape[axis]
-        out = (np.take(c, np.arange(2 * r + 1, 2 * r + 1 + n), axis=axis) - np.take(c, np.arange(0, n), axis=axis)) / (2 * r + 1)
-    return out
-
-
-def text_mask(normal, box, band):
-    """The engraved letters inside box (x0, y0, x1, y1, image pixels) and the
-    band (a polygon round the line of text): where the normal map tilts away
-    from its smooth surroundings."""
-    x0, y0, x1, y1 = box
-    n = normal[y0:y1, x0:x1, :3].astype(np.float64)
-    smooth = box_blur(n, 5)
-    tilt = np.linalg.norm(n - smooth, axis=2)
-    yy, xx = np.mgrid[y0:y1, x0:x1]
-    in_band = inside_polygon(xx.ravel() + 0.5, yy.ravel() + 0.5, band).reshape(xx.shape)
-    mask = (tilt > 0.08) & in_band
-    # Grow it a little so the letters' soft edges go too.
-    grown = box_blur(mask.astype(np.float64), 2) > 0.02
-    return grown
-
-
-def letters(text, height_px):
-    """The marking as a 0..1 image, white letters on black, drawn with
-    Blender's built-in font (turned into a mesh and filled in)."""
-    curve = bpy.data.curves.new('marking', 'FONT')
-    curve.body = text
-    curve.size = 1.0
-    curve.space_character = 1.05
-    obj = link(bpy.data.objects.new('marking', curve))
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    mesh = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
-    bpy.data.objects.remove(obj)
-    bpy.data.curves.remove(curve)
-    v = np.array([vv.co[:2] for vv in mesh.vertices])
-    tris = [p.vertices[:] for p in mesh.polygons]
-    bpy.data.meshes.remove(mesh)
-    lo, hi = v.min(0), v.max(0)
-    s = height_px / (hi[1] - lo[1])
-    w, h = int((hi[0] - lo[0]) * s) + 6, int(height_px) + 6
-    img = np.zeros((h, w))
-    yy, xx = np.mgrid[0:h, 0:w]
-    p = np.c_[xx.ravel() + 0.5, yy.ravel() + 0.5]
-    # Supersample 3x3 for soft edges.
-    acc = np.zeros(len(p))
-    for dx in (-1 / 3, 0, 1 / 3):
-        for dy in (-1 / 3, 0, 1 / 3):
-            q = p + [dx, dy]
-            inside = np.zeros(len(p), bool)
-            for t in tris:
-                pts = (v[list(t)] - lo) * s + 3
-                pts[:, 1] = h - pts[:, 1]  # image rows go down
-                inside |= inside_polygon(q[:, 0], q[:, 1], pts)
-            acc += inside
-    return (acc / 9).reshape(h, w)
-
-
-def engrave(normal, mask_img, at, angle, flip_rows, depth=1.4):
-    """Adds engraved letters to the normal map: mask_img (0..1) placed with its
-    centre at `at` (x, y pixels), turned by `angle` (radians, image space)."""
-    h, w = mask_img.shape
-    ca, sa = math.cos(angle), math.sin(angle)
-    half = int(math.hypot(w, h) / 2) + 4
-    cx, cy = at
-    ys, xs = np.mgrid[cy - half:cy + half, cx - half:cx + half]
-    # Back into the letters' image: undo the turn (and the flip).
-    dx, dy = xs + 0.5 - cx, ys + 0.5 - cy
-    if flip_rows:
-        dy = -dy
-    lx = ca * dx + sa * dy + w / 2
-    ly = -sa * dx + ca * dy + h / 2
-    ok = (lx >= 0) & (lx < w - 1) & (ly >= 0) & (ly < h - 1)
-    ix, iy = np.clip(lx.astype(int), 0, w - 2), np.clip(ly.astype(int), 0, h - 2)
-    fx, fy = lx - ix, ly - iy
-    m = (mask_img[iy, ix] * (1 - fx) * (1 - fy) + mask_img[iy, ix + 1] * fx * (1 - fy)
-         + mask_img[iy + 1, ix] * (1 - fx) * fy + mask_img[iy + 1, ix + 1] * fx * fy)
-    m = np.where(ok, m, 0.0)
-    m = box_blur(m, 1)
-    # Engraved: the surface drops where the letters are. Tangent-space normal
-    # from the height: (-dh/dx, -dh/dy) with the image's rows going down,
-    # matching the sign of the letters this replaced (see ENGRAVE_SIGN).
-    hgt = -m * depth
-    gx = (np.roll(hgt, -1, 1) - np.roll(hgt, 1, 1)) / 2
-    gy = (np.roll(hgt, -1, 0) - np.roll(hgt, 1, 0)) / 2
-    region = normal[cy - half:cy + half, cx - half:cx + half, :3].astype(np.float64) * 2 - 1
-    region[..., 0] += -gx * ENGRAVE_SIGN[0]
-    region[..., 1] += -gy * ENGRAVE_SIGN[1]
-    region /= np.linalg.norm(region, axis=2, keepdims=True)
-    normal[cy - half:cy + half, cx - half:cx + half, :3] = (region + 1) / 2
-
-
-# Signs of the engraving's slopes in this normal map (x, y), measured from the
-# letters that were there: +1 means a slope down towards +x (or down the
-# image) shows as a higher red (or green).
-ENGRAVE_SIGN = (1.0, 1.0)
-
-
-def measure_engrave_sign(normal, box, mask):
-    """How the original letters' slopes show in the normal map, so the new ones
-    match (the map's green may be flipped)."""
-    x0, y0, x1, y1 = box
-    n = normal[y0:y1, x0:x1, :3].astype(np.float64) * 2 - 1
-    m = box_blur(mask.astype(np.float64), 1)
-    gx = (np.roll(m, -1, 1) - np.roll(m, 1, 1)) / 2
-    gy = (np.roll(m, -1, 0) - np.roll(m, 1, 0)) / 2
-    sx = np.sign(np.sum(gx * n[..., 0]))
-    sy = np.sign(np.sum(gy * n[..., 1]))
-    # Height of engraved letters is -m, so -dh/dx = +gx: red goes with +gx.
-    return float(sx or 1), float(sy or 1)
-
+# (The helpers are in texture_edit.py.)
 
 # Where the maker's name is engraved in the 2048 px normal map: a box
 # (x0, y0, x1, y1) and, inside it, a band round the line of letters.
@@ -401,7 +261,6 @@ NAME_BAND = [(122, 1182), (116, 1150), (262, 1090), (274, 1124)]
 
 
 def fix_textures():
-    global ENGRAVE_SIGN
     base = load_image('DefaultMaterial.003_baseColor.png')
     orm = load_image('DefaultMaterial.003_metallicRoughness.png')
     normal = load_image('DefaultMaterial.003_normal.png')
@@ -418,7 +277,7 @@ def fix_textures():
     n = image_array(normal)
     x0, y0, x1, y1 = NAME_BOX
     mask = text_mask(n, NAME_BOX, NAME_BAND)
-    ENGRAVE_SIGN = measure_engrave_sign(n, NAME_BOX, mask)
+    sign = measure_engrave_sign(n, NAME_BOX, mask)
     ys, xs = np.nonzero(mask)
     pts = np.c_[xs + x0, ys + y0].astype(np.float64)
     centre = pts.mean(0)
@@ -428,7 +287,7 @@ def fix_textures():
     t = (pts - centre) @ along
     u = (pts - centre) @ across
     log(f'maker\'s name: {len(pts)} px, centre {centre.round(1)}, along {along.round(3)}, '
-        f'{t.max() - t.min():.0f} x {u.max() - u.min():.0f} px, slope signs {ENGRAVE_SIGN}')
+        f'{t.max() - t.min():.0f} x {u.max() - u.min():.0f} px, slope signs {sign}')
     # Clone from a strip the letters' height plus a bit away, across the text
     # (towards the flat middle of the slide, away from the edge).
     shift = across * (np.ptp(np.percentile(u, [4, 96])) + 7)
@@ -455,7 +314,7 @@ def fix_textures():
     # (Centred a little behind the old name: the flat ends just in front of it.)
     angle = math.atan2(-along[1], along[0])
     at = centre + along * 9
-    engrave(n, img, (int(at[0]), int(at[1])), angle, flip_rows=True)
+    engrave(n, img, (int(at[0]), int(at[1])), angle, flip_rows=True, sign=sign)
     store(normal, n)
 
     # 3. Blued steel: darken the metal, keeping the bright wear on its edges.

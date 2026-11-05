@@ -5,6 +5,15 @@
 import { SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
 
+// An attachment's name, from its id.
+function nameOf(gun, id) {
+  for (const options of Object.values(ATTACHMENTS[gun] || {})) {
+    const found = options.find((o) => o.id === id);
+    if (found) return found.name;
+  }
+  return id;
+}
+
 export class LoadoutMenu {
   // element: the #loadout panel. loadout: the Loadout (src/attachments.js).
   // input: the Input, to release and take the mouse. heldGun(): the key of the
@@ -97,8 +106,18 @@ export class LoadoutMenu {
         button.type = 'button';
         button.textContent = option.name;
         button.className = option.id === current ? 'option chosen' : 'option';
+        // What it does, and what choosing it would take off.
+        const off = option.id === current ? [] : this.loadout.wouldTakeOff(this.gun, slot.id, option.id).map((id) => nameOf(this.gun, id));
+        button.title = [option.about, off.length ? `Takes off: ${off.join(', ')}` : ''].filter(Boolean).join(' ');
         button.addEventListener('click', () => this.loadout.set(this.gun, slot.id, option.id));
         row.append(button);
+      }
+      const chosen = slots[slot.id].find((o) => o.id === current);
+      if (chosen && chosen.about) {
+        const about = document.createElement('p');
+        about.className = 'about';
+        about.textContent = chosen.about;
+        row.append(about);
       }
       panel.append(row);
     }

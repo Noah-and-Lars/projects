@@ -101,6 +101,7 @@ export class Pistol {
     this.inspect = null; // { time, done: Set of steps reached, check: with the chamber check, cut: cut short, fade: 1 → 0 when it's going back }
     this.reloadWaiting = false; // the reload key was pressed while inspecting
     this.pulls = []; // trigger pulls waiting for the gun to be ready (seconds waited)
+    this.chamberCheck = true; // whether inspecting checks the chamber (not while an attachment is in the way of the hand)
   }
 
   // Whether a trigger pull is waiting to fire (for the gun to come up out of
@@ -227,7 +228,7 @@ export class Pistol {
     }
 
     if (inspectKey && ready && !busy && !this.pulls.length && this.cooldown === 0) {
-      this.inspect = { time: 0, done: new Set(), check: !this.slideLocked, cut: false, fade: 1 };
+      this.inspect = { time: 0, done: new Set(), check: !this.slideLocked && this.chamberCheck, cut: false, fade: 1 };
       events.push('inspect');
       return events;
     }

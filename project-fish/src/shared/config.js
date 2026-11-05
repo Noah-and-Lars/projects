@@ -28,11 +28,11 @@ export const WORLD = {
 };
 
 // The guns. Times in seconds, angles in degrees, distances in metres.
-// The first pistol: a 9 mm.
+// The first pistol: a compact 9 mm, 15 rounds.
 export const PISTOL = {
   name: 'PF-9',
   fireInterval: 0.12, // fastest the trigger can be pulled again (500 rounds a minute)
-  magazine: 12,
+  magazine: 15,
   reserve: 60,
   reloadTime: 2.1, // with rounds left: the old magazine is caught and kept
   emptyReloadTime: 2.5, // from empty: the slide has to be released too

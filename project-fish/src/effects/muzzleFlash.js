@@ -109,6 +109,15 @@ export class MuzzleFlash {
     this.strength = 1;
   }
 
+  // Moves the flash to another muzzle (gun space), such as a suppressor's
+  // front. A suppressor (suppressed) leaves only a faint flicker.
+  setMuzzle(muzzle, suppressed = false) {
+    this.muzzle.set(...muzzle);
+    this.group.position.copy(this.muzzle);
+    this.light.position.set(muzzle[0], muzzle[1] + 0.02, muzzle[2] + 0.06);
+    this.suppressed = suppressed;
+  }
+
   // Adds the flash, sparks and light to the pistol model.
   attachTo(pistol) {
     pistol.add(this.group, this.light, ...this.embers.map((e) => e.sprite));
@@ -118,6 +127,7 @@ export class MuzzleFlash {
     this.time = 0;
     // Every shot is a little different, and now and then barely visible.
     this.strength = Math.random() < 0.15 ? 0.45 : 0.75 + Math.random() * 0.35;
+    if (this.suppressed) this.strength *= 0.12;
     const pick = (list) => list[Math.floor(Math.random() * list.length)];
     this.ball.material = pick(this.fireballs);
     this.ball.rotation.z = Math.random() * Math.PI * 2;
@@ -128,7 +138,7 @@ export class MuzzleFlash {
     }
     this.group.rotation.z = Math.random() * Math.PI;
     for (const e of this.embers) {
-      if (Math.random() < 0.4) continue;
+      if (Math.random() < (this.suppressed ? 0.95 : 0.4)) continue;
       e.age = 0;
       e.life = EMBER_LIFE[0] + Math.random() * (EMBER_LIFE[1] - EMBER_LIFE[0]);
       e.velocity.set((Math.random() - 0.5) * 1.2, (Math.random() - 0.3) * 1.0, -(2 + Math.random() * 4));

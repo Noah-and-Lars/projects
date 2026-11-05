@@ -12,6 +12,7 @@ let master = null;
 let echo = null;
 let noise = null;
 let shots = [];
+let quietShots = []; // through a suppressor
 
 const SHOT_VARIANTS = 5;
 
@@ -41,7 +42,11 @@ function ring(out, rate, at, freqs, decay, volume) {
   }
 }
 
-function makeShot(rate) {
+// A gunshot. Suppressed, the blast is much smaller and duller (a deep
+// "thup"), and the slide's clatter, which a suppressor doesn't quieten,
+// stands out.
+function makeShot(rate, suppressed = false) {
+  const quiet = suppressed ? 0.28 : 1;
   const length = Math.floor(rate * 0.4);
   const out = new Float32Array(length);
   const r = (a, b) => a + Math.random() * (b - a);
@@ -54,11 +59,11 @@ function makeShot(rate) {
     const t = i / rate;
     blast[i] = (Math.random() * 2 - 1) * (Math.exp(-t / fast) + 0.3 * Math.exp(-t / tail));
   }
-  highpass(lowpass(blast, r(5000, 6500), rate), 260, rate);
+  highpass(lowpass(blast, suppressed ? r(1500, 1900) : r(5000, 6500), rate), 260, rate);
 
   // The pressure spike at the very start (an N-shaped wave, about 1.3 ms).
   const spike = Math.floor(rate * r(0.0011, 0.0015));
-  for (let i = 0; i < spike; i++) out[i] += 1.4 * (1 - (2 * i) / spike);
+  for (let i = 0; i < spike; i++) out[i] += 1.4 * quiet * (1 - (2 * i) / spike);
 
   // Low punch: a damped tone sliding down.
   let phase = 0;
@@ -66,9 +71,9 @@ function makeShot(rate) {
   for (let i = 0; i < length; i++) {
     const t = i / rate;
     phase += (2 * Math.PI * (boom * Math.exp(-t * 9) + 52)) / rate;
-    out[i] += Math.sin(phase) * Math.exp(-t / 0.042) * Math.min(1, t / 0.0015) * 0.75;
+    out[i] += Math.sin(phase) * Math.exp(-t / 0.042) * Math.min(1, t / 0.0015) * 0.75 * (suppressed ? 0.45 : 1);
   }
-  for (let i = 0; i < length; i++) out[i] += blast[i] * 1.6;
+  for (let i = 0; i < length; i++) out[i] += blast[i] * 1.6 * quiet;
 
   // The slide: back (a sharp metallic click) and home (a heavier clack).
   ring(out, rate, r(0.019, 0.024), [2900, 4700, 6300].map((f) => f * r(0.95, 1.05)), 0.007, 0.13);
@@ -181,6 +186,9 @@ export function startAudio() {
       const buffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.4), context.sampleRate);
       buffer.copyToChannel(makeShot(context.sampleRate), 0);
       shots.push(buffer);
+      const quietBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.4), context.sampleRate);
+      quietBuffer.copyToChannel(makeShot(context.sampleRate, true), 0);
+      quietShots.push(quietBuffer);
     }
     loadSamples();
   }
@@ -235,19 +243,26 @@ const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 // it's deeper, and a bit louder.
 const GUNSHOT = { pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 } };
 
-export function playGunshot(gun = 'pistol') {
+// suppressed: fired through a suppressor (quieter, and it barely echoes).
+export function playGunshot(gun = 'pistol', suppressed = false) {
   if (!context || !shots.length) return;
   const sound = GUNSHOT[gun] || GUNSHOT.pistol;
   const source = context.createBufferSource();
-  source.buffer = shots[Math.floor(Math.random() * shots.length)];
+  const set = suppressed ? quietShots : shots;
+  source.buffer = set[Math.floor(Math.random() * set.length)];
   source.playbackRate.value = vary(sound.rate, 0.03);
   const level = context.createGain();
-  level.gain.value = sound.volume;
+  level.gain.value = sound.volume * (suppressed ? 0.75 : 1);
   source.connect(level).connect(master);
   const send = context.createGain();
-  send.gain.value = 0.5;
+  send.gain.value = suppressed ? 0.12 : 0.5;
   level.connect(send).connect(echo);
   source.start();
+}
+
+// The light or laser's switch.
+export function playSwitchClick() {
+  burst({ type: 'bandpass', from: 2600, q: 5, volume: 0.35, decay: 0.012 });
 }
 
 export function playDryFire() {

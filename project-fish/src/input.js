@@ -8,7 +8,7 @@ const DEGREES_PER_COUNT = 0.022;
 const MAX_PITCH = (89 * Math.PI) / 180;
 
 // Keys the game uses; the browser's default action for them is blocked while playing.
-const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'KeyF', 'Digit1', 'Digit2', 'KeyB', 'ShiftLeft', 'ShiftRight']);
+const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'KeyF', 'Digit1', 'Digit2', 'KeyB', 'KeyT', 'ShiftLeft', 'ShiftRight']);
 
 // Q aims: a quick click turns aiming on or off; holding it aims until you let go.
 const AIM_KEY = 'KeyQ';

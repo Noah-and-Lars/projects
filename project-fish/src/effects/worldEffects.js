@@ -96,9 +96,11 @@ export class WorldEffects {
     this.magazines = [];
   }
 
-  flash(position) {
+  // strength: 1 for a full flash (a suppressor leaves a faint one).
+  flash(position, strength = 1) {
     this.flashLight.position.copy(position);
     this.flashTime = 0;
+    this.flashStrength = strength;
   }
 
   // A soft sprite that grows and fades.
@@ -229,7 +231,7 @@ export class WorldEffects {
   update(dt) {
     this.flashTime += dt;
     const f = Math.max(0, 1 - this.flashTime / 0.06);
-    this.flashLight.intensity = 6 * f * f;
+    this.flashLight.intensity = 6 * f * f * (this.flashStrength ?? 1);
 
     for (let i = this.puffs.length - 1; i >= 0; i--) {
       const p = this.puffs[i];

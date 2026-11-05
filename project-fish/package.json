@@ -5,7 +5,8 @@
   "description": "Only the tools in tools/ use this. The game itself needs no install or build step.",
   "scripts": {
     "export-arm-base": "node tools/export-arm-base.mjs build/arm-base",
-    "build-pistol": "npm run export-arm-base && mkdir -p assets && blender --background --python tools/blender/build_pistol.py -- build/arm-base/pistol.json build/pistol-raw.glb --blend build/pistol.blend && gltf-transform meshopt build/pistol-raw.glb assets/pistol.glb --level high",
+    "build-pistol": "mkdir -p assets && blender --background --python tools/blender/convert_pistol9.py -- build/pistol9-source build/pistol9-raw.glb --blend build/pistol9.blend && node tools/finish_pistol9.mjs build/pistol9-raw.glb assets/pistol.glb",
+    "build-pistol-own": "npm run export-arm-base && mkdir -p build && blender --background --python tools/blender/build_pistol.py -- build/arm-base/pistol.json build/pistol-own-raw.glb --blend build/pistol-own.blend && gltf-transform meshopt build/pistol-own-raw.glb build/pistol-own.glb --level high",
     "build-arms": "npm run export-arm-base && mkdir -p assets && blender --background --python tools/blender/build_arms.py -- build/arm-base build/arms-raw.glb --blend build/arms.blend && gltf-transform meshopt build/arms-raw.glb assets/arms.glb --level high",
     "build-pistol45": "mkdir -p assets && blender --background --python tools/blender/convert_pistol45.py -- build/m1911-source build/pistol45-raw.glb --blend build/pistol45.blend && gltf-transform meshopt build/pistol45-raw.glb assets/pistol45.glb --level high",
     "build-pistol45-own": "npm run export-arm-base && mkdir -p build && blender --background --python tools/blender/build_pistol45.py -- build/arm-base/pistol45.json build/pistol45-own-raw.glb --blend build/pistol45-own.blend && gltf-transform meshopt build/pistol45-own-raw.glb build/pistol45-own.glb --level high",

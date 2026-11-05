@@ -9,6 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createPistol, GRIP, SIGHTS, MAGAZINE, SLIDE } from './pistol.js';
 import { createPistol45, MODEL45, FALLBACK45 } from './pistol45.js';
+import { MODEL9 } from './pistol9.js';
 import { createArms, rightHandPose } from './arms.js';
 import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix, OVER_TURN, OVER_SLIDE } from './supportHand.js';
 import { ShootingHand } from './shootingHand.js';
@@ -18,7 +19,8 @@ import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS } from '../weapon.js';
 import { PISTOL, PISTOL45, LOADOUT } from '../shared/config.js';
 
-// Points on the first pistol (gun space; the Blender pistol matches): the
+// Points on the built-in first pistol (gun space; used if its model file
+// can't be loaded; the model's are in pistol9.js): the
 // muzzle, and the ejection port the spent case comes out of; the sight line
 // (pistol.js); how far the slide goes back when firing (metres), and the
 // top and half width of the slide; the barrel, which only follows the slide
@@ -27,7 +29,8 @@ import { PISTOL, PISTOL45, LOADOUT } from '../shared/config.js';
 // (radians) about the pin at its back end into the slide's notch when the
 // slide locks back empty. It has no hammer to show (it's striker fired), and
 // its magazine release is in shootingHand.js. The second pistol's are in
-// pistol45.js.
+// pistol45.js. A gun whose magazine slides out at a slightly different angle
+// from the grip line has its own magDown.)
 const POINTS9 = {
   muzzle: [0, 0, -0.1545],
   port: [0.008, 0.017, -0.025],
@@ -51,7 +54,7 @@ const BLADE_TRAVEL = 0.0009;
 // Blender, see tools/blender/) with simpler built-in ones in case a file
 // can't be loaded, and the points on each.
 const GUN_KINDS = {
-  pistol: { rules: PISTOL, model: new URL('../../assets/pistol.glb', import.meta.url), fallback: createPistol, points: POINTS9, fallbackPoints: POINTS9 },
+  pistol: { rules: PISTOL, model: new URL('../../assets/pistol.glb', import.meta.url), fallback: createPistol, points: MODEL9, fallbackPoints: POINTS9 },
   pistol45: { rules: PISTOL45, model: new URL('../../assets/pistol45.glb', import.meta.url), fallback: createPistol45, points: MODEL45, fallbackPoints: FALLBACK45 },
 };
 
@@ -72,6 +75,8 @@ function turnAbout(part, rest, pivot, angle) {
   part.quaternion.copy(turning).multiply(rest.quaternion);
 }
 const restOf = (part) => part && { position: part.position.clone(), quaternion: part.quaternion.clone() };
+// How far an attachment is moved for the mount it sits on (see pistol9.js).
+const place = (extra, on) => (extra && extra.on && extra.on[on] && extra.on[on].offset) || [0, 0, 0];
 
 // Where the gun goes while reloading, relative to how it's held: brought up
 // and in, muzzle tipped up so the magazine well comes into view, and canted
@@ -140,15 +145,16 @@ function holdingMagazine({ center, turn }) {
 }
 
 // The second half, the same for both: from taking hold of the fresh magazine
-// at the belt (the hand turned `turn` there) to closing round the grip again.
-const freshMagazine = (S, turn) => [
+// at the belt (the hand turned `turn` there) to closing round the grip again,
+// for a magazine that goes in along `down`.
+const freshMagazine = (S, turn, down = GRIP.down) => [
   { r: S.magGrab, at: BELT.clone().add(V(0, -0.005, 0)), turn, hand: 'magazine', stop: true, name: 'grab' }, // closes round a fresh magazine
   { r: S.magGrab + 0.07, at: V(-0.08, -0.25, 0.15), turn: between(turn, HOLD_TURN, 0.5), hand: 'magazine' }, // pulls it out, turning it up
-  { r: 0.5, at: holdingAt(MAG_AT_WELL + 0.05).add(V(-0.03, -0.02, 0.04)), turn: HOLD_TURN, hand: 'magazine' },
-  { r: 0.545, at: holdingAt(MAG_AT_WELL + 0.008), turn: HOLD_TURN, hand: 'magazine', stop: true }, // lined up under the well
-  { r: 0.59, at: holdingAt(0.055), turn: HOLD_TURN, hand: 'pushing' }, // in it goes, the fingers sliding off its front...
-  { r: S.magIn, at: holdingAt(0), turn: HOLD_TURN, hand: 'flat', stop: true }, // ...and the palm pushes it home
-  { r: 0.665, at: holdingAt(0).addScaledVector(GRIP.down, 0.022).add(V(-0.008, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' },
+  { r: 0.5, at: holdingAt(MAG_AT_WELL + 0.05, down).add(V(-0.03, -0.02, 0.04)), turn: HOLD_TURN, hand: 'magazine' },
+  { r: 0.545, at: holdingAt(MAG_AT_WELL + 0.008, down), turn: HOLD_TURN, hand: 'magazine', stop: true }, // lined up under the well
+  { r: 0.59, at: holdingAt(0.055, down), turn: HOLD_TURN, hand: 'pushing' }, // in it goes, the fingers sliding off its front...
+  { r: S.magIn, at: holdingAt(0, down), turn: HOLD_TURN, hand: 'flat', stop: true }, // ...and the palm pushes it home
+  { r: 0.665, at: holdingAt(0, down).addScaledVector(down, 0.022).add(V(-0.008, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' },
   { r: 0.725, at: V(-0.045, -0.07, 0.022), turn: between(HOLD_TURN, NONE, 0.62), hand: 'reaching' }, // turning back
   { r: 0.79, at: V(-0.028, -0.028, 0.01), turn: NONE, hand: 'reaching' }, // beside the grip
   { r: 0.815, at: V(-0.008, -0.01, 0.004), turn: NONE, hand: 'loose' }, // fingers round it...
@@ -159,7 +165,7 @@ const freshMagazine = (S, turn) => [
 // chamber check after it. A key from the end of a reload, moved to the same
 // time after the magazine goes in as it is there.
 const inInspect = (key) => ({ ...key, r: INSPECT.magIn + (key.r - RELOAD_STEPS.catching.magIn) * PISTOL.reloadTime });
-const INSPECT_HEAD = [
+const inspectHead = (down) => [
   { r: 0, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
   { r: 0.08, at: V(-0.012, -0.014, 0.008), turn: NONE, hand: 'loose' }, // fingers lift off the grip...
   { r: 0.15, at: V(-0.022, -0.03, -0.012), turn: turned(0.08, 0, 0.05), hand: 'loose' }, // ...off the front of the grip...
@@ -167,14 +173,14 @@ const INSPECT_HEAD = [
   { r: 0.5, at: LOW, turn: AT_LOW, hand: 'relaxed', stop: true }, // down out of the way
   { r: 2.75, at: LOW, turn: AT_LOW, hand: 'relaxed', stop: true },
   { r: 3.05, at: V(-0.07, -0.2, 0.1), turn: between(AT_LOW, HOLD_TURN, 0.55), hand: 'reaching' }, // back up, turning palm up
-  { r: INSPECT.magOut - 0.08, at: holdingAt(CATCH_GAP), turn: HOLD_TURN, hand: 'flat', stop: true }, // under the magazine
-  { r: CAUGHT, at: holdingAt(CATCH_GAP), turn: HOLD_TURN, hand: 'flat', stop: true }, // it drops in...
-  { r: CAUGHT + 0.08, at: holdingAt(CATCH_GAP + 0.008), turn: HOLD_TURN, hand: 'pushing' }, // ...the hand gives a little and the fingers close...
-  { r: CAUGHT + 0.16, at: holdingAt(MAG_AT_WELL + 0.03), turn: HOLD_TURN, hand: 'magazine' }, // ...pulling it out
+  { r: INSPECT.magOut - 0.08, at: holdingAt(CATCH_GAP, down), turn: HOLD_TURN, hand: 'flat', stop: true }, // under the magazine
+  { r: CAUGHT, at: holdingAt(CATCH_GAP, down), turn: HOLD_TURN, hand: 'flat', stop: true }, // it drops in...
+  { r: CAUGHT + 0.08, at: holdingAt(CATCH_GAP + 0.008, down), turn: HOLD_TURN, hand: 'pushing' }, // ...the hand gives a little and the fingers close...
+  { r: CAUGHT + 0.16, at: holdingAt(MAG_AT_WELL + 0.03, down), turn: HOLD_TURN, hand: 'magazine' }, // ...pulling it out
   { r: CAUGHT + 0.42, ...holdingMagazine(LOOK[0]), hand: 'magazine' }, // held up to look at...
   { r: INSPECT.magIn - 0.43, ...holdingMagazine(LOOK[1]), hand: 'magazine', stop: true }, // ...turning it a little
   // Lined up under the well, and in it goes.
-  ...freshMagazine(RELOAD_STEPS.catching, HOLD_TURN).slice(3, 6).map(inInspect),
+  ...freshMagazine(RELOAD_STEPS.catching, HOLD_TURN, down).slice(3, 6).map(inInspect),
 ];
 // How far back the slide is eased to check the chamber: half way.
 const PRESS_CHECK = 0.5;
@@ -191,12 +197,13 @@ function pressCheckAt(time) {
 }
 // The chamber check's keys, for a gun whose slide the hand takes hold of at
 // OVER_SLIDE moved by `shift` (its slide is lower or narrower than the first
-// pistol's) and goes back `travel` metres when it fires.
-const inspectCheck = (shift, travel) => {
+// pistol's) and goes back `travel` metres when it fires, and whose magazine
+// goes in along `down`.
+const inspectCheck = (shift, travel, down) => {
   const over = OVER_SLIDE.clone().add(shift);
   const PULLED = over.clone().add(V(0, 0, travel * PRESS_CHECK));
   return [
-  { r: INSPECT.magIn + 0.075, at: holdingAt(0).addScaledVector(GRIP.down, 0.022).add(V(-0.008, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' }, // away from the magazine...
+  { r: INSPECT.magIn + 0.075, at: holdingAt(0, down).addScaledVector(down, 0.022).add(V(-0.008, 0, 0)), turn: between(HOLD_TURN, NONE, 0.2), hand: 'flat' }, // away from the magazine...
   { r: 5.07, at: over.clone().add(V(-0.045, -0.05, 0.03)), turn: between(HOLD_TURN, OVER_TURN, 0.55), hand: 'open' }, // ...up to the slide...
   { r: 5.26, at: over.clone().add(V(-0.014, -0.006, 0.004)), turn: OVER_TURN, hand: 'open', stop: true }, // ...beside it, open...
   { r: INSPECT.pull, at: over, turn: OVER_TURN, hand: 'slide', stop: true }, // ...and takes hold of it
@@ -220,6 +227,7 @@ function handPaths(points) {
   const E = RELOAD_STEPS.empty;
   const C = RELOAD_STEPS.catching;
   const shift = V(SLIDE.halfWidth - points.slideHalfWidth, points.slideTop - SLIDE.top, 0);
+  const down = points.magDown || GRIP.down;
   return {
     // From empty: off the grip and straight down to the belt, as the thumb
     // presses the release and the empty magazine falls.
@@ -230,7 +238,7 @@ function handPaths(points) {
       { r: 0.105, at: V(-0.055, -0.18, 0.095), turn: turned(0.3, 0, 0.14), hand: 'reaching' }, // ...and it's away
       { r: 0.2, at: V(-0.088, -0.34, 0.195), turn: turned(0.48, 0, 0.19), hand: 'relaxed' }, // down to the belt
       { r: 0.305, at: BELT, turn: AT_BELT, hand: 'open', stop: true, name: 'reach' },
-      ...freshMagazine(E, AT_BELT),
+      ...freshMagazine(E, AT_BELT, down),
     ],
     // With rounds left: palm up under the grip to catch the old magazine,
     // out with it, put it away on the way down, and on to the belt for a
@@ -238,15 +246,15 @@ function handPaths(points) {
     catching: [
       { r: 0, at: V(0, 0, 0), turn: NONE, hand: 'grip', stop: true },
       { r: 0.03, at: V(-0.012, -0.014, 0.008), turn: between(NONE, HOLD_TURN, 0.08), hand: 'loose' }, // fingers lift off the grip...
-      { r: 0.09, at: holdingAt(CATCH_GAP + 0.04).add(V(-0.05, 0, 0.02)), turn: between(NONE, HOLD_TURN, 0.6), hand: 'reaching' }, // ...turning palm up
-      { r: 0.15, at: holdingAt(CATCH_GAP), turn: HOLD_TURN, hand: 'flat', stop: true }, // under the magazine
-      { r: C.magCaught, at: holdingAt(CATCH_GAP), turn: HOLD_TURN, hand: 'flat', stop: true }, // it drops in...
-      { r: 0.25, at: holdingAt(CATCH_GAP + 0.008), turn: HOLD_TURN, hand: 'pushing' }, // ...the hand gives a little and the fingers close...
-      { r: 0.275, at: holdingAt(MAG_AT_WELL + 0.03), turn: HOLD_TURN, hand: 'magazine' }, // ...pulling it out
+      { r: 0.09, at: holdingAt(CATCH_GAP + 0.04, down).add(V(-0.05, 0, 0.02)), turn: between(NONE, HOLD_TURN, 0.6), hand: 'reaching' }, // ...turning palm up
+      { r: 0.15, at: holdingAt(CATCH_GAP, down), turn: HOLD_TURN, hand: 'flat', stop: true }, // under the magazine
+      { r: C.magCaught, at: holdingAt(CATCH_GAP, down), turn: HOLD_TURN, hand: 'flat', stop: true }, // it drops in...
+      { r: 0.25, at: holdingAt(CATCH_GAP + 0.008, down), turn: HOLD_TURN, hand: 'pushing' }, // ...the hand gives a little and the fingers close...
+      { r: 0.275, at: holdingAt(MAG_AT_WELL + 0.03, down), turn: HOLD_TURN, hand: 'magazine' }, // ...pulling it out
       { r: 0.305, at: V(-0.07, -0.26, 0.14), turn: HOLD_TURN, hand: 'magazine', stop: true, name: 'stow' }, // into a pouch...
       { r: 0.33, at: V(-0.08, -0.3, 0.17), turn: HOLD_TURN, hand: 'open' }, // ...lets go of it...
       { r: 0.36, at: BELT, turn: HOLD_TURN, hand: 'open', stop: true, name: 'reach' }, // ...and on to the belt
-      ...freshMagazine(C, HOLD_TURN),
+      ...freshMagazine(C, HOLD_TURN, down),
     ],
     // Inspecting (times in seconds): off the grip and down out of view while
     // the shooting hand turns the gun, then back up, palm up under the grip,
@@ -254,10 +262,10 @@ function handPaths(points) {
     // and back in. Then up over the top of the slide, eases it back half way
     // (the slide follows the hand), holds it there while the chamber's
     // checked, and lets go so it snaps forward; and back round the grip.
-    inspect: [...INSPECT_HEAD, ...inspectCheck(shift, points.slideTravel)],
+    inspect: [...inspectHead(down), ...inspectCheck(shift, points.slideTravel, down)],
     // With the slide locked back, no chamber check: straight back round the
     // grip once the magazine is in (as at the end of a reload).
-    inspectShort: [...INSPECT_HEAD, ...freshMagazine(C, HOLD_TURN).slice(6).map(inInspect)],
+    inspectShort: [...inspectHead(down), ...freshMagazine(C, HOLD_TURN, down).slice(6).map(inInspect)],
   };
 }
 const HAND_PATHS = handPaths(POINTS9);
@@ -590,8 +598,11 @@ export class Viewmodel {
       // to one doesn't stall while they're prepared.
       // (One at a time: each gun brings its own muzzle-flash light, and the
       // materials are made for the lights in the scene.)
+      // (Its attachments too: they're shown for this, then put back as the
+      // loadout has them.)
       for (const g of Object.values(this.guns)) {
         this.gun.add(g.pistol);
+        for (const node of Object.values(g.attachments)) node.visible = true;
         renderer.compile(this.scene, this.camera);
         g.pistol.traverse((o) => {
           if (!o.isMesh) return;
@@ -600,6 +611,7 @@ export class Viewmodel {
           }
         });
         this.gun.remove(g.pistol);
+        this.setAttachments(g.key, g.on);
       }
       this.useGun(LOADOUT[0]);
     });
@@ -615,7 +627,7 @@ export class Viewmodel {
     pistol.name = 'pistol';
     shadowed(pistol);
     const part = (name) => pistol.getObjectByName(name);
-    const g = { key, rules: kind.rules, points, pistol, paths: handPaths(points), release: '' };
+    const g = { key, rules: kind.rules, base: points, points, pistol, paths: handPaths(points), release: '', on: {} };
     const slide = part('slide');
     const trigger = part('trigger');
     const magazine = part('magazine');
@@ -676,7 +688,85 @@ export class Viewmodel {
     }
     g.flash = new MuzzleFlash(points.muzzle);
     g.flash.attachTo(pistol);
+    // Its attachments (src/attachments.js): parts named att_<id>, hidden
+    // until they're chosen. Each remembers where it is relative to the gun,
+    // for moving it onto another mount.
+    g.attachments = {};
+    pistol.updateMatrixWorld(true);
+    const toGun = pistol.matrixWorld.clone().invert();
+    g.inGun = (o) => toGun.clone().multiply(o.matrixWorld);
+    // (Only the outermost: the loader names an attachment's own pieces after
+    // it too.)
+    const inAttachment = (o) => {
+      for (let p = o.parent; p && p !== pistol; p = p.parent) if (p.name.startsWith('att_')) return true;
+      return false;
+    };
+    pistol.traverse((o) => {
+      if (o.name.startsWith('att_') && !inAttachment(o)) g.attachments[o.name.slice(4)] = o;
+    });
+    for (const node of Object.values(g.attachments)) {
+      node.visible = false;
+      node.userData.home = node.parent;
+      node.userData.inGun = g.inGun(node);
+    }
+    g.restInGun = new Map();
     return g;
+  }
+
+  // Shows the attachments `on` ({ slot: id }, see src/attachments.js) on gun
+  // `key`, each on the mount it sits on with the others, and works out what
+  // they change: the aim line through a red dot, the muzzle at the front of a
+  // suppressor, where the light and laser shine from.
+  setAttachments(key, on) {
+    const g = this.guns[key];
+    if (!g) return;
+    g.on = { ...on };
+    const ids = new Set(Object.values(on).filter(Boolean));
+    const extra = g.base.attachments || {};
+    // Which mount each one sits on.
+    const mount = ids.has('clamp') ? 'clamp' : ids.has('cover') ? 'cover' : null;
+    const rail = ids.has('clamp') ? 'clamp' : ids.has('can_box') ? 'can_box' : 'frame';
+    const sitsOn = { reddot: mount, light_long: rail, light_compact: rail, can_box: ids.has('cover') ? 'cover' : null };
+    const move = new THREE.Matrix4();
+    for (const [id, node] of Object.entries(g.attachments)) {
+      node.visible = ids.has(id);
+      const seat = (extra[id] && extra[id].on && extra[id].on[sitsOn[id]]) || {};
+      const parent = (seat.parent && g.pistol.getObjectByName(seat.parent)) || node.userData.home;
+      if (!g.restInGun.has(parent)) g.restInGun.set(parent, parent === g.pistol ? new THREE.Matrix4() : g.inGun(parent));
+      const [x, y, z] = seat.offset || [0, 0, 0];
+      move.makeTranslation(x, y, z);
+      g.restInGun.get(parent).clone().invert().multiply(move).multiply(node.userData.inGun)
+        .decompose(node.position, node.quaternion, node.scale);
+      if (node.parent !== parent) parent.add(node);
+    }
+    // What they change.
+    const points = { ...g.base, chamberCheck: true };
+    if (ids.has('reddot') && extra.reddot) points.sights = extra.reddot.sights[mount] || g.base.sights;
+    for (const id of ids) {
+      const e = extra[id] || {};
+      if (e.muzzle) {
+        points.muzzle = e.muzzle;
+        if (id === 'can_box' && ids.has('cover')) points.muzzle = [e.muzzle[0], e.muzzle[1], e.muzzle[2] - 0.0018];
+        points.suppressed = true;
+      }
+      if (e.lens) {
+        const [x, y, z] = place(extra[id], sitsOn[id]);
+        points.light = [e.lens[0] + x, e.lens[1] + y, e.lens[2] + z];
+      }
+      if (e.emitter) points.laser = e.emitter;
+    }
+    // The hand that checks the chamber takes hold of the slide over its
+    // front: not with the clamp mount or box suppressor in the way. With the
+    // rail cover on, it takes hold of that.
+    if (ids.has('clamp') || ids.has('can_box')) points.chamberCheck = false;
+    if (ids.has('cover') && extra.cover) {
+      points.slideTop = extra.cover.slide.top;
+      points.slideHalfWidth = extra.cover.slide.halfWidth;
+    }
+    g.points = points;
+    g.paths = handPaths(points);
+    g.flash.setMuzzle(points.muzzle, Boolean(points.suppressed));
+    if (g === this.current) this.aimAt(points.sights);
   }
 
   // Puts a gun in the hands (straight away; switchTo puts one away first).
@@ -692,11 +782,7 @@ export class Viewmodel {
     for (const other of Object.values(this.guns)) if (other.handMagazine) other.handMagazine.visible = false;
     this.handMagazine = g.handMagazine || null;
     this.dropModel = g.dropModel || null;
-    // Aiming down the sights, the gun comes up so the line through its
-    // sights runs straight through the eye, the rear sight AIM.eyeToRearSight
-    // away.
-    const sights = g.points.sights;
-    this.aimPosition.set(0, -sights.height, -(AIM.eyeToRearSight + sights.rearZ));
+    this.aimAt(g.points.sights);
     // Its moving parts start at rest.
     this.slideTime = this.triggerTime = 1;
     this.slammed = true;
@@ -704,6 +790,13 @@ export class Viewmodel {
     this.stopLift = 0;
     this.chambered = 1;
     this.dropDone = false;
+  }
+
+  // Aiming down the sights, the gun comes up so the line through its sights
+  // runs straight through the eye, the rear sight AIM.eyeToRearSight away (or
+  // the sight's own eye relief).
+  aimAt(sights) {
+    this.aimPosition.set(0, -sights.height, -((sights.eyeRelief ?? AIM.eyeToRearSight) + sights.rearZ));
   }
 
   // Which gun is in the hands (its key in LOADOUT).
@@ -823,8 +916,43 @@ export class Viewmodel {
     return this.current ? this.current.points : POINTS9;
   }
 
+  // The way the magazine of the gun in the hands slides out.
+  get magDown() {
+    return this.points.magDown || GRIP.down;
+  }
+
   muzzlePoint() {
     return this.pointOnGun(this.points.muzzle);
+  }
+
+  // Where the gun's light and laser shine from, and a point a metre ahead
+  // along their beam (gun layer), or null if it hasn't one.
+  lightBeam() {
+    return this.beam(this.points.light);
+  }
+
+  laserBeam() {
+    return this.beam(this.points.laser);
+  }
+
+  beam(p) {
+    return p ? [this.pointOnGun(p), this.pointOnGun([p[0], p[1], p[2] - 1])] : null;
+  }
+
+  // The light's lens and the laser's window glow while they're on.
+  setGlow(on) {
+    if (this.glowing === on) return;
+    this.glowing = on;
+    for (const g of Object.values(this.guns)) {
+      for (const id of ['light_long', 'light_compact', 'laser']) {
+        const node = g.attachments[id];
+        if (!node) continue;
+        node.traverse((o) => {
+          if (!o.isMesh) return;
+          for (const m of [].concat(o.material)) if (m.emissive) m.emissiveIntensity = on ? 2.5 : 0;
+        });
+      }
+    }
   }
 
   portPoint() {
@@ -1043,7 +1171,7 @@ export class Viewmodel {
     if (out && kind === 'empty') {
       // The empty one drops free, without a round on top, and out of view
       // it's handed over to the world.
-      this.magazine.position.addScaledVector(GRIP.down, Math.min(fall, HAND_TO_WORLD));
+      this.magazine.position.addScaledVector(this.magDown, Math.min(fall, HAND_TO_WORLD));
       inGun = fall < HAND_TO_WORLD;
       gunRounds = 0;
       if (!inGun && !this.dropDone) {
@@ -1053,7 +1181,7 @@ export class Viewmodel {
       }
     } else if (out && r < S.magCaught) {
       // The old one slides out and drops into the waiting hand...
-      this.magazine.position.addScaledVector(GRIP.down, Math.min(fall, CATCH_GAP));
+      this.magazine.position.addScaledVector(this.magDown, Math.min(fall, CATCH_GAP));
       inGun = true;
     } else if (out && (inspecting || r < keyAt('catching', 'stow'))) {
       // ...which takes it down to the pouch (or, inspecting, holds it up to
@@ -1077,9 +1205,9 @@ export class Viewmodel {
     const turn = this.pistol.getWorldQuaternion(new THREE.Quaternion());
     this.dropped = {
       object: this.dropModel.clone(true),
-      position: MAGAZINE_CENTER.clone().addScaledVector(GRIP.down, fallen).applyMatrix4(pistol),
+      position: MAGAZINE_CENTER.clone().addScaledVector(this.magDown, fallen).applyMatrix4(pistol),
       quaternion: turn.clone().multiply(MAGAZINE_TURN),
-      velocity: GRIP.down.clone().applyQuaternion(turn).multiplyScalar(speed),
+      velocity: this.magDown.clone().applyQuaternion(turn).multiplyScalar(speed),
     };
   }
 
