@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { GUNS, LOADOUT, MOVEMENT, PLAYER, TICK_DT } from './shared/config.js';
-import { createPlayerState, emptyCommand, horizontalSpeed, simulatePlayer } from './shared/movement.js';
+import { BUTTON_SPRINT, BUTTON_SPRINT_KEY, createPlayerState, emptyCommand, horizontalSpeed, simulatePlayer } from './shared/movement.js';
 import { raycastColliders, raycastWorld } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
@@ -160,10 +160,81 @@ function resize() {
   renderer.setSize(width, height);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
+  if (typeof photo !== 'undefined') {
+    photo.camera.aspect = width / height;
+    photo.camera.updateProjectionMatrix();
+  }
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
   viewmodel.setAspect(width / height);
 }
 window.addEventListener('resize', resize);
+
+// --- Photo mode (P) ---
+//
+// The camera comes off the player to fly round and look at him from
+// outside: WASD to fly (Shift faster), Space and C up and down, the mouse to
+// look. The arrow keys walk him (Shift runs), so you can watch him move. His
+// whole body shows, head and arms too, holding a copy of the gun where the
+// hands have it. P again comes back. The game carries on meanwhile.
+const photo = { on: false, camera: new THREE.PerspectiveCamera(60, 1, 0.02, 1500), look: { yaw: 0, pitch: 0 }, player: { yaw: 0, pitch: 0 }, gun: null, gunOf: null };
+photo.camera.rotation.order = 'YXZ';
+const PHOTO = { speed: 2.5, fast: 4 };
+function setPhotoMode(on) {
+  photo.on = on;
+  document.body.classList.toggle('photo', on);
+  body.setFirstPerson(!on);
+  if (on) {
+    // Start a little behind and above him, looking at him.
+    photo.player = { yaw: input.yaw, pitch: input.pitch };
+    const back = new THREE.Vector3(Math.sin(input.yaw), 0, Math.cos(input.yaw));
+    photo.camera.position.copy(camera.position).addScaledVector(back, 2.2).add(new THREE.Vector3(0.6, 0.3, 0));
+    const to = camera.position.clone().add(new THREE.Vector3(0, -0.6, 0)).sub(photo.camera.position);
+    input.yaw = Math.atan2(-to.x, -to.z);
+    input.pitch = Math.atan2(to.y, Math.hypot(to.x, to.z));
+  } else {
+    input.yaw = photo.player.yaw;
+    input.pitch = photo.player.pitch;
+    if (photo.gun) photo.gun.visible = false;
+  }
+}
+// The gun in his hands, in the world: a copy of the one in the gun layer,
+// its parts as they are there.
+function updatePhotoGun() {
+  const source = viewmodel.pistol;
+  if (!source) return;
+  if (photo.gunOf !== source) {
+    if (photo.gun) scene.remove(photo.gun);
+    photo.gun = source.clone(true);
+    photo.gun.matrixAutoUpdate = false;
+    photo.gunOf = source;
+    scene.add(photo.gun);
+  }
+  const from = [];
+  source.traverse((o) => from.push(o));
+  let i = 0;
+  photo.gun.traverse((o) => {
+    const f = from[i++];
+    if (!f || o === photo.gun) return;
+    o.position.copy(f.position);
+    o.quaternion.copy(f.quaternion);
+    o.scale.copy(f.scale);
+    o.visible = f.visible;
+  });
+  photo.gun.visible = true;
+  photo.gun.matrix.multiplyMatrices(camera.matrixWorld, source.matrixWorld);
+  photo.gun.matrixWorldNeedsUpdate = true;
+}
+function flyPhotoCamera(dt) {
+  const c = photo.camera;
+  c.rotation.set(photo.look.pitch, photo.look.yaw, 0);
+  const held = (code) => (input.held.has(code) ? 1 : 0);
+  const speed = PHOTO.speed * (held('ShiftLeft') || held('ShiftRight') ? PHOTO.fast : 1) * dt;
+  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(c.quaternion);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(c.quaternion);
+  c.position.addScaledVector(forward, (held('KeyW') - held('KeyS')) * speed)
+    .addScaledVector(right, (held('KeyD') - held('KeyA')) * speed)
+    .add(new THREE.Vector3(0, (held('Space') - held('KeyC')) * speed, 0));
+}
 resize();
 
 // --- Click to play / Esc to release the mouse ---
@@ -400,6 +471,15 @@ renderer.setAnimationLoop((time) => {
   const frameSeconds = lastTime === null ? 0 : Math.min((time - lastTime) / 1000, MAX_FRAME_SECONDS);
   lastTime = time;
 
+  // Photo mode: the mouse turns its camera; the player keeps the look he had.
+  if (input.locked && input.presses('KeyP') > 0) setPhotoMode(!photo.on);
+  if (photo.on) {
+    photo.look = { yaw: input.yaw, pitch: input.pitch };
+    input.yaw = photo.player.yaw;
+    input.pitch = photo.player.pitch;
+  }
+  const play = input.locked && !photo.on; // the game's own keys
+
   accumulator += frameSeconds;
   // A shot waiting for the gun to come up stops a sprint until it's gone off.
   input.sprintBlocked = weapon.shotWaiting;
@@ -408,7 +488,15 @@ renderer.setAnimationLoop((time) => {
     previous.y = player.y;
     previous.z = player.z;
     previous.eye = player.eye;
-    if (input.locked) {
+    if (photo.on) {
+      // The arrow keys walk him (Shift runs).
+      input.sample(cmd);
+      const held = (code) => (input.held.has(code) ? 1 : 0);
+      Object.assign(cmd, emptyCommand(), { yaw: input.yaw, pitch: input.pitch });
+      cmd.forward = held('ArrowUp') - held('ArrowDown');
+      cmd.right = held('ArrowRight') - held('ArrowLeft');
+      if (cmd.forward > 0 && (held('ShiftLeft') || held('ShiftRight'))) cmd.buttons = BUTTON_SPRINT | BUTTON_SPRINT_KEY;
+    } else if (input.locked) {
       input.sample(cmd);
     } else {
       // No input while the mouse is released; the player stands still.
@@ -432,7 +520,7 @@ renderer.setAnimationLoop((time) => {
   camera.rotation.set(input.pitch + viewKick.x + moveFeel.pitch, input.yaw + viewKick.y, moveFeel.roll);
 
   // The loadout menu: B.
-  if (input.locked && input.presses('KeyB') > 0) {
+  if (play && input.presses('KeyB') > 0) {
     menu.show();
     if (weapon.inspect) weapon.inspect.cut = true; // put the gun back in the hold first
   }
@@ -443,14 +531,14 @@ renderer.setAnimationLoop((time) => {
     applyLoadout(held);
   }
   // The light and laser: T.
-  if (input.locked && input.presses('KeyT') > 0 && (viewmodel.points.light || viewmodel.points.laser)) {
+  if (play && input.presses('KeyT') > 0 && (viewmodel.points.light || viewmodel.points.laser)) {
     lightsOn = !lightsOn;
     playSwitchClick();
     viewmodel.flickSwitch();
   }
 
   // Switching guns: 1 and 2, or the mouse wheel.
-  if (input.locked) {
+  if (play) {
     LOADOUT.forEach((key, i) => {
       if (input.presses(`Digit${i + 1}`) > 0) switchGun(key);
     });
@@ -469,9 +557,9 @@ renderer.setAnimationLoop((time) => {
   // can't fire (aiming, it can while climbing).
   const cantFire = (player.move === 'mantle' && !input.aiming) || player.move === 'rise' || (player.move === 'dive' && !player.grounded);
   // (Clicks while it can't fire are dropped, not kept for later.)
-  const clicks = input.locked ? input.presses('Mouse0') : 0;
-  if (input.locked && input.presses('KeyR') > 0) asked.reload = true;
-  if (input.locked && input.presses('KeyF') > 0) asked.inspect = true;
+  const clicks = input.locked ? input.presses('Mouse0') * (photo.on ? 0 : 1) : 0;
+  if (play && input.presses('KeyR') > 0) asked.reload = true;
+  if (play && input.presses('KeyF') > 0) asked.inspect = true;
   const reloadNow = asked.reload && !switching;
   const inspectNow = asked.inspect && !switching;
   if (!switching || !input.locked) asked.reload = asked.inspect = false;
@@ -485,7 +573,7 @@ renderer.setAnimationLoop((time) => {
   const shownKey = viewmodel.shownGun;
   if (outgoing && (outgoing.key !== shownKey || shownKey === held)) outgoing = null;
   const gunState = outgoing ? outgoing.state : gunStateOf(weapons[shownKey]);
-  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading && !weapon.inspecting && !switching, gunState);
+  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !photo.on && !weapon.reloading && !weapon.inspecting && !switching, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount, moveFeel.fov);
   updateBeams();
   document.body.classList.toggle('aiming', aimAmount > 0.4);
@@ -523,10 +611,21 @@ renderer.setAnimationLoop((time) => {
   if (fpArms && body.model && loaded) fpArms.update(camera, player, input.pitch);
   updateAmmo();
 
+  if (photo.on) {
+    flyPhotoCamera(frameSeconds);
+    updatePhotoGun();
+  }
+
   gpuTimer.begin();
   renderer.clear();
-  renderer.render(scene, camera);
-  viewmodel.render(renderer);
+  renderer.render(scene, photo.on ? photo.camera : camera);
+  if (!photo.on) viewmodel.render(renderer);
   gpuTimer.end();
+  // (Back to the photo camera's look for the mouse.)
+  if (photo.on) {
+    photo.player = { yaw: input.yaw, pitch: input.pitch };
+    input.yaw = photo.look.yaw;
+    input.pitch = photo.look.pitch;
+  }
   hud.update(frameSeconds, player, performance.now() - cpuStart, gpuTimer.ms);
 });

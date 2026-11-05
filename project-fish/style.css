@@ -254,3 +254,28 @@ body.menu-open #ammo {
   display: none;
 }
 
+
+/* Photo mode (P): no crosshair or ammo; a note on the controls. */
+body.photo #crosshair,
+body.photo #ammo {
+  display: none;
+}
+
+#photo-hint {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(20, 22, 26, 0.7);
+  color: #fff;
+  font: 13px/1.4 system-ui, sans-serif;
+  text-align: center;
+}
+
+body.photo #photo-hint {
+  display: block;
+}

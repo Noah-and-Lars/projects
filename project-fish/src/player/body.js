@@ -84,14 +84,21 @@ export class PlayerBody {
     const sky = outdoorEnvironment(renderer, SUN_DIRECTION);
     model.traverse((o) => {
       if (!o.isMesh) return;
-      o.material = [].concat(o.material).map((m) => {
+      const shown = [].concat(o.material).map((m) => {
         const own = m.clone();
         own.envMap = sky;
         own.envMapIntensity = SOLDIER_SKY;
-        if (firstPersonTag(o)) hideKeepingShadow(own);
         return own;
       });
+      o.material = shown.map((m) => {
+        if (!firstPersonTag(o)) return m;
+        const hidden = m.clone();
+        hideKeepingShadow(hidden);
+        return hidden;
+      });
       if (o.material.length === 1) o.material = o.material[0];
+      // (Seen from outside, in photo mode, all of him shows: see setFirstPerson.)
+      o.userData.materials = { firstPerson: o.material, outside: shown.length === 1 ? shown[0] : shown };
       o.castShadow = o.receiveShadow = true;
       o.frustumCulled = false;
     });
@@ -131,7 +138,7 @@ export class PlayerBody {
     // other bent under him.
     const sliding = Boolean(player && player.move === 'slide');
     const posed = !player || sliding || !(isLow(player) || player.move === 'mantle');
-    this.setShown(posed);
+    this.setShown(posed || this.outside);
     const crouch = Math.max(0, PLAYER.eyeHeight - eye); // (the camera's eye height this frame)
     model.position.copy(feet);
     model.rotation.set(0, yaw + Math.PI, 0); // he faces +Z
@@ -233,6 +240,18 @@ export class PlayerBody {
       foot.quaternion.copy(parentTurn).invert().multiply(planted[i].quaternion);
       foot.updateMatrixWorld(true);
     }
+  }
+
+  // In first person (true) his head and arms are left out of the picture
+  // (they still cast their shadow); seen from outside (photo mode) all of
+  // him shows.
+  setFirstPerson(on) {
+    this.outside = !on;
+    if (!this.model) return;
+    this.model.traverse((o) => {
+      if (o.isMesh && o.userData.materials) o.material = on ? o.userData.materials.firstPerson : o.userData.materials.outside;
+    });
+    if (!on) this.setShown(true);
   }
 
   // Shows or leaves out his body in the world (his arms, drawn in the gun
