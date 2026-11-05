@@ -3,7 +3,8 @@
 // Every frame they're pushed by how the player turns, speeds up, slows down,
 // steps, jumps and lands; springs pull them back to where they're held, and
 // they overshoot a little as they settle, like real arms. Near a wall, the
-// gun is pulled back and tipped up so it doesn't look like it goes through.
+// gun is pulled back and tipped up so it doesn't look like it goes through;
+// sprinting, the wrists bend it down the other way.
 //
 // Offsets are in the viewmodel camera's space: x right, y up, z towards the
 // player. Rotations are radians about those axes.
@@ -22,6 +23,11 @@ export const MOTION = {
   landing: { drop: 0.045, nod: 0.22 }, // shove when landing, per m/s of fall
   breath: { speed: 1.4, up: 0.0007, pitch: 0.002, drift: 0.0015 },
   wall: { far: 0.85, near: 0.35, back: 0.12, down: 0.025, tip: 0.4 },
+  // Sprinting: the hands bend down at the wrists, tipping the gun muzzle down
+  // (`bend`, radians; the forearms stay put), and the arms come in a little
+  // lower and closer (metres), canted in a touch. The strides are longer and
+  // swing it more. `ease`: how quickly it goes into the pose and back out.
+  sprint: { bend: 0.6, tip: 0.05, back: 0.05, up: 0.015, inward: 0.015, roll: 0.05, stride: 0.75, bob: 1.8, ease: 7 },
   // Aiming down the sights: how much of each movement is left (1 = all of it).
   aiming: { look: 0.75, inertia: 0.5, lean: 0.35, bob: 0.4, wall: 0.5 },
   // Hold sway while aiming: a few slow, uneven drifts (radians, cycles a second)
@@ -85,6 +91,7 @@ export class ViewmodelMotion {
     this.wasGrounded = true;
     this.lastFall = 0;
     this.wall = 0;
+    this.sprint = 0; // 0 = not sprinting, 1 = fully into the sprint pose
     this.unsteady = 0;
   }
 
@@ -122,8 +129,9 @@ export class ViewmodelMotion {
 
   // dt: seconds since the last frame. player: movement state. yaw, pitch: where
   // the player looks. wallDistance: metres to whatever is straight ahead.
-  // aim: 0 at the hip, 1 fully aiming down the sights.
-  update(dt, player, yaw, pitch, wallDistance, aim = 0) {
+  // aim: 0 at the hip, 1 fully aiming down the sights. sprinting: whether
+  // the gun should be in the sprint pose.
+  update(dt, player, yaw, pitch, wallDistance, aim = 0, sprinting = false) {
     dt = Math.min(dt, 0.05);
     if (dt <= 0) return;
     this.time += dt;
@@ -168,12 +176,17 @@ export class ViewmodelMotion {
     torque.y += this.accel.x * M.inertia.rotation * 0.4 * shove;
     targetRot.z -= right * M.lean * keep('lean');
 
-    // Walking: a figure-of-eight in step with the feet, and a little bounce at each footstep.
+    // Sprinting eases the gun down into the sprint pose and back up again.
+    this.sprint += ((sprinting ? 1 : 0) - this.sprint) * Math.min(1, dt * M.sprint.ease);
+    const run = this.sprint;
+
+    // Walking: a figure-of-eight in step with the feet, and a little bounce at
+    // each footstep. Sprinting, the strides are longer and swing it more.
     const speed = player.grounded ? Math.hypot(player.vx, player.vz) : 0;
     this.bobAmount += (Math.min(speed / 5, 1) - this.bobAmount) * Math.min(1, dt * 8);
     const before = Math.floor(this.bobPhase / Math.PI);
-    this.bobPhase += speed * dt * M.bob.stepsPerMetre * Math.PI;
-    const b = this.bobAmount * keep('bob');
+    this.bobPhase += speed * dt * M.bob.stepsPerMetre * (1 - (1 - M.sprint.stride) * run) * Math.PI;
+    const b = this.bobAmount * keep('bob') * (1 + (M.sprint.bob - 1) * run);
     if (Math.floor(this.bobPhase / Math.PI) !== before) {
       this.position.velocity.y -= M.bob.footstep * b;
       this.rotation.velocity.x -= M.bob.nod * b;
@@ -221,6 +234,14 @@ export class ViewmodelMotion {
     target.z += M.wall.back * this.wall;
     target.y -= M.wall.down * this.wall;
     targetRot.x += M.wall.tip * this.wall;
+
+    // Sprinting: the arms come in a little lower and closer, tipped and
+    // canted a touch (the wrists bend the rest of the way; see viewmodel.js).
+    target.z += M.sprint.back * run;
+    target.y += M.sprint.up * run;
+    target.x -= M.sprint.inward * run;
+    targetRot.x -= M.sprint.tip * run;
+    targetRot.z += M.sprint.roll * run;
 
     this.position.step(dt, target, force);
     this.rotation.step(dt, targetRot, torque);

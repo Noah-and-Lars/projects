@@ -36,7 +36,8 @@ body:not(.playing) #crosshair {
   transition: opacity 0.12s;
 }
 
-body.aiming #crosshair {
+body.aiming #crosshair,
+body.sprinting #crosshair {
   opacity: 0;
 }
 

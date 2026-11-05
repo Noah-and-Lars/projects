@@ -223,6 +223,8 @@ renderer.setAnimationLoop((time) => {
   lastTime = time;
 
   accumulator += frameSeconds;
+  // A shot waiting for the gun to come up stops a sprint until it's gone off.
+  input.sprintBlocked = weapon.shotWaiting;
   while (accumulator >= TICK_DT) {
     previous.x = player.x;
     previous.y = player.y;
@@ -249,8 +251,8 @@ renderer.setAnimationLoop((time) => {
 
   // The pistol: trigger and reload key, then the gun's pose, then what happened.
   const events = input.locked
-    ? weapon.update(frameSeconds, input.presses('Mouse0'), input.presses('KeyR') > 0)
-    : weapon.update(frameSeconds, 0, false);
+    ? weapon.update(frameSeconds, input.presses('Mouse0'), input.presses('KeyR') > 0, viewmodel.readyToFire)
+    : weapon.update(frameSeconds, 0, false, viewmodel.readyToFire);
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
   const gunState = {
@@ -262,6 +264,7 @@ renderer.setAnimationLoop((time) => {
   aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
   document.body.classList.toggle('aiming', aimAmount > 0.4);
+  document.body.classList.toggle('sprinting', viewmodel.motion.sprint > 0.4);
   for (const event of events) {
     if (event === 'shot') shoot();
     else if (event === 'dry') {

@@ -9,6 +9,7 @@ import { COLLIDERS } from './map.js';
 
 export const BUTTON_JUMP = 1 << 0;
 export const BUTTON_AIM = 1 << 1;
+export const BUTTON_SPRINT = 1 << 2;
 
 export function createPlayerState() {
   return {
@@ -19,6 +20,7 @@ export function createPlayerState() {
     vy: 0,
     vz: 0,
     grounded: true,
+    sprinting: false,
     jumpBufferTimer: 0,
     prevButtons: 0,
   };
@@ -52,7 +54,12 @@ export function simulatePlayer(s, cmd, dt) {
   const wishX = -sin * f + cos * r;
   const wishZ = -cos * f - sin * r;
   const hasInput = len > 0.001;
-  const topSpeed = MOVEMENT.walkSpeed * (cmd.buttons & BUTTON_AIM ? MOVEMENT.aimSpeedFactor : 1);
+  // Sprinting: only going forwards (straight or at an angle), not while
+  // aiming. It starts on the ground, and keeps going through a jump.
+  const wantsSprint = (cmd.buttons & BUTTON_SPRINT) && !(cmd.buttons & BUTTON_AIM) && cmd.forward > 0;
+  s.sprinting = Boolean(wantsSprint && (s.grounded || s.sprinting));
+  const factor = cmd.buttons & BUTTON_AIM ? MOVEMENT.aimSpeedFactor : s.sprinting ? MOVEMENT.sprintSpeedFactor : 1;
+  const topSpeed = MOVEMENT.walkSpeed * factor;
 
   if (s.grounded) {
     const targetX = wishX * topSpeed;

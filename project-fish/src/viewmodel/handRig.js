@@ -6,7 +6,9 @@
 // side of a joint, so knuckles bend smoothly instead of folding. A hand shape
 // (a "pose") says where each joint goes, and the hand can be put part of the
 // way between any two. Joints only bend: a finger never twists round its own
-// length, whatever the shape. supportHand.js and shootingHand.js have the
+// length, whatever the shape. The hand can also bend at the wrist: the cuff of
+// the glove stays with the sleeve on a forearm bone, and the rest follows the
+// hand. supportHand.js and shootingHand.js have the
 // shapes for each hand.
 
 import * as THREE from 'three';
@@ -20,6 +22,9 @@ const CHAINS = ['index', 'middle', 'ring', 'little', 'thumb'];
 const FINGER_BLEND = [0.0065, 0.0045, 0.0035];
 const THUMB_BLEND = [0.011, 0.0055, 0.004];
 const SHARE = 0.0008; // how softly a point between two fingers is shared between them
+// The glove's cuff follows the forearm from this far up from the wrist
+// (metres), blending into the hand over the wrist.
+const CUFF = [0.002, 0.02];
 
 const smoothstep = (e0, e1, x) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
@@ -63,6 +68,11 @@ export class HandRig {
         return bone;
       });
     });
+    // The forearm: the glove's cuff stays with it when the wrist bends.
+    this.forearmBone = new THREE.Bone();
+    this.forearmBone.name = `${side}_forearm`;
+    this.forearmBone.position.copy(rest.wrist);
+    this.forearm = this.shapes.forearm.clone();
     this.skeleton = null;
 
     // Each finger bends about the line it curls round in the model (the
@@ -121,7 +131,7 @@ export class HandRig {
   // the skeleton in the glove's parent (the support arm).
   skin(mesh) {
     const parent = mesh.parent;
-    parent.add(this.root);
+    parent.add(this.root, this.forearmBone);
     parent.updateMatrixWorld(true);
     const geometry = mesh.geometry;
     const position = geometry.attributes.position;
@@ -151,14 +161,21 @@ export class HandRig {
     parent.add(skinned);
     parent.remove(mesh);
     this.set('grip');
-    this.skeleton = new THREE.Skeleton([this.root, ...this.bones.flat()]);
+    this.skeleton = new THREE.Skeleton([this.root, ...this.bones.flat(), this.forearmBone]);
     parent.updateMatrixWorld(true);
     skinned.bind(this.skeleton);
     return skinned;
   }
 
+  // Bends the hand at the wrist: turns it by `turn` (a quaternion, in the
+  // arm's space) about the wrist, leaving the cuff with the forearm.
+  bendWrist(turn) {
+    this.root.quaternion.copy(turn);
+  }
+
   // Which bones a point on the glove follows, and how much: [[bone, weight], ...]
-  // (at most four, largest first). Bone 0 is the hand itself.
+  // (at most four, largest first). Bone 0 is the hand itself; the last is the
+  // forearm.
   weightsAt(p) {
     const shares = new Map();
     const add = (bone, w) => shares.set(bone, (shares.get(bone) || 0) + w);
@@ -203,6 +220,12 @@ export class HandRig {
       add(2 + c * 4, share * (S[1] - S[2]));
       add(3 + c * 4, share * S[2]);
     });
+    // Up the forearm from the wrist, the cuff follows the forearm instead.
+    const up = smoothstep(CUFF[0], CUFF[1], p.clone().sub(this.rest.wrist).dot(this.forearm));
+    if (up > 0) {
+      for (const [bone, w] of shares) shares.set(bone, w * (1 - up));
+      add(1 + this.chains.length * 4, up);
+    }
     const list = [...shares].filter(([, w]) => w > 1e-4).sort((a, b) => b[1] - a[1]).slice(0, 4);
     const sum = list.reduce((a, [, w]) => a + w, 0);
     return list.map(([bone, w]) => [bone, w / sum]);

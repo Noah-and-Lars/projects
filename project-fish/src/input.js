@@ -1,18 +1,22 @@
 // Keyboard and mouse. Keys are read by their physical position (KeyW etc.),
 // so WASD works on any keyboard layout.
 
-import { BUTTON_AIM, BUTTON_JUMP } from './shared/movement.js';
+import { BUTTON_AIM, BUTTON_JUMP, BUTTON_SPRINT } from './shared/movement.js';
 import { settings } from './settings.js';
 
 const DEGREES_PER_COUNT = 0.022;
 const MAX_PITCH = (89 * Math.PI) / 180;
 
 // Keys the game uses; the browser's default action for them is blocked while playing.
-const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ']);
+const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'ShiftLeft', 'ShiftRight']);
 
 // Q aims: a quick click turns aiming on or off; holding it aims until you let go.
 const AIM_KEY = 'KeyQ';
 const AIM_CLICK_MS = 250; // a press shorter than this counts as a click
+
+// Holding Shift sprints. Firing stops it; it carries on this long after the
+// last shot if Shift is still held.
+const SPRINT_AFTER_SHOT_MS = 400;
 
 export class Input {
   constructor(element) {
@@ -30,6 +34,8 @@ export class Input {
     this.aimKeyOn = false; // aiming with Q
     this.aimKeyDown = 0; // when Q was pressed
     this.aimKeyWasOn = false; // whether it was already on when Q was pressed
+    this.lastShot = -Infinity; // when the fire button was last pressed (ms)
+    this.sprintBlocked = false; // set by the game while a shot is waiting to go off
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.element;
@@ -75,6 +81,7 @@ export class Input {
     document.addEventListener('mousedown', (e) => {
       if (!this.locked) return;
       this.held.add('Mouse' + e.button);
+      if (e.button === 0) this.lastShot = performance.now();
       this.tapped.add('Mouse' + e.button);
       this.pressed.set('Mouse' + e.button, (this.pressed.get('Mouse' + e.button) || 0) + 1);
     });
@@ -126,6 +133,13 @@ export class Input {
     return this.locked && (this.held.has('Mouse2') || this.aimKeyOn);
   }
 
+  // Holding Shift sprints, unless aiming, or just after firing (or while a
+  // shot is still waiting for the gun to come up).
+  get sprinting() {
+    return this.locked && (this.held.has('ShiftLeft') || this.held.has('ShiftRight')) && !this.aiming
+      && !this.sprintBlocked && performance.now() - this.lastShot > SPRINT_AFTER_SHOT_MS;
+  }
+
   // Fills `cmd` with this tick's input.
   sample(cmd) {
     const down = (code) => (this.held.has(code) || this.tapped.has(code) ? 1 : 0);
@@ -133,7 +147,7 @@ export class Input {
     cmd.right = down('KeyD') - down('KeyA');
     cmd.yaw = this.yaw;
     cmd.pitch = this.pitch;
-    cmd.buttons = (down('Space') ? BUTTON_JUMP : 0) | (this.aiming ? BUTTON_AIM : 0);
+    cmd.buttons = (down('Space') ? BUTTON_JUMP : 0) | (this.aiming ? BUTTON_AIM : 0) | (this.sprinting ? BUTTON_SPRINT : 0);
     this.tapped.clear();
     return cmd;
   }

@@ -8,10 +8,10 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createPistol, GRIP, SIGHTS, MAGAZINE } from './pistol.js';
-import { createArms } from './arms.js';
+import { createArms, rightHandPose } from './arms.js';
 import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix } from './supportHand.js';
 import { ShootingHand } from './shootingHand.js';
-import { ViewmodelMotion } from './motion.js';
+import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall } from '../weapon.js';
 
@@ -215,6 +215,10 @@ const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 
 // The arms swing about this point between the wrists (gun space), not the eye.
 const PIVOT = new THREE.Vector3(0, -0.085, 0.07);
+// The wrists bend about the line through both of them (gun space): from the
+// shooting hand's wrist to the support hand's (arms.js).
+const RIGHT_WRIST = rightHandPose().wrist;
+const WRIST_LINE = WRIST.clone().sub(RIGHT_WRIST).normalize();
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
@@ -344,6 +348,7 @@ export class Viewmodel {
       if (glove) {
         this.hand = new SupportHand();
         this.hand.skin(glove);
+        this.carriedByHand(this.hand, this.leftArm.getObjectByName('left_knuckle_guard'));
       }
       // And the shooting glove's thumb, so it can press the magazine release.
       let rightGlove = arms.getObjectByName('right_glove');
@@ -351,6 +356,7 @@ export class Viewmodel {
       if (rightGlove) {
         this.shooter = new ShootingHand();
         this.shooter.skin(rightGlove);
+        this.carriedByHand(this.shooter, arms.getObjectByName('right_knuckle_guard'));
       }
       // The fresh magazine the support hand brings back during a reload.
       if (this.magazine) {
@@ -419,10 +425,34 @@ export class Viewmodel {
     this.motion.twitch();
   }
 
+  // A hand-mounted part (the hard knuckle guard) moves with the hand when the
+  // wrist bends.
+  carriedByHand(rig, part) {
+    if (part) rig.root.attach(part);
+  }
+
+  // Bends both wrists `angle` radians, muzzle down: the hands and the gun turn
+  // together about the line through both wrists, and the forearms stay put.
+  bendWrists(angle) {
+    const turn = new THREE.Quaternion().setFromAxisAngle(WRIST_LINE, angle);
+    if (this.hand) this.hand.bendWrist(turn);
+    if (this.shooter) this.shooter.bendWrist(turn);
+    if (this.pistol) {
+      this.pistol.quaternion.copy(turn);
+      this.pistol.position.copy(RIGHT_WRIST).applyQuaternion(turn).negate().add(RIGHT_WRIST);
+    }
+  }
+
+  // Whether the gun is up and can fire: not while it's still in (or coming
+  // up from) the sprint pose.
+  get readyToFire() {
+    return this.motion.sprint < 0.25;
+  }
+
   // Where a point on the gun (gun space) is in the gun layer's camera space.
   pointOnGun([x, y, z]) {
     this.scene.updateMatrixWorld();
-    return this.gun.localToWorld(new THREE.Vector3(x, y, z));
+    return (this.pistol || this.gun).localToWorld(new THREE.Vector3(x, y, z));
   }
 
   muzzlePoint() {
@@ -473,12 +503,14 @@ export class Viewmodel {
     this.animateGun(dt, gun, reload);
 
     // Weapon physics move the whole posed gun about the pivot between the wrists.
-    this.motion.update(frameSeconds, player, yaw, pitch, wallDistance, aim);
+    // Sprinting tips the gun down, except while reloading or aiming.
+    this.motion.update(frameSeconds, player, yaw, pitch, wallDistance, aim, Boolean(player.sprinting) && reload < 0 && !aiming);
     this.holder.position.copy(this.pivot).add(this.motion.position.value);
     const r = this.motion.rotation.value;
     this.holder.rotation.set(r.x, r.y, r.z);
     this.gun.position.copy(this.posePosition).sub(this.pivot);
     this.gun.quaternion.copy(this.poseQuaternion);
+    this.bendWrists(MOTION.sprint.bend * this.motion.sprint);
     if (this.dropping && this.dropModel) this.dropMagazine(this.dropping);
     this.dropping = null;
 

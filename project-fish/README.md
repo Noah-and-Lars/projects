@@ -21,6 +21,7 @@ Click to lock the mouse to the game. Press Esc to get the mouse back.
 | Key | Action |
 |---|---|
 | WASD | Move |
+| Shift (hold) | Sprint (going forwards) |
 | Mouse | Look |
 | Space | Jump |
 | Left mouse | Fire |
@@ -66,6 +67,7 @@ All movement values are in `src/shared/config.js`:
 | Value | Now | Meaning |
 |---|---|---|
 | `walkSpeed` | 5 m/s | Top walking speed |
+| `sprintSpeedFactor` | 1.5 | Sprinting speed (7.5 m/s), as a fraction of walking speed |
 | `groundAccel` | 50 m/s² | How fast you reach full speed or change direction (full speed in 0.1 s) |
 | `groundDecel` | 40 m/s² | How fast you stop when you let go (about 0.13 s) |
 | `airAccel` | 12 m/s² | How much you can steer in the air |
@@ -105,9 +107,13 @@ The pistol is semi-automatic: one shot per click, up to 500 a minute (clicks mad
 - **Sound:** a 9mm report built in code sample by sample (pressure spike, bright blast, low punch, ground bounce, slide clack) with outdoor echoes, a click when the gun is empty, and reload sounds, including a dropped magazine clattering on the ground (`src/effects/audio.js`).
 - **Reloading (R):** the gun comes up and in, muzzle tipped up a little so the magazine well comes into view, and the shooting hand's thumb comes down onto the magazine release and presses it. From empty, the support hand has already let go and is heading for the belt, and the empty magazine drops free; it carries on falling in the world, clatters on the ground and stays there (the last dozen are kept). With rounds left, the support hand turns palm up under the grip first, the old magazine drops into it, and it pulls it out and puts it away on the way to the belt, so the rounds left in it are kept. Either way it closes round a fresh magazine at the belt and brings it up held the way it's pushed in: palm up, baseplate in the palm, index finger along the front, the other fingers and the thumb closed on it (each closes until it touches the magazine). It lines it up under the well and pushes it straight in: the fingers slide off its front as it goes up into the grip, and the palm pushes it home (the gun jolts as it clicks in). Then the hand drops away, turns back and comes up beside the grip half open, and closes round it again; from empty, the slide is then released forward. 2.1 s with rounds left, or 2.5 s from empty. The hands' movements are `HAND_PATHS` in `src/viewmodel/viewmodel.js`, their hand shapes are in `src/viewmodel/supportHand.js` and `src/viewmodel/shootingHand.js`, and the timings are `RELOAD_STEPS` in `src/weapon.js`. The ammo counter is bottom right.
 
+### Sprinting
+
+Hold Shift while moving forwards (straight or at an angle) to sprint at 7.5 m/s, 1.5 times walking speed (`sprintSpeedFactor` in `src/shared/config.js`). The hands bend down at the wrists, tipping the gun muzzle down (the gloves' cuffs stay with the sleeves), and the crosshair fades. Sprinting needs you to be going forwards and not aiming; it starts on the ground and carries on through a jump. Aiming or firing stops it. A shot fired mid-sprint waits the moment it takes the gun to come back up (about 0.2 s), and sprinting picks up again 0.4 s after the last shot if Shift is still held. You can reload while sprinting; the gun stays in its reload pose. The pose is `sprint` in `MOTION` (`src/viewmodel/motion.js`).
+
 ### Weapon physics
 
-The hands and gun hang on springs (`src/viewmodel/motion.js`), so they have weight. Turning makes them trail behind and swing back past centre when you stop; speeding up or stopping shoves them the other way; strafing leans them into the turn; each footstep gives a small bounce; jumping and landing make them dip and nod; breathing keeps them from ever being perfectly still. Close to a wall (a ray straight ahead hits something under 85 cm away) the gun is pulled back and tipped up. They swing about a point between the wrists, not the eye, so they move like arms. Every value is in `MOTION` at the top of the file, with a comment saying what it does.
+The hands and gun hang on springs (`src/viewmodel/motion.js`), so they have weight. Turning makes them trail behind and swing back past centre when you stop; speeding up or stopping shoves them the other way; strafing leans them into the turn; each footstep gives a small bounce; jumping and landing make them dip and nod; breathing keeps them from ever being perfectly still. Close to a wall (a ray straight ahead hits something under 85 cm away) the gun is pulled back and tipped up. Sprinting, the hands bend down at the wrists the other way, tipping the gun muzzle down while the forearms stay put, and the longer strides swing it more. They swing about a point between the wrists, not the eye, so they move like arms. Every value is in `MOTION` at the top of the file, with a comment saying what it does.
 
 ### Rebuilding the models
 

@@ -46,6 +46,12 @@ export class Pistol {
     this.pulls = []; // trigger pulls waiting for the gun to be ready (seconds waited)
   }
 
+  // Whether a trigger pull is waiting to fire (for the gun to come up out of
+  // a sprint, or for the last shot's cycle to finish).
+  get shotWaiting() {
+    return this.pulls.length > 0;
+  }
+
   get reloading() {
     return this.reload !== null;
   }
@@ -58,15 +64,19 @@ export class Pistol {
   // dt: seconds since the last frame. trigger: how many times the fire button
   // was pressed this frame (a pull while the gun isn't ready yet is kept for a
   // moment, so quick taps are never lost). reloadKey: the reload key was pressed.
+  // ready: the gun is up and can fire (not while it's still coming up from a
+  // sprint; a pull made then fires as soon as it's up).
   // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magCaught',
   // 'magGrab', 'magIn', 'slideRelease', 'reloaded'.
-  update(dt, trigger, reloadKey) {
-    this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 0.25);
+  update(dt, trigger, reloadKey, ready = true) {
+    // Pulls wait for the gun to be up (out of a sprint) before they start to
+    // go stale.
+    if (ready) this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 0.25);
     for (let i = 0; i < trigger; i++) this.pulls.push(0);
-    return this.step(dt, reloadKey);
+    return this.step(dt, reloadKey, ready);
   }
 
-  step(dt, reloadKey) {
+  step(dt, reloadKey, ready = true) {
     const events = [];
     this.cooldown = Math.max(0, this.cooldown - dt);
 
@@ -102,7 +112,7 @@ export class Pistol {
       return events;
     }
 
-    if (this.pulls.length && this.cooldown === 0) {
+    if (ready && this.pulls.length && this.cooldown === 0) {
       this.pulls.shift();
       if (this.ammo > 0) {
         this.ammo--;
