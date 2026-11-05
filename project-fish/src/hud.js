@@ -38,7 +38,8 @@ export class Hud {
     this.element.textContent =
       `${fps} FPS (CPU ${cpu.toFixed(1)} ms${gpu})\n` +
       `Speed ${horizontalSpeed(player).toFixed(1)} m/s\n` +
-      (player.grounded ? 'On ground' : `In air ${player.y.toFixed(2)} m`);
+      (player.grounded ? 'On ground' : `In air ${player.y.toFixed(2)} m`) +
+      ` · ${player.move === 'ground' || player.move === 'air' ? player.stance : player.move}${player.tacSprint ? ' (tactical sprint)' : player.sprinting ? ' (sprint)' : ''} · stamina ${Math.round(player.stamina * 100)}%`;
   }
 }
 

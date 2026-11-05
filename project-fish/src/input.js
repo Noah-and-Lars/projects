@@ -1,14 +1,14 @@
 // Keyboard and mouse. Keys are read by their physical position (KeyW etc.),
 // so WASD works on any keyboard layout.
 
-import { BUTTON_AIM, BUTTON_JUMP, BUTTON_SPRINT } from './shared/movement.js';
+import { BUTTON_AIM, BUTTON_CROUCH, BUTTON_JUMP, BUTTON_PRONE, BUTTON_SPRINT } from './shared/movement.js';
 import { settings } from './settings.js';
 
 const DEGREES_PER_COUNT = 0.022;
 const MAX_PITCH = (89 * Math.PI) / 180;
 
 // Keys the game uses; the browser's default action for them is blocked while playing.
-const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'KeyF', 'Digit1', 'Digit2', 'KeyB', 'KeyT', 'ShiftLeft', 'ShiftRight']);
+const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyR', 'KeyQ', 'KeyF', 'Digit1', 'Digit2', 'KeyB', 'KeyT', 'KeyC', 'KeyZ', 'ShiftLeft', 'ShiftRight']);
 
 // Q aims: a quick click turns aiming on or off; holding it aims until you let go.
 const AIM_KEY = 'KeyQ';
@@ -190,7 +190,8 @@ export class Input {
     cmd.right = down('KeyD') - down('KeyA');
     cmd.yaw = this.yaw;
     cmd.pitch = this.pitch;
-    cmd.buttons = (down('Space') ? BUTTON_JUMP : 0) | (this.aiming ? BUTTON_AIM : 0) | (this.sprinting ? BUTTON_SPRINT : 0);
+    cmd.buttons = (down('Space') ? BUTTON_JUMP : 0) | (this.aiming ? BUTTON_AIM : 0) | (this.sprinting ? BUTTON_SPRINT : 0)
+      | (down('KeyC') ? BUTTON_CROUCH : 0) | (down('KeyZ') ? BUTTON_PRONE : 0);
     this.tapped.clear();
     return cmd;
   }

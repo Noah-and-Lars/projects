@@ -72,7 +72,7 @@ const hud = new Hud(document.getElementById('debug'));
 const gpuTimer = new GpuTimer(renderer.getContext());
 
 const player = createPlayerState();
-const previous = { x: player.x, y: player.y, z: player.z };
+const previous = { x: player.x, y: player.y, z: player.z, eye: player.eye };
 const cmd = emptyCommand();
 // The guns the player carries (src/shared/config.js), and the one in hand:
 // switching to another happens at once here (its keys and its ammo), while
@@ -137,8 +137,8 @@ menu.onFailedLock = () => {
 // three.js wants the vertical FOV. Work it out from the horizontal FOV on a
 // 16:9 screen, so wider screens see more at the sides instead of less above
 // and below. `zoom` > 1 narrows it, for aiming down the sights.
-function setWorldFov(zoom) {
-  const halfHorizontal = (settings.fov * Math.PI) / 360;
+function setWorldFov(zoom, wider = 0) {
+  const halfHorizontal = ((settings.fov + wider) * Math.PI) / 360;
   const fov = (2 * Math.atan((Math.tan(halfHorizontal) * (9 / 16)) / zoom) * 180) / Math.PI;
   if (fov !== camera.fov) {
     camera.fov = fov;
@@ -193,6 +193,38 @@ viewmodel.ready.then(() => {
 const RECOIL = { kick: 0.42, kickRandom: 0.12, sideways: 0.12, climb: 0.0045, aimed: 0.7, stiffness: 160, damping: 0.72 };
 const viewKick = { x: 0, y: 0, vx: 0, vy: 0 };
 
+// --- How moving feels ---
+
+// The camera's extra tilt and widening for the way you're moving: it rolls
+// a little into a slide and the view widens (and settles back as it slows),
+// widens a touch on a tactical sprint and a dive, and dips as you land hard.
+// Degrees for fov, radians for the rest.
+const MOVE_FEEL = { slideRoll: -0.1, slideFov: 7, tacSprintFov: 5, diveFov: 6, divePitch: -0.07, ease: 8, mantlePitch: -0.05 };
+const moveFeel = { roll: 0, fov: 0, pitch: 0, landed: 0 };
+function updateMoveFeel(dt) {
+  const M = MOVE_FEEL;
+  const sliding = player.move === 'slide' || player.move === 'supine';
+  const slowing = sliding ? Math.max(0, 1 - player.moveTime / (player.move === 'supine' ? MOVEMENT.supineTime : MOVEMENT.slideTime)) : 0;
+  let roll = 0;
+  let fov = 0;
+  let pitch = 0;
+  if (sliding) {
+    roll = M.slideRoll * (0.4 + 0.6 * slowing);
+    fov = M.slideFov * (0.3 + 0.7 * slowing);
+  } else if (player.tacSprint) {
+    fov = M.tacSprintFov * Math.min(1, player.stamina / MOVEMENT.fatigueStart);
+  } else if (player.move === 'dive') {
+    fov = M.diveFov * (player.grounded ? 0.4 : 1);
+    pitch = player.grounded ? 0 : M.divePitch;
+  } else if (player.move === 'mantle') {
+    pitch = M.mantlePitch * Math.sin(Math.PI * Math.min(1, player.moveTime / 0.5));
+  }
+  const k = 1 - Math.exp(-dt * M.ease);
+  moveFeel.roll += (roll - moveFeel.roll) * k;
+  moveFeel.fov += (fov - moveFeel.fov) * k;
+  moveFeel.pitch += (pitch - moveFeel.pitch) * k;
+}
+
 function updateViewKick(dt) {
   const c = 2 * RECOIL.damping * Math.sqrt(RECOIL.stiffness);
   const steps = Math.max(1, Math.ceil(dt * 240));
@@ -238,7 +270,10 @@ function shoot() {
   const sight = viewmodel.sightOnScreen();
   const throughSights = new THREE.Vector3(sight.x, sight.y, 0.5).unproject(camera).sub(camera.position).normalize();
   const moving = Math.min(1, horizontalSpeed(player) / MOVEMENT.walkSpeed);
-  const stray = (gun.spread.hip + gun.spread.moving * moving) * (1 - aimAmount) + gun.spread.aim * aimAmount;
+  // Steadier crouched or prone; wilder sliding, diving or in the air.
+  const steady = player.move === 'slide' || player.move === 'supine' || player.move === 'dive' || !player.grounded ? 1.5
+    : player.stance === 'prone' ? 0.65 : player.stance === 'crouch' ? 0.8 : 1;
+  const stray = ((gun.spread.hip + gun.spread.moving * moving) * (1 - aimAmount) + gun.spread.aim * aimAmount) * steady;
   const direction = spread(forward.clone().lerp(throughSights, aimAmount).normalize(), stray);
   const hit = raycastWorld(camera.position.x, camera.position.y, camera.position.z, direction.x, direction.y, direction.z, gun.range);
   if (hit && hit.what === 'soldier') effects.impact(hit, 0x6b6e58, false); // cloth: no hole (his box is only roughly his shape)
@@ -366,6 +401,7 @@ renderer.setAnimationLoop((time) => {
     previous.x = player.x;
     previous.y = player.y;
     previous.z = player.z;
+    previous.eye = player.eye;
     if (input.locked) {
       input.sample(cmd);
     } else {
@@ -378,13 +414,15 @@ renderer.setAnimationLoop((time) => {
 
   // How far we are between the last tick and the next one (0..1).
   const alpha = accumulator / TICK_DT;
+  const feetY = previous.y + (player.y - previous.y) * alpha;
   camera.position.set(
     previous.x + (player.x - previous.x) * alpha,
-    previous.y + (player.y - previous.y) * alpha + PLAYER.eyeHeight,
+    feetY + previous.eye + (player.eye - previous.eye) * alpha,
     previous.z + (player.z - previous.z) * alpha,
   );
   updateViewKick(frameSeconds);
-  camera.rotation.set(input.pitch + viewKick.x, input.yaw + viewKick.y, 0);
+  updateMoveFeel(frameSeconds);
+  camera.rotation.set(input.pitch + viewKick.x + moveFeel.pitch, input.yaw + viewKick.y, moveFeel.roll);
 
   // The loadout menu: B.
   if (input.locked && input.presses('KeyB') > 0) menu.show();
@@ -409,14 +447,17 @@ renderer.setAnimationLoop((time) => {
   // trigger pull waits until it's up).
   // (A reload or inspect asked for then is kept until it's up.)
   const switching = Boolean(viewmodel.switching);
-  const busy = input.aiming || Boolean(player.sprinting);
+  const busy = input.aiming || Boolean(player.sprinting) || player.move !== 'ground' && player.move !== 'air';
+  // Climbing, diving through the air or getting up off your back, the gun
+  // can't fire (aiming, it can while climbing).
+  const cantFire = (player.move === 'mantle' && !input.aiming) || player.move === 'rise' || (player.move === 'dive' && !player.grounded);
   if (input.locked && input.presses('KeyR') > 0) asked.reload = true;
   if (input.locked && input.presses('KeyF') > 0) asked.inspect = true;
   const reloadNow = asked.reload && !switching;
   const inspectNow = asked.inspect && !switching;
   if (!switching || !input.locked) asked.reload = asked.inspect = false;
   const events = input.locked
-    ? weapon.update(frameSeconds, input.presses('Mouse0'), reloadNow, viewmodel.readyToFire, inspectNow, busy)
+    ? weapon.update(frameSeconds, cantFire ? 0 : input.presses('Mouse0'), reloadNow, viewmodel.readyToFire, inspectNow, busy)
     : weapon.update(frameSeconds, 0, false, viewmodel.readyToFire, false, busy);
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
@@ -426,7 +467,7 @@ renderer.setAnimationLoop((time) => {
   if (outgoing && (outgoing.key !== shownKey || shownKey === held)) outgoing = null;
   const gunState = outgoing ? outgoing.state : gunStateOf(weapons[shownKey]);
   aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading && !weapon.inspecting && !switching, gunState);
-  setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
+  setWorldFov(1 + (AIM.zoom - 1) * aimAmount, moveFeel.fov);
   updateBeams();
   document.body.classList.toggle('aiming', aimAmount > 0.4);
   document.body.classList.toggle('sprinting', viewmodel.motion.sprint > 0.4);
@@ -459,7 +500,7 @@ renderer.setAnimationLoop((time) => {
   updateBarrelSmoke(frameSeconds);
   effects.update(frameSeconds);
   soldier.update(frameSeconds);
-  body.update(new THREE.Vector3(camera.position.x, camera.position.y - PLAYER.eyeHeight, camera.position.z), input.yaw, input.pitch);
+  body.update(new THREE.Vector3(camera.position.x, feetY, camera.position.z), input.yaw, input.pitch, player);
   updateAmmo();
 
   gpuTimer.begin();

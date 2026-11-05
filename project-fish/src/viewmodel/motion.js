@@ -49,6 +49,21 @@ export const MOTION = {
   // (spring speeds, radians or metres a second), a bit less while aiming.
   recoil: { flip: 3.1, flipRandom: 0.6, yaw: 0.6, roll: 0.9, back: 0.55, up: 0.12, aimed: 0.55 },
   slam: { dip: 0.9, forward: 0.12 }, // the smaller jolt as the slide slams home a moment later
+  // How it moves with the player's moves (src/shared/movement.js).
+  // Tactical sprint: longer, harder strides (on top of the sprint pose).
+  tacSprint: { bob: 1.35, stride: 0.9 },
+  // Sliding (or on your back): lowered, canted over and tipped up a little,
+  // with a fine judder from the ground.
+  slide: { down: 0.035, left: 0.015, roll: 0.32, tip: -0.06, judder: 0.0025, ease: 10 },
+  // Climbing: dipped and rolled to the left (the support hand reaches for the
+  // ledge), less while aiming.
+  mantle: { down: 0.07, roll: -0.45, tip: 0.25, ease: 9 },
+  // Prone: low and propped, canted a touch.
+  prone: { down: 0.02, roll: 0.08, ease: 6 },
+  // Crouching or standing up: a little dip (or lift) as the body drops.
+  crouch: { dip: 0.09, nod: 0.25 },
+  // Diving: up as you leave the ground, a big shove as you land.
+  dive: { lift: 0.5, land: 0.12, nod: 0.6 },
 };
 
 const MAX_STEP = 1 / 240; // springs are stepped at least this finely, so they stay stable
@@ -96,6 +111,12 @@ export class ViewmodelMotion {
     this.lastFall = 0;
     this.wall = 0;
     this.sprint = 0; // 0 = not sprinting, 1 = fully into the sprint pose
+    this.slide = 0; // 0..1 into the slide pose, and the others
+    this.mantle = 0;
+    this.prone = 0;
+    this.tac = 0;
+    this.lastStance = 'stand';
+    this.lastMove = 'ground';
     this.unsteady = 0;
   }
 
@@ -184,14 +205,47 @@ export class ViewmodelMotion {
     // Sprinting eases the gun down into the sprint pose and back up again.
     this.sprint += ((sprinting ? 1 : 0) - this.sprint) * Math.min(1, dt * M.sprint.ease);
     const run = this.sprint;
+    this.tac += ((sprinting && player.tacSprint ? 1 : 0) - this.tac) * Math.min(1, dt * M.sprint.ease);
+
+    // The player's moves: sliding, climbing, prone, crouching, diving.
+    const move = player.move || 'ground';
+    const ease = (v, on, rate) => v + ((on ? 1 : 0) - v) * Math.min(1, dt * rate);
+    this.slide = ease(this.slide, move === 'slide' || move === 'supine', M.slide.ease);
+    this.mantle = ease(this.mantle, move === 'mantle', M.mantle.ease);
+    this.prone = ease(this.prone, player.stance === 'prone' || move === 'dive', M.prone.ease);
+    const sl = this.slide;
+    target.y -= M.slide.down * sl;
+    target.x -= M.slide.left * sl;
+    targetRot.z += M.slide.roll * sl;
+    targetRot.x -= M.slide.tip * sl;
+    if (sl > 0.05) {
+      const j = M.slide.judder * sl * Math.min(1, Math.hypot(player.vx, player.vz) / 6);
+      target.y += (Math.sin(this.time * 61) + Math.sin(this.time * 97.3)) * 0.5 * j;
+      targetRot.z += (Math.sin(this.time * 73.1) * 0.5) * j * 6;
+    }
+    const ml = this.mantle * keep('inertia');
+    target.y -= M.mantle.down * ml;
+    targetRot.z += M.mantle.roll * ml;
+    targetRot.x -= M.mantle.tip * ml;
+    target.y -= M.prone.down * this.prone;
+    targetRot.z += M.prone.roll * this.prone;
+    if (player.stance !== this.lastStance && move !== 'slide' && move !== 'supine') {
+      const down = player.stance !== 'stand' && this.lastStance === 'stand' || player.stance === 'prone';
+      this.position.velocity.y += (down ? -1 : 1) * M.crouch.dip;
+      this.rotation.velocity.x += (down ? -1 : 1) * M.crouch.nod;
+    }
+    if (move === 'dive' && this.lastMove !== 'dive') this.rotation.velocity.x += M.dive.lift;
+    this.lastStance = player.stance || 'stand';
+    this.lastMove = move;
 
     // Walking: a figure-of-eight in step with the feet, and a little bounce at
     // each footstep. Sprinting, the strides are longer and swing it more.
     const speed = player.grounded ? Math.hypot(player.vx, player.vz) : 0;
     this.bobAmount += (Math.min(speed / 5, 1) - this.bobAmount) * Math.min(1, dt * 8);
     const before = Math.floor(this.bobPhase / Math.PI);
-    this.bobPhase += speed * dt * M.bob.stepsPerMetre * (1 - (1 - M.sprint.stride) * run) * Math.PI;
-    const b = this.bobAmount * keep('bob') * (1 + (M.sprint.bob - 1) * run);
+    const crouched = player.stance === 'crouch' ? 1 : 0;
+    this.bobPhase += speed * dt * M.bob.stepsPerMetre * (1 - (1 - M.sprint.stride) * run) * (1 - (1 - M.tacSprint.stride) * this.tac) * (1 + 0.3 * crouched) * Math.PI;
+    const b = this.bobAmount * keep('bob') * (1 + (M.sprint.bob - 1) * run) * (1 + (M.tacSprint.bob - 1) * this.tac) * (1 - 0.4 * crouched) * (1 - sl) * (1 - this.mantle);
     if (Math.floor(this.bobPhase / Math.PI) !== before) {
       this.position.velocity.y -= M.bob.footstep * b;
       this.rotation.velocity.x -= M.bob.nod * b;
@@ -208,8 +262,9 @@ export class ViewmodelMotion {
     }
     if (!this.wasGrounded && player.grounded) {
       const impact = Math.max(0, -this.lastFall);
-      this.position.velocity.y -= impact * M.landing.drop;
-      this.rotation.velocity.x -= impact * M.landing.nod;
+      const dive = move === 'dive' ? 1 : 0;
+      this.position.velocity.y -= impact * M.landing.drop + dive * M.dive.land;
+      this.rotation.velocity.x -= impact * M.landing.nod + dive * M.dive.nod;
     }
     this.wasGrounded = player.grounded;
     this.lastFall = player.vy;

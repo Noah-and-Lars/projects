@@ -21,9 +21,11 @@ Click to lock the mouse to the game. Press Esc to get the mouse back.
 | Key | Action |
 |---|---|
 | WASD | Move |
-| Shift (hold) | Sprint (going forwards) |
+| Shift (hold) | Sprint (going forwards); double-tap for a tactical sprint (faster, while stamina lasts) |
 | Mouse | Look |
-| Space | Jump |
+| Space | Jump; at a ledge, climb onto it (or vault over it if it's low and thin); stand up |
+| C | Crouch (toggle); while sprinting, slide (double-tap: a longer slide onto your back) |
+| Z | Go prone (toggle); while sprinting, dive |
 | Left mouse | Fire |
 | Right mouse (hold) | Aim down the iron sights |
 | Q | Aim: click to toggle, or hold to aim until you let go |
@@ -34,7 +36,7 @@ Click to lock the mouse to the game. Press Esc to get the mouse back.
 | T | Switch the gun's light and laser on and off (when it has them) |
 | Esc | Release the mouse |
 
-The top-left corner shows the frame rate, your speed and whether you're on the ground or in the air.
+The top-left corner shows the frame rate, your speed, whether you're on the ground or in the air, your stance or move, and your stamina.
 
 ## How the code is laid out
 
@@ -81,6 +83,22 @@ A soldier in full tactical gear stands beside the house door, facing where you s
 
 You are the soldier too: look down and you see his legs, boots and kit, and the sun casts his whole shadow (`src/player/body.js`, a copy of the same model). The camera sits just behind his eyes, so his head, helmet, glasses and eyes are left out of the picture (they still cast their shadow), and so are his sleeves and gloves for now (the hands on the gun are the gun layer's). He faces where you look, leans a little with the view, and his neck and head take the rest of it. His hips move so his eyes stay just in front of the camera, sliding back as you look down so you look down past his chest, and his feet stay planted (two-bone leg IK, `src/player/ik.js`).
 
+## Moving
+
+The movement is in `src/shared/movement.js` (shared with the future server), with its numbers in `MOVEMENT` and `PLAYER` in `src/shared/config.js`. They're modelled on how modern military shooters move:
+
+- **Walking** at 5 m/s, a little slower backwards (0.75) and sideways (0.9). Aiming 0.6, crouched 0.5 (0.35 aiming), prone 0.9 m/s.
+- **Sprinting** (hold Shift going forwards) at 6.8 m/s, as long as you like. **Tactical sprint** (double-tap Shift) at 8.4 m/s for up to 4 s of stamina: it slows towards a plain sprint as stamina runs low, and stamina comes back over 3 s after a short pause. The view widens a little while it lasts, and the gun swings harder.
+- **Crouching** (C, a toggle) and **going prone** (Z). Space stands up. You can't stand up where there's no room overhead.
+- **Sliding** (C while sprinting): a burst of speed (1.2 times your sprint) that slows over 0.75 s, low enough to go under a 1 m bar. You can steer it a little, and jump out of it after 0.15 s to keep sprint speed (a slide cancel). The view rolls into it and widens, and the gun drops and cants over with a fine judder from the ground. It ends crouched. **Double-tap C** while sprinting for a longer, lower slide onto your back; getting up takes half a second.
+- **Diving** (Z while sprinting): a low leap forward that lands you prone and slides you to a stop. Not straight after a jump.
+- **Jumping** 1 m high. You land on top of things and walk up anything 35 cm or lower. You can still jump just after walking off an edge, and a jump pressed just before landing still happens.
+- **Mantling**: Space at a ledge up to 2.1 m above your feet (or moving towards one in the air, so a jump reaches higher ledges) climbs onto it. Something up to 1.15 m high and 0.8 m thick you vault over instead. You keep your speed coming out (Mantle momentum), and C during a vault goes straight into a slide. The gun dips and rolls while you climb and can only fire if you're aiming.
+- **Landing** from 1.5 m or more slows you for a moment (more from 3.5 m), less if you were sprinting.
+- Shots stray less crouched (0.8) or prone (0.65) and more sliding, diving or in the air (1.5).
+
+A small course to the left of the spawn has something for each: crates 0.5, 1 and 1.5 m high, a low wall to vault, a 2 m wall and a 2.6 m ledge to climb (jump first for the ledge), a bar to slide under, and three steps (`OBSTACLES` in `src/shared/map.js`).
+
 ## Tuning movement
 
 All movement values are in `src/shared/config.js`:
@@ -88,7 +106,10 @@ All movement values are in `src/shared/config.js`:
 | Value | Now | Meaning |
 |---|---|---|
 | `walkSpeed` | 5 m/s | Top walking speed |
-| `sprintSpeedFactor` | 1.5 | Sprinting speed (7.5 m/s), as a fraction of walking speed |
+| `sprintSpeedFactor` | 1.36 | Sprinting speed (6.8 m/s), as a fraction of walking speed |
+| `tacSprintSpeedFactor` | 1.68 | Tactical sprint (8.4 m/s); `tacSprintTime` 4 s of stamina, back over `staminaRegenTime` 3 s |
+| `slideBoost`, `slideFriction`, `slideTime` | 1.2, 7 m/s², 0.75 s | A slide's burst, how fast it slows and how long it lasts at most |
+| `mantleReach`, `vaultMaxHeight` | 2.1 m, 1.15 m | How high a ledge you can climb, and how high a wall you vault |
 | `groundAccel` | 50 m/s² | How fast you reach full speed or change direction (full speed in 0.1 s) |
 | `groundDecel` | 40 m/s² | How fast you stop when you let go (about 0.13 s) |
 | `airAccel` | 12 m/s² | How much you can steer in the air |

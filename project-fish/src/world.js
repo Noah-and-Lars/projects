@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { loadSoldier, SOLDIER_MODEL } from './soldier.js';
 import { WORLD } from './shared/config.js';
-import { COLLIDERS, HOUSE, SOLDIER, SOLDIER_BOX } from './shared/map.js';
+import { COLLIDERS, HOUSE, OBSTACLES, SOLDIER, SOLDIER_BOX } from './shared/map.js';
 
 const SKY_COLOR = 0xb8c6d4;
 const FLOOR_COLOR = 0x8c8c8c;
@@ -21,16 +21,17 @@ export function createWorld() {
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0x5a5a5a, 1.2));
 
-  // The sun casts shadows around the house only (it's the only thing that casts one).
+  // The sun casts shadows around the house, the movement course and the
+  // spawn (SHADOW_AREA).
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.position.set(HOUSE.x, 0, HOUSE.z).addScaledVector(SUN_DIRECTION, 40);
-  sun.target.position.set(HOUSE.x, 0, HOUSE.z);
+  sun.position.set(SHADOW_AREA.x, 0, SHADOW_AREA.z).addScaledVector(SUN_DIRECTION, 40);
+  sun.target.position.set(SHADOW_AREA.x, 0, SHADOW_AREA.z);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -8;
-  sun.shadow.camera.right = 8;
-  sun.shadow.camera.top = 8;
-  sun.shadow.camera.bottom = -8;
+  sun.shadow.camera.left = -SHADOW_AREA.half;
+  sun.shadow.camera.right = SHADOW_AREA.half;
+  sun.shadow.camera.top = SHADOW_AREA.half;
+  sun.shadow.camera.bottom = -SHADOW_AREA.half;
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 80;
   sun.shadow.bias = -0.0005;
@@ -46,7 +47,28 @@ export function createWorld() {
   scene.add(floor);
 
   scene.add(createHouse());
+  scene.add(createCourse());
   return scene;
+}
+
+// Where the sun's shadows are drawn: centre and half size (metres).
+const SHADOW_AREA = { x: -3, z: -11, half: 15 };
+
+// The movement course's crates, walls, bar and steps (OBSTACLES in map.js).
+function createCourse() {
+  const group = new THREE.Group();
+  const looks = {
+    crate: new THREE.MeshStandardMaterial({ color: 0x8b6b45, roughness: 0.85, metalness: 0 }),
+    concrete: new THREE.MeshStandardMaterial({ color: 0x9c9a93, roughness: 0.95, metalness: 0 }),
+    metal: new THREE.MeshStandardMaterial({ color: 0x55595e, roughness: 0.5, metalness: 0.6 }),
+  };
+  for (const b of OBSTACLES) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ), looks[b.look]);
+    mesh.position.set((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2);
+    mesh.castShadow = mesh.receiveShadow = true;
+    group.add(mesh);
+  }
+  return group;
 }
 
 function createHouse() {

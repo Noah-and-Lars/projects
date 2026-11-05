@@ -18,6 +18,8 @@ import * as THREE from 'three';
 import { bonesOf, firstPersonTag, loadSoldier } from '../soldier.js';
 import { outdoorEnvironment, SOLDIER_SKY, SUN_DIRECTION } from '../world.js';
 import { twoBoneIK } from './ik.js';
+import { PLAYER } from '../shared/config.js';
+import { isLow } from '../shared/movement.js';
 
 // How far in front of the camera his eyes are (metres); and how much further
 // back he goes as the view turns straight down.
@@ -88,10 +90,16 @@ export class PlayerBody {
     });
   }
 
-  // feet: where the player stands (world); yaw, pitch: where they look.
-  update(feet, yaw, pitch) {
+  // feet: where the player stands (world); yaw, pitch: where they look;
+  // player: the movement state (crouching lowers his hips; sliding, lying,
+  // diving and climbing aren't posed yet, so he's left out then).
+  update(feet, yaw, pitch, player = null) {
     const model = this.model;
     if (!model) return;
+    const posed = !player || !(isLow(player) || player.move === 'mantle');
+    model.visible = posed;
+    if (!posed) return;
+    const crouch = player ? Math.max(0, PLAYER.eyeHeight - player.eye) : 0;
     model.position.copy(feet);
     model.rotation.set(0, yaw + Math.PI, 0); // he faces +Z
     for (const [bone, rest] of this.rest) {
@@ -136,7 +144,7 @@ export class PlayerBody {
       const most = Math.sqrt(Math.max(0, reach * reach - across * across));
       drop = Math.max(drop, down - most);
     }
-    hipAt.y -= Math.max(0, drop);
+    hipAt.y -= Math.max(drop, crouch);
     this.hip.position.copy(this.hip.parent.worldToLocal(hipAt));
     this.hip.updateMatrixWorld(true);
 

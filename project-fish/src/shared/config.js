@@ -6,21 +6,84 @@ export const TICK_RATE = 60;
 export const TICK_DT = 1 / TICK_RATE;
 
 export const PLAYER = {
-  height: 1.8, // m
-  eyeHeight: 1.65, // m, camera height above the feet
+  height: 1.8, // m, standing
+  eyeHeight: 1.65, // m, camera height above the feet, standing
   radius: 0.35, // m, how wide the player is when bumping into things
+  // How tall the player is (for bumping into things) and where the eyes are,
+  // in each stance and move.
+  heights: { stand: 1.8, crouch: 1.2, slide: 0.95, prone: 0.55, supine: 0.6, dive: 0.8 },
+  eyes: { stand: 1.65, crouch: 1.08, slide: 0.82, prone: 0.38, supine: 0.48, dive: 0.65 },
+  stepHeight: 0.35, // m, walks straight up anything this low
 };
 
 export const MOVEMENT = {
   walkSpeed: 5.0, // m/s
-  aimSpeedFactor: 0.55, // walking speed while aiming down the sights, as a fraction of walkSpeed
-  sprintSpeedFactor: 1.5, // running speed while sprinting (hold Shift going forwards), as a fraction of walkSpeed
+  // Speeds as fractions of walkSpeed.
+  aimSpeedFactor: 0.6, // aiming down the sights
+  sprintSpeedFactor: 1.36, // sprinting (hold Shift going forwards): 6.8 m/s
+  tacSprintSpeedFactor: 1.68, // tactical sprint (double-tap Shift): 8.4 m/s, while stamina lasts
+  backSpeedFactor: 0.75, // walking backwards
+  strafeSpeedFactor: 0.9, // walking sideways
+  crouchSpeedFactor: 0.5, // crouched
+  crouchAimSpeedFactor: 0.35, // crouched and aiming
+  proneSpeed: 0.9, // m/s, crawling
   groundAccel: 50, // m/s², how hard you speed up or change direction on the ground
   groundDecel: 40, // m/s², how hard you stop when you let go of the keys
   airAccel: 12, // m/s², how much you can steer in the air
   gravity: 20, // m/s², stronger than real life so jumps feel crisp
   jumpHeight: 1.0, // m
   jumpBuffer: 0.1, // s, a jump pressed this long before landing still happens
+  coyoteTime: 0.1, // s, you can still jump this long after walking off an edge
+  doubleTap: 0.3, // s, two presses this close together are a double tap
+
+  // Changing stance: how fast the eyes move (m/s).
+  stanceSpeed: { crouch: 4, prone: 1.5 },
+
+  // Tactical sprint and stamina (plain sprinting never runs out).
+  tacSprintTime: 4, // s from full to empty
+  tacSprintMinStamina: 0.25, // needed to start one
+  staminaRegenDelay: 0.6, // s after it stops
+  staminaRegenTime: 3, // s from empty to full
+  fatigueStart: 0.3, // below this much stamina it slows towards a plain sprint
+
+  // Sliding: press C while sprinting.
+  slideMinSprintTime: 0.15, // s of sprinting first
+  slideMinSpeed: 5.5, // m/s
+  slideBoost: 1.2, // speed at the start, times the sprint speed you had
+  slideMaxStartSpeed: 9.6, // m/s
+  slideFriction: 7, // m/s², how fast it slows
+  slideTime: 0.75, // s at most
+  slideSteer: 4, // m/s², how much you can steer
+  slideJumpDelay: 0.15, // s into a slide before you can jump out of it
+  slideCooldown: 0.3, // s before the next one (sprinting again)
+  // Supine slide: double-tap C while sprinting. Longer and lower, ending on
+  // your back; getting up takes a moment.
+  supineBoost: 1.4,
+  supineFriction: 5,
+  supineTime: 1.1,
+  supineRise: 0.55, // s
+
+  // Diving: press Z while sprinting.
+  diveMinSprintTime: 0.15,
+  diveUp: 3.2, // m/s up at the start
+  diveMaxSpeed: 9,
+  diveFriction: 10, // m/s², sliding on your front after landing
+  diveRecover: 0.45, // s before you can crawl after landing
+  diveAfterJump: 0.35, // s after a jump before you can dive
+
+  // Landing: falls from higher than this slow you a little for a moment.
+  landSlowFall: 1.5, // m
+  landSlow: { time: 0.15, factor: 0.7 },
+  hardLandFall: 3.5, // m
+  hardLand: { time: 0.35, factor: 0.5 },
+  sprintLandKeep: 0.8, // landing while sprinting keeps at least this much speed
+
+  // Mantling and vaulting (Space at a ledge, or automatically in the air).
+  mantleProbe: 0.5, // m beyond the player's edge
+  mantleReach: 2.1, // m above the feet (standing or in the air)
+  vaultMaxHeight: 1.15, // m: lower, and thin enough, and you go over instead of onto
+  vaultMaxDepth: 0.8, // m
+  mantleTimes: { vault: 0.4, low: 0.45, mid: 0.55, high: 0.75 }, // s
 };
 
 export const WORLD = {
