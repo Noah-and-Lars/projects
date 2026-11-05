@@ -15,6 +15,7 @@ import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMag
 import { addSoldier, createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { PlayerBody } from './player/body.js';
+import { FirstPersonArms } from './player/fpArms.js';
 import { Input } from './input.js';
 import { GpuTimer, Hud } from './hud.js';
 import { settings } from './settings.js';
@@ -66,6 +67,8 @@ camera.rotation.order = 'YXZ'; // turn left/right first, then look up/down
 const soldier = addSoldier(scene, renderer, camera);
 const body = new PlayerBody(scene, renderer, camera);
 const viewmodel = new Viewmodel(renderer, SUN_DIRECTION);
+// The soldier's own arms on the gun (settings.soldierArms), once both are in.
+const fpArms = settings.soldierArms ? new FirstPersonArms(body, viewmodel) : null;
 
 const input = new Input(renderer.domElement);
 const hud = new Hud(document.getElementById('debug'));
@@ -504,6 +507,7 @@ renderer.setAnimationLoop((time) => {
   effects.update(frameSeconds);
   soldier.update(frameSeconds);
   body.update(new THREE.Vector3(camera.position.x, feetY, camera.position.z), input.yaw, input.pitch, player);
+  if (fpArms && body.model && loaded) fpArms.update(camera);
   updateAmmo();
 
   gpuTimer.begin();

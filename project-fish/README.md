@@ -61,7 +61,7 @@ The top-left corner shows the frame rate, your speed, whether you're on the grou
 | `src/viewmodel/handRig.js` | Finger joints for the gloves (a skeleton fitted when the game loads) |
 | `src/viewmodel/supportHand.js` | The support hand's shapes and how it holds a magazine |
 | `src/viewmodel/shootingHand.js` | The shooting hand's thumb pressing each gun's magazine release |
-| `src/soldier.js`, `src/player/body.js`, `src/player/ik.js` | The soldier model, loaded once; the player's own body; limb IK |
+| `src/soldier.js`, `src/player/body.js`, `src/player/fpArms.js`, `src/player/ik.js` | The soldier model, loaded once; the player's own body; his arms holding the gun; limb IK |
 | `src/attachments.js`, `src/loadoutMenu.js` | Which attachments each gun has on, and the loadout menu (B) to choose them |
 | `src/effects/audio.js` | The sounds: made in code, and the PF-45's recordings in `assets/sounds/` |
 | `src/viewmodel/sdf.js` | Turns blended shapes into smooth meshes (used for the hands and sleeves) |
@@ -81,7 +81,9 @@ A soldier in full tactical gear stands beside the house door, facing where you s
 
 ## Your own body
 
-You are the soldier too: look down and you see his legs, boots and kit, and the sun casts his whole shadow (`src/player/body.js`, a copy of the same model). The camera sits just behind his eyes, so his head, helmet, glasses and eyes are left out of the picture (they still cast their shadow), and so are his sleeves and gloves for now (the hands on the gun are the gun layer's). He faces where you look, leans a little with the view, and his neck and head take the rest of it. His hips move so his eyes stay just in front of the camera, sliding back as you look down so you look down past his chest, and his feet stay planted (two-bone leg IK, `src/player/ik.js`).
+You are the soldier too: look down and you see his legs, boots and kit, and the sun casts his whole shadow (`src/player/body.js`, a copy of the same model). The camera sits just behind his eyes, so his head, helmet, glasses and eyes are left out of the picture (they still cast their shadow).
+
+His own arms hold the gun (`src/player/fpArms.js`): his sleeves and gloves are drawn in the gun layer with the body's own bones and vertex data, nothing copied. The hands are still animated by the gun layer's hand rigs (every grip, reload and inspect), and each frame his hand is put where the rig's is (his middle knuckle on its middle knuckle), each finger bone turned as the rig's, and his upper arm and forearm reach it from his shoulder by two-bone IK, the elbow hanging down and out, with the lower forearm taking half the wrist's twist. If his arms can't reach (looking up, mostly), the whole gun is drawn in towards his shoulders so the hands never leave it. To reach, the gun is held 0.4 m from the camera with a wider view of the gun layer (62°), so it's the size on screen it was further out. `settings.soldierArms` (in `src/settings.js`) switches back to the separate gloves model, which is also used if the soldier model can't be loaded. He faces where you look, leans a little with the view, and his neck and head take the rest of it. His hips move so his eyes stay just in front of the camera, sliding back as you look down so you look down past his chest, and his feet stay planted (two-bone leg IK, `src/player/ik.js`).
 
 ## Moving
 

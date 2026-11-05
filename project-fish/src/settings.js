@@ -6,4 +6,8 @@ export const settings = {
   // Horizontal field of view in degrees, measured on a 16:9 screen.
   // Wider screens see more at the sides; taller ones see the same width.
   fov: 90,
+  // Hold the gun with the soldier's own arms (sleeves and gloves) in first
+  // person, as the body you see looking down; false uses the separate
+  // gloves model (it's also used if the soldier model can't be loaded).
+  soldierArms: true,
 };

@@ -96,9 +96,10 @@ export class PlayerBody {
   update(feet, yaw, pitch, player = null) {
     const model = this.model;
     if (!model) return;
+    // (Still placed when he's left out, so his shoulders stay where his arms
+    // need them.)
     const posed = !player || !(isLow(player) || player.move === 'mantle');
-    model.visible = posed;
-    if (!posed) return;
+    this.setShown(posed);
     const crouch = player ? Math.max(0, PLAYER.eyeHeight - player.eye) : 0;
     model.position.copy(feet);
     model.rotation.set(0, yaw + Math.PI, 0); // he faces +Z
@@ -165,6 +166,16 @@ export class PlayerBody {
       foot.quaternion.copy(parentTurn).invert().multiply(planted[i].quaternion);
       foot.updateMatrixWorld(true);
     }
+  }
+
+  // Shows or leaves out his body in the world (his arms, drawn in the gun
+  // layer, use its bones either way).
+  setShown(shown) {
+    if (this.shown === shown) return;
+    this.shown = shown;
+    this.model.traverse((o) => {
+      if (o.isMesh) o.visible = shown;
+    });
   }
 
   // The world scale of a bone's parent chain (the model's skeleton is in

@@ -514,11 +514,13 @@ export function handAt(r, kind = 'empty', paths = HAND_PATHS) {
 // The hands and arms, made in Blender (see tools/blender/).
 const ARMS_MODEL = new URL('../../assets/arms.glb', import.meta.url);
 
-const VIEW_FOV = 52; // vertical, degrees
+const VIEW_FOV = 62; // vertical, degrees
 
 // Where the gun sits in front of the camera when held at the hip: arms pushed
-// out, pistol a little right of centre, pointing straight ahead.
-const HIP_POSITION = new THREE.Vector3(0.075, -0.07, -0.5);
+// out, pistol a little right of centre, pointing straight ahead. (Close
+// enough that the soldier's own arms reach it from his shoulders; the wide
+// view keeps it the size it would be further out.)
+const HIP_POSITION = new THREE.Vector3(0.074, -0.069, -0.4);
 const HIP_ROTATION = new THREE.Euler(0, 0.02, 0, 'YXZ');
 
 // Aiming down the sights: the gun comes up so the line through the three
@@ -614,7 +616,7 @@ export class Viewmodel {
     this.sun = new THREE.DirectionalLight(0xfff4e6, 2.4);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(this.sun.shadow.camera, { left: -0.24, right: 0.24, top: 0.24, bottom: -0.24, near: 0.05, far: 2 });
+    Object.assign(this.sun.shadow.camera, { left: -0.4, right: 0.4, top: 0.4, bottom: -0.4, near: 0.05, far: 2 });
     this.sun.shadow.bias = -0.0002;
     this.sun.shadow.normalBias = 0.0012;
     this.sun.target.position.copy(HIP_POSITION);
@@ -674,6 +676,11 @@ export class Viewmodel {
         this.shooter.skin(rightGlove);
         this.carriedByHand(this.shooter, arms.getObjectByName('right_knuckle_guard'));
       }
+      // The gloves model's own meshes (see hideGloves).
+      this.gloveMeshes = [];
+      arms.traverse((o) => {
+        if (o.isMesh) this.gloveMeshes.push(o);
+      });
       kinds.forEach((key, i) => {
         this.guns[key] = this.rigGun(key, pistols[i].model, pistols[i].fromFile);
       });
@@ -899,6 +906,12 @@ export class Viewmodel {
     this.stopLift = 0;
     this.chambered = 1;
     this.dropDone = false;
+  }
+
+  // Stops drawing the gloves model (the soldier's own arms hold the gun
+  // instead, src/player/fpArms.js); its hand rigs keep working.
+  hideGloves() {
+    for (const mesh of this.gloveMeshes || []) mesh.visible = false;
   }
 
   // The support hand presses the gun's light or laser switch (T).
@@ -1268,6 +1281,9 @@ export class Viewmodel {
       this.leftArm.position.copy(WRIST).applyQuaternion(hand.turn).negate().add(WRIST).add(hand.offset);
     }
     if (this.hand) this.hand.set(hand.from, hand.to, hand.k, 'grip', returning);
+    // Whether the support hand is on the gun (rather than off at the belt).
+    const ON_GUN = ['grip', 'loose', 'flat', 'pushing', 'slide'];
+    this.supportOnGun = ON_GUN.includes(hand.from) && ON_GUN.includes(hand.to);
     // Pressing an attachment's switch (T): a quick reach and back, while
     // the hand's holding the gun.
     if (this.hand && this.flick !== null && this.current.switchPose && hand.from === 'grip' && hand.to === 'grip' && returning === 0 && r < 0) {
