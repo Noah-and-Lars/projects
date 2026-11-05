@@ -36,6 +36,30 @@ export const RELOAD_STEPS = {
   },
 };
 
+// Inspecting: the shooting hand turns the gun to show its right side, then
+// its left, and then the magazine is checked: the support hand catches it as
+// it drops out, holds it up to look at, and pushes it back in. The hands' and
+// gun's movements are keyframed in src/viewmodel/viewmodel.js
+// (INSPECT_POSES and HAND_PATHS.inspect); these are the times things happen
+// (seconds from the start), for the sounds and the magazine.
+export const INSPECT = {
+  time: 5.8, // the whole thing
+  // Cut short (by firing, aiming, reloading or sprinting), it goes back to
+  // the hold this quickly, from wherever it's got to...
+  fade: 0.25,
+  // ...but with the magazine out, it's put back in first, the rest played
+  // this many times faster.
+  hurry: 4,
+  magOut: 3.38, // the thumb presses the release; the magazine drops into the support hand
+  magIn: 4.78, // the palm pushes it back home
+};
+const inspectAt = (seconds) => seconds / INSPECT.time;
+export const INSPECT_STEPS = {
+  magOut: inspectAt(INSPECT.magOut),
+  magCaught: inspectAt(INSPECT.magOut + fallTime(CATCH_GAP)), // it lands in the palm
+  magIn: inspectAt(INSPECT.magIn),
+};
+
 export class Pistol {
   constructor() {
     this.ammo = PISTOL.magazine;
@@ -43,6 +67,8 @@ export class Pistol {
     this.cooldown = 0;
     this.slideLocked = false; // the slide stays back after the last round
     this.reload = null; // { time, duration, empty, done: Set of steps reached }
+    this.inspect = null; // { time, done: Set of steps reached, cut: cut short, fade: 1 → 0 when it's going back }
+    this.reloadWaiting = false; // the reload key was pressed while inspecting
     this.pulls = []; // trigger pulls waiting for the gun to be ready (seconds waited)
   }
 
@@ -61,24 +87,66 @@ export class Pistol {
     return this.reload ? Math.min(1, this.reload.time / this.reload.duration) : -1;
   }
 
+  get inspecting() {
+    return this.inspect !== null;
+  }
+
+  // How far through the inspect (0..1), or -1 if not inspecting.
+  get inspectProgress() {
+    return this.inspect ? Math.min(1, this.inspect.time / INSPECT.time) : -1;
+  }
+
+  // How much of the inspect pose there is: 1, going down to 0 when it's cut
+  // short.
+  get inspectAmount() {
+    return this.inspect ? Math.max(0, this.inspect.fade) : 0;
+  }
+
   // dt: seconds since the last frame. trigger: how many times the fire button
   // was pressed this frame (a pull while the gun isn't ready yet is kept for a
   // moment, so quick taps are never lost). reloadKey: the reload key was pressed.
   // ready: the gun is up and can fire (not while it's still coming up from a
-  // sprint; a pull made then fires as soon as it's up).
+  // sprint; a pull made then fires as soon as it's up). inspectKey: the
+  // inspect key was pressed. busy: aiming or sprinting, which stops an
+  // inspect (or keeps one from starting).
   // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magCaught',
-  // 'magGrab', 'magIn', 'slideRelease', 'reloaded'.
-  update(dt, trigger, reloadKey, ready = true) {
-    // Pulls wait for the gun to be up (out of a sprint) before they start to
-    // go stale.
-    if (ready) this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 0.25);
+  // 'magGrab', 'magIn', 'slideRelease', 'reloaded', 'inspect', 'inspected'.
+  update(dt, trigger, reloadKey, ready = true, inspectKey = false, busy = false) {
     for (let i = 0; i < trigger; i++) this.pulls.push(0);
-    return this.step(dt, reloadKey, ready);
+    const events = this.step(dt, reloadKey, ready, inspectKey, busy);
+    // Pulls that couldn't fire yet go stale after a moment, but only once
+    // the gun is up (out of a sprint, or back from an inspect), and only
+    // after a frame in which they could have fired (so even a very slow
+    // frame can't make one stale before it gets its chance).
+    if (ready && !this.inspect) this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 0.25);
+    return events;
   }
 
-  step(dt, reloadKey, ready = true) {
+  step(dt, reloadKey, ready = true, inspectKey = false, busy = false) {
     const events = [];
     this.cooldown = Math.max(0, this.cooldown - dt);
+
+    if (this.inspect) {
+      // Firing, reloading, aiming or sprinting cuts it short, and what was
+      // asked for happens once the gun is back in the hold.
+      if (reloadKey && this.ammo < PISTOL.magazine && this.reserve > 0) this.reloadWaiting = true;
+      const inspect = this.inspect;
+      if (this.pulls.length || this.reloadWaiting || busy) inspect.cut = true;
+      const p = inspect.time / INSPECT.time;
+      const magazineOut = p >= INSPECT_STEPS.magOut && p < INSPECT_STEPS.magIn;
+      if (inspect.cut && !magazineOut) inspect.fade -= dt / INSPECT.fade;
+      else inspect.time += dt * (inspect.cut ? INSPECT.hurry : 1);
+      const now = inspect.time / INSPECT.time;
+      for (const [step, at] of Object.entries(INSPECT_STEPS)) {
+        if (now >= at && !inspect.done.has(step)) {
+          inspect.done.add(step);
+          events.push(step);
+        }
+      }
+      if (now < 1 && inspect.fade > 0) return events;
+      this.inspect = null;
+      events.push('inspected');
+    }
 
     if (this.reload) {
       this.reload.time += dt;
@@ -104,11 +172,21 @@ export class Pistol {
     }
 
     const canReload = this.ammo < PISTOL.magazine && this.reserve > 0;
+    if (this.reloadWaiting) {
+      reloadKey = true;
+      this.reloadWaiting = false;
+    }
     if (reloadKey && canReload) {
       const empty = this.ammo === 0;
       this.reload = { time: 0, duration: empty ? PISTOL.emptyReloadTime : PISTOL.reloadTime, empty, done: new Set() };
       events.push('reload');
       this.pulls = [];
+      return events;
+    }
+
+    if (inspectKey && ready && !busy && !this.pulls.length && this.cooldown === 0) {
+      this.inspect = { time: 0, done: new Set(), cut: false, fade: 1 };
+      events.push('inspect');
       return events;
     }
 

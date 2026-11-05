@@ -28,6 +28,7 @@ Click to lock the mouse to the game. Press Esc to get the mouse back.
 | Right mouse (hold) | Aim down the iron sights |
 | Q | Aim: click to toggle, or hold to aim until you let go |
 | R | Reload |
+| I | Inspect the gun |
 | Esc | Release the mouse |
 
 The top-left corner shows the frame rate, your speed and whether you're on the ground or in the air.
@@ -107,6 +108,12 @@ The pistol is semi-automatic: one shot per click, up to 500 a minute (clicks mad
 - **Smoke:** a wisp from the muzzle on every shot. Each shot also heats the barrel, which cools over a few seconds; after a few quick shots, thin smoke keeps curling off the muzzle and out of the ejection port for a few seconds (about three after a whole magazine; `HEAT` in `src/main.js`).
 - **Sound:** a 9mm report built in code sample by sample (pressure spike, bright blast, low punch, ground bounce, slide clack) with outdoor echoes, a click when the gun is empty, and reload sounds, including a dropped magazine clattering on the ground (`src/effects/audio.js`).
 - **Reloading (R):** the gun comes up and in, muzzle tipped up a little so the magazine well comes into view, and the shooting hand's thumb comes down onto the magazine release and presses it. From empty, the support hand has already let go and is heading for the belt, and the empty magazine drops free; it carries on falling in the world, clatters on the ground and stays there (the last dozen are kept). With rounds left, the support hand turns palm up under the grip first, the old magazine drops into it, and it pulls it out and puts it away on the way to the belt, so the rounds left in it are kept. Either way it closes round a fresh magazine at the belt and brings it up held the way it's pushed in: palm up, baseplate in the palm, index finger along the front, the other fingers and the thumb closed on it (each closes until it touches the magazine). It lines it up under the well and pushes it straight in: the fingers slide off its front as it goes up into the grip, and the palm pushes it home (the gun jolts as it clicks in). Then the hand drops away, turns back and comes up beside the grip half open, and closes round it again; from empty, the slide is then released forward. 2.1 s with rounds left, or 2.5 s from empty. The hands' movements are `HAND_PATHS` in `src/viewmodel/viewmodel.js`, their hand shapes are in `src/viewmodel/supportHand.js` and `src/viewmodel/shootingHand.js`, and the timings are `RELOAD_STEPS` in `src/weapon.js`. The ammo counter is bottom right.
+
+### Inspecting
+
+Press I to look the gun over (5.8 s). The support hand lets go and drops out of the way, and the shooting hand brings the gun up and rolls it over to show its right side (the ejection port and the loaded-chamber indicator), then turns it the other way, muzzle to the left, to show its left side (the slide stop, which is up if the slide is locked back, and the markings). It turns the gun the way a real arm does: as much as it can by twisting the forearm about its own length, so the sleeve stays where it is, and the rest by bending the wrist and turning the forearm at the elbow. Then the gun comes upright and up, as for a reload, for a magazine check: the thumb presses the release, the magazine drops into the support hand waiting palm up under the grip, and the hand pulls it out and holds it up so you can see the top round and how full it is (or the follower if it's empty). It lines it back up, pushes it home, and takes hold of the gun again.
+
+Firing, aiming, reloading or sprinting cuts it short: the gun goes back to the hold in a quarter of a second, and then does what you asked (a shot isn't lost). If the magazine is out at that moment, it's pushed back in first, four times faster. You can't start an inspect while reloading, aiming or sprinting. The gun's and arms' keyframes are `INSPECT_POSES` and the support hand's path is `HAND_PATHS.inspect`, both in `src/viewmodel/viewmodel.js`; the timings are `INSPECT` in `src/weapon.js`.
 
 ### Sprinting
 

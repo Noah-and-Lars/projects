@@ -249,10 +249,12 @@ renderer.setAnimationLoop((time) => {
   updateViewKick(frameSeconds);
   camera.rotation.set(input.pitch + viewKick.x, input.yaw + viewKick.y, 0);
 
-  // The pistol: trigger and reload key, then the gun's pose, then what happened.
+  // The pistol: trigger, reload and inspect keys, then the gun's pose, then
+  // what happened. Aiming or sprinting stops an inspect.
+  const busy = input.aiming || Boolean(player.sprinting);
   const events = input.locked
-    ? weapon.update(frameSeconds, input.presses('Mouse0'), input.presses('KeyR') > 0, viewmodel.readyToFire)
-    : weapon.update(frameSeconds, 0, false, viewmodel.readyToFire);
+    ? weapon.update(frameSeconds, input.presses('Mouse0'), input.presses('KeyR') > 0, viewmodel.readyToFire, input.presses('KeyI') > 0, busy)
+    : weapon.update(frameSeconds, 0, false, viewmodel.readyToFire, false, busy);
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);
   const gunState = {
@@ -262,8 +264,10 @@ renderer.setAnimationLoop((time) => {
     reloadEmpty: weapon.reload ? weapon.reload.empty : false,
     ammo: weapon.ammo,
     reserve: weapon.reserve,
+    inspectProgress: weapon.inspectProgress,
+    inspectAmount: weapon.inspectAmount,
   };
-  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading, gunState);
+  aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !weapon.reloading && !weapon.inspecting, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount);
   document.body.classList.toggle('aiming', aimAmount > 0.4);
   document.body.classList.toggle('sprinting', viewmodel.motion.sprint > 0.4);
