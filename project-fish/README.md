@@ -59,6 +59,7 @@ The top-left corner shows the frame rate, your speed and whether you're on the g
 | `src/viewmodel/handRig.js` | Finger joints for the gloves (a skeleton fitted when the game loads) |
 | `src/viewmodel/supportHand.js` | The support hand's shapes and how it holds a magazine |
 | `src/viewmodel/shootingHand.js` | The shooting hand's thumb pressing each gun's magazine release |
+| `src/soldier.js`, `src/player/body.js`, `src/player/ik.js` | The soldier model, loaded once; the player's own body; limb IK |
 | `src/attachments.js`, `src/loadoutMenu.js` | Which attachments each gun has on, and the loadout menu (B) to choose them |
 | `src/effects/audio.js` | The sounds: made in code, and the PF-45's recordings in `assets/sounds/` |
 | `src/viewmodel/sdf.js` | Turns blended shapes into smooth meshes (used for the hands and sleeves) |
@@ -75,6 +76,10 @@ The game logic runs at a fixed 60 ticks per second, whatever the screen's frame 
 A soldier in full tactical gear stands beside the house door, facing where you start, in his idle pose (breathing, shifting his weight). He's the character players will be when multiplayer arrives; until then he's there to look at. You can't walk through him, and shots stop on him. His model is `assets/soldier.glb` (3.2 MB), made from "Soldier Full Tactical Gear" by DanlyVostok (see Credits): 84,000 triangles with a full skeleton (fingers, face and twist bones) and its idle animation. Where he stands is `SOLDIER` in `src/shared/map.js`. The world lights him with the same outdoor sky reflections the gun uses, so his dark olive kit reads in daylight.
 
 `tools/soldier/build_soldier.mjs` makes the file from the download: it rubs the lettering off his chest and back patches and blanks the round badge on his helmet (`tools/soldier/remove_patch_text.py`), drops texture coordinates no material uses, shrinks the textures from 4096 px to 1024 (the colour and normal maps; the rest to 512) as WebP, and compresses the meshes. At 1024 px he looks nearly the same as with the full 4K textures at any distance you'd see him from, and takes a quarter of the graphics memory of 2048 px. To rebuild it, download the model's glTF version from Sketchfab, unzip it into `build/soldier-source` (so the folder holds `scene.gltf`, `scene.bin` and `textures/`) and run `npm run build-soldier` (it needs Python 3 with numpy and Pillow).
+
+## Your own body
+
+You are the soldier too: look down and you see his legs, boots and kit, and the sun casts his whole shadow (`src/player/body.js`, a copy of the same model). The camera sits just behind his eyes, so his head, helmet, glasses and eyes are left out of the picture (they still cast their shadow), and so are his sleeves and gloves for now (the hands on the gun are the gun layer's). He faces where you look, leans a little with the view, and his neck and head take the rest of it. His hips move so his eyes stay just in front of the camera, sliding back as you look down so you look down past his chest, and his feet stay planted (two-bone leg IK, `src/player/ik.js`).
 
 ## Tuning movement
 

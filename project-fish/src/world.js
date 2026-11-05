@@ -3,8 +3,7 @@
 // soldier standing by it.
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { loadSoldier, SOLDIER_MODEL } from './soldier.js';
 import { WORLD } from './shared/config.js';
 import { COLLIDERS, HOUSE, SOLDIER, SOLDIER_BOX } from './shared/map.js';
 
@@ -143,15 +142,14 @@ export function outdoorEnvironment(renderer, sunDirection) {
 // players will be in multiplayer, standing by the house in his idle pose
 // until then. It loads in the background; if it can't be loaded the world
 // just goes without him. Call update(dt) every frame to play his idle.
-const SOLDIER_MODEL = new URL('../assets/soldier.glb', import.meta.url);
-const SOLDIER_SKY = 1; // how strongly the sky lights him
+export const SOLDIER_SKY = 1; // how strongly the sky lights him
 
 export function addSoldier(scene, renderer, camera) {
   const soldier = { mixer: null, update(dt) { if (this.mixer) this.mixer.update(dt); } };
   // Lit by the outdoor sky too, as the gun is (the world's plain lights alone
   // leave his dark olive kit nearly black).
   const sky = outdoorEnvironment(renderer, SUN_DIRECTION);
-  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(SOLDIER_MODEL.href).then((gltf) => {
+  loadSoldier().then(({ gltf }) => {
     const model = gltf.scene;
     model.position.set(SOLDIER.x, 0, SOLDIER.z);
     model.rotation.y = SOLDIER.facing;

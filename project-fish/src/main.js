@@ -14,6 +14,7 @@ import { WorldEffects } from './effects/worldEffects.js';
 import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playSlideBack, playSlideRelease, playSwitchClick, startAudio } from './effects/audio.js';
 import { addSoldier, createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
+import { PlayerBody } from './player/body.js';
 import { Input } from './input.js';
 import { GpuTimer, Hud } from './hud.js';
 import { settings } from './settings.js';
@@ -63,6 +64,7 @@ let lightsOn = true;
 const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 1500);
 camera.rotation.order = 'YXZ'; // turn left/right first, then look up/down
 const soldier = addSoldier(scene, renderer, camera);
+const body = new PlayerBody(scene, renderer, camera);
 const viewmodel = new Viewmodel(renderer, SUN_DIRECTION);
 
 const input = new Input(renderer.domElement);
@@ -457,6 +459,7 @@ renderer.setAnimationLoop((time) => {
   updateBarrelSmoke(frameSeconds);
   effects.update(frameSeconds);
   soldier.update(frameSeconds);
+  body.update(new THREE.Vector3(camera.position.x, camera.position.y - PLAYER.eyeHeight, camera.position.z), input.yaw, input.pitch);
   updateAmmo();
 
   gpuTimer.begin();
