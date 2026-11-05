@@ -114,10 +114,13 @@ export class HandRig {
   // Moves the fingers part of the way (k, 0..1) from hand shape a to hand
   // shape b, and then part of the way (w) from there to hand shape `toward`
   // (for going back to holding the gun from anywhere in between).
-  set(a, b = a, k = 0, toward = null, w = 0) {
+  // `squeeze` (a hand shape) with s (0..1) takes the index finger alone that
+  // far towards it (the trigger finger pulling).
+  set(a, b = a, k = 0, toward = null, w = 0, squeeze = null, s = 0) {
     const A = this.poses[a];
     const B = this.poses[b];
     const C = toward && w > 0 ? this.poses[toward] : null;
+    const D = squeeze && s > 0 ? this.poses[squeeze] : null;
     const world = new THREE.Quaternion();
     const parent = new THREE.Quaternion();
     this.bones.forEach((bones, c) => {
@@ -125,6 +128,7 @@ export class HandRig {
       for (let i = 0; i < 3; i++) {
         world.slerpQuaternions(A[c][i], B[c][i], k);
         if (C) world.slerp(C[c][i], w);
+        if (D && c === 0) world.slerp(D[c][i], s);
         bones[i].quaternion.copy(parent).invert().multiply(world);
         parent.copy(world);
       }

@@ -12,7 +12,7 @@ import { createPistol45, MODEL45, FALLBACK45 } from './pistol45.js';
 import { MODEL9 } from './pistol9.js';
 import { createArms, rightHandPose } from './arms.js';
 import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix, OVER_TURN, OVER_SLIDE } from './supportHand.js';
-import { ShootingHand } from './shootingHand.js';
+import { ShootingHand, MAG_RELEASE } from './shootingHand.js';
 import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
@@ -75,6 +75,51 @@ function turnAbout(part, rest, pivot, angle) {
   part.quaternion.copy(turning).multiply(rest.quaternion);
 }
 const restOf = (part) => part && { position: part.position.clone(), quaternion: part.quaternion.clone() };
+
+// A part's bounds in gun space (as it is now).
+function partBox(pistol, part) {
+  pistol.updateMatrixWorld(true);
+  const toGun = pistol.matrixWorld.clone().invert();
+  const box = new THREE.Box3();
+  part.traverse((o) => {
+    if (!o.isMesh) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(toGun.clone().multiply(o.matrixWorld)));
+  });
+  return box;
+}
+
+// The front of a gun's trigger where the finger rests (gun space): the
+// foremost point of its blade, about half way down it, on the middle line.
+// Measured from the model, so each gun's trigger finger lands on its own.
+function triggerFace(pistol, trigger) {
+  pistol.updateMatrixWorld(true);
+  const toGun = pistol.matrixWorld.clone().invert();
+  const points = [];
+  const p = new THREE.Vector3();
+  const visit = (o) => {
+    if (o.name === 'safety_blade') return; // it sticks out in front, and pushes in
+    if (o.isMesh) {
+      const m = toGun.clone().multiply(o.matrixWorld);
+      const position = o.geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) points.push(p.fromBufferAttribute(position, i).applyMatrix4(m).clone());
+    }
+    for (const c of o.children) visit(c);
+  };
+  visit(trigger);
+  if (!points.length) return new THREE.Vector3(0, -0.05, -0.058);
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const q of points) {
+    lo = Math.min(lo, q.y);
+    hi = Math.max(hi, q.y);
+  }
+  const y = (lo + hi) / 2;
+  let z = Infinity;
+  for (const q of points) if (Math.abs(q.y - y) < 0.003 && Math.abs(q.x) < 0.004) z = Math.min(z, q.z);
+  if (!Number.isFinite(z)) for (const q of points) z = Math.min(z, q.z);
+  return new THREE.Vector3(0, y, z);
+}
 // How far an attachment is moved for the mount it sits on (see pistol9.js).
 const place = (extra, on) => (extra && extra.on && extra.on[on] && extra.on[on].offset) || [0, 0, 0];
 
@@ -281,12 +326,24 @@ const FRESH_IN_HAND = {
 // pressed, is on the button this long before, and is back this long after
 // (fractions of the reload).
 const THUMB = { start: 0.08, on: 0.035, back: 0.06 };
+// The same for the slide stop at the end of an empty reload.
+const STOP_THUMB = { start: 0.07, on: 0.025, back: 0.07 };
 
 // How far the thumb is from holding the grip to being on the release and
 // pressing it, at reload progress r: [from shape, to shape, how far]. `scale`
 // stretches the thumb's timings (for the inspect, which is longer).
-function thumbAt(r, S, scale = 1) {
+function thumbAt(r, S, scale = 1, slideStop = false) {
   const ease = (a, b) => smoothstep(a, b, r);
+  // After an empty reload, the thumb comes up onto the slide stop and
+  // pushes it down, and the slide goes home.
+  if (slideStop && S.slideRelease !== undefined) {
+    const at = S.slideRelease;
+    if (r >= at - STOP_THUMB.start && r < at + STOP_THUMB.back) {
+      if (r < at - STOP_THUMB.on) return ['grip', 'onStop', ease(at - STOP_THUMB.start, at - STOP_THUMB.on)];
+      if (r < at) return ['onStop', 'pressStop', ease(at - STOP_THUMB.on, at)];
+      return ['pressStop', 'grip', ease(at + 0.01, at + STOP_THUMB.back)];
+    }
+  }
   const press = S.magOut;
   const start = THUMB.start * scale;
   const on = THUMB.on * scale;
@@ -645,9 +702,19 @@ export class Viewmodel {
       chamberRound, chamberRoundRest: chamberRound ? chamberRound.position.clone() : null,
       safetyBlade, safetyBladeRest: safetyBlade ? safetyBlade.position.z : 0,
     };
-    // Its magazine release, for the shooting hand's thumb (the first
-    // pistol's is the hand's own).
-    if (points.magRelease && this.shooter) {
+    // The shooting hand on this gun: the index finger on its trigger (and
+    // pulling it), and the thumb on its magazine release.
+    if (this.shooter && trigger) {
+      g.release = '_' + key;
+      g.grip = 'grip' + g.release;
+      this.shooter.addGun(g.release, triggerFace(pistol, trigger), TRIGGER_TRAVEL, points.magRelease || MAG_RELEASE);
+      const stop = part('slide_stop');
+      if (stop) {
+        const box = partBox(pistol, stop);
+        this.shooter.addSlideStop(g.release, new THREE.Vector3(box.min.x + 0.002, box.max.y + 0.0012, (box.min.z + box.max.z) / 2));
+        g.thumbStop = true;
+      }
+    } else if (points.magRelease && this.shooter) {
       g.release = '_' + key;
       this.shooter.addRelease(g.release, points.magRelease);
     }
@@ -1061,6 +1128,7 @@ export class Viewmodel {
     this.triggerTime += dt;
     const tt = this.triggerTime;
     const pull = tt < 0.03 ? tt / 0.03 : tt < 0.11 ? 1 - (tt - 0.03) / 0.08 : 0;
+    this.triggerPull = pull;
     if (this.trigger) this.trigger.position.z = this.triggerRest + TRIGGER_TRAVEL * pull;
     // The safety blade in its face presses in first, as the finger takes up the slack.
     if (this.safetyBlade) this.safetyBlade.position.z = this.safetyBladeRest + BLADE_TRAVEL * Math.min(1, pull * 3);
@@ -1132,9 +1200,11 @@ export class Viewmodel {
     // (The inspect's times are in seconds; the thumb's are fractions of a reload.)
     if (this.shooter) {
       // (On another gun, the thumb goes to that gun's magazine release.)
-      const [from, to, k] = thumbAt(r, S, inspecting ? rules.reloadTime : 1);
-      const release = (shape) => (shape === 'grip' ? shape : shape + this.current.release);
-      this.shooter.set(release(from), release(to), k, 'grip', returning);
+      const [from, to, k] = thumbAt(r, S, inspecting ? rules.reloadTime : 1, Boolean(this.current.thumbStop) && !inspecting);
+      const grip = this.current.grip || 'grip';
+      const release = (shape) => (shape === 'grip' ? grip : shape + this.current.release);
+      const squeeze = this.current.grip ? 'squeeze' + this.current.release : null;
+      this.shooter.set(release(from), release(to), k, grip, returning, squeeze, this.triggerPull || 0);
     }
     const hand = handAt(r, kind, this.current.paths);
     if (returning > 0) {
