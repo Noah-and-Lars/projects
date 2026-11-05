@@ -79,7 +79,7 @@ NOSE_FROM = P['slideInfo']['noseFrom']
 NOSE_BOTTOM = P['slideInfo']['noseBottom']
 FRAME_HALF = P['frame']['width'] / 2
 SIGHT_TOP = P['sights']['height']
-TOP_ROUND = 0.0026  # radius the top edges of the slide are rounded to (it's slab-sided)
+TOP_ROUND = 0.0052  # radius the top edges of the slide are rounded to (flat sides, rounded top)
 # The breech face, with the slide forward: the 1911's long extractor puts it
 # well forward of the back of the slide. The barrel runs 127 mm from here.
 BREECH = 0.0362
@@ -122,14 +122,14 @@ def round_45(name, s0, at=(0.0, 0.0)):
 
 def build_slide():
     slide = prism('slide', P['slide']['points'], P['slide']['width'])
-    bevel(slide, 0.0006)
+    bevel(slide, 0.0011, 3)
     cutters = []
     # The rounded top: both top corners turned off along the whole length.
     for side in (-1, 1):
-        cutters.append(extrude_xy('round_top', rounded_corner(side * SLIDE_HALF, SLIDE_TOP, TOP_ROUND, side, 1), -0.04, 0.18))
+        cutters.append(extrude_xy('round_top', rounded_corner(side * SLIDE_HALF, SLIDE_TOP, TOP_ROUND, side, 1, steps=14), -0.04, 0.18))
     # The nose under the barrel is rounded underneath, round the recoil spring.
     for side in (-1, 1):
-        cutters.append(extrude_xy('round_nose', rounded_corner(side * SLIDE_HALF, NOSE_BOTTOM, 0.007, side, -1), NOSE_FROM - 0.002, 0.18))
+        cutters.append(extrude_xy('round_nose', rounded_corner(side * SLIDE_HALF, NOSE_BOTTOM, 0.0085, side, -1, steps=14), NOSE_FROM - 0.002, 0.18))
     # Ejection port: a small one in the right side and the top, with the
     # barrel showing in it.
     cutters.append(box('port', 0.0008, 0.02, PORT[0], PORT[1], 0.0046, 0.03))
@@ -218,7 +218,7 @@ def build_slide():
 
 def build_frame():
     frame = prism('frame', P['frame']['points'], P['frame']['width'])
-    bevel(frame, 0.0008)
+    bevel(frame, 0.0016, 4)
     guard = prism('guard_hole', P['frame']['holes'][0], 0.05)
     cutters = [guard]
     top = P['frame']['points'][0][1]
@@ -227,6 +227,11 @@ def build_frame():
                                    (side * (FRAME_HALF - 0.0007), top + 0.0005)][::side], -0.05, NOSE_FROM + 0.001) for side in (-1, 1)]
     # The slot at the back the hammer sits in, between the frame's tangs, and
     # the one the trigger comes out of.
+    # The front strap is well rounded across.
+    for side in (-1, 1):
+        cutters.append(round_along('round_strap', (side * FRAME_HALF, 0.0), 0.0058, side, -1, (0.026, -0.0605), (0.0055, -0.1205)))
+    for side in (-1, 1):
+        cutters.append(extrude_xy('round_dust_cover', rounded_corner(side * FRAME_HALF, NOSE_BOTTOM, 0.0065, side, -1, steps=12), 0.084, NOSE_FROM + 0.002))
     cutters.append(box('hammer_slot', -0.0037, 0.0037, -0.065, -0.0336, -0.0262, 0.02))
     cutters.append(box('trigger_slot', -0.0034, 0.0034, 0.0498, 0.0595, -0.031, -0.0262))
     # The magazine well, open at the bottom.
@@ -256,6 +261,41 @@ def build_frame():
     return frame
 
 
+def panel_pillow(panel, side, inner, width, dome=0.0011):
+    """Subdivides a flat grip panel and bulges its outer face out a little,
+    most in the middle."""
+    mod = panel.modifiers.new('Smooth', 'SUBSURF')
+    mod.levels = 2
+    mod.render_levels = 2
+    apply_modifiers(panel)
+    pts = np.array(P['gripPanel']['points'])
+    cs, cy = pts.mean(axis=0)
+    half = (pts.max(axis=0) - pts.min(axis=0)) / 2
+    for v in panel.data.vertices:
+        x, s, y = v.co
+        outward = (abs(x) - inner) / width  # 0 at the frame, 1 at the outer face
+        if outward < 0.5:
+            continue
+        r = min(1.0, ((s - cs) / half[0]) ** 2 + ((y - cy) / half[1]) ** 2)
+        v.co.x += side * dome * (1 - r) * (outward - 0.5) * 2
+
+
+def round_along(name, corner_xy, radius, sx, sy, a, b, steps=12):
+    """Like a round_top cut, but along any straight line in the side view,
+    from a to b (s, y): rounds off a long corner of the frame (the front
+    strap's edges). corner_xy is the corner's (x, f): f across the line
+    (towards the side the corner points, sy)."""
+    (s0, y0), (s1, y1) = a, b
+    length = math.hypot(s1 - s0, y1 - y0)
+    ts, ty = (s1 - s0) / length, (y1 - y0) / length
+    fs, fy = ty, -ts  # across the line, to the right of its direction
+    cutter = extrude_xy(name, rounded_corner(corner_xy[0], corner_xy[1], radius, sx, sy, steps), -0.003, length + 0.003)
+    # Local (x, t, f) to Blender (x, s, y).
+    m = Matrix(((1, 0, 0, 0), (0, ts, fs, s0), (0, ty, fy, y0), (0, 0, 0, 1)))
+    cutter.data.transform(m)
+    return cutter
+
+
 def build_grips():
     """The two walnut panels, their screws, and nothing else: one object
     for the wood, one for the screws."""
@@ -264,7 +304,10 @@ def build_grips():
     for side in (-1, 1):
         panel = prism('grip_panel', P['gripPanel']['points'], width)
         panel.data.transform(Matrix.Translation((side * (inner + width / 2), 0, 0)))
-        bevel(panel, 0.0019, 4, 25)
+        bevel(panel, 0.0018, 2, 25)
+        # Pillowed: domed outwards, thickest in the middle, softly rounded
+        # all round the edge.
+        panel_pillow(panel, side, inner, width)
         # The left one is cut away round the magazine release.
         if side < 0:
             cut(panel, cylinder('release_cutout', 0.0059, -inner - width - 0.002, -inner + 0.001, axis='x', at=(0.0225, -0.0415), segments=32))
@@ -300,7 +343,7 @@ def build_grips():
 def build_small_parts():
     # The hammer, modelled down against the slide; the game cocks it back.
     hammer = prism('hammer', P['hammer']['points'], P['hammer']['width'])
-    bevel(hammer, 0.0005, 2)
+    bevel(hammer, 0.0008, 3)
     # Grooves across the top of its spur for the thumb.
     for k in range(5):
         s = -0.0475 - k * 0.0017
@@ -310,7 +353,7 @@ def build_small_parts():
     set_pivot(hammer, tuple(P['hammerPivot']))
 
     trigger = prism('trigger', P['trigger']['points'], P['trigger']['width'])
-    bevel(trigger, 0.0005, 2)
+    bevel(trigger, 0.0008, 3)
     for k in range(5):
         x = -0.002 + k * 0.001
         cut(trigger, box('trigger_groove', x - 0.00016, x + 0.00016, 0.0574, 0.06, -0.0475, -0.0295))
@@ -324,7 +367,7 @@ def build_small_parts():
     paddle = box('paddle', -FRAME_HALF - w - 0.002, -FRAME_HALF - w + 0.0003, -0.0125, -0.0032, -0.0135, -0.0115)
     boss = cylinder('safety_boss', 0.0042, -FRAME_HALF - w - 0.0007, -FRAME_HALF - w + 0.0002, axis='x', at=(-0.0302, -0.0182), segments=28)
     safety = join(safety, paddle, boss)
-    bevel(safety, 0.0003, 2)
+    bevel(safety, 0.0005, 3)
     for k in range(4):
         s = -0.0112 + k * 0.0022
         cut(safety, box('paddle_groove', -FRAME_HALF - w - 0.004, -FRAME_HALF - w - 0.0016, s - 0.0004, s + 0.0004, -0.0145, -0.011))
@@ -339,7 +382,7 @@ def build_small_parts():
     stop.data.transform(Matrix.Translation((-(FRAME_HALF + w / 2), 0, 0)))
     pin = cylinder('stop_pin', 0.0032, -FRAME_HALF - w - 0.0008, -FRAME_HALF - w + 0.0002, axis='x', at=tuple(P['slideStopPivot'][1:]), segments=28)
     stop = join(stop, pin)
-    bevel(stop, 0.0003, 2)
+    bevel(stop, 0.0005, 3)
     for k in range(4):
         s = 0.0208 + k * 0.0019
         cut(stop, box('pad_groove', -FRAME_HALF - w - 0.001, -FRAME_HALF - w + 0.0004, s - 0.0004, s + 0.0004, -0.0185, -0.0092))
@@ -524,7 +567,7 @@ def main():
         SETTINGS['size'] = 512 if obj in small_parts else 1024
         log('textures for', obj.name, f'({sum(len(f.vertices) - 2 for f in obj.data.polygons)} triangles)')
         triangulate(obj)
-        sharp_edges(obj, 35)
+        sharp_edges(obj, 55)
         uv_unwrap(obj)
         p = bake_positions(obj)
         n = bake_world_normals(obj)
