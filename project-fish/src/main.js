@@ -506,7 +506,7 @@ renderer.setAnimationLoop((time) => {
   updateBarrelSmoke(frameSeconds);
   effects.update(frameSeconds);
   soldier.update(frameSeconds);
-  body.update(new THREE.Vector3(camera.position.x, feetY, camera.position.z), input.yaw, input.pitch, player);
+  body.update(new THREE.Vector3(camera.position.x, feetY, camera.position.z), input.yaw, input.pitch, player, frameSeconds);
   if (fpArms && body.model && loaded) fpArms.update(camera);
   updateAmmo();
 

@@ -31,6 +31,12 @@ const LEAN = { down: 0.15, up: 0.3, maxDown: 0.44, maxUp: 0.21 };
 const SPINE = [['CC_Base_Waist', 0.3], ['CC_Base_Spine01', 0.3], ['CC_Base_Spine02', 0.4]];
 const NECK = [['CC_Base_NeckTwist01', 0.3], ['CC_Base_NeckTwist02', 0.3], ['CC_Base_Head', 0.4]];
 const LEGS = ['L', 'R'].map((s) => [`CC_Base_${s}_Thigh`, `CC_Base_${s}_Calf`, `CC_Base_${s}_Foot`]);
+// Walking and running: two steps a cycle, as many steps a metre as the
+// gun's bob (so the feet land with its footstep jolts); the part of the
+// cycle each foot is on the ground (more walking slowly, less running), how
+// high it lifts, how far the hips drop at each step, and how far apart the
+// feet go side to side. In the air the feet tuck up.
+const GAIT = { stepsPerMetre: 0.75, stance: [0.62, 0.36], lift: [0.06, 0.16], bob: 0.03, maxStride: 0.55, tuck: 0.22, ease: 10 };
 
 // Leaves a material's mesh out of the picture, keeping its shadow: every
 // vertex is put outside the view (the shadow is drawn with a material of its
@@ -93,9 +99,16 @@ export class PlayerBody {
   // feet: where the player stands (world); yaw, pitch: where they look;
   // player: the movement state (crouching lowers his hips; sliding, lying,
   // diving and climbing aren't posed yet, so he's left out then).
-  update(feet, yaw, pitch, player = null) {
+  update(feet, yaw, pitch, player = null, dt = 0) {
     const model = this.model;
     if (!model) return;
+    // The walking cycle.
+    const speed = player && player.grounded ? Math.hypot(player.vx, player.vz) : 0;
+    this.phase = (this.phase || 0) + speed * dt * GAIT.stepsPerMetre * Math.PI;
+    const k = 1 - Math.exp(-dt * GAIT.ease);
+    this.walk = (this.walk || 0) + ((speed > 0.3 ? 1 : 0) - (this.walk || 0)) * k;
+    this.air = (this.air || 0) + ((player && !player.grounded && player.move !== 'mantle' ? 1 : 0) - (this.air || 0)) * k;
+    if (speed > 0.3) this.heading = Math.atan2(player.vx, player.vz);
     // (Still placed when he's left out, so his shoulders stay where his arms
     // need them.)
     const posed = !player || !(isLow(player) || player.move === 'mantle');
@@ -109,8 +122,33 @@ export class PlayerBody {
     }
     model.updateMatrixWorld(true);
     model.getWorldQuaternion(modelTurn);
-    // Where his feet stand (as they do at rest), to keep them there.
+    // Where his feet stand (as they do at rest), to keep them there; walking,
+    // each in turn is planted (going back under him as he moves on, at his
+    // speed, so it stays put on the ground) and then swung forward, lifted.
     const planted = this.legs.map(([, , foot]) => ({ position: foot.getWorldPosition(new THREE.Vector3()), quaternion: foot.getWorldQuaternion(new THREE.Quaternion()) }));
+    let hipBob = 0;
+    if (this.walk > 0.01 || this.air > 0.01) {
+      const run = THREE.MathUtils.clamp(speed / 5, 0, 1);
+      const stance = THREE.MathUtils.lerp(GAIT.stance[0], GAIT.stance[1], run);
+      const cycle = 2 / GAIT.stepsPerMetre; // metres
+      const stride = Math.min(GAIT.maxStride * 2, cycle * stance); // how far a foot goes back while down
+      const lift = THREE.MathUtils.lerp(GAIT.lift[0], GAIT.lift[1], run) * (player && player.stance === 'crouch' ? 0.6 : 1);
+      const dir = new THREE.Vector3(Math.sin(this.heading || 0), 0, Math.cos(this.heading || 0));
+      planted.forEach((foot, i) => {
+        const t = ((this.phase / (2 * Math.PI) + i * 0.5) % 1 + 1) % 1; // 0..1 through this foot's cycle
+        let along;
+        let up = 0;
+        if (t < stance) {
+          along = stride * (0.5 - t / stance); // on the ground, going back under him
+          hipBob += Math.sin((Math.PI * t) / stance) * 0.5;
+        } else {
+          const u = (t - stance) / (1 - stance);
+          along = stride * (-0.5 + (1 - Math.cos(Math.PI * u)) / 2); // swung forward
+          up = Math.sin(Math.PI * u) * lift;
+        }
+        foot.position.addScaledVector(dir, along * this.walk * (1 - this.air)).add(new THREE.Vector3(0, up * this.walk * (1 - this.air) + GAIT.tuck * this.air * (i ? 0.7 : 1), 0));
+      });
+    }
 
     // Leaning with the view (forward is a turn about his left, +X); the neck
     // and head take the rest of it.
@@ -145,7 +183,7 @@ export class PlayerBody {
       const most = Math.sqrt(Math.max(0, reach * reach - across * across));
       drop = Math.max(drop, down - most);
     }
-    hipAt.y -= Math.max(drop, crouch);
+    hipAt.y -= Math.max(drop, crouch) + GAIT.bob * hipBob * this.walk;
     this.hip.position.copy(this.hip.parent.worldToLocal(hipAt));
     this.hip.updateMatrixWorld(true);
 
