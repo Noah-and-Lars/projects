@@ -331,6 +331,8 @@ export class Account extends DurableObject {
       const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
       return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games });
     }
+    // 'list' (admin header only): used once on 2026-11-06 to put every older account on the Players list
+    if (route === 'list') { if (!a.listed) { const r = await dirCall(this.env, 'add', { n: a.name, c: a.created }); if (r.ok) { a.listed = 1; await S.put('acct', a); } } return j({ name: a.name }); }
     if (route === 'adminwipe') { await this.goodbye(a); await S.deleteAll(); return j({ deleted: true, name: a.name }); }
     return j({ error: 'not_found' }, 404);
   }
