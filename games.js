@@ -515,12 +515,22 @@ window.ArcadeOnline = (() => {
 const SITE_NOTICE = {
   id: 'cf-outage-2026-11-05',
   tag: 'Server issue',
+  banner: 'Online play is down right now because of a server issue. It should be back up soon. Offline and vs bots still work.',
   title: 'Online play is down for now',
   text: 'The cloud servers our online games run on (Cloudflare) are having issues, so online matches, the global chat, the player counter and account sign-in and cloud saves aren’t working at the moment.',
   items: ['<b>Still working:</b> every game offline and against bots. Your progress on this device is safe.', '<b>Online:</b> should be back to normal shortly. No need to do anything; just come back a bit later.'],
 };
 (() => {
   if (!SITE_NOTICE) return;
+  // a strip across the top of the page that stays for as long as the notice is up
+  const bar = () => {
+    if (!SITE_NOTICE.banner || document.getElementById('siteNoticeBar')) return;
+    const b = document.createElement('div'); b.id = 'siteNoticeBar'; b.setAttribute('role', 'status');
+    b.style.cssText = 'position:relative;z-index:40;background:#f2b134;color:#1a1408;font:700 14px/1.35 system-ui,-apple-system,sans-serif;text-align:center;padding:8px 14px';
+    b.textContent = '\u26a0\ufe0f ' + SITE_NOTICE.banner;
+    document.body.prepend(b);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bar); else bar();
   let closed = ''; try { closed = localStorage.getItem('arcade-notice-closed') || ''; } catch (e) {}
   if (closed === SITE_NOTICE.id) return;
   const show = () => {
