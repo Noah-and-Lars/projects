@@ -64,7 +64,7 @@ const SLIDE_PROFILE = [
 
 // A polygon with its corners rounded off: each point is [s, y, radius]. Works
 // for corners that point in as well as out.
-function filleted(points) {
+export function filleted(points) {
   const out = [];
   const n = points.length;
   for (let i = 0; i < n; i++) {
@@ -147,7 +147,7 @@ export const PROFILES = {
 };
 
 // Pushes a side profile out to `width` (centred on x = 0) with rounded edges.
-function profile(points, width, bevel, holes = []) {
+export function profile(points, width, bevel, holes = []) {
   const shape = new THREE.Shape(points.map(([s, y]) => new THREE.Vector2(s, y)));
   for (const hole of holes) shape.holes.push(new THREE.Path(hole.map(([s, y]) => new THREE.Vector2(s, y))));
   const geometry = new THREE.ExtrudeGeometry(shape, {

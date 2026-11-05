@@ -7,6 +7,7 @@
 //   right_glove.obj, left_glove.obj, pistol.obj
 //   rig.json: finger joints, wrists, elbows and hand directions.
 //   pistol.json: the pistol's side profiles and thicknesses.
+//   pistol45.json: the same for the second pistol (pistol45.js).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,6 +21,7 @@ globalThis.document = { createElement: () => ({ getContext: () => fakeContext })
 
 const { buildArmParts } = await import('../src/viewmodel/arms.js');
 const { createPistol, GRIP, PROFILES } = await import('../src/viewmodel/pistol.js');
+const pistol45 = await import('../src/viewmodel/pistol45.js');
 
 const out = process.argv[2] || 'arm-base';
 fs.mkdirSync(out, { recursive: true });
@@ -55,4 +57,11 @@ pistol.updateMatrixWorld(true);
 write('pistol.obj', pistol);
 fs.writeFileSync(path.join(out, 'rig.json'), JSON.stringify(rig, null, 1));
 fs.writeFileSync(path.join(out, 'pistol.json'), JSON.stringify(PROFILES, null, 1));
+fs.writeFileSync(path.join(out, 'pistol45.json'), JSON.stringify({
+  ...pistol45.PROFILES,
+  slideInfo: { ...pistol45.SLIDE },
+  sights: pistol45.SIGHTS,
+  hammerPivot: [0, -pistol45.HAMMER.pivot.z, pistol45.HAMMER.pivot.y],
+  slideStopPivot: [0, -pistol45.SLIDE_STOP.pivot.z, pistol45.SLIDE_STOP.pivot.y],
+}, null, 1));
 console.log('Wrote', fs.readdirSync(out).join(', '), 'to', out);

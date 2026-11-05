@@ -7,7 +7,8 @@
     "export-arm-base": "node tools/export-arm-base.mjs build/arm-base",
     "build-pistol": "npm run export-arm-base && mkdir -p assets && blender --background --python tools/blender/build_pistol.py -- build/arm-base/pistol.json build/pistol-raw.glb --blend build/pistol.blend && gltf-transform meshopt build/pistol-raw.glb assets/pistol.glb --level high",
     "build-arms": "npm run export-arm-base && mkdir -p assets && blender --background --python tools/blender/build_arms.py -- build/arm-base build/arms-raw.glb --blend build/arms.blend && gltf-transform meshopt build/arms-raw.glb assets/arms.glb --level high",
-    "build-models": "npm run build-pistol && npm run build-arms"
+    "build-pistol45": "npm run export-arm-base && mkdir -p assets && blender --background --python tools/blender/build_pistol45.py -- build/arm-base/pistol45.json build/pistol45-raw.glb --blend build/pistol45.blend && gltf-transform meshopt build/pistol45-raw.glb assets/pistol45.glb --level high",
+    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-arms"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.2.1",
