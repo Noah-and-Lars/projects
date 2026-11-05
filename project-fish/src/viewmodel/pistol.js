@@ -33,7 +33,7 @@ export const MAGAZINE = {
   bottom: 0.0673, // u of the bottom of the body, where the baseplate starts
   base: 0.0752, // u of the bottom of the baseplate
   baseHalfWidth: 0.0148, // the baseplate is wider and longer than the body
-  baseHalfDepth: 0.0278,
+  baseHalfDepth: 0.0296, // (with the lip at the front)
 };
 GRIP.bottom = 0.0678;
 
@@ -50,16 +50,66 @@ const SLIDE_PROFILE = [
   [-0.032, -0.0105], [0.152, -0.0105], [0.152, 0.009], [0.146, 0.0165], [-0.03, 0.0165], [-0.032, 0.012],
 ];
 
-const FRAME_PROFILE = [
-  [-0.024, -0.0105], [0.135, -0.0105], [0.137, -0.0125], [0.137, -0.027], [0.088, -0.027],
-  [0.088, -0.031], [0.086, -0.062], [0.08, -0.068], [0.04, -0.07], [0.03, -0.066], [0.026, -0.058],
-  [0.02, -0.075], [0.011, -0.1], [0.004, -0.12], [0.002, -0.124], [-0.046, -0.124], [-0.05, -0.118],
-  [-0.034, -0.058], [-0.031, -0.042], [-0.04, -0.03], [-0.044, -0.024], [-0.04, -0.018], [-0.03, -0.0155],
-];
+// A polygon with its corners rounded off: each point is [s, y, radius]. Works
+// for corners that point in as well as out.
+function filleted(points) {
+  const out = [];
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const [px, py, radius] = points[i];
+    const [ax, ay] = points[(i + n - 1) % n];
+    const [bx, by] = points[(i + 1) % n];
+    if (!radius) {
+      out.push([px, py]);
+      continue;
+    }
+    const la = Math.hypot(ax - px, ay - py);
+    const lb = Math.hypot(bx - px, by - py);
+    const u1 = [(ax - px) / la, (ay - py) / la];
+    const u2 = [(bx - px) / lb, (by - py) / lb];
+    const half = Math.acos(Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1]))) / 2;
+    if (half < 1e-3 || half > Math.PI / 2 - 1e-3) {
+      out.push([px, py]);
+      continue;
+    }
+    // How far back along each side the curve starts, kept within the sides.
+    const d = Math.min(radius / Math.tan(half), 0.45 * la, 0.45 * lb);
+    const r = d * Math.tan(half);
+    const bis = [u1[0] + u2[0], u1[1] + u2[1]];
+    const lbis = Math.hypot(bis[0], bis[1]);
+    const cx = px + (bis[0] / lbis) * (r / Math.sin(half));
+    const cy = py + (bis[1] / lbis) * (r / Math.sin(half));
+    const t1 = [px + u1[0] * d, py + u1[1] * d];
+    const t2 = [px + u2[0] * d, py + u2[1] * d];
+    let a1 = Math.atan2(t1[1] - cy, t1[0] - cx);
+    let a2 = Math.atan2(t2[1] - cy, t2[0] - cx);
+    let sweep = a2 - a1;
+    while (sweep > Math.PI) sweep -= 2 * Math.PI;
+    while (sweep < -Math.PI) sweep += 2 * Math.PI;
+    const steps = Math.max(2, Math.ceil(Math.abs(sweep) / (Math.PI / 12)));
+    for (let k = 0; k <= steps; k++) {
+      const t = a1 + (sweep * k) / steps;
+      out.push([+(cx + r * Math.cos(t)).toFixed(6), +(cy + r * Math.sin(t)).toFixed(6)]);
+    }
+  }
+  return out;
+}
 
-const TRIGGER_GUARD_HOLE = [
-  [0.083, -0.031], [0.081, -0.06], [0.076, -0.0645], [0.042, -0.0655], [0.034, -0.061], [0.03, -0.052], [0.028, -0.031],
-];
+// The frame, with smooth curves: dust cover, trigger guard (squared off at the
+// front, its bottom curving up into the front strap under a small undercut),
+// the front strap, and the beavertail sweeping back over the web of the hand.
+const FRAME_PROFILE = filleted([
+  [-0.024, -0.0105, 0], [0.137, -0.0105, 0.0012], [0.137, -0.027, 0.0018], [0.088, -0.027, 0.0022],
+  [0.0855, -0.0635, 0.0068], [0.04, -0.0702, 0.004], [0.0305, -0.0668, 0.003], [0.026, -0.058, 0.0035],
+  [0.02, -0.075, 0.012], [0.011, -0.1, 0.02], [0.0035, -0.1215, 0.003], [0.002, -0.124, 0.0012],
+  [-0.046, -0.124, 0.0018], [-0.05, -0.118, 0.004], [-0.034, -0.058, 0.012], [-0.031, -0.042, 0.007],
+  [-0.04, -0.03, 0.009], [-0.0455, -0.0235, 0.005], [-0.041, -0.0175, 0.006], [-0.03, -0.0155, 0.004],
+]);
+
+const TRIGGER_GUARD_HOLE = filleted([
+  [0.083, -0.031, 0.0015], [0.0815, -0.0605, 0.0052], [0.042, -0.0657, 0.0042], [0.0332, -0.0605, 0.0045],
+  [0.0292, -0.05, 0.006], [0.028, -0.031, 0.0015],
+]);
 
 const GRIP_PANEL = [
   [0.021, -0.064], [0.009, -0.1], [0.003, -0.116], [-0.044, -0.116], [-0.047, -0.111],
@@ -70,7 +120,8 @@ const TRIGGER_PROFILE = [
   [0.05, -0.031], [0.056, -0.031], [0.059, -0.04], [0.058, -0.052], [0.054, -0.06], [0.05, -0.0595], [0.0525, -0.05], [0.0525, -0.04],
 ];
 
-const MAG_BASE = [[0.007, -0.1235], [0.008, -0.131], [-0.051, -0.131], [-0.05, -0.1235]];
+// The magazine baseplate, with a lip sticking out at the front to pull it by.
+const MAG_BASE = [[0.007, -0.1235], [0.0075, -0.1262], [0.0112, -0.1272], [0.0112, -0.131], [-0.051, -0.131], [-0.05, -0.1235]];
 
 // The side profiles and their thicknesses (metres), shared with the Blender
 // pistol (tools/blender/build_pistol.py) so both have exactly the same shape.

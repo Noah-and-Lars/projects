@@ -8,11 +8,12 @@ Run from the project-fish folder (see package.json, "build-pistol"):
 It uses the same side profiles as the game's built-in pistol (pistol.js), so
 the hands still fit, and adds:
 
-- Rounded machined edges everywhere, chamfered top edges on the slide, and a
-  rounded grip that fills the hand.
-- Real cuts: ejection port with the barrel hood inside, angled cocking
-  serrations front and back, recessed barrel crown and bore, rear sight notch,
-  accessory rail slots under the frame.
+- Rounded machined edges everywhere; the slide chamfered along its top and
+  bottom edges and tapered at the nose; a rounded grip that fills the hand,
+  with a flared magazine well at the bottom.
+- Real cuts: ejection port with the barrel hood inside, deep flat-bottomed
+  cocking serrations (eight front and back, both sides), recessed barrel crown
+  and bore, rear sight notch, accessory rail slots under the frame.
 - A separate barrel that stays put while the slide recoils (and tips its
   back end down, done in the game), so with the slide locked back it pokes
   out of the front and the chamber shows.
@@ -22,6 +23,7 @@ the hands still fit, and adds:
   takedown levers, magazine release, pins, trigger with safety blade.
 - Engraved markings: model name and serial number (made up, no real brands),
   calibre on the barrel.
+- Coarse stippling all round the grip, inside a smooth border.
 - A well-used finish: bare steel on worn edges and high points, holster wear
   rubbed lengthwise along the slide, scratches through the finish, scuffed
   polymer, and the grip worn smoother where it's held; and baked ambient
@@ -65,9 +67,50 @@ WORN_FINISH = '#4c4f54'  # finish rubbed thin, not quite down to bare steel
 POLYMER_SCUFF = '#4a4945'
 
 SLIDE_TOP = 0.0165
-# Outline of the rounded grip shell: the frame's grip, half a millimetre bigger.
-GRIP_SHELL = [(0.0265, -0.0575), (0.0205, -0.075), (0.0115, -0.1), (0.0045, -0.12), (0.0025, -0.1245),
-              (-0.0465, -0.1245), (-0.0505, -0.1182), (-0.0345, -0.0575)]
+
+
+def filleted(points):
+    """A polygon with its corners rounded off: each point is (s, y, radius).
+    The same as filleted() in pistol.js."""
+    out = []
+    n = len(points)
+    for i in range(n):
+        px, py, radius = points[i]
+        ax, ay = points[i - 1][:2]
+        bx, by = points[(i + 1) % n][:2]
+        if not radius:
+            out.append((px, py))
+            continue
+        la, lb = math.hypot(ax - px, ay - py), math.hypot(bx - px, by - py)
+        u1 = ((ax - px) / la, (ay - py) / la)
+        u2 = ((bx - px) / lb, (by - py) / lb)
+        half = math.acos(max(-1.0, min(1.0, u1[0] * u2[0] + u1[1] * u2[1]))) / 2
+        if half < 1e-3 or half > math.pi / 2 - 1e-3:
+            out.append((px, py))
+            continue
+        d = min(radius / math.tan(half), 0.45 * la, 0.45 * lb)
+        r = d * math.tan(half)
+        bis = (u1[0] + u2[0], u1[1] + u2[1])
+        lbis = math.hypot(*bis)
+        cx = px + bis[0] / lbis * (r / math.sin(half))
+        cy = py + bis[1] / lbis * (r / math.sin(half))
+        a1 = math.atan2(py + u1[1] * d - cy, px + u1[0] * d - cx)
+        a2 = math.atan2(py + u2[1] * d - cy, px + u2[0] * d - cx)
+        sweep = (a2 - a1 + math.pi) % (2 * math.pi) - math.pi
+        steps = max(2, math.ceil(abs(sweep) / (math.pi / 12)))
+        for k in range(steps + 1):
+            t = a1 + sweep * k / steps
+            out.append((cx + r * math.cos(t), cy + r * math.sin(t)))
+    return out
+
+
+# Outline of the rounded grip shell: the frame's grip, half a millimetre
+# bigger, with its corners and straps curved.
+GRIP_SHELL = filleted([(0.0265, -0.0575, 0.003), (0.0205, -0.075, 0.012), (0.0115, -0.1, 0.02), (0.0045, -0.12, 0.004),
+                       (0.0025, -0.1245, 0.0015), (-0.0465, -0.1245, 0.0015), (-0.0505, -0.1182, 0.004), (-0.0345, -0.0575, 0.005)])
+# The flared magazine well: a band round the bottom of the grip, sticking out
+# a little further at the front and back.
+MAGWELL = [(0.0049, -0.1165), (0.0047, -0.1248), (-0.0485, -0.1248), (-0.0525, -0.1168), (-0.0515, -0.1135), (0.0042, -0.1135)]
 SLIDE_HALF = 0.0245 / 2
 FRAME_HALF = 0.0235 / 2
 
@@ -237,29 +280,63 @@ def build_slide(p):
         cutters.append(wedge('chamfer', tri if side > 0 else tri[::-1], -0.04, 0.16))
     # Ejection port: top and right side, with the barrel hood showing inside.
     cutters.append(box('port', -0.0034, 0.02, 0.006, 0.044, 0.0062, 0.03))
-    # Cocking serrations, front and back, both sides: V grooves leaning forward a little.
+    # Cocking serrations, front and back, both sides: deep flat-bottomed
+    # grooves with sloped walls, eight at each end, stopping short of the top
+    # chamfer.
     for side in (-1, 1):
         xe = side * SLIDE_HALF
-        for s0, count in ((-0.0265, 9), (0.113, 6)):
+        for s0, count in ((-0.0272, 8), (0.1062, 8)):
             for k in range(count):
-                s = s0 + k * 0.0024
+                s = s0 + k * 0.0031
                 bm = bmesh.new()
-                pts = [(xe + side * 0.0005, s - 0.00065), (xe - side * 0.00085, s), (xe + side * 0.0005, s + 0.00065)]
-                lean = 0.0012
-                lo = [bm.verts.new((x, ss, -0.0072)) for x, ss in pts]
-                hi = [bm.verts.new((x, ss + lean, 0.0128)) for x, ss in pts]
+                depth, inner, outer = 0.00115, 0.00062, 0.00092  # half-widths at the bottom and the surface
+                pts = [(xe + side * 0.0006, s - outer), (xe - side * depth, s - inner), (xe - side * depth, s + inner), (xe + side * 0.0006, s + outer)]
+                lean = 0.0006
+                lo = [bm.verts.new((x, ss, -0.0089)) for x, ss in pts]
+                hi = [bm.verts.new((x, ss + lean, SLIDE_TOP - 0.0021)) for x, ss in pts]
                 bm.faces.new(lo[::-1])
                 bm.faces.new(hi)
-                for i in range(3):
-                    j = (i + 1) % 3
+                for i in range(4):
+                    j = (i + 1) % 4
                     bm.faces.new((lo[i], lo[j], hi[j], hi[i]))
                 bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
                 cutters.append(from_bmesh('serration', bm))
+    # The nose: the front corners chamfered, and the bottom edge at the front
+    # sloped back, so the slide tapers at the muzzle.
+    for side in (-1, 1):
+        xe = side * SLIDE_HALF
+        tri = [(xe - side * 0.0016, 0.1525), (xe + side * 0.0006, 0.1525), (xe + side * 0.0006, 0.1503)]
+        bm = bmesh.new()
+        lo = [bm.verts.new((x, ss, -0.012)) for x, ss in tri]
+        hi = [bm.verts.new((x, ss, SLIDE_TOP + 0.001)) for x, ss in tri]
+        bm.faces.new(lo[::-1])
+        bm.faces.new(hi)
+        for i in range(3):
+            j = (i + 1) % 3
+            bm.faces.new((lo[i], lo[j], hi[j], hi[i]))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        cutters.append(from_bmesh('nose', bm))
+        # The bottom edge along each side, chamfered.
+        low = [(xe + side * 0.0006, -0.0105 + 0.0011), (xe + side * 0.0006, -0.0111), (xe - side * 0.0011, -0.0111)]
+        bm = bmesh.new()
+        a = [bm.verts.new((x, -0.04, y)) for x, y in low]
+        b = [bm.verts.new((x, 0.16, y)) for x, y in low]
+        bm.faces.new(a)
+        bm.faces.new(b[::-1])
+        for i in range(3):
+            j = (i + 1) % 3
+            bm.faces.new((a[i], b[i], b[j], a[j]))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        cutters.append(from_bmesh('bottom_chamfer', bm))
+    nose = [(0.1455, -0.0112), (0.1535, -0.0112), (0.1535, -0.0076)]
+    cutters.append(prism('nose_slope', nose, 0.03))
     # Recess at the muzzle for the barrel crown.
     cutters.append(cylinder('recess', 0.0069, 0.1475, 0.16))
     cut(slide, *cutters)
     # Markings: the model name on the left side, read from the left (muzzle first).
     engrave(slide, 'PF-9', 0.0056, (-SLIDE_HALF, 0.072, 0.0025), (0, -1, 0), (0, 0, 1))
+    # And the serial number on the right, under the ejection port.
+    engrave(slide, 'PF 04217', 0.0024, (SLIDE_HALF, 0.058, -0.0055), (0, 1, 0), (0, 0, 1), depth=0.0002)
 
     parts = []
     # Barrel: its own part, because it doesn't ride all the way back with the
@@ -313,7 +390,10 @@ def build_frame(p):
     # A rounded grip shell over the frame's square-edged grip, so it fills the hand.
     grip = prism('grip', GRIP_SHELL, p['grip']['width'])
     bevel(grip, 0.0055, 6, 25)
-    join(frame, grip)
+    # The magazine well flares out at the bottom of the grip, front and back.
+    flare = prism('magwell', MAGWELL, p['grip']['width'] + 0.0024)
+    bevel(flare, 0.0022, 4, 25)
+    join(frame, grip, flare)
     sharp_edges(frame, 40)
     return frame
 
@@ -520,6 +600,18 @@ def inside_polygon(xs, ys, polygon):
     return result
 
 
+def distance_to_outline(xs, ys, polygon):
+    """How far points (xs, ys) are from the nearest edge of a polygon."""
+    best = np.full(len(xs), np.inf)
+    n = len(polygon)
+    for i in range(n):
+        (x0, y0), (x1, y1) = polygon[i], polygon[(i + 1) % n]
+        dx, dy = x1 - x0, y1 - y0
+        t = np.clip(((xs - x0) * dx + (ys - y0) * dy) / (dx * dx + dy * dy or 1e-12), 0, 1)
+        best = np.minimum(best, np.hypot(xs - (x0 + t * dx), ys - (y0 + t * dy)))
+    return best
+
+
 def stipple(u, v, cell=0.0009, seed=5):
     """Raised dots scattered over a surface, from 2D surface coordinates."""
     rng = np.random.default_rng(seed)
@@ -546,14 +638,20 @@ def frame_maps(p, n, ao, profiles):
     color *= (1 + 0.25 * edge + 0.04 * low_noise(p, 0.03, 32))[:, None]
     height = np.zeros(count)
 
-    # Stippling on the grip panels: inside the panel outline, on its outer surfaces.
-    in_panel = inside_polygon(p[:, 1], p[:, 2], profiles['grip']['points']) & (np.abs(p[:, 0]) > FRAME_HALF - 0.0002)
+    # Stippling on the grip: coarse raised dots all round it (sides, front and
+    # back straps), inside a smooth border a few millimetres in from the
+    # panel's outline.
+    outline = profiles['grip']['points']
+    in_panel = inside_polygon(p[:, 1], p[:, 2], outline) & (np.abs(p[:, 0]) > FRAME_HALF - 0.0002)
+    border = smoothstep(0.0018, 0.003, distance_to_outline(p[:, 1], p[:, 2], outline))
     side_facing = np.abs(n[:, 0]) > 0.6
     u = np.where(side_facing, p[:, 1], p[:, 0])
     v = p[:, 2]
-    dots = stipple(u, v)
-    fade = smoothstep(0.0, 0.0015, np.minimum(np.abs(p[:, 0]) - FRAME_HALF, 1))
-    height += np.where(in_panel, 0.00011 * dots * fade, 0)
+    dots = stipple(u, v, cell=0.0013)
+    fade = smoothstep(0.0, 0.0015, np.minimum(np.abs(p[:, 0]) - FRAME_HALF, 1)) * border
+    height += np.where(in_panel, 0.00019 * dots * fade, 0)
+    # The smooth border is a touch lower than the stippled panel, with a crisp edge.
+    height -= np.where(in_panel, 0.00008 * (1 - border), 0)
     rough = np.where(in_panel, rough + 0.12, rough)
     color = np.where(in_panel[:, None], color * (0.95 + 0.1 * dots[:, None]), color)
 
