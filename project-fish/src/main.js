@@ -15,7 +15,7 @@ import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMag
 import { createWorld, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { Input } from './input.js';
-import { Hud } from './hud.js';
+import { GpuTimer, Hud } from './hud.js';
 import { settings } from './settings.js';
 
 // Never run more than this much game time in one frame (e.g. after switching
@@ -49,6 +49,7 @@ const viewmodel = new Viewmodel(renderer, SUN_DIRECTION);
 
 const input = new Input(renderer.domElement);
 const hud = new Hud(document.getElementById('debug'));
+const gpuTimer = new GpuTimer(renderer.getContext());
 
 const player = createPlayerState();
 const previous = { x: player.x, y: player.y, z: player.z };
@@ -238,6 +239,7 @@ let accumulator = 0;
 const lookDirection = new THREE.Vector3();
 
 renderer.setAnimationLoop((time) => {
+  const cpuStart = performance.now();
   const frameSeconds = lastTime === null ? 0 : Math.min((time - lastTime) / 1000, MAX_FRAME_SECONDS);
   lastTime = time;
 
@@ -342,8 +344,10 @@ renderer.setAnimationLoop((time) => {
   effects.update(frameSeconds);
   updateAmmo();
 
-  hud.update(frameSeconds, player);
+  gpuTimer.begin();
   renderer.clear();
   renderer.render(scene, camera);
   viewmodel.render(renderer);
+  gpuTimer.end();
+  hud.update(frameSeconds, player, performance.now() - cpuStart, gpuTimer.ms);
 });

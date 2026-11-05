@@ -611,12 +611,13 @@ export class Viewmodel {
       kinds.forEach((key, i) => {
         this.guns[key] = this.rigGun(key, pistols[i].model, pistols[i].fromFile);
       });
-      // Get every gun's materials ready now (with all of them in the scene for
-      // a moment), so the first switch to one doesn't stall while they're
-      // prepared.
-      for (const g of Object.values(this.guns)) this.gun.add(g.pistol);
-      renderer.compile(this.scene, this.camera);
+      // Get every gun's materials and textures ready now, so the first switch
+      // to one doesn't stall while they're prepared.
+      // (One at a time: each gun brings its own muzzle-flash light, and the
+      // materials are made for the lights in the scene.)
       for (const g of Object.values(this.guns)) {
+        this.gun.add(g.pistol);
+        renderer.compile(this.scene, this.camera);
         g.pistol.traverse((o) => {
           if (!o.isMesh) return;
           for (const material of [].concat(o.material)) {
