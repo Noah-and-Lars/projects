@@ -512,7 +512,8 @@ window.ArcadeOnline = (() => {
 
 // Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
 // localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
-const SITE_NOTICE = {
+const SITE_NOTICE = null; // online is back (2026-11-05 12:00 Sydney). The last notice, kept for reuse:
+const SITE_NOTICE_OLD = {
   id: 'cf-outage-2026-11-05',
   tag: 'Server issue',
   banner: 'Online play is down right now because of a server issue. It should be back up soon. Offline and vs bots still work.',
