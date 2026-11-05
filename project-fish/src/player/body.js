@@ -36,6 +36,10 @@ const LEGS = ['L', 'R'].map((s) => [`CC_Base_${s}_Thigh`, `CC_Base_${s}_Calf`, `
 // cycle each foot is on the ground (more walking slowly, less running), how
 // high it lifts, how far the hips drop at each step, and how far apart the
 // feet go side to side. In the air the feet tuck up.
+// Sliding: where his feet go (metres ahead of where he is, and to his
+// left), how far he leans back (radians), how low his hips can go, and how
+// far further back his eyes are (so you look down past his chest).
+const SLIDE_POSE = { lead: [0.8, 0.08], tucked: [0.35, -0.13], lean: -0.3, lowestHip: 0.14, back: 0.32 };
 const GAIT = { stepsPerMetre: 0.75, stance: [0.62, 0.36], lift: [0.06, 0.16], bob: 0.03, maxStride: 0.55, tuck: 0.22, ease: 10 };
 
 // Leaves a material's mesh out of the picture, keeping its shadow: every
@@ -116,7 +120,10 @@ export class PlayerBody {
     if (speed > 0.3) this.heading = Math.atan2(player.vx, player.vz);
     // (Still placed when he's left out, so his shoulders stay where his arms
     // need them.)
-    const posed = !player || !(isLow(player) || player.move === 'mantle');
+    // Sliding he sits back on the ground, his lead leg out ahead and the
+    // other bent under him.
+    const sliding = Boolean(player && player.move === 'slide');
+    const posed = !player || sliding || !(isLow(player) || player.move === 'mantle');
     this.setShown(posed);
     const crouch = Math.max(0, PLAYER.eyeHeight - eye); // (the camera's eye height this frame)
     model.position.copy(feet);
@@ -156,7 +163,15 @@ export class PlayerBody {
 
     // Leaning with the view (forward is a turn about his left, +X); the neck
     // and head take the rest of it.
-    const lean = pitch < 0 ? Math.min(LEAN.maxDown, -pitch * LEAN.down) : -Math.min(LEAN.maxUp, pitch * LEAN.up);
+    if (sliding) {
+      const ahead = new THREE.Vector3(Math.sin(this.heading || yaw + Math.PI), 0, Math.cos(this.heading || yaw + Math.PI));
+      const side = new THREE.Vector3(ahead.z, 0, -ahead.x);
+      planted.forEach((foot, i) => {
+        const [out, across] = i === 0 ? SLIDE_POSE.lead : SLIDE_POSE.tucked;
+        foot.position.set(feet.x, feet.y + 0.12, feet.z).addScaledVector(ahead, out).addScaledVector(side, across);
+      });
+    }
+    const lean = sliding ? SLIDE_POSE.lean : pitch < 0 ? Math.min(LEAN.maxDown, -pitch * LEAN.down) : -Math.min(LEAN.maxUp, pitch * LEAN.up);
     const neckTurn = -pitch - lean;
     for (const [name, share] of SPINE) {
       const bone = this.bones[name];
@@ -171,7 +186,7 @@ export class PlayerBody {
     for (const e of this.eyes) eyes.add(e.getWorldPosition(new THREE.Vector3()));
     if (this.eyes.length) eyes.divideScalar(this.eyes.length);
     const camera = new THREE.Vector3(feet.x, 0, feet.z);
-    const want = camera.addScaledVector(forward, EYES_AHEAD - DOWN_SLIDE * Math.max(0, Math.sin(-pitch)));
+    const want = camera.addScaledVector(forward, EYES_AHEAD - DOWN_SLIDE * Math.max(0, Math.sin(-pitch)) - (sliding ? SLIDE_POSE.back : 0));
     const shift = new THREE.Vector3(want.x - eyes.x, 0, want.z - eyes.z);
     if (shift.length() > 0.35) shift.setLength(0.35);
     const hipAt = this.hip.getWorldPosition(new THREE.Vector3()).add(shift);
@@ -188,6 +203,7 @@ export class PlayerBody {
       drop = Math.max(drop, down - most);
     }
     hipAt.y -= Math.max(drop, crouch) + GAIT.bob * hipBob * this.walk;
+    hipAt.y = Math.max(hipAt.y, feet.y + SLIDE_POSE.lowestHip);
     this.hip.position.copy(this.hip.parent.worldToLocal(hipAt));
     this.hip.updateMatrixWorld(true);
 
