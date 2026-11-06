@@ -135,7 +135,8 @@ const mul = (a, b) => {
 };
 const apply = (m, p) => [m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12], m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13], m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]];
 const applyDir = (m, p) => [m[0] * p[0] + m[4] * p[1] + m[8] * p[2], m[1] * p[0] + m[5] * p[1] + m[9] * p[2], m[2] * p[0] + m[6] * p[1] + m[10] * p[2]];
-function invert(m) {
+const invert = (m) => {
+  // General 4x4 inverse.
   const inv = new Array(16);
   const [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = m;
   inv[0] = a5 * a10 * a15 - a5 * a11 * a14 - a9 * a6 * a15 + a9 * a7 * a14 + a13 * a6 * a11 - a13 * a7 * a10;
@@ -153,10 +154,10 @@ function invert(m) {
   inv[3] = -a1 * a6 * a11 + a1 * a7 * a10 + a5 * a2 * a11 - a5 * a3 * a10 - a9 * a2 * a7 + a9 * a3 * a6;
   inv[7] = a0 * a6 * a11 - a0 * a7 * a10 - a4 * a2 * a11 + a4 * a3 * a10 + a8 * a2 * a7 - a8 * a3 * a6;
   inv[11] = -a0 * a5 * a11 + a0 * a7 * a9 + a4 * a1 * a11 - a4 * a3 * a9 - a8 * a1 * a7 + a8 * a3 * a5;
-  inv[15] = a0 * a5 * a10 - a0 * a6 * a9 - a4 * a2 * a10 + a4 * a3 * a9 + a8 * a2 * a6 - a8 * a3 * a5;
+  inv[15] = a0 * a5 * a10 - a0 * a6 * a9 - a4 * a1 * a10 + a4 * a2 * a9 + a8 * a1 * a6 - a8 * a2 * a5;
   const det = a0 * inv[0] + a1 * inv[4] + a2 * inv[8] + a3 * inv[12];
   return inv.map((x) => x / det);
-}
+};
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const mulS = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
@@ -505,6 +506,7 @@ function gloveOnRig(item, left, rig, S, opts, log) {
     P.set(apply(A, pointOf3(out.pos, i)), 3 * i);
     PN.set(norm(applyDir(A, pointOf3(out.nor, i))), 3 * i);
   }
+  if (process.env.DBG) { let worst = 0, wi = -1; for (let i = 0; i < n; i++) { const d = len(sub(pointOf3(P, i), pointOf3(out.pos, i))); if (d > worst) { worst = d; wi = i; } } console.log('DBG worst move', worst, 'at', wi, [...out.wts.subarray(wi * B, wi * B + B)].map((x) => x.toFixed(2)).join(' ')); for (const [vi, m] of out.pose) console.log('DBG pose', view.list[vi].name, m.map((x) => x.toFixed(3)).join(' '), 'rest', restOfView(vi).map((x) => x.toFixed(3)).join(' ')); }
   // The rig's own skin, its points on this side: for the cuff's weights
   // (all of them) and the palm's (those on the hand group).
   const sidePos = new Float32Array(h.points.length * 3);
