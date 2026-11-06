@@ -45,6 +45,7 @@ export const ATTACHMENTS = {
   },
   pistol45: {},
   beretta: {},
+  fn502: {},
 };
 
 const STORAGE_KEY = 'project-fish.attachments';

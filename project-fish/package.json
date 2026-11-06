@@ -12,8 +12,9 @@
     "build-pistol45-own": "npm run export-arm-base && mkdir -p build && blender --background --python tools/blender/build_pistol45.py -- build/arm-base/pistol45.json build/pistol45-own-raw.glb --blend build/pistol45-own.blend && gltf-transform meshopt build/pistol45-own-raw.glb build/pistol45-own.glb --level high",
     "build-soldier": "mkdir -p assets && python3 -I tools/soldier/remove_patch_text.py build/soldier-source/textures/Mark_Helmet1_baseColor.jpeg build/soldier-helmet.jpeg && node tools/soldier/build_soldier.mjs build/soldier-source assets/soldier.glb --helmet build/soldier-helmet.jpeg --size 1024",
     "build-beretta": "mkdir -p assets && blender --background --python tools/blender/convert_beretta.py -- build/beretta-source build/beretta-raw.glb && gltf-transform meshopt build/beretta-raw.glb assets/beretta.glb --level high",
+    "build-fn502": "mkdir -p assets && blender --background --python tools/blender/convert_fn502.py -- build/fn502-source build/fn502-raw.glb && gltf-transform meshopt build/fn502-raw.glb assets/fn502.glb --level high",
     "build-gear": "mkdir -p build assets/gear && python3 -I tools/gear/rub_headset_text.py build/gear-src/tactical_headset_-_game_ready/textures/headset_baseColor.jpeg build/gear-headset.png && node tools/gear/build_gear.mjs build/gear-src assets/soldier.glb assets/gear --headset-texture build/gear-headset.png",
-    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-arms && npm run build-soldier && npm run build-gear"
+    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-arms && npm run build-soldier && npm run build-gear"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.2.1",

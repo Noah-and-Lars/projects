@@ -87,6 +87,9 @@ SCALE = 0.19 / GUN_LENGTH  # download units to metres (0.708)
 # The eye: the download's camera (an FBX camera, looking along its own +X,
 # which in the armature's space is forward, -Y, with +Z up).
 CAMERA_NODE = 'Camera'
+# Where the ejection port's middle is: this far (metres) in front of the rear
+# sight (from the model: the opening is 70-111 mm from the slide's back).
+PORT_AHEAD = 0.075
 
 # The clips: ours, and the download's animation each is (all of it), or for
 # a still, the animation and the time it's taken at.
@@ -552,9 +555,8 @@ def measure(rig, meshes, clips):
                      'frontZ': round(float(f_pt[2]), 4), 'front_x': round(float(f_pt[0]), 4),
                      'front_height': round(float(f_pt[1]), 4)}
     # The ejection port: on the slide's right side, just under its top, over
-    # the chamber (the back of the barrel's hood: PORT_BACK in front of the
-    # rear sight).
-    port_own = np.array([sv[:, 0].max() - 0.002, top - 0.008, s['rearZ'] - 0.05])
+    # the chamber (its middle PORT_AHEAD in front of the rear sight).
+    port_own = np.array([sv[:, 0].max() - 0.002, top - 0.008, s['rearZ'] - PORT_AHEAD])
     out['port_own'] = r4(port_own)
     out['port'] = r4(in_gun(port_own))
 

@@ -140,11 +140,11 @@ function loadSamples() {
 }
 
 // Plays a recorded sound; false if it isn't loaded (yet).
-function playSample(name, volume = 1) {
+function playSample(name, volume = 1, rate = 1) {
   if (!context || !samples[name]) return false;
   const source = context.createBufferSource();
   source.buffer = samples[name];
-  source.playbackRate.value = vary(1, 0.02);
+  source.playbackRate.value = vary(rate, 0.02);
   const level = context.createGain();
   level.gain.value = volume;
   source.connect(level).connect(master);
@@ -241,11 +241,19 @@ const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 
 // Each gun's shot: the .45 is the same recording slowed down a little, so
 // it's deeper, and a bit louder. The Beretta is the 9 mm's, a touch lower
-// (a longer barrel and a heavier, all-steel gun) and as loud.
-const GUNSHOT = { pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, beretta: { rate: 0.95, volume: 0.92 } };
+// (a longer barrel and a heavier, all-steel gun) and as loud. The FN 502's
+// .22 is the 9 mm's sped up, so it's sharper and shorter, and much quieter,
+// with less of it echoing back.
+const GUNSHOT = {
+  pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, beretta: { rate: 0.95, volume: 0.92 },
+  fn502: { rate: 1.35, volume: 0.5, echo: 0.3 },
+};
 // The guns whose magazine and slide sounds are the .45 recordings: the
-// PF-45's, and the Beretta's (a steel magazine and slide too).
+// M1911's, and the Beretta's (a steel magazine and slide too). The FN 502
+// has the PF-9's magazine sounds (it's polymer-framed), and the .45's slide
+// recordings played faster and quieter (a lighter slide): LIGHT_SLIDE.
 const RECORDED = new Set(['pistol45', 'beretta']);
+const LIGHT_SLIDE = { fn502: { rate: 1.25, volume: 0.65 } };
 
 // suppressed: fired through a suppressor (quieter, and it barely echoes).
 export function playGunshot(gun = 'pistol', suppressed = false) {
@@ -259,7 +267,7 @@ export function playGunshot(gun = 'pistol', suppressed = false) {
   level.gain.value = sound.volume * (suppressed ? 0.75 : 1);
   source.connect(level).connect(master);
   const send = context.createGain();
-  send.gain.value = suppressed ? 0.12 : 0.5;
+  send.gain.value = suppressed ? 0.12 : sound.echo ?? 0.5; // (how much echoes back)
   level.connect(send).connect(echo);
   source.start();
 }
@@ -317,14 +325,18 @@ export function playMagIn(gun = 'pistol') {
 }
 
 // The slide pulled back by hand (checking the chamber). Only the .45s have
-// a sound for it, recorded.
+// a sound for it, recorded (and the FN 502, the same, lighter).
 export function playSlideBack(gun = 'pistol') {
-  if (RECORDED.has(gun)) playSample('slide45Back', 0.85);
+  const light = LIGHT_SLIDE[gun];
+  if (light) playSample('slide45Back', 0.85 * light.volume, light.rate);
+  else if (RECORDED.has(gun)) playSample('slide45Back', 0.85);
 }
 
 // The slide snapping forward when it's let go (or the slide stop releases
 // it). The .45s' is recorded.
 export function playSlideRelease(gun = 'pistol') {
+  const light = LIGHT_SLIDE[gun];
+  if (light && playSample('slide45Forward', 0.95 * light.volume, light.rate)) return;
   if (RECORDED.has(gun) && playSample('slide45Forward', 0.95)) return;
   burst({ type: 'bandpass', from: 1800, q: 4, volume: 1.00, decay: 0.05 });
   burst({ at: 0.012, type: 'bandpass', from: 3000, q: 6, volume: 0.80, decay: 0.03 });

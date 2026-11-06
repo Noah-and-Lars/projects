@@ -90,7 +90,9 @@ export const WORLD = {
   size: 2000, // m, the baseplate is size × size, centred on 0,0
 };
 
-// The guns. Times in seconds, angles in degrees, distances in metres.
+// The guns. Times in seconds, angles in degrees, distances in metres. Each
+// gun's `name` is what the player sees (the ammo counter, the loadout menu,
+// the start screen's credits); everything else knows it by its key in GUNS.
 // The first pistol: a compact 9 mm, 15 rounds.
 export const PISTOL = {
   name: 'PF-9',
@@ -105,11 +107,11 @@ export const PISTOL = {
   recoil: 1, // how hard it kicks (the view and the gun)
 };
 
-// The second pistol: a .45 in the style of the 1911. Fewer, slower, harder-
-// kicking shots. (Its reload times match the first pistol's for now: the
-// hands' reload is shared, see src/viewmodel/viewmodel.js.)
+// The second pistol: an M1911, a .45. Fewer, slower, harder-kicking shots.
+// (Its reload times match the first pistol's for now: the hands' reload is
+// shared, see src/viewmodel/viewmodel.js.)
 export const PISTOL45 = {
-  name: 'PF-45',
+  name: 'M1911',
   fireInterval: 0.17, // 350 rounds a minute at most
   magazine: 7,
   reserve: 35,
@@ -138,7 +140,7 @@ export const PISTOL45 = {
 // inspect is its inspect clip (5.03 s). Each shot's clip has the slide home
 // 0.12 s after the shot goes off and the trigger pulled again by 0.2: 300
 // rounds a minute at most. A heavy, all-steel-slide 9 mm: it kicks a
-// little more than the PF-9 and a little less than the PF-45.
+// little more than the PF-9 and a little less than the M1911.
 export const BERETTA = {
   name: 'Beretta 92FS',
   fireInterval: 0.2,
@@ -165,6 +167,36 @@ export const BERETTA = {
   inspectLocked: false,
 };
 
-// The guns the player carries, in the order of their keys (1, 2, 3).
-export const LOADOUT = ['pistol', 'pistol45', 'beretta'];
-export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA };
+// The fourth: an FN 502 Tactical, a .22 LR pistol holding 10 rounds. It
+// comes with its own arms and its own animations too (src/viewmodel/
+// fn502.js), so its times are those clips' own lengths: a reload with
+// rounds left is its reload clip (1.98 s), one from empty its full reload
+// (2.98 s: the support hand racks the slide after the fresh magazine goes
+// in). Its shot clip has the slide home 0.19 s after the shot: 300 rounds a
+// minute at most. A light .22: it barely kicks, and strays a little less.
+// It has no inspect (its maker made none).
+export const FN502 = {
+  name: 'FN 502',
+  fireInterval: 0.2,
+  magazine: 10,
+  reserve: 40,
+  reloadTime: 1.983,
+  emptyReloadTime: 2.983,
+  // When things happen, as fractions of the reload: the clips' own times
+  // (src/viewmodel/fn502.js) over their lengths. Either way the magazine
+  // comes out and is swapped for a fresh one at the belt (nothing catches
+  // it: magCaught is never reached); from empty, the slide is then pulled
+  // back and let go.
+  reloadSteps: {
+    empty: { magOut: 0.075, magGrab: 0.207, magIn: 0.444, slidePull: 0.612, slideRelease: 0.665, handOn: 0.869 },
+    catching: { magOut: 0.113, magCaught: 2, magGrab: 0.311, magIn: 0.668, handOn: 0.811 },
+  },
+  range: 150,
+  spread: { hip: 1.6, aim: 0.1, moving: 1.1 },
+  recoil: 0.55,
+  inspect: false,
+};
+
+// The guns the player carries, in the order of their keys (1, 2, 3, 4).
+export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502'];
+export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502 };

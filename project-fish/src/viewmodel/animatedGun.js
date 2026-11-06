@@ -1,6 +1,6 @@
 // A gun that brings its own arms and animations (the Beretta 92FS, see
-// beretta.js): one skeleton with the forearms, hands and gun on it, and the
-// clips its maker made for it. The gun layer (viewmodel.js) puts it where
+// beretta.js, and the FN 502, fn502.js): one skeleton with the forearms,
+// hands and gun on it, and the clips its maker made for it. The gun layer (viewmodel.js) puts it where
 // the eye is and moves the whole rig with the same sway, bob, recoil kick,
 // aiming and sprinting offsets as the other guns; this plays its clips as
 // the gun's state says, as they were made.
@@ -10,7 +10,7 @@
 //   locked back on an empty magazine (where shootLast ends).
 // - draw, hide: taking it out and putting it away. Without them, the gun
 //   layer lowers and raises the whole rig as it does the other guns, held in
-//   its idle pose.
+//   its rest pose (idle, or idleEmpty).
 // - shoot: one shot, from the idle pose back to it. shootLast: the last
 //   round, ending with the slide locked back. Each shot plays it from the
 //   moment the shot goes off (model.events.shoot.fire), so the kick comes
@@ -18,6 +18,9 @@
 // - reload (with rounds left) and reloadEmpty (from empty, slide locked back
 //   at the start). With only one, it plays for both.
 // - inspect.
+// - walk, run: loops of the hands' sway as the player walks and runs (each
+//   starting and ending in the idle pose). Played in place of the idle pose
+//   (not idleEmpty) as much as the player is walking or running.
 //
 // The clips are sampled, not played: each frame the gun layer says which one
 // the gun is in and how far (the reload's progress, how far the switch has
@@ -59,6 +62,8 @@ const STOP_LIFT = 0.12;
 
 // The clip played instead when a gun hasn't one.
 const STAND_IN = { idleEmpty: 'idle', shootLast: 'shoot', reloadEmpty: 'reload' };
+// The loops played in place of the idle pose walking and running.
+const LOOPS = ['walk', 'run'];
 
 const ACROSS = new THREE.Vector3(1, 0, 0);
 const turn = new THREE.Quaternion();
@@ -146,6 +151,10 @@ export class AnimatedGun {
     // The shot playing (its clip from its start): { time, last } (last: it
     // emptied the gun, found on the next frame; null till then).
     this.shot = null;
+    // (walk, run) How far into the loops (seconds), and how much of each is
+    // played in place of the idle pose.
+    this.loopTime = 0;
+    this.loops = LOOPS.filter((key) => clips[key]);
 
     // The pose at rest (the opt-in parts' rest is where the idle pose has them).
     if (this.actions.idle) {
@@ -259,10 +268,12 @@ export class AnimatedGun {
   //   idleEmpty, and a shot that has just emptied it plays shootLast).
   // - shotDt: the time a shot moves on by (real time, which the gun's fire
   //   rate keeps to, even when dt has been cut short for a slow frame).
+  // - moving: { walk, run }, how much (0..1, eased) the player is walking
+  //   and running (for the walk and run loops, if it has them).
   // - (Opt-in extras) slide: 'clip' (as the clip has it), 'home' (held
   //   forward) or 'locked' (held back once it's gone back); triggerPull: how
   //   far the trigger is pulled (0..1).
-  update(dt, { clip, time = 0, toIdle = 0, empty = false, shotDt = dt, slide = 'clip', triggerPull = 0 }) {
+  update(dt, { clip, time = 0, toIdle = 0, empty = false, shotDt = dt, moving = null, slide = 'clip', triggerPull = 0 }) {
     if (!this.ok) return;
     this.slideMode = slide;
     const b = this.base;
@@ -293,7 +304,8 @@ export class AnimatedGun {
         time = t;
       }
     }
-    if (clip === 'idle') clip = rest;
+    // (Drawn or put away without a clip for it, it's held in its rest pose.)
+    if (clip === 'idle' || ((clip === 'draw' || clip === 'hide') && !this.has(clip))) clip = rest;
     clip = this.clipFor(clip);
     const length = this.duration(clip);
     time = Math.min(Math.max(time, 0), Math.max(0, length - 1e-4));
@@ -330,8 +342,24 @@ export class AnimatedGun {
       a.weight += w;
     };
     const fading = this.ghost ? this.ghost.weight * this.ghost.weight * (3 - 2 * this.ghost.weight) : 0;
-    set(this.actions[clip], time, (1 - fading) * (1 - b.toIdle));
-    if (b.toIdle) set(this.actions[rest], 0, (1 - fading) * b.toIdle);
+    // The idle pose, with the walk and run loops in place of as much of it
+    // as the player is walking and running.
+    this.loopTime += dt;
+    const restPose = (key, w) => {
+      let left = w;
+      if (key === 'idle' && moving) {
+        for (const loop of this.loops) {
+          const share = w * THREE.MathUtils.clamp(moving[loop] || 0, 0, 1);
+          if (share <= 0) continue;
+          set(this.actions[loop], this.loopTime % this.duration(loop), share);
+          left -= share;
+        }
+      }
+      set(this.actions[key], 0, Math.max(0, left));
+    };
+    if (clip === rest) restPose(rest, (1 - fading) * (1 - b.toIdle));
+    else set(this.actions[clip], time, (1 - fading) * (1 - b.toIdle));
+    if (b.toIdle) restPose(rest, (1 - fading) * b.toIdle);
     if (this.ghost) {
       const g = this.ghost;
       set(this.ghosts[g.clip], g.time, fading * (1 - g.toIdle));

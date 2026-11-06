@@ -12,6 +12,7 @@ import { createPistol, GRIP, SIGHTS, MAGAZINE, SLIDE } from './pistol.js';
 import { createPistol45, MODEL45, FALLBACK45 } from './pistol45.js';
 import { MODEL9 } from './pistol9.js';
 import { MODEL_BERETTA } from './beretta.js';
+import { MODEL_FN502 } from './fn502.js';
 import { AnimatedGun } from './animatedGun.js';
 import { createArms, rightHandPose } from './arms.js';
 import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix, OVER_TURN, OVER_SLIDE } from './supportHand.js';
@@ -20,7 +21,7 @@ import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS, reloadSteps } from '../weapon.js';
-import { PISTOL, PISTOL45, BERETTA, LOADOUT } from '../shared/config.js';
+import { PISTOL, PISTOL45, BERETTA, FN502, LOADOUT } from '../shared/config.js';
 
 // Points on the built-in first pistol (gun space; used if its model file
 // can't be loaded; the model's are in pistol9.js): the
@@ -53,17 +54,18 @@ const TRIGGER_TRAVEL = 0.0032;
 const INDICATOR_TRAVEL = 0.0006;
 const BLADE_TRAVEL = 0.0009;
 
-// If the Beretta's model can't be loaded, the PF-9's built-in stand-in takes
-// its place, held by the usual hands: its rules, but the PF-9's reloads and
-// inspect (the Beretta's follow its own animations).
-const STAND_IN_BERETTA = {
-  ...BERETTA,
+// If the Beretta's or the FN 502's model can't be loaded, the PF-9's built-
+// in stand-in takes its place, held by the usual hands: its rules, but the
+// PF-9's reloads and inspect (theirs follow their own animations).
+const standIn = (rules) => ({
+  ...rules,
   reloadTime: PISTOL.reloadTime,
   emptyReloadTime: PISTOL.emptyReloadTime,
   reloadSteps: undefined,
   inspectTime: undefined,
   inspectLocked: undefined,
-};
+  inspect: undefined,
+});
 
 // The guns: their rules (src/shared/config.js), their models (made in
 // Blender, see tools/blender/) with simpler built-in ones in case a file
@@ -78,7 +80,13 @@ const GUN_KINDS = {
     rules: BERETTA, model: new URL('../../assets/beretta.glb', import.meta.url), animated: MODEL_BERETTA,
     // (Its rear sight where the PF-45's is at the hip: see RIG.)
     rig: { sightAsAtHip: MODEL45.sights, kick: 0.4 },
-    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: STAND_IN_BERETTA,
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(BERETTA),
+  },
+  fn502: {
+    rules: FN502, model: new URL('../../assets/fn502.glb', import.meta.url), animated: MODEL_FN502,
+    // (Its rear sight where the M1911's is at the hip, as the Beretta's.)
+    rig: { sightAsAtHip: MODEL45.sights, kick: 0.4 },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(FN502),
   },
 };
 
@@ -1650,8 +1658,11 @@ export class Viewmodel {
     // (The opt-in extras' slide: while it's being put away, it stays as it
     // was when the switch began.)
     const slide = leaving ? rig.slideMode : reload >= 0 && !gun.reloadEmpty ? 'home' : empty ? 'locked' : 'clip';
-    // (Its shots move on in real time, as the fire rate does.)
-    rig.update(dt, { clip, time, toIdle, empty, shotDt: this.rigFrameSeconds, slide, triggerPull: this.triggerPull });
+    // (Its shots move on in real time, as the fire rate does. Walking and
+    // running, its walk and run loops play, if it has them, as much as the
+    // gun layer's own bob and sprint pose have come in.)
+    const moving = { walk: this.motion.bobAmount * (1 - this.motion.sprint), run: this.motion.bobAmount * this.motion.sprint };
+    rig.update(dt, { clip, time, toIdle, empty, shotDt: this.rigFrameSeconds, moving, slide, triggerPull: this.triggerPull });
   }
 
   // Where a gun with its own arms is held: at the eye moved to the hip, a
