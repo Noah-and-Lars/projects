@@ -36,7 +36,7 @@
 //   0.34 s, is swapped at the belt and back in at 1.43; the hands are back
 //   in the idle pose by the end.
 // - reloadEmpty (12.0-16.03 s), slide locked back: the magazine is let go
-//   at 0.1 s and falls away, the new one is in the support hand by 0.65 and
+//   at 0.1 s and falls away, the fresh one is in the support hand from about 0.65 and
 //   in at 1.76; the support hand pulls the slide back the last bit (2.62)
 //   and lets it go (2.77, home at 2.86), and the hands settle by the end.
 // - hide (16.33-16.83 s): the gun leaves at once and is down out of sight
