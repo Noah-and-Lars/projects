@@ -782,7 +782,6 @@ function clearCuff(P, joints, wts4, rig, h, opts, log) {
     if (!want || r >= want) continue;
     count++;
     need.set(k, want / r);
-    if (process.env.CUFFDBG) console.log("    need", k, (a * 1000).toFixed(1), (r * 1000).toFixed(1), (want * 1000).toFixed(1));
   }
   // (Smoothed: each strip takes the most of those near it, eased off over
   // 8 mm along the arm and two strips round it.)
