@@ -100,8 +100,9 @@ BLUED = np.array([0.055, 0.058, 0.064])  # linear
 WEAR = np.array([0.36, 0.37, 0.39])  # linear, bare steel on the worn edges
 TEXTURE_SIZE = 2048
 
-# The made-up markings, engraved where the download had its maker's name.
-MARKING = 'PF-45  CAL .45'
+# The marking engraved where the download had its maker's name: just the
+# calibre (no maker's or model name, as on the other guns).
+MARKING = 'CAL .45'
 
 
 def part_of(name):

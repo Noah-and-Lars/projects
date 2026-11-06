@@ -139,7 +139,7 @@ DIELECTRIC = 0.04
 RUB_OUT = [
     ((396, 560, 540, 1020), 'letters'),  # frame, right: the maker's address and the maker's line
     ((1396, 586, 1504, 812), 'letters'),  # slide, right: serial, proof and date marks
-    ((1584, 1600, 1788, 1880), 'fill'),  # grip side: the maker's logo (all of its oval)
+    ((1588, 1600, 1774, 1880), 'fill'),  # grip side: the maker's logo (all of its oval)
     ((2092, 866, 2296, 1048), 'letters'),  # slide, left: the maker's logo (the calibre above it stays)
     ((1986, 1296, 2384, 1424), 'letters'),  # frame: model, calibre and serial line
     ((3458, 1886, 3548, 2046), 'letters'),  # frame plate: serial and proof marks

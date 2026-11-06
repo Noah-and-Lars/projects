@@ -736,9 +736,9 @@ function drawOut(P, h, to, S, log) {
 // Widens the cuff wherever it's within `clearance` of (or inside) the rig's
 // bare forearm, in the bind pose, so the skin never shows through it: round
 // the forearm's line, strip by strip (4 mm along it, 24 round it), every
-// point of the cuff in a strip is moved out by the same share, the most
-// any of them needs there (so its layers, a strap over the cuff, its lining
-// inside it, stay as they are), smoothed over the strips near it and eased
+// point of the cuff in a strip is moved out by the same share, what its
+// outermost point there needs (so its layers, a strap over the cuff, its
+// lining inside it, stay as they are), smoothed over the strips near it and eased
 // off from the wrist to 2 cm into the hand.
 function clearCuff(P, joints, wts4, rig, h, opts, log) {
   const at = roundArm(h);
@@ -760,21 +760,29 @@ function clearCuff(P, joints, wts4, rig, h, opts, log) {
     for (let da = -1; da <= 1; da++) r = Math.max(r, skinR.get(`${A + da},${S2}`) ?? 0);
     return r;
   };
-  // The share each strip of the cuff needs.
+  // The share each strip of the cuff needs: its outermost layer pushed
+  // clear of the skin there. (Only the outermost: what's under it, the
+  // cuff's lining or a layer under a strap, is hidden whether or not the
+  // skin goes through it, and pushing the whole cuff out to clear its
+  // lining made it stand off the arm by 2 cm.)
   const n = P.length / 3;
-  const need = new Map();
-  let count = 0;
+  const outer = new Map();
   for (let i = 0; i < n; i++) {
     const p = pointOf3(P, i);
     const [a, ang] = at(p);
     if (a > 0.02 || a < -0.15) continue;
-    const r = radius(p, a), want = skinAt(a, ang) + opts.clearance;
-    // (Points well inside the skin aren't the cuff's: the glove's insides
-    // at the wrist, or across the palm.)
-    if (!want || r >= want || r < 0.7 * (want - opts.clearance)) continue;
-    count++;
     const k = `${ai(a)},${si(ang)}`;
-    need.set(k, Math.max(need.get(k) ?? 1, want / r));
+    const r = radius(p, a);
+    if (r > (outer.get(k)?.r ?? 0)) outer.set(k, { r, a, ang });
+  }
+  const need = new Map();
+  let count = 0;
+  for (const [k, { r, a, ang }] of outer) {
+    const want = skinAt(a, ang) + opts.clearance;
+    if (!want || r >= want) continue;
+    count++;
+    need.set(k, want / r);
+    if (process.env.CUFFDBG) console.log("    need", k, (a * 1000).toFixed(1), (r * 1000).toFixed(1), (want * 1000).toFixed(1));
   }
   // (Smoothed: each strip takes the most of those near it, eased off over
   // 8 mm along the arm and two strips round it.)
@@ -806,7 +814,7 @@ function clearCuff(P, joints, wts4, rig, h, opts, log) {
     most = Math.max(most, len(sub(q, p)));
     P.set(q, 3 * i);
   }
-  log(`  ${h === rig.hands.L ? 'L' : 'R'}: cuff widened over the bare forearm: ${count} points were within ${opts.clearance * 1000} mm of the skin; moved out by up to ${(most * 1000).toFixed(1)} mm`);
+  log(`  ${h === rig.hands.L ? 'L' : 'R'}: cuff widened over the bare forearm: in ${count} of its strips its outside was within ${opts.clearance * 1000} mm of the skin; moved out by up to ${(most * 1000).toFixed(1)} mm`);
 }
 
 // --- Both hands, simplified, and the file -----------------------------------
