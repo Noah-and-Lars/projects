@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Krill Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #eaf7ff; --muted: #9cc3d8; --panel: rgba(4, 22, 40, .78); --line: rgba(160, 220, 255, .18);
+    --krill: #ff7a59; --krill-hi: #ffb199; --sea: #0b4f7c;
+    --t0: #9aa7b2; --t1: #3fa9ff; --t2: #ff4d5e; --t3: #b06bff; --t4: #ffd23f;
+    --display: 'Baloo 2', system-ui, sans-serif; --body: 'Nunito', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #021526; color: var(--ink); font: 16px/1.4 var(--body); }
+  canvas#sea { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .screen { position: fixed; inset: 0; display: none; overflow-y: auto; padding: 16px; }
+  .screen.on { display: flex; flex-direction: column; align-items: center; }
+  button { font: inherit; cursor: pointer; }
+  .btn { border: 0; border-radius: 14px; padding: 13px 20px; font-weight: 800; font-size: 17px; color: #071a2b; background: linear-gradient(180deg, #ffd9b8, var(--krill)); box-shadow: 0 4px 0 #b9452c, 0 8px 24px rgba(255, 122, 89, .25); transition: transform .08s; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #b9452c; }
+  .btn.alt { background: rgba(255, 255, 255, .08); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+  /* home */
+  #home { justify-content: center; gap: 14px; text-align: center; }
+  .logo { font: 800 clamp(54px, 13vw, 96px)/.9 var(--display); letter-spacing: -.02em; margin: 0; color: #fff; text-shadow: 0 4px 0 #0a3b5c, 0 10px 40px rgba(63, 169, 255, .5); }
+  .logo em { font-style: normal; color: var(--krill); }
+  .tagline { max-width: 520px; color: #e2f4ff; margin: 0 auto; font-weight: 700; text-shadow: 0 2px 8px rgba(0, 20, 40, .8); }
+  .homeCard { width: min(520px, 100%); padding: 18px; display: grid; gap: 10px; }
+  .dayRow { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; }
+  .dayRow small { color: var(--muted); font-weight: 700; }
+  .statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .statsGrid div { background: rgba(255, 255, 255, .05); border-radius: 12px; padding: 8px 4px; }
+  .statsGrid b { display: block; font: 800 22px/1.1 var(--display); }
+  .statsGrid span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .doneNote { font-size: 14px; color: var(--muted); }
+  .doneNote b { color: var(--krill-hi); }
+  .links { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .link { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 14px; }
+
+  /* the dive */
+  #game { padding: max(12px, env(safe-area-inset-top)) 12px 12px; pointer-events: none; }
+  #game > * { pointer-events: auto; }
+  .topbar { width: min(640px, 100%); display: flex; align-items: center; gap: 10px; }
+  .pips { display: flex; gap: 6px; flex: 1; }
+  .pips i { flex: 1; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .14); }
+  .pips i.cur { background: rgba(255, 255, 255, .45); }
+  .depthTag { font: 800 18px/1 var(--display); min-width: 96px; text-align: right; }
+  .iconBtn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 16px; }
+  .card { width: min(640px, 100%); margin-top: 12px; padding: 18px 18px 16px; position: relative; }
+  .qNum { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+  .prompt { font: 800 clamp(24px, 5.5vw, 36px)/1.1 var(--display); margin: 4px 0 12px; }
+  .timer { position: absolute; right: 14px; top: 14px; width: 58px; height: 58px; }
+  .timer svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .timer circle { fill: none; stroke-width: 6; }
+  .timer .bg { stroke: rgba(255, 255, 255, .12); }
+  .timer .fg { stroke: #6fe3ff; stroke-linecap: round; transition: stroke .2s; }
+  .timer b { position: absolute; inset: 0; display: grid; place-items: center; font: 800 20px/1 var(--display); }
+  .timer.low .fg { stroke: #ff5d6c; } .timer.low b { color: #ff9aa4; }
+  .prompt { padding-right: 64px; }
+  .ansRow { display: flex; gap: 8px; }
+  #ans { flex: 1; min-width: 0; font: 700 20px var(--body); padding: 12px 14px; border-radius: 14px; border: 2px solid var(--line); background: rgba(0, 0, 0, .25); color: #fff; outline: none; }
+  #ans:focus { border-color: #6fe3ff; }
+  #ans:disabled { opacity: .5; }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+  .tries { min-height: 22px; margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; font-size: 13px; color: #ffb3bb; }
+  .tries span { background: rgba(255, 77, 94, .12); border-radius: 8px; padding: 2px 8px; text-decoration: line-through; }
+  .ready { position: absolute; left: 18px; right: 18px; bottom: 16px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 12px; background: rgba(2, 16, 30, .92); font: 800 30px/1 var(--display); color: #fff; }
+  .ready[hidden] { display: none; }
+  .ready small { font: 800 13px var(--body); letter-spacing: .14em; color: var(--muted); }
+  .verdict { margin-top: 10px; padding: 12px 14px; border-radius: 14px; display: flex; align-items: center; gap: 12px; animation: pop .3s ease-out; }
+  @keyframes pop { from { transform: scale(.9); opacity: 0; } }
+  .chip { flex: none; font: 800 13px var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 6px 10px; border-radius: 10px; color: #061423; }
+  .verdict b { font: 800 22px/1.1 var(--display); }
+  .verdict .pts { margin-left: auto; text-align: right; font: 800 26px/1 var(--display); }
+  .verdict .pts small { display: block; font: 700 12px var(--body); color: var(--muted); }
+  .t0 { background: var(--t0); } .t1 { background: var(--t1); } .t2 { background: var(--t2); } .t3 { background: var(--t3); } .t4 { background: var(--t4); }
+  .vbg0 { background: rgba(154, 167, 178, .14); } .vbg1 { background: rgba(63, 169, 255, .16); } .vbg2 { background: rgba(255, 77, 94, .16); } .vbg3 { background: rgba(176, 107, 255, .18); } .vbg4 { background: rgba(255, 210, 63, .2); box-shadow: 0 0 30px rgba(255, 210, 63, .35); }
+  .vbgx { background: rgba(255, 255, 255, .06); }
+
+  /* results */
+  #results { gap: 12px; }
+  .resHead { text-align: center; margin-top: 8px; }
+  .resHead h2 { font: 800 clamp(40px, 10vw, 64px)/1 var(--display); margin: 0; }
+  .resHead p { margin: 4px 0 0; color: var(--muted); }
+  .zone { display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, .08); font-weight: 800; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+  .resList { width: min(640px, 100%); padding: 8px; display: grid; gap: 6px; }
+  .resRow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, .04); }
+  .resRow .q { font-size: 13px; color: var(--muted); }
+  .resRow .a { font-weight: 800; font-size: 17px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .resRow .p { grid-row: span 2; align-self: center; font: 800 22px var(--display); text-align: right; }
+  .resRow .p small { display: block; font: 700 11px var(--body); color: var(--muted); }
+  .resRow .x { font-size: 12px; color: var(--muted); grid-column: 1 / -1; }
+  .chip.sm { font-size: 10px; padding: 3px 7px; border-radius: 7px; }
+  .resBtns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding-bottom: 20px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #0b2a44; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-weight: 700; z-index: 20; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+
+  /* how to play */
+  #how { justify-content: center; }
+  .howCard { width: min(560px, 100%); padding: 20px; }
+  .howCard h2 { font: 800 30px var(--display); margin: 0 0 8px; }
+  .howCard li { margin-bottom: 6px; }
+  .tierTable { display: grid; gap: 6px; margin: 10px 0 14px; }
+  .tierTable div { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .tierTable .chip { width: 120px; text-align: center; }
+  .tierTable b { margin-left: auto; }
+  @media (max-width: 520px) { .statsGrid b { font-size: 18px; } .prompt { font-size: 24px; } .verdict b { font-size: 18px; } }
+</style>
+</head>
+<body>
+<canvas id="sea"></canvas>
+
+<section id="home" class="screen on">
+  <h1 class="logo">KRILL<br><em>DIVE</em></h1>
+  <p class="tagline">Seven prompts. 25 seconds each. Skip the obvious: the rarer your answer, the deeper your krill sinks. Reach 7,000 m for a perfect dive.</p>
+  <div class="homeCard panel">
+    <div class="dayRow"><span id="dayTitle">Today's dive</span><small id="dayDate"></small></div>
+    <div class="doneNote" id="doneNote" hidden></div>
+    <button class="btn" id="dailyBtn">Start today's dive</button>
+    <button class="btn alt" id="practiceBtn">Practice dive (random prompts)</button>
+    <div class="statsGrid">
+      <div><b id="stBest">0</b><span>Best m</span></div>
+      <div><b id="stPlayed">0</b><span>Dives</span></div>
+      <div><b id="stStreak">0</b><span>Streak</span></div>
+      <div><b id="stAvg">0</b><span>Avg m</span></div>
+    </div>
+    <div class="links"><button class="link" id="howBtn">How to play</button><button class="link" id="muteBtn">Sound: on</button></div>
+  </div>
+</section>
+
+<section id="how" class="screen">
+  <div class="howCard panel">
+    <h2>How to play</h2>
+    <ul>
+      <li>Every diver gets the same <b>seven prompts</b> each day, like "Name a songbird".</li>
+      <li>You get <b>3 seconds</b> to read each prompt, then <b>25 seconds</b> to answer.</li>
+      <li><b>One shot:</b> the first answer the game recognises is locked in. Answers it doesn't know don't count against you, so keep typing.</li>
+      <li>Rarer answers score more. Every point sinks your krill <b>10 m</b>.</li>
+    </ul>
+    <div class="tierTable">
+      <div><span class="chip t0">Plankton</span>Common: what everyone says <b>10</b></div>
+      <div><span class="chip t1">Shallows</span>Uncommon <b>~30</b></div>
+      <div><span class="chip t2">Reef</span>Rare <b>~50–65</b></div>
+      <div><span class="chip t3">Abyss</span>Very niche <b>~80</b></div>
+      <div><span class="chip t4">Trench Find</span>The rarest answers <b>100</b></div>
+    </div>
+    <p style="color:var(--muted);font-size:14px">Rarity comes from Krill Dive's familiarity list: how often each answer turns up in everyday writing, not what other players typed. Very obscure answers that aren't on the list don't count. The daily dive changes at midnight UTC. Practice dives give you a fresh random set whenever you like.</p>
+    <button class="btn" id="howBack" style="width:100%">Got it</button>
+  </div>
+</section>
+
+<section id="game" class="screen">
+  <div class="topbar"><button class="iconBtn" id="quitBtn" title="Quit this dive">✕</button><div class="pips" id="pips"></div><div class="depthTag" id="depthTag">0 m</div></div>
+  <div class="card panel" id="card">
+    <div class="qNum" id="qNum">Prompt 1 of 7</div>
+    <div class="prompt" id="prompt"></div>
+    <div class="timer" id="timer"><svg viewBox="0 0 60 60"><circle class="bg" cx="30" cy="30" r="25"/><circle class="fg" id="timerFg" cx="30" cy="30" r="25" stroke-dasharray="157" stroke-dashoffset="0"/></svg><b id="timerT">25</b></div>
+    <div class="ansRow"><input id="ans" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="40" placeholder="Type your answer…"><button class="btn" id="goBtn">Dive</button></div>
+    <div class="tries" id="tries"></div>
+    <div id="verdict"></div>
+    <div class="ready" id="ready" hidden></div>
+  </div>
+</section>
+
+<section id="results" class="screen">
+  <div class="resHead"><p id="resKind">Today's dive</p><h2 id="resDepth">0 m</h2><span class="zone" id="resZone"></span><p id="resScore"></p></div>
+  <div class="resList panel" id="resList"></div>
+  <div class="resBtns"><button class="btn" id="shareBtn">Copy my dive</button><button class="btn alt" id="againBtn">Practice dive</button><button class="btn alt" id="homeBtn">Home</button></div>
+</section>
+<div class="toast" id="toast"></div>
+<script>
+// Krill Dive: the familiarity database. Every list runs from the most familiar answer to the least familiar one,
+// roughly by how often each name turns up in everyday writing. An answer's place in its list sets its rarity tier.
+// "Main/alias/alias": the first name is shown, the others are also accepted.
+window.KD_DATA = (() => {
+  const L = s => s.trim().split(/\s*\|\s*/).filter(Boolean);
+  const C = {};
+  C.countries = L(`United States/USA/US/America/United States of America | China | United Kingdom/UK/Britain/Great Britain | France | Germany | Japan | India | Russia | Canada | Australia | Italy | Spain | Brazil | Mexico | Egypt | South Africa | Ireland | Israel | Greece | Netherlands/Holland | Sweden | Switzerland | Norway | Argentina | Turkey/Türkiye | South Korea/Korea | North Korea | Pakistan | Iran | Iraq | Afghanistan | Poland | Ukraine | Portugal | New Zealand | Nigeria | Kenya | Vietnam | Thailand | Indonesia | Philippines | Saudi Arabia | Denmark | Finland | Belgium | Austria | Cuba | Jamaica | Chile | Peru | Colombia | Venezuela | Morocco | Ethiopia | Syria | Lebanon | Jordan | Singapore | Malaysia | Iceland | Scotland | Wales | Hungary | Czech Republic/Czechia | Romania | Bulgaria | Serbia | Croatia | Ghana | Somalia | Sudan | Libya | Algeria | Tunisia | Nepal | Bangladesh | Sri Lanka | Mongolia | Kuwait | Qatar | United Arab Emirates/UAE | Yemen | Oman | Bolivia | Ecuador | Uruguay | Paraguay | Haiti | Dominican Republic | Panama | Costa Rica | Guatemala | Honduras | Nicaragua | El Salvador | Belarus | Lithuania | Latvia | Estonia | Slovakia | Slovenia | Bosnia and Herzegovina/Bosnia | Albania | North Macedonia/Macedonia | Montenegro | Kosovo | Moldova | Georgia | Armenia | Azerbaijan | Kazakhstan | Uzbekistan | Turkmenistan | Kyrgyzstan | Tajikistan | Myanmar/Burma | Cambodia | Laos | Taiwan | Bhutan | Maldives | Monaco | Luxembourg | Liechtenstein | Andorra | San Marino | Vatican City/Vatican/Holy See | Malta | Cyprus | Zimbabwe | Zambia | Uganda | Tanzania | Rwanda | Congo/Republic of the Congo | Democratic Republic of the Congo/DRC/DR Congo | Angola | Mozambique | Madagascar | Namibia | Botswana | Senegal | Mali | Niger | Chad | Cameroon | Ivory Coast/Côte d'Ivoire/Cote d'Ivoire | Sierra Leone | Liberia | Guinea | Gambia/The Gambia | Burkina Faso | Benin | Togo | Gabon | Eritrea | Djibouti | South Sudan | Malawi | Lesotho | Eswatini/Swaziland | Mauritania | Mauritius | Seychelles | Cape Verde/Cabo Verde | Comoros | Equatorial Guinea | Guinea-Bissau | Central African Republic | Burundi | Sao Tome and Principe/São Tomé and Príncipe | Bahrain | Brunei | East Timor/Timor-Leste | Papua New Guinea | Fiji | Samoa | Tonga | Vanuatu | Solomon Islands | Kiribati | Tuvalu | Nauru | Palau | Micronesia | Marshall Islands | Bahamas/The Bahamas | Barbados | Trinidad and Tobago | Grenada | Saint Lucia | Saint Vincent and the Grenadines | Antigua and Barbuda | Dominica | Saint Kitts and Nevis | Belize | Guyana | Suriname`);
+  C.capitals = L(`London | Paris | Washington/Washington DC/Washington D.C. | Tokyo | Rome | Berlin | Madrid | Moscow | Beijing/Peking | Ottawa | Canberra | Dublin | Athens | Cairo | Amsterdam | Lisbon | Vienna | Stockholm | Oslo | Copenhagen | Brussels | Bern | Warsaw | Prague | Budapest | Helsinki | New Delhi/Delhi | Mexico City | Buenos Aires | Seoul | Bangkok | Jerusalem | Ankara | Tehran | Baghdad | Kabul | Islamabad | Nairobi | Wellington | Havana | Lima | Santiago | Bogotá/Bogota | Caracas | Kyiv/Kiev | Edinburgh | Cardiff | Reykjavik | Brasília/Brasilia | Pretoria | Hanoi | Manila | Jakarta | Kuala Lumpur | Singapore | Riyadh | Doha | Abu Dhabi | Damascus | Beirut | Amman | Kathmandu | Dhaka | Bucharest | Sofia | Belgrade | Zagreb | Kingston | Addis Ababa | Accra | Abuja | Rabat | Algiers | Tunis | Tripoli | Khartoum | Mogadishu | Kampala | Kigali | Dodoma | Lusaka | Harare | Luanda | Maputo | Windhoek | Gaborone | Dakar | Bamako | Niamey | Montevideo | Asunción/Asuncion | La Paz | Sucre | Quito | Panama City | San José/San Jose | Managua | Tegucigalpa | San Salvador | Guatemala City | Santo Domingo | Port-au-Prince | Minsk | Vilnius | Riga | Tallinn | Bratislava | Ljubljana | Sarajevo | Tirana | Skopje | Podgorica | Pristina | Chișinău/Chisinau | Tbilisi | Yerevan | Baku | Astana/Nur-Sultan | Tashkent | Ashgabat | Bishkek | Dushanbe | Ulaanbaatar/Ulan Bator | Naypyidaw | Phnom Penh | Vientiane | Taipei | Thimphu | Malé/Male | Colombo/Sri Jayawardenepura Kotte | Valletta | Nicosia | Luxembourg | Vaduz | Andorra la Vella | Monaco | Muscat | Sanaa | Kuwait City | Manama | Bandar Seri Begawan | Dili | Port Moresby | Suva | Apia | Nukuʻalofa/Nukualofa | Port Vila | Honiara | Tarawa | Funafuti | Yaren | Ngerulmud | Palikir | Majuro | Nassau | Bridgetown | Port of Spain | St. George's/Saint George's | Castries | Kingstown | St. John's/Saint John's | Roseau | Basseterre | Belmopan | Georgetown | Paramaribo | Antananarivo | Port Louis | Victoria | Praia | Moroni | Malabo | Bissau | Bangui | Gitega | Juba | Asmara | Djibouti | Nouakchott | Banjul | Conakry | Freetown | Monrovia | Yamoussoukro | Ouagadougou | Porto-Novo | Lomé/Lome | Libreville | Yaoundé/Yaounde | N'Djamena/Ndjamena | Brazzaville | Kinshasa | Lilongwe | Maseru | Mbabane | São Tomé/Sao Tome`);
+  C.states = L(`California | Texas | New York | Florida | Hawaii | Alaska | Washington | Nevada | Arizona | Colorado | Illinois | Ohio | Georgia | Michigan | Massachusetts | Pennsylvania | New Jersey | Virginia | North Carolina | Tennessee | Louisiana | Oregon | Utah | Kentucky | Alabama | Mississippi | South Carolina | Minnesota | Wisconsin | Indiana | Missouri | Oklahoma | Kansas | Iowa | Nebraska | Maryland | Connecticut | Maine | Vermont | New Mexico | Montana | Idaho | Wyoming | Arkansas | West Virginia | New Hampshire | Rhode Island | Delaware | South Dakota | North Dakota`);
+  C.elements = L(`Oxygen | Hydrogen | Carbon | Gold | Iron | Silver | Nitrogen | Helium | Copper | Lead | Uranium | Calcium | Sodium | Aluminium/Aluminum | Zinc | Mercury | Neon | Platinum | Chlorine | Potassium | Magnesium | Sulfur/Sulphur | Phosphorus | Silicon | Lithium | Titanium | Tin | Nickel | Plutonium | Fluorine | Iodine | Argon | Radium | Cobalt | Chromium | Tungsten | Manganese | Arsenic | Boron | Radon | Krypton | Xenon | Beryllium | Barium | Bromine | Cadmium | Cesium/Caesium | Strontium | Bismuth | Palladium | Vanadium | Selenium | Antimony | Thorium | Iridium | Osmium | Gallium | Germanium | Molybdenum | Zirconium | Tantalum | Indium | Rhodium | Ruthenium | Neodymium | Polonium | Francium | Thallium | Tellurium | Rubidium | Scandium | Yttrium | Niobium | Technetium | Hafnium | Rhenium | Lanthanum | Cerium | Europium | Gadolinium | Americium | Curium | Einsteinium | Fermium | Nobelium | Astatine | Actinium | Protactinium | Neptunium | Samarium | Promethium | Praseodymium | Terbium | Dysprosium | Holmium | Erbium | Thulium | Ytterbium | Lutetium | Berkelium | Californium | Mendelevium | Lawrencium | Rutherfordium | Dubnium | Seaborgium | Bohrium | Hassium | Meitnerium | Darmstadtium | Roentgenium | Copernicium | Nihonium | Flerovium | Moscovium | Livermorium | Tennessine | Oganesson`);
+  C.birds = L(`Eagle | Robin | Sparrow | Pigeon | Crow | Owl | Penguin | Parrot | Duck | Swan | Chicken | Seagull/Gull | Hawk | Falcon | Ostrich | Flamingo | Peacock | Turkey | Goose | Hummingbird | Woodpecker | Blue Jay/Jay | Cardinal | Raven | Pelican | Stork | Heron | Vulture | Dove | Kingfisher | Swallow | Starling | Blackbird | Magpie | Canary | Emu | Kiwi | Toucan | Albatross | Puffin | Crane | Finch | Wren | Bluebird | Mockingbird | Kookaburra | Cockatoo | Budgie/Budgerigar | Macaw | Condor | Osprey | Kestrel | Pheasant | Quail | Partridge | Grouse | Cuckoo | Nightingale | Lark/Skylark | Thrush | Oriole | Tit/Titmouse | Chickadee | Warbler | Goldfinch | Bullfinch | Cormorant | Ibis | Egret | Spoonbill | Sandpiper | Plover | Lapwing | Curlew | Oystercatcher | Gannet | Petrel | Shearwater | Tern | Frigatebird | Booby | Rhea | Cassowary | Lyrebird | Bowerbird | Hornbill | Hoopoe | Bee-eater | Roller | Kite | Harrier | Buzzard | Merlin | Nuthatch | Treecreeper | Dipper | Wagtail | Pipit | Bunting | Grosbeak | Tanager | Waxwing | Shrike | Vireo | Flycatcher | Kingbird | Phoebe | Swift | Nightjar | Whip-poor-will | Roadrunner | Quetzal | Jacana | Hoatzin | Kakapo | Kea | Takahe | Shoebill | Secretary bird | Oxpecker | Weaver | Sunbird | Honeyeater | Fairywren | Pitta | Motmot | Potoo | Sungrebe | Grebe | Loon/Diver | Coot | Moorhen | Rail | Bittern`);
+  C.songbirds = L(`Robin | Sparrow | Blackbird | Nightingale | Canary | Finch | Wren | Lark/Skylark | Thrush | Bluebird | Cardinal | Mockingbird | Starling | Warbler | Goldfinch | Oriole | Chickadee | Tit/Titmouse | Swallow | Blue Jay/Jay | Magpie | Crow | Raven | Nuthatch | Bunting | Grosbeak | Tanager | Waxwing | Wagtail | Pipit | Bullfinch | Chaffinch | Greenfinch | Linnet | Siskin | Redpoll | Crossbill | Dunnock | Redstart | Wheatear | Stonechat | Whinchat | Blackcap | Chiffchaff | Goldcrest | Firecrest | Treecreeper | Dipper | Shrike | Vireo | Flycatcher | Kingbird | Phoebe | Catbird | Thrasher | Junco | Towhee | Meadowlark | Bobolink | Grackle | Cowbird | Lyrebird | Bowerbird | Honeyeater | Fairywren | Sunbird | Weaver | Bulbul | Babbler | Drongo | Myna | Pitta | Manakin | Cotinga | Ovenbird | Veery | Dickcissel`);
+  C.fruits = L(`Apple | Banana | Orange | Strawberry | Grape | Lemon | Cherry | Pineapple | Mango | Peach | Pear | Watermelon | Blueberry | Raspberry | Lime | Plum | Kiwi/Kiwifruit | Coconut | Melon | Grapefruit | Pomegranate | Apricot | Blackberry | Cranberry | Papaya | Avocado | Tomato | Fig | Date | Nectarine | Cantaloupe | Honeydew | Tangerine | Mandarin | Clementine | Passion fruit/Passionfruit | Lychee/Litchi | Guava | Persimmon | Gooseberry | Currant/Blackcurrant/Redcurrant | Quince | Elderberry | Mulberry | Boysenberry | Dragon fruit/Pitaya | Star fruit/Carambola | Jackfruit | Durian | Rambutan | Mangosteen | Kumquat | Plantain | Olive | Loquat | Yuzu | Feijoa | Tamarind | Longan | Salak/Snake fruit | Cherimoya/Custard apple | Soursop | Sapodilla | Ackee | Breadfruit | Pawpaw | Jabuticaba | Medlar | Cloudberry | Lingonberry | Huckleberry | Bilberry | Physalis/Cape gooseberry | Ugli fruit | Pomelo | Miracle fruit | Horned melon/Kiwano | Marula | Bael | Langsat`);
+  C.vegetables = L(`Carrot | Potato | Broccoli | Tomato | Onion | Lettuce | Cucumber | Pea/Peas | Corn/Sweetcorn | Spinach | Cabbage | Pepper/Bell pepper | Cauliflower | Mushroom | Garlic | Celery | Green bean/Bean | Pumpkin | Sweet potato | Zucchini/Courgette | Eggplant/Aubergine | Asparagus | Kale | Beetroot/Beet | Radish | Brussels sprout/Brussels sprouts | Leek | Squash | Artichoke | Turnip | Parsnip | Okra | Avocado | Chili/Chilli | Bok choy/Pak choi | Shallot | Swede/Rutabaga | Fennel | Watercress | Rocket/Arugula | Chard/Swiss chard | Kohlrabi | Endive | Chicory | Radicchio | Celeriac | Yam | Cassava | Taro | Jicama | Daikon | Edamame | Lentil | Chickpea | Butternut squash | Spring onion/Scallion | Mangetout/Snow pea | Romanesco | Sorrel | Samphire | Salsify | Jerusalem artichoke/Sunchoke | Bamboo shoot | Lotus root | Water chestnut | Burdock | Fiddlehead | Kale sprout | Tomatillo | Collard greens/Collards | Mustard greens | Dandelion greens | Purslane`);
+  C.dogs = L(`Labrador/Labrador Retriever | German Shepherd | Golden Retriever | Poodle | Bulldog | Beagle | Chihuahua | Husky/Siberian Husky | Dachshund | Pug | Rottweiler | Boxer | Dalmatian | Border Collie | Great Dane | Yorkshire Terrier/Yorkie | Shih Tzu | Doberman | Corgi | Pomeranian | Cocker Spaniel | Jack Russell | Greyhound | Collie | Saint Bernard | French Bulldog | Maltese | Schnauzer | Bichon Frise | Labradoodle | Cavalier King Charles Spaniel | Basset Hound | Bloodhound | Shiba Inu | Akita | Chow Chow | Pit Bull | Staffordshire Bull Terrier/Staffy | Whippet | Weimaraner | Vizsla | Pointer | Setter | Newfoundland | Bernese Mountain Dog | Mastiff | Malamute | Samoyed | Afghan Hound | Irish Wolfhound | Sheepdog/Old English Sheepdog | Shetland Sheepdog/Sheltie | Australian Shepherd | Cockapoo | Papillon | Pekingese | Lhasa Apso | Scottish Terrier | West Highland Terrier/Westie | Airedale | Bull Terrier | Border Terrier | Springer Spaniel | Basenji | Saluki | Borzoi | Rhodesian Ridgeback | Shar Pei | Kelpie | Cattle Dog | Puli | Komondor | Xoloitzcuintli/Xolo | Leonberger | Keeshond | Schipperke | Otterhound | Lagotto Romagnolo | Bedlington Terrier | Dandie Dinmont | Sloughi | Azawakh | Mudi`);
+  C.instruments = L(`Piano | Guitar | Drums | Violin | Flute | Trumpet | Saxophone | Bass/Bass guitar | Cello | Clarinet | Harp | Keyboard | Ukulele | Trombone | Harmonica | Organ | Tuba | Banjo | Accordion | Xylophone | Tambourine | Oboe | French horn/Horn | Bagpipes | Recorder | Viola | Double bass | Triangle | Cymbal | Mandolin | Bassoon | Synthesizer | Glockenspiel | Harpsichord | Piccolo | Bongo | Sitar | Marimba | Didgeridoo | Cornet | Lute | Timpani | Castanets | Maracas | Steel drum/Steelpan | Kazoo | Theremin | Euphonium | Flugelhorn | Bugle | Sousaphone | Zither | Dulcimer | Balalaika | Bouzouki | Koto | Shamisen | Erhu | Tabla | Djembe | Cajón/Cajon | Kalimba/Mbira | Ocarina | Pan flute/Panpipes | Hurdy-gurdy | Celesta | Vibraphone | Mellotron | Melodica | Concertina | Shakuhachi | Oud | Duduk | Guzheng | Pipa | Gamelan | Tanpura | Sarangi | Hang/Handpan | Crwth | Nyckelharpa | Ondes Martenot`);
+  C.sports = L(`Football/Soccer | Basketball | Tennis | Baseball | Cricket | Golf | Rugby | Swimming | Boxing | Hockey/Ice hockey | Volleyball | American football | Running/Athletics | Cycling | Skiing | Badminton | Table tennis/Ping pong | Wrestling | Surfing | Snowboarding | Skateboarding | Gymnastics | Karate | Judo | Rowing | Sailing | Fencing | Archery | Bowling | Netball | Handball | Lacrosse | Polo | Water polo | Squash | Darts | Snooker | Pool/Billiards | Diving | Triathlon | Marathon | Equestrian/Horse riding | Taekwondo | Softball | Curling | Bobsleigh/Bobsled | Luge | Skeleton | Biathlon | Canoeing/Kayaking | Rock climbing/Climbing | Mountain biking | BMX | Motocross | Formula One/F1 | Rally | Kickboxing | Mixed martial arts/MMA | Sumo | Kendo | Hurling | Gaelic football | Australian rules football/Aussie rules | Korfball | Kabaddi | Sepak takraw | Pelota/Jai alai | Bandy | Floorball | Ultimate frisbee/Ultimate | Orienteering | Pentathlon | Decathlon | Croquet | Bocce | Petanque/Boules | Shinty | Hurdling | Pole vault | Kitesurfing | Paragliding | Racquetball | Padel | Pickleball | Fives | Real tennis | Underwater hockey | Chess boxing`);
+  C.colours = L(`Red | Blue | Green | Yellow | Black | White | Orange | Purple | Pink | Brown | Grey/Gray | Gold | Silver | Navy | Violet | Turquoise | Beige | Maroon | Teal | Cream | Indigo | Crimson | Lavender | Magenta | Cyan | Scarlet | Lilac | Olive | Burgundy | Tan | Peach | Coral | Ivory | Khaki | Mint | Aqua | Lime | Amber | Bronze | Copper | Charcoal | Emerald | Ruby | Sapphire | Jade | Plum | Mauve | Mustard | Salmon | Rust | Fuchsia | Cobalt | Azure | Cerulean | Ochre | Sienna | Umber | Taupe | Periwinkle | Chartreuse | Vermilion | Puce | Ecru | Celadon | Viridian | Carmine | Cinnabar | Gamboge | Heliotrope | Wenge | Zaffre | Smalt | Glaucous | Coquelicot | Falu red | Fulvous | Isabelline | Xanadu | Mikado`);
+  C.languages = L(`English | Spanish | French | Chinese/Mandarin | German | Italian | Japanese | Russian | Arabic | Portuguese | Hindi | Korean | Dutch | Greek | Latin | Swedish | Hebrew | Turkish | Polish | Irish/Gaelic | Welsh | Norwegian | Danish | Finnish | Cantonese | Bengali | Urdu | Punjabi | Vietnamese | Thai | Indonesian | Swahili | Persian/Farsi | Ukrainian | Czech | Hungarian | Romanian | Tagalog/Filipino | Malay | Tamil | Telugu | Marathi | Gujarati | Icelandic | Scottish Gaelic | Catalan | Basque | Croatian | Serbian | Bulgarian | Slovak | Slovenian | Lithuanian | Latvian | Estonian | Albanian | Armenian | Georgian | Esperanto | Sanskrit | Yiddish | Zulu | Xhosa | Afrikaans | Amharic | Yoruba | Igbo | Hausa | Somali | Maori | Hawaiian | Navajo | Cherokee | Quechua | Guarani | Nahuatl | Mongolian | Tibetan | Khmer | Lao | Burmese | Nepali | Sinhala | Pashto | Kurdish | Maltese | Luxembourgish | Faroese | Breton | Cornish | Manx | Romani | Tok Pisin | Inuktitut | Sami | Ainu`);
+  C.moons = L(`Moon/The Moon/Luna | Titan | Europa | Ganymede | Io | Callisto | Phobos | Deimos | Triton | Enceladus | Charon | Mimas | Titania | Oberon | Miranda | Rhea | Iapetus | Dione | Tethys | Hyperion | Ariel | Umbriel | Phoebe | Nereid | Amalthea | Himalia | Proteus | Janus | Epimetheus | Pandora | Prometheus | Atlas | Pan | Puck | Thebe | Metis | Adrastea | Elara | Larissa | Galatea | Despina | Thalassa | Naiad | Nix | Hydra | Kerberos | Styx | Dysnomia | Hi'iaka/Hiiaka | Namaka | Cordelia | Ophelia | Bianca | Cressida | Desdemona | Juliet | Portia | Rosalind | Belinda | Perdita | Mab | Cupid | Sycorax | Caliban | Setebos | Prospero | Helene | Telesto | Calypso | Polydeuces | Daphnis | Ymir | Paaliaq | Kiviuq`);
+  C.gods = L(`Zeus | Jupiter | Poseidon | Neptune | Hades | Pluto | Athena | Minerva | Apollo | Aphrodite | Venus | Ares | Mars | Hermes | Mercury | Hera | Juno | Artemis | Diana | Dionysus | Bacchus | Demeter | Ceres | Hephaestus | Vulcan | Hestia | Vesta | Eros | Cupid | Cronus/Kronos | Saturn | Gaia | Uranus | Persephone | Proserpina | Nike | Janus | Pan | Hecate | Nemesis | Helios | Sol | Selene | Luna | Eos | Aurora | Hypnos | Somnus | Thanatos | Morpheus | Iris | Hebe | Tyche | Fortuna | Asclepius | Rhea | Ops | Faunus | Quirinus | Bellona | Terminus | Pomona | Flora | Lares | Penates | Priapus | Aeolus | Triton | Proteus | Nereus | Oceanus | Tethys | Hyperion | Themis | Mnemosyne | Atlas | Prometheus | Epimetheus | Erebus | Nyx | Chaos | Eris | Harmonia | Enyo | Deimos | Phobos`);
+  C.bones = L(`Skull/Cranium | Femur | Rib | Spine/Vertebra/Vertebrae | Pelvis | Tibia | Humerus | Radius | Ulna | Fibula | Jaw/Mandible | Collarbone/Clavicle | Kneecap/Patella | Shoulder blade/Scapula | Sternum/Breastbone | Coccyx/Tailbone | Sacrum | Hip bone | Phalanges/Phalanx | Metacarpal | Metatarsal | Carpal | Tarsal | Maxilla | Hyoid | Ilium | Ischium | Pubis | Atlas | Axis | Stapes/Stirrup | Incus/Anvil | Malleus/Hammer | Calcaneus/Heel bone | Talus | Scaphoid | Lunate | Triquetrum | Pisiform | Trapezium | Trapezoid | Capitate | Hamate | Navicular | Cuboid | Cuneiform | Zygomatic/Cheekbone | Nasal bone | Lacrimal | Palatine | Vomer | Ethmoid | Sphenoid | Occipital | Parietal | Frontal | Temporal | Sesamoid`);
+  C.seas = L(`Mediterranean Sea/Mediterranean | Caribbean Sea/Caribbean | Red Sea | Dead Sea | Black Sea | North Sea | Baltic Sea | Caspian Sea | Arabian Sea | South China Sea | Irish Sea | Adriatic Sea | Aegean Sea | Tasman Sea | Bering Sea | Coral Sea | Sea of Japan/East Sea | Yellow Sea | East China Sea | Ionian Sea | Tyrrhenian Sea | Ligurian Sea | Sargasso Sea | Barents Sea | Norwegian Sea | Weddell Sea | Ross Sea | Celtic Sea | Labrador Sea | Sea of Okhotsk | Andaman Sea | Java Sea | Philippine Sea | Timor Sea | Arafura Sea | Banda Sea | Celebes Sea | Sulu Sea | Bismarck Sea | Solomon Sea | Kara Sea | Laptev Sea | Chukchi Sea | Beaufort Sea | Greenland Sea | White Sea | Sea of Azov | Sea of Marmara | Balearic Sea | Alboran Sea | Wadden Sea | Bothnian Sea | Sea of Galilee | Salton Sea | Aral Sea | Scotia Sea | Amundsen Sea | Bellingshausen Sea | Davis Sea | Lazarev Sea | Riiser-Larsen Sea | Molucca Sea | Flores Sea | Savu Sea | Halmahera Sea | Seram Sea | Ceram Sea | Natuna Sea | Lakshadweep Sea | Inland Sea/Seto Inland Sea | Sibuyan Sea | Bohol Sea | Camotes Sea | Sea of the Hebrides | Sea of Crete | Myrtoan Sea | Thracian Sea | Cilician Sea | Levantine Sea | Libyan Sea`);
+  C.rivers = L(`Nile | Amazon | Mississippi | Thames | Yangtze | Ganges | Danube | Rhine | Seine | Volga | Colorado | Missouri | Hudson | Tigris | Euphrates | Jordan | Congo | Niger | Zambezi | Mekong | Yellow River/Huang He | Indus | Tiber | Loire | Rhône/Rhone | Elbe | Oder | Vistula | Dnieper | Don | Ob | Yenisei | Lena | Amur | Murray | Darling | St. Lawrence/Saint Lawrence | Rio Grande | Columbia | Snake | Ohio | Tennessee | Potomac | Delaware | Yukon | Mackenzie | Fraser | Orinoco | Paraná/Parana | Uruguay | São Francisco/Sao Francisco | Limpopo | Orange | Senegal | Shannon | Severn | Trent | Tyne | Mersey | Clyde | Tay | Liffey | Douro | Tagus/Tejo | Ebro | Guadalquivir | Po | Arno | Adige | Garonne | Dordogne | Meuse/Maas | Scheldt | Moselle | Main | Neckar | Inn | Brahmaputra | Irrawaddy | Salween | Chao Phraya | Pearl River | Han | Ural | Kama | Oka | Pechora | Kolyma | Indigirka | Syr Darya | Amu Darya | Helmand | Kura | Okavango | Kasai | Ubangi | Benue | Volta | Gambia | Juba | Shire | Rufiji | Waikato | Whanganui | Fly | Sepik`);
+  C.cars = L(`Ford | Toyota | BMW | Mercedes/Mercedes-Benz | Honda | Ferrari | Volkswagen/VW | Audi | Chevrolet/Chevy | Tesla | Porsche | Nissan | Lamborghini | Jeep | Hyundai | Kia | Mazda | Subaru | Volvo | Jaguar | Land Rover | Range Rover | Fiat | Peugeot | Renault | Mini | Bentley | Rolls-Royce | Aston Martin | Maserati | Lexus | Dodge | Cadillac | Buick | Chrysler | GMC | Lincoln | Mitsubishi | Suzuki | Skoda | SEAT | Citroën/Citroen | Opel | Vauxhall | Alfa Romeo | Bugatti | McLaren | Lotus | Infiniti | Acura | Genesis | Rivian | Lucid | Polestar | Ram | Holden | Dacia | Lancia | Saab | Smart | Pagani | Koenigsegg | DS | Cupra | Daihatsu | Isuzu | Tata | Mahindra | BYD | Geely | Chery | Great Wall | Proton | Perodua | Lada | Moskvich | Trabant | Pontiac | Oldsmobile | Plymouth | Saturn | Hummer | Mercury | DeLorean | Studebaker | Packard | Hudson | Nash | AMC | Rover | Triumph | MG | Morris | Austin | Hillman | Sunbeam | Reliant | TVR | Morgan | Caterham | Ariel | Noble | Spyker | Rimac | Zenvo`);
+  C.fish = L(`Salmon | Tuna | Shark | Goldfish | Cod | Trout | Clownfish | Catfish | Swordfish | Carp | Piranha | Herring | Sardine | Mackerel | Bass | Haddock | Halibut | Eel | Anchovy | Pike | Barracuda | Marlin | Stingray/Ray | Pufferfish/Blowfish | Seahorse | Angelfish | Guppy | Betta/Siamese fighting fish | Koi | Tilapia | Sole | Plaice | Flounder | Snapper | Grouper | Perch | Sturgeon | Monkfish | Anglerfish | Sunfish/Mola | Swordtail | Molly | Tetra | Minnow | Lamprey | Hagfish | Coelacanth | Lungfish | Arowana | Arapaima | Gar | Bream | Roach | Rudd | Tench | Chub | Dace | Grayling | Char | Whitefish | Pollock | Hake | Whiting | Ling | Turbot | Brill | Dab | John Dory | Gurnard | Wrasse | Parrotfish | Triggerfish | Butterflyfish | Tang/Surgeonfish | Damselfish | Goby | Blenny | Lionfish | Scorpionfish | Stonefish | Wahoo | Mahi-mahi/Dorado | Opah | Oarfish | Barreleye | Hatchetfish | Lanternfish | Viperfish | Fangtooth | Gulper eel | Remora | Mudskipper | Archerfish | Snakehead | Paddlefish | Bowfin | Bichir | Mbu pufferfish`);
+  C.insects = L(`Ant | Bee | Butterfly | Fly | Mosquito | Beetle | Ladybird/Ladybug | Wasp | Grasshopper | Cockroach | Dragonfly | Moth | Cricket | Termite | Flea | Caterpillar | Bumblebee | Hornet | Firefly | Stick insect | Praying mantis/Mantis | Locust | Aphid | Louse/Lice | Gnat | Midge | Earwig | Weevil | Cicada | Silverfish | Damselfly | Mayfly | Stonefly | Caddisfly | Lacewing | Scarab | Stag beetle | Dung beetle | Weta | Katydid | Mealworm | Horsefly | Botfly | Tsetse fly | Sandfly | Crane fly | Hoverfly | Bluebottle | Bed bug | Water strider/Pond skater | Water boatman | Backswimmer | Leafhopper | Treehopper | Shield bug/Stink bug | Assassin bug | Thrips | Scale insect | Mealybug | Whitefly | Sawfly | Ichneumon | Gall wasp | Velvet ant | Antlion | Dobsonfly | Snakefly | Scorpionfly | Webspinner | Rock crawler | Bristletail | Springtail | Zorapteran | Walking leaf/Leaf insect`);
+  C.cheeses = L(`Cheddar | Mozzarella | Parmesan/Parmigiano | Brie | Swiss | Feta | Gouda | Camembert | Blue cheese | Stilton | Gorgonzola | Cream cheese | Cottage cheese | Ricotta | Mascarpone | Edam | Emmental | Gruyère/Gruyere | Halloumi | Roquefort | Manchego | Provolone | Monterey Jack | Colby | Pecorino | Paneer | Goat cheese/Chèvre/Chevre | Havarti | Jarlsberg | Wensleydale | Red Leicester | Double Gloucester | Lancashire | Cheshire | Caerphilly | Burrata | Fontina | Taleggio | Asiago | Raclette | Comté/Comte | Reblochon | Munster | Port Salut | Boursin | Roquefort | Danish blue | Limburger | Leerdammer | Queso fresco | Cotija | Oaxaca | Manouri | Kefalotyri | Mizithra | Graviera | Gjetost/Brunost | Hallomi | Stinking Bishop | Shropshire Blue | Cornish Yarg | Tomme | Mimolette | Époisses/Epoisses | Livarot | Pont-l'Évêque/Pont l'Eveque | Valençay/Valencay | Crottin | Saint-Nectaire | Cantal | Vacherin | Appenzeller | Tête de Moine | Casu marzu | Bryndza | Oscypek | Torta del Casar | Idiazabal | Mahón/Mahon | Cabrales | Tetilla | Serra da Estrela`);
+  C.gems = L(`Diamond | Ruby | Emerald | Sapphire | Pearl | Amethyst | Opal | Topaz | Jade | Garnet | Turquoise | Aquamarine | Amber | Onyx | Quartz | Peridot | Tourmaline | Citrine | Moonstone | Lapis lazuli | Tanzanite | Zircon | Jasper | Agate | Obsidian | Malachite | Coral | Jet | Spinel | Alexandrite | Morganite | Tiger's eye/Tigers eye | Bloodstone | Carnelian | Chalcedony | Rose quartz | Smoky quartz | Fluorite | Beryl | Chrysoberyl | Iolite | Kunzite | Labradorite | Rhodolite | Sunstone | Kyanite | Apatite | Sodalite | Rhodochrosite | Chrysoprase | Hematite | Pyrite | Moissanite | Benitoite | Painite | Taaffeite | Grandidierite | Jeremejevite | Musgravite | Poudretteite | Red beryl/Bixbite | Demantoid | Tsavorite | Spessartine | Andalusite | Sphene/Titanite | Diopside | Prehnite | Ammolite | Larimar | Charoite | Sugilite | Seraphinite`);
+  C.trees = L(`Oak | Pine | Maple | Birch | Willow | Palm | Apple | Cherry | Elm | Ash | Beech | Redwood | Sequoia | Fir | Spruce | Cedar | Cypress | Eucalyptus/Gum tree | Sycamore | Poplar | Chestnut | Walnut | Yew | Holly | Magnolia | Baobab | Banyan | Olive | Lemon | Orange | Bamboo | Juniper | Larch | Hemlock | Hazel | Hawthorn | Rowan | Alder | Aspen | Linden/Lime tree | Hornbeam | Plane tree | Acacia | Mahogany | Teak | Ebony | Rosewood | Sandalwood | Jacaranda | Dogwood | Hickory | Pecan | Cottonwood | Tulip tree | Ginkgo | Monkey puzzle | Joshua tree | Dragon tree | Kauri | Jarrah | Karri | Banksia | Wattle | Mangrove | Fig | Mulberry | Persimmon | Medlar | Quince | Elder | Blackthorn | Whitebeam | Wych elm | Sweetgum | Tupelo | Catalpa | Paulownia | Sassafras | Bristlecone pine | Wollemi pine | Kapok | Ceiba | Rubber tree | Neem | Tamarind | Moringa`);
+  C.flowers = L(`Rose | Tulip | Daisy | Sunflower | Lily | Orchid | Daffodil | Lavender | Poppy | Carnation | Dandelion | Violet | Lotus | Jasmine | Hibiscus | Chrysanthemum | Marigold | Iris | Peony | Lilac | Magnolia | Bluebell | Daisy | Pansy | Petunia | Geranium | Hydrangea | Dahlia | Camellia | Azalea | Rhododendron | Begonia | Snowdrop | Crocus | Hyacinth | Primrose | Buttercup | Cornflower | Foxglove | Forget-me-not | Gardenia | Gerbera | Freesia | Gladiolus | Honeysuckle | Morning glory | Nasturtium | Snapdragon | Sweet pea | Zinnia | Aster | Lupin/Lupine | Delphinium | Anemone | Ranunculus | Cosmos | Clematis | Wisteria | Bougainvillea | Edelweiss | Heather | Protea | Bird of paradise | Frangipani/Plumeria | Anthurium | Amaryllis | Calla lily | Lisianthus | Alstroemeria | Statice | Scabiosa | Hellebore | Cyclamen | Fritillary | Columbine/Aquilegia | Larkspur | Verbena | Salvia | Echinacea/Coneflower | Rudbeckia/Black-eyed Susan | Gaillardia | Allium | Agapanthus | Kangaroo paw | Waratah | Rafflesia | Corpse flower/Titan arum`);
+  C.dinosaurs = L(`Tyrannosaurus/T-rex/T rex/Tyrannosaurus rex | Triceratops | Velociraptor/Raptor | Stegosaurus | Brachiosaurus | Diplodocus | Spinosaurus | Pterodactyl/Pteranodon | Ankylosaurus | Brontosaurus | Apatosaurus | Allosaurus | Iguanodon | Parasaurolophus | Pachycephalosaurus | Dilophosaurus | Gallimimus | Carnotaurus | Giganotosaurus | Compsognathus | Archaeopteryx | Oviraptor | Protoceratops | Deinonychus | Maiasaura | Hadrosaurus | Edmontosaurus | Styracosaurus | Utahraptor | Baryonyx | Megalosaurus | Argentinosaurus | Microraptor | Therizinosaurus | Troodon | Coelophysis | Plateosaurus | Herrerasaurus | Eoraptor | Kentrosaurus | Nodosaurus | Euoplocephalus | Albertosaurus | Daspletosaurus | Tarbosaurus | Ceratosaurus | Suchomimus | Irritator | Corythosaurus | Lambeosaurus | Ouranosaurus | Psittacosaurus | Chasmosaurus | Pentaceratops | Torosaurus | Sauropelta | Gastonia | Minmi | Muttaburrasaurus | Leaellynasaura | Dreadnoughtus | Patagotitan | Mamenchisaurus | Shunosaurus | Yutyrannus | Sinosauropteryx | Mononykus | Nigersaurus | Amargasaurus | Majungasaurus | Mapusaurus | Acrocanthosaurus | Carcharodontosaurus | Concavenator | Pegomastax | Tsintaosaurus | Zuniceratops`);
+  C.constellations = L(`Orion | Ursa Major/Great Bear/Big Dipper/Plough | Ursa Minor/Little Bear/Little Dipper | Cassiopeia | Leo | Scorpius/Scorpio | Taurus | Gemini | Cancer | Virgo | Libra | Sagittarius | Capricornus/Capricorn | Aquarius | Pisces | Aries | Southern Cross/Crux | Draco | Pegasus | Andromeda | Perseus | Cygnus | Lyra | Aquila | Hercules | Canis Major | Canis Minor | Centaurus | Bootes/Boötes | Corona Borealis | Cepheus | Auriga | Ophiuchus | Hydra | Phoenix | Pavo | Carina | Vela | Puppis | Eridanus | Lepus | Columba | Monoceros | Serpens | Delphinus | Vulpecula | Sagitta | Lacerta | Triangulum | Camelopardalis | Lynx | Leo Minor | Coma Berenices | Canes Venatici | Corvus | Crater | Sextans | Antlia | Pyxis | Fornax | Sculptor | Caelum | Horologium | Reticulum | Dorado | Mensa | Volans | Chamaeleon | Musca | Apus | Octans | Indus | Tucana | Hydrus | Grus | Microscopium | Telescopium | Norma | Circinus | Ara | Triangulum Australe | Lupus | Corona Australis | Pictor | Equuleus | Scutum`);
+  C.herbs = L(`Salt | Pepper/Black pepper | Basil | Oregano | Cinnamon | Garlic | Ginger | Mint | Rosemary | Thyme | Parsley | Paprika | Cumin | Chilli/Chili | Nutmeg | Turmeric | Curry powder | Coriander/Cilantro | Dill | Sage | Bay leaf | Vanilla | Cloves | Cardamom | Chives | Saffron | Cayenne | Mustard | Fennel | Tarragon | Allspice | Star anise | Anise/Aniseed | Marjoram | Lemongrass | Caraway | Fenugreek | Sumac | Za'atar/Zaatar | Garam masala | Five spice | Lovage | Chervil | Sorrel | Borage | Savory | Juniper | Mace | Asafoetida | Nigella/Black seed | Ajwain | Galangal | Kaffir lime leaf/Makrut lime | Curry leaf | Epazote | Annatto/Achiote | Grains of paradise | Long pepper | Sichuan pepper/Szechuan pepper | Sansho | Shiso/Perilla | Mahlab | Amchur | Hyssop | Rue | Angelica | Woodruff | Lemon verbena | Pandan | Wasabi | Horseradish`);
+  C.pasta = L(`Spaghetti | Penne | Macaroni | Lasagne/Lasagna | Fettuccine | Ravioli | Linguine | Tagliatelle | Fusilli | Rigatoni | Farfalle/Bow tie | Tortellini | Gnocchi | Cannelloni | Orzo | Conchiglie/Shells | Vermicelli | Pappardelle | Angel hair/Capellini | Ziti | Orecchiette | Rotini | Bucatini | Cavatappi | Ditalini | Tortelloni | Manicotti | Agnolotti | Cavatelli | Gemelli | Radiatori | Campanelle | Paccheri | Trofie | Strozzapreti | Pici | Malloreddus | Casarecce | Mafaldine | Fregola | Anelli | Stelline | Acini di pepe | Lumache | Calamarata | Bigoli | Garganelli | Corzetti | Culurgiones | Scialatielli | Busiate | Lorighittas | Su filindeu | Testaroli | Mezzelune | Sagnarelli`);
+  C.shakespeare = L(`Romeo and Juliet | Hamlet | Macbeth | Othello | King Lear | A Midsummer Night's Dream/Midsummer Night's Dream | The Tempest/Tempest | Julius Caesar | Twelfth Night | Much Ado About Nothing | The Merchant of Venice/Merchant of Venice | As You Like It | The Taming of the Shrew/Taming of the Shrew | Richard III | Henry V | Antony and Cleopatra | The Merry Wives of Windsor/Merry Wives of Windsor | The Winter's Tale/Winter's Tale | Richard II | Henry IV | Coriolanus | Titus Andronicus | Measure for Measure | All's Well That Ends Well | Cymbeline | Troilus and Cressida | Love's Labour's Lost | The Comedy of Errors/Comedy of Errors | Two Gentlemen of Verona/The Two Gentlemen of Verona | Timon of Athens | Pericles | Henry VI | Henry VIII | King John | The Two Noble Kinsmen/Two Noble Kinsmen | Edward III`);
+  C.clouds = L(`Cumulus | Cirrus | Stratus | Nimbus | Cumulonimbus | Nimbostratus | Altocumulus | Altostratus | Cirrostratus | Cirrocumulus | Stratocumulus | Mammatus | Lenticular | Fog | Contrail | Noctilucent | Nacreous | Shelf cloud/Arcus | Wall cloud | Roll cloud | Pileus | Fractus | Castellanus | Asperitas | Kelvin-Helmholtz/Fluctus | Pyrocumulus | Funnel cloud | Virga | Morning glory | Undulatus | Floccus | Velum | Incus | Tuba | Pannus | Cauda`);
+  C.dances = L(`Ballet | Salsa | Tango | Waltz | Hip hop | Breakdance/Breaking | Tap | Jazz | Disco | Swing | Ballroom | Line dancing | Flamenco | Belly dance | Cha-cha/Cha cha | Foxtrot | Rumba | Samba | Quickstep | Jive | Charleston | Twist | Macarena | Moonwalk | Polka | Can-can | Conga | Limbo | Irish dance/Riverdance | Square dance | Hula | Bollywood | Bhangra | Krumping | Voguing/Vogue | Lindy hop | Bachata | Merengue | Paso doble | Mambo | Zumba | Kathak | Bharatanatyam | Haka | Morris dance | Ceilidh | Highland fling | Maypole | Clogging | Polonaise | Mazurka | Minuet | Gavotte | Bolero | Fandango | Jota | Sardana | Zouk | Kizomba | Capoeira | Lambada | Lezginka | Hopak | Kolo | Horo | Sirtaki | Tarantella | Dabke | Kecak | Barong | Jingju | Odissi | Kuchipudi | Manipuri | Kathakali | Lavani | Garba | Gumboot | Pantsula | Tinikling | Cueca | Joropo | Marinera`);
+  C.big = L(`Large | Huge | Giant | Enormous | Massive | Great | Vast | Gigantic | Immense | Tall | Colossal | Tremendous | Jumbo | Mammoth | Monster | Bulky | Hefty | Mighty | Substantial | Sizeable/Sizable | Monumental | Titanic | Mega | Whopping | Hulking | Towering | Gargantuan | Ample | Considerable | Extensive | Generous | Grand | Spacious | Roomy | Boundless | Stupendous | Prodigious | Behemoth | Elephantine | Herculean | Leviathan | Brobdingnagian | Cyclopean | Mountainous | Astronomical | Ginormous | Humongous | Whacking | Thumping | Walloping | Capacious | Voluminous | Outsize | King-size/Kingsize | Oversized | Burly | Strapping`);
+  C.happy = L(`Glad | Joyful | Cheerful | Pleased | Content | Delighted | Excited | Thrilled | Merry | Jolly | Ecstatic | Elated | Joyous | Overjoyed | Satisfied | Upbeat | Chirpy | Sunny | Blissful | Euphoric | Jubilant | Gleeful | Carefree | Buoyant | Bright | Lively | Thankful | Grateful | Blessed | Lucky | Smiling | Beaming | Radiant | Exuberant | Elated | Rapturous | Exultant | Triumphant | Contented | Chipper | Perky | Peppy | Bubbly | Blithe | Sanguine | Halcyon | Gay | Mirthful | Jocund | Jovial | Convivial | Gruntled | Tickled | Stoked | Chuffed | Over the moon | On cloud nine | Walking on air`);
+  C.fast = L(`Quick | Rapid | Speedy | Swift | Hasty | Fleet | Brisk | Nippy | Zippy | Express | Hurried | Prompt | Expeditious | Breakneck | Lightning | Accelerated | Snappy | Agile | Nimble | Lively | Hotfoot | Supersonic | Meteoric | Headlong | Precipitate | Pacy | Turbo | Whirlwind | Blistering | Flying | High-speed | Fleet-footed | Mercurial | Galloping | Racing | Rushing | Sprinting | Darting | Dashing | Zooming | Velocious | Alacritous | Celeritous | Presto`);
+  C.mountains = L(`Everest/Mount Everest | Kilimanjaro | Mont Blanc | Matterhorn | Fuji/Mount Fuji | K2 | Denali/Mount McKinley | Ben Nevis | Olympus/Mount Olympus | Snowdon/Yr Wyddfa | Rushmore/Mount Rushmore | Aconcagua | Elbrus | Vesuvius | Etna | St. Helens/Mount St. Helens | Rainier/Mount Rainier | Kosciuszko | Cook/Aoraki | Table Mountain | Sinai/Mount Sinai | Ararat | Kangchenjunga | Lhotse | Makalu | Cho Oyu | Dhaulagiri | Manaslu | Nanga Parbat | Annapurna | Eiger | Jungfrau | Zugspitze | Whitney/Mount Whitney | Shasta | Hood/Mount Hood | Pikes Peak | Logan | Robson | Chimborazo | Cotopaxi | Huascarán/Huascaran | Fitz Roy | Kenya/Mount Kenya | Toubkal | Stanley | Cameroon | Kinabalu | Rinjani | Bromo | Krakatoa | Pinatubo | Mauna Kea | Mauna Loa | Kilauea | Ruapehu | Taranaki | Scafell Pike | Carrauntoohil | Triglav | Musala | Gerlach | Rysy | Galdhøpiggen/Galdhopiggen | Kebnekaise | Hvannadalshnúkur | Pico | Teide | Mulhacén/Mulhacen | Aneto | Grossglockner | Ortler | Gran Paradiso | Monte Rosa | Dom | Weisshorn | Dufourspitze | Vinson | Puncak Jaya/Carstensz | Ojos del Salado | Tupungato`);
+  C.board = L(`Chess | Monopoly | Scrabble | Checkers/Draughts | Cluedo/Clue | Snakes and Ladders/Chutes and Ladders | Risk | Battleship | Connect Four/Connect 4 | Backgammon | Trivial Pursuit | Ludo | Go | Mahjong | Pictionary | Jenga | Catan/Settlers of Catan | Guess Who | Operation | Mouse Trap | Ticket to Ride | Dominoes | Othello/Reversi | Stratego | Mastermind | Boggle | Yahtzee | Twister | Carcassonne | Pandemic | Chinese checkers | Mancala | Kerplunk | Hungry Hungry Hippos | Game of Life/The Game of Life | Sorry | Candy Land | Taboo | Codenames | Dixit | Azul | Splendor | Wingspan | Gloomhaven | Terraforming Mars | Agricola | Puerto Rico | Power Grid | Dominion | Small World | Shogi | Xiangqi | Nine men's morris | Senet | Hnefatafl | Pachisi | Parcheesi | Halma | Blokus | Qwirkle | Rummikub | Hive | Patchwork | Kingdomino | Scythe | Brass | Twilight Struggle | El Grande | Tigris and Euphrates | Hanabi | Diplomacy | Axis and Allies | Arkham Horror | Cosmic Encounter`);
+  C.breads = L(`Baguette | Bagel | Croissant | Sourdough | Pitta/Pita | Naan | Brioche | Ciabatta | Rye | Focaccia | Bun | Roll | Toast | Wholemeal/Whole wheat | White bread | Tortilla | Pretzel | Muffin/English muffin | Crumpet | Scone | Soda bread | Cornbread | Flatbread | Chapati/Roti | Paratha | Challah | Pumpernickel | Bloomer | Cob | Farl | Bap | Barm cake | Panettone | Stollen | Pandoro | Babka | Focaccia | Lavash | Injera | Matzo/Matzah | Arepa | Pão de queijo/Pao de queijo | Bao | Mantou | Puri | Bhatura | Kulcha | Khachapuri | Simit | Pide | Lahmacun | Grissini | Piadina | Pane carasau | Fougasse | Pain de mie | Pain d'épi/Pain d'epi | Vienna loaf | Kaiser roll | Brötchen/Brotchen | Zopf | Knäckebröd/Knackebrod | Lefse | Bannock | Damper | Johnnycake | Hushpuppy | Sopaipilla | Bolillo | Concha | Teacake | Lardy cake | Stottie | Oatcake | Manchet`);
+  C.currencies = L(`Dollar | Euro | Pound/Pound sterling | Yen | Yuan/Renminbi | Rupee | Peso | Franc | Rouble/Ruble | Real | Won | Krona | Krone | Lira | Rand | Dinar | Dirham | Riyal/Rial | Shekel | Baht | Ringgit | Rupiah | Dong | Zloty | Forint | Koruna | Leu | Lev | Hryvnia | Lari | Dram | Manat | Tenge | Som | Somoni | Tugrik | Kyat | Riel | Kip | Taka | Ngultrum | Rufiyaa | Afghani | Birr | Shilling | Naira | Cedi | Kwacha | Kwanza | Metical | Pula | Loti | Lilangeni | Ariary | Ouguiya | Dalasi | Leone | Nakfa | Bolívar/Bolivar | Boliviano | Guaraní/Guarani | Sol | Colón/Colon | Córdoba/Cordoba | Lempira | Quetzal | Balboa | Gourde | Florin/Guilder | Kina | Vatu | Pa'anga/Paanga | Tala | Mark | Drachma | Peseta | Escudo | Deutschmark | Ducat | Doubloon | Sestertius | Denarius`);
+
+  // ---------- the prompts ----------
+  // list: which list; filter (optional): which of its answers count; hint: an example shown after the round
+  const P = [];
+  const add = (q, list, filter) => P.push({ q, list, filter: filter || null });
+  add('Name a country', 'countries');
+  add('Name a capital city', 'capitals');
+  add('Name a US state', 'states');
+  add('Name a chemical element', 'elements');
+  add('Name a bird', 'birds');
+  add('Name a songbird', 'songbirds');
+  add('Name a fruit', 'fruits');
+  add('Name a vegetable', 'vegetables');
+  add('Name a dog breed', 'dogs');
+  add('Name a musical instrument', 'instruments');
+  add('Name a sport', 'sports');
+  add('Name a colour', 'colours');
+  add('Name a language', 'languages');
+  add('Name a moon in our solar system', 'moons');
+  add('Name a Greek or Roman god', 'gods');
+  add('Name a bone in the human body', 'bones');
+  add('Name a sea', 'seas');
+  add('Name a river', 'rivers');
+  add('Name a car brand', 'cars');
+  add('Name a fish', 'fish');
+  add('Name an insect', 'insects');
+  add('Name a cheese', 'cheeses');
+  add('Name a gemstone', 'gems');
+  add('Name a tree', 'trees');
+  add('Name a flower', 'flowers');
+  add('Name a dinosaur', 'dinosaurs');
+  add('Name a constellation', 'constellations');
+  add('Name a herb or spice', 'herbs');
+  add('Name a pasta shape', 'pasta');
+  add('Name a Shakespeare play', 'shakespeare');
+  add('Name a type of cloud', 'clouds');
+  add('Name a dance', 'dances');
+  add('Name a word that means "big"', 'big');
+  add('Name a word that means "happy"', 'happy');
+  add('Name a word that means "fast"', 'fast');
+  add('Name a mountain', 'mountains');
+  add('Name a board game', 'board');
+  add('Name a kind of bread', 'breads');
+  add('Name a currency', 'currencies');
+  // word-shape prompts, cut from the big lists
+  const first = s => s.split('/')[0];
+  for (const ch of 'ABCGKMNPST') add(`Name a country starting with ${ch}`, 'countries', a => first(a)[0].toUpperCase() === ch);
+  add('Name a country ending in O', 'countries', a => /o$/i.test(first(a)));
+  add('Name a country ending in A', 'countries', a => /a$/i.test(first(a)));
+  add('Name a country ending in -STAN', 'countries', a => /stan$/i.test(first(a)));
+  add('Name a country with "land" in its name', 'countries', a => /land/i.test(first(a)));
+  add('Name a country with a two-word name', 'countries', a => /^\S+ \S+$/.test(first(a)));
+  for (const ch of 'MN') add(`Name a US state starting with ${ch}`, 'states', a => a[0] === ch);
+  add('Name a chemical element ending in -IUM', 'elements', a => /ium$/i.test(first(a)));
+  add('Name a chemical element that does NOT end in -IUM', 'elements', a => !/ium$/i.test(first(a)));
+  for (const ch of 'BCPS') add(`Name a capital city starting with ${ch}`, 'capitals', a => first(a)[0].toUpperCase() === ch);
+  for (const ch of 'BCP') add(`Name a fruit starting with ${ch}`, 'fruits', a => first(a)[0].toUpperCase() === ch);
+  for (const ch of 'BCS') add(`Name a bird starting with ${ch}`, 'birds', a => first(a)[0].toUpperCase() === ch);
+  add('Name a river in Europe', 'rivers', a => /^(Thames|Danube|Rhine|Seine|Volga|Tiber|Loire|Rhône|Elbe|Oder|Vistula|Dnieper|Don|Shannon|Severn|Trent|Tyne|Mersey|Clyde|Tay|Liffey|Douro|Tagus|Ebro|Guadalquivir|Po|Arno|Adige|Garonne|Dordogne|Meuse|Scheldt|Moselle|Main|Neckar|Inn|Ural|Kama|Oka|Pechora)/.test(a));
+  add('Name a moon of Saturn', 'moons', a => /^(Titan|Enceladus|Mimas|Rhea|Iapetus|Dione|Tethys|Hyperion|Phoebe|Janus|Epimetheus|Pandora|Prometheus|Atlas|Pan|Helene|Telesto|Calypso|Polydeuces|Daphnis|Ymir|Paaliaq|Kiviuq)$/.test(a.split('/')[0]));
+  add('Name a moon of Uranus', 'moons', a => /^(Titania|Oberon|Miranda|Ariel|Umbriel|Puck|Cordelia|Ophelia|Bianca|Cressida|Desdemona|Juliet|Portia|Rosalind|Belinda|Perdita|Mab|Cupid|Sycorax|Caliban|Setebos|Prospero)$/.test(a.split('/')[0]));
+  add('Name a constellation starting with C', 'constellations', a => first(a)[0] === 'C');
+  return { lists: C, prompts: P };
+})();
+</script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const VERSION = '1.0';
+const MAX_DEPTH = 7000, PER_POINT = 10, READ_S = 3, ANSWER_S = 25, ROUNDS = 7;
+const TIERS = [
+  { name: 'Plankton', what: 'Common' }, { name: 'Shallows', what: 'Uncommon' }, { name: 'Reef', what: 'Rare' },
+  { name: 'Abyss', what: 'Very niche' }, { name: 'Trench Find', what: 'Rarest of all' },
+];
+const ZONES = [[0, 'Sunlight zone'], [200, 'Twilight zone'], [1000, 'Midnight zone'], [4000, 'Abyssal zone'], [6000, 'Hadal trench'], [7000, 'Perfect dive: the trench floor']];
+const zoneAt = m => { let z = ZONES[0][1]; for (const [d, n] of ZONES) if (m >= d) z = n; return z; };
+
+// ---------- save ----------
+const SKEY = 'krilldive';
+const save = (() => { try { return Object.assign({ days: {}, best: 0, played: 0, total: 0, streak: 0, lastDay: '', practiceBest: 0, mute: false }, JSON.parse(localStorage.getItem(SKEY) || '{}')); } catch (e) { return { days: {}, best: 0, played: 0, total: 0, streak: 0, lastDay: '', practiceBest: 0, mute: false }; } })();
+function persist() { try { localStorage.setItem(SKEY, JSON.stringify(save)); } catch (e) {} }
+
+// ---------- the answer lists ----------
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/&/g, 'and').replace(/^the\s+/, '').replace(/^(mount|mt\.?|saint|st\.?)\s+/, m => /^m/.test(m) ? 'mount ' : 'saint ').replace(/[^a-z0-9]/g, '');
+const LISTS = {};
+for (const [k, arr] of Object.entries(KD_DATA.lists)) {
+  const seen = new Set(), out = [];
+  for (const e of arr) { const names = e.split('/').map(s => s.trim()).filter(Boolean), key = norm(names[0]); if (seen.has(key)) continue; seen.add(key); out.push({ show: names[0], keys: [...new Set(names.map(norm))], raw: e }); }
+  LISTS[k] = out;
+}
+function answersFor(P) { const L = LISTS[P.list]; return P.filter ? L.filter(e => P.filter(e.raw)) : L; }
+function lev(a, b) { if (Math.abs(a.length - b.length) > 2) return 9; const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) { d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1); } return d[a.length][b.length]; }
+// the entry this answer names (exact, then without a plural s, then allowing a small typo), and where it sits in the list
+function match(P, text) {
+  const t = norm(text); if (t.length < 2) return null;
+  const L = answersFor(P), tries = [t, t.replace(/es$/, ''), t.replace(/s$/, '')];
+  for (const q of tries) { const i = L.findIndex(e => e.keys.includes(q)); if (i >= 0) return { i, n: L.length, e: L[i] }; }
+  if (t.length >= 5) { let best = null, bd = 9; L.forEach((e, i) => { for (const k of e.keys) { const d = lev(t, k); const ok = d <= (k.length >= 9 ? 2 : 1); if (ok && d < bd) { bd = d; best = { i, n: L.length, e }; } } }); if (best) return best; }
+  return null;
+}
+// rarity from the place in the list: the first 15% are common, the last 12% the rarest
+function score(i, n) {
+  const p = n <= 1 ? 1 : i / (n - 1);
+  if (p < 0.15) return { tier: 0, pts: 10 };
+  if (p < 0.35) return { tier: 1, pts: 25 + Math.round((p - 0.15) / 0.2 * 10) };
+  if (p < 0.6) return { tier: 2, pts: 50 + Math.round((p - 0.35) / 0.25 * 15) };
+  if (p < 0.88) return { tier: 3, pts: 75 + Math.round((p - 0.6) / 0.28 * 10) };
+  return { tier: 4, pts: 100 };
+}
+// a rough share of divers who'd give this answer (Zipf's law over the list), for the results
+function share(i, n) { let H = 0; for (let k = 1; k <= n; k++) H += 1 / k; const s = (1 / (i + 1)) / H * 100; return s >= 1 ? Math.round(s) + '%' : s >= 0.1 ? s.toFixed(1) + '%' : '<0.1%'; }
+
+// ---------- the day's prompts ----------
+const today = () => new Date().toISOString().slice(0, 10);
+const dayNo = d => Math.floor((Date.parse(d + 'T00:00:00Z') - Date.parse('2026-11-06T00:00:00Z')) / 864e5) + 1;
+function rng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
+function pickPrompts(r) {
+  const pool = KD_DATA.prompts.map((p, i) => ({ p, i })).filter(x => answersFor(x.p).length >= 6), out = [], used = new Set();
+  while (out.length < ROUNDS && pool.length) { const k = Math.floor(r() * pool.length), x = pool.splice(k, 1)[0]; if (used.has(x.p.list)) continue; used.add(x.p.list); out.push(x.i); }
+  return out;
+}
+
+// ---------- sound ----------
+const Sound = (() => {
+  let ctx = null; const init = () => { if (!ctx) try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (ctx && ctx.state === 'suspended') ctx.resume(); };
+  function tone(f, d, type = 'sine', v = 0.12, slide = 0, at = 0) { if (!ctx || save.mute) return; const t = ctx.currentTime + at, o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + d + 0.05); }
+  return {
+    init, tick: () => tone(880, 0.06, 'square', 0.04), wrong: () => { tone(220, 0.16, 'sawtooth', 0.06, -60); },
+    bubble: () => { for (let i = 0; i < 4; i++) tone(300 + Math.random() * 500, 0.08, 'sine', 0.06, 400, i * 0.06); },
+    tier: n => { const notes = [[392], [392, 494], [392, 494, 587], [392, 494, 587, 740], [392, 494, 587, 784, 988]][n]; notes.forEach((f, i) => tone(f, 0.22, 'triangle', 0.1, 0, i * 0.08)); },
+    timeup: () => tone(160, 0.5, 'sine', 0.12, -60), go: () => tone(660, 0.12, 'triangle', 0.1),
+  };
+})();
+
+// ---------- the ocean ----------
+const cv = $('sea'), cx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+addEventListener('resize', resize); resize();
+const SEA = { depth: 0, shown: 0, cam: 0, t: 0, bubbles: [], snow: [], krillX: 0 };
+const PX = () => Math.max(0.35, H / 1100); // pixels per metre
+for (let i = 0; i < 90; i++) SEA.snow.push({ x: Math.random(), y: Math.random(), s: Math.random() * 1.6 + 0.4, v: Math.random() * 0.3 + 0.1 });
+const STOPS = [[0, [64, 196, 255]], [120, [22, 120, 196]], [200, [12, 86, 150]], [1000, [6, 38, 78]], [2500, [3, 20, 46]], [4000, [2, 10, 26]], [6000, [1, 4, 12]], [7200, [0, 1, 4]]];
+function seaColour(m) { for (let i = 1; i < STOPS.length; i++) if (m <= STOPS[i][0]) { const [a, ca] = STOPS[i - 1], [b, cb] = STOPS[i], k = (m - a) / (b - a); return ca.map((v, j) => Math.round(v + (cb[j] - v) * k)); } return STOPS[STOPS.length - 1][1]; }
+const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+// creatures: fixed places in the water, drawn when on screen
+const CRE = [];
+{ const r = rng(77); const kinds = [[20, 180, 'fish', 14], [40, 260, 'turtle', 2], [220, 950, 'jelly', 12], [600, 1200, 'whale', 1], [1000, 3200, 'lantern', 18], [1500, 3500, 'squid', 2], [3000, 5600, 'angler', 6], [4200, 6200, 'eel', 4], [6200, 6950, 'isopod', 5], [5000, 6900, 'glow', 20]];
+  for (const [a, b, k, n] of kinds) for (let i = 0; i < n; i++) CRE.push({ k, m: a + r() * (b - a), x: r(), ph: r() * 6.28, s: 0.7 + r() * 0.6, dir: r() < 0.5 ? -1 : 1 }); }
+function drawCreature(c, x, y, t) {
+  cx.save(); cx.translate(x, y); cx.scale(c.dir * c.s, c.s);
+  const sway = Math.sin(t * 1.3 + c.ph);
+  if (c.k === 'fish') { cx.fillStyle = 'rgba(255,214,120,.85)'; cx.beginPath(); cx.ellipse(0, 0, 10, 4.5, 0, 0, 7); cx.fill(); cx.beginPath(); cx.moveTo(-9, 0); cx.lineTo(-16, -5 + sway); cx.lineTo(-16, 5 + sway); cx.fill(); cx.fillStyle = '#123'; cx.beginPath(); cx.arc(6, -1, 1.2, 0, 7); cx.fill(); }
+  else if (c.k === 'turtle') { cx.fillStyle = '#5a8f4e'; cx.beginPath(); cx.ellipse(0, 0, 18, 12, 0, 0, 7); cx.fill(); cx.fillStyle = '#87b56f'; cx.beginPath(); cx.arc(20, -2, 5, 0, 7); cx.fill(); cx.strokeStyle = '#87b56f'; cx.lineWidth = 5; cx.lineCap = 'round'; cx.beginPath(); cx.moveTo(8, 9); cx.lineTo(14, 16 + sway * 3); cx.moveTo(-10, 9); cx.lineTo(-16, 14 - sway * 3); cx.stroke(); }
+  else if (c.k === 'jelly') { const g = cx.createRadialGradient(0, 0, 2, 0, 0, 16); g.addColorStop(0, 'rgba(255,170,240,.9)'); g.addColorStop(1, 'rgba(160,110,255,.15)'); cx.fillStyle = g; cx.beginPath(); cx.arc(0, 0, 14, Math.PI, 0); cx.quadraticCurveTo(0, 6 + sway * 2, -14, 0); cx.fill(); cx.strokeStyle = 'rgba(230,170,255,.45)'; cx.lineWidth = 1.2; for (let i = -2; i <= 2; i++) { cx.beginPath(); cx.moveTo(i * 5, 2); cx.quadraticCurveTo(i * 5 + sway * 4, 16, i * 5, 30 + i % 2 * 6); cx.stroke(); } }
+  else if (c.k === 'whale') { cx.fillStyle = 'rgba(40,80,120,.85)'; cx.beginPath(); cx.ellipse(0, 0, 70, 20, 0, 0, 7); cx.fill(); cx.beginPath(); cx.moveTo(-64, 0); cx.lineTo(-96, -16 + sway * 4); cx.lineTo(-90, 0); cx.lineTo(-96, 16 + sway * 4); cx.fill(); cx.fillStyle = 'rgba(180,210,230,.35)'; cx.beginPath(); cx.ellipse(10, 9, 50, 7, 0, 0, 7); cx.fill(); }
+  else if (c.k === 'lantern') { cx.fillStyle = 'rgba(40,60,90,.9)'; cx.beginPath(); cx.ellipse(0, 0, 9, 4, 0, 0, 7); cx.fill(); cx.beginPath(); cx.moveTo(-8, 0); cx.lineTo(-13, -4); cx.lineTo(-13, 4); cx.fill(); for (let i = 0; i < 4; i++) { cx.fillStyle = `rgba(120,240,255,${0.5 + 0.5 * Math.sin(t * 3 + c.ph + i)})`; cx.beginPath(); cx.arc(-5 + i * 3.5, 2.5, 1.1, 0, 7); cx.fill(); } }
+  else if (c.k === 'squid') { cx.fillStyle = 'rgba(190,70,70,.8)'; cx.beginPath(); cx.moveTo(30, 0); cx.quadraticCurveTo(10, -14, -10, -6); cx.lineTo(-10, 6); cx.quadraticCurveTo(10, 14, 30, 0); cx.fill(); cx.strokeStyle = 'rgba(190,70,70,.7)'; cx.lineWidth = 2.4; for (let i = -3; i <= 3; i++) { cx.beginPath(); cx.moveTo(-10, i * 1.6); cx.quadraticCurveTo(-30, i * 4 + sway * 5, -50 - Math.abs(i) * 4, i * 6); cx.stroke(); } cx.fillStyle = '#ffe'; cx.beginPath(); cx.arc(0, -2, 2.5, 0, 7); cx.fill(); }
+  else if (c.k === 'angler') { cx.fillStyle = 'rgba(30,26,34,.95)'; cx.beginPath(); cx.arc(0, 0, 14, 0, 7); cx.fill(); cx.fillStyle = '#ddd'; for (let i = 0; i < 5; i++) { cx.beginPath(); cx.moveTo(6 + i * 1.6, 3); cx.lineTo(7 + i * 1.6, 8); cx.lineTo(8 + i * 1.6, 3); cx.fill(); } cx.strokeStyle = 'rgba(80,80,90,.9)'; cx.lineWidth = 1.5; cx.beginPath(); cx.moveTo(2, -13); cx.quadraticCurveTo(14, -30, 22, -18 + sway * 2); cx.stroke(); const g = cx.createRadialGradient(22, -18 + sway * 2, 0, 22, -18 + sway * 2, 14); g.addColorStop(0, 'rgba(180,255,220,.95)'); g.addColorStop(1, 'rgba(180,255,220,0)'); cx.fillStyle = g; cx.beginPath(); cx.arc(22, -18 + sway * 2, 14, 0, 7); cx.fill(); }
+  else if (c.k === 'eel') { cx.strokeStyle = 'rgba(60,70,60,.9)'; cx.lineWidth = 5; cx.lineCap = 'round'; cx.beginPath(); for (let i = 0; i <= 12; i++) { const px = -40 + i * 7, py = Math.sin(t * 2 + c.ph + i * 0.6) * 5; i ? cx.lineTo(px, py) : cx.moveTo(px, py); } cx.stroke(); }
+  else if (c.k === 'isopod') { cx.fillStyle = 'rgba(170,160,150,.9)'; cx.beginPath(); cx.ellipse(0, 0, 16, 8, 0, 0, 7); cx.fill(); cx.strokeStyle = 'rgba(120,110,100,.9)'; cx.lineWidth = 1; for (let i = -3; i <= 3; i++) { cx.beginPath(); cx.moveTo(i * 4, -8); cx.lineTo(i * 4, 8); cx.stroke(); } }
+  else if (c.k === 'glow') { const a = 0.3 + 0.3 * Math.sin(t * 2 + c.ph); cx.fillStyle = `rgba(110,255,230,${a})`; cx.beginPath(); cx.arc(0, 0, 2.2, 0, 7); cx.fill(); }
+  cx.restore();
+}
+function drawKrill(x, y, t, tilt) {
+  cx.save(); cx.translate(x, y); cx.rotate(tilt); const s = Math.max(1.2, Math.min(2, W / 420)); cx.scale(s, s);
+  const kick = Math.sin(t * 14);
+  cx.strokeStyle = 'rgba(255,190,170,.9)'; cx.lineWidth = 1.2; cx.lineCap = 'round';
+  for (let i = 0; i < 6; i++) { cx.beginPath(); cx.moveTo(-6 + i * 3.4, 4); cx.lineTo(-7 + i * 3.4 + kick * 2 * (i % 2 ? 1 : -1), 11); cx.stroke(); }
+  cx.beginPath(); cx.moveTo(13, -2); cx.quadraticCurveTo(26, -10, 34, -4 + kick); cx.moveTo(13, -1); cx.quadraticCurveTo(24, -4, 31, 3 + kick); cx.stroke();
+  const g = cx.createLinearGradient(-16, -6, 14, 6); g.addColorStop(0, '#ff9a7a'); g.addColorStop(1, '#ff5a3c'); cx.fillStyle = g;
+  cx.beginPath(); cx.moveTo(14, 0); cx.quadraticCurveTo(10, -7, -2, -6); cx.quadraticCurveTo(-14, -5, -18, -1); cx.quadraticCurveTo(-24, 1, -26, 6); cx.quadraticCurveTo(-18, 5, -14, 4); cx.quadraticCurveTo(0, 6, 14, 0); cx.fill();
+  cx.strokeStyle = 'rgba(160,40,20,.5)'; cx.lineWidth = 1; for (let i = 0; i < 5; i++) { cx.beginPath(); cx.moveTo(-12 + i * 4.6, -5.5); cx.lineTo(-11 + i * 4.6, 4.5); cx.stroke(); }
+  cx.fillStyle = '#111'; cx.beginPath(); cx.arc(10, -2.4, 2.2, 0, 7); cx.fill(); cx.fillStyle = '#fff'; cx.beginPath(); cx.arc(10.7, -3, 0.7, 0, 7); cx.fill();
+  cx.fillStyle = 'rgba(120,255,240,.85)'; cx.beginPath(); cx.arc(-6, 3, 1, 0, 7); cx.arc(-1, 3.5, 1, 0, 7); cx.fill(); // krill glow
+  cx.restore();
+}
+let lastT = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; SEA.t += dt;
+  const px = PX();
+  SEA.shown += (SEA.depth - SEA.shown) * Math.min(1, dt * 1.8);
+  const krillY = H * 0.5, top = SEA.shown - krillY / px; // metres at the top of the screen
+  // water: a gradient through the depths on screen
+  const g = cx.createLinearGradient(0, 0, 0, H); for (let i = 0; i <= 6; i++) { const m = top + (H / px) * i / 6; g.addColorStop(i / 6, rgb(seaColour(Math.max(0, m)))); } cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+  // the sky and surface
+  const sy = (0 - top) * px; if (sy > 0) { cx.fillStyle = '#9fdcff'; cx.fillRect(0, 0, W, sy); cx.fillStyle = '#ffffff55'; for (let x = 0; x < W; x += 24) { cx.beginPath(); cx.arc(x + (SEA.t * 18) % 24, sy, 12, Math.PI, 0); cx.fill(); } }
+  // sun rays near the surface
+  if (top < 300) { cx.save(); cx.globalAlpha = Math.max(0, 0.16 * (1 - top / 300)); cx.fillStyle = '#e8fbff'; for (let i = 0; i < 6; i++) { const x0 = W * (i / 6) + Math.sin(SEA.t * 0.3 + i) * 30; cx.beginPath(); cx.moveTo(x0, Math.max(0, sy)); cx.lineTo(x0 + 60, Math.max(0, sy)); cx.lineTo(x0 + 180, H); cx.lineTo(x0 + 90, H); cx.fill(); } cx.restore(); }
+  // depth marks and zone lines
+  cx.font = '700 12px Nunito, sans-serif'; cx.textBaseline = 'middle';
+  const step = 100; for (let m = Math.ceil(top / step) * step; m < top + H / px; m += step) { if (m < 0) continue; const y = (m - top) * px, major = m % 500 === 0; cx.fillStyle = major ? 'rgba(200,235,255,.6)' : 'rgba(200,235,255,.25)'; cx.fillRect(0, y, major ? 22 : 10, 1); if (major) cx.fillText(m.toLocaleString() + ' m', 26, y); }
+  for (const [m, name] of ZONES) { if (!m) continue; const y = (m - top) * px; if (y < -20 || y > H + 20) continue; cx.save(); cx.setLineDash([6, 8]); cx.strokeStyle = 'rgba(160,220,255,.25)'; cx.beginPath(); cx.moveTo(0, y); cx.lineTo(W, y); cx.stroke(); cx.restore(); cx.fillStyle = 'rgba(200,235,255,.55)'; cx.textAlign = 'right'; cx.fillText(name.toUpperCase(), W - 12, y - 10); cx.textAlign = 'left'; }
+  // creatures
+  for (const c of CRE) { const y = (c.m - top) * px; if (y < -80 || y > H + 80) continue; const x = ((c.x * W + SEA.t * 12 * c.dir * (c.k === 'glow' ? 0.2 : 1)) % (W + 200) + W + 200) % (W + 200) - 100; drawCreature(c, x, y, SEA.t); }
+  // the trench floor at 7,000 m
+  const fy = (MAX_DEPTH - top) * px; if (fy < H + 40) { cx.fillStyle = '#0b0b10'; cx.beginPath(); cx.moveTo(0, H); for (let x = 0; x <= W; x += 20) cx.lineTo(x, fy + 14 + Math.sin(x * 0.05) * 8 + Math.sin(x * 0.013) * 14); cx.lineTo(W, H); cx.fill(); cx.fillStyle = 'rgba(255,210,63,.75)'; cx.textAlign = 'center'; cx.font = '800 14px Nunito, sans-serif'; cx.fillText('TRENCH FLOOR · 7,000 m', W / 2, fy + 46); cx.textAlign = 'left'; }
+  // marine snow
+  for (const s of SEA.snow) { s.y += s.v * dt * 0.05; if (s.y > 1) s.y -= 1; cx.fillStyle = `rgba(220,240,255,${0.15 + 0.2 * Math.min(1, top / 800)})`; cx.fillRect(s.x * W, ((s.y * H - (SEA.shown * px) % H) % H + H) % H, s.s, s.s); }
+  // the krill and its bubbles
+  const kx = W * 0.5 + Math.sin(SEA.t * 0.7) * 18, ky = krillY + Math.sin(SEA.t * 1.6) * 6, sinking = SEA.depth - SEA.shown;
+  if (sinking > 1 && Math.random() < dt * 30) SEA.bubbles.push({ x: kx + 10, y: ky - 6, r: 1.5 + Math.random() * 3, v: 30 + Math.random() * 30 });
+  for (let i = SEA.bubbles.length - 1; i >= 0; i--) { const b = SEA.bubbles[i]; b.y -= (b.v + sinking * px * 1.2) * dt; b.x += Math.sin(SEA.t * 4 + i) * 0.4; if (b.y < -10) { SEA.bubbles.splice(i, 1); continue; } cx.strokeStyle = 'rgba(220,245,255,.6)'; cx.lineWidth = 1; cx.beginPath(); cx.arc(b.x, b.y, b.r, 0, 7); cx.stroke(); }
+  if (top > 900) { const lg = cx.createRadialGradient(kx, ky, 0, kx, ky, 90); lg.addColorStop(0, 'rgba(120,255,240,.10)'); lg.addColorStop(1, 'rgba(120,255,240,0)'); cx.fillStyle = lg; cx.beginPath(); cx.arc(kx, ky, 90, 0, 7); cx.fill(); }
+  drawKrill(kx, ky, SEA.t, Math.min(0.9, sinking / 400) + Math.sin(SEA.t) * 0.05);
+  $('depthTag').textContent = Math.round(SEA.shown).toLocaleString() + ' m';
+}
+requestAnimationFrame(frame);
+
+// ---------- screens ----------
+function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1800); }
+function refreshHome() {
+  const d = today(), done = save.days[d];
+  $('dayDate').textContent = 'Dive #' + dayNo(d) + ' · ' + new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  $('doneNote').hidden = !done; if (done) $('doneNote').innerHTML = `You reached <b>${(done.score * PER_POINT).toLocaleString()} m</b> today (${zoneAt(done.score * PER_POINT)}). Come back tomorrow for new prompts, or keep practising.`;
+  $('dailyBtn').textContent = done ? 'See today\'s dive' : 'Start today\'s dive';
+  $('stBest').textContent = (save.best * PER_POINT).toLocaleString(); $('stPlayed').textContent = save.played; $('stStreak').textContent = save.streak;
+  $('stAvg').textContent = save.played ? Math.round(save.total / save.played * PER_POINT).toLocaleString() : 0;
+  $('muteBtn').textContent = 'Sound: ' + (save.mute ? 'off' : 'on');
+  if (!RUN) SEA.depth = 160; // the home screen sits just under the waves
+}
+
+// ---------- a dive ----------
+let RUN = null, ticker = 0;
+function startDive(daily) {
+  Sound.init();
+  const d = today(), ids = daily ? pickPrompts(rng(hash('krill-dive:' + d))) : pickPrompts(Math.random);
+  RUN = { daily, date: d, ids, i: -1, res: [], score: 0 };
+  SEA.depth = 0; SEA.shown = 0;
+  $('pips').innerHTML = ids.map(() => '<i></i>').join('');
+  show('game'); next();
+}
+function next() {
+  const R = RUN; R.i++;
+  if (R.i >= R.ids.length) { finish(); return; }
+  const P = KD_DATA.prompts[R.ids[R.i]];
+  R.P = P; R.tries = []; R.locked = false; R.phase = 'read'; R.t0 = performance.now();
+  [...$('pips').children].forEach((p, k) => { p.className = k === R.i ? 'cur' : ''; if (k < R.i) { const r = R.res[k]; p.style.background = r.tier >= 0 ? getComputedStyle(document.documentElement).getPropertyValue('--t' + r.tier) : 'rgba(255,255,255,.08)'; } else p.style.background = ''; });
+  $('qNum').textContent = `Prompt ${R.i + 1} of ${R.ids.length}`; $('prompt').textContent = P.q; $('tries').innerHTML = ''; $('verdict').innerHTML = '';
+  $('ans').value = ''; $('ans').disabled = true; $('goBtn').disabled = true;
+  $('timer').classList.remove('low'); $('timerT').textContent = ANSWER_S; $('timerFg').style.strokeDashoffset = 0;
+  $('ready').hidden = false;
+  clearInterval(ticker); let lastSec = -1;
+  ticker = setInterval(() => {
+    const el = (performance.now() - R.t0) / 1000;
+    if (R.phase === 'read') {
+      const left = Math.ceil(READ_S - el); $('ready').innerHTML = `<small>READ THE PROMPT</small>${Math.max(1, left)}`;
+      if (el >= READ_S) { R.phase = 'answer'; R.t1 = performance.now(); $('ready').hidden = true; $('ans').disabled = false; $('goBtn').disabled = false; $('ans').focus(); Sound.go(); }
+      return;
+    }
+    if (R.phase !== 'answer') return;
+    const t = (performance.now() - R.t1) / 1000, left = Math.max(0, ANSWER_S - t);
+    $('timerT').textContent = Math.ceil(left); $('timerFg').style.strokeDashoffset = 157 * (1 - left / ANSWER_S); $('timer').classList.toggle('low', left <= 5);
+    if (left <= 5 && Math.ceil(left) !== lastSec) { lastSec = Math.ceil(left); if (left > 0) Sound.tick(); }
+    if (left <= 0) timeUp();
+  }, 50);
+}
+function submit() {
+  const R = RUN; if (!R || R.phase !== 'answer' || R.locked) return;
+  const text = $('ans').value.trim(); if (!text) return;
+  const m = match(R.P, text);
+  if (!m) { // not recognised: no penalty, keep going
+    if (!R.tries.includes(text.toLowerCase())) { R.tries.push(text.toLowerCase()); const s = document.createElement('span'); s.textContent = text; $('tries').appendChild(s); }
+    $('ans').classList.remove('shake'); void $('ans').offsetWidth; $('ans').classList.add('shake'); $('ans').select(); Sound.wrong(); return;
+  }
+  lockIn(m);
+}
+function lockIn(m) {
+  const R = RUN; R.locked = true; R.phase = 'done'; clearInterval(ticker);
+  const sc = score(m.i, m.n), rarest = answersFor(R.P).slice(-3).map(e => e.show);
+  R.res.push({ q: R.P.q, a: m.e.show, tier: sc.tier, pts: sc.pts, share: share(m.i, m.n), rarest: rarest[Math.floor(Math.random() * rarest.length)] });
+  R.score += sc.pts; SEA.depth = R.score * PER_POINT;
+  $('ans').disabled = true; $('goBtn').disabled = true;
+  $('verdict').innerHTML = `<div class="verdict vbg${sc.tier}"><span class="chip t${sc.tier}">${TIERS[sc.tier].name}</span><div><b>${esc(m.e.show)}</b><div style="font-size:13px;color:var(--muted)">${TIERS[sc.tier].what} · about ${share(m.i, m.n)} of divers</div></div><div class="pts">+${sc.pts}<small>+${sc.pts * PER_POINT} m</small></div></div>`;
+  Sound.tier(sc.tier); setTimeout(Sound.bubble, 250);
+  setTimeout(next, 2300);
+}
+function timeUp() {
+  const R = RUN; if (R.phase !== 'answer') return; R.phase = 'done'; clearInterval(ticker);
+  const L = answersFor(R.P), deep = L[Math.floor(L.length * 0.9)] || L[L.length - 1];
+  R.res.push({ q: R.P.q, a: null, tier: -1, pts: 0, rarest: deep.show });
+  $('ans').disabled = true; $('goBtn').disabled = true; Sound.timeup();
+  $('verdict').innerHTML = `<div class="verdict vbgx"><span class="chip" style="background:#55606b;color:#fff">Time's up</span><div><b>No answer</b><div style="font-size:13px;color:var(--muted)">A deep one would have been: ${esc(deep.show)}</div></div><div class="pts">+0</div></div>`;
+  setTimeout(next, 2300);
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function finish() {
+  const R = RUN; clearInterval(ticker);
+  if (R.daily && !save.days[R.date]) {
+    save.days[R.date] = { score: R.score, res: R.res.map(r => [r.a, r.tier, r.pts]) };
+    const y = new Date(Date.parse(R.date + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10);
+    save.streak = save.lastDay === y ? save.streak + 1 : 1; save.lastDay = R.date;
+    const keys = Object.keys(save.days).sort(); while (keys.length > 120) delete save.days[keys.shift()];
+  }
+  save.played++; save.total += R.score; save.best = Math.max(save.best, R.score); if (!R.daily) save.practiceBest = Math.max(save.practiceBest, R.score); persist();
+  showResults(R);
+}
+function showResults(R) {
+  const m = R.score * PER_POINT;
+  $('resKind').textContent = R.daily ? 'Dive #' + dayNo(R.date) + ' · today\'s prompts' : 'Practice dive';
+  $('resDepth').textContent = m.toLocaleString() + ' m'; $('resZone').textContent = zoneAt(m);
+  $('resScore').textContent = `${R.score} of ${R.ids.length * 100} rarity points` + (m >= MAX_DEPTH ? ' · a perfect dive!' : '');
+  $('resList').innerHTML = R.res.map((r, k) => `<div class="resRow"><div class="q">${k + 1}. ${esc(r.q)}</div><div class="p">+${r.pts}<small>${r.pts * PER_POINT} m</small></div><div class="a">${r.a ? `${esc(r.a)} <span class="chip sm t${r.tier}">${TIERS[r.tier].name}</span>` : '<span style="color:var(--muted)">No answer</span>'}</div>${r.a ? `<div class="x">About ${r.share} of divers think of it.${r.tier < 4 ? ' A rarer one: ' + esc(r.rarest) + '.' : ''}</div>` : `<div class="x">A deep answer: ${esc(r.rarest)}.</div>`}</div>`).join('');
+  RUN = null; show('results'); SEA.depth = m;
+  $('shareBtn').onclick = () => {
+    const sq = ['⬜', '🟦', '🟥', '🟪', '🟨'], line = R.res.map(r => r.tier >= 0 ? sq[r.tier] : '⬛').join('');
+    const txt = `🦐 Krill Dive ${R.daily ? '#' + dayNo(R.date) : '(practice)'}: ${m.toLocaleString()} m\n${line}\n${zoneAt(m)}`;
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('Copied! Paste it to your friends.')).catch(() => { prompt('Copy your dive:', txt); });
+  };
+}
+function showSaved(d) {
+  const S = save.days[d]; if (!S) return;
+  const ids = pickPrompts(rng(hash('krill-dive:' + d)));
+  const R = { daily: true, date: d, ids, score: S.score, res: S.res.map((x, k) => { const P = KD_DATA.prompts[ids[k]], L = answersFor(P), i = x[0] ? L.findIndex(e => e.show === x[0]) : -1; return { q: P ? P.q : '', a: x[0], tier: x[1], pts: x[2], share: i >= 0 ? share(i, L.length) : '?', rarest: L.length ? L[L.length - 1].show : '' }; }) };
+  showResults(R);
+}
+
+// ---------- buttons and keys ----------
+$('dailyBtn').onclick = () => { Sound.init(); if (save.days[today()]) showSaved(today()); else startDive(true); };
+$('practiceBtn').onclick = () => startDive(false);
+$('againBtn').onclick = () => startDive(false);
+$('homeBtn').onclick = () => { refreshHome(); show('home'); };
+$('howBtn').onclick = () => show('how'); $('howBack').onclick = () => show('home');
+$('muteBtn').onclick = () => { save.mute = !save.mute; persist(); refreshHome(); };
+$('goBtn').onclick = submit;
+$('ans').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+$('quitBtn').onclick = () => { if (!RUN) return; if (RUN.daily && !confirm('Quit today\'s dive? It will count with the answers you have so far.')) return; if (RUN.daily) { while (RUN.res.length < RUN.ids.length) RUN.res.push({ q: KD_DATA.prompts[RUN.ids[RUN.res.length]].q, a: null, tier: -1, pts: 0, rarest: '' }); RUN.i = RUN.ids.length; finish(); } else { clearInterval(ticker); RUN = null; refreshHome(); show('home'); } };
+refreshHome();
+if (/[?&]debug/.test(location.search)) window.__kd = { match, score, answersFor, pickPrompts, rng, hash, LISTS, save };
+</script>
+</body>
+</html>

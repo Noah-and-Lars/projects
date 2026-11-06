@@ -14,6 +14,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'krill-dive',
+    title: 'Krill Dive',
+    category: 'Puzzle',
+    tagline: 'Daily trivia where the obvious answer scores least: name something rare and your krill sinks deeper.',
+    description: 'Seven prompts a day, the same for everyone: name a songbird, a country ending in O, a moon of Saturn. You get 3 seconds to read each one and 25 to answer, and the first answer the game recognises is locked in. Common answers score 10, the rarest score 100, and every point sinks your krill 10 m down through the sunlight, twilight and midnight zones. Score all 700 to reach the trench floor at 7,000 m. Practice dives give you a fresh random set any time.',
+    controls: 'Keyboard or touch',
+    keys: [['Type', 'Your answer'], ['Enter', 'Lock it in'], ['Practice dive', 'A new random set of prompts']],
+    path: 'krill-dive/index.html',
+    thumb: 'krill-dive/thumb.svg',
+    added: '2026-11-07T08:00:00+11:00',
+    updated: '2026-11-07T08:00:00+11:00',
+    stat() { const s = readSave('krilldive', true); return s && s.played ? 'Best ' + ((s.best || 0) * 10).toLocaleString() + ' m' : null; },
+  },
+  {
     id: 'card-royale',
     title: 'Card Royale',
     category: 'Strategy',
@@ -38,7 +52,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-05T12:13:00+11:00',
+    updated: '2026-11-07T08:00:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -52,7 +66,7 @@ window.GAMES = [
     path: 'uno/index.html',
     thumb: 'uno/thumb.jpg',
     added: '2026-11-01T22:00:00+11:00',
-    updated: '2026-11-01T22:00:00+11:00',
+    updated: '2026-11-07T08:00:00+11:00',
     stat() { const s = readSave('uno.stats', true); return s && s.wins ? s.wins + (s.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -80,7 +94,7 @@ window.GAMES = [
     path: 'football/index.html',
     thumb: 'football/thumb.jpg?v=2',
     added: '2026-10-25T18:00:00+11:00',
-    updated: '2026-11-01T16:00:00+11:00',
+    updated: '2026-11-07T08:00:00+11:00',
     stat() { const p = readSave('soccer.profile', true); return p && p.played ? p.played + ' matches played' : null; },
   },
   {
@@ -95,7 +109,7 @@ window.GAMES = [
     path: 'havoc-bay/index.html',
     thumb: 'havoc-bay/thumb.jpg?v=1',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-11-05T03:30:00+11:00',
+    updated: '2026-11-07T08:00:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -119,12 +133,12 @@ window.GAMES = [
     tagline: 'Classic chess against the computer, or online against a real person.',
     description: 'Play chess against the computer on a classic green board. Pick Easy, Medium or Hard, play as White, Black or a random colour, and drag or click your pieces. Every rule is in: castling, en passant, promotion, checkmate, stalemate and draws. Your game is saved, and your wins, losses and draws are kept for each level. Online games are rated the way chess.com rates them (Glicko), and your rating shows on your profile.',
     controls: 'Mouse or touch',
-    keys: [['Drag or click', 'Move a piece'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
+    keys: [['Local 2-player', 'Two players on one screen: the board turns round after every move'], ['🏆 Leaderboard', 'Everyone\u2019s highest online rating'], ['Drag or click', 'Move a piece'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-11-05T04:20:00+11:00',
-    stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rating.n > 0 && isFinite(s.rating.r) ? 'Rating ' + Math.round(s.rating.r) : ''; return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
+    updated: '2026-11-07T08:00:00+11:00',
+    stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rating.n > 0 && isFinite(s.rating.r) ? 'Rating ' + Math.round(s.rating.r) + (Math.round(s.rating.peak || 0) > Math.round(s.rating.r) ? ' (best ' + Math.round(s.rating.peak) + ')' : '') : ''; return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
     id: 'russian-roulette',
@@ -165,7 +179,7 @@ window.GAMES = [
     path: 'cube-tower-defense/index.html',
     thumb: 'cube-tower-defense/thumb.svg',
     added: '2026-10-14T21:26:00+11:00',
-    updated: '2026-10-18T12:15:00+11:00',
+    updated: '2026-11-07T08:00:00+11:00',
     stat() { const p = readSave('cubeTDProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -196,7 +210,7 @@ window.GAMES = [
     path: 'cube-assault/index.html',
     thumb: 'cube-assault/thumb.jpg?v=4',
     added: '2026-10-13T11:03:05+11:00',
-    updated: '2026-11-02T18:00:00+11:00',
+    updated: '2026-11-07T08:00:00+11:00',
     stat() { const p = readSave('cubeAssaultProfile', true); return p && p.best ? 'Best wave ' + p.best : null; },
   },
   {
@@ -267,6 +281,14 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-07', game: 'krill-dive', text: 'New game: Krill Dive. Seven daily prompts, 25 seconds each, and the rarer your answer the deeper your krill sinks. Reach the trench floor at 7,000 m for a perfect dive.' },
+  { date: '2026-11-07', game: 'havoc-bay', text: 'Havoc Bay 1.3: planes can crash into each other (teammates too), blowing up everyone on board. Press C for first person on foot and on ships, and cockpits now have floors, walls, seats and glass windows to look out of.' },
+  { date: '2026-11-07', game: 'cube-tower-defense', text: 'Cube Tower Defense 1.3: online Co-op (defend one base together) and Versus (same map and waves, last base standing wins), plus 25 new specialists from the 15-coin Scout to the Heavy Gunner.' },
+  { date: '2026-11-07', game: 'chess', text: 'Chess 1.5: Local 2-player, where the board turns round after every move so two people can play on one computer (not rated), and a leaderboard of everyone\'s highest rating.' },
+  { date: '2026-11-07', game: 'football', text: 'Football 1.1.1: fairer penalties (keepers now save some), and VAR checks and penalty shootouts no longer carry on while the game is paused.' },
+  { date: '2026-11-07', game: 'siege', text: 'Siege 1.0.17: drone fixes. Jammed drones fall instead of freezing, thrown drones can\'t pass through walls, lost drones come back, and bots\' drones move smoothly online.' },
+  { date: '2026-11-07', game: 'uno', text: 'UNO! 1.1: big hands wrap onto rows so you can always see every card, a Sort button, a turn bar, a log of the last moves, scores on every seat and a new main menu with your stats and patch notes.' },
+  { date: '2026-11-07', game: 'cube-assault', text: 'Cube Assault 3.0.3: the Battle Pass button is gone now the Halloween event is over (you keep everything you got from it). New in Settings: legacy map skins, with Halloween 2026 to bring back the decorations.' },
   { date: '2026-11-05', game: 'card-royale', text: 'Card Royale 1.1: 25 new cards (troops, towers and spells, from the Wolf Pack and the Ballista to Meteor and the Mimic), and troops now take 1.5 seconds to arrive, showing their outline until they land. Card names on every card, in your hand and in your collection. Tap a battle in your Battle Log to see that player\u2019s profile, and tap the arena for the Trophy Road. A bot takes over after 10 seconds of searching. Battle chat is unfiltered unless you turn the filter on in Settings. Plus a cleaner look, and fixes for Zap and The Log.' },
   { date: '2026-11-05', game: 'siege', text: 'Siege 1.0.16: lighter online traffic. Online play went down for a morning when the arcade\u2019s realtime server ran out of its daily allowance, and Siege matches were the biggest users; Siege now sends far fewer messages, and other players and bots still move smoothly.' },
   { date: '2026-11-05', game: 'siege', text: 'Siege 1.0.15: a reinforced wall shows its bolts on the other side, so attackers can tell it\'s reinforced. Breaches also show up properly for whoever set them off.' },

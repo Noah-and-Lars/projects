@@ -196,6 +196,46 @@ h2{font-size:19px;margin-bottom:4px}
 #menuBtn{margin-left:auto;background:#0006;border:none;color:#fff;width:34px;height:34px;border-radius:9px;font-size:17px;cursor:pointer}
 #roomTag{font-size:11px;background:#0006;padding:3px 9px;border-radius:9px;font-weight:800;letter-spacing:1px}
 .hide{display:none!important}
+/* ---------- 1.1: the hand never squeezes cards out of sight, plus a turn bar, action log and fuller menus ---------- */
+#hand{display:block;height:auto;padding:0 12px;position:relative}
+#hand .hrow{display:flex;justify-content:center;align-items:flex-end;position:relative}
+#hand.scroll .hrow{justify-content:flex-start;overflow-x:auto;overflow-y:visible;padding-top:26px;margin-top:-26px;scrollbar-width:thin}
+#hand .card{position:relative}
+#hand .card:hover{z-index:40}
+#hand .card.no:hover{transform:translateY(-10px);filter:brightness(.85) saturate(.8)}
+#handBar{display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 6px}
+.hb-btn{background:#0007;border:1px solid #ffffff2a;color:#fff;font-weight:800;font-size:12px;padding:5px 11px;border-radius:9px;cursor:pointer}
+.hb-btn.on{background:#f3b900;color:#2a1800;border-color:#f3b900}
+.hb-cnt{font-size:12px;font-weight:800;background:#0007;padding:5px 11px;border-radius:9px}
+.hb-cnt b{color:#7dff9a}
+#unoBtn,#drawBtn{bottom:calc(var(--handH,190px) + 6px)}
+#turnBar{position:absolute;left:50%;top:max(118px,21%);transform:translateX(-50%);z-index:7;display:flex;gap:8px;align-items:center;
+  background:#000b;border:1px solid #ffffff26;padding:7px 15px;border-radius:999px;font-weight:800;font-size:13px;white-space:nowrap;box-shadow:0 6px 18px #0008;transition:background .25s}
+#turnBar .cdot{width:15px;height:15px;border-radius:50%;box-shadow:0 0 0 2px #fff,0 0 10px currentColor}
+#turnBar .stack{background:#e6352b;color:#fff;padding:2px 8px;border-radius:8px;animation:unopulse 1s infinite}
+#turnBar .dim{opacity:.6}
+#turnBar.mine{background:linear-gradient(90deg,#f3b900,#ffcf3d);color:#2a1800;border-color:#fff}
+#log{position:absolute;left:10px;top:100px;z-index:5;width:220px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+#log .lh{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#ffffff80;font-weight:800;margin-bottom:2px}
+#log .le{background:#000a;border-left:4px solid var(--lc,#fff);padding:5px 9px;border-radius:7px;font-size:12px;font-weight:700;animation:tin .25s}
+#log .le:not(:last-child){opacity:.72}
+@media (max-width:760px),(max-height:520px){#log{display:none}}
+.seat .sc{font-size:10px;font-weight:800;color:#f3b900;background:#0008;padding:1px 7px;border-radius:7px}
+.statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px}
+.statrow div{background:#ffffff0d;border:1px solid #ffffff12;border-radius:12px;padding:9px 4px;text-align:center}
+.statrow b{display:block;font-size:21px;font-weight:900;color:#f3b900;line-height:1.1}
+.statrow span{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#ffffff9c;font-weight:800}
+.mchips{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:2px 0 4px}
+.mchips span{font-size:11px;font-weight:800;padding:4px 10px;border-radius:9px;background:#ffffff12;border:1px solid #ffffff1c}
+.mchips span i{font-style:normal;margin-right:4px}
+.vtag{display:block;margin:14px auto 0;background:#ffffff10;border:1px solid #ffffff22;color:#fff;font-weight:800;font-size:12px;padding:6px 12px;border-radius:10px;cursor:pointer}
+.vtag em{font-style:normal;color:#f3b900;margin-right:6px}
+.notes h3{font-size:16px;margin:16px 0 6px;color:#f3b900}
+.notes h3 small{color:#ffffff9c;font-weight:700;font-size:12px;margin-left:6px}
+.notes ul{padding-left:18px}
+.notes li{font-size:13px;line-height:1.5;color:#ffffffd6;margin:0 0 6px}
+.cardrow{display:flex;justify-content:center;gap:-10px;margin:6px 0 2px}
+.cardrow .card{--cw:46px;margin:0 -6px;transform:rotate(var(--r))}
 </style>
 </head>
 <body>
@@ -219,8 +259,11 @@ h2{font-size:19px;margin-bottom:4px}
 
   <div id="me" class="hide">
     <div id="meInfo"><div class="av" id="meAv">U</div><div class="nm" id="meName">You</div></div>
+    <div id="handBar"><span class="hb-cnt" id="handCnt"></span><button class="hb-btn" id="sortBtn">Sort cards</button></div>
     <div id="hand"></div>
   </div>
+  <div id="turnBar" class="hide"></div>
+  <div id="log" class="hide"></div>
   <button id="unoBtn">UNO</button>
   <button id="drawBtn" class="pill hide">Draw a card</button>
 
@@ -660,6 +703,7 @@ function render() {
     }
     if (p.out) { const u = el('div', 'uno'); u.style.background = '#555'; u.textContent = 'OUT'; av.appendChild(u); }
     const nm = el('div', 'nm'); nm.textContent = p.name + (p.bot ? '' : ''); s.appendChild(nm);
+    if (S.winMode !== 'last') { const sc = el('div', 'sc'); sc.textContent = (p.score || 0) + ' pts'; s.appendChild(sc); } // 1.1
     s.dataset.pi = pi;
     seats.appendChild(s);
   });
@@ -671,20 +715,33 @@ function render() {
   const hand = $('#hand'); hand.innerHTML = '';
   hand.classList.toggle('myturn', myTurn);
   if (me) {
-    const legalSet = new Set(legal);
-    const n = me.hand.length, cw = Math.min(86, Math.max(40, (window.innerWidth - 24) / Math.max(7, n) * 1.0));
-    const overlap = n > 7 ? Math.min(0, -(cw * (n - 7) / n) - 4) : 2;
-    me.hand.forEach((cd, i) => {
-      const c = renderCardFace(face(cd, S.side), S.side);
-      c.style.setProperty('--cw', cw + 'px');
-      if (i > 0) c.style.marginLeft = overlap + 'px';
-      const ok = myTurn && legalSet.has(i) && !S.needSwap && !S.needChallenge;
-      c.classList.add(ok ? 'ok' : 'no');
-      c.dataset.idx = i;
-      if (ok) c.onclick = () => tryPlay(i);
-      hand.appendChild(c);
-    });
+    // 1.1: cards are laid out in up to three overlapping rows, each card always showing at least its corner. With more
+    // cards than that fits, each row scrolls sideways. Sort puts them in colour order, then by number.
+    const legalSet = new Set(legal), n = me.hand.length, order = me.hand.map((cd, i) => i);
+    if (APP.sort) { const cols = S.side === 'd' ? DARK : LIGHT, rank = f => (isWild(f) ? 9 : Math.max(0, cols.indexOf(f.c))) * 100 + (f.k === 'num' ? f.n : 20 + (f.n || 0) + (SYM[f.k] ? 1 : 0)); order.sort((a, b) => rank(face(me.hand[a], S.side)) - rank(face(me.hand[b], S.side))); }
+    const avail = Math.max(240, window.innerWidth - 28), cw = Math.min(86, Math.max(50, avail / Math.max(7, Math.min(n, 11)))), strip = Math.max(32, cw * 0.48);
+    let perRow = Math.max(1, Math.floor((avail - cw) / strip) + 1), rows = Math.min(3, Math.ceil(n / perRow));
+    perRow = Math.max(1, Math.ceil(n / rows));
+    const scroll = (perRow - 1) * strip + cw > avail + 1; hand.classList.toggle('scroll', scroll);
+    const ch = cw * 1.5, rise = Math.max(36, ch * 0.46);
+    $('#handCnt').innerHTML = `${n} ${n === 1 ? 'card' : 'cards'}${myTurn ? ` · <b>${legal.length} playable</b>` : ''}`;
+    $('#sortBtn').classList.toggle('on', !!APP.sort); $('#sortBtn').textContent = APP.sort ? 'Sorted ✓' : 'Sort cards';
+    for (let r = 0; r < rows; r++) {
+      const row = el('div', 'hrow'); if (r) row.style.marginTop = -(ch - rise) + 'px'; row.style.zIndex = r + 1;
+      const ids = order.slice(r * perRow, (r + 1) * perRow), k = ids.length, gap = scroll ? strip - cw : k > 1 ? Math.min(3, (avail - cw * k) / (k - 1)) : 0;
+      ids.forEach((i, j) => {
+        const c = renderCardFace(face(me.hand[i], S.side), S.side);
+        c.style.setProperty('--cw', cw + 'px'); if (j) c.style.marginLeft = Math.max(gap, strip - cw) + 'px';
+        const ok = myTurn && legalSet.has(i) && !S.needSwap && !S.needChallenge;
+        c.classList.add(ok ? 'ok' : 'no'); c.dataset.idx = i;
+        if (ok) c.onclick = () => tryPlay(i);
+        row.appendChild(c);
+      });
+      hand.appendChild(row);
+    }
+    document.documentElement.style.setProperty('--handH', Math.round(ch + (rows - 1) * rise + 74) + 'px');
   }
+  turnBar(S, myTurn); logDiff(S, meIdx);
   // ----- buttons -----
   const canDrawPile = myTurn && !S.needSwap && !S.needChallenge;
   $('#drawpile').onclick = canDrawPile ? onDrawClick : null;
@@ -699,6 +756,46 @@ function render() {
   db.textContent = S.pend > 0 ? `Take +${S.pend}` : 'Draw a card';
   db.onclick = onDrawClick;
 }
+
+/* ---------- 1.1: turn bar, action log, stats ---------- */
+const escH = s => String(s).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+const KNAME = { skip: 'Skip', rev: 'Reverse', skipall: 'Skip Everyone', discardall: 'Discard All', flip: 'Flip', wild: 'Wild', wildcolor: 'Wild Colour Roulette' };
+function cardName(f) {
+  if (!f) return 'a card';
+  if (f.k === 'num') return `${CNAME[f.c] || ''} ${f.n}`;
+  if (f.k === 'draw') return `${CNAME[f.c] || ''} +${f.n}`;
+  if (f.k === 'wilddraw') return `Wild ${f.rev ? 'Reverse ' : ''}+${f.n}`;
+  return (isWild(f) ? '' : (CNAME[f.c] || '') + ' ') + (KNAME[f.k] || f.k);
+}
+function turnBar(S, myTurn) {
+  const tb = $('#turnBar'), cur = S.players[S.turn];
+  tb.className = myTurn ? 'mine' : '';
+  const hint = myTurn ? (S.needColor ? 'Pick a colour' : S.pend > 0 ? 'Stack or take the cards' : 'Your turn!') : `${escH(cur ? cur.name : '')}’s turn`;
+  tb.innerHTML = `<span class="cdot" style="background:${HEX[S.color] || '#888'};color:${HEX[S.color] || '#888'}"></span><span>${CNAME[S.color] || 'Any colour'}</span><span class="dim">·</span><span>${hint}</span>${S.pend > 0 ? `<span class="stack">+${S.pend} stacked</span>` : ''}<span class="dim" title="Direction of play">${S.dir === -1 ? '↺' : '↻'}</span>`;
+}
+// what just happened, worked out from the change since the last time the table was drawn (so it works online too)
+function logDiff(S, meIdx) {
+  const top = S.discard[S.discard.length - 1], counts = S.players.map(p => p.hand.length), P = APP.prevView;
+  const add = (t, c) => { APP.log.push({ t, c }); if (APP.log.length > 7) APP.log.shift(); };
+  if (P && S.discard.length >= P.dl - 0 && P.players === S.players.length) {
+    if (top && top.id !== P.top) {
+      const by = S.players[P.turn], f = face(top, S.side);
+      if (by) { add(`${escH(by.name)} played ${cardName(f)}`, HEX[f.c] || (isWild(f) ? '#ffffff' : '#ffffff')); if (P.turn === meIdx) bumpStat('played'); }
+    }
+    const up = [], down = []; counts.forEach((n, i) => { if (n > P.counts[i]) up.push(i); else if (n < P.counts[i]) down.push(i); });
+    if (up.length && down.length && up.length + down.length >= 2 && counts.reduce((a, b) => a + b, 0) === P.counts.reduce((a, b) => a + b, 0)) add('Hands were swapped', '#f3b900');
+    else for (const i of up) add(`${escH(S.players[i].name)} drew ${counts[i] - P.counts[i]}`, '#9aa0ad');
+    if (P.side !== S.side) add('The deck flipped!', '#7b40ef');
+    if (P.dir !== S.dir && S.players.length > 2) add('Play reversed', '#ffffff');
+  }
+  APP.prevView = { top: top && top.id, counts, turn: S.turn, dl: S.discard.length, players: S.players.length, side: S.side, dir: S.dir };
+  $('#log').innerHTML = APP.log.length ? '<div class="lh">Last moves</div>' + APP.log.map(e => `<div class="le" style="--lc:${e.c}">${e.t}</div>`).join('') : '';
+}
+function unoStats() { try { return JSON.parse(localStorage.getItem('uno.stats') || '{}') || {}; } catch (e) { return {}; } }
+function bumpStat(k, n = 1) { try { const s = unoStats(); s[k] = (s[k] || 0) + n; localStorage.setItem('uno.stats', JSON.stringify(s)); } catch (e) {} }
+$('#sortBtn').onclick = () => { APP.sort = !APP.sort; try { localStorage.setItem('uno.sort', APP.sort ? '1' : ''); } catch (e) {} render(); };
+try { APP.sort = !!localStorage.getItem('uno.sort'); } catch (e) {}
+APP.log = [];
 
 /* ---------- player actions (routed through dispatch) ---------- */
 function tryPlay(idx) {
@@ -1011,6 +1108,7 @@ function recordGame(S) {
 function showRoundEnd() {
   clearTimeout(APP.botTimer); clearCatch();
   const S = APP.S;
+  { const meI = S.players.findIndex(p => p.id === APP.meId), rk = S.players.map(p => p.score).join(',') + S.phase; if (APP.lastRW !== rk) { APP.lastRW = rk; if (S.roundWinner === meI) bumpStat('rounds'); } } // 1.1
   if (S.phase === 'game' && !S._recorded) { S._recorded = true; recordGame(S); }
   const ov = el('div', 'ov'); const p = el('div', 'panel');
   if (S.phase === 'game') {
@@ -1134,21 +1232,52 @@ function hostSyncLobby() {
    ============================================================ */
 function overlay(html) { const ov = el('div', 'ov'); const p = el('div', 'panel'); p.innerHTML = html; ov.appendChild(p); $('#overlay').innerHTML = ''; $('#overlay').appendChild(ov); return p; }
 function clearOverlay() { $('#overlay').innerHTML = ''; }
-function showGameChrome(on) { $('#top').classList.toggle('hide', !on); $('#me').classList.toggle('hide', !on); }
+function showGameChrome(on) { $('#top').classList.toggle('hide', !on); $('#me').classList.toggle('hide', !on); $('#turnBar').classList.toggle('hide', !on); $('#log').classList.toggle('hide', !on); if (on) { APP.log = []; APP.prevView = null; $('#log').innerHTML = ''; } }
 
+const UNO_VERSION = '1.1';
 function mainMenu() {
   showGameChrome(false); $('#roomTag').classList.add('hide');
   APP.S = null; APP.online = false; APP.host = false; LOBBY = null;
+  const st = unoStats(), g = st.games || 0, w = st.wins || 0;
+  const fan = [['r', 7, -14], ['y', 'skip', -5], ['g', 'rev', 5], ['b', 'draw', 14]].map(([c, k, r]) => { const f = k === 'draw' ? { c, k: 'draw', n: 2 } : typeof k === 'number' ? { c, k: 'num', n: k } : { c, k }; const el2 = renderCardFace(f, 'l'); el2.style.setProperty('--r', r + 'deg'); return el2.outerHTML; }).join('') + renderCardFace({ c: 'w', k: 'wilddraw', n: 4 }, 'l').outerHTML.replace('class="card', 'style="--r:22deg" class="card');
   const p = overlay(`
+    <div class="cardrow">${fan}</div>
     <div class="logo">UN<span>O</span>!</div>
-    <div class="sub">2–10 players · classic rules, No Mercy & Flip</div>
+    <div class="sub">2–10 players · against bots or online with friends</div>
+    <div class="mchips"><span><i>🃏</i>Classic</span><span><i>💀</i>No Mercy</span><span><i>🌗</i>Flip</span></div>
     <button class="btn" id="solo">Play vs Bots</button>
     <button class="btn blue" id="online">Play Online</button>
-    <button class="btn ghost" id="rules">How to play</button>
-    <div class="note">Signed in as <b>${APP.meName}</b></div>`);
+    <div class="row"><button class="btn ghost" id="rules">How to play</button><button class="btn ghost" id="notes">Patch notes</button></div>
+    <div class="statrow"><div><b>${g}</b><span>Games</span></div><div><b>${w}</b><span>Wins</span></div><div><b>${g ? Math.round(w / g * 100) : 0}%</b><span>Win rate</span></div><div><b>${st.rounds || 0}</b><span>Rounds won</span></div></div>
+    <div class="note">Signed in as <b>${escH(APP.meName)}</b> · ${st.played || 0} cards played</div>
+    <button class="vtag" id="ver"><em>v${UNO_VERSION}</em>What's new: a cleaner hand and a new look</button>`);
   p.querySelector('#solo').onclick = soloSetup;
   p.querySelector('#online').onclick = onlineMenu;
   p.querySelector('#rules').onclick = rulesScreen;
+  p.querySelector('#notes').onclick = patchNotes; p.querySelector('#ver').onclick = patchNotes;
+  try { if (localStorage.getItem('uno.seenVersion') !== UNO_VERSION) { localStorage.setItem('uno.seenVersion', UNO_VERSION); patchNotes(); } } catch (e) {}
+}
+function patchNotes() {
+  const p = overlay(`<div class="eyebrow">Patch notes</div><h2 style="text-align:center">What's new in UNO!</h2>
+    <div class="notes">
+      <h3>v1.1 <small>A cleaner hand and a new look</small></h3>
+      <ul>
+        <li><b>No more cards stacked out of sight.</b> With a big hand, your cards wrap onto up to three rows, and every card always shows its corner. If you have even more, each row scrolls sideways.</li>
+        <li><b>Sort cards</b> puts your hand in colour order, then by number. Your choice is remembered.</li>
+        <li>Over your hand: how many cards you hold and how many you can play right now.</li>
+        <li><b>Turn bar:</b> the colour in play, whose turn it is, which way play is going and how many cards are stacked on you.</li>
+        <li><b>Last moves:</b> on bigger screens, a log of the last few plays, draws, swaps and flips.</li>
+        <li>Everyone's score shows under their name in points games.</li>
+        <li>A fuller main menu with your games, wins, win rate, rounds won and cards played, plus this patch notes screen.</li>
+      </ul>
+      <h3>v1.0 <small>First release</small></h3>
+      <ul>
+        <li>Classic UNO, No Mercy and Flip for 2 to 10 players, against bots or online in a private room.</li>
+        <li>Wild Draw Four challenges, calling UNO and catching players who forget, stacking and the 25-card knockout in No Mercy.</li>
+      </ul>
+    </div>
+    <button class="btn" id="ok">Back</button>`);
+  p.querySelector('#ok').onclick = mainMenu;
 }
 
 function modePicker(current, onPick) {

@@ -164,9 +164,9 @@ async function accounts(req, env, url) {
   const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const route = url.pathname.slice(6);
-  if (route === 'players' || route === 'player') { // the public player list and one player's profile
+  if (route === 'players' || route === 'player' || route === 'top') { // the public player list, one player's profile, and (1.5) every player's best in one game
     if (req.method !== 'GET') return out({ error: 'bad' }, 400);
-    const r = await dirCall(env, route === 'players' ? 'list' : 'get?name=' + encodeURIComponent(url.searchParams.get('name') || ''));
+    const r = await dirCall(env, route === 'players' ? 'list' : route === 'top' ? 'top?g=' + encodeURIComponent(url.searchParams.get('g') || '') : 'get?name=' + encodeURIComponent(url.searchParams.get('name') || ''));
     return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
   }
   if (route === 'ws') { // live friend and message updates: the token comes as the second WebSocket subprotocol
@@ -632,6 +632,13 @@ export class Directory extends DurableObject {
     const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
     const list = await this.names();
     if (route === 'list') return j({ players: list });
+    if (route === 'top') { // 1.5: each player's stat line for one game (Chess's leaderboard), cached for a minute
+      const g = String(url.searchParams.get('g') || ''); if (!GAME_RE.test(g)) return j({ error: 'bad' }, 400);
+      const c = (this.topCache = this.topCache || {})[g]; if (c && Date.now() - c.at < 60e3) return j({ top: c.top });
+      const ks = list.filter(x => x[2]).map(x => 'u:' + x[0].toLowerCase()), top = [];
+      for (let i = 0; i < ks.length; i += 128) { const m = await S.get(ks.slice(i, i + 128)); for (const [k, u] of m) if (u && u.s && u.s[g]) { const e = list.find(x => 'u:' + x[0].toLowerCase() === k); top.push({ n: e ? e[0] : k.slice(2), s: u.s[g] }); } }
+      this.topCache[g] = { at: Date.now(), top }; return j({ top });
+    }
     if (route === 'get') {
       const n = String(url.searchParams.get('name') || ''), k = n.toLowerCase();
       if (!NAME_RE.test(n)) return j({ error: 'bad' }, 400);

@@ -98,6 +98,18 @@
   /* the result, shown over the board */
   #result { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(0, 0, 0, .35); }
   #result[hidden] { display: none; }
+  /* 1.5: local 2-player and the leaderboard */
+  body.local .cpu-only { display: none; }
+  #lb { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(0,0,0,.55); padding: 16px; }
+  #lb[hidden] { display: none; }
+  #lb .card { background: var(--panel); border-radius: 10px; padding: 20px 18px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.55); width: min(460px, 100%); max-height: 86vh; display: flex; flex-direction: column; text-align: left; }
+  #lb h2 { margin: 0 0 4px; } #lb .lbsub { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+  #lbList { overflow-y: auto; flex: 1; min-height: 80px; margin-bottom: 12px; border-radius: 8px; background: var(--panel2); }
+  .lbrow { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 15px; }
+  .lbrow:nth-child(1) .rk { color: #ffd34d; } .lbrow:nth-child(2) .rk { color: #d8dee8; } .lbrow:nth-child(3) .rk { color: #e3a46b; }
+  .lbrow .rk { font-weight: 800; } .lbrow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; } .lbrow .rt { font-weight: 800; font-variant-numeric: tabular-nums; } .lbrow .rt.un { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .lbrow.me { background: rgba(129,182,76,.18); }
+  .lbmsg { padding: 18px; color: var(--muted); text-align: center; }
   #result .card { width: min(300px, 80%); background: var(--panel); border-radius: 10px; text-align: center; padding: 22px 18px 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, .55); animation: pop .25s ease-out; }
   @keyframes pop { from { transform: scale(.9); opacity: 0; } }
   #result h2 { margin: 0 0 4px; font-size: 26px; } #result p { margin: 0 0 16px; color: var(--muted); font-weight: 600; }
@@ -174,8 +186,9 @@
   </div>
   <aside id="side">
     <div class="head"><img id="logo" alt=""><span id="headT">Play the computer</span></div>
-    <div class="sect offline-only"><h4>Computer</h4><div class="seg" id="levelSeg"><button data-v="easy">Easy</button><button data-v="casual">Casual</button><button data-v="medium">Medium</button><button data-v="advanced">Advanced</button><button data-v="hard">Hard</button><button data-v="master">Master</button></div></div>
-    <div class="sect offline-only"><h4>Play as</h4><div class="seg" id="colorSeg"><button data-v="w">White</button><button data-v="r">Random</button><button data-v="b">Black</button></div></div>
+    <div class="sect offline-only"><h4>Opponent</h4><div class="seg" id="oppSeg"><button data-v="cpu">🤖 Computer</button><button data-v="local">👥 Local 2-player</button></div></div>
+    <div class="sect offline-only cpu-only"><h4>Computer</h4><div class="seg" id="levelSeg"><button data-v="easy">Easy</button><button data-v="casual">Casual</button><button data-v="medium">Medium</button><button data-v="advanced">Advanced</button><button data-v="hard">Hard</button><button data-v="master">Master</button></div></div>
+    <div class="sect offline-only cpu-only"><h4>Play as</h4><div class="seg" id="colorSeg"><button data-v="w">White</button><button data-v="r">Random</button><button data-v="b">Black</button></div></div>
     <div class="sect offline-only"><button class="bigbtn" id="newBtn">New game</button></div>
     <div class="sect" id="netBox"><h4>Play online</h4>
       <div id="rateCard" hidden></div>
@@ -194,6 +207,7 @@
       <button class="netbtn" data-net="leave" id="netLeave">Leave the table</button>
       <div id="netStatus"></div>
     </div>
+    <div class="sect"><button class="netbtn" id="lbBtn">🏆 Chess leaderboard</button></div>
     <div id="moves"></div>
     <div id="status"></div>
     <div class="tools"><button id="undoBtn" title="Take back your last move"><b>↶</b>Undo</button><button id="flipBtn" title="Turn the board around"><b>⇅</b>Flip</button><button id="resignBtn" title="Give up this game"><b>⚑</b>Resign</button></div>
@@ -202,9 +216,22 @@
       <label class="check">Sound<input type="checkbox" id="soundChk"></label></div>
   </aside>
 </div>
+<div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their highest online rating. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.3</span></summary>
+    <summary>Patch notes <span>v1.5</span></summary>
+    <h3>v1.5 <small>Local 2-player and a leaderboard</small></h3>
+    <ul>
+      <li><b>Local 2-player:</b> under Opponent, pick <b>Local 2-player</b> to play a friend on the same computer. After White moves, the board turns round so Black is at the bottom, and back again after Black moves. Undo takes back one move. These games don’t count towards your rating or record.</li>
+      <li><b>Leaderboard:</b> press <b>🏆 Chess leaderboard</b> to see everyone with an Arcade account who has played chess, ranked by their highest online rating.</li>
+      <li>Fixed the patch notes: the ratings update is now listed as v1.4, which it was (it was still showing as v1.3).</li>
+    </ul>
+    <h3>v1.4 <small>Ratings</small></h3>
+    <ul>
+      <li>Online games are rated, the way chess.com does it (Glicko). The first time you play online, pick how well you play (400 to 2000) to set your starting rating.</li>
+      <li>Your rating and your opponent’s show next to the names. After each game you see how much it went up or down, and your best rating is kept.</li>
+      <li>Only online games against a person count. A game where someone leaves before both sides have moved is aborted and not rated. Leaving a game you’ve both moved in counts as a loss.</li>
+    </ul>
     <h3>v1.3 <small>Six levels</small></h3>
     <ul>
       <li>Three new computer levels on top of the old ones, so there's one that fits how you play: <b>Casual</b> (between Easy and Medium), <b>Advanced</b> (between Medium and Hard) and <b>Master</b> (harder than Hard: it thinks for 4 seconds and looks deeper).</li>
@@ -538,7 +565,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.4';
+const VERSION = '1.5';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -602,6 +629,7 @@ const Sound = (() => {
 // ---------- game state ----------
 let G = fromFEN(START_FEN), hist = [], keys = [posKey(G)], legalNow = legal(G);
 let player = 'w', level = save.level, over = null, flipped = false, aiBusy = false, reqId = 0, selected = -1, resignArm = 0;
+let localGame = false, localT = 0; // 1.5: local 2-player: both sides on this screen, the board turns to whoever moves next
 const flip = () => (player === 'b') !== flipped;
 const myTurn = () => !over && !aiBusy && (G.w ? 'w' : 'b') === player;
 
@@ -657,7 +685,19 @@ function playMove(m, dropped) {
   animateMove(m, dropped);
   if (s.endsWith('#') || s.endsWith('+')) Sound.check(); else if (m.pr) Sound.promote(); else if (m.fl === 'c') Sound.castle(); else if (m.cap) Sound.capture(); else Sound.move();
   checkEnd(); renderMarks(); renderSide(); saveGame();
-  if (!online.on && !over && (G.w ? 'w' : 'b') !== player) aiMove();
+  if (localGame) { if (!over) passTurn(); }
+  else if (!online.on && !over && (G.w ? 'w' : 'b') !== player) aiMove();
+}
+// 1.5: local 2-player: after the move has slid into place, the board turns round for the other player
+function passTurn() { const id = ++localT; setTimeout(() => { if (id !== localT || !localGame || over) return; player = G.w ? 'w' : 'b'; selected = -1; buildSquares(); renderAll(); renderSide(); }, 450); }
+const SIDE = c => c === 'w' ? 'White' : 'Black';
+function finishLocal() {
+  $('resR').textContent = 'Local games don\'t count towards your record or rating'; $('resR').className = '';
+  $('resT').textContent = over.winner ? SIDE(over.winner) + ' wins!' : 'Draw';
+  $('resP').textContent = over.resigned ? SIDE(over.winner === 'w' ? 'b' : 'w') + ' resigned' : (over.winner ? SIDE(over.winner) + ' won ' : 'Drawn ') + over.why;
+  $('resNew').textContent = 'New game'; $('resNew').disabled = false;
+  setTimeout(() => { if (over) { $('result').hidden = false; Sound.end(true); } }, 450);
+  renderSide();
 }
 function checkEnd() {
   if (over) return;
@@ -669,6 +709,7 @@ function checkEnd() {
   if (over) finish();
 }
 function finish() {
+  if (localGame) { finishLocal(); return; } // 1.5
   // online games have their own record, and leave your saved game against the computer alone
   const st = online.on ? save.online : save.stats[level], aborted = online.on && hist.length < 2; // 1.4: an aborted online game doesn't count at all
   if (!aborted) { if (!over.winner) st.d++; else if (over.winner === player) st.w++; else st.l++; }
@@ -822,17 +863,29 @@ function renderSide() {
   $('stats').innerHTML = `<div><b>${s.w}</b><span>Wins</span></div><div><b>${s.l}</b><span>Losses</span></div><div><b>${s.d}</b><span>Draws</span></div>`;
   for (const b of $('levelSeg').children) b.classList.toggle('on', b.dataset.v === save.level);
   for (const b of $('colorSeg').children) b.classList.toggle('on', b.dataset.v === save.color);
+  for (const b of $('oppSeg').children) b.classList.toggle('on', b.dataset.v === (save.opp || 'cpu'));
+  if (localGame && !online.on) { // 1.5: two people on one screen
+    const nm = c => c === 'w' ? 'White<small>Player 1</small>' : 'Black<small>Player 2</small>';
+    $('topName').innerHTML = nm(topCol); $('botName').innerHTML = nm(botCol);
+    for (const [bar, c] of [['topBar', topCol], ['botBar', botCol]]) { const a = $(bar).querySelector('.avatar'); a.textContent = c === 'w' ? '\u2654' : '\u265A'; a.classList.toggle('you', c === (G.w ? 'w' : 'b') && !over); }
+    const side = G.w ? 'w' : 'b';
+    $('status').textContent = over ? (!over.winner ? 'Draw ' + over.why + '.' : over.resigned ? SIDE(over.winner === 'w' ? 'b' : 'w') + ' resigned.' : SIDE(over.winner) + ' won ' + over.why + '.') : resignArm ? 'Click Resign again to give up for ' + SIDE(side) + '.' : (inCheck(G, G.w) ? 'Check! ' : '') + SIDE(side) + ' to move.';
+    $('undoBtn').disabled = !!over || !hist.length;
+    $('statsT').textContent = 'Local 2-player'; $('headT').textContent = 'Local 2-player';
+    $('stats').innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--muted)">Pass the device after each move: the board turns round for whoever plays next. These games don\'t count towards your record or rating.</div>';
+  }
   $('hintsChk').checked = save.hints; $('soundChk').checked = save.sound;
 }
-function saveGame() { if (online.on) return; save.game = over ? null : { moves: hist.map(x => uci(x.m)), player, level }; persist(); }
+function saveGame() { if (online.on || localGame) return; save.game = over ? null : { moves: hist.map(x => uci(x.m)), player, level }; persist(); }
 
 // ---------- new game, undo, flip, resign ----------
 function newGame() {
   reqId++; aiBusy = false; $('thinking').hidden = true; $('result').hidden = true; $('promo').hidden = true;
   level = save.level; player = save.color === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : save.color;
+  localGame = save.opp === 'local'; localT++; if (localGame) player = 'w'; document.body.classList.toggle('local', localGame); // 1.5
   G = fromFEN(START_FEN); hist = []; keys = [posKey(G)]; legalNow = legal(G); over = null; selected = -1; resignArm = 0; flipped = false;
   buildSquares(); renderAll(); renderSide(); saveGame(); Sound.start();
-  if (player === 'b') aiMove();
+  if (player === 'b' && !localGame) aiMove();
 }
 // rebuild a game from its list of moves (used for undo and when you come back to a saved game)
 function replay(list) {
@@ -850,6 +903,9 @@ $('resNew').addEventListener('click', () => {
 });
 $('resView').addEventListener('click', () => { $('result').hidden = true; });
 $('undoBtn').addEventListener('click', () => {
+  if (localGame && !online.on) { // 1.5: take back one move
+    if (over || !hist.length) return; Sound.init(); localT++; const l = hist.map(x => uci(x.m)); l.pop(); replay(l); player = G.w ? 'w' : 'b'; selected = -1; resignArm = 0; buildSquares(); renderAll(); renderSide(); Sound.move(); return;
+  }
   if (over || online.on) return; Sound.init(); reqId++; aiBusy = false; $('thinking').hidden = true; $('promo').hidden = true;
   const list = hist.map(x => uci(x.m));
   // take back to just before your last move
@@ -863,12 +919,13 @@ $('resignBtn').addEventListener('click', () => {
   if (!resignArm) { resignArm = setTimeout(() => { resignArm = 0; renderSide(); }, 3000); renderSide(); return; }
   clearTimeout(resignArm); resignArm = 0; reqId++; aiBusy = false; $('thinking').hidden = true;
   if (online.on) Net.send('resign');
-  over = { winner: player === 'w' ? 'b' : 'w', why: '', resigned: true }; finish(); renderMarks();
+  over = { winner: (localGame && !online.on ? (G.w ? 'w' : 'b') : player) === 'w' ? 'b' : 'w', why: '', resigned: true }; finish(); renderMarks();
 });
 for (const [id, key] of [['levelSeg', 'level'], ['colorSeg', 'color']]) $(id).addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; save[key] = b.dataset.v; persist(); renderSide();
   $('status').textContent = key === 'level' && hist.length && !over ? `${LV[b.dataset.v]} starts with your next new game.` : $('status').textContent;
 });
+$('oppSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || online.on) return; Sound.init(); save.opp = b.dataset.v; persist(); newGame(); }); // 1.5
 $('hintsChk').addEventListener('change', e => { save.hints = e.target.checked; persist(); renderMarks(); });
 $('soundChk').addEventListener('change', e => { save.sound = e.target.checked; persist(); });
 
@@ -1010,7 +1067,7 @@ const Net = (() => {
 const online = { on: false, gameNo: 0, meAgain: false, oppAgain: false };
 const oppName = () => (Net.opp && Net.opp.name) || online.lastOpp || 'Opponent';
 function startOnline() {
-  online.on = true; online.lastOpp = Net.opp.name;
+  online.on = true; localGame = false; localT++; document.body.classList.remove('local'); online.lastOpp = Net.opp.name;
   reqId++; aiBusy = false; $('thinking').hidden = true; $('result').hidden = true; $('promo').hidden = true;
   // the host is White in odd games, Black in even ones
   player = (online.gameNo % 2 === 0) === Net.isHost() ? 'w' : 'b'; online.gameNo++; online.meAgain = online.oppAgain = false;
@@ -1027,7 +1084,7 @@ function leaveOnline() {
   netWaiting(false); netStatus('');
   // back to your game against the computer
   if (save.game && Array.isArray(save.game.moves)) {
-    reqId++; aiBusy = false; $('result').hidden = true;
+    reqId++; localGame = false; document.body.classList.remove('local'); save.opp = 'cpu'; aiBusy = false; $('result').hidden = true;
     player = save.game.player === 'b' ? 'b' : 'w'; level = LEVELS.includes(save.game.level) ? save.game.level : 'medium'; over = null;
     replay(save.game.moves); buildSquares(); renderAll(); checkEnd(); renderSide();
     if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
@@ -1095,9 +1152,53 @@ function renderRate() {
 }
 Net.onEvent('rate', () => { if (online.on && !hist.length && Net.opp && Net.opp.rate) { online.oppRate = { r: Net.opp.rate.r, rd: Net.opp.rate.rd }; renderRate(); } }); // their new rating arrives for a rematch
 
+// ---------- 1.5: the leaderboard: every player with an Arcade account who has played chess, by their highest rating ----------
+// The arcade's server keeps each account's best in every game (games.js stat(), sent by account.js). It answers
+// /acct/top?g=chess with all of them in one request; if this copy of the server doesn't have that yet, the board asks
+// for the player list and then each player who has scores (6 at a time). Either way the result is kept for 10 minutes
+// in this tab (sessionStorage), so opening the board again costs nothing.
+const LB = (() => {
+  const KEY = 'chess-lb', TTL = 10 * 60e3;
+  const acc = () => { try { return (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount || null; } catch (e) { return window.ArcadeAccount || null; } };
+  const server = () => { const A = acc(); return (A && A.server) || 'https://arcade-realtime.arcade-realtime.workers.dev'; };
+  const myName = () => { const A = acc(); try { const n = A && (typeof A.name === 'function' ? A.name() : A.name); if (n) return String(n); } catch (e) {} return save.name || ''; };
+  const best = s => { const m = /best (\d+)/.exec(s || '') || /Rating (\d+)/.exec(s || ''); return m ? +m[1] : 0; };
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  async function load(force) {
+    try { const c = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (!force && c && Date.now() - c.at < TTL) return c.rows; } catch (e) {}
+    const base = server() + '/acct/'; let rows = null;
+    try { const r = await fetch(base + 'top?g=chess', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (Array.isArray(j.top)) rows = j.top.map(x => ({ n: String(x.n), r: best(x.s) })); } } catch (e) {}
+    if (!rows) {
+      const j = await (await fetch(base + 'players', { cache: 'no-store' })).json();
+      const names = (j.players || []).filter(p => p && p[2]).map(p => p[0]).slice(0, 500); rows = []; let i = 0;
+      const work = async () => { while (i < names.length) { const n = names[i++]; try { const p = await (await fetch(base + 'player?name=' + encodeURIComponent(n), { cache: 'no-store' })).json(); if (p && p.s && p.s.chess) rows.push({ n: String(p.n || n), r: best(p.s.chess) }); } catch (e) {} } };
+      await Promise.all(Array.from({ length: 6 }, work));
+    }
+    rows.sort((a, b) => (b.r || 0) - (a.r || 0) || a.n.localeCompare(b.n));
+    try { sessionStorage.setItem(KEY, JSON.stringify({ at: Date.now(), rows })); } catch (e) {}
+    return rows;
+  }
+  function draw(rows) {
+    const me = myName().toLowerCase(); let rk = 0;
+    // your own best from this device, in case the server hasn't heard it yet
+    if (me && save.rating && save.rating.n > 0) { const peak = Math.round(Math.max(save.rating.peak || 0, save.rating.r)), row = rows.find(x => x.n.toLowerCase() === me); if (row) row.r = Math.max(row.r || 0, peak); else rows.push({ n: myName(), r: peak }); rows.sort((a, b) => (b.r || 0) - (a.r || 0) || a.n.localeCompare(b.n)); }
+    $('lbList').innerHTML = rows.length ? rows.map(x => `<div class="lbrow${x.n.toLowerCase() === me ? ' me' : ''}"><span class="rk">${x.r ? '#' + (++rk) : '–'}</span><span class="nm">${esc(x.n)}</span>${x.r ? `<span class="rt">${x.r}</span>` : '<span class="rt un">Unrated</span>'}</div>`).join('') : '<div class="lbmsg">Nobody has played chess with an account yet. Be the first!</div>';
+  }
+  async function open(force) {
+    $('lb').hidden = false; $('lbList').innerHTML = '<div class="lbmsg">Loading the leaderboard…</div>';
+    try { draw(await load(force)); }
+    catch (e) { $('lbList').innerHTML = '<div class="lbmsg">The leaderboard couldn’t load. It works on the Arcade website, online.</div>'; }
+  }
+  $('lbBtn').addEventListener('click', () => { Sound.init(); open(false); });
+  $('lbRefresh').addEventListener('click', () => open(true));
+  $('lbClose').addEventListener('click', () => { $('lb').hidden = true; });
+  $('lb').addEventListener('click', e => { if (e.target === $('lb')) $('lb').hidden = true; });
+  return { open };
+})();
+
 // ---------- start: carry on a saved game, or start a new one ----------
 resize();
-if (save.game && Array.isArray(save.game.moves)) {
+if (save.game && Array.isArray(save.game.moves) && save.opp !== 'local') {
   player = save.game.player === 'b' ? 'b' : 'w'; level = LEVELS.includes(save.game.level) ? save.game.level : 'medium';
   replay(save.game.moves); buildSquares(); renderAll(); checkEnd(); renderSide();
   if (!over && (G.w ? 'w' : 'b') !== player) aiMove();

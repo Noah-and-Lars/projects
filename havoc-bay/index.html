@@ -413,6 +413,12 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.3 <small>Mid-air collisions, first person, real cockpits</small></h3>
+    <ul>
+      <li><b>Planes can crash into each other.</b> Any two planes, teammates or enemies, that fly into each other blow up in a fireball and everyone on board dies. The burning wreckage falls out of the sky. Ramming an enemy plane counts as a kill.</li>
+      <li><b>First person everywhere.</b> Press <b>C</b> on foot or on a ship to switch between first and third person (planes already used C for the cockpit).</li>
+      <li><b>Proper cockpits.</b> The cockpit now has a floor, side walls, a seat, a bulkhead behind you and glass windows you can see the world through. The bomber has a full flight deck with a roof, side windows and a glazed nose. The cockpit is fixed to the plane, so looking around shows the walls and windows instead of the dashboard following your mouse.</li>
+    </ul>
     <h3>v1.2.7 <small>Bigger bases, further apart</small></h3>
     <ul>
       <li><b>The harbors are 35% further apart</b>, so there's more sea to fight over between the bases and the islands in the middle.</li>
@@ -615,7 +621,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.2.7';
+const VERSION = '1.3';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -2752,6 +2758,18 @@ class Plane extends Ent {
     if (!crash && this.pos.y < 40) hitShip = shipUnder(this.pos, 1.5);
     if (hitShip && hitShip.S.carrier && hitShip.team === this.team && this.pos.y > hitShip.S.deck - 2) hitShip = null; // 1.2.1: low over your own carrier, to land
     if (hitShip) crash = true;
+    // 1.3: mid-air collisions. Planes of either team can fly into each other: both blow up and everyone aboard dies.
+    // Each screen checks the planes it runs; the host (or offline game) also kills the other plane.
+    if (!crash && this.invuln <= 0) {
+      const other = midairHit(this);
+      if (other) {
+        this.midair = true; this.crashed = true; this.invuln = 0;
+        const foe = other.driver && other.team !== this.team ? other.driver : null;
+        if (!NET.client && other.alive) { other.midair = true; other.crashed = true; other.invuln = 0; killEnt(other, this.driver && this.team !== other.team ? this.driver : null); }
+        killEnt(this, foe);
+        return;
+      }
+    }
     if (crash) {
       const water = !hitShip && !solid && gh < -0.5;
       this.pos.y = Math.max(gh, 0) + 0.5;
@@ -2834,6 +2852,11 @@ class Plane extends Ent {
       for (let i = 0; i < 14; i++) fxSmoke.spawn(this.pos.x + rand(-3, 3), 0.3, this.pos.z + rand(-3, 3), rand(-3, 3), rand(5, 12), rand(-3, 3), 0.9, 1.1, 0.2, 0xffffff, 0xd8f2ff, 18);
       Sound.play('splash', this.pos); this.sinking = true; this.vel.set(0, 0, 0); this.pos.y = Math.min(this.pos.y, 0.4);
     }
+    else if (this.crashed && this.midair) { // 1.3: two planes met in the air: a fireball, then the wreckage falls burning
+      explode(this.pos, 26); for (let i = 0; i < 10; i++) firePuff(_v1.copy(this.pos).add(_v2.set(rand(-6, 6), rand(-4, 4), rand(-6, 6))), 3);
+      if (camera.position.distanceTo(this.pos) < 520) camShake = Math.max(camShake, 1.4);
+      this.crashed = false; this.vel.copy(this.fwd).multiplyScalar(this.speed * 0.5); this.vel.y -= 8;
+    }
     else if (this.crashed) { explode(this.pos, 32); crashScar(this.pos); if (camera.position.distanceTo(this.pos) < 520) camShake = Math.max(camShake, 1.2); scene.remove(this.group); this.remove(); this.gone = true; } // 1.2: a much bigger blast // 1.2.1: twice the blast, and it scorches the land
     else { explode(this.pos, 10); this.vel.copy(this.fwd).multiplyScalar(this.speed * 0.8); }
     if (this.driver) vehicleLost(this.driver, this);
@@ -2903,6 +2926,16 @@ class Turret extends Ent {
 }
 
 // 1.2: the ship whose hull a point is inside (or within pad metres of)
+// 1.3: the plane this one has just flown into (either team), or null. Landed planes and ones still spawning don't count.
+function midairHit(pl) {
+  if (pl.landed || pl.pos.y < 3) return null;
+  for (const o of ENTS) {
+    if (o === pl || o.kind !== 'plane' || !o.alive || o.landed || o.gone || o.invuln > 0) continue;
+    const r = (pl.P.r + o.P.r) * 0.62, dx = o.pos.x - pl.pos.x, dy = o.pos.y - pl.pos.y, dz = o.pos.z - pl.pos.z;
+    if (dx * dx + dy * dy + dz * dz < r * r) return o;
+  }
+  return null;
+}
 function shipUnder(p, pad) {
   for (const s of ENTS) {
     if (s.kind !== 'ship' || !s.alive) continue;
@@ -3591,6 +3624,7 @@ function onKey(code) {
   if (code === 'KeyM') { toggleMap(); return; }
   if (PLAYER.mode === 'foot' && /^Digit[1-5]$/.test(code)) { PLAYER.wpn = +code[5] - 1; Sound.play('ui'); showMsg('', FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn]]); return; } // 1.2
   if (code === 'KeyC' && PLAYER.mode === 'plane') { settings.planeCam = settings.planeCam === 'cockpit' ? 'chase' : 'cockpit'; saveObj(SET_KEY, settings); showMsg('', settings.planeCam === 'cockpit' ? 'Cockpit view · press C to switch back' : 'Chase view'); return; } // 1.2
+  if (code === 'KeyC' && (PLAYER.mode === 'foot' || PLAYER.mode === 'ship')) { settings.fp = settings.fp ? 0 : 1; saveObj(SET_KEY, settings); showMsg('', settings.fp ? 'First person · press C to switch back' : 'Third person'); return; } // 1.3
   if (code === 'Tab') { drawBoard(); $('board').classList.remove('hidden'); return; }
   if (overlayOpen()) return;
   if (code === 'KeyE') useKey();
@@ -3965,7 +3999,51 @@ const COCKPIT = (() => {
   const hud = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.33), new THREE.MeshBasicMaterial({ map: htex, transparent: true, depthTest: false, toneMapped: false }));
   hud.position.set(0, -0.1, -1.05); g.add(hud);
   const hudFrame = bx(0.46, 0.02, 0.06, rim, 0, -0.265, -0.95);
+  // 1.3: a real cabin round the pilot: floor, side walls, a bulkhead behind the seat and glass you see the world through.
+  // The cockpit is fixed to the plane now (it used to turn with the mouse), so looking round shows the walls and windows.
+  const glass = new THREE.MeshBasicMaterial({ color: 0xa9cde6, transparent: true, opacity: 0.13, depthWrite: false, side: THREE.DoubleSide });
+  const glint = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, depthWrite: false, side: THREE.DoubleSide });
+  const floorM = M(0x1b1f25), wallM = M(0x47505c), padM = M(0x2d3138), seatM = M(0x3b2a20);
+  const pane = (w, h, m, x, y, z, rx = 0, ry = 0, rz = 0, p = g) => { const o = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); p.add(o); return o; };
+  // fighters and the jet: a narrow tub with a bubble canopy
+  const tub = new THREE.Group(); g.add(tub);
+  bx(1.9, 0.06, 2.4, floorM, 0, -1.08, -0.3, 0, 0, 0, tub);                         // floor
+  for (let k = 0; k < 6; k++) bx(1.7, 0.012, 0.05, rim, 0, -1.045, -1.2 + k * 0.36, 0, 0, 0, tub); // floor ribs
+  for (const sx of [-1, 1]) {
+    bx(0.08, 0.72, 2.4, wallM, sx * 1.08, -0.7, -0.3, 0, 0, 0, tub);                // side walls up to the sill
+    bx(0.14, 0.05, 2.4, padM, sx * 1.06, -0.33, -0.3, 0, 0, 0, tub);                // padded sill
+    for (let k = 0; k < 4; k++) bx(0.02, 0.6, 0.04, rim, sx * 1.03, -0.7, -1.2 + k * 0.55, 0, 0, 0, tub); // frames
+    pane(2.3, 1.0, glass, sx * 1.0, 0.18, -0.3, 0, sx * Math.PI / 2, -sx * 0.22, tub); // side glass
+  }
+  bx(2.2, 1.6, 0.08, wallM, 0, -0.3, 0.75, 0, 0, 0, tub);                            // bulkhead behind the seat
+  bx(0.6, 0.5, 0.12, seatM, 0, 0.0, 0.62, 0, 0, 0, tub); bx(0.7, 0.9, 0.14, seatM, 0, -0.65, 0.6, -0.1, 0, 0, tub); // headrest and seat back
+  pane(2.1, 1.1, glass, 0, 0.12, -1.05, -0.55, 0, 0, tub);                           // windscreen
+  pane(1.7, 1.6, glass, 0, 0.8, -0.25, -Math.PI / 2 + 0.1, 0, 0, tub);              // canopy roof
+  pane(0.5, 0.9, glint, 0.45, 0.25, -1.0, -0.55, 0, 0, tub);                         // a glint on the screen
+  // the bomber: a roomy flight deck with a roof, side windows in the walls and a glazed nose
+  const deck = new THREE.Group(); g.add(deck);
+  bx(2.8, 0.06, 3.4, floorM, 0, -1.15, -0.4, 0, 0, 0, deck);
+  for (let k = 0; k < 8; k++) bx(2.6, 0.012, 0.05, rim, 0, -1.115, -1.9 + k * 0.42, 0, 0, 0, deck);
+  for (const sx of [-1, 1]) {
+    bx(0.08, 0.75, 3.4, wallM, sx * 1.4, -0.78, -0.4, 0, 0, 0, deck);               // wall below the windows
+    bx(0.08, 0.4, 3.4, wallM, sx * 1.4, 0.75, -0.4, 0, 0, 0, deck);                 // wall above them
+    for (let k = 0; k < 5; k++) bx(0.1, 0.72, 0.1, wallM, sx * 1.4, 0.18, -2.0 + k * 0.8, 0, 0, 0, deck); // window posts
+    pane(3.4, 0.72, glass, sx * 1.37, 0.18, -0.4, 0, sx * Math.PI / 2, 0, deck);
+    bx(0.3, 0.12, 2.6, padM, sx * 1.2, -0.44, -0.4, 0, 0, 0, deck);                 // armrests and side panels
+  }
+  bx(2.88, 0.06, 3.4, wallM, 0, 0.96, -0.4, 0, 0, 0, deck);                          // roof
+  for (let k = 0; k < 5; k++) bx(2.7, 0.06, 0.06, rim, 0, 0.92, -2.0 + k * 0.8, 0, 0, 0, deck);
+  bx(2.88, 2.2, 0.08, wallM, 0, -0.1, 1.3, 0, 0, 0, deck);                           // bulkhead behind the crew
+  bx(0.3, 1.2, 0.05, rim, 0, -0.25, 1.25, 0, 0, 0, deck);                           // its door
+  bx(0.6, 0.5, 0.12, seatM, 0, 0.0, 0.62, 0, 0, 0, deck); bx(0.7, 0.9, 0.14, seatM, 0, -0.65, 0.6, -0.1, 0, 0, deck);
+  bx(0.6, 0.5, 0.12, seatM, 0.95, 0.0, 0.62, 0, 0, 0, deck); bx(0.7, 0.9, 0.14, seatM, 0.95, -0.65, 0.6, -0.1, 0, 0, deck); // co-pilot's seat
+  for (const sx of [-1, 0, 1]) bx(0.05, 1.0, 0.05, rim, sx * 0.8, 0.45, -2.05, -0.5, 0, 0, deck); // nose frames
+  bx(2.8, 0.05, 0.05, rim, 0, 0.88, -1.9, 0, 0, 0, deck);
+  pane(2.8, 1.25, glass, 0, 0.35, -2.1, -0.5, 0, 0, deck);                           // glazed nose
+  pane(0.6, 1.0, glint, -0.6, 0.35, -2.05, -0.5, 0, 0, deck);
+  for (const m of [glass, glint]) { m.userData.base = m.color.clone(); }
   g.traverse(o => { if (o.isMesh) { o.renderOrder = 20; o.frustumCulled = false; } });
+  for (const o of [...tub.children, ...deck.children]) if (o.material === glass || o.material === glint) o.renderOrder = 21; // glass last, over the cabin
   g.visible = false; let hidden = null, drawT = 0, lastType = null;
   // ---- drawing the gauges ----
   function dial(x, y, r, label) {
@@ -4047,7 +4125,7 @@ const COCKPIT = (() => {
     if (hidden && hidden !== (on ? e : null)) { if (hidden.group) hidden.group.visible = true; hidden = null; }
     if (!on) return;
     e.group.visible = false; hidden = e;
-    if (lastType !== e.type) { lastType = e.type; const jet = e.type === 'jet', bomber = e.type === 'bomber'; hud.visible = hudFrame.visible = jet; ring.visible = !jet; stick.visible = !bomber; yoke.visible = bomber; }
+    if (lastType !== e.type) { lastType = e.type; const jet = e.type === 'jet', bomber = e.type === 'bomber'; hud.visible = hudFrame.visible = jet; ring.visible = !jet; stick.visible = !bomber; yoke.visible = bomber; tub.visible = !bomber; deck.visible = bomber; }
     // the stick leans into the turn and moves with the climb; the yoke turns; the throttle lever slides
     const turn = clamp(-(e.bank || 0) * 0.5, -0.45, 0.45), climb = clamp((e.desired.y - e.fwd.y) * 2, -0.35, 0.35);
     stick.rotation.set(-climb, 0, turn); yoke.rotation.set(0, 0, turn * 1.4); yoke.position.z = -0.56 + climb * 0.06;
@@ -4056,7 +4134,13 @@ const COCKPIT = (() => {
     const k = 0.4 + 0.6 * (DN.k ?? 1); for (const m of mats) m.color.copy(m.userData.base).multiplyScalar(k);
     drawT -= dt; if (drawT <= 0) { drawT = 0.1; drawPanel(e, GAME.time); if (hud.visible) drawHUD(e); }
   }
-  return { tick };
+  // 1.3: after the camera has turned: hold the cabin to the plane (camera-space = inverse camera turn x plane turn x half turn)
+  const _cq = new THREE.Quaternion(), _hq = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+  function orient() {
+    const e = PLAYER.ent; if (!g.visible || !e || !e.quat) { g.quaternion.identity(); return; }
+    camera.getWorldQuaternion(_cq).invert(); g.quaternion.copy(_cq).multiply(e.quat).multiply(_hq);
+  }
+  return { tick, orient };
 })();
 function updateCamera(dt) {
   COCKPIT.tick(dt);
@@ -4075,7 +4159,16 @@ function updateCamera(dt) {
   const zoom = (cam.zoom || IN.rmb) && mode !== 'dead' && mode !== 'demo';
   const base = clamp(+settings.fov || 70, 60, 100), fov = zoom ? (mode === 'plane' ? 45 : 30) * base / 70 : base;
   if (Math.abs(camera.fov - fov) > 0.1) { camera.fov = damp(camera.fov, fov, 10, dt); camera.updateProjectionMatrix(); }
-  if (mode === 'foot' && e) {
+  // 1.3: first person on foot and on a ship (C switches; planes use the cockpit view)
+  const fpFoot = settings.fp && mode === 'foot' && e && e.alive && !e.chute;
+  if (fpBody && fpBody !== (fpFoot ? e : null)) { if (fpBody.group) fpBody.group.visible = true; fpBody = null; }
+  if (fpFoot) {
+    e.group.visible = false; fpBody = e;
+    camera.position.set(e.pos.x, e.pos.y + (e.swim ? 0.9 : 1.75), e.pos.z);
+  } else if (settings.fp && mode === 'ship' && e && e.alive) {
+    const L = e.S.len, sn = Math.sin(e.heading), cs = Math.cos(e.heading);
+    camera.position.set(e.pos.x + sn * L * 0.12, (e.S.top || 8) + 1.6 + (e.pos.y || 0), e.pos.z + cs * L * 0.12);
+  } else if (mode === 'foot' && e) {
     _ct.set(e.pos.x, e.pos.y + 2.1, e.pos.z);
     const rx = -Math.cos(cam.yaw), rz = Math.sin(cam.yaw), dist = zoom ? 3.5 : 6.5;
     _cp.copy(_ct).addScaledVector(aimDir, -dist); _cp.x += rx * 1.2; _cp.z += rz * 1.2;
@@ -4131,8 +4224,10 @@ function updateCamera(dt) {
   // shake
   if (camShake > 0.01) { camera.rotation.x += rand(-1, 1) * camShake * 0.02; camera.rotation.y += rand(-1, 1) * camShake * 0.02; camShake = damp(camShake, 0, 6, dt); }
   camera.updateMatrixWorld();
+  COCKPIT.orient(); // 1.3
   Sound.listener.copy(camera.position);
 }
+var fpBody = null; // 1.3: the soldier hidden for first person
 
 /* ==========================================================================
    HUD
@@ -4269,9 +4364,9 @@ function updateHUD(dt) {
     // bottom-right key hints
     let keys = '';
     if (!touchOn()) {
-      if (mode === 'foot') keys = `<div><kbd>1</kbd>-<kbd>5</kbd>${FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn || 0]]}</div><div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div>`;
+      if (mode === 'foot') keys = `<div><kbd>1</kbd>-<kbd>5</kbd>${FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn || 0]]}</div><div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div><div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div>`;
       else if (mode === 'ship' && !e.alive) keys = '<div><kbd>E</kbd>Jump overboard</div>';
-      else if (mode === 'ship') keys = `<div><kbd>W</kbd><kbd>S</kbd>Throttle <kbd>A</kbd><kbd>D</kbd>Steer</div><div><kbd>Click</kbd>Fire</div>${e.S.torps ? '<div><kbd>F</kbd>Torpedo</div>' : ''}${e.S.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}${e.S.carrier ? '<div><kbd>B</kbd>Launch a plane</div>' : ''}<div><kbd>E</kbd>Get out</div>`;
+      else if (mode === 'ship') keys = `<div><kbd>W</kbd><kbd>S</kbd>Throttle <kbd>A</kbd><kbd>D</kbd>Steer</div><div><kbd>Click</kbd>Fire</div>${e.S.torps ? '<div><kbd>F</kbd>Torpedo</div>' : ''}${e.S.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}${e.S.carrier ? '<div><kbd>B</kbd>Launch a plane</div>' : ''}<div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div><div><kbd>E</kbd>Get out</div>`;
       else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div>${e.P.guns.length ? '<div><kbd>Click</kbd>Guns</div>' : ''}${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>Space</kbd>Level out</div><div><kbd>C</kbd>Cockpit view</div><div><kbd>E</kbd>Bail out</div>`;
       else if (mode === 'turret') keys = '<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>Leave</div>';
       else if (mode === 'gunner') keys = `<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>${e.ship ? 'Jump off' : 'Bail out'}</div>`;

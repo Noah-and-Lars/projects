@@ -814,6 +814,10 @@ body.touch.mpOn #mpBoardBtn { display: block; }
       <div><i>🎯</i><span><b>Scope key</b>Press Z (or any key you pick) to put the scope up and down instead of holding right click.</span></div>
     </div>
     <div class="notes">
+      <section><h3>v3.0.3 <span>Legacy map skins</span></h3><ul>
+        <li><b>The Battle Pass button is gone</b> from the home screen. The Halloween 2026 Event is over and its pass is locked. Everything you unlocked from it (Jack's Grin, Reaper's Lantern, the Pumpkin Launcher, coins and crates) stays in your account.</li>
+        <li><b>Legacy map skins:</b> a new option at the bottom of Settings. Pick <b>Halloween 2026</b> to bring back the jack-o'-lanterns, lights, ghosts, bats, orange trees and spooky sunset on every map but Classic. It's off by default.</li>
+      </ul></section>
       <section><h3>v3.0.2 <span>Siege lives on its own</span></h3><ul>
         <li>The Siege button now tells you Siege is its own game and takes you there. Siege can't be played from inside Cube Assault any more, so old copies with Siege built in are asked to update.</li>
       </ul></section>
@@ -1421,6 +1425,9 @@ body.touch.mpOn #mpBoardBtn { display: block; }
     <div class="binds" id="bindList"></div>
     <button class="btn secondary" id="bindReset">Reset keybinds to default</button>
     <div class="weapons" id="weaponCards" hidden></div>
+    <div class="section">Legacy map skins</div>
+    <p class="touchNote">Bring back the decorations from past events on every map but Classic, in single player and multiplayer. Off by default. It shows from the next map you load.</p>
+    <div class="row"><label>Map skin</label><div class="seg" id="skinSeg"><button data-skin="off">Off</button><button data-skin="hw26">🎃 Halloween 2026</button></div></div>
     <div class="section">Data</div>
     <button class="btn danger" data-action="reset">Reset all data</button>
     <button class="btn" data-action="back">Back</button>
@@ -5740,6 +5747,7 @@ function refreshSettingsUI() {
   document.querySelectorAll('#radioSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.radio === 'on') === (settings.radioMusic !== false))); // 2.9.9
   document.querySelectorAll('#musicSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.music === 'on') === (settings.music !== false)));
   document.querySelectorAll('#scopeSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.scope === 'lock') === !!settings.scopeLock));
+  document.querySelectorAll('#skinSeg button').forEach(b => b.classList.toggle('sel', b.dataset.skin === (settings.mapSkin || 'off'))); // 3.0.3
   document.querySelectorAll('.wcard').forEach(c => {
     const k = c.dataset.weapon, w = WEAPONS[k];
     c.classList.toggle('sel', k === settings.weapon);
@@ -5757,6 +5765,7 @@ document.querySelectorAll('#musicSeg button').forEach(b => b.addEventListener('c
   settings.music = b.dataset.music === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI();
 }));
 document.querySelectorAll('#touchSeg button').forEach(b => b.addEventListener('click', () => { settings.touch = b.dataset.touch; saveSettings(); refreshSettingsUI(); }));
+document.querySelectorAll('#skinSeg button').forEach(b => b.addEventListener('click', () => { settings.mapSkin = b.dataset.skin; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI(); })); // 3.0.3: legacy map skins
 document.querySelectorAll('#radioSeg button').forEach(b => b.addEventListener('click', () => { settings.radioMusic = b.dataset.radio === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI(); })); // 2.9.9
 document.querySelectorAll('#fpsSeg button').forEach(b => b.addEventListener('click', () => { settings.showFps = b.dataset.fps === 'on'; saveSettings(); Sound.init(); Sound.play('click'); refreshSettingsUI(); })); // 2.8.2
 // 2.8: the keybind list. Click a control, press a key; a key that's taken swaps with the control that had it.
@@ -9308,7 +9317,7 @@ addEventListener('touchend', () => Sound.init());
 addEventListener('keydown', () => Sound.init());
 
 // What's new: shown once per version
-const VERSION = '3.0.2';
+const VERSION = '3.0.3';
 const NEWS_VERSION = '3.0.2'; // the update the "What's new" popup is about (small fix updates don't get one)
 function maybeShowNews() { if (settings.seenVersion !== VERSION) { settings.seenVersion = VERSION; saveSettings(); openSub('notes'); backTo.notes = 'main'; } } // 2.9.9: the newest patch notes, once per version
 function closeNews() { settings.seenVersion = NEWS_VERSION; saveSettings(); Sound.play('click'); showMenu('main'); }
@@ -14786,7 +14795,7 @@ body.touch #hotbar { display: none !important; }
     if (xp) addXp(xp); else paintTime();
   }, 1000);
   // ---------- the card in the bottom right of the home screen ----------
-  const card = document.createElement('button'); card.id = 'spCard'; document.body.appendChild(card);
+  const card = document.createElement('button'); card.id = 'spCard'; // 3.0.3: the Battle Pass button is gone (the event is over). Everything players got from it stays theirs
   const pic = (id, W, H) => { try { return window.v296 ? v296.picOf(id, W, H) : ''; } catch (e) { return ''; } };
   const gunPicUrl = k => { try { return avatarOf(k).url || ''; } catch (e) { return ''; } }; // 2.9.13
   const left = () => { const ms = Math.max(0, seasonEnds(seasonNow()) - Date.now()), d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
@@ -15378,7 +15387,7 @@ function buildMall() {
     const signs = new Map(), sign = (name, color, icon, dark) => { const k = [name, color, icon, !!dark].join('|'); if (!signs.has(k)) signs.set(k, atlas.slot(caSignDraw(name, color, icon, dark))); return signs.get(k); };
     // 2.9.14: posters in the shop windows
     const POSTERS = [['SALE 50% OFF', '#dc2626', '🏷️'], ['NEW IN', '#111827', '✨'], ['HALLOWEEN DEALS', '#7c2d12', '🎃'], ['BUY 1 GET 1 FREE', '#ca8a04', '🎁'], ['CLEARANCE', '#1d4ed8', '📦'], ['OPEN LATE', '#15803d', '🌙']].map(([t, c, i]) => sign(t, c, i));
-    const fall = (() => { try { return !seasonLocked(); } catch (e) { return false; } })(), leaf = (k = 0) => fall ? [0xd9541e, 0xe8771f, 0xf2a03d, 0xb83a1b, 0xc9871f][k % 5] : [0x3f8f3a, 0x4b9a44][k % 2]; // orange for Halloween
+    const fall = (() => { try { return typeof caOn === 'function' ? caOn() : !seasonLocked(); } catch (e) { return false; } })(), leaf = (k = 0) => fall ? [0xd9541e, 0xe8771f, 0xf2a03d, 0xb83a1b, 0xc9871f][k % 5] : [0x3f8f3a, 0x4b9a44][k % 2]; // orange for Halloween
 
     // ---- the ground, the floors, the roof ----
     // the carpark and the paths round the building
@@ -16775,7 +16784,7 @@ function caBuildMap(id) {
   else if (id === 'seaside') buildSeaside();
   else if (id === 'forest') buildForest();
 }
-const caOn = () => { try { return !seasonLocked(); } catch (e) { return false; } }; // the Halloween 2026 Event is still on
+const caOn = () => { if (settings.mapSkin === 'hw26') return true; try { return !seasonLocked(); } catch (e) { return false; } }; // the Halloween 2026 Event is still on, or (3.0.3) its legacy map skin is picked in Settings
 const CA_LIGHT = { hemi: [hemi.color.getHex(), hemi.groundColor.getHex(), hemi.intensity], sun: [sun.color.getHex(), sun.intensity] };
 function caAfterMap(id, M) {
   // 2.9.14: Frontier's town gets three buildings you can go into (made the first time you play it)

@@ -662,7 +662,7 @@ function bestXI(nid, form = '4-3-3') {
 const teamOvr = ids => Math.round(ids.reduce((a, id) => a + PLAYER[id].ovr, 0) / ids.length);
 
 // ---------- Saved settings and profile ----------
-const VERSION = '1.1';
+const VERSION = '1.1.1';
 const load = k => { try { return JSON.parse(localStorage.getItem(k) || 'null') || {}; } catch (e) { return {}; } };
 const settings = Object.assign({ camera: 'broadcast', diff: 1, halfMin: 4, volume: 0.7, replays: true, seenDisclaimer: '', tod: 'afternoon', controls: 'fifa', music: true, pens: false }, load('soccer.settings'));
 const today = new Date();
@@ -1593,9 +1593,14 @@ function setKickoff(ti) {
 }
 
 // ---------- the main step ----------
+// 1.1.1: match timers run on the match clock (they used to be real-time, so a VAR check or the next penalty in a shootout
+// carried on while the game was paused, and could fire after you'd left the match)
+function later(sec, fn) { if (M) (M.timers = M.timers || []).push({ t: sec, fn, m: M }); }
+function runTimers(dt) { const L = M.timers; if (!L || !L.length) return; for (let i = L.length - 1; i >= 0; i--) { const q = L[i]; q.t -= dt; if (q.t <= 0) { L.splice(i, 1); if (q.m === M) q.fn(); if (!M) return; } } }
 function simStep(dt) {
   if (!M) return;
   M.pt += dt;
+  runTimers(dt); if (!M) return;
   const ph = M.phase;
   if (ph === 'intro') { if (!M.lined) { lineUp(); M.lined = true; } crowd.excite = Math.max(crowd.excite, 0.35); if (M.pt > INTRO_LEN || (inp.pressed.skip && M.pt > 0.25)) endIntro(); }
   if (ph === 'play' || (ph === 'restart' && !(M.restart && M.restart.type === 'kickoff'))) {
@@ -1738,7 +1743,7 @@ function volley(P, dir) {
   const az = (dir && Math.abs(dir.z) > 0.2 ? Math.sign(dir.z) : (Math.random() < 0.5 ? -1 : 1)) * (1.5 + Math.random() * 1.8) + gauss() * (1.3 - stat(P, 'sho') / 100) * 3;
   _v.set(gx - B.pos.x, 0, az - B.pos.z).normalize(); const sp = 20 + stat(P, 'sho') * 0.08;
   kickBall(P, V3(_v.x * sp, 1 + Math.random() * 3, _v.z * sp)); P.anim = ANIM.kick; P.at = 0.12;
-  B.shot = { team: T, by: P, t: M.simT, saved: false, decided: false }; T.stats.shots++;
+  B.shot = { team: T, by: P, t: M.simT, save: false, decided: false }; T.stats.shots++;
 }
 function switchPlayer() {
   const T = M.teams[M.user], B = M.ball;
@@ -1835,7 +1840,7 @@ function shoot(P, power, dir, finesse) {
   const t = dh / sp, vy = (ay - B.pos.y + 0.5 * G * t * t) / t;
   kickBall(P, V3(_v.x * sp, Math.min(vy, 9), _v.z * sp), 1);
   if (curl) { B.curveT = 0; const lat = V3(-_v.z, 0, _v.x); if (lat.z * curl > 0) lat.negate(); B.curve = lat.multiplyScalar(2 * Math.abs(curl) / (t * t)); }
-  B.shot = { team: T, by: P, t: M.simT, saved: false, decided: false };
+  B.shot = { team: T, by: P, t: M.simT, save: false, decided: false };
   T.stats.shots++;
   if (dist < 30) crowd.excite = Math.max(crowd.excite, 0.35);
 }
@@ -1932,7 +1937,7 @@ function header(P, wantGoal) {
     const gx = T.dir * PL, az = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 2.4) + gauss() * (1.2 - stat(P, 'sho') / 100) * 2;
     _v.set(gx - B.pos.x, 0, az - B.pos.z).normalize(); const sp = 13 + stat(P, 'phy') * 0.05;
     kickBall(P, V3(_v.x * sp, -1 + Math.random() * 3, _v.z * sp));
-    B.shot = { team: T, by: P, t: M.simT, saved: false, decided: false }; T.stats.shots++;
+    B.shot = { team: T, by: P, t: M.simT, save: false, decided: false }; T.stats.shots++;
   } else if (relX(T, P.pos.x) < -10) kickBall(P, V3(T.dir * 16, 7, gauss() * 6)); // clear it
   else { const R = pickReceiver(P, null, 'ground'); if (R) { _v.copy(R.pos).sub(B.pos).setY(0).normalize(); kickBall(P, V3(_v.x * 11, 2, _v.z * 11)); } else kickBall(P, V3(T.dir * 10, 3, 0)); }
   P.anim = ANIM.header; P.at = 0;
@@ -2305,9 +2310,13 @@ function takePenalty(R, power, d) {
   M.ball.shot = { team: T, by: K, t: M.simT, decided: true, save: false };
   T.stats.shots++;
   if (GK) { // the keeper guesses (you guess for him if he's yours)
-    let g = human(T.opp) ? (M.penGuess || 0) : (Math.random() < 0.45 ? -1 : Math.random() < 0.82 ? 1 : 0);
+    // 1.1.1: a computer keeper now reads the taker some of the time (the better the keeper, the more often), a hard shot is
+    // harder to keep out, a dive covers more of the goal than standing still, and only shots right under the bar beat a good guess
+    const read = !human(T.opp) && Math.random() < 0.1 + stat(GK, 'gk') / 600;
+    let g = human(T.opp) ? (M.penGuess || 0) : read ? (Math.abs(az) < 0.9 ? 0 : Math.sign(az)) : (Math.random() < 0.45 ? -1 : Math.random() < 0.82 ? 1 : 0);
     M.penGuess = 0;
-    const toZ = g * 2.3, saves = Math.abs(toZ - az) < 1.05 && ay < 2.1 && Math.random() < 0.35 + stat(GK, 'gk') / 300;
+    const toZ = g * 2.3, reachZ = g ? 1.3 : 0.95, hard = Math.max(0, power - 0.65) * 0.6;
+    const saves = Math.abs(toZ - az) < reachZ && ay < 2.25 && Math.random() < 0.24 + stat(GK, 'gk') / 300 - hard;
     if (g) { GK.dive = { t: 0, side: diveSide(GK, toZ - GK.pos.z), from: GK.pos.z, to: toZ, dur: 0.45 }; GK.anim = ANIM.dive; GK.at = 0; GK.busy = 1.4; }
     if (saves) { M.ball.shot.save = true; M.ball.shot.zc = az; }
   }
@@ -2359,7 +2368,7 @@ function showBoard(n) {
 function varCheck(what, call, detail, ok, overturn = 1) {
   M.phase = 'var'; M.pt = 0; HUD.hint(null);
   HUD.banner('VAR CHECK', what, 'pen'); crowd.excite = 0.45;
-  setTimeout(() => { if (!M || M.phase !== 'var') return; HUD.banner(call, detail, call === 'NO GOAL' || call === 'NO PENALTY' ? 'foul' : 'save'); whistle(0.5); setTimeout(() => { if (M && M.phase === 'var') ok(); }, 1400); }, 2600);
+  later(2.6, () => { if (!M || M.phase !== 'var') return; HUD.banner(call, detail, call === 'NO GOAL' || call === 'NO PENALTY' ? 'foul' : 'save'); whistle(0.5); later(1.4, () => { if (M && M.phase === 'var') ok(); }); });
 }
 // the ball hitting the referee: play stops for a dropped ball (Law 9)
 function refBall() {
@@ -2378,7 +2387,7 @@ function refBall() {
 function startShootout() {
   M.so = { g: [0, 0], n: [0, 0], marks: [[], []], turn: 0, order: M.teams.map(T => active(T).filter(p => !p.gk).sort((a, b) => stat(b, 'sho') - stat(a, 'sho'))), kick: null };
   M.phase = 'so'; M.pt = 0; whistle(1, 2); HUD.banner('PENALTIES', 'Five each, then sudden death', 'pen');
-  setTimeout(soNext, 2400);
+  later(2.4, soNext);
 }
 function soNext() {
   const S = M.so; if (!S || !M) return;
@@ -2396,8 +2405,8 @@ function soResult(scored) {
   const dots = i => S.marks[i].map(x => x ? '●' : '○').join(' ');
   HUD.banner(scored ? 'SCORED' : 'MISSED', `${M.teams[0].short} ${a} ${dots(0)} &nbsp;|&nbsp; ${dots(1)} ${b} ${M.teams[1].short}`, scored ? 'save' : 'foul');
   S.turn++;
-  if (done) { M.pens = [a, b]; setTimeout(() => { if (!M) return; whistle(1.6, 3); M.phase = 'fulltime'; M.pt = 0; HUD.banner('PENALTIES', `${M.teams[a > b ? 0 : 1].name} win ${Math.max(a, b)}-${Math.min(a, b)} on penalties`, 'pen'); MENUS.fulltime(); }, 2200); }
-  else setTimeout(soNext, 2200);
+  if (done) { M.pens = [a, b]; later(2.2, () => { if (!M) return; whistle(1.6, 3); M.phase = 'fulltime'; M.pt = 0; HUD.banner('PENALTIES', `${M.teams[a > b ? 0 : 1].name} win ${Math.max(a, b)}-${Math.min(a, b)} on penalties`, 'pen'); MENUS.fulltime(); }); }
+  else later(2.2, soNext);
 }
 function soStep(dt) { // a penalty in the shootout that doesn't go in: saved, held, or it stops
   const S = M.so; if (!S || !S.kick || M.phase !== 'play') return;
@@ -2945,6 +2954,7 @@ const MENUS = (() => {
   function disclaimer(again) {
     const o = overlay(`<span class="wipTag">WORK IN PROGRESS</span><h2>Football ${VERSION}</h2>
       <p>Welcome to Football. This game is a <b>work in progress</b> and needs time to improve: the <b>gameplay</b>, the <b>players</b>, the <b>graphics</b> and the <b>mechanics</b> will all keep getting better with updates. You'll find bugs and things that change along the way.</p>
+      <p><b>New in 1.1.1, fixes:</b> penalties are fairer (keepers now save some: a dive covers more of the goal, better keepers read the taker more often, and hard-hit penalties are harder to stop; before, keepers almost never saved one). VAR checks and penalty shootouts now run on the match clock, so they no longer carry on while you're paused or after you leave a match.</p>
       <p>New in 1.1: the <b>World Cup</b> (all 48 teams) and <b>online play</b> against a friend. Career and Tournaments are coming in later updates.</p>
       <p>Player names are used for fun in this fan-made game; ratings are our own estimates. Football isn't connected to any real league, club or federation.</p>
       <div class="row" style="justify-content:flex-start"><button class="btn" data-ok>I understand</button></div>`);

@@ -273,8 +273,25 @@ source in Settings → Pages should be switched to `main`.
   game is played for `online.oppRate` taken at its start. Only online games where both sides moved count (fewer is
   "aborted": no record, no rating); leaving mid-game is a loss; an opponent without a rating (an older copy) is unrated.
   `stat()` in games.js shows the rating, and account.js `score()` counts online games.
+  Local 2-player (1.5): `save.opp` 'local' (Opponent picker `#oppSeg`), `localGame`: `player` follows the side to move,
+  so the board turns round (`passTurn`, after the move slides); no records or rating (`finishLocal`), not saved, Undo
+  takes back one move. Leaderboard (1.5, `LB`): `/acct/top?g=chess` if the server has it (added to the Worker source
+  on 2026-11-07, not yet deployed), otherwise `/acct/players` then `/acct/player` for each player with scores, 6 at a
+  time, cached 10 minutes in sessionStorage. It reads games.js chess `stat()`, which now adds "(best N)" from `rating.peak`.
+  The 1.4 patch notes were missing (the ratings update still said v1.3): fixed in 1.5.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
+
+  1.3: 25 new units in `NEW_T` (each has `base`, one of the first nine, which sets its model (`personModel` via `BASE_OF`,
+  colours from `look`), its behaviour in `updateTowers` (`t.B`) and its sound; upgrades from `newUpg`). Online (`window.TDN`,
+  the end of the main script; Online on the main menu, `#menu-online`): rooms on the realtime server (`ctd-lobby-<mode>`
+  for quick match, `ctd-t-<key>` tables, 5-letter private codes, `?tdroom=<name>` test channels). Co-op: the host runs
+  the cubes and waves; the guest's `damage()` and base hits are switched off (`TDG()`), it sends 'pl'/'sl'/'up'/'wv'
+  requests, the host answers with 'u'/'sd'/'ua' and a snapshot 's' twice a second in a wave (every 2 s otherwise);
+  wallets are separate (`TDN.gc` is the guest's on the host), units have an owner `t.o` ('h'/'g'), 3 farms each,
+  cubes x1.5 health. Versus: each screen plays its own game, waves from a shared seed (`TDN.waveRand`), auto-start
+  (wave 1 after 15 s, 8 s between), no speed-up; 'st' once a second (units only when they change) drawn on `#oppCv`;
+  'lost' ends it. Both modes need an online account (rt.js).
 
 - `free-criminal/`: CLOSED since 2026-10-22 (the owner closed it; it stays listed on the arcade with a "Closed for now"
   tagline). `CLOSED_NOW` before `boot()` shows the `#closed` screen instead of building the city, so nobody can play or
@@ -316,6 +333,12 @@ source in Settings → Pages should be switched to `main`.
   1.2.7: `HARBOR_X` 2126 (was 1575) and harbor islands `r` 290 (was 225); `MAP`, `BOUND` (x 2950), `DEPTH_W`, `MINI` and
   the PC map's `MAPV.s` grew to match. Each harbor has six more turret spots on the new land (4 AA, 2 cannons).
   `restoreIsland` (called by `setIslandOwner` when a team claims it) removes `SCORCHES` and `EMITTERS` on that island.
+  1.3: `midairHit` (any two planes, either team, within 62% of their radii) in `Plane.update`: both are killed with
+  `midair` + `crashed` (a fireball in `onDeath`, then the wreck falls and blows up on the ground). Each screen checks the
+  planes it runs; the host or offline game also kills the other plane. First person: `settings.fp` (C on foot or on a
+  ship; planes keep C for the cockpit), the soldier is hidden while you look through his eyes (`fpBody`). The cockpit
+  (`COCKPIT`) is now a cabin fixed to the plane (`COCKPIT.orient()` after the camera turns): a tub with floor, walls, seat,
+  bulkhead and glass for fighters and the jet, a flight deck with roof, side windows and glazed nose for the bomber.
 - `card-royale/`: Card Royale (1.1), a real-time 1v1 card battler (towers, lanes, Elixir, 75 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by
   `build.sh`): data, `20-sim.js` (the battle: `newBattle`, `step` at 20 ticks a second, `play`, `canDeploy`, the bot in
@@ -412,10 +435,27 @@ source in Settings → Pages should be switched to `main`.
   for shots), and `botGadgets` (attackers: hack, scan, sonar, EMP near the site, frag/flash where they lost you; defenders:
   gas/kunai/claymores on the site's doorways, Volt rods on reinforced walls, Murk sets gas off). Test-clock caveat: `now()`
   is real time + `SG_TOFF`, so a slow headless step can expire hold/bang timers early.
+  1.0.17: drones. A jammed drone loses control but still falls (`sgMoveDrone` swaps the input for nothing instead of
+  returning), a thrown drone is carried out from your feet in 4 cm steps (`sgEnterDrone`, it could land through a thin
+  wall), `D.safe` brings back a drone that drops below -20 m, and the bot snapshot key includes `o.d` and `o.m` so bots'
+  drones are sent as they move (they were sent once a second).
   1.0.15: the half of a reinforced wall that wasn't reinforced (`3 - p.reinf`) shows bolt marks: `W.stars` (one
   InstancedMesh per map, a slot per wall chunk at `p.star`), set by `starMarks(p)` from `sgPanelDraw` (every other
   chunk, jittered, `starMat()` canvas star, lit like the chunk). `sgBoom` marks the panels it hit `dirtyDraw` (it zeroes
   `alive` itself, so `EV.boom` used to skip the redraw on the screen that set the charge off); a punched hatch redraws too.
+
+- `krill-dive/` (2026-11-07): Krill Dive, a daily rarity-trivia game (plain canvas 2D and HTML, no libraries; named
+  Krill Dive rather than after the existing game the owner described). `KD_DATA` (the first script) holds the
+  familiarity lists (`lists`, each ordered from the most familiar answer to the least; "Main/alias/alias") and the
+  prompts (`add(q, list, filter)`; word-shape prompts filter a big list). Rarity tier = an answer's place in its
+  (filtered) list (`score()`: first 15% Plankton 10, Shallows ~30, Reef 50-65, Abyss ~80, last 12% Trench Find 100);
+  `share()` is a rough Zipf estimate, not real player data. `match()` normalises accents, "the", plurals and allows a
+  one- or two-letter typo (Damerau). Daily prompts come from the UTC date (`pickPrompts(rng(hash('krill-dive:' + d)))`,
+  never two from one list; prompts with fewer than 6 answers are never picked), Dive #1 is 2026-11-06. 3 s to read
+  (`READ_S`), 25 s to answer (`ANSWER_S`); unrecognised answers don't count against you. Each point = 10 m, 700 = 7,000 m.
+  The ocean is drawn on `#sea` (`frame()`: depth gradient `STOPS`, zone lines `ZONES`, creatures `CRE`, the krill).
+  Save `krilldive` (days, best, played, total, streak, lastDay, mute). `?debug` exposes `window.__kd`.
+  When adding prompts: keep every list ordered by familiarity, since that order *is* the scoring.
 
 ## Adding a game
 

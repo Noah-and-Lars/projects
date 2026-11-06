@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=2"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.16';
+const VERSION = '1.0.17';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -4613,7 +4613,8 @@ function sgMove(P, inp, dt) {
 // drones: tiny, fast, fit through small holes
 function sgMoveDrone(P, D, inp, dt) {
   if (D.boostT > 0) D.boostT = Math.max(0, D.boostT - dt);
-  if (D.jam > now()) return;
+  // 1.0.17: a jammed drone loses control but still falls and slows down (it used to freeze where it was, even in mid-hop)
+  if (D.jam > now()) inp = { f: 0, s: 0, jump: false };
   const sp = D.boostT > 0 ? DRONE_BOOST_SP : DRONE_SP, fx = -Math.sin(D.yaw), fz = -Math.cos(D.yaw), rx = Math.cos(D.yaw), rz = -Math.sin(D.yaw);
   D.vx = (D.vx || 0) + ((fx * inp.f + rx * inp.s) * sp - (D.vx || 0)) * Math.min(1, dt * 8);
   D.vz = (D.vz || 0) + ((fz * inp.f + rz * inp.s) * sp - (D.vz || 0)) * Math.min(1, dt * 8);
@@ -4635,14 +4636,19 @@ function sgMoveDrone(P, D, inp, dt) {
   });
   if (ny <= gy) { ny = gy; D.vy = 0; D.onGround = true; } else D.onGround = false;
   D.x = pos.x; D.z = pos.z; D.y = ny;
+  // 1.0.17: a drone that drops out of the map comes back to the last place it was standing
+  if (D.onGround) D.safe = { x: D.x, y: D.y, z: D.z }; else if (D.y < -20) { const s = D.safe || { x: P.x, y: P.y + 0.3, z: P.z }; D.x = s.x; D.y = s.y + 0.05; D.z = s.z; D.vx = D.vz = D.vy = 0; }
   if (Math.hypot(D.vx, D.vz) > 1 && Math.random() < dt * 6) snd('drone', null, 0.4);
 }
 function sgEnterDrone(P, n, prep) {
   const D = P.drones[n]; if (!D || !D.alive) return false;
   if (D.held) { // throw it out in front of you
     D.held = false; eyeOf(P, _e); dirOf(P.yaw, 0, _d);
-    D.x = P.x + _d.x * 0.8; D.z = P.z + _d.z * 0.8; D.y = P.y + 0.3; D.yaw = P.yaw; D.vy = 1; D.vx = _d.x * 3; D.vz = _d.z * 3;
-    const c = { x: D.x, y: D.y, z: D.z }; sgCollide(c, 0.13, 0.2); D.x = c.x; D.z = c.z;
+    const dx = _d.x, dz = _d.z; D.yaw = P.yaw; D.vy = 1; D.vx = dx * 3; D.vz = dz * 3;
+    // 1.0.17: carried out from your feet in small steps, so it stops at a wall you're facing (it used to be put 80 cm
+    // ahead and pushed out from there, which could land it on the far side of a thin wall)
+    const c = { x: P.x, y: P.y + 0.3, z: P.z }, gb = sgGadBoxes(); for (let k = 0; k < 20; k++) { c.x += dx * 0.04; c.z += dz * 0.04; sgCollide(c, 0.13, 0.2, gb, 0.24); }
+    D.x = c.x; D.z = c.z; D.y = c.y; D.safe = { x: c.x, y: P.y, z: c.z };
   }
   P.mode = 'drone'; P.droneN = n; P.droneYaw = D.yaw; P.dronePitch = 0;
   return true;
@@ -5744,7 +5750,7 @@ function snSendStates(dt) {
     const b = [];
     for (const Q of G.P.values()) {
       if (!Q.bot || !Q.alive) continue;
-      const o = snPack(Q), key = JSON.stringify([o.p, o.r, o.c, o.pr, o.s, o.a, o.h, o.su, o.dn, o.n]), k = SN.botKeys[Q.id];
+      const o = snPack(Q), key = JSON.stringify([o.p, o.r, o.c, o.pr, o.s, o.m, o.a, o.h, o.su, o.dn, o.n, o.d]) /* 1.0.17: with the drones and mode, so a bot's drone moves smoothly on other screens */, k = SN.botKeys[Q.id];
       if (!k || k.key !== key || t > k.t + 1) { b.push(o); SN.botKeys[Q.id] = { key, t }; }
     }
     if (b.length) NET.send('bs', { b });
@@ -5786,6 +5792,12 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.17', t: 'Drone fixes', d: '7 November 2026', intro: 'A round of fixes for drones.', items: [
+    ['Jammed drones fall', 'A drone caught by a jammer used to freeze where it was, even in the middle of a hop. Now it loses control but still drops to the floor and slows down.'],
+    ['No more drones through walls', 'Throwing out a drone while standing right against a thin wall could put it on the other side. The drone now leaves your hands in small steps and stops at the wall.'],
+    ['Lost drones come back', 'A drone that fell out of the map is put back where it last stood, instead of falling for ever.'],
+    ['Smooth bot drones online', 'Bots\' drones only updated once a second on other players\' screens, so they jumped around. They now move smoothly.'],
+  ] },
   { v: '1.0.16', t: 'Lighter online traffic', d: '5 November 2026', intro: 'Online play went down for a morning because the arcade\'s realtime server ran out of its daily allowance, and Siege matches were the biggest users. Siege now sends far fewer messages.', items: [
     ['Fewer messages', 'You send your position 8 times a second while you move, aim or shoot (it was 12), and only once a second while you stand still. Bots are sent 5 times a second (it was 10), and only the ones that moved.'],
     ['Still smooth', 'Other players and bots are drawn a fraction of a second behind and blended between updates, so they move as smoothly as before.'],
