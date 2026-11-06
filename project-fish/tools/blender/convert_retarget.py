@@ -16,7 +16,11 @@ scene.bin and textures/. Then, from the project-fish folder:
     gltf-transform meshopt build/mp7-raw.glb assets/mp7.glb --level high
 
 (--arms is the soldier's model, assets/soldier.glb: his first-person arms,
-the meshes tagged firstPerson 'arms', and his skeleton come from it.)
+the meshes tagged firstPerson 'arms', and his skeleton come from it.
+--report FILE also writes the measured constants as JSON; --no-textures
+and --no-fit make quick builds for checking the motion. It reads the
+download with plain numpy; Blender is only used for the textures. A build
+takes 10 to 20 minutes, most of it fitting the fingers.)
 
 Why: the downloads' arms are Epic Games' Unreal Engine mannequin (the
 SK_Mannequin_Arms meshes and their MI_Manny materials and textures), which
@@ -46,6 +50,13 @@ retargeting, here at build time:
   the mannequin's elbow is, the forearm a hinge; half the wrist's twist
   goes into his lower forearm (the glove's cuff and the sleeve's end), as
   in fpArms.js. Nothing is added: the moves are the clips'.
+- His gloved hands are thicker than the mannequin's bare ones and shaped a
+  little differently, so the contact is kept (FIT, GunVolume): each hand is
+  moved straight out of the gun as far as its palm is in it, and each
+  finger bone is turned about the axis it bends on (the thumb also
+  sideways), as little as it takes, out of the gun, or back onto it where
+  the mannequin's matching finger bone touches it (judged from the
+  mannequin's skeleton only, never its mesh).
 - Everything is put in gun space (metres, +X right, +Y up, -Z forward),
   with the rig's root at the eye: the download's own first-person camera
   (the MP7's `Camera` node on the head; the X4, which has the same
@@ -386,11 +397,6 @@ class Soldier:
                     'triangles': accessor(prim['indices']).astype(np.int64).reshape(-1, 3),
                 })
 
-    def bone_local_frames(self):
-        """In his rest pose, each arm bone's world rotation and place (his
-        model's space, metres)."""
-        return self.rest_world
-
     def image(self, info):
         tex = self.g['textures'][info['index']]
         src = tex.get('extensions', {}).get('EXT_texture_webp', {}).get('source', tex.get('source'))
@@ -618,7 +624,7 @@ class Retarget:
         mannequin's bare one, moved straight out of the gun as far as his
         palm and his fingers' first bones are in it (FIT['inside']),
         smoothed over the frames (PALM_SMOOTH) so it doesn't shake."""
-        S, s = self.soldier, self.soldier.scale
+        s = self.soldier.scale
         out = {}
         for side in SIDES:
             ms = side.lower()

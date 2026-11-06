@@ -104,7 +104,10 @@ const GUN_KINDS = {
     // higher and the support arm's sleeve comes into view at the bottom
     // left. Aiming, its own aimed clips play and the gun layer lines up
     // their sights.)
-    rig: { hip: new THREE.Vector3(0.01, -0.01, -0.02), kick: 0.4 },
+    // (Its run clip is its maker's sprint pose, the gun held low across the
+    // chest, so it doesn't take the gun layer's too; that pose is held 7 cm
+    // higher, or the gun would be all but out of view.)
+    rig: { hip: new THREE.Vector3(0.01, -0.01, -0.02), kick: 0.4, sprintPose: 0, sprintOut: new THREE.Vector3(0, 0.07, 0) },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(HIPISTOL),
   },
 };
@@ -651,6 +654,11 @@ const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 //   animation already kicks the hands and gun back and up).
 // - tacOut: on a tactical sprint, as the others come up close in front of
 //   the chest, it's held this much lower (metres, gun space).
+// - sprintPose: how much of the gun layer's sprint pose (MOTION.sprint and
+//   tacSprint's offsets) it takes: 0 for a gun whose run clip is its
+//   maker's own sprint pose. sprintOut: sprinting, it's held this much
+//   higher (metres, gun space), as much as it's in the sprint pose: for a
+//   run clip that takes the gun lower than the gun layer's view shows.
 // (Sprinting, the others' hands bend at the wrists; a gun with its own arms
 // only does if its model asks for it, see animatedGun.js: the whole rig
 // takes the sprint pose's offsets.)
@@ -661,6 +669,8 @@ const RIG = {
   eyeRelief: 0.26,
   kick: 0.4,
   tacOut: new THREE.Vector3(),
+  sprintPose: 1,
+  sprintOut: new THREE.Vector3(),
 };
 // A gun's own RIG values: its rig in GUN_KINDS over RIG's.
 function rigOf(kind) {
@@ -1460,6 +1470,7 @@ export class Viewmodel {
 
     // Weapon physics move the whole posed gun about the pivot between the wrists.
     // Sprinting tips the gun down, except while reloading, inspecting or aiming.
+    this.motion.sprintPose = this.current && this.current.held ? this.current.held.sprintPose : 1;
     this.motion.update(frameSeconds, player, yaw, pitch, wallDistance, aim, Boolean(player.sprinting) && reload < 0 && inspect < 0 && !aiming);
     this.holder.position.copy(this.pivot).add(this.motion.position.value).add(this.reachPull);
     const r = this.motion.rotation.value;
@@ -1717,7 +1728,7 @@ export class Viewmodel {
   // sprinting only if its model asks for it (see animatedGun.js).
   poseRig(sprintBend) {
     const g = this.current;
-    g.object.position.copy(g.at).addScaledVector(g.held.tacOut, this.motion.tac);
+    g.object.position.copy(g.at).addScaledVector(g.held.tacOut, this.motion.tac).addScaledVector(g.held.sprintOut, this.motion.sprint);
     if (sprintBend) g.rig.bendWrists(sprintBend);
   }
 

@@ -114,6 +114,10 @@ export class ViewmodelMotion {
     this.lastFall = 0;
     this.wall = 0;
     this.sprint = 0; // 0 = not sprinting, 1 = fully into the sprint pose
+    // How much of the sprint pose's offsets the gun takes (the gun layer
+    // sets it for each gun: one whose own run clip has its maker's sprint
+    // pose takes none; the strides' swing stays).
+    this.sprintPose = 1;
     this.slide = 0; // 0..1 into the slide pose, and the others
     this.mantle = 0;
     this.prone = 0;
@@ -301,8 +305,8 @@ export class ViewmodelMotion {
     // Sprinting: the arms come in a little lower and closer, tipped and
     // canted a touch (the wrists bend the rest of the way; see viewmodel.js).
     // On a tactical sprint it comes up close instead, muzzle up.
-    const plain = run * (1 - this.tac);
-    const tac = this.tac;
+    const plain = run * (1 - this.tac) * this.sprintPose;
+    const tac = this.tac * this.sprintPose;
     target.z += M.sprint.back * plain + M.tacSprint.back * tac;
     target.y += M.sprint.up * plain + M.tacSprint.up * tac;
     target.x -= M.sprint.inward * plain + M.tacSprint.inward * tac;
