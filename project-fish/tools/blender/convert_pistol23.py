@@ -70,12 +70,13 @@ SOURCE, OUT_GLB = ARGS[0], ARGS[1]
 # what look like centimetres. Its gun is 27.47 units long from the hammer
 # spur to the barrel's crown; the real gun is 245 mm.
 SCALE = 0.245 / 27.47  # download units to metres (0.00892)
-# The eye the arms were posed for, in the download's units: worked out from
-# the model page's own picture (taken with a 45 degree view): the rear sight
-# about 27 units ahead, 3.6 to the right and a hair below the eye, the line
-# of the sights almost through it. It's level with the top of the sights and
-# a little left of the gun, in front of the arms' shoulders.
-CAMERA = (-7.15, 154.65, -31.9)
+# The eye the arms were posed for, in the download's units: fitted to the
+# outline of the gun, hands and arms in the model page's own picture (whose
+# view is about 50 degrees high). From it the rear sight is 0.29 m ahead,
+# 32 mm to the right and 4 mm below the eye, so the sights line up just
+# under it. (That picture's view is also turned 1.8 degrees left; that isn't
+# kept: here the gun points straight ahead, -Z, at the middle of the view.)
+CAMERA = (-6.79, 154.62, -36.18)
 
 # The download's animations (they share one timeline) and ours. Each runs
 # from the first to the last key of its own channels. The idle pose is the
