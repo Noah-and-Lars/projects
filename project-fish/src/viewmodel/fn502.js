@@ -7,8 +7,9 @@
 //
 // The file's root is the eye its maker framed it from (the download's own
 // camera): put it at the gun layer's camera and the gun is where its maker
-// framed it. The game holds it where the M1911's held at the hip, as the
-// Beretta is (its RIG in viewmodel.js). Its points are in the `gun` node on
+// framed it. The game holds it a little further out and lower than that,
+// as far as its arms' cut-off ends stay out of view (its RIG in
+// viewmodel.js). Its points are in the `gun` node on
 // the frame bone, which in the idle pose is gun space (metres, +X right, +Y
 // up, -Z forward) moved to the frame bone (frame, below: where that is in
 // the idle pose, in the file's space). The gun is held turned 7.5° onto its

@@ -83,6 +83,13 @@ function turnPart(part, rest, angle) {
   part.position.copy(rest.position);
   part.quaternion.copy(rest.quaternion).multiply(turn.setFromAxisAngle(ACROSS, angle));
 }
+// Adds weight `w` to an action at `t` seconds into its clip. (A still holds
+// still, so an action set twice just adds up its weight.)
+function setAction(a, t, w) {
+  a.enabled = true;
+  a.time = Math.min(Math.max(t, 0), Math.max(0, a.getClip().duration - 1e-4));
+  a.weight += w;
+}
 const restOf = (part) => part && { position: part.position.clone(), quaternion: part.quaternion.clone() };
 
 export class AnimatedGun {
@@ -133,6 +140,8 @@ export class AnimatedGun {
       this.actions[key] = action(clip);
       this.ghosts[key] = action(copy(clip, '_fading'));
     }
+    // (All of them, to zero each frame.)
+    this.allActions = [...Object.values(this.actions), ...Object.values(this.ghosts)];
     // (additiveShots) A few actions adding the shoot clip on top, one for
     // each shot that may still be playing.
     this.shots = [];
@@ -155,6 +164,8 @@ export class AnimatedGun {
     // played in place of the idle pose.
     this.loopTime = 0;
     this.loops = LOOPS.filter((key) => clips[key]);
+    // Whether the slide was locked back last frame (see update).
+    this.wasEmpty = false;
 
     // The pose at rest (the opt-in parts' rest is where the idle pose has them).
     if (this.actions.idle) {
@@ -277,7 +288,12 @@ export class AnimatedGun {
     if (!this.ok) return;
     this.slideMode = slide;
     const b = this.base;
-    const rest = empty ? this.clipFor('idleEmpty') : 'idle';
+    // (The frame the last round goes, the gun says it's empty before its
+    // shot has started: till then it stays in the idle pose, so shootLast
+    // plays from that, as its maker made it.)
+    const justEmptied = empty && !this.wasEmpty && !this.shot;
+    this.wasEmpty = empty;
+    const rest = empty && !justEmptied ? this.clipFor('idleEmpty') : 'idle';
     // Put away in the middle of a reload, the pose it's in is held (the gun
     // layer lowers it out of view as it does the other guns: see lowering).
     // Fading from it into the hide clip would swing the support hand, down
@@ -332,46 +348,46 @@ export class AnimatedGun {
     }
 
     // Every action's weight and time: the clips' adding up to 1 (and any
-    // added shots on top). (A still holds still, so an action set twice
-    // just adds up its weight.)
-    for (const a of Object.values(this.actions)) a.weight = 0;
-    for (const a of Object.values(this.ghosts)) a.weight = 0;
-    const set = (a, t, w) => {
-      a.enabled = true;
-      a.time = Math.min(Math.max(t, 0), Math.max(0, a.getClip().duration - 1e-4));
-      a.weight += w;
-    };
+    // added shots on top).
+    for (const a of this.allActions) a.weight = 0;
     const fading = this.ghost ? this.ghost.weight * this.ghost.weight * (3 - 2 * this.ghost.weight) : 0;
-    // The idle pose, with the walk and run loops in place of as much of it
-    // as the player is walking and running.
     this.loopTime += dt;
-    const restPose = (key, w) => {
-      let left = w;
-      if (key === 'idle' && moving) {
-        for (const loop of this.loops) {
-          const share = w * THREE.MathUtils.clamp(moving[loop] || 0, 0, 1);
-          if (share <= 0) continue;
-          set(this.actions[loop], this.loopTime % this.duration(loop), share);
-          left -= share;
-        }
-      }
-      set(this.actions[key], 0, Math.max(0, left));
-    };
-    if (clip === rest) restPose(rest, (1 - fading) * (1 - b.toIdle));
-    else set(this.actions[clip], time, (1 - fading) * (1 - b.toIdle));
-    if (b.toIdle) restPose(rest, (1 - fading) * b.toIdle);
+    const A = this.actions;
+    if (clip === rest) this.restPose(A, rest, (1 - fading) * (1 - b.toIdle), moving);
+    else setAction(A[clip], time, (1 - fading) * (1 - b.toIdle));
+    if (b.toIdle) this.restPose(A, rest, (1 - fading) * b.toIdle, moving);
     if (this.ghost) {
+      // (The pose fading out: its rest pose with the loops as they are now,
+      // so a shot or reload started walking doesn't jump by the loop's sway.)
       const g = this.ghost;
-      set(this.ghosts[g.clip], g.time, fading * (1 - g.toIdle));
-      if (g.toIdle) set(this.ghosts[g.rest], 0, fading * g.toIdle);
+      const G = this.ghosts;
+      if (g.clip === g.rest) this.restPose(G, g.rest, fading * (1 - g.toIdle), moving);
+      else setAction(G[g.clip], g.time, fading * (1 - g.toIdle));
+      if (g.toIdle) this.restPose(G, g.rest, fading * g.toIdle, moving);
     }
     for (const s of this.shots) {
       s.action.weight = 0;
-      set(s.action, s.time, s.weight);
+      setAction(s.action, s.time, s.weight);
     }
     this.putBack();
     this.mixer.update(0);
     this.setParts(dt, clip, slide, triggerPull);
+  }
+
+  // The rest pose `key` from the action set `actions` (the playing ones or
+  // the fading copies), weighted `w`: the idle pose with the walk and run
+  // loops in place of as much of it as the player is walking and running.
+  restPose(actions, key, w, moving) {
+    let left = w;
+    if (key === 'idle' && moving) {
+      for (const loop of this.loops) {
+        const share = w * THREE.MathUtils.clamp(moving[loop] || 0, 0, 1);
+        if (share <= 0) continue;
+        setAction(actions[loop], this.loopTime % this.duration(loop), share);
+        left -= share;
+      }
+    }
+    setAction(actions[key], 0, Math.max(0, left));
   }
 
   // The opt-in extras on the gun's parts (none unless model.overrides asks).

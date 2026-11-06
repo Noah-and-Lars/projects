@@ -222,8 +222,13 @@ def webp_bytes(image, name, quality, folder_name):
 
 
 class Writer:
-    def __init__(self, generator, copyright_):
-        self.g = {'asset': {'version': '2.0', 'generator': generator, 'copyright': copyright_},
+    # extras: who made the model and its license (title, source, author,
+    # license), as the other models in the game keep them.
+    def __init__(self, generator, copyright_, extras=None):
+        asset = {'version': '2.0', 'generator': generator, 'copyright': copyright_}
+        if extras:
+            asset['extras'] = extras
+        self.g = {'asset': asset,
                   'scene': 0, 'scenes': [{'nodes': [0]}], 'nodes': [], 'meshes': [], 'skins': [],
                   'materials': [], 'textures': [], 'images': [], 'samplers': [], 'animations': [],
                   'accessors': [], 'bufferViews': [], 'buffers': [],

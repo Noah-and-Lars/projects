@@ -383,7 +383,7 @@ function shoot() {
     .addScaledVector(up, 2 + Math.random() * 0.8)
     .addScaledVector(forward, -0.4)
     .add(new THREE.Vector3(player.vx, player.vy, player.vz));
-  effects.ejectCase(gunPointToWorld(viewmodel.portPoint()), caseVelocity);
+  effects.ejectCase(gunPointToWorld(viewmodel.portPoint()), caseVelocity, gun.caseSize);
 
   const k = (1 - (1 - RECOIL.aimed) * aimAmount) * gun.recoil;
   viewKick.vx += (RECOIL.kick + Math.random() * RECOIL.kickRandom) * k;

@@ -8,6 +8,9 @@ import { MAGAZINE } from '../viewmodel/pistol.js';
 
 const GRAVITY = 9.8;
 const MAX_MAGAZINES = 12; // dropped magazines left lying about (the oldest go first)
+// A spent 9 mm case (metres): the one every gun throws out unless its rules
+// give a caseSize of its own.
+const CASE = { diameter: 0.0098, length: 0.019 };
 
 // A dropped magazine's shape for landing on the ground, in its own frame
 // (centred, Y up along it, X across its width): the corners of its body and
@@ -79,8 +82,9 @@ export class WorldEffects {
     this.puffTexture = softDot();
     this.puffs = [];
 
-    // Spent cases: little brass tubes.
-    this.caseGeometry = new THREE.CylinderGeometry(0.0049, 0.0049, 0.019, 12);
+    // Spent cases: little brass tubes, a 9 mm's (scaled for a gun whose
+    // rules give its caseSize).
+    this.caseGeometry = new THREE.CylinderGeometry(CASE.diameter / 2, CASE.diameter / 2, CASE.length, 12);
     // Not fully metallic: the world has no reflections for pure metal to show, so it would look black.
     this.caseMaterial = new THREE.MeshStandardMaterial({ color: 0xd4a84e, metalness: 0.35, roughness: 0.35 });
     this.cases = [];
@@ -136,14 +140,17 @@ export class WorldEffects {
   }
 
   // A spent case flying out of the ejection port.
-  ejectCase(position, velocity) {
+  // size: { diameter, length } (metres) if it isn't a 9 mm's.
+  ejectCase(position, velocity, size = null) {
     const mesh = new THREE.Mesh(this.caseGeometry, this.caseMaterial);
+    const radius = (size ? size.diameter : CASE.diameter) / 2;
+    if (size) mesh.scale.set(size.diameter / CASE.diameter, size.length / CASE.length, size.diameter / CASE.diameter);
     mesh.position.copy(position);
     mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
     mesh.castShadow = true;
     this.scene.add(mesh);
     const spin = new THREE.Vector3((Math.random() - 0.5) * 40, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 40);
-    this.cases.push({ mesh, velocity: velocity.clone(), spin, age: 0, bounces: 0, resting: false });
+    this.cases.push({ mesh, radius, velocity: velocity.clone(), spin, age: 0, bounces: 0, resting: false });
     if (this.cases.length > 40) {
       this.scene.remove(this.cases[0].mesh);
       this.cases.shift();
@@ -270,7 +277,7 @@ export class WorldEffects {
         if (speed < 0.6 || c.bounces > 4) {
           // Settles lying on its side.
           c.resting = true;
-          c.mesh.position.y = 0.0049;
+          c.mesh.position.y = c.radius;
           c.mesh.rotation.set(Math.PI / 2, 0, c.mesh.rotation.z);
         }
       }

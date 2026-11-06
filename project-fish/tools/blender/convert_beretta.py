@@ -15,7 +15,7 @@ the project-fish folder:
 (npm run build-beretta does this and compresses the result into
 assets/beretta.glb.)
 
-Like the PF-23 before it, this gun comes with its own arms: bare forearms
+This gun comes with its own arms: bare forearms
 and hands on one skeleton, a second small skeleton for the gun (frame,
 slide, trigger, lever, magazine), and one 16.8 s animation holding all its
 clips back to back. The game draws those arms instead of the soldier's
@@ -144,6 +144,15 @@ SKIN_ROUGHNESS = 0.6
 # drew the eye off the gun. Toned down a little.
 SKIN_COLOUR = [0.8, 0.74, 0.7, 1.0]
 
+# Who made it and its license (from its license.txt), in asset.extras as the
+# other models keep them.
+EXTRAS = {
+    'title': 'Beretta Pistol FPS ANIMATION',
+    'source': 'https://sketchfab.com/3d-models/beretta-pistol-fps-animation-0313ab1888994c14abeaf444d7af3217',
+    'author': 'BURNER (https://sketchfab.com/Alexander_Ovelar)',
+    'license': 'CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)',
+    'arms': 'A Mixamo character\'s (Adobe Mixamo)',
+}
 COPYRIGHT = ('This work is based on "Beretta Pistol FPS ANIMATION" '
              '(https://sketchfab.com/3d-models/beretta-pistol-fps-animation-0313ab1888994c14abeaf444d7af3217) '
              'by BURNER (https://sketchfab.com/Alexander_Ovelar) licensed under CC-BY-4.0 '
@@ -562,7 +571,8 @@ def textures(g, meshes):
 
 class Writer:
     def __init__(self):
-        self.g = {'asset': {'version': '2.0', 'generator': 'Project Fish convert_beretta.py', 'copyright': COPYRIGHT},
+        self.g = {'asset': {'version': '2.0', 'generator': 'Project Fish convert_beretta.py', 'copyright': COPYRIGHT,
+                            'extras': EXTRAS},
                   'scene': 0, 'scenes': [{'nodes': [0]}], 'nodes': [], 'meshes': [], 'skins': [],
                   'materials': [], 'textures': [], 'images': [], 'samplers': [], 'animations': [],
                   'accessors': [], 'bufferViews': [], 'buffers': [],

@@ -139,7 +139,7 @@ DIELECTRIC = 0.04
 RUB_OUT = [
     ((396, 560, 540, 1020), 'letters'),  # frame, right: the maker's address and the maker's line
     ((1396, 586, 1504, 812), 'letters'),  # slide, right: serial, proof and date marks
-    ((1596, 1616, 1772, 1820), 'fill'),  # grip side: the maker's logo
+    ((1584, 1600, 1788, 1880), 'fill'),  # grip side: the maker's logo (all of its oval)
     ((2092, 866, 2296, 1048), 'letters'),  # slide, left: the maker's logo (the calibre above it stays)
     ((1986, 1296, 2384, 1424), 'letters'),  # frame: model, calibre and serial line
     ((3458, 1886, 3548, 2046), 'letters'),  # frame plate: serial and proof marks
@@ -148,7 +148,16 @@ RUB_OUT = [
     ((3212, 2812, 3348, 3048), 'letters'),  # slide: the model number
     ((2538, 2788, 2592, 2862), 'letters'),  # frame: proof marks
 ]
-STANDS_OUT = (0.06, 0.08, 0.06)  # colour, normal map, specular/glossiness
+STANDS_OUT = (0.06, 0.08, 0.06)
+
+# Who made it and its license (from its license.txt), in asset.extras as the
+# other models keep them.
+EXTRAS = {
+    'title': 'FPS animations FN 502 Tactical',
+    'source': 'https://sketchfab.com/3d-models/fps-animations-fn-502-tactical-dad2ee1250054a63adaa81918887c0fe',
+    'author': 'Cransh (https://sketchfab.com/ccransh)',
+    'license': 'CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)',
+}  # colour, normal map, specular/glossiness
 
 COPYRIGHT = ('This work is based on "FPS animations FN 502 Tactical" '
              '(https://sketchfab.com/3d-models/fps-animations-fn-502-tactical-dad2ee1250054a63adaa81918887c0fe) '
@@ -466,7 +475,7 @@ def textures(g):
 # --- Writing the file -----------------------------------------------------------
 
 def write_glb(rig, meshes, clips, images, gun_turn, path):
-    w = Writer('Project Fish convert_fn502.py', COPYRIGHT)
+    w = Writer('Project Fish convert_fn502.py', COPYRIGHT, EXTRAS)
     g = w.g
     first = write_rig(w, 'fn502', rig, 'frame_j', gun_turn)
     material_index = {}

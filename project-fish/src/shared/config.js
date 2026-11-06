@@ -165,6 +165,10 @@ export const BERETTA = {
   // with the slide locked back (the clip has the slide forward).
   inspectTime: 5.033,
   inspectLocked: false,
+  // Cut short (firing, aiming, reloading, sprinting), its inspect pose goes
+  // back to the hold this quickly (seconds): its support hand is far from
+  // the grip for most of the clip.
+  inspectFade: 0.4,
 };
 
 // The fourth: an FN 502 Tactical, a .22 LR pistol holding 10 rounds. It
@@ -195,6 +199,8 @@ export const FN502 = {
   spread: { hip: 1.6, aim: 0.1, moving: 1.1 },
   recoil: 0.55,
   inspect: false,
+  // Its spent case: a .22 LR's (metres), far smaller than a 9 mm's.
+  caseSize: { diameter: 0.0057, length: 0.0156 },
 };
 
 // The guns the player carries, in the order of their keys (1, 2, 3, 4).

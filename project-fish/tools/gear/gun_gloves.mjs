@@ -29,9 +29,11 @@
 //   forearm twist bones exactly as the rig's skin does, and the palm takes
 //   the rig's split between the hand bone and the bones in the palm
 //   (the FN 502's index0..little0).
-// - On bare arms (the Beretta's) the cuff is pushed clear of the forearm's
-//   skin, so the skin never shows through it; into a sleeve (the FN 502's)
-//   it's narrowed to fit inside it and goes up it far enough to stay hidden.
+// - On bare arms (the Beretta's) the cuff is widened clear of the
+//   forearm's skin, so the skin never shows through it; into a sleeve (the
+//   FN 502's) it's narrowed to fit inside it (glove.mjs) and drawn out all
+//   the way round to 55 mm up the forearm (drawOut: a slanted cuff, or one
+//   with a slit, would otherwise leave a gap under the sleeve's end).
 // - Where the rig's own hand must be cut out of its arm mesh to make room
 //   (everything past a plane a little way under the cuff's top edge, on
 //   bare arms, or at the sleeve's end), it's written into the glove's node
@@ -167,6 +169,10 @@ const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a
 const len = (a) => Math.hypot(a[0], a[1], a[2]);
 const norm = (a) => mulS(a, 1 / (len(a) || 1));
 const pointOf3 = (pos, v) => [pos[3 * v], pos[3 * v + 1], pos[3 * v + 2]];
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// (glove.mjs's CUFF: the cuff is wholly on the forearm this far up it from
+// the wrist, and none of it this far down the hand.)
+const CUFF_FOREARM = -0.024, CUFF_HAND = 0.014;
 const translation = (p) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, p[0], p[1], p[2], 1];
 const bounds = (pos) => {
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -349,7 +355,11 @@ function rigView(rig, S, opts) {
   const push = (name, j, world) => { list.push({ name: `CC_Base_${S}_${name}`, rigJoint: j, world }); return list.length - 1; };
   const handI = push('Hand', h.hand, rig.bind[h.hand]);
   push('Forearm', null, translation(h.elbowSide));
-  const twistI = push('ForearmTwist02', h.twist, rig.bind[h.twist]);
+  // (The cuff's bone: the rig's forearm bone turned as it is, but at the
+  // wrist, so glove.mjs's turns of it, part of the way to the hand's line,
+  // are about the wrist however far up the arm the bone itself starts.
+  // The cuff takes the rig's own skin weights afterwards.)
+  const twistI = push('ForearmTwist02', h.twist, [...rig.bind[h.twist].slice(0, 12), ...h.wrist, 1]);
   const digitI = [];
   h.fingers.forEach((f, c) => digitI.push(f.bones.map((j, k) => push(`${FINGER_NAMES[c]}${k + 1}`, j, rig.bind[j]))));
   digitI.push(h.thumb.bones.map((j, k) => push(`Thumb${k + 1}`, j, rig.bind[j])));
@@ -365,20 +375,26 @@ function rigView(rig, S, opts) {
     for (let k = 0; k < 4; k++) if (h.group.has(rig.jo[4 * v + k])) hw += rig.we[4 * v + k];
     const p = pointOf3(rig.pos, v);
     if (hw >= 0.5) {
-      own.pos.push(...p);
+      own.pos.push(...sub(p, h.wrist));
       for (let k = 0; k < 4; k++) {
         const j = rig.jo[4 * v + k];
         own.joints.push(toView.has(j) ? toView.get(j) : 65535);
         own.weights.push(rig.we[4 * v + k]);
       }
     } else if (opts.sleeve && dot(sub(p, h.wrist), h.axis) < opts.sleeveEnd + 0.002) {
-      sleeve.pos.push(...p);
+      sleeve.pos.push(...sub(p, h.wrist));
     }
   }
   own.pos = new Float32Array(own.pos); own.joints = new Uint16Array(own.joints); own.weights = new Float32Array(own.weights);
   sleeve.pos = new Float32Array(sleeve.pos);
   const soldier = {
-    joints: list.map((e) => ({ getName: () => e.name, getWorldMatrix: () => e.world })),
+    // (All of it moved so the wrist is at the origin: glove.mjs's weights
+    // can fall short of a whole by a percent or so where many fingers share
+    // a point, and in its fitting step that pulls the point towards the
+    // origin by as much of its distance from it. Here that's a fraction of
+    // a millimetre; with the rig's hands 0.76 m out from its middle it
+    // would be spikes of 5 to 10 mm. Moved back after.)
+    joints: list.map((e) => ({ getName: () => e.name, getWorldMatrix: () => mul(translation(mulS(h.wrist, -1)), e.world) })),
     meshes: new Map([['Object_129', own], ['Mark_Kitel_1_arms', sleeve]]),
   };
   return { soldier, list, handI, twistI, digitI, toView };
@@ -488,7 +504,14 @@ function gloveOnRig(item, left, rig, S, opts, log) {
   const view = rigView(rig, S, opts);
   const h = rig.hands[S];
   const cfg = { ...item.glove, cuffTo: opts.cuffTo, sleeveMargin: opts.sleeveMargin };
+  {
+    const mcp = h.fingers.map((f) => rig.bind[f.bones[0]]).map((m) => [m[12], m[13], m[14]]);
+    const mm = mulS(mcp.reduce(add, [0, 0, 0]), 0.25);
+    log(`  ${S}: the hand is at ${(Math.acos(dot(norm(sub(mm, h.wrist)), h.axis)) * 180 / Math.PI).toFixed(0)} degrees to the forearm in the bind pose`);
+  }
   const out = rigGlove({ ...item, glove: cfg }, left, view.soldier, S, (m) => log(m));
+  for (const key of ['pos', 'aligned']) for (let i = 0; i < out[key].length; i += 3) for (let k = 0; k < 3; k++) out[key][i + k] += h.wrist[k];
+  for (const [vi, m] of out.pose) out.pose.set(vi, mul(translation(h.wrist), m));
   const n = out.pos.length / 3;
   const B = out.bones;
   // The view's joints in the glove's weights (B: 0 hand, 1 forearm, 2 + 3c
@@ -502,30 +525,66 @@ function gloveOnRig(item, left, rig, S, opts, log) {
   const P = new Float32Array(n * 3), PN = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
     const A = new Array(16).fill(0);
-    for (let b = 0; b < B; b++) { const w = out.wts[i * B + b]; if (w) for (let k = 0; k < 16; k++) A[k] += w * M[b][k]; }
+    // (glove.mjs's weights can fall a little short of a whole: as shares.)
+    let sw = 0;
+    for (let b = 0; b < B; b++) sw += out.wts[i * B + b];
+    for (let b = 0; b < B; b++) { const w = out.wts[i * B + b] / sw; if (w) for (let k = 0; k < 16; k++) A[k] += w * M[b][k]; }
     P.set(apply(A, pointOf3(out.pos, i)), 3 * i);
     PN.set(norm(applyDir(A, pointOf3(out.nor, i))), 3 * i);
   }
-  if (process.env.DBG) { let worst = 0, wi = -1; for (let i = 0; i < n; i++) { const d = len(sub(pointOf3(P, i), pointOf3(out.pos, i))); if (d > worst) { worst = d; wi = i; } } console.log('DBG worst move', worst, 'at', wi, [...out.wts.subarray(wi * B, wi * B + B)].map((x) => x.toFixed(2)).join(' ')); for (const [vi, m] of out.pose) console.log('DBG pose', view.list[vi].name, m.map((x) => x.toFixed(3)).join(' '), 'rest', restOfView(vi).map((x) => x.toFixed(3)).join(' ')); }
+  // Into a sleeve: the cuff drawn out all the way round to `cuffTo`.
+  if (opts.sleeve) {
+    const before = P.slice();
+    drawOut(P, h, opts.cuffTo, S, log);
+    // (What it drew up the arm keeps the weights it had where it was, part
+    // on the hand: 50 mm up the forearm, that swung it out through the
+    // sleeve when the wrist bent (the support hand in the shot and the
+    // reloads). Those points go over to the forearm as glove.mjs's own cuff
+    // does, by how far up the arm they now are: wholly from 24 mm up.)
+    let moved = 0;
+    for (let i = 0; i < n; i++) {
+      if (P[3 * i] === before[3 * i] && P[3 * i + 1] === before[3 * i + 1] && P[3 * i + 2] === before[3 * i + 2]) continue;
+      const a = dot(sub(pointOf3(P, i), h.wrist), h.axis);
+      let sw = 0;
+      for (let b = 0; b < B; b++) sw += out.wts[i * B + b];
+      const fore = out.wts[i * B + 1] / sw;
+      const want = 1 - smoothstep(CUFF_FOREARM, CUFF_HAND, a);
+      if (want <= fore) continue;
+      const k = (1 - want) / (1 - fore);
+      for (let b = 0; b < B; b++) out.wts[i * B + b] = b === 1 ? want * sw : out.wts[i * B + b] * k;
+      moved++;
+    }
+    log(`  ${S}: ${moved} points drawn up the sleeve moved over to the forearm`);
+  }
   // The rig's own skin, its points on this side: for the cuff's weights
   // (all of them) and the palm's (those on the hand group).
   const sidePos = new Float32Array(h.points.length * 3);
   h.points.forEach((v, k) => sidePos.set(pointOf3(rig.pos, v), 3 * k));
   const grid = new Grid(sidePos, 0.01);
   const palmSet = new Set(h.palmBones);
+  const round = roundArm(h);
+  const cyl = (p) => { const [a, ang] = round(p); return [a, 0.03 * Math.cos(ang), 0.03 * Math.sin(ang)]; };
+  const cylPoints = h.points.filter((v) => round(pointOf3(rig.pos, v))[0] < 0.03);
+  const cylPos = new Float32Array(cylPoints.length * 3);
+  cylPoints.forEach((v, k) => cylPos.set(cyl(pointOf3(rig.pos, v)), 3 * k));
+  const cylGrid = new Grid(cylPos, 0.01);
   const weights = []; // per point: Map rig joint -> weight
   for (let i = 0; i < n; i++) {
     const wmap = new Map();
     const addW = (j, w) => { if (w > 0) wmap.set(j, (wmap.get(j) || 0) + w); };
     const p = pointOf3(P, i);
     const hand = out.wts[i * B], fore = out.wts[i * B + 1];
-    const near = (hand > 0 || fore > 0) ? grid.near(p[0], p[1], p[2], 8, 0.08) : [];
+    const near = hand > 0 ? grid.near(p[0], p[1], p[2], 8, 0.08) : [];
     if (fore > 0) {
-      // The rig's skin weights here.
+      // The rig's skin weights here: of its nearest points round the
+      // forearm's line (by how far along it and which way round, not how
+      // far out: so the cuff's layers, and its inside and outside, all
+      // take the same and move together).
       const sum = new Map();
       let total = 0;
-      for (const [k, d] of near) {
-        const v = h.points[k];
+      const c = cyl(p);
+      for (const [k, d] of cylGrid.near(c[0], c[1], c[2], 8, 0.08)) {
+        const v = cylPoints[k];
         const w = 1 / (d + 0.004) ** 2;
         total += w;
         for (let q = 0; q < 4; q++) { const j = rig.jo[4 * v + q], wj = rig.we[4 * v + q]; if (wj) sum.set(j, (sum.get(j) || 0) + w * wj); }
@@ -560,17 +619,7 @@ function gloveOnRig(item, left, rig, S, opts, log) {
   if (opts.bare) clearCuff(P, joints, wts4, rig, h, opts, log);
   // Where its cuff reaches: up the forearm from the wrist, the shortest
   // way round (the least reach of 24 strips round the arm).
-  const e1 = norm(addS(cross(h.axis, [0, 1, 0]), h.axis, 0));
-  const e2 = cross(h.axis, e1);
-  const reach = new Array(24).fill(Infinity);
-  for (let i = 0; i < n; i++) {
-    const d = sub(pointOf3(P, i), h.wrist);
-    const a = dot(d, h.axis);
-    if (a > 0.02) continue;
-    const s2 = ((Math.round(Math.atan2(dot(d, e2), dot(d, e1)) / (2 * Math.PI) * 24) % 24) + 24) % 24;
-    reach[s2] = Math.min(reach[s2], a);
-  }
-  console.log("reach", reach.map((x) => (x * 1000).toFixed(0)).join(" "));
+  const reach = reachRound(P, h, 24);
   const cuffTop = Math.max(...reach.filter(Number.isFinite));
   const cut = opts.sleeve ? opts.sleeveEnd : cuffTop + opts.under;
   if (opts.sleeve && cuffTop > cut - 0.01) log(`  ${S}: WARNING the cuff reaches only ${(cuffTop * 1000).toFixed(0)} mm, not 10 mm past the sleeve's end`);
@@ -612,64 +661,152 @@ function gloveOnRig(item, left, rig, S, opts, log) {
   };
 }
 
-// Pushes the cuff out wherever it's within `clearance` of (or inside) the
-// rig's forearm skin, where that's left showing (up the arm from the wrist
-// to where its hand is cut away, and a little further), in the bind pose.
-// As build_gear.mjs's clear: each point's need is the deepest of its nearest
-// skin points' (by their normals), spread smoothly over the cuff so it keeps
-// its shape, a few times over.
+// Angles round the forearm (radians), from a fixed direction across it.
+function roundArm(h) {
+  const e1 = norm(cross(h.axis, Math.abs(h.axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
+  const e2 = cross(h.axis, e1);
+  return (p) => { const d = sub(p, h.wrist); return [dot(d, h.axis), Math.atan2(dot(d, e2), dot(d, e1))]; };
+}
+// How far up the forearm the cuff reaches (metres from the wrist, negative
+// up the arm) in each of `bins` strips round it.
+function reachRound(P, h, bins) {
+  const at = roundArm(h);
+  const reach = new Array(bins).fill(Infinity);
+  for (let i = 0; i < P.length / 3; i++) {
+    const [a, ang] = at(pointOf3(P, i));
+    if (a > 0.02) continue;
+    const s2 = ((Math.round(ang / (2 * Math.PI) * bins) % bins) + bins) % bins;
+    reach[s2] = Math.min(reach[s2], a);
+  }
+  return reach;
+}
+// A cuff going up a sleeve, drawn out all the way round to `to`: glove.mjs
+// draws it out only by its longest reach, and a cuff cut on a slant, or with
+// a slit or a notch, would stop short of the sleeve's end somewhere round it
+// and leave a gap there. Strip by strip round the arm (smoothly from one to
+// the next), the cuff from 12 mm above where it stops in that strip is
+// stretched along the forearm until it reaches `to`.
+function drawOut(P, h, to, S, log) {
+  const BINS = 36;
+  const raw = reachRound(P, h, BINS);
+  // (Each strip the shortest of it and its neighbours: an empty strip
+  // between two flaps takes theirs.)
+  const reach = raw.map((_, b) => Math.max(...[-1, 0, 1].map((d) => raw[(b + d + BINS) % BINS]).filter(Number.isFinite)));
+  const at = roundArm(h);
+  const gauss = (ang, f) => {
+    let sw = 0, sk = 0;
+    for (let b = 0; b < BINS; b++) {
+      let d = ang - (b / BINS) * 2 * Math.PI;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      const w = Math.exp(-((d / (1.2 * 2 * Math.PI / BINS)) ** 2));
+      sw += w; sk += w * f(b);
+    }
+    return sk / sw;
+  };
+  const smoothReach = (ang) => gauss(ang, (b) => reach[b]);
+  const factor = (ang) => {
+    // (A Gaussian over the strips round the arm.)
+    let sw = 0, sk = 0;
+    for (let b = 0; b < BINS; b++) {
+      let d = ang - (b / BINS) * 2 * Math.PI;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      const w = Math.exp(-((d / (1.2 * 2 * Math.PI / BINS)) ** 2));
+      const from = reach[b] + 0.012;
+      const k = reach[b] > to ? (to - from) / (reach[b] - from) : 1;
+      sw += w; sk += w * k;
+    }
+    return sk / sw;
+  };
+  let most = 1;
+  for (let i = 0; i < P.length / 3; i++) {
+    const p = pointOf3(P, i);
+    const [a, ang] = at(p);
+    if (a > 0.02) continue;
+    const k = factor(ang);
+    if (k <= 1) continue;
+    // (Stretched from 12 mm above where it stops near here, smoothly round.)
+    const from = smoothReach(ang) + 0.012;
+    if (a >= from) continue;
+    P.set(addS(p, h.axis, (a - from) * (k - 1)), 3 * i);
+    most = Math.max(most, k);
+  }
+  log(`  ${S}: cuff drawn out to ${(to * 1000).toFixed(0)} mm all round (it reached ${(Math.max(...raw.filter(Number.isFinite)) * 1000).toFixed(0)} mm at its shortest; stretched up to ${most.toFixed(2)} times)`);
+}
+
+// Widens the cuff wherever it's within `clearance` of (or inside) the rig's
+// bare forearm, in the bind pose, so the skin never shows through it: round
+// the forearm's line, strip by strip (4 mm along it, 24 round it), every
+// point of the cuff in a strip is moved out by the same share, the most
+// any of them needs there (so its layers, a strap over the cuff, its lining
+// inside it, stay as they are), smoothed over the strips near it and eased
+// off from the wrist to 2 cm into the hand.
 function clearCuff(P, joints, wts4, rig, h, opts, log) {
-  const skin = [];
+  const at = roundArm(h);
+  const STEP = 0.004, ANG = 24;
+  const ai = (a) => Math.round(a / STEP), si = (ang) => ((Math.round(ang / (2 * Math.PI) * ANG) % ANG) + ANG) % ANG;
+  const radius = (p, a) => len(sub(sub(p, h.wrist), mulS(h.axis, a)));
+  // The skin's outer radius in each strip (up the arm from the wrist).
+  const skinR = new Map();
   for (const v of h.points) {
     const p = pointOf3(rig.pos, v);
-    const a = dot(sub(p, h.wrist), h.axis);
-    if (a < -0.12 || a > 0.01) continue;
-    skin.push(v);
+    const [a, ang] = at(p);
+    if (a < -0.15 || a > 0.004) continue;
+    const k = `${ai(a)},${si(ang)}`;
+    skinR.set(k, Math.max(skinR.get(k) ?? 0, radius(p, a)));
   }
-  const sp = new Float32Array(skin.length * 3), sn = new Float32Array(skin.length * 3);
-  skin.forEach((v, k) => { sp.set(pointOf3(rig.pos, v), 3 * k); sn.set(pointOf3(rig.nor, v), 3 * k); });
-  const grid = new Grid(sp, 0.01);
-  const n = P.length / 3;
-  const cuff = [];
-  for (let i = 0; i < n; i++) if (dot(sub(pointOf3(P, i), h.wrist), h.axis) < 0.015) cuff.push(i);
-  const margin = opts.clearance;
-  const need = () => {
-    const out = new Map();
-    let worst = 0;
-    for (const i of cuff) {
-      const [x, y, z] = pointOf3(P, i);
-      let push = 0, dir = null;
-      for (const [b] of grid.near(x, y, z, 3, 0.03)) {
-        const nb = pointOf3(sn, b);
-        const d = (x - sp[3 * b]) * nb[0] + (y - sp[3 * b + 1]) * nb[1] + (z - sp[3 * b + 2]) * nb[2];
-        if (margin - d > push) { push = margin - d; dir = nb; }
-      }
-      if (push > 0 && push < 0.02) { out.set(i, mulS(dir, push)); worst = Math.max(worst, push); }
-    }
-    return { out, worst };
+  const skinAt = (a, ang) => {
+    const A = Math.min(ai(a), ai(0.004)), S2 = si(ang);
+    let r = 0;
+    for (let da = -1; da <= 1; da++) r = Math.max(r, skinR.get(`${A + da},${S2}`) ?? 0);
+    return r;
   };
-  const cp = new Float32Array(cuff.length * 3);
-  cuff.forEach((i, k) => cp.set(pointOf3(P, i), 3 * k));
-  const cgrid = new Grid(cp, 0.01);
-  const nbrs = cuff.map((i) => cgrid.near(P[3 * i], P[3 * i + 1], P[3 * i + 2], 300, 0.02).map(([k, d]) => [cuff[k], d]));
-  let state = need();
-  log(`  ${h === rig.hands.L ? 'L' : 'R'}: cuff into the forearm's skin: ${state.out.size} points, deepest ${(state.worst * 1000).toFixed(1)} mm`);
-  for (let pass = 0; pass < 6 && state.out.size; pass++) {
-    const move = new Map();
-    cuff.forEach((i, k) => {
-      let best = 0, m = null;
-      for (const [u, d] of nbrs[k]) {
-        const nd = state.out.get(u);
-        if (!nd) continue;
-        const w = Math.exp(-((d / 0.008) ** 2));
-        if (w * len(nd) > best) { best = w * len(nd); m = mulS(nd, w); }
-      }
-      if (m) move.set(i, m);
-    });
-    for (const [i, m] of move) P.set(addS(pointOf3(P, i), m, 1.05), 3 * i);
-    state = need();
+  // The share each strip of the cuff needs.
+  const n = P.length / 3;
+  const need = new Map();
+  let count = 0;
+  for (let i = 0; i < n; i++) {
+    const p = pointOf3(P, i);
+    const [a, ang] = at(p);
+    if (a > 0.02 || a < -0.15) continue;
+    const r = radius(p, a), want = skinAt(a, ang) + opts.clearance;
+    // (Points well inside the skin aren't the cuff's: the glove's insides
+    // at the wrist, or across the palm.)
+    if (!want || r >= want || r < 0.7 * (want - opts.clearance)) continue;
+    count++;
+    const k = `${ai(a)},${si(ang)}`;
+    need.set(k, Math.max(need.get(k) ?? 1, want / r));
   }
-  log(`    after: ${state.out.size} points still within ${margin * 1000} mm, deepest ${(state.worst * 1000).toFixed(1)} mm`);
+  // (Smoothed: each strip takes the most of those near it, eased off over
+  // 8 mm along the arm and two strips round it.)
+  const shareAt = (a, ang) => {
+    const A = ai(a), S2 = si(ang);
+    let k = 1;
+    for (let da = -4; da <= 4; da++) for (let ds = -3; ds <= 3; ds++) {
+      const b = (S2 + ds + ANG) % ANG;
+      const x = need.get(`${A + da},${b}`);
+      if (!x) continue;
+      // (By the point's own distance from the strip's middle, so the share
+      // changes smoothly from point to point.)
+      let dAng = ang - (b / ANG) * 2 * Math.PI;
+      dAng = Math.atan2(Math.sin(dAng), Math.cos(dAng)) / (2 * Math.PI / ANG);
+      const w = Math.exp(-(((a - (A + da) * STEP) / 0.008) ** 2) - (dAng / 1.5) ** 2);
+      k = Math.max(k, 1 + (x - 1) * w);
+    }
+    return k;
+  };
+  let most = 0;
+  for (let i = 0; i < n; i++) {
+    const p = pointOf3(P, i);
+    const [a, ang] = at(p);
+    if (a > 0.02 || a < -0.16) continue;
+    const k = 1 + (shareAt(a, ang) - 1) * (1 - Math.min(1, Math.max(0, a / 0.02)) ** 2);
+    if (k <= 1) continue;
+    const c = addS(h.wrist, h.axis, a);
+    const q = add(c, mulS(sub(p, c), k));
+    most = Math.max(most, len(sub(q, p)));
+    P.set(q, 3 * i);
+  }
+  log(`  ${h === rig.hands.L ? 'L' : 'R'}: cuff widened over the bare forearm: ${count} points were within ${opts.clearance * 1000} mm of the skin; moved out by up to ${(most * 1000).toFixed(1)} mm`);
 }
 
 // --- Both hands, simplified, and the file -----------------------------------

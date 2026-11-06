@@ -8,7 +8,7 @@
 //
 // The file's root is the eye the arms were posed for: put it at the gun
 // layer's camera and the gun is where its maker framed it, low and a little
-// right. The game holds it where the PF-45's held at the hip (its RIG in
+// right. The game holds it where the M1911's held at the hip (its RIG in
 // viewmodel.js). Its points are in the `gun` node on the frame bone, which
 // in the idle pose is gun space (metres, +X right, +Y up, -Z forward) moved
 // to the frame bone (frame, below: where that is in the idle pose, in the

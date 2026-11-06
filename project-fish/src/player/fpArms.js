@@ -24,10 +24,11 @@
 // If his arms can't reach where the hands are, the whole gun is drawn in
 // towards his shoulders by the difference, so the hands never leave it.
 //
-// A gun that brings its own arms (none yet, see src/viewmodel/
-// animatedGun.js) is held by those: his arms aren't drawn in the gun layer
-// then, nothing pulls the gun in or fits his fingers, and his body's arms
-// (for the shadow) just reach for where its wrists are.
+// A gun that brings its own arms (the Beretta 92FS and the FN 502, see
+// src/viewmodel/animatedGun.js) is held by those: his arms aren't drawn in
+// the gun layer then, and nothing pulls the gun in or fits his fingers to
+// it. His body's arms (seen in photo mode, and in his shadow) take the hold
+// its own arms' clips have: see reachOwnArms.
 
 import * as THREE from 'three';
 import { bonesOf, firstPersonTag } from '../soldier.js';
@@ -58,7 +59,36 @@ const TIP = 0.85; // a fingertip's length, of the bone before it
 
 const v = () => new THREE.Vector3();
 // Scratch vectors for reachOwnArms.
-const OWN = { target: new THREE.Vector3(), shoulder: new THREE.Vector3(), out: new THREE.Vector3() };
+const OWN = {
+  target: new THREE.Vector3(), shoulder: new THREE.Vector3(), out: new THREE.Vector3(),
+  wrist: new THREE.Vector3(), mid: new THREE.Vector3(), index: new THREE.Vector3(), pinky: new THREE.Vector3(),
+  a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), d: new THREE.Vector3(), e: new THREE.Vector3(),
+  turn: new THREE.Quaternion(), his: new THREE.Quaternion(), q: new THREE.Quaternion(), p: new THREE.Quaternion(),
+  m: new THREE.Matrix4(),
+};
+// A gun's own arms' finger bones, by the names its converter gives them
+// (tools/blender/): in the rigs' chain order (DIGITS), each from its first
+// knuckle out, and its hand bone. (Its pinky is `pinky` or `little`.)
+const OWN_DIGITS = [['index'], ['middle'], ['ring'], ['pinky', 'little'], ['thumb']];
+function ownHand(root, s) {
+  const bone = (name) => root.getObjectByName(`${name}_${s}`) || null;
+  const hand = bone('hand');
+  const digits = OWN_DIGITS.map((names) => {
+    for (const n of names) {
+      const chain = [1, 2, 3].map((k) => bone(`${n}${k}`));
+      if (chain.every(Boolean)) return chain;
+    }
+    return null;
+  });
+  return hand && digits.every(Boolean) ? { hand, digits } : null;
+}
+// The rotation whose columns are (along, across, their normal), into `out`.
+function frameInto(out, along, across) {
+  const x = along.normalize();
+  const y = across.addScaledVector(x, -across.dot(x)).normalize();
+  const z = OWN.c.crossVectors(x, y);
+  return out.setFromRotationMatrix(OWN.m.makeBasis(x, y, z));
+}
 const q = () => new THREE.Quaternion();
 
 // A rotation whose columns are the frame (along, across, normal) built from
@@ -175,9 +205,12 @@ export class FirstPersonArms {
           : b.getWorldPosition(v()).lerp(digit[k - 1].getWorldPosition(v()), -TIP);
         return b.worldToLocal(end);
       }));
-      const shared = { rig, handMap, wristAt, fingerMap, reach, palmOut, ends };
+      const shared = { rig, handMap, wristAt, fingerMap, reach, palmOut, ends, hisMid, hisAcross };
       this.arms[side] = Object.assign(arm, shared);
       this.bodyArms[side] = Object.assign(bodyArm, shared);
+      // (His body's finger bones as they were, to turn from each frame while
+      // a gun with its own arms is held: see reachOwnArms.)
+      bodyArm.digitRest = bodyArm.digits.map((bones) => bones.map((b) => b.quaternion.clone()));
     }
     // His sleeves and gloves in the gun layer, with the arms' copy's bones.
     this.inGunLayer = new Map(); // his mesh in the arms' copy -> its copy in the gun layer
@@ -345,21 +378,62 @@ export class FirstPersonArms {
   }
 
   // A gun with its own arms in the hands: no pull (it's let go of at once:
-  // the gun was out of view as it was swapped), and his body's arms reach
-  // for its wrists (gun layer camera space), the elbows hanging down and out
-  // as when he holds the others, the hands as they rest.
+  // the gun was out of view as it was swapped), and his body's arms (seen
+  // in photo mode, and in his shadow) take the hold its own arms' clips
+  // have: each of his hands turned as its hand is, his middle knuckle on
+  // its middle knuckle, each finger bone pointing as its matching one does,
+  // and his arm reaching there by two-bone IK from his shoulder, the elbow
+  // hanging down and out as when he holds the others. (Its own arms, in the
+  // gun layer, aren't changed: they play its clips as made.)
   reachOwnArms(wrists, C, Cq) {
     const { viewmodel } = this;
     viewmodel.holder.position.sub(viewmodel.reachPull);
     viewmodel.reachPull.set(0, 0, 0);
+    const root = viewmodel.current && viewmodel.current.rig && viewmodel.current.rig.root;
+    if (!this.ownHands || this.ownHands.root !== root) {
+      this.ownHands = { root, right: root && ownHand(root, 'R'), left: root && ownHand(root, 'L') };
+    }
     // (It runs every frame: it reuses the same few vectors.)
     for (const [side, arm] of Object.entries(this.bodyArms)) {
       if (!wrists[side]) continue;
+      const its = this.ownHands[side];
       const target = OWN.target.copy(wrists[side]).applyMatrix4(C);
+      let turn = null;
+      if (its) {
+        // Its hand's frame in the world, from its knuckles; his hand turned
+        // to match, and moved so his middle knuckle is on its.
+        const wristAt = its.hand.getWorldPosition(OWN.wrist).applyMatrix4(C);
+        const mid = its.digits[1][0].getWorldPosition(OWN.mid).applyMatrix4(C);
+        const index = its.digits[0][0].getWorldPosition(OWN.index).applyMatrix4(C);
+        const pinky = its.digits[3][0].getWorldPosition(OWN.pinky).applyMatrix4(C);
+        frameInto(OWN.turn, OWN.a.subVectors(mid, wristAt), OWN.b.subVectors(pinky, index));
+        frameInto(OWN.his, OWN.a.copy(arm.hisMid), OWN.b.copy(arm.hisAcross));
+        turn = OWN.turn.multiply(OWN.his.invert());
+        target.copy(mid).sub(OWN.a.copy(arm.hisMid).applyQuaternion(turn));
+      }
       const shoulder = arm.upper.getWorldPosition(OWN.shoulder);
       const out = OWN.out.set(side === 'right' ? 1 : -1, -1.4, 0.35).applyQuaternion(Cq);
       const pole = shoulder.lerp(target, 0.5).addScaledVector(out.normalize(), 0.3);
       twoBoneIK(arm.upper, arm.fore, arm.hand, target, pole);
+      if (!turn) continue;
+      arm.hand.quaternion.copy(arm.fore.getWorldQuaternion(OWN.q).invert().multiply(turn));
+      arm.hand.updateMatrixWorld(true);
+      // Each finger bone from where it was, turned to point as its does.
+      arm.digits.forEach((bones, c) => bones.forEach((b, k) => {
+        b.quaternion.copy(arm.digitRest[c][k]);
+        b.updateMatrixWorld(true);
+        const chain = its.digits[c];
+        const from = b.getWorldPosition(OWN.a);
+        const hisDir = (k < bones.length - 1 ? bones[k + 1].getWorldPosition(OWN.b) : OWN.b.copy(from).sub(bones[k - 1].getWorldPosition(OWN.c)).add(from)).sub(from);
+        const p0 = chain[k].getWorldPosition(OWN.c).applyMatrix4(C);
+        const itsDir = (k < chain.length - 1 ? chain[k + 1].getWorldPosition(OWN.d).applyMatrix4(C) : OWN.d.copy(p0).sub(chain[k - 1].getWorldPosition(OWN.e).applyMatrix4(C)).add(p0)).sub(p0);
+        if (hisDir.lengthSq() < 1e-12 || itsDir.lengthSq() < 1e-12) return;
+        const delta = OWN.q.setFromUnitVectors(hisDir.normalize(), itsDir.normalize());
+        // (A world turn, as a turn in the bone's parent's frame.)
+        const parent = b.parent.getWorldQuaternion(OWN.his);
+        b.quaternion.premultiply(OWN.p.copy(parent).invert().multiply(delta).multiply(parent));
+        b.updateMatrixWorld(true);
+      }));
     }
   }
 

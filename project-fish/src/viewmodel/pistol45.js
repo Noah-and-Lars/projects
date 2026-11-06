@@ -33,7 +33,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // (behind its pin) rises when the slide locks back; the hammer, modelled down
 // and cocked back this far (radians) about its pin; and the magazine
 // release's face (pressed towards +X).
-// Reloading, the PF-45 comes up turned further over (canted towards the
+// Reloading, the M1911 comes up turned further over (canted towards the
 // support hand) than the first pistol, so the magazine well faces it.
 const RELOAD_POSE45 = { position: V(-0.05, 0.15, 0.11), turn: [0.5, -0.12, -0.62] };
 

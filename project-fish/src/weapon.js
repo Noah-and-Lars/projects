@@ -187,7 +187,7 @@ export class Pistol {
       const t = inspect.time;
       const magazineOut = !own && t >= INSPECT.magOut && t < INSPECT.magIn;
       const slideHeld = !own && inspect.check && t >= INSPECT.pull && t < INSPECT.release;
-      if (inspect.cut && !magazineOut && !slideHeld) inspect.fade -= dt / INSPECT.fade;
+      if (inspect.cut && !magazineOut && !slideHeld) inspect.fade -= dt / (this.spec.inspectFade || INSPECT.fade);
       else inspect.time += inspect.cut ? dt * INSPECT.hurry : own ? dt : this.inspectStep(inspect, dt);
       for (const [step, at] of own ? [] : Object.entries(INSPECT_STEPS)) {
         if ((step === 'slidePull' || step === 'slideRelease') && !inspect.check) continue;

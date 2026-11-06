@@ -78,16 +78,20 @@ const GUN_KINDS = {
   pistol45: { rules: PISTOL45, model: new URL('../../assets/pistol45.glb', import.meta.url), fallback: createPistol45, points: MODEL45, fallbackPoints: FALLBACK45 },
   beretta: {
     rules: BERETTA, model: new URL('../../assets/beretta.glb', import.meta.url), animated: MODEL_BERETTA,
-    // (Its rear sight where the PF-45's is at the hip: see RIG.)
+    // (Its rear sight where the M1911's is at the hip: see RIG.)
     rig: { sightAsAtHip: MODEL45.sights, kick: 0.4 },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(BERETTA),
   },
   fn502: {
     rules: FN502, model: new URL('../../assets/fn502.glb', import.meta.url), animated: MODEL_FN502,
-    // (Held as its maker framed it, the rig's root at the eye: moved in to
-    // where the M1911's sights are at the hip, the sleeves at its back end
-    // would come into view. A narrower view at the hip shows it as big.)
-    rig: { viewFov: 50, kick: 0.4 },
+    // (Its maker framed it close to the eye, its arms ending just past the
+    // elbows, out of view. Moved out as far as the M1911's hold, those ends
+    // would come into view. It's held 3 cm further out, 3 cm lower and 2 cm
+    // to the right than its maker had it, with a slightly wider view at the
+    // hip: as far as the arms' ends stay out of view through every clip, at
+    // 16:9, 21:9 and 4:3, with a margin. That shows it a little bigger than
+    // the others, its rear sight about where theirs is.)
+    rig: { hip: new THREE.Vector3(0.02, -0.03, -0.03), viewFov: 64, kick: 0.4 },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(FN502),
   },
 };
@@ -621,7 +625,7 @@ const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 // arms were posed for: placed there, the gun would sit where its maker
 // framed it. It's placed in the gun's pose to sit at the eye moved by `hip`
 // (gun space) when the gun is at the hip (`at` is the eye there): the
-// Beretta's by as much as puts its rear sight where the PF-45's is at the
+// Beretta's by as much as puts its rear sight where the M1911's is at the
 // hip (`sightAsAtHip`, that gun's sights), so it's held as the others are.
 // It goes up to the sights and moves with the weapon physics from there,
 // the whole rig as one, like the others. Each gun's `rig` in GUN_KINDS can
@@ -786,6 +790,8 @@ export class Viewmodel {
     // Whether a gun with its own arms is being lowered holding its pose
     // (put away mid-reload: see update and updateSwitch).
     this.rigHeld = false;
+    // (What a gun with its own arms is told each frame: one object, reused.)
+    this.rigState = { clip: 'idle', time: 0, toIdle: 0, empty: false, shotDt: 0, moving: { walk: 0, run: 0 }, slide: 'clip', triggerPull: 0 };
     this.rigFrameSeconds = 0; // real time this frame, for its shots (see animateRig)
     this.wristRight = new THREE.Vector3();
     this.wristLeft = new THREE.Vector3();
@@ -1179,12 +1185,13 @@ export class Viewmodel {
 
   // Lowers the gun out of view, swaps it, and raises the other. (A gun with
   // its own arms plays its hide and draw animations instead, if it has
-  // them, and takes their time. One being lowered holding its pose, put away
-  // mid-reload or without a hide animation, is lowered like the others; it
-  // isn't brought straight back up if it's asked for again: a mid-reload
-  // pose has the support hand down at the belt, and going over from there
-  // to the hold in view would swing that arm up past the eye. It goes on
-  // down out of view and is drawn afresh.)
+  // them, and takes their time; without them it's lowered and raised like
+  // the others, in its rest pose, and comes straight back up if it's asked
+  // for again. One put away mid-reload is lowered like the others holding
+  // its pose, and isn't brought straight back up if it's asked for again: a
+  // mid-reload pose has the support hand down at the belt, and going over
+  // from there to the hold in view would swing that arm up past the eye. It
+  // goes on down out of view and is drawn afresh.)
   updateSwitch(dt) {
     if (!this.switching) return;
     const rig = this.current && this.current.rig;
@@ -1413,7 +1420,7 @@ export class Viewmodel {
     // updateSwitch.)
     const ownRig = this.current && this.current.rig;
     if (!ownRig || !this.switching) this.rigHeld = false;
-    else if (this.switching.to !== this.shownGun && (ownRig.reloading || !ownRig.has('hide'))) this.rigHeld = true;
+    else if (this.switching.to !== this.shownGun && ownRig.reloading) this.rigHeld = true;
     const raising = Boolean(this.switching) && this.switching.to === this.shownGun && !this.rigHeld;
     const byClip = ownRig && !this.rigHeld && ownRig.has(raising ? 'draw' : 'hide');
     const lowered = byClip ? 0 : smoothstep(0, 1, this.lowered);
@@ -1663,8 +1670,19 @@ export class Viewmodel {
     // (Its shots move on in real time, as the fire rate does. Walking and
     // running, its walk and run loops play, if it has them, as much as the
     // gun layer's own bob and sprint pose have come in.)
-    const moving = { walk: this.motion.bobAmount * (1 - this.motion.sprint), run: this.motion.bobAmount * this.motion.sprint };
-    rig.update(dt, { clip, time, toIdle, empty, shotDt: this.rigFrameSeconds, moving, slide, triggerPull: this.triggerPull });
+    // (Aiming, they're kept down as much as the gun layer's bob is.)
+    const k = this.motion.bobAmount * (1 - (1 - MOTION.aiming.bob) * (this.lastAim || 0));
+    const s = this.rigState;
+    s.moving.walk = k * (1 - this.motion.sprint);
+    s.moving.run = k * this.motion.sprint;
+    s.clip = clip;
+    s.time = time;
+    s.toIdle = toIdle;
+    s.empty = empty;
+    s.shotDt = this.rigFrameSeconds;
+    s.slide = slide;
+    s.triggerPull = this.triggerPull;
+    rig.update(dt, s);
   }
 
   // Where a gun with its own arms is held: at the eye moved to the hip, a
