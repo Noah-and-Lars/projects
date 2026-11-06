@@ -15,11 +15,20 @@
 // so the player's body leaves it out of the first-person camera but keeps
 // its shadow, as it does his head.
 //
-// Gloves: the slot is here with only his own gloves for now. Another glove
-// is added as an option with a `file` (made like the others, tagged
-// firstPerson 'arms'); the first-person arms (player/fpArms.js) are dressed
-// by a Wardrobe too, with `slots: ['gloves']`, so a new glove is drawn in
-// the gun layer as well (see dress()).
+// Gloves are made from downloaded gloves in their own (flat, open-hand)
+// pose and bound to his hand bones in that pose (tools/gear/glove.mjs), so
+// his bones bend them into whatever his hands do. They're tagged
+// firstPerson 'arms': the player's body leaves them out of the first-person
+// camera (keeping their shadow), and the first-person arms
+// (player/fpArms.js), dressed by a Wardrobe too with `slots: ['gloves']`,
+// draw them in the gun layer instead. Each glove file carries how thick its
+// fingers are to his own gloves' (gear.thickness in the node's extras), for
+// fitting the fingers to the gun.
+//
+// (They're bound to his hand bones by name: CC_Base_[LR]_Hand, the
+// ForearmTwist02 for the cuff, and three bones for each finger and the
+// thumb. A skeleton with other bones could wear one by being given those
+// names, or by driving a copy of his hand bones from its own.)
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -69,7 +78,10 @@ export const SLOTS = [
   {
     id: 'gloves', name: 'Gloves',
     options: [
-      { id: 'field', name: 'Field gloves', about: 'His own gloves.', own: true },
+      { id: 'field', name: 'Field gloves', about: 'His own gloves, with a hard knuckle guard.', own: true },
+      { id: 'black', name: 'Black gloves', about: 'Black gloves with a padded knuckle guard, knuckle pads and a wide wrist strap.', file: gearFile('gloves_black') },
+      { id: 'olive', name: 'Olive gloves', about: 'Worn olive gloves with moulded knuckles and a long strapped cuff.', file: gearFile('gloves_olive') },
+      { id: 'camo', name: 'Camo gloves', about: 'Camouflage gloves with a hard knuckle guard and a tan leather palm.', file: gearFile('gloves_camo') },
     ],
   },
 ];

@@ -191,9 +191,13 @@ export class FirstPersonArms {
     if (body.wardrobe) {
       body.wardrobe.dress(model, {
         slots: ['gloves'],
-        add: (piece) => this.inGunLayer.set(piece, this.addToGunLayer(piece)),
+        add: (piece) => {
+          this.inGunLayer.set(piece, this.addToGunLayer(piece));
+          this.setThickness(piece.userData.gear && piece.userData.gear.thickness);
+        },
         remove: (piece) => {
           const mesh = this.inGunLayer.get(piece);
+          if (piece.userData.gear && this.gloves === piece.userData.gear.thickness) this.setThickness(null);
           if (mesh) {
             mesh.removeFromParent();
             this.meshes.splice(this.meshes.indexOf(mesh), 1);
@@ -213,6 +217,23 @@ export class FirstPersonArms {
     for (const gun of Object.values(viewmodel.guns || {})) if (gun.pistol && !gun.animated) this.gunVolume(gun.pistol);
     this.ready = true;
     return true;
+  }
+
+  // How thick the gloves he's wearing are, to his own (by bone: each of
+  // the fingers' and the thumb's three, and the palm; null: his own), so
+  // their fingers rest on the gun as his do: FIT's radii scaled by it.
+  setThickness(thickness) {
+    const k = (x) => THREE.MathUtils.clamp(Number(x) || 1, 0.7, 1.4);
+    const t = thickness || {};
+    this.gloves = thickness ? t : null;
+    this.fit = {
+      ...FIT,
+      radius: {
+        finger: FIT.radius.finger.map((r, i) => r * k(t.finger && t.finger[i])),
+        thumb: FIT.radius.thumb.map((r, i) => r * k(t.thumb && t.thumb[i])),
+        palm: FIT.radius.palm * k(t.palm),
+      },
+    };
   }
 
   // One of his meshes (or a glove from his outfit), on the arms' copy's
