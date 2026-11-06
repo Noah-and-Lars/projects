@@ -84,8 +84,10 @@ const GUN_KINDS = {
   },
   fn502: {
     rules: FN502, model: new URL('../../assets/fn502.glb', import.meta.url), animated: MODEL_FN502,
-    // (Its rear sight where the M1911's is at the hip, as the Beretta's.)
-    rig: { sightAsAtHip: MODEL45.sights, kick: 0.4 },
+    // (Held as its maker framed it, the rig's root at the eye: moved in to
+    // where the M1911's sights are at the hip, the sleeves at its back end
+    // would come into view. A narrower view at the hip shows it as big.)
+    rig: { viewFov: 50, kick: 0.4 },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(FN502),
   },
 };
