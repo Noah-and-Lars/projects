@@ -70,10 +70,9 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import linear_to_srgb, log  # noqa: E402
-from rigged_gltf import (Rig, Writer, clip_pose, cut, inside, loose_pieces, matrix_quat, node_matrix,  # noqa: E402
-                         quat_matrix, read_gltf, sample, skin, trs_matrix, webp_bytes, write_clips, write_mesh,
-                         write_rig)
-from texture_edit import box_blur, clone_over, deviation_mask, image_array, rub_out, store, to_linear  # noqa: E402
+from rigged_gltf import (Rig, Writer, clip_pose, cut, inside, matrix_quat, node_matrix, quat_matrix,  # noqa: E402
+                         read_gltf, skin, trs_matrix, webp_bytes, write_clips, write_mesh, write_rig)
+from texture_edit import clone_over, deviation_mask, image_array, rub_out, store, to_linear  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
 SOURCE, OUT_GLB = ARGS[0], ARGS[1]
@@ -519,9 +518,6 @@ def measure(rig, meshes, clips):
     gun = meshes['gun']
     gp = skin(rig, gun, idle)
     own = (np.c_[gp, np.ones(len(gp))] @ to_own.T)[:, :3]
-    pieces = loose_pieces(gun['position'], gun['triangles'])
-    vert_piece = np.zeros(len(gp), np.int64)
-    vert_piece[gun['triangles'].ravel()] = np.repeat(pieces, 3)
     dom = gun['joints'][np.arange(len(gp)), gun['weights'].argmax(1)]
     out['gun_length'] = round(float(np.ptp(own[:, 2])), 4)
     out['gun_height'] = round(float(np.ptp(own[:, 1])), 4)
