@@ -96,7 +96,7 @@ export const INSPECT_STEPS = {
 };
 
 export class Pistol {
-  // spec: the gun's numbers (PISTOL or PISTOL45 in src/shared/config.js).
+  // spec: the gun's numbers (PISTOL, PISTOL45 or PISTOL23 in src/shared/config.js).
   constructor(spec = PISTOL) {
     this.spec = spec;
     this.ammo = spec.magazine;
@@ -233,7 +233,8 @@ export class Pistol {
       return events;
     }
 
-    if (inspectKey && ready && !busy && !this.pulls.length && this.cooldown === 0) {
+    // (A gun with no inspect animation, its spec's inspect false, ignores the key.)
+    if (inspectKey && this.spec.inspect !== false && ready && !busy && !this.pulls.length && this.cooldown === 0) {
       this.inspect = { time: 0, done: new Set(), check: !this.slideLocked && this.chamberCheck, cut: false, fade: 1 };
       events.push('inspect');
       return events;

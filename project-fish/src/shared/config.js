@@ -130,6 +130,40 @@ export const PISTOL45 = {
   inspectHolds: { right: 0.9, left: 0.9, magazine: 0.8, chamber: 0.6 },
 };
 
-// The guns the player carries, in the order of their keys (1, 2).
-export const LOADOUT = ['pistol', 'pistol45'];
-export const GUNS = { pistol: PISTOL, pistol45: PISTOL45 };
+// The third pistol: a big, heavy .45 with a long barrel. It comes with its
+// own arms and its own animations (see src/viewmodel/pistol23.js), so its
+// times follow those clips: one shot's slide cycle takes 0.2 s, and an empty
+// reload plays its one reload clip (3.73 s) from start to end; with rounds
+// left it eases out of that clip once the support hand is back on the grip,
+// as there's no slide to drop (3.2 s, MODEL23.reloadWithRounds). Its weight and
+// recoil buffer make it kick less than the PF-45 for the same cartridge, and
+// it's the most accurate of the three, but the hardest to keep on target on
+// the move.
+export const PISTOL23 = {
+  name: 'PF-23',
+  fireInterval: 0.2, // 300 rounds a minute at most: the slide's whole cycle in the shoot clip
+  magazine: 12,
+  reserve: 48,
+  // Both play the reload clip at its own pace: from empty all of it, with
+  // rounds left (the slide held forward) till the hand is back on the grip,
+  // then into the idle pose.
+  reloadTime: 3.2,
+  emptyReloadTime: 3.73,
+  // When things happen, as fractions of the reload: the clip's own times
+  // (src/viewmodel/pistol23.js) over the reload's time. The old magazine falls
+  // clear either way (nothing catches it: magCaught is never reached), the
+  // support hand takes the fresh one at the belt, pushes it home, and is back
+  // on the grip; from empty, the thumb then drops the slide.
+  reloadSteps: {
+    empty: { magOut: 0.145, magGrab: 0.259, magIn: 0.632, handOn: 0.737, slideRelease: 0.822 },
+    catching: { magOut: 0.169, magCaught: 2, magGrab: 0.302, magIn: 0.737, handOn: 0.859 },
+  },
+  range: 160,
+  spread: { hip: 1.9, aim: 0.1, moving: 1.5 },
+  recoil: 1.3,
+  inspect: false, // it has no inspect animation: F does nothing with it in the hands
+};
+
+// The guns the player carries, in the order of their keys (1, 2, 3).
+export const LOADOUT = ['pistol', 'pistol45', 'pistol23'];
+export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, pistol23: PISTOL23 };

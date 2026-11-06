@@ -13,6 +13,8 @@
 // The file's root is the eye the arms were posed for: put it at the gun
 // layer's camera and the gun is where its maker framed it (a little right of
 // the middle, the sights just under the eye, the rear sight 0.29 m ahead).
+// The game holds it lower, further right and further out than that at the
+// hip, where the PF-45 is held (RIG in viewmodel.js).
 // Its bones are turned the game's way round, so in the idle pose the gun's
 // bones are gun space moved to their pivots (metres, +X right, +Y up, -Z
 // forward). The bones the game uses:
@@ -34,7 +36,8 @@
 //   tips up 6 degrees, and is back where it was by 0.3. The support hand
 //   stays on the grip, wrapped round the shooting hand, and rides it out.
 // - reload: an empty reload, slide locked back from the start (49 mm, easing
-//   on to 66 mm as the hand works). The gun comes up and over to the left;
+//   on to 66 mm as the hand works; the game keeps it at 49, where the slide
+//   stop holds it). The gun comes up and over to the left;
 //   the support hand lets go at 0.1 s and drops to the belt (out of sight
 //   from 0.35); the magazine is let go at 0.54 and falls clear (out of sight
 //   at 0.63); the new one is in the support hand at 0.97 (the same magazine,
@@ -45,7 +48,8 @@
 //   gun dips with it and settles back by the end, 3.73.
 // - draw: the gun comes up from low and turned in front of the chest, both
 //   hands already on it; in sight from 0.11 s, up and on target at 0.33, a
-//   small dip and settled at the end, 0.83.
+//   small dip and settled at the end, 0.83. It can fire from 0.5 s on (a
+//   shot then plays on top of the rest of the draw).
 // - hide: the reverse, both hands on it: it leaves at once, is out of sight
 //   at 0.28 s and down at 0.37.
 // (In sight means inside the game's 62 degree gun layer view.)
@@ -90,7 +94,16 @@ export const MODEL23 = {
       supportHandOff: 0.1, supportHandOutOfSight: 0.35, magReleased: 0.542, magOutOfSight: 0.633, newMagInHand: 0.967, newMagInSight: 1.75,
       newMagAtWell: 2.225, magSeated: 2.358, supportHandBack: 2.75, slideReleased: 3.067, slideHome: 3.167,
     },
-    draw: { inSight: 0.108, ready: 0.333 },
+    // (It can fire from `fire` on: on target and through the small dip.)
+    draw: { inSight: 0.108, ready: 0.333, fire: 0.5 },
     hide: { outOfSight: 0.275 },
   },
+
+  // A reload with rounds left (the slide is forward the whole time, so
+  // there's nothing for the thumb to drop) plays the reload animation till
+  // just after the support hand is back on the grip, before the shooting
+  // thumb starts for the slide stop (`leave`, seconds), and then eases from
+  // that pose into the idle pose, done at `length` (PISTOL23.reloadTime in
+  // src/shared/config.js).
+  reloadWithRounds: { leave: 2.77, length: 3.2 },
 };

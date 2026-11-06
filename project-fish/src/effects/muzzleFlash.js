@@ -137,12 +137,22 @@ export class MuzzleFlash {
       f.scale.set(0.6 + Math.random() * 0.7, 0.7 + Math.random() * 0.5, 1);
     }
     this.group.rotation.z = Math.random() * Math.PI;
+    // Full on straight away: the shot's own frame is drawn before the next
+    // update.
+    this.group.visible = true;
+    this.ball.material.opacity = this.strength;
+    for (const f of this.flames) f.material.opacity = this.strength * 0.9;
+    this.light.intensity = 0.5 * this.strength;
     for (const e of this.embers) {
       if (Math.random() < (this.suppressed ? 0.95 : 0.4)) continue;
       e.age = 0;
       e.life = EMBER_LIFE[0] + Math.random() * (EMBER_LIFE[1] - EMBER_LIFE[0]);
       e.velocity.set((Math.random() - 0.5) * 1.2, (Math.random() - 0.3) * 1.0, -(2 + Math.random() * 4));
       e.sprite.position.copy(this.muzzle);
+      // (Its size and brightness as it starts, so it isn't drawn a whole
+      // metre across in the shot's own frame, before update has sized it.)
+      e.sprite.scale.setScalar(0.0035);
+      e.sprite.material.opacity = 1;
       e.sprite.visible = true;
     }
   }

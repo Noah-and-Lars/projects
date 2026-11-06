@@ -200,11 +200,11 @@ function setPhotoMode(on) {
 // The gun in his hands, in the world: a copy of the one in the gun layer,
 // its parts as they are there.
 function updatePhotoGun() {
-  const source = viewmodel.pistol;
+  const source = viewmodel.photoSource;
   if (!source) return;
   if (photo.gunOf !== source) {
     if (photo.gun) scene.remove(photo.gun);
-    photo.gun = source.clone(true);
+    photo.gun = viewmodel.copyForPhoto(source);
     photo.gun.matrixAutoUpdate = false;
     photo.gunOf = source;
     scene.add(photo.gun);
@@ -220,6 +220,11 @@ function updatePhotoGun() {
     o.scale.copy(f.scale);
     o.visible = f.visible;
   });
+  // (A gun with its own arms leaves them out: his own arms hold it.)
+  for (const name of photo.gun.userData.hidden || []) {
+    const part = photo.gun.getObjectByName(name);
+    if (part) part.visible = false;
+  }
   photo.gun.visible = true;
   photo.gun.matrix.multiplyMatrices(camera.matrixWorld, source.matrixWorld);
   photo.gun.matrixWorldNeedsUpdate = true;
@@ -249,6 +254,12 @@ input.onLockChange = (locked) => {
   document.body.classList.toggle('playing', locked);
 };
 viewmodel.ready.then(() => {
+  // A gun whose model couldn't be loaded may have a stand-in that plays by
+  // slightly different rules (see STAND_IN23 in src/viewmodel/viewmodel.js).
+  for (const key of LOADOUT) {
+    const g = viewmodel.guns[key];
+    if (g && g.rules && weapons[key].spec !== g.rules) weapons[key].spec = g.rules;
+  }
   LOADOUT.forEach(applyLoadout);
   // A dropped magazine is handed over to the world: get its materials ready
   // now, so the first empty reload doesn't stall.
@@ -537,7 +548,7 @@ renderer.setAnimationLoop((time) => {
     viewmodel.flickSwitch();
   }
 
-  // Switching guns: 1 and 2, or the mouse wheel.
+  // Switching guns: 1, 2 and 3, or the mouse wheel.
   if (play) {
     LOADOUT.forEach((key, i) => {
       if (input.presses(`Digit${i + 1}`) > 0) switchGun(key);

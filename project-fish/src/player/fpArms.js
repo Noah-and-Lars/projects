@@ -23,6 +23,11 @@
 //
 // If his arms can't reach where the hands are, the whole gun is drawn in
 // towards his shoulders by the difference, so the hands never leave it.
+//
+// A gun that brings its own arms (the PF-23, see src/viewmodel/
+// animatedGun.js) is held by those: his arms aren't drawn in the gun layer
+// then, nothing pulls the gun in or fits his fingers, and his body's arms
+// (for the shadow) just reach for where its wrists are.
 
 import * as THREE from 'three';
 import { bonesOf, firstPersonTag } from '../soldier.js';
@@ -52,6 +57,8 @@ const ALONG = [0.35, 0.7, 1]; // where along each bone its fit is checked
 const TIP = 0.85; // a fingertip's length, of the bone before it
 
 const v = () => new THREE.Vector3();
+// Scratch vectors for reachOwnArms.
+const OWN = { target: new THREE.Vector3(), shoulder: new THREE.Vector3(), out: new THREE.Vector3() };
 const q = () => new THREE.Quaternion();
 
 // A rotation whose columns are the frame (along, across, normal) built from
@@ -195,7 +202,7 @@ export class FirstPersonArms {
     // hand rigs still move the magazine and the like).
     viewmodel.hideGloves();
     // Each gun's shape now, rather than the first time it's drawn.
-    for (const gun of Object.values(viewmodel.guns || {})) if (gun.pistol) this.gunVolume(gun.pistol);
+    for (const gun of Object.values(viewmodel.guns || {})) if (gun.pistol && !gun.animated) this.gunVolume(gun.pistol);
     this.ready = true;
     return true;
   }
@@ -210,6 +217,12 @@ export class FirstPersonArms {
     const C = camera.matrixWorld;
     const Cq = camera.getWorldQuaternion(q());
     const toView = C.clone().invert();
+    const wrists = viewmodel.ownWrists;
+    for (const mesh of this.meshes) mesh.visible = !wrists;
+    if (wrists) {
+      this.reachOwnArms(wrists, C, Cq);
+      return;
+    }
 
     // Where his chest is, seen from the camera, standing still and looking
     // straight ahead: measured the first time he does.
@@ -276,6 +289,25 @@ export class FirstPersonArms {
     for (const mesh of this.meshes) {
       mesh.matrix.copy(toView);
       mesh.matrixWorld.copy(toView);
+    }
+  }
+
+  // A gun with its own arms in the hands: no pull (it's let go of at once:
+  // the gun was out of view as it was swapped), and his body's arms reach
+  // for its wrists (gun layer camera space), the elbows hanging down and out
+  // as when he holds the others, the hands as they rest.
+  reachOwnArms(wrists, C, Cq) {
+    const { viewmodel } = this;
+    viewmodel.holder.position.sub(viewmodel.reachPull);
+    viewmodel.reachPull.set(0, 0, 0);
+    // (It runs every frame: it reuses the same few vectors.)
+    for (const [side, arm] of Object.entries(this.bodyArms)) {
+      if (!wrists[side]) continue;
+      const target = OWN.target.copy(wrists[side]).applyMatrix4(C);
+      const shoulder = arm.upper.getWorldPosition(OWN.shoulder);
+      const out = OWN.out.set(side === 'right' ? 1 : -1, -1.4, 0.35).applyQuaternion(Cq);
+      const pole = shoulder.lerp(target, 0.5).addScaledVector(out.normalize(), 0.3);
+      twoBoneIK(arm.upper, arm.fore, arm.hand, target, pole);
     }
   }
 

@@ -240,8 +240,13 @@ function tone({ at = 0, from, to = from, volume, decay, type = 'sine' }) {
 const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 
 // Each gun's shot: the .45 is the same recording slowed down a little, so
-// it's deeper, and a bit louder.
-const GUNSHOT = { pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 } };
+// it's deeper, and a bit louder. The PF-23 is the .45 recording slowed down
+// a touch more: the longer barrel and heavier slide give a deeper, rounder
+// boom, just as loud.
+const GUNSHOT = { pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, pistol23: { rate: 0.78, volume: 1 } };
+// The guns whose magazine and slide sounds are the .45 recordings: the
+// PF-45's, and the PF-23's (another big .45 with a steel magazine).
+const RECORDED = new Set(['pistol45', 'pistol23']);
 
 // suppressed: fired through a suppressor (quieter, and it barely echoes).
 export function playGunshot(gun = 'pistol', suppressed = false) {
@@ -280,7 +285,7 @@ export function playCasing(volume = 1) {
 // The magazine release pressed and the magazine coming out. empty: whether
 // there are any rounds in it (the second pistol's sound differs).
 export function playMagOut(gun = 'pistol', empty = false) {
-  if (gun === 'pistol45' && playSample(empty ? 'mag45OutEmpty' : 'mag45Out', 1)) return;
+  if (RECORDED.has(gun) && playSample(empty ? 'mag45OutEmpty' : 'mag45Out', 1)) return;
   burst({ type: 'bandpass', from: 2400, q: 5, volume: 0.96, decay: 0.03 }); // release button
   burst({ at: 0.05, type: 'bandpass', from: 900, to: 600, q: 2, volume: 0.80, decay: 0.12 }); // slides out
 }
@@ -307,21 +312,21 @@ export function playMagDrop(volume = 1) {
 }
 
 export function playMagIn(gun = 'pistol') {
-  if (gun === 'pistol45' && playSample(Math.random() < 0.5 ? 'mag45In1' : 'mag45In2', 1)) return;
+  if (RECORDED.has(gun) && playSample(Math.random() < 0.5 ? 'mag45In1' : 'mag45In2', 1)) return;
   burst({ type: 'bandpass', from: 1200, to: 800, q: 2, volume: 0.64, decay: 0.08 });
   burst({ at: 0.07, type: 'bandpass', from: 2200, q: 6, volume: 1.00, decay: 0.04 }); // clicks home
 }
 
-// The slide pulled back by hand (checking the chamber). Only the second
-// pistol has a sound for it, recorded.
+// The slide pulled back by hand (checking the chamber). Only the .45s have
+// a sound for it, recorded.
 export function playSlideBack(gun = 'pistol') {
-  if (gun === 'pistol45') playSample('slide45Back', 0.85);
+  if (RECORDED.has(gun)) playSample('slide45Back', 0.85);
 }
 
 // The slide snapping forward when it's let go (or the slide stop releases
-// it). The second pistol's is recorded.
+// it). The .45s' is recorded.
 export function playSlideRelease(gun = 'pistol') {
-  if (gun === 'pistol45' && playSample('slide45Forward', 0.95)) return;
+  if (RECORDED.has(gun) && playSample('slide45Forward', 0.95)) return;
   burst({ type: 'bandpass', from: 1800, q: 4, volume: 1.00, decay: 0.05 });
   burst({ at: 0.012, type: 'bandpass', from: 3000, q: 6, volume: 0.80, decay: 0.03 });
 }

@@ -39,7 +39,11 @@ skinning and the animations, and only:
 - Textures: rubs the caliber marking off the slide and engraves the game's
   own "PF-23  CAL .45" in its place, rubs a small stamp off the barrel hood,
   and doubles the gun's 512 px texture to 1024 px so the new letters are
-  crisp. The hands and gloves have no markings. All are stored as WebP.
+  crisp. The hands and gloves have no markings; the gloves' texture is
+  doubled to 1024 px too, and sharpened a little. The gun's colour is
+  taken a little off blue and the skin's toned down (GUN_COLOUR,
+  HANDS_COLOUR). All are stored as WebP.
+- Keeps who made it and its license in the file (asset.copyright).
 - Names the parts, bones, materials and animations plainly.
 
 The game's constants for this gun (MODEL23 in src/viewmodel/pistol23.js) are
@@ -108,6 +112,25 @@ MATERIALS = {'Hand_D': 'pistol23_hands', 'Glove_D': 'pistol23_gloves', 'Mark23_D
 # mostly the painted colour with a little sheen.
 GUN_METALNESS = 0.35
 GUN_ROUGHNESS = 0.55
+# The texture's steel is painted a little blue; this takes the blue cast off
+# so it sits with the other two guns' near-neutral black.
+GUN_COLOUR = [1.0, 0.96, 0.88, 1.0]
+# The bare forearms' skin is painted bright and pink: in the game's light it
+# was the brightest thing at the bottom of the view and drew the eye off the
+# gun. Toned down and given a little of skin's sheen.
+HANDS_COLOUR = [0.74, 0.64, 0.59, 1.0]
+HANDS_ROUGHNESS = 0.7
+# The gloves' texture is only 512 px and looks smeared when aiming, with the
+# support glove filling the bottom of the view: it's doubled, and sharpened
+# a little (an unsharp mask: this much of the difference from a blur of
+# this radius, in pixels, added back).
+GLOVE_TEXTURE_SIZE = 1024
+GLOVE_SHARPEN = (0.6, 2)
+# Kept in the file (asset.copyright, which the compression keeps): who made
+# the model and under what license.
+COPYRIGHT = ('Based on a model by BarcodeGames (https://sketchfab.com/barcodegames), Sketchfab Standard license '
+             '(https://sketchfab.com/licenses), changed for Project Fish. Only for use as part of the game; '
+             'not to be extracted, republished or reused as a stand-alone file.')
 
 # Loose pieces of the frame's mesh that get bones of their own: the middle
 # of each piece (download units, at rest) and the point it turns about.
@@ -138,7 +161,14 @@ WIDTH = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
 def read_gltf(folder):
     with open(os.path.join(folder, 'scene.gltf')) as f:
         g = json.load(f)
-    with open(os.path.join(folder, g['buffers'][0]['uri']), 'rb') as f:
+    # (The download is someone else's file: its buffer must be a plain file
+    # name in its own folder, not a path that reaches out of it.)
+    uri = g['buffers'][0]['uri']
+    path = os.path.realpath(os.path.join(folder, uri))
+    if (uri != os.path.basename(uri) or uri.startswith('data:') or '..' in uri or os.path.isabs(uri)
+            or os.path.dirname(path) != os.path.realpath(folder)):
+        raise SystemExit(f'unexpected buffer {uri!r}: it should be a file next to scene.gltf')
+    with open(path, 'rb') as f:
         data = f.read()
 
     def accessor(i):
@@ -547,7 +577,11 @@ def textures():
     gun = load(os.path.join(folder, 'Mark23_D_baseColor.png'), GUN_TEXTURE_SIZE)
     fix_gun_texture(gun)
     hands = load(os.path.join(folder, 'Hand_D_baseColor.png'))
-    gloves = load(os.path.join(folder, 'Glove_D_baseColor.png'))
+    gloves = load(os.path.join(folder, 'Glove_D_baseColor.png'), GLOVE_TEXTURE_SIZE)
+    a = image_array(gloves)
+    amount, radius = GLOVE_SHARPEN
+    a[..., :3] = np.clip(a[..., :3] + amount * (a[..., :3] - box_blur(a[..., :3], radius)), 0, 1)
+    store(gloves, a)
     return {'pistol23_gun': webp_bytes(gun, 'pistol23_gun'),
             'pistol23_hands': webp_bytes(hands, 'pistol23_hands'),
             'pistol23_gloves': webp_bytes(gloves, 'pistol23_gloves')}
@@ -557,7 +591,7 @@ def textures():
 
 class Writer:
     def __init__(self):
-        self.g = {'asset': {'version': '2.0', 'generator': 'Project Fish convert_pistol23.py'},
+        self.g = {'asset': {'version': '2.0', 'generator': 'Project Fish convert_pistol23.py', 'copyright': COPYRIGHT},
                   'scene': 0, 'scenes': [{'nodes': [0]}], 'nodes': [], 'meshes': [], 'skins': [],
                   'materials': [], 'textures': [], 'images': [], 'samplers': [], 'animations': [],
                   'accessors': [], 'bufferViews': [], 'buffers': [],
@@ -631,7 +665,10 @@ def write_glb(rig, meshes, clips, images, path, glove_specular):
                'pbrMetallicRoughness': {'baseColorTexture': {'index': len(g['textures']) - 1},
                                         'metallicFactor': 0.0, 'roughnessFactor': 0.94}}
         if name == 'pistol23_gun':
-            mat['pbrMetallicRoughness'].update(metallicFactor=GUN_METALNESS, roughnessFactor=GUN_ROUGHNESS)
+            mat['pbrMetallicRoughness'].update(metallicFactor=GUN_METALNESS, roughnessFactor=GUN_ROUGHNESS,
+                                               baseColorFactor=GUN_COLOUR)
+        if name == 'pistol23_hands':
+            mat['pbrMetallicRoughness'].update(roughnessFactor=HANDS_ROUGHNESS, baseColorFactor=HANDS_COLOUR)
         if name == 'pistol23_gloves' and glove_specular is not None:
             mat['extensions'] = {'KHR_materials_specular': glove_specular}
             g['extensionsUsed'].append('KHR_materials_specular')
