@@ -135,12 +135,12 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid #ffffff1a; box-shadow: 0 20px 60px #0000006b;
 }
 .feature-art {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2;
   transform: scale(1.04); transition: transform 1.2s cubic-bezier(.2, .7, .2, 1);
 }
 .feature:hover .feature-art { transform: scale(1.09); }
 .feature::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
+  content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: -1;
   background: linear-gradient(90deg, #0f0d1ff2 0%, #0f0d1fb3 38%, #0f0d1f00 72%),
               linear-gradient(0deg, #0f0d1fcc 0%, #0f0d1f00 55%);
 }
@@ -184,7 +184,7 @@ a { color: inherit; text-decoration: none; }
 
 /* Intro: a slow, cinematic reveal of the name, then the screen dissolves into the games */
 .intro {
-  position: fixed; inset: 0; z-index: 100; overflow: hidden;
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; overflow: hidden;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   padding: 20px; text-align: center; cursor: pointer; background: var(--bg);
   animation: intro-out 1.2s cubic-bezier(.6, 0, .4, 1) 4s forwards;
@@ -252,10 +252,10 @@ body.player {
 .pbest { color: var(--accent-2); font-size: 13px; font-weight: 700; white-space: nowrap; }
 .stage { position: relative; }
 .loading {
-  position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; overflow: hidden;
   background: #0a0916; transition: opacity .5s ease, visibility .5s;
 }
-.loading img { position: absolute; inset: -20px; width: calc(100% + 40px); height: calc(100% + 40px); object-fit: cover; filter: blur(18px) brightness(.45); }
+.loading img { position: absolute; top: -20px; right: -20px; bottom: -20px; left: -20px; width: calc(100% + 40px); height: calc(100% + 40px); object-fit: cover; filter: blur(18px) brightness(.45); }
 .loading-box { position: relative; text-align: center; }
 .loading-box p { margin: 0 0 12px; font-weight: 700; font-size: 18px; }
 .loading-bar { width: 200px; height: 4px; border-radius: 4px; background: #ffffff22; overflow: hidden; }
@@ -332,7 +332,7 @@ kbd {
 @media (prefers-reduced-motion: reduce) { .popup { animation: none; } }
 
 /* Notice in the middle of the home page (index.html #notice) */
-.notice { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8, 6, 20, 0.75); backdrop-filter: blur(4px); animation: notice-fade .3s ease; }
+.notice { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8, 6, 20, 0.75); backdrop-filter: blur(4px); animation: notice-fade .3s ease; }
 .notice[hidden] { display: none; }
 .notice-box { width: min(480px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--panel); border: 1px solid #f2b13466; border-radius: var(--radius); box-shadow: 0 24px 70px #000a; padding: 26px 24px 22px; text-align: center; animation: notice-in .35s cubic-bezier(.2, .7, .2, 1); }
 .notice-tag { display: inline-block; background: #f2b134; color: #1a1408; font-weight: 800; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 9px; border-radius: 6px; margin-bottom: 12px; }
@@ -423,3 +423,93 @@ kbd {
   .chat-log { padding: 8px 8px 10px; }
 }
 @media (max-width: 480px) { .chat-me { max-width: 76px; padding: 8px; font-size: 13px; } .chat-send { gap: 6px; padding: 8px; } }
+
+/* ======================================================================================================
+   Phones and tablets (2026-11-07). These rules only apply when the page decides it's on a phone or a tablet
+   (html.mob, set by the small script at the top of each page from the device, not the window width), so the
+   desktop site, even in a narrow window, stays exactly as it was. html.mob-phone / html.mob-tab pick the size.
+   ====================================================================================================== */
+.mob body { -webkit-text-size-adjust: 100%; }
+.mob .tile:hover, .mob .tile:focus-visible { transform: none; box-shadow: none; border-color: #ffffff12; }
+.mob .tile:active { transform: scale(.97); border-color: var(--accent); }
+.mob .tile:hover .thumb img { transform: none; }
+.mob .feature:hover .feature-art { transform: none; }
+
+/* header: one slim row (logo, account) with the search under it; on phones the section tabs become a bottom bar */
+.mob-phone .top { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--bg); } /* a blur here would trap the fixed bottom bar inside the header */
+.mob .top { position: relative; flex-wrap: wrap; gap: 10px; padding: 10px 14px 12px; padding-top: max(10px, env(safe-area-inset-top)); }
+.mob .brand { flex: 1; font-size: 17px; }
+.mob .logo { width: 28px; height: 28px; }
+.mob #acctBtn { order: 2; margin-left: 0; }
+.mob #search { order: 3; width: 100%; margin-left: 0; padding: 10px 16px; font-size: 16px; }
+.mob-phone .top .tabs {
+  position: fixed; z-index: 40; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom));
+  justify-content: space-around; padding: 6px; background: rgba(27, 24, 53, .94);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 12px 34px #000a; border-color: #ffffff24;
+}
+.mob-phone .top .tab { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; font-size: 12px; position: relative; }
+.mob-phone .top .tab::before { font-size: 19px; line-height: 1.1; }
+.mob-phone .top .tab:nth-child(1)::before { content: "🎮"; }
+.mob-phone .top .tab:nth-child(2)::before { content: "💬"; }
+.mob-phone .top .tab:nth-child(3)::before { content: "👥"; }
+.mob-phone .top .tab .wide { display: none; } .mob-phone .top .tab .narrow { display: inline; }
+.mob-phone .top .tab-n { position: absolute; top: 2px; left: calc(50% + 8px); }
+.mob-phone body:not(.player) { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+.mob-tab .top { padding-left: 20px; padding-right: 20px; }
+.mob-tab .top .tabs { order: 1; }
+.mob-tab .brand { flex: 0 1 auto; margin-right: auto; }
+
+/* home page */
+.mob .wrap { padding: 0 14px; }
+.mob .live { margin-top: 14px; padding: 10px 16px; gap: 10px; border-radius: 14px; }
+.mob .live b { font-size: 28px; } .mob .live span { font-size: 14px; }
+.mob .feature { margin-top: 14px; min-height: 230px; border-radius: 18px; }
+.mob .feature-body { padding: 18px; }
+.mob .feature h1 { font-size: 34px; }
+.mob .feature-tag { font-size: 14px; margin: 6px 0 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mob .feature-meta { margin-bottom: 12px; }
+.mob .feature .btn.big { padding: 10px 20px; font-size: 15px; }
+.mob .section { margin-top: 22px; }
+.mob .sec-bar { display: block; margin-bottom: 10px; }
+.mob .sec-bar .sec-h { margin-bottom: 10px; }
+.mob .chips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 0 -14px; padding: 2px 14px 4px; }
+.mob .chips::-webkit-scrollbar { display: none; }
+.mob .chip { flex: none; padding: 7px 14px; }
+.mob .recent { display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 10px; margin: 0 -14px; padding: 0 14px 4px; scrollbar-width: none; }
+.mob .recent::-webkit-scrollbar { display: none; }
+.mob .recent > * { flex: 0 0 auto; }
+
+/* game cards: two to a row on phones, three on tablets; short and tidy */
+.mob .grid { gap: 10px; padding-bottom: 20px; }
+.mob-phone .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mob-tab .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.mob .tile { border-radius: 14px; }
+.mob .info { padding: 9px 10px 11px; }
+.mob .info h2 { font-size: 15px; line-height: 1.2; }
+.mob .desc { font-size: 12.5px; line-height: 1.35; margin: 3px 0 8px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.mob-tab .desc { -webkit-line-clamp: 3; font-size: 13px; }
+.mob .meta { gap: 5px; font-size: 11px; }
+.mob-phone .meta .ctl { display: none; }
+.mob .badge { top: 7px; left: 7px; font-size: 10px; padding: 2px 6px; }
+.mob .best { font-size: 12px; margin-top: 6px; }
+.mob .playing { font-size: 12px; padding-top: 8px; }
+
+/* what's new: tidy cards with the text cut to three lines */
+.mob .news ol { border-radius: 14px; }
+.mob .news li { flex-direction: column; gap: 3px; padding: 11px 14px; font-size: 14px; }
+.mob .news li > :last-child { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.mob .foot { margin-top: 24px; }
+
+/* playing a game: the game fills the screen under a slim bar */
+.mob .player .top { position: sticky; flex-wrap: nowrap; gap: 8px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); }
+.mob .player .back { font-size: 0; flex: none; }
+.mob .player .back::before { content: "←"; font-size: 22px; line-height: 1; padding: 2px 6px; }
+.mob .player .ptitle-wrap { order: 0; width: auto; flex: 1; min-width: 0; }
+.mob .player .ptitle { font-size: 16px; }
+.mob .player .pbest { display: none; }
+.mob .player .actions .btn.ghost { display: none; }
+.mob .player .actions .btn { padding: 7px 12px; font-size: 13px; }
+.mob .player .stage-wrap { padding: 0; }
+.mob .player .stage { aspect-ratio: auto; margin-top: 0; height: calc(var(--vh, 1vh) * 100 - 56px - env(safe-area-inset-top)); max-height: none; border-radius: 0; border-left: 0; border-right: 0; }
+.mob .player .howto, .mob .player .more-h, .mob .player #more { margin-left: 14px; margin-right: 14px; }
+.mob-phone .player #more { grid-template-columns: repeat(2, minmax(0, 1fr)); }

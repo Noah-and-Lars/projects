@@ -3,6 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+// 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
+// not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
+(function () {
+  var u = navigator.userAgent || '', c = document.documentElement.classList, f = '';
+  try { f = (/[?&]mob=(phone|tab|off)/.exec(location.search) || [])[1] || sessionStorage.getItem('arcade-mob') || ''; if (f) sessionStorage.setItem('arcade-mob', f); } catch (e) {}
+  var ipad = /iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|webOS|Android.+Mobile|Mobile.+Firefox/.test(u);
+  var tab = !phone && (ipad || /Android|Tablet|Silk|Kindle|PlayBook/.test(u));
+  if (f) { phone = f === 'phone'; tab = f === 'tab'; }
+  if (phone || tab) { c.add('mob'); c.add(phone ? 'mob-phone' : 'mob-tab'); }
+  var vh = function () { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
+  vh(); window.addEventListener('resize', vh);
+  // older browsers (iOS before 14) don't have replaceChildren, which the home page uses to list the games
+  if (window.Element && !Element.prototype.replaceChildren) Element.prototype.replaceChildren = function () { while (this.firstChild) this.removeChild(this.firstChild); for (var i = 0; i < arguments.length; i++) { var n = arguments[i]; this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n); } };
+})();
+</script>
 <title>Players · The Arcade</title>
 <meta name="description" content="Everyone on The Arcade: find players, see their best scores, add friends and send messages.">
 <meta name="theme-color" content="#0f0d1f">
@@ -14,7 +31,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=13">
+<link rel="stylesheet" href="arcade.css?v=14">
 <style>
 .pl { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 18px; margin-top: 20px; height: calc(100vh - 150px); height: calc(100dvh - 150px); min-height: 460px; }
 .pl-side, .pl-main { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid #ffffff14; border-radius: 18px; overflow: hidden; }
@@ -119,7 +136,7 @@
 </main>
 
 <script src="games.js?v=169"></script>
-<script src="account.js?v=8"></script>
+<script src="account.js?v=9"></script>
 <script>
 // Players (2026-11-06): every account on the arcade, their best score in each game, friends and private messages.
 // Everything comes from the arcade's server (realtime-worker: /acct/players, /acct/player, /acct/social,
@@ -426,6 +443,6 @@ loadSocial();
 let lastName = myName();
 setInterval(() => { if (myName() !== lastName) { lastName = myName(); loadSocial(); if (cur) route(); } }, 1000);
 </script>
-<script src="tos.js?v=2"></script>
+<script src="tos.js?v=3"></script>
 </body>
 </html>

@@ -43,7 +43,7 @@
       ['If any part of these Terms cannot be enforced, the rest still applies. If the creators do not enforce a part of these Terms, they can still enforce it later. These Terms are the whole agreement between you and the Site about using it.']]
   ];
 
-  var css = '#tosPop{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:16px;background:rgba(8,6,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-family:inherit;color:var(--text,#f1effa)}' +
+  var css = '#tosPop{position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483000;display:grid;place-items:center;padding:16px;background:rgba(8,6,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-family:inherit;color:var(--text,#f1effa)}' +
     '#tosPop *{box-sizing:border-box}' +
     '#tosPop .tbox{width:min(720px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--panel,#1b1835);border:1px solid rgba(255,255,255,.12);border-top:4px solid var(--accent,#6c5ce7);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}' +
     '#tosPop .thead{padding:20px 24px 12px}#tosPop .thead small{display:block;color:var(--accent-2,#00d2a8);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:12px}' +

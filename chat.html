@@ -3,6 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+// 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
+// not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
+(function () {
+  var u = navigator.userAgent || '', c = document.documentElement.classList, f = '';
+  try { f = (/[?&]mob=(phone|tab|off)/.exec(location.search) || [])[1] || sessionStorage.getItem('arcade-mob') || ''; if (f) sessionStorage.setItem('arcade-mob', f); } catch (e) {}
+  var ipad = /iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|webOS|Android.+Mobile|Mobile.+Firefox/.test(u);
+  var tab = !phone && (ipad || /Android|Tablet|Silk|Kindle|PlayBook/.test(u));
+  if (f) { phone = f === 'phone'; tab = f === 'tab'; }
+  if (phone || tab) { c.add('mob'); c.add(phone ? 'mob-phone' : 'mob-tab'); }
+  var vh = function () { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
+  vh(); window.addEventListener('resize', vh);
+  // older browsers (iOS before 14) don't have replaceChildren, which the home page uses to list the games
+  if (window.Element && !Element.prototype.replaceChildren) Element.prototype.replaceChildren = function () { while (this.firstChild) this.removeChild(this.firstChild); for (var i = 0; i < arguments.length; i++) { var n = arguments[i]; this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n); } };
+})();
+</script>
 <title>Global chat · The Arcade</title>
 <meta name="description" content="Talk with everyone on The Arcade right now.">
 <meta name="theme-color" content="#0f0d1f">
@@ -14,7 +31,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=13">
+<link rel="stylesheet" href="arcade.css?v=14">
 <style>
 .mh a.who { color: hsl(var(--h) 85% 76%); font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mh a.who:hover { text-decoration: underline; }
@@ -69,7 +86,7 @@
 </div>
 
 <script src="games.js?v=169"></script>
-<script src="account.js?v=8"></script>
+<script src="account.js?v=9"></script>
 <script>
 // Global chat (rebuilt 2026-11-06): one chat room on the arcade's Cloudflare server (the Chat object in
 // realtime-worker). The server keeps the newest 150 messages, so everyone sees the same chat, even people who
@@ -348,6 +365,6 @@ setInterval(() => {
 }, 1000);
 if (!name && !window.ArcadeAccount) askName(true);
 </script>
-<script src="tos.js?v=2"></script>
+<script src="tos.js?v=3"></script>
 </body>
 </html>
