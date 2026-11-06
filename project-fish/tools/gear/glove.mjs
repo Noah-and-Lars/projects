@@ -1,40 +1,48 @@
 // Rigs a downloaded glove (a static mesh in a flat, open-hand pose) onto the
 // soldier's hand bones, for tools/gear/build_gear.mjs.
 //
-// The glove keeps its own pose: it's skinned in it. A copy of his hand
-// skeleton is posed to match it (his palm where the glove's palm is, each
-// finger and thumb bone turned to point along the glove's), and the glove is
-// bound to his real bones with that pose's inverse bind matrices. So in the
-// game his bones bend it straight from its own pose into his, whatever they
-// do (every grip, reload and inspect, and his idle pose), with nothing new at
-// run time: each bone's turn from the glove's pose is the turn it's given.
+// A copy of his hand skeleton is posed to match the glove (his palm where
+// the glove's palm is, each finger and thumb bone turned to point along the
+// glove's), the glove is skinned to it, bent part of the way into his rest
+// pose and bound to his real bones there (its own inverse bind matrices). So
+// in the game his bones bend it into whatever his hands do (every grip,
+// reload and inspect, his idle pose) with nothing new at run time: it's worn
+// like any other piece (src/gear.js).
 //
 // 1. The glove's joints are found from its own shape, in its hand frame (u
 //    along the fingers, v towards the thumb, w out of the back of the hand;
 //    `axes` in the item say which way those are in the download):
-//    - the fingertips and the webs between the fingers from its outline
-//      seen from the back;
-//    - each finger's middle line, followed from its tip down through the
-//      middle of the finger (and on into the palm) slice by slice;
-//    - the knuckle a little further down than the web (`web`, of the
-//      finger's length beyond it), and the two joints between knuckle and
-//      tip spaced as his are;
-//    - the thumb's tip as its outline's furthest point, its two joints
-//      spaced as his from there, and its root (deep in the palm) where his
-//      is.
-// 2. It's turned, scaled (his knuckles' span over its) and placed so its
-//    knuckle row lies on his, in his hand's frame. The right hand is the
-//    left glove mirrored.
-// 3. Each point's weights: the finger (or thumb) it's nearest, shared softly
-//    between neighbours, and along that finger the bones either side of each
-//    joint, blended across it; the cuff on his lower forearm (like his own
-//    glove's).
+//    - the fingertips from its outline seen from the back;
+//    - each finger's middle line, slice by slice from its tip down to the
+//      webs beside it (`webs`, how high they are), then straight on into
+//      the palm;
+//    - the knuckle below the web by a share (`web`) of his finger's length,
+//      and the two joints between knuckle and tip spaced as his are;
+//    - the thumb's tip, the furthest point near `thumb.tip` going the
+//      thumb's way, its middle line followed down from there, its two joints
+//      spaced as his from the tip, and its root (deep in the palm) where his
+//      is;
+//    - its wrist: the middle of the glove as far below its knuckles as his
+//      wrist is below his.
+// 2. It's turned (its wrist-to-knuckles and its knuckle row onto his),
+//    scaled (his knuckles' span over its) and placed (its knuckles' middle
+//    on his). The right hand is the left glove mirrored.
+// 3. Each point's weights: the digit whose line is nearest, shared with the
+//    digits it's joined to over the glove's surface (so fingers that touch
+//    don't share), and along each digit the bones either side of each joint,
+//    blended across it; the cuff on his lower forearm (like his own glove's).
 // 4. His hand skeleton posed as the glove (each bone turned the least way
-//    from his rest to point as the glove's does), and the glove stretched a
-//    little along each bone so its joints sit exactly on his.
-// 5. The cuff: lengthened if it would stop short of his sleeve, and narrowed
+//    from his rest to point as the glove's does, his bone lengths), and the
+//    glove stretched a little along each bone so its joints sit on his.
+// 5. Bent half way (`bindAt`) to his rest pose as rigid turns blended as dual
+//    quaternions (so bends keep their volume), and bound there: the game's
+//    skinning (linear) then only does the other half.
+// 6. The cuff: lengthened if it would stop short of his sleeve, and narrowed
 //    where it goes up inside the sleeve, so it meets the sleeve with no gap
 //    and never pokes through.
+//
+// It also measures how thick the glove's fingers are to his own gloves'
+// (for fitting the fingers to the gun, src/player/fpArms.js).
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -690,20 +698,23 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
       // (How far along: each segment's nearest point, shared between the
       // segments by how near they are, so it doesn't jump on the inside of
       // a bend in the line.)
-      let best = Infinity, arc = 0;
+      let best = Infinity, arc = 0, on = null;
       const per = [];
       for (let k = 0; k < line.length - 1; k++) {
         const segLen = len(sub(line[k + 1], line[k]));
         const [d, t] = toSegment(p, line[k], line[k + 1]);
         per.push([d, arc + t * segLen]);
-        best = Math.min(best, d);
+        if (d < best) { best = d; on = lerp(line[k], line[k + 1], t); }
         arc += segLen;
       }
       let sw = 0, arcAt = 0;
       for (const [d, a] of per) { const w = Math.exp(-(d - best) / ARC_SHARE); sw += w; arcAt += w * a; }
       arcAt /= sw;
       near[i * 5 + c] = best;
-      const blend = c === 4 ? THUMB_BLEND : FINGER_BLEND;
+      // (A finger's palm side, `palmBlend`: blended over a wider stretch, so
+      // a tight curl folds it softly rather than crumpling it.)
+      const palm = c === 4 || !cfg.palmBlend ? 0 : smoothstep(0.2, 0.8, -dot(norm(sub(p, on)), his.W));
+      const blend = (c === 4 ? THUMB_BLEND : FINGER_BLEND).map((b) => b * (1 + (cfg.palmBlend || 0) * palm));
       const into = joints.map((j, k) => smoothstep(j - blend[k], j + blend[k], arcAt));
       along.set([1 - into[0], into[0] - into[1], into[1] - into[2], into[2]], (i * 5 + c) * 4);
     });
@@ -729,6 +740,7 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
     wts[i * B + 1] = hand * fore;
   }
 
+  const aligned = pos.slice(); // (for simplifying it, build_gear.mjs)
   // The glove fitted to his bones in its pose: each bone's part stretched
   // along it so the joints sit on his.
   const D = (dir, k) => (x) => addS(x, dir, (k - 1) * dot(x, dir));
@@ -767,7 +779,6 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
   // which are near it. (His forearm in the glove's pose: turned about the
   // wrist so the cuff, along his hand, lies along his forearm at rest.)
   const foreFlat = turnAbout(his.world(his.twist), swing(his.forearmAxis, handAxis), his.wrist, his.wrist);
-  const flatPos = process.env.GLOVE_STRETCH ? pos.slice() : null;
   // (Bound part of the way from the glove's pose to his rest, `bindAt`: so
   // what's bent here and what his bones bend in the game are each smaller.)
   const bindAt = cfg.bindAt ?? 0.5;
@@ -797,21 +808,6 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
     nor.set(norm(m3v(R2, pointOf3(nor, i))), 3 * i);
   }
 
-  if (process.env.GLOVE_STRETCH) {
-    const bad = [];
-    for (let t = 0; t < g.index.length; t += 3) for (let e = 0; e < 3; e++) {
-      const a = g.index[t + e], b = g.index[t + (e + 1) % 3];
-      const l0 = len(sub(pointOf3(flatPos, a), pointOf3(flatPos, b))), l1 = len(sub(pointOf3(pos, a), pointOf3(pos, b)));
-      if (l1 > 2 * l0 + 0.002) bad.push([a, b, l0, l1]);
-    }
-    log(`  stretched edges: ${bad.length}`);
-    const names = ['hand', 'fore', ...DIGITS.flatMap((d) => [1, 2, 3].map((k) => d + k))];
-    for (const [a, b, l0, l1] of bad.slice(0, 12)) {
-      const w = (i) => [...wts.subarray(i * B, i * B + B)].map((x, j) => [names[j], x]).filter(([, x]) => x > 0.05).map(([nm, x]) => `${nm}:${x.toFixed(2)}`).join(' ');
-      log(`    ${(l0 * 1000).toFixed(1)} -> ${(l1 * 1000).toFixed(1)} mm  a[${w(a)}] b[${w(b)}] H a ${[...pointOf3(H, a)].map((x) => x.toFixed(3))} b ${[...pointOf3(H, b)].map((x) => x.toFixed(3))}`);
-    }
-  }
-
   // The cuff: up into his sleeve far enough, and inside it.
   fitCuff(pos, wts, B, his, cfg, log);
 
@@ -834,7 +830,7 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
   const index = Uint32Array.from(g.index);
   if (mirrored) for (let t = 0; t < index.length; t += 3) { const x = index[t + 1]; index[t + 1] = index[t + 2]; index[t + 2] = x; }
   return {
-    pos, nor, uv: g.uv, index, joints, weights, pose, thickness,
+    pos, nor, uv: g.uv, index, joints, weights, pose, thickness, aligned, wts, bones: B,
     debug: { H, found, chainsG, posed, R, s, toGlove, wrist: his.wrist },
   };
 }
@@ -968,8 +964,22 @@ function measureThickness(pos, wts, B, chains, his) {
     return +(r.reduce((a, b) => a + b, 0) / r.length).toFixed(3);
   });
   const finger = ratio([0, 1, 2, 3]);
+  // The palm: how far its points (weighted mostly to his hand bone) are
+  // from the line from his wrist to the middle of his knuckles.
+  const palmOf = (P, J, W, count) => {
+    const ds = [];
+    for (let v = 0; v < count; v++) {
+      let w = 0;
+      for (let q = 0; q < 4; q++) if (J[4 * v + q] === his.hand) w += W[4 * v + q];
+      if (w >= 0.7) ds.push(toSegment(pointOf3(P, v), his.wrist, his.mcpMean)[0]);
+    }
+    ds.sort((a, b) => a - b);
+    return ds.length ? ds[ds.length >> 1] : NaN;
+  };
+  const palmGlove = palmOf(pos, J, W, count), palmOwn = palmOf(own.pos, own.joints, own.weights, own.pos.length / 3);
+  const palm = Number.isFinite(palmGlove / palmOwn) ? +(palmGlove / palmOwn).toFixed(3) : 1;
   return {
-    finger, thumb: ratio([4]), palm: finger[0],
-    mm: { glove: glove.map((c) => c.map((x) => +(x * 1000).toFixed(1))), own: mine.map((c) => c.map((x) => +(x * 1000).toFixed(1))) },
+    finger, thumb: ratio([4]), palm,
+    mm: { glove: glove.map((c) => c.map((x) => +(x * 1000).toFixed(1))), own: mine.map((c) => c.map((x) => +(x * 1000).toFixed(1))), palm: [+(palmGlove * 1000).toFixed(1), +(palmOwn * 1000).toFixed(1)] },
   };
 }

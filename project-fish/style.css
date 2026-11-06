@@ -265,6 +265,7 @@ body:not(.playing) #ammo {
 }
 
 #loadout .stage {
+  position: relative;
   flex: 0 0 240px;
   text-align: center;
 }
@@ -272,8 +273,8 @@ body:not(.playing) #ammo {
 #loadout canvas.avatar {
   display: block;
   width: 240px;
-  height: min(340px, calc(100vh - 230px));
-  min-height: 220px;
+  height: min(360px, calc(100vh - 250px));
+  min-height: 200px;
   border-radius: 6px;
   background: radial-gradient(ellipse at 50% 35%, #56606c 0%, #2c3138 70%, #22262b 100%);
   touch-action: none;
@@ -284,19 +285,34 @@ body:not(.playing) #ammo {
   cursor: grabbing;
 }
 
+/* The framing buttons and the hint sit over the picture. */
 #loadout .views {
-  margin-top: 8px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
 }
 
 #loadout .views button {
   padding: 3px 10px;
+  margin: 0 3px;
   font-size: 13px;
+  background: rgba(20, 22, 26, 0.6);
+}
+
+#loadout .views button.chosen {
+  background: rgba(90, 72, 30, 0.75);
 }
 
 #loadout .stage .hint {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
   margin: 0;
   font-size: 12px;
   opacity: 0.55;
+  pointer-events: none;
 }
 
 #loadout .slots {
@@ -314,9 +330,20 @@ body:not(.playing) #ammo {
   margin-bottom: 14px;
 }
 
+/* Phone, upright: the picture stacked above the slots, kept in view at the
+   top of the panel while the slots scroll under it. */
 @media (max-width: 600px) {
   #loadout .panel {
-    padding: 16px;
+    padding: 14px 16px;
+  }
+
+  #loadout h2 {
+    margin-bottom: 10px;
+    font-size: 21px;
+  }
+
+  #loadout .tabs {
+    margin-bottom: 8px;
   }
 
   #loadout .outfit {
@@ -326,12 +353,108 @@ body:not(.playing) #ammo {
   }
 
   #loadout .stage {
+    position: sticky;
+    top: -14px;
+    z-index: 1;
     flex: none;
+    padding: 4px 0 6px;
+    background: rgb(20, 22, 26);
   }
 
   #loadout canvas.avatar {
     width: 100%;
-    height: min(40vh, 320px);
+    height: min(32vh, 280px);
+    min-height: 160px;
+  }
+
+  #loadout .stage .hint {
+    top: 10px;
+  }
+
+  #loadout .views {
+    bottom: 10px;
+  }
+
+  #loadout .slots .slot {
+    margin-bottom: 10px;
+  }
+
+  #loadout .slots .label {
+    margin-bottom: 4px;
+  }
+
+  #loadout .slots button {
+    padding: 5px 9px;
+    margin: 0 5px 5px 0;
+    font-size: 14px;
+  }
+
+  #loadout .about {
+    font-size: 12px;
+  }
+}
+
+/* Phone, on its side (short): picture and slots side by side, everything
+   smaller so the slots and the buttons fit without scrolling. */
+@media (max-height: 460px) and (min-width: 601px) {
+  #loadout .panel {
+    max-height: calc(100vh - 12px);
+    padding: 10px 18px;
+  }
+
+  #loadout h2 {
+    display: inline-block;
+    margin: 0 16px 6px 0;
+    font-size: 19px;
+  }
+
+  #loadout .tabs {
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+
+  #loadout .tabs button {
+    padding: 4px 10px;
+    margin-bottom: 0;
+  }
+
+  #loadout .outfit {
+    gap: 14px;
+  }
+
+  #loadout .stage {
+    flex-basis: 190px;
+  }
+
+  #loadout canvas.avatar {
+    width: 190px;
+    height: calc(100vh - 120px);
+    min-height: 140px;
+  }
+
+  #loadout .slots .slot {
+    margin-bottom: 6px;
+  }
+
+  #loadout .slots .label {
+    margin-bottom: 3px;
+    font-size: 14px;
+  }
+
+  #loadout .slots button {
+    padding: 4px 8px;
+    margin: 0 4px 4px 0;
+    font-size: 14px;
+  }
+
+  #loadout .about {
+    margin: 0;
+    font-size: 12px;
+  }
+
+  #loadout .back {
+    margin-top: 4px;
+    padding: 4px 10px;
   }
 }
 

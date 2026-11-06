@@ -15,12 +15,17 @@ import { outdoorEnvironment, SOLDIER_SKY, SUN_DIRECTION } from './world.js';
 // Where the camera looks and how much it shows (metres of him, up and
 // across, at least), for each framing; and how fast he turns by himself (radians a
 // second), and how long after a drag before he does again (seconds).
+// In the Gloves view he doesn't turn all the way round (his hand would go
+// behind him): he swings to and fro over `swing` (his turn, radians: 0
+// faces the camera, more shows his right side), `period` seconds each way
+// and back.
 export const VIEWS = {
   full: { name: 'Full', target: [0, 0.93, 0], height: 2.0, width: 1.0 },
   head: { name: 'Head', target: [0, 1.64, 0], height: 0.48, width: 0.42 },
-  hands: { name: 'Gloves', target: 'hands', height: 0.5, width: 0.42 },
+  hands: { name: 'Gloves', target: 'hands', height: 0.42, width: 0.36, swing: [0.25, 1.35], period: 10 },
 };
 const TURN = { speed: 0.35, pause: 2.5, start: 0.5 };
+const target = new THREE.Vector3(); // (scratch, each frame)
 const FOV = 26;
 
 export class OutfitPreview {
@@ -168,17 +173,27 @@ export class OutfitPreview {
     }
     if (this.mixer) this.mixer.update(dt);
     this.idle += dt;
-    if (!this.dragging && this.idle > TURN.pause) this.turn += TURN.speed * dt;
+    const view = VIEWS[this.view];
+    if (!this.dragging && this.idle > TURN.pause) {
+      if (view.swing) {
+        // To and fro over the swing, easing there from wherever he is.
+        this.swingTime = (this.swingTime || 0) + dt;
+        const [a, b] = view.swing;
+        const want = a + (b - a) * (0.5 - 0.5 * Math.cos((this.swingTime * 2 * Math.PI) / view.period));
+        const off = THREE.MathUtils.euclideanModulo(want - this.turn + Math.PI, 2 * Math.PI) - Math.PI;
+        this.turn += off * (1 - Math.exp(-dt * 2.5));
+      } else {
+        this.turn += TURN.speed * dt;
+      }
+    }
     if (this.model) {
       this.model.rotation.y = this.turn;
       this.model.updateMatrixWorld(true);
     }
     // Ease the framing towards the chosen view.
-    const view = VIEWS[this.view];
-    const target = new THREE.Vector3();
     if (view.target === 'hands') {
       // (His right hand; its middle, a little past the wrist.)
-      if (this.hand) target.copy(this.hand.getWorldPosition(new THREE.Vector3())).y -= 0.05;
+      if (this.hand) this.hand.getWorldPosition(target).y -= 0.05;
       else target.set(-0.4, 0.95, 0);
     } else {
       target.set(...view.target);

@@ -102,11 +102,22 @@ export class PlayerBody {
       // are made ready before it goes on.
       if (this.wardrobe) {
         this.wardrobe.dress(model, {
-          prepare: (mesh) => {
+          prepare: async (mesh) => {
             this.prepareMesh(mesh);
+            // (Both its first-person and its outside materials.)
+            const { firstPerson, outside } = mesh.userData.materials;
+            await renderer.compileAsync(mesh, camera, scene);
+            if (outside !== firstPerson) {
+              mesh.material = outside;
+              await renderer.compileAsync(mesh, camera, scene);
+            }
+          },
+          // (How he's shown is looked at when the piece goes on, not when
+          // it was readied: photo mode may have come or gone meanwhile.)
+          add: (mesh) => {
             mesh.material = this.outside ? mesh.userData.materials.outside : mesh.userData.materials.firstPerson;
             mesh.visible = this.shown !== false;
-            return renderer.compileAsync(mesh, camera, scene);
+            model.add(mesh);
           },
           hide: (mesh, hidden) => {
             mesh.visible = this.shown !== false && !hidden;

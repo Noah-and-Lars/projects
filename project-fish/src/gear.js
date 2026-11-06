@@ -51,11 +51,22 @@ const OWN = {
   gloves: (mesh, material) => material === 'Mark_Gloves_1',
 };
 
+// Other pieces of his an option can leave off (its `hides`): his glasses
+// (the lenses, and the frame, in his pouches' material, on his head). Their
+// arms were made to tuck under his helmet's ear cups, so with nothing on
+// his head they'd stick out behind his ears.
+const EXTRA = {
+  glasses: (mesh, material) => material === 'Mark_SunGlusses_Glus'
+    || (material === 'Mark_Pouches_1' && mainBone(mesh) === 'CC_Base_Head'),
+};
+
 const gearFile = (name) => new URL(`../assets/gear/${name}.glb`, import.meta.url).href;
 
 // The slots and their options: { id, name, about, own: true (his own
-// piece) | file (a piece from assets/gear) | neither (nothing) }. The first
-// option is the one he starts in.
+// piece) | file (a piece from assets/gear) | neither (nothing), hides
+// (optional: names in EXTRA also left off with it) }. The first option is
+// the one he starts in. (Ids stay as they were saved: the Sage carrier and
+// gloves are 'olive'.)
 export const SLOTS = [
   {
     id: 'head', name: 'Head',
@@ -63,7 +74,7 @@ export const SLOTS = [
       { id: 'field', name: 'Field helmet', about: 'His own helmet, with ear defenders built in.', own: true },
       { id: 'comms', name: 'Comms helmet', about: 'A high-cut helmet with rails, a counterweight pouch, ear cups and a boom mic.', file: gearFile('helmet_comms') },
       { id: 'headset', name: 'Headset', about: 'Ear defenders and a boom mic, no helmet.', file: gearFile('headset') },
-      { id: 'none', name: 'None', about: 'Bare head: just his balaclava and glasses.' },
+      { id: 'none', name: 'None', about: 'Bare head: just his balaclava (and no glasses).', hides: ['glasses'] },
     ],
   },
   {
@@ -71,7 +82,7 @@ export const SLOTS = [
     options: [
       { id: 'field', name: 'Field carrier', about: 'His own plate carrier with its magazine and side pouches.', own: true },
       { id: 'black', name: 'Black carrier', about: 'A black plate carrier with triple magazine pouches and a flag patch.', file: gearFile('vest_black') },
-      { id: 'olive', name: 'Olive carrier', about: 'A heavier olive plate carrier with webbing all round.', file: gearFile('vest_olive') },
+      { id: 'olive', name: 'Sage carrier', about: 'A heavier sage-grey plate carrier with webbing all round.', file: gearFile('vest_olive') },
       { id: 'none', name: 'None', about: 'No vest: just his jacket.' },
     ],
   },
@@ -80,7 +91,7 @@ export const SLOTS = [
     options: [
       { id: 'field', name: 'Field gloves', about: 'His own gloves, with a hard knuckle guard.', own: true },
       { id: 'black', name: 'Black gloves', about: 'Black gloves with a padded knuckle guard, knuckle pads and a wide wrist strap.', file: gearFile('gloves_black') },
-      { id: 'olive', name: 'Olive gloves', about: 'Worn olive gloves with moulded knuckles and a long strapped cuff.', file: gearFile('gloves_olive') },
+      { id: 'olive', name: 'Sage gloves', about: 'Worn sage-green gloves with moulded knuckles and a long strapped cuff.', file: gearFile('gloves_olive') },
       { id: 'camo', name: 'Camo gloves', about: 'Camouflage gloves with a hard knuckle guard and a tan leather palm.', file: gearFile('gloves_camo') },
     ],
   },
@@ -159,6 +170,21 @@ export function loadGear(url) {
 
 const IDENTITY = new THREE.Matrix4();
 
+// A piece's file's own materials (shared by every copy), so that taking
+// the piece off frees only the copies of them made for it.
+const fileMaterials = new WeakMap();
+
+// Frees the materials made for a piece taken off (its mesh's, and the
+// first-person and outside sets player/body.js keeps), but never the
+// file's own, nor its geometry or textures (shared by every copy).
+export function disposeOwnMaterials(mesh) {
+  const shared = fileMaterials.get(mesh) || new Set();
+  const made = new Set([].concat(mesh.material));
+  const kept = mesh.userData.materials;
+  if (kept) for (const m of [].concat(kept.firstPerson, kept.outside)) made.add(m);
+  for (const m of made) if (m && !shared.has(m)) m.dispose();
+}
+
 // Dresses copies of the soldier in the Outfit, and keeps them dressed as it
 // changes.
 export class Wardrobe {
@@ -185,15 +211,23 @@ export class Wardrobe {
       if (o.isBone) bones[boneName(o.name)] = o;
     });
     const own = {};
+    const extra = {}; // slot -> { name in EXTRA -> his meshes }, for its options' `hides`
     const slots = options.slots || SLOTS.map((s) => s.id);
-    for (const slot of slots) own[slot] = [];
+    for (const slot of slots) {
+      own[slot] = [];
+      extra[slot] = {};
+      for (const option of slotOf(slot).options) for (const name of option.hides || []) extra[slot][name] = [];
+    }
     model.traverse((o) => {
       if (!o.isMesh || o.userData.gearPiece) return;
       const material = [].concat(o.material)[0].name;
-      for (const slot of slots) if (OWN[slot] && OWN[slot](o, material)) own[slot].push(o);
+      for (const slot of slots) {
+        if (OWN[slot] && OWN[slot](o, material)) own[slot].push(o);
+        for (const name of Object.keys(extra[slot])) if (EXTRA[name](o, material)) extra[slot][name].push(o);
+      }
     });
     const copy = {
-      model, bones, own, slots,
+      model, bones, own, extra, slots,
       prepare: options.prepare || (() => {}),
       add: options.add || ((mesh) => model.add(mesh)),
       remove: options.remove || ((mesh) => mesh.removeFromParent()),
@@ -215,8 +249,11 @@ export class Wardrobe {
     if (!copy.slots.includes(slot)) return;
     const id = this.outfit.get(slot);
     const option = optionOf(slot, id);
-    if (!option || (copy.worn[slot] && copy.worn[slot].id === id)) return;
+    // (Recorded first, so a piece still loading for an option chosen since
+    // and given up sees it was and stays off, even when this one is
+    // already on.)
     copy.pending[slot] = id;
+    if (!option || (copy.worn[slot] && copy.worn[slot].id === id)) return;
     let meshes = [];
     if (option.file) {
       try {
@@ -228,14 +265,29 @@ export class Wardrobe {
         meshes = null;
       }
       // (Something else was chosen meanwhile.)
-      if (copy.pending[slot] !== id) return;
+      if (copy.pending[slot] !== id) {
+        for (const m of meshes || []) disposeOwnMaterials(m);
+        return;
+      }
     }
     // Off with what was on, and his own piece shown or hidden.
-    if (copy.worn[slot]) for (const m of copy.worn[slot].meshes) copy.remove(m);
+    if (copy.worn[slot]) {
+      for (const m of copy.worn[slot].meshes) {
+        copy.remove(m);
+        disposeOwnMaterials(m);
+      }
+    }
     const showOwn = option.own || meshes === null;
     for (const m of copy.own[slot]) {
       m.userData.gearHidden = !showOwn;
       copy.hide(m, !showOwn);
+    }
+    for (const [name, list] of Object.entries(copy.extra[slot])) {
+      const hidden = (option.hides || []).includes(name);
+      for (const m of list) {
+        m.userData.gearHidden = hidden;
+        copy.hide(m, hidden);
+      }
     }
     for (const m of meshes || []) copy.add(m);
     copy.worn[slot] = { id, meshes: meshes || [] };
@@ -252,6 +304,7 @@ export class Wardrobe {
       const bones = o.skeleton.bones.map((b) => copy.bones[boneName(b.name)]);
       if (bones.some((b) => !b)) throw new Error(`${o.name}: a joint isn't in the soldier's skeleton`);
       const mesh = new THREE.SkinnedMesh(o.geometry, o.material);
+      fileMaterials.set(mesh, new Set([].concat(o.material)));
       mesh.name = o.name;
       mesh.userData = { ...o.userData, gearPiece: true };
       mesh.bind(new THREE.Skeleton(bones, o.skeleton.boneInverses), IDENTITY);

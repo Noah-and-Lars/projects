@@ -6,6 +6,9 @@
 //   tactical_headset_-_game_ready            -> assets/gear/headset.glb
 //   tactical_plate_carrier_vest_-_game_ready -> assets/gear/vest_black.glb
 //   military_armor_3d_model                  -> assets/gear/vest_olive.glb
+//   tactical_combat_gloves_-_game_ready      -> assets/gear/gloves_black.glb
+//   tactical_combat_gloves_3d_model          -> assets/gear/gloves_olive.glb (the "Sage gloves")
+//   military_tactical_gloves_-_multicam_hard_knuckle -> assets/gear/gloves_camo.glb
 // Download each one's glTF version from Sketchfab and unzip it into
 // build/gear-src/<that folder name> (so it holds scene.gltf, scene.bin and
 // textures/). Then, from the project-fish folder:
@@ -24,6 +27,9 @@
 //   its shape), and skinned to his spine and collarbones with the weights of
 //   the nearest points of his own plate carrier, so it breathes, leans and
 //   bends with him.
+// - Gloves are rigged to his hand bones by tools/gear/glove.mjs (the
+//   download's left glove, mirrored for the right hand), simplified once
+//   rigged, and bound in a pose of their own (see there).
 // Then each is stored on a copy of his skeleton (same joints, same inverse
 // bind matrices), so the game can put it on any copy of him by handing it
 // that copy's bones (src/gear.js). Big meshes are simplified to a game
@@ -38,12 +44,13 @@ import { meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import { rigGlove } from './glove.mjs';
+import { subdivide } from './subdivide.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
 const [SOURCES, SOLDIER, OUT] = args;
 if (!SOURCES || !SOLDIER || !OUT) {
-  console.error('usage: node tools/gear/build_gear.mjs build/gear-src assets/soldier.glb assets/gear [--headset-texture FIXED.png] [--only id]');
+  console.error('usage: node tools/gear/build_gear.mjs build/gear-src assets/soldier.glb assets/gear [--headset-texture FIXED.png] [--only id] [--debug DIR]');
   process.exit(1);
 }
 const HEADSET_TEXTURE = option('--headset-texture', null);
@@ -70,6 +77,7 @@ const ITEMS = [
     maxTriangles: 9500, size: 1024, roughness: 0.7, turn: 0, tilt: 0, texture: HEADSET_TEXTURE,
     fit: { scale: 0.27, centre: [-0.021, 1.67, 0.045] },
     clear: { margin: 0.004 },
+    settle: { from: 1.715, ease: 0.03, margin: 0.004, over: 0.008 }, // (its band onto his head)
   },
   {
     id: 'vest_black', source: 'tactical_plate_carrier_vest_-_game_ready', slot: 'vest',
@@ -93,24 +101,31 @@ const ITEMS = [
   // length beyond them, and `webs` how high those are (u, index to little
   // finger); `thumb`: roughly where its thumb's tip is and a
   // place further down the thumb (in its hand frame: u, v, w as `axes`,
-  // from the middle of its bounds; see tools/gear/glove.mjs).
+  // from the middle of its bounds; see tools/gear/glove.mjs); `subdivide`:
+  // a step of smooth subdivision first, for a low-poly glove
+  // (tools/gear/subdivide.mjs), rounded only from `from` to `to` (u, as
+  // `thumb`) up; `palmBlend`: how much wider the fingers' joints blend on
+  // their palm side (so a tight curl crumples it less); `bindAt` (default
+  // 0.5): how far towards his rest pose it's bound.
   {
     id: 'gloves_black', source: 'tactical_combat_gloves_-_game_ready', slot: 'gloves',
     title: 'Tactical Combat Gloves - Game Ready', url: 'https://sketchfab.com/3d-models/tactical-combat-gloves-game-ready-5e8f53fcba864163a199fa22baa653cb',
     maxTriangles: 12000, size: 2048, normalSize: 1024, roughness: 0.8,
-    glove: { pick: (c) => c[0] < 0.35, axes: { along: [0, 1, 0], thumb: [1, 0, 0], back: [0, 0, 1] }, webs: [0.17, 0.17, 0.2], web: 0.3, thumb: { tip: [0.19, 0.25, -0.2], toward: [-0.15, 0.2, -0.08] } },
+    glove: { subdivide: { from: -0.3, to: -0.2 }, pick: (c) => c[0] < 0.35, axes: { along: [0, 1, 0], thumb: [1, 0, 0], back: [0, 0, 1] }, webs: [0.17, 0.17, 0.2], web: 0.3, thumb: { tip: [0.19, 0.25, -0.2], toward: [-0.15, 0.2, -0.08] } },
   },
   {
     id: 'gloves_olive', source: 'tactical_combat_gloves_3d_model', slot: 'gloves',
     title: 'Tactical Combat Gloves 3D Model', url: 'https://sketchfab.com/3d-models/tactical-combat-gloves-3d-model-fda69c63c472449f8ded80a9e6d91562',
-    maxTriangles: 12000, size: 2048, roughness: 0.85,
+    // (Its woven fabric is so fine that, shrunk, it shimmers in swirls and
+    // stripes up close: calmed first, see calmTexture.)
+    maxTriangles: 12000, size: 1024, roughness: 0.95, calm: { fine: 3, local: 48, keep: 0.55, tint: [0.84, 0.87, 0.76] },
     glove: { pick: (c) => c[2] < 0, axes: { along: [0, -1, 0], thumb: [0, 0, -1], back: [-1, 0, 0] }, webs: [0.18, 0.18, 0.2], web: 0.3, thumb: { tip: [0.27, 0.24, -0.05], toward: [-0.1, 0.15, -0.05] } },
   },
   {
     id: 'gloves_camo', source: 'military_tactical_gloves_-_multicam_hard_knuckle', slot: 'gloves',
     title: 'Military Tactical Gloves - MultiCam Hard Knuckle', url: 'https://sketchfab.com/3d-models/military-tactical-gloves-multicam-hard-knuckle-72342e418cd743209395bba607d5504e',
     maxTriangles: 12000, size: 2048, normalSize: 1024, roughness: 0.85,
-    glove: { pick: (c) => c[0] > 0, axes: { along: [0, 1, 0], thumb: [1, 0, 0], back: [0, 0, 1] }, webs: [0.17, 0.17, 0.2], web: 0.3, thumb: { tip: [0.18, 0.26, -0.18], toward: [-0.12, 0.17, -0.08] } },
+    glove: { palmBlend: 1.5, pick: (c) => c[0] > 0, axes: { along: [0, 1, 0], thumb: [1, 0, 0], back: [0, 0, 1] }, webs: [0.17, 0.17, 0.2], web: 0.3, thumb: { tip: [0.18, 0.26, -0.18], toward: [-0.12, 0.17, -0.08] } },
   },
 ];
 const AUTHOR = 'Exactly (https://sketchfab.com/txyrm70)';
@@ -262,17 +277,46 @@ const HEAD = soldier.jointNamed(/^CC_Base_Head_/);
 console.log(`soldier: head joint ${HEAD}, plate carrier ${PLATE.pos.length / 3} points, jacket ${JACKET.pos.length / 3}, head and glasses ${HEAD_BODY.pos.length / 3}`);
 
 // --- A downloaded piece ------------------------------------------------------
+// (The downloads aren't trusted: every file their scene.gltf names must be in
+// its own folder, so a crafted one can't have another file on this machine
+// read and built into a piece.)
+function checkURIs(folder) {
+  const json = JSON.parse(fs.readFileSync(path.join(folder, 'scene.gltf'), 'utf8'));
+  const root = path.resolve(folder);
+  for (const entry of [...(json.buffers || []), ...(json.images || [])]) {
+    const uri = entry.uri;
+    if (uri === undefined) continue;
+    if (typeof uri !== 'string') throw new Error(`${folder}: a URI that isn't text`);
+    if (/^data:/i.test(uri)) continue;
+    let file;
+    try {
+      file = decodeURIComponent(uri);
+    } catch {
+      throw new Error(`${folder}: a URI that can't be read: ${uri}`);
+    }
+    const inside = path.resolve(root, file);
+    if (/^[a-z][a-z0-9+.-]*:/i.test(uri) || path.isAbsolute(file) || file.includes('\\') || file.includes('\0')
+      || !inside.startsWith(root + path.sep)) {
+      throw new Error(`${folder}: scene.gltf names a file outside its folder: ${uri}`);
+    }
+    // (Nor through a link out of it.)
+    const real = fs.realpathSync(inside);
+    if (!real.startsWith(fs.realpathSync(root) + path.sep)) throw new Error(`${folder}: ${uri} links outside its folder`);
+  }
+}
+
 async function readSource(item) {
   const folder = path.join(SOURCES, item.source);
   const licence = fs.readFileSync(path.join(folder, 'license.txt'), 'utf8');
   if (!licence.includes('CC-BY-4.0') || !licence.includes(item.url)) throw new Error(`${item.source}: not the CC BY 4.0 model expected (${item.url})`);
+  checkURIs(folder);
   const doc = await io.read(path.join(folder, 'scene.gltf'));
   const triangles = () => doc.getRoot().listMeshes().reduce((n, m) => n + m.listPrimitives().reduce((k, p) => k + p.getIndices().getCount() / 3, 0), 0);
   const before = triangles();
-  if (before > item.maxTriangles) {
+  if (before > item.maxTriangles && !item.glove) {
     await doc.transform(weld(), simplify({ simplifier: MeshoptSimplifier, ratio: item.maxTriangles / before, error: 0.01 }));
   }
-  item.simplified = before > item.maxTriangles;
+  item.simplified = before > item.maxTriangles && !item.glove; // (gloves: after rigging, see rigBoth)
   console.log(`${item.id}: ${before} triangles${item.simplified ? ` simplified to ${triangles()}` : ''}`);
   const pos = [], nor = [], uv = [], index = [];
   let image = null, normalImage = null;
@@ -301,6 +345,24 @@ async function readSource(item) {
   return { pos: new Float32Array(pos), nor: new Float32Array(nor), uv: new Float32Array(uv), index: new Uint32Array(index), image, normalImage };
 }
 
+// Calms a texture whose fine weave is too fine for the game (`calm`): the
+// weave blurred away (`fine`, pixels of the download's texture), and what's
+// left eased towards each area's own mean colour (over `local` pixels) to
+// `keep` of its contrast, then tinted (`tint`, a factor for each of red,
+// green and blue). Shrunk, a weave that fine aliases into swirls and
+// stripes up close, and its quilting's bright and dark bands read as
+// crumpled foil; this leaves a calm fabric tone instead.
+async function calmTexture(image, { fine, local, keep, tint = [1, 1, 1] }) {
+  const read = () => sharp(Buffer.from(image.data)).removeAlpha();
+  const { width, height } = await read().metadata();
+  const smooth = await read().blur(fine).raw().toBuffer();
+  const mean = await read().blur(local).raw().toBuffer();
+  const out = Buffer.alloc(smooth.length);
+  for (let i = 0; i < out.length; i++) out[i] = Math.max(0, Math.min(255, Math.round((mean[i] + (smooth[i] - mean[i]) * keep) * tint[i % 3])));
+  const png = await sharp(out, { raw: { width, height, channels: 3 } }).png().toBuffer();
+  return { data: new Uint8Array(png), mime: 'image/png' };
+}
+
 // Only the triangles whose middles pass `test` (the download's left glove).
 function pick(g, test) {
   const keep = [];
@@ -325,9 +387,46 @@ function pick(g, test) {
 // A glove: the download's left glove rigged onto both his hands (the right
 // one mirrored), as one mesh.
 function rigBoth(item, g) {
-  const left = pick(g, item.glove.pick);
+  let left = pick(g, item.glove.pick);
   console.log(`  left glove: ${left.index.length / 3} triangles`);
+  // (A low-poly glove is subdivided first, so its fingers bend round.)
+  if (item.glove.subdivide) {
+    // (Rounded from the hand up, `subdivide.from` to `.to` along its hand
+    // from the middle of its bounds: its wrist strap, a layer over the
+    // cuff, is only split, as rounding would sink one into the other.)
+    const along = item.glove.axes.along, { lo, hi } = bounds(left.pos);
+    const mid = [0, 1, 2].map((k) => (lo[k] + hi[k]) / 2);
+    const l = Math.hypot(...along);
+    const { from, to } = item.glove.subdivide;
+    const u = (p) => ((p[0] - mid[0]) * along[0] + (p[1] - mid[1]) * along[1] + (p[2] - mid[2]) * along[2]) / l;
+    left = subdivide(left, (p) => (u(p) - from) / (to - from));
+    console.log(`  subdivided to ${left.index.length / 3} triangles`);
+  }
   const hands = ['L', 'R'].map((side) => rigGlove(item, left, soldier, side));
+  // Simplified once rigged (both hands alike, they're the same glove): edges
+  // between points with different weights are kept, so each joint keeps the
+  // rings of points it bends at and nothing stretches across it.
+  const keep = item.maxTriangles / 2;
+  if (left.index.length / 3 > keep) {
+    const h = hands[0];
+    const count = left.pos.length / 3;
+    const attributes = new Float32Array(h.wts);
+    const [index] = MeshoptSimplifier.simplifyWithAttributes(Uint32Array.from(left.index), h.aligned, 3, attributes, h.bones,
+      new Array(h.bones).fill(1), null, Math.floor(keep) * 3, 0.05, []);
+    const used = new Map();
+    for (const i of index) if (!used.has(i)) used.set(i, used.size);
+    const pickArr = (a, per) => { const o = new a.constructor(used.size * per); for (const [i, j] of used) o.set(a.subarray(i * per, i * per + per), j * per); return o; };
+    for (const hand of hands) {
+      const flip = hand === hands[1]; // (the right hand, mirrored)
+      hand.pos = pickArr(hand.pos, 3); hand.nor = pickArr(hand.nor, 3); hand.uv = pickArr(hand.uv, 2);
+      hand.joints = pickArr(hand.joints, 4); hand.weights = pickArr(hand.weights, 4);
+      hand.index = Uint32Array.from(index, (i) => used.get(i));
+      if (flip) for (let t = 0; t < hand.index.length; t += 3) { const x = hand.index[t + 1]; hand.index[t + 1] = hand.index[t + 2]; hand.index[t + 2] = x; }
+    }
+    left.pos = new Float32Array(used.size * 3); // (only its size is used below)
+    console.log(`  simplified from ${count} points, ${left.index.length / 3} triangles a hand to ${used.size} points, ${index.length / 3}`);
+    item.simplified = true;
+  }
   if (DEBUG) {
     fs.mkdirSync(DEBUG, { recursive: true });
     const d = hands[0].debug;
@@ -442,6 +541,68 @@ function clear(item, g, body) {
   }
 }
 
+// The opposite of clear, for a headset's band (`settle`): above `from`
+// (metres, his rest pose), easing in over `ease`, it's drawn in towards his
+// head until its inside rests `margin` off it, so it sits on his head
+// rather than arching over it. Each point moves by the smallest gap among
+// its neighbours (within `over`: so the band's inner and outer faces move
+// together and it keeps its thickness), along the head's normal there, and
+// the moves are smoothed over the band.
+function settle(item, g, body) {
+  const { from, ease, margin } = item.settle;
+  const grid = new Grid(body.pos, 0.02);
+  const n = g.pos.length / 3;
+  const gap = new Float32Array(n).fill(Infinity);
+  const dir = new Float32Array(n * 3);
+  for (let v = 0; v < n; v++) {
+    const [x, y, z] = g.pos.subarray(3 * v, 3 * v + 3);
+    if (y < from) continue;
+    const near = grid.near(x, y, z, 3, 0.05);
+    if (!near.length) continue;
+    let best = Infinity, nb = null;
+    for (const [b] of near) {
+      const nn = body.nor.subarray(3 * b, 3 * b + 3);
+      const d = (x - body.pos[3 * b]) * nn[0] + (y - body.pos[3 * b + 1]) * nn[1] + (z - body.pos[3 * b + 2]) * nn[2];
+      if (d < best) { best = d; nb = nn; }
+    }
+    gap[v] = best;
+    dir.set(nb, 3 * v);
+  }
+  const grid2 = new Grid(g.pos, 0.015);
+  const pull = new Float32Array(n * 3);
+  for (let v = 0; v < n; v++) {
+    const [x, y, z] = g.pos.subarray(3 * v, 3 * v + 3);
+    if (y < from) continue;
+    let least = Infinity;
+    for (const [u] of grid2.near(x, y, z, 400, item.settle.over)) least = Math.min(least, gap[u]);
+    if (!Number.isFinite(least) || least <= margin) continue;
+    const by = (least - margin) * Math.min(1, Math.max(0, (y - from) / ease)) ** 2;
+    for (let k = 0; k < 3; k++) pull[3 * v + k] = -dir[3 * v + k] * by;
+  }
+  // (Smoothed over 1.5 cm, so the band's faces move alike and it doesn't
+  // crease.)
+  const move = new Float32Array(n * 3);
+  let most = 0, moved = 0;
+  for (let v = 0; v < n; v++) {
+    const [x, y, z] = g.pos.subarray(3 * v, 3 * v + 3);
+    if (y < from - 0.01) continue;
+    let sw = 0;
+    const m = [0, 0, 0];
+    for (const [u, d] of grid2.near(x, y, z, 600, 0.015)) {
+      const w = Math.exp(-((d / 0.008) ** 2));
+      sw += w;
+      for (let k = 0; k < 3; k++) m[k] += w * pull[3 * u + k];
+    }
+    const size = Math.hypot(...m) / sw;
+    if (!size) continue;
+    for (let k = 0; k < 3; k++) move[3 * v + k] = m[k] / sw;
+    most = Math.max(most, size);
+    moved++;
+  }
+  for (let i = 0; i < g.pos.length; i++) g.pos[i] += move[i];
+  console.log(`  settled: ${moved} points drawn in towards his head, at most ${(most * 1000).toFixed(1)} mm`);
+}
+
 // Skin weights: head gear all on his head; a vest the blend of the nearest
 // points of his plate carrier.
 function weigh(item, g) {
@@ -506,6 +667,11 @@ async function write(item, g) {
     }
   }
   for (const a of root.listAnimations()) a.dispose();
+  // (Neutral names for the nodes above his skeleton, which carry the
+  // download's: not bones, so nothing finds them by name.)
+  const joints = new Set(skin.listJoints());
+  const RENAME = { Sketchfab_model: 'soldier_root', 'Mark_1_Olive_IdlePose.fbx': 'soldier_model' };
+  for (const node of root.listNodes()) if (!joints.has(node) && RENAME[node.getName()]) node.setName(RENAME[node.getName()]);
   const buffer = root.listBuffers()[0];
   const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
   const texture = doc.createTexture(`${item.id}_color`).setImage(g.image.data).setMimeType(g.image.mime);
@@ -547,7 +713,7 @@ async function write(item, g) {
   });
   parent.addChild(node);
   const asset = doc.getRoot().getAsset();
-  asset.copyright = `"${item.title}" (${item.url}) by ${AUTHOR}, licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for Project Fish: ${item.glove ? 'the left glove rigged to the game\'s soldier\'s hand bones and fitted to him, and mirrored for the right hand' : 'fitted to the game\'s soldier and skinned to his skeleton'}${item.id === 'headset' ? ', the print on the ear cups rubbed off' : ''}${item.simplified ? ', simplified' : ''}, textures shrunk and stored as WebP, meshes compressed. The skeleton is the soldier's, from "Soldier Full Tactical Gear" by DanlyVostok (CC BY 4.0).`;
+  asset.copyright = `"${item.title}" (${item.url}) by ${AUTHOR}, licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for Project Fish: ${item.glove ? 'the left glove rigged to the game\'s soldier\'s hand bones and fitted to him, and mirrored for the right hand' : 'fitted to the game\'s soldier and skinned to his skeleton'}${item.id === 'headset' ? ', the print on the ear cups rubbed off and its band settled onto his head' : ''}${item.glove && item.glove.subdivide ? ', subdivided' : ''}${item.simplified ? ', simplified' : ''}${item.calm ? ', its colour texture softened and tinted' : ''}, textures shrunk and stored as WebP, meshes compressed. The skeleton is the soldier's, from "Soldier Full Tactical Gear" by DanlyVostok (CC BY 4.0).`;
   asset.extras = { title: item.title, source: item.url, author: AUTHOR, license: 'CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)' };
   doc.getRoot().getAsset().generator = 'Project Fish tools/gear/build_gear.mjs';
   await doc.transform(
@@ -565,11 +731,13 @@ async function write(item, g) {
 for (const item of ITEMS) {
   if (ONLY && item.id !== ONLY) continue;
   let g = await readSource(item);
+  if (item.calm) g.image = await calmTexture(g.image, item.calm);
   if (item.glove) {
     g = rigBoth(item, g);
   } else {
     place(item, g);
     clear(item, g, item.slot === 'head' ? HEAD_BODY : JACKET);
+    if (item.settle) settle(item, g, HEAD_BODY);
     weigh(item, g);
     toBind(g);
   }

@@ -200,6 +200,7 @@ export class FirstPersonArms {
           if (piece.userData.gear && this.gloves === piece.userData.gear.thickness) this.setThickness(null);
           if (mesh) {
             mesh.removeFromParent();
+            for (const m of [].concat(mesh.material)) m.dispose(); // (its own copies; the file's geometry stays)
             this.meshes.splice(this.meshes.indexOf(mesh), 1);
             this.inGunLayer.delete(piece);
           }
