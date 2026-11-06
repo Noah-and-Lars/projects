@@ -130,6 +130,41 @@ export const PISTOL45 = {
   inspectHolds: { right: 0.9, left: 0.9, magazine: 0.8, chamber: 0.6 },
 };
 
-// The guns the player carries, in the order of their keys (1, 2).
-export const LOADOUT = ['pistol', 'pistol45'];
-export const GUNS = { pistol: PISTOL, pistol45: PISTOL45 };
+// The third: a Beretta 92FS, a full-size 9 mm holding 15 rounds. It comes
+// with its own arms and its own animations (src/viewmodel/beretta.js), so
+// its times are those clips' own lengths: a reload with rounds left is its
+// reload clip (2.7 s), one from empty its empty reload (4.03 s, the support
+// hand pulls the locked slide back and lets it go at the end), and its
+// inspect is its inspect clip (5.03 s). Each shot's clip has the slide home
+// 0.12 s after the shot goes off and the trigger pulled again by 0.2: 300
+// rounds a minute at most. A heavy, all-steel-slide 9 mm: it kicks a
+// little more than the PF-9 and a little less than the PF-45.
+export const BERETTA = {
+  name: 'Beretta 92FS',
+  fireInterval: 0.2,
+  magazine: 15,
+  reserve: 60,
+  reloadTime: 2.7,
+  emptyReloadTime: 4.033,
+  // When things happen, as fractions of the reload: the clips' own times
+  // (src/viewmodel/beretta.js) over their lengths. With rounds left the
+  // magazine comes out, is swapped for a fresh one at the belt and goes
+  // back in (nothing catches it: magCaught is never reached); from empty it
+  // drops free, the fresh one is taken at the belt and pushed in, and the
+  // slide is pulled back and let go.
+  reloadSteps: {
+    empty: { magOut: 0.025, magGrab: 0.16, magIn: 0.436, handOn: 0.6, slidePull: 0.649, slideRelease: 0.686 },
+    catching: { magOut: 0.127, magCaught: 2, magGrab: 0.247, magIn: 0.528, handOn: 0.6 },
+  },
+  range: 150,
+  spread: { hip: 1.8, aim: 0.11, moving: 1.25 },
+  recoil: 1.15,
+  // Its inspect is its own clip, this long (seconds), and it's left out
+  // with the slide locked back (the clip has the slide forward).
+  inspectTime: 5.033,
+  inspectLocked: false,
+};
+
+// The guns the player carries, in the order of their keys (1, 2, 3).
+export const LOADOUT = ['pistol', 'pistol45', 'beretta'];
+export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA };

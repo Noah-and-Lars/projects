@@ -240,10 +240,12 @@ function tone({ at = 0, from, to = from, volume, decay, type = 'sine' }) {
 const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 
 // Each gun's shot: the .45 is the same recording slowed down a little, so
-// it's deeper, and a bit louder.
-const GUNSHOT = { pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 } };
-// The guns whose magazine and slide sounds are the .45 recordings.
-const RECORDED = new Set(['pistol45']);
+// it's deeper, and a bit louder. The Beretta is the 9 mm's, a touch lower
+// (a longer barrel and a heavier, all-steel gun) and as loud.
+const GUNSHOT = { pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, beretta: { rate: 0.95, volume: 0.92 } };
+// The guns whose magazine and slide sounds are the .45 recordings: the
+// PF-45's, and the Beretta's (a steel magazine and slide too).
+const RECORDED = new Set(['pistol45', 'beretta']);
 
 // suppressed: fired through a suppressor (quieter, and it barely echoes).
 export function playGunshot(gun = 'pistol', suppressed = false) {

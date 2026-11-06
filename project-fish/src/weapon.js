@@ -96,7 +96,7 @@ export const INSPECT_STEPS = {
 };
 
 export class Pistol {
-  // spec: the gun's numbers (PISTOL or PISTOL45 in src/shared/config.js).
+  // spec: the gun's numbers (PISTOL, PISTOL45 or BERETTA in src/shared/config.js).
   constructor(spec = PISTOL) {
     this.spec = spec;
     this.ammo = spec.magazine;
@@ -140,6 +140,7 @@ export class Pistol {
   }
 
   get inspectLength() {
+    if (this.spec.inspectTime) return this.spec.inspectTime; // (a gun with its own inspect animation)
     return this.inspect && this.inspect.check ? INSPECT.time : INSPECT.shortTime;
   }
 
@@ -180,12 +181,15 @@ export class Pistol {
       if (reloadKey && this.ammo < this.spec.magazine && this.reserve > 0) this.reloadWaiting = true;
       const inspect = this.inspect;
       if (this.pulls.length || this.reloadWaiting || busy) inspect.cut = true;
+      // (A gun with its own inspect animation, its spec's inspectTime, just
+      // plays it: no magazine or slide steps, nothing to finish first.)
+      const own = Boolean(this.spec.inspectTime);
       const t = inspect.time;
-      const magazineOut = t >= INSPECT.magOut && t < INSPECT.magIn;
-      const slideHeld = inspect.check && t >= INSPECT.pull && t < INSPECT.release;
+      const magazineOut = !own && t >= INSPECT.magOut && t < INSPECT.magIn;
+      const slideHeld = !own && inspect.check && t >= INSPECT.pull && t < INSPECT.release;
       if (inspect.cut && !magazineOut && !slideHeld) inspect.fade -= dt / INSPECT.fade;
-      else inspect.time += inspect.cut ? dt * INSPECT.hurry : this.inspectStep(inspect, dt);
-      for (const [step, at] of Object.entries(INSPECT_STEPS)) {
+      else inspect.time += inspect.cut ? dt * INSPECT.hurry : own ? dt : this.inspectStep(inspect, dt);
+      for (const [step, at] of own ? [] : Object.entries(INSPECT_STEPS)) {
         if ((step === 'slidePull' || step === 'slideRelease') && !inspect.check) continue;
         if (inspect.time >= at && !inspect.done.has(step)) {
           inspect.done.add(step);
@@ -233,8 +237,11 @@ export class Pistol {
       return events;
     }
 
-    // (A gun with no inspect animation, its spec's inspect false, ignores the key.)
-    if (inspectKey && this.spec.inspect !== false && ready && !busy && !this.pulls.length && this.cooldown === 0) {
+    // (A gun with no inspect animation, its spec's inspect false, ignores the
+    // key; one whose inspect animation has the slide forward, inspectLocked
+    // false, ignores it with the slide locked back.)
+    const canInspect = this.spec.inspect !== false && !(this.slideLocked && this.spec.inspectLocked === false);
+    if (inspectKey && canInspect && ready && !busy && !this.pulls.length && this.cooldown === 0) {
       this.inspect = { time: 0, done: new Set(), check: !this.slideLocked && this.chamberCheck, cut: false, fade: 1 };
       events.push('inspect');
       return events;

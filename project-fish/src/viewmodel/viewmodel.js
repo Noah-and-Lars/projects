@@ -11,6 +11,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { createPistol, GRIP, SIGHTS, MAGAZINE, SLIDE } from './pistol.js';
 import { createPistol45, MODEL45, FALLBACK45 } from './pistol45.js';
 import { MODEL9 } from './pistol9.js';
+import { MODEL_BERETTA } from './beretta.js';
 import { AnimatedGun } from './animatedGun.js';
 import { createArms, rightHandPose } from './arms.js';
 import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix, OVER_TURN, OVER_SLIDE } from './supportHand.js';
@@ -19,7 +20,7 @@ import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS, reloadSteps } from '../weapon.js';
-import { PISTOL, PISTOL45, LOADOUT } from '../shared/config.js';
+import { PISTOL, PISTOL45, BERETTA, LOADOUT } from '../shared/config.js';
 
 // Points on the built-in first pistol (gun space; used if its model file
 // can't be loaded; the model's are in pistol9.js): the
@@ -52,14 +53,33 @@ const TRIGGER_TRAVEL = 0.0032;
 const INDICATOR_TRAVEL = 0.0006;
 const BLADE_TRAVEL = 0.0009;
 
+// If the Beretta's model can't be loaded, the PF-9's built-in stand-in takes
+// its place, held by the usual hands: its rules, but the PF-9's reloads and
+// inspect (the Beretta's follow its own animations).
+const STAND_IN_BERETTA = {
+  ...BERETTA,
+  reloadTime: PISTOL.reloadTime,
+  emptyReloadTime: PISTOL.emptyReloadTime,
+  reloadSteps: undefined,
+  inspectTime: undefined,
+  inspectLocked: undefined,
+};
+
 // The guns: their rules (src/shared/config.js), their models (made in
 // Blender, see tools/blender/) with simpler built-in ones in case a file
 // can't be loaded, and the points on each. A gun that brings its own arms
 // and animations (`animated`, see animatedGun.js) has its constants there
-// instead, and the rules its stand-in follows (`fallbackRules`).
+// instead, where it's held (`rig`, see RIG), and the rules its stand-in
+// follows (`fallbackRules`).
 const GUN_KINDS = {
   pistol: { rules: PISTOL, model: new URL('../../assets/pistol.glb', import.meta.url), fallback: createPistol, points: MODEL9, fallbackPoints: POINTS9 },
   pistol45: { rules: PISTOL45, model: new URL('../../assets/pistol45.glb', import.meta.url), fallback: createPistol45, points: MODEL45, fallbackPoints: FALLBACK45 },
+  beretta: {
+    rules: BERETTA, model: new URL('../../assets/beretta.glb', import.meta.url), animated: MODEL_BERETTA,
+    // (Its rear sight where the PF-45's is at the hip: see RIG.)
+    rig: { sightAsAtHip: MODEL45.sights, kick: 0.4 },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: STAND_IN_BERETTA,
+  },
 };
 
 // Switching guns: the one in the hands drops down out of view, turning away
@@ -588,32 +608,44 @@ const AIM_ROTATION = new THREE.Quaternion();
 const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 
 // A gun with its own arms (animatedGun.js). Its model's root is the eye its
-// arms were posed for: placed there, the gun would sit where its maker framed
-// it, nearly on the sight line in the middle of a 50 degree view, so it would
-// look aimed while at the hip and much bigger and higher than the other guns.
-// So it's placed in the gun's pose to sit at the eye moved by `hip` (gun
-// space) when the gun is at the hip (`at` is the eye there): down, right and
-// out, which puts its rear sight where the PF-45's is in the same view. It
-// goes up to the sights and moves with the weapon physics from there like
-// the others.
+// arms were posed for: placed there, the gun would sit where its maker
+// framed it. It's placed in the gun's pose to sit at the eye moved by `hip`
+// (gun space) when the gun is at the hip (`at` is the eye there): the
+// Beretta's by as much as puts its rear sight where the PF-45's is at the
+// hip (`sightAsAtHip`, that gun's sights), so it's held as the others are.
+// It goes up to the sights and moves with the weapon physics from there,
+// the whole rig as one, like the others. Each gun's `rig` in GUN_KINDS can
+// set (else these):
+// - hip: as above (or sightAsAtHip to work it out).
 // - viewFov: the gun layer's view at the hip with it (the others' one);
 //   aiming, it goes to AIM.viewFov like the others.
 // - eyeRelief: how far its rear sight is from the eye when aiming (metres).
 // - kick: how much of the gun layer's recoil kick it gets (its shoot
 //   animation already kicks the hands and gun back and up).
-// - sprint: sprinting, its hands bend at the wrists with the gun as the
-//   others' do, by this `share` of their bend. On a tactical sprint, as the
-//   others come up close in front of the chest, it's held this much lower
-//   (`tacOut`, metres, gun space), so its long bare forearms don't fill the
-//   bottom of the view.
+// - tacOut: on a tactical sprint, as the others come up close in front of
+//   the chest, it's held this much lower (metres, gun space).
+// (Sprinting, the others' hands bend at the wrists; a gun with its own arms
+// only does if its model asks for it, see animatedGun.js: the whole rig
+// takes the sprint pose's offsets.)
 const RIG = {
   at: HIP_POSITION.clone().applyQuaternion(HIP_QUATERNION.clone().invert()).negate(),
-  hip: new THREE.Vector3(0.035, -0.052, -0.077),
+  hip: new THREE.Vector3(),
   viewFov: VIEW_FOV,
   eyeRelief: 0.26,
   kick: 0.4,
-  sprint: { share: 1, tacOut: new THREE.Vector3(0, -0.03, 0) },
+  tacOut: new THREE.Vector3(),
 };
+// A gun's own RIG values: its rig in GUN_KINDS over RIG's.
+function rigOf(kind) {
+  const r = { ...RIG, ...(kind.rig || {}) };
+  if (kind.rig && kind.rig.sightAsAtHip && !kind.rig.hip) {
+    const M = kind.animated;
+    const s = kind.rig.sightAsAtHip;
+    const rear = new THREE.Vector3(...M.frame).add(new THREE.Vector3(M.sights.x || 0, M.sights.height, M.sights.rearZ));
+    r.hip = new THREE.Vector3(s.x || 0, s.height, s.rearZ).sub(RIG.at).sub(rear);
+  }
+  return r;
+}
 // A gun with its own arms has none of the other guns' separate parts.
 const NO_PARTS = {
   slide: null, trigger: null, barrel: null, magazine: null, magazineRest: null, slideStop: null, hammer: null,
@@ -924,10 +956,10 @@ export class Viewmodel {
 
   // A gun that brings its own arms and animations (see animatedGun.js and
   // RIG), from its loaded model; or null if the model hasn't what it needs
-  // (then its stand-in is used). Its points are in its frame bone's space
-  // (the gun layer's `pistol` while it's held): the muzzle, the ejection port
-  // and the sights, and where the frame is in the idle pose (gun space), for
-  // aiming.
+  // (then its stand-in is used). Its points (the muzzle, the ejection port
+  // and the sights) are in the space of its frame's node (the gun layer's
+  // `pistol` while it's held), which in the idle pose is gun space moved to
+  // M.frame; that's where it is, for aiming.
   rigAnimated(key, scene, animations) {
     const kind = GUN_KINDS[key];
     const M = kind.animated;
@@ -937,25 +969,23 @@ export class Viewmodel {
       return null;
     }
     shadowed(scene);
+    const held = rigOf(kind);
     const object = new THREE.Group();
     object.name = `${key}_rig`;
     object.add(scene);
-    const at = RIG.at.clone().add(RIG.hip);
+    const at = RIG.at.clone().add(held.hip);
     object.position.copy(at);
-    const f = M.idle.frame;
-    const slide = M.idle.slide.clone().sub(f); // the slide's bone in the frame's space
-    const s = M.sights;
     const points = {
       muzzle: M.muzzle,
-      port: [M.port[0] + slide.x, M.port[1] + slide.y, M.port[2] + slide.z],
-      sights: { x: s.x - f.x, height: s.height - f.y, rearZ: s.rearZ - f.z, frontZ: s.frontZ - f.z, eyeRelief: RIG.eyeRelief },
-      sightsAt: at.clone().add(f),
+      port: M.port,
+      sights: { ...M.sights, eyeRelief: held.eyeRelief },
+      sightsAt: at.clone().add(new THREE.Vector3(...M.frame)),
       slideTravel: M.slideTravel,
-      viewFov: RIG.viewFov,
-      kick: RIG.kick,
+      viewFov: held.viewFov,
+      kick: held.kick,
       chamberCheck: false,
     };
-    const g = { key, rules: kind.rules, base: points, points, pistol: rig.frame, object, rig, at, animated: M, parts: NO_PARTS, attachments: {}, on: {}, release: '' };
+    const g = { key, rules: kind.rules, base: points, points, pistol: rig.frame, object, rig, at, held, animated: M, parts: NO_PARTS, attachments: {}, on: {}, release: '' };
     g.flash = new MuzzleFlash(M.muzzle);
     g.flash.attachTo(rig.frame);
     return g;
@@ -1042,7 +1072,7 @@ export class Viewmodel {
     // A gun with its own arms: the gloves model and its hands aren't drawn,
     // and it starts its draw (or idle pose) afresh.
     if (this.arms) this.arms.visible = !g.animated;
-    if (g.rig) g.rig.reset(this.switching ? 'draw' : 'idle');
+    if (g.rig) g.rig.reset(this.switching ? 'draw' : 'idle'); // (its idle pose if it has no draw)
     this.rigHeld = false;
     this.flash = g.flash;
     Object.assign(this, g.parts);
@@ -1138,17 +1168,19 @@ export class Viewmodel {
   }
 
   // Lowers the gun out of view, swaps it, and raises the other. (A gun with
-  // its own arms plays its hide and draw animations instead, and takes their
-  // time. One being lowered holding its pose, put away mid-reload, isn't
-  // brought straight back up if it's asked for again: its pose has the
-  // support hand down at the belt, and going over from there to the hold in
-  // view would swing that arm up past the eye. It goes on down out of view
-  // and is drawn afresh with its draw animation.)
+  // its own arms plays its hide and draw animations instead, if it has
+  // them, and takes their time. One being lowered holding its pose, put away
+  // mid-reload or without a hide animation, is lowered like the others; it
+  // isn't brought straight back up if it's asked for again: a mid-reload
+  // pose has the support hand down at the belt, and going over from there
+  // to the hold in view would swing that arm up past the eye. It goes on
+  // down out of view and is drawn afresh.)
   updateSwitch(dt) {
     if (!this.switching) return;
     const rig = this.current && this.current.rig;
     if (this.switching.to !== this.shownGun || this.rigHeld) {
-      this.lowered = Math.min(1, this.lowered + dt / (rig ? rig.duration('hide') : SWITCH.lower));
+      const time = rig && !this.rigHeld && rig.has('hide') ? rig.duration('hide') : SWITCH.lower;
+      this.lowered = Math.min(1, this.lowered + dt / time);
       if (this.lowered < 1) return;
       if (this.switching.to !== this.shownGun) this.useGun(this.switching.to);
       else {
@@ -1156,7 +1188,7 @@ export class Viewmodel {
         rig.reset('draw');
       }
     } else {
-      this.lowered = Math.max(0, this.lowered - dt / (rig ? rig.duration('draw') : SWITCH.raise));
+      this.lowered = Math.max(0, this.lowered - dt / (rig && rig.has('draw') ? rig.duration('draw') : SWITCH.raise));
       if (this.lowered <= 0) this.switching = null;
     }
   }
@@ -1237,14 +1269,15 @@ export class Viewmodel {
   }
 
   // Whether the gun is up and can fire: not while it's still in (or coming
-  // up from) the sprint pose, or switching. (A gun with its own arms can
-  // once its draw animation has it on target, before the draw has settled:
-  // MODEL23.events.draw.fire.)
+  // up from) the sprint pose, or switching. (A gun with its own draw
+  // animation can once that has it on target, a moment before it ends:
+  // its events.draw.fire, e.g. MODEL_BERETTA's.)
   get readyToFire() {
     if (this.motion.sprint >= 0.25) return false;
     if (!this.switching) return true;
     const g = this.current;
-    const from = g && g.rig && !this.rigHeld && this.switching.to === g.key ? g.animated.events.draw.fire : undefined;
+    const draw = g && g.rig && g.rig.has('draw') && g.animated.events && g.animated.events.draw;
+    const from = draw && !this.rigHeld && this.switching.to === g.key ? draw.fire : undefined;
     return from !== undefined && (1 - this.lowered) * g.rig.duration('draw') >= from;
   }
 
@@ -1354,7 +1387,8 @@ export class Viewmodel {
     // down as it goes back to the hold when it's cut short).
     const inspect = gun && gun.inspectTime >= 0 && reload < 0 ? gun.inspectTime : -1;
     const check = Boolean(gun && gun.inspectCheck);
-    const amount = inspect < 0 ? 0 : smoothstep(0, 1, gun.inspectAmount);
+    // (A gun with its own arms has its inspect in its animation.)
+    const amount = inspect < 0 || rig ? 0 : smoothstep(0, 1, gun.inspectAmount);
     const pose = inspectPoseAt(inspect, check);
     if (amount > 0) {
       this.posePosition.addScaledVector(pose.at, amount);
@@ -1364,12 +1398,15 @@ export class Viewmodel {
     // the frame rate is low).
     this.updateSwitch(Math.min(frameSeconds, 0.25));
     // (A gun with its own arms plays its hide and draw animations instead,
-    // unless it's put away mid-reload: then it's lowered like the others,
-    // held as it was, see AnimatedGun.lowering and updateSwitch.)
+    // if it has them, unless it's put away mid-reload: then it's lowered
+    // like the others, held as it was, see AnimatedGun.lowering and
+    // updateSwitch.)
     const ownRig = this.current && this.current.rig;
     if (!ownRig || !this.switching) this.rigHeld = false;
-    else if (this.switching.to !== this.shownGun && (ownRig.lowering || ownRig.base.clip === 'reload')) this.rigHeld = true;
-    const lowered = ownRig && !this.rigHeld ? 0 : smoothstep(0, 1, this.lowered);
+    else if (this.switching.to !== this.shownGun && (ownRig.reloading || !ownRig.has('hide'))) this.rigHeld = true;
+    const raising = Boolean(this.switching) && this.switching.to === this.shownGun && !this.rigHeld;
+    const byClip = ownRig && !this.rigHeld && ownRig.has(raising ? 'draw' : 'hide');
+    const lowered = byClip ? 0 : smoothstep(0, 1, this.lowered);
     if (lowered > 0) {
       this.posePosition.addScaledVector(SWITCH.drop, lowered);
       this.poseQuaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...SWITCH.turn.map((a) => a * lowered))));
@@ -1580,9 +1617,10 @@ export class Viewmodel {
   // A gun with its own arms: its animations, as the gun's state says (see
   // animatedGun.js). Putting it away or drawing it plays its hide or draw
   // animation as far as the switch has got; a reload plays its reload
-  // animation over the reload's time; otherwise it's in its idle pose, each
-  // shot playing its shoot animation on top. With the last round gone its
-  // slide stays back, and with rounds left a reload keeps it forward.
+  // animation (from empty, its empty one) over the reload's time, and an
+  // inspect its inspect; otherwise it's in its idle pose (with the slide
+  // locked back once the last round has gone, if it has that pose), each
+  // shot playing its shoot animation.
   animateRig(dt, gun, reload) {
     if (this.flash) this.flash.update(dt);
     const rig = this.current.rig;
@@ -1594,41 +1632,35 @@ export class Viewmodel {
     // (Asked for again while it's lowered holding its pose, it goes on down
     // as it was: see updateSwitch.)
     const leaving = this.switching && (this.switching.to !== this.shownGun || this.rigHeld);
+    const empty = Boolean(gun && gun.slideLocked);
     if (leaving) {
       clip = 'hide';
       time = this.lowered * rig.duration('hide');
     } else if (this.switching) {
       clip = 'draw';
       time = (1 - this.lowered) * rig.duration('draw');
+    } else if (reload >= 0) {
+      clip = gun.reloadEmpty ? 'reloadEmpty' : 'reload';
+      time = reload * rig.duration(rig.clipFor(clip));
+    } else if (gun && gun.inspectTime >= 0) {
+      clip = 'inspect';
+      time = gun.inspectTime;
+      toIdle = 1 - smoothstep(0, 1, gun.inspectAmount);
     }
-    const empty = Boolean(gun && gun.reloadEmpty);
-    if (!this.switching && reload >= 0) {
-      clip = 'reload';
-      // From empty, the whole clip over the reload's time. With rounds left,
-      // the clip at its own pace till the support hand is back on the grip,
-      // then it eases over into the idle pose instead of going on to drop
-      // the slide (see MODEL23.reloadWithRounds).
-      const tactical = this.current.animated.reloadWithRounds;
-      if (empty || !tactical) time = reload * rig.duration('reload');
-      else {
-        const seconds = reload * (gun.reloadSeconds || tactical.length);
-        time = Math.min(seconds, tactical.leave);
-        toIdle = smoothstep(tactical.leave, gun.reloadSeconds || tactical.length, seconds);
-      }
-    }
-    // (While it's being put away, its slide stays as it was when the switch
-    // began. Its shots move on in real time, as the fire rate does: see
-    // AnimatedGun.update.)
-    const slide = leaving ? rig.slideMode : reload >= 0 && !empty ? 'home' : gun && gun.slideLocked ? 'locked' : 'clip';
-    rig.update(dt, clip, time, slide, this.triggerPull, toIdle, this.rigFrameSeconds);
+    // (The opt-in extras' slide: while it's being put away, it stays as it
+    // was when the switch began.)
+    const slide = leaving ? rig.slideMode : reload >= 0 && !gun.reloadEmpty ? 'home' : empty ? 'locked' : 'clip';
+    // (Its shots move on in real time, as the fire rate does.)
+    rig.update(dt, { clip, time, toIdle, empty, shotDt: this.rigFrameSeconds, slide, triggerPull: this.triggerPull });
   }
 
-  // Sprinting, a gun with its own arms bends its wrists with the gun, as the
-  // others' do (see RIG.sprint).
+  // Where a gun with its own arms is held: at the eye moved to the hip, a
+  // little lower on a tactical sprint (its RIG tacOut); its wrists bend
+  // sprinting only if its model asks for it (see animatedGun.js).
   poseRig(sprintBend) {
-    const object = this.current.object;
-    object.position.copy(this.current.at).addScaledVector(RIG.sprint.tacOut, this.motion.tac);
-    if (sprintBend) this.current.rig.bendWrists(sprintBend * RIG.sprint.share);
+    const g = this.current;
+    g.object.position.copy(g.at).addScaledVector(g.held.tacOut, this.motion.tac);
+    if (sprintBend) g.rig.bendWrists(sprintBend);
   }
 
   // The dropped magazine as it leaves the gun: where it is, which way it's

@@ -1,29 +1,39 @@
-// A gun that brings its own arms and animations (none in the game yet; kept
-// for the next gun that comes with its own animated arms):
-// one skeleton with the forearms, hands and gun on it, and clips made for
-// it (idle, draw, hide, shoot, reload). The gun layer (viewmodel.js) puts it
-// where the eye is and moves it with the same sway, bob, recoil, aiming and
-// sprinting as the other guns; this plays its clips as the gun's state says.
+// A gun that brings its own arms and animations (the Beretta 92FS, see
+// beretta.js): one skeleton with the forearms, hands and gun on it, and the
+// clips its maker made for it. The gun layer (viewmodel.js) puts it where
+// the eye is and moves the whole rig with the same sway, bob, recoil kick,
+// aiming and sprinting offsets as the other guns; this plays its clips as
+// the gun's state says, as they were made.
+//
+// The clips it can have (a gun may lack any but idle; see has()):
+// - idle: a still, the pose it rests in. idleEmpty: the same with the slide
+//   locked back on an empty magazine (where shootLast ends).
+// - draw, hide: taking it out and putting it away. Without them, the gun
+//   layer lowers and raises the whole rig as it does the other guns, held in
+//   its idle pose.
+// - shoot: one shot, from the idle pose back to it. shootLast: the last
+//   round, ending with the slide locked back. Each shot plays it from the
+//   moment the shot goes off (model.events.shoot.fire), so the kick comes
+//   with the flash.
+// - reload (with rounds left) and reloadEmpty (from empty, slide locked back
+//   at the start). With only one, it plays for both.
+// - inspect.
 //
 // The clips are sampled, not played: each frame the gun layer says which one
 // the gun is in and how far (the reload's progress, how far the switch has
-// gone), so they always match the game's own timings. When that changes
-// (from a reload to putting the gun away, say), the pose it was in fades out
-// over a moment instead of jumping. Each shot plays the shoot clip from its
-// start, added on top of whatever pose the gun is in (as how far the clip
-// moves each bone from its first frame, the idle pose): so a shot that comes
-// before the last one has settled kicks on from where that one has got to,
-// instead of the gun snapping back to the idle pose first.
+// gone), so they always match the game's own timings, which are each clip's
+// own length. When that changes (from a reload to putting the gun away,
+// say), the pose it was in fades out over a moment instead of jumping.
 //
-// The clips can't know the gun's state, so a few parts are set on top of
-// them: the slide is held back once the last round has gone, and held home
-// through a reload with rounds left (the clip's reload starts from empty,
-// slide locked back); the slide stop comes up while it's locked back; the
-// trigger comes back as it breaks; and the hammer falls on each shot and is
-// cocked again by the slide going back over it.
-//
-// Sprinting, the hands bend at the wrists with the gun in them, as the other
-// guns' do (bendWrists): the forearms stay where the clip has them.
+// Opt-in extras, for a gun whose clips can't show its state (model.overrides,
+// all off unless a gun asks for them; no gun does now): `slide` (the slide
+// held back once the last round has gone, and home through a reload with
+// rounds left), `trigger` (pulled back as it breaks), `hammer` (falls on
+// each shot, cocked again by the slide), `slideStop` (up while the slide is
+// locked back), `additiveShots` (each shot's clip added on top of whatever
+// pose the gun is in, rather than played from its start) and `bendWrists`
+// (sprinting, the hands bend at the wrists with the gun, as the other guns'
+// do).
 //
 // (The mixer only sets a bone when the clips move it from where they last
 // put it, so the bones changed on top of them are put back where the clips
@@ -32,21 +42,23 @@
 import * as THREE from 'three';
 
 // How long (seconds) the pose a clip was in takes to fade out when another
-// takes over.
+// takes over; when a shot starts, a little quicker (its first frame is
+// nearly the idle pose, and a slower fade would soften the kick).
 const FADE = 0.15;
-// Reloading or being put away, any shot still playing fades out this
-// quickly. (Drawn, it can fire once it's on target, before the draw has
-// quite settled: a shot then plays on top of the draw.)
+const SHOT_FADE = 0.05;
+// (additiveShots) Reloading or being put away, any shot still playing fades
+// out this quickly; and how many shots can be playing at once.
 const SHOT_LEAVE = 0.1;
-// How many shots can be playing at once (each lasts 0.33 s; one comes every
-// 0.2 s at most).
 const SHOT_SLOTS = 3;
-// The moving parts: how far (radians, about the gun's X) the trigger turns
-// back when it's pulled, the hammer falls from cocked, and the slide stop's
-// back end lifts into the slide's notch when it's locked back.
+// (trigger, hammer, slideStop) How far (radians, about the gun's X) the
+// trigger turns back when it's pulled, the hammer falls from cocked, and the
+// slide stop's back end lifts into the slide's notch when it's locked back.
 const TRIGGER_TURN = -0.2;
 const HAMMER_FALL = -0.85;
 const STOP_LIFT = 0.12;
+
+// The clip played instead when a gun hasn't one.
+const STAND_IN = { idleEmpty: 'idle', shootLast: 'shoot', reloadEmpty: 'reload' };
 
 const ACROSS = new THREE.Vector3(1, 0, 0);
 const turn = new THREE.Quaternion();
@@ -70,11 +82,12 @@ const restOf = (part) => part && { position: part.position.clone(), quaternion: 
 
 export class AnimatedGun {
   // scene: the loaded model's scene (its root at the eye); animations: its
-  // clips; model: its constants (bones, parts, points and event times).
+  // clips; model: its constants (bones, clips, points and event times).
   constructor(scene, animations, model) {
     this.model = model;
     this.root = scene;
-    const bone = (key) => scene.getObjectByName(model.bones[key]) || null;
+    this.extra = model.overrides || {};
+    const bone = (key) => (model.bones[key] && scene.getObjectByName(model.bones[key])) || null;
     this.frame = bone('frame');
     this.slide = bone('slide');
     this.trigger = bone('trigger');
@@ -88,8 +101,7 @@ export class AnimatedGun {
 
     // Each clip has two actions: the one playing, and a copy for its pose
     // fading out after another clip takes over (it may be the same clip, from
-    // another time). The shoot clip also has a few that add it on top (one
-    // for each shot that may still be playing).
+    // another time).
     this.mixer = new THREE.AnimationMixer(scene);
     const clips = {};
     for (const [key, name] of Object.entries(model.clips)) {
@@ -116,8 +128,10 @@ export class AnimatedGun {
       this.actions[key] = action(clip);
       this.ghosts[key] = action(copy(clip, '_fading'));
     }
+    // (additiveShots) A few actions adding the shoot clip on top, one for
+    // each shot that may still be playing.
     this.shots = [];
-    if (clips.shoot) {
+    if (this.extra.additiveShots && clips.shoot) {
       for (let i = 0; i < SHOT_SLOTS; i++) {
         const added = THREE.AnimationUtils.makeClipAdditive(copy(clips.shoot, `_added${i}`), 0);
         const a = this.mixer.clipAction(added, null, THREE.AdditiveAnimationBlendMode);
@@ -129,17 +143,19 @@ export class AnimatedGun {
       }
     }
     this.newest = null;
+    // The shot playing (its clip from its start): { time, last } (last: it
+    // emptied the gun, found on the next frame; null till then).
+    this.shot = null;
 
-    // Where the slide rests in the idle pose (it's held there through a
-    // reload with rounds left).
+    // The pose at rest (the opt-in parts' rest is where the idle pose has them).
     if (this.actions.idle) {
       this.actions.idle.weight = 1;
       this.mixer.update(0);
       this.actions.idle.weight = 0;
     }
 
-    this.base = { clip: 'idle', time: 0, toIdle: 0 };
-    this.ghost = null; // { clip, time, toIdle, weight }
+    this.base = { clip: 'idle', time: 0, toIdle: 0, rest: 'idle' };
+    this.ghost = null; // { clip, time, toIdle, rest, weight, fade }
     this.lowering = null; // the pose held while it's put away mid-reload (see update)
     this.slideMode = 'clip'; // how the slide was held last frame (see update)
     this.slideRest = restOf(this.slide);
@@ -154,6 +170,23 @@ export class AnimatedGun {
     this.hammerDown = 0; // 1 = fallen, 0 = cocked
     this.stopLift = 0;
     this.ok = Boolean(clips.idle && this.frame);
+  }
+
+  // Whether it has a clip of its own for `key` (draw, hide, inspect...).
+  has(key) {
+    return Boolean(this.clips[key]);
+  }
+
+  // The clip that plays for `key` (its own, or the one standing in for it).
+  clipFor(key) {
+    if (this.clips[key]) return key;
+    const stand = STAND_IN[key];
+    return stand && this.clips[stand] ? stand : 'idle';
+  }
+
+  // Whether it's in (or holding the pose of) a reload.
+  get reloading() {
+    return Boolean(this.lowering) || this.base.clip === 'reload' || this.base.clip === 'reloadEmpty';
   }
 
   // Remembers where the clips put a bone, before it's changed on top of them.
@@ -189,11 +222,12 @@ export class AnimatedGun {
   // Starts it afresh in `clip` at `time`, with nothing to fade from (it's
   // just been drawn, from out of view).
   reset(clip = 'idle', time = 0) {
-    this.base.clip = clip;
+    this.base.clip = this.clipFor(clip);
     this.base.time = time;
     this.base.toIdle = 0;
     this.lowering = null;
     this.ghost = null;
+    this.shot = null;
     for (const s of this.shots) {
       s.time = Infinity;
       s.weight = 0;
@@ -202,66 +236,92 @@ export class AnimatedGun {
     this.hammerDown = 0;
   }
 
-  // A shot: the shoot clip from its start (in the slot that's been playing
-  // longest, or is free).
+  // A shot: the shoot clip from the moment the shot goes off.
   fire() {
-    if (!this.shots.length) return;
-    const slot = this.shots.reduce((a, s) => (s.time > a.time ? s : a));
-    slot.time = 0;
-    slot.weight = 1;
-    this.newest = slot;
+    if (this.shots.length) {
+      const slot = this.shots.reduce((a, s) => (s.time > a.time ? s : a));
+      slot.time = 0;
+      slot.weight = 1;
+      this.newest = slot;
+    } else if (this.clips.shoot) {
+      this.shot = { time: 0, last: null };
+    }
     this.hammerDown = 1;
   }
 
-  // Poses the rig for this frame. clip, time: the clip it's in (idle,
-  // reload, draw, hide) and how far (seconds). slide:
-  // 'clip' (as the clip has it), 'home' (held forward) or 'locked' (held
-  // back once it's gone back). triggerPull: how far the trigger is pulled
-  // (0..1). toIdle: how far (0..1) the pose has gone from the clip's over to
-  // the idle pose (a reload with rounds left leaves its clip before the end:
-  // see MODEL23.reloadWithRounds). shotDt: the time the shots move on by
-  // (real time, which the gun's fire rate keeps to, even when dt has been
-  // cut short for a slow frame).
-  update(dt, clip, time, slide = 'clip', triggerPull = 0, toIdle = 0, shotDt = dt) {
+  // Poses the rig for this frame. state:
+  // - clip, time: what the gun's state says it's doing (idle, draw, hide,
+  //   reload, reloadEmpty, inspect) and how far into it (seconds); a shot
+  //   playing takes the place of idle and draw.
+  // - toIdle: how far (0..1) the pose has gone from the clip's over to the
+  //   rest pose (an inspect cut short).
+  // - empty: the slide is locked back on an empty magazine (the rest pose is
+  //   idleEmpty, and a shot that has just emptied it plays shootLast).
+  // - shotDt: the time a shot moves on by (real time, which the gun's fire
+  //   rate keeps to, even when dt has been cut short for a slow frame).
+  // - (Opt-in extras) slide: 'clip' (as the clip has it), 'home' (held
+  //   forward) or 'locked' (held back once it's gone back); triggerPull: how
+  //   far the trigger is pulled (0..1).
+  update(dt, { clip, time = 0, toIdle = 0, empty = false, shotDt = dt, slide = 'clip', triggerPull = 0 }) {
     if (!this.ok) return;
     this.slideMode = slide;
     const b = this.base;
+    const rest = empty ? this.clipFor('idleEmpty') : 'idle';
     // Put away in the middle of a reload, the pose it's in is held (the gun
     // layer lowers it out of view as it does the other guns: see lowering).
-    // Fading from it into the hide animation would swing the support hand,
-    // down at the belt, up past the eye.
-    if (clip === 'hide' && (this.lowering || b.clip === 'reload')) {
+    // Fading from it into the hide clip would swing the support hand, down
+    // at the belt, up past the eye.
+    if (clip === 'hide' && (this.lowering || this.reloading)) {
       if (!this.lowering) this.lowering = { clip: b.clip, time: b.time, toIdle: b.toIdle };
       ({ clip, time, toIdle } = this.lowering);
     } else this.lowering = null;
-    if (!this.clips[clip]) clip = 'idle';
+
+    // A shot plays its clip from where it goes off, in place of the rest
+    // pose or the end of the draw.
+    let fade = FADE;
+    const shot = this.shot;
+    if (shot) {
+      if (shot.last === null) shot.last = empty;
+      const key = this.clipFor(shot.last ? 'shootLast' : 'shoot');
+      const events = (this.model.events || {})[key] || {};
+      const t = (events.fire || 0) + shot.time;
+      shot.time += shotDt;
+      if (t >= this.duration(key) || (clip !== 'idle' && clip !== 'draw')) this.shot = null;
+      else {
+        if (b.clip !== key || t < b.time - 0.02) fade = SHOT_FADE;
+        clip = key;
+        time = t;
+      }
+    }
+    if (clip === 'idle') clip = rest;
+    clip = this.clipFor(clip);
     const length = this.duration(clip);
     time = Math.min(Math.max(time, 0), Math.max(0, length - 1e-4));
 
     // Another clip, or a jump in this one: the old pose fades out.
     if (clip !== b.clip || time < b.time - 0.05 || time > b.time + 0.25) {
-      this.ghost = { clip: b.clip, time: b.time, toIdle: b.toIdle, weight: 1 };
+      this.ghost = { clip: b.clip, time: b.time, toIdle: b.toIdle, rest: b.rest, weight: 1, fade };
     }
     b.clip = clip;
     b.time = time;
-    b.toIdle = clip === 'idle' ? 0 : THREE.MathUtils.clamp(toIdle, 0, 1);
+    b.rest = rest;
+    b.toIdle = clip === rest ? 0 : THREE.MathUtils.clamp(toIdle, 0, 1);
     if (this.ghost) {
-      this.ghost.weight -= dt / FADE;
+      this.ghost.weight -= dt / this.ghost.fade;
       if (this.ghost.weight <= 0) this.ghost = null;
     }
 
-    // The shots, each added in full till it's done (or fading out if the gun
-    // is reloading or being put away).
+    // (additiveShots) Each shot added in full till it's done, or fading out
+    // if the gun is reloading or being put away.
     for (const s of this.shots) {
       s.time += shotDt;
       if (s.time >= this.duration('shoot')) s.weight = 0; // done: back where it was
-      else if (clip !== 'idle' && clip !== 'draw') s.weight = Math.max(0, s.weight - dt / SHOT_LEAVE);
+      else if (clip !== rest && clip !== 'draw') s.weight = Math.max(0, s.weight - dt / SHOT_LEAVE);
     }
 
-    // Every action's weight and time: the clips' adding up to 1, the shots
-    // added on top.
-    // (The idle pose holds still, so an action set twice, idle's, just adds
-    // up its weight.)
+    // Every action's weight and time: the clips' adding up to 1 (and any
+    // added shots on top). (A still holds still, so an action set twice
+    // just adds up its weight.)
     for (const a of Object.values(this.actions)) a.weight = 0;
     for (const a of Object.values(this.ghosts)) a.weight = 0;
     const set = (a, t, w) => {
@@ -271,11 +331,11 @@ export class AnimatedGun {
     };
     const fading = this.ghost ? this.ghost.weight * this.ghost.weight * (3 - 2 * this.ghost.weight) : 0;
     set(this.actions[clip], time, (1 - fading) * (1 - b.toIdle));
-    if (b.toIdle) set(this.actions.idle, 0, (1 - fading) * b.toIdle);
+    if (b.toIdle) set(this.actions[rest], 0, (1 - fading) * b.toIdle);
     if (this.ghost) {
       const g = this.ghost;
       set(this.ghosts[g.clip], g.time, fading * (1 - g.toIdle));
-      if (g.toIdle) set(this.ghosts.idle, 0, fading * g.toIdle);
+      if (g.toIdle) set(this.ghosts[g.rest], 0, fading * g.toIdle);
     }
     for (const s of this.shots) {
       s.action.weight = 0;
@@ -283,10 +343,14 @@ export class AnimatedGun {
     }
     this.putBack();
     this.mixer.update(0);
-    for (const part of [this.slide, this.trigger, this.hammer, this.slideStop]) this.keep(part);
+    this.setParts(dt, clip, slide, triggerPull);
+  }
 
-    // The slide, held where the gun's state says.
-    const S = this.slide;
+  // The opt-in extras on the gun's parts (none unless model.overrides asks).
+  setParts(dt, clip, slide, triggerPull) {
+    const x = this.extra;
+    const S = x.slide ? this.slide : null;
+    if (S) this.keep(S);
     const travel = this.model.slideTravel;
     if (S && slide === 'home') {
       S.position.copy(this.slideRest.position);
@@ -298,27 +362,35 @@ export class AnimatedGun {
       this.lockHold = Math.max(this.lockHold, shooting ? S.position.z : this.slideRest.position.z + travel);
       S.position.z = Math.max(S.position.z, this.lockHold);
     } else this.lockHold = -Infinity;
-    // The reload animation eases the locked slide on another 17 mm as the
-    // hands work, past where the slide stop holds it, so it would hang off
-    // the back of the frame: it stays where it locked (and goes home when
-    // the animation sends it forward past there, as the thumb drops it).
-    if (S && clip === 'reload') S.position.z = Math.min(S.position.z, this.slideRest.position.z + travel);
+    // (A reload clip that eases the locked slide on past where the slide
+    // stop holds it would leave it hanging off the frame: it stays where it
+    // locked.)
+    if (S && clip.startsWith('reload')) S.position.z = Math.min(S.position.z, this.slideRest.position.z + travel);
     const back = S ? THREE.MathUtils.clamp((S.position.z - this.slideRest.position.z) / travel, 0, 1) : 0;
 
-    // The hammer is cocked again as the slide goes back over it.
-    this.hammerDown = Math.min(this.hammerDown, 1 - back);
-    turnPart(this.hammer, this.hammerRest, HAMMER_FALL * this.hammerDown);
-    turnPart(this.trigger, this.triggerRest, TRIGGER_TURN * triggerPull);
-    this.stopLift += ((slide === 'locked' ? 1 : 0) - this.stopLift) * Math.min(1, dt * 40);
-    turnPart(this.slideStop, this.stopRest, STOP_LIFT * this.stopLift);
+    if (x.hammer && this.hammer) {
+      // The hammer is cocked again as the slide goes back over it.
+      this.keep(this.hammer);
+      this.hammerDown = Math.min(this.hammerDown, 1 - back);
+      turnPart(this.hammer, this.hammerRest, HAMMER_FALL * this.hammerDown);
+    }
+    if (x.trigger && this.trigger) {
+      this.keep(this.trigger);
+      turnPart(this.trigger, this.triggerRest, TRIGGER_TURN * triggerPull);
+    }
+    if (x.slideStop && this.slideStop) {
+      this.keep(this.slideStop);
+      this.stopLift += ((slide === 'locked' ? 1 : 0) - this.stopLift) * Math.min(1, dt * 40);
+      turnPart(this.slideStop, this.stopRest, STOP_LIFT * this.stopLift);
+    }
   }
 
-  // Bends both hands and the gun `angle` radians at the wrists, about the
-  // line from the shooting hand's wrist to the support hand's (positive is
-  // muzzle down), on top of the pose the clips gave them.
+  // (bendWrists, opt-in) Bends both hands and the gun `angle` radians at the
+  // wrists, about the line from the shooting hand's wrist to the support
+  // hand's (positive is muzzle down), on top of the pose the clips gave them.
   bendWrists(angle) {
     const { shooting, support } = this.hands;
-    if (!angle || !shooting || !support || !this.frame) return;
+    if (!this.extra.bendWrists || !angle || !shooting || !support || !this.frame) return;
     const root = this.root;
     root.updateMatrixWorld(true);
     const toRoot = m1.copy(root.matrixWorld).invert();
