@@ -45,14 +45,15 @@ export class OutfitMenu {
     this.slotsElement.className = 'slots';
     wrap.append(stage, this.slotsElement);
     container.append(wrap);
-    this.renderSlots();
+    this.renderSlots(true);
     this.preview.start();
   }
 
   // The slots and their options (again whenever a choice changes).
-  renderSlots() {
+  // (fresh: just made, not on the page yet.)
+  renderSlots(fresh = false) {
     const el = this.slotsElement;
-    if (!el || !el.isConnected) return;
+    if (!el || (!fresh && !el.isConnected)) return;
     el.replaceChildren();
     for (const slot of SLOTS) {
       const row = document.createElement('div');

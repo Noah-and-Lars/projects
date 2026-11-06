@@ -12,13 +12,13 @@ import * as THREE from 'three';
 import { loadSoldier } from './soldier.js';
 import { outdoorEnvironment, SOLDIER_SKY, SUN_DIRECTION } from './world.js';
 
-// Where the camera looks and how much it shows (metres of his height in
-// view), for each framing; and how fast he turns by himself (radians a
+// Where the camera looks and how much it shows (metres of him, up and
+// across, at least), for each framing; and how fast he turns by himself (radians a
 // second), and how long after a drag before he does again (seconds).
 export const VIEWS = {
-  full: { name: 'Full', target: [0, 0.93, 0], height: 2.05 },
-  head: { name: 'Head', target: [0, 1.64, 0], height: 0.5 },
-  hands: { name: 'Gloves', target: 'hands', height: 0.42 },
+  full: { name: 'Full', target: [0, 0.93, 0], height: 2.0, width: 1.0 },
+  head: { name: 'Head', target: [0, 1.64, 0], height: 0.48, width: 0.42 },
+  hands: { name: 'Gloves', target: 'hands', height: 0.5, width: 0.42 },
 };
 const TURN = { speed: 0.35, pause: 2.5, start: 0.5 };
 const FOV = 26;
@@ -87,7 +87,8 @@ export class OutfitPreview {
     this.sky = outdoorEnvironment(r, SUN_DIRECTION);
     this.focus = new THREE.Vector3(...VIEWS.full.target);
     this.height = VIEWS.full.height;
-    this.clock = new THREE.Clock();
+    this.width = VIEWS.full.width;
+    this.last = 0;
     loadSoldier().then(({ gltf, preview }) => {
       const model = preview;
       model.position.set(0, 0, 0);
@@ -128,7 +129,7 @@ export class OutfitPreview {
   start() {
     if (this.running || !this.setUp()) return;
     this.running = true;
-    this.clock.getDelta();
+    this.last = performance.now();
     this.raf = requestAnimationFrame(this.frame);
   }
 
@@ -147,7 +148,9 @@ export class OutfitPreview {
       this.stop();
       return;
     }
-    const dt = Math.min(this.clock.getDelta(), 0.1);
+    const now = performance.now();
+    const dt = Math.min((now - this.last) / 1000, 0.1);
+    this.last = now;
     this.render(dt);
   }
 
@@ -183,10 +186,11 @@ export class OutfitPreview {
     const k = 1 - Math.exp(-dt * 6);
     this.focus.lerp(target, k);
     this.height += (view.height - this.height) * k;
-    // Far enough back to show `height` metres (or its width, on a narrow
-    // canvas), a little above, looking slightly down.
+    this.width += (view.width - this.width) * k;
+    // Far enough back to show that much of him, a little above, looking
+    // slightly down.
     const halfTan = Math.tan((FOV * Math.PI) / 360);
-    const fit = Math.max(this.height / 2, (this.height * 0.42) / this.camera.aspect);
+    const fit = Math.max(this.height / 2, this.width / 2 / this.camera.aspect);
     const distance = fit / halfTan;
     this.camera.position.set(this.focus.x, this.focus.y + distance * 0.12, this.focus.z + distance);
     this.camera.lookAt(this.focus);

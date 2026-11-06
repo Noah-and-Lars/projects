@@ -251,7 +251,11 @@ body:not(.playing) #ammo {
 
 /* The Outfit tab: the picture of him beside the slots (stacked on a phone). */
 #loadout .panel.wide {
-  width: min(760px, calc(100vw - 32px));
+  width: min(800px, calc(100vw - 32px));
+}
+
+#loadout .slots button {
+  padding: 6px 10px;
 }
 
 #loadout .outfit {
@@ -268,7 +272,8 @@ body:not(.playing) #ammo {
 #loadout canvas.avatar {
   display: block;
   width: 240px;
-  height: 340px;
+  height: min(340px, calc(100vh - 230px));
+  min-height: 220px;
   border-radius: 6px;
   background: radial-gradient(ellipse at 50% 35%, #56606c 0%, #2c3138 70%, #22262b 100%);
   touch-action: none;
@@ -326,7 +331,7 @@ body:not(.playing) #ammo {
 
   #loadout canvas.avatar {
     width: 100%;
-    height: min(46vh, 360px);
+    height: min(40vh, 320px);
   }
 }
 
