@@ -138,6 +138,49 @@ function blendMoves(moves, w) {
   const tq = qmul(d, [-x, -y, -z, ww]);
   return [R, [2 * tq[0], 2 * tq[1], 2 * tq[2]]];
 }
+// A turn of `a` radians about unit axis k.
+function axisAngle(k, a) {
+  const c = Math.cos(a), s2 = Math.sin(a), t = 1 - c;
+  const [x, y, z] = k;
+  return [
+    [c + x * x * t, x * y * t - z * s2, x * z * t + y * s2],
+    [y * x * t + z * s2, c + y * y * t, y * z * t - x * s2],
+    [z * x * t - y * s2, z * y * t + x * s2, c + z * z * t],
+  ];
+}
+// Rotation part of the way from A to B (both 3x3 rotations).
+function slerpR(A, B, t) {
+  const qa = quatOf(A);
+  let qb = quatOf(B);
+  if (dot4(qa, qb) < 0) qb = qb.map((x) => -x);
+  const c = Math.min(1, dot4(qa, qb));
+  const ang = Math.acos(c);
+  let q;
+  if (ang < 1e-6) q = qa;
+  else { const s0 = Math.sin((1 - t) * ang) / Math.sin(ang), s1 = Math.sin(t * ang) / Math.sin(ang); q = qa.map((x, i) => s0 * x + s1 * qb[i]); }
+  const [x, y, z, w] = q;
+  return [
+    [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+    [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+    [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+  ];
+}
+// A joint's world matrix M with its rotation replaced (keeping its scale)
+// and moved to `at`.
+function withRotation(M, R, at) {
+  const out = M.slice();
+  for (let c = 0; c < 3; c++) {
+    const l = Math.hypot(M[c * 4], M[c * 4 + 1], M[c * 4 + 2]);
+    for (let r = 0; r < 3; r++) out[c * 4 + r] = R[r][c] * l;
+  }
+  out[12] = at[0]; out[13] = at[1]; out[14] = at[2];
+  return out;
+}
+// Part of the way (t) from joint matrix A to B, turning about its own place.
+function between(A, B, t) {
+  const R = slerpR(normCols(rot3Of(A)), normCols(rot3Of(B)), t);
+  return withRotation(B, R, lerp(pointOf(A), pointOf(B), t));
+}
 const dot4 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
 
 const DIGITS = ['Index', 'Mid', 'Ring', 'Pinky', 'Thumb'];
@@ -614,10 +657,11 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
     const dirs = [0, 1, 2].map((k) => norm(sub(G[k + 1], G[k])));
     const J = [ch.J[0]];
     for (let k = 0; k < 3; k++) J.push(addS(J[k], dirs[k], ch.lengths[k]));
-    const world = ch.ids.map((id, k) => turnAbout(his.world(id), swing(ch.dirs[k], dirs[k]), ch.J[k], J[k]));
+    // (twist: turned about its own length too, by that many radians.)
+    const worldAt = (twist) => ch.ids.map((id, k) => turnAbout(his.world(id), m3mul(axisAngle(dirs[k], twist), swing(ch.dirs[k], dirs[k])), ch.J[k], J[k]));
     // Stretched along each bone to fit his: x -> J + D (x - G).
     const stretch = [0, 1, 2].map((k) => ch.lengths[k] / len(sub(G[k + 1], G[k])));
-    return { J, dirs, world, stretch };
+    return { J, dirs, world: worldAt(0), worldAt, stretch };
   });
   log(`  ${side}: stretch along bones ${posed.map((p) => p.stretch.map((x) => x.toFixed(2)).join('/')).join(' ')}; knuckles off his by ${chainsG.slice(0, 4).map((G, c) => (len(sub(G[0], his.chains[c].J[0])) * 1000).toFixed(1)).join(' ')} mm`);
 
@@ -708,6 +752,34 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
     nor.set(norm(nn), 3 * i);
   }
 
+  // The thumb's turn about its own length in the glove's pose: the least
+  // turn into his pose alone can leave the thumb's pad facing the wrong way
+  // (the downloads' thumbs lie out flat, his is opposed). So it's turned so
+  // that, in his rest pose, its pad faces his index finger, as his does:
+  // the glove's pad taken to face `thumb.pad` degrees from straight out of
+  // its palm towards its fingers (45 by default).
+  {
+    const ids = his.digits[4];
+    const padDeg = ((cfg.thumb.pad ?? 45) * Math.PI) / 180;
+    const padH = [0, -Math.sin(padDeg), -Math.cos(padDeg)];
+    const padFlat = norm(m3v(R, padH));
+    const tc2 = his.chains[4];
+    const wantRaw = sub(his.chains[0].J[1], tc2.J[2]);
+    const want = ortho(wantRaw, tc2.dirs[2]);
+    let best = null;
+    for (let deg = -180; deg < 180; deg += 5) {
+      const world = posed[4].worldAt((deg * Math.PI) / 180);
+      const move = moveOf(his.world(ids[2]), world[2]);
+      const [R2] = blendMoves([move], [1]);
+      const pad = ortho(m3v(R2, ortho(padFlat, posed[4].dirs[2])), tc2.dirs[2]);
+      const score = dot(pad, want);
+      if (!best || score > best.score) best = { deg, score };
+    }
+    const twist = cfg.thumbTwist ?? best.deg;
+    posed[4].world = posed[4].worldAt((twist * Math.PI) / 180);
+    log(`  thumb turned ${twist} degrees about its length`);
+  }
+
   // How thick its fingers are, to his own glove's (for fitting the fingers
   // to the gun, src/player/fpArms.js).
   const thickness = measureThickness(pos, wts, B, chainsG.map((G, c) => [posed[c].J[0], posed[c].J[1], posed[c].J[2], addS(posed[c].J[2], posed[c].dirs[2], his.chains[c].lengths[2])]), his);
@@ -720,8 +792,29 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
   // wrist so the cuff, along his hand, lies along his forearm at rest.)
   const foreFlat = turnAbout(his.world(his.twist), swing(his.forearmAxis, handAxis), his.wrist, his.wrist);
   const flatPos = process.env.GLOVE_STRETCH ? pos.slice() : null;
-  const moves = [identityMove(), moveOf(his.world(his.twist), foreFlat)];
-  his.digits.forEach((ids, c) => ids.forEach((id, k) => moves.push(moveOf(his.world(id), posed[c].world[k]))));
+  // (Bound part of the way from the glove's pose to his rest, `bindAt`: so
+  // what's bent here and what his bones bend in the game are each smaller.)
+  const bindAt = cfg.bindAt ?? 0.5;
+  const bind = new Map([[his.hand, his.world(his.hand)], [his.twist, between(foreFlat, his.world(his.twist), bindAt, null, null)]]);
+  his.digits.forEach((ids, c) => {
+    let parentFlat = normCols(rot3Of(his.world(his.hand))), parentRest = parentFlat, parentBind = parentFlat;
+    let at = his.chains[c].J[0];
+    ids.forEach((id, k) => {
+      const flat = posed[c].world[k], rest = his.world(id);
+      const Rf = normCols(rot3Of(flat)), Rr = normCols(rot3Of(rest));
+      const local = slerpR(m3mul(m3T(parentFlat), Rf), m3mul(m3T(parentRest), Rr), bindAt);
+      const Rb = m3mul(parentBind, local);
+      if (k > 0) {
+        const prev = his.chains[c].J[k - 1];
+        const offset = m3v(m3T(parentRest), sub(his.chains[c].J[k], prev));
+        at = add(at, m3v(parentBind, offset));
+      }
+      bind.set(id, withRotation(rest, Rb, at));
+      parentFlat = Rf; parentRest = Rr; parentBind = Rb;
+    });
+  });
+  const moves = [identityMove(), moveOf(bind.get(his.twist), foreFlat)];
+  his.digits.forEach((ids, c) => ids.forEach((id, k) => moves.push(moveOf(bind.get(id), posed[c].world[k]))));
   for (let i = 0; i < n; i++) {
     const [R2, t] = blendMoves(moves, wts.subarray(i * B, i * B + B));
     pos.set(add(m3v(R2, pointOf3(pos, i)), t), 3 * i);
@@ -758,8 +851,8 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
     const t = top.reduce((x, [, w]) => x + w, 0);
     top.forEach(([b, w], k) => { joints[4 * i + k] = jointOf[b]; weights[4 * i + k] = w / t; });
   }
-  // Inverse bind matrices: his rest pose.
-  const pose = new Map(jointOf.map((id) => [id, his.world(id)]));
+  // Inverse bind matrices: that pose.
+  const pose = bind;
 
   // (Triangles wind the other way on the mirrored hand.)
   const index = Uint32Array.from(g.index);
