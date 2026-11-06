@@ -752,33 +752,9 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
     nor.set(norm(nn), 3 * i);
   }
 
-  // The thumb's turn about its own length in the glove's pose: the least
-  // turn into his pose alone can leave the thumb's pad facing the wrong way
-  // (the downloads' thumbs lie out flat, his is opposed). So it's turned so
-  // that, in his rest pose, its pad faces his index finger, as his does:
-  // the glove's pad taken to face `thumb.pad` degrees from straight out of
-  // its palm towards its fingers (45 by default).
-  {
-    const ids = his.digits[4];
-    const padDeg = ((cfg.thumb.pad ?? 45) * Math.PI) / 180;
-    const padH = [0, -Math.sin(padDeg), -Math.cos(padDeg)];
-    const padFlat = norm(m3v(R, padH));
-    const tc2 = his.chains[4];
-    const wantRaw = sub(his.chains[0].J[1], tc2.J[2]);
-    const want = ortho(wantRaw, tc2.dirs[2]);
-    let best = null;
-    for (let deg = -180; deg < 180; deg += 5) {
-      const world = posed[4].worldAt((deg * Math.PI) / 180);
-      const move = moveOf(his.world(ids[2]), world[2]);
-      const [R2] = blendMoves([move], [1]);
-      const pad = ortho(m3v(R2, ortho(padFlat, posed[4].dirs[2])), tc2.dirs[2]);
-      const score = dot(pad, want);
-      if (!best || score > best.score) best = { deg, score };
-    }
-    const twist = cfg.thumbTwist ?? best.deg;
-    posed[4].world = posed[4].worldAt((twist * Math.PI) / 180);
-    log(`  thumb turned ${twist} degrees about its length`);
-  }
+  // (The thumb can be turned about its own length in the glove's pose,
+  // `thumb.twist` degrees, if its pad would face the wrong way.)
+  if (cfg.thumb.twist) posed[4].world = posed[4].worldAt((cfg.thumb.twist * Math.PI) / 180);
 
   // How thick its fingers are, to his own glove's (for fitting the fingers
   // to the gun, src/player/fpArms.js).
