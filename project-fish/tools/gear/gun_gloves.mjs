@@ -568,12 +568,31 @@ function gloveOnRig(item, left, rig, S, opts, log) {
   const cylPos = new Float32Array(cylPoints.length * 3);
   cylPoints.forEach((v, k) => cylPos.set(cyl(pointOf3(rig.pos, v)), 3 * k));
   const cylGrid = new Grid(cylPos, 0.01);
+  // Where its cuff reaches: up the forearm from the wrist, the shortest
+  // way round (the least reach of 24 strips round the arm).
+  const reach = reachRound(P, h, 24);
+  const cuffTop = Math.max(...reach.filter(Number.isFinite));
+  const cut = opts.sleeve ? opts.sleeveEnd : cuffTop + opts.under;
+  // (Widening the cuff, below, only moves it out from the forearm's line,
+  // so it doesn't change these.)
   const weights = []; // per point: Map rig joint -> weight
   for (let i = 0; i < n; i++) {
     const wmap = new Map();
     const addW = (j, w) => { if (w > 0) wmap.set(j, (wmap.get(j) || 0) + w); };
     const p = pointOf3(P, i);
-    const hand = out.wts[i * B], fore = out.wts[i * B + 1];
+    let hand = out.wts[i * B], fore = out.wts[i * B + 1], rest = 1;
+    {
+      // Over the rig's skin that's kept (up to the cut, and 4 mm past it)
+      // the cuff takes the skin's own weights wholly, eased over to
+      // glove.mjs's by 16 mm past the cut: so where they overlap the two
+      // bend the same and the skin can't come through the cuff on the
+      // inside of a bent wrist (glove.mjs's cuff is part on the hand from
+      // 24 mm up the forearm, which the skin there mostly isn't).
+      let sw = 0;
+      for (let b = 0; b < B; b++) sw += out.wts[i * B + b];
+      const want = (1 - smoothstep(cut + 0.004, cut + 0.016, dot(sub(p, h.wrist), h.axis))) * sw;
+      if (want > fore) { rest = (sw - want) / (sw - fore); hand *= rest; fore = want; }
+    }
     const near = hand > 0 ? grid.near(p[0], p[1], p[2], 8, 0.08) : [];
     if (fore > 0) {
       // The rig's skin weights here: of its nearest points round the
@@ -605,7 +624,7 @@ function gloveOnRig(item, left, rig, S, opts, log) {
       if (!total) addW(h.hand, hand);
       else for (const [j, w] of sum) addW(j, hand * w / total);
     }
-    for (let b = 2; b < B; b++) addW(view.list[viewOf[b]].rigJoint, out.wts[i * B + b]);
+    for (let b = 2; b < B; b++) addW(view.list[viewOf[b]].rigJoint, out.wts[i * B + b] * rest);
     weights.push(wmap);
   }
   // Up to four bones a point.
@@ -617,11 +636,6 @@ function gloveOnRig(item, left, rig, S, opts, log) {
   }
   // Bare arms: the cuff pushed clear of the forearm's skin.
   if (opts.bare) clearCuff(P, joints, wts4, rig, h, opts, log);
-  // Where its cuff reaches: up the forearm from the wrist, the shortest
-  // way round (the least reach of 24 strips round the arm).
-  const reach = reachRound(P, h, 24);
-  const cuffTop = Math.max(...reach.filter(Number.isFinite));
-  const cut = opts.sleeve ? opts.sleeveEnd : cuffTop + opts.under;
   if (opts.sleeve && cuffTop > cut - 0.01) log(`  ${S}: WARNING the cuff reaches only ${(cuffTop * 1000).toFixed(0)} mm, not 10 mm past the sleeve's end`);
   log(`  ${S}: cuff reaches ${(cuffTop * 1000).toFixed(0)} mm up the forearm; the rig's hand is cut away from ${(cut * 1000).toFixed(0)} mm`);
   // The plane, in the hand bone's bind frame (metres).
