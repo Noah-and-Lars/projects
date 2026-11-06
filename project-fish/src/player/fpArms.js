@@ -180,24 +180,32 @@ export class FirstPersonArms {
       this.bodyArms[side] = Object.assign(bodyArm, shared);
     }
     // His sleeves and gloves in the gun layer, with the arms' copy's bones.
+    this.inGunLayer = new Map(); // his mesh in the arms' copy -> its copy in the gun layer
     model.traverse((o) => {
       if (!o.isSkinnedMesh || firstPersonTag(o) !== 'arms') return;
-      const material = [].concat(o.material).map((m) => {
-        const own = m.clone();
-        own.envMap = null; // the gun layer's own sky
-        own.envMapIntensity = 1;
-        return own;
-      });
-      const mesh = new THREE.SkinnedMesh(o.geometry, material.length === 1 ? material[0] : material);
-      mesh.bind(o.skeleton, new THREE.Matrix4());
-      mesh.bindMode = THREE.DetachedBindMode;
-      mesh.matrixAutoUpdate = false;
-      mesh.frustumCulled = false;
-      mesh.castShadow = mesh.receiveShadow = true;
-      mesh.name = `fp_${o.name}`;
-      viewmodel.scene.add(mesh);
-      this.meshes.push(mesh);
+      this.inGunLayer.set(o, this.addToGunLayer(o));
     });
+    // Gloves from his outfit (src/gear.js: the gloves slot): a glove that
+    // isn't his own goes in the gun layer on the arms' copy's bones, and
+    // his own gloves are left out.
+    if (body.wardrobe) {
+      body.wardrobe.dress(model, {
+        slots: ['gloves'],
+        add: (piece) => this.inGunLayer.set(piece, this.addToGunLayer(piece)),
+        remove: (piece) => {
+          const mesh = this.inGunLayer.get(piece);
+          if (mesh) {
+            mesh.removeFromParent();
+            this.meshes.splice(this.meshes.indexOf(mesh), 1);
+            this.inGunLayer.delete(piece);
+          }
+        },
+        hide: (own, hidden) => {
+          const mesh = this.inGunLayer.get(own);
+          if (mesh) mesh.userData.gearHidden = hidden;
+        },
+      });
+    }
     // The gloves model's own gloves and sleeves are no longer drawn (its
     // hand rigs still move the magazine and the like).
     viewmodel.hideGloves();
@@ -205,6 +213,28 @@ export class FirstPersonArms {
     for (const gun of Object.values(viewmodel.guns || {})) if (gun.pistol && !gun.animated) this.gunVolume(gun.pistol);
     this.ready = true;
     return true;
+  }
+
+  // One of his meshes (or a glove from his outfit), on the arms' copy's
+  // bones, drawn in the gun layer: its own copies of the materials, lit by
+  // the gun layer's sky.
+  addToGunLayer(o) {
+    const material = [].concat(o.material).map((m) => {
+      const own = m.clone();
+      own.envMap = null; // the gun layer's own sky
+      own.envMapIntensity = 1;
+      return own;
+    });
+    const mesh = new THREE.SkinnedMesh(o.geometry, material.length === 1 ? material[0] : material);
+    mesh.bind(o.skeleton, o.bindMatrix);
+    mesh.bindMode = THREE.DetachedBindMode;
+    mesh.matrixAutoUpdate = false;
+    mesh.frustumCulled = false;
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.name = `fp_${o.name}`;
+    this.viewmodel.scene.add(mesh);
+    this.meshes.push(mesh);
+    return mesh;
   }
 
   // camera: the world camera, after it's placed for this frame; player: the
@@ -218,7 +248,7 @@ export class FirstPersonArms {
     const Cq = camera.getWorldQuaternion(q());
     const toView = C.clone().invert();
     const wrists = viewmodel.ownWrists;
-    for (const mesh of this.meshes) mesh.visible = !wrists;
+    for (const mesh of this.meshes) mesh.visible = !wrists && !mesh.userData.gearHidden;
     if (wrists) {
       this.reachOwnArms(wrists, C, Cq);
       return;
