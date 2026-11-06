@@ -25,7 +25,9 @@
 // towards his shoulders by the difference, so the hands never leave it.
 //
 // A gun that brings its own arms (the Beretta 92FS, the FN 502 and the
-// Browning Hi-Power, see src/viewmodel/animatedGun.js) is held by those: his
+// Browning Hi-Power, see src/viewmodel/animatedGun.js), or plays its
+// maker's clips on a copy of his own (the Xiri X4, the MP7A1 and the AR-15, see
+// src/viewmodel/soldierRig.js), is held by those: his
 // arms aren't drawn in the gun layer then, and nothing pulls the gun in or
 // fits his fingers to it. His body's arms (seen in photo mode, and in his shadow) take the hold
 // its own arms' clips have: see reachOwnArms.
@@ -68,9 +70,18 @@ const OWN = {
 };
 // A gun's own arms' finger bones, by the names its converter gives them
 // (tools/blender/): in the rigs' chain order (DIGITS), each from its first
-// knuckle out, and its hand bone. (Its pinky is `pinky` or `little`.)
+// knuckle out, and its hand bone. (Its pinky is `pinky` or `little`.) A
+// gun whose clips were put on his own arms (src/viewmodel/soldierRig.js)
+// has his bones, by his names: `same` then (each of his bones can take the
+// turn its own has).
 const OWN_DIGITS = [['index'], ['middle'], ['ring'], ['pinky', 'little'], ['thumb']];
 function ownHand(root, s) {
+  const his = (name) => root.getObjectByName(`CC_Base_${s}_${name}`) || null;
+  if (his('Hand')) {
+    const hand = his('Hand');
+    const digits = DIGITS.map((d) => [1, 2, 3].map((k) => his(`${d}${k}`)));
+    return digits.every((d) => d.every(Boolean)) ? { hand, digits, same: true } : null;
+  }
   const bone = (name) => root.getObjectByName(`${name}_${s}`) || null;
   const hand = bone('hand');
   const digits = OWN_DIGITS.map((names) => {
@@ -399,7 +410,11 @@ export class FirstPersonArms {
       const its = this.ownHands[side];
       const target = OWN.target.copy(wrists[side]).applyMatrix4(C);
       let turn = null;
-      if (its) {
+      if (its && its.same) {
+        // (His own bones: his hand turned as its hand is, his wrist on its.)
+        target.copy(its.hand.getWorldPosition(OWN.wrist)).applyMatrix4(C);
+        turn = OWN.turn.copy(Cq).multiply(its.hand.getWorldQuaternion(OWN.his));
+      } else if (its) {
         // Its hand's frame in the world, from its knuckles; his hand turned
         // to match, and moved so his middle knuckle is on its.
         const wristAt = its.hand.getWorldPosition(OWN.wrist).applyMatrix4(C);
@@ -418,6 +433,12 @@ export class FirstPersonArms {
       if (!turn) continue;
       arm.hand.quaternion.copy(arm.fore.getWorldQuaternion(OWN.q).invert().multiply(turn));
       arm.hand.updateMatrixWorld(true);
+      // His own bones: each finger bone turned as its own is.
+      if (its.same) {
+        arm.digits.forEach((bones, c) => bones.forEach((b, k) => b.quaternion.copy(its.digits[c][k].quaternion)));
+        arm.hand.updateMatrixWorld(true);
+        continue;
+      }
       // Each finger bone from where it was, turned to point as its does.
       arm.digits.forEach((bones, c) => bones.forEach((b, k) => {
         b.quaternion.copy(arm.digitRest[c][k]);

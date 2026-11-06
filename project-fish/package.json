@@ -15,7 +15,10 @@
     "build-fn502": "mkdir -p assets && blender --background --python tools/blender/convert_fn502.py -- build/fn502-source build/fn502-raw.glb && gltf-transform meshopt build/fn502-raw.glb assets/fn502.glb --level high",
     "build-hipistol": "mkdir -p assets && blender --background --python tools/blender/convert_hipistol.py -- build/hipistol-source build/hipistol-raw.glb && gltf-transform meshopt build/hipistol-raw.glb assets/hipistol.glb --level high",
     "build-gear": "mkdir -p build assets/gear && python3 -I tools/gear/rub_headset_text.py build/gear-src/tactical_headset_-_game_ready/textures/headset_baseColor.jpeg build/gear-headset.png && node tools/gear/build_gear.mjs build/gear-src assets/soldier.glb assets/gear --headset-texture build/gear-headset.png",
-    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-arms && npm run build-soldier && npm run build-gear"
+    "build-x4": "mkdir -p build assets && blender --background --python tools/blender/convert_retarget.py -- build/upload-xiri build/x4-raw.glb --arms assets/soldier.glb && gltf-transform meshopt build/x4-raw.glb assets/x4.glb --level high",
+    "build-mp7": "mkdir -p build assets && blender --background --python tools/blender/convert_retarget.py -- build/upload-mp7 build/mp7-raw.glb --arms assets/soldier.glb && gltf-transform meshopt build/mp7-raw.glb assets/mp7.glb --level high",
+    "build-ar15": "mkdir -p build assets && blender --background --python tools/blender/convert_retarget.py -- build/upload-ar15 build/ar15-raw.glb --arms assets/soldier.glb && gltf-transform meshopt build/ar15-raw.glb assets/ar15.glb --level high",
+    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-arms && npm run build-soldier && npm run build-gear && npm run build-x4 && npm run build-mp7 && npm run build-ar15"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.2.1",

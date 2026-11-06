@@ -26,6 +26,9 @@
 // fitting the fingers to the gun. The guns that bring their own arms (the
 // Beretta 92FS, the FN 502 and the Hi-Power) wear the same gloves made for
 // their own hands (an option's `guns`), put on by src/viewmodel/gunGloves.js.
+// The guns whose clips play on a copy of his own arms (the Xiri X4, the
+// MP7A1 and the AR-15, src/viewmodel/soldierRig.js) wear these very files (an option's
+// `file`), put on by gunGloves.js too.
 //
 // (They're bound to his hand bones by name: CC_Base_[LR]_Hand, the
 // ForearmTwist02 for the cuff, and three bones for each finger and the
@@ -101,7 +104,7 @@ export const SLOTS = [
   {
     id: 'gloves', name: 'Gloves', default: 'field',
     options: [
-      { id: 'none', name: 'No gloves', about: "The hands the Beretta, the FN 502 and the Hi-Power came with (bare hands on the Beretta, its own leather gloves on the FN 502, its own black gloves on the Hi-Power). He has no bare hands under his gloves, so he keeps his field gloves on.", own: true },
+      { id: 'none', name: 'No gloves', about: "The hands the Beretta, the FN 502 and the Hi-Power came with (bare hands on the Beretta, its own leather gloves on the FN 502, its own black gloves on the Hi-Power). He has no bare hands under his gloves, so he keeps his field gloves on (on the Xiri X4, the MP7A1 and the AR-15 too, which he holds with his own arms).", own: true },
       { id: 'field', name: 'Field gloves', about: 'His own gloves, with a hard knuckle guard. (They weren\'t made for the own arms of the Beretta, the FN 502 and the Hi-Power, which keep the hands they came with.)', own: true },
       { id: 'black', name: 'Black gloves', about: 'Black gloves with a padded knuckle guard, knuckle pads and a wide wrist strap.', file: gearFile('gloves_black'), guns: gunGloves('black') },
       { id: 'olive', name: 'Sage gloves', about: 'Worn sage-green gloves with moulded knuckles and a long strapped cuff.', file: gearFile('gloves_olive'), guns: gunGloves('olive') },

@@ -14,6 +14,9 @@ import { MODEL9 } from './pistol9.js';
 import { MODEL_BERETTA } from './beretta.js';
 import { MODEL_FN502 } from './fn502.js';
 import { MODEL_HIPISTOL } from './hipistol.js';
+import { MODEL_X4 } from './x4.js';
+import { MODEL_MP7 } from './mp7.js';
+import { MODEL_AR15 } from './ar15.js';
 import { AnimatedGun } from './animatedGun.js';
 import { GunGloves } from './gunGloves.js';
 import { createArms, rightHandPose } from './arms.js';
@@ -23,7 +26,7 @@ import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS, reloadSteps } from '../weapon.js';
-import { PISTOL, PISTOL45, BERETTA, FN502, HIPISTOL, LOADOUT } from '../shared/config.js';
+import { PISTOL, PISTOL45, BERETTA, FN502, HIPISTOL, X4, MP7, AR15, LOADOUT } from '../shared/config.js';
 
 // Points on the built-in first pistol (gun space; used if its model file
 // can't be loaded; the model's are in pistol9.js): the
@@ -109,6 +112,40 @@ const GUN_KINDS = {
     // higher, or the gun would be all but out of view.)
     rig: { hip: new THREE.Vector3(0.01, -0.01, -0.02), kick: 0.4, sprintPose: 0, sprintOut: new THREE.Vector3(0, 0.07, 0) },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(HIPISTOL),
+  },
+  // The guns whose makers' clips were put on the soldier's own arms
+  // (soldierRig.js).
+  x4: {
+    rules: X4, model: new URL('../../assets/x4.glb', import.meta.url), animated: MODEL_X4,
+    rig: { hip: new THREE.Vector3(0.015, 0.005, -0.02), kick: 0.4, aimLevel: 1, sprintPose: 0, sprintOut: new THREE.Vector3(0, 0.1, 0.03) },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(X4),
+  },
+  mp7: {
+    rules: MP7, model: new URL('../../assets/mp7.glb', import.meta.url), animated: MODEL_MP7,
+    rig: {
+      hip: new THREE.Vector3(0.03, -0.035, -0.02), kick: 0.3, aimLevel: 1, sprintPose: 0, sprintOut: new THREE.Vector3(0, 0.1, 0.03),
+      suppressed: true, redDot: { radius: 0.0095 },
+    },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(MP7),
+  },
+  // (Its maker framed it shouldered, low on the right; it's held 2 cm
+  // further right, 2.5 cm lower and 3 cm further out, which shows a little
+  // less of the optic at the hip, with the arms' ends out of view through
+  // both reloads and its draw at 16:9, 21:9 and 4:3, looking down too. It
+  // has no shot clip, so it takes more of the gun layer's kick than the
+  // others with their own arms. Aiming, the eyepiece of its magnifier is
+  // 16 cm from the eye: further and the stock fills the bottom of the view,
+  // as it runs back under the eye. It has no run clip, so it takes the gun
+  // layer's sprint pose like the PF-9. Its holographic sight's reticle
+  // isn't on the model, so a dot is drawn (redDot: in the eyepiece, seen
+  // through the glass).)
+  ar15: {
+    rules: AR15, model: new URL('../../assets/ar15.glb', import.meta.url), animated: MODEL_AR15,
+    rig: {
+      hip: new THREE.Vector3(0.02, -0.025, -0.03), kick: 0.6, aimLevel: 1, eyeRelief: 0.16,
+      suppressed: true, redDot: { radius: 0.0188 },
+    },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(AR15),
   },
 };
 
@@ -635,6 +672,7 @@ export const AIM = {
 };
 // (Where the gun is then depends on its sights: see useGun.)
 const AIM_ROTATION = new THREE.Quaternion();
+const FORWARD_AXIS = new THREE.Vector3(0, 0, 1);
 const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 
 // A gun with its own arms (animatedGun.js). Its model's root is the eye its
@@ -659,6 +697,15 @@ const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 //   maker's own sprint pose. sprintOut: sprinting, it's held this much
 //   higher (metres, gun space), as much as it's in the sprint pose: for a
 //   run clip that takes the gun lower than the gun layer's view shows.
+// - aimLevel: how much of the cant its maker holds it at (its model's cant)
+//   the whole rig is turned back about the line of sight as it comes up to
+//   the sights (1: aimed level).
+// - suppressed: it has a suppressor on (a faint flash, a quieter shot).
+// - redDot: it's aimed through a red dot sight (its model's sights are the
+//   lens: the middle, and the back and front of the sight), and the dot
+//   shows in the lens (radius: the lens's, metres), and shots go through
+//   it: see redDotPoint and showRedDot. (The lens's glass is see-through
+//   in the model itself: its own material, written by the converter.)
 // (Sprinting, the others' hands bend at the wrists; a gun with its own arms
 // only does if its model asks for it, see animatedGun.js: the whole rig
 // takes the sprint pose's offsets.)
@@ -671,6 +718,9 @@ const RIG = {
   tacOut: new THREE.Vector3(),
   sprintPose: 1,
   sprintOut: new THREE.Vector3(),
+  aimLevel: 0,
+  suppressed: false,
+  redDot: null,
 };
 // A gun's own RIG values: its rig in GUN_KINDS over RIG's.
 function rigOf(kind) {
@@ -688,6 +738,36 @@ const NO_PARTS = {
   slide: null, trigger: null, barrel: null, magazine: null, magazineRest: null, slideStop: null, hammer: null,
   extractor: null, chamberRound: null, safetyBlade: null,
 };
+
+// A red dot sight's dot (showRedDot): its size (metres across at the lens,
+// its glow round it included; its bright middle is about a third of that).
+// Aimed (from aimFrom of the way up to the sights), it's kept in view while
+// the eye is off the lens's axis by up to `keep` lens radii (a burst's kick
+// shakes the eye off it by more than the lens: the MP7A1's, 9.5 mm, by up
+// to 17), drawn no further out than inLens of the radius.
+const RED_DOT = { size: 0.004, inLens: 0.85, aimFrom: 0.6, keep: 2 };
+
+// The red dot: a bright, nearly white middle, red round it, glowing out.
+function dotTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 32;
+  const g = canvas.getContext('2d');
+  const grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255,236,226,1)');
+  grad.addColorStop(0.2, 'rgba(255,90,60,1)');
+  grad.addColorStop(0.4, 'rgba(255,30,15,0.85)');
+  grad.addColorStop(0.65, 'rgba(255,20,10,0.25)');
+  grad.addColorStop(1, 'rgba(255,0,0,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 32, 32);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+const lensAt = new THREE.Vector3();
+const lensAxis = new THREE.Vector3();
+const lensSeen = new THREE.Vector3();
+const dotAim = new THREE.Vector3();
 
 // The arms swing about this point between the wrists (gun space), not the eye.
 const PIVOT = new THREE.Vector3(0, -0.085, 0.07);
@@ -821,6 +901,15 @@ export class Viewmodel {
     this.wristRight = new THREE.Vector3();
     this.wristLeft = new THREE.Vector3();
     this.aimPosition = new THREE.Vector3();
+    this.aimRoll = new THREE.Quaternion();
+    // A red dot sight's dot (see showRedDot): one, for whichever gun has one.
+    this.redDot = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: dotTexture(), transparent: true, depthWrite: false, toneMapped: false,
+    }));
+    this.redDot.scale.setScalar(RED_DOT.size);
+    this.redDot.visible = false;
+    this.redDot.renderOrder = 1;
+    this.scene.add(this.redDot);
     // How far the gun is drawn in so the soldier's arms reach it (set by
     // src/player/fpArms.js).
     this.reachPull = new THREE.Vector3();
@@ -1026,9 +1115,15 @@ export class Viewmodel {
       viewFov: held.viewFov,
       kick: held.kick,
       chamberCheck: false,
+      suppressed: held.suppressed,
+      redDot: held.redDot,
+      // (Aimed, the rig is turned this much about the line of sight: radians,
+      // positive anticlockwise as you look.)
+      aimRoll: -THREE.MathUtils.degToRad((M.cant || 0) * held.aimLevel),
     };
     const g = { key, rules: kind.rules, base: points, points, pistol: rig.frame, object, rig, at, held, animated: M, parts: NO_PARTS, attachments: {}, on: {}, release: '' };
     g.flash = new MuzzleFlash(M.muzzle);
+    g.flash.setMuzzle(M.muzzle, held.suppressed);
     g.flash.attachTo(rig.frame);
     return g;
   }
@@ -1155,11 +1250,15 @@ export class Viewmodel {
   // the sight's own eye relief). (Sights that aren't on gun space's middle
   // line, or measured from a part that isn't at its origin, `at`, are moved
   // over by that much.)
+  // (A gun whose rig is turned about the line of sight as it's aimed, its
+  // points' aimRoll, is placed so its sights are on that line, turned.)
   aimAt(sights, at = null) {
     const x = (sights.x || 0) + (at ? at.x : 0);
     const y = sights.height + (at ? at.y : 0);
     const z = sights.rearZ + (at ? at.z : 0);
-    this.aimPosition.set(-x, -y, -((sights.eyeRelief ?? AIM.eyeToRearSight) + z));
+    const roll = (this.current && this.current.points.aimRoll) || 0;
+    const rear = new THREE.Vector3(x, y, z).applyAxisAngle(FORWARD_AXIS, roll);
+    this.aimPosition.set(-rear.x, -rear.y, -((sights.eyeRelief ?? AIM.eyeToRearSight) + rear.z));
   }
 
   // For a gun with its own arms, where its hands' wrists are (gun layer
@@ -1252,8 +1351,10 @@ export class Viewmodel {
   }
 
   // A shot: the gun kicks, the muzzle flashes and the slide cycles.
-  fire(aim) {
-    this.motion.kick(aim, this.current ? this.current.rules.recoil * (this.current.points.kick ?? 1) : 1);
+  // (burst: how much harder this round of a burst kicks, for a fully
+  // automatic gun.)
+  fire(aim, burst = 1) {
+    this.motion.kick(aim, (this.current ? this.current.rules.recoil * (this.current.points.kick ?? 1) : 1) * burst);
     if (this.flash) this.flash.fire();
     if (this.current && this.current.rig) this.current.rig.fire();
     this.slideTime = 0;
@@ -1272,6 +1373,7 @@ export class Viewmodel {
   dryFire() {
     this.triggerTime = 0;
     this.motion.twitch();
+    if (this.current && this.current.rig) this.current.rig.dryFire();
   }
 
   // A hand-mounted part (the hard knuckle guard) moves with the hand when the
@@ -1389,7 +1491,9 @@ export class Viewmodel {
 
   // Where the front sight is on screen (-1..1 each way), so shots go where the
   // sights point.
+  // (Through a red dot sight, where its dot is: see redDotPoint.)
   sightOnScreen() {
+    if (this.points.redDot && this.pistol && this.redDotPoint(dotAim) !== null) return dotAim.project(this.camera);
     const sights = this.points.sights;
     return this.pointOnGun([sights.x || 0, sights.height, sights.frontZ]).project(this.camera);
   }
@@ -1423,6 +1527,7 @@ export class Viewmodel {
     this.posePosition.lerpVectors(HIP_POSITION, this.aimPosition, aim);
     this.posePosition.y -= AIM.arc.down * swoop;
     this.poseQuaternion.slerpQuaternions(HIP_QUATERNION, AIM_ROTATION, aim);
+    if (this.points.aimRoll) this.poseQuaternion.multiply(this.aimRoll.setFromAxisAngle(FORWARD_AXIS, this.points.aimRoll * aim));
     this.poseQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), AIM.arc.roll * swoop));
     // Reloading: the gun comes up and in, tipped so the magazine well faces
     // you, so you can watch the support hand bring the new magazine in.
@@ -1482,6 +1587,7 @@ export class Viewmodel {
     else this.poseArms(bend, pose, amount);
     if (this.dropping && this.dropModel) this.dropMagazine(this.dropping);
     this.dropping = null;
+    this.showRedDot();
 
     const hipFov = this.points.viewFov || VIEW_FOV;
     const fov = hipFov + (AIM.viewFov - hipFov) * aim;
@@ -1730,6 +1836,49 @@ export class Viewmodel {
     const g = this.current;
     g.object.position.copy(g.at).addScaledVector(g.held.tacOut, this.motion.tac).addScaledVector(g.held.sprintOut, this.motion.sprint);
     if (sprintBend) g.rig.bendWrists(sprintBend);
+  }
+
+  // Where a red dot sight's dot is (a gun whose points have redDot; the
+  // gun layer's camera space, into `out`), as a real one shows it: where
+  // the line from the eye along the sight's axis (the gun's, forward) meets
+  // the lens, so it sits on what the gun points at, and shots go there (see
+  // sightOnScreen). With the eye further off that axis than inLens of the
+  // lens's radius, it's drawn there on the lens instead, towards the axis
+  // line (see RED_DOT). Returns how far off the axis the eye is (metres).
+  redDotPoint(out) {
+    const lens = this.points.redDot;
+    this.scene.updateMatrixWorld();
+    const s = this.points.sights;
+    this.pistol.localToWorld(lensAt.set(s.x || 0, s.height, lens.z ?? s.rearZ));
+    lensAxis.set(0, 0, -1).transformDirection(this.pistol.matrixWorld);
+    // (The gun layer's camera is at its origin, looking along -Z.)
+    out.copy(lensAxis).multiplyScalar(lensAt.dot(lensAxis));
+    const off = out.distanceTo(lensAt);
+    const most = RED_DOT.inLens * lens.radius;
+    if (off > most) out.sub(lensAt).multiplyScalar(most / off).add(lensAt);
+    return off;
+  }
+
+  // A red dot sight's dot (see redDotPoint) shows when the eye is behind the
+  // lens (near the middle of the screen once aimed, out of sight at the
+  // hip), fading out towards the lens's rim; and aimed, while the eye is
+  // shaken off the lens by firing (RED_DOT). (It's drawn just in front of
+  // the lens, in the gun layer.)
+  showRedDot() {
+    const dot = this.redDot;
+    const lens = this.points.redDot;
+    dot.visible = false;
+    if (!lens || !this.pistol || this.lowered >= 1) return;
+    const off = this.redDotPoint(lensSeen);
+    if (lensSeen.z > -0.02) return;
+    const r = lens.radius;
+    const behind = 1 - smoothstep(0.75 * r, r, off);
+    const aimed = smoothstep(RED_DOT.aimFrom, 1, this.lastAim || 0) * (1 - smoothstep(RED_DOT.keep * r, (RED_DOT.keep + 0.5) * r, off));
+    const opacity = Math.max(behind, aimed);
+    if (opacity <= 0.01) return;
+    dot.position.copy(lensSeen).addScaledVector(lensAxis, -0.0015);
+    dot.material.opacity = opacity;
+    dot.visible = true;
   }
 
   // The dropped magazine as it leaves the gun: where it is, which way it's

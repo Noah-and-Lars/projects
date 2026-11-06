@@ -7,6 +7,9 @@ The downloads are by TheParaziT (CC BY 4.0, see README.md, Credits):
   https://sketchfab.com/3d-models/xiri-x4-animations-9c66f74e346e4c5e8b1d4e5fcddc8a37
 - "MP7A1 Animations", a compact submachine gun:
   https://sketchfab.com/3d-models/mp7a1-animations-0a55689855594f2496c2debdb7e6f5bc
+- "AR-15 Animations Miniset", a rifle (four clips: two draws and two
+  reloads; the idles are frames of them held):
+  https://sketchfab.com/3d-models/ar-15-animations-miniset-e3b0951ec7a54de188f7fe3e6c38a9ad
 Download the glTF version and unzip it so the folder holds scene.gltf,
 scene.bin and textures/. Then, from the project-fish folder:
 
@@ -14,11 +17,14 @@ scene.bin and textures/. Then, from the project-fish folder:
     gltf-transform meshopt build/x4-raw.glb assets/x4.glb --level high
     blender --background --python tools/blender/convert_retarget.py -- build/upload-mp7 build/mp7-raw.glb --arms assets/soldier.glb
     gltf-transform meshopt build/mp7-raw.glb assets/mp7.glb --level high
+    blender --background --python tools/blender/convert_retarget.py -- build/upload-ar15 build/ar15-raw.glb --arms assets/soldier.glb
+    gltf-transform meshopt build/ar15-raw.glb assets/ar15.glb --level high
 
 (--arms is the soldier's model, assets/soldier.glb: his first-person arms,
 the meshes tagged firstPerson 'arms', and his skeleton come from it.
 --report FILE also writes the measured constants as JSON; --no-textures
-and --no-fit make quick builds for checking the motion. It reads the
+and --no-fit make quick builds for checking the motion, and --clips
+idle,reload builds only those clips. It reads the
 download with plain numpy; Blender is only used for the textures. A build
 takes 10 to 20 minutes, most of it fitting the fingers.)
 
@@ -59,8 +65,12 @@ retargeting, here at build time:
   mannequin's skeleton only, never its mesh).
 - Everything is put in gun space (metres, +X right, +Y up, -Z forward),
   with the rig's root at the eye: the download's own first-person camera
-  (the MP7's `Camera` node on the head; the X4, which has the same
-  skeleton and head but no camera node, uses the same place).
+  (the MP7's `Camera` node on the head; the X4 and the AR-15, which have
+  the same skeleton and head but no camera node, use the same place). The
+  heads turn a little in some clips (up to 6 degrees in the X4's and the
+  MP7's reloads, 23 in the AR-15's first draw, looking down at the gun):
+  the rig root stays where the eye is at rest, and for the AR-15 a
+  `camera` node says where the clip's camera is in each frame.
 - His bones keep their names (CC_Base_L_Hand, CC_Base_R_Index1, ...), their
   local axes and their units (centimetres, under a node scaled as his model
   is), so an outfit glove (assets/gear/gloves_*.glb, bound to his bones)
@@ -69,6 +79,11 @@ retargeting, here at build time:
 - The gun's textures: maker's logos and brand names rubbed off (RUB_OUT),
   kept at their own size up to TEXTURE_SIZE, stored as WebP. His sleeves'
   and gloves' textures are copied from his model as they are.
+- The optics' glass (the MP7's red dot lens, the AR-15's magnifier lenses
+  and holographic sight windows: painted opaque on the downloads) is
+  written as a see-through material of its own (`<gun>_glass`, a mesh on
+  the gun mesh's points: see glass_of), so the sights can be looked
+  through.
 - Keeps who made it and its license in the file (asset.copyright).
 
 The game's constants for each gun are printed at the end (RETARGET ...),
@@ -107,6 +122,7 @@ SOURCE, OUT_GLB = POSITIONAL[0], POSITIONAL[1]
 ARMS = option('--arms', 'assets/soldier.glb')
 REPORT = option('--report')
 NO_TEXTURES = '--no-textures' in ARGS
+ONLY_CLIPS = option('--clips', '').split(',') if option('--clips') else None  # (a quick look at some clips)
 FIT_FINGERS = '--no-fit' not in ARGS  # (--no-fit: his fingers turned as the mannequin's only)  # (quick builds for checking the motion: plain grey textures)
 
 # --- The guns -------------------------------------------------------------------
@@ -163,6 +179,14 @@ GUNS = {
                   'front_scope': 'front_sight', 'back_scope': 'rear_sight', 'fire_switch': 'selector',
                   'scope': 'red_dot'},
         'materials': {'Slot_1': 'mp7_receiver', 'slot_2': 'mp7_parts', 'slot_3': 'mp7_stock'},
+        # The red dot's lens (its two glass faces, front and back) is
+        # painted opaque orange on the download: it's written as see-through
+        # glass of its own (see glass_of). axis: the lens's middle (gun
+        # space x, y: its tube's, as the game aims through it).
+        # (Its tint: the lens's amber, darker than the download's bright
+        # orange paint, which lit by the sky makes the glass look milky.)
+        'glass': {'bones': ('red_dot',), 'axis': (-0.0135, 0.1332), 'radius': 0.008, 'reach': 0.02,
+                  'tint': (0.30, 0.10, 0.04), 'alpha': 0.12},
         'rub_out': {
             # The receiver: the maker's logo and the model name on both sides
             # of the grip, and a line of small print; the calibre and the
@@ -174,14 +198,86 @@ GUNS = {
             'slot_2': [((118, 278, 178, 482), 'letters'), ((518, 222, 612, 268), 'letters')],
         },
     },
+    'ar15': {
+        'mesh': 'AR_15',
+        'title': 'AR-15 Animations Miniset',
+        'source': 'https://sketchfab.com/3d-models/ar-15-animations-miniset-e3b0951ec7a54de188f7fe3e6c38a9ad',
+        'prefix': '',
+        # Only four clips, none of them an idle: everything is placed and
+        # bound in the ready pose that Reload and Full_Reload start and end
+        # in and Draw_2 ends in (the same arms in all, to half a degree).
+        'rest': ('Reload', 0.0),
+        # (ours, the download's clip[, a time: that one frame held, HOLD
+        # seconds long]). idle: Reload's first frame (the gun ready, the
+        # magazine in, the bolt home). idleEmpty: Full_Reload's first frame
+        # (the same arms, the bolt held open on the bolt catch). draw: the
+        # quick draw (Draw_2: up from low left, no part moves). drawFirst:
+        # the first draw (Draw: up from the hip while the head looks down
+        # at it, the left hand pulls the stock out and the right thumb puts
+        # the selector from safe to fire).
+        'clips': [('idle', 'Reload', 0.0), ('idleEmpty', 'Full_Reload', 0.0), ('draw', 'Draw_2'),
+                  ('drawFirst', 'Draw'), ('reload', 'Reload'), ('reloadEmpty', 'Full_Reload')],
+        'camera_source': ('the MP7 download\'s Camera node, put on this download\'s head (the same mannequin '
+                          'skeleton) in the ready pose (Reload\'s first frame)'),
+        # Its head (the camera) turns by up to 23 degrees in Draw (looking
+        # down at the gun coming up): write where (the `camera` node).
+        'camera_node': True,
+        # Its thick grip and handguard: his palm moves out of the gun by at
+        # most 12 mm (see Retarget.hands).
+        'palm_push_most': 0.012,
+        # Its fingers' turns change more smoothly from frame to frame (ten
+        # times the X4's and the MP7's change2, which let fingers on its
+        # bigger grip and handguard flick in a frame or two as they touch).
+        'fit': {'change2': 1.5},
+        'bones': {'body': 'frame', 'trigger': 'trigger', 'fire_safety_switch': 'selector',
+                  'bolt_release': 'bolt_catch', 'mag_release': 'mag_release', 'stock': 'stock',
+                  'stock_button': 'stock_lock', 'bolt': 'bolt_carrier', 'scope_2': 'magnifier', 'scope': 'holo_sight',
+                  'silencer': 'suppressor', 'mag': 'magazine', 'charging_handle': 'charging_handle',
+                  'charging_handle_l': 'charging_handle_latch_l', 'charging_handle_r': 'charging_handle_latch_r',
+                  'mag_2': 'magazine_2'},
+        'materials': {'texture_set_1': 'ar15_lower', 'texture_set_2': 'ar15_upper'},
+        # The magnifier's lenses and the holographic sight's windows are
+        # painted opaque (teal and grey) on the download: written as
+        # see-through glass of their own (see glass_of). axis: the optic's
+        # (the magnifier's eyepiece's middle, gun space x, y).
+        'glass': {'bones': ('magnifier', 'holo_sight'), 'axis': (-0.0063, 0.0972), 'radius': 0.010, 'reach': 0.03,
+                  'tint': (0.022, 0.08, 0.076)},
+        'rub_out': {
+            # The lower, stock, grip and magazines: a cat's-head logo and
+            # small print on the magazine well's right side, the grip's
+            # model name (right) and origin mark (left), the origin mark on
+            # the receiver's left side, and the stock's model name and
+            # origin mark. The selector's FIRE / SAFE and the magazine's
+            # number stay.
+            'texture_set_1': [((1410, 998, 1508, 1118), 'letters'), ((726, 1306, 774, 1370), 'letters'),
+                              ((48, 1328, 94, 1392), 'letters'), ((1230, 38, 1258, 152), 'letters'),
+                              ((816, 594, 840, 654), 'letters'), ((613, 824, 642, 932), 'letters')],
+            # The upper and the optics: the holographic sight's maker's logo
+            # and name (left side) and the magnifier's maker's name.
+            'texture_set_2': [((850, 1476, 892, 1532), 'letters'), ((1586, 503, 1613, 565), 'letters')],
+        },
+        'not_in_size': ('magazine_2',),
+        'events_from_start': (('magazine_2', 'mag2'), ('stock', 'stock')),
+        # More parts whose moves are timed in the report.
+        'events': (('bolt_carrier', 'boltCarrier'), ('magazine_2', 'mag2'), ('stock', 'stock'),
+                   ('mag_release', 'magRelease')),
+    },
 }
+# How long a clip holding one frame lasts (seconds).
+HOLD = 1.0
+# The optics' glass (a gun's 'glass'): how much of what's behind it it hides
+# (alpha, unless the gun gives its own; its colour is its 'tint', linear:
+# the AR-15's is the mean of its glass's colour on the download's texture),
+# and how smooth it is (its reflections).
+GLASS_ALPHA = 0.15
+GLASS_ROUGHNESS = 0.05
 TEXTURE_SIZE = 2048
 WEBP_QUALITY = 90
 STANDS_OUT = (0.05, 0.08, 0.06)  # colour, normal, metal/roughness (see texture_edit.deviation_mask)
 
-# The eye: the MP7 download's `Camera` node, on the head bone (the head
-# doesn't move in any clip). The X4 has the same skeleton and head but no
-# camera node: it gets the same one.
+# The eye: the MP7 download's `Camera` node, on the head bone, in the rest
+# pose. The X4 and the AR-15 have the same skeleton and head but no camera
+# node: they get the same one.
 CAMERA_ON_HEAD = {'translation': [0.0, 0.0491, 0.0], 'rotation': [0.0, 0.0, -0.70710678, 0.70710678]}
 
 # His reach: the most of his arm's length (shoulder to wrist) a clip's pose
@@ -247,6 +343,13 @@ def stem(name):
     return name.rsplit('_', 1)[0] if name.rsplit('_', 1)[-1].isdigit() else name
 
 
+def rest_of(cfg, as_list=False):
+    """The pose everything is placed and bound in: (clip, time), the idle
+    clip's first frame unless the gun says otherwise ('rest')."""
+    clip, t = cfg.get('rest', (cfg['prefix'] + 'idle', 0.0))
+    return (clip, [t]) if as_list else (clip, t)
+
+
 # --- Reading the download -----------------------------------------------------------
 
 class Download:
@@ -258,6 +361,18 @@ class Download:
         g = self.g
         self.nodes = g['nodes']
         self.parent = {c: i for i, n in enumerate(self.nodes) for c in n.get('children', [])}
+        # A scene root scaled up for the viewer (the AR-15's root is 2.286
+        # times) is put back to its own size: the skeleton's units are
+        # metres, a real man's arms.
+        self.viewer_scale = 1.0
+        for r in g['scenes'][g.get('scene', 0)]['nodes']:
+            m = node_matrix(self.nodes[r])
+            sc = abs(float(np.linalg.det(m[:3, :3]))) ** (1 / 3)
+            if abs(sc - 1) > 1e-6:
+                m[:3, :3] /= sc
+                self.nodes[r] = {k: v for k, v in self.nodes[r].items() if k not in ('translation', 'rotation', 'scale')}
+                self.nodes[r]['matrix'] = [float(x) for x in m.T.reshape(-1)]
+                self.viewer_scale = sc
         self.by = {}
         for i, n in enumerate(self.nodes):
             self.by.setdefault(stem(n.get('name', '')), i)
@@ -432,16 +547,18 @@ class Retarget:
     def __init__(self, dl, soldier, cfg):
         self.dl, self.soldier, self.cfg = dl, soldier, cfg
         by = dl.by
-        # The eye, in the glTF's world (from the idle clip's first frame:
-        # the head never moves).
-        idle = cfg['prefix'] + 'idle'
-        head = dl.worlds([by['head']], idle, [0.0])[by['head']][0]
+        # The eye, in the glTF's world, from the rest pose (the idle clip's
+        # first frame; the head turns a little in some clips, see
+        # camera_path).
+        idle, t0 = rest_of(cfg)
+        head = dl.worlds([by['head']], idle, [t0])[by['head']][0]
         if 'Camera' in by:
-            cam = dl.worlds([by['Camera']], idle, [0.0])[by['Camera']][0]
+            cam = dl.worlds([by['Camera']], idle, [t0])[by['Camera']][0]
             self.camera_source = 'the download\'s Camera node'
         else:
             cam = head @ trs_matrix(CAMERA_ON_HEAD['translation'], CAMERA_ON_HEAD['rotation'])
-            self.camera_source = 'the MP7 download\'s Camera node, on the same head'
+            self.camera_source = cfg.get('camera_source', 'the MP7 download\'s Camera node, on the same head')
+        self.cam_rest = cam
         # An Unreal camera looks along its +X, up its +Y... here (after the
         # download's own axis change) along +X with +Y up: check.
         look, up = unit(cam[:3, 0]), unit(cam[:3, 1])
@@ -453,6 +570,17 @@ class Retarget:
         self.G[:3, :3] = np.array([right, up, -look])
         self.G[:3, 3] = -self.G[:3, :3] @ self.eye
         log(f'eye: {self.camera_source}, at {np.round(self.eye, 4)} looking {np.round(look, 3)}')
+
+    def camera_path(self, clip, ts):
+        """Where the download's camera (on its head) is at ts, in gun space:
+        from where it is in the rest pose (the rig root, the eye) to now."""
+        by = self.dl.by
+        if 'Camera' in by:
+            cam = self.dl.worlds([by['Camera']], clip, ts)[by['Camera']]
+        else:
+            cam = self.dl.worlds([by['head']], clip, ts)[by['head']] @ trs_matrix(CAMERA_ON_HEAD['translation'],
+                                                                                CAMERA_ON_HEAD['rotation'])
+        return self.G[None] @ cam @ np.linalg.inv(self.cam_rest)[None] @ np.linalg.inv(self.G)[None]
 
     # The mannequin's bones we follow.
     def manny_names(self):
@@ -473,7 +601,7 @@ class Retarget:
         space) so his shoulders are where the mannequin's are in the idle
         pose, turned as its chest is."""
         S = self.soldier
-        M = self.manny(self.cfg['prefix'] + 'idle', [0.0])
+        M = self.manny(*rest_of(self.cfg, True))
         p = lambda n: M[n][0, :3, 3]  # noqa: E731
         its_across = p('upperarm_l') - p('upperarm_r')
         its_up = p('neck_01') - p('spine_05')
@@ -689,6 +817,16 @@ class Retarget:
                     push[k] = self.out_of_gun(self.palm_points(side, turn[k], wrist[k], M, k), push[k], volume, where[k])
                 idx = np.clip(np.arange(n)[:, None] + np.arange(-1, 2)[None], 0, n - 1)
                 push = push[idx].mean(1)
+            # (A gun may cap the move ('palm_push_most', metres): round the
+            # AR-15's thick grip and handguard the mannequin's hands wrap
+            # so far that the whole move, many points wanting out on
+            # opposite sides, takes his hands 2 to 5 cm off them; capped,
+            # his glove sinks a little into the grip, and his fingers are
+            # fitted after.)
+            most = self.cfg.get('palm_push_most')
+            if most is not None:
+                size = np.linalg.norm(push, axis=1, keepdims=True)
+                push = push * np.minimum(1.0, most / np.maximum(size, 1e-12))
             out[side] = (turn, wrist + push, np.linalg.norm(push, axis=1))
         return out
 
@@ -730,11 +868,12 @@ class Retarget:
             pts.append(at + (self.points[name] * s) @ rot.T)
         return np.concatenate(pts)
 
-    def pose(self, clip, volume=None, where=None):
+    def pose(self, clip, volume=None, where=None, ts=None):
         """His arm bones' world rotations and places (gun space) at each of
-        the clip's key times, and what had to give."""
+        the clip's key times (or at ts), and what had to give."""
         S, s = self.soldier, self.soldier.scale
-        ts = self.dl.times(clip)
+        if ts is None:
+            ts = self.dl.times(clip)
         M = self.manny(clip, ts)
         n = len(ts)
         hands = self.hands(M, n, volume, where)
@@ -989,9 +1128,9 @@ def gun_meshes(dl, cfg, rt, bones):
     """The gun's meshes in gun space, posed as at the idle clip's first
     frame (its bind pose here), weighted to our gun bones."""
     g, acc = dl.g, dl.accessor
-    idle = cfg['prefix'] + 'idle'
+    idle, t0 = rest_of(cfg)
     joints = dl.skin['joints']
-    W0 = dl.worlds(joints, idle, [0.0])
+    W0 = dl.worlds(joints, idle, [t0])
     mats = np.array([W0[j][0] @ b for j, b in zip(joints, dl.ibm)])
     lookup = np.array([bones.index(j) if j in bones else -1 for j in joints])
     out = []
@@ -1026,6 +1165,52 @@ def gun_meshes(dl, cfg, rt, bones):
                     'normal': normal, 'uv': acc(a['TEXCOORD_0']).astype(np.float64), 'joints': ours, 'weights': W,
                     'triangles': acc(prim['indices']).astype(np.int64).reshape(-1, 3)})
     return out
+
+
+def glass_of(mesh, cfg, bones, dl, frame):
+    """Which of a gun mesh's triangles are its optic's glass (cfg['glass']):
+    the faces the sight line passes through (lines parallel to gun space's
+    z within `radius` of `axis` cross them, facing along it, on the optic's
+    bones), and the faces joined to them that face roughly along it too (out
+    to each lens's or window's rim, within `reach` of the axis). frame: the
+    frame bone in the idle pose (the `gun` node is there, turned as the
+    file is). None if it has none."""
+    spec = cfg.get('glass')
+    if not spec:
+        return None
+    names = cfg['bones']
+    optic = [k for k, i in enumerate(bones) if names[stem(dl.nodes[i]['name'])] in spec['bones']]
+    on = np.isin(mesh['joints'][np.arange(len(mesh['joints'])), mesh['weights'].argmax(1)], optic)
+    pos, tri = mesh['position'] - frame[:3, 3], mesh['triangles']
+    (ax, ay), radius = spec['axis'], spec['radius']
+    a, b, c = pos[tri[:, 0]], pos[tri[:, 1]], pos[tri[:, 2]]
+    n = np.cross(b - a, c - a)
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-15)
+    cen = (a + b + c) / 3
+    near = on[tri].all(1) & (np.hypot(cen[:, 0] - ax, cen[:, 1] - ay) < spec['reach'])
+    facing = near & (np.abs(n[:, 2]) > 0.9)
+    sloped = near & (np.abs(n[:, 2]) > 0.5)
+    v0, v1 = b[:, :2] - a[:, :2], c[:, :2] - a[:, :2]
+    den = v0[:, 0] * v1[:, 1] - v1[:, 0] * v0[:, 1]
+    ok = facing & (np.abs(den) > 1e-14)
+    den = np.where(ok, den, 1)
+    glass = np.zeros(len(tri), bool)
+    steps = np.linspace(-radius, radius, 17)
+    for dx in steps:
+        for dy in steps:
+            if dx * dx + dy * dy > radius * radius:
+                continue
+            v2 = np.array([ax + dx, ay + dy]) - a[:, :2]
+            u = (v2[:, 0] * v1[:, 1] - v1[:, 0] * v2[:, 1]) / den
+            v = (v0[:, 0] * v2[:, 1] - v2[:, 0] * v0[:, 1]) / den
+            glass |= ok & (u >= -1e-9) & (v >= -1e-9) & (u + v <= 1 + 1e-9)
+    while True:
+        corners = np.zeros(len(pos), bool)
+        corners[tri[glass].ravel()] = True
+        more = sloped & ~glass & corners[tri].any(1)
+        if not more.any():
+            return glass
+        glass |= more
 
 
 # --- Textures -----------------------------------------------------------------------------------
@@ -1074,12 +1259,24 @@ def gun_textures(dl, cfg, folder):
 
 # --- Writing the file -------------------------------------------------------------------------------
 
+def camera_turn(cam):
+    """How far (degrees, metres) the camera turns and moves at most in a clip."""
+    return (max(math.degrees(angle_of(m[:3, :3])) for m in cam), float(np.linalg.norm(cam[:, :3, 3], axis=1).max()))
+
+
+def camera_moves(clips):
+    turns = [camera_turn(c['camera']) for k, c in clips.items() if not k.startswith('__') and 'camera' in c]
+    return any(a > 0.1 or d > 0.0005 for a, d in turns)
+
+
 def write_glb(path, key, cfg, dl, rt, bones, gun, clips, arm_rest):
     S = rt.soldier
     s = S.scale
     copyright_ = (f'This work is based on "{cfg["title"]}" ({cfg["source"]}) by {AUTHOR} licensed under {LICENSE}. '
                   'Changed for Project Fish: turned, placed for the game with the rig\'s root at the eye; the clips '
-                  'kept as made, retargeted onto the soldier\'s arms; markings rubbed off; textures stored as WebP; '
+                  'kept as made, retargeted onto the soldier\'s arms; markings rubbed off; '
+                  + ('the sight\'s glass made see-through; ' if cfg.get('glass') else '')
+                  + 'textures stored as WebP; '
                   'compressed. ' + ARMS_NOTE)
     extras = {'title': cfg['title'], 'source': cfg['source'], 'author': AUTHOR, 'license': LICENSE,
               'arms': 'the soldier\'s (assets/soldier.glb): CC_Base_* bones, centimetres, under the `arms` node'}
@@ -1137,6 +1334,17 @@ def write_glb(path, key, cfg, dl, rt, bones, gun, clips, arm_rest):
                        'inverseBindMatrices': w.accessor(np.array([m.T.reshape(-1) for m in ibm]), 'MAT4')})
     joint_index = {('gun', i): k for k, i in enumerate(bones)}
     joint_index.update({('arm', n): len(bones) + k for k, n in enumerate(S.names)})
+    # The `camera` node, where the download's clips move its camera (its
+    # head turns in some): the place to see a clip from just as it was
+    # framed. Only for a gun that asks for it ('camera_node') and when it
+    # moves in a clip; the rig root stays the eye.
+    camera_node = None
+    if cfg.get('camera_node') and camera_moves(clips):
+        camera_node = len(g['nodes'])
+        g['nodes'].append({'name': 'camera', 'extras': {
+            'camera': 'the download\'s camera in each clip (its head turns), from the eye at rest (the rig root); '
+                      'looks along its -Z'}})
+        g['nodes'][0]['children'].append(camera_node)
 
     # Materials and textures.
     images = clips['__textures']
@@ -1196,17 +1404,19 @@ def write_glb(path, key, cfg, dl, rt, bones, gun, clips, arm_rest):
         g['materials'].append(m)
         his_materials[src['name']] = (len(g['materials']) - 1, label)
 
-    def mesh_out(name, position, normal, uv, joints_, weights, triangles, material, extras_=None):
-        n = normal / np.maximum(np.linalg.norm(normal, axis=1, keepdims=True), 1e-12)
-        top = np.argsort(-weights, axis=1)[:, :4]
-        J = np.take_along_axis(joints_, top, 1)
-        Wt = np.take_along_axis(weights, top, 1)
-        Wt /= Wt.sum(1, keepdims=True)
-        attrs = {'POSITION': w.accessor(position, 'VEC3', target=34962, bounds=True),
-                 'NORMAL': w.accessor(n, 'VEC3', target=34962),
-                 'TEXCOORD_0': w.accessor(uv, 'VEC2', target=34962),
-                 'JOINTS_0': w.accessor(J, 'VEC4', 5123, target=34962),
-                 'WEIGHTS_0': w.accessor(Wt, 'VEC4', target=34962)}
+    def mesh_out(name, position, normal, uv, joints_, weights, triangles, material, extras_=None, attrs=None):
+        # (attrs: another mesh's points, shared: the glass's are its gun mesh's.)
+        if attrs is None:
+            n = normal / np.maximum(np.linalg.norm(normal, axis=1, keepdims=True), 1e-12)
+            top = np.argsort(-weights, axis=1)[:, :4]
+            J = np.take_along_axis(joints_, top, 1)
+            Wt = np.take_along_axis(weights, top, 1)
+            Wt /= Wt.sum(1, keepdims=True)
+            attrs = {'POSITION': w.accessor(position, 'VEC3', target=34962, bounds=True),
+                     'NORMAL': w.accessor(n, 'VEC3', target=34962),
+                     'TEXCOORD_0': w.accessor(uv, 'VEC2', target=34962),
+                     'JOINTS_0': w.accessor(J, 'VEC4', 5123, target=34962),
+                     'WEIGHTS_0': w.accessor(Wt, 'VEC4', target=34962)}
         prim = {'attributes': attrs, 'indices': w.accessor(triangles.reshape(-1, 1), 'SCALAR', 5125, target=34963),
                 'material': material}
         g['meshes'].append({'name': name, 'primitives': [prim]})
@@ -1215,11 +1425,28 @@ def write_glb(path, key, cfg, dl, rt, bones, gun, clips, arm_rest):
             node['extras'] = extras_
         g['nodes'].append(node)
         g['nodes'][0]['children'].append(len(g['nodes']) - 1)
+        return attrs
 
+    # The optic's glass (cfg['glass']): its own see-through material, and its
+    # triangles in a mesh of their own (`<gun>_glass`, on its gun mesh's
+    # points), out of the gun mesh.
+    glass_index = None
+    if cfg.get('glass'):
+        tint = [float(x) for x in cfg['glass']['tint']]
+        g['materials'].append({'name': f'{key}_glass', 'doubleSided': True, 'alphaMode': 'BLEND',
+                               'pbrMetallicRoughness': {'baseColorFactor': tint + [cfg['glass'].get('alpha', GLASS_ALPHA)], 'metallicFactor': 0.0,
+                                                        'roughnessFactor': GLASS_ROUGHNESS}})
+        glass_index = len(g['materials']) - 1
     for mesh in gun:
         J = np.array([[joint_index[('gun', bones[j])] for j in row] for row in mesh['joints']])
-        mesh_out(mesh['name'], mesh['position'], mesh['normal'], mesh['uv'], J, mesh['weights'], mesh['triangles'],
-                 material_index[mesh['name']], {'part': 'gun'})
+        glass = glass_of(mesh, cfg, bones, dl, F)
+        tris = mesh['triangles'] if glass is None else mesh['triangles'][~glass]
+        attrs = mesh_out(mesh['name'], mesh['position'], mesh['normal'], mesh['uv'], J, mesh['weights'], tris,
+                         material_index[mesh['name']], {'part': 'gun'})
+        if glass is not None and glass.any():
+            log(f'{mesh["name"]}: {int(glass.sum())} triangles of glass, see-through ({key}_glass)')
+            mesh_out(f'{key}_glass', None, None, None, None, None, mesh['triangles'][glass], glass_index,
+                     {'part': 'gun', 'glass': True}, attrs)
     # His arms, in his bind pose here (the idle clip's first frame).
     his_joint = np.array([joint_index[('arm', n)] if n in S.names else 0 for n in S.joint_names])
     mats_now = {n: bind[joint_index[('arm', n)]] for n in S.names}
@@ -1263,6 +1490,13 @@ def write_glb(path, key, cfg, dl, rt, bones, gun, clips, arm_rest):
                     q[k] = -q[k]
             channel(node_of[('gun', i)], 'rotation', q)
             channel(node_of[('gun', i)], 'translation', local[:, :3, 3])
+        if camera_node is not None:
+            q = np.array([matrix_quat(m[:3, :3]) for m in clip['camera']])
+            for k in range(1, len(q)):
+                if q[k] @ q[k - 1] < 0:
+                    q[k] = -q[k]
+            channel(camera_node, 'rotation', q)
+            channel(camera_node, 'translation', clip['camera'][:, :3, 3])
         for n in S.names:
             par = S.parent[n]
             Rn, Pn = clip['R'][n], clip['P'][n]
@@ -1323,7 +1557,11 @@ def measure(key, cfg, dl, rt, bones, gun, clips):
     F = clips['idle']['gun'][bones[0]][0]
     to_own = np.linalg.inv(F)
     out = {'gun': key, 'eye': 'the rig root (0, 0, 0): ' + rt.camera_source, 'frame_idle': r4(F[:3, 3])}
-    allp = np.concatenate([m['position'] for m in gun])
+    # (Parts kept out of the size: the AR-15's second magazine, waiting
+    # out of view.)
+    skip = [bones.index(by_name[n]) for n in cfg.get('not_in_size', ())]
+    allp = np.concatenate([m['position'][~np.isin(m['joints'][np.arange(len(m['joints'])), m['weights'].argmax(1)], skip)]
+                           for m in gun])
     own = (np.c_[allp, np.ones(len(allp))] @ to_own.T)[:, :3]
     out['size'] = {'length': round(float(np.ptp(own[:, 2])), 4), 'height': round(float(np.ptp(own[:, 1])), 4),
                    'width': round(float(np.ptp(own[:, 0])), 4)}
@@ -1352,7 +1590,25 @@ def measure(key, cfg, dl, rt, bones, gun, clips):
     out['top'] = round(float(top_part[:, 1].max()), 4)
     # Iron sights: the rear and front sights' tops (the MP7's flip-up
     # sights; the X4's on its slide).
-    if 'rear_sight' in by_name:
+    if 'magnifier' in by_name:
+        # No iron sights: a holographic sight with a magnifier behind it, in
+        # line. The sight line is the magnifier's axis (the middle of its
+        # eyepiece, its rearmost ring), on through the sight's window.
+        mg, hs = part('magnifier'), part('holo_sight')
+        ring = mg[mg[:, 2] > mg[:, 2].max() - 0.004]
+        ax = (ring[:, 0].max() + ring[:, 0].min()) / 2
+        ay = (ring[:, 1].max() + ring[:, 1].min()) / 2
+        out['optic'] = {'axisX': round(float(ax), 4), 'axisY': round(float(ay), 4),
+                        'magnifierRear': round(float(mg[:, 2].max()), 4),
+                        'magnifierFront': round(float(mg[:, 2].min()), 4),
+                        'eyepieceRadius': round(float((ring[:, 1].max() - ring[:, 1].min()) / 2), 4),
+                        'holoRear': round(float(hs[:, 2].max()), 4), 'holoFront': round(float(hs[:, 2].min()), 4),
+                        'holoTop': round(float(hs[:, 1].max()), 4)}
+        out['sights'] = {'rearTop': round(float(ay), 4), 'rearZ': round(float(mg[:, 2].max()), 4),
+                         'frontTop': round(float(ay), 4), 'frontZ': round(float(hs[:, 2].min()), 4),
+                         'x': round(float(ax), 4), 'note': 'no iron sights: the optic\'s axis'}
+        top_part = frame_pts
+    elif 'rear_sight' in by_name:
         rs, fs = part('rear_sight'), part('front_sight')
         rd = part('red_dot')
         out['sights'] = {'rearTop': round(float(rs[:, 1].max()), 4), 'rearZ': round(float(rs[:, 2].max()), 4),
@@ -1380,6 +1636,14 @@ def measure(key, cfg, dl, rt, bones, gun, clips):
     if 'slide' in by_name:
         sl = part('slide')
         out['port'] = r4([sl[:, 0].max() - 0.002, sl[:, 1].max() - 0.008, s['rearZ'] - 0.06])
+    elif 'bolt_carrier' in by_name:
+        # (The AR-15's: on the upper's right, beside the bolt carrier's
+        # front half.)
+        bc = part('bolt_carrier')
+        near = frame_pts[(frame_pts[:, 1] > bc[:, 1].min()) & (frame_pts[:, 1] < bc[:, 1].max())
+                         & (frame_pts[:, 2] > bc[:, 2].min()) & (frame_pts[:, 2] < bc[:, 2].max())]
+        out['port'] = r4([near[:, 0].max() - 0.002, (bc[:, 1].max() + bc[:, 1].min()) / 2,
+                          bc[:, 2].min() + 0.035])
     else:
         ch = part('charging_handle')
         out['port'] = r4([frame_pts[:, 0].max() - 0.002, ch[:, 1].min() - 0.004, ch[:, 2].min() - 0.05])
@@ -1400,15 +1664,28 @@ def measure(key, cfg, dl, rt, bones, gun, clips):
         e = {'duration': round(float(ts[-1]), 3), 'source': clip['source']}
         for part_name, label in (('slide', 'slide'), ('charging_handle', 'bolt'), ('magazine', 'mag'),
                                  ('trigger', 'trigger'), ('hammer', 'hammer'), ('selector', 'selector'),
-                                 ('bolt_catch', 'boltCatch'), ('slide_stop', 'slideStop')):
+                                 ('bolt_catch', 'boltCatch'), ('slide_stop', 'slideStop')) + tuple(cfg.get('events', ())):
             if part_name not in by_name:
                 continue
             p = rel(name, part_name)
             moved = np.linalg.norm(p - rel('idle', part_name)[0], axis=1)
+            if (part_name, label) in cfg.get('events_from_start', ()):
+                # (A part whose place differs from clip to clip at their
+                # start, the AR-15's stock and second magazine: from where
+                # it is at the clip's start.)
+                moved = np.linalg.norm(p - p[0], axis=1)
             if part_name in ('trigger', 'selector', 'bolt_catch', 'slide_stop', 'hammer'):
                 i = by_name[part_name]
                 R0 = clips['idle']['gunLocal'][i][0][:3, :3]
                 ang = np.array([math.degrees(angle_of(R0.T @ m[:3, :3])) for m in clip['gunLocal'][i]])
+                if cfg.get('events') and ang[0] > 1:
+                    # (Not where it is at idle from the clip's start, the
+                    # AR-15's bolt catch holding the bolt open: when it
+                    # first moves from there.)
+                    R1 = clip['gunLocal'][i][0][:3, :3]
+                    own = np.array([math.degrees(angle_of(R1.T @ m[:3, :3])) for m in clip['gunLocal'][i]])
+                    if (own > 1).any():
+                        e[label + 'FirstMoves'] = round(float(ts[np.argmax(own > 1)]), 3)
                 if ang.max() > 2 or moved.max() > 0.001:
                     e[label] = {'starts': round(float(ts[np.argmax((ang > 1) | (moved > 0.0005))]), 3),
                                 'most': round(float(ts[np.argmax(np.maximum(ang, moved * 1000))]), 3),
@@ -1417,6 +1694,12 @@ def measure(key, cfg, dl, rt, bones, gun, clips):
                 continue
             if moved.max() < 0.002:
                 continue
+            if cfg.get('events') and moved[0] > 0.002:
+                # (Away from its idle place at the clip's start, the AR-15's
+                # bolt carrier held open: when it first moves from there.)
+                own = np.linalg.norm(p - p[0], axis=1) > 0.002
+                if own.any():
+                    e[label + 'FirstMoves'] = round(float(ts[np.argmax(own)]), 3)
             on = moved > 0.002
             far = moved > moved.max() - 0.001
             e[label] = {'starts': round(float(ts[np.argmax(on)]), 3), 'most': round(float(ts[np.argmax(moved)]), 3),
@@ -1432,7 +1715,17 @@ def measure(key, cfg, dl, rt, bones, gun, clips):
                 first = int(np.argmax(gone))
                 back = first + int(np.argmax(~gone[first:]))
                 e[label]['gone'] = round(float(ts[first]), 3)
-                e[label]['backInHand'] = round(float(ts[back]), 3)
+                # (The AR-15's clips drop the old one for good and bring a
+                # second magazine bone in: see mag2.)
+                e[label]['backInHand'] = round(float(ts[back]), 3) if not gone[back] else None
+            if label == 'mag2':
+                # The fresh magazine (a bone of its own): when it first
+                # comes within 15 cm of the magazine well, and when it's
+                # seated (within a millimetre of where the magazine sits).
+                well = np.linalg.norm(p - rel('idle', 'magazine')[0], axis=1)
+                near, seated = well < 0.15, well < 0.001
+                e[label]['nearWell'] = round(float(ts[np.argmax(near)]), 3) if near.any() else None
+                e[label]['seated'] = round(float(ts[np.argmax(seated)]), 3) if seated.any() else None
         e['retarget'] = clip['stats']
         events[name] = e
     out['clips'] = events
@@ -1446,6 +1739,7 @@ def main():
     meshes = [m['name'] for m in dl.g['meshes']]
     key = next(k for k, c in GUNS.items() if any(n.startswith(c['mesh']) for n in meshes))
     cfg = GUNS[key]
+    FIT.update(cfg.get('fit', {}))  # (a gun's own fitting costs, if any)
     log(f'{key}: {cfg["title"]}; meshes {meshes}; {len(dl.anims)} animations')
     soldier = Soldier(ARMS)
     log(f'his arms: {len(soldier.meshes)} meshes, bones in units of {soldier.scale:.6f} m')
@@ -1458,29 +1752,36 @@ def main():
     volume = GunVolume(gun, bones) if FIT_FINGERS else None
     if volume:
         log(f'the gun as {len(volume.parts)} distance fields')
-    idle_world = dl.worlds(bones, cfg['prefix'] + 'idle', [0.0])
+    idle_world = dl.worlds(bones, *rest_of(cfg, True))
     clips = {}
-    for name, src in cfg['clips']:
+    for name, src, *hold in cfg['clips']:
+        if ONLY_CLIPS and name not in ONLY_CLIPS + ['idle']:
+            continue
         clip = cfg['prefix'] + src
-        ts = dl.times(clip)
+        # (A held frame: that frame twice, written HOLD seconds apart.)
+        ts = dl.times(clip) if not hold else np.array([hold[0], hold[0]], np.float64)
         gw = dl.worlds(bones, clip, ts)
         where = None
         if volume:
             where = [{j: rt.G @ gw[i][k] @ np.linalg.inv(idle_world[i][0]) @ np.linalg.inv(rt.G)
                       for j, i in enumerate(bones)} for k in range(len(ts))]
-        ts, R, P, stats, M = rt.pose(clip, volume, where)
+        ts, R, P, stats, M = rt.pose(clip, volume, where, ts)
         if volume:
             stats['fit'] = rt.fit_fingers(R, P, M, where, volume)
         top = rt.G[None] @ gw[bones[0]]
         gun_local = {i: dl.local(i, clip, ts) for i in bones[1:]}
         moved = {i: any((i, p) in dl.anims[clip] and np.ptp(dl.anims[clip][(i, p)][1], 0).max() > 1e-6
                         for p in ('translation', 'rotation')) for i in bones[1:]}
-        clips[name] = {'times': ts, 'R': R, 'P': P,
+        clips[name] = {'times': ts if not hold else np.array([0.0, HOLD]), 'R': R, 'P': P,
                        'stats': {k: ({s_: round(v, 3) for s_, v in d.items()} if k != 'fit' else d)
                                  for k, d in stats.items()},
                        'gun': {bones[0]: top}, 'gunLocal': gun_local, 'gunMoved': moved,
-                       'gunWorld': {i: rt.G[None] @ gw[i] for i in bones}, 'source': clip}
-        log(f'{name} ({clip}): {ts[-1] - ts[0]:.3f} s, {len(ts)} keys; reach '
+                       'gunWorld': {i: rt.G[None] @ gw[i] for i in bones},
+                       'source': clip if not hold else f'{clip}, its frame at {hold[0]:.3f} s held'}
+        cam = rt.camera_path(clip, ts)
+        if cam is not None:
+            clips[name]['camera'] = cam
+        log(f'{name} ({clips[name]["source"]}): {ts[-1] - ts[0]:.3f} s, {len(ts)} keys; reach '
             f'{{L: {stats["reach"]["L"]:.2f}, R: {stats["reach"]["R"]:.2f}}}, '
             f'shoulder slid {{L: {stats["slide"]["L"] * 100:.1f}, R: {stats["slide"]["R"] * 100:.1f}}} cm, '
             f'hand short {{L: {stats["handGap"]["L"] * 1000:.1f}, R: {stats["handGap"]["R"] * 1000:.1f}}} mm'

@@ -1,5 +1,7 @@
 // The outfit's gloves on the guns that bring their own arms (the Beretta
-// 92FS, the FN 502 and the Browning Hi-Power, see animatedGun.js).
+// 92FS, the FN 502 and the Browning Hi-Power, see animatedGun.js), and on
+// the guns whose clips were put on the soldier's own arms (the Xiri X4, the
+// MP7A1 and the AR-15, see soldierRig.js and the end of this note).
 //
 // Each glove option in SLOTS (src/gear.js) that can be worn on those arms
 // names a file for each of them (`guns`: assets/gear/gloves_<id>_<gun>.glb,
@@ -27,9 +29,21 @@
 // only once its file is in and its materials are ready, in the same frame
 // as its hand is cut away, so the hand never shows bare in between; until
 // then the gun keeps what it had.
+//
+// On the soldier's own arms (a gun whose model has soldierArms), the gloves
+// are his outfit's own files (an option's `file`, the ones he wears), bound
+// to the rig's bones by name with their own inverse bind matrices, as
+// gear.js binds them to him: those rigs keep his arm bones as they are in
+// him, so they fit as on him. His gloves in the file (the mesh tagged
+// soldierGloves) are hidden under them, in the same frame as they go on,
+// rather than cut. The rigs leave out his other bones (his legs, head and
+// spine but one); the glove files list them too, with nothing weighted to
+// them, so they're tied to the model's spareJoint. Field gloves and No
+// gloves are his own gloves in the file.
 
 import * as THREE from 'three';
 import { loadGear, optionOf } from '../gear.js';
+import { boneName } from '../soldier.js';
 
 const IDENTITY = new THREE.Matrix4();
 const q = new THREE.Vector3();
@@ -121,11 +135,18 @@ export class GunGloves {
   // The glove file the outfit has for gun `key` (null: its own hands).
   fileFor(key) {
     const option = optionOf('gloves', this.outfit.get('gloves'));
+    const g = this.viewmodel.guns[key];
+    if (g && g.animated && g.animated.soldierArms) return (option && option.file) || null;
     return (option && option.guns && option.guns[key]) || null;
   }
 
   stateOf(g) {
-    if (!this.state.has(g.key)) this.state.set(g.key, { arms: new Map(), cuts: new Map(), worn: { file: null, pieces: [] }, ticket: 0, loading: null });
+    if (!this.state.has(g.key)) {
+      // (On the soldier's arms: his own gloves in the file, hidden under another pair.)
+      const own = [];
+      if (g.animated.soldierArms) g.rig.root.traverse((o) => { if (o.isMesh && o.userData.soldierGloves) own.push(o); });
+      this.state.set(g.key, { arms: new Map(), cuts: new Map(), own, worn: { file: null, pieces: [] }, ticket: 0, loading: null });
+    }
     return this.state.get(g.key);
   }
 
@@ -184,6 +205,7 @@ export class GunGloves {
       disposePiece(m);
     }
     for (const [mesh, geometry] of s.arms) mesh.geometry = (cut && cut.get(mesh)) || geometry;
+    for (const m of s.own) m.visible = !file;
     for (const m of pieces) g.object.add(m);
     s.worn = { file, pieces };
   }
@@ -195,6 +217,7 @@ export class GunGloves {
     g.rig.root.traverse((o) => {
       if (o.isBone && !bones.has(o.name)) bones.set(o.name, o);
     });
+    if (g.animated.soldierArms) return { pieces: this.fitSoldier(g, gltf, bones), cut: null };
     let spec = null;
     const sources = [];
     gltf.scene.traverse((o) => {
@@ -235,6 +258,37 @@ export class GunGloves {
       return mesh;
     });
     return { pieces, cut: s.cuts.get(file) };
+  }
+
+  // His outfit's glove (a file made for him, gear.js) on a rig with his arm
+  // bones: each joint found by name (his bones' names carry a number in
+  // his model, see boneName), the ones the rig leaves out tied to its
+  // spareJoint, provided nothing in the glove is weighted to them.
+  fitSoldier(g, gltf, bones) {
+    const spare = bones.get(g.animated.spareJoint);
+    const pieces = [];
+    gltf.scene.traverse((o) => {
+      if (!o.isSkinnedMesh) return;
+      const joints = o.skeleton.bones.map((b) => bones.get(boneName(b.name)) || null);
+      const index = o.geometry.attributes.skinIndex;
+      const weight = o.geometry.attributes.skinWeight;
+      for (let v = 0; v < index.count; v++) {
+        for (let k = 0; k < 4; k++) {
+          if (weight.getComponent(v, k) > 0 && !joints[index.getComponent(v, k)]) throw new Error(`the ${g.rules.name} has no bone ${o.skeleton.bones[index.getComponent(v, k)].name}`);
+        }
+      }
+      if (!spare && joints.some((j) => !j)) throw new Error(`the ${g.rules.name} has no ${g.animated.spareJoint}`);
+      const materials = [].concat(o.material).map((m) => m.clone());
+      const mesh = new THREE.SkinnedMesh(o.geometry, materials.length === 1 ? materials[0] : materials);
+      mesh.name = `${g.key}_${o.name}`;
+      mesh.userData = { ...o.userData, gunGlovePiece: true };
+      mesh.bind(new THREE.Skeleton(joints.map((j) => j || spare), o.skeleton.boneInverses), IDENTITY);
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.frustumCulled = false; // (the clips move it far from where it was bound)
+      pieces.push(mesh);
+    });
+    if (!pieces.length) throw new Error('not a glove');
+    return pieces;
   }
 
   // Gets the pieces' materials and textures ready for the gun layer, so

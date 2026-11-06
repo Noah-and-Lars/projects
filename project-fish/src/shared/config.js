@@ -93,6 +93,8 @@ export const WORLD = {
 // The guns. Times in seconds, angles in degrees, distances in metres. Each
 // gun's `name` is what the player sees (the ammo counter, the loadout menu,
 // the start screen's credits); everything else knows it by its key in GUNS.
+// A gun fires once per trigger pull unless its fireMode is 'auto' (it fires
+// as long as the trigger is held, see src/weapon.js).
 // The first pistol: a compact 9 mm, 15 rounds.
 export const PISTOL = {
   name: 'PF-9',
@@ -232,6 +234,108 @@ export const HIPISTOL = {
   inspect: false,
 };
 
-// The guns the player carries, in the order of their keys (1 to 5).
-export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502', 'hipistol'];
-export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502, hipistol: HIPISTOL };
+// The sixth: a Xiri X4, a full-size pistol, played as a 9 mm holding 15
+// rounds. Its clips came with the download and were put on the soldier's
+// own arms (src/viewmodel/x4.js), so its times are those clips' own
+// lengths: a reload with rounds left is its reload clip (1.53 s), one from
+// empty its full reload (1.78 s: the slide stop drops the slide at the
+// end), and its inspect is its inspect clip (2.8 s, left out with the slide
+// locked back: the clip has it forward). Its shot clip lets go of the
+// trigger 0.15 s after the shot: 400 rounds a minute at most.
+export const X4 = {
+  name: 'Xiri X4',
+  fireInterval: 0.15,
+  magazine: 15,
+  reserve: 60,
+  reloadTime: 1.533,
+  emptyReloadTime: 1.783,
+  // When things happen, as fractions of the reload: the clips' own times
+  // (src/viewmodel/x4.js) over their lengths. Either way the old magazine
+  // drops free and a fresh one is pushed in (nothing catches it: magCaught
+  // is never reached); from empty, the slide then goes home.
+  reloadSteps: {
+    empty: { magOut: 0.159, magGrab: 0.299, magIn: 0.393, handOn: 0.5, slideRelease: 0.607 },
+    catching: { magOut: 0.185, magCaught: 2, magGrab: 0.348, magIn: 0.457, handOn: 0.6 },
+  },
+  range: 150,
+  spread: { hip: 1.8, aim: 0.11, moving: 1.25 },
+  recoil: 1.05,
+  inspectTime: 2.8,
+  inspectLocked: false,
+  inspectFade: 0.3,
+};
+
+// The seventh: an MP7A1, a compact sub-machine gun firing 4.6x30 mm from a
+// 40-round magazine, with a suppressor and a red dot. It's fully automatic
+// (fireMode 'auto': it fires as long as the trigger is held), about 950
+// rounds a minute. Its clips came with the download and were put on the
+// soldier's own arms (src/viewmodel/mp7.js), so its times are those clips'
+// own lengths: a reload with rounds left is its reload clip (2.32 s), one
+// from empty its full reload (2.72 s: the charging handle is pulled after
+// the fresh magazine goes in), and its inspect is its inspect clip (2.8 s).
+// Each shot kicks far less than a pistol's, but in a burst the kick grows a
+// little with each round (burstKick: how much more per round, and at most).
+export const MP7 = {
+  name: 'MP7A1',
+  fireMode: 'auto',
+  fireInterval: 60 / 950,
+  magazine: 40,
+  reserve: 160,
+  reloadTime: 2.317,
+  emptyReloadTime: 2.717,
+  // When things happen, as fractions of the reload: the clips' own times
+  // over their lengths. With rounds left the magazine comes out, is put away
+  // and a fresh one pushed in; from empty the empty one drops, the fresh
+  // one goes in, and the charging handle is pulled and let go.
+  reloadSteps: {
+    empty: { magOut: 0.098, magGrab: 0.282, magIn: 0.399, slidePull: 0.607, slideRelease: 0.65, handOn: 0.75 },
+    catching: { magOut: 0.151, magCaught: 2, magGrab: 0.496, magIn: 0.604, handOn: 0.75 },
+  },
+  range: 200,
+  spread: { hip: 2.2, aim: 0.12, moving: 1.4 },
+  recoil: 0.4,
+  burstKick: { perRound: 0.05, most: 0.6 },
+  inspectTime: 2.8,
+  inspectFade: 0.3,
+  // Its spent case: a 4.6x30 mm's (metres), longer and narrower than a 9 mm's.
+  caseSize: { diameter: 0.008, length: 0.0305 },
+};
+
+// The eighth: an AR-15, a civilian rifle firing 5.56 mm from a 30-round
+// magazine, semi-automatic (one shot per trigger pull), with a suppressor
+// and a holographic sight. Its clips came with the download and were put on
+// the soldier's own arms (src/viewmodel/ar15.js), so its times are those
+// clips' own lengths: a reload with rounds left is its reload clip (2.5 s),
+// one from empty its full reload (2.6 s: the bolt catch is slapped after
+// the fresh magazine goes in, and the bolt runs home). It has no shoot
+// clip, so nothing sets its pace but the trigger finger: up to 600 rounds a
+// minute. A shouldered rifle: it kicks a little less than the PF-9 in the
+// view, strays far less aimed, and reaches further. It has no inspect (its
+// maker made none).
+export const AR15 = {
+  name: 'AR-15',
+  fireInterval: 0.1,
+  magazine: 30,
+  reserve: 120,
+  reloadTime: 2.5,
+  emptyReloadTime: 2.6,
+  // When things happen, as fractions of the reload: the clips' own times
+  // (src/viewmodel/ar15.js) over their lengths. Either way the support hand
+  // fetches the fresh magazine first, then the old one drops away (nothing
+  // catches it: magCaught is never reached) and the fresh one is seated;
+  // from empty, the bolt then runs home.
+  reloadSteps: {
+    empty: { magGrab: 0.007, magOut: 0.327, magIn: 0.513, slideRelease: 0.692, handOn: 0.8 },
+    catching: { magGrab: 0.007, magOut: 0.34, magCaught: 2, magIn: 0.533, handOn: 0.8 },
+  },
+  range: 300,
+  spread: { hip: 2.4, aim: 0.06, moving: 1.6 },
+  recoil: 0.85,
+  inspect: false,
+  // Its spent case: a 5.56x45 mm's (metres), much longer than a 9 mm's.
+  caseSize: { diameter: 0.0096, length: 0.0447 },
+};
+
+// The guns the player carries, in the order of their keys (1 to 8).
+export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502', 'hipistol', 'x4', 'mp7', 'ar15'];
+export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502, hipistol: HIPISTOL, x4: X4, mp7: MP7, ar15: AR15 };

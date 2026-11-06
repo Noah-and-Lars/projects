@@ -1,5 +1,6 @@
-// A pistol's rules: one shot per trigger pull, a short wait between shots,
-// a magazine, and reloading. It doesn't draw or play anything; it reports
+// A gun's rules: one shot per trigger pull (or, for a gun whose fireMode is
+// 'auto', shots for as long as the trigger is held), a short wait between
+// shots, a magazine, and reloading. It doesn't draw or play anything; it reports
 // what happened (events) so the effects, sounds and gun animation can follow.
 // Each gun has its own (its numbers are in src/shared/config.js).
 
@@ -81,6 +82,9 @@ export const INSPECT_HOLDS = {
   chamber: [INSPECT.pulled, INSPECT.release - 0.05], // only with the chamber check
 };
 
+// (Fully automatic) the most rounds fired in one frame (a slow frame's
+// worth of a burst).
+const BURST_MOST = 3;
 const HOLD_EASE = 0.15; // seconds (of the inspect) to slow into and out of a hold
 const smoothstep = (e0, e1, x) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
@@ -108,12 +112,25 @@ export class Pistol {
     this.reloadWaiting = false; // the reload key was pressed while inspecting
     this.pulls = []; // trigger pulls waiting for the gun to be ready (seconds waited)
     this.chamberCheck = true; // whether inspecting checks the chamber (not while an attachment is in the way of the hand)
+    this.triggerHeld = false; // (fully automatic) the trigger is held down
+    this.burst = 0; // shots since the trigger was pressed (fully automatic: the rounds of this burst)
+    this.firing = false; // (fully automatic) it was firing a burst last frame
+  }
+
+  // Whether it fires as long as the trigger is held (its spec's fireMode).
+  get automatic() {
+    return this.spec.fireMode === 'auto';
   }
 
   // Whether a trigger pull is waiting to fire (for the gun to come up out of
   // a sprint, or for the last shot's cycle to finish).
   get shotWaiting() {
-    return this.pulls.length > 0;
+    return this.pulls.length > 0 || this.holdingFire;
+  }
+
+  // (Fully automatic) the trigger is held with rounds to fire.
+  get holdingFire() {
+    return this.automatic && this.triggerHeld && this.ammo > 0 && !this.reload;
   }
 
   get reloading() {
@@ -156,13 +173,23 @@ export class Pistol {
   // ready: the gun is up and can fire (not while it's still coming up from a
   // sprint; a pull made then fires as soon as it's up). inspectKey: the
   // inspect key was pressed. busy: aiming or sprinting, which stops an
-  // inspect (or keeps one from starting).
+  // inspect (or keeps one from starting). held: the fire button is held
+  // down (a fully automatic gun keeps firing while it is: a round every
+  // fireInterval, the time left over carried from one shot to the next so
+  // the rate holds down to a few frames a second; a press with the magazine
+  // empty clicks once, holding it doesn't).
   // Returns a list of events: 'shot', 'dry', 'reload', 'magOut', 'magCaught',
   // 'magGrab', 'magIn', 'slidePull', 'slideRelease', 'reloaded', 'inspect',
   // 'inspected'.
-  update(dt, trigger, reloadKey, ready = true, inspectKey = false, busy = false) {
+  update(dt, trigger, reloadKey, ready = true, inspectKey = false, busy = false, held = false) {
     for (let i = 0; i < trigger; i++) this.pulls.push(0);
+    this.triggerHeld = this.automatic && held;
     const events = this.step(dt, reloadKey, ready, inspectKey, busy);
+    // (A burst ends when the trigger is let go, and when the gun can't go
+    // on firing: reloading, or not up (a sprint, a switch).
+    // Firing again after that starts a new burst, from its first round's
+    // kick.)
+    if ((!this.triggerHeld && !this.pulls.length) || this.reload || !ready) this.burst = 0;
     // Pulls that couldn't fire yet go stale after a moment, but only once
     // the gun is up (out of a sprint, or back from an inspect), and only
     // after a frame in which they could have fired (so even a very slow
@@ -173,14 +200,23 @@ export class Pistol {
 
   step(dt, reloadKey, ready = true, inspectKey = false, busy = false) {
     const events = [];
-    this.cooldown = Math.max(0, this.cooldown - dt);
+    // (Firing a burst, the time past the next round's is kept for it, up to
+    // what the most rounds one frame fires (BURST_MOST) can pay back, so the
+    // rate holds down to a few frames a second. Only once the burst is under
+    // way, from its second frame: time waited before it (the gun not up yet,
+    // or the trigger not yet pulled) is never owed, so a burst always starts
+    // with one round.)
+    const firing = this.holdingFire && !this.inspect && ready;
+    const carry = firing && this.firing;
+    this.firing = firing;
+    this.cooldown = carry ? Math.max(-(BURST_MOST - 1) * this.spec.fireInterval, this.cooldown - dt) : Math.max(0, this.cooldown - dt);
 
     if (this.inspect) {
       // Firing, reloading, aiming or sprinting cuts it short, and what was
       // asked for happens once the gun is back in the hold.
       if (reloadKey && this.ammo < this.spec.magazine && this.reserve > 0) this.reloadWaiting = true;
       const inspect = this.inspect;
-      if (this.pulls.length || this.reloadWaiting || busy) inspect.cut = true;
+      if (this.pulls.length || this.holdingFire || this.reloadWaiting || busy) inspect.cut = true;
       // (A gun with its own inspect animation, its spec's inspectTime, just
       // plays it: no magazine or slide steps, nothing to finish first.)
       const own = Boolean(this.spec.inspectTime);
@@ -241,23 +277,27 @@ export class Pistol {
     // key; one whose inspect animation has the slide forward, inspectLocked
     // false, ignores it with the slide locked back.)
     const canInspect = this.spec.inspect !== false && !(this.slideLocked && this.spec.inspectLocked === false);
-    if (inspectKey && canInspect && ready && !busy && !this.pulls.length && this.cooldown === 0) {
+    if (inspectKey && canInspect && ready && !busy && !this.shotWaiting && this.cooldown <= 0) {
       this.inspect = { time: 0, done: new Set(), check: !this.slideLocked && this.chamberCheck, cut: false, fade: 1 };
       events.push('inspect');
       return events;
     }
 
-    if (ready && this.pulls.length && this.cooldown === 0) {
-      this.pulls.shift();
+    // (A fully automatic gun with the trigger held fires as many rounds as
+    // are due, at most a few in one frame.)
+    for (let n = 0; n < BURST_MOST && ready && this.shotWaiting && this.cooldown <= 0; n++) {
+      const pressed = this.pulls.length > 0;
+      if (pressed) this.pulls.shift();
+      this.cooldown += this.spec.fireInterval;
       if (this.ammo > 0) {
         this.ammo--;
-        this.cooldown = this.spec.fireInterval;
+        this.burst++;
         if (this.ammo === 0) this.slideLocked = true;
         events.push('shot');
       } else {
-        this.cooldown = this.spec.fireInterval;
         events.push('dry');
       }
+      if (!this.holdingFire) break;
     }
     return events;
   }
@@ -290,6 +330,8 @@ export class Pistol {
     this.inspect = null;
     this.reloadWaiting = false;
     this.pulls = [];
+    this.burst = 0;
+    this.firing = false;
     if (!this.reload) return;
     const steps = reloadSteps(this.spec, this.reload.empty ? 'empty' : 'catching');
     if (this.reloadProgress >= steps.magIn) {

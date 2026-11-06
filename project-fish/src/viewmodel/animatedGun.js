@@ -1,7 +1,8 @@
 // A gun that brings its own arms and animations (the Beretta 92FS, see
-// beretta.js, the FN 502, fn502.js, and the Browning Hi-Power, hipistol.js):
-// one skeleton with the forearms,
-// hands and gun on it, and the clips its maker made for it. The gun layer (viewmodel.js) puts it where
+// beretta.js, the FN 502, fn502.js, and the Browning Hi-Power, hipistol.js),
+// or whose maker's clips were put on the soldier's own arms (the Xiri X4,
+// x4.js, the MP7A1, mp7.js, and the AR-15, ar15.js; see soldierRig.js): one skeleton with the
+// arms, hands and gun on it, and the clips its maker made for it. The gun layer (viewmodel.js) puts it where
 // the eye is and moves the whole rig with the same sway, bob, recoil kick,
 // aiming and sprinting offsets as the other guns; this plays its clips as
 // the gun's state says, as they were made.
@@ -9,20 +10,29 @@
 // The clips it can have (a gun may lack any but idle; see has()):
 // - idle: the pose it rests in: a still, or a loop (its maker's breathing,
 //   longer than a still: see STILL). idleEmpty: the same with the slide
-//   locked back on an empty magazine (where shootLast ends).
+//   locked back on an empty magazine (where shootLast ends). A rest clip
+//   can also be held still at one of its frames (model.stills: seconds, or
+//   'end' for its last), e.g. the X4's idleEmpty, the end of its maker's
+//   clip settling with the slide locked back.
 // - draw, hide: taking it out and putting it away. Without them, the gun
 //   layer lowers and raises the whole rig as it does the other guns, held in
 //   its rest pose (idle, or idleEmpty).
 // - shoot: one shot, from the idle pose back to it. shootLast: the last
 //   round, ending with the slide locked back. Each shot plays it from the
 //   moment the shot goes off (model.events.shoot.fire), so the kick comes
-//   with the flash.
+//   with the flash; a shot while one is still playing (a fully automatic
+//   gun's next round) plays it from there again. afterShot: the hands
+//   settling once a shot's clip has ended (the MP7's, after a burst),
+//   played through before the rest pose.
+// - dry: the trigger pulled with nothing to fire (only from the idle pose:
+//   resting with the slide locked back, there's nothing for it to show).
 // - reload (with rounds left) and reloadEmpty (from empty, slide locked back
 //   at the start). With only one, it plays for both.
 // - inspect.
 // - walk, run: loops of the hands' sway as the player walks and runs (each
 //   starting and ending in the idle pose). Played in place of the idle pose
-//   (not idleEmpty) as much as the player is walking or running.
+//   (not idleEmpty) as much as the player is walking or running. (A shot
+//   plays over what's left of the run loop: see SHOT_CLIPS.)
 // - aimIdle, aimWalk, aimShoot: the same held up to the sights, for a gun
 //   whose maker made its aiming too. Each is played in place of its clip
 //   (idle, walk, shoot; at the same time into it) as much as the gun layer
@@ -57,6 +67,10 @@ import * as THREE from 'three';
 // nearly the idle pose, and a slower fade would soften the kick).
 const FADE = 0.15;
 const SHOT_FADE = 0.05;
+// ...but from the walk and run loops (a shot plays in place of them), as
+// slowly as any other clip's, as much as the player is in them, so the hands
+// don't leave the loop's sway in a moment.
+const LOOP_SHOT_FADE = FADE;
 // (additiveShots) Reloading or being put away, any shot still playing fades
 // out this quickly; and how many shots can be playing at once.
 const SHOT_LEAVE = 0.1;
@@ -72,6 +86,14 @@ const STOP_LIFT = 0.12;
 const STAND_IN = { idleEmpty: 'idle', shootLast: 'shoot', reloadEmpty: 'reload' };
 // The loops played in place of the idle pose walking and running.
 const LOOPS = ['walk', 'run'];
+// The clips a shot plays, and the loops that go on under them as much as
+// the player is still in them: the run loop, which fades out as the gun
+// layer brings the gun up out of a sprint (a shot as soon as it can fire,
+// with some of the run's low carry still in, starts from there instead of
+// leaving it in a moment). (A shot walking plays in place of the walk loop,
+// as it always has.)
+const SHOT_CLIPS = new Set(['shoot', 'shootLast', 'afterShot', 'dry']);
+const UNDER_SHOTS = ['run'];
 // The clips aimed variants can stand in for (see aimIdle above).
 const AIMED = { idle: 'aimIdle', walk: 'aimWalk', shoot: 'aimShoot' };
 // A rest clip (idle, idleEmpty, aimIdle) at most this long (seconds) is a
@@ -279,9 +301,23 @@ export class AnimatedGun {
       slot.weight = 1;
       this.newest = slot;
     } else if (this.clips.shoot) {
-      this.shot = { time: 0, last: null };
+      this.shot = { key: null, time: 0, dry: false };
     }
     this.hammerDown = 1;
+  }
+
+  // The trigger pulled with the magazine empty: its dry clip, if it has one
+  // (and it's resting in the idle pose; see update).
+  dryFire() {
+    if (this.clips.dry && !this.shots.length) this.shot = { key: null, time: 0, dry: true };
+  }
+
+  // The time a rest clip is held still at (model.stills), or null if it
+  // plays (a loop, or a still at its start).
+  stillAt(key) {
+    const at = (this.model.stills || {})[key];
+    if (at === undefined || !this.clips[key]) return null;
+    return at === 'end' ? this.duration(key) : at;
   }
 
   // Poses the rig for this frame. state:
@@ -322,21 +358,33 @@ export class AnimatedGun {
     } else this.lowering = null;
 
     // A shot plays its clip from where it goes off, in place of the rest
-    // pose or the end of the draw.
+    // pose or the end of the draw (and then its afterShot clip, if it has
+    // one and it's resting in the idle pose). Which clip is decided on the
+    // shot's first frame: shootLast if it emptied the gun; for the trigger
+    // pulled on an empty gun, its dry clip, if it's resting in the idle pose.
     let fade = FADE;
-    const shot = this.shot;
-    if (shot) {
-      if (shot.last === null) shot.last = empty;
-      const key = this.clipFor(shot.last ? 'shootLast' : 'shoot');
-      const events = (this.model.events || {})[key] || {};
-      const t = (events.fire || 0) + shot.time;
-      shot.time += shotDt;
-      if (t >= this.duration(key) || (clip !== 'idle' && clip !== 'draw')) this.shot = null;
-      else {
-        if (b.clip !== key || t < b.time - 0.02) fade = SHOT_FADE;
-        clip = key;
-        time = t;
+    while (this.shot) {
+      const shot = this.shot;
+      if (shot.key === null) shot.key = shot.dry ? (rest === 'idle' ? 'dry' : '') : this.clipFor(empty ? 'shootLast' : 'shoot');
+      if (!shot.key || (clip !== 'idle' && clip !== 'draw')) {
+        this.shot = null;
+        break;
       }
+      const events = (this.model.events || {})[shot.key] || {};
+      const t = (events.fire || 0) + shot.time;
+      if (t >= this.duration(shot.key)) {
+        const after = (shot.key === 'shoot' || shot.key === 'shootLast') && this.clips.afterShot && rest === 'idle';
+        this.shot = after ? { key: 'afterShot', time: t - this.duration(shot.key), dry: false } : null;
+        continue;
+      }
+      if (shot.key !== 'afterShot' && (b.clip !== shot.key || t < b.time - 0.02)) {
+        const looping = b.clip === b.rest && b.rest === 'idle' && moving ? Math.min(1, this.loops.reduce((sum, loop) => sum + (moving[loop] || 0), 0)) : 0;
+        fade = SHOT_FADE + (LOOP_SHOT_FADE - SHOT_FADE) * looping;
+      }
+      clip = shot.key;
+      time = t;
+      shot.time += shotDt;
+      break;
     }
     // (Drawn or put away without a clip for it, it's held in its rest pose.)
     if (clip === 'idle' || ((clip === 'draw' || clip === 'hide') && !this.has(clip))) clip = rest;
@@ -372,7 +420,7 @@ export class AnimatedGun {
     this.loopTime += dt;
     const A = this.actions;
     if (clip === rest) this.restPose(A, rest, (1 - fading) * (1 - b.toIdle), moving);
-    else this.play(A, clip, time, (1 - fading) * (1 - b.toIdle));
+    else this.play(A, clip, time, this.underShot(A, clip, (1 - fading) * (1 - b.toIdle), moving));
     if (b.toIdle) this.restPose(A, rest, (1 - fading) * b.toIdle, moving);
     if (this.ghost) {
       // (The pose fading out: its rest pose with the loops as they are now,
@@ -380,7 +428,7 @@ export class AnimatedGun {
       const g = this.ghost;
       const G = this.ghosts;
       if (g.clip === g.rest) this.restPose(G, g.rest, fading * (1 - g.toIdle), moving);
-      else this.play(G, g.clip, g.time, fading * (1 - g.toIdle));
+      else this.play(G, g.clip, g.time, this.underShot(G, g.clip, fading * (1 - g.toIdle), moving));
       if (g.toIdle) this.restPose(G, g.rest, fading * g.toIdle, moving);
     }
     for (const s of this.shots) {
@@ -397,17 +445,33 @@ export class AnimatedGun {
   // loops in place of as much of it as the player is walking and running.
   // (A rest clip longer than a still loops.)
   restPose(actions, key, w, moving) {
-    let left = w;
-    if (key === 'idle' && moving) {
-      for (const loop of this.loops) {
-        const share = w * THREE.MathUtils.clamp(moving[loop] || 0, 0, 1);
-        if (share <= 0) continue;
-        this.play(actions, loop, this.loopTime % this.duration(loop), share);
-        left -= share;
-      }
-    }
+    const left = key === 'idle' ? this.loopsUnder(actions, w, moving, this.loops) : w;
     const length = this.duration(key);
-    this.play(actions, key, length > STILL ? this.loopTime % length : 0, Math.max(0, left));
+    const still = this.stillAt(key);
+    this.play(actions, key, still !== null ? still : length > STILL ? this.loopTime % length : 0, Math.max(0, left));
+  }
+
+  // The loops `keys` (those it has) from `actions`, as much of weight `w` as
+  // the player is in them (moving); returns the weight left for the pose
+  // they're under.
+  loopsUnder(actions, w, moving, keys) {
+    let left = w;
+    if (!moving) return left;
+    for (const loop of this.loops) {
+      if (!keys.includes(loop)) continue;
+      const share = w * THREE.MathUtils.clamp(moving[loop] || 0, 0, 1);
+      if (share <= 0) continue;
+      this.play(actions, loop, this.loopTime % this.duration(loop), share);
+      left -= share;
+    }
+    return Math.max(0, left);
+  }
+
+  // A clip other than the rest pose, weighted `w`: a shot's (SHOT_CLIPS)
+  // with the loops that go on under it (UNDER_SHOTS); returns the weight
+  // left for the clip itself.
+  underShot(actions, key, w, moving) {
+    return SHOT_CLIPS.has(key) ? this.loopsUnder(actions, w, moving, UNDER_SHOTS) : w;
   }
 
   // Clip `key` from `actions` at `time`, weighted `w`: with as much of that

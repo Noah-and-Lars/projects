@@ -12,7 +12,7 @@ import { raycastColliders, raycastWorld } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
 import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playSlideBack, playSlideRelease, playSwitchClick, startAudio } from './effects/audio.js';
-import { addSoldier, createWorld, SUN_DIRECTION } from './world.js';
+import { addSoldier, createWorld, outdoorEnvironment, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { PlayerBody } from './player/body.js';
 import { FirstPersonArms } from './player/fpArms.js';
@@ -204,13 +204,35 @@ function setPhotoMode(on) {
   }
 }
 // The gun in his hands, in the world: a copy of the one in the gun layer,
-// its parts as they are there.
+// its parts as they are there. (Lit by the outdoor sky as it is in the gun
+// layer, and as he is: the world's plain lights alone leave a metal gun
+// nearly black. Its materials are copies with the sky on, let go of when
+// another gun's copy takes its place.)
+let photoSky = null;
+function lightPhotoGun(gun) {
+  if (!photoSky) photoSky = outdoorEnvironment(renderer, SUN_DIRECTION);
+  const made = [];
+  gun.traverse((o) => {
+    if (!o.isMesh) return;
+    const lit = [].concat(o.material).map((m) => {
+      const copy = Object.assign(m.clone(), { envMap: photoSky, envMapIntensity: viewmodel.scene.environmentIntensity });
+      made.push(copy);
+      return copy;
+    });
+    o.material = Array.isArray(o.material) ? lit : lit[0];
+  });
+  gun.userData.litMaterials = made;
+}
 function updatePhotoGun() {
   const source = viewmodel.photoSource;
   if (!source) return;
   if (photo.gunOf !== source) {
-    if (photo.gun) scene.remove(photo.gun);
+    if (photo.gun) {
+      scene.remove(photo.gun);
+      for (const m of photo.gun.userData.litMaterials || []) m.dispose();
+    }
     photo.gun = viewmodel.copyForPhoto(source);
+    lightPhotoGun(photo.gun);
     photo.gun.matrixAutoUpdate = false;
     photo.gunOf = source;
     scene.add(photo.gun);
@@ -355,7 +377,12 @@ function spread(direction, degrees) {
 
 function shoot() {
   const gun = weapon.spec;
-  viewmodel.fire(aimAmount);
+  // (Fully automatic, each round of a burst kicks a little harder than the
+  // last, up to its burstKick's most; and sprinting waits for the burst to
+  // end, as it does after a shot from the others.)
+  const burst = weapon.automatic && gun.burstKick ? 1 + Math.min(gun.burstKick.most, gun.burstKick.perRound * Math.max(0, weapon.burst - 1)) : 1;
+  if (weapon.automatic) input.lastShot = performance.now();
+  viewmodel.fire(aimAmount, burst);
   const suppressed = Boolean(viewmodel.points.suppressed);
   playGunshot(held, suppressed);
   barrels[held].heat = Math.min(HEAT.max, barrels[held].heat + HEAT.perShot);
@@ -387,7 +414,7 @@ function shoot() {
     .add(new THREE.Vector3(player.vx, player.vy, player.vz));
   effects.ejectCase(gunPointToWorld(viewmodel.portPoint()), caseVelocity, gun.caseSize);
 
-  const k = (1 - (1 - RECOIL.aimed) * aimAmount) * gun.recoil;
+  const k = (1 - (1 - RECOIL.aimed) * aimAmount) * gun.recoil * burst;
   viewKick.vx += (RECOIL.kick + Math.random() * RECOIL.kickRandom) * k;
   viewKick.vy += (Math.random() * 2 - 1) * RECOIL.sideways * k;
   input.pitch = Math.min(1.55, input.pitch + RECOIL.climb * k);
@@ -478,10 +505,11 @@ function updateAmmo() {
   const state = `${held}/${weapon.ammo}/${weapon.reserve}/${weapon.reloading}`;
   if (state === shownAmmo) return;
   shownAmmo = state;
-  if (ammoName) ammoName.textContent = weapon.spec.name;
+  if (ammoName) ammoName.textContent = weapon.automatic ? `${weapon.spec.name} · Auto` : weapon.spec.name;
   ammoMag.textContent = weapon.ammo;
   ammoReserve.textContent = weapon.reserve;
-  ammo.classList.toggle('low', weapon.ammo <= 3);
+  // (Low: 3 rounds or fewer, or a fifth of a bigger magazine.)
+  ammo.classList.toggle('low', weapon.ammo <= Math.max(3, Math.ceil(weapon.spec.magazine * 0.2)));
   ammoHint.textContent = weapon.reloading ? 'Reloading' : weapon.ammo === 0 && weapon.reserve > 0 ? 'Press R to reload' : weapon.ammo === 0 ? 'Out of ammo' : '';
 }
 
@@ -562,7 +590,7 @@ renderer.setAnimationLoop((time) => {
     viewmodel.flickSwitch();
   }
 
-  // Switching guns: 1 to 5, or the mouse wheel.
+  // Switching guns: 1 to 8, or the mouse wheel.
   if (play) {
     LOADOUT.forEach((key, i) => {
       if (input.presses(`Digit${i + 1}`) > 0) switchGun(key);
@@ -583,13 +611,15 @@ renderer.setAnimationLoop((time) => {
   const cantFire = (player.move === 'mantle' && !input.aiming) || player.move === 'rise' || (player.move === 'dive' && !player.grounded);
   // (Clicks while it can't fire are dropped, not kept for later.)
   const clicks = input.locked ? input.presses('Mouse0') * (photo.on ? 0 : 1) : 0;
+  // (A fully automatic gun fires as long as the button is held.)
+  const holdingTrigger = play && !cantFire && input.held.has('Mouse0');
   if (play && input.presses('KeyR') > 0) asked.reload = true;
   if (play && input.presses('KeyF') > 0) asked.inspect = true;
   const reloadNow = asked.reload && !switching;
   const inspectNow = asked.inspect && !switching;
   if (!switching || !input.locked) asked.reload = asked.inspect = false;
   const events = input.locked
-    ? weapon.update(frameSeconds, cantFire ? 0 : clicks, reloadNow, viewmodel.readyToFire, inspectNow, busy)
+    ? weapon.update(frameSeconds, cantFire ? 0 : clicks, reloadNow, viewmodel.readyToFire, inspectNow, busy, holdingTrigger)
     : weapon.update(frameSeconds, 0, false, viewmodel.readyToFire, false, busy);
   camera.getWorldDirection(lookDirection);
   const wallDistance = raycastColliders(camera.position.x, camera.position.y, camera.position.z, lookDirection.x, lookDirection.y, lookDirection.z, 2);

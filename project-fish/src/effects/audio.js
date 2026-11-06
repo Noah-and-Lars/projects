@@ -13,6 +13,8 @@ let echo = null;
 let noise = null;
 let shots = [];
 let quietShots = []; // through a suppressor
+let smgShots = []; // the MP7A1's: a suppressed 4.6 mm (see makeSmgShot)
+let rifleShots = []; // the AR-15's: a suppressed 5.56 mm (see makeRifleShot)
 
 const SHOT_VARIANTS = 5;
 
@@ -86,6 +88,98 @@ function makeShot(rate, suppressed = false) {
 
   // Loud and a bit gritty, like a real shot heard up close: soft clipping.
   const drive = 1.9;
+  const norm = Math.tanh(drive);
+  for (let i = 0; i < length; i++) out[i] = Math.tanh(out[i] * drive) / norm;
+  return out;
+}
+
+// The MP7A1's shot: a small, fast 4.6x30 mm round through a suppressor.
+// The suppressor takes most of the blast (a short, dull "tup" with a little
+// low thump), but the bullet is faster than sound, so its crack stays: a
+// sharp, bright snap at the very start. Then the bolt: back and home within
+// a few hundredths of a second (it fires 16 rounds a second, so each shot's
+// sound is short).
+function makeSmgShot(rate) {
+  const length = Math.floor(rate * 0.25);
+  const out = new Float32Array(length);
+  const r = (a, b) => a + Math.random() * (b - a);
+  // The bullet's crack: a short N-wave, only its highs.
+  const crack = new Float32Array(length);
+  const n = Math.floor(rate * r(0.0005, 0.0007));
+  for (let i = 0; i < n; i++) crack[i] = 1 - (2 * i) / n;
+  highpass(crack, 1800, rate);
+  // The muffled blast.
+  const blast = new Float32Array(length);
+  const fast = r(0.0035, 0.005);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    blast[i] = (Math.random() * 2 - 1) * (Math.exp(-t / fast) + 0.25 * Math.exp(-t / 0.018));
+  }
+  highpass(lowpass(blast, r(2000, 2600), rate), 300, rate);
+  // A little low thump.
+  let phase = 0;
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    phase += (2 * Math.PI * (150 * Math.exp(-t * 14) + 60)) / rate;
+    out[i] += Math.sin(phase) * Math.exp(-t / 0.022) * Math.min(1, t / 0.001) * 0.35;
+  }
+  for (let i = 0; i < length; i++) out[i] += blast[i] * 0.75 + crack[i] * 1.5;
+  // The bolt: back (a light click) and home (a sharper clack).
+  ring(out, rate, r(0.011, 0.014), [3600, 5300, 7200].map((f) => f * r(0.95, 1.05)), 0.005, 0.16);
+  ring(out, rate, r(0.03, 0.036), [2300, 4100, 5900].map((f) => f * r(0.95, 1.05)), 0.008, 0.22);
+  // Off the ground, duller.
+  const delay = Math.floor(rate * r(0.004, 0.0055));
+  const bounce = lowpass(Float32Array.from(out), 2500, rate);
+  for (let i = length - 1; i >= delay; i--) out[i] += bounce[i - delay] * 0.35;
+  const drive = 1.6;
+  const norm = Math.tanh(drive);
+  for (let i = 0; i < length; i++) out[i] = Math.tanh(out[i] * drive) / norm;
+  return out;
+}
+
+// The AR-15's shot: a 5.56x45 mm rifle round through a suppressor. The
+// suppressor takes the worst of the blast, but there's far more of it than
+// the MP7A1's (a deeper, longer "thoomp" with a solid low punch), and the
+// bullet, much faster than sound, cracks loudly at the very start. Then the
+// bolt carrier: back, and home with the buffer spring's short metallic
+// twang that an AR-15 makes, a little later and heavier than the MP7A1's
+// bolt.
+function makeRifleShot(rate) {
+  const length = Math.floor(rate * 0.35);
+  const out = new Float32Array(length);
+  const r = (a, b) => a + Math.random() * (b - a);
+  // The bullet's crack: a sharp N-wave, longer than the 4.6 mm's.
+  const crack = new Float32Array(length);
+  const n = Math.floor(rate * r(0.0008, 0.001));
+  for (let i = 0; i < n; i++) crack[i] = 1 - (2 * i) / n;
+  highpass(crack, 1400, rate);
+  // The muffled blast.
+  const blast = new Float32Array(length);
+  const fast = r(0.005, 0.007);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    blast[i] = (Math.random() * 2 - 1) * (Math.exp(-t / fast) + 0.3 * Math.exp(-t / 0.03));
+  }
+  highpass(lowpass(blast, r(1600, 2100), rate), 200, rate);
+  // The low punch.
+  let phase = 0;
+  const boom = r(95, 115);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    phase += (2 * Math.PI * (boom * Math.exp(-t * 10) + 48)) / rate;
+    out[i] += Math.sin(phase) * Math.exp(-t / 0.035) * Math.min(1, t / 0.0012) * 0.6;
+  }
+  for (let i = 0; i < length; i++) out[i] += blast[i] * 1.1 + crack[i] * 1.8;
+  // The bolt carrier: back (a click), home (a clack), and the buffer
+  // spring's twang.
+  ring(out, rate, r(0.016, 0.02), [3100, 4800, 6600].map((f) => f * r(0.95, 1.05)), 0.006, 0.14);
+  ring(out, rate, r(0.045, 0.052), [1900, 3500, 5200].map((f) => f * r(0.95, 1.05)), 0.01, 0.2);
+  ring(out, rate, r(0.03, 0.034), [r(820, 900), r(1650, 1750)], 0.03, 0.05);
+  // Off the ground, duller.
+  const delay = Math.floor(rate * r(0.004, 0.0055));
+  const bounce = lowpass(Float32Array.from(out), 2500, rate);
+  for (let i = length - 1; i >= delay; i--) out[i] += bounce[i - delay] * 0.4;
+  const drive = 1.8;
   const norm = Math.tanh(drive);
   for (let i = 0; i < length; i++) out[i] = Math.tanh(out[i] * drive) / norm;
   return out;
@@ -189,6 +283,14 @@ export function startAudio() {
       const quietBuffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.4), context.sampleRate);
       quietBuffer.copyToChannel(makeShot(context.sampleRate, true), 0);
       quietShots.push(quietBuffer);
+      const smg = makeSmgShot(context.sampleRate);
+      const smgBuffer = context.createBuffer(1, smg.length, context.sampleRate);
+      smgBuffer.copyToChannel(smg, 0);
+      smgShots.push(smgBuffer);
+      const rifle = makeRifleShot(context.sampleRate);
+      const rifleBuffer = context.createBuffer(1, rifle.length, context.sampleRate);
+      rifleBuffer.copyToChannel(rifle, 0);
+      rifleShots.push(rifleBuffer);
     }
     loadSamples();
   }
@@ -245,32 +347,47 @@ const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 // .22 is the 9 mm's sped up, so it's sharper and shorter, and much quieter,
 // with less of it echoing back. The Hi-Power's is the 9 mm's, between the
 // PF-9's and the Beretta's (all steel, its barrel a little shorter than the
-// Beretta's).
+// Beretta's). The Xiri X4's is the 9 mm's, a touch higher (a polymer frame,
+// like the PF-9's, and a full-size one). The MP7A1 has its own (`set`:
+// makeSmgShot's, already suppressed), with only a little echo. So has the
+// AR-15 (makeRifleShot's, suppressed too), louder, its crack echoing back
+// more.
 const GUNSHOT = {
   pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, beretta: { rate: 0.95, volume: 0.92 },
   fn502: { rate: 1.35, volume: 0.5, echo: 0.3 }, hipistol: { rate: 0.97, volume: 0.92 },
+  x4: { rate: 1.02, volume: 0.9 }, mp7: { rate: 1, volume: 0.8, echo: 0.2, set: 'smg' },
+  ar15: { rate: 1, volume: 0.95, echo: 0.35, set: 'rifle' },
 };
+const OWN_SHOTS = { smg: () => smgShots, rifle: () => rifleShots };
 // The guns whose magazine and slide sounds are the .45 recordings: the
 // M1911's, the Beretta's and the Hi-Power's (a steel magazine and slide
 // too). The FN 502
 // has the PF-9's magazine sounds (it's polymer-framed), and the .45's slide
 // recordings played faster and quieter (a lighter slide): LIGHT_SLIDE.
-const RECORDED = new Set(['pistol45', 'beretta', 'hipistol']);
-const LIGHT_SLIDE = { fn502: { rate: 1.25, volume: 0.65 } };
+// The Xiri X4 has the PF-9's magazine sounds (polymer too) and the .45's
+// slide going home, a little faster. The MP7A1 has the PF-9's magazine
+// sounds and, for its charging handle pulled back and let go, the .45's
+// slide recordings played faster and quieter. The AR-15 has the .45's
+// recorded magazine sounds (a metal magazine) and, for its bolt running
+// home off the bolt catch, the .45's slide going forward, a little lower.
+const RECORDED = new Set(['pistol45', 'beretta', 'hipistol', 'ar15']);
+const LIGHT_SLIDE = { fn502: { rate: 1.25, volume: 0.65 }, x4: { rate: 1.08, volume: 0.85 }, mp7: { rate: 1.3, volume: 0.6 }, ar15: { rate: 0.92, volume: 1 } };
 
 // suppressed: fired through a suppressor (quieter, and it barely echoes).
 export function playGunshot(gun = 'pistol', suppressed = false) {
   if (!context || !shots.length) return;
   const sound = GUNSHOT[gun] || GUNSHOT.pistol;
   const source = context.createBufferSource();
-  const set = suppressed ? quietShots : shots;
+  // (A gun with its own set of shots has its suppressor in them already.)
+  const own = sound.set ? OWN_SHOTS[sound.set]() : null;
+  const set = own || (suppressed ? quietShots : shots);
   source.buffer = set[Math.floor(Math.random() * set.length)];
   source.playbackRate.value = vary(sound.rate, 0.03);
   const level = context.createGain();
-  level.gain.value = sound.volume * (suppressed ? 0.75 : 1);
+  level.gain.value = sound.volume * (suppressed && !own ? 0.75 : 1);
   source.connect(level).connect(master);
   const send = context.createGain();
-  send.gain.value = suppressed ? 0.12 : sound.echo ?? 0.5; // (how much echoes back)
+  send.gain.value = own ? sound.echo ?? 0.2 : suppressed ? 0.12 : sound.echo ?? 0.5; // (how much echoes back)
   level.connect(send).connect(echo);
   source.start();
 }
