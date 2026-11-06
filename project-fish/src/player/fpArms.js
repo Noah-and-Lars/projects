@@ -24,10 +24,10 @@
 // If his arms can't reach where the hands are, the whole gun is drawn in
 // towards his shoulders by the difference, so the hands never leave it.
 //
-// A gun that brings its own arms (the Beretta 92FS and the FN 502, see
-// src/viewmodel/animatedGun.js) is held by those: his arms aren't drawn in
-// the gun layer then, and nothing pulls the gun in or fits his fingers to
-// it. His body's arms (seen in photo mode, and in his shadow) take the hold
+// A gun that brings its own arms (the Beretta 92FS, the FN 502 and the
+// Browning Hi-Power, see src/viewmodel/animatedGun.js) is held by those: his
+// arms aren't drawn in the gun layer then, and nothing pulls the gun in or
+// fits his fingers to it. His body's arms (seen in photo mode, and in his shadow) take the hold
 // its own arms' clips have: see reachOwnArms.
 
 import * as THREE from 'three';

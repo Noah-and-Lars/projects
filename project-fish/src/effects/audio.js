@@ -243,16 +243,19 @@ const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 // it's deeper, and a bit louder. The Beretta is the 9 mm's, a touch lower
 // (a longer barrel and a heavier, all-steel gun) and as loud. The FN 502's
 // .22 is the 9 mm's sped up, so it's sharper and shorter, and much quieter,
-// with less of it echoing back.
+// with less of it echoing back. The Hi-Power's is the 9 mm's, between the
+// PF-9's and the Beretta's (all steel, its barrel a little shorter than the
+// Beretta's).
 const GUNSHOT = {
   pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, beretta: { rate: 0.95, volume: 0.92 },
-  fn502: { rate: 1.35, volume: 0.5, echo: 0.3 },
+  fn502: { rate: 1.35, volume: 0.5, echo: 0.3 }, hipistol: { rate: 0.97, volume: 0.92 },
 };
 // The guns whose magazine and slide sounds are the .45 recordings: the
-// M1911's, and the Beretta's (a steel magazine and slide too). The FN 502
+// M1911's, the Beretta's and the Hi-Power's (a steel magazine and slide
+// too). The FN 502
 // has the PF-9's magazine sounds (it's polymer-framed), and the .45's slide
 // recordings played faster and quieter (a lighter slide): LIGHT_SLIDE.
-const RECORDED = new Set(['pistol45', 'beretta']);
+const RECORDED = new Set(['pistol45', 'beretta', 'hipistol']);
 const LIGHT_SLIDE = { fn502: { rate: 1.25, volume: 0.65 } };
 
 // suppressed: fired through a suppressor (quieter, and it barely echoes).

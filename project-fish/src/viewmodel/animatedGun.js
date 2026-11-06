@@ -1,12 +1,14 @@
 // A gun that brings its own arms and animations (the Beretta 92FS, see
-// beretta.js, and the FN 502, fn502.js): one skeleton with the forearms,
+// beretta.js, the FN 502, fn502.js, and the Browning Hi-Power, hipistol.js):
+// one skeleton with the forearms,
 // hands and gun on it, and the clips its maker made for it. The gun layer (viewmodel.js) puts it where
 // the eye is and moves the whole rig with the same sway, bob, recoil kick,
 // aiming and sprinting offsets as the other guns; this plays its clips as
 // the gun's state says, as they were made.
 //
 // The clips it can have (a gun may lack any but idle; see has()):
-// - idle: a still, the pose it rests in. idleEmpty: the same with the slide
+// - idle: the pose it rests in: a still, or a loop (its maker's breathing,
+//   longer than a still: see STILL). idleEmpty: the same with the slide
 //   locked back on an empty magazine (where shootLast ends).
 // - draw, hide: taking it out and putting it away. Without them, the gun
 //   layer lowers and raises the whole rig as it does the other guns, held in
@@ -21,6 +23,12 @@
 // - walk, run: loops of the hands' sway as the player walks and runs (each
 //   starting and ending in the idle pose). Played in place of the idle pose
 //   (not idleEmpty) as much as the player is walking or running.
+// - aimIdle, aimWalk, aimShoot: the same held up to the sights, for a gun
+//   whose maker made its aiming too. Each is played in place of its clip
+//   (idle, walk, shoot; at the same time into it) as much as the gun layer
+//   has the gun up to the sights (the state's aim), so it blends in with
+//   the gun layer's own move up to the sights. A gun without them is aimed
+//   by the gun layer alone.
 //
 // The clips are sampled, not played: each frame the gun layer says which one
 // the gun is in and how far (the reload's progress, how far the switch has
@@ -64,6 +72,11 @@ const STOP_LIFT = 0.12;
 const STAND_IN = { idleEmpty: 'idle', shootLast: 'shoot', reloadEmpty: 'reload' };
 // The loops played in place of the idle pose walking and running.
 const LOOPS = ['walk', 'run'];
+// The clips aimed variants can stand in for (see aimIdle above).
+const AIMED = { idle: 'aimIdle', walk: 'aimWalk', shoot: 'aimShoot' };
+// A rest clip (idle, idleEmpty, aimIdle) at most this long (seconds) is a
+// still, held at its start; a longer one loops.
+const STILL = 0.1;
 
 const ACROSS = new THREE.Vector3(1, 0, 0);
 const turn = new THREE.Quaternion();
@@ -166,6 +179,8 @@ export class AnimatedGun {
     this.loops = LOOPS.filter((key) => clips[key]);
     // Whether the slide was locked back last frame (see update).
     this.wasEmpty = false;
+    // How far up to the sights the gun layer has it (0..1, see update).
+    this.aim = 0;
 
     // The pose at rest (the opt-in parts' rest is where the idle pose has them).
     if (this.actions.idle) {
@@ -281,12 +296,15 @@ export class AnimatedGun {
   //   rate keeps to, even when dt has been cut short for a slow frame).
   // - moving: { walk, run }, how much (0..1, eased) the player is walking
   //   and running (for the walk and run loops, if it has them).
+  // - aim: how far (0..1, eased) the gun layer has brought it up to the
+  //   sights (for the aimed clips, if it has them).
   // - (Opt-in extras) slide: 'clip' (as the clip has it), 'home' (held
   //   forward) or 'locked' (held back once it's gone back); triggerPull: how
   //   far the trigger is pulled (0..1).
-  update(dt, { clip, time = 0, toIdle = 0, empty = false, shotDt = dt, moving = null, slide = 'clip', triggerPull = 0 }) {
+  update(dt, { clip, time = 0, toIdle = 0, empty = false, shotDt = dt, moving = null, aim = 0, slide = 'clip', triggerPull = 0 }) {
     if (!this.ok) return;
     this.slideMode = slide;
+    this.aim = THREE.MathUtils.clamp(aim, 0, 1);
     const b = this.base;
     // (The frame the last round goes, the gun says it's empty before its
     // shot has started: till then it stays in the idle pose, so shootLast
@@ -354,7 +372,7 @@ export class AnimatedGun {
     this.loopTime += dt;
     const A = this.actions;
     if (clip === rest) this.restPose(A, rest, (1 - fading) * (1 - b.toIdle), moving);
-    else setAction(A[clip], time, (1 - fading) * (1 - b.toIdle));
+    else this.play(A, clip, time, (1 - fading) * (1 - b.toIdle));
     if (b.toIdle) this.restPose(A, rest, (1 - fading) * b.toIdle, moving);
     if (this.ghost) {
       // (The pose fading out: its rest pose with the loops as they are now,
@@ -362,7 +380,7 @@ export class AnimatedGun {
       const g = this.ghost;
       const G = this.ghosts;
       if (g.clip === g.rest) this.restPose(G, g.rest, fading * (1 - g.toIdle), moving);
-      else setAction(G[g.clip], g.time, fading * (1 - g.toIdle));
+      else this.play(G, g.clip, g.time, fading * (1 - g.toIdle));
       if (g.toIdle) this.restPose(G, g.rest, fading * g.toIdle, moving);
     }
     for (const s of this.shots) {
@@ -377,17 +395,28 @@ export class AnimatedGun {
   // The rest pose `key` from the action set `actions` (the playing ones or
   // the fading copies), weighted `w`: the idle pose with the walk and run
   // loops in place of as much of it as the player is walking and running.
+  // (A rest clip longer than a still loops.)
   restPose(actions, key, w, moving) {
     let left = w;
     if (key === 'idle' && moving) {
       for (const loop of this.loops) {
         const share = w * THREE.MathUtils.clamp(moving[loop] || 0, 0, 1);
         if (share <= 0) continue;
-        setAction(actions[loop], this.loopTime % this.duration(loop), share);
+        this.play(actions, loop, this.loopTime % this.duration(loop), share);
         left -= share;
       }
     }
-    setAction(actions[key], 0, Math.max(0, left));
+    const length = this.duration(key);
+    this.play(actions, key, length > STILL ? this.loopTime % length : 0, Math.max(0, left));
+  }
+
+  // Clip `key` from `actions` at `time`, weighted `w`: with as much of that
+  // in its aimed variant, if it has one, as the gun is up to the sights.
+  play(actions, key, time, w) {
+    const aimed = AIMED[key];
+    const share = aimed && actions[aimed] ? this.aim : 0;
+    if (share < 1) setAction(actions[key], time, w * (1 - share));
+    if (share > 0) setAction(actions[aimed], time, w * share);
   }
 
   // The opt-in extras on the gun's parts (none unless model.overrides asks).

@@ -203,6 +203,35 @@ export const FN502 = {
   caseSize: { diameter: 0.0057, length: 0.0156 },
 };
 
-// The guns the player carries, in the order of their keys (1, 2, 3, 4).
-export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502'];
-export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502 };
+// The fifth: a Browning Hi-Power, a 9 mm holding 13 rounds. It comes with
+// its own arms and its own animations too (src/viewmodel/hipistol.js), so
+// its times are those clips' own lengths: its one reload clip (2.71 s),
+// from empty too (its slide goes home after the last shot, so there's
+// nothing more to do). Its shot clip has the slide home 0.2 s after the
+// shot: 300 rounds a minute at most. An all-steel 9 mm, a little lighter
+// than the Beretta. It has no inspect (its maker made none).
+export const HIPISTOL = {
+  name: 'Browning Hi-Power',
+  fireInterval: 0.2,
+  magazine: 13,
+  reserve: 52,
+  reloadTime: 2.708,
+  emptyReloadTime: 2.708,
+  // When things happen, as fractions of the reload: the clip's own times
+  // (src/viewmodel/hipistol.js) over its length. Either way the magazine
+  // comes out and is swapped for a fresh one at the belt (nothing catches
+  // it, and the slide isn't touched: magCaught and slideRelease are never
+  // reached).
+  reloadSteps: {
+    empty: { magOut: 0.157, magGrab: 0.326, magIn: 0.665, handOn: 0.825, slideRelease: 2 },
+    catching: { magOut: 0.157, magCaught: 2, magGrab: 0.326, magIn: 0.665, handOn: 0.825 },
+  },
+  range: 150,
+  spread: { hip: 1.8, aim: 0.11, moving: 1.25 },
+  recoil: 1.1,
+  inspect: false,
+};
+
+// The guns the player carries, in the order of their keys (1 to 5).
+export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502', 'hipistol'];
+export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502, hipistol: HIPISTOL };

@@ -6,6 +6,13 @@
 import { SLOTS, optionOf } from './gear.js';
 import { OutfitPreview, VIEWS } from './outfitPreview.js';
 
+// The hint over the picture, for each framing. (The picture is always the
+// soldier; in the Gloves view it says the guns with their own arms wear
+// the gloves too.)
+const hintFor = (view) => (view === 'hands'
+  ? 'Drag to turn him. The Beretta, the FN 502 and the Hi-Power wear these gloves on their own hands too.'
+  : 'Drag to turn him.');
+
 export class OutfitMenu {
   // outfit: the Outfit; wardrobe: the Wardrobe that dresses every copy of
   // him (the picture's too).
@@ -26,6 +33,8 @@ export class OutfitMenu {
     stage.append(this.preview.canvas);
     const views = document.createElement('div');
     views.className = 'views';
+    const hint = document.createElement('p');
+    hint.className = 'hint';
     for (const [id, view] of Object.entries(VIEWS)) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -34,12 +43,11 @@ export class OutfitMenu {
       button.addEventListener('click', () => {
         this.preview.setView(id);
         for (const b of views.children) b.classList.toggle('chosen', b === button);
+        hint.textContent = hintFor(this.preview.view);
       });
       views.append(button);
     }
-    const hint = document.createElement('p');
-    hint.className = 'hint';
-    hint.textContent = 'Drag to turn him.';
+    hint.textContent = hintFor(this.preview.view);
     stage.append(views, hint);
     this.slotsElement = document.createElement('div');
     this.slotsElement.className = 'slots';

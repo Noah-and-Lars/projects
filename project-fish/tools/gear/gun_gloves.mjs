@@ -1,11 +1,12 @@
 // Fits the outfit gloves (the same three downloads build_gear.mjs makes the
 // soldier's from) to the arms that come with the animated guns (the Beretta
-// 92FS, assets/beretta.glb, and the FN 502, assets/fn502.glb), so they can
-// be worn on those arms too: assets/gear/gloves_<glove>_<rig>.glb.
+// 92FS, assets/beretta.glb, the FN 502, assets/fn502.glb, and the Browning
+// Hi-Power, assets/hipistol.glb), so they can be worn on those arms too:
+// assets/gear/gloves_<glove>_<rig>.glb.
 //
 // From the project-fish folder (after the guns are built):
 //
-//     node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/gear
+//     node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/gear
 //
 // (Options: --only <glove id>, e.g. --only gloves_camo; --debug DIR writes
 // what it found for each hand as JSON.)
@@ -18,10 +19,15 @@
 // for the right, simplified once rigged), only here the hand it's fitted to
 // is the rig's, in the pose its arms were skinned in (their bind pose: a
 // T-pose with flat hands for the Beretta's Mixamo arms, arms out in front
-// for the FN 502's). glove.mjs reads a skeleton laid out like the
-// soldier's, so it's handed one: the rig's bones under his bone names
-// (see rigView), its own hand's skin as "his own glove" (for the fingertips'
-// length and the fingers' thickness) and, for the FN 502, its sleeve.
+// for the FN 502's and the Hi-Power's). glove.mjs reads a skeleton laid out
+// like the soldier's, so it's handed one: the rig's bones under his bone
+// names (see rigView), its own hand's skin as "his own glove" (for the
+// fingertips' length and the fingers' thickness) and, for the FN 502 and the
+// Hi-Power, its sleeve. (The Hi-Power's arms are two meshes, its gloves and
+// its sleeves: the gloves are the arm mesh, cut away under the new glove,
+// and the sleeves are read beside them, for the cuff to fit inside and take
+// its weights from. Its hands, a Rigify rig's, have their finger bones
+// under bones in the palm that carry no weight, so RIGS names them.)
 //
 // Then, for the rig:
 // - The cuff takes the skin weights of the rig's own forearm where it is
@@ -78,7 +84,7 @@ const SOURCES = positional[0];
 const OUT = positional[positional.length - 1];
 const GUNS = positional.slice(1, -1);
 if (!SOURCES || !OUT || !GUNS.length) {
-  console.error('usage: node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/gear [--only gloves_camo] [--debug DIR]');
+  console.error('usage: node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/gear [--only gloves_camo] [--debug DIR]');
   process.exit(1);
 }
 const ONLY = option('--only', null);
@@ -116,9 +122,24 @@ const AUTHOR = 'Exactly (https://sketchfab.com/txyrm70)';
 // rig's hand is cut away at the sleeve's end. Bare arms: the cuff keeps its
 // own length (at least `cuffTo`), is pushed `clearance` clear of the skin,
 // and the hand is cut away `under` below the cuff's top edge.
+// Optional, for a rig whose arms aren't one mesh or whose hands can't be
+// found from their shape: armMesh (the node name of the mesh with the
+// hands, else the mesh most weighted to them), sleeveMesh (a mesh of
+// sleeves beside it), hands (a side's bone names, with S for its side:
+// hand, fingers index to little, each its three bones, palm, the weighted
+// bone in the palm before each finger, and thumb).
+const finger = (name) => [1, 2, 3].map((k) => `${name}${k}_S`);
 const RIGS = {
   beretta: { name: 'Beretta 92FS', bare: true, cuffTo: -0.03, clearance: 0.0025, under: 0.008 },
   fn502: { name: 'FN 502', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004 },
+  hipistol: {
+    name: 'Browning Hi-Power', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004,
+    armMesh: 'hipistol_gloves', sleeveMesh: 'hipistol_sleeves',
+    hands: {
+      hand: 'hand_S', fingers: ['index', 'middle', 'ring', 'little'].map(finger),
+      palm: [1, 2, 3, 4].map((k) => `palm${k}_S`), thumb: finger('thumb'),
+    },
+  },
 };
 
 await MeshoptEncoder.ready;
@@ -226,14 +247,16 @@ class Grid {
 // bones as the arms' skin does.
 const HANDISH = /(hand|index|middle|ring|pinky|little|thumb)/i;
 const sideOf = (name) => (/(_|\.|\b)(L|Left)$/.test(name) || /^Left|_L_|\.L\./.test(name) ? 'L' : /(_|\.|\b)(R|Right)$/.test(name) || /^Right|_R_|\.R\./.test(name) ? 'R' : null);
-async function readRig(file) {
+async function readRig(file, opts) {
   const doc = await io.read(file);
   const root = doc.getRoot();
   const id = path.basename(file, '.glb');
-  // The arm mesh: the skinned mesh most weighted to hands and fingers.
+  // The arm mesh: the skinned mesh most weighted to hands and fingers (or
+  // the one named).
   let best = null;
   for (const node of root.listNodes()) {
     if (!node.getMesh() || !node.getSkin()) continue;
+    if (opts.armMesh && node.getName() !== opts.armMesh) continue;
     const joints = node.getSkin().listJoints();
     let w = 0;
     for (const prim of node.getMesh().listPrimitives()) {
@@ -243,6 +266,7 @@ async function readRig(file) {
     }
     if (!best || w > best.w) best = { node, w };
   }
+  if (!best) throw new Error(`${id}: no arm mesh ${opts.armMesh || ''}`);
   const node = best.node;
   const prims = node.getMesh().listPrimitives();
   if (prims.length !== 1) throw new Error(`${id}: the arm mesh has ${prims.length} primitives (one expected)`);
@@ -250,14 +274,34 @@ async function readRig(file) {
   const skin = node.getSkin();
   const joints = skin.listJoints();
   const ibm = skin.getInverseBindMatrices();
-  const P = prim.getAttribute('POSITION'), N = prim.getAttribute('NORMAL'), J = prim.getAttribute('JOINTS_0'), W = prim.getAttribute('WEIGHTS_0');
-  const count = P.getCount();
+  // (And its sleeves, if they're a mesh of their own on the same bones:
+  // their points after the arm mesh's, from sleeveFrom. Compressing the
+  // file gives each mesh a skin of its own, its inverse bind matrices
+  // taking in its own quantization: its joints are mapped to the arm
+  // mesh's, and its points into the arm mesh's bind space, below.)
+  const parts = [prim];
+  let sleeve = null;
+  if (opts.sleeveMesh) {
+    const sleeveNode = root.listNodes().find((n) => n.getName() === opts.sleeveMesh && n.getMesh() && n.getSkin());
+    if (!sleeveNode) throw new Error(`${id}: no skinned sleeve mesh ${opts.sleeveMesh}`);
+    const sk = sleeveNode.getSkin();
+    const map = sk.listJoints().map((j) => joints.indexOf(j));
+    if (map.some((i) => i < 0)) throw new Error(`${id}: the sleeve mesh is skinned to bones the arm mesh's skin hasn't`);
+    sleeve = { map, ibm: sk.getInverseBindMatrices() };
+    parts.push(...sleeveNode.getMesh().listPrimitives());
+  }
+  const sleeveFrom = prim.getAttribute('POSITION').getCount();
+  const count = parts.reduce((n, p) => n + p.getAttribute('POSITION').getCount(), 0);
   const jo = new Uint16Array(count * 4), we = new Float32Array(count * 4);
   const used = new Set();
-  for (let v = 0, j = [], w = []; v < count; v++) {
-    J.getElement(v, j); W.getElement(v, w);
-    jo.set(j, 4 * v); we.set(w, 4 * v);
-    for (let k = 0; k < 4; k++) if (w[k] > 0) used.add(j[k]);
+  for (let v = 0, base = 0, j = [], w = []; base < count; base += parts[v].getAttribute('POSITION').getCount(), v++) {
+    const J = parts[v].getAttribute('JOINTS_0'), W = parts[v].getAttribute('WEIGHTS_0');
+    for (let i = 0; i < J.getCount(); i++) {
+      J.getElement(i, j); W.getElement(i, w);
+      if (v > 0) for (let k = 0; k < 4; k++) j[k] = sleeve.map[j[k]];
+      jo.set(j, 4 * (base + i)); we.set(w, 4 * (base + i));
+      for (let k = 0; k < 4; k++) if (w[k] > 0) used.add(j[k]);
+    }
   }
   // (Only the bones the arms are weighted to: the others' inverse bind
   // matrices needn't mean anything.)
@@ -268,11 +312,24 @@ async function readRig(file) {
   if (units.some((x) => Math.abs(x / u0 - 1) > 1e-3)) throw new Error(`${id}: the arms' bones aren't all the same scale in their bind pose`);
   const s = 1 / u0;
   const bind = raw.map((m, i) => (used.has(i) ? mul([s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1], m) : null));
+  // (A sleeve point into the arm mesh's bind space: through any bone's
+  // bind matrix in its own skin and back out of the arm mesh's.)
+  let toArm = null;
+  if (sleeve) {
+    const k = sleeve.map.findIndex((i) => used.has(i) && i !== undefined);
+    const via = (q) => mul(mul([s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1], raw[sleeve.map[q]]), sleeve.ibm.getElement(q, []));
+    toArm = via(k);
+    const other = via(sleeve.map.length - 1 - [...sleeve.map].reverse().findIndex((i) => used.has(i)));
+    if (other.some((x, i) => Math.abs(x - toArm[i]) > 1e-4)) throw new Error(`${id}: the sleeve mesh's bones don't agree on where it is`);
+  }
   const pos = new Float32Array(count * 3), nor = new Float32Array(count * 3);
-  for (let v = 0, p = [], n = []; v < count; v++) {
-    P.getElement(v, p); N.getElement(v, n);
-    pos.set(p.map((x) => x * s), 3 * v);
-    nor.set(norm(n), 3 * v);
+  for (let part = 0, base = 0, p = [], n = []; part < parts.length; base += parts[part].getAttribute('POSITION').getCount(), part++) {
+    const P = parts[part].getAttribute('POSITION'), N = parts[part].getAttribute('NORMAL');
+    for (let v = 0; v < P.getCount(); v++) {
+      P.getElement(v, p); N.getElement(v, n);
+      pos.set(part === 0 ? p.map((x) => x * s) : apply(toArm, p), 3 * (base + v));
+      nor.set(norm(part === 0 ? n : applyDir(toArm, n)), 3 * (base + v));
+    }
   }
   const names = joints.map((j) => j.getName());
   const at = (i) => [bind[i][12], bind[i][13], bind[i][14]];
@@ -280,7 +337,23 @@ async function readRig(file) {
   // with or without one in the palm before them; the thumb's three).
   const hands = {};
   const isJoint = new Set(joints);
-  for (const j of joints) {
+  if (opts.hands) {
+    // (Named in RIGS.)
+    for (const S of ['L', 'R']) {
+      const at2 = (name) => {
+        const i = names.indexOf(name.replace(/S$/, S));
+        if (i < 0) throw new Error(`${id}: no bone ${name.replace(/S$/, S)}`);
+        return i;
+      };
+      const H = opts.hands;
+      hands[S] = {
+        hand: at2(H.hand),
+        fingers: H.fingers.map((bones, c) => ({ palm: H.palm ? at2(H.palm[c]) : null, bones: bones.map(at2) })),
+        thumb: { palm: null, bones: H.thumb.map(at2) },
+      };
+    }
+  }
+  for (const j of opts.hands ? [] : joints) {
     const kids = j.listChildren().filter((c) => isJoint.has(c));
     if (kids.length < 5) continue;
     const chains = kids.map((k) => {
@@ -319,13 +392,14 @@ async function readRig(file) {
     h.palmBones = [h.hand, ...h.fingers.map((f) => f.palm).filter((x) => x !== null)];
     h.wrist = at(h.hand);
     h.points = [];
+    h.sleeve = []; // (the sleeve mesh's, if it has one)
     const near = new Map();
     let mid = [0, 0, 0], midN = 0;
     for (let v = 0; v < count; v++) {
       let sw = 0;
       for (let k = 0; k < 4; k++) if (sideOf(names[jo[4 * v + k]]) === S) sw += we[4 * v + k];
       if (sw < 0.5) continue;
-      h.points.push(v);
+      (v < sleeveFrom ? h.points : h.sleeve).push(v);
       const d = len(sub(pointOf3(pos, v), h.wrist));
       let handW = 0;
       for (let k = 0; k < 4; k++) if (h.group.has(jo[4 * v + k])) handW += we[4 * v + k];
@@ -341,7 +415,7 @@ async function readRig(file) {
   const copyright = root.getAsset().copyright || '';
   const m = /"([^"]+)" \((https?:[^)]+)\) by ([^(]+?) \(/.exec(copyright);
   const credit = m ? `"${m[1]}" by ${m[3].trim()} (CC BY 4.0)` : 'the gun model';
-  return { id, file, doc, node, armMesh: node.getName(), joints, names, bind, used, pos, nor, jo, we, index: prim.getIndices().getArray(), hands, s, credit };
+  return { id, file, doc, node, armMesh: node.getName(), joints, names, bind, used, pos, nor, jo, we, index: prim.getIndices().getArray(), hands, s, credit, sleeveFrom };
 }
 
 // The rig seen as glove.mjs expects the soldier: his hand bones' names on
@@ -381,10 +455,12 @@ function rigView(rig, S, opts) {
         own.joints.push(toView.has(j) ? toView.get(j) : 65535);
         own.weights.push(rig.we[4 * v + k]);
       }
-    } else if (opts.sleeve && dot(sub(p, h.wrist), h.axis) < opts.sleeveEnd + 0.002) {
+    } else if (opts.sleeve && !opts.sleeveMesh && dot(sub(p, h.wrist), h.axis) < opts.sleeveEnd + 0.002) {
       sleeve.pos.push(...sub(p, h.wrist));
     }
   }
+  // (A sleeve mesh of its own: all of it.)
+  for (const v of h.sleeve) sleeve.pos.push(...sub(pointOf3(rig.pos, v), h.wrist));
   own.pos = new Float32Array(own.pos); own.joints = new Uint16Array(own.joints); own.weights = new Float32Array(own.weights);
   sleeve.pos = new Float32Array(sleeve.pos);
   const soldier = {
@@ -564,7 +640,7 @@ function gloveOnRig(item, left, rig, S, opts, log) {
   const palmSet = new Set(h.palmBones);
   const round = roundArm(h);
   const cyl = (p) => { const [a, ang] = round(p); return [a, 0.03 * Math.cos(ang), 0.03 * Math.sin(ang)]; };
-  const cylPoints = h.points.filter((v) => round(pointOf3(rig.pos, v))[0] < 0.03);
+  const cylPoints = [...h.points, ...h.sleeve].filter((v) => round(pointOf3(rig.pos, v))[0] < 0.03);
   const cylPos = new Float32Array(cylPoints.length * 3);
   cylPoints.forEach((v, k) => cylPos.set(cyl(pointOf3(rig.pos, v)), 3 * k));
   const cylGrid = new Grid(cylPos, 0.01);
@@ -938,12 +1014,26 @@ async function write(item, g, rig, opts, source) {
 
 const rigs = [];
 for (const file of GUNS) {
-  const rig = await readRig(file);
-  const opts = RIGS[rig.id];
-  if (!opts) throw new Error(`${file}: no settings for the rig "${rig.id}" (RIGS)`);
+  const opts = RIGS[path.basename(file, '.glb')];
+  if (!opts) throw new Error(`${file}: no settings for the rig "${path.basename(file, '.glb')}" (RIGS)`);
+  const rig = await readRig(file, opts);
   for (const S of ['L', 'R']) {
     const h = rig.hands[S];
-    console.log(`${rig.id} ${S}: hand ${rig.names[h.hand]}, fingers ${h.fingers.map((f) => f.bones.map((j) => rig.names[j]).join('/')).join(' ')}, thumb ${h.thumb.bones.map((j) => rig.names[j]).join('/')}, palm bones ${h.palmBones.map((j) => rig.names[j]).join(' ')}, cuff bone ${rig.names[h.twist]}, ${h.points.length} points`);
+    console.log(`${rig.id} ${S}: hand ${rig.names[h.hand]}, fingers ${h.fingers.map((f) => f.bones.map((j) => rig.names[j]).join('/')).join(' ')}, thumb ${h.thumb.bones.map((j) => rig.names[j]).join('/')}, palm bones ${h.palmBones.map((j) => rig.names[j]).join(' ')}, cuff bone ${rig.names[h.twist]}, ${h.points.length} points${h.sleeve.length ? ` (and ${h.sleeve.length} of the sleeve)` : ''}`);
+    if (opts.sleeveMesh) {
+      // (Where its own glove and its sleeve end, along the forearm from the
+      // wrist: for choosing sleeveEnd and cuffTo.)
+      const along = (vs) => vs.map((v) => dot(sub(pointOf3(rig.pos, v), h.wrist), h.axis));
+      const reach = (vs, f) => vs.length ? (f(...along(vs)) * 1000).toFixed(0) : '-';
+      const round = roundArm(h);
+      const ends = new Array(24).fill(-Infinity);
+      for (const v of h.sleeve) {
+        const [a, ang] = round(pointOf3(rig.pos, v));
+        const b = ((Math.round(ang / (2 * Math.PI) * 24) % 24) + 24) % 24;
+        ends[b] = Math.max(ends[b], a);
+      }
+      console.log(`  its own glove reaches ${reach(h.points, Math.min)} mm up the forearm; its sleeve comes down to ${(Math.min(...ends) * 1000).toFixed(0)} to ${reach(h.sleeve, Math.max)} mm`);
+    }
   }
   rigs.push({ rig, opts });
 }

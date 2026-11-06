@@ -260,6 +260,8 @@ input.onLockChange = (locked) => {
   document.body.classList.toggle('playing', locked);
 };
 viewmodel.ready.then(() => {
+  // The guns with their own arms wear the outfit's gloves too.
+  viewmodel.wearGloves(outfit);
   // A gun whose model couldn't be loaded may have a stand-in that plays by
   // slightly different rules (its fallbackRules in GUN_KINDS, src/viewmodel/viewmodel.js).
   for (const key of LOADOUT) {
@@ -560,7 +562,7 @@ renderer.setAnimationLoop((time) => {
     viewmodel.flickSwitch();
   }
 
-  // Switching guns: 1 to 4, or the mouse wheel.
+  // Switching guns: 1 to 5, or the mouse wheel.
   if (play) {
     LOADOUT.forEach((key, i) => {
       if (input.presses(`Digit${i + 1}`) > 0) switchGun(key);
