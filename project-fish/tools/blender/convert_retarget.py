@@ -541,7 +541,16 @@ class Retarget:
         return out
 
     def fit_fingers(self, R, P, M, where, volume):
-        """See FIT. R, P (his bones, per frame) are changed in place."""
+        """See FIT. R, P (his bones, per frame) are changed in place.
+
+        Each finger bone (knuckle out, FIT['passes'] times) gets one turn per
+        frame, chosen for the whole clip at once: every frame's cost of each
+        turn tried (how far his glove's points on it, and on the bones past
+        it, are in the gun; how far it is off the gun where the mannequin's
+        matching bone touches it; how far it turns from the clip's pose)
+        plus what it costs to change the turn from one frame to the next,
+        the cheapest path through the frames (dynamic programming). So a
+        finger never flicks from one frame to the next to dodge the gun."""
         s = self.soldier.scale
         if not hasattr(self, 'points'):
             self.points = self.finger_points()
@@ -555,55 +564,79 @@ class Retarget:
             for f in FINGERS:
                 chain = [f'CC_Base_{side}_{f}{j}' for j in (1, 2, 3)]
                 # (Axes tried: the one it bends about, and for the thumb also
-                # sideways; 0 and 1 index his anatomical frame's columns.)
+                # sideways; 1 and 2 index his anatomical frame's columns.)
                 axes = (1, 2) if f == 'Thumb' else (1,)
                 tries = [(ax, a) for ax in axes for a in angles]
-                prev = {name: 0.0 for name in chain}
-                for k in range(n):
-                    for j, name in [(j, c) for _ in range(FIT['passes']) for j, c in enumerate(chain)]:
-                        pts = self.points[name] * s
-                        if not len(pts):
-                            continue
-                        # Does the mannequin's matching bone touch the gun?
+                T = len(tries)
+                # Each try as a turn vector (in the bone's anatomical frame),
+                # for the cost of going from one to another.
+                vec = np.zeros((T, 3))
+                for t, (ax, a) in enumerate(tries):
+                    vec[t, ax] = a
+                step = np.linalg.norm(vec[:, None] - vec[None], axis=2)
+                change = FIT['change'] * step + FIT['change2'] * step ** 2
+                size = np.linalg.norm(vec, axis=1) * FIT['keep'] + np.array([FIT['sideways'] if ax == 2 and a else 0
+                                                                              for ax, a in tries])
+                for j, name in [(j, c) for _ in range(FIT['passes']) for j, c in enumerate(chain)]:
+                    pts = self.points[name] * s
+                    if not len(pts):
+                        continue
+                    cost = np.zeros((n, T))
+                    frames = np.zeros((n, 3, 3))
+                    for k in range(n):
+                        # How much the mannequin's matching bone touches the
+                        # gun (its middle line's distance to the gun's
+                        # surface; its skeleton only, never its mesh): fully
+                        # within FIT['touch'], not at all beyond FIT['near'].
                         a0 = M[f'{MANNY_FINGERS[f]}_{j + 1:02d}_{ms}'][k][:3, 3]
                         if j < 2:
                             b0 = M[f'{MANNY_FINGERS[f]}_{j + 2:02d}_{ms}'][k][:3, 3]
                         else:
                             b0 = a0 + (a0 - M[f'{MANNY_FINGERS[f]}_{j:02d}_{ms}'][k][:3, 3]) * 0.8
                         line = a0 + (b0 - a0) * np.linspace(0.15, 1, 6)[:, None]
-                        touching = volume.distance(line, where[k]).min() < FIT['touch']
-                        hi = FIT['gap'] if touching else np.inf
+                        near = volume.distance(line, where[k]).min()
+                        touch = float(np.clip((FIT['near'] - near) / (FIT['near'] - FIT['touch']), 0, 1))
                         frame = R[name][k] @ self.finger_frames[name][0]
+                        frames[k] = frame
                         own = pts @ R[name][k].T
                         kids = [self.points[c] * s @ R[c][k].T + (P[c][k] - P[name][k]) for c in chain[j + 1:]]
                         kids = np.concatenate(kids) if kids else np.zeros((0, 3))
                         rots = np.stack([axis_angle(frame[:, ax], ang) for ax, ang in tries])
                         d_own = volume.distance(P[name][k] + np.einsum('tij,vj->tvi', rots, own), where[k]).min(1)
                         d_kid = (volume.distance(P[name][k] + np.einsum('tij,vj->tvi', rots, kids), where[k]).min(1)
-                                 if len(kids) else np.full(len(tries), np.inf))
-                        ok = (d_own >= lo) & (d_own <= hi) & (d_kid >= lo)
-                        if ok[0]:
-                            prev[name] = 0.0
-                            continue
-                        # (Of those that do, the nearest the last frame's turn.)
-                        far = np.array([abs(ang - prev[name]) + (0.02 if ax == 2 else 0) for ax, ang in tries])
-                        if ok.any():
-                            pick = int(np.argmin(np.where(ok, far, np.inf)))
+                                 if len(kids) else np.full(T, np.inf))
+                        gap = np.minimum(d_own, FIT['band']) - FIT['gap']
+                        cost[k] = (FIT['in'] * (np.maximum(lo - d_own, 0) + np.maximum(lo - d_kid, 0))
+                                   + touch * np.maximum(gap, 0) + size)
+                    # The cheapest path through the frames.
+                    total = cost[0].copy()
+                    back = np.zeros((n, T), np.int64)
+                    for k in range(1, n):
+                        c = total[:, None] + change
+                        back[k] = np.argmin(c, axis=0)
+                        total = c[back[k], np.arange(T)] + cost[k]
+                    pick = np.zeros(n, np.int64)
+                    pick[-1] = int(np.argmin(total))
+                    for k in range(n - 1, 0, -1):
+                        pick[k - 1] = back[k][pick[k]]
+                    for k in range(n):
+                        ax, ang = tries[pick[k]]
+                        if ang:
                             stats['fixed'] += 1
-                        else:
-                            # (Into the gun is worse than off it.)
-                            miss = (4 * np.maximum(lo - d_own, 0) + np.maximum(d_own - hi, 0) + 4 * np.maximum(lo - d_kid, 0))
-                            pick = int(np.argmin(miss + far * 1e-4))
+                        self.turn_chain(R, P, chain[j:], k, frames[k][:, ax], ang)
+                # What's left: each of his finger bones' points in the gun,
+                # and off it where the mannequin's touches.
+                for j, name in enumerate(chain):
+                    pts = self.points[name] * s
+                    if not len(pts):
+                        continue
+                    for k in range(n):
+                        d = volume.distance(P[name][k] + pts @ R[name][k].T, where[k]).min()
+                        if d < lo:
                             stats['left'] += 1
-                            stats['worstIn'] = max(stats['worstIn'], float(max(lo - d_own[pick], 0)))
-                            if np.isfinite(hi) and np.isfinite(d_own[pick]):
-                                stats['worstGap'] = max(stats['worstGap'], float(max(d_own[pick] - hi, 0)))
-                        ax, ang = tries[pick]
-                        prev[name] = ang if ax == 1 else 0.0
-                        self.turn_chain(R, P, chain[j:], k, frame[:, ax], ang)
-                stats['frames'] = n
+                            stats['worstIn'] = max(stats['worstIn'], float(lo - d))
+        stats['frames'] = n
         stats['worstIn'] = round(stats['worstIn'] * 1000, 1)
-        stats['worstGap'] = round(stats['worstGap'] * 1000, 1)
         return stats
 
     def turn_chain(self, R, P, chain, k, axis, angle):
@@ -622,8 +655,9 @@ class Retarget:
         mannequin's hand (their knuckle rows lined up), his middle knuckle
         on its middle knuckle; then, his gloved hand being thicker than the
         mannequin's bare one, moved straight out of the gun as far as his
-        palm and his fingers' first bones are in it (FIT['inside']),
-        smoothed over the frames (PALM_SMOOTH) so it doesn't shake."""
+        palm and his fingers' first bones are in it (FIT['inside']; the
+        least move that takes them all out), smoothed over the frames
+        (PALM_SMOOTH) so it doesn't shake."""
         s = self.soldier.scale
         out = {}
         for side in SIDES:
@@ -639,25 +673,45 @@ class Retarget:
                 wrist[k] = mp('middle_01') - turn[k] @ (arm['mid'] * s)
                 if volume is None:
                     continue
-                pts = self.palm_points(side, turn[k], wrist[k], M, k)
-                for _ in range(4):
-                    d = volume.distance(pts + push[k], where[k])
-                    i = int(np.argmin(d))
-                    if d[i] >= -FIT['inside']:
-                        break
-                    g = volume.gradient(pts[i] + push[k], where[k])
-                    push[k] += g * (-FIT['inside'] * 0.5 - d[i])
+                push[k] = self.out_of_gun(self.palm_points(side, turn[k], wrist[k], M, k), push[k], volume, where[k])
             if volume is not None and n > 2:
                 # (The most of each frame's neighbours', then averaged: it
-                # stays out of the gun and moves smoothly.)
+                # moves smoothly; then out of the gun again where that left
+                # it in, from there, and averaged once more with the next
+                # frames.)
                 r = PALM_SMOOTH
                 mag = np.linalg.norm(push, axis=1)
                 idx = np.clip(np.arange(n)[:, None] + np.arange(-r, r + 1)[None], 0, n - 1)
                 pick = idx[np.arange(n), mag[idx].argmax(1)]
                 pushed = push[pick]
                 push = pushed[idx].mean(1)
+                for k in range(n):
+                    push[k] = self.out_of_gun(self.palm_points(side, turn[k], wrist[k], M, k), push[k], volume, where[k])
+                idx = np.clip(np.arange(n)[:, None] + np.arange(-1, 2)[None], 0, n - 1)
+                push = push[idx].mean(1)
             out[side] = (turn, wrist + push, np.linalg.norm(push, axis=1))
         return out
+
+    @staticmethod
+    def out_of_gun(pts, push, volume, where):
+        """The least move (from `push`) that takes all the points out of the
+        gun (to FIT['inside'] / 2): damped least squares over all the
+        points in it at once, each wanting out its own way, by at most 5 mm
+        a step."""
+        push = push.copy()
+        for _ in range(60):
+            d = volume.distance(pts + push, where)
+            bad = d < -FIT['inside'] * 0.5
+            if not bad.any():
+                break
+            g = volume.gradients(pts[bad] + push, where)
+            want = -FIT['inside'] * 0.5 - d[bad]
+            move = np.linalg.solve(g.T @ g + 0.1 * len(g) * np.eye(3), g.T @ want)
+            size = np.linalg.norm(move)
+            if size < 1e-5:
+                break
+            push += move * min(1.0, 0.005 / size)
+        return push
 
     def palm_points(self, side, turn, wrist, M, k):
         """His glove's palm and fingers' first bones (but the thumb's) where
@@ -796,8 +850,14 @@ class Retarget:
 # within FIT['touch'] of the gun's surface: the mannequin's skeleton only,
 # never its mesh) and his is more than FIT['gap'] off it; by at most
 # FIT['most']. The turns are smoothed over the clip's frames.
-FIT = {'inside': 0.002, 'gap': 0.0025, 'touch': 0.012, 'most': math.radians(35), 'step': math.radians(1.5),
-       'cell': 0.002, 'band': 0.012, 'spacing': 0.0018, 'passes': 2}
+FIT = {'inside': 0.002, 'gap': 0.0025, 'touch': 0.010, 'near': 0.016, 'most': math.radians(35),
+       'step': math.radians(1.5), 'cell': 0.002, 'band': 0.012, 'spacing': 0.0018, 'passes': 2,
+       # The costs (in metres of being in or off the gun): each metre in the
+       # gun counts `in` times; a turn away from the clip's pose costs
+       # `keep` a radian (the thumb's sideways turn `sideways` more), and a
+       # change of turn from one frame to the next `change` a radian plus
+       # `change2` a radian squared, so it eases in and out.
+       'in': 4.0, 'keep': 0.004, 'sideways': 0.0004, 'change': 0.003, 'change2': 0.3}
 
 
 class GunVolume:
@@ -886,6 +946,17 @@ class GunVolume:
             val[~np.isfinite(val)] = np.inf
             out[ok] = np.minimum(out[ok], val)
         return out.reshape(shape)
+
+    def gradients(self, points, where, h=0.001):
+        """Which way is out of the gun at each of the points (unit; zero
+        where it can't tell)."""
+        e = np.eye(3) * h
+        d = self.distance(np.concatenate([points + e[i] for i in range(3)] + [points - e[i] for i in range(3)]),
+                          where).reshape(6, -1)
+        ok = np.isfinite(d[:3]) & np.isfinite(d[3:])
+        g = np.where(ok, d[:3] - np.where(ok, d[3:], 0), 0).T
+        n = np.linalg.norm(g, axis=1, keepdims=True)
+        return np.where(n > 1e-12, g / np.maximum(n, 1e-12), 0)
 
     def gradient(self, point, where, h=0.001):
         """Which way is out of the gun at a point (unit)."""
