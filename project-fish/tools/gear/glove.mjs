@@ -88,11 +88,63 @@ function turnAbout(M, R, from, to) {
   return out;
 }
 
+// Rigid moves (rotation, translation) and their blend as dual quaternions.
+function quatOf(R) {
+  const [[a, b, c], [d, e, f], [g, h, k]] = R;
+  const tr = a + e + k;
+  let q;
+  if (tr > 0) { const S = Math.sqrt(tr + 1) * 2; q = [(h - f) / S, (c - g) / S, (d - b) / S, 0.25 * S]; }
+  else if (a > e && a > k) { const S = Math.sqrt(1 + a - e - k) * 2; q = [0.25 * S, (b + d) / S, (c + g) / S, (h - f) / S]; }
+  else if (e > k) { const S = Math.sqrt(1 + e - a - k) * 2; q = [(b + d) / S, 0.25 * S, (f + h) / S, (c - g) / S]; }
+  else { const S = Math.sqrt(1 + k - a - e) * 2; q = [(c + g) / S, (f + h) / S, 0.25 * S, (d - b) / S]; }
+  const l = Math.hypot(...q);
+  return q.map((x) => x / l);
+}
+const qmul = (a, b) => [
+  a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+  a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+  a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+  a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+];
+const identityMove = () => ({ real: [0, 0, 0, 1], dual: [0, 0, 0, 0] });
+// The move taking a bone from `from` (world matrix) to `to`: to * from^-1
+// (both with the model's scale, which cancels).
+function moveOf(to, from) {
+  const Rt = normCols(rot3Of(to)), Rf = normCols(rot3Of(from));
+  const R = m3mul(Rt, m3T(Rf));
+  const t = sub(pointOf(to), m3v(R, pointOf(from)));
+  const real = quatOf(R);
+  const dual = qmul([t[0], t[1], t[2], 0], real).map((x) => x * 0.5);
+  return { real, dual };
+}
+function blendMoves(moves, w) {
+  const real = [0, 0, 0, 0], dual = [0, 0, 0, 0];
+  let pivot = null;
+  for (let b = 0; b < moves.length; b++) {
+    if (!w[b]) continue;
+    const m = moves[b];
+    if (!pivot) pivot = m.real;
+    const sgn = dot4(pivot, m.real) < 0 ? -w[b] : w[b];
+    for (let k = 0; k < 4; k++) { real[k] += sgn * m.real[k]; dual[k] += sgn * m.dual[k]; }
+  }
+  const l = Math.hypot(...real);
+  const r = real.map((x) => x / l), d = dual.map((x) => x / l);
+  const [x, y, z, ww] = r;
+  const R = [
+    [1 - 2 * (y * y + z * z), 2 * (x * y - z * ww), 2 * (x * z + y * ww)],
+    [2 * (x * y + z * ww), 1 - 2 * (x * x + z * z), 2 * (y * z - x * ww)],
+    [2 * (x * z - y * ww), 2 * (y * z + x * ww), 1 - 2 * (x * x + y * y)],
+  ];
+  const tq = qmul(d, [-x, -y, -z, ww]);
+  return [R, [2 * tq[0], 2 * tq[1], 2 * tq[2]]];
+}
+const dot4 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+
 const DIGITS = ['Index', 'Mid', 'Ring', 'Pinky', 'Thumb'];
 // How widely each joint's bend is blended (metres either side): the
 // fingers' knuckle, middle and last joints, and the thumb's root, middle
 // and last (as the game's own gloves, src/viewmodel/handRig.js).
-const FINGER_BLEND = [0.008, 0.0055, 0.0045];
+const FINGER_BLEND = [0.010, 0.007, 0.0055];
 const THUMB_BLEND = [0.014, 0.007, 0.005];
 const SHARE = 0.0015; // how softly a point between two fingers is shared (metres)
 // The cuff follows his lower forearm: fully this far up his arm from the
@@ -540,14 +592,27 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
     nor.set(norm(nn), 3 * i);
   }
 
-  // His forearm bone posed so the cuff (along his hand) lies along his
-  // forearm at rest: turned about the wrist by the bend between them.
-  const foreSwing = swing(his.forearmAxis, handAxis);
-  const foreFlat = turnAbout(his.world(his.twist), foreSwing, his.wrist, his.wrist);
-  const toRest = m3T(foreSwing); // cuff points from the glove's pose to his rest
+  // How thick its fingers are, to his own glove's (for fitting the fingers
+  // to the gun, src/player/fpArms.js).
+  const thickness = measureThickness(pos, wts, B, chainsG.map((G, c) => [posed[c].J[0], posed[c].J[1], posed[c].J[2], addS(posed[c].J[2], posed[c].dirs[2], his.chains[c].lengths[2])]), his);
+
+  // Into his rest pose (his fingers curled as he stands), each point taken
+  // by its bones' blend as rigid turns (dual quaternions, so a bend keeps
+  // the glove's volume instead of pinching it), and bound there: in the
+  // game his bones then only bend it from his rest to his hands' poses,
+  // which are near it. (His forearm in the glove's pose: turned about the
+  // wrist so the cuff, along his hand, lies along his forearm at rest.)
+  const foreFlat = turnAbout(his.world(his.twist), swing(his.forearmAxis, handAxis), his.wrist, his.wrist);
+  const moves = [identityMove(), moveOf(his.world(his.twist), foreFlat)];
+  his.digits.forEach((ids, c) => ids.forEach((id, k) => moves.push(moveOf(his.world(id), posed[c].world[k]))));
+  for (let i = 0; i < n; i++) {
+    const [R2, t] = blendMoves(moves, wts.subarray(i * B, i * B + B));
+    pos.set(add(m3v(R2, pointOf3(pos, i)), t), 3 * i);
+    nor.set(norm(m3v(R2, pointOf3(nor, i))), 3 * i);
+  }
 
   // The cuff: up into his sleeve far enough, and inside it.
-  fitCuff(pos, wts, B, his, handAxis, toRest, cfg, log);
+  fitCuff(pos, wts, B, his, cfg, log);
 
   // Into the file's terms: up to four joints each.
   const jointOf = [his.hand, his.twist, ...his.digits.flatMap((ids) => ids)];
@@ -561,14 +626,8 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
     const t = top.reduce((x, [, w]) => x + w, 0);
     top.forEach(([b, w], k) => { joints[4 * i + k] = jointOf[b]; weights[4 * i + k] = w / t; });
   }
-  // Inverse bind matrices: the glove's pose (his hand and forearm as at rest
-  // but the forearm turned for the cuff, his fingers as the glove's).
-  const pose = new Map([[his.hand, his.world(his.hand)], [his.twist, foreFlat]]);
-  his.digits.forEach((ids, c) => ids.forEach((id, k) => pose.set(id, posed[c].world[k])));
-
-  // How thick its fingers are, to his own glove's (for fitting the fingers
-  // to the gun, src/player/fpArms.js).
-  const thickness = measureThickness(pos, joints, weights, chainsG.map((G, c) => [posed[c].J[0], posed[c].J[1], posed[c].J[2], addS(posed[c].J[2], posed[c].dirs[2], his.chains[c].lengths[2])]), his);
+  // Inverse bind matrices: his rest pose.
+  const pose = new Map(jointOf.map((id) => [id, his.world(id)]));
 
   // (Triangles wind the other way on the mirrored hand.)
   const index = Uint32Array.from(g.index);
@@ -583,32 +642,17 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
 // forearm from the wrist) it's drawn out to there; and wherever it's inside
 // his sleeve it's narrowed to fit inside it, easing back to its own width
 // past the sleeve's end.
-function fitCuff(pos, wts, B, his, handAxis, toRest, cfg, log) {
+function fitCuff(pos, wts, B, his, cfg, log) {
   const n = pos.length / 3;
   const axis = his.forearmAxis;
   const w0 = his.wrist;
-  // Each point at rest (only the cuff's matter: hand and forearm weights;
-  // the forearm part turned about the wrist).
-  const rest = (p, i) => {
-    const f = wts[i * B + 1];
-    return lerp(p, add(w0, m3v(toRest, sub(p, w0))), f);
-  };
-  const back = (p, i) => {
-    // (Undoes rest(): the blend of identity and a turn, for one point.)
-    let x = p;
-    for (let it = 0; it < 6; it++) x = add(x, sub(p, rest(x, i)));
-    return x;
-  };
   const cuffIdx = [];
-  for (let i = 0; i < n; i++) {
-    const p = pointOf3(pos, i);
-    if (dot(sub(p, w0), handAxis) < 0.03) cuffIdx.push(i);
-  }
+  for (let i = 0; i < n; i++) if (dot(sub(pointOf3(pos, i), w0), axis) < 0.03) cuffIdx.push(i);
   // Draw it out.
   let lowest = Infinity;
   const restPos = new Map();
   for (const i of cuffIdx) {
-    const r = rest(pointOf3(pos, i), i);
+    const r = pointOf3(pos, i);
     restPos.set(i, r);
     lowest = Math.min(lowest, dot(sub(r, w0), axis));
   }
@@ -687,13 +731,13 @@ function fitCuff(pos, wts, B, his, handAxis, toRest, cfg, log) {
       most = Math.max(most, len(radial) * (1 - k));
     }
   }
-  for (const [i, r] of restPos) pos.set(back(r, i), 3 * i);
+  for (const [i, r] of restPos) pos.set(r, 3 * i);
   log(`  cuff: sleeve ends ${(sleeveEnd * 1000).toFixed(0)} mm from the wrist; ${narrowed} points narrowed to fit inside it, by up to ${(most * 1000).toFixed(1)} mm`);
 }
 
 // Median distance of each bone's points (weighted mostly to it) from the
 // bone, for the glove and for his own glove; their ratios by kind.
-function measureThickness(pos, joints, weights, chains, his) {
+function measureThickness(pos, wts, B, chains, his) {
   const radius = (P, J, W, count, chainsAt) => chainsAt.map((ch, c) => [0, 1, 2].map((k) => {
     const id = his.digits[c][k];
     const ds = [];
@@ -706,7 +750,15 @@ function measureThickness(pos, joints, weights, chains, his) {
     ds.sort((a, b) => a - b);
     return ds.length ? ds[ds.length >> 1] : NaN;
   }));
-  const glove = radius(pos, joints, weights, pos.length / 3, chains);
+  // (The glove's own weights by bone, 4 a point, as the file's.)
+  const count = pos.length / 3;
+  const jointOf = [his.hand, his.twist, ...his.digits.flatMap((ids) => ids)];
+  const J = new Uint16Array(count * 4), W = new Float32Array(count * 4);
+  for (let v = 0; v < count; v++) {
+    const top = [...wts.subarray(v * B, v * B + B)].map((w, b) => [b, w]).sort((x, y) => y[1] - x[1]).slice(0, 4);
+    top.forEach(([b, w], k) => { J[4 * v + k] = jointOf[b]; W[4 * v + k] = w; });
+  }
+  const glove = radius(pos, J, W, count, chains);
   const own = his.own;
   const ownChains = his.chains.map((ch) => [ch.J[0], ch.J[1], ch.J[2], addS(ch.J[2], ch.dirs[2], ch.lengths[2])]);
   const mine = radius(own.pos, own.joints, own.weights, own.pos.length / 3, ownChains);
