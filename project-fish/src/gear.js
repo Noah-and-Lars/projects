@@ -176,8 +176,16 @@ const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const files = new Map(); // url -> Promise of the loaded file
 
 // Loads a gear file once (for every copy and the preview).
+// A file that fails to load is forgotten, so the next time it's wanted
+// it's fetched again (after a network blip, say).
 export function loadGear(url) {
-  if (!files.has(url)) files.set(url, loader.loadAsync(url));
+  if (!files.has(url)) {
+    const loading = loader.loadAsync(url);
+    files.set(url, loading);
+    loading.catch(() => {
+      if (files.get(url) === loading) files.delete(url);
+    });
+  }
   return files.get(url);
 }
 
@@ -279,7 +287,10 @@ export class Wardrobe {
       }
       // (Something else was chosen meanwhile.)
       if (copy.pending[slot] !== id) {
-        for (const m of meshes || []) disposeOwnMaterials(m);
+        for (const m of meshes || []) {
+          disposeOwnMaterials(m);
+          m.skeleton.dispose();
+        }
         return;
       }
     }
@@ -288,6 +299,9 @@ export class Wardrobe {
       for (const m of copy.worn[slot].meshes) {
         copy.remove(m);
         disposeOwnMaterials(m);
+        // (Its own skeleton's bone texture; the first-person copy that
+        // shares it went in copy.remove.)
+        m.skeleton.dispose();
       }
     }
     const showOwn = option.own || meshes === null;

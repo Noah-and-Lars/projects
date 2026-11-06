@@ -91,26 +91,26 @@ const ONLY = option('--only', null);
 const DEBUG = option('--debug', null);
 
 // The gloves: as ITEMS in build_gear.mjs (the same downloads and the same
-// settings for finding their joints; see there and glove.mjs), with smaller
-// textures (these are only seen in the gun layer, close up but small) and
-// fewer triangles.
+// settings for finding their joints; see there and glove.mjs), with 2048 px
+// colour textures (the camo's normal map is 1024 px, as the download's is)
+// and fewer triangles.
 const GLOVES = [
   {
     id: 'gloves_black', short: 'black', source: 'tactical_combat_gloves_-_game_ready',
     title: 'Tactical Combat Gloves - Game Ready', url: 'https://sketchfab.com/3d-models/tactical-combat-gloves-game-ready-5e8f53fcba864163a199fa22baa653cb',
-    maxTriangles: 12000, size: 1024, normalSize: 512, roughness: 0.8,
+    maxTriangles: 12000, size: 2048, normalSize: 2048, roughness: 0.8,
     glove: { subdivide: { from: -0.3, to: -0.2 }, pick: (c) => c[0] < 0.35, axes: { along: [0, 1, 0], thumb: [1, 0, 0], back: [0, 0, 1] }, webs: [0.17, 0.17, 0.2], web: 0.3, thumb: { tip: [0.19, 0.25, -0.2], toward: [-0.15, 0.2, -0.08] } },
   },
   {
     id: 'gloves_olive', short: 'olive', source: 'tactical_combat_gloves_3d_model',
     title: 'Tactical Combat Gloves 3D Model', url: 'https://sketchfab.com/3d-models/tactical-combat-gloves-3d-model-fda69c63c472449f8ded80a9e6d91562',
-    maxTriangles: 12000, size: 1024, roughness: 0.95, calm: { fine: 3, local: 48, keep: 0.55, tint: [0.84, 0.87, 0.76] },
+    maxTriangles: 12000, size: 2048, roughness: 0.95, calm: { fine: 3, local: 48, keep: 0.55, tint: [0.84, 0.87, 0.76] },
     glove: { pick: (c) => c[2] < 0, axes: { along: [0, -1, 0], thumb: [0, 0, -1], back: [-1, 0, 0] }, webs: [0.18, 0.18, 0.2], web: 0.3, thumb: { tip: [0.27, 0.24, -0.05], toward: [-0.1, 0.15, -0.05] } },
   },
   {
     id: 'gloves_camo', short: 'camo', source: 'military_tactical_gloves_-_multicam_hard_knuckle',
     title: 'Military Tactical Gloves - MultiCam Hard Knuckle', url: 'https://sketchfab.com/3d-models/military-tactical-gloves-multicam-hard-knuckle-72342e418cd743209395bba607d5504e',
-    maxTriangles: 12000, size: 1024, normalSize: 512, roughness: 0.85,
+    maxTriangles: 12000, size: 2048, normalSize: 1024, roughness: 0.85,
     glove: { palmBlend: 1.5, pick: (c) => c[0] > 0, axes: { along: [0, 1, 0], thumb: [1, 0, 0], back: [0, 0, 1] }, webs: [0.17, 0.17, 0.2], web: 0.3, thumb: { tip: [0.18, 0.26, -0.18], toward: [-0.12, 0.17, -0.08] } },
   },
 ];
