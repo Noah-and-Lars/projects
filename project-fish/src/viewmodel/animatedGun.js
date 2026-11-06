@@ -1,4 +1,5 @@
-// A gun that brings its own arms and animations (the PF-23, see pistol23.js):
+// A gun that brings its own arms and animations (none in the game yet; kept
+// for the next gun that comes with its own animated arms):
 // one skeleton with the forearms, hands and gun on it, and clips made for
 // it (idle, draw, hide, shoot, reload). The gun layer (viewmodel.js) puts it
 // where the eye is and moves it with the same sway, bob, recoil, aiming and
@@ -69,7 +70,7 @@ const restOf = (part) => part && { position: part.position.clone(), quaternion: 
 
 export class AnimatedGun {
   // scene: the loaded model's scene (its root at the eye); animations: its
-  // clips; model: its constants (MODEL23 in pistol23.js).
+  // clips; model: its constants (bones, parts, points and event times).
   constructor(scene, animations, model) {
     this.model = model;
     this.root = scene;

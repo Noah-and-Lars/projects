@@ -11,7 +11,6 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { createPistol, GRIP, SIGHTS, MAGAZINE, SLIDE } from './pistol.js';
 import { createPistol45, MODEL45, FALLBACK45 } from './pistol45.js';
 import { MODEL9 } from './pistol9.js';
-import { MODEL23 } from './pistol23.js';
 import { AnimatedGun } from './animatedGun.js';
 import { createArms, rightHandPose } from './arms.js';
 import { SupportHand, WRIST, HOLD_TURN, holdingAt, handMatrix, OVER_TURN, OVER_SLIDE } from './supportHand.js';
@@ -20,7 +19,7 @@ import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS, reloadSteps } from '../weapon.js';
-import { PISTOL, PISTOL45, PISTOL23, LOADOUT } from '../shared/config.js';
+import { PISTOL, PISTOL45, LOADOUT } from '../shared/config.js';
 
 // Points on the built-in first pistol (gun space; used if its model file
 // can't be loaded; the model's are in pistol9.js): the
@@ -53,18 +52,6 @@ const TRIGGER_TRAVEL = 0.0032;
 const INDICATOR_TRAVEL = 0.0006;
 const BLADE_TRAVEL = 0.0009;
 
-// If the PF-23's model can't be loaded, the PF-45's built-in stand-in takes
-// its place, held by the usual hands: its rules, but the PF-45's reloads
-// (the PF-23's follow its own animation) and the usual inspect.
-const STAND_IN23 = {
-  ...PISTOL23,
-  reloadTime: PISTOL45.reloadTime,
-  emptyReloadTime: PISTOL45.emptyReloadTime,
-  reloadSteps: PISTOL45.reloadSteps,
-  inspect: true,
-  inspectHolds: PISTOL45.inspectHolds,
-};
-
 // The guns: their rules (src/shared/config.js), their models (made in
 // Blender, see tools/blender/) with simpler built-in ones in case a file
 // can't be loaded, and the points on each. A gun that brings its own arms
@@ -73,7 +60,6 @@ const STAND_IN23 = {
 const GUN_KINDS = {
   pistol: { rules: PISTOL, model: new URL('../../assets/pistol.glb', import.meta.url), fallback: createPistol, points: MODEL9, fallbackPoints: POINTS9 },
   pistol45: { rules: PISTOL45, model: new URL('../../assets/pistol45.glb', import.meta.url), fallback: createPistol45, points: MODEL45, fallbackPoints: FALLBACK45 },
-  pistol23: { rules: PISTOL23, model: new URL('../../assets/pistol23.glb', import.meta.url), animated: MODEL23, fallback: createPistol45, fallbackPoints: FALLBACK45, fallbackRules: STAND_IN23 },
 };
 
 // Switching guns: the one in the hands drops down out of view, turning away
@@ -830,7 +816,7 @@ export class Viewmodel {
   rigGun(key, pistol, fromFile) {
     const kind = GUN_KINDS[key];
     const given = fromFile ? kind.points : kind.fallbackPoints;
-    // (A gun's stand-in may play by other rules: see STAND_IN23.)
+    // (A gun's stand-in may play by other rules: its kind's fallbackRules.)
     const rules = fromFile ? kind.rules : kind.fallbackRules || kind.rules;
     pistol.name = 'pistol';
     shadowed(pistol);

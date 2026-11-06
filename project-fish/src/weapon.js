@@ -96,7 +96,7 @@ export const INSPECT_STEPS = {
 };
 
 export class Pistol {
-  // spec: the gun's numbers (PISTOL, PISTOL45 or PISTOL23 in src/shared/config.js).
+  // spec: the gun's numbers (PISTOL or PISTOL45 in src/shared/config.js).
   constructor(spec = PISTOL) {
     this.spec = spec;
     this.ammo = spec.magazine;

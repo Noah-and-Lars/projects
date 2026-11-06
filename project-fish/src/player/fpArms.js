@@ -24,7 +24,7 @@
 // If his arms can't reach where the hands are, the whole gun is drawn in
 // towards his shoulders by the difference, so the hands never leave it.
 //
-// A gun that brings its own arms (the PF-23, see src/viewmodel/
+// A gun that brings its own arms (none yet, see src/viewmodel/
 // animatedGun.js) is held by those: his arms aren't drawn in the gun layer
 // then, nothing pulls the gun in or fits his fingers, and his body's arms
 // (for the shadow) just reach for where its wrists are.

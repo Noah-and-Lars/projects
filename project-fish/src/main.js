@@ -261,7 +261,7 @@ input.onLockChange = (locked) => {
 };
 viewmodel.ready.then(() => {
   // A gun whose model couldn't be loaded may have a stand-in that plays by
-  // slightly different rules (see STAND_IN23 in src/viewmodel/viewmodel.js).
+  // slightly different rules (its fallbackRules in GUN_KINDS, src/viewmodel/viewmodel.js).
   for (const key of LOADOUT) {
     const g = viewmodel.guns[key];
     if (g && g.rules && weapons[key].spec !== g.rules) weapons[key].spec = g.rules;
