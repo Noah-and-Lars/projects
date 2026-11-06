@@ -1,0 +1,252 @@
+// The soldier's outfit: what he wears on his head, his vest and his gloves.
+//
+// The choices are SLOTS (below), each with its options: his own piece (part
+// of the soldier model), pieces made from downloaded models (assets/gear/,
+// made by tools/gear/build_gear.mjs, each on a copy of his skeleton), or
+// none. The Outfit menu (in the loadout menu, B; src/outfitMenu.js) chooses
+// one per slot; the choice is remembered in the browser (Outfit, below).
+//
+// Every copy of the soldier is dressed by the Wardrobe: the soldier by the
+// house (world.js), the player's body (player/body.js: its shadow, looking
+// down, photo mode) and the menu's preview (outfitPreview.js). A piece that
+// isn't his own hides his own piece for that slot (OWN, below) and is put on
+// that copy's own bones, so it moves with him; "None" hides his own piece
+// and puts nothing on. Head gear keeps the model's firstPerson 'head' tag,
+// so the player's body leaves it out of the first-person camera but keeps
+// its shadow, as it does his head.
+//
+// Gloves: the slot is here with only his own gloves for now. Another glove
+// is added as an option with a `file` (made like the others, tagged
+// firstPerson 'arms'); the first-person arms (player/fpArms.js) are dressed
+// by a Wardrobe too, with `slots: ['gloves']`, so a new glove is drawn in
+// the gun layer as well (see dress()).
+
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { boneName, firstPersonTag } from './soldier.js';
+
+// What's his own in each slot, in the soldier model: by material, and for
+// the head and vest by what the piece is weighted to.
+// - head: his helmet (with its built-in ear cups); its material also holds
+//   the patches on his chest and back, which aren't tagged 'head'.
+// - vest: the plate carrier, the patches on it, and the pouches on its
+//   front and sides (weighted to his lower spine; the belt and its pouches,
+//   on his hips, the thigh pouch and the neck gaiter stay).
+// - gloves: his gloves.
+const OWN = {
+  head: (mesh, material) => material === 'Mark_Helmet1' && firstPersonTag(mesh) === 'head',
+  vest: (mesh, material) => material === 'Mark_Plate_1'
+    || (material === 'Mark_Helmet1' && firstPersonTag(mesh) !== 'head')
+    || (material === 'Mark_Pouches_1' && mainBone(mesh) === 'CC_Base_Spine01'),
+  gloves: (mesh, material) => material === 'Mark_Gloves_1',
+};
+
+const gearFile = (name) => new URL(`../assets/gear/${name}.glb`, import.meta.url).href;
+
+// The slots and their options: { id, name, about, own: true (his own
+// piece) | file (a piece from assets/gear) | neither (nothing) }. The first
+// option is the one he starts in.
+export const SLOTS = [
+  {
+    id: 'head', name: 'Head',
+    options: [
+      { id: 'field', name: 'Field helmet', about: 'His own helmet, with ear defenders built in.', own: true },
+      { id: 'comms', name: 'Comms helmet', about: 'A high-cut helmet with rails, a counterweight pouch, ear cups and a boom mic.', file: gearFile('helmet_comms') },
+      { id: 'headset', name: 'Headset', about: 'Ear defenders and a boom mic, no helmet.', file: gearFile('headset') },
+      { id: 'none', name: 'None', about: 'Bare head: just his balaclava and glasses.' },
+    ],
+  },
+  {
+    id: 'vest', name: 'Vest',
+    options: [
+      { id: 'field', name: 'Field carrier', about: 'His own plate carrier with its magazine and side pouches.', own: true },
+      { id: 'black', name: 'Black carrier', about: 'A black plate carrier with triple magazine pouches and a flag patch.', file: gearFile('vest_black') },
+      { id: 'olive', name: 'Olive carrier', about: 'A heavier olive plate carrier with webbing all round.', file: gearFile('vest_olive') },
+      { id: 'none', name: 'None', about: 'No vest: just his jacket.' },
+    ],
+  },
+  {
+    id: 'gloves', name: 'Gloves',
+    options: [
+      { id: 'field', name: 'Field gloves', about: 'His own gloves.', own: true },
+    ],
+  },
+];
+
+const slotOf = (id) => SLOTS.find((s) => s.id === id);
+export const optionOf = (slot, id) => (slotOf(slot) || { options: [] }).options.find((o) => o.id === id);
+
+const STORAGE_KEY = 'project-fish.outfit';
+
+// The chosen option in each slot, remembered in the browser.
+export class Outfit {
+  constructor() {
+    this.chosen = {};
+    this.listeners = [];
+    let saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
+    } catch {
+      // Nothing saved (or storage is off): his own kit.
+    }
+    for (const slot of SLOTS) {
+      this.chosen[slot.id] = optionOf(slot.id, saved[slot.id]) ? saved[slot.id] : slot.options[0].id;
+    }
+  }
+
+  get(slot) {
+    return this.chosen[slot];
+  }
+
+  set(slot, id) {
+    if (!optionOf(slot, id) || this.chosen[slot] === id) return;
+    this.chosen[slot] = id;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.chosen));
+    } catch {
+      // Can't remember it; it still applies until the page is closed.
+    }
+    for (const fn of this.listeners) fn(slot, id);
+  }
+
+  // Calls fn(slot, id) whenever a choice changes.
+  onChange(fn) {
+    this.listeners.push(fn);
+  }
+}
+
+// The bone a mesh is mostly weighted to (its name, see boneName).
+function mainBone(mesh) {
+  if (!mesh.isSkinnedMesh) return null;
+  const index = mesh.geometry.attributes.skinIndex;
+  const weight = mesh.geometry.attributes.skinWeight;
+  if (!index || !weight) return null;
+  const sum = new Map();
+  for (let v = 0; v < index.count; v++) {
+    for (let k = 0; k < 4; k++) {
+      const w = weight.getComponent(v, k);
+      if (w) sum.set(index.getComponent(v, k), (sum.get(index.getComponent(v, k)) || 0) + w);
+    }
+  }
+  let best = -1;
+  let most = 0;
+  for (const [j, w] of sum) if (w > most) { most = w; best = j; }
+  const bone = mesh.skeleton.bones[best];
+  return bone ? boneName(bone.name) : null;
+}
+
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const files = new Map(); // url -> Promise of the loaded file
+
+// Loads a gear file once (for every copy and the preview).
+export function loadGear(url) {
+  if (!files.has(url)) files.set(url, loader.loadAsync(url));
+  return files.get(url);
+}
+
+const IDENTITY = new THREE.Matrix4();
+
+// Dresses copies of the soldier in the Outfit, and keeps them dressed as it
+// changes.
+export class Wardrobe {
+  constructor(outfit) {
+    this.outfit = outfit;
+    this.copies = [];
+    outfit.onChange((slot) => {
+      for (const copy of this.copies) this.apply(copy, slot);
+    });
+  }
+
+  // Dresses `model` (a copy of the soldier, with its own bones) now and from
+  // now on. Options:
+  // - prepare(mesh): readies a new piece for this copy (its materials, say);
+  //   may return a promise (compiling them), and the piece goes on after.
+  // - add(mesh) / remove(mesh): where pieces go (default: under the model).
+  // - slots: which slots this copy wears (default: all).
+  // - hide(mesh, hidden): hides or shows one of his own pieces (default:
+  //   mesh.visible; mesh.userData.gearHidden says it's hidden either way).
+  // Returns a promise that settles once the current outfit is on.
+  dress(model, options = {}) {
+    const bones = {};
+    model.traverse((o) => {
+      if (o.isBone) bones[boneName(o.name)] = o;
+    });
+    const own = {};
+    const slots = options.slots || SLOTS.map((s) => s.id);
+    for (const slot of slots) own[slot] = [];
+    model.traverse((o) => {
+      if (!o.isMesh || o.userData.gearPiece) return;
+      const material = [].concat(o.material)[0].name;
+      for (const slot of slots) if (OWN[slot] && OWN[slot](o, material)) own[slot].push(o);
+    });
+    const copy = {
+      model, bones, own, slots,
+      prepare: options.prepare || (() => {}),
+      add: options.add || ((mesh) => model.add(mesh)),
+      remove: options.remove || ((mesh) => mesh.removeFromParent()),
+      hide: options.hide || ((mesh, hidden) => { mesh.visible = !hidden; }),
+      worn: {}, // slot -> { id, meshes }
+      pending: {}, // slot -> the option being put on
+    };
+    this.copies.push(copy);
+    return Promise.all(slots.map((slot) => this.apply(copy, slot)));
+  }
+
+  // Stops dressing a copy (its pieces stay as they are).
+  undress(model) {
+    this.copies = this.copies.filter((c) => c.model !== model);
+  }
+
+  // Puts the chosen option for `slot` on one copy.
+  async apply(copy, slot) {
+    if (!copy.slots.includes(slot)) return;
+    const id = this.outfit.get(slot);
+    const option = optionOf(slot, id);
+    if (!option || (copy.worn[slot] && copy.worn[slot].id === id)) return;
+    copy.pending[slot] = id;
+    let meshes = [];
+    if (option.file) {
+      try {
+        const gltf = await loadGear(option.file);
+        meshes = this.piecesFor(copy, gltf);
+        await Promise.all(meshes.map((m) => copy.prepare(m)));
+      } catch (error) {
+        console.warn(`Couldn't load ${option.file}; he wears his own instead.`, error);
+        meshes = null;
+      }
+      // (Something else was chosen meanwhile.)
+      if (copy.pending[slot] !== id) return;
+    }
+    // Off with what was on, and his own piece shown or hidden.
+    if (copy.worn[slot]) for (const m of copy.worn[slot].meshes) copy.remove(m);
+    const showOwn = option.own || meshes === null;
+    for (const m of copy.own[slot]) {
+      m.userData.gearHidden = !showOwn;
+      copy.hide(m, !showOwn);
+    }
+    for (const m of meshes || []) copy.add(m);
+    copy.worn[slot] = { id, meshes: meshes || [] };
+  }
+
+  // The piece's meshes, for one copy: sharing the file's geometry and
+  // materials, on that copy's bones (the file's own skeleton is a copy of
+  // his, so each joint is found by name; its inverse bind matrices are
+  // kept, as they go with the file's geometry).
+  piecesFor(copy, gltf) {
+    const out = [];
+    gltf.scene.traverse((o) => {
+      if (!o.isSkinnedMesh) return;
+      const bones = o.skeleton.bones.map((b) => copy.bones[boneName(b.name)]);
+      if (bones.some((b) => !b)) throw new Error(`${o.name}: a joint isn't in the soldier's skeleton`);
+      const mesh = new THREE.SkinnedMesh(o.geometry, o.material);
+      mesh.name = o.name;
+      mesh.userData = { ...o.userData, gearPiece: true };
+      mesh.bind(new THREE.Skeleton(bones, o.skeleton.boneInverses), IDENTITY);
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.frustumCulled = false; // (skinned: his bind pose's bounds don't follow him)
+      out.push(mesh);
+    });
+    return out;
+  }
+}

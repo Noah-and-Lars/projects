@@ -1,9 +1,13 @@
 // A simple, temporary loadout menu: press B in the game to choose each gun's
-// attachments. It releases the mouse while it's open; B, Esc or "Back to
-// game" closes it and takes the mouse again.
+// attachments, and (its last tab) your outfit (src/outfitMenu.js). It
+// releases the mouse while it's open; B, Esc or "Back to game" closes it and
+// takes the mouse again.
 
 import { SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
+
+// The Outfit tab's key (beside the guns').
+const OUTFIT = 'outfit';
 
 // An attachment's name, from its id.
 function nameOf(gun, id) {
@@ -17,8 +21,10 @@ function nameOf(gun, id) {
 export class LoadoutMenu {
   // element: the #loadout panel. loadout: the Loadout (src/attachments.js).
   // input: the Input, to release and take the mouse. heldGun(): the key of the
-  // gun in the hands (the menu opens on it).
-  constructor(element, loadout, input, heldGun) {
+  // gun in the hands (the menu opens on it). outfitMenu: the OutfitMenu
+  // shown on the Outfit tab (optional).
+  constructor(element, loadout, input, heldGun, outfitMenu = null) {
+    this.outfitMenu = outfitMenu;
     this.element = element;
     this.loadout = loadout;
     this.input = input;
@@ -33,13 +39,16 @@ export class LoadoutMenu {
         this.close();
       }
     });
-    this.loadout.onChange(() => this.render());
+    this.loadout.onChange(() => {
+      if (this.open && this.gun !== OUTFIT) this.render();
+    });
   }
 
   show() {
     if (this.open) return;
     this.open = true;
-    this.gun = this.heldGun();
+    // (Back on the Outfit tab if that's where it was left.)
+    if (this.gun !== OUTFIT) this.gun = this.heldGun();
     this.render();
     this.element.hidden = false;
     document.body.classList.add('menu-open');
@@ -50,6 +59,7 @@ export class LoadoutMenu {
     if (!this.open) return;
     this.open = false;
     this.element.hidden = true;
+    if (this.outfitMenu) this.outfitMenu.hide();
     document.body.classList.remove('menu-open');
     // Back into the game (a key press or click counts as asking for the
     // mouse). If the browser won't give it back yet, onFailedLock is told.
@@ -70,10 +80,11 @@ export class LoadoutMenu {
     // A tab for each gun.
     const tabs = document.createElement('div');
     tabs.className = 'tabs';
-    for (const key of LOADOUT) {
+    const keys = this.outfitMenu ? [...LOADOUT, OUTFIT] : LOADOUT;
+    for (const key of keys) {
       const tab = document.createElement('button');
       tab.type = 'button';
-      tab.textContent = GUNS[key].name;
+      tab.textContent = key === OUTFIT ? 'Outfit' : GUNS[key].name;
       tab.className = key === this.gun ? 'tab chosen' : 'tab';
       tab.addEventListener('click', () => {
         this.gun = key;
@@ -82,6 +93,14 @@ export class LoadoutMenu {
       tabs.append(tab);
     }
     panel.append(tabs);
+    if (this.outfitMenu && this.gun !== OUTFIT) this.outfitMenu.hide();
+    if (this.gun === OUTFIT) {
+      panel.classList.add('wide');
+      this.outfitMenu.render(panel);
+      panel.append(this.backButton());
+      el.append(panel);
+      return;
+    }
 
     // A row for each slot that gun has, with a button per attachment and one
     // for none.
@@ -122,12 +141,16 @@ export class LoadoutMenu {
       panel.append(row);
     }
 
+    panel.append(this.backButton());
+    el.append(panel);
+  }
+
+  backButton() {
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'back';
     back.textContent = 'Back to game (B)';
     back.addEventListener('click', () => this.close());
-    panel.append(back);
-    el.append(panel);
+    return back;
   }
 }

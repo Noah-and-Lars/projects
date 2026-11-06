@@ -164,9 +164,10 @@ export function outdoorEnvironment(renderer, sunDirection) {
 // players will be in multiplayer, standing by the house in his idle pose
 // until then. It loads in the background; if it can't be loaded the world
 // just goes without him. Call update(dt) every frame to play his idle.
+// wardrobe (src/gear.js, optional) dresses him in the player's outfit.
 export const SOLDIER_SKY = 1; // how strongly the sky lights him
 
-export function addSoldier(scene, renderer, camera) {
+export function addSoldier(scene, renderer, camera, wardrobe = null) {
   const soldier = { mixer: null, update(dt) { if (this.mixer) this.mixer.update(dt); } };
   // Lit by the outdoor sky too, as the gun is (the world's plain lights alone
   // leave his dark olive kit nearly black).
@@ -196,6 +197,17 @@ export function addSoldier(scene, renderer, camera) {
         }
       });
       scene.add(model);
+      // The player's outfit (each new piece lit by the sky like him, its
+      // materials made ready before it goes on).
+      if (wardrobe) {
+        wardrobe.dress(model, {
+          prepare: (mesh) => {
+            mesh.material = [].concat(mesh.material).map((m) => Object.assign(m.clone(), { envMap: sky, envMapIntensity: SOLDIER_SKY }));
+            if (mesh.material.length === 1) mesh.material = mesh.material[0];
+            return renderer.compileAsync(mesh, camera, scene);
+          },
+        });
+      }
       if (gltf.animations.length) {
         soldier.mixer = new THREE.AnimationMixer(model);
         soldier.mixer.clipAction(gltf.animations[0]).play();

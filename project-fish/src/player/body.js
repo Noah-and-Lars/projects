@@ -67,8 +67,11 @@ function bend(bone, rest, angle) {
 }
 
 export class PlayerBody {
-  constructor(scene, renderer, camera) {
+  // wardrobe: the Wardrobe (src/gear.js) that dresses him in the chosen
+  // outfit (optional).
+  constructor(scene, renderer, camera, wardrobe = null) {
     this.model = null;
+    this.wardrobe = wardrobe;
     // (The second copy of the model is for the arms holding the gun,
     // src/player/fpArms.js.)
     this.armsModel = null;
@@ -81,26 +84,9 @@ export class PlayerBody {
   }
 
   setUp(model, scene, renderer, camera) {
-    const sky = outdoorEnvironment(renderer, SUN_DIRECTION);
+    this.sky = outdoorEnvironment(renderer, SUN_DIRECTION);
     model.traverse((o) => {
-      if (!o.isMesh) return;
-      const shown = [].concat(o.material).map((m) => {
-        const own = m.clone();
-        own.envMap = sky;
-        own.envMapIntensity = SOLDIER_SKY;
-        return own;
-      });
-      o.material = shown.map((m) => {
-        if (!firstPersonTag(o)) return m;
-        const hidden = m.clone();
-        hideKeepingShadow(hidden);
-        return hidden;
-      });
-      if (o.material.length === 1) o.material = o.material[0];
-      // (Seen from outside, in photo mode, all of him shows: see setFirstPerson.)
-      o.userData.materials = { firstPerson: o.material, outside: shown.length === 1 ? shown[0] : shown };
-      o.castShadow = o.receiveShadow = true;
-      o.frustumCulled = false;
+      if (o.isMesh) this.prepareMesh(o);
     });
     this.bones = bonesOf(model);
     this.rest = new Map();
@@ -111,7 +97,48 @@ export class PlayerBody {
     this.model = model;
     return renderer.compileAsync(model, camera, scene).then(() => {
       scene.add(model);
+      // His outfit: a new piece gets his materials' set-up, shows as he does
+      // (first person or from outside, shown or left out), and its materials
+      // are made ready before it goes on.
+      if (this.wardrobe) {
+        this.wardrobe.dress(model, {
+          prepare: (mesh) => {
+            this.prepareMesh(mesh);
+            mesh.material = this.outside ? mesh.userData.materials.outside : mesh.userData.materials.firstPerson;
+            mesh.visible = this.shown !== false;
+            return renderer.compileAsync(mesh, camera, scene);
+          },
+          hide: (mesh, hidden) => {
+            mesh.visible = this.shown !== false && !hidden;
+          },
+        });
+      }
     });
+  }
+
+  // A mesh of his (or a piece of gear put on him): its own copies of the
+  // materials, lit by the sky; in first person the parts tagged for it
+  // (his head, what's on it, his arms) are left out of the picture but
+  // still cast their shadow, and seen from outside (photo mode) all of him
+  // shows (see setFirstPerson).
+  prepareMesh(o) {
+    const shown = [].concat(o.material).map((m) => {
+      const own = m.clone();
+      own.envMap = this.sky;
+      own.envMapIntensity = SOLDIER_SKY;
+      return own;
+    });
+    let firstPerson = shown.map((m) => {
+      if (!firstPersonTag(o)) return m;
+      const hidden = m.clone();
+      hideKeepingShadow(hidden);
+      return hidden;
+    });
+    if (firstPerson.length === 1) firstPerson = firstPerson[0];
+    o.material = firstPerson;
+    o.userData.materials = { firstPerson, outside: shown.length === 1 ? shown[0] : shown };
+    o.castShadow = o.receiveShadow = true;
+    o.frustumCulled = false;
   }
 
   // feet: where the player stands (world); yaw, pitch: where they look;
@@ -260,7 +287,7 @@ export class PlayerBody {
     if (this.shown === shown) return;
     this.shown = shown;
     this.model.traverse((o) => {
-      if (o.isMesh) o.visible = shown;
+      if (o.isMesh) o.visible = shown && !o.userData.gearHidden; // (his own gear, when something else is worn)
     });
   }
 

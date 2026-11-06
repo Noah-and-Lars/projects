@@ -21,6 +21,8 @@ import { GpuTimer, Hud } from './hud.js';
 import { settings } from './settings.js';
 import { Loadout } from './attachments.js';
 import { LoadoutMenu } from './loadoutMenu.js';
+import { Outfit, Wardrobe } from './gear.js';
+import { OutfitMenu } from './outfitMenu.js';
 
 // Never run more than this much game time in one frame (e.g. after switching
 // tabs), so the game doesn't freeze trying to catch up.
@@ -64,8 +66,12 @@ const LASER = { range: 120 };
 let lightsOn = true;
 const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 1500);
 camera.rotation.order = 'YXZ'; // turn left/right first, then look up/down
-const soldier = addSoldier(scene, renderer, camera);
-const body = new PlayerBody(scene, renderer, camera);
+// What the soldier wears (chosen in the loadout menu's Outfit tab, src/
+// gear.js): the player's body and the soldier by the house wear it.
+const outfit = new Outfit();
+const wardrobe = new Wardrobe(outfit);
+const soldier = addSoldier(scene, renderer, camera, wardrobe);
+const body = new PlayerBody(scene, renderer, camera, wardrobe);
 const viewmodel = new Viewmodel(renderer, SUN_DIRECTION);
 // The soldier's own arms on the gun (settings.soldierArms), once both are in.
 const fpArms = settings.soldierArms ? new FirstPersonArms(body, viewmodel) : null;
@@ -120,7 +126,7 @@ const effects = new WorldEffects(scene);
 // The attachments on each gun, and the loadout menu (B) to choose them. If
 // closing the menu can't take the mouse back, the click-to-play screen shows.
 const loadout = new Loadout();
-const menu = new LoadoutMenu(document.getElementById('loadout'), loadout, input, () => held);
+const menu = new LoadoutMenu(document.getElementById('loadout'), loadout, input, () => held, new OutfitMenu(outfit, wardrobe));
 // Puts a gun's chosen attachments on it (once the models are in; then each
 // time the loadout changes).
 function applyLoadout(key) {

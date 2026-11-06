@@ -249,6 +249,87 @@ body:not(.playing) #ammo {
   margin-top: 10px;
 }
 
+/* The Outfit tab: the picture of him beside the slots (stacked on a phone). */
+#loadout .panel.wide {
+  width: min(760px, calc(100vw - 32px));
+}
+
+#loadout .outfit {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+#loadout .stage {
+  flex: 0 0 240px;
+  text-align: center;
+}
+
+#loadout canvas.avatar {
+  display: block;
+  width: 240px;
+  height: 340px;
+  border-radius: 6px;
+  background: radial-gradient(ellipse at 50% 35%, #56606c 0%, #2c3138 70%, #22262b 100%);
+  touch-action: none;
+  cursor: grab;
+}
+
+#loadout canvas.avatar:active {
+  cursor: grabbing;
+}
+
+#loadout .views {
+  margin-top: 8px;
+}
+
+#loadout .views button {
+  padding: 3px 10px;
+  font-size: 13px;
+}
+
+#loadout .stage .hint {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+#loadout .slots {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#loadout .slots .label {
+  display: block;
+  min-width: 0;
+  margin-bottom: 6px;
+}
+
+#loadout .slots .slot {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 600px) {
+  #loadout .panel {
+    padding: 16px;
+  }
+
+  #loadout .outfit {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  #loadout .stage {
+    flex: none;
+  }
+
+  #loadout canvas.avatar {
+    width: 100%;
+    height: min(46vh, 360px);
+  }
+}
+
 body.menu-open #crosshair,
 body.menu-open #ammo {
   display: none;
