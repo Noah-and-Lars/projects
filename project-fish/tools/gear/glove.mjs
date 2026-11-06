@@ -146,7 +146,8 @@ const DIGITS = ['Index', 'Mid', 'Ring', 'Pinky', 'Thumb'];
 // and last (as the game's own gloves, src/viewmodel/handRig.js).
 const FINGER_BLEND = [0.010, 0.007, 0.0055];
 const THUMB_BLEND = [0.014, 0.007, 0.005];
-const SHARE = 0.0015; // how softly a point between two fingers is shared (metres)
+const ARC_SHARE = 0.004; // how softly a point is shared between a line's segments (metres)
+const SHARE_OVER = 0.005; // how far over the glove's surface a digit's share fades (metres)
 // The cuff follows his lower forearm: fully this far up his arm from the
 // wrist, none this far down the hand (metres; as his own glove).
 const CUFF = { forearm: -0.024, hand: 0.014 };
@@ -452,6 +453,101 @@ function along(line, arc) {
   return addS(b.at, norm(sub(b.at, a.at)), arc - b.arc);
 }
 
+// Each point's share of each digit (5 a point): its own (the digit whose
+// line is nearest; a point all of whose neighbours disagree takes theirs),
+// shared with others by how far over the surface their points are
+// (Gaussian, `over` metres). Points at the same place (texture seams) count
+// as one.
+function surfaceShare(pos, index, near, over) {
+  const n = pos.length / 3;
+  const key = new Map();
+  const node = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    const k = `${Math.round(pos[3 * i] * 1e5)},${Math.round(pos[3 * i + 1] * 1e5)},${Math.round(pos[3 * i + 2] * 1e5)}`;
+    if (!key.has(k)) key.set(k, key.size);
+    node[i] = key.get(k);
+  }
+  const m = key.size;
+  const where = new Float32Array(m * 3);
+  for (let i = 0; i < n; i++) where.set(pointOf3(pos, i), 3 * node[i]);
+  const links = Array.from({ length: m }, () => new Map());
+  for (let t = 0; t < index.length; t += 3) {
+    for (let e = 0; e < 3; e++) {
+      const a = node[index[t + e]], b = node[index[t + (e + 1) % 3]];
+      if (a === b) continue;
+      const d = len(sub(pointOf3(where, a), pointOf3(where, b)));
+      links[a].set(b, d);
+      links[b].set(a, d);
+    }
+  }
+  // Nearest line, by node.
+  const label = new Int8Array(m).fill(-1);
+  const bestD = new Float32Array(m).fill(Infinity);
+  for (let i = 0; i < n; i++) {
+    for (let c = 0; c < 5; c++) {
+      if (near[i * 5 + c] < bestD[node[i]]) { bestD[node[i]] = near[i * 5 + c]; label[node[i]] = c; }
+    }
+  }
+  // (Odd points out: twice over, a point whose neighbours mostly agree on
+  // another digit takes theirs.)
+  for (let pass = 0; pass < 2; pass++) {
+    const next = label.slice();
+    for (let a = 0; a < m; a++) {
+      const votes = [0, 0, 0, 0, 0];
+      for (const b of links[a].keys()) votes[label[b]]++;
+      const total = votes.reduce((x, y) => x + y, 0);
+      const top = votes.indexOf(Math.max(...votes));
+      if (top !== label[a] && votes[top] > total / 2 && votes[label[a]] === 0) next[a] = top;
+    }
+    label.set(next);
+  }
+  // Distance over the surface to each digit's points (Dijkstra from all of
+  // them at once), out to 3 x `over`.
+  const out = new Float32Array(n * 5);
+  const nodeShare = new Float32Array(m * 5);
+  for (let c = 0; c < 5; c++) {
+    const dist = new Float32Array(m).fill(Infinity);
+    const heap = [];
+    const push = (d, a) => {
+      heap.push([d, a]);
+      let i = heap.length - 1;
+      while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; }
+    };
+    const pop = () => {
+      const top = heap[0];
+      const last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        let i = 0;
+        for (;;) {
+          const l = 2 * i + 1, r = l + 1;
+          let s2 = i;
+          if (l < heap.length && heap[l][0] < heap[s2][0]) s2 = l;
+          if (r < heap.length && heap[r][0] < heap[s2][0]) s2 = r;
+          if (s2 === i) break;
+          [heap[s2], heap[i]] = [heap[i], heap[s2]];
+          i = s2;
+        }
+      }
+      return top;
+    };
+    for (let a = 0; a < m; a++) if (label[a] === c) { dist[a] = 0; push(0, a); }
+    while (heap.length) {
+      const [d, a] = pop();
+      if (d > dist[a] || d > 3 * over) continue;
+      for (const [b, e] of links[a]) if (d + e < dist[b]) { dist[b] = d + e; push(d + e, b); }
+    }
+    for (let a = 0; a < m; a++) nodeShare[a * 5 + c] = Number.isFinite(dist[a]) ? Math.exp(-((dist[a] / over) ** 2)) : 0;
+  }
+  for (let a = 0; a < m; a++) {
+    let t = 0;
+    for (let c = 0; c < 5; c++) t += nodeShare[a * 5 + c];
+    for (let c = 0; c < 5; c++) nodeShare[a * 5 + c] = t ? nodeShare[a * 5 + c] / t : (label[a] === c ? 1 : 0);
+  }
+  for (let i = 0; i < n; i++) for (let c = 0; c < 5; c++) out[i * 5 + c] = nodeShare[node[i] * 5 + c] < 0.01 ? 0 : nodeShare[node[i] * 5 + c];
+  return out;
+}
+
 // Distance from p to segment ab, and how far along it (0..1).
 function toSegment(p, a, b) {
   const ab = sub(b, a);
@@ -530,40 +626,60 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
   const B = 2 + 15;
   const wts = new Float32Array(n * B);
   const handAxis = norm(sub(his.mcpMean, his.wrist));
+  // Each digit's line from the wrist through its joints to its tip, and its
+  // joints' places along it.
+  const lines = chainsG.map((G) => {
+    const line = [his.wrist, ...G];
+    const at = [];
+    let a = 0;
+    for (let k = 0; k < line.length - 1; k++) { a += len(sub(line[k + 1], line[k])); at.push(a); }
+    return { line, joints: at.slice(0, 3) };
+  });
+  // For each point and digit: how far it is from the digit's line, and the
+  // weights it would have along that digit (hand, then each bone in turn,
+  // blended across each joint).
+  const near = new Float32Array(n * 5);
+  const along = new Float32Array(n * 5 * 4);
   for (let i = 0; i < n; i++) {
     const p = pointOf3(pos, i);
-    // Each digit's line from the wrist through its joints to its tip.
-    const fits = chainsG.map((G) => {
-      const line = [his.wrist, ...G];
-      let best = Infinity, arcAt = 0, arc = 0;
+    lines.forEach(({ line, joints }, c) => {
+      // (How far along: each segment's nearest point, shared between the
+      // segments by how near they are, so it doesn't jump on the inside of
+      // a bend in the line.)
+      let best = Infinity, arc = 0;
+      const per = [];
       for (let k = 0; k < line.length - 1; k++) {
         const segLen = len(sub(line[k + 1], line[k]));
         const [d, t] = toSegment(p, line[k], line[k + 1]);
-        if (d < best) { best = d; arcAt = arc + t * segLen; }
+        per.push([d, arc + t * segLen]);
+        best = Math.min(best, d);
         arc += segLen;
       }
-      // (The joints' places along the line.)
-      const at = [];
-      let a = 0;
-      for (let k = 0; k < line.length - 1; k++) { a += len(sub(line[k + 1], line[k])); at.push(a); }
-      return { d: best, arc: arcAt, joints: at.slice(0, 3) };
-    });
-    const dMin = Math.min(...fits.map((f) => f.d));
-    let share = fits.map((f) => Math.exp(-(f.d - dMin) / SHARE));
-    const total = share.reduce((x, y) => x + y, 0);
-    share = share.map((x) => x / total);
-    let hand = 0;
-    fits.forEach((f, c) => {
-      if (share[c] < 1e-3) { hand += share[c]; return; }
+      let sw = 0, arcAt = 0;
+      for (const [d, a] of per) { const w = Math.exp(-(d - best) / ARC_SHARE); sw += w; arcAt += w * a; }
+      arcAt /= sw;
+      near[i * 5 + c] = best;
       const blend = c === 4 ? THUMB_BLEND : FINGER_BLEND;
-      // Along the digit: hand, then each bone in turn, blended at each joint.
-      const into = f.joints.map((j, k) => smoothstep(j - blend[k], j + blend[k], f.arc));
-      const bw = [1 - into[0], into[0] - into[1], into[1] - into[2], into[2]];
-      hand += share[c] * bw[0];
-      for (let k = 0; k < 3; k++) wts[i * B + 2 + 3 * c + k] += share[c] * Math.max(0, bw[k + 1]);
+      const into = joints.map((j, k) => smoothstep(j - blend[k], j + blend[k], arcAt));
+      along.set([1 - into[0], into[0] - into[1], into[1] - into[2], into[2]], (i * 5 + c) * 4);
     });
+  }
+  // Which digit each point belongs to: the nearest line, then shared with
+  // the digits next to it on the glove's surface (by distance over the
+  // surface, so fingers that touch but aren't joined don't share, and the
+  // webs and palm blend smoothly).
+  const share = surfaceShare(pos, g.index, near, SHARE_OVER);
+  for (let i = 0; i < n; i++) {
+    let hand = 0;
+    for (let c = 0; c < 5; c++) {
+      const m = share[i * 5 + c];
+      if (!m) continue;
+      const bw = along.subarray((i * 5 + c) * 4, (i * 5 + c) * 4 + 4);
+      hand += m * bw[0];
+      for (let k = 0; k < 3; k++) wts[i * B + 2 + 3 * c + k] += m * Math.max(0, bw[k + 1]);
+    }
     // The cuff on his lower forearm.
-    const a = dot(sub(p, his.wrist), handAxis);
+    const a = dot(sub(pointOf3(pos, i), his.wrist), handAxis);
     const fore = 1 - smoothstep(CUFF.forearm, CUFF.hand, a);
     wts[i * B] = hand * (1 - fore);
     wts[i * B + 1] = hand * fore;
@@ -603,12 +719,28 @@ export function rigGlove(item, g, soldier, side, log = console.log) {
   // which are near it. (His forearm in the glove's pose: turned about the
   // wrist so the cuff, along his hand, lies along his forearm at rest.)
   const foreFlat = turnAbout(his.world(his.twist), swing(his.forearmAxis, handAxis), his.wrist, his.wrist);
+  const flatPos = process.env.GLOVE_STRETCH ? pos.slice() : null;
   const moves = [identityMove(), moveOf(his.world(his.twist), foreFlat)];
   his.digits.forEach((ids, c) => ids.forEach((id, k) => moves.push(moveOf(his.world(id), posed[c].world[k]))));
   for (let i = 0; i < n; i++) {
     const [R2, t] = blendMoves(moves, wts.subarray(i * B, i * B + B));
     pos.set(add(m3v(R2, pointOf3(pos, i)), t), 3 * i);
     nor.set(norm(m3v(R2, pointOf3(nor, i))), 3 * i);
+  }
+
+  if (process.env.GLOVE_STRETCH) {
+    const bad = [];
+    for (let t = 0; t < g.index.length; t += 3) for (let e = 0; e < 3; e++) {
+      const a = g.index[t + e], b = g.index[t + (e + 1) % 3];
+      const l0 = len(sub(pointOf3(flatPos, a), pointOf3(flatPos, b))), l1 = len(sub(pointOf3(pos, a), pointOf3(pos, b)));
+      if (l1 > 2 * l0 + 0.002) bad.push([a, b, l0, l1]);
+    }
+    log(`  stretched edges: ${bad.length}`);
+    const names = ['hand', 'fore', ...DIGITS.flatMap((d) => [1, 2, 3].map((k) => d + k))];
+    for (const [a, b, l0, l1] of bad.slice(0, 12)) {
+      const w = (i) => [...wts.subarray(i * B, i * B + B)].map((x, j) => [names[j], x]).filter(([, x]) => x > 0.05).map(([nm, x]) => `${nm}:${x.toFixed(2)}`).join(' ');
+      log(`    ${(l0 * 1000).toFixed(1)} -> ${(l1 * 1000).toFixed(1)} mm  a[${w(a)}] b[${w(b)}] H a ${[...pointOf3(H, a)].map((x) => x.toFixed(3))} b ${[...pointOf3(H, b)].map((x) => x.toFixed(3))}`);
+    }
   }
 
   // The cuff: up into his sleeve far enough, and inside it.
