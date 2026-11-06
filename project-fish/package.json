@@ -10,8 +10,9 @@
     "build-arms": "npm run export-arm-base && mkdir -p assets && blender --background --python tools/blender/build_arms.py -- build/arm-base build/arms-raw.glb --blend build/arms.blend && gltf-transform meshopt build/arms-raw.glb assets/arms.glb --level high",
     "build-pistol45": "mkdir -p assets && blender --background --python tools/blender/convert_pistol45.py -- build/m1911-source build/pistol45-raw.glb --blend build/pistol45.blend && gltf-transform meshopt build/pistol45-raw.glb assets/pistol45.glb --level high",
     "build-pistol45-own": "npm run export-arm-base && mkdir -p build && blender --background --python tools/blender/build_pistol45.py -- build/arm-base/pistol45.json build/pistol45-own-raw.glb --blend build/pistol45-own.blend && gltf-transform meshopt build/pistol45-own-raw.glb build/pistol45-own.glb --level high",
+    "build-pistol23": "mkdir -p assets && blender --background --python tools/blender/convert_pistol23.py -- build/pistol23-source build/pistol23-raw.glb && gltf-transform meshopt build/pistol23-raw.glb assets/pistol23.glb --level high",
     "build-soldier": "mkdir -p assets && python3 -I tools/soldier/remove_patch_text.py build/soldier-source/textures/Mark_Helmet1_baseColor.jpeg build/soldier-helmet.jpeg && node tools/soldier/build_soldier.mjs build/soldier-source assets/soldier.glb --helmet build/soldier-helmet.jpeg --size 1024",
-    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-arms && npm run build-soldier"
+    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-pistol23 && npm run build-arms && npm run build-soldier"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.2.1",

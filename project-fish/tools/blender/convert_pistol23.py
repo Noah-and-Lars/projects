@@ -58,7 +58,7 @@ import bpy
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import linear_to_srgb, log  # noqa: E402
+from common import log  # noqa: E402
 from texture_edit import (box_blur, clone_over, deviation_mask, image_array, letters, rub_out,  # noqa: E402
                           store, to_linear)
 
@@ -102,11 +102,12 @@ MESHES = {
     'main_Mark23_D_0': 'frame', 'Side_Mark23_D_0': 'slide', 'mag_Mark23_D_0': 'magazine',
 }
 MATERIALS = {'Hand_D': 'pistol23_hands', 'Glove_D': 'pistol23_gloves', 'Mark23_D': 'pistol23_gun'}
-# Metal and polymer share the gun's one texture; fully metallic (the
-# download's default) it looks like chrome under the gun layer's sky, so it's
-# set between the two.
-GUN_METALNESS = 0.55
-GUN_ROUGHNESS = 0.5
+# The steel slide and the polymer frame share the gun's one texture, which
+# has its light and wear painted in. Fully metallic (the download's default)
+# it mirrors the gun layer's sky and looks like bare grey steel, so it's
+# mostly the painted colour with a little sheen.
+GUN_METALNESS = 0.35
+GUN_ROUGHNESS = 0.55
 
 # Loose pieces of the frame's mesh that get bones of their own: the middle
 # of each piece (download units, at rest) and the point it turns about.
@@ -358,7 +359,6 @@ def convert(g, accessor):
         assert np.abs(expect - got).max() < 1e-6, f'{m["name"]} moved by {np.abs(expect - got).max()}'
 
     # Animations, cut out of the shared timeline.
-    by_name = {a['name']: a for a in g['animations']}
     union = set()
     source = {}
     for a in g['animations']:
@@ -715,20 +715,32 @@ def measure(rig, meshes, clips, pivots):
                     'back': round(float(sbody[:, 2].max()), 4), 'front': round(float(sbody[:, 2].min()), 4)}
     # The sights: the loose pieces standing on the slide's top, at the back
     # and the front.
+    # (The biggest at each end: the white dots are loose pieces too.)
     sights = []
     for L in np.unique(spieces):
         v = sp[np.unique(slide['triangles'][spieces == L].ravel())]
-        if v[:, 1].max() > sbody[:, 1].max() + 0.003 and len(v) > 20:
+        if v[:, 1].max() > sbody[:, 1].max() + 0.003:
             sights.append(v)
-    rear = max(sights, key=lambda v: v[:, 2].mean())
-    front = min(sights, key=lambda v: v[:, 2].mean())
+    middle = (sbody[:, 2].max() + sbody[:, 2].min()) / 2
+    rear = max((v for v in sights if v[:, 2].mean() > middle), key=len)
+    front = max((v for v in sights if v[:, 2].mean() < middle), key=len)
+    # The back faces of the blades, at their tops (the rear sight's base runs
+    # on behind its blade).
+    rear_blade = rear[rear[:, 1] > rear[:, 1].max() - 0.0006]
+    front_blade = front[front[:, 1] > front[:, 1].max() - 0.0006]
     cx = (rear[:, 0].max() + rear[:, 0].min()) / 2
-    notch = rear[np.abs(rear[:, 0] - cx) < 0.0012]
+    # The notch's sides: the rear sight's corners nearest the middle on
+    # either side; its bottom is the lowest of their corners above the slide.
+    tops = rear[rear[:, 1] > rear[:, 1].max() - 0.0006]  # the two blades' tops
+    inner = (tops[tops[:, 0] < cx][:, 0].max(), tops[tops[:, 0] > cx][:, 0].min())
+    notch = rear[((np.abs(rear[:, 0] - inner[0]) < 0.0003) | (np.abs(rear[:, 0] - inner[1]) < 0.0003))
+                 & (rear[:, 1] > sbody[:, 1].max() + 0.001)]
+    notch_bottom = notch[:, 1].min()
     out['sights'] = {
-        'rearTop': round(float(rear[:, 1].max()), 4), 'notchBottom': round(float(notch[:, 1].max()), 4),
+        'rearTop': round(float(rear[:, 1].max()), 4), 'notchBottom': round(float(notch_bottom), 4),
+        'notchWidth': round(float(inner[1] - inner[0]), 4),
         'frontTop': round(float(front[:, 1].max()), 4),
-        'rearZ': round(float(rear[:, 2].max()), 4), 'rearFrontZ': round(float(rear[:, 2].min()), 4),
-        'frontZ': round(float(front[:, 2].max()), 4), 'frontX': round(float(front[:, 0].mean()), 4),
+        'rearZ': round(float(rear_blade[:, 2].max()), 4), 'frontZ': round(float(front_blade[:, 2].max()), 4), 'frontX': round(float(front[:, 0].mean()), 4),
         'rearX': round(float(cx), 4)}
     # The ejection port: on the slide's right side over the barrel's hood
     # (the box in the frame's mesh seen through it).
@@ -744,7 +756,7 @@ def measure(rig, meshes, clips, pivots):
     out['magazine_box'] = {'min': r5(mv.min(0)), 'max': r5(mv.max(0))}
 
     # The eye's view of it (the rig's root is the eye).
-    rs = np.array([out['sights']['rearX'], out['sights']['notchBottom'], out['sights']['rearZ']])
+    rs = np.array([out['sights']['rearX'], out['sights']['rearTop'], out['sights']['rearZ']])
     out['eye_to_rear_sight'] = r5(rs)
     out['view_angles_deg'] = {'right': round(math.degrees(math.atan2(rs[0], -rs[2])), 2),
                               'down': round(math.degrees(math.atan2(-rs[1], -rs[2])), 2)}
@@ -777,6 +789,7 @@ def measure(rig, meshes, clips, pivots):
     events['shoot']['gunPitchMaxDeg'] = round(max(math.degrees(math.acos(np.clip(wm[fj][1, 1], -1, 1))) for wm, _ in ps), 2)
 
     # Reload: the magazine (in the frame's space) and the slide.
+    hand = rig.index('hand_L')
     ts, ps = path('reload', 'mag_j')
     mag_in_frame = np.array([in_bone(rig, 'frame_j', wm[mj][:3, 3], pose) for wm, pose in ps])
     off = np.linalg.norm(mag_in_frame - mag_in_frame[0], axis=1)
@@ -799,6 +812,20 @@ def measure(rig, meshes, clips, pivots):
         'slideFullyBack': round(float(ts[rack]), 3), 'slideBackMax': round(float(slide_t.max()), 4),
         'slideReleased': round(float(ts[sk[-1]]), 3) if len(sk) else None,
         'duration': round(clips['reload']['duration'], 3)}
+    # When the magazine is out of the view (its top below the lower edge of
+    # the game's 62 degree gun layer view), and when the new one is in the
+    # support hand (held at a steady distance from its wrist).
+    top_in_mag = np.array([0, out['magazine_box']['max'][1] - world[mj][1, 3], 0])
+    tops = np.array([(wm[mj] @ np.r_[top_in_mag, 1])[:3] for wm, _ in ps])
+    hidden = (np.degrees(np.arctan2(-tops[:, 1], -tops[:, 2])) > 31) | (tops[:, 2] > 0)
+    gone = first_move + int(np.argmax(hidden[first_move:]))
+    back = gone + int(np.argmax(~hidden[gone:]))
+    to_hand = np.array([np.linalg.norm(wm[mj][:3, 3] - wm[hand][:3, 3]) for wm, _ in ps])
+    held = np.abs(to_hand - to_hand[back_in]) < 0.002
+    in_hand = far + int(np.argmax(held[far:]))
+    events['reload'].update({'magOutOfSight': round(float(ts[gone]), 3), 'newMagInHand': round(float(ts[in_hand]), 3),
+                             'newMagInSight': round(float(ts[back]), 3),
+                             'slideHome': round(float(ts[rack + int(np.argmax(slide_t[rack:] < 0.0005))]), 3)})
     step = max(1, len(ts) // 24)
     out['magazine_path'] = [[round(float(ts[i]), 3)] + r5(mag_in_frame[i]) for i in range(0, len(ts), step)]
     # Draw and hide: when the gun is where it rests (draw) or as low as it goes (hide).
@@ -827,7 +854,6 @@ def measure(rig, meshes, clips, pivots):
     out['events'] = events
 
     # What the support hand does: its wrist in the frame's space over each clip.
-    hand = rig.index('hand_L')
     hands = {}
     for clip in ('reload', 'shoot', 'draw', 'hide'):
         ts, ps = path(clip, 'hand_L', 1 / 10)
