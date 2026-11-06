@@ -50,7 +50,8 @@ script keeps the skeletons, the skinning and the keys, and only:
   arms' texture coordinates moved to match) and shrunk to ARMS_SIZE. The
   gun's are shrunk to GUN_SIZE. There are no maker's marks or logos on
   them to rub off (none in the colour or the normal map). All are stored
-  as WebP. The skin isn't metal (the download leaves its metalness at 1).
+  as WebP. The skin isn't metal (the download leaves its metalness at 1),
+  and it's toned down a little (SKIN_COLOUR).
 - Keeps who made it and its license in the file (asset.copyright).
 - Names the parts, bones, materials and animations plainly.
 
@@ -138,6 +139,10 @@ SHOULDER_UV = (0.80, 0.12)
 GUN_SIZE = 1024
 WEBP_QUALITY = 88
 SKIN_ROUGHNESS = 0.6
+# The stock character's skin is painted pale and bright: in the gun layer's
+# light the bare arms were the brightest thing at the bottom of the view and
+# drew the eye off the gun. Toned down a little.
+SKIN_COLOUR = [0.8, 0.74, 0.7, 1.0]
 
 COPYRIGHT = ('This work is based on "Beretta Pistol FPS ANIMATION" '
              '(https://sketchfab.com/3d-models/beretta-pistol-fps-animation-0313ab1888994c14abeaf444d7af3217) '
@@ -633,7 +638,8 @@ def write_glb(rig, meshes, clips, images, gun_turn, path):
     arms_rough = images.pop('_arms_roughness')
     g['materials'].append({'name': 'beretta_arms', 'doubleSided': True,
                            'pbrMetallicRoughness': {'baseColorTexture': w.texture('beretta_arms', images['arms_colour']),
-                                                    'metallicFactor': 0.0, 'roughnessFactor': min(arms_rough, SKIN_ROUGHNESS)},
+                                                    'metallicFactor': 0.0, 'roughnessFactor': min(arms_rough, SKIN_ROUGHNESS),
+                                                    'baseColorFactor': SKIN_COLOUR},
                            'normalTexture': w.texture('beretta_arms_normal', images['arms_normal'])})
     g['materials'].append({'name': 'beretta_gun', 'doubleSided': True,
                            'pbrMetallicRoughness': {'baseColorTexture': w.texture('beretta_gun', images['gun_colour']),
