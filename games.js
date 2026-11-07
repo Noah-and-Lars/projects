@@ -109,7 +109,7 @@ window.GAMES = [
     path: 'havoc-bay/index.html',
     thumb: 'havoc-bay/thumb.jpg?v=2',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-11-07T17:30:00+11:00',
+    updated: '2026-11-07T21:30:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -281,6 +281,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-07', game: 'havoc-bay', text: 'Havoc Bay 1.3.2: walk into the island houses and barracks for cover (doors, windows, floors, furniture; walls stop bullets). Rebuilt cockpits with clear windscreens, glowing tracers, gun recoil in first person, and an unlimited match time for bot games.' },
   { date: '2026-11-07', game: 'krill-dive', text: 'Krill Dive 1.1: the share under each answer is now real. Every diver answer is counted, so you see how many divers actually said the same thing (one vote per diver per prompt).' },
   { date: '2026-11-07', game: 'havoc-bay', text: 'Havoc Bay 1.3.1: flares (X) pull homing missiles off your plane or big ship, with a MISSILE INCOMING warning. Barrel rolls, blacking out when you climb straight up, runways on every island, team upgrades on the computer, crouching and lying down, lifeboats off sinking carriers, auto-balance in the public battle and a cheaper shop.' },
   { date: '2026-11-07', game: 'krill-dive', text: 'New game: Krill Dive. Seven daily prompts, 25 seconds each, and the rarer your answer the deeper your krill sinks. Reach the trench floor at 7,000 m for a perfect dive.' },

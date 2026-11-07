@@ -404,7 +404,7 @@ body.touch #throttle{top:40%}
         <div><div class="mlbl">Your team</div><div class="seg" id="teamSeg"><button class="btn blue" data-v="0">Blue</button><button class="btn red" data-v="1">Red</button></div></div>
         <div><div class="mlbl">Bots</div><div class="seg" id="diffSeg"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div></div>
         <div><div class="mlbl">Players per team</div><div class="seg" id="botSeg"><button class="btn" data-v="4">4</button><button class="btn" data-v="6">6</button><button class="btn" data-v="8">8</button><button class="btn" data-v="10">10</button></div></div>
-        <div><div class="mlbl">Match time</div><div class="seg" id="timeSeg"><button class="btn" data-v="10">10m</button><button class="btn" data-v="15">15m</button><button class="btn" data-v="20">20m</button></div></div>
+        <div><div class="mlbl">Match time</div><div class="seg" id="timeSeg"><button class="btn" data-v="10">10m</button><button class="btn" data-v="15">15m</button><button class="btn" data-v="20">20m</button><button class="btn" data-v="0" title="No time limit: the battle goes on until a harbor is destroyed">∞</button></div></div>
       </div>
       <button class="btn go wide" id="practiceBtn">▶ Start practice</button>
     </section>
@@ -419,6 +419,15 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.3.2 <small>Houses you can go into, real cockpits, better bullets</small></h3>
+    <ul>
+      <li><b>Houses you can go into.</b> Every house on the islands and the barracks in each harbor now has a door, open windows, a wooden floor and furniture inside. The walls and roof stop bullets, so you can take cover inside and shoot out of the windows.</li>
+      <li><b>Real cockpits.</b> The cockpits are rebuilt as one joined-up cabin: a curved tub with side consoles, a padded seat and harness, the stick and throttle where your hands would be, and a canopy with slim frames. The fighter's bubble canopy keeps the view ahead clear. The bomber has a proper flight deck with a two-pane windscreen, side screens and side windows set low so you can see down over the nose.</li>
+      <li><b>Better bullets.</b> Tracers are now pointed streaks with a hot core and a soft glow that fades toward the tail. They glow at night.</li>
+      <li><b>Recoil in first person.</b> Guns kick back and flip up when you fire, with a muzzle flash and a small kick to the view. Each gun has its own kick: the shotgun and sniper kick hardest, and lying down steadies it.</li>
+      <li><b>Unlimited time.</b> Bot games have a new ∞ match time: the battle goes on until a harbor is destroyed. The clock counts up instead.</li>
+      <li>Online play uses new channels, so everyone in a match needs 1.3.2 (refresh if you can't find a game).</li>
+    </ul>
     <h3>v1.3.1 <small>Flares, barrel rolls, island runways, team upgrades</small></h3>
     <ul>
       <li><b>Flares.</b> Every plane, the Battleship and the Aircraft Carrier carry flares (the dearer it is, the more it carries: Fighter 2, Dual Gunner 3, Bomber 5, Jet 6, Battleship 6, Carrier 8). Press <b>X</b> to fire a bright red flare. A homing missile coming for you goes for the flare instead, and when they meet it blows up in the air without hurting anyone. Planes reload flares when they land; ships get one back every 20 seconds.</li>
@@ -662,7 +671,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.3.1';
+const VERSION = '1.3.2';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -1842,10 +1851,17 @@ function buildHarbor(team) {
     sb(9, 7, 0.4, 0x3a3f48, 150, G + 3.5, z - Math.sign(z) * 8.6);
   }
   // little houses and barracks
-  for (const [x, z] of [[-28, -88], [-28, 88], [-6, -96], [-6, 96]]) {
-    sb(12, 6, 9, 0xe9e2d0, x, G + 3, z, 'sh');
-    s.b.wedge(12.6, 3, 5, T.hull, x, G + 7.5, z - 2.5, 0, Math.PI, 0); s.b.wedge(12.6, 3, 5, T.hull, x, G + 7.5, z + 2.5, 0, 0, 0);
-    sb(2, 3.6, 0.3, 0x5a3b1e, x, G + 1.8, z + (z > 0 ? -4.6 : 4.6)); sb(2.4, 1.6, 0.3, C.glass, x + 3.5, G + 3.4, z + (z > 0 ? -4.6 : 4.6));
+  { // 1.3.2: you can go inside them (barracks bunks, doors facing the middle of the base)
+    const ib = new Builder();
+    for (const [x, z] of [[-28, -88], [-28, 88], [-6, -96], [-6, 96]]) {
+      const f = z > 0 ? -1 : 1; // house +z is the site's +z for the houses on the -z side, turned half round on the other
+      const [hx, hz] = s.wx(x, z);
+      hollowHouse({ W: 12, D: 9, H: 4, y: houseFloor(hx, hz, 6.3, G), wall: 0xe9e2d0, roof: T.hull, liner: 0xf3efe6, frontWin: [-3.6, 3.6], backWin: [-3, 3], doorX: 0, wf: 'sh', rf: 'h', beds: 3,
+        mesh: (w, h, d, c, lx, yc, lz, rx = 0) => s.b.box(w, h, d, c, x + f * lx, yc, z + f * lz, f * rx, 0, 0),
+        inner: (w, h, d, c, lx, yc, lz) => ib.box(w, h, d, c, x + f * lx, yc, z + f * lz),
+        col: (w, h, d, lx, yc, lz, fl) => col(w, h, d, x + f * lx, yc, z + f * lz, fl) });
+    }
+    const hg = new THREE.Group(); hg.position.set(s.ox, 0, s.oz); hg.rotation.y = s.sgn > 0 ? 0 : Math.PI; hg.add(ib.mesh(MAT.solid, false)); scene.add(hg);
   }
   // oil tanks
   for (const z of [-140, 140]) for (const x of [-40, -12]) {
@@ -2201,12 +2217,26 @@ function setFootGun(s, wk) {
 }
 const PROJS = [];
 // instanced tracers and shells
-const tracerMesh = new THREE.InstancedMesh(boxGeo(), new THREE.MeshBasicMaterial(), 900);
-tracerMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); tracerMesh.frustumCulled = false;
+// 1.3.2: a tracer is a pointed spindle (its tip at +z, a unit long and a unit wide) with a white-hot core and an
+// additive glow round it that fades out toward the tail
+function tracerGeo(tail) {
+  const rings = [[0.5, 0, 1], [0.36, 0.5, 1], [-0.5, 0.12, tail]], n = 6, pos = [], col = [];
+  for (let r = 0; r < rings.length - 1; r++) for (let i = 0; i < n; i++) {
+    const [z0, r0, c0] = rings[r], [z1, r1, c1] = rings[r + 1], a0 = i / n * TAU, a1 = (i + 1) / n * TAU;
+    const P = (z, rr, a, c) => { pos.push(Math.cos(a) * rr, Math.sin(a) * rr, z); col.push(c, c, c); };
+    P(z0, r0, a0, c0); P(z1, r1, a0, c1); P(z1, r1, a1, c1); P(z0, r0, a0, c0); P(z1, r1, a1, c1); P(z0, r0, a1, c0);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); return g;
+}
+const tracerMesh = new THREE.InstancedMesh(tracerGeo(0.7), new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }), 900);
+const tracerGlow = new THREE.InstancedMesh(tracerGeo(0), new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }), 900);
 // setColorAt sizes the colour buffer from .count, so fill it before zeroing the count
-for (let i = 0; i < 900; i++) tracerMesh.setColorAt(i, _pc.set(0xffffff));
-tracerMesh.count = 0;
-scene.add(tracerMesh);
+for (const m of [tracerMesh, tracerGlow]) {
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false;
+  for (let i = 0; i < 900; i++) m.setColorAt(i, _pc.set(0xffffff));
+  m.count = 0; scene.add(m);
+}
+tracerGlow.renderOrder = 2;
 const shellMesh = new THREE.InstancedMesh(sphGeo(8), new THREE.MeshLambertMaterial({ color: 0x2c2c2c }), 300);
 shellMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); shellMesh.frustumCulled = false; shellMesh.count = 0;
 scene.add(shellMesh);
@@ -2338,11 +2368,15 @@ function updateProjectiles(dt) {
       const fx = v.x / sp, fy = v.y / sp, fz = v.z / sp;
       let rx = fz, ry = 0, rz = -fx; const rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
       const ux = fy * rz - fz * ry, uy = fz * rx - fx * rz, uz = fx * ry - fy * rx;
-      te[0] = rx * W.w; te[1] = ry * W.w; te[2] = rz * W.w; te[3] = 0;
-      te[4] = ux * W.w; te[5] = uy * W.w; te[6] = uz * W.w; te[7] = 0;
-      te[8] = fx * L; te[9] = fy * L; te[10] = fz * L; te[11] = 0;
-      te[12] = p.pos.x - fx * L * 0.5; te[13] = p.pos.y - fy * L * 0.5; te[14] = p.pos.z - fz * L * 0.5; te[15] = 1;
-      tracerMesh.setMatrixAt(nt, _pm); tracerMesh.setColorAt(nt, _pc.set(W.tracer)); nt++;
+      const put = (m, w, len, c) => {
+        te[0] = rx * w; te[1] = ry * w; te[2] = rz * w; te[3] = 0;
+        te[4] = ux * w; te[5] = uy * w; te[6] = uz * w; te[7] = 0;
+        te[8] = fx * len; te[9] = fy * len; te[10] = fz * len; te[11] = 0;
+        te[12] = p.pos.x - fx * len * 0.5; te[13] = p.pos.y - fy * len * 0.5; te[14] = p.pos.z - fz * len * 0.5; te[15] = 1;
+        m.setMatrixAt(nt, _pm); m.setColorAt(nt, c);
+      };
+      put(tracerMesh, W.w * 0.6, L, _pc.set(W.tracer).lerp(_pc2.set(0xffffff), 0.3));
+      put(tracerGlow, W.w * 3, L * 1.7, _pc.set(W.tracer).multiplyScalar(0.8)); nt++;
     } else if (W.size && ns < 300) {
       const s = W.size;
       te[0] = s; te[1] = 0; te[2] = 0; te[3] = 0; te[4] = 0; te[5] = s; te[6] = 0; te[7] = 0; te[8] = 0; te[9] = 0; te[10] = s; te[11] = 0;
@@ -2350,7 +2384,7 @@ function updateProjectiles(dt) {
       shellMesh.setMatrixAt(ns, _pm); ns++;
     }
   }
-  tracerMesh.count = nt; tracerMesh.instanceMatrix.needsUpdate = true; if (tracerMesh.instanceColor) tracerMesh.instanceColor.needsUpdate = true;
+  for (const m of [tracerMesh, tracerGlow]) { m.count = nt; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
   shellMesh.count = ns; shellMesh.instanceMatrix.needsUpdate = true;
 }
 
@@ -3629,7 +3663,8 @@ function startMatch(demo) {
   GAME.on = false; GAME.demo = !!demo; GAME.over = false; GAME.winner = -1; GAME.ending = 0; GAME.noResult = false;
   GAME.diff = demo ? 1 : cfg.difficulty;
   GAME.perTeam = demo ? 5 : cfg.bots;
-  GAME.clock = demo ? 1e9 : cfg.minutes * 60; GAME.clock0 = GAME.clock; dnLast = -1; // 1.2.4: the day starts with the match
+  GAME.unlimited = !demo && !NET.on && !cfg.minutes; // 1.3.2: bot games can go on until a harbor falls
+  GAME.clock = demo || GAME.unlimited ? 1e9 : (cfg.minutes || 15) * 60; GAME.clock0 = GAME.clock; dnLast = -1; // 1.2.4: the day starts with the match
   resetWorld();
   reset121();
   Object.assign(PLAYER, { name: !demo && NET.on ? NET.name : 'You', team: demo ? -1 : cfg.team, kills: 0, deaths: 0, damage: 0, gold: 300, earned: 0, spent: 0, caps: 0, ent: null, soldier: null, mode: demo ? 'demo' : 'dead', respawn: 0, jetAt: JET_WAIT });
@@ -3667,7 +3702,7 @@ function updateClock(dt) {
   if (GAME.demo || GAME.over) return;
   if (NET.client) { GAME.clock = Math.max(0, GAME.clock - dt); return; } // the host ends the match
   GAME.clock -= dt;
-  if (GAME.clock <= 0) {
+  if (GAME.clock <= 0 && !GAME.unlimited) {
     GAME.clock = 0;
     const a = HARBORS[0].ent.hp, b = HARBORS[1].ent.hp;
     if (Math.abs(a - b) < 1) endMatch(-1, 'Time is up and both harbors are equal');
@@ -3967,6 +4002,7 @@ function playerFoot(s, dt, c) {
     }
     muzzleFlash(_v1, wk === 'rpg' ? 1 : wk === 'shotgun' ? 0.7 : 0.4);
     if (wk === 'rpg' || wk === 'sniper') camShake = Math.max(camShake, 0.35);
+    VM.shot(wk); // 1.3.2: the gun kicks in first person
     s.cd = 1 / W.rof;
   }
   PLAYER.interact = findInteract(s);
@@ -4086,83 +4122,167 @@ const COCKPIT = (() => {
   const X = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
   // (the bottom fifth of the view: its top edge is about 22 degrees below the middle of the screen)
   const face = new THREE.Mesh(new THREE.PlaneGeometry(0.96, 0.3), new THREE.MeshBasicMaterial({ map: tex })); face.position.set(0, -0.445, -0.76); face.rotation.x = -0.16; g.add(face);
-  bx(1.04, 0.36, 0.16, dark, 0, -0.46, -0.85, -0.16);           // the panel's body
-  bx(1.1, 0.045, 0.22, rim, 0, -0.282, -0.8, -0.1);             // padded glare shield over it
-  bx(1.1, 0.025, 0.025, leather, 0, -0.268, -0.69, 0);          // its leather edge
-  for (const sx of [-1, 1]) bx(0.07, 0.34, 0.14, mid, sx * 0.52, -0.45, -0.79, -0.16);
-  for (const sx of [-1, 1]) {                                    // side consoles with rows of switches
-    bx(0.3, 0.16, 1.0, mid, sx * 0.7, -0.9, -0.42); bx(0.31, 0.02, 1.01, rim, sx * 0.7, -0.81, -0.42);
-    for (let k = 0; k < 5; k++) { bx(0.03, 0.05, 0.03, k % 2 ? metal : yel, sx * 0.64, -0.79, -0.72 + k * 0.1, -0.4); bx(0.03, 0.05, 0.03, metal, sx * 0.76, -0.79, -0.72 + k * 0.1, 0.3); }
-    bx(0.08, 0.04, 0.06, red, sx * 0.7, -0.795, -0.12);
-  }
-  // throttle quadrant on the left, the lever travels with the throttle
-  bx(0.1, 0.06, 0.3, rim, -0.47, -0.56, -0.52);
-  const thr = new THREE.Group(); thr.position.set(-0.47, -0.54, -0.52); g.add(thr);
-  cy(0.012, 0.2, metal, 0, 0.1, 0, 0, 0, 0, thr, 6); bx(0.07, 0.05, 0.08, blk, 0, 0.21, 0.01, 0, 0, 0, thr); bx(0.02, 0.02, 0.03, red, 0.03, 0.235, 0.01, 0, 0, 0, thr);
-  // stick between the knees (the bomber flies with a yoke instead)
-  const stick = new THREE.Group(); stick.position.set(0.02, -0.86, -0.5); g.add(stick);
-  cy(0.016, 0.42, metal, 0, 0.21, 0, 0, 0, 0, stick, 8); cy(0.03, 0.12, blk, 0, 0.46, 0, 0, 0, 0, stick, 8); bx(0.02, 0.025, 0.02, red, 0, 0.5, -0.03, 0, 0, 0, stick);
-  bx(0.11, 0.03, 0.11, leather, 0, 0.02, 0, 0, 0, 0, stick);
+  // 1.3.2: round parts. mesh() places any geometry; shell() is a curved skin round the z axis (theta 0 straight down,
+  // PI/2 the right side, PI the top); rbox() is a box with every edge rounded.
+  const mesh = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0, p = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); p.add(o); return o; };
+  const shell = (r, len, t0, tl, m, x, y, z, p, seg = 32) => { const o = mesh(new THREE.CylinderGeometry(r, r, len, seg, 1, true, t0, tl), m, x, y, z, Math.PI / 2, 0, 0, p); o.userData.inside = true; return o; };
+  const rbox = (w, h, d, r, m, x, y, z, rx = 0, ry = 0, rz = 0, p = g) => {
+    r = Math.max(0.004, Math.min(r, w / 2 - 0.002, h / 2 - 0.002, d / 2 - 0.002));
+    const a = w / 2 - r, b = h / 2 - r, c = Math.min(a, b) * 0.6, sh = new THREE.Shape();
+    sh.moveTo(-a + c, -b); sh.lineTo(a - c, -b); sh.quadraticCurveTo(a, -b, a, -b + c); sh.lineTo(a, b - c); sh.quadraticCurveTo(a, b, a - c, b);
+    sh.lineTo(-a + c, b); sh.quadraticCurveTo(-a, b, -a, b - c); sh.lineTo(-a, -b + c); sh.quadraticCurveTo(-a, -b, -a + c, -b);
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.001, d - 2 * r), bevelEnabled: true, bevelThickness: r, bevelSize: r, bevelSegments: 3, curveSegments: 4 });
+    geo.translate(0, 0, -Math.max(0.001, d - 2 * r) / 2); return mesh(geo, m, x, y, z, rx, ry, rz, p);
+  };
+  const arc = (R, tube, ang, m, x, y, z, rx = 0, ry = 0, rz = 0, p = g) => mesh(new THREE.TorusGeometry(R, tube, 6, Math.max(8, ang * 12 | 0), ang), m, x, y, z, rx, ry, rz, p);
+  const toggle = (x, y, z, p, up) => { cy(0.016, 0.012, rim, x, y, z, 0, 0, 0, p, 8); cy(0.007, 0.05, metal, x, y + 0.025, z + (up ? -0.01 : 0.01), up ? -0.35 : 0.35, 0, 0, p, 6); };
+  // throttle lever (the cabins give it its quadrant), stick between the knees, and the bomber's yoke
+  const thr = new THREE.Group(); g.add(thr);
+  cy(0.012, 0.2, metal, 0, 0.1, 0, 0, 0, 0, thr, 6); rbox(0.07, 0.05, 0.08, 0.018, blk, 0, 0.21, 0.01, 0, 0, 0, thr); cy(0.012, 0.02, red, 0.03, 0.235, 0.01, 0, 0, Math.PI / 2, thr, 8);
+  const stick = new THREE.Group(); stick.position.set(0.02, -1.04, -0.5); g.add(stick);
+  mesh(new THREE.CylinderGeometry(0.035, 0.1, 0.12, 14), leather, 0, 0.06, 0, 0, 0, 0, stick); // the boot round its foot
+  cy(0.016, 0.44, metal, 0, 0.3, 0, 0, 0, 0, stick, 8); rbox(0.06, 0.13, 0.065, 0.025, blk, 0, 0.55, 0, 0.15, 0, 0, stick);
+  cy(0.012, 0.02, red, 0, 0.62, -0.02, Math.PI / 2, 0, 0, stick, 8); cy(0.01, 0.03, metal, 0.025, 0.56, -0.03, Math.PI / 2, 0, 0, stick, 6); // trigger and button
   const yoke = new THREE.Group(); yoke.position.set(0, -0.5, -0.56); g.add(yoke);
-  cy(0.02, 0.3, metal, 0, -0.15, 0.08, 0.5, 0, 0, yoke, 8);
-  bx(0.34, 0.035, 0.035, blk, 0, 0.0, 0, 0, 0, 0, yoke); for (const sx of [-1, 1]) bx(0.035, 0.12, 0.035, blk, sx * 0.17, 0.05, 0, 0, 0, 0, yoke);
-  // canopy frame: a bow over the windscreen, side rails, a rear arch, and a mirror
-  for (const sx of [-1, 1]) { bx(0.045, 1.5, 0.045, rim, sx * 1.02, 0.08, -1.02, 0, 0, -sx * 0.34); bx(0.04, 0.04, 1.7, rim, sx * 0.84, 0.74, -0.3); bx(0.04, 0.9, 0.04, rim, sx * 0.9, 0.3, 0.42, 0, 0, -sx * 0.2); bx(0.03, 0.03, 1.4, rim, sx * 1.08, -0.42, -0.4); }
-  bx(1.62, 0.05, 0.05, rim, 0, 0.66, -1.0); bx(1.62, 0.045, 0.045, rim, 0, 0.82, 0.42); bx(0.04, 0.04, 1.4, rim, 0, 0.7, -0.3);
-  bx(0.24, 0.07, 0.015, rim, 0, 0.6, -0.98); bx(0.22, 0.055, 0.01, M(0x8fa6b8), 0, 0.6, -0.972);
+  cy(0.025, 0.36, metal, 0, -0.03, -0.18, Math.PI / 2, 0, 0, yoke, 10); // the column into the panel
+  arc(0.16, 0.018, Math.PI, blk, 0, -0.05, 0, 0, 0, 0, yoke); for (const sx of [-1, 1]) rbox(0.05, 0.13, 0.05, 0.022, blk, sx * 0.16, 0.0, 0, 0, 0, 0, yoke);
+  cy(0.035, 0.05, mid, 0, -0.05, 0.0, Math.PI / 2, 0, 0, yoke, 12);
   // gunsight: a reflector ring and its bead
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.045, 0.052, 32), new THREE.MeshBasicMaterial({ color: 0xffb03a, transparent: true, opacity: 0.85, depthTest: false }));
-  ring.position.set(0, -0.08, -1.2); g.add(ring); bx(0.1, 0.05, 0.08, mid, 0, -0.245, -0.86);
+  ring.position.set(0, -0.08, -1.2); g.add(ring); const sightBox = rbox(0.1, 0.06, 0.1, 0.02, mid, 0, -0.205, -0.84);
   // the jet's head-up display: a glass plate with green symbols
   const hcv = document.createElement('canvas'); hcv.width = 512; hcv.height = 384; const HX = hcv.getContext('2d'), htex = new THREE.CanvasTexture(hcv);
   const hud = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.33), new THREE.MeshBasicMaterial({ map: htex, transparent: true, depthTest: false, toneMapped: false }));
   hud.position.set(0, -0.1, -1.05); g.add(hud);
-  const hudFrame = bx(0.46, 0.02, 0.06, rim, 0, -0.265, -0.95);
-  // 1.3: a real cabin round the pilot: floor, side walls, a bulkhead behind the seat and glass you see the world through.
-  // The cockpit is fixed to the plane now (it used to turn with the mouse), so looking round shows the walls and windows.
-  const glass = new THREE.MeshBasicMaterial({ color: 0xa9cde6, transparent: true, opacity: 0.13, depthWrite: false, side: THREE.DoubleSide });
+  const hudFrame = rbox(0.46, 0.03, 0.08, 0.012, rim, 0, -0.215, -0.92);
+  // 1.3: a real cabin round the pilot; 1.3.2: made round and joined up. Each cabin is one curved shell: a tub below
+  // the sill, a bubble of glass above it closed by a rounded windscreen, framed by hoops, with the panel, consoles,
+  // seat and levers fixed to it. The parts are shaded by a light from above (vertex colours), so the curves read.
+  const glass = new THREE.MeshBasicMaterial({ color: 0xa9cde6, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide });
   const glint = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, depthWrite: false, side: THREE.DoubleSide });
-  const floorM = M(0x1b1f25), wallM = M(0x47505c), padM = M(0x2d3138), seatM = M(0x3b2a20);
-  const pane = (w, h, m, x, y, z, rx = 0, ry = 0, rz = 0, p = g) => { const o = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); p.add(o); return o; };
-  // fighters and the jet: a narrow tub with a bubble canopy
+  const DS = m => { m.side = THREE.DoubleSide; return m; };
+  const floorM = M(0x1b1f25), wallM = DS(M(0x4d5764)), padM = M(0x2d3138), seatM = M(0x4a3426), cowlM = DS(M(0x3b434e)), beltM = M(0x8a7a52);
+  // a rounded windscreen: the upper front quarter of a ball, stretched forward by k, with frame hoops on it
+  const dome = (R, k, x, y, z, posts, p) => {
+    const d = new THREE.Group(); d.position.set(x, y, z); d.scale.set(1, 1, k); p.add(d);
+    mesh(new THREE.SphereGeometry(R, 28, 10, Math.PI, Math.PI, 0, Math.PI / 2), glass, 0, 0, 0, 0, 0, 0, d);
+    arc(R, 0.02, Math.PI, rim, 0, 0, 0, -Math.PI / 2, 0, 0, d); // along its foot
+    for (const a of posts) arc(R, 0.018, Math.PI / 2, rim, 0, 0, 0, 0, Math.PI / 2 + a, 0, d);
+    return d;
+  };
+  // fighters, the dual and the jet: a narrow tub with a bubble canopy
   const tub = new THREE.Group(); g.add(tub);
-  bx(1.9, 0.06, 2.4, floorM, 0, -1.08, -0.3, 0, 0, 0, tub);                         // floor
-  for (let k = 0; k < 6; k++) bx(1.7, 0.012, 0.05, rim, 0, -1.045, -1.2 + k * 0.36, 0, 0, 0, tub); // floor ribs
+  const R = 0.86, TC = -0.36;                                                         // its radius and the sill height
+  shell(R, 1.8, Math.PI * 1.5, Math.PI, wallM, 0, TC, -0.05, tub);                    // the tub, from sill to sill under you
+  mesh(new THREE.CircleGeometry(R, 32, Math.PI, Math.PI), wallM, 0, TC, -0.95, 0, 0, 0, tub); // closed in front, under the panel
+  mesh(new THREE.CircleGeometry(R, 40), wallM, 0, TC, 0.85, 0, Math.PI, 0, tub);     // and behind the seat
+  rbox(1.0, 0.05, 1.55, 0.02, floorM, 0, -1.05, -0.15, 0, 0, 0, tub);                 // the floor plate
+  for (let k = 0; k < 5; k++) rbox(0.9, 0.015, 0.04, 0.007, rim, 0, -1.02, -0.8 + k * 0.32, 0, 0, 0, tub);
   for (const sx of [-1, 1]) {
-    bx(0.08, 0.72, 2.4, wallM, sx * 1.08, -0.7, -0.3, 0, 0, 0, tub);                // side walls up to the sill
-    bx(0.14, 0.05, 2.4, padM, sx * 1.06, -0.33, -0.3, 0, 0, 0, tub);                // padded sill
-    for (let k = 0; k < 4; k++) bx(0.02, 0.6, 0.04, rim, sx * 1.03, -0.7, -1.2 + k * 0.55, 0, 0, 0, tub); // frames
-    pane(2.3, 1.0, glass, sx * 1.0, 0.18, -0.3, 0, sx * Math.PI / 2, -sx * 0.22, tub); // side glass
+    cy(0.055, 1.8, padM, sx * R, TC, -0.05, Math.PI / 2, 0, 0, tub, 12);              // padded sill rails
+    for (const z of [-0.6, -0.1, 0.4]) arc(R - 0.02, 0.02, Math.PI / 2, rim, 0, TC, z, 0, 0, sx > 0 ? -Math.PI / 2 : Math.PI, tub); // ribs in the tub
+    rbox(0.27, 0.16, 0.95, 0.045, mid, sx * 0.61, -0.78, -0.35, 0, 0, 0, tub);        // side consoles against the walls
+    for (let k = 0; k < 4; k++) toggle(sx * 0.56, -0.7, -0.7 + k * 0.12, tub, k % 2);
+    for (let k = 0; k < 3; k++) cy(0.018, 0.02, [red, yel, metal][k], sx * 0.67, -0.7, -0.66 + k * 0.14, 0, 0, 0, tub, 10);
   }
-  bx(2.2, 1.6, 0.08, wallM, 0, -0.3, 0.75, 0, 0, 0, tub);                            // bulkhead behind the seat
-  bx(0.6, 0.5, 0.12, seatM, 0, 0.0, 0.62, 0, 0, 0, tub); bx(0.7, 0.9, 0.14, seatM, 0, -0.65, 0.6, -0.1, 0, 0, tub); // headrest and seat back
-  pane(2.1, 1.1, glass, 0, 0.12, -1.05, -0.55, 0, 0, tub);                           // windscreen
-  pane(1.7, 1.6, glass, 0, 0.8, -0.25, -Math.PI / 2 + 0.1, 0, 0, tub);              // canopy roof
-  pane(0.5, 0.9, glint, 0.45, 0.25, -1.0, -0.55, 0, 0, tub);                         // a glint on the screen
-  // the bomber: a roomy flight deck with a roof, side windows in the walls and a glazed nose
+  rbox(0.1, 0.05, 0.32, 0.02, rim, -0.61, -0.68, -0.5, 0, 0, 0, tub);                 // the throttle quadrant, on the left console
+  // the instrument panel fills the tub's width, under a padded rounded coaming
+  rbox(1.62, 0.37, 0.2, 0.05, dark, 0, -0.455, -0.875, -0.16, 0, 0, tub);
+  cy(0.042, 1.5, padM, 0, -0.282, -0.83, 0, 0, Math.PI / 2, tub, 16);
+  for (const sx of [-1, 1]) mesh(new THREE.SphereGeometry(0.042, 12, 8), padM, sx * 0.75, -0.282, -0.83, 0, 0, 0, tub);
+  for (const sx of [-1, 1]) for (const yy of [-0.36, -0.52]) cy(0.045, 0.02, rim, sx * 0.62, yy, -0.77, Math.PI / 2 - 0.16, 0, 0, tub, 16); // standby dials
+  shell(0.8, 1.2, Math.PI / 2, Math.PI, cowlM, 0, -1.12, -1.55, tub).userData.inside = false; // the nose, seen over the panel
+  rbox(0.24, 0.012, 1.1, 0.005, blk, 0, -0.317, -1.5, 0, 0, 0, tub);                 // its anti-glare stripe
+  // the seat: a rounded shell with a headrest and harness
+  rbox(0.62, 0.95, 0.15, 0.07, seatM, 0, -0.55, 0.64, -0.1, 0, 0, tub); rbox(0.66, 0.14, 0.55, 0.06, seatM, 0, -1.0, 0.34, 0, 0, 0, tub);
+  rbox(0.46, 0.34, 0.15, 0.08, seatM, 0, 0.06, 0.68, 0, 0, 0, tub);
+  for (const sx of [-1, 1]) { rbox(0.11, 0.9, 0.17, 0.05, seatM, sx * 0.33, -0.6, 0.6, -0.1, 0, 0, tub); rbox(0.05, 0.62, 0.02, 0.01, beltM, sx * 0.14, -0.45, 0.555, -0.1, 0, 0, tub); }
+  // the glass: a half-tube over your head, closed by the windscreen, with the frame hoops and a spine
+  shell(R - 0.005, 1.6, Math.PI / 2, Math.PI, glass, 0, TC, 0.05, tub);
+  dome(R - 0.005, 1.15, 0, TC, -0.75, [-0.95, 0.95], tub);                           // slim posts, set wide so the view ahead is clear
+  for (const z of [-0.75, 0.45]) arc(R, 0.018, Math.PI, rim, 0, TC, z, 0, 0, 0, tub);
+  rbox(0.22, 0.05, 0.025, 0.015, rim, 0, TC + R - 0.06, -0.72, 0, 0, 0, tub); rbox(0.2, 0.035, 0.01, 0.008, M(0x8fa6b8), 0, TC + R - 0.06, -0.706, 0, 0, 0, tub); // mirror
+
+  mesh(new THREE.PlaneGeometry(0.4, 0.8), glint, 0.42, 0.12, -1.3, -0.6, -0.3, 0, tub); // a glint on the screen
+  // the bomber: a roomy flight deck like a real one. A metal fuselage tube and a rounded metal nose, with window
+  // openings cut along the skin's grid (so their edges are clean) and filled with glass: a two-pane windscreen either
+  // side of a centre post, side screens, and two side windows each way, every one with a frame round it.
   const deck = new THREE.Group(); g.add(deck);
-  bx(2.8, 0.06, 3.4, floorM, 0, -1.15, -0.4, 0, 0, 0, deck);
-  for (let k = 0; k < 8; k++) bx(2.6, 0.012, 0.05, rim, 0, -1.115, -1.9 + k * 0.42, 0, 0, 0, deck);
-  for (const sx of [-1, 1]) {
-    bx(0.08, 0.75, 3.4, wallM, sx * 1.4, -0.78, -0.4, 0, 0, 0, deck);               // wall below the windows
-    bx(0.08, 0.4, 3.4, wallM, sx * 1.4, 0.75, -0.4, 0, 0, 0, deck);                 // wall above them
-    for (let k = 0; k < 5; k++) bx(0.1, 0.72, 0.1, wallM, sx * 1.4, 0.18, -2.0 + k * 0.8, 0, 0, 0, deck); // window posts
-    pane(3.4, 0.72, glass, sx * 1.37, 0.18, -0.4, 0, sx * Math.PI / 2, 0, deck);
-    bx(0.3, 0.12, 2.6, padM, sx * 1.2, -0.44, -0.4, 0, 0, 0, deck);                 // armrests and side panels
+  const R2 = 1.45, DC = -0.1, ZN = -2.0, NK = 0.85, ZC = -0.35, LEN = 3.3;          // radius, centre height, nose, its stretch, tube middle and length
+  // split a skin into metal and glass: a triangle goes to the glass when win(its middle, in the skin's own space) says so
+  const skin = (geo, win, p, x, y, z, rx, sc) => {
+    const P = geo.toNonIndexed().attributes.position, mt = [], gl = [], v = new THREE.Vector3();
+    for (let i = 0; i < P.count; i += 3) {
+      v.set(0, 0, 0); for (let k = 0; k < 3; k++) v.x += P.getX(i + k) / 3, v.y += P.getY(i + k) / 3, v.z += P.getZ(i + k) / 3;
+      const out = win(v) ? gl : mt; for (let k = 0; k < 3; k++) out.push(P.getX(i + k), P.getY(i + k), P.getZ(i + k));
+    }
+    for (const [arr, m, inside] of [[mt, wallM, true], [gl, glass, false]]) {
+      if (!arr.length) continue;
+      const G2 = new THREE.BufferGeometry(); G2.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); G2.computeVertexNormals();
+      const o = mesh(G2, m, x, y, z, rx, 0, 0, p); if (sc) o.scale.set(1, 1, sc); o.userData.inside = inside;
+    }
+  };
+  const st = Math.PI / 48, sn = v => Math.round(v / st) * st;                       // the skins' grid, and a value snapped to it
+  // nose windows in (azimuth, elevation) from the nose's centre: + azimuth is to the right
+  // two big windscreen panes either side of a slim centre post, and a side screen each way (wide, set low so you see down)
+  const NW = [[-1.42, -0.74, -0.32, 0.6], [-0.68, -0.035, -0.36, 0.72], [0.035, 0.68, -0.36, 0.72], [0.74, 1.42, -0.32, 0.6]].map(w => w.map(sn));
+  const noseWin = (az, el) => NW.some(([a0, a1, e0, e1]) => az > a0 && az < a1 && el > e0 && el < e1);
+  skin(new THREE.SphereGeometry(R2, 96, 48, Math.PI, Math.PI, 0, Math.PI), v => noseWin(Math.atan2(v.x, -v.z), Math.atan2(v.y, Math.hypot(v.x, v.z))), deck, 0, DC, ZN, 0, NK);
+  // the tube: side windows between theta (round from the bottom) t0..t1 and along z
+  const SW = [sn(Math.PI / 2 - 0.2), sn(Math.PI / 2 + 0.45)], SZ = [[-1.8, -1.1], [-0.9, -0.2]];
+  skin(new THREE.CylinderGeometry(R2, R2, LEN, 96, 33, true), v => {
+    let th = Math.atan2(v.x, v.z); if (th < 0) th += TAU; const mir = th > Math.PI ? TAU - th : th, z = ZC + v.y;
+    return mir > SW[0] && mir < SW[1] && SZ.some(([a, b]) => z > a && z < b);
+  }, deck, 0, DC, ZC, Math.PI / 2);
+  // frames round every window: arcs along the skin and straight rails
+  { const d = new THREE.Group(); d.position.set(0, DC, ZN); d.scale.set(1, 1, NK); deck.add(d);
+    for (const [a0, a1, e0, e1] of NW) {
+      for (const az of [a0, a1]) arc(R2 - 0.01, 0.018, e1 - e0, rim, 0, 0, 0, 0, Math.PI / 2 - az, e0, d);                            // the sides of the pane
+      for (const el of [e0, e1]) { const r = (R2 - 0.01) * Math.cos(el); arc(r, 0.018, a1 - a0, rim, 0, (R2 - 0.01) * Math.sin(el), 0, -Math.PI / 2, 0, Math.PI / 2 - a1, d); } // its top and bottom
+    }
+    for (const sx of [-1, 1]) for (const [z0, z1] of SZ) {
+      for (const z of [z0, z1]) arc(R2 - 0.01, 0.018, SW[1] - SW[0], rim, 0, DC, z, 0, 0, sx > 0 ? SW[0] - Math.PI / 2 : Math.PI / 2 - SW[1] + Math.PI, deck);
+      for (const th of SW) cy(0.018, z1 - z0, rim, sx * (R2 - 0.01) * Math.sin(th), DC - (R2 - 0.01) * Math.cos(th), (z0 + z1) / 2, Math.PI / 2, 0, 0, deck, 8);
+    }
   }
-  bx(2.88, 0.06, 3.4, wallM, 0, 0.96, -0.4, 0, 0, 0, deck);                          // roof
-  for (let k = 0; k < 5; k++) bx(2.7, 0.06, 0.06, rim, 0, 0.92, -2.0 + k * 0.8, 0, 0, 0, deck);
-  bx(2.88, 2.2, 0.08, wallM, 0, -0.1, 1.3, 0, 0, 0, deck);                           // bulkhead behind the crew
-  bx(0.3, 1.2, 0.05, rim, 0, -0.25, 1.25, 0, 0, 0, deck);                           // its door
-  bx(0.6, 0.5, 0.12, seatM, 0, 0.0, 0.62, 0, 0, 0, deck); bx(0.7, 0.9, 0.14, seatM, 0, -0.65, 0.6, -0.1, 0, 0, deck);
-  bx(0.6, 0.5, 0.12, seatM, 0.95, 0.0, 0.62, 0, 0, 0, deck); bx(0.7, 0.9, 0.14, seatM, 0.95, -0.65, 0.6, -0.1, 0, 0, deck); // co-pilot's seat
-  for (const sx of [-1, 0, 1]) bx(0.05, 1.0, 0.05, rim, sx * 0.8, 0.45, -2.05, -0.5, 0, 0, deck); // nose frames
-  bx(2.8, 0.05, 0.05, rim, 0, 0.88, -1.9, 0, 0, 0, deck);
-  pane(2.8, 1.25, glass, 0, 0.35, -2.1, -0.5, 0, 0, deck);                           // glazed nose
-  pane(0.6, 1.0, glint, -0.6, 0.35, -2.05, -0.5, 0, 0, deck);
+  rbox(1.98, 0.05, 3.2, 0.02, floorM, 0, -1.15, -0.35, 0, 0, 0, deck);
+  for (let k = 0; k < 8; k++) rbox(1.8, 0.015, 0.05, 0.007, rim, 0, -1.12, -1.9 + k * 0.42, 0, 0, 0, deck);
+  for (const sx of [-1, 1]) rbox(0.3, 0.1, 2.4, 0.04, padM, sx * 1.18, -0.44, -0.4, 0, 0, 0, deck); // armrests along the walls
+  rbox(0.5, 0.1, 1.8, 0.04, padM, 0, 1.0, -0.9, 0, 0, 0, deck);                     // the overhead panel
+  for (let k = 0; k < 6; k++) toggle(-0.15 + (k % 3) * 0.15, 0.94, -1.4 + (k / 3 | 0) * 0.5, deck, k % 2);
+  // the panel across the front, a low console under it, and a glare shield
+  rbox(1.3, 0.3, 0.75, 0.08, dark, 0, -1.0, -1.35, 0, 0, 0, deck);
+  rbox(2.4, 0.4, 0.2, 0.05, dark, 0, -0.46, -0.875, -0.16, 0, 0, deck);
+  cy(0.045, 2.3, padM, 0, -0.282, -0.83, 0, 0, Math.PI / 2, deck, 16);
+  for (const sx of [-1, 1]) for (const xx of [0.66, 0.86, 1.06]) cy(0.07, 0.02, rim, sx * xx, -0.42, -0.775, Math.PI / 2 - 0.16, 0, 0, deck, 16); // more dials either side
+  mesh(new THREE.PlaneGeometry(0.5, 0.7), glint, -0.55, 0.3, -2.5, -0.4, 0.3, 0, deck);
+  // behind the crew: a round bulkhead with a door
+  mesh(new THREE.CircleGeometry(R2, 40), wallM, 0, DC, 1.3, 0, Math.PI, 0, deck);
+  rbox(0.75, 1.5, 0.06, 0.1, rim, 0, -0.4, 1.26, 0, 0, 0, deck); cy(0.03, 0.08, metal, 0.25, -0.4, 1.22, Math.PI / 2, 0, 0, deck, 8);
+  // two seats, the throttle pedestal between them and a yoke for the co-pilot
+  for (const sx of [0, 0.95]) {
+    rbox(0.62, 0.95, 0.15, 0.07, seatM, sx, -0.55, 0.64, -0.1, 0, 0, deck); rbox(0.66, 0.14, 0.55, 0.06, seatM, sx, -1.0, 0.34, 0, 0, 0, deck);
+    rbox(0.46, 0.34, 0.15, 0.08, seatM, sx, 0.06, 0.68, 0, 0, 0, deck);
+  }
+  rbox(0.3, 0.3, 0.7, 0.06, mid, 0.47, -0.88, -0.35, 0, 0, 0, deck); rbox(0.12, 0.05, 0.3, 0.02, rim, 0.47, -0.71, -0.42, 0, 0, 0, deck);
+  for (let k = 0; k < 3; k++) toggle(0.42 + k * 0.05, -0.72, -0.15, deck, k % 2);
+  cy(0.025, 0.36, metal, 0.95, -0.53, -0.74, Math.PI / 2, 0, 0, deck, 10); arc(0.16, 0.018, Math.PI, blk, 0.95, -0.55, -0.56, 0, 0, 0, deck);
+  for (const sx of [-1, 1]) rbox(0.05, 0.13, 0.05, 0.022, blk, 0.95 + sx * 0.16, -0.5, -0.56, 0, 0, 0, deck);
+  // shade every solid part by a light from above and in front (glass, the panel and the HUD stay as they are)
+  { const L = new THREE.Vector3(0.3, 1, -0.45).normalize(), n = new THREE.Vector3(), nm = new THREE.Matrix3();
+    g.updateMatrixWorld(true);
+    g.traverse(o => {
+      if (!o.isMesh || !mats.includes(o.material)) return;
+      const N = o.geometry.attributes.normal; if (!N) return;
+      nm.getNormalMatrix(o.matrixWorld); const flip = o.userData.inside ? -1 : 1, col = new Float32Array(N.count * 3);
+      for (let i = 0; i < N.count; i++) { n.fromBufferAttribute(N, i).applyMatrix3(nm).normalize().multiplyScalar(flip); const v = 0.55 + 0.45 * Math.max(0, n.dot(L)) + 0.12 * Math.max(0, n.y); col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = v; }
+      o.geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    });
+    for (const m of mats) m.vertexColors = true;
+  }
   for (const m of [glass, glint]) { m.userData.base = m.color.clone(); }
   g.traverse(o => { if (o.isMesh) { o.renderOrder = 20; o.frustumCulled = false; } });
-  for (const o of [...tub.children, ...deck.children]) if (o.material === glass || o.material === glint) o.renderOrder = 21; // glass last, over the cabin
+  g.traverse(o => { if (o.isMesh && (o.material === glass || o.material === glint)) o.renderOrder = 21; }); // glass last, over the cabin
   g.visible = false; let hidden = null, drawT = 0, lastType = null;
   // ---- drawing the gauges ----
   function dial(x, y, r, label) {
@@ -4244,7 +4364,7 @@ const COCKPIT = (() => {
     if (hidden && hidden !== (on ? e : null)) { if (hidden.group) hidden.group.visible = true; hidden = null; }
     if (!on) return;
     e.group.visible = false; hidden = e;
-    if (lastType !== e.type) { lastType = e.type; const jet = e.type === 'jet', bomber = e.type === 'bomber'; hud.visible = hudFrame.visible = jet; ring.visible = !jet; stick.visible = !bomber; yoke.visible = bomber; tub.visible = !bomber; deck.visible = bomber; }
+    if (lastType !== e.type) { lastType = e.type; const jet = e.type === 'jet', bomber = e.type === 'bomber'; hud.visible = hudFrame.visible = jet; ring.visible = sightBox.visible = !jet; stick.visible = !bomber; yoke.visible = bomber; tub.visible = !bomber; deck.visible = bomber; if (bomber) thr.position.set(0.47, -0.7, -0.42); else thr.position.set(-0.61, -0.66, -0.5); }
     // the stick leans into the turn and moves with the climb; the yoke turns; the throttle lever slides
     const turn = clamp(-(e.bank || 0) * 0.5, -0.45, 0.45), climb = clamp((e.desired.y - e.fwd.y) * 2, -0.35, 0.35);
     stick.rotation.set(-climb, 0, turn); yoke.rotation.set(0, 0, turn * 1.4); yoke.position.z = -0.56 + climb * 0.06;
@@ -4343,6 +4463,7 @@ function updateCamera(dt) {
   if (mode === 'foot' || mode === 'ship' || mode === 'plane' || mode === 'turret' || mode === 'gunner') camera.rotation.set(cam.pitch, cam.yaw + Math.PI, 0);
   // shake
   if (camShake > 0.01) { camera.rotation.x += rand(-1, 1) * camShake * 0.02; camera.rotation.y += rand(-1, 1) * camShake * 0.02; camShake = damp(camShake, 0, 6, dt); }
+  VM.view(dt); // 1.3.2
   camera.updateMatrixWorld();
   COCKPIT.orient(); // 1.3
   Sound.listener.copy(camera.position);
@@ -4423,6 +4544,7 @@ function updateTags() {
 function placeMk(id, v) { const el = $(id); if (v && screenPos(v, _sp)) { el.style.display = 'block'; el.style.transform = `translate(${_sp.x}px,${_sp.y}px) translate(-50%,-50%)`; return true; } el.style.display = 'none'; return false; }
 
 const fmtClock = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const matchClock = () => GAME.unlimited ? '∞ ' + fmtClock(GAME.clock0 - GAME.clock) : fmtClock(GAME.clock); // 1.3.2: unlimited games count up
 let hudT = 0, miniT = 0;
 // 1.2.3: the freeze meter, over your head while you're cold
 function updateFreeze(show) {
@@ -4450,7 +4572,7 @@ function updateHUD(dt) {
     const hb = HARBORS[0].ent, hr = HARBORS[1].ent;
     $('hpB').style.transform = `scaleX(${hb.hp / hb.maxHp})`; $('hpR').style.transform = `scaleX(${hr.hp / hr.maxHp})`;
     setText('hpBt', fmt(hb.hp) + '/' + fmt(hb.maxHp)); setText('hpRt', fmt(hr.hp) + '/' + fmt(hr.maxHp));
-    setText('clock', fmtClock(GAME.clock));
+    setText('clock', matchClock());
     { const h = timeOfDay(), up = h >= 6 && h < 18; setText('todT', fmtTOD(h)); setText('todI', up ? '☀' : '☾'); $('tod').className = up ? '' : 'nt'; } // 1.2.4
     setHTML('isl', ISLANDS.map(i => `<div class="pip ${i.owner >= 0 ? 't' + i.owner : ''}" title="${i.name}"></div>`).join(''));
     setText('gold', isTester() ? '∞' : fmt(PLAYER.gold));
@@ -6028,7 +6150,7 @@ function drawPC(pc) {
   } else {
     x.fillStyle = TEAM[t].css; x.fillRect(0, 0, w, 24);
     x.fillStyle = '#fff'; x.font = 'bold 14px system-ui,sans-serif'; x.textAlign = 'left'; x.fillText(TEAM[t].name.toUpperCase() + ' COMMAND · ' + (PC.st === 'radar' ? 'MAP' : PC.st === 'upg' ? 'TEAM UPGRADES' : PC.st === 'home' || PC.st === 'denied' ? 'HAVOC OS' : 'MISSILE CONTROL'), 10, 12);
-    x.textAlign = 'right'; x.fillText(fmtClock(GAME.clock), w - 10, 12);
+    x.textAlign = 'right'; x.fillText(matchClock(), w - 10, 12);
     button(x, BTN_OFF, 'LOG OFF', '#2a3442', '#cfd8e3', 13);
     if (PC.st === 'denied') {
       x.textAlign = 'center'; x.fillStyle = '#ff4a3a'; x.font = 'bold 40px system-ui,sans-serif'; x.fillText('ACCESS DENIED', w / 2, 140);
@@ -6364,14 +6486,79 @@ function turned(b, ox, oz, a) {
   const c = Math.cos(a), s = Math.sin(a);
   return (w, h, d, col, lx, y, lz, rx = 0, rz = 0) => b.box(w, h, d, col, ox + lx * c + lz * s, y, oz - lx * s + lz * c, rx, a, rz);
 }
-function addHut(b, x, y, z, a, R) {
-  const B = turned(b, x, z, a), wall = pick([0xd8c39a, 0xc9a77a, 0xe2d6bc]), roof = pick([0x8a4b2a, 0x6e7f8f, 0x9c3b2e]);
-  B(6, 3.4, 4.6, wall, 0, y + 1.7, 0);
-  B(6.6, 0.25, 2.9, roof, 0, y + 4.05, -1.25, 0.55, 0); B(6.6, 0.25, 2.9, roof, 0, y + 4.05, 1.25, -0.55, 0);
-  B(6.04, 1.1, 0.4, wall, 0, y + 3.95, 0, 0, 0);
-  B(1.1, 2.2, 0.1, 0x5a3b1e, 0.8, y + 1.1, 2.33); B(1, 0.8, 0.1, C.glass, -1.6, y + 2, 2.33); B(1, 0.8, 0.1, C.glass, -1.6, y + 2, -2.33);
-  B(0.5, 1.4, 0.5, 0x8f8f8c, 2.2, y + 4.4, -1);
-  B(2.2, 0.15, 1.6, C.dwood, 0.8, y + 0.08, 3.1); // a step
+// 1.3.2: houses you can walk into and take cover in. Every wall is cut round a door and open windows, and each piece
+// is its own collider, so walls stop people and bullets while the gaps let you through and let you shoot out; the roof
+// stops bullets too. House frame: x along the front, the door in the +z wall, y the floor. mesh() draws with shadows,
+// inner() without (the faces inside, so the room reads as lit), col(w, h, d, lx, yc, lz, flags) adds a collider.
+const HOUSE_T = 0.3;
+// the floor height for a house centred on world (wx, wz): just over the highest ground under it, so grass can't come through
+function houseFloor(wx, wz, half, low) { let h = low; for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) h = Math.max(h, landH(wx + i * half / 2, wz + j * half / 2)); return h + 0.05; }
+function hollowHouse(o) {
+  const { W, D, H, y, wall, roof, mesh, inner, col, wf, rf } = o, t = HOUSE_T, trim = o.trim || 0x5a3b1e, liner = o.liner || 0xf1e7d3;
+  const piece = (alongX, at, a0, a1, b0, b1, inward) => {
+    const len = a1 - a0, hh = b1 - b0; if (len < 0.05 || hh < 0.05) return;
+    const m = (a0 + a1) / 2, yc = y + (b0 + b1) / 2;
+    if (alongX) { mesh(len, hh, t, wall, m, yc, at); col(len, hh, t, m, yc, at, wf); inner(len, hh, 0.04, liner, m, yc, at + inward * (t / 2 + 0.02)); }
+    else { mesh(t, hh, len, wall, at, yc, m); col(t, hh, len, at, yc, m, wf); inner(0.04, hh, len, liner, at + inward * (t / 2 + 0.02), yc, m); }
+  };
+  // a wall along x (at lz = at) or along z (at lx = at), from -half to half, with holes { c, w, y0, y1 }
+  const wallWith = (alongX, at, half, holes, inward) => {
+    let a = -half;
+    for (const h of holes.slice().sort((p, q) => p.c - q.c)) {
+      const h0 = h.c - h.w / 2, h1 = h.c + h.w / 2;
+      piece(alongX, at, a, h0, 0, H, inward); piece(alongX, at, h0, h1, 0, h.y0, inward); piece(alongX, at, h0, h1, h.y1, H, inward);
+      const out = at - inward * (t / 2 + 0.04), fr = (w, hh, d, lx, yc, lz) => alongX ? mesh(w, hh, d, trim, lx, yc, lz) : mesh(d, hh, w, trim, lz, yc, lx);
+      if (h.y0 > 0) fr(h.w + 0.24, 0.1, 0.16, h.c, y + h.y0 - 0.03, out); // the sill
+      fr(h.w + 0.24, 0.12, 0.12, h.c, y + h.y1 + 0.05, out);              // the head
+      fr(0.12, h.y1 - h.y0, 0.12, h0 - 0.06, y + (h.y0 + h.y1) / 2, out); fr(0.12, h.y1 - h.y0, 0.12, h1 + 0.06, y + (h.y0 + h.y1) / 2, out);
+      a = h1;
+    }
+    piece(alongX, at, a, half, 0, H, inward);
+  };
+  const door = { c: o.doorX || 0, w: 1.6, y0: 0, y1: 2.5 }, win = c => ({ c, w: 1.3, y0: 1.1, y1: 2.2 });
+  const fz = D / 2 - t / 2, sx = W / 2 - t / 2, sideHalf = D / 2 - t;
+  wallWith(true, fz, W / 2, [door, ...(o.frontWin || []).map(win)], -1);   // front, with the door
+  wallWith(true, -fz, W / 2, (o.backWin || [0]).map(win), 1);              // back
+  wallWith(false, sx, sideHalf, [win(0)], -1); wallWith(false, -sx, sideHalf, [win(0)], 1); // sides
+  // floor: planks on a stone footing that reaches down into the slope (the floor is what you stand on inside)
+  mesh(W + 0.2, 1.4, D + 0.2, 0x8f8a80, 0, y - 0.68, 0); // (its top just under the planks)
+  inner(W - 2 * t, 0.1, D - 2 * t, 0x9a6b42, 0, y + 0.05, 0);
+  for (let x = -W / 2 + t + 0.5; x < W / 2 - t; x += 0.5) inner(0.025, 0.105, D - 2 * t, 0x6e4826, x, y + 0.055, 0);
+  col(W - 2 * t, 1.6, D - 2 * t, 0, y + 0.1 - 0.8, 0, 's');
+  mesh(2.2, 0.15, 1.2, C.dwood, door.c, y + 0.03, D / 2 + 0.6); // the step
+  // gable roof with the ridge along x, a ceiling and beams inside
+  const rh = D * 0.32, run = D / 2 + 0.45, sl = Math.hypot(run, rh), ang = Math.atan2(rh, run);
+  for (const sz of [-1, 1]) mesh(W + 0.7, 0.18, sl, roof, 0, y + H + rh / 2 + 0.05, sz * run / 2, sz * ang);
+  mesh(W + 0.8, 0.16, 0.3, roof, 0, y + H + rh + 0.08, 0); // ridge cap
+  for (const gx of [-sx, sx]) for (let i = 0; i < 4; i++) { const k = (i + 0.5) / 4; mesh(t, rh / 4 + 0.02, (D - t) * (1 - k), wall, gx, y + H + rh * (i + 0.5) / 4, 0); }
+  col(W + 0.7, rh + 0.2, D + 0.9, 0, y + H + rh / 2, 0, rf);
+  inner(W - 2 * t, 0.05, D - 2 * t, 0xe6dccb, 0, y + H - 0.03, 0);
+  for (const bz of [-D / 4, D / 4]) inner(W - 2 * t, 0.16, 0.16, 0x7a5232, 0, y + H - 0.12, bz);
+  // furniture: a table with stools, a bed, a crate, a shelf, a rug and a lamp
+  const iw = W / 2 - t, id = D / 2 - t, tx = -iw + 1.3, tz = -id + 1.1;
+  inner(1.5, 0.08, 0.9, 0x8a5a34, tx, y + 0.84, tz); for (const [lx, lz] of [[-0.65, -0.35], [0.65, -0.35], [-0.65, 0.35], [0.65, 0.35]]) inner(0.08, 0.8, 0.08, 0x6e4826, tx + lx, y + 0.42, tz + lz);
+  for (const lx of [-0.5, 0.5]) { inner(0.4, 0.06, 0.4, 0x7a5232, tx + lx, y + 0.5, tz + 0.8); inner(0.06, 0.46, 0.06, 0x6e4826, tx + lx, y + 0.25, tz + 0.8); }
+  inner(0.18, 0.2, 0.18, 0xe0e4e8, tx + 0.3, y + 0.98, tz); inner(0.3, 0.04, 0.24, 0xf2f2ee, tx - 0.3, y + 0.9, tz + 0.1);
+  for (let k = 0; k < (o.beds || 1); k++) {
+    const bx = iw - 0.55 - k * 1.4, bz = -id + 1.1;
+    inner(0.95, 0.35, 2.0, 0x6e4826, bx, y + 0.3, bz); inner(0.9, 0.12, 1.5, pick([0x3f6fae, 0xae3f3f, 0x4a8a52]), bx, y + 0.53, bz + 0.2); inner(0.8, 0.14, 0.4, 0xf4f1e8, bx, y + 0.55, bz - 0.75);
+  }
+  inner(0.9, 0.9, 0.9, 0x9c7444, -iw + 0.55, y + 0.5, id - 0.75); inner(0.92, 0.06, 0.92, 0x7a5232, -iw + 0.55, y + 0.93, id - 0.75); // crate
+  inner(1.4, 0.05, 0.3, 0x7a5232, iw - 1.0, y + 1.7, id - 0.17); inner(1.4, 0.05, 0.3, 0x7a5232, iw - 1.0, y + 2.1, id - 0.17); // shelves
+  for (let k = 0; k < 4; k++) inner(0.16, 0.24, 0.16, [0x3d6b8f, 0xb85a2a, 0xd8c070, 0x4a7a3a][k], iw - 1.5 + k * 0.33, y + 1.85, id - 0.17);
+  inner(2.2, 0.02, 1.5, 0x8f3a2e, 0, y + 0.11, 0.2); inner(1.9, 0.025, 1.2, 0xd8a84a, 0, y + 0.115, 0.2); // rug
+  inner(0.03, 0.5, 0.03, 0x222222, 0, y + H - 0.3, 0); inner(0.36, 0.2, 0.36, 0xfff0b8, 0, y + H - 0.62, 0); // lamp
+}
+// an island house turned to a quarter turn q (0-3) at (x, y, z), its colliders in world space round island I
+function addHut(b, ib, I, x, y, z, q, big) {
+  const a = q * Math.PI / 2, c = Math.round(Math.cos(a)), s = Math.round(Math.sin(a)), B = turned(b, x, z, a), IB = turned(ib, x, z, a);
+  const wall = pick([0xd8c39a, 0xc9a77a, 0xe2d6bc]), roof = pick([0x8a4b2a, 0x6e7f8f, 0x9c3b2e]);
+  y = houseFloor(I.x + x, I.z + z, (big ? 9 : 7.5) / 2 + 0.3, y);
+  hollowHouse({ W: big ? 9 : 7.5, D: 6, H: 3.2, y, wall, roof, frontWin: [big ? -2.6 : -2], backWin: big ? [-2, 2] : [0], doorX: 0.9, wf: 's', rf: '', beds: big ? 2 : 1,
+    mesh: (w, h, d, col, lx, yc, lz, rx = 0) => B(w, h, d, col, lx, yc, lz, rx, 0),
+    inner: (w, h, d, col, lx, yc, lz) => IB(w, h, d, col, lx, yc, lz),
+    col: (w, h, d, lx, yc, lz, f) => { const wx = I.x + x + lx * c + lz * s, wz = I.z + z - lx * s + lz * c, ww = s ? d : w, dd = s ? w : d;
+      addCollider({ minX: wx - ww / 2, maxX: wx + ww / 2, minY: yc - h / 2, maxY: yc + h / 2, minZ: wz - dd / 2, maxZ: wz + dd / 2, solid: f.includes('s'), hit: false, ship: false, owner: null, stamp: 0 }); } });
 }
 function addCampfire(b, x, y, z) {
   for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; b.add(icoGeo(0), 0x7d7d7a, x + Math.cos(a) * 1.1, y + 0.15, z + Math.sin(a) * 1.1, a, a, 0, 0.35, 0.25, 0.35); }
@@ -6439,7 +6626,7 @@ function addBoat(x, z, a) { // a little fishing boat moored by a dock, bobbing o
 }
 function detailIsland(I) {
   if (I.type === 'harbor') return;
-  const b = new Builder(), R = rng((I.seed || 1) * 131 + I.z * 0.013 + 7);
+  const b = new Builder(), ib = new Builder(), R = rng((I.seed || 1) * 131 + I.z * 0.013 + 7);
   const placed = [];
   const free = (wx, wz, m) => {
     if (landH(wx, wz) < 1.2 || onRunway(wx, wz, m)) return false;
@@ -6461,7 +6648,7 @@ function detailIsland(I) {
   const solid = (lx, lz, w, h, d, y) => addCollider({ minX: I.x + lx - w / 2, maxX: I.x + lx + w / 2, minY: y, maxY: y + h, minZ: I.z + lz - d / 2, maxZ: I.z + lz + d / 2, solid: true, hit: false, ship: false, owner: null, stamp: 0 });
   const g = new THREE.Group(); g.position.set(I.x, 0, I.z);
   if (I.type === 'claim') {
-    for (let k = 0; k < 2; k++) { const p = spot(6); if (p) { const a = Math.round(p[3] / (Math.PI / 2)) * Math.PI / 2; addHut(b, p[0], p[1] - 0.2, p[2], a, R); solid(p[0], p[2], a % Math.PI ? 4.6 : 6, 4, a % Math.PI ? 6 : 4.6, p[1] - 0.2); } }
+    for (let k = 0; k < 2; k++) { const p = spot(6.5); if (p) addHut(b, ib, I, p[0], p[1] - 0.1, p[2], Math.round(p[3] / (Math.PI / 2)) & 3, k === 1 && I.r >= 70); }
     let p = spot(4); if (p) addCampfire(b, p[0], p[1] - 0.05, p[2]);
     p = spot(3); if (p) addBarrels(b, p[0], p[1], p[2], R);
     for (let k = 0; k < 3; k++) { const q = spot(3, 0.75, 1.05); if (q && q[1] < 2.6) addUmbrella(b, q[0], q[1] - 0.05, q[2], R); }
@@ -6476,13 +6663,14 @@ function detailIsland(I) {
     const dp = pad && pad.pads.find(q => q.kind === 'boat');
     if (dp) { const dx = Math.sin(dp.heading), dz = Math.cos(dp.heading); addBoat(dp.pos.x + dz * 7 - dx * 10, dp.pos.z - dx * 7 - dz * 10, dp.heading + 0.1); }
   } else {
-    if (I.r >= 26) { let p = spot(5, 0.1, 0.5); if (p) { addHut(b, p[0], p[1] - 0.2, p[2], R() * TAU, R); solid(p[0], p[2], 5, 4, 5, p[1] - 0.2); } p = spot(3, 0.2, 0.7); if (p) addCampfire(b, p[0], p[1] - 0.05, p[2]); }
+    if (I.r >= 26) { let p = spot(6, 0.1, 0.5); if (p) addHut(b, ib, I, p[0], p[1] - 0.1, p[2], R() * 4 & 3); p = spot(3, 0.2, 0.7); if (p) addCampfire(b, p[0], p[1] - 0.05, p[2]); }
     else {
       for (let d = I.r * 0.4; d < I.r * 1.4; d += 1) { const a = I.seed * 2.1 + (I.flip ? Math.PI : 0), wx = I.x + Math.cos(a) * d, wz = I.z + Math.sin(a) * d; if (landH(wx, wz) < 0.4) { addWreck(b, wx - I.x, -0.4, wz - I.z, a + 1.2, R); break; } }
       const p = spot(3, 0.1, 0.6); if (p) addBarrels(b, p[0], p[1], p[2], R);
     }
   }
   if (!b.empty) { const m = b.mesh(); g.add(m); }
+  if (!ib.empty) g.add(ib.mesh(MAT.solid, false));
   scene.add(g);
 }
 // gulls circling over the islands
@@ -7022,7 +7210,7 @@ function rbox(w, h, d, r, seg = 3) {
   const isHost = () => !!room && room.hostId === myId;
   function newRoom(code, name, topic) {
     let synced; const sync = new Promise(r => synced = r);
-    return { code, topic: topic || 'hb-room131-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
+    return { code, topic: topic || 'hb-room132-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
       roster: new Map(), names: new Map(), settings: { ...DEFAULTS }, pings: {}, acks: {}, myPing: null, seen: new Set(),
       ups: new Map(), lastHeard: new Map(), hz: MAX_HZ, stDue: false, lastSt: 0, lastSend: 0, sync, synced, trouble: 0, waitAcc: null, matchOn: false, infoAt: 0 };
   }
@@ -7189,7 +7377,7 @@ function rbox(w, h, d, r, seg = 3) {
   async function joinWorld(name) {
     if (room) leaveRoom();
     await getClient();
-    room = newRoom('WORLD', name, 'hb-world-131'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
+    room = newRoom('WORLD', name, 'hb-world-132'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
     try {
       room.ch = chan(room.topic, true); wireRoom(room.ch);
       await joinChan(room.ch, trouble);
@@ -8724,7 +8912,15 @@ const VM = (() => {
   vs.add(root); root.add(hold); hold.add(kick); hold.scale.setScalar(3);
   const hemi = new THREE.HemisphereLight(0xe8f0ff, 0x5a5040, 0.9), sunL = new THREE.DirectionalLight(0xfff0dc, 0.9);
   sunL.position.copy(SUN_DIR); vs.add(hemi, sunL);
-  let built = '', gun = null, arms = [], lastCd = 0, bobT = 0, recoil = 0;
+  let built = '', gun = null, arms = [], bobT = 0, recoil = 0, side = 0, lastT = 0, punch = 0, muzzle = null, flashT = 0;
+  // 1.3.2: recoil per gun: how far it slides back (gun metres), how far the muzzle flips up (radians), how fast it settles
+  const KICK = { rifle: [0.045, 0.1, 9], pistol: [0.035, 0.2, 7], shotgun: [0.085, 0.24, 4.5], sniper: [0.1, 0.2, 3.5], rpg: [0.07, 0.08, 3.5] };
+  let kickOf = KICK.rifle;
+  const flash = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: canvasTex(64, 64, (x, w, h) => {
+    const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,235,1)'); gr.addColorStop(0.25, 'rgba(255,220,120,.9)'); gr.addColorStop(1, 'rgba(255,120,20,0)');
+    x.fillStyle = gr; x.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r = i % 2 ? 12 : 32; x.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } x.fill();
+  }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false }));
+  flash.visible = false; flash.renderOrder = 5;
   const box = (w, h, d, c) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c }));
   // an arm from somewhere below the screen to a hand: a square sleeve and a square hand (like the sailors')
   function arm(from, to, team) {
@@ -8750,6 +8946,7 @@ const VM = (() => {
     const bb = new THREE.Box3().setFromObject(gun), len = bb.max.z - bb.min.z, short = len < 0.35;
     const tube = wk === 'rpg', gx = tube ? 0.25 : short ? 0.14 : 0.2, cy = tube ? -0.19 : short ? -0.17 : -0.21, rear = tube ? -0.22 : short ? -0.48 : -0.45; // the launcher sits on the shoulder
     gun.position.set(gx - (bb.min.x + bb.max.x) / 2, cy - (bb.min.y + bb.max.y) / 2, rear - bb.max.z); kick.add(gun);
+    flash.position.set(gx, cy + (tube ? 0 : 0.015), rear - len - 0.04); kick.add(flash); kickOf = KICK[wk] || KICK.rifle; // at the muzzle
     const grip = new V3(gx, cy - 0.035, rear - (short ? 0.04 : 0.12));
     const fore = short ? new V3(gx - 0.05, cy - 0.06, rear - 0.05) : new V3(gx - 0.01, cy - 0.025, rear - Math.min(0.48, len * 0.5));
     arm(new V3(0.34, -0.5, -0.05), grip, team);
@@ -8764,14 +8961,28 @@ const VM = (() => {
     if (built !== wk + s.team) build(wk, s.team);
     // bob while walking, kick when firing, sway a little lower when lying down
     const sp = Math.hypot(s.vel.x, s.vel.z); bobT += Math.min(0.05, sp * 0.0016 + 0.001) * 6;
-    if (s.cd > lastCd + 0.01) recoil = 1; lastCd = s.cd; recoil = Math.max(0, recoil - 0.12);
-    kick.position.set(Math.sin(bobT) * 0.008 * Math.min(1, sp / 6), Math.abs(Math.cos(bobT)) * 0.008 * Math.min(1, sp / 6) - (PLAYER.stance === 2 ? 0.02 : 0), recoil * 0.05);
-    kick.rotation.x = recoil * 0.08;
+    const now = performance.now() / 1000, dt = Math.min(0.05, Math.max(0, now - lastT)); lastT = now;
+    recoil = Math.max(0, recoil - dt * kickOf[2]); const r = recoil * recoil * (3 - 2 * recoil); // snaps back, then eases home
+    const [back, flip] = kickOf, prone = PLAYER.stance === 2 ? 0.55 : 1; // lying down steadies it
+    kick.position.set(Math.sin(bobT) * 0.008 * Math.min(1, sp / 6) + side * back * 0.15 * r, Math.abs(Math.cos(bobT)) * 0.008 * Math.min(1, sp / 6) - (PLAYER.stance === 2 ? 0.02 : 0) + back * 0.25 * r * prone, back * r * prone);
+    kick.rotation.set(flip * r * prone, side * flip * 0.25 * r, side * flip * 0.35 * r);
+    flashT -= dt; flash.visible = flashT > 0 && wk !== 'rpg'; if (flash.visible) { flash.rotation.z = Math.random() * 6.3; flash.scale.setScalar((wk === 'shotgun' ? 0.26 : 0.18) * (0.8 + Math.random() * 0.4)); }
     root.position.copy(camera.position); root.quaternion.copy(camera.quaternion);
     const k = 0.35 + 0.65 * (DN.k ?? 1); hemi.intensity = 0.9 * k; sunL.intensity = 0.9 * k;
     renderer.autoClear = false; renderer.clearDepth(); renderer.render(vs, camera); renderer.autoClear = true;
   }
-  return { render };
+  // a shot: kick the gun and the view a little (the view kick is only for show, it doesn't move your aim)
+  function shot(wk) {
+    if (!settings.fp || PLAYER.mode !== 'foot') return;
+    recoil = 1; side = Math.random() * 2 - 1; flashT = 0.05;
+    punch = Math.min(1.5, punch + (KICK[wk] || KICK.rifle)[1] * 0.5);
+  }
+  // applied after the camera has turned, before the frame is drawn
+  function view(dt) {
+    punch = Math.max(0, punch - dt * 6);
+    if (punch > 0.001 && settings.fp && PLAYER.mode === 'foot') { camera.rotation.x += punch * 0.03; camera.updateMatrixWorld(); }
+  }
+  return { render, shot, view };
 })();
 
 /* ---------------- the low performance warning ---------------- */
