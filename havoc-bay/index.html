@@ -124,6 +124,10 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;paddin
 #harm{font:800 12px/1 system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;padding:3px 7px;border-radius:9px;background:rgba(200,40,30,.55);border:1px solid rgba(255,140,120,.8)}
 #pullup{position:absolute;left:50%;top:62%;transform:translateX(-50%);font:900 30px/1 system-ui,sans-serif;letter-spacing:.12em;color:#ff4a3a;text-shadow:0 0 10px rgba(255,60,40,.8),0 2px 4px #000;animation:pullb .5s steps(2) infinite;pointer-events:none}
 @keyframes pullb{50%{opacity:.25}}
+#misWarn{position:absolute;left:50%;top:31%;transform:translateX(-50%);max-width:92vw;text-align:center;font:900 26px/1.15 system-ui,sans-serif;letter-spacing:.06em;color:#fff;background:rgba(200,20,10,.82);border:2px solid #ffb0a0;border-radius:10px;padding:8px 18px;text-shadow:0 2px 4px #000;animation:pullb .4s steps(2) infinite;pointer-events:none;z-index:3}
+#gloc{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:2}
+#perfPop{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
+#perfPop .panel{max-width:400px;text-align:center}
 #lockm{width:40px;height:40px;border:2px solid #ff5a4a;border-radius:4px}
 #tags{position:absolute;inset:0;overflow:hidden}
 .tag{position:absolute;left:0;top:0;transform-origin:50% 100%;text-align:center;white-space:nowrap;font-size:12px;font-weight:800;will-change:transform}
@@ -359,6 +363,8 @@ body.touch #throttle{top:40%}
   <div id="leadm" class="mk" style="display:none"></div>
   <div id="harm" class="mk" style="display:none"></div>
   <div id="pullup" class="hidden">PULL UP</div>
+  <div id="misWarn" class="hidden"></div>
+  <div id="gloc"></div>
   <canvas id="mini" width="420" height="300"></canvas>
   <div id="spd" class="hidden"></div>
   <div id="keys"></div>
@@ -413,6 +419,37 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.3.1 <small>Flares, barrel rolls, island runways, team upgrades</small></h3>
+    <ul>
+      <li><b>Flares.</b> Every plane, the Battleship and the Aircraft Carrier carry flares (the dearer it is, the more it carries: Fighter 2, Dual Gunner 3, Bomber 5, Jet 6, Battleship 6, Carrier 8). Press <b>X</b> to fire a bright red flare. A homing missile coming for you goes for the flare instead, and when they meet it blows up in the air without hurting anyone. Planes reload flares when they land; ships get one back every 20 seconds.</li>
+      <li><b>Missile warning.</b> When a homing missile is coming for your plane or ship, <b>MISSILE INCOMING, DEPLOY FLARE IMMEDIATELY!</b> flashes on screen with a warning beep until it hits (ships without flares just get <b>MISSILE INCOMING!</b>).</li>
+      <li><b>Barrel rolls.</b> In a plane, hold <b>Shift</b> and press <b>A</b> or <b>D</b> to roll all the way round.</li>
+      <li><b>Blacking out.</b> Fly (nearly) straight up and the screen starts to flicker. Keep the nose up for 4 seconds and you pass out, the plane falls, and you have to respawn.</li>
+      <li><b>Hold E to bail out.</b> Getting out of a flying plane now takes 3 seconds of holding <b>E</b>.</li>
+      <li><b>Runways on every island</b> you can claim (not the little islets). Gull Rock, Turtle Cay, Palm Key and Driftwood grew a little to fit them, and each has a plane pad. Landing is easier too: you can come in a bit faster with a little throttle.</li>
+      <li><b>Parked planes stay.</b> Get out of a plane on a runway or deck and it stays there: walk up and press <b>E</b> to get back in.</li>
+      <li><b>Crouch and lie down.</b> On foot, press <b>Ctrl</b> once to crouch and again to lie down with your gun out in front. You're harder to hit, but slower. Press it again (or Space) to stand up.</li>
+      <li><b>Hands in first person.</b> On foot in first person you see your square hands holding your gun, and the sniper rifle's scope zooms in much further.</li>
+      <li><b>Night is dangerous.</b> At night everyone's name tags are hidden and the map shows nobody. Only the Map app on the computer in your keep still works. Name tags come back at sunrise.</li>
+      <li><b>Team Upgrades</b>, a new app on the computer: <b>Armor</b> (450 gold) gives your whole team 150 health on foot, <b>Running Shoes</b> (200) makes everyone 50% faster on foot, and <b>Half Price</b> (700) halves the price of ships and planes for your team.</li>
+      <li><b>Missiles at big ships.</b> The computer's missiles can now be sent at an enemy Battleship or Aircraft Carrier. One hit takes 75% of its health, unless its flares pull the missile off.</li>
+      <li><b>Lifeboats.</b> When an Aircraft Carrier sinks, two lifeboats drop off its sides. Each seats two, has 200 health, and you can drive one to an island.</li>
+      <li><b>Crashes hurt everyone.</b> A crashing plane's blast now damages everyone near it, your own side too. Every part of the enemy's base island takes damage now, not just the middle.</li>
+      <li><b>Fair public battles.</b> If the side you pick already has more players than the other, auto-balance puts you on the other side.</li>
+      <li><b>Your name is your account name.</b> The name box is gone from Settings: online, your name is your Arcade account's name.</li>
+      <li><b>Low performance warning.</b> If the game runs under 30 frames a second for 10 seconds, it offers to set the graphics to Low. You can turn this off in Settings.</li>
+      <li>The monitor stand on the computer now sits behind the screen.</li>
+    </ul>
+    <h3>v1.3.1 balance changes</h3>
+    <ul>
+      <li><b>Everything in the shop is cheaper:</b> Destroyer 250 (was 350), Battleship 650 (was 900), Aircraft Carrier 900 (was 1200), Jet 600 (was 800), Bomber 500 (was 700), Dual Gunner 200 (was 300).</li>
+      <li><b>Fighter:</b> health 600 → 500.</li>
+      <li><b>Dual Gunner:</b> health 950 → 1200.</li>
+      <li><b>Jet:</b> wait between jets 1 minute → 45 seconds.</li>
+      <li><b>Mid-air rams</b> always destroy both planes, whatever their health, with one exception: the free Fighter only destroys another Fighter or a plane already low on health. Anything else it rams loses 70% of its health (the Fighter is still destroyed).</li>
+      <li><b>Bots</b> aim a little worse and stop flying into each other; they only ram on purpose now and then, when they're about to go down anyway.</li>
+      <li><b>Automatic guns</b> (unmanned turrets, ships' anti-aircraft guns and plane gunners) do 30% less damage, online and offline.</li>
+    </ul>
     <h3>v1.3 <small>Mid-air collisions, first person, real cockpits</small></h3>
     <ul>
       <li><b>Planes can crash into each other.</b> Any two planes, teammates or enemies, that fly into each other blow up in a fireball and everyone on board dies. The burning wreckage falls out of the sky. Ramming an enemy plane counts as a kill.</li>
@@ -528,8 +565,9 @@ body.touch #throttle{top:40%}
     <div class="opt">Volume <input type="range" id="sVol" min="0" max="1" step="0.05"></div>
     <div class="opt">Invert look <div class="seg" id="sInv"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Graphics <div class="seg" id="sQual"><button class="btn" data-v="auto">Auto</button><button class="btn" data-v="low">Low</button><button class="btn" data-v="medium">Med</button><button class="btn" data-v="high">High</button></div></div>
-    <div class="opt">Your name (online) <input class="inp" id="sName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Captain" style="width:170px;min-height:36px;padding:4px 10px;font-size:15px"></div>
+    <div class="opt" style="display:none">Your name (online) <input class="inp" id="sName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Captain" style="width:170px;min-height:36px;padding:4px 10px;font-size:15px"></div>
     <div class="opt">Menu music <div class="seg" id="sMusic"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
+    <div class="opt">Low performance warning <div class="seg" id="sPerf"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Touch controls <div class="seg" id="sTouch"><button class="btn" data-v="auto">Auto</button><button class="btn" data-v="on">On</button><button class="btn" data-v="off">Off</button></div></div>
     <div class="btns"><button class="btn go" id="sDone">Done</button></div>
   </div>
@@ -548,7 +586,10 @@ body.touch #throttle{top:40%}
       <tr><td>Right-click</td><td>Zoom</td></tr>
       <tr><td>F</td><td>Torpedo (ships) · drop bomb (planes)</td></tr>
       <tr><td>R</td><td>Missile (jets, battleship)</td></tr>
-      <tr><td>E</td><td>Use a spawn pad, turret or the missile computer · get in or out</td></tr>
+      <tr><td>E</td><td>Use a spawn pad, turret, parked plane or the missile computer · get in or out (hold 3 seconds to bail out of a plane)</td></tr>
+      <tr><td>X</td><td>Flare: pulls homing missiles off you (planes, Battleship, Carrier)</td></tr>
+      <tr><td>Shift + A / D</td><td>Barrel roll (planes)</td></tr>
+      <tr><td>Ctrl</td><td>Crouch, then lie down, then stand up</td></tr>
       <tr><td>S (plane)</td><td>Lowest speed: touch down on your carrier or a runway to land. Stay parked 8 seconds to refuel, rearm and repair</td></tr>
       <tr><td>Space</td><td>Jump · plane: level out</td></tr>
       <tr><td>Shift</td><td>Sprint</td></tr>
@@ -621,7 +662,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.3';
+const VERSION = '1.3.1';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -730,6 +771,8 @@ const Sound = (() => {
         case 'lost': tone(523, 523, 0.14, 0.16, 'triangle'); tone(415, 415, 0.3, 0.16, 'triangle', 0.14); break;
         case 'warn': tone(880, 880, 0.12, 0.12, 'square'); break;
         case 'lock': tone(1200, 1200, 0.05, 0.08, 'sine'); break;
+        case 'flare': noise(0.35, 2600, 0.6, 0.3 * v, 'highpass', 600); tone(520, 1400, 0.18, 0.08 * v, 'sawtooth'); break; // 1.3.1
+        case 'mwarn': tone(1250, 1250, 0.09, 0.16, 'square'); tone(950, 950, 0.09, 0.16, 'square', 0.11); break; // 1.3.1: missile incoming
         case 'win': [523, 659, 784, 1046].forEach((f, i) => tone(f, f, 0.3, 0.2, 'triangle', i * 0.15)); break;
         case 'mega': noise(4.5, 420, 0.4, 1.6, 'lowpass', 30); tone(48, 18, 3.2, 1.2); noise(1.2, 2200, 0.5, 0.6, 'lowpass', 200); break;
         case 'lose': [392, 349, 311, 262].forEach((f, i) => tone(f, f * 0.98, 0.4, 0.2, 'triangle', i * 0.22)); break;
@@ -1082,7 +1125,16 @@ function makeAvatar(team, gun = true) {
 function poseAvatar(av, mode, dt, speed = 0) {
   av.t += dt * (2 + speed * 0.9);
   const s = Math.sin(av.t * 1.6);
-  if (mode === 'walk' || mode === 'idle') {
+  av.body.position.set(0, mode === 'crouch' ? -0.4 : mode === 'prone' ? 0.22 : 0, mode === 'prone' ? -1 : 0); // 1.3.1
+  if (mode === 'crouch') { // 1.3.1: down on one knee (shuffling along when moving), the gun up
+    const a = clamp(speed / 4, 0, 1) * 0.35;
+    av.legL.rotation.x = -1.25 + s * a; av.legR.rotation.x = 1.25 - s * a;
+    av.armL.rotation.x = -Math.PI / 2 + 0.25; av.armR.rotation.x = -Math.PI / 2 + 0.1;
+  } else if (mode === 'prone') { // 1.3.1: lying on the front (the body is turned flat by whoever poses it), the gun out in front
+    const a = clamp(speed / 2, 0, 1) * 0.3;
+    av.legL.rotation.x = s * a; av.legR.rotation.x = -s * a;
+    av.armL.rotation.x = -Math.PI + 0.25 + s * a * 0.5; av.armR.rotation.x = -Math.PI + 0.12;
+  } else if (mode === 'walk' || mode === 'idle') {
     const a = mode === 'walk' ? clamp(speed / 8, 0, 1) * 0.9 : 0;
     av.legL.rotation.x = s * a; av.legR.rotation.x = -s * a;
     av.armL.rotation.x = -s * a * 0.8; av.armR.rotation.x = -Math.PI / 2 + 0.1;
@@ -1176,7 +1228,7 @@ const SHIP_TYPES = {
     torps: 2, missiles: 0, seat: [0, 2.6, 0.2],
   },
   destroyer: {
-    name: 'Destroyer', icon: '🛳️', cost: 350, hp: 4500, len: 46, wid: 8, top: 14, draft: 2.2, speed: 21, accel: 4.5, turn: 0.36, cam: 42, kill: 160, sound: 'big',
+    name: 'Destroyer', icon: '🛳️', cost: 250, hp: 4500, len: 46, wid: 8, top: 14, draft: 2.2, speed: 21, accel: 4.5, turn: 0.36, cam: 42, kill: 160, sound: 'big',
     desc: 'Two twin cannons, two anti-air guns and 4 torpedoes.',
     guns: [
       { w: 'shellM', kind: 'main', x: 0, y: 2.4, z: 13, yaw0: 0, arc: 2.4, barrels: 2, main: true },
@@ -1187,7 +1239,7 @@ const SHIP_TYPES = {
     torps: 4, missiles: 0, seat: [0, 9, 4],
   },
   battleship: {
-    name: 'Battleship', icon: '🚢', cost: 900, hp: 12000, len: 78, wid: 13.5, top: 24, draft: 3.6, speed: 14.5, accel: 2.6, turn: 0.2, cam: 72, kill: 400, sound: 'big',
+    name: 'Battleship', icon: '🚢', cost: 650, hp: 12000, len: 78, wid: 13.5, top: 24, draft: 3.6, speed: 14.5, accel: 2.6, turn: 0.2, cam: 72, kill: 400, sound: 'big',
     desc: 'Three triple big guns, four anti-air guns and 8 missiles. Slow but very tough.',
     guns: [
       { w: 'shellL', kind: 'big', x: 0, y: 3.3, z: 25, yaw0: 0, arc: 2.35, barrels: 3, main: true },
@@ -1201,7 +1253,7 @@ const SHIP_TYPES = {
     torps: 0, missiles: 8, seat: [0, 18, 6],
   },
   carrier: {
-    name: 'Aircraft Carrier', icon: '🛫', cost: 1200, hp: 15000, len: 96, wid: 22, top: 30, draft: 4, deck: 9.6, speed: 12, accel: 2, turn: 0.15, cam: 95, kill: 500, sound: 'big', carrier: true,
+    name: 'Aircraft Carrier', icon: '🛫', cost: 900, hp: 15000, len: 96, wid: 22, top: 30, draft: 4, deck: 9.6, speed: 12, accel: 2, turn: 0.15, cam: 95, kill: 500, sound: 'big', carrier: true,
     desc: 'A floating airfield. Everyone on your team can launch planes from its deck. Two cannons and five anti-air guns.',
     guns: [
       { w: 'shellM', kind: 'main', x: 8.2, y: 9.9, z: -42, yaw0: Math.PI * 0.75, arc: 1.5, barrels: 2, main: true },
@@ -1323,6 +1375,16 @@ function buildShipModel(type, team) {
       q = P(0, 1.35, 0.6); b.box(0.9, 0.6, 1.6, C.glass, q[0], q[1], q[2], 0, a, 0);
     };
     parked(6.5, -34, 0.7); parked(6.5, -24, 0.7); parked(-2, -43, -0.6); parked(7, 8, 0.5);
+  } else if (type === 'lifeboat') { // 1.3.1: an orange lifeboat off a sinking carrier, two seats under a canopy
+    b.box(2.2, 0.9, 4.4, 0xff7a1a, 0, 0.1, -0.3);
+    b.add(bowGeo(0.5), 0xff7a1a, 0, -0.35, 1.9, 0, 0, 0, 2.2, 0.9, 1.4);
+    b.box(2.24, 0.16, 4.44, C.white, 0, 0.58, -0.3);
+    b.box(1.9, 0.12, 3.6, 0x3a3f46, 0, 0.5, -0.3);
+    for (const z of [0.4, -1.1]) b.box(1.6, 0.3, 0.45, C.white, 0, 0.75, z);
+    b.box(2.0, 0.08, 1.6, 0xff9a3a, 0, 2.15, -1.6); for (const sx of [-0.95, 0.95]) b.box(0.08, 1.5, 0.08, C.white, sx, 1.4, -2.3);
+    b.box(0.35, 0.5, 0.35, 0x2b3240, 0, 0.95, 1.2);
+    rider = makeAvatar(team, false); rider.group.position.set(0, 0.45, 0.1); group.add(rider.group); poseAvatar(rider, 'sit', 0);
+    const mate = makeAvatar(team, false); mate.group.position.set(0, 0.45, -1.4); group.add(mate.group); poseAvatar(mate, 'sit', 0); mate.group.visible = false; group.userData.mate = mate;
   }
   // gun mounts
   S.guns.forEach((g) => {
@@ -1345,20 +1407,24 @@ function buildShipModel(type, team) {
 }
 
 for (const k in SHIP_TYPES) SHIP_TYPES[k].speed = Math.round(SHIP_TYPES[k].speed * 1.1 * 10) / 10; // 1.2: every warship is 10% faster
+// 1.3.1: lifeboats come off a sinking carrier, two either side. They can't be bought (hidden), and an empty one lasts 4 minutes.
+SHIP_TYPES.lifeboat = { name: 'Lifeboat', icon: '🛟', cost: 0, hp: 200, len: 5.2, wid: 2.3, top: 2.2, draft: 0.5, speed: 17, accel: 7, turn: 1.3, cam: 12, kill: 20, sound: 'small', hidden: true, life: 240,
+  desc: 'Two seats. Get to an island.', guns: [], torps: 0, missiles: 0, seat: [0, 0.8, 0.1] };
+SHIP_ORDER.push('lifeboat');
 /* ---------------- planes ---------------- */
 const PLANE_TYPES = {
-  fighter: { name: 'Fighter', icon: '✈️', cost: 0, hp: 600, min: 40, max: 92, turn: 1.35, r: 5.5, guns: [[2.2, -0.2, 2], [-2.2, -0.2, 2]], bombs: 2, missiles: 0, cam: 18, kill: 60, sound: 'plane', desc: 'The basic gunner: two machine guns and 2 small bombs.' },
-  jet: { name: 'Jet', icon: '🛩️', cost: 800, hp: 650, min: 58, max: 140, turn: 1.25, r: 6, guns: [[0.9, -0.3, 4], [-0.9, -0.3, 4]], bombs: 0, missiles: 4, cam: 20, kill: 90, sound: 'jet', desc: 'Very fast, with machine guns and 4 homing missiles.' },
-  bomber: { name: 'Bomber', icon: '💣', cost: 700, hp: 2000, min: 38, max: 72, turn: 0.75, r: 9.5, guns: [[0.6, -0.5, 6.9], [-0.6, -0.5, 6.9]], bombs: 10, missiles: 0, rear: true, cam: 30, kill: 130, sound: 'plane', desc: '10 heavy bombs, two nose guns and a rear gunner. Flattens harbors.' }, // 1.1: nose guns (Click did nothing before)
+  fighter: { name: 'Fighter', icon: '✈️', cost: 0, hp: 500, min: 40, max: 92, turn: 1.35, r: 5.5, guns: [[2.2, -0.2, 2], [-2.2, -0.2, 2]], bombs: 2, missiles: 0, cam: 18, kill: 60, sound: 'plane', desc: 'The basic gunner: two machine guns and 2 small bombs.' },
+  jet: { name: 'Jet', icon: '🛩️', cost: 600, hp: 650, min: 58, max: 140, turn: 1.25, r: 6, guns: [[0.9, -0.3, 4], [-0.9, -0.3, 4]], bombs: 0, missiles: 4, cam: 20, kill: 90, sound: 'jet', desc: 'Very fast, with machine guns and 4 homing missiles.' },
+  bomber: { name: 'Bomber', icon: '💣', cost: 500, hp: 2000, min: 38, max: 72, turn: 0.75, r: 9.5, guns: [[0.6, -0.5, 6.9], [-0.6, -0.5, 6.9]], bombs: 10, missiles: 0, rear: true, cam: 30, kill: 130, sound: 'plane', desc: '10 heavy bombs, two nose guns and a rear gunner. Flattens harbors.' }, // 1.1: nose guns (Click did nothing before)
 };
-PLANE_TYPES.dual = { name: 'Dual Gunner', icon: '🛩️', cost: 300, hp: 950, min: 42, max: 96, turn: 1.15, r: 6.5, guns: [[1.9, -0.2, 2.4], [-1.9, -0.2, 2.4]], bombs: 0, missiles: 0,
+PLANE_TYPES.dual = { name: 'Dual Gunner', icon: '🛩️', cost: 200, hp: 1200, min: 42, max: 96, turn: 1.15, r: 6.5, guns: [[1.9, -0.2, 2.4], [-1.9, -0.2, 2.4]], bombs: 0, missiles: 0,
   gunners: [[0, 1.75, -2.0], [0, -1.05, -1.2]], cam: 22, kill: 85, sound: 'plane', desc: 'Two forward guns, plus a gunner on top and one underneath who shoot at any plane in range.' }; // 1.2
 const PLANE_ORDER = ['fighter', 'jet', 'bomber', 'dual'];
 // 1.2.5: fuel, in seconds of flying at full throttle (it burns slower throttled back). Empty, the engine stops and the
 // plane glides down. Parked on a runway or your carrier for SERVICE_S seconds it is refuelled, rearmed and patched up.
 const PLANE_FUEL = { fighter: 150, jet: 110, bomber: 220, dual: 170 };
 for (const k in PLANE_FUEL) PLANE_TYPES[k].fuel = PLANE_FUEL[k];
-const SERVICE_S = 8, SERVICE_HEAL = 0.5, JET_WAIT = 60; // JET_WAIT: a jet is ready a minute into the match, and a minute after each one
+const SERVICE_S = 8, SERVICE_HEAL = 0.5, JET_WAIT = 45; // JET_WAIT: a jet is ready 45 seconds into the match, and 45 seconds after each one (1.3.1: was a minute)
 const REAR_RANGE = 340, REAR_HIT = 0.75; // 1.2.5: the bomber's tail gunner hits three shots in four within range
 // 1.2: where your eyes are in each cockpit (plane space: +z forward)
 const COCKPIT_EYE = { fighter: [0, 1.05, 0.35], jet: [0, 1.0, 2.0], bomber: [0, 1.35, 5.6], dual: [0, 1.1, 0.7] };
@@ -1594,10 +1660,10 @@ const ISLES = [
   { id: 'hb', name: 'Blue Harbor', x: -HARBOR_X, z: 0, r: 290, h: G, n: 0.03, seed: 1.3, type: 'harbor', team: 0 }, // 1.2.7: r 225 -> 290
   { id: 'hr', name: 'Red Harbor', x: HARBOR_X, z: 0, r: 290, h: G, n: 0.03, seed: 1.3, type: 'harbor', team: 1, flip: true },
   { id: 'crown', name: 'Crown Isle', x: 0, z: 0, r: 105, h: 13, n: 0.13, seed: 2.2, type: 'claim', rw: true }, // rw: 1.2.1, two runways
-  { id: 'gull', name: 'Gull Rock', x: -90, z: -810, r: 78, h: 11, n: 0.17, seed: 5.5, type: 'claim' },
-  { id: 'turtle', name: 'Turtle Cay', x: 90, z: 810, r: 78, h: 11, n: 0.17, seed: 5.5, type: 'claim', flip: true },
-  { id: 'palm', name: 'Palm Key', x: -750, z: 465, r: 66, h: 8, n: 0.15, seed: 3.3, type: 'claim' },
-  { id: 'drift', name: 'Driftwood', x: 750, z: -465, r: 66, h: 8, n: 0.15, seed: 3.3, type: 'claim', flip: true },
+  { id: 'gull', name: 'Gull Rock', x: -90, z: -810, r: 90, h: 11, n: 0.17, seed: 5.5, type: 'claim', rw: true }, // 1.3.1: bigger, with a runway (r was 78)
+  { id: 'turtle', name: 'Turtle Cay', x: 90, z: 810, r: 90, h: 11, n: 0.17, seed: 5.5, type: 'claim', flip: true, rw: true },
+  { id: 'palm', name: 'Palm Key', x: -750, z: 465, r: 78, h: 8, n: 0.15, seed: 3.3, type: 'claim', rw: true }, // 1.3.1: r was 66
+  { id: 'drift', name: 'Driftwood', x: 750, z: -465, r: 78, h: 8, n: 0.15, seed: 3.3, type: 'claim', flip: true, rw: true },
   { x: -930, z: -660, r: 26, h: 5, n: 0.25, seed: 1.1, type: 'deco' },
   { x: 930, z: 660, r: 26, h: 5, n: 0.25, seed: 1.1, type: 'deco', flip: true },
   { x: -375, z: -285, r: 17, h: 4, n: 0.3, seed: 6.1, type: 'deco' },
@@ -1881,11 +1947,13 @@ function buildClaimIsland(I) {
     const x = Math.cos(a) * d, z = Math.sin(a) * d, h = landH(I.x + x, I.z + z);
     const len = 8 + R() * 6, ht = 2.5 + R() * 3;
     const alongX = Math.abs(Math.sin(a)) > 0.7;
+    if (onRunway(I.x + x, I.z + z, len / 2 + 2)) continue; // 1.3.1: not across a runway
     s.box(alongX ? len : 2, ht, alongX ? 2 : len, C.stone, x, h + ht / 2 - 0.4, z, 's');
     s.box(alongX ? len + 0.3 : 2.3, 0.4, alongX ? 2.3 : len + 0.3, C.dstone, x, h + ht - 0.3, z);
   }
   for (let k = 0; k < 5; k++) {
     const a = R() * TAU, d = I.r * (0.15 + R() * 0.2), x = Math.cos(a) * d, z = Math.sin(a) * d, h = landH(I.x + x, I.z + z);
+    if (onRunway(I.x + x, I.z + z, 3)) continue; // 1.3.1
     addCrate(s.b, x, h - 0.1, z, 1.6 + R() * 0.6, R() * 2); s.col(2, 2, 2, x, h + 0.8, z, 's');
   }
   // palms and rocks
@@ -1921,7 +1989,7 @@ function buildClaimIsland(I) {
   const tb = da - Math.PI * 0.6, cd = I.r * 0.55;
   TURRET_SPOTS.push({ type: 'cannon', team: -1, site: s, lx: Math.cos(tb) * cd, ly: Math.max(0.5, landH(I.x + Math.cos(tb) * cd, I.z + Math.sin(tb) * cd)), lz: Math.sin(tb) * cd, owner: isl });
   if (I.id === 'crown') TURRET_SPOTS.push({ type: 'aa', team: -1, site: s, lx: -Math.cos(ta) * I.r * 0.25, ly: landH(I.x - Math.cos(ta) * I.r * 0.25, I.z - Math.sin(ta) * I.r * 0.25), lz: -Math.sin(ta) * I.r * 0.25, owner: isl });
-  if (I.rw) buildCrownRunways(isl, s); // 1.2.1
+  if (I.rw) buildCrownRunways(isl, s); // 1.2.1 (1.3.1: every big island)
   // capture ring of buoys
   const bb = new Builder();
   const nb = Math.round(isl.capR / 4);
@@ -2158,7 +2226,7 @@ function dropProjModel(kind, m) { scene.remove(m); projModelPool[kind].push(m); 
 
 function fire(wn, src, pos, dir, opts) {
   const W = WEAP[wn];
-  const p = { W, wn, team: src.team, owner: src.driver || src.ownerDriver || src.crew || null, src, pos: pos.clone(), prev: pos.clone(), vel: dir.clone().multiplyScalar(W.speed), life: W.life, target: opts && opts.target || null, mesh: null, trail: 0, armed: wn === 'torpedo' ? 0.4 : 0 };
+  const p = { W, wn, team: src.team, owner: src.driver || src.ownerDriver || src.crew || null, src, pos: pos.clone(), prev: pos.clone(), vel: dir.clone().multiplyScalar(W.speed), life: W.life, target: opts && opts.target || null, mesh: null, trail: 0, armed: wn === 'torpedo' ? 0.4 : 0, auto: !!(opts && opts.auto) }; // auto: 1.3.1, fired by an automatic gun
   if (opts && opts.vel) p.vel.add(opts.vel);
   if (opts && opts.v0) p.vel.copy(opts.v0); // the exact starting velocity (shots sent over the network)
   if (W.model) { p.mesh = takeProjModel(W.model); p.mesh.position.copy(p.pos); }
@@ -2229,7 +2297,7 @@ function updateProjectiles(dt) {
       for (const e of ENTS) {
         if (e.kind !== 'plane' || !e.alive || e.team === p.team) continue;
         if (segSphere(p.prev, p.pos, e.pos, W.flak) >= 0) {
-          applyDamage(e, W.dmg * mult(W, e) * 0.35, p);
+          applyDamage(e, W.dmg * mult(W, e) * 0.35 * (p.auto ? AUTO_DMG : 1), p);
           smokePuff(p.pos, 2.2, true); fxFire.spawn(p.pos.x, p.pos.y, p.pos.z, 0, 0, 0, 0.12, 1.2, 2.6, 0xffd070, 0xff8a30);
           done = true; break;
         }
@@ -2254,7 +2322,7 @@ function updateProjectiles(dt) {
         impact(p, p.pos, null, null, gh < 0); done = true;
       }
     }
-    if (!done && p.life <= 0) { if (W.splash) impact(p, p.pos, null, null); done = true; }
+    if (!done && p.life <= 0) { if (W.splash && !p.dud) impact(p, p.pos, null, null); done = true; } // dud: 1.3.1, a missile a flare blew up
     if (done) {
       if (p.mesh) dropProjModel(W.model, p.mesh);
       PROJS[i] = PROJS[PROJS.length - 1]; PROJS.pop();
@@ -2287,11 +2355,11 @@ function updateProjectiles(dt) {
 }
 
 function impact(p, point, ent, box, water) {
-  const W = p.W;
-  if (ent) applyDamage(ent, W.dmg * mult(W, ent), p);
-  else if (box && box.hit && box.owner && box.owner.ent && box.owner.ent.kind === 'harbor') applyDamage(box.owner.ent, W.dmg * W.vs.harbor, p);
+  const W = p.W, k = p.auto ? AUTO_DMG : 1; // 1.3.1: automatic guns hit 30% softer
+  if (ent) applyDamage(ent, W.dmg * mult(W, ent) * k, p);
+  else if (box && box.hit && box.owner && box.owner.ent && box.owner.ent.kind === 'harbor') applyDamage(box.owner.ent, W.dmg * W.vs.harbor * k, p);
   if (W.splash) {
-    splashDamage(point, W.splash, W.dmg * 0.4, p, ent);
+    splashDamage(point, W.splash, W.dmg * 0.4 * k, p, ent);
     explode(point, W.splash * (p.wn === 'bomb' ? 0.75 : 0.6));
   } else {
     if (water) { if (Math.random() < 0.35) fxSmoke.spawn(point.x, 0.2, point.z, 0, rand(5, 8), 0, 0.5, 0.45, 0.1, 0xffffff, 0xd8f2ff, 20); }
@@ -2304,14 +2372,17 @@ function splashDamage(point, R, dmg, p, skip) {
     const d = e.hitCenter().distanceTo(point) - e.rad * 0.5;
     if (d < R) applyDamage(e, dmg * mult(p.W, e) * (1 - Math.max(0, d) / R), p);
   }
-  // harbors: once per harbor if any of its buildings are close
+  // harbors: once per harbor if any of its buildings are close (1.3.1: or anywhere on its island)
   for (const H of HARBORS) {
-    if (H.team === p.team || !H.ent) continue;
-    if (Math.abs(point.x - H.isle.x) > 320) continue;
+    if (H.team === p.team || !H.ent || !(p.W.vs.harbor > 0)) continue;
+    if (Math.abs(point.x - H.isle.x) > H.isle.r + 60) continue;
+    let near = Math.hypot(point.x - H.isle.x, point.z - H.isle.z) < H.isle.r * 1.05 + R && point.y < 90;
     for (const B of H.boxes) {
+      if (near) break;
       const dx = Math.max(B.minX - point.x, 0, point.x - B.maxX), dy = Math.max(B.minY - point.y, 0, point.y - B.maxY), dz = Math.max(B.minZ - point.z, 0, point.z - B.maxZ);
-      if (dx * dx + dy * dy + dz * dz < R * R) { if (!(p.W.vs.harbor > 0)) break; applyDamage(H.ent, dmg * p.W.vs.harbor * 0.5, p); break; }
+      if (dx * dx + dy * dy + dz * dz < R * R) near = true;
     }
+    if (near) applyDamage(H.ent, dmg * p.W.vs.harbor * 0.5, p);
   }
 }
 
@@ -2353,7 +2424,7 @@ function applyDamage(e, amount, src) {
   if (e.kind === 'harbor') harborDamaged(e);
   if (e.kind === 'plane' && e.hp <= 0 && !e.crashed) { // 1.2: it stops working and falls; it's killed when it hits something
     e.hp = 1; e.disabled = true; e.disabledBy = own;
-    if (e.driver && e.driver.isPlayer) showMsg('', 'Your plane is going down! Bail out with <b>E</b>, or crash it into a ship');
+    if (e.driver && e.driver.isPlayer) showMsg('', 'Your plane is going down! Hold <b>E</b> to bail out, or crash it into a ship');
     return;
   }
   if (e.hp <= 0) { e.hp = 0; killEnt(e, own); }
@@ -2419,6 +2490,7 @@ class Gun {
   shoot(spreadMul = 1, src = this.base) { // src: 1.2.6, a gunner seat fires as its gunner
     if (this.cd > 0) return false;
     const W = this.W, n = this.node;
+    const auto = src === this.base && (this.auto || (this.base.kind === 'turret' && !this.base.manned)); // 1.3.1: nobody's aiming it
     n.pitch.updateMatrixWorld(true);
     _gd.set(0, 0, 1).transformDirection(n.pitch.matrixWorld);
     const ms = n.muzzles;
@@ -2427,7 +2499,7 @@ class Gun {
       _gw.copy(m).applyMatrix4(n.pitch.matrixWorld);
       const sp = (W.spread || 0.006) * spreadMul;
       _v4.copy(_gd).add(_v3.set(rand(-sp, sp), rand(-sp, sp), rand(-sp, sp))).normalize();
-      fire(this.def.w, src, _gw, _v4, { silent: k > 0, gi: this.idx });
+      fire(this.def.w, src, _gw, _v4, { silent: k > 0, gi: this.idx, auto });
       muzzleFlash(_gw, W.splash ? 2.2 : 0.8);
       if (W.splash) smokePuff(_gw, 1.6);
     });
@@ -2576,7 +2648,7 @@ class Ship extends Ent {
     if (this.misCd > 0) this.misCd -= dt;
     if (this.torps < S.torps || this.missiles < S.missiles) { this.rearm += dt; if (this.rearm > 14) { this.rearm = 0; if (this.torps < S.torps) this.torps++; if (this.missiles < S.missiles) this.missiles++; } }
     // abandoned ships drift and eventually sink
-    if (!this.driver) { this.thr = 0; this.rudder = 0; this.empty += dt; if (S.carrier) shipGuns(this, dt, false); if (this.empty > (S.carrier ? 600 : 45)) killEnt(this, null); }
+    if (!this.driver) { this.thr = 0; this.rudder = 0; this.empty += dt; if (S.carrier) shipGuns(this, dt, false); if (this.empty > (S.carrier ? 600 : S.life || 45)) killEnt(this, null); }
     else this.empty = 0;
   }
   // bobbing, wake and damage smoke (ships driven over the network use this too)
@@ -2640,6 +2712,7 @@ class Ship extends Ent {
     explode(_v1.set(this.pos.x, this.S.top * 0.4, this.pos.z), Math.min(16, 4 + this.S.len * 0.2));
     for (let i = 0; i < Math.min(5, this.S.len / 10); i++) setTimeout(() => this.group.parent && explode(_v1.set(this.pos.x + rand(-1, 1) * this.S.wid, this.S.top * 0.3 - this.sink, this.pos.z + rand(-0.5, 0.5) * this.S.len), 5), 300 + i * 450);
     this.sinkRoll = rand(-0.5, 0.5); this.sinkPitch = rand(-0.25, 0.25); this.sinkT = 0;
+    if (this.S.carrier && !NET.client && GAME.on) launchLifeboats(this); // 1.3.1
     if (this.driver && this.driver.isPlayer) {
       // you only lose the ship: stay aboard the wreck until you jump or it goes under
       Sound.engine(null);
@@ -2689,7 +2762,7 @@ class Plane extends Ent {
     const x = _v1.crossVectors(UP, f); if (x.lengthSq() < 1e-4) x.copy(this.right); x.normalize();
     const y = _v2.crossVectors(f, x).normalize();
     _pmx.makeBasis(x, y, f); this.quat.setFromRotationMatrix(_pmx);
-    _pq.setFromAxisAngle(_pz, this.bank); this.quat.multiply(_pq);
+    _pq.setFromAxisAngle(_pz, this.bank + (this.rollA || 0)); this.quat.multiply(_pq); // rollA: 1.3.1, a barrel roll
     this.right.set(1, 0, 0).applyQuaternion(this.quat); this.up.set(0, 1, 0).applyQuaternion(this.quat);
     this.group.position.copy(this.pos); this.group.quaternion.copy(this.quat);
     this.group.updateMatrixWorld(true);
@@ -2728,14 +2801,14 @@ class Plane extends Ent {
     }
     if (this.fuel <= 0) { this.thr = 0; this.desired.y = Math.min(this.desired.y, -0.07); }
     // steer toward the desired direction
-    const d = this.desired;
-    if (d.y > 0.88) d.y = 0.88; if (d.y < -0.88) d.y = -0.88; d.normalize();
+    const d = this.desired, steep = this.driver === PLAYER ? 0.995 : 0.88; // 1.3.1: you can climb almost straight up (and black out if you hold it)
+    if (d.y > steep) d.y = steep; if (d.y < -0.88) d.y = -0.88; d.normalize();
     const ang = this.fwd.angleTo(d);
     if (ang > 1e-4) {
       const ax = _v3.crossVectors(this.fwd, d);
       if (ax.lengthSq() > 1e-8) { ax.normalize(); this.fwd.applyAxisAngle(ax, Math.min(ang, P.turn * dt * clamp(this.speed / P.min, 0.7, 1.15) * (this.disabled ? 0.45 : 1))); }
     }
-    if (this.fwd.y > 0.9) { this.fwd.y = 0.9; this.fwd.normalize(); }
+    if (this.fwd.y > Math.max(0.9, steep)) { this.fwd.y = Math.max(0.9, steep); this.fwd.normalize(); }
     if (this.fwd.y < -0.9) { this.fwd.y = -0.9; this.fwd.normalize(); }
     const target = lerp(P.min, P.max, this.thr) - this.fwd.y * 28;
     this.speed = approach(this.speed, target, (target > this.speed ? 16 : 11) * dt);
@@ -2745,6 +2818,8 @@ class Plane extends Ent {
     if (this.pos.y > 620) this.pos.y = 620;
     const yaw = Math.atan2(this.fwd.x, this.fwd.z), yr = dt > 0 ? wrapA(yaw - this.prevYaw) / dt : 0; this.prevYaw = yaw;
     this.bank = damp(this.bank, clamp(-yr * 0.9, -1.25, 1.25) + this.rollIn, 4, dt);
+    barrelRoll(this, dt); // 1.3.1
+    if (this.ramT > 0) this.ramT -= dt;
     this.orient(dt);
     if ((this.driver === PLAYER || (this.driver && this.driver.rtb)) && !this.disabled && tryLand(this)) return; // 1.2.1: at the lowest speed over a deck or runway (1.2.5: bots coming in to refuel too)
     // crashing into the ground, water or buildings
@@ -2760,14 +2835,21 @@ class Plane extends Ent {
     if (hitShip) crash = true;
     // 1.3: mid-air collisions. Planes of either team can fly into each other: both blow up and everyone aboard dies.
     // Each screen checks the planes it runs; the host (or offline game) also kills the other plane.
+    // 1.3.1: a ram always destroys both, whatever their health, except that the free Fighter only destroys another Fighter
+    // or a plane already low on health; anything else it rams just loses most of its health (the Fighter still goes)
     if (!crash && this.invuln <= 0) {
       const other = midairHit(this);
       if (other) {
-        this.midair = true; this.crashed = true; this.invuln = 0;
-        const foe = other.driver && other.team !== this.team ? other.driver : null;
-        if (!NET.client && other.alive) { other.midair = true; other.crashed = true; other.invuln = 0; killEnt(other, this.driver && this.team !== other.team ? this.driver : null); }
-        killEnt(this, foe);
-        return;
+        const spareOther = this.type === 'fighter' && other.type !== 'fighter' && other.hp > other.maxHp * RAM_LOW;
+        const spareMe = other.type === 'fighter' && this.type !== 'fighter' && this.hp > this.maxHp * RAM_LOW;
+        const foeOf = (a, b) => a.driver && a.team !== b.team ? a.driver : null; // who gets the kill
+        this.ramT = other.ramT = 1.2;
+        if (!NET.client && other.alive) {
+          if (spareOther) { applyDamage(other, other.maxHp * RAM_HIT, { team: -2, owner: foeOf(this, other), W: WEAP.bomb }); explode(other.pos, 8); }
+          else { other.midair = true; other.crashed = true; other.invuln = 0; killEnt(other, foeOf(this, other)); }
+        }
+        if (spareMe) { applyDamage(this, this.maxHp * RAM_HIT, { team: -2, owner: foeOf(other, this), W: WEAP.bomb }); explode(this.pos, 8); }
+        else { this.midair = true; this.crashed = true; this.invuln = 0; killEnt(this, foeOf(other, this)); return; }
       }
     }
     if (crash) {
@@ -2827,7 +2909,7 @@ class Plane extends Ent {
           _v3.crossVectors(_v2, UP).normalize(); _v2.addScaledVector(_v3, Math.cos(a) * r); _v3.crossVectors(_v3, _v2).normalize(); _v2.addScaledVector(_v3, Math.sin(a) * r);
         } else { _v2.x += rand(-0.03, 0.03); _v2.y += rand(-0.03, 0.03); _v2.z += rand(-0.03, 0.03); }
         _v2.normalize();
-        fire('mg', this, _v1, _v2, { vel: _v3.copy(this.fwd).multiplyScalar(this.speed * 0.5), gi: 1, silent: k > 0 });
+        fire('mg', this, _v1, _v2, { vel: _v3.copy(this.fwd).multiplyScalar(this.speed * 0.5), gi: 1, silent: k > 0, auto: true });
         this.gcd[k] = 0.11 + k * 0.02;
       });
     }
@@ -2930,7 +3012,7 @@ class Turret extends Ent {
 function midairHit(pl) {
   if (pl.landed || pl.pos.y < 3) return null;
   for (const o of ENTS) {
-    if (o === pl || o.kind !== 'plane' || !o.alive || o.landed || o.gone || o.invuln > 0) continue;
+    if (o === pl || o.kind !== 'plane' || !o.alive || o.landed || o.gone || o.invuln > 0 || o.ramT > 0) continue;
     const r = (pl.P.r + o.P.r) * 0.62, dx = o.pos.x - pl.pos.x, dy = o.pos.y - pl.pos.y, dz = o.pos.z - pl.pos.z;
     if (dx * dx + dy * dy + dz * dz < r * r) return o;
   }
@@ -2948,28 +3030,32 @@ function shipUnder(p, pad) {
 }
 // 1.2: kamikaze. A plane that crashes hurts what it hits: a ship loses 45% of its full health (so one at full health
 // survives), and turrets, sailors, other ships and harbor buildings nearby are damaged by the blast.
+// 1.3.1: the blast hurts everyone near it, your own side too, and anywhere on the enemy's base island counts
 function planeImpact(pl, ship) {
-  const src = { team: pl.team, owner: pl.driver || null, W: WEAP.bomb, wn: 'bomb' };
-  if (ship && ship.team !== pl.team) applyDamage(ship, ship.maxHp * 0.45, src);
+  const foe = { team: pl.team, owner: pl.driver || null, W: WEAP.bomb, wn: 'bomb' }, own = { team: -3, owner: null, W: WEAP.bomb, wn: 'bomb' };
+  const src = e => e.team === pl.team ? own : foe;
+  if (ship) applyDamage(ship, ship.maxHp * 0.45, src(ship));
   for (const e of ENTS) {
-    if (!e.alive || e === ship || e === pl || e.team === pl.team || e.team < 0 || e.kind === 'harbor') continue;
+    if (!e.alive || e === ship || e === pl || e.team < 0 || e.kind === 'harbor') continue;
     const d = e.hitCenter().distanceTo(pl.pos); if (d > 48) continue; // 1.2.1: twice as far
     const f = 1 - d / 48;
-    applyDamage(e, (e.kind === 'ship' ? e.maxHp * 0.15 : e.kind === 'turret' ? e.maxHp * 0.6 : 450) * f, src);
+    applyDamage(e, (e.kind === 'ship' ? e.maxHp * 0.15 : e.kind === 'turret' ? e.maxHp * 0.6 : 450) * f, src(e));
   }
-  for (const H of HARBORS) if (H.ent && H.team !== pl.team && Math.hypot(H.center.x - pl.pos.x, H.center.z - pl.pos.z) < 130) applyDamage(H.ent, 700, src);
+  for (const H of HARBORS) if (H.ent && H.team !== pl.team && Math.hypot(H.isle.x - pl.pos.x, H.isle.z - pl.pos.z) < H.isle.r + 20) applyDamage(H.ent, 700, foe);
 }
 /* ---------------- the player on foot ---------------- */
 class Soldier extends Ent {
   constructor(team, driver) {
-    super('soldier', team, 100);
+    super('soldier', team, teamUp(team, UP_HP) ? 150 : 100); // 1.3.1: the Armor team upgrade
     this.driver = driver; this.rad = 1.4; this.killGold = 15;
     this.av = makeAvatar(team); this.group = this.av.group; scene.add(this.group);
     this.yaw = 0; this.onGround = false; this.swim = false; this.chute = false; this.cd = 0; this.invuln = 2;
     this.chuteMesh = null;
   }
-  hitCenter() { return this._hc.set(this.pos.x, this.pos.y + 1.2, this.pos.z); }
-  segHit(a, b) { return segBox(a.x, a.y, a.z, b.x, b.y, b.z, { minX: this.pos.x - 0.6, maxX: this.pos.x + 0.6, minY: this.pos.y, maxY: this.pos.y + 2.4, minZ: this.pos.z - 0.6, maxZ: this.pos.z + 0.6 }); }
+  // 1.3.1: crouching and lying down make you a smaller target
+  stance() { return this === PLAYER.soldier ? PLAYER.stance || 0 : this.anim === 6 ? 2 : this.anim === 5 ? 1 : 0; }
+  hitCenter() { const st = this.stance(); return this._hc.set(this.pos.x, this.pos.y + (st === 2 ? 0.3 : st === 1 ? 0.8 : 1.2), this.pos.z); }
+  segHit(a, b) { const st = this.stance(), r = st === 2 ? 1 : 0.6; return segBox(a.x, a.y, a.z, b.x, b.y, b.z, { minX: this.pos.x - r, maxX: this.pos.x + r, minY: this.pos.y, maxY: this.pos.y + (st === 2 ? 0.7 : st === 1 ? 1.6 : 2.4), minZ: this.pos.z - r, maxZ: this.pos.z + r }); }
   setChute(on) {
     this.chute = on;
     if (on && !this.chuteMesh) {
@@ -3058,7 +3144,7 @@ function setIslandOwner(isl, team) {
 const GAME = { on: false, demo: false, over: false, time: 0, clock: 0, diff: 1, perTeam: 6, bots: [], winner: -1, ending: 0 };
 const PLAYER = { isPlayer: true, name: 'You', team: 0, kills: 0, deaths: 0, damage: 0, gold: 0, earned: 0, caps: 0, ent: null, soldier: null, mode: 'none', respawn: 0 };
 const CREW = [0, 1].map(t => ({ name: TEAM[t].name + ' Harbor', team: t, isPlayer: false, kills: 0, deaths: 0, damage: 0, crew: true }));
-const DIFF = [{ aim: 0.05, rate: 0.6 }, { aim: 0.028, rate: 0.85 }, { aim: 0.015, rate: 1 }];
+const DIFF = [{ aim: 0.06, rate: 0.6 }, { aim: 0.034, rate: 0.85 }, { aim: 0.018, rate: 1 }]; // 1.3.1: bots aim a little worse
 const BOT_SKILL = () => DIFF[GAME.diff] || DIFF[1];
 const BOT_NAMES = ['xX_Sailor_Xx', 'CaptainNoob', 'Builderman42', 'Guest_7712', 'TorpedoTim', 'AquaAce', 'SeaDog_99', 'PirateKing2012', 'Bacon_Hair', 'NoobMaster69', 'SkyRider', 'Kraken_Kid', 'Admiral_Oof', 'DockDuke', 'Anchorman', 'BoomBoat', 'SharkBait77', 'HarborHero', 'WaveRunner', 'CannonCat', 'GullGuy', 'MaydayMax', 'TidalTom', 'Shipwreck_Sam', 'Admiral_Bloxy', 'CommanderCool', 'JetskiJen', 'FlyingFish', 'BlueWhale_8', 'Captain_Crunch', 'Sir_Sinks_A_Lot', 'BubbleBoi'];
 
@@ -3110,7 +3196,7 @@ function spawnShip(type, team, pad, driver) {
   return new Ship(type, team, p.x, p.z, pad.heading, driver);
 }
 function spawnPlane(type, team, pad, driver) {
-  if (pad.rw) return runwaySpawn(type, team, driver); // 1.2.1: Crown Isle's runways
+  if (pad.rw) return runwaySpawn(type, team, driver, pad.island); // 1.2.1: Crown Isle's runways (1.3.1: or that island's)
   return new Plane(type, team, pad.spawn, pad.heading, 0.16, driver);
 }
 
@@ -3398,6 +3484,9 @@ function botPlane(bot, p, dt) {
         || nearestEnemy(p.pos, bot.team, e => e.kind === 'ship' && !!e.driver, 2100)
         || nearestEnemy(p.pos, bot.team, e => e.kind === 'turret' && e.type === 'aa', 900);
     }
+    // 1.3.1: now and then a bot that's about to go down anyway rams the plane it's after (one roll, when it first gets that low)
+    if (p.hp < p.maxHp * 0.3 && !p.ramRolled) { p.ramRolled = true; bot.ram = bot.target && bot.target.kind === 'plane' && Math.random() < 0.3 ? bot.target : null; }
+    else if (!p.ramRolled) bot.ram = null;
   }
   const t = bot.target && bot.target.alive ? bot.target : null;
   p.thr = 1;
@@ -3457,6 +3546,8 @@ function botPlane(bot, p, dt) {
     D.set(hx / hd, clamp((170 - p.pos.y) * 0.01, -0.3, 0.3), hz / hd);
     p.thr = 0.7;
   }
+  if (bot.ram && bot.ram === t) D.copy(t.hitCenter()).sub(p.pos).normalize(); // 1.3.1
+  else avoidPlanes(p, D); // 1.3.1: they used to fly into each other all the time
   // don't fly into the sea or the hills
   const ax = p.pos.x + p.fwd.x * p.speed * 1.8, az = p.pos.z + p.fwd.z * p.speed * 1.8;
   const gh = Math.max(0, landH(ax, az), landH(p.pos.x, p.pos.z));
@@ -3469,6 +3560,23 @@ function botPlane(bot, p, dt) {
   D.normalize();
 }
 
+// 1.3.1: steer clear of any plane we'd pass too close to in the next few seconds: away from where it'll be, and over
+// or under it
+const _av = new V3(), _aw = new V3();
+function avoidPlanes(p, D) {
+  let best = null, bt = 1e9;
+  for (const o of ENTS) {
+    if (o === p || o.kind !== 'plane' || !o.alive || o.landed) continue;
+    _av.copy(o.pos).sub(p.pos); if (_av.lengthSq() > 450 * 450) continue;
+    _aw.copy(o.vel).sub(p.vel); const vv = _aw.lengthSq();
+    const t = vv < 1 ? 0 : clamp(-_av.dot(_aw) / vv, 0, 4.5);
+    _av.addScaledVector(_aw, t); // where it'll be, from us, when closest
+    if (_av.length() < (p.P.r + o.P.r) * 2 + 14 && t < bt) { bt = t; best = _av.clone(); }
+  }
+  if (!best) return;
+  if (best.lengthSq() < 1) best.set(p.fwd.z, 0, -p.fwd.x);
+  D.addScaledVector(best.normalize(), -2.4); D.y += best.y > 0 ? -0.5 : 0.7; D.normalize();
+}
 // 1.2.5: a bot bringing its plane in: out to a point 700 m off the end of the runway, then down a gentle glide path
 // along it with the throttle closed, until tryLand puts it down. Too far off the line, or past the runway: go round.
 function botLand(bot, p, dt) {
@@ -3761,7 +3869,9 @@ function useKey() {
     if (it.type === 'pad') openDeploy(it.pad.kind, it.pad);
     else if (it.type === 'turret' || it.type === 'ship') { enterVehicle(it.ent); Sound.play('ui'); }
     else if (it.type === 'pc') openPC(it.H);
-  } else if (PLAYER.mode === 'ship' || PLAYER.mode === 'plane' || PLAYER.mode === 'turret' || PLAYER.mode === 'gunner') exitVehicle();
+    else if (it.type === 'plane') boardParked(it.ent); // 1.3.1
+  } else if (holdToBail()) return; // 1.3.1: out of a flying plane you hold E for 3 seconds
+  else if (PLAYER.mode === 'ship' || PLAYER.mode === 'plane' || PLAYER.mode === 'turret' || PLAYER.mode === 'gunner') exitVehicle();
 }
 function findInteract(s) {
   let best = null, bd = 1e9;
@@ -3783,6 +3893,12 @@ function findInteract(s) {
     const d = Math.max(lx, lz, 0);
     if (d < 4 && d < bd) { bd = d; best = { type: 'ship', ent: e, text: 'Board the ' + e.S.name }; }
   }
+  // 1.3.1: a plane someone left parked on a runway or deck
+  for (const e of ENTS) {
+    if (e.kind !== 'plane' || !e.alive || e.team !== PLAYER.team || e.driver || e.disabled || !(e.landed || (NET.client && e.speed < 3 && landFrame(e)))) continue;
+    const d = Math.hypot(s.pos.x - e.pos.x, s.pos.z - e.pos.z);
+    if (d < e.P.r + 3 && Math.abs(s.pos.y - e.pos.y) < 5 && d < bd) { bd = d; best = { type: 'plane', ent: e, text: 'Get in the ' + e.P.name }; }
+  }
   // 1.2.1: the missile computer in the keep
   for (const H of HARBORS) if (H.pc && Math.hypot(s.pos.x - H.pc.stand.x, s.pos.z - H.pc.stand.z) < 2.6 && Math.abs(s.pos.y - H.pc.stand.y) < 2) best = { type: 'pc', H, text: H.team === PLAYER.team ? 'Log on to the missile computer' : 'Use the enemy\u2019s computer' };
   return best;
@@ -3794,12 +3910,14 @@ function playerFoot(s, dt, c) {
   if (s.invuln > 0) s.invuln -= dt;
   const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw), rx = -Math.cos(cam.yaw), rz = Math.sin(cam.yaw);
   let wx = fx * c.y + rx * c.x, wz = fz * c.y + rz * c.x; const wl = Math.hypot(wx, wz); if (wl > 1) { wx /= wl; wz /= wl; }
-  const spd = s.swim ? 5.5 : s.chute ? 7 : c.sprint ? 13 : 8.5;
+  if ((s.swim || s.chute) && PLAYER.stance) PLAYER.stance = 0;
+  const st = PLAYER.stance || 0, shoes = teamUp(s.team, UP_SHOES) ? 1.5 : 1; // 1.3.1: crouching, lying down and the Running Shoes upgrade
+  const spd = s.swim ? 5.5 : s.chute ? 7 : (st === 2 ? 2.4 : st === 1 ? 4.6 : c.sprint ? 13 : 8.5) * shoes;
   const k = s.onGround || s.swim ? 12 : s.chute ? 1.5 : 2.5;
   s.vel.x = damp(s.vel.x, wx * spd, k, dt); s.vel.z = damp(s.vel.z, wz * spd, k, dt);
   if (!s.swim) s.vel.y -= 30 * dt;
   if (s.chute) s.vel.y = Math.max(s.vel.y, -6.5);
-  if (c.jump && s.onGround) { s.vel.y = 11; s.onGround = false; }
+  if (c.jump && s.onGround && !st && !(PLAYER.noJumpT > 0)) { s.vel.y = 11; s.onGround = false; }
   // move with box collisions
   let nx = s.pos.x + s.vel.x * dt, nz = s.pos.z + s.vel.z * dt;
   const r = 0.6, feet = s.pos.y, head = s.pos.y + 2.3;
@@ -3833,15 +3951,16 @@ function playerFoot(s, dt, c) {
   const aiming = c.fire || IN.rmb;
   if (aiming || (moving > 0.5 && !s.swim)) s.yaw = aiming ? cam.yaw : Math.atan2(s.vel.x, s.vel.z);
   s.group.position.copy(s.pos); s.group.rotation.y = s.yaw;
-  poseAvatar(s.av, s.chute ? 'chute' : s.swim ? 'swim' : !s.onGround ? 'fall' : moving > 0.6 ? 'walk' : 'idle', dt, moving);
-  if (s.swim) s.av.body.rotation.x = 0.9; else s.av.body.rotation.x = 0;
+  const pose = s.chute ? 'chute' : s.swim ? 'swim' : !s.onGround ? 'fall' : st === 2 ? 'prone' : st === 1 ? 'crouch' : moving > 0.6 ? 'walk' : 'idle';
+  poseAvatar(s.av, pose, dt, moving);
+  s.av.body.rotation.x = pose === 'swim' ? 0.9 : pose === 'prone' ? Math.PI / 2 : 0;
   // your gun (1.2: five of them, keys 1 to 5)
   const wk = FOOT_GUNS[PLAYER.wpn || 0] || 'rifle', W = WEAP[wk];
   setFootGun(s, wk);
   if (s.cd > 0) s.cd -= dt;
   if (c.fire && s.cd <= 0 && !s.swim && !s.chute) {
     const aim = PLAYER.aimPt;
-    _v1.set(s.pos.x - Math.cos(s.yaw) * 0.6 + Math.sin(s.yaw) * 1.2, s.pos.y + 1.55, s.pos.z + Math.sin(s.yaw) * 0.6 + Math.cos(s.yaw) * 1.2);
+    _v1.set(s.pos.x - Math.cos(s.yaw) * 0.6 + Math.sin(s.yaw) * 1.2, s.pos.y + (st === 2 ? 0.4 : st === 1 ? 1.05 : 1.55), s.pos.z + Math.sin(s.yaw) * 0.6 + Math.cos(s.yaw) * 1.2);
     for (let k = 0; k < (W.pellets || 1); k++) {
       _v2.copy(aim).sub(_v1).normalize();
       fire(wk, s, _v1, _v2.add(_v3.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(W.spread || 0)).normalize(), k ? { silent: true } : undefined);
@@ -4153,23 +4272,24 @@ function updateCamera(dt) {
   if (CINE.on) { cineCamera(dt); return; }
   const mode = PLAYER.mode, e = PLAYER.ent;
   let pMin = -1.2, pMax = 1.3;
-  if (mode === 'ship') { pMin = -0.55; pMax = 0.9; } else if (mode === 'plane') { pMin = -1.35; pMax = 1.35; } else if (mode === 'turret') { pMin = -0.45; pMax = 1.45; } else if (mode === 'gunner') { pMin = -1.3; pMax = 1.4; }
+  if (mode === 'ship') { pMin = -0.55; pMax = 0.9; } else if (mode === 'plane') { pMin = -1.35; pMax = 1.48; } else if (mode === 'turret') { pMin = -0.45; pMax = 1.45; } else if (mode === 'gunner') { pMin = -1.3; pMax = 1.4; }
   cam.pitch = clamp(cam.pitch, pMin, pMax);
   setAimDir();
   const zoom = (cam.zoom || IN.rmb) && mode !== 'dead' && mode !== 'demo';
-  const base = clamp(+settings.fov || 70, 60, 100), fov = zoom ? (mode === 'plane' ? 45 : 30) * base / 70 : base;
+  const base = clamp(+settings.fov || 70, 60, 100), fov = zoom ? (mode === 'plane' ? 45 : mode === 'foot' && FOOT_GUNS[PLAYER.wpn || 0] === 'sniper' ? 13 : 30) * base / 70 : base; // 1.3.1: the sniper's scope zooms further
   if (Math.abs(camera.fov - fov) > 0.1) { camera.fov = damp(camera.fov, fov, 10, dt); camera.updateProjectionMatrix(); }
   // 1.3: first person on foot and on a ship (C switches; planes use the cockpit view)
   const fpFoot = settings.fp && mode === 'foot' && e && e.alive && !e.chute;
   if (fpBody && fpBody !== (fpFoot ? e : null)) { if (fpBody.group) fpBody.group.visible = true; fpBody = null; }
   if (fpFoot) {
     e.group.visible = false; fpBody = e;
-    camera.position.set(e.pos.x, e.pos.y + (e.swim ? 0.9 : 1.75), e.pos.z);
+    const st = PLAYER.stance || 0, fw = st === 2 ? 0.8 : 0; // 1.3.1: lower when crouching or lying down
+    camera.position.set(e.pos.x + Math.sin(e.yaw) * fw, e.pos.y + (e.swim ? 0.9 : st === 2 ? 0.5 : st === 1 ? 1.15 : 1.75), e.pos.z + Math.cos(e.yaw) * fw);
   } else if (settings.fp && mode === 'ship' && e && e.alive) {
     const L = e.S.len, sn = Math.sin(e.heading), cs = Math.cos(e.heading);
     camera.position.set(e.pos.x + sn * L * 0.12, (e.S.top || 8) + 1.6 + (e.pos.y || 0), e.pos.z + cs * L * 0.12);
   } else if (mode === 'foot' && e) {
-    _ct.set(e.pos.x, e.pos.y + 2.1, e.pos.z);
+    _ct.set(e.pos.x, e.pos.y + (PLAYER.stance === 2 ? 0.9 : PLAYER.stance === 1 ? 1.5 : 2.1), e.pos.z);
     const rx = -Math.cos(cam.yaw), rz = Math.sin(cam.yaw), dist = zoom ? 3.5 : 6.5;
     _cp.copy(_ct).addScaledVector(aimDir, -dist); _cp.x += rx * 1.2; _cp.z += rz * 1.2;
     const hs = traceStatic(_ct, _cp); if (hs) _cp.lerpVectors(_ct, _cp, Math.max(0.05, hs.t - 0.08));
@@ -4269,6 +4389,7 @@ function updateTags() {
   for (const e of ENTS) {
     // online, other real players on foot get a tag too
     const walker = e.kind === 'soldier' && NET.on && e.driver && e.driver !== PLAYER;
+    if (isNight()) break; // 1.3.1: no name tags at night, so you can sneak up on people
     if (!e.alive || (e.kind !== 'ship' && e.kind !== 'plane' && !walker) || e === PLAYER.ent || (PLAYER.ent && e === PLAYER.ent.plane)) continue;
     const d = e.pos.distanceTo(camP); if (d > (walker ? 300 : e.team === PLAYER.team ? 700 : 1100)) continue;
     list.push([d, e]);
@@ -4364,12 +4485,12 @@ function updateHUD(dt) {
     // bottom-right key hints
     let keys = '';
     if (!touchOn()) {
-      if (mode === 'foot') keys = `<div><kbd>1</kbd>-<kbd>5</kbd>${FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn || 0]]}</div><div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div><div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div>`;
+      if (mode === 'foot') keys = `<div><kbd>1</kbd>-<kbd>5</kbd>${FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn || 0]]}</div><div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div><div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div><div><kbd>Ctrl</kbd>${['Crouch', 'Lie down', 'Stand up'][PLAYER.stance || 0]}</div>`;
       else if (mode === 'ship' && !e.alive) keys = '<div><kbd>E</kbd>Jump overboard</div>';
-      else if (mode === 'ship') keys = `<div><kbd>W</kbd><kbd>S</kbd>Throttle <kbd>A</kbd><kbd>D</kbd>Steer</div><div><kbd>Click</kbd>Fire</div>${e.S.torps ? '<div><kbd>F</kbd>Torpedo</div>' : ''}${e.S.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}${e.S.carrier ? '<div><kbd>B</kbd>Launch a plane</div>' : ''}<div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div><div><kbd>E</kbd>Get out</div>`;
-      else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div>${e.P.guns.length ? '<div><kbd>Click</kbd>Guns</div>' : ''}${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>Space</kbd>Level out</div><div><kbd>C</kbd>Cockpit view</div><div><kbd>E</kbd>Bail out</div>`;
+      else if (mode === 'ship') keys = `<div><kbd>W</kbd><kbd>S</kbd>Throttle <kbd>A</kbd><kbd>D</kbd>Steer</div><div><kbd>Click</kbd>Fire</div>${e.S.torps ? '<div><kbd>F</kbd>Torpedo</div>' : ''}${e.S.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}${e.S.carrier ? '<div><kbd>B</kbd>Launch a plane</div>' : ''}${flareMax(e) ? `<div><kbd>X</kbd>Flare (${flaresOf(e)})</div>` : ''}<div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div><div><kbd>E</kbd>Get out</div>`;
+      else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div>${e.P.guns.length ? '<div><kbd>Click</kbd>Guns</div>' : ''}${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>X</kbd>Flare (${flaresOf(e)})</div><div><kbd>Shift</kbd>+<kbd>A</kbd>/<kbd>D</kbd>Barrel roll</div><div><kbd>Space</kbd>Level out</div><div><kbd>C</kbd>Cockpit view</div><div><kbd>E</kbd>${e.landed ? 'Get out' : 'Hold to bail out'}</div>`;
       else if (mode === 'turret') keys = '<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>Leave</div>';
-      else if (mode === 'gunner') keys = `<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>${e.ship ? 'Jump off' : 'Bail out'}</div>`;
+      else if (mode === 'gunner') keys = `<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>${e.ship ? 'Jump off' : 'Hold to bail out'}</div>`;
       if (PLAYER.pc) keys = '<div><kbd>Mouse</kbd>Move the cursor <kbd>Click</kbd>Press</div><div><kbd>E</kbd>Log off</div>';
       if (MCAM.m) keys = '<div><kbd>E</kbd>Skip</div>';
     }
@@ -4402,6 +4523,7 @@ function updateHUD(dt) {
   // prompt
   let prompt = '';
   if (PLAYER.pc) prompt = '';
+  else if (PLAYER.bailT > 0 && holdToBail()) prompt = `<kbd>E</kbd>Bailing out in ${Math.max(0, BAIL_S - PLAYER.bailT).toFixed(1)}s…`; // 1.3.1
   else if (mode === 'foot' && PLAYER.interact) prompt = (touchOn() ? '<kbd>E</kbd>' : '<kbd>E</kbd>') + PLAYER.interact.text;
   else if (mode === 'foot' && PLAYER.soldier && PLAYER.soldier.chute) prompt = 'Parachuting…';
   else if (mode === 'ship' && e && !e.alive) prompt = '<kbd>E</kbd>Jump overboard';
@@ -4497,8 +4619,10 @@ function drawMap(cv, big) {
     if (big) { x.setLineDash([]); x.fillStyle = '#fff'; x.font = 'bold 18px sans-serif'; x.textAlign = 'center'; x.fillText(isl.name, X(isl.x), Z(isl.z) - isl.capR * sx - 6); }
   }
   x.setLineDash([]);
-  const s = big ? 2 : 1;
+  const s = big ? 2 : 1, dark = isNight(); // 1.3.1: at night the map shows nobody (the computers in the keeps still do)
+  if (dark) { x.fillStyle = 'rgba(4,10,24,.45)'; x.fillRect(0, 0, W, H); x.fillStyle = '#cfe0ff'; x.font = `bold ${big ? 22 : 13}px sans-serif`; x.textAlign = 'center'; x.fillText('☾ Night: radar off', W / 2, big ? 34 : 18); }
   for (const e of ENTS) {
+    if (dark) break;
     if (!e.alive || e.team < 0) continue;
     if (e.kind === 'ship') {
       x.save(); x.translate(X(e.pos.x), Z(e.pos.z)); x.rotate(-e.heading);
@@ -4591,6 +4715,7 @@ function renderDeploy() {
   const atIsland = (!pad && !!(locObj && locObj.isl)) || !!(pad && pad.island);
   const rwOk = planeSpotOk(pad, locObj); // 1.2.5
   const card = (k, t, D) => {
+    D = priced(D); // 1.3.1: the team's half-price upgrade
     const free = !D.cost, wait = k === 'plane' && t === 'jet' ? jetWait() : 0, noRw = k === 'plane' && !rwOk;
     const can = !DEPLOY.locked && PLAYER.gold >= D.cost && !wait && !noRw;
     const fuel = k === 'plane' ? ` <span class="fu">⛽ ${fmtClock(D.fuel)}</span>` : '';
@@ -4598,14 +4723,14 @@ function renderDeploy() {
     return `<button class="card ${free ? 'free' : ''}" data-k="${k}" data-t="${t}" ${can ? '' : 'disabled'}><div class="em">${D.icon}</div><div class="nm">${D.name}</div><div class="ds">${D.desc}${fuel}</div><div class="pr">${pr}</div></button>`;
   };
   setShow('dBoatWrap', (!kind || kind === 'boat')); // 1.2: ships can launch beside a carrier too
-  $('dBoats').innerHTML = SHIP_ORDER.map(t => card('boat', t, SHIP_TYPES[t])).join('');
+  $('dBoats').innerHTML = SHIP_ORDER.filter(t => !SHIP_TYPES[t].hidden).map(t => card('boat', t, SHIP_TYPES[t])).join('');
   setShow('dPlaneWrap', (!kind || kind === 'plane')); // 1.2.5: only from a runway (the cards say so elsewhere)
   $('dPlanes').innerHTML = PLANE_ORDER.map(t => card('plane', t, PLANE_TYPES[t])).join('');
   setShow('dFootWrap', !pad && DEPLOY.reason !== 'menu' && !atCarrier);
   $('dFoot').innerHTML = `<button class="card free" data-k="foot" data-t="foot" ${DEPLOY.locked ? 'disabled' : ''}><div class="em">🚶</div><div class="nm">On foot</div><div class="ds">Walk around your base, man turrets and pick vehicles from the pads.</div><div class="pr">FREE</div></button>`;
   // 1.1: Deploy again
   let ag = $('dAgain'); if (!ag) { ag = document.createElement('button'); ag.id = 'dAgain'; ag.className = 'btn'; ag.style.cssText = 'display:block;margin:6px auto 10px;font-weight:800'; $('dgold').after(ag); ag.onclick = () => deployAgain(); }
-  const L = PLAYER.lastDeploy, LD = L && (L.kind === 'boat' ? SHIP_TYPES[L.type] : L.kind === 'plane' ? PLANE_TYPES[L.type] : null);
+  const L = PLAYER.lastDeploy, LD = L && priced(L.kind === 'boat' ? SHIP_TYPES[L.type] : L.kind === 'plane' ? PLANE_TYPES[L.type] : null);
   const okKind = L && (!kind || kind === L.kind) && !(L.kind === 'boat' && atCarrier);
   const canAgain = !!(LD && okKind && !DEPLOY.locked && PLAYER.gold >= LD.cost && !(L.kind === 'plane' && (!rwOk || (L.type === 'jet' && jetWait()))));
   ag.style.display = LD && okKind ? 'block' : 'none'; ag.disabled = !canAgain;
@@ -4631,11 +4756,11 @@ function deploy(kind, type) {
   if (kind === 'boat' || kind === 'plane') PLAYER.lastDeploy = { kind, type }; // 1.1: for Deploy again
   const loc = DEPLOY.pad ? (DEPLOY.pad.island || 'harbor') : (ISLANDS.find(i => i.name === DEPLOY.loc && i.owner === PLAYER.team) || 'harbor');
   const carrier = !DEPLOY.pad ? teamCarriers(team).find(c => 'c' + c.id === DEPLOY.loc) : null;
-  const D = kind === 'boat' ? SHIP_TYPES[type] : kind === 'plane' ? PLANE_TYPES[type] : { cost: 0 };
+  const D = priced(kind === 'boat' ? SHIP_TYPES[type] : kind === 'plane' ? PLANE_TYPES[type] : { cost: 0 });
   if (PLAYER.gold < D.cost) { Sound.play('deny'); return; }
   if (kind === 'plane') { // 1.2.5
     const locObj = DEPLOY.pad ? null : deployLocations().find(l => l.id === DEPLOY.loc);
-    if (!planeSpotOk(DEPLOY.pad, locObj)) { showMsg('', 'Planes take off from a runway: your airfield, Crown Isle or a carrier'); Sound.play('deny'); return; }
+    if (!planeSpotOk(DEPLOY.pad, locObj)) { showMsg('', 'Planes take off from a runway: your airfield, an island of yours or a carrier'); Sound.play('deny'); return; }
     if (type === 'jet' && jetWait() > 0) { showMsg('', 'The jet is ready in ' + fmtClock(jetWait())); Sound.play('deny'); return; }
   }
   let ent = null;
@@ -4651,7 +4776,7 @@ function deploy(kind, type) {
     ent = spawnShip(type, team, pad, null);
   } else if (kind === 'plane') {
     if (carrier) ent = launchFromCarrier(type, team, carrier, null);
-    else if (loc !== 'harbor' && !DEPLOY.pad) ent = runwaySpawn(type, team, null); // 1.2.1: on Crown Isle's runway (1.2.5: the only island with one)
+    else if (loc !== 'harbor' && !DEPLOY.pad) ent = runwaySpawn(type, team, null, loc); // 1.2.1: on the island's runway (1.3.1: every big island has one)
     else {
       const pads = PADS.filter(p => p.kind === 'plane' && p.team === team && !p.island); // (1.2.1: the harbor's own airfield)
       const pad = DEPLOY.pad && DEPLOY.pad.kind === 'plane' ? DEPLOY.pad : pick(pads);
@@ -5337,7 +5462,7 @@ function frame(now) {
   const f = PLAYER.ent && PLAYER.ent.alive ? PLAYER.ent.pos : camera.position;
   updateDayNight();
   sun.target.position.set(f.x, 0, f.z); sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 500);
-  if (!(window.hbReel && hbReel.covering)) renderer.render(scene, camera); // the title reel covers the demo battle
+  if (!(window.hbReel && hbReel.covering)) { renderer.render(scene, camera); VM.render(); } // the title reel covers the demo battle (1.3.1: then your hands in first person)
 }
 function onResize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); }
 addEventListener('resize', onResize);
@@ -5415,7 +5540,10 @@ const soloOnline = () => !!(NET.on && NET.alone && NET.alone());
 const GEAR = { fighter: 2.05, dual: 2.05, jet: 0.95, bomber: 1.7 }; // wheels below the middle of each plane
 // Crown Isle's two runways, east-west either side of the flag. The harbors' airfields are added by buildHarbor.
 // h is the heading along the runway; "along" points that way and "side" to its right.
-const RUNWAYS = [50, -50].map(z => ({ x: 0, z, h: Math.PI / 2, hl: 84, hw: 9, y: 6.2, crown: true }));
+const RUNWAYS = [50, -50].map(z => ({ x: 0, z, h: Math.PI / 2, hl: 84, hw: 9, y: 6.2, crown: true, isle: 'crown' }));
+// 1.3.1: every island you can claim has one now (not the little islets): east-west on the side away from the middle
+// of the map, shorter on the smaller islands, which grew a little to fit them. crown: an island's, not a harbor's.
+for (const I of ISLES) if (I.rw && I.id !== 'crown') RUNWAYS.push({ x: I.x, z: I.z + Math.sign(I.z) * I.r * 0.5, h: Math.PI / 2, hl: I.r > 85 ? 72 : 62, hw: 8, y: Math.round(I.h * 0.7 * 10) / 10, crown: true, isle: I.id });
 function rwLocal(R, x, z) { const sn = Math.sin(R.h), cs = Math.cos(R.h), dx = x - R.x, dz = z - R.z; return [dx * sn + dz * cs, dx * cs - dz * sn]; }
 // Crown Isle's ground is cut flat (and built out into the sea where it needs to be) under each runway
 function runwayFlat(x, z, h) {
@@ -5431,7 +5559,7 @@ function onRunway(x, z, m = 0) { for (const R of RUNWAYS) { const [a, s] = rwLoc
 function buildCrownRunways(isl, s) {
   const lb = new Builder();
   RUNWAYS.forEach((R, i) => {
-    if (!R.crown) return;
+    if (!R.crown || R.isle !== isl.I.id) return;
     R.isl = isl;
     const x = R.x - isl.x, z = R.z - isl.z, y = R.y, L = R.hl * 2;
     s.box(L + 6, 0.6, R.hw * 2 + 3, 0x8d8a80, x, y - 0.32, z, 's'); // shoulders
@@ -5452,13 +5580,15 @@ function buildCrownRunways(isl, s) {
   });
   const lm = lb.mesh(MAT.glow, false); lm.position.set(isl.x, 0, isl.z); scene.add(lm);
   // the plane pad between the runways, west of the flag: it belongs to whoever holds Crown Isle
-  const px = isl.x - 34, pz = isl.z + 30, py = landH(px, pz);
-  const pad = { team: -1, kind: 'plane', pos: new V3(px, py, pz), spawn: new V3(px, py + 3, pz), heading: 0, owner: isl, label: 'Crown Isle runway', island: isl, rw: true };
+  // (1.3.1: on the other islands, beside the runway on the island's side, near its west end)
+  const R0 = RUNWAYS.find(R => R.isle === isl.I.id), crown = isl.I.id === 'crown';
+  const px = crown ? isl.x - 34 : R0.x - (R0.hl - 24), pz = crown ? isl.z + 30 : R0.z - Math.sign(R0.z - isl.z) * (R0.hw + 7), py = landH(px, pz);
+  const pad = { team: -1, kind: 'plane', pos: new V3(px, py, pz), spawn: new V3(px, py + 3, pz), heading: 0, owner: isl, label: isl.name + ' runway', island: isl, rw: true };
   isl.pads.push(pad); PADS.push(pad);
 }
-// a plane on one of Crown Isle's runways, pointing at the enemy
-function runwaySpawn(type, team, driver) {
-  const R = pick(RUNWAYS.filter(r => r.crown)), dir = team === 0 ? 1 : -1;
+// a plane on one of Crown Isle's runways, pointing at the enemy (1.3.1: or on the runway of the island you picked)
+function runwaySpawn(type, team, driver, isl) {
+  const R = pick(RUNWAYS.filter(r => r.crown && (!isl || !isl.I || r.isle === isl.I.id))), dir = team === 0 ? 1 : -1;
   const p = new V3(R.x - dir * (R.hl - 12), R.y + 3, R.z);
   return new Plane(type, team, p, dir > 0 ? Math.PI / 2 : -Math.PI / 2, 0.16, driver);
 }
@@ -5477,24 +5607,29 @@ function landFrame(pl) {
   for (const R of RUNWAYS) {
     if (R.crown ? !R.isl || R.isl.owner === 1 - pl.team : R.team !== pl.team) continue;
     const [a, s] = rwLocal(R, p.x, p.z);
-    if (Math.abs(a) < R.hl - 2 && Math.abs(s) < R.hw - 1) return { R, a, s, y: R.y };
+    if (Math.abs(a) < R.hl + 4 && Math.abs(s) < R.hw + 4) return { R, a, s, y: R.y }; // 1.3.1: was hl - 2 and hw - 1
   }
   return null;
 }
 // at the lowest speed, low over a deck or runway: put it down instead of crashing
+// 1.3.1: easier: up to a third throttle, 28 instead of 14 over the lowest speed, a steeper approach and twice the height window
 function tryLand(pl) {
   const P = pl.P;
-  if (pl.thr > 0.05 || pl.speed > P.min + 14 || pl.fwd.y < -0.5) return false;
+  if (pl.thr > 0.35 || pl.speed > P.min + 28 || pl.fwd.y < -0.55) return false;
   const f = landFrame(pl); if (!f) return false;
   const gy = f.y + (GEAR[pl.type] || 2);
-  if (pl.pos.y > gy + 3 || pl.pos.y < gy - 4) return false;
-  const base = f.ship ? f.ship.heading : f.R.h;
-  pl.landed = { ship: f.ship || null, R: f.R || null, a: f.a, s: f.s, ly: wrapA(Math.atan2(pl.fwd.x, pl.fwd.z) - base), park: 0, rearm: 0 };
-  pl.svcT = 0; pl.svcDone = false; // 1.2.5: the 8 second service starts once it has stopped
-  pl.bank = 0; pl.rollIn = 0;
+  if (pl.pos.y > gy + 6 || pl.pos.y < gy - 5) return false;
+  parkOn(pl, f);
   Sound.play('thud', pl.pos); smokePuff(_v1.copy(pl.pos).setY(gy - 1.6), 2.4);
   if (pl.driver === PLAYER) showMsg(f.ship ? 'Landed on the carrier' : 'Landed', `Stay parked ${SERVICE_S} seconds to refuel, rearm and repair`);
   return true;
+}
+// set a plane down on a deck or runway (landFrame's f)
+function parkOn(pl, f) {
+  const base = f.ship ? f.ship.heading : f.R.h;
+  pl.landed = { ship: f.ship || null, R: f.R || null, a: f.a, s: f.s, ly: wrapA(Math.atan2(pl.fwd.x, pl.fwd.z) - base), park: 0, rearm: 0 };
+  pl.svcT = 0; pl.svcDone = false; // 1.2.5: the 8 second service starts once it has stopped
+  pl.bank = 0; pl.rollIn = 0; pl.rollT = 0; pl.rollA = 0; pl.thr = 0;
 }
 function landedUpdate(pl, dt) {
   const L = pl.landed, P = pl.P;
@@ -5526,8 +5661,8 @@ function landedUpdate(pl, dt) {
     if (pl.driver === PLAYER) cam.pitch = Math.max(cam.pitch, 0.22);
     return;
   }
-  // parked with nobody in it: tidied away after a while
-  if (!pl.driver) { L.park += dt; if (L.park > 25) { scene.remove(pl.group); pl.remove(); pl.gone = true; } } else L.park = 0;
+  // parked with nobody in it (1.3.1: it stays there for anyone on the team to get back in; parkedCap tidies the oldest)
+  if (!pl.driver) L.park += dt; else L.park = 0;
 }
 // near one of your decks or runways, low down: say how to land
 function landHint(pl) {
@@ -5537,7 +5672,7 @@ function landHint(pl) {
   for (const R of RUNWAYS) {
     if (R.crown ? !R.isl || R.isl.owner === 1 - pl.team : R.team !== pl.team) continue;
     const [a, s] = rwLocal(R, p.x, p.z);
-    if (Math.abs(a) < R.hl + 200 && Math.abs(s) < 60) return true;
+    if (Math.abs(a) < R.hl + 260 && Math.abs(s) < 80) return true;
   }
   return false;
 }
@@ -5751,7 +5886,7 @@ function buildKeep(s, H, sb) {
   for (const ox of [-1.95, 1.95]) b.box(0.1, 0.92, 1.5, 0x3a3f46, dx + ox, y0 + 0.46, dz);
   b.box(0.5, 0.95, 1, 0x23272d, dx + 1.4, y0 + 0.48, dz); lb.box(0.04, 0.05, 0.05, 0x3dff6e, dx + 1.4, y0 + 0.85, dz + 0.51); // the tower under the desk
   b.box(0.95, 0.04, 0.32, 0x23272d, dx, y0 + 1.02, dz + 0.45); b.box(0.12, 0.04, 0.18, 0x23272d, dx + 0.75, y0 + 1.02, dz + 0.5); // keyboard and mouse
-  b.box(0.12, 0.4, 0.12, 0x23272d, dx, y0 + 1.2, dz - 0.35); b.box(0.5, 0.03, 0.3, 0x23272d, dx, y0 + 1.01, dz - 0.35);
+  b.box(0.12, 0.42, 0.12, 0x23272d, dx, y0 + 1.22, dz - 0.5); b.box(0.5, 0.03, 0.3, 0x23272d, dx, y0 + 1.01, dz - 0.52); // 1.3.1: the stand sits behind the screen (it showed through the bottom of it)
   b.box(1.78, 1.12, 0.07, 0x16191d, dx, y0 + 1.66, dz - 0.38); // the monitor's bezel
   b.box(0.7, 0.08, 0.7, 0x23272d, dx, y0 + 0.5, dz + 1.4); b.box(0.66, 0.7, 0.08, 0x23272d, dx, y0 + 0.9, dz + 1.72); b.box(0.08, 0.5, 0.08, 0x3a3f46, dx, y0 + 0.25, dz + 1.4); // chair
   s.col(4.2, 1, 1.7, dx, y0 + 0.5, dz, 's');
@@ -5833,7 +5968,7 @@ function closePC() {
   if (PLAYER.soldier) PLAYER.soldier.group.visible = true;
 }
 // screen layout (canvas pixels)
-const BTN_SEND = [70, 52, 180, 148], BTN_MAP = [262, 52, 180, 148], BTN_OFF = [418, 34, 82, 26], BTN_BACK = [12, 286, 80, 26];   // 1.2.3: two apps, Missiles and Map
+const BTN_SEND = [22, 66, 148, 140], BTN_MAP = [182, 66, 148, 140], BTN_UPG = [342, 66, 148, 140], BTN_OFF = [418, 34, 82, 26], BTN_BACK = [12, 286, 80, 26];   // 1.2.3: two apps, Missiles and Map (1.3.1: and Team Upgrades)
 const inBox = (b, x, y) => x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3];
 const MAPV = { cx: 256, cy: 166, s: 0.053 }; // 1.2.7: fits the wider map
 const mapXY = (x, z) => [MAPV.cx + x * MAPV.s, MAPV.cy + z * MAPV.s];
@@ -5851,17 +5986,23 @@ function pcStep(dt) {
   if (PC.st === 'map') {
     let bd = 1e9;
     ISLES.forEach((I, i) => { const [x, y] = mapXY(I.x, I.z), d = Math.hypot(PC.cx - x, PC.cy - y); if (d < Math.max(10, I.r * MAPV.s + 4) && d < bd) { bd = d; PC.hover = i; } });
+    for (const e of bigShips(1 - pc.H.team)) { const [x, y] = mapXY(e.pos.x, e.pos.z), d = Math.hypot(PC.cx - x, PC.cy - y); if (d < 9 && d < bd + 4) { bd = d; PC.hover = SHIP_TGT + shipKey(e); } } // 1.3.1
   }
+  if (PC.st === 'upg') PC.hover = UPGRADES.findIndex(u => inBox(u.box, PC.cx, PC.cy)); // 1.3.1
   if (click) {
     if (inBox(BTN_OFF, PC.cx, PC.cy) && PC.st !== 'boot') { closePC(); return; }
     if (PC.st === 'home' && inBox(BTN_SEND, PC.cx, PC.cy)) {
       if (MIS.n[pc.H.team] > 0) { PC.st = 'map'; Sound.play('ui'); } else { Sound.play('deny'); PC.note = 'No missile ready yet'; PC.noteT = 2; }
     } else if (PC.st === 'home' && inBox(BTN_MAP, PC.cx, PC.cy)) { PC.st = 'radar'; Sound.play('ui'); }
-    else if ((PC.st === 'map' || PC.st === 'sent' || PC.st === 'radar') && inBox(BTN_BACK, PC.cx, PC.cy)) { PC.st = 'home'; Sound.play('ui'); }
-    else if (PC.st === 'map' && PC.hover >= 0) {
+    else if (PC.st === 'home' && inBox(BTN_UPG, PC.cx, PC.cy)) { PC.st = 'upg'; Sound.play('ui'); } // 1.3.1
+    else if ((PC.st === 'map' || PC.st === 'sent' || PC.st === 'radar' || PC.st === 'upg') && inBox(BTN_BACK, PC.cx, PC.cy)) { PC.st = 'home'; Sound.play('ui'); }
+    else if (PC.st === 'upg' && PC.hover >= 0) buyUpgrade(PC.hover); // 1.3.1
+    else if (PC.st === 'map' && PC.hover >= 0 && PC.hover < SHIP_TGT) {
       if (!isTarget(PC.hover)) { Sound.play('deny'); PC.note = 'Harbors can’t be targeted'; PC.noteT = 2; }
       else if (MIS.n[pc.H.team] <= 0) { Sound.play('deny'); PC.st = 'home'; }
       else requestMissile(pc.H.team, PC.hover);
+    } else if (PC.st === 'map' && PC.hover >= SHIP_TGT) { // 1.3.1
+      if (MIS.n[pc.H.team] <= 0) { Sound.play('deny'); PC.st = 'home'; } else requestMissile(pc.H.team, PC.hover);
     }
   }
   if (PC.noteT > 0) PC.noteT -= dt;
@@ -5886,7 +6027,7 @@ function drawPC(pc) {
     for (let i = 0; i < Math.min(lines.length, Math.floor(f * lines.length) + 1); i++) x.fillText('> ' + lines[i], 112, 204 + i * 18);
   } else {
     x.fillStyle = TEAM[t].css; x.fillRect(0, 0, w, 24);
-    x.fillStyle = '#fff'; x.font = 'bold 14px system-ui,sans-serif'; x.textAlign = 'left'; x.fillText(TEAM[t].name.toUpperCase() + ' COMMAND · ' + (PC.st === 'radar' ? 'MAP' : PC.st === 'home' || PC.st === 'denied' ? 'HAVOC OS' : 'MISSILE CONTROL'), 10, 12);
+    x.fillStyle = '#fff'; x.font = 'bold 14px system-ui,sans-serif'; x.textAlign = 'left'; x.fillText(TEAM[t].name.toUpperCase() + ' COMMAND · ' + (PC.st === 'radar' ? 'MAP' : PC.st === 'upg' ? 'TEAM UPGRADES' : PC.st === 'home' || PC.st === 'denied' ? 'HAVOC OS' : 'MISSILE CONTROL'), 10, 12);
     x.textAlign = 'right'; x.fillText(fmtClock(GAME.clock), w - 10, 12);
     button(x, BTN_OFF, 'LOG OFF', '#2a3442', '#cfd8e3', 13);
     if (PC.st === 'denied') {
@@ -5897,12 +6038,16 @@ function drawPC(pc) {
       const n = MIS.n[t];
       appTile(x, BTN_SEND, '🚀', 'MISSILES', n > 0 ? `${n} ready` : 'None ready', n > 0 ? '#d42d22' : '#3a2a2a', n > 0 ? '#fff' : '#8a7a7a', inBox(BTN_SEND, PC.cx, PC.cy) && n > 0);
       appTile(x, BTN_MAP, '🗺️', 'MAP', 'Where everyone is', '#1f5f8f', '#fff', inBox(BTN_MAP, PC.cx, PC.cy));
+      appTile(x, BTN_UPG, '⬆️', 'UPGRADES', 'For your whole team', '#2f7a3a', '#fff', inBox(BTN_UPG, PC.cx, PC.cy)); // 1.3.1
       x.textAlign = 'center'; x.font = '15px system-ui,sans-serif'; x.fillStyle = '#9fb0c2'; x.fillText(`Next missile in ${fmtClock(MIS.t[t])}`, w / 2, 236);
       x.font = '12px system-ui,sans-serif'; x.fillStyle = '#6f7f91'; x.fillText('Click an app to open it', w / 2, 262);
     } else if (PC.st === 'radar') {
       drawRadar(x, t);
       button(x, BTN_BACK, '◀ BACK', '#2a3442', '#cfd8e3', 13);
-    } else { // the map: pick an island
+    } else if (PC.st === 'upg') { // 1.3.1
+      drawUpgrades(x, t);
+      button(x, BTN_BACK, '◀ BACK', '#2a3442', '#cfd8e3', 13);
+    } else { // the map: pick an island (1.3.1: or an enemy Battleship or Carrier)
       x.strokeStyle = '#173048'; x.lineWidth = 1;
       for (let gx = -2800; gx <= 2800; gx += 400) { const [a] = mapXY(gx, 0); x.beginPath(); x.moveTo(a, 40); x.lineTo(a, 292); x.stroke(); }
       for (let gz = -1600; gz <= 1600; gz += 400) { const [, b] = mapXY(0, gz); x.beginPath(); x.moveTo(98, b); x.lineTo(414, b); x.stroke(); }
@@ -5920,16 +6065,23 @@ function drawPC(pc) {
         const [px, py] = mapXY(e.pos.x, e.pos.z);
         x.fillStyle = e.team === 0 ? '#7db3ff' : '#ff8a80'; x.fillRect(px - (e.kind === 'ship' ? 2 : 1), py - (e.kind === 'ship' ? 2 : 1), e.kind === 'ship' ? 4 : 2, e.kind === 'ship' ? 4 : 2);
       }
+      for (const e of bigShips(1 - t)) { // 1.3.1: enemy Battleships and Carriers can be targeted too
+        const [px, py] = mapXY(e.pos.x, e.pos.z), hov = PC.hover === SHIP_TGT + shipKey(e) && PC.st === 'map';
+        x.strokeStyle = hov ? '#ffd0c8' : '#ff8a80'; x.lineWidth = hov ? 2.5 : 1.5; x.beginPath(); x.arc(px, py, hov ? 9 : 7, 0, TAU); x.stroke();
+        x.fillStyle = hov ? '#ff4a3a' : '#ff8a80'; x.fillRect(px - 3.5, py - 3.5, 7, 7);
+        if (hov) { x.fillStyle = '#ffd0c8'; x.font = 'bold 11px system-ui,sans-serif'; x.textAlign = 'center'; x.fillText(e.S.name, px, py - 14); }
+      }
       for (const m of MISSILES) { const [px, py] = mapXY(m.pos.x, m.pos.z); x.fillStyle = '#ffec60'; x.beginPath(); x.arc(px, py, 3.5, 0, TAU); x.fill(); }
       button(x, BTN_BACK, '◀ BACK', '#2a3442', '#cfd8e3', 13);
       x.textAlign = 'left'; x.font = 'bold 15px system-ui,sans-serif';
       if (PC.st === 'sent') {
         const m = MISSILES.find(q => q.team === t);
         x.fillStyle = '#ffec60';
-        x.fillText(PC.pend ? 'Launching…' : m ? `MISSILE AWAY → ${isleName(m.I)} · impact in ${Math.max(0, Math.ceil(m.T - m.t))} s` : 'Target destroyed', 104, 300);
+        x.fillText(PC.pend ? 'Launching…' : m ? `MISSILE AWAY → ${misName(m)} · impact in ${Math.max(0, Math.ceil(m.T - m.t))} s` : 'Target destroyed', 104, 300);
       } else {
         x.fillStyle = '#ffb4a8';
-        x.fillText(PC.hover >= 0 ? (isTarget(PC.hover) ? `Click to launch at ${isleName(ISLES[PC.hover])}` : 'Harbors can’t be targeted') : 'Pick an island to hit', 104, 300);
+        const sh = PC.hover >= SHIP_TGT ? tgtShip(PC.hover) : null;
+        x.fillText(sh ? `Click to launch at the enemy ${sh.S.name}` : PC.hover >= 0 ? (isTarget(PC.hover) ? `Click to launch at ${isleName(ISLES[PC.hover])}` : 'Harbors can’t be targeted') : 'Pick an island or a big enemy ship', 104, 300);
       }
     }
     if (PC.noteT > 0 && PC.note) { x.textAlign = 'center'; x.font = 'bold 15px system-ui,sans-serif'; x.fillStyle = '#ffd23a'; x.fillText(PC.note, w / 2, 52); }
@@ -6020,6 +6172,7 @@ const MISSILE_GEO = (() => {
 })();
 function bez(out, a, b, c, d, t) { const u = 1 - t; out.set(0, 0, 0).addScaledVector(a, u * u * u).addScaledVector(b, 3 * u * u * t).addScaledVector(c, 3 * u * t * t).addScaledVector(d, t * t * t); return out; }
 function launchMissile(team, i, by, mine) {
+  if (i >= SHIP_TGT) { launchShipMissile(team, i, by, mine); return; } // 1.3.1
   const I = ISLES[i], H = HARBORS[team];
   if (!I || !isTarget(i) || !H || !H.silo) return;
   if (!NET.client) { if (MIS.n[team] <= 0) return; MIS.n[team]--; if (NET.host) NET.missile(team, i); }
@@ -6049,7 +6202,7 @@ const MCAM = { m: null, t: 0, after: 0, pos: new V3(), look: new V3() };
 function missileCam(dt) {
   const m = MCAM.m;
   if (m.done) { // then pull back and up to watch the blast
-    if (!MCAM.after) { const R = m.I.r * (1 + m.I.n); _v1.set(-m.dir.x, 0, -m.dir.z); if (_v1.lengthSq() < 1e-4) _v1.set(1, 0, 0); _v1.normalize(); MCAM.pos.copy(m.p3).addScaledVector(_v1, R * 2.4 + 140).y += R + 110; }
+    if (!MCAM.after) { const R = m.I ? m.I.r * (1 + m.I.n) : 30; _v1.set(-m.dir.x, 0, -m.dir.z); if (_v1.lengthSq() < 1e-4) _v1.set(1, 0, 0); _v1.normalize(); MCAM.pos.copy(m.p3).addScaledVector(_v1, R * 2.4 + 140).y += R + 110; }
     MCAM.after += dt; if (MCAM.after > 4.2) { MCAM.m = null; return false; }
   } else { // riding beside the missile, off to one side of its smoke
     _v1.crossVectors(m.dir, UP); if (_v1.lengthSq() < 1e-4) _v1.set(1, 0, 0); _v1.normalize();
@@ -6080,7 +6233,8 @@ function missileStep(dt) {
     }
     m.tail.copy(_v2);
     fxFire.spawn(_v2.x, _v2.y, _v2.z, -m.dir.x * 20, -m.dir.y * 20, -m.dir.z * 20, 0.12, 2.6, 0.6, 0xfff2b0, 0xff7a20);
-    if (m.t >= m.T) { MISSILES.splice(k, 1); impactMissile(m); }
+    if (m.ship) shipMissileStep(m, dt); // 1.3.1: follows the ship, and a flare can pull it off
+    if (m.t >= m.T) { MISSILES.splice(k, 1); if (m.ship) impactShipMissile(m); else impactMissile(m); }
   }
   for (const H of HARBORS) { // the silo doors slide open for a launch
     const S = H.silo; if (!S) continue;
@@ -6177,7 +6331,8 @@ function botMissiles(dt) {
 }
 // another player at their computer asked for a launch (the host checks they're really there)
 function peerMissile(P, i) {
-  if (!GAME.on || GAME.over || !isTarget(i) || MIS.n[P.team] <= 0) return;
+  if (!GAME.on || GAME.over || MIS.n[P.team] <= 0) return;
+  if (i >= SHIP_TGT ? !tgtShip(i, P.team) : !isTarget(i)) return; // 1.3.1: a ship has to be a big enemy one
   const H = HARBORS[P.team], e = P.ent;
   if (!H.pc || !e || !e.alive || e.kind !== 'soldier' || e.pos.distanceTo(H.pc.stand) > 10) return;
   launchMissile(P.team, i, P);
@@ -6383,6 +6538,7 @@ function step121(dt, c) {
   if (PLAYER.mode === 'gunner' && PLAYER.ent && PLAYER.ent.kind === 'seat') gunnerStep(dt, c);
   if (PC.on && (PLAYER.mode !== 'foot' || !PLAYER.soldier || !PLAYER.soldier.alive || GAME.over)) closePC();
   if (PC.on) pcStep(dt);
+  step131(dt, c); // 1.3.1
 }
 // the camera, when the computer or the missile has it; true means it's been placed
 function camera121(dt) {
@@ -6391,6 +6547,7 @@ function camera121(dt) {
   return false;
 }
 function key121(code) {
+  if (key131(code)) return true; // 1.3.1
   if (MCAM.m && (code === 'KeyE' || code === 'Space' || code === 'Escape' || code === 'Enter')) { MCAM.m = null; return true; }
   if (PC.on && (code === 'KeyE' || code === 'Escape')) { if (code === 'Escape') GAME.skipPause = true; closePC(); return true; }
   if (PC.on && code !== 'Tab' && code !== 'KeyM') return true; // typing on the computer doesn't move you
@@ -6404,6 +6561,7 @@ function reset121() {
   for (const s of SCORCHES) { scene.remove(s); s.geometry.dispose(); } SCORCHES.length = 0;
   closePC();
   GAME.startT = GAME.time;
+  reset131(); // 1.3.1
 }
 // the HUD's extra bits
 function hud121(mode, e) {
@@ -6411,6 +6569,7 @@ function hud121(mode, e) {
   const alone = soloOnline() && playing() && !GAME.over;
   if (!el && alone) { el = document.createElement('div'); el.id = 'hbAlone'; el.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);background:rgba(10,14,22,.78);color:#ffd23a;font:700 13px system-ui,sans-serif;padding:6px 12px;border-radius:8px;z-index:4;pointer-events:none;text-align:center'; el.textContent = 'You are the only player here: no gold and no wins until someone else joins'; document.body.appendChild(el); }
   if (el) el.style.display = alone ? 'block' : 'none';
+  hud131(mode, e); // 1.3.1
 }
 </script>
 <script id="hb-guns">
@@ -6777,7 +6936,7 @@ function rbox(w, h, d, r, seg = 3) {
   const DEFAULTS = { difficulty: 1, bots: 6, minutes: 15 };
   const ALLOWED = { difficulty: [0, 1, 2], bots: [4, 6, 8, 10], minutes: [10, 15, 20] };
   const WN = Object.keys(WEAP);                      // weapons by number
-  const ANIM = ['idle', 'walk', 'swim', 'chute', 'fall'];
+  const ANIM = ['idle', 'walk', 'swim', 'chute', 'fall', 'crouch', 'prone']; // 1.3.1: crouching and lying down
 
   // ---------- small helpers ----------
   const now = () => performance.now();
@@ -6863,7 +7022,7 @@ function rbox(w, h, d, r, seg = 3) {
   const isHost = () => !!room && room.hostId === myId;
   function newRoom(code, name, topic) {
     let synced; const sync = new Promise(r => synced = r);
-    return { code, topic: topic || 'hb-room121-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
+    return { code, topic: topic || 'hb-room131-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
       roster: new Map(), names: new Map(), settings: { ...DEFAULTS }, pings: {}, acks: {}, myPing: null, seen: new Set(),
       ups: new Map(), lastHeard: new Map(), hz: MAX_HZ, stDue: false, lastSt: 0, lastSend: 0, sync, synced, trouble: 0, waitAcc: null, matchOn: false, infoAt: 0 };
   }
@@ -7030,7 +7189,7 @@ function rbox(w, h, d, r, seg = 3) {
   async function joinWorld(name) {
     if (room) leaveRoom();
     await getClient();
-    room = newRoom('WORLD', name, 'hb-world-121'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle. (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
+    room = newRoom('WORLD', name, 'hb-world-131'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
     try {
       room.ch = chan(room.topic, true); wireRoom(room.ch);
       await joinChan(room.ch, trouble);
@@ -7054,6 +7213,8 @@ function rbox(w, h, d, r, seg = 3) {
       const acc = await askHost();
       if (acc.no) throw acc.no;
       room.hostId = String(acc.h); room.roster = cleanRoster(acc.r); room.accepted = true;
+      const want = settings.worldTeam === 1 ? 1 : 0, got = room.roster.get(myId);
+      if (got !== undefined && got !== want) setTimeout(() => showMsg('Auto-balance', `${TEAM[want].name} has more players, so you're on ${TEAM[got].name}`), 3500); // 1.3.1
       if (acc.go && !M) beginMatch(acc.go, false);
     } catch (e) { teardown(); throw typeof e === 'string' ? e : 'offline'; }
   }
@@ -7084,7 +7245,11 @@ function rbox(w, h, d, r, seg = 3) {
     openUp(id).then(up => {
       if (room !== r) return;
       if (no) { send(up, 'acc', { no }); setTimeout(() => closeUp(id), 1500); return; }
-      if (!room.roster.has(id)) room.roster.set(id, room.world && (d.t === 0 || d.t === 1) ? d.t : smallerTeam()); // 1.2: the side you picked
+      if (!room.roster.has(id)) { // 1.2: the side you picked (1.3.1: unless it already has more players than the other: then the other)
+        let tm = room.world && (d.t === 0 || d.t === 1) ? d.t : smallerTeam();
+        if (room.world && teamCount(tm) > teamCount(1 - tm)) tm = 1 - tm;
+        room.roster.set(id, tm);
+      }
       room.lastHeard.set(id, now());
       const acc = { ok: 1, h: myId, s: room.settings, r: [...room.roster] };
       if (M && M.host) { addPeer(id); acc.go = goInfo(); }
@@ -7354,6 +7519,7 @@ function rbox(w, h, d, r, seg = 3) {
     if (Array.isArray(m.s)) for (const s of m.s.slice(0, 16)) peerShot(P, s);
     if (Array.isArray(m.d)) for (const d of m.d.slice(0, 4)) peerSelf(P, d);
     if (num(m.ms)) peerMissile(P, m.ms | 0); // 1.2.1
+    if (Array.isArray(m.x)) for (const r of m.x.slice(0, 6)) if (Array.isArray(r)) peer131(P, r); // 1.3.1: flares, upgrades
     if (m.t <= P.lastT) return; // older than what we have (only with the lag simulator)
     P.lastT = m.t;
     if (m.v !== undefined) peerVehicle(P, m.v, Math.min(t, m.t + P.clk.off), t);
@@ -7391,7 +7557,7 @@ function rbox(w, h, d, r, seg = 3) {
     if (!lid) return;
     let s = null;
     if (k === 's' && nums(v, 3, 10)) s = { t: at, x: cx(v[3]), z: cz(v[4]), h: v[5], sp: clamp(v[6], -20, 60), thr: v[7], rd: v[8], f: v[9] | 0, g: Array.isArray(v[11]) ? v[11] : null };
-    else if (k === 'p' && nums(v, 3, 13)) s = { t: at, x: cx(v[3]), y: clamp(v[4], -5, 700), z: cz(v[5]), fx: v[6], fy: v[7], fz: v[8], bk: v[9], sp: clamp(v[10], 0, 200), thr: v[11], f: v[12] | 0 };
+    else if (k === 'p' && nums(v, 3, 13)) s = { t: at, x: cx(v[3]), y: clamp(v[4], -5, 700), z: cz(v[5]), fx: v[6], fy: v[7], fz: v[8], bk: v[9], sp: clamp(v[10], 0, 200), thr: v[11], f: v[12] | 0, ra: num(v[14]) ? clamp(v[14], -7, 7) : 0 };
     else if (k === 'f' && nums(v, 2, 11)) s = { t: at, x: cx(v[2]), y: clamp(v[3], -5, 700), z: cz(v[4]), yaw: v[5], an: v[6] | 0, sp: v[7], f: v[8] | 0, p: v[9], c: v[10] | 0 };
     if (!s) return;
     if (lid !== P.lid) { // something new: swap their stand-in
@@ -7418,7 +7584,12 @@ function rbox(w, h, d, r, seg = 3) {
     } else if (k === 'p') {
       const type = PLANE_TYPES[PLANE_ORDER[v[2]]] && PLANE_ORDER[v[2]];
       if (!type) return null;
-      e = new Plane(type, P.team, new V3(s.x, s.y, s.z), Math.atan2(s.fx, s.fz), Math.asin(clamp(s.fy, -1, 1)), P);
+      const board = v[13] | 0;
+      if (board) { // 1.3.1: climbing back into a plane parked on a runway or deck
+        const o = byRef(board);
+        if (!o || !o.alive || o.kind !== 'plane' || o.team !== P.team || o.driver || o.type !== type) return null;
+        e = o; e.driver = P; e.landed = null;
+      } else e = new Plane(type, P.team, new V3(s.x, s.y, s.z), Math.atan2(s.fx, s.fz), Math.asin(clamp(s.fy, -1, 1)), P);
     } else if (k === 'f') {
       e = new Soldier(P.team, P); e.pos.set(s.x, s.y, s.z); e.group.position.copy(e.pos);
     }
@@ -7431,7 +7602,11 @@ function rbox(w, h, d, r, seg = 3) {
     const e = P.ent; P.ent = null;
     if (!e) return;
     if (e.kind === 'seat') { if (e.plane.seats && e.plane.seats[e.k] === P) e.plane.seats[e.k] = null; return; } // 1.2.1
-    if (e.kind === 'plane' && e.alive && e.speed < 12 && e.pos.y < 40 && e.driver === P) { e.driver = null; scene.remove(e.group); e.remove(); return; } // 1.2.1: parked: tidy it away
+    if (e.kind === 'plane' && e.alive && e.speed < 12 && e.pos.y < 40 && e.driver === P) { // 1.2.1: parked (1.3.1: it stays, for the team to fly again)
+      const f = landFrame(e); e.driver = null;
+      if (f) { e.peer = null; e.track = null; e.lid = 0; e.trigger = false; parkOn(e, f); } else { scene.remove(e.group); e.remove(); }
+      return;
+    }
     e.peer = null; e.track = null; e.lid = 0;
     if (e.kind === 'turret') { if (e.manned === P) e.manned = e.ownerDriver = e.driver = null; return; }
     if (e.kind === 'soldier') { if (e.alive) { scene.remove(e.group); e.remove(); } return; }
@@ -7519,7 +7694,7 @@ function rbox(w, h, d, r, seg = 3) {
       let x = lerp(a.x, b.x, k), y = lerp(a.y, b.y, k), z = lerp(a.z, b.z, k);
       if (ex) { x += F.x * sp * ex; y += F.y * sp * ex; z += F.z * sp * ex; }
       ease(e, x, y, z, dt);
-      e.bank = lerp(a.bk, b.bk, k); e.speed = sp; e.thr = a.thr;
+      e.bank = lerp(a.bk, b.bk, k); e.speed = sp; e.thr = a.thr; e.rollA = lerpA(a.ra || 0, b.ra || 0, k); // rollA: 1.3.1
       e.vel.copy(F).multiplyScalar(sp); e.desired.copy(F); e.prevYaw = Math.atan2(F.x, F.z);
       e.spin(dt); e.orient(dt); e.smoke(dt);
       e.trigger = !!(f & 1);
@@ -7536,13 +7711,13 @@ function rbox(w, h, d, r, seg = 3) {
       const mode = ANIM[a.an] || 'idle';
       e.group.position.copy(e.pos); e.group.rotation.y = e.yaw;
       poseAvatar(e.av, mode, dt, sp);
-      e.av.body.rotation.x = mode === 'swim' ? 0.9 : 0;
+      e.av.body.rotation.x = mode === 'swim' ? 0.9 : mode === 'prone' ? Math.PI / 2 : 0;
       e.swim = mode === 'swim'; e.onGround = mode === 'idle' || mode === 'walk';
       if (!!a.c !== e.chute) e.setChute(!!a.c);
       if (e.cd > 0) e.cd -= dt;
       if ((f & 1) && e.cd <= 0 && mode !== 'swim' && mode !== 'chute') {
         const yw = e.yaw, pt = a.p || 0;
-        _v1.set(e.pos.x - Math.cos(yw) * 0.6 + Math.sin(yw) * 1.2, e.pos.y + 1.55, e.pos.z + Math.sin(yw) * 0.6 + Math.cos(yw) * 1.2);
+        _v1.set(e.pos.x - Math.cos(yw) * 0.6 + Math.sin(yw) * 1.2, e.pos.y + (mode === 'prone' ? 0.4 : mode === 'crouch' ? 1.05 : 1.55), e.pos.z + Math.sin(yw) * 0.6 + Math.cos(yw) * 1.2);
         _v2.set(Math.sin(yw) * Math.cos(pt), Math.sin(pt), Math.cos(yw) * Math.cos(pt));
         _v2.add(_v3.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(WEAP.rifle.spread)).normalize();
         fire('rifle', e, _v1, _v2, { gi: 0 }); muzzleFlash(_v1, 0.4);
@@ -7592,11 +7767,11 @@ function rbox(w, h, d, r, seg = 3) {
   }
   function planeRow(e) {
     return [e.id, 1, PLANE_ORDER.indexOf(e.type), e.team, keyOf(e.driver), e.peer ? e.lid | 0 : 0, Math.ceil(e.hp), e.fireBits | 0,
-      r1(e.pos.x), r1(e.pos.y), r1(e.pos.z), r3(e.fwd.x), r3(e.fwd.y), r3(e.fwd.z), r2(e.bank), r1(e.speed), r2(e.thr), e.seats ? e.seats.map(keyOf) : 0]; // 1.2.1: who's in the gunner seats
+      r1(e.pos.x), r1(e.pos.y), r1(e.pos.z), r3(e.fwd.x), r3(e.fwd.y), r3(e.fwd.z), r2(e.bank), r1(e.speed), r2(e.thr), e.seats ? e.seats.map(keyOf) : 0, r2(e.rollA || 0)]; // 1.2.1: who's in the gunner seats (18: 1.3.1, a barrel roll)
   }
   function footRow(e) {
     const own = e === PLAYER.soldier, sp = own ? Math.hypot(e.vel.x, e.vel.z) : e.netSp || 0;
-    const an = own ? (e.chute ? 3 : e.swim ? 2 : !e.onGround ? 4 : sp > 0.6 ? 1 : 0) : e.anim | 0;
+    const an = own ? (e.chute ? 3 : e.swim ? 2 : !e.onGround ? 4 : PLAYER.stance === 2 ? 6 : PLAYER.stance === 1 ? 5 : sp > 0.6 ? 1 : 0) : e.anim | 0; // 5, 6: 1.3.1
     return [e.id, 2, 0, e.team, keyOf(e.driver), e.peer ? e.lid | 0 : 0, Math.ceil(e.hp), e.fireBits | 0,
       r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), r2(e.yaw), an, r1(sp), r2(own ? cam.pitch : e.aimPitch || 0), e.chute ? 1 : 0];
   }
@@ -7629,6 +7804,7 @@ function rbox(w, h, d, r, seg = 3) {
     });
     if (tu.length) S.u = tu;
     S.m = [MIS.n[0], Math.round(MIS.t[0]), MIS.n[1], Math.round(MIS.t[1])]; // 1.2.1: missiles ready, and the time to the next
+    S.z = snap131(); // 1.3.1: team upgrades
     S.p = humanStats(t);
     const b = GAME.bots.map(bot => [bot.key, bot.name, bot.team, bot.kills, bot.deaths]), bk = JSON.stringify(b);
     if (full || bk !== M.botKey) { M.botKey = bk; S.b = b; }
@@ -7669,7 +7845,7 @@ function rbox(w, h, d, r, seg = 3) {
   function sampleOf(r, t) {
     const s = { t, dk: r[4], lid: r[5] | 0, hp: r[6], f: r[7] | 0 };
     if (r[1] === 0) { s.x = r[8]; s.z = r[9]; s.h = r[10]; s.sp = r[11]; s.thr = r[12]; s.rd = r[13]; s.g = Array.isArray(r[14]) ? r[14] : null; s.sk = Array.isArray(r[15]) ? r[15] : null; }
-    else if (r[1] === 1) { s.x = r[8]; s.y = r[9]; s.z = r[10]; s.fx = r[11]; s.fy = r[12]; s.fz = r[13]; s.bk = r[14]; s.sp = r[15]; s.thr = r[16]; s.sk = Array.isArray(r[17]) ? r[17] : null; }
+    else if (r[1] === 1) { s.x = r[8]; s.y = r[9]; s.z = r[10]; s.fx = r[11]; s.fy = r[12]; s.fz = r[13]; s.bk = r[14]; s.sp = r[15]; s.thr = r[16]; s.sk = Array.isArray(r[17]) ? r[17] : null; s.ra = num(r[18]) ? r[18] : 0; }
     else { s.x = r[8]; s.y = r[9]; s.z = r[10]; s.yaw = r[11]; s.an = r[12] | 0; s.sp = r[13]; s.p = r[14]; s.c = r[15] | 0; }
     return s;
   }
@@ -7791,6 +7967,7 @@ function rbox(w, h, d, r, seg = 3) {
     });
     if (Array.isArray(S.u)) for (const r of S.u) applyTurret(r);
     if (Array.isArray(S.m)) misState(S.m); // 1.2.1
+    if (Array.isArray(S.z)) apply131(S.z); // 1.3.1
     if (Array.isArray(S.p)) applyStats(S.p);
     const e = PLAYER.ent;
     if (fr.mine && e && e.id === fr.mine[0] && e.alive && num(fr.mine[1])) {
@@ -7808,6 +7985,7 @@ function rbox(w, h, d, r, seg = 3) {
       else if (!e.fed && e.kind !== 'turret') addKillFeed(killer, e, victim);
     } else if (ev[0] === 'g') { const e = byRef(ev[2]); if (e && e !== PLAYER.ent && e.alive && e.kind !== 'turret') { scene.remove(e.group); e.remove(); } }
     else if (ev[0] === 'm') { if ((ev[2] === 0 || ev[2] === 1) && num(ev[3])) launchMissile(ev[2], ev[3] | 0, null, false); } // 1.2.1: a missile on its way
+    else if (ev[0] === 'z') ev131(ev.slice(2)); // 1.3.1
     else if (ev[0] === 'j') showMsg('', `<span class="c${ev[3] === 1 ? 1 : 0}">${esc(cleanName(ev[2]))}</span> ${ev[4] ? 'joined' : 'left'} the match`);
   }
   function spawnShot(ev) {
@@ -7878,9 +8056,9 @@ function rbox(w, h, d, r, seg = 3) {
     if (e.kind !== 'turret' && e.kind !== 'seat') M.myLids.set(e.id, e);
     if (e.kind === 'seat') return ['g', e.plane.nid || e.plane.id, e.k, qa(wrapA(cam.yaw)), qa(cam.pitch), f]; // 1.2.1: a gunner seat
     if (e.kind === 'ship') { const g = []; for (const G of e.guns) g.push(qa(G.yaw), qa(G.pitch)); return ['s', e.id, SHIP_ORDER.indexOf(e.type), r1(e.pos.x), r1(e.pos.z), r3(e.heading), r1(e.speed), r2(e.thr), r2(e.rudder), f, e.nid || 0, g]; }
-    if (e.kind === 'plane') return ['p', e.id, PLANE_ORDER.indexOf(e.type), r1(e.pos.x), r1(e.pos.y), r1(e.pos.z), r3(e.fwd.x), r3(e.fwd.y), r3(e.fwd.z), r2(e.bank), r1(e.speed), r2(e.thr), f | (e.landed ? 16 : 0)];
+    if (e.kind === 'plane') return ['p', e.id, PLANE_ORDER.indexOf(e.type), r1(e.pos.x), r1(e.pos.y), r1(e.pos.z), r3(e.fwd.x), r3(e.fwd.y), r3(e.fwd.z), r2(e.bank), r1(e.speed), r2(e.thr), f | (e.landed ? 16 : 0), e.nid || 0, r2(e.rollA || 0)]; // 13, 14: 1.3.1
     if (e.kind === 'soldier') {
-      const sp = Math.hypot(e.vel.x, e.vel.z), an = e.chute ? 3 : e.swim ? 2 : !e.onGround ? 4 : sp > 0.6 ? 1 : 0;
+      const sp = Math.hypot(e.vel.x, e.vel.z), an = e.chute ? 3 : e.swim ? 2 : !e.onGround ? 4 : PLAYER.stance === 2 ? 6 : PLAYER.stance === 1 ? 5 : sp > 0.6 ? 1 : 0; // 5, 6: 1.3.1
       return ['f', e.id, r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), r2(e.yaw), an, r1(sp), f, r2(cam.pitch), e.chute ? 1 : 0];
     }
     if (e.kind === 'turret') return ['t', TURRETS.indexOf(e), qa(e.gun.yaw), qa(e.gun.pitch), f];
@@ -7891,12 +8069,13 @@ function rbox(w, h, d, r, seg = 3) {
       if (t - room.lastSend >= IDLE_MS) { room.lastSend = t; send(room.up, 'i', { t: Math.round(t), g: room.myPing }); }
       return;
     }
-    const iv = 1000 / room.hz, has = !!(PLAYER.ent && PLAYER.ent.alive), urgent = M.shots.length || M.self.length || M.ms != null;
+    const iv = 1000 / room.hz, has = !!(PLAYER.ent && PLAYER.ent.alive), urgent = M.shots.length || M.self.length || M.ms != null || (M.x && M.x.length);
     if (t - room.lastSend < (urgent ? iv * 0.5 : has ? iv : 1000)) return;
     const m = { t: Math.round(t), g: room.myPing, v: myState() };
     if (M.shots.length) m.s = M.shots.splice(0, 16);
     if (M.self.length) m.d = M.self.splice(0, 4);
     if (M.ms != null) { m.ms = M.ms; M.ms = null; } // 1.2.1: a missile launch, from our computer
+    if (M.x && M.x.length) m.x = M.x.splice(0, 6); // 1.3.1
     room.lastSend = t;
     send(room.up, 'i', m);
   }
@@ -7968,6 +8147,11 @@ function rbox(w, h, d, r, seg = 3) {
     soloMatch: () => !!(M && room && (members().length < 2 || (M.withT || 0) < 60)),
     myKey: () => myId,
     askMissile: i => { if (M && !M.host) M.ms = i; },
+    // 1.3.1: ask the host for something (a flare, an upgrade), tell everyone about something, and find a thing by the host's id
+    ask131: r => { if (M && !M.host) (M.x || (M.x = [])).push(r); },
+    ev131: a => { if (M && M.host && M.events.length < 160) M.events.push(['z', now(), ...a]); },
+    entById: id => !M ? ENTS.find(e => e.id === id) || null : M.host ? ENTS.find(e => e.id === id) || null : M.netMap.get(id) || null,
+    refOf: e => M ? refOf(e) : 0, byRef: r => M ? byRef(r) : null,
     missile: (team, i) => { if (M && M.host) M.events.push(['m', now(), team, i]); },
     inWorld: () => !!(room && room.world),
     toLobby, quit,
@@ -8006,7 +8190,15 @@ function rbox(w, h, d, r, seg = 3) {
   function readName() {
     const n = cleanName($('oName').value);
     if (!n) { $('oMsg').textContent = 'Pick a name first.'; $('oName').focus(); return null; }
-    if (/^gametester$/i.test(n)) { if (!isTester()) { $('oMsg').textContent = 'GAMETESTER needs its password: type the name in Settings first.'; return null; } return 'GAMETESTER'; } // 1.2.1
+    if (/^gametester$/i.test(n)) { // 1.2.1 (1.3.1: the password is asked for here, now the name box in Settings is gone)
+      if (isTester()) return 'GAMETESTER';
+      const pw = prompt('GAMETESTER password');
+      if (pw) sha256(pw).then(h => {
+        if (h !== TESTER_KEY) { $('oMsg').textContent = 'Wrong password.'; Sound.play('deny'); return; }
+        settings.name = 'GAMETESTER'; settings.testerOk = h; saveObj(SET_KEY, settings); $('oMsg').textContent = 'GAMETESTER unlocked: press the button again.'; Sound.play('buy');
+      });
+      return null;
+    }
     settings.name = n; delete settings.testerOk; saveObj(SET_KEY, settings); $('sName').value = n;
     return n;
   }
@@ -8238,6 +8430,477 @@ function rbox(w, h, d, r, seg = 3) {
   // for testing from the console
   window.HBNet = { get room() { return room; }, get match() { return M; }, myId, stats, say, openChat, createRoom, joinRoom, joinWorld, playWorld, leaveRoom, startMatchHost, toLobby, quit };
 })();
+</script>
+<script id="hb-131">
+'use strict';
+/* ==========================================================================
+   1.3.1
+   - Barrel rolls (Shift + A or D in a plane)
+   - Blacking out: hold the nose (nearly) straight up for 4 seconds and you pass out; the screen flickers first
+   - Flares (X) in every plane and in the Battleship and Carrier: they pull homing missiles off you, and a
+     missile that reaches one blows up harmlessly in the air. A warning flashes while one is coming for you
+   - Hold E for 3 seconds to bail out of a plane
+   - Crouch and lie down (Ctrl), your hands on the gun in first person
+   - Lifeboats off a sinking carrier, team upgrades on the computer, missiles that can hit big ships
+   - Name tags and the map go dark at night (the computers' Map app still works)
+   - A low performance warning that offers to turn the graphics down
+   ========================================================================== */
+
+/* ---------------- tuning ---------------- */
+const AUTO_DMG = 0.7;                   // automatic guns (unmanned turrets, ships' AA, plane gunners) hit 30% softer
+const RAM_LOW = 0.3, RAM_HIT = 0.7;     // the Fighter only destroys a plane under 30% health or another Fighter; anything else loses 70%
+const ROLL_T = 1.1;                     // how long a barrel roll takes, seconds
+const BAIL_S = 3;                       // hold E this long to bail out
+const GLOC_S = 4, GLOC_Y = 0.96;        // seconds with the nose above about 74 degrees before you black out
+const FLARE_N = { fighter: 2, dual: 3, bomber: 5, jet: 6, battleship: 6, carrier: 8 }; // the dearer it is, the more it carries
+const FLARE_RELOAD = 20;                // ships get one back this often; planes refill when they land
+const UP_HP = 1, UP_SHOES = 2, UP_DISC = 4;
+const UPGRADES = [
+  { bit: UP_HP, name: 'Armor', icon: '🛡️', cost: 450, desc: 'Everyone on foot has 150 health instead of 100', box: [22, 64, 150, 196] },
+  { bit: UP_SHOES, name: 'Running Shoes', icon: '👟', cost: 200, desc: 'Everyone on foot runs 50% faster', box: [181, 64, 150, 196] },
+  { bit: UP_DISC, name: 'Half Price', icon: '🏷️', cost: 700, desc: 'Ships and planes cost half for your whole team', box: [340, 64, 150, 196] },
+];
+const SHIP_TGT = 1000;                  // missile targets from here up are ships: SHIP_TGT + the host's id for the ship
+
+/* ---------------- small things ---------------- */
+const TUP = [0, 0];                     // each team's upgrades (bits)
+const teamUp = (t, bit) => t >= 0 && !!(TUP[t] & bit);
+const priced = D => D && D.cost && teamUp(PLAYER.team, UP_DISC) ? Object.assign({}, D, { cost: Math.round(D.cost / 2) }) : D;
+const isNight = () => { if (!GAME.on || GAME.demo) return false; const h = timeOfDay(); return h < 6 || h >= 18; };
+const holdToBail = () => { const e = PLAYER.ent; return !!e && ((PLAYER.mode === 'plane' && e.alive && !e.landed) || (PLAYER.mode === 'gunner' && !e.ship)); };
+const myKey = () => NET.on ? NET.myKey() : 'me';
+
+/* ---------------- barrel rolls ---------------- */
+// a full turn round the nose, sliding a little toward the side it rolls to (called from Plane.update)
+function barrelRoll(pl, dt) {
+  if (!(pl.rollT > 0)) { pl.rollA = 0; return; }
+  pl.rollT = Math.max(0, pl.rollT - dt);
+  const f = 1 - pl.rollT / ROLL_T;
+  pl.rollA = pl.rollT > 0 ? pl.rollDir * TAU * smooth(0, 1, f) : 0;
+  const k = pl.rollDir * Math.sin(f * Math.PI) * 16 * dt; // right is (-fwd.z, 0, fwd.x)
+  pl.pos.x -= pl.fwd.z * k; pl.pos.z += pl.fwd.x * k;
+}
+
+/* ---------------- flares ---------------- */
+const FLARES = [];
+const FLARE_GEO = new THREE.CylinderGeometry(0.17, 0.17, 1.6, 6).rotateX(Math.PI / 2);
+const FLARE_MAT = new THREE.MeshBasicMaterial({ color: 0xff2a14, toneMapped: false, fog: false });
+const FLARE_GLOW = new THREE.SpriteMaterial({ map: canvasTex(64, 64, (x, w, h) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,230,1)'); g.addColorStop(0.25, 'rgba(255,90,50,.9)'); g.addColorStop(1, 'rgba(255,30,10,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); }), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false });
+function flareMax(e) { return !e || (e.kind !== 'plane' && e.kind !== 'ship') ? 0 : FLARE_N[e.type] || 0; }
+function flaresOf(e) { if (!e) return 0; if (e.flares === undefined) e.flares = flareMax(e); return e.flares; }
+// e launches one (key: whose it is online, so their own screen doesn't draw it twice). True if one went.
+function dropFlare(e, key) {
+  if (!e || !e.alive || flaresOf(e) <= 0 || (e.flareAt || 0) > GAME.time) return false;
+  e.flares--; e.flareAt = GAME.time + 0.45;
+  const pos = new V3(), vel = new V3();
+  if (e.kind === 'plane') { // out of the belly and back, falling away
+    pos.copy(e.pos).addScaledVector(e.fwd, -e.P.r * 0.5).addScaledVector(e.up, -1.2);
+    vel.copy(e.vel).multiplyScalar(0.55).addScaledVector(e.up, -14).addScaledVector(e.right, rand(-12, 12)); vel.y += rand(-3, 3);
+  } else { // fired up and out from the superstructure
+    pos.set(e.pos.x + rand(-2, 2), e.S.top * 0.7, e.pos.z + rand(-2, 2));
+    vel.set(rand(-16, 16), rand(32, 42), rand(-16, 16)).add(e.vel);
+  }
+  spawnFlare(pos, vel, e.team, key || 0, e);
+  if (NET.client && e === PLAYER.ent) NET.ask131(['f']);
+  return true;
+}
+function spawnFlare(pos, vel, team, key, from) {
+  const f = { pos: pos.clone(), vel: vel.clone(), team, key, from: from || null, t: 0, life: 4.5, alive: true, fx: 0, isFlare: true, hitCenter() { return this.pos; } };
+  f.mesh = new THREE.Mesh(FLARE_GEO, FLARE_MAT); f.mesh.position.copy(pos); scene.add(f.mesh);
+  f.glow = new THREE.Sprite(FLARE_GLOW); f.glow.scale.setScalar(9); f.mesh.add(f.glow);
+  FLARES.push(f);
+  Sound.play('flare', pos, from === PLAYER.ent);
+  decoy(f);
+  if (NET.host) NET.ev131(['f', r1(pos.x), r1(pos.y), r1(pos.z), r1(vel.x), r1(vel.y), r1(vel.z), team, key || 0]);
+  return f;
+}
+const r1 = v => Math.round(v * 10) / 10;
+// homing missiles after something of the flare's side, near it, go for the flare instead
+function decoy(f) {
+  for (const p of PROJS) {
+    if (!p.W.homing || p.dud || p.team === f.team || !p.target || p.target.isFlare || p.target.team !== f.team) continue;
+    if (p.target.pos.distanceTo(f.pos) < 160 && p.pos.distanceTo(f.pos) < 1100) p.target = f;
+  }
+  for (const m of MISSILES) { // the computer's missiles at ships, in their last few seconds
+    if (!m.ship || m.decoy || m.done || m.team === f.team || m.ship.team !== f.team) continue;
+    if (m.ship.pos.distanceTo(f.pos) < 250 && m.T - m.t < f.life - 0.3) { m.decoy = f; if (m.col) m.col.visible = false; }
+  }
+}
+function airBurst(pos) { // harmless: no splash damage, and small enough not to hurt gunners
+  explode(pos, 5, true);
+  for (let i = 0; i < 6; i++) firePuff(_v1.copy(pos).add(_v2.set(rand(-3, 3), rand(-2, 2), rand(-3, 3))), 2.4);
+  Sound.play('boom', pos);
+}
+function flareStep(dt) {
+  for (let i = FLARES.length - 1; i >= 0; i--) {
+    const f = FLARES[i];
+    f.t += dt;
+    f.vel.y -= 9 * dt; f.vel.multiplyScalar(1 - Math.min(1, 0.9 * dt));
+    f.pos.addScaledVector(f.vel, dt);
+    f.mesh.position.copy(f.pos);
+    if (f.vel.lengthSq() > 0.01) f.mesh.lookAt(_v1.copy(f.pos).add(f.vel));
+    f.glow.scale.setScalar(7 + Math.sin(f.t * 40) * 1.5 + Math.random() * 2);
+    f.fx -= dt;
+    if (f.fx <= 0) { f.fx = 0.035; fxFire.spawn(f.pos.x, f.pos.y, f.pos.z, rand(-1, 1), rand(-1, 1), rand(-1, 1), 0.35, 1.1, 0.3, 0xffd0a0, 0xff3a1a); fxSmoke.spawn(f.pos.x, f.pos.y, f.pos.z, 0, 0.6, 0, 1.6, 0.6, 2.4, 0xf2f2f2, 0xbdbdbd); }
+    // a missile that reaches it blows up with it
+    let hit = false;
+    for (const p of PROJS) if (p.target === f && !p.dud && p.pos.distanceTo(f.pos) < 7) { p.dud = true; p.life = 0; hit = true; }
+    if (hit) airBurst(f.pos);
+    if (hit || f.t > f.life || f.pos.y < Math.max(0, landH(f.pos.x, f.pos.z))) { f.alive = false; scene.remove(f.mesh); FLARES.splice(i, 1); }
+  }
+}
+// bots (and empty big ships' crews) throw flares at missiles too, though not always
+function botFlares(dt) {
+  if (NET.client) return;
+  for (const p of PROJS) {
+    if (!p.W.homing || p.dud || p.flareSeen || !p.target || p.target.isFlare || !p.target.alive) continue;
+    const e = p.target;
+    if (e === PLAYER.ent || (e.driver && (e.driver.isPlayer || e.driver.peer)) || !flareMax(e)) continue;
+    if (p.pos.distanceTo(e.pos) > 320) continue;
+    p.flareSeen = true;
+    if (Math.random() < 0.55) dropFlare(e, 0);
+  }
+}
+function flareReload(dt) {
+  for (const e of ENTS) {
+    if (!e.alive || e.flares === undefined) continue;
+    const max = flareMax(e);
+    if (e.kind === 'plane') { if (e.landed && e.svcDone) e.flares = max; continue; } // planes: at the service, with the fuel
+    if (e.flares < max) { e.flareRe = (e.flareRe || 0) + dt; if (e.flareRe >= FLARE_RELOAD) { e.flareRe = 0; e.flares++; } }
+  }
+}
+function clearFlares() { for (const f of FLARES) { f.alive = false; scene.remove(f.mesh); } FLARES.length = 0; }
+
+/* ---------------- missiles from the computer at big ships ---------------- */
+const shipKey = e => (NET.client ? e.nid : e.id) || 0; // the host's id for it
+const bigShips = team => ENTS.filter(e => e.kind === 'ship' && e.alive && e.team === team && (e.type === 'battleship' || e.type === 'carrier'));
+function tgtShip(i, team) {
+  const e = NET.entById(i - SHIP_TGT);
+  return e && e.alive && e.kind === 'ship' && (e.type === 'battleship' || e.type === 'carrier') && (team === undefined || e.team !== team) ? e : null;
+}
+const misName = m => m.ship ? 'the enemy ' + m.ship.S.name : isleName(m.I);
+function launchShipMissile(team, i, by, mine) {
+  const ship = tgtShip(i, team), H = HARBORS[team];
+  if (!ship || !H || !H.silo) return;
+  if (!NET.client) { if (MIS.n[team] <= 0) return; MIS.n[team]--; if (NET.host) NET.missile(team, i); }
+  const p0 = H.silo.pos.clone(), p3 = new V3(ship.pos.x, ship.S.top * 0.4, ship.pos.z), mid = p0.clone().lerp(p3, 0.5);
+  const m = { team, i, I: null, ship, by: by || CREW[team], t: 0, T: 8, p0, p1: p0.clone().setY(p0.y + 430), p2: new V3(lerp(mid.x, p3.x, 0.6), 560, lerp(mid.z, p3.z, 0.6)), p3, pos: p0.clone(), dir: new V3(0, 1, 0), smokeT: 0, mine: !!mine };
+  m.mesh = new THREE.Mesh(MISSILE_GEO, MAT.solid); m.mesh.castShadow = true; m.mesh.position.copy(p0); scene.add(m.mesh);
+  const R = ship.S.len * 0.55;
+  m.col = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 140, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+  m.col.position.set(ship.pos.x, 50, ship.pos.z); scene.add(m.col);
+  MISSILES.push(m);
+  H.silo.openT = 4;
+  for (let k = 0; k < 26; k++) fxSmoke.spawn(p0.x + rand(-5, 5), p0.y + rand(0, 2), p0.z + rand(-5, 5), rand(-14, 14), rand(2, 10), rand(-14, 14), rand(2.5, 4.5), rand(3, 5), rand(9, 15), 0xe9e9e9, 0x9a9a9a, -1, 1.2);
+  Sound.play('cannon', p0); Sound.play('missile', p0);
+  if (GAME.on && !GAME.demo) {
+    const aboard = PLAYER.ent && (PLAYER.ent === ship || PLAYER.ent.plane === ship);
+    if (aboard) showMsg('⚠ CRUISE MISSILE INBOUND!', `It's coming for your ${ship.S.name}. ${flaresOf(ship) ? 'Fire flares (X) as it gets close' : 'Get clear'}!`);
+    else showMsg(`<span class="c${team}">${TEAM[team].name}</span> launched a missile!`, `Target: <span class="c${ship.team}">${TEAM[ship.team].name}</span> ${esc(ship.S.name)}`);
+  }
+  if (mine || (PC.pend && PC.pend.i === i && team === PLAYER.team)) { PC.pend = null; PC.st = 'sent'; MCAM.m = m; MCAM.t = 0; MCAM.after = 0; }
+}
+// it follows the ship (or the flare that took it)
+function shipMissileStep(m, dt) {
+  const s = m.ship;
+  if (m.decoy) { if (m.decoy.alive) m.p3.copy(m.decoy.pos); return; }
+  if (ENTS.indexOf(s) >= 0) { m.p3.set(s.pos.x, Math.max(2, s.S.top * 0.4 - (s.sink || 0)), s.pos.z); m.col.position.set(s.pos.x, 50, s.pos.z); }
+}
+// 75% of the ship's full health, unless a flare took it
+function impactShipMissile(m) {
+  m.done = true;
+  scene.remove(m.mesh); scene.remove(m.col); m.col.geometry.dispose();
+  const c = m.p3;
+  if (m.decoy) { airBurst(c); return; }
+  explode(c, 34); Sound.play('mega');
+  for (let k = 0; k < 6; k++) setTimeout(() => explode(_v1.set(c.x + rand(-1, 1) * m.ship.S.wid, c.y + rand(0, 6), c.z + rand(-0.4, 0.4) * m.ship.S.len), rand(8, 14), true), 80 + k * 140);
+  const d = camera.position.distanceTo(c); camShake = Math.max(camShake, clamp(1.6 - d / 1200, 0.2, 1.4)); flash(clamp(0.6 - d / 3000, 0.1, 0.5));
+  if (!NET.client && m.ship.alive) applyDamage(m.ship, m.ship.maxHp * 0.75, { team: m.team, owner: m.by, W: WEAP.missile, wn: 'missile' });
+}
+
+/* ---------------- team upgrades (the computer's third app) ---------------- */
+function buyUpgrade(i) {
+  const U = UPGRADES[i], t = PLAYER.team; if (!U || PC.on.H.team !== t) return;
+  if (teamUp(t, U.bit)) { PC.note = 'Your team already has this'; PC.noteT = 2; Sound.play('deny'); return; }
+  if (PLAYER.gold < U.cost) { PC.note = `Not enough gold: ${U.name} costs ${U.cost}`; PC.noteT = 2.5; Sound.play('deny'); return; }
+  if (NET.client) {
+    if (PC.upAt && performance.now() - PC.upAt < 3000) return;
+    PC.upAt = performance.now(); NET.ask131(['u', U.bit]); PC.note = 'Buying…'; PC.noteT = 3; Sound.play('ui');
+    return;
+  }
+  PLAYER.gold -= U.cost; PLAYER.spent += U.cost;
+  grantUpgrade(t, U.bit, PLAYER);
+}
+function grantUpgrade(t, bit, by) {
+  if (teamUp(t, bit)) return false;
+  TUP[t] |= bit; applyUpgrade(t, bit);
+  if (NET.host) NET.ev131(['u', t, bit, by === PLAYER ? NET.myKey() : by && by.id || 0]);
+  upgradeNote(t, bit, by === PLAYER ? 'You' : by && by.name);
+  return true;
+}
+function applyUpgrade(t, bit) { // the health goes up for everyone already out there too
+  if (bit === UP_HP) for (const e of ENTS) if (e.kind === 'soldier' && e.team === t && e.alive && e.maxHp < 150) { e.hp += 50; e.maxHp = 150; }
+}
+function upgradeNote(t, bit, who) {
+  const U = UPGRADES.find(u => u.bit === bit);
+  if (!U || !GAME.on || GAME.demo) return;
+  if (t === PLAYER.team) { showMsg(`${U.icon} Team upgrade: ${U.name}`, `${esc(who || 'A teammate')} bought it. ${U.desc}`); Sound.play('cap'); }
+  else showMsg('', `<span class="c${t}">${TEAM[t].name}</span> bought ${U.name}`);
+}
+function wrapLines(x, text, maxW) {
+  const out = []; let line = '';
+  for (const w of text.split(' ')) { const t = line ? line + ' ' + w : w; if (x.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; }
+  if (line) out.push(line); return out;
+}
+function drawUpgrades(x, t) {
+  UPGRADES.forEach((U, i) => {
+    const b = U.box, own = teamUp(t, U.bit), hot = PC.hover === i && !own, can = PLAYER.gold >= U.cost;
+    button(x, b, '', own ? '#1f5a30' : '#1b2a3b', '#fff', 12, hot && can);
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff';
+    x.font = '38px system-ui,sans-serif'; x.fillText(U.icon, b[0] + b[2] / 2, b[1] + 38);
+    x.font = 'bold 16px system-ui,sans-serif'; x.fillText(U.name, b[0] + b[2] / 2, b[1] + 78);
+    x.font = '12px system-ui,sans-serif'; x.fillStyle = '#c8d4e0';
+    wrapLines(x, U.desc, b[2] - 18).forEach((l, k) => x.fillText(l, b[0] + b[2] / 2, b[1] + 102 + k * 15));
+    x.font = 'bold 15px system-ui,sans-serif'; x.fillStyle = own ? '#7dff9a' : can ? '#ffd23a' : '#9a8a6a';
+    x.fillText(own ? '✔ OWNED' : `${U.cost} gold`, b[0] + b[2] / 2, b[1] + b[3] - 22);
+  });
+  x.textAlign = 'left'; x.font = 'bold 14px system-ui,sans-serif'; x.fillStyle = '#ffd23a';
+  x.fillText(`Your gold: ${isTester() ? '∞' : fmt(PLAYER.gold)} · upgrades last the whole match`, 104, 300);
+}
+
+/* ---------------- lifeboats ---------------- */
+function launchLifeboats(c) {
+  const rx = Math.cos(c.heading), rz = -Math.sin(c.heading), fx = Math.sin(c.heading), fz = Math.cos(c.heading);
+  [-1, 1].forEach(sd => {
+    const off = c.S.wid / 2 + 5, along = sd * 12, x = c.pos.x + rx * sd * off + fx * along, z = c.pos.z + rz * sd * off + fz * along;
+    if (landH(x, z) > -1.5) return;
+    const b = new Ship('lifeboat', c.team, x, z, c.heading + sd * 0.6, null);
+    b.invuln = 3;
+  });
+  const near = PLAYER.ent && PLAYER.ent.pos && PLAYER.ent.pos.distanceTo(c.pos) < 200;
+  if (near && GAME.on && !GAME.demo) showMsg('Lifeboats away!', 'Swim to one and press E to take it to an island');
+}
+
+/* ---------------- planes left parked ---------------- */
+function boardParked(e) {
+  if (!e.alive || e.driver) return;
+  if (!e.landed) { const f = landFrame(e); if (!f) return; parkOn(e, f); }
+  e.speed = 0; e.thr = 0;
+  enterVehicle(e); Sound.play('ui');
+  showMsg('', e.svcDone ? 'Hold W to take off' : `Stay parked ${SERVICE_S} seconds to refuel, or hold W to take off`);
+}
+function parkedCap() { // keep at most 14 empty planes parked about: the one parked longest goes
+  if (NET.client) return;
+  const list = ENTS.filter(e => e.kind === 'plane' && e.alive && e.landed && !e.driver);
+  if (list.length <= 14) return;
+  const old = list.reduce((a, b) => (b.landed.park > a.landed.park ? b : a));
+  scene.remove(old.group); old.remove(); old.gone = true;
+}
+
+/* ---------------- blacking out ---------------- */
+function glocStep(dt) {
+  const e = PLAYER.ent;
+  const up = PLAYER.mode === 'plane' && e && e.alive && !e.landed && !e.disabled && e.fwd.y > GLOC_Y;
+  PLAYER.gT = up ? (PLAYER.gT || 0) + dt : Math.max(0, (PLAYER.gT || 0) - dt * 1.5);
+  if (up && PLAYER.gT > 0.8 && !PLAYER.gWarn) { PLAYER.gWarn = true; showMsg('G-FORCE!', 'You are blacking out: lower your nose!'); }
+  if (!PLAYER.gT) PLAYER.gWarn = false;
+  if (PLAYER.gT >= GLOC_S) passOut(e);
+}
+function passOut(e) {
+  PLAYER.gT = 0; PLAYER.gWarn = false; PLAYER.gOut = 1.6;
+  showMsg('You blacked out!', 'You climbed almost straight up for too long. Respawn, and keep the nose lower');
+  if (NET.on) NET.left(e);
+  e.driver = null; e.trigger = false; e.thr = 0; e.disabled = true; e.desired.set(e.fwd.x, -0.6, e.fwd.z).normalize();
+  Sound.engine(null);
+  PLAYER.deaths++;
+  playerDied(e);
+}
+
+/* ---------------- on foot: stances, and your hands in first person ---------------- */
+// Drawn in a second pass over the world (so walls never cut through them), built in metres and shown three times
+// bigger and three times further away, which looks the same but clears the camera's near plane.
+const VM = (() => {
+  const vs = new THREE.Scene(), root = new THREE.Group(), hold = new THREE.Group(), kick = new THREE.Group();
+  vs.add(root); root.add(hold); hold.add(kick); hold.scale.setScalar(3);
+  const hemi = new THREE.HemisphereLight(0xe8f0ff, 0x5a5040, 0.9), sunL = new THREE.DirectionalLight(0xfff0dc, 0.9);
+  sunL.position.copy(SUN_DIR); vs.add(hemi, sunL);
+  let built = '', gun = null, arms = [], lastCd = 0, bobT = 0, recoil = 0;
+  const box = (w, h, d, c) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c }));
+  // an arm from somewhere below the screen to a hand: a square sleeve and a square hand (like the sailors')
+  function arm(from, to, team) {
+    const g = new THREE.Group(), L = from.distanceTo(to);
+    const sl = box(0.09, 0.09, L, TEAM[team].shirt); sl.position.z = L / 2 - 0.05; g.add(sl);
+    const hd = box(0.1, 0.1, 0.1, C.skin); hd.position.z = L; g.add(hd);
+    g.position.copy(from); g.lookAt(to); kick.add(g); arms.push(g);
+  }
+  function rifle() { // the sailors' rifle, in metres
+    const g = new THREE.Group(), dk = 0x2b2b2b;
+    const add = (m, x, y, z) => { m.position.set(x, y, z); g.add(m); };
+    add(box(0.05, 0.08, 0.5, dk), 0, 0, -0.25); add(box(0.03, 0.03, 0.32, 0x1a1a1a), 0, 0.01, -0.64);
+    add(box(0.045, 0.07, 0.24, 0x5a3b1e), 0, -0.02, 0.1); add(box(0.04, 0.12, 0.05, dk), 0, -0.09, -0.3);
+    add(box(0.03, 0.03, 0.12, dk), 0, 0.055, -0.2);
+    return g;
+  }
+  function build(wk, team) {
+    for (const a of arms) kick.remove(a); arms = [];
+    if (gun) kick.remove(gun);
+    gun = wk === 'rifle' || typeof CA_GUNS === 'undefined' || !CA_GUNS[FOOT_GUN_MODEL[wk]] ? rifle() : CA_GUNS[FOOT_GUN_MODEL[wk]]().g;
+    gun.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; o.frustumCulled = false; } });
+    // its back end a forearm's length ahead and a little right and down, both hands round it where you can see them
+    const bb = new THREE.Box3().setFromObject(gun), len = bb.max.z - bb.min.z, short = len < 0.35;
+    const tube = wk === 'rpg', gx = tube ? 0.25 : short ? 0.14 : 0.2, cy = tube ? -0.19 : short ? -0.17 : -0.21, rear = tube ? -0.22 : short ? -0.48 : -0.45; // the launcher sits on the shoulder
+    gun.position.set(gx - (bb.min.x + bb.max.x) / 2, cy - (bb.min.y + bb.max.y) / 2, rear - bb.max.z); kick.add(gun);
+    const grip = new V3(gx, cy - 0.035, rear - (short ? 0.04 : 0.12));
+    const fore = short ? new V3(gx - 0.05, cy - 0.06, rear - 0.05) : new V3(gx - 0.01, cy - 0.025, rear - Math.min(0.48, len * 0.5));
+    arm(new V3(0.34, -0.5, -0.05), grip, team);
+    arm(new V3(-0.12, -0.55, -0.15), fore, team);
+    built = wk + team;
+  }
+  function render() {
+    const s = PLAYER.soldier, wk = FOOT_GUNS[PLAYER.wpn || 0] || 'rifle';
+    const scoped = (cam.zoom || IN.rmb) && wk === 'sniper';
+    const on = GAME.on && !GAME.demo && PLAYER.mode === 'foot' && settings.fp && s && s.alive && !s.chute && !s.swim && !PC.on && !MCAM.m && !CINE.on && !scoped;
+    if (!on) return;
+    if (built !== wk + s.team) build(wk, s.team);
+    // bob while walking, kick when firing, sway a little lower when lying down
+    const sp = Math.hypot(s.vel.x, s.vel.z); bobT += Math.min(0.05, sp * 0.0016 + 0.001) * 6;
+    if (s.cd > lastCd + 0.01) recoil = 1; lastCd = s.cd; recoil = Math.max(0, recoil - 0.12);
+    kick.position.set(Math.sin(bobT) * 0.008 * Math.min(1, sp / 6), Math.abs(Math.cos(bobT)) * 0.008 * Math.min(1, sp / 6) - (PLAYER.stance === 2 ? 0.02 : 0), recoil * 0.05);
+    kick.rotation.x = recoil * 0.08;
+    root.position.copy(camera.position); root.quaternion.copy(camera.quaternion);
+    const k = 0.35 + 0.65 * (DN.k ?? 1); hemi.intensity = 0.9 * k; sunL.intensity = 0.9 * k;
+    renderer.autoClear = false; renderer.clearDepth(); renderer.render(vs, camera); renderer.autoClear = true;
+  }
+  return { render };
+})();
+
+/* ---------------- the low performance warning ---------------- */
+const PERF = { last: 0, n: 0, acc: 0, low: 0, asked: false };
+if (settings.perfWarn === undefined) settings.perfWarn = 1;
+segBind('sPerf', 'perfWarn');
+function perfCheck(fps, span) {
+  const busy = !playing() || GAME.paused || document.hidden || overlayOpen() || CINE.on || !settings.perfWarn || PERF.asked || qualityLevel() === 'low';
+  PERF.low = busy || fps >= 30 ? 0 : PERF.low + span;
+  if (PERF.low >= 10) { PERF.asked = true; perfPop(); }
+}
+function perfPop() {
+  if ($('perfPop')) return;
+  const d = document.createElement('div'); d.id = 'perfPop';
+  d.innerHTML = '<div class="panel ts"><h2>Low performance</h2><p>The game has been running under 30 frames a second for a while. We recommend turning the graphics down to <b>Low</b>.</p><p style="opacity:.75;font-size:13px">You can turn this warning off in Settings.</p><div class="btns"><button class="btn go" id="perfOk">OK, set graphics to Low</button><button class="btn" id="perfNo">Not now</button></div></div>';
+  document.body.appendChild(d);
+  GAME.skipPause = true; if (document.pointerLockElement) document.exitPointerLock();
+  const close = () => { d.remove(); resumeLock(); };
+  $('perfOk').onclick = () => { const b = $('sQual').querySelector('[data-v="low"]'); if (b) b.click(); close(); showMsg('', 'Graphics set to Low'); };
+  $('perfNo').onclick = () => { Sound.play('ui'); close(); };
+}
+(function perfLoop(t) {
+  requestAnimationFrame(perfLoop);
+  const dt = (t - PERF.last) / 1000; PERF.last = t;
+  if (!(dt > 0 && dt < 1)) return;
+  PERF.acc += dt; PERF.n++;
+  if (PERF.acc >= 0.5) { perfCheck(PERF.n / PERF.acc, PERF.acc); PERF.acc = 0; PERF.n = 0; }
+})(0);
+
+/* ---------------- touch buttons ---------------- */
+(() => {
+  const css = document.createElement('style');
+  css.textContent = '#tFlare{right:calc(196px + env(safe-area-inset-right));bottom:calc(30px + env(safe-area-inset-bottom));width:54px;height:54px;font-size:12px;border-color:#ff8a70}#tRoll{right:calc(44px + env(safe-area-inset-right));bottom:calc(212px + env(safe-area-inset-bottom));width:50px;height:50px;font-size:12px}';
+  document.head.appendChild(css);
+  for (const [id, label] of [['tFlare', 'FLARE'], ['tRoll', 'ROLL']]) { const b = document.createElement('button'); b.className = 'tbtn hidden'; b.id = id; b.textContent = label; $('touch').appendChild(b); }
+  bindTap('tFlare', () => { if (playing()) key131('KeyX'); });
+  bindTap('tRoll', () => { const e = PLAYER.ent; if (playing() && PLAYER.mode === 'plane' && e && e.alive && !e.landed && !e.disabled && !(e.rollT > 0)) { e.rollT = ROLL_T; e.rollDir = TOUCH.mx < 0 ? -1 : 1; } });
+  const u = $('tUse'); // held, for bailing out
+  u.addEventListener('pointerdown', () => { TOUCH.use = true; });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) u.addEventListener(ev, () => { TOUCH.use = false; });
+})();
+
+/* ---------------- hooks from the game ---------------- */
+function key131(code) {
+  if (!playing() || GAME.over || overlayOpen() || PC.on || CINE.on) return false;
+  const e = PLAYER.ent;
+  if ((code === 'KeyA' || code === 'KeyD') && (KEYS.ShiftLeft || KEYS.ShiftRight) && PLAYER.mode === 'plane' && e && e.alive && !e.landed && !e.disabled) {
+    if (!(e.rollT > 0)) { e.rollT = ROLL_T; e.rollDir = code === 'KeyD' ? 1 : -1; }
+    return true;
+  }
+  if (code === 'KeyX' && (PLAYER.mode === 'plane' || PLAYER.mode === 'ship') && e && e.alive) {
+    if (!flareMax(e)) showMsg('', `The ${esc(e.S ? e.S.name : e.P.name)} has no flares`);
+    else if (!dropFlare(e, myKey()) && !flaresOf(e)) { showMsg('', e.kind === 'plane' ? 'No flares left: land to reload' : 'No flares left: one comes back every 20 seconds'); Sound.play('deny'); }
+    return true;
+  }
+  if ((code === 'ControlLeft' || code === 'ControlRight') && PLAYER.mode === 'foot' && PLAYER.soldier && PLAYER.soldier.alive && !PLAYER.soldier.swim && !PLAYER.soldier.chute) {
+    PLAYER.stance = ((PLAYER.stance || 0) + 1) % 3; Sound.play('ui');
+    return true;
+  }
+  if (code === 'Space' && PLAYER.mode === 'foot' && PLAYER.stance) { PLAYER.stance = 0; PLAYER.noJumpT = 0.35; return true; }
+  return false;
+}
+function step131(dt, c) {
+  if (PLAYER.mode !== 'foot') PLAYER.stance = 0;
+  if (PLAYER.noJumpT > 0) PLAYER.noJumpT -= dt;
+  if (PLAYER.gOut > 0) PLAYER.gOut -= dt;
+  // holding E to bail out
+  if (holdToBail() && (KEYS.KeyE || TOUCH.use) && !overlayOpen() && !PC.on) { PLAYER.bailT = (PLAYER.bailT || 0) + dt; if (PLAYER.bailT >= BAIL_S) { PLAYER.bailT = 0; exitVehicle(); } }
+  else PLAYER.bailT = 0;
+  glocStep(dt);
+  flareStep(dt); botFlares(dt); flareReload(dt);
+  parkedCap();
+  for (const e of ENTS) if (e.kind === 'ship' && e.type === 'lifeboat' && e.model) { // the crew in it
+    if (e.model.rider) e.model.rider.group.visible = !!e.driver && !(e.driver === PLAYER && settings.fp);
+    const mate = e.group.userData.mate; if (mate) mate.group.visible = !!e.driver;
+  }
+}
+function reset131() {
+  TUP[0] = TUP[1] = 0; clearFlares();
+  PLAYER.stance = 0; PLAYER.gT = 0; PLAYER.gOut = 0; PLAYER.bailT = 0;
+  PERF.low = 0;
+}
+function hud131(mode, e) {
+  // missile incoming: on your plane or ship (or the one you're a gunner on)
+  const me = e && e.kind === 'seat' ? e.plane : e;
+  let inc = false;
+  if (playing() && !GAME.over && me && me.alive && (me.kind === 'plane' || me.kind === 'ship')) {
+    for (const p of PROJS) if (p.W.homing && !p.dud && p.target === me) { inc = true; break; }
+    if (!inc) for (const m of MISSILES) if (m.ship === me && !m.decoy && !m.done) { inc = true; break; }
+  }
+  setShow('misWarn', inc);
+  if (inc) {
+    setText('misWarn', me === e && flaresOf(me) > 0 ? 'MISSILE INCOMING, DEPLOY FLARE IMMEDIATELY!' : 'MISSILE INCOMING!');
+    const t = performance.now(); if (t - (PLAYER.mwAt || 0) > 340) { PLAYER.mwAt = t; Sound.play('mwarn'); }
+  }
+  // blacking out: the edges close in and the picture flickers, then black
+  const g = $('gloc'), f = PLAYER.gOut > 0 ? 1 : clamp((PLAYER.gT || 0) / GLOC_S, 0, 1);
+  const o = PLAYER.gOut > 0 ? Math.min(1, PLAYER.gOut) : f > 0 ? f * 0.82 * (0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 70))) + (Math.random() < f * 0.25 ? 0.15 : 0) : 0;
+  if (g.style.opacity !== String(o)) g.style.opacity = o;
+  if (touchOn()) {
+    setShow('tFlare', (mode === 'plane' || mode === 'ship') && !!flareMax(e));
+    setShow('tRoll', mode === 'plane');
+    if (mode === 'plane' || mode === 'ship') setText('tFlare', flareMax(e) ? 'FLARE ' + flaresOf(e) : 'FLARE');
+  }
+}
+// online: what players ask the host for, and what the host tells everyone
+function peer131(P, r) {
+  if (!GAME.on || GAME.over) return;
+  if (r[0] === 'f') { const e = P.ent; if (e && (e.kind === 'plane' || e.kind === 'ship')) dropFlare(e, P.id); }
+  else if (r[0] === 'u') {
+    const U = UPGRADES.find(u => u.bit === r[1]), H = HARBORS[P.team], e = P.ent;
+    if (!U || teamUp(P.team, U.bit) || !H || !H.pc || !e || !e.alive || e.kind !== 'soldier' || e.pos.distanceTo(H.pc.stand) > 10) return;
+    grantUpgrade(P.team, U.bit, P);
+  }
+}
+function ev131(a) {
+  if (a[0] === 'f') {
+    if (a[8] && String(a[8]) === NET.myKey()) return; // ours: already flying here
+    spawnFlare(new V3(a[1], a[2], a[3]), new V3(a[4], a[5], a[6]), a[7], a[8], null);
+  } else if (a[0] === 'u') {
+    const t = a[1] === 1 ? 1 : 0, bit = a[2] | 0, U = UPGRADES.find(u => u.bit === bit); if (!U) return;
+    const mine = String(a[3]) === NET.myKey();
+    if (mine) { PLAYER.spent += U.cost; PLAYER.gold -= U.cost; PC.upAt = 0; }
+    if (!teamUp(t, bit)) { TUP[t] |= bit; applyUpgrade(t, bit); }
+    upgradeNote(t, bit, mine ? 'You' : 'A teammate');
+  }
+}
+const snap131 = () => [TUP[0], TUP[1]];
+function apply131(z) { [0, 1].forEach(t => { const n = z[t] | 0, add = n & ~TUP[t]; if (!add) return; TUP[t] |= add; for (const U of UPGRADES) if (add & U.bit) applyUpgrade(t, U.bit); }); }
 </script>
 <!-- hb-reel:start -->
 <script id="hb-reel">
