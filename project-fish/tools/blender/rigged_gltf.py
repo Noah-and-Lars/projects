@@ -1,6 +1,6 @@
 """Reading and writing animated, skinned glTF files for the guns that bring
-their own arms (convert_fn502.py; convert_beretta.py has its own copy of
-the same code): the download's accessors, quaternion and matrix maths,
+their own arms (convert_fn502.py, convert_makarov.py and convert_hipistol.py;
+convert_beretta.py has its own copy of the same code): the download's accessors, quaternion and matrix maths,
 sampling a channel as glTF's LINEAR does, posing a skeleton and its skinned
 meshes, finding loose pieces of a mesh, and writing a .glb with embedded
 WebP textures.
@@ -21,10 +21,10 @@ COMPONENTS = {5126: np.float32, 5123: np.uint16, 5121: np.uint8, 5125: np.uint32
 WIDTH = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4, 'MAT4': 16}
 
 
-def inside(folder, uri):
+def find(folder, uri, required=False):
     """The path of a file the download names, which must be a plain file in
     its own folder (or its textures/ folder, or loose beside scene.gltf),
-    not one reaching out of it."""
+    not one reaching out of it; None if it isn't there (unless required)."""
     base = os.path.realpath(folder)
     if uri.startswith('data:') or os.path.isabs(uri) or '..' in uri.replace('\\', '/').split('/'):
         raise SystemExit(f'unexpected file {uri!r} in the download')
@@ -32,7 +32,14 @@ def inside(folder, uri):
         path = os.path.realpath(os.path.join(folder, candidate))
         if os.path.commonpath([base, path]) == base and os.path.isfile(path):
             return path
-    raise SystemExit(f'{uri} not found in {folder}')
+    if required:
+        raise SystemExit(f'{uri} not found in {folder}')
+    return None
+
+
+def inside(folder, uri):
+    """The path of a file the download names (see find), which must be there."""
+    return find(folder, uri, required=True)
 
 
 def read_gltf(folder):
