@@ -15,7 +15,8 @@ assets/fn502.glb.)
 
 Like the Beretta (convert_beretta.py), it comes with its own arms (gloved
 hands and sleeves) and its own animations, and the game plays its maker's
-clips as they are. One skeleton holds the arms and the gun (frame, slide,
+clips as they are. The reading, turning and measuring are shared with the
+same maker's Makarov PM (cransh_rig.py; convert_makarov.py). One skeleton holds the arms and the gun (frame, slide,
 trigger, hammer, magazine), and there are five clips: FN_Shot (one shot),
 FN_Reload (with rounds left: the slide doesn't move), FN_ReloadFull (from
 empty: after the fresh magazine goes in, the support hand racks the slide),

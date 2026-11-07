@@ -1,12 +1,13 @@
 // Fits the outfit gloves (the same three downloads build_gear.mjs makes the
 // soldier's from) to the arms that come with the animated guns (the Beretta
-// 92FS, assets/beretta.glb, the FN 502, assets/fn502.glb, and the Browning
-// Hi-Power, assets/hipistol.glb), so they can be worn on those arms too:
+// 92FS, assets/beretta.glb, the FN 502, assets/fn502.glb, the Browning
+// Hi-Power, assets/hipistol.glb, and the Makarov PM, assets/makarov.glb), so
+// they can be worn on those arms too:
 // assets/gear/gloves_<glove>_<rig>.glb.
 //
 // From the project-fish folder (after the guns are built):
 //
-//     node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/gear
+//     node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/makarov.glb assets/gear
 //
 // (Options: --only <glove id>, e.g. --only gloves_camo; --debug DIR writes
 // what it found for each hand as JSON.)
@@ -19,7 +20,7 @@
 // for the right, simplified once rigged), only here the hand it's fitted to
 // is the rig's, in the pose its arms were skinned in (their bind pose: a
 // T-pose with flat hands for the Beretta's Mixamo arms, arms out in front
-// for the FN 502's and the Hi-Power's). glove.mjs reads a skeleton laid out
+// for the FN 502's, the Makarov's and the Hi-Power's). glove.mjs reads a skeleton laid out
 // like the soldier's, so it's handed one: the rig's bones under his bone
 // names (see rigView), its own hand's skin as "his own glove" (for the
 // fingertips' length and the fingers' thickness) and, for the FN 502 and the
@@ -84,7 +85,7 @@ const SOURCES = positional[0];
 const OUT = positional[positional.length - 1];
 const GUNS = positional.slice(1, -1);
 if (!SOURCES || !OUT || !GUNS.length) {
-  console.error('usage: node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/gear [--only gloves_camo] [--debug DIR]');
+  console.error('usage: node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/makarov.glb assets/gear [--only gloves_camo] [--debug DIR]');
   process.exit(1);
 }
 const ONLY = option('--only', null);

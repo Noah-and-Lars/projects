@@ -18,7 +18,8 @@
     "build-x4": "mkdir -p build assets && blender --background --python tools/blender/convert_retarget.py -- build/upload-xiri build/x4-raw.glb --arms assets/soldier.glb && gltf-transform meshopt build/x4-raw.glb assets/x4.glb --level high",
     "build-mp7": "mkdir -p build assets && blender --background --python tools/blender/convert_retarget.py -- build/upload-mp7 build/mp7-raw.glb --arms assets/soldier.glb && gltf-transform meshopt build/mp7-raw.glb assets/mp7.glb --level high",
     "build-ar15": "mkdir -p build assets && blender --background --python tools/blender/convert_retarget.py -- build/upload-ar15 build/ar15-raw.glb --arms assets/soldier.glb && gltf-transform meshopt build/ar15-raw.glb assets/ar15.glb --level high",
-    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-arms && npm run build-soldier && npm run build-gear && npm run build-x4 && npm run build-mp7 && npm run build-ar15"
+    "build-makarov": "mkdir -p assets && blender --background --python tools/blender/convert_makarov.py -- build/upload-makarov build/makarov-raw.glb && gltf-transform meshopt build/makarov-raw.glb assets/makarov.glb --level high",
+    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-makarov && npm run build-arms && npm run build-soldier && npm run build-gear && npm run build-x4 && npm run build-mp7 && npm run build-ar15"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.2.1",

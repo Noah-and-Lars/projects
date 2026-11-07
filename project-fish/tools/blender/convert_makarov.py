@@ -139,7 +139,8 @@ COPYRIGHT = ('This work is based on "Makarov PM FPS animations" '
              '(https://sketchfab.com/3d-models/makarov-pm-fps-animations-d02ebd58e3cf44acb7af73e3f156be28) '
              'by Cransh (https://sketchfab.com/ccransh) licensed under CC-BY-4.0 '
              '(http://creativecommons.org/licenses/by/4.0/). '
-             'Changed for Project Fish: turned, scaled to real size and placed for the game, its attachments '
+             'Changed for Project Fish: turned, scaled to real size and placed for the game, its arms\' points taken '
+             'back into their skin\'s space, its attachments '
              '(a suppressor and a red dot sight) left out, a faint stamp rubbed off, textures shrunk and stored '
              'as WebP, compressed.')
 
@@ -256,7 +257,6 @@ def main():
     gun = Gun(BONES, MESHES, MATERIALS, SCALE, CLIPS, plain_uv, PORT_AHEAD, camera_node=CAMERA_NODE,
               dropped=DROPPED, dropped_meshes=DROPPED_MESHES, rest_times=rest_times,
               mesh_fix={'mesh_Mat_0': ARMS_FIX}, own_frame='slide')
-    gun.debug = os.environ.get('MAKAROV_DEBUG')
     rig, meshes, clips = convert(g, accessor, gun)
     info, gun_turn = measure(rig, meshes, clips, gun, event_clips=('shoot', 'reload', 'reloadEmpty', 'walk', 'idle'),
                              parts=True)

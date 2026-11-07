@@ -81,7 +81,6 @@ class Gun:
         self.rest_times = tuple(rest_times)
         self.mesh_fix = mesh_fix or {}
         self.own_frame = own_frame
-        self.debug = None
 
 
 # --- Reading the download -------------------------------------------------------
@@ -378,8 +377,6 @@ def measure(rig, meshes, clips, gun, event_clips=('shoot', 'reload', 'reloadEmpt
     out['cant_deg'] = round(math.degrees(math.atan2(F[0, 1], F[1, 1])), 2)  # top towards the left (+)
     in_gun = lambda p: F[:3, :3] @ np.asarray(p, np.float64)  # noqa: E731  (the gun's own frame to the gun node's)
 
-    if gun.debug:
-        np.save(gun.debug, np.c_[own, dom])
     out['gun_length'] = round(float(np.ptp(own[:, 2])), 4)
     out['gun_height'] = round(float(np.ptp(own[:, 1])), 4)
     out['gun_width'] = round(float(np.ptp(own[:, 0])), 4)
