@@ -1,8 +1,10 @@
 // A simple, temporary loadout menu: press B in the game to choose each gun's
 // attachments, and (its last tab) your outfit (src/outfitMenu.js). Each
 // gun's tab can also put that gun in your hands (onPickGun: the game's, the
-// gun's key) and goes back to the game. It releases the mouse while it's
-// open; B, Esc or "Back to game" closes it and takes the mouse again.
+// gun's key) and goes back to the game. Every tab has a button that opens
+// the AR-15 breakdown (onBreakdown: the game's; the menu closes without
+// taking the mouse back). It releases the mouse while it's open; B, Esc or
+// "Back to game" closes it and takes the mouse again.
 
 import { SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
@@ -35,6 +37,7 @@ export class LoadoutMenu {
     this.gun = LOADOUT[0];
     this.open = false;
     this.onPickGun = null; // (key) => puts that gun in the hands
+    this.onBreakdown = null; // () => opens the AR-15 breakdown
     this.element.hidden = true;
     document.addEventListener('keydown', (e) => {
       if (!this.open) return;
@@ -59,12 +62,15 @@ export class LoadoutMenu {
     this.input.unlock();
   }
 
-  close() {
+  // relock: false leaves the mouse free (for something that opens over the
+  // game, as the breakdown does).
+  close(relock = true) {
     if (!this.open) return;
     this.open = false;
     this.element.hidden = true;
     if (this.outfitMenu) this.outfitMenu.hide();
     document.body.classList.remove('menu-open');
+    if (!relock) return;
     // Back into the game (a key press or click counts as asking for the
     // mouse). If the browser won't give it back yet, onFailedLock is told.
     this.input.lock().then(() => {
@@ -101,6 +107,7 @@ export class LoadoutMenu {
     if (this.gun === OUTFIT) {
       panel.classList.add('wide');
       this.outfitMenu.render(panel);
+      if (this.onBreakdown) panel.append(this.showcaseRow());
       panel.append(this.backButton());
       el.append(panel);
       return;
@@ -167,8 +174,30 @@ export class LoadoutMenu {
       panel.append(row);
     }
 
+    if (this.onBreakdown) panel.append(this.showcaseRow());
     panel.append(this.backButton());
     el.append(panel);
+  }
+
+  // A button that plays the AR-15 breakdown: the rifle taken apart part by
+  // part, each one labelled (src/showcase/breakdown.js).
+  showcaseRow() {
+    const row = document.createElement('div');
+    row.className = 'slot showcase';
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = 'Showcase';
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'option';
+    open.textContent = 'AR-15 breakdown';
+    open.title = 'Watch an AR-15 taken apart part by part, with what each part does.';
+    open.addEventListener('click', () => {
+      this.close(false);
+      this.onBreakdown();
+    });
+    row.append(label, open);
+    return row;
   }
 
   backButton() {

@@ -150,6 +150,41 @@ menu.onFailedLock = () => {
   overlay.hidden = false;
 };
 
+// --- The AR-15 breakdown (the loadout menu's Showcase button) ---
+//
+// It opens over the game with its own renderer (src/showcase/breakdown.js),
+// and its code and model are only loaded when it's opened. Meanwhile the
+// game stands still: the frame loop does nothing (so nothing moves, fires
+// or is drawn), and the mouse stays free, as it is in the menu. Closing it
+// (Esc, its Close button) frees all it made and goes back to the menu.
+let showcase = null; // the Breakdown while it's open (or loading)
+async function openBreakdown() {
+  if (showcase) return;
+  showcase = { loading: true };
+  input.releaseAll();
+  let Breakdown, script;
+  try {
+    const [engine, parts] = await Promise.all([import('./showcase/breakdown.js'), import('./showcase/arSlrParts.js')]);
+    Breakdown = engine.Breakdown;
+    script = parts.AR15_BREAKDOWN;
+  } catch (error) {
+    console.error(error);
+    showcase = null;
+    menu.show();
+    return;
+  }
+  const show = new Breakdown({
+    script,
+    onClose: () => {
+      showcase = null;
+      menu.show();
+    },
+  });
+  showcase = show;
+  show.play().catch((error) => console.error(error));
+}
+menu.onBreakdown = openBreakdown;
+
 // --- Window size and field of view ---
 
 // three.js wants the vertical FOV. Work it out from the horizontal FOV on a
@@ -533,6 +568,11 @@ let accumulator = 0;
 const lookDirection = new THREE.Vector3();
 
 renderer.setAnimationLoop((time) => {
+  // (Standing still while the breakdown is open, and not catching up after.)
+  if (showcase) {
+    lastTime = null;
+    return;
+  }
   const cpuStart = performance.now();
   const frameSeconds = lastTime === null ? 0 : Math.min((time - lastTime) / 1000, MAX_FRAME_SECONDS);
   lastTime = time;

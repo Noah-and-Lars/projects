@@ -1,0 +1,94 @@
+/* The gun breakdown (src/showcase/breakdown.js): a full-window overlay with
+   its own canvas, the leader line, the part's card, the title and the
+   controls. The module adds this file to the page itself. */
+
+.bd-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, #2e343b 0%, #181b1f 58%, #0b0c0e 100%);
+  color: #e9edf1;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+}
+.bd-root[hidden] { display: none; }
+.bd-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.bd-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 55%, rgba(0, 0, 0, 0.5) 100%);
+}
+.bd-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.bd-line { fill: none; stroke: #f2b84b; stroke-width: 1.5; stroke-linejoin: round; filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8)); }
+.bd-dot { fill: #f2b84b; opacity: 0; filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9)); }
+.bd-ring { fill: none; stroke: #f2b84b; stroke-width: 1.5; opacity: 0; }
+
+.bd-card {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 14px 18px 16px;
+  background: rgba(13, 15, 18, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #f2b84b;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+.bd-card[hidden] { display: none; }
+.bd-kicker { font-size: 11px; letter-spacing: 0.16em; color: #f2b84b; font-variant-numeric: tabular-nums; }
+.bd-title { margin: 4px 0 8px; font-size: clamp(18px, 1.9vw, 26px); font-weight: 650; line-height: 1.15; letter-spacing: 0.01em; }
+.bd-text { margin: 0; font-size: clamp(13px, 1.15vw, 16px); line-height: 1.5; color: #c8d0d7; }
+
+.bd-titlecard {
+  position: absolute;
+  left: 50%;
+  bottom: 13%;
+  transform: translateX(-50%);
+  width: min(92vw, 900px);
+  text-align: center;
+  pointer-events: none;
+}
+.bd-titlecard[hidden] { display: none; }
+.bd-name { font-size: clamp(40px, 7vw, 92px); font-weight: 750; letter-spacing: 0.16em; line-height: 1; text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6); }
+.bd-sub { margin-top: 12px; font-size: clamp(11px, 1.2vw, 15px); letter-spacing: 0.32em; text-transform: uppercase; color: #f2b84b; }
+.bd-credit { margin-top: 14px; font-size: 12px; color: #8f99a2; }
+.bd-buttons { margin-top: 18px; display: flex; gap: 12px; justify-content: center; pointer-events: auto; }
+
+.bd-root button {
+  font: inherit;
+  font-size: 13px;
+  color: #e9edf1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  padding: 7px 16px;
+  cursor: pointer;
+}
+.bd-root button:hover { background: rgba(242, 184, 75, 0.2); border-color: #f2b84b; }
+.bd-close { position: absolute; top: 16px; right: 16px; }
+.bd-root kbd {
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  color: #aab3bb;
+}
+.bd-hint { position: absolute; left: 20px; bottom: 26px; font-size: 12px; color: #7f8992; pointer-events: none; }
+.bd-hint kbd { margin: 0 2px; }
+.bd-progress { position: absolute; left: 20px; right: 20px; bottom: 14px; height: 2px; background: rgba(255, 255, 255, 0.1); pointer-events: none; }
+.bd-progress-fill { height: 100%; width: 0; background: #f2b84b; }
+.bd-loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase; color: #8f99a2; }
+.bd-loading[hidden] { display: none; }
+
+@media (max-width: 560px) {
+  .bd-hint { display: none; }
+  .bd-card { padding: 12px 14px 14px; }
+}

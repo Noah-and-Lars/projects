@@ -315,7 +315,7 @@ export class Pistol {
     // pumps the fore-end instead.)
     const pump = unpumped && ready && this.pulls.length > 0;
     if ((reloadKey && canReload) || pump) {
-      this.startReload();
+      this.startReload(pump && !(reloadKey && canReload));
       events.push('reload');
       this.pulls = [];
       return events;
@@ -355,13 +355,14 @@ export class Pistol {
 
   // Starts a reload: from empty, or with rounds left (a gun with
   // reloadTurns takes turns with them; one loaded a shell at a time starts
-  // turning to load, or, with the tube full and the chamber empty, goes
-  // straight to pumping).
-  startReload() {
+  // turning to load, or, with the tube full and the chamber empty, or
+  // `pumpOnly` (the trigger pulled with an empty chamber), goes straight to
+  // pumping).
+  startReload(pumpOnly = false) {
     const empty = this.ammo === 0;
     const spec = this.spec;
     if (this.byShell) {
-      const full = !(this.ammo < this.capacity && this.reserve > 0);
+      const full = pumpOnly || !(this.ammo < this.capacity && this.reserve > 0);
       this.reload = { shells: true, empty: this.chamberEmpty || empty, stop: false, time: 0, done: new Set() };
       this.shellStage(full ? 'pump' : 'start');
       return;

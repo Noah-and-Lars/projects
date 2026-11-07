@@ -21,8 +21,8 @@
 // "No gloves" and "Field gloves" have no file for these guns (the
 // soldier's own field gloves were never made for them), so they show the
 // hands the gun came with: the Beretta's and the AK-74U's bare hands, the
-// FN 502's leather gloves, the black gloves of the Hi-Power, the Makarov,
-// the AK-74M and the SPAS-12.
+// FN 502's leather gloves, the AK-74M's olive leather gloves, the black
+// gloves of the Hi-Power, the Makarov and the SPAS-12.
 //
 // A gun is dressed when it's taken out (from when the switch to it starts,
 // so the file has the old gun's putting away to load in), and again when

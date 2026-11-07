@@ -107,7 +107,7 @@ export const SLOTS = [
   {
     id: 'gloves', name: 'Gloves', default: 'field',
     options: [
-      { id: 'none', name: 'No gloves', about: "The hands the guns with their own arms came with (bare hands on the Beretta and the AK-74U, its own leather gloves on the FN 502, black gloves on the Hi-Power, the Makarov, the AK-74M and the SPAS-12). He has no bare hands under his gloves, so he keeps his field gloves on (on the Xiri X4, the MP7A1 and the AR-15 too, which he holds with his own arms).", own: true },
+      { id: 'none', name: 'No gloves', about: "The hands the guns with their own arms came with (bare hands on the Beretta and the AK-74U, leather gloves on the FN 502, olive leather gloves on the AK-74M, black gloves on the Hi-Power, the Makarov and the SPAS-12). He has no bare hands under his gloves, so he keeps his field gloves on (on the Xiri X4, the MP7A1 and the AR-15 too, which he holds with his own arms).", own: true },
       { id: 'field', name: 'Field gloves', about: 'His own gloves, with a hard knuckle guard. (They weren\'t made for the own arms of the Beretta, the FN 502, the Hi-Power, the Makarov, the AK-74M, the AK-74U and the SPAS-12, which keep the hands they came with.)', own: true },
       { id: 'black', name: 'Black gloves', about: 'Black gloves with a padded knuckle guard, knuckle pads and a wide wrist strap.', file: gearFile('gloves_black'), guns: gunGloves('black') },
       { id: 'olive', name: 'Sage gloves', about: 'Worn sage-green gloves with moulded knuckles and a long strapped cuff.', file: gearFile('gloves_olive'), guns: gunGloves('olive') },
