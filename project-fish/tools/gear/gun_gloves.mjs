@@ -132,6 +132,10 @@ const finger = (name) => [1, 2, 3].map((k) => `${name}${k}_S`);
 const RIGS = {
   beretta: { name: 'Beretta 92FS', bare: true, cuffTo: -0.03, clearance: 0.0025, under: 0.008 },
   fn502: { name: 'FN 502', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004 },
+  // (The same maker's arms as the FN 502's: its own gloves end at the wrist
+  // and a strip of bare skin shows up to the sleeve's end, 28 mm up the
+  // forearm; all of that is cut away.)
+  makarov: { name: 'Makarov PM', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004 },
   hipistol: {
     name: 'Browning Hi-Power', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004,
     armMesh: 'hipistol_gloves', sleeveMesh: 'hipistol_sleeves',
