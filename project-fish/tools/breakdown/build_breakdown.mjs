@@ -3,7 +3,7 @@
 //
 //     node tools/breakdown/build_breakdown.mjs SOURCE_FOLDER CONFIG.json OUT.glb
 //
-// For the AR-15 (npm run build-breakdown would be, from the project-fish folder):
+// For the AR-15 (npm run build-breakdown does this, from the project-fish folder):
 //
 //     node tools/breakdown/build_breakdown.mjs build/upload-ar-breakdown tools/breakdown/ar_slr.json assets/breakdown/ar_slr.glb
 //

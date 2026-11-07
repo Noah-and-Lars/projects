@@ -249,11 +249,28 @@ body:not(.playing) #ammo {
   margin-top: 10px;
 }
 
-/* The row with the AR-15 breakdown's button, set apart from the gun's. */
-#loadout .showcase {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+/* The title, with the AR-15 breakdown's button at its right. */
+#loadout .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 14px;
+}
+
+#loadout .head h2 {
+  margin: 0;
+}
+
+#loadout button.showcase {
+  margin: 0;
+  border-color: rgba(242, 193, 78, 0.6);
+  color: #f2c14e;
+}
+
+#loadout button.showcase:hover {
+  background: rgba(242, 193, 78, 0.16);
 }
 
 /* The Outfit tab: the picture of him beside the slots (stacked on a phone). */

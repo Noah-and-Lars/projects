@@ -1,8 +1,8 @@
 // A simple, temporary loadout menu: press B in the game to choose each gun's
 // attachments, and (its last tab) your outfit (src/outfitMenu.js). Each
 // gun's tab can also put that gun in your hands (onPickGun: the game's, the
-// gun's key) and goes back to the game. Every tab has a button that opens
-// the AR-15 breakdown (onBreakdown: the game's; the menu closes without
+// gun's key) and goes back to the game. A button by the title opens the
+// AR-15 breakdown (onBreakdown: the game's; the menu closes without
 // taking the mouse back). It releases the mouse while it's open; B, Esc or
 // "Back to game" closes it and takes the mouse again.
 
@@ -83,9 +83,14 @@ export class LoadoutMenu {
     el.replaceChildren();
     const panel = document.createElement('div');
     panel.className = 'panel';
+    // The title, with the breakdown's button beside it (on every tab).
+    const head = document.createElement('div');
+    head.className = 'head';
     const title = document.createElement('h2');
     title.textContent = 'Loadout';
-    panel.append(title);
+    head.append(title);
+    if (this.onBreakdown) head.append(this.breakdownButton());
+    panel.append(head);
 
     // A tab for each gun.
     const tabs = document.createElement('div');
@@ -107,7 +112,6 @@ export class LoadoutMenu {
     if (this.gun === OUTFIT) {
       panel.classList.add('wide');
       this.outfitMenu.render(panel);
-      if (this.onBreakdown) panel.append(this.showcaseRow());
       panel.append(this.backButton());
       el.append(panel);
       return;
@@ -174,30 +178,23 @@ export class LoadoutMenu {
       panel.append(row);
     }
 
-    if (this.onBreakdown) panel.append(this.showcaseRow());
     panel.append(this.backButton());
     el.append(panel);
   }
 
   // A button that plays the AR-15 breakdown: the rifle taken apart part by
   // part, each one labelled (src/showcase/breakdown.js).
-  showcaseRow() {
-    const row = document.createElement('div');
-    row.className = 'slot showcase';
-    const label = document.createElement('span');
-    label.className = 'label';
-    label.textContent = 'Showcase';
+  breakdownButton() {
     const open = document.createElement('button');
     open.type = 'button';
-    open.className = 'option';
+    open.className = 'showcase';
     open.textContent = 'AR-15 breakdown';
     open.title = 'Watch an AR-15 taken apart part by part, with what each part does.';
     open.addEventListener('click', () => {
       this.close(false);
       this.onBreakdown();
     });
-    row.append(label, open);
-    return row;
+    return open;
   }
 
   backButton() {

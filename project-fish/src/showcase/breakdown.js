@@ -30,17 +30,17 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 // Pacing (seconds).
 export const TIMING = {
-  intro: 5, // the opening shot, with the gun's name
-  travel: [1.2, 2.2], // the camera's sweep to a part: shortest and longest
-  move: 1.1, // a move that doesn't say how long it takes
-  line: 0.45, // the leader line drawing
-  card: 0.3, // the card fading in (and out)
-  read: { base: 1.3, word: 0.13, min: 3, max: 6.2 }, // how long a label stays: base + per word
-  back: 0.6, // a part going back takes this share of the time it took to come out
-  backMin: 0.45,
-  closeTravel: 1.1, // the camera taking in a whole chain of parts going back
-  settle: 0.2, // after the last part seats, before the camera moves on
-  outro: 2.4, // the sweep back to the whole gun
+  intro: 3.6, // the opening shot, with the gun's name
+  travel: [0.85, 1.5], // the camera's sweep to a part: shortest and longest
+  move: 1.0, // a move that doesn't say how long it takes
+  line: 0.4, // the leader line drawing
+  card: 0.25, // the card fading in (and out)
+  read: { base: 1.1, word: 0.1, min: 2.8, max: 4.4 }, // how long a label stays: base + per word
+  back: 0.5, // a part going back takes this share of the time it took to come out
+  backMin: 0.35,
+  closeTravel: 1.0, // the camera taking in a whole chain of parts going back
+  settle: 0.15, // after the last part of a chain seats, before the camera moves on
+  outro: 2.6, // the sweep back to the whole gun
 };
 
 // How the shots are framed: how much of the free part of the screen the
@@ -165,7 +165,7 @@ export class Breakdown {
     root.innerHTML = `
       <canvas class="bd-canvas"></canvas>
       <div class="bd-vignette"></div>
-      <svg class="bd-lines" xmlns="http://www.w3.org/2000/svg"><polyline class="bd-line" points=""/><circle class="bd-ring" r="9"/><circle class="bd-dot" r="3.5"/></svg>
+      <svg class="bd-lines" xmlns="http://www.w3.org/2000/svg"></svg>
       <div class="bd-card" hidden><div class="bd-kicker"></div><h2 class="bd-title"></h2><p class="bd-text"></p></div>
       <div class="bd-titlecard" hidden><div class="bd-name"></div><div class="bd-sub"></div><div class="bd-credit"></div>
         <div class="bd-buttons"><button type="button" class="bd-replay">Replay</button><button type="button" class="bd-done">Close</button></div></div>
@@ -175,9 +175,8 @@ export class Breakdown {
       <div class="bd-loading">Loading…</div>`;
     const $ = (s) => root.querySelector(s);
     this.canvas = $('.bd-canvas');
-    this.line = $('.bd-line');
-    this.dot = $('.bd-dot');
-    this.ring = $('.bd-ring');
+    this.svg = $('.bd-lines');
+    this.leaders = []; // a line, dot and ring for each part a label points at
     this.card = $('.bd-card');
     this.cardKicker = $('.bd-kicker');
     this.cardTitle = $('.bd-title');
@@ -341,19 +340,25 @@ export class Breakdown {
           keys.push({ t: t + TIMING.closeTravel, shot: step.closeKey, mode: 'travel', drift: 0, from: step.key, fromDrift: FRAME.drift * (step.holdEnd - step.outStart) });
           t += TIMING.closeTravel * 0.55;
         }
+        // (Moves that came out together go back together.)
         let at = t;
+        let prev = null;
         for (const s of closing.reverse()) {
           for (const m of [...s.moves].reverse()) {
             const time = Math.max(TIMING.backMin, (m.outEnd - m.outStart) * TIMING.back);
-            m.inStart = at;
-            m.inEnd = at + time;
-            if (m.click) clicks.push(m.inEnd);
-            at = m.inStart + time * 0.85;
+            const together = prev && prev.step === m.step && m.outEnd > prev.outStart + 0.05;
+            m.inStart = together ? prev.inStart : at;
+            m.inEnd = m.inStart + time;
+            if (m.click && !(together && Math.abs(m.inEnd - prev.inEnd) < 0.08)) clicks.push(m.inEnd);
+            at = Math.max(at, m.inStart + time * 0.85);
+            prev = m;
           }
         }
         step.closing = closing;
         step.closeEnd = Math.max(at, ...closing.flatMap((s) => s.moves.map((m) => m.inEnd)));
-        t = step.closeEnd + TIMING.settle;
+        // (After a chain the camera waits for the last part to seat; after a
+        // single part it sets off as the part arrives.)
+        t = chain ? step.closeEnd + TIMING.settle : step.closeEnd - Math.min(0.3, 0.4 * (step.closeEnd - step.closeStart));
         if (chain) keys.push({ t, shot: step.closeKey, mode: 'hold' });
         else keys.push({ t, shot: step.key, mode: 'hold', drift: FRAME.drift * (t - step.outStart) });
       }
@@ -488,8 +493,10 @@ export class Breakdown {
     for (const step of this.timeline.steps) {
       const parts = new Set(step.moves.flatMap((mv) => mv.parts));
       if (step.spec.view && step.spec.view.frame) for (const p of this.nodesFor(step.spec.view.frame)) parts.add(p);
-      const anchor = this.parts.get(step.spec.anchor);
-      if (anchor) parts.add(anchor);
+      for (const a of anchorsOf(step.spec)) {
+        const anchor = this.parts.get(a.name);
+        if (anchor) parts.add(anchor);
+      }
       const pts = this.corners([...parts], step.outStart);
       this.corners([...parts], step.holdStart, pts);
       this.shots.set(step.key, this.frameShot(pts, step.view, this.cards[step.index].free, FRAME.fill, step.view.min));
@@ -681,58 +688,85 @@ export class Breakdown {
     this.cardText.textContent = step.spec.text || '';
   }
 
-  // The label: the line draws from the part to the card, the card fades in,
-  // and both go before the part goes back.
+  // A leader (line, dot and pulsing ring) for each of the label's parts.
+  leader(i) {
+    while (this.leaders.length <= i) {
+      const ns = 'http://www.w3.org/2000/svg';
+      const make = (tag, cls) => {
+        const el = document.createElementNS(ns, tag);
+        el.setAttribute('class', cls);
+        this.svg.appendChild(el);
+        return el;
+      };
+      const line = make('polyline', 'bd-line');
+      const ring = make('circle', 'bd-ring');
+      const dot = make('circle', 'bd-dot');
+      dot.setAttribute('r', 3.5);
+      this.leaders.push({ line, ring, dot });
+    }
+    return this.leaders[i];
+  }
+
+  // The label: a line draws from each of its parts to the card, the card
+  // fades in, and both go before the parts go back.
   drawLabel(step, t) {
-    const hide = () => {
-      this.card.hidden = true;
-      this.line.setAttribute('points', '');
-      this.dot.style.opacity = 0;
-      this.ring.style.opacity = 0;
+    const hideFrom = (n) => {
+      for (const l of this.leaders.slice(n)) {
+        l.line.setAttribute('points', '');
+        l.dot.style.opacity = 0;
+        l.ring.style.opacity = 0;
+      }
     };
-    if (!step || t < step.lineStart || t >= step.labelEnd) return hide();
+    if (!step || t < step.lineStart || t >= step.labelEnd) {
+      this.card.hidden = true;
+      return hideFrom(0);
+    }
     const box = this.cards[step.index];
     if (this.cardIndex !== step.index) {
       this.fillCard(step, step.index);
       this.cardIndex = step.index;
     }
     Object.assign(this.card.style, { left: box.x + 'px', top: box.y + 'px', width: box.w + 'px' });
-    // The anchor: the middle of the label's part (plus offset), where it is now.
-    const part = this.parts.get(step.spec.anchor) || step.moves[0]?.parts[0];
-    if (!part) return hide();
-    const p = new THREE.Vector3();
-    part.box.getCenter(p).applyMatrix4(part.node.matrix);
-    if (step.spec.offset) p.add(new THREE.Vector3(...step.spec.offset));
-    p.project(this.camera);
+    // The anchors: the middle of each label part (plus offset), where it is now.
+    let anchors = anchorsOf(step.spec).map((a) => ({ part: this.parts.get(a.name), offset: a.offset })).filter((a) => a.part);
+    if (!anchors.length && step.moves[0]?.parts[0]) anchors = [{ part: step.moves[0].parts[0] }];
     const { w, h } = this.size;
-    const ax = (p.x + 1) * 0.5 * w, ay = (1 - p.y) * 0.5 * h;
-    // Elbow line to the card's title.
-    let pts;
-    if (box.side === 'bottom') {
-      const x = Math.min(box.x + box.w - 24, Math.max(box.x + 24, ax));
-      pts = [[ax, ay], [x, box.y - 28], [x, box.y]];
-    } else {
-      const edge = box.side === 'right' ? box.x : box.x + box.w;
-      const y = box.y + 30;
-      const elbow = box.side === 'right' ? Math.max(ax + 10, edge - 44) : Math.min(ax - 10, edge + 44);
-      pts = [[ax, ay], [elbow, y], [edge, y]];
-    }
-    let len = 0;
-    for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
     const draw = clamp01((t - step.lineStart) / TIMING.line);
     const fadeOut = clamp01((step.labelEnd - t) / TIMING.card);
-    this.line.setAttribute('points', pts.map((q) => q.join(',')).join(' '));
-    this.line.style.strokeDasharray = `${len} ${len}`;
-    this.line.style.strokeDashoffset = String(len * (1 - ease(draw)));
-    this.line.style.opacity = fadeOut;
-    this.dot.setAttribute('cx', ax);
-    this.dot.setAttribute('cy', ay);
-    this.dot.style.opacity = Math.min(1, draw * 3) * fadeOut;
     const pulse = ((t - step.lineStart) % 1.6) / 1.6;
-    this.ring.setAttribute('cx', ax);
-    this.ring.setAttribute('cy', ay);
-    this.ring.setAttribute('r', 4 + pulse * 10);
-    this.ring.style.opacity = (1 - pulse) * 0.8 * fadeOut * Math.min(1, draw * 3);
+    anchors.forEach(({ part, offset }, i) => {
+      const p = new THREE.Vector3();
+      part.box.getCenter(p).applyMatrix4(part.node.matrix);
+      if (offset) p.add(new THREE.Vector3(...offset));
+      p.project(this.camera);
+      const ax = (p.x + 1) * 0.5 * w, ay = (1 - p.y) * 0.5 * h;
+      // Elbow line to the card's title.
+      let pts;
+      if (box.side === 'bottom') {
+        const x = Math.min(box.x + box.w - 24, Math.max(box.x + 24, ax));
+        pts = [[ax, ay], [x, box.y - 28], [x, box.y]];
+      } else {
+        const edge = box.side === 'right' ? box.x : box.x + box.w;
+        const y = box.y + 30;
+        const elbow = box.side === 'right' ? Math.max(ax + 10, edge - 44) : Math.min(ax - 10, edge + 44);
+        pts = [[ax, ay], [elbow, y], [edge, y]];
+      }
+      let len = 0;
+      for (let k = 1; k < pts.length; k++) len += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+      const { line, dot, ring } = this.leader(i);
+      line.setAttribute('points', pts.map((q) => q.join(',')).join(' '));
+      line.style.strokeDasharray = `${len} ${len}`;
+      line.style.strokeDashoffset = String(len * (1 - ease(draw)));
+      line.style.opacity = fadeOut;
+      dot.setAttribute('cx', ax);
+      dot.setAttribute('cy', ay);
+      dot.style.opacity = Math.min(1, draw * 3) * fadeOut;
+      ring.setAttribute('cx', ax);
+      ring.setAttribute('cy', ay);
+      ring.setAttribute('r', 4 + pulse * 10);
+      ring.style.opacity = (1 - pulse) * 0.8 * fadeOut * Math.min(1, draw * 3);
+    });
+    hideFrom(anchors.length);
     const cardIn = clamp01((t - step.lineStart - TIMING.line) / TIMING.card);
     this.card.hidden = false;
     this.card.style.opacity = Math.min(cardIn, fadeOut);
@@ -795,6 +829,13 @@ export class Breakdown {
   }
 }
 
+// The parts a step's label points at: anchor is a name, or a list of names
+// and { name, offset } (offset: [x, y, z] metres; a plain name takes the
+// step's offset).
+function anchorsOf(spec) {
+  return [].concat(spec.anchor || []).map((a) => (typeof a === 'string' ? { name: a, offset: spec.offset } : a));
+}
+
 // The direction from the target to the camera for (az, el) in degrees.
 function dirOf(az, el) {
   const a = rad(az), e = rad(el);
@@ -802,9 +843,10 @@ function dirOf(az, el) {
 }
 
 // Between two shots: the target slides, the camera swings round the shorter
-// way, the distance eases in proportion; on a big swing, or a long slide for
-// how close the camera is, it rises a little and pulls back on the way, so it
-// never cuts through the gun.
+// way, the distance eases in proportion; on a big swing it rises (looking
+// down over the gun rather than along it), and on a big swing or a long
+// slide for how close the camera is it pulls back a little on the way, so
+// it never cuts through the gun.
 function mixShots(a, b, x) {
   const daz = ((b.az - a.az + 540) % 360) - 180;
   const swing = Math.min(1, Math.abs(daz) / 120);
@@ -812,9 +854,9 @@ function mixShots(a, b, x) {
   const bump = Math.sin(Math.PI * x);
   return {
     az: a.az + daz * x,
-    el: lerp(a.el, b.el, x) + bump * 10 * swing,
+    el: lerp(a.el, b.el, x) + bump * 30 * swing,
     fov: lerp(a.fov, b.fov, x),
-    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), x)) * (1 + (0.35 * swing + 0.5 * slide) * bump),
+    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), x)) * (1 + (0.2 * swing + 0.4 * slide) * bump),
     target: a.target.clone().lerp(b.target, x),
   };
 }
