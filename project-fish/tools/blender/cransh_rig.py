@@ -61,16 +61,27 @@ class Gun:
       front of the rear sight.
     - rest_times: the times in the idle clip the gun's frame is lined up
       with gun space at, on average (one for a still).
+    - mesh_fix: {mesh name: 4x4 matrix} for a mesh whose points the
+      download keeps in another space than its skin's: the matrix takes
+      them into it (its normals turned with it, and its faces' winding
+      turned over if it mirrors them).
+    - own_frame: 'bone' (the gun is measured in its frame bone's axes) or
+      'slide' (in the frame its slide's sights set, for a frame bone that
+      points another way: see slide_frame).
     """
 
     def __init__(self, bones, meshes, materials, scale, clips, uv, port_ahead, camera_node='Camera',
-                 dropped=(), dropped_meshes=(), rest_times=(0.0,)):
+                 dropped=(), dropped_meshes=(), rest_times=(0.0,), mesh_fix=None,
+                 own_frame='bone'):
         self.bones = {**arm_bones(), **bones}
         self.dropped = {'IK_PoleTrgt_L', 'IK_PoleTrgt_R', *dropped}
         self.meshes, self.materials, self.scale, self.clips = meshes, materials, scale, clips
         self.uv, self.port_ahead, self.camera_node = uv, port_ahead, camera_node
         self.dropped_meshes = set(dropped_meshes)
         self.rest_times = tuple(rest_times)
+        self.mesh_fix = mesh_fix or {}
+        self.own_frame = own_frame
+        self.debug = None
 
 
 # --- Reading the download -------------------------------------------------------
@@ -184,16 +195,25 @@ def convert(g, accessor, gun):
         assert (joints[w > 0] >= 0).all(), f'{m["name"]}: weighted to a left-out bone'
         joints[joints < 0] = 0
         pos = accessor(a['POSITION']).astype(np.float64)
+        normal = accessor(a['NORMAL']).astype(np.float64)
+        triangles = accessor(prim['indices']).astype(np.int64).reshape(-1, 3)
+        if m['name'] in gun.mesh_fix:
+            X = np.asarray(gun.mesh_fix[m['name']], np.float64)
+            pos = (np.c_[pos, np.ones(len(pos))] @ X.T)[:, :3]
+            linear = X[:3, :3] / np.cbrt(abs(np.linalg.det(X[:3, :3])))
+            normal = normal @ linear.T
+            if np.linalg.det(linear) < 0:
+                triangles = triangles[:, ::-1].copy()  # (mirrored: its faces' winding turns over)
         material = g['materials'][prim['material']]
         uv = accessor(a['TEXCOORD_0']).astype(np.float64)
         uv, wraps = gun.uv(g, material, uv)
         meshes[gun.meshes[m['name']]] = {
             'position': (np.c_[pos, np.ones(len(pos))] @ Hw.T)[:, :3],
-            'normal': accessor(a['NORMAL']).astype(np.float64) @ rot.T,
+            'normal': normal @ rot.T,
             'uv': uv, 'joints': joints, 'weights': w,
-            'triangles': accessor(prim['indices']).astype(np.int64).reshape(-1, 3),
+            'triangles': triangles,
             'material': gun.materials[material['name']], 'wraps': wraps,
-            'source': (pos, J),
+            'source': (pos, J),  # (as fitted, if it was)
         }
 
     # Check: at rest, our rig puts every vertex where the download's does,
@@ -291,27 +311,75 @@ def rest_frame(rig, clips, fj, times):
     return F
 
 
-def measure(rig, meshes, clips, gun, event_clips=('shoot', 'reload', 'reloadEmpty', 'walk', 'run')):
+def slide_frame(slide, turn):
+    """The gun's own frame (right, up, back), in the frame bone's space, from
+    its slide's points there (at rest), for a frame bone whose axes aren't
+    the gun's: right as near the rig's +X as the bone's axes come (turn:
+    the frame bone's turn at rest, into the rig's space, where the gun
+    points forward, -Z, its top up), back along the line over its sights
+    (the slide's highest points near its back and its front, first found
+    along its longest extent) and up from those. Returns the 3x3 turn whose
+    columns are those axes."""
+    # (The bone's axis nearest the rig's right: the right to start from.)
+    k = int(np.argmax(np.abs(turn[0])))
+    right = np.eye(3)[k] * np.sign(turn[0, k])
+    c = slide - slide.mean(0)
+    _, _, vt = np.linalg.svd(c, full_matrices=False)
+    back = vt[0] if (turn @ vt[0])[2] > 0 else -vt[0]
+    for _ in range(3):
+        right = right - back * (right @ back)
+        right /= np.linalg.norm(right)
+        axes = np.c_[right, np.cross(back, right), back]
+        own = c @ axes
+        middle = (own[:, 2].max() + own[:, 2].min()) / 2
+        rear = own[own[:, 2] > middle]
+        fore = own[own[:, 2] < middle]
+        r = rear[rear[:, 1] > rear[:, 1].max() - 0.0008].mean(0)
+        f = fore[fore[:, 1] > fore[:, 1].max() - 0.0008].mean(0)
+        r[1], f[1] = rear[:, 1].max(), fore[:, 1].max()
+        line = axes @ (r - f)
+        back = line / np.linalg.norm(line)
+    right = right - back * (right @ back)
+    right /= np.linalg.norm(right)
+    return np.c_[right, np.cross(back, right), back]
+
+
+def measure(rig, meshes, clips, gun, event_clips=('shoot', 'reload', 'reloadEmpty', 'walk', 'run'), parts=False):
     """The game's constants for the gun (its points in the `gun` node's
     space, where the frame is at rest, the clips' events) and the `gun`
     node's turn on the frame bone."""
     out = {'scale': round(gun.scale, 5)}
     fj, sj, mj, hl = rig.index('frame_j'), rig.index('slide_j'), rig.index('mag_j'), rig.index('hand_L')
     idle = clip_pose(clips['idle'], gun.rest_times[0])
-    F = rest_frame(rig, clips, fj, gun.rest_times)
+    world = rig.world(idle)
+    Fb = rest_frame(rig, clips, fj, gun.rest_times)
     # The `gun` node: at the frame bone, turned so that at idle it's lined up
-    # with gun space. The frame bone's own axes are the gun's (right, up,
-    # back): it's held turned a little about its bore.
-    gun_turn = matrix_quat(F[:3, :3].T)
-    out['frame_idle'] = r4(F[:3, 3])
-    out['cant_deg'] = round(math.degrees(math.atan2(F[0, 1], F[1, 1])), 2)  # top towards the left (+)
-    to_own = np.linalg.inv(F)  # into the gun's own frame
-    in_gun = lambda p: F[:3, :3] @ np.asarray(p, np.float64)  # noqa: E731  (the gun's own frame to the gun node's)
-
+    # with gun space. The gun is measured in its own frame: the frame bone's
+    # own axes (right, up, back: it's held turned a little about its bore),
+    # or for a gun whose frame bone points another way (gun.own_frame:
+    # 'slide'), the frame its slide sets (see slide_frame).
+    gun_turn = matrix_quat(Fb[:3, :3].T)
     mesh = meshes['gun']
     gp = skin(rig, mesh, idle)
-    own = (np.c_[gp, np.ones(len(gp))] @ to_own.T)[:, :3]
     dom = mesh['joints'][np.arange(len(gp)), mesh['weights'].argmax(1)]
+    # (Its points in the frame bone's space, which they're fixed in at rest.)
+    local = (np.c_[gp, np.ones(len(gp))] @ np.linalg.inv(world[fj]).T)[:, :3]
+    if gun.own_frame == 'slide':
+        G = slide_frame(local[dom == sj], Fb[:3, :3])
+        log(f'frame bone axes at rest (rig space, columns): {np.round(Fb[:3, :3], 3).tolist()}; the gun\'s: '
+            f'{np.round(Fb[:3, :3] @ G, 3).tolist()}')
+        local = local @ G
+        F = Fb.copy()
+        F[:3, :3] = Fb[:3, :3] @ G
+    else:
+        F = Fb
+    own = local
+    out['frame_idle'] = r4(F[:3, 3])
+    out['cant_deg'] = round(math.degrees(math.atan2(F[0, 1], F[1, 1])), 2)  # top towards the left (+)
+    in_gun = lambda p: F[:3, :3] @ np.asarray(p, np.float64)  # noqa: E731  (the gun's own frame to the gun node's)
+
+    if gun.debug:
+        np.save(gun.debug, np.c_[own, dom])
     out['gun_length'] = round(float(np.ptp(own[:, 2])), 4)
     out['gun_height'] = round(float(np.ptp(own[:, 1])), 4)
     out['gun_width'] = round(float(np.ptp(own[:, 0])), 4)
@@ -355,7 +423,6 @@ def measure(rig, meshes, clips, gun, event_clips=('shoot', 'reload', 'reloadEmpt
         ts = np.linspace(0, clips[clip]['duration'], n)
         return ts, [rig.world(clip_pose(clips[clip], t)) for t in ts]
 
-    world = rig.world(idle)
     rest_slide = (np.linalg.inv(world[fj]) @ world[sj])[:3, 3]
     rest_mag = (np.linalg.inv(world[fj]) @ world[mj])[:3, 3]
     rest_hand = (np.linalg.inv(world[fj]) @ world[hl])[:3, 3]
@@ -388,6 +455,19 @@ def measure(rig, meshes, clips, gun, event_clips=('shoot', 'reload', 'reloadEmpt
         if hand.max() > 0.01:
             off = hand > 0.01
             e['handOn'] = round(float(ts[len(off) - 1 - np.argmax(off[::-1])]), 3)
+        if parts:
+            # (parts) When the trigger and hammer move from where they rest
+            # (turned more than 2 degrees), and when they're furthest.
+            for key, bone in (('trigger', 'trigger_j'), ('hammer', 'hammer_j')):
+                b = rig.index(bone)
+                rest = (np.linalg.inv(world[fj]) @ world[b])[:3, :3]
+                angle = np.array([math.degrees(math.acos(np.clip((np.trace(rest.T @ (np.linalg.inv(wm[fj]) @ wm[b])[:3, :3])
+                                                                   - 1) / 2, -1, 1))) for wm in ws])
+                if angle.max() > 2:
+                    moved = angle > 2
+                    e[key] = {'moves': round(float(ts[np.argmax(moved)]), 3), 'most': round(float(ts[np.argmax(angle)]), 3),
+                              'back': round(float(ts[len(moved) - 1 - np.argmax(moved[::-1])]), 3),
+                              'degrees': round(float(angle.max()), 1)}
         events[clip] = e
     out['events'] = events
     out['slideTravel'] = events['shoot']['slideTravel']

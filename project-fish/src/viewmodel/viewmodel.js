@@ -17,6 +17,7 @@ import { MODEL_HIPISTOL } from './hipistol.js';
 import { MODEL_X4 } from './x4.js';
 import { MODEL_MP7 } from './mp7.js';
 import { MODEL_AR15 } from './ar15.js';
+import { MODEL_MAKAROV } from './makarov.js';
 import { AnimatedGun } from './animatedGun.js';
 import { GunGloves } from './gunGloves.js';
 import { createArms, rightHandPose } from './arms.js';
@@ -26,7 +27,7 @@ import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS, reloadSteps } from '../weapon.js';
-import { PISTOL, PISTOL45, BERETTA, FN502, HIPISTOL, X4, MP7, AR15, LOADOUT } from '../shared/config.js';
+import { PISTOL, PISTOL45, BERETTA, FN502, HIPISTOL, X4, MP7, AR15, MAKAROV, LOADOUT } from '../shared/config.js';
 
 // Points on the built-in first pistol (gun space; used if its model file
 // can't be loaded; the model's are in pistol9.js): the
@@ -146,6 +147,11 @@ const GUN_KINDS = {
       suppressed: true, redDot: { radius: 0.0188 },
     },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(AR15),
+  },
+  makarov: {
+    rules: MAKAROV, model: new URL('../../assets/makarov.glb', import.meta.url), animated: MODEL_MAKAROV,
+    rig: { sightAsAtHip: MODEL45.sights, kick: 0.4 },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(MAKAROV),
   },
 };
 

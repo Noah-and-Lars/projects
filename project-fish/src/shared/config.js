@@ -336,6 +336,43 @@ export const AR15 = {
   caseSize: { diameter: 0.0096, length: 0.0447 },
 };
 
-// The guns the player carries, in the order of their keys (1 to 8).
-export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502', 'hipistol', 'x4', 'mp7', 'ar15'];
-export const GUNS = { pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502, hipistol: HIPISTOL, x4: X4, mp7: MP7, ar15: AR15 };
+// The ninth: a Makarov PM, a 9x18 mm Makarov pistol holding 8 rounds. It
+// comes with its own arms and its own animations (src/viewmodel/
+// makarov.js), so its times are those clips' own lengths: a reload with
+// rounds left is its fast reload clip (2.23 s), one from empty its full
+// reload (2.98 s: the support hand racks the slide after the fresh
+// magazine goes in). Its shot clip has the slide home 0.07 s after the
+// shot; like the other pistols it fires up to 300 rounds a minute. A small,
+// all-steel blowback gun with a short, sharp kick, a little more than the
+// PF-9's. It has no inspect (its maker made none).
+export const MAKAROV = {
+  name: 'Makarov PM',
+  fireInterval: 0.2,
+  magazine: 8,
+  reserve: 32,
+  reloadTime: 2.232,
+  emptyReloadTime: 2.982,
+  // When things happen, as fractions of the reload: the clips' own times
+  // (src/viewmodel/makarov.js) over their lengths. Either way the magazine
+  // comes out and is swapped for a fresh one at the belt (nothing catches
+  // it: magCaught is never reached); from empty, the slide is then pulled
+  // back and let go.
+  reloadSteps: {
+    empty: { magOut: 0.218, magGrab: 0.355, magIn: 0.575, slidePull: 0.74, slideRelease: 0.807, handOn: 0.978 },
+    catching: { magOut: 0.295, magCaught: 2, magGrab: 0.474, magIn: 0.768, handOn: 0.888 },
+  },
+  range: 150,
+  spread: { hip: 1.8, aim: 0.11, moving: 1.25 },
+  recoil: 1.1,
+  inspect: false,
+  // Its spent case: a 9x18 mm Makarov's (metres), a little shorter than a
+  // 9x19 mm's.
+  caseSize: { diameter: 0.0099, length: 0.0181 },
+};
+
+// The guns the player carries, in the order of their keys (1 to 9).
+export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502', 'hipistol', 'x4', 'mp7', 'ar15', 'makarov'];
+export const GUNS = {
+  pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502, hipistol: HIPISTOL, x4: X4, mp7: MP7, ar15: AR15,
+  makarov: MAKAROV,
+};

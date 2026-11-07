@@ -81,13 +81,13 @@ SOURCE, OUT_GLB = ARGS[0], ARGS[1]
 # The download's armature is Z up with the muzzle towards -Y, as the FN
 # 502's. Its gun is GUN_LENGTH units long along the bore, from the back of
 # the hammer to the muzzle; a Makarov PM is 161 mm.
-GUN_LENGTH = 0.2
+GUN_LENGTH = 0.20403
 SCALE = 0.161 / GUN_LENGTH  # download units to metres
 # The eye: the download's camera (on its head bone).
 CAMERA_NODE = 'Camera'
 # Where the ejection port's middle is: this far (metres) in front of the rear
 # sight.
-PORT_AHEAD = 0.05
+PORT_AHEAD = 0.046
 
 # The clips: ours, and the download's animation each is (all of it).
 CLIPS = [
@@ -107,6 +107,11 @@ BONES = {'Body': 'frame_j', 'Slide': 'slide_j', 'Trig': 'trigger_j', 'Hammer': '
 DROPPED = {'Head_Cam'}
 
 MESHES = {'mesh_Mat_0': 'arms', 'Makarov_base_makarov_material_0': 'gun'}
+# The arms' points are stored mirrored through the origin (every coordinate
+# negated) and 10,000 times too big for their skin (an export fault: as
+# they stand they'd be drawn tens of metres across). Taken back into the
+# skin's space, they lie where the FN 502's arms do on the same skeleton.
+ARMS_FIX = np.diag([-1e-4, -1e-4, -1e-4, 1.0])
 DROPPED_MESHES = {'Makarov_base_makarov_attachments_material_0'}
 MATERIALS = {'material': 'makarov_arms', 'makarov_material': 'makarov_gun'}
 
@@ -249,9 +254,12 @@ def main():
                    for s in a['samplers'])
     rest_times = np.arange(0, duration, REST_STEP)
     gun = Gun(BONES, MESHES, MATERIALS, SCALE, CLIPS, plain_uv, PORT_AHEAD, camera_node=CAMERA_NODE,
-              dropped=DROPPED, dropped_meshes=DROPPED_MESHES, rest_times=rest_times)
+              dropped=DROPPED, dropped_meshes=DROPPED_MESHES, rest_times=rest_times,
+              mesh_fix={'mesh_Mat_0': ARMS_FIX}, own_frame='slide')
+    gun.debug = os.environ.get('MAKAROV_DEBUG')
     rig, meshes, clips = convert(g, accessor, gun)
-    info, gun_turn = measure(rig, meshes, clips, gun, event_clips=('shoot', 'reload', 'reloadEmpty', 'walk', 'idle'))
+    info, gun_turn = measure(rig, meshes, clips, gun, event_clips=('shoot', 'reload', 'reloadEmpty', 'walk', 'idle'),
+                             parts=True)
     assert abs(info['gun_length'] - 0.161) < 0.001, f'the gun is {info["gun_length"]} m long'
     bpy.ops.wm.read_factory_settings(use_empty=True)
     images = textures(g)

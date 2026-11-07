@@ -351,12 +351,15 @@ const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 // like the PF-9's, and a full-size one). The MP7A1 has its own (`set`:
 // makeSmgShot's, already suppressed), with only a little echo. So has the
 // AR-15 (makeRifleShot's, suppressed too), louder, its crack echoing back
-// more.
+// more. The Makarov PM's 9x18 mm is the 9 mm's a little higher and
+// shorter (a smaller charge from a short barrel in a small steel gun) and
+// a touch quieter.
 const GUNSHOT = {
   pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, beretta: { rate: 0.95, volume: 0.92 },
   fn502: { rate: 1.35, volume: 0.5, echo: 0.3 }, hipistol: { rate: 0.97, volume: 0.92 },
   x4: { rate: 1.02, volume: 0.9 }, mp7: { rate: 1, volume: 0.8, echo: 0.2, set: 'smg' },
   ar15: { rate: 1, volume: 0.95, echo: 0.35, set: 'rifle' },
+  makarov: { rate: 1.08, volume: 0.86, echo: 0.45 },
 };
 const OWN_SHOTS = { smg: () => smgShots, rifle: () => rifleShots };
 // The guns whose magazine and slide sounds are the .45 recordings: the
@@ -370,8 +373,13 @@ const OWN_SHOTS = { smg: () => smgShots, rifle: () => rifleShots };
 // slide recordings played faster and quieter. The AR-15 has the .45's
 // recorded magazine sounds (a metal magazine) and, for its bolt running
 // home off the bolt catch, the .45's slide going forward, a little lower.
-const RECORDED = new Set(['pistol45', 'beretta', 'hipistol', 'ar15']);
-const LIGHT_SLIDE = { fn502: { rate: 1.25, volume: 0.65 }, x4: { rate: 1.08, volume: 0.85 }, mp7: { rate: 1.3, volume: 0.6 }, ar15: { rate: 0.92, volume: 1 } };
+// The Makarov PM has the .45's recorded magazine sounds (a steel magazine)
+// and its slide recordings a little faster (a smaller steel slide).
+const RECORDED = new Set(['pistol45', 'beretta', 'hipistol', 'ar15', 'makarov']);
+const LIGHT_SLIDE = {
+  fn502: { rate: 1.25, volume: 0.65 }, x4: { rate: 1.08, volume: 0.85 }, mp7: { rate: 1.3, volume: 0.6 }, ar15: { rate: 0.92, volume: 1 },
+  makarov: { rate: 1.12, volume: 0.9 },
+};
 
 // suppressed: fired through a suppressor (quieter, and it barely echoes).
 export function playGunshot(gun = 'pistol', suppressed = false) {
