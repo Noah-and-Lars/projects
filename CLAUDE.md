@@ -450,7 +450,9 @@ source in Settings → Pages should be switched to `main`.
   familiarity lists (`lists`, each ordered from the most familiar answer to the least; "Main/alias/alias") and the
   prompts (`add(q, list, filter)`; word-shape prompts filter a big list). Rarity tier = an answer's place in its
   (filtered) list (`score()`: first 15% Plankton 10, Shallows ~30, Reef 50-65, Abyss ~80, last 12% Trench Find 100);
-  `share()` is a rough Zipf estimate, not real player data. `match()` normalises accents, "the", plurals and allows a
+  1.1: the "% of divers" line is real: `kdPost('vote', { q, a, id: save.id })` to the arcade Worker's `/kd/vote` (the
+  `Tally` Durable Object, one 'p:<prompt text>' record of answer counts and each diver's one vote) returns { c, n };
+  saved dives send the same vote again (it doesn't move) to read the counts. `window.KD_API` points it at a local Worker. `match()` normalises accents, "the", plurals and allows a
   one- or two-letter typo (Damerau). Daily prompts come from the UTC date (`pickPrompts(rng(hash('krill-dive:' + d)))`,
   never two from one list; prompts with fewer than 6 answers are never picked), Dive #1 is 2026-11-06. 3 s to read
   (`READ_S`), 25 s to answer (`ANSWER_S`); unrecognised answers don't count against you. Each point = 10 m, 700 = 7,000 m.

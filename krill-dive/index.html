@@ -150,7 +150,7 @@
       <div><span class="chip t3">Abyss</span>Very niche <b>~80</b></div>
       <div><span class="chip t4">Trench Find</span>The rarest answers <b>100</b></div>
     </div>
-    <p style="color:var(--muted);font-size:14px">Rarity comes from Krill Dive's familiarity list: how often each answer turns up in everyday writing, not what other players typed. Very obscure answers that aren't on the list don't count. The daily dive changes at midnight UTC. Practice dives give you a fresh random set whenever you like.</p>
+    <p style="color:var(--muted);font-size:14px">Rarity comes from Krill Dive's familiarity list: how often each answer turns up in everyday writing, not what other players typed. Under each answer you'll see how many divers really gave it: everyone's answers are counted (one per diver per prompt). Very obscure answers that aren't on the list don't count. The daily dive changes at midnight UTC. Practice dives give you a fresh random set whenever you like.</p>
     <button class="btn" id="howBack" style="width:100%">Got it</button>
   </div>
 </section>
@@ -288,7 +288,7 @@ window.KD_DATA = (() => {
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
-const VERSION = '1.0';
+const VERSION = '1.1';
 const MAX_DEPTH = 7000, PER_POINT = 10, READ_S = 3, ANSWER_S = 25, ROUNDS = 7;
 const TIERS = [
   { name: 'Plankton', what: 'Common' }, { name: 'Shallows', what: 'Uncommon' }, { name: 'Reef', what: 'Rare' },
@@ -330,7 +330,18 @@ function score(i, n) {
   return { tier: 4, pts: 100 };
 }
 // a rough share of divers who'd give this answer (Zipf's law over the list), for the results
-function share(i, n) { let H = 0; for (let k = 1; k <= n; k++) H += 1 / k; const s = (1 / (i + 1)) / H * 100; return s >= 1 ? Math.round(s) + '%' : s >= 0.1 ? s.toFixed(1) + '%' : '<0.1%'; }
+// the real share: the arcade Worker counts every diver's answer to every prompt (one vote per diver per prompt)
+const KD_API = window.KD_API || 'https://arcade-realtime.arcade-realtime.workers.dev/kd/';
+if (!save.id) { save.id = Array.from(crypto.getRandomValues(new Uint8Array(10)), b => (b % 36).toString(36)).join(''); persist(); }
+function kdPost(route, body) { return fetch(KD_API + route, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.ok ? r.json() : Promise.reject()); }
+function shareText(c, n) {
+  if (!n) return 'Not counted (offline)';
+  if (n === 1) return 'You\'re the first diver to answer this one';
+  if (c <= 1) return `Only you said it, out of ${n} divers`;
+  return `${Math.round(c / n * 100)}% of divers said it (${c} of ${n})`;
+}
+// fill the share in on the result and on any line on screen that's waiting for it
+function setShare(r, c, n) { r.share = shareText(c, n); document.querySelectorAll('[data-share]').forEach(el => { if (el.kdRes === r) el.textContent = r.share; }); }
 
 // ---------- the day's prompts ----------
 const today = () => new Date().toISOString().slice(0, 10);
@@ -493,10 +504,13 @@ function submit() {
 function lockIn(m) {
   const R = RUN; R.locked = true; R.phase = 'done'; clearInterval(ticker);
   const sc = score(m.i, m.n), rarest = answersFor(R.P).slice(-3).map(e => e.show);
-  R.res.push({ q: R.P.q, a: m.e.show, tier: sc.tier, pts: sc.pts, share: share(m.i, m.n), rarest: rarest[Math.floor(Math.random() * rarest.length)] });
+  const res = { q: R.P.q, a: m.e.show, tier: sc.tier, pts: sc.pts, share: 'Counting divers…', rarest: rarest[Math.floor(Math.random() * rarest.length)] };
+  R.res.push(res);
+  kdPost('vote', { q: R.P.q, a: m.e.show, id: save.id }).then(x => setShare(res, x.c, x.n), () => setShare(res, 0, 0));
   R.score += sc.pts; SEA.depth = R.score * PER_POINT;
   $('ans').disabled = true; $('goBtn').disabled = true;
-  $('verdict').innerHTML = `<div class="verdict vbg${sc.tier}"><span class="chip t${sc.tier}">${TIERS[sc.tier].name}</span><div><b>${esc(m.e.show)}</b><div style="font-size:13px;color:var(--muted)">${TIERS[sc.tier].what} · about ${share(m.i, m.n)} of divers</div></div><div class="pts">+${sc.pts}<small>+${sc.pts * PER_POINT} m</small></div></div>`;
+  $('verdict').innerHTML = `<div class="verdict vbg${sc.tier}"><span class="chip t${sc.tier}">${TIERS[sc.tier].name}</span><div><b>${esc(m.e.show)}</b><div style="font-size:13px;color:var(--muted)">${TIERS[sc.tier].what} · <span data-share></span></div></div><div class="pts">+${sc.pts}<small>+${sc.pts * PER_POINT} m</small></div></div>`;
+  bindShares($('verdict'), [res]);
   Sound.tier(sc.tier); setTimeout(Sound.bubble, 250);
   setTimeout(next, 2300);
 }
@@ -508,6 +522,7 @@ function timeUp() {
   $('verdict').innerHTML = `<div class="verdict vbgx"><span class="chip" style="background:#55606b;color:#fff">Time's up</span><div><b>No answer</b><div style="font-size:13px;color:var(--muted)">A deep one would have been: ${esc(deep.show)}</div></div><div class="pts">+0</div></div>`;
   setTimeout(next, 2300);
 }
+function bindShares(box, rs) { box.querySelectorAll('[data-share]').forEach((el, k) => { el.kdRes = rs[k]; el.textContent = rs[k].share; }); }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function finish() {
   const R = RUN; clearInterval(ticker);
@@ -525,7 +540,8 @@ function showResults(R) {
   $('resKind').textContent = R.daily ? 'Dive #' + dayNo(R.date) + ' · today\'s prompts' : 'Practice dive';
   $('resDepth').textContent = m.toLocaleString() + ' m'; $('resZone').textContent = zoneAt(m);
   $('resScore').textContent = `${R.score} of ${R.ids.length * 100} rarity points` + (m >= MAX_DEPTH ? ' · a perfect dive!' : '');
-  $('resList').innerHTML = R.res.map((r, k) => `<div class="resRow"><div class="q">${k + 1}. ${esc(r.q)}</div><div class="p">+${r.pts}<small>${r.pts * PER_POINT} m</small></div><div class="a">${r.a ? `${esc(r.a)} <span class="chip sm t${r.tier}">${TIERS[r.tier].name}</span>` : '<span style="color:var(--muted)">No answer</span>'}</div>${r.a ? `<div class="x">About ${r.share} of divers think of it.${r.tier < 4 ? ' A rarer one: ' + esc(r.rarest) + '.' : ''}</div>` : `<div class="x">A deep answer: ${esc(r.rarest)}.</div>`}</div>`).join('');
+  $('resList').innerHTML = R.res.map((r, k) => `<div class="resRow"><div class="q">${k + 1}. ${esc(r.q)}</div><div class="p">+${r.pts}<small>${r.pts * PER_POINT} m</small></div><div class="a">${r.a ? `${esc(r.a)} <span class="chip sm t${r.tier}">${TIERS[r.tier].name}</span>` : '<span style="color:var(--muted)">No answer</span>'}</div>${r.a ? `<div class="x"><span data-share></span>.${r.tier < 4 ? ' A rarer one: ' + esc(r.rarest) + '.' : ''}</div>` : `<div class="x">A deep answer: ${esc(r.rarest)}.</div>`}</div>`).join('');
+  bindShares($('resList'), R.res.filter(r => r.a));
   RUN = null; show('results'); SEA.depth = m;
   $('shareBtn').onclick = () => {
     const sq = ['⬜', '🟦', '🟥', '🟪', '🟨'], line = R.res.map(r => r.tier >= 0 ? sq[r.tier] : '⬛').join('');
@@ -536,8 +552,10 @@ function showResults(R) {
 function showSaved(d) {
   const S = save.days[d]; if (!S) return;
   const ids = pickPrompts(rng(hash('krill-dive:' + d)));
-  const R = { daily: true, date: d, ids, score: S.score, res: S.res.map((x, k) => { const P = KD_DATA.prompts[ids[k]], L = answersFor(P), i = x[0] ? L.findIndex(e => e.show === x[0]) : -1; return { q: P ? P.q : '', a: x[0], tier: x[1], pts: x[2], share: i >= 0 ? share(i, L.length) : '?', rarest: L.length ? L[L.length - 1].show : '' }; }) };
+  const R = { daily: true, date: d, ids, score: S.score, res: S.res.map((x, k) => { const P = KD_DATA.prompts[ids[k]], L = answersFor(P), i = x[0] ? L.findIndex(e => e.show === x[0]) : -1; return { q: P ? P.q : '', a: x[0], tier: x[1], pts: x[2], share: 'Counting divers…', rarest: L.length ? L[L.length - 1].show : '' }; }) };
   showResults(R);
+  // a diver's vote stays put when they send the same answer again, so this just reads the counts (and adds dives from before 1.1)
+  for (const r of R.res) if (r.a) kdPost('vote', { q: r.q, a: r.a, id: save.id }).then(x => setShare(r, x.c, x.n), () => setShare(r, 0, 0));
 }
 
 // ---------- buttons and keys ----------

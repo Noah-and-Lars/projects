@@ -31,6 +31,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname.startsWith('/acct/')) return accounts(req, env, url);
     if (url.pathname === '/chat/ws') return chatSocket(req, env, url);
+    if (url.pathname.startsWith('/kd/')) return krill(req, env, url);
     if (url.pathname !== '/ws') return new Response('arcade realtime ok', { headers: { 'content-type': 'text/plain' } });
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426 });
     const origin = req.headers.get('Origin') || '';
@@ -663,6 +664,44 @@ export class Directory extends DurableObject {
       if (i >= 0) { list.splice(i, 1); await this.saveNames(); }
       await S.delete('u:' + k);
       return j({ ok: true });
+    }
+    return j({ error: 'not_found' }, 404);
+  }
+}
+
+// Krill Dive's "% of divers": how many divers gave each answer to each prompt. One object holds every prompt as
+// 'p:<prompt text>' = { a: { answer: count }, v: { diverId: answer } }; a diver who meets a prompt again (practice
+// dives) moves their one vote instead of adding another, so the share is per diver.
+const KD_Q = 160, KD_A = 80, KD_ID = /^[0-9a-z]{8,32}$/, KD_VOTERS = 20000, KD_ANSWERS = 800, KD_PROMPTS = 5000;
+async function krill(req, env, url) {
+  const origin = req.headers.get('Origin') || '';
+  if (!ACCT_ORIGINS.includes(origin)) return new Response('only available on the official website', { status: 403 });
+  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
+  if (req.method !== 'POST' || +(req.headers.get('content-length') || 0) > 8192) return out({ error: 'bad' }, 400);
+  let body; try { body = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
+  const r = await env.TALLY.get(env.TALLY.idFromName('krill-dive')).fetch(new Request('https://tally/' + url.pathname.slice(4), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) }));
+  return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
+}
+export class Tally extends DurableObject {
+  async fetch(req) {
+    const route = new URL(req.url).pathname.slice(1), S = this.ctx.storage, b = await req.json().catch(() => ({}));
+    const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
+    const str = (v, n) => typeof v === 'string' && v.length && v.length <= n ? v : '';
+    const total = rec => Object.keys(rec.v).length;
+    if (route === 'vote') { // { q, a, id } -> { c: divers who gave this answer, n: divers who answered }
+      const q = str(b.q, KD_Q), a = str(b.a, KD_A), id = KD_ID.test(b.id || '') ? b.id : '';
+      if (!q || !a || !id) return j({ error: 'bad' }, 400);
+      let rec = await S.get('p:' + q);
+      if (!rec) { const np = (await S.get('np')) || 0; if (np >= KD_PROMPTS) return j({ error: 'full' }, 507); await S.put('np', np + 1); rec = { a: {}, v: {} }; }
+      const old = rec.v[id];
+      if (old !== a && (old !== undefined || total(rec) < KD_VOTERS) && (rec.a[a] || Object.keys(rec.a).length < KD_ANSWERS)) {
+        if (old !== undefined && rec.a[old] && !--rec.a[old]) delete rec.a[old];
+        rec.v[id] = a; rec.a[a] = (rec.a[a] || 0) + 1;
+        await S.put('p:' + q, rec);
+      }
+      return j({ c: rec.a[a] || 0, n: total(rec) });
     }
     return j({ error: 'not_found' }, 404);
   }

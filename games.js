@@ -24,7 +24,7 @@ window.GAMES = [
     path: 'krill-dive/index.html',
     thumb: 'krill-dive/thumb.svg',
     added: '2026-11-07T08:00:00+11:00',
-    updated: '2026-11-07T08:00:00+11:00',
+    updated: '2026-11-07T19:00:00+11:00',
     stat() { const s = readSave('krilldive', true); return s && s.played ? 'Best ' + ((s.best || 0) * 10).toLocaleString() + ' m' : null; },
   },
   {
@@ -281,6 +281,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-07', game: 'krill-dive', text: 'Krill Dive 1.1: the share under each answer is now real. Every diver answer is counted, so you see how many divers actually said the same thing (one vote per diver per prompt).' },
   { date: '2026-11-07', game: 'havoc-bay', text: 'Havoc Bay 1.3.1: flares (X) pull homing missiles off your plane or big ship, with a MISSILE INCOMING warning. Barrel rolls, blacking out when you climb straight up, runways on every island, team upgrades on the computer, crouching and lying down, lifeboats off sinking carriers, auto-balance in the public battle and a cheaper shop.' },
   { date: '2026-11-07', game: 'krill-dive', text: 'New game: Krill Dive. Seven daily prompts, 25 seconds each, and the rarer your answer the deeper your krill sinks. Reach the trench floor at 7,000 m for a perfect dive.' },
   { date: '2026-11-07', game: 'havoc-bay', text: 'Havoc Bay 1.3: planes can crash into each other (teammates too), blowing up everyone on board. Press C for first person on foot and on ships, and cockpits now have floors, walls, seats and glass windows to look out of.' },
