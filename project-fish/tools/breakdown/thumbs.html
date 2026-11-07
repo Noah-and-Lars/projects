@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Breakdown pictures</title>
+    <!--
+      The breakdowns picker's pictures (assets/breakdown/thumbs/<id>.webp):
+      each film's last frame, the whole gun with nothing over it, on a clear
+      background (the picker puts the dark backdrop behind it). Serve the
+      project folder (as the game is served), open this page, and save each
+      picture with its link. It draws every entry in
+      src/showcase/breakdowns.js, one after another.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+        }
+      }
+    </script>
+    <style>
+      body { margin: 0; padding: 16px; background: #14161a; color: #ddd; font: 14px system-ui, sans-serif; }
+      /* The film is drawn in a fixed box (its last shot fits the gun into
+         the top two thirds of it), then the picture is cut round the gun. */
+      #stage { position: fixed; left: 0; top: 0; width: 960px; height: 760px; visibility: hidden; }
+      #stage .bd-root { position: absolute; }
+      .out { display: inline-block; margin: 0 12px 12px 0; text-align: center; }
+      .out img { display: block; width: 320px; height: 160px; background: radial-gradient(ellipse 80% 75% at 50% 50%, #2e343b 0%, #181b1f 62%, #0b0c0e 100%); }
+      a { color: #f2c14e; }
+    </style>
+  </head>
+  <body>
+    <p id="status">Drawing…</p>
+    <div id="outs"></div>
+    <div id="stage"></div>
+    <script type="module">
+      import { Breakdown } from '../../src/showcase/breakdown.js';
+      import { BREAKDOWNS } from '../../src/showcase/breakdowns.js';
+
+      const SIZE = { w: 640, h: 320 }; // the picture (2:1, shown at up to ~370 px wide)
+      const MARGIN = 1.12; // how much wider (or taller) the picture is than the gun
+      const stage = document.getElementById('stage');
+      const status = document.getElementById('status');
+      window.thumbs = {}; // id -> data URL, for a script to collect
+
+      for (const entry of BREAKDOWNS) {
+        status.textContent = `Drawing ${entry.name}…`;
+        const script = await entry.load();
+        const show = new Breakdown({ script, container: stage, sound: false, autoplay: false, clickToAdvance: false });
+        await show.play();
+        show.renderAt(show.duration); // (draws in this task, so the canvas still holds it below)
+        // The gun's outline (wherever the canvas isn't clear), and a 2:1
+        // picture round it with a little room at the sides.
+        const canvas = show.canvas;
+        const copy = document.createElement('canvas');
+        copy.width = canvas.width;
+        copy.height = canvas.height;
+        copy.getContext('2d').drawImage(canvas, 0, 0);
+        const { data } = copy.getContext('2d').getImageData(0, 0, copy.width, copy.height);
+        let x0 = copy.width, y0 = copy.height, x1 = 0, y1 = 0;
+        for (let y = 0; y < copy.height; y++) for (let x = 0; x < copy.width; x++) {
+          if (data[(y * copy.width + x) * 4 + 3] < 8) continue;
+          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+        const cropW = Math.max(x1 - x0, (y1 - y0) * (SIZE.w / SIZE.h)) * MARGIN;
+        const scale = SIZE.w / cropW;
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        const out = document.createElement('canvas');
+        out.width = SIZE.w;
+        out.height = SIZE.h;
+        const g = out.getContext('2d');
+        g.imageSmoothingQuality = 'high';
+        g.drawImage(copy, SIZE.w / 2 - cx * scale, SIZE.h / 2 - cy * scale, copy.width * scale, copy.height * scale);
+        const url = out.toDataURL('image/webp', 0.9);
+        window.thumbs[entry.id] = url;
+        show.skip();
+        const box = document.createElement('div');
+        box.className = 'out';
+        box.innerHTML = `<img alt="" src="${url}"><a download="${entry.id}.webp" href="${url}">${entry.id}.webp</a>`;
+        document.getElementById('outs').append(box);
+      }
+      status.textContent = 'Done: save each picture to assets/breakdown/thumbs/.';
+      window.thumbsDone = true;
+    </script>
+  </body>
+</html>

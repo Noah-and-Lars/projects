@@ -249,7 +249,7 @@ body:not(.playing) #ammo {
   margin-top: 10px;
 }
 
-/* The title, with the AR-15 breakdown's button at its right. */
+/* The title, with the Breakdowns button at its right. */
 #loadout .head {
   display: flex;
   align-items: center;
@@ -355,6 +355,90 @@ body:not(.playing) #ammo {
   margin-bottom: 14px;
 }
 
+/* The breakdowns picker: a card per gun, two across (one on a phone), each
+   with the film's last frame over the breakdown's own dark backdrop. */
+#loadout .picks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 4px;
+}
+
+#loadout button.pick {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  margin: 0;
+  padding: 0 0 10px;
+  overflow: hidden;
+  text-align: left;
+  border-radius: 6px;
+}
+
+#loadout button.pick:hover,
+#loadout button.pick:focus-visible {
+  border-color: #f2c14e;
+  background: rgba(242, 193, 78, 0.12);
+}
+
+#loadout button.pick:focus-visible {
+  outline: 2px solid #f2c14e;
+  outline-offset: 1px;
+}
+
+#loadout .pick .thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 1;
+  margin-bottom: 6px;
+  background: radial-gradient(ellipse 80% 75% at 50% 50%, #2e343b 0%, #181b1f 62%, #0b0c0e 100%);
+}
+
+#loadout .pick .thumb img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#loadout .pick .name,
+#loadout .pick .what,
+#loadout .pick .credit {
+  padding: 0 12px;
+}
+
+#loadout .pick .name {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+#loadout .pick .what {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+#loadout .pick .credit {
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+/* A short window: flatter pictures, so all four fit. */
+@media (max-height: 820px) {
+  #loadout .pick .thumb {
+    aspect-ratio: 3 / 1;
+  }
+}
+
+@media (max-height: 600px) {
+  #loadout .pick .thumb {
+    aspect-ratio: 4 / 1;
+  }
+}
+
 /* Phone, upright: the picture stacked above the slots, kept in view at the
    top of the panel while the slots scroll under it. */
 @media (max-width: 600px) {
@@ -416,6 +500,11 @@ body:not(.playing) #ammo {
 
   #loadout .about {
     font-size: 12px;
+  }
+
+  #loadout .picks {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
 }
 
@@ -514,8 +603,8 @@ body.photo #photo-hint {
   display: block;
 }
 
-/* The AR-15 breakdown loading (src/main.js): the same dark screen its own
-   overlay has, till its code is in; Esc goes back to the menu. */
+/* A breakdown loading (src/main.js): the same dark screen its own overlay
+   has, till its code is in; Esc goes back to the picker. */
 .showcase-loading {
   position: fixed;
   inset: 0;

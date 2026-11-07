@@ -21,6 +21,7 @@ import { GpuTimer, Hud } from './hud.js';
 import { settings } from './settings.js';
 import { Loadout } from './attachments.js';
 import { LoadoutMenu } from './loadoutMenu.js';
+import { breakdownById } from './showcase/breakdowns.js';
 import { Outfit, Wardrobe } from './gear.js';
 import { OutfitMenu } from './outfitMenu.js';
 
@@ -150,32 +151,39 @@ menu.onFailedLock = () => {
   overlay.hidden = false;
 };
 
-// --- The AR-15 breakdown (the loadout menu's Showcase button) ---
+// --- The gun breakdowns (the loadout menu's Breakdowns picker) ---
 //
-// It opens over the game with its own renderer (src/showcase/breakdown.js),
-// and its code and model are only loaded when it's opened. Meanwhile the
-// game stands still: the frame loop does nothing (so nothing moves, fires
-// or is drawn), and the mouse stays free, as it is in the menu. Closing it
-// (Esc, its Close button) frees all it made and goes back to the menu.
+// Each opens over the game with its own renderer (src/showcase/breakdown.js);
+// its code, script and model are only loaded when it's picked (the list is
+// src/showcase/breakdowns.js). Meanwhile the game stands still: the frame
+// loop does nothing (so nothing moves, fires or is drawn), and the mouse
+// stays free, as it is in the menu. Closing it (Esc, its Close button)
+// frees all it made and goes back to the picker.
 let showcase = null; // the Breakdown while it's open (or loading)
-async function openBreakdown() {
+async function openBreakdown(id) {
   if (showcase) return;
+  const entry = breakdownById(id);
+  if (!entry) return;
   const pending = { loading: true, cancelled: false };
   showcase = pending;
   input.releaseAll();
+  const back = () => {
+    showcase = null;
+    input.releaseAll();
+    menu.show('breakdowns', id);
+  };
   // Till its code is in, a plain screen says it's loading, and Esc goes back
-  // to the menu (it then never opens).
+  // to the picker (it then never opens).
   const wait = document.createElement('div');
   wait.className = 'showcase-loading';
-  wait.textContent = 'Loading the breakdown…';
+  wait.textContent = `Loading the ${entry.name} breakdown…`;
   const onKey = (e) => {
     if (e.code !== 'Escape') return;
     e.preventDefault();
     e.stopImmediatePropagation();
     pending.cancelled = true;
     done();
-    showcase = null;
-    menu.show();
+    back();
   };
   const done = () => {
     wait.remove();
@@ -185,26 +193,19 @@ async function openBreakdown() {
   document.body.appendChild(wait);
   let Breakdown, script;
   try {
-    const [engine, parts] = await Promise.all([import('./showcase/breakdown.js'), import('./showcase/arSlrParts.js')]);
+    const [engine, loaded] = await Promise.all([import('./showcase/breakdown.js'), entry.load()]);
     Breakdown = engine.Breakdown;
-    script = parts.AR15_BREAKDOWN;
+    script = loaded;
   } catch (error) {
     console.error(error);
     if (pending.cancelled) return;
     done();
-    showcase = null;
-    menu.show();
+    back();
     return;
   }
   if (pending.cancelled) return;
   done();
-  const show = new Breakdown({
-    script,
-    onClose: () => {
-      showcase = null;
-      menu.show();
-    },
-  });
+  const show = new Breakdown({ script, onClose: back });
   showcase = show;
   show.play().catch((error) => console.error(error));
 }

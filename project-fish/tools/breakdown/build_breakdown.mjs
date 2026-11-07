@@ -207,7 +207,8 @@ for (const material of root.listMaterials()) {
     const c = await statsOf(base);
     // (Near-black ones too: a little noise on black can't be seen.)
     const dark = c.every((ch) => ch.mean < 25);
-    if (flat(c, [0, 1, 2], dark ? 3 : 1.5)) {
+    // (A see-through material's colour texture stays: its alpha matters.)
+    if (flat(c, [0, 1, 2], dark ? 3 : 1.5) && material.getAlphaMode() === 'OPAQUE') {
       const f = material.getBaseColorFactor();
       material.setBaseColorFactor([0, 1, 2].map((k) => srgbToLinear(c[k].mean / 255) * f[k]).concat(f[3]));
       material.setBaseColorTexture(null);
@@ -339,7 +340,9 @@ for (const job of jobs) {
   }
   const layout = layouts.get(material);
   if (layout.size !== size) throw new Error(`a material's textures differ in size (${texture.getURI()})`);
-  const src = sharp(Buffer.from(texture.getImage())).removeAlpha().toColourspace('srgb');
+  // A see-through material's colour keeps its alpha (a red dot's reticle).
+  const alpha = job.kind === 'colour' && material.getAlphaMode() !== 'OPAQUE';
+  const src = (alpha ? sharp(Buffer.from(texture.getImage())).ensureAlpha() : sharp(Buffer.from(texture.getImage())).removeAlpha()).toColourspace('srgb');
   let img, w, h;
   const half = job.half ? 0.5 : 1;
   if (layout.packed) {
@@ -363,7 +366,7 @@ for (const job of jobs) {
       const piece = await full.clone().extract({ left, top, width: right - left, height: bottom - top }).resize(cw, ch, { kernel: 'lanczos3', fit: 'fill' }).png().toBuffer();
       pieces.push({ input: piece, left: Math.max(0, dx), top: Math.max(0, dy) });
     }
-    img = sharp({ create: { width: w, height: h, channels: 3, background: { r: 0, g: 0, b: 0 } } }).composite(pieces);
+    img = sharp({ create: { width: w, height: h, channels: alpha ? 4 : 3, background: { r: 0, g: 0, b: 0, ...(alpha ? { alpha: 0 } : {}) } } }).composite(pieces);
     if (half < 1) {
       const flatImg = await img.png().toBuffer();
       w = Math.max(16, Math.round(w * half)); h = Math.max(16, Math.round(h * half));

@@ -1,0 +1,192 @@
+{
+  "comment": "Galil ACE breakdown model: what tools/breakdown/bake_rigid.mjs (the 'rigid' section) and then tools/breakdown/build_breakdown.mjs do to the download. The download is one skinned gun whose parts move by bones; bake_rigid takes the pose at 4.5 s of its animation (magazine in, rail covers on, bolt closed), gives every bone's part its own node, splits the body bone's and the bolt bone's meshes into their separate pieces and names them, moves the two top rounds into the magazine (the pose has them behind it), leaves out the backdrop, the loose rounds and cases lying by the gun and the two lower rounds (they would poke through the magazine's walls), and rubs the maker's, importer's and serial stamps off the normal map (the selector's letters are in the colour map and stay). 'parts' then names the nodes for assets/breakdown/galil_ace.glb; src/showcase/galilAceParts.js groups these names into the breakdown's steps. Sides are the gun's own: right is the ejection-port side.",
+  "title": "Galil Ace",
+  "id": "galil_ace",
+  "copyright": "This work is based on \"Galil Ace\" (https://sketchfab.com/3d-models/galil-ace-5471bfc3d66a402f8eb4fda52b62a2df) by MarkLevin (https://sketchfab.com/mark7levin) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for Project Fish: posed put together and its bones baked into separate rigid parts, each its own named node; rescaled to metres; the backdrop, loose rounds and animation left out; maker, importer and serial stamps rubbed off; textures stored as WebP, flat textures replaced by plain values; meshes compressed.",
+  "extras": {
+    "title": "Galil Ace",
+    "author": "MarkLevin (https://sketchfab.com/mark7levin)",
+    "source": "https://sketchfab.com/3d-models/galil-ace-5471bfc3d66a402f8eb4fda52b62a2df",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)"
+  },
+  "rigid": {
+    "time": 4.5,
+    "frame": "TheGalilAce21_00",
+    "axes": [
+      [
+        0,
+        0.99965,
+        -0.02652
+      ],
+      [
+        -1,
+        0,
+        0
+      ],
+      [
+        0,
+        0.02652,
+        0.99965
+      ]
+    ],
+    "drop": [
+      "Plane01",
+      "TheKartridge_015",
+      "TheSleeve01_013",
+      "TheSleeve_014",
+      "TheCartridge03_023",
+      "TheCartridge04_020"
+    ],
+    "split": [
+      "TheGalilAce21_00",
+      "TheBolt_017"
+    ],
+    "bones": {
+      "TheBar_016": "charging_slot_cover",
+      "TheTrig1_01": "selector_left",
+      "TheTrig2_04": "selector_right",
+      "TheTrigShoot_02": "trigger",
+      "TheTrigMag_03": "magazine_catch",
+      "TheSaile_05": "receiver",
+      "Mag_018": "magazine",
+      "TheApplicant_019": "magazine_follower",
+      "TheCartridge01_022": "magazine_round_1",
+      "TheCartridge02_021": "magazine_round_2",
+      "TheVkladishLeft_06": "rail_cover_left",
+      "TheButtonLeft_07": "rail_cover_left_latch",
+      "TheVkladishRight_08": "rail_cover_right",
+      "TheButtonRight_09": "rail_cover_right_latch",
+      "TheVkladishBottom_010": "rail_cover_bottom",
+      "TheButtonBottom_011": "rail_cover_bottom_latch",
+      "TheSight_012": "rear_sight"
+    },
+    "pieces": {
+      "receiver": [
+        "TheGalilAce21_00#0",
+        "TheGalilAce21_00#11",
+        "TheGalilAce21_00#12",
+        "TheGalilAce21_00#13",
+        "TheGalilAce21_00#14"
+      ],
+      "top_cover": [
+        "TheGalilAce21_00#1"
+      ],
+      "top_rail": [
+        "TheGalilAce21_00#4",
+        "TheGalilAce21_00#5"
+      ],
+      "rear_end_plate": [
+        "TheGalilAce21_00#2"
+      ],
+      "handguard": [
+        "TheGalilAce21_00#3"
+      ],
+      "handguard_top_rail": [
+        "TheGalilAce21_00#6"
+      ],
+      "gas_block": [
+        "TheGalilAce21_00#7",
+        "TheGalilAce21_00#9"
+      ],
+      "front_sight_post": [
+        "TheGalilAce21_00#15",
+        "TheGalilAce21_00#16"
+      ],
+      "barrel": [
+        "TheGalilAce21_00#8"
+      ],
+      "trigger_pin": [
+        "TheGalilAce21_00#10"
+      ],
+      "charging_handle": [
+        "TheBolt_017#0"
+      ],
+      "bolt_carrier": [
+        "TheBolt_017#1"
+      ],
+      "bolt": [
+        "TheBolt_017#2"
+      ]
+    },
+    "move": {
+      "magazine_round_1": [
+        0,
+        -0.0795,
+        0.371
+      ],
+      "magazine_round_2": [
+        0,
+        -0.0675,
+        0.362
+      ],
+      "magazine_follower": [
+        0,
+        -0.0265,
+        0
+      ]
+    },
+    "textures": {
+      "01_-_Default_normal.png": {
+        "size": 2048,
+        "median": 15,
+        "rub": [
+          [
+            1140,
+            135,
+            230,
+            160
+          ],
+          [
+            1725,
+            135,
+            220,
+            110
+          ],
+          [
+            2850,
+            80,
+            160,
+            45
+          ]
+        ]
+      }
+    }
+  },
+  "metresPerUnit": 0.1509,
+  "pxAcross": 800,
+  "texelsPerMm": [
+    6,
+    16
+  ],
+  "parts": {
+    "receiver": "receiver",
+    "charging_slot_cover": "charging_slot_cover",
+    "top_cover": "top_cover",
+    "top_rail": "top_rail",
+    "rear_end_plate": "rear_end_plate",
+    "handguard": "handguard",
+    "handguard_top_rail": "handguard_top_rail",
+    "gas_block": "gas_block",
+    "front_sight_post": "front_sight_post",
+    "barrel": "barrel",
+    "trigger_pin": "trigger_pin",
+    "bolt_carrier": "bolt_carrier",
+    "charging_handle": "charging_handle",
+    "bolt": "bolt",
+    "selector_left": "selector_left",
+    "selector_right": "selector_right",
+    "trigger": "trigger",
+    "magazine_catch": "magazine_catch",
+    "magazine": "magazine",
+    "magazine_follower": "magazine_follower",
+    "magazine_round_1": "magazine_round_1",
+    "magazine_round_2": "magazine_round_2",
+    "rail_cover_left": "rail_cover_left",
+    "rail_cover_left_latch": "rail_cover_left_latch",
+    "rail_cover_right": "rail_cover_right",
+    "rail_cover_right_latch": "rail_cover_right_latch",
+    "rail_cover_bottom": "rail_cover_bottom",
+    "rail_cover_bottom_latch": "rail_cover_bottom_latch",
+    "rear_sight": "rear_sight"
+  }
+}

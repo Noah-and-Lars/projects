@@ -158,7 +158,7 @@ export class Breakdown {
       this.renderer = null;
     }
     // (Nothing big stays reachable from here, whatever still holds this.)
-    this.scene = this.gun = this.parts = this.moving = this.shots = this.timeline = null;
+    this.scene = this.gun = this.parts = this.moving = this.shots = this.timeline = this.entering = null;
     if (this.audio) { this.audio.close().catch(() => {}); this.audio = null; }
     if (this.root) { this.root.remove(); this.root = null; }
     this.ready = null;
@@ -278,13 +278,23 @@ export class Breakdown {
         color: o.material.color.clone(),
         env: o.material.envMapIntensity ?? 1,
         dim: 1,
+        opacity: o.material.opacity,
+        transparent: o.material.transparent,
       });
     });
     this.buildTimeline();
     // Compile shaders and upload textures now, not on the first frames.
+    // (Parts that come in from out of the picture are drawn see-through only
+    // while they fade, and solid once in, so they sort with the solid parts
+    // and not with the lenses: both their shaders are made now.)
     this.layoutDirty = true;
     this.layout();
     renderer.compile(scene, this.camera);
+    if (this.entering.length) {
+      for (const part of this.entering) { part.node.material.transparent = true; part.node.visible = true; }
+      renderer.compile(scene, this.camera);
+      for (const part of this.entering) part.node.material.transparent = part.transparent;
+    }
   }
 
   // ---- The timeline ----
@@ -331,7 +341,12 @@ export class Breakdown {
           inStart: Infinity,
           inEnd: Infinity,
           click: m.click !== false,
+          // enter: the parts aren't there till this move brings them in (along
+          // its path from the far end to where they rest, fading in), and
+          // they fade away at the far end when it goes back.
+          enter: !!m.enter,
         };
+        if (move.enter && move.click) clicks.push(move.outEnd);
         if (move.turn && typeof move.turn.pivot === 'string') {
           const p = this.parts.get(move.turn.pivot);
           if (!p) throw new Error('Breakdown: no pivot part ' + move.turn.pivot);
@@ -374,7 +389,7 @@ export class Breakdown {
             const together = prev && prev.step === m.step && m.outEnd > prev.outStart + 0.05;
             m.inStart = together ? prev.inStart : at;
             m.inEnd = m.inStart + time;
-            if (m.click && !(together && Math.abs(m.inEnd - prev.inEnd) < 0.08)) clicks.push(m.inEnd);
+            if (m.click && !m.enter && !(together && Math.abs(m.inEnd - prev.inEnd) < 0.08)) clicks.push(m.inEnd);
             at = Math.max(at, m.inStart + time * 0.85);
             prev = m;
           }
@@ -403,6 +418,11 @@ export class Breakdown {
       if (!this.moving.has(p)) this.moving.set(p, []);
       this.moving.get(p).push(move);
     }
+    this.entering = [];
+    for (const [part, list] of this.moving) {
+      part.enters = list.filter((mv) => mv.enter);
+      if (part.enters.length) this.entering.push(part);
+    }
     this.timeline = { steps, moves, keys, clicks };
   }
 
@@ -416,6 +436,7 @@ export class Breakdown {
   }
 
   moveMatrix(move, p, out) {
+    if (move.enter) p = 1 - p; // (out is where it rests; home is the far end)
     // Along its path by arc length.
     const offset = new THREE.Vector3();
     let left = p * move.length;
@@ -445,7 +466,7 @@ export class Breakdown {
       const total = new THREE.Matrix4();
       for (const move of list) {
         const p = this.progress(move, t);
-        if (p > 0) total.multiply(this.moveMatrix(move, p, m));
+        if (p > 0 || move.enter) total.multiply(this.moveMatrix(move, p, m));
       }
       result.set(part, total.multiply(part.rest));
     }
@@ -510,11 +531,12 @@ export class Breakdown {
     const full = { x0: m, x1: w - m, y0: top, y1: h - bottom };
     const titled = { x0: m, x1: w - m, y0: top, y1: h * 0.66 };
     const all = [...this.parts.values()];
-    const whole = this.corners(all, 0);
+    const shownAt = (t) => all.filter((p) => !p.enters || !p.enters.length || p.enters.some((mv) => this.progress(mv, t) > 0));
+    const whole = this.corners(shownAt(0), 0);
     this.shots = new Map();
     this.shots.set('intro-a', this.frameShot(whole, { az: 70, el: 18 }, titled, 0.9));
     this.shots.set('intro-b', this.frameShot(whole, { az: 28, el: 8 }, titled, 0.9));
-    this.shots.set('outro', this.frameShot(this.corners(all, this.duration), { az: 24, el: 9 }, titled, 0.9));
+    this.shots.set('outro', this.frameShot(this.corners(shownAt(this.duration), this.duration), { az: 24, el: 9 }, titled, 0.9));
     for (const step of this.timeline.steps) {
       const parts = new Set(step.moves.flatMap((mv) => mv.parts));
       if (step.spec.view && step.spec.view.frame) for (const p of this.nodesFor(step.spec.view.frame)) parts.add(p);
@@ -609,11 +631,12 @@ export class Breakdown {
     if (b.from) from = { ...this.shots.get(b.from), az: this.shots.get(b.from).az + (b.fromDrift || 0) };
     const to = b.mode === 'hold' ? shotOf(b, true) : shotOf(b, false);
     const x = clamp01((t - a.t) / Math.max(1e-6, b.t - a.t));
+    const wide = this.shots.get('outro');
     if (b.mode === 'hold') {
       if (a.shot === b.shot) return { ...to, az: lerp(from.az, to.az, x) };
-      return mixShots(from, to, glide(x));
+      return mixShots(from, to, glide(x), wide);
     }
-    return mixShots(from, to, glide(x));
+    return mixShots(from, to, glide(x), wide);
   }
 
   // ---- Running ----
@@ -686,6 +709,13 @@ export class Breakdown {
         part.node.material.color.copy(part.color).multiplyScalar(k);
         part.node.material.envMapIntensity = part.env * (0.35 + 0.65 * k);
       }
+    }
+    // Parts brought in from out of the picture: seen only while in.
+    for (const part of this.entering) {
+      const k = Math.max(...part.enters.map((mv) => clamp01(this.progress(mv, t) / 0.25)));
+      part.node.visible = k > 0;
+      part.node.material.opacity = part.opacity * k;
+      part.node.material.transparent = k < 1 || part.transparent;
     }
     // Camera, with a small settle shake after each click.
     const shot = this.cameraAt(t);
@@ -768,11 +798,13 @@ export class Breakdown {
     // apart from the others': see below.)
     const spots = anchors.map(({ part, offset }) => {
       const p = new THREE.Vector3();
-      // (The offset is in the part's own frame, so it stays on the part
-      // when the part is turned, as the bolt carrier is with the upper.)
-      part.box.getCenter(p);
-      if (offset) p.add(new THREE.Vector3(...offset));
-      p.applyMatrix4(part.node.matrix).project(this.camera);
+      // (The offset is in metres in the part's own frame, so it stays on
+      // the part when the part is turned, as the bolt carrier is with the
+      // upper. It's turned with the part but not scaled: a quantized
+      // mesh's node carries a scale, and the box is in the mesh's units.)
+      part.box.getCenter(p).applyMatrix4(part.node.matrix);
+      if (offset) p.add(new THREE.Vector3(...offset).applyMatrix4(new THREE.Matrix4().extractRotation(part.node.matrix)));
+      p.project(this.camera);
       return { ax: (p.x + 1) * 0.5 * w, ay: (1 - p.y) * 0.5 * h };
     });
     // (Of the ways to give the lines their places on the card, the one where
@@ -895,18 +927,23 @@ function dirOf(az, el) {
 // way, the distance eases in proportion; on a big swing it rises a little
 // (looking down over the gun rather than along it), and on a big swing or a long
 // slide for how close the camera is it pulls back a little on the way, so
-// it never cuts through the gun.
-function mixShots(a, b, x) {
+// it never cuts through the gun. A half turn passes the gun end on, where
+// its near end would fill the picture: on one it rises and pulls back, at
+// least most of the way to the shot of the whole gun (wide), looking
+// towards the gun's middle.
+function mixShots(a, b, x, wide = null) {
   const daz = ((b.az - a.az + 540) % 360) - 180;
   const swing = Math.min(1, Math.abs(daz) / 120);
+  const half = Math.min(1, Math.max(0, (Math.abs(daz) - 70) / 50));
   const slide = Math.min(1, a.target.distanceTo(b.target) / Math.min(a.dist, b.dist));
   const bump = Math.sin(Math.PI * x);
+  const dist = Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), x)) * (1 + (0.2 * swing + 0.4 * slide) * bump);
   return {
     az: a.az + daz * x,
-    el: lerp(a.el, b.el, x) + bump * 12 * swing,
+    el: lerp(a.el, b.el, x) + bump * (12 * swing + 6 * half),
     fov: lerp(a.fov, b.fov, x),
-    dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), x)) * (1 + (0.2 * swing + 0.4 * slide) * bump),
-    target: a.target.clone().lerp(b.target, x),
+    dist: wide ? Math.max(1, (half * wide.dist) / dist) ** bump * dist : dist,
+    target: wide ? a.target.clone().lerp(b.target, x).lerp(wide.target, 0.85 * half * bump) : a.target.clone().lerp(b.target, x),
   };
 }
 

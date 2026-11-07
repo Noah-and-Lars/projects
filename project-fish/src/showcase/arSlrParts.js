@@ -100,7 +100,7 @@ export const AR15_BREAKDOWN = {
     {
       title: 'Charging handle',
       text: 'Pulled back to a notch at the rear of the upper, it drops out. It is how you load the first round or clear the chamber, and it stays forward while the rifle fires.',
-      anchor: 'charging_handle', offset: [0, 0, -0.055], // (the T handle at its back: its middle is the thin shaft)
+      anchor: 'charging_handle', offset: [-0.0038, 0.0032, -0.041], // (the T handle at its back: its middle is the thin shaft)
       moves: [{ nodes: ['charging_handle*'], path: [[0, 0, -0.045], [0, -0.022, -0.045], [0, -0.03, -0.09], [0, -0.075, -0.1]], time: 1.4 }],
       view: { az: 190, el: 16, frame: ['bolt_carrier'] },
       keep: true,
@@ -122,7 +122,7 @@ export const AR15_BREAKDOWN = {
     {
       title: 'Bolt',
       text: 'It slides out of the front of the carrier. Seven lugs lock it into the barrel extension; the extractor hooks the case rim, and the spring-loaded ejector flicks the empty case out of the port.',
-      anchor: 'bolt',
+      anchor: 'bolt', offset: [-0.0062, 0.0004, 0], // (its side: the extractor covers its middle)
       moves: [{ nodes: ['bolt', 'extractor', 'ejector'], by: [0, 0, 0.042], time: 1.0 }],
       view: { az: 150, el: 26, min: 0.06 },
       close: 4, // the bolt carrier group and charging handle go back; the upper stays open
@@ -164,7 +164,7 @@ export const AR15_BREAKDOWN = {
     {
       title: 'Barrel, gas block and muzzle brake',
       text: 'The barrel nut clamps the barrel to the upper; rifling inside spins the bullet so it flies point first. The gas block taps gas from a port drilled partway down the barrel, under the block, and sends it back down the tube to the carrier. The brake throws gas sideways to tame recoil.',
-      anchor: ['barrel_nut', 'gas_block', 'muzzle_device'],
+      anchor: [{ name: 'barrel_nut', offset: [0.015, 0.0068, 0.0105] }, 'gas_block', 'muzzle_device'], // (the nut's rim: the barrel runs through its middle)
       moves: [
         { nodes: ['muzzle_device'], turn: { axis: [0, 0, 1], deg: 540, pivot: 'muzzle_device' }, by: [0, 0, 0.05], time: 1.0 },
         { nodes: ['gas_block_set_screw_*'], by: [0, -0.012, 0], time: 0.4 },
@@ -192,7 +192,7 @@ export const AR15_BREAKDOWN = {
     {
       title: 'Stock and buffer tube',
       text: 'The latch lets the stock slide along the buffer tube, or off. The tube, locked by the castle nut, holds the buffer and spring that return the carrier.',
-      anchor: ['stock', 'buffer_tube'], offset: [0, 0.01, 0],
+      anchor: [{ name: 'stock', offset: [0.0053, 0.0063, -0.0036] }, { name: 'buffer_tube', offset: [0, 0.01, 0] }],
       moves: [
         { nodes: ['stock_latch_*', 'stock_lock_pin'], by: [0, -0.006, 0], time: 0.4 },
         { nodes: ['stock*', 'butt_pad_*'], by: [0, 0, -0.15], time: 1.2 },
