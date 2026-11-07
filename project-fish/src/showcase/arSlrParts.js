@@ -16,7 +16,8 @@
 // Each step:
 //   title, text   the label (name, and 1 to 3 sentences on what it does)
 //   anchor        the part the label's line points at (its middle), and
-//                 offset: [x, y, z] metres from it
+//                 offset: [x, y, z] metres from it (in its own frame,
+//                 so it turns with it)
 //   moves         what comes out, in order. Each move:
 //                   nodes   names; '*' matches any run of letters, '!name'
 //                           leaves a name out
@@ -64,7 +65,7 @@ export const AR15_BREAKDOWN = {
   steps: [
     {
       title: 'Magazine',
-      text: 'It holds thirty rounds of 5.56×45mm. The magazine release lets it drop free. Its spring pushes the rounds up to the lips, where the bolt strips off the top one.',
+      text: 'It holds thirty rounds of 5.56×45mm and drops free when the release is pressed; its spring pushes the rounds up to the lips, where the bolt strips off the top one. With it out, lock the bolt back and check the chamber is empty.',
       anchor: 'magazine', offset: [0, -0.02, 0],
       moves: [
         { nodes: ['magazine_release_button*'], by: [0.003, 0, 0], time: 0.25, click: false },
@@ -87,7 +88,7 @@ export const AR15_BREAKDOWN = {
     {
       title: 'Bolt carrier group',
       text: 'Draw the charging handle back and the carrier slides out with it. In firing, gas piped into the key on top drives it back to unlock the bolt and throw out the empty case; the buffer spring returns it, chambering the next round.',
-      anchor: 'bolt_carrier', offset: [0, 0, -0.03],
+      anchor: 'bolt_carrier', offset: [0, 0, -0.06], // (its solid back end: its middle is the open cam slot)
       moves: [
         { nodes: ['charging_handle*'], by: [0, 0, -0.06], time: 0.7 },
         { nodes: BCG, by: [0, 0, -0.06], time: 0.7, after: 0 },
@@ -99,28 +100,31 @@ export const AR15_BREAKDOWN = {
     {
       title: 'Charging handle',
       text: 'Pulled back to a notch at the rear of the upper, it drops out. It is how you load the first round or clear the chamber, and it stays forward while the rifle fires.',
-      anchor: 'charging_handle', offset: [0, 0, -0.03],
-      moves: [{ nodes: ['charging_handle*'], path: [[0, 0, -0.045], [0, -0.022, -0.045], [0, -0.03, -0.09]], time: 1.2 }],
+      anchor: 'charging_handle', offset: [0, 0, -0.055], // (the T handle at its back: its middle is the thin shaft)
+      moves: [{ nodes: ['charging_handle*'], path: [[0, 0, -0.045], [0, -0.022, -0.045], [0, -0.03, -0.09], [0, -0.075, -0.1]], time: 1.4 }],
       view: { az: 190, el: 16, frame: ['bolt_carrier'] },
       keep: true,
     },
     {
       title: 'Cam pin',
-      text: 'With the firing pin retaining pin out, it turns a quarter and lifts free. Riding in a curved slot in the carrier, it twists the bolt to lock and unlock.',
+      text: 'Push out the firing pin retaining pin and the firing pin slides out of the back of the carrier; then the cam pin turns a quarter and lifts free. Riding in a curved slot in the carrier, it twists the bolt to lock and unlock.',
       anchor: 'cam_pin',
       moves: [
         { nodes: ['firing_pin_retaining_pin'], by: [-0.03, 0, 0], time: 0.6 },
+        // (The model's firing pin is only its tip, in the bolt's face: it
+        // slides out through the carrier and shows at the back.)
+        { nodes: ['firing_pin', 'firing_pin_tip'], by: [0, 0, -0.175], time: 1.1 },
         { nodes: ['cam_pin'], turn: { axis: [0, 1, 0], deg: 90, pivot: 'cam_pin' }, by: [0, 0.035, 0], time: 0.9 },
       ],
-      view: { az: 170, el: 30, min: 0.1, frame: ['bolt_carrier'] },
+      view: { az: 170, el: 30, min: 0.08 },
       keep: true,
     },
     {
       title: 'Bolt',
       text: 'It slides out of the front of the carrier. Seven lugs lock it into the barrel extension; the extractor hooks the case rim, and the spring-loaded ejector flicks the empty case out of the port.',
       anchor: 'bolt',
-      moves: [{ nodes: ['bolt', 'extractor', 'ejector', 'firing_pin', 'firing_pin_tip'], by: [0, 0, 0.06], time: 1.0 }],
-      view: { az: 150, el: 26, min: 0.1, frame: ['bolt_carrier'] },
+      moves: [{ nodes: ['bolt', 'extractor', 'ejector'], by: [0, 0, 0.042], time: 1.0 }],
+      view: { az: 150, el: 26, min: 0.06 },
       close: 4, // the bolt carrier group and charging handle go back; the upper stays open
     },
     {
@@ -133,7 +137,7 @@ export const AR15_BREAKDOWN = {
     },
     {
       title: 'Trigger group and safety',
-      text: 'On SAFE the selector blocks the trigger. Pulled, the trigger drops the hammer onto the firing pin; the disconnector catches it so it fires once per pull.',
+      text: 'On SAFE the selector blocks the trigger. Pulled, the trigger releases the hammer, which its spring snaps onto the firing pin; the disconnector catches it so it fires once per pull.',
       anchor: 'trigger_unit', offset: [0, 0.006, 0],
       moves: [
         { nodes: ['safety_selector_left'], by: [0.02, 0, 0], time: 0.6 },
@@ -145,19 +149,6 @@ export const AR15_BREAKDOWN = {
       view: { az: 28, el: 16, min: 0.1, frame: ['lower_receiver'] },
     },
     {
-      title: 'Dust cover and forward assist',
-      text: 'The dust cover keeps dirt out of the ejection port and springs open when the carrier moves. The forward assist shoves the carrier home if it hasn’t locked.',
-      anchor: ['dust_cover', 'forward_assist'],
-      moves: [
-        { nodes: ['dust_cover_clip'], by: [-0.006, -0.01, 0], time: 0.5 },
-        { nodes: ['dust_cover_hinge_pin'], by: [0, 0, -0.1], time: 0.7 },
-        { nodes: ['dust_cover', 'dust_cover_spring'], by: [-0.03, -0.006, 0], time: 0.7, after: 0.9 },
-        { nodes: ['forward_assist*'], by: [-0.022, 0.002, -0.022], time: 0.7, after: 0.9 },
-      ],
-      view: { az: 205, el: 12, min: 0.12 },
-      card: 'left',
-    },
-    {
       title: 'Handguard',
       text: 'Free-floating: it clamps to the barrel nut and never touches the barrel, so a grip or rest on it can’t bend the barrel and shift the shot. Two screws loosen and it slides off the front.',
       anchor: 'handguard', offset: [0, -0.012, 0],
@@ -166,22 +157,36 @@ export const AR15_BREAKDOWN = {
         { nodes: ['handguard_clamp_nut_*'], by: [0.012, 0, 0], time: 0.6, after: 0 },
         { nodes: HANDGUARD, path: [[0, 0, 0.3], [0, -0.1, 0.36]], time: 1.8 },
       ],
-      view: { az: 32, el: 12 },
+      view: { az: 32, el: 12, frame: ['upper_receiver'] },
       card: 'left',
       keep: true,
     },
     {
       title: 'Barrel, gas block and muzzle brake',
-      text: 'The barrel nut clamps the barrel to the upper; rifling inside spins the bullet so it flies point first. The gas block taps gas from a port near the muzzle and sends it back down the tube to the carrier. The brake throws gas sideways to tame recoil.',
+      text: 'The barrel nut clamps the barrel to the upper; rifling inside spins the bullet so it flies point first. The gas block taps gas from a port drilled partway down the barrel, under the block, and sends it back down the tube to the carrier. The brake throws gas sideways to tame recoil.',
       anchor: ['barrel_nut', 'gas_block', 'muzzle_device'],
       moves: [
-        { nodes: ['muzzle_device'], turn: { axis: [0, 0, 1], deg: -540, pivot: 'muzzle_device' }, by: [0, 0, 0.05], time: 1.0 },
+        { nodes: ['muzzle_device'], turn: { axis: [0, 0, 1], deg: 540, pivot: 'muzzle_device' }, by: [0, 0, 0.05], time: 1.0 },
         { nodes: ['gas_block_set_screw_*'], by: [0, -0.012, 0], time: 0.4 },
         { nodes: ['gas_block*', 'gas_tube', 'muzzle_device'], by: [0, 0, 0.1], time: 0.9 },
         { nodes: ['barrel_nut'], turn: { axis: [0, 0, 1], deg: 360, pivot: 'barrel_nut' }, by: [0, 0, 0.03], time: 0.9 },
         { nodes: BARREL, by: [0, 0, 0.09], time: 0.9 },
       ],
       view: { az: 34, el: 12, frame: ['upper_receiver'] },
+      card: 'left',
+      keep: true, // it stays out for the dust cover's hinge pin
+    },
+    {
+      title: 'Dust cover and forward assist',
+      text: 'The dust cover keeps dirt out of the ejection port and springs open when the carrier moves. Its hinge pin slides out of the front of the upper, once the handguard and barrel are off. The forward assist shoves the carrier home if it hasn’t locked.',
+      anchor: ['dust_cover', 'forward_assist'],
+      moves: [
+        { nodes: ['dust_cover_clip'], by: [-0.006, -0.01, 0], time: 0.5 },
+        { nodes: ['dust_cover_hinge_pin'], by: [0, 0, 0.09], time: 0.8 },
+        { nodes: ['dust_cover', 'dust_cover_spring'], by: [-0.045, -0.012, 0], time: 0.8, after: 1.0 },
+        { nodes: ['forward_assist*'], by: [-0.03, 0.003, -0.03], time: 0.8, after: 1.0 },
+      ],
+      view: { az: 200, el: 14, min: 0.1 },
       card: 'left',
     },
     {
@@ -191,7 +196,7 @@ export const AR15_BREAKDOWN = {
       moves: [
         { nodes: ['stock_latch_*', 'stock_lock_pin'], by: [0, -0.006, 0], time: 0.4 },
         { nodes: ['stock*', 'butt_pad_*'], by: [0, 0, -0.15], time: 1.2 },
-        { nodes: ['castle_nut'], turn: { axis: [0, 0, 1], deg: 270, pivot: 'castle_nut' }, by: [0, 0, -0.035], time: 0.8, after: 1.2 },
+        { nodes: ['castle_nut'], turn: { axis: [0, 0, 1], deg: -270, pivot: 'castle_nut' }, by: [0, 0, -0.035], time: 0.8, after: 1.2 },
         { nodes: ['buffer_tube', 'castle_nut', 'end_plate*'], turn: { axis: [0, 0, 1], deg: -360, pivot: 'buffer_tube' }, by: [0, 0, -0.05], time: 1.0 },
       ],
       view: { az: -30, el: 10 },

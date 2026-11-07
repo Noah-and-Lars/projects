@@ -73,6 +73,11 @@ export const MODEL_SAPS12 = {
   // aimed swings the sights right out of the top of the view; this much
   // keeps the rock (some 13 degrees) and the sights in view.
   aimShot: 0.35,
+  // While one clip fades into the next (from one shell's reload to the
+  // next's, say), its shell (moved by shell_ctrl) is where the clip coming in has it (see
+  // noFade in animatedGun.js): each reload clip starts with it in the hand,
+  // out of view, and the one before ends with it in the gun.
+  noFade: ['shell_ctrl'],
   slideTravel: 0,
   events: {
     shoot: { fire: 0.05 },

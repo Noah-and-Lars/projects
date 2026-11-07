@@ -160,8 +160,29 @@ menu.onFailedLock = () => {
 let showcase = null; // the Breakdown while it's open (or loading)
 async function openBreakdown() {
   if (showcase) return;
-  showcase = { loading: true };
+  const pending = { loading: true, cancelled: false };
+  showcase = pending;
   input.releaseAll();
+  // Till its code is in, a plain screen says it's loading, and Esc goes back
+  // to the menu (it then never opens).
+  const wait = document.createElement('div');
+  wait.className = 'showcase-loading';
+  wait.textContent = 'Loading the breakdown…';
+  const onKey = (e) => {
+    if (e.code !== 'Escape') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    pending.cancelled = true;
+    done();
+    showcase = null;
+    menu.show();
+  };
+  const done = () => {
+    wait.remove();
+    window.removeEventListener('keydown', onKey, true);
+  };
+  window.addEventListener('keydown', onKey, true);
+  document.body.appendChild(wait);
   let Breakdown, script;
   try {
     const [engine, parts] = await Promise.all([import('./showcase/breakdown.js'), import('./showcase/arSlrParts.js')]);
@@ -169,10 +190,14 @@ async function openBreakdown() {
     script = parts.AR15_BREAKDOWN;
   } catch (error) {
     console.error(error);
+    if (pending.cancelled) return;
+    done();
     showcase = null;
     menu.show();
     return;
   }
+  if (pending.cancelled) return;
+  done();
   const show = new Breakdown({
     script,
     onClose: () => {

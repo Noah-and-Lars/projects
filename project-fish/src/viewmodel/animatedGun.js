@@ -455,7 +455,40 @@ export class AnimatedGun {
     }
     this.putBack();
     this.mixer.update(0);
+    if (this.ghost) this.unfaded(clip);
     this.setParts(dt, clip, slide, triggerPull);
+  }
+
+  // (model.noFade) While one clip fades into another, the bones named there
+  // are where the clip now playing has them, not on the way between the two:
+  // the SPAS-12's shell, which each reload clip has in the hand while the one
+  // before ends with it hidden in the gun, would otherwise float from the
+  // gun to the hand, in view, with no hand on it.
+  unfaded(clip) {
+    if (!this.noFade) {
+      this.noFade = (this.model.noFade || []).map((name) => this.root.getObjectByName(name)).filter(Boolean);
+      this.noFadeTracks = new Map();
+    }
+    if (!this.noFade.length) return;
+    const action = this.actions[clip];
+    if (!action || action.weight <= 0) return;
+    let tracks = this.noFadeTracks.get(clip);
+    if (!tracks) {
+      tracks = [];
+      for (const bone of this.noFade) {
+        for (const track of this.clips[clip].tracks) {
+          const [node, property] = track.name.split('.');
+          if (node === bone.name && (property === 'position' || property === 'quaternion' || property === 'scale')) {
+            tracks.push({ bone, property, at: track.createInterpolant() });
+          }
+        }
+      }
+      this.noFadeTracks.set(clip, tracks);
+    }
+    for (const { bone, property, at } of tracks) {
+      this.keep(bone);
+      bone[property].fromArray(at.evaluate(action.time));
+    }
   }
 
   // The rest pose `key` from the action set `actions` (the playing ones or

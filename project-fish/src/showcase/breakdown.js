@@ -31,7 +31,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 // Pacing (seconds).
 export const TIMING = {
   intro: 3.6, // the opening shot, with the gun's name
-  travel: [0.85, 1.5], // the camera's sweep to a part: shortest and longest
+  travel: [0.9, 2.8], // the camera's sweep to a part: shortest, and longest (a half turn round the gun)
   move: 1.0, // a move that doesn't say how long it takes
   line: 0.4, // the leader line drawing
   card: 0.25, // the card fading in (and out)
@@ -51,6 +51,10 @@ const FRAME = { fill: 0.86, fov: 30, drift: 0.6, dim: 0.42 };
 const UP = new THREE.Vector3(0, 1, 0);
 
 const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2); // in and out
+// The camera's moves: in and out more gently than ease, so a long swing
+// round the gun never whips through the middle (at most 1.6 times its
+// average speed, where ease peaks at 3).
+const glide = (x) => 0.5 - 0.5 * Math.cos(Math.PI * x);
 const seat = (x) => (x * x * (3 - x)) / 2; // slow start, arrives quickly: a part going home
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -208,6 +212,7 @@ export class Breakdown {
     this.creditLine.textContent = this.script.credit || '';
     this.buttons = this.titleCard.querySelector('.bd-buttons');
     this.progressBar = $('.bd-progress-fill');
+    this.hint = $('.bd-hint');
     this.loading = $('.bd-loading');
     const stop = (e) => e.stopPropagation();
     $('.bd-close').addEventListener('click', (e) => { stop(e); this.close(); });
@@ -307,7 +312,7 @@ export class Breakdown {
       const step = { index, spec, view, moves: [], key: 'step' + index };
       // The camera's sweep: longer for a bigger turn.
       const turn = Math.abs(((view.az - lastView.az + 540) % 360) - 180) + Math.abs(view.el - lastView.el);
-      const travel = lerp(TIMING.travel[0], TIMING.travel[1], clamp01(turn / 150));
+      const travel = lerp(TIMING.travel[0], TIMING.travel[1], clamp01(turn / 180));
       step.travelStart = t;
       t += travel;
       step.outStart = t;
@@ -606,9 +611,9 @@ export class Breakdown {
     const x = clamp01((t - a.t) / Math.max(1e-6, b.t - a.t));
     if (b.mode === 'hold') {
       if (a.shot === b.shot) return { ...to, az: lerp(from.az, to.az, x) };
-      return mixShots(from, to, ease(x));
+      return mixShots(from, to, glide(x));
     }
-    return mixShots(from, to, ease(x));
+    return mixShots(from, to, glide(x));
   }
 
   // ---- Running ----
@@ -699,6 +704,11 @@ export class Breakdown {
     this.drawLabel(step, t);
     this.drawTitles(t);
     this.progressBar.style.width = (100 * clamp01(t / this.duration)).toFixed(2) + '%';
+    // (The controls' hint shows through the first part's label, and while
+    // it's paused; after that it would sit over the parts in close shots.)
+    const first = steps[0];
+    const hint = this.paused || !first || t < first.labelEnd ? '1' : '0';
+    if (this.hint.style.opacity !== hint) this.hint.style.opacity = hint;
   }
 
   fillCard(step, i) {
@@ -754,23 +764,42 @@ export class Breakdown {
     const draw = clamp01((t - step.lineStart) / TIMING.line);
     const fadeOut = clamp01((step.labelEnd - t) / TIMING.card);
     const pulse = ((t - step.lineStart) % 1.6) / 1.6;
-    anchors.forEach(({ part, offset }, i) => {
+    // Where each anchor is on screen. (Its line meets the card a little
+    // apart from the others': see below.)
+    const spots = anchors.map(({ part, offset }) => {
       const p = new THREE.Vector3();
-      part.box.getCenter(p).applyMatrix4(part.node.matrix);
+      // (The offset is in the part's own frame, so it stays on the part
+      // when the part is turned, as the bolt carrier is with the upper.)
+      part.box.getCenter(p);
       if (offset) p.add(new THREE.Vector3(...offset));
-      p.project(this.camera);
-      const ax = (p.x + 1) * 0.5 * w, ay = (1 - p.y) * 0.5 * h;
-      // Elbow line to the card's title.
-      let pts;
+      p.applyMatrix4(part.node.matrix).project(this.camera);
+      return { ax: (p.x + 1) * 0.5 * w, ay: (1 - p.y) * 0.5 * h };
+    });
+    // (Of the ways to give the lines their places on the card, the one where
+    // no line crosses or brushes past another; first try, the parts' order
+    // up the screen.)
+    const lineFor = ({ ax, ay }, k) => {
       if (box.side === 'bottom') {
         const x = Math.min(box.x + box.w - 24, Math.max(box.x + 24, ax));
-        pts = [[ax, ay], [x, box.y - 28], [x, box.y]];
-      } else {
-        const edge = box.side === 'right' ? box.x : box.x + box.w;
-        const y = box.y + 30;
-        const elbow = box.side === 'right' ? Math.max(ax + 10, edge - 44) : Math.min(ax - 10, edge + 44);
-        pts = [[ax, ay], [elbow, y], [edge, y]];
+        return [[ax, ay], [x, box.y - 28], [x, box.y]];
       }
+      const edge = box.side === 'right' ? box.x : box.x + box.w;
+      const y = box.y + 30 + k * 12;
+      const elbow = box.side === 'right' ? Math.max(ax + 10, edge - 44) : Math.min(ax - 10, edge + 44);
+      return [[ax, ay], [elbow, y], [edge, y]];
+    };
+    const sorted = spots.map((sp, i) => i).sort((i, j) => (box.side === 'bottom' ? spots[i].ax - spots[j].ax : spots[i].ay - spots[j].ay));
+    let best = null;
+    for (const order of permutations(sorted)) {
+      const lines = new Array(spots.length);
+      order.forEach((i, r) => { lines[i] = lineFor(spots[i], r - (spots.length - 1) / 2); });
+      let clash = 0;
+      for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) clash += polylinesNear(lines[i], lines[j], 6);
+      if (!best || clash < best.clash) best = { clash, lines };
+      if (clash === 0) break;
+    }
+    spots.forEach(({ ax, ay }, i) => {
+      const pts = best.lines[i];
       let len = 0;
       for (let k = 1; k < pts.length; k++) len += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
       const { line, dot, ring } = this.leader(i);
@@ -863,8 +892,8 @@ function dirOf(az, el) {
 }
 
 // Between two shots: the target slides, the camera swings round the shorter
-// way, the distance eases in proportion; on a big swing it rises (looking
-// down over the gun rather than along it), and on a big swing or a long
+// way, the distance eases in proportion; on a big swing it rises a little
+// (looking down over the gun rather than along it), and on a big swing or a long
 // slide for how close the camera is it pulls back a little on the way, so
 // it never cuts through the gun.
 function mixShots(a, b, x) {
@@ -874,9 +903,43 @@ function mixShots(a, b, x) {
   const bump = Math.sin(Math.PI * x);
   return {
     az: a.az + daz * x,
-    el: lerp(a.el, b.el, x) + bump * 30 * swing,
+    el: lerp(a.el, b.el, x) + bump * 12 * swing,
     fov: lerp(a.fov, b.fov, x),
     dist: Math.exp(lerp(Math.log(a.dist), Math.log(b.dist), x)) * (1 + (0.2 * swing + 0.4 * slide) * bump),
     target: a.target.clone().lerp(b.target, x),
   };
+}
+
+// Every order of a short list (the first as given).
+function permutations(list) {
+  if (list.length <= 1) return [list.slice()];
+  const out = [];
+  list.forEach((x, i) => {
+    for (const rest of permutations([...list.slice(0, i), ...list.slice(i + 1)])) out.push([x, ...rest]);
+  });
+  return out;
+}
+
+// How many pairs of segments of two polylines (lists of [x, y]) cross or
+// come within `gap` pixels of each other (ignoring their shared last point:
+// the lines all end on the card's edge).
+function polylinesNear(a, b, gap) {
+  let n = 0;
+  for (let i = 1; i < a.length; i++) for (let j = 1; j < b.length; j++) {
+    if (i === a.length - 1 && j === b.length - 1) continue;
+    if (segmentDistance(a[i - 1], a[i], b[j - 1], b[j]) < gap) n++;
+  }
+  return n;
+}
+function segmentDistance(p, q, r, s) {
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const d1 = cross(r, s, p), d2 = cross(r, s, q), d3 = cross(p, q, r), d4 = cross(p, q, s);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
+  const toSeg = (x, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const l = dx * dx + dy * dy;
+    const t = l ? Math.max(0, Math.min(1, ((x[0] - a[0]) * dx + (x[1] - a[1]) * dy) / l)) : 0;
+    return Math.hypot(x[0] - a[0] - t * dx, x[1] - a[1] - t * dy);
+  };
+  return Math.min(toSeg(p, r, s), toSeg(q, r, s), toSeg(r, p, q), toSeg(s, p, q));
 }

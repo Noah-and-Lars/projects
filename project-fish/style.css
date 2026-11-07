@@ -513,3 +513,19 @@ body.photo #ammo {
 body.photo #photo-hint {
   display: block;
 }
+
+/* The AR-15 breakdown loading (src/main.js): the same dark screen its own
+   overlay has, till its code is in; Esc goes back to the menu. */
+.showcase-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, #2e343b 0%, #181b1f 58%, #0b0c0e 100%);
+  color: #8f99a2;
+  font: 14px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}

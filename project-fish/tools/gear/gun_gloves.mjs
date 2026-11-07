@@ -156,8 +156,11 @@ const RIGS = {
   ak74m: { name: 'AK-74M', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004 },
   // (The Beretta's maker's Mixamo arms, here in a hoodie: their bare skin
   // is the arm mesh, cut away under the new glove, and the hoodie's sleeves
-  // are read beside it.)
-  ak74u: { name: 'AK-74U', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004, armMesh: 'ak74u_hands', sleeveMesh: 'ak74u_sleeves' },
+  // are read beside it. The hoodie's ribbed cuffs are tight and turn with
+  // the forearm's twist differently from the skin, so the glove's cuff is
+  // narrowed 12 mm inside them, not 4: any less and it shows through the
+  // ribs as the forearm twists in the inspect.)
+  ak74u: { name: 'AK-74U', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.012, armMesh: 'ak74u_hands', sleeveMesh: 'ak74u_sleeves' },
   // (The Hi-Power's maker's arms again.)
   saps12: {
     name: 'Franchi SPAS-12', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004,

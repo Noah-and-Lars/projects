@@ -171,6 +171,13 @@ MATERIALS = {'Weapon': 'saps12_gun', 'Case': 'saps12_shell', 'M_Gloves_Black': '
 SIZE = {'saps12_shell': 1024}  # (the rest SIZE_DEFAULT)
 SIZE_DEFAULT = 2048
 WEBP_QUALITY = 90
+# The metal/roughness/occlusion maps are saved lossless: lossy WebP stores
+# colour at half size (it's made for pictures, where that doesn't show), and
+# on a map whose three channels are three unrelated values that smears the
+# roughness and metalness into blocks, which show as a blocky shine on the
+# receiver close up. (The gun's and the shell's: on the gloves' and the
+# sleeves' cloth it doesn't show, and lossless would add 3 MB to the file.)
+ORM_LOSSLESS = {'saps12_gun', 'saps12_shell'}  # (Blender saves WebP at quality 100 lossless)
 # The specular F0 Sketchfab takes as the usual one, and a specularFactor
 # this close to 1 is left out.
 SKETCHFAB_F0 = 0.5
@@ -696,7 +703,7 @@ def textures(g):
         out[name] = {
             'colour': webp_bytes(new_image(f'{name}_colour_out', colour, True), f'{name}_colour', WEBP_QUALITY, folder),
             'normal': webp_bytes(new_image(f'{name}_normal_out', normal), f'{name}_normal', WEBP_QUALITY, folder),
-            'orm': webp_bytes(new_image(f'{name}_orm_out', orm), f'{name}_orm', WEBP_QUALITY, folder),
+            'orm': webp_bytes(new_image(f'{name}_orm_out', orm), f'{name}_orm', 100 if name in ORM_LOSSLESS else WEBP_QUALITY, folder),
             **info,
         }
         for image in list(bpy.data.images):

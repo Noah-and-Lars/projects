@@ -172,7 +172,7 @@ const GUN_KINDS = {
   // of the view instead of across it.)
   ak74m: {
     rules: AK74M, model: new URL('../../assets/ak74m.glb', import.meta.url), animated: MODEL_AK74M,
-    rig: { hip: new THREE.Vector3(0.05, -0.015, -0.02), kick: 0.3, aimLevel: 1, eyeRelief: 0.27, sprintPose: 0, sprintOut: new THREE.Vector3(0.06, -0.05, 0) },
+    rig: { hip: new THREE.Vector3(0.05, -0.015, -0.02), kick: 0.3, aimLevel: 1, eyeRelief: 0.27, sprintPose: 0, sprintOut: new THREE.Vector3(0.06, -0.05, 0), runBlend: [0.3, 0.85] },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(AK74M),
   },
   // (Its download has no camera: the converter's eye is where the head
@@ -749,6 +749,11 @@ const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 //   maker's own sprint pose. sprintOut: sprinting, it's held this much
 //   higher (metres, gun space), as much as it's in the sprint pose: for a
 //   run clip that takes the gun lower than the gun layer's view shows.
+//   runBlend: [from, to], for a run clip with the support hand off the gun
+//   (the AK-74M's): its run loop is played in place of the walk loop over
+//   just that stretch of the way into the sprint pose (0..1), so coming out
+//   of a sprint the hand is back on the gun in a moment (about 0.15 s)
+//   rather than drifting beside it for as long as the pose takes.
 // - aimLevel: how much of the cant its maker holds it at (its model's cant)
 //   the whole rig is turned back about the line of sight as it comes up to
 //   the sights (1: aimed level).
@@ -770,6 +775,7 @@ const RIG = {
   tacOut: new THREE.Vector3(),
   sprintPose: 1,
   sprintOut: new THREE.Vector3(),
+  runBlend: null,
   aimLevel: 0,
   suppressed: false,
   redDot: null,
@@ -1903,8 +1909,10 @@ export class Viewmodel {
     // (Aiming, they're kept down as much as the gun layer's bob is.)
     const k = this.motion.bobAmount * (1 - (1 - MOTION.aiming.bob) * (this.lastAim || 0));
     const s = this.rigState;
-    s.moving.walk = k * (1 - this.motion.sprint);
-    s.moving.run = k * this.motion.sprint;
+    const blend = this.current && this.current.held && this.current.held.runBlend;
+    const run = blend ? smoothstep(blend[0], blend[1], this.motion.sprint) : this.motion.sprint;
+    s.moving.walk = k * (1 - run);
+    s.moving.run = k * run;
     s.clip = clip;
     s.time = time;
     s.toIdle = toIdle;
