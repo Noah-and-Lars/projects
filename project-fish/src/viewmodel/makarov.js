@@ -12,13 +12,17 @@
 // viewmodel.js). Its points are in the `gun` node on the frame bone, which
 // over the idle loop is, on average, gun space (metres, +X right, +Y up,
 // -Z forward) moved to the frame bone (frame, below: where that is then,
-// in the file's space). The gun is held turned 4° onto its right side and
-// a little to the left, so its sights are a little left of the bore.
+// in the file's space). The gun is held turned 4° onto its right side
+// (cant) and 1.3° to the left, so its sights are a little left of the bore
+// and its front sight's blade a little left of where the rear sight's
+// notch looks; aimed, the gun layer turns the whole rig back level and
+// straight (aimLevel, and sights.front: see sightLine in viewmodel.js), so
+// the front blade sits in the notch.
 // Measured by the converter, which prints them (MAKAROV ...):
 // - muzzle: the front of the barrel; port: the ejection port, on the right
 //   of the slide, where the spent case leaves.
-// - sights: the top of the rear sight (the front blade's is level with
-//   it), their middle, and the back faces of the rear and front sights.
+// - sights: the top of the rear sight, their middle, and the back faces of
+//   the rear and front sights; front: the top of the front blade.
 //
 // The clips (seconds), all five as made, each starting and ending in the
 // pose it rests in:
@@ -52,7 +56,10 @@ export const MODEL_MAKAROV = {
   // (In the `gun` node's space.)
   muzzle: [-0.0095, 0.091, -0.124],
   port: [0.0011, 0.0965, -0.0378],
-  sights: { x: -0.0074, height: 0.1039, rearZ: 0.0084, frontZ: -0.1131 },
+  sights: { x: -0.0074, height: 0.1039, rearZ: 0.0084, frontZ: -0.1131, front: { x: -0.0102, height: 0.1037 } },
+  // (How far it's held turned about its bore: degrees, its top towards the
+  // left; it's aimed level.)
+  cant: -4.22,
   // Where the `gun` node is at rest (the file's space).
   frame: [0.038, -0.1127, -0.3182],
   slideTravel: 0.0225,
