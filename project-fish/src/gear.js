@@ -24,8 +24,9 @@
 // draw them in the gun layer instead. Each glove file carries how thick its
 // fingers are to his own gloves' (gear.thickness in the node's extras), for
 // fitting the fingers to the gun. The guns that bring their own arms (the
-// Beretta 92FS, the FN 502, the Hi-Power and the Makarov PM) wear the same gloves made for
-// their own hands (an option's `guns`), put on by src/viewmodel/gunGloves.js.
+// Beretta 92FS, the FN 502, the Hi-Power, the Makarov PM, the AK-74M, the
+// AK-74U and the SPAS-12) wear the same gloves made for their own hands (an
+// option's `guns`), put on by src/viewmodel/gunGloves.js.
 // The guns whose clips play on a copy of his own arms (the Xiri X4, the
 // MP7A1 and the AR-15, src/viewmodel/soldierRig.js) wear these very files (an option's
 // `file`), put on by gunGloves.js too.
@@ -67,9 +68,11 @@ const EXTRA = {
 
 const gearFile = (name) => new URL(`../assets/gear/${name}.glb`, import.meta.url).href;
 // A pair of gloves made for the arms the Beretta, the FN 502, the
-// Hi-Power and the Makarov PM bring with them (tools/gear/gun_gloves.mjs;
-// worn there by src/viewmodel/gunGloves.js), by gun.
-const gunGloves = (id) => Object.fromEntries(['beretta', 'fn502', 'hipistol', 'makarov'].map((gun) => [gun, gearFile(`gloves_${id}_${gun}`)]));
+// Hi-Power, the Makarov PM, the AK-74M, the AK-74U and the SPAS-12 bring
+// with them (tools/gear/gun_gloves.mjs; worn there by src/viewmodel/
+// gunGloves.js), by gun.
+const OWN_ARMS = ['beretta', 'fn502', 'hipistol', 'makarov', 'ak74m', 'ak74u', 'saps12'];
+const gunGloves = (id) => Object.fromEntries(OWN_ARMS.map((gun) => [gun, gearFile(`gloves_${id}_${gun}`)]));
 
 // The slots and their options: { id, name, about, own: true (his own
 // piece) | file (a piece from assets/gear) | neither (nothing), hides
@@ -104,8 +107,8 @@ export const SLOTS = [
   {
     id: 'gloves', name: 'Gloves', default: 'field',
     options: [
-      { id: 'none', name: 'No gloves', about: "The hands the Beretta, the FN 502, the Hi-Power and the Makarov came with (bare hands on the Beretta, its own leather gloves on the FN 502, its own black gloves on the Hi-Power and on the Makarov). He has no bare hands under his gloves, so he keeps his field gloves on (on the Xiri X4, the MP7A1 and the AR-15 too, which he holds with his own arms).", own: true },
-      { id: 'field', name: 'Field gloves', about: 'His own gloves, with a hard knuckle guard. (They weren\'t made for the own arms of the Beretta, the FN 502, the Hi-Power and the Makarov, which keep the hands they came with.)', own: true },
+      { id: 'none', name: 'No gloves', about: "The hands the guns with their own arms came with (bare hands on the Beretta and the AK-74U, its own leather gloves on the FN 502, black gloves on the Hi-Power, the Makarov, the AK-74M and the SPAS-12). He has no bare hands under his gloves, so he keeps his field gloves on (on the Xiri X4, the MP7A1 and the AR-15 too, which he holds with his own arms).", own: true },
+      { id: 'field', name: 'Field gloves', about: 'His own gloves, with a hard knuckle guard. (They weren\'t made for the own arms of the Beretta, the FN 502, the Hi-Power, the Makarov, the AK-74M, the AK-74U and the SPAS-12, which keep the hands they came with.)', own: true },
       { id: 'black', name: 'Black gloves', about: 'Black gloves with a padded knuckle guard, knuckle pads and a wide wrist strap.', file: gearFile('gloves_black'), guns: gunGloves('black') },
       { id: 'olive', name: 'Sage gloves', about: 'Worn sage-green gloves with moulded knuckles and a long strapped cuff.', file: gearFile('gloves_olive'), guns: gunGloves('olive') },
       { id: 'camo', name: 'Camo gloves', about: 'Camouflage gloves with a hard knuckle guard and a tan leather palm.', file: gearFile('gloves_camo'), guns: gunGloves('camo') },

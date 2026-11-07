@@ -370,9 +370,124 @@ export const MAKAROV = {
   caseSize: { diameter: 0.0099, length: 0.0181 },
 };
 
-// The guns the player carries, in the order of their keys (1 to 9).
-export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502', 'hipistol', 'x4', 'mp7', 'ar15', 'makarov'];
+// The tenth: an AK-74M, a 5.45x39 mm assault rifle with a 30-round
+// magazine, fully automatic at about 650 rounds a minute. It comes with its
+// own arms and its own animations (src/viewmodel/ak74m.js), so its times are
+// those clips' own lengths. It has two reloads with rounds left, which take
+// turns (reloadTurns, see src/weapon.js): the first (2.65 s) knocks the old
+// magazine out with the fresh one, the second (2.82 s) pulls the old one
+// first and stows it. From empty (3.5 s) the support hand also reaches over
+// and works the charging handle. Its muzzle brake keeps the kick down: a
+// little less than the AR-15's per round, growing in a burst.
+export const AK74M = {
+  name: 'AK-74M',
+  fireMode: 'auto',
+  fireInterval: 60 / 650,
+  magazine: 30,
+  reserve: 120,
+  reloadTime: 2.648,
+  emptyReloadTime: 3.498,
+  // When things happen, as fractions of the reload: the clips' own times
+  // (src/viewmodel/ak74m.js) over their lengths. With rounds left the
+  // fresh magazine is fetched first and knocks the old one out (nothing
+  // catches it: magCaught is never reached); from empty the same, and the
+  // charging handle is pulled and let go.
+  reloadSteps: {
+    empty: { magGrab: 0.267, magOut: 0.328, magIn: 0.543, slidePull: 0.705, slideRelease: 0.736, handOn: 0.891 },
+    catching: { magGrab: 0.352, magOut: 0.434, magCaught: 2, magIn: 0.718, handOn: 0.824 },
+  },
+  // The second reload with rounds left: the old magazine pulled and
+  // stowed, then the fresh one seated (its clip, length and steps).
+  reloadTurns: [
+    { clip: 'reload2', time: 2.815, steps: { magGrab: 0.189, magOut: 0.337, magCaught: 2, magIn: 0.583, handOn: 0.905 } },
+  ],
+  range: 300,
+  spread: { hip: 2.6, aim: 0.08, moving: 1.6 },
+  recoil: 0.6,
+  burstKick: { perRound: 0.06, most: 0.7 },
+  inspect: false,
+  // Its spent case: a 5.45x39 mm's (metres).
+  caseSize: { diameter: 0.01, length: 0.0396 },
+};
+
+// The eleventh: an AK-74U (an AKS-74U), the AK-74's short carbine: the same
+// 5.45x39 mm from a 30-round magazine, fully automatic at about 700 rounds
+// a minute. It comes with its own arms (a Mixamo character's) and its own
+// animations (src/viewmodel/ak74u.js), so its times are those clips' own
+// lengths: a reload with rounds left (2.23 s) swaps the magazine; one from
+// empty (3.47 s) drops the empty one, seats a fresh one and works the
+// charging handle. Its inspect is its own clip (4.63 s). A short barrel and
+// a small muzzle booster in place of the AK-74M's brake: it kicks and
+// climbs more, and strays more aimed.
+export const AK74U = {
+  name: 'AK-74U',
+  fireMode: 'auto',
+  fireInterval: 60 / 700,
+  magazine: 30,
+  reserve: 120,
+  reloadTime: 2.233,
+  emptyReloadTime: 3.467,
+  // When things happen, as fractions of the reload: the clips' own times
+  // (src/viewmodel/ak74u.js) over their lengths. With rounds left the
+  // magazine catch is pressed and the old magazine taken out and swapped
+  // (nothing catches it: magCaught is never reached); from empty the
+  // fresh magazine is in the hand first, the empty one is knocked out and
+  // dropped, and the charging handle is pulled and let go.
+  reloadSteps: {
+    empty: { magGrab: 0.038, magOut: 0.195, magIn: 0.365, slidePull: 0.637, slideRelease: 0.71, handOn: 0.834 },
+    catching: { magOut: 0.19, magCaught: 2, magGrab: 0.42, magIn: 0.657, handOn: 0.858 },
+  },
+  range: 200,
+  spread: { hip: 2.6, aim: 0.12, moving: 1.6 },
+  recoil: 0.75,
+  burstKick: { perRound: 0.07, most: 0.8 },
+  inspectTime: 4.633,
+  // Cut short, its inspect pose goes back to the hold this quickly: the
+  // support hand is off the gun for part of it.
+  inspectFade: 0.4,
+  caseSize: { diameter: 0.01, length: 0.0396 },
+};
+
+// The twelfth: a Franchi SPAS-12, a 12-gauge combat shotgun, fired
+// semi-automatically, with 8 shells in its tube magazine under the barrel
+// and one more in the chamber. It comes with its own arms and its own
+// animations (src/viewmodel/saps12.js; the download calls it "Saps-12").
+// Each shot throws `pellets` pellets (00 buckshot: nine), each strayed by
+// up to pelletSpread (degrees, half the cone) from where the shot goes.
+// It's loaded a shell at a time (reload 'shells', see src/weapon.js): the
+// gun is turned onto its side (shells.start), each shell is pushed into the
+// tube (shells.each, counted at shells.shellIn), up to the tube's 8 (one
+// more with a shell in the chamber); then it's turned back (shells.end)
+// and, if it was empty, the fore-end is pumped to chamber a shell
+// (shells.pump). A trigger pull while it's loading stops it after the
+// shell in hand. The shot clip has the bolt home 0.24 s after the shot and
+// the gun still well up in its recoil: about 200 rounds a minute.
+export const SAPS12 = {
+  name: 'Franchi SPAS-12',
+  fireInterval: 0.3,
+  magazine: 8,
+  reserve: 32,
+  reload: 'shells',
+  // (Seconds: the clips' own lengths and times, src/viewmodel/saps12.js.)
+  shells: { start: 1.0, each: 1.667, shellIn: 1.158, end: 0.917, pump: 1.25, pumpBack: 0.04, pumpForward: 0.5, chamber: 1 },
+  // (For its stand-in, the PF-9's built-in model, if its own can't load;
+  // its reload is the stand-in's.)
+  reloadTime: 2.1,
+  emptyReloadTime: 2.5,
+  range: 60,
+  pellets: 9,
+  pelletSpread: 2.2,
+  spread: { hip: 1.2, aim: 0.3, moving: 1 },
+  recoil: 1.8,
+  inspect: false,
+  // Its spent hull: a fired 12-gauge shell's (metres).
+  caseSize: { diameter: 0.0205, length: 0.065, color: 0xa3262a },
+};
+
+// The guns the player carries, in the order of their keys (1 to 9, then
+// 0, - and =).
+export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502', 'hipistol', 'x4', 'mp7', 'ar15', 'makarov', 'ak74m', 'ak74u', 'saps12'];
 export const GUNS = {
   pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502, hipistol: HIPISTOL, x4: X4, mp7: MP7, ar15: AR15,
-  makarov: MAKAROV,
+  makarov: MAKAROV, ak74m: AK74M, ak74u: AK74U, saps12: SAPS12,
 };

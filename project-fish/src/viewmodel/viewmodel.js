@@ -18,6 +18,9 @@ import { MODEL_X4 } from './x4.js';
 import { MODEL_MP7 } from './mp7.js';
 import { MODEL_AR15 } from './ar15.js';
 import { MODEL_MAKAROV } from './makarov.js';
+import { MODEL_AK74M } from './ak74m.js';
+import { MODEL_AK74U } from './ak74u.js';
+import { MODEL_SAPS12 } from './saps12.js';
 import { AnimatedGun } from './animatedGun.js';
 import { GunGloves } from './gunGloves.js';
 import { createArms, rightHandPose } from './arms.js';
@@ -27,7 +30,7 @@ import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS, reloadSteps } from '../weapon.js';
-import { PISTOL, PISTOL45, BERETTA, FN502, HIPISTOL, X4, MP7, AR15, MAKAROV, LOADOUT } from '../shared/config.js';
+import { PISTOL, PISTOL45, BERETTA, FN502, HIPISTOL, X4, MP7, AR15, MAKAROV, AK74M, AK74U, SAPS12, LOADOUT } from '../shared/config.js';
 
 // Points on the built-in first pistol (gun space; used if its model file
 // can't be loaded; the model's are in pistol9.js): the
@@ -62,12 +65,16 @@ const BLADE_TRAVEL = 0.0009;
 
 // If the model of a gun with its own arms can't be loaded, the PF-9's built-
 // in stand-in takes its place, held by the usual hands: its rules, but the
-// PF-9's reloads and inspect (theirs follow their own animations).
+// PF-9's reloads and inspect (theirs follow their own animations; a
+// shotgun's stand-in is reloaded by the magazine too).
 const standIn = (rules) => ({
   ...rules,
   reloadTime: PISTOL.reloadTime,
   emptyReloadTime: PISTOL.emptyReloadTime,
   reloadSteps: undefined,
+  reloadTurns: undefined,
+  reload: undefined,
+  shells: undefined,
   inspectTime: undefined,
   inspectLocked: undefined,
   inspect: undefined,
@@ -152,6 +159,21 @@ const GUN_KINDS = {
     rules: MAKAROV, model: new URL('../../assets/makarov.glb', import.meta.url), animated: MODEL_MAKAROV,
     rig: { sightAsAtHip: MODEL45.sights, kick: 0.4, aimLevel: 1 },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(MAKAROV),
+  },
+  ak74m: {
+    rules: AK74M, model: new URL('../../assets/ak74m.glb', import.meta.url), animated: MODEL_AK74M,
+    rig: { hip: new THREE.Vector3(0.05, -0.015, -0.02), kick: 0.3, aimLevel: 1, eyeRelief: 0.33, sprintPose: 0 },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(AK74M),
+  },
+  ak74u: {
+    rules: AK74U, model: new URL('../../assets/ak74u.glb', import.meta.url), animated: MODEL_AK74U,
+    rig: { hip: new THREE.Vector3(0.03, -0.02, -0.03), kick: 0.3, aimLevel: 1, eyeRelief: 0.28 },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(AK74U),
+  },
+  saps12: {
+    rules: SAPS12, model: new URL('../../assets/saps12.glb', import.meta.url), animated: MODEL_SAPS12,
+    rig: { hip: new THREE.Vector3(-0.01, 0.07, 0), kick: 0.3, eyeRelief: 0.42, sprintPose: 0 },
+    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(SAPS12),
   },
 };
 
@@ -1146,6 +1168,14 @@ export class Viewmodel {
       // sightLine.)
       aimTurn: sightLine(M.sights),
     };
+    if (M.hold) {
+      // (A gun whose `gun` node turns with it, held turned M.hold at rest:
+      // aimed, it's turned back by that as well, and its rear sight is
+      // where that turn has it.)
+      const hold = new THREE.Quaternion(...M.hold).normalize();
+      points.aimTurn = (points.aimTurn || new THREE.Quaternion()).clone().multiply(hold.clone().invert());
+      points.aimRear = new THREE.Vector3(M.sights.x || 0, M.sights.height, M.sights.rearZ).applyQuaternion(hold).add(points.sightsAt);
+    }
     const g = { key, rules: kind.rules, base: points, points, pistol: rig.frame, object, rig, at, held, animated: M, parts: NO_PARTS, attachments: {}, on: {}, release: '' };
     g.flash = new MuzzleFlash(M.muzzle);
     g.flash.setMuzzle(M.muzzle, held.suppressed);
@@ -1283,7 +1313,8 @@ export class Viewmodel {
     const z = sights.rearZ + (at ? at.z : 0);
     const roll = (this.current && this.current.points.aimRoll) || 0;
     const turn = this.current && this.current.points.aimTurn;
-    const rear = new THREE.Vector3(x, y, z);
+    const own = this.current && this.current.points.aimRear;
+    const rear = own ? own.clone() : new THREE.Vector3(x, y, z);
     if (turn) rear.applyQuaternion(turn);
     rear.applyAxisAngle(FORWARD_AXIS, roll);
     this.aimPosition.set(-rear.x, -rear.y, -((sights.eyeRelief ?? AIM.eyeToRearSight) + rear.z));
@@ -1830,7 +1861,9 @@ export class Viewmodel {
       clip = 'draw';
       time = (1 - this.lowered) * rig.duration('draw');
     } else if (reload >= 0) {
-      clip = gun.reloadEmpty ? 'reloadEmpty' : 'reload';
+      // (The gun's own reload clip, for one with more than one with rounds
+      // left or loaded a shell at a time: reloadClip.)
+      clip = gun.reloadClip || (gun.reloadEmpty ? 'reloadEmpty' : 'reload');
       time = reload * rig.duration(rig.clipFor(clip));
     } else if (gun && gun.inspectTime >= 0) {
       clip = 'inspect';

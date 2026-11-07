@@ -11,7 +11,7 @@ import { BUTTON_SPRINT, BUTTON_SPRINT_KEY, createPlayerState, emptyCommand, hori
 import { raycastColliders, raycastWorld } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
-import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playSlideBack, playSlideRelease, playSwitchClick, startAudio } from './effects/audio.js';
+import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playShellIn, playSlideBack, playSlideRelease, playSwitchClick, startAudio } from './effects/audio.js';
 import { addSoldier, createWorld, outdoorEnvironment, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { PlayerBody } from './player/body.js';
@@ -91,6 +91,9 @@ let held = LOADOUT[0];
 let weapon = weapons[held];
 
 const asked = { reload: false, inspect: false }; // keys pressed while switching guns
+// The keys for the guns, in LOADOUT's order: the number row, 1 to 9, then
+// 0, - and =.
+const GUN_KEYS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
 
 // What the hands show of a gun (see Viewmodel.update).
 function gunStateOf(w) {
@@ -99,6 +102,7 @@ function gunStateOf(w) {
     reloadProgress: w.reloadProgress,
     reloadSeconds: w.reload ? w.reload.duration : 0,
     reloadEmpty: w.reload ? w.reload.empty : false,
+    reloadClip: w.reload ? w.reload.clip || null : null,
     ammo: w.ammo,
     reserve: w.reserve,
     inspectTime: w.inspectTime,
@@ -127,6 +131,8 @@ const effects = new WorldEffects(scene);
 // closing the menu can't take the mouse back, the click-to-play screen shows.
 const loadout = new Loadout();
 const menu = new LoadoutMenu(document.getElementById('loadout'), loadout, input, () => held, new OutfitMenu(outfit, wardrobe));
+// (Each gun's tab can put that gun in the hands.)
+menu.onPickGun = (key) => switchGun(key);
 // Puts a gun's chosen attachments on it (once the models are in; then each
 // time the loadout changes).
 function applyLoadout(key) {
@@ -398,9 +404,16 @@ function shoot() {
     : player.stance === 'prone' ? 0.65 : player.stance === 'crouch' ? 0.8 : 1;
   const stray = ((gun.spread.hip + gun.spread.moving * moving) * (1 - aimAmount) + gun.spread.aim * aimAmount) * steady;
   const direction = spread(forward.clone().lerp(throughSights, aimAmount).normalize(), stray);
-  const hit = raycastWorld(camera.position.x, camera.position.y, camera.position.z, direction.x, direction.y, direction.z, gun.range);
-  if (hit && hit.what === 'soldier') effects.impact(hit, 0x6b6e58, false); // cloth: no hole (his box is only roughly his shape)
-  else if (hit) effects.impact(hit, hit.what === 'ground' ? 0x8c8c8c : 0xcfc6b6);
+  // (A shotgun's pellets, `pellets` of them, each strayed by up to its
+  // pelletSpread from there; each kicks up less dust than a bullet.)
+  const pellets = Math.max(1, gun.pellets || 1);
+  for (let i = 0; i < pellets; i++) {
+    const d = pellets > 1 ? spread(direction, gun.pelletSpread || 0) : direction;
+    const hit = raycastWorld(camera.position.x, camera.position.y, camera.position.z, d.x, d.y, d.z, gun.range);
+    const dust = pellets > 1 ? 0.35 : 1;
+    if (hit && hit.what === 'soldier') effects.impact(hit, 0x6b6e58, false, dust); // cloth: no hole (his box is only roughly his shape)
+    else if (hit) effects.impact(hit, hit.what === 'ground' ? 0x8c8c8c : 0xcfc6b6, true, dust);
+  }
 
   // Flash, smoke and the spent case, where the gun is.
   const muzzle = gunPointToWorld(viewmodel.muzzlePoint());
@@ -590,10 +603,10 @@ renderer.setAnimationLoop((time) => {
     viewmodel.flickSwitch();
   }
 
-  // Switching guns: 1 to 9, or the mouse wheel.
+  // Switching guns: 1 to 9, 0, - and =, or the mouse wheel.
   if (play) {
     LOADOUT.forEach((key, i) => {
-      if (input.presses(`Digit${i + 1}`) > 0) switchGun(key);
+      if (GUN_KEYS[i] && input.presses(GUN_KEYS[i]) > 0) switchGun(key);
     });
     const steps = input.wheelSteps();
     if (steps) switchGun(LOADOUT[(LOADOUT.indexOf(held) + steps % LOADOUT.length + LOADOUT.length) % LOADOUT.length]);
@@ -646,6 +659,7 @@ renderer.setAnimationLoop((time) => {
       playMagIn(held);
       viewmodel.seatMagazine();
     }
+    else if (event === 'shellIn') playShellIn();
     else if (event === 'slidePull') playSlideBack(held);
     else if (event === 'slideRelease') playSlideRelease(held);
   }

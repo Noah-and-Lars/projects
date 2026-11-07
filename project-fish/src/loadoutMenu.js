@@ -1,13 +1,16 @@
 // A simple, temporary loadout menu: press B in the game to choose each gun's
-// attachments, and (its last tab) your outfit (src/outfitMenu.js). It
-// releases the mouse while it's open; B, Esc or "Back to game" closes it and
-// takes the mouse again.
+// attachments, and (its last tab) your outfit (src/outfitMenu.js). Each
+// gun's tab can also put that gun in your hands (onPickGun: the game's, the
+// gun's key) and goes back to the game. It releases the mouse while it's
+// open; B, Esc or "Back to game" closes it and takes the mouse again.
 
 import { SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
 
 // The Outfit tab's key (beside the guns').
 const OUTFIT = 'outfit';
+// Each gun's key in the game (LOADOUT's order), for the menu to show.
+const KEY_NAMES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
 
 // An attachment's name, from its id.
 function nameOf(gun, id) {
@@ -31,6 +34,7 @@ export class LoadoutMenu {
     this.heldGun = heldGun;
     this.gun = LOADOUT[0];
     this.open = false;
+    this.onPickGun = null; // (key) => puts that gun in the hands
     this.element.hidden = true;
     document.addEventListener('keydown', (e) => {
       if (!this.open) return;
@@ -100,6 +104,28 @@ export class LoadoutMenu {
       panel.append(this.backButton());
       el.append(panel);
       return;
+    }
+
+    // The gun in the hands, or a button to take it.
+    if (this.onPickGun) {
+      const row = document.createElement('div');
+      row.className = 'slot';
+      const label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = 'In your hands';
+      row.append(label);
+      const take = document.createElement('button');
+      take.type = 'button';
+      const key = KEY_NAMES[LOADOUT.indexOf(this.gun)];
+      const holding = this.gun === this.heldGun();
+      take.textContent = holding ? `${GUNS[this.gun].name} (in your hands)` : `Take the ${GUNS[this.gun].name}${key ? ` (${key})` : ''}`;
+      take.className = holding ? 'option chosen' : 'option';
+      take.addEventListener('click', () => {
+        if (!holding) this.onPickGun(this.gun);
+        this.close();
+      });
+      row.append(take);
+      panel.append(row);
     }
 
     // A row for each slot that gun has, with a button per attachment and one

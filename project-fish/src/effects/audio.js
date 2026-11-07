@@ -15,6 +15,9 @@ let shots = [];
 let quietShots = []; // through a suppressor
 let smgShots = []; // the MP7A1's: a suppressed 4.6 mm (see makeSmgShot)
 let rifleShots = []; // the AR-15's: a suppressed 5.56 mm (see makeRifleShot)
+let akShots = []; // the AK-74M's: an open 5.45 mm through a muzzle brake (see makeAkShot)
+let akShortShots = []; // the AK-74U's: the same from a short barrel (makeAkShot's short one)
+let shotgunShots = []; // the SPAS-12's: a 12-gauge (see makeShotgunShot)
 
 const SHOT_VARIANTS = 5;
 
@@ -185,6 +188,99 @@ function makeRifleShot(rate) {
   return out;
 }
 
+// The AK-74M's shot: a 5.45x39 mm rifle round with nothing on the muzzle
+// but its brake, which throws the blast out sideways: much louder and
+// brighter than the suppressed AR-15's (makeRifleShot's, the same parts,
+// changed), the bullet's crack sharp at the start, a deep low punch, and
+// the heavy bolt carrier slamming back and home. `short`: the AK-74U's,
+// from a barrel less than half as long: more of the powder burns outside
+// it (a harsher, more concussive blast, its low punch stronger), the
+// carrier cycles a little quicker, and the report dies away sooner.
+function makeAkShot(rate, short = false) {
+  const length = Math.floor(rate * (short ? 0.3 : 0.4));
+  const out = new Float32Array(length);
+  const r = (a, b) => a + Math.random() * (b - a);
+  // The bullet's crack: a sharp N-wave.
+  const crack = new Float32Array(length);
+  const n = Math.floor(rate * r(0.0009, 0.0011));
+  for (let i = 0; i < n; i++) crack[i] = 1 - (2 * i) / n;
+  highpass(crack, 1200, rate);
+  // The blast, open: broadband, bright, with a longer tail than a pistol's.
+  const blast = new Float32Array(length);
+  const fast = short ? r(0.0075, 0.009) : r(0.006, 0.0075);
+  const tail = short ? r(0.035, 0.045) : r(0.045, 0.06);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    blast[i] = (Math.random() * 2 - 1) * (Math.exp(-t / fast) + 0.35 * Math.exp(-t / tail));
+  }
+  highpass(lowpass(blast, short ? r(4200, 5200) : r(5500, 7000), rate), 170, rate);
+  // The pressure spike at the very start.
+  const spike = Math.floor(rate * r(0.0012, 0.0016));
+  for (let i = 0; i < spike; i++) out[i] += 1.5 * (1 - (2 * i) / spike);
+  // The low punch.
+  let phase = 0;
+  const boom = short ? r(80, 95) : r(88, 105);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    phase += (2 * Math.PI * (boom * Math.exp(-t * 9) + 45)) / rate;
+    out[i] += Math.sin(phase) * Math.exp(-t / (short ? 0.045 : 0.05)) * Math.min(1, t / 0.0012) * (short ? 1.05 : 0.9);
+  }
+  for (let i = 0; i < length; i++) out[i] += blast[i] * (short ? 2 : 1.8) + crack[i] * 1.9;
+  // The bolt carrier: back (a click) and home (a heavy clack).
+  ring(out, rate, short ? r(0.011, 0.014) : r(0.013, 0.017), [2900, 4600, 6300].map((f) => f * r(0.95, 1.05)), 0.006, 0.15);
+  ring(out, rate, short ? r(0.05, 0.056) : r(0.058, 0.066), [1500, 2900, 4300].map((f) => f * r(0.95, 1.05)), 0.012, 0.22);
+  // Off the ground, duller.
+  const delay = Math.floor(rate * r(0.004, 0.0055));
+  const bounce = lowpass(Float32Array.from(out), 2500, rate);
+  for (let i = length - 1; i >= delay; i--) out[i] += bounce[i - delay] * 0.4;
+  const drive = 2.2;
+  const norm = Math.tanh(drive);
+  for (let i = 0; i < length; i++) out[i] = Math.tanh(out[i] * drive) / norm;
+  return out;
+}
+
+// The SPAS-12's shot: a 12-gauge from an open barrel, deeper and longer
+// than a rifle's (a big, slower blast, a strong low boom, only a faint
+// crack from the pellets), and its bolt cycling by itself (it's fired
+// semi-automatically): back with the hull flying out, and home.
+function makeShotgunShot(rate) {
+  const length = Math.floor(rate * 0.5);
+  const out = new Float32Array(length);
+  const r = (a, b) => a + Math.random() * (b - a);
+  const crack = new Float32Array(length);
+  const n = Math.floor(rate * r(0.0006, 0.0008));
+  for (let i = 0; i < n; i++) crack[i] = 1 - (2 * i) / n;
+  highpass(crack, 1500, rate);
+  const blast = new Float32Array(length);
+  const fast = r(0.009, 0.011);
+  const tail = r(0.06, 0.08);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    blast[i] = (Math.random() * 2 - 1) * (Math.exp(-t / fast) + 0.4 * Math.exp(-t / tail));
+  }
+  highpass(lowpass(blast, r(3600, 4400), rate), 110, rate);
+  const spike = Math.floor(rate * r(0.0016, 0.002));
+  for (let i = 0; i < spike; i++) out[i] += 1.6 * (1 - (2 * i) / spike);
+  let phase = 0;
+  const boom = r(62, 74);
+  for (let i = 0; i < length; i++) {
+    const t = i / rate;
+    phase += (2 * Math.PI * (boom * Math.exp(-t * 7) + 38)) / rate;
+    out[i] += Math.sin(phase) * Math.exp(-t / 0.085) * Math.min(1, t / 0.0015) * 1.2;
+  }
+  for (let i = 0; i < length; i++) out[i] += blast[i] * 2.1 + crack[i] * 0.8;
+  // The bolt: back (the hull flies out) and home (a heavy clack).
+  ring(out, rate, r(0.07, 0.08), [2100, 3700, 5200].map((f) => f * r(0.95, 1.05)), 0.008, 0.16);
+  ring(out, rate, r(0.18, 0.2), [1300, 2500, 3900].map((f) => f * r(0.95, 1.05)), 0.014, 0.24);
+  const delay = Math.floor(rate * r(0.004, 0.0055));
+  const bounce = lowpass(Float32Array.from(out), 2200, rate);
+  for (let i = length - 1; i >= delay; i--) out[i] += bounce[i - delay] * 0.45;
+  const drive = 2.4;
+  const norm = Math.tanh(drive);
+  for (let i = 0; i < length; i++) out[i] = Math.tanh(out[i] * drive) / norm;
+  return out;
+}
+
 // Outdoor echo: a few distinct reflections off things far away, then a
 // rolling tail that loses its highs, a little different in each ear.
 function makeEcho(rate) {
@@ -291,6 +387,12 @@ export function startAudio() {
       const rifleBuffer = context.createBuffer(1, rifle.length, context.sampleRate);
       rifleBuffer.copyToChannel(rifle, 0);
       rifleShots.push(rifleBuffer);
+      for (const [list, make] of [[akShots, () => makeAkShot(context.sampleRate)], [akShortShots, () => makeAkShot(context.sampleRate, true)], [shotgunShots, () => makeShotgunShot(context.sampleRate)]]) {
+        const data = make();
+        const buffer = context.createBuffer(1, data.length, context.sampleRate);
+        buffer.copyToChannel(data, 0);
+        list.push(buffer);
+      }
     }
     loadSamples();
   }
@@ -353,15 +455,20 @@ const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 // AR-15 (makeRifleShot's, suppressed too), louder, its crack echoing back
 // more. The Makarov PM's 9x18 mm is the 9 mm's a little higher and
 // shorter (a smaller charge from a short barrel in a small steel gun) and
-// a touch quieter.
+// a touch quieter. The AK-74M has its own (makeAkShot's: open, through a
+// muzzle brake), loud and echoing back a lot; the AK-74U makeAkShot's
+// short one, louder still and shorter; the SPAS-12 makeShotgunShot's,
+// the loudest and deepest, echoing back the most.
 const GUNSHOT = {
   pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, beretta: { rate: 0.95, volume: 0.92 },
   fn502: { rate: 1.35, volume: 0.5, echo: 0.3 }, hipistol: { rate: 0.97, volume: 0.92 },
   x4: { rate: 1.02, volume: 0.9 }, mp7: { rate: 1, volume: 0.8, echo: 0.2, set: 'smg' },
   ar15: { rate: 1, volume: 0.95, echo: 0.35, set: 'rifle' },
   makarov: { rate: 1.08, volume: 0.86, echo: 0.45 },
+  ak74m: { rate: 1, volume: 1, echo: 0.6, set: 'ak' }, ak74u: { rate: 1.04, volume: 1, echo: 0.55, set: 'akShort' },
+  saps12: { rate: 1, volume: 1, echo: 0.7, set: 'shotgun' },
 };
-const OWN_SHOTS = { smg: () => smgShots, rifle: () => rifleShots };
+const OWN_SHOTS = { smg: () => smgShots, rifle: () => rifleShots, ak: () => akShots, akShort: () => akShortShots, shotgun: () => shotgunShots };
 // The guns whose magazine and slide sounds are the .45 recordings: the
 // M1911's, the Beretta's and the Hi-Power's (a steel magazine and slide
 // too). The FN 502
@@ -374,11 +481,17 @@ const OWN_SHOTS = { smg: () => smgShots, rifle: () => rifleShots };
 // recorded magazine sounds (a metal magazine) and, for its bolt running
 // home off the bolt catch, the .45's slide going forward, a little lower.
 // The Makarov PM has the .45's recorded magazine sounds (a steel magazine)
-// and its slide recordings a little faster (a smaller steel slide).
+// and its slide recordings a little faster (a smaller steel slide). The
+// AK-74M and the AK-74U have the PF-9's magazine sounds (their magazines
+// are polymer) and, for the charging handle pulled back and let go, the
+// .45's slide recordings slower (a long, heavy bolt carrier). The SPAS-12
+// has the same, slower still, for its fore-end pumped back and forward,
+// and playShellIn for each shell pushed into its tube.
 const RECORDED = new Set(['pistol45', 'beretta', 'hipistol', 'ar15', 'makarov']);
 const LIGHT_SLIDE = {
   fn502: { rate: 1.25, volume: 0.65 }, x4: { rate: 1.08, volume: 0.85 }, mp7: { rate: 1.3, volume: 0.6 }, ar15: { rate: 0.92, volume: 1 },
   makarov: { rate: 1.12, volume: 0.9 },
+  ak74m: { rate: 0.84, volume: 1 }, ak74u: { rate: 0.88, volume: 1 }, saps12: { rate: 0.74, volume: 1 },
 };
 
 // suppressed: fired through a suppressor (quieter, and it barely echoes).
@@ -407,6 +520,20 @@ export function playSwitchClick() {
 
 export function playDryFire() {
   burst({ type: 'bandpass', from: 3200, q: 6, volume: 0.80, decay: 0.02 });
+}
+
+// A shell pushed into a shotgun's tube: it slides in past the lifter and
+// the shell latch clicks behind it.
+export function playShellIn() {
+  burst({ type: 'bandpass', from: 1100, to: 700, q: 2, volume: 0.5, attack: 0.004, decay: 0.07 });
+  burst({ at: 0.055, type: 'bandpass', from: 2600, q: 5, volume: 0.6, decay: 0.03 });
+}
+
+// A fired shotgun hull landing: a dull plastic knock and its brass head's
+// faint tick.
+export function playHull(volume = 1) {
+  burst({ type: 'bandpass', from: 900, to: 500, q: 2.5, volume: 0.22 * volume, attack: 0.001, decay: 0.05 });
+  tone({ at: 0.002, from: vary(3100, 0.1), volume: 0.02 * volume, decay: 0.05 });
 }
 
 // A spent case landing: a few bright metallic pings.

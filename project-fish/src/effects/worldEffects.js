@@ -3,7 +3,7 @@
 // and bullet impacts (a puff of dust and a hole left behind).
 
 import * as THREE from 'three';
-import { playCasing, playMagDrop } from './audio.js';
+import { playCasing, playHull, playMagDrop } from './audio.js';
 import { MAGAZINE } from '../viewmodel/pistol.js';
 
 const GRAVITY = 9.8;
@@ -87,6 +87,9 @@ export class WorldEffects {
     this.caseGeometry = new THREE.CylinderGeometry(CASE.diameter / 2, CASE.diameter / 2, CASE.length, 12);
     // Not fully metallic: the world has no reflections for pure metal to show, so it would look black.
     this.caseMaterial = new THREE.MeshStandardMaterial({ color: 0xd4a84e, metalness: 0.35, roughness: 0.35 });
+    // (A shotgun's hull: plastic in its caseSize's colour, by colour, with
+    // a brass head.)
+    this.hullMaterials = new Map();
     this.cases = [];
 
     // Bullet holes.
@@ -140,9 +143,19 @@ export class WorldEffects {
   }
 
   // A spent case flying out of the ejection port.
-  // size: { diameter, length } (metres) if it isn't a 9 mm's.
+  // size: { diameter, length } (metres) if it isn't a 9 mm's; with a
+  // colour, it's a shotgun's plastic hull, its brass head the bottom fifth.
   ejectCase(position, velocity, size = null) {
-    const mesh = new THREE.Mesh(this.caseGeometry, this.caseMaterial);
+    const hull = Boolean(size && size.color !== undefined);
+    if (hull && !this.hullMaterials.has(size.color)) this.hullMaterials.set(size.color, new THREE.MeshStandardMaterial({ color: size.color, roughness: 0.6 }));
+    const mesh = new THREE.Mesh(this.caseGeometry, hull ? this.hullMaterials.get(size.color) : this.caseMaterial);
+    if (hull) {
+      const head = new THREE.Mesh(this.caseGeometry, this.caseMaterial);
+      head.scale.set(1.04, 0.2, 1.04);
+      head.position.y = -0.4 * CASE.length;
+      head.castShadow = true;
+      mesh.add(head);
+    }
     const radius = (size ? size.diameter : CASE.diameter) / 2;
     if (size) mesh.scale.set(size.diameter / CASE.diameter, size.length / CASE.length, size.diameter / CASE.diameter);
     mesh.position.copy(position);
@@ -150,7 +163,7 @@ export class WorldEffects {
     mesh.castShadow = true;
     this.scene.add(mesh);
     const spin = new THREE.Vector3((Math.random() - 0.5) * 40, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 40);
-    this.cases.push({ mesh, radius, velocity: velocity.clone(), spin, age: 0, bounces: 0, resting: false });
+    this.cases.push({ mesh, radius, hull, velocity: velocity.clone(), spin, age: 0, bounces: 0, resting: false });
     if (this.cases.length > 40) {
       this.scene.remove(this.cases[0].mesh);
       this.cases.shift();
@@ -208,9 +221,10 @@ export class WorldEffects {
     }
   }
 
-  // Where a bullet hit: a hole (unless `hole` is false) and a puff of dust
-  // (and a few grains of grit).
-  impact(hit, color, withHole = true) {
+  // Where a bullet hit: a hole (unless `withHole` is false) and a puff of
+  // dust (and a few grains of grit; `amount` of it: less for each of a
+  // shotgun's pellets).
+  impact(hit, color, withHole = true, amount = 1) {
     const normal = new THREE.Vector3(hit.nx, hit.ny, hit.nz);
     const point = new THREE.Vector3(hit.x, hit.y, hit.z);
     if (withHole) {
@@ -224,12 +238,12 @@ export class WorldEffects {
       if (this.holes.length > 80) this.scene.remove(this.holes.shift());
     }
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < Math.max(1, Math.round(7 * amount)); i++) {
       const v = normal.clone().multiplyScalar(0.6 + Math.random() * 1.4)
         .add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).multiplyScalar(0.9));
       this.puff(point.clone().addScaledVector(normal, 0.02), v, { color, opacity: 0.45, size: 0.05 + Math.random() * 0.05, grow: 0.35, life: 0.5 + Math.random() * 0.5, drag: 4 });
     }
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < Math.max(1, Math.round(5 * amount)); i++) {
       const v = normal.clone().multiplyScalar(1.5 + Math.random() * 2).add(new THREE.Vector3(Math.random() - 0.5, Math.random(), Math.random() - 0.5).multiplyScalar(2));
       this.puff(point.clone(), v, { color: 0x5a564e, opacity: 0.9, size: 0.012, grow: 0, life: 0.35, drag: 0.5, rise: -GRAVITY });
     }
@@ -268,7 +282,8 @@ export class WorldEffects {
       if (c.mesh.position.y < 0.005 && c.velocity.y < 0) {
         c.mesh.position.y = 0.005;
         const speed = -c.velocity.y;
-        playCasing(Math.min(1, speed / 3));
+        if (c.hull) playHull(Math.min(1, speed / 3));
+        else playCasing(Math.min(1, speed / 3));
         c.velocity.y = speed * 0.35;
         c.velocity.x *= 0.55;
         c.velocity.z *= 0.55;

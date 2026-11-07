@@ -40,9 +40,26 @@ export const RELOAD_STEPS = {
 
 // A gun's own times for a reload (its spec's reloadSteps change some of
 // them; a gun that's racked by hand from empty has rackGrab and rackPull).
-export function reloadSteps(spec, kind) {
-  return { ...RELOAD_STEPS[kind], ...((spec && spec.reloadSteps && spec.reloadSteps[kind]) || {}) };
+// (turn: one of its spec's reloadTurns, a reload with rounds left that
+// takes turns with its usual one: its steps instead of reloadSteps'.)
+export function reloadSteps(spec, kind, turn = null) {
+  const own = turn ? turn.steps : spec && spec.reloadSteps && spec.reloadSteps[kind];
+  return { ...RELOAD_STEPS[kind], ...(own || {}) };
 }
+
+// A gun loaded a shell at a time (its spec's reload is 'shells', and its
+// shells say how long each part takes: see SAPS12 in src/shared/config.js)
+// goes through these stages, each its own clip: turned to load (start), a
+// shell pushed in (shell, again for each one: the shell counts at
+// shells.shellIn), turned back (end) and, if the chamber was empty, the
+// fore-end pumped to chamber one (pump: back at shells.pumpBack, home at
+// shells.pumpForward).
+export const SHELL_STAGES = {
+  start: { clip: 'reloadStart', time: 'start' },
+  shell: { clip: 'reload', time: 'each' },
+  end: { clip: 'reloadEnd', time: 'end' },
+  pump: { clip: 'pump', time: 'pump' },
+};
 
 // Inspecting: the shooting hand turns the gun to show its right side, then
 // its left, and then the magazine is checked: the support hand catches it as
@@ -120,6 +137,21 @@ export class Pistol {
     this.triggerHeld = false; // (fully automatic) the trigger is held down
     this.burst = 0; // shots since the trigger was pressed (fully automatic: the rounds of this burst)
     this.firing = false; // (fully automatic) it was firing a burst last frame
+    this.reloadTurn = 0; // (a gun with reloadTurns) which reload with rounds left is next
+    // (A gun loaded a shell at a time) its chamber is empty (its rounds, if
+    // any, are all in the tube): after its last shot, until it's pumped.
+    this.chamberEmpty = false;
+  }
+
+  // Whether it's loaded a shell at a time (see SHELL_STAGES).
+  get byShell() {
+    return this.spec.reload === 'shells' && Boolean(this.spec.shells);
+  }
+
+  // (Loaded a shell at a time) how many rounds it can hold now: the tube,
+  // and one more if there's one in the chamber.
+  get capacity() {
+    return this.spec.magazine + (this.byShell && !this.chamberEmpty && this.ammo > 0 ? this.spec.shells.chamber || 0 : 0);
   }
 
   // Whether it fires as long as the trigger is held (its spec's fireMode).
@@ -191,6 +223,8 @@ export class Pistol {
     // inspecting, one click is kept for when it can fire.)
     const waiting = !ready || this.reload || this.inspect;
     if (trigger > 0 && (waiting || this.cooldown - dt <= PULL_KEEP + 1e-6)) this.pulls = [0];
+    // (Loading shells, a trigger pull stops it after the shell in hand.)
+    if (trigger > 0 && this.reload && this.reload.shells) this.reload.stop = true;
     this.triggerHeld = this.automatic && held;
     const events = this.step(dt, reloadKey, ready, inspectKey, busy);
     // (A burst ends when the trigger is let go, and when the gun can't go
@@ -245,10 +279,11 @@ export class Pistol {
       events.push('inspected');
     }
 
+    if (this.reload && this.reload.shells) return this.stepShells(dt, events);
     if (this.reload) {
       this.reload.time += dt;
       const p = this.reloadProgress;
-      const steps = reloadSteps(this.spec, this.reload.empty ? 'empty' : 'catching');
+      const steps = this.reload.steps;
       for (const [step, at] of Object.entries(steps)) {
         if (step === 'handOn') continue;
         if (p >= at && !this.reload.done.has(step)) {
@@ -268,14 +303,19 @@ export class Pistol {
       return events;
     }
 
-    const canReload = this.ammo < this.spec.magazine && this.reserve > 0;
+    // (Loaded a shell at a time, it can be reloaded until the tube is full,
+    // and pumped with the tube full and the chamber empty.)
+    const unpumped = this.byShell && this.chamberEmpty && this.ammo > 0;
+    const canReload = (this.ammo < this.capacity && this.reserve > 0) || unpumped;
     if (this.reloadWaiting) {
       reloadKey = true;
       this.reloadWaiting = false;
     }
-    if (reloadKey && canReload) {
-      const empty = this.ammo === 0;
-      this.reload = { time: 0, duration: empty ? this.spec.emptyReloadTime : this.spec.reloadTime, empty, done: new Set() };
+    // (With rounds in the tube and none in the chamber, a trigger pull
+    // pumps the fore-end instead.)
+    const pump = unpumped && ready && this.pulls.length > 0;
+    if ((reloadKey && canReload) || pump) {
+      this.startReload();
       events.push('reload');
       this.pulls = [];
       return events;
@@ -300,7 +340,10 @@ export class Pistol {
       if (this.ammo > 0) {
         this.ammo--;
         this.burst++;
-        if (this.ammo === 0) this.slideLocked = true;
+        if (this.ammo === 0) {
+          this.slideLocked = true;
+          this.chamberEmpty = this.byShell;
+        }
         events.push('shot');
       } else {
         events.push('dry');
@@ -308,6 +351,91 @@ export class Pistol {
       if (!this.holdingFire) break;
     }
     return events;
+  }
+
+  // Starts a reload: from empty, or with rounds left (a gun with
+  // reloadTurns takes turns with them; one loaded a shell at a time starts
+  // turning to load, or, with the tube full and the chamber empty, goes
+  // straight to pumping).
+  startReload() {
+    const empty = this.ammo === 0;
+    const spec = this.spec;
+    if (this.byShell) {
+      const full = !(this.ammo < this.capacity && this.reserve > 0);
+      this.reload = { shells: true, empty: this.chamberEmpty || empty, stop: false, time: 0, done: new Set() };
+      this.shellStage(full ? 'pump' : 'start');
+      return;
+    }
+    let turn = null;
+    if (!empty && spec.reloadTurns && spec.reloadTurns.length) {
+      const turns = [null, ...spec.reloadTurns];
+      turn = turns[this.reloadTurn % turns.length];
+      this.reloadTurn++;
+    }
+    this.reload = {
+      time: 0,
+      duration: empty ? spec.emptyReloadTime : turn ? turn.time : spec.reloadTime,
+      empty,
+      // (The clip to play, if not the usual reload or empty reload.)
+      clip: turn ? turn.clip : null,
+      steps: reloadSteps(spec, empty ? 'empty' : 'catching', turn),
+      done: new Set(),
+    };
+  }
+
+  // (Loaded a shell at a time) on to the reload stage `stage` (see
+  // SHELL_STAGES), from its start.
+  shellStage(stage) {
+    const r = this.reload;
+    r.stage = stage;
+    r.clip = SHELL_STAGES[stage].clip;
+    r.duration = this.spec.shells[SHELL_STAGES[stage].time];
+    r.done = new Set();
+  }
+
+  // (Loaded a shell at a time) a reload's dt seconds: its stage's events,
+  // and on to the next stage when it's done (time over carried into it).
+  // Each shell counts as it goes into the tube; the reload goes on to the
+  // next shell while there's room and shells to load, unless the trigger
+  // has been pulled; it ends turned back, pumped if the chamber was empty.
+  stepShells(dt, events) {
+    const r = this.reload;
+    const S = this.spec.shells;
+    r.time += dt;
+    for (;;) {
+      const t = r.time;
+      if (r.stage === 'shell' && t >= S.shellIn && !r.done.has('shellIn') && this.reserve > 0) {
+        r.done.add('shellIn');
+        this.ammo++;
+        this.reserve--;
+        events.push('shellIn');
+      }
+      if (r.stage === 'pump' && t >= S.pumpBack && !r.done.has('slidePull')) {
+        r.done.add('slidePull');
+        events.push('slidePull');
+      }
+      if (r.stage === 'pump' && t >= S.pumpForward && !r.done.has('slideRelease')) {
+        r.done.add('slideRelease');
+        events.push('slideRelease');
+        this.chamberEmpty = false;
+        this.slideLocked = false;
+      }
+      if (t < r.duration) return events;
+      const room = this.ammo < this.capacity && this.reserve > 0;
+      let next = null;
+      if (r.stage === 'start') next = room ? 'shell' : 'end';
+      else if (r.stage === 'shell') next = room && !r.stop ? 'shell' : 'end';
+      else if (r.stage === 'end') next = r.empty && this.ammo > 0 ? 'pump' : null;
+      if (!next) {
+        this.slideLocked = this.chamberEmpty;
+        this.reload = null;
+        events.push('reloaded');
+        return events;
+      }
+      r.time = t - r.duration;
+      this.shellStage(next);
+      if (next === 'shell') events.push('magGrab'); // (the next shell taken from the belt)
+    }
   }
 
   // How far an inspect moves on in dt seconds: slower through the holds
@@ -341,7 +469,12 @@ export class Pistol {
     this.burst = 0;
     this.firing = false;
     if (!this.reload) return;
-    const steps = reloadSteps(this.spec, this.reload.empty ? 'empty' : 'catching');
+    // (Loading shells, those already in stay in.)
+    if (this.reload.shells) {
+      this.reload = null;
+      return;
+    }
+    const steps = this.reload.steps;
     if (this.reloadProgress >= steps.magIn) {
       const taken = Math.min(this.spec.magazine - this.ammo, this.reserve);
       this.ammo += taken;

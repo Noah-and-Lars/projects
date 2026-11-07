@@ -145,6 +145,21 @@ const RIGS = {
       palm: [1, 2, 3, 4].map((k) => `palm${k}_S`), thumb: finger('thumb'),
     },
   },
+  // (The FN 502's and the Makarov's maker's arms again.)
+  ak74m: { name: 'AK-74M', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004 },
+  // (The Beretta's maker's Mixamo arms, here in a hoodie: their bare skin
+  // is the arm mesh, cut away under the new glove, and the hoodie's sleeves
+  // are read beside it.)
+  ak74u: { name: 'AK-74U', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004, armMesh: 'ak74u_hands', sleeveMesh: 'ak74u_sleeves' },
+  // (The Hi-Power's maker's arms again.)
+  saps12: {
+    name: 'Franchi SPAS-12', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004,
+    armMesh: 'saps12_gloves', sleeveMesh: 'saps12_sleeves',
+    hands: {
+      hand: 'hand_S', fingers: ['index', 'middle', 'ring', 'little'].map(finger),
+      palm: [1, 2, 3, 4].map((k) => `palm${k}_S`), thumb: finger('thumb'),
+    },
+  },
 };
 
 await MeshoptEncoder.ready;
