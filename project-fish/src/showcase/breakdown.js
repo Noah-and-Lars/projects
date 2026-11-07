@@ -35,7 +35,7 @@ export const TIMING = {
   move: 1.0, // a move that doesn't say how long it takes
   line: 0.4, // the leader line drawing
   card: 0.25, // the card fading in (and out)
-  read: { base: 1.1, word: 0.1, min: 2.8, max: 4.4 }, // how long a label stays: base + per word
+  read: { base: 1.1, word: 0.1, min: 3, max: 5 }, // how long a label stays: base + per word
   back: 0.5, // a part going back takes this share of the time it took to come out
   backMin: 0.35,
   closeTravel: 1.0, // the camera taking in a whole chain of parts going back
@@ -140,6 +140,7 @@ export class Breakdown {
     window.removeEventListener('resize', this.onResize);
     if (this.renderer) {
       this.renderer.setAnimationLoop(null);
+      this.releaseSharedTextures();
       this.scene.traverse((o) => {
         if (o.geometry) o.geometry.dispose();
         for (const m of [].concat(o.material || [])) {
@@ -152,9 +153,28 @@ export class Breakdown {
       this.renderer.forceContextLoss();
       this.renderer = null;
     }
+    // (Nothing big stays reachable from here, whatever still holds this.)
+    this.scene = this.gun = this.parts = this.moving = this.shots = this.timeline = null;
     if (this.audio) { this.audio.close().catch(() => {}); this.audio = null; }
     if (this.root) { this.root.remove(); this.root = null; }
     this.ready = null;
+  }
+
+  // three.js shares one small texture between all renderers (its DFG lookup
+  // table for shiny materials) and never frees it; each renderer that uses
+  // it hangs a listener on it, which would keep this renderer, its canvas
+  // and so this whole show alive after it closes. This takes ours off: it's
+  // the listener our renderer put on our own textures.
+  releaseSharedTextures() {
+    let own = null, lut = null;
+    this.scene.traverse((o) => {
+      if (!o.isMesh || (own && lut)) return;
+      const m = o.material;
+      own = own || (m.map && m.map._listeners && m.map._listeners.dispose && m.map._listeners.dispose[0]) || null;
+      const uniforms = this.renderer.properties.get(m).uniforms;
+      lut = lut || (uniforms && uniforms.dfgLUT && uniforms.dfgLUT.value) || null;
+    });
+    if (own && lut) lut.removeEventListener('dispose', own);
   }
 
   // ---- The page ----
@@ -487,7 +507,7 @@ export class Breakdown {
     const all = [...this.parts.values()];
     const whole = this.corners(all, 0);
     this.shots = new Map();
-    this.shots.set('intro-a', this.frameShot(whole, { az: 70, el: 18 }, titled, 0.8));
+    this.shots.set('intro-a', this.frameShot(whole, { az: 70, el: 18 }, titled, 0.9));
     this.shots.set('intro-b', this.frameShot(whole, { az: 28, el: 8 }, titled, 0.9));
     this.shots.set('outro', this.frameShot(this.corners(all, this.duration), { az: 24, el: 9 }, titled, 0.9));
     for (const step of this.timeline.steps) {
