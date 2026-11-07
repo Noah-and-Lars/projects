@@ -988,6 +988,9 @@ async function write(item, g, rig, opts, source) {
     .setAttribute('WEIGHTS_0', acc('VEC4', g.weights))
     .setMaterial(material);
   const node = doc.createNode(`gear_${item.id}_${rig.id}`).setMesh(doc.createMesh(`gear_${item.id}_${rig.id}`).addPrimitive(prim)).setSkin(skin);
+  // (A segment none of whose points could be measured, as the Makarov's
+  // thumb's middle one, is taken as its own hand's thickness: 1, as the palm.)
+  const known = (xs) => xs.map((x) => (Number.isFinite(x) ? x : 1));
   const th = g.hands[0].thickness;
   const sides = {};
   const cut = {};
@@ -997,7 +1000,7 @@ async function write(item, g, rig, opts, source) {
     cut[S] = +g.hands[k].cut.toFixed(4);
   });
   node.setExtras({
-    gear: { id: item.id, slot: 'gloves', rig: rig.id, thickness: { finger: th.finger, thumb: th.thumb, palm: th.palm } },
+    gear: { id: item.id, slot: 'gloves', rig: rig.id, thickness: { finger: known(th.finger), thumb: known(th.thumb), palm: th.palm } },
     gunGlove: { rig: rig.id, armMesh: rig.armMesh, sides, cut },
   });
   parent.addChild(node);

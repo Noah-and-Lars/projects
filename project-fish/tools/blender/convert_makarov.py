@@ -107,8 +107,9 @@ BONES = {'Body': 'frame_j', 'Slide': 'slide_j', 'Trig': 'trigger_j', 'Hammer': '
 DROPPED = {'Head_Cam'}
 
 MESHES = {'mesh_Mat_0': 'arms', 'Makarov_base_makarov_material_0': 'gun'}
-# The arms' points are stored mirrored through the origin (every coordinate
-# negated) and 10,000 times too big for their skin (an export fault: as
+# The arms' points (and normals, but not their faces' winding) are stored
+# mirrored through the origin (every coordinate negated) and 10,000 times
+# too big for their skin (an export fault: as
 # they stand they'd be drawn tens of metres across). Taken back into the
 # skin's space, they lie where the FN 502's arms do on the same skeleton.
 ARMS_FIX = np.diag([-1e-4, -1e-4, -1e-4, 1.0])
@@ -188,10 +189,11 @@ def textures(g):
         assert pbr.get('baseColorFactor', [1, 1, 1, 1]) == [1, 1, 1, 1] and 'emissiveTexture' not in m
         colour = image_array(load(find(SOURCE, tex(pbr['baseColorTexture']), required=True), True))
         mr = image_array(load(find(SOURCE, tex(pbr['metallicRoughnessTexture']), required=True), False))
-        normal_path = find(SOURCE, tex(m['normalTexture'])) if 'normalTexture' in m else None
+        normal_uri = tex(m['normalTexture']) if 'normalTexture' in m else None
+        normal_path = find(SOURCE, normal_uri) if normal_uri else None
         normal = image_array(load(normal_path, False)) if normal_path else None
         if not normal_path:
-            log(f'{key}: no normal map in the download ({tex(m["normalTexture"])}): left without one')
+            log(f'{key}: no normal map in the download ({normal_uri or "none named"}): left without one')
         if key == 'gun':
             k = SIZE / 4096
             maps = [colour, mr] + ([normal] if normal is not None else [])

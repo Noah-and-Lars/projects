@@ -590,7 +590,7 @@ renderer.setAnimationLoop((time) => {
     viewmodel.flickSwitch();
   }
 
-  // Switching guns: 1 to 8, or the mouse wheel.
+  // Switching guns: 1 to 9, or the mouse wheel.
   if (play) {
     LOADOUT.forEach((key, i) => {
       if (input.presses(`Digit${i + 1}`) > 0) switchGun(key);

@@ -744,7 +744,9 @@ function rigOf(kind) {
 // isn't on the line straight ahead from the rear sight's), the turn that
 // lines its sights up with the view ahead: aimed, the whole rig is turned by
 // it (then by its aimRoll), so the front blade sits on the rear sight.
-// Null for the others.
+// (Whatever its aimLevel: the roll after it is about the line of sight it
+// gives, so it keeps the sights lined up however much of the cant is
+// levelled.) Null for the others.
 function sightLine(sights) {
   if (!sights || !sights.front) return null;
   const line = new THREE.Vector3(sights.front.x - (sights.x || 0), sights.front.height - sights.height, sights.frontZ - sights.rearZ).normalize();

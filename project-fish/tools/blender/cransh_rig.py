@@ -63,8 +63,10 @@ class Gun:
       with gun space at, on average (one for a still).
     - mesh_fix: {mesh name: 4x4 matrix} for a mesh whose points the
       download keeps in another space than its skin's: the matrix takes
-      them into it (its normals turned with it, and its faces' winding
-      turned over if it mirrors them).
+      them into it (its normals turned with it). Its faces' winding is
+      then turned over only if it doesn't agree with its normals: the
+      Makarov's arms' points and normals are stored mirrored but their
+      winding isn't, so taken back they already agree.
     - own_frame: 'bone' (the gun is measured in its frame bone's axes) or
       'slide' (in the frame its slide's sights set, for a frame bone that
       points another way: see slide_frame).
@@ -201,8 +203,14 @@ def convert(g, accessor, gun):
             pos = (np.c_[pos, np.ones(len(pos))] @ X.T)[:, :3]
             linear = X[:3, :3] / np.cbrt(abs(np.linalg.det(X[:3, :3])))
             normal = normal @ linear.T
-            if np.linalg.det(linear) < 0:
-                triangles = triangles[:, ::-1].copy()  # (mirrored: its faces' winding turns over)
+            # (Front faces wound anticlockwise round their normals, as
+            # glTF's are; a double-sided material otherwise shades the
+            # side seen with its normals turned inwards.)
+            face = np.cross(pos[triangles[:, 1]] - pos[triangles[:, 0]], pos[triangles[:, 2]] - pos[triangles[:, 0]])
+            agree = np.einsum('ij,ij->i', face, normal[triangles].sum(1)) > 0
+            log(f'{m["name"]}: {agree.mean():.3f} of its faces wound round their normals')
+            if agree.mean() < 0.5:
+                triangles = triangles[:, ::-1].copy()
         material = g['materials'][prim['material']]
         uv = accessor(a['TEXCOORD_0']).astype(np.float64)
         uv, wraps = gun.uv(g, material, uv)
