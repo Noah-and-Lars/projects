@@ -85,6 +85,11 @@ export const INSPECT_HOLDS = {
 // (Fully automatic) the most rounds fired in one frame (a slow frame's
 // worth of a burst).
 const BURST_MOST = 3;
+// A click comes this close (seconds) before the gun can fire again, it's kept
+// and fires as soon as it can; a click earlier than that is dropped (clicking
+// faster than the gun fires never stores shots up for later). At most one
+// click is ever kept.
+const PULL_KEEP = 0.1;
 const HOLD_EASE = 0.15; // seconds (of the inspect) to slow into and out of a hold
 const smoothstep = (e0, e1, x) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
@@ -110,7 +115,7 @@ export class Pistol {
     this.reload = null; // { time, duration, empty, done: Set of steps reached }
     this.inspect = null; // { time, done: Set of steps reached, check: with the chamber check, cut: cut short, fade: 1 → 0 when it's going back }
     this.reloadWaiting = false; // the reload key was pressed while inspecting
-    this.pulls = []; // trigger pulls waiting for the gun to be ready (seconds waited)
+    this.pulls = []; // the trigger pull waiting for the gun to be ready, if any (seconds waited)
     this.chamberCheck = true; // whether inspecting checks the chamber (not while an attachment is in the way of the hand)
     this.triggerHeld = false; // (fully automatic) the trigger is held down
     this.burst = 0; // shots since the trigger was pressed (fully automatic: the rounds of this burst)
@@ -168,8 +173,8 @@ export class Pistol {
   }
 
   // dt: seconds since the last frame. trigger: how many times the fire button
-  // was pressed this frame (a pull while the gun isn't ready yet is kept for a
-  // moment, so quick taps are never lost). reloadKey: the reload key was pressed.
+  // was pressed this frame (one pull is kept while the gun isn't ready yet, or
+  // when it comes just before the gun can fire again: PULL_KEEP). reloadKey: the reload key was pressed.
   // ready: the gun is up and can fire (not while it's still coming up from a
   // sprint; a pull made then fires as soon as it's up). inspectKey: the
   // inspect key was pressed. busy: aiming or sprinting, which stops an
@@ -182,7 +187,10 @@ export class Pistol {
   // 'magGrab', 'magIn', 'slidePull', 'slideRelease', 'reloaded', 'inspect',
   // 'inspected'.
   update(dt, trigger, reloadKey, ready = true, inspectKey = false, busy = false, held = false) {
-    for (let i = 0; i < trigger; i++) this.pulls.push(0);
+    // (While the gun isn't up yet (a sprint, a switch), reloading or
+    // inspecting, one click is kept for when it can fire.)
+    const waiting = !ready || this.reload || this.inspect;
+    if (trigger > 0 && (waiting || this.cooldown - dt <= PULL_KEEP + 1e-6)) this.pulls = [0];
     this.triggerHeld = this.automatic && held;
     const events = this.step(dt, reloadKey, ready, inspectKey, busy);
     // (A burst ends when the trigger is let go, and when the gun can't go
@@ -194,7 +202,7 @@ export class Pistol {
     // the gun is up (out of a sprint, or back from an inspect), and only
     // after a frame in which they could have fired (so even a very slow
     // frame can't make one stale before it gets its chance).
-    if (ready && !this.inspect) this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 0.25);
+    if (ready && !this.inspect) this.pulls = this.pulls.map((t) => t + dt).filter((t) => t < 2 * PULL_KEEP);
     return events;
   }
 
