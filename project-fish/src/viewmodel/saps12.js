@@ -68,6 +68,11 @@ export const MODEL_SAPS12 = {
   // Aimed, its idle is held at its start, where its sights were lined up
   // (its idle loop rocks it up and down by more than the sights' width).
   aimStill: 0,
+  // Aimed, its shot clip plays at this share of its weight over that held
+  // frame: at full weight its recoil rocks the gun up 37 degrees, which
+  // aimed swings the sights right out of the top of the view; this much
+  // keeps the rock (some 13 degrees) and the sights in view.
+  aimShot: 0.35,
   slideTravel: 0,
   events: {
     shoot: { fire: 0.05 },

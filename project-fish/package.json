@@ -19,7 +19,11 @@
     "build-mp7": "mkdir -p build assets && blender --background --python tools/blender/convert_retarget.py -- build/upload-mp7 build/mp7-raw.glb --arms assets/soldier.glb && gltf-transform meshopt build/mp7-raw.glb assets/mp7.glb --level high",
     "build-ar15": "mkdir -p build assets && blender --background --python tools/blender/convert_retarget.py -- build/upload-ar15 build/ar15-raw.glb --arms assets/soldier.glb && gltf-transform meshopt build/ar15-raw.glb assets/ar15.glb --level high",
     "build-makarov": "mkdir -p assets && blender --background --python tools/blender/convert_makarov.py -- build/upload-makarov build/makarov-raw.glb && gltf-transform meshopt build/makarov-raw.glb assets/makarov.glb --level high",
-    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-makarov && npm run build-arms && npm run build-soldier && npm run build-gear && npm run build-x4 && npm run build-mp7 && npm run build-ar15"
+    "build-ak74m": "mkdir -p build assets && blender --background --python tools/blender/convert_ak74m.py -- build/upload-ak74m build/ak74m-raw.glb && gltf-transform meshopt build/ak74m-raw.glb assets/ak74m.glb --level high",
+    "build-ak74u": "mkdir -p build assets && blender --background --python tools/blender/convert_ak74u.py -- build/upload-krinkov build/ak74u-raw.glb && gltf-transform meshopt build/ak74u-raw.glb assets/ak74u.glb --level high",
+    "build-saps12": "mkdir -p build assets && blender --background --python tools/blender/convert_saps12.py -- build/upload-saps12 build/saps12-raw.glb && gltf-transform meshopt build/saps12-raw.glb assets/saps12.glb --level high",
+    "build-gun-gloves": "mkdir -p assets/gear && node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/makarov.glb assets/ak74m.glb assets/ak74u.glb assets/saps12.glb assets/gear",
+    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-makarov && npm run build-ak74m && npm run build-ak74u && npm run build-saps12 && npm run build-arms && npm run build-soldier && npm run build-gear && npm run build-gun-gloves && npm run build-x4 && npm run build-mp7 && npm run build-ar15"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.2.1",

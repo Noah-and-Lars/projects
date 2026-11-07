@@ -160,19 +160,43 @@ const GUN_KINDS = {
     rig: { sightAsAtHip: MODEL45.sights, kick: 0.4, aimLevel: 1 },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(MAKAROV),
   },
+  // (Its maker framed it shouldered, low on the right; it's held 5 cm
+  // further right, 1.5 cm lower and 2 cm further out, which shows the
+  // rifle from the rear sight forward with the support hand on the
+  // handguard. Aiming, its rear sight is 27 cm from the eye, about where its
+  // maker had it: any further out and the support arm's cut-off upper arm
+  // comes up into the bottom left of the view. Its run clip is its maker's
+  // sprint carry, the rifle held upright on the right with the support arm
+  // swinging free, so it doesn't take the gun layer's sprint pose; that's
+  // held 6 cm further right and 5 cm lower, so the rifle stays at the edge
+  // of the view instead of across it.)
   ak74m: {
     rules: AK74M, model: new URL('../../assets/ak74m.glb', import.meta.url), animated: MODEL_AK74M,
-    rig: { hip: new THREE.Vector3(0.05, -0.015, -0.02), kick: 0.3, aimLevel: 1, eyeRelief: 0.33, sprintPose: 0 },
+    rig: { hip: new THREE.Vector3(0.05, -0.015, -0.02), kick: 0.3, aimLevel: 1, eyeRelief: 0.27, sprintPose: 0, sprintOut: new THREE.Vector3(0.06, -0.05, 0) },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(AK74M),
   },
+  // (Its download has no camera: the converter's eye is where the head
+  // would be. It's held 3 cm further right, 2 cm lower and 3 cm further
+  // out than that, the carbine on the right with both hands in view and the
+  // hoodie's cut-off sleeves out of view through every clip. Aiming, its
+  // rear sight is 28 cm from the eye. No walk or run clips: it takes the
+  // gun layer's bob and sprint pose, as the PF-9 does.)
   ak74u: {
     rules: AK74U, model: new URL('../../assets/ak74u.glb', import.meta.url), animated: MODEL_AK74U,
     rig: { hip: new THREE.Vector3(0.03, -0.02, -0.03), kick: 0.3, aimLevel: 1, eyeRelief: 0.28 },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(AK74U),
   },
+  // (Its maker framed it low on the right, the folded stock's top and the
+  // receiver filling the bottom of the view; it's held 7 cm higher and 1 cm
+  // to the left, which shows the receiver, the heat shield and the support
+  // hand on the fore-end. Aiming, its rear sight is 42 cm from the eye, the
+  // folded stock's arms either side of the sights: any closer and the back
+  // of the receiver fills the bottom of the view. Its run clip is its maker's sprint carry, the gun swung low across
+  // the body, so it doesn't take the gun layer's sprint pose; that's held
+  // 1.5 cm higher, enough to keep the gun in view along the bottom.)
   saps12: {
     rules: SAPS12, model: new URL('../../assets/saps12.glb', import.meta.url), animated: MODEL_SAPS12,
-    rig: { hip: new THREE.Vector3(-0.01, 0.07, 0), kick: 0.3, eyeRelief: 0.42, sprintPose: 0 },
+    rig: { hip: new THREE.Vector3(-0.01, 0.07, 0), kick: 0.3, eyeRelief: 0.42, sprintPose: 0, sprintOut: new THREE.Vector3(0, 0.015, 0) },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(SAPS12),
   },
 };

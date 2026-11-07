@@ -46,7 +46,9 @@
 //   the gun layer's own move up to the sights. A gun without them is aimed
 //   by the gun layer alone; one whose idle loop moves the sights about
 //   (model.aimStill: seconds into idle) holds its idle at that frame, the
-//   one its sights were lined up in, as much as it's up to the sights.
+//   one its sights were lined up in, as much as it's up to the sights;
+//   with model.aimShot too, aimed, its shot clip plays only that share
+//   over that frame (the SPAS-12's swings the gun 37 degrees up).
 //
 // The clips are sampled, not played: each frame the gun layer says which one
 // the gun is in and how far (the reload's progress, how far the switch has
@@ -496,6 +498,15 @@ export class AnimatedGun {
   // Clip `key` from `actions` at `time`, weighted `w`: with as much of that
   // in its aimed variant, if it has one, as the gun is up to the sights.
   play(actions, key, time, w) {
+    // (aimShot: aimed, its shot clip plays only that share of its weight,
+    // the rest held in the idle frame its sights were lined up in, aimStill:
+    // a shot clip that swings the gun far up at the hip, as the SPAS-12's,
+    // would throw the sights right out of view.)
+    if (key === 'shoot' && this.model.aimShot !== undefined && actions.idleHeld) {
+      const keep = this.aim * (1 - this.model.aimShot);
+      if (keep > 0) setAction(actions.idleHeld, this.model.aimStill, w * keep);
+      w *= 1 - keep;
+    }
     const aimed = AIMED[key];
     const share = aimed && actions[aimed] ? this.aim : 0;
     if (share < 1) setAction(actions[key], time, w * (1 - share));

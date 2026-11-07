@@ -1,13 +1,20 @@
 // Fits the outfit gloves (the same three downloads build_gear.mjs makes the
 // soldier's from) to the arms that come with the animated guns (the Beretta
 // 92FS, assets/beretta.glb, the FN 502, assets/fn502.glb, the Browning
-// Hi-Power, assets/hipistol.glb, and the Makarov PM, assets/makarov.glb), so
-// they can be worn on those arms too:
+// Hi-Power, assets/hipistol.glb, the Makarov PM, assets/makarov.glb, the
+// AK-74M, assets/ak74m.glb, the AK-74U, assets/ak74u.glb, and the Franchi
+// SPAS-12, assets/saps12.glb), so they can be worn on those arms too:
 // assets/gear/gloves_<glove>_<rig>.glb.
 //
-// From the project-fish folder (after the guns are built):
+// From the project-fish folder (after the guns are built; npm run
+// build-gun-gloves):
 //
-//     node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/makarov.glb assets/gear
+//     node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/makarov.glb assets/ak74m.glb assets/ak74u.glb assets/saps12.glb assets/gear
+//
+// (The AK-74M's arms are the FN 502's and the Makarov's maker's; the
+// AK-74U's the Beretta's maker's Mixamo arms, in a hoodie: its bare skin is
+// its arm mesh and the hoodie's sleeves its sleeve mesh; the SPAS-12's are
+// the Hi-Power's.)
 //
 // (Options: --only <glove id>, e.g. --only gloves_camo; --debug DIR writes
 // what it found for each hand as JSON.)

@@ -1,6 +1,6 @@
 // The outfit's gloves on the guns that bring their own arms (the Beretta
-// 92FS, the FN 502, the Browning Hi-Power and the Makarov PM, see
-// animatedGun.js), and on
+// 92FS, the FN 502, the Browning Hi-Power, the Makarov PM, the AK-74M, the
+// AK-74U and the Franchi SPAS-12, see animatedGun.js), and on
 // the guns whose clips were put on the soldier's own arms (the Xiri X4, the
 // MP7A1 and the AR-15, see soldierRig.js and the end of this note).
 //
@@ -20,8 +20,9 @@
 //
 // "No gloves" and "Field gloves" have no file for these guns (the
 // soldier's own field gloves were never made for them), so they show the
-// hands the gun came with: the Beretta's bare hands, the FN 502's leather
-// gloves, the Hi-Power's and the Makarov's black gloves.
+// hands the gun came with: the Beretta's and the AK-74U's bare hands, the
+// FN 502's leather gloves, the black gloves of the Hi-Power, the Makarov,
+// the AK-74M and the SPAS-12.
 //
 // A gun is dressed when it's taken out (from when the switch to it starts,
 // so the file has the old gun's putting away to load in), and again when
