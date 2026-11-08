@@ -38,6 +38,21 @@
     if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
   }
   var PING_MS = 25000, DEAD_MS = 120000, JOIN_MS = 10000, BACKOFF = [1000, 2000, 5000, 10000];
+  // Saving the server's daily allowance (2026-11-09):
+  //  - a tab left in the background for IDLE_MS quietly disconnects every channel (the game isn't told, so nothing
+  //    tears down); coming back to the tab reconnects them and re-sends presence, like after a dropped connection.
+  //  - a channel that has never got in after PARK_AFTER tries (the server refuses this page) only tries every PARK_MS,
+  //    or straight away when the tab is shown again or the network comes back.
+  var IDLE_MS = 15 * 60 * 1000, PARK_AFTER = 6, PARK_MS = 5 * 60 * 1000, ALL = [], asleep = false, idleT = 0;
+  try { if (window.ARCADE_RT_IDLE_MS) IDLE_MS = +window.ARCADE_RT_IDLE_MS; } catch (e) {} // tests only
+  function live() { return ALL.filter(function (c) { return !c.gone; }); }
+  function sleepAll() { if (!document.hidden) return; asleep = true; ALL = live(); ALL.forEach(function (c) { c.sleep(); }); }
+  function wakeAll() { clearTimeout(idleT); asleep = false; ALL = live(); ALL.forEach(function (c) { c.wake(); }); }
+  document.addEventListener('visibilitychange', function () {
+    clearTimeout(idleT);
+    if (document.hidden) idleT = setTimeout(sleepAll, IDLE_MS); else wakeAll();
+  });
+  window.addEventListener('online', function () { if (!document.hidden) wakeAll(); });
 
   function Channel(client, name, opts) {
     var c = (opts && opts.config) || {};
@@ -55,6 +70,9 @@
     this.tries = 0;
     this.gone = false;
     this.timers = {};
+    this.sleeping = false;
+    this.everJoined = false;
+    ALL.push(this);
   }
   Channel.prototype.on = function (type, filter, fn) {
     this.binds.push({ type: type, event: (filter && filter.event) || '*', fn: fn });
@@ -84,6 +102,7 @@
   Channel.prototype.connect = function () {
     var self = this;
     if (this.gone) return;
+    if (asleep) { this.sleeping = true; return; } // a background tab stays off until it's shown again
     this.state = 'joining';
     var ws;
     try { ws = new WebSocket(WS + '?topic=' + encodeURIComponent(this.subTopic) + '&key=' + encodeURIComponent(this.key)); }
@@ -103,7 +122,7 @@
       if (m.t === 'b') self.fire('broadcast', m.e, { type: 'broadcast', event: m.e, payload: m.p });
       else if (m.t === 'state') self.setState(m.s || {});
       else if (m.t === 'joined') {
-        joined = true;
+        joined = true; self.everJoined = true;
         clearTimeout(self.timers.join);
         self.tries = 0;
         self.state = 'joined';
@@ -132,9 +151,25 @@
     if (wasJoined || this.tries === 0) this.emit('CHANNEL_ERROR', new Error('connection lost'));
     if (Object.keys(this.pstate).length) this.setState({});
     var wait = BACKOFF[Math.min(this.tries, BACKOFF.length - 1)];
+    if (!this.everJoined && this.tries >= PARK_AFTER) { wait = PARK_MS; this.sleeping = true; } // refused: barely try
     this.tries++;
     clearTimeout(this.timers.retry);
     this.timers.retry = setTimeout(function () { if (!self.gone && !self.ws) self.connect(); }, wait);
+  };
+  // the tab has been in the background a while: close quietly, keep everything needed to come back
+  Channel.prototype.sleep = function () {
+    if (this.gone) return;
+    for (var t in this.timers) { clearTimeout(this.timers[t]); clearInterval(this.timers[t]); }
+    var ws = this.ws; this.ws = null;
+    if (ws) try { ws.close(1000, 'idle'); } catch (e) {}
+    this.sleeping = true;
+    if (this.state === 'joined' || this.state === 'joining') this.state = 'sleeping';
+  };
+  Channel.prototype.wake = function () {
+    if (this.gone || !this.sleeping) return;
+    this.sleeping = false;
+    clearTimeout(this.timers.retry);
+    if (!this.ws) { this.tries = 0; this.connect(); }
   };
   Channel.prototype.setState = function (s) {
     var old = this.pstate;

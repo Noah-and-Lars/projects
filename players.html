@@ -136,7 +136,7 @@
 </main>
 
 <script src="games.js?v=177"></script>
-<script src="account.js?v=10"></script>
+<script src="account.js?v=11"></script>
 <script>
 // Players (2026-11-06): every account on the arcade, their best score in each game, friends and private messages.
 // Everything comes from the arcade's server (realtime-worker: /acct/players, /acct/player, /acct/social,
@@ -443,6 +443,6 @@ loadSocial();
 let lastName = myName();
 setInterval(() => { if (myName() !== lastName) { lastName = myName(); loadSocial(); if (cur) route(); } }, 1000);
 </script>
-<script src="tos.js?v=6"></script>
+<script src="tos.js?v=7"></script>
 </body>
 </html>

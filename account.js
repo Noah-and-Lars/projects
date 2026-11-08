@@ -237,7 +237,15 @@
      request per page view. A private message (not the Global chat) or friend request shows a pop-up in the top right;
      the Players page listens through onLive() instead of opening its own. */
   var live = null, liveTok = '', liveTries = 0, livePing = 0, liveHandlers = [];
+  // a tab left in the background for 15 minutes drops this socket; showing it again reconnects (within 2 s)
+  var liveIdle = false, liveIdleT = 0;
+  document.addEventListener('visibilitychange', function () {
+    clearTimeout(liveIdleT);
+    if (document.hidden) liveIdleT = setTimeout(function () { if (!document.hidden) return; liveIdle = true; if (live) { var o = live; live = null; liveTok = ''; clearInterval(livePing); try { o.close(); } catch (e) {} } }, 15 * 60 * 1000);
+    else if (liveIdle) { liveIdle = false; liveTries = 0; liveConnect(); }
+  });
   function liveConnect() {
+    if (liveIdle) return;
     var tok = acct ? acct.token : '';
     if (tok === liveTok && (live || !tok)) return;
     if (live) { var o = live; live = null; try { o.close(); } catch (e) {} }
@@ -264,7 +272,7 @@
       if (live !== s) return;
       live = null;
       if (!opened && liveTries > 4) return; // the page still works without live updates
-      setTimeout(function () { liveTok = ''; liveConnect(); }, [2000, 5000, 10000, 30000, 60000][Math.min(liveTries++, 4)]);
+      setTimeout(function () { if (liveIdle) return; liveTok = ''; liveConnect(); }, [2000, 5000, 10000, 30000, 60000][Math.min(liveTries++, 4)]);
     };
     clearInterval(livePing);
     livePing = setInterval(function () {

@@ -86,7 +86,7 @@
 </div>
 
 <script src="games.js?v=177"></script>
-<script src="account.js?v=10"></script>
+<script src="account.js?v=11"></script>
 <script>
 // Global chat (rebuilt 2026-11-06): one chat room on the arcade's Cloudflare server (the Chat object in
 // realtime-worker). The server keeps the newest 150 messages, so everyone sees the same chat, even people who
@@ -237,8 +237,15 @@ function status() {
 
 // The connection: one WebSocket, a ping every 25 s (answered by Cloudflare without waking the room), and
 // reconnecting with a growing wait when it drops. Signed-in players send their token as the second subprotocol.
-let pingT = 0, retryT = 0;
+let pingT = 0, retryT = 0, idle = false, idleT = 0;
+// a chat tab left in the background for 15 minutes disconnects; showing it again reconnects
+document.addEventListener('visibilitychange', () => {
+  clearTimeout(idleT);
+  if (document.hidden) idleT = setTimeout(() => { if (!document.hidden) return; idle = true; clearTimeout(retryT); clearInterval(pingT); if (ws) { const o = ws; ws = null; try { o.close(); } catch (e) {} } joined = false; }, 15 * 60 * 1000);
+  else if (idle) { idle = false; tries = 0; connect(); }
+});
 function connect() {
+  if (idle) return;
   clearTimeout(retryT);
   if (ws) { const old = ws; ws = null; try { old.close(); } catch (e) {} }
   const base = ((window.ArcadeAccount && ArcadeAccount.server) || 'https://arcade-realtime.arcade-realtime.workers.dev').replace(/^http/, 'ws');
@@ -365,6 +372,6 @@ setInterval(() => {
 }, 1000);
 if (!name && !window.ArcadeAccount) askName(true);
 </script>
-<script src="tos.js?v=6"></script>
+<script src="tos.js?v=7"></script>
 </body>
 </html>

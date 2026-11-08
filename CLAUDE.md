@@ -111,7 +111,10 @@ source in Settings → Pages should be switched to `main`.
   copies work too) where they used to load supabase-js; the old `SB_URL`/`SB_KEY` lines are
   unused. Cube Assault loads it with a plain script tag before the counter, so `mp-net` finds
   `window.supabase` already there and never loads supabase-js (mp-net itself was not changed).
-  Bump `rt.js?v=N` everywhere when rt.js changes. Since 2026-11-06 (rt.js v=2) online play needs an online
+  Bump `rt.js?v=N` everywhere when rt.js changes. Saving the free plan (2026-11-09): a tab hidden for 15 minutes quietly
+  disconnects every channel (`sleepAll`; the game isn't told) and reconnects them when shown again (`wakeAll`); a channel
+  that never got in after 6 tries (a refused page) only retries every 5 minutes. account.js's `/acct/ws` and chat.html do
+  the same 15-minute idle disconnect. `window.ARCADE_RT_IDLE_MS` shortens it for tests. Since 2026-11-06 (rt.js v=2) online play needs an online
   account: without `arcade-acct` (no account or a local account) every channel except `online:arcade` (the on-now
   counter) reports CHANNEL_ERROR without connecting and `askForAccount()` opens the account popup (the top window's
   `ArcadeAccount.welcome`, or its own box when a game runs on its own). Games then act as if offline. It's a
