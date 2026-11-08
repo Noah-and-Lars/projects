@@ -174,7 +174,7 @@ export class Effects {
     // The splash the bullet leaves: a decal on the plate's face.
     const splash = canvasTexture(256, 256, (g, w) => drawSplash(g, w / 2, w / 2, w * 0.2, seeded(31337), 1));
     this.splash = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.12, 0.12),
+      new THREE.PlaneGeometry(0.09, 0.09),
       new THREE.MeshStandardMaterial({ map: splash, transparent: true, roughness: 0.5, metalness: 0.3, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false }),
     );
     this.splash.visible = false;
@@ -308,7 +308,7 @@ export class Effects {
       if (t < ms(0.25)) {
         const k = 1 - t / ms(0.25);
         p.copy(w.hit.at).addScaledVector(n, 0.004);
-        this.glows.put(p, 0.06 * (0.4 + k), 0.06 * (0.4 + k), 0, glow(0.05, 6, this.color), k, this.tex.dot);
+        this.glows.put(p, 0.035 * (0.4 + k), 0.035 * (0.4 + k), 0, glow(0.1, 2.5, this.color), k, this.tex.dot);
       }
       // Lead and jacket spraying out along the face, and sparks.
       for (const F of this.frags) {
