@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cube Assault Guide</title>
+<meta name="description" content="How to play Cube Assault: maps, controls, enemies, weapons, shop and profile.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Russo+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0f14; --bg-2: #121820; --panel: #161d26; --line: rgba(255, 255, 255, .12);
+    --ink: #f4f1e8; --muted: #b6bec7;
+    --gold: #f5b82e; --gold-hi: #ffd166; --gold-ink: #1a1205;
+    --red: #ef4444; --green: #4ade80; --blue: #3b82f6; --purple: #a855f7; --plasma: #22d3ee;
+    --display: 'Russo One', 'Arial Black', Impact, sans-serif;
+    --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: radial-gradient(ellipse at top, #1b222c 0%, var(--bg) 60%) fixed, var(--bg);
+    color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.6;
+  }
+  a { color: var(--gold-hi); }
+  a:hover { color: var(--gold); }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+
+  /* Hero */
+  header { padding: 64px 0 40px; text-align: center; }
+  .logo { display: inline-flex; gap: 6px; margin-bottom: 20px; }
+  .logo i { width: 22px; height: 22px; border-radius: 4px; display: block; transform: rotate(8deg); box-shadow: 0 4px 0 rgba(0,0,0,.35); }
+  .logo i:nth-child(1) { background: var(--red); }
+  .logo i:nth-child(2) { background: var(--green); transform: rotate(-6deg) translateY(-4px); }
+  .logo i:nth-child(3) { background: var(--blue); }
+  .logo i:nth-child(4) { background: var(--purple); transform: rotate(-10deg) translateY(-2px); }
+  .logo i:nth-child(5) { background: var(--gold); }
+  h1 {
+    font-family: var(--display); font-weight: 400; letter-spacing: .02em;
+    font-size: clamp(40px, 9vw, 76px); line-height: 1; text-transform: uppercase;
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, #c98a0a);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 4px 0 rgba(0,0,0,.4));
+  }
+  .tagline { color: var(--muted); max-width: 600px; margin: 18px auto 28px; font-size: 19px; }
+  .cta {
+    display: inline-block; font-family: var(--display); text-transform: uppercase; letter-spacing: .06em;
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: var(--gold-ink);
+    padding: 14px 34px; border-radius: 10px; text-decoration: none; font-size: 18px;
+    box-shadow: 0 5px 0 #a86f00, 0 10px 24px rgba(245, 184, 46, .25);
+    transition: transform .1s, box-shadow .1s;
+  }
+  .cta:hover { color: var(--gold-ink); transform: translateY(2px); box-shadow: 0 3px 0 #a86f00, 0 8px 18px rgba(245, 184, 46, .25); }
+
+  /* Nav */
+  nav { position: sticky; top: 0; z-index: 5; background: rgba(11, 15, 20, .88); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  nav ul { list-style: none; display: flex; gap: 4px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
+  nav ul::-webkit-scrollbar { display: none; }
+  nav a { display: block; white-space: nowrap; padding: 6px 12px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 15px; }
+  nav a:hover { background: var(--panel); color: var(--ink); }
+
+  /* Sections */
+  main { padding: 24px 0 48px; }
+  section { padding: 32px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 56px; }
+  section:last-child { border-bottom: 0; }
+  h2 {
+    font-family: var(--display); font-weight: 400; text-transform: uppercase; letter-spacing: .04em;
+    font-size: 26px; color: var(--gold); margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
+  }
+  h2::before { content: ""; width: 14px; height: 14px; background: var(--gold); border-radius: 3px; transform: rotate(12deg); flex: none; }
+  p { margin-bottom: 14px; }
+  p:last-child { margin-bottom: 0; }
+  strong { color: var(--ink); }
+  .muted { color: var(--muted); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card h3 { font-family: var(--display); font-weight: 400; font-size: 18px; margin-bottom: 6px; }
+  .card p { color: var(--muted); font-size: 16px; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; background: rgba(245,184,46,.15); color: var(--gold-hi); margin-left: 6px; vertical-align: middle; }
+  .price { font-family: var(--display); color: var(--gold-hi); font-size: 15px; }
+
+  .note { background: rgba(34, 211, 238, .07); border-left: 3px solid var(--plasma); padding: 12px 16px; border-radius: 0 8px 8px 0; color: var(--muted); }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-family: var(--display); font-weight: 400; text-transform: uppercase; letter-spacing: .05em; font-size: 13px; color: var(--muted); background: var(--bg-2); }
+  kbd {
+    display: inline-block; font-family: var(--body); font-weight: 700; font-size: 14px; line-height: 1;
+    padding: 6px 9px; min-width: 28px; text-align: center; border-radius: 6px;
+    background: linear-gradient(180deg, #343d48, #1b222c); border: 1px solid #4a5563; border-bottom-width: 3px;
+    color: var(--ink); white-space: nowrap;
+  }
+  .cube { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
+  td.name { font-weight: 700; white-space: nowrap; }
+  #controls td:first-child { white-space: nowrap; }
+
+  ul.list { list-style: none; }
+  ul.list li { position: relative; padding-left: 22px; margin-bottom: 10px; }
+  ul.list li::before { content: ""; position: absolute; left: 2px; top: .55em; width: 9px; height: 9px; background: var(--gold); border-radius: 2px; transform: rotate(12deg); }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+  .stats span { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 15px; color: var(--muted); }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 15px; text-align: center; }
+
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    header { padding: 44px 0 28px; }
+    th, td { padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <h1>Cube Assault</h1>
+    <p class="tagline">A first-person 3D shooter in a single HTML file. Defend a village from waves of cubes, earn coins, level up your profile, and buy the Extreme Gun, a turret and a combat knife.</p>
+    <a class="cta" href="index.html">Play now</a>
+  </div>
+</header>
+
+<nav aria-label="Sections">
+  <div class="wrap">
+    <ul>
+      <li><a href="#play">Play</a></li>
+      <li><a href="#controls">Controls</a></li>
+      <li><a href="#enemies">Enemies</a></li>
+      <li><a href="#weapons">Weapons &amp; shop</a></li>
+      <li><a href="#profile">Profile</a></li>
+      <li><a href="#graphics">Graphics</a></li>
+      <li><a href="#credits">Credits</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <section id="play">
+    <h2>Play</h2>
+    <p>Download <a href="index.html"><code>index.html</code></a> and open it in Chrome, Edge, Firefox or Safari. It works offline: the 3D engine and fonts are built into the file. You need a keyboard and mouse.</p>
+    <p class="note">When you're online, the home screen shows how many people are playing right now. Offline, or on a network that blocks it, the counter just doesn't appear.</p>
+    <p style="margin-top:14px">The first time you play, the game asks for your name. Press Play, then pick a map:</p>
+    <div class="cards">
+      <div class="card">
+        <h3>Classic Village</h3>
+        <p>The original walled village. Small, tight and fast.</p>
+      </div>
+      <div class="card">
+        <h3>Frontier <span class="tag">Work in progress</span></h3>
+        <p>Four times bigger, with the village in the middle, a dense forest, a mountain range, a farm and a town.</p>
+      </div>
+    </div>
+    <p>Every building in Frontier's town can be entered. Take the stairs up floor by floor to the roof, where a low wall gives you cover for sniping. The cubes follow you: they come in through the door and climb the stairs after you.</p>
+    <p>You always start in the middle of the village.</p>
+  </section>
+
+  <section id="controls">
+    <h2>Controls</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Key</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></td><td>Move</td></tr>
+          <tr><td><kbd>Mouse</kbd></td><td>Aim</td></tr>
+          <tr><td><kbd>Left click</kbd></td><td>Shoot</td></tr>
+          <tr><td><kbd>Right click</kbd></td><td>Zoom (sniper)</td></tr>
+          <tr><td><kbd>Space</kbd></td><td>Jump</td></tr>
+          <tr><td><kbd>Shift</kbd></td><td>Sprint</td></tr>
+          <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
+          <tr><td><kbd>1</kbd>–<kbd>5</kbd> / <kbd>Scroll</kbd></td><td>Switch weapon</td></tr>
+          <tr><td><kbd>Q</kbd></td><td>Swap to last weapon</td></tr>
+          <tr><td><kbd>6</kbd></td><td>Place your turret <span class="muted">(if you've bought one)</span></td></tr>
+          <tr><td>Hold <kbd>7</kbd></td><td>Combat knife <span class="muted">(if you've bought one)</span></td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Pause</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="enemies">
+    <h2>Enemies</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Cube</th><th>Arrives</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="name"><span class="cube" style="background:var(--red)"></span>Red</td><td>Wave 1</td><td>Melee only. The weakest.</td></tr>
+          <tr><td class="name"><span class="cube" style="background:var(--green)"></span>Green</td><td>Wave 4</td><td>Small and very fast.</td></tr>
+          <tr><td class="name"><span class="cube" style="background:var(--blue)"></span>Blue</td><td>Wave 7</td><td>Keeps its distance and shoots slow energy shots.</td></tr>
+          <tr><td class="name"><span class="cube" style="background:var(--purple)"></span>Brute</td><td>Wave 10</td><td>Heavy armour, heavy melee.</td></tr>
+          <tr><td class="name"><span class="cube" style="background:var(--gold)"></span>King</td><td>Wave 15, then every 5 waves</td><td>Boss. Leaps and slams the ground; jump the shockwave.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="weapons">
+    <h2>Weapons &amp; shop</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Pistol &amp; Rifle</h3>
+        <p>Every game starts with these.</p>
+      </div>
+      <div class="card">
+        <h3>Shotgun &amp; Sniper</h3>
+        <p>Unlock when you reach wave 5, in every game.</p>
+      </div>
+      <div class="card">
+        <h3>Extreme Gun</h3>
+        <div class="price">1,000 coins</div>
+        <p>Full-auto plasma; every shot explodes.</p>
+      </div>
+      <div class="card">
+        <h3>Turret</h3>
+        <div class="price">400 coins</div>
+        <p>Press <kbd>6</kbd> to set it down next to you. It shoots the nearest cube once a second and finishes any normal cube in two hits. It has 200 HP, never heals, and cubes will attack it. One at a time.</p>
+      </div>
+      <div class="card">
+        <h3>Combat Knife</h3>
+        <div class="price">40 coins</div>
+        <p>Hold <kbd>7</kbd> to keep slashing; every slash hits every cube in front of you within arm's reach. No ammo, no reloads.</p>
+      </div>
+    </div>
+    <p>Every cube you destroy earns <strong>1 coin</strong> (the King earns <strong>10</strong>).</p>
+  </section>
+
+  <section id="profile">
+    <h2>Profile</h2>
+    <p>Click your profile in the top right of the main menu to see your stats and pick a profile picture. Every point you score is XP.</p>
+    <div class="stats">
+      <span>Level</span><span>Total accuracy</span><span>Shots fired</span><span>Cubes killed</span><span>Time played</span><span>Best wave</span>
+    </div>
+    <p>The first time you load a new version, a What's New pop-up shows what was added.</p>
+    <p>Everything is saved in your browser. <strong>Settings → Reset all data</strong> wipes it and starts fresh.</p>
+  </section>
+
+  <section id="graphics">
+    <h2>Graphics</h2>
+    <p>Settings has four graphics levels: <strong>Potato</strong>, <strong>Low</strong>, <strong>High</strong> and <strong>Ultra</strong>. Field of view goes from 60 to 120.</p>
+  </section>
+
+  <section id="credits">
+    <h2>Credits</h2>
+    <ul class="list">
+      <li><a href="https://threejs.org">three.js</a> r128, MIT License, embedded in the file.</li>
+      <li>Russo One and Barlow fonts, SIL Open Font License, embedded in the file.</li>
+      <li>All models, textures and sounds are generated in code.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">Cube Assault · <a href="index.html">Play the game</a></div>
+</footer>
+
+</body>
+</html>
