@@ -475,7 +475,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.2';
+const VERSION = '1.2.1';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -2623,11 +2623,11 @@ function getClient() {
     const s = document.createElement('script'); s.src = RT_SRC; s.onload = go; s.onerror = () => rej('offline'); document.head.appendChild(s);
   });
 }
-// in versus the crew's own messages carry the crew number, so other crews can tell them apart
+// in versus the crew's own messages carry the crew number (cw; c is already the call in 'call'), so other crews can tell them apart
 const CREW_EV = new Set(['s', 'fx', 'call', 'tb', 'shut', 'fin']);
 function netSend(ev, payload) {
   if (!NET.ch || !NET.on) return;
-  if (GAME.vs && GAME.mode === 'race' && CREW_EV.has(ev)) payload.c = GAME.crewIdx;
+  if (GAME.vs && GAME.mode === 'race' && CREW_EV.has(ev)) payload.cw = GAME.crewIdx;
   try { NET.ch.send({ type: 'broadcast', event: ev, payload }); } catch (e) {}
 }
 function members() { if (!NET.ch) return []; const st = NET.ch.presenceState(); return Object.keys(st).map(k => ({ id: k, m: st[k][0] || {} })); }
@@ -2730,11 +2730,11 @@ function onNet(ev, d) {
   if (ev === 'tolobby') { if (GAME.mode === 'race') leaveRace(); showScreen('lobbyScr'); renderLobby(); return; }
   if (GAME.mode !== 'race' || !GAME.crew) return;
   // another crew's car in a versus race
-  if (GAME.vs && d.c !== undefined && d.c !== GAME.crewIdx) {
+  if (GAME.vs && d.cw !== undefined && d.cw !== GAME.crewIdx) {
     if (ev === 's') rivalSnap(d);
-    else if (ev === 'fin' && !GAME.stand[d.c]) {
-      GAME.stand[d.c] = { ms: d.ms };
-      if (GAME.phase < 3) showToast(crewLabel(GAME.lob, d.c) + ' finished', fmtTime(d.ms), 1600);
+    else if (ev === 'fin' && !GAME.stand[d.cw]) {
+      GAME.stand[d.cw] = { ms: d.ms };
+      if (GAME.phase < 3) showToast(crewLabel(GAME.lob, d.cw) + ' finished', fmtTime(d.ms), 1600);
       if (SCREEN === 'resultScr') renderStand();
     }
     return;
@@ -2892,7 +2892,7 @@ addEventListener('keydown', e => { if (e.code === 'KeyV' && GAME.mode === 'race'
    three crews race the same stage at once (just for fun, never on the
    leaderboard). The lobby keeps crews as [[driver, navigator|null], ...]; a
    crew of one gets the AI co-driver. Every driver's snapshots carry their crew
-   number (c), so everyone draws the other crews' cars.
+   number (cw), so everyone draws the other crews' cars.
    Quick match is one shared channel (ttt-quick) where searching players wait
    (Presence: when they started, which queue). The oldest searcher of a group
    makes a room and tells the others its code ('qm'); then it's a normal room.
@@ -3001,8 +3001,8 @@ function snapInterp(o) {
   return unpackSnap(A, Bb, clamp((rt - A.t) / (Bb.t - A.t), 0, 1.2));
 }
 function rivalSnap(d) {
-  let r = RIVALS.get(d.c);
-  if (!r) { r = { buf: [], off: null, mesh: makeRivalCar(d.c, crewLabel(GAME.lob, d.c)), pose: null, last: 0, bird: false, roll: 0 }; RIVALS.set(d.c, r); scene.add(r.mesh.g); }
+  let r = RIVALS.get(d.cw);
+  if (!r) { r = { buf: [], off: null, mesh: makeRivalCar(d.cw, crewLabel(GAME.lob, d.cw)), pose: null, last: 0, bird: false, roll: 0 }; RIVALS.set(d.cw, r); scene.add(r.mesh.g); }
   snapPush(r, d); r.last = performance.now();
 }
 function rivalReset() {
@@ -3349,6 +3349,9 @@ function showBoardResult(j) {
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.2.1', date: '10 November 2026', items: [
+    'Fixed versus calls: the driver saw "undefined" instead of the navigator\'s call (left, sharp right, jump…). Every call now comes through.',
+  ] },
   { v: '1.2', date: '9 November 2026', items: [
     'Quick match: pick co-op or versus and get matched with other players who are searching. Crew codes still work like before.',
     'Versus: 4 to 6 players in crews of two (a fifth player gets the AI co-driver) race the same stage at once. Make a versus room and share the code, or find one with quick match.',
