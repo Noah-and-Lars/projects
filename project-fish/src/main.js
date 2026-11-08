@@ -161,6 +161,7 @@ menu.onFailedLock = () => {
 // frees all it made and goes back to the picker.
 let showcase = null; // the Breakdown (or the cinematic) while it's open (or loading)
 async function openBreakdown(id) {
+  if (id === 'cinematic') return openCinematic(false, true);
   if (showcase) return;
   const entry = breakdownById(id);
   if (!entry) return;
@@ -214,33 +215,56 @@ menu.onBreakdown = openBreakdown;
 // --- The cinematic (src/showcase/cinematic/film.js) ---
 //
 // A short film of the soldier diving for a pistol, ending on the bullet
-// cam. It has no menu button yet: ?cinematic=1 in the address opens it once
-// the game has loaded (?cinematic=test with the shot names and the notes on
-// the shots still waiting for their Mixamo clips). Like a breakdown, it has
-// its own renderer and the game stands still while it's open; closing it
-// (Esc, its Close button) frees all it made and goes back to the start
-// screen.
-async function openCinematic(test = false) {
+// cam: the first card in the Breakdowns picker (?cinematic=1 in the address
+// also opens it once the game has loaded; ?cinematic=test with the shot
+// names and times). Like a breakdown, it has its own renderer and the game
+// stands still while it's open; till its code is in, a plain screen says
+// it's loading and Esc goes back (it then never opens); closing it (Esc, its
+// Close button) frees all it made and goes back to where it was opened
+// from (the picker, or the start screen).
+async function openCinematic(test = false, fromPicker = false) {
   if (showcase) return;
-  showcase = { loading: true };
+  const pending = { loading: true, cancelled: false };
+  showcase = pending;
   input.releaseAll();
+  const back = () => {
+    showcase = null;
+    input.releaseAll();
+    if (fromPicker) menu.show('breakdowns', 'cinematic');
+    else overlay.hidden = false;
+  };
+  const wait = document.createElement('div');
+  wait.className = 'showcase-loading';
+  wait.textContent = 'Loading the cinematic…';
+  const onKey = (e) => {
+    if (e.code !== 'Escape') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    pending.cancelled = true;
+    done();
+    back();
+  };
+  const done = () => {
+    wait.remove();
+    window.removeEventListener('keydown', onKey, true);
+  };
+  window.addEventListener('keydown', onKey, true);
+  document.body.appendChild(wait);
+  let Film;
   try {
-    const { Film } = await import('./showcase/cinematic/film.js');
-    const film = new Film({
-      wardrobe, test,
-      onClose: () => {
-        showcase = null;
-        input.releaseAll();
-        overlay.hidden = false;
-      },
-    });
-    showcase = film;
-    await film.play();
+    ({ Film } = await import('./showcase/cinematic/film.js'));
   } catch (error) {
     console.error(error);
-    if (showcase && showcase.close) showcase.close();
-    showcase = null;
+    if (pending.cancelled) return;
+    done();
+    back();
+    return;
   }
+  if (pending.cancelled) return;
+  done();
+  const film = new Film({ wardrobe, test, onClose: back });
+  showcase = film;
+  film.play().catch((error) => console.error(error));
 }
 const cinematicParam = new URLSearchParams(location.search).get('cinematic');
 

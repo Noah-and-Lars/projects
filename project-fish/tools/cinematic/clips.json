@@ -8,8 +8,8 @@
     {
       "name": "sprint",
       "file": "Sprint/Sprint.fbx",
-      "loops": 5,
-      "use": "the run in: one 0.533 s stride cycle, 5 times (2.67 s, 14.4 m)"
+      "loops": 8,
+      "use": "the run in: one 0.533 s stride cycle, 8 times (4.27 s, 23 m)"
     },
     {
       "name": "dive",
@@ -42,9 +42,19 @@
       "use": "spare: a forward dive roll from a run, aiming before and after"
     },
     {
-      "name": "spare_aim",
+      "name": "enemy_aim",
       "file": "Pistol_Idle/Pistol_Idle.fbx",
-      "use": "spare: standing, aiming, still"
+      "use": "the enemy before the shot: standing, aiming a pistol, still (loops)"
+    },
+    {
+      "name": "enemy_hit_fall",
+      "file": "Shoulder_Hit_And_Fall/Shoulder_Hit_And_Fall.fbx",
+      "use": "the enemy struck in the shoulder: twists and falls"
+    },
+    {
+      "name": "enemy_hit",
+      "file": "Hit_Reaction/Hit_Reaction.fbx",
+      "use": "spare: a standing hit reaction"
     }
   ],
   "candidates": [
@@ -87,14 +97,6 @@
     {
       "name": "gunplay",
       "file": "Gunplay/Gunplay.fbx"
-    },
-    {
-      "name": "hit_reaction",
-      "file": "Hit_Reaction/Hit_Reaction.fbx"
-    },
-    {
-      "name": "shoulder_hit_and_fall",
-      "file": "Shoulder_Hit_And_Fall/Shoulder_Hit_And_Fall.fbx"
     },
     {
       "name": "gk_diving_save_2",

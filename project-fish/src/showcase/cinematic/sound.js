@@ -2,9 +2,10 @@
 // context (freed when the film closes), as the breakdowns' click is.
 //
 // The shot (in time and slowed right down for the bullet cam), the air
-// the slowed bullet roars through, the steel plate's ring (slowed at the
-// strike, then at full speed as time snaps back), the case landing, and
-// the soft thumps of his dive and roll.
+// the slowed bullet roars through, the bullet striking cloth (a dull,
+// padded thud, deepened in slow motion), time snapping back, his
+// footfalls, the rustle of his kit, the cases landing, the enemy's pistol
+// clattering down, and the soft thumps of the dive, the roll and the fall.
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -147,30 +148,6 @@ export class FilmSound {
     }), { volume: 0.55, reverb: 0.15 });
   }
 
-  // A steel plate's ring: a few inharmonic partials of a thick disc, each
-  // dying away at its own rate, over a sharp knock. slow: the strike
-  // slowed right down.
-  ringBuffer() {
-    return this.buffer('ring', 2.2, (d, rate) => {
-      const partials = [[1010, 0.9, 0.55], [1655, 0.55, 0.5], [2390, 0.4, 0.38], [3170, 0.25, 0.3], [4280, 0.16, 0.22], [612, 0.3, 0.45]];
-      for (let i = 0; i < d.length; i++) {
-        const t = i / rate;
-        let v = 0;
-        for (const [f, a, tau] of partials) v += a * Math.sin(2 * Math.PI * f * t + f) * Math.exp(-t / tau);
-        const knock = (Math.random() * 2 - 1) * Math.exp(-t / 0.004);
-        d[i] = v * 0.35 * (1 - Math.exp(-t / 0.001)) + knock * 0.6;
-      }
-    });
-  }
-
-  ring() {
-    this.play(this.ringBuffer(), { volume: 0.75, reverb: 0.55 });
-  }
-
-  slowRing() {
-    this.play(this.ringBuffer(), { volume: 0.9, rate: 0.22, reverb: 0.7 });
-  }
-
   // Time snapping back: a short rising rush into the real sound.
   snap() {
     this.play(this.buffer('snap', 0.5, (d, rate) => {
@@ -238,5 +215,61 @@ export class FilmSound {
         d[i] = a * Math.exp(-t / 0.012) * 1.2;
       }
     }), { volume: 0.5, rate: 0.8 * rate, reverb: 0.2 });
+  }
+
+  // A boot striking the ground at a run: a short, gritty scuff over a
+  // low knock.
+  step(rate = 1, volume = 1) {
+    const k = Math.floor(Math.random() * 3);
+    this.play(this.buffer('step' + k, 0.16, (d, sr) => {
+      let a = 0, b = 0;
+      for (let i = 0; i < d.length; i++) {
+        const t = i / sr;
+        const n = Math.random() * 2 - 1;
+        a += 0.5 * (n - a);
+        b += 0.04 * (n - b);
+        d[i] = a * Math.exp(-t / (0.01 + k * 0.003)) * 0.35 + (b * 3 + Math.sin(2 * Math.PI * (85 + k * 9) * t) * 0.5) * Math.exp(-t / 0.025);
+      }
+    }), { volume: 0.32 * volume, reverb: 0.12, rate: rate * rand(0.92, 1.08) });
+  }
+
+  // His kit rustling and his knee meeting the ground as he settles.
+  cloth(rate = 1, volume = 1) {
+    this.play(this.buffer('cloth', 0.45, (d, sr) => {
+      let a = 0;
+      for (let i = 0; i < d.length; i++) {
+        const t = i / sr, x = t / 0.45;
+        a += 0.2 * ((Math.random() * 2 - 1) - a);
+        d[i] = a * Math.sin(Math.PI * x) * (0.6 + 0.4 * Math.sin(t * 60)) * 0.7;
+      }
+    }), { volume: 0.4 * volume, reverb: 0.1, rate });
+  }
+
+  // The bullet striking his sleeve: a dull, padded thud with a soft tear
+  // (slowed, a deep boom).
+  hit(rate = 1) {
+    this.play(this.buffer('hit', 0.6, (d, sr) => {
+      let a = 0, b = 0;
+      for (let i = 0; i < d.length; i++) {
+        const t = i / sr;
+        const n = Math.random() * 2 - 1;
+        a += 0.08 * (n - a);
+        b += 0.6 * (n - b);
+        d[i] = (a * 2.5 + Math.sin(2 * Math.PI * 55 * t) * 0.8) * Math.exp(-t / 0.07) + b * Math.exp(-t / 0.006) * 0.4;
+      }
+    }), { volume: 0.8, reverb: 0.35, rate: Math.max(0.25, rate) });
+  }
+
+  // A pistol hitting the ground: a hard knock and a short metallic rattle.
+  clatter(rate = 1) {
+    this.play(this.buffer('clatter', 0.4, (d, sr) => {
+      const partials = [[1850, 0.5, 0.05], [2900, 0.35, 0.04], [4100, 0.2, 0.03], [760, 0.4, 0.06]];
+      for (let i = 0; i < d.length; i++) {
+        const t = i / sr;
+        let v = 0;
+        for (const [f, a, tau] of partials) v += a * Math.sin(2 * Math.PI * f * t) * (Math.exp(-t / tau) + 0.5 * Math.exp(-Math.abs(t - 0.09) / tau) * (t > 0.09 ? 1 : 0));
+        d[i] = v * 0.4 + (Math.random() * 2 - 1) * Math.exp(-t / 0.005) * 0.5;
+      }
+    }), { volume: 0.5, reverb: 0.3, rate });
   }
 }

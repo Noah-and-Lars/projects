@@ -13,16 +13,17 @@
 //   So it loses (1,150 - 1,049) ft/s over 50 yd: 30.8 m/s in 45.72 m,
 //   0.673 m/s for each metre it flies (speed falling in a straight line
 //   with distance, which is what an exponential fall in time gives; good
-//   to a fraction of a m/s over the film's 12 m). That leaves it at about
-//   342 m/s at the plate.
+//   to a fraction of a m/s over the film's 13 m). That leaves it at about
+//   342 m/s after the film's 13 m.
 // - The rifling: one turn in 10 in (254 mm), the usual twist of 9 mm
 //   pistol barrels in the US (SIG Sauer's, for example); C.I.P. gives
 //   250 mm (1 in 9.84 in) (https://en.wikipedia.org/wiki/9×19mm_Parabellum,
 //   its infobox). So it leaves spinning 350.5 / 0.254 = 1,380 turns a
 //   second (82,800 rpm). Spin dies away far more slowly than speed, so
-//   over 12 m it's taken as constant.
+//   over 13 m it's taken as constant.
 // - Sound travels at 343 m/s in dry air at 20 °C: the bullet leaves just
-//   faster than sound (Mach 1.02) and drops just below it by the plate.
+//   faster than sound (Mach 1.02) and drops just below it by the end of
+//   its 13 m flight.
 // - Pressure: at most 235 MPa (34,084 psi) by C.I.P., 35,000 psi
 //   (241 MPa) by SAAMI (the same Wikipedia infobox).
 // - The PF-9's barrel (assets/pistol.glb): 104 mm (4.1 in) from the
@@ -150,17 +151,4 @@ export function gunKick(t) {
   const rise = 0.24 * (1 - Math.exp(-s / 0.03)) * Math.exp(-Math.max(0, s - 0.06) / 0.09);
   const back = 0.022 * (1 - Math.exp(-s / 0.012)) * Math.exp(-Math.max(0, s - 0.03) / 0.08);
   return { back, rise };
-}
-
-// The plate's swing (radians, its bottom back from the shooter) t seconds
-// after the bullet strikes. A 12 in (305 mm) plate of 3/8 in (9.5 mm)
-// steel weighs 5.45 kg; hung 0.41 m below the bar (to its middle) it
-// swings with a period of 2 pi sqrt(I / m g d) = 1.29 s (I = m (r^2 / 4 +
-// d^2)). The bullet brings 8.04 g x 342 m/s = 2.75 kg m/s; about the bar
-// that's 1.13 kg m^2/s, starting it at 1.18 rad/s, which swings it some
-// 14 degrees (0.24 rad) on its chains, a damped pendulum.
-export function plateSwing(t, { peak = 0.23, period = 1.29, damping = 0.55 } = {}) {
-  if (t <= 0) return 0;
-  const w = (2 * Math.PI) / period;
-  return peak * 1.25 * Math.exp(-damping * t) * Math.sin(w * t) * (1 - Math.exp(-t / 0.004));
 }

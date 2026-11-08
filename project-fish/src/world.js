@@ -71,7 +71,9 @@ function createCourse() {
   return group;
 }
 
-function createHouse() {
+// The house (also stands behind the enemy in the cinematic, src/showcase/
+// cinematic/set.js).
+export function createHouse() {
   const { width: w, depth: d, wallHeight: h, roofHeight: rh } = HOUSE;
   const house = new THREE.Group();
   house.position.set(HOUSE.x, 0, HOUSE.z);

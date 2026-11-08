@@ -57,3 +57,15 @@ export const BREAKDOWNS = [
 ];
 
 export const breakdownById = (id) => BREAKDOWNS.find((b) => b.id === id) || null;
+
+// The cinematic (src/showcase/cinematic/film.js), offered first in the same
+// picker: a short film of the soldier diving for a PF-9 and the bullet cam
+// that follows his shot. Picking it opens it like a breakdown (src/main.js
+// openBreakdown). Its picture is a frame of the film (the catch).
+export const CINEMATIC = {
+  id: 'cinematic',
+  name: 'Cinematic: Dive and fire',
+  about: 'He dives for a thrown PF-9, rolls into cover and fires; then the bullet cam rides with the 9 mm round to the enemy by the house.',
+  thumb: here('../../assets/cinematic/thumb.webp'),
+  credit: 'Animations from Mixamo · Soldier by DanlyVostok · PF-9 by ~D-Try~, CC BY 4.0',
+};

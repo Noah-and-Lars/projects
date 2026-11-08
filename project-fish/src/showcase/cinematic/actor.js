@@ -1,17 +1,20 @@
 // The film's cast and props: a copy of the soldier (assets/soldier.glb) in
-// the player's outfit, his moves (the clips in the film's slots, see
-// src/showcase/cinematic/edit.js and tools/cinematic/README.md), and the
-// PF-9 (assets/pistol.glb) with its moving slide and barrel.
+// an outfit (the player's, or the enemy's), his moves, and a PF-9
+// (assets/pistol.glb) with its moving slide and barrel.
 //
-// His moves come from Mixamo clips retargeted onto his skeleton
-// (tools/cinematic/retarget_mixamo.py). Every clip, and the stand-in for a
-// slot whose clip hasn't been added yet (his idle, carried along the path
-// the clip is planned to take), is turned into one frame of reference
-// before it plays: his hips' track is moved to where that slot starts in
-// the world. So he only ever has one place (his model's own root never
-// moves), the mixer can cross-fade from one slot to the next, and any
-// frame of the film can be posed on its own (pose(t) sets every action's
-// time and weight, then updates the mixer by nothing).
+// His moves are Mixamo clips retargeted onto his skeleton
+// (tools/cinematic/retarget_mixamo.py, into assets/cinematic/
+// soldier_clips.glb: one animation per clip, by name; see
+// tools/cinematic/README.md). His body moves only by those clips: the film
+// chooses them, trims them, times them, cross-fades them and places the
+// whole of him. Nothing here poses a bone.
+//
+// A timeline is a list of segments, each one clip played from a clip time
+// at a story time (see setTimeline). Each segment's hips' track is moved
+// into the world (its place and turn) before it plays, so his model's root
+// never moves, the mixer can cross-fade one segment into the next, and any
+// moment can be posed on its own (pose(t) sets every action's time and
+// weight, then updates the mixer by nothing).
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -23,60 +26,76 @@ import { Outfit, Wardrobe } from '../../gear.js';
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 export const PISTOL_MODEL = new URL('../../../assets/pistol.glb', import.meta.url);
+export const CLIPS_FILE = new URL('../../../assets/cinematic/soldier_clips.glb', import.meta.url);
+
+// The clips file, loaded once (it's only animation data) for every actor.
+let clipsFile = null;
+function loadClips() {
+  if (!clipsFile) {
+    clipsFile = loader.loadAsync(CLIPS_FILE.href);
+    clipsFile.catch(() => { clipsFile = null; });
+  }
+  return clipsFile;
+}
 
 const HIP = 'CC_Base_Hip';
-// The bones an upper-body layer (a slot with layer: true) moves: the spine
-// from the waist up, the head, the arms and the hands.
-const UPPER = /^CC_Base_(Waist|Spine0[12]|NeckTwist0[12]|Head|[LR]_(Clavicle|Upperarm|UpperarmTwist0[12]|Forearm|ForearmTwist0[12]|ElbowShareBone|Hand|Thumb[123]|Index[123]|Mid[123]|Ring[123]|Pinky[123]))$/;
+const UP = new THREE.Vector3(0, 1, 0);
+const DEG = Math.PI / 180;
 
-// Where the PF-9 sits in his right hand: its position and turn in the
-// hand bone's frame: the grip's middle in his palm (between his wrist and
-// his knuckles, on the palm side), the barrel along his forearm's line,
-// the slide's top towards his index finger. Worked out from his idle
-// pose's hand bones; retune it against the first clip that holds a pistol
-// (see tools/cinematic/README.md).
+// Where the PF-9 sits in his right hand (CC_Base_R_Hand's frame): the
+// grip's middle 2.2 cm off his palm, the grip's line along the palm's
+// width (index knuckle at the top), the bore 12° below the knuckles' line.
+// Worked out from his hand bones in the pistol clips (the knuckles never
+// move against the hand bone, so it holds in every one; see
+// tools/cinematic/README.md, The pistol in his hand).
 export const GRIP = {
-  position: new THREE.Vector3(-0.0196, 0.0607, 0.0856),
-  rotation: new THREE.Euler(1.719, -0.035, 0.006, 'XYZ'),
+  position: new THREE.Vector3(-0.0225, 0.0729, 0.0807),
+  rotation: new THREE.Euler(1.727, -0.0071, 0.0012, 'XYZ'),
 };
+GRIP.quaternion = new THREE.Quaternion().setFromEuler(GRIP.rotation);
 
-// A slot's placement: where it starts on the ground (x, z), the way he
-// faces (yaw: 0 is +Z) and, for a slot without its clip, how far it's
-// planned to take him (in his own frame: +Z forward, +X his left) and how
-// far he turns.
-export function placement(x, z, yaw) {
-  return { x, z, yaw };
-}
-const yawToQuat = (yaw, out = new THREE.Quaternion()) => out.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-// A placement moved on by (dx, dz) in its own frame and turned by turn.
-export function advance(p, dx, dz, turn) {
-  const c = Math.cos(p.yaw), s = Math.sin(p.yaw);
-  return { x: p.x + c * dx + s * dz, z: p.z - s * dx + c * dz, yaw: p.yaw + turn };
-}
-// The inverse: where it was before such a move.
-export function retreat(p, dx, dz, turn) {
-  const yaw = p.yaw - turn;
-  const c = Math.cos(yaw), s = Math.sin(yaw);
-  return { x: p.x - (c * dx + s * dz), z: p.z - (-s * dx + c * dz), yaw };
-}
+// A placement on the ground: (x, z) and a turn about the upright (yaw,
+// radians; 0 faces +Z, positive turns him to his left).
+const placeMatrix = (x, z, yaw) => new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(UP, yaw), new THREE.Vector3(1, 1, 1));
 
 export class Actor {
-  constructor({ renderer, envMap, gunEnv = envMap, wardrobe = null }) {
+  constructor({ renderer, envMap, gunEnv = envMap, wardrobe = null, name = 'soldier' }) {
     this.renderer = renderer;
     this.envMap = envMap;
     this.gunEnv = gunEnv;
     this.wardrobe = wardrobe || new Wardrobe(new Outfit());
+    this.name = name;
     this.ownMaterials = new Set(); // materials made here (freed on dispose)
     this.shared = new Set(); // geometries, materials and textures shared with the game
+    this.segments = [];
   }
 
-  // Loads (or reuses) the soldier and the PF-9; files: clip files by slot id.
-  async load(slots) {
-    const [{ gltf }, pistol] = await Promise.all([loadSoldier(), loader.loadAsync(PISTOL_MODEL.href)]);
+  // Loads (or reuses) the soldier, his clips and a PF-9.
+  async load() {
+    const [{ gltf }, pistol, clipsGltf] = await Promise.all([loadSoldier(), loader.loadAsync(PISTOL_MODEL.href), loadClips()]);
     // His copy: its own bones; the game's geometry and textures, with its
     // own copies of the materials (lit by the film's sky).
     const model = (this.model = clone(gltf.scene));
-    model.name = 'soldier';
+    model.name = this.name;
+    // (The game's own copy stands by the house and breathes in its idle, so
+    // the copy starts where it is and as it's posed: put it back at the
+    // origin with every node at the file's rest, which the clips are made
+    // against; the bones no clip moves stay there.)
+    model.position.set(0, 0, 0);
+    model.quaternion.identity();
+    model.scale.set(1, 1, 1);
+    const rest = new Map();
+    gltf.scene.traverse((o) => {
+      const a = gltf.parser.associations.get(o);
+      if (a && a.nodes !== undefined) rest.set(o.name, gltf.parser.json.nodes[a.nodes]);
+    });
+    model.traverse((o) => {
+      const n = o !== model && rest.get(o.name);
+      if (!n) return;
+      o.position.fromArray(n.translation || [0, 0, 0]);
+      o.quaternion.fromArray(n.rotation || [0, 0, 0, 1]);
+      o.scale.fromArray(n.scale || [1, 1, 1]);
+    });
     model.traverse((o) => {
       if (!o.isMesh) return;
       this.shared.add(o.geometry);
@@ -89,7 +108,6 @@ export class Actor {
     model.traverse((o) => {
       if (o.isBone) this.bones[boneName(o.name)] = o;
     });
-    this.idle = gltf.animations[0];
     this.mixer = new THREE.AnimationMixer(model);
     // The outfit: each piece's materials copied for the film too.
     this.dressed = this.wardrobe.dress(model, {
@@ -97,13 +115,15 @@ export class Actor {
         this.shared.add(mesh.geometry);
         mesh.material = [].concat(mesh.material).map((m) => this.ownMaterial(m));
         if (mesh.material.length === 1) mesh.material = mesh.material[0];
+        mesh.castShadow = mesh.receiveShadow = true;
+        mesh.frustumCulled = false;
       },
     }).catch((error) => console.warn('Cinematic: the outfit could not be put on', error));
 
     // The pistol: plain (no attachments), its round in the chamber left
     // out (the film shows its own).
     this.pistol = pistol.scene;
-    this.pistol.name = 'pf9';
+    this.pistol.name = this.name + '-pf9';
     this.pistolParts = {};
     this.pistol.traverse((o) => {
       if (o.name) this.pistolParts[o.name] = o;
@@ -119,18 +139,21 @@ export class Actor {
       if (p) this.pistolRest[name] = { position: p.position.clone(), quaternion: p.quaternion.clone() };
     }
 
-    // The clips that have been added.
+    // The clips, their tracks renamed to this copy's bones (by name without
+    // the number his skeleton adds; unknown bones dropped).
     this.clips = {};
-    await Promise.all(slots.filter((s) => s.file).map(async (slot) => {
-      try {
-        const file = await loader.loadAsync(String(slot.file));
-        const clip = file.animations[0];
-        if (!clip) throw new Error('no animation in ' + slot.file);
-        this.clips[slot.id] = this.adoptClip(clip, slot);
-      } catch (error) {
-        console.warn(`Cinematic: the ${slot.id} clip couldn't be loaded; its stand-in plays instead.`, error);
+    for (const anim of clipsGltf.animations) {
+      const tracks = [];
+      for (const track of anim.tracks) {
+        const dot = track.name.lastIndexOf('.');
+        const bone = this.bones[boneName(track.name.slice(0, dot))];
+        if (!bone) continue;
+        const t = track.clone();
+        t.name = bone.name + track.name.slice(dot);
+        tracks.push(t);
       }
-    }));
+      this.clips[anim.name] = new THREE.AnimationClip(anim.name, anim.duration, tracks);
+    }
   }
 
   ownMaterial(m) {
@@ -142,26 +165,6 @@ export class Actor {
     return c;
   }
 
-  // A loaded clip's tracks, renamed to his bones (by name without the
-  // number his skeleton adds; unknown bones dropped), trimmed and with only
-  // the upper body for a layer.
-  adoptClip(clip, slot) {
-    const tracks = [];
-    for (const track of clip.tracks) {
-      const dot = track.name.lastIndexOf('.');
-      const node = boneName(track.name.slice(0, dot));
-      const bone = this.bones[node];
-      if (!bone) continue;
-      if (slot.layer && !UPPER.test(node)) continue;
-      const t = track.clone();
-      t.name = bone.name + track.name.slice(dot);
-      tracks.push(t);
-    }
-    let out = new THREE.AnimationClip(slot.id, clip.duration, tracks);
-    if (slot.trim) out = THREE.AnimationUtils.subclip(out, slot.id, Math.round(slot.trim[0] * 30), Math.round(slot.trim[1] * 30), 30);
-    return out;
-  }
-
   // The static frame of the hips' parent, in his model's root frame.
   hipParentMatrix() {
     const hip = this.bones[HIP];
@@ -170,120 +173,141 @@ export class Actor {
     return rootInv.multiply(hip.parent.matrixWorld.clone());
   }
 
-  // How a clip carries him: his hips' ground position and heading at clip
-  // time t, relative to its first frame (in the clip's frame).
-  clipDrift(clip, t) {
-    const pos = clip.tracks.find((k) => k.name === this.bones[HIP].name + '.position');
-    if (!pos) return { dx: 0, dz: 0 };
-    const A = this.hipParentMatrix();
-    const at = (time) => {
-      const v = new THREE.Vector3();
-      const interp = pos.createInterpolant();
-      v.fromArray(interp.evaluate(Math.min(time, clip.duration)));
-      return v.applyMatrix4(A);
-    };
-    const a = at(0), b = at(t);
-    return { dx: b.x - a.x, dz: b.z - a.z };
+  // A clip's hips at clip time t, in his model's frame, unplaced.
+  clipHip(clip, t, A = this.hipParentMatrix()) {
+    const track = clip.tracks.find((k) => k.name === this.bones[HIP].name + '.position');
+    return new THREE.Vector3().fromArray(track.createInterpolant().evaluate(Math.min(Math.max(0, t), clip.duration))).applyMatrix4(A);
   }
 
-  // Builds the actions for the film's slots, each placed where it starts
-  // (slot.place: { x, z, yaw }) with its start in the story (slot.start,
-  // seconds) and how long it plays (slot.length). A slot without a clip
-  // gets a stand-in: his idle, carried along its planned path
-  // (slot.travel [dx, dz] and slot.turn, over its length).
-  setUp(slots) {
+  // Builds the actions for a timeline. Each segment:
+  //   clip     the clip's name in the clips file
+  //   start    when it starts, story seconds
+  //   from     the clip time it starts at (seconds; default 0)
+  //   to       the clip time it holds at once it gets there (default: the clip's end)
+  //   loop     plays round and round instead (an idle)
+  //   blend    seconds it cross-fades in over (0: a hard cut)
+  //   yaw      the turn given to the whole clip (degrees, his left positive)
+  //   place    where it goes: by default its hips (x, z) at `from` meet the
+  //            segment before's hips at the same story time, or at that
+  //            segment's clip time `alignPrev`; `sameAs: i` uses segment
+  //            i's place; `x`, `z` place it outright (with align: false)
+  //   layer    plays over the others, only on bones matching `mask` (a
+  //            RegExp of bone names), held at `from`, at `weight`, from
+  //            start to `end` (fading over `blend`)
+  // and stage: { x, z, yaw (radians) }, a move and turn of the whole timeline
+  // in the world; with stage.anchor { segment, at, x, z }, the stage is
+  // moved so that segment's hips at its clip time `at` land at (x, z).
+  setTimeline(segments, stage = { x: 0, z: 0, yaw: 0 }) {
     this.mixer.stopAllAction();
-    this.actions = [];
+    this.mixer.uncacheRoot(this.model);
     const A = this.hipParentMatrix();
     const Ainv = A.clone().invert();
-    // (Its turn alone: the frame is scaled, centimetres to metres.)
+    // (Its turn alone: the frame may be scaled.)
     const qA = new THREE.Quaternion();
     A.decompose(new THREE.Vector3(), qA, new THREE.Vector3());
     const qAinv = qA.clone().invert();
     const hipName = this.bones[HIP].name;
-    for (const slot of slots) {
-      const own = this.clips[slot.id];
-      if (!own && slot.layer) continue; // (a layer without its clip adds nothing)
-      const source = own || this.idle;
+
+    // Each segment's place, in the timeline's own frame.
+    const placed = [];
+    segments.forEach((s, i) => {
+      const src = this.clips[s.clip];
+      if (!src) throw new Error(`Cinematic: no clip "${s.clip}" in ${CLIPS_FILE.pathname}`);
+      const yaw = (s.yaw || 0) * DEG;
+      const qy = new THREE.Quaternion().setFromAxisAngle(UP, yaw);
+      let off = new THREE.Vector3(s.x || 0, 0, s.z || 0);
+      const before = placed.filter((p) => !p.s.layer);
+      if (s.sameAs !== undefined) off = placed[s.sameAs].off.clone();
+      else if (before.length && s.align !== false && !s.layer) {
+        const p = before[before.length - 1];
+        const pt = s.alignPrev !== undefined ? s.alignPrev : (p.s.from || 0) + (s.start - p.s.start);
+        const prevHip = this.clipHip(p.src, pt, A).applyQuaternion(p.qy).add(p.off);
+        const mine = this.clipHip(src, s.alignClip !== undefined ? s.alignClip : s.from || 0, A).applyQuaternion(qy);
+        off = new THREE.Vector3(prevHip.x - mine.x, 0, prevHip.z - mine.z);
+      }
+      placed.push({ s, src, off, qy, yaw });
+    });
+
+    // The stage.
+    let stageYaw = stage.yaw || 0, sx = stage.x || 0, sz = stage.z || 0;
+    if (stage.anchor) {
+      const p = placed[stage.anchor.segment];
+      const h = this.clipHip(p.src, stage.anchor.at, A).applyQuaternion(p.qy).add(p.off).applyAxisAngle(UP, stageYaw);
+      sx = stage.anchor.x - h.x;
+      sz = stage.anchor.z - h.z;
+    }
+    this.stage = { x: sx, z: sz, yaw: stageYaw };
+    const S = placeMatrix(sx, sz, stageYaw);
+
+    this.segments = placed.map((p, i) => {
+      const { s, src } = p;
+      const M = S.clone().multiply(new THREE.Matrix4().compose(p.off, p.qy, new THREE.Vector3(1, 1, 1)));
+      const qTurn = new THREE.Quaternion().setFromAxisAngle(UP, stageYaw + p.yaw);
       const tracks = [];
-      let hipPos = null, hipRot = null;
-      for (const t of source.tracks) {
-        if (t.name === hipName + '.position') hipPos = t;
-        else if (t.name === hipName + '.quaternion') hipRot = t;
-        else tracks.push(t);
-      }
-      const length = slot.length;
-      // Where the slot's frame is at clip time t.
-      const frameAt = (t) => {
-        if (own) return slot.place;
-        const k = Math.min(1, Math.max(0, t / length));
-        const e = slot.ease ? slot.ease(k) : k;
-        return advance(slot.place, slot.travel[0] * e, slot.travel[1] * e, (slot.turn || 0) * e);
-      };
-      // The hips' track, moved into the world (sampled at 30 a second; a
-      // clip keeps its own keys).
-      if (hipPos && !slot.layer) {
-        const times = own ? Array.from(hipPos.times) : Array.from({ length: Math.ceil(length * 30) + 1 }, (_, i) => i / 30);
-        const ip = hipPos.createInterpolant(), iq = hipRot ? hipRot.createInterpolant() : null;
-        const pv = [], qv = [];
-        const v = new THREE.Vector3(), q = new THREE.Quaternion(), m = new THREE.Matrix4(), qy = new THREE.Quaternion();
-        for (const time of times) {
-          const src = own ? time : time % source.duration;
-          const f = frameAt(time);
-          yawToQuat(f.yaw, qy);
-          m.compose(new THREE.Vector3(f.x, 0, f.z), qy, new THREE.Vector3(1, 1, 1));
-          v.fromArray(ip.evaluate(src)).applyMatrix4(A).applyMatrix4(m).applyMatrix4(Ainv);
-          pv.push(v.x, v.y, v.z);
-          if (iq) {
-            q.fromArray(iq.evaluate(src));
-            q.premultiply(qA).premultiply(qy).premultiply(qAinv);
-            qv.push(q.x, q.y, q.z, q.w);
+      for (const t of src.tracks) {
+        const node = boneName(t.name.slice(0, t.name.lastIndexOf('.')));
+        if (s.layer && !(s.mask && s.mask.test(node))) continue;
+        if (!s.layer && t.name === hipName + '.position') {
+          const v = new THREE.Vector3(), out = [];
+          for (let k = 0; k < t.times.length; k++) {
+            v.fromArray(t.values, k * 3).applyMatrix4(A).applyMatrix4(M).applyMatrix4(Ainv);
+            out.push(v.x, v.y, v.z);
           }
-        }
-        tracks.push(new THREE.VectorKeyframeTrack(hipName + '.position', times, pv));
-        if (iq) tracks.push(new THREE.QuaternionKeyframeTrack(hipName + '.quaternion', times, qv));
-      } else if (hipPos && slot.layer) {
-        // (A layer leaves the hips to the slot under it.)
+          tracks.push(new THREE.VectorKeyframeTrack(t.name, Array.from(t.times), out));
+        } else if (!s.layer && t.name === hipName + '.quaternion') {
+          const q = new THREE.Quaternion(), out = [];
+          for (let k = 0; k < t.times.length; k++) {
+            q.fromArray(t.values, k * 4).premultiply(qA).premultiply(qTurn).premultiply(qAinv);
+            out.push(q.x, q.y, q.z, q.w);
+          }
+          tracks.push(new THREE.QuaternionKeyframeTrack(t.name, Array.from(t.times), out));
+        } else tracks.push(t);
       }
-      const clip = new THREE.AnimationClip(slot.id + (own ? '' : '-standin'), own ? source.duration : Math.max(length, source.duration), tracks);
+      const clip = new THREE.AnimationClip(`${s.clip}#${i}`, src.duration, tracks);
       const action = this.mixer.clipAction(clip);
-      action.setLoop(own ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+      action.setLoop(THREE.LoopOnce, 1);
       action.clampWhenFinished = true;
       action.play();
       action.weight = 0;
-      this.actions.push({ slot, action, own: !!own, speed: slot.speed || 1 });
-    }
+      return { s, src, action, matrix: M };
+    });
   }
 
   // Poses him at story time t (seconds).
   pose(t) {
-    // Each slot's weight: in over its blend at its start, out as the next
-    // comes in; the first holds before it, the last after it.
-    const base = this.actions.filter((a) => !a.slot.layer);
-    const weights = base.map((a, i) => {
-      const s = a.slot;
-      const next = base[i + 1];
+    const base = this.segments.filter((p) => !p.s.layer);
+    base.forEach((p, i) => {
+      const s = p.s, next = base[i + 1];
       let w = 1;
-      if (i > 0) w = Math.min(w, smooth01((t - s.start) / Math.max(1e-3, s.blend)));
-      if (next) w = Math.min(w, 1 - smooth01((t - next.slot.start) / Math.max(1e-3, next.slot.blend)));
-      return Math.max(0, w);
+      if (i > 0) w = Math.min(w, s.blend ? smooth01((t - s.start) / s.blend) : t >= s.start ? 1 : 0);
+      if (next) w = Math.min(w, next.s.blend ? 1 - smooth01((t - next.s.start) / next.s.blend) : t >= next.s.start ? 0 : 1);
+      p.action.enabled = w > 0;
+      p.action.weight = Math.max(0, w);
+      const d = p.src.duration;
+      let time = (s.from || 0) + (t - s.start);
+      if (s.loop) time = ((time % d) + d) % d;
+      p.action.time = Math.min(Math.max(time, 0), s.to ?? d);
     });
-    base.forEach((a, i) => {
-      a.action.enabled = weights[i] > 0;
-      a.action.weight = weights[i];
-      a.action.time = Math.max(0, (t - a.slot.start) * a.speed + (a.own ? 0 : a.slot.idleFrom || 0));
-      if (a.own) a.action.time = Math.min(a.action.time, a.action.getClip().duration);
-    });
-    for (const a of this.actions.filter((x) => x.slot.layer)) {
-      const s = a.slot;
-      const local = t - s.start;
-      const w = smooth01(local / 0.15) * (1 - smooth01((local - s.length + 0.2) / 0.2));
-      a.action.enabled = w > 0;
-      a.action.weight = 20 * w;
-      a.action.time = Math.min(Math.max(0, local), a.action.getClip().duration);
+    for (const p of this.segments.filter((x) => x.s.layer)) {
+      const s = p.s, b = s.blend || 0.1;
+      const w = smooth01((t - s.start) / b) * (s.end !== undefined ? 1 - smooth01((t - s.end) / b) : 1);
+      p.action.enabled = w > 0;
+      p.action.weight = w * (s.weight || 1);
+      p.action.time = s.from || 0;
     }
     this.mixer.update(0);
     this.model.updateMatrixWorld(true);
+  }
+
+  // The segment playing (the newest with any weight) at story time t.
+  segmentAt(t) {
+    const base = this.segments.filter((p) => !p.s.layer && p.s.start <= t);
+    return base[base.length - 1] || this.segments[0];
+  }
+
+  // A bone's world position now.
+  at(bone, out = new THREE.Vector3()) {
+    return this.bones[bone].getWorldPosition(out);
   }
 
   // His right hand's world position and turn.
@@ -292,11 +316,12 @@ export class Actor {
     return { position: outPos, quaternion: outQuat };
   }
 
-  // Where the PF-9 is when he holds it.
-  gunInHand(outPos = new THREE.Vector3(), outQuat = new THREE.Quaternion()) {
+  // Where the PF-9 is when he holds it (grip: { position, quaternion } in
+  // his hand bone's frame).
+  gunInHand(grip = GRIP, outPos = new THREE.Vector3(), outQuat = new THREE.Quaternion()) {
     const { position, quaternion } = this.hand(outPos, outQuat);
-    position.add(GRIP.position.clone().applyQuaternion(quaternion));
-    quaternion.multiply(new THREE.Quaternion().setFromEuler(GRIP.rotation));
+    position.add(grip.position.clone().applyQuaternion(quaternion));
+    quaternion.multiply(grip.quaternion);
     return { position, quaternion };
   }
 
@@ -313,6 +338,15 @@ export class Actor {
       P.barrel.quaternion.copy(turn).multiply(R.barrel.quaternion);
     }
     if (P.trigger) P.trigger.position.z = R.trigger.position.z + 0.004 * trigger;
+  }
+
+  // His meshes (and his outfit's), for finding where a ray meets him.
+  meshes() {
+    const list = [];
+    this.model.traverse((o) => {
+      if (o.isMesh && o.visible) list.push(o);
+    });
+    return list;
   }
 
   // Frees what was made here (never the game's shared geometry, textures

@@ -1,11 +1,11 @@
 // The film's effects, each a plain function of time (so any frame can be
 // drawn on its own, at any speed): the muzzle blast (the gas leaking out
 // ahead of the bullet, the fireball of hot gas, burning grains of powder
-// and the smoke; the air it disturbs is film.js's air pass), the strike
-// on the plate
-// (the bullet flattening, lead and jacket spraying out along the face,
-// sparks, a grey cloud and the splash left on the paint), and the dust in
-// the air that shows how fast the camera goes.
+// and the smoke; the air it disturbs is film.js's air pass; at real speed,
+// the one-frame flash a camera catches), the strikes (on cloth: a puff of
+// dust from the weave and a few loose fibres, nothing more, the film being
+// a game's; on the house's wall: a puff of plaster dust and chips), and
+// the dust in the air that shows how fast the camera goes.
 //
 // The glows and smoke are drawn on layer FX_LAYER, after the depth of
 // field (their soft shapes don't need blurring, and the blur would smear
@@ -13,7 +13,6 @@
 
 import * as THREE from 'three';
 import { canvasTexture, clamp01, seeded, smoothstep, tileNoise } from './util.js';
-import { drawSplash } from './set.js';
 import { SHOT } from './ballistics.js';
 
 const EXIT = SHOT.exit; // the bullet's base clears the muzzle (s)
@@ -156,10 +155,11 @@ export class Effects {
       streak: streakTexture(),
       smoke: [smokeTexture(rng), smokeTexture(rng)],
     };
-    this.glows = new Sprites(this.group, 90, this.tex.blobs[0]);
-    this.streaks = new Sprites(this.group, 140, this.tex.streak);
-    this.smoke = new Sprites(this.group, 100, this.tex.smoke[0], { additive: false });
-    this.bits = new Sprites(this.group, 100, this.tex.dot, { additive: false });
+    // (Enough for three shots' smoke and strikes at once.)
+    this.glows = new Sprites(this.group, 120, this.tex.blobs[0]);
+    this.streaks = new Sprites(this.group, 160, this.tex.streak);
+    this.smoke = new Sprites(this.group, 240, this.tex.smoke[0], { additive: false });
+    this.bits = new Sprites(this.group, 160, this.tex.dot, { additive: false });
     this.color = new THREE.Color();
 
     // The blast's pieces, chosen once (seeded): each gas lump, grain and
@@ -178,29 +178,24 @@ export class Effects {
       size: 0.02 + r() * 0.035, grow: 0.12 + r() * 0.22, rise: 0.02 + r() * 0.05, drift: r() - 0.5, port: i >= 24,
       tex: i % 2, rot: r() * 6, shade: i < 10 ? 0.62 + r() * 0.12 : 0.75 + r() * 0.2, gas: i < 10,
     }));
-    // The strike's pieces: flakes of lead and jacket thrown out flat
-    // along the plate's face (a 'splash' disc), and sparks of hot metal,
-    // thinner and quicker, some flying farther and arcing down.
-    this.frags = Array.from({ length: 130 }, (_, i) => {
-      const spark = i % 3 === 0;
-      return {
-        angle: r() * Math.PI * 2, speed: spark ? 70 + r() * 220 : 40 + r() * 150, lift: spark ? 0.08 + r() * 0.45 : 0.02 + r() * 0.18,
-        life: spark ? ms(60 + r() * 380) : ms(30 + r() * 140), size: spark ? 0.00035 + r() * 0.0005 : 0.0008 + r() * 0.0018, spark,
-        drag: spark ? ms(40 + r() * 120) : ms(20 + r() * 15),
-      };
-    });
+    // The strikes' pieces: on cloth, fibres torn loose and flung back out
+    // of the weave, slowed fast by the air; on the wall, chips of plaster
+    // thrown out and falling.
+    this.fibres = Array.from({ length: 26 }, () => ({
+      angle: r() * Math.PI * 2, out: 0.25 + r() * 0.9, speed: 2 + r() * 9, drag: ms(15 + r() * 45),
+      len: 0.004 + r() * 0.01, width: 0.0005 + r() * 0.0004, fall: 0.08 + r() * 0.25, spin: r() * 6, life: 0.9 + r() * 1.2,
+      shade: 0.16 + r() * 0.12,
+    }));
+    this.dustPuffs = Array.from({ length: 12 }, () => ({
+      angle: r() * Math.PI * 2, out: 0.3 + r() * 0.8, reach: 0.02 + r() * 0.05, drift: 0.08 + r() * 0.2,
+      size: 0.022 + r() * 0.03, grow: 0.05 + r() * 0.1, rot: r() * 6, tex: Math.floor(r() * 2), shade: 0.68 + r() * 0.14,
+    }));
+    this.chips = Array.from({ length: 16 }, () => ({
+      angle: r() * Math.PI * 2, out: 0.4 + r() * 0.8, speed: 3 + r() * 8, size: 0.004 + r() * 0.01, life: 0.6 + r() * 0.6,
+    }));
 
     // Dust floating in the air along the bullet's path (set by setPath).
     this.dust = null;
-
-    // The splash the bullet leaves: a decal on the plate's face.
-    const splash = canvasTexture(512, 512, (g, w) => drawSplash(g, w / 2, w / 2, w * 0.2, seeded(31337), 0.65));
-    this.splash = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.06, 0.06),
-      new THREE.MeshStandardMaterial({ map: splash, transparent: true, roughness: 0.5, metalness: 0.3, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false }),
-    );
-    this.splash.visible = false;
-    this.splash.name = 'splash';
   }
 
   // Motes of dust in a slab round the path from a to b.
@@ -229,17 +224,39 @@ export class Effects {
     this.group.add(this.dust);
   }
 
-  // Draws the effects for this instant. s (seconds since the primer fired;
-  // negative before), the camera, and where things are:
+  // Draws the effects for this instant: begin(camera), then shot(s, w) for
+  // each shot fired, then end(). s: seconds since that shot's primer fired
+  // (negative before); w, where things are:
   // - muzzle, dir: the muzzle and the bore's direction (world)
   // - port, portDir: the ejection port and its outward direction
-  // - bullet: the bullet's middle; speed (m/s); flying (it's out and not yet struck)
-  // - hit: { s, at, normal, plate } once it strikes (s: when)
-  update(s, camera, w) {
+  // - realtime: the story is going at (about) real speed, so the camera
+  //   catches the flash in one frame rather than watching it grow
+  // - hit: { s, at, normal, dir, kind: 'cloth' | 'wall' } where and when it
+  //   strikes (s: when; normal: off the surface, towards the shooter; dir:
+  //   the bullet's flight)
+  begin(camera) {
+    this.camera = camera;
     for (const pool of [this.glows, this.streaks, this.smoke, this.bits]) {
       pool.camera = camera;
       pool.begin();
     }
+  }
+
+  end() {
+    this.glows.end();
+    this.streaks.end();
+    this.smoke.end();
+    this.bits.end();
+  }
+
+  update(s, camera, w) {
+    this.begin(camera);
+    this.shot(s, w);
+    this.end();
+  }
+
+  shot(s, w) {
+    const camera = this.camera;
     const up = new THREE.Vector3(0, 1, 0);
     const side = new THREE.Vector3().crossVectors(w.dir, up).normalize();
     const upAcross = new THREE.Vector3().crossVectors(side, w.dir).normalize();
@@ -325,62 +342,83 @@ export class Effects {
     // (The air the bullet tears through is drawn by film.js's air pass:
     // the picture bends round it.)
 
+    // The flash as a film camera catches it at real speed: in one frame
+    // (a 30th of a second), a bright ball of flame at the muzzle.
+    if (w.realtime && s >= 0 && s < 1 / 30) {
+      for (let i = 0; i < 3; i++) {
+        p.copy(w.muzzle).addScaledVector(w.dir, 0.03 + i * 0.045);
+        const size = [0.11, 0.09, 0.06][i];
+        this.glows.put(p, size, size, i * 2.1, glow(0.15 + i * 0.2, 1.6, this.color), 0.9, this.tex.blobs[i % 2]);
+      }
+      p.copy(w.muzzle).addScaledVector(w.dir, 0.01);
+      this.glows.put(p, 0.05, 0.05, 0, glow(0.05, 2.2, this.color), 1, this.tex.dot);
+    }
+
     // The strike.
     if (w.hit && s >= w.hit.s) {
       const t = s - w.hit.s;
-      const n = w.hit.normal;
-      const a1 = new THREE.Vector3().crossVectors(n, up).normalize();
-      const a2 = new THREE.Vector3().crossVectors(a1, n).normalize();
-      // A white flash where it strikes.
-      if (t < ms(0.25)) {
-        const k = 1 - t / ms(0.25);
-        p.copy(w.hit.at).addScaledVector(n, 0.004);
-        this.glows.put(p, 0.02 * (0.4 + k), 0.02 * (0.4 + k), 0, glow(0.12, 1.8, this.color), k * k, this.tex.dot);
-      }
-      // Lead and jacket spraying out along the face, and sparks.
-      for (const F of this.frags) {
-        if (t > F.life) continue;
-        const d = q.copy(a1).multiplyScalar(Math.cos(F.angle)).addScaledVector(a2, Math.sin(F.angle)).addScaledVector(n, F.lift).normalize();
-        const drag = F.drag;
-        const dist = F.speed * drag * (1 - Math.exp(-t / drag));
-        p.copy(w.hit.at).addScaledVector(d, dist + 0.003);
-        p.y -= 4.9 * t * t;
-        const k = 1 - t / F.life;
-        const v = F.speed * Math.exp(-t / drag);
-        // (Streaked along its motion, as a film camera's shutter smears it:
-        // longer while it's fast.)
-        const len = F.size * (1.5 + Math.min(F.spark ? 60 : 10, v / (F.spark ? 6 : 25)));
-        const fall = q.copy(d).multiplyScalar(v).add(_b.set(0, -9.81 * t, 0)).normalize();
-        if (F.spark) this.streaks.put(p, len, F.size, screenAngle(camera, p, fall), glow(0.35 + (1 - k) * 0.6, 1.25 * (0.5 + 0.5 * k), this.color), Math.min(1, k * 1.6));
-        else this.bits.put(p, len * 0.35, F.size * 1.2, screenAngle(camera, p, d), this.color.setRGB(0.18, 0.18, 0.19), 0.95 * k, this.tex.dot);
-      }
-      // A grey cloud of lead spreading over the face and drifting off.
-      for (let i = 0; i < 10; i++) {
-        const angle = (i / 10) * Math.PI * 2 + 0.3;
-        const spread = 1 - Math.exp(-t / 0.04);
-        const r = 0.03 + 0.16 * spread * (0.7 + 0.3 * Math.sin(i * 7.1));
-        p.copy(w.hit.at).addScaledVector(a1, Math.cos(angle) * r).addScaledVector(a2, Math.sin(angle) * r).addScaledVector(n, 0.02 + 0.08 * spread);
-        p.y += 0.05 * t;
-        const size = 0.04 + 0.14 * spread + 0.06 * t;
-        const fade = smoothstep(0, ms(1), t) * (1 - smoothstep(0.3, 2.2, t));
-        this.smoke.put(p, size, size, i, this.color.setRGB(0.58, 0.59, 0.61), 0.16 * fade, this.tex.smoke[i % 2]);
-      }
+      if (w.hit.kind === 'wall') this.wall(t, w.hit);
+      else this.cloth(t, w.hit);
     }
+  }
 
-    // The splash on the plate.
-    if (w.hit && w.hit.plate) {
-      if (this.splash.parent !== w.hit.plate) {
-        w.hit.plate.add(this.splash);
-        this.splash.position.copy(w.hit.local).add(new THREE.Vector3(0, 0, 0.0002));
-      }
-      const t = s - w.hit.s;
-      this.splash.visible = t > 0;
-      this.splash.scale.setScalar(0.15 + 0.85 * smoothstep(0, ms(0.25), t));
+  // The bullet striking cloth (t seconds after): a puff of dust driven out
+  // of the weave, back towards the shooter and spreading round the hole,
+  // and a few loose fibres flung out with it, slowed fast by the air and
+  // drifting down. No blood: it's a game.
+  cloth(t, hit) {
+    const { a1, a2, n } = this.axes(hit.normal);
+    const p = new THREE.Vector3(), d = new THREE.Vector3();
+    for (const P of this.dustPuffs) {
+      const burst = 1 - Math.exp(-t / ms(1.2));
+      const slow = 1 - Math.exp(-t / 0.35);
+      d.copy(a1).multiplyScalar(Math.cos(P.angle) * P.out).addScaledVector(a2, Math.sin(P.angle) * P.out).add(n).normalize();
+      p.copy(hit.at).addScaledVector(d, 0.004 + P.reach * burst + P.drift * slow);
+      p.y += 0.03 * t - 0.01 * slow;
+      const size = P.size * (0.25 + 0.75 * burst) + P.grow * slow;
+      const fade = smoothstep(0, ms(0.15), t) * (1 - smoothstep(0.25, 1.3, t));
+      this.smoke.put(p, size, size, P.rot + slow, this.color.setRGB(P.shade, P.shade * 0.95, P.shade * 0.86), 0.55 * fade, this.tex.smoke[P.tex]);
     }
+    for (const F of this.fibres) {
+      if (t > F.life) continue;
+      d.copy(a1).multiplyScalar(Math.cos(F.angle) * F.out).addScaledVector(a2, Math.sin(F.angle) * F.out).add(n).normalize();
+      const dist = F.speed * F.drag * (1 - Math.exp(-t / F.drag));
+      p.copy(hit.at).addScaledVector(d, dist + 0.003);
+      p.y -= F.fall * t * t;
+      const k = 1 - t / F.life;
+      this.bits.put(p, F.len, F.width, F.spin + t * 3, this.color.setRGB(F.shade, F.shade, F.shade * 0.8), Math.min(1, k * 3) * smoothstep(0, ms(0.2), t), this.tex.dot);
+    }
+  }
 
-    this.glows.end();
-    this.streaks.end();
-    this.smoke.end();
-    this.bits.end();
+  // A bullet striking the house's wall: a puff of pale plaster dust and a
+  // few chips thrown out and falling.
+  wall(t, hit) {
+    const { a1, a2, n } = this.axes(hit.normal);
+    const p = new THREE.Vector3(), d = new THREE.Vector3();
+    for (const P of this.dustPuffs) {
+      const burst = 1 - Math.exp(-t / ms(6));
+      const slow = 1 - Math.exp(-t / 0.5);
+      d.copy(a1).multiplyScalar(Math.cos(P.angle) * P.out).addScaledVector(a2, Math.sin(P.angle) * P.out).add(n).normalize();
+      p.copy(hit.at).addScaledVector(d, 0.01 + P.reach * 3 * burst + P.drift * 2 * slow);
+      p.y += 0.06 * t - 0.05 * slow;
+      const size = (P.size * 2.5) * (0.3 + 0.7 * burst) + P.grow * 2.2 * slow;
+      const fade = smoothstep(0, ms(2), t) * (1 - smoothstep(0.4, 2.0, t));
+      this.smoke.put(p, size, size, P.rot + slow, this.color.setRGB(0.86, 0.83, 0.76), 0.5 * fade, this.tex.smoke[P.tex]);
+    }
+    for (const C of this.chips) {
+      if (t > C.life) continue;
+      d.copy(a1).multiplyScalar(Math.cos(C.angle) * C.out).addScaledVector(a2, Math.sin(C.angle) * C.out).add(n).normalize();
+      p.copy(hit.at).addScaledVector(d, C.speed * t);
+      p.y -= 4.9 * t * t;
+      this.bits.put(p, C.size, C.size, C.angle, this.color.setRGB(0.7, 0.67, 0.6), 1 - t / C.life, this.tex.dot);
+    }
+  }
+
+  // Two directions across a surface with this normal, and the normal.
+  axes(normal) {
+    const n = normal.clone().normalize();
+    const a1 = new THREE.Vector3().crossVectors(n, Math.abs(n.y) > 0.95 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize();
+    const a2 = new THREE.Vector3().crossVectors(a1, n).normalize();
+    return { a1, a2, n };
   }
 }

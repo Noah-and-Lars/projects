@@ -1,10 +1,11 @@
 // A short film made in the game: the soldier sprints in, dives, catches a
 // PF-9 thrown to him in mid air, rolls into cover behind a barrier, comes
-// up and fires; then the bullet cam: time all but stops at the muzzle and
-// the camera rides beside the bullet while labels (in the breakdowns' look,
-// with their lines and cards) tell what it is, how it spins, what's left
-// behind and how fast it goes, until it strikes a steel plate, time snaps
-// back and the plate rings and swings.
+// up and fires at an enemy soldier standing by the house; then the bullet
+// cam: time all but stops at the muzzle and the camera rides beside the
+// bullet while labels (in the breakdowns' look, with their lines and cards)
+// tell what it is, how it spins, what's left behind and how fast it goes,
+// until it strikes the enemy's shoulder (a puff of dust from his sleeve:
+// it's a game, nothing gory), and he twists and falls as time snaps back.
 //
 //     import { Film } from './showcase/cinematic/film.js';
 //     const film = new Film({ onClose: () => { ... }, wardrobe });
@@ -17,12 +18,12 @@
 // Its keys: Space pauses, the arrows skip back and on 5 s, Esc closes; at
 // the end Replay and Close.
 //
-// What happens is all in src/showcase/cinematic/edit.js (the slots for his
-// moves, the shots, the cameras, the labels); the shot's numbers in
-// ballistics.js; the set, the round, the effects and the sounds in set.js,
-// round.js, fx.js and sound.js; the soldier, his moves and the pistol in
-// actor.js. `test: true` shows the shot's name and times, and a note on
-// each shot still waiting for its Mixamo clip.
+// What happens is all in src/showcase/cinematic/edit.js (which Mixamo
+// clips the men play when, the shots, the cameras, the labels); the shot's
+// numbers in ballistics.js; the set, the rounds, the effects and the
+// sounds in set.js, round.js, fx.js and sound.js; the soldiers, their
+// moves and their pistols in actor.js. `test: true` shows the shot's name
+// and times.
 //
 // The picture: the scene with depth of field (focused per camera key),
 // then the air (the bow wave, wake and blast wave bending the picture
@@ -39,14 +40,16 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { addBreakdownStyles, ease, leaderPaths, releaseSharedTextures } from '../breakdown.js';
 import { outdoorEnvironment, SUN_DIRECTION } from '../../world.js';
+import { HOUSE } from '../../shared/map.js';
+import { Outfit, SLOTS as GEAR_SLOTS, Wardrobe } from '../../gear.js';
 import { MODEL9 } from '../../viewmodel/pistol9.js';
-import { Actor, advance, retreat } from './actor.js';
-import { buildSet, filmEnvironment, TARGET } from './set.js';
+import { Actor, GRIP } from './actor.js';
+import { buildSet, filmEnvironment } from './set.js';
 import { makeCartridge, makeFiredBullet, makeSpentCase, roundMaterials, ROUND } from './round.js';
 import { Effects, FX_LAYER } from './fx.js';
 import { FilmSound } from './sound.js';
-import { EJECT, SHOT, barrelPose, bulletSpeed, bulletSpin, bulletTravel, gunKick, plateSwing, slideBack, timeToTravel } from './ballistics.js';
-import { FILM, LAYOUT, SLOTS, cards, cues as makeCues, shots as makeShots } from './edit.js';
+import { EJECT, SHOT, barrelPose, bulletSpeed, bulletSpin, bulletTravel, slideBack, timeToTravel } from './ballistics.js';
+import { COVER_SEGMENT, DIVE_AT, ENEMY_DROPS, FILM, FIRES, HERO, LAYOUT, backInCover, cards, cues as makeCues, dive, enemy as enemyTimeline, shots as makeShots } from './edit.js';
 import { clamp01, lerp, monotone, pathAt, smoothstep } from './util.js';
 
 const LABEL = { line: 0.4, card: 0.25 }; // the breakdowns' pace: the line draws, the card fades
@@ -74,25 +77,39 @@ const SOUNDS = {
   slowShot: (a) => a.slowShot(),
   rush14: (a) => a.rush(13),
   rush7: (a) => a.rush(6.4),
-  slowRing: (a) => a.slowRing(),
-  ring: (a, v) => (v > 0.5 ? a.ring() : a.slowRing()),
   snap: (a) => a.snap(),
+  hit: (a, v) => a.hit(v > 0.5 ? 1 : 0.3),
   tink: (a, v, volume) => a.tink(slowed(v), volume),
-  slowTink: (a) => a.tink(0.35),
   thump: (a, v, volume) => a.thump(volume, slowed(v)),
   slap: (a, v) => a.slap(slowed(v)),
   whoosh: (a, v) => a.whoosh(slowed(v)),
+  step: (a, v, volume) => a.step(slowed(v), volume),
+  cloth: (a, v, volume) => a.cloth(slowed(v), volume),
+  clatter: (a, v) => a.clatter(slowed(v)),
 };
 
+// The enemy's outfit: in each slot, something other than what the player
+// wears (a different helmet, vest and gloves), so he reads as the other
+// side. Fixed for the film (it doesn't follow the player's changes).
+function enemyWardrobe(wardrobe) {
+  const player = wardrobe ? wardrobe.outfit : new Outfit();
+  const pick = { head: ['comms', 'headset'], vest: ['black', 'olive'], gloves: ['olive', 'black'] };
+  const chosen = {};
+  for (const slot of GEAR_SLOTS) {
+    const [first, second] = pick[slot.id] || [slot.options[0].id, slot.options[1].id];
+    chosen[slot.id] = player.get(slot.id) === first ? second : first;
+  }
+  return new Wardrobe({ chosen, get: (slot) => chosen[slot], onChange: () => {} });
+}
+
 export class Film {
-  constructor({ container = document.body, onClose = null, wardrobe = null, test = false, sound = true, autoplay = true, slots = SLOTS } = {}) {
+  constructor({ container = document.body, onClose = null, wardrobe = null, test = false, sound = true, autoplay = true } = {}) {
     this.container = container;
     this.onClose = onClose;
     this.wardrobe = wardrobe;
     this.test = test;
     this.sound = sound;
     this.autoplay = autoplay;
-    this.slotSpecs = slots;
     this.t = 0;
     this.paused = false;
     this.open = false;
@@ -167,7 +184,11 @@ export class Film {
     this.titleName = $('.bd-name');
     this.titleSub = $('.bd-sub');
     this.creditLine = $('.bd-credit');
-    this.creditLine.textContent = FILM.credit;
+    for (const line of FILM.credits) {
+      const row = document.createElement('div');
+      row.textContent = line;
+      this.creditLine.append(row);
+    }
     this.buttons = $('.bd-buttons');
     this.progressBar = $('.bd-progress-fill');
     this.hint = $('.bd-hint');
@@ -210,36 +231,37 @@ export class Film {
     const scene = (this.scene = new THREE.Scene());
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.01, 1000);
     this.camera.layers.enableAll();
-    this.env = outdoorEnvironment(renderer, SUN_DIRECTION); // (the game's: for him)
+    this.env = outdoorEnvironment(renderer, SUN_DIRECTION); // (the game's: for the men)
     this.shine = filmEnvironment(renderer, SUN_DIRECTION); // (for the rounds and the metal close up)
 
-    const set = (this.set = buildSet(renderer, { crateSpot: LAYOUT.crates }));
+    const set = (this.set = buildSet(renderer, { crateSpot: LAYOUT.crates, houseSpot: LAYOUT.house }));
     scene.add(set.group);
     scene.fog = set.fog;
-    // Metal on the set shows the sky, as the gun and the soldier do.
+    // Metal on the set shows the sky, as the guns and the soldiers do.
     set.group.traverse((o) => {
       if (o.isMesh) for (const m of [].concat(o.material)) if (m.metalness > 0.3) m.envMap = this.shine;
     });
 
-    // The rounds: the one on the barrier in the opening, the bullet and
-    // the spent case.
+    // The rounds: one lying by the pistol in the opening, the bullet the
+    // bullet cam follows, and a spent case for each shot.
     this.roundMat = roundMaterials(this.shine);
     this.titleRound = makeCartridge(this.roundMat);
-    this.titleRound.position.fromArray(LAYOUT.round);
-    this.titleRound.rotation.set(-Math.PI / 2, 0, 0.6);
-    scene.add(this.titleRound);
     this.bullet = makeFiredBullet(this.roundMat);
-    this.spent = makeSpentCase(this.roundMat);
-    scene.add(this.bullet, this.spent);
+    this.spentCases = FIRES.map(() => makeSpentCase(this.roundMat));
+    scene.add(this.titleRound, this.bullet, ...this.spentCases);
 
     this.fx = new Effects(scene);
 
-    // The soldier and the pistol.
-    const actor = (this.actor = new Actor({ renderer, envMap: this.env, gunEnv: this.shine, wardrobe: this.wardrobe }));
-    await actor.load(this.slotSpecs);
+    // The soldier (in the player's outfit) and the enemy (in another), each
+    // with a PF-9.
+    const actorOptions = { renderer, envMap: this.env, gunEnv: this.shine };
+    this.hero = new Actor({ ...actorOptions, wardrobe: this.wardrobe, name: 'soldier' });
+    this.enemy = new Actor({ ...actorOptions, wardrobe: enemyWardrobe(this.wardrobe), name: 'enemy' });
+    this.actor = this.hero; // (the star, for older checks)
+    await Promise.all([this.hero.load(), this.enemy.load()]);
     if (!this.renderer) throw new Error('closed while loading');
-    scene.add(actor.model, actor.pistol);
-    await actor.dressed;
+    scene.add(this.hero.model, this.hero.pistol, this.enemy.model, this.enemy.pistol);
+    await Promise.all([this.hero.dressed, this.enemy.dressed]);
     if (!this.renderer) throw new Error('closed while loading');
 
     this.plan();
@@ -248,112 +270,154 @@ export class Film {
     this.layout();
     // Compile the shaders and upload the textures now, not on the first frames.
     this.renderAt(this.shotList.find((s) => s.name === 'bullet-out').start + 3);
+    this.renderAt(this.shotList.find((s) => s.name === 'impact').start + 4);
     this.renderAt(0);
   }
 
   // ---- The plan: where everything goes and when ----
 
   plan() {
-    const actor = this.actor;
-    // The slots: each one's length (its clip's, or as planned), where it
-    // starts in the story, and where in the world.
-    const slots = this.slotSpecs.map((spec) => {
-      const clip = actor.clips[spec.id];
-      return { ...spec, length: clip ? clip.duration / (spec.speed || 1) : spec.length, hasClip: !!clip, marks: { ...(spec.marks || {}) } };
-    });
-    const byId = Object.fromEntries(slots.map((s) => [s.id, s]));
-    const base = slots.filter((s) => !s.layer);
-    let t = 0;
-    base.forEach((s, i) => {
-      if (i > 0) t += base[i - 1].length - s.blend;
-      s.start = t;
-    });
-    for (const s of slots.filter((x) => x.layer)) {
-      const under = byId[s.over];
-      s.start = under.start + (under.marks[s.at] ?? under.length / 2) - s.lead;
+    const hero = this.hero, enemy = this.enemy;
+    // His timeline, turned to run towards -Z and placed so that he kneels
+    // behind the barriers.
+    const heroStage = { yaw: Math.PI, anchor: { segment: COVER_SEGMENT, at: 0, x: LAYOUT.cover.x, z: LAYOUT.cover.z } };
+    hero.setTimeline(HERO, heroStage);
+    const S = { fires: FIRES.slice(), fire: FIRES[FIRES.length - 1], catch: dive(0.9) };
+    this.fireAt = S.fire;
+    this.catchAt = S.catch;
+
+    // The enemy, standing: his left shoulder `range` metres down the bore
+    // of the aimed shot (level), turned so that his own pistol points at
+    // the shooter's head.
+    const shot3 = this.boreAt(S.fire, GRIP);
+    enemy.setTimeline([{ clip: 'enemy_aim', start: -60, loop: true, align: false }]);
+    enemy.pose(0);
+    const eg = enemy.gunInHand(GRIP);
+    const eDir = new THREE.Vector3(0, 0, -1).applyQuaternion(eg.quaternion);
+    const shoulder0 = enemy.at('CC_Base_L_Upperarm');
+    const flat = shot3.dir.clone().setY(0).normalize();
+    const want = shot3.muzzle.clone().addScaledVector(flat, LAYOUT.enemy.range);
+    hero.pose(S.fire);
+    const head = hero.at('CC_Base_Head');
+    const yaw = Math.atan2(head.x - want.x, head.z - want.z) - Math.atan2(eDir.x, eDir.z);
+    const turned = shoulder0.clone().applyAxisAngle(UP, yaw);
+    this.enemyStage = { x: want.x - turned.x, z: want.z - turned.z, yaw };
+    enemy.setTimeline([{ clip: 'enemy_aim', start: -60, loop: true, align: false }], this.enemyStage);
+
+    // Where the aimed shot strikes him (the front of his left shoulder,
+    // where the ray to the joint meets his sleeve), and the fire clip's
+    // grip turned so the bore points exactly there (a degree or two; the
+    // same grip for all three shots, as it's one clip).
+    this.fireGrip = { position: GRIP.position.clone(), quaternion: GRIP.quaternion.clone() };
+    enemy.pose(S.fire);
+    const meshes = enemy.meshes();
+    for (const m of meshes) if (m.isSkinnedMesh) { m.computeBoundingSphere(); m.computeBoundingBox(); }
+    const ray = new THREE.Raycaster();
+    let hit = null;
+    for (let pass = 0; pass < 3; pass++) {
+      const b = this.boreAt(S.fire, this.fireGrip);
+      const joint = enemy.at('CC_Base_L_Upperarm').add(new THREE.Vector3(0, 0.035, 0));
+      ray.set(b.muzzle, joint.clone().sub(b.muzzle).normalize());
+      const found = ray.intersectObjects(meshes, false)[0];
+      hit = found ? found.point.clone() : joint;
+      // Turn the grip: the bore's direction onto the one to the strike.
+      const wantDir = hit.clone().sub(b.muzzle).normalize();
+      const qd = new THREE.Quaternion().setFromUnitVectors(b.dir, wantDir);
+      const H = hero.hand().quaternion;
+      const Hinv = H.clone().invert();
+      this.fireGrip.quaternion.premultiply(Hinv.clone().multiply(qd).multiply(H));
     }
-    // Placed backwards from the fire slot: each slot starts where the one
-    // before it has carried him by the time the next fades in.
-    const fireIndex = base.findIndex((s) => s.id === 'fire');
-    base[fireIndex].place = { ...LAYOUT.fireSpot };
-    const carry = (s, time) => {
-      if (s.hasClip) {
-        const d = actor.clipDrift(actor.clips[s.id], time * (s.speed || 1));
-        return [d.dx, d.dz, 0];
+    const b3 = this.boreAt(S.fire, this.fireGrip);
+    this.firing = b3.gun;
+    this.dir = hit.clone().sub(b3.muzzle).normalize();
+    this.seat = b3.muzzle.clone().addScaledVector(this.dir, -SHOT.bore); // the bullet's base, seated
+    this.range = b3.muzzle.distanceTo(hit);
+    this.hit = hit;
+    this.hitNormal = this.dir.clone().negate();
+    // (Where it strikes, in his left upper arm's frame, for the card's dot
+    // to follow his shoulder as he twists away.)
+    this.hitOnArm = enemy.bones.CC_Base_L_Upperarm.worldToLocal(hit.clone());
+    this.hitS = timeToTravel(this.seat.distanceTo(hit) - ROUND.bullet.length); // the nose meets him
+    S.impact = S.fire + this.hitS;
+    this.fx.setPath(b3.muzzle, hit);
+
+    // Now the rest of their timelines: he goes back into cover after the
+    // strike; the enemy is struck.
+    hero.setTimeline([...HERO, backInCover(S)], heroStage);
+    enemy.setTimeline(enemyTimeline(S), this.enemyStage);
+
+    // Each shot: the gun as it fires, the bullet's line, where it strikes
+    // (the first two, the house behind him: plaster; the last, him), and
+    // its spent case's flight.
+    const houseFront = LAYOUT.house.z + HOUSE.depth / 2;
+    this.shots = S.fires.map((F, i) => {
+      const last = i === S.fires.length - 1;
+      const b = last ? b3 : this.boreAt(F, this.fireGrip);
+      const dir = last ? this.dir : b.dir;
+      const shot = { F, firing: b.gun, muzzle: b.muzzle, dir, caseMesh: this.spentCases[i] };
+      if (last) shot.hit = { s: this.hitS, at: hit, normal: this.hitNormal, dir, kind: 'cloth' };
+      else {
+        // The house's front wall, or failing that the ground.
+        const seat = b.muzzle.clone().addScaledVector(dir, -SHOT.bore);
+        let at = null, normal = null;
+        const k = (houseFront - b.muzzle.z) / dir.z;
+        const p = b.muzzle.clone().addScaledVector(dir, k);
+        if (k > 0 && Math.abs(p.x - LAYOUT.house.x) < HOUSE.width / 2 && p.y > 0 && p.y < HOUSE.wallHeight) { at = p; normal = new THREE.Vector3(0, 0, 1); }
+        else if (dir.y < 0) { at = b.muzzle.clone().addScaledVector(dir, -b.muzzle.y / dir.y); normal = UP.clone(); }
+        if (at) shot.hit = { s: timeToTravel(seat.distanceTo(at)), at, normal, dir, kind: 'wall' };
       }
-      const k = clamp01(time / s.length);
-      return [s.travel[0] * k, s.travel[1] * k, (s.turn || 0) * k];
-    };
-    for (let i = fireIndex - 1; i >= 0; i--) {
-      const s = base[i], next = base[i + 1];
-      const [dx, dz, turn] = carry(s, next.start - s.start);
-      s.place = retreat(next.place, dx, dz, turn);
-    }
-    for (let i = fireIndex + 1; i < base.length; i++) {
-      const s = base[i], prev = base[i - 1];
-      const [dx, dz, turn] = carry(prev, s.start - prev.start);
-      s.place = advance(prev.place, dx, dz, turn);
-    }
-    for (const s of slots.filter((x) => x.layer)) s.place = byId[s.over].place;
-    this.slots = slots;
-    actor.setUp(slots);
-
-    const story = {
-      start: (id) => byId[id].start,
-      mark: (id, name) => byId[id].start + (byId[id].marks[name] ?? 0),
-    };
-    story.fire = story.mark('fire', 'shot');
-    this.fireAt = story.fire;
-    this.grabAt = story.mark('dive', 'catch');
-
-    // The plate, and where the bullet strikes it.
-    const target = this.set.target;
-    target.group.updateMatrixWorld(true);
-    this.hitLocal = new THREE.Vector3(LAYOUT.hit[0], LAYOUT.hit[1], TARGET.thick / 2);
-    this.hit = this.hitLocal.clone().applyMatrix4(target.plate.matrixWorld);
-    this.hitNormal = new THREE.Vector3(0, 0, 1).transformDirection(target.plate.matrixWorld);
-
-    // The gun as he fires: from his hand if the fire clip is in, else held
-    // up in its aim pose. The bullet flies from where it sits in the
-    // chamber to the strike.
-    this.aimPose = this.aimGun();
-    const firing = byId.fire.hasClip ? this.gunFromHand(story.fire) : this.aimPose;
-    this.firing = firing;
-    const muzzleLocal = new THREE.Vector3(...MODEL9.muzzle);
-    const muzzle = muzzleLocal.clone().applyQuaternion(firing.quaternion).add(firing.position);
-    this.dir = new THREE.Vector3().subVectors(this.hit, muzzle).normalize();
-    this.seat = muzzle.clone().addScaledVector(this.dir, -SHOT.bore); // the bullet's base, seated
-    this.range = muzzle.distanceTo(this.hit);
-    const toHit = this.seat.distanceTo(this.hit) - ROUND.bullet.length;
-    this.hitS = timeToTravel(toHit); // seconds after the primer fires
-    story.impact = story.fire + this.hitS;
-    this.fx.setPath(muzzle, this.hit);
+      shot.caseFlight = this.flyCase(b.gun);
+      return shot;
+    });
 
     // The toss: the pistol lies on the top crate (LAYOUT.crates) until
     // it's thrown, then flies to arrive in his hand at the dive's catch,
     // turning over (whole turns, plus the turn from lying flat to his
     // grip) as it goes.
-    actor.pose(this.grabAt);
-    const grab = actor.gunInHand();
+    hero.pose(S.catch);
+    const grab = hero.gunInHand(GRIP);
     const rest = this.restingGun();
     const T = LAYOUT.toss.flight;
     const from = rest.position.clone();
     this.toss = {
-      from, T, start: this.grabAt - T, end: grab.position.clone(), endQuat: grab.quaternion.clone(), restQuat: rest.quaternion.clone(),
+      from, T, start: S.catch - T, end: grab.position.clone(), endQuat: grab.quaternion.clone(), restQuat: rest.quaternion.clone(),
       v0: grab.position.clone().sub(from).addScaledVector(GRAVITY, -0.5 * T * T).divideScalar(T),
       axis: new THREE.Vector3().subVectors(grab.position, from).cross(UP).normalize(),
     };
     this.catchPoint = grab.position.clone();
+    this.restPoint = rest.position.clone();
+    // A round lying on the lid beside it, for the opening.
+    this.titleRound.quaternion.copy(rest.quaternion).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0.9, 0)));
+    this.titleRound.position.copy(rest.position).add(new THREE.Vector3(0.05, 0, 0.07).applyAxisAngle(UP, this.set.crates.topYaw + LAYOUT.crates.yaw));
+    this.titleRound.position.y = rest.position.y + 0.0003;
+    this.titleRound.updateMatrixWorld(true);
+    const roundBox = new THREE.Box3().setFromObject(this.titleRound);
+    this.titleRound.position.y += rest.position.y - roundBox.min.y;
 
-    // The spent case's flight, worked out once.
-    this.caseFlight = this.flyCase();
+    // The enemy's pistol: in his hand until he's struck, then dropped.
+    this.enemyGun = this.dropGun(S.impact + ENEMY_DROPS);
+    this.enemyGunLands = this.enemyGun.landed;
+
+    // His footfalls as he runs (each toe's lowest point, while the sprint plays).
+    this.footfalls = [];
+    let prev = null;
+    for (let t = 0; t < DIVE_AT + 0.3; t += 1 / 60) {
+      hero.pose(t);
+      const y = [hero.at('CC_Base_L_ToeBase').y, hero.at('CC_Base_R_ToeBase').y];
+      if (prev) for (let k = 0; k < 2; k++) if (prev.y[k] > y[k] && y[k] < 0.06 && !prev.down[k]) {
+        if (t > 0.05 && !(t - this.footfalls[this.footfalls.length - 1] < 0.2)) this.footfalls.push(t);
+        prev.down[k] = true;
+      }
+      const down = prev ? prev.down.map((d, k) => d && y[k] < 0.09) : [false, false];
+      prev = { y, down };
+    }
 
     // The shots, end to end. A shot's story clock: `time` keys (a smooth
     // curve through [film seconds, story time]), `ramp` keys (its speed,
     // story seconds a film second, eased from key to key in proportion,
     // so 1 to 1/1000 slows as evenly as 1/1000 to 1/1,000,000), or real
     // speed. `from: 'prev'` carries on from where the shot before ended.
-    const list = makeShots(story);
+    const list = makeShots(S);
     let at = 0, prevTo = 0;
     this.shotList = list.map((spec) => {
       const from = spec.from === 'prev' ? prevTo : spec.from;
@@ -371,6 +435,17 @@ export class Film {
         film = r.film;
         map = r.map;
         to = r.to;
+        // (A ramp that would run past `to` is cut where it gets there.)
+        if (typeof spec.to === 'number' && to > spec.to) {
+          let lo = 0, hi = film;
+          for (let i = 0; i < 40; i++) {
+            const mid = (lo + hi) / 2;
+            if (map(mid) < spec.to) lo = mid;
+            else hi = mid;
+          }
+          film = lo;
+          to = map(lo);
+        }
       } else {
         film = spec.film ?? to - from;
         map = spec.time ? monotone(spec.time) : (x) => from + x;
@@ -388,17 +463,28 @@ export class Film {
       return shot;
     });
     this.duration = at;
-    this.story = story;
-    this.cards = cards(this.range);
+    this.story = S;
+    this.cards = cards(this.range, this.hitS);
     // Sounds: at film times in a shot (`sounds`), and at moments in the
     // story (cues: each plays once, the first time the film passes it, at
     // the story's speed then: slowed, or in its slow-motion form).
     this.events = [];
     for (const s of this.shotList) for (const [when, name] of s.sounds || []) this.events.push({ t: s.start + when, name });
     this.events.sort((a, b) => a.t - b.t);
-    this.cues = makeCues(story, this).map(([w, name, volume]) => ({ w, name, volume }));
+    this.cues = makeCues(S, this).map(([w, name, volume]) => ({ w, name, volume }));
     this.cuesPlayed = new Set();
     this.timeline = { shots: this.shotList };
+  }
+
+  // The PF-9 in his hand at story time t with a grip: its pose, its
+  // muzzle and its bore's direction.
+  boreAt(t, grip) {
+    this.hero.pose(t);
+    const g = this.hero.gunInHand(grip);
+    const gun = { position: g.position.clone(), quaternion: g.quaternion.clone() };
+    const muzzle = new THREE.Vector3(...MODEL9.muzzle).applyQuaternion(gun.quaternion).add(gun.position);
+    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(gun.quaternion);
+    return { gun, muzzle, dir };
   }
 
   // The PF-9 lying on its left side on the top crate's lid, its muzzle
@@ -406,7 +492,7 @@ export class Film {
   restingGun() {
     const crates = this.set.crates;
     crates.group.updateMatrixWorld(true);
-    const pistol = this.actor.pistol;
+    const pistol = this.hero.pistol;
     const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, crates.topYaw + LAYOUT.toss.restTurn, -Math.PI / 2, 'YXZ'));
     quaternion.premultiply(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().extractRotation(crates.group.matrixWorld)));
     // (Its lowest point on the lid.)
@@ -419,27 +505,57 @@ export class Film {
     return { position, quaternion };
   }
 
-  // The PF-9 held up to fire, its muzzle at LAYOUT.muzzle, pointing at the strike.
-  aimGun() {
-    const muzzle = new THREE.Vector3(...LAYOUT.muzzle);
-    const dir = new THREE.Vector3().subVectors(this.hit, muzzle).normalize();
-    const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), dir, UP); // (its -Z along dir)
-    const quaternion = new THREE.Quaternion().setFromRotationMatrix(m);
-    const position = muzzle.clone().sub(new THREE.Vector3(...MODEL9.muzzle).applyQuaternion(quaternion));
-    return { position, quaternion };
+  // The enemy's pistol as it leaves his hand at story time t0: thrown on
+  // with his hand's speed, tumbling, falling and bouncing on the ground.
+  // Steps of a millisecond for three seconds.
+  dropGun(t0) {
+    const enemy = this.enemy;
+    const dt = 0.001, h = 1 / 30;
+    enemy.pose(t0 - h);
+    const a = enemy.gunInHand(GRIP);
+    const pa = a.position.clone();
+    enemy.pose(t0);
+    const b = enemy.gunInHand(GRIP);
+    const pos = b.position.clone();
+    const vel = pos.clone().sub(pa).divideScalar(h).multiplyScalar(0.8);
+    let q = b.quaternion.clone();
+    let axis = new THREE.Vector3(1, 0.3, 0.2).normalize().applyQuaternion(q);
+    let spin = 7; // rad/s
+    const steps = Math.ceil(3 / dt);
+    const out = { t0, dt, pos: new Float32Array(steps * 3), quat: new Float32Array(steps * 4), landed: [] };
+    const r = 0.025; // (about its half thickness, lying)
+    let resting = false;
+    for (let i = 0; i < steps; i++) {
+      out.pos.set([pos.x, pos.y, pos.z], i * 3);
+      out.quat.set([q.x, q.y, q.z, q.w], i * 4);
+      if (resting) continue;
+      vel.addScaledVector(GRAVITY, dt);
+      pos.addScaledVector(vel, dt);
+      q = new THREE.Quaternion().setFromAxisAngle(axis, spin * dt).multiply(q);
+      if (pos.y < r && vel.y < 0) {
+        pos.y = r;
+        out.landed.push(t0 + i * dt);
+        vel.y *= -0.25;
+        vel.x *= 0.5;
+        vel.z *= 0.5;
+        spin *= 0.4;
+        axis = new THREE.Vector3(0, 1, 0);
+        if (Math.abs(vel.y) < 0.3) {
+          // Lying on its side.
+          const along = new THREE.Vector3(0, 0, -1).applyQuaternion(q).setY(0).normalize();
+          q.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), along, UP)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2));
+          vel.set(0, 0, 0);
+          resting = true;
+        }
+      }
+    }
+    return out;
   }
 
-  gunFromHand(storyTime) {
-    this.actor.pose(storyTime);
-    const g = this.actor.gunInHand();
-    return { position: g.position.clone(), quaternion: g.quaternion.clone() };
-  }
-
-  // The case from the moment it leaves the port: thrown out, tumbling,
-  // falling, bouncing off the ground and settling on its side. Steps of
-  // half a millisecond for four seconds.
-  flyCase() {
-    const g = this.firing;
+  // The case from the moment it leaves the port of the gun posed `g`:
+  // thrown out, tumbling, falling, bouncing off the ground and settling on
+  // its side. Steps of half a millisecond for four seconds.
+  flyCase(g) {
     const dt = 0.0005;
     const portLocal = this.caseInGun(EJECT.time).position;
     const pos = portLocal.clone().applyQuaternion(g.quaternion).add(g.position);
@@ -606,79 +722,93 @@ export class Film {
     const shot = this.shotAt(t);
     const local = Math.min(t - shot.start, shot.film);
     const w = shot.map(local); // story time
-    const s = w - this.fireAt; // since the primer fired
-    const actor = this.actor;
-    const standIn = shot.aim && !actor.clips.fire;
+    const speed = shot.speedAt(local);
+    const s = w - this.fireAt; // since the aimed shot's primer fired
+    const hero = this.hero, enemy = this.enemy;
+    const hide = shot.hide || [];
 
-    // Him.
-    actor.pose(w);
-    actor.model.visible = !(standIn || (shot.hide || []).includes('soldier'));
+    // The men.
+    hero.pose(w);
+    enemy.pose(w);
+    hero.model.visible = !hide.includes('soldier');
+    enemy.model.visible = !hide.includes('enemy');
 
-    // The pistol: in the air, in his hand, or held up to fire; its slide
-    // and barrel as the shot cycles them.
-    const gun = this.gunAt(w, s, standIn);
-    actor.pistol.visible = !!gun;
-    if (gun) {
-      actor.pistol.position.copy(gun.position);
-      actor.pistol.quaternion.copy(gun.quaternion);
+    // His pistol: on the crate, in the air, or in his hand; its slide and
+    // barrel as the latest shot cycles them, its trigger as the next one
+    // breaks.
+    const gun = this.gunAt(w);
+    hero.pistol.position.copy(gun.position);
+    hero.pistol.quaternion.copy(gun.quaternion);
+    let latest = null, next = null;
+    for (const sh of this.shots) {
+      if (w >= sh.F) latest = sh;
+      else if (!next) next = sh;
     }
-    const slide = slideBack(s, MODEL9.slideTravel);
-    actor.setPistol({ slide, barrel: barrelPose(slide, MODEL9.barrel), trigger: smoothstep(-0.12, -0.02, s) * (1 - smoothstep(0.03, 0.15, s)) }, MODEL9);
-    actor.pistol.updateMatrixWorld(true);
+    const slide = latest ? slideBack(w - latest.F, MODEL9.slideTravel) : 0;
+    const pull = (x) => smoothstep(-0.12, -0.02, x) * (1 - smoothstep(0.03, 0.15, x));
+    hero.setPistol({ slide, barrel: barrelPose(slide, MODEL9.barrel), trigger: Math.max(latest ? pull(w - latest.F) : 0, next ? pull(w - next.F) : 0) }, MODEL9);
+    hero.pistol.updateMatrixWorld(true);
+    // The enemy's: in his hand, then dropped as he's struck.
+    const eg = this.enemyGunAt(w);
+    enemy.pistol.position.copy(eg.position);
+    enemy.pistol.quaternion.copy(eg.quaternion);
+    enemy.pistol.visible = enemy.model.visible;
+    enemy.pistol.updateMatrixWorld(true);
 
-    // The bullet.
+    // The bullet the camera follows (the aimed shot's): out of the barrel,
+    // across, and into his sleeve, where it's gone.
     const travel = bulletTravel(s);
-    const flying = s > 0 && travel > SHOT.bore - ROUND.bullet.length && s < this.hitS + 0.00012;
+    const flying = s > 0 && travel > SHOT.bore - ROUND.bullet.length && s < this.hitS + 0.00008;
     this.bullet.visible = flying;
     const bulletMid = new THREE.Vector3();
     const bulletQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.dir);
     bulletQ.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), bulletSpin(s)));
-    if (flying) {
-      // At the strike it flattens against the steel, the lead spreading.
-      const k = clamp01((s - this.hitS) / 0.00004);
-      const along = 1 - 0.88 * k;
-      const across = 1 + 1.3 * k;
-      const base = this.seat.clone().addScaledVector(this.dir, Math.min(travel, this.seat.distanceTo(this.hit) - ROUND.bullet.length * along));
-      this.bullet.position.copy(base);
-      this.bullet.quaternion.copy(bulletQ);
-      this.bullet.scale.set(across, across, along);
-      bulletMid.copy(base).addScaledVector(this.dir, (ROUND.bullet.length * along) / 2);
-    } else {
-      bulletMid.copy(this.seat).addScaledVector(this.dir, Math.min(travel, this.seat.distanceTo(this.hit)) + ROUND.bullet.length / 2);
-    }
+    const base = this.seat.clone().addScaledVector(this.dir, travel);
+    this.bullet.position.copy(base);
+    this.bullet.quaternion.copy(bulletQ);
+    this.bullet.scale.set(1, 1, 1);
+    bulletMid.copy(base).addScaledVector(this.dir, ROUND.bullet.length / 2);
     this.bulletFrame = { origin: bulletMid, q: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.dir) };
 
-    // The case.
-    const caseMid = this.caseAt(s, gun);
-
-    // The plate swings once struck.
-    this.set.target.pivot.rotation.x = plateSwing(s - this.hitS);
-    this.set.target.pivot.updateMatrixWorld(true);
-
-    // Effects.
-    const muzzle = gun ? new THREE.Vector3(...MODEL9.muzzle).applyMatrix4(actor.pistol.matrixWorld) : new THREE.Vector3();
-    this.muzzleNow = gun ? muzzle : null;
-    const portGun = new THREE.Vector3(...MODEL9.port);
-    portGun.z += slide;
-    const port = gun ? portGun.applyMatrix4(actor.pistol.matrixWorld) : new THREE.Vector3();
-    const portDir = gun ? new THREE.Vector3(0.85, 0.5, 0.1).normalize().applyQuaternion(actor.pistol.quaternion) : UP;
-    const fxDir = gun ? new THREE.Vector3(0, 0, -1).applyQuaternion(actor.pistol.quaternion) : this.dir;
+    // The spent cases.
+    this.shots.forEach((sh) => { sh.caseMid = this.caseAt(sh, w - sh.F); });
+    const caseMid = this.shots[this.shots.length - 1].caseMid;
 
     // Camera (before the effects: streaks turn to face it).
     this.placeCamera(shot, local, w);
-    this.fx.update(s, this.camera, {
-      muzzle, dir: fxDir, port, portDir, bullet: bulletMid, flying: flying && s < this.hitS, speed: bulletSpeed(s),
-      hit: { s: this.hitS, at: this.hit, normal: this.hitNormal, plate: this.set.target.plate, local: this.hitLocal },
-    });
-    // (Before the shot, nothing of it.)
-    this.fx.group.visible = s > 0;
-    this.fx.splash.visible = this.fx.splash.visible && s > this.hitS;
+
+    // Effects, for each shot: at the gun while it's at the muzzle and the
+    // port (its smoke left where it was fired), and at the strike.
+    const pm = hero.pistol.matrixWorld;
+    const firedMatrix = (sh) => new THREE.Matrix4().compose(sh.firing.position, sh.firing.quaternion, new THREE.Vector3(1, 1, 1));
+    this.fx.begin(this.camera);
+    let anyFx = false;
+    this.muzzleNow = null;
+    for (const sh of this.shots) {
+      const sk = w - sh.F;
+      if (sk <= 0) continue;
+      anyFx = true;
+      const live = sh === latest && sk < 0.02;
+      const m = live ? pm : firedMatrix(sh);
+      const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().extractRotation(m));
+      const muzzle = new THREE.Vector3(...MODEL9.muzzle).applyMatrix4(m);
+      const portGun = new THREE.Vector3(...MODEL9.port);
+      portGun.z += live ? slide : 0;
+      const port = portGun.applyMatrix4(m);
+      const portDir = new THREE.Vector3(0.85, 0.5, 0.1).normalize().applyQuaternion(q);
+      const fxDir = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
+      if (sh === this.shots[this.shots.length - 1]) this.muzzleNow = muzzle;
+      this.fx.shot(sk, { muzzle, dir: fxDir, port, portDir, realtime: speed > 0.3, hit: sh.hit });
+    }
+    this.fx.end();
+    this.fx.group.visible = anyFx;
+    if (this.fx.dust) this.fx.dust.visible = s > 0 && s < this.hitS + 0.002;
 
     // Shadows: a tight box round the bullet or the gun in the close shots,
-    // else the whole action.
+    // else round what the camera looks at.
     const sun = this.set.sun;
-    const centre = shot.fine ? this.lookPoint : new THREE.Vector3(1.5, 0, 0);
-    const half = shot.fine ? 0.35 : 16;
+    const centre = shot.fine ? this.lookPoint : this.lookPoint.clone().setY(0);
+    const half = shot.fine ? 0.35 : 14;
     sun.target.position.copy(centre);
     sun.position.copy(centre).addScaledVector(SUN_DIRECTION, shot.fine ? 6 : 40);
     Object.assign(sun.shadow.camera, { left: -half, right: half, top: half, bottom: -half, near: shot.fine ? 0.5 : 5, far: shot.fine ? 12 : 90 });
@@ -690,6 +820,8 @@ export class Film {
     this.scenePass.focus = this.focusDist;
     this.scenePass.blur = shot.blur ?? 0.008;
     this.grade.uniforms.time.value = t;
+    // (The end dims as its title and credits come up.)
+    this.grade.uniforms.fade.value = shot.title === 'end' ? 0.5 * smoothstep(2.4, 3.8, local) : 0;
     this.renderer.toneMappingExposure = shot.exposure ?? 1.1; // (the game's, unless the shot says)
     this.composer.render();
 
@@ -759,54 +891,60 @@ export class Film {
     u.far.value = cam.far;
   }
 
-  // The pistol's pose at story time w (null before it's thrown).
-  gunAt(w, s, standIn) {
-    const actor = this.actor;
+  // His pistol's pose at story time w: lying on the crate, thrown, or in
+  // his hand (the fire clip's grip faded in with the fire clip).
+  gunAt(w) {
     const toss = this.toss;
     if (w < toss.start) return { position: toss.from.clone(), quaternion: toss.restQuat.clone() };
-    if (w < this.grabAt) {
+    if (w < this.catchAt) {
       const tau = w - toss.start;
       const position = toss.from.clone().addScaledVector(toss.v0, tau).addScaledVector(GRAVITY, 0.5 * tau * tau);
       const k = tau / toss.T;
       // (From lying flat to his grip, plus whole turns end over end, which
       // spin fastest as it leaves and slow a touch: a little drag.)
-      const spin = 1 - (1 - k) * (1 - k * 0.25) / 1;
+      const spin = 1 - (1 - k) * (1 - k * 0.25);
       const quaternion = toss.restQuat.clone().slerp(toss.endQuat, smoothstep(0, 1, k))
         .premultiply(new THREE.Quaternion().setFromAxisAngle(toss.axis, -(1 - spin) * LAYOUT.toss.turns * Math.PI * 2));
       return { position, quaternion };
     }
-    if (standIn) {
-      // Held up to fire, kicking as it fires.
-      const kick = gunKick(s);
-      const g = this.aimPose;
-      const pivot = new THREE.Vector3(0, -0.085, 0.03); // about the grip, in the gun's frame
-      const turn = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), kick.rise);
-      const local = new THREE.Vector3().sub(pivot).applyQuaternion(turn).add(pivot);
-      local.z += kick.back;
-      return {
-        position: local.applyQuaternion(g.quaternion).add(g.position),
-        quaternion: g.quaternion.clone().multiply(turn),
-      };
-    }
-    const g = actor.gunInHand();
+    let fire = 0;
+    for (const p of this.hero.segments) if (p.s.clip === 'fire') fire += p.action.weight;
+    const grip = { position: GRIP.position, quaternion: GRIP.quaternion.clone().slerp(this.fireGrip.quaternion, clamp01(fire)) };
+    const g = this.hero.gunInHand(grip);
     return { position: g.position.clone(), quaternion: g.quaternion.clone() };
   }
 
-  // Places the spent case for time s; returns its middle (or null).
-  caseAt(s, gun) {
-    const c = this.spent;
+  // The enemy's pistol: in his right hand (the same grip), then falling.
+  enemyGunAt(w) {
+    const f = this.enemyGun;
+    if (w < f.t0) {
+      const g = this.enemy.gunInHand(GRIP);
+      return { position: g.position.clone(), quaternion: g.quaternion.clone() };
+    }
+    const x = Math.min((w - f.t0) / f.dt, f.pos.length / 3 - 1.001);
+    const i = Math.floor(x), k = x - i;
+    return {
+      position: new THREE.Vector3().fromArray(f.pos, i * 3).lerp(new THREE.Vector3().fromArray(f.pos, i * 3 + 3), k),
+      quaternion: new THREE.Quaternion().fromArray(f.quat, i * 4).slerp(new THREE.Quaternion().fromArray(f.quat, i * 4 + 4), k),
+    };
+  }
+
+  // Places a shot's spent case for time s since it fired; returns its
+  // middle (or null).
+  caseAt(sh, s) {
+    const c = sh.caseMesh;
     const back = slideBack(s, MODEL9.slideTravel);
-    if (s <= 0 || (s < EJECT.time && back < 0.004) || !gun) {
+    if (s <= 0 || (s < EJECT.time && back < 0.004)) {
       c.visible = false;
       return null;
     }
     c.visible = true;
     if (s < EJECT.time) {
       const p = this.caseInGun(s);
-      c.position.copy(p.position).applyMatrix4(this.actor.pistol.matrixWorld);
-      c.quaternion.copy(this.actor.pistol.quaternion).multiply(p.quaternion);
+      c.position.copy(p.position).applyMatrix4(this.hero.pistol.matrixWorld);
+      c.quaternion.copy(this.hero.pistol.quaternion).multiply(p.quaternion);
     } else {
-      const f = this.caseFlight;
+      const f = sh.caseFlight;
       const x = Math.min((s - EJECT.time) / f.dt, f.pos.length / 3 - 1.001);
       const i = Math.floor(x), k = x - i;
       c.position.fromArray(f.pos, i * 3).lerp(new THREE.Vector3().fromArray(f.pos, i * 3 + 3), k);
@@ -819,22 +957,31 @@ export class Film {
   // A point [frame, x, y, z] in the world, now.
   point([frame, x = 0, y = 0, z = 0]) {
     const v = new THREE.Vector3(x, y, z);
-    const actor = this.actor;
+    const hero = this.hero, enemy = this.enemy;
+    const along = (o) => {
+      // [right, up, forward] along the bullet's line.
+      const f = this.dir, r = new THREE.Vector3().crossVectors(f, UP).normalize(), u = new THREE.Vector3().crossVectors(r, f);
+      return o.clone().addScaledVector(r, x).addScaledVector(u, y).addScaledVector(f, z);
+    };
     switch (frame) {
       case 'world': return v;
-      case 'hips': return v.add(actor.bones.CC_Base_Hip.getWorldPosition(new THREE.Vector3()));
-      case 'hand': return v.add(actor.bones.CC_Base_R_Hand.getWorldPosition(new THREE.Vector3()));
+      case 'hips': return v.add(hero.at('CC_Base_Hip'));
+      case 'hand': return v.add(hero.at('CC_Base_R_Hand'));
+      case 'head': return v.add(hero.at('CC_Base_Head'));
+      case 'enemy': return v.add(enemy.at('CC_Base_Hip'));
+      case 'ehead': return v.add(enemy.at('CC_Base_Head'));
       case 'catch': return v.add(this.catchPoint);
-      case 'case': return v.add(this.spent.visible ? new THREE.Vector3(0, 0, ROUND.case.length / 2).applyMatrix4(this.spent.matrixWorld) : this.hit);
-      case 'hit': return v.add(this.hit);
-      case 'gun': return v.applyMatrix4(actor.pistol.matrixWorld);
-      case 'muzzle':
-      case 'bullet': {
-        // [right, up, forward] along the bore.
-        const f = this.dir, r = new THREE.Vector3().crossVectors(f, UP).normalize(), u = new THREE.Vector3().crossVectors(r, f);
-        const o = frame === 'muzzle' ? this.seat.clone().addScaledVector(f, SHOT.bore) : this.bulletFrame.origin;
-        return o.clone().addScaledVector(r, x).addScaledVector(u, y).addScaledVector(f, z);
+      case 'rest': return v.add(this.restPoint);
+      case 'case': {
+        const c = this.shots[this.shots.length - 1].caseMesh;
+        return v.add(c.visible ? new THREE.Vector3(0, 0, ROUND.case.length / 2).applyMatrix4(c.matrixWorld) : this.hit);
       }
+      case 'hit': return v.add(this.hit);
+      case 'sleeve': return v.add(enemy.bones.CC_Base_L_Upperarm.localToWorld(this.hitOnArm.clone()));
+      case 'gun': return v.applyMatrix4(hero.pistol.matrixWorld);
+      case 'muzzle': return along(this.seat.clone().addScaledVector(this.dir, SHOT.bore));
+      case 'bullet': return along(this.bulletFrame.origin);
+      case 'strike': return along(this.hit);
       default: return v;
     }
   }
@@ -996,19 +1143,8 @@ export class Film {
   }
 
   drawTest(shot, t, w, s) {
-    const notes = [];
-    if (shot.slot) {
-      const slot = this.slots.find((x) => x.id === shot.slot);
-      if (slot && !slot.hasClip) notes.push(`placeholder: waiting for the Mixamo clip (${slot.name})`);
-      if (shot.slot === 'dive' || shot.slot === 'catch') {
-        const c = this.slots.find((x) => x.id === 'catch');
-        if (c && !c.hasClip && shot.slot === 'dive') notes.push('placeholder: waiting for the Mixamo clip (Catch)');
-      }
-    }
-    if (shot.aim && !this.actor.clips.fire) notes.push('placeholder: shooter left out until the Mixamo clip (Fire) arrives');
     this.testLine.hidden = false;
-    this.testLine.innerHTML = `<b>${shot.name}</b> · film ${t.toFixed(2)} s · story ${w.toFixed(4)} s` + (s > -0.5 && s < 3.5 ? ` · shot +${(s * 1000).toFixed(3)} ms` : '')
-      + notes.map((n) => `<div class="cine-note">${n}</div>`).join('');
+    this.testLine.innerHTML = `<b>${shot.name}</b> · film ${t.toFixed(2)} s · story ${w.toFixed(4)} s · ×${shot.speedAt(Math.min(t - shot.start, shot.film)).toPrecision(2)}` + (s > -0.5 && s < 3.5 ? ` · shot +${(s * 1000).toFixed(3)} ms` : '');
   }
 
   // ---- Closing ----
@@ -1023,17 +1159,19 @@ export class Film {
       // (the soldier's and his gear's geometry and textures, and three.js's
       // own lookup texture), so nothing the game keeps holds on to it.
       if (this.scene) releaseSharedTextures(renderer, this.scene);
-      if (this.actor && this.set) {
+      const actors = [this.hero, this.enemy].filter((a) => a);
+      if (this.set) {
         const ownOf = (thing) => (thing._listeners && thing._listeners.dispose ? thing._listeners.dispose.slice() : []);
         const mine = new Set([...ownOf(this.set.floor.geometry), ...ownOf(this.set.floor.material), ...ownOf(this.set.floor.material.map)]);
-        for (const thing of this.actor.shared) {
+        for (const actor of actors) for (const thing of actor.shared) {
           const list = thing._listeners && thing._listeners.dispose;
           if (list) for (const fn of list.slice()) if (mine.has(fn)) thing.removeEventListener('dispose', fn);
         }
       }
-      if (this.actor) {
-        if (this.actor.model) this.actor.model.removeFromParent();
-        this.actor.dispose();
+      // (Their models out of the scene first: the geometry is the game's.)
+      for (const actor of actors) {
+        if (actor.model) actor.model.removeFromParent();
+        actor.dispose();
       }
       if (this.scene) {
         this.scene.traverse((o) => {
@@ -1058,7 +1196,7 @@ export class Film {
       renderer.forceContextLoss();
       this.renderer = null;
     }
-    this.scene = this.actor = this.set = this.fx = this.composer = this.timeline = this.shotList = null;
+    this.scene = this.actor = this.hero = this.enemy = this.set = this.fx = this.composer = this.timeline = this.shotList = null;
     if (this.audio) { this.audio.close(); this.audio = null; }
     if (this.root) { this.root.remove(); this.root = null; }
     this.ready = null;
@@ -1073,7 +1211,11 @@ export class Film {
       hitMs: +(this.hitS * 1000).toFixed(3),
       range: +this.range.toFixed(3),
       shots: this.shotList.map((s) => ({ name: s.name, start: +s.start.toFixed(2), end: +s.end.toFixed(2), story: [+s.from.toFixed(4), +s.to.toFixed(4)] })),
-      slots: this.slots.map((s) => ({ id: s.id, clip: s.hasClip, start: +s.start.toFixed(3), length: +s.length.toFixed(3), place: s.place && { x: +s.place.x.toFixed(2), z: +s.place.z.toFixed(2), yaw: +s.place.yaw.toFixed(2) } })),
+      fires: this.shots.map((s) => ({ at: +s.F.toFixed(3), hit: s.hit ? { kind: s.hit.kind, at: s.hit.at.toArray().map((v) => +v.toFixed(3)), ms: +(s.hit.s * 1000).toFixed(2) } : null })),
+      impact: +this.story.impact.toFixed(4),
+      catch: this.catchPoint.toArray().map((v) => +v.toFixed(3)),
+      heroStage: this.hero.stage, enemyStage: this.enemyStage,
+      segments: this.hero.segments.map((p) => ({ clip: p.s.clip, start: +p.s.start.toFixed(3), from: p.s.from || 0 })),
       triangles: info ? info.render.triangles : 0,
       calls: info ? info.render.calls : 0,
       textures: info ? info.memory.textures : 0,
@@ -1242,12 +1384,12 @@ class SceneDofPass extends Pass {
 // The grade: a soft vignette, a little colour fringing towards the edges,
 // a touch of contrast and fine moving grain (after tone mapping).
 const GRADE = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, fade: { value: 0 } },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: /* glsl */`
     varying vec2 vUv;
     uniform sampler2D tDiffuse;
-    uniform float time;
+    uniform float time, fade;
     float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233)) + time * 37.0) * 43758.5453); }
     void main() {
       vec2 c = vUv - 0.5;
@@ -1256,6 +1398,7 @@ const GRADE = {
       vec3 col = vec3(texture2D(tDiffuse, vUv + shift).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - shift).b);
       col = mix(col, col * col * (3.0 - 2.0 * col), 0.18); // contrast
       col *= mix(1.0, 0.62, smoothstep(0.12, 0.62, r2)); // vignette
+      col *= 1.0 - fade; // (dimmed under the end's titles)
       col += (hash(vUv * 913.0) - 0.5) * 0.028; // grain
       gl_FragColor = vec4(col, 1.0);
     }`,

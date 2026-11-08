@@ -1,14 +1,15 @@
 // The film's set: the game's baseplate (the same grey ground, sky colour,
 // haze, sun and sky light as src/world.js), a row of two concrete
-// barriers for cover, and a steel target hanging on a stand down range.
-// All made in code.
+// barriers for cover, a stack of ammunition crates, and the game's house
+// down range, where the enemy stands. All made in code.
 //
 // The layout (metres): the barriers run along X at z = 0; he takes cover
-// behind them (+Z) and fires towards -Z, at the plate 12 m away. The
-// crates stand where the edit puts them (LAYOUT.crates in edit.js).
+// behind them (+Z) and fires towards -Z, at the enemy 13 m away. The
+// crates and the house stand where the edit puts them (LAYOUT in
+// edit.js).
 
 import * as THREE from 'three';
-import { SUN_DIRECTION } from '../../world.js';
+import { SUN_DIRECTION, createHouse } from '../../world.js';
 import { canvasTexture, seeded, tileNoise } from './util.js';
 
 // The game's colours (src/world.js).
@@ -22,19 +23,7 @@ const FLOOR_COLOR = 0x8c8c8c;
 const JERSEY = [[0.305, 0], [0.305, 0.075], [0.126, 0.33], [0.075, 0.81]];
 export const BARRIER = { height: 0.81, top: 0.075, base: 0.305, length: 3.05, gap: 0.03 };
 
-// The target: a 12 in (305 mm) round plate of 3/8 in (9.5 mm) steel,
-// painted white, hanging on two short chains from the crossbar of a stand.
-export const TARGET = {
-  at: new THREE.Vector3(0.3, 0, -12),
-  radius: 0.1525,
-  thick: 0.0095,
-  barY: 1.5, // the crossbar's top
-  chain: 0.2,
-  stand: 0.95, // half the distance between the uprights
-};
-TARGET.centreY = TARGET.barY - 0.025 - TARGET.chain - 0.03 - TARGET.radius;
-
-export function buildSet(renderer, { shadowCentre = new THREE.Vector3(1.5, 0, 0), crateSpot = { x: -6, z: 3, yaw: 0.3 } } = {}) {
+export function buildSet(renderer, { shadowCentre = new THREE.Vector3(1.5, 0, 0), crateSpot = { x: -6, z: 3, yaw: 0.3 }, houseSpot = { x: 1.5, z: -19 } } = {}) {
   const group = new THREE.Group();
   group.name = 'set';
   const rng = seeded(9119);
@@ -109,15 +98,19 @@ export function buildSet(renderer, { shadowCentre = new THREE.Vector3(1.5, 0, 0)
   }
   group.add(barriers);
 
-  const target = buildTarget(rng);
-  group.add(target.group);
+  // The game's house (src/world.js), its front (+Z, with the door)
+  // towards the barriers.
+  const house = createHouse();
+  house.position.set(houseSpot.x, 0, houseSpot.z);
+  house.name = 'house';
+  group.add(house);
 
   // The ammunition crates the pistol is thrown from.
   const crates = buildCrates(rng, crateSpot);
   group.add(crates.group);
 
   return {
-    group, sun, floor, barriers, target, crates,
+    group, sun, floor, barriers, house, crates,
     fog: new THREE.Fog(SKY_COLOR, 60, 900),
     background: new THREE.Color(SKY_COLOR),
   };
@@ -210,153 +203,6 @@ function jerseyBarrier(material, rng) {
     g.add(m);
   }
   return g;
-}
-
-// The steel target on its stand.
-function buildTarget(rng) {
-  const T = TARGET;
-  const group = new THREE.Group();
-  group.name = 'target';
-  group.position.copy(T.at);
-  const tube = new THREE.MeshStandardMaterial({ color: 0x2c3034, roughness: 0.55, metalness: 0.7 });
-  const add = (geo, mat, x, y, z) => {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, y, z);
-    m.castShadow = m.receiveShadow = true;
-    group.add(m);
-    return m;
-  };
-  // Two uprights of 50 mm square tube on wide feet, a crossbar over them.
-  const s = 0.05;
-  for (const x of [-T.stand, T.stand]) {
-    add(new THREE.BoxGeometry(s, T.barY, s), tube, x, T.barY / 2, 0);
-    add(new THREE.BoxGeometry(s * 1.1, s * 0.8, 0.9), tube, x, s * 0.4, 0);
-    // Braces from the foot up the upright.
-    for (const dz of [-1, 1]) {
-      const brace = add(new THREE.BoxGeometry(0.03, 0.42, 0.03), tube, x, 0.17, dz * 0.14);
-      brace.rotation.x = -dz * 0.78; // (from the foot's end up to the upright)
-    }
-  }
-  add(new THREE.BoxGeometry(T.stand * 2 + 0.12, s, s), tube, 0, T.barY - s / 2, 0);
-
-  // The swinging part: chains and plate turn together about the crossbar.
-  const pivot = new THREE.Group();
-  pivot.name = 'plate-pivot';
-  pivot.position.set(0, T.barY - s / 2, 0);
-  group.add(pivot);
-  const chainMat = new THREE.MeshStandardMaterial({ color: 0x8d8f91, roughness: 0.35, metalness: 1 });
-  const link = new THREE.TorusGeometry(0.009, 0.0028, 6, 14);
-  link.scale(1, 1.55, 1);
-  const linkCount = Math.round(T.chain / 0.02);
-  const chainX = T.radius * 0.62;
-  for (const x of [-chainX, chainX]) {
-    // A bolt-on hanger round the bar, then the chain.
-    const hook = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.005, 8, 18), chainMat);
-    hook.position.set(x, 0, 0);
-    hook.rotation.y = Math.PI / 2;
-    hook.castShadow = true;
-    pivot.add(hook);
-    for (let i = 0; i < linkCount; i++) {
-      const m = new THREE.Mesh(link, chainMat);
-      m.position.set(x, -0.035 - 0.012 - i * 0.02, 0);
-      m.rotation.y = i % 2 ? Math.PI / 2 : 0;
-      m.castShadow = true;
-      pivot.add(m);
-    }
-  }
-  // The plate (its face towards +Z, the shooter), painted white, worn,
-  // with the grey splashes of earlier hits; the edge and back bare steel.
-  const paint = plateTexture(rng);
-  const face = new THREE.MeshStandardMaterial({ map: paint.map, roughness: 0.62, metalness: 0.05, roughnessMap: paint.rough });
-  const steel = new THREE.MeshStandardMaterial({ color: 0x3a3c3e, roughness: 0.5, metalness: 0.85 });
-  const plateGeo = new THREE.CylinderGeometry(T.radius, T.radius, T.thick, 72, 1);
-  plateGeo.rotateX(Math.PI / 2);
-  const plate = new THREE.Mesh(plateGeo, [steel, face, steel]);
-  // (Cylinder groups: 0 the side, 1 the +Y cap, 2 the -Y cap; turned, the
-  // +Y cap faces +Z.)
-  const plateY = -(T.barY - s / 2) + T.centreY;
-  plate.position.set(0, plateY, 0);
-  plate.castShadow = plate.receiveShadow = true;
-  plate.name = 'plate';
-  pivot.add(plate);
-  // Two tabs at the top where the chains are bolted.
-  for (const x of [-chainX, chainX]) {
-    const tab = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, T.thick), steel);
-    tab.position.set(x, plateY + T.radius * Math.sqrt(1 - 0.62 * 0.62) + 0.012, 0);
-    tab.castShadow = true;
-    pivot.add(tab);
-  }
-  return { group, pivot, plate, faceZ: T.thick / 2, plateY, centre: new THREE.Vector3(T.at.x, T.centreY, T.at.z + T.thick / 2) };
-}
-
-function plateTexture(rng) {
-  const N = 1024;
-  const n = tileNoise(N, N, rng, [[6, 0.4], [24, 0.35], [96, 0.25]]);
-  const splashes = [];
-  for (let k = 0; k < 6; k++) {
-    const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 0.62;
-    splashes.push([0.5 + Math.cos(a) * r * 0.5, 0.5 + Math.sin(a) * r * 0.5, 0.025 + rng() * 0.03]);
-  }
-  const map = canvasTexture(N, N, (g) => {
-    const img = g.createImageData(N, N);
-    for (let i = 0; i < N * N; i++) {
-      const v = 226 + (n[i] - 0.5) * 30;
-      img.data[i * 4] = v;
-      img.data[i * 4 + 1] = v * 0.99;
-      img.data[i * 4 + 2] = v * 0.96;
-      img.data[i * 4 + 3] = 255;
-    }
-    g.putImageData(img, 0, 0);
-    for (const [x, y, r] of splashes) drawSplash(g, x * N, y * N, r * N * 0.8, rng, 0.32);
-  });
-  const rough = canvasTexture(N, N, (g) => {
-    g.fillStyle = '#a0a0a0';
-    g.fillRect(0, 0, N, N);
-    for (const [x, y, r] of splashes) {
-      g.fillStyle = '#505050';
-      g.beginPath();
-      g.arc(x * N, y * N, r * N * 0.6, 0, Math.PI * 2);
-      g.fill();
-    }
-  }, { srgb: false });
-  return { map, rough };
-}
-
-// A bullet's splash on painted steel: the lead smeared out from a dark
-// centre in a star of rays, the paint knocked off round it.
-export function drawSplash(g, x, y, r, rng, strength = 1) {
-  g.save();
-  g.translate(x, y);
-  g.globalAlpha = strength;
-  // Bare steel where the paint flaked off.
-  g.fillStyle = 'rgba(120,122,124,0.9)';
-  g.beginPath();
-  for (let i = 0; i <= 40; i++) {
-    const a = (i / 40) * Math.PI * 2;
-    const rr = r * (0.75 + rng() * 0.35);
-    g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
-  }
-  g.fill();
-  // Rays of lead.
-  for (let i = 0; i < 30; i++) {
-    const a = rng() * Math.PI * 2;
-    const len = r * (0.7 + rng() * 0.9);
-    g.strokeStyle = `rgba(92,95,100,${0.3 + rng() * 0.45})`;
-    g.lineWidth = r * (0.02 + rng() * 0.05);
-    g.beginPath();
-    g.moveTo(Math.cos(a) * r * 0.15, Math.sin(a) * r * 0.15);
-    g.lineTo(Math.cos(a) * len, Math.sin(a) * len);
-    g.stroke();
-  }
-  const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
-  core.addColorStop(0, 'rgba(84,86,90,1)');
-  core.addColorStop(0.6, 'rgba(118,121,125,0.85)');
-  core.addColorStop(1, 'rgba(90,92,96,0)');
-  g.fillStyle = core;
-  g.beginPath();
-  g.arc(0, 0, r * 0.55, 0, Math.PI * 2);
-  g.fill();
-  g.restore();
 }
 
 // The sky the film's metal reflects: the game's outdoor reflections

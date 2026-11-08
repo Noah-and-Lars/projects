@@ -2,15 +2,16 @@
 // attachments, and (its last tab) your outfit (src/outfitMenu.js). Each
 // gun's tab can also put that gun in your hands (onPickGun: the game's, the
 // gun's key) and goes back to the game. A Breakdowns button by the title
-// opens a picker of the gun breakdowns (src/showcase/breakdowns.js): picking
-// one plays it (onBreakdown: the game's, the breakdown's id; the menu closes
+// opens a picker of the gun breakdowns (src/showcase/breakdowns.js), with
+// the cinematic first: picking one plays it (onBreakdown: the game's, the
+// breakdown's id, or 'cinematic'; the menu closes
 // without taking the mouse back), and Esc goes back to the loadout. It
 // releases the mouse while it's open; B, Esc or "Back to game" closes it and
 // takes the mouse again.
 
 import { SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
-import { BREAKDOWNS } from './showcase/breakdowns.js';
+import { BREAKDOWNS, CINEMATIC } from './showcase/breakdowns.js';
 
 // The Outfit tab's key (beside the guns').
 const OUTFIT = 'outfit';
@@ -45,7 +46,7 @@ export class LoadoutMenu {
     this.onPickGun = null; // (key) => puts that gun in the hands
     this.onBreakdown = null; // (id) => plays that breakdown
     this.view = LOADOUT_VIEW;
-    this.lastBreakdown = BREAKDOWNS[0] ? BREAKDOWNS[0].id : null; // the picker's focus
+    this.lastBreakdown = CINEMATIC.id; // the picker's focus (the cinematic first)
     this.element.hidden = true;
     document.addEventListener('keydown', (e) => {
       if (!this.open) return;
@@ -226,9 +227,10 @@ export class LoadoutMenu {
     return open;
   }
 
-  // The breakdowns picker: a card for each gun (its picture, name, what the
-  // film shows and the model's credit). A click, or Enter on the focused
-  // card, plays it; the arrow keys move between the cards; Esc goes back.
+  // The breakdowns picker: the cinematic, then a card for each gun (its
+  // picture, name, what the film shows and the model's credit). A click, or
+  // Enter on the focused card, plays it; the arrow keys move between the
+  // cards; Esc goes back.
   renderPicker() {
     if (this.outfitMenu) this.outfitMenu.hide();
     const panel = document.createElement('div');
@@ -246,12 +248,12 @@ export class LoadoutMenu {
     panel.append(head);
     const intro = document.createElement('p');
     intro.className = 'about';
-    intro.textContent = 'Pick a gun to watch it taken apart part by part, with what each part does.';
+    intro.textContent = 'Watch the cinematic, or pick a gun to watch it taken apart part by part, with what each part does.';
     panel.append(intro);
     const grid = document.createElement('div');
     grid.className = 'picks';
     this.picks = [];
-    for (const entry of BREAKDOWNS) {
+    for (const entry of [CINEMATIC, ...BREAKDOWNS]) {
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'pick';
