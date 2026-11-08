@@ -465,7 +465,10 @@ source in Settings → Pages should be switched to `main`.
 1. Make a folder with a single self-contained `index.html` (no build step, no
    external servers) and a `thumb.svg`.
 2. Add an entry to `games.js` (with added/updated times, keys and a stat()
-   reader if the game saves a best), and a line at the top of `NEWS`.
+   reader if the game saves a best), and a line at the top of `NEWS`. Keep the
+   `description` to one short paragraph (2 to 3 sentences, about 250 characters at most): what the game is, how you
+   play, and whether it has bots or online. No feature lists, counts of items or version news (the owner asked for
+   this on 2026-11-08); taglines stay one line.
 3. Add a row to the games table in `README.md`.
 4. Test it in a browser, including a phone-sized viewport.
 

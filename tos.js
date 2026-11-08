@@ -2,7 +2,7 @@
 // tick the box and agree. Agreeing is remembered in this browser under TOS_KEY; change TOS_VERSION to ask everyone
 // again after the terms change.
 (function () {
-  var TOS_VERSION = '2026-11-01', TOS_KEY = 'arcade-tos-agreed';
+  var TOS_VERSION = '2026-11-08', TOS_KEY = 'arcade-tos-agreed';
   try { if (localStorage.getItem(TOS_KEY) === TOS_VERSION) return; } catch (e) {}
   if (/[?&]notos=1/.test(location.search)) return;
 
@@ -10,7 +10,8 @@
     ['1. Agreeing to these terms',
       ['These Terms of Service ("Terms") apply to The Arcade website, every game, page and feature on it, and every online feature of those games, including the Global chat, in-game chat, private messages, multiplayer lobbies and anything else that lets you talk to or play with other people (together, "the Site").',
        'By ticking the box and pressing "Agree and continue", or by using the Site in any way, you agree to these Terms. If you do not agree, do not use the Site and close this page.',
-       'If you are under the age where you can agree to terms like these where you live, a parent or guardian must read and agree to them for you, and they are responsible for how you use the Site.']],
+       'If you are under the age where you can agree to terms like these where you live, a parent or guardian must read and agree to them for you, and they are responsible for how you use the Site.',
+       'If you get around, skip, hide, close, block or bypass these Terms in any way, so that you avoid pressing "Agree and continue", you automatically agree to these Terms, exactly as if you had ticked the box and pressed it.']],
     ['2. Your chat and messages are your responsibility',
       ['Everything you type, send or share on the Site is your own responsibility. This includes messages in the Global chat, chat inside any game, private messages, player names, lobby names and anything else other people can see ("Your Content").',
        'You alone are responsible for Your Content and for any consequences of it, whether on the Site or anywhere else. That includes, but is not limited to, anything you say that is rude, offensive, abusive, threatening, hateful, sexual, discriminatory, illegal, untrue, or that shares someone\'s personal information.',
@@ -32,14 +33,17 @@
       ['You can make a free Arcade account with a username and a password (no email). If you do, your username, a scrambled (hashed) form of your password, and the saves, scores and settings from the games are stored on an online service (Cloudflare) so your progress follows you to other devices. Your username is public: it is your name in the games and in chat, so do not use your real name. Keep your recovery code safe; without it a forgotten password cannot be reset. Accounts and the progress saved in them may be removed at any time, for example if the Site shuts down.',
        'If you use a local account instead, your names, settings, saves and scores are kept only in your own browser\'s storage. Clearing your browser data, using a different browser or device, or an update to a game can delete them, and they cannot be recovered. Chat history is always kept only in your own browser.',
        'When you use online features, what you send (such as your player name, chat messages and in-game actions) is sent through an online service so other players can see it. Do not send anything you would not want other people to see.']],
-    ['7. No warranty',
+    ['7. Accounts',
+      ['Account names and account status (including roles, badges, ranks, verification, mutes and bans) can be changed by the creators at any time, for any reason or no reason, without warning and without giving a reason.',
+       'Accounts can be deleted and removed from the Site at any time, for any reason or no reason, without warning and without giving a reason. When an account is deleted, its saves, scores, friends, messages and everything else linked to it may be lost for good and cannot be recovered.']],
+    ['8. No warranty',
       ['The Site and everything on it is provided "as is" and "as available", for free and for fun, without any warranty of any kind. The creators do not promise that the Site will be safe, secure, error-free, always available, or that bugs will be fixed.',
        'You use the Site at your own risk.']],
-    ['8. Limitation of responsibility',
+    ['9. Limitation of responsibility',
       ['As far as the law allows, the creators of the Site are not responsible or liable for any loss or harm of any kind that comes from using, or not being able to use, the Site. This includes lost progress or saves, things other users say or do, things you say or do, the Site or any game being changed or removed, or the Site being taken down or terminated.']],
-    ['9. Changes to these Terms',
+    ['10. Changes to these Terms',
       ['These Terms can be changed at any time. When they change, the Site may ask you to agree again. If you keep using the Site after the Terms change, you agree to the new Terms.']],
-    ['10. Everything else',
+    ['11. Everything else',
       ['If any part of these Terms cannot be enforced, the rest still applies. If the creators do not enforce a part of these Terms, they can still enforce it later. These Terms are the whole agreement between you and the Site about using it.']]
   ];
 
@@ -63,7 +67,7 @@
     var d = document.createElement('div'); d.id = 'tosPop'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'tosTitle');
     var body = TERMS.map(function (s) { return '<h3>' + esc(s[0]) + '</h3>' + s[1].map(function (p) { return '<p>' + esc(p) + '</p>'; }).join(''); }).join('');
     d.innerHTML = '<div class="tbox"><div class="thead"><small>The Arcade</small><h2 id="tosTitle">Terms of Service</h2>' +
-      '<p>Please read these terms before using the site. Last updated 1 November 2026.</p></div>' +
+      '<p>Please read these terms before using the site. Last updated 8 November 2026.</p></div>' +
       '<div class="tbody" tabindex="0">' + body + '</div>' +
       '<div class="tfoot"><label><input type="checkbox" id="tosCheck"><span>I have read and I agree to the Terms of Service. I understand that everything I say in chat is my own responsibility, that games can be changed or removed at any time, and that the site can be changed, taken down or terminated at any time.</span></label>' +
       '<span class="thint" id="tosHint">Tick the box to continue.</span><button id="tosOk" disabled>Agree and continue</button></div></div>';
