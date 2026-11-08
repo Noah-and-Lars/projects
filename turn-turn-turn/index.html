@@ -97,6 +97,20 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 .rng output{min-width:34px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
 
 /* help */
+.lb-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px}
+.lb-tabs button{flex:none;padding:7px 12px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-weight:700;font-size:13px;color:var(--dim);white-space:nowrap}
+.lb-tabs button.on{background:#fff;color:#11161c;border-color:#fff}
+.lb-list{max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:6px;min-height:120px}
+.lb-row{display:grid;grid-template-columns:44px 1fr auto auto;gap:12px;align-items:center;padding:10px 14px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.lb-row.me{border-color:var(--orange);background:rgba(255,122,26,.1)}
+.lb-row .rk{font:900 italic 20px/1 var(--ff);color:var(--dim)}
+.lb-row.top1 .rk{color:var(--gold)}.lb-row.top2 .rk{color:var(--silver)}.lb-row.top3 .rk{color:var(--bronze)}
+.lb-row .crew{font-weight:800;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-row .crew small{display:block;font-weight:600;font-size:11.5px;color:var(--dim);margin-top:2px}
+.lb-row .tm{font:800 17px/1 ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.lb-row .dt{color:var(--dim);font-size:12px}
+.lb-empty{color:var(--dim);text-align:center;padding:30px 10px}
+.res-lb{text-align:center;color:#d4dbe1;font-weight:700;margin:-6px 0 14px;min-height:20px}
 .notes{max-height:62vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
 .note{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .note h3{font-size:17px;font-weight:900;font-style:italic;display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -169,7 +183,10 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
 #hint{position:absolute;left:16px;bottom:14px;max-width:min(560px,70vw);font-size:12.5px;color:#e8edf1;background:rgba(10,14,18,.55);border-radius:10px;padding:8px 11px;line-height:1.7;transition:opacity .6s}
 #hint kbd{font-size:11px;min-width:20px;padding:1px 5px}
 #hint.fade{opacity:0}
-#hint.top{bottom:auto;top:12px}
+#hint.top{bottom:auto;top:66px}
+#stopwatch{position:absolute;left:14px;top:12px;font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;color:#fff;background:rgba(10,14,18,.62);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 13px 9px 34px;letter-spacing:.5px}
+#stopwatch::before{content:'';position:absolute;left:12px;top:50%;width:13px;height:13px;margin-top:-6px;border:2.5px solid #ff7a1a;border-radius:50%;box-sizing:border-box}
+#stopwatch.pen::after{content:attr(data-pen);margin-left:10px;font-size:14px;color:#ff6a5a;vertical-align:3px}
 #netbar{position:absolute;right:14px;top:12px;font-size:12px;color:#e8edf1;background:rgba(10,14,18,.5);border-radius:9px;padding:6px 10px;display:flex;gap:8px;align-items:center}
 #netbar .dot{width:8px;height:8px;border-radius:50%;background:var(--teal)}
 #netbar .dot.bad{background:var(--red)}
@@ -222,6 +239,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
 <canvas id="gl"></canvas>
 <div id="ui">
   <div id="hud" class="hidden">
+    <div id="stopwatch">0:00.00</div>
     <div id="calls"></div>
     <div id="count" class="hidden"></div>
     <div id="toast"></div>
@@ -249,7 +267,10 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
         <button class="btn" data-go="settings">Settings</button>
         <button class="btn" data-go="help">How to play</button>
       </div>
-      <button class="btn" data-go="notes" style="padding:9px 14px;font-size:13.5px">Patch notes <small id="notesVer"></small></button>
+      <div class="menu-row">
+        <button class="btn" data-go="lb">🏆 Leaderboard</button>
+        <button class="btn" data-go="notes">Patch notes <small id="notesVer"></small></button>
+      </div>
       <div class="online-note" id="onlineNote"></div>
     </div>
     <div class="ver" id="verTxt"></div>
@@ -281,6 +302,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
             <span><kbd>W</kbd> <kbd>S</kbd></span><span>Gas / brake (and reverse)</span>
             <span><kbd>A</kbd> <kbd>D</kbd></span><span>Steer</span>
             <span><kbd>Space</kbd></span><span>Handbrake</span>
+            <span><kbd>Shift</kbd></span><span>Neutral: rev it, let go to launch</span>
             <span><kbd>E</kbd></span><span>Wipers (clear the mud)</span>
             <span><kbd>Q</kbd></span><span>Pull your door shut</span>
             <span><kbd>R</kbd></span><span>Back on the road (+5 s)</span>
@@ -302,6 +324,14 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
         </div>
       </div>
       <div class="help-foot">Hazards: mud splats across the windscreen, the glass cracks when you crash, doors fly open on big hits, and a hard landing can knock the tablet out of the navigator's hands. Xbox controllers work too (driver: triggers and left stick; navigator: d-pad and bumpers). Turn on voice chat in the crew lobby, or just shout across the room.</div>
+    </div>
+  </div>
+
+  <div id="lbScr" class="screen dim hidden">
+    <div class="panel" style="width:min(720px,100%)">
+      <div class="panel-head"><div><h2>Leaderboard</h2><div class="sub" style="margin:0">The fastest crews on each stage. Only online crew runs count.</div></div><button class="close" data-back>✕</button></div>
+      <div class="lb-tabs" id="lbTabs"></div>
+      <div class="lb-list" id="lbList"></div>
     </div>
   </div>
 
@@ -358,6 +388,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
       <div class="sub" id="resStage" style="text-align:center;margin-bottom:0"></div>
       <div class="res-time" id="resTime"></div>
       <div class="res-medal" id="resMedal"></div>
+      <div class="res-lb" id="resLb"></div>
       <div class="res-rows" id="resRows"></div>
       <div class="btn-row" id="resBtns"></div>
       <div class="status" id="resStatus"></div>
@@ -385,7 +416,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.0';
+const VERSION = '1.1';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -479,45 +510,57 @@ const padHeld = i => !!PAD.b[i];
 
 /* ---------------- audio ---------------- */
 const AUDIO = (() => {
-  let ctx = null, master = null, eng = null, gravel = null, wind = null, noiseBuf = null;
+  let ctx = null, master = null, eng = null, gravel = null, grit = null, wind = null, noiseBuf = null;
   const A = {};
   A.unlock = () => {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-    master = ctx.createGain(); master.gain.value = S.vol; master.connect(ctx.destination);
+    // everything goes through a gentle compressor so crashes and the engine never clip
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.2;
+    comp.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = S.vol; master.connect(comp);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); let b = 0;
     for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; b = b * 0.6 + w * 0.4; d[i] = b; }
-    // engine: two detuned saws and a square an octave down, through a low-pass and a soft clip
+    // engine: a warm harmonic wave at the firing rate (falling harmonics, no harsh saw edge), a sub an octave down
+    // for the four-cylinder thump and a detuned copy for movement, through a low-pass that opens with the throttle
+    const N = 40, re = new Float32Array(N), im = new Float32Array(N);
+    for (let k = 1; k < N; k++) im[k] = Math.exp(-k / 6.5) * (k === 1 ? 0.7 : 1) * (k % 2 ? 1 : 0.75);
+    const wave = ctx.createPeriodicWave(re, im);
     const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), o3 = ctx.createOscillator();
-    o1.type = 'sawtooth'; o2.type = 'sawtooth'; o3.type = 'square';
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 3;
-    const ws = ctx.createWaveShaper(); const cur = new Float32Array(256);
-    for (let i = 0; i < 256; i++) { const x = i / 128 - 1; cur[i] = Math.tanh(x * 2.2); } ws.curve = cur;
+    o1.setPeriodicWave(wave); o2.setPeriodicWave(wave); o3.type = 'sine';
+    const g2 = ctx.createGain(); g2.gain.value = 0.35; const g3 = ctx.createGain(); g3.gain.value = 0.55;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600; lp.Q.value = 0.9;
+    const ws = ctx.createWaveShaper(); const cur = new Float32Array(512);
+    for (let i = 0; i < 512; i++) { const x = i / 256 - 1; cur[i] = Math.tanh(x * 1.4); } ws.curve = cur;
     const g = ctx.createGain(); g.gain.value = 0;
-    const g3 = ctx.createGain(); g3.gain.value = 0.5;
-    o1.connect(lp); o2.connect(lp); o3.connect(g3); g3.connect(lp); lp.connect(ws); ws.connect(g); g.connect(master);
+    o1.connect(lp); o2.connect(g2); g2.connect(lp); o3.connect(g3); g3.connect(lp); lp.connect(ws); ws.connect(g); g.connect(master);
     o1.start(); o2.start(); o3.start();
-    eng = { o1, o2, o3, lp, g };
     const loop = (type, f, q) => {
       const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
       const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
       const gg = ctx.createGain(); gg.gain.value = 0; s.connect(fl); fl.connect(gg); gg.connect(master); s.start();
       return { fl, g: gg };
     };
-    gravel = loop('bandpass', 1400, 0.7);
-    wind = loop('lowpass', 500, 0.5);
+    // exhaust breath: noise around the firing note, louder on the throttle
+    const ex = loop('bandpass', 200, 1.2);
+    eng = { o1, o2, o3, lp, g, ex };
+    gravel = loop('lowpass', 600, 0.5);
+    grit = loop('bandpass', 2600, 0.6);
+    wind = loop('lowpass', 420, 0.5);
   };
   A.setVol = v => { if (master) master.gain.value = v; };
   A.engine = (rpm, thr, on, gravelAmt, windAmt) => {
     if (!ctx || !eng) return;
     const t = ctx.currentTime, f = rpm / 60 * 2; // four-cylinder firing rate
-    eng.o1.frequency.setTargetAtTime(f, t, 0.03); eng.o2.frequency.setTargetAtTime(f * 1.007, t, 0.03); eng.o3.frequency.setTargetAtTime(f / 2, t, 0.03);
-    eng.lp.frequency.setTargetAtTime(500 + thr * 1500 + rpm * 0.12, t, 0.05);
+    eng.o1.frequency.setTargetAtTime(f, t, 0.04); eng.o2.frequency.setTargetAtTime(f * 1.004, t, 0.04); eng.o3.frequency.setTargetAtTime(f / 2, t, 0.04);
+    eng.lp.frequency.setTargetAtTime(260 + f * 2.6 + thr * 900, t, 0.06);
     eng.g.gain.setTargetAtTime(on ? 0.05 + thr * 0.07 : 0, t, 0.08);
-    gravel.g.gain.setTargetAtTime(on ? gravelAmt * 0.22 : 0, t, 0.06);
-    gravel.fl.frequency.setTargetAtTime(900 + gravelAmt * 1400, t, 0.1);
-    wind.g.gain.setTargetAtTime(on ? windAmt * 0.18 : 0, t, 0.1);
+    eng.ex.fl.frequency.setTargetAtTime(f * 1.5, t, 0.05); eng.ex.g.gain.setTargetAtTime(on ? 0.01 + thr * 0.05 : 0, t, 0.08);
+    gravel.g.gain.setTargetAtTime(on ? gravelAmt * 0.16 : 0, t, 0.08);
+    gravel.fl.frequency.setTargetAtTime(300 + gravelAmt * 600, t, 0.1);
+    grit.g.gain.setTargetAtTime(on ? gravelAmt * gravelAmt * 0.035 : 0, t, 0.08);
+    wind.g.gain.setTargetAtTime(on ? windAmt * 0.11 : 0, t, 0.1);
   };
   const burst = (dur, f, q, gain, type = 'bandpass', pan = 0, when = 0) => {
     if (!ctx) return;
@@ -558,7 +601,7 @@ const AUDIO = (() => {
   };
   A.say = text => {
     if (!S.speech || !window.speechSynthesis) return;
-    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.55; u.pitch = 1.05; u.volume = clamp(S.vol * 1.1, 0, 1); speechSynthesis.speak(u); } catch (e) {}
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.0; u.pitch = 1.0; u.volume = clamp(S.vol * 1.1, 0, 1); speechSynthesis.speak(u); } catch (e) {}
   };
   A.stopAll = () => { if (eng) A.engine(900, 0, false, 0, 0); };
   return A;
@@ -1031,13 +1074,13 @@ function buildDecor(st, rng, noise) {
   const hi = S.quality !== 'low';
   const pines = [], leafs = [], bushes = [], rocks = [], tufts = [], posts = [];
   const area = (g.nx * g.CS) * (g.nz * g.CS);
-  const tries = Math.min(26000, area / 95) * B.density;
+  const tries = Math.min(30000, area / 88) * B.density;
   for (let k = 0; k < tries; k++) {
     const x = g.minX + rng() * g.nx * g.CS, z = g.minZ + rng() * g.nz * g.CS;
     const inf = gridInfo(st, x, z), e = inf.e;
     if (e < 2.4) continue;
     const pc = st.PC[clamp(inf.i, 0, st.N - 1)] * (inf.d >= 0 ? 1 : -1);
-    let p = e < 12 ? 0.85 : e < 45 ? 0.55 : 0.32;
+    let p = e < 12 ? 1 : e < 45 ? 0.55 : 0.32; // packed tight at the roadside so corners stay blind
     if (pc > 0.3 && e > 1.5) p *= 0.12;
     if (rng() > p) continue;
     const y = groundH(st, x, z) - 0.25, s = 0.75 + rng() * 0.75;
@@ -1186,7 +1229,7 @@ class Car {
     this.grounded = true; this.airT = 0; this.ax = 0; this.ay = 0; this.spin = 0; this.hPrev = null;
     this.onRoad = true; this.inMud = 0; this.lastGood = i; this.goodT = 0; this.fallen = 0; this.cutPen = 0;
     this.doors = [{ open: false, a: 0, v: 0, ph: 0 }, { open: false, a: 0, v: 0, ph: 1.7 }];
-    this.oneHand = 0; this.hand = 0; this.gas = 0; this.brk = 0; this.mudGap = 0; this.mudN = 0; this.mudP = -1;
+    this.oneHand = 0; this.hand = 0; this.gas = 0; this.brk = 0; this.clutch = false; this.launch = 0; this.limT = 0; this.mudGap = 0; this.mudN = 0; this.mudP = -1;
     this.loc = roadLocal(st, this.p.x, this.p.z, i);
   }
   surf(x, z) {
@@ -1270,8 +1313,12 @@ class Car {
     const gas = I.gas, brk = I.brake, hand = I.hand ? 1 : 0;
     this.gas = gas; this.brk = brk; this.hand = hand;
     let drive = 0;
-    if (gas > 0 && this.vx > -1) drive = gas * Math.min(c.P / Math.max(this.vx, 7), 6400) * (this.shiftT > 0 ? 0.35 : 1);
-    if (brk > 0 && this.vx < 1.2 && gas === 0) drive = -brk * (this.vx > -9 ? 3600 : 0);
+    const clutch = !!I.clutch;
+    if (this.clutch && !clutch && this.rpm > 3800 && sp < 14) { this.launch = 0.35 + (this.rpm - 3800) / 3300 * 0.65; this.events.push({ k: 'launch' }); }
+    this.clutch = clutch;
+    this.launch = Math.max(0, this.launch - dt);
+    if (gas > 0 && this.vx > -1 && !clutch) drive = gas * Math.min(c.P / Math.max(this.vx, 7), 6400) * (this.shiftT > 0 ? 0.35 : 1) * (this.launch > 0 ? 1.7 : 1);
+    if (brk > 0 && this.vx < 1.2 && gas === 0 && !clutch) drive = -brk * (this.vx > -9 ? 3600 : 0);
     const tract = mu * load * 0.9;
     this.spin = Math.abs(drive) > tract ? Math.min(1, (Math.abs(drive) - tract) / 3000) : 0;
     drive = clamp(drive, -tract, tract);
@@ -1279,8 +1326,8 @@ class Car {
     if (brk > 0 && this.vx > 1.2) Fx -= brk * mu * load * 0.95;
     if (gas > 0 && this.vx < -1.2) Fx += gas * mu * load * 0.95;
     if (hand) Fx -= Math.sign(this.vx) * Math.min(Math.abs(this.vx) * c.m * 4, mu * NR * 0.55);
-    const use = clamp(Math.abs(drive) * 0.55 / (mu * NR + 1) + hand * 0.6, 0, 0.96);
-    let FyF = -mu * NF * pac(aF, 7.2), FyR = -mu * NR * Math.sqrt(1 - use * use) * (hand ? 0.42 : 1) * pac(aR, 7.8);
+    const use = clamp(Math.abs(drive) * 0.42 / (mu * NR + 1) + hand * 0.6, 0, 0.96);
+    let FyF = -mu * NF * pac(aF, 7.0), FyR = -mu * NR * 1.06 * Math.sqrt(1 - use * use) * (hand ? 0.42 : 1) * pac(aR, 8.6);
     Fx += -0.74 * this.vx * Math.abs(this.vx) - (this.onRoad ? 0.022 : 0.075) * c.m * 9.8 * clamp(this.vx, -1, 1) - (this.inMud ? 0.06 * c.m * 9.8 * clamp(this.vx / 5, -1, 1) : 0);
     // open doors catch the air
     for (let d = 0; d < 2; d++) if (this.doors[d].open) Fx -= this.doors[d].a * 0.02 * this.vx * Math.abs(this.vx);
@@ -1293,7 +1340,7 @@ class Car {
     this.ax = Fx / c.m; this.ay = Fy / c.m;
     this.vx += (this.ax - this.vl * this.r) * dt;
     this.vl += (this.ay + this.vx * this.r) * dt;
-    this.r += (contact ? M / c.Iz : -this.r * 0.4) * dt;
+    this.r += (contact ? M / c.Iz - this.r * 0.35 : -this.r * 0.4) * dt;
     if (contact && sp < 1.5 && gas === 0) { this.vl *= 0.9; this.r *= 0.9; if (brk === 0 && sp < 0.3) this.vx *= 0.9; }
     this.p.x += (fx * this.vx + rx * this.vl) * dt; this.p.z += (fz * this.vx + rz * this.vl) * dt;
     this.yaw += this.r * dt;
@@ -1320,8 +1367,12 @@ class Car {
     // gearbox (for the sound and the rev needle)
     this.shiftT = Math.max(0, this.shiftT - dt);
     const top = GEARS[this.gear];
-    this.rpm = lerp(this.rpm, 950 + clamp(Math.abs(this.vx) / top, 0, 1.1) * 6100 + this.spin * 1600 + (!contact ? gas * 2200 : 0), 0.25);
-    if (this.rpm > 6900 && this.gear < 5) { this.gear++; this.shiftT = 0.16; this.events.push({ k: 'shift' }); }
+    if (clutch) {
+      this.limT -= dt;
+      if (this.rpm > 7150) { this.rpm = 6650; this.limT = 0.06; }
+      else this.rpm = lerp(this.rpm, this.limT > 0 ? 6600 : 950 + gas * 6500, gas > this.rpm / 7500 ? 0.06 : 0.04);
+    } else this.rpm = lerp(this.rpm, 950 + clamp(Math.abs(this.vx) / top, 0, 1.1) * 6100 + this.spin * 1600 + (this.launch > 0 ? 900 : 0) + (!contact ? gas * 2200 : 0), 0.25);
+    if (this.rpm > 6900 && this.gear < 5 && !clutch) { this.gear++; this.shiftT = 0.16; this.events.push({ k: 'shift' }); }
     else if (this.gear > 1 && Math.abs(this.vx) < GEARS[this.gear - 1] * 0.62) this.gear--;
 
     // doors
@@ -1472,7 +1523,10 @@ const GAUGE = (() => {
   const D = [{ cx: 130, cy: 112, R: 100 }, { cx: 382, cy: 112, R: 100 }];
   const drawFace = () => {
     const f = face.getContext('2d'), mph = S.units === 'mph';
-    f.fillStyle = '#121418'; f.fillRect(0, 0, W, Hh);
+    // an arched panel (round on top, flat underneath); everything outside it is see-through
+    f.clearRect(0, 0, W, Hh);
+    const arch = (inset, col) => { f.fillStyle = col; f.beginPath(); f.moveTo(inset, Hh - inset); f.lineTo(inset, Hh * 0.62); f.ellipse(W / 2, Hh * 0.62, W / 2 - inset, Hh * 0.62 - inset, 0, Math.PI, Math.PI * 2); f.lineTo(W - inset, Hh - inset); f.closePath(); f.fill(); };
+    arch(0, '#2a2f37'); arch(5, '#121418');
     const dial = (d, max, step, minor, label, redFrom, fmt) => {
       const { cx, cy, R } = d;
       const bez = f.createLinearGradient(cx, cy - R, cx, cy + R); bez.addColorStop(0, '#d9dde2'); bez.addColorStop(0.5, '#6d737c'); bez.addColorStop(1, '#2a2e34');
@@ -1505,7 +1559,7 @@ const GAUGE = (() => {
   return {
     tex, draw(kmh, rpm, ms, gear) {
       if (faceUnits !== S.units) drawFace();
-      x.drawImage(face, 0, 0);
+      x.clearRect(0, 0, W, Hh); x.drawImage(face, 0, 0);
       const mph = S.units === 'mph', spd = mph ? kmh / 1.609 : kmh;
       // big digital speed under the speedo needle, the gear under the revs
       x.textAlign = 'center'; x.textBaseline = 'middle';
@@ -1676,7 +1730,7 @@ function buildCabin() {
   const hood = new THREE.CylinderGeometry(0.2, 0.2, 0.2, 12, 1, true, -Math.PI / 2, Math.PI); hood.rotateX(-Math.PI / 2); hood.scale(1.2, 0.5, 1);
   const hm = new THREE.Mesh(hood, cabinMat(LOOK.dash2, { side: THREE.DoubleSide })); hm.position.set(0.37, 0.6, 0.45); add(hm);
   add(box(0.46, 0.08, 0.16, M.dash2, 0.37, 0.52, 0.5)); add(box(0.46, 0.02, 0.2, M.dash2, 0.37, 0.54, 0.47, 0.35));
-  const gauge = new THREE.Mesh(new THREE.PlaneGeometry(0.37, 0.162), new THREE.MeshBasicMaterial({ map: GAUGE.tex })); gauge.position.set(0.37, 0.63, 0.39); gauge.rotation.set(0.3, Math.PI, 0, 'YXZ'); add(gauge);
+  const gauge = new THREE.Mesh(new THREE.PlaneGeometry(0.37, 0.162), new THREE.MeshBasicMaterial({ map: GAUGE.tex, transparent: true, alphaTest: 0.5 })); gauge.position.set(0.37, 0.63, 0.39); gauge.rotation.set(0.3, Math.PI, 0, 'YXZ'); add(gauge);
   // centre stack, vents, switches, glovebox, co-driver trip meter
   add(box(0.32, 0.34, 0.14, M.dash2, 0, 0.28, 0.44, 0.1));
   add(box(0.24, 0.06, 0.02, M.black, 0, 0.38, 0.37, 0.1));
@@ -1891,6 +1945,7 @@ const GAME = {
   view: null, // what the cabin draws: the car itself or the navigator's copy of it
 };
 const DT = 1 / 120;
+const STOPW = $('stopwatch');
 
 /* the navigator's tablet: held, held up close, dropped, being picked up */
 const TAB = {
@@ -2064,7 +2119,7 @@ function setHint() {
   h.classList.remove('hidden', 'fade');
   h.innerHTML = GAME.role === 'nav'
     ? '<kbd>Q</kbd><kbd>A</kbd><kbd>W</kbd><kbd>D</kbd><kbd>E</kbd> calls &nbsp; <kbd>S</kbd> slow &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Shift</kbd> tablet up &nbsp; <kbd>F</kbd> grab tablet &nbsp; <kbd>Z</kbd> door &nbsp; <kbd>C</kbd> look at driver'
-    : '<kbd>W</kbd><kbd>S</kbd> gas/brake &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>Space</kbd> handbrake &nbsp; <kbd>E</kbd> wipers &nbsp; <kbd>Q</kbd> door &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> look at navigator';
+    : '<kbd>W</kbd><kbd>S</kbd> gas/brake &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>Space</kbd> handbrake &nbsp; <kbd>Shift</kbd> neutral (rev, let go to launch) &nbsp; <kbd>E</kbd> wipers &nbsp; <kbd>Q</kbd> door &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> look at navigator';
   GAME.hintT = 9;
 }
 
@@ -2080,7 +2135,7 @@ function startRace(def, role, crew) {
   const st = ensureStage(def);
   GAME.mode = 'race'; GAME.role = role; GAME.crew = !!crew; GAME.paused = false;
   GAME.car = new Car(st); GAME.view = GAME.car;
-  GAME.phase = role === 'nav' || crew ? 0 : 1; GAME.cd = 3.6; GAME.resultShown = false; GAME.result = null; GAME.raceMs = 0; GAME.pen = 0; GAME.crashes = 0; GAME.calls = 0; GAME.resets = 0; GAME.doneT = 0;
+  GAME.phase = role === 'nav' || crew ? 0 : 1; GAME.cd = 3.6; GAME.resultShown = false; GAME.result = null; GAME.lbRes = null; GAME.raceMs = 0; GAME.pen = 0; GAME.crashes = 0; GAME.calls = 0; GAME.resets = 0; GAME.doneT = 0;
   GAME.wipe = { t: -1, n: 0, a: 0 }; GAME.shake = 0; GAME.look.yaw = 0; GAME.look.pitch = 0; GAME.acc = 0; GAME.stuckT = 0; GAME.point = null; GAME.mudSeen = false; GAME.lastCnt = -1;
   GLASS.reset(); tabReset(); AIC.called.clear(); AIC.rep.clear(); AIC.queue.length = 0; AIC.lastST = -99999; AIC.door = 0;
   NAVV.buf.length = 0; NAVV.off = null;
@@ -2090,6 +2145,9 @@ function startRace(def, role, crew) {
   $('netbar').classList.toggle('hidden', !crew);
   $('touchDrv').classList.toggle('hidden', !(role !== 'nav' && matchMedia('(pointer: coarse)').matches));
   $('navtip').classList.add('hidden');
+  // the driver sees less of the road ahead than the navigator: thicker haze in the driver's seat only
+  const B = st.B, haze = role === 'nav' ? 1 : 0.55;
+  scene.fog.near = B.fogN * haze * 0.6; scene.fog.far = Math.max(58, B.fogF * haze);
   CAB.drv.head.visible = role === 'nav'; CAB.nav.head.visible = role !== 'nav';
   // your own torso would fill the screen when you look down
   CAB.drv.body.slice(0, 4).forEach(m => m.visible = role === 'nav'); CAB.nav.body.slice(0, 4).forEach(m => m.visible = role !== 'nav');
@@ -2107,7 +2165,11 @@ function finishRace() {
   if (nb) { b[k] = ms; if (GAME.crew) b.crewWith = NET.partnerName(); }
   SAVE.runs++; save();
   GAME.result = { ms, nb, pen: GAME.pen, crashes: GAME.crashes, resets: GAME.resets, calls: GAME.calls };
-  if (GAME.crew && GAME.role === 'driver') netSend('fin', { ms, pen: GAME.pen, cr: GAME.crashes, rs: GAME.resets });
+  if (GAME.crew && GAME.role === 'driver') {
+    netSend('fin', { ms, pen: GAME.pen, cr: GAME.crashes, rs: GAME.resets });
+    GAME.lbRes = null;
+    submitRun(def, ms).then(j => { GAME.lbRes = j || { rank: 0, err: 1 }; netSend('lbr', GAME.lbRes); if (SCREEN === 'resultScr') showBoardResult(j); });
+  }
   AUDIO.beep(1320, 0.4);
 }
 function resetCar(pen = 5000, why) {
@@ -2118,6 +2180,7 @@ function resetCar(pen = 5000, why) {
   if (GAME.crew) netSend('fx', { k: 'reset', pen });
 }
 function leaveRace() {
+  if (GAME.st) { scene.fog.near = GAME.st.B.fogN; scene.fog.far = GAME.st.B.fogF; }
   GAME.mode = 'menu'; GAME.car = null; GAME.view = null; $('hud').classList.add('hidden'); AUDIO.stopAll();
   try { speechSynthesis.cancel(); } catch (e) {}
 }
@@ -2171,7 +2234,7 @@ function driverInput(dt) {
   GAME.kSteer += clamp(s - GAME.kSteer, -dt * (s ? 4.5 : 7), dt * (s ? 4.5 : 7));
   const steer = Math.abs(PAD.lx) > 0.02 ? PAD.lx : GAME.kSteer;
   const gas = Math.max(key('KeyW', 'ArrowUp') || TOUCH.gas ? 1 : 0, PAD.rt), brake = Math.max(key('KeyS', 'ArrowDown') || TOUCH.brake ? 1 : 0, PAD.lt);
-  return { steer, gas, brake, hand: key('Space') || padHeld(0) };
+  return { steer, gas, brake, hand: key('Space') || padHeld(0), clutch: key('ShiftLeft', 'ShiftRight') || padHeld(4) };
 }
 function driverFrame(dt) {
   const car = GAME.car, st = GAME.st;
@@ -2183,8 +2246,10 @@ function driverFrame(dt) {
     GAME.cd -= dt;
     const n = Math.ceil(GAME.cd - 0.6);
     if (n !== GAME.lastCnt) { GAME.lastCnt = n; const el = $('count'); el.classList.remove('hidden', 'go'); if (n > 0 && n <= 3) { el.textContent = n; AUDIO.beep(660); } else if (n <= 0) { el.textContent = 'GO!'; el.classList.add('go'); AUDIO.beep(1320, 0.35); } else el.classList.add('hidden'); }
-    if (GAME.cd <= 0.6) { GAME.phase = 2; setTimeout(() => $('count').classList.add('hidden'), 700); }
-    car.rpm = lerp(car.rpm, 950 + I.gas * 5200, 0.1);
+    if (GAME.cd <= 0.6) { GAME.phase = 2; if (!I.clutch && I.gas > 0 && car.rpm > 3800) car.launch = 0.35 + (car.rpm - 3800) / 3300 * 0.65; setTimeout(() => $('count').classList.add('hidden'), 700); }
+    car.limT -= dt;
+    if (car.rpm > 7150) { car.rpm = 6650; car.limT = 0.06; } else car.rpm = lerp(car.rpm, car.limT > 0 ? 6600 : 950 + I.gas * 6500, 0.08);
+    car.clutch = I.clutch; car.gas = I.gas;
   }
   if (GAME.phase >= 2) {
     const inp = GAME.phase === 3 ? { steer: I.steer * 0.3, gas: 0, brake: 0.5, hand: false } : I;
@@ -2324,22 +2389,39 @@ function cameraFrame(dt) {
   _wq.setFromEuler(_e1).premultiply(L.quaternion);
   for (const c of [wcam, ccam]) { c.position.copy(eye); c.quaternion.copy(_wq); }
 }
+const _lr = new THREE.Vector3(), _lu = new THREE.Vector3(), _lf = new THREE.Vector3();
 function lightFrame(focus) {
-  sun.position.copy(focus).addScaledVector(SUNDIR, 160); sun.target.position.copy(focus); sun.target.updateMatrixWorld();
+  // snap the shadow camera to whole shadow-map texels in the light's own axes, so shadows don't shimmer while moving
+  _lr.crossVectors(_lu.set(0, 1, 0), SUNDIR).normalize(); _lu.crossVectors(SUNDIR, _lr).normalize();
+  const tx = 110 / sun.shadow.mapSize.x, a = Math.round(focus.dot(_lr) / tx) * tx, b = Math.round(focus.dot(_lu) / tx) * tx, c = focus.dot(SUNDIR);
+  _lf.copy(_lr).multiplyScalar(a).addScaledVector(_lu, b).addScaledVector(SUNDIR, c);
+  sun.position.copy(_lf).addScaledVector(SUNDIR, 160); sun.target.position.copy(_lf); sun.target.updateMatrixWorld();
   csun.position.copy(focus).addScaledVector(SUNDIR, 10); csun.target.position.copy(focus); csun.target.updateMatrixWorld();
   sky.position.copy(wcam.position);
 }
 
 /* ---------- menu backdrop: fly along the stage ---------- */
+// a point on the road at distance d (metres), between samples, so the camera glides instead of stepping
+function roadAt(st, d, out, up = 0) {
+  const f = clamp(d / STEP, 0, st.N - 1.001), i = Math.floor(f), t = f - i;
+  return out.set(lerp(st.X[i], st.X[i + 1], t), lerp(st.H[i], st.H[i + 1], t) + up, lerp(st.Z[i], st.Z[i + 1], t));
+}
+const ATR = { p: new THREE.Vector3(), t: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), last: -1 };
 function attractFrame(dt) {
   const st = GAME.st; if (!st) return;
   GAME.attractT += dt;
-  const s = (GAME.attractT * 14) % (st.L - 80), i = clamp(Math.floor(s / STEP), 0, st.N - 30);
-  const j = i + 18, side = Math.sin(GAME.attractT * 0.05) > 0 ? 1 : -1;
-  const rx = -Math.cos(st.HD[i]), rz = Math.sin(st.HD[i]);
-  wcam.position.lerp(_v1.set(st.X[i] + rx * 9 * side, st.H[i] + 7, st.Z[i] + rz * 9 * side), GAME.attractT < 0.1 ? 1 : Math.min(1, dt * 2));
-  _v2.set(st.X[j], st.H[j] + 1, st.Z[j]);
-  wcam.lookAt(_v2);
+  const span = st.L - 140, d = 40 + (GAME.attractT * 12) % span;
+  // the road's direction from points either side (smooth through corners), and a slow sway from side to side
+  roadAt(st, d + 14, ATR.a); roadAt(st, d - 14, ATR.b);
+  const hx = ATR.a.x - ATR.b.x, hz = ATR.a.z - ATR.b.z, hl = Math.hypot(hx, hz) || 1, rx = -hz / hl, rz = hx / hl;
+  const side = Math.sin(GAME.attractT * 0.11) * 8.5;
+  roadAt(st, d, _v1, 6.5 + Math.sin(GAME.attractT * 0.23) * 1.5); _v1.x += rx * side; _v1.z += rz * side;
+  roadAt(st, d + 32, _v2, 1.2);
+  if (ATR.last < 0 || d < ATR.last) { ATR.p.copy(_v1); ATR.t.copy(_v2); } // first frame, or looped back to the start
+  ATR.last = d;
+  const k = 1 - Math.exp(-dt * 2.5);
+  ATR.p.lerp(_v1, k); ATR.t.lerp(_v2, k);
+  wcam.position.copy(ATR.p); wcam.lookAt(ATR.t);
   lightFrame(wcam.position);
 }
 
@@ -2363,7 +2445,9 @@ function frame(now) {
     GLASS.update();
     tabT -= dt;
     if (tabT <= 0) { tabT = GAME.role === 'nav' ? 1 / 20 : 0.5; TABLET.draw(GAME.st, { idx: GAME.view.idx, x: GAME.view.p.x, z: GAME.view.p.z, yaw: GAME.view.yaw, kmh: GAME.view.kmh, ms: GAME.raceMs + GAME.pen }); if (GAME.role !== 'nav') TABLET.drawLo(); }
-    gaugeT -= dt; if (gaugeT <= 0) { gaugeT = 1 / 15; GAUGE.draw(GAME.view.kmh, GAME.view.rpm, GAME.raceMs + GAME.pen, GAME.view.gear); }
+    { const k = Math.min(1, dt * 9); GAUGE.sk = lerp(GAUGE.sk || 0, GAME.view.kmh, k); GAUGE.sr = lerp(GAUGE.sr || 900, GAME.view.rpm, Math.min(1, dt * 14)); }
+    gaugeT -= dt; if (gaugeT <= 0) { gaugeT = 1 / 40; GAUGE.draw(GAUGE.sk, GAUGE.sr, GAME.raceMs + GAME.pen, GAME.view.gear); }
+    STOPW.textContent = fmtTime(GAME.raceMs + GAME.pen); STOPW.classList.toggle('pen', GAME.pen > 0); STOPW.dataset.pen = GAME.pen ? '+' + Math.round(GAME.pen / 1000) + ' s' : '';
     tripT -= dt; if (tripT <= 0) { tripT = 0.25; drawTrip(); }
     const car = GAME.view, sp = Math.abs(car.vx);
     AUDIO.engine(car.rpm, car.gas, !GAME.paused || GAME.crew, clamp(sp / 35, 0, 1) * (car.onRoad ? 0.75 : 1.2) + (car.hand && sp > 3 ? 0.4 : 0), clamp((sp / 45) ** 2, 0, 1) + (car.doors[0].open || car.doors[1].open ? 0.5 : 0));
@@ -2511,6 +2595,7 @@ function onNet(ev, d) {
   if (GAME.role === 'nav') {
     if (ev === 's') navSnap(d);
     else if (ev === 'fx') applyFx(d, false);
+    else if (ev === 'lbr') { GAME.lbRes = d; if (SCREEN === 'resultScr') showBoardResult(d.err ? null : d); }
     else if (ev === 'fin') { GAME.phase = 3; GAME.raceMs = d.ms - d.pen; GAME.pen = d.pen; GAME.crashes = d.cr; GAME.resets = d.rs; finishNav(d); }
   } else {
     if (ev === 'call') { GAME.calls++; showCall(d.c, NET.partnerName()); }
@@ -2624,7 +2709,7 @@ addEventListener('keydown', e => { if (e.code === 'KeyV' && GAME.mode === 'race'
    MENUS: main menu, stages, settings, how to play, joining, the crew lobby,
    pause and results. Then boot.
    ========================================================================== */
-const SCREENS = ['menu', 'stagesScr', 'settingsScr', 'helpScr', 'notesScr', 'joinScr', 'lobbyScr', 'pauseScr', 'resultScr'];
+const SCREENS = ['menu', 'stagesScr', 'settingsScr', 'helpScr', 'notesScr', 'lbScr', 'joinScr', 'lobbyScr', 'pauseScr', 'resultScr'];
 let SCREEN = 'menu', BACK = {};
 function showScreen(id, from) {
   for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
@@ -2647,13 +2732,83 @@ document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('cl
   else if (g === 'stages') openStages('browse', 'menu');
   else if (g === 'settings') { renderSettings(); showScreen('settingsScr', 'menu'); }
   else if (g === 'help') showScreen('helpScr', 'menu');
+  else if (g === 'lb') openBoard();
   else if (g === 'notes') { renderNotes(); showScreen('notesScr', 'menu'); }
   else if (g === 'join') openJoin();
   else if (g === 'crew') makeOnlineCrew();
 }));
 
+/* ---------- leaderboard: the best crews per stage, kept by the arcade server ---------- */
+const LB_API = (IS_LOCAL && (() => { try { return localStorage.getItem('ttt-api'); } catch (e) { return null; } })()) || 'https://arcade-realtime.arcade-realtime.workers.dev/ttt/';
+let LB_STAGE = null;
+const LB_CACHE = {};
+function acctToken() { try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return a && a.token; } catch (e) { return null; } }
+function openBoard(stageId) {
+  LB_STAGE = stageId || LB_STAGE || SAVE.stage;
+  const tabs = $('lbTabs'); tabs.innerHTML = '';
+  for (const def of allStages()) {
+    const b = document.createElement('button'); b.textContent = def.name + (def.sub ? ' · ' + def.sub : ''); if (def.id === LB_STAGE) b.className = 'on';
+    b.onclick = () => { AUDIO.ui(); openBoard(def.id); };
+    tabs.appendChild(b);
+  }
+  const on = tabs.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+  showScreen('lbScr', SCREEN === 'lbScr' ? BACK.lbScr : SCREEN);
+  loadBoard(LB_STAGE);
+}
+async function loadBoard(id) {
+  const box = $('lbList');
+  if (LB_CACHE[id]) drawBoard(id, LB_CACHE[id]); else box.innerHTML = '<div class="lb-empty">Loading…</div>';
+  try {
+    const r = await fetch(LB_API + 'board?s=' + encodeURIComponent(id));
+    const j = await r.json(); if (!r.ok) throw 0;
+    LB_CACHE[id] = j.list || [];
+    if (LB_STAGE === id) drawBoard(id, LB_CACHE[id]);
+  } catch (e) { if (LB_STAGE === id && !LB_CACHE[id]) box.innerHTML = '<div class="lb-empty">Could not reach the leaderboard. Check your connection.</div>'; }
+}
+function drawBoard(id, list) {
+  const box = $('lbList'), me = myName().toLowerCase(), def = stageById(id);
+  box.innerHTML = '';
+  if (!list.length) { box.innerHTML = '<div class="lb-empty">No crews on this stage yet. Make a crew and set the first time!</div>'; return; }
+  list.forEach((e, i) => {
+    const row = document.createElement('div');
+    row.className = 'lb-row' + (i < 3 ? ' top' + (i + 1) : '') + (e.d.toLowerCase() === me || e.n.toLowerCase() === me ? ' me' : '');
+    const rk = document.createElement('div'); rk.className = 'rk'; rk.textContent = '#' + (i + 1);
+    const cr = document.createElement('div'); cr.className = 'crew'; cr.append(e.d + '+' + e.n);
+    const sm = document.createElement('small'); sm.textContent = 'Driver ' + e.d + ' · Navigator ' + e.n; cr.appendChild(sm);
+    const tm = document.createElement('div'); tm.className = 'tm'; tm.innerHTML = medalDot(def, e.ms); tm.append(fmtTime(e.ms));
+    const dt = document.createElement('div'); dt.className = 'dt'; dt.textContent = new Date(e.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    row.append(rk, cr, tm, dt); box.appendChild(row);
+  });
+}
+// the driver's screen sends a finished crew run (solo runs never go on the board)
+async function submitRun(def, ms) {
+  const tok = acctToken(), nav = NET.partnerName();
+  if (!tok || !nav) return null;
+  try {
+    const r = await fetch(LB_API + 'run', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body: JSON.stringify({ s: def.id, ms, n: nav }) });
+    const j = await r.json(); delete LB_CACHE[def.id];
+    return r.ok ? j : null;
+  } catch (e) { return null; }
+}
+function showBoardResult(j) {
+  const el = $('resLb'); if (!el) return;
+  if (!j) { el.textContent = 'Could not reach the leaderboard.'; return; }
+  el.textContent = j.rank ? 'Leaderboard: #' + j.rank + ' on ' + GAME.def.name + (j.best && j.best < GAME.result.ms ? ' (your crew\'s best is ' + fmtTime(j.best) + ')' : '') : 'Not in the top crews on this stage yet.';
+}
+
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.1', date: '8 November 2026', items: [
+    'Leaderboard: the fastest crews on every stage, shown as Driver+Navigator. Only online crew runs count, so solo runs with the AI co-driver never go on it.',
+    'A stopwatch in the top left for both seats, with your penalties next to it.',
+    'Hold Shift (or LB) to put the car in neutral: rev it up, then let go to launch.',
+    'Smoother speedometer and rev counter needles, and a rounded gauge panel.',
+    'A new engine sound: warmer and less buzzy, with quieter gravel and wind.',
+    'The co-driver voice speaks slower and clearer.',
+    'The car holds its line better under power. Lifting off or yanking the handbrake still spins it.',
+    'The driver sees less of the road ahead (thicker haze, trees tight to the corners), so the navigator matters more.',
+    'The menu fly-by glides smoothly, and shadows no longer shimmer while you drive.',
+  ] },
   { v: '1.0', date: '8 November 2026', items: [
     'Turn! Turn! TURN! is here: a co-op dirt rally where one of you drives with no map and the other reads the route off a tablet.',
     'Make a crew and share the 6-digit code, or join one. Swap seats in the lobby. Voice chat is built in.',
@@ -2883,6 +3038,8 @@ function showResults() {
   const btns = $('resBtns'); btns.innerHTML = '';
   const btn = (t, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = t; b.onclick = () => { AUDIO.ui(); fn(); }; btns.appendChild(b); };
   $('resStatus').textContent = '';
+  $('resLb').textContent = GAME.crew ? (GAME.lbRes ? '' : 'Sending to the leaderboard…') : 'Solo runs don\'t go on the leaderboard. Make a crew!';
+  if (GAME.crew && GAME.lbRes) showBoardResult(GAME.lbRes.err ? null : GAME.lbRes);
   if (!GAME.crew) {
     btn('Run it again', 'primary', () => startRace(def, 'driver', false));
     btn('Other stages', '', () => { leaveRace(); openStages('solo', 'menu'); });
@@ -2890,6 +3047,7 @@ function showResults() {
   } else if (NET.host) {
     btn('Run it again', 'primary', () => hostStart(false));
     btn('Swap seats & go', 'teal', () => hostStart(true));
+    btn('Leaderboard', '', () => openBoard(def.id));
     btn('Back to lobby', '', () => { netSend('tolobby', {}); leaveRace(); showScreen('lobbyScr'); renderLobby(); });
   } else {
     btn('Ask for another run', 'primary', () => { netSend('restart', {}); $('resStatus').textContent = 'Asked the host…'; });

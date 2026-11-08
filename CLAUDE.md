@@ -355,7 +355,9 @@ source in Settings → Pages should be switched to `main`.
   Online: crew channel `ttt-crew-<6 digits>` (Presence; the maker hosts the lobby: seats, stage). The driver's screen runs
   the car and sends 's' 20 a second plus 'fx' hazards; the navigator sends 'call', 'tb' (tablet) and 'shut'; 'start',
   'ready', 'fin', 'restart', 'tolobby'. Voice chat is WebRTC signalled over the channel ('vo', 'rtc'), so play.html's
-  iframe allows the microphone. `?tttroom=<name>` uses test channels; `window.__ci` on localhost for tests. Medals are
+  iframe allows the microphone. Leaderboard (1.1): the Worker's `/ttt/board?s=` and `/ttt/run` (driver's account token checked
+  with whoami; one entry per pair of players, best kept; Tally object `ttt-board`); only crew runs are sent (`submitRun`).
+  `localStorage['ttt-api']` points it at a local server on localhost. `?tttroom=<name>` uses test channels; `window.__ci` on localhost for tests. Medals are
   par x1.25 / x1.5 / x1.85 (`MEDAL`). Add a `PATCH_NOTES` entry and bump `VERSION` with every release.
 - `card-royale/`: Card Royale (1.1), a real-time 1v1 card battler (towers, lanes, Elixir, 75 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by

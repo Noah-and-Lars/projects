@@ -24,7 +24,7 @@ window.GAMES = [
     path: 'turn-turn-turn/index.html',
     thumb: 'turn-turn-turn/thumb.jpg',
     added: '2026-11-08T22:00:00+11:00',
-    updated: '2026-11-08T22:00:00+11:00',
+    updated: '2026-11-08T23:30:00+11:00',
     stat() { const s = readSave('turnturnturn.save', true); if (!s || !s.best) return null; const n = Object.keys(s.best).filter(k => s.best[k].solo || s.best[k].crew).length; return n ? n + (n === 1 ? ' stage' : ' stages') + ' finished' : null; },
   },
   {
@@ -295,6 +295,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-08', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.1: a crew leaderboard for every stage (online crews only), a stopwatch, neutral revs and launches on Shift, smoother gauges, a new engine sound, a calmer co-driver voice, steadier handling and less road for the driver to see.' },
   { date: '2026-11-08', game: 'turn-turn-turn', text: 'New game: Turn! Turn! TURN!, a co-op dirt rally. One of you drives with no map, the other reads the route off a tablet and calls the turns. Make a crew with a 6-digit code, or drive solo with an AI co-driver.' },
   { date: '2026-11-07', game: 'havoc-bay', text: 'Havoc Bay 1.3.2: walk into the island houses and barracks for cover (doors, windows, floors, furniture; walls stop bullets). Rebuilt cockpits with clear windscreens, glowing tracers, gun recoil in first person, and an unlimited match time for bot games.' },
   { date: '2026-11-07', game: 'krill-dive', text: 'Krill Dive 1.1: the share under each answer is now real. Every diver answer is counted, so you see how many divers actually said the same thing (one vote per diver per prompt).' },
