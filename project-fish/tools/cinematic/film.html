@@ -3,7 +3,8 @@
      game (see tools/cinematic/README.md). Serve the repository as for
      playing and open /project-fish/tools/cinematic/film.html; add ?test=1
      for the shot names, times and placeholder notes, ?at=SECONDS to start
-     there, ?paused=1 to hold still. window.film is the Film. -->
+     there, ?paused=1 to hold still, ?clips=fire:path/to/fire.glb,dive:...
+     to try clips before they're set in edit.js. window.film is the Film. -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -22,8 +23,11 @@
   <body>
     <script type="module">
       import { Film } from '../../src/showcase/cinematic/film.js';
+      import { SLOTS } from '../../src/showcase/cinematic/edit.js';
       const q = new URLSearchParams(location.search);
+      const clips = Object.fromEntries((q.get('clips') || '').split(',').filter(Boolean).map((c) => c.split(':')));
       const film = new Film({
+        slots: SLOTS.map((s) => (clips[s.id] ? { ...s, file: new URL(clips[s.id], location.href) } : s)),
         test: q.get('test') === '1',
         autoplay: q.get('paused') !== '1',
         sound: q.get('sound') !== '0',

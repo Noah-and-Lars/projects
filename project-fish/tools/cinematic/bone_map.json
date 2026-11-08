@@ -97,14 +97,14 @@
     "RightHandPinky2": "RightHandPinky3"
   },
   "twist": {
-    "about": "Of the hand's turn about the forearm (and the forearm's about the upper arm), the share each twist bone takes, so the sleeve twists along the arm instead of at the wrist.",
+    "about": "Of the hand's turn about the forearm, the share each forearm twist bone takes (Twist01 nearer the elbow, then Twist02, adding up), so the sleeve twists along the forearm instead of all at the wrist.",
     "CC_Base_L_ForearmTwist01": [
       "CC_Base_L_Hand",
       0.25
     ],
     "CC_Base_L_ForearmTwist02": [
       "CC_Base_L_Hand",
-      0.35
+      0.6
     ],
     "CC_Base_R_ForearmTwist01": [
       "CC_Base_R_Hand",
@@ -112,15 +112,7 @@
     ],
     "CC_Base_R_ForearmTwist02": [
       "CC_Base_R_Hand",
-      0.35
-    ],
-    "CC_Base_L_UpperarmTwist01": [
-      "CC_Base_L_Forearm",
-      0.0
-    ],
-    "CC_Base_R_UpperarmTwist01": [
-      "CC_Base_R_Forearm",
-      0.0
+      0.6
     ]
   }
 }
