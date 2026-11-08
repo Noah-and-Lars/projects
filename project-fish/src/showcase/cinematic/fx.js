@@ -1,7 +1,8 @@
 // The film's effects, each a plain function of time (so any frame can be
-// drawn on its own, at any speed): the muzzle blast (the air pushed out
+// drawn on its own, at any speed): the muzzle blast (the gas leaking out
 // ahead of the bullet, the fireball of hot gas, burning grains of powder
-// and the smoke), the air the bullet disturbs, the strike on the plate
+// and the smoke; the air it disturbs is film.js's air pass), the strike
+// on the plate
 // (the bullet flattening, lead and jacket spraying out along the face,
 // sparks, a grey cloud and the splash left on the paint), and the dust in
 // the air that shows how fast the camera goes.
@@ -11,8 +12,11 @@
 // them with whatever is behind them); the rest is in the scene as usual.
 
 import * as THREE from 'three';
-import { canvasTexture, clamp01, seeded, smoothstep } from './util.js';
+import { canvasTexture, clamp01, seeded, smoothstep, tileNoise } from './util.js';
 import { drawSplash } from './set.js';
+import { SHOT } from './ballistics.js';
+
+const EXIT = SHOT.exit; // the bullet's base clears the muzzle (s)
 
 export const FX_LAYER = 1;
 
@@ -58,18 +62,28 @@ function streakTexture() {
   }, { srgb: false });
 }
 
+// A wisp of smoke: billowing noise (a few octaves) inside a soft,
+// lumpy edge, so the puffs read as smoke and not as round blobs.
 function smokeTexture(rng) {
-  return canvasTexture(128, 128, (g, w) => {
-    const c = w / 2;
-    for (let i = 0; i < 30; i++) {
-      const a = rng() * Math.PI * 2, d = Math.pow(rng(), 0.8) * c * 0.5, r = c * (0.15 + rng() * 0.3);
-      const x = c + Math.cos(a) * d, y = c + Math.sin(a) * d;
-      const grad = g.createRadialGradient(x, y, 0, x, y, r);
-      grad.addColorStop(0, 'rgba(255,255,255,0.16)');
-      grad.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grad;
-      g.fillRect(0, 0, w, w);
+  const N = 128;
+  const n = tileNoise(N, N, rng, [[4, 0.45], [8, 0.3], [16, 0.17], [32, 0.08]]);
+  const lump = Array.from({ length: 7 }, () => 0.75 + rng() * 0.35);
+  return canvasTexture(N, N, (g) => {
+    const img = g.createImageData(N, N);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const dx = (x + 0.5) / N - 0.5, dy = (y + 0.5) / N - 0.5;
+      const a = Math.atan2(dy, dx), r = Math.hypot(dx, dy) * 2;
+      // (The edge wobbles round the puff.)
+      const f = ((a / (Math.PI * 2)) + 1) * 7 % 7, i = Math.floor(f), k = f - i;
+      const edge = lump[i] + (lump[(i + 1) % 7] - lump[i]) * (k * k * (3 - 2 * k));
+      const fall = Math.max(0, 1 - r / edge);
+      const v = n[y * N + x];
+      const alpha = Math.max(0, Math.min(1, fall * fall * (0.25 + 1.5 * (v - 0.25))));
+      const o = (y * N + x) * 4;
+      img.data[o] = img.data[o + 1] = img.data[o + 2] = 255;
+      img.data[o + 3] = Math.round(alpha * 255);
     }
+    g.putImageData(img, 0, 0);
   }, { srgb: false });
 }
 
@@ -144,37 +158,45 @@ export class Effects {
     };
     this.glows = new Sprites(this.group, 90, this.tex.blobs[0]);
     this.streaks = new Sprites(this.group, 140, this.tex.streak);
-    this.smoke = new Sprites(this.group, 70, this.tex.smoke[0], { additive: false });
-    this.bits = new Sprites(this.group, 80, this.tex.dot, { additive: false });
+    this.smoke = new Sprites(this.group, 100, this.tex.smoke[0], { additive: false });
+    this.bits = new Sprites(this.group, 100, this.tex.dot, { additive: false });
     this.color = new THREE.Color();
 
     // The blast's pieces, chosen once (seeded): each gas lump, grain and
     // smoke puff has its own direction, speed and timing.
     const r = seeded(77);
     this.lumps = Array.from({ length: 26 }, (_, i) => ({
-      start: ms(0.39 + r() * 0.12), along: 0.015 + r() * 0.07, out: 0.006 + r() * 0.026, angle: r() * Math.PI * 2,
-      size: 0.012 + r() * 0.024, tau: ms(0.15 + r() * 0.2), life: ms(0.9 + r() * 1.3), tex: i % 2, spin: r() * 6,
+      start: ms(r() * 0.12), along: 0.012 + r() * 0.085, out: 0.004 + r() * 0.026, angle: r() * Math.PI * 2,
+      size: 0.016 + r() * 0.03, tau: ms(0.12 + r() * 0.22), life: ms(0.8 + r() * 1.2), tex: i % 2, spin: r() * 6,
     }));
     this.grains = Array.from({ length: 34 }, () => ({
-      start: ms(0.39 + r() * 0.35), speed: 260 + r() * 200, spread: r() * 0.11, angle: r() * Math.PI * 2,
-      drag: ms(1.2 + r() * 2.5), life: ms(1.5 + r() * 4), size: 0.0004 + r() * 0.0006,
+      start: EXIT + ms(r() * 0.35), speed: 260 + r() * 200, spread: r() * 0.11, angle: r() * Math.PI * 2,
+      drag: ms(1.2 + r() * 2.5), life: ms(1.5 + r() * 4), size: 0.00022 + r() * 0.0003,
     }));
     this.puffs = Array.from({ length: 30 }, (_, i) => ({
-      start: ms(0.6 + r() * 2.4), along: 0.02 + r() * 0.1, out: 0.008 + r() * 0.04, angle: r() * Math.PI * 2,
+      start: i < 10 ? EXIT + ms(r() * 0.4) : ms(0.9 + r() * 2.2), along: 0.02 + r() * 0.1, out: 0.008 + r() * 0.04, angle: r() * Math.PI * 2,
       size: 0.02 + r() * 0.035, grow: 0.12 + r() * 0.22, rise: 0.02 + r() * 0.05, drift: r() - 0.5, port: i >= 24,
-      tex: i % 2, rot: r() * 6, shade: 0.75 + r() * 0.2,
+      tex: i % 2, rot: r() * 6, shade: i < 10 ? 0.62 + r() * 0.12 : 0.75 + r() * 0.2, gas: i < 10,
     }));
-    this.frags = Array.from({ length: 80 }, () => ({
-      angle: r() * Math.PI * 2, speed: 50 + r() * 170, lift: 0.05 + r() * 0.3, life: ms(30 + r() * 140), size: 0.001 + r() * 0.002, spark: r() < 0.18,
-    }));
+    // The strike's pieces: flakes of lead and jacket thrown out flat
+    // along the plate's face (a 'splash' disc), and sparks of hot metal,
+    // thinner and quicker, some flying farther and arcing down.
+    this.frags = Array.from({ length: 130 }, (_, i) => {
+      const spark = i % 3 === 0;
+      return {
+        angle: r() * Math.PI * 2, speed: spark ? 70 + r() * 220 : 40 + r() * 150, lift: spark ? 0.08 + r() * 0.45 : 0.02 + r() * 0.18,
+        life: spark ? ms(60 + r() * 380) : ms(30 + r() * 140), size: spark ? 0.00035 + r() * 0.0005 : 0.0008 + r() * 0.0018, spark,
+        drag: spark ? ms(40 + r() * 120) : ms(20 + r() * 15),
+      };
+    });
 
     // Dust floating in the air along the bullet's path (set by setPath).
     this.dust = null;
 
     // The splash the bullet leaves: a decal on the plate's face.
-    const splash = canvasTexture(256, 256, (g, w) => drawSplash(g, w / 2, w / 2, w * 0.2, seeded(31337), 1));
+    const splash = canvasTexture(512, 512, (g, w) => drawSplash(g, w / 2, w / 2, w * 0.2, seeded(31337), 0.65));
     this.splash = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.09, 0.09),
+      new THREE.PlaneGeometry(0.06, 0.06),
       new THREE.MeshStandardMaterial({ map: splash, transparent: true, roughness: 0.5, metalness: 0.3, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false }),
     );
     this.splash.visible = false;
@@ -225,34 +247,43 @@ export class Effects {
     const p = new THREE.Vector3(), q = new THREE.Vector3();
 
     if (s > ms(0.2)) {
-      // The air in the barrel, pushed out just ahead of the bullet: a pale,
-      // fast-spreading puff.
-      const air = s - ms(0.26);
-      if (air > 0 && air < ms(1.2)) {
-        const k = 1 - air / ms(1.2);
-        p.copy(w.muzzle).addScaledVector(w.dir, 0.004 + 40 * air);
-        const size = 0.008 + 20 * air;
-        this.glows.put(p, size, size, 0, this.color.setRGB(0.5, 0.55, 0.6), 0.15 * k * k, this.tex.blobs[2]);
+      // The gas that leaks past the bullet before it's out (blow-by): a
+      // small grey puff spreading just ahead of the muzzle.
+      const leak = s - (EXIT - ms(0.16));
+      if (leak > 0 && leak < ms(2.5)) {
+        const grow = 1 - Math.exp(-leak / ms(0.25));
+        p.copy(w.muzzle).addScaledVector(w.dir, 0.003 + 0.03 * grow);
+        const size = 0.006 + 0.03 * grow;
+        const fade = smoothstep(0, ms(0.08), leak) * (1 - smoothstep(ms(0.8), ms(2.5), leak));
+        this.smoke.put(p, size, size, 1.3, this.color.setRGB(0.72, 0.72, 0.74), 0.3 * fade, this.tex.smoke[0]);
       }
-      // The fireball: lumps of hot gas burst out round the muzzle, push
-      // forward and outward, swell and cool from white through orange to
-      // a dull red.
+      // The flash: as the base clears the muzzle, the hot gas behind it
+      // bursts out in lumps that rush forward and outward round the bullet,
+      // swell and cool from yellow through orange to a dull red. (Kept to
+      // a pistol's modest flash: most of a 9 mm's light is this one small,
+      // short orange burst.)
       for (const L of this.lumps) {
-        const t = s - L.start;
+        const t = s - (EXIT + L.start);
         if (t <= 0 || t > L.life) continue;
         const grow = 1 - Math.exp(-t / L.tau);
         const cool = t / L.life;
-        p.copy(w.muzzle).addScaledVector(w.dir, L.along * grow + 0.004).addScaledVector(radial(L.angle, q), L.out * grow);
-        const size = L.size * (0.3 + 0.9 * grow);
-        const fade = smoothstep(0, ms(0.05), t) * (1 - smoothstep(0.55, 1, cool));
-        this.glows.put(p, size, size, L.spin + cool * 2, glow(cool * 1.15, 1.1 * (1 - cool * 0.6), this.color), 0.4 * fade, this.tex.blobs[L.tex]);
+        p.copy(w.muzzle).addScaledVector(w.dir, L.along * grow + 0.003).addScaledVector(radial(L.angle, q), L.out * grow);
+        const size = L.size * (0.25 + 0.8 * grow);
+        const fade = smoothstep(0, ms(0.04), t) * (1 - smoothstep(0.45, 1, cool));
+        // (Its body drawn over the picture, so it shows orange against the
+        // bright sky, and its glow added on top.)
+        glow(0.3 + cool * 0.9, 1, this.color);
+        this.color.multiplyScalar(0.92 - 0.35 * cool);
+        this.smoke.put(p, size * 0.9, size * 0.9, L.spin + 1, this.color, 0.4 * fade * (1 - cool * 0.5), this.tex.smoke[L.tex]);
+        this.glows.put(p, size, size, L.spin + cool * 2, glow(0.15 + cool * 1.0, 1.2 * (1 - cool * 0.6), this.color), 0.26 * fade, this.tex.blobs[L.tex]);
       }
-      // The flash's white core at the muzzle, for an instant.
-      const core = s - ms(0.39);
-      if (core > 0 && core < ms(0.6)) {
-        const k = 1 - core / ms(0.6);
-        p.copy(w.muzzle).addScaledVector(w.dir, 0.01);
-        this.glows.put(p, 0.016 * (0.5 + k), 0.016 * (0.5 + k), core * 9000, glow(0.15, 1.2, this.color), k, this.tex.blobs[0]);
+      // Its hottest moment: a small bright ring of light right at the
+      // muzzle as the gas first meets the air.
+      const core = s - EXIT;
+      if (core > 0 && core < ms(0.4)) {
+        const k = 1 - core / ms(0.4);
+        p.copy(w.muzzle).addScaledVector(w.dir, 0.004);
+        this.glows.put(p, 0.012 * (0.6 + 0.6 * (1 - k)), 0.012 * (0.6 + 0.6 * (1 - k)), core * 9000, glow(0.18, 1.0, this.color), k * k, this.tex.blobs[0]);
       }
       // Burning grains of powder shot out with the gas, slowing fast.
       for (const G of this.grains) {
@@ -265,7 +296,7 @@ export class Effects {
         const cool = t / G.life;
         // (A short streak: longer while it's fast.)
         const len = G.size * (1.5 + Math.min(4, v / 90));
-        this.streaks.put(p, len, G.size, screenAngle(camera, p, d), glow(0.2 + cool * 0.8, 2.2, this.color), 1 - cool * cool);
+        this.streaks.put(p, len * 2, G.size, screenAngle(camera, p, d), glow(0.2 + cool * 0.8, 1.7, this.color), 1 - cool * cool);
       }
       // Smoke: grey puffs from the blast (and from the ejection port as
       // the case leaves), swelling fast at first, then drifting, rising
@@ -276,27 +307,23 @@ export class Effects {
         if (t <= 0 || t > 3.5) continue;
         const base = P.port ? w.port : w.muzzle;
         const dir = P.port ? w.portDir : w.dir;
-        const burst = 1 - Math.exp(-t / ms(2.5));
+        // (The gas itself bursts out in a fraction of a millisecond; the
+        // smoke after it and from the port spreads more slowly.)
+        const burst = 1 - Math.exp(-t / (P.gas ? ms(0.35) : ms(2.5)));
         const slow = 1 - Math.exp(-t / 0.8);
         p.copy(base).addScaledVector(dir, P.along * (P.port ? 0.3 : 1) * burst + 0.15 * slow * (P.port ? 0.2 : 1))
           .addScaledVector(radial(P.angle, q), P.out * burst + 0.05 * slow);
         p.y += P.rise * slow + 0.04 * t;
         p.x += P.drift * 0.1 * slow;
-        const size = (P.size * (0.3 + burst) + P.grow * slow) * (P.port ? 0.6 : 1);
-        const fade = smoothstep(0, ms(0.3), t) * (1 - smoothstep(0.8, 3.5, t));
-        const shade = P.shade;
-        this.smoke.put(p, size, size, P.rot + slow * 0.6, this.color.setRGB(shade, shade, shade * 1.02), 0.38 * fade, this.tex.smoke[P.tex]);
+        const size = (P.size * (0.3 + burst) * (P.gas ? 1.6 : 1) + P.grow * slow) * (P.port ? 0.45 : 1);
+        const fade = smoothstep(0, P.gas ? ms(0.06) : ms(0.3), t) * (1 - smoothstep(0.8, 3.5, t));
+        const shade = P.port ? P.shade * 0.82 : P.shade;
+        this.smoke.put(p, size, size, P.rot + slow * 0.6, this.color.setRGB(shade, shade, shade * 1.02), (P.port ? 0.2 : 0.36) * fade, this.tex.smoke[P.tex]);
       }
     }
 
-    // The air the bullet tears through: a faint streak behind it.
-    if (w.flying) {
-      p.copy(w.bullet).addScaledVector(w.dir, -0.09);
-      const len = 0.16;
-      this.streaks.put(p, len, 0.0045, screenAngle(camera, p, w.dir), this.color.setRGB(0.75, 0.82, 0.9), 0.1, this.tex.streak);
-      p.copy(w.bullet).addScaledVector(w.dir, -0.03);
-      this.streaks.put(p, 0.05, 0.007, screenAngle(camera, p, w.dir), this.color.setRGB(0.9, 0.92, 0.95), 0.06, this.tex.streak);
-    }
+    // (The air the bullet tears through is drawn by film.js's air pass:
+    // the picture bends round it.)
 
     // The strike.
     if (w.hit && s >= w.hit.s) {
@@ -308,20 +335,23 @@ export class Effects {
       if (t < ms(0.25)) {
         const k = 1 - t / ms(0.25);
         p.copy(w.hit.at).addScaledVector(n, 0.004);
-        this.glows.put(p, 0.035 * (0.4 + k), 0.035 * (0.4 + k), 0, glow(0.1, 2.5, this.color), k, this.tex.dot);
+        this.glows.put(p, 0.02 * (0.4 + k), 0.02 * (0.4 + k), 0, glow(0.12, 1.8, this.color), k * k, this.tex.dot);
       }
       // Lead and jacket spraying out along the face, and sparks.
       for (const F of this.frags) {
         if (t > F.life) continue;
         const d = q.copy(a1).multiplyScalar(Math.cos(F.angle)).addScaledVector(a2, Math.sin(F.angle)).addScaledVector(n, F.lift).normalize();
-        const drag = ms(25);
+        const drag = F.drag;
         const dist = F.speed * drag * (1 - Math.exp(-t / drag));
         p.copy(w.hit.at).addScaledVector(d, dist + 0.003);
         p.y -= 4.9 * t * t;
         const k = 1 - t / F.life;
         const v = F.speed * Math.exp(-t / drag);
-        const len = F.size * (1.5 + Math.min(10, v / 25));
-        if (F.spark) this.streaks.put(p, len * 0.6, F.size * 0.7, screenAngle(camera, p, d), glow(0.3 + (1 - k) * 0.6, 2.2, this.color), k);
+        // (Streaked along its motion, as a film camera's shutter smears it:
+        // longer while it's fast.)
+        const len = F.size * (1.5 + Math.min(F.spark ? 60 : 10, v / (F.spark ? 6 : 25)));
+        const fall = q.copy(d).multiplyScalar(v).add(_b.set(0, -9.81 * t, 0)).normalize();
+        if (F.spark) this.streaks.put(p, len, F.size, screenAngle(camera, p, fall), glow(0.35 + (1 - k) * 0.6, 1.25 * (0.5 + 0.5 * k), this.color), Math.min(1, k * 1.6));
         else this.bits.put(p, len * 0.35, F.size * 1.2, screenAngle(camera, p, d), this.color.setRGB(0.18, 0.18, 0.19), 0.95 * k, this.tex.dot);
       }
       // A grey cloud of lead spreading over the face and drifting off.
@@ -331,9 +361,9 @@ export class Effects {
         const r = 0.03 + 0.16 * spread * (0.7 + 0.3 * Math.sin(i * 7.1));
         p.copy(w.hit.at).addScaledVector(a1, Math.cos(angle) * r).addScaledVector(a2, Math.sin(angle) * r).addScaledVector(n, 0.02 + 0.08 * spread);
         p.y += 0.05 * t;
-        const size = 0.05 + 0.25 * spread + 0.1 * t;
+        const size = 0.04 + 0.14 * spread + 0.06 * t;
         const fade = smoothstep(0, ms(1), t) * (1 - smoothstep(0.3, 2.2, t));
-        this.smoke.put(p, size, size, i, this.color.setRGB(0.6, 0.61, 0.63), 0.35 * fade, this.tex.smoke[i % 2]);
+        this.smoke.put(p, size, size, i, this.color.setRGB(0.58, 0.59, 0.61), 0.16 * fade, this.tex.smoke[i % 2]);
       }
     }
 

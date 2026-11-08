@@ -4,7 +4,8 @@
 // All made in code.
 //
 // The layout (metres): the barriers run along X at z = 0; he takes cover
-// behind them (+Z) and fires towards -Z, at the plate 12 m away.
+// behind them (+Z) and fires towards -Z, at the plate 12 m away. The
+// crates stand where the edit puts them (LAYOUT.crates in edit.js).
 
 import * as THREE from 'three';
 import { SUN_DIRECTION } from '../../world.js';
@@ -33,7 +34,7 @@ export const TARGET = {
 };
 TARGET.centreY = TARGET.barY - 0.025 - TARGET.chain - 0.03 - TARGET.radius;
 
-export function buildSet(renderer, { shadowCentre = new THREE.Vector3(1.5, 0, 0), sky = null } = {}) {
+export function buildSet(renderer, { shadowCentre = new THREE.Vector3(1.5, 0, 0), crateSpot = { x: -6, z: 3, yaw: 0.3 } } = {}) {
   const group = new THREE.Group();
   group.name = 'set';
   const rng = seeded(9119);
@@ -111,8 +112,12 @@ export function buildSet(renderer, { shadowCentre = new THREE.Vector3(1.5, 0, 0)
   const target = buildTarget(rng);
   group.add(target.group);
 
+  // The ammunition crates the pistol is thrown from.
+  const crates = buildCrates(rng, crateSpot);
+  group.add(crates.group);
+
   return {
-    group, sun, floor, barriers, target,
+    group, sun, floor, barriers, target, crates,
     fog: new THREE.Fog(SKY_COLOR, 60, 900),
     background: new THREE.Color(SKY_COLOR),
   };
@@ -229,7 +234,7 @@ function buildTarget(rng) {
     // Braces from the foot up the upright.
     for (const dz of [-1, 1]) {
       const brace = add(new THREE.BoxGeometry(0.03, 0.42, 0.03), tube, x, 0.17, dz * 0.14);
-      brace.rotation.x = dz * 0.78;
+      brace.rotation.x = -dz * 0.78; // (from the foot's end up to the upright)
     }
   }
   add(new THREE.BoxGeometry(T.stand * 2 + 0.12, s, s), tube, 0, T.barY - s / 2, 0);
@@ -344,8 +349,8 @@ export function drawSplash(g, x, y, r, rng, strength = 1) {
     g.stroke();
   }
   const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
-  core.addColorStop(0, 'rgba(70,72,76,1)');
-  core.addColorStop(0.6, 'rgba(105,108,112,0.9)');
+  core.addColorStop(0, 'rgba(84,86,90,1)');
+  core.addColorStop(0.6, 'rgba(118,121,125,0.85)');
   core.addColorStop(1, 'rgba(90,92,96,0)');
   g.fillStyle = core;
   g.beginPath();
@@ -373,7 +378,7 @@ export function filmEnvironment(renderer, sunDirection) {
   }
   dome.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   scene.add(new THREE.Mesh(dome, new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true })));
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(20, 18.5, 16.5) }));
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 8.3, 7.4) }));
   sun.position.copy(sunDirection).multiplyScalar(9);
   scene.add(sun);
   // A pale wall low on the far side, for a second, softer highlight.
@@ -386,4 +391,118 @@ export function filmEnvironment(renderer, sunDirection) {
   pmrem.dispose();
   dome.dispose();
   return texture;
+}
+
+// Wooden ammunition crates (US style: olive-drab plywood on a frame of
+// battens, rope handles, yellow stencils; 9 mm ball, M882, is the US
+// military's 124 grain round): two side by side and one on top. Its own
+// frame: the stack's foot at the origin, the long sides along X. `top` is
+// the top crate's lid's middle (in the stack's frame) and `topYaw` its
+// turn, for the pistol lying on it.
+export const CRATE = { w: 0.66, d: 0.38, h: 0.34, batten: 0.022 };
+function buildCrates(rng, spot) {
+  const group = new THREE.Group();
+  group.name = 'crates';
+  group.position.set(spot.x, 0, spot.z);
+  group.rotation.y = spot.yaw;
+  const C = CRATE;
+  const wood = crateTexture(rng);
+  const side = new THREE.MeshStandardMaterial({ map: wood.side, roughness: 0.85, bumpMap: wood.bump, bumpScale: 0.6 });
+  const end = new THREE.MeshStandardMaterial({ map: wood.end, roughness: 0.85, bumpMap: wood.bump, bumpScale: 0.6 });
+  const plain = new THREE.MeshStandardMaterial({ map: wood.plain, roughness: 0.85, bumpMap: wood.bump, bumpScale: 0.6 });
+  const batten = new THREE.MeshStandardMaterial({ map: wood.plain, color: 0xd8d8d0, roughness: 0.8 });
+  const rope = new THREE.MeshStandardMaterial({ color: 0x8a7a5c, roughness: 0.95 });
+  const box = new THREE.BoxGeometry(C.w, C.h, C.d);
+  const make = () => {
+    const g = new THREE.Group();
+    // (Box faces: +X, -X ends; +Y, -Y top and bottom; +Z, -Z sides.)
+    const body = new THREE.Mesh(box, [end, end, plain, plain, side, side]);
+    body.position.y = C.h / 2;
+    g.add(body);
+    // Battens round each face's edges, standing proud of the plywood.
+    const b = C.batten;
+    const addBar = (sx, sy, sz, x, y, z) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), batten);
+      m.position.set(x, y, z);
+      g.add(m);
+    };
+    for (const z of [-1, 1]) {
+      const zz = z * (C.d / 2 + b / 4);
+      addBar(C.w, b, b / 2, 0, b / 2, zz);
+      addBar(C.w, b, b / 2, 0, C.h - b / 2, zz);
+      for (const x of [-1, 1]) addBar(b, C.h - 2 * b, b / 2, x * (C.w / 2 - b / 2), C.h / 2, zz);
+    }
+    for (const x of [-1, 1]) {
+      const xx = x * (C.w / 2 + b / 4);
+      addBar(b / 2, b, C.d + b, xx, b / 2, 0);
+      addBar(b / 2, b, C.d + b, xx, C.h - b / 2, 0);
+      // A rope handle on each end, in two wooden cleats.
+      const handle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.008, 6, 16, Math.PI), rope);
+      handle.rotation.set(Math.PI, Math.PI / 2, 0);
+      handle.position.set(x * (C.w / 2 + 0.012), C.h * 0.62, 0);
+      g.add(handle);
+      for (const z of [-1, 1]) addBar(0.02, 0.035, 0.03, x * (C.w / 2 + 0.01), C.h * 0.62, z * 0.06);
+    }
+    // Lid battens across the top.
+    for (const x of [-0.28, 0, 0.28]) addBar(0.05, b / 2, C.d, x * C.w, C.h + b / 4, 0);
+    g.traverse((o) => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+    return g;
+  };
+  const a = make(), b = make(), top = make();
+  a.position.set(0, 0, -C.d / 2 - 0.01);
+  a.rotation.y = 0.02;
+  b.position.set(0.03, 0, C.d / 2 + 0.01);
+  b.rotation.y = -0.03;
+  top.position.set(0.04, C.h + 0.003, 0.02);
+  top.rotation.y = 0.12;
+  group.add(a, b, top);
+  // The lid's middle (the lid battens stand C.batten / 2 proud of it).
+  const lid = new THREE.Vector3(-0.12, C.h + C.h + 0.003 + C.batten / 2, 0.02);
+  return { group, top: lid, topYaw: 0.12 };
+}
+
+// The crates' faces: olive-drab paint over plywood grain, worn at the
+// edges, with the yellow stencilled markings on the long sides and ends.
+function crateTexture(rng) {
+  const W = 1024, H = 512;
+  const n = tileNoise(W, H, rng, [[3, 0.3], [12, 0.3], [48, 0.25], [192, 0.15]]);
+  const paint = (g, stencil) => {
+    const img = g.createImageData(W, H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      // Grain: long bands along X, wobbling.
+      const grain = 0.5 + 0.5 * Math.sin(y * 0.09 + n[i] * 9 + Math.sin(x * 0.004) * 2);
+      const wear = Math.max(0, n[i] - 0.68) * 3;
+      const v = 0.82 + grain * 0.1 + (rng() - 0.5) * 0.05;
+      const drab = [92 * v, 96 * v, 64 * v];
+      const bare = [168 * v, 140 * v, 98 * v];
+      for (let c = 0; c < 3; c++) img.data[i * 4 + c] = drab[c] + (bare[c] - drab[c]) * Math.min(1, wear);
+      img.data[i * 4 + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    if (!stencil) return;
+    g.fillStyle = 'rgba(214,190,92,0.92)';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    for (const [text, y, size] of stencil) {
+      g.font = `bold ${size}px "Courier New", Courier, monospace`;
+      g.fillText(text, W / 2, y * H);
+    }
+  };
+  const side = canvasTexture(W, H, (g) => paint(g, [
+    ['1000 CARTRIDGES', 0.26, 54], ['9MM BALL M882', 0.46, 74], ['LOT 0128', 0.66, 40], ['2 CANS', 0.8, 34],
+  ]));
+  const end = canvasTexture(W, H, (g) => paint(g, [['9MM', 0.4, 120], ['M882', 0.66, 80]]));
+  const plain = canvasTexture(W, H, (g) => paint(g, null));
+  const bump = canvasTexture(W, H, (g) => {
+    const img = g.createImageData(W, H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const v = 128 + 50 * Math.sin(y * 0.09 + n[i] * 9) * 0.5 + (rng() - 0.5) * 20;
+      img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+      img.data[i * 4 + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  }, { srgb: false });
+  return { side, end, plain, bump };
 }

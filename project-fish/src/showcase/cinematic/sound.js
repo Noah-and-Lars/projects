@@ -183,28 +183,30 @@ export class FilmSound {
     }), { volume: 0.5, reverb: 0.1 });
   }
 
-  // A spent case landing: bright pings.
-  tink() {
+  // A spent case landing: bright pings (rate below 1: slowed, deeper and
+  // longer).
+  tink(rate = 1, volume = 1) {
     if (!this.ok) return;
+    this.resume();
     const ctx = this.ctx, now = ctx.currentTime;
-    const base = rand(3800, 4600);
+    const base = rand(3800, 4600) * rate;
     for (let i = 0; i < 4; i++) {
       const o = ctx.createOscillator();
       o.frequency.value = base * (1 + i * 0.41);
       const g = ctx.createGain();
-      const at = now + i * rand(0.05, 0.11);
+      const at = now + (i * rand(0.05, 0.11)) / rate;
       g.gain.setValueAtTime(0.0001, at);
-      g.gain.exponentialRampToValueAtTime(0.06 / (i + 1), at + 0.002);
-      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.12);
+      g.gain.exponentialRampToValueAtTime((0.06 * volume) / (i + 1), at + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.12 / rate);
       o.connect(g).connect(this.master);
       o.start(at);
-      o.stop(at + 0.14);
+      o.stop(at + 0.14 / rate);
     }
   }
 
   // A body landing or rolling on the ground; a hand slapping round the
   // gun as he catches it.
-  thump(volume = 1) {
+  thump(volume = 1, rate = 1) {
     this.play(this.buffer('thump', 0.3, (d, rate) => {
       let a = 0;
       for (let i = 0; i < d.length; i++) {
@@ -212,10 +214,22 @@ export class FilmSound {
         a += 0.05 * ((Math.random() * 2 - 1) - a);
         d[i] = (a * 3 + Math.sin(2 * Math.PI * 60 * t) * 0.5) * Math.exp(-t / 0.06);
       }
-    }), { volume: 0.6 * volume, reverb: 0.15 });
+    }), { volume: 0.6 * volume, reverb: 0.15, rate });
   }
 
-  slap() {
+  // Air rushing past, for a fast camera move or a body flying by.
+  whoosh(rate = 1) {
+    this.play(this.buffer('whoosh', 0.9, (d, rate) => {
+      let a = 0;
+      for (let i = 0; i < d.length; i++) {
+        const t = i / rate, x = t / 0.9;
+        a += (0.01 + 0.12 * Math.sin(Math.PI * x)) * ((Math.random() * 2 - 1) - a);
+        d[i] = a * Math.sin(Math.PI * x) ** 2 * 2.2;
+      }
+    }), { volume: 0.45, reverb: 0.2, rate });
+  }
+
+  slap(rate = 1) {
     this.play(this.buffer('slap', 0.15, (d, rate) => {
       let a = 0;
       for (let i = 0; i < d.length; i++) {
@@ -223,6 +237,6 @@ export class FilmSound {
         a += 0.3 * ((Math.random() * 2 - 1) - a);
         d[i] = a * Math.exp(-t / 0.012) * 1.2;
       }
-    }), { volume: 0.5, rate: 0.8, reverb: 0.2 });
+    }), { volume: 0.5, rate: 0.8 * rate, reverb: 0.2 });
   }
 }

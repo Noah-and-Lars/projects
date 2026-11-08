@@ -23,6 +23,13 @@
 // round.js, fx.js and sound.js; the soldier, his moves and the pistol in
 // actor.js. `test: true` shows the shot's name and times, and a note on
 // each shot still waiting for its Mixamo clip.
+//
+// The picture: the scene with depth of field (focused per camera key),
+// then the air (the bow wave, wake and blast wave bending the picture
+// behind the bullet), the glow (bloom), film-like tone mapping and a grade
+// (vignette, a touch of fringing and grain), in wide screen with bars.
+// Time: each shot maps film time to story time (see edit.js, TIME), and
+// everything is posed from story time, so slow motion slows it all.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -39,7 +46,7 @@ import { makeCartridge, makeFiredBullet, makeSpentCase, roundMaterials, ROUND } 
 import { Effects, FX_LAYER } from './fx.js';
 import { FilmSound } from './sound.js';
 import { EJECT, SHOT, barrelPose, bulletSpeed, bulletSpin, bulletTravel, gunKick, plateSwing, slideBack, timeToTravel } from './ballistics.js';
-import { FILM, LAYOUT, SLOTS, cards, shots as makeShots } from './edit.js';
+import { FILM, LAYOUT, SLOTS, cards, cues as makeCues, shots as makeShots } from './edit.js';
 import { clamp01, lerp, monotone, pathAt, smoothstep } from './util.js';
 
 const LABEL = { line: 0.4, card: 0.25 }; // the breakdowns' pace: the line draws, the card fades
@@ -58,18 +65,23 @@ function addStyles() {
   document.head.appendChild(link);
 }
 
+// The sounds by name: each gets the film's sound and how fast the story
+// is going (1 real time, less in slow motion), and plays at that rate (a
+// slowed sound deepens) or, slowed past hearing, its slow-motion form.
+const slowed = (speed) => Math.max(0.2, Math.min(1, speed));
 const SOUNDS = {
-  shot: (s) => s.shot(),
-  slowShot: (s) => s.slowShot(),
-  rush14: (s) => s.rush(13),
-  rush7: (s) => s.rush(6.4),
-  slowRing: (s) => s.slowRing(),
-  ring: (s) => s.ring(),
-  snap: (s) => s.snap(),
-  tink: (s) => s.tink(),
-  slowTink: (s) => s.tink(),
-  thump: (s) => s.thump(),
-  slap: (s) => s.slap(),
+  shot: (a, v) => (v > 0.5 ? a.shot() : a.slowShot()),
+  slowShot: (a) => a.slowShot(),
+  rush14: (a) => a.rush(13),
+  rush7: (a) => a.rush(6.4),
+  slowRing: (a) => a.slowRing(),
+  ring: (a, v) => (v > 0.5 ? a.ring() : a.slowRing()),
+  snap: (a) => a.snap(),
+  tink: (a, v, volume) => a.tink(slowed(v), volume),
+  slowTink: (a) => a.tink(0.35),
+  thump: (a, v, volume) => a.thump(volume, slowed(v)),
+  slap: (a, v) => a.slap(slowed(v)),
+  whoosh: (a, v) => a.whoosh(slowed(v)),
 };
 
 export class Film {
@@ -201,7 +213,7 @@ export class Film {
     this.env = outdoorEnvironment(renderer, SUN_DIRECTION); // (the game's: for him)
     this.shine = filmEnvironment(renderer, SUN_DIRECTION); // (for the rounds and the metal close up)
 
-    const set = (this.set = buildSet(renderer));
+    const set = (this.set = buildSet(renderer, { crateSpot: LAYOUT.crates }));
     scene.add(set.group);
     scene.fog = set.fog;
     // Metal on the set shows the sky, as the gun and the soldier do.
@@ -317,14 +329,17 @@ export class Film {
     story.impact = story.fire + this.hitS;
     this.fx.setPath(muzzle, this.hit);
 
-    // The toss: the pistol arrives in his hand at the catch, turning over
-    // as it flies.
+    // The toss: the pistol lies on the top crate (LAYOUT.crates) until
+    // it's thrown, then flies to arrive in his hand at the dive's catch,
+    // turning over (whole turns, plus the turn from lying flat to his
+    // grip) as it goes.
     actor.pose(this.grabAt);
     const grab = actor.gunInHand();
+    const rest = this.restingGun();
     const T = LAYOUT.toss.flight;
-    const from = new THREE.Vector3(...LAYOUT.toss.from);
+    const from = rest.position.clone();
     this.toss = {
-      from, T, start: this.grabAt - T, end: grab.position.clone(), endQuat: grab.quaternion.clone(),
+      from, T, start: this.grabAt - T, end: grab.position.clone(), endQuat: grab.quaternion.clone(), restQuat: rest.quaternion.clone(),
       v0: grab.position.clone().sub(from).addScaledVector(GRAVITY, -0.5 * T * T).divideScalar(T),
       axis: new THREE.Vector3().subVectors(grab.position, from).cross(UP).normalize(),
     };
@@ -333,25 +348,75 @@ export class Film {
     // The spent case's flight, worked out once.
     this.caseFlight = this.flyCase();
 
-    // The shots, end to end.
+    // The shots, end to end. A shot's story clock: `time` keys (a smooth
+    // curve through [film seconds, story time]), `ramp` keys (its speed,
+    // story seconds a film second, eased from key to key in proportion,
+    // so 1 to 1/1000 slows as evenly as 1/1000 to 1/1,000,000), or real
+    // speed. `from: 'prev'` carries on from where the shot before ended.
     const list = makeShots(story);
-    let at = 0;
+    let at = 0, prevTo = 0;
     this.shotList = list.map((spec) => {
-      const film = spec.film ?? spec.to - spec.from;
-      const map = spec.time ? monotone(spec.time) : (x) => spec.from + x;
-      const camKeys = spec.camera.map((k) => ({ ...k }));
-      const shot = { ...spec, film, start: at, end: at + film, map, camKeys };
+      const from = spec.from === 'prev' ? prevTo : spec.from;
+      let film, map, to = spec.to;
+      if (spec.ramp) {
+        // (With `to`, a stretch at the first key's speed comes first, as
+        // long as it takes for the ramp to end there.)
+        let keys = spec.ramp;
+        if (typeof spec.to === 'number') {
+          const lead = (spec.to - rampMap(from, keys).to) / keys[0][1];
+          if (lead > 0) keys = [[0, keys[0][1]], ...keys.map(([x, v]) => [x + lead, v])];
+        }
+        spec = { ...spec, ramp: keys };
+        const r = rampMap(from, keys);
+        film = r.film;
+        map = r.map;
+        to = r.to;
+      } else {
+        film = spec.film ?? to - from;
+        map = spec.time ? monotone(spec.time) : (x) => from + x;
+      }
+      const camKeys = spec.camera.map((k) => ({ ...k, at: k.at === 'end' ? film : k.at }));
+      const shot = { ...spec, from, to, film, start: at, end: at + film, map, camKeys };
+      // How fast its story goes at x film seconds in (story s a film s).
+      shot.speedAt = spec.ramp ? rampMap.speed(spec.ramp) : spec.time ? (x) => {
+        const h = Math.min(1 / 240, film / 4);
+        const a = Math.max(0, x - h), b = Math.min(film, x + h);
+        return (map(b) - map(a)) / Math.max(1e-9, b - a);
+      } : () => 1;
       at += film;
+      prevTo = to;
       return shot;
     });
     this.duration = at;
     this.story = story;
     this.cards = cards(this.range);
-    // Sounds at film times.
+    // Sounds: at film times in a shot (`sounds`), and at moments in the
+    // story (cues: each plays once, the first time the film passes it, at
+    // the story's speed then: slowed, or in its slow-motion form).
     this.events = [];
     for (const s of this.shotList) for (const [when, name] of s.sounds || []) this.events.push({ t: s.start + when, name });
     this.events.sort((a, b) => a.t - b.t);
+    this.cues = makeCues(story, this).map(([w, name, volume]) => ({ w, name, volume }));
+    this.cuesPlayed = new Set();
     this.timeline = { shots: this.shotList };
+  }
+
+  // The PF-9 lying on its left side on the top crate's lid, its muzzle
+  // turned a little off the crate's long side.
+  restingGun() {
+    const crates = this.set.crates;
+    crates.group.updateMatrixWorld(true);
+    const pistol = this.actor.pistol;
+    const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, crates.topYaw + LAYOUT.toss.restTurn, -Math.PI / 2, 'YXZ'));
+    quaternion.premultiply(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().extractRotation(crates.group.matrixWorld)));
+    // (Its lowest point on the lid.)
+    pistol.position.set(0, 0, 0);
+    pistol.quaternion.copy(quaternion);
+    pistol.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(pistol);
+    const lid = crates.top.clone().applyMatrix4(crates.group.matrixWorld);
+    const position = new THREE.Vector3(lid.x - (box.min.x + box.max.x) / 2, lid.y - box.min.y, lid.z - (box.min.z + box.max.z) / 2);
+    return { position, quaternion };
   }
 
   // The PF-9 held up to fire, its muzzle at LAYOUT.muzzle, pointing at the strike.
@@ -437,7 +502,9 @@ export class Film {
     const composer = (this.composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType })));
     this.scenePass = new SceneDofPass(this);
     composer.addPass(this.scenePass);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.35, 0.4, 1.25);
+    this.air = new ShaderPass(AIR);
+    composer.addPass(this.air);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.4, 1.6);
     composer.addPass(this.bloom);
     composer.addPass(new OutputPass());
     this.grade = new ShaderPass(GRADE);
@@ -478,17 +545,45 @@ export class Film {
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
     if (!this.paused) this.advance(dt);
+    // (Paused, the sounds already playing hold too.)
+    if (this.audio && this.audio.ok && this.paused !== this.audioPaused) {
+      this.audioPaused = this.paused;
+      if (this.paused) this.audio.ctx.suspend().catch(() => {});
+      else this.audio.resume();
+    }
     this.draw();
   }
 
   advance(dt) {
     const before = this.t;
     this.t = Math.min(this.duration + 30, this.t + dt);
-    if (this.audio && dt > 0) for (const e of this.events) if (e.t > before && e.t <= this.t && SOUNDS[e.name]) SOUNDS[e.name](this.audio);
+    if (!this.audio || dt <= 0) return;
+    for (const e of this.events) if (e.t > before && e.t <= this.t && SOUNDS[e.name]) SOUNDS[e.name](this.audio, 1);
+    // The story's cues passed since the last frame (within this shot).
+    const shot = this.shotAt(this.t);
+    const local = Math.min(this.t - shot.start, shot.film);
+    const w1 = shot.map(local), w0 = shot.map(Math.max(0, local - (this.t - before)));
+    for (let i = 0; i < this.cues.length; i++) {
+      const c = this.cues[i];
+      if (this.cuesPlayed.has(i) || !(c.w > w0 && c.w <= w1) || !SOUNDS[c.name]) continue;
+      this.cuesPlayed.add(i);
+      SOUNDS[c.name](this.audio, shot.speedAt(local), c.volume ?? 1);
+    }
+  }
+
+  // The story time at film time t.
+  storyAt(t) {
+    const shot = this.shotAt(t);
+    return shot.map(Math.min(Math.max(0, t - shot.start), shot.film));
   }
 
   seek(t) {
     this.t = Math.max(0, t);
+    // (Cues before here count as played; those after will play.)
+    if (this.cues) {
+      const w = this.storyAt(this.t);
+      this.cuesPlayed = new Set(this.cues.map((c, i) => (c.w <= w ? i : -1)).filter((i) => i >= 0));
+    }
     if (this.renderer) this.draw();
   }
 
@@ -562,6 +657,7 @@ export class Film {
 
     // Effects.
     const muzzle = gun ? new THREE.Vector3(...MODEL9.muzzle).applyMatrix4(actor.pistol.matrixWorld) : new THREE.Vector3();
+    this.muzzleNow = gun ? muzzle : null;
     const portGun = new THREE.Vector3(...MODEL9.port);
     portGun.z += slide;
     const port = gun ? portGun.applyMatrix4(actor.pistol.matrixWorld) : new THREE.Vector3();
@@ -590,6 +686,7 @@ export class Film {
     sun.shadow.normalBias = shot.fine ? 0.0004 : 0.015;
     sun.shadow.bias = shot.fine ? -0.00005 : -0.0003;
 
+    this.setAir(s, flying);
     this.scenePass.focus = this.focusDist;
     this.scenePass.blur = shot.blur ?? 0.008;
     this.grade.uniforms.time.value = t;
@@ -604,16 +701,78 @@ export class Film {
     if (this.test) this.drawTest(shot, t, w, s);
   }
 
+  // The air the shot disturbs, as the picture bends it: the bow wave just
+  // ahead of the bullet's nose (it flies at about Mach 1), the churning
+  // wake behind its base, and the blast wave spreading from the muzzle.
+  // Worked out on the screen from where the bullet and the muzzle are.
+  setAir(s, flying) {
+    const u = this.air.uniforms;
+    const { w, h } = this.size;
+    const dpr = this.renderer.getPixelRatio();
+    u.res.value.set(w * dpr, h * dpr);
+    const cam = this.camera;
+    const toPx = (v, out) => {
+      const p = v.clone().project(cam);
+      out.set((p.x + 1) * 0.5 * w * dpr, (p.y + 1) * 0.5 * h * dpr);
+      return p.z < 1 && p.z > -1;
+    };
+    u.wake.value = 0;
+    u.bow.value = 0;
+    u.blast.value = 0;
+    if (flying && s < this.hitS) {
+      const mid = this.bulletFrame.origin;
+      const half = ROUND.bullet.length / 2;
+      const nose = mid.clone().addScaledVector(this.dir, half), tail = mid.clone().addScaledVector(this.dir, -half);
+      const onScreen = toPx(nose, u.nose.value) & toPx(tail, u.tail.value);
+      // (Its radius on the screen, from its distance.)
+      const dist = mid.distanceTo(cam.position);
+      const rad = ((ROUND.bullet.diameter / 2) / (dist * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)))) * 0.5 * h * dpr;
+      u.rad.value = rad;
+      // Out of the gas cloud, and big enough on the screen to see.
+      const out = smoothstep(0.0006, 0.0011, s) * smoothstep(3, 9, rad) * (onScreen ? 1 : 0);
+      const travelled = bulletTravel(s);
+      u.phase.value = (travelled * (u.nose.value.distanceTo(u.tail.value) / ROUND.bullet.length)) % (rad * 900 + 1);
+      u.wake.value = out;
+      u.bow.value = out * smoothstep(SHOT.sound * 0.995, SHOT.sound * 1.01, bulletSpeed(s) * 1.0) * 0.6 + out * 0.4;
+    }
+    // The blast wave: a shell spreading from the muzzle faster than sound
+    // at first, fading as it grows.
+    const since = s - SHOT.exit + 0.00003;
+    if (since > 0 && since < 0.0016 && this.muzzleNow) {
+      const R = 0.012 + 520 * since * Math.exp(-since / 0.004);
+      const c = this.muzzleNow;
+      if (toPx(c, u.blastC.value)) {
+        const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+        const edge = new THREE.Vector2();
+        toPx(c.clone().addScaledVector(right, R), edge);
+        u.blastR.value = edge.distanceTo(u.blastC.value);
+        u.blastW.value = Math.max(2.5 * dpr, u.blastR.value * 0.07);
+        u.blast.value = (1 - smoothstep(0.0006, 0.0016, since)) * smoothstep(0, 0.00006, since);
+      }
+    }
+    u.time.value = s;
+    // (Behind the bullet, or the muzzle for the blast.)
+    const at = flying && s < this.hitS ? this.bulletFrame.origin : this.muzzleNow;
+    u.behind.value = at ? at.distanceTo(cam.position) + 0.012 : 0;
+    u.tDepth.value = this.scenePass.target.depthTexture;
+    u.near.value = cam.near;
+    u.far.value = cam.far;
+  }
+
   // The pistol's pose at story time w (null before it's thrown).
   gunAt(w, s, standIn) {
     const actor = this.actor;
     const toss = this.toss;
-    if (w < toss.start) return null;
+    if (w < toss.start) return { position: toss.from.clone(), quaternion: toss.restQuat.clone() };
     if (w < this.grabAt) {
       const tau = w - toss.start;
       const position = toss.from.clone().addScaledVector(toss.v0, tau).addScaledVector(GRAVITY, 0.5 * tau * tau);
-      const left = (toss.T - tau) / toss.T;
-      const quaternion = toss.endQuat.clone().premultiply(new THREE.Quaternion().setFromAxisAngle(toss.axis, -left * LAYOUT.toss.turns * Math.PI * 2));
+      const k = tau / toss.T;
+      // (From lying flat to his grip, plus whole turns end over end, which
+      // spin fastest as it leaves and slow a touch: a little drag.)
+      const spin = 1 - (1 - k) * (1 - k * 0.25) / 1;
+      const quaternion = toss.restQuat.clone().slerp(toss.endQuat, smoothstep(0, 1, k))
+        .premultiply(new THREE.Quaternion().setFromAxisAngle(toss.axis, -(1 - spin) * LAYOUT.toss.turns * Math.PI * 2));
       return { position, quaternion };
     }
     if (standIn) {
@@ -890,6 +1049,8 @@ export class Film {
       if (this.shine) this.shine.dispose();
       if (this.composer) {
         this.composer.dispose();
+        this.air.dispose();
+        this.grade.dispose();
         this.scenePass.dispose();
         this.bloom.dispose();
       }
@@ -919,6 +1080,35 @@ export class Film {
     };
   }
 }
+
+// A shot's story clock from speed keys [[film seconds, speed], ...]
+// (story seconds a film second): between keys the speed eases (smoothly
+// in and out) from one to the next in proportion (its logarithm eases), so
+// a ramp from real speed to a thousandth is as smooth at every scale.
+// Returns { map(x): story time x film seconds in, film, to }.
+function rampMap(from, keys) {
+  const speed = rampMap.speed(keys);
+  const film = keys[keys.length - 1][0];
+  const steps = Math.max(1, Math.ceil(film * 2000));
+  const dx = film / steps;
+  const sum = new Float64Array(steps + 1);
+  for (let i = 0; i < steps; i++) sum[i + 1] = sum[i] + speed((i + 0.5) * dx) * dx;
+  const map = (x) => {
+    const f = Math.min(steps, Math.max(0, x / dx));
+    const i = Math.min(steps - 1, Math.floor(f));
+    return from + sum[i] + (sum[i + 1] - sum[i]) * (f - i);
+  };
+  return { map, film, to: from + sum[steps] };
+}
+rampMap.speed = (keys) => (x) => {
+  const n = keys.length;
+  if (x <= keys[0][0]) return keys[0][1];
+  if (x >= keys[n - 1][0]) return keys[n - 1][1];
+  let i = 0;
+  while (x > keys[i + 1][0]) i++;
+  const k = smoothstep(keys[i][0], keys[i + 1][0], x);
+  return Math.exp(lerp(Math.log(keys[i][1]), Math.log(keys[i + 1][1]), k));
+};
 
 // ---- The picture: the scene with depth of field, then the glows ----
 
@@ -959,8 +1149,13 @@ const DOF = {
       taps[25]=vec2(0.28,0.0); taps[26]=vec2(0.203,-0.203); taps[27]=vec2(0.0,-0.28); taps[28]=vec2(-0.203,0.203); taps[29]=vec2(-0.28,0.0);
       taps[30]=vec2(-0.203,-0.203); taps[31]=vec2(0.0,0.28); taps[32]=vec2(0.116,0.116); taps[33]=vec2(0.16,0.0); taps[34]=vec2(0.116,-0.116);
       taps[35]=vec2(0.0,-0.16); taps[36]=vec2(-0.116,0.116); taps[37]=vec2(-0.16,0.0); taps[38]=vec2(-0.116,-0.116); taps[39]=vec2(0.0,0.16);
+      // (The taps turned by a different angle at each pixel, so a small
+      // bright highlight far out of focus spreads into a soft disc, not a
+      // ring of dots.)
+      float spin = fract(sin(dot(vUv * 1000.0, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832;
+      mat2 turn = mat2(cos(spin), sin(spin), -sin(spin), cos(spin));
       for (int i = 0; i < N; i++) {
-        vec2 uv = vUv + taps[i] * 2.5 * r;
+        vec2 uv = vUv + turn * taps[i] * 2.5 * r;
         float d = dist(uv);
         float c = coc(d);
         // (A sharper pixel in front of this one stays out of its blur.)
@@ -1063,5 +1258,91 @@ const GRADE = {
       col *= mix(1.0, 0.62, smoothstep(0.12, 0.62, r2)); // vignette
       col += (hash(vUv * 913.0) - 0.5) * 0.028; // grain
       gl_FragColor = vec4(col, 1.0);
+    }`,
+};
+
+// The air: the picture bent where the shot disturbs it (see setAir). All
+// in pixels: the bullet's nose and tail and its radius on the screen; the
+// blast wave's centre, radius and thickness.
+const AIR = {
+  uniforms: {
+    tDiffuse: { value: null }, res: { value: new THREE.Vector2(1, 1) },
+    nose: { value: new THREE.Vector2() }, tail: { value: new THREE.Vector2() }, rad: { value: 1 },
+    wake: { value: 0 }, bow: { value: 0 }, phase: { value: 0 }, time: { value: 0 },
+    tDepth: { value: null }, near: { value: 0.1 }, far: { value: 100 }, behind: { value: 0 },
+    blastC: { value: new THREE.Vector2() }, blastR: { value: 0 }, blastW: { value: 1 }, blast: { value: 0 },
+  },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: /* glsl */`
+    #include <packing>
+    varying vec2 vUv;
+    uniform sampler2D tDiffuse, tDepth;
+    uniform float near, far, behind;
+    uniform vec2 res, nose, tail, blastC;
+    uniform float rad, wake, bow, phase, time, blastR, blastW, blast;
+    float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    float noise(vec2 p) {
+      vec2 i = floor(p), f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+    }
+    void main() {
+      vec2 px = vUv * res;
+      vec2 off = vec2(0.0);
+      float shade = 0.0;
+      vec2 axis = nose - tail;
+      float len = length(axis);
+      if (wake + bow > 0.0 && len > 1.0) {
+        vec2 ax = axis / len, pr = vec2(-ax.y, ax.x);
+        // (Seen end on, there's nothing to show: it fades as it turns.)
+        float side = smoothstep(1.2, 3.0, len / rad);
+        vec2 d = px - nose;
+        float al = dot(d, ax), ac = dot(d, pr);
+        // The bow wave: a thin curved sheet standing just off the nose.
+        float Rc = rad * 1.8;
+        float ahead = al - (rad * 0.45 - ac * ac / (2.0 * Rc));
+        float x = ahead / (rad * 0.12);
+        vec2 n = normalize(ax + pr * (ac / Rc));
+        // (Only round the nose: it fades out sideways and before it
+        // curves back past the bullet's middle.)
+        float around = exp(-ac * ac / (rad * rad * 7.0)) * smoothstep(-len * 0.5, rad * 0.2, al);
+        off += n * (-x) * exp(-x * x) * around * bow * side * rad * 0.2;
+        // The wake: eddies shed off the base, fixed in the air as the
+        // bullet leaves them behind, widening and dying away.
+        float b = -(al + len);
+        float width = rad * (0.85 + 0.06 * max(b, 0.0) / rad);
+        float inside = smoothstep(-rad * 0.2, rad * 0.4, b) * smoothstep(width, width * 0.35, abs(ac)) * exp(-max(b, 0.0) / (rad * 45.0));
+        if (inside > 0.001) {
+          vec2 q = vec2((b + phase) / (rad * 0.55), ac / (rad * 0.42) + time * 300.0);
+          vec2 q2 = vec2((b + phase) / (rad * 0.22), ac / (rad * 0.2) - time * 500.0);
+          vec2 swirl = vec2(noise(q) - 0.5, noise(q + 17.3) - 0.5) + 0.5 * vec2(noise(q2) - 0.5, noise(q2 + 5.1) - 0.5);
+          off += swirl * inside * wake * side * rad * 0.28;
+          // (Hot, thin air shows as faint light and dark streaks even
+          // against a plain sky, as in a schlieren photograph.)
+          shade += (swirl.x + swirl.y) * inside * wake * side * 0.2;
+        }
+        shade += (-x) * exp(-x * x) * around * bow * side * 0.14;
+      }
+      if (blast > 0.0) {
+        vec2 d = px - blastC;
+        float r = length(d);
+        float x = (r - blastR) / blastW;
+        // A lens-like ring: the picture pushed out at the front of the
+        // shell and pulled in behind it.
+        off += (d / max(r, 1e-3)) * (-x) * exp(-x * x) * blast * blastW * 0.6;
+        shade += (-x) * exp(-x * x) * blast * 0.06;
+      }
+      // (Only the air behind the bullet bends: nothing nearer than
+      // behind metres, the bullet itself included, moves or is pulled
+      // into the picture.)
+      if (behind > 0.0) {
+        float d0 = -perspectiveDepthToViewZ(texture2D(tDepth, vUv).x, near, far);
+        float d1 = -perspectiveDepthToViewZ(texture2D(tDepth, vUv + off / res).x, near, far);
+        float k = smoothstep(behind, behind * 1.25, min(d0, d1));
+        off *= k;
+        shade *= k;
+      }
+      vec4 col = texture2D(tDiffuse, vUv + off / res);
+      gl_FragColor = vec4(col.rgb * (1.0 + shade), col.a);
     }`,
 };

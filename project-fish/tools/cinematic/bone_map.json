@@ -114,5 +114,14 @@
       "CC_Base_R_Hand",
       0.6
     ]
+  },
+  "roll": {
+    "about": "The second direction (besides `aim`) that lines up each bone's roll between the two rests, by Mixamo bone name (first pattern that matches): 'left' the character's left (+X), 'up' (+Y), 'palm' the palm's width (index knuckle to little-finger knuckle), 'palm_normal' the palm's normal (for the thumb, which points along the palm's width), 'world' no lining up at all: his bone keeps its own rest turn where Mixamo's is at rest (the feet: both stand flat in their rests, but his ankle sits higher over his toes than Mixamo's, so pointing his foot the way Mixamo's points would tip his heel into the ground).",
+    "(Left|Right)HandThumb\\d": "palm_normal",
+    "(Left|Right)Hand(Index|Middle|Ring|Pinky)\\d": "palm",
+    "(Left|Right)(Arm|ForeArm|Hand)": "palm",
+    "(Left|Right)Shoulder": "up",
+    "(Left|Right)(Foot|ToeBase)": "world",
+    ".*": "left"
   }
 }

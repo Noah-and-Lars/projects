@@ -3,25 +3,32 @@
 // primer fired (seconds), so the film can show any instant exactly (and
 // slow it down as much as it likes).
 //
-// The facts, and where they come from (checked 2026-11):
-// - The load: a 115 grain (7.45 g) FMJ round-nose bullet. Federal's
-//   American Eagle AE9DP (115 gr FMJ) is listed at 1,180 ft/s (360 m/s) at
-//   the muzzle from a 4 in test barrel, 1,048 ft/s at 50 yards, 356 ft·lbf
-//   (483 J) at the muzzle (federalpremium.com, AE9DP; the same figures in
-//   Vista Outdoor's ballistics chart). Wikipedia's "9×19mm Parabellum"
-//   table gives the same 360 m/s for a 115 gr Federal FMJ. The speed falls
-//   (1,180 - 1,048) ft/s over 50 yd: 0.88 m/s for each metre it flies.
-// - The rifling: one turn in 250 mm (9.84 in), the C.I.P. figure Wikipedia
-//   gives for the cartridge (and the twist of the polygonal barrels of the
-//   pistols the PF-9 is like); so it leaves spinning 360 / 0.25 = 1,440
-//   turns a second (86,400 rpm). Spin dies away far more slowly than speed,
-//   so over 12 m it's taken as constant.
-// - Sound travels at 343 m/s in air at 20 °C, so it leaves just faster
-//   than sound.
-// - Pressure: at most 235 MPa (C.I.P.), 35,000 psi (SAAMI).
+// The facts, and where they come from (each checked 2026-11-08):
+// - The load: a 124 grain (8.04 g) full metal jacket round-nose bullet,
+//   the NATO-standard weight. Federal American Eagle AE9AP (9mm Luger,
+//   124 gr FMJ): 1,150 ft/s (350.5 m/s) at the muzzle from a 4 in test
+//   barrel; 1,095 ft/s at 25 yd, 1,049 ft/s at 50 yd, 977 ft/s at 100 yd;
+//   364 ft-lbf (494 J) at the muzzle.
+//   https://www.federalpremium.com/handgun/american-eagle/11-AE9AP.html
+//   So it loses (1,150 - 1,049) ft/s over 50 yd: 30.8 m/s in 45.72 m,
+//   0.673 m/s for each metre it flies (speed falling in a straight line
+//   with distance, which is what an exponential fall in time gives; good
+//   to a fraction of a m/s over the film's 12 m). That leaves it at about
+//   342 m/s at the plate.
+// - The rifling: one turn in 10 in (254 mm), the usual twist of 9 mm
+//   pistol barrels in the US (SIG Sauer's, for example); C.I.P. gives
+//   250 mm (1 in 9.84 in) (https://en.wikipedia.org/wiki/9×19mm_Parabellum,
+//   its infobox). So it leaves spinning 350.5 / 0.254 = 1,380 turns a
+//   second (82,800 rpm). Spin dies away far more slowly than speed, so
+//   over 12 m it's taken as constant.
+// - Sound travels at 343 m/s in dry air at 20 °C: the bullet leaves just
+//   faster than sound (Mach 1.02) and drops just below it by the plate.
+// - Pressure: at most 235 MPa (34,084 psi) by C.I.P., 35,000 psi
+//   (241 MPa) by SAAMI (the same Wikipedia infobox).
 // - The PF-9's barrel (assets/pistol.glb): 104 mm (4.1 in) from the
-//   chamber's back to the muzzle; the bullet's base, seated, is 88.6 mm
-//   from the muzzle.
+//   chamber's back to the muzzle, close to the 4 in test barrel. The
+//   bullet's base, seated (round.js: the cartridge at its 29.69 mm
+//   maximum length), is 104 - (19.15 - 4.86) = 89.7 mm from the muzzle.
 // - The case: 70/30 cartridge brass (70% copper, 30% zinc).
 //
 // What isn't measured: how a pistol's parts move inside the first few
@@ -31,17 +38,22 @@
 // back about 5 ms in, throws the case out on the way and is home by about
 // 12 ms), not a measurement of this gun.
 
+import { ROUND } from './round.js';
+
+const FT = 0.3048;
 export const SHOT = {
-  speed: 360, // m/s at the muzzle
-  slowing: 0.88, // m/s lost per metre flown (1/s)
-  twist: 0.25, // metres per turn of the rifling
-  mass: 0.00745, // kg (115 grains)
-  bore: 0.0886, // m the bullet's base travels in the barrel
+  speed: 1150 * FT, // m/s at the muzzle (350.5)
+  slowing: ((1150 - 1049) * FT) / (50 * 3 * FT), // m/s lost per metre flown (1/s): 0.673
+  twist: 0.254, // metres per turn of the rifling (1 in 10 in)
+  mass: 124 * 0.00006479891, // kg (124 grains: 8.035 g)
+  barrel: 0.104, // the PF-9's, chamber's back to muzzle (m)
   sound: 343, // m/s
 };
+// How far the bullet's base travels in the barrel (m).
+SHOT.bore = SHOT.barrel - (ROUND.case.length - ROUND.seat);
 // (The bullet speeds up in the barrel as x = bore * (t / exit)^1.6, which
 // leaves it at the muzzle speed.)
-SHOT.exit = (1.6 * SHOT.bore) / SHOT.speed; // 0.39 ms
+SHOT.exit = (1.6 * SHOT.bore) / SHOT.speed; // 0.41 ms
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const smooth = (a, b, x) => {
@@ -141,10 +153,13 @@ export function gunKick(t) {
 }
 
 // The plate's swing (radians, its bottom back from the shooter) t seconds
-// after the bullet strikes. A 12 in plate of 3/8 in steel weighs about
-// 5.3 kg; the bullet's 2.7 kg·m/s gives it about half a metre a second,
-// which swings it some 15 degrees on its chains, a damped pendulum.
-export function plateSwing(t, { peak = 0.26, period = 1.25, damping = 0.55 } = {}) {
+// after the bullet strikes. A 12 in (305 mm) plate of 3/8 in (9.5 mm)
+// steel weighs 5.45 kg; hung 0.41 m below the bar (to its middle) it
+// swings with a period of 2 pi sqrt(I / m g d) = 1.29 s (I = m (r^2 / 4 +
+// d^2)). The bullet brings 8.04 g x 342 m/s = 2.75 kg m/s; about the bar
+// that's 1.13 kg m^2/s, starting it at 1.18 rad/s, which swings it some
+// 14 degrees (0.24 rad) on its chains, a damped pendulum.
+export function plateSwing(t, { peak = 0.23, period = 1.29, damping = 0.55 } = {}) {
   if (t <= 0) return 0;
   const w = (2 * Math.PI) / period;
   return peak * 1.25 * Math.exp(-damping * t) * Math.sin(w * t) * (1 - Math.exp(-t / 0.004));

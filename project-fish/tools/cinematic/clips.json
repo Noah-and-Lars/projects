@@ -1,0 +1,148 @@
+{
+  "about": "The Mixamo clips the cinematic uses (tools/cinematic/retarget_mixamo.py; npm run build-cinematic-clips). Paths are under `source` (build/mixamo/, the downloads: FBX Binary, without skin, 30 fps; never committed). `rest` is the skinned X Bot whose bind pose is Mixamo's rest. Each clip: its name in assets/cinematic/soldier_clips.glb, its file, `trim` [from, to] seconds of it kept (none: all of it, so the film's times are the download's own), `loops` to repeat a cycle (a run) carrying him on, and `use`: what the film uses it for (tools/cinematic/README.md has the takes, trims and grips). `candidates` are the other downloads, built only with --candidates (for looking at them).",
+  "project": "../..",
+  "source": "build/mixamo",
+  "soldier": "assets/soldier.glb",
+  "rest": "Soccer_Game_Pack/files/X Bot.fbx",
+  "clips": [
+    {
+      "name": "sprint",
+      "file": "Sprint/Sprint.fbx",
+      "loops": 5,
+      "use": "the run in: one 0.533 s stride cycle, 5 times (2.67 s, 14.4 m)"
+    },
+    {
+      "name": "dive",
+      "file": "Soccer_Game_Pack/files/goalkeeper diving save.fbx",
+      "use": "the dive to his left and the mid-air snatch (right hand), landing, rolling over and coming up"
+    },
+    {
+      "name": "cover",
+      "file": "Idle_Crouching/Idle_Crouching.fbx",
+      "use": "kneeling behind the barrier, gun low (right knee down)"
+    },
+    {
+      "name": "cover_aim",
+      "file": "Pistol_Kneeling_Idle/Pistol_Kneeling_Idle.fbx",
+      "use": "kneeling, gun up in both hands (the pop-up's first frame); also the right hand's grip for the snatch"
+    },
+    {
+      "name": "pop_up",
+      "file": "Pistol_Kneel_To_Stand/Pistol_Kneel_To_Stand.fbx",
+      "use": "rising from the knee to standing, aiming"
+    },
+    {
+      "name": "fire",
+      "file": "Shooting/Shooting.fbx",
+      "use": "standing two-handed, one shot with its recoil"
+    },
+    {
+      "name": "spare_dive_roll",
+      "file": "Running_Dive_Roll/Running_Dive_Roll.fbx",
+      "use": "spare: a forward dive roll from a run, aiming before and after"
+    },
+    {
+      "name": "spare_aim",
+      "file": "Pistol_Idle/Pistol_Idle.fbx",
+      "use": "spare: standing, aiming, still"
+    }
+  ],
+  "candidates": [
+    {
+      "name": "fast_run",
+      "file": "Fast_Run/Fast_Run.fbx"
+    },
+    {
+      "name": "crouched_to_sprint",
+      "file": "Crouched_To_Sprinting/Crouched_To_Sprinting.fbx"
+    },
+    {
+      "name": "pistol_run",
+      "file": "Pistol_Run/Pistol_Run.fbx"
+    },
+    {
+      "name": "pistol_run_1",
+      "file": "Pistol_Run_1/Pistol_Run_1.fbx"
+    },
+    {
+      "name": "standing_dive_forward",
+      "file": "Standing_Dive_Forward/Standing_Dive_Forward.fbx"
+    },
+    {
+      "name": "stand_to_roll",
+      "file": "Stand_To_Roll/Stand_To_Roll.fbx"
+    },
+    {
+      "name": "cover_idle",
+      "file": "Cover_Idle/Cover_Idle.fbx"
+    },
+    {
+      "name": "standing_cover_turn",
+      "file": "Standing_Cover_Turn/Standing_Cover_Turn.fbx"
+    },
+    {
+      "name": "shooting_pistol",
+      "file": "Shooting_Pistol/Shooting_Pistol.fbx"
+    },
+    {
+      "name": "gunplay",
+      "file": "Gunplay/Gunplay.fbx"
+    },
+    {
+      "name": "hit_reaction",
+      "file": "Hit_Reaction/Hit_Reaction.fbx"
+    },
+    {
+      "name": "shoulder_hit_and_fall",
+      "file": "Shoulder_Hit_And_Fall/Shoulder_Hit_And_Fall.fbx"
+    },
+    {
+      "name": "gk_diving_save_2",
+      "file": "Soccer_Game_Pack/files/goalkeeper diving save (2).fbx"
+    },
+    {
+      "name": "gk_catch",
+      "file": "Soccer_Game_Pack/files/goalkeeper catch.fbx"
+    },
+    {
+      "name": "gk_catch_2",
+      "file": "Soccer_Game_Pack/files/goalkeeper catch (2).fbx"
+    },
+    {
+      "name": "gk_catch_3",
+      "file": "Soccer_Game_Pack/files/goalkeeper catch (3).fbx"
+    },
+    {
+      "name": "gk_catch_4",
+      "file": "Soccer_Game_Pack/files/goalkeeper catch (4).fbx"
+    },
+    {
+      "name": "gk_scoop",
+      "file": "Soccer_Game_Pack/files/goalkeeper scoop.fbx"
+    },
+    {
+      "name": "gk_miss",
+      "file": "Soccer_Game_Pack/files/goalkeeper miss.fbx"
+    },
+    {
+      "name": "gk_body_block",
+      "file": "Soccer_Game_Pack/files/goalkeeper body block.fbx"
+    },
+    {
+      "name": "fallen_idle",
+      "file": "Soccer_Game_Pack/files/fallen idle.fbx"
+    },
+    {
+      "name": "standing_up",
+      "file": "Soccer_Game_Pack/files/standing up.fbx"
+    },
+    {
+      "name": "soccer_tackle_2",
+      "file": "Soccer_Game_Pack/files/soccer tackle (2).fbx"
+    },
+    {
+      "name": "soccer_trip",
+      "file": "Soccer_Game_Pack/files/soccer trip.fbx"
+    }
+  ]
+}
