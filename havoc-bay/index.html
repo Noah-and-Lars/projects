@@ -419,6 +419,12 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.3.3 <small>Voice chat</small></h3>
+    <ul>
+      <li><b>Voice chat in online battles.</b> In the Public Battle and in private rooms, hold <b>G</b> to talk to everyone in the lobby. The first time you press it your browser asks to use the microphone.</li>
+      <li>The players talking show at the left of the screen.</li>
+      <li><b>Settings → Voice chat → Off</b> mutes all voice chat: you won't hear anyone, and nobody hears you.</li>
+    </ul>
     <h3>v1.3.2 <small>Houses you can go into, real cockpits, better bullets</small></h3>
     <ul>
       <li><b>Houses you can go into.</b> Every house on the islands and the barracks in each harbor now has a door, open windows, a wooden floor and furniture inside. The walls and roof stop bullets, so you can take cover inside and shoot out of the windows.</li>
@@ -575,6 +581,7 @@ body.touch #throttle{top:40%}
     <div class="opt">Invert look <div class="seg" id="sInv"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Graphics <div class="seg" id="sQual"><button class="btn" data-v="auto">Auto</button><button class="btn" data-v="low">Low</button><button class="btn" data-v="medium">Med</button><button class="btn" data-v="high">High</button></div></div>
     <div class="opt" style="display:none">Your name (online) <input class="inp" id="sName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Captain" style="width:170px;min-height:36px;padding:4px 10px;font-size:15px"></div>
+    <div class="opt">Voice chat <span style="margin-left:auto;margin-right:8px;opacity:.7;font-size:13px">hold G to talk</span><div class="seg" id="sVoice"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Menu music <div class="seg" id="sMusic"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Low performance warning <div class="seg" id="sPerf"><button class="btn" data-v="0">Off</button><button class="btn" data-v="1">On</button></div></div>
     <div class="opt">Touch controls <div class="seg" id="sTouch"><button class="btn" data-v="auto">Auto</button><button class="btn" data-v="on">On</button><button class="btn" data-v="off">Off</button></div></div>
@@ -597,6 +604,7 @@ body.touch #throttle{top:40%}
       <tr><td>R</td><td>Missile (jets, battleship)</td></tr>
       <tr><td>E</td><td>Use a spawn pad, turret, parked plane or the missile computer · get in or out (hold 3 seconds to bail out of a plane)</td></tr>
       <tr><td>X</td><td>Flare: pulls homing missiles off you (planes, Battleship, Carrier)</td></tr>
+      <tr><td>G (hold)</td><td>Push to talk: voice chat to everyone in your online lobby</td></tr>
       <tr><td>Shift + A / D</td><td>Barrel roll (planes)</td></tr>
       <tr><td>Ctrl</td><td>Crouch, then lie down, then stand up</td></tr>
       <tr><td>S (plane)</td><td>Lowest speed: touch down on your carrier or a runway to land. Stay parked 8 seconds to refuel, rearm and repair</td></tr>
@@ -671,7 +679,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.3.2';
+const VERSION = '1.3.3';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -5605,6 +5613,8 @@ function boot() {
   segBind('teamSeg', 'team'); segBind('diffSeg', 'difficulty'); segBind('botSeg', 'bots'); segBind('timeSeg', 'minutes');
   if (settings.menuMusic === undefined) settings.menuMusic = 1;
   segBind('sMusic', 'menuMusic'); // 1.2
+  if (settings.voice === undefined) settings.voice = 1;
+  segBind('sVoice', 'voice', () => window.HBVoice && HBVoice.setting()); // 1.3.3: Off mutes everyone, you included
   segBind('sInv', 'invert'); segBind('sQual', 'quality', applyQuality); segBind('sTouch', 'touch', () => document.body.classList.toggle('touch', touchOn()));
   // jump the demo battle ahead a little so the title screen has action in it
   toTitle();
@@ -8351,6 +8361,10 @@ function rbox(w, h, d, r, seg = 3) {
     ended,
     boardNote: () => `👤 real players · ${room && room.world ? 'online server' : 'room ' + (room ? room.code : '')} · ${room && isHost() ? 'you are the host' : 'ping ' + (room && room.myPing != null ? room.myPing + ' ms' : '–')}`,
     inRoom: () => !!room,
+    // 1.3.3: voice chat runs on its own channel beside the room's, once the room has let us in
+    voiceTopic: () => room && room.accepted && room.ch && !room.closed ? room.topic + '-voice' : null,
+    voiceClient: () => client,
+    voiceName: id => room ? nameOf(id) : 'Player',
     // 1.2.1: on your own online (nobody to play against) there's no gold, and a match only counts if someone
     // else was there for at least a minute of it
     alone: () => !!(M && room && members().length < 2),
@@ -9123,6 +9137,143 @@ const snap131 = () => [TUP[0], TUP[1]];
 function apply131(z) { [0, 1].forEach(t => { const n = z[t] | 0, add = n & ~TUP[t]; if (!add) return; TUP[t] |= add; for (const U of UPGRADES) if (add & U.bit) applyUpgrade(t, U.bit); }); }
 </script>
 <!-- hb-reel:start -->
+<script id="hb-voice">
+'use strict';
+/* 1.3.3 voice chat. Everyone in an online lobby (the Public Battle or a private room) can talk to the whole lobby.
+   Hold G to talk (push to talk). Audio goes straight between the players' browsers (WebRTC, a connection to each
+   other player); only the setup messages go over the arcade's server, on the channel '<room topic>-voice' (Presence =
+   who has voice on; broadcast 'sig' {to, from, sdp | ice} and 'tk' {id, on} for the talking list). Every connection
+   has an audio slot from the start, so the microphone (asked for the first time you press G) just drops into it.
+   Settings → Voice chat → Off leaves the voice channel: you hear nobody and nobody hears you. */
+(() => {
+  const ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
+  const V = { topic: null, ch: null, peers: new Map(), mic: null, micAsk: null, talking: false, who: new Map(), joining: false };
+  const me = () => NET.myKey && NET.myKey();
+  const on = () => settings.voice !== 0;
+  const hud = document.createElement('div'); hud.id = 'vcHud';
+  hud.style.cssText = 'position:fixed;left:12px;top:42%;z-index:30;display:none;flex-direction:column;gap:5px;pointer-events:none;font:700 13px/1.2 system-ui,Segoe UI,Arial,sans-serif';
+  document.body.appendChild(hud);
+  const send = (event, payload) => { if (V.ch) try { V.ch.send({ type: 'broadcast', event, payload }); } catch (e) {} };
+
+  function drawHud() {
+    if (!V.ch) { hud.style.display = 'none'; return; }
+    hud.style.display = 'flex'; hud.innerHTML = '';
+    const pill = (txt, live, dim) => { const d = document.createElement('div'); d.textContent = txt;
+      d.style.cssText = 'padding:5px 10px;border-radius:9px;color:#fff;background:' + (live ? 'rgba(40,170,90,.85)' : 'rgba(10,14,20,.55)') + ';opacity:' + (dim ? 0.75 : 1) + ';max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      hud.appendChild(d); };
+    pill(V.talking ? '🎙 Talking…' : V.micAsk === 'denied' ? '🎙 Microphone blocked' : '🎙 Hold G to talk', V.talking, !V.talking);
+    for (const [id, t] of V.who) if (t && V.peers.has(id)) pill('🔊 ' + NET.voiceName(id), true);
+  }
+  // the caller makes the audio slot; the answerer uses the one the caller's offer brings (see onSig)
+  function peerFor(id, caller) {
+    let P = V.peers.get(id); if (P) return P;
+    const pc = new RTCPeerConnection({ iceServers: ICE });
+    const tr = caller ? pc.addTransceiver('audio', { direction: 'sendrecv' }) : null;
+    if (tr && V.mic) tr.sender.replaceTrack(V.mic.getAudioTracks()[0]);
+    const el = document.createElement('audio'); el.autoplay = true; el.volume = Math.min(1, (settings.volume == null ? 0.7 : settings.volume) * 1.3);
+    pc.ontrack = e => { el.srcObject = e.streams[0] || new MediaStream([e.track]); el.play().catch(() => {}); };
+    pc.onicecandidate = e => { if (e.candidate) send('sig', { to: id, from: me(), ice: e.candidate.toJSON() }); };
+    pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') { closePeer(id); setTimeout(sync, 2000); } };
+    P = { pc, tr, el, pend: [] }; V.peers.set(id, P);
+    return P;
+  }
+  function closePeer(id) { const P = V.peers.get(id); if (!P) return; try { P.pc.close(); } catch (e) {} P.el.srcObject = null; V.peers.delete(id); V.who.delete(id); drawHud(); }
+  async function call(id) {
+    const P = peerFor(id, true);
+    try { await P.pc.setLocalDescription(await P.pc.createOffer()); send('sig', { to: id, from: me(), sdp: P.pc.localDescription.toJSON() }); } catch (e) { closePeer(id); }
+  }
+  async function onSig(d) {
+    if (!d || d.to !== me() || !d.from) return;
+    try {
+      if (d.sdp && d.sdp.type === 'offer') {
+        if (V.peers.has(d.from)) closePeer(d.from);
+        const P = peerFor(d.from, false);
+        await P.pc.setRemoteDescription(d.sdp);
+        P.tr = P.pc.getTransceivers()[0]; if (P.tr) { P.tr.direction = 'sendrecv'; if (V.mic) P.tr.sender.replaceTrack(V.mic.getAudioTracks()[0]); }
+        for (const c of P.pend) await P.pc.addIceCandidate(c); P.pend = [];
+        await P.pc.setLocalDescription(await P.pc.createAnswer());
+        send('sig', { to: d.from, from: me(), sdp: P.pc.localDescription.toJSON() });
+      } else if (d.sdp) {
+        const P = V.peers.get(d.from); if (!P) return;
+        await P.pc.setRemoteDescription(d.sdp);
+        for (const c of P.pend) await P.pc.addIceCandidate(c); P.pend = [];
+      } else if (d.ice) {
+        const P = V.peers.get(d.from); if (!P) return;
+        if (P.pc.remoteDescription) await P.pc.addIceCandidate(d.ice); else P.pend.push(d.ice);
+      }
+    } catch (e) { console.warn('voice', e); }
+  }
+  // who has voice on right now: connect to the new ones (the lower id calls), drop the ones that left
+  function sync() {
+    if (!V.ch) return;
+    const st = V.ch.presenceState(), here = new Set(Object.keys(st)), mine = me();
+    for (const id of [...V.peers.keys()]) if (!here.has(id)) closePeer(id);
+    for (const id of here) if (id !== mine && !V.peers.has(id) && mine < id) call(id);
+    drawHud();
+  }
+  async function join(topic) {
+    if (V.joining) return; V.joining = true;
+    try {
+      const c = NET.voiceClient(); if (!c) return;
+      const ch = c.channel(topic, { config: { broadcast: { self: false, ack: false }, presence: { key: me() } } });
+      ch.on('presence', { event: 'sync' }, sync);
+      ch.on('broadcast', { event: 'sig' }, m => onSig(m.payload));
+      ch.on('broadcast', { event: 'tk' }, m => { const d = m.payload || {}; if (d.id) { V.who.set(d.id, !!d.on); drawHud(); } });
+      await new Promise((res, rej) => { const to = setTimeout(() => rej('timeout'), 9000); ch.subscribe(s => { if (s === 'SUBSCRIBED') { clearTimeout(to); res(); } else if (s === 'CHANNEL_ERROR') { clearTimeout(to); rej('error'); } }); });
+      if (NET.voiceTopic() !== topic || !on()) { try { c.removeChannel(ch); } catch (e) {} return; }
+      V.ch = ch; V.topic = topic;
+      await ch.track({ id: me(), t: Date.now() });
+      drawHud();
+    } catch (e) { /* no voice this time; the next check tries again */ }
+    finally { V.joining = false; }
+  }
+  function leave() {
+    talk(false);
+    for (const id of [...V.peers.keys()]) closePeer(id);
+    if (V.ch) { const ch = V.ch, c = NET.voiceClient(); V.ch = null; try { ch.untrack(); } catch (e) {} setTimeout(() => { try { c.removeChannel(ch); } catch (e) {} }, 150); }
+    V.topic = null; V.who.clear();
+    if (V.mic) { V.mic.getTracks().forEach(t => t.stop()); V.mic = null; } // the browser's mic light goes off
+    drawHud();
+  }
+  // follow the lobby: in a room with voice on means on the voice channel; anything else means off it
+  setInterval(() => {
+    const want = on() && NET.voiceTopic ? NET.voiceTopic() : null;
+    if (want !== V.topic && V.ch) leave();
+    if (want && !V.ch) join(want);
+  }, 1000);
+
+  async function micReady() {
+    if (V.mic) return true;
+    if (V.micAsk === 'asking') return false;
+    V.micAsk = 'asking';
+    try {
+      V.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      const t = V.mic.getAudioTracks()[0]; t.enabled = false;
+      for (const P of V.peers.values()) if (P.tr) P.tr.sender.replaceTrack(t);
+      V.micAsk = 'ok'; return true;
+    } catch (e) { V.micAsk = 'denied'; drawHud(); return false; }
+  }
+  function talk(want) {
+    if (want === V.talking) return;
+    V.talking = want;
+    if (V.mic) V.mic.getAudioTracks().forEach(t => t.enabled = want);
+    send('tk', { id: me(), on: want ? 1 : 0 });
+    drawHud();
+  }
+  const typing = () => { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable); };
+  let held = false;
+  addEventListener('keydown', async e => {
+    if (e.code !== 'KeyG' || e.repeat || typing() || !V.ch) return;
+    held = true;
+    if (await micReady() && held) talk(true);
+  });
+  addEventListener('keyup', e => { if (e.code === 'KeyG') { held = false; talk(false); } });
+  addEventListener('blur', () => { held = false; talk(false); });
+  window.HBVoice = { setting() { if (!on()) leave(); }, state: () => ({ topic: V.topic, peers: [...V.peers.entries()].map(([k, P]) => [k, P.pc.connectionState]), mic: !!V.mic, ask: V.micAsk, talking: V.talking }),
+    // audio bytes received from everyone (for tests)
+    rx: async () => { let b = 0; for (const P of V.peers.values()) (await P.pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') b += r.bytesReceived || 0; }); return b; } };
+})();
+</script>
 <script id="hb-reel">
 'use strict';
 /* ==========================================================================

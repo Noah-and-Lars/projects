@@ -334,6 +334,10 @@ source in Settings → Pages should be switched to `main`.
   1.2.7: `HARBOR_X` 2126 (was 1575) and harbor islands `r` 290 (was 225); `MAP`, `BOUND` (x 2950), `DEPTH_W`, `MINI` and
   the PC map's `MAPV.s` grew to match. Each harbor has six more turret spots on the new land (4 AA, 2 cannons).
   `restoreIsland` (called by `setIslandOwner` when a team claims it) removes `SCORCHES` and `EMITTERS` on that island.
+  1.3.3: voice chat (`<script id="hb-voice">`, `window.HBVoice`): everyone in an online lobby (Public Battle or private room)
+  talks to the whole lobby, push to talk on G. WebRTC mesh; setup over its own channel `<room topic>-voice` (Presence + 'sig',
+  'tk'), found through `NET.voiceTopic()` (set once the room accepts you). Settings `voice` 0 leaves the channel (you hear and
+  send nothing); the mic is only asked for on the first G press and stopped when you leave.
   1.3: `midairHit` (any two planes, either team, within 62% of their radii) in `Plane.update`: both are killed with
   `midair` + `crashed` (a fireball in `onDeath`, then the wreck falls and blows up on the ground). Each screen checks the
   planes it runs; the host or offline game also kills the other plane. First person: `settings.fp` (C on foot or on a

@@ -119,11 +119,11 @@ window.GAMES = [
     description: 'A Red vs Blue sea battle. Sail warships, fly planes and fight on foot to claim islands and destroy the enemy harbor. Join the public online battle, play a private room with friends, or play offline against bots.',
     controls: 'Keyboard + mouse or touch',
     keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['1 to 5', 'Switch guns on foot'], ['C', 'Cockpit or chase view in a plane'], ['F', 'Torpedo or drop a bomb'], ['R', 'Missile (jet, battleship)'], ['X', 'Flare (planes, battleship, carrier)'], ['Shift + A / D', 'Barrel roll'], ['Ctrl', 'Crouch, then lie down'], ['Enter', 'Deploy again (in the deploy menu)'],
-           ['E', 'Use pads and turrets, get in and out (hold to bail out of a plane)'], ['Space', 'Jump, or level out a plane'], ['Shift', 'Sprint'], ['B', 'Deploy menu, or launch a plane from your carrier'], ['M', 'Map'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat (online)'], ['Y', 'Team chat (online)'], ['Esc', 'Pause']],
+           ['E', 'Use pads and turrets, get in and out (hold to bail out of a plane)'], ['Space', 'Jump, or level out a plane'], ['Shift', 'Sprint'], ['B', 'Deploy menu, or launch a plane from your carrier'], ['M', 'Map'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat (online)'], ['Y', 'Team chat (online)'], ['Esc', 'Pause'], ['G (hold)', 'Push to talk (online)']],
     path: 'havoc-bay/index.html',
     thumb: 'havoc-bay/thumb.jpg?v=2',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-11-07T21:30:00+11:00',
+    updated: '2026-11-09T00:30:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -295,6 +295,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-09', game: 'havoc-bay', text: 'Havoc Bay 1.3.3: voice chat. In the Public Battle and in private rooms, hold G to talk to everyone in the lobby. Settings > Voice chat > Off mutes it all, you included.' },
   { date: '2026-11-08', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.1: a crew leaderboard for every stage (online crews only), a stopwatch, neutral revs and launches on Shift, smoother gauges, a new engine sound, a calmer co-driver voice, steadier handling and less road for the driver to see.' },
   { date: '2026-11-08', game: 'turn-turn-turn', text: 'New game: Turn! Turn! TURN!, a co-op dirt rally. One of you drives with no map, the other reads the route off a tablet and calls the turns. Make a crew with a 6-digit code, or drive solo with an AI co-driver.' },
   { date: '2026-11-07', game: 'havoc-bay', text: 'Havoc Bay 1.3.2: walk into the island houses and barracks for cover (doors, windows, floors, furniture; walls stop bullets). Rebuilt cockpits with clear windscreens, glowing tracers, gun recoil in first person, and an unlimited match time for bot games.' },
