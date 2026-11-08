@@ -66,16 +66,6 @@ export function buildSet(renderer, { shadowCentre = new THREE.Vector3(1.5, 0, 0)
   sun.shadow.bias = -0.0003;
   sun.shadow.normalBias = 0.015;
   group.add(sun, sun.target);
-  // (A second, tight shadow for the close shots of the round and the gun:
-  // switched on by the film for those.)
-  const fine = new THREE.DirectionalLight(0xffffff, 0);
-  fine.castShadow = true;
-  fine.shadow.mapSize.set(2048, 2048);
-  Object.assign(fine.shadow.camera, { left: -0.5, right: 0.5, top: 0.5, bottom: -0.5, near: 1, far: 30 });
-  fine.shadow.bias = -0.0002;
-  fine.shadow.normalBias = 0.002;
-  group.add(fine, fine.target);
-
   // The baseplate: the game's grey, with a faint grain so movement over it
   // reads in the close, fast shots.
   const floorTex = canvasTexture(1024, 1024, (g, w, h) => {
@@ -122,7 +112,7 @@ export function buildSet(renderer, { shadowCentre = new THREE.Vector3(1.5, 0, 0)
   group.add(target.group);
 
   return {
-    group, sun, fine, floor, barriers, target,
+    group, sun, floor, barriers, target,
     fog: new THREE.Fog(SKY_COLOR, 60, 900),
     background: new THREE.Color(SKY_COLOR),
   };
@@ -298,7 +288,7 @@ function plateTexture(rng) {
   const N = 1024;
   const n = tileNoise(N, N, rng, [[6, 0.4], [24, 0.35], [96, 0.25]]);
   const splashes = [];
-  for (let k = 0; k < 9; k++) {
+  for (let k = 0; k < 6; k++) {
     const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 0.62;
     splashes.push([0.5 + Math.cos(a) * r * 0.5, 0.5 + Math.sin(a) * r * 0.5, 0.025 + rng() * 0.03]);
   }
@@ -312,7 +302,7 @@ function plateTexture(rng) {
       img.data[i * 4 + 3] = 255;
     }
     g.putImageData(img, 0, 0);
-    for (const [x, y, r] of splashes) drawSplash(g, x * N, y * N, r * N, rng, 0.55);
+    for (const [x, y, r] of splashes) drawSplash(g, x * N, y * N, r * N * 0.8, rng, 0.32);
   });
   const rough = canvasTexture(N, N, (g) => {
     g.fillStyle = '#a0a0a0';
@@ -343,23 +333,57 @@ export function drawSplash(g, x, y, r, rng, strength = 1) {
   }
   g.fill();
   // Rays of lead.
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 30; i++) {
     const a = rng() * Math.PI * 2;
-    const len = r * (0.6 + rng() * 1.5);
-    g.strokeStyle = `rgba(62,64,68,${0.35 + rng() * 0.5})`;
-    g.lineWidth = r * (0.03 + rng() * 0.07);
+    const len = r * (0.7 + rng() * 0.9);
+    g.strokeStyle = `rgba(92,95,100,${0.3 + rng() * 0.45})`;
+    g.lineWidth = r * (0.02 + rng() * 0.05);
     g.beginPath();
     g.moveTo(Math.cos(a) * r * 0.15, Math.sin(a) * r * 0.15);
     g.lineTo(Math.cos(a) * len, Math.sin(a) * len);
     g.stroke();
   }
   const core = g.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
-  core.addColorStop(0, 'rgba(40,42,46,1)');
-  core.addColorStop(0.6, 'rgba(70,72,76,0.9)');
+  core.addColorStop(0, 'rgba(70,72,76,1)');
+  core.addColorStop(0.6, 'rgba(105,108,112,0.9)');
   core.addColorStop(1, 'rgba(90,92,96,0)');
   g.fillStyle = core;
   g.beginPath();
   g.arc(0, 0, r * 0.55, 0, Math.PI * 2);
   g.fill();
   g.restore();
+}
+
+// The sky the film's metal reflects: the game's outdoor reflections
+// (src/world.js outdoorEnvironment) with more contrast for the close-ups,
+// a bright horizon, a darker ground and a hot sun, so polished copper and
+// brass show crisp highlights and dark edges as they do outside.
+export function filmEnvironment(renderer, sunDirection) {
+  const scene = new THREE.Scene();
+  const dome = new THREE.SphereGeometry(10, 96, 48);
+  const sky = new THREE.Color(0.22, 0.34, 0.6);
+  const horizon = new THREE.Color(0.95, 0.97, 1.0);
+  const ground = new THREE.Color(0.07, 0.07, 0.075);
+  const colors = [];
+  const position = dome.attributes.position;
+  for (let i = 0; i < position.count; i++) {
+    const up = position.getY(i) / 10;
+    const c = up > 0 ? horizon.clone().lerp(sky, Math.pow(up, 0.3)) : horizon.clone().lerp(ground, Math.min(1, -up * 22));
+    colors.push(c.r, c.g, c.b);
+  }
+  dome.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  scene.add(new THREE.Mesh(dome, new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true })));
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(20, 18.5, 16.5) }));
+  sun.position.copy(sunDirection).multiplyScalar(9);
+  scene.add(sun);
+  // A pale wall low on the far side, for a second, softer highlight.
+  const card = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.6), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.2, 2.2), side: THREE.DoubleSide }));
+  card.position.copy(sunDirection).multiplyScalar(-8.5).setY(1.2);
+  card.lookAt(0, 0, 0);
+  scene.add(card);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const texture = pmrem.fromScene(scene, 0).texture;
+  pmrem.dispose();
+  dome.dispose();
+  return texture;
 }

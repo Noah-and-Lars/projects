@@ -93,15 +93,15 @@ function lathe(pts, segments = 64) {
 // small dip in the radius, twisted the way the rifling turns (right hand).
 function firedBulletGeometry() {
   const outline = bulletOutline();
-  const radial = 96;
+  const radial = 128;
   const positions = [];
   const twist = 0.25; // metres a turn
   const lands = 6;
-  const depth = mm(0.045);
+  const depth = mm(0.06);
   const bearingTop = mm(6.4);
   for (let i = 0; i < outline.length; i++) {
     const [r, z] = outline[i];
-    for (let j = 0; j <= radial; j++) {
+    for (let j = 0; j < radial; j++) {
       const a = (j / radial) * Math.PI * 2;
       let rr = r;
       if (z > mm(0.2) && z < bearingTop) {
@@ -112,11 +112,13 @@ function firedBulletGeometry() {
       positions.push(Math.cos(a) * rr, Math.sin(a) * rr, z);
     }
   }
+  // (Joined all the way round, with no seam, so it's smooth everywhere.)
   const index = [];
   for (let i = 0; i < outline.length - 1; i++) {
     for (let j = 0; j < radial; j++) {
-      const a = i * (radial + 1) + j, b = a + radial + 1;
-      index.push(a, a + 1, b, b, a + 1, b + 1);
+      const a = i * radial + j, a1 = i * radial + ((j + 1) % radial);
+      const b = a + radial, b1 = a1 + radial;
+      index.push(a, b, a1, a1, b, b1);
     }
   }
   const g = new THREE.BufferGeometry();
@@ -131,9 +133,9 @@ function firedBulletGeometry() {
 export function roundMaterials(envMap = null) {
   const m = (o) => Object.assign(new THREE.MeshPhysicalMaterial(o), envMap ? { envMap } : {});
   return {
-    jacket: m({ color: new THREE.Color(0.86, 0.47, 0.30), metalness: 1, roughness: 0.22, clearcoat: 0.3, clearcoatRoughness: 0.3 }),
-    lead: m({ color: new THREE.Color(0.34, 0.35, 0.37), metalness: 0.7, roughness: 0.55 }),
-    brass: m({ color: new THREE.Color(0.93, 0.72, 0.36), metalness: 1, roughness: 0.2 }),
+    jacket: m({ color: new THREE.Color(0.93, 0.5, 0.29), metalness: 1, roughness: 0.17 }),
+    lead: m({ color: new THREE.Color(0.1, 0.105, 0.11), metalness: 0.6, roughness: 0.62 }),
+    brass: m({ color: new THREE.Color(0.95, 0.74, 0.34), metalness: 1, roughness: 0.16 }),
     primer: m({ color: new THREE.Color(0.78, 0.76, 0.72), metalness: 1, roughness: 0.32 }),
   };
 }
@@ -183,7 +185,10 @@ export function makeCartridge(mat) {
 export function makeFiredBullet(mat) {
   const body = new THREE.Mesh(firedBulletGeometry(), mat.jacket);
   const base = new THREE.Mesh(baseDisc(), mat.lead);
-  return group('bullet', [body, base]);
+  const g = group('bullet', [body, base]);
+  // (Too small for the wide shots' shadows to land on cleanly.)
+  for (const m of g.children) m.receiveShadow = false;
+  return g;
 }
 
 // The spent case, base at the origin, mouth along +Z: open (its inside

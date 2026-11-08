@@ -1,0 +1,29 @@
+/* The film (src/showcase/cinematic/film.js): over the breakdowns' look
+   (breakdown.css: the lines, the card, the title, the buttons), a black
+   screen with wide-screen bars and, in test mode, a line of notes. The
+   module adds this file to the page itself. */
+
+.bd-root.cine-root { background: #000; cursor: default; }
+.cine-bar { position: absolute; left: 0; right: 0; height: 0; background: #000; pointer-events: none; z-index: 1; }
+.cine-top { top: 0; }
+.cine-bottom { bottom: 0; }
+.cine-root .bd-lines, .cine-root .bd-card, .cine-root .bd-titlecard { z-index: 2; }
+.cine-root .bd-close, .cine-root .bd-hint, .cine-root .bd-progress { z-index: 3; }
+.cine-root .bd-progress { background: rgba(255, 255, 255, 0.07); }
+.cine-root .bd-titlecard { bottom: 18%; }
+.cine-root .bd-name { letter-spacing: 0.22em; }
+.cine-card .bd-kicker { text-transform: uppercase; }
+.cine-test {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  z-index: 4;
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #cfd6dc;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 6px 9px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.cine-test[hidden] { display: none; }
+.cine-note { color: #f2b84b; }

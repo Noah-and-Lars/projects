@@ -159,7 +159,7 @@ menu.onFailedLock = () => {
 // loop does nothing (so nothing moves, fires or is drawn), and the mouse
 // stays free, as it is in the menu. Closing it (Esc, its Close button)
 // frees all it made and goes back to the picker.
-let showcase = null; // the Breakdown while it's open (or loading)
+let showcase = null; // the Breakdown (or the cinematic) while it's open (or loading)
 async function openBreakdown(id) {
   if (showcase) return;
   const entry = breakdownById(id);
@@ -210,6 +210,39 @@ async function openBreakdown(id) {
   show.play().catch((error) => console.error(error));
 }
 menu.onBreakdown = openBreakdown;
+
+// --- The cinematic (src/showcase/cinematic/film.js) ---
+//
+// A short film of the soldier diving for a pistol, ending on the bullet
+// cam. It has no menu button yet: ?cinematic=1 in the address opens it once
+// the game has loaded (?cinematic=test with the shot names and the notes on
+// the shots still waiting for their Mixamo clips). Like a breakdown, it has
+// its own renderer and the game stands still while it's open; closing it
+// (Esc, its Close button) frees all it made and goes back to the start
+// screen.
+async function openCinematic(test = false) {
+  if (showcase) return;
+  showcase = { loading: true };
+  input.releaseAll();
+  try {
+    const { Film } = await import('./showcase/cinematic/film.js');
+    const film = new Film({
+      wardrobe, test,
+      onClose: () => {
+        showcase = null;
+        input.releaseAll();
+        overlay.hidden = false;
+      },
+    });
+    showcase = film;
+    await film.play();
+  } catch (error) {
+    console.error(error);
+    if (showcase && showcase.close) showcase.close();
+    showcase = null;
+  }
+}
+const cinematicParam = new URLSearchParams(location.search).get('cinematic');
 
 // --- Window size and field of view ---
 
@@ -369,6 +402,7 @@ viewmodel.ready.then(() => {
   for (const d of drops) scene.remove(d);
   loaded = true;
   overlayStatus.textContent = 'Click to play';
+  if (cinematicParam) openCinematic(cinematicParam === 'test');
 });
 
 // --- Shooting ---

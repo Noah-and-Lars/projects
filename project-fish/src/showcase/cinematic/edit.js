@@ -47,11 +47,16 @@
 // focus get (a share of the picture's width); `shake` a little handheld
 // wobble.
 //
-// Each shot can also: hide the soldier (`hide: ['soldier']`), hold the gun
-// in its aim pose rather than his hand (`aim: true`: until the fire clip is
-// added there's no arm to hold it up), show labels (`labels`, at film
-// seconds into the shot), play sounds (`sounds`: [film seconds into the
-// shot, name]), and show the title or the end (`title`).
+// Each shot can also: hide the soldier (`hide: ['soldier']`); with
+// `aim: true`, while the fire slot has no clip, hold the gun up in its aim
+// pose (LAYOUT.muzzle) and leave him out (his idle has no arm to hold it
+// up: the bullet cam's shots are framed on the gun and the bullet, so once
+// the fire clip is in he and his hands are simply there, and the bullet
+// flies from wherever his gun points at the shot); show labels (`labels`,
+// at film seconds into the shot, with the card on one `side`, pointing at
+// `anchor`); play sounds (`sounds`: [film seconds into the shot, name],
+// see film.js); show the title or the end (`title`); and draw tight
+// shadows round what's close up (`fine`).
 
 import { ROUND } from './round.js';
 import { SHOT, SPIN, bulletSpeed, timeToTravel } from './ballistics.js';
@@ -69,10 +74,8 @@ export const LAYOUT = {
   // the picture), arriving in his hand at the dive's catch.
   toss: { from: [-5.6, 1.35, 2.5], flight: 1.05, turns: 1.25 },
   // The round standing on the barrier in the opening shot.
-  round: [-0.62, 0.81, 0.012],
+  round: [-0.3, 0.81, 0.012],
 };
-
-const here = (path) => new URL(path, import.meta.url);
 
 export const SLOTS = [
   {
@@ -124,7 +127,7 @@ export function cards(range) {
     spin: {
       kicker: 'Bullet cam · 3 / 5',
       title: 'Spin',
-      text: `The rifling makes one turn in 250 mm (about 1 in 10 in), so it leaves the barrel spinning about ${Math.round(SPIN / 10) * 10 > 1000 ? (Math.round(SPIN / 10) * 10).toLocaleString('en-GB') : Math.round(SPIN)} times a second, some ${(Math.round((SPIN * 60) / 1000)).toLocaleString('en-GB')},000 rpm. The spin keeps it flying point first.`,
+      text: `The rifling makes one turn in 250 mm (about 1 in 10 in), so it leaves the barrel spinning about ${Math.round(SPIN).toLocaleString('en-GB')} times a second, some ${Math.round((SPIN * 60) / 1000)},000 rpm. The spin keeps it flying point first.`,
     },
     case: {
       kicker: 'Bullet cam · 4 / 5',
@@ -154,8 +157,8 @@ export function shots(S) {
     {
       name: 'title', from: -4.6, to: -0.1, film: 4.5, hide: ['soldier'], title: 'open', blur: 0.03,
       camera: [
-        { at: 0, pos: ['world', -0.735, 0.842, 0.105], look: ['world', -0.62, 0.825, 0.012], lens: 100 },
-        { at: 4.5, pos: ['world', -0.705, 0.838, 0.082], look: ['world', -0.62, 0.825, 0.012], lens: 100 },
+        { at: 0, pos: ['world', -0.52, 0.842, 0.18], look: ['world', -0.3, 0.829, 0.012], lens: 100 },
+        { at: 4.5, pos: ['world', -0.485, 0.84, 0.155], look: ['world', -0.3, 0.829, 0.012], lens: 100 },
       ],
       sounds: [[0.1, 'rushIn']],
     },
@@ -221,17 +224,17 @@ export function shots(S) {
     // At the muzzle: the flash, the bullet coming out; then the camera
     // rides with it, round it, as the labels come and go.
     {
-      name: 'bullet-out', from: F + ms(0.3), to: F + ms(3.0), film: 14.5, aim: true, hide: ['soldier'], blur: 0.02, fine: true,
+      name: 'bullet-out', exposure: 0.95, from: F + ms(0.3), to: F + ms(3.0), film: 14.5, aim: true, blur: 0.02, fine: true,
       time: rel(F, [[0, 0.30], [1.5, 0.405], [4, 0.6], [6, 0.85], [9, 1.45], [12, 2.35], [14.5, 3.0]], ms(1)),
       camera: [
-        { at: 0, pos: ['muzzle', -0.07, 0.02, 0.055], look: ['muzzle', 0, 0, 0.018], lens: 60 },
-        { at: 1.4, pos: ['muzzle', -0.066, 0.019, 0.062], look: ['muzzle', 0, 0, 0.022], lens: 60 },
-        { at: 3.6, pos: ['bullet', -0.058, 0.012, 0.002], look: ['bullet', 0, 0, 0], lens: 85 },
-        { at: 5.6, pos: ['bullet', -0.054, 0.011, 0.006], look: ['bullet', 0, 0, 0], lens: 85 },
-        { at: 7.4, pos: ['bullet', -0.036, 0.024, 0.048], look: ['bullet', 0, 0, 0.002], lens: 85 },
-        { at: 9.6, pos: ['bullet', -0.032, 0.022, 0.054], look: ['bullet', 0, 0, 0.002], lens: 85 },
-        { at: 11.2, pos: ['bullet', 0.022, 0.016, -0.052], look: ['bullet', 0, 0, 0.003], lens: 85 },
-        { at: 14.5, pos: ['bullet', 0.026, 0.018, -0.058], look: ['bullet', 0, 0, 0.003], lens: 85 },
+        { at: 0, pos: ['muzzle', -0.1, 0.03, 0.13], look: ['muzzle', 0, 0, 0.012], lens: 60 },
+        { at: 1.4, pos: ['muzzle', -0.095, 0.028, 0.135], look: ['muzzle', 0, 0, 0.02], lens: 60 },
+        { at: 3.6, pos: ['bullet', -0.085, 0.016, 0.004], look: ['bullet', 0, 0, 0], lens: 70 },
+        { at: 5.6, pos: ['bullet', -0.08, 0.015, 0.01], look: ['bullet', 0, 0, 0], lens: 70 },
+        { at: 7.4, pos: ['bullet', -0.05, 0.03, 0.07], look: ['bullet', 0, 0, 0.002], lens: 70 },
+        { at: 9.6, pos: ['bullet', -0.045, 0.028, 0.078], look: ['bullet', 0, 0, 0.002], lens: 70 },
+        { at: 11.2, pos: ['bullet', 0.035, 0.022, -0.075], look: ['bullet', 0, 0, 0.003], lens: 70 },
+        { at: 14.5, pos: ['bullet', 0.04, 0.024, -0.085], look: ['bullet', 0, 0, 0.003], lens: 70 },
       ],
       labels: [
         { at: 2.0, until: 5.6, card: 'name', side: 'right', anchor: ['bullet', 0, 0, 0] },
@@ -242,7 +245,7 @@ export function shots(S) {
     },
     // Meanwhile, at the gun: the slide back, the case flicked out.
     {
-      name: 'case', from: F + ms(3.0), to: F + ms(13), film: 4.6, aim: true, hide: ['soldier'], blur: 0.014, fine: true,
+      name: 'case', exposure: 0.95, from: F + ms(3.0), to: F + ms(13), film: 4.6, aim: true, blur: 0.014, fine: true,
       time: rel(F, [[0, 3.0], [1.0, 3.55], [3.6, 9.0], [4.6, 13]], ms(1)),
       camera: [
         { at: 0, pos: ['gun', 0.13, 0.085, -0.095], look: ['gun', 0.025, 0.0, -0.03], lens: 50 },
@@ -253,19 +256,19 @@ export function shots(S) {
     },
     // Back with the bullet: the plate ahead, coming up fast.
     {
-      name: 'flight', from: F + ms(13), to: I - ms(2.2), film: 6.5, aim: true, hide: ['soldier'], blur: 0.012,
+      name: 'flight', exposure: 0.95, from: F + ms(13), to: I - ms(2.2), film: 6.5, aim: true, blur: 0.012,
       time: [[0, F + ms(13)], [3, F + ms(21)], [5.5, I - ms(4.5)], [6.5, I - ms(2.2)]],
       camera: [
         { at: 0, pos: ['bullet', -0.05, 0.016, -0.1], look: ['bullet', 0, 0, 0.35], lens: 35 },
         { at: 4.5, pos: ['bullet', -0.055, 0.02, -0.12], look: ['bullet', 0, 0, 0.4], lens: 35 },
         { at: 6.5, pos: ['bullet', -0.07, 0.03, -0.2], look: ['bullet', 0, 0, 0.5], lens: 35 },
       ],
-      labels: [{ at: 0.6, until: 4.6, card: 'speed', side: 'right', anchor: ['bullet', 0, 0, 0] }],
+      labels: [{ at: 0.6, until: 4.6, card: 'speed', side: 'left', anchor: ['bullet', 0, 0, 0] }],
       sounds: [[0, 'rush7']],
     },
     // The strike, from beside the plate.
     {
-      name: 'impact', from: I - ms(2.2), to: I + ms(0.9), film: 3.2, aim: true, hide: ['soldier'], blur: 0.01,
+      name: 'impact', exposure: 0.95, from: I - ms(2.2), to: I + ms(0.9), film: 3.2, aim: true, blur: 0.01,
       time: rel(I, [[0, -2.2], [1.3, -0.12], [1.9, 0.06], [3.2, 0.9]], ms(1)),
       camera: [
         { at: 0, pos: ['hit', 0.42, 0.07, 0.3], look: ['hit', 0, 0, 0.05], lens: 42 },
@@ -275,7 +278,7 @@ export function shots(S) {
     },
     // Time snaps back: the plate rings and swings.
     {
-      name: 'snap', from: I + ms(0.9), to: I + 2.2, aim: true, hide: ['soldier'], blur: 0.004,
+      name: 'snap', from: I + ms(0.9), to: I + 2.2, aim: true, blur: 0.004,
       camera: [
         { at: 0, pos: ['hit', 2.3, 0.05, 1.6], look: ['hit', -0.1, -0.12, 0], lens: 50 },
         { at: 2.2, pos: ['hit', 2.2, 0.08, 1.5], look: ['hit', -0.1, -0.12, 0], lens: 50 },
@@ -301,5 +304,4 @@ export const FILM = {
   // (When the Mixamo clips are added, add their credit here and in
   // README.md, Credits.)
   slots: SLOTS,
-  here,
 };

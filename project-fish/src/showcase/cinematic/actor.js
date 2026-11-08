@@ -30,11 +30,14 @@ const HIP = 'CC_Base_Hip';
 const UPPER = /^CC_Base_(Waist|Spine0[12]|NeckTwist0[12]|Head|[LR]_(Clavicle|Upperarm|UpperarmTwist0[12]|Forearm|ForearmTwist0[12]|ElbowShareBone|Hand|Thumb[123]|Index[123]|Mid[123]|Ring[123]|Pinky[123]))$/;
 
 // Where the PF-9 sits in his right hand: its position and turn in the
-// hand bone's frame (the grip in his palm, the muzzle past his knuckles).
-// Measured by eye against his hand's mesh (see tools/cinematic/README.md).
+// hand bone's frame: the grip's middle in his palm (between his wrist and
+// his knuckles, on the palm side), the barrel along his forearm's line,
+// the slide's top towards his index finger. Worked out from his idle
+// pose's hand bones; retune it against the first clip that holds a pistol
+// (see tools/cinematic/README.md).
 export const GRIP = {
-  position: new THREE.Vector3(0.012, 0.086, 0.028),
-  rotation: new THREE.Euler(-1.45, 0.06, 1.62, 'XYZ'),
+  position: new THREE.Vector3(-0.0196, 0.0607, 0.0856),
+  rotation: new THREE.Euler(1.719, -0.035, 0.006, 'XYZ'),
 };
 
 // A slot's placement: where it starts on the ground (x, z), the way he
@@ -58,9 +61,10 @@ export function retreat(p, dx, dz, turn) {
 }
 
 export class Actor {
-  constructor({ renderer, envMap, wardrobe = null }) {
+  constructor({ renderer, envMap, gunEnv = envMap, wardrobe = null }) {
     this.renderer = renderer;
     this.envMap = envMap;
+    this.gunEnv = gunEnv;
     this.wardrobe = wardrobe || new Wardrobe(new Outfit());
     this.ownMaterials = new Set(); // materials made here (freed on dispose)
     this.shared = new Set(); // geometries, materials and textures shared with the game
@@ -106,7 +110,7 @@ export class Actor {
       if (/^att_/.test(o.name) || o.name === 'chamber_round') o.visible = false;
       if (o.isMesh) {
         o.castShadow = o.receiveShadow = true;
-        for (const m of [].concat(o.material)) m.envMap = this.envMap;
+        for (const m of [].concat(o.material)) m.envMap = this.gunEnv;
       }
     });
     this.pistolRest = {};
@@ -192,7 +196,9 @@ export class Actor {
     this.actions = [];
     const A = this.hipParentMatrix();
     const Ainv = A.clone().invert();
-    const qA = new THREE.Quaternion().setFromRotationMatrix(A);
+    // (Its turn alone: the frame is scaled, centimetres to metres.)
+    const qA = new THREE.Quaternion();
+    A.decompose(new THREE.Vector3(), qA, new THREE.Vector3());
     const qAinv = qA.clone().invert();
     const hipName = this.bones[HIP].name;
     for (const slot of slots) {
@@ -324,7 +330,7 @@ export class Actor {
     this.pistol.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       for (const m of [].concat(o.material || [])) {
-        for (const v of Object.values(m)) if (v && v.isTexture && v !== this.envMap) v.dispose();
+        for (const v of Object.values(m)) if (v && v.isTexture && v !== this.envMap && v !== this.gunEnv) v.dispose();
         m.dispose();
       }
     });

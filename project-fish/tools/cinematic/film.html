@@ -1,0 +1,38 @@
+<!doctype html>
+<!-- The cinematic on its own, for watching and checking it without the
+     game (see tools/cinematic/README.md). Serve the repository as for
+     playing and open /project-fish/tools/cinematic/film.html; add ?test=1
+     for the shot names, times and placeholder notes, ?at=SECONDS to start
+     there, ?paused=1 to hold still. window.film is the Film. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Project Fish: the cinematic</title>
+    <style>html, body { margin: 0; height: 100%; background: #000; }</style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import { Film } from '../../src/showcase/cinematic/film.js';
+      const q = new URLSearchParams(location.search);
+      const film = new Film({
+        test: q.get('test') === '1',
+        autoplay: q.get('paused') !== '1',
+        sound: q.get('sound') !== '0',
+        onClose: () => { document.body.textContent = ''; window.filmClosed = true; },
+      });
+      window.film = film;
+      await film.play();
+      if (q.get('at')) film.seek(+q.get('at'));
+      window.filmReady = true;
+    </script>
+  </body>
+</html>

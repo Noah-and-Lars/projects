@@ -95,6 +95,8 @@ class Sprites {
   // One sprite: position, size (w, h metres), screen rotation, colour (may
   // be brighter than 1, for the bloom), opacity.
   put(pos, w, h, rotation, color, opacity, texture = null) {
+    // (Thinned out where it would be right in front of the lens.)
+    if (this.camera) opacity *= smoothstep(0.4, 1.6, pos.distanceTo(this.camera.position) / Math.max(w, h));
     if (this.used >= this.items.length || opacity <= 0.002) return;
     const s = this.items[this.used++];
     s.visible = true;
@@ -143,26 +145,27 @@ export class Effects {
     this.glows = new Sprites(this.group, 90, this.tex.blobs[0]);
     this.streaks = new Sprites(this.group, 140, this.tex.streak);
     this.smoke = new Sprites(this.group, 70, this.tex.smoke[0], { additive: false });
+    this.bits = new Sprites(this.group, 80, this.tex.dot, { additive: false });
     this.color = new THREE.Color();
 
     // The blast's pieces, chosen once (seeded): each gas lump, grain and
     // smoke puff has its own direction, speed and timing.
     const r = seeded(77);
     this.lumps = Array.from({ length: 26 }, (_, i) => ({
-      start: ms(0.39 + r() * 0.12), along: 0.03 + r() * 0.11, out: 0.012 + r() * 0.05, angle: r() * Math.PI * 2,
-      size: 0.018 + r() * 0.04, tau: ms(0.18 + r() * 0.25), life: ms(1.2 + r() * 1.6), tex: i % 2, spin: r() * 6,
+      start: ms(0.39 + r() * 0.12), along: 0.015 + r() * 0.07, out: 0.006 + r() * 0.026, angle: r() * Math.PI * 2,
+      size: 0.012 + r() * 0.024, tau: ms(0.15 + r() * 0.2), life: ms(0.9 + r() * 1.3), tex: i % 2, spin: r() * 6,
     }));
     this.grains = Array.from({ length: 34 }, () => ({
       start: ms(0.39 + r() * 0.35), speed: 260 + r() * 200, spread: r() * 0.11, angle: r() * Math.PI * 2,
-      drag: ms(1.2 + r() * 2.5), life: ms(1.5 + r() * 4), size: 0.0012 + r() * 0.0016,
+      drag: ms(1.2 + r() * 2.5), life: ms(1.5 + r() * 4), size: 0.0004 + r() * 0.0006,
     }));
     this.puffs = Array.from({ length: 30 }, (_, i) => ({
-      start: ms(0.6 + r() * 2.4), along: 0.02 + r() * 0.14, out: 0.01 + r() * 0.06, angle: r() * Math.PI * 2,
-      size: 0.03 + r() * 0.05, grow: 0.12 + r() * 0.22, rise: 0.02 + r() * 0.05, drift: r() - 0.5, port: i >= 24,
+      start: ms(0.6 + r() * 2.4), along: 0.02 + r() * 0.1, out: 0.008 + r() * 0.04, angle: r() * Math.PI * 2,
+      size: 0.02 + r() * 0.035, grow: 0.12 + r() * 0.22, rise: 0.02 + r() * 0.05, drift: r() - 0.5, port: i >= 24,
       tex: i % 2, rot: r() * 6, shade: 0.75 + r() * 0.2,
     }));
-    this.frags = Array.from({ length: 70 }, () => ({
-      angle: r() * Math.PI * 2, speed: 50 + r() * 170, lift: 0.05 + r() * 0.3, life: ms(30 + r() * 140), size: 0.0015 + r() * 0.003, spark: r() < 0.32,
+    this.frags = Array.from({ length: 80 }, () => ({
+      angle: r() * Math.PI * 2, speed: 50 + r() * 170, lift: 0.05 + r() * 0.3, life: ms(30 + r() * 140), size: 0.001 + r() * 0.002, spark: r() < 0.18,
     }));
 
     // Dust floating in the air along the bullet's path (set by setPath).
@@ -211,9 +214,10 @@ export class Effects {
   // - bullet: the bullet's middle; speed (m/s); flying (it's out and not yet struck)
   // - hit: { s, at, normal, plate } once it strikes (s: when)
   update(s, camera, w) {
-    this.glows.begin();
-    this.streaks.begin();
-    this.smoke.begin();
+    for (const pool of [this.glows, this.streaks, this.smoke, this.bits]) {
+      pool.camera = camera;
+      pool.begin();
+    }
     const up = new THREE.Vector3(0, 1, 0);
     const side = new THREE.Vector3().crossVectors(w.dir, up).normalize();
     const upAcross = new THREE.Vector3().crossVectors(side, w.dir).normalize();
@@ -227,8 +231,8 @@ export class Effects {
       if (air > 0 && air < ms(1.2)) {
         const k = 1 - air / ms(1.2);
         p.copy(w.muzzle).addScaledVector(w.dir, 0.004 + 40 * air);
-        const size = 0.01 + 32 * air;
-        this.glows.put(p, size, size, 0, this.color.setRGB(0.55, 0.6, 0.65), 0.25 * k * k, this.tex.blobs[2]);
+        const size = 0.008 + 20 * air;
+        this.glows.put(p, size, size, 0, this.color.setRGB(0.5, 0.55, 0.6), 0.15 * k * k, this.tex.blobs[2]);
       }
       // The fireball: lumps of hot gas burst out round the muzzle, push
       // forward and outward, swell and cool from white through orange to
@@ -241,14 +245,14 @@ export class Effects {
         p.copy(w.muzzle).addScaledVector(w.dir, L.along * grow + 0.004).addScaledVector(radial(L.angle, q), L.out * grow);
         const size = L.size * (0.3 + 0.9 * grow);
         const fade = smoothstep(0, ms(0.05), t) * (1 - smoothstep(0.55, 1, cool));
-        this.glows.put(p, size, size, L.spin + cool * 2, glow(cool * 1.15, 3.2 * (1 - cool * 0.6), this.color), 0.75 * fade, this.tex.blobs[L.tex]);
+        this.glows.put(p, size, size, L.spin + cool * 2, glow(cool * 1.15, 1.1 * (1 - cool * 0.6), this.color), 0.4 * fade, this.tex.blobs[L.tex]);
       }
       // The flash's white core at the muzzle, for an instant.
       const core = s - ms(0.39);
       if (core > 0 && core < ms(0.6)) {
         const k = 1 - core / ms(0.6);
         p.copy(w.muzzle).addScaledVector(w.dir, 0.01);
-        this.glows.put(p, 0.05 * (0.5 + k), 0.05 * (0.5 + k), 0, glow(0.1, 5, this.color), k, this.tex.dot);
+        this.glows.put(p, 0.016 * (0.5 + k), 0.016 * (0.5 + k), core * 9000, glow(0.15, 1.2, this.color), k, this.tex.blobs[0]);
       }
       // Burning grains of powder shot out with the gas, slowing fast.
       for (const G of this.grains) {
@@ -260,8 +264,8 @@ export class Effects {
         p.copy(w.muzzle).addScaledVector(d, dist + 0.004);
         const cool = t / G.life;
         // (A short streak: longer while it's fast.)
-        const len = G.size * (1.5 + Math.min(6, v / 60));
-        this.streaks.put(p, len, G.size, screenAngle(camera, p, d), glow(0.2 + cool * 0.8, 4, this.color), 1 - cool * cool);
+        const len = G.size * (1.5 + Math.min(4, v / 90));
+        this.streaks.put(p, len, G.size, screenAngle(camera, p, d), glow(0.2 + cool * 0.8, 2.2, this.color), 1 - cool * cool);
       }
       // Smoke: grey puffs from the blast (and from the ejection port as
       // the case leaves), swelling fast at first, then drifting, rising
@@ -281,7 +285,7 @@ export class Effects {
         const size = (P.size * (0.3 + burst) + P.grow * slow) * (P.port ? 0.6 : 1);
         const fade = smoothstep(0, ms(0.3), t) * (1 - smoothstep(0.8, 3.5, t));
         const shade = P.shade;
-        this.smoke.put(p, size, size, P.rot + slow * 0.6, this.color.setRGB(shade, shade, shade * 1.02), 0.5 * fade, this.tex.smoke[P.tex]);
+        this.smoke.put(p, size, size, P.rot + slow * 0.6, this.color.setRGB(shade, shade, shade * 1.02), 0.38 * fade, this.tex.smoke[P.tex]);
       }
     }
 
@@ -317,8 +321,8 @@ export class Effects {
         const k = 1 - t / F.life;
         const v = F.speed * Math.exp(-t / drag);
         const len = F.size * (1.5 + Math.min(10, v / 25));
-        if (F.spark) this.streaks.put(p, len, F.size * 0.8, screenAngle(camera, p, d), glow(0.15 + (1 - k) * 0.6, 5, this.color), k);
-        else this.streaks.put(p, len * 0.7, F.size, screenAngle(camera, p, d), this.color.setRGB(0.32, 0.33, 0.35), 0.9 * k, this.tex.dot);
+        if (F.spark) this.streaks.put(p, len * 0.6, F.size * 0.7, screenAngle(camera, p, d), glow(0.3 + (1 - k) * 0.6, 2.2, this.color), k);
+        else this.bits.put(p, len * 0.35, F.size * 1.2, screenAngle(camera, p, d), this.color.setRGB(0.18, 0.18, 0.19), 0.95 * k, this.tex.dot);
       }
       // A grey cloud of lead spreading over the face and drifting off.
       for (let i = 0; i < 10; i++) {
@@ -347,5 +351,6 @@ export class Effects {
     this.glows.end();
     this.streaks.end();
     this.smoke.end();
+    this.bits.end();
   }
 }
