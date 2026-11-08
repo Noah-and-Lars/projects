@@ -50,7 +50,7 @@ export const TIMING = {
 const FRAME = { fill: 0.86, fov: 30, drift: 0.6, dim: 0.42 };
 const UP = new THREE.Vector3(0, 1, 0);
 
-const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2); // in and out
+export const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2); // in and out
 // The camera's moves: in and out more gently than ease, so a long swing
 // round the gun never whips through the middle (at most 1.6 times its
 // average speed, where ease peaks at 3).
@@ -61,7 +61,9 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const rad = THREE.MathUtils.degToRad;
 
 let stylesAdded = false;
-function addStyles() {
+// Adds breakdown.css to the page (once). Exported for the other films that
+// share its look (src/showcase/cinematic/film.js uses its labels).
+export function addBreakdownStyles() {
   if (stylesAdded) return;
   stylesAdded = true;
   const link = document.createElement('link');
@@ -101,7 +103,7 @@ export class Breakdown {
 
   // Opens it and plays from the start (loading the model the first time).
   async play() {
-    addStyles();
+    addBreakdownStyles();
     if (!this.root) this.buildDom();
     this.root.hidden = false;
     this.open = true;
@@ -164,21 +166,10 @@ export class Breakdown {
     this.ready = null;
   }
 
-  // three.js shares one small texture between all renderers (its DFG lookup
-  // table for shiny materials) and never frees it; each renderer that uses
-  // it hangs a listener on it, which would keep this renderer, its canvas
-  // and so this whole show alive after it closes. This takes ours off: it's
-  // the listener our renderer put on our own textures.
+  // (Keeps three.js's shared lookup texture from holding this renderer, its
+  // canvas and so this whole show after it closes: see below.)
   releaseSharedTextures() {
-    let own = null, lut = null;
-    this.scene.traverse((o) => {
-      if (!o.isMesh || (own && lut)) return;
-      const m = o.material;
-      own = own || (m.map && m.map._listeners && m.map._listeners.dispose && m.map._listeners.dispose[0]) || null;
-      const uniforms = this.renderer.properties.get(m).uniforms;
-      lut = lut || (uniforms && uniforms.dfgLUT && uniforms.dfgLUT.value) || null;
-    });
-    if (own && lut) lut.removeEventListener('dispose', own);
+    releaseSharedTextures(this.renderer, this.scene);
   }
 
   // ---- The page ----
@@ -807,31 +798,9 @@ export class Breakdown {
       p.project(this.camera);
       return { ax: (p.x + 1) * 0.5 * w, ay: (1 - p.y) * 0.5 * h };
     });
-    // (Of the ways to give the lines their places on the card, the one where
-    // no line crosses or brushes past another; first try, the parts' order
-    // up the screen.)
-    const lineFor = ({ ax, ay }, k) => {
-      if (box.side === 'bottom') {
-        const x = Math.min(box.x + box.w - 24, Math.max(box.x + 24, ax));
-        return [[ax, ay], [x, box.y - 28], [x, box.y]];
-      }
-      const edge = box.side === 'right' ? box.x : box.x + box.w;
-      const y = box.y + 30 + k * 12;
-      const elbow = box.side === 'right' ? Math.max(ax + 10, edge - 44) : Math.min(ax - 10, edge + 44);
-      return [[ax, ay], [elbow, y], [edge, y]];
-    };
-    const sorted = spots.map((sp, i) => i).sort((i, j) => (box.side === 'bottom' ? spots[i].ax - spots[j].ax : spots[i].ay - spots[j].ay));
-    let best = null;
-    for (const order of permutations(sorted)) {
-      const lines = new Array(spots.length);
-      order.forEach((i, r) => { lines[i] = lineFor(spots[i], r - (spots.length - 1) / 2); });
-      let clash = 0;
-      for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) clash += polylinesNear(lines[i], lines[j], 6);
-      if (!best || clash < best.clash) best = { clash, lines };
-      if (clash === 0) break;
-    }
+    const lines = leaderPaths(spots, box);
     spots.forEach(({ ax, ay }, i) => {
-      const pts = best.lines[i];
+      const pts = lines[i];
       let len = 0;
       for (let k = 1; k < pts.length; k++) len += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
       const { line, dot, ring } = this.leader(i);
@@ -908,6 +877,54 @@ export class Breakdown {
       textures: info ? info.memory.textures : 0,
     };
   }
+}
+
+// The leader lines from points on screen ({ ax, ay } in pixels) to a card
+// ({ x, y, w, h, side: 'left' | 'right' | 'bottom' }): one polyline each
+// (lists of [x, y]), ending on the card's edge. Of the ways to give the
+// lines their places on the card, the one where no line crosses or brushes
+// past another; first try, the points' order up (or across) the screen.
+// (Also used by src/showcase/cinematic/film.js.)
+export function leaderPaths(spots, box) {
+  const lineFor = ({ ax, ay }, k) => {
+    if (box.side === 'bottom') {
+      const x = Math.min(box.x + box.w - 24, Math.max(box.x + 24, ax));
+      return [[ax, ay], [x, box.y - 28], [x, box.y]];
+    }
+    const edge = box.side === 'right' ? box.x : box.x + box.w;
+    const y = box.y + 30 + k * 12;
+    const elbow = box.side === 'right' ? Math.max(ax + 10, edge - 44) : Math.min(ax - 10, edge + 44);
+    return [[ax, ay], [elbow, y], [edge, y]];
+  };
+  const sorted = spots.map((sp, i) => i).sort((i, j) => (box.side === 'bottom' ? spots[i].ax - spots[j].ax : spots[i].ay - spots[j].ay));
+  let best = null;
+  for (const order of permutations(sorted)) {
+    const lines = new Array(spots.length);
+    order.forEach((i, r) => { lines[i] = lineFor(spots[i], r - (spots.length - 1) / 2); });
+    let clash = 0;
+    for (let i = 0; i < lines.length; i++) for (let j = i + 1; j < lines.length; j++) clash += polylinesNear(lines[i], lines[j], 6);
+    if (!best || clash < best.clash) best = { clash, lines };
+    if (clash === 0) break;
+  }
+  return best.lines;
+}
+
+// three.js shares one small texture between all renderers (its DFG lookup
+// table for shiny materials) and never frees it; each renderer that uses
+// it hangs a listener on it, which would keep the renderer, its canvas and
+// whatever drew with it alive after it closes. This takes the renderer's
+// off: it's the listener that renderer put on the scene's own textures.
+// Call it before renderer.dispose().
+export function releaseSharedTextures(renderer, scene) {
+  let own = null, lut = null;
+  scene.traverse((o) => {
+    if (!o.isMesh || (own && lut)) return;
+    const m = o.material;
+    own = own || (m.map && m.map._listeners && m.map._listeners.dispose && m.map._listeners.dispose[0]) || null;
+    const uniforms = renderer.properties.get(m).uniforms;
+    lut = lut || (uniforms && uniforms.dfgLUT && uniforms.dfgLUT.value) || null;
+  });
+  if (own && lut) lut.removeEventListener('dispose', own);
 }
 
 // The parts a step's label points at: anchor is a name, or a list of names
