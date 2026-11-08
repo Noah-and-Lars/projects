@@ -22,6 +22,7 @@ The Chat tab (`chat.html`) is a global chat for everyone on the arcade; messages
 | [Chess](chess/) | Chess against the computer (six levels), local 2-player on one screen, or rated online games against real people (Glicko, like chess.com) with a leaderboard | Mouse or touch |
 | [Stocks Game](bull-run/) | Stock-trading strategy | Mouse, keyboard or touch |
 | [Havoc Bay](havoc-bay/) | Red vs Blue sea battle with warships, planes and islands, online or against bots | Keyboard + mouse or touch |
+| [Turn! Turn! TURN!](turn-turn-turn/) | Co-op dirt rally: one drives with no map, the other reads the route and calls the turns (online crews or solo with an AI co-driver) | Keyboard + mouse or Xbox controller |
 | [Krill Dive](krill-dive/) | Daily rarity trivia: seven prompts, 25 seconds each, the rarer the answer the deeper you dive | Keyboard or touch |
 
 ## Adding a game

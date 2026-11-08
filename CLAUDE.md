@@ -340,6 +340,23 @@ source in Settings → Pages should be switched to `main`.
   ship; planes keep C for the cockpit), the soldier is hidden while you look through his eyes (`fpBody`). The cockpit
   (`COCKPIT`) is now a cabin fixed to the plane (`COCKPIT.orient()` after the camera turns): a tub with floor, walls, seat,
   bulkhead and glass for fighters and the jet, a flight deck with roof, side windows and glazed nose for the bomber.
+- `turn-turn-turn/`: Turn! Turn! TURN! (1.0, 2026-11-08), a two-player co-op dirt rally (Three.js r128 copied from Havoc Bay).
+  The owner first called it "Right! Right! RIGHT!" and gave reference pictures of an existing game; it was built with
+  its own name (renamed by the owner), car, cabin, crew and tablet instead, so don't copy that game's look or title.
+  The file is built from parts kept outside the repo (scratchpad `ci/src`, joined by `ci/build.sh`): `20-core` (save
+  `turnturnturn.save`, settings, input, gamepad, Web Audio engine and call chimes, speechSynthesis call voice), `30-world`
+  (`STAGES` + `dailyStage()`, `BIOMES`, `genPath` (turn plan by severity, self-crossing check), heights with jumps,
+  cliffs `PC`, puddles, pace `notes`, `speedProfile` -> `par`; terrain grid from a chamfer nearest-road pass, `groundH`,
+  `roadLocal`/`roadSurf`, instanced trees/rocks/grass, colliders), `40-car` (`Car`: bicycle-model tyres on a sprung body,
+  walls, tree hits, doors, mud events; `buildCabin` (car-local +X is the LEFT/driver side), `GLASS` mud + crack canvases,
+  `GAUGE`, `TABLET` (the driver only ever sees a 48x32 blur of it), `makeCrew` + two-bone `ik` arms), `50-game` (two
+  scenes: world, then the cabin drawn sharp on top with speed blur in between; `TAB` tablet physics (held/raised/drop/grab),
+  calls `showCall`/`navCall`, `AIC` solo co-driver, `driverFrame`/`navFrame`), `60-net`, `70-ui` (menus, `PATCH_NOTES`).
+  Online: crew channel `ttt-crew-<6 digits>` (Presence; the maker hosts the lobby: seats, stage). The driver's screen runs
+  the car and sends 's' 20 a second plus 'fx' hazards; the navigator sends 'call', 'tb' (tablet) and 'shut'; 'start',
+  'ready', 'fin', 'restart', 'tolobby'. Voice chat is WebRTC signalled over the channel ('vo', 'rtc'), so play.html's
+  iframe allows the microphone. `?tttroom=<name>` uses test channels; `window.__ci` on localhost for tests. Medals are
+  par x1.25 / x1.5 / x1.85 (`MEDAL`). Add a `PATCH_NOTES` entry and bump `VERSION` with every release.
 - `card-royale/`: Card Royale (1.1), a real-time 1v1 card battler (towers, lanes, Elixir, 75 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by
   `build.sh`): data, `20-sim.js` (the battle: `newBattle`, `step` at 20 ticks a second, `play`, `canDeploy`, the bot in
