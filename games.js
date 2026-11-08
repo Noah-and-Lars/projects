@@ -548,7 +548,8 @@ window.ArcadeOnline = (() => {
 
 // Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
 // localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
-const SITE_NOTICE = { // 2026-11-06: the rebuilt Global chat and the new Players tab (popup only, no banner)
+const SITE_NOTICE = null; // 2026-11-08: the Global chat notice taken down (kept below for reuse)
+const SITE_NOTICE_CHAT = { // 2026-11-06: the rebuilt Global chat and the new Players tab (popup only, no banner)
   id: 'chat-fixed-2026-11-06',
   tag: 'Fixed',
   title: 'The Global chat is fixed!',

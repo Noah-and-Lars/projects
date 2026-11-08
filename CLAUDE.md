@@ -460,6 +460,12 @@ source in Settings → Pages should be switched to `main`.
   Save `krilldive` (days, best, played, total, streak, lastDay, mute). `?debug` exposes `window.__kd`.
   When adding prompts: keep every list ordered by familiarity, since that order *is* the scoring.
 
+- `intro.js` (2026-11-08): the "Made by The Arcade" intro, a 2.2 s canvas cinematic drawn inside `#stage` on
+  play.html, so it plays where the game goes. The game's iframe only gets its `src` when `ArcadeIntro.load` resolves
+  (as the intro fades), because a game booting in the same-origin iframe blocks the thread and froze the animation;
+  intro time only advances with drawn frames. Click skips; `?nointro=1` turns it off; hidden tabs skip it. Games
+  opened directly (not through play.html) don't get it.
+
 ## Adding a game
 
 1. Make a folder with a single self-contained `index.html` (no build step, no
