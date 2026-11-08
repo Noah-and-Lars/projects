@@ -2,7 +2,7 @@
 // tick the box and agree. Agreeing is remembered in this browser under TOS_KEY; change TOS_VERSION to ask everyone
 // again after the terms change.
 (function () {
-  var TOS_VERSION = '2026-11-08', TOS_KEY = 'arcade-tos-agreed';
+  var TOS_VERSION = '2026-11-08b', TOS_KEY = 'arcade-tos-agreed';
   try { if (localStorage.getItem(TOS_KEY) === TOS_VERSION) return; } catch (e) {}
   if (/[?&]notos=1/.test(location.search)) return;
 
