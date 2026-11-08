@@ -42,14 +42,16 @@ const HIP = 'CC_Base_Hip';
 const UP = new THREE.Vector3(0, 1, 0);
 const DEG = Math.PI / 180;
 
-// Where the PF-9 sits in his right hand (CC_Base_R_Hand's frame): the
-// grip's middle 2.2 cm off his palm, the grip's line along the palm's
-// width (index knuckle at the top), the bore 12° below the knuckles' line.
-// Worked out from his hand bones in the pistol clips (the knuckles never
-// move against the hand bone, so it holds in every one; see
-// tools/cinematic/README.md, The pistol in his hand).
+// Where the PF-9 sits in his right hand (CC_Base_R_Hand's frame): the grip
+// in his fist (his fingers round its front, the web of his hand just under
+// the slide at the back, the index finger along the frame over the trigger
+// guard), so the slide and the ejection port are clear above his hand; the
+// bore 12° below the knuckles' line, which levels his aim in the pistol
+// clips. Worked out from close-ups of his hand in every pistol clip (the
+// knuckles never move against the hand bone, so it holds in every one;
+// see tools/cinematic/README.md, The pistol in his hand).
 export const GRIP = {
-  position: new THREE.Vector3(-0.0225, 0.0729, 0.0807),
+  position: new THREE.Vector3(-0.0222, 0.1146, 0.1055),
   rotation: new THREE.Euler(1.727, -0.0071, 0.0012, 'XYZ'),
 };
 GRIP.quaternion = new THREE.Quaternion().setFromEuler(GRIP.rotation);
@@ -190,7 +192,7 @@ export class Actor {
   //   place    where it goes: by default its hips (x, z) at `from` meet the
   //            segment before's hips at the same story time, or at that
   //            segment's clip time `alignPrev`; `sameAs: i` uses segment
-  //            i's place; `x`, `z` place it outright (with align: false)
+  //            i's place (moved by `dx`, `dz`); `x`, `z` place it outright (with align: false)
   //   layer    plays over the others, only on bones matching `mask` (a
   //            RegExp of bone names), held at `from`, at `weight`, from
   //            start to `end` (fading over `blend`)
@@ -217,7 +219,7 @@ export class Actor {
       const qy = new THREE.Quaternion().setFromAxisAngle(UP, yaw);
       let off = new THREE.Vector3(s.x || 0, 0, s.z || 0);
       const before = placed.filter((p) => !p.s.layer);
-      if (s.sameAs !== undefined) off = placed[s.sameAs].off.clone();
+      if (s.sameAs !== undefined) off = placed[s.sameAs].off.clone().add(new THREE.Vector3(s.dx || 0, 0, s.dz || 0));
       else if (before.length && s.align !== false && !s.layer) {
         const p = before[before.length - 1];
         const pt = s.alignPrev !== undefined ? s.alignPrev : (p.s.from || 0) + (s.start - p.s.start);
@@ -273,8 +275,27 @@ export class Actor {
     });
   }
 
-  // Poses him at story time t (seconds).
-  pose(t) {
+  // Raises the whole of him at times: lift { t0, dt, values, holdEnd }
+  // (metres, every dt story seconds from t0; none before, and none after
+  // unless holdEnd, when the last is held).
+  setLift(lift) {
+    this.lift = lift;
+  }
+
+  liftAt(t) {
+    const L = this.lift;
+    if (!L) return 0;
+    const x = (t - L.t0) / L.dt, n = L.values.length;
+    if (x <= 0) return 0;
+    if (x >= n - 1) return L.holdEnd ? L.values[n - 1] : 0;
+    const i = Math.floor(x), k = x - i;
+    return L.values[i] + (L.values[i + 1] - L.values[i]) * k;
+  }
+
+  // Poses him at story time t (seconds), raised as setLift says (unless
+  // `lifted` is false).
+  pose(t, lifted = true) {
+    this.model.position.y = lifted ? this.liftAt(t) : 0;
     const base = this.segments.filter((p) => !p.s.layer);
     base.forEach((p, i) => {
       const s = p.s, next = base[i + 1];

@@ -1,5 +1,5 @@
 {
-  "about": "The Mixamo clips the cinematic uses (tools/cinematic/retarget_mixamo.py; npm run build-cinematic-clips). Paths are under `source` (build/mixamo/, the downloads: FBX Binary, without skin, 30 fps; never committed). `rest` is the skinned X Bot whose bind pose is Mixamo's rest. Each clip: its name in assets/cinematic/soldier_clips.glb, its file, `trim` [from, to] seconds of it kept (none: all of it, so the film's times are the download's own), `loops` to repeat a cycle (a run) carrying him on, and `use`: what the film uses it for (tools/cinematic/README.md has the takes, trims and grips). `candidates` are the other downloads, built only with --candidates (for looking at them).",
+  "about": "The Mixamo clips the cinematic uses (tools/cinematic/retarget_mixamo.py; npm run build-cinematic-clips). Paths are under `source` (build/mixamo/, the downloads: FBX Binary, without skin, 30 fps; never committed). `rest` is the skinned X Bot whose bind pose is Mixamo's rest. Each clip: its name in assets/cinematic/soldier_clips.glb, its file, `trim` [from, to] seconds of it kept (none: all of it, so the film's times are the download's own), `loops` to repeat a cycle (a run) carrying him on, `hands: \"together\"` to keep both hands on the pistol where his proportions would part them (see the script), and `use`: what the film uses it for (tools/cinematic/README.md has the takes, trims and grips). `candidates` are the other downloads, built only with --candidates (for looking at them).",
   "project": "../..",
   "source": "build/mixamo",
   "soldier": "assets/soldier.glb",
@@ -19,21 +19,24 @@
     {
       "name": "cover",
       "file": "Idle_Crouching/Idle_Crouching.fbx",
-      "use": "kneeling behind the barrier, gun low (right knee down)"
+      "use": "spare: kneeling, a rifle hold (with a pistol his left hand is out in front holding nothing)"
     },
     {
       "name": "cover_aim",
       "file": "Pistol_Kneeling_Idle/Pistol_Kneeling_Idle.fbx",
-      "use": "kneeling, gun up in both hands (the pop-up's first frame); also the right hand's grip for the snatch"
+      "hands": "together",
+      "use": "kneeling behind the barrier, gun up in both hands, before and after (ends on the pop-up's first frame); also the right hand's grip for the snatch"
     },
     {
       "name": "pop_up",
       "file": "Pistol_Kneel_To_Stand/Pistol_Kneel_To_Stand.fbx",
+      "hands": "together",
       "use": "rising from the knee to standing, aiming"
     },
     {
       "name": "fire",
       "file": "Shooting/Shooting.fbx",
+      "hands": "together",
       "use": "standing two-handed, one shot with its recoil"
     },
     {
@@ -44,6 +47,7 @@
     {
       "name": "enemy_aim",
       "file": "Pistol_Idle/Pistol_Idle.fbx",
+      "hands": "together",
       "use": "the enemy before the shot: standing, aiming a pistol, still (loops)"
     },
     {

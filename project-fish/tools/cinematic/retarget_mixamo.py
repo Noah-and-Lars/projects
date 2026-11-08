@@ -280,6 +280,42 @@ def main():
     rest_q = {i: local[i][1] for i in sk['order']}
     rest_t = {i: local[i][0] for i in sk['order']}
 
+    L_ARM, L_FORE, L_HAND, R_ARM, R_FORE, R_HAND = (bones['CC_Base_' + n] for n in ('L_Upperarm', 'L_Forearm', 'L_Hand', 'R_Upperarm', 'R_Forearm', 'R_Hand'))
+
+    def two_bone(wrot, pos, arm_i, fore_i, hand_i, want):
+        """Turns an arm's upper arm and forearm (world turns, in wrot) so its
+        wrist reaches `want`, in the plane of its bend (pos: the joints'
+        places before)."""
+        S_, E_, H_ = pos[arm_i], pos[fore_i], pos[hand_i]
+        a, b = (E_ - S_).length, (H_ - E_).length
+        to = want - S_
+        c = min(max(to.length, abs(a - b) + 1e-4), a + b - 1e-4)
+        d = to.normalized()
+        side = (E_ - S_) - d * (E_ - S_).dot(d)
+        if side.length < 1e-6:
+            side = d.orthogonal()
+        side.normalize()
+        cos_a = (a * a + c * c - b * b) / (2 * a * c)
+        E2 = S_ + (d * cos_a + side * math.sqrt(max(0.0, 1 - cos_a * cos_a))) * a
+        H2 = S_ + d * c
+        r1 = (E_ - S_).rotation_difference(E2 - S_)
+        wrot[arm_i] = (r1 @ wrot[arm_i]).normalized()
+        r2 = (r1 @ (H_ - E_)).rotation_difference(H2 - E2)
+        wrot[fore_i] = (r2 @ r1 @ wrot[fore_i]).normalized()
+
+    def fk(wrot, hip_w):
+        """His joints' places by his own chain (rest offsets, these turns)."""
+        pos = {hip_i: hip_w}
+        for i in sk['order']:
+            if i == hip_i:
+                continue
+            p = parent[i]
+            if p in pos:
+                sc = W(p).to_scale()
+                off = Vector((rest_t[i].x * sc.x, rest_t[i].y * sc.y, rest_t[i].z * sc.z))
+                pos[i] = pos[p] + wrot[p] @ off
+        return pos
+
     jobs = list(cfg['clips'])
     if o['candidates']:
         jobs += cfg.get('candidates', [])
@@ -319,6 +355,9 @@ def main():
         rot_keys = {i: [] for i in animated}
         hip_raw, src_sole, tgt_sole, facing, hands = [], [], [], [], []
         checks = {'wristTwist': [0.0, 0.0], 'kneeBackwards': 0, 'handInBody': 0, 'elbowBackwards': 0}
+        together = job.get('hands') == 'together'
+        hand_miss = []  # how far his left wrist ends from where it should be (m)
+        drawn_in = []  # how far his hands were drawn in to reach (m)
         for f, lap in seq:
             scene.frame_set(f)
             now = {m: B2G @ arm.matrix_world @ pb[m].matrix for m in mapped if m in pb}
@@ -331,6 +370,51 @@ def main():
                     wrot[i] = rot_of(now[m]) @ src_rest_rot[m].inverted() @ aligned[base(nodes[i]['name'])]
                 else:
                     wrot[i] = pw @ rest_q[i]
+            # Two hands on one gun (a clip's `hands: "together"`): his
+            # shoulders and arms aren't Mixamo's in proportion, so the same
+            # turns leave his hands apart where Mixamo's hold the pistol
+            # together. His wrists are put back where Mixamo's are against
+            # each other (the left wrist's offset from the right, turned as
+            # the right hand turned from its rest; both hands hold the same
+            # gun, so it isn't scaled), each hand going half the way, and
+            # both drawn in towards his chest, along the line from his
+            # shoulders to his hands, if an arm can't reach that far. Each
+            # arm gets there by turning its upper arm and forearm in the
+            # plane of its own bend (two-bone reach, the elbow kept on the
+            # side the clip bends it). Both hands' and all the fingers' turns
+            # stay the clip's own.
+            if together:
+                hip_now = Vector((hip_rest.x, hip_rest.y + k * (now['Hips'].to_translation().y - src_hip_rest.y), hip_rest.z))
+                pos0 = fk(wrot, hip_now)
+                dR = rot_of(now['RightHand']) @ src_rest_rot['RightHand'].inverted()
+                gap = now['LeftHand'].to_translation() - now['RightHand'].to_translation()
+                w = min(1.0, max(0.0, (0.16 - gap.length) / 0.06))
+                if w > 0:
+                    e = (pos0[R_HAND] + dR @ gap) - pos0[L_HAND]
+                    want = {R_HAND: pos0[R_HAND] - e * (0.5 * w), L_HAND: pos0[L_HAND] + e * (0.5 * w)}
+                    arms = {R_HAND: (R_ARM, R_FORE), L_HAND: (L_ARM, L_FORE)}
+                    reach = lambda h, sh: (pos0[arms[h][0]] - pos0[arms[h][1]]).length + (pos0[arms[h][1]] - pos0[h]).length - 0.004 - sh
+                    mid_sh = (pos0[R_ARM] + pos0[L_ARM]) * 0.5
+                    inward = (mid_sh - (want[R_HAND] + want[L_HAND]) * 0.5).normalized()
+                    lo, hi = 0.0, 0.0
+                    if any((want[h] - pos0[arms[h][0]]).length > reach(h, 0) for h in want):
+                        hi = 0.3
+                        for _ in range(30):
+                            mid = (lo + hi) / 2
+                            if any((want[h] + inward * mid - pos0[arms[h][0]]).length > reach(h, 0) for h in want):
+                                lo = mid
+                            else:
+                                hi = mid
+                    for h in want:
+                        want[h] = want[h] + inward * hi
+                        two_bone(wrot, pos0, arms[h][0], arms[h][1], h, want[h])
+                    # (His bones no clip moves follow their parents again.)
+                    for i in sk['order']:
+                        if i not in want_i and i in parent and parent[i] in wrot and i != hip_i:
+                            wrot[i] = wrot[parent[i]] @ rest_q[i]
+                    pos1 = fk(wrot, hip_now)
+                    hand_miss.append((pos1[L_HAND] - pos1[R_HAND] - dR @ gap).length)
+                    drawn_in.append(hi)
             # Twist bones: their share of the hand's twist about the forearm.
             for i, (drv, share) in tw.items():
                 fore = parent[drv]
@@ -361,15 +445,7 @@ def main():
                                 for s in ('Left', 'Right') for p, v in zip(('Foot', 'ToeBase'), soles_src[s])))
             # His joints' places by his own chain (rest offsets, these turns).
             hip_w = Vector((hip_rest.x, hip_rest.y + k * (hp.y - src_hip_rest.y), hip_rest.z))
-            pos = {hip_i: hip_w}
-            for i in sk['order']:
-                if i == hip_i:
-                    continue
-                p = parent[i]
-                if p in pos:
-                    sc = W(p).to_scale()
-                    off = Vector((rest_t[i].x * sc.x, rest_t[i].y * sc.y, rest_t[i].z * sc.z))
-                    pos[i] = pos[p] + wrot[p] @ off
+            pos = fk(wrot, hip_w)
             pts = []
             for s, S in (('Left', 'L'), ('Right', 'R')):
                 fi, ti = bones['CC_Base_%s_Foot' % S], bones['CC_Base_%s_ToeBase' % S]
@@ -430,6 +506,10 @@ def main():
             'groundLift': {'usual': round(usual, 3), 'min': round(min(lift), 3), 'max': round(max(lift), 3)},
             'checks': dict(checks, wristTwist=[round(v, 1) for v in checks['wristTwist']]),
         }
+        if together:
+            info['hands'] = 'together'
+            info['handsMiss'] = round(max(hand_miss), 4) if hand_miss else None
+            info['handsDrawnIn'] = round(max(drawn_in), 4) if drawn_in else None
         anims.append((job['name'], times, rot_keys, hip_keys, info))
         report[job['name']] = dict(info, soleSrc=[round(k * s, 3) for s in src_sole], soleHis=[round(t + u, 3) for t, u in zip(tgt_sole, lift)],
                                    hips=[[round(k * (hp.x - start.x), 3), round(k * (hp.z - start.z), 3)] for hp in hip_raw],

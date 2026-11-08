@@ -362,22 +362,26 @@ export class Effects {
     }
   }
 
-  // The bullet striking cloth (t seconds after): a puff of dust driven out
-  // of the weave, back towards the shooter and spreading round the hole,
-  // and a few loose fibres flung out with it, slowed fast by the air and
-  // drifting down. No blood: it's a game.
+  // The bullet striking cloth (t seconds after; hit.at moves with his
+  // sleeve, film.js): a small puff of dust the colour of his jacket driven
+  // out of the weave, back along the bullet's line towards the shooter and
+  // sinking, gone in about half a second, and a few loose fibres flung out
+  // with it, slowed fast by the air and drifting down. No blood: it's a
+  // game.
   cloth(t, hit) {
     const { a1, a2, n } = this.axes(hit.normal);
     const p = new THREE.Vector3(), d = new THREE.Vector3();
     for (const P of this.dustPuffs) {
       const burst = 1 - Math.exp(-t / ms(1.2));
-      const slow = 1 - Math.exp(-t / 0.35);
-      d.copy(a1).multiplyScalar(Math.cos(P.angle) * P.out).addScaledVector(a2, Math.sin(P.angle) * P.out).add(n).normalize();
-      p.copy(hit.at).addScaledVector(d, 0.004 + P.reach * burst + P.drift * slow);
-      p.y += 0.03 * t - 0.01 * slow;
-      const size = P.size * (0.25 + 0.75 * burst) + P.grow * slow;
-      const fade = smoothstep(0, ms(0.15), t) * (1 - smoothstep(0.25, 1.3, t));
-      this.smoke.put(p, size, size, P.rot + slow, this.color.setRGB(P.shade, P.shade * 0.95, P.shade * 0.86), 0.55 * fade, this.tex.smoke[P.tex]);
+      const slow = 1 - Math.exp(-t / 0.3);
+      d.copy(a1).multiplyScalar(Math.cos(P.angle) * P.out * 0.6).addScaledVector(a2, Math.sin(P.angle) * P.out * 0.6).add(n).normalize();
+      p.copy(hit.at).addScaledVector(d, 0.004 + P.reach * 0.8 * burst + P.drift * 0.8 * slow);
+      p.y -= 0.06 * slow;
+      const size = (P.size * (0.25 + 0.75 * burst) + P.grow * slow) * 0.6;
+      const fade = smoothstep(0, ms(0.15), t) * (1 - smoothstep(0.12, 0.55, t));
+      // (Olive drab, as his sleeve, a little lighter: dust off it.)
+      const k = P.shade / 0.75;
+      this.smoke.put(p, size, size, P.rot + slow, this.color.setRGB(0.47 * k, 0.46 * k, 0.34 * k), 0.5 * fade, this.tex.smoke[P.tex]);
     }
     for (const F of this.fibres) {
       if (t > F.life) continue;

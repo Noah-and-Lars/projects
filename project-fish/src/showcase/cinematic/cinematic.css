@@ -14,6 +14,9 @@
 .cine-root .bd-name { letter-spacing: 0.22em; }
 .cine-root .bd-credit { line-height: 1.6; }
 .cine-card .bd-kicker { text-transform: uppercase; }
+/* A live reading (the bullet's speed): a line of its own under the title. */
+.cine-live { font: 600 15px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #f2b84b; margin: 2px 0 8px; font-variant-numeric: tabular-nums; }
+.cine-live[hidden] { display: none; }
 .cine-test {
   position: absolute;
   left: 16px;

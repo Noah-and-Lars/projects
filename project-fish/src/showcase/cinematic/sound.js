@@ -2,7 +2,8 @@
 // context (freed when the film closes), as the breakdowns' click is.
 //
 // The shot (in time and slowed right down for the bullet cam), the air
-// the slowed bullet roars through, the bullet striking cloth (a dull,
+// the slowed bullet roars through, a low drone and heartbeat under the
+// deepest slow motion, the bullet striking cloth (a dull,
 // padded thud, deepened in slow motion), time snapping back, his
 // footfalls, the rustle of his kit, the cases landing, the enemy's pistol
 // clattering down, and the soft thumps of the dive, the roll and the fall.
@@ -11,6 +12,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 export class FilmSound {
   constructor() {
+    this.cache = new Map();
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     } catch {
@@ -31,7 +33,6 @@ export class FilmSound {
     const send = ctx.createGain();
     send.gain.value = 0.5;
     this.verb.connect(send).connect(this.master);
-    this.cache = new Map();
   }
 
   get ok() {
@@ -68,6 +69,7 @@ export class FilmSound {
 
   // A buffer drawn sample by sample by fill(data, rate), made once.
   buffer(key, seconds, fill) {
+    if (!this.ctx) return null; // (no Web Audio: silence)
     if (!this.cache.has(key)) {
       const ctx = this.ctx, rate = ctx.sampleRate;
       const buf = ctx.createBuffer(1, Math.floor(rate * seconds), rate);
@@ -78,7 +80,7 @@ export class FilmSound {
   }
 
   play(buf, { volume = 1, rate = 1, reverb = 0.3, at = 0 } = {}) {
-    if (!this.ok) return;
+    if (!this.ok || !buf) return;
     this.resume();
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
@@ -146,6 +148,24 @@ export class FilmSound {
         d[i] = (a * 1.4 + b * 3) * env * (0.35 + 0.4 * x) + Math.sin(2 * Math.PI * 1440 / 200 * t) * 0.02 * env;
       }
     }), { volume: 0.55, reverb: 0.15 });
+  }
+
+  // Under the deepest slow motion: a low drone with a slow heartbeat in
+  // it, over `seconds`, swelling in and fading out.
+  drone(seconds) {
+    if (!this.ok) return;
+    this.play(this.buffer('drone' + seconds.toFixed(1), seconds, (d, rate) => {
+      let a = 0;
+      for (let i = 0; i < d.length; i++) {
+        const t = i / rate;
+        a += 0.002 * ((Math.random() * 2 - 1) - a);
+        const env = Math.min(1, t / 0.8) * Math.min(1, (seconds - t) / 1.2);
+        // (Two soft beats every 1.15 s.)
+        const beat = t % 1.15;
+        const thud = Math.sin(2 * Math.PI * 48 * beat) * (Math.exp(-beat / 0.07) + 0.7 * (beat > 0.28 ? Math.exp(-(beat - 0.28) / 0.07) : 0));
+        d[i] = (Math.sin(2 * Math.PI * 41 * t) * 0.25 + Math.sin(2 * Math.PI * 61.5 * t) * 0.1 + a * 6 + thud * 0.55) * env;
+      }
+    }), { volume: 0.6, reverb: 0.25 });
   }
 
   // Time snapping back: a short rising rush into the real sound.

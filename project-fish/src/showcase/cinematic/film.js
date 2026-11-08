@@ -49,13 +49,14 @@ import { makeCartridge, makeFiredBullet, makeSpentCase, roundMaterials, ROUND } 
 import { Effects, FX_LAYER } from './fx.js';
 import { FilmSound } from './sound.js';
 import { EJECT, SHOT, barrelPose, bulletSpeed, bulletSpin, bulletTravel, slideBack, timeToTravel } from './ballistics.js';
-import { COVER_SEGMENT, DIVE_AT, ENEMY_DROPS, FILM, FIRES, HERO, LAYOUT, backInCover, cards, cues as makeCues, dive, enemy as enemyTimeline, shots as makeShots } from './edit.js';
+import { CATCH, COVER_FROM, COVER_SEGMENT, DIVE_AT, ENEMY_DROPS, ENEMY_HIT, FILM, FIRES, HERO, LAYOUT, backInCover, cards, cues as makeCues, dive, enemy as enemyTimeline, shots as makeShots } from './edit.js';
 import { clamp01, lerp, monotone, pathAt, smoothstep } from './util.js';
 
 const LABEL = { line: 0.4, card: 0.25 }; // the breakdowns' pace: the line draws, the card fades
 const BAND = 2.39; // the picture's shape (wide screen), with bars above and below
 const UP = new THREE.Vector3(0, 1, 0);
 const GRAVITY = new THREE.Vector3(0, -9.81, 0);
+const DUST_STICK = 0.05; // story seconds the strike's dust moves with his sleeve
 
 let stylesAdded = false;
 function addStyles() {
@@ -86,6 +87,8 @@ const SOUNDS = {
   step: (a, v, volume) => a.step(slowed(v), volume),
   cloth: (a, v, volume) => a.cloth(slowed(v), volume),
   clatter: (a, v) => a.clatter(slowed(v)),
+  drone: (a) => a.drone(5.8),
+  flap: (a) => a.cloth(0.35, 1.2),
 };
 
 // The enemy's outfit: in each slot, something other than what the player
@@ -93,7 +96,7 @@ const SOUNDS = {
 // side. Fixed for the film (it doesn't follow the player's changes).
 function enemyWardrobe(wardrobe) {
   const player = wardrobe ? wardrobe.outfit : new Outfit();
-  const pick = { head: ['comms', 'headset'], vest: ['black', 'olive'], gloves: ['olive', 'black'] };
+  const pick = { head: ['comms', 'field'], vest: ['black', 'olive'], gloves: ['olive', 'black'] };
   const chosen = {};
   for (const slot of GEAR_SLOTS) {
     const [first, second] = pick[slot.id] || [slot.options[0].id, slot.options[1].id];
@@ -163,7 +166,7 @@ export class Film {
       <canvas class="bd-canvas"></canvas>
       <div class="cine-bar cine-top"></div><div class="cine-bar cine-bottom"></div>
       <svg class="bd-lines" xmlns="http://www.w3.org/2000/svg"></svg>
-      <div class="bd-card cine-card" hidden><div class="bd-kicker"></div><h2 class="bd-title"></h2><p class="bd-text"></p></div>
+      <div class="bd-card cine-card" hidden><div class="bd-kicker"></div><h2 class="bd-title"></h2><div class="cine-live" hidden></div><p class="bd-text"></p></div>
       <div class="bd-titlecard cine-titlecard" hidden><div class="bd-name"></div><div class="bd-sub"></div><div class="bd-credit"></div>
         <div class="bd-buttons"><button type="button" class="bd-replay">Replay</button><button type="button" class="bd-done">Close</button></div></div>
       <button type="button" class="bd-close" aria-label="Close the film">Close <kbd>Esc</kbd></button>
@@ -180,6 +183,7 @@ export class Film {
     this.cardKicker = $('.bd-kicker');
     this.cardTitle = $('.bd-title');
     this.cardText = $('.bd-text');
+    this.cardLive = $('.cine-live');
     this.titleCard = $('.bd-titlecard');
     this.titleName = $('.bd-name');
     this.titleSub = $('.bd-sub');
@@ -199,12 +203,19 @@ export class Film {
     $('.bd-done').addEventListener('click', (e) => { stop(e); this.close(); });
     $('.bd-replay').addEventListener('click', (e) => { stop(e); this.seek(0); this.paused = false; this.lastEvent = -1; });
     for (const b of root.querySelectorAll('button')) b.addEventListener('pointerdown', stop);
-    root.addEventListener('pointerdown', (e) => { if (e.button === 0 && this.timeline) this.paused = !this.paused; });
+    root.addEventListener('pointerdown', (e) => { if (e.button === 0 && this.timeline) this.paused = !this.paused; this.unmute(); });
     this.container.appendChild(root);
+  }
+
+  // (Opened without a click, ?cinematic=1, the browser keeps the sound
+  // off until the first click or key on the page.)
+  unmute() {
+    if (this.audio && this.audio.ok && !this.paused) this.audio.resume();
   }
 
   onKey(e) {
     if (!this.open) return;
+    this.unmute();
     const keys = {
       Escape: () => this.close(),
       Space: () => { this.paused = !this.paused; },
@@ -255,14 +266,23 @@ export class Film {
     // The soldier (in the player's outfit) and the enemy (in another), each
     // with a PF-9.
     const actorOptions = { renderer, envMap: this.env, gunEnv: this.shine };
-    this.hero = new Actor({ ...actorOptions, wardrobe: this.wardrobe, name: 'soldier' });
-    this.enemy = new Actor({ ...actorOptions, wardrobe: enemyWardrobe(this.wardrobe), name: 'enemy' });
+    const hero = (this.hero = new Actor({ ...actorOptions, wardrobe: this.wardrobe, name: 'soldier' }));
+    const enemy = (this.enemy = new Actor({ ...actorOptions, wardrobe: enemyWardrobe(this.wardrobe), name: 'enemy' }));
     this.actor = this.hero; // (the star, for older checks)
-    await Promise.all([this.hero.load(), this.enemy.load()]);
-    if (!this.renderer) throw new Error('closed while loading');
-    scene.add(this.hero.model, this.hero.pistol, this.enemy.model, this.enemy.pistol);
-    await Promise.all([this.hero.dressed, this.enemy.dressed]);
-    if (!this.renderer) throw new Error('closed while loading');
+    // (Closed while they loaded: the film freed itself already, but not
+    // them, as they weren't there yet; they let go of the game's outfit
+    // now.)
+    const closed = () => {
+      if (this.renderer) return false;
+      hero.dispose();
+      enemy.dispose();
+      return true;
+    };
+    await Promise.all([hero.load(), enemy.load()]);
+    if (closed()) throw new Error('closed while loading');
+    scene.add(hero.model, hero.pistol, enemy.model, enemy.pistol);
+    await Promise.all([hero.dressed, enemy.dressed]);
+    if (closed()) throw new Error('closed while loading');
 
     this.plan();
     this.post();
@@ -280,9 +300,10 @@ export class Film {
     const hero = this.hero, enemy = this.enemy;
     // His timeline, turned to run towards -Z and placed so that he kneels
     // behind the barriers.
-    const heroStage = { yaw: Math.PI, anchor: { segment: COVER_SEGMENT, at: 0, x: LAYOUT.cover.x, z: LAYOUT.cover.z } };
+    const heroStage = { yaw: Math.PI, anchor: { segment: COVER_SEGMENT, at: COVER_FROM, x: LAYOUT.cover.x, z: LAYOUT.cover.z } };
     hero.setTimeline(HERO, heroStage);
-    const S = { fires: FIRES.slice(), fire: FIRES[FIRES.length - 1], catch: dive(0.9) };
+    this.coverCut = HERO[COVER_SEGMENT].start;
+    const S = { fires: FIRES.slice(), fire: FIRES[FIRES.length - 1], catch: dive(CATCH) };
     this.fireAt = S.fire;
     this.catchAt = S.catch;
 
@@ -344,7 +365,17 @@ export class Film {
     // Now the rest of their timelines: he goes back into cover after the
     // strike; the enemy is struck.
     hero.setTimeline([...HERO, backInCover(S)], heroStage);
-    enemy.setTimeline(enemyTimeline(S), this.enemyStage);
+    enemy.setTimeline(enemyTimeline(S, this.placeHit(S)), this.enemyStage);
+    // Lying on the ground (his roll; the enemy's fall), their bodies,
+    // outfits and all, are raised so nothing goes below it.
+    // (His ends at the cut to cover; the enemy's holds as he lies there.)
+    hero.setLift(this.lifts(hero, dive(1.1), this.coverCut - 1e-3));
+    enemy.setLift({ ...this.lifts(enemy, S.impact + 0.3, S.impact + 3.2), holdEnd: true });
+    // The struck spot on his sleeve as he starts to twist away (the dust
+    // goes with it a moment, then drifts on at its speed).
+    const sleeveAt = (t) => { enemy.pose(t); return enemy.bones.CC_Base_L_Upperarm.localToWorld(this.hitOnArm.clone()); };
+    const pA = sleeveAt(S.impact + DUST_STICK), pB = sleeveAt(S.impact + DUST_STICK + 0.02);
+    this.dustDrift = { at: pA, v: pB.sub(pA).divideScalar(0.02) };
 
     // Each shot: the gun as it fires, the bullet's line, where it strikes
     // (the first two, the house behind him: plaster; the last, him), and
@@ -371,19 +402,26 @@ export class Film {
     });
 
     // The toss: the pistol lies on the top crate (LAYOUT.crates) until
-    // it's thrown, then flies to arrive in his hand at the dive's catch,
+    // it's thrown, then flies to a point a hand's width off his open palm,
     // turning over (whole turns, plus the turn from lying flat to his
-    // grip) as it goes.
-    hero.pose(S.catch);
-    const grab = hero.gunInHand(GRIP);
+    // grip, all done a little before it gets there), and for the last
+    // LAYOUT.toss.seat seconds slides straight into his palm, at his grip,
+    // as his fingers start to close: the catch.
+    const seat = LAYOUT.toss.seat;
+    hero.pose(S.catch - seat);
+    const near = hero.gunInHand(GRIP);
+    const palm = this.palmOut();
     const rest = this.restingGun();
     const T = LAYOUT.toss.flight;
     const from = rest.position.clone();
+    const end = near.position.clone().addScaledVector(palm, LAYOUT.toss.reach);
     this.toss = {
-      from, T, start: S.catch - T, end: grab.position.clone(), endQuat: grab.quaternion.clone(), restQuat: rest.quaternion.clone(),
-      v0: grab.position.clone().sub(from).addScaledVector(GRAVITY, -0.5 * T * T).divideScalar(T),
-      axis: new THREE.Vector3().subVectors(grab.position, from).cross(UP).normalize(),
+      from, T, seat, start: S.catch - seat - T, end, endQuat: near.quaternion.clone(), restQuat: rest.quaternion.clone(),
+      v0: end.clone().sub(from).addScaledVector(GRAVITY, -0.5 * T * T).divideScalar(T),
+      axis: new THREE.Vector3().subVectors(end, from).cross(UP).normalize(),
     };
+    hero.pose(S.catch);
+    const grab = hero.gunInHand(GRIP);
     this.catchPoint = grab.position.clone();
     this.restPoint = rest.position.clone();
     // A round lying on the lid beside it, for the opening.
@@ -423,12 +461,33 @@ export class Film {
       const from = spec.from === 'prev' ? prevTo : spec.from;
       let film, map, to = spec.to;
       if (spec.ramp) {
-        // (With `to`, a stretch at the first key's speed comes first, as
-        // long as it takes for the ramp to end there.)
-        let keys = spec.ramp;
+        // Holds first: a key { hold: story time } holds the speed before it
+        // until the story gets there; the keys after it count from there.
+        let keys = [];
+        for (const k of spec.ramp) {
+          if (Array.isArray(k) && !keys.held) keys.push(k);
+          else if (Array.isArray(k)) keys.push([keys.held + k[0], k[1]]);
+          else {
+            const reached = rampMap(from, keys).to;
+            const last = keys[keys.length - 1];
+            const hold = Math.max(1e-4, (k.hold - reached) / last[1]);
+            keys.push([last[0] + hold, last[1]]);
+            keys.held = last[0] + hold;
+          }
+        }
+        keys = keys.map((k) => k.slice());
+        // With `to`: a stretch at the first key's speed comes first, as long
+        // as it takes for the ramp to end there (or, with fill: 'tail', at
+        // the last key's speed after it).
         if (typeof spec.to === 'number') {
-          const lead = (spec.to - rampMap(from, keys).to) / keys[0][1];
-          if (lead > 0) keys = [[0, keys[0][1]], ...keys.map(([x, v]) => [x + lead, v])];
+          const short = spec.to - rampMap(from, keys).to;
+          if (short > 0 && spec.fill === 'tail') {
+            const last = keys[keys.length - 1];
+            keys.push([last[0] + short / last[1], last[1]]);
+          } else if (short > 0) {
+            const lead = short / keys[0][1];
+            keys = [[0, keys[0][1]], ...keys.map(([x, v]) => [x + lead, v])];
+          }
         }
         spec = { ...spec, ramp: keys };
         const r = rampMap(from, keys);
@@ -476,6 +535,60 @@ export class Film {
     this.timeline = { shots: this.shotList };
   }
 
+  // Where the enemy's hit clip goes: turned and moved so that, where it
+  // comes in, his feet are where they were in his aim (so they don't slide
+  // as one cross-fades into the other). Returns its turn (degrees) and
+  // move, for enemyTimeline.
+  placeHit(S) {
+    const enemy = this.enemy;
+    const feet = () => ['L', 'R'].map((k) => enemy.at(`CC_Base_${k}_Foot`).add(enemy.at(`CC_Base_${k}_ToeBase`)).multiplyScalar(0.5));
+    const hitAlone = (place) => {
+      const segs = enemyTimeline(S, place);
+      segs[1] = { ...segs[1], blend: 0 };
+      enemy.setTimeline(segs, this.enemyStage);
+      enemy.pose(S.impact);
+      return feet();
+    };
+    enemy.setTimeline(enemyTimeline(S), this.enemyStage);
+    enemy.pose(S.impact - 1e-4);
+    const [aL, aR] = feet();
+    const flatAngle = (v) => Math.atan2(v.x, v.z);
+    let place = { yaw: -20, dx: 0, dz: 0 };
+    let [bL, bR] = hitAlone(place);
+    place.yaw += THREE.MathUtils.radToDeg(flatAngle(aR.clone().sub(aL)) - flatAngle(bR.clone().sub(bL)));
+    [bL, bR] = hitAlone(place);
+    const move = aL.clone().add(aR).sub(bL).sub(bR).multiplyScalar(0.5).setY(0).applyAxisAngle(UP, -this.enemyStage.yaw);
+    place = { ...place, dx: move.x, dz: move.z };
+    return place;
+  }
+
+  // How far a man must be raised at story times t0..t1 (every 30th of a
+  // second) so that no part of him (or his outfit) is below the ground:
+  // the lowest point of his posed meshes, padded and smoothed.
+  lifts(actor, t0, t1) {
+    const dt = 1 / 30, raw = [];
+    const meshes = actor.meshes().filter((m) => m.isSkinnedMesh);
+    const box = new THREE.Box3();
+    for (let t = t0; t <= t1 + 1e-9; t += dt) {
+      actor.pose(t, false);
+      let low = Infinity;
+      for (const m of meshes) {
+        m.computeBoundingBox();
+        box.copy(m.boundingBox).applyMatrix4(m.matrixWorld);
+        low = Math.min(low, box.min.y);
+      }
+      raw.push(Math.max(0, 0.004 - low));
+    }
+    // (The most it needs nearby, then smoothed, so it rises and settles
+    // gently and never lets him dip.)
+    const near = raw.map((_, i) => Math.max(...raw.slice(Math.max(0, i - 4), i + 5)));
+    const values = near.map((_, i) => {
+      const part = near.slice(Math.max(0, i - 3), i + 4);
+      return part.reduce((a, b) => a + b, 0) / part.length;
+    });
+    return { t0, dt, values };
+  }
+
   // The PF-9 in his hand at story time t with a grip: its pose, its
   // muzzle and its bore's direction.
   boreAt(t, grip) {
@@ -485,6 +598,17 @@ export class Film {
     const muzzle = new THREE.Vector3(...MODEL9.muzzle).applyQuaternion(gun.quaternion).add(gun.position);
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(gun.quaternion);
     return { gun, muzzle, dir };
+  }
+
+  // The way out of his right palm now (world): across the palm's width and
+  // along it, turned to the side his fingers curl to.
+  palmOut() {
+    const h = this.hero;
+    const hand = h.at('CC_Base_R_Hand'), mid = h.at('CC_Base_R_Mid1');
+    const across = h.at('CC_Base_R_Pinky1').sub(h.at('CC_Base_R_Index1'));
+    const n = mid.clone().sub(hand).cross(across).normalize();
+    if (n.dot(h.at('CC_Base_R_Mid3').sub(mid)) < 0) n.negate();
+    return n;
   }
 
   // The PF-9 lying on its left side on the top crate's lid, its muzzle
@@ -661,12 +785,22 @@ export class Film {
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
     if (!this.paused) this.advance(dt);
+    // (Hidden, the sounds already playing hold too, as the picture does.)
+    const hidden = document.hidden;
+    if (this.audio && this.audio.ok && hidden !== this.audioHidden) {
+      this.audioHidden = hidden;
+      if (hidden) this.audio.ctx.suspend().catch(() => {});
+      else if (!this.paused) this.audio.resume();
+    }
     // (Paused, the sounds already playing hold too.)
     if (this.audio && this.audio.ok && this.paused !== this.audioPaused) {
       this.audioPaused = this.paused;
       if (this.paused) this.audio.ctx.suspend().catch(() => {});
       else this.audio.resume();
     }
+    // (Paused, nothing moves: the picture is drawn again only if the
+    // window changed.)
+    if (this.paused && this.drawnAt === this.t && !this.layoutDirty) return;
     this.draw();
   }
 
@@ -675,15 +809,24 @@ export class Film {
     this.t = Math.min(this.duration + 30, this.t + dt);
     if (!this.audio || dt <= 0) return;
     for (const e of this.events) if (e.t > before && e.t <= this.t && SOUNDS[e.name]) SOUNDS[e.name](this.audio, 1);
-    // The story's cues passed since the last frame (within this shot).
-    const shot = this.shotAt(this.t);
-    const local = Math.min(this.t - shot.start, shot.film);
-    const w1 = shot.map(local), w0 = shot.map(Math.max(0, local - (this.t - before)));
-    for (let i = 0; i < this.cues.length; i++) {
-      const c = this.cues[i];
-      if (this.cuesPlayed.has(i) || !(c.w > w0 && c.w <= w1) || !SOUNDS[c.name]) continue;
-      this.cuesPlayed.add(i);
-      SOUNDS[c.name](this.audio, shot.speedAt(local), c.volume ?? 1);
+    // The story's cues passed since the last frame: each shot the film
+    // went through plays the stretch of story it showed (from a shot's
+    // very first moment, when the film cut into it), so a cue right at a
+    // cut, or in a shot skipped over by a long frame, still plays once.
+    const list = this.shotList;
+    const i0 = list.indexOf(this.shotAt(before)), i1 = list.indexOf(this.shotAt(this.t));
+    for (let i = i0; i <= i1; i++) {
+      const sh = list[i];
+      const a = i === i0 ? Math.min(Math.max(0, before - sh.start), sh.film) : 0;
+      const b = i === i1 ? Math.min(Math.max(0, this.t - sh.start), sh.film) : sh.film;
+      const wa = sh.map(a), wb = sh.map(b);
+      for (let k = 0; k < this.cues.length; k++) {
+        const c = this.cues[k];
+        if (this.cuesPlayed.has(k) || !SOUNDS[c.name]) continue;
+        if (!((i === i0 ? c.w > wa : c.w >= wa) && c.w <= wb)) continue;
+        this.cuesPlayed.add(k);
+        SOUNDS[c.name](this.audio, sh.speedAt(b), c.volume ?? 1);
+      }
     }
   }
 
@@ -719,6 +862,7 @@ export class Film {
     if (!this.renderer) return;
     this.layout();
     const t = this.t;
+    this.drawnAt = t;
     const shot = this.shotAt(t);
     const local = Math.min(t - shot.start, shot.film);
     const w = shot.map(local); // story time
@@ -798,7 +942,14 @@ export class Film {
       const portDir = new THREE.Vector3(0.85, 0.5, 0.1).normalize().applyQuaternion(q);
       const fxDir = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
       if (sh === this.shots[this.shots.length - 1]) this.muzzleNow = muzzle;
-      this.fx.shot(sk, { muzzle, dir: fxDir, port, portDir, realtime: speed > 0.3, hit: sh.hit });
+      let hit = sh.hit;
+      if (hit && hit.kind === 'cloth' && sk > hit.s) {
+        // (On his sleeve, moving with it, then drifting on.)
+        const since = sk - hit.s;
+        const at = since < DUST_STICK ? this.point(['sleeve']) : this.dustDrift.at.clone().addScaledVector(this.dustDrift.v, 0.5 * (since - DUST_STICK));
+        hit = { ...hit, at };
+      }
+      this.fx.shot(sk, { muzzle, dir: fxDir, port, portDir, realtime: speed > 0.3, hit });
     }
     this.fx.end();
     this.fx.group.visible = anyFx;
@@ -823,6 +974,7 @@ export class Film {
     // (The end dims as its title and credits come up.)
     this.grade.uniforms.fade.value = shot.title === 'end' ? 0.5 * smoothstep(2.4, 3.8, local) : 0;
     this.renderer.toneMappingExposure = shot.exposure ?? 1.1; // (the game's, unless the shot says)
+    this.bloom.strength = shot.bloom ?? 0.3;
     this.composer.render();
 
     this.drawLabels(shot, local, s, caseMid);
@@ -896,16 +1048,25 @@ export class Film {
   gunAt(w) {
     const toss = this.toss;
     if (w < toss.start) return { position: toss.from.clone(), quaternion: toss.restQuat.clone() };
-    if (w < this.catchAt) {
+    const seatAt = this.catchAt - toss.seat;
+    if (w < seatAt) {
       const tau = w - toss.start;
       const position = toss.from.clone().addScaledVector(toss.v0, tau).addScaledVector(GRAVITY, 0.5 * tau * tau);
-      const k = tau / toss.T;
       // (From lying flat to his grip, plus whole turns end over end, which
-      // spin fastest as it leaves and slow a touch: a little drag.)
+      // spin fastest as it leaves and slow a touch, a little drag: all done
+      // by 85% of the way, so it comes in steady.)
+      const k = Math.min(1, tau / toss.T / 0.85);
       const spin = 1 - (1 - k) * (1 - k * 0.25);
       const quaternion = toss.restQuat.clone().slerp(toss.endQuat, smoothstep(0, 1, k))
         .premultiply(new THREE.Quaternion().setFromAxisAngle(toss.axis, -(1 - spin) * LAYOUT.toss.turns * Math.PI * 2));
       return { position, quaternion };
+    }
+    if (w < this.catchAt) {
+      // Sliding into his palm, as his hand moves.
+      const k = (w - seatAt) / toss.seat;
+      const g = this.hero.gunInHand(GRIP);
+      g.position.addScaledVector(this.palmOut(), LAYOUT.toss.reach * (1 - k * (1.3 - 0.3 * k)));
+      return { position: g.position.clone(), quaternion: g.quaternion.clone() };
     }
     let fire = 0;
     for (const p of this.hero.segments) if (p.s.clip === 'fire') fire += p.action.weight;
@@ -1014,6 +1175,12 @@ export class Film {
     cam.up.copy(UP);
     cam.lookAt(look);
     if (lens.y) cam.rotateZ(THREE.MathUtils.degToRad(lens.y));
+    if (shot.jolt) {
+      // (A kick as time snaps back, dying away in a quarter of a second.)
+      const k = Math.exp(-local / 0.07);
+      cam.rotateX(0.035 * k * Math.cos(local * 38));
+      cam.rotateZ(0.02 * k * Math.sin(local * 31));
+    }
     if (shot.shake) {
       const t = this.t;
       const a = 0.0025 * shot.shake;
@@ -1076,11 +1243,15 @@ export class Film {
       this.cardTitle.textContent = card.title;
       this.cardText.textContent = card.text;
       this.cardKicker.textContent = card.kicker;
+      this.cardLive.hidden = !card.live;
+      if (card.live) this.cardLive.textContent = card.live({ s, travelled: bulletTravel(s) - SHOT.bore });
+    if (card.status) this.cardKicker.textContent = `${card.kicker} · ${card.status({ s })}`;
       this.card.style.width = this.cardW + 'px';
       this.card.hidden = false;
       this.cardH = this.card.offsetHeight;
     }
-    if (card.live) this.cardKicker.textContent = `${card.kicker} · ${card.live({ s, travelled: bulletTravel(s) - SHOT.bore })}`;
+    if (card.live) this.cardLive.textContent = card.live({ s, travelled: bulletTravel(s) - SHOT.bore });
+    if (card.status) this.cardKicker.textContent = `${card.kicker} · ${card.status({ s })}`;
     const m = this.margin;
     let box;
     if (this.portrait) box = { x: m, y: this.band.bottom - 56 - this.cardH, w: this.cardW, h: this.cardH, side: 'bottom' };

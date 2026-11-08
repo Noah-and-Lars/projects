@@ -240,8 +240,8 @@ export function filmEnvironment(renderer, sunDirection) {
 }
 
 // Wooden ammunition crates (US style: olive-drab plywood on a frame of
-// battens, rope handles, yellow stencils; 9 mm ball, M882, is the US
-// military's 124 grain round): two side by side and one on top. Its own
+// battens, rope handles, yellow stencils, for the 124-grain full metal
+// jacket 9 mm Luger the bullet cam's figures are for): two side by side and one on top. Its own
 // frame: the stack's foot at the origin, the long sides along X. `top` is
 // the top crate's lid's middle (in the stack's frame) and `topYaw` its
 // turn, for the pistol lying on it.
@@ -336,9 +336,9 @@ function crateTexture(rng) {
     }
   };
   const side = canvasTexture(W, H, (g) => paint(g, [
-    ['1000 CARTRIDGES', 0.26, 54], ['9MM BALL M882', 0.46, 74], ['LOT 0128', 0.66, 40], ['2 CANS', 0.8, 34],
+    ['1000 CARTRIDGES', 0.26, 54], ['9MM LUGER 124 GR FMJ', 0.46, 58], ['LOT 0128', 0.66, 40], ['2 CANS', 0.8, 34],
   ]));
-  const end = canvasTexture(W, H, (g) => paint(g, [['9MM', 0.4, 120], ['M882', 0.66, 80]]));
+  const end = canvasTexture(W, H, (g) => paint(g, [['9MM', 0.4, 120], ['124 GR FMJ', 0.66, 64]]));
   const plain = canvasTexture(W, H, (g) => paint(g, null));
   const bump = canvasTexture(W, H, (g) => {
     const img = g.createImageData(W, H);
