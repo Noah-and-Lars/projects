@@ -17,14 +17,14 @@ window.GAMES = [
     id: 'turn-turn-turn',
     title: 'Turn! Turn! TURN!',
     category: 'Racing',
-    tagline: 'Co-op dirt rally: one of you drives blind, the other reads the map and shouts the turns.',
+    tagline: 'Co-op dirt rally: one of you drives blind, the other reads the map and shouts the turns. Now with quick match and 4-6 player versus.',
     description: 'A two-player co-op rally. The driver has the wheel but no map; the navigator holds the tablet with the route and calls every turn. Beat the stage clock through mud, cracked glass, flying doors and a dropped tablet, or drive solo with an AI co-driver.',
     controls: 'Keyboard, mouse or Xbox controller',
-    keys: [['W A S D', 'Drive (driver)'], ['Space', 'Handbrake (driver) / Jump call (navigator)'], ['E', 'Wipers (driver) / Sharp right (navigator)'], ['Q A W D E S', 'Calls (navigator)'], ['F / click', 'Grab the dropped tablet'], ['C', 'Look at your partner']],
+    keys: [['W A S D', 'Drive (driver)'], ['Space', 'Handbrake (driver) / Jump call (navigator)'], ['E', 'Wipers (driver) / Sharp right (navigator)'], ['Q A W D E S', 'Calls (navigator)'], ['F / click', 'Grab the dropped tablet'], ['C', 'Look at your partner'], ['F (hold)', 'Hand out of the window (versus driver)']],
     path: 'turn-turn-turn/index.html',
     thumb: 'turn-turn-turn/thumb.jpg',
     added: '2026-11-08T22:00:00+11:00',
-    updated: '2026-11-09T21:00:00+11:00',
+    updated: '2026-11-09T23:30:00+11:00',
     stat() { const s = readSave('turnturnturn.save', true); if (!s || !s.best) return null; const n = Object.keys(s.best).filter(k => s.best[k].solo || s.best[k].crew).length; return n ? n + (n === 1 ? ' stage' : ' stages') + ' finished' : null; },
   },
   {
@@ -295,6 +295,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-09', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.2: quick match finds you a crew partner or a whole race, and the new versus mode puts 4 to 6 players in crews of two on the same stage at once (just for fun, not on the leaderboard). Versus drivers can wind the window down and show the car behind what they think of it.' },
   { date: '2026-11-09', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.1.1: fixed the main menu popping up over a running stage for the player who joined the crew, plus a few smaller crew fixes.' },
   { date: '2026-11-09', game: 'havoc-bay', text: 'Havoc Bay 1.3.3: voice chat. In the Public Battle and in private rooms, hold G to talk to everyone in the lobby. Settings > Voice chat > Off mutes it all, you included.' },
   { date: '2026-11-08', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.1: a crew leaderboard for every stage (online crews only), a stopwatch, neutral revs and launches on Shift, smoother gauges, a new engine sound, a calmer co-driver voice, steadier handling and less road for the driver to see.' },

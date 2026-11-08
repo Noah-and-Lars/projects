@@ -358,7 +358,8 @@ source in Settings → Pages should be switched to `main`.
   walls, tree hits, doors, mud events; `buildCabin` (car-local +X is the LEFT/driver side), `GLASS` mud + crack canvases,
   `GAUGE`, `TABLET` (the driver only ever sees a 48x32 blur of it), `makeCrew` + two-bone `ik` arms), `50-game` (two
   scenes: world, then the cabin drawn sharp on top with speed blur in between; `TAB` tablet physics (held/raised/drop/grab),
-  calls `showCall`/`navCall`, `AIC` solo co-driver, `driverFrame`/`navFrame`), `60-net`, `70-ui` (menus, `PATCH_NOTES`).
+  calls `showCall`/`navCall`, `AIC` solo co-driver, `driverFrame`/`navFrame`), `60-net`, `65-vs` (1.2: versus rooms, the other crews' cars `RIVALS`/`makeRivalCar`, car-to-car `rivalPush`, quick match `QM`), `70-ui` (menus, `PATCH_NOTES`).
+  1.2 versus: the same crew channel with the host's Presence `md: 'vs'` (up to 6); lobby `{ vs: 1, crews: [[driver, nav|null], ...] }`; crew messages ('s', 'fx', 'call', 'tb', 'shut', 'fin') carry the crew number `c`; the host waits for every 'ready' then sends 'go'; each crew's clock starts at the START banner; versus never saves bests or posts to the leaderboard; the driver holds F to put a hand out of the window (`car.bird`, sent as `bd`). Quick match: channel `ttt-quick` (Presence `{ q: 'crew'|'vs', t }`), the oldest searcher of a group makes a room and broadcasts 'qm' `{ code, ids }`; the quick-room host auto-starts after a 5 s lobby countdown. Voice is addressed to your crewmate (`to`/`from`; the lower id calls). Test with `cdpN.mjs` (scratchpad) and `window.__vsMin` on localhost.
   Online: crew channel `ttt-crew-<6 digits>` (Presence; the maker hosts the lobby: seats, stage). The driver's screen runs
   the car and sends 's' 20 a second plus 'fx' hazards; the navigator sends 'call', 'tb' (tablet) and 'shut'; 'start',
   'ready', 'fin', 'restart', 'tolobby'. Voice chat is WebRTC signalled over the channel ('vo', 'rtc'), so play.html's
