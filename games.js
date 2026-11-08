@@ -24,7 +24,7 @@ window.GAMES = [
     path: 'turn-turn-turn/index.html',
     thumb: 'turn-turn-turn/thumb.jpg',
     added: '2026-11-08T22:00:00+11:00',
-    updated: '2026-11-08T23:30:00+11:00',
+    updated: '2026-11-09T21:00:00+11:00',
     stat() { const s = readSave('turnturnturn.save', true); if (!s || !s.best) return null; const n = Object.keys(s.best).filter(k => s.best[k].solo || s.best[k].crew).length; return n ? n + (n === 1 ? ' stage' : ' stages') + ' finished' : null; },
   },
   {
@@ -295,6 +295,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-09', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.1.1: fixed the main menu popping up over a running stage for the player who joined the crew, plus a few smaller crew fixes.' },
   { date: '2026-11-09', game: 'havoc-bay', text: 'Havoc Bay 1.3.3: voice chat. In the Public Battle and in private rooms, hold G to talk to everyone in the lobby. Settings > Voice chat > Off mutes it all, you included.' },
   { date: '2026-11-08', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.1: a crew leaderboard for every stage (online crews only), a stopwatch, neutral revs and launches on Shift, smoother gauges, a new engine sound, a calmer co-driver voice, steadier handling and less road for the driver to see.' },
   { date: '2026-11-08', game: 'turn-turn-turn', text: 'New game: Turn! Turn! TURN!, a co-op dirt rally. One of you drives with no map, the other reads the route off a tablet and calls the turns. Make a crew with a 6-digit code, or drive solo with an AI co-driver.' },

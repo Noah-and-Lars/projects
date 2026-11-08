@@ -416,7 +416,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.1';
+const VERSION = '1.1.1';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -471,7 +471,8 @@ function myName() { return (window.ARCADE_NAME || '').trim() || 'Player'; }
 const KEYS = {};
 const PRESSED = new Set(); // keys pressed this frame (cleared after each frame)
 addEventListener('keydown', e => {
-  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (GAME.mode === 'race' && !SCREEN && e.target && e.target !== document.body && e.target.blur) { e.target.blur(); if (e.code === 'Enter' || e.code === 'Space') e.preventDefault(); }
+  else if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.offsetParent) return;
   if (!KEYS[e.code]) PRESSED.add(e.code);
   KEYS[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code) && GAME.mode === 'race') e.preventDefault();
@@ -2141,6 +2142,7 @@ function startRace(def, role, crew) {
   NAVV.buf.length = 0; NAVV.off = null;
   $('calls').innerHTML = ''; $('count').classList.add('hidden');
   showScreen(null); $('hud').classList.remove('hidden');
+  try { const f = document.activeElement; if (f && f !== document.body && f.blur) f.blur(); } catch (e) {}
   $('navpad').classList.toggle('hidden', role !== 'nav');
   $('netbar').classList.toggle('hidden', !crew);
   $('touchDrv').classList.toggle('hidden', !(role !== 'nav' && matchMedia('(pointer: coarse)').matches));
@@ -2499,7 +2501,7 @@ const NET = {
   on: false, ch: null, client: null, code: null, host: false, me: Math.random().toString(36).slice(2, 10), lobby: null, ready: false, readyWait: 0,
   sendT: 0, pingT: 0, rtt: 0, gone: 0, lastTab: null, joined: false, names: {},
 };
-NET.partnerName = () => { const l = NET.lobby; if (!l) return ''; const id = l.d === NET.me ? l.n : l.d; return (l.names && l.names[id]) || 'Partner'; };
+NET.partnerName = () => { const l = NET.lobby; if (!l) return NET.lastPartner || ''; const id = l.d === NET.me ? l.n : l.d; return (NET.lastPartner = (l.names && l.names[id]) || 'Partner'); };
 function getClient() {
   if (NET.client) return Promise.resolve(NET.client);
   return new Promise((res, rej) => {
@@ -2579,7 +2581,7 @@ function onNet(ev, d) {
     hostPushLobby(); if (VOICE.on) netSend('vo', { on: 1 });
     return;
   }
-  if (ev === 'full' && d.to === NET.me) { crewClose(); showScreen('joinScr'); $('joinErr').textContent = 'That crew is full.'; return; }
+  if (ev === 'full' && d.to === NET.me) { if (GAME.mode === 'race') leaveRace(); crewClose(); showScreen('joinScr'); $('joinErr').textContent = 'That crew is full.'; return; }
   if (ev === 'lobby' && !NET.host) { NET.lobby = d.l; for (const k in d.l.names) NET.names[k] = d.l.names[k]; if (GAME.mode !== 'race') renderLobby(); return; }
   if (ev === 'swap' && NET.host) { swapSeats(); return; }
   if (ev === 'start') { onCrewStart(d); return; }
@@ -2711,7 +2713,9 @@ addEventListener('keydown', e => { if (e.code === 'KeyV' && GAME.mode === 'race'
    ========================================================================== */
 const SCREENS = ['menu', 'stagesScr', 'settingsScr', 'helpScr', 'notesScr', 'lbScr', 'joinScr', 'lobbyScr', 'pauseScr', 'resultScr'];
 let SCREEN = 'menu', BACK = {};
+const RACE_SCREENS = [null, 'pauseScr', 'settingsScr', 'resultScr', 'lbScr'];
 function showScreen(id, from) {
+  if (GAME.mode === 'race' && !RACE_SCREENS.includes(id)) { console.warn('kept the stage on screen instead of', id); id = GAME.paused ? 'pauseScr' : GAME.resultShown ? 'resultScr' : null; from = null; }
   for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
   if (from) BACK[id] = from;
   SCREEN = id;
@@ -2719,13 +2723,18 @@ function showScreen(id, from) {
 function showLoading(t) { const l = $('loading'); l.textContent = t || 'Loading…'; l.classList.remove('hidden'); }
 function hideLoading() { $('loading').classList.add('hidden'); }
 function lobbyStatus(t) { $('lobStatus').textContent = t || ''; }
-document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => { AUDIO.ui(); showScreen(BACK[SCREEN] || 'menu'); }));
+function onScreen(el) { const s = el.closest('.screen'); return !!s && s.id === SCREEN; }
+document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
+  if (!onScreen(b)) return;
+  AUDIO.ui(); showScreen(BACK[SCREEN] || (GAME.mode === 'race' ? (GAME.resultShown ? 'resultScr' : 'pauseScr') : 'menu'));
+}));
 
 /* ---------- main menu ---------- */
 $('verTxt').textContent = 'Turn! Turn! TURN! v' + VERSION;
 function hasOnlineAccount() { try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return !!(a && a.token); } catch (e) { return false; } }
 $('onlineNote').textContent = hasOnlineAccount() ? 'Playing as ' + myName() : 'Crews play online and need an Arcade account.';
 document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('click', () => {
+  if (SCREEN !== 'menu' || GAME.mode === 'race') return;
   AUDIO.unlock(); AUDIO.ui();
   const g = b.dataset.go;
   if (g === 'solo') openStages('solo', 'menu');
@@ -2798,6 +2807,12 @@ function showBoardResult(j) {
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.1.1', date: '9 November 2026', items: [
+    'Fixed the main menu popping up over a running stage for the player who joined the crew, which cut them off from their partner.',
+    'Keys you press during a stage can no longer press a menu button that still had focus.',
+    'Clicking Make a crew twice no longer opens two crews at once (which could drop the first one a few seconds later).',
+    'The connection bar always shows your partner\'s name.',
+  ] },
   { v: '1.1', date: '8 November 2026', items: [
     'Leaderboard: the fastest crews on every stage, shown as Driver+Navigator. Only online crew runs count, so solo runs with the AI co-driver never go on it.',
     'A stopwatch in the top left for both seats, with your penalties next to it.',
@@ -2946,7 +2961,7 @@ function openJoin() {
 }
 let JOINING = false;
 async function joinGo() {
-  if (JOINING) return;
+  if (JOINING || SCREEN !== 'joinScr' || NET.on) return;
   const code = [...$('codeBoxes').querySelectorAll('input')].map(i => i.value).join('');
   if (!/^\d{6}$/.test(code)) { $('joinErr').textContent = 'Type all 6 digits.'; return; }
   JOINING = true; $('joinErr').textContent = ''; $('joinGo').textContent = 'Joining…';
@@ -2955,7 +2970,13 @@ async function joinGo() {
   JOINING = false; $('joinGo').textContent = 'Join';
 }
 $('joinGo').addEventListener('click', joinGo);
+let MAKING = false;
 async function makeOnlineCrew() {
+  if (NET.on || MAKING) return;
+  MAKING = true;
+  try { await makeCrewTries(); } finally { MAKING = false; }
+}
+async function makeCrewTries() {
   showLoading('Making your crew…');
   for (let tries = 0; tries < 3; tries++) {
     const code = String(100000 + Math.floor(Math.random() * 900000));
@@ -2999,7 +3020,7 @@ $('swapSeats').addEventListener('click', () => { AUDIO.ui(); swapSeats(); });
 $('lobPick').addEventListener('click', () => openStages('lobby', 'lobbyScr'));
 $('lobStart').addEventListener('click', () => { AUDIO.unlock(); hostStart(false); });
 $('voiceBtn').addEventListener('click', () => voiceToggle());
-$('lobbyLeave').addEventListener('click', () => { crewClose(); showScreen('menu'); });
+$('lobbyLeave').addEventListener('click', () => { if (SCREEN !== 'lobbyScr' || GAME.mode === 'race') return; crewClose(); showScreen('menu'); });
 
 /* ---------- pause ---------- */
 function togglePause() {
