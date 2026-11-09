@@ -502,6 +502,14 @@ source in Settings → Pages should be switched to `main`.
   The ocean is drawn on `#sea` (`frame()`: depth gradient `STOPS`, zone lines `ZONES`, creatures `CRE`, the krill).
   Save `krilldive` (days, best, played, total, streak, lastDay, mute). `?debug` exposes `window.__kd`.
   When adding prompts: keep every list ordered by familiarity, since that order *is* the scoring.
+  1.2 (2026-11-10) grew the 25 lists the dives of 10-17 Nov use (about 5x; capitals now include state, province and
+  historical capitals, countries include territories and former states). A grown list has an entry in
+  `KD_DATA.cuts` ([end of common, end of uncommon, end of rare]): `score(i, n, cut)` tiers a full-list prompt by
+  those bands (the last 30% of the rarest band are Trench Finds), because its long niche tail would otherwise push
+  obscure answers into the common tier. Filtered (word-shape) prompts still score by place in the filtered list.
+  The Europe-river and Saturn/Uranus-moon prompts filter by named sets (`EUROPE`, `SATURN`, `URANUS`), not
+  regexes (the old prefix regex counted the Potomac and Okavango as European). When adding to a grown list, keep
+  the cuts in step: new common answers go before the first cut, and so on.
 
 - `intro.js` (2026-11-08): the "Made by The Arcade" intro, a 2.2 s canvas cinematic drawn inside `#stage` on
   play.html, so it plays where the game goes. The game's iframe only gets its `src` when `ArcadeIntro.load` resolves
