@@ -38,7 +38,7 @@ window.GAMES = [
     path: 'krill-dive/index.html',
     thumb: 'krill-dive/thumb.svg',
     added: '2026-11-07T08:00:00+11:00',
-    updated: '2026-11-10T20:00:00+11:00',
+    updated: '2026-11-10T23:00:00+11:00',
     stat() { const s = readSave('krilldive', true); return s && s.played ? 'Best ' + ((s.best || 0) * 10).toLocaleString() + ' m' : null; },
   },
   {
@@ -295,6 +295,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-10', game: 'krill-dive', text: 'Krill Dive 1.3: a daily leaderboard. Every signed-in diver\'s daily dive is ranked by depth, with today\'s 1st, 2nd and 3rd and the time left at the top, and every finished day kept below as its own board.' },
   { date: '2026-11-10', game: 'krill-dive', text: 'Krill Dive 1.2: about five times as many accepted answers on the prompts coming up this week (16,700 across the week, up from 3,400), from everyday answers that were missing to real deep cuts, and niche answers now score as the rare finds they are.' },
   { date: '2026-11-10', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.2.1: fixed versus calls showing "undefined" on the driver\'s screen instead of the navigator\'s call.' },
   { date: '2026-11-09', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.2: quick match finds you a crew partner or a whole race, and the new versus mode puts 4 to 6 players in crews of two on the same stage at once (just for fun, not on the leaderboard). Versus drivers can wind the window down and show the car behind what they think of it.' },

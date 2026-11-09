@@ -717,16 +717,38 @@ export class Directory extends DurableObject {
 // Krill Dive's "% of divers": how many divers gave each answer to each prompt. One object holds every prompt as
 // 'p:<prompt text>' = { a: { answer: count }, v: { diverId: answer } }; a diver who meets a prompt again (practice
 // dives) moves their one vote instead of adding another, so the share is per diver.
+// The daily leaderboard (1.3): one board per UTC day, 'lb:<YYYY-MM-DD>' = [{ n, s, at }] (s = rarity points; the
+// dive's depth is s * 10 m), one entry per account, best first, ties to whoever dived first. Only today's board
+// takes new dives (and yesterday's for KD_LATE after midnight, for a dive that started before it), so a finished
+// day never changes. 'lbdays' lists the days that have a board; the oldest are dropped past KD_DAYS.
+//   POST /kd/score {d, s}  (Authorization: Bearer <token>; the name is the token's account) -> { rank, n, s }
+//   POST /kd/lb {d}        -> { d, list: [{ n, s, at }], n }   (best first, top KD_SHOW)
+//   POST /kd/lb-days {}    -> { days: [{ d, n, top: [{ n, s }] }] }   (newest first, the last KD_DAYS days)
 const KD_Q = 160, KD_A = 80, KD_ID = /^[0-9a-z]{8,32}$/, KD_VOTERS = 20000, KD_ANSWERS = 800, KD_PROMPTS = 5000;
+const KD_DAY = /^\d{4}-\d{2}-\d{2}$/, KD_MAX = 700, KD_KEEP = 5000, KD_SHOW = 500, KD_DAYS = 60, KD_LATE = 20 * 60000;
 async function krill(req, env, url) {
   const origin = req.headers.get('Origin') || '';
   if (!ACCT_ORIGINS.includes(origin)) return new Response('only available on the official website', { status: 403 });
-  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
+  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type, authorization', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
   if (req.method !== 'POST' || +(req.headers.get('content-length') || 0) > 8192) return out({ error: 'bad' }, 400);
   let body; try { body = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
-  const r = await env.TALLY.get(env.TALLY.idFromName('krill-dive')).fetch(new Request('https://tally/' + url.pathname.slice(4), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) }));
+  let route = url.pathname.slice(4);
+  if (!['vote', 'lb', 'lb-days', 'score'].includes(route)) return out({ error: 'not_found' }, 404); // 'lb-add' only comes from here
+  if (route === 'score') { // a finished daily dive, under the diver's account name
+    const auth = req.headers.get('authorization') || '', nm = auth.replace(/^Bearer\s+/i, '').split('.')[0] || '';
+    if (!NAME_RE.test(nm)) return out({ error: 'auth' }, 401);
+    const w = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + nm.toLowerCase())).fetch(new Request('https://acct/whoami', { headers: { authorization: auth } }));
+    const who = w.ok ? await w.json().catch(() => ({})) : {};
+    if (!who.name) return out({ error: 'auth' }, 401);
+    const now = Date.now(), td = new Date(now).toISOString().slice(0, 10), yd = new Date(now - 864e5).toISOString().slice(0, 10);
+    const late = now - Date.parse(td + 'T00:00:00Z') < KD_LATE;
+    if (!(body.d === td || (late && body.d === yd))) return out({ error: 'closed' }, 409);
+    if (!Number.isInteger(body.s) || body.s < 0 || body.s > KD_MAX) return out({ error: 'bad' }, 400);
+    body = { d: body.d, s: body.s, n: who.name }; route = 'lb-add';
+  }
+  const r = await env.TALLY.get(env.TALLY.idFromName('krill-dive')).fetch(new Request('https://tally/' + route, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) }));
   return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
 }
 // Turn! Turn! TURN! crew leaderboard: the best crews per stage. Only crew runs count (solo runs with the AI co-driver
@@ -780,6 +802,29 @@ export class Tally extends DurableObject {
         await S.put('p:' + q, rec);
       }
       return j({ c: rec.a[a] || 0, n: total(rec) });
+    }
+    if (route === 'lb-add') { // { d, s, n } from krill(): a diver's one entry for the day (their first daily dive)
+      let list = await S.get('lb:' + b.d), days = (await S.get('lbdays')) || [];
+      if (!list) {
+        list = []; days.push(b.d); days.sort();
+        while (days.length > KD_DAYS) await S.delete('lb:' + days.shift());
+        await S.put('lbdays', days);
+      }
+      const me = b.n.toLowerCase(); let i = list.findIndex(e => e.n.toLowerCase() === me);
+      if (i < 0 && list.length < KD_KEEP) {
+        list.push({ n: b.n, s: b.s, at: Date.now() }); list.sort((x, y) => y.s - x.s || x.at - y.at);
+        await S.put('lb:' + b.d, list); i = list.findIndex(e => e.n.toLowerCase() === me);
+      }
+      return j({ rank: i + 1, n: list.length, s: i >= 0 ? list[i].s : b.s });
+    }
+    if (route === 'lb') { // { d } -> that day's board
+      if (!KD_DAY.test(b.d || '')) return j({ error: 'bad' }, 400);
+      const list = (await S.get('lb:' + b.d)) || [];
+      return j({ d: b.d, list: list.slice(0, KD_SHOW), n: list.length });
+    }
+    if (route === 'lb-days') {
+      const days = ((await S.get('lbdays')) || []).slice().reverse(), lists = await S.get(days.map(d => 'lb:' + d));
+      return j({ days: days.map(d => { const l = lists.get('lb:' + d) || []; return { d, n: l.length, top: l.slice(0, 3).map(e => ({ n: e.n, s: e.s })) }; }) });
     }
     if (route === 'ttt-board') return j({ list: ((await S.get('lb:' + b.s)) || []).slice(0, TTT_SHOW) });
     if (route === 'ttt-run') { // a crew's run; one entry per pair of players, keeping their best

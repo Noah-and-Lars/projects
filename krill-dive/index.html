@@ -101,6 +101,43 @@
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #0b2a44; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-weight: 700; z-index: 20; opacity: 0; transition: opacity .25s; pointer-events: none; }
   .toast.on { opacity: 1; }
 
+  /* the daily leaderboard */
+  .lbMini { display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, .05); text-align: left; cursor: pointer; border: 0; color: inherit; font: inherit; width: 100%; }
+  .lbMini .h { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; font-size: 14px; }
+  .lbMini .h small { color: var(--muted); font-weight: 700; font-size: 12px; }
+  .lbMini .row { display: flex; gap: 8px; font-size: 14px; }
+  .lbMini .row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lbMini .empty { font-size: 13px; color: var(--muted); }
+  #board { gap: 12px; }
+  .boardHead { width: min(640px, 100%); display: flex; align-items: center; gap: 10px; }
+  .boardHead h2 { font: 800 32px/1 var(--display); margin: 0; flex: 1; text-shadow: 0 3px 0 #0a3b5c, 0 6px 20px rgba(0, 20, 40, .6); }
+  .dayPanel { width: min(640px, 100%); padding: 14px; display: grid; gap: 10px; }
+  .dayPanel .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .dayPanel .top b { font: 800 22px/1 var(--display); }
+  .dayPanel .top small { color: var(--muted); font-weight: 700; }
+  .clock { font: 800 15px var(--display); color: var(--t4); }
+  .clock span { color: var(--muted); font: 700 12px var(--body); text-transform: uppercase; letter-spacing: .06em; margin-right: 6px; }
+  .podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 8px; align-items: end; }
+  .pod { border-radius: 14px; padding: 10px 6px; text-align: center; background: rgba(255, 255, 255, .05); min-width: 0; }
+  .pod .medal { font-size: 26px; line-height: 1; }
+  .pod .who { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; }
+  .pod .m { font: 800 18px/1.1 var(--display); }
+  .pod.p1 { padding-top: 18px; background: linear-gradient(180deg, rgba(255, 210, 63, .25), rgba(255, 210, 63, .06)); box-shadow: inset 0 0 0 1px rgba(255, 210, 63, .45); }
+  .pod.p2 { background: linear-gradient(180deg, rgba(200, 215, 230, .2), rgba(200, 215, 230, .05)); box-shadow: inset 0 0 0 1px rgba(200, 215, 230, .35); }
+  .pod.p3 { background: linear-gradient(180deg, rgba(214, 140, 80, .22), rgba(214, 140, 80, .05)); box-shadow: inset 0 0 0 1px rgba(214, 140, 80, .4); }
+  .pod.none { opacity: .45; }
+  .lbList { display: grid; gap: 4px; }
+  .lbList[hidden] { display: none; }
+  .lbRow { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); font-size: 15px; }
+  .lbRow .r { color: var(--muted); font-weight: 800; }
+  .lbRow .nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lbRow .m { font: 800 15px var(--display); }
+  .lbRow.me, .pod.me { box-shadow: inset 0 0 0 2px var(--krill); }
+  .lbNote { font-size: 13px; color: var(--muted); }
+  .lbMore { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 13px; justify-self: start; padding: 0; }
+  .pastHead { width: min(640px, 100%); font: 800 20px var(--display); margin: 6px 0 -4px; text-shadow: 0 2px 0 #0a3b5c, 0 4px 14px rgba(0, 20, 40, .7); }
+  #resRank { margin: 6px 0 0; font-weight: 800; color: var(--t4); }
+
   /* how to play */
   #how { justify-content: center; }
   .howCard { width: min(560px, 100%); padding: 20px; }
@@ -130,7 +167,8 @@
       <div><b id="stStreak">0</b><span>Streak</span></div>
       <div><b id="stAvg">0</b><span>Avg m</span></div>
     </div>
-    <div class="links"><button class="link" id="howBtn">How to play</button><button class="link" id="muteBtn">Sound: on</button></div>
+    <button class="lbMini" id="lbMini"></button>
+    <div class="links"><button class="link" id="boardBtn">Leaderboard</button><button class="link" id="howBtn">How to play</button><button class="link" id="muteBtn">Sound: on</button></div>
   </div>
 </section>
 
@@ -142,6 +180,7 @@
       <li>You get <b>3 seconds</b> to read each prompt, then <b>25 seconds</b> to answer.</li>
       <li><b>One shot:</b> the first answer the game recognises is locked in. Answers it doesn't know don't count against you, so keep typing.</li>
       <li>Rarer answers score more. Every point sinks your krill <b>10 m</b>.</li>
+      <li>Your daily dive goes on <b>today's leaderboard</b> under your arcade name (practice dives don't). Each day ends at midnight UTC, and its final top three stay on the board as a previous day.</li>
     </ul>
     <div class="tierTable">
       <div><span class="chip t0">Plankton</span>Common: what everyone says <b>10</b></div>
@@ -168,10 +207,17 @@
   </div>
 </section>
 
+<section id="board" class="screen">
+  <div class="boardHead"><h2>Leaderboard</h2><button class="btn alt" id="boardBack">Back</button></div>
+  <div class="dayPanel panel" id="boardToday"></div>
+  <div class="pastHead" id="pastHead" hidden>Previous days</div>
+  <div id="boardPast" style="display:contents"></div>
+</section>
+
 <section id="results" class="screen">
-  <div class="resHead"><p id="resKind">Today's dive</p><h2 id="resDepth">0 m</h2><span class="zone" id="resZone"></span><p id="resScore"></p></div>
+  <div class="resHead"><p id="resKind">Today's dive</p><h2 id="resDepth">0 m</h2><span class="zone" id="resZone"></span><p id="resScore"></p><p id="resRank" hidden></p></div>
   <div class="resList panel" id="resList"></div>
-  <div class="resBtns"><button class="btn" id="shareBtn">Copy my dive</button><button class="btn alt" id="againBtn">Practice dive</button><button class="btn alt" id="homeBtn">Home</button></div>
+  <div class="resBtns"><button class="btn" id="shareBtn">Copy my dive</button><button class="btn alt" id="resBoardBtn">Leaderboard</button><button class="btn alt" id="againBtn">Practice dive</button><button class="btn alt" id="homeBtn">Home</button></div>
 </section>
 <div class="toast" id="toast"></div>
 <script>
@@ -293,7 +339,7 @@ window.KD_DATA = (() => {
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
-const VERSION = '1.2';
+const VERSION = '1.3';
 const MAX_DEPTH = 7000, PER_POINT = 10, READ_S = 3, ANSWER_S = 25, ROUNDS = 7;
 const TIERS = [
   { name: 'Plankton', what: 'Common' }, { name: 'Shallows', what: 'Uncommon' }, { name: 'Reef', what: 'Rare' },
@@ -558,6 +604,14 @@ function showResults(R) {
   $('resList').innerHTML = R.res.map((r, k) => `<div class="resRow"><div class="q">${k + 1}. ${esc(r.q)}</div><div class="p">+${r.pts}<small>${r.pts * PER_POINT} m</small></div><div class="a">${r.a ? `${esc(r.a)} <span class="chip sm t${r.tier}">${TIERS[r.tier].name}</span>` : '<span style="color:var(--muted)">No answer</span>'}</div>${r.a ? `<div class="x"><span data-share></span>.${r.tier < 4 ? ' A rarer one: ' + esc(r.rarest) + '.' : ''}</div>` : `<div class="x">A deep answer: ${esc(r.rarest)}.</div>`}</div>`).join('');
   bindShares($('resList'), R.res.filter(r => r.a));
   RUN = null; show('results'); SEA.depth = m;
+  $('resRank').hidden = true;
+  if (R.daily && R.date === today()) {
+    if (!account()) { $('resRank').hidden = false; $('resRank').textContent = 'Sign in to the arcade to put your dive on today\'s leaderboard.'; }
+    else postScore(R.date).then(() => kdPost('lb', { d: R.date })).then(b => {
+      todayBoard = b; const me = account().name.toLowerCase(), i = b.list.findIndex(e => e.n.toLowerCase() === me);
+      if (i >= 0) { $('resRank').hidden = false; $('resRank').textContent = (i < 3 ? MEDALS[i] + ' ' : '') + `#${i + 1} of ${b.n} on today's leaderboard`; }
+    }).catch(() => {});
+  }
   $('shareBtn').onclick = () => {
     const sq = ['⬜', '🟦', '🟥', '🟪', '🟨'], line = R.res.map(r => r.tier >= 0 ? sq[r.tier] : '⬛').join('');
     const txt = `🦐 Krill Dive ${R.daily ? '#' + dayNo(R.date) : '(practice)'}: ${m.toLocaleString()} m\n${line}\n${zoneAt(m)}`;
@@ -573,17 +627,111 @@ function showSaved(d) {
   for (const r of R.res) if (r.a) kdPost('vote', { q: r.q, a: r.a, id: save.id }).then(x => setShare(r, x.c, x.n), () => setShare(r, 0, 0));
 }
 
+// ---------- the daily leaderboard ----------
+// Every finished daily dive goes on that UTC day's board under the diver's arcade account (signed-out divers can
+// look but aren't listed). Today's board updates live; once a day is over its board is final, so it's kept here
+// (BKEY) and shown as a panel for that day without asking the server again.
+const BKEY = 'krilldive.boards', MEDALS = ['🥇', '🥈', '🥉'];
+const boards = (() => { try { return JSON.parse(localStorage.getItem(BKEY) || '{}'); } catch (e) { return {}; } })();
+function keepBoards() { const ks = Object.keys(boards).sort(); while (ks.length > 60) delete boards[ks.shift()]; try { localStorage.setItem(BKEY, JSON.stringify(boards)); } catch (e) {} }
+function account() { try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return a && a.name && a.token ? a : null; } catch (e) { return null; } }
+const metres = s => (s * PER_POINT).toLocaleString() + ' m';
+const dayLabel = d => 'Dive #' + dayNo(d) + ' · ' + new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+const msLeft = () => { const n = Date.now(); return Date.parse(new Date(n).toISOString().slice(0, 10) + 'T00:00:00Z') + 864e5 - n; };
+const clockText = ms => { const t = Math.max(0, Math.floor(ms / 1000)); return [t / 3600, t / 60 % 60, t % 60].map(v => String(Math.floor(v)).padStart(2, '0')).join(':'); };
+// a day's board stops changing a little after it ends (the server takes dives that began before midnight for 20 minutes)
+const isFinal = d => Date.now() > Date.parse(d + 'T00:00:00Z') + 864e5 + 25 * 60000;
+function getBoard(d) {
+  if (boards[d] && boards[d].final) return Promise.resolve(boards[d]);
+  return kdPost('lb', { d }).then(b => { if (isFinal(d)) { boards[d] = { list: b.list, n: b.n, final: 1 }; keepBoards(); } return b; });
+}
+// send today's dive if it hasn't gone yet (a dive from before 1.3, or one finished offline or signed out)
+function postScore(d) {
+  const a = account(), S = save.days[d];
+  if (!a || !S || S.lb || d !== today()) return Promise.resolve(null);
+  return fetch(KD_API + 'score', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + a.token }, body: JSON.stringify({ d, s: S.score }) })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(x => { S.lb = 1; persist(); return x; }, st => { if (st === 409) { S.lb = 1; persist(); } return null; });
+}
+function podium(list, me) {
+  return '<div class="podium">' + [1, 0, 2].map(k => { const e = list[k]; return e
+    ? `<div class="pod p${k + 1}${me && e.n.toLowerCase() === me ? ' me' : ''}"><div class="medal">${MEDALS[k]}</div><div class="who">${esc(e.n)}</div><div class="m">${metres(e.s)}</div></div>`
+    : `<div class="pod p${k + 1} none"><div class="medal">${MEDALS[k]}</div><div class="who">—</div><div class="m">&nbsp;</div></div>`; }).join('') + '</div>';
+}
+function rows(list, me, from) { return list.slice(from).map((e, k) => `<div class="lbRow${me && e.n.toLowerCase() === me ? ' me' : ''}"><span class="r">${from + k + 1}</span><span class="nm">${esc(e.n)}</span><span class="m">${metres(e.s)}</span></div>`).join(''); }
+let boardTimer = 0, boardDay = '', todayBoard = null;
+function drawToday() {
+  const d = today(), a = account(), me = a && a.name.toLowerCase(), b = todayBoard && todayBoard.d === d ? todayBoard : null;
+  const list = b ? b.list : [], mine = me ? list.findIndex(e => e.n.toLowerCase() === me) : -1;
+  const note = !a ? 'Sign in to the arcade to put your daily dive on the board.'
+    : mine >= 0 ? `You're #${mine + 1} today with ${metres(list[mine].s)}.` : save.days[d] ? 'Your dive is on its way to the board.'
+    : 'Finish today\'s dive to get on the board. Practice dives don\'t count.';
+  $('boardToday').innerHTML = `<div class="top"><div><b>Today</b> <small>${dayLabel(d)}</small></div><div class="clock"><span>Ends in</span><i id="clock">${clockText(msLeft())}</i></div></div>
+    ${podium(list, me)}
+    ${!b ? '<div class="lbNote">Loading today\'s divers…</div>' : list.length > 3 ? `<div class="lbList">${rows(list, me, 3)}</div>` : list.length ? '' : '<div class="lbNote">No divers on the board yet today. Be the first!</div>'}
+    <div class="lbNote">${b ? (b.n === 1 ? '1 diver' : b.n + ' divers') + ' so far · ' : ''}${note}</div>`;
+}
+function pastPanel(day) {
+  const a = account(), me = a && a.name.toLowerCase(), full = boards[day.d] && boards[day.d].final ? boards[day.d] : null;
+  const list = full ? full.list : day.top, n = full ? full.n : day.n;
+  return `<div class="dayPanel panel" data-day="${day.d}"><div class="top"><div><b>${new Date(day.d + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}</b> <small>Dive #${dayNo(day.d)}</small></div><small>${n === 1 ? '1 diver' : n + ' divers'}</small></div>
+    ${podium(list, me)}${full && full.list.length > 3 ? `<div class="lbList" hidden>${rows(full.list, me, 3)}</div>` : ''}
+    ${n > 3 ? `<button class="lbMore">Show all ${n} divers</button>` : ''}</div>`;
+}
+function drawPast(days) {
+  const past = days.filter(x => x.d < today() && x.n);
+  $('pastHead').hidden = !past.length;
+  $('boardPast').innerHTML = past.map(pastPanel).join('');
+  $('boardPast').querySelectorAll('.lbMore').forEach(btn => btn.onclick = () => {
+    const box = btn.closest('.dayPanel'), d = box.dataset.day, a = account(), me = a && a.name.toLowerCase();
+    let lst = box.querySelector('.lbList');
+    if (lst) { lst.hidden = !lst.hidden; btn.textContent = lst.hidden ? btn.textContent.replace('Hide', 'Show all') : btn.textContent.replace('Show all', 'Hide'); return; }
+    btn.textContent = 'Loading…';
+    getBoard(d).then(b => { btn.insertAdjacentHTML('beforebegin', `<div class="lbList">${rows(b.list, me, 3)}</div>`); btn.textContent = `Hide ${b.n} divers`; }, () => { btn.textContent = 'Couldn\'t load. Tap to try again.'; });
+  });
+}
+function loadToday() { const d = today(); return kdPost('lb', { d }).then(b => { todayBoard = b; drawToday(); drawMini(); }, () => {}); }
+function openBoard() {
+  show('board'); drawToday();
+  postScore(today()).then(loadToday);
+  // finished days come from this device first; the server only fills in days it hasn't kept yet
+  const cached = Object.keys(boards).filter(d => boards[d].final).map(d => ({ d, n: boards[d].n, top: boards[d].list.slice(0, 3) }));
+  drawPast(cached.sort((x, y) => x.d < y.d ? 1 : -1));
+  kdPost('lb-days', {}).then(r => {
+    const byDay = {}; for (const x of cached) byDay[x.d] = x; for (const x of r.days) if (!byDay[x.d]) byDay[x.d] = x;
+    drawPast(Object.values(byDay).sort((x, y) => x.d < y.d ? 1 : -1));
+    for (const x of r.days) if (x.d < today() && isFinal(x.d) && !(boards[x.d] && boards[x.d].final)) getBoard(x.d).catch(() => {}); // keep finished days
+  }, () => {});
+  clearInterval(boardTimer); boardDay = today(); let tick = 0;
+  boardTimer = setInterval(() => {
+    if (!$('board').classList.contains('on')) { clearInterval(boardTimer); return; }
+    if (today() !== boardDay) { openBoard(); return; } // midnight: today's board becomes a previous day
+    const c = $('clock'); if (c) c.textContent = clockText(msLeft());
+    if (++tick % 30 === 0) loadToday(); // the newest day keeps updating
+  }, 1000);
+}
+// the home card's strip: today's top three and the time left
+function drawMini() {
+  const d = today(), b = todayBoard && todayBoard.d === d ? todayBoard : null, list = b ? b.list : [];
+  $('lbMini').innerHTML = `<div class="h">Today's top divers <small>ends in <i id="miniClock">${clockText(msLeft())}</i></small></div>`
+    + (list.length ? list.slice(0, 3).map((e, k) => `<div class="row">${MEDALS[k]}<span>${esc(e.n)}</span><b>${metres(e.s)}</b></div>`).join('') : `<div class="empty">${b ? 'Nobody on the board yet today. Be the first!' : 'Tap to see the leaderboard.'}</div>`);
+}
+setInterval(() => { const c = $('miniClock'); if (c && $('home').classList.contains('on')) { c.textContent = clockText(msLeft()); if (msLeft() < 1000) setTimeout(() => { refreshHome(); postScore(today()).then(loadToday); }, 1500); } }, 1000);
+
 // ---------- buttons and keys ----------
 $('dailyBtn').onclick = () => { Sound.init(); if (save.days[today()]) showSaved(today()); else startDive(true); };
 $('practiceBtn').onclick = () => startDive(false);
 $('againBtn').onclick = () => startDive(false);
 $('homeBtn').onclick = () => { refreshHome(); show('home'); };
+$('boardBtn').onclick = $('lbMini').onclick = $('resBoardBtn').onclick = openBoard;
+$('boardBack').onclick = () => { refreshHome(); show('home'); };
 $('howBtn').onclick = () => show('how'); $('howBack').onclick = () => show('home');
 $('muteBtn').onclick = () => { save.mute = !save.mute; persist(); refreshHome(); };
 $('goBtn').onclick = submit;
 $('ans').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
 $('quitBtn').onclick = () => { if (!RUN) return; if (RUN.daily && !confirm('Quit today\'s dive? It will count with the answers you have so far.')) return; if (RUN.daily) { while (RUN.res.length < RUN.ids.length) RUN.res.push({ q: KD_DATA.prompts[RUN.ids[RUN.res.length]].q, a: null, tier: -1, pts: 0, rarest: '' }); RUN.i = RUN.ids.length; finish(); } else { clearInterval(ticker); RUN = null; refreshHome(); show('home'); } };
-refreshHome();
+refreshHome(); drawMini();
+postScore(today()).then(loadToday);
 if (/[?&]debug/.test(location.search)) window.__kd = { match, score, answersFor, pickPrompts, rng, hash, LISTS, save };
 </script>
 </body>

@@ -510,6 +510,13 @@ source in Settings → Pages should be switched to `main`.
   The Europe-river and Saturn/Uranus-moon prompts filter by named sets (`EUROPE`, `SATURN`, `URANUS`), not
   regexes (the old prefix regex counted the Potomac and Okavango as European). When adding to a grown list, keep
   the cuts in step: new common answers go before the first cut, and so on.
+  1.3 (2026-11-10): the daily leaderboard. A finished daily dive POSTs /kd/score {d, s} with the arcade token
+  (`postScore`; sent again on load if it hadn't gone, `save.days[d].lb` marks it sent); the Worker checks the
+  account, takes only today's UTC day (yesterday's for 20 min after midnight) and keeps each account's first entry.
+  `/kd/lb {d}` and `/kd/lb-days` read the boards (Tally 'krill-dive', 'lb:<day>' and 'lbdays', 60 days kept); the
+  Worker only passes vote/lb/lb-days/score through, so 'lb-add' can't be called directly. The `#board` screen:
+  today (podium, countdown to UTC midnight, everyone else, refreshed every 30 s) then previous days; a day's board
+  is cached for good in localStorage `krilldive.boards` once it's final (25 min after the day ends).
 
 - `intro.js` (2026-11-08): the "Made by The Arcade" intro, a 2.2 s canvas cinematic drawn inside `#stage` on
   play.html, so it plays where the game goes. The game's iframe only gets its `src` when `ArcadeIntro.load` resolves
