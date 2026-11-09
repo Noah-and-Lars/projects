@@ -95,9 +95,21 @@ export const LAYOUT = {
 // ---- His moves ----
 // (Story seconds. The dive clip's own times are the download's: see
 // tools/cinematic/README.md for its marks.)
-export const DIVE_AT = 3.35; // the dive starts, on a hard cut (6 strides into the sprint)
-const DIVE_FROM = 0.57; // at the dive clip's 0.57 s: his weight down, arms swinging up
-export const dive = (c) => +(DIVE_AT + c - DIVE_FROM).toFixed(4); // story time of dive clip time c
+// The run into the dive: on his sixth stride, as his right foot is down,
+// the sprint cross-fades into Running_Dive_Roll's run-up (its right foot
+// down too), and from it he pushes off his left foot, arms reaching out,
+// diving forward; airborne, at the cut to the grab, the goalkeeper's dive
+// takes over for the snatch.
+const SPRINT_FROM = 0.3; // the sprint's clip time at story 0 (its stride lined up with the run-up's)
+export const DIVE_AT = 3.466; // the running dive takes over from the sprint (cross-fading in)
+const RUN_DIVE_FROM = 0.17; // ... from its 0.17 s (his right foot down, as the sprint's is)
+const RUN_DIVE_SPEED = 1.25; // (a little faster than it was made: he comes in sprinting)
+const RUN_DIVE_BLEND = 0.08;
+export const TAKEOFF = DIVE_AT + (0.4 - RUN_DIVE_FROM) / RUN_DIVE_SPEED; // his left foot leaves the ground (the running dive's 0.4 s)
+// The goalkeeper's dive: dive(c) is the story time of its clip time c.
+export const dive = (c) => +(2.78 + c).toFixed(4);
+const GRAB_CUT = dive(0.83); // the cut to the grab: the goalkeeper's dive comes in, airborne
+const TRACK_CUT = DIVE_AT - 0.14; // the cut from tracking him to the takeoff (on his last sprinting stride)
 export const CATCH = 0.9; // the dive clip's catch: his right hand closes on the pistol
 const CUT = dive(2.1); // hard cut to him kneeling behind the barrier (mid-roll)
 // Kneeling behind the barrier: the kneeling aim, played so that it ends on
@@ -118,10 +130,13 @@ const GRIP_FADE = 0.012;
 // Fire clip yaw: 22° matches the pop-up (its body is bladed 22° more);
 // the first two shots go a little left of him (they strike the house).
 export const HERO = [
-  { clip: 'sprint', start: 0, from: 0 },
-  // (A hard cut, as the camera cuts to the low angle: the goalkeeper's dive
-  // starts from a set stance, not a run.)
-  { clip: 'dive', start: DIVE_AT, from: DIVE_FROM },
+  { clip: 'sprint', start: 0, from: SPRINT_FROM },
+  // (The run-up and takeoff of a running dive, cross-fading in during a
+  // stride, both right feet down.)
+  { clip: 'spare_dive_roll', start: DIVE_AT, from: RUN_DIVE_FROM, speed: RUN_DIVE_SPEED, blend: RUN_DIVE_BLEND },
+  // (A hard cut, as the camera cuts to the grab, both airborne: the
+  // goalkeeper's dive, for its arms reaching up and out for the pistol.)
+  { clip: 'dive', start: GRAB_CUT, from: 0.83 },
   // (The goalkeeper's hands are open claws: as the pistol meets his palm,
   // his right fingers close round the grip, from the kneeling aim; gone
   // again just before the cut.)
@@ -132,7 +147,7 @@ export const HERO = [
   { clip: 'fire', start: FIRE2, from: 0.05, blend: 0.15, yaw: 24.4 },
   { clip: 'fire', start: FIRE3, from: 0, blend: 0.3, yaw: 22 },
 ];
-export const COVER_SEGMENT = 3;
+export const COVER_SEGMENT = 4;
 export const COVER_FROM = KNEEL - COVER_LEN;
 // The shots he fires, story seconds.
 export const FIRES = [FIRE1 + SHOT_AT, FIRE2 + SHOT_AT - 0.05, FIRE3 + SHOT_AT];
@@ -285,7 +300,7 @@ export function shots(S) {
     },
     // Tracking beside him, low, on his left, on his last strides.
     {
-      name: 'track', from: 2.3, to: DIVE_AT, blur: 0.008, shake: 0.6,
+      name: 'track', from: 2.3, to: TRACK_CUT, blur: 0.008, shake: 0.6,
       camera: [
         { at: 0, pos: ['hips', -3.3, -0.3, -1.9], look: ['hips', 0, 0.22, 0], lens: 35 },
         { at: 'end', pos: ['hips', -3.0, -0.35, -0.9], look: ['hips', 0, 0.2, 0], lens: 35 },
@@ -294,11 +309,11 @@ export function shots(S) {
     // The takeoff, from low on the ground (a hard cut, on his last
     // stride): time slows as he leaves it and the pistol comes spinning in.
     {
-      name: 'takeoff', from: DIVE_AT, to: dive(0.83), blur: 0.006,
+      name: 'takeoff', from: TRACK_CUT, to: GRAB_CUT, blur: 0.006,
       ramp: [[0, 1], [0.08, 1], [0.5, 0.09], [1.0, 0.09]],
       camera: [
-        { at: 0, pos: ['world', -0.75, 0.16, 2.5], look: ['hips', 0, 0.15, 0], lens: 24 },
-        { at: 'end', pos: ['world', -0.7, 0.17, 2.4], look: ['catch', 0.25, -0.05, 0.25], lens: 24 },
+        { at: 0, pos: ['world', -1.3, 0.18, 2.6], look: ['hips', 0, 0.1, 0], lens: 22 },
+        { at: 'end', pos: ['world', -1.15, 0.2, 2.35], look: ['catch', 0.25, -0.15, 0.25], lens: 22 },
       ],
       sounds: [[0.1, 'whoosh']],
     },
@@ -307,7 +322,7 @@ export function shots(S) {
     // focused on the hand; as it meets his palm, his fingers close and time
     // snaps back to speed; a hard cut.
     {
-      name: 'grab', from: dive(0.83), blur: 0.012,
+      name: 'grab', from: GRAB_CUT, blur: 0.012,
       ramp: [[0, 0.09], [0.35, 1 / 36], { hold: dive(CATCH) }, [0.12, 1], [0.3, 1]],
       camera: [
         ...orbit(['catch', 0, 0, 0], { at: [0, 3.0], angle: [105, 160], radius: [0.95, 0.8], height: [0.14, 0.1], lens: 55, steps: 6 }),

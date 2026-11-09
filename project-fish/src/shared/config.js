@@ -93,11 +93,14 @@ export const WORLD = {
 // The guns. Times in seconds, angles in degrees, distances in metres. Each
 // gun's `name` is what the player sees (the ammo counter, the loadout menu,
 // the main menu's credits); everything else knows it by its key in GUNS.
+// Its `calibre` and `kind` are what the loadout menu shows beside the name.
 // A gun fires once per trigger pull unless its fireMode is 'auto' (it fires
 // as long as the trigger is held, see src/weapon.js).
 // The first pistol: a compact 9 mm, 15 rounds.
 export const PISTOL = {
   name: 'PF-9',
+  calibre: '9×19 mm',
+  kind: 'Pistol',
   fireInterval: 0.12, // fastest the trigger can be pulled again (500 rounds a minute)
   magazine: 15,
   reserve: 60,
@@ -114,6 +117,8 @@ export const PISTOL = {
 // shared, see src/viewmodel/viewmodel.js.)
 export const PISTOL45 = {
   name: 'M1911',
+  calibre: '.45 ACP',
+  kind: 'Pistol',
   fireInterval: 0.17, // 350 rounds a minute at most
   magazine: 7,
   reserve: 35,
@@ -145,6 +150,8 @@ export const PISTOL45 = {
 // little more than the PF-9 and a little less than the M1911.
 export const BERETTA = {
   name: 'Beretta 92FS',
+  calibre: '9×19 mm',
+  kind: 'Pistol',
   fireInterval: 0.2,
   magazine: 15,
   reserve: 60,
@@ -183,6 +190,8 @@ export const BERETTA = {
 // It has no inspect (its maker made none).
 export const FN502 = {
   name: 'FN 502',
+  calibre: '.22 LR',
+  kind: 'Pistol',
   fireInterval: 0.2,
   magazine: 10,
   reserve: 40,
@@ -214,6 +223,8 @@ export const FN502 = {
 // than the Beretta. It has no inspect (its maker made none).
 export const HIPISTOL = {
   name: 'Browning Hi-Power',
+  calibre: '9×19 mm',
+  kind: 'Pistol',
   fireInterval: 0.2,
   magazine: 13,
   reserve: 52,
@@ -244,6 +255,8 @@ export const HIPISTOL = {
 // trigger 0.15 s after the shot: 400 rounds a minute at most.
 export const X4 = {
   name: 'Xiri X4',
+  calibre: '9×19 mm',
+  kind: 'Pistol',
   fireInterval: 0.15,
   magazine: 15,
   reserve: 60,
@@ -277,6 +290,8 @@ export const X4 = {
 // little with each round (burstKick: how much more per round, and at most).
 export const MP7 = {
   name: 'MP7A1',
+  calibre: '4.6×30 mm',
+  kind: 'Sub-machine gun',
   fireMode: 'auto',
   fireInterval: 60 / 950,
   magazine: 40,
@@ -314,6 +329,8 @@ export const MP7 = {
 // maker made none).
 export const AR15 = {
   name: 'AR-15',
+  calibre: '5.56×45 mm',
+  kind: 'Rifle',
   fireInterval: 0.1,
   magazine: 30,
   reserve: 120,
@@ -347,6 +364,8 @@ export const AR15 = {
 // PF-9's. It has no inspect (its maker made none).
 export const MAKAROV = {
   name: 'Makarov PM',
+  calibre: '9×18 mm Makarov',
+  kind: 'Pistol',
   fireInterval: 0.2,
   magazine: 8,
   reserve: 32,
@@ -381,6 +400,8 @@ export const MAKAROV = {
 // little less than the AR-15's per round, growing in a burst.
 export const AK74M = {
   name: 'AK-74M',
+  calibre: '5.45×39 mm',
+  kind: 'Assault rifle',
   fireMode: 'auto',
   fireInterval: 60 / 650,
   magazine: 30,
@@ -421,6 +442,8 @@ export const AK74M = {
 // climbs more, and strays more aimed.
 export const AK74U = {
   name: 'AK-74U',
+  calibre: '5.45×39 mm',
+  kind: 'Carbine',
   fireMode: 'auto',
   fireInterval: 60 / 700,
   magazine: 30,
@@ -464,6 +487,8 @@ export const AK74U = {
 // the gun still well up in its recoil: about 200 rounds a minute.
 export const SAPS12 = {
   name: 'Franchi SPAS-12',
+  calibre: '12 gauge',
+  kind: 'Shotgun',
   fireInterval: 0.3,
   magazine: 8,
   reserve: 32,

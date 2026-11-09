@@ -1,0 +1,1341 @@
+/* The loadout menu (src/loadoutMenu.js, src/outfitMenu.js): a full screen
+   over the game or the main menu, in the main menu's look (src/menu/
+   menu.css): the stencil title, condensed small-caps labels, thin lines,
+   muted greys and one red accent. The soldier stands in the middle on his
+   own canvas (src/outfitPreview.js) over the dark backdrop drawn here; the
+   columns sit either side of him. On a phone he's at the top and the rest
+   scrolls below him. */
+
+#loadout {
+  --lo-red: #e0352b;
+  --lo-red-soft: rgba(224, 53, 43, 0.16);
+  --lo-ink: #ece8e2;
+  --lo-dim: rgba(236, 232, 226, 0.6);
+  --lo-faint: rgba(236, 232, 226, 0.38);
+  --lo-line: rgba(236, 232, 226, 0.1);
+  --lo-card: rgba(16, 17, 21, 0.72);
+  --lo-card-hover: rgba(28, 30, 36, 0.84);
+  --lo-gutter: clamp(16px, 4.4vw, 92px);
+  --lo-col: clamp(300px, 21vw, 420px);
+  --lo-right: clamp(320px, 23vw, 460px);
+  --lo-top: clamp(150px, 19vh, 214px);
+  --lo-bottom: clamp(70px, 9vh, 104px);
+  --lo-title-font: 'Big Shoulders Stencil Display', 'Arial Narrow', Impact, sans-serif;
+  --lo-ui-font: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  background: #060709;
+  color: var(--lo-ink);
+  font-family: var(--lo-ui-font);
+  opacity: 1;
+  transition: opacity 0.35s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#loadout[hidden] {
+  display: none;
+}
+
+#loadout.lo-enter {
+  opacity: 0;
+  transition: none;
+}
+
+#loadout button {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#loadout button:focus-visible {
+  outline: 1px solid rgba(236, 232, 226, 0.75);
+  outline-offset: 2px;
+}
+
+#loadout kbd {
+  display: inline-block;
+  min-width: 1.1em;
+  padding: 3px 5px 2px;
+  border: 1px solid rgba(236, 232, 226, 0.28);
+  border-radius: 2px;
+  font: 600 11px/1 var(--lo-ui-font);
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--lo-dim);
+}
+
+/* ---- The studio behind him ---- */
+
+.lo-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 30% 62% at 50% 46%, rgba(78, 90, 110, 0.34) 0%, rgba(40, 46, 58, 0.18) 45%, transparent 75%),
+    radial-gradient(ellipse 36% 46% at 74% 62%, rgba(150, 18, 10, 0.24) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 22% at 50% 86%, rgba(30, 34, 42, 0.6) 0%, transparent 70%),
+    linear-gradient(180deg, #08090c 0%, #0c0e12 52%, #09090b 74%, #050506 100%);
+}
+
+/* A faint line where the floor meets the dark, and thin frame marks. */
+.lo-backdrop::before {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 74%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(236, 232, 226, 0.06) 30%, rgba(236, 232, 226, 0.06) 70%, transparent);
+}
+
+.lo-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.lo-stage canvas.avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+.lo-stage canvas.avatar:active {
+  cursor: grabbing;
+}
+
+/* Darker towards the columns, top and bottom, and round the edges. */
+.lo-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(4, 4, 6, 0.9) 0%, rgba(4, 4, 6, 0.62) 22%, rgba(4, 4, 6, 0) 36%, rgba(4, 4, 6, 0) 64%, rgba(4, 4, 6, 0.62) 78%, rgba(4, 4, 6, 0.9) 100%),
+    linear-gradient(180deg, rgba(4, 4, 6, 0.65) 0%, rgba(4, 4, 6, 0) 20%, rgba(4, 4, 6, 0) 82%, rgba(4, 4, 6, 0.7) 100%);
+}
+
+/* Film grain, very faint. */
+.lo-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+#loadout[data-view='guns'] .lo-shade,
+#loadout[data-view='breakdowns'] .lo-shade {
+  background: linear-gradient(180deg, rgba(4, 4, 6, 0.7), rgba(4, 4, 6, 0.84));
+}
+
+#loadout[data-view='breakdowns'] .lo-stage {
+  display: none;
+}
+
+.lo-ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lo-ui > * {
+  pointer-events: auto;
+}
+
+/* ---- Title, tabs, Breakdowns ---- */
+
+.lo-head {
+  position: absolute;
+  top: clamp(22px, 4.2vh, 52px);
+  left: var(--lo-gutter);
+  right: var(--lo-gutter);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 40px;
+  pointer-events: none;
+}
+
+.lo-head > * {
+  pointer-events: auto;
+}
+
+.lo-brand {
+  flex: 0 0 100%;
+}
+
+.lo-kicker {
+  margin: 0 0 6px 2px;
+  font: 600 12px/1 var(--lo-ui-font);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--lo-red);
+}
+
+.lo-kicker span {
+  color: var(--lo-faint);
+}
+
+.lo-title {
+  margin: 0;
+  font: 900 clamp(46px, 4vw, 82px) / 0.86 var(--lo-title-font);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  animation: lo-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.lo-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 14px;
+  border-bottom: 1px solid var(--lo-line);
+}
+
+.lo-tabs kbd {
+  margin: 0 8px 6px;
+}
+
+#loadout .lo-tab {
+  position: relative;
+  padding: 8px 12px 11px;
+  border: 0;
+  background: none;
+  font: 600 15px/1 var(--lo-ui-font);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lo-faint);
+  transition: color 0.2s ease;
+}
+
+#loadout .lo-tab::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--lo-red);
+  transform: scaleX(0);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#loadout .lo-tab:hover {
+  color: var(--lo-ink);
+}
+
+#loadout .lo-tab.on {
+  color: #fff;
+}
+
+#loadout .lo-tab.on::after {
+  transform: scaleX(1);
+}
+
+/* Small outlined buttons: Breakdowns, Default kit. */
+#loadout .lo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px 7px 12px;
+  border: 1px solid rgba(236, 232, 226, 0.22);
+  border-radius: 1px;
+  background: rgba(10, 11, 14, 0.55);
+  font: 600 13px/1 var(--lo-ui-font);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lo-dim);
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+#loadout .lo-chip:hover:not(:disabled) {
+  color: #fff;
+  border-color: rgba(224, 53, 43, 0.8);
+  background: rgba(224, 53, 43, 0.12);
+}
+
+#loadout .lo-chip:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.lo-chip-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--lo-red);
+  box-shadow: 0 0 8px rgba(224, 53, 43, 0.7);
+}
+
+#loadout .lo-breakdowns {
+  margin-left: auto;
+  margin-bottom: 4px;
+}
+
+/* ---- The columns ---- */
+
+.lo-body {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lo-left,
+.lo-right {
+  position: absolute;
+  top: var(--lo-top);
+  bottom: var(--lo-bottom);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(236, 232, 226, 0.2) transparent;
+  pointer-events: auto;
+  animation: lo-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.lo-left {
+  left: var(--lo-gutter);
+  width: var(--lo-col);
+  padding-right: 6px;
+}
+
+.lo-right {
+  right: var(--lo-gutter);
+  width: var(--lo-right);
+  padding-left: 6px;
+  animation-name: lo-in-right;
+}
+
+.lo-block {
+  margin: 0 0 clamp(14px, 2.2vh, 24px);
+}
+
+.lo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 10px;
+  font: 600 12px/1 var(--lo-ui-font);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--lo-dim);
+}
+
+.lo-section-rule {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--lo-line);
+}
+
+.lo-section-aside {
+  letter-spacing: 0.18em;
+  color: var(--lo-faint);
+}
+
+.lo-mini {
+  font: 600 11px/1 var(--lo-ui-font);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--lo-faint);
+}
+
+.lo-keycap {
+  min-width: 18px;
+  padding: 3px 4px 2px;
+  border: 1px solid rgba(236, 232, 226, 0.25);
+  font: 600 11px/1 var(--lo-ui-font);
+  text-align: center;
+  color: var(--lo-dim);
+}
+
+/* Pictures: each on a dark card, contained. */
+.lo-pic {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 75% at 50% 45%, rgba(54, 60, 70, 0.55) 0%, rgba(22, 24, 29, 0.7) 60%, rgba(10, 11, 13, 0.85) 100%);
+}
+
+.lo-pic img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Cards: the gun in your hands, the gear rows, the tiles. */
+#loadout .lo-gun-card,
+#loadout .lo-gear-row,
+#loadout .lo-tile,
+#loadout .lo-option,
+#loadout .lo-gun-tile,
+#loadout .lo-pick,
+#loadout .lo-strip-gun {
+  position: relative;
+  border: 1px solid var(--lo-line);
+  border-radius: 0;
+  background: var(--lo-card);
+  text-align: left;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+#loadout .lo-gun-card:hover,
+#loadout .lo-gear-row:hover,
+#loadout .lo-tile:hover,
+#loadout .lo-option:hover,
+#loadout .lo-gun-tile:hover,
+#loadout .lo-pick:hover,
+#loadout .lo-strip-gun:hover,
+#loadout .lo-pick:focus-visible,
+#loadout .lo-gun-tile:focus-visible,
+#loadout .lo-option:focus-visible,
+#loadout .lo-tile:focus-visible {
+  border-color: rgba(236, 232, 226, 0.32);
+  background: var(--lo-card-hover);
+}
+
+/* Chosen: a red edge and a red mark at the top left. */
+#loadout .chosen {
+  border-color: rgba(224, 53, 43, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(224, 53, 43, 0.25), 0 0 24px rgba(224, 53, 43, 0.08);
+}
+
+#loadout .chosen::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: -1px;
+  left: -1px;
+  width: 16px;
+  height: 3px;
+  background: var(--lo-red);
+}
+
+.lo-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lo-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.lo-card-more {
+  font: 600 11px/1 var(--lo-ui-font);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lo-faint);
+  transition: color 0.18s ease;
+}
+
+.lo-card-more::after {
+  content: ' ›';
+  letter-spacing: 0;
+}
+
+#loadout button:hover .lo-card-more {
+  color: var(--lo-red);
+}
+
+/* The gun in your hands. */
+#loadout .lo-gun-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'top top' 'pic pic' 'text more';
+  align-items: end;
+  gap: 8px 10px;
+  width: 100%;
+  padding: 12px 14px 14px;
+}
+
+.lo-gun-card .lo-card-top {
+  grid-area: top;
+}
+
+.lo-gun-card .lo-gun-pic {
+  grid-area: pic;
+  aspect-ratio: 2.3 / 1;
+  background: none;
+}
+
+.lo-gun-card .lo-card-text {
+  grid-area: text;
+}
+
+.lo-gun-card .lo-card-more {
+  grid-area: more;
+  padding-bottom: 2px;
+}
+
+.lo-gun-name {
+  font: 600 clamp(21px, 1.45vw, 27px) / 1 var(--lo-ui-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lo-gun-sub {
+  font: 500 14px/1.1 var(--lo-ui-font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lo-dim);
+}
+
+/* All twelve, small. */
+.lo-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 6px;
+}
+
+#loadout .lo-strip-gun {
+  padding: 0;
+  aspect-ratio: 1.9 / 1;
+  background: rgba(16, 17, 21, 0.6);
+}
+
+#loadout .lo-strip-gun .lo-pic {
+  position: absolute;
+  inset: 3px 4px;
+  background: none;
+  opacity: 0.72;
+  transition: opacity 0.18s ease;
+}
+
+#loadout .lo-strip-gun:hover .lo-pic,
+#loadout .lo-strip-gun.chosen .lo-pic {
+  opacity: 1;
+}
+
+.lo-strip-key {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font: 600 10px/1 var(--lo-ui-font);
+  color: var(--lo-faint);
+}
+
+#loadout .lo-strip-gun.chosen::before {
+  width: 10px;
+  height: 2px;
+}
+
+/* What he wears, a row each. */
+.lo-gear-block {
+  margin-bottom: clamp(10px, 1.6vh, 18px);
+}
+
+#loadout .lo-gear-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 6px 14px 6px 6px;
+}
+
+.lo-gear-pic {
+  flex: none;
+  width: clamp(54px, 3.7vw, 70px);
+  aspect-ratio: 1;
+}
+
+.lo-gear-row .lo-card-text {
+  flex: 1 1 auto;
+}
+
+.lo-gear-name {
+  font: 600 19px/1 var(--lo-ui-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* ---- The right panel ---- */
+
+.lo-cat {
+  margin: 0 0 8px;
+  font: 600 12px/1.2 var(--lo-ui-font);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--lo-red);
+}
+
+.lo-name {
+  margin: 0 0 12px;
+  font: 700 clamp(34px, 2.6vw, 50px) / 0.95 var(--lo-ui-font);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.lo-about {
+  margin: 0 0 14px;
+  font: 400 16px/1.4 var(--lo-ui-font);
+  letter-spacing: 0.02em;
+  color: rgba(236, 232, 226, 0.72);
+}
+
+.lo-state {
+  margin: -4px 0 20px;
+  font: 600 12px/1 var(--lo-ui-font);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--lo-red);
+}
+
+.lo-state.off {
+  color: var(--lo-faint);
+}
+
+/* The gun's picture, big; the PF-9's attachments drawn over it. */
+.lo-hero {
+  position: relative;
+  aspect-ratio: 2 / 1;
+  margin: 0 -8px 12px;
+  background: radial-gradient(ellipse 60% 55% at 50% 52%, rgba(70, 78, 92, 0.3) 0%, transparent 72%);
+}
+
+.lo-hero::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 4%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(236, 232, 226, 0.12), transparent);
+}
+
+.lo-hero-zoom {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.lo-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.lo-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.lo-specs {
+  margin: 0 0 22px;
+}
+
+.lo-spec {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0 6px;
+  border-top: 1px solid var(--lo-line);
+}
+
+.lo-spec:last-child {
+  border-bottom: 1px solid var(--lo-line);
+}
+
+.lo-spec dt {
+  font: 600 12px/1 var(--lo-ui-font);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--lo-faint);
+}
+
+.lo-spec dd {
+  margin: 0;
+  font: 500 15px/1.2 var(--lo-ui-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--lo-ink);
+}
+
+/* Attachment rows: the slot and what's on it; open, its options. */
+.lo-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#loadout .lo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px 0 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: rgba(16, 17, 21, 0.7);
+  text-align: left;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+#loadout button.lo-row:hover {
+  background: var(--lo-card-hover);
+}
+
+#loadout .lo-row.set {
+  border-left-color: rgba(224, 53, 43, 0.85);
+}
+
+#loadout .lo-row.open {
+  background: rgba(30, 32, 38, 0.9);
+}
+
+.lo-row-slot {
+  flex: 0 0 42%;
+  font: 600 12px/1 var(--lo-ui-font);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--lo-faint);
+}
+
+.lo-row-value {
+  flex: 1 1 auto;
+  font: 600 15px/1.1 var(--lo-ui-font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--lo-ink);
+}
+
+.lo-row:not(.set) .lo-row-value {
+  color: var(--lo-faint);
+}
+
+.lo-row-mark {
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid var(--lo-dim);
+  border-bottom: 1px solid var(--lo-dim);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 0.2s ease;
+}
+
+.lo-row.open .lo-row-mark {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.lo-row.fixed {
+  border-left-color: rgba(236, 232, 226, 0.25);
+}
+
+.lo-note {
+  margin: 8px 0 0;
+  font: 400 14px/1.35 var(--lo-ui-font);
+  letter-spacing: 0.03em;
+  color: var(--lo-faint);
+}
+
+.lo-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 1px 0 6px 14px;
+}
+
+#loadout .lo-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 12px 8px 14px;
+  border: 1px solid transparent;
+  background: rgba(12, 13, 16, 0.78);
+  text-align: left;
+}
+
+#loadout .lo-choice:hover {
+  border-color: rgba(236, 232, 226, 0.22);
+}
+
+#loadout .lo-choice.chosen::before {
+  width: 3px;
+  height: auto;
+  bottom: -1px;
+}
+
+.lo-choice-name {
+  font: 600 15px/1.1 var(--lo-ui-font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.lo-choice-about {
+  font: 400 13px/1.3 var(--lo-ui-font);
+  letter-spacing: 0.02em;
+  color: var(--lo-dim);
+}
+
+.lo-choice-warn {
+  font: 600 11px/1.2 var(--lo-ui-font);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ff7468;
+}
+
+/* ---- Customization: tiles on the left, options on the right ---- */
+
+.lo-tools {
+  margin: 0 0 clamp(14px, 2.2vh, 24px);
+}
+
+.lo-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#loadout .lo-tile,
+#loadout .lo-option {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 0 9px;
+}
+
+#loadout .lo-tile .lo-pic,
+#loadout .lo-option .lo-pic {
+  aspect-ratio: 1;
+  margin-bottom: 6px;
+}
+
+.lo-tile-label,
+.lo-tile-name,
+.lo-option-name {
+  padding: 0 9px;
+}
+
+.lo-tile-label {
+  font: 600 10px/1 var(--lo-ui-font);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--lo-faint);
+}
+
+.lo-tile-name,
+.lo-option-name {
+  font: 600 13px/1.1 var(--lo-ui-font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lo-ink);
+}
+
+.lo-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lo-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 3px 5px 2px;
+  background: var(--lo-red);
+  font: 700 10px/1 var(--lo-ui-font);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #140707;
+}
+
+/* ---- The grid of guns, and the breakdowns: a sheet over the stage ---- */
+
+.lo-sheet {
+  position: absolute;
+  top: var(--lo-top);
+  bottom: var(--lo-bottom);
+  left: var(--lo-gutter);
+  right: var(--lo-gutter);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(236, 232, 226, 0.2) transparent;
+  animation: lo-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.lo-sheet-head {
+  max-width: 760px;
+  margin-bottom: 18px;
+}
+
+.lo-sheet-head .lo-name {
+  font-size: clamp(28px, 2vw, 38px);
+}
+
+.lo-sheet-head .lo-about {
+  margin-bottom: 0;
+}
+
+.lo-gun-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+#loadout .lo-gun-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 14px;
+}
+
+.lo-gun-tile .lo-gun-pic {
+  aspect-ratio: 2 / 1;
+  margin: 4px -4px 2px;
+  background: none;
+}
+
+.lo-gun-tile .lo-gun-name {
+  font-size: clamp(18px, 1.15vw, 23px);
+}
+
+.lo-gun-tile .lo-gun-sub {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.lo-gun-tile .lo-badge {
+  top: 12px;
+  right: 46px;
+}
+
+.lo-picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+}
+
+#loadout .lo-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 0 14px;
+}
+
+.lo-pick-pic {
+  aspect-ratio: 2 / 1;
+  margin-bottom: 12px;
+}
+
+.lo-pick .lo-card-text {
+  padding: 0 14px;
+}
+
+.lo-pick-what {
+  font: 400 14px/1.35 var(--lo-ui-font);
+  letter-spacing: 0.02em;
+  color: rgba(236, 232, 226, 0.72);
+}
+
+.lo-pick-credit {
+  font: 400 12px/1.3 var(--lo-ui-font);
+  letter-spacing: 0.04em;
+  color: var(--lo-faint);
+}
+
+/* ---- Back, the hint, the keys ---- */
+
+.lo-foot {
+  position: absolute;
+  left: var(--lo-gutter);
+  right: var(--lo-gutter);
+  bottom: clamp(18px, 3.4vh, 40px);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  pointer-events: none;
+}
+
+.lo-foot > * {
+  pointer-events: auto;
+}
+
+#loadout .lo-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px 8px 12px;
+  border: 1px solid rgba(236, 232, 226, 0.22);
+  background: rgba(10, 11, 14, 0.6);
+  font: 600 15px/1 var(--lo-ui-font);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--lo-ink);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+#loadout .lo-back:hover {
+  border-color: rgba(224, 53, 43, 0.8);
+  background: rgba(224, 53, 43, 0.12);
+}
+
+.lo-back-mark {
+  width: 7px;
+  height: 7px;
+  border-left: 2px solid var(--lo-red);
+  border-bottom: 2px solid var(--lo-red);
+  transform: rotate(45deg);
+  margin: 0 2px 0 4px;
+}
+
+.lo-back kbd {
+  margin-left: 4px;
+}
+
+.lo-drag {
+  position: absolute;
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+  font: 600 11px/1 var(--lo-ui-font);
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--lo-faint);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.lo-drag::before,
+.lo-drag::after {
+  content: '';
+  display: inline-block;
+  width: 26px;
+  height: 1px;
+  margin: 0 12px 3px;
+  background: rgba(236, 232, 226, 0.25);
+}
+
+.lo-keys {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+  font: 600 11px/1 var(--lo-ui-font);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lo-faint);
+  pointer-events: none;
+}
+
+.lo-keys kbd {
+  margin-right: 4px;
+}
+
+@keyframes lo-in {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+
+@keyframes lo-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+/* No mouse: no key hints. */
+@media (hover: none) {
+  .lo-keys,
+  .lo-tabs kbd,
+  .lo-back kbd {
+    display: none;
+  }
+}
+
+/* A smaller window: narrower columns, the keys go. */
+@media (max-width: 1360px) {
+  #loadout {
+    --lo-col: clamp(290px, 25vw, 340px);
+    --lo-right: clamp(300px, 27vw, 360px);
+  }
+
+  .lo-keys {
+    display: none;
+  }
+
+  .lo-gun-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 820px) and (min-width: 1001px) {
+  #loadout {
+    --lo-top: 150px;
+  }
+
+  .lo-title {
+    font-size: 48px;
+  }
+
+  .lo-tabs {
+    margin-top: 8px;
+  }
+
+  .lo-hero {
+    aspect-ratio: 2.6 / 1;
+  }
+}
+
+/* A phone or a narrow window: the title and tabs over him at the top, and
+   everything else below him, scrolling, 16 px from the edges. */
+@media (max-width: 1000px) {
+  #loadout {
+    --lo-gutter: 16px;
+    --lo-stage: 52vh;
+    --lo-stage-top: 104px;
+    --lo-foot: 60px;
+  }
+
+  @supports (height: 1dvh) {
+    #loadout {
+      --lo-stage: 52dvh;
+    }
+  }
+
+  /* (Under the title and tabs.) */
+  .lo-stage {
+    top: var(--lo-stage-top);
+    bottom: auto;
+    height: calc(var(--lo-stage) - var(--lo-stage-top));
+  }
+
+  .lo-backdrop {
+    background:
+      radial-gradient(ellipse 60% 34% at 50% 26%, rgba(78, 90, 110, 0.34) 0%, transparent 75%),
+      radial-gradient(ellipse 50% 30% at 80% 34%, rgba(150, 18, 10, 0.22) 0%, transparent 70%),
+      linear-gradient(180deg, #08090c 0%, #0c0e12 30%, #08090b 46%, #060708 100%);
+  }
+
+  .lo-backdrop::before {
+    display: none;
+  }
+
+  .lo-shade {
+    background: linear-gradient(180deg, rgba(4, 4, 6, 0.8) 0%, rgba(4, 4, 6, 0) 22%, rgba(4, 4, 6, 0) 36%, rgba(4, 4, 6, 0.6) 46%, rgba(4, 4, 6, 0.6) 100%);
+  }
+
+  .lo-head {
+    top: max(12px, env(safe-area-inset-top));
+    column-gap: 12px;
+  }
+
+  .lo-kicker {
+    font-size: 10px;
+    letter-spacing: 0.34em;
+    margin-bottom: 4px;
+  }
+
+  .lo-title {
+    font-size: clamp(32px, 9vw, 52px);
+  }
+
+  .lo-tabs {
+    margin-top: 6px;
+    gap: 0;
+    border-bottom: 0;
+  }
+
+  #loadout .lo-tab {
+    padding: 7px 8px 9px 0;
+    margin-right: 12px;
+    font-size: 13px;
+    letter-spacing: 0.18em;
+  }
+
+  #loadout .lo-tab::after {
+    left: 0;
+    right: 0;
+  }
+
+  #loadout .lo-breakdowns {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 7px 10px 6px 9px;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+  }
+
+  .lo-body {
+    top: var(--lo-stage);
+    bottom: var(--lo-foot);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 16px 18px;
+    pointer-events: auto;
+  }
+
+  .lo-left,
+  .lo-right {
+    position: static;
+    width: auto;
+    overflow: visible;
+    padding: 0;
+    animation: none;
+  }
+
+  .lo-right {
+    margin-top: 6px;
+    padding-top: 18px;
+    border-top: 1px solid var(--lo-line);
+  }
+
+  .lo-name {
+    font-size: 34px;
+  }
+
+  .lo-hero {
+    margin: 0 0 10px;
+  }
+
+  .lo-gun-card .lo-gun-pic {
+    aspect-ratio: 3 / 1;
+  }
+
+  .lo-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lo-block {
+    margin-bottom: 14px;
+  }
+
+  .lo-sheet {
+    top: 118px;
+    bottom: var(--lo-foot);
+    padding-bottom: 16px;
+  }
+
+  .lo-gun-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  #loadout .lo-gun-tile {
+    padding: 10px 10px 12px;
+  }
+
+  .lo-gun-tile .lo-gun-name {
+    font-size: 18px;
+  }
+
+  .lo-gun-tile .lo-gun-sub {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  .lo-gun-tile .lo-badge {
+    display: none;
+  }
+
+  .lo-foot {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--lo-foot);
+    padding: 0 16px max(0px, env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    background: linear-gradient(180deg, rgba(6, 7, 9, 0.9), #060709);
+    border-top: 1px solid var(--lo-line);
+  }
+
+  #loadout .lo-back {
+    padding: 10px 14px 9px 10px;
+    font-size: 14px;
+  }
+
+  .lo-drag {
+    position: fixed;
+    top: calc(var(--lo-stage) - 26px);
+    bottom: auto;
+    font-size: 10px;
+  }
+
+  .lo-drag::before,
+  .lo-drag::after {
+    width: 16px;
+    margin: 0 8px 3px;
+  }
+
+  .lo-keys {
+    display: none;
+  }
+}
+
+/* A phone on its side: him on the left, the rest scrolling on the right. */
+@media (max-width: 1000px) and (max-height: 520px) and (orientation: landscape) {
+  #loadout {
+    --lo-stage: 100vh;
+  }
+
+  .lo-stage {
+    top: 92px;
+    width: 42vw;
+    height: calc(100% - 92px - var(--lo-foot));
+  }
+
+  .lo-head {
+    right: auto;
+    width: calc(42vw - 32px);
+  }
+
+  .lo-body,
+  .lo-sheet {
+    top: 0;
+    left: 42vw;
+    padding-top: 14px;
+  }
+
+  .lo-sheet {
+    right: 0;
+    padding-right: 16px;
+  }
+
+  .lo-drag {
+    top: auto;
+    bottom: calc(var(--lo-foot) + 10px);
+    left: 21vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #loadout,
+  .lo-title,
+  .lo-left,
+  .lo-right,
+  .lo-sheet {
+    animation: none;
+    transition: none;
+  }
+}

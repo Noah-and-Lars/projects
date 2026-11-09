@@ -186,6 +186,7 @@ export class Actor {
   //   start    when it starts, story seconds
   //   from     the clip time it starts at (seconds; default 0)
   //   to       the clip time it holds at once it gets there (default: the clip's end)
+  //   speed    clip seconds a story second (default 1: as it was made)
   //   loop     plays round and round instead (an idle)
   //   blend    seconds it cross-fades in over (0: a hard cut)
   //   yaw      the turn given to the whole clip (degrees, his left positive)
@@ -222,7 +223,7 @@ export class Actor {
       if (s.sameAs !== undefined) off = placed[s.sameAs].off.clone().add(new THREE.Vector3(s.dx || 0, 0, s.dz || 0));
       else if (before.length && s.align !== false && !s.layer) {
         const p = before[before.length - 1];
-        const pt = s.alignPrev !== undefined ? s.alignPrev : (p.s.from || 0) + (s.start - p.s.start);
+        const pt = s.alignPrev !== undefined ? s.alignPrev : (p.s.from || 0) + (s.start - p.s.start) * (p.s.speed || 1);
         const prevHip = this.clipHip(p.src, pt, A).applyQuaternion(p.qy).add(p.off);
         const mine = this.clipHip(src, s.alignClip !== undefined ? s.alignClip : s.from || 0, A).applyQuaternion(qy);
         off = new THREE.Vector3(prevHip.x - mine.x, 0, prevHip.z - mine.z);
@@ -305,7 +306,7 @@ export class Actor {
       p.action.enabled = w > 0;
       p.action.weight = Math.max(0, w);
       const d = p.src.duration;
-      let time = (s.from || 0) + (t - s.start);
+      let time = (s.from || 0) + (t - s.start) * (s.speed || 1);
       if (s.loop) time = ((time % d) + d) % d;
       p.action.time = Math.min(Math.max(time, 0), s.to ?? d);
     });

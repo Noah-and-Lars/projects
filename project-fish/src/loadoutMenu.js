@@ -1,27 +1,46 @@
-// A simple, temporary loadout menu: press B in the game to choose each gun's
-// attachments, and (its last tab) your outfit (src/outfitMenu.js). Each
-// gun's tab can also put that gun in your hands (onPickGun: the game's, the
-// gun's key) and goes back to the game. A Breakdowns button by the title
-// opens a picker of the gun breakdowns (src/showcase/breakdowns.js), with
-// the cinematic first: picking one plays it (onBreakdown: the game's, the
-// breakdown's id, or 'cinematic'; the menu closes
-// without taking the mouse back), and Esc goes back to the loadout. It
-// releases the mouse while it's open; B, Esc or "Back to game" closes it and
-// takes the mouse again. Opened from the main menu, it has a `home` (the
-// game's): closing it goes there instead, and opened on the picker `alone`,
-// Esc there closes it.
+// The loadout menu (B in the game, Loadout in the main menu): a full screen
+// with the player's soldier big in the middle (src/outfitPreview.js: in his
+// outfit, in his idle clip, drag to turn him) and two tabs:
+// - Loadout: on the left the gun in your hands (its picture, name, calibre;
+//   choosing it opens a grid of all twelve, and a strip of all twelve takes
+//   one straight away), then what he wears (headwear, body armour, hands),
+//   each opening the Customization tab on that slot. On the right the gun:
+//   its picture (the PF-9's with its attachments on), what it is, its
+//   numbers from src/shared/config.js, and its attachments as rows (each
+//   opens the attachments that fit; src/attachments.js), or what's fitted
+//   to it for good.
+// - Customization: the outfit (src/outfitMenu.js).
+// The number keys (1 to 9, 0, - and =) also put a gun in your hands, and Q
+// and E change tab. A Breakdowns button opens a picker of the gun breakdowns
+// (src/showcase/breakdowns.js), with the cinematic first: picking one plays
+// it (onBreakdown: the game's, the breakdown's id, or 'cinematic'; the menu
+// closes without taking the mouse back), and Esc goes back to the loadout.
+// It releases the mouse while it's open; B, Esc or Back closes it and takes
+// the mouse again. Opened from the main menu, it has a `home` (the game's):
+// closing it goes there instead, and opened on the picker `alone`, Esc
+// there closes it. onOpenChange(open) tells the game when it opens and
+// closes (the game draws nothing behind it meanwhile).
 
-import { SLOTS, ATTACHMENTS } from './attachments.js';
+import { SLOTS as ATTACHMENT_SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
 import { BREAKDOWNS, CINEMATIC } from './showcase/breakdowns.js';
+import { SLOTS as GEAR_SLOTS } from './gear.js';
+import { GUN_INFO, gunSpecs, thumbUrl, pf9LayersFor } from './loadoutInfo.js';
+import { el, picture, heading, gearThumb } from './outfitMenu.js';
 
-// The Outfit tab's key (beside the guns').
-const OUTFIT = 'outfit';
-// Each gun's key in the game (LOADOUT's order), for the menu to show.
+// Each gun's key in the game (LOADOUT's order), as shown and as pressed.
 const KEY_NAMES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
-// The menu's two views: the loadout (the tabs), and the breakdowns picker.
-const LOADOUT_VIEW = 'loadout';
+const KEY_CODES = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
+// The tabs, and the menu's other two views: the grid of guns, and the
+// breakdowns picker.
+const TABS = { loadout: 'Loadout', outfit: 'Customization' };
+const GUNS_VIEW = 'guns';
 const BREAKDOWNS_VIEW = 'breakdowns';
+// How the stage frames him on each tab (and each outfit slot).
+const FRAMING = { loadout: 'full', guns: 'full' };
+
+const keyOf = (gun) => KEY_NAMES[LOADOUT.indexOf(gun)];
+const gunThumb = (gun) => thumbUrl(`gun_${gun}`);
 
 // An attachment's name, from its id.
 function nameOf(gun, id) {
@@ -32,71 +51,143 @@ function nameOf(gun, id) {
   return id;
 }
 
+// Where a picture isn't clear (fractions of its width and height:
+// [x0, y0, x1, y1]), worked out once per picture.
+const boxes = new Map();
+async function alphaBox(img) {
+  if (boxes.has(img.src)) return boxes.get(img.src);
+  await img.decode();
+  const w = 256, h = Math.max(1, Math.round((256 * img.naturalHeight) / img.naturalWidth));
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, w, h);
+  const { data } = g.getImageData(0, 0, w, h);
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] < 12) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  const box = x1 < 0 ? null : [x0 / w, y0 / h, (x1 + 1) / w, (y1 + 1) / h];
+  boxes.set(img.src, box);
+  return box;
+}
+
+// The transform that fits what the layers in `zoom` show to its box.
+async function fitLayers(zoom) {
+  try {
+    const found = (await Promise.all([...zoom.querySelectorAll('img')].map(alphaBox))).filter(Boolean);
+    if (!found.length) return null;
+    const [x0, y0, x1, y1] = found.reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
+    const scale = Math.min(0.92 / (x1 - x0), 0.86 / (y1 - y0), 2.6);
+    const tx = 0.5 - ((x0 + x1) / 2) * scale;
+    const ty = 0.5 - ((y0 + y1) / 2) * scale;
+    return `translate(${(tx * 100).toFixed(2)}%, ${(ty * 100).toFixed(2)}%) scale(${scale.toFixed(4)})`;
+  } catch {
+    return null; // (a picture that didn't load: left as it is)
+  }
+}
+
+function button(className, key, onClick) {
+  const b = el('button', className);
+  b.type = 'button';
+  if (key) b.dataset.key = key;
+  if (onClick) b.addEventListener('click', onClick);
+  return b;
+}
+
+function kbd(text) {
+  return el('kbd', '', text);
+}
+
 export class LoadoutMenu {
-  // element: the #loadout panel. loadout: the Loadout (src/attachments.js).
+  // element: the #loadout element. loadout: the Loadout (src/attachments.js).
   // input: the Input, to release and take the mouse. heldGun(): the key of the
-  // gun in the hands (the menu opens on it). outfitMenu: the OutfitMenu
-  // shown on the Outfit tab (optional).
+  // gun in the hands. outfitMenu: the OutfitMenu for the Customization tab
+  // and the stage (optional: without it, the Loadout tab alone).
   constructor(element, loadout, input, heldGun, outfitMenu = null) {
     this.outfitMenu = outfitMenu;
     this.element = element;
     this.loadout = loadout;
     this.input = input;
     this.heldGun = heldGun;
-    this.gun = LOADOUT[0];
     this.open = false;
     this.onPickGun = null; // (key) => puts that gun in the hands
     this.onBreakdown = null; // (id) => plays that breakdown
+    this.onOpenChange = null; // (open) => the menu opened or closed
     this.home = null; // () => back to the main menu, when opened from it (else closing takes the mouse)
     this.alone = false; // opened on the picker by itself: Esc there closes the menu
-    this.view = LOADOUT_VIEW;
+    this.tab = 'loadout'; // the tab last on ('loadout' or 'outfit')
+    this.view = 'loadout'; // a tab, GUNS_VIEW or BREAKDOWNS_VIEW
+    this.slot = GEAR_SLOTS[0].id; // the outfit slot open on the Customization tab
+    this.openSlot = null; // the attachment slot whose options are open
     this.lastBreakdown = CINEMATIC.id; // the picker's focus (the cinematic first)
-    this.element.hidden = true;
-    document.addEventListener('keydown', (e) => {
-      if (!this.open) return;
-      if (this.view === BREAKDOWNS_VIEW && e.code === 'Escape') {
-        e.preventDefault();
-        if (this.alone) this.close();
-        else this.showView(LOADOUT_VIEW);
-      } else if (e.code === 'KeyB' || e.code === 'Escape') {
-        e.preventDefault();
-        this.close();
-      } else if (this.view === BREAKDOWNS_VIEW) {
-        this.pickerKey(e);
-      }
-    });
+
+    // What stays: the backdrop, the stage, the shading over it; the rest is
+    // drawn again whenever something changes.
+    element.hidden = true;
+    element.classList.add('lo');
+    element.replaceChildren();
+    const backdrop = el('div', 'lo-backdrop');
+    this.stage = el('div', 'lo-stage');
+    if (outfitMenu) this.stage.append(outfitMenu.preview.canvas);
+    const shade = el('div', 'lo-shade');
+    const grain = el('div', 'lo-grain');
+    this.ui = el('div', 'lo-ui');
+    element.append(backdrop, this.stage, shade, grain, this.ui);
+
+    document.addEventListener('keydown', (e) => this.key(e));
     this.loadout.onChange(() => {
-      if (this.open && this.gun !== OUTFIT) this.render();
+      if (this.open) this.render();
     });
+    if (outfitMenu) {
+      outfitMenu.outfit.onChange(() => {
+        if (this.open) this.render();
+      });
+    }
   }
 
   // view: 'breakdowns' opens it on the breakdowns picker (as a breakdown
-  // closing does), with focus on the one with that id. options.alone: the
-  // picker by itself (left out, it stays as it was).
-  show(view = LOADOUT_VIEW, breakdown = null, options = null) {
+  // closing does), with focus on the one with that id; else it opens on the
+  // tab last on. options.alone: the picker by itself (left out, it stays as
+  // it was).
+  show(view = 'loadout', breakdown = null, options = null) {
     if (this.open) return;
     this.open = true;
     if (options) this.alone = Boolean(options.alone);
-    this.view = view === BREAKDOWNS_VIEW && this.onBreakdown ? BREAKDOWNS_VIEW : LOADOUT_VIEW;
+    this.view = view === BREAKDOWNS_VIEW && this.onBreakdown ? BREAKDOWNS_VIEW : this.tab;
     if (breakdown) this.lastBreakdown = breakdown;
-    // (Back on the Outfit tab if that's where it was left.)
-    if (this.gun !== OUTFIT) this.gun = this.heldGun();
-    this.render();
+    this.openSlot = null;
     this.element.hidden = false;
+    this.element.classList.add('lo-enter');
+    requestAnimationFrame(() => requestAnimationFrame(() => this.element.classList.remove('lo-enter')));
     document.body.classList.add('menu-open');
     this.input.unlock();
-    if (this.view === BREAKDOWNS_VIEW) this.focusPick(); // (it can't take focus while hidden)
+    if (this.onOpenChange) this.onOpenChange(true);
+    this.render(null);
+    if (this.view === BREAKDOWNS_VIEW) this.focusPick();
+    else this.focusKey(this.view === 'outfit' ? `slot-${this.slot}` : 'gun-card');
   }
 
   showView(view) {
     const from = this.view;
+    if (TABS[view]) this.tab = view;
     this.view = view;
-    this.render();
-    // (Back from the picker: on the button that opened it.)
-    if (from === BREAKDOWNS_VIEW && view === LOADOUT_VIEW) {
-      const open = this.element.querySelector('button.showcase');
-      if (open) open.focus();
-    }
+    this.openSlot = null;
+    this.render(null);
+    // Back from the picker: on the button that opened it; back from the
+    // grid of guns: on the gun card.
+    if (from === BREAKDOWNS_VIEW && TABS[view]) this.focusKey('breakdowns');
+    else if (from === GUNS_VIEW && view === 'loadout') this.focusKey('gun-card');
+    else if (view === GUNS_VIEW) this.focusKey(`pick-${this.heldGun()}`);
+    else if (view === 'outfit') this.focusKey(`slot-${this.slot}`);
+    else if (view === BREAKDOWNS_VIEW) this.focusPick();
   }
 
   // relock: false leaves the mouse free (for something that opens over the
@@ -107,6 +198,7 @@ export class LoadoutMenu {
     this.element.hidden = true;
     if (this.outfitMenu) this.outfitMenu.hide();
     document.body.classList.remove('menu-open');
+    if (this.onOpenChange) this.onOpenChange(false);
     if (!relock) return;
     if (this.home) {
       this.home();
@@ -119,212 +211,75 @@ export class LoadoutMenu {
     });
   }
 
-  render() {
-    const el = this.element;
-    el.replaceChildren();
+  // ---- Keys ----
+
+  key(e) {
+    if (!this.open || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.code === 'Escape') {
+      e.preventDefault();
+      if (this.view === BREAKDOWNS_VIEW && !this.alone) this.showView(this.tab);
+      else if (this.view === GUNS_VIEW) this.showView('loadout');
+      else if (this.view === 'loadout' && this.openSlot) {
+        // (An attachment slot's choices open: closed first.)
+        const slot = this.openSlot;
+        this.openSlot = null;
+        this.render(null);
+        this.focusKey(`att-${slot}`);
+      } else this.close();
+      return;
+    }
+    if (e.code === 'KeyB') {
+      e.preventDefault();
+      this.close();
+      return;
+    }
     if (this.view === BREAKDOWNS_VIEW) {
-      this.renderPicker();
+      this.gridKey(e);
       return;
     }
-    const panel = document.createElement('div');
-    panel.className = 'panel';
-    // The title, with the breakdowns' button beside it (on every tab).
-    const head = document.createElement('div');
-    head.className = 'head';
-    const title = document.createElement('h2');
-    title.textContent = 'Loadout';
-    head.append(title);
-    if (this.onBreakdown && BREAKDOWNS.length) head.append(this.breakdownsButton());
-    panel.append(head);
-
-    // A tab for each gun.
-    const tabs = document.createElement('div');
-    tabs.className = 'tabs';
-    const keys = this.outfitMenu ? [...LOADOUT, OUTFIT] : LOADOUT;
-    for (const key of keys) {
-      const tab = document.createElement('button');
-      tab.type = 'button';
-      tab.textContent = key === OUTFIT ? 'Outfit' : GUNS[key].name;
-      tab.className = key === this.gun ? 'tab chosen' : 'tab';
-      tab.addEventListener('click', () => {
-        this.gun = key;
-        this.render();
-      });
-      tabs.append(tab);
-    }
-    panel.append(tabs);
-    if (this.outfitMenu && this.gun !== OUTFIT) this.outfitMenu.hide();
-    if (this.gun === OUTFIT) {
-      panel.classList.add('wide');
-      this.outfitMenu.render(panel);
-      panel.append(this.backButton());
-      el.append(panel);
+    const gun = KEY_CODES.indexOf(e.code);
+    if (gun >= 0 && LOADOUT[gun]) {
+      e.preventDefault();
+      this.pickGun(LOADOUT[gun]);
       return;
     }
-
-    // The gun in the hands, or a button to take it.
-    if (this.onPickGun) {
-      const row = document.createElement('div');
-      row.className = 'slot';
-      const label = document.createElement('span');
-      label.className = 'label';
-      label.textContent = 'In your hands';
-      row.append(label);
-      const take = document.createElement('button');
-      take.type = 'button';
-      const key = KEY_NAMES[LOADOUT.indexOf(this.gun)];
-      const holding = this.gun === this.heldGun();
-      take.textContent = holding ? `${GUNS[this.gun].name} (in your hands)` : `Take the ${GUNS[this.gun].name}${key ? ` (${key})` : ''}`;
-      take.className = holding ? 'option chosen' : 'option';
-      take.addEventListener('click', () => {
-        if (!holding) this.onPickGun(this.gun);
-        this.close();
-      });
-      row.append(take);
-      panel.append(row);
+    if ((e.code === 'KeyQ' || e.code === 'KeyE') && this.outfitMenu) {
+      e.preventDefault();
+      const to = e.code === 'KeyQ' ? 'loadout' : 'outfit';
+      if (this.view !== to) this.showView(to);
+      return;
     }
-
-    // A row for each slot that gun has, with a button per attachment and one
-    // for none.
-    const slots = ATTACHMENTS[this.gun] || {};
-    const rows = SLOTS.filter((slot) => (slots[slot.id] || []).length);
-    if (!rows.length) {
-      const none = document.createElement('p');
-      none.className = 'none';
-      none.textContent = 'No attachments for this gun yet.';
-      panel.append(none);
-    }
-    for (const slot of rows) {
-      const row = document.createElement('div');
-      row.className = 'slot';
-      const label = document.createElement('span');
-      label.className = 'label';
-      label.textContent = slot.name;
-      row.append(label);
-      const current = this.loadout.get(this.gun, slot.id);
-      for (const option of [{ id: null, name: 'None' }, ...slots[slot.id]]) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = option.name;
-        button.className = option.id === current ? 'option chosen' : 'option';
-        // What it does, and what choosing it would take off.
-        const off = option.id === current ? [] : this.loadout.wouldTakeOff(this.gun, slot.id, option.id).map((id) => nameOf(this.gun, id));
-        button.title = [option.about, off.length ? `Takes off: ${off.join(', ')}` : ''].filter(Boolean).join(' ');
-        button.addEventListener('click', () => this.loadout.set(this.gun, slot.id, option.id));
-        row.append(button);
-      }
-      const chosen = slots[slot.id].find((o) => o.id === current);
-      if (chosen && chosen.about) {
-        const about = document.createElement('p');
-        about.className = 'about';
-        about.textContent = chosen.about;
-        row.append(about);
-      }
-      panel.append(row);
-    }
-
-    panel.append(this.backButton());
-    el.append(panel);
+    this.gridKey(e);
   }
 
-  // A button that opens the breakdowns picker.
-  breakdownsButton() {
-    const open = document.createElement('button');
-    open.type = 'button';
-    open.className = 'showcase';
-    open.textContent = 'Breakdowns';
-    open.title = 'Watch a gun taken apart part by part, with what each part does.';
-    open.addEventListener('click', () => this.showView(BREAKDOWNS_VIEW));
-    return open;
-  }
-
-  // The breakdowns picker: the cinematic, then a card for each gun (its
-  // picture, name, what the film shows and the model's credit). A click, or
-  // Enter on the focused card, plays it; the arrow keys move between the
-  // cards; Esc goes back.
-  renderPicker() {
-    if (this.outfitMenu) this.outfitMenu.hide();
-    const panel = document.createElement('div');
-    panel.className = 'panel wide';
-    const head = document.createElement('div');
-    head.className = 'head';
-    const title = document.createElement('h2');
-    title.textContent = 'Breakdowns';
-    const back = document.createElement('button');
-    back.type = 'button';
-    back.className = 'showcase';
-    back.textContent = this.alone ? (this.home ? 'Back to menu (Esc)' : 'Close (Esc)') : 'Back to loadout (Esc)';
-    back.addEventListener('click', () => (this.alone ? this.close() : this.showView(LOADOUT_VIEW)));
-    head.append(title, back);
-    panel.append(head);
-    const intro = document.createElement('p');
-    intro.className = 'about';
-    intro.textContent = 'Watch the cinematic, or pick a gun to watch it taken apart part by part, with what each part does.';
-    panel.append(intro);
-    const grid = document.createElement('div');
-    grid.className = 'picks';
-    this.picks = [];
-    for (const entry of [CINEMATIC, ...BREAKDOWNS]) {
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'pick';
-      card.dataset.breakdown = entry.id;
-      const picture = document.createElement('span');
-      picture.className = 'thumb';
-      const img = document.createElement('img');
-      img.alt = '';
-      img.decoding = 'async';
-      img.src = String(entry.thumb);
-      img.addEventListener('error', () => img.remove()); // (the name is still there)
-      picture.append(img);
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = entry.name;
-      const about = document.createElement('span');
-      about.className = 'what';
-      about.textContent = entry.about;
-      const credit = document.createElement('span');
-      credit.className = 'credit';
-      credit.textContent = entry.credit;
-      card.append(picture, name, about, credit);
-      card.addEventListener('click', () => this.pick(entry.id));
-      card.addEventListener('focus', () => { this.lastBreakdown = entry.id; });
-      grid.append(card);
-      this.picks.push(card);
-    }
-    panel.append(grid);
-    this.element.append(panel);
-    this.focusPick();
-  }
-
-  // Focus on the last breakdown watched (or the first), so Enter plays it.
-  focusPick() {
-    const card = (this.picks || []).find((c) => c.dataset.breakdown === this.lastBreakdown) || (this.picks || [])[0];
-    if (card) card.focus();
-  }
-
-  pick(id) {
-    this.lastBreakdown = id;
-    this.close(false);
-    this.onBreakdown(id);
-  }
-
-  // The arrow keys in the picker: left and right one card, up and down a
-  // row (however many cards fit across).
-  pickerKey(e) {
+  // The arrow keys in a grid (the guns, the tiles, the options, the
+  // breakdowns): left and right one, up and down a row (however many fit
+  // across).
+  gridKey(e) {
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: 'up', ArrowDown: 'down' }[e.code];
-    if (!step || !this.picks || !this.picks.length) return;
+    if (!step) return;
+    const active = document.activeElement;
+    const grid = active && this.ui.contains(active) ? active.closest('.lo-grid') : null;
+    if (!grid) {
+      // (In the picker, from the Back button or nothing: back on the card
+      // last on.)
+      if (this.view === BREAKDOWNS_VIEW) {
+        e.preventDefault();
+        this.focusPick();
+      }
+      return;
+    }
+    const items = [...grid.children].filter((c) => c.tagName === 'BUTTON');
+    const at = items.indexOf(active);
+    if (at < 0) return;
     e.preventDefault();
-    // (From the Back button or nothing: back on the card last on.)
-    const at = this.picks.indexOf(document.activeElement);
-    if (at < 0) return this.focusPick();
     let to = at;
     if (typeof step === 'number') to = at + step;
     else {
-      // The nearest card in the row above or below.
+      // The nearest in the row above or below.
       const box = (c) => c.getBoundingClientRect();
-      const here = box(this.picks[at]);
-      const others = this.picks
+      const here = box(items[at]);
+      const others = items
         .map((c, i) => ({ i, b: box(c) }))
         .filter(({ b }) => (step === 'up' ? b.bottom <= here.top + 1 : b.top >= here.bottom - 1));
       if (others.length) {
@@ -334,16 +289,353 @@ export class LoadoutMenu {
         to = row[0].i;
       }
     }
-    to = Math.min(this.picks.length - 1, Math.max(0, to));
-    this.picks[to].focus();
+    to = Math.min(items.length - 1, Math.max(0, to));
+    items[to].focus();
   }
 
-  backButton() {
-    const back = document.createElement('button');
-    back.type = 'button';
-    back.className = 'back';
-    back.textContent = this.home ? 'Back to menu (B)' : 'Back to game (B)';
-    back.addEventListener('click', () => this.close());
-    return back;
+  focusKey(key) {
+    const target = key && this.ui.querySelector(`[data-key="${CSS.escape(key)}"]`);
+    if (target) target.focus({ preventScroll: true });
+  }
+
+  // ---- Choosing ----
+
+  // Puts a gun in the hands (the menu stays open; from the grid of guns,
+  // back to the Loadout tab).
+  pickGun(gun) {
+    if (gun !== this.heldGun() && this.onPickGun) this.onPickGun(gun);
+    this.openSlot = null;
+    if (this.view === GUNS_VIEW || this.view === 'outfit') this.showView('loadout');
+    else this.render();
+  }
+
+  pickSlot(slot) {
+    this.slot = slot;
+    if (this.view !== 'outfit') this.showView('outfit');
+    else this.render();
+  }
+
+  // ---- Drawing ----
+
+  // Draws the current view again (focus and scrolling kept as they were,
+  // unless focus is null).
+  render(focus = undefined) {
+    const active = document.activeElement;
+    const keep = focus === undefined && active && this.ui.contains(active) ? active.dataset.key : null;
+    const scrolls = {};
+    for (const node of this.ui.querySelectorAll('[data-scroll]')) scrolls[node.dataset.scroll] = node.scrollTop;
+
+    this.element.dataset.view = this.view;
+    this.ui.replaceChildren();
+    if (this.view === BREAKDOWNS_VIEW) this.renderPicker();
+    else {
+      this.ui.append(this.header());
+      if (this.view === GUNS_VIEW) this.ui.append(this.gunGrid());
+      else {
+        const body = el('div', 'lo-body');
+        body.dataset.scroll = 'body';
+        const left = el('aside', 'lo-left');
+        left.dataset.scroll = 'left';
+        const right = el('aside', 'lo-right');
+        right.dataset.scroll = 'right';
+        if (this.view === 'outfit') {
+          left.append(this.outfitTools());
+          this.outfitMenu.renderSections(left, this.slot, (slot) => this.pickSlot(slot));
+          this.outfitMenu.renderDetail(right, this.slot);
+        } else {
+          this.renderWeapons(left);
+          this.renderGearSummary(left);
+          this.renderGun(right);
+        }
+        body.append(left, right);
+        this.ui.append(body);
+      }
+    }
+    this.ui.append(this.footer());
+
+    // The stage: drawn while a tab shows him.
+    if (this.outfitMenu) {
+      const preview = this.outfitMenu.preview;
+      if (TABS[this.view]) {
+        preview.setFraming(this.view === 'outfit' ? (this.slot === 'head' || this.slot === 'vest' || this.slot === 'gloves' ? this.slot : 'outfit') : FRAMING[this.view]);
+        preview.start();
+      } else {
+        preview.stop();
+      }
+    }
+    for (const node of this.ui.querySelectorAll('[data-scroll]')) {
+      if (scrolls[node.dataset.scroll]) node.scrollTop = scrolls[node.dataset.scroll];
+    }
+    if (keep) this.focusKey(keep);
+  }
+
+  // The title, the tabs and the Breakdowns button.
+  header() {
+    const head = el('header', 'lo-head');
+    const brand = el('div', 'lo-brand');
+    const kicker = el('p', 'lo-kicker');
+    kicker.append('Project Fish ', el('span', '', '·'), ' Operator');
+    brand.append(kicker, el('h1', 'lo-title', this.view === 'outfit' ? 'Customization' : 'Loadout'));
+    head.append(brand);
+    if (this.outfitMenu) {
+      const tabs = el('nav', 'lo-tabs');
+      tabs.setAttribute('aria-label', 'Loadout tabs');
+      tabs.append(kbd('Q'));
+      for (const [id, name] of Object.entries(TABS)) {
+        const on = (this.view === GUNS_VIEW ? 'loadout' : this.view) === id;
+        const tab = button(`lo-tab${on ? ' on' : ''}`, `tab-${id}`, () => {
+          if (this.view !== id) this.showView(id);
+        });
+        tab.textContent = name;
+        tab.setAttribute('aria-pressed', String(on));
+        tabs.append(tab);
+      }
+      tabs.append(kbd('E'));
+      head.append(tabs);
+    }
+    if (this.onBreakdown && BREAKDOWNS.length) {
+      const open = button('lo-chip lo-breakdowns', 'breakdowns', () => this.showView(BREAKDOWNS_VIEW));
+      open.append(el('span', 'lo-chip-dot'), 'Breakdowns');
+      open.title = 'Watch the cinematic, or a gun taken apart part by part, with what each part does.';
+      head.append(open);
+    }
+    return head;
+  }
+
+  // Back, a hint, and the keys.
+  footer() {
+    const foot = el('footer', 'lo-foot');
+    const inner = this.view === GUNS_VIEW || (this.view === BREAKDOWNS_VIEW && !this.alone);
+    const back = button('lo-back', 'back', () => {
+      if (this.view === GUNS_VIEW) this.showView('loadout');
+      else if (this.view === BREAKDOWNS_VIEW && !this.alone) this.showView(this.tab);
+      else this.close();
+    });
+    back.append(el('span', 'lo-back-mark'), inner ? 'Back' : this.home ? 'Back to menu' : 'Back to game', kbd('Esc'));
+    foot.append(back);
+    if (TABS[this.view] && this.outfitMenu) foot.append(el('p', 'lo-drag', 'Drag to turn him'));
+    const keys = el('div', 'lo-keys');
+    keys.setAttribute('aria-hidden', 'true');
+    const hint = (k, text) => {
+      const s = el('span');
+      for (const x of [].concat(k)) s.append(kbd(x));
+      s.append(text);
+      return s;
+    };
+    if (this.view !== BREAKDOWNS_VIEW) keys.append(hint(['1', '='], 'Gun'));
+    if (TABS[this.view] && this.outfitMenu) keys.append(hint(['Q', 'E'], 'Tab'));
+    keys.append(hint(['←', '→'], 'Select'), hint('Enter', 'Choose'), hint('B', 'Close'));
+    foot.append(keys);
+    return foot;
+  }
+
+  // The Loadout tab's weapons: the gun in your hands, and all twelve.
+  renderWeapons(container) {
+    const held = this.heldGun();
+    const gun = GUNS[held];
+    const section = el('section', 'lo-block');
+    section.append(heading('Weapons', `${LOADOUT.length} carried`));
+    const card = button('lo-gun-card', 'gun-card', () => this.showView(GUNS_VIEW));
+    card.title = 'Choose the gun in your hands';
+    const top = el('span', 'lo-card-top');
+    top.append(el('span', 'lo-mini', 'In your hands'), el('span', 'lo-keycap', keyOf(held)));
+    const text = el('span', 'lo-card-text');
+    text.append(el('span', 'lo-gun-name', gun.name), el('span', 'lo-gun-sub', `${gun.kind} · ${gun.calibre}`));
+    card.append(top, picture(gunThumb(held), 'lo-pic lo-gun-pic'), text, el('span', 'lo-card-more', 'Change'));
+    section.append(card);
+    // All twelve, small: one click takes it.
+    const strip = el('div', 'lo-strip lo-grid');
+    strip.setAttribute('aria-label', 'Take a gun');
+    for (const key of LOADOUT) {
+      const b = button(`lo-strip-gun${key === held ? ' chosen' : ''}`, `strip-${key}`, () => this.pickGun(key));
+      b.title = `${GUNS[key].name} (${keyOf(key)})`;
+      b.setAttribute('aria-label', `${GUNS[key].name}, key ${keyOf(key)}`);
+      b.setAttribute('aria-pressed', String(key === held));
+      b.append(picture(gunThumb(key), 'lo-pic'), el('span', 'lo-strip-key', keyOf(key)));
+      strip.append(b);
+    }
+    section.append(strip);
+    container.append(section);
+  }
+
+  // What he wears, a row per slot, each opening it on the Customization tab.
+  renderGearSummary(container) {
+    if (!this.outfitMenu) return;
+    for (const slot of GEAR_SLOTS) {
+      const { option } = this.outfitMenu.worn(slot.id);
+      const section = el('section', 'lo-block lo-gear-block');
+      section.append(heading(slot.title));
+      const row = button('lo-gear-row', `gear-${slot.id}`, () => this.pickSlot(slot.id));
+      row.title = `Change: ${slot.name.toLowerCase()}`;
+      const text = el('span', 'lo-card-text');
+      text.append(el('span', 'lo-mini', slot.name), el('span', 'lo-gear-name', option.name));
+      row.append(picture(gearThumb(slot.id, option.id), 'lo-pic lo-gear-pic'), text, el('span', 'lo-card-more', 'Customize'));
+      section.append(row);
+      container.append(section);
+    }
+  }
+
+  // The gun in the hands, on the right: what it is, its numbers, its
+  // attachments.
+  renderGun(container) {
+    const key = this.heldGun();
+    const gun = GUNS[key];
+    const info = GUN_INFO[key] || {};
+    container.append(el('p', 'lo-cat', `${gun.kind} · Key ${keyOf(key)}`), el('h2', 'lo-name', gun.name));
+    // Its picture (the PF-9's with its attachments drawn over it).
+    const hero = el('div', 'lo-hero');
+    const slots = ATTACHMENTS[key] || {};
+    const rows = ATTACHMENT_SLOTS.filter((slot) => (slots[slot.id] || []).length);
+    if (rows.length && key === 'pistol') {
+      // (The layers are framed to fit the gun with everything on: zoomed in
+      // to fit what's on now, easing from how it was.)
+      hero.classList.add('layered');
+      const zoom = el('div', 'lo-hero-zoom');
+      if (this.heroZoom) zoom.style.transform = this.heroZoom;
+      zoom.append(picture(thumbUrl('pf9_kit'), 'lo-layer'));
+      const ids = new Set(Object.values(this.loadout.on(key)).filter(Boolean));
+      for (const layer of pf9LayersFor(ids)) zoom.append(picture(thumbUrl(layer.name), 'lo-layer'));
+      hero.append(zoom);
+      fitLayers(zoom).then((transform) => {
+        if (!transform || !zoom.isConnected) return;
+        this.heroZoom = transform;
+        requestAnimationFrame(() => { zoom.style.transform = transform; });
+      });
+    } else {
+      hero.append(picture(gunThumb(key), 'lo-layer'));
+    }
+    container.append(hero);
+    if (info.about) container.append(el('p', 'lo-about', info.about));
+    const specs = el('dl', 'lo-specs');
+    for (const row of gunSpecs(key)) {
+      const line = el('div', 'lo-spec');
+      line.append(el('dt', '', row.label), el('dd', '', row.value));
+      specs.append(line);
+    }
+    container.append(specs);
+
+    if (!rows.length) {
+      container.append(heading('Fitted', info.fitted ? `${info.fitted.length}` : ''));
+      const list = el('div', 'lo-rows');
+      for (const f of info.fitted || []) {
+        const line = el('div', 'lo-row fixed');
+        line.append(el('span', 'lo-row-slot', f.slot), el('span', 'lo-row-value', f.what));
+        list.append(line);
+      }
+      if (!(info.fitted || []).length) list.append(el('p', 'lo-note', 'Nothing fitted. This gun has no attachments yet.'));
+      else list.append(el('p', 'lo-note', 'Fitted for good: this gun has no attachments to change yet.'));
+      container.append(list);
+      return;
+    }
+    const on = this.loadout.on(key);
+    container.append(heading('Attachments', `${Object.values(on).filter(Boolean).length} / ${rows.length} fitted`));
+    const list = el('div', 'lo-rows');
+    for (const slot of rows) {
+      const current = this.loadout.get(key, slot.id);
+      const open = this.openSlot === slot.id;
+      const row = button(`lo-row${open ? ' open' : ''}${current ? ' set' : ''}`, `att-${slot.id}`, () => {
+        this.openSlot = open ? null : slot.id;
+        this.render();
+      });
+      row.setAttribute('aria-expanded', String(open));
+      row.append(el('span', 'lo-row-slot', slot.name), el('span', 'lo-row-value', current ? nameOf(key, current) : 'None'), el('span', 'lo-row-mark'));
+      list.append(row);
+      if (!open) continue;
+      // Its options: none, then each that fits.
+      const options = el('div', 'lo-choices lo-grid');
+      for (const option of [{ id: null, name: 'None' }, ...slots[slot.id]]) {
+        const chosen = option.id === current;
+        const choice = button(`lo-choice${chosen ? ' chosen' : ''}`, `att-${slot.id}-${option.id || 'none'}`, () => this.loadout.set(key, slot.id, option.id));
+        choice.setAttribute('aria-pressed', String(chosen));
+        const off = chosen ? [] : this.loadout.wouldTakeOff(key, slot.id, option.id).map((id) => nameOf(key, id));
+        choice.append(el('span', 'lo-choice-name', option.name));
+        if (option.about) choice.append(el('span', 'lo-choice-about', option.about));
+        if (off.length) choice.append(el('span', 'lo-choice-warn', `Takes off: ${off.join(', ')}`));
+        options.append(choice);
+      }
+      list.append(options);
+    }
+    container.append(list);
+  }
+
+  // Above the Customization tab's tiles: the kit he starts in.
+  outfitTools() {
+    const tools = el('div', 'lo-tools');
+    const reset = button('lo-chip', 'reset-outfit', () => this.outfitMenu.reset());
+    reset.append(el('span', 'lo-chip-dot'), 'Default kit');
+    reset.title = 'Put him back in the kit he starts in';
+    reset.disabled = this.outfitMenu.isDefault();
+    tools.append(reset);
+    return tools;
+  }
+
+  // The grid of guns: choosing one puts it in your hands.
+  gunGrid() {
+    const held = this.heldGun();
+    const sheet = el('section', 'lo-sheet');
+    sheet.dataset.scroll = 'guns';
+    const head = el('div', 'lo-sheet-head');
+    head.append(el('p', 'lo-cat', 'Weapons'), el('h2', 'lo-name', 'Choose the gun in your hands'), el('p', 'lo-about', 'Every gun is carried; its key (1 to 9, 0, - and =) takes it out in the game. Only the PF-9 takes attachments.'));
+    sheet.append(head);
+    const grid = el('div', 'lo-gun-grid lo-grid');
+    for (const key of LOADOUT) {
+      const gun = GUNS[key];
+      const tile = button(`lo-gun-tile${key === held ? ' chosen' : ''}`, `pick-${key}`, () => this.pickGun(key));
+      tile.setAttribute('aria-pressed', String(key === held));
+      const top = el('span', 'lo-card-top');
+      top.append(el('span', 'lo-mini', gun.kind), el('span', 'lo-keycap', keyOf(key)));
+      const text = el('span', 'lo-card-text');
+      text.append(el('span', 'lo-gun-name', gun.name), el('span', 'lo-gun-sub', `${gun.calibre} · ${gun.magazine} ${gun.pellets ? 'shells' : 'rounds'} · ${gun.fireMode === 'auto' ? 'Auto' : 'Semi'}`));
+      tile.append(top, picture(gunThumb(key), 'lo-pic lo-gun-pic'), text);
+      if (key === held) tile.append(el('span', 'lo-badge', 'In hands'));
+      grid.append(tile);
+    }
+    sheet.append(grid);
+    return sheet;
+  }
+
+  // The breakdowns picker: the cinematic, then a card for each gun (its
+  // picture, name, what the film shows and the model's credit). A click, or
+  // Enter on the focused card, plays it; the arrow keys move between the
+  // cards; Esc goes back.
+  renderPicker() {
+    const head = el('header', 'lo-head');
+    const brand = el('div', 'lo-brand');
+    const kicker = el('p', 'lo-kicker');
+    kicker.append('Project Fish ', el('span', '', '·'), ' Films');
+    brand.append(kicker, el('h1', 'lo-title', 'Breakdowns'));
+    head.append(brand);
+    this.ui.append(head);
+    const sheet = el('section', 'lo-sheet');
+    sheet.dataset.scroll = 'picker';
+    const intro = el('div', 'lo-sheet-head');
+    intro.append(el('p', 'lo-cat', 'Cinematic and breakdowns'), el('p', 'lo-about', 'Watch the cinematic, or pick a gun to watch it taken apart part by part, with what each part does.'));
+    sheet.append(intro);
+    const grid = el('div', 'lo-picks lo-grid');
+    this.picks = [];
+    for (const entry of [CINEMATIC, ...BREAKDOWNS]) {
+      const card = button('lo-pick', `breakdown-${entry.id}`, () => this.pick(entry.id));
+      card.dataset.breakdown = entry.id;
+      const text = el('span', 'lo-card-text');
+      text.append(el('span', 'lo-mini', entry === CINEMATIC ? 'Cinematic' : 'Breakdown'), el('span', 'lo-gun-name', entry.name), el('span', 'lo-pick-what', entry.about), el('span', 'lo-pick-credit', entry.credit));
+      card.append(picture(String(entry.thumb), 'lo-pic lo-pick-pic'), text);
+      card.addEventListener('focus', () => { this.lastBreakdown = entry.id; });
+      grid.append(card);
+      this.picks.push(card);
+    }
+    sheet.append(grid);
+    this.ui.append(sheet);
+  }
+
+  // Focus on the last breakdown watched (or the first), so Enter plays it.
+  focusPick() {
+    const card = (this.picks || []).find((c) => c.dataset.breakdown === this.lastBreakdown) || (this.picks || [])[0];
+    if (card) card.focus({ preventScroll: false });
+  }
+
+  pick(id) {
+    this.lastBreakdown = id;
+    this.close(false);
+    this.onBreakdown(id);
   }
 }

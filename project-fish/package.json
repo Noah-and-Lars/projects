@@ -29,6 +29,7 @@
     "build-breakdown-galil": "mkdir -p assets/breakdown && node tools/breakdown/bake_rigid.mjs build/upload-breakdown3 tools/breakdown/galil_ace.json build/galil-ace-rigid && node tools/breakdown/build_breakdown.mjs build/galil-ace-rigid tools/breakdown/galil_ace.json assets/breakdown/galil_ace.glb",
     "build-breakdown-pf9": "mkdir -p assets/breakdown && python3 -I tools/breakdown/prepare_pf9.py build/pistol9-source build/pf9-breakdown-src && node tools/breakdown/build_breakdown.mjs build/pf9-breakdown-src tools/breakdown/pf9.json assets/breakdown/pf9.glb",
     "build-cinematic-clips": "mkdir -p assets/cinematic && blender --background --python tools/cinematic/retarget_mixamo.py -- tools/cinematic/clips.json assets/cinematic/soldier_clips.glb",
+    "build-loadout-thumbs": "node tools/loadout/render_thumbs.mjs assets/loadout/thumbs",
     "build-breakdowns": "npm run build-breakdown && npm run build-breakdown-scar && npm run build-breakdown-galil && npm run build-breakdown-pf9",
     "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-makarov && npm run build-ak74m && npm run build-ak74u && npm run build-saps12 && npm run build-arms && npm run build-soldier && npm run build-gear && npm run build-gun-gloves && npm run build-x4 && npm run build-mp7 && npm run build-ar15 && npm run build-breakdowns"
   },

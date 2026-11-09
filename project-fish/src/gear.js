@@ -74,7 +74,9 @@ const gearFile = (name) => new URL(`../assets/gear/${name}.glb`, import.meta.url
 const OWN_ARMS = ['beretta', 'fn502', 'hipistol', 'makarov', 'ak74m', 'ak74u', 'saps12'];
 const gunGloves = (id) => Object.fromEntries(OWN_ARMS.map((gun) => [gun, gearFile(`gloves_${id}_${gun}`)]));
 
-// The slots and their options: { id, name, about, own: true (his own
+// The slots and their options. A slot has its id, its name, its `title`
+// (the loadout menu's heading for it) and its `group` (the section of the
+// menu's Customization tab it's in). An option is { id, name, about, own: true (his own
 // piece) | file (a piece from assets/gear) | neither (nothing), hides
 // (optional: names in EXTRA also left off with it), guns (gloves only,
 // optional: the same gloves for the guns with their own arms, by gun; an
@@ -87,7 +89,7 @@ const gunGloves = (id) => Object.fromEntries(OWN_ARMS.map((gun) => [gun, gearFil
 // the hands they came with.
 export const SLOTS = [
   {
-    id: 'head', name: 'Head',
+    id: 'head', name: 'Head', title: 'Headwear', group: 'Tactical gear',
     options: [
       { id: 'field', name: 'Field helmet', about: 'His own helmet, with ear defenders built in.', own: true },
       { id: 'comms', name: 'Comms helmet', about: 'A high-cut helmet with rails, a counterweight pouch, ear cups and a boom mic.', file: gearFile('helmet_comms') },
@@ -96,7 +98,7 @@ export const SLOTS = [
     ],
   },
   {
-    id: 'vest', name: 'Vest',
+    id: 'vest', name: 'Vest', title: 'Body armour', group: 'Tactical gear',
     options: [
       { id: 'field', name: 'Field carrier', about: 'His own plate carrier with its magazine and side pouches.', own: true },
       { id: 'black', name: 'Black carrier', about: 'A black plate carrier with triple magazine pouches and a flag patch.', file: gearFile('vest_black') },
@@ -105,7 +107,7 @@ export const SLOTS = [
     ],
   },
   {
-    id: 'gloves', name: 'Gloves', default: 'field',
+    id: 'gloves', name: 'Gloves', title: 'Hands', group: 'Hands', default: 'field',
     options: [
       { id: 'none', name: 'No gloves', about: "The hands the guns with their own arms came with (bare hands on the Beretta and the AK-74U, leather gloves on the FN 502, olive leather gloves on the AK-74M, black gloves on the Hi-Power, the Makarov and the SPAS-12). He has no bare hands under his gloves, so he keeps his field gloves on (on the Xiri X4, the MP7A1 and the AR-15 too, which he holds with his own arms).", own: true },
       { id: 'field', name: 'Field gloves', about: 'His own gloves, with a hard knuckle guard. (They weren\'t made for the own arms of the Beretta, the FN 502, the Hi-Power, the Makarov, the AK-74M, the AK-74U and the SPAS-12, which keep the hands they came with.)', own: true },

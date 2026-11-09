@@ -136,8 +136,11 @@ const effects = new WorldEffects(scene);
 // from the main menu, it goes back there when it closes (its `home`).
 const loadout = new Loadout();
 const menu = new LoadoutMenu(document.getElementById('loadout'), loadout, input, () => held, new OutfitMenu(outfit, wardrobe));
-// (Each gun's tab can put that gun in the hands.)
+// (It can put any gun in the hands.)
 menu.onPickGun = (key) => switchGun(key);
+// While it's open it covers the whole screen: the game draws nothing (see
+// the game loop) and neither does the title screen's backdrop.
+menu.onOpenChange = (open) => menuBehind(!open);
 // Puts a gun's chosen attachments on it (once the models are in; then each
 // time the loadout changes).
 function applyLoadout(key) {
@@ -432,7 +435,7 @@ import('./menu/backdrop.js').then(({ Backdrop }) => {
 // the cinematic is open over it).
 function menuBehind(on) {
   if (!backdrop) return;
-  if (on && menuMode === 'title') backdrop.start();
+  if (on && menuMode === 'title' && !menu.open && !showcase) backdrop.start();
   else backdrop.stop();
 }
 
@@ -749,9 +752,9 @@ let accumulator = 0;
 const lookDirection = new THREE.Vector3();
 
 renderer.setAnimationLoop((time) => {
-  // (Standing still while the breakdown is open or the title screen is up,
-  // and not catching up after.)
-  if (showcase || menuMode === 'title') {
+  // (Standing still while the breakdown is open, the title screen is up or
+  // the loadout menu covers the screen, and not catching up after.)
+  if (showcase || menuMode === 'title' || menu.open) {
     lastTime = null;
     return;
   }
