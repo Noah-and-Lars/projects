@@ -120,7 +120,7 @@
 
 <script src="games.js?v=180"></script>
 <script src="account.js?v=11"></script>
-<script src="call.js?v=1"></script>
+<script src="call.js?v=2"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
@@ -259,6 +259,6 @@ ArcadeOnline.start('home');
 // scores change while you play in another tab, so refresh when you come back
 addEventListener('pageshow', () => { renderFeature(); renderRecent(); render(); });
 </script>
-<script src="tos.js?v=8"></script>
+<script src="tos.js?v=9"></script>
 </body>
 </html>

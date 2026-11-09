@@ -2,7 +2,7 @@
 // tick the box and agree. Agreeing is remembered in this browser under TOS_KEY; change TOS_VERSION to ask everyone
 // again after the terms change.
 (function () {
-  var TOS_VERSION = '2026-11-10', TOS_KEY = 'arcade-tos-agreed';
+  var TOS_VERSION = '2026-11-10b', TOS_KEY = 'arcade-tos-agreed';
   try { if (localStorage.getItem(TOS_KEY) === TOS_VERSION) return; } catch (e) {}
   if (/[?&]notos=1/.test(location.search)) return;
 
@@ -19,7 +19,7 @@
        'You must not share personal information about yourself or any other person, including real names, addresses, telephone numbers, passwords, school names or photographs.']],
     ['3. Voice Chat, Video Calls and Text Chat',
       ['Some parts of the Site let users talk to each other by text (the Global chat, in-game chat, room chat and private messages) and by voice (voice chat in certain games). Voice chat sends audio from your microphone directly to the other players in the same lobby or room while it is switched on. It is not recorded or stored by us, and we are not able to listen to, monitor, review or moderate it.',
-       'Friends can also video call each other. A video call sends your camera and microphone directly to the other person\'s browser. When you call someone, they can see your camera while the call is ringing, before they answer; they only see and hear their caller after choosing to accept, and you only hear them once they accept. Video calls are not recorded or stored by us, and we are not able to watch, listen to, monitor, review or moderate them.',
+       'Players can also video call each other, one-to-one or in groups of up to four, including players who are not their friends (unless one has blocked the other). A video call sends your camera and microphone directly to the browsers of the other people in the call. When a friend calls you, you can see their camera while the call is ringing, before you answer; a call from someone who is not your friend shows only their name until you accept. Nobody sees or hears you until you accept, and the person calling can add others to the call. Video calls are not recorded or stored by us, and we are not able to watch, listen to, monitor, review or moderate them.',
        'WE ARE NOT RESPONSIBLE FOR ANYTHING SAID OR SHOWN IN VOICE CHAT, VIDEO CALLS OR TEXT CHAT. NEITHER THE SITE NOR ITS CREATORS ARE RESPONSIBLE OR LIABLE FOR ANYTHING ANY USER SAYS, TYPES, SHOWS, SENDS OR SHARES, INCLUDING ANYTHING SAID, SHOWN OR WRITTEN TO YOU OR ABOUT YOU, AND ANYTHING YOU HEAR, SEE OR READ.',
        'You are solely responsible for everything you say, type or show, whether by voice, video or text, and for any consequences arising from it, in the same way as for your other User Content. Anything your microphone or camera picks up while voice chat or a video call is sending, including other people, sounds or anything else near you, is treated as said or shown by you.',
        'Other users may be able to record or share what you say, show or type without our knowledge (including by recording their screen during a video call), and we cannot prevent this. Do not say, show or type anything you would not want other people to hear, see, keep or repeat.',

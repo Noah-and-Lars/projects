@@ -427,17 +427,22 @@ export class Account extends DurableObject {
       this.push({ t: 'dm', k, n: s.c[k].n, m: rec });
       return j({ m: rec, n: s.c[k].n });
     }
-    if (route === 'call') { // video calls (2026-11-10): passes call set-up to a friend's open pages; the video itself goes browser to browser
+    if (route === 'call') { // video calls (2026-11-10): passes call set-up to another player's open pages; the video itself goes browser to browser
       const d = body.d, size = JSON.stringify(d || null).length;
       if (!d || typeof d !== 'object' || size > CALL_MAX) return j({ error: 'bad' }, 400);
-      if (!s.f[k] || s.f[k].st !== 'f') return j({ error: 'not_friend' }, 403);
       if (s.b[k]) return j({ error: 'you_blocked' }, 403);
       this.calls = (this.calls || []).filter(x => now - x < 10000);
       if (this.calls.length >= 20) return j({ error: 'slow' }, 429);
       this.calls.push(now);
+      if (d.k === 'ring') { // at most 6 new calls a minute, so nobody can ring the whole Players list
+        this.rings = (this.rings || []).filter(x => now - x < 60000);
+        if (this.rings.length >= 6) return j({ error: 'slow' }, 429);
+        this.rings.push(now);
+      }
       const r = await peerCall(this.env, other, 'p-call', { from: a.name, d });
+      if (r.status === 404) return j({ error: 'no_account' }, 404);
       if (r.status !== 200) return j({ error: 'failed' }, 502);
-      return j({ on: r.on || 0 });
+      return j({ on: r.on || 0, fr: r.fr || 0 });
     }
     return j({ error: 'not_found' }, 404);
   }
@@ -467,11 +472,11 @@ export class Account extends DurableObject {
       this.push({ t: 'dm', k, n: from, m: rec });
       return j({ ok: true, n: a.name });
     }
-    if (route === 'p-call') { // only friends get through; blocked or not friends looks the same as offline
-      if (s.b[k] || !s.f[k] || s.f[k].st !== 'f') return j({ on: 0 });
-      const n = this.ctx.getWebSockets().length;
-      if (n) this.push({ t: 'call', n: s.f[k].n || from, d: body.d });
-      return j({ on: n });
+    if (route === 'p-call') { // anyone not blocked gets through (blocked looks the same as offline); fr = they're friends, so their camera may show while it rings
+      if (s.b[k]) return j({ on: 0 });
+      const fr = s.f[k] && s.f[k].st === 'f' ? 1 : 0, n = this.ctx.getWebSockets().length;
+      if (n) this.push({ t: 'call', n: (fr && s.f[k].n) || from, d: body.d, fr });
+      return j({ on: n, fr });
     }
     if (route === 'p-gone') {
       delete s.f[k]; delete s.c[k];

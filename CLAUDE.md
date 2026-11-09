@@ -90,13 +90,15 @@ source in Settings → Pages should be switched to `main`.
   game reads it and keeps the game's name box on that name, read-only. Cube Assault still lets the
   test names (GAMETESTER, ADMINTEST) be typed, since those ask for their password. Havoc Bay (1.3.1) hides its name
   box in Settings; typing GAMETESTER in the Private room name box asks for the password. The chat uses the account name too.
-- `call.js` (2026-11-10): 1-on-1 video calls between friends, loaded after `account.js` on `index.html`, `play.html`,
-  `chat.html` and `players.html` (the "📹 Video call" button on a friend's profile and in a DM). Set-up rides the
-  account's live socket: `POST /acct/call {to, d}` reaches only friends (not blocked) and is pushed as `{t:'call', n, d}`;
-  the media is WebRTC browser to browser (Google STUN only, no TURN relay, so a few strict networks can't connect).
-  The caller's camera (not their sound) shows on the callee's ringing card before they pick up: 'ring' (offer) ->
-  'ans' (answer with empty senders) -> 'ok' (callee fills its senders with replaceTrack) | 'no' | 'busy' | 'end'.
-  One tab per player rings (localStorage claim). `ArcadeCall.start(name)`; tests: `cdp2v.mjs` (fake camera) + rt-local.
+- `call.js` (2026-11-10): video calls, one-on-one or groups of up to 4, loaded after `account.js` on `index.html`,
+  `play.html`, `chat.html` and `players.html` (the "📹 Video call" / "Add to call" button on a profile and in a DM).
+  Anyone can call anyone who hasn't blocked them (the owner asked, 2026-11-10). Set-up rides the account's live socket:
+  `POST /acct/call {to, d}` is pushed as `{t:'call', n, d, fr}` (fr = friends; at most 6 new rings a minute per caller).
+  The media is WebRTC between every pair (mesh), Google STUN only. NO relay: the owner said never add TURN, so two
+  devices whose network blocks direct connections can't connect (the call ends after about 10 s with a message).
+  A friend's camera shows on the ringing card before you pick up; a non-friend's doesn't (and their card has Block).
+  Protocol in the comment at the top of call.js ('ring', 'ans', 'ok', 'no', 'busy', 'end', 'roster', 'join', 'jans').
+  Tests: scratchpad `cdpNv.mjs` with FAKECAM=1 (fake cameras, n browsers) + rt-local accounts Tester, Noah, Lars.
 - `tos.js`: the Terms of Service pop-up, loaded by `index.html`, `play.html` and
   `chat.html`. It shows until the visitor ticks the box and agrees; agreeing is
   remembered in localStorage (`arcade-tos-agreed`, set to `TOS_VERSION`). Change
