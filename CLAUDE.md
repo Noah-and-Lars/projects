@@ -99,6 +99,10 @@ source in Settings → Pages should be switched to `main`.
   the Worker has the secrets TURN_KEY_ID and TURN_KEY_TOKEN; deleting them turns it off again. A link that isn't up
   is retried with an ICE restart at 6 s and 14 s and the call ends with a message at 24 s (never stuck on
   "Connecting video…"). Messages carry the page id (dev) so a call links to the device that answered.
+  Screen sharing (2026-11-10): the call bar's screen button (hidden where getDisplayMedia is missing: phones and
+  tablets) puts your screen in place of your camera on every link with replaceTrack (no new offer); a shared tab's
+  sound is mixed with the mic (Web Audio); 'scr' {on} tells each person once their link is up, and their tile shows
+  it whole (object-fit contain) and big. Clips of gameplay are a parked idea; don't build them unasked.
   A friend's camera shows on the ringing card before you pick up; a non-friend's doesn't (and their card has Block).
   Protocol in the comment at the top of call.js ('ring', 'ans', 'ok', 'no', 'busy', 'end', 'roster', 'join', 'jans').
   Tests: scratchpad `cdpNv.mjs` with FAKECAM=1 (fake cameras, n browsers) + rt-local accounts Tester, Noah, Lars.

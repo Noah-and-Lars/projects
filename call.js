@@ -13,7 +13,9 @@
    A video link that isn't up after 6 s is retried with an ICE restart ('re' / 'rea'; the answering side asks with
    'kick'), and given up with a message after about 24 s. If you answer on a different device from the one whose
    preview the caller linked to, the caller re-offers to that device ('ring2') and tells the others ('taken').
-   Only one tab per player rings (a localStorage claim, the tab you look at wins). */
+   Only one tab per player rings (a localStorage claim, the tab you look at wins).
+   Screen sharing (2026-11-10): your screen takes your camera's place in every link (replaceTrack, no new offer), a
+   shared tab's sound is mixed with your microphone, and 'scr' {on} tells the others to show it whole. */
 (function () {
   var A = window.ArcadeAccount;
   if (!A || !window.RTCPeerConnection || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { window.ArcadeCall = { start: function () { alert('Video calls don’t work in this browser.'); }, active: function () { return false; }, canAdd: function () { return false; } }; return; }
@@ -28,7 +30,8 @@
     });
   }
   var TAB = Math.random().toString(36).slice(2, 10), RING_MS = 40000, MAX = 4;
-  // C: this page's call { id, host, who: [names in the order they joined], peers: {lower: P}, st: 'ring' | 'live', local, t0 }
+  // C: this page's call { id, host, who: [names in the order they joined], peers: {lower: P}, st: 'ring' | 'live', local, t0,
+  //    share (your screen, while sharing), mix (your mic plus the shared tab's sound) }
   // P: one other person { n, pc, remote, st: 'ring' | 'live', out (we called them), offerer (we made this link's offer),
   //    dev (their page), fr, offer, answering, ringT, bad (seconds the video link hasn't been up), tries }
   var C = null;
@@ -54,23 +57,76 @@
     pc.ontrack = function (e) { if (P.pc === pc) { P.remote.addTrack(e.track); draw(); } };
     pc.onconnectionstatechange = function () {
       if (P.pc !== pc || !C || C.peers[lc(P.n)] !== P) return;
-      if (pc.connectionState === 'connected') { P.bad = 0; P.tries = 0; }
+      if (pc.connectionState === 'connected') { P.bad = 0; P.tries = 0; tellShare(); }
       draw();
     };
     return pc;
   }
-  // our camera and microphone into an offer, or into the empty senders of an answer
+  // what we send: the screen instead of the camera while sharing, and the mic mixed with the shared tab's sound
+  function outTrack(kind) {
+    if (kind === 'video' && C.share) return C.share.getVideoTracks()[0] || null;
+    if (kind === 'audio' && C.mix) return C.mix.track;
+    return (C.local && C.local.getTracks().find(function (x) { return x.kind === kind; })) || null;
+  }
+  // into an offer, or into the empty senders of an answer (a video slot even without a camera, so a screen can go in later)
   function addLocal(pc) {
-    var s = C.local; if (!s) return;
-    s.getTracks().forEach(function (t) { pc.addTrack(t, s); });
-    if (!s.getVideoTracks().length) pc.addTransceiver('video', { direction: 'recvonly' });
+    var s = C.local || C.share; if (!s) return;
+    var a = outTrack('audio'), v = outTrack('video');
+    if (a) pc.addTrack(a, s); else pc.addTransceiver('audio', { direction: 'sendrecv' });
+    if (v) pc.addTrack(v, s); else pc.addTransceiver('video', { direction: 'sendrecv' });
   }
   function fillSenders(pc) {
-    var s = C.local; if (!s) return;
     pc.getTransceivers().forEach(function (t) {
-      var kind = t.receiver.track && t.receiver.track.kind, tr = kind && s.getTracks().find(function (x) { return x.kind === kind; });
-      if (tr) t.sender.replaceTrack(tr);
+      var kind = t.receiver.track && t.receiver.track.kind, tr = kind && outTrack(kind);
+      if (tr && t.sender.track !== tr) t.sender.replaceTrack(tr).catch(function () {});
     });
+  }
+  function pushOut() { for (var k in C.peers) if (C.peers[k].pc) fillSenders(C.peers[k].pc); bitrate(); }
+
+  /* ---------- sharing your screen ---------- */
+  var canShare = !!(navigator.mediaDevices.getDisplayMedia);
+  function share() {
+    if (!C || C.st !== 'live') return;
+    if (C.share) { stopShare(); return; }
+    var c = C;
+    navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 }, width: { max: 1920 }, height: { max: 1080 } }, audio: true }).then(function (s) {
+      var v = s.getVideoTracks()[0];
+      if (C !== c || !v) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+      try { v.contentHint = 'detail'; } catch (e) {}
+      v.addEventListener('ended', function () { if (C === c && C.share === s) stopShare(); });   // the browser's own "Stop sharing"
+      C.share = s;
+      var sa = s.getAudioTracks()[0]; if (sa) mixIn(sa);
+      for (var k in C.peers) C.peers[k].toldShare = false;
+      pushOut(); tellShare(); draw();
+    }).catch(function (e) {
+      if (e && /system/i.test(e.message || '')) alert('Your computer blocked screen sharing. On a Mac: System Settings → Privacy & Security → Screen Recording, turn it on for this browser, then quit and reopen the browser.');
+    });
+  }
+  function stopShare() {
+    if (!C || !C.share) return;
+    C.share.getTracks().forEach(function (t) { t.stop(); }); C.share = null;
+    if (C.mix) { try { C.mix.ctx.close(); } catch (e) {} C.mix = null; }
+    for (var k in C.peers) C.peers[k].toldShare = false;
+    pushOut(); tellShare(); draw();
+  }
+  function mixIn(sa) {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)(), dest = ctx.createMediaStreamDestination();
+      var mic = C.local && C.local.getAudioTracks()[0];
+      if (mic) ctx.createMediaStreamSource(new MediaStream([mic])).connect(dest);   // a muted mic is silence here too
+      ctx.createMediaStreamSource(new MediaStream([sa])).connect(dest);
+      C.mix = { ctx: ctx, track: dest.stream.getAudioTracks()[0] };
+    } catch (e) { C.mix = null; }
+  }
+  // each person hears once (when their link is up) whether you're sharing
+  function tellShare() {
+    for (var k in C.peers) {
+      var P = C.peers[k];
+      if (P.st !== 'live' || !P.pc || P.pc.connectionState !== 'connected' || P.toldShare) continue;
+      P.toldShare = true;
+      var on = !!C.share;
+      if (on || P.seesShare) { sendP(P, { k: 'scr', on: on ? 1 : 0 }); P.seesShare = on; }
+    }
   }
   function offer(P) {
     return iceReady().then(function () {
@@ -106,9 +162,10 @@
       .then(function () { if (C === c && P.pc === pc) sendP(P, { k: 'rea', sdp: pc.localDescription.toJSON() }); })
       .catch(function () {});
   }
-  // every second: a live link that isn't up gets retried at 6 s and 14 s, and given up at 24 s
+  // every second: a live link that isn't up gets retried at 6 s and 14 s, and given up at 24 s; late joiners hear about a shared screen
   setInterval(function () {
     if (!C || C.st !== 'live') return;
+    tellShare(); // anyone who joined (or whose link came up) since you started sharing
     for (var k in C.peers) {
       var P = C.peers[k]; if (P.st !== 'live' || !P.pc) continue;
       if (P.pc.connectionState === 'connected') { P.bad = 0; continue; }
@@ -119,15 +176,18 @@
     }
   }, 1000);
   // more people, less video each, so everyone's upload keeps up
+  // (a shared screen gets more, and keeps its sharpness over smoothness, so text stays readable)
   function bitrate() {
     if (!C) return;
-    var n = Object.keys(C.peers).length, max = n <= 1 ? 900000 : n === 2 ? 600000 : 450000;
+    var n = Object.keys(C.peers).length, scr = !!C.share;
+    var max = scr ? (n <= 1 ? 1800000 : n === 2 ? 1200000 : 900000) : (n <= 1 ? 900000 : n === 2 ? 600000 : 450000);
     for (var k in C.peers) {
       var pc = C.peers[k].pc; if (!pc) continue;
       pc.getSenders().forEach(function (s) {
         if (!s.track || s.track.kind !== 'video' || !s.getParameters) return;
         var p = s.getParameters(); if (!p.encodings || !p.encodings.length) return;
-        p.encodings[0].maxBitrate = max; s.setParameters(p).catch(function () {});
+        p.encodings[0].maxBitrate = max; p.degradationPreference = scr ? 'maintain-resolution' : 'balanced';
+        s.setParameters(p).catch(function () {});
       });
     }
   }
@@ -206,6 +266,7 @@
     else if (d.k === 'ring2' && P && C.st === 'live') { var c3 = C; answerTo(P, d.sdp).then(function (sdp) { if (C === c3 && C.peers[k] === P) sendP(P, { k: 'ans', sdp: sdp }); }); }
     else if (d.k === 're' && P && P.pc && (!P.dev || P.dev === d.dev)) reAnswer(P, d.sdp);
     else if (d.k === 'rea' && P && P.pc && P.pc.signalingState === 'have-local-offer') P.pc.setRemoteDescription(d.sdp).catch(function () {});
+    else if (d.k === 'scr' && P) { P.screen = !!d.on; draw(); }
     else if (d.k === 'kick' && P && P.offerer && P.st === 'live' && P.pc && P.pc.connectionState !== 'connected' && (P.bad || 0) >= 3 && (P.tries || 0) < 3) restart(P);
     else if (d.k === 'no' && P && P.st === 'ring') drop(P, from + ' declined the call.');
     else if (d.k === 'busy' && P && P.st === 'ring') drop(P, from + ' is in another call.');
@@ -319,6 +380,8 @@
     clearTimeout(c.ringT); ringTone(false); flashTitle(false);
     for (var k in c.peers) { var P = c.peers[k]; clearTimeout(P.ringT); clearTimeout(P.dropT); try { P.pc && P.pc.close(); } catch (e) {} }
     if (c.local) c.local.getTracks().forEach(function (t) { t.stop(); });
+    if (c.share) c.share.getTracks().forEach(function (t) { t.stop(); });
+    if (c.mix) try { c.mix.ctx.close(); } catch (e) {}
     ['acRing', 'acCall'].forEach(function (id) { var e = $(id); if (e) e.remove(); });
     try { localStorage.removeItem('arcade-call-busy'); } catch (e) {}
     var other = about || c.who.filter(function (n) { return lc(n) !== lc(me()); })[0] || c.host;
@@ -363,7 +426,6 @@
       '#acCall .acc-stage{position:relative;aspect-ratio:16/9;overflow:hidden;background:#14122a;display:grid;gap:2px}' +
       '#acCall .acc-stage.n2{grid-template-columns:1fr 1fr}#acCall .acc-stage.n3{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}' +
       '#acCall .acc-tile{position:relative;min-width:0;min-height:0;overflow:hidden;background:#1b1838}#acCall .acc-tile video{width:100%;height:100%;object-fit:cover;display:block}' +
-      '#acCall .acc-stage.n3 .acc-tile:first-child{grid-column:span 2}' +
       '#acCall .acc-tile .acc-tn{position:absolute;left:8px;bottom:8px;font:700 12px/1 system-ui,sans-serif;background:rgba(11,10,24,.72);padding:5px 8px;border-radius:7px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
       '#acCall .acc-tile .acc-ts{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#d9d4f3;font-size:12.5px;text-align:center;padding:10px}' +
       '#acCall .acc-unmute{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:0;border-radius:12px;padding:10px 16px;background:#6c5ce7;color:#fff;font:800 14px system-ui,sans-serif;cursor:pointer;z-index:2}' +
@@ -373,6 +435,8 @@
       '#acCall .acc-over b{font-size:17px;text-shadow:0 1px 6px #000}#acCall .acc-over span{color:#d9d4f3;font-size:12.5px;text-shadow:0 1px 6px #000}' +
       '#acCall .acc-bar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(27,24,53,.97)}#acCall .acc-bar .acc-nm{flex:1;min-width:0;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#acCall .acc-bar .acc-tm{color:#a9a3c9;font:600 12px ui-monospace,Menlo,monospace;margin-left:6px}' +
       '#acCall .acc-bar button{border:0;border-radius:10px;width:38px;height:34px;background:#ffffff14;color:#fff;cursor:pointer;font-size:16px;display:grid;place-items:center;flex:none}#acCall .acc-bar button:hover{background:#ffffff26}' +
+      '#acCall .acc-bar button.acc-on{background:#00b894}#acCall .acc-tile.acc-scr video{object-fit:contain;background:#000}#acCall .acc-tile.acc-wide{order:-1}#acCall .acc-stage.n3 .acc-tile.acc-wide{grid-column:span 2}' +
+      '#acCall .acc-me.acc-scr video{transform:none;object-fit:contain}' +
       '#acCall .acc-bar button.acc-off{background:#e8344c55}#acCall .acc-bar button.acc-end{background:#e8344c;width:46px}#acCall .acc-bar button[hidden]{display:none}' +
       '#acCall .acc-bar svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}' +
       '#acCall .acc-add{display:flex;flex-direction:column;gap:8px;padding:10px;background:rgba(27,24,53,.97);border-top:1px solid #ffffff14}' +
@@ -386,6 +450,7 @@
     micOff: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/></svg>',
     cam: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3"/></svg>',
     camOff: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3M3 3l18 18"/></svg>',
+    screen: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M12 13V7M9 10l3-3 3 3"/></svg>',
     add: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 20c1-4 4-6 7-6s6 2 7 6M19 8v6M16 11h6"/></svg>',
     big: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
     end: '<svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-2 3-4-2v-3c-2-1-4-1-6 0v3l-4 2z"/></svg>'
@@ -427,7 +492,7 @@
     if (!box) {
       box = el('div'); box.id = 'acCall';
       box.innerHTML = '<div class="acc-stage" id="acStage"></div><div class="acc-me" id="acCallMe"><video id="acCallLocal" autoplay playsinline muted></video></div><div class="acc-over" id="acCallOver"></div>' +
-        '<div class="acc-bar"><span class="acc-nm" id="acCallNm"></span><button type="button" id="acMic" title="Mute your microphone">' + ICON.mic + '</button><button type="button" id="acCam" title="Turn your camera off">' + ICON.cam + '</button><button type="button" id="acAdd" title="Add someone to the call">' + ICON.add + '</button><button type="button" id="acBig" title="Bigger">' + ICON.big + '</button><button type="button" class="acc-end" id="acEnd" title="Leave the call">' + ICON.end + '</button></div>';
+        '<div class="acc-bar"><span class="acc-nm" id="acCallNm"></span><button type="button" id="acMic" title="Mute your microphone">' + ICON.mic + '</button><button type="button" id="acCam" title="Turn your camera off">' + ICON.cam + '</button><button type="button" id="acShare" title="Share your screen">' + ICON.screen + '</button><button type="button" id="acAdd" title="Add someone to the call">' + ICON.add + '</button><button type="button" id="acBig" title="Bigger">' + ICON.big + '</button><button type="button" class="acc-end" id="acEnd" title="Leave the call">' + ICON.end + '</button></div>';
       // the corner picture and the message sit over the tiles
       var wrap = el('div'); wrap.style.position = 'relative';
       box.insertBefore(wrap, box.firstChild); ['acStage', 'acCallMe', 'acCallOver'].forEach(function (id) { wrap.appendChild(box.querySelector('#' + id)); });
@@ -435,10 +500,13 @@
       $('acMic').onclick = function () { if (!C) return; C.micOff = !C.micOff; hearing(live().length > 0); this.classList.toggle('acc-off', C.micOff); this.innerHTML = C.micOff ? ICON.micOff : ICON.mic; };
       $('acCam').onclick = function () { if (!C) return; C.camOff = !C.camOff; if (C.local) C.local.getVideoTracks().forEach(function (t) { t.enabled = !C.camOff; }); this.classList.toggle('acc-off', C.camOff); this.innerHTML = C.camOff ? ICON.camOff : ICON.cam; };
       $('acAdd').onclick = toggleAdd;
+      $('acShare').onclick = share;
       $('acBig').onclick = function () { box.classList.toggle('acc-big'); };
       $('acEnd').onclick = hangUp;
     }
     var ps = []; for (var k in C.peers) ps.push(C.peers[k]);
+    // a shared screen gets the big spot (in a group of three, the wide top tile)
+    var wide = ps.filter(function (P) { return P.screen && P.st === 'live'; })[0] || ps[0];
     var stage = $('acStage');
     stage.className = 'acc-stage n' + Math.min(3, Math.max(1, ps.length));
     box.classList.toggle('acc-grp', ps.length > 1);
@@ -450,6 +518,8 @@
         t = P.tile = el('div', 'acc-tile'); var v = el('video'); v.autoplay = true; v.playsInline = true; v.muted = true; t.appendChild(v);
         t.appendChild(el('span', 'acc-tn', P.n)); var s = el('div', 'acc-ts'); t.appendChild(s);
       }
+      t.classList.toggle('acc-scr', !!P.screen); t.classList.toggle('acc-wide', P === wide);
+      t.querySelector('.acc-tn').textContent = P.screen ? P.n + ' · sharing their screen' : P.n;
       var v2 = t.querySelector('video'), s2 = t.querySelector('.acc-ts');
       if (P.remote && v2.srcObject !== P.remote) { v2.srcObject = P.remote; }
       var on = P.st === 'live' && C.st === 'live';
@@ -475,7 +545,10 @@
     nm.textContent = list.length ? names(list) : 'Video call'; var tm = el('span', 'acc-tm'); tm.id = 'acCallTm'; nm.appendChild(tm);
     $('acAdd').hidden = !canAdd();
     if ($('acAddBox') && !canAdd()) $('acAddBox').remove();
-    var lv = $('acCallLocal'); if (lv && C.local && lv.srcObject !== C.local) { lv.srcObject = C.local; lv.play().catch(function () {}); }
+    // your corner shows what you're sending: your camera, or your screen while sharing
+    var lv = $('acCallLocal'), mine = C.share || C.local; if (lv && mine && lv.srcObject !== mine) { lv.srcObject = mine; lv.play().catch(function () {}); }
+    $('acCallMe').classList.toggle('acc-scr', !!C.share);
+    var sb = $('acShare'); sb.hidden = !canShare; sb.classList.toggle('acc-on', !!C.share); sb.title = C.share ? 'Stop sharing your screen' : 'Share your screen';
   }
   function status(title, sub) {
     var o = $('acCallOver'); if (!o) return;
@@ -553,6 +626,6 @@
   A.onLive(function (m) { if (m && m.t === 'call' && m.n) got(m.n, m.d, m.fr); });
   window.ArcadeCall = {
     start: start, active: function () { return !!C; }, canAdd: canAdd,
-    _test: { state: function () { if (!C) return null; var p = {}; for (var k in C.peers) p[k] = C.peers[k].st + '/' + (C.peers[k].pc ? C.peers[k].pc.connectionState : '-'); return { id: C.id, host: C.host, who: C.who, st: C.st, peers: p }; }, accept: accept, decline: decline, hangUp: hangUp, restart: function (n) { if (C && C.peers[lc(n)]) restart(C.peers[lc(n)]); }, ice: function () { return ICE; } }
+    _test: { state: function () { if (!C) return null; var p = {}; for (var k in C.peers) p[k] = C.peers[k].st + '/' + (C.peers[k].pc ? C.peers[k].pc.connectionState : '-'); return { id: C.id, host: C.host, who: C.who, st: C.st, peers: p, sharing: !!C.share }; }, accept: accept, decline: decline, hangUp: hangUp, share: share, restart: function (n) { if (C && C.peers[lc(n)]) restart(C.peers[lc(n)]); }, ice: function () { return ICE; } }
   };
 })();
