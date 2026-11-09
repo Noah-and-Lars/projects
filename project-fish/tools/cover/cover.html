@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Project Fish cover</title>
+    <!-- The game's cover art, drawn by tools/cover/cover.js and saved by
+         tools/cover/render_cover.mjs (npm run build-cover). Open it served
+         from the project-fish folder to see a layout:
+         cover.html?layout=thumb|cover|og -->
+    <style>
+      @font-face {
+        font-family: 'Cover Title';
+        src: url(fonts/BigShouldersDisplay-Black.ttf) format('truetype');
+        font-weight: 900;
+      }
+      @font-face {
+        font-family: 'Cover Stencil';
+        src: url(fonts/BigShouldersStencilDisplay-Black.ttf) format('truetype');
+        font-weight: 900;
+      }
+      html, body { margin: 0; background: #1a0e04; }
+      canvas { display: block; max-width: 100vw; max-height: 100vh; object-fit: contain; }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module" src="cover.js"></script>
+  </body>
+</html>

@@ -76,11 +76,12 @@ const gunGloves = (id) => Object.fromEntries(OWN_ARMS.map((gun) => [gun, gearFil
 
 // The slots and their options. A slot has its id, its name, its `title`
 // (the loadout menu's heading for it) and its `group` (the section of the
-// menu's Customization tab it's in). An option is { id, name, about, own: true (his own
-// piece) | file (a piece from assets/gear) | neither (nothing), hides
-// (optional: names in EXTRA also left off with it), guns (gloves only,
-// optional: the same gloves for the guns with their own arms, by gun; an
-// option without them leaves those guns the hands they came with) }. He
+// menu's Customization tab it's in). An option is { id, name, about,
+// own: true (his own piece) | file (a piece from assets/gear) | neither
+// (nothing), hides (optional: names in EXTRA also left off with it), guns
+// (gloves only, optional: the same gloves for the guns with their own
+// arms, by gun; an option without them leaves those guns the hands they
+// came with) }. He
 // starts in the slot's `default`, or else its first option. (Ids stay as
 // they were saved: the Sage carrier and gloves are 'olive'.)
 //

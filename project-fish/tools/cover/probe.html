@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><title>probe</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"}}</script>
+<style>body{margin:0}</style></head><body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { boneName } from '../../src/soldier.js';
+import { Wardrobe } from '../../src/gear.js';
+const q = new URLSearchParams(location.search);
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const [sg, cg] = await Promise.all([loader.loadAsync('../../assets/soldier.glb'), loader.loadAsync('../../assets/cinematic/soldier_clips.glb')]);
+const model = sg.scene; const bones = {}; model.traverse((o) => { if (o.isBone) bones[boneName(o.name)] = o; if (o.isMesh) o.frustumCulled = false; });
+const wardrobe = new Wardrobe({ get: (s) => ({ head: 'comms', vest: 'black', gloves: 'black' })[s], onChange() {} });
+await wardrobe.dress(model);
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x888888);
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+const sun = new THREE.DirectionalLight(0xffffff, 2); sun.position.set(2, 4, 3); scene.add(sun);
+scene.add(model);
+const clipName = q.get('clip') || 'cover';
+if (clipName !== 'rest') {
+  let anim = clipName === 'idle' ? sg.animations[0] : cg.animations.find((a) => a.name === clipName);
+  const tracks = [];
+  for (const tr of anim.tracks) { const d = tr.name.lastIndexOf('.'); const b = bones[boneName(tr.name.slice(0, d))]; if (!b) continue; const t = tr.clone(); t.name = b.name + tr.name.slice(d); tracks.push(t); }
+  const clip = new THREE.AnimationClip(anim.name, anim.duration, tracks);
+  const mixer = new THREE.AnimationMixer(model); const a = mixer.clipAction(clip); a.play(); a.time = +(q.get('t') || 0); mixer.update(0);
+}
+model.updateMatrixWorld(true);
+const hip = new THREE.Vector3(); bones.CC_Base_Hip.getWorldPosition(hip);
+const head = new THREE.Vector3(); bones.CC_Base_Head.getWorldPosition(head);
+const yaw = +(q.get('yaw') || 0) * Math.PI / 180;
+const dist = +(q.get('dist') || 3), ch = +(q.get('ch') || 1.0);
+const cam = new THREE.PerspectiveCamera(+(q.get('fov') || 35), W / H, 0.05, 100);
+const c = new THREE.Vector3(hip.x + Math.sin(yaw) * dist, ch, hip.z + Math.cos(yaw) * dist);
+cam.position.copy(c); cam.lookAt(hip.x, (hip.y + head.y) / 2 + +(q.get('ly') || 0), hip.z);
+renderer.render(scene, cam);
+console.log('hip', hip.toArray().map(v=>v.toFixed(2)), 'head', head.toArray().map(v=>v.toFixed(2)));
+window.coverDone = true;
+</script></body></html>
