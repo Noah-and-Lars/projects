@@ -149,7 +149,7 @@ const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gameteste
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
 const ADMIN_HASH = '899ba39fe0b4ce0b8d4994cf7449cc63c2a8ade12fa77e590cfaf5999256ccf2';
-const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile']; // what a browser may ask an account for
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call']; // what a browser may ask an account for
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
 function nameProblem(n) {
@@ -275,7 +275,7 @@ export class Account extends DurableObject {
       if (now - (a.seenAt || 0) > 5 * 60000) { a.seenAt = now; await S.put('acct', a); this.ctx.waitUntil(dirCall(this.env, 'seen', { n: a.name }).catch(() => null)); }
       return new Response(null, { status: 101, webSocket: pair[0], headers: { 'Sec-WebSocket-Protocol': 'arcade' } });
     }
-    if (['social', 'friend', 'block', 'dm', 'profile'].includes(route)) return this.social(route, req, url, body, a, j, now);
+    if (['social', 'friend', 'block', 'dm', 'profile', 'call'].includes(route)) return this.social(route, req, url, body, a, j, now);
     if (route === 'logout') { a.sess.splice(si, 1); await S.put('acct', a); return j({ ok: true }); }
     if (route === 'password') {
       if (!KEY_RE.test(body.key || '') || !same(await sha(a.salt + (body.old || '')), a.h)) return j({ error: 'wrong' }, 401);
@@ -427,6 +427,18 @@ export class Account extends DurableObject {
       this.push({ t: 'dm', k, n: s.c[k].n, m: rec });
       return j({ m: rec, n: s.c[k].n });
     }
+    if (route === 'call') { // video calls (2026-11-10): passes call set-up to a friend's open pages; the video itself goes browser to browser
+      const d = body.d, size = JSON.stringify(d || null).length;
+      if (!d || typeof d !== 'object' || size > CALL_MAX) return j({ error: 'bad' }, 400);
+      if (!s.f[k] || s.f[k].st !== 'f') return j({ error: 'not_friend' }, 403);
+      if (s.b[k]) return j({ error: 'you_blocked' }, 403);
+      this.calls = (this.calls || []).filter(x => now - x < 10000);
+      if (this.calls.length >= 20) return j({ error: 'slow' }, 429);
+      this.calls.push(now);
+      const r = await peerCall(this.env, other, 'p-call', { from: a.name, d });
+      if (r.status !== 200) return j({ error: 'failed' }, 502);
+      return j({ on: r.on || 0 });
+    }
     return j({ error: 'not_found' }, 404);
   }
   // another account asking (friend requests, messages, an account going away)
@@ -454,6 +466,12 @@ export class Account extends DurableObject {
       const rec = await this.addMsg(s, k, from, m, false);
       this.push({ t: 'dm', k, n: from, m: rec });
       return j({ ok: true, n: a.name });
+    }
+    if (route === 'p-call') { // only friends get through; blocked or not friends looks the same as offline
+      if (s.b[k] || !s.f[k] || s.f[k].st !== 'f') return j({ on: 0 });
+      const n = this.ctx.getWebSockets().length;
+      if (n) this.push({ t: 'call', n: s.f[k].n || from, d: body.d });
+      return j({ on: n });
     }
     if (route === 'p-gone') {
       delete s.f[k]; delete s.c[k];
@@ -487,7 +505,7 @@ export class Account extends DurableObject {
    the friend-request and unread counts, and live updates go over hibernating WebSockets (pings are answered by
    Cloudflare without waking anything).
    ========================================================================== */
-const MAX_FRIENDS = 300, MAX_CONVOS = 300, KEEP_DM = 300, DM_LEN = 500;
+const MAX_FRIENDS = 300, MAX_CONVOS = 300, KEEP_DM = 300, DM_LEN = 500, CALL_MAX = 24000;
 const pad = n => String(n).padStart(10, '0');
 // stars out swear words and slurs (the same list as the chat page's tidy())
 const BAD = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;

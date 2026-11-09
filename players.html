@@ -85,6 +85,7 @@
 .dm-head .av { width: 32px; height: 32px; font-size: 14px; }
 .dm-head a { font-weight: 800; font-size: 17px; }
 .dm-head a:hover { text-decoration: underline; }
+.dm-head .dm-call { margin-left: auto; padding: 7px 12px; font-size: 13px; }
 .back { display: none; padding: 6px 10px; border-radius: 9px; border: 1px solid #ffffff22; background: none; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
 .dm-log { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
 .bub { max-width: min(75%, 520px); padding: 7px 11px; border-radius: 14px; background: #ffffff10; align-self: flex-start; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.4; }
@@ -137,6 +138,7 @@
 
 <script src="games.js?v=177"></script>
 <script src="account.js?v=11"></script>
+<script src="call.js?v=1"></script>
 <script>
 // Players (2026-11-06): every account on the arcade, their best score in each game, friends and private messages.
 // Everything comes from the arcade's server (realtime-worker: /acct/players, /acct/player, /acct/social,
@@ -293,6 +295,7 @@ function drawProfile(box, r) {
       else if (f.st === 'out') btn('Cancel friend request', 'ghost2', () => friend(r.n, 'remove'));
       else btn('Remove friend', 'ghost2', () => { if (confirm('Remove ' + r.n + ' from your friends?')) return friend(r.n, 'remove'); });
       btn('Message', blocked ? 'ghost2' : '', () => go('dm', r.n));
+      if (f && f.st === 'f' && !blocked) btn('📹 Video call', '', () => window.ArcadeCall && ArcadeCall.start(r.n));
       btn(blocked ? 'Unblock' : 'Block', 'danger', () => { if (blocked || confirm('Block ' + r.n + '? They won’t be able to message you or send you friend requests. They aren’t told.')) return block(r.n, !blocked); });
     }
   }
@@ -341,6 +344,10 @@ function openDm(n) {
   const head = el('div', 'dm-head'), link = el('a', '', nameOf(k)), log = el('div', 'dm-log'), form = el('form', 'dm-send'), inp = el('input', 'field'), send = el('button', 'btn', 'Send');
   link.href = '#p=' + encodeURIComponent(nameOf(k));
   head.append(backBtn(), avatar(nameOf(k)), link);
+  if (soc && soc.f[k] && soc.f[k].st === 'f' && !soc.b[k]) { // friends can video call from the chat too
+    const call = el('button', 'btn dm-call', '📹 Video call'); call.type = 'button'; call.title = 'Video call ' + nameOf(k);
+    call.onclick = () => window.ArcadeCall && ArcadeCall.start(nameOf(k)); head.append(call);
+  }
   inp.maxLength = 500; inp.placeholder = 'Message ' + nameOf(k) + '…'; inp.setAttribute('aria-label', 'Message'); inp.autocomplete = 'off'; inp.enterKeyHint = 'send';
   send.type = 'submit';
   form.append(inp, send);
@@ -443,6 +450,6 @@ loadSocial();
 let lastName = myName();
 setInterval(() => { if (myName() !== lastName) { lastName = myName(); loadSocial(); if (cur) route(); } }, 1000);
 </script>
-<script src="tos.js?v=7"></script>
+<script src="tos.js?v=8"></script>
 </body>
 </html>
