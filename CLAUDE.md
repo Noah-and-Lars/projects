@@ -94,8 +94,11 @@ source in Settings → Pages should be switched to `main`.
   `play.html`, `chat.html` and `players.html` (the "📹 Video call" / "Add to call" button on a profile and in a DM).
   Anyone can call anyone who hasn't blocked them (the owner asked, 2026-11-10). Set-up rides the account's live socket:
   `POST /acct/call {to, d}` is pushed as `{t:'call', n, d, fr}` (fr = friends; at most 6 new rings a minute per caller).
-  The media is WebRTC between every pair (mesh), Google STUN only. NO relay: the owner said never add TURN, so two
-  devices whose network blocks direct connections can't connect (the call ends after about 10 s with a message).
+  The media is WebRTC between every pair (mesh). Relay: Cloudflare TURN, added 2026-11-10 at the owner's request
+  (after first saying no); `GET /acct/turn` gives signed-in players 4-hour logins, and it is OFF (direct only) until
+  the Worker has the secrets TURN_KEY_ID and TURN_KEY_TOKEN; deleting them turns it off again. A link that isn't up
+  is retried with an ICE restart at 6 s and 14 s and the call ends with a message at 24 s (never stuck on
+  "Connecting video…"). Messages carry the page id (dev) so a call links to the device that answered.
   A friend's camera shows on the ringing card before you pick up; a non-friend's doesn't (and their card has Block).
   Protocol in the comment at the top of call.js ('ring', 'ans', 'ok', 'no', 'busy', 'end', 'roster', 'join', 'jans').
   Tests: scratchpad `cdpNv.mjs` with FAKECAM=1 (fake cameras, n browsers) + rt-local accounts Tester, Noah, Lars.

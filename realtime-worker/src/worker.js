@@ -149,7 +149,7 @@ const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gameteste
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
 const ADMIN_HASH = '899ba39fe0b4ce0b8d4994cf7449cc63c2a8ade12fa77e590cfaf5999256ccf2';
-const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call']; // what a browser may ask an account for
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn']; // what a browser may ask an account for
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
 function nameProblem(n) {
@@ -276,6 +276,7 @@ export class Account extends DurableObject {
       return new Response(null, { status: 101, webSocket: pair[0], headers: { 'Sec-WebSocket-Protocol': 'arcade' } });
     }
     if (['social', 'friend', 'block', 'dm', 'profile', 'call'].includes(route)) return this.social(route, req, url, body, a, j, now);
+    if (route === 'turn') return this.turn(j, now);
     if (route === 'logout') { a.sess.splice(si, 1); await S.put('acct', a); return j({ ok: true }); }
     if (route === 'password') {
       if (!KEY_RE.test(body.key || '') || !same(await sha(a.salt + (body.old || '')), a.h)) return j({ error: 'wrong' }, 401);
@@ -446,6 +447,26 @@ export class Account extends DurableObject {
     }
     return j({ error: 'not_found' }, 404);
   }
+  /* Video-call relay (2026-11-10): short-lived logins for Cloudflare's TURN relay, which carries a call's video only
+     when the two browsers can't reach each other directly. Off until the owner adds the secrets TURN_KEY_ID and
+     TURN_KEY_TOKEN (deleting them turns it off again). Signed-in players only, at most 30 an hour each. */
+  async turn(j, now) {
+    const id = this.env.TURN_KEY_ID, tok = this.env.TURN_KEY_TOKEN;
+    if (!id || !tok) return j({ iceServers: [] });
+    this.turnAsks = (this.turnAsks || []).filter(x => now - x < 3600e3);
+    if (this.turnAsks.length >= 30) return j({ error: 'slow' }, 429);
+    this.turnAsks.push(now);
+    const r = await fetch('https://rtc.live.cloudflare.com/v1/turn/keys/' + encodeURIComponent(id) + '/credentials/generate-ice-servers', {
+      method: 'POST', headers: { authorization: 'Bearer ' + tok, 'content-type': 'application/json' }, body: JSON.stringify({ ttl: TURN_TTL })
+    }).catch(() => null);
+    if (!r || !r.ok) return j({ iceServers: [] });
+    const x = await r.json().catch(() => ({}));
+    // browsers time out on port 53, so those addresses are left out
+    const list = (Array.isArray(x.iceServers) ? x.iceServers : x.iceServers ? [x.iceServers] : [])
+      .map(v => Object.assign({}, v, { urls: [].concat(v.urls || []).filter(u => typeof u === 'string' && !/:53(\?|$)/.test(u)) }))
+      .filter(v => v.urls.length);
+    return j({ iceServers: list, ttl: TURN_TTL });
+  }
   // another account asking (friend requests, messages, an account going away)
   async peer(route, body, j, now) {
     const S = this.ctx.storage, a = await S.get('acct');
@@ -510,7 +531,7 @@ export class Account extends DurableObject {
    the friend-request and unread counts, and live updates go over hibernating WebSockets (pings are answered by
    Cloudflare without waking anything).
    ========================================================================== */
-const MAX_FRIENDS = 300, MAX_CONVOS = 300, KEEP_DM = 300, DM_LEN = 500, CALL_MAX = 24000;
+const MAX_FRIENDS = 300, MAX_CONVOS = 300, KEEP_DM = 300, DM_LEN = 500, CALL_MAX = 24000, TURN_TTL = 4 * 3600;
 const pad = n => String(n).padStart(10, '0');
 // stars out swear words and slurs (the same list as the chat page's tidy())
 const BAD = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;

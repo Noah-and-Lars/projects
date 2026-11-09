@@ -2,20 +2,35 @@
    The call set-up rides the account's live connection (account.js): POST /acct/call {to, d} goes to the other
    player's account (anyone who hasn't blocked you), which pushes {t: 'call', n, d, fr} to their open pages
    (fr = you're friends). The video and sound go straight between the browsers (WebRTC, every pair connected to
-   each other), so a call costs the server only its few set-up messages, however long it lasts. There is no relay
-   server (the owner chose none, 2026-11-10): two browsers on a network that blocks direct connections can't connect.
+   each other), so a call costs the server only its few set-up messages, however long it lasts. When two browsers
+   can't reach each other directly, Cloudflare's TURN relay carries it: short-lived logins from /acct/turn (off, and
+   direct-only, until the owner adds the TURN secrets to the Worker).
    Messages (d.k, all with the call id): 'ring' (an invite with an offer and who's in the call) -> 'ans' (answer;
    from a friend at once, so their camera shows while it rings; otherwise on pick-up) -> 'ok' (picked up) | 'no' |
    'busy'. The host (who started the call; the next in line if they leave) sends 'roster' to everyone when someone
    joins; then each pair not yet connected connects, the alphabetically first name sending 'join' (an offer) and the
-   other 'jans'. 'end' leaves the call. Only one tab per player rings (a localStorage claim, the tab you look at wins). */
+   other 'jans'. 'end' leaves the call. Every message carries the sending page's id (dev); 'to' aims one at a page.
+   A video link that isn't up after 6 s is retried with an ICE restart ('re' / 'rea'; the answering side asks with
+   'kick'), and given up with a message after about 24 s. If you answer on a different device from the one whose
+   preview the caller linked to, the caller re-offers to that device ('ring2') and tells the others ('taken').
+   Only one tab per player rings (a localStorage claim, the tab you look at wins). */
 (function () {
   var A = window.ArcadeAccount;
   if (!A || !window.RTCPeerConnection || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { window.ArcadeCall = { start: function () { alert('Video calls don’t work in this browser.'); }, active: function () { return false; }, canAdd: function () { return false; } }; return; }
-  var ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
+  var STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }], ICE = STUN, iceUntil = 0;
+  // relay logins from the server (empty while the relay is off; asked again every 10 minutes then)
+  function iceReady() {
+    if (Date.now() < iceUntil) return Promise.resolve();
+    return A.api('turn', { auth: true }).then(function (r) {
+      var on = r.status === 200 && Array.isArray(r.iceServers) && r.iceServers.length;
+      ICE = on ? STUN.concat(r.iceServers) : STUN;
+      iceUntil = Date.now() + (on ? Math.max(600, (r.ttl || 3600) - 900) : 600) * 1000;
+    });
+  }
   var TAB = Math.random().toString(36).slice(2, 10), RING_MS = 40000, MAX = 4;
   // C: this page's call { id, host, who: [names in the order they joined], peers: {lower: P}, st: 'ring' | 'live', local, t0 }
-  // P: one other person { n, pc, remote, st: 'ring' | 'live', out (we called them), fr, offer, answering, ringT }
+  // P: one other person { n, pc, remote, st: 'ring' | 'live', out (we called them), offerer (we made this link's offer),
+  //    dev (their page), fr, offer, answering, ringT, bad (seconds the video link hasn't been up), tries }
   var C = null;
   var $ = function (id) { return document.getElementById(id); };
   var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -23,11 +38,13 @@
   var me = function () { return A.name(); };
 
   /* ---------- talking to the others ---------- */
-  function send(to, d, keep) { d.id = d.id || (C && C.id); return A.api('call', { method: 'POST', auth: true, body: { to: to, d: d }, keepalive: !!keep }); }
+  function send(to, d, keep) { d.id = d.id || (C && C.id); d.dev = TAB; return A.api('call', { method: 'POST', auth: true, body: { to: to, d: d }, keepalive: !!keep }); }
+  // to one person's page (once we know which of their pages is in the call)
+  function sendP(P, d, keep) { if (P.dev) d.to = P.dev; return send(P.n, d, keep); }
   function gathered(pc) {
     return new Promise(function (r) {
       if (pc.iceGatheringState === 'complete') return r();
-      var t = setTimeout(r, 2500);
+      var t = setTimeout(r, 4000);
       pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); r(); } });
     });
   }
@@ -37,9 +54,8 @@
     pc.ontrack = function (e) { if (P.pc === pc) { P.remote.addTrack(e.track); draw(); } };
     pc.onconnectionstatechange = function () {
       if (P.pc !== pc || !C || C.peers[lc(P.n)] !== P) return;
+      if (pc.connectionState === 'connected') { P.bad = 0; P.tries = 0; }
       draw();
-      if (pc.connectionState === 'failed') lost(P, 'Couldn’t connect to ' + P.n + '. One of your networks blocks direct video calls.');
-      else if (pc.connectionState === 'disconnected') { clearTimeout(P.dropT); P.dropT = setTimeout(function () { if (P.pc === pc && pc.connectionState !== 'connected') lost(P, 'Lost the connection to ' + P.n + '.'); }, 8000); }
     };
     return pc;
   }
@@ -57,17 +73,51 @@
     });
   }
   function offer(P) {
-    var pc = newPc(P); addLocal(pc); bitrate();
-    return pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).then(function () { return gathered(pc); }).then(function () { return pc.localDescription.toJSON(); });
+    return iceReady().then(function () {
+      var pc = newPc(P); P.offerer = true; addLocal(pc); bitrate();
+      return pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).then(function () { return gathered(pc); }).then(function () { return pc.localDescription.toJSON(); });
+    });
   }
   function answerTo(P, sdp) {
-    var pc = newPc(P);
-    return pc.setRemoteDescription(sdp).then(function () {
-      pc.getTransceivers().forEach(function (t) { t.direction = 'sendrecv'; });
-      fillSenders(pc); bitrate();
-      return pc.createAnswer();
-    }).then(function (a) { return pc.setLocalDescription(a); }).then(function () { return gathered(pc); }).then(function () { return pc.localDescription.toJSON(); });
+    return iceReady().then(function () {
+      var old = P.pc, pc = newPc(P); P.offerer = false;
+      if (old) try { old.close(); } catch (e) {}
+      return pc.setRemoteDescription(sdp).then(function () {
+        pc.getTransceivers().forEach(function (t) { t.direction = 'sendrecv'; });
+        fillSenders(pc); bitrate();
+        return pc.createAnswer();
+      }).then(function (a) { return pc.setLocalDescription(a); }).then(function () { return gathered(pc); }).then(function () { return pc.localDescription.toJSON(); });
+    });
   }
+  // a link that won't come up: new routes on the same connection (ICE restart), offered by whoever made the first offer
+  function restart(P) {
+    var pc = P.pc, c = C;
+    if (!pc || !P.offerer || pc.signalingState !== 'stable') return;
+    P.tries = (P.tries || 0) + 1;
+    iceReady().then(function () { try { pc.setConfiguration({ iceServers: ICE }); } catch (e) {} return pc.createOffer({ iceRestart: true }); })
+      .then(function (o) { return pc.setLocalDescription(o); }).then(function () { return gathered(pc); })
+      .then(function () { if (C === c && P.pc === pc) sendP(P, { k: 're', sdp: pc.localDescription.toJSON() }); })
+      .catch(function () {});
+  }
+  function reAnswer(P, sdp) {
+    var pc = P.pc, c = C; if (!pc) return;
+    iceReady().then(function () { try { pc.setConfiguration({ iceServers: ICE }); } catch (e) {} return pc.setRemoteDescription(sdp); })
+      .then(function () { return pc.createAnswer(); }).then(function (a) { return pc.setLocalDescription(a); }).then(function () { return gathered(pc); })
+      .then(function () { if (C === c && P.pc === pc) sendP(P, { k: 'rea', sdp: pc.localDescription.toJSON() }); })
+      .catch(function () {});
+  }
+  // every second: a live link that isn't up gets retried at 6 s and 14 s, and given up at 24 s
+  setInterval(function () {
+    if (!C || C.st !== 'live') return;
+    for (var k in C.peers) {
+      var P = C.peers[k]; if (P.st !== 'live' || !P.pc) continue;
+      if (P.pc.connectionState === 'connected') { P.bad = 0; continue; }
+      P.bad = (P.bad || 0) + 1;
+      if (P.bad === 6 || P.bad === 14) { if (P.offerer) restart(P); else sendP(P, { k: 'kick' }); }
+      if (P.bad >= 24) { lost(P, 'Couldn’t connect the video with ' + P.n + '. Check both of your connections and try again.'); continue; }
+      draw();
+    }
+  }, 1000);
   // more people, less video each, so everyone's upload keeps up
   function bitrate() {
     if (!C) return;
@@ -98,7 +148,8 @@
     C = { id: Math.random().toString(36).slice(2, 12), host: me(), who: [me()], peers: {}, st: 'live', t0: 0 };
     var c = C;
     draw(); status('Turning on your camera…');
-    media().then(function (s) {
+    Promise.all([media(), iceReady()]).then(function (got) {
+      var s = got[0];
       if (C !== c) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
       C.local = s; hearing(false); draw(); add(n);
     }).catch(function () { if (C === c) finish('Your browser didn’t let the arcade use your camera or microphone. Allow them and try again.'); });
@@ -122,12 +173,13 @@
         else { P.fr = !!r.fr; draw(); }
       });
     }).catch(function () { if (C === c) drop(P, 'Couldn’t call ' + n + '.'); });
-    P.ringT = setTimeout(function () { if (C === c && C.peers[k] === P && P.st === 'ring') { send(n, { k: 'end' }); drop(P, 'No answer from ' + n + '.'); } }, RING_MS);
+    P.ringT = setTimeout(function () { if (C === c && C.peers[k] === P && P.st === 'ring') { sendP(P, { k: 'end' }); drop(P, 'No answer from ' + n + '.'); } }, RING_MS);
   }
 
   /* ---------- messages from the others ---------- */
   function got(from, d, fr) {
     if (!d || typeof d.id !== 'string') return;
+    if (d.to && d.to !== TAB) return;
     var k = lc(from);
     if (d.k === 'ring') {
       if (C && C.id === d.id) return;
@@ -137,34 +189,46 @@
     }
     if (!C || C.id !== d.id) return;
     var P = C.peers[k];
-    if (d.k === 'ans' && P && P.out && P.pc && !P.pc.currentRemoteDescription) P.pc.setRemoteDescription(d.sdp).catch(function () {});
+    if (d.k === 'ans' && P && P.out && P.pc && !P.pc.currentRemoteDescription && (!P.dev || P.dev === d.dev)) { P.dev = d.dev; P.pc.setRemoteDescription(d.sdp).catch(function () {}); }
     else if (d.k === 'ok' && P && P.out && P.st === 'ring') {
       P.st = 'live'; clearTimeout(P.ringT);
       if (C.who.indexOf(P.n) < 0) C.who.push(P.n);
+      send(P.n, { k: 'taken', by: d.dev }); // their other pages stop ringing
+      if (P.dev && d.dev && P.dev !== d.dev) {
+        // they answered on a different device from the one showing our preview: link to that one instead
+        var c2 = C; P.dev = d.dev;
+        try { P.pc.close(); } catch (e) {}
+        offer(P).then(function (sdp) { if (C === c2 && C.peers[k] === P) sendP(P, { k: 'ring2', sdp: sdp }); });
+      }
       goLive(); sendRoster();
     }
+    else if (d.k === 'taken' && C.st === 'ring' && d.by !== TAB) finish('');
+    else if (d.k === 'ring2' && P && C.st === 'live') { var c3 = C; answerTo(P, d.sdp).then(function (sdp) { if (C === c3 && C.peers[k] === P) sendP(P, { k: 'ans', sdp: sdp }); }); }
+    else if (d.k === 're' && P && P.pc && (!P.dev || P.dev === d.dev)) reAnswer(P, d.sdp);
+    else if (d.k === 'rea' && P && P.pc && P.pc.signalingState === 'have-local-offer') P.pc.setRemoteDescription(d.sdp).catch(function () {});
+    else if (d.k === 'kick' && P && P.offerer && P.st === 'live' && P.pc && P.pc.connectionState !== 'connected' && (P.bad || 0) >= 3 && (P.tries || 0) < 3) restart(P);
     else if (d.k === 'no' && P && P.st === 'ring') drop(P, from + ' declined the call.');
     else if (d.k === 'busy' && P && P.st === 'ring') drop(P, from + ' is in another call.');
     else if (d.k === 'end') {
       if (C.st === 'ring') finish(lc(C.host) === k ? 'Missed call from ' + C.host + '.' : '');
-      else if (P) drop(P, P.st === 'live' ? from + ' left the call.' : '');
+      else if (P && (!P.dev || !d.dev || P.dev === d.dev)) drop(P, P.st === 'live' ? from + ' left the call.' : '');
     }
     else if (d.k === 'roster' && Array.isArray(d.who) && C.st === 'live') roster(d.who.map(String).slice(0, MAX), from);
     else if (d.k === 'join' && C.st === 'live' && !P && Object.keys(C.peers).length < MAX - 1) {
       // someone new in the call connects to us: answer with our camera straight away
-      var c = C, J = C.peers[k] = { n: from, st: 'live', out: false };
+      var c = C, J = C.peers[k] = { n: from, st: 'live', out: false, dev: d.dev };
       if (C.who.indexOf(from) < 0) C.who.push(from);
-      answerTo(J, d.sdp).then(function (sdp) { if (C === c && C.peers[k] === J) send(from, { k: 'jans', sdp: sdp }); draw(); }).catch(function () { if (C === c) drop(J, ''); });
+      answerTo(J, d.sdp).then(function (sdp) { if (C === c && C.peers[k] === J) sendP(J, { k: 'jans', sdp: sdp }); draw(); }).catch(function () { if (C === c) drop(J, ''); });
       draw();
     }
-    else if (d.k === 'jans' && P && P.joining && P.pc && !P.pc.currentRemoteDescription) { P.pc.setRemoteDescription(d.sdp).catch(function () {}); P.joining = false; }
+    else if (d.k === 'jans' && P && P.joining && P.pc && !P.pc.currentRemoteDescription) { P.dev = d.dev; P.pc.setRemoteDescription(d.sdp).catch(function () {}); P.joining = false; }
   }
   // the host tells everyone who's in the call; each pair not yet connected connects
   function sendRoster() {
     if (!C || lc(C.host) !== lc(me())) return;
     var who = [me()].concat(live().map(function (P) { return P.n; }));
     C.who = who;
-    live().forEach(function (P) { send(P.n, { k: 'roster', who: who, host: C.host }); });
+    live().forEach(function (P) { sendP(P, { k: 'roster', who: who, host: C.host }); });
     draw();
   }
   function roster(who, from) {
@@ -185,9 +249,9 @@
     if (C) return;
     var who = (Array.isArray(d.who) ? d.who.map(String) : [from]).slice(0, MAX);
     C = { id: d.id, host: from, who: who, peers: {}, st: 'ring', fr: !!fr };
-    var c = C, P = C.peers[lc(from)] = { n: from, st: 'ring', out: false, fr: !!fr, offer: d.sdp };
+    var c = C, P = C.peers[lc(from)] = { n: from, st: 'ring', out: false, fr: !!fr, offer: d.sdp, dev: d.dev };
     // a friend's camera shows while it rings; anyone else's only once you pick up
-    if (fr) answerIn(P).then(function (sdp) { if (C === c && sdp) send(from, { k: 'ans', sdp: sdp }); });
+    if (fr) answerIn(P).then(function (sdp) { if (C === c && sdp) sendP(P, { k: 'ans', sdp: sdp }); });
     drawRing();
     ringTone(true); flashTitle(true);
     c.ringT = setTimeout(function () { if (C === c && C.st === 'ring') finish('Missed call from ' + from + '.'); }, RING_MS + 2000);
@@ -209,14 +273,14 @@
       if (C !== c) { if (s) s.getTracks().forEach(function (t) { t.stop(); }); return; }
       C.local = s; if (!s) status('', 'Your camera and microphone are off. Allow them in the browser to be seen and heard.'); else status('');
       if (P.answering) { fillSenders(P.pc); return; }   // a friend: already answered, now send our camera
-      return answerIn(P).then(function (sdp) { if (C === c && sdp) return send(P.n, { k: 'ans', sdp: sdp }); });
+      return answerIn(P).then(function (sdp) { if (C === c && sdp) return sendP(P, { k: 'ans', sdp: sdp }); });
     }).then(function () {
       if (C !== c) return;
       P.st = 'live'; bitrate(); hearing(true);
-      send(P.n, { k: 'ok' }); goLive();
+      sendP(P, { k: 'ok' }); goLive();
     });
   }
-  function decline() { if (!C || C.st !== 'ring') return; send(C.host, { k: 'no' }); finish(''); }
+  function decline() { if (!C || C.st !== 'ring') return; var P = C.peers[lc(C.host)]; if (P) sendP(P, { k: 'no' }); finish(''); }
   function declineBlock() {
     if (!C) return; var n = C.host;
     if (!confirm('Block ' + n + '? They won’t be able to call you, message you or send you friend requests. They aren’t told.')) return;
@@ -231,7 +295,7 @@
   }
   function hangUp() {
     if (!C) return;
-    for (var k in C.peers) send(C.peers[k].n, { k: 'end' });
+    for (var k in C.peers) sendP(C.peers[k], { k: 'end' });
     finish('');
   }
   // one person gone (declined, left, or their connection failed); the call goes on while anyone's left
@@ -248,7 +312,7 @@
     if (lc(C.host) === lc(me())) sendRoster();
     bitrate(); draw();
   }
-  function lost(P, msg) { send(P.n, { k: 'end' }); drop(P, msg); }
+  function lost(P, msg) { sendP(P, { k: 'end' }); drop(P, msg); }
   function finish(msg, about) {
     if (!C) return;
     var c = C; C = null;
@@ -394,7 +458,7 @@
       var cs = P.pc ? P.pc.connectionState : 'new';
       s2.replaceChildren();
       if (P.st === 'ring' && P.out) { s2.appendChild(avatar(P.n)); s2.appendChild(el('span', '', 'Ringing ' + P.n + '…')); }
-      else if (cs !== 'connected') { s2.appendChild(el('span', '', 'Connecting video…')); }
+      else if (cs !== 'connected') s2.appendChild(el('span', '', (P.bad || 0) < 6 ? 'Connecting video…' : P.bad < 14 ? 'Still connecting… trying another route' : 'Trying one more time…'));
       s2.style.display = s2.childNodes.length ? 'flex' : 'none';
       v2.style.visibility = P.st === 'live' || !P.out ? 'visible' : 'hidden';
       keep[lc(P.n)] = 1;
@@ -484,11 +548,11 @@
 
   // leaving the page leaves the call
   addEventListener('beforeunload', function (e) { if (C && C.st === 'live' && live().length) { e.preventDefault(); e.returnValue = ''; } });
-  addEventListener('pagehide', function () { if (!C) return; if (C.st === 'ring') send(C.host, { k: 'no' }, true); else for (var k in C.peers) send(C.peers[k].n, { k: 'end' }, true); });
+  addEventListener('pagehide', function () { if (!C) return; if (C.st === 'ring') { var H = C.peers[lc(C.host)]; if (H) sendP(H, { k: 'no' }, true); } else for (var k in C.peers) sendP(C.peers[k], { k: 'end' }, true); });
 
   A.onLive(function (m) { if (m && m.t === 'call' && m.n) got(m.n, m.d, m.fr); });
   window.ArcadeCall = {
     start: start, active: function () { return !!C; }, canAdd: canAdd,
-    _test: { state: function () { if (!C) return null; var p = {}; for (var k in C.peers) p[k] = C.peers[k].st + '/' + (C.peers[k].pc ? C.peers[k].pc.connectionState : '-'); return { id: C.id, host: C.host, who: C.who, st: C.st, peers: p }; }, accept: accept, decline: decline, hangUp: hangUp }
+    _test: { state: function () { if (!C) return null; var p = {}; for (var k in C.peers) p[k] = C.peers[k].st + '/' + (C.peers[k].pc ? C.peers[k].pc.connectionState : '-'); return { id: C.id, host: C.host, who: C.who, st: C.st, peers: p }; }, accept: accept, decline: decline, hangUp: hangUp, restart: function (n) { if (C && C.peers[lc(n)]) restart(C.peers[lc(n)]); }, ice: function () { return ICE; } }
   };
 })();
