@@ -166,9 +166,8 @@ menu.onFailedLock = () => {
 // loop does nothing (so nothing moves, fires or is drawn), and the mouse
 // stays free, as it is in the menu. Closing it (Esc, its Close button)
 // frees all it made and goes back to the picker.
-let showcase = null; // the Breakdown (or the cinematic) while it's open (or loading)
+let showcase = null; // the Breakdown while it's open (or loading)
 async function openBreakdown(id) {
-  if (id === 'cinematic') return openCinematic(false, true);
   if (showcase) return;
   const entry = breakdownById(id);
   if (!entry) return;
@@ -221,64 +220,9 @@ async function openBreakdown(id) {
 }
 menu.onBreakdown = openBreakdown;
 
-// --- The cinematic (src/showcase/cinematic/film.js) ---
-//
-// A short film of the soldier diving for a pistol, ending on the bullet
-// cam: the first card in the Breakdowns picker (?cinematic=1 in the address
-// also opens it once the game has loaded; ?cinematic=test with the shot
-// names and times). Like a breakdown, it has its own renderer and the game
-// stands still while it's open; till its code is in, a plain screen says
-// it's loading and Esc goes back (it then never opens); closing it (Esc, its
-// Close button) frees all it made and goes back to where it was opened
-// from (the picker, or the main menu).
-async function openCinematic(test = false, fromPicker = false) {
-  if (showcase) return;
-  const pending = { loading: true, cancelled: false };
-  showcase = pending;
-  input.releaseAll();
-  menuBehind(false);
-  if (!fromPicker) mainMenu.cover(true);
-  const back = () => {
-    showcase = null;
-    input.releaseAll();
-    menuBehind(true);
-    if (fromPicker) menu.show('breakdowns', 'cinematic');
-    else mainMenu.cover(false);
-  };
-  const wait = document.createElement('div');
-  wait.className = 'showcase-loading';
-  wait.textContent = 'Loading the cinematic…';
-  const onKey = (e) => {
-    if (e.code !== 'Escape') return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    pending.cancelled = true;
-    done();
-    back();
-  };
-  const done = () => {
-    wait.remove();
-    window.removeEventListener('keydown', onKey, true);
-  };
-  window.addEventListener('keydown', onKey, true);
-  document.body.appendChild(wait);
-  let Film;
-  try {
-    ({ Film } = await import('./showcase/cinematic/film.js'));
-  } catch (error) {
-    console.error(error);
-    if (pending.cancelled) return;
-    done();
-    back();
-    return;
-  }
-  if (pending.cancelled) return;
-  done();
-  const film = new Film({ wardrobe, test, onClose: back });
-  showcase = film;
-  film.play().catch((error) => console.error(error));
-}
-const cinematicParam = new URLSearchParams(location.search).get('cinematic');
+// (The dive cinematic, src/showcase/cinematic/, is kept in the repository
+// but no longer offered: nothing here opens it. tools/cinematic/film.html
+// still plays it on its own page.)
 
 // --- Window size and field of view ---
 
@@ -412,8 +356,8 @@ resize();
 // soldiers on the rooftop over the city) while the game stands still behind
 // it, not drawn. Play takes the mouse: the menu fades into the game and the
 // backdrop is freed. Letting the mouse go in the game (Esc) brings the menu
-// back over the game, with Resume at the top. The loadout menu, the
-// breakdowns picker and the cinematic open over it and come back to it.
+// back over the game, with Resume at the top. The loadout menu and the
+// breakdowns picker open over it and come back to it.
 
 let loaded = false;
 // 'title' (before the game is first played), 'pause', or null (playing).
@@ -431,8 +375,8 @@ import('./menu/backdrop.js').then(({ Backdrop }) => {
   }
 }).catch((error) => console.warn('The menu backdrop could not load.', error));
 
-// The backdrop draws only while it can be seen (not while a breakdown or
-// the cinematic is open over it).
+// The backdrop draws only while it can be seen (not while the loadout menu
+// or a breakdown is open over it).
 function menuBehind(on) {
   if (!backdrop) return;
   if (on && menuMode === 'title' && !menu.open && !showcase) backdrop.start();
@@ -491,7 +435,6 @@ mainMenu.onAction = (action) => {
   if (action === 'play') playOrResume();
   else if (action === 'loadout') openLoadoutFromMenu('loadout');
   else if (action === 'breakdowns') openLoadoutFromMenu('breakdowns');
-  else if (action === 'cinematic') openCinematic(false, false);
   else if (action === 'fullscreen') {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else document.documentElement.requestFullscreen().catch(() => {});
@@ -526,7 +469,6 @@ viewmodel.ready.then(() => {
   loaded = true;
   mainMenu.setReady(true);
   if (mainMenu.status.textContent === 'Still loading the game…') mainMenu.setStatus('');
-  if (cinematicParam) openCinematic(cinematicParam === 'test');
 });
 
 // --- Shooting ---

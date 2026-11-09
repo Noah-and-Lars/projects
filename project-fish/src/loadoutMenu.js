@@ -12,9 +12,9 @@
 // - Customization: the outfit (src/outfitMenu.js).
 // The number keys (1 to 9, 0, - and =) also put a gun in your hands, and Q
 // and E change tab. A Breakdowns button opens a picker of the gun breakdowns
-// (src/showcase/breakdowns.js), with the cinematic first: picking one plays
-// it (onBreakdown: the game's, the breakdown's id, or 'cinematic'; the menu
-// closes without taking the mouse back), and Esc goes back to the loadout.
+// (src/showcase/breakdowns.js): picking one plays it (onBreakdown: the
+// game's, the breakdown's id; the menu closes without taking the mouse
+// back), and Esc goes back to the loadout.
 // It releases the mouse while it's open; B, Esc or Back closes it and takes
 // the mouse again. Opened from the main menu, it has a `home` (the game's):
 // closing it goes there instead, and opened on the picker `alone`, Esc
@@ -23,7 +23,7 @@
 
 import { SLOTS as ATTACHMENT_SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
-import { BREAKDOWNS, CINEMATIC } from './showcase/breakdowns.js';
+import { BREAKDOWNS } from './showcase/breakdowns.js';
 import { SLOTS as GEAR_SLOTS } from './gear.js';
 import { GUN_INFO, gunSpecs, thumbUrl, pf9LayersFor } from './loadoutInfo.js';
 import { el, picture, heading, gearThumb } from './outfitMenu.js';
@@ -127,7 +127,7 @@ export class LoadoutMenu {
     this.view = 'loadout'; // a tab, GUNS_VIEW or BREAKDOWNS_VIEW
     this.slot = GEAR_SLOTS[0].id; // the outfit slot open on the Customization tab
     this.openSlot = null; // the attachment slot whose options are open
-    this.lastBreakdown = CINEMATIC.id; // the picker's focus (the cinematic first)
+    this.lastBreakdown = BREAKDOWNS.length ? BREAKDOWNS[0].id : null; // the picker's focus
 
     // What stays: the backdrop, the stage, the shading over it; the rest is
     // drawn again whenever something changes.
@@ -396,7 +396,7 @@ export class LoadoutMenu {
     if (this.onBreakdown && BREAKDOWNS.length) {
       const open = button('lo-chip lo-breakdowns', 'breakdowns', () => this.showView(BREAKDOWNS_VIEW));
       open.append(el('span', 'lo-chip-dot'), 'Breakdowns');
-      open.title = 'Watch the cinematic, or a gun taken apart part by part, with what each part does.';
+      open.title = 'Watch a gun taken apart part by part, with what each part does.';
       head.append(open);
     }
     return head;
@@ -594,7 +594,7 @@ export class LoadoutMenu {
     return sheet;
   }
 
-  // The breakdowns picker: the cinematic, then a card for each gun (its
+  // The breakdowns picker: a card for each gun (its
   // picture, name, what the film shows and the model's credit). A click, or
   // Enter on the focused card, plays it; the arrow keys move between the
   // cards; Esc goes back.
@@ -609,15 +609,15 @@ export class LoadoutMenu {
     const sheet = el('section', 'lo-sheet');
     sheet.dataset.scroll = 'picker';
     const intro = el('div', 'lo-sheet-head');
-    intro.append(el('p', 'lo-cat', 'Cinematic and breakdowns'), el('p', 'lo-about', 'Watch the cinematic, or pick a gun to watch it taken apart part by part, with what each part does.'));
+    intro.append(el('p', 'lo-cat', 'Gun breakdowns'), el('p', 'lo-about', 'Pick a gun to watch it taken apart part by part, with what each part does.'));
     sheet.append(intro);
     const grid = el('div', 'lo-picks lo-grid');
     this.picks = [];
-    for (const entry of [CINEMATIC, ...BREAKDOWNS]) {
+    for (const entry of BREAKDOWNS) {
       const card = button('lo-pick', `breakdown-${entry.id}`, () => this.pick(entry.id));
       card.dataset.breakdown = entry.id;
       const text = el('span', 'lo-card-text');
-      text.append(el('span', 'lo-mini', entry === CINEMATIC ? 'Cinematic' : 'Breakdown'), el('span', 'lo-gun-name', entry.name), el('span', 'lo-pick-what', entry.about), el('span', 'lo-pick-credit', entry.credit));
+      text.append(el('span', 'lo-mini', 'Breakdown'), el('span', 'lo-gun-name', entry.name), el('span', 'lo-pick-what', entry.about), el('span', 'lo-pick-credit', entry.credit));
       card.append(picture(String(entry.thumb), 'lo-pic lo-pick-pic'), text);
       card.addEventListener('focus', () => { this.lastBreakdown = entry.id; });
       grid.append(card);

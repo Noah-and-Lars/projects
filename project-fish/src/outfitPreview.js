@@ -24,7 +24,7 @@ import { loadSoldier } from './soldier.js';
 export const FRAMINGS = {
   full: { target: [0, 0.92, 0], height: 2.12, width: 0.9, turn: 0.32 },
   outfit: { target: [0, 1.2, 0], height: 1.56, width: 0.84, turn: 0.38 },
-  head: { target: [0, 1.32, 0], height: 1.3, width: 0.74, turn: 0.46 },
+  head: { target: [0, 1.28, 0], height: 1.44, width: 0.78, turn: 0.46 },
   vest: { target: [0, 1.2, 0], height: 1.56, width: 0.84, turn: 0.3 },
   gloves: { target: [0, 1.1, 0], height: 1.56, width: 0.9, turn: 0.78 },
 };

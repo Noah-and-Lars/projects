@@ -6,17 +6,16 @@
 // top instead of Play).
 //
 // It only shows and lays out; what an item does is the game's (onAction:
-// the item's data-action, 'play', 'loadout', 'breakdowns', 'cinematic' or
-// 'fullscreen'; Controls and Credits open their panels here). The mouse
-// over an item, or the keyboard (up and down, Home and End, Tab), puts the
-// accent bar on it; Enter or a click chooses it; Esc closes a panel.
+// the item's data-action, 'play', 'loadout', 'breakdowns' or 'fullscreen';
+// Controls and Credits open their panels here). The mouse over an item, or
+// the keyboard (up and down, Home and End, Tab), puts the accent bar on it;
+// Enter or a click chooses it; Esc closes a panel.
 
 const ABOUT = {
   play: 'Into the game: the mouse locks to it (Esc pauses).',
   resume: 'Back into the game where you left it.',
   loadout: 'Pick a gun, its attachments, and your outfit.',
   breakdowns: 'Watch a gun taken apart part by part.',
-  cinematic: 'The dive: a short film that ends on the bullet cam.',
   controls: 'Every key.',
   credits: 'The models, sounds and fonts the game is made with.',
   fullscreen: 'Fill the whole screen with the game.',
@@ -101,7 +100,7 @@ export class MainMenu {
   }
 
   // Hides the title and list while something opens over it (the loadout
-  // menu, a breakdown, the cinematic), keeping what's behind them; false
+  // menu, a breakdown), keeping what's behind them; false
   // brings them back, on the item last chosen.
   cover(on) {
     if (on === this.covered) return;
