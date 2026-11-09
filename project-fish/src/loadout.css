@@ -626,7 +626,14 @@
 
 .lo-hero-zoom {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 2 / 1;
+  margin: auto;
   transform-origin: 0 0;
   transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -1105,6 +1112,22 @@
   .lo-hero {
     aspect-ratio: 2.6 / 1;
   }
+
+  .lo-gun-card .lo-gun-pic {
+    aspect-ratio: 3.4 / 1;
+  }
+
+  .lo-gear-pic {
+    width: 52px;
+  }
+
+  .lo-gear-block {
+    margin-bottom: 8px;
+  }
+
+  .lo-section {
+    margin-bottom: 8px;
+  }
 }
 
 /* A phone or a narrow window: the title and tabs over him at the top, and
@@ -1200,6 +1223,9 @@
   .lo-right {
     position: static;
     width: auto;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
     overflow: visible;
     padding: 0;
     animation: none;
@@ -1207,6 +1233,8 @@
 
   .lo-right {
     margin-top: 6px;
+    margin-left: auto;
+    margin-right: auto;
     padding-top: 18px;
     border-top: 1px solid var(--lo-line);
   }
@@ -1293,8 +1321,9 @@
   }
 }
 
-/* A phone on its side: him on the left, the rest scrolling on the right. */
-@media (max-width: 1000px) and (max-height: 520px) and (orientation: landscape) {
+/* A phone on its side, or a small window: him on the left, the rest
+   scrolling on the right. */
+@media (max-width: 1000px) and (orientation: landscape) {
   #loadout {
     --lo-stage: 100vh;
   }

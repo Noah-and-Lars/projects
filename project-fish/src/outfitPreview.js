@@ -202,8 +202,8 @@ export class OutfitPreview {
     const width = this.canvas.clientWidth;
     const height = this.canvas.clientHeight;
     if (!width || !height) return;
-    // (Fewer pixels on a big screen: at most about 4 million drawn.)
-    const ratio = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(4.2e6 / (width * height)));
+    // (Fewer pixels on a big screen: at most about 6.5 million drawn.)
+    const ratio = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(6.5e6 / (width * height)));
     const size = `${width}x${height}@${ratio.toFixed(2)}`;
     if (this.size !== size) {
       this.size = size;
