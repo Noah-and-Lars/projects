@@ -92,7 +92,7 @@ export const WORLD = {
 
 // The guns. Times in seconds, angles in degrees, distances in metres. Each
 // gun's `name` is what the player sees (the ammo counter, the loadout menu,
-// the start screen's credits); everything else knows it by its key in GUNS.
+// the main menu's credits); everything else knows it by its key in GUNS.
 // A gun fires once per trigger pull unless its fireMode is 'auto' (it fires
 // as long as the trigger is held, see src/weapon.js).
 // The first pistol: a compact 9 mm, 15 rounds.

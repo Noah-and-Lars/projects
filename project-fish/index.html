@@ -4,7 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Project Fish</title>
+    <meta name="description" content="Project Fish: a tactical first-person shooter for the browser, built from scratch with three.js." />
+    <meta name="theme-color" content="#050506" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800;900&amp;family=Barlow+Condensed:wght@400;500;600;700&amp;display=swap" />
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="src/menu/menu.css" />
     <script type="importmap">
       {
         "imports": {
@@ -21,38 +27,110 @@
     <pre id="debug"></pre>
     <div id="ammo"><span class="name" data-gun-name="pistol">PF-9</span><span class="mag">15</span><span class="reserve">60</span><span class="hint"></span></div>
 
-    <div id="loadout" hidden></div>
-
-    <div id="overlay">
-      <div class="panel">
-        <h1>Project Fish</h1>
-        <p id="overlay-status">Loading…</p>
-        <table class="controls">
-          <tr><td>WASD</td><td>Move</td></tr>
-          <tr><td>Mouse</td><td>Look</td></tr>
-          <tr><td>Left mouse</td><td>Fire (hold for automatic fire with the <span data-gun-name="mp7">MP7A1</span>, <span data-gun-name="ak74m">AK-74M</span> and <span data-gun-name="ak74u">AK-74U</span>)</td></tr>
-          <tr><td>Right mouse</td><td>Aim down the sights (hold)</td></tr>
-          <tr><td>Q</td><td>Aim: click to toggle, or hold</td></tr>
-          <tr><td>R</td><td>Reload</td></tr>
-          <tr><td>F</td><td>Inspect the gun (not the FN 502, the Hi-Power, the AR-15, the Makarov PM, the AK-74M or the SPAS-12, which have no inspect)</td></tr>
-          <tr><td>1 to 9, 0, - and =, mouse wheel</td><td>Switch guns: the <span data-gun-name="pistol">PF-9</span>, <span data-gun-name="pistol45">M1911</span>, <span data-gun-name="beretta">Beretta 92FS</span>, <span data-gun-name="fn502">FN 502</span>, <span data-gun-name="hipistol">Browning Hi-Power</span>, <span data-gun-name="x4">Xiri X4</span>, <span data-gun-name="mp7">MP7A1</span>, <span data-gun-name="ar15">AR-15</span>, <span data-gun-name="makarov">Makarov PM</span>, <span data-gun-name="ak74m">AK-74M</span>, <span data-gun-name="ak74u">AK-74U</span> and <span data-gun-name="saps12">Franchi SPAS-12</span> (or pick one in the loadout menu)</td></tr>
-          <tr><td>B</td><td>Loadout: pick a gun, its attachments, and your outfit; and watch the gun breakdowns</td></tr>
-          <tr><td>Shift</td><td>Sprint (hold; double-tap for a tactical sprint)</td></tr>
-          <tr><td>C</td><td>Crouch; while sprinting, slide (double-tap: onto your back)</td></tr>
-          <tr><td>Z</td><td>Go prone; while sprinting, dive</td></tr>
-          <tr><td>Space</td><td>Jump; at a ledge, climb or vault</td></tr>
-          <tr><td>T</td><td>Light and laser on and off</td></tr>
-          <tr><td>P</td><td>Photo mode: fly round and look at yourself</td></tr>
-          <tr><td>Esc</td><td>Release the mouse</td></tr>
-        </table>
-        <p class="credits"><span data-gun-name="pistol">PF-9</span> and its attachments (in your hands, in its breakdown and in the cinematic) based on a <a href="https://sketchfab.com/3d-models/pistol-9mm-custom-7bb44ec1d8e14925aeebbfa8374b87cf" target="_blank" rel="noopener" onclick="event.stopPropagation()">model</a> by <a href="https://sketchfab.com/DTry" target="_blank" rel="noopener" onclick="event.stopPropagation()">~D-Try~</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. <span data-gun-name="pistol45">M1911</span> based on a <a href="https://sketchfab.com/3d-models/colt-m1911-2cfbca3cd37a426c8dbf6474504703e8" target="_blank" rel="noopener" onclick="event.stopPropagation()">model</a> by <a href="https://sketchfab.com/neyr" target="_blank" rel="noopener" onclick="event.stopPropagation()">neyr</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. <span data-gun-name="beretta">Beretta 92FS</span> and its arms based on <a href="https://sketchfab.com/3d-models/beretta-pistol-fps-animation-0313ab1888994c14abeaf444d7af3217" target="_blank" rel="noopener" onclick="event.stopPropagation()">"Beretta Pistol FPS ANIMATION"</a> by <a href="https://sketchfab.com/Alexander_Ovelar" target="_blank" rel="noopener" onclick="event.stopPropagation()">BURNER</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game; the arms are a <a href="https://www.mixamo.com" target="_blank" rel="noopener" onclick="event.stopPropagation()">Mixamo</a> character's. <span data-gun-name="fn502">FN 502</span> and its arms based on <a href="https://sketchfab.com/3d-models/fps-animations-fn-502-tactical-dad2ee1250054a63adaa81918887c0fe" target="_blank" rel="noopener" onclick="event.stopPropagation()">"FPS animations FN 502 Tactical"</a> by <a href="https://sketchfab.com/ccransh" target="_blank" rel="noopener" onclick="event.stopPropagation()">Cransh</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. <span data-gun-name="hipistol">Browning Hi-Power</span> and its arms based on <a href="https://sketchfab.com/3d-models/fps-character-animation-pack-pistol-e2815a5bea3a4e3895b3c29a2586e671" target="_blank" rel="noopener" onclick="event.stopPropagation()">"FPS Character Animation Pack Pistol"</a> by <a href="https://sketchfab.com/DuqueCD7" target="_blank" rel="noopener" onclick="event.stopPropagation()">Cristian David Duque Camacho</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. <span data-gun-name="x4">Xiri X4</span> based on <a href="https://sketchfab.com/3d-models/xiri-x4-animations-9c66f74e346e4c5e8b1d4e5fcddc8a37" target="_blank" rel="noopener" onclick="event.stopPropagation()">"Xiri X4 Animations"</a>, <span data-gun-name="mp7">MP7A1</span> on <a href="https://sketchfab.com/3d-models/mp7a1-animations-0a55689855594f2496c2debdb7e6f5bc" target="_blank" rel="noopener" onclick="event.stopPropagation()">"MP7A1 Animations"</a> and <span data-gun-name="ar15">AR-15</span> on <a href="https://sketchfab.com/3d-models/ar-15-animations-miniset-e3b0951ec7a54de188f7fe3e6c38a9ad" target="_blank" rel="noopener" onclick="event.stopPropagation()">"AR-15 Animations Miniset"</a>, all by <a href="https://sketchfab.com/TheParaziT" target="_blank" rel="noopener" onclick="event.stopPropagation()">TheParaziT</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game: their animations play on the soldier's own arms (the downloads' mannequin arms, Epic Games' "Manny", were removed). <span data-gun-name="makarov">Makarov PM</span> and its arms based on <a href="https://sketchfab.com/3d-models/makarov-pm-fps-animations-d02ebd58e3cf44acb7af73e3f156be28" target="_blank" rel="noopener" onclick="event.stopPropagation()">"Makarov PM FPS animations"</a> by <a href="https://sketchfab.com/ccransh" target="_blank" rel="noopener" onclick="event.stopPropagation()">Cransh</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. <span data-gun-name="ak74m">AK-74M</span> and its arms based on <a href="https://sketchfab.com/3d-models/fps-ak-74m-animations-94be8385c402474cacd39bc096c6ca14" target="_blank" rel="noopener" onclick="event.stopPropagation()">"FPS AK-74m animations"</a> by <a href="https://sketchfab.com/ccransh" target="_blank" rel="noopener" onclick="event.stopPropagation()">Cransh</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. <span data-gun-name="ak74u">AK-74U</span> and its arms based on <a href="https://sketchfab.com/3d-models/ak74u-free-animation-2ab66220c48b465e9501067667965569" target="_blank" rel="noopener" onclick="event.stopPropagation()">"AK74U | FREE ANIMATION."</a> by <a href="https://sketchfab.com/Alexander_Ovelar" target="_blank" rel="noopener" onclick="event.stopPropagation()">BURNER</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game; the arms are a <a href="https://www.mixamo.com" target="_blank" rel="noopener" onclick="event.stopPropagation()">Mixamo</a> character's. <span data-gun-name="saps12">Franchi SPAS-12</span> and its arms based on <a href="https://sketchfab.com/3d-models/fps-character-animation-pack-saps-12-3e5ebbd4ace24f2e92eadb7252927b31" target="_blank" rel="noopener" onclick="event.stopPropagation()">"FPS Character Animation Pack Saps-12"</a> by <a href="https://sketchfab.com/DuqueCD7" target="_blank" rel="noopener" onclick="event.stopPropagation()">Cristian David Duque Camacho</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. The AR-15 breakdown's rifle based on <a href="https://sketchfab.com/3d-models/ar-slr-bf6a5fb58a484f60b302adecb8bf0aec" target="_blank" rel="noopener" onclick="event.stopPropagation()">"AR SLR"</a> by <a href="https://sketchfab.com/luapqq" target="_blank" rel="noopener" onclick="event.stopPropagation()">luapqq</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. The FN SCAR-L breakdown's rifle based on <a href="https://sketchfab.com/3d-models/scar-l-f52a0de5e7de44dcbded409c1fcc704e" target="_blank" rel="noopener" onclick="event.stopPropagation()">"SCAR L"</a> by <a href="https://sketchfab.com/zhe_kan" target="_blank" rel="noopener" onclick="event.stopPropagation()">zhe_kan</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. The IWI Galil ACE breakdown's gun based on <a href="https://sketchfab.com/3d-models/galil-ace-5471bfc3d66a402f8eb4fda52b62a2df" target="_blank" rel="noopener" onclick="event.stopPropagation()">"Galil Ace"</a> by <a href="https://sketchfab.com/mark7levin" target="_blank" rel="noopener" onclick="event.stopPropagation()">MarkLevin</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game. The cinematic: Animations from <a href="https://www.mixamo.com" target="_blank" rel="noopener" onclick="event.stopPropagation()">Mixamo</a> (Adobe), retargeted onto the soldier. Soldier based on a <a href="https://sketchfab.com/3d-models/soldier-full-tactical-gear-850593a8c7114c188395ba1849a66eb9" target="_blank" rel="noopener" onclick="event.stopPropagation()">model</a> by <a href="https://sketchfab.com/1799danly" target="_blank" rel="noopener" onclick="event.stopPropagation()">DanlyVostok</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game (he and a second soldier, the enemy, are also the cinematic's cast). Outfit gear based on models by <a href="https://sketchfab.com/txyrm70" target="_blank" rel="noopener" onclick="event.stopPropagation()">Exactly</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" onclick="event.stopPropagation()">CC BY 4.0</a>, changed for the game: the <a href="https://sketchfab.com/3d-models/tactical-helmet-with-headset-game-ready-82adf376164f4d99a4e0b2949930e2ad" target="_blank" rel="noopener" onclick="event.stopPropagation()">comms helmet</a>, the <a href="https://sketchfab.com/3d-models/tactical-headset-game-ready-c1cee56e73ed47438015a646ad82dfa5" target="_blank" rel="noopener" onclick="event.stopPropagation()">headset</a>, the <a href="https://sketchfab.com/3d-models/tactical-plate-carrier-vest-game-ready-3b51e6329dbb4b0aa14e43f12eb6c42a" target="_blank" rel="noopener" onclick="event.stopPropagation()">black carrier</a>, the <a href="https://sketchfab.com/3d-models/military-armor-3d-model-7cab57de2b844a60a43af4fd8b61a4a4" target="_blank" rel="noopener" onclick="event.stopPropagation()">sage carrier</a>, the <a href="https://sketchfab.com/3d-models/tactical-combat-gloves-game-ready-5e8f53fcba864163a199fa22baa653cb" target="_blank" rel="noopener" onclick="event.stopPropagation()">black gloves</a>, the <a href="https://sketchfab.com/3d-models/tactical-combat-gloves-3d-model-fda69c63c472449f8ded80a9e6d91562" target="_blank" rel="noopener" onclick="event.stopPropagation()">sage gloves</a> and the <a href="https://sketchfab.com/3d-models/military-tactical-gloves-multicam-hard-knuckle-72342e418cd743209395bba607d5504e" target="_blank" rel="noopener" onclick="event.stopPropagation()">camo gloves</a>.</p>
+    <div id="menu" class="menu title">
+      <div id="menu-backdrop" class="menu-backdrop"></div>
+      <div class="menu-shade"></div>
+      <div class="menu-left">
+        <header class="menu-brand">
+          <p class="menu-kicker">Tactical shooter <span>·</span> in the browser</p>
+          <h1 class="menu-title"><span class="word">Project</span> <span class="word">Fish</span></h1>
+          <p class="menu-tag"><span>Phase 1</span> Baseplate</p>
+        </header>
+        <nav class="menu-list" aria-label="Main menu">
+          <span class="menu-bar" aria-hidden="true"></span>
+          <div class="menu-group big">
+            <button type="button" class="menu-item loading" data-action="play" style="--i: 0"><span class="label">Play</span><span class="menu-chip">Loading</span></button>
+            <button type="button" class="menu-item" data-action="loadout" style="--i: 1"><span class="label">Loadout</span></button>
+            <button type="button" class="menu-item" data-action="breakdowns" style="--i: 2"><span class="label">Breakdowns</span></button>
+            <button type="button" class="menu-item" data-action="cinematic" style="--i: 3"><span class="label">Cinematic</span></button>
+          </div>
+          <p class="menu-about" aria-live="polite"></p>
+          <div class="menu-group small">
+            <button type="button" class="menu-item" data-action="controls" aria-haspopup="dialog" style="--i: 4"><span class="label">Controls</span></button>
+            <button type="button" class="menu-item" data-action="credits" aria-haspopup="dialog" style="--i: 5"><span class="label">Credits</span></button>
+          </div>
+          <button type="button" class="menu-item accent" data-action="fullscreen" style="--i: 6"><span class="label">Fullscreen</span></button>
+        </nav>
+        <p class="menu-status" role="status"></p>
       </div>
+      <div class="menu-version"><span>Project Fish · Phase 1</span><span class="menu-build"></span></div>
+      <div class="menu-keys" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> Select</span><span><kbd>Enter</kbd> Choose</span><span><kbd>Esc</kbd> Back</span></div>
+
+      <section class="menu-panel" data-panel="controls" role="dialog" aria-label="Controls" tabindex="-1" hidden>
+        <header><h2>Controls</h2><button type="button" class="panel-close">Back <kbd>Esc</kbd></button></header>
+        <table class="controls">
+            <tbody>
+              <tr class="group"><th colspan="2">Moving</th></tr>
+              <tr><td>WASD</td><td>Move</td></tr>
+              <tr><td>Mouse</td><td>Look</td></tr>
+              <tr><td>Shift</td><td>Sprint (hold; double-tap for a tactical sprint)</td></tr>
+              <tr><td>C</td><td>Crouch; while sprinting, slide (double-tap: onto your back)</td></tr>
+              <tr><td>Z</td><td>Go prone; while sprinting, dive</td></tr>
+              <tr><td>Space</td><td>Jump; at a ledge, climb or vault</td></tr>
+            </tbody>
+            <tbody>
+              <tr class="group"><th colspan="2">The gun</th></tr>
+              <tr><td>Left mouse</td><td>Fire (hold for automatic fire with the <span data-gun-name="mp7">MP7A1</span>, <span data-gun-name="ak74m">AK-74M</span> and <span data-gun-name="ak74u">AK-74U</span>)</td></tr>
+              <tr><td>Right mouse</td><td>Aim down the sights (hold)</td></tr>
+              <tr><td>Q</td><td>Aim: click to toggle, or hold</td></tr>
+              <tr><td>R</td><td>Reload</td></tr>
+              <tr><td>F</td><td>Inspect the gun (not the FN 502, the Hi-Power, the AR-15, the Makarov PM, the AK-74M or the SPAS-12, which have no inspect)</td></tr>
+              <tr><td>1 to 9, 0, - and =, mouse wheel</td><td>Switch guns: the <span data-gun-name="pistol">PF-9</span>, <span data-gun-name="pistol45">M1911</span>, <span data-gun-name="beretta">Beretta 92FS</span>, <span data-gun-name="fn502">FN 502</span>, <span data-gun-name="hipistol">Browning Hi-Power</span>, <span data-gun-name="x4">Xiri X4</span>, <span data-gun-name="mp7">MP7A1</span>, <span data-gun-name="ar15">AR-15</span>, <span data-gun-name="makarov">Makarov PM</span>, <span data-gun-name="ak74m">AK-74M</span>, <span data-gun-name="ak74u">AK-74U</span> and <span data-gun-name="saps12">Franchi SPAS-12</span> (or pick one in the loadout menu)</td></tr>
+              <tr><td>T</td><td>Light and laser on and off</td></tr>
+            </tbody>
+            <tbody>
+              <tr class="group"><th colspan="2">Menus and more</th></tr>
+              <tr><td>B</td><td>Loadout: pick a gun, its attachments, and your outfit; and watch the gun breakdowns</td></tr>
+              <tr><td>P</td><td>Photo mode: fly round and look at yourself</td></tr>
+              <tr><td>Esc</td><td>Pause: the main menu, with Resume at the top</td></tr>
+            </tbody>
+        </table>
+      </section>
+
+      <section class="menu-panel" data-panel="credits" role="dialog" aria-label="Credits" tabindex="-1" hidden>
+        <header><h2>Credits</h2><button type="button" class="panel-close">Back <kbd>Esc</kbd></button></header>
+        <ul class="credits">
+              <li><span data-gun-name="pistol">PF-9</span> and its attachments (in your hands, in its breakdown and in the cinematic) based on a <a href="https://sketchfab.com/3d-models/pistol-9mm-custom-7bb44ec1d8e14925aeebbfa8374b87cf" target="_blank" rel="noopener">model</a> by <a href="https://sketchfab.com/DTry" target="_blank" rel="noopener">~D-Try~</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li><span data-gun-name="pistol45">M1911</span> based on a <a href="https://sketchfab.com/3d-models/colt-m1911-2cfbca3cd37a426c8dbf6474504703e8" target="_blank" rel="noopener">model</a> by <a href="https://sketchfab.com/neyr" target="_blank" rel="noopener">neyr</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li><span data-gun-name="beretta">Beretta 92FS</span> and its arms based on <a href="https://sketchfab.com/3d-models/beretta-pistol-fps-animation-0313ab1888994c14abeaf444d7af3217" target="_blank" rel="noopener">"Beretta Pistol FPS ANIMATION"</a> by <a href="https://sketchfab.com/Alexander_Ovelar" target="_blank" rel="noopener">BURNER</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game; the arms are a <a href="https://www.mixamo.com" target="_blank" rel="noopener">Mixamo</a> character's.</li>
+              <li><span data-gun-name="fn502">FN 502</span> and its arms based on <a href="https://sketchfab.com/3d-models/fps-animations-fn-502-tactical-dad2ee1250054a63adaa81918887c0fe" target="_blank" rel="noopener">"FPS animations FN 502 Tactical"</a> by <a href="https://sketchfab.com/ccransh" target="_blank" rel="noopener">Cransh</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li><span data-gun-name="hipistol">Browning Hi-Power</span> and its arms based on <a href="https://sketchfab.com/3d-models/fps-character-animation-pack-pistol-e2815a5bea3a4e3895b3c29a2586e671" target="_blank" rel="noopener">"FPS Character Animation Pack Pistol"</a> by <a href="https://sketchfab.com/DuqueCD7" target="_blank" rel="noopener">Cristian David Duque Camacho</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li><span data-gun-name="x4">Xiri X4</span> based on <a href="https://sketchfab.com/3d-models/xiri-x4-animations-9c66f74e346e4c5e8b1d4e5fcddc8a37" target="_blank" rel="noopener">"Xiri X4 Animations"</a>, <span data-gun-name="mp7">MP7A1</span> on <a href="https://sketchfab.com/3d-models/mp7a1-animations-0a55689855594f2496c2debdb7e6f5bc" target="_blank" rel="noopener">"MP7A1 Animations"</a> and <span data-gun-name="ar15">AR-15</span> on <a href="https://sketchfab.com/3d-models/ar-15-animations-miniset-e3b0951ec7a54de188f7fe3e6c38a9ad" target="_blank" rel="noopener">"AR-15 Animations Miniset"</a>, all by <a href="https://sketchfab.com/TheParaziT" target="_blank" rel="noopener">TheParaziT</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game: their animations play on the soldier's own arms (the downloads' mannequin arms, Epic Games' "Manny", were removed).</li>
+              <li><span data-gun-name="makarov">Makarov PM</span> and its arms based on <a href="https://sketchfab.com/3d-models/makarov-pm-fps-animations-d02ebd58e3cf44acb7af73e3f156be28" target="_blank" rel="noopener">"Makarov PM FPS animations"</a> by <a href="https://sketchfab.com/ccransh" target="_blank" rel="noopener">Cransh</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li><span data-gun-name="ak74m">AK-74M</span> and its arms based on <a href="https://sketchfab.com/3d-models/fps-ak-74m-animations-94be8385c402474cacd39bc096c6ca14" target="_blank" rel="noopener">"FPS AK-74m animations"</a> by <a href="https://sketchfab.com/ccransh" target="_blank" rel="noopener">Cransh</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li><span data-gun-name="ak74u">AK-74U</span> and its arms based on <a href="https://sketchfab.com/3d-models/ak74u-free-animation-2ab66220c48b465e9501067667965569" target="_blank" rel="noopener">"AK74U | FREE ANIMATION."</a> by <a href="https://sketchfab.com/Alexander_Ovelar" target="_blank" rel="noopener">BURNER</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game; the arms are a <a href="https://www.mixamo.com" target="_blank" rel="noopener">Mixamo</a> character's.</li>
+              <li><span data-gun-name="saps12">Franchi SPAS-12</span> and its arms based on <a href="https://sketchfab.com/3d-models/fps-character-animation-pack-saps-12-3e5ebbd4ace24f2e92eadb7252927b31" target="_blank" rel="noopener">"FPS Character Animation Pack Saps-12"</a> by <a href="https://sketchfab.com/DuqueCD7" target="_blank" rel="noopener">Cristian David Duque Camacho</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li>The AR-15 breakdown's rifle based on <a href="https://sketchfab.com/3d-models/ar-slr-bf6a5fb58a484f60b302adecb8bf0aec" target="_blank" rel="noopener">"AR SLR"</a> by <a href="https://sketchfab.com/luapqq" target="_blank" rel="noopener">luapqq</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li>The FN SCAR-L breakdown's rifle based on <a href="https://sketchfab.com/3d-models/scar-l-f52a0de5e7de44dcbded409c1fcc704e" target="_blank" rel="noopener">"SCAR L"</a> by <a href="https://sketchfab.com/zhe_kan" target="_blank" rel="noopener">zhe_kan</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li>The IWI Galil ACE breakdown's gun based on <a href="https://sketchfab.com/3d-models/galil-ace-5471bfc3d66a402f8eb4fda52b62a2df" target="_blank" rel="noopener">"Galil Ace"</a> by <a href="https://sketchfab.com/mark7levin" target="_blank" rel="noopener">MarkLevin</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li>The cinematic: Animations from <a href="https://www.mixamo.com" target="_blank" rel="noopener">Mixamo</a> (Adobe), retargeted onto the soldier.</li>
+              <li>Soldier based on a <a href="https://sketchfab.com/3d-models/soldier-full-tactical-gear-850593a8c7114c188395ba1849a66eb9" target="_blank" rel="noopener">model</a> by <a href="https://sketchfab.com/1799danly" target="_blank" rel="noopener">DanlyVostok</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game (he and a second soldier, the enemy, are also the cinematic's cast).</li>
+              <li>Outfit gear based on models by <a href="https://sketchfab.com/txyrm70" target="_blank" rel="noopener">Exactly</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game: the <a href="https://sketchfab.com/3d-models/tactical-helmet-with-headset-game-ready-82adf376164f4d99a4e0b2949930e2ad" target="_blank" rel="noopener">comms helmet</a>, the <a href="https://sketchfab.com/3d-models/tactical-headset-game-ready-c1cee56e73ed47438015a646ad82dfa5" target="_blank" rel="noopener">headset</a>, the <a href="https://sketchfab.com/3d-models/tactical-plate-carrier-vest-game-ready-3b51e6329dbb4b0aa14e43f12eb6c42a" target="_blank" rel="noopener">black carrier</a>, the <a href="https://sketchfab.com/3d-models/military-armor-3d-model-7cab57de2b844a60a43af4fd8b61a4a4" target="_blank" rel="noopener">sage carrier</a>, the <a href="https://sketchfab.com/3d-models/tactical-combat-gloves-game-ready-5e8f53fcba864163a199fa22baa653cb" target="_blank" rel="noopener">black gloves</a>, the <a href="https://sketchfab.com/3d-models/tactical-combat-gloves-3d-model-fda69c63c472449f8ded80a9e6d91562" target="_blank" rel="noopener">sage gloves</a> and the <a href="https://sketchfab.com/3d-models/military-tactical-gloves-multicam-hard-knuckle-72342e418cd743209395bba607d5504e" target="_blank" rel="noopener">camo gloves</a>.</li>
+              <li><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r184, MIT License.</li>
+              <li>The <span data-gun-name="pistol45">M1911</span>'s slide sound cut from "1911 Pistol Cocking" by freesound_community on <a href="https://pixabay.com" target="_blank" rel="noopener">Pixabay</a>, under the <a href="https://pixabay.com/service/license-summary/" target="_blank" rel="noopener">Pixabay Content License</a>; its magazine sounds were supplied for the project.</li>
+              <li>This menu: the rooftop, the city and its lights are made in code; its two soldiers are the soldier above, in the outfit gear above. Fonts: <a href="https://fonts.google.com/specimen/Big+Shoulders+Stencil+Display" target="_blank" rel="noopener">Big Shoulders Stencil Display</a> by Patric King and <a href="https://fonts.google.com/specimen/Barlow+Condensed" target="_blank" rel="noopener">Barlow Condensed</a> by Jeremy Tribby, <a href="https://openfontlicense.org" target="_blank" rel="noopener">SIL Open Font License</a>, from Google Fonts.</li>
+        </ul>
+      </section>
     </div>
+
+    <div id="loadout" hidden></div>
 
     <script
       type="module"
       src="src/main.js"
-      onerror="document.getElementById('overlay-status').textContent = 'The game couldn’t load. Check your internet connection and refresh.'"
+      onerror="window.menuLoadFailed()"
     ></script>
+    <script>
+      // The game is several files, which a browser won't load straight from
+      // disk: opened as a file, or if they can't be fetched, the menu says so.
+      window.menuLoadFailed = function () {
+        var status = document.querySelector('#menu .menu-status');
+        status.dataset.kind = 'error';
+        status.textContent = location.protocol === 'file:'
+          ? 'This page was opened from a file (file://), so the browser won’t load the game. Serve the folder with a web server (python3 -m http.server, see README.md) and open it from http://localhost.'
+          : 'The game couldn’t load. Check your internet connection and refresh.';
+      };
+      if (location.protocol === 'file:') window.menuLoadFailed();
+    </script>
   </body>
 </html>

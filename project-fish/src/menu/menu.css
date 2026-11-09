@@ -1,0 +1,686 @@
+/* The main menu (src/menu/mainMenu.js): the title screen over the live
+   backdrop (src/menu/backdrop.js), and the pause menu over the game. A dark,
+   calm left side for the title and the list; the accent is red. */
+
+#menu {
+  --menu-red: #e0352b;
+  --menu-red-soft: rgba(224, 53, 43, 0.22);
+  --menu-ink: #ece8e2;
+  --menu-dim: rgba(236, 232, 226, 0.62);
+  --menu-gutter: clamp(16px, 4.4vw, 92px);
+  --menu-title-font: 'Big Shoulders Stencil Display', 'Arial Narrow', Impact, sans-serif;
+  --menu-ui-font: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  font-family: var(--menu-ui-font);
+  color: var(--menu-ink);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.65s ease, visibility 0s linear 0s;
+}
+
+/* Fading into the game. */
+#menu.gone {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.65s ease, visibility 0s linear 0.65s;
+}
+
+/* The title screen's own picture, under the backdrop till it fades in (or
+   if it can't start): a night sky glowing over a city. */
+#menu.title {
+  background:
+    radial-gradient(ellipse 70% 30% at 52% 56%, rgba(120, 58, 34, 0.55) 0%, rgba(40, 20, 18, 0.4) 45%, transparent 75%),
+    radial-gradient(ellipse 40% 50% at 100% 60%, rgba(120, 10, 6, 0.35) 0%, transparent 70%),
+    linear-gradient(180deg, #050608 0%, #0b0a10 45%, #120c0c 60%, #050506 100%);
+}
+
+.menu-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+#menu.pause .menu-backdrop {
+  display: none;
+}
+
+.menu-backdrop-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 1.6s ease;
+}
+
+.menu-backdrop-canvas.shown {
+  opacity: 1;
+}
+
+/* Dark on the left for the menu, and round the edges. */
+.menu-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(3, 3, 5, 0.88) 0%, rgba(3, 3, 5, 0.72) 26%, rgba(3, 3, 5, 0.3) 44%, rgba(3, 3, 5, 0) 58%),
+    linear-gradient(180deg, rgba(3, 3, 5, 0.5) 0%, rgba(3, 3, 5, 0) 22%, rgba(3, 3, 5, 0) 78%, rgba(3, 3, 5, 0.55) 100%);
+}
+
+/* Paused: the game behind, blurred and darker, a touch of red at the edge. */
+#menu.pause {
+  -webkit-backdrop-filter: blur(6px) saturate(0.6);
+  backdrop-filter: blur(6px) saturate(0.6);
+}
+
+#menu.pause .menu-shade {
+  background:
+    linear-gradient(90deg, rgba(4, 4, 6, 0.93) 0%, rgba(4, 4, 6, 0.8) 30%, rgba(4, 4, 6, 0.55) 60%, rgba(4, 4, 6, 0.45) 100%),
+    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(150, 16, 10, 0.35) 0%, transparent 70%);
+}
+
+/* ---- The left column: title, list ---- */
+
+.menu-left {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--menu-gutter);
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - 2 * var(--menu-gutter)));
+  padding: clamp(36px, 11vh, 132px) 0 clamp(28px, 8vh, 96px);
+  box-sizing: border-box;
+  transition: opacity 0.45s ease, transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#menu.enter .menu-left,
+#menu.enter .menu-version {
+  opacity: 0;
+  transform: translateX(-18px);
+  transition: none;
+}
+
+.menu-version,
+.menu-keys {
+  transition: opacity 0.45s ease, transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Something open over it (the loadout menu, a film): only the picture stays. */
+#menu.covered .menu-left,
+#menu.covered .menu-version,
+#menu.covered .menu-keys,
+#menu.covered .menu-panel {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.menu-brand {
+  flex: none;
+}
+
+.menu-kicker {
+  margin: 0 0 6px 4px;
+  font: 600 clamp(11px, 0.78vw, 15px) / 1 var(--menu-ui-font);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--menu-red);
+}
+
+.menu-kicker span {
+  color: var(--menu-dim);
+}
+
+.menu-title {
+  margin: 0;
+  font: 900 clamp(64px, 7.6vw, 156px) / 0.84 var(--menu-title-font);
+  letter-spacing: 0.012em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--menu-ink);
+  text-shadow: 0 0 34px rgba(255, 210, 190, 0.08), 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* "FISH" a little warmer, as if lit by the red light. */
+.menu-title .word + .word {
+  color: #f3e6df;
+}
+
+.menu-tag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0 4px;
+  font: 600 clamp(11px, 0.78vw, 15px) / 1 var(--menu-ui-font);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--menu-dim);
+}
+
+.menu-tag span {
+  padding: 4px 7px 3px 9px;
+  background: var(--menu-red);
+  color: #120707;
+  letter-spacing: 0.24em;
+}
+
+/* ---- The list, and the accent bar that slides along it ---- */
+
+.menu-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: clamp(26px, 8vh, 96px);
+}
+
+.menu-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.menu-group.small {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.menu-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: 0.16em 0.6em 0.16em 22px;
+  border: 0;
+  background: none;
+  color: var(--menu-dim);
+  font: 500 clamp(26px, 2.05vw, 40px) / 1.18 var(--menu-ui-font);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: menu-item-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation-delay: calc(0.25s + var(--i, 0) * 0.06s);
+}
+
+.menu-item[hidden] {
+  display: none;
+}
+
+.menu-group.small .menu-item,
+.menu-item.accent {
+  font-size: clamp(17px, 1.12vw, 22px);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding-top: 0.22em;
+  padding-bottom: 0.22em;
+}
+
+.menu-item.active,
+.menu-item.open {
+  color: #fff;
+  transform: translateX(8px);
+}
+
+.menu-item.accent {
+  margin-top: 14px;
+  color: rgba(224, 53, 43, 0.86);
+}
+
+.menu-item.accent.active {
+  color: #ff5a4d;
+}
+
+.menu-item:focus-visible .label {
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+  text-underline-offset: 6px;
+}
+
+.menu-item.active:focus-visible .label {
+  text-decoration: none;
+}
+
+/* Play, still loading: a small tag, and it waits. */
+.menu-chip {
+  display: none;
+  padding: 3px 7px 2px;
+  border: 1px solid rgba(236, 232, 226, 0.28);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  color: var(--menu-dim);
+  animation: menu-chip 1.4s ease-in-out infinite;
+}
+
+.menu-item.loading .menu-chip {
+  display: inline-block;
+}
+
+.menu-item.loading .label {
+  opacity: 0.55;
+}
+
+.menu-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: min(420px, 100%);
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+}
+
+.menu-bar.instant {
+  transition: opacity 0.3s ease;
+}
+
+.menu-bar.on {
+  opacity: 1;
+}
+
+.menu-bar::before,
+.menu-bar::after {
+  content: '';
+  position: absolute;
+  top: 8%;
+  bottom: 8%;
+}
+
+.menu-bar::before {
+  left: 0;
+  width: 4px;
+  background: var(--menu-red);
+  box-shadow: 0 0 14px rgba(224, 53, 43, 0.65);
+}
+
+.menu-bar::after {
+  left: 4px;
+  right: 0;
+  background: linear-gradient(90deg, var(--menu-red-soft) 0%, rgba(224, 53, 43, 0.06) 55%, rgba(224, 53, 43, 0) 100%);
+}
+
+.menu-bar.accent::after {
+  background: linear-gradient(90deg, rgba(224, 53, 43, 0.3) 0%, rgba(224, 53, 43, 0) 80%);
+}
+
+/* What the item under the bar does. */
+.menu-about {
+  min-height: 1.3em;
+  margin: 14px 0 0 22px;
+  font: 400 clamp(14px, 0.9vw, 17px) / 1.3 var(--menu-ui-font);
+  letter-spacing: 0.06em;
+  color: rgba(236, 232, 226, 0.48);
+}
+
+.menu-status {
+  min-height: 0;
+  margin: 12px 0 0 22px;
+  max-width: 460px;
+  font: 500 15px/1.35 var(--menu-ui-font);
+  letter-spacing: 0.04em;
+  color: rgba(236, 232, 226, 0.8);
+}
+
+.menu-status:empty {
+  display: none;
+}
+
+.menu-status[data-kind='error'] {
+  color: #ff7468;
+}
+
+/* ---- Corners: the version, the keys ---- */
+
+.menu-version {
+  position: absolute;
+  top: clamp(14px, 2.2vh, 26px);
+  right: clamp(16px, 2vw, 34px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  font: 600 12px/1.2 var(--menu-ui-font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(236, 232, 226, 0.5);
+  text-align: right;
+  pointer-events: none;
+}
+
+.menu-build {
+  letter-spacing: 0.12em;
+  color: rgba(236, 232, 226, 0.38);
+}
+
+.menu-keys {
+  position: absolute;
+  right: clamp(16px, 2vw, 34px);
+  bottom: clamp(14px, 2.4vh, 28px);
+  display: flex;
+  gap: 22px;
+  font: 600 12px/1 var(--menu-ui-font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(236, 232, 226, 0.42);
+  pointer-events: none;
+}
+
+#menu kbd {
+  display: inline-block;
+  min-width: 1.1em;
+  margin-right: 5px;
+  padding: 3px 5px 2px;
+  border: 1px solid rgba(236, 232, 226, 0.3);
+  border-radius: 2px;
+  font: inherit;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+/* ---- The Controls and Credits panels ---- */
+
+.menu-panel {
+  position: absolute;
+  top: clamp(200px, 31vh, 380px);
+  left: clamp(380px, 33vw, 680px);
+  width: min(660px, calc(100vw - clamp(380px, 33vw, 680px) - 48px));
+  max-height: calc(100vh - clamp(200px, 31vh, 380px) - clamp(24px, 6vh, 72px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  padding: 0 30px 26px;
+  background: linear-gradient(180deg, rgba(14, 13, 16, 0.92), rgba(8, 8, 10, 0.9));
+  border-top: 2px solid var(--menu-red);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  outline: none;
+  animation: menu-panel-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(236, 232, 226, 0.25) transparent;
+}
+
+.menu-panel[hidden] {
+  display: none;
+}
+
+.menu-panel header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 -30px 6px;
+  padding: 20px 30px 12px;
+  background: rgba(13, 12, 15, 0.97);
+}
+
+.menu-panel h2 {
+  margin: 0;
+  font: 800 clamp(34px, 2.6vw, 48px) / 1 var(--menu-title-font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.panel-close {
+  flex: none;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: var(--menu-dim);
+  font: 600 13px/1 var(--menu-ui-font);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.panel-close kbd {
+  margin: 0 0 0 6px !important;
+}
+
+.panel-close:hover,
+.panel-close:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.menu-panel .controls {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 16px/1.35 var(--menu-ui-font);
+  letter-spacing: 0.02em;
+}
+
+.menu-panel .controls th {
+  padding: 18px 0 8px;
+  font: 600 12px/1 var(--menu-ui-font);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--menu-red);
+}
+
+.menu-panel .controls td {
+  padding: 7px 0;
+  border-top: 1px solid rgba(236, 232, 226, 0.08);
+  vertical-align: top;
+  color: rgba(236, 232, 226, 0.82);
+}
+
+.menu-panel .controls td:first-child {
+  width: 34%;
+  padding-right: 18px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.menu-panel .credits {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font: 400 15px/1.45 var(--menu-ui-font);
+  letter-spacing: 0.02em;
+  color: rgba(236, 232, 226, 0.76);
+  user-select: text;
+}
+
+.menu-panel .credits li {
+  position: relative;
+  padding: 8px 0 8px 18px;
+  border-top: 1px solid rgba(236, 232, 226, 0.07);
+}
+
+.menu-panel .credits li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 16px;
+  width: 6px;
+  height: 2px;
+  background: var(--menu-red);
+}
+
+.menu-panel .credits a {
+  color: #fff;
+  text-decoration: underline;
+  text-decoration-color: rgba(224, 53, 43, 0.6);
+  text-underline-offset: 3px;
+}
+
+.menu-panel .credits a:hover {
+  text-decoration-color: var(--menu-red);
+}
+
+/* While the menu shows, the game's readouts are out of the way. */
+body.menu-visible #debug,
+body.menu-visible #photo-hint {
+  display: none;
+}
+
+@keyframes menu-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+@keyframes menu-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+
+@keyframes menu-chip {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* A short window: everything closer together. */
+@media (max-height: 720px) {
+  .menu-left {
+    padding-top: 28px;
+    padding-bottom: 22px;
+  }
+
+  .menu-list {
+    margin-top: 22px;
+  }
+
+  .menu-item {
+    font-size: clamp(22px, 1.8vw, 32px);
+  }
+}
+
+/* No mouse: no key hints. */
+@media (hover: none) {
+  .menu-keys {
+    display: none;
+  }
+}
+
+/* A phone (or a narrow window): the title over the list, all on the left,
+   16 px from the edges; the panels fill the screen. */
+@media (max-width: 760px) {
+  #menu {
+    --menu-gutter: 16px;
+  }
+
+  .menu-left {
+    width: calc(100vw - 32px);
+    padding: 64px 0 max(20px, env(safe-area-inset-bottom));
+  }
+
+  .menu-shade {
+    background:
+      linear-gradient(180deg, rgba(3, 3, 5, 0.78) 0%, rgba(3, 3, 5, 0.25) 32%, rgba(3, 3, 5, 0.15) 50%, rgba(3, 3, 5, 0.82) 78%, rgba(3, 3, 5, 0.94) 100%),
+      linear-gradient(90deg, rgba(3, 3, 5, 0.55) 0%, rgba(3, 3, 5, 0) 70%);
+  }
+
+  .menu-title {
+    font-size: clamp(54px, 17vw, 96px);
+    white-space: normal;
+  }
+
+  .menu-kicker {
+    letter-spacing: 0.3em;
+  }
+
+  .menu-list {
+    margin-top: auto;
+    flex: none;
+  }
+
+  .menu-item {
+    font-size: 27px;
+    padding-left: 18px;
+  }
+
+  .menu-group.small {
+    margin-top: 10px;
+    padding-top: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0 6px;
+  }
+
+  .menu-group.small .menu-item,
+  .menu-item.accent {
+    font-size: 18px;
+  }
+
+  .menu-item.accent {
+    margin-top: 4px;
+  }
+
+  .menu-about {
+    margin: 6px 0 0 18px;
+    font-size: 14px;
+  }
+
+  .menu-version {
+    top: 14px;
+    right: 16px;
+    font-size: 10px;
+  }
+
+  .menu-panel {
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+    max-height: none;
+    padding: 0 18px 18px;
+    animation-name: menu-panel-in-phone;
+  }
+
+  .menu-panel {
+    background: rgba(10, 10, 12, 0.97);
+  }
+
+  #menu.panel-open .menu-left {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .menu-panel header {
+    margin: 0 -18px 4px;
+    padding: 16px 18px 10px;
+  }
+
+  .menu-panel .controls td:first-child {
+    width: 38%;
+  }
+
+  @keyframes menu-panel-in-phone {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-item,
+  .menu-panel,
+  .menu-chip {
+    animation: none;
+  }
+
+  .menu-bar,
+  .menu-left {
+    transition: none;
+  }
+}

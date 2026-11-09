@@ -24,20 +24,23 @@ import { LoadoutMenu } from './loadoutMenu.js';
 import { breakdownById } from './showcase/breakdowns.js';
 import { Outfit, Wardrobe } from './gear.js';
 import { OutfitMenu } from './outfitMenu.js';
+import { MainMenu } from './menu/mainMenu.js';
 
 // Never run more than this much game time in one frame (e.g. after switching
 // tabs), so the game doesn't freeze trying to catch up.
 const MAX_FRAME_SECONDS = 0.25;
 
 const container = document.getElementById('game');
-const overlay = document.getElementById('overlay');
-const overlayStatus = document.getElementById('overlay-status');
+// The main menu (src/menu/mainMenu.js): the title screen first, then the
+// pause menu whenever the mouse is let go in the game.
+const mainMenu = new MainMenu(document.getElementById('menu'));
+mainMenu.setReady(false);
 
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 } catch {
-  overlayStatus.textContent = 'Your browser or graphics card doesn’t support WebGL, which the game needs.';
+  mainMenu.setStatus('Your browser or graphics card doesn’t support WebGL, which the game needs.', 'error');
   throw new Error('WebGL not available');
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -129,7 +132,8 @@ function switchGun(key) {
 const effects = new WorldEffects(scene);
 
 // The attachments on each gun, and the loadout menu (B) to choose them. If
-// closing the menu can't take the mouse back, the click-to-play screen shows.
+// closing the menu can't take the mouse back, the pause menu shows. Opened
+// from the main menu, it goes back there when it closes (its `home`).
 const loadout = new Loadout();
 const menu = new LoadoutMenu(document.getElementById('loadout'), loadout, input, () => held, new OutfitMenu(outfit, wardrobe));
 // (Each gun's tab can put that gun in the hands.)
@@ -148,7 +152,7 @@ loadout.onChange((key) => {
   else applyLoadout(key);
 });
 menu.onFailedLock = () => {
-  overlay.hidden = false;
+  pauseMenu();
 };
 
 // --- The gun breakdowns (the loadout menu's Breakdowns picker) ---
@@ -168,9 +172,11 @@ async function openBreakdown(id) {
   const pending = { loading: true, cancelled: false };
   showcase = pending;
   input.releaseAll();
+  menuBehind(false);
   const back = () => {
     showcase = null;
     input.releaseAll();
+    menuBehind(true);
     menu.show('breakdowns', id);
   };
   // Till its code is in, a plain screen says it's loading, and Esc goes back
@@ -221,17 +227,20 @@ menu.onBreakdown = openBreakdown;
 // stands still while it's open; till its code is in, a plain screen says
 // it's loading and Esc goes back (it then never opens); closing it (Esc, its
 // Close button) frees all it made and goes back to where it was opened
-// from (the picker, or the start screen).
+// from (the picker, or the main menu).
 async function openCinematic(test = false, fromPicker = false) {
   if (showcase) return;
   const pending = { loading: true, cancelled: false };
   showcase = pending;
   input.releaseAll();
+  menuBehind(false);
+  if (!fromPicker) mainMenu.cover(true);
   const back = () => {
     showcase = null;
     input.releaseAll();
+    menuBehind(true);
     if (fromPicker) menu.show('breakdowns', 'cinematic');
-    else overlay.hidden = false;
+    else mainMenu.cover(false);
   };
   const wait = document.createElement('div');
   wait.className = 'showcase-loading';
@@ -394,17 +403,104 @@ function flyPhotoCamera(dt) {
 }
 resize();
 
-// --- Click to play / Esc to release the mouse ---
+// --- The main menu: Play, and the pause menu (Esc) ---
+//
+// The title screen draws its own backdrop (src/menu/backdrop.js: the
+// soldiers on the rooftop over the city) while the game stands still behind
+// it, not drawn. Play takes the mouse: the menu fades into the game and the
+// backdrop is freed. Letting the mouse go in the game (Esc) brings the menu
+// back over the game, with Resume at the top. The loadout menu, the
+// breakdowns picker and the cinematic open over it and come back to it.
 
 let loaded = false;
-overlay.addEventListener('click', () => {
+// 'title' (before the game is first played), 'pause', or null (playing).
+let menuMode = 'title';
+let backdrop = null;
+const MENU_FADE_MS = 650; // (src/menu/menu.css, #menu's fade)
+import('./menu/backdrop.js').then(({ Backdrop }) => {
+  if (menuMode !== 'title') return;
+  try {
+    backdrop = new Backdrop(document.getElementById('menu-backdrop'), { outfit, wardrobe });
+    if (!showcase) backdrop.start();
+  } catch (error) {
+    // (No second WebGL canvas: the title screen's own dark picture stays.)
+    console.warn('The menu backdrop could not start.', error);
+  }
+}).catch((error) => console.warn('The menu backdrop could not load.', error));
+
+// The backdrop draws only while it can be seen (not while a breakdown or
+// the cinematic is open over it).
+function menuBehind(on) {
+  if (!backdrop) return;
+  if (on && menuMode === 'title') backdrop.start();
+  else backdrop.stop();
+}
+
+function pauseMenu() {
+  if (menuMode === 'title') {
+    mainMenu.show('title');
+    return;
+  }
+  menuMode = 'pause';
+  mainMenu.show('pause');
+}
+
+// Into the game: the menu fades out over it; the backdrop goes once it has.
+function enterGame() {
+  if (menuMode === null) return;
+  const wasTitle = menuMode === 'title';
+  menuMode = null;
+  mainMenu.hide();
+  mainMenu.setStatus('');
+  if (wasTitle && backdrop) {
+    const leaving = backdrop;
+    backdrop = null;
+    setTimeout(() => leaving.dispose(), MENU_FADE_MS + 100);
+  }
+}
+
+// Play (or Resume): takes the mouse. If the browser won't give it (just
+// after Esc, or a phone with no mouse), says so.
+async function playOrResume() {
   startAudio(); // browsers only allow sound after a click
-  if (loaded) input.lock();
-});
-input.onLockChange = (locked) => {
-  overlay.hidden = locked || menu.open;
-  document.body.classList.toggle('playing', locked);
+  if (!loaded) {
+    mainMenu.setStatus('Still loading the game…');
+    return;
+  }
+  await input.lock();
+  if (document.pointerLockElement === renderer.domElement || !mainMenu.visible) return;
+  const touch = window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches;
+  mainMenu.setStatus(touch ? 'Project Fish needs a keyboard and mouse.' : 'The browser didn’t give the game the mouse yet: click again.');
+}
+
+// The loadout menu (or its breakdowns picker on its own) over the main
+// menu, coming back to it when it closes.
+function openLoadoutFromMenu(view) {
+  menu.home = () => {
+    menu.home = null;
+    mainMenu.cover(false);
+  };
+  mainMenu.cover(true);
+  menu.show(view, null, { alone: view === 'breakdowns' });
+}
+
+mainMenu.onAction = (action) => {
+  if (action === 'play') playOrResume();
+  else if (action === 'loadout') openLoadoutFromMenu('loadout');
+  else if (action === 'breakdowns') openLoadoutFromMenu('breakdowns');
+  else if (action === 'cinematic') openCinematic(false, false);
+  else if (action === 'fullscreen') {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  }
 };
+
+input.onLockChange = (locked) => {
+  document.body.classList.toggle('playing', locked);
+  if (locked) enterGame();
+  else if (!menu.open && !showcase) pauseMenu();
+};
+mainMenu.show('title');
 viewmodel.ready.then(() => {
   // The guns with their own arms wear the outfit's gloves too.
   viewmodel.wearGloves(outfit);
@@ -425,7 +521,8 @@ viewmodel.ready.then(() => {
   renderer.compile(scene, camera);
   for (const d of drops) scene.remove(d);
   loaded = true;
-  overlayStatus.textContent = 'Click to play';
+  mainMenu.setReady(true);
+  if (mainMenu.status.textContent === 'Still loading the game…') mainMenu.setStatus('');
   if (cinematicParam) openCinematic(cinematicParam === 'test');
 });
 
@@ -620,7 +717,7 @@ function updateBeams() {
 
 // --- Ammo counter ---
 
-// The guns' names on the page (the start screen's controls and credits) are
+// The guns' names on the page (the main menu's controls and credits) are
 // each gun's own (its name in src/shared/config.js).
 for (const el of document.querySelectorAll('[data-gun-name]')) {
   if (GUNS[el.dataset.gunName]) el.textContent = GUNS[el.dataset.gunName].name;
@@ -652,8 +749,9 @@ let accumulator = 0;
 const lookDirection = new THREE.Vector3();
 
 renderer.setAnimationLoop((time) => {
-  // (Standing still while the breakdown is open, and not catching up after.)
-  if (showcase) {
+  // (Standing still while the breakdown is open or the title screen is up,
+  // and not catching up after.)
+  if (showcase || menuMode === 'title') {
     lastTime = null;
     return;
   }
@@ -711,7 +809,8 @@ renderer.setAnimationLoop((time) => {
 
   // The loadout menu: B.
   if (play && input.presses('KeyB') > 0) {
-    menu.show();
+    menu.home = null;
+    menu.show('loadout', null, { alone: false });
     if (weapon.inspect) weapon.inspect.cut = true; // put the gun back in the hold first
   }
   // A loadout change to the gun in the hands waits for its reload or

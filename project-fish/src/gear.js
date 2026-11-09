@@ -156,6 +156,11 @@ export class Outfit {
   onChange(fn) {
     this.listeners.push(fn);
   }
+
+  // Stops calling fn.
+  offChange(fn) {
+    this.listeners = this.listeners.filter((f) => f !== fn);
+  }
 }
 
 // The bone a mesh is mostly weighted to (its name, see boneName).
@@ -291,8 +296,9 @@ export class Wardrobe {
         console.warn(`Couldn't load ${option.file}; he wears his own instead.`, error);
         meshes = null;
       }
-      // (Something else was chosen meanwhile.)
-      if (copy.pending[slot] !== id) {
+      // (Something else was chosen meanwhile, or the copy is no longer
+      // dressed: it was let go of while the piece loaded.)
+      if (copy.pending[slot] !== id || !this.copies.includes(copy)) {
         for (const m of meshes || []) {
           disposeOwnMaterials(m);
           m.skeleton.dispose();

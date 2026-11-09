@@ -7,7 +7,9 @@
 // breakdown's id, or 'cinematic'; the menu closes
 // without taking the mouse back), and Esc goes back to the loadout. It
 // releases the mouse while it's open; B, Esc or "Back to game" closes it and
-// takes the mouse again.
+// takes the mouse again. Opened from the main menu, it has a `home` (the
+// game's): closing it goes there instead, and opened on the picker `alone`,
+// Esc there closes it.
 
 import { SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
@@ -45,6 +47,8 @@ export class LoadoutMenu {
     this.open = false;
     this.onPickGun = null; // (key) => puts that gun in the hands
     this.onBreakdown = null; // (id) => plays that breakdown
+    this.home = null; // () => back to the main menu, when opened from it (else closing takes the mouse)
+    this.alone = false; // opened on the picker by itself: Esc there closes the menu
     this.view = LOADOUT_VIEW;
     this.lastBreakdown = CINEMATIC.id; // the picker's focus (the cinematic first)
     this.element.hidden = true;
@@ -52,7 +56,8 @@ export class LoadoutMenu {
       if (!this.open) return;
       if (this.view === BREAKDOWNS_VIEW && e.code === 'Escape') {
         e.preventDefault();
-        this.showView(LOADOUT_VIEW);
+        if (this.alone) this.close();
+        else this.showView(LOADOUT_VIEW);
       } else if (e.code === 'KeyB' || e.code === 'Escape') {
         e.preventDefault();
         this.close();
@@ -66,10 +71,12 @@ export class LoadoutMenu {
   }
 
   // view: 'breakdowns' opens it on the breakdowns picker (as a breakdown
-  // closing does), with focus on the one with that id.
-  show(view = LOADOUT_VIEW, breakdown = null) {
+  // closing does), with focus on the one with that id. options.alone: the
+  // picker by itself (left out, it stays as it was).
+  show(view = LOADOUT_VIEW, breakdown = null, options = null) {
     if (this.open) return;
     this.open = true;
+    if (options) this.alone = Boolean(options.alone);
     this.view = view === BREAKDOWNS_VIEW && this.onBreakdown ? BREAKDOWNS_VIEW : LOADOUT_VIEW;
     if (breakdown) this.lastBreakdown = breakdown;
     // (Back on the Outfit tab if that's where it was left.)
@@ -101,6 +108,10 @@ export class LoadoutMenu {
     if (this.outfitMenu) this.outfitMenu.hide();
     document.body.classList.remove('menu-open');
     if (!relock) return;
+    if (this.home) {
+      this.home();
+      return;
+    }
     // Back into the game (a key press or click counts as asking for the
     // mouse). If the browser won't give it back yet, onFailedLock is told.
     this.input.lock().then(() => {
@@ -242,8 +253,8 @@ export class LoadoutMenu {
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'showcase';
-    back.textContent = 'Back to loadout (Esc)';
-    back.addEventListener('click', () => this.showView(LOADOUT_VIEW));
+    back.textContent = this.alone ? (this.home ? 'Back to menu (Esc)' : 'Close (Esc)') : 'Back to loadout (Esc)';
+    back.addEventListener('click', () => (this.alone ? this.close() : this.showView(LOADOUT_VIEW)));
     head.append(title, back);
     panel.append(head);
     const intro = document.createElement('p');
@@ -331,7 +342,7 @@ export class LoadoutMenu {
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'back';
-    back.textContent = 'Back to game (B)';
+    back.textContent = this.home ? 'Back to menu (B)' : 'Back to game (B)';
     back.addEventListener('click', () => this.close());
     return back;
   }

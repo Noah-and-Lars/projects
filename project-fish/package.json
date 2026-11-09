@@ -1,6 +1,7 @@
 {
   "name": "project-fish",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "description": "Only the tools in tools/ use this. The game itself needs no install or build step.",
   "scripts": {
