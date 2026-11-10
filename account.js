@@ -37,6 +37,7 @@
     ['football', /^soccer\./],
     ['bull-run', /^bullRun/],
     ['chess', /^chessSave$/],
+    ['checkers', /^checkersSave$/],
     ['russian-roulette', /^russianRoulette/],
     ['gamble-your-life-away', /^gambleLife/],
     ['cube-tower-defense', /^cubeTD/],
@@ -81,6 +82,7 @@
         case 'football': { var f = J('soccer.profile'); return N(f.played) * 100 + N(f.wins) * 10 + JSON.stringify(f).length * 0.01; }
         case 'bull-run': { var b = J('bullRunSave'); return N(b.stats && b.stats.best) + N(b.day) * 10; }
         case 'chess': { var c = J('chessSave'), n = 0, o = c.online || {}; Object.keys(c.stats || {}).forEach(function (l) { var s = c.stats[l] || {}; n += N(s.w) + N(s.l) + N(s.d); }); return n + N(o.w) + N(o.l) + N(o.d) + (c.rating ? N(c.rating.n) : 0); }
+        case 'checkers': { var ck = J('checkersSave'), kn = 0, ko = ck.online || {}; Object.keys(ck.stats || {}).forEach(function (l) { var s = ck.stats[l] || {}; kn += N(s.w) + N(s.l) + N(s.d); }); return kn + N(ko.w) + N(ko.l) + N(ko.d) + (ck.rating ? N(ck.rating.n) : 0); }
         case 'russian-roulette': { var x = J('russianRouletteSave'); return N(x.best) * 10 + N(x.games) + N(x.onGames); }
         case 'gamble-your-life-away': { var y = J('gambleLifeSave'); return N(y.rounds) + N(y.peak) * 1e-6; }
         case 'cube-tower-defense': { var t = J('cubeTDProfile'); return N(t.level) * 1000 + N(t.best) * 10 + N(t.xp); }

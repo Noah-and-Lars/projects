@@ -279,6 +279,17 @@ source in Settings → Pages should be switched to `main`.
   channels: test with that, never on the real lobby. To be several players at once, put
   a few iframes of the game with the same `?rrroom=` on one page and drive them with `contentWindow.eval(...)`.
 
+- `checkers/` (2026-11-11): Checkers, made from Chess 1.5 by `tools/checkers-build/build.py` (run from the repo root: the chess page
+  with `tools/checkers-build/engine.js` as its `<script id="engine">`, and the pieces, names and a few board functions swapped). American
+  checkers on the 64-square board (pieces P/K red, p/k black; red 'w' moves first, at the bottom): forced jumps,
+  multi-jumps (a move's `path` and `caps`; `animateMove` hops through them), a man crowned mid-jump stops, kings
+  move both ways; lose with no pieces or no move; draws by repetition (3) or 40 moves each with no capture or man
+  move (`G.h >= 80`). Squares are numbered 1-32 (`num`), moves read 11-15 / 22x15x8, which is also the 'mv' string
+  online. Its own save `checkersSave`, its own channels (`ck-lobby`, `ck-t-<key>`, `?ckroom=` for tests), its own
+  Glicko rating and leaderboard (`/acct/top?g=checkers`, games.js checkers `stat()`). Pieces that must jump get a
+  gold ring (`.sq.must`). Wooden board (owner's choice): `--light #ecca93`, `--dark #a5652f`, a frame drawn with
+  box-shadow round `#board` (resize leaves room for it). Since the page is built from chess/index.html, a fix to
+  Chess's shared code can be carried over by re-running build.py (it stops if a replaced line has changed).
 - `chess/`: Chess against the computer (the engine is the `<script id="engine">` block, shared with a Web Worker).
   Saves `chessSave` (settings, per-level stats, the game in progress). Since 1.1 it plays online too: the `Net`
   block and the Play online box in the side panel. Quick match pairs in Presence on `ch-lobby`; a private table has

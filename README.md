@@ -20,6 +20,7 @@ The Chat tab (`chat.html`) is a global chat for everyone on the arcade; messages
 | [Blockcraft](blockcraft/) | 3D block sandbox with the Nether, the End and a public multiplayer server (survival and creative) | Keyboard + mouse or touch |
 | [Russian Roulette](russian-roulette/) | First-person thriller | Mouse, keyboard or touch |
 | [Chess](chess/) | Chess against the computer (six levels), local 2-player on one screen, or rated online games against real people (Glicko, like chess.com) with a leaderboard | Mouse or touch |
+| [Checkers](checkers/) | American checkers made from Chess: forced jumps, multi-jumps and kings on a wooden board, against the computer (six levels), local 2-player, or rated online games with its own leaderboard | Mouse or touch |
 | [Stocks Game](bull-run/) | Stock-trading strategy | Mouse, keyboard or touch |
 | [Havoc Bay](havoc-bay/) | Red vs Blue sea battle with warships, planes and islands, online or against bots | Keyboard + mouse or touch |
 | [Turn! Turn! TURN!](turn-turn-turn/) | Co-op dirt rally: one drives with no map, the other reads the route and calls the turns (online crews or solo with an AI co-driver) | Keyboard + mouse or Xbox controller |

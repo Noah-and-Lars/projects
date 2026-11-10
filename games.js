@@ -155,6 +155,20 @@ window.GAMES = [
     stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rating.n > 0 && isFinite(s.rating.r) ? 'Rating ' + Math.round(s.rating.r) + (Math.round(s.rating.peak || 0) > Math.round(s.rating.r) ? ' (best ' + Math.round(s.rating.peak) + ')' : '') : ''; return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
+    id: 'checkers',
+    title: 'Checkers',
+    category: 'Board',
+    tagline: 'Classic checkers against the computer, or online against a real person.',
+    description: 'American checkers with forced jumps, multi-jumps and kings: against the computer on six levels, two players on one screen, or online against a real person for a rating of its own and its own leaderboard.',
+    controls: 'Mouse or touch',
+    keys: [['Local 2-player', 'Two players on one screen: the board turns round after every move'], ['🏆 Leaderboard', 'Everyone\u2019s highest online rating'], ['Drag or click', 'Move a piece'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
+    path: 'checkers/index.html',
+    thumb: 'checkers/thumb.svg',
+    added: '2026-11-11T13:00:00+11:00',
+    updated: '2026-11-11T13:00:00+11:00',
+    stat() { const s = readSave('checkersSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rating.n > 0 && isFinite(s.rating.r) ? 'Rating ' + Math.round(s.rating.r) + (Math.round(s.rating.peak || 0) > Math.round(s.rating.r) ? ' (best ' + Math.round(s.rating.peak) + ')' : '') : ''; return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
+  },
+  {
     id: 'russian-roulette',
     title: 'Russian Roulette',
     category: 'Thriller',
@@ -295,6 +309,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-11', game: 'checkers', text: 'New game: Checkers. The same board and buttons as Chess, with checker pieces and checkers rules (forced jumps, multi-jumps, kings). Play the computer on six levels, a friend on one screen, or real people online for a checkers rating with its own leaderboard.' },
   { date: '2026-11-11', game: 'krill-dive', text: 'Krill Dive 1.4: versus lobbies. Make a lobby and share the code (or join an open one), and everyone dives the same seven prompts with live standings. The leaderboard now lists every diver from first to last, and the game no longer tells you the rarest answer after a prompt.' },
   { date: '2026-11-10', game: 'krill-dive', text: 'Krill Dive 1.3: a daily leaderboard. Every signed-in diver\'s daily dive is ranked by depth, with today\'s 1st, 2nd and 3rd and the time left at the top, and every finished day kept below as its own board.' },
   { date: '2026-11-10', game: 'krill-dive', text: 'Krill Dive 1.2: about five times as many accepted answers on the prompts coming up this week (16,700 across the week, up from 3,400), from everyday answers that were missing to real deep cuts, and niche answers now score as the rare finds they are.' },

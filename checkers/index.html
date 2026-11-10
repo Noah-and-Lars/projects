@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script id="arcade-name">
+// Your name in this game is your arcade account's name (made on the arcade's home page, or your local account's).
+// It's put into the save before the game reads it, and the name box can't be changed here.
+(() => {
+  let n = '';
+  try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'), l = JSON.parse(localStorage.getItem('arcade-local') || 'null'); n = String((a && a.name) || (l && l.name) || ''); } catch (e) {}
+  window.ARCADE_NAME = n;
+  if (!n) return;
+  const put = (key, path, skip) => {
+    try {
+      const raw = localStorage.getItem(key); if (raw == null) return;
+      const o = JSON.parse(raw); if (!o || typeof o !== 'object' || (skip && skip(o))) return;
+      let t = o; for (let i = 0; i < path.length - 1; i++) { if (!t[path[i]] || typeof t[path[i]] !== 'object') t[path[i]] = {}; t = t[path[i]]; }
+      if (t[path[path.length - 1]] !== n) { t[path[path.length - 1]] = n; localStorage.setItem(key, JSON.stringify(o)); }
+    } catch (e) {}
+  };
+  put("checkersSave", ["name"]);
+  const IDS = ["netName"], ALLOW = []; // ALLOW: test names that can still be typed in (they ask for their password)
+  const allowed = v => ALLOW.some(a => a.toLowerCase() === v.trim().toLowerCase());
+  const partOf = v => !v.trim() || ALLOW.some(a => a.toLowerCase().startsWith(v.trim().toLowerCase()));
+  const set = el => { if (el.value !== n) { el.value = n; el.dispatchEvent(new Event('input', { bubbles: true })); } };
+  const fix = () => {
+    for (const id of IDS) {
+      const el = document.getElementById(id); if (!el) continue;
+      if (!el.dataset.arcadeName) {
+        el.dataset.arcadeName = 1; el.title = 'Your name comes from your arcade account. Change it on the arcade home page.';
+        if (!ALLOW.length) el.readOnly = true;
+        else {
+          el.addEventListener('input', () => { if (el.value !== n && !partOf(el.value)) set(el); }, true);
+          el.addEventListener('blur', () => { if (!allowed(el.value)) set(el); });
+        }
+      }
+      if (document.activeElement !== el || !ALLOW.length) { if (!allowed(el.value)) set(el); }
+    }
+  };
+  // a name typed in the box is only taken if it's one of the test names
+  for (const id of []) document.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('#' + id)) for (const i of IDS) { const el = document.getElementById(i); if (el && !allowed(el.value)) set(el); } }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && IDS.includes(e.target.id) && !allowed(e.target.value)) set(e.target); }, true);
+  setInterval(fix, 250); document.addEventListener('DOMContentLoaded', fix);
+})();
+</script>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkers</title>
+<style>
+  :root { --bg: #302e2b; --panel: #262522; --panel2: #1f1e1b; --line: rgba(255, 255, 255, .08); --ink: #f0efed; --muted: #a8a6a2; --green: #81b64c; --green-hi: #95c95e;
+    --light: #ecca93; --dark: #a5652f; --sel: rgba(255, 255, 51, .5); --last: rgba(255, 255, 51, .42);
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  button { font-family: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; cursor: pointer; }
+  #app { display: flex; gap: 20px; justify-content: center; align-items: flex-start; padding: 16px; max-width: 1180px; margin: 0 auto; }
+  #left { display: flex; flex-direction: column; gap: 6px; }
+  .player { display: flex; align-items: center; gap: 10px; height: 44px; min-width: 0; }
+  .avatar { width: 40px; height: 40px; border-radius: 4px; flex: none; display: grid; place-items: center; font-size: 22px; background: #4b4847; }
+  .avatar.you { background: #5d7e3a; }
+  .pname { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pname small { color: var(--muted); font-weight: 600; margin-left: 6px; }
+  .caps { display: flex; align-items: center; height: 18px; margin-top: 2px; min-width: 0; overflow: hidden; }
+  .caps img { width: 18px; height: 18px; margin-right: -6px; }
+  .caps span { margin-left: 10px; font-size: 12px; color: var(--muted); font-weight: 700; }
+  .thinking { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .thinking[hidden] { display: none; }
+  .thinking i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
+  .thinking i:nth-child(2) { animation-delay: .2s; } .thinking i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 50% { opacity: .2; } }
+
+  /* the board */
+  #board { position: relative; width: var(--size); height: var(--size); border-radius: 4px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: 0 6px 24px rgba(0, 0, 0, .35); }
+  #squares { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
+  .sq { position: relative; }
+  .sq.l { background: var(--light) repeating-linear-gradient(100deg, rgba(150, 90, 30, .07) 0 2px, transparent 2px 9px); }
+  .sq.d { background: var(--dark) repeating-linear-gradient(100deg, rgba(60, 25, 5, .12) 0 2px, transparent 2px 10px); }
+  #board { margin: 9px; box-shadow: 0 0 0 9px #d7a868, 0 0 0 11px #8a5524, 0 8px 22px 11px rgba(0, 0, 0, .35); }
+  .sq.last::before, .sq.sel::before { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: var(--last); }
+  .sq.sel::before { background: var(--sel); }
+  .sq.must::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; box-shadow: inset 0 0 0 calc(var(--size) / 110) rgba(255, 210, 63, .85); pointer-events: none; }
+  .sq.hover { box-shadow: inset 0 0 0 calc(var(--size) / 140) rgba(255, 255, 255, .75); }
+  .dot { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; pointer-events: none; z-index: 3; }
+  .dot::before { content: ""; width: 33%; height: 33%; border-radius: 50%; background: rgba(0, 0, 0, .14); }
+  .dot.cap::before { width: 100%; height: 100%; background: none; box-shadow: inset 0 0 0 calc(var(--size) / 85) rgba(0, 0, 0, .14); }
+  .coord { position: absolute; font-size: calc(var(--size) / 42); font-weight: 700; pointer-events: none; line-height: 1; }
+  .coord.r { top: 5%; left: 6%; opacity: .7; }
+  .sq.l .coord { color: var(--dark); } .sq.d .coord { color: var(--light); }
+  #pieces { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+  .pc { position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; background-size: 100% 100%; will-change: transform; z-index: 2; }
+  .pc.anim { transition: transform .16s ease-out; }
+  .pc.drag { z-index: 10; transition: none; cursor: grabbing; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); }
+  .pc.gone { opacity: 0; transition: opacity .12s; }
+  /* choosing what to promote to */
+  #promo { position: absolute; z-index: 20; width: 12.5%; display: flex; flex-direction: column; background: #fff; border-radius: 3px; box-shadow: 0 6px 20px rgba(0, 0, 0, .5); }
+  #promo[hidden] { display: none; }
+  #promo button { border: 0; background: #fff; aspect-ratio: 1; padding: 0; } #promo button:hover { background: #ffe9a8; }
+  #promo button img { width: 100%; height: 100%; display: block; }
+  #promo .x { aspect-ratio: auto; height: calc(var(--size) / 20); background: #f1f1f1; color: #555; font-size: calc(var(--size) / 40); font-weight: 700; }
+  /* the result, shown over the board */
+  #result { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 30; display: grid; place-items: center; background: rgba(0, 0, 0, .35); }
+  #result[hidden] { display: none; }
+  /* 1.5: local 2-player and the leaderboard */
+  body.local .cpu-only { display: none; }
+  #lb { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 60; display: grid; place-items: center; background: rgba(0,0,0,.55); padding: 16px; }
+  #lb[hidden] { display: none; }
+  #lb .card { background: var(--panel); border-radius: 10px; padding: 20px 18px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.55); width: min(460px, 100%); max-height: 86vh; display: flex; flex-direction: column; text-align: left; }
+  #lb h2 { margin: 0 0 4px; } #lb .lbsub { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+  #lbList { overflow-y: auto; flex: 1; min-height: 80px; margin-bottom: 12px; border-radius: 8px; background: var(--panel2); }
+  .lbrow { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 15px; }
+  .lbrow:nth-child(1) .rk { color: #ffd34d; } .lbrow:nth-child(2) .rk { color: #d8dee8; } .lbrow:nth-child(3) .rk { color: #e3a46b; }
+  .lbrow .rk { font-weight: 800; } .lbrow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; } .lbrow .rt { font-weight: 800; font-variant-numeric: tabular-nums; } .lbrow .rt.un { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .lbrow.me { background: rgba(129,182,76,.18); }
+  .lbmsg { padding: 18px; color: var(--muted); text-align: center; }
+  #result .card { width: min(300px, 80%); background: var(--panel); border-radius: 10px; text-align: center; padding: 22px 18px 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, .55); animation: pop .25s ease-out; }
+  @keyframes pop { from { transform: scale(.9); opacity: 0; } }
+  #result h2 { margin: 0 0 4px; font-size: 26px; } #result p { margin: 0 0 16px; color: var(--muted); font-weight: 600; }
+  #result .close { position: absolute; }
+
+  /* the side panel */
+  #side { width: 340px; flex: none; background: var(--panel); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+  #side .head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); font-weight: 800; font-size: 18px; }
+  #side .head img { width: 28px; height: 28px; }
+  .sect { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .sect h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .seg { display: flex; background: var(--panel2); border-radius: 6px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; border: 0; background: none; color: var(--muted); font-weight: 700; font-size: 14px; padding: 8px 4px; border-radius: 4px; }
+  .seg button.on { background: #3c3a37; color: var(--ink); }
+  #levelSeg { flex-wrap: wrap; } #levelSeg button { flex: 1 0 30%; } /* 1.3: six levels, three to a row */
+  .bigbtn { display: block; width: 100%; border: 0; border-radius: 8px; padding: 13px; font-size: 18px; font-weight: 800; color: #fff; background: var(--green); box-shadow: 0 4px 0 #45753c; }
+  .bigbtn:hover { background: var(--green-hi); } .bigbtn:active { transform: translateY(2px); box-shadow: 0 2px 0 #45753c; }
+  #moves { flex: 1; min-height: 120px; max-height: 300px; overflow-y: auto; font-size: 14px; }
+  .mrow { display: grid; grid-template-columns: 42px 1fr 1fr; padding: 3px 16px; } .mrow:nth-child(even) { background: rgba(255, 255, 255, .03); }
+  .mrow .n { color: var(--muted); } .mrow span.mv { font-weight: 700; padding: 1px 6px; border-radius: 3px; justify-self: start; } .mrow span.cur { background: #4b4847; }
+  #status { padding: 10px 16px; font-weight: 700; color: var(--muted); min-height: 41px; border-top: 1px solid var(--line); }
+  .tools { display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .tools button { flex: 1; border: 0; border-radius: 6px; background: #3c3a37; color: var(--ink); font-weight: 700; font-size: 13px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .tools button:hover { background: #484643; } .tools button:disabled { opacity: .4; cursor: default; }
+  .tools button b { font-size: 17px; line-height: 1; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+  .stats div { background: var(--panel2); border-radius: 6px; padding: 6px 2px; } .stats b { display: block; font-size: 18px; } .stats span { font-size: 11px; color: var(--muted); font-weight: 700; }
+  .check { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; margin-top: 8px; color: var(--muted); }
+  .check input { width: 18px; height: 18px; accent-color: var(--green); }
+
+  /* patch notes, at the bottom of the page */
+  #notes { max-width: 1180px; margin: 10px auto 30px; padding: 0 16px; }
+  #notes details { background: var(--panel); border-radius: 8px; padding: 14px 18px; }
+  #notes summary { cursor: pointer; font-weight: 800; font-size: 16px; } #notes summary span { color: var(--muted); font-weight: 600; font-size: 14px; margin-left: 6px; }
+  #notes h3 { margin: 14px 0 6px; font-size: 16px; } #notes h3 small { color: var(--green); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-left: 8px; }
+  #notes ul { margin: 0; padding-left: 20px; color: #d6d4d0; line-height: 1.55; font-size: 14px; }
+
+  /* 1.1: play online */
+  .txt { display: block; width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); font: inherit; font-weight: 700; font-size: 15px; }
+  .txt:focus { outline: none; border-color: var(--green); }
+  .bigbtn.net { margin-top: 8px; font-size: 16px; padding: 11px; }
+  .netbtn { display: block; width: 100%; margin-top: 8px; border: 0; border-radius: 6px; background: #3c3a37; color: var(--ink); font-weight: 700; font-size: 14px; padding: 10px; } .netbtn:hover { background: #484643; }
+  #netCancel[hidden], #rateCard[hidden], #rateLevel[hidden] { display: none; } /* 1.4: .netbtn and the card's flex used to override hidden (Cancel always showed) */
+  /* 1.4: your rating */
+  #rateCard { background: var(--panel2); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  #rateCard b { font-size: 24px; color: #ffd166; } #rateCard .rl { font-size: 12px; color: var(--muted); font-weight: 700; } #rateCard .vs { width: 100%; font-size: 13px; color: var(--ink); }
+  #rateLevel { margin-bottom: 8px; } #rateLevel p { margin: 0 0 6px; font-size: 13px; color: var(--muted); } #rateLevel .lv { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  #rateLevel .lv button { border: 0; border-radius: 6px; background: #3c3a37; color: var(--ink); font-weight: 700; font-size: 13px; padding: 8px 4px; } #rateLevel .lv button:hover { background: #484643; }
+  #rateLevel .lv button small { display: block; color: var(--muted); font-weight: 600; } #rateLevel .lv button:last-child { grid-column: 1 / -1; }
+  #resR { margin: -4px 0 12px; font-weight: 800; color: #ffd166; } #resR:empty { display: none; } #resR.dn { color: #ff8a80; }
+  .netrow { display: flex; gap: 6px; margin-top: 8px; } .netrow .txt { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .2em; text-align: center; } .netrow .netbtn { flex: 1.4; margin: 0; }
+  #netStatus { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--green-hi); } #netStatus:empty { display: none; } #netStatus.bad { color: #ff8a80; }
+  #chatBox { display: none; margin-bottom: 8px; } body.online #chatBox { display: block; }
+  #chatLog { max-height: 150px; min-height: 40px; overflow-y: auto; background: var(--panel2); border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; font-size: 14px; line-height: 1.4; }
+  #chatLog:empty::before { content: 'Chat with your opponent here.'; color: var(--muted); }
+  #chatLog div { overflow-wrap: anywhere; } #chatLog b { color: var(--green-hi); } #chatLog .me b { color: #ffd166; } #chatLog .sys { color: var(--muted); font-style: italic; }
+  #chatIn { font-weight: 600; font-size: 14px; }
+  #netLeave { display: none; } body.online #netLeave { display: block; } body.online #netPick, body.online #netCancel, body.online .offline-only { display: none; }
+  #resNew:disabled { opacity: .6; }
+  @media (max-width: 860px) {
+    #app { flex-direction: column; align-items: center; padding: 10px 8px; gap: 12px; }
+    #side { width: var(--size); } #moves { max-height: 180px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div class="player" id="topBar"><div class="avatar">🤖</div><div style="min-width:0"><div class="pname" id="topName">Computer</div><div class="caps" id="topCaps"></div></div><div class="thinking" id="thinking" hidden><i></i><i></i><i></i></div></div>
+    <div id="board"><div id="squares"></div><div id="pieces"></div><div id="promo" hidden></div>
+      <div id="result" hidden><div class="card"><h2 id="resT"></h2><p id="resP"></p><p id="resR"></p><button class="bigbtn" id="resNew">New game</button><button class="link" id="resView" style="margin-top:10px;background:none;border:0;color:var(--muted);font-weight:700">View the board</button></div></div>
+    </div>
+    <div class="player" id="botBar"><div class="avatar you">🙂</div><div style="min-width:0"><div class="pname" id="botName">You</div><div class="caps" id="botCaps"></div></div></div>
+  </div>
+  <aside id="side">
+    <div class="head"><img id="logo" alt=""><span id="headT">Play the computer</span></div>
+    <div class="sect offline-only"><h4>Opponent</h4><div class="seg" id="oppSeg"><button data-v="cpu">🤖 Computer</button><button data-v="local">👥 Local 2-player</button></div></div>
+    <div class="sect offline-only cpu-only"><h4>Computer</h4><div class="seg" id="levelSeg"><button data-v="easy">Easy</button><button data-v="casual">Casual</button><button data-v="medium">Medium</button><button data-v="advanced">Advanced</button><button data-v="hard">Hard</button><button data-v="master">Master</button></div></div>
+    <div class="sect offline-only cpu-only"><h4>Play as</h4><div class="seg" id="colorSeg"><button data-v="w">Red (first)</button><button data-v="r">Random</button><button data-v="b">Black</button></div></div>
+    <div class="sect offline-only"><button class="bigbtn" id="newBtn">New game</button></div>
+    <div class="sect" id="netBox"><h4>Play online</h4>
+      <div id="rateCard" hidden></div>
+      <div id="netPick">
+        <div id="rateLevel" hidden><p>Online games are rated (the Glicko system chess.com uses). How well do you play checkers? This sets your starting rating.</p><div class="lv">
+          <button data-lv="new">New to checkers<small>400</small></button><button data-lv="beginner">Beginner<small>800</small></button>
+          <button data-lv="intermediate">Intermediate<small>1200</small></button><button data-lv="advanced">Advanced<small>1600</small></button>
+          <button data-lv="expert">Expert<small>2000</small></button></div></div>
+        <input id="netName" class="txt" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false">
+        <button class="bigbtn net" data-net="quick">Quick match</button>
+        <button class="netbtn" data-net="create">Create a private table</button>
+        <div class="netrow"><input id="netCode" class="txt code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="netbtn" data-net="join">Join with code</button></div>
+      </div>
+      <button class="netbtn" data-net="cancel" id="netCancel" hidden>Cancel</button>
+      <div id="chatBox"><div id="chatLog"></div><input id="chatIn" class="txt" maxlength="140" placeholder="Say something… (Enter to send)" autocomplete="off" spellcheck="false"></div>
+      <button class="netbtn" data-net="leave" id="netLeave">Leave the table</button>
+      <div id="netStatus"></div>
+    </div>
+    <div class="sect"><button class="netbtn" id="lbBtn">🏆 Checkers leaderboard</button></div>
+    <div id="moves"></div>
+    <div id="status"></div>
+    <div class="tools"><button id="undoBtn" title="Take back your last move"><b>↶</b>Undo</button><button id="flipBtn" title="Turn the board around"><b>⇅</b>Flip</button><button id="resignBtn" title="Give up this game"><b>⚑</b>Resign</button></div>
+    <div class="sect"><h4 id="statsT">Your record against this level</h4><div class="stats" id="stats"></div>
+      <label class="check">Show legal moves<input type="checkbox" id="hintsChk"></label>
+      <label class="check">Sound<input type="checkbox" id="soundChk"></label></div>
+  </aside>
+</div>
+<div id="lb" hidden><div class="card"><h2>🏆 Checkers leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played checkers, ranked by their highest online rating. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
+<div id="notes">
+  <details>
+    <summary>Patch notes <span>v1.0</span></summary>
+    <h3>v1.0 <small>First release</small></h3>
+    <ul>
+      <li>Checkers, made from the arcade's Chess: the same board, buttons and online play, with checker pieces and checkers rules.</li>
+      <li>American checkers: men move diagonally forward, and become kings (with a gold crown) on the far row; kings move both ways. Jumping is compulsory and you keep jumping while you can. A man crowned in the middle of a jump stops there.</li>
+      <li>Pieces that must jump are ringed in gold. Drag a piece or click it and then where it should go; legal moves show as dots, and a multi-jump slides through every hop.</li>
+      <li>You win by taking every piece or leaving your opponent with no move. Draws: the same position three times, or 40 moves each with no capture and no man moved.</li>
+      <li>Six computer levels, Easy to Master, plus Local 2-player on one screen.</li>
+      <li>Play online: Quick match, private tables with a 5-letter code, chat, and rematches with colours swapped.</li>
+      <li>Online games are rated (Glicko), with a checkers rating of its own and a separate <b>🏆 Checkers leaderboard</b>.</li>
+      <li>Squares are numbered 1 to 32 the way checkers players write moves, so the move list reads like 11-15 or 22x15x8.</li>
+    </ul>
+  </details>
+</div>
+<script id="engine">
+'use strict';
+// =====================================================================
+//  Checkers: the rules and the computer player (also run in a Web Worker)
+// =====================================================================
+// American checkers (English draughts) on the dark squares of an 8x8 board. Red ('w', at the bottom) moves first.
+// Men move one square diagonally forward and become kings on the far row; kings move one square diagonally either
+// way. Taking is compulsory: a piece that can jump must, and keeps jumping while it can (a man that is crowned
+// mid-jump stops there). You lose when you have no pieces or no move. Draws: the same position three times, or
+// 40 moves each with no capture and no man moved.
+// The board is 64 squares (0 = top left) so the board code can stay the same as Chess. Pieces: P red man, K red king,
+// p black man, k black king. A "FEN" here is 'w:<64 squares, . for empty>:<plies without progress>'.
+const START_FEN = 'w:' + Array.from({ length: 64 }, (_, s) => { const r = s >> 3, c = s & 7; return (r + c) % 2 === 1 ? (r < 3 ? 'p' : r > 4 ? 'P' : '.') : '.'; }).join('') + ':0';
+const isW = p => p !== '' && p === p.toUpperCase();
+const isKing = p => p === 'K' || p === 'k';
+// squares are named 1-32, the way checkers players write them: row by row from Black's side
+const num = s => (s >> 3) * 4 + ((s & 7) >> 1) + 1;
+const sqName = num;
+const D4 = [[-1, -1], [-1, 1], [1, -1], [1, 1]], FWD_W = [[-1, -1], [-1, 1]], FWD_B = [[1, -1], [1, 1]];
+
+function fromFEN(fen) {
+  const [side, bd, h] = String(fen).split(':');
+  return { b: bd.split('').map(c => c === '.' ? '' : c), w: side === 'w', h: +h || 0, u: [] };
+}
+function toFEN(G) { return (G.w ? 'w' : 'b') + ':' + G.b.map(p => p || '.').join('') + ':' + G.h; }
+const posKey = G => G.b.map(p => p || '.').join('') + (G.w ? 'w' : 'b');
+
+function mk(from, to, path, caps, p) {
+  const crown = !isKing(p) && (isW(p) ? to >> 3 === 0 : to >> 3 === 7);
+  return { from, to, path, caps, p, cap: caps.length > 0, pr: crown ? (isW(p) ? 'K' : 'k') : '' };
+}
+// every way the piece on `origin` can keep jumping from `cur`
+function jumps(G, origin, cur, p, dirs, path, caps, out) {
+  let any = false;
+  for (const [dr, dc] of dirs) {
+    const r = (cur >> 3) + dr * 2, c = (cur & 7) + dc * 2;
+    if (r < 0 || r > 7 || c < 0 || c > 7) continue;
+    const mid = cur + dr * 8 + dc, land = r * 8 + c, q = G.b[mid];
+    if (!q || isW(q) === isW(p) || caps.includes(mid)) continue;
+    if (G.b[land] && land !== origin) continue;
+    any = true;
+    const np = path.concat(land), nc = caps.concat(mid);
+    if (!isKing(p) && (isW(p) ? r === 0 : r === 7)) out.push(mk(origin, land, np, nc, p)); // crowned: the move ends
+    else jumps(G, origin, land, p, dirs, np, nc, out);
+  }
+  if (!any && caps.length) out.push(mk(origin, cur, path, caps, p));
+}
+function gen(G) {
+  const caps = [], quiet = [];
+  for (let s = 0; s < 64; s++) {
+    const p = G.b[s]; if (!p || isW(p) !== G.w) continue;
+    const dirs = isKing(p) ? D4 : G.w ? FWD_W : FWD_B;
+    jumps(G, s, s, p, dirs, [s], [], caps);
+    if (!caps.length) for (const [dr, dc] of dirs) {
+      const r = (s >> 3) + dr, c = (s & 7) + dc; if (r < 0 || r > 7 || c < 0 || c > 7) continue;
+      const t = r * 8 + c; if (!G.b[t]) quiet.push(mk(s, t, [s, t], [], p));
+    }
+  }
+  return caps.length ? caps : quiet;
+}
+const legal = G => gen(G);
+function make(G, m) {
+  const taken = m.caps.map(c => G.b[c]);
+  G.u.push({ m, taken, h: G.h });
+  G.b[m.from] = ''; for (const c of m.caps) G.b[c] = ''; G.b[m.to] = m.pr || m.p;
+  G.h = m.cap || !isKing(m.p) ? 0 : G.h + 1; G.w = !G.w;
+}
+function unmake(G) {
+  const { m, taken, h } = G.u.pop();
+  G.b[m.to] = ''; m.caps.forEach((c, i) => { G.b[c] = taken[i]; }); G.b[m.from] = m.p;
+  G.h = h; G.w = !G.w;
+}
+// a move written the checkers way: 11-15, or 22x15x8 for jumps; it's also what goes over the network
+const uci = m => m.path.map(num).join(m.cap ? 'x' : '-');
+const san = (G, m) => uci(m) + (m.pr ? '♛' : '');
+
+// ---------- evaluation (from the side to move) ----------
+const CENTER = s => { const r = s >> 3, c = s & 7; return (r >= 2 && r <= 5 && c >= 2 && c <= 5) ? 1 : 0; };
+function evaluate(G) {
+  let sc = 0, rm = 0, bm = 0, rk = 0, bk = 0;
+  for (let s = 0; s < 64; s++) {
+    const p = G.b[s]; if (!p) continue;
+    const r = s >> 3, c = s & 7;
+    if (p === 'P') { rm++; sc += 100 + (7 - r) * 3 + CENTER(s) * 4 + (r === 7 ? 6 : 0) + (c === 0 || c === 7 ? 2 : 0); }
+    else if (p === 'p') { bm++; sc -= 100 + r * 3 + CENTER(s) * 4 + (r === 0 ? 6 : 0) + (c === 0 || c === 7 ? 2 : 0); }
+    else if (p === 'K') { rk++; sc += 155 + CENTER(s) * 8 - (r === 0 || r === 7 || c === 0 || c === 7 ? 4 : 0); }
+    else { bk++; sc -= 155 + CENTER(s) * 8 - (r === 0 || r === 7 || c === 0 || c === 7 ? 4 : 0); }
+  }
+  const red = rm + rk, black = bm + bk, total = red + black;
+  // ahead in material: trade pieces off (an even trade helps the side with more)
+  if (red !== black && total < 20) sc += (red > black ? 1 : -1) * (24 - total) * 4;
+  // the side behind with only kings left can't win: lean towards a draw for it
+  if (!rm && !bm && Math.abs(red - black) <= 0) sc = sc / 4;
+  // late in the game, kings hunt: the stronger side's kings close in on the other side's pieces
+  if (total <= 8 && red !== black) {
+    const strong = red > black, mine = [], theirs = [];
+    for (let s = 0; s < 64; s++) { const p = G.b[s]; if (!p) continue; (isW(p) === strong ? mine : theirs).push(s); }
+    let d = 0; for (const a of mine) if (isKing(G.b[a])) for (const b of theirs) d += Math.max(Math.abs((a >> 3) - (b >> 3)), Math.abs((a & 7) - (b & 7)));
+    sc += (strong ? -1 : 1) * d;
+  }
+  return G.w ? sc : -sc;
+}
+
+// ---------- search ----------
+const WIN = 100000, INF = 1e9;
+function order(ms, S, ply) {
+  for (const m of ms) m._o = m.caps.length * 100 + (m.pr ? 50 : 0) + (S.killers[ply] === uci(m) ? 30 : 0) + (S.hist[uci(m)] || 0) / 64;
+  return ms.sort((a, b) => b._o - a._o);
+}
+function search(G, depth, alpha, beta, ply, S) {
+  if ((++S.nodes & 1023) === 0 && Date.now() > S.end) S.stop = true;
+  if (S.stop) return 0;
+  const ms = gen(G);
+  if (!ms.length) return -WIN + ply;
+  if (G.h >= 80) return 0;
+  // forced captures always get looked at, so the search never stops in the middle of an exchange
+  if (depth <= 0 && (!ms[0].cap || ply > 48)) return evaluate(G);
+  order(ms, S, ply);
+  let best = -INF;
+  for (const m of ms) {
+    make(G, m); const v = -search(G, depth - 1, -beta, -alpha, ply + 1, S); unmake(G);
+    if (S.stop) return 0;
+    if (v > best) best = v;
+    if (v > alpha) alpha = v;
+    if (alpha >= beta) { if (!m.cap) { S.killers[ply] = uci(m); S.hist[uci(m)] = (S.hist[uci(m)] || 0) + depth * depth; } break; }
+  }
+  return best;
+}
+function rootScores(G, depth, S, first) {
+  const out = [], ms = order(gen(G), S, 0);
+  if (first) { const i = ms.findIndex(m => uci(m) === first); if (i > 0) ms.unshift(ms.splice(i, 1)[0]); }
+  for (const m of ms) {
+    make(G, m);
+    let v = -search(G, depth - 1, -INF, INF, 1, S);
+    if (S.seen.has(posKey(G)) && v > 0) v -= 40; // don't walk into a repetition when ahead
+    unmake(G);
+    if (S.stop) break; out.push({ m, v });
+  }
+  return out.sort((a, b) => b.v - a.v);
+}
+function deepest(G, S, maxD) {
+  let best = null;
+  for (let d = 1; d <= maxD; d++) {
+    const sc = rootScores(G, d, S, best && uci(best.m));
+    if (sc.length && (!S.stop || !best)) best = sc[0];
+    if (S.stop || (best && Math.abs(best.v) > WIN / 2)) break;
+  }
+  return best;
+}
+function pickMove(fen, level, history) {
+  const G = fromFEN(fen), moves = legal(G); if (!moves.length) return null;
+  if (moves.length === 1) return uci(moves[0]);
+  const S = { nodes: 0, stop: false, end: Date.now() + 60000, killers: [], hist: {}, seen: new Set(history || []) };
+  const rnd = a => a[Math.floor(Math.random() * a.length)];
+  if (level === 'easy') { // a beginner: often just plays something, and only looks at the move itself
+    if (Math.random() < 0.35) return uci(rnd(moves));
+    const sc = rootScores(G, 1, S), top = sc[0].v;
+    return uci(rnd(sc.filter(x => x.v >= top - 60)).m);
+  }
+  if (level === 'casual') { // sees a reply ahead, now and then plays a loose move
+    if (Math.random() < 0.12) return uci(rnd(moves));
+    const sc = rootScores(G, 3, S), top = sc[0].v;
+    if (top > WIN / 2) return uci(sc[0].m);
+    return uci(rnd(sc.filter(x => x.v >= top - 30)).m);
+  }
+  if (level === 'medium') { // a club player: five moves deep, sometimes a slightly weaker move
+    S.end = Date.now() + 2500;
+    const sc = rootScores(G, 5, S); if (!sc.length) return uci(moves[0]);
+    const top = sc[0].v; if (top > WIN / 2) return uci(sc[0].m);
+    return uci(rnd(sc.filter(x => x.v >= top - (Math.random() < 0.15 ? 25 : 8))).m);
+  }
+  // advanced, hard and master: the best move it finds in 0.8, 1.6 or 4 seconds
+  S.end = Date.now() + (level === 'advanced' ? 800 : level === 'master' ? 4000 : 1600);
+  const best = deepest(G, S, level === 'advanced' ? 9 : level === 'master' ? 30 : 16);
+  return uci(best ? best.m : moves[0]);
+}
+
+</script>
+<script>
+'use strict';
+// =====================================================================
+//  Checkers v1.0 (made from Chess 1.5): the board, the pieces and playing the computer
+// =====================================================================
+const VERSION = '1.0';
+const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
+const $ = id => document.getElementById(id);
+
+// ---------- the pieces: flat checkers, drawn here so the game needs no image files ----------
+function pieceSVG(p) {
+  const red = p === p.toUpperCase(), king = p === 'K' || p === 'k';
+  const [c1, c2, side, st, ring] = red ? ['#f2685e', '#b8261f', '#7a1410', '#5a0d0a', 'rgba(255,255,255,.35)'] : ['#5b5753', '#232120', '#0c0b0b', '#000', 'rgba(255,255,255,.18)'];
+  const crown = king ? '<path d="M31 58 L27 36 L39 46 L50 30 L61 46 L73 36 L69 58 Z" fill="#ffd23f" stroke="#8a6200" stroke-width="2.5" stroke-linejoin="round"/><rect x="31" y="58" width="38" height="6" rx="2" fill="#ffd23f" stroke="#8a6200" stroke-width="2.5"/>' : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="g" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></radialGradient></defs>`
+    + `<circle cx="50" cy="56" r="39" fill="${side}"/><circle cx="50" cy="50" r="39" fill="url(#g)" stroke="${st}" stroke-width="3"/>`
+    + `<circle cx="50" cy="50" r="30" fill="none" stroke="${ring}" stroke-width="3"/><circle cx="50" cy="50" r="22" fill="none" stroke="${ring}" stroke-width="2"/>${crown}</svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+const IMG = {}; for (const p of 'PKpk') IMG[p] = pieceSVG(p);
+$('logo').src = IMG.K;
+document.head.insertAdjacentHTML('beforeend', `<link rel="icon" href="${IMG.K}">`);
+
+// ---------- saving ----------
+const SAVE_KEY = 'checkersSave';
+const save = { level: 'medium', color: 'w', hints: true, sound: true, stats: {}, game: null, name: '', online: { w: 0, l: 0, d: 0 }, rating: null };
+try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
+if (!save.online || typeof save.online !== 'object') save.online = {}; for (const k of ['w', 'l', 'd']) save.online[k] = Math.max(0, save.online[k] | 0);
+if (!LEVELS.includes(save.level)) save.level = 'medium';
+if (!['w', 'b', 'r'].includes(save.color)) save.color = 'w';
+for (const l of LEVELS) { const s = save.stats[l] || {}; save.stats[l] = { w: +s.w || 0, l: +s.l || 0, d: +s.d || 0 }; }
+// 1.4: the online rating: r and rd (Glicko), when the last rated game was (at, ms), rated games (n), best rating (peak)
+{ const R = save.rating; save.rating = R && typeof R === 'object' && isFinite(R.r) && isFinite(R.rd) ? { r: Math.min(3500, Math.max(100, +R.r)), rd: Math.min(350, Math.max(30, +R.rd)), at: +R.at || 0, n: Math.max(0, R.n | 0), peak: +R.peak || +R.r } : null; }
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+
+// ---------- sound ----------
+const Sound = (() => {
+  let ctx = null;
+  const init = () => { if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; } const AC = window.AudioContext || window.webkitAudioContext; if (AC) try { ctx = new AC(); } catch (e) {} };
+  function knock(freq, gain, dur, delay = 0) {
+    if (!ctx || !save.sound) return; const t = ctx.currentTime + delay;
+    const len = Math.floor(ctx.sampleRate * dur), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 6);
+    const src = ctx.createBufferSource(); src.buffer = buf; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.2;
+    const g = ctx.createGain(); g.gain.value = gain; src.connect(f); f.connect(g); g.connect(ctx.destination); src.start(t);
+    const o = ctx.createOscillator(), og = ctx.createGain(); o.frequency.setValueAtTime(freq / 8, t); o.frequency.exponentialRampToValueAtTime(freq / 16, t + dur);
+    og.gain.setValueAtTime(gain * 0.5, t); og.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(og); og.connect(ctx.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function tone(freq, dur, gain, delay = 0) {
+    if (!ctx || !save.sound) return; const t = ctx.currentTime + delay, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + dur + 0.05);
+  }
+  return {
+    init, move: () => knock(1700, 0.9, 0.07), capture: () => { knock(1100, 1.3, 0.1); knock(2400, 0.5, 0.05, 0.01); }, castle: () => { knock(1700, 0.8, 0.06); knock(1500, 0.8, 0.06, 0.09); },
+    check: () => { knock(1700, 0.9, 0.07); tone(880, 0.18, 0.12, 0.02); tone(1175, 0.22, 0.1, 0.1); }, promote: () => { knock(1700, 0.9, 0.07); tone(784, 0.15, 0.1); tone(1047, 0.25, 0.1, 0.1); },
+    end: win => { const n = win ? [523, 659, 784, 1047] : [440, 392, 349, 294]; n.forEach((f, i) => tone(f, 0.35, 0.12, i * 0.12)); }, bad: () => tone(160, 0.12, 0.1), start: () => { tone(523, 0.12, 0.08); tone(784, 0.18, 0.08, 0.1); },
+  };
+})();
+
+// ---------- game state ----------
+let G = fromFEN(START_FEN), hist = [], keys = [posKey(G)], legalNow = legal(G);
+let player = 'w', level = save.level, over = null, flipped = false, aiBusy = false, reqId = 0, selected = -1, resignArm = 0;
+let localGame = false, localT = 0; // 1.5: local 2-player: both sides on this screen, the board turns to whoever moves next
+const flip = () => (player === 'b') !== flipped;
+const myTurn = () => !over && !aiBusy && (G.w ? 'w' : 'b') === player;
+
+// ---------- the board ----------
+const boardEl = $('board'), squaresEl = $('squares'), piecesEl = $('pieces');
+let pieceEls = new Array(64).fill(null), sqEls = [];
+const rc = sq => flip() ? [7 - (sq >> 3), 7 - (sq & 7)] : [sq >> 3, sq & 7];
+const sqAt = (row, col) => flip() ? (7 - row) * 8 + (7 - col) : row * 8 + col;
+function buildSquares() {
+  squaresEl.innerHTML = ''; sqEls = new Array(64);
+  for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++) {
+    const sq = sqAt(row, col), d = document.createElement('div'); d.className = 'sq ' + ((row + col) % 2 ? 'd' : 'l');
+    if ((row + col) % 2) d.insertAdjacentHTML('beforeend', `<span class="coord r">${num(sq)}</span>`);
+    squaresEl.appendChild(d); sqEls[sq] = d;
+  }
+}
+function placeEl(el, sq, anim) { const [r, c] = rc(sq); el.classList.toggle('anim', !!anim); el.style.transform = `translate(${c * 100}%, ${r * 100}%)`; }
+function makeEl(p, sq) { const el = document.createElement('div'); el.className = 'pc'; el.style.backgroundImage = `url("${IMG[p]}")`; placeEl(el, sq); piecesEl.appendChild(el); return el; }
+function renderAll() {
+  piecesEl.innerHTML = ''; pieceEls = new Array(64).fill(null);
+  G.b.forEach((p, sq) => { if (p) pieceEls[sq] = makeEl(p, sq); });
+  renderMarks();
+}
+function removeEl(el) { if (!el) return; el.classList.add('gone'); setTimeout(() => el.remove(), 150); }
+// slide the piece along its jumps (the board state has already been updated), taking each jumped piece as it passes
+let animMs = 0;
+function animateMove(m, dropped) {
+  const el = pieceEls[m.from], capEls = m.caps.map(c => { const e = pieceEls[c]; pieceEls[c] = null; return e; });
+  pieceEls[m.from] = null; pieceEls[m.to] = el;
+  const hops = m.path.slice(1), step = 190; animMs = dropped || hops.length < 2 ? 160 : hops.length * step;
+  const crown = () => { if (el && m.pr) el.style.backgroundImage = `url("${IMG[m.pr]}")`; };
+  if (!el) { capEls.forEach(removeEl); return; }
+  el.classList.remove('drag');
+  if (dropped || hops.length < 2) { placeEl(el, m.to, !dropped); capEls.forEach(removeEl); crown(); return; }
+  hops.forEach((sq, i) => setTimeout(() => { placeEl(el, sq, true); setTimeout(() => removeEl(capEls[i]), 110); if (i === hops.length - 1) crown(); }, i * step));
+}
+// highlights: last move, the selected piece, check, and where the selected piece can go
+function renderMarks() {
+  const last = hist.length ? hist[hist.length - 1].m : null;
+  for (let sq = 0; sq < 64; sq++) {
+    const d = sqEls[sq]; d.classList.toggle('last', !!last && (sq === last.from || sq === last.to)); d.classList.toggle('sel', sq === selected);
+    d.classList.toggle('must', !over && !!legalNow.length && legalNow[0].cap && legalNow.some(m => m.from === sq) && (localGame || (G.w ? 'w' : 'b') === player));
+    const old = d.querySelector('.dot'); if (old) old.remove();
+  }
+  if (selected >= 0 && save.hints) for (const m of legalNow) if (m.from === selected) {
+    const dot = document.createElement('div'); dot.className = 'dot' + (m.cap ? ' cap' : ''); sqEls[m.to].appendChild(dot);
+  }
+}
+
+// ---------- playing a move ----------
+function playMove(m, dropped) {
+  // online, your own moves go to the other player
+  if (online.on && (G.w ? 'w' : 'b') === player) Net.send('mv', { n: hist.length, u: uci(m) });
+  const s = san(G, m, legalNow); make(G, m); G.u.length = 0;
+  hist.push({ m, san: s }); keys.push(posKey(G)); legalNow = legal(G); selected = -1;
+  animateMove(m, dropped);
+  if (m.pr) Sound.promote(); else if (m.cap) { for (let i = 0; i < m.caps.length; i++) setTimeout(Sound.capture, i * 190); } else Sound.move();
+  checkEnd(); renderMarks(); renderSide(); saveGame();
+  if (localGame) { if (!over) passTurn(); }
+  else if (!online.on && !over && (G.w ? 'w' : 'b') !== player) aiMove();
+}
+// 1.5: local 2-player: after the move has slid into place, the board turns round for the other player
+function passTurn() { const id = ++localT; setTimeout(() => { if (id !== localT || !localGame || over) return; player = G.w ? 'w' : 'b'; selected = -1; buildSquares(); renderAll(); renderSide(); }, Math.max(450, animMs + 250)); }
+const SIDE = c => c === 'w' ? 'Red' : 'Black';
+function finishLocal() {
+  $('resR').textContent = 'Local games don\'t count towards your record or rating'; $('resR').className = '';
+  $('resT').textContent = over.winner ? SIDE(over.winner) + ' wins!' : 'Draw';
+  $('resP').textContent = over.resigned ? SIDE(over.winner === 'w' ? 'b' : 'w') + ' resigned' : (over.winner ? SIDE(over.winner) + ' won ' : 'Drawn ') + over.why;
+  $('resNew').textContent = 'New game'; $('resNew').disabled = false;
+  setTimeout(() => { if (over) { $('result').hidden = false; Sound.end(true); } }, 450);
+  renderSide();
+}
+function checkEnd() {
+  if (over) return;
+  const side = G.w ? 'w' : 'b';
+  if (!legalNow.length) over = { winner: side === 'w' ? 'b' : 'w', why: G.b.some(p => p && isW(p) === G.w) ? 'by blocking every piece' : 'by taking every piece' };
+  else if (G.h >= 80) over = { winner: null, why: 'by the 40-move rule' };
+  else if (keys.filter(k => k === keys[keys.length - 1]).length >= 3) over = { winner: null, why: 'by repetition' };
+  if (over) finish();
+}
+function finish() {
+  if (localGame) { finishLocal(); return; } // 1.5
+  // online games have their own record, and leave your saved game against the computer alone
+  const st = online.on ? save.online : save.stats[level], aborted = online.on && hist.length < 2; // 1.4: an aborted online game doesn't count at all
+  if (!aborted) { if (!over.winner) st.d++; else if (over.winner === player) st.w++; else st.l++; }
+  if (!online.on) save.game = null;
+  // 1.4: rated: an online game against a person in which both of you moved (one that ends sooner is aborted, as on chess.com)
+  $('resR').textContent = ''; $('resR').className = '';
+  if (online.on && save.rating) {
+    if (aborted) $('resR').textContent = 'Game aborted: not rated';
+    else if (!online.oppRate) $('resR').textContent = 'Not rated: your opponent’s copy of the game is out of date';
+    else {
+      const R = save.rating, before = Math.round(R.r), sc = !over.winner ? 0.5 : over.winner === player ? 1 : 0;
+      const res = glicko(R.r, rdNow(R), online.oppRate.r, online.oppRate.rd, sc);
+      R.r = Math.min(3500, Math.max(RATE.floor, res.r)); R.rd = Math.max(RATE.rdMin, res.rd); R.at = Date.now(); R.n++; R.peak = Math.max(R.peak || 0, R.r);
+      const d = Math.round(R.r) - before; online.delta = d;
+      $('resR').textContent = `Rating ${showR(R.r)} (${d >= 0 ? '+' : ''}${d})`; $('resR').className = d < 0 ? 'dn' : '';
+      Net.retrack();
+    }
+  }
+  persist();
+  const won = over.winner === player;
+  $('resT').textContent = !over.winner ? 'Draw' : won ? 'You won!' : 'You lost';
+  $('resP').textContent = over.left ? `${oppName()} left the table. You win.` : over.oppResigned ? `${oppName()} resigned` : over.resigned ? 'You resigned' : (over.winner ? (won ? 'You won ' : (online.on ? oppName() : 'The computer') + ' won ') : 'Drawn ') + over.why;
+  $('resNew').textContent = !online.on ? 'New game' : Net.left || !Net.on ? 'Find a new game' : 'Rematch'; $('resNew').disabled = false;
+  setTimeout(() => { if (over) { $('result').hidden = false; Sound.end(won); } }, Math.max(450, animMs + 250));
+  renderSide();
+}
+
+// ---------- the computer ----------
+let worker = null;
+try { worker = new Worker(URL.createObjectURL(new Blob([$('engine').textContent + '\nonmessage = e => { const d = e.data; postMessage({ id: d.id, move: pickMove(d.fen, d.level, d.keys) }); };'], { type: 'text/javascript' }))); }
+catch (e) { worker = null; }
+function aiMove() {
+  aiBusy = true; const id = ++reqId, t0 = Date.now(), fen = toFEN(G), lv = level, ks = keys.slice();
+  $('thinking').hidden = false; renderSide();
+  const done = uciStr => {
+    if (id !== reqId) return;
+    setTimeout(() => {
+      if (id !== reqId) return; aiBusy = false; $('thinking').hidden = true;
+      const m = legalNow.find(x => uci(x) === uciStr) || legalNow[0]; if (m) playMove(m); else renderSide();
+    }, Math.max(0, (lv === 'easy' ? 650 : 450) - (Date.now() - t0)));
+  };
+  if (worker) { worker.onmessage = e => done(e.data.move); worker.postMessage({ id, fen, level: lv, keys: ks }); }
+  else setTimeout(() => done(pickMove(fen, lv, ks)), 30);
+}
+
+// ---------- your moves: drag a piece, or click it and then click a square ----------
+let drag = null;
+function squareFromPoint(x, y) { const r = boardEl.getBoundingClientRect(); const col = Math.floor((x - r.left) / r.width * 8), row = Math.floor((y - r.top) / r.height * 8); if (col < 0 || col > 7 || row < 0 || row > 7) return -1; return sqAt(row, col); }
+function tryMove(from, to, dropped) {
+  const cands = legalNow.filter(m => m.from === from && m.to === to);
+  if (!cands.length) { if (dropped && pieceEls[from]) placeEl(pieceEls[from], from, true); return false; }
+  cands.sort((a, b) => b.caps.length - a.caps.length); // two jump routes to one square: the longer one
+  playMove(cands[0], dropped); return true;
+}
+boardEl.addEventListener('pointerdown', e => {
+  Sound.init();
+  if (!$('promo').hidden || !$('result').hidden) return;
+  const sq = squareFromPoint(e.clientX, e.clientY); if (sq < 0) return;
+  const p = G.b[sq], mine = p && (isW(p) ? 'w' : 'b') === player;
+  if (selected >= 0 && sq !== selected && legalNow.some(m => m.from === selected && m.to === sq) && myTurn()) { tryMove(selected, sq, false); return; }
+  if (mine && !over) {
+    const again = selected === sq; selected = sq; renderMarks();
+    if (myTurn() && pieceEls[sq]) { drag = { sq, el: pieceEls[sq], again, moved: false, x: e.clientX, y: e.clientY, id: e.pointerId }; try { boardEl.setPointerCapture(e.pointerId); } catch (_) {} }
+    e.preventDefault(); return;
+  }
+  selected = -1; renderMarks();
+});
+boardEl.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 4) return;
+  drag.moved = true; const r = boardEl.getBoundingClientRect(), s = r.width / 8;
+  drag.el.classList.add('drag'); drag.el.classList.remove('anim');
+  drag.el.style.transform = `translate(${e.clientX - r.left - s / 2}px, ${e.clientY - r.top - s / 2}px)`;
+  const hov = squareFromPoint(e.clientX, e.clientY);
+  for (let i = 0; i < 64; i++) sqEls[i].classList.toggle('hover', i === hov && i !== drag.sq);
+});
+function endDrag(e) {
+  if (!drag || e.pointerId !== drag.id) return; const d = drag; drag = null;
+  for (const s of sqEls) s.classList.remove('hover');
+  if (!d.moved) { if (d.again) { selected = -1; renderMarks(); } return; }
+  const to = squareFromPoint(e.clientX, e.clientY);
+  if (to >= 0 && to !== d.sq && myTurn() && tryMove(d.sq, to, true)) return;
+  d.el.classList.remove('drag'); placeEl(d.el, d.sq, true);
+}
+boardEl.addEventListener('pointerup', endDrag);
+boardEl.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) { drag.el.classList.remove('drag'); placeEl(drag.el, drag.sq, true); for (const s of sqEls) s.classList.remove('hover'); drag = null; } });
+boardEl.addEventListener('contextmenu', e => e.preventDefault());
+
+// ---------- the side panel ----------
+const LV = { easy: 'Easy', casual: 'Casual', medium: 'Medium', advanced: 'Advanced', hard: 'Hard', master: 'Master' };
+function captured(forWhite) { // the other colour's pieces this side has taken, and how many pieces it's ahead
+  const have = { w: 0, b: 0 }; for (const p of G.b) if (p) have[isW(p) ? 'w' : 'b']++;
+  const opp = forWhite ? 'b' : 'w', out = [];
+  for (let i = 0; i < Math.max(0, 12 - have[opp]); i++) out.push(forWhite ? 'p' : 'P');
+  return { out, lead: have[forWhite ? 'w' : 'b'] - have[opp] };
+}
+function capsHTML(white) { const c = captured(white); return c.out.map(p => `<img alt="" src="${IMG[p]}">`).join('') + (c.lead > 0 ? `<span>+${c.lead}</span>` : ''); }
+function renderSide() {
+  if (typeof renderRate === 'function') try { renderRate(); } catch (e) {} // 1.4
+  const topIsWhite = flip(), aiColor = player === 'w' ? 'b' : 'w';
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // 1.4: online, both names carry their rating, as on chess.com
+  const nameFor = col => col === player ? 'You' + (online.on && save.rating ? `<small>${showR(save.rating.r)}</small>` : '') : online.on ? `${esc(oppName())}<small>${online.oppRate ? showR(online.oppRate.r) : 'Online'}</small>` : `Computer<small>${LV[level]}</small>`;
+  const oppFace = online.on ? '👤' : '🤖';
+  const topCol = topIsWhite ? 'w' : 'b', botCol = topIsWhite ? 'b' : 'w';
+  $('topName').innerHTML = nameFor(topCol); $('botName').innerHTML = nameFor(botCol);
+  $('topBar').querySelector('.avatar').textContent = topCol === player ? '🙂' : oppFace; $('topBar').querySelector('.avatar').classList.toggle('you', topCol === player);
+  $('botBar').querySelector('.avatar').textContent = botCol === player ? '🙂' : oppFace; $('botBar').querySelector('.avatar').classList.toggle('you', botCol === player);
+  $('topCaps').innerHTML = capsHTML(topCol === 'w'); $('botCaps').innerHTML = capsHTML(botCol === 'w');
+  // the thinking dots go on the computer's bar
+  const think = $('thinking'); (topCol === aiColor ? $('topBar') : $('botBar')).appendChild(think);
+  // move list
+  let h = ''; for (let i = 0; i < hist.length; i += 2) {
+    const a = hist[i], b = hist[i + 1], last = hist.length - 1;
+    h += `<div class="mrow"><span class="n">${i / 2 + 1}.</span><span class="mv${i === last ? ' cur' : ''}">${a.san}</span><span class="mv${i + 1 === last ? ' cur' : ''}">${b ? b.san : ''}</span></div>`;
+  }
+  const mv = $('moves'); mv.innerHTML = h || '<div class="mrow" style="color:var(--muted);display:block">Moves will show here.</div>'; mv.scrollTop = mv.scrollHeight;
+  // status line
+  let st;
+  if (over) st = !over.winner ? 'Draw ' + over.why + '.' : (over.winner === player ? 'You won ' : 'You lost ') + (over.resigned ? '(you resigned).' : over.why + '.');
+  else if (resignArm) st = 'Click Resign again to give up this game.';
+  else if (aiBusy) st = 'The computer is thinking…';
+  else if (online.on && (G.w ? 'w' : 'b') !== player) st = `${oppName()}’s move.`;
+  else st = (legalNow.length && legalNow[0].cap ? 'You must jump! ' : '') + 'Your move.' + (online.on && !hist.length ? ` You’re ${SIDE(player)}.` : '');
+  $('status').textContent = st;
+  $('undoBtn').disabled = online.on || !!over || !hist.some((x, i) => (i % 2 === 0) === (player === 'w'));
+  $('resignBtn').disabled = !!over || !hist.length;
+  const s = online.on ? save.online : save.stats[save.level];
+  $('statsT').textContent = online.on ? 'Your online record' : 'Your record against this level';
+  $('headT').textContent = online.on ? 'Playing online' : 'Play the computer';
+  $('stats').innerHTML = `<div><b>${s.w}</b><span>Wins</span></div><div><b>${s.l}</b><span>Losses</span></div><div><b>${s.d}</b><span>Draws</span></div>`;
+  for (const b of $('levelSeg').children) b.classList.toggle('on', b.dataset.v === save.level);
+  for (const b of $('colorSeg').children) b.classList.toggle('on', b.dataset.v === save.color);
+  for (const b of $('oppSeg').children) b.classList.toggle('on', b.dataset.v === (save.opp || 'cpu'));
+  if (localGame && !online.on) { // 1.5: two people on one screen
+    const nm = c => c === 'w' ? 'Red<small>Player 1</small>' : 'Black<small>Player 2</small>';
+    $('topName').innerHTML = nm(topCol); $('botName').innerHTML = nm(botCol);
+    for (const [bar, c] of [['topBar', topCol], ['botBar', botCol]]) { const a = $(bar).querySelector('.avatar'); a.textContent = c === 'w' ? '🔴' : '⚫'; a.classList.toggle('you', c === (G.w ? 'w' : 'b') && !over); }
+    const side = G.w ? 'w' : 'b';
+    $('status').textContent = over ? (!over.winner ? 'Draw ' + over.why + '.' : over.resigned ? SIDE(over.winner === 'w' ? 'b' : 'w') + ' resigned.' : SIDE(over.winner) + ' won ' + over.why + '.') : resignArm ? 'Click Resign again to give up for ' + SIDE(side) + '.' : (legalNow.length && legalNow[0].cap ? 'Must jump! ' : '') + SIDE(side) + ' to move.';
+    $('undoBtn').disabled = !!over || !hist.length;
+    $('statsT').textContent = 'Local 2-player'; $('headT').textContent = 'Local 2-player';
+    $('stats').innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--muted)">Pass the device after each move: the board turns round for whoever plays next. These games don\'t count towards your record or rating.</div>';
+  }
+  $('hintsChk').checked = save.hints; $('soundChk').checked = save.sound;
+}
+function saveGame() { if (online.on || localGame) return; save.game = over ? null : { moves: hist.map(x => uci(x.m)), player, level }; persist(); }
+
+// ---------- new game, undo, flip, resign ----------
+function newGame() {
+  reqId++; aiBusy = false; $('thinking').hidden = true; $('result').hidden = true; $('promo').hidden = true;
+  level = save.level; player = save.color === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : save.color;
+  localGame = save.opp === 'local'; localT++; if (localGame) player = 'w'; document.body.classList.toggle('local', localGame); // 1.5
+  G = fromFEN(START_FEN); hist = []; keys = [posKey(G)]; legalNow = legal(G); over = null; selected = -1; resignArm = 0; flipped = false;
+  buildSquares(); renderAll(); renderSide(); saveGame(); Sound.start();
+  if (player === 'b' && !localGame) aiMove();
+}
+// rebuild a game from its list of moves (used for undo and when you come back to a saved game)
+function replay(list) {
+  G = fromFEN(START_FEN); hist = []; keys = [posKey(G)]; legalNow = legal(G);
+  for (const u of list) { const m = legalNow.find(x => uci(x) === u); if (!m) break; const s = san(G, m, legalNow); make(G, m); G.u.length = 0; hist.push({ m, san: s }); keys.push(posKey(G)); legalNow = legal(G); }
+}
+$('newBtn').addEventListener('click', () => { Sound.init(); newGame(); });
+$('resNew').addEventListener('click', () => {
+  Sound.init();
+  if (!online.on) { newGame(); return; }
+  if (Net.left || !Net.on) { leaveOnline(); return; }
+  // a rematch, with the colours swapped, once you both press it
+  online.meAgain = true; Net.send('again'); $('resNew').disabled = true;
+  if (online.oppAgain) startOnline(); else $('resP').textContent = `Waiting for ${oppName()}…`;
+});
+$('resView').addEventListener('click', () => { $('result').hidden = true; });
+$('undoBtn').addEventListener('click', () => {
+  if (localGame && !online.on) { // 1.5: take back one move
+    if (over || !hist.length) return; Sound.init(); localT++; const l = hist.map(x => uci(x.m)); l.pop(); replay(l); player = G.w ? 'w' : 'b'; selected = -1; resignArm = 0; buildSquares(); renderAll(); renderSide(); Sound.move(); return;
+  }
+  if (over || online.on) return; Sound.init(); reqId++; aiBusy = false; $('thinking').hidden = true; $('promo').hidden = true;
+  const list = hist.map(x => uci(x.m));
+  // take back to just before your last move
+  while (list.length) { const wasMine = (list.length % 2 === 1) === (player === 'w'); list.pop(); if (wasMine) break; }
+  replay(list); selected = -1; resignArm = 0; renderAll(); renderSide(); saveGame(); Sound.move();
+  if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
+});
+$('flipBtn').addEventListener('click', () => { flipped = !flipped; buildSquares(); renderAll(); renderSide(); });
+$('resignBtn').addEventListener('click', () => {
+  if (over || !hist.length) return;
+  if (!resignArm) { resignArm = setTimeout(() => { resignArm = 0; renderSide(); }, 3000); renderSide(); return; }
+  clearTimeout(resignArm); resignArm = 0; reqId++; aiBusy = false; $('thinking').hidden = true;
+  if (online.on) Net.send('resign');
+  over = { winner: (localGame && !online.on ? (G.w ? 'w' : 'b') : player) === 'w' ? 'b' : 'w', why: '', resigned: true }; finish(); renderMarks();
+});
+for (const [id, key] of [['levelSeg', 'level'], ['colorSeg', 'color']]) $(id).addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; save[key] = b.dataset.v; persist(); renderSide();
+  $('status').textContent = key === 'level' && hist.length && !over ? `${LV[b.dataset.v]} starts with your next new game.` : $('status').textContent;
+});
+$('oppSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || online.on) return; Sound.init(); save.opp = b.dataset.v; persist(); newGame(); }); // 1.5
+$('hintsChk').addEventListener('change', e => { save.hints = e.target.checked; persist(); renderMarks(); });
+$('soundChk').addEventListener('change', e => { save.sound = e.target.checked; persist(); });
+
+// ---------- sizing ----------
+function resize() {
+  const W = innerWidth, H = innerHeight;
+  const size = W > 860 ? Math.min(H - 32 - 120, W - 340 - 72, 760) : Math.min(W - 36, 640); // room for the wooden frame
+  document.documentElement.style.setProperty('--size', Math.max(260, Math.floor(size / 8) * 8) + 'px');
+}
+addEventListener('resize', resize);
+
+
+// ---------- 1.1: play online against another person ----------
+// Over the arcade's Supabase Realtime project. Quick match: everyone waiting is in Presence on ch-lobby, oldest
+// first, and the oldest two pair up (the older one is host). A private table has a 5-letter code and whoever made it
+// is host. A table is one channel, ch-t-<key>: Presence says who's sitting there, and moves are broadcasts.
+// The host plays White in the first game and the colours swap with every rematch. A move is 'mv' with its number
+// (n) and the move in UCI (u); the other side checks it's legal before playing it. 'resign', and 'again' for a rematch.
+// Leaving the table loses the game. ?chroom=<name> uses separate test channels.
+// ---------- 1.4: ratings, the way chess.com does them ----------
+// chess.com rates with the Glicko system: every player has a rating and a rating deviation (RD), how sure the system is
+// of that rating. You start at the level you pick (400 new to chess, 800 beginner, 1200 intermediate, 1600 advanced,
+// 2000 expert) with RD 350, so your first games move it a lot; each game lowers your RD, and time away raises it again.
+// Each game is its own rating period (Glickman's Glicko formulas). Only online games against a person are rated.
+const RATE = { start: { new: 400, beginner: 800, intermediate: 1200, advanced: 1600, expert: 2000 }, rd0: 350, rdMin: 30, c: 18, floor: 100, prov: 110 };
+const GQ = Math.log(10) / 400, gRD = rd => 1 / Math.sqrt(1 + 3 * GQ * GQ * rd * rd / (Math.PI * Math.PI));
+// RD grows while you don't play: about a year away takes a settled rating back to RD 350
+function rdNow(R, t = Date.now()) { if (!R) return RATE.rd0; const days = R.at ? Math.max(0, (t - R.at) / 864e5) : 0; return Math.min(RATE.rd0, Math.sqrt(R.rd * R.rd + RATE.c * RATE.c * days)); }
+// one game against an opponent rated ro with deviation rdo; s = 1 win, 0.5 draw, 0 loss
+function glicko(r, rd, ro, rdo, s) {
+  const g = gRD(rdo), E = 1 / (1 + Math.pow(10, -g * (r - ro) / 400)), d2 = 1 / (GQ * GQ * g * g * E * (1 - E));
+  const k = 1 / (1 / (rd * rd) + 1 / d2);
+  return { r: r + GQ * k * g * (s - E), rd: Math.sqrt(k), E };
+}
+const showR = r => String(Math.round(r));
+const myRating = () => save.rating ? { r: Math.round(save.rating.r), rd: Math.round(rdNow(save.rating)) } : {};
+
+const Net = (() => {
+  const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
+  const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
+  const TEST = (new URLSearchParams(location.search).get('ckroom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
+  const BASE = TEST ? 'ck-test-' + TEST : 'ck';
+  const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const myId = (Math.random().toString(36) + '0000000').slice(2, 8);
+  let client = null, libLoad = null, lobby = null, table = null, hostId = null, expectId = null, waitTimer = 0, queueT = 0;
+  const api = { on: false, name: '', opp: null, left: false, me: myId, isHost: () => hostId === myId };
+  const handlers = {};
+  const emit = (ev, d) => (handlers[ev] || []).forEach(f => { try { f(d); } catch (e) { console.error(e); } });
+  api.onEvent = (ev, f) => { (handlers[ev] = handlers[ev] || []).push(f); };
+  api.cleanName = n => String(n || '').replace(/[^A-Za-z0-9_ .'-]/g, '').trim().slice(0, 16);
+
+  function getClient() {
+    if (client) return Promise.resolve(client);
+    try { const A = window.parent !== window && window.parent.ArcadeOnline, c = A && A.client && A.client(); if (c) return Promise.resolve(client = c); } catch (e) {}
+    if (!libLoad) libLoad = new Promise((res, rej) => {
+      if (window.supabase && window.supabase.createClient) return res();
+      const s = document.createElement('script'); s.src = SB_LIB; s.async = true; s.onload = res; s.onerror = () => { libLoad = null; rej('offline'); };
+      document.head.appendChild(s);
+    });
+    return libLoad.then(() => client || (client = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } })));
+  }
+  const chan = topic => client.channel(topic, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
+  function joinChan(ch) {
+    return new Promise((res, rej) => {
+      let done = false; const to = setTimeout(() => { if (!done) { done = true; rej('offline'); } }, 10000);
+      ch.subscribe(st => { if (done) return; if (st === 'SUBSCRIBED') { done = true; clearTimeout(to); res(); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { done = true; clearTimeout(to); rej('offline'); } });
+    });
+  }
+  function drop(ch) { if (!ch || !client) return; try { ch.untrack && ch.untrack().catch(() => {}); } catch (e) {} try { const p = client.removeChannel(ch); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+  const members = ch => { const st = ch ? ch.presenceState() : {}, out = []; for (const k in st) { const m = st[k] && st[k][0]; if (m && typeof m.id === 'string') out.push(m); } return out; };
+  api.send = (ev, payload = {}) => { if (!table || table.state !== 'joined') return; try { const p = table.send({ type: 'broadcast', event: ev, payload: Object.assign({ f: myId }, payload) }); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+
+  async function seat(key, host, expect) {
+    hostId = host; expectId = expect || null; api.opp = null; api.left = false;
+    table = chan(BASE + '-t-' + key);
+    for (const ev of ['mv', 'resign', 'again', 'chat']) table.on('broadcast', { event: ev }, m => { const p = m.payload || {}; if (api.opp && p.f === api.opp.id) emit(ev, p); });
+    table.on('presence', { event: 'sync' }, onTable);
+    await joinChan(table);
+    await table.track(Object.assign({ id: myId, n: api.name, h: host === myId }, api.myRating ? api.myRating() : {})); // 1.4: with your rating
+  }
+  // 1.4: after a rated game, tell the table your new rating (for the rematch)
+  api.retrack = () => { if (table && table.state === 'joined') { try { const p = table.track(Object.assign({ id: myId, n: api.name, h: hostId === myId }, api.myRating ? api.myRating() : {})); if (p && p.catch) p.catch(() => {}); } catch (e) {} } };
+  const rateOf = m => { const r = +m.r, rd = +m.rd; return isFinite(r) && isFinite(rd) && r >= 100 && r <= 3500 && rd >= 30 && rd <= 350 ? { r, rd } : null; };
+  function onTable() {
+    const others = members(table).filter(m => m.id !== myId);
+    if (!api.opp) {
+      const c = expectId ? others.find(m => m.id === expectId) : hostId === myId ? others[0] : others.find(m => m.h);
+      if (!hostId && others.length > 1) { emit('error', 'That table is full.'); api.leave(); return; }
+      if (!c) return;
+      if (!hostId) hostId = c.id;
+      api.opp = { id: c.id, name: api.cleanName(c.n) || 'Opponent', rate: rateOf(c) };
+      clearTimeout(waitTimer); emit('matched', api.opp);
+    } else if (!others.some(m => m.id === api.opp.id) && !api.left) { api.left = true; emit('left', api.opp); }
+    else { const o = others.find(m => m.id === api.opp.id); if (o) { api.opp.rate = rateOf(o); emit('rate'); } }
+  }
+  api.quick = async (name, again) => {
+    api.name = api.cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    lobby = chan(BASE + '-lobby');
+    const t = again && queueT ? queueT : (queueT = Date.now());
+    let pairing = false;
+    lobby.on('presence', { event: 'sync' }, () => {
+      if (pairing || !lobby) return;
+      const q = members(lobby).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1)), i = q.findIndex(m => m.id === myId);
+      if (i < 0) return;
+      emit('queue', q.length);
+      const mate = i % 2 === 0 ? q[i + 1] : q[i - 1];
+      if (!mate) return;
+      pairing = true;
+      const host = i % 2 === 0 ? myId : mate.id, guest = host === myId ? mate.id : myId;
+      const lb = lobby; lobby = null; drop(lb);
+      seat('q' + host + guest, host, mate.id).catch(() => emit('error', 'offline'));
+      clearTimeout(waitTimer);
+      waitTimer = setTimeout(() => { if (!api.opp && api.on) { const tb = table; table = null; drop(tb); api.quick(api.name, true).catch(() => emit('error', 'offline')); } }, 8000);
+    });
+    await joinChan(lobby);
+    await lobby.track({ id: myId, n: api.name, t });
+  };
+  api.create = async name => {
+    api.name = api.cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    const code = Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
+    await seat('c' + code, myId, null);
+    return code;
+  };
+  api.join = async (name, code) => {
+    api.name = api.cleanName(name) || 'Player'; api.on = true;
+    await getClient();
+    await seat('c' + code, null, null);
+    clearTimeout(waitTimer);
+    waitTimer = setTimeout(() => { if (!api.opp && api.on) { emit('error', 'Nobody is at table ' + code + '.'); api.leave(); } }, 6000);
+  };
+  api.leave = () => { api.on = false; clearTimeout(waitTimer); const a = lobby, b = table; lobby = table = null; api.opp = null; hostId = null; drop(a); drop(b); };
+  api.myRating = myRating;
+  return api;
+})();
+
+// the online game: on is true while you're at a table
+const online = { on: false, gameNo: 0, meAgain: false, oppAgain: false };
+const oppName = () => (Net.opp && Net.opp.name) || online.lastOpp || 'Opponent';
+function startOnline() {
+  online.on = true; localGame = false; localT++; document.body.classList.remove('local'); online.lastOpp = Net.opp.name;
+  reqId++; aiBusy = false; $('thinking').hidden = true; $('result').hidden = true; $('promo').hidden = true;
+  // the host is White in odd games, Black in even ones
+  player = (online.gameNo % 2 === 0) === Net.isHost() ? 'w' : 'b'; online.gameNo++; online.meAgain = online.oppAgain = false;
+  // 1.4: the ratings this game is played for (an opponent on an older copy of the game has none: unrated)
+  online.oppRate = Net.opp.rate ? { r: Net.opp.rate.r, rd: Net.opp.rate.rd } : null; online.delta = null;
+  G = fromFEN(START_FEN); hist = []; keys = [posKey(G)]; legalNow = legal(G); over = null; selected = -1; resignArm = 0; flipped = false;
+  document.body.classList.add('online');
+  buildSquares(); renderAll(); renderSide(); Sound.start();
+}
+function leaveOnline() {
+  // 1.4: walking out of a game you've both moved in loses it, as on chess.com
+  if (online.on && !over && hist.length >= 2) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true }; try { Net.send('resign', {}); } catch (e) {} finish(); }
+  Net.leave(); online.on = false; online.gameNo = 0; document.body.classList.remove('online');
+  netWaiting(false); netStatus('');
+  // back to your game against the computer
+  if (save.game && Array.isArray(save.game.moves)) {
+    reqId++; localGame = false; document.body.classList.remove('local'); save.opp = 'cpu'; aiBusy = false; $('result').hidden = true;
+    player = save.game.player === 'b' ? 'b' : 'w'; level = LEVELS.includes(save.game.level) ? save.game.level : 'medium'; over = null;
+    replay(save.game.moves); buildSquares(); renderAll(); checkEnd(); renderSide();
+    if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
+  } else newGame();
+}
+Net.onEvent('matched', o => { netStatus(`Playing ${o.name}.`); $('chatLog').innerHTML = ''; startOnline(); });
+// chat with the other player (1.2)
+const escH = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function chatLine(name, text, me) { const el = document.createElement('div'); if (me) el.className = 'me'; el.innerHTML = `<b>${escH(name)}:</b> ${escH(text)}`; const log = $('chatLog'); log.appendChild(el); while (log.children.length > 60) log.firstChild.remove(); log.scrollTop = log.scrollHeight; }
+Net.onEvent('chat', p => { if (online.on && typeof p.m === 'string') { chatLine(oppName(), p.m.slice(0, 140)); if (save.sound) Sound.move(); } });
+let chatT = 0;
+$('chatIn').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const t = e.target.value.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 140);
+  if (!t || !online.on || Date.now() - chatT < 600) return;
+  chatT = Date.now(); Net.send('chat', { m: t }); chatLine('You', t, true); e.target.value = '';
+});
+Net.onEvent('mv', p => {
+  if (!online.on || over || (p.n | 0) !== hist.length || (G.w ? 'w' : 'b') === player) return;
+  const m = legalNow.find(x => uci(x) === p.u); if (m) playMove(m);
+});
+Net.onEvent('resign', () => { if (online.on && !over) { over = { winner: player, why: 'by resignation', oppResigned: true }; finish(); renderMarks(); } });
+Net.onEvent('left', () => {
+  if (!online.on) return;
+  if (!over) { over = { winner: player, why: '', left: true }; finish(); renderMarks(); }
+  else { $('resP').textContent = `${oppName()} left the table.`; $('resNew').textContent = 'Find a new game'; renderSide(); }
+});
+Net.onEvent('again', () => { online.oppAgain = true; if (online.meAgain) startOnline(); else if (over) $('resP').textContent = `${oppName()} wants a rematch.`; });
+Net.onEvent('error', msg => { netWaiting(false); netStatus(msg === 'offline' ? 'Couldn’t connect. Check your internet and try again.' : msg, true); });
+Net.onEvent('queue', n => { if (Net.on && !Net.opp) netStatus(n > 1 ? 'Found someone. Starting…' : 'Looking for someone to play… You’re the only one waiting right now. Keep this open, or send a friend a private table code.'); });
+function netStatus(t, bad) { const s = $('netStatus'); s.textContent = t || ''; s.classList.toggle('bad', !!bad); }
+function netWaiting(on) { $('netPick').hidden = on; $('netCancel').hidden = !on; }
+function netFail() { Net.leave(); netWaiting(false); netStatus('Couldn’t connect. Check your internet and try again.', true); }
+$('netBox').addEventListener('click', e => {
+  const b = e.target.closest('button[data-net]'); if (!b) return; Sound.init();
+  const go = b.dataset.net, name = Net.cleanName($('netName').value);
+  if (go === 'cancel') { Net.leave(); netWaiting(false); netStatus(''); return; }
+  if (go === 'leave') { leaveOnline(); return; }
+  if (!save.rating) { netStatus('Pick how well you play first: it sets your starting rating.', true); return; } // 1.4
+  if (!name) { netStatus('Type your name first.', true); $('netName').focus(); return; }
+  save.name = name; persist(); netWaiting(true);
+  if (go === 'quick') { netStatus('Looking for someone to play…'); Net.quick(name).catch(netFail); }
+  else if (go === 'create') { netStatus('Setting up a table…'); Net.create(name).then(code => netStatus(`Your table code is ${code}. Send it to a friend, then wait here.`)).catch(netFail); }
+  else if (go === 'join') {
+    const code = $('netCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 5) { netWaiting(false); netStatus('A table code has 5 letters.', true); return; }
+    netStatus('Joining table ' + code + '…'); Net.join(name, code).catch(netFail);
+  }
+});
+$('netName').value = save.name || '';
+// 1.4: the level you start from (once), and the rating card
+$('rateLevel').addEventListener('click', e => {
+  const b = e.target.closest('button[data-lv]'); if (!b || save.rating) return;
+  const r = RATE.start[b.dataset.lv]; if (!r) return;
+  save.rating = { r, rd: RATE.rd0, at: 0, n: 0, peak: r }; persist(); netStatus(''); renderRate();
+});
+function renderRate() {
+  const R = save.rating, card = $('rateCard'), esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  $('rateLevel').hidden = !!R || online.on; card.hidden = !R;
+  if (!R) return;
+  const prov = rdNow(R) > RATE.prov; // like chess.com, a rating it isn't sure of yet gets a question mark
+  let h = `<span class="rl">Rating</span><b>${showR(R.r)}${prov ? '?' : ''}</b><span class="rl">${R.n ? R.n + ' rated game' + (R.n === 1 ? '' : 's') + ' · best ' + showR(R.peak) : 'No rated games yet'}${prov ? ' · provisional' : ''}</span>`;
+  if (online.on && Net.opp) h += `<div class="vs">Playing ${esc(oppName())} ${online.oppRate ? '(' + showR(online.oppRate.r) + (online.oppRate.rd > RATE.prov ? '?' : '') + ')' : '(unrated game)'}${online.delta !== null && online.delta !== undefined && over ? ` · this game ${online.delta >= 0 ? '+' : ''}${online.delta}` : ''}</div>`;
+  card.innerHTML = h;
+}
+Net.onEvent('rate', () => { if (online.on && !hist.length && Net.opp && Net.opp.rate) { online.oppRate = { r: Net.opp.rate.r, rd: Net.opp.rate.rd }; renderRate(); } }); // their new rating arrives for a rematch
+
+// ---------- 1.5: the leaderboard: every player with an Arcade account who has played chess, by their highest rating ----------
+// The arcade's server keeps each account's best in every game (games.js stat(), sent by account.js). It answers
+// /acct/top?g=chess with all of them in one request; if this copy of the server doesn't have that yet, the board asks
+// for the player list and then each player who has scores (6 at a time). Either way the result is kept for 10 minutes
+// in this tab (sessionStorage), so opening the board again costs nothing.
+const LB = (() => {
+  const KEY = 'checkers-lb', TTL = 10 * 60e3;
+  const acc = () => { try { return (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount || null; } catch (e) { return window.ArcadeAccount || null; } };
+  const server = () => { const A = acc(); return (A && A.server) || 'https://arcade-realtime.arcade-realtime.workers.dev'; };
+  const myName = () => { const A = acc(); try { const n = A && (typeof A.name === 'function' ? A.name() : A.name); if (n) return String(n); } catch (e) {} return save.name || ''; };
+  const best = s => { const m = /best (\d+)/.exec(s || '') || /Rating (\d+)/.exec(s || ''); return m ? +m[1] : 0; };
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  async function load(force) {
+    try { const c = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (!force && c && Date.now() - c.at < TTL) return c.rows; } catch (e) {}
+    const base = server() + '/acct/'; let rows = null;
+    try { const r = await fetch(base + 'top?g=checkers', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (Array.isArray(j.top)) rows = j.top.map(x => ({ n: String(x.n), r: best(x.s) })); } } catch (e) {}
+    if (!rows) {
+      const j = await (await fetch(base + 'players', { cache: 'no-store' })).json();
+      const names = (j.players || []).filter(p => p && p[2]).map(p => p[0]).slice(0, 500); rows = []; let i = 0;
+      const work = async () => { while (i < names.length) { const n = names[i++]; try { const p = await (await fetch(base + 'player?name=' + encodeURIComponent(n), { cache: 'no-store' })).json(); if (p && p.s && p.s.checkers) rows.push({ n: String(p.n || n), r: best(p.s.checkers) }); } catch (e) {} } };
+      await Promise.all(Array.from({ length: 6 }, work));
+    }
+    rows.sort((a, b) => (b.r || 0) - (a.r || 0) || a.n.localeCompare(b.n));
+    try { sessionStorage.setItem(KEY, JSON.stringify({ at: Date.now(), rows })); } catch (e) {}
+    return rows;
+  }
+  function draw(rows) {
+    const me = myName().toLowerCase(); let rk = 0;
+    // your own best from this device, in case the server hasn't heard it yet
+    if (me && save.rating && save.rating.n > 0) { const peak = Math.round(Math.max(save.rating.peak || 0, save.rating.r)), row = rows.find(x => x.n.toLowerCase() === me); if (row) row.r = Math.max(row.r || 0, peak); else rows.push({ n: myName(), r: peak }); rows.sort((a, b) => (b.r || 0) - (a.r || 0) || a.n.localeCompare(b.n)); }
+    $('lbList').innerHTML = rows.length ? rows.map(x => `<div class="lbrow${x.n.toLowerCase() === me ? ' me' : ''}"><span class="rk">${x.r ? '#' + (++rk) : '–'}</span><span class="nm">${esc(x.n)}</span>${x.r ? `<span class="rt">${x.r}</span>` : '<span class="rt un">Unrated</span>'}</div>`).join('') : '<div class="lbmsg">Nobody has played checkers with an account yet. Be the first!</div>';
+  }
+  async function open(force) {
+    $('lb').hidden = false; $('lbList').innerHTML = '<div class="lbmsg">Loading the leaderboard…</div>';
+    try { draw(await load(force)); }
+    catch (e) { $('lbList').innerHTML = '<div class="lbmsg">The leaderboard couldn’t load. It works on the Arcade website, online.</div>'; }
+  }
+  $('lbBtn').addEventListener('click', () => { Sound.init(); open(false); });
+  $('lbRefresh').addEventListener('click', () => open(true));
+  $('lbClose').addEventListener('click', () => { $('lb').hidden = true; });
+  $('lb').addEventListener('click', e => { if (e.target === $('lb')) $('lb').hidden = true; });
+  return { open };
+})();
+
+// ---------- start: carry on a saved game, or start a new one ----------
+resize();
+if (save.game && Array.isArray(save.game.moves) && save.opp !== 'local') {
+  player = save.game.player === 'b' ? 'b' : 'w'; level = LEVELS.includes(save.game.level) ? save.game.level : 'medium';
+  replay(save.game.moves); buildSquares(); renderAll(); checkEnd(); renderSide();
+  if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
+} else newGame();
+
+</script>
+</body>
+</html>
