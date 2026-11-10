@@ -8,6 +8,7 @@ import { createInput, isTouchDevice } from './input.js';
 import { createAudio } from './audio.js';
 import { createUI, ordinal } from './ui.js';
 import { load, save } from './storage.js';
+import { createAI } from './ai.js';
 
 window.__trStarted = true;
 const $ = (id) => document.getElementById(id);
@@ -295,7 +296,7 @@ requestAnimationFrame(frame);
 
 // Test hook for automated checks.
 window.__game = {
-  game, startRace, input, data: () => data, TRACKS, pause, resume, ui,
+  game, startRace, input, data: () => data, TRACKS, pause, resume, ui, createAI,
   // Advance the simulation quickly (used by automated tests).
   simulate(seconds, playerInput) {
     const race = game.race;

@@ -6,18 +6,39 @@ A side-scrolling motocross racer for the browser. It's built with
 You race three AI riders over five tracks, on laptop, desktop and iOS Safari,
 with keyboard or touch.
 
-## Run it
+## Play
 
-It's plain ES modules with no build step. Serve the folder over HTTP and open
-`index.html`:
+`index.html` is the whole game in one self-contained file, the same way Cube
+Assault is shipped. Three.js, planck.js, the styles and the icon are all
+built in, so it makes no outside requests. Put it on any static host, or just
+open it in Chrome, Edge, Firefox or Safari. It works offline.
+
+Don't edit `index.html` by hand. It's generated from `src/` (see below).
+
+## Develop
+
+The source lives in `src/` as plain ES modules. While you work, serve the
+`throttle-ridge` folder and open `src/index.html`:
 
 ```bash
 python3 -m http.server 8765
 ```
 
-Then open <http://localhost:8765/>. Three.js and planck load from jsDelivr,
-pinned through the import map in `index.html`, so the first load needs an
-internet connection.
+Then open <http://localhost:8765/src/>. In development, three.js and planck
+load from jsDelivr through the import map in `src/index.html`, pinned to the
+same versions the build bundles.
+
+To rebuild the single-file `index.html` after changing anything in `src/`:
+
+```bash
+cd tools && npm install && npm run build
+```
+
+`tools/build.mjs` bundles and minifies the code with esbuild, then inlines
+it with the CSS and icon. It stops with an error if the import map's library
+versions drift from the ones in `tools/package.json`. The web app manifest
+is left out of the single file, because its relative paths can't work
+inline. Adding the game to the iOS home screen still runs it full screen.
 
 ## Controls
 
@@ -36,7 +57,7 @@ skill level and mute state are saved in `localStorage`.
 
 ## Code layout
 
-| File | What it does |
+| File (in `src/` unless noted) | What it does |
 | --- | --- |
 | `js/main.js` | Entry point: game states, fixed 60 Hz loop, glue, test hook (`window.__game`) |
 | `js/physics.js` | planck world, ground chain, collision categories |
@@ -47,14 +68,16 @@ skill level and mute state are saved in `localStorage`.
 | `js/ai.js` | AI riders (set throttle/brake/lean only, like a player) |
 | `js/tracks.js` | The 5 track layouts (feature lists) and the spline that turns them into ground |
 | `js/themes.js` | Per-track visual theme: sky, fog, sun, scenery layers, props; made-up sponsors |
-| `js/render.js` | Scene building and drawing: dirt ribbon, cut face, venue, scenery, particles, lights, AO |
+| `js/render.js` | Scene building and drawing: sculpted dirt berm, venue, scenery, particles, lights, AO |
 | `js/models.js` | Bike and rider models built from Three.js primitives |
-| `js/textures.js` | Procedural canvas textures (dirt, strata, grass, sand, banners, number plates, dust) |
+| `js/textures.js` | Procedural canvas textures (raked dirt, grass, sand, rock, banners, number plates, dust) |
 | `js/camera.js` | Side-on follow camera |
 | `js/input.js` | Keyboard and multi-touch |
 | `js/audio.js` | Engine and effects synthesised with Web Audio |
 | `js/ui.js`, `style.css` | Menus, track select, HUD, results |
-| `tools/test.cjs` | Headless browser test (see below) |
+| `tools/build.mjs` | Builds the single-file `index.html` (not in `src/`) |
+| `tools/test.cjs` | Headless browser test (see below; not in `src/`) |
+| `tools/THIRD_PARTY_LICENSES.txt` | three.js and planck.js MIT licence texts |
 
 ## Visual style and decisions
 
@@ -151,15 +174,19 @@ art is original: no logos, assets, characters or models from other games.
 
 ## Testing
 
-`tools/test.cjs` drives headless Chromium with Playwright. Serve the folder
-first, then run it:
+`tools/test.cjs` drives headless Chromium with Playwright. Serve the
+`throttle-ridge` folder first, then run it:
 
 ```bash
 node tools/test.cjs <screenshot-dir>
 ```
 
-Add `--shots`, `--touch`, `--complete` or `--fps` to run one part only. It:
+By default it tests the built `index.html`. Add `--src` to test
+`src/index.html` instead, and `--shots`, `--touch`, `--complete` or `--fps`
+to run one part only. It:
 
+- blocks every outside request when testing the built file, and fails if
+  the game tries to make one, which proves the file is self-contained;
 - loads the game at desktop size (1280×720) and iPhone 14 landscape, with
   notch-sized safe-area insets emulated, and fails on any console error or
   warning;

@@ -1,15 +1,25 @@
-// Headless test: serve the folder first (python3 -m http.server 8765), then
-//   node tools/test.cjs <outdir> [--shots] [--complete] [--fps]
+// Headless test. Serve the throttle-ridge folder first
+// (python3 -m http.server 8765), then:
+//   node tools/test.cjs <outdir> [--shots] [--touch] [--complete] [--fps] [--src]
+// Tests the built single-file index.html; --src tests src/index.html instead.
 const { chromium, devices } = require('playwright');
 const out = process.argv[2] || '.';
 const flags = new Set(process.argv.slice(3));
-const URL = 'http://localhost:8765/index.html';
+const SRC = flags.has('--src');
+const URL = 'http://localhost:8765/' + (SRC ? 'src/index.html' : 'index.html');
+flags.delete('--src');
 const all = flags.size === 0;
 
 async function open(b, ctxOpts) {
   const ctx = await b.newContext(ctxOpts);
   const p = await ctx.newPage();
   const errs = [];
+  // The built file must be fully self-contained: fail any outside request.
+  if (!SRC) await p.route('**/*', (r) => {
+    const u = r.request().url();
+    if (u.startsWith('http://localhost:8765/') || u.startsWith('data:')) return r.continue();
+    errs.push('blocked external request: ' + u); return r.abort();
+  });
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   // GL driver performance notes come from the headless software renderer
   // (screenshots read pixels back); they are not game errors.
@@ -25,8 +35,7 @@ async function open(b, ctxOpts) {
 // Drive the player with the AI so we can check every track can be finished.
 async function autoPlayer(p, skill = 'hard') {
   await p.evaluate(async (skill) => {
-    const { createAI } = await import('./js/ai.js');
-    __game.game.race.player.ai = createAI(skill, 99);
+    __game.game.race.player.ai = __game.createAI(skill, 99);
   }, skill);
 }
 
