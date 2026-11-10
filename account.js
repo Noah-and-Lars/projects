@@ -246,7 +246,20 @@
     if (document.hidden) liveIdleT = setTimeout(function () { if (!document.hidden) return; liveIdle = true; if (live) { var o = live; live = null; liveTok = ''; clearInterval(livePing); try { o.close(); } catch (e) {} } }, 15 * 60 * 1000);
     else if (liveIdle) { liveIdle = false; liveTries = 0; liveConnect(); }
   });
+  // 2026-11-11: a page opened inside a call (call.js keeps the call going by showing other pages in a frame over the
+  // page the call started on) shares that page's connection and leaves the pop-ups to it
+  function shellTop() { try { return window.top !== window && window.top.ArcadeCall && window.top.ArcadeCall.shell && window.top.ArcadeAccount ? window.top : null; } catch (e) { return null; } }
+  var inShell = !!shellTop(), shellHooked = false;
+  // the chat open on screen (on this page, or in the call's frame) gets no pop-up
+  function chatOpen(k) {
+    if (window.ArcadeDmOpen === k) return true;
+    try { var f = window.ArcadeShellFrame && window.ArcadeShellFrame(); return !!(f && f.ArcadeDmOpen === k); } catch (e) { return false; }
+  }
   function liveConnect() {
+    if (inShell) {
+      if (!shellHooked) { shellHooked = true; var alive = true; addEventListener('pagehide', function () { alive = false; }); shellTop().ArcadeAccount.onLive(function (m) { if (alive) liveHandlers.forEach(function (f) { try { f(m); } catch (e) {} }); }); }
+      return;
+    }
     if (liveIdle) return;
     var tok = acct ? acct.token : '';
     if (tok === liveTok && (live || !tok)) return;
@@ -264,7 +277,11 @@
       liveHandlers.forEach(function (f) { try { f(m); } catch (e) {} });
       var c = social || { req: 0, un: 0 };
       if (m.t === 'dm' && m.m && !m.m.f) {
-        if (window.ArcadeDmOpen !== m.k) { setSocial({ req: c.req, un: c.un + 1 }); toast(m.n, m.m.t, 'players.html#dm=' + encodeURIComponent(m.n)); }
+        if (!chatOpen(m.k)) { setSocial({ req: c.req, un: c.un + 1 }); toast(m.n, m.m.t, 'players.html#dm=' + encodeURIComponent(m.n)); }
+      } else if (m.t === 'gm' && m.m && !m.m.f) { // a group message (2026-11-11)
+        if (!chatOpen(m.k)) { setSocial({ req: c.req, un: c.un + 1 }); toast(m.n, (m.m.by ? m.m.by + ': ' : '') + m.m.t, 'players.html#g=' + encodeURIComponent(m.k.slice(2))); }
+      } else if (m.t === 'grp' && m.fresh && m.c) {
+        setSocial({ req: c.req, un: c.un + 1 }); toast(m.c.n, (m.by || 'Someone') + ' added you to this group chat', 'players.html#g=' + encodeURIComponent(m.k.slice(2)));
       } else if (m.t === 'friend' && m.v && m.v.st === 'in') {
         setSocial({ req: c.req + 1, un: c.un }); toast(m.v.n, 'wants to be your friend', 'players.html#p=' + encodeURIComponent(m.v.n));
       } else if (m.t === 'friend' && m.v && m.v.st === 'f') toast(m.v.n, 'is now your friend', 'players.html#p=' + encodeURIComponent(m.v.n));
@@ -432,7 +449,9 @@
     $('acF').onsubmit = function (e) {
       e.preventDefault(); E.textContent = '';
       var n = N.value.trim(), pw = $('acP').value;
-      var bad = nameError(n);
+      // only a new account's name is checked against the reserved names: an account that already exists (the owner's
+      // included) can always log in or reset its password, as long as the name has the right shape
+      var bad = tab === 'signup' ? nameError(n) : /^[A-Za-z0-9_]{3,16}$/.test(n) ? '' : WHY.format;
       if (bad) { E.textContent = bad; return; }
       if (pw.length < 6) { E.textContent = 'Use a password with at least 6 characters.'; return; }
       if (tab === 'signup' && pw !== $('acP2').value) { E.textContent = 'The two passwords don’t match.'; return; }

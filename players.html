@@ -97,6 +97,26 @@
 .dm-send .btn:disabled { opacity: .5; cursor: default; }
 .dm-note { margin: 0; padding: 0 14px 10px; background: #ffffff05; color: var(--muted); font-size: 12px; }
 .dm-older { align-self: center; margin-bottom: 6px; }
+/* group chats (2026-11-11) */
+.av.grp { background: linear-gradient(135deg, #6c5ce7, #00d2a8); }
+.plist li.newgrp { color: var(--accent-2); font-weight: 800; }
+.plist li.newgrp .av { background: #00d2a822; color: var(--accent-2); }
+.bub .by { display: block; font-size: 12px; font-weight: 800; margin-bottom: 1px; color: hsl(var(--h, 260) 70% 72%); }
+.dm-head .grp-info { min-width: 0; display: flex; flex-direction: column; }
+.dm-head .grp-info small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-head .grp-acts { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.dm-head .grp-acts .btn { padding: 7px 11px; font-size: 13px; }
+.grp-form { overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; max-width: 560px; }
+.grp-form h1 { margin: 0; font-size: 24px; }
+.grp-form label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.grp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.grp-chips button { border: 1px solid #ffffff22; background: #ffffff0a; color: var(--text); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.grp-chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.grp-row { display: flex; gap: 8px; }
+.grp-row .field { flex: 1; min-width: 0; }
+.grp-mem { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
+.grp-mem a { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #ffffff0d; color: var(--text); }
+.grp-mem a.own::after { content: ' 👑'; }
 @media (max-width: 760px) {
   .pl { grid-template-columns: minmax(0, 1fr); height: calc(100vh - 128px); height: calc(100dvh - 128px); margin-top: 12px; }
   .pl.detail .pl-side { display: none; }
@@ -137,8 +157,8 @@
 </main>
 
 <script src="games.js?v=184"></script>
-<script src="account.js?v=12"></script>
-<script src="call.js?v=4"></script>
+<script src="account.js?v=13"></script>
+<script src="call.js?v=5"></script>
 <script>
 // Players (2026-11-06): every account on the arcade, their best score in each game, friends and private messages.
 // Everything comes from the arcade's server (realtime-worker: /acct/players, /acct/player, /acct/social,
@@ -218,22 +238,28 @@ function renderList() {
       .map(([k, f]) => ({ k, n: f.n, sub: f.st === 'in' ? 'Wants to be your friend' : f.st === 'out' ? 'Request sent' : '', kind: 'p' }));
     $('plCount').textContent = view === 'friends' ? rows.length + (rows.length === 1 ? ' friend' : ' friends') : rows.length ? 'Friend requests' : '';
   } else {
-    rows = Object.entries(soc ? soc.c : {}).filter(([k]) => !q || k.includes(q)).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0))
-      .map(([k, c]) => ({ k, n: c.n, sub: (c.me ? 'You: ' : '') + plain(c.t || ''), kind: 'dm', un: c.un, ts: c.ts }));
-    $('plCount').textContent = rows.length ? 'Private chats' : '';
+    rows = Object.entries(soc ? soc.c : {}).filter(([k, c]) => !q || k.includes(q) || lc(c.n || '').includes(q)).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0))
+      .map(([k, c]) => c.g ? { k, n: c.n, id: k.slice(2), sub: (c.me ? 'You: ' : c.by ? c.by + ': ' : '') + plain(c.t || ''), kind: 'g', un: c.un, ts: c.ts }
+        : { k, n: c.n, sub: (c.me ? 'You: ' : '') + plain(c.t || ''), kind: 'dm', un: c.un, ts: c.ts });
+    $('plCount').textContent = rows.length ? 'Private and group chats' : '';
+    const ng = item('New group chat', 'Up to 15 people'); ng.classList.add('newgrp'); ng.querySelector('.av').textContent = '+';
+    ng.onclick = () => go('new', 'group'); ng.onkeydown = e => { if (e.key === 'Enter') go('new', 'group'); };
+    if (cur && cur.kind === 'new') ng.classList.add('sel');
+    out.push(ng);
   }
   for (const r of rows.slice(0, limit)) {
     let extra = null;
-    if (r.kind === 'dm') { extra = r.un ? el('span', 'un', r.un) : el('small', 'pl-count', ago(r.ts)); }
+    if (r.kind === 'dm' || r.kind === 'g') { extra = r.un ? el('span', 'un', r.un) : el('small', 'pl-count', ago(r.ts)); }
     else if (view === 'all') extra = tagFor(r.k);
-    const li = item(r.n, r.sub, extra);
+    const li = item(r.n, r.sub, extra), dest = r.kind === 'g' ? r.id : r.n;
+    if (r.kind === 'g') { const av = li.querySelector('.av'); av.textContent = '👥'; av.classList.add('grp'); }
     if (cur && cur.k === r.k && (cur.kind === r.kind || view === 'all')) li.classList.add('sel');
-    li.onclick = () => go(r.kind, r.n);
-    li.onkeydown = e => { if (e.key === 'Enter') go(r.kind, r.n); };
+    li.onclick = () => go(r.kind, dest);
+    li.onkeydown = e => { if (e.key === 'Enter') go(r.kind, dest); };
     out.push(li);
   }
   if (rows.length > limit) { const m = el('li', 'more', 'Show more (' + (rows.length - limit) + ')'); m.onclick = () => { limit += 300; renderList(); }; out.push(m); }
-  if (!rows.length) out.push(el('li', 'none', view === 'all' ? (players.length ? 'Nobody matches that.' : '') : view === 'friends' ? 'No friends yet. Find someone in All and press Add friend.' : view === 'req' ? 'No friend requests right now.' : 'No private chats yet. Open someone’s profile and press Message.'));
+  if (!rows.length) out.push(el('li', 'none', view === 'all' ? (players.length ? 'Nobody matches that.' : '') : view === 'friends' ? 'No friends yet. Find someone in All and press Add friend.' : view === 'req' ? 'No friend requests right now.' : 'No chats yet. Open someone’s profile and press Message, or start a group chat.'));
   ul.replaceChildren(...out);
 }
 for (const b of document.querySelectorAll('.seg button')) b.onclick = () => setView(b.dataset.v);
@@ -252,9 +278,11 @@ function go(kind, n) {
   route();
 }
 function route() {
-  const m = location.hash.match(/^#(p|dm)=([^&]+)/);
+  const m = location.hash.match(/^#(p|dm|g|new)=([^&]+)/);
   if (!m) { cur = null; $('pl').classList.remove('detail'); return; }
   let n = ''; try { n = decodeURIComponent(m[2]); } catch (e) {}
+  if (m[1] === 'g') { if (!/^[0-9a-f]{4,16}$/.test(n)) return; $('pl').classList.add('detail'); if (view !== 'dm') setView('dm'); openGroup(n); return; }
+  if (m[1] === 'new') { $('pl').classList.add('detail'); newGroup(); return; }
   if (!/^[A-Za-z0-9_]{3,16}$/.test(n)) return;
   $('pl').classList.add('detail');
   if (m[1] === 'dm') openDm(n); else openProfile(n);
@@ -386,10 +414,11 @@ function drawDm(bottom) {
   for (const m of dm.msgs) {
     const d = new Date(m.ts).toDateString();
     if (d !== day) { day = d; frag.append(el('div', 'dm-day', new Date(m.ts).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }))); }
-    const b = el('div', 'bub' + (m.f ? ' me' : ''), plain(m.t)), t = el('time', '', clock(m.ts));
-    b.append(t); frag.append(b);
+    const b = el('div', 'bub' + (m.f ? ' me' : '')), t = el('time', '', clock(m.ts));
+    if (dm.g && !m.f && m.by) { const by = el('span', 'by', m.by); by.style.setProperty('--h', hue(m.by)); b.append(by); }
+    b.append(document.createTextNode(plain(m.t)), t); frag.append(b);
   }
-  if (!dm.msgs.length) frag.append(el('p', 'note', 'No messages yet. Say hi!'));
+  if (!dm.msgs.length) frag.append(el('p', 'note', dm.g ? 'No messages yet. Say hi to the group!' : 'No messages yet. Say hi!'));
   const keepFrom = log.scrollHeight - log.scrollTop;
   log.replaceChildren(frag);
   if (bottom) log.scrollTop = log.scrollHeight; else log.scrollTop = log.scrollHeight - keepFrom;
@@ -397,7 +426,7 @@ function drawDm(bottom) {
 function older() {
   const d = dm, first = d.msgs[0];
   if (!first) return;
-  api('dm?with=' + encodeURIComponent(d.n) + '&before=' + first.q, { auth: true }).then(r => {
+  api((d.g ? 'group?id=' + d.g : 'dm?with=' + encodeURIComponent(d.n)) + '&before=' + first.q, { auth: true }).then(r => {
     if (dm !== d || r.status !== 200) return;
     d.msgs = r.msgs.concat(d.msgs); d.more = r.more; drawDm(false);
   });
@@ -418,6 +447,149 @@ function gotDm(k, n, m) {
   counts(); renderList();
 }
 
+// ---------- group chats (2026-11-11) ----------
+// A group is the conversation 'g~<id>' (soc.c) with its name, members (mem) and who made it (own); /acct/group does the rest.
+const GROUP_MAX = 15;
+const grpErr = r => r.error === 'too_many' ? 'A group chat can have up to ' + GROUP_MAX + ' people.' : r.error === 'slow' ? 'Slow down a little.' : r.error === 'no_one' ? 'None of those players could be added (they may have blocked you, or the names are wrong).' : r.error === 'not_found' ? 'You’re not in that group chat any more.' : 'Couldn’t do that. Check your connection and try again.';
+// pick people: your friends as buttons, or type any name
+function picker(box, taken, onChange) {
+  const chosen = new Map(), chips = el('div', 'grp-chips'), row = el('div', 'grp-row'), inp = el('input', 'field'), add = el('button', 'btn ghost2', 'Add');
+  inp.placeholder = 'Any player’s name'; inp.maxLength = 16; inp.autocomplete = 'off'; inp.spellcheck = false; add.type = 'button';
+  row.append(inp, add);
+  const draw = () => {
+    const friends = Object.values(soc ? soc.f : {}).filter(f => f.st === 'f' && !taken.has(lc(f.n))).map(f => f.n);
+    const all = [...new Set(friends.concat([...chosen.values()]))];
+    chips.replaceChildren(...all.map(n => { const b = el('button', chosen.has(lc(n)) ? 'on' : '', (chosen.has(lc(n)) ? '✓ ' : '') + n); b.type = 'button'; b.onclick = () => { if (chosen.has(lc(n))) chosen.delete(lc(n)); else chosen.set(lc(n), n); draw(); }; return b; }));
+    if (!all.length) chips.append(el('span', 'note', 'Type a player’s name to add them.'));
+    onChange(chosen);
+  };
+  const typed = () => { const n = inp.value.trim(); if (!/^[A-Za-z0-9_]{3,16}$/.test(n) || lc(n) === lc(myName()) || taken.has(lc(n))) { inp.focus(); return; } chosen.set(lc(n), n); inp.value = ''; draw(); };
+  add.onclick = typed; inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); typed(); } };
+  box.append(chips, row); draw();
+  return chosen;
+}
+function newGroup() {
+  cur = { kind: 'new', k: 'new' }; dm = null; renderList();
+  if (!signedIn()) { $('main').replaceChildren(needAccount('make group chats')); return; }
+  const f = el('form', 'grp-form'), name = el('input', 'field'), go2 = el('button', 'btn', 'Make the group chat'), err = el('p', 'note');
+  name.placeholder = 'Group name'; name.maxLength = 40; name.required = true; go2.type = 'submit';
+  f.append(backBtn(), el('h1', '', 'New group chat'), el('label', '', 'Name'), name, el('label', '', 'People (up to ' + (GROUP_MAX - 1) + ', plus you)'));
+  const pick = el('div'); f.append(pick);
+  const chosen = picker(pick, new Set([lc(myName())]), ch => { go2.textContent = ch.size ? 'Make the group chat with ' + ch.size + (ch.size === 1 ? ' person' : ' people') : 'Make the group chat'; });
+  f.append(go2, err);
+  f.onsubmit = e => {
+    e.preventDefault(); err.textContent = '';
+    const n = tidy(name.value).slice(0, 40), mem = [...chosen.values()];
+    if (!n) { name.focus(); return; }
+    if (!mem.length) { err.textContent = 'Pick at least one person.'; return; }
+    if (mem.length > GROUP_MAX - 1) { err.textContent = 'A group chat can have up to ' + GROUP_MAX + ' people.'; return; }
+    go2.disabled = true;
+    api('group', { method: 'POST', auth: true, body: { op: 'make', name: n, mem } }).then(r => {
+      go2.disabled = false;
+      if (r.status !== 200) { err.textContent = grpErr(r); return; }
+      soc.c[r.k] = r.c; counts();
+      if (r.skipped && r.skipped.length) alert('Couldn’t add ' + r.skipped.join(', ') + '.');
+      go('g', r.k.slice(2));
+    });
+  };
+  $('main').replaceChildren(f); setTimeout(() => name.focus(), 50);
+}
+function openGroup(id) {
+  const k = 'g~' + id, c = soc && soc.c[k];
+  cur = { kind: 'g', k, n: c ? c.n : 'Group' };
+  renderList();
+  if (!signedIn()) { $('main').replaceChildren(needAccount('use group chats')); return; }
+  if (!soc) { $('main').replaceChildren(el('div', 'pl-empty', 'Loading…')); return; }
+  if (!c) { $('main').replaceChildren(backBtn(), el('div', 'pl-empty', 'You’re not in that group chat.')); return; }
+  const head = el('div', 'dm-head'), av = avatar('G'), info = el('div', 'grp-info'), title = el('b', '', c.n), sub = el('small'), acts = el('div', 'grp-acts');
+  av.textContent = '👥'; av.classList.add('grp');
+  info.append(title, sub); head.append(backBtn(), av, info, acts);
+  const mem = el('div', 'grp-mem'), log = el('div', 'dm-log'), form = el('form', 'dm-send'), inp = el('input', 'field'), send = el('button', 'btn', 'Send');
+  const abtn = (t, cls, fn) => { const b = el('button', 'btn ' + cls, t); b.type = 'button'; b.onclick = fn; acts.append(b); return b; };
+  abtn('📹 Call the group', '', () => { const g = soc.c[k]; if (!g || !window.ArcadeCall) return; const who = g.mem.filter(n => lc(n) !== lc(myName())); ArcadeCall.start(who, g.n); });
+  abtn('➕ Add', 'ghost2', () => addPeople(id));
+  abtn('✏️', 'ghost2', () => { const g = soc.c[k]; const n = prompt('New name for the group chat:', g ? g.n : ''); if (!n || !tidy(n)) return; api('group', { method: 'POST', auth: true, body: { op: 'rename', id, name: tidy(n).slice(0, 40) } }).then(r => { if (r.status !== 200) alert(grpErr(r)); else { soc.c[k] = r.c; drawGroupHead(); renderList(); } }); }).title = 'Rename';
+  abtn('Leave', 'danger', () => { if (!confirm('Leave this group chat? Its messages go from your list.')) return; api('group', { method: 'POST', auth: true, body: { op: 'leave', id } }).then(r => { if (r.status !== 200 && r.error !== 'not_found') { alert(grpErr(r)); return; } delete soc.c[k]; counts(); history.replaceState(null, '', location.pathname + location.search); cur = null; dm = null; $('pl').classList.remove('detail'); $('main').replaceChildren(el('div', 'pl-empty', 'You left the group chat.')); renderList(); }); });
+  inp.maxLength = 500; inp.placeholder = 'Message the group…'; inp.setAttribute('aria-label', 'Message'); inp.autocomplete = 'off'; inp.enterKeyHint = 'send'; send.type = 'submit';
+  form.append(inp, send);
+  $('main').replaceChildren(head, mem, log, form, el('p', 'dm-note', 'Everyone in this group chat can see these messages. Be kind, and never share passwords or personal details.'));
+  log.append(el('p', 'note', 'Loading…'));
+  dm = { k, n: c.n, g: id, msgs: [], more: false, log };
+  function drawGroupHead() {
+    const g = soc.c[k]; if (!g) return;
+    title.textContent = g.n; cur.n = g.n;
+    sub.textContent = g.mem.length + ' people · ' + g.mem.slice(0, 6).join(', ') + (g.mem.length > 6 ? '…' : '');
+    mem.replaceChildren(...g.mem.map(n => { const a = el('a', lc(n) === lc(g.own || '') ? 'own' : '', lc(n) === lc(myName()) ? n + ' (you)' : n); a.href = '#p=' + encodeURIComponent(n); return a; }));
+  }
+  dm.drawHead = drawGroupHead; drawGroupHead();
+  api('group?id=' + id, { auth: true }).then(r => {
+    if (!dm || dm.k !== k) return;
+    if (r.status !== 200) { log.replaceChildren(el('p', 'note', r.status === 404 ? 'You’re not in that group chat any more.' : 'Couldn’t load the messages. Check your connection.')); return; }
+    dm.msgs = r.msgs; dm.more = r.more;
+    if (soc.c[k]) { soc.c[k].un = 0; counts(); renderList(); }
+    drawDm(true);
+  });
+  let sending = false;
+  form.onsubmit = e => {
+    e.preventDefault();
+    const text = plain(inp.value).slice(0, 500);
+    if (!text || sending) return;
+    sending = true; send.disabled = true;
+    api('group', { method: 'POST', auth: true, body: { op: 'say', id, text } }).then(r => {
+      sending = false; send.disabled = false;
+      if (r.status !== 200) { alert(grpErr(r)); return; }
+      inp.value = ''; gotGm(k, r.n, r.m); inp.focus();
+    });
+  };
+  setTimeout(() => inp.focus(), 50);
+}
+function addPeople(id) {
+  const k = 'g~' + id, g = soc.c[k]; if (!g) return;
+  const room = GROUP_MAX - g.mem.length;
+  if (room <= 0) { alert('This group chat already has ' + GROUP_MAX + ' people.'); return; }
+  const f = el('form', 'grp-form'), go2 = el('button', 'btn', 'Add'), err = el('p', 'note'), back = el('button', 'back', '← Back to the chat');
+  back.type = 'button'; back.style.display = 'inline-block'; back.onclick = () => openGroup(id);
+  go2.type = 'submit';
+  f.append(back, el('h1', '', 'Add people to ' + g.n), el('label', '', 'Up to ' + room + ' more'));
+  const pick = el('div'); f.append(pick);
+  const chosen = picker(pick, new Set(g.mem.map(lc)), () => {});
+  f.append(go2, err);
+  f.onsubmit = e => {
+    e.preventDefault(); err.textContent = '';
+    const mem = [...chosen.values()]; if (!mem.length) { err.textContent = 'Pick someone first.'; return; }
+    if (mem.length > room) { err.textContent = 'Only ' + room + ' more can join.'; return; }
+    go2.disabled = true;
+    api('group', { method: 'POST', auth: true, body: { op: 'add', id, mem } }).then(r => {
+      go2.disabled = false;
+      if (r.status !== 200) { err.textContent = grpErr(r); return; }
+      soc.c[k] = r.c;
+      if (r.skipped && r.skipped.length) alert('Couldn’t add ' + r.skipped.join(', ') + '.');
+      openGroup(id);
+    });
+  };
+  dm = null; $('main').replaceChildren(f);
+}
+function gotGm(k, n, m) {
+  if (soc) {
+    const c = soc.c[k]; if (!c) return;
+    c.n = n; c.ts = m.ts; c.t = m.t.slice(0, 80); c.me = m.f; c.by = m.by || '';
+    const open = dm && dm.k === k && cur && cur.kind === 'g' && !document.hidden;
+    if (!m.f && !open) c.un = (c.un || 0) + 1;
+    if (!m.f && open) { clearTimeout(readT); readT = setTimeout(() => api('group?id=' + k.slice(2) + '&before=1', { auth: true }), 1500); }
+  }
+  if (dm && dm.k === k && !dm.msgs.some(x => x.id === m.id && x.f === m.f)) {
+    const near = dm.log.scrollHeight - dm.log.scrollTop - dm.log.clientHeight < 120;
+    dm.msgs.push(m); drawDm(near || m.f);
+  }
+  counts(); renderList();
+}
+function gotGrp(k, c) {
+  if (!soc) return;
+  if (c) soc.c[k] = Object.assign(soc.c[k] || {}, c); else delete soc.c[k];
+  if (dm && dm.k === k) { if (!c) { dm = null; $('main').replaceChildren(el('div', 'pl-empty', 'You’re no longer in that group chat.')); } else if (dm.drawHead) dm.drawHead(); }
+  counts(); renderList();
+}
+
 // ---------- loading, and live updates over the account's WebSocket ----------
 function loadPlayers() {
   return api('players').then(r => {
@@ -427,19 +599,21 @@ function loadPlayers() {
 }
 function loadSocial() {
   if (!signedIn()) { soc = null; counts(); renderList(); return Promise.resolve(); }
-  return api('social', { auth: true }).then(r => { if (r.status === 200) { soc = { f: r.f || {}, c: r.c || {}, b: r.b || {} }; refreshCur(); } });
+  return api('social', { auth: true }).then(r => { if (r.status === 200) { const was = !!soc; soc = { f: r.f || {}, c: r.c || {}, b: r.b || {} }; refreshCur(); if (!was && cur && cur.kind === 'g') route(); } });
 }
 // live updates come over account.js's connection (one per page)
 A.onLive(m => {
   if (!soc) return;
   if (m.t === 'dm' && m.m) gotDm(m.k, m.n, m.m);
+  else if (m.t === 'gm' && m.m) gotGm(m.k, m.n, m.m);
+  else if (m.t === 'grp') gotGrp(m.k, m.c);
   else if (m.t === 'friend') { if (m.v) soc.f[m.k] = m.v; else delete soc.f[m.k]; refreshCur(); }
   else if (m.t === 'read') { if (soc.c[m.k]) soc.c[m.k].un = 0; counts(); renderList(); }
   else if (m.t === 'social') loadSocial();
 });
 // the chat open on screen gets no pop-up from account.js
-setInterval(() => { window.ArcadeDmOpen = dm && cur && cur.kind === 'dm' && !document.hidden ? dm.k : ''; }, 300);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && dm && cur && cur.kind === 'dm' && soc && soc.c[dm.k] && soc.c[dm.k].un) openDm(dm.n); });
+setInterval(() => { window.ArcadeDmOpen = dm && cur && (cur.kind === 'dm' || cur.kind === 'g') && !document.hidden ? dm.k : ''; }, 300);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && dm && cur && (cur.kind === 'dm' || cur.kind === 'g') && soc && soc.c[dm.k] && soc.c[dm.k].un) { if (dm.g) openGroup(dm.g); else openDm(dm.n); } });
 
 ArcadeOnline.start('players');
 let onT = 0;

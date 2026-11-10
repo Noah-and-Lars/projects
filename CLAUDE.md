@@ -90,6 +90,18 @@ source in Settings → Pages should be switched to `main`.
   game reads it and keeps the game's name box on that name, read-only. Cube Assault still lets the
   test names (GAMETESTER, ADMINTEST) be typed, since those ask for their password. Havoc Bay (1.3.1) hides its name
   box in Settings; typing GAMETESTER in the Private room name box asks for the password. The chat uses the account name too.
+- Group chats and bigger calls (2026-11-11): group chats of up to 15 (`GROUP_MAX`) are conversations 'g~<id>' in every
+  member's Account 'soc'.c (`{n, g:1, mem, own}`), messages stored by every member with `by`; `Account.group()` serves
+  `/acct/group` (GET messages; POST op make/add/rename/leave/say), members are told with peer routes 'p-grp' (the whole
+  member list; a member not in it is taken out) and 'p-gmsg'; pushes are `{t:'grp'}` and `{t:'gm'}` (account.js pops
+  them up, players.html shows groups in Chats: `#g=<id>`, `#new=group`). Calls go up to 15 (call.js `MAX`): every pair
+  is still linked directly, `bitrate()` lowers bitrate and resolution as the call grows, the stage becomes a grid; a
+  group's 📹 button calls everyone (`ArcadeCall.start(list, name)`, 'ring' carries `gn`). The Worker's call limits are
+  240 messages per 10 s and 6 new calls a minute, each ringing up to 20 people. While you're in a call, links to other
+  site pages open in a full-page frame (`#accShell`, `openShell`) over the page the call started on, so the call keeps
+  going while you play; the address bar follows the frame. Pages inside it forward calls to the top (`ArcadeCall.inFrame`)
+  and share its live socket (account.js `inShell`); `window.ArcadeShellFrame` lets account.js skip pop-ups for a chat
+  open in the frame. The ➖ button hides the video. Tested with 6 people (headless Chrome, fake cameras).
 - `call.js` (2026-11-10): video calls, one-on-one or groups of up to 4, loaded after `account.js` on `index.html`,
   `play.html`, `chat.html` and `players.html` (the "📹 Video call" / "Add to call" button on a profile and in a DM).
   Anyone can call anyone who hasn't blocked them (the owner asked, 2026-11-10). Set-up rides the account's live socket:

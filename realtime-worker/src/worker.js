@@ -149,7 +149,7 @@ const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gameteste
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
 const ADMIN_HASH = '899ba39fe0b4ce0b8d4994cf7449cc63c2a8ade12fa77e590cfaf5999256ccf2';
-const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn']; // what a browser may ask an account for
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group']; // what a browser may ask an account for
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
 function nameProblem(n) {
@@ -276,6 +276,7 @@ export class Account extends DurableObject {
       return new Response(null, { status: 101, webSocket: pair[0], headers: { 'Sec-WebSocket-Protocol': 'arcade' } });
     }
     if (['social', 'friend', 'block', 'dm', 'profile', 'call'].includes(route)) return this.social(route, req, url, body, a, j, now);
+    if (route === 'group') return this.group(req, url, body, a, j, now);
     if (route === 'turn') return this.turn(j, now);
     if (route === 'logout') { a.sess.splice(si, 1); await S.put('acct', a); return j({ ok: true }); }
     if (route === 'password') {
@@ -353,9 +354,10 @@ export class Account extends DurableObject {
   async webSocketError(ws) { this.webSocketClose(ws, 1011); }
   async addMsg(s, k, n, m, mine) {
     const S = this.ctx.storage, c = s.c[k] || (s.c[k] = { n, seq: 0, un: 0 });
-    c.n = n; c.seq = (c.seq || 0) + 1; c.ts = m.ts; c.t = m.t.slice(0, 80); c.me = mine ? 1 : 0;
+    c.n = n; c.seq = (c.seq || 0) + 1; c.ts = m.ts; c.t = m.t.slice(0, 80); c.me = mine ? 1 : 0; c.by = m.by || '';
     if (!mine) c.un = (c.un || 0) + 1;
     const rec = { id: m.id, f: mine ? 1 : 0, t: m.t, ts: m.ts, q: c.seq };
+    if (m.by) rec.by = m.by;
     const ks = Object.keys(s.c);
     if (ks.length > MAX_CONVOS) { // forget the oldest conversation
       const old = ks.filter(x => x !== k).sort((x, y) => (s.c[x].ts || 0) - (s.c[y].ts || 0))[0];
@@ -433,12 +435,13 @@ export class Account extends DurableObject {
       if (!d || typeof d !== 'object' || size > CALL_MAX) return j({ error: 'bad' }, 400);
       if (s.b[k]) return j({ error: 'you_blocked' }, 403);
       this.calls = (this.calls || []).filter(x => now - x < 10000);
-      if (this.calls.length >= 20) return j({ error: 'slow' }, 429);
+      if (this.calls.length >= 240) return j({ error: 'slow' }, 429); // a 15-person call sends a lot of set-up
       this.calls.push(now);
-      if (d.k === 'ring') { // at most 6 new calls a minute, so nobody can ring the whole Players list
-        this.rings = (this.rings || []).filter(x => now - x < 60000);
-        if (this.rings.length >= 6) return j({ error: 'slow' }, 429);
-        this.rings.push(now);
+      if (d.k === 'ring') { // at most 6 new calls a minute, each ringing at most 20 people, so nobody can ring the whole Players list
+        this.rings = (this.rings || []).filter(x => now - x.t < 60000);
+        const cid = String(d.id || ''), mine = this.rings.filter(x => x.id === cid).length, calls = new Set(this.rings.map(x => x.id));
+        if ((!mine && calls.size >= 6) || mine >= 20) return j({ error: 'slow' }, 429);
+        this.rings.push({ t: now, id: cid });
       }
       const r = await peerCall(this.env, other, 'p-call', { from: a.name, d });
       if (r.status === 404) return j({ error: 'no_account' }, 404);
@@ -446,6 +449,93 @@ export class Account extends DurableObject {
       return j({ on: r.on || 0, fr: r.fr || 0 });
     }
     return j({ error: 'not_found' }, 404);
+  }
+  /* ---------- group chats (2026-11-11) ----------
+     Up to GROUP_MAX people. Like private chats, every member keeps their own copy: the group is the conversation
+     'g~<id>' in each member's 'soc'.c ({n: group name, g: 1, mem: [names], own: who made it, seq, un, ts, t, me, by}),
+     and each message is stored by every member ('m:g~<id>:<seq>', with by = who wrote it). Whoever changes the group
+     tells every member ('p-grp' set: the whole member list), a message goes to every member ('p-gmsg'). Anyone in a
+     group can add people (up to the limit) or rename it; leaving takes you out of everyone's list. Someone who has
+     blocked you can't be put in a group by you, and you don't get messages from people you've blocked.
+       GET  /acct/group?id=<id>[&before=<seq>]       -> { n, mem, own, msgs, more }
+       POST /acct/group { op: 'make', name, mem }     -> { k, c }
+                        { op: 'add', id, mem } | { op: 'rename', id, name } | { op: 'leave', id } | { op: 'say', id, text } */
+  async group(req, url, body, a, j, now) {
+    const S = this.ctx.storage, s = await this.soc(), me = a.name;
+    const gid = String((body && body.id) || url.searchParams.get('id') || ''), k = 'g~' + gid, c = s.c[k];
+    const gname = v => tidy(v).slice(0, 40);
+    const tell = (names, b) => Promise.all(names.map(n => peerCall(this.env, n, b.op ? 'p-grp' : 'p-gmsg', Object.assign({ from: me, id: gid }, b)).then(r => ({ n, r }), () => ({ n, r: { status: 0 } }))));
+    if (req.method === 'GET') {
+      if (!c || !c.g) return j({ error: 'not_found' }, 404);
+      const before = +url.searchParams.get('before') || 0, opt = { prefix: 'm:' + k + ':', reverse: true, limit: 50 };
+      if (before > 0) opt.end = 'm:' + k + ':' + pad(before);
+      const list = [...(await S.list(opt)).values()].reverse();
+      if (c.un) { c.un = 0; await S.put('soc', s); this.push({ t: 'read', k }); }
+      return j({ n: c.n, mem: c.mem, own: c.own, msgs: list, more: list.length === 50 });
+    }
+    if (!body || typeof body !== 'object') return j({ error: 'bad' }, 400);
+    const names = v => [...new Map((Array.isArray(v) ? v : []).map(String).filter(n => NAME_RE.test(n) && n.toLowerCase() !== me.toLowerCase()).map(n => [n.toLowerCase(), n])).values()];
+    // tell the new members, keep the ones who could be added (real accounts that haven't blocked you)
+    const invite = async (list, mem, name, own, id) => {
+      const res = await tell(list, { op: 'set', name, mem, own, id });
+      return res.filter(x => x.r.status === 200 && x.r.ok).map(x => x.r.n || x.n);
+    };
+    if (body.op === 'make') {
+      const name = gname(body.name), want = names(body.mem).filter(n => !s.b[n.toLowerCase()]);
+      if (!name || !want.length) return j({ error: 'bad' }, 400);
+      if (want.length > GROUP_MAX - 1) return j({ error: 'too_many' }, 400);
+      this.grps = (this.grps || []).filter(x => now - x < 3600e3);
+      if (this.grps.length >= 10) return j({ error: 'slow' }, 429);
+      this.grps.push(now);
+      const id = rnd(5);
+      return this.groupSet(s, id, name, me, [me].concat(want), want, j, now, invite, me);
+    }
+    if (!c || !c.g) return j({ error: 'not_found' }, 404);
+    const others = c.mem.filter(n => n.toLowerCase() !== me.toLowerCase());
+    if (body.op === 'add') {
+      const have = new Set(c.mem.map(n => n.toLowerCase())), want = names(body.mem).filter(n => !have.has(n.toLowerCase()) && !s.b[n.toLowerCase()]);
+      if (!want.length) return j({ error: 'bad' }, 400);
+      if (c.mem.length + want.length > GROUP_MAX) return j({ error: 'too_many' }, 400);
+      return this.groupSet(s, gid, c.n, c.own, c.mem.concat(want), want, j, now, invite, me, others);
+    }
+    if (body.op === 'rename') {
+      const name = gname(body.name); if (!name) return j({ error: 'bad' }, 400);
+      c.n = name; await S.put('soc', s); await tell(others, { op: 'set', name, mem: c.mem, own: c.own });
+      this.push({ t: 'grp', k, c }); return j({ k, c });
+    }
+    if (body.op === 'leave') {
+      const mem = others, own = c.own && c.own.toLowerCase() === me.toLowerCase() ? (mem[0] || '') : c.own;
+      delete s.c[k]; await this.dropMsgs(k); await S.put('soc', s);
+      await tell(mem, { op: 'set', name: c.n, mem, own });
+      this.push({ t: 'grp', k, c: null }); return j({ ok: true });
+    }
+    if (body.op === 'say') {
+      const t = plain(body.text).slice(0, DM_LEN);
+      if (!t) return j({ error: 'bad' }, 400);
+      this.sent = (this.sent || []).filter(x => now - x < 10000);
+      if (this.sent.length >= 8) return j({ error: 'slow' }, 429);
+      this.sent.push(now);
+      const m = { id: rnd(6), t, ts: now, by: me };
+      const rec = await this.addMsg(s, k, c.n, m, true);
+      this.push({ t: 'gm', k, n: c.n, m: rec });
+      this.ctx.waitUntil(tell(others, { m }));
+      return j({ m: rec, n: c.n });
+    }
+    return j({ error: 'bad' }, 400);
+  }
+  // a new or bigger member list: the new people are asked first (some can't be added), then everyone gets the final list
+  async groupSet(s, id, name, own, mem, fresh, j, now, invite, me, old) {
+    const k = 'g~' + id, ok = await invite(fresh, mem, name, own, id), okL = new Set(ok.map(n => n.toLowerCase()));
+    if (!ok.length && !old) return j({ error: 'no_one' }, 400);
+    const final = mem.filter(n => !fresh.some(f => f.toLowerCase() === n.toLowerCase()) || okL.has(n.toLowerCase()))
+      .map(n => ok.find(x => x.toLowerCase() === n.toLowerCase()) || n);
+    const tellAll = final.filter(n => n.toLowerCase() !== me.toLowerCase());
+    if (final.length !== mem.length || old) await Promise.all(tellAll.map(n => peerCall(this.env, n, 'p-grp', { from: me, id, op: 'set', name, mem: final, own }).catch(() => null)));
+    const c = s.c[k] || (s.c[k] = { seq: 0, un: 0, ts: now, t: 'You made the group', me: 1 });
+    Object.assign(c, { n: name, g: 1, mem: final, own });
+    await this.ctx.storage.put('soc', s);
+    this.push({ t: 'grp', k, c });
+    return j({ k, c, skipped: fresh.filter(n => !okL.has(n.toLowerCase())) });
   }
   /* Video-call relay (2026-11-10): short-lived logins for Cloudflare's TURN relay, which carries a call's video only
      when the two browsers can't reach each other directly. Off until the owner adds the secrets TURN_KEY_ID and
@@ -499,6 +589,33 @@ export class Account extends DurableObject {
       if (n) this.push({ t: 'call', n: (fr && s.f[k].n) || from, d: body.d, fr });
       return j({ on: n, fr });
     }
+    if (route === 'p-grp') { // a group you're in (or are being put in) changed: its name and whole member list
+      const gk = 'g~' + String(body.id || '').replace(/[^0-9a-f]/g, '').slice(0, 16);
+      if (gk === 'g~') return j({ error: 'bad' }, 400);
+      const mem = (Array.isArray(body.mem) ? body.mem : []).map(String).filter(n => NAME_RE.test(n)).slice(0, GROUP_MAX);
+      const cur = s.c[gk];
+      if (!cur && s.b[k]) return j({ ok: 0, n: a.name }); // blocked them: they can't put you in a group
+      if (cur && !cur.mem.some(n => n.toLowerCase() === k)) return j({ ok: 0, n: a.name }); // only members change a group
+      if (!mem.some(n => n.toLowerCase() === a.name.toLowerCase())) { // you were taken out
+        if (cur) { delete s.c[gk]; await this.dropMsgs(gk); await S.put('soc', s); this.push({ t: 'grp', k: gk, c: null }); }
+        return j({ ok: 1, n: a.name });
+      }
+      const c = cur || (s.c[gk] = { seq: 0, un: 1, ts: now, t: from + ' added you', me: 0, by: '' });
+      Object.assign(c, { n: tidy(body.name).slice(0, 40) || 'Group', g: 1, mem, own: NAME_RE.test(String(body.own || '')) ? String(body.own) : from });
+      await S.put('soc', s);
+      this.push({ t: 'grp', k: gk, c, by: from, fresh: !cur });
+      return j({ ok: 1, n: a.name });
+    }
+    if (route === 'p-gmsg') { // a message in a group you're in
+      const gk = 'g~' + String(body.id || '').replace(/[^0-9a-f]/g, '').slice(0, 16), c = s.c[gk], m0 = body.m || {};
+      if (!c || !c.mem.some(n => n.toLowerCase() === k)) return j({ ok: 0 });
+      if (s.b[k]) return j({ ok: 1 });
+      const m = { id: String(m0.id || '').slice(0, 16), t: plain(m0.t).slice(0, DM_LEN), ts: +m0.ts || now, by: from };
+      if (!m.t) return j({ error: 'bad' }, 400);
+      const rec = await this.addMsg(s, gk, c.n, m, false);
+      this.push({ t: 'gm', k: gk, n: c.n, m: rec });
+      return j({ ok: 1 });
+    }
     if (route === 'p-gone') {
       delete s.f[k]; delete s.c[k];
       await this.dropMsgs(k); await S.put('soc', s);
@@ -531,7 +648,7 @@ export class Account extends DurableObject {
    the friend-request and unread counts, and live updates go over hibernating WebSockets (pings are answered by
    Cloudflare without waking anything).
    ========================================================================== */
-const MAX_FRIENDS = 300, MAX_CONVOS = 300, KEEP_DM = 300, DM_LEN = 500, CALL_MAX = 24000, TURN_TTL = 4 * 3600;
+const MAX_FRIENDS = 300, MAX_CONVOS = 300, KEEP_DM = 300, DM_LEN = 500, CALL_MAX = 24000, TURN_TTL = 4 * 3600, GROUP_MAX = 15;
 const pad = n => String(n).padStart(10, '0');
 // stars out swear words and slurs (the same list as the chat page's tidy())
 const BAD = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;
