@@ -34,7 +34,7 @@
     }
   } catch (e) {}
   if (!A || !window.RTCPeerConnection || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { window.ArcadeCall = { start: function () { alert('Video calls don’t work in this browser.'); }, active: function () { return false; }, canAdd: function () { return false; } }; return; }
-  var STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }], ICE = STUN, iceUntil = 0;
+  var STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }], ICE = STUN, iceUntil = 0;
   // relay logins from the server (empty while the relay is off; asked again every 10 minutes then)
   function iceReady() {
     if (Date.now() < iceUntil) return Promise.resolve();
@@ -264,7 +264,16 @@
     var k = lc(from);
     if (d.k === 'ring') {
       if (C && C.id === d.id) return;
-      if (C || busyElsewhere()) { claim(d.id, function () { send(from, { k: 'busy', id: d.id }); }); return; }
+      // 2026-11-12: a call we're only half in doesn't make us busy: a ring still showing from an earlier call, or a
+      // call where nobody is actually connected (it hung on "Connecting"), gives way to the new one
+      if (C && (C.st === 'ring' || (C.t0 && Date.now() - C.t0 > 25000 && !live().some(function (P) { return P.pc && P.pc.connectionState === 'connected'; })))) {
+        if (C.st === 'ring') { var H = C.peers[lc(C.host)]; if (H) sendP(H, { k: 'no' }); } else for (var q in C.peers) sendP(C.peers[q], { k: 'end' });
+        finish('');
+      }
+      if (C || busyElsewhere()) {
+        claim(d.id, function () { send(from, { k: 'busy', id: d.id }); A.toast(from, 'tried to call you while you were in a call', 'players.html#p=' + encodeURIComponent(from)); });
+        return;
+      }
       claim(d.id, function () { ringIn(from, d, fr); });
       return;
     }
@@ -289,8 +298,8 @@
     else if (d.k === 'rea' && P && P.pc && P.pc.signalingState === 'have-local-offer') P.pc.setRemoteDescription(d.sdp).catch(function () {});
     else if (d.k === 'scr' && P) { P.screen = !!d.on; draw(); }
     else if (d.k === 'kick' && P && P.offerer && P.st === 'live' && P.pc && P.pc.connectionState !== 'connected' && (P.bad || 0) >= 3 && (P.tries || 0) < 3) restart(P);
-    else if (d.k === 'no' && P && P.st === 'ring') drop(P, from + ' declined the call.');
-    else if (d.k === 'busy' && P && P.st === 'ring') drop(P, from + ' is in another call.');
+    else if (d.k === 'no' && P && P.st === 'ring') { if (C.gn) note('declined', from); drop(P, C.gn ? '' : from + ' declined the call.'); }
+    else if (d.k === 'busy' && P && P.st === 'ring') { if (C.gn) note('busy', from); drop(P, C.gn ? '' : from + ' is in another call.'); }
     else if (d.k === 'end') {
       if (C.st === 'ring') finish(lc(C.host) === k ? 'Missed call from ' + C.host + '.' : '');
       else if (P && (!P.dev || !d.dev || P.dev === d.dev)) drop(P, P.st === 'live' ? from + ' left the call.' : '');
@@ -354,6 +363,7 @@
     media().catch(function () { return null; }).then(function (s) {
       if (C !== c) { if (s) s.getTracks().forEach(function (t) { t.stop(); }); return; }
       C.local = s; if (!s) status('', 'Your camera and microphone are off. Allow them in the browser to be seen and heard.'); else status('');
+      pushOut(); // links other people made to us while the camera was starting get it too
       if (P.answering) { fillSenders(P.pc); return; }   // a friend: already answered, now send our camera
       return answerIn(P).then(function (sdp) { if (C === c && sdp) return sendP(P, { k: 'ans', sdp: sdp }); });
     }).then(function () {
@@ -394,6 +404,16 @@
     if (lc(C.host) === lc(me())) sendRoster();
     bitrate(); draw();
   }
+  // a group call collects who didn't come, and says it once when the ringing is over
+  function note(why, n) {
+    if (!C) return; var c = C; C.missed = C.missed || { declined: [], busy: [] }; C.missed[why].push(n);
+    clearTimeout(C.missT); C.missT = setTimeout(function () {
+      if (C !== c || !c.missed) return; var m = c.missed, parts = [];
+      if (m.busy.length) parts.push(names(m.busy) + (m.busy.length === 1 ? ' is' : ' are') + ' in another call');
+      if (m.declined.length) parts.push(names(m.declined) + ' declined');
+      c.missed = null; if (parts.length) A.toast(c.gn || 'Group call', parts.join('; ') + '.', 'players.html');
+    }, 1500);
+  }
   function lost(P, msg) { sendP(P, { k: 'end' }); drop(P, msg); }
   function finish(msg, about) {
     if (!C) return;
@@ -421,8 +441,8 @@
       setTimeout(function () { var c = lsGet('arcade-call-claim'); if (!c || c.tab === TAB) fn(); }, 60);
     }, wait);
   }
-  function busyMark() { if (C) { lsSet('arcade-call-busy', { tab: TAB, at: Date.now() }); setTimeout(busyMark, 4000); } }
-  function busyElsewhere() { var b = lsGet('arcade-call-busy'); return !!(b && b.tab !== TAB && Date.now() - b.at < 10000); }
+  function busyMark() { if (C) { lsSet('arcade-call-busy', { tab: TAB, at: Date.now() }); clearTimeout(busyMark.t); busyMark.t = setTimeout(busyMark, 2000); } }
+  function busyElsewhere() { var b = lsGet('arcade-call-busy'); return !!(b && b.tab !== TAB && Date.now() - b.at < 5000); }
 
   /* ---------- what you see ---------- */
   function css() {
