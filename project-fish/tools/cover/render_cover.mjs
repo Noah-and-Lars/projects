@@ -1,4 +1,4 @@
-// Saves Project Fish's cover art: serves the project folder, opens
+// Saves the cover art of Steelhead: Dead Ground: serves the project folder, opens
 // tools/cover/cover.html in a headless Chromium once per layout and writes
 // the JPEG each one draws.
 //

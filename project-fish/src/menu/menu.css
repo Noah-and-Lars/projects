@@ -132,7 +132,14 @@
   color: var(--menu-dim);
 }
 
+/* The title: the series name, STEELHEAD, big in the stencil; under it the
+   game's own name, DEAD GROUND, smaller and widely spaced, with a red rule
+   running on to the end of the big word (the title is only as wide as
+   STEELHEAD, so the rule always ends under its last letter). */
 .menu-title {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
   margin: 0;
   font: 900 clamp(64px, 7.6vw, 156px) / 0.84 var(--menu-title-font);
   letter-spacing: 0.012em;
@@ -142,16 +149,47 @@
   text-shadow: 0 0 34px rgba(255, 210, 190, 0.08), 0 2px 0 rgba(0, 0, 0, 0.35);
 }
 
-/* "FISH" a little warmer, as if lit by the red light. */
-.menu-title .word + .word {
+.menu-title-name {
+  display: block;
+}
+
+/* Read out as "Steelhead: Dead Ground", not shown. */
+.menu-title-colon {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.menu-title-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0.62em 0 0 0.16em;
+  font: 700 clamp(17px, 1.5vw, 31px) / 1 var(--menu-ui-font);
+  letter-spacing: 0.46em;
   color: #f3e6df;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.menu-title-sub::after {
+  content: '';
+  flex: 1 1 auto;
+  min-width: 1.2em;
+  height: 0.16em;
+  max-height: 4px;
+  min-height: 2px;
+  background: var(--menu-red);
+  box-shadow: 0 0 12px rgba(224, 53, 43, 0.55);
 }
 
 .menu-tag {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 14px 0 0 4px;
+  margin: 20px 0 0 4px;
   font: 600 clamp(11px, 0.78vw, 15px) / 1 var(--menu-ui-font);
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -590,7 +628,11 @@ body.menu-visible #photo-hint {
 
   .menu-title {
     font-size: clamp(54px, 17vw, 96px);
-    white-space: normal;
+  }
+
+  .menu-title-sub {
+    font-size: clamp(14px, 4.4vw, 22px);
+    letter-spacing: 0.42em;
   }
 
   .menu-kicker {

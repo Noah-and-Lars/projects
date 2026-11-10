@@ -1,4 +1,4 @@
-// Project Fish's cover art: the soldier, low and close, a rifle across his
+// The cover art of Steelhead: Dead Ground: the soldier, low and close, a rifle across his
 // body, a billowing smoke cloud on the left, three jets climbing on the
 // right, all in one amber grade, and the title. tools/cover/render_cover.mjs
 // opens this page once per layout and saves what it draws (npm run
@@ -17,7 +17,8 @@
 //   fist;
 // - the sky, the cloud, the debris, the jets and their trails: made in this
 //   file (lit sprites with noise, and simple low-poly meshes);
-// - the title: Big Shoulders Display (SIL Open Font License, in fonts/).
+// - the title, STEELHEAD over DEAD GROUND: Big Shoulders Display (SIL Open
+//   Font License, in fonts/).
 //
 // The page draws at twice the layout's size, grades it (amber monochrome,
 // grain, vignette), writes the title over it, then halves it, and leaves
@@ -51,8 +52,8 @@ const DEG = Math.PI / 180;
 // - sun: the glow behind him.
 // - cloud: the smoke's middle and size (in frame heights).
 // - jets: the lead jet, the line the three fly in, their size.
-// - title: its baseline (fraction of the height from the top) and its
-//   width (fraction of the frame's).
+// - title: the top of STEELHEAD's capitals and their height (fractions of
+//   the frame's height), and DEAD GROUND's capitals as a fraction of those.
 const LAYOUTS = {
   cover: {
     size: [1200, 1800],
@@ -60,7 +61,7 @@ const LAYOUTS = {
     sun: [0.3, 0.32],
     cloud: { at: [-0.78, -0.25], size: 0.62 },
     jets: { at: [0.5, 0.66], step: [0.15, -0.07], size: 0.034 },
-    title: { baseline: 0.135, width: 0.8 },
+    title: { top: 0.052, cap: 0.105, sub: 0.2 },
   },
   thumb: {
     size: [1280, 720],
@@ -68,7 +69,7 @@ const LAYOUTS = {
     sun: [0.2, 0.3],
     cloud: { at: [-0.74, -0.42], size: 0.62 },
     jets: { at: [0.5, 0.5], step: [0.11, -0.1], size: 0.04 },
-    title: { baseline: 0.215, width: 0.5 },
+    title: { top: 0.048, cap: 0.112, sub: 0.25 },
   },
   og: {
     size: [1200, 630],
@@ -76,7 +77,7 @@ const LAYOUTS = {
     sun: [0.2, 0.3],
     cloud: { at: [-0.74, -0.42], size: 0.62 },
     jets: { at: [0.5, 0.5], step: [0.11, -0.1], size: 0.04 },
-    title: { baseline: 0.225, width: 0.5 },
+    title: { top: 0.046, cap: 0.104, sub: 0.26 },
   },
 };
 
@@ -857,28 +858,113 @@ function finish(glCanvas, withTitle) {
   window.coverDone = true;
 }
 
+// The title: STEELHEAD (the series) big and white, and under it DEAD GROUND
+// (this game), smaller, widely spaced, on a dark rough-edged band, the two
+// centred. The layout gives the top of STEELHEAD's capitals and their height
+// (fractions of the picture's height); the rest follows from those.
 function drawTitle(ctx) {
   const T = L.title;
-  const text = 'PROJECT FISH';
   const font = q.get('font') === 'stencil' ? 'Cover Stencil' : 'Cover Title';
-  let size = RH * 0.2;
+  const cx = RW / 2;
+
+  // STEELHEAD: its size set by the height of its capitals.
+  const name = 'STEELHEAD';
+  const nameSpacing = 0.015;
+  ctx.font = `900 100px "${font}"`;
+  const capPer100 = ctx.measureText('H').actualBoundingBoxAscent;
+  const size = (RH * T.cap) / (capPer100 / 100);
   ctx.font = `900 ${size}px "${font}"`;
-  ctx.letterSpacing = `${(size * 0.015).toFixed(1)}px`;
-  const width = ctx.measureText(text).width;
-  size *= (RW * T.width) / width;
-  ctx.font = `900 ${size}px "${font}"`;
-  ctx.letterSpacing = `${(size * 0.015).toFixed(1)}px`;
+  ctx.letterSpacing = `${(size * nameSpacing).toFixed(1)}px`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
+  const nameWidth = ctx.measureText(name).width - size * nameSpacing;
+  const baseline = RH * (T.top + T.cap);
+  // (letterSpacing also follows the last letter: shift by half of it.)
+  const nameX = cx + (size * nameSpacing) / 2;
   ctx.save();
   ctx.shadowColor = 'rgba(60, 25, 0, 0.45)';
   ctx.shadowBlur = size * 0.12;
   ctx.shadowOffsetY = size * 0.02;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(text, RW / 2, RH * T.baseline);
+  ctx.fillText(name, nameX, baseline);
   ctx.restore();
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(text, RW / 2, RH * T.baseline);
+  ctx.fillText(name, nameX, baseline);
+
+  // DEAD GROUND: capitals a fraction of STEELHEAD's, spaced wide, on a band
+  // as wide as STEELHEAD with torn ends and edges.
+  const sub = 'DEAD GROUND';
+  const subCap = RH * T.cap * T.sub;
+  const subSize = (subCap / capPer100) * 100;
+  const subSpacing = 0.42;
+  ctx.font = `900 ${subSize}px "${font}"`;
+  ctx.letterSpacing = `${(subSize * subSpacing).toFixed(1)}px`;
+  const subWidth = ctx.measureText(sub).width - subSize * subSpacing;
+  const bandH = subCap * 2.05;
+  const bandTop = baseline + RH * T.cap * 0.13;
+  const bandW = Math.max(nameWidth * 1.04, subWidth + subCap * 3.2);
+  roughBand(ctx, cx - bandW / 2, bandTop, bandW, bandH);
+  ctx.fillStyle = '#fff4e2';
+  ctx.fillText(sub, cx + (subSize * subSpacing) / 2, bandTop + bandH / 2 + subCap / 2);
+}
+
+// A dark band like a quick stroke of a wide brush: its long edges wander a
+// little and are nicked here and there, its ends are torn, and a few dry
+// streaks trail off them. Seeded, so it's the same every time.
+function roughBand(ctx, x, y, w, h) {
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const step = h * 0.09;
+  const edge = (from, to, yAt, sign) => {
+    const pts = [];
+    const n = Math.max(2, Math.round(Math.abs(to - from) / step));
+    for (let i = 0; i <= n; i++) {
+      const px = from + ((to - from) * i) / n;
+      let dy = (rand() - 0.5) * h * 0.05 + Math.sin(px / (h * 1.7)) * h * 0.025;
+      if (rand() < 0.06) dy += sign * h * (0.06 + rand() * 0.07);
+      pts.push([px, yAt + dy]);
+    }
+    return pts;
+  };
+  const end = (xAt, fromY, toY, sign) => {
+    const pts = [];
+    const n = 9;
+    for (let i = 1; i < n; i++) {
+      const py = fromY + ((toY - fromY) * i) / n;
+      pts.push([xAt + sign * (rand() * h * 0.32 - h * 0.08), py]);
+    }
+    return pts;
+  };
+  const top = edge(x + h * 0.1, x + w - h * 0.1, y, 1);
+  const bottom = edge(x + w - h * 0.06, x + h * 0.06, y + h, -1);
+  const pts = [...top, ...end(x + w, y, y + h, 1), ...bottom, ...end(x, y + h, y, -1)];
+  ctx.save();
+  ctx.shadowColor = 'rgba(40, 16, 0, 0.35)';
+  ctx.shadowBlur = h * 0.35;
+  ctx.fillStyle = 'rgba(22, 11, 3, 0.9)';
+  ctx.beginPath();
+  pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  // Dry streaks off each end.
+  ctx.fillStyle = 'rgba(22, 11, 3, 0.75)';
+  for (const side of [-1, 1]) {
+    const ex = side < 0 ? x : x + w;
+    for (let i = 0; i < 7; i++) {
+      const sy = y + h * (0.08 + rand() * 0.84);
+      const len = h * (0.25 + rand() * 0.9);
+      const th = h * (0.03 + rand() * 0.06);
+      const start = ex - side * h * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(start, sy - th / 2);
+      ctx.lineTo(start + side * len, sy - th * 0.1);
+      ctx.lineTo(start + side * len * 0.97, sy + th * 0.15);
+      ctx.lineTo(start, sy + th / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
 }
 
 main().catch((error) => {

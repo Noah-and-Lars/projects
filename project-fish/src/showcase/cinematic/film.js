@@ -1294,7 +1294,7 @@ export class Film {
       k = Math.min(clamp01((local - 0.6) / 0.8), clamp01((shot.film - 0.4 - local) / 0.6));
       if (this.titleMode !== 'open') {
         this.titleMode = 'open';
-        this.titleName.textContent = 'PROJECT FISH';
+        this.titleName.textContent = 'STEELHEAD';
         this.titleSub.textContent = FILM.subtitle;
       }
     } else if (shot.title === 'end') {

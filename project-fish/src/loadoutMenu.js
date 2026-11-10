@@ -374,7 +374,7 @@ export class LoadoutMenu {
     const head = el('header', 'lo-head');
     const brand = el('div', 'lo-brand');
     const kicker = el('p', 'lo-kicker');
-    kicker.append('Project Fish ', el('span', '', '·'), ' Operator');
+    kicker.append('Steelhead ', el('span', '', '·'), ' Operator');
     brand.append(kicker, el('h1', 'lo-title', this.view === 'outfit' ? 'Customization' : 'Loadout'));
     head.append(brand);
     if (this.outfitMenu) {
@@ -602,7 +602,7 @@ export class LoadoutMenu {
     const head = el('header', 'lo-head');
     const brand = el('div', 'lo-brand');
     const kicker = el('p', 'lo-kicker');
-    kicker.append('Project Fish ', el('span', '', '·'), ' Films');
+    kicker.append('Steelhead ', el('span', '', '·'), ' Films');
     brand.append(kicker, el('h1', 'lo-title', 'Breakdowns'));
     head.append(brand);
     this.ui.append(head);

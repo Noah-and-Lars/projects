@@ -417,7 +417,7 @@ async function playOrResume() {
   await input.lock();
   if (document.pointerLockElement === renderer.domElement || !mainMenu.visible) return;
   const touch = window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches;
-  mainMenu.setStatus(touch ? 'Project Fish needs a keyboard and mouse.' : 'The browser didn’t give the game the mouse yet: click again.');
+  mainMenu.setStatus(touch ? 'Steelhead: Dead Ground needs a keyboard and mouse.' : 'The browser didn’t give the game the mouse yet: click again.');
 }
 
 // The loadout menu (or its breakdowns picker on its own) over the main
