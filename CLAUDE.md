@@ -90,6 +90,12 @@ source in Settings → Pages should be switched to `main`.
   game reads it and keeps the game's name box on that name, read-only. Cube Assault still lets the
   test names (GAMETESTER, ADMINTEST) be typed, since those ask for their password. Havoc Bay (1.3.1) hides its name
   box in Settings; typing GAMETESTER in the Private room name box asks for the password. The chat uses the account name too.
+- Username changes (2026-11-11): the account panel's "Change username" (account.js `openRename`) calls `/acct/rename`;
+  `Account.renameTo` copies every stored key to the new name's object (header 'x-arcade-move', `moveIn`, in batches),
+  moves the Players list entry and scores, tells everyone it knows ('p-rename': friends, blocks, chat history keys,
+  group members), gives this device a new token and leaves 'moved' behind so old devices get 401 (signed out). Once a
+  week (`a.renamedAt`). Forced: `RENAME_NAMES`/`RENAME_BEFORE` (the lars account made 2026-11-09, whose name the owner
+  gave to a friend) makes sync answer `mustRename`, and account.js shows the rename popup with no way to close it.
 - Group chats and bigger calls (2026-11-11): group chats of up to 15 (`GROUP_MAX`) are conversations 'g~<id>' in every
   member's Account 'soc'.c (`{n, g:1, mem, own}`), messages stored by every member with `by`; `Account.group()` serves
   `/acct/group` (GET messages; POST op make/add/rename/leave/say), members are told with peer routes 'p-grp' (the whole

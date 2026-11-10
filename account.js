@@ -193,6 +193,7 @@
           return settle(g, d, s).then(function (y) { if (y === 'down') pulled.push(g); });
         });
       });
+      if (meta.mustRename && !$('acRenF')) openRename(true); // 2026-11-11: this account's name went to someone else
       return chain.then(function () {
         saveSync(); state.last = Date.now(); setStatus('ok');
         if (meta.soc) setSocial(meta.soc);
@@ -519,7 +520,7 @@
     var games = (window.GAMES || []).map(function (g) { var s = null; try { s = g.stat && g.stat(); } catch (e) {} return s ? '<div><b>' + esc(g.title) + '</b><span>' + esc(s) + '</span></div>' : ''; }).join('');
     var html = '<div class="head"><div class="av">' + esc(name().charAt(0).toUpperCase()) + '</div><div><h2 style="margin:0">' + esc(name()) + '</h2>' +
       (k === 'online' ? '<span class="pill">☁ Online account</span>' : '<span class="pill local">💾 Local account</span>') + '</div></div>';
-    if (k === 'online') html += '<p id="acSt" style="margin-top:10px">' + statusText() + '</p><div class="row"><button class="alt" id="acSync">Sync now</button><button class="alt" id="acPw">Change password</button></div>';
+    if (k === 'online') html += '<p id="acSt" style="margin-top:10px">' + statusText() + '</p><div class="row"><button class="alt" id="acSync">Sync now</button><button class="alt" id="acPw">Change password</button></div><div class="row"><button class="alt" id="acNm">Change username</button></div>';
     else html += '<div class="warn">Your progress is only saved in this browser. Make an online account to keep it safe and play on any device. Everything you have now comes with you.</div><button class="go" id="acMake">Create an online account</button><div class="row"><button class="alt" id="acIn">Log in</button><button class="alt" id="acRen">Change name</button></div>';
     html += '<h3 style="margin:18px 0 0;font-size:15px">Your games</h3><div class="stats">' + (games || '<div><span>Play a game and your stats show up here.</span></div>') + '</div>';
     if (k === 'online') html += '<button class="link" id="acOut">Log out of this device</button><button class="link" id="acDel" style="margin-top:6px;color:#ff8a80">Delete my account</button>';
@@ -527,6 +528,7 @@
     var b;
     if ((b = $('acSync'))) b.onclick = function () { b.disabled = true; sync('manual').then(function (p) { b.disabled = false; var s = $('acSt'); if (s) s.textContent = statusText(); if (p && p.length) location.reload(); }); };
     if ((b = $('acPw'))) b.onclick = openPassword;
+    if ((b = $('acNm'))) b.onclick = function () { openRename(false); };
     if ((b = $('acMake'))) b.onclick = function () { openWelcome('signup'); };
     if ((b = $('acIn'))) b.onclick = function () { openWelcome('login'); };
     if ((b = $('acRen'))) b.onclick = localName;
@@ -618,6 +620,41 @@
     };
     else $('acZ').onclick = function () { logout(); };
     return true;
+  }
+
+  /* ---------- changing your username (2026-11-11) ----------
+     POST /acct/rename {name}: everything (progress, friends, messages, group chats) moves to the new name and this
+     device gets a new sign-in; other devices are signed out. Once a week, except when forced: an account whose name
+     the owner gave to someone else is shown this until it picks a new one (forced, no way to close it). */
+  function openRename(forced) {
+    css();
+    overlay('<div class="big">✏️</div><h2>' + (forced ? 'Your username needs to change' : 'Change your username') + '</h2>' +
+      '<p>' + (forced ? 'The name <b>' + esc(name()) + '</b> is going to someone else, so please pick a new one. Your progress, friends, messages and group chats all stay with you.' : 'Your progress, friends, messages and group chats all move to the new name. You can change it once a week, and your other devices will need to log in again.') + '</p>' +
+      '<form id="acRenF" autocomplete="off"><label for="acN">New username</label><input type="text" id="acN" maxlength="16" spellcheck="false" autocapitalize="off"><div class="hint" id="acNh"></div><div class="err" id="acE"></div><button class="go" id="acGo">Change my username</button></form>', !forced);
+    var N = $('acN'), E = $('acE'), go = $('acGo'), t = 0;
+    N.addEventListener('input', function () {
+      var v = N.value.trim(), h = $('acNh'), bad = nameError(v); clearTimeout(t);
+      if (bad) { h.textContent = v ? bad : ''; h.className = 'hint' + (v ? ' bad' : ''); return; }
+      t = setTimeout(function () { api('check?name=' + encodeURIComponent(v)).then(function (r) { if (N.value.trim() !== v || r.status !== 200) return; h.textContent = r.free ? '✔ ' + v + ' is free' : WHY[r.why] || WHY.taken; h.className = 'hint ' + (r.free ? 'good' : 'bad'); }); }, 350);
+    });
+    $('acRenF').onsubmit = function (e) {
+      e.preventDefault(); E.textContent = '';
+      var v = N.value.trim(), bad = nameError(v);
+      if (!bad && /admin|moderator|^mods?$|official|staff|gametester|imacheater/i.test(v)) bad = WHY.reserved;
+      if (bad) { E.textContent = bad; return; }
+      go.disabled = true; go.textContent = 'Moving everything to ' + v + '…';
+      api('rename', { method: 'POST', auth: true, body: { name: v } }).then(function (r) {
+        if (r.status !== 200 || !r.token) {
+          go.disabled = false; go.textContent = 'Change my username';
+          E.textContent = r.error === 'slow' ? 'You can change your username once a week. Try again in ' + (r.wait || 7) + ' day' + (r.wait === 1 ? '' : 's') + '.' : WHY[r.error] || (r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : 'Something went wrong. Try again.');
+          return;
+        }
+        setAcct({ name: r.name, token: r.token }, false);
+        try { localStorage.removeItem('arcade-acct-prof'); } catch (x) {}
+        location.reload();
+      });
+    };
+    setTimeout(function () { N.focus(); }, 50);
   }
 
   /* ---------- start ---------- */

@@ -149,7 +149,7 @@ const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gameteste
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
 const ADMIN_HASH = '899ba39fe0b4ce0b8d4994cf7449cc63c2a8ade12fa77e590cfaf5999256ccf2';
-const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group']; // what a browser may ask an account for
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename']; // what a browser may ask an account for
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
 function nameProblem(n) {
@@ -234,8 +234,11 @@ export class Account extends DurableObject {
     const body = req.method === 'GET' ? null : await req.json().catch(() => ({}));
     if (req.headers.get('x-arcade-admin') === '1') return this.admin(route, body, j, now);
     if (req.headers.get('x-arcade-peer') === '1') return this.peer(route, body || {}, j, now);
+    if (req.headers.get('x-arcade-move') === '1') return this.moveIn(body || {}, j, now);
     let a = await S.get('acct');
     if (route === 'check') return j({ free: !a });
+    // an account that moved to a new name (renameTo): its old devices are signed out, so they log in again with the new name
+    if (!a && !['signup', 'login', 'recover'].includes(route) && await S.get('moved')) return j({ error: 'auth' }, 401);
     if (route === 'signup') {
       if (a) return j({ error: 'taken' }, 409);
       if (!KEY_RE.test(body.key || '')) return j({ error: 'bad' }, 400);
@@ -288,7 +291,8 @@ export class Account extends DurableObject {
       if (!KEY_RE.test(body.key || '') || !same(await sha(a.salt + body.key), a.h)) return j({ error: 'wrong' }, 401);
       await this.goodbye(a); await S.deleteAll(); return j({ deleted: true });
     }
-    if (route === 'sync') return j({ name: a.name, created: a.created, games: a.games || {}, soc: socCounts(await this.soc()) });
+    if (route === 'sync') return j({ name: a.name, created: a.created, games: a.games || {}, soc: socCounts(await this.soc()), mustRename: mustRename(a) ? 1 : 0 });
+    if (route === 'rename') return this.renameTo(a, body || {}, j, now);
     if (route === 'game') {
       const g = url.searchParams.get('g') || '';
       if (!GAME_RE.test(g)) return j({ error: 'bad' }, 400);
@@ -616,6 +620,23 @@ export class Account extends DurableObject {
       this.push({ t: 'gm', k: gk, n: c.n, m: rec });
       return j({ ok: 1 });
     }
+    if (route === 'p-rename') { // someone this account knows changed their name: friends, blocks, chats and groups follow
+      const to = String(body.to || ''), nk = to.toLowerCase();
+      if (!NAME_RE.test(to)) return j({ error: 'bad' }, 400);
+      if (s.f[k]) { s.f[nk] = Object.assign(s.f[k], { n: to }); delete s.f[k]; }
+      if (s.b[k]) { s.b[nk] = to; delete s.b[k]; }
+      if (s.c[k] && !s.c[k].g) {
+        s.c[nk] = Object.assign(s.c[k], { n: to }); delete s.c[k];
+        const msgs = await S.list({ prefix: 'm:' + k + ':' }), put = {};
+        for (const [mk, v] of msgs) put['m:' + nk + ':' + mk.slice(k.length + 3)] = v;
+        const ks = Object.keys(put); for (let i = 0; i < ks.length; i += 100) await S.put(Object.fromEntries(ks.slice(i, i + 100).map(x => [x, put[x]])));
+        if (msgs.size) { const old = [...msgs.keys()]; for (let i = 0; i < old.length; i += 100) await S.delete(old.slice(i, i + 100)); }
+      }
+      for (const c of Object.values(s.c)) if (c.g) { c.mem = (c.mem || []).map(n => n.toLowerCase() === k ? to : n); if (String(c.own || '').toLowerCase() === k) c.own = to; }
+      await S.put('soc', s);
+      this.push({ t: 'social' });
+      return j({ ok: 1 });
+    }
     if (route === 'p-gone') {
       delete s.f[k]; delete s.c[k];
       await this.dropMsgs(k); await S.put('soc', s);
@@ -623,6 +644,52 @@ export class Account extends DurableObject {
       return j({ ok: true });
     }
     return j({ error: 'not_found' }, 404);
+  }
+  /* ---------- a forced name change (2026-11-11) ----------
+     The owner gave a name to someone else (RENAME_NAMES: accounts with that name made before RENAME_BEFORE). Such an
+     account is asked once (sync's mustRename) to pick a new name; everything moves to the new name's object
+     ('x-arcade-move', in batches), the Players list and everyone it knows (friends, chats, groups: 'p-rename') get the new
+     name, this device gets a new token, and the old object keeps only 'moved' so its other devices are signed out. */
+  async renameTo(a, body, j, now) {
+    // anyone can change their name (2026-11-11), once a week; a forced change is always allowed
+    if (!mustRename(a) && a.renamedAt && now - a.renamedAt < 7 * 864e5) return j({ error: 'slow', wait: Math.ceil((a.renamedAt + 7 * 864e5 - now) / 864e5) }, 429);
+    const nn = String(body.name || ''), p = nameProblem(nn);
+    if (p) return j({ error: p }, 400);
+    if (nn.toLowerCase() === a.name.toLowerCase()) return j({ error: 'taken' }, 409);
+    const S = this.ctx.storage, old = a.name, dest = this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('u:' + nn.toLowerCase()));
+    const move = async b => { const r = await dest.fetch(new Request('https://acct/move', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-move': '1' }, body: JSON.stringify(Object.assign({ from: old }, b)) })); return r.status; };
+    if (await move({ begin: 1 }) !== 200) return j({ error: 'taken' }, 409);
+    const all = [...(await S.list()).entries()].filter(([k]) => k !== 'acct' && k !== 'moved');
+    for (let i = 0; i < all.length; i += 100) if (await move({ e: all.slice(i, i + 100) }) !== 200) return j({ error: 'failed' }, 502);
+    a.name = nn; a.listed = 1; a.renamedAt = now;
+    const token = await this.session(a);
+    if (await move({ e: [['acct', a]], end: 1 }) !== 200) return j({ error: 'failed' }, 502);
+    // the Players list, with the scores carried over
+    const prof = await (await dirCall(this.env, 'get?name=' + encodeURIComponent(old))).json().catch(() => ({}));
+    await dirCall(this.env, 'del', { n: old }).catch(() => null);
+    await dirCall(this.env, 'add', { n: nn, c: a.created }).catch(() => null);
+    if (prof && prof.s && Object.keys(prof.s).length) await dirCall(this.env, 'stats', { n: nn, c: a.created, s: prof.s }).catch(() => null);
+    // everyone this account knows
+    const s = await this.soc(), names = new Set();
+    for (const f of Object.values(s.f)) names.add(f.n);
+    for (const [k, c] of Object.entries(s.c)) { if (c.g) (c.mem || []).forEach(n => names.add(n)); else names.add(c.n); }
+    names.delete(old); names.delete(nn);
+    await Promise.all([...names].slice(0, 600).map(n => peerCall(this.env, n, 'p-rename', { from: old, to: nn }).catch(() => null)));
+    for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'renamed'); } catch (e) {}
+    await S.deleteAll(); await S.put('moved', { to: nn, at: now });
+    return j({ token, name: nn });
+  }
+  // the new name's object, filled in by renameTo()
+  async moveIn(b, j, now) {
+    const S = this.ctx.storage;
+    if (await S.get('acct')) return j({ error: 'taken' }, 409);
+    const m = await S.get('moving');
+    if (b.begin) { if (m && m.from !== b.from && now - m.at < 120000) return j({ error: 'taken' }, 409); await S.deleteAll(); await S.put('moving', { from: b.from, at: now }); return j({ ok: 1 }); }
+    if (!m || m.from !== b.from) return j({ error: 'bad' }, 400);
+    const put = {}; for (const [k, v] of (Array.isArray(b.e) ? b.e : [])) put[k] = v;
+    if (Object.keys(put).length) await S.put(put);
+    if (b.end) await S.delete('moving');
+    return j({ ok: 1 });
   }
   // the account is being deleted: off the Players list, and out of everyone's friends and messages
   async goodbye(a) {
@@ -648,6 +715,9 @@ export class Account extends DurableObject {
    the friend-request and unread counts, and live updates go over hibernating WebSockets (pings are answered by
    Cloudflare without waking anything).
    ========================================================================== */
+// 2026-11-11: the owner gave the name lars to a friend: the account that had it (made 2026-11-09) is asked to pick a new one
+const RENAME_NAMES = ['lars'], RENAME_BEFORE = 1794280371000;
+const mustRename = a => RENAME_NAMES.includes(String(a.name || '').toLowerCase()) && (a.created || 0) < RENAME_BEFORE;
 const MAX_FRIENDS = 300, MAX_CONVOS = 300, KEEP_DM = 300, DM_LEN = 500, CALL_MAX = 24000, TURN_TTL = 4 * 3600, GROUP_MAX = 15;
 const pad = n => String(n).padStart(10, '0');
 // stars out swear words and slurs (the same list as the chat page's tidy())
