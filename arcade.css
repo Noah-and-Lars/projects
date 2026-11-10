@@ -347,7 +347,7 @@ kbd {
 @keyframes notice-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
 @media (prefers-reduced-motion: reduce) { .notice, .notice-box { animation: none; } }
 
-/* Tabs in the header: Games and Global chat */
+/* Tabs in the header: Games, Global chat, Players and Social */
 .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--panel); border: 1px solid #ffffff1a; }
 .tab { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; color: var(--muted); font-weight: 700; font-size: 14px; white-space: nowrap; }
 .tab:hover { color: var(--text); background: #ffffff0d; }
@@ -452,6 +452,7 @@ kbd {
 .mob-phone .top .tab:nth-child(1)::before { content: "🎮"; }
 .mob-phone .top .tab:nth-child(2)::before { content: "💬"; }
 .mob-phone .top .tab:nth-child(3)::before { content: "👥"; }
+.mob-phone .top .tab:nth-child(4)::before { content: "🎬"; }
 .mob-phone .top .tab .wide { display: none; } .mob-phone .top .tab .narrow { display: inline; }
 .mob-phone .top .tab-n { position: absolute; top: 2px; left: calc(50% + 8px); }
 .mob-phone body:not(.player) { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }

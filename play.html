@@ -39,7 +39,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=14">
+<link rel="stylesheet" href="arcade.css?v=15">
 </head>
 <body class="player">
 <header class="top">
@@ -49,6 +49,7 @@
     <span id="best" class="pbest" hidden></span>
   </div>
   <div class="actions">
+    <button id="clip" class="btn ghost" title="Record a clip of your game (F8)">🎬 Clip</button>
     <a id="next" class="btn ghost">Next game →</a>
     <button id="fs" class="btn">Fullscreen</button>
   </div>
@@ -80,6 +81,7 @@
 <script src="games.js?v=184"></script>
 <script src="account.js?v=14"></script>
 <script src="call.js?v=6"></script>
+<script src="clips.js?v=1"></script>
 <script>
 const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('game');
@@ -119,6 +121,8 @@ if (!game) {
     ArcadeAccount.ready().then(start);
     ArcadeAccount.onPulled(g => { if (g.includes(game.id) && frame.src) try { frame.contentWindow.location.reload(); } catch (e) { frame.src = game.path; } });
   } else start();
+  // 🎬 Clip: record the game and post it to Social (clips.js)
+  if (window.ArcadeClips) ArcadeClips.attach(frame, game, $('clip')); else $('clip').hidden = true;
   $('newtab').href = game.path;
 
   const next = GAMES[(index + 1) % GAMES.length];

@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+// 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
+// not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
+(function () {
+  var u = navigator.userAgent || '', c = document.documentElement.classList, f = '';
+  try { f = (/[?&]mob=(phone|tab|off)/.exec(location.search) || [])[1] || sessionStorage.getItem('arcade-mob') || ''; if (f) sessionStorage.setItem('arcade-mob', f); } catch (e) {}
+  var ipad = /iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|webOS|Android.+Mobile|Mobile.+Firefox/.test(u);
+  var tab = !phone && (ipad || /Android|Tablet|Silk|Kindle|PlayBook/.test(u));
+  if (f) { phone = f === 'phone'; tab = f === 'tab'; }
+  if (phone || tab) { c.add('mob'); c.add(phone ? 'mob-phone' : 'mob-tab'); }
+  var vh = function () { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
+  vh(); window.addEventListener('resize', vh);
+  if (window.Element && !Element.prototype.replaceChildren) Element.prototype.replaceChildren = function () { while (this.firstChild) this.removeChild(this.firstChild); for (var i = 0; i < arguments.length; i++) { var n = arguments[i]; this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n); } };
+})();
+</script>
+<title>Social · The Arcade</title>
+<meta name="description" content="Gameplay clips from players on The Arcade: watch, like, comment and follow.">
+<meta name="theme-color" content="#0f0d1f">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Arcade">
+<link rel="stylesheet" href="arcade.css?v=15">
+<style>
+.soc { max-width: 980px; padding-bottom: 50px; }
+.soc-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 20px 0 16px; }
+.soc-seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--panel); border: 1px solid #ffffff14; }
+.soc-seg button { padding: 7px 14px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.soc-seg button:hover { color: var(--text); }
+.soc-seg button.on { background: var(--accent); color: #fff; }
+.soc-top .sp { flex: 1; }
+.soc-top .btn { padding: 8px 14px; font-size: 14px; }
+.btn.ghost2 { background: transparent; border: 1px solid #ffffff2a; color: var(--text); box-shadow: none; }
+.btn.small { padding: 5px 12px; font-size: 13px; }
+.soc-note { color: var(--muted); font-size: 13px; margin: -6px 0 14px; }
+.soc-note summary { cursor: pointer; width: max-content; }
+.soc-note p { margin: 6px 0 0; max-width: 640px; line-height: 1.5; }
+.feed { display: flex; flex-direction: column; gap: 22px; max-width: 640px; margin: 0 auto; }
+.empty { margin: 40px auto; padding: 30px; max-width: 460px; text-align: center; color: var(--muted); background: var(--panel); border: 1px solid #ffffff14; border-radius: 18px; }
+.empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
+.empty .btn { margin-top: 14px; }
+.more { display: block; margin: 0 auto; }
+
+/* a clip */
+.card { background: var(--panel); border: 1px solid #ffffff14; border-radius: 18px; overflow: hidden; }
+.ch { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; background: hsl(var(--h) 55% 42%); color: #fff; font-weight: 800; font-size: 15px; }
+.ch .who { flex: 1; min-width: 0; line-height: 1.25; }
+.ch .who a.nm { font-weight: 800; }
+.ch .who a.nm:hover { text-decoration: underline; }
+.ch .who small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch .who small a:hover { color: var(--text); text-decoration: underline; }
+.fol { border: 0; background: none; color: var(--accent-2); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; padding: 0 0 0 6px; }
+.fol.on { color: var(--muted); }
+.dots { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+.dots:hover { background: #ffffff10; color: var(--text); }
+.vid { position: relative; background: #000; aspect-ratio: 16 / 9; cursor: pointer; overflow: hidden; }
+.vid img, .vid video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.vid video { opacity: 0; transition: opacity .2s; }
+.vid.ready video { opacity: 1; }
+.vid .snd { position: absolute; right: 10px; bottom: 14px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #000a; color: #fff; font-size: 15px; cursor: pointer; }
+.vid .paused { position: absolute; inset: 0; display: none; place-items: center; font-size: 54px; color: #fffd; text-shadow: 0 4px 20px #000; pointer-events: none; }
+.vid.stopped .paused { display: grid; }
+.vid .load { position: absolute; left: 10px; bottom: 14px; font-size: 12px; color: #fffc; background: #000a; padding: 3px 8px; border-radius: 999px; display: none; }
+.vid.loading .load { display: block; }
+.vid .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #ffffff22; }
+.vid .prog i { display: block; height: 100%; width: 0; background: #fff; }
+.vid .heart { position: absolute; left: 50%; top: 50%; font-size: 90px; transform: translate(-50%, -50%) scale(0); opacity: 0; pointer-events: none; filter: drop-shadow(0 6px 20px #0008); }
+.vid .heart.pop { animation: heartpop .8s ease-out; }
+@keyframes heartpop { 15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 30% { transform: translate(-50%, -50%) scale(.95); } 70% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
+.acts { display: flex; align-items: center; gap: 4px; padding: 8px 8px 0; }
+.acts button { display: flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--text); font: inherit; font-weight: 700; font-size: 14px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+.acts button:hover { background: #ffffff0d; }
+.acts .ic { font-size: 21px; line-height: 1; }
+.acts .like.on .ic { color: #ff4d6d; }
+.acts .views { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 600; padding-right: 6px; white-space: nowrap; }
+.cap { margin: 4px 14px 0; overflow-wrap: anywhere; line-height: 1.45; }
+.cap a { font-weight: 800; margin-right: 6px; }
+.cap a:hover { text-decoration: underline; }
+.allcm { display: block; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; padding: 4px 14px 0; cursor: pointer; }
+.allcm:hover { color: var(--text); }
+.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px 12px; }
+.card-foot time { color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.card-foot a { font-size: 13px; font-weight: 700; color: var(--accent-2); }
+.card-foot a:hover { text-decoration: underline; }
+.menu { position: absolute; z-index: 60; min-width: 190px; padding: 6px; background: var(--panel-2); border: 1px solid #ffffff22; border-radius: 12px; box-shadow: 0 16px 40px #000a; }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.menu button:hover { background: #ffffff12; }
+.menu button.bad { color: #ff8a8a; }
+
+/* comments */
+.cmts { display: flex; flex-direction: column; min-height: 0; }
+.cm-list { list-style: none; margin: 0; padding: 6px 14px; overflow-y: auto; flex: 1; min-height: 0; }
+.cm-list li { display: flex; gap: 10px; padding: 8px 0; }
+.cm-list .av { width: 30px; height: 30px; font-size: 13px; }
+.cm-list .body { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.4; font-size: 14px; }
+.cm-list .body a.nm { font-weight: 800; margin-right: 6px; }
+.cm-list .body .re { color: var(--accent-2); font-weight: 700; margin-right: 4px; }
+.cm-list .meta { display: flex; gap: 12px; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.cm-list .meta button { border: 0; background: none; color: inherit; font: inherit; padding: 0; cursor: pointer; }
+.cm-list .meta button:hover { color: var(--text); }
+.cm-list .cl { border: 0; background: none; color: var(--muted); font-size: 14px; cursor: pointer; align-self: center; padding: 4px; }
+.cm-list .cl.on { color: #ff4d6d; }
+.cm-list .none { color: var(--muted); justify-content: center; padding: 26px 0; }
+.cm-form { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #ffffff12; }
+.cm-form input { flex: 1; min-width: 0; padding: 9px 14px; border-radius: 999px; border: 1px solid #ffffff22; background: #0f0d1f; color: var(--text); font: inherit; }
+.cm-form button { border: 0; background: none; color: var(--accent-2); font: inherit; font-weight: 800; cursor: pointer; padding: 0 6px; }
+.cm-form button:disabled { opacity: .4; cursor: default; }
+.cm-reply { display: flex; justify-content: space-between; padding: 6px 14px 0; color: var(--muted); font-size: 12px; }
+.cm-reply button { border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; }
+.card .cmts { border-top: 1px solid #ffffff12; max-height: 520px; }
+
+/* pop-ups */
+.ov { position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: 16px; background: rgba(5, 4, 14, .72); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+.sheet { width: min(520px, 100%); height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--panel); border: 1px solid #ffffff1f; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 80px #000c; }
+.sheet.short { height: auto; max-height: min(560px, calc(100vh - 32px)); }
+.sheet-h { display: flex; align-items: center; padding: 12px 14px; border-bottom: 1px solid #ffffff12; font-weight: 800; }
+.sheet-h span { flex: 1; text-align: center; }
+.sheet-h button { border: 0; background: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; width: 30px; }
+.people { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
+.people a { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; font-weight: 700; }
+.people a:hover { background: #ffffff0d; }
+.people .none { color: var(--muted); padding: 20px; text-align: center; }
+.howto-clip ol { margin: 0; padding: 14px 18px 4px 36px; line-height: 1.6; color: var(--muted); }
+.howto-clip ol b { color: var(--text); }
+.howto-clip .btn { margin: 10px 16px 16px; }
+
+/* a profile */
+.prof { max-width: 860px; margin: 0 auto; }
+.prof-h { display: flex; gap: 26px; align-items: center; padding: 10px 6px 22px; border-bottom: 1px solid #ffffff14; flex-wrap: wrap; }
+.prof-h .av { width: 96px; height: 96px; font-size: 42px; }
+.prof-h .info { flex: 1; min-width: 220px; }
+.prof-h h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; overflow-wrap: anywhere; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prof-h h1 .tag { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #ffffff14; color: var(--muted); }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; margin: 10px 0 14px; }
+.stats button, .stats span { border: 0; background: none; color: var(--muted); font: inherit; padding: 0; font-size: 15px; }
+.stats button { cursor: pointer; }
+.stats button:hover { color: var(--text); }
+.stats b { color: var(--text); font-size: 17px; margin-right: 4px; }
+.prof-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.prof-acts .btn { padding: 8px 16px; font-size: 14px; }
+.pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+.pgrid a { position: relative; display: block; aspect-ratio: 16 / 10; background: #000; overflow: hidden; border-radius: 4px; }
+.pgrid img { width: 100%; height: 100%; object-fit: cover; transition: transform .2s, filter .2s; }
+.pgrid a:hover img { transform: scale(1.04); filter: brightness(.7); }
+.pgrid .ov2 { position: absolute; left: 8px; bottom: 6px; right: 8px; display: flex; justify-content: space-between; color: #fff; font-size: 13px; font-weight: 800; text-shadow: 0 1px 6px #000; pointer-events: none; }
+.pgrid .hov { position: absolute; inset: 0; display: none; place-items: center; gap: 18px; grid-auto-flow: column; color: #fff; font-weight: 800; pointer-events: none; }
+.pgrid a:hover .hov { display: grid; }
+.pgrid-none { text-align: center; color: var(--muted); padding: 50px 10px; }
+.back { display: inline-flex; margin: 0 0 12px; }
+.single { max-width: 640px; margin: 0 auto; }
+@media (max-width: 640px) {
+  .soc-seg { width: 100%; } .soc-seg button { flex: 1; padding: 7px 4px; font-size: 13px; }
+  .prof-h { gap: 16px; } .prof-h .av { width: 72px; height: 72px; font-size: 30px; }
+  .pgrid { gap: 2px; }
+}
+.mob-phone .soc { padding-left: 0; padding-right: 0; }
+.mob-phone .soc-top, .mob-phone .soc-note, .mob-phone .prof-h, .mob-phone .back { margin-left: 12px; margin-right: 12px; }
+.mob-phone .card { border-radius: 0; border-left: 0; border-right: 0; }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">The Arcade</a>
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab" href="index.html">Games</a>
+    <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
+    <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
+    <a class="tab on" href="social.html" aria-current="page">Social</a>
+  </nav>
+</header>
+
+<main class="wrap soc">
+  <div class="soc-top">
+    <div class="soc-seg" role="tablist" id="seg">
+      <button type="button" data-t="foryou" role="tab">For you</button>
+      <button type="button" data-t="following" role="tab">Following</button>
+      <button type="button" data-t="new" role="tab">New</button>
+      <button type="button" data-t="top" role="tab">Top</button>
+    </div>
+    <span class="sp"></span>
+    <button type="button" class="btn ghost2" id="mine">My profile</button>
+    <button type="button" class="btn" id="make">🎬 Make a clip</button>
+  </div>
+  <div id="view" aria-live="polite"></div>
+</main>
+
+<script src="games.js?v=184"></script>
+<script src="account.js?v=14"></script>
+<script src="call.js?v=6"></script>
+<script>
+/* Social (2026-11-10): gameplay clips, Instagram style. The server is the Worker's /clips/* routes (see the comment
+   block above `clips()` in realtime-worker/src/worker.js); clips are recorded on play.html by clips.js.
+   Views: #t=foryou|following|new|top (feeds), #u=<name> (a profile), #c=<id> (one clip with its comments).
+   A view counts once a clip has played for 2 seconds (or most of a short one), once per viewer (the account, or this
+   device for guests); how much of each clip people watch is sent too and helps rank For you. */
+const $ = id => document.getElementById(id);
+const ROOM = ((/[?&]clipsroom=([a-z0-9-]+)/i.exec(location.search) || [])[1] || '').toLowerCase(); // tests: a separate Social
+const ADMIN = /[?&]admin\b/.test(location.search);
+const KEEP = ROOM ? '?clipsroom=' + ROOM + (ADMIN ? '&admin' : '') : ADMIN ? '?admin' : '';
+const API = () => ArcadeAccount.server + '/clips/';
+const me = () => ArcadeAccount.kind() === 'online' ? ArcadeAccount.name() : '';
+const lc = s => String(s || '').toLowerCase();
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const hue = id => { let h = 0; for (const c of lc(id)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const avatar = n => { const s = el('span', 'av', (String(n).match(/[a-z0-9]/i) || [String(n)[0] || '?'])[0].toUpperCase()); s.setAttribute('aria-hidden', 'true'); s.style.setProperty('--h', hue(n)); return s; };
+const num = n => n < 1000 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0).replace(/\.0$/, '') + 'K' : (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+const plural = (n, w) => num(n) + ' ' + w + (n === 1 ? '' : 's');
+const ago = t => { const s = (Date.now() - t) / 1000; if (s < 60) return 'now'; if (s < 3600) return Math.floor(s / 60) + 'm'; if (s < 86400) return Math.floor(s / 3600) + 'h'; if (s < 604800) return Math.floor(s / 86400) + 'd'; if (s < 2592000) return Math.floor(s / 604800) + 'w'; return new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' }); };
+const gameOf = id => GAMES.find(g => g.id === id);
+const ls = { get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+const userLink = n => '#u=' + encodeURIComponent(n);
+
+/* ---------- the server ---------- */
+function qs(o) { const p = new URLSearchParams(); for (const [k, v] of Object.entries(o || {})) if (v !== '' && v != null) p.set(k, v); if (ROOM) p.set('r', ROOM); const s = p.toString(); return s ? '?' + s : ''; }
+async function get(path, o) {
+  try { const r = await fetch(API() + path + qs(Object.assign({ me: me() }, o)), { cache: 'no-store' }); const j = await r.json().catch(() => ({})); j.status = r.status; return j; }
+  catch (e) { return { error: 'offline', status: 0 }; }
+}
+async function post(path, body, noAuth) {
+  const h = { 'content-type': 'application/json' };
+  if (!noAuth) { if (!me()) { needAccount(); return { error: 'auth', status: 401 }; } h.authorization = 'Bearer ' + ArcadeAccount.token(); }
+  try { const r = await fetch(API() + path + qs(), { method: 'POST', headers: h, body: JSON.stringify(body), keepalive: !!noAuth }); const j = await r.json().catch(() => ({})); j.status = r.status; return j; }
+  catch (e) { return { error: 'offline', status: 0 }; }
+}
+function needAccount() { ArcadeAccount.welcome(); }
+function failed(r) { alert(r.error === 'slow' ? 'Slow down a little and try again.' : r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : 'That didn’t work (' + (r.error || r.status) + ').'); }
+
+/* ---------- who you follow, friends, blocks ---------- */
+let following = new Set(ls.get('arcade-social-following', []));
+function setFollowing(list) { following = new Set(list.map(lc)); ls.set('arcade-social-following', [...following]); }
+function friends() { const s = ArcadeAccount.social && ArcadeAccount.social(); return s && s.f ? Object.values(s.f).filter(f => f.st === 'f').map(f => f.n) : []; }
+function blocked() { const s = ArcadeAccount.social && ArcadeAccount.social(); return new Set(s && s.b ? Object.keys(s.b) : []); }
+async function follow(name, on, btns) {
+  const r = await post('follow', { name, on: on ? 1 : 0 });
+  if (r.status !== 200) return r.status === 401 ? null : failed(r);
+  if (on) following.add(lc(name)); else following.delete(lc(name));
+  ls.set('arcade-social-following', [...following]);
+  document.querySelectorAll('[data-follow="' + CSS.escape(lc(name)) + '"]').forEach(b => paintFollow(b, on));
+  return r;
+}
+function paintFollow(b, on) {
+  b.classList.toggle('on', on);
+  if (b.classList.contains('btn')) { b.textContent = on ? 'Following' : 'Follow'; b.className = 'btn ' + (on ? 'ghost2' : ''); b.classList.toggle('on', on); }
+  else b.textContent = on ? 'Following' : 'Follow';
+}
+function followBtn(name, big) {
+  const b = el('button', big ? 'btn' : 'fol'); b.type = 'button'; b.dataset.follow = lc(name);
+  paintFollow(b, following.has(lc(name)));
+  b.onclick = e => { e.stopPropagation(); follow(name, !following.has(lc(name))); };
+  return b;
+}
+
+/* ---------- views: once a clip has played 2 s, once per viewer; how much of it was watched ---------- */
+let devId = ls.get('arcade-social-dev', '');
+if (!devId) { devId = Math.random().toString(36).slice(2, 12); ls.set('arcade-social-dev', devId); }
+const viewer = () => me() ? 'a:' + lc(me()) : 'd:' + devId;
+const seen = ls.get('arcade-social-seen', {}); // clip id -> when this device first viewed it (For you shows those less)
+const watch = new Map(), pending = new Map(); // id -> { t: seconds watched, last, counted }
+function watched(c, v, card) {
+  const w = watch.get(c.id) || { t: 0, last: v.currentTime };
+  watch.set(c.id, w);
+  let d = v.currentTime - w.last; if (d < 0 || d > 1.5) d = 0.25; // looped round, or a jump
+  w.last = v.currentTime; w.t += d;
+  const dur = c.dur || v.duration || 10, frac = Math.min(1, w.t / dur);
+  if (!w.counted && w.t >= Math.min(2, dur * 0.8)) {
+    w.counted = true;
+    if (!seen[c.id]) { seen[c.id] = Date.now(); const ks = Object.keys(seen); if (ks.length > 3000) ks.sort((a, b) => seen[a] - seen[b]).slice(0, 500).forEach(k => delete seen[k]); ls.set('arcade-social-seen', seen); c.vw++; paintViews(card, c); }
+  }
+  if (w.counted && !w.sent) pending.set(c.id, frac);
+}
+function flushViews() {
+  if (!pending.size) return;
+  const l = [...pending].slice(0, 50); l.forEach(([id]) => { pending.delete(id); watch.get(id).sent = true; });
+  post('seen', { v: viewer(), l }, true);
+}
+setInterval(flushViews, 15000);
+addEventListener('pagehide', flushViews);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { flushViews(); if (playing) playing.pause(); } });
+
+/* ---------- videos: fetched whole (so seeking works everywhere), a few kept ---------- */
+const blobs = new Map();
+function videoUrl(id) {
+  if (blobs.has(id)) { const p = blobs.get(id); blobs.delete(id); blobs.set(id, p); return p; }
+  const p = fetch(API() + 'v/' + id).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); }).then(b => URL.createObjectURL(b));
+  p.catch(() => blobs.delete(id));
+  blobs.set(id, p);
+  while (blobs.size > 12) { const [old, op] = blobs.entries().next().value; blobs.delete(old); op.then(u => { if (!document.querySelector('video[src="' + u + '"]')) URL.revokeObjectURL(u); }, () => {}); }
+  return p;
+}
+let muted = ls.get('arcade-social-muted', true), playing = null;
+const io = new IntersectionObserver(es => {
+  for (const e of es) { const v = e.target.querySelector('video'); if (e.isIntersecting && e.intersectionRatio >= 0.6) startVideo(e.target); else if (v && !v.paused) v.pause(); }
+}, { threshold: [0, 0.6] });
+function startVideo(box) {
+  const v = box.querySelector('video'), c = box._clip;
+  if (playing && playing !== v) playing.pause();
+  playing = v; v.muted = muted;
+  box.querySelector('.snd').textContent = muted ? '🔇' : '🔊';
+  if (v.src) { v.play().catch(() => {}); return; }
+  box.classList.add('loading');
+  videoUrl(c.id).then(u => {
+    box.classList.remove('loading');
+    if (!v.src) v.src = u;
+    if (playing === v) v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+    // fetch the next clip in the feed while this one plays
+    const next = box.closest('.card') && box.closest('.card').nextElementSibling;
+    if (next && next._clip) videoUrl(next._clip.id);
+  }, () => { box.classList.remove('loading'); box.querySelector('.load').textContent = 'Couldn’t load this clip'; box.classList.add('loading'); });
+}
+
+/* ---------- a clip card ---------- */
+function paintViews(card, c) { const v = card && card.querySelector('.views'); if (v) v.textContent = '👁 ' + plural(c.vw, 'view'); }
+function card(c, opt) {
+  opt = opt || {};
+  const a = el('article', 'card'); a._clip = c;
+  const g = gameOf(c.g), mine = lc(c.by) === lc(me());
+  // header: who, follow, game, menu
+  const ch = el('div', 'ch'), who = el('div', 'who'), nm = el('a', 'nm', c.by);
+  const avl = el('a'); avl.href = userLink(c.by); avl.append(avatar(c.by));
+  nm.href = userLink(c.by);
+  who.append(nm);
+  if (!mine && !following.has(lc(c.by))) { who.append(document.createTextNode(' · ')); who.append(followBtn(c.by)); }
+  const sm = el('small'), gl = el('a', '', g ? g.title : c.g); gl.href = 'play.html?game=' + encodeURIComponent(c.g);
+  sm.append(gl, document.createTextNode(' · ' + Math.round(c.dur) + 's'));
+  who.append(sm);
+  const dots = el('button', 'dots', '⋯'); dots.type = 'button'; dots.setAttribute('aria-label', 'More');
+  dots.onclick = e => { e.stopPropagation(); menu(dots, c, a); };
+  ch.append(avl, who, dots);
+  // the video
+  const box = el('div', 'vid stopped'); box._clip = c;
+  if (c.w && c.h) box.style.aspectRatio = c.w + ' / ' + c.h;
+  const img = el('img'); img.alt = ''; img.src = c.p || (g ? g.thumb : ''); img.loading = 'lazy';
+  const v = el('video'); v.loop = true; v.playsInline = true; v.muted = true; v.preload = 'none'; v.setAttribute('playsinline', '');
+  const snd = el('button', 'snd', '🔇'); snd.type = 'button'; snd.setAttribute('aria-label', 'Sound on or off');
+  const heart = el('div', 'heart', '❤️'), prog = el('div', 'prog'), pi = el('i'), paused = el('div', 'paused', '▶'), load = el('div', 'load', 'Loading…');
+  prog.append(pi);
+  box.append(img, v, paused, load, snd, heart, prog);
+  v.addEventListener('playing', () => { box.classList.add('ready'); box.classList.remove('stopped'); });
+  v.addEventListener('pause', () => box.classList.add('stopped'));
+  v.addEventListener('timeupdate', () => { if (!v.paused) watched(c, v, a); pi.style.width = Math.min(100, v.currentTime / (c.dur || v.duration || 1) * 100) + '%'; });
+  snd.onclick = e => { e.stopPropagation(); muted = !muted; ls.set('arcade-social-muted', muted); v.muted = muted; snd.textContent = muted ? '🔇' : '🔊'; };
+  let tap = 0;
+  box.addEventListener('click', () => { // one tap: pause/play; two quick taps: like (like Instagram)
+    clearTimeout(tap);
+    tap = setTimeout(() => { if (v.paused) startVideo(box); else v.pause(); }, 260);
+  });
+  box.addEventListener('dblclick', e => { e.preventDefault(); clearTimeout(tap); heart.classList.remove('pop'); void heart.offsetWidth; heart.classList.add('pop'); if (!c.me) like(c, a, true); });
+  io.observe(box);
+  // actions
+  const acts = el('div', 'acts');
+  const lb = el('button', 'like' + (c.me ? ' on' : '')); lb.type = 'button'; lb.innerHTML = '<span class="ic"></span><span class="n"></span>';
+  const cb = el('button'); cb.type = 'button'; cb.innerHTML = '<span class="ic">💬</span><span class="n"></span>';
+  const sb = el('button'); sb.type = 'button'; sb.innerHTML = '<span class="ic">↗</span><span>Share</span>';
+  const views = el('span', 'views');
+  acts.append(lb, cb, sb, views);
+  lb.onclick = () => like(c, a, !c.me);
+  cb.onclick = () => opt.inline ? a.querySelector('.cm-form input').focus() : openComments(c, a);
+  sb.onclick = () => share(c);
+  a.append(ch, box, acts);
+  if (c.t) { const cap = el('p', 'cap'), cn = el('a', '', c.by); cn.href = userLink(c.by); cap.append(cn, document.createTextNode(c.t)); a.append(cap); }
+  const all = el('button', 'allcm'); all.type = 'button'; all.onclick = () => openComments(c, a);
+  if (!opt.inline) a.append(all);
+  const foot = el('div', 'card-foot'), tm = el('time', '', ago(c.at)); tm.dateTime = new Date(c.at).toISOString(); tm.title = new Date(c.at).toLocaleString();
+  const play = el('a', '', '▶ Play ' + (g ? g.title : 'this game')); play.href = 'play.html?game=' + encodeURIComponent(c.g);
+  const tl = el('a', '', ''); tl.href = '#c=' + c.id; tl.append(tm); tl.style.color = 'inherit';
+  foot.append(tl, play);
+  a.append(foot);
+  if (ADMIN && c.rp) { const r = el('p', 'soc-note', '⚑ Reported by ' + c.rp + (c.rp >= 3 ? ' (hidden from feeds)' : '')); r.style.margin = '0 14px 10px'; a.append(r); }
+  paintCard(a, c);
+  if (opt.inline) a.append(commentsPanel(c, a, true));
+  return a;
+}
+function paintCard(a, c) {
+  const lb = a.querySelector('.like');
+  lb.classList.toggle('on', !!c.me); lb.querySelector('.ic').textContent = c.me ? '❤️' : '♡';
+  lb.querySelector('.n').textContent = num(c.lk); lb.setAttribute('aria-label', (c.me ? 'Unlike' : 'Like') + ' (' + c.lk + ')');
+  a.querySelectorAll('.acts button')[1].querySelector('.n').textContent = num(c.cm);
+  const all = a.querySelector('.allcm');
+  if (all) { all.hidden = false; all.textContent = c.cm ? (c.cm === 1 ? 'View 1 comment' : 'View all ' + num(c.cm) + ' comments') : 'Add a comment…'; }
+  paintViews(a, c);
+}
+async function like(c, a, on) {
+  if (!me()) return needAccount();
+  c.me = on ? 1 : 0; c.lk += on ? 1 : -1; paintCard(a, c); // straight away; put back if the server says no
+  const r = await post('like', { id: c.id, on: c.me });
+  if (r.status === 200) { c.lk = r.lk; paintCard(a, c); }
+  else { c.me = on ? 0 : 1; c.lk += on ? -1 : 1; paintCard(a, c); if (r.status !== 401) failed(r); }
+}
+async function share(c) {
+  const url = location.href.split('#')[0] + '#c=' + c.id, g = gameOf(c.g);
+  const shared = ls.get('arcade-social-shared', {});
+  const count = () => { if (!shared[c.id]) { shared[c.id] = 1; ls.set('arcade-social-shared', shared); post('share', { id: c.id }, true); } };
+  if (navigator.share && /mob/.test(document.documentElement.className)) { try { await navigator.share({ title: c.by + ' on The Arcade', text: c.t || (g ? g.title + ' clip' : 'A clip'), url }); count(); } catch (e) {} return; }
+  try { await navigator.clipboard.writeText(url); ArcadeAccount.toast('Link copied', 'Paste it anywhere to share this clip.', url); count(); }
+  catch (e) { prompt('Copy this link:', url); count(); }
+}
+let openMenu = null;
+function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } }
+document.addEventListener('click', closeMenu);
+function menu(btn, c, a) {
+  closeMenu();
+  const m = el('div', 'menu'), mine = lc(c.by) === lc(me()), add = (t, f, bad) => { const b = el('button', bad ? 'bad' : '', t); b.type = 'button'; b.onclick = e => { e.stopPropagation(); closeMenu(); f(); }; m.append(b); };
+  add('Go to post', () => { location.hash = 'c=' + c.id; });
+  add('Copy link', () => share(c));
+  add('About ' + c.by, () => { location.hash = 'u=' + encodeURIComponent(c.by); });
+  if (!mine) add('Report', async () => {
+    if (!me()) return needAccount();
+    if (!confirm('Report this clip? Clips reported by a few players are hidden until the owner looks at them.')) return;
+    const r = await post('report', { id: c.id }); if (r.status === 200) ArcadeAccount.toast('Thanks', 'The clip was reported.', location.href); else if (r.status !== 401) failed(r);
+  }, true);
+  if (mine) add('Delete', async () => {
+    if (!confirm('Delete this clip for good?')) return;
+    const r = await post('del', { id: c.id }); if (r.status === 200) gone(a); else if (r.status !== 401) failed(r);
+  }, true);
+  if (ADMIN) add('Admin: delete', () => adminDelete(c, a), true);
+  const r = btn.getBoundingClientRect();
+  m.style.top = (r.bottom + scrollY + 4) + 'px'; m.style.left = Math.max(8, r.right + scrollX - 200) + 'px';
+  document.body.append(m); openMenu = m;
+}
+function gone(a) { a.style.transition = 'opacity .3s'; a.style.opacity = 0; setTimeout(() => a.remove(), 300); }
+let adminPw = '';
+async function adminDelete(c, a) {
+  if (!adminPw) adminPw = prompt('Admin password') || '';
+  if (!adminPw || !confirm('Delete this clip by ' + c.by + ' for everyone?')) return;
+  const r = await ArcadeAccount.api('admin', { method: 'POST', body: { pw: adminPw, op: 'clipdel', id: c.id, r: ROOM } });
+  if (r.status === 200) gone(a); else { adminPw = ''; alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').'); }
+}
+
+/* ---------- comments ---------- */
+function commentsPanel(c, a, inline) {
+  const wrap = el('div', 'cmts'), list = el('ul', 'cm-list'), reply = el('div', 'cm-reply'), form = el('form', 'cm-form');
+  const inp = el('input'); inp.maxLength = 300; inp.placeholder = me() ? 'Add a comment…' : 'Sign in to comment'; inp.setAttribute('aria-label', 'Add a comment');
+  const send = el('button', '', 'Post'); send.disabled = true;
+  form.append(inp, send); reply.hidden = true;
+  wrap.append(list, reply, form);
+  let re = '';
+  const setRe = n => { re = n; reply.hidden = !n; reply.replaceChildren(el('span', '', 'Replying to ' + n)); const x = el('button', '', '✕'); x.type = 'button'; x.onclick = () => setRe(''); reply.append(x); };
+  inp.oninput = () => { send.disabled = !inp.value.trim(); };
+  inp.onfocus = () => { if (!me()) { inp.blur(); needAccount(); } };
+  const row = m => {
+    const li = el('li'), body = el('div', 'body'), nm = el('a', 'nm', m.n), al = el('a');
+    nm.href = al.href = userLink(m.n); al.append(avatar(m.n));
+    body.append(nm);
+    if (m.re) { const r = el('a', 're', '@' + m.re); r.href = userLink(m.re); body.append(r); }
+    body.append(document.createTextNode(m.t));
+    const meta = el('div', 'meta'); meta.append(el('span', '', ago(m.at)));
+    const lks = el('span', '', m.lk ? plural(m.lk, 'like') : ''); meta.append(lks);
+    const rb = el('button', '', 'Reply'); rb.type = 'button'; rb.onclick = () => { if (!me()) return needAccount(); setRe(m.n); inp.focus(); };
+    meta.append(rb);
+    if (me() && (lc(m.n) === lc(me()) || lc(c.by) === lc(me()))) {
+      const db = el('button', '', 'Delete'); db.type = 'button';
+      db.onclick = async () => { if (!confirm('Delete this comment?')) return; const r = await post('cdel', { id: c.id, i: m.i }); if (r.status === 200) { li.remove(); c.cm = r.cm; paintCard(a, c); } else failed(r); };
+      meta.append(db);
+    }
+    body.append(meta);
+    const hb = el('button', 'cl' + (m.me ? ' on' : ''), m.me ? '♥' : '♡'); hb.type = 'button'; hb.setAttribute('aria-label', 'Like comment');
+    hb.onclick = async () => {
+      if (!me()) return needAccount();
+      const on = !m.me, r = await post('clike', { id: c.id, i: m.i, on: on ? 1 : 0 });
+      if (r.status !== 200) return failed(r);
+      m.me = on; m.lk = r.lk; hb.classList.toggle('on', on); hb.textContent = on ? '♥' : '♡'; lks.textContent = m.lk ? plural(m.lk, 'like') : '';
+    };
+    li.append(al, body, hb);
+    return li;
+  };
+  const none = () => { if (!list.querySelector('li:not(.none)')) list.replaceChildren(el('li', 'none', 'No comments yet. Say something nice!')); };
+  list.append(el('li', 'none', 'Loading comments…'));
+  get('comments', { id: c.id }).then(r => {
+    if (r.status !== 200) { list.replaceChildren(el('li', 'none', 'Couldn’t load the comments.')); return; }
+    list.replaceChildren(...r.list.map(row)); none();
+    if (!inline) list.scrollTop = list.scrollHeight;
+  });
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const t = inp.value.trim(); if (!t) return;
+    send.disabled = true;
+    const r = await post('comment', { id: c.id, t, re });
+    if (r.status !== 200) { send.disabled = false; if (r.status !== 401) failed(r); return; }
+    inp.value = ''; setRe('');
+    list.querySelector('.none') && list.querySelector('.none').remove();
+    list.append(row(r.c)); list.scrollTop = list.scrollHeight;
+    c.cm = r.cm; paintCard(a, c);
+  };
+  return wrap;
+}
+function sheet(title, content, short) {
+  const ov = el('div', 'ov'), sh = el('div', 'sheet' + (short ? ' short' : '')), h = el('div', 'sheet-h'), x = el('button', '', '×');
+  x.type = 'button'; x.setAttribute('aria-label', 'Close');
+  h.append(el('i', '', ''), el('span', '', title), x); h.firstChild.style.width = '30px';
+  sh.append(h, content); ov.append(sh);
+  const close = () => { ov.remove(); removeEventListener('keydown', esc); removeEventListener('hashchange', close); };
+  const esc = e => { if (e.key === 'Escape') close(); };
+  x.onclick = close; ov.onclick = e => { if (e.target === ov) close(); };
+  addEventListener('keydown', esc); addEventListener('hashchange', close);
+  document.body.append(ov);
+  return close;
+}
+function openComments(c, a) { const p = commentsPanel(c, a); p.style.flex = '1'; sheet('Comments', p); setTimeout(() => { if (me()) p.querySelector('input').focus(); }, 50); }
+function peopleSheet(title, names) {
+  const ul = el('ul', 'people');
+  if (!names.length) ul.append(el('li', 'none', 'Nobody yet.'));
+  for (const n of names) { const li = el('li'), a = el('a'); a.href = userLink(n); a.append(avatar(n), el('span', '', n)); li.append(a); ul.append(li); }
+  sheet(title, ul, true);
+}
+
+/* ---------- For you: ranked for this player ---------- */
+// The server sends its hottest clips (engagement: likes, comments, shares and how much of each view was watched,
+// cooled by age) and its newest. Here they're ranked for you: games you play, games whose clips you like and people
+// you follow count more, clips you've already seen far less, then no more than a couple from one player in a row.
+function rank(list) {
+  const played = Arcade.played(), fol = new Set([...following, ...friends().map(lc)]), likedGame = {}, now = Date.now();
+  for (const c of list) if (c.me) likedGame[c.g] = (likedGame[c.g] || 0) + 1;
+  let pool = list.map(c => {
+    let s = c.hot || 0.001;
+    if (played[c.g]) s *= 1.5;
+    if (likedGame[c.g]) s *= 1 + Math.min(1, likedGame[c.g] * 0.25);
+    if (fol.has(lc(c.by))) s *= 2;
+    if (now - c.at < 6 * 36e5) s *= 1.3;
+    if (seen[c.id]) s *= 0.12;
+    if (lc(c.by) === lc(me())) s *= 0.4;
+    return { c, s: s * (0.85 + Math.random() * 0.3) };
+  });
+  const out = [], byCount = {};
+  while (pool.length) {
+    let best = 0, bs = -1;
+    pool.forEach((x, i) => { const k = x.s * Math.pow(0.5, byCount[lc(x.c.by)] || 0) * (out.length && out[out.length - 1].g === x.c.g ? 0.8 : 1); if (k > bs) { bs = k; best = i; } });
+    const [x] = pool.splice(best, 1); out.push(x.c); byCount[lc(x.c.by)] = (byCount[lc(x.c.by)] || 0) + 1;
+  }
+  return out;
+}
+
+/* ---------- views ---------- */
+const view = $('view');
+let tab = 'foryou', gen = 0;
+function empty(title, text, btnText, href) {
+  const d = el('div', 'empty'); d.append(el('b', '', title), document.createTextNode(text));
+  if (btnText) { const b = el(href ? 'a' : 'button', 'btn', btnText); if (href) b.href = href; else { b.type = 'button'; b.onclick = howTo; } d.append(el('br'), b); }
+  return d;
+}
+function offline(retry) { const d = empty('Couldn’t reach Social', 'Check your connection and try again.'); const b = el('button', 'btn', 'Try again'); b.onclick = retry; d.append(el('br'), b); return d; }
+function setTab(t) { tab = t; document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); }
+async function showFeed(t) {
+  const my = ++gen; setTab(t);
+  view.replaceChildren(el('p', 'soc-note', 'Loading clips…'));
+  if (t === 'following' && !me()) { view.replaceChildren(empty('Follow players to see their clips', 'Make an online account, then follow people from their clips or profiles. Your friends’ clips show here too.', 'Make an account')); view.querySelector('.btn').onclick = needAccount; return; }
+  const extra = t === 'following' ? { by: friends().slice(0, 300).join(',') } : {};
+  const r = await get('feed', Object.assign({ tab: t }, extra));
+  if (my !== gen) return;
+  if (r.status !== 200) { view.replaceChildren(offline(() => showFeed(t))); return; }
+  if (me()) setFollowing(r.following || []);
+  const hide = blocked(), list = (t === 'foryou' ? rank(r.clips) : r.clips).filter(c => !hide.has(lc(c.by)));
+  const feed = el('div', 'feed');
+  const nodes = [];
+  if (t === 'foryou') {
+    const d = el('details', 'soc-note'); d.innerHTML = '<summary>How For you picks clips</summary><p></p>';
+    d.querySelector('p').textContent = 'Clips that people like, comment on, share and watch to the end rise; newer clips get a boost and older ones cool down. Then it’s made yours: clips from games you play, games whose clips you like, and people you follow or are friends with come first, clips you’ve already watched drop back, and you won’t get lots from one player in a row.';
+    nodes.push(d);
+  }
+  if (!list.length) {
+    nodes.push(t === 'following' ? empty('Nothing here yet', 'Nobody you follow has posted a clip. Find players on For you and tap Follow.') : empty('No clips yet', 'Be the first: open a game and press 🎬 Clip to record what happens.', 'How to make a clip'));
+    view.replaceChildren(...nodes); return;
+  }
+  list.forEach(c => feed.append(card(c)));
+  nodes.push(feed);
+  // older clips for New and Following
+  if ((t === 'new' || t === 'following') && r.clips.length >= 30) {
+    const more = el('button', 'btn ghost2 more', 'Load more'); more.type = 'button';
+    more.onclick = async () => {
+      more.disabled = true; more.textContent = 'Loading…';
+      const last = feed.lastElementChild._clip, r2 = await get('feed', Object.assign({ tab: t, before: last.at }, extra));
+      if (r2.status !== 200) { more.disabled = false; more.textContent = 'Load more'; return; }
+      r2.clips.filter(c => !hide.has(lc(c.by))).forEach(c => feed.append(card(c)));
+      if (r2.clips.length < 30) more.remove(); else { more.disabled = false; more.textContent = 'Load more'; }
+    };
+    nodes.push(el('br'), more);
+  }
+  view.replaceChildren(...nodes);
+}
+async function showUser(name) {
+  const my = ++gen; setTab('');
+  view.replaceChildren(el('p', 'soc-note', 'Loading ' + name + '…'));
+  const r = await get('user', { name });
+  if (my !== gen) return;
+  if (r.status !== 200) { view.replaceChildren(r.status === 400 ? empty('No such player', 'Check the name and try again.') : offline(() => showUser(name))); return; }
+  const isMe = lc(r.n) === lc(me());
+  if (me() && !isMe) { if (r.iFollow) following.add(lc(r.n)); else following.delete(lc(r.n)); }
+  const p = el('section', 'prof'), h = el('div', 'prof-h'), info = el('div', 'info'), h1 = el('h1', '', r.n);
+  document.title = r.n + ' · Social · The Arcade';
+  if (r.followsMe) h1.append(el('span', 'tag', 'Follows you'));
+  const st = el('div', 'stats');
+  const stat = (n, w, f) => { const b = el(f ? 'button' : 'span'); if (f) { b.type = 'button'; b.onclick = f; } b.append(el('b', '', num(n)), document.createTextNode(w)); st.append(b); return b; };
+  stat(r.clips.length, r.clips.length === 1 ? 'clip' : 'clips');
+  const flB = stat(r.followers, r.followers === 1 ? 'follower' : 'followers', () => peopleSheet('Followers', r.fl || []));
+  stat(r.following, 'following', () => peopleSheet('Following', r.fg || []));
+  stat(r.views, r.views === 1 ? 'view' : 'views');
+  stat(r.likes, r.likes === 1 ? 'like' : 'likes');
+  const acts = el('div', 'prof-acts');
+  if (isMe) { const mk = el('button', 'btn', '🎬 Make a clip'); mk.type = 'button'; mk.onclick = howTo; acts.append(mk); }
+  else {
+    const fb = followBtn(r.n, true);
+    fb.onclick = async () => { const on = !following.has(lc(r.n)), x = await follow(r.n, on); if (x && x.followers != null) { flB.firstChild.textContent = num(x.followers); r.followers = x.followers; const mn = lc(me()); r.fl = (r.fl || []).filter(n => n !== mn); if (on) r.fl.unshift(mn); } };
+    acts.append(fb);
+    const msg = el('a', 'btn ghost2', 'Message'); msg.href = 'players.html#dm=' + encodeURIComponent(r.n); acts.append(msg);
+  }
+  const sc = el('a', 'btn ghost2', 'Best scores'); sc.href = 'players.html#p=' + encodeURIComponent(r.n); acts.append(sc);
+  info.append(h1, st, acts);
+  h.append(avatar(r.n), info);
+  const grid = el('div', 'pgrid');
+  for (const c of r.clips) {
+    const a = el('a'); a.href = '#c=' + c.id; a.title = c.t || (gameOf(c.g) || {}).title || '';
+    const img = el('img'); img.alt = c.t || 'Clip'; img.loading = 'lazy'; img.src = c.p || ((gameOf(c.g) || {}).thumb || '');
+    const o = el('div', 'ov2'); o.append(el('span', '', '▶ ' + num(c.vw)), el('span', '', Math.round(c.dur) + 's'));
+    const hov = el('div', 'hov'); hov.append(el('span', '', '❤️ ' + num(c.lk)), el('span', '', '💬 ' + num(c.cm)));
+    a.append(img, o, hov); grid.append(a);
+  }
+  p.append(h, grid);
+  if (!r.clips.length) p.append(el('p', 'pgrid-none', isMe ? 'You haven’t posted any clips yet. Open a game and press 🎬 Clip.' : r.n + ' hasn’t posted any clips yet.'));
+  view.replaceChildren(p);
+}
+async function showClip(id) {
+  const my = ++gen; setTab('');
+  view.replaceChildren(el('p', 'soc-note', 'Loading the clip…'));
+  const r = await get('one', { id });
+  if (my !== gen) return;
+  if (r.status !== 200) { view.replaceChildren(r.status === 404 ? empty('This clip isn’t here', 'It may have been deleted.', 'Back to For you', '#t=foryou') : offline(() => showClip(id))); return; }
+  const back = el('button', 'btn ghost2 small back', '← Back'); back.type = 'button';
+  back.onclick = () => { if (history.length > 1 && document.referrer.indexOf(location.pathname) >= 0) history.back(); else location.hash = 't=foryou'; };
+  const wrap = el('div', 'single'); wrap.append(back, card(r.clip, { inline: true }));
+  view.replaceChildren(wrap);
+  document.title = r.clip.by + (r.clip.t ? ': ' + r.clip.t : '') + ' · Social · The Arcade';
+}
+function route() {
+  closeMenu();
+  if (playing) { playing.pause(); playing = null; }
+  const h = decodeURIComponent(location.hash.slice(1)), [k, v] = [h.split('=')[0], h.slice(h.indexOf('=') + 1)];
+  document.title = 'Social · The Arcade';
+  scrollTo(0, 0);
+  if (k === 'u' && v) return showUser(v);
+  if (k === 'c' && v) return showClip(v);
+  showFeed(k === 't' && ['foryou', 'following', 'new', 'top'].includes(v) ? v : 'foryou');
+}
+function howTo() {
+  const d = el('div', 'howto-clip');
+  d.innerHTML = '<ol><li>Open any game from <b>Games</b>.</li><li>Press <b>🎬 Clip</b> at the top (or <b>F8</b> in the game) to start recording, and again to stop. Clips can be up to a minute long.</li><li>Add a caption and press <b>Post to Social</b>. Posting needs an online Arcade account.</li></ol>';
+  const b = el('a', 'btn', 'Pick a game'); b.href = 'index.html'; d.append(b);
+  sheet('Make a clip', d, true);
+}
+$('seg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) location.hash = 't=' + b.dataset.t; });
+$('make').onclick = howTo;
+$('mine').onclick = () => { if (!me()) return needAccount(); location.hash = 'u=' + encodeURIComponent(me()); };
+addEventListener('hashchange', route);
+// keep the test room and ?admin on links within the page's own feeds (they're hash links, so nothing to do) and on
+// links out to play.html (a clip posted from a test room goes to that room)
+if (KEEP) document.addEventListener('click', e => { const a = e.target.closest('a[href^="play.html"]'); if (a && !/clipsroom=/.test(a.href) && ROOM) a.href += '&clipsroom=' + ROOM; }, true);
+ArcadeAccount.ready().then(route);
+if (ArcadeAccount.onSocial) ArcadeAccount.onSocial(() => {}); // friends and blocks arrive with the account's sync
+</script>
+<script src="tos.js?v=9"></script>
+</body>
+</html>

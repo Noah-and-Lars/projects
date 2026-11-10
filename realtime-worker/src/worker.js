@@ -33,6 +33,7 @@ export default {
     if (url.pathname === '/chat/ws') return chatSocket(req, env, url);
     if (url.pathname.startsWith('/kd/')) return krill(req, env, url);
     if (url.pathname.startsWith('/ttt/')) return turnBoard(req, env, url);
+    if (url.pathname.startsWith('/clips/')) return clips(req, env, url);
     if (url.pathname !== '/ws') return new Response('arcade realtime ok', { headers: { 'content-type': 'text/plain' } });
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426 });
     const origin = req.headers.get('Origin') || '';
@@ -203,12 +204,17 @@ async function accounts(req, env, url) {
 // object is asked through a header only this Worker ever sets
 async function admin(env, body, out) {
   const name = String(body.name || ''), op = body.op;
-  if (op !== 'info' && op !== 'delete' && op !== 'chatdel') return out({ error: 'bad' }, 400);
+  if (op !== 'info' && op !== 'delete' && op !== 'chatdel' && op !== 'clipdel') return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
   if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
   if (op === 'chatdel') { // take a message out of the Global chat
     const r = await env.CHAT.get(env.CHAT.idFromName('chat:global')).fetch(new Request('https://chat/del', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-int': '1' }, body: JSON.stringify({ id: String(body.id || '') }) }));
+    return out(await r.json().catch(() => ({})), r.status);
+  }
+  if (op === 'clipdel') { // take a clip off Social (body.r: a ?clipsroom= test room)
+    const room = String(body.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
+    const r = await clipIndex(env, room).fetch(new Request('https://clips/admindel', { method: 'POST', body: JSON.stringify({ id: String(body.id || ''), me: 'admin_' }) }));
     return out(await r.json().catch(() => ({})), r.status);
   }
   if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
@@ -675,6 +681,7 @@ export class Account extends DurableObject {
     for (const [k, c] of Object.entries(s.c)) { if (c.g) (c.mem || []).forEach(n => names.add(n)); else names.add(c.n); }
     names.delete(old); names.delete(nn);
     await Promise.all([...names].slice(0, 600).map(n => peerCall(this.env, n, 'p-rename', { from: old, to: nn }).catch(() => null)));
+    await clipIndex(this.env, '').fetch(new Request('https://clips/rename', { method: 'POST', body: JSON.stringify({ int: 1, from: old, to: nn }) })).catch(() => null);
     for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'renamed'); } catch (e) {}
     await S.deleteAll(); await S.put('moved', { to: nn, at: now });
     return j({ token, name: nn });
@@ -696,6 +703,7 @@ export class Account extends DurableObject {
     const s = await this.soc(), names = new Set([...Object.values(s.f).map(x => x.n), ...Object.values(s.c).map(x => x.n)]);
     await Promise.all([...names].slice(0, 400).map(n => peerCall(this.env, n, 'p-gone', { from: a.name }).catch(() => null)));
     await dirCall(this.env, 'del', { n: a.name }).catch(() => null);
+    await clipIndex(this.env, '').fetch(new Request('https://clips/purge', { method: 'POST', body: JSON.stringify({ int: 1, from: a.name }) })).catch(() => null);
     for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'deleted'); } catch (e) {}
   }
   // a new signed-in device: the token is the name plus a random part; only a hash of that part is kept
@@ -1046,5 +1054,339 @@ export class Tally extends DurableObject {
       return j({ rank: k >= 0 ? k + 1 : 0, best: b.ms });
     }
     return j({ error: 'not_found' }, 404);
+  }
+}
+
+/* ==========================================================================
+   Social (2026-11-10): gameplay clips, like a small Instagram for the arcade. Players record a clip on the play page
+   (play.html, the 🎬 Clip button) and publish it here; social.html shows the feeds, profiles and comments.
+   One Durable Object class, two kinds of object:
+     'index' (or 'index-test-<room>' for ?clipsroom= tests): every clip's details, likes, comments, views, follows.
+       'm:<id>' = { id, by, g, t, at, dur, w, h, sz, ty, lk, vw, wf, cm, sh, rp }   (wf = sum of the share of the clip
+       each view watched, so wf / vw is how much of it people watch); 'p:<id>' = the poster (a small JPEG data URL);
+       'l:<id>' = [lower names who liked]; 'c:<id>' = [{ i, n, t, at, re, lk: [lower names] }]; 'v:<id>' = [viewer
+       keys] (one view per viewer: an account name or a device id); 'u:<lower>' = { n, f: [following], fr: [followers],
+       lk: [liked ids], day, k (clips published that day) }; 'q:<id>' = an upload waiting for its video.
+       All the 'm:' rows are read once when the object wakes and kept in memory (they're small; posters aren't).
+     'clip:<id>': one clip's video, in 1 MB pieces 'v:0'... ('vn' pieces, 'ty' type). Served with a year-long cache.
+   Publishing is two steps: POST /clips/new (details + poster, checked against the account) gives an id and a one-time
+   key; PUT /clips/v/<id>?k= sends the video, and the video's object asks the index to put the clip live ('commit').
+   The free plan has 5 GB of storage in all, so when clips pass CLIP_STORE the weakest clip older than 3 days goes.
+   Feeds:
+     GET  /clips/feed?tab=foryou|new|top|following&me=&by=a,b&before=   (foryou: candidates for the browser to rank)
+     GET  /clips/user?name=&me=   GET /clips/one?id=&me=   GET /clips/comments?id=&me=   GET /clips/v/<id> (the video)
+     POST /clips/seen { v: viewer key, l: [[id, share watched 0-1]] }   POST /clips/share { id }
+   With "Authorization: Bearer <token>" (an online account):
+     POST /clips/new { g, t, dur, w, h, sz, ty, poster } -> { id, k }      PUT /clips/v/<id>?k= <video bytes>
+     POST /clips/like { id, on }   /clips/comment { id, t, re }   /clips/cdel { id, i }   /clips/clike { id, i, on }
+     POST /clips/follow { name, on }   /clips/del { id }   /clips/report { id }
+   The owner deletes any clip with /acct/admin op 'clipdel'. Every route takes ?r=<room> for test rooms.
+   ========================================================================== */
+const CLIP_MAX = 12 * 1024 * 1024, CLIP_PIECE = 1024 * 1024, CLIP_STORE = 3.5e9, CLIP_DAY = 15, CLIP_PER_USER = 60;
+const CLIP_ID = /^[a-z0-9]{10}$/, CLIP_TITLE = 80, CLIP_COMMENT = 300, CLIP_COMMENTS = 500, CLIP_VIEWERS = 5000;
+const CLIP_POSTER = 60000, CLIP_REPORTS = 3, VIEWER_RE = /^[A-Za-z0-9_:.-]{3,40}$/;
+const clipIndex = (env, room) => env.CLIPS.get(env.CLIPS.idFromName(room ? 'index-test-' + room : 'index'));
+const clipMedia = (env, id) => env.CLIPS.get(env.CLIPS.idFromName('clip:' + id));
+async function whoami(env, auth) {
+  const nm = auth.replace(/^Bearer\s+/i, '').split('.')[0] || '';
+  if (!NAME_RE.test(nm)) return '';
+  const w = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + nm.toLowerCase())).fetch(new Request('https://acct/whoami', { headers: { authorization: auth } }));
+  return w.ok ? ((await w.json().catch(() => ({}))).name || '') : '';
+}
+async function clips(req, env, url) {
+  const origin = req.headers.get('Origin') || '';
+  if (!ACCT_ORIGINS.includes(origin)) return new Response('only available on the official website', { status: 403 });
+  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type, authorization', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
+  const pass = r => new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': r.headers.get('content-type') || 'application/json', 'cache-control': r.headers.get('cache-control') || 'no-store' } });
+  const room = (url.searchParams.get('r') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
+  const route = url.pathname.slice(7);
+  if (route.startsWith('v/')) { // a clip's video
+    const id = route.slice(2);
+    if (!CLIP_ID.test(id)) return out({ error: 'bad' }, 400);
+    if (req.method === 'GET') return pass(await clipMedia(env, id).fetch(new Request('https://clips/media-get')));
+    if (req.method !== 'PUT') return out({ error: 'bad' }, 400);
+    if (+(req.headers.get('content-length') || 0) > CLIP_MAX) return out({ error: 'too_big' }, 413);
+    const q = new URLSearchParams({ id, k: url.searchParams.get('k') || '', r: room });
+    return pass(await clipMedia(env, id).fetch(new Request('https://clips/media-put?' + q, { method: 'PUT', headers: { 'content-type': req.headers.get('content-type') || '' }, body: req.body })));
+  }
+  const idx = clipIndex(env, room);
+  if (req.method === 'GET') {
+    if (!['feed', 'user', 'one', 'comments'].includes(route)) return out({ error: 'not_found' }, 404);
+    return pass(await idx.fetch(new Request('https://clips/' + route + url.search)));
+  }
+  if (req.method !== 'POST' || +(req.headers.get('content-length') || 0) > 100000) return out({ error: 'bad' }, 400);
+  let b; try { b = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
+  if (!b || typeof b !== 'object') return out({ error: 'bad' }, 400);
+  if (route === 'seen' || route === 'share') return pass(await idx.fetch(new Request('https://clips/' + route, { method: 'POST', body: JSON.stringify(b) })));
+  if (!['new', 'like', 'comment', 'cdel', 'clike', 'follow', 'del', 'report'].includes(route)) return out({ error: 'not_found' }, 404);
+  const who = await whoami(env, req.headers.get('authorization') || '');
+  if (!who) return out({ error: 'auth' }, 401);
+  b.me = who;
+  return pass(await idx.fetch(new Request('https://clips/' + route, { method: 'POST', body: JSON.stringify(b) })));
+}
+
+export class Clips extends DurableObject {
+  async fetch(req) {
+    const url = new URL(req.url), route = url.pathname.slice(1);
+    const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
+    if (route.startsWith('media-')) return this.media(route, req, url, j);
+    await this.load();
+    if (req.method === 'GET') return this.read(route, url.searchParams, j);
+    const b = await req.json().catch(() => ({}));
+    return this.write(route, b, j);
+  }
+
+  /* ---------- one clip's video ---------- */
+  async media(route, req, url, j) {
+    const S = this.ctx.storage;
+    if (route === 'media-get') {
+      const n = await S.get('vn');
+      if (!n) return j({ error: 'not_found' }, 404);
+      const parts = await S.get([...Array(n).keys()].map(i => 'v:' + i)), ty = (await S.get('ty')) || 'video/webm';
+      const bufs = []; let len = 0;
+      for (let i = 0; i < n; i++) { const p = parts.get('v:' + i); if (!p) return j({ error: 'not_found' }, 404); bufs.push(p); len += p.byteLength; }
+      const all = new Uint8Array(len); let o = 0; for (const p of bufs) { all.set(new Uint8Array(p), o); o += p.byteLength; }
+      return new Response(all, { headers: { 'content-type': ty, 'cache-control': 'public, max-age=31536000, immutable' } });
+    }
+    if (route === 'media-del') { await S.deleteAll(); return j({ ok: 1 }); }
+    if (route === 'media-put') {
+      if (await S.get('vn')) return j({ error: 'taken' }, 409);
+      const p = url.searchParams, buf = await req.arrayBuffer();
+      if (!buf.byteLength || buf.byteLength > CLIP_MAX) return j({ error: 'too_big' }, 413);
+      const u = new Uint8Array(buf, 0, Math.min(12, buf.byteLength));
+      const webm = u[0] === 0x1a && u[1] === 0x45 && u[2] === 0xdf && u[3] === 0xa3;
+      const mp4 = u[4] === 0x66 && u[5] === 0x74 && u[6] === 0x79 && u[7] === 0x70; // 'ftyp'
+      if (!webm && !mp4) return j({ error: 'not_video' }, 415);
+      const n = Math.ceil(buf.byteLength / CLIP_PIECE), put = { vn: n, ty: webm ? 'video/webm' : 'video/mp4' };
+      for (let i = 0; i < n; i++) put['v:' + i] = buf.slice(i * CLIP_PIECE, (i + 1) * CLIP_PIECE);
+      // pieces go in a few at a time (each put is one transaction, kept well under its size limit)
+      const keys = Object.keys(put);
+      for (let i = 0; i < keys.length; i += 4) { const part = {}; for (const k of keys.slice(i, i + 4)) part[k] = put[k]; await S.put(part); }
+      const r = await this.env.CLIPS.get(this.env.CLIPS.idFromName(p.get('r') ? 'index-test-' + p.get('r') : 'index')).fetch(new Request('https://clips/commit', { method: 'POST', body: JSON.stringify({ id: p.get('id'), k: p.get('k'), sz: buf.byteLength, ty: put.ty, int: 1 }) }));
+      if (r.status !== 200) { await S.deleteAll(); return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json' } }); }
+      return j(await r.json());
+    }
+    return j({ error: 'not_found' }, 404);
+  }
+
+  /* ---------- the index ---------- */
+  async load() {
+    if (this.m) return;
+    const m = await this.ctx.storage.list({ prefix: 'm:' });
+    this.m = new Map(); this.users = new Map(); this.dirty = new Set();
+    for (const v of m.values()) this.m.set(v.id, v);
+  }
+  async user(name) {
+    const k = String(name || '').toLowerCase();
+    if (!k) return null;
+    if (this.users.has(k)) return this.users.get(k);
+    const u = (await this.ctx.storage.get('u:' + k)) || { n: name, f: [], fr: [], lk: [] };
+    this.users.set(k, u);
+    return u;
+  }
+  saveUser(u) { return this.ctx.storage.put('u:' + u.n.toLowerCase(), u); }
+  hot(m, now) {
+    const age = (now - m.at) / 36e5, watched = m.vw ? m.wf / m.vw : 0.5;
+    return (1 + m.lk * 4 + m.cm * 6 + (m.sh || 0) * 5 + m.vw * watched) / Math.pow(age + 2, 1.4);
+  }
+  // what the browser gets for each clip: the details, the poster, whether "me" liked it
+  async show(list, me) {
+    const S = this.ctx.storage, posters = new Map();
+    for (let i = 0; i < list.length; i += 128) for (const [k, v] of await S.get(list.slice(i, i + 128).map(m => 'p:' + m.id))) posters.set(k, v);
+    const u = me ? await this.user(me) : null, liked = new Set(u ? u.lk : []), now = Date.now();
+    return list.map(m => ({ id: m.id, by: m.by, g: m.g, t: m.t, at: m.at, dur: m.dur, w: m.w, h: m.h, lk: m.lk, vw: m.vw, cm: m.cm, sh: m.sh || 0,
+      wr: m.vw ? Math.round(m.wf / m.vw * 100) / 100 : 0, rp: (m.rp || []).length, hot: Math.round(this.hot(m, now) * 1e4) / 1e4, p: posters.get('p:' + m.id) || '', me: liked.has(m.id) ? 1 : 0 }));
+  }
+  live() { return [...this.m.values()].filter(m => (m.rp || []).length < CLIP_REPORTS); }
+  async read(route, q, j) {
+    const me = String(q.get('me') || ''), now = Date.now();
+    if (route === 'feed') {
+      const tab = q.get('tab') || 'foryou', before = +q.get('before') || Infinity, all = this.live();
+      const newest = all.slice().sort((a, b) => b.at - a.at);
+      let list;
+      if (tab === 'new') list = newest.filter(m => m.at < before).slice(0, 30);
+      else if (tab === 'top') list = all.filter(m => now - m.at < 7 * 864e5).sort((a, b) => (b.lk * 4 + b.cm * 6 + b.vw) - (a.lk * 4 + a.cm * 6 + a.vw)).slice(0, 40);
+      else if (tab === 'following') {
+        const u = me ? await this.user(me) : null, by = new Set([...(u ? u.f : []), ...String(q.get('by') || '').toLowerCase().split(',').filter(Boolean).slice(0, 300)]);
+        list = newest.filter(m => by.has(m.by.toLowerCase()) && m.at < before).slice(0, 30);
+      } else { // For you: the hottest 120 and the newest 40 (so new clips get seen); the browser ranks them for this player
+        const ids = new Set(), pick = [];
+        for (const m of all.slice().sort((a, b) => this.hot(b, now) - this.hot(a, now)).slice(0, 120).concat(newest.slice(0, 40))) if (!ids.has(m.id)) { ids.add(m.id); pick.push(m); }
+        list = pick;
+      }
+      const u = me ? await this.user(me) : null;
+      return j({ clips: await this.show(list, me), following: u ? u.f : [] });
+    }
+    if (route === 'user') {
+      const name = String(q.get('name') || ''), k = name.toLowerCase();
+      if (!NAME_RE.test(name)) return j({ error: 'bad' }, 400);
+      const theirs = [...this.m.values()].filter(m => m.by.toLowerCase() === k).sort((a, b) => b.at - a.at);
+      const u = await this.user(name), mine = me ? await this.user(me) : null;
+      return j({ n: theirs.length ? theirs[0].by : u.n, clips: await this.show(theirs, me), followers: u.fr.length, following: u.f.length,
+        views: theirs.reduce((s, m) => s + m.vw, 0), likes: theirs.reduce((s, m) => s + m.lk, 0), iFollow: mine && mine.f.includes(k) ? 1 : 0, followsMe: mine && u.f.includes(me.toLowerCase()) ? 1 : 0,
+        fl: u.fr.slice(-500).reverse(), fg: u.f.slice(-500).reverse() }); // follower and following names (lower case), newest first
+    }
+    if (route === 'one') {
+      const m = this.m.get(q.get('id') || '');
+      if (!m) return j({ error: 'not_found' }, 404);
+      return j({ clip: (await this.show([m], me))[0] });
+    }
+    if (route === 'comments') {
+      const id = q.get('id') || '', mk = me.toLowerCase();
+      if (!this.m.has(id)) return j({ error: 'not_found' }, 404);
+      const list = (await this.ctx.storage.get('c:' + id)) || [];
+      return j({ list: list.map(c => ({ i: c.i, n: c.n, t: c.t, at: c.at, re: c.re || '', lk: (c.lk || []).length, me: mk && (c.lk || []).includes(mk) ? 1 : 0 })) });
+    }
+    return j({ error: 'not_found' }, 404);
+  }
+  async write(route, b, j) {
+    const S = this.ctx.storage, now = Date.now(), me = String(b.me || ''), mk = me.toLowerCase();
+    if (route === 'commit') { // from the video's object: the video is in, so the clip goes live
+      if (!b.int) return j({ error: 'bad' }, 400);
+      const q = await S.get('q:' + b.id);
+      if (!q || !same(String(b.k || ''), q.k) || now - q.at > 30 * 60000) return j({ error: 'expired' }, 410);
+      const m = Object.assign(q.m, { sz: +b.sz || 0, ty: b.ty, at: now });
+      this.m.set(m.id, m);
+      await S.put({ ['m:' + m.id]: m, ['p:' + m.id]: q.p });
+      await S.delete('q:' + b.id);
+      await this.prune(now);
+      return j({ ok: 1, id: m.id });
+    }
+    if ((route === 'purge' || route === 'rename') && b.int) { // from Account: the account was deleted (its clips go) or renamed
+      const from = String(b.from || '').toLowerCase(), to = String(b.to || '');
+      for (const m of [...this.m.values()].filter(x => x.by.toLowerCase() === from)) {
+        if (route === 'purge') await this.drop(m.id); else { m.by = to; await S.put('m:' + m.id, m); }
+      }
+      const u = await S.get('u:' + from);
+      if (u) {
+        await S.delete('u:' + from); this.users.delete(from);
+        // the people they followed and who followed them
+        for (const k of new Set([...(u.f || []), ...(u.fr || [])])) {
+          const o = await this.user(k); if (!o || !o.n) continue;
+          o.f = o.f.filter(x => x !== from); o.fr = o.fr.filter(x => x !== from);
+          if (route === 'rename') { if ((u.fr || []).includes(k)) o.f.push(to.toLowerCase()); if ((u.f || []).includes(k)) o.fr.push(to.toLowerCase()); }
+          await this.saveUser(o);
+        }
+        if (route === 'rename') { u.n = to; this.users.set(to.toLowerCase(), u); await S.put('u:' + to.toLowerCase(), u); }
+      }
+      return j({ ok: 1 });
+    }
+    if (route === 'seen') { // views: one per viewer per clip; also how much of the clip they watched
+      const v = String(b.v || '');
+      if (!VIEWER_RE.test(v) || !Array.isArray(b.l)) return j({ error: 'bad' }, 400);
+      const ids = b.l.slice(0, 50).filter(x => Array.isArray(x) && this.m.has(x[0]));
+      if (!ids.length) return j({ ok: 1 });
+      const lists = await S.get(ids.map(x => 'v:' + x[0])), put = {};
+      for (const [id, f] of ids) {
+        const seen = lists.get('v:' + id) || [], m = this.m.get(id);
+        if (seen.includes(v)) continue;
+        if (seen.length < CLIP_VIEWERS) seen.push(v);
+        m.vw++; m.wf = Math.round(((m.wf || 0) + Math.max(0, Math.min(1, +f || 0))) * 100) / 100;
+        put['v:' + id] = seen; put['m:' + id] = m;
+      }
+      if (Object.keys(put).length) await S.put(put);
+      return j({ ok: 1 });
+    }
+    if (route === 'share') {
+      const m = this.m.get(String(b.id || ''));
+      if (m) { m.sh = (m.sh || 0) + 1; await S.put('m:' + m.id, m); }
+      return j({ ok: 1, sh: m ? m.sh : 0 });
+    }
+    if (!NAME_RE.test(me)) return j({ error: 'auth' }, 401);
+    if (route === 'new') {
+      const u = await this.user(me), day = new Date(now).toISOString().slice(0, 10);
+      if (u.day !== day) { u.day = day; u.k = 0; }
+      if (u.k >= CLIP_DAY) return j({ error: 'slow' }, 429);
+      if ([...this.m.values()].filter(m => m.by.toLowerCase() === mk).length >= CLIP_PER_USER) return j({ error: 'too_many' }, 400);
+      const p = String(b.poster || '');
+      if (!GAME_RE.test(b.g || '') || !(b.dur > 0.5 && b.dur <= 75) || !(b.sz > 0 && b.sz <= CLIP_MAX)) return j({ error: 'bad' }, 400);
+      if (!/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(p) || p.length > CLIP_POSTER) return j({ error: 'bad' }, 400);
+      let id; do { id = rnd(5); } while (this.m.has(id));
+      const m = { id, by: me, g: b.g, t: tidy(b.t).slice(0, CLIP_TITLE), at: now, dur: Math.round(b.dur * 10) / 10, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [] };
+      const k = rnd(16);
+      u.k++; await this.saveUser(u);
+      await S.put('q:' + id, { k, m, p, at: now });
+      // forget uploads that never sent their video
+      const old = [...(await S.list({ prefix: 'q:' })).entries()].filter(([, x]) => now - x.at > 60 * 60000).map(([key]) => key);
+      if (old.length) await S.delete(old);
+      return j({ id, k });
+    }
+    if (route === 'follow') {
+      const other = String(b.name || ''), ok = other.toLowerCase();
+      if (!NAME_RE.test(other) || ok === mk) return j({ error: 'bad' }, 400);
+      const u = await this.user(me), them = await this.user(other);
+      u.f = u.f.filter(x => x !== ok); them.fr = them.fr.filter(x => x !== mk);
+      if (b.on) { if (u.f.length >= 2000) return j({ error: 'too_many' }, 400); u.f.push(ok); them.fr.push(mk); }
+      await S.put({ ['u:' + mk]: u, ['u:' + ok]: them });
+      return j({ on: b.on ? 1 : 0, followers: them.fr.length });
+    }
+    const id = String(b.id || ''), m = this.m.get(id);
+    if (!m) return j({ error: 'not_found' }, 404);
+    if (route === 'like') {
+      const u = await this.user(me), likes = (await S.get('l:' + id)) || [], had = likes.includes(mk);
+      if (!!b.on !== had) {
+        if (b.on) { likes.push(mk); u.lk.push(id); if (u.lk.length > 3000) u.lk.splice(0, u.lk.length - 3000); }
+        else { likes.splice(likes.indexOf(mk), 1); u.lk = u.lk.filter(x => x !== id); }
+        m.lk = likes.length;
+        await S.put({ ['l:' + id]: likes, ['u:' + mk]: u, ['m:' + id]: m });
+      }
+      return j({ on: b.on ? 1 : 0, lk: m.lk });
+    }
+    if (route === 'comment') { // comments aren't word-filtered, like the chats (the owner's choice); shown as plain text
+      const t = plain(b.t).slice(0, CLIP_COMMENT);
+      if (!t) return j({ error: 'bad' }, 400);
+      const list = (await S.get('c:' + id)) || [];
+      if (list.filter(c => c.n.toLowerCase() === mk && now - c.at < 60000).length >= 5) return j({ error: 'slow' }, 429);
+      const c = { i: rnd(4), n: me, t, at: now, lk: [] };
+      if (b.re && NAME_RE.test(String(b.re))) c.re = String(b.re);
+      list.push(c); if (list.length > CLIP_COMMENTS) list.shift();
+      m.cm = list.length;
+      await S.put({ ['c:' + id]: list, ['m:' + id]: m });
+      return j({ c: { i: c.i, n: c.n, t: c.t, at: c.at, re: c.re || '', lk: 0, me: 0 }, cm: m.cm });
+    }
+    if (route === 'cdel' || route === 'clike') {
+      const list = (await S.get('c:' + id)) || [], c = list.find(x => x.i === b.i);
+      if (!c) return j({ error: 'not_found' }, 404);
+      if (route === 'cdel') { // your own comment, or any comment on your clip
+        if (c.n.toLowerCase() !== mk && m.by.toLowerCase() !== mk) return j({ error: 'not_yours' }, 403);
+        list.splice(list.indexOf(c), 1); m.cm = list.length;
+        await S.put({ ['c:' + id]: list, ['m:' + id]: m });
+        return j({ ok: 1, cm: m.cm });
+      }
+      c.lk = (c.lk || []).filter(x => x !== mk); if (b.on) c.lk.push(mk);
+      await S.put('c:' + id, list);
+      return j({ on: b.on ? 1 : 0, lk: c.lk.length });
+    }
+    if (route === 'report') {
+      m.rp = m.rp || [];
+      if (!m.rp.includes(mk) && m.by.toLowerCase() !== mk) { m.rp.push(mk); await S.put('m:' + id, m); }
+      return j({ ok: 1 });
+    }
+    if (route === 'del') {
+      if (m.by.toLowerCase() !== mk) return j({ error: 'not_yours' }, 403);
+      await this.drop(id); return j({ ok: 1 });
+    }
+    if (route === 'admindel') { await this.drop(id); return j({ ok: 1 }); } // only from admin() (it checks the owner's password)
+    return j({ error: 'not_found' }, 404);
+  }
+  async drop(id) {
+    const S = this.ctx.storage, m = this.m.get(id);
+    if (!m) return;
+    this.m.delete(id);
+    const likes = (await S.get('l:' + id)) || [];
+    for (const k of likes.slice(0, 500)) { const u = await this.user(k); if (u) { u.lk = u.lk.filter(x => x !== id); await this.saveUser(u); } }
+    await S.delete(['m:' + id, 'p:' + id, 'l:' + id, 'c:' + id, 'v:' + id]);
+    await this.env.CLIPS.get(this.env.CLIPS.idFromName('clip:' + id)).fetch(new Request('https://clips/media-del', { method: 'POST' })).catch(() => null);
+  }
+  // keep the clips under CLIP_STORE: the weakest clip older than 3 days goes first
+  async prune(now) {
+    let total = 0; for (const m of this.m.values()) total += m.sz || 0;
+    while (total > CLIP_STORE) {
+      const old = [...this.m.values()].filter(m => now - m.at > 3 * 864e5).sort((a, b) => this.hot(a, now) - this.hot(b, now))[0];
+      if (!old) break;
+      total -= old.sz || 0; await this.drop(old.id);
+    }
   }
 }

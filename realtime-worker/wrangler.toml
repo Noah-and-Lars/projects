@@ -37,3 +37,11 @@ class_name = "Tally"
 [[migrations]]
 tag = "v4"
 new_sqlite_classes = ["Tally"]
+
+[[durable_objects.bindings]]
+name = "CLIPS"
+class_name = "Clips"
+
+[[migrations]]
+tag = "v5"
+new_sqlite_classes = ["Clips"]
