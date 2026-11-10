@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Throttle Ridge</title>
+<meta name="description" content="Side-scrolling motocross racing in your browser.">
+<meta name="theme-color" content="#1a1430">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Throttle Ridge">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" id="apple-icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+    "planck": "https://cdn.jsdelivr.net/npm/planck@1.4.2/dist/planck.mjs"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hud-left">
+    <div id="hud-time" class="pill big">0:00.00</div>
+    <div id="hud-track" class="pill small"></div>
+  </div>
+  <div id="progress"><div class="bar"></div><div id="progress-dots"></div><div class="flag">&#9873;</div></div>
+  <div class="hud-right">
+    <div id="hud-pos" class="pill big">1<sup>st</sup><span>/4</span></div>
+    <button id="btn-mute" class="icon-btn" aria-label="Mute">&#128266;</button>
+    <button id="btn-pause" class="icon-btn" aria-label="Pause">&#10074;&#10074;</button>
+  </div>
+</div>
+<div id="countdown" class="hidden"></div>
+<div id="toast" class="hidden"></div>
+
+<!-- Touch controls -->
+<div id="touch" class="hidden">
+  <div class="cluster left">
+    <div class="tbtn" data-act="back"><span>&#8630;</span><small>LEAN BACK</small></div>
+    <div class="tbtn" data-act="fwd"><span>&#8631;</span><small>LEAN FWD</small></div>
+  </div>
+  <div class="cluster right">
+    <div class="tbtn" data-act="brake"><span>&#9632;</span><small>BRAKE</small></div>
+    <div class="tbtn gas" data-act="gas"><span>&#9650;</span><small>GAS</small></div>
+  </div>
+</div>
+
+<!-- Main menu -->
+<section id="scr-menu" class="screen">
+  <div class="panel title-panel">
+    <h1 class="logo"><span>THROTTLE</span><span>RIDGE</span></h1>
+    <p class="sub">Side-scrolling motocross</p>
+    <div class="col">
+      <button class="btn primary" id="btn-play">PLAY</button>
+      <button class="btn" id="btn-how">HOW TO PLAY</button>
+      <button class="btn" id="btn-menu-mute">SOUND: ON</button>
+    </div>
+  </div>
+</section>
+
+<section id="scr-how" class="screen hidden">
+  <div class="panel">
+    <h2>How to play</h2>
+    <div class="how scroll">
+      <p><b>Throttle</b> Up / W &middot; <b>Brake</b> Down / S &middot; <b>Lean back</b> Left / A &middot; <b>Lean forward</b> Right / D &middot; <b>Restart at checkpoint</b> R &middot; <b>Pause</b> Esc / P &middot; <b>Mute</b> M</p>
+      <p>On a phone or tablet: lean buttons bottom-left, brake and gas bottom-right. Hold several at once.</p>
+      <p>Lean in the air to rotate. Match the angle of the landing slope to keep your speed; land badly and you'll lose it. Lean back on the ground to wheelie, lean forward to keep the front down.</p>
+      <p>Hit the ground with your head and you'll crash, then restart at the last checkpoint. Finish in the top 2 to unlock the next track.</p>
+    </div>
+    <button class="btn primary" data-back>BACK</button>
+  </div>
+</section>
+
+<!-- Track select -->
+<section id="scr-select" class="screen hidden">
+  <div class="panel wide">
+    <div class="row between">
+      <button class="btn small" data-back>&#8592; BACK</button>
+      <h2>Choose a track</h2>
+      <div class="seg" id="skill">
+        <button data-skill="easy">EASY</button><button data-skill="medium">MEDIUM</button><button data-skill="hard">HARD</button>
+      </div>
+    </div>
+    <div id="tracks" class="tracks scroll"></div>
+  </div>
+</section>
+
+<!-- Pause -->
+<section id="scr-pause" class="screen hidden dim">
+  <div class="panel">
+    <h2>Paused</h2>
+    <div class="col">
+      <button class="btn primary" id="btn-resume">RESUME</button>
+      <button class="btn" id="btn-restart">RESTART RACE</button>
+      <button class="btn" id="btn-pause-mute">SOUND: ON</button>
+      <button class="btn" id="btn-quit">QUIT TO MENU</button>
+    </div>
+  </div>
+</section>
+
+<!-- Results -->
+<section id="scr-results" class="screen hidden dim">
+  <div class="panel">
+    <h2 id="res-title">Finished!</h2>
+    <div class="results">
+      <div><small>POSITION</small><b id="res-pos">1st</b></div>
+      <div><small>TIME</small><b id="res-time">0:00.00</b></div>
+      <div><small>BEST</small><b id="res-best">0:00.00</b></div>
+    </div>
+    <ol id="res-table"></ol>
+    <p id="res-note"></p>
+    <div class="row">
+      <button class="btn" id="btn-res-menu">TRACKS</button>
+      <button class="btn" id="btn-res-retry">RETRY</button>
+      <button class="btn primary" id="btn-res-next">NEXT TRACK</button>
+    </div>
+  </div>
+</section>
+
+<div id="rotate"><div><div class="phone">&#128241;</div><p>Rotate your device to landscape</p></div></div>
+<div id="loading">Loading&hellip;</div>
+<div id="error" class="hidden"></div>
+
+<script type="module" src="js/main.js"></script>
+<script>
+  // Shown only if the module script fails to start (e.g. CDN blocked).
+  setTimeout(function () {
+    if (!window.__trStarted) {
+      var e = document.getElementById('error');
+      e.textContent = 'The game could not start. Check your internet connection (the 3D and physics engines load from a CDN) and reload.';
+      e.className = '';
+    }
+  }, 15000);
+</script>
+</body>
+</html>

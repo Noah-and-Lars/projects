@@ -1,0 +1,14 @@
+{
+  "name": "Throttle Ridge",
+  "short_name": "Throttle Ridge",
+  "description": "Side-scrolling motocross racing.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1a1430",
+  "theme_color": "#1a1430",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

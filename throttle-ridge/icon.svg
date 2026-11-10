@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e1f5e"/><stop offset="1" stop-color="#ff4d2e"/></linearGradient></defs>
+  <rect width="512" height="512" rx="96" fill="url(#s)"/>
+  <path d="M0 420 Q200 420 310 270 L310 512 L0 512 Z" fill="#b27a45"/>
+  <path d="M310 270 L512 512 L310 512 Z" fill="#8a5a30"/>
+  <text x="300" y="220" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-style="italic" font-weight="900" font-size="170" fill="#ffd23f">TR</text>
+</svg>
