@@ -117,7 +117,9 @@ const boxTop = B => Vc((B.minX + B.maxX) / 2, B.maxY, (B.minZ + B.maxZ) / 2);
 function makeFilm() {
   if (!renderer.capabilities.isWebGL2) return null;
   const f = { type: T.HalfFloatType, minFilter: T.LinearFilter, magFilter: T.LinearFilter };
-  const main = new T.WebGLMultisampleRenderTarget(4, 4, Object.assign({ depthBuffer: true }, f)); main.samples = 4;
+  // stencilBuffer gives a 24-bit depth buffer (depth only is 16-bit in this three.js, which made distant surfaces
+  // fight over which is in front: the bases' ground, roads and walls flickered as broken stripes)
+  const main = new T.WebGLMultisampleRenderTarget(4, 4, Object.assign({ depthBuffer: true, stencilBuffer: true }, f)); main.samples = 4;
   const mk = () => new T.WebGLRenderTarget(4, 4, Object.assign({ depthBuffer: false }, f));
   const half = mk(), b1 = mk(), b2 = mk(), s1 = mk(), s2 = mk();
   const cam = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1), qs = new T.Scene(), quad = new T.Mesh(new T.PlaneGeometry(2, 2)); quad.frustumCulled = false; qs.add(quad);
@@ -159,6 +161,7 @@ function makeFilm() {
   const draw = (m, tg) => { quad.material = m; renderer.setRenderTarget(tg); renderer.render(qs, cam); };
   const bl = (src, dst, x, y) => { blur.uniforms.t.value = src.texture; blur.uniforms.d.value.set(x, y); draw(blur, dst); };
   return {
+    main,
     setSize() {
       renderer.getDrawingBufferSize(size); const w = Math.max(4, size.x), h = Math.max(4, size.y);
       main.setSize(w, h); for (const rt of [half, b1, b2]) rt.setSize(Math.max(4, w >> 1), Math.max(4, h >> 1));
@@ -1250,7 +1253,7 @@ function goTo(t) {
 function draw(s, t) {
   if (s.card) { renderer.setRenderTarget(null); renderer.setClearColor(0x000000); renderer.clear(); return; }
   const lt = t - s.t0, c = s.cam(lt);
-  camera.fov = c.fov; camera.near = 0.5; camera.far = 9000; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  camera.fov = c.fov; camera.near = c.p.distanceTo(c.l) > 250 ? 2 : 0.8; camera.far = 9000; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   camera.position.copy(c.p); camera.up.set(0, 1, 0); camera.lookAt(c.l); camera.rotateZ(c.roll);
   const sh = s.shake + camShake, e = t;
   camera.rotateX(sh * (0.004 * Math.sin(e * 41) + 0.007 * wob(e * 1.6, 1)));
@@ -1321,6 +1324,7 @@ window.HBT = {
   get scale() { return scale; },
   get flash() { return FX.flash; },
   get film() { return !!film; },
+  get _film() { return film; },
   get _pools() { return { PF, PW, PS, SS, SF, PWK, FX }; },   // for checking from the console
 };
 })();
