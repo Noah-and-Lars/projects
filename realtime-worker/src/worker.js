@@ -1111,7 +1111,7 @@ async function clipsBot(req, env) {
   const img = Uint8Array.from(atob(String(b.img || '')), c => c.charCodeAt(0));
   if (!img.length || img.length > CLIP_MAX) return out({ error: 'bad' }, 400);
   const room = String(b.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
-  const r = await clipIndex(env, room).fetch(new Request('https://clips/botnew', { method: 'POST', body: JSON.stringify({ me: BOT_NAME, key: b.key, g: b.g, t: b.t, w: b.w, h: b.h, sz: img.length, poster: b.poster, int: 1 }) }));
+  const r = await clipIndex(env, room).fetch(new Request('https://clips/botnew', { method: 'POST', body: JSON.stringify({ me: BOT_NAME, key: b.key, replace: b.replace, g: b.g, t: b.t, w: b.w, h: b.h, sz: img.length, poster: b.poster, int: 1 }) }));
   const q = await r.json();
   if (!q.k) return out(q, r.status);
   const put = await clipMedia(env, q.id).fetch(new Request('https://clips/media-put?' + new URLSearchParams({ id: q.id, k: q.k, r: room }), { method: 'PUT', body: img }));
@@ -1335,6 +1335,12 @@ export class Clips extends DurableObject {
       const bk = 'bk:' + String(b.key || '').slice(0, 120);
       if (bk === 'bk:') return j({ error: 'bad' }, 400);
       if (await S.get(bk)) return j({ dup: 1 });
+      // a repost takes the earlier post(s) down: 'bk:' holds the post id (older ones hold the time it was asked for)
+      for (const old of (Array.isArray(b.replace) ? b.replace : []).slice(0, 5)) {
+        const was = await S.get('bk:' + String(old).slice(0, 120));
+        if (typeof was === 'string') { if (this.m.has(was) && this.m.get(was).bot) await this.drop(was); }
+        else if (was) for (const m of [...this.m.values()].filter(m => m.bot && m.g === (b.g || '') && Math.abs(m.at - was) < 5 * 60000)) await this.drop(m.id);
+      }
       const p = String(b.poster || '');
       if ((b.g && !GAME_RE.test(b.g)) || !/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(p) || p.length > CLIP_POSTER) return j({ error: 'bad' }, 400);
       const mine = [...this.m.values()].filter(m => m.by.toLowerCase() === mk).sort((a, c) => a.at - c.at);
@@ -1342,7 +1348,7 @@ export class Clips extends DurableObject {
       let id; do { id = rnd(5); } while (this.m.has(id));
       const m = { id, by: me, k: 'photo', g: b.g || '', t: String(b.t || '').replace(/\r/g, '').replace(/[^\S\n]+/g, ' ').trim().slice(0, BOT_CAP), at: now, dur: 0, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [], bot: 1 };
       const k = rnd(16);
-      await S.put({ ['q:' + id]: { k, m, p, at: now }, [bk]: now });
+      await S.put({ ['q:' + id]: { k, m, p, at: now }, [bk]: id });
       return j({ id, k });
     }
     if (route === 'new') {

@@ -16,7 +16,7 @@ jobs:
   post:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Old games.js
         env:
           BEFORE: ${{ github.event.before || inputs.before }}
@@ -29,4 +29,5 @@ jobs:
         env:
           BOT_KEY: ${{ secrets.ARCADE_BOT_KEY }}
           ROOM: ${{ inputs.room }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: node tools/claude-post/post.mjs /tmp/old.js games.js

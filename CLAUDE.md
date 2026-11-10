@@ -647,23 +647,28 @@ source in Settings → Pages should be switched to `main`.
 
 ## Claude posts every update to Social (the owner's rule, 2026-11-11)
 
-Every game update, new game or new site feature gets a post on Social from the **Claude** account, shown to
-everyone. It is automatic: `.github/workflows/claude-post.yml` runs on every push to the Pages branch that changes
-`games.js`, and `tools/claude-post/post.mjs` posts each `NEWS` entry that wasn't there before (at most 5 a push,
-oldest first). So the rule for whoever ships: **every update, game or feature gets its own new `NEWS` line** (that is
-what triggers the post). Quiet fixes that the owner wants kept silent get no NEWS line and so no post.
-- The caption is written from the NEWS text ("New game: X. ..." → new-game post, "New: ..." → feature post,
-  "Title 1.2: ..." → update post). For a better post, add `post: '...'` to the NEWS entry with the full caption
-  (up to 700 characters, `\n` for line breaks, a few emoji and hashtags are fine; no secret test names, as in
-  patch notes). Write it like a friendly announcement: what's new and why it's fun, then a call to play.
-- The picture is drawn by `tools/claude-post/card.py` (Pillow) from the game's `thumb.jpg`/`.png` (an SVG thumb or
-  no game uses `og.png`) with a NEW GAME / UPDATE / NEW FEATURE label. Try it locally:
-  `DRY=1 node tools/claude-post/post.mjs <old games.js> games.js` prints the captions and saves the pictures.
-- Server: `POST /clips/bot` on the Worker, checked against the `BOT_KEY` Worker secret (the same value is the repo's
-  `ARCADE_BOT_KEY` Actions secret; to change it, set both). It posts a photo as 'Claude' (`BOT_NAME`); each entry's
-  key is remembered ('bk:<key>' in the index) so it never posts twice. Bot posts (`bot: 1`) aren't pruned for space;
-  past 100 the oldest Claude post goes. Test with Actions → "Claude posts updates to Social" → Run workflow, with a
-  `before` commit and a `room` (posts go to `?clipsroom=<room>` only).
+Every game update, new game or new site feature, pushed by anyone, gets a post on Social from the **Claude** account,
+shown to everyone. It is automatic: `.github/workflows/claude-post.yml` runs on every push to the Pages branch that
+changes `games.js`, and `tools/claude-post/post.mjs` posts:
+- each `NEWS` entry that wasn't there before (at most 5 a push), and
+- every game whose `updated` time changed (or that is new) with no new NEWS line of its own: the commit message is
+  the news, so name the version in it ("Chess 1.5: puzzles and faster bots"). Fixes that should stay silent must not
+  change `updated` and get no NEWS line.
+Posts look like social media posts, and **show the new feature, not the game's cover**:
+- `imgs: ['<game>/news/<version>-<feature>.jpg', ...]` on the NEWS entry: 1 to 4 screenshots of the new things (1080 px
+  wide JPEGs kept in the game's `news/` folder; e.g. Havoc Bay 1.4 has a submarine and a helicopter). Take them in a
+  real match (render with the game's renderer and save the canvas). Without `imgs` the thumbnail is used.
+- `headline: '...'`: the big words on the picture (default: the first phrase after "Game 1.2:").
+- `post: '...'`: the caption (up to 700 characters, `\n` line breaks, a hook line, emoji bullets for the features, a
+  question or call to play, hashtags; no secret test names). Without it one is written from the NEWS text.
+- `repost: N` posts the entry again (with new pictures or caption) and takes the earlier post down.
+The picture is drawn by `tools/claude-post/card.py` (Pillow). Try it locally:
+`DRY=1 node tools/claude-post/post.mjs <old games.js> games.js` prints the captions and saves the pictures.
+Server: `POST /clips/bot` on the Worker, checked against the `BOT_KEY` Worker secret (the same value is the repo's
+`ARCADE_BOT_KEY` Actions secret; to change it, set both). It posts a photo as 'Claude' (`BOT_NAME`); each post's key is
+kept ('bk:<key>' = the post id) so it never posts twice. Bot posts (`bot: 1`) aren't pruned for space; past 100 the
+oldest Claude post goes. Manual runs need the workflow on `main`; to test, push a throwaway branch with that branch in
+the trigger and `ROOM: <name>` (posts go to `?clipsroom=<name>` only), then delete it.
 
 ## Conventions
 
