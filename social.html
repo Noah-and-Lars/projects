@@ -242,6 +242,32 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .sheet-h button { border: 0; background: none; color: var(--muted); font-size: 24px; cursor: pointer; line-height: 1; width: 30px; }
 .sheet-b { overflow-y: auto; padding: 14px 16px 18px; }
 .create-opts { display: grid; gap: 10px; }
+/* send a post (Instagram's share sheet) */
+.snd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 14px 6px; padding: 14px 4px 6px; overflow-y: auto; min-height: 150px; max-height: 46vh; }
+.snd-p { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; padding: 0; }
+.snd-p .av { width: 64px; height: 64px; font-size: 26px; }
+.snd-p small { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.snd-p .tick { position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%; background: var(--blue); color: #fff; display: none; place-items: center; border: 3px solid var(--panel); font-size: 13px; font-weight: 900; }
+.snd-p.on .tick { display: grid; }
+.snd-p.on .av { outline: 3px solid var(--blue); outline-offset: 2px; }
+.snd-none { grid-column: 1 / -1; color: var(--muted); text-align: center; padding: 26px 0; font-size: 14px; }
+.snd-foot { border-top: 1px solid var(--line); padding: 12px 14px 14px; display: grid; gap: 10px; }
+.snd-foot input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid #ffffff22; background: var(--bg); color: var(--text); font: inherit; }
+.snd-foot .btn { width: 100%; }
+.snd-more { display: flex; gap: 18px; justify-content: center; padding: 4px 0 2px; }
+.snd-more button { display: flex; flex-direction: column; align-items: center; gap: 5px; border: 0; background: none; color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.snd-more span.c { width: 48px; height: 48px; border-radius: 50%; background: #ffffff14; display: grid; place-items: center; font-size: 20px; }
+.snd-more svg { width: 22px; height: 22px; }
+.snd-msg { color: var(--muted); font-size: 13px; text-align: center; min-height: 1.2em; }
+.snd-msg.err { color: #ff8a8a; }
+/* a post sent in a chat */
+.bub.post-bub { padding: 0; overflow: hidden; width: 230px; background: #ffffff10; color: var(--text); cursor: pointer; white-space: normal; }
+.bub.post-bub.me { background: #ffffff10; color: var(--text); border: 1px solid #7b5cff88; }
+.post-bub .ph2 { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-weight: 800; font-size: 13px; }
+.post-bub .ph2 .av { width: 24px; height: 24px; font-size: 11px; }
+.post-bub img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #000; }
+.post-bub .pc { padding: 8px 10px; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-bub .pc b { color: var(--text); margin-right: 4px; }
 .create-opts button, .create-opts a { display: flex; align-items: center; gap: 14px; text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: #ffffff06; color: var(--text); font: inherit; cursor: pointer; }
 .create-opts button:hover, .create-opts a:hover { background: #ffffff10; }
 .create-opts .big { font-size: 28px; width: 40px; text-align: center; }
@@ -609,7 +635,7 @@ function postCard(c, opt) {
   lb.innerHTML = svg(IC.heart); cb.innerHTML = svg(IC.comment); sb.innerHTML = svg(IC.send); vb.innerHTML = svg(IC.save);
   lb.onclick = () => doLike(!c.me);
   cb.onclick = () => opt.inline ? a.querySelector('.cm-form input').focus() : openComments(c);
-  sb.onclick = () => share(c);
+  sb.onclick = () => sendSheet(c);
   vb.onclick = () => { vb.classList.toggle('on', toggleSave(c.id)); };
   acts.append(lb, cb, sb, vb);
   let lk = el('div');
@@ -641,7 +667,7 @@ function reelItem(c, root) {
   const shade = el('div', 'shade'), side = el('div', 'side'), info = el('div', 'info');
   const btn = (cls, ic, label) => { const b = el('button', cls); b.type = 'button'; b.innerHTML = svg(ic); b.setAttribute('aria-label', label); const s = el('span'); b.append(s); side.append(b); return [b, s]; };
   const [lb, ls_] = btn('like', IC.heart, 'Like'), [cb, cs] = btn('', IC.comment, 'Comments'), [sb] = btn('', IC.send, 'Share'), [vb] = btn('save', IC.save, 'Save'), [mb] = btn('', IC.more, 'More');
-  lb.onclick = () => like(c, !c.me); cb.onclick = () => openComments(c); sb.onclick = () => share(c);
+  lb.onclick = () => like(c, !c.me); cb.onclick = () => openComments(c); sb.onclick = () => sendSheet(c);
   vb.onclick = () => { vb.classList.toggle('on', toggleSave(c.id)); };
   mb.onclick = e => { e.stopPropagation(); menu(mb, c, r); };
   const row = el('div', 'row'), avl = el('a'), nm = el('a', 'nm', c.by);
@@ -718,11 +744,11 @@ async function like(c, on) {
   if (r.status === 200) { c.lk = r.lk; repaint(c); }
   else { c.me = on ? 0 : 1; c.lk += on ? -1 : 1; repaint(c); if (r.status !== 401) failed(r); }
 }
-async function share(c) {
+async function share(c, how) {
   const url = location.href.split('#')[0] + '#c=' + c.id, g = gameOf(c.g);
   const shared = ls.get('arcade-social-shared', {});
   const count = () => { if (!shared[c.id]) { shared[c.id] = 1; ls.set('arcade-social-shared', shared); post('share', { id: c.id }, true); c.sh++; } };
-  if (navigator.share && /mob/.test(document.documentElement.className)) { try { await navigator.share({ title: c.by + ' on The Arcade', text: c.t || (g ? g.title + ' clip' : 'A post'), url }); count(); } catch (e) {} return; }
+  if (how === 'native' || (!how && navigator.share && /mob/.test(document.documentElement.className))) { try { await navigator.share({ title: c.by + ' on The Arcade', text: c.t || (g ? g.title + ' clip' : 'A post'), url }); count(); } catch (e) {} return; }
   try { await navigator.clipboard.writeText(url); ArcadeAccount.toast('Link copied', 'Paste it anywhere to share this post.', url); count(); }
   catch (e) { prompt('Copy this link:', url); count(); }
 }
@@ -733,7 +759,7 @@ function menu(btn, c, node) {
   closeMenu();
   const m = el('div', 'menu'), mine = lc(c.by) === lc(me()), add = (t, f, bad) => { const b = el('button', bad ? 'bad' : '', t); b.type = 'button'; b.onclick = e => { e.stopPropagation(); closeMenu(); f(); }; m.append(b); };
   add('Go to post', () => { location.hash = 'c=' + c.id; });
-  add('Copy link', () => share(c));
+  add('Copy link', () => share(c, 'copy'));
   add('About this account', () => { location.hash = 'u=' + encodeURIComponent(c.by); });
   if (!mine && me()) add('Message ' + c.by, () => { location.hash = 'dm=' + encodeURIComponent(c.by); });
   if (!mine) add('Report', async () => {
@@ -757,6 +783,73 @@ async function adminDelete(c, node) {
   if (!adminPw || !confirm('Delete this post by ' + c.by + ' for everyone?')) return;
   const r = await acct('admin', { method: 'POST', body: { pw: adminPw, op: 'clipdel', id: c.id, r: ROOM } });
   if (r.status === 200) gone(node); else { adminPw = ''; alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').'); }
+}
+
+/* ---------- send a post to people (Instagram's paper-plane button) ----------
+   Shows your recent chats, group chats, friends and people you follow, and searches everyone; each one picked gets
+   the post as a private message (the post's link, which chats show as a small card), plus your note if you write one. */
+async function sendSheet(c) {
+  const b = el('div'), q = el('input', 'search'), grid = el('div', 'snd-grid'), foot = el('div', 'snd-foot');
+  q.type = 'search'; q.placeholder = 'Search'; q.setAttribute('aria-label', 'Search people'); q.style.cssText = 'margin:12px 14px 0;width:calc(100% - 28px)';
+  const note = el('input'); note.type = 'text'; note.maxLength = 300; note.placeholder = 'Write a message…'; note.hidden = true;
+  const send = el('button', 'btn blue', 'Send'); send.type = 'button'; send.hidden = true;
+  const msg = el('div', 'snd-msg'), more = el('div', 'snd-more');
+  const opt = (label, ic, f) => { const x = el('button'); x.type = 'button'; const ci = el('span', 'c'); ci.innerHTML = ic; x.append(ci, label); x.onclick = f; more.append(x); };
+  opt('Copy link', svg('<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>'), () => share(c, 'copy'));
+  if (navigator.share) opt('Share to…', svg(IC.send), () => share(c, 'native'));
+  foot.append(note, send, msg, more);
+  b.append(q, grid, foot); b.style.cssText = 'display:flex;flex-direction:column;min-height:0';
+  const ov = sheet('Share', b, true);
+  ov.querySelector('.sheet').style.maxWidth = '560px';
+  const picked = new Map(); // key -> { n, g (group id) }
+  const paintFoot = () => { const n = picked.size; note.hidden = send.hidden = !n; send.textContent = n > 1 ? 'Send separately (' + n + ')' : 'Send'; };
+  if (!me()) {
+    grid.replaceChildren(el('div', 'snd-none', 'Sign in to send posts to your friends.'));
+    const si = el('button', 'btn', 'Make an account'); si.type = 'button'; si.style.cssText = 'grid-column:1/-1;justify-self:center'; si.onclick = () => { ov.close(); needAccount(); }; grid.append(si);
+    return;
+  }
+  grid.append(el('div', 'snd-none', 'Loading…'));
+  if (!soc) await loadSoc();
+  // suggestions: recent chats first (people and groups), then friends, then people you follow
+  const sug = [], seenK = new Set();
+  const add = (k, n, g) => { if (seenK.has(k) || lc(n) === lc(me()) || (soc && soc.b[k])) return; seenK.add(k); sug.push({ k, n, g }); };
+  if (soc) Object.entries(soc.c).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0)).forEach(([k, x]) => add(k, x.n, x.g ? k.slice(2) : ''));
+  friends().forEach(n => add(lc(n), n, ''));
+  [...following].forEach(k => add(k, k, ''));
+  let everyone = null;
+  const tile = p => {
+    const t = el('button', 'snd-p' + (picked.has(p.k) ? ' on' : '')), wrap = el('span'); t.type = 'button';
+    wrap.style.position = 'relative'; const av = p.g ? avatar('G') : avatar(p.n); if (p.g) av.style.background = 'linear-gradient(135deg, #6c5ce7, #00d2a8)';
+    wrap.append(av, el('span', 'tick', '✓'));
+    t.append(wrap, el('small', '', p.n));
+    t.onclick = () => { if (picked.has(p.k)) picked.delete(p.k); else picked.set(p.k, p); t.classList.toggle('on', picked.has(p.k)); paintFoot(); };
+    return t;
+  };
+  const paint = async () => {
+    const t = lc(q.value.trim());
+    let list = sug;
+    if (t) {
+      if (!everyone) { const r = await acct('players'); everyone = r.status === 200 ? r.players.map(x => ({ k: lc(x[0]), n: x[0], g: '' })) : []; }
+      const pool = sug.concat(everyone.filter(x => !seenK.has(x.k) && x.k !== lc(me()) && !(soc && soc.b[x.k])));
+      list = pool.filter(x => lc(x.n).includes(t)).sort((a, b) => lc(a.n).indexOf(t) - lc(b.n).indexOf(t)).slice(0, 60);
+    }
+    grid.replaceChildren(...list.map(tile));
+    if (!list.length) grid.append(el('div', 'snd-none', t ? 'No one found.' : 'Search for a player to send this to.'));
+  };
+  q.oninput = paint; paint();
+  send.onclick = async () => {
+    const link = location.href.split('#')[0] + '#c=' + c.id, text = (note.value.trim() ? note.value.trim().slice(0, 300) + '\n' : '') + link;
+    send.disabled = true; msg.className = 'snd-msg'; msg.textContent = 'Sending…';
+    let ok = 0, bad = [];
+    for (const p of picked.values()) { // one at a time, so the server's message limits aren't hit all at once
+      const r = p.g ? await acct('group', { method: 'POST', auth: true, body: { op: 'say', id: p.g, text } }) : await acct('dm', { method: 'POST', auth: true, body: { to: p.n, text } });
+      if (r.status === 200) { ok++; if (!p.g && r.m) gotDm(p.k, r.n || p.n, r.m); }
+      else { bad.push(p.n); if (r.error === 'slow') break; }
+    }
+    if (ok) post('share', { id: c.id }, true);
+    if (!bad.length) { ov.close(); ArcadeAccount.toast('Sent', ok === 1 ? 'Sent to ' + [...picked.values()][0].n + '.' : 'Sent to ' + ok + ' people.', '#dm'); return; }
+    send.disabled = false; msg.className = 'snd-msg err'; msg.textContent = 'Couldn’t send to ' + bad.join(', ') + (ok ? ' (the others got it).' : '. Try again in a moment.');
+  };
 }
 
 /* ---------- comments ---------- */
@@ -1083,7 +1176,8 @@ function paintInbox() {
     const li = el('li', c.un ? 'un' : ''), av = avatar(c.g ? 'G' : c.n), tx = el('div', 'tx');
     if (c.g) av.style.background = 'linear-gradient(135deg, #6c5ce7, #00d2a8)';
     else if (online[k]) av.classList.add('on-dot');
-    const sub = c.un ? (c.un > 1 ? c.un + ' new messages' : (c.by ? c.by + ': ' : '') + (c.t || '')) : online[k] && !c.g ? 'Active now' : (c.me ? 'You: ' : c.by ? c.by + ': ' : '') + (c.t || '');
+    const last = POST_LINK.test(c.t || '') ? (c.me ? 'You sent a post' : 'Sent a post') : (c.t || '');
+    const sub = c.un ? (c.un > 1 ? c.un + ' new messages' : (c.by ? c.by + ': ' : '') + last) : online[k] && !c.g ? 'Active now' : (POST_LINK.test(c.t || '') ? '' : c.me ? 'You: ' : c.by ? c.by + ': ' : '') + last;
     tx.append(el('b', '', c.n), el('small', '', sub + (c.ts && !(online[k] && !c.un && !c.g) ? ' · ' + ago(c.ts) : '')));
     li.append(av, tx);
     if (c.un) li.append(el('span', 'udot'));
@@ -1151,10 +1245,32 @@ function drawChat() {
   chat.msgs.forEach(m => {
     const d = new Date(m.ts).toDateString();
     if (d !== day) { day = d; frag.append(el('div', 'day-sep', new Date(m.ts).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' + new Date(m.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))); }
+    const pm = POST_LINK.exec(m.t || ''), note = pm ? m.t.replace(POST_LINK, '').replace(/\s*https?:\/\/\S*$/, '').trim() : '';
+    if (pm) { // a post someone sent: a little card that opens it
+      frag.append(postBubble(pm[1], m.f));
+      if (note) { const t = el('div', 'bub' + (m.f ? ' me' : ''), note); frag.append(t); }
+      return;
+    }
     const b = el('div', 'bub' + (m.f ? ' me' : ''), m.t); b.title = new Date(m.ts).toLocaleString(); frag.append(b);
   });
   if (!chat.msgs.length) frag.append(el('p', 'note', 'Say hi to ' + chat.n + '! Only the two of you can see this chat.'));
   log.replaceChildren(frag); log.scrollTop = log.scrollHeight;
+}
+const POST_LINK = /\S*social\.html[^#\s]*#c=([a-z0-9]{10})\b/;
+const postCache = new Map();
+function postBubble(id, mine) {
+  const b = el('div', 'bub post-bub' + (mine ? ' me' : '')), head = el('div', 'ph2'), img = el('img'), cap = el('div', 'pc', 'Loading post…');
+  img.alt = ''; b.append(head, img, cap);
+  b.onclick = () => { location.hash = 'c=' + id; };
+  if (!postCache.has(id)) postCache.set(id, get('one', { id }));
+  postCache.get(id).then(r => {
+    if (r.status !== 200) { cap.textContent = 'This post isn’t available any more.'; img.remove(); return; }
+    const c = r.clip, g = gameOf(c.g);
+    head.append(avatar(c.by), el('span', '', c.by));
+    img.src = c.p || (g ? g.thumb : '');
+    cap.replaceChildren(); const nb = el('b', '', c.by); cap.append(nb, document.createTextNode(c.t || (c.k === 'photo' ? 'Photo' : g ? g.title + ' clip' : 'Video')));
+  });
+  return b;
 }
 function gotDm(k, n, m) {
   if (soc) { const c = soc.c[k] || (soc.c[k] = { n, seq: 0, un: 0 }); c.n = n; c.t = m.t.slice(0, 80); c.ts = m.ts; c.me = m.f ? 1 : 0; c.by = ''; if (!m.f && !(chat && chat.k === k)) c.un = (c.un || 0) + 1; }
