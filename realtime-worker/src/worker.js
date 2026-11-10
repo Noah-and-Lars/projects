@@ -943,6 +943,8 @@ async function krill(req, env, url) {
 // then keeps each pair of players once (their best), shown as "Driver+Navigator". One Tally object 'ttt-board'.
 //   GET  /ttt/board?s=<stage>                          -> { list: [{ d, n, ms, at }] }  (best first, top TTT_SHOW)
 //   POST /ttt/run {s, ms, n}   (Authorization: Bearer <token>; the driver is the token's account) -> { rank }
+// Solo runs (1.3, with the AI co-driver) have their own board per stage, each driver's best: 'ls:<stage>' = [{ d, ms, at }]
+//   GET  /ttt/sboard?s=<stage>   -> { list: [{ d, ms, at }] }      POST /ttt/solo {s, ms} (Bearer token) -> { rank, best }
 const TTT_STAGE = /^[a-z0-9-]{2,24}$/, TTT_KEEP = 60, TTT_SHOW = 25, TTT_STAGES = 800;
 async function turnBoard(req, env, url) {
   const origin = req.headers.get('Origin') || '';
@@ -952,12 +954,17 @@ async function turnBoard(req, env, url) {
   const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
   const route = url.pathname.slice(5), tally = env.TALLY.get(env.TALLY.idFromName('ttt-board'));
   const call = body => tally.fetch(new Request('https://tally/ttt-' + route, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }));
+  if (route === 'sboard' && req.method === 'GET') {
+    const s = url.searchParams.get('s') || '';
+    if (!TTT_STAGE.test(s)) return out({ error: 'bad' }, 400);
+    const r = await call({ s }); return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
+  }
   if (route === 'board' && req.method === 'GET') {
     const s = url.searchParams.get('s') || '';
     if (!TTT_STAGE.test(s)) return out({ error: 'bad' }, 400);
     const r = await call({ s }); return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
   }
-  if (route === 'run' && req.method === 'POST') {
+  if ((route === 'run' || route === 'solo') && req.method === 'POST') {
     if (+(req.headers.get('content-length') || 0) > 2048) return out({ error: 'bad' }, 400);
     let b; try { b = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
     const auth = req.headers.get('authorization') || '', nm = auth.replace(/^Bearer\s+/i, '').split('.')[0] || '';
@@ -965,8 +972,9 @@ async function turnBoard(req, env, url) {
     const w = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + nm.toLowerCase())).fetch(new Request('https://acct/whoami', { headers: { authorization: auth } }));
     const who = w.ok ? await w.json().catch(() => ({})) : {};
     if (!who.name) return out({ error: 'auth' }, 401);
-    if (!TTT_STAGE.test(b.s || '') || !NAME_RE.test(b.n || '') || b.n.toLowerCase() === who.name.toLowerCase() || !(b.ms >= 20000 && b.ms <= 3600000)) return out({ error: 'bad' }, 400);
-    const r = await call({ s: b.s, ms: Math.round(b.ms), d: who.name, n: b.n });
+    if (!TTT_STAGE.test(b.s || '') || !(b.ms >= 20000 && b.ms <= 3600000)) return out({ error: 'bad' }, 400);
+    if (route === 'run' && (!NAME_RE.test(b.n || '') || b.n.toLowerCase() === who.name.toLowerCase())) return out({ error: 'bad' }, 400);
+    const r = await call(route === 'run' ? { s: b.s, ms: Math.round(b.ms), d: who.name, n: b.n } : { s: b.s, ms: Math.round(b.ms), d: who.name });
     return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
   }
   return out({ error: 'not_found' }, 404);
@@ -1014,6 +1022,18 @@ export class Tally extends DurableObject {
       return j({ days: days.map(d => { const l = lists.get('lb:' + d) || []; return { d, n: l.length, top: l.slice(0, 3).map(e => ({ n: e.n, s: e.s })) }; }) });
     }
     if (route === 'ttt-board') return j({ list: ((await S.get('lb:' + b.s)) || []).slice(0, TTT_SHOW) });
+    if (route === 'ttt-sboard') return j({ list: ((await S.get('ls:' + b.s)) || []).slice(0, TTT_SHOW) });
+    if (route === 'ttt-solo') { // a solo run: one entry per driver, keeping their best
+      let list = await S.get('ls:' + b.s);
+      if (!list) { const ns = (await S.get('nss')) || 0; if (ns >= TTT_STAGES) return j({ error: 'full' }, 507); await S.put('nss', ns + 1); list = []; }
+      const me = b.d.toLowerCase(), i = list.findIndex(e => e.d.toLowerCase() === me);
+      if (i >= 0 && list[i].ms <= b.ms) return j({ rank: i + 1, best: list[i].ms });
+      if (i >= 0) list.splice(i, 1);
+      list.push({ d: b.d, ms: b.ms, at: Date.now() }); list.sort((x, y) => x.ms - y.ms); list.length = Math.min(list.length, TTT_KEEP);
+      await S.put('ls:' + b.s, list);
+      const k = list.findIndex(e => e.d.toLowerCase() === me);
+      return j({ rank: k >= 0 ? k + 1 : 0, best: b.ms });
+    }
     if (route === 'ttt-run') { // a crew's run; one entry per pair of players, keeping their best
       let list = await S.get('lb:' + b.s);
       if (!list) { const ns = (await S.get('ns')) || 0; if (ns >= TTT_STAGES) return j({ error: 'full' }, 507); await S.put('ns', ns + 1); list = []; }

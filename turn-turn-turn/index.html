@@ -117,6 +117,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 .medal{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
 .m-gold{background:var(--gold)}.m-silver{background:var(--silver)}.m-bronze{background:var(--bronze)}
 .daily-tag{position:absolute;top:8px;right:8px;background:var(--teal);color:#03201c;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
+.daily-tag.long-tag{background:var(--orange);color:#2a1200}
+.lb-kind{margin-bottom:2px}.lb-kind button{font-size:14px}
 
 /* settings */
 .set-grid{display:grid;grid-template-columns:1fr auto;gap:12px 18px;align-items:center}
@@ -368,7 +370,8 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
 
   <div id="lbScr" class="screen dim hidden">
     <div class="panel" style="width:min(720px,100%)">
-      <div class="panel-head"><div><h2>Leaderboard</h2><div class="sub" style="margin:0">The fastest crews on each stage. Only online crew runs count.</div></div><button class="close" data-back>✕</button></div>
+      <div class="panel-head"><div><h2>Leaderboard</h2><div class="sub" style="margin:0" id="lbSub">The fastest crews on each stage. Only online crew runs count.</div></div><button class="close" data-back>✕</button></div>
+      <div class="lb-tabs lb-kind" id="lbKind"><button data-k="crew" class="on">👥 Crews</button><button data-k="solo">🚗 Solo</button></div>
       <div class="lb-tabs" id="lbTabs"></div>
       <div class="lb-list" id="lbList"></div>
     </div>
@@ -475,7 +478,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.2.1';
+const VERSION = '1.3';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -681,6 +684,19 @@ const STAGES = [
   { id: 'switch', name: 'Switchback Summit', biome: 'alpine', seed: 6650, len: 2600, diff: 3, cliff: 0.55, mud: 0.5, jumps: 2, w: 6.8, blurb: 'Hairpins stacked up a cliff face.' },
   { id: 'fog', name: 'Fog Hollow', biome: 'fog', seed: 3319, len: 2400, diff: 3, cliff: 0.3, mud: 0.8, jumps: 3, w: 6.8, blurb: 'You can barely see the bonnet. Trust the calls.' },
   { id: 'dusk', name: 'Dusk Ridge', biome: 'dusk', seed: 8890, len: 2800, diff: 3, cliff: 0.45, mud: 0.5, jumps: 4, w: 6.8, blurb: 'Long, fast and mean, into the sunset.' },
+  // 1.3: the long stages, about three times the length, with real hills. relief: how big the hills are (m), wave: how far
+  // apart (m), trend: the climb (+) or drop (-) from start to finish (m), grade: the steepest slope, crests: blind brows
+  // that throw the car light (called as jumps), dips: compressions, parX: the extra time hills take (for the medals)
+  { id: 'pass', name: 'Highland Pass', long: 1, biome: 'alpine', seed: 61021, len: 7800, diff: 3, cliff: 0.55, mud: 0.3, jumps: 2, w: 6.8, relief: 34, wave: 900, trend: 170, grade: 0.16, crests: 4, dips: 2, parX: 1.12, blurb: 'One long climb over the mountains, cliffs all the way up.' },
+  { id: 'descent', name: 'The Long Drop', long: 1, biome: 'snow', seed: 61103, len: 7500, diff: 3, cliff: 0.4, mud: 0, jumps: 2, w: 7.0, relief: 22, wave: 700, trend: -190, grade: 0.17, crests: 3, dips: 5, parX: 1.02, blurb: 'Downhill from the summit to the valley floor. Brake early.' },
+  { id: 'rollers', name: 'Rollercoaster Run', long: 1, biome: 'dry', seed: 61207, len: 6600, diff: 2, cliff: 0.2, mud: 0.2, jumps: 4, w: 7.2, relief: 20, wave: 260, trend: 0, grade: 0.19, crests: 11, dips: 8, parX: 1.08, blurb: 'Hill after hill after hill. Your stomach will notice.' },
+  { id: 'canyon', name: 'Red Canyon', long: 1, biome: 'canyon', seed: 61301, len: 7200, diff: 3, cliff: 0.85, mud: 0.1, jumps: 3, w: 6.8, relief: 30, wave: 800, trend: -60, grade: 0.15, crests: 4, dips: 3, parX: 1.06, blurb: 'Rock walls and big drops through a red canyon.' },
+  { id: 'jungle', name: 'Jungle Mud Run', long: 1, biome: 'jungle', seed: 61409, len: 6800, diff: 2, cliff: 0.25, mud: 2.6, jumps: 2, w: 6.6, relief: 18, wave: 500, trend: 40, grade: 0.14, crests: 3, dips: 7, parX: 1.07, blurb: 'Thick trees, deep mud and dips that hide the road.' },
+  { id: 'meadow', name: 'Meadow Marathon', long: 1, biome: 'forest', seed: 61503, len: 6200, diff: 1, cliff: 0.1, mud: 0.5, jumps: 3, w: 7.6, relief: 16, wave: 600, trend: 30, grade: 0.12, crests: 5, dips: 3, parX: 1.04, blurb: 'Gentle, rolling and long. A good first marathon.' },
+  { id: 'storm', name: 'Stormfront', long: 1, biome: 'wet', seed: 61607, len: 7000, diff: 3, cliff: 0.4, mud: 1.8, jumps: 2, w: 6.8, relief: 32, wave: 650, trend: 90, grade: 0.16, crests: 5, dips: 4, parX: 1.1, blurb: 'Rain, mud and steep hills. The navigator earns their pay.' },
+  { id: 'frost', name: 'Frostbite Forest', long: 1, biome: 'snow', seed: 61709, len: 7400, diff: 2, cliff: 0.3, mud: 0.2, jumps: 3, w: 7.0, relief: 28, wave: 550, trend: -40, grade: 0.15, crests: 6, dips: 4, parX: 1.06, blurb: 'Snowy pines, white hills and long sweeping bends.' },
+  { id: 'golden', name: 'Golden Hour Marathon', long: 1, biome: 'dusk', seed: 61811, len: 8600, diff: 3, cliff: 0.45, mud: 0.4, jumps: 5, w: 6.8, relief: 40, wave: 750, trend: 0, grade: 0.17, crests: 7, dips: 4, parX: 1.1, blurb: 'The longest stage of all, chasing the sunset over the hills.' },
+  { id: 'harvest', name: 'Harvest Hills', long: 1, biome: 'autumn', seed: 61907, len: 7000, diff: 2, cliff: 0.2, mud: 0.8, jumps: 3, w: 7.2, relief: 26, wave: 420, trend: 20, grade: 0.16, crests: 8, dips: 5, parX: 1.07, blurb: 'Rolling farm hills in the autumn leaves. Big crests, big air.' },
 ];
 function dailyStage() {
   const d = new Date(), key = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
@@ -714,6 +730,16 @@ const BIOMES = {
   dusk: { sky: [0x2f3f78, 0xf2a466], fog: 0xd99a72, fogN: 40, fogF: 300, sun: 0xffb27a, sunI: 1.35, sunDir: [-0.75, 0.24, 0.45], hemi: [0xffc49a, 0x3c3a3a, 0.55],
     grass: [0x6b7f3a, 0x768a40, 0x5e7134], dirt: 0x9c7a5a, road: 0xaa8762, pine: [0x2a4a32, 0x30553a, 0x24412c], leaf: [0x6a7a34, 0x77843a, 0x5e6e2e], trunk: 0x4a3122,
     rock: 0x8a7a72, cliff: 0x7e6a5e, bush: [0x5c6a32, 0x66723a], pineMix: 0.6, density: 0.9, hill: 15, mtn: 0x8a6a78 },
+  // 1.3
+  snow: { sky: [0x8fb4d8, 0xeef4f8], fog: 0xe6eef4, fogN: 50, fogF: 280, sun: 0xffffff, sunI: 1.15, sunDir: [0.4, 0.7, -0.35], hemi: [0xf2f8ff, 0x8a9aa8, 0.72],
+    grass: [0xe6ecf0, 0xf2f5f8, 0xd9e1e8], dirt: 0xbcc3c9, road: 0xa8a39a, pine: [0x2b4f3e, 0x335a46, 0x26473a], leaf: [0x6f7c74, 0x7a8780, 0x66716a], trunk: 0x4a3a2e,
+    rock: 0x9aa0a6, cliff: 0x8c929a, bush: [0xc9d2d8, 0xb8c2ca], pineMix: 0.95, density: 0.8, hill: 16, mtn: 0xdfe8f0 },
+  canyon: { sky: [0x5f9fd8, 0xf5d6b0], fog: 0xf0cfa8, fogN: 70, fogF: 340, sun: 0xfff0d8, sunI: 1.35, sunDir: [-0.45, 0.75, 0.35], hemi: [0xffe8cc, 0x9a5a3a, 0.6],
+    grass: [0xc0784a, 0xb06a40, 0xcc8a58], dirt: 0xc88e62, road: 0xd2a074, pine: [0x5a6a3a, 0x63733f, 0x4f5f34], leaf: [0x8a8a46, 0x7d7e40, 0x96944c], trunk: 0x6b4a30,
+    rock: 0xb8643c, cliff: 0xa8502e, bush: [0x8a7a40, 0x7a6a38], pineMix: 0.2, density: 0.35, hill: 22, mtn: 0xc0704a },
+  jungle: { sky: [0x5aa6c8, 0xd8eedc], fog: 0xb8d8c4, fogN: 35, fogF: 230, sun: 0xfff6dc, sunI: 1.1, sunDir: [0.35, 0.8, 0.3], hemi: [0xe0ffe8, 0x2f5a28, 0.7],
+    grass: [0x2f7a2a, 0x3a8a30, 0x276a22], dirt: 0x7a5a3a, road: 0x8a6a48, pine: [0x1f5a2e, 0x24682f, 0x1a4e28], leaf: [0x2f8a2a, 0x3aa032, 0x268024, 0x52a83a], trunk: 0x4a3420,
+    rock: 0x6e7a66, cliff: 0x5e6a52, bush: [0x2f7a2a, 0x3c8c32], pineMix: 0.15, density: 1.5, hill: 14, mtn: 0x5f8a7a },
 };
 
 /* ---------- small geometry helpers ---------- */
@@ -835,9 +861,12 @@ function buildStage(def, scene) {
 
   /* heights: rolling noise, a grade limit, then jumps on straights */
   const H = new Float32Array(N);
-  for (let i = 0; i < N; i++) { const s = i * STEP; H[i] = (noise.fbm1(s / 430) - 0.5) * 2 * (16 + def.diff * 4) + (noise.fbm1(s / 105 + 50) - 0.5) * 2 * 3.5; }
+  if (def.long) { // 1.3: big hills of their own size and spacing, plus the stage's overall climb or drop
+    const rel = def.relief || 24, wv = def.wave || 700;
+    for (let i = 0; i < N; i++) { const s = i * STEP; H[i] = (noise.fbm1(s / wv) - 0.5) * 2 * rel + (noise.fbm1(s / (wv * 0.3) + 20) - 0.5) * 2 * rel * 0.3 + (noise.fbm1(s / 95 + 50) - 0.5) * 2 * 3 + (def.trend || 0) * s / L; }
+  } else for (let i = 0; i < N; i++) { const s = i * STEP; H[i] = (noise.fbm1(s / 430) - 0.5) * 2 * (16 + def.diff * 4) + (noise.fbm1(s / 105 + 50) - 0.5) * 2 * 3.5; }
   for (let i = 0; i < 40; i++) H[i] = H[40];
-  const G = 0.11 * STEP;
+  const G = (def.grade || 0.11) * STEP;
   for (let pass = 0; pass < 2; pass++) {
     for (let i = 1; i < N; i++) H[i] = clamp(H[i], H[i - 1] - G, H[i - 1] + G);
     for (let i = N - 2; i >= 0; i--) H[i] = clamp(H[i], H[i + 1] - G, H[i + 1] + G);
@@ -854,6 +883,18 @@ function buildStage(def, scene) {
     jumps.push(c);
     const amp = 1.7 + rng() * 0.8, sg = 8 / STEP;
     for (let i = Math.max(0, c - 20); i < Math.min(N, c + 20); i++) H[i] += amp * Math.exp(-(((i - c) / sg) ** 2));
+  }
+  // 1.3: blind crests (the car goes light over the top: called as jumps) and dips, on the long stages
+  const nearJump = c => jumps.some(j => Math.abs(j - c) * STEP < 120);
+  for (let j = 0, tries = 0; j < (def.crests || 0) + (def.dips || 0) && tries < 400; tries++) {
+    const crest = j < (def.crests || 0), c = Math.round(lerp(160 / STEP, N - 160 / STEP, rng()));
+    if (nearJump(c)) continue;
+    let ks = 0; for (let i = c - 15; i <= c + 15; i++) ks = Math.max(ks, Math.abs(K[i] || 0));
+    if (crest && ks > 1 / 70) continue; // crests on fast, straight-ish road only
+    const amp = crest ? 2.6 + rng() * 1.4 : -(2.2 + rng() * 1.8), sg = (crest ? 10 + rng() * 3 : 13 + rng() * 6) / STEP;
+    for (let i = Math.max(0, Math.round(c - sg * 3)); i < Math.min(N, Math.round(c + sg * 3)); i++) H[i] += amp * Math.exp(-(((i - c) / sg) ** 2));
+    if (crest) jumps.push(c);
+    j++;
   }
   jumps.sort((a, b) => a - b);
 
@@ -887,12 +928,12 @@ function buildStage(def, scene) {
     const c = t.sev <= 2 ? (t.dir > 0 ? 'SL' : 'SR') : (t.dir > 0 ? 'L' : 'R');
     notes.push({ i: t.i0, i1: t.i1, c, sev: t.sev, dir: t.dir });
   }
-  for (const j of jumps) notes.push({ i: j - Math.round(10 / STEP), i1: j + 4, c: 'JUMP', sev: 0 });
+  for (const j of jumps) notes.push({ i: j - Math.round((def.long ? 14 : 10) / STEP), i1: j + 4, c: 'JUMP', sev: 0 });
   notes.sort((a, b) => a.i - b.i);
 
   const V = speedProfile(K, N);
   let par = 0; for (let i = 1; i < N; i++) par += STEP / Math.max(4, (V[i] + V[i - 1]) / 2);
-  par *= 1000;
+  par *= 1000 * (def.parX || 1);
 
   /* road hash (for nearest-sample lookups) */
   const RH = 20, rhash = new Map();
@@ -948,7 +989,7 @@ function terrainProfile(st, noise, x, z, loc) {
 }
 
 function buildTerrain(st, noise, rng) {
-  const M = 210, CS = 5;
+  const M = 210, CS = st.def.long ? 7 : 5;
   let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
   for (let i = 0; i < st.N; i++) { minX = Math.min(minX, st.X[i]); maxX = Math.max(maxX, st.X[i]); minZ = Math.min(minZ, st.Z[i]); maxZ = Math.max(maxZ, st.Z[i]); }
   minX -= M; minZ -= M; maxX += M; maxZ += M;
@@ -2273,6 +2314,9 @@ function finishRace() {
     netSend('fin', { ms, pen: GAME.pen, cr: GAME.crashes, rs: GAME.resets });
     GAME.lbRes = null;
     submitRun(def, ms).then(j => { GAME.lbRes = j || { rank: 0, err: 1 }; netSend('lbr', GAME.lbRes); if (SCREEN === 'resultScr') showBoardResult(j); });
+  } else if (!GAME.crew) { // 1.3: solo runs have their own leaderboard
+    GAME.lbRes = null;
+    submitSolo(def, ms).then(j => { GAME.lbRes = j || { rank: 0, err: 1 }; if (SCREEN === 'resultScr') showBoardResult(j); });
   }
   AUDIO.beep(1320, 0.4);
 }
@@ -3206,7 +3250,7 @@ setInterval(() => {
   if (!Q || Q.started || !NET.host || !L || GAME.mode === 'race' || SCREEN !== 'lobbyScr') return;
   const here = L.vs ? vsIds(L).length : (L.d && L.n ? 2 : 1), all = Q.ids.length, age = (performance.now() - Q.t) / 1000;
   const enough = L.vs ? here >= vsMin() : here === 2;
-  if (!Q.cd && enough && (here >= all || age > 12)) { Q.cd = 5; L.st = allStages()[Math.floor(Math.random() * allStages().length)].id; }
+  if (!Q.cd && enough && (here >= all || age > 12)) { Q.cd = 5; const pool = allStages().filter(d => !d.long); L.st = pool[Math.floor(Math.random() * pool.length)].id; }
   if (Q.cd) {
     if (!enough) { Q.cd = 0; L.auto = 0; hostPushLobby(); return; }
     L.auto = Q.cd; hostPushLobby(); Q.cd--;
@@ -3289,13 +3333,17 @@ $('qmCancel').addEventListener('click', () => { AUDIO.ui(); qmStop(); openQuick(
 $('qmClose').addEventListener('click', () => { if (SCREEN !== 'qmScr') return; AUDIO.ui(); qmStop(); showScreen('menu'); });
 function enterLobby(status) { hideLoading(); showScreen('lobbyScr', 'menu'); lobbyStatus(status); renderLobby(); }
 
-/* ---------- leaderboard: the best crews per stage, kept by the arcade server ---------- */
+/* ---------- leaderboard: the best crews per stage, and (1.3) the best solo drivers, kept by the arcade server ---------- */
 const LB_API = (IS_LOCAL && (() => { try { return localStorage.getItem('ttt-api'); } catch (e) { return null; } })()) || 'https://arcade-realtime.arcade-realtime.workers.dev/ttt/';
-let LB_STAGE = null;
+let LB_STAGE = null, LB_KIND = 'crew';
 const LB_CACHE = {};
+const lbKey = id => LB_KIND + ':' + id;
 function acctToken() { try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return a && a.token; } catch (e) { return null; } }
-function openBoard(stageId) {
+function openBoard(stageId, kind) {
   LB_STAGE = stageId || LB_STAGE || SAVE.stage;
+  if (kind) LB_KIND = kind;
+  document.querySelectorAll('#lbKind button').forEach(b => b.classList.toggle('on', b.dataset.k === LB_KIND));
+  $('lbSub').textContent = LB_KIND === 'solo' ? 'The fastest solo drivers on each stage (you drive, the AI co-driver calls the turns).' : 'The fastest crews on each stage. Only online crew runs count.';
   const tabs = $('lbTabs'); tabs.innerHTML = '';
   for (const def of allStages()) {
     const b = document.createElement('button'); b.textContent = def.name + (def.sub ? ' · ' + def.sub : ''); if (def.id === LB_STAGE) b.className = 'on';
@@ -3307,25 +3355,27 @@ function openBoard(stageId) {
   loadBoard(LB_STAGE);
 }
 async function loadBoard(id) {
-  const box = $('lbList');
-  if (LB_CACHE[id]) drawBoard(id, LB_CACHE[id]); else box.innerHTML = '<div class="lb-empty">Loading…</div>';
+  const box = $('lbList'), kind = LB_KIND, key = kind + ':' + id;
+  if (LB_CACHE[key]) drawBoard(id, LB_CACHE[key]); else box.innerHTML = '<div class="lb-empty">Loading…</div>';
   try {
-    const r = await fetch(LB_API + 'board?s=' + encodeURIComponent(id));
+    const r = await fetch(LB_API + (kind === 'solo' ? 'sboard' : 'board') + '?s=' + encodeURIComponent(id));
     const j = await r.json(); if (!r.ok) throw 0;
-    LB_CACHE[id] = j.list || [];
-    if (LB_STAGE === id) drawBoard(id, LB_CACHE[id]);
-  } catch (e) { if (LB_STAGE === id && !LB_CACHE[id]) box.innerHTML = '<div class="lb-empty">Could not reach the leaderboard. Check your connection.</div>'; }
+    LB_CACHE[key] = j.list || [];
+    if (LB_STAGE === id && LB_KIND === kind) drawBoard(id, LB_CACHE[key]);
+  } catch (e) { if (LB_STAGE === id && LB_KIND === kind && !LB_CACHE[key]) box.innerHTML = '<div class="lb-empty">Could not reach the leaderboard. Check your connection.</div>'; }
 }
+document.querySelectorAll('#lbKind button').forEach(b => b.addEventListener('click', () => { AUDIO.ui(); openBoard(LB_STAGE, b.dataset.k); }));
 function drawBoard(id, list) {
   const box = $('lbList'), me = myName().toLowerCase(), def = stageById(id);
   box.innerHTML = '';
-  if (!list.length) { box.innerHTML = '<div class="lb-empty">No crews on this stage yet. Make a crew and set the first time!</div>'; return; }
+  const solo = LB_KIND === 'solo';
+  if (!list.length) { box.innerHTML = solo ? '<div class="lb-empty">No solo times on this stage yet. Drive it and set the first one!</div>' : '<div class="lb-empty">No crews on this stage yet. Make a crew and set the first time!</div>'; return; }
   list.forEach((e, i) => {
     const row = document.createElement('div');
-    row.className = 'lb-row' + (i < 3 ? ' top' + (i + 1) : '') + (e.d.toLowerCase() === me || e.n.toLowerCase() === me ? ' me' : '');
+    row.className = 'lb-row' + (i < 3 ? ' top' + (i + 1) : '') + (e.d.toLowerCase() === me || (e.n || '').toLowerCase() === me ? ' me' : '');
     const rk = document.createElement('div'); rk.className = 'rk'; rk.textContent = '#' + (i + 1);
-    const cr = document.createElement('div'); cr.className = 'crew'; cr.append(e.d + '+' + e.n);
-    const sm = document.createElement('small'); sm.textContent = 'Driver ' + e.d + ' · Navigator ' + e.n; cr.appendChild(sm);
+    const cr = document.createElement('div'); cr.className = 'crew'; cr.append(solo ? e.d : e.d + '+' + e.n);
+    const sm = document.createElement('small'); sm.textContent = solo ? 'Solo, with the AI co-driver' : 'Driver ' + e.d + ' · Navigator ' + e.n; cr.appendChild(sm);
     const tm = document.createElement('div'); tm.className = 'tm'; tm.innerHTML = medalDot(def, e.ms); tm.append(fmtTime(e.ms));
     const dt = document.createElement('div'); dt.className = 'dt'; dt.textContent = new Date(e.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
     row.append(rk, cr, tm, dt); box.appendChild(row);
@@ -3341,14 +3391,32 @@ async function submitRun(def, ms) {
     return r.ok ? j : null;
   } catch (e) { return null; }
 }
+// 1.3: a solo run goes on the solo board (signed-in players)
+async function submitSolo(def, ms) {
+  const tok = acctToken(); if (!tok) return { rank: 0, err: 2 };
+  try {
+    const r = await fetch(LB_API + 'solo', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body: JSON.stringify({ s: def.id, ms }) });
+    const j = await r.json(); delete LB_CACHE['solo:' + def.id];
+    return r.ok ? j : null;
+  } catch (e) { return null; }
+}
 function showBoardResult(j) {
   const el = $('resLb'); if (!el) return;
   if (!j) { el.textContent = 'Could not reach the leaderboard.'; return; }
-  el.textContent = j.rank ? 'Leaderboard: #' + j.rank + ' on ' + GAME.def.name + (j.best && j.best < GAME.result.ms ? ' (your crew\'s best is ' + fmtTime(j.best) + ')' : '') : 'Not in the top crews on this stage yet.';
+  if (j.err === 2) { el.textContent = 'Sign in on the arcade home page to put your solo times on the leaderboard.'; return; }
+  const who = GAME.crew ? 'your crew\'s' : 'your';
+  el.textContent = j.rank ? (GAME.crew ? 'Leaderboard' : 'Solo leaderboard') + ': #' + j.rank + ' on ' + GAME.def.name + (j.best && j.best < GAME.result.ms ? ' (' + who + ' best is ' + fmtTime(j.best) + ')' : '') : GAME.crew ? 'Not in the top crews on this stage yet.' : 'Not in the top solo drivers on this stage yet.';
 }
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.3', date: '12 November 2026', items: [
+    '10 new long stages, about three times the length of the others (6 to 8.6 km), each with its own character: a mountain pass that climbs all the way, a long drop down a snowy mountain, a rollercoaster of hills, a red canyon, a jungle full of mud, a gentle meadow marathon, a stormy climb, a frozen forest, harvest hills and the longest of all into the sunset.',
+    'Real hills on the long stages: long climbs and descents, steeper slopes, blind crests that throw the car light (the navigator calls them as jumps) and dips that squash the suspension.',
+    'Three new places to race: snow, a red canyon and a jungle.',
+    'Solo leaderboards: solo runs (you drive, the AI co-driver calls the turns) now go on their own leaderboard for every stage. Open Leaderboard and switch between Crews and Solo. You need to be signed in to the arcade.',
+    'Long stages are marked LONG on the stage list. Quick-match versus races stay on the regular-length stages.',
+  ] },
   { v: '1.2.1', date: '10 November 2026', items: [
     'Fixed versus calls: the driver saw "undefined" instead of the navigator\'s call (left, sharp right, jump…). Every call now comes through.',
   ] },
@@ -3422,7 +3490,7 @@ function stageParMs(def) {
   if (PAR[def.id]) return PAR[def.id];
   const P = genPath(def, mulberry(def.seed * 13 + 7)), V = speedProfile(P.K, P.X.length);
   let t = 0; for (let i = 1; i < P.X.length; i++) t += STEP / Math.max(4, (V[i] + V[i - 1]) / 2);
-  return (PAR[def.id] = t * 1000);
+  return (PAR[def.id] = t * 1000 * (def.parX || 1));
 }
 function openStages(mode, from) {
   STAGE_MODE = mode; STAGE_SEL = mode === 'lobby' ? (NET.lobby && NET.lobby.st) : SAVE.stage;
@@ -3438,7 +3506,7 @@ function renderStages() {
     const el = document.createElement('button'); el.className = 'stage' + (STAGE_SEL === def.id ? ' sel' : '');
     const c1 = '#' + new THREE.Color(B.sky[0]).getHexString(), c2 = '#' + new THREE.Color(B.grass[0]).getHexString(), road = '#' + new THREE.Color(B.road).getHexString();
     el.innerHTML = `<div class="sw" style="background:linear-gradient(160deg,${c1},${c2})"><svg viewBox="0 0 200 54" preserveAspectRatio="xMidYMid meet"><path d="${stagePreview(def)}" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="${stagePreview(def)}" fill="none" stroke="${road}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`
-      + (def.daily ? '<span class="daily-tag">DAILY</span>' : '')
+      + (def.daily ? '<span class="daily-tag">DAILY</span>' : def.long ? '<span class="daily-tag long-tag">LONG</span>' : '')
       + `<div class="nm"></div><div class="meta"><span class="pips">${[1, 2, 3].map(i => `<i class="${i <= def.diff ? 'on' : ''}"></i>`).join('')}</span><span>${(def.len / 1000).toFixed(1)} km · ${['', 'Easy', 'Medium', 'Hard'][def.diff]}</span></div><div class="bi"></div>`
       + `<div class="bests"><div><span>Solo</span> ${b.solo ? medalDot(def, b.solo) + fmtTime(b.solo) : '–'}</div><div><span>Crew</span> ${b.crew ? medalDot(def, b.crew) + fmtTime(b.crew) : '–'}</div></div>`;
     el.querySelector('.nm').textContent = def.name + (def.sub ? ' · ' + def.sub : '');
@@ -3653,8 +3721,8 @@ function showResults() {
   const btns = $('resBtns'); btns.innerHTML = '';
   const btn = (t, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = t; b.onclick = () => { AUDIO.ui(); fn(); }; btns.appendChild(b); };
   $('resStatus').textContent = '';
-  $('resLb').textContent = GAME.crew ? (GAME.lbRes ? '' : 'Sending to the leaderboard…') : 'Solo runs don\'t go on the leaderboard. Make a crew!';
-  if (GAME.crew && GAME.lbRes) showBoardResult(GAME.lbRes.err ? null : GAME.lbRes);
+  $('resLb').textContent = GAME.lbRes ? '' : 'Sending to the leaderboard…';
+  if (GAME.lbRes) showBoardResult(GAME.lbRes.err === 1 ? null : GAME.lbRes);
   if (!GAME.crew) {
     btn('Run it again', 'primary', () => startRace(def, 'driver', false));
     btn('Other stages', '', () => { leaveRace(); openStages('solo', 'menu'); });

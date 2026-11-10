@@ -393,6 +393,13 @@ source in Settings → Pages should be switched to `main`.
   (`COCKPIT`) is now a cabin fixed to the plane (`COCKPIT.orient()` after the camera turns): a tub with floor, walls, seat,
   bulkhead and glass for fighters and the jet, a flight deck with roof, side windows and glazed nose for the bomber.
 - `turn-turn-turn/`: Turn! Turn! TURN! (1.0, 2026-11-08), a two-player co-op dirt rally (Three.js r128 copied from Havoc Bay).
+  1.3 (2026-11-12): 10 long stages in `STAGES` (`long: 1`, 6.2-8.6 km) with their own hill model in buildStage: `relief`,
+  `wave`, `trend` (overall climb/drop), `grade` (max slope), `crests` (gaussian brows, added to `jumps` so they're called
+  as JUMP) and `dips`; `parX` scales par (both buildStage and stageParMs) for the time hills cost. Long stages use a 7 m
+  ground grid. New biomes snow, canyon, jungle. Quick-match versus picks only regular stages. Solo leaderboard: POST
+  /ttt/solo {s, ms} (token) and GET /ttt/sboard?s= (Tally 'ttt-board' keys 'ls:<stage>', best per driver); the
+  Leaderboard screen has Crews/Solo tabs (`LB_KIND`). Build with `ci/build.sh ../repo/turn-turn-turn/index.html`
+  (the output path is relative to ci/).
   The owner first called it "Right! Right! RIGHT!" and gave reference pictures of an existing game; it was built with
   its own name (renamed by the owner), car, cabin, crew and tablet instead, so don't copy that game's look or title.
   The file is built from parts kept outside the repo (scratchpad `ci/src`, joined by `ci/build.sh`): `20-core` (save
