@@ -15,7 +15,9 @@ export const RIDERS = [
   { name: 'Diesel', color: 0xff8a00, accent: 0x6b2bd9, jersey: 0x6b2bd9, jersey2: 0xff8a00, pants: 0x6b2bd9, helmet: 0xff8a00, helmet2: 0x6b2bd9, frame: 0x2a2a2e, num: 9 },
 ];
 // Depth offsets (render only). The player is in the nearest lane.
-export const LANES = [2.7, 0.9, -0.9, -2.7];
+// Spread wide enough that, with the camera's slight downward tilt, each rider
+// sits visibly higher and smaller than the one in front: no overlapping blob.
+export const LANES = [3.4, 1.0, -1.4, -3.8];
 const RESPAWN_DELAY = 1.0;
 const STUCK_TIME = 3.5;
 

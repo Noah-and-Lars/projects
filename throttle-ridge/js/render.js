@@ -14,7 +14,7 @@ import { ragdollJoints } from './ragdoll.js';
 import { THEMES, SPONSORS } from './themes.js';
 import * as TX from './textures.js';
 
-export const TW = 3.7; // half track width (z)
+export const TW = 4.6; // half track width (z)
 
 let envCache = null;
 export function createRenderer(canvas, quality) {
@@ -48,7 +48,8 @@ export function createView(renderer, race, quality) {
   const keep = (o) => { disposables.push(o); return o; };
 
   scene.background = keep(TX.skyTexture(T.sky[0], T.sky[1], T.stars));
-  scene.fog = new THREE.Fog(new THREE.Color(T.fog[0]), T.fog[1], T.fog[2]);
+  const fogCol = new THREE.Color(T.fog[0]);
+  scene.fog = new THREE.Fog(fogCol, T.fog[1], T.fog[2]);
   scene.environment = envCache;
   scene.environmentIntensity = T.env;
   renderer.toneMappingExposure = T.exposure;
@@ -142,21 +143,31 @@ export function createView(renderer, race, quality) {
   {
     // Cut front face: a vertical cross-section of the dirt, down out of view.
     const strata = keep(TX.strataTexture(dirtCol, 3));
-    const pos = [], uv = [], idx = [];
+    // Rows: top edge, a band just below it, deeper down, then out of view.
+    // Vertex colours darken quickly with depth (fake occlusion), so the face
+    // reads as a solid slab of earth instead of a busy wall of texture.
+    const rows = [[0.08, 1.0], [0.9, 0.82], [2.6, 0.5], [5.5, 0.3], [null, 0.22]];
+    const R5 = rows.length;
+    const pos = [], uv = [], idx = [], col = [];
     for (let i = 0; i < n; i++) {
-      const x = track.xs[i], y = track.ys[i] - 0.08;
-      pos.push(x, y, TW, x, bottomY, TW);
-      uv.push(x / 5, y / 5, x / 5, bottomY / 5);
+      const x = track.xs[i];
+      for (const [d, c] of rows) {
+        const y = d === null ? bottomY : track.ys[i] - d;
+        pos.push(x, y, TW);
+        uv.push(x / 5, y / 5);
+        const warm = d === null ? 0 : 0.03; // a touch warmer near the top
+        col.push(c + warm, c, c * 0.95);
+      }
     }
-    for (let i = 0; i < n - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 3, a, a + 3, a + 2); }
+    for (let i = 0; i < n - 1; i++) for (let r = 0; r < R5 - 1; r++) {
+      const a = i * R5 + r, b = a + R5;
+      idx.push(a, a + 1, b + 1, a, b + 1, b);
+    }
     const g = keep(new THREE.BufferGeometry());
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.setIndex(idx);
     g.computeVertexNormals();
-    // Darken lower down (fake occlusion) with a vertical gradient via vertex colours.
-    const col = [];
-    for (let i = 0; i < n; i++) col.push(1, 1, 1, 0.35, 0.3, 0.28);
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     const m = new THREE.Mesh(g, keep(new THREE.MeshStandardMaterial({ map: strata, vertexColors: true, roughness: 1 })));
     m.receiveShadow = true;
@@ -206,10 +217,12 @@ export function createView(renderer, race, quality) {
       for (const z of rows) {
         const zz = z === rows[0] ? -Math.max(TW + 0.3, outerAt(x) - 0.1) : z;
         pos.push(x, groundAt(x, zz), zz);
-        uv.push(x / 6, zz / 6);
-        // Darker right at the foot of the track (contact occlusion).
+        uv.push(x / 9, zz / 9);
+        // Darker right at the foot of the track (contact occlusion), plus
+        // large soft patches so distant ground never shows a tiling grid.
         const ao = z === rows[0] ? 0.6 : z === rows[1] ? 0.85 : 1;
-        col.push(ao, ao, ao);
+        const patch = 0.9 + 0.1 * smoothNoise(x * 3 + zz * 5, 7);
+        col.push(ao * patch, ao * (patch * 0.97 + 0.03), ao * patch);
       }
     }
     const W = rows.length;
@@ -236,7 +249,12 @@ export function createView(renderer, race, quality) {
     const w = span * (1 - L.factor) + 500;
     const seg = Math.ceil(w / (opts.step || 6));
     const pos = [], col = [], idx = [], uv = [];
-    const c = new THREE.Color(L.color), dark = c.clone().multiplyScalar(0.7);
+    // Far layers sit beyond the fog's end, so they skip scene fog and are
+    // pre-blended toward the haze colour instead (aerial perspective).
+    const far = L.factor >= 0.7;
+    const c = new THREE.Color(L.color);
+    if (far) c.lerp(fogCol, 0.3);
+    const dark = c.clone().multiplyScalar(far ? 0.85 : 0.7);
     const yb = -60;
     for (let i = 0; i <= seg; i++) {
       const x = -w / 2 + (w * i) / seg;
@@ -251,7 +269,7 @@ export function createView(renderer, race, quality) {
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.setIndex(idx); g.computeVertexNormals();
-    const mat = keep(new THREE.MeshLambertMaterial({ vertexColors: true, map: opts.map || null }));
+    const mat = keep(new THREE.MeshLambertMaterial({ vertexColors: true, map: opts.map || null, fog: !far }));
     const m = new THREE.Mesh(g, mat);
     const grp = new THREE.Group();
     grp.add(m);
@@ -279,6 +297,26 @@ export function createView(renderer, race, quality) {
         }
         return y;
       }, { step: 2, map: rockTex });
+    } else if (L.kind === 'treeline') {
+      // A dense band of small trees along the horizon breaks up the field.
+      const r2 = rng(Math.abs(L.z) * 7 | 0);
+      const geo = keep(L.pine ? new THREE.ConeGeometry(1.4, 5.5, 6).translate(0, 2.75, 0) : new THREE.IcosahedronGeometry(2.2, 1).translate(0, 2.4, 0));
+      const xs0 = track.minX - 160, xs1 = track.endX + 220;
+      const count = Math.ceil((xs1 - xs0) / 2.2) * 2;
+      const inst = new THREE.InstancedMesh(geo, keep(new THREE.MeshLambertMaterial({ color: L.color })), count);
+      const mt = new THREE.Matrix4(), qq = new THREE.Quaternion(), ss = new THREE.Vector3(), pp = new THREE.Vector3(), cc = new THREE.Color();
+      let k = 0;
+      for (let x = xs0; x < xs1 && k < count; x += 1.2 + r2() * 2) {
+        for (let row = 0; row < 2 && k < count; row++) {
+          const z = L.z - row * 6 - r2() * 4, sc = 0.8 + r2() * 0.7;
+          pp.set(x, groundAt(x, z) - 0.3, z); ss.set(sc, sc * (0.85 + r2() * 0.4), sc);
+          mt.compose(pp, qq, ss); inst.setMatrixAt(k, mt);
+          inst.setColorAt(k, cc.set(L.color).offsetHSL((r2() - 0.5) * 0.04, 0, (r2() - 0.5) * 0.12));
+          k++;
+        }
+      }
+      inst.count = k;
+      scene.add(inst);
     } else if (L.kind === 'city') {
       // Distant city lights behind the stadium.
       const r2 = rng(5);
@@ -319,7 +357,7 @@ export function createView(renderer, race, quality) {
     const spots = [];
     const density = T.trees.count;
     for (let x = track.minX - 100; x < track.endX + 150; x += (6 + R() * 10) / density) {
-      const z = -12 - R() * (T.trees.kind === 'pine' ? 30 : 45);
+      const z = -20 - R() * (T.trees.kind === 'pine' ? 34 : 50);
       spots.push([x, z, 0.8 + R() * 0.8]);
     }
     const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
@@ -350,6 +388,8 @@ export function createView(renderer, race, quality) {
   }
 
   // Fence with banners along the back edge (or arena boards at night).
+  const bannerG = keep(new THREE.PlaneGeometry(6, 0.95));
+  let bi = 0;
   const bannerMats = SPONSORS.map(([t, bg, fg], i) => keep(new THREE.MeshStandardMaterial({ map: keep(TX.bannerTexture(t, bg, fg, i % 3)), roughness: 0.6 })));
   {
     const postG = keep(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 6)); postG.translate(0, 0.7, 0);
@@ -377,8 +417,6 @@ export function createView(renderer, race, quality) {
       scene.add(fm);
     }
     // Banners every few metres, mounted on the fence / boards.
-    const bannerG = keep(new THREE.PlaneGeometry(6, 0.95));
-    let bi = 0;
     const boardH = T.props.boards ? 1.1 : 0.95;
     for (let x = track.minX + 10; x < track.endX; x += T.props.boards ? 6.1 : 9 + R() * 12) {
       const z = fenceZ(x) + 0.03;
@@ -444,7 +482,7 @@ export function createView(renderer, race, quality) {
     const valG = keep(new THREE.BoxGeometry(2.5, 0.25, 2.5));
     const legM = keep(new THREE.MeshStandardMaterial({ color: 0xcfd3da, metalness: 0.5, roughness: 0.4 }));
     for (let x = 60; x < finishX; x += 110 + R() * 40) {
-      const z = fenceZ(x) - 3.2, y = groundAt(x, z);
+      const z = fenceZ(x) - 5.5, y = groundAt(x, z);
       const g = new THREE.Group();
       const col = accent[(R() * accent.length) | 0];
       const roofM = keep(new THREE.MeshStandardMaterial({ color: col, roughness: 0.6 }));
@@ -463,7 +501,7 @@ export function createView(renderer, race, quality) {
 
   // Crowd stands (grandstands at intervals, or the full arena at night).
   const crowdPeople = [];
-  function grandstand(xa, xb, z0, tiers, roof) {
+  function grandstand(xa, xb, z0, tiers, roof, wall) {
     const y0 = Math.min(groundAt(xa, z0), groundAt(xb, z0), groundAt((xa + xb) / 2, z0));
     const concrete = keep(new THREE.MeshStandardMaterial({ color: T.night ? 0x4a5060 : 0xb8bcc4, roughness: 0.9 }));
     const len = xb - xa;
@@ -475,6 +513,23 @@ export function createView(renderer, race, quality) {
       for (let x = xa + 0.4; x < xb - 0.3; x += 0.62 + R() * 0.3) {
         if (R() < 0.12) continue;
         crowdPeople.push([x, y0 + 0.5 + t * 0.55, z0 - t * 0.9 + 0.05]);
+      }
+    }
+    if (wall) {
+      // Arena: a tall back wall closes the bowl, with a lit rim on top.
+      const h = tiers * 0.55 + 7;
+      const w = new THREE.Mesh(keep(new THREE.BoxGeometry(len, h, 0.6)), keep(new THREE.MeshStandardMaterial({ color: 0x252a3a, roughness: 0.9 })));
+      w.position.set((xa + xb) / 2, y0 + h / 2, z0 - tiers * 0.9 - 0.4);
+      scene.add(w);
+      const rim = new THREE.Mesh(keep(new THREE.BoxGeometry(len, 0.35, 0.2)), keep(new THREE.MeshStandardMaterial({ color: 0x000000, emissive: accent[(xa / 60 & 1) ? 1 : 0], emissiveIntensity: 1.6 })));
+      rim.position.set((xa + xb) / 2, y0 + tiers * 0.55 + 0.9, z0 - tiers * 0.9 + 0.2);
+      scene.add(rim);
+      // Sponsor boards along the upper wall.
+      for (let bx = xa + 6; bx < xb - 3; bx += 12) {
+        const bd = new THREE.Mesh(bannerG, bannerMats[bi++ % bannerMats.length]);
+        bd.position.set(bx, y0 + tiers * 0.55 + 3.2, z0 - tiers * 0.9 - 0.05);
+        bd.scale.set(1.4, 1.6, 1);
+        scene.add(bd);
       }
     }
     if (roof) {
@@ -489,15 +544,15 @@ export function createView(renderer, race, quality) {
     }
   }
   if (T.layers.some(L => L.kind === 'stadium')) {
-    for (let x = track.minX; x < track.endX + 40; x += 60) grandstand(x, x + 58, -(TW + 5.5) - 2.5, 9, false);
+    for (let x = track.minX - 40; x < track.endX + 80; x += 60) grandstand(x, x + 60, -(TW + 19), 13, false, true);
   } else {
     const nS = T.props.stands;
     for (let i = 0; i < nS; i++) {
       const x = track.startX + 20 + (i + 0.5) * (finishX / Math.max(1, nS)) * 0.95;
-      grandstand(x - 18, x + 18, -15, 6, true);
+      grandstand(x - 22, x + 22, -40, 7, true);
     }
     // Finish grandstand.
-    if (nS) grandstand(finishX - 25, finishX + 25, -15, 7, true);
+    if (nS) grandstand(finishX - 28, finishX + 28, -40, 8, true);
   }
   if (crowdPeople.length) {
     const g = keep(new THREE.CapsuleGeometry(0.17, 0.35, 3, 6)); g.translate(0, 0.38, 0);
@@ -510,7 +565,7 @@ export function createView(renderer, race, quality) {
     crowdPeople.forEach(([x, y, z], i) => {
       m4.makeTranslation(x, y, z);
       bodies.setMatrixAt(i, m4); heads.setMatrixAt(i, m4);
-      bodies.setColorAt(i, c.set(shirts[(R() * shirts.length) | 0]));
+      bodies.setColorAt(i, c.set(shirts[(R() * shirts.length) | 0]).multiplyScalar(T.night ? 0.4 : 0.9));
       heads.setColorAt(i, c.set(skins[(R() * skins.length) | 0]));
     });
     scene.add(bodies, heads);
@@ -521,12 +576,17 @@ export function createView(renderer, race, quality) {
   if (T.props.floodlights) {
     const poleM = keep(new THREE.MeshStandardMaterial({ color: 0x5a606c, metalness: 0.6, roughness: 0.4 }));
     const lampM = keep(new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf4f8ff, emissiveIntensity: 3 }));
+    const glowMat = keep(new THREE.SpriteMaterial({ map: keep(TX.glowTexture()), color: 0xdfe8ff, transparent: true, opacity: 0.55, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
     for (let x = track.minX + 20; x < track.endX; x += 70) {
       const z = -(TW + 22), y = groundAt(x, z);
       const pole = new THREE.Mesh(keep(new THREE.CylinderGeometry(0.25, 0.4, 26, 8)), poleM);
       pole.position.set(x, y + 13, z); scene.add(pole);
       const head = new THREE.Mesh(keep(new THREE.BoxGeometry(4, 2, 0.4)), poleM);
       head.position.set(x, y + 26, z + 0.4); head.rotation.x = 0.35; scene.add(head);
+      const halo = new THREE.Sprite(glowMat);
+      halo.scale.set(16, 10, 1);
+      halo.position.set(x, y + 26, z + 1.2);
+      scene.add(halo);
       for (let a = 0; a < 3; a++) for (let b = 0; b < 2; b++) {
         const l = new THREE.Mesh(keep(new THREE.CircleGeometry(0.42, 12)), lampM);
         l.position.set(x - 1.3 + a * 1.3, y + 25.5 + b * 0.9, z + 0.75); l.rotation.x = -0.35;
@@ -605,14 +665,17 @@ export function createView(renderer, race, quality) {
     pMesh.setColorAt(i, pColor);
   };
   const MAXD = 100;
-  const dMesh = new THREE.InstancedMesh(keep(new THREE.IcosahedronGeometry(0.5, 1)),
-    keep(new THREE.MeshLambertMaterial({ color: dirtCol.clone().lerp(new THREE.Color(0xffffff), 0.45), transparent: true, opacity: 0.5, depthWrite: false })), MAXD);
+  // Dust: soft camera-facing puffs (the camera looks down -z, so flat XY
+  // quads face it). A radial-gradient texture keeps the edges feathered.
+  const puffTex = keep(TX.puffTexture());
+  const dMesh = new THREE.InstancedMesh(keep(new THREE.PlaneGeometry(1.3, 1.3)),
+    keep(new THREE.MeshLambertMaterial({ color: dirtCol.clone().lerp(new THREE.Color(0xffffff), 0.5), map: puffTex, transparent: true, opacity: 0.6, depthWrite: false })), MAXD);
   dMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   dMesh.frustumCulled = false;
   scene.add(dMesh);
   const D = Array.from({ length: MAXD }, () => ({ life: 0 }));
   let dNext = 0;
-  const dust = (x, y, z, vx, vy, s) => { const d = D[dNext]; dNext = (dNext + 1) % MAXD; Object.assign(d, { x, y, z, vx, vy, life: 0.9 + Math.random() * 0.6, max: 1.4, s }); };
+  const dust = (x, y, z, vx, vy, s) => { const d = D[dNext]; dNext = (dNext + 1) % MAXD; Object.assign(d, { x, y, z: z + 0.6, vx, vy, life: 0.9 + Math.random() * 0.6, max: 1.4, s, rot: Math.random() * 6 }); };
   const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), v4 = new THREE.Vector3(), s4 = new THREE.Vector3(), e4 = new THREE.Euler();
   const zero = new THREE.Matrix4().makeScale(0, 0, 0);
   for (let i = 0; i < MAXP; i++) { pMesh.setMatrixAt(i, zero); pMesh.setColorAt(i, pColor.set(dirtHex)); }
@@ -700,6 +763,11 @@ export function createView(renderer, race, quality) {
       v.bike.root.position.set(ch.x, ch.y, z);
       v.bike.root.rotation.z = ch.a;
       const rl = toLocal(ch, rw.x, rw.y), fl = toLocal(ch, fw.x, fw.y);
+      // The physics wheel joints have springs but no travel limit, so an
+      // upside-down crashed bike can stretch its wheels away. Draw them within
+      // realistic suspension travel.
+      rl.y = Math.max(-0.62, Math.min(-0.24, rl.y)); rl.x = Math.max(-0.8, Math.min(-0.64, rl.x));
+      fl.y = Math.max(-0.62, Math.min(-0.24, fl.y)); fl.x = Math.max(0.66, Math.min(0.84, fl.x));
       poseBike(v.bike, rl, fl, rw.a - ch.a, fw.a - ch.a);
       // Landing absorption: a damped spring on the rider's crouch.
       const comp = Math.max(0, (-0.42 - (rl.y + fl.y) / 2)) * 2; // suspension compression
@@ -746,7 +814,8 @@ export function createView(renderer, race, quality) {
       if (d.life <= 0) { dMesh.setMatrixAt(i, zero); continue; }
       const t = 1 - d.life / d.max;
       const s = d.s * (0.5 + t * 1.6) * Math.min(1, d.life * 2.5);
-      m4.compose(v4.set(d.x, d.y, d.z), q4.identity(), s4.set(s, s * 0.75, s));
+      e4.set(0, 0, d.rot + t * 0.6); q4.setFromEuler(e4);
+      m4.compose(v4.set(d.x, d.y, d.z), q4, s4.set(s * 1.3, s, 1));
       dMesh.setMatrixAt(i, m4);
     }
     dMesh.instanceMatrix.needsUpdate = true;

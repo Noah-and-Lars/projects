@@ -274,3 +274,25 @@ export function rockTexture(base, seed = 21) {
   }
   return tex(c);
 }
+
+// Soft round puff for dust clouds (white; tinted by the material colour).
+export function puffTexture() {
+  const [c, g] = canvas(128, 128);
+  const R = rng(17);
+  for (let i = 0; i < 7; i++) {
+    const x = 64 + (R() - 0.5) * 32, y = 64 + (R() - 0.5) * 24, r = 20 + R() * 24;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, 'rgba(255,255,255,0.55)'); grd.addColorStop(0.6, 'rgba(255,255,255,0.2)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  }
+  return tex(c, { repeat: false });
+}
+
+// Smooth radial glow (floodlight halos).
+export function glowTexture() {
+  const [c, g] = canvas(128, 128);
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.25, 'rgba(255,255,255,0.45)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  return tex(c, { repeat: false });
+}

@@ -71,7 +71,10 @@ h2 { font-size: clamp(20px, 4.2vmin, 34px); color: var(--sun); }
 .scroll { overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
 
 /* Track cards */
-.tracks { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 12px; padding: 4px 2px 8px; }
+/* All five cards share the row (minmax(0, 1fr) lets them shrink inside the
+   safe area); the list scrolls only if a screen is too small for that. */
+.panel.wide { overflow: hidden; }
+.tracks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; padding: 4px 2px 8px; min-height: 0; flex: 0 1 auto; }
 .card {
   position: relative; border: 0; border-radius: 16px; padding: 0; overflow: hidden; text-align: left;
   background: #2a2150; box-shadow: 0 5px 0 #17112e; min-height: 170px; display: flex; flex-direction: column;
@@ -103,32 +106,38 @@ h2 { font-size: clamp(20px, 4.2vmin, 34px); color: var(--sun); }
 #res-note { margin: 0; color: var(--sun); font-weight: 800; min-height: 1.2em; }
 
 /* ---------- HUD ---------- */
+/* Compact: position + time top-left, a thin progress line, two small icon
+   buttons top-right. Everything sits in the top ~12% of the screen. */
 #hud {
   position: fixed; left: 0; right: 0; top: 0; z-index: 10; pointer-events: none;
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: calc(10px + var(--sat)) calc(12px + var(--sar)) 0 calc(12px + var(--sal));
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: calc(8px + var(--sat)) calc(10px + var(--sar)) 0 calc(10px + var(--sal));
 }
-.hud-left, .hud-right { display: flex; gap: 8px; align-items: flex-start; }
+.hud-left, .hud-right { display: flex; gap: 6px; align-items: flex-start; }
 .hud-left { flex-direction: column; }
+.hud-row { display: flex; gap: 6px; align-items: center; }
 .hud-right { margin-left: auto; }
 .pill {
-  background: rgba(26, 20, 48, 0.78); border-radius: 12px; padding: 6px 12px; font-weight: 800;
-  font-variant-numeric: tabular-nums; transform: skewX(-6deg);
+  background: rgba(20, 14, 40, 0.62); border-radius: 9px; padding: 3px 9px; font-weight: 800;
+  font-variant-numeric: tabular-nums; transform: skewX(-6deg); font-size: clamp(13px, 2.6vmin, 18px);
+  line-height: 1.25; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
-.pill.big { font-family: var(--display); font-style: italic; font-size: clamp(18px, 4vmin, 30px); }
-.pill.small { font-size: 12px; color: var(--muted); }
+.pill.big { font-family: var(--display); font-style: italic; font-size: clamp(16px, 3.4vmin, 24px); padding: 2px 10px; }
+.pill.small { font-size: 11px; color: var(--muted); }
+#hud-track.fade { animation: hudfade 0.6s ease-in 3.5s forwards; }
+@keyframes hudfade { to { opacity: 0; } }
 #hud-pos sup { font-size: 0.55em; }
 #hud-pos span { font-size: 0.55em; color: var(--muted); }
 .icon-btn {
-  pointer-events: auto; width: 48px; height: 48px; border-radius: 12px; border: 0;
-  background: rgba(26, 20, 48, 0.78); font-size: 20px; display: grid; place-items: center;
+  pointer-events: auto; width: 44px; height: 44px; border-radius: 10px; border: 0;
+  background: rgba(20, 14, 40, 0.5); font-size: 16px; display: grid; place-items: center; color: #fff;
 }
-#progress { flex: 1; position: relative; height: 34px; margin: 6px 6px 0; max-width: 640px; margin-inline: auto; }
-#progress .bar { position: absolute; left: 0; right: 18px; top: 13px; height: 8px; border-radius: 4px; background: rgba(26, 20, 48, 0.6); box-shadow: inset 0 0 0 2px rgba(255,255,255,.15); }
-#progress .flag { position: absolute; right: 0; top: 2px; font-size: 22px; color: #fff; text-shadow: 0 1px 3px #000; }
-#progress-dots { position: absolute; left: 0; right: 18px; top: 0; height: 34px; }
-.dot { position: absolute; top: 10px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
-.dot.me { top: 6px; width: 22px; height: 22px; margin-left: -11px; border-width: 3px; z-index: 2; }
+#progress { flex: 1; position: relative; height: 22px; margin: 4px 6px 0; max-width: 520px; margin-inline: auto; }
+#progress .bar { position: absolute; left: 0; right: 16px; top: 9px; height: 4px; border-radius: 2px; background: rgba(20, 14, 40, 0.5); box-shadow: 0 0 0 1px rgba(255,255,255,.25); }
+#progress .flag { position: absolute; right: 0; top: 0; font-size: 16px; color: #fff; text-shadow: 0 1px 3px #000; }
+#progress-dots { position: absolute; left: 0; right: 16px; top: 0; height: 22px; }
+.dot { position: absolute; top: 6px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.dot.me { top: 3px; width: 16px; height: 16px; margin-left: -8px; border-width: 2px; z-index: 2; }
 
 #countdown {
   position: fixed; inset: 0; display: grid; place-items: center; z-index: 12; pointer-events: none;
@@ -178,14 +187,24 @@ html.force-rotate #rotate { display: flex; }
 
 /* Small landscape phones */
 @media (max-height: 460px) {
-  .tracks { grid-template-columns: repeat(5, minmax(132px, 1fr)); gap: 8px; }
-  .card { min-height: 150px; }
-  .card .art { height: 52px; }
+  .tracks { gap: 8px; }
+  .card { min-height: 0; }
+  .card .art { height: 44px; }
+  .card .body { padding: 6px 8px 8px; gap: 2px; }
+  .card .name { font-size: 15px; }
+  .card .num, .card .diff { font-size: 11px; }
   .card .tag { display: none; }
-  .btn { min-height: 46px; padding: 8px 16px; }
-  .panel { gap: 8px; }
+  .card .best { font-size: 11px; padding-top: 4px; }
+  .card.locked::after { font-size: 10px; padding: 5px; content: "\1F512  Top 2 to unlock"; }
+  .btn { min-height: 44px; padding: 8px 16px; }
+  .btn.small { min-height: 44px; }
+  .panel { gap: 8px; padding: 12px 16px; }
+  .panel.wide h2 { font-size: 20px; }
+  .seg button { min-height: 40px; padding: 4px 10px; font-size: 12px; }
   .logo { font-size: clamp(40px, 15vmin, 80px); }
 }
-@media (max-width: 760px) {
-  .tracks { grid-template-columns: repeat(5, minmax(128px, 150px)); }
+/* Very narrow screens: a horizontal, snap-scrolling strip of cards. */
+@media (max-width: 600px) {
+  .tracks { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 140px; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .card { scroll-snap-align: start; }
 }

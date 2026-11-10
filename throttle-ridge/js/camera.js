@@ -5,8 +5,8 @@
 import * as THREE from 'three';
 
 const FOV = 24;            // narrow lens: reads like 2D with 3D depth
-const TILT = 0.1;          // radians of downward tilt (~6 degrees)
-const BASE_HEIGHT = 7.4;   // metres visible vertically at rest (~bike = 1/4 screen)
+const TILT = 0.13;         // radians of downward tilt (~7.5 degrees)
+const BASE_HEIGHT = 6.4;   // metres visible vertically at rest (~bike = 1/4 screen)
 const PLAYER_SCREEN_X = 0.34; // player at about a third from the left
 
 export function createCameraRig() {
@@ -27,7 +27,7 @@ export function createCameraRig() {
 
     // Visible height grows a little with speed and air time. On very wide
     // screens keep at least ~22 m of width; on tall ones at least ~11 m.
-    let height = BASE_HEIGHT + Math.min(2.2, speed * 0.08) + st.air * 2.6;
+    let height = BASE_HEIGHT + Math.min(1.5, speed * 0.06) + st.air * 2.2;
     height = Math.max(height, 11 / camera.aspect);
     const tanHalf = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
     const width = height * camera.aspect;

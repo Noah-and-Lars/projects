@@ -97,7 +97,12 @@ export function createUI(handlers) {
   }
   function showHUD(visible, trackName) {
     $('hud').classList.toggle('hidden', !visible);
-    if (trackName) $('hud-track').textContent = trackName;
+    if (trackName) {
+      // The track label shows at the start, then fades out of the way.
+      const el = $('hud-track');
+      el.textContent = trackName;
+      el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade');
+    }
     lastPos = 0; lastTime = '';
   }
 
