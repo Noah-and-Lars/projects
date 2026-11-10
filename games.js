@@ -66,7 +66,7 @@ window.GAMES = [
     path: 'siege/index.html',
     thumb: 'siege/thumb.jpg',
     added: '2026-11-02T21:00:00+11:00',
-    updated: '2026-11-07T08:00:00+11:00',
+    updated: '2026-11-11T09:00:00+11:00',
     stat() { const p = readSave('siege.profile', true); return p && p.matches ? 'Level ' + (1 + Math.floor(Math.sqrt((p.xp || 0) / 120))) + ' · ' + (p.wins || 0) + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -309,6 +309,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-11', game: 'siege', text: 'Siege 1.0.18: jammers reach 2.5 m and no longer work through walls, floors or ceilings, so one downstairs can\'t jam your drone upstairs. Barricades are solid green blocks again: bullets can\'t go through them or leave holes to see through.' },
   { date: '2026-11-11', game: 'checkers', text: 'New game: Checkers. The same board and buttons as Chess, with checker pieces and checkers rules (forced jumps, multi-jumps, kings). Play the computer on six levels, a friend on one screen, or real people online for a checkers rating with its own leaderboard.' },
   { date: '2026-11-11', game: 'krill-dive', text: 'Krill Dive 1.4: versus lobbies. Make a lobby and share the code (or join an open one), and everyone dives the same seven prompts with live standings. The leaderboard now lists every diver from first to last, and the game no longer tells you the rarest answer after a prompt.' },
   { date: '2026-11-10', game: 'krill-dive', text: 'Krill Dive 1.3: a daily leaderboard. Every signed-in diver\'s daily dive is ranked by depth, with today\'s 1st, 2nd and 3rd and the time left at the top, and every finished day kept below as its own board.' },

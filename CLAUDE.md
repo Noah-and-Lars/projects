@@ -516,6 +516,11 @@ source in Settings → Pages should be switched to `main`.
   InstancedMesh per map, a slot per wall chunk at `p.star`), set by `starMarks(p)` from `sgPanelDraw` (every other
   chunk, jittered, `starMat()` canvas star, lit like the chunk). `sgBoom` marks the panels it hit `dirtyDraw` (it zeroes
   `alive` itself, so `EV.boom` used to skip the redraw on the screen that set the charge off); a punched hatch redraws too.
+  1.0.18: jammers go through `jamReach(j, x, y, z, n)` / `jammedAt(x, y, z, n)`: `JAM_R` (2.5 m, 3D; it was 4 m flat, so a
+  jammer downstairs jammed drones upstairs) and a clear `sgClear` line (walls, slabs and barricades block it); a charge on a
+  wall (`g.n`) also counts from a point just behind that wall. Barricades are solid green (`BAR_GREEN`, `BAR_DEBRIS`): bullets
+  stop at them (no pierce), `barHole` only darkens a dent, `barOpenAt`/`BAR_OPEN` are gone, and they break at `BAR_HP`
+  (bullets do `dm * 0.1`, pellets 0.5).
 
 - `krill-dive/` (2026-11-07): Krill Dive, a daily rarity-trivia game (plain canvas 2D and HTML, no libraries; named
   Krill Dive rather than after the existing game the owner described). `KD_DATA` (the first script) holds the
