@@ -7,7 +7,7 @@
 // Everything in the picture is made here or is one of the game's own
 // models:
 // - the soldier (assets/soldier.glb), dressed by the game's Wardrobe
-//   (src/gear.js) in the comms helmet, the black carrier and the black
+//   (src/gear.js) in the comms helmet, the sage carrier and the black
 //   gloves;
 // - his pose: one frame of the `cover` clip in assets/cinematic/
 //   soldier_clips.glb (a Mixamo rifle hold retargeted onto him; see
@@ -45,8 +45,9 @@ const DEG = Math.PI / 180;
 // across its width and height (y up).
 // - camera: where it stands round him (yaw in degrees about him, 0 in front;
 //   height above the ground and distance from his hips, in metres), the
-//   height it looks at, its vertical field of view, and `shift`: how far
-//   the frame is slid across (in frame widths, + moves him left).
+//   height it looks at, its vertical field of view, `shift`: how far to
+//   one side of him it looks (metres, + puts him right of the middle),
+//   and its roll (degrees).
 // - sun: the glow behind him.
 // - cloud: the smoke's middle and size (in frame heights).
 // - jets: the lead jet, the line the three fly in, their size.
@@ -55,45 +56,48 @@ const DEG = Math.PI / 180;
 const LAYOUTS = {
   cover: {
     size: [1200, 1800],
-    camera: { yaw: 0, height: 0.18, dist: 1.95, look: 0.92, fov: 42, shift: 0.0 },
-    sun: [0.25, 0.25],
+    camera: { yaw: 0, height: 0.45, dist: 1.6, look: 1.02, fov: 44, shift: 0.1, roll: 8 },
+    sun: [0.3, 0.32],
     cloud: { at: [-0.78, -0.25], size: 0.62 },
-    jets: { at: [0.42, 0.47], step: [0.17, -0.075], size: 0.055 },
+    jets: { at: [0.5, 0.66], step: [0.15, -0.07], size: 0.034 },
     title: { baseline: 0.135, width: 0.8 },
   },
   thumb: {
     size: [1280, 720],
-    camera: { yaw: 0, height: 0.3, dist: 1.85, look: 0.86, fov: 38, shift: 0.0 },
-    sun: [0.3, 0.2],
-    cloud: { at: [-0.7, -0.2], size: 0.95 },
-    jets: { at: [0.5, 0.52], step: [0.1, -0.13], size: 0.09 },
-    title: { baseline: 0.235, width: 0.56 },
+    camera: { yaw: 0, height: 0.5, dist: 1.45, look: 1.11, fov: 40, shift: -0.08, roll: 6 },
+    sun: [0.2, 0.3],
+    cloud: { at: [-0.74, -0.42], size: 0.62 },
+    jets: { at: [0.5, 0.5], step: [0.11, -0.1], size: 0.04 },
+    title: { baseline: 0.215, width: 0.5 },
   },
   og: {
     size: [1200, 630],
-    camera: { yaw: 0, height: 0.3, dist: 1.85, look: 0.86, fov: 38, shift: 0.0 },
-    sun: [0.3, 0.2],
-    cloud: { at: [-0.7, -0.2], size: 0.95 },
-    jets: { at: [0.5, 0.52], step: [0.1, -0.13], size: 0.09 },
-    title: { baseline: 0.24, width: 0.56 },
+    camera: { yaw: 0, height: 0.5, dist: 1.45, look: 1.11, fov: 40, shift: -0.08, roll: 6 },
+    sun: [0.2, 0.3],
+    cloud: { at: [-0.74, -0.42], size: 0.62 },
+    jets: { at: [0.5, 0.5], step: [0.11, -0.1], size: 0.04 },
+    title: { baseline: 0.225, width: 0.5 },
   },
 };
 
 // Which frame of which clip he's in, and how he's turned (degrees about the
 // upright; the clip has him facing 42 degrees to his right).
-const POSE = { clip: q.get('clip') || 'cover', time: num('t', 0.9), yaw: num('yaw', 30) };
+const POSE = { clip: q.get('clip') || 'cover', time: num('t', 0.9), yaw: num('yaw', 40) };
 
-// His outfit: the comms helmet, the black carrier, the black gloves.
-const OUTFIT = { head: 'comms', vest: 'black', gloves: 'black' };
+// His outfit: the comms helmet, the sage carrier, the black gloves.
+const OUTFIT = { head: 'comms', vest: q.get('vest') || 'olive', gloves: 'black' };
 
 // The rifle in his hands: the point in his right fist the pistol grip's
-// middle goes to and the point in his left fist the handguard rests in, each
-// in that hand bone's own frame (metres); where along the handguard (0 at
-// its back, 1 at its front) and how far under its middle the left fist
-// holds it; and its roll about the line between his fists (degrees).
+// middle goes to and the point in his left hand the handguard rests in, each
+// in that hand bone's own frame (its units are centimetres: y runs out
+// along the fingers, z towards the thumb, and the palm faces -x on the right
+// hand, +x on the left), so each sits in the curl of the fingers; where
+// along the handguard (0 at its back, 1 at its front) and how far under its
+// middle the left hand holds it (metres); and its roll about the line
+// between his hands (degrees).
 const GRIP = {
-  right: new THREE.Vector3(num('rx', 0.0), num('ry', 0.085), num('rz', 0.03)),
-  left: new THREE.Vector3(num('lx', 0.0), num('ly', 0.085), num('lz', 0.03)),
+  right: new THREE.Vector3(num('rx', -3.2), num('ry', 9.0), num('rz', 1.5)),
+  left: new THREE.Vector3(num('lx', 3.0), num('ly', 11.0), num('lz', 1.5)),
   along: num('along', 0.45),
   under: num('under', 0.03),
   roll: num('roll', 0),
@@ -101,6 +105,11 @@ const GRIP = {
 
 const layoutName = LAYOUTS[q.get('layout')] ? q.get('layout') : 'cover';
 const L = LAYOUTS[layoutName];
+// (Any camera number can be tried from the address: cyaw, ch, cdist, clook,
+// cfov, shift, roll.)
+for (const [key, name] of [['yaw', 'cyaw'], ['height', 'ch'], ['dist', 'cdist'], ['look', 'clook'], ['fov', 'cfov'], ['shift', 'shift'], ['roll', 'roll']]) {
+  if (q.has(name)) L.camera[key] = Number(q.get(name));
+}
 const SCALE = num('scale', 2);
 const [W, H] = L.size;
 const RW = Math.round(W * SCALE);
@@ -173,7 +182,7 @@ async function main() {
     o.castShadow = o.receiveShadow = true;
     for (const m of [].concat(o.material)) {
       m.envMap = env;
-      m.envMapIntensity = 0.35;
+      m.envMapIntensity = num('envI', 0.25);
     }
   });
   scene.add(soldier);
@@ -186,7 +195,7 @@ async function main() {
   const gripBox = box('pistol_grip');
   const guardBox = box('handguard');
   const gripPoint = gripBox.getCenter(new THREE.Vector3());
-  const restPoint = new THREE.Vector3(0, THREE.MathUtils.lerp((guardBox.min.y + guardBox.max.y) / 2, guardBox.min.y, 0) - GRIP.under, THREE.MathUtils.lerp(guardBox.min.z, guardBox.max.z, GRIP.along));
+  const restPoint = new THREE.Vector3(0, (guardBox.min.y + guardBox.max.y) / 2 - GRIP.under, THREE.MathUtils.lerp(guardBox.min.z, guardBox.max.z, GRIP.along));
   const inHand = (bone, local) => bone.localToWorld(local.clone());
   const rightFist = inHand(bones.CC_Base_R_Hand, GRIP.right);
   const leftFist = inHand(bones.CC_Base_L_Hand, GRIP.left);
@@ -227,6 +236,15 @@ async function main() {
     camera.lookAt(hips.x, (hips.y + head.y) / 2 + num('cly', 0), hips.z);
     camera.updateProjectionMatrix();
     scene.background = new THREE.Color(0x777777);
+    for (const side of ['L', 'R']) {
+      const hand = bones[`CC_Base_${side}_Hand`];
+      const out = {};
+      for (const f of ['Index1', 'Index3', 'Mid1', 'Mid2', 'Mid3', 'Pinky1', 'Thumb1', 'Thumb3']) {
+        const b = bones[`CC_Base_${side}_${f}`];
+        if (b) out[f] = hand.worldToLocal(b.getWorldPosition(new THREE.Vector3())).toArray().map((v) => v.toFixed(3)).join(',');
+      }
+      console.log(side, JSON.stringify(out));
+    }
     scene.environment = env;
     for (const [n, p] of [['r', rightFist], ['l', leftFist]]) {
       const dotMesh = new THREE.Mesh(new THREE.SphereGeometry(0.012), new THREE.MeshBasicMaterial({ color: n === 'r' ? 0xff0000 : 0x00ff00, depthTest: false }));
@@ -245,10 +263,11 @@ async function main() {
   }
   const yaw = C.yaw * DEG;
   camera.position.set(hips.x + Math.sin(yaw) * C.dist, C.height, hips.z + Math.cos(yaw) * C.dist);
-  camera.lookAt(hips.x, C.look, hips.z);
-  if (C.shift) {
-    camera.setViewOffset(RW, RH, -C.shift * RW, 0, RW, RH);
-  }
+  // (Shift: the camera looks that far to his left of his hips, in metres,
+  // so he sits to the right of the middle; negative: to the left.)
+  const across = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  camera.lookAt(hips.x - across.x * C.shift, C.look, hips.z - across.z * C.shift);
+  if (C.roll) camera.rotateZ(C.roll * DEG);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld(true);
 
@@ -256,7 +275,6 @@ async function main() {
   // The sun behind him (his rim), the glow of the fire on the left, a dim
   // warm fill from in front and below, and the room's soft light.
   const toCamera = camera.position.clone().sub(hips).setY(0).normalize();
-  const side = new THREE.Vector3(0, 1, 0).cross(toCamera).normalize(); // to the frame's left... see below
   const lightAt = (dir, strength) => {
     const light = new THREE.DirectionalLight(0xffffff, strength);
     light.position.copy(hips).add(dir);
@@ -265,16 +283,15 @@ async function main() {
     return light;
   };
   const frameRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).setY(0).normalize();
-  const sun = lightAt(frameRight.clone().multiplyScalar(1.2).addScaledVector(toCamera, -1.4).add(new THREE.Vector3(0, 1.6, 0)), num('sunI', 7));
+  const sun = lightAt(frameRight.clone().multiplyScalar(1.2).addScaledVector(toCamera, -1.4).add(new THREE.Vector3(0, 1.6, 0)), num('sunI', 9));
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -1, right: 1, top: 1, bottom: -1, near: 0.1, far: 6 });
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.01;
   lightAt(frameRight.clone().multiplyScalar(-1.5).addScaledVector(toCamera, -0.8).add(new THREE.Vector3(0, 0.6, 0)), num('fireI', 3.2));
-  lightAt(toCamera.clone().multiplyScalar(1.5).add(new THREE.Vector3(0, -0.3, 0)).addScaledVector(frameRight, 0.6), num('fillI', 0.9));
+  lightAt(toCamera.clone().multiplyScalar(1.5).add(new THREE.Vector3(0, -0.3, 0)).addScaledVector(frameRight, 0.6), num('fillI', 0.8));
   lightAt(new THREE.Vector3(0, 2, 0).addScaledVector(toCamera, 0.6), num('topI', 1.2));
-  void side;
 
   // --- The backdrop -------------------------------------------------------
   const frame = new Frame(camera);
@@ -422,24 +439,24 @@ function puffMaterial() {
       void main() {
         vec2 uv = vUv;
         float seed = vShade.w * 91.7;
-        float n = fbm(uv * 2.2 + seed);
-        float n2 = fbm(uv * 5.5 + seed * 1.7);
+        float n = fbm(uv * 1.6 + seed);
+        float n2 = fbm(uv * 3.2 + seed * 1.7);
         float r2 = dot(uv, uv);
         float edge = 1.0 - r2 + (n - 0.5) * 0.9 + (n2 - 0.5) * 0.35;
-        float alpha = smoothstep(0.0, 0.3, edge) * vAlpha;
+        float alpha = smoothstep(0.0, 0.45, edge) * vAlpha;
         if (alpha < 0.004) discard;
         vec3 N = normalize(vec3(uv, sqrt(max(0.02, 1.0 - r2))));
         // Bumps from the noise.
         float e = 0.05;
-        float nx = fbm((uv + vec2(e, 0.0)) * 5.5 + seed * 1.7) - n2;
-        float ny = fbm((uv + vec2(0.0, e)) * 5.5 + seed * 1.7) - n2;
-        N = normalize(N - vec3(nx, ny, 0.0) * 9.0);
-        vec3 M = normalize(mix(N, vMass, 0.4));
+        float nx = fbm((uv + vec2(e, 0.0)) * 3.2 + seed * 1.7) - n2;
+        float ny = fbm((uv + vec2(0.0, e)) * 3.2 + seed * 1.7) - n2;
+        N = normalize(N - vec3(nx, ny, 0.0) * 2.0);
+        vec3 M = normalize(mix(N, vMass, 0.3));
         vec3 Lv = normalize((viewMatrix * vec4(uLight, 0.0)).xyz);
         float ndl = dot(M, Lv);
-        float lit = smoothstep(-0.25, 0.9, ndl) * vShade.x;
+        float lit = pow(smoothstep(-0.35, 0.95, ndl), 1.4) * vShade.x;
         float albedo = vShade.y;
-        float lum = albedo * (0.10 + 1.25 * lit + 0.12 * (1.0 - r2));
+        float lum = albedo * (0.1 + 1.9 * lit * lit + 0.05 * (1.0 - r2));
         lum += vShade.z * (0.6 + 0.8 * n2) * smoothstep(0.2, 0.9, edge); // glow inside
         gl_FragColor = vec4(vec3(lum), alpha);
       }
@@ -502,10 +519,10 @@ function makeCloud(frame, spec, distance) {
   for (const b of big) add(b.x, b.y, b.z, b.r, 0);
   // Smaller billows on the surface of each, two levels down.
   let level = big.map((b) => ({ ...b }));
-  for (let depth = 1; depth <= 3; depth++) {
+  for (let depth = 1; depth <= 2; depth++) {
     const next = [];
     for (const p of level) {
-      const count = depth === 1 ? 7 : depth === 2 ? 5 : 3;
+      const count = depth === 1 ? 8 : 6;
       for (let i = 0; i < count; i++) {
         // Mostly on the side facing the camera and upwards.
         let dx = random() * 2 - 1;
@@ -513,7 +530,7 @@ function makeCloud(frame, spec, distance) {
         let dz = random() * 1.2 - 0.2;
         const len = Math.hypot(dx, dy, dz) || 1;
         dx /= len; dy /= len; dz /= len;
-        const r = p.r * (0.38 + random() * 0.2);
+        const r = p.r * (0.42 + random() * 0.22);
         const x = p.x + dx * p.r * 0.85;
         const y = p.y + dy * p.r * 0.85;
         const z = p.z + dz * p.r * 0.85;
@@ -536,7 +553,7 @@ function makeCloud(frame, spec, distance) {
       if (t <= 0) continue;
       const miss = toB.clone().addScaledVector(lightLocal, -t).length();
       const cover = THREE.MathUtils.smoothstep(b.r * 1.05 - miss, -b.r * 0.15, b.r * 0.6);
-      reach *= 1 - 0.45 * cover;
+      reach *= 1 - 0.6 * cover;
     }
     const mass = pos.clone().sub(centre);
     mass.y *= 0.7;
@@ -548,7 +565,7 @@ function makeCloud(frame, spec, distance) {
       c: place(p.x, p.y, p.z),
       r: p.r * h * (p.depth === 0 ? 1.0 : 1.08),
       light: reach,
-      albedo: 0.62 + random() * 0.2,
+      albedo: 0.48 + random() * 0.16,
       glow,
       seed: random(),
       mass: massW,
@@ -556,15 +573,15 @@ function makeCloud(frame, spec, distance) {
     });
   }
   // The dark spires of thrown earth rising out of the top and side.
-  const spires = [[-0.35, 1.1, -0.2, 1.0], [0.05, 1.2, 0.05, 1.35], [0.35, 1.05, 0.2, 0.9], [-0.7, 0.4, -0.55, 0.5], [0.6, 0.7, 0.45, 0.75]];
+  const spires = [[-0.35, 1.05, -0.3, 0.45], [0.32, 1.0, 0.35, 0.35], [-0.75, 0.35, -0.5, 0.3], [0.7, 0.2, 0.5, 0.3]];
   for (const [x0, y0, dx, len] of spires) {
     const steps = 22;
     for (let i = 0; i < steps; i++) {
       const t = i / steps;
-      const r = (0.13 * (1 - t) + 0.015) * (0.8 + random() * 0.4);
-      const x = x0 + dx * t * len + (random() - 0.5) * 0.04;
+      const r = (0.07 * (1 - t) + 0.01) * (0.7 + random() * 0.6);
+      const x = x0 + dx * t * len + (random() - 0.5) * 0.05;
       const y = y0 + t * len;
-      puffs.push({ c: place(x, y, -0.3), r: r * h, light: 0.35, albedo: 0.32, glow: 0, seed: random(), mass: U.clone(), alpha: 0.85 * (1 - t * 0.6) });
+      puffs.push({ c: place(x, y, -0.3), r: r * h, light: 0.25, albedo: 0.25, glow: 0, seed: random(), mass: U.clone(), alpha: 0.9 * (1 - t * 0.5) });
     }
   }
   const material = puffMesh(puffs, frame.camera);
@@ -574,13 +591,13 @@ function makeCloud(frame, spec, distance) {
   // Debris: dark shards flung out of the cloud, with a few streaks.
   const shards = new THREE.Group();
   const shardGeometry = new THREE.TetrahedronGeometry(1, 0);
-  const shardMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
-  for (let i = 0; i < 160; i++) {
-    const a = (random() * 0.9 + 0.05) * Math.PI; // upwards mostly
-    const d = 0.7 + random() * 1.1;
+  const shardMaterial = new THREE.MeshBasicMaterial({ color: 0x1c1712 });
+  for (let i = 0; i < 170; i++) {
+    const a = (random() * 1.1 - 0.05) * Math.PI; // upwards mostly
+    const d = 0.7 + random() * random() * 0.7;
     const x = Math.cos(a) * d * 1.1 - 0.1;
     const y = Math.sin(a) * d * 0.9 + 0.1;
-    const s = h * (0.006 + random() * random() * 0.03);
+    const s = h * (0.005 + random() * random() * 0.026);
     const m = new THREE.Mesh(shardGeometry, shardMaterial);
     m.position.copy(place(x, y, 0.2 + random() * 0.3));
     m.scale.set(s * (0.6 + random()), s * (0.4 + random()), s);

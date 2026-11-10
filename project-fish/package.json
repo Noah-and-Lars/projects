@@ -31,7 +31,8 @@
     "build-cinematic-clips": "mkdir -p assets/cinematic && blender --background --python tools/cinematic/retarget_mixamo.py -- tools/cinematic/clips.json assets/cinematic/soldier_clips.glb",
     "build-loadout-thumbs": "node tools/loadout/render_thumbs.mjs assets/loadout/thumbs",
     "build-breakdowns": "npm run build-breakdown && npm run build-breakdown-scar && npm run build-breakdown-galil && npm run build-breakdown-pf9",
-    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-makarov && npm run build-ak74m && npm run build-ak74u && npm run build-saps12 && npm run build-arms && npm run build-soldier && npm run build-gear && npm run build-gun-gloves && npm run build-x4 && npm run build-mp7 && npm run build-ar15 && npm run build-breakdowns"
+    "build-models": "npm run build-pistol && npm run build-pistol45 && npm run build-beretta && npm run build-fn502 && npm run build-hipistol && npm run build-makarov && npm run build-ak74m && npm run build-ak74u && npm run build-saps12 && npm run build-arms && npm run build-soldier && npm run build-gear && npm run build-gun-gloves && npm run build-x4 && npm run build-mp7 && npm run build-ar15 && npm run build-breakdowns",
+    "build-cover": "node tools/cover/render_cover.mjs"
   },
   "devDependencies": {
     "@gltf-transform/cli": "4.2.1",
