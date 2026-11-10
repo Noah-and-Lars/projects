@@ -309,6 +309,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-10', href: 'social.html', text: 'New: Social, the arcade’s own Instagram. Clip the last 30 seconds of any game with the 🎬 button (or F8), post your own photos and videos, scroll Reels, like and comment, follow players and message them from the new inbox. Find it in the Social tab.' },
   { date: '2026-11-12', game: 'siege', text: 'Siege 1.0.18: jammers reach 2.5 m and no longer work through walls, floors or ceilings, so one downstairs can\'t jam your drone upstairs. Barricades are solid green blocks again: bullets can\'t go through them or leave holes to see through.' },
   { date: '2026-11-12', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.3: 10 new long stages, about three times longer, with real hills (long climbs, big descents, blind crests and dips), three new places (snow, a red canyon and a jungle), and solo leaderboards for runs with the AI co-driver.' },
   { date: '2026-11-11', game: 'checkers', text: 'New game: Checkers. The same board and buttons as Chess, with checker pieces and checkers rules (forced jumps, multi-jumps, kings). Play the computer on six levels, a friend on one screen, or real people online for a checkers rating with its own leaderboard.' },
@@ -588,7 +589,21 @@ window.ArcadeOnline = (() => {
 
 // Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
 // localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
-const SITE_NOTICE = null; // 2026-11-08: the Global chat notice taken down (kept below for reuse)
+const SITE_NOTICE = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
+  id: 'social-launch-2026-11-10',
+  tag: 'New',
+  title: 'Social is here! 🎬',
+  text: 'The Arcade now has its own social app, like Instagram, in the new Social tab. Share your best moments and see everyone else’s.',
+  items: [
+    '<b>Clip the last 30 seconds.</b> Did something amazing just happen? Press <b>🎬 Clip last 30s</b> (or <b>F8</b>) in any game and it saves what you just played, sound and all.',
+    '<b>Post photos and videos.</b> Tap <b>+</b> to share your own pictures and videos too.',
+    '<b>Scroll Reels.</b> Swipe through clips one at a time. Double-tap to like, comment, share and save your favourites.',
+    '<b>Follow players.</b> Follow people to see their posts first, watch their stories and see your views go up on your profile.',
+    '<b>Messages.</b> A new inbox for your private chats, with a video call button for each one.'
+  ],
+  go: { text: 'Open Social', href: 'social.html' },
+  skip: /social\.html$/,
+};
 const SITE_NOTICE_CHAT = { // 2026-11-06: the rebuilt Global chat and the new Players tab (popup only, no banner)
   id: 'chat-fixed-2026-11-06',
   tag: 'Fixed',
@@ -618,6 +633,7 @@ const SITE_NOTICE_OLD = {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bar); else bar();
   let closed = ''; try { closed = localStorage.getItem('arcade-notice-closed') || ''; } catch (e) {}
   if (closed === SITE_NOTICE.id) return;
+  if (SITE_NOTICE.skip && SITE_NOTICE.skip.test(location.pathname)) return;
   const show = () => {
     const d = document.createElement('div'); d.className = 'notice'; d.style.zIndex = 2147483600; d.setAttribute('role', 'dialog'); // above the account popup (#acctOv) d.setAttribute('aria-modal', 'true');
     const box = document.createElement('div'); box.className = 'notice-box'; d.appendChild(box);
@@ -625,8 +641,14 @@ const SITE_NOTICE_OLD = {
     const h = document.createElement('h2'); h.textContent = SITE_NOTICE.title; box.appendChild(h);
     const p = document.createElement('p'); p.textContent = SITE_NOTICE.text; box.appendChild(p);
     const ul = document.createElement('ul'); for (const it of SITE_NOTICE.items) { const li = document.createElement('li'); li.innerHTML = it; ul.appendChild(li); } box.appendChild(ul);
-    const ok = document.createElement('button'); ok.className = 'notice-ok'; ok.textContent = 'OK'; box.appendChild(ok);
-    ok.onclick = () => { d.remove(); try { localStorage.setItem('arcade-notice-closed', SITE_NOTICE.id); } catch (e) {} };
+    const done = () => { d.remove(); try { localStorage.setItem('arcade-notice-closed', SITE_NOTICE.id); } catch (e) {} };
+    if (SITE_NOTICE.go) { // an optional button that goes somewhere (inside a game's frame, the whole page goes)
+      const go = document.createElement('a'); go.className = 'notice-ok'; go.style.cssText = 'display:inline-block;text-decoration:none;margin-right:8px'; go.textContent = SITE_NOTICE.go.text;
+      go.href = SITE_NOTICE.go.href; go.target = '_top'; go.onclick = done; box.appendChild(go);
+    }
+    const ok = document.createElement('button'); ok.className = 'notice-ok'; ok.textContent = SITE_NOTICE.go ? 'Later' : 'OK'; box.appendChild(ok);
+    if (SITE_NOTICE.go) { ok.style.background = 'transparent'; ok.style.border = '1px solid #ffffff33'; }
+    ok.onclick = done;
     document.body.appendChild(d);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
