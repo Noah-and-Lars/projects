@@ -187,10 +187,10 @@ const LOOKS = {
   // shadows, the sea glittering toward the sun behind the Red harbor
   dawn: look({ top: '#24356a', mid: '#e89a6e', fog: '#c99a82', fogN: 700, fogF: 6800, sun: [0.55, 0.16, -0.82], sunC: [1, 0.68, 0.44], sunI: 1.75, disc: [1, 0.6, 0.32], glowK: 2.0,
     hs: '#7f98c4', hg: '#3b2e27', hI: 0.6, deep: '#173a5e', shallow: '#3c7f88', skyc: '#d29a84', cloud: '#c98a70', cloudC: 0.8, exp: 1.08 },
-    { lift: [0.0, 0.0, 0.025], gain: [1.05, 1.0, 0.94], sat: 1.06, con: 1.14, bloom: 0.42, th: 1.15, streak: 0.45 }),
+    { lift: [0.0, 0.0, 0.025], gain: [1.07, 0.99, 0.9], sat: 0.94, con: 1.14, bloom: 0.42, th: 1.15, streak: 0.45 }),
   // battle: mid-morning, a high hard sun and a teal-and-orange grade
   day: look({ top: '#2f5590', mid: '#a6bccd', fog: '#b0c2cf', fogN: 800, fogF: 7200, sun: [0.55, 0.52, 0.42], sunC: [1, 0.9, 0.76], sunI: 1.25, disc: [1, 0.95, 0.85], glowK: 1.2,
-    hs: '#b9cbe0', hg: '#5e5446', hI: 0.5, deep: '#123c66', shallow: '#3a8e98', skyc: '#9db6c9', cloud: '#8f9aa6', exp: 1.14 },
+    hs: '#b9cbe0', hg: '#5e5446', hI: 0.5, deep: '#123c66', shallow: '#3a8e98', skyc: '#9db6c9', cloud: '#8f9aa6', exp: 1.14, glint: 0.45 },
     { lift: [0.0, 0.01, 0.03], gain: [1.06, 1.0, 0.92], sat: 1.1, con: 1.15, bloom: 0.36, th: 1.35, streak: 0.3 }),
   // smoke over the fleet: the sun dimmed and orange, the air thick
   smoke: look({ top: '#3a4352', mid: '#a08c7e', fog: '#8a7d74', fogN: 350, fogF: 4800, sun: [0.5, 0.33, 0.5], sunC: [1, 0.72, 0.45], sunI: 1.05, disc: [1, 0.55, 0.28], glowK: 2.4,
@@ -205,7 +205,7 @@ const LOOKS = {
     hs: '#6c5044', hg: '#1a1210', hI: 0.45, deep: '#101b23', shallow: '#2a3b3b', skyc: '#5c3c30', cloud: '#3c2c26', cloudC: 0.35, exp: 1.35 },
     { lift: [0.015, 0.0, 0.0], gain: [1.08, 0.98, 0.9], sat: 1.05, con: 1.14, bloom: 0.55, th: 1.05, streak: 0.55, vig: 0.45 }),
   // after: night, the harbor burning
-  night: look({ top: '#05070d', mid: '#3a1e16', fog: '#22150f', fogN: 120, fogF: 3200, sun: [-0.4, 0.45, -0.3], sunC: [0.5, 0.6, 0.92], sunI: 0.3, disc: [0.5, 0.55, 0.65], glowK: 0.4, night: 0.7,
+  night: look({ top: '#05070d', mid: '#3a1e16', fog: '#22150f', fogN: 100, fogF: 2500, sun: [-0.4, 0.45, -0.3], sunC: [0.5, 0.6, 0.92], sunI: 0.3, disc: [0.5, 0.55, 0.65], glowK: 0.4, night: 0.7,
     hs: '#4a5070', hg: '#1a1210', hI: 0.5, deep: '#0a1822', shallow: '#123038', skyc: '#2c2026', cloud: '#2a1e1c', cloudC: 0.25, exp: 1.95 },
     { lift: [0.0, 0.0, 0.02], gain: [1.06, 0.98, 0.94], sat: 1.05, con: 1.1, bloom: 0.7, th: 0.9, streak: 0.6, vig: 0.5 }),
 };
@@ -220,7 +220,7 @@ function setLook(L) {
   sun.color.fromArray(L.sunC); sun.intensity = L.sunI;
   hemi.color.set(L.hs); hemi.groundColor.set(L.hg); hemi.intensity = L.hI;
   const W = waterMat.uniforms; W.deep.value.set(L.deep); W.shallow.value.set(L.shallow); W.skyc.value.set(L.skyc);
-  W.sunCol.value.fromArray(L.disc).multiplyScalar(0.9); W.fogColor.value.set(L.fog); W.fogNear.value = L.fogN; W.fogFar.value = L.fogF;
+  W.sunCol.value.fromArray(L.disc).multiplyScalar(L.glint ?? 0.9); W.fogColor.value.set(L.fog); W.fogNear.value = L.fogN; W.fogFar.value = L.fogF;
   MAT.cloud.emissive.set(L.cloud); MAT.cloud.color.setScalar(L.cloudC);
   renderer.setClearColor(_c.set(L.fog));
 }
@@ -272,12 +272,18 @@ function placeShip(S, x, z, h, speed, t, dt) {
     while (S.wakeT <= 0) {
       S.wakeT += S.L > 30 ? 0.06 : 0.035;
       const sx = x - fx * S.L * 0.45, sz = z - fz * S.L * 0.45;
-      fxWake.spawn(sx, 0.08, sz, -fx * 0.6, 0, -fz * 0.6, S.L > 30 ? 5 : 2.4, S.W * 0.5, S.W * (S.L > 30 ? 3.6 : 2.6), 0xffffff);
+      const k = clamp(speed / 16, 0.3, 1);
+      PWK.spawn(sx, 0.09, sz, -fx * 0.6, 0, -fz * 0.6, S.L > 30 ? 5 : 2.4, S.W * 0.45, S.W * (S.L > 30 ? 2.6 : 2.4) * k, 0xffffff);
       const bx = x + fx * S.L * 0.42, bz = z + fz * S.L * 0.42;
-      if (speed > 7) fxWake.spawn(bx, 0.08, bz, 0, 0, 0, 1.6, S.W * 0.3, S.W * 1.4, 0xffffff);
+      if (speed > 12) PWK.spawn(bx, 0.09, bz, 0, 0, 0, 1.4, S.W * 0.4, S.W * 1.3, 0xffffff);
     }
     if (speed > 12) { S.sprayT -= dt; while (S.sprayT <= 0) { S.sprayT += 0.012; const bx = x + fx * S.L * 0.3, bz = z + fz * S.L * 0.3; for (const s of [-1, 1]) PW.spawn(bx + fz * s * S.W * 0.85, 0.3, bz - fx * s * S.W * 0.85, fz * s * rand(4, 9) - fx * 2, rand(2, 5), -fx * s * rand(4, 9) - fz * 2, rand(0.3, 0.5), rand(0.1, 0.18), 0.03, 0xeef4f8, 0xb8c8d2, 14, 0.6); } }
   }
+  // a ship already under way when the shot starts gets the wake it would already have laid behind it
+  if (S._fresh && dt > 0 && speed > 1.5) {
+    S._fresh = false; const fx = Math.sin(h), fz = Math.cos(h), L = S.L > 30 ? 5 : 2.4, s1 = S.W * (S.L > 30 ? 3.2 : 2.6) * clamp(speed / 14, 0.35, 1);
+    for (let a = 0.1; a < L; a += S.L > 30 ? 0.1 : 0.06) { const q = speed * a, f = a / L; PWK.spawn(x - fx * (S.L * 0.45 + q), 0.09, z - fz * (S.L * 0.45 + q), 0, 0, 0, L - a, lerp(S.W * 0.7, s1, f), s1, 0xffffff); }
+  } else if (dt > 0) S._fresh = false;
   S.g.updateMatrixWorld(true);
 }
 const _q = new T.Quaternion(), _m = new T.Matrix4(), _up = Vc(0, 1, 0);
@@ -305,11 +311,11 @@ const RECOIL = new Set();
 function setRecoil(g, off) {
   for (const m of g.pitch.children) { if (m.userData.z0 === undefined) m.userData.z0 = m.position.z; m.position.z = m.userData.z0 - off; }
 }
-function recoil(g, A, D = 0.9) { g._rc = { t: 0, A, D }; RECOIL.add(g); }
+function recoil(g, A, D = 0.9) { if (g._rc && RECOIL.has(g)) { g._rc.t = Math.min(g._rc.t, 0.01); g._rc.A = A; g._rc.D = D; } else g._rc = { t: 0, A, D }; RECOIL.add(g); }
 function updateRecoil(dt) {
   for (const g of RECOIL) {
     const r = g._rc; r.t += dt;
-    const k = r.t < 0.035 ? r.t / 0.035 : r.t < 0.11 ? 1 : 1 - eio((r.t - 0.11) / (r.D - 0.11));
+    const a = Math.min(0.035, r.D * 0.18), hold = Math.min(0.11, r.D * 0.35), k = r.t < a ? r.t / a : r.t < hold ? 1 : 1 - eio((r.t - hold) / (r.D - hold));
     setRecoil(g, r.A * clamp(k, 0, 1));
     if (r.t >= r.D) { setRecoil(g, 0); RECOIL.delete(g); }
   }
@@ -320,7 +326,7 @@ function clearRecoil() { for (const g of RECOIL) setRecoil(g, 0); RECOIL.clear()
 // Extra particle pools of the game's own kind (instanced balls), so trails and background fire don't use up the
 // pools the game's explode() draws from: PF is hot fire and sparks (drawn brighter than 1, so the film's bloom and
 // lens streak pick them up), PW unlit white (spray, vapour, missile trails), PS lit smoke.
-let PF = null, PW = null, PS = null;
+let PF = null, PW = null, PS = null, PWK = null;
 const FX = { tracers: [], shells: [], rings: [], spheres: [], misc: [], lights: [], flash: 0 };
 function glowTex() {
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
@@ -331,21 +337,99 @@ function glowTex() {
 // a soft halo, and a thin trail of smoke.
 function shellVisual(scale = 1) {
   const g = new T.Group();
-  const core = new T.Mesh(new T.SphereGeometry(0.3, 10, 8).scale(1, 1, 2.6), new T.MeshBasicMaterial({ color: new T.Color(14, 9, 4.5), fog: false }));
+  const body = new T.Mesh(new T.CylinderGeometry(0.34, 0.36, 1.5, 12).rotateX(Math.PI / 2), new T.MeshLambertMaterial({ color: 0x3a3632 }));
+  const nose = new T.Mesh(new T.ConeGeometry(0.34, 0.9, 12).rotateX(Math.PI / 2), new T.MeshLambertMaterial({ color: 0x4a4540 })); nose.position.z = 1.2;
+  const band = new T.Mesh(new T.CylinderGeometry(0.37, 0.37, 0.16, 12).rotateX(Math.PI / 2), new T.MeshLambertMaterial({ color: 0xb08040 })); band.position.z = -0.45;
+  const core = new T.Mesh(new T.CircleGeometry(0.33, 12), new T.MeshBasicMaterial({ color: new T.Color(14, 8, 3.5), fog: false, side: T.DoubleSide })); core.position.z = -0.76;
   const tg = new T.ConeGeometry(0.42, 1, 12, 1, true); tg.rotateX(-Math.PI / 2); tg.translate(0, 0, -0.5);
   const trail = new T.Mesh(tg, new T.MeshBasicMaterial({ color: new T.Color(3.4, 1.5, 0.45), transparent: true, opacity: 0.9, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false }));
   const tg2 = tg.clone(); const trail2 = new T.Mesh(tg2, new T.MeshBasicMaterial({ color: new T.Color(6, 4.5, 2.6), transparent: true, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false }));
   trail2.scale.set(0.4, 0.4, 0.5);
-  const halo = new T.Sprite(new T.SpriteMaterial({ map: FX.glowTex, color: new T.Color(5, 2.5, 0.9), blending: T.AdditiveBlending, depthWrite: false, fog: false })); halo.scale.setScalar(5.5);
-  g.add(core, trail, trail2, halo); g.scale.setScalar(scale); g.visible = false; g.userData = { trail, trail2 }; scene.add(g);
+  const halo = new T.Sprite(new T.SpriteMaterial({ map: FX.glowTex, color: new T.Color(4, 2, 0.7), blending: T.AdditiveBlending, depthWrite: false, fog: false })); halo.scale.setScalar(3.6); halo.position.z = -0.9;
+  trail.position.z = -0.76; trail2.position.z = -0.76;
+  g.add(body, nose, band, core, trail, trail2, halo); g.scale.setScalar(scale); g.visible = false; g.userData = { trail, trail2 }; scene.add(g);
   return g;
 }
-function orientShell(g, p, v) {
+function orientShell(g, p, v, maxL = 30) {
   g.position.copy(p); g.lookAt(_tv.copy(p).add(v));
-  const L = clamp(v.length() * 0.055, 6, 30); g.userData.trail.scale.set(1, 1, L); g.userData.trail2.scale.set(0.4, 0.4, L * 0.45);
+  const L = clamp(v.length() * 0.055, 6, maxL); g.userData.trail.scale.set(1, 1, L); g.userData.trail2.scale.set(0.4, 0.4, L * 0.45);
+}
+// Soft particles: camera-facing puffs drawn from a feathered texture, one draw per pool, fading with age.
+// Normal-blended pools (smoke) are sorted back to front; additive pools (fire) aren't. Smoke is tinted by the
+// shot's light (sun and sky), so it's warm at dawn and dark at night.
+function puffTex(seed, hard) {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), R = rng(seed);
+  for (let i = 0; i < 40; i++) {
+    const a = R() * TAU, d = Math.pow(R(), 0.7) * 34, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d, r = 16 + R() * 22;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); const k = 0.82 + 0.18 * (1 - (y - 30) / 70);
+    gr.addColorStop(0, `rgba(${255 * k | 0},${255 * k | 0},${255 * k | 0},${hard ? 0.55 : 0.3})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  }
+  const m = g.createRadialGradient(64, 64, 34, 64, 64, 64); m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(1, 'rgba(0,0,0,1)');
+  g.globalCompositeOperation = 'destination-out'; g.fillStyle = m; g.fillRect(0, 0, 128, 128);
+  return new T.CanvasTexture(c);
+}
+const SOFT_U = { tint: { value: new T.Color(1, 1, 1) }, fogC: { value: new T.Color() }, fogN: { value: 100 }, fogF: { value: 4000 } };
+class Soft {
+  constructor(n, map, additive) {
+    this.n = n; this.add = additive; this.items = []; this.next = 0; this.list = [];
+    const q = new T.PlaneGeometry(1, 1), g = new T.InstancedBufferGeometry(); g.index = q.index; g.attributes.position = q.attributes.position; g.attributes.uv = q.attributes.uv;
+    this.P = new Float32Array(n * 3); this.Cc = new Float32Array(n * 4); this.S = new Float32Array(n * 2);
+    g.setAttribute('iP', new T.InstancedBufferAttribute(this.P, 3).setUsage(T.DynamicDrawUsage));
+    g.setAttribute('iC', new T.InstancedBufferAttribute(this.Cc, 4).setUsage(T.DynamicDrawUsage));
+    g.setAttribute('iS', new T.InstancedBufferAttribute(this.S, 2).setUsage(T.DynamicDrawUsage));
+    g.instanceCount = 0; this.g = g;
+    this.mesh = new T.Mesh(g, new T.ShaderMaterial({
+      uniforms: Object.assign({ map: { value: map } }, SOFT_U), transparent: true, depthWrite: false, fog: false, blending: additive ? T.AdditiveBlending : T.NormalBlending,
+      vertexShader: `attribute vec3 iP; attribute vec4 iC; attribute vec2 iS; varying vec2 vUv; varying vec4 vC; varying float vD;
+        void main(){ vUv = uv; vC = iC; vec4 mv = modelViewMatrix * vec4(iP, 1.0); float c = cos(iS.y), s = sin(iS.y);
+          mv.xy += vec2(c * position.x - s * position.y, s * position.x + c * position.y) * iS.x; vD = -mv.z; gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform sampler2D map; uniform vec3 tint, fogC; uniform float fogN, fogF; varying vec2 vUv; varying vec4 vC; varying float vD;
+        void main(){ vec4 t = texture2D(map, vUv); float f = smoothstep(fogN, fogF, vD);
+          ${additive ? 'gl_FragColor = vec4(t.rgb * vC.rgb * t.a * vC.a * (1.0 - f), 1.0);' : 'gl_FragColor = vec4(mix(t.rgb * vC.rgb * tint, fogC, f), t.a * vC.a);'} }`,
+    }));
+    this.mesh.frustumCulled = false; this.mesh.renderOrder = additive ? 4 : 3; scene.add(this.mesh);
+    for (let i = 0; i < n; i++) this.items.push({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 0, life: 1, s0: 1, s1: 1, c0: new T.Color(), c1: new T.Color(), a0: 1, a1: 0, grav: 0, drag: 0, rot: 0, spin: 0, d: 0 });
+  }
+  // like the game's Particles.spawn, plus start and end opacity
+  spawn(x, y, z, vx, vy, vz, life, s0, s1, c0, c1, a0 = 0.8, a1 = 0, grav = 0, drag = 0) {
+    let p = null;
+    for (let k = 0; k < 64; k++) { const q = this.items[(this.next + k) % this.n]; if (!q.on) { p = q; this.next = (this.next + k + 1) % this.n; break; } }
+    if (!p) { p = this.items[this.next]; this.next = (this.next + 1) % this.n; }
+    p.on = true; p.x = x; p.y = y; p.z = z; p.vx = vx; p.vy = vy; p.vz = vz; p.age = 0; p.life = life; p.s0 = s0; p.s1 = s1;
+    p.c0.set(c0); p.c1.set(c1 ?? c0); p.a0 = a0; p.a1 = a1; p.grav = grav; p.drag = drag; p.rot = Math.random() * TAU; p.spin = (Math.random() - 0.5) * 0.8;
+    return p;
+  }
+  clear() { for (const p of this.items) p.on = false; this.g.instanceCount = 0; }
+  update(dt) {
+    const cp = camera.position, L = this.list; L.length = 0;
+    for (const p of this.items) {
+      if (!p.on) continue; p.age += dt; if (p.age >= p.life) { p.on = false; continue; }
+      if (p.drag) { const k = Math.exp(-p.drag * dt); p.vx *= k; p.vy *= k; p.vz *= k; }
+      p.vy -= p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.rot += p.spin * dt;
+      if (!this.add) p.d = (p.x - cp.x) ** 2 + (p.y - cp.y) ** 2 + (p.z - cp.z) ** 2;
+      L.push(p);
+    }
+    if (!this.add) L.sort((a, b) => b.d - a.d);
+    let i = 0;
+    for (const p of L) {
+      const k = p.age / p.life, ks = 1 - (1 - k) * (1 - k), fin = Math.min(1, p.age / 0.06);
+      this.P[i * 3] = p.x; this.P[i * 3 + 1] = p.y; this.P[i * 3 + 2] = p.z;
+      this.Cc[i * 4] = lerp(p.c0.r, p.c1.r, k); this.Cc[i * 4 + 1] = lerp(p.c0.g, p.c1.g, k); this.Cc[i * 4 + 2] = lerp(p.c0.b, p.c1.b, k); this.Cc[i * 4 + 3] = lerp(p.a0, p.a1, k) * fin;
+      this.S[i * 2] = (p.s0 + (p.s1 - p.s0) * ks) * 2; this.S[i * 2 + 1] = p.rot; i++;
+    }
+    this.g.instanceCount = i; for (const n of ['iP', 'iC', 'iS']) this.g.attributes[n].needsUpdate = true;
+  }
+}
+let SS = null, SF = null;
+function softLight() {
+  SOFT_U.tint.value.copy(sun.color).multiplyScalar(sun.intensity * 0.42).add(_c.copy(hemi.color).multiplyScalar(hemi.intensity * 0.75));
+  const t = SOFT_U.tint.value; t.r = Math.min(t.r, 1.25); t.g = Math.min(t.g, 1.25); t.b = Math.min(t.b, 1.25);
+  SOFT_U.fogC.value.copy(scene.fog.color); SOFT_U.fogN.value = scene.fog.near; SOFT_U.fogF.value = scene.fog.far;
 }
 function makeFx() {
   FX.glowTex = glowTex();
+  SS = new Soft(7000, puffTex(11, false), false); SF = new Soft(1800, puffTex(23, true), true);
   const tg = new T.BoxGeometry(1, 1, 1); tg.translate(0, 0, -0.5);
   const tm = new T.MeshBasicMaterial({ color: new T.Color(9, 6, 2.2), fog: false });
   for (let i = 0; i < 260; i++) { const m = new T.Mesh(tg, tm); m.visible = false; m.frustumCulled = false; scene.add(m); FX.tracers.push({ m, p: Vc(), v: Vc(), life: 0, len: 6 }); }
@@ -359,7 +443,9 @@ function makeFx() {
   PF = new Particles(2600, new T.MeshBasicMaterial({ color: new T.Color(2.4, 2.4, 2.4), fog: true }), icoGeo(1));
   PW = new Particles(4200, new T.MeshBasicMaterial({ fog: true }), icoGeo(1));
   PS = new Particles(3600, fxSmoke.mesh.material, icoGeo(1));
-  fxFire.mesh.material.color.setScalar(1.7);
+  const wg = new T.CircleGeometry(1, 20); wg.rotateX(-Math.PI / 2);
+  PWK = new Particles(2600, new T.MeshBasicMaterial({ map: FX.glowTex, transparent: true, opacity: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, fog: true }), wg, true); PWK.mesh.renderOrder = 1;
+  fxFire.mesh.material.color.setScalar(1.45);
 }
 function tracer(p, dir, speed, life = 0.35, len = 7, w = 0.16) {
   const t = FX.tracers.find(x => x.life <= 0) || FX.tracers[0];
@@ -385,15 +471,15 @@ function sparks(p, n, sp, life = 1) {
 // a big explosion: the game's own blast, a heavier fireball, a shock sphere, sparks, a rising column of smoke,
 // a light and a ring on the water or ground
 function boom(p, size, o = {}) {
-  explode(p, size, true);
-  for (let i = 0; i < Math.min(30, size * 1.6); i++) {
-    const a = rand(TAU), u = rand(-0.2, 1), sp = size * rand(0.8, 2.4);
-    PF.spawn(p.x, p.y, p.z, Math.cos(a) * sp * 0.8, u * sp + size * 0.8, Math.sin(a) * sp * 0.8, rand(0.45, 1.1), size * rand(0.45, 0.85), size * 0.08, pick([0xfff2b0, 0xffc040, 0xff9020]), 0x8a2006, -2, 2.4);
+  const n0 = fxFire.p.length; explode(p, size * 0.62, true);
+  const core = fxFire.p[n0]; if (core && core.life <= 0.14) { core.s0 *= 0.25; core.s1 *= 0.25; }   // the game's flat white core flash, made small
+  SF.spawn(p.x, p.y, p.z, 0, 0, 0, 0.13, size * 0.7, size * 1.3, 0xfff4d8, 0xffa040, 1.4, 0);
+  for (let i = 0; i < Math.min(34, size * 2); i++) {
+    const a = rand(TAU), u = rand(-0.2, 1), sp = size * rand(0.6, 2.2);
+    SF.spawn(p.x, p.y, p.z, Math.cos(a) * sp * 0.8, u * sp + size * 0.7, Math.sin(a) * sp * 0.8, rand(0.4, 1.0), size * rand(0.35, 0.7), size * rand(0.8, 1.2), pick([0xfff0b0, 0xffc050, 0xff9a30]), 0x6a1804, rand(1.2, 1.8), 0, -2, 2.4);
   }
-  for (let i = 0; i < 6; i++) PF.spawn(p.x + rand(-1, 1) * size * 0.3, p.y + rand(0, size * 0.4), p.z + rand(-1, 1) * size * 0.3, 0, rand(2, 6), 0, rand(0.7, 1.3), size * rand(0.7, 1.0), size * 0.3, 0xffb040, 0x501008, -1, 1.5);
-  for (let i = 0; i < Math.min(26, size * 1.6); i++) PS.spawn(p.x + rand(-1, 1) * size * 0.4, p.y + rand(0, size * 0.5), p.z + rand(-1, 1) * size * 0.4, rand(-3, 3), rand(3, 11), rand(-3, 3), rand(3.5, 7), size * 0.25, size * rand(0.7, 1.25), 0x2a2624, 0x6a6460, -0.8, 0.8);
+  for (let i = 0; i < Math.min(30, size * 2); i++) SS.spawn(p.x + rand(-1, 1) * size * 0.4, p.y + rand(0, size * 0.5), p.z + rand(-1, 1) * size * 0.4, rand(-3, 3) + WIND.x * 0.4, rand(3, 11), rand(-3, 3) + WIND.z * 0.4, rand(4, 8), size * rand(0.3, 0.5), size * rand(1.0, 1.8), pick([0x2a2624, 0x342f2c, 0x221f1d]), 0x6a6460, rand(0.7, 0.9), 0, -0.8, 0.8);
   sparks(p, Math.min(40, size * 2.2), size * 3.2, 1.1);
-  shockSphere(p, size * 2.2, 0.22, 0.22);
   flashLight(Vc(p.x, p.y + size, p.z), size * 0.35, o.decay || 4);
   if (o.ring !== false) ring(Vc(p.x, Math.max(0.3, o.ground ?? p.y * 0.1), p.z), size * (o.ringK || 5), 0.9, 0.5, 0xffd8a8);
   if (o.ember) addEmitter(p, size * 0.35, o.ember);
@@ -410,35 +496,48 @@ function column(p, size) {
     const a = rand(TAU), sp = rand(4, 10) * H;
     PW.spawn(p.x, rand(8, 18) * H, p.z, Math.cos(a) * sp, rand(4, 12), Math.sin(a) * sp, rand(1.2, 2.2), size * 0.06, size * 0.14, 0xffffff, 0xb4c6d2, 14, 0.5);
   }
-  for (let i = 0; i < 16; i++) PS.spawn(p.x + rand(-1, 1) * size * 0.3, rand(2, size * 0.9), p.z + rand(-1, 1) * size * 0.3, rand(-2, 2), rand(1, 3), rand(-2, 2), rand(2.5, 4.5), size * 0.1, size * 0.34, 0xeef2f4, 0xb8c4ca, 0.5, 0.6);
+  for (let i = 0; i < 18; i++) SS.spawn(p.x + rand(-1, 1) * size * 0.3, rand(2, size * 1.1), p.z + rand(-1, 1) * size * 0.3, rand(-2, 2) + WIND.x * 0.4, rand(1, 3), rand(-2, 2), rand(2.8, 5), size * 0.15, size * 0.55, 0xf4f6f8, 0xc4ccd2, 0.5, 0, 0.5, 0.6);
   ring(Vc(p.x, 0.3, p.z), size * 3.2, 1.4, 0.55);
   flashLight(Vc(p.x, 10, p.z), size * 0.12, 3);
 }
-// a big gun firing: a white-hot core, a cone of flame along the bore, a shock sphere, and the ring of smoke a
-// heavy gun throws out sideways round its muzzle
+// gun smoke: lots of fine wisps, each its own size, speed and shade, thrown out in a ragged cone along the bore
+// and then carried off by the breeze, so no two shots look alike and nothing is symmetrical
+const WIND = Vc(3.2, 0.5, 1.6);
+const SMOKE_SHADES = [0xdcd6cc, 0xcdc7bd, 0xbeb8ae, 0xe6e1d8, 0xb0aaa2];
+function gunSmoke(p, dir, size, n) {
+  const u = Vc(0, 1, 0).cross(dir).normalize(), w = dir.clone().cross(u).normalize();
+  for (let i = 0; i < n; i++) {
+    const spread = Math.pow(Math.random(), 1.6) * 0.75, a = Math.random() * TAU;
+    const d = dir.clone().addScaledVector(u, Math.cos(a) * spread).addScaledVector(w, Math.sin(a) * spread).normalize();
+    const sp = size * rand(0.6, 6.5) * (1 - spread * 0.6), off = rand(0, size * 0.5);
+    SS.spawn(p.x + d.x * off, p.y + d.y * off, p.z + d.z * off, d.x * sp + WIND.x * rand(0.3, 1.2), d.y * sp + WIND.y * rand(0.5, 1.5), d.z * sp + WIND.z * rand(0.3, 1.2),
+      rand(2.6, 5.6), size * rand(0.06, 0.14), size * rand(0.55, 1.45), pick(SMOKE_SHADES), pick([0x9c9892, 0xa8a49e, 0x8e8a85]), rand(0.45, 0.7), 0, -rand(0.2, 0.9), rand(1.4, 2.6));
+  }
+  // a few slower, larger, fainter billows that hang behind and drift downwind
+  for (let i = 0; i < Math.max(2, n / 10); i++) {
+    const d = dir.clone().add(Vc(rand(-0.4, 0.4), rand(-0.1, 0.4), rand(-0.4, 0.4))).normalize(), sp = size * rand(0.8, 2.2);
+    SS.spawn(p.x, p.y, p.z, d.x * sp + WIND.x, d.y * sp + WIND.y, d.z * sp + WIND.z, rand(4, 6.5), size * rand(0.12, 0.2), size * rand(0.8, 1.3), pick(SMOKE_SHADES), 0x8a8680, 0.25, 0, -0.3, 1.0);
+  }
+}
+// a big gun firing: a white-hot core, a cone of flame along the bore, a shock sphere and fine smoke
 function muzzleBlast(p, dir, size) {
   muzzleFlash(p, size * 1.4);
   PF.spawn(p.x, p.y, p.z, dir.x * 6, dir.y * 6, dir.z * 6, 0.09, size * 1.1, size * 0.4, 0xfffbe8, 0xffc060);
-  for (let i = 0; i < 16; i++) { const s = rand(10, 60) * size * 0.16; PF.spawn(p.x, p.y, p.z, dir.x * s + rand(-3, 3), dir.y * s + rand(-2, 3), dir.z * s + rand(-3, 3), rand(0.12, 0.3), size * rand(0.45, 0.95), size * 0.15, pick([0xfff6c0, 0xffd060, 0xffa030]), 0xff6020, 0, 6); }
-  const u = Vc(0, 1, 0).cross(dir).normalize(), w = dir.clone().cross(u).normalize();
-  for (let k = 0; k < 14; k++) {
-    const a = k / 14 * TAU, r = u.clone().multiplyScalar(Math.cos(a)).addScaledVector(w, Math.sin(a));
-    PS.spawn(p.x + r.x * size * 0.2, p.y + r.y * size * 0.2, p.z + r.z * size * 0.2, r.x * size * 2.2 + dir.x * size * 1.4, r.y * size * 2.2 + dir.y * size * 1.4 + 0.5, r.z * size * 2.2 + dir.z * size * 1.4, rand(2.2, 3.6), size * 0.16, size * rand(0.4, 0.62), 0xcfc9bf, 0x8c8882, -0.4, 2.2);
-  }
-  for (let i = 0; i < 10; i++) { const s = rand(4, 40) * size * 0.16; PS.spawn(p.x, p.y, p.z, dir.x * s + rand(-2, 2), dir.y * s + rand(0, 3), dir.z * s + rand(-2, 2), rand(2.5, 4.5), size * 0.3, size * rand(0.9, 1.4), 0xd2cec6, 0x8c8882, -0.6, 1.4); }
+  for (let i = 0; i < 18; i++) { const s = rand(10, 60) * size * 0.16; SF.spawn(p.x, p.y, p.z, dir.x * s + rand(-3, 3), dir.y * s + rand(-2, 3), dir.z * s + rand(-3, 3), rand(0.12, 0.32), size * rand(0.3, 0.7), size * 0.15, pick([0xfff2c0, 0xffd070, 0xffa040]), 0xff5010, 1.6, 0, 0, 6); }
+  gunSmoke(p, dir, size, 54);
   sparks(p, size * 1.4, size * 4, 0.7);
-  shockSphere(p, size * 1.2, 0.15, 0.25);
 }
 // a small, quick gun (anti-aircraft, machine gun): flash, a puff, a spark or two
 function gunPop(p, dir, size) {
-  muzzleFlash(p, size);
-  PF.spawn(p.x, p.y, p.z, dir.x * 8, dir.y * 8, dir.z * 8, 0.06, size * 0.9, size * 0.2, 0xfff4c0, 0xff9a30);
-  PS.spawn(p.x, p.y, p.z, dir.x * 4 + rand(-1, 1), dir.y * 4 + rand(0, 1), dir.z * 4 + rand(-1, 1), rand(0.8, 1.4), size * 0.25, size * 0.9, 0xb8b2aa, 0x8a8680, -0.3, 1.5);
+  SF.spawn(p.x + dir.x * size * 0.4, p.y + dir.y * size * 0.4, p.z + dir.z * size * 0.4, dir.x * 8, dir.y * 8, dir.z * 8, 0.07, size * 0.9, size * 1.3, 0xfff4c8, 0xff9a30, 1.6, 0);
+  SF.spawn(p.x, p.y, p.z, 0, 0, 0, 0.05, size * 0.45, size * 0.3, 0xffffff, 0xffd080, 2, 0);
+  gunSmoke(p, dir, size * 0.5, 5);
 }
 // a flak burst: a flash, a few sparks and a lingering black cloud
 function flak(p, size = 1) {
   PF.spawn(p.x, p.y, p.z, 0, 0, 0, 0.09, 3.6 * size, 1.2 * size, 0xfff2b8, 0xff8020);
-  for (let i = 0; i < 4; i++) PS.spawn(p.x + rand(-1, 1), p.y + rand(-1, 1), p.z + rand(-1, 1), rand(-3, 3), rand(-2, 3), rand(-3, 3), rand(2.5, 4.5), 1.6 * size, rand(4.5, 7.5) * size, 0x24221f, 0x403c39, 0, 0.8);
+  for (let i = 0; i < 9; i++) { const d = Vc(rand(-1, 1), rand(-0.6, 1), rand(-1, 1)).normalize().multiplyScalar(rand(1, 6)); SS.spawn(p.x, p.y, p.z, d.x + WIND.x * 0.5, d.y, d.z + WIND.z * 0.5, rand(2.4, 4), rand(0.6, 1.1) * size, rand(2.6, 4.6) * size, pick([0x2c2a28, 0x383532, 0x24221f]), 0x5a5652, rand(0.55, 0.8), 0, 0, 1.2); }
+  SF.spawn(p.x, p.y, p.z, 0, 0, 0, 0.12, 2.6 * size, 3.6 * size, 0xffd080, 0xff7020, 1.2, 0);
   sparks(p, 5, 14, 0.5);
 }
 // a ship's gun firing far away: a flash low on the horizon and a puff of smoke
@@ -447,11 +546,12 @@ function distantGun(p) { PF.spawn(p.x, p.y, p.z, 0, 0, 0, 0.1, 9, 3, 0xfff0c0, 0
 function flares(p, v, n) {
   for (let i = 0; i < n; i++) {
     const d = v.clone().multiplyScalar(0.45).add(Vc(rand(-14, 14), rand(-18, -4), rand(-14, 14)));
-    const q = p.clone(); let life = rand(1.6, 2.4), tt = 0;
+    const q = p.clone(), last = p.clone(); let life = rand(1.6, 2.4);
     FX.misc.push({ step(dt) { life -= dt; d.multiplyScalar(Math.exp(-1.2 * dt)); d.y -= 9 * dt; q.addScaledVector(d, dt);
       PF.spawn(q.x, q.y, q.z, 0, 0, 0, 0.05, 1.5, 0.6, 0xfffbe8, 0xffb060);
-      if ((tt -= dt) <= 0) { tt = 0.012; PW.spawn(q.x, q.y, q.z, rand(-0.3, 0.3), rand(0, 0.6), rand(-0.3, 0.3), rand(1.2, 1.8), 0.35, 1.5, 0xf8f6f2, 0xa8a6a2, -0.4, 0.8); }
-      return life > 0; } });
+      const n = Math.min(30, Math.ceil(last.distanceTo(q) / 0.45));
+      for (let j = 0; j < n; j++) { const r = _tv.copy(last).lerp(q, (j + 1) / n); SS.spawn(r.x, r.y, r.z, rand(-0.3, 0.3), rand(0, 0.6), rand(-0.3, 0.3), rand(1.4, 2.2), rand(0.3, 0.5), rand(1.4, 2.2), 0xf8f6f2, 0xb4b0aa, 0.6, 0, -0.4, 0.8); }
+      last.copy(q); return life > 0; } });
   }
 }
 // a stream of tracers from a gun position toward a target, with spread
@@ -485,8 +585,8 @@ function updateFx(dt) {
   for (const s of FX.shells) {
     if (s.life <= 0) continue; s.life -= dt; s.v.y -= 9.8 * dt; s.p.addScaledVector(s.v, dt);
     orientShell(s.g, s.p, s.v);
-    const L = s.last.distanceTo(s.p), n = Math.min(60, Math.ceil(L / 1.1));
-    for (let i = 0; i < n; i++) { const q = _tv.copy(s.last).lerp(s.p, (i + 1) / n); PW.spawn(q.x, q.y, q.z, rand(-0.2, 0.2), rand(0.1, 0.4), rand(-0.2, 0.2), rand(0.45, 0.75), 0.18, rand(0.5, 0.8), 0xe4ded4, 0x8a8680, -0.1, 0.5); }
+    const L = s.last.distanceTo(s.p), n = Math.min(8, Math.ceil(L / 3.5));
+    for (let i = 0; i < n; i++) { const q = _tv.copy(s.last).lerp(s.p, (i + 1) / n); SS.spawn(q.x, q.y, q.z, rand(-0.2, 0.2), rand(0.1, 0.4), rand(-0.2, 0.2), rand(0.5, 0.8), 0.4, rand(1.0, 1.5), 0xece6dc, 0xa8a49e, 0.35, 0, -0.1, 0.5); }
     s.last.copy(s.p);
     const landed = s.target ? s.life <= 0.02 : s.p.y < 0;
     if (landed || s.life <= 0) {
@@ -503,7 +603,7 @@ function updateFx(dt) {
   FX.flash *= Math.exp(-6 * dt);
   camShake *= Math.exp(-3.2 * dt);
   updateEmitters(dt);
-  fxFire.update(dt); fxSmoke.update(dt); fxWake.update(dt); PF.update(dt); PW.update(dt); PS.update(dt);
+  fxFire.update(dt); fxSmoke.update(dt); fxWake.update(dt); PF.update(dt); PW.update(dt); PS.update(dt); PWK.update(dt); SS.update(dt); SF.update(dt);
 }
 const _tv = Vc(), _a = Vc(), _b = Vc(), _d = Vc();
 
@@ -516,17 +616,19 @@ function debris(p, n, sp, col = 0x3a3836) {
     const v = Vc(rand(-1, 1), rand(0.6, 1.6), rand(-1, 1)).normalize().multiplyScalar(sp * rand(0.5, 1.2)), spin = Vc(rand(-6, 6), rand(-6, 6), rand(-6, 6));
     let life = rand(2, 3.5), tt = 0;
     FX.misc.push({ m, step(dt) { life -= dt; v.y -= 22 * dt; m.position.addScaledVector(v, dt); m.rotation.x += spin.x * dt; m.rotation.y += spin.y * dt; m.rotation.z += spin.z * dt;
-      if ((tt -= dt) <= 0) { tt = 0.025; PS.spawn(m.position.x, m.position.y, m.position.z, 0, 1, 0, 1.3, 0.5, 2.2, 0x2a2826, 0x6a6662, 0, 0.5); if (Math.random() < 0.7) PF.spawn(m.position.x, m.position.y, m.position.z, 0, 0, 0, 0.25, 0.9, 0.2, 0xffb030, 0xd04010); }
+      if ((tt -= dt) <= 0) { tt = 0.02; SS.spawn(m.position.x, m.position.y, m.position.z, 0, 1, 0, 1.6, 0.5, 2.4, 0x2a2826, 0x6a6662, 0.75, 0, 0, 0.5); if (Math.random() < 0.7) SF.spawn(m.position.x, m.position.y, m.position.z, 0, 0, 0, 0.3, 1.1, 0.4, 0xffb030, 0xd04010, 1.2, 0); }
       if (life <= 0 || m.position.y < -2) { if (m.position.y < 0.5) PW.spawn(m.position.x, 0.5, m.position.z, 0, 5, 0, 0.7, 0.6, 0.2, 0xffffff, 0xc0d0d8, 12, 0); scene.remove(m); return false; } } });
   }
 }
 // a plane shot down: it falls burning, trailing smoke, and blows up on the water
 function wreck(P, v, roll) {
-  const q = P.pos.clone(), d = v.clone(); let r = roll, tt = 0, dead = false;
+  const q = P.pos.clone(), d = v.clone(), last = q.clone(); let r = roll, dead = false;
   FX.misc.push({ step(dt) {
     if (dead) return false;
     d.y -= 12 * dt; q.addScaledVector(d, dt); r += dt * 2.2; placePlane(P, q, d, r, dt);
-    if ((tt -= dt) <= 0) { tt = 0.02; PS.spawn(q.x, q.y, q.z, 0, 1, 0, 2.2, 1.2, 4.5, 0x1e1c1a, 0x55504c, -0.2, 0.4); PF.spawn(q.x, q.y, q.z, 0, 0, 0, 0.3, 2.2, 0.4, 0xffc040, 0xd03010); }
+    const n = Math.min(30, Math.ceil(last.distanceTo(q) / 0.9));
+    for (let j = 0; j < n; j++) { const s = _tv.copy(last).lerp(q, (j + 1) / n); SS.spawn(s.x, s.y, s.z, rand(-0.5, 0.5), 1, rand(-0.5, 0.5), rand(2.2, 3.2), rand(0.8, 1.3), rand(3.5, 6), 0x1e1c1a, 0x5a5550, 0.8, 0, -0.2, 0.4); if (j % 2 === 0) SF.spawn(s.x, s.y, s.z, 0, 0, 0, 0.35, 2.2, 0.8, 0xffc040, 0xd03010, 1.2, 0); }
+    last.copy(q);
     if (q.y < 1) { dead = true; P.g.visible = false; column(Vc(q.x, 0, q.z), 12); boom(Vc(q.x, 1, q.z), 8, { ring: false }); return false; }
   } });
 }
@@ -539,7 +641,7 @@ function clearFx() {
   for (const g of FX.spheres) { g.t = g.T; g.m.visible = false; }
   for (const L of FX.lights) { L.k = 0; L.l.intensity = 0; }
   FX.flash = 0; camShake = 0; clearRecoil();
-  fxFire.clear(); fxSmoke.clear(); fxWake.clear(); PF.clear(); PW.clear(); PS.clear(); EMITTERS.length = 0;
+  fxFire.clear(); fxSmoke.clear(); fxWake.clear(); PF.clear(); PW.clear(); PS.clear(); PWK.clear(); SS.clear(); SF.clear(); EMITTERS.length = 0;
 }
 
 // ---------- world state ----------
@@ -567,7 +669,7 @@ function makeBeacons() {
   for (const [x, z] of [[K.minX + 1, K.minZ + 1], [K.maxX - 1, K.maxZ - 1]]) {
     const b = new T.Group(); b.position.set(x, K.maxY + 1.4, z); g.add(b);
     b.add(new T.Mesh(new T.BoxGeometry(1.2, 1.2, 1.2), new T.MeshBasicMaterial({ color: new T.Color(9, 0.8, 0.4) })));
-    const m = new T.MeshBasicMaterial({ color: new T.Color(1.6, 0.12, 0.06), transparent: true, opacity: 0.35, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false });
+    const m = new T.MeshBasicMaterial({ color: new T.Color(1.6, 0.12, 0.06), transparent: true, opacity: 0.18, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false });
     const c = new T.Mesh(beam, m); b.add(c); const c2 = new T.Mesh(beam, m); c2.rotation.y = Math.PI; b.add(c2); mats.push(b);
   }
   g.userData.spin = mats; return g;
@@ -588,7 +690,7 @@ function makeCloudBank() {
 // speed < 1 plays the shot's action in slow motion (the camera keeps real time). shadow: [x, z, size] of the
 // sun's shadow box (default: round the point the camera looks at).
 const SHOTS = [];
-const shot = (name, t0, t1, o) => { const s = Object.assign({ name, t0, t1, look: 'day', shake: 0, speed: 1 }, o); SHOTS.push(s); return s; };
+const shot = (name, t0, t1, o) => { const s = Object.assign({ name, t0, t1, look: 'day', shake: 0, speed: 1 }, o); s._keys = new Set(Object.keys(s)); SHOTS.push(s); return s; };
 const camOut = { p: Vc(), l: Vc(), fov: 40, roll: 0 };
 const CAM = (p, l, fov, roll = 0) => { camOut.p.copy(p); camOut.l.copy(l); camOut.fov = fov; camOut.roll = roll; return camOut; };
 const lerpV = (a, b, k, out = Vc()) => out.copy(a).lerp(b, k);
@@ -622,8 +724,8 @@ shot('redHarbor', 6.5, 11.5, {
     placeShip(C.rdd3, 1745 - lt * 7, -160, -Math.PI / 2 + 0.18, 7, lt, dt);
     placeShip(C.rgb, 1640 - lt * 14, -110, -Math.PI / 2 + 0.2, 14, lt, dt);
     placeShip(C.rgb2, 1655 - lt * 15, 75, -Math.PI / 2 - 0.12, 15, lt, dt);
-    const dir = Vc(-0.97, 0.22, 0.05).normalize();
-    if (lt > 1.2) { fly(C.rfig, Vc(2030, 30, -20), dir, 70, lt - 1.2, -0.1, dt); fly(C.rfig2, Vc(2060, 36, 30), dir, 70, lt - 1.2, 0.1, dt); }
+    const dir = Vc(-0.95, 0.16, -0.27).normalize();
+    if (lt > 0.6) { fly(C.rfig, Vc(1900, 26, -10), dir, 85, lt - 0.6, -0.12, dt); fly(C.rfig2, Vc(1922, 31, 22), dir, 85, lt - 0.6, -0.12, dt); }
   },
   cam(lt) { const k = eio(lt / 5); return CAM(lerpV(Vc(1380, 6, -160), Vc(1445, 8.5, -138), k), lerpV(Vc(2066, 24, 0), Vc(2066, 30, 0), k), 33); },
 });
@@ -652,16 +754,22 @@ shot('turret', 11.5, 16.4, {
   update(lt, dt) {
     const p = bbAt(11.5 + lt); placeShip(C.bb, p.x, p.z, Math.PI / 2, 6, 11.5 + lt, dt); bbGuns(eio((lt - 0.5) / 2.2), eio((lt - 1.5) / 2.3));
     placeShip(C.dd, p.x + 60, p.z - 190, Math.PI / 2, 6, 11.5 + lt, dt); placeShip(C.dd2, p.x - 120, p.z - 260, Math.PI / 2, 6, 11.5 + lt, dt);
+    if (this.once(1.9)) column(local(C.bb, -70, 0, 30).setY(0), 16);
+    if (this.once(3.4)) column(local(C.bb, 55, 0, -20).setY(0), 18);
+    amb(this, dt, { guns: { box: [p.x + 900, p.x + 1600, 2, 6, p.z + 300, p.z + 1200], rate: 1.6 } });
     const dir = Vc(1, 0.02, -0.15).normalize(); if (lt > 1.8) { fly(C.jet, Vc(p.x - 260, 95, p.z - 120), dir, 120, lt - 1.8, 0, dt); fly(C.jet2, Vc(p.x - 285, 99, p.z - 95), dir, 120, lt - 1.8, 0, dt); C.jet.flame(0.5); C.jet2.flame(0.5); }
   },
   cam(lt) { const k = eio(lt / 4.9); return CAM(local(C.bb, lerp(-15, -11, k), lerp(10.5, 8.2, k), lerp(47, 41, k)), local(C.bb, 0, 5, 27), lerp(44, 36, k)); },
 });
 function broadside(sh, t, dt, at, close) {
-  if (sh.once(at)) {
-    const sz = close ? 5 : 9;
-    fireTurret(C.bb.guns[0], sz, 470, 2.2, 1.6); fireTurret(C.bb.guns[1], sz, 470, 2.2, 1.6); fireTurret(C.bb.guns[2], sz, 470, 2.2, 1.6);
-    if (!close) flashLight(local(C.bb, 0, 12, 10), 9, 5); shake(close ? 0.7 : 1.2); screenFlash(close ? 0.12 : 0.3);
+  if (!close) {
+    if (sh.once(at)) { for (let i = 0; i < 3; i++) fireTurret(C.bb.guns[i], 9, 470, 1.6, 1.6); flashLight(local(C.bb, 0, 12, 10), 9, 5); shake(1.2); screenFlash(0.3); }
+    return;
   }
+  // slow motion: the forward turrets one after the other, a short stroke and a run-out seen inside the shot
+  if (sh.once(at)) { fireTurret(C.bb.guns[0], 4, 470, 1.25, 0.33); shake(0.5); screenFlash(0.06); }
+  if (sh.once(at + 0.05)) { fireTurret(C.bb.guns[1], 4, 470, 1.25, 0.33); shake(0.5); }
+  if (sh.once(at + 0.1)) fireTurret(C.bb.guns[2], 6, 470, 1.25, 0.33);
 }
 shot('fire', 16.4, 17.6, {
   look: 'dawn', shake: 0.05,
@@ -673,16 +781,16 @@ shot('fire', 16.4, 17.6, {
     if (this.once(0.44)) fireTurret(C.dd2.guns[0], 4.5, 380, 0.9, 0.8);
     if (this.once(0.62)) { fireTurret(C.dd.guns[1], 4.5, 380, 0.9, 0.8); fireTurret(C.dd2.guns[1], 4.5, 380, 0.9, 0.8); }
   },
-  cam(lt) { const p = bbAt(16.4); return CAM(Vc(p.x + 110 + lt * 6, 5.5, p.z + 160), Vc(p.x + 8 + lt * 6, 14, p.z), 46); },
+  cam(lt) { const p = bbAt(16.4); return CAM(Vc(p.x + 78 + lt * 6, 6, p.z + 112), Vc(p.x + 4 + lt * 6, 13, p.z), 46); },
 });
 shot('recoil', 17.6, 18.8, {
   look: 'dawn', shake: 0.03, speed: 0.3,
   update(lt, dt) {
     const t = 16.4 + lt, p = bbAt(t); placeShip(C.bb, p.x, p.z, Math.PI / 2, 6, t, dt); bbGuns(1, 1); escorts(t, dt, 1);
     C.bb.roll = lt > 0.05 ? -0.05 * Math.exp(-2 * (lt - 0.05)) * Math.sin((lt - 0.05) * 5) : 0;
-    broadside(this, t, dt, 0.06, true);
+    broadside(this, t, dt, 0.012, true);
   },
-  cam(lt) { return CAM(local(C.bb, 5.6 - lt * 0.3, 16.2 - lt * 0.3, 6 + lt * 0.9), local(C.bb, -8, 5.5, 21), 50, 0.02); },
+  cam(lt) { return CAM(local(C.bb, 9.5 - lt * 0.4, 17.5 - lt * 0.3, 7 + lt * 0.9), local(C.bb, -7, 5.5, 21), 42, 0.02); },
 });
 // 6. riding a shell to a Red squadron: the whole salvo lands round it
 const SH = { p0: null, p1: null, D: 1.7, H: 70 };
@@ -701,8 +809,8 @@ shot('shell', 18.8, 21.2, {
     const toward = Vc(SH.p0.x, 30, SH.p0.z);
     for (const [S, t0] of [[C.rdd, 0.25], [C.rdd2, 0.5]]) { aimGun(S.guns[0], toward); aimGun(S.guns[1], toward); if (this.once(t0)) { fireTurret(S.guns[0], 4, 0, 0.9, 0.8); } if (this.once(t0 + 0.35)) fireTurret(S.guns[1], 4, 0, 0.9, 0.8); }
     const u = lt / SH.D;
-    if (u < 1) { shellPath(u, _a); shellPath(u + 0.01, _b); orientShell(C.shellM, _a, _b.sub(_a).multiplyScalar(100 / SH.D)); C.shellM.visible = true;
-      const L = (this.sl || _a).distanceTo(_a), n = Math.min(80, Math.ceil(L / 1.0)); for (let i = 0; i < n; i++) { const q = _tv.copy(this.sl || _a).lerp(_a, (i + 1) / n); PW.spawn(q.x, q.y, q.z, 0, 0.2, 0, 0.6, 0.2, 0.7, 0xe4ded4, 0x8a8680, 0, 0.3); }
+    if (u < 1) { shellPath(u, _a); shellPath(u + 0.01, _b); orientShell(C.shellM, _a, _b.sub(_a).multiplyScalar(100 / SH.D), 7); C.shellM.visible = true;
+      const L = (this.sl || _a).distanceTo(_a), n = Math.min(80, Math.ceil(L / 1.0)); for (let i = 0; i < n; i++) { const q = _tv.copy(this.sl || _a).lerp(_a, (i + 1) / n); SS.spawn(q.x, q.y, q.z, 0, 0.2, 0, 0.9, 0.25, 0.9, 0xece6dc, 0xa8a49e, 0.45, 0, 0, 0.3); }
       this.sl = (this.sl || Vc()).copy(_a); }
     else C.shellM.visible = false;
     if (this.once(1.52)) column(Vc(C.rdd2.pos.x - 22, 0, C.rdd2.pos.z + 14), 16);
@@ -733,7 +841,7 @@ function buildJetPath(p0, side, t0) {
     const pitch = climb * 0.3;
     const dir = Vc(Math.cos(psi) * Math.cos(pitch), Math.sin(pitch), Math.sin(psi) * Math.cos(pitch));
     tab.push({ p: p.clone(), dir: dir.clone(), roll: side * 1.32 * sm(t0 - 0.15, t0 + 0.25, t), burner: sm(t0 - 0.3, t0 + 0.1, t), v });
-    psi += side * 1.25 * turn * JET.dt * (1 - 0.35 * sm(t0 + 1.7, t0 + 2.4, t));
+    psi += side * 1.3 * turn * JET.dt * (1 - 0.4 * sm(t0 + 2.2, t0 + 2.8, t));
     p.addScaledVector(dir, v * JET.dt); t += JET.dt;
   }
   return tab;
@@ -762,7 +870,7 @@ function updateMissiles(tabs, dt) {
     M.mesh.visible = true; M.mesh.position.copy(_a); M.mesh.lookAt(_b);
     if (s > 0.15 && dt > 0 && M.last) {
       const L = M.last.distanceTo(_a), n = Math.min(70, Math.ceil(L / 1.0));
-      for (let i = 0; i < n; i++) { const q = _tv.copy(M.last).lerp(_a, (i + 1) / n); PW.spawn(q.x, q.y, q.z, rand(-0.3, 0.3), rand(0.1, 0.5), rand(-0.3, 0.3), rand(0.8, 1.2), 0.45, rand(1.3, 1.9), 0xf6f4f0, 0x9c9a96, -0.2, 0.6); }
+      for (let i = 0; i < n; i++) { const q = _tv.copy(M.last).lerp(_a, (i + 1) / n); SS.spawn(q.x, q.y, q.z, rand(-0.4, 0.4) + WIND.x * 0.2, rand(0.1, 0.6), rand(-0.4, 0.4), rand(1.6, 2.4), 0.35, rand(1.6, 2.6), 0xf4f2ee, 0xb0aca6, 0.55, 0, -0.2, 0.6); }
       PF.spawn(_a.x, _a.y, _a.z, 0, 0, 0, 0.05, 1.5, 0.5, 0xfff4c0, 0xffa030);
     }
     M.last = (M.last || Vc()).copy(_a);
@@ -796,7 +904,13 @@ shot('jetIn', 22.4, 24.8, {
 });
 shot('jetOut', 24.8, 27.2, {
   look: 'day', shake: 0.1,
-  setup() { setupMissiles(); },
+  setup() {
+    setupMissiles();
+    for (const M of MS) {   // the trail each missile laid before the cut
+      const age = 24.8 - M.t0;
+      for (let s = 0.15; s < age; s += 0.004) { missilePos(M, s, _a); const left = 2.0 - (age - s); if (left > 0.05) SS.spawn(_a.x, _a.y, _a.z, rand(-0.4, 0.4), rand(0.1, 0.6), rand(-0.4, 0.4), left, lerp(0.35, 2.2, (age - s) / 2), 2.6, 0xf4f2ee, 0xb0aca6, lerp(0.55, 0.2, (age - s) / 2), 0, -0.2, 0.6); }
+    }
+  },
   update(lt, dt) {
     const tabs = 24.8 + lt; jetsAt(tabs, dt); updateMissiles(tabs, dt); missileHits(this);
     harborAA(this, dt, C.jet.pos, 16);
@@ -807,16 +921,16 @@ shot('jetOut', 24.8, 27.2, {
         this['ct' + k] = 0.015; for (const s of [-1, 1]) { local(P, s * 4.6, -0.2, -1.5, _a); PW.spawn(_a.x, _a.y, _a.z, 0, 0, 0, 0.9, 0.3, 0.9, 0xffffff, 0xe6ebf0); }
       }
     }
-    for (const t0 of [0.7, 0.95, 1.2, 1.45]) if (this.once(t0)) { const j = jetAt(0, tabs - 22.4); flares(C.jet.pos.clone().addScaledVector(j.dir, -5), j.dir.clone().multiplyScalar(j.v), 4); }
-    for (const t0 of [0.85, 1.15]) if (this.once(t0)) { const j = jetAt(1, tabs - 22.4); flares(C.jet2.pos.clone().addScaledVector(j.dir, -5), j.dir.clone().multiplyScalar(j.v), 4); }
+    for (const t0 of [0.45, 0.7, 0.95, 1.2, 1.45]) if (this.once(t0)) { const j = jetAt(0, tabs - 22.4); flares(C.jet.pos.clone().addScaledVector(j.dir, -5), j.dir.clone().multiplyScalar(j.v), 4); }
+    for (const t0 of [0.55, 0.85, 1.15]) if (this.once(t0)) { const j = jetAt(1, tabs - 22.4); flares(C.jet2.pos.clone().addScaledVector(j.dir, -5), j.dir.clone().multiplyScalar(j.v), 4); }
     if (this.once(1.3)) { const p = boxTop(KEEP(HR)).add(Vc(-40, -10, 60)); boom(p, 14, { ground: p.y - 8, ringK: 3 }); debris(p, 6, 30, 0x55504a); }
     if (this.once(1.8)) { const p = boxTop(KEEP(HR)).add(Vc(60, -12, -50)); boom(p, 12, { ground: p.y - 8, ringK: 3 }); }
   },
   cam(lt) {
     const tau = 24.8 + lt - 22.4, j = jetAt(0, tau), j0 = jetAt(0, 2.4), right = Vc(-j0.dir.z, 0, j0.dir.x);
     const back = j0.p.clone().addScaledVector(j0.dir, 80 * (1 - Math.exp(-(tau - 2.4) * 1.1)) - 46).addScaledVector(right, 6).add(Vc(0, 13 + lt * 3, 0));
-    const look = Vc(2000, 26, 0).lerp(j.p, 0.5 + 0.4 * sm(0.8, 2.0, lt));
-    return CAM(back, look, lerp(42, 50, sm(0.8, 2.2, lt)), 0.02 * Math.sin(lt * 1.4));
+    const look = Vc(2000, 26, 0).lerp(j.p, 0.55 + 0.42 * sm(0.3, 1.4, lt));
+    return CAM(back, look, lerp(44, 54, sm(0.4, 2.0, lt)), 0.02 * Math.sin(lt * 1.4));
   },
 });
 // 10. dogfights over Turtle Cay: a Blue jet guns down a Red fighter, another pair turns behind them
@@ -845,8 +959,8 @@ shot('dogfight', 27.2, 29.6, {
       for (const s of [-1, 1]) { local(C.jet, s * 0.9, -0.3, 4.2, _a); const aimP = red.clone().add(Vc(rand(-2, 2), rand(-1.5, 1.5), rand(-2, 2))); tracer(_a, aimP.sub(_a), 900, 0.12, 9); gunPop(_a, redDir, 0.7); }
     }
     if (!this.dead && lt > 0.55 && firing && Math.random() < 0.55) sparks(red.clone().add(Vc(rand(-2, 2), rand(-1, 1), rand(-2, 2))), 3, 10, 0.4);
-    if (!this.dead && lt > 0.95 && dt > 0) { const q = red.clone().addScaledVector(redDir, -6); PS.spawn(q.x, q.y, q.z, 0, 1, 0, 1.4, 0.6, 2.4, 0x2a2826, 0x5a5652, 0, 0.6); if (lt > 1.3) PF.spawn(q.x, q.y, q.z, 0, 0, 0, 0.25, 1.1, 0.2, 0xffb030, 0xd04010); }
-    if (!this.dead && this.once(1.75)) { this.dead = true; C.rfig.g.visible = false; boom(red, 10, { ring: false }); debris(red, 9, 26, 0x8c2a22); shake(0.9); screenFlash(0.15); }
+    if (!this.dead && lt > 0.95 && dt > 0) { const q = red.clone().addScaledVector(redDir, -6), l0 = this.rl || q.clone(), n = Math.min(30, Math.ceil(l0.distanceTo(q) / 0.8)); for (let j = 0; j < n; j++) { const s = _tv.copy(l0).lerp(q, (j + 1) / n); SS.spawn(s.x, s.y, s.z, 0, 1, 0, 1.8, rand(0.5, 0.8), rand(2.2, 3.4), 0x2a2826, 0x5a5652, 0.8, 0, 0, 0.6); if (lt > 1.3 && j % 2 === 0) SF.spawn(s.x, s.y, s.z, 0, 0, 0, 0.3, 1.4, 0.6, 0xffb040, 0xd04010, 1.2, 0); } this.rl = q; }
+    if (!this.dead && this.once(1.75)) { this.dead = true; C.rfig.g.visible = false; boom(red, 7, { ring: false }); debris(red, 9, 26, 0x8c2a22); shake(0.9); screenFlash(0.1); }
     amb(this, dt, { flak: { box: [-300, 500, 180, 380, 200, 1000], rate: 4 } });
   },
   cam(lt) {
@@ -870,12 +984,13 @@ shot('boat', 30.8, 33.2, {
     const g = C.gb.guns[0]; g.yaw.rotation.y = 0.04 + Math.sin(lt * 1.7) * 0.03; g.pitch.rotation.x = -0.05;
     if (lt > 0.4 && lt < 1.2 && dt > 0 && (this.gt = (this.gt || 0) - dt) <= 0) {
       this.gt = 0.06; const b = (this.bi = ((this.bi || 0) + 1) % 2); gunMuzzle(g, b, _a); gunDir(g, _d);
-      gunPop(_a, _d, 1.1); tracer(_a, _d.clone().add(Vc(rand(-0.01, 0.01), rand(-0.005, 0.01), rand(-0.01, 0.01))), 520, 0.6, 6); recoil(g, 0.18, 0.08);
+      gunPop(_a, _d, 1.1); tracer(_a, _d.clone().add(Vc(rand(-0.01, 0.01), rand(-0.005, 0.01), rand(-0.01, 0.01))), 520, 0.6, 6); recoil(g, 0.16, 0.14);
       if (Math.random() < 0.5) splash(Vc(x + 280 + rand(-20, 20), 0, 330 + rand(-12, 12)), 1.3, true);
     }
     // the Red boat shoots back across the bows, then its magazine goes up
     if (!this.rdead) stream(this, 'rgb', local(C.rgb, 0, 2.5, -5), Vc(x + rand(-10, 30), 2, 300 + rand(-8, 8)), lt < 1.8 ? 12 : 0, dt, { speed: 520, life: 0.8, spread: 0.015, len: 6, pop: 0.9 });
     if (!this.rdead && this.once(2.0)) { this.rdead = true; C.rgb.g.visible = false; const p = Vc(rx, 2, 330); boom(p, 11, {}); column(Vc(rx, 0, 330), 12); debris(p, 8, 24, 0x8c2a22); }
+    if (this.once(0.12)) column(Vc(x - 55, 0, 245), 12);
     if (this.once(0.55)) column(Vc(x - 30, 0, 252), 13);
     if (this.once(1.25)) column(Vc(x - 75, 0, 238), 15);
     if (this.once(1.95)) column(Vc(x + 2, 0, 226), 12);
@@ -883,7 +998,7 @@ shot('boat', 30.8, 33.2, {
     if (this.torp) {
       const tp = this.torp; tp.t += dt; tp.v.y -= 12 * dt; tp.p.addScaledVector(tp.v, dt);
       if (tp.p.y < 0 && !tp.wet) { tp.wet = true; splash(Vc(tp.p.x, 0, tp.p.z), 3.5, true); }
-      if (tp.wet) { tp.p.y = Math.max(tp.p.y, -1.2); tp.v.y = 0; tp.v.x = 46; if (dt > 0) fxWake.spawn(tp.p.x, 0.09, tp.p.z, 0, 0, 0, 2.2, 0.5, 2.2, 0xffffff); }
+      if (tp.wet) { tp.p.y = Math.max(tp.p.y, -1.2); tp.v.y = 0; tp.v.x = 46; if (dt > 0) for (let j = 0; j < 2; j++) PWK.spawn(tp.p.x - j * 0.75, 0.09, tp.p.z, 0, 0, 0, 2.2, 0.9, 2.4, 0xffffff); }
       C.torp.position.copy(tp.p); C.torp.rotation.set(0, Math.PI / 2, 0); C.torp.visible = tp.p.y > -0.9;
     }
   },
@@ -905,7 +1020,7 @@ shot('torpedo', 33.2, 35.6, {
     TP.forEach((tp, i) => {
       const tgt = local(C.rdd, tp.at[0] * C.rdd.W, 0, tp.at[1], Vc()); tgt.y = 0;
       const k = clamp(lt / tp.hit, 0, 1), p = tp.from.clone().lerp(tgt, k);
-      if (k < 1 && dt > 0 && this.tl[i]) { const L = this.tl[i].distanceTo(p), n = Math.ceil(L / 1.1); for (let j = 0; j < n; j++) { const q = _tv.copy(this.tl[i]).lerp(p, (j + 1) / n); fxWake.spawn(q.x, 0.09, q.z, 0, 0, 0, 2.8, 0.5, 2.2, 0xffffff); } if (Math.random() < 0.8) PW.spawn(p.x + rand(-0.5, 0.5), 0.2, p.z + rand(-0.5, 0.5), 0, rand(0.5, 1.5), 0, 0.5, 0.2, 0.5, 0xffffff, 0xe0f0f8, 0, 0); }
+      if (k < 1 && dt > 0 && this.tl[i]) { const L = this.tl[i].distanceTo(p), n = Math.ceil(L / 1.1); for (let j = 0; j < n; j++) { const q = _tv.copy(this.tl[i]).lerp(p, (j + 1) / n); PWK.spawn(q.x, 0.09, q.z, 0, 0, 0, 2.8, 0.9, 2.6, 0xffffff); } if (Math.random() < 0.8) PW.spawn(p.x + rand(-0.5, 0.5), 0.2, p.z + rand(-0.5, 0.5), 0, rand(0.5, 1.5), 0, 0.5, 0.2, 0.5, 0xffffff, 0xe0f0f8, 0, 0); }
       this.tl[i] = (this.tl[i] || Vc()).copy(p);
       if (this.once(tp.hit)) { this.hits++; column(tgt, i ? 22 : 26); boom(tgt.clone().setY(2), i ? 11 : 13, { ring: false }); debris(tgt.clone().setY(3), 6, 24); shake(0.7); screenFlash(0.1); this.e.push([addEmitter(local(C.rdd, -2, 6, tp.at[1]), 5), tp.at[1]]); }
     });
@@ -923,7 +1038,7 @@ shot('cardIslands', 36.8 - 1.2, 36.8, { card: true });
 shot('island', 36.8, 39.2, {
   look: 'day', shake: 0.12,
   setup() {
-    setIslandOwner(ISL.crown, BLUE);
+    setIslandOwner(ISL.crown, BLUE); for (const P of PADS) P.group.visible = false;
     this.tr = TURRETS.filter(t => t.type === 'cannon' && Math.hypot(t.pos.x, t.pos.z) < 160).sort((a, b) => b.pos.x - a.pos.x)[0];
     this.aa = TURRETS.filter(t => t.type === 'aa' && Math.hypot(t.pos.x, t.pos.z) < 160);
     smokes([[-700, -260, 8], [-560, 280, 6]], 3);
@@ -951,7 +1066,7 @@ shot('island', 36.8, 39.2, {
   },
   cam(lt) {
     const tr = this.tr, c = tr ? tr.pos : Vc(-55, 11, 18);
-    const sh = C.rdd.pos; return CAM(Vc(c.x + 24 - lt * 1.5, c.y + 8.5, c.z - 11 + lt * 0.8), Vc(lerp(c.x, sh.x, 0.85), 8, lerp(c.z, sh.z, 0.85)), 38);
+    const sh = C.rdd.pos; return CAM(Vc(c.x + 34 - lt * 1.5, c.y + 14, c.z - 15 + lt * 0.8), Vc(lerp(c.x, sh.x, 0.7), 6, lerp(c.z, sh.z, 0.7)), 36);
   },
 });
 // 16 and 17: the fleet's anti-aircraft barrage: close on a destroyer's guns as a Red bomber is blown apart
@@ -966,7 +1081,7 @@ function fleetAA(sh, t, dt, dead) {
     const g = S.guns[gi], b = dead[k] ? bomberAt(1 - k, t) : bomberAt(k, t); aimGun(g, b);
     if (dt > 0 && ((sh['g' + k + gi] = (sh['g' + k + gi] || 0) - dt) <= 0)) {
       sh['g' + k + gi] = 0.12; gunMuzzle(g, (sh['b' + k + gi] = ((sh['b' + k + gi] || 0) + 1) % 2), _a); gunDir(g, _d);
-      gunPop(_a, _d, 1.6); tracer(_a, _d.clone().add(Vc(rand(-0.03, 0.03), rand(-0.02, 0.03), rand(-0.03, 0.03))), 620, 0.6, 9, 0.2); recoil(g, 0.4, 0.11);
+      gunPop(_a, _d, 1.6); tracer(_a, _d.clone().add(Vc(rand(-0.03, 0.03), rand(-0.02, 0.03), rand(-0.03, 0.03))), 620, 0.6, 9, 0.2); recoil(g, 0.38, 0.16);
     }
   }
   amb(sh, dt, { flak: { box: [-520, -60, 140, 260, -460, -260], rate: 16, size: 1.1 } });
@@ -977,11 +1092,11 @@ shot('aa', 39.2, 40.4, {
   update(lt, dt) {
     const t = 39.2 + lt; fleetAA(this, t, dt, this.dead);
     for (const k of [0, 1]) if (!this.dead[k]) placePlane(k ? C.rbomb2 : C.rbomb, bomberAt(k, t), Vc(-1, -0.03, 0.05), 0.15 + Math.sin(lt * 2 + k) * 0.05, dt);
-    if (!this.dead[0] && lt > 0.5 && dt > 0) smokePuff(bomberAt(0, t).add(Vc(4, 0, 0)), 3, true);
+    if (!this.dead[0] && lt > 0.5 && dt > 0) for (let j = 0; j < 6; j++) { const q = bomberAt(0, t - j * dt / 6).add(Vc(5, 0, 0)); SS.spawn(q.x, q.y, q.z, rand(-0.6, 0.6) + WIND.x * 0.4, rand(0.3, 1), rand(-0.6, 0.6), rand(2, 3), rand(0.6, 0.9), rand(2.6, 4), pick([0x2a2826, 0x34302d, 0x222020]), 0x5a5652, 0.75, 0, -0.2, 0.6); }
     if (!this.dead[0] && this.once(1.1)) { this.dead[0] = true; C.rbomb.g.visible = false; const p = bomberAt(0, t); boom(p, 15, { ring: false }); debris(p, 12, 30, 0x8c2a22); screenFlash(0.2); }
   },
   cam(lt) { const g = C.dd.guns[2]; g.yaw.updateMatrixWorld(true); const gp = Vc().setFromMatrixPosition(g.yaw.matrixWorld);
-    const bp = bomberAt(0, 39.2 + Math.min(lt, 1.1)); return CAM(local(C.dd, -0.6, 7.3, -6.9), gp.clone().addScaledVector(bp.sub(gp).normalize(), 40), 56, -0.05); },
+    const bp = bomberAt(0, 39.2 + Math.min(lt, 1.1)); return CAM(local(C.dd, 1.7, 6.7, -7.0), gp.clone().addScaledVector(bp.sub(gp).normalize(), 40), 46, -0.05); },
 });
 shot('aaWide', 40.4, 41.6, {
   look: 'smoke', shake: 0.3,
@@ -992,7 +1107,7 @@ shot('aaWide', 40.4, 41.6, {
     if (!this.fell && this.once(0.12)) { this.fell = true; this.dead[1] = true; boom(C.rbomb2.pos.clone(), 9, { ring: false }); wreck(C.rbomb2, Vc(-50, -8, 6), 0.3); }
     if (this.once(0.5)) { for (let i = 0; i < 3; i++) fireTurret(C.bb.guns[i], 9, 460, 2.2, 1.5); flashLight(local(C.bb, 0, 12, 0), 8, 4); shake(0.8); }
   },
-  cam(lt) { const x = ddX(40.4 + lt); return CAM(Vc(x + 70 - lt * 4, 3.4, -112 - lt * 2), Vc(-290, 58 + lt * 4, -300), 56, 0.03); },
+  cam(lt) { const x = ddX(40.4 + lt); return CAM(Vc(x + 40 - lt * 4, 3.2, -150 - lt * 2), Vc(-300, 52 + lt * 4, -300), 52, 0.03); },
 });
 // 18. the storm: a B-52 comes out of the cloud with two jets flying escort
 const b52At = t => Vc(727 + 95 * (t - 41.6), 560, -40);
@@ -1028,7 +1143,9 @@ shot('bombs', 45.0, 47.6, {
       if (!d.p) { d.p = d.b.position.clone(); d.v = Vc(95, -5, 0); }
       d.v.y -= 9.8 * dt; d.p.addScaledVector(d.v, dt); d.b.position.copy(d.p); d.b.rotateX(dt * 0.06);
     }
-    amb(this, dt, { flak: { box: [p.x - 60, p.x + 260, 500, 620, -150, 110], rate: 9, size: 1.2 }, aa: [{ from: Vc(p.x + 600, 30, -30), to: [p.x - 40, p.x + 120, 540, 600, -80, 40], rate: 10, speed: 900, life: 1.2, len: 14 }] });
+    applyFlashLight(0.3 + 0.5 * FX.lights.reduce((m, L) => Math.max(m, L.k), 0));
+    if ((this.fl = (this.fl || 0) - dt) <= 0 && dt > 0) { this.fl = 0.3; const q = p.clone().add(Vc(rand(-40, 120), rand(-50, 40), rand(-70, 70))); flak(q, 1.3); flashLight(q, 2.5, 6); }
+    amb(this, dt, { flak: { box: [p.x - 60, p.x + 260, 480, 620, -150, 110], rate: 14, size: 1.2 }, aa: [{ from: Vc(p.x + 600, 30, -30), to: [p.x - 40, p.x + 120, 540, 600, -80, 40], rate: 10, speed: 900, life: 1.2, len: 14 }] });
     if (this.once(0.55)) { flak(p.clone().add(Vc(28, -18, 22)), 1.4); shake(0.6); }
     if (this.once(1.9)) { flak(p.clone().add(Vc(-12, -26, -30)), 1.4); shake(0.5); }
   },
@@ -1064,7 +1181,7 @@ shot('destroy', 47.6, 51.6, {
       for (let i = 0; i < 60; i++) fxFire.spawn(K.x + rand(-14, 14), K.y + rand(0, 10), K.z + rand(-14, 14), rand(-10, 10), rand(14, 40), rand(-10, 10), rand(1.4, 2.8), rand(10, 18), 0, pick([0xffe066, 0xffb030, 0xff7a1a]), 0xb02a08, -2, 0.8);
       for (let i = 0; i < 50; i++) fxSmoke.spawn(K.x + rand(-10, 10), K.y + rand(0, 16), K.z + rand(-10, 10), rand(-3, 3), rand(18, 40), rand(-3, 3), rand(5, 8), rand(8, 12), rand(18, 28), 0x3a3430, 0x8a8480, -1.2, 0.9);
       for (let i = 0; i < 30; i++) { const a = rand(TAU), sp = rand(14, 26); fxSmoke.spawn(K.x, K.y + 70, K.z, Math.cos(a) * sp, rand(16, 26), Math.sin(a) * sp, rand(5.5, 8), 12, rand(24, 34), 0x5a524c, 0xa6a09a, 0, 0.5); }
-      sparks(K, 60, 70, 1.6); shockSphere(K, 160, 0.5, 0.5);
+      sparks(K, 60, 70, 1.6);
       debris(K, 14, 55, 0x4a4540); flashLight(K.clone().add(Vc(0, 40, 0)), 14, 2.2); screenFlash(0.4); shake(1.0); C.fire.k = 1;
       ring(Vc(K.x, 0.5, K.z), 1100, 2.2, 0.2, 0xffe0c0);
       for (const B of HR.boxes) if (hs(B.minX, B.maxZ) < 0.35) addEmitter(boxTop(B), 3 + hs(B.minZ, 1) * 4);
@@ -1082,7 +1199,7 @@ shot('after', 51.6, 54.0, {
   update(lt, dt) {
     placeShip(C.dd, 1735, 75 - lt * 12, Math.PI, 12, 51.6 + lt, dt);
     placeShip(C.rdd3, 1758, -95, 0.9, 0, 51.6 + lt, 0);
-    if (dt > 0 && Math.random() < 0.6) PF.spawn(camera.position.x + rand(30, 160), rand(0, 20), camera.position.z + rand(-60, 60), rand(-1, 1), rand(2, 5), rand(-1, 1), rand(1.5, 3), 0.25, 0.05, 0xffa040, 0xff5010, -0.4, 0.3);
+    if (dt > 0 && Math.random() < 0.6) PF.spawn(1615 + lt * 4 + rand(30, 160), rand(0, 20), -60 + rand(-60, 60), rand(-1, 1), rand(2, 5), rand(-1, 1), rand(1.5, 3), 0.25, 0.05, 0xffa040, 0xff5010, -0.4, 0.3);
     for (const [t0, dx, dz] of [[0.7, -40, 60], [1.8, 70, -30]]) if (this.once(t0)) { const p = boxTop(KEEP(HR)).add(Vc(dx, -14, dz)); boom(p, 7, { ground: p.y - 4, ringK: 2 }); }
   },
   cam(lt) { return CAM(Vc(1615 + lt * 4, 6.5, -60), Vc(2066, 20, 10), 38); },
@@ -1100,13 +1217,14 @@ let cur = null, curT = -1, film = null, ISL = {};
 function once(lt) { const k = 'o' + lt; if (this._done[k] || this._lt < lt) return false; this._done[k] = true; return true; }
 function shotAt(t) { for (const s of SHOTS) if (t < s.t1) return s; return SHOTS[SHOTS.length - 1]; }
 function begin(s) {
+  for (const k of Object.keys(s)) if (!s._keys.has(k) && k[0] !== '_') delete s[k];   // per-shot scratch from the last run
   cur = s; s._done = {}; s._lt = 0; s._acc = {}; s.once = once;
   for (const g of CAST) g.visible = false;
   clearFx();
   C.beacons.visible = false; C.bank.visible = false; C.torp.visible = false; C.shellM.visible = false;
   C.missiles.forEach(m => m.visible = false); C.bombs.forEach(b => b.visible = false);
   for (const P of JETS) { P.mis.forEach(m => m.visible = true); P.flame(0); }
-  for (const S of SHIPS) { S.roll = 0; S.sink = 0; S.pitch = 0; S.wakeT = 0; for (const g of S.guns) { g.yaw.rotation.y = g.yaw.userData.y0; g.pitch.rotation.x = g.pitch.userData.x0; } }
+  for (const S of SHIPS) { S.roll = 0; S.sink = 0; S.pitch = 0; S.wakeT = 0; S._fresh = true; for (const g of S.guns) { g.yaw.rotation.y = g.yaw.userData.y0; g.pitch.rotation.x = g.pitch.userData.x0; } }
   harborWhole(HR); harborWhole(HB); C.fire.k = 0;
   if (!s.card) setLook(LOOKS[s.look]);
   applyFlashLight(0);
@@ -1117,11 +1235,13 @@ function advance(s, lt, dt) { s._lt = lt; if (s.update) s.update(lt, dt); update
 // `speed` of real time)
 function goTo(t) {
   const s = shotAt(t), sp = s.speed;
-  if (s !== cur || t < curT - 1e-6 || t - curT > 0.35) {
-    begin(s); let lt = 0; advance(s, 0, 0);
+  if (s !== cur || t < curT - 1e-6) {
+    begin(s); if (!s.card) { const c = s.cam(0); camera.position.copy(c.p); }
+    let lt = 0; advance(s, 0, 0);
     const target = (t - s.t0) * sp; while (lt < target - 1e-6) { const d = Math.min(1 / 30, target - lt); lt += d; advance(s, lt, d); }
   } else {
-    let lt = (curT - s.t0) * sp; const target = (t - s.t0) * sp;
+    // forward within the shot: step on, but never more than a second of catching up after a stall
+    let lt = Math.max((curT - s.t0) * sp, (t - s.t0) * sp - 1); const target = (t - s.t0) * sp;
     while (lt < target - 1e-6) { const d = Math.min(1 / 30, target - lt); lt += d; advance(s, lt, d); }
   }
   curT = t;
@@ -1138,11 +1258,13 @@ function draw(s, t) {
   camera.rotateZ(sh * 0.004 * wob(e * 0.9, 7));
   camera.updateMatrixWorld(true);
   sky.position.copy(camera.position);
-  waterMat.uniforms.time.value = t; waterMat.uniforms.camPos.value.copy(camera.position);
-  if (clouds) clouds.position.x = Math.sin(t * 0.003) * 500;
+  const tw = s.t0 + (t - s.t0) * s.speed;   // world time: slow in a slow-motion shot
+  waterMat.uniforms.time.value = tw; waterMat.uniforms.camPos.value.copy(camera.position);
+  if (clouds) clouds.position.x = Math.sin(tw * 0.003) * 500;
+  softLight();
   if (s.shadow) aimShadow(Vc(s.shadow[0], 0, s.shadow[1]), s.shadow[2]);
   else { const d = Math.min(400, Math.max(90, c.p.distanceTo(c.l) * 0.9)); aimShadow(c.l, d); }
-  for (const H of HARBORS) H.flag.rotation.y = (H.sgn > 0 ? 0 : Math.PI) + Math.sin(t * 2.2) * 0.2;
+  for (const H of HARBORS) H.flag.rotation.y = (H.sgn > 0 ? 0 : Math.PI) + Math.sin(tw * 2.2) * 0.2;
   if (film) {
     try { film.render(LOOK, t, FX.flash * 0.6); return; }
     catch (err) { console.warn('trailer: film finish off', err); film = null; renderer.toneMapping = T.ACESFilmicToneMapping; }
@@ -1175,7 +1297,7 @@ function init() {
   C.bombs = Array.from({ length: 6 }, () => { const b = C.b52.bomb.clone(); b.visible = false; scene.add(b); return b; });
   C.beacons = makeBeacons(); C.bank = makeCloudBank();
   C.fire = { l: new T.PointLight(0xff7a30, 0, 700, 2), k: 0 }; C.fire.l.position.set(2060, 45, 0); scene.add(C.fire.l);
-  JET.paths = [buildJetPath(Vc(1300, 38, -30), -1, 3.0), buildJetPath(Vc(1278, 41, -4), 1, 3.12)];
+  JET.paths = [buildJetPath(Vc(1300, 38, -30), -1, 2.55), buildJetPath(Vc(1278, 41, -4), 1, 2.68)];
   renderer.toneMapping = T.NoToneMapping;
   // a bigger shadow map where the device can take it (the shots' shadow boxes are up to 700 m across)
   SHADOW_MAP = renderer.capabilities.maxTextureSize >= 8192 && !(matchMedia && matchMedia('(pointer: coarse)').matches) ? 4096 : 2048;
@@ -1199,6 +1321,7 @@ window.HBT = {
   get scale() { return scale; },
   get flash() { return FX.flash; },
   get film() { return !!film; },
+  get _pools() { return { PF, PW, PS, SS, SF, PWK, FX }; },   // for checking from the console
 };
 })();
 </script>
@@ -2143,7 +2266,8 @@ function updateTitle(t) {
   const a = sm(-0.02, 0.18, k), s = 1.14 - 0.14 * (1 - Math.pow(1 - clamp(k / 2.2, 0, 1), 3)), blur = 16 * (1 - sm(0, 0.5, k));
   TT.name.style.opacity = a; TT.name.style.transform = `scale(${s})`; TT.name.style.filter = `blur(${blur.toFixed(1)}px) drop-shadow(0 0 22px rgba(255,140,60,.28)) drop-shadow(0 6px 0 rgba(0,0,0,.35))`;
   TT.pre.style.opacity = sm(0.6, 1.4, k); TT.rule.style.transform = `scaleX(${sm(0.3, 1.4, k)})`;
-  TT.tag.style.opacity = sm(1.6, 2.3, k); TT.avail.style.opacity = sm(2.6, 3.4, k) * 0.9 * (1 - sm(60.2, 60.9, t));
+  const short = innerHeight < 560, endK = sm(60.2, 60.9, t);
+  TT.tag.style.opacity = sm(1.6, 2.3, k) * (short ? 1 - endK : 1); TT.avail.style.opacity = sm(2.6, 3.4, k) * 0.9 * (1 - sm(60.2, 60.9, t));
   TT.root.style.transform = `translateY(${(-sm(60.2, 61.2, t) * 7).toFixed(2)}vh)`;
 }
 // ---------- fades to and from black ----------
