@@ -10,9 +10,9 @@ import { riderPose, toWorld } from './rider.js';
 // Each rider has a full colour scheme: bike plastics, jersey, pants, helmet.
 export const RIDERS = [
   { name: 'You',    color: 0xe8331c, accent: 0xffffff, jersey: 0xe8331c, jersey2: 0xffffff, pants: 0x1c1c22, helmet: 0xffffff, helmet2: 0xe8331c, frame: 0x2a2a2e, num: 1 },
-  { name: 'Kenji',  color: 0x1f6fe0, accent: 0xffd23f, jersey: 0x1f6fe0, jersey2: 0xffd23f, pants: 0xf2f2f2, helmet: 0xffd23f, helmet2: 0x1f6fe0, frame: 0x9aa4b4, num: 27 },
-  { name: 'Mara',   color: 0x35c24a, accent: 0x111111, jersey: 0x111111, jersey2: 0x35c24a, pants: 0x35c24a, helmet: 0x35c24a, helmet2: 0x111111, frame: 0x1a1a1a, num: 44 },
-  { name: 'Diesel', color: 0xff8a00, accent: 0x6b2bd9, jersey: 0x6b2bd9, jersey2: 0xff8a00, pants: 0x6b2bd9, helmet: 0xff8a00, helmet2: 0x6b2bd9, frame: 0x2a2a2e, num: 9 },
+  { name: 'Bolt',   color: 0x1f6fe0, accent: 0xffd23f, jersey: 0x1f6fe0, jersey2: 0xffd23f, pants: 0xf2f2f2, helmet: 0xffd23f, helmet2: 0x1f6fe0, frame: 0x9aa4b4, num: 27 },
+  { name: 'Viper',  color: 0x35c24a, accent: 0x111111, jersey: 0x111111, jersey2: 0x35c24a, pants: 0x35c24a, helmet: 0x35c24a, helmet2: 0x111111, frame: 0x1a1a1a, num: 44 },
+  { name: 'Blaze',  color: 0xff8a00, accent: 0x6b2bd9, jersey: 0x6b2bd9, jersey2: 0xff8a00, pants: 0x6b2bd9, helmet: 0xff8a00, helmet2: 0x6b2bd9, frame: 0x2a2a2e, num: 9 },
 ];
 // Depth offsets (render only). The player is in the nearest lane.
 // Spread wide enough that, with the camera's slight downward tilt, each rider

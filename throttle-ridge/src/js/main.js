@@ -296,7 +296,7 @@ requestAnimationFrame(frame);
 
 // Test hook for automated checks.
 window.__game = {
-  game, startRace, input, data: () => data, TRACKS, pause, resume, ui, createAI,
+  game, startRace, input, data: () => data, TRACKS, pause, resume, ui, createAI, rig,
   // Advance the simulation quickly (used by automated tests).
   simulate(seconds, playerInput) {
     const race = game.race;
