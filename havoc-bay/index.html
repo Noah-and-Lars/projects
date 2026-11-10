@@ -421,7 +421,7 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
-    <h3>v1.3.4 <small>Submarines and helicopters</small></h3>
+    <h3>v1.4 <small>Submarines and helicopters</small></h3>
     <ul>
       <li><b>Three submarines</b> at the boat pads, each its own size and shape: the <b>Seehund</b> (150, an 11 m mini sub with 2 torpedoes), the <b>Seawolf</b> (400, a 32 m attack sub with 4 torpedoes and a deck gun) and the <b>Typhoon</b> (750, a 64 m missile sub with 4 torpedoes and 4 missiles).</li>
       <li><b>Space dives and surfaces.</b> Dived, only torpedoes, depth charges and bombs (at half damage) can hit you, and enemies only see you within about 120 m or with a helicopter's sonar. But you're slower, your deck gun and missiles don't work, you can't claim islands, and your air runs out (40, 60 or 90 seconds). It only refills on the surface.</li>
@@ -693,7 +693,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.3.4';
+const VERSION = '1.4';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -802,7 +802,7 @@ const Sound = (() => {
         case 'lost': tone(523, 523, 0.14, 0.16, 'triangle'); tone(415, 415, 0.3, 0.16, 'triangle', 0.14); break;
         case 'warn': tone(880, 880, 0.12, 0.12, 'square'); break;
         case 'lock': tone(1200, 1200, 0.05, 0.08, 'sine'); break;
-        case 'sonar': tone(1480, 1440, 1.3, 0.2, 'sine'); tone(1480, 1440, 0.9, 0.07, 'sine', 0.55); tone(1480, 1440, 0.6, 0.03, 'sine', 1.0); break; // 1.3.4: a ping and its echoes
+        case 'sonar': tone(1480, 1440, 1.3, 0.2, 'sine'); tone(1480, 1440, 0.9, 0.07, 'sine', 0.55); tone(1480, 1440, 0.6, 0.03, 'sine', 1.0); break; // 1.4: a ping and its echoes
         case 'flare': noise(0.35, 2600, 0.6, 0.3 * v, 'highpass', 600); tone(520, 1400, 0.18, 0.08 * v, 'sawtooth'); break; // 1.3.1
         case 'mwarn': tone(1250, 1250, 0.09, 0.16, 'square'); tone(950, 950, 0.09, 0.16, 'square', 0.11); break; // 1.3.1: missile incoming
         case 'win': [523, 659, 784, 1046].forEach((f, i) => tone(f, f, 0.3, 0.2, 'triangle', i * 0.15)); break;
@@ -1319,7 +1319,7 @@ function shipHull(b, L, W, fb, draft, bowLen, team, sternTaper = 0) {
   b.box(0.1, 0.1, mid - 1, C.white, W / 2 - 0.25, fb + 0.92, z0 + mid / 2); b.box(0.1, 0.1, mid - 1, C.white, -W / 2 + 0.25, fb + 0.92, z0 + mid / 2);
 }
 
-// 1.3.4: submarines, each its own shape. The waterline is y = 0, the bow is +z. peri: where the periscope is (for its
+// 1.4: submarines, each its own shape. The waterline is y = 0, the bow is +z. peri: where the periscope is (for its
 // little wake when dived). Propellers are their own groups (group.userData.subProps) and spin with the speed.
 const SUB_SHAPE = { stingray: { peri: 0.2 }, barracuda: { peri: 4 }, leviathan: { peri: 15.5 } };
 function subProp(group, z, y, r, blades, col, x = 0) {
@@ -1517,7 +1517,7 @@ function buildShipModel(type, team) {
       q = P(0, 1.35, 0.6); b.box(0.9, 0.6, 1.6, C.glass, q[0], q[1], q[2], 0, a, 0);
     };
     parked(6.5, -34, 0.7); parked(6.5, -24, 0.7); parked(-2, -43, -0.6); parked(7, 8, 0.5);
-  } else if (S.sub) { // 1.3.4
+  } else if (S.sub) { // 1.4
     subHull(b, type, S, T, group);
   } else if (type === 'lifeboat') { // 1.3.1: an orange lifeboat off a sinking carrier, two seats under a canopy
     b.box(2.2, 0.9, 4.4, 0xff7a1a, 0, 0.1, -0.3);
@@ -1555,7 +1555,7 @@ for (const k in SHIP_TYPES) SHIP_TYPES[k].speed = Math.round(SHIP_TYPES[k].speed
 SHIP_TYPES.lifeboat = { name: 'Lifeboat', icon: '🛟', cost: 0, hp: 200, len: 5.2, wid: 2.3, top: 2.2, draft: 0.5, speed: 17, accel: 7, turn: 1.3, cam: 12, kill: 20, sound: 'small', hidden: true, life: 240,
   desc: 'Two seats. Get to an island.', guns: [], torps: 0, missiles: 0, seat: [0, 0.8, 0.1] };
 SHIP_ORDER.push('lifeboat');
-// 1.3.4: submarines. Space dives and surfaces. Under the surface (depth past SUB_HIDE) only torpedoes, depth charges and
+// 1.4: submarines. Space dives and surfaces. Under the surface (depth past SUB_HIDE) only torpedoes, depth charges and
 // bombs (at half damage) reach them, but they are slower, their deck guns and missiles don't work, they don't count for
 // claiming islands, and their air (S.air seconds) runs out; it only refills on the surface. Enemies see a dived sub
 // within SUB_SPOT metres, or a helicopter's sonar (P.sonar) finds it. S.depth is how deep it goes.
@@ -1582,7 +1582,7 @@ const PLANE_TYPES = {
 PLANE_TYPES.dual = { name: 'Dual Gunner', icon: '🛩️', cost: 200, hp: 1200, min: 42, max: 96, turn: 1.15, r: 6.5, guns: [[1.9, -0.2, 2.4], [-1.9, -0.2, 2.4]], bombs: 0, missiles: 0,
   gunners: [[0, 1.75, -2.0], [0, -1.05, -1.2]], cam: 22, kill: 85, sound: 'plane', desc: 'Two forward guns, plus a gunner on top and one underneath who shoot at any plane in range.' }; // 1.2
 const PLANE_ORDER = ['fighter', 'jet', 'bomber', 'dual'];
-// 1.3.4: helicopters. They hover: the mouse turns and aims the nose gun, W/S fly forward and back, A/D sideways,
+// 1.4: helicopters. They hover: the mouse turns and aims the nose gun, W/S fly forward and back, A/D sideways,
 // Space climbs and Shift drops. They set down on any flat ground, roof or deck (gently), and landed on your own
 // harbor, an island of yours or your carrier they refuel, rearm and repair like a parked plane. max: top speed,
 // climb: metres a second up, sonar: how far they find dived submarines, bombW: what F drops or fires.
@@ -1696,11 +1696,11 @@ function buildPlaneModel(type, team) {
     b.box(2.2, 0.4, 5, 0x30343a, 0, -1.4, 1);
     prop(4.4, 0.2, 4.35, 1.1); prop(-4.4, 0.2, 4.35, 1.1);
   }
-  else if (PLANE_TYPES[type].heli) heliModel(b, type, T, group, roundel); // 1.3.4
+  else if (PLANE_TYPES[type].heli) heliModel(b, type, T, group, roundel); // 1.4
   const mesh = b.mesh(); group.add(mesh);
   return { group, props, rotors: group.userData.rotors || null };
 }
-// 1.3.4: helicopters, each its own shape: the Hornet a small egg-shaped scout on skids, the Kingfisher a big naval
+// 1.4: helicopters, each its own shape: the Hornet a small egg-shaped scout on skids, the Kingfisher a big naval
 // helicopter on wheels with a sonar dome, the Talon a narrow tandem-seat gunship with stub wings. The main and tail
 // rotors are their own groups (spun in Plane.spin). +z is the nose; the skids or wheels sit HELI_GEAR below the middle.
 function heliRotors(group, y, z, R, blades, tz, ty, tR, tx, col) {
@@ -2455,7 +2455,7 @@ Object.assign(WEAP, {
   sniper: { speed: 950, dmg: 115, life: 1.2, grav: 0, tracer: 0xffffff, len: 7, w: 0.12, snd: 'rifle', rof: 0.75, spread: 0, range: 950, vs: { soldier: 1, ship: 0.3, plane: 0.7, turret: 0.3, harbor: 0.01 } },
   rpg: { speed: 140, dmg: 300, life: 5, grav: 0, splash: 6, model: 'missile', snd: 'missile', rof: 0.6, range: 600, vs: { ship: 0.9, plane: 1, turret: 1, harbor: 0.4, soldier: 1 } },
 });
-// 1.3.4: the Kingfisher's depth charges (they sink, then go off under the water) and the Talon's rockets (unguided).
+// 1.4: the Kingfisher's depth charges (they sink, then go off under the water) and the Talon's rockets (unguided).
 // deep: how hard each one hits a dived submarine (anything without it can't reach one); splashK: the share of dmg the
 // blast does (0.4 if not given)
 Object.assign(WEAP, {
@@ -2540,7 +2540,7 @@ function traceEnts(a, b, team, src, W) {
   for (let i = 0; i < ENTS.length; i++) {
     const e = ENTS[i];
     if (!e.alive || e === src || e.team === team || e.team < 0 || e.kind === 'harbor') continue;
-    if (subUnder(e) && !(W && W.deep)) continue; // 1.3.4: only some weapons reach a dived sub
+    if (subUnder(e) && !(W && W.deep)) continue; // 1.4: only some weapons reach a dived sub
     // quick reject: distance from the centre to the segment
     const c = e.hitCenter();
     const r = e.rad + 2;
@@ -2615,7 +2615,7 @@ function updateProjectiles(dt) {
     if (!done) {
       const gh = landH(p.pos.x, p.pos.z);
       if (p.wn === 'torpedo') { if (gh > -1.2) { impact(p, p.pos, null, null); done = true; } }
-      else if (p.sank) { if (p.pos.y < -5.5 || p.pos.y < gh + 0.3) { impact(p, p.pos, null, null, true); done = true; } } // 1.3.4: a depth charge going down
+      else if (p.sank) { if (p.pos.y < -5.5 || p.pos.y < gh + 0.3) { impact(p, p.pos, null, null, true); done = true; } } // 1.4: a depth charge going down
       else if (W.sinks && gh < -1 && p.pos.y < 0) { p.sank = true; p.vel.set(p.vel.x * 0.15, -9, p.vel.z * 0.15); splash(_v1.set(p.pos.x, 0, p.pos.z), 2); }
       else if (p.pos.y < Math.max(gh, 0)) {
         if (gh < 0) p.pos.y = 0.1; else p.pos.y = gh + 0.1;
@@ -2664,7 +2664,7 @@ function impact(p, point, ent, box, water) {
   else if (box && box.hit && box.owner && box.owner.ent && box.owner.ent.kind === 'harbor') applyDamage(box.owner.ent, W.dmg * W.vs.harbor * k, p);
   if (W.splash) {
     splashDamage(point, W.splash, W.dmg * (W.splashK || 0.4) * k, p, ent);
-    if (p.sank) { const q = _v1.set(point.x, 0, point.z); splash(q, 9); splash(q, 6, true); fxWake.spawn(q.x, 0.1, q.z, 0, 0, 0, 2.4, 6, 30, 0xffffff); if (camera.position.distanceTo(q) < 200) camShake = Math.max(camShake, 0.5); } // 1.3.4: a plume of water
+    if (p.sank) { const q = _v1.set(point.x, 0, point.z); splash(q, 9); splash(q, 6, true); fxWake.spawn(q.x, 0.1, q.z, 0, 0, 0, 2.4, 6, 30, 0xffffff); if (camera.position.distanceTo(q) < 200) camShake = Math.max(camShake, 0.5); } // 1.4: a plume of water
     else explode(point, W.splash * (p.wn === 'bomb' ? 0.75 : 0.6));
   } else {
     if (water) { if (Math.random() < 0.35) fxSmoke.spawn(point.x, 0.2, point.z, 0, rand(5, 8), 0, 0.5, 0.45, 0.1, 0xffffff, 0xd8f2ff, 20); }
@@ -2674,7 +2674,7 @@ function impact(p, point, ent, box, water) {
 function splashDamage(point, R, dmg, p, skip) {
   for (const e of ENTS) {
     if (!e.alive || e === skip || e.team === p.team || e.team < 0 || e.kind === 'harbor') continue;
-    const deep = subUnder(e) ? p.W.deep || 0 : 1; if (!deep) continue; // 1.3.4
+    const deep = subUnder(e) ? p.W.deep || 0 : 1; if (!deep) continue; // 1.4
     const d = e.kind === 'ship' && e.S.sub ? Math.max(0, Math.hypot(e.pos.x - point.x, e.pos.z - point.z) - e.S.len * 0.3) + Math.abs(-e.depth - point.y) * 0.5 : e.hitCenter().distanceTo(point) - e.rad * 0.5; // a sub: along its length
     if (d < R) applyDamage(e, dmg * mult(p.W, e) * deep * (1 - Math.max(0, d) / R), p);
   }
@@ -2795,7 +2795,7 @@ class Gun {
   }
   shoot(spreadMul = 1, src = this.base) { // src: 1.2.6, a gunner seat fires as its gunner
     if (this.cd > 0) return false;
-    if (this.base.depth > 0.6) return false; // 1.3.4: a sub's deck gun is under water
+    if (this.base.depth > 0.6) return false; // 1.4: a sub's deck gun is under water
     const W = this.W, n = this.node;
     const auto = src === this.base && (this.auto || (this.base.kind === 'turret' && !this.base.manned)); // 1.3.1: nobody's aiming it
     n.pitch.updateMatrixWorld(true);
@@ -2871,7 +2871,7 @@ class Ship extends Ent {
     this.box = { minX: -S.wid / 2, maxX: S.wid / 2, minY: -S.draft, maxY: S.top * 0.75, minZ: -S.len / 2, maxZ: S.len / 2 };
     this.roll = 0; this.pitchA = 0; this.bob = 0; this.sink = 0; this.wakeT = 0; this.fxT = 0; this.invuln = 3; this.empty = 0;
     this.trigger = false; this.aim = new V3(); this.hasAim = false;
-    this.depth = 0; if (S.sub) { this.dive = false; this.air = S.air; this.spot = [false, false]; this.pingT = 0; this.pingCd = 0; } // 1.3.4
+    this.depth = 0; if (S.sub) { this.dive = false; this.air = S.air; this.spot = [false, false]; this.pingT = 0; this.pingCd = 0; } // 1.4
     this.updateTransform(0);
   }
   hitCenter() { return this._hc.set(this.pos.x, this.S.top * 0.25 - this.depth, this.pos.z); }
@@ -2912,7 +2912,7 @@ class Ship extends Ent {
       return;
     }
     // driving
-    if (S.sub) subStep(this, dt); // 1.3.4
+    if (S.sub) subStep(this, dt); // 1.4
     const wantSp = this.thr * S.speed * (subUnder(this) ? 0.75 : 1);
     this.speed = approach(this.speed, wantSp, (Math.abs(wantSp) > Math.abs(this.speed) ? S.accel : S.accel * 1.6) * dt);
     const steer = this.rudder * S.turn * clamp(Math.abs(this.speed) / (S.speed * 0.35), 0.25, 1) * (this.speed < -0.5 ? -1 : 1);
@@ -2935,7 +2935,7 @@ class Ship extends Ent {
     }
     // ship to ship bumping (each hull is a line from stern to bow)
     for (const o of ENTS) {
-      if (o === this || o.kind !== 'ship' || !o.alive || subUnder(o) !== subUnder(this)) continue; // 1.3.4: a dived sub passes under
+      if (o === this || o.kind !== 'ship' || !o.alive || subUnder(o) !== subUnder(this)) continue; // 1.4: a dived sub passes under
       const dx = o.pos.x - this.pos.x, dz = o.pos.z - this.pos.z, maxd = (S.len + o.S.len) / 2 + 2;
       if (dx * dx + dz * dz > maxd * maxd) continue;
       const d = segSegDist2D(this, o);
@@ -2969,11 +2969,11 @@ class Ship extends Ent {
     this.roll = damp(this.roll, -steer * Math.min(1, Math.abs(this.speed) / S.speed) * 0.35 * small + Math.sin(tt * 0.9) * 0.03 * small, 2, dt);
     this.pitchA = damp(this.pitchA, -Math.sin(tt * 1.1) * 0.02 * small - (this.thr - this.speed / S.speed) * 0.03 * small, 2, dt);
     this.updateTransform(dt);
-    if (this.group.userData.subProps) for (const pr of this.group.userData.subProps) pr.rotation.z += dt * (this.alive ? 0.6 + this.speed * 0.35 : 0); // 1.3.4
+    if (this.group.userData.subProps) for (const pr of this.group.userData.subProps) pr.rotation.z += dt * (this.alive ? 0.6 + this.speed * 0.35 : 0); // 1.4
     // wake
     const asp = Math.abs(this.speed);
     this.wakeT -= dt;
-    if (S.sub && this.depth > 0.8) { // 1.3.4: dived, only the periscope leaves a little wake (and none from a hidden one)
+    if (S.sub && this.depth > 0.8) { // 1.4: dived, only the periscope leaves a little wake (and none from a hidden one)
       if (asp > 2 && this.wakeT <= 0 && this.group.visible) { this.wakeT = 0.12; const px = this.pos.x + fx * SUB_SHAPE[this.type].peri, pz = this.pos.z + fz * SUB_SHAPE[this.type].peri; fxWake.spawn(px, 0.08, pz, -fx * 0.3, 0, -fz * 0.3, 2, 0.4, 2, 0xffffff); }
     } else if (asp > 2 && this.wakeT <= 0) {
       this.wakeT = S.len > 30 ? 0.09 : 0.06;
@@ -3011,9 +3011,9 @@ class Ship extends Ent {
   }
   fireMissile(target) {
     if (this.missiles <= 0 || this.misCd > 0) return false;
-    if (this.S.sub && this.depth > 0.6) { if (this.driver === PLAYER) showMsg('', 'Surface (Space) to fire missiles'); return false; } // 1.3.4
+    if (this.S.sub && this.depth > 0.6) { if (this.driver === PLAYER) showMsg('', 'Surface (Space) to fire missiles'); return false; } // 1.4
     const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
-    if (this.S.sub) _v1.set(this.pos.x - fx * (2 + (this.missiles % 4) * 2.4), this.S.deckY + 1.2, this.pos.z - fz * (2 + (this.missiles % 4) * 2.4)); // 1.3.4: out of a hatch behind the sail
+    if (this.S.sub) _v1.set(this.pos.x - fx * (2 + (this.missiles % 4) * 2.4), this.S.deckY + 1.2, this.pos.z - fz * (2 + (this.missiles % 4) * 2.4)); // 1.4: out of a hatch behind the sail
     else _v1.set(this.pos.x - fx * this.S.len * 0.24, 9, this.pos.z - fz * this.S.len * 0.24);
     const dir = _v2.set(0, 1, 0);
     if (target) { _v3.copy(target.hitCenter()).sub(_v1).normalize(); dir.add(_v3).normalize(); }
@@ -3037,10 +3037,10 @@ class Ship extends Ent {
     this.driver = null;
   }
 }
-// 1.3.4: diving and surfacing, and the air a dived sub uses up
+// 1.4: diving and surfacing, and the air a dived sub uses up
 function subStep(s, dt) {
   const S = s.S;
-  if (s.pingT > 0) s.pingT -= dt; if (s.pingCd > 0) s.pingCd -= dt; // 1.3.4: sonar ping
+  if (s.pingT > 0) s.pingT -= dt; if (s.pingCd > 0) s.pingCd -= dt; // 1.4: sonar ping
   if (s.dive && s.air <= 0) { s.dive = false; if (s.driver === PLAYER) { showMsg('Out of air!', 'Surfacing. The air refills on the surface'); Sound.play('deny'); } }
   const was = s.depth > SUB_HIDE;
   s.depth = approach(s.depth, s.dive ? S.depth : 0, (s.dive ? 1.5 : 2.4) * dt);
@@ -3071,7 +3071,7 @@ function subSpotted(s, team) {
 }
 // can this team (or, with team < 0, anyone) see this ship? Surfaced ships, your own subs and spotted ones, yes
 function subSeen(e, team) { return !subUnder(e) || team < 0 || e.team === team || !!(e.spot && e.spot[team]) || (team === PLAYER.team && myPing() > 0); }
-// 1.3.4: sonar pings (Q on the Seawolf and the Typhoon). For S.ping.dur seconds a sonar map shows everything:
+// 1.4: sonar pings (Q on the Seawolf and the Typhoon). For S.ping.dur seconds a sonar map shows everything:
 // the Seawolf's only to its captain, the Typhoon's to the whole team (and dived enemy subs count as found).
 // Online, a pinging sub's row says so (pingOn), so every screen knows.
 const pinging = s => !!(s && s.alive && s.S && s.S.ping && (s.pingT > 0 || s.pingOn));
@@ -3142,7 +3142,7 @@ class Plane extends Ent {
     this.fuelMax = P.fuel || 150; this.fuel = this.fuelMax; this.svcT = 0; this.svcDone = false; // 1.2.5
     const M = buildPlaneModel(type, team); this.model = M; this.group = M.group; scene.add(this.group);
     this.right = new V3(1, 0, 0); this.up = new V3(0, 1, 0);
-    if (P.heli) { this.lastFloor = 0; this.speed = 0; this.thr = 0; this.yaw = this.yawWant = heading; this.aimP = 0; this.fwd.set(Math.sin(heading), 0, Math.cos(heading)); this.hin = { f: 0, s: 0, v: 0 }; } // 1.3.4
+    if (P.heli) { this.lastFloor = 0; this.speed = 0; this.thr = 0; this.yaw = this.yawWant = heading; this.aimP = 0; this.fwd.set(Math.sin(heading), 0, Math.cos(heading)); this.hin = { f: 0, s: 0, v: 0 }; } // 1.4
     this.orient(0);
   }
   segHit(a, b) { return segSphere(a, b, this.pos, this.P.r); }
@@ -3173,7 +3173,7 @@ class Plane extends Ent {
       if (this.pos.y < gh + 0.5) { explode(this.pos, 14); crashScar(this.pos); scene.remove(this.group); this.remove(); this.gone = true; }
       return;
     }
-    if (P.heli) { heliUpdate(this, dt); return; } // 1.3.4
+    if (P.heli) { heliUpdate(this, dt); return; } // 1.4
     if (this.landed) { landedUpdate(this, dt); return; } // 1.2.1: on a deck or runway
     // 1.2: going down: no engine, no guns, heavy smoke, and the nose drops (you can still steer it a little)
     if (!this.disabled && NET.client && this.hp <= 1 && this.maxHp > 1) this.disabled = true;
@@ -3257,7 +3257,7 @@ class Plane extends Ent {
   // propellers and the jet's afterburner
   spin(dt) {
     for (const p of this.model.props) p.rotation.z += dt * (this.alive && this.fuel !== 0 ? 40 : 4); // 1.2.5: windmilling with no fuel
-    const R = this.model.rotors; // 1.3.4
+    const R = this.model.rotors; // 1.4
     if (R) { const w = this.alive && this.fuel !== 0 ? 26 : this.alive ? 9 : 3; R.main.rotation.y += dt * w; R.tail.rotation.x += dt * w * 2.2; }
     if (this.model.group.userData.glow) this.model.group.userData.glow.scale.set(0.5, 0.8 + this.thr * 1.6, 0.5);
   }
@@ -3308,14 +3308,14 @@ class Plane extends Ent {
   }
   dropBomb() {
     if (this.bombs <= 0 || this.bombCd > 0) return false;
-    if (this.P.bombW === 'rocket') { // 1.3.4: the Talon's rockets, from the pod on each side in turn
+    if (this.P.bombW === 'rocket') { // 1.4: the Talon's rockets, from the pod on each side in turn
       const sd = this.bombs % 2 ? 1 : -1; _v1.set(sd * 2.1, -0.55, 1.2).applyMatrix4(this.group.matrixWorld);
       _v2.copy(this.fwd).add(_v3.set(rand(-0.012, 0.012), rand(-0.012, 0.012), rand(-0.012, 0.012))).normalize();
       fire('rocket', this, _v1, _v2, { vel: this.vel, silent: this.bombs % 3 !== 0 }); smokePuff(_v1, 1.2);
       this.bombs--; this.bombCd = 0.16; this.rearm = 0;
       return true;
     }
-    if (this.P.bombW === 'dcharge') { // 1.3.4: the Kingfisher's depth charges
+    if (this.P.bombW === 'dcharge') { // 1.4: the Kingfisher's depth charges
       _v1.set(this.bombs % 2 ? 1.75 : -1.75, -0.9, -0.3).applyMatrix4(this.group.matrixWorld);
       fire('dcharge', this, _v1, _v2.set(0, -1, 0), { vel: this.vel });
       this.bombs--; this.bombCd = 0.7; this.rearm = 0;
@@ -3412,7 +3412,7 @@ class Turret extends Ent {
   }
 }
 
-// 1.3.4: flying a helicopter. hin: what it's told to do (f forward/back, s sideways, v up/down, each -1 to 1),
+// 1.4: flying a helicopter. hin: what it's told to do (f forward/back, s sideways, v up/down, each -1 to 1),
 // yawWant: which way to face, aimP: how far the nose (and the gun) points up or down. It keeps its height unless
 // told to climb or drop, sets down gently on land, roofs or decks, and crashes into the sea or anything at speed.
 function heliFloor(h) { // what's under it: { y, ship, home } (y: the surface, or -1e9 over open water)
@@ -3527,7 +3527,7 @@ function heliUpdate(h, dt) {
 // 1.2: the ship whose hull a point is inside (or within pad metres of)
 // 1.3: the plane this one has just flown into (either team), or null. Landed planes and ones still spawning don't count.
 function midairHit(pl) {
-  if (pl.landed || pl.grounded || pl.pos.y < 3) return null; // 1.3.4: nor a helicopter on the ground
+  if (pl.landed || pl.grounded || pl.pos.y < 3) return null; // 1.4: nor a helicopter on the ground
   for (const o of ENTS) {
     if (o === pl || o.kind !== 'plane' || !o.alive || o.landed || o.grounded || o.gone || o.invuln > 0 || o.ramT > 0) continue;
     const r = (pl.P.r + o.P.r) * 0.62, dx = o.pos.x - pl.pos.x, dy = o.pos.y - pl.pos.y, dz = o.pos.z - pl.pos.z;
@@ -3597,7 +3597,7 @@ function islandUnits(isl) {
   const n = [0, 0];
   for (const e of ENTS) {
     if (!e.alive || e.team < 0 || (e.kind !== 'ship' && e.kind !== 'soldier')) continue;
-    if (e.kind === 'ship' && (!e.driver || subUnder(e))) continue; // 1.3.4: a dived sub can't claim
+    if (e.kind === 'ship' && (!e.driver || subUnder(e))) continue; // 1.4: a dived sub can't claim
     const dx = e.pos.x - isl.x, dz = e.pos.z - isl.z;
     if (dx * dx + dz * dz < isl.capR * isl.capR) n[e.team] += e.kind === 'ship' && e.S.len > 30 ? 2 : 1;
   }
@@ -3712,13 +3712,13 @@ function spawnShip(type, team, pad, driver) {
   const S = SHIP_TYPES[type], p = shipSpawnPoint(pad, S);
   return new Ship(type, team, p.x, p.z, pad.heading, driver);
 }
-// 1.3.4: a helicopter hovering over one of an island's pads
+// 1.4: a helicopter hovering over one of an island's pads
 function heliSpawn(type, team, isl, driver) {
   const P = isl.pads && isl.pads[0], x = P ? P.pos.x : isl.x, z = P ? P.pos.z : isl.z;
   return new Plane(type, team, new V3(x, Math.max(0, landH(x, z), P ? P.pos.y : 0) + 14, z), Math.atan2(-isl.x, -isl.z), 0, driver);
 }
 function spawnPlane(type, team, pad, driver) {
-  if (PLANE_TYPES[type].heli) return new Plane(type, team, new V3(pad.spawn.x, Math.max(pad.spawn.y, landH(pad.spawn.x, pad.spawn.z) + 12), pad.spawn.z), pad.heading, 0, driver); // 1.3.4
+  if (PLANE_TYPES[type].heli) return new Plane(type, team, new V3(pad.spawn.x, Math.max(pad.spawn.y, landH(pad.spawn.x, pad.spawn.z) + 12), pad.spawn.z), pad.heading, 0, driver); // 1.4
   if (pad.rw) return runwaySpawn(type, team, driver, pad.island); // 1.2.1: Crown Isle's runways (1.3.1: or that island's)
   return new Plane(type, team, pad.spawn, pad.heading, 0.16, driver);
 }
@@ -3736,7 +3736,7 @@ function spawnBot(bot) {
     if ((c.destroyer || 0) < 3) opts.push(['destroyer', 3.5]);
     if ((c.battleship || 0) < big) opts.push(['battleship', 1.6]);
     if (!c.carrier) opts.push(['carrier', 1.2]);
-    opts.push(['stingray', 0.7]); // 1.3.4: submarines
+    opts.push(['stingray', 0.7]); // 1.4: submarines
     if ((c.barracuda || 0) < big) opts.push(['barracuda', 0.9]);
     if (!c.leviathan) opts.push(['leviathan', 0.5]);
     const type = weighted(opts), S = SHIP_TYPES[type];
@@ -3749,7 +3749,7 @@ function spawnBot(bot) {
   } else {
     const opts = [['fighter', 3], ['jet', 1.4], ['dual', 1.2]]; // 1.2.1: Dual Gunners too, so you can ride in one
     if ((c.bomber || 0) < big) opts.push(['bomber', 1.6]);
-    opts.push(['hornet', 0.8], ['talon', 0.7]); // 1.3.4: helicopters (more sub hunters when the other side has subs out)
+    opts.push(['hornet', 0.8], ['talon', 0.7]); // 1.4: helicopters (more sub hunters when the other side has subs out)
     const foeSubs = ENTS.some(e => e.kind === 'ship' && e.alive && e.team !== team && e.team >= 0 && e.S.sub && e.driver);
     if ((c.kingfisher || 0) < big) opts.push(['kingfisher', foeSubs ? 2.2 : 0.5]);
     const type = weighted(opts);
@@ -3777,7 +3777,7 @@ function updateBots(dt) {
       continue;
     }
     if (e.kind === 'ship') botShip(bot, e, dt);
-    else if (e.kind === 'plane' && e.P.heli) botHeli(bot, e, dt); // 1.3.4
+    else if (e.kind === 'plane' && e.P.heli) botHeli(bot, e, dt); // 1.4
     else if (e.kind === 'plane') botPlane(bot, e, dt);
   }
 }
@@ -3872,7 +3872,7 @@ function chooseShipMission(bot, s) {
     bot.missionT = rand(120, 200);
     return;
   }
-  if (s.S.sub && Math.random() < 0.7) { bot.mission = { kind: 'hunt' }; bot.missionT = rand(60, 120); return; } // 1.3.4: subs go after ships
+  if (s.S.sub && Math.random() < 0.7) { bot.mission = { kind: 'hunt' }; bot.missionT = rand(60, 120); return; } // 1.4: subs go after ships
   const open = ISLANDS.filter(i => i.owner !== bot.team);
   const raid = { kind: 'raid' };
   if (!open.length || Math.random() < (s.S.len > 30 ? 0.55 : 0.3)) { bot.mission = raid; raid.flank = Math.random() < 0.7; raid.side = Math.random() < 0.5 ? -1 : 1; }
@@ -3930,9 +3930,9 @@ function botShip(bot, s, dt) {
   if (bot.think <= 0) {
     bot.think = 0.6 + rand(0.4);
     bot.target = nearestEnemy(s.pos, bot.team, e => e.kind === 'ship' && !!e.driver, R * 1.25) || nearestEnemy(s.pos, bot.team, e => e.kind === 'turret', R * 0.9);
-    if (S.sub && bot.mission && bot.mission.kind === 'hunt' && !bot.target) bot.target = nearestEnemy(s.pos, bot.team, e => e.kind === 'ship' && !!e.driver, 2600); // 1.3.4
-    if (!bot.target && s.torps > 0) bot.target = spottedSub(s.pos, bot.team, 380, pinging(s)); // 1.3.4: a dived sub we've found: torpedo it
-    if (S.ping && s.pingCd <= 0 && (bot.target || Math.random() < 0.15)) sonarPing(s); // 1.3.4: ping when there's a fight, or now and then
+    if (S.sub && bot.mission && bot.mission.kind === 'hunt' && !bot.target) bot.target = nearestEnemy(s.pos, bot.team, e => e.kind === 'ship' && !!e.driver, 2600); // 1.4
+    if (!bot.target && s.torps > 0) bot.target = spottedSub(s.pos, bot.team, 380, pinging(s)); // 1.4: a dived sub we've found: torpedo it
+    if (S.ping && s.pingCd <= 0 && (bot.target || Math.random() < 0.15)) sonarPing(s); // 1.4: ping when there's a fight, or now and then
     if (!bot.mission || bot.missionT <= 0 || (bot.mission.kind === 'capture' && bot.mission.isl.owner === bot.team)) chooseShipMission(bot, s);
   }
   const tgt = bot.target && bot.target.alive ? bot.target : null;
@@ -3974,7 +3974,7 @@ function botShip(bot, s, dt) {
     } else goal.set(cx, 0, cz);
     slow = Math.hypot(s.pos.x - cx, s.pos.z - cz) < 90;
   }
-  if (S.sub) { // 1.3.4: dive when enemies are about and there's air; come up to breathe, or when nothing's near
+  if (S.sub) { // 1.4: dive when enemies are about and there's air; come up to breathe, or when nothing's near
     const threat = nearestEnemy(s.pos, bot.team, e => (e.kind === 'ship' && !!e.driver) || e.kind === 'plane' || e.kind === 'turret', 800);
     if (!s.dive && threat && s.air > S.air * 0.55) toggleDive(s);
     else if (s.dive && (s.air < S.air * 0.12 || (!threat && s.air < S.air * 0.6))) toggleDive(s);
@@ -4100,7 +4100,7 @@ function botPlane(bot, p, dt) {
   D.normalize();
 }
 
-// 1.3.4: a dived enemy sub this team has found (spot is worked out in updateSubs)
+// 1.4: a dived enemy sub this team has found (spot is worked out in updateSubs)
 function spottedSub(from, team, range, any) { // any: a Seawolf's own sonar ping finds them all
   let best = null, bd = range * range;
   for (const e of ENTS) {
@@ -4110,7 +4110,7 @@ function spottedSub(from, team, range, any) { // any: a Seawolf's own sonar ping
   }
   return best;
 }
-// 1.3.4: helicopter pilots. Hornets hunt small boats, helicopters and sailors; Kingfishers hunt subs (depth charges
+// 1.4: helicopter pilots. Hornets hunt small boats, helicopters and sailors; Kingfishers hunt subs (depth charges
 // on ones their sonar finds) and otherwise ships; Talons rocket ships and turrets. Low on fuel, or a gunship out of
 // rockets, they fly home, land and wait for the service.
 const _hg = new V3();
@@ -4346,13 +4346,13 @@ function onKey(code) {
   if (!playing() || GAME.over) return;
   if (code === 'KeyM') { toggleMap(); return; }
   if (PLAYER.mode === 'foot' && /^Digit[1-5]$/.test(code)) { PLAYER.wpn = +code[5] - 1; Sound.play('ui'); showMsg('', FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn]]); return; } // 1.2
-  if (code === 'KeyC' && PLAYER.mode === 'plane' && PLAYER.ent && PLAYER.ent.P && PLAYER.ent.P.heli) { showMsg('', 'Helicopters have the chase view only'); return; } // 1.3.4
+  if (code === 'KeyC' && PLAYER.mode === 'plane' && PLAYER.ent && PLAYER.ent.P && PLAYER.ent.P.heli) { showMsg('', 'Helicopters have the chase view only'); return; } // 1.4
   if (code === 'KeyC' && PLAYER.mode === 'plane') { settings.planeCam = settings.planeCam === 'cockpit' ? 'chase' : 'cockpit'; saveObj(SET_KEY, settings); showMsg('', settings.planeCam === 'cockpit' ? 'Cockpit view · press C to switch back' : 'Chase view'); return; } // 1.2
   if (code === 'KeyC' && (PLAYER.mode === 'foot' || PLAYER.mode === 'ship')) { settings.fp = settings.fp ? 0 : 1; saveObj(SET_KEY, settings); showMsg('', settings.fp ? 'First person · press C to switch back' : 'Third person'); return; } // 1.3
   if (code === 'Tab') { drawBoard(); $('board').classList.remove('hidden'); return; }
   if (overlayOpen()) return;
   if (code === 'KeyE') useKey();
-  if (code === 'KeyQ' && PLAYER.mode === 'ship' && PLAYER.ent && PLAYER.ent.S.ping) sonarPing(PLAYER.ent); // 1.3.4
+  if (code === 'KeyQ' && PLAYER.mode === 'ship' && PLAYER.ent && PLAYER.ent.S.ping) sonarPing(PLAYER.ent); // 1.4
   if (code === 'KeyB') deployKey();
   if (code === 'KeyV') cam.zoom = !cam.zoom;
 }
@@ -4368,7 +4368,7 @@ function bindHold(id, key) {
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
 }
 function bindTap(id, fn) { $(id).addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); Sound.init(); fn(); }); }
-{ // 1.3.4: the sonar ping button on touch screens
+{ // 1.4: the sonar ping button on touch screens
   const b = document.createElement('button'); b.className = 'tbtn hidden'; b.id = 'tPing'; b.textContent = 'PING'; $('touch').appendChild(b);
   const css = document.createElement('style'); css.textContent = '#tPing{right:calc(196px + env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom));width:54px;height:54px;font-size:12px;border-color:#5dffb8}'; document.head.appendChild(css);
   bindTap('tPing', () => { if (playing() && PLAYER.mode === 'ship' && PLAYER.ent && PLAYER.ent.S.ping) sonarPing(PLAYER.ent); });
@@ -4445,7 +4445,7 @@ function exitVehicle() {
   const e = PLAYER.ent;
   if (!e || PLAYER.mode === 'foot') return;
   if (e.kind === 'seat') { bailOut(); return; } // 1.2.1: out of a gunner seat
-  if (e.kind === 'ship' && e.alive && e.depth > 0.8) { showMsg('', 'Surface first (Space)'); Sound.play('deny'); return; } // 1.3.4
+  if (e.kind === 'ship' && e.alive && e.depth > 0.8) { showMsg('', 'Surface first (Space)'); Sound.play('deny'); return; } // 1.4
   if (NET.on) NET.left(e);
   Sound.engine(null);
   let pos = new V3(), yaw = cam.yaw, chute = false;
@@ -4465,7 +4465,7 @@ function exitVehicle() {
       if (g > -0.6) { best = new V3(x, g, z); break; }
     }
     pos = best || new V3(e.pos.x + rx * (e.S.wid / 2 + 2.5), -1, e.pos.z + rz * (e.S.wid / 2 + 2.5));
-  } else if (e.kind === 'plane' && e.P.heli && e.grounded) { // 1.3.4: out of a helicopter that's landed
+  } else if (e.kind === 'plane' && e.P.heli && e.grounded) { // 1.4: out of a helicopter that's landed
     e.driver = null; e.trigger = false; e.hin = null;
     pos.copy(e.pos).addScaledVector(e.right, -(e.P.r * 0.5 + 2.5)); pos.y = groundAt(pos.x, pos.z, e.pos.y);
   } else if (e.kind === 'plane' && e.landed) { // 1.2.1: climbing out of a parked plane
@@ -4521,7 +4521,7 @@ function findInteract(s) {
   }
   // 1.3.1: a plane someone left parked on a runway or deck
   for (const e of ENTS) {
-    if (e.kind !== 'plane' || !e.alive || e.team !== PLAYER.team || e.driver || e.disabled || !(e.landed || (e.P.heli ? e.grounded || (NET.client && e.speed < 2 && e.pos.y < heliFloor(e).y + HELI_GEAR + 1.5) : NET.client && e.speed < 3 && landFrame(e)))) continue; // 1.3.4: a landed helicopter
+    if (e.kind !== 'plane' || !e.alive || e.team !== PLAYER.team || e.driver || e.disabled || !(e.landed || (e.P.heli ? e.grounded || (NET.client && e.speed < 2 && e.pos.y < heliFloor(e).y + HELI_GEAR + 1.5) : NET.client && e.speed < 3 && landFrame(e)))) continue; // 1.4: a landed helicopter
     const d = Math.hypot(s.pos.x - e.pos.x, s.pos.z - e.pos.z);
     if (d < e.P.r + 3 && Math.abs(s.pos.y - e.pos.y) < 5 && d < bd) { bd = d; best = { type: 'plane', ent: e, text: 'Get in the ' + e.P.name }; }
   }
@@ -4616,8 +4616,8 @@ function playerPre(dt, c) {
     e.thr = clamp(e.thr + c.y * dt * 0.75, -0.35, 1);
     if (Math.abs(e.thr) < 0.04 && c.y === 0) e.thr = 0;
     e.rudder = -c.x;
-    if (e.S.sub) { if (c.jump && !PLAYER.diveHeld) toggleDive(e); PLAYER.diveHeld = c.jump; } // 1.3.4
-  } else if (PLAYER.mode === 'plane' && e.P.heli) { // 1.3.4: a helicopter
+    if (e.S.sub) { if (c.jump && !PLAYER.diveHeld) toggleDive(e); PLAYER.diveHeld = c.jump; } // 1.4
+  } else if (PLAYER.mode === 'plane' && e.P.heli) { // 1.4: a helicopter
     const hi = e.hin || (e.hin = { f: 0, s: 0, v: 0 });
     hi.f = c.y; hi.s = c.x; hi.v = (c.jump ? 1 : 0) - (c.sprint || (touchOn() && c.alt2) ? 1 : 0); // on touch, the second button goes down
     e.yawWant = cam.yaw; e.aimP = cam.pitch; e.trigger = c.fire;
@@ -5108,7 +5108,7 @@ function updateTags() {
     const walker = e.kind === 'soldier' && NET.on && e.driver && e.driver !== PLAYER;
     if (isNight()) break; // 1.3.1: no name tags at night, so you can sneak up on people
     if (!e.alive || (e.kind !== 'ship' && e.kind !== 'plane' && !walker) || e === PLAYER.ent || (PLAYER.ent && e === PLAYER.ent.plane)) continue;
-    if (e.kind === 'ship' && !e.group.visible) continue; // 1.3.4: a dived sub nobody has found
+    if (e.kind === 'ship' && !e.group.visible) continue; // 1.4: a dived sub nobody has found
     const d = e.pos.distanceTo(camP); if (d > (walker ? 300 : e.team === PLAYER.team ? 700 : 1100)) continue;
     list.push([d, e]);
   }
@@ -5185,7 +5185,7 @@ function updateHUD(dt) {
       else if (mode === 'gunner') name = e.ship ? 'AA gunner · ' + e.plane.S.name : SEAT_NAME[e.k] + ' · Dual Gunner';
       // 1.2.5: fuel
       { const fr = $('fuelRow'), on = mode === 'plane'; setShow('fuelRow', on); if (on) { const f = e.fuel / e.fuelMax; setBar('#fuelBar', f, e.fuel > 0 ? 'Fuel ' + fmtClock(e.fuel) : 'No fuel'); fr.classList.toggle('low', f < 0.2); } }
-      { const sub = mode === 'ship' && e.S.sub; setShow('airRow', sub); if (sub) { const f = e.air / e.S.air; setBar('#airBar', f, (e.depth > SUB_HIDE ? 'Dived · air ' : e.dive ? 'Diving · air ' : 'Air ') + fmtClock(e.air)); $('airRow').classList.toggle('low', f < 0.25 && e.dive); } } // 1.3.4
+      { const sub = mode === 'ship' && e.S.sub; setShow('airRow', sub); if (sub) { const f = e.air / e.S.air; setBar('#airBar', f, (e.depth > SUB_HIDE ? 'Dived · air ' : e.dive ? 'Diving · air ' : 'Air ') + fmtClock(e.air)); $('airRow').classList.toggle('low', f < 0.25 && e.dive); } } // 1.4
       setShow('a1Row', !!a1); setShow('a2Row', !!a2);
       if (a1) { setText('a1Ico', a1[0]); setBar('#a1Bar', a1[1], a1[2]); }
       if (a2) { setText('a2Ico', a2[0]); setBar('#a2Bar', a2[1], a2[2]); }
@@ -5208,7 +5208,7 @@ function updateHUD(dt) {
       if (mode === 'foot') keys = `<div><kbd>1</kbd>-<kbd>5</kbd>${FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn || 0]]}</div><div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div><div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div><div><kbd>Ctrl</kbd>${['Crouch', 'Lie down', 'Stand up'][PLAYER.stance || 0]}</div>`;
       else if (mode === 'ship' && !e.alive) keys = '<div><kbd>E</kbd>Jump overboard</div>';
       else if (mode === 'ship') keys = `<div><kbd>W</kbd><kbd>S</kbd>Throttle <kbd>A</kbd><kbd>D</kbd>Steer</div>${e.S.sub ? `<div><kbd>Space</kbd>${e.dive ? 'Surface' : 'Dive'}</div>` : ''}${e.S.ping ? `<div><kbd>Q</kbd>Sonar ping ${e.pingT > 0 ? '(on)' : e.pingCd > 0 ? '(' + Math.ceil(e.pingCd) + 's)' : '(ready)'}</div>` : ''}${e.guns.some(g => !g.auto) ? '<div><kbd>Click</kbd>Fire</div>' : ''}${e.S.torps ? '<div><kbd>F</kbd>Torpedo</div>' : ''}${e.S.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}${e.S.carrier ? '<div><kbd>B</kbd>Launch a plane</div>' : ''}${flareMax(e) ? `<div><kbd>X</kbd>Flare (${flaresOf(e)})</div>` : ''}<div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div><div><kbd>E</kbd>Get out</div>`;
-      else if (mode === 'plane' && e.P.heli) keys = `<div><kbd>Mouse</kbd>Turn and aim</div><div><kbd>W</kbd><kbd>S</kbd>Forward/back <kbd>A</kbd><kbd>D</kbd>Sideways</div><div><kbd>Space</kbd>Up <kbd>Shift</kbd>Down</div><div><kbd>Click</kbd>Guns</div>${e.P.bombs ? `<div><kbd>F</kbd>${e.P.bombW === 'rocket' ? 'Rockets' : 'Depth charge'}</div>` : ''}<div><kbd>X</kbd>Flare (${flaresOf(e)})</div><div><kbd>E</kbd>${e.grounded ? 'Get out' : 'Hold to bail out'}</div>`; // 1.3.4
+      else if (mode === 'plane' && e.P.heli) keys = `<div><kbd>Mouse</kbd>Turn and aim</div><div><kbd>W</kbd><kbd>S</kbd>Forward/back <kbd>A</kbd><kbd>D</kbd>Sideways</div><div><kbd>Space</kbd>Up <kbd>Shift</kbd>Down</div><div><kbd>Click</kbd>Guns</div>${e.P.bombs ? `<div><kbd>F</kbd>${e.P.bombW === 'rocket' ? 'Rockets' : 'Depth charge'}</div>` : ''}<div><kbd>X</kbd>Flare (${flaresOf(e)})</div><div><kbd>E</kbd>${e.grounded ? 'Get out' : 'Hold to bail out'}</div>`; // 1.4
       else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div>${e.P.guns.length ? '<div><kbd>Click</kbd>Guns</div>' : ''}${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>X</kbd>Flare (${flaresOf(e)})</div><div><kbd>Shift</kbd>+<kbd>A</kbd>/<kbd>D</kbd>Barrel roll</div><div><kbd>Space</kbd>Level out</div><div><kbd>C</kbd>Cockpit view</div><div><kbd>E</kbd>${e.landed ? 'Get out' : 'Hold to bail out'}</div>`;
       else if (mode === 'turret') keys = '<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>Leave</div>';
       else if (mode === 'gunner') keys = `<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>${e.ship ? 'Jump off' : 'Hold to bail out'}</div>`;
@@ -5217,7 +5217,7 @@ function updateHUD(dt) {
     }
     setHTML('keys', keys);
     if (touchOn()) {
-      const heli = mode === 'plane' && e.P.heli, sub = mode === 'ship' && e.S.sub; // 1.3.4
+      const heli = mode === 'plane' && e.P.heli, sub = mode === 'ship' && e.S.sub; // 1.4
       setText('tAlt', mode === 'plane' ? (e.P.bombW === 'rocket' ? 'RKT' : e.P.bombW ? 'DEPTH' : 'BOMB') : mode === 'ship' ? (e.S.carrier ? 'PLANE' : 'TORP') : 'F');
       setShow('tAlt', (mode === 'plane' && e.P.bombs > 0) || (mode === 'ship' && (e.S.torps > 0 || !!e.S.carrier)));
       setShow('tAlt2', (mode === 'plane' && (e.P.missiles > 0 || heli)) || (mode === 'ship' && e.S.missiles > 0));
@@ -5251,7 +5251,7 @@ function updateHUD(dt) {
   else if (mode === 'foot' && PLAYER.soldier && PLAYER.soldier.chute) prompt = 'Parachuting…';
   else if (mode === 'ship' && e && !e.alive) prompt = '<kbd>E</kbd>Jump overboard';
   else if (mode === 'plane' && e && e.alive && e.landed) prompt = e.svcDone ? '<kbd>W</kbd>Take off · refuelled' : e.fuel > 0 ? `<kbd>W</kbd>Take off · refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s` : `Refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s`; // 1.2.5
-  else if (mode === 'plane' && e && e.alive && e.P.heli && e.svcHome && !e.svcDone) prompt = `Refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s`; // 1.3.4
+  else if (mode === 'plane' && e && e.alive && e.P.heli && e.svcHome && !e.svcDone) prompt = `Refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s`; // 1.4
   else if (mode === 'plane' && e && e.alive && e.P.heli && e.grounded) prompt = '<kbd>Space</kbd>Lift off';
   else if (mode === 'plane' && e && e.alive && !e.P.heli && landHint(e)) prompt = '<kbd>S</kbd>Lowest speed, then touch down gently to land';
   else if (MCAM.m) prompt = '<kbd>E</kbd>Skip';
@@ -5299,7 +5299,7 @@ function updateHUD(dt) {
   setShow('bound', out);
   updateTags();
   hud121(mode, e);
-  const sonarT = myPing(), mini = $('mini'); // 1.3.4: a sonar ping makes the minimap big for its 10 seconds
+  const sonarT = myPing(), mini = $('mini'); // 1.4: a sonar ping makes the minimap big for its 10 seconds
   if (mini.classList.contains('sonar') !== sonarT > 0) mini.classList.toggle('sonar', sonarT > 0);
   miniT -= dt; if (miniT <= 0) { miniT = sonarT ? 0.05 : 0.1; drawMap(mini, false, sonarT); }
   if (!$('bigmapWrap').classList.contains('hidden')) drawMap($('bigmap'), true, sonarT);
@@ -5346,13 +5346,13 @@ function drawMap(cv, big, sonar) {
     if (big) { x.setLineDash([]); x.fillStyle = '#fff'; x.font = 'bold 18px sans-serif'; x.textAlign = 'center'; x.fillText(isl.name, X(isl.x), Z(isl.z) - isl.capR * sx - 6); }
   }
   x.setLineDash([]);
-  const s = big ? 2 : 1, dark = isNight() && !sonar; // 1.3.1: at night the map shows nobody (the computers in the keeps still do) (1.3.4: sonar does)
+  const s = big ? 2 : 1, dark = isNight() && !sonar; // 1.3.1: at night the map shows nobody (the computers in the keeps still do) (1.4: sonar does)
   if (sonar) { x.fillStyle = 'rgba(0,40,30,.45)'; x.fillRect(0, 0, W, H); }
   if (dark) { x.fillStyle = 'rgba(4,10,24,.45)'; x.fillRect(0, 0, W, H); x.fillStyle = '#cfe0ff'; x.font = `bold ${big ? 22 : 13}px sans-serif`; x.textAlign = 'center'; x.fillText('☾ Night: radar off', W / 2, big ? 34 : 18); }
   for (const e of ENTS) {
     if (dark) break;
     if (!e.alive || e.team < 0) continue;
-    if (e.kind === 'ship' && !sonar && !subSeen(e, PLAYER.team)) continue; // 1.3.4: dived subs nobody has found
+    if (e.kind === 'ship' && !sonar && !subSeen(e, PLAYER.team)) continue; // 1.4: dived subs nobody has found
     if (sonar && e.kind === 'soldier') { x.fillStyle = TEAM[e.team].light; x.beginPath(); x.arc(X(e.pos.x), Z(e.pos.z), 2.2 * s, 0, TAU); x.fill(); continue; } // sonar shows sailors too
     if (e.kind === 'ship') {
       x.save(); x.translate(X(e.pos.x), Z(e.pos.z)); x.rotate(-e.heading); if (e.depth > SUB_HIDE) x.globalAlpha = 0.5;
@@ -5360,7 +5360,7 @@ function drawMap(cv, big, sonar) {
       const L = Math.max(5, e.S.len * sx * 1.2) * s, Wd = Math.max(3, e.S.wid * sx * 1.6) * s;
       x.beginPath(); x.moveTo(0, L / 2 + 2 * s); x.lineTo(Wd / 2, L / 4); x.lineTo(Wd / 2, -L / 2); x.lineTo(-Wd / 2, -L / 2); x.lineTo(-Wd / 2, L / 4); x.closePath(); x.fill(); x.stroke();
       x.restore();
-      if (sonar && e.depth > SUB_HIDE) { x.strokeStyle = e.team === PLAYER.team ? 'rgba(160,255,220,.8)' : '#ff6a5a'; x.lineWidth = 1.5 * s; x.beginPath(); x.arc(X(e.pos.x), Z(e.pos.z), (6 + Math.sin(GAME.time * 6) * 1.5) * s, 0, TAU); x.stroke(); } // 1.3.4: dived subs
+      if (sonar && e.depth > SUB_HIDE) { x.strokeStyle = e.team === PLAYER.team ? 'rgba(160,255,220,.8)' : '#ff6a5a'; x.lineWidth = 1.5 * s; x.beginPath(); x.arc(X(e.pos.x), Z(e.pos.z), (6 + Math.sin(GAME.time * 6) * 1.5) * s, 0, TAU); x.stroke(); } // 1.4: dived subs
     } else if (e.kind === 'plane') {
       x.save(); x.translate(X(e.pos.x), Z(e.pos.z)); x.rotate(-Math.atan2(e.fwd.x, e.fwd.z));
       x.fillStyle = TEAM[e.team].light; x.beginPath(); x.moveTo(0, 6 * s); x.lineTo(4 * s, -4 * s); x.lineTo(-4 * s, -4 * s); x.closePath(); x.fill(); x.restore();
@@ -5452,7 +5452,7 @@ function renderDeploy() {
   const rwOk = planeSpotOk(pad, locObj); // 1.2.5
   const card = (k, t, D) => {
     D = priced(D); // 1.3.1: the team's half-price upgrade
-    const free = !D.cost, wait = k === 'plane' && t === 'jet' ? jetWait() : 0, noRw = k === 'plane' && !rwOk && !D.heli; // 1.3.4: helicopters need no runway
+    const free = !D.cost, wait = k === 'plane' && t === 'jet' ? jetWait() : 0, noRw = k === 'plane' && !rwOk && !D.heli; // 1.4: helicopters need no runway
     const can = !DEPLOY.locked && PLAYER.gold >= D.cost && !wait && !noRw;
     const fuel = k === 'plane' ? ` <span class="fu">⛽ ${fmtClock(D.fuel)}</span>` : '';
     const pr = noRw ? 'No runway here' : wait ? '⏱ Ready in ' + fmtClock(wait) : free ? 'FREE' : '<span class="coin"></span>' + fmt(D.cost);
@@ -5512,7 +5512,7 @@ function deploy(kind, type) {
     ent = spawnShip(type, team, pad, null);
   } else if (kind === 'plane') {
     if (carrier) ent = launchFromCarrier(type, team, carrier, null);
-    else if (PLANE_TYPES[type].heli && loc !== 'harbor' && !DEPLOY.pad) ent = heliSpawn(type, team, loc, null); // 1.3.4
+    else if (PLANE_TYPES[type].heli && loc !== 'harbor' && !DEPLOY.pad) ent = heliSpawn(type, team, loc, null); // 1.4
     else if (loc !== 'harbor' && !DEPLOY.pad) ent = runwaySpawn(type, team, null, loc); // 1.2.1: on the island's runway (1.3.1: every big island has one)
     else {
       const pads = PADS.filter(p => p.kind === 'plane' && p.team === team && !p.island); // (1.2.1: the harbor's own airfield)
@@ -6174,7 +6174,7 @@ function step(dt) {
   step121(dt, c); // 1.2.1: missiles, gunner seats, the computer, the islands' life
   updateProjectiles(dt);
   updateIslands(dt);
-  updateSubs(dt); // 1.3.4
+  updateSubs(dt); // 1.4
   updateEmitters(dt);
   fxFire.update(dt); fxSmoke.update(dt); fxWake.update(dt);
   updateClock(dt);
@@ -6855,7 +6855,7 @@ function drawRadar(x, t) {
   let hov = null, hd = 12;
   for (const e of ENTS) {
     if (!e.alive || e.team < 0 || (e.kind !== 'ship' && e.kind !== 'plane' && e.kind !== 'soldier')) continue;
-    if (e.kind === 'ship' && (!e.driver || !subSeen(e, PLAYER.team))) continue; // empty hulls at the pads are not people (1.3.4: nor dived subs nobody has found)
+    if (e.kind === 'ship' && (!e.driver || !subSeen(e, PLAYER.team))) continue; // empty hulls at the pads are not people (1.4: nor dived subs nobody has found)
     const [px, py] = mapXY(e.pos.x, e.pos.z);
     if (px < 96 || px > 416 || py < 30 || py > 282) continue;
     cnt[e.team][e.kind]++;
@@ -7843,7 +7843,7 @@ function rbox(w, h, d, r, seg = 3) {
   const isHost = () => !!room && room.hostId === myId;
   function newRoom(code, name, topic) {
     let synced; const sync = new Promise(r => synced = r);
-    return { code, topic: topic || 'hb-room134-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
+    return { code, topic: topic || 'hb-room14-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
       roster: new Map(), names: new Map(), settings: { ...DEFAULTS }, pings: {}, acks: {}, myPing: null, seen: new Set(),
       ups: new Map(), lastHeard: new Map(), hz: MAX_HZ, stDue: false, lastSt: 0, lastSend: 0, sync, synced, trouble: 0, waitAcc: null, matchOn: false, infoAt: 0 };
   }
@@ -8010,7 +8010,7 @@ function rbox(w, h, d, r, seg = 3) {
   async function joinWorld(name) {
     if (room) leaveRoom();
     await getClient();
-    room = newRoom('WORLD', name, 'hb-world-134'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
+    room = newRoom('WORLD', name, 'hb-world-14'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
     try {
       room.ch = chan(room.topic, true); wireRoom(room.ch);
       await joinChan(room.ch, trouble);
@@ -8423,7 +8423,7 @@ function rbox(w, h, d, r, seg = 3) {
     const e = P.ent; P.ent = null;
     if (!e) return;
     if (e.kind === 'seat') { if (e.plane.seats && e.plane.seats[e.k] === P) e.plane.seats[e.k] = null; return; } // 1.2.1
-    if (e.kind === 'plane' && e.alive && e.P.heli && e.driver === P) { e.driver = null; e.peer = null; e.track = null; e.lid = 0; e.trigger = false; e.hin = { f: 0, s: 0, v: 0 }; return; } // 1.3.4: a helicopter settles down by itself
+    if (e.kind === 'plane' && e.alive && e.P.heli && e.driver === P) { e.driver = null; e.peer = null; e.track = null; e.lid = 0; e.trigger = false; e.hin = { f: 0, s: 0, v: 0 }; return; } // 1.4: a helicopter settles down by itself
     if (e.kind === 'plane' && e.alive && e.speed < 12 && e.pos.y < 40 && e.driver === P) { // 1.2.1: parked (1.3.1: it stays, for the team to fly again)
       const f = landFrame(e); e.driver = null;
       if (f) { e.peer = null; e.track = null; e.lid = 0; e.trigger = false; parkOn(e, f); } else { scene.remove(e.group); e.remove(); }
@@ -8491,7 +8491,7 @@ function rbox(w, h, d, r, seg = 3) {
       if (ex) { x += Math.sin(h) * sp * ex; z += Math.cos(h) * sp * ex; }
       ease(e, x, 0, z, dt); e.pos.y = 0;
       e.heading = h; e.speed = sp; e.thr = a.thr; e.rudder = lerp(a.rd, b.rd, k);
-      if (e.S.sub) { e.depth = lerp(a.dp || 0, b.dp || 0, k); e.dive = (b.dp || 0) > (a.dp || 0) || (a.dp || 0) > SUB_HIDE; e.pingOn = !!a.pg; } // 1.3.4
+      if (e.S.sub) { e.depth = lerp(a.dp || 0, b.dp || 0, k); e.dive = (b.dp || 0) > (a.dp || 0) || (a.dp || 0) > SUB_HIDE; e.pingOn = !!a.pg; } // 1.4
       e.vel.set(Math.sin(h) * sp, 0, Math.cos(h) * sp);
       const S = e.S, steer = e.rudder * S.turn * clamp(Math.abs(sp) / (S.speed * 0.35), 0.25, 1) * (sp < -0.5 ? -1 : 1);
       e.visuals(dt, steer);
@@ -8515,7 +8515,7 @@ function rbox(w, h, d, r, seg = 3) {
       F.normalize();
       const sp = lerp(a.sp, b.sp, k);
       let x = lerp(a.x, b.x, k), y = lerp(a.y, b.y, k), z = lerp(a.z, b.z, k);
-      if (e.P.heli) { // 1.3.4: a helicopter can fly any way it likes, so carry it on the way it was going
+      if (e.P.heli) { // 1.4: a helicopter can fly any way it likes, so carry it on the way it was going
         const span = Math.max(0.05, (b.t - a.t) / 1000), pv = e.netV || (e.netV = new V3());
         if (b !== a) pv.set((b.x - a.x) / span, (b.y - a.y) / span, (b.z - a.z) / span);
         if (ex) { x += pv.x * ex; y += pv.y * ex; z += pv.z * ex; }
@@ -8591,7 +8591,7 @@ function rbox(w, h, d, r, seg = 3) {
   function shipRow(e) {
     const g = []; for (const G of e.guns) g.push(qa(G.yaw), qa(G.pitch));
     return [e.id, 0, SHIP_ORDER.indexOf(e.type), e.team, keyOf(e.driver), e.peer ? e.lid | 0 : 0, Math.ceil(e.hp), e.fireBits | 0,
-      r1(e.pos.x), r1(e.pos.z), r3(e.heading), r1(e.speed), r2(e.thr), r2(e.rudder), g, e.seats ? e.seats.map(keyOf) : 0, r1(e.depth || 0), pinging(e) ? 1 : 0]; // 1.2.6: who's on its guns (16, 17: 1.3.4, a sub's depth and sonar ping)
+      r1(e.pos.x), r1(e.pos.z), r3(e.heading), r1(e.speed), r2(e.thr), r2(e.rudder), g, e.seats ? e.seats.map(keyOf) : 0, r1(e.depth || 0), pinging(e) ? 1 : 0]; // 1.2.6: who's on its guns (16, 17: 1.4, a sub's depth and sonar ping)
   }
   function planeRow(e) {
     return [e.id, 1, PLANE_ORDER.indexOf(e.type), e.team, keyOf(e.driver), e.peer ? e.lid | 0 : 0, Math.ceil(e.hp), e.fireBits | 0,
@@ -8883,8 +8883,8 @@ function rbox(w, h, d, r, seg = 3) {
     const f = M.myFire; M.myFire = 0;
     if (e.kind !== 'turret' && e.kind !== 'seat') M.myLids.set(e.id, e);
     if (e.kind === 'seat') return ['g', e.plane.nid || e.plane.id, e.k, qa(wrapA(cam.yaw)), qa(cam.pitch), f]; // 1.2.1: a gunner seat
-    if (e.kind === 'ship') { const g = []; for (const G of e.guns) g.push(qa(G.yaw), qa(G.pitch)); return ['s', e.id, SHIP_ORDER.indexOf(e.type), r1(e.pos.x), r1(e.pos.z), r3(e.heading), r1(e.speed), r2(e.thr), r2(e.rudder), f, e.nid || 0, g, r1(e.depth || 0), e.pingT > 0 ? 1 : 0]; } // 12, 13: 1.3.4, a sub's depth and sonar ping
-    if (e.kind === 'plane') return ['p', e.id, PLANE_ORDER.indexOf(e.type), r1(e.pos.x), r1(e.pos.y), r1(e.pos.z), r3(e.fwd.x), r3(e.fwd.y), r3(e.fwd.z), r2(e.bank), r1(e.speed), r2(e.thr), f | (e.landed || e.svcHome ? 16 : 0), e.nid || 0, r2(e.rollA || 0)]; // 13, 14: 1.3.1 (16: 1.3.4, a helicopter landed at home)
+    if (e.kind === 'ship') { const g = []; for (const G of e.guns) g.push(qa(G.yaw), qa(G.pitch)); return ['s', e.id, SHIP_ORDER.indexOf(e.type), r1(e.pos.x), r1(e.pos.z), r3(e.heading), r1(e.speed), r2(e.thr), r2(e.rudder), f, e.nid || 0, g, r1(e.depth || 0), e.pingT > 0 ? 1 : 0]; } // 12, 13: 1.4, a sub's depth and sonar ping
+    if (e.kind === 'plane') return ['p', e.id, PLANE_ORDER.indexOf(e.type), r1(e.pos.x), r1(e.pos.y), r1(e.pos.z), r3(e.fwd.x), r3(e.fwd.y), r3(e.fwd.z), r2(e.bank), r1(e.speed), r2(e.thr), f | (e.landed || e.svcHome ? 16 : 0), e.nid || 0, r2(e.rollA || 0)]; // 13, 14: 1.3.1 (16: 1.4, a helicopter landed at home)
     if (e.kind === 'soldier') {
       const sp = Math.hypot(e.vel.x, e.vel.z), an = e.chute ? 3 : e.swim ? 2 : !e.onGround ? 4 : PLAYER.stance === 2 ? 6 : PLAYER.stance === 1 ? 5 : sp > 0.6 ? 1 : 0; // 5, 6: 1.3.1
       return ['f', e.id, r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), r2(e.yaw), an, r1(sp), f, r2(cam.pitch), e.chute ? 1 : 0];
@@ -9284,7 +9284,7 @@ const RAM_LOW = 0.3, RAM_HIT = 0.7;     // the Fighter only destroys a plane und
 const ROLL_T = 1.1;                     // how long a barrel roll takes, seconds
 const BAIL_S = 3;                       // hold E this long to bail out
 const GLOC_S = 4, GLOC_Y = 0.96;        // seconds with the nose above about 74 degrees before you black out
-const FLARE_N = { fighter: 2, dual: 3, bomber: 5, jet: 6, battleship: 6, carrier: 8, hornet: 2, kingfisher: 3, talon: 4 }; // 1.3.4: helicopters // the dearer it is, the more it carries
+const FLARE_N = { fighter: 2, dual: 3, bomber: 5, jet: 6, battleship: 6, carrier: 8, hornet: 2, kingfisher: 3, talon: 4 }; // 1.4: helicopters // the dearer it is, the more it carries
 const FLARE_RELOAD = 20;                // ships get one back this often; planes refill when they land
 const UP_HP = 1, UP_SHOES = 2, UP_DISC = 4;
 const UPGRADES = [
@@ -9524,7 +9524,7 @@ function boardParked(e) {
 function parkedCap() { // keep at most 14 empty planes parked about: the one parked longest goes
   if (NET.client) return;
   const list = ENTS.filter(e => e.kind === 'plane' && e.alive && (e.landed || e.grounded) && !e.driver);
-  const age = e => e.landed ? e.landed.park : e.parkT || 0; // 1.3.4: empty helicopters on the ground too
+  const age = e => e.landed ? e.landed.park : e.parkT || 0; // 1.4: empty helicopters on the ground too
   if (list.length <= 14) return;
   const old = list.reduce((a, b) => (age(b) > age(a) ? b : a));
   scene.remove(old.group); old.remove(); old.gone = true;
