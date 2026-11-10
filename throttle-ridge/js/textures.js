@@ -1,5 +1,4 @@
-// Procedurally generated canvas textures: dirt with ruts and tyre marks, the
-// cut face strata, grass, sand, fence mesh, banners and number plates.
+// Procedurally generated canvas textures: raked dirt with ruts and tyre marks, grass, sand, fence mesh, banners and number plates.
 import * as THREE from 'three';
 
 function rng(seed) {
@@ -36,66 +35,80 @@ function speckle(g, W, H, R, colors, count, maxSize) {
   }
 }
 
-// Top surface of the track. u runs along the track, v across it.
-// lanes: v positions (0..1) of the four racing lines.
-export function dirtTexture(base, lanes, seed = 7) {
-  const W = 1024, H = 512;
+// Dirt for the whole track cross-section. u runs along the track, v across
+// it from the back foot (0) to the front foot (1). opts.top = [v0, v1] is the
+// riding surface; opts.metres is how many metres v spans. lanes: v of each
+// racing line.
+export function dirtTexture(base, lanes, seed = 7, opts = {}) {
+  const W = 1024, H = 1024;
+  const [top0, top1] = opts.top || [0, 1];
+  const pxm = H / (opts.metres || 7.4); // pixels per metre across
   const [c, g] = canvas(W, H);
   const R = rng(seed);
   g.fillStyle = hex(base); g.fillRect(0, 0, W, H);
+  const onTop = (y) => y >= top0 * H && y <= top1 * H;
   // Large soft blotches of lighter / darker dirt.
-  for (let i = 0; i < 70; i++) {
-    const x = R() * W, y = R() * H, r = 30 + R() * 90;
-    const k = (R() - 0.5) * 0.25;
+  for (let i = 0; i < 90; i++) {
+    const x = R() * W, y = R() * H, r = 30 + R() * 110;
+    const k = (R() - 0.5) * 0.22;
     const grd = g.createRadialGradient(x, y, 0, x, y, r);
-    grd.addColorStop(0, rgba(shade(base, k), 0.55)); grd.addColorStop(1, rgba(shade(base, k), 0));
+    grd.addColorStop(0, rgba(shade(base, k), 0.5)); grd.addColorStop(1, rgba(shade(base, k), 0));
     for (const dx of [0, -W, W]) { g.fillStyle = grd; g.save(); g.translate(dx, 0); g.fillRect(x - r, y - r, r * 2, r * 2); g.restore(); }
   }
-  // Packed racing lines: darker, smoother bands along each lane.
-  const wave = (v, x, amp, f, ph) => (v + Math.sin((x / W) * Math.PI * 2 * f + ph) * amp) * H;
+  // Raked grooves running along the track, over the top and down both
+  // shoulders: a dark groove with a lit ridge just above it (light comes from
+  // above), gently wavy so they read as sculpted dirt, not printed stripes.
+  const wave = (y, x, amp, f, ph) => y + Math.sin((x / W) * Math.PI * 2 * f + ph) * amp;
+  for (let y = 2; y < H; y += 4 + R() * 7) {
+    const top = onTop(y);
+    const a = top ? 0.16 + R() * 0.1 : 0.32 + R() * 0.18;
+    const f = 1 + ((R() * 2) | 0), ph = R() * 6, amp = 0.6 + R() * 1.6;
+    g.lineWidth = 1.2 + R() * 1.6;
+    g.strokeStyle = rgba(shade(base, -0.38), a);
+    g.beginPath(); for (let x = 0; x <= W; x += 16) g.lineTo(x, wave(y, x, amp, f, ph)); g.stroke();
+    g.lineWidth = 1;
+    g.strokeStyle = rgba(shade(base, 0.22), a * 0.9);
+    g.beginPath(); for (let x = 0; x <= W; x += 16) g.lineTo(x, wave(y - 2, x, amp, f, ph)); g.stroke();
+  }
+  // Packed racing lines: darker, smoother bands along each lane, with two rut
+  // grooves, a lighter crown between them and knobby tread marks.
+  const lw = (m) => m * pxm;
   for (const v of lanes) {
     const ph = R() * 6;
-    for (let pass = 0; pass < 6; pass++) {
-      g.strokeStyle = rgba(shade(base, -0.28), 0.12);
-      g.lineWidth = 34 - pass * 4;
-      g.beginPath();
-      for (let x = 0; x <= W; x += 8) g.lineTo(x, wave(v, x, 0.012, 2, ph));
-      g.stroke();
+    const lane = (off, x) => wave((v + off) * H, x, lw(0.08), 2, ph);
+    for (let pass = 0; pass < 5; pass++) {
+      g.strokeStyle = rgba(shade(base, -0.24), 0.13);
+      g.lineWidth = lw(0.75) - pass * lw(0.12);
+      g.beginPath(); for (let x = 0; x <= W; x += 8) g.lineTo(x, lane(0, x)); g.stroke();
     }
-    // Two rut grooves per lane with a lighter crown between them.
-    for (const off of [-0.022, 0.022]) {
-      g.strokeStyle = rgba(shade(base, -0.42), 0.55); g.lineWidth = 7;
-      g.beginPath(); for (let x = 0; x <= W; x += 8) g.lineTo(x, wave(v + off, x, 0.012, 2, ph)); g.stroke();
-      g.strokeStyle = rgba(shade(base, 0.18), 0.35); g.lineWidth = 2;
-      g.beginPath(); for (let x = 0; x <= W; x += 8) g.lineTo(x, wave(v + off, x, 0.012, 2, ph) - 5); g.stroke();
-    }
-    // Knobby tyre tread marks in the ruts.
-    g.fillStyle = rgba(shade(base, -0.55), 0.6);
-    for (const off of [-0.022, 0.022]) {
-      for (let x = 0; x < W; x += 9) {
-        const y = wave(v + off, x, 0.012, 2, ph);
-        g.fillRect(x, y - 3 + ((x / 9) % 2 ? 2 : -2), 4, 2);
-      }
+    for (const off of [-0.17, 0.17]) {
+      const o = off / (opts.metres || 7.4);
+      g.strokeStyle = rgba(shade(base, -0.45), 0.6); g.lineWidth = lw(0.09);
+      g.beginPath(); for (let x = 0; x <= W; x += 8) g.lineTo(x, lane(o, x)); g.stroke();
+      g.strokeStyle = rgba(shade(base, 0.2), 0.45); g.lineWidth = Math.max(1, lw(0.03));
+      g.beginPath(); for (let x = 0; x <= W; x += 8) g.lineTo(x, lane(o, x) - lw(0.07)); g.stroke();
+      g.fillStyle = rgba(shade(base, -0.55), 0.55);
+      for (let x = 0; x < W; x += 9) g.fillRect(x, lane(o, x) - 2 + ((x / 9) % 2 ? 1.5 : -1.5), 4, 2);
     }
   }
-  // Wandering secondary tyre tracks.
-  for (let i = 0; i < 7; i++) {
-    const v = 0.08 + R() * 0.84, ph = R() * 6, f = 1 + ((R() * 3) | 0);
-    g.strokeStyle = rgba(shade(base, -0.3), 0.25); g.lineWidth = 4;
-    g.beginPath(); for (let x = 0; x <= W; x += 8) g.lineTo(x, wave(v, x, 0.05, f, ph)); g.stroke();
+  // Wandering secondary tyre tracks on the riding surface.
+  for (let i = 0; i < 9; i++) {
+    const v = top0 + 0.05 * (top1 - top0) + R() * 0.9 * (top1 - top0), ph = R() * 6, f = 1 + ((R() * 3) | 0);
+    g.strokeStyle = rgba(shade(base, -0.3), 0.22); g.lineWidth = lw(0.06);
+    g.beginPath(); for (let x = 0; x <= W; x += 8) g.lineTo(x, wave(v * H, x, lw(0.5), f, ph)); g.stroke();
   }
   // Loose clods, pebbles and grain.
-  speckle(g, W, H, R, [rgba(shade(base, -0.35), 0.8), rgba(shade(base, 0.25), 0.8), rgba(shade(base, -0.15), 0.9)], 9000, 2.5);
-  for (let i = 0; i < 500; i++) {
-    const x = R() * W, y = R() * H, r = 1.5 + R() * 3.5;
-    g.fillStyle = rgba(shade(base, -0.4), 0.7); g.beginPath(); g.ellipse(x, y + 1, r, r * 0.7, 0, 0, 7); g.fill();
-    g.fillStyle = rgba(shade(base, 0.12), 1); g.beginPath(); g.ellipse(x, y, r * 0.85, r * 0.6, 0, 0, 7); g.fill();
+  speckle(g, W, H, R, [rgba(shade(base, -0.35), 0.7), rgba(shade(base, 0.25), 0.7), rgba(shade(base, -0.15), 0.8)], 12000, 2.2);
+  for (let i = 0; i < 700; i++) {
+    const x = R() * W, y = R() * H, r = 1.2 + R() * 2.8;
+    g.fillStyle = rgba(shade(base, -0.4), 0.6); g.beginPath(); g.ellipse(x, y + 1, r, r * 0.7, 0, 0, 7); g.fill();
+    g.fillStyle = rgba(shade(base, 0.14), 1); g.beginPath(); g.ellipse(x, y, r * 0.85, r * 0.6, 0, 0, 7); g.fill();
   }
-  // Looser, lighter dirt along both edges (berms).
-  for (const [y0, y1] of [[0, 0.09], [1, 0.91]]) {
-    const grd = g.createLinearGradient(0, y0 * H, 0, y1 * H);
-    grd.addColorStop(0, rgba(shade(base, 0.12), 0.7)); grd.addColorStop(1, rgba(shade(base, 0.12), 0));
-    g.fillStyle = grd; g.fillRect(0, Math.min(y0, y1) * H, W, Math.abs(y1 - y0) * H);
+  // Drier, lighter dirt along the top edges where the shoulders roll over.
+  for (const [ya, yb] of [[top0, top0 + 0.035], [top1, top1 - 0.035]]) {
+    const grd = g.createLinearGradient(0, ya * H, 0, yb * H);
+    grd.addColorStop(0, rgba(shade(base, 0.14), 0.55)); grd.addColorStop(1, rgba(shade(base, 0.14), 0));
+    g.fillStyle = grd; g.fillRect(0, Math.min(ya, yb) * H, W, Math.abs(yb - ya) * H);
   }
   const map = tex(c);
   const bump = tex(toBump(c), { srgb: false });
@@ -110,41 +123,6 @@ function toBump(src) {
   return c;
 }
 
-// Cross-section of the dirt on the cut front face: strata and stones.
-export function strataTexture(base, seed = 3) {
-  const W = 512, H = 512;
-  const [c, g] = canvas(W, H);
-  const R = rng(seed);
-  g.fillStyle = hex(shade(base, -0.12)); g.fillRect(0, 0, W, H);
-  let y = 0;
-  while (y < H) {
-    const h = 10 + R() * 40;
-    const k = (R() - 0.5) * 0.3 - 0.08;
-    g.fillStyle = hex(shade(base, k));
-    g.beginPath(); g.moveTo(0, y);
-    const ph = R() * 6, amp = 2 + R() * 5;
-    for (let x = 0; x <= W; x += 16) g.lineTo(x, y + Math.sin((x / W) * Math.PI * 4 + ph) * amp);
-    for (let x = W; x >= 0; x -= 16) g.lineTo(x, y + h + Math.sin((x / W) * Math.PI * 4 + ph + 1) * amp);
-    g.fill();
-    y += h;
-  }
-  speckle(g, W, H, R, [rgba(shade(base, -0.4), 0.7), rgba(shade(base, 0.2), 0.6)], 5000, 2);
-  for (let i = 0; i < 160; i++) {
-    const x = R() * W, yy = R() * H, r = 2 + R() * 7;
-    g.fillStyle = rgba(0x000000, 0.25); g.beginPath(); g.ellipse(x + 1, yy + 2, r, r * 0.75, 0, 0, 7); g.fill();
-    g.fillStyle = hex(shade(0x9a9088, (R() - 0.5) * 0.4)); g.beginPath(); g.ellipse(x, yy, r, r * 0.75, R(), 0, 7); g.fill();
-  }
-  // Roots / cracks.
-  g.strokeStyle = rgba(shade(base, -0.5), 0.35); g.lineWidth = 1.5;
-  for (let i = 0; i < 25; i++) {
-    let x = R() * W, yy = R() * H * 0.4;
-    g.beginPath(); g.moveTo(x, yy);
-    for (let k = 0; k < 6; k++) { x += (R() - 0.5) * 20; yy += 6 + R() * 12; g.lineTo(x, yy); }
-    g.stroke();
-  }
-  return tex(c);
-}
-
 export function grassTexture(base, seed = 11) {
   const W = 512, H = 512;
   const [c, g] = canvas(W, H);
@@ -154,7 +132,10 @@ export function grassTexture(base, seed = 11) {
     const x = R() * W, y = R() * H, r = 40 + R() * 80, k = (R() - 0.5) * 0.2;
     const grd = g.createRadialGradient(x, y, 0, x, y, r);
     grd.addColorStop(0, rgba(shade(base, k), 0.6)); grd.addColorStop(1, rgba(shade(base, k), 0));
-    g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2);
+    // Draw wrapped in both directions so the texture tiles without seams.
+    for (const dx of [-W, 0, W]) for (const dy of [-H, 0, H]) {
+      g.save(); g.translate(dx, dy); g.fillStyle = grd; g.fillRect(x - r, y - r, r * 2, r * 2); g.restore();
+    }
   }
   for (let i = 0; i < 12000; i++) {
     const x = R() * W, y = R() * H, l = 2 + R() * 5;

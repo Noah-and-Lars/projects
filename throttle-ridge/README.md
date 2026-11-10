@@ -58,46 +58,64 @@ skill level and mute state are saved in `localStorage`.
 
 ## Visual style and decisions
 
-The style follows common side-scrolling motocross conventions (close side-on
-camera, a chunky 3D dirt track, a busy race venue behind it). The art is
-original: no logos, assets or models from other games.
+The look aims for a warm, hazy, stylised side-scroller: a sculpted dirt berm
+seen from slightly above, with the four riders spread across its width. The
+art is original: no logos, assets, characters or models from other games.
 
-- **Camera.** The lens is narrow (24°) and almost side-on, tilted down about
-  7.5°. Bike and rider fill about a quarter of the screen height at racing
-  speed. The player sits about a third in from the left so you can see what's
-  coming. The camera zooms out a little with speed and air time, follows
-  smoothly and shakes on hard landings.
+- **Camera.** A 32° lens, side-on and tilted down about 14°. Bike and rider
+  are roughly a sixth of the screen height. That's further out than the
+  original "quarter of the screen" brief, to match the reference screenshot,
+  and it shows more of the track and the riders' depth lanes. The player sits
+  about a third in from the left so you can see what's coming. The camera
+  zooms out a little with speed and air time, follows smoothly and shakes on
+  hard landings.
 - **Lanes.** All four bikes ride the same 2D physics ground but are drawn in
-  depth lanes (`LANES` in `race.js`) spread across a 9.2 m wide track. With
-  the slight downward tilt, each rider further back sits visibly higher and
-  smaller, so the pack doesn't merge into one blob. The player is always in
-  the nearest lane. The physics doesn't know about lanes, so riders never
+  depth lanes (`LANES` in `race.js`) spread across a 10.8 m wide track. With
+  the downward tilt, each rider further back sits clearly higher on screen,
+  so the pack doesn't merge into one blob. The player is always in the
+  nearest lane. The physics doesn't know about lanes, so riders never
   collide.
-- **Track.** The top of the track is a crowned dirt ribbon with a procedural
-  texture: packed racing lines, a pair of rut grooves per lane with knobby
-  tread marks, loose clods, and lighter loose dirt along the berms. A vertical
-  cut face shows soil layers, stones and roots, darkening quickly with depth
-  so every jump reads as a solid mound. The back of the mound slopes down to
-  the venue ground.
+- **Track.** The track is one sculpted cross-section swept along the ground
+  profile (`render.js`):
+  - The berm always stands at least 0.8 m proud of the venue ground. A
+    crowned riding surface rolls over rounded shoulders (smoothstep profile)
+    down to a foot on both sides. Taller jumps get wider, longer shoulders,
+    so every jump, whoop and tabletop reads as a solid mound.
+  - A skirt at each foot digs below the ground so no gap can show.
+  - The procedural dirt texture spans the whole cross-section in metres, so
+    raked grooves run continuously over the top and down both shoulders.
+  - On the riding surface the texture adds packed racing lines, a pair of
+    ruts per lane with knobby tread marks, wandering tyre tracks and loose
+    clods. The ruts line up with the riders' lanes.
+  - A bump map and vertex-colour occlusion at the feet give the grooves
+    relief.
+- **Ground in front of the berm.** It's darker than the ground behind, so the
+  eye goes to the track.
 - **Venue.** Chain-link fence with sponsor banners (made-up names in
   `themes.js`), tyre stacks and flags at jump lips, marshal tents, crowd
-  stands, a start gate with drop plates per lane, and a finish gantry
-  cantilevered from the back. Everything sits behind the far edge of the
-  track, so nothing passes between the camera and the riders. The stands are
-  set well back (40 m) so the crowd doesn't compete with the riders.
+  stands, boulders on the desert and canyon tracks, a start gate with drop
+  plates per lane, and a finish gantry cantilevered from the back.
+  Everything sits behind the track, so nothing passes between the camera and
+  the riders. The stands are set well back (40 m) so the crowd doesn't
+  compete with the riders.
 - **Themes.** Track 1 Meadow Run is grassland, 2 Dust Bowl is desert, 3 Pine
   Ridge is forest, 4 Red Canyon is canyon, and 5 Thunder Arena is a stadium
   at night under floodlights. Each theme sets the sky, haze, sun, track dirt
   colour, ground texture, background layers and props.
-- **Scenery scale.** The narrow lens magnifies distant scenery, so background
-  layer heights are tuned for it. The far layers skip the scene fog and are
-  pre-tinted toward the haze colour instead. A dense band of trees on the
-  horizon breaks up the grass on the green tracks.
-- **Lighting.** A strong directional sun with soft shadows, a hemisphere fill
-  light and a room environment map for reflections. Neutral tone mapping
-  keeps colours saturated, and linear fog gives atmospheric depth. On desktop
-  there's screen-space ambient occlusion (GTAO), turned off on touch devices
-  for performance; add `?noao` to the URL to disable it on desktop.
+  - The day themes share a warm, slightly muted palette with golden light
+    and strong haze.
+  - The arena has a closed bowl of stands, sponsor boards on the wall and
+    floodlight halos.
+- **Scenery scale.** The lens magnifies distant scenery, so background layer
+  heights are tuned for it. The far layers skip the scene fog and are
+  pre-tinted toward the haze colour instead. Dense bands of trees break up
+  the grass on the green tracks.
+- **Lighting.** A strong directional sun with soft shadows, a warm
+  hemisphere fill light and a room environment map for reflections. Neutral
+  tone mapping keeps colours from washing out, linear fog adds haze, and a
+  soft warm vignette (CSS) frames the view. On desktop there's screen-space
+  ambient occlusion (GTAO), turned off on touch devices for performance; add
+  `?noao` to the URL to disable it on desktop.
 - **Bike and rider.** Built procedurally from primitives:
   - The bike has knobby tyres, 32-spoke wheels, a disc brake, a twin-spar
     frame, gold fork tubes with chrome lower legs that compress with the
@@ -111,6 +129,9 @@ original: no logos, assets or models from other games.
   - The rider's body shifts with lean, crouches to absorb landings (a damped
     spring driven by impact and suspension compression) and ragdolls off the
     bike on a crash.
+  - The physics wheel joints have no travel limit, so the renderer clamps
+    the drawn wheels to realistic suspension travel. A crashed bike no longer
+    looks stretched apart.
 - **3D models.** No external models are used. Free CC0 bike models were an
   option, but the procedural ones stay small, need no extra downloads, and
   match the moving suspension exactly. So there are no third-party asset
@@ -156,13 +177,15 @@ are far slower than a real GPU and only useful for comparing changes. Real
 
 ## Still different from the target look
 
-- The bike and rider are built from primitives, so they're chunkier and
-  simpler than hand-modelled, textured 3D art (no decals on the plastics,
-  simple capsule limbs).
-- Crowd members are simple capsule figures; up close they read as dolls
-  rather than people.
+- The bike and rider are built from primitives, so they're simpler than
+  hand-modelled, hand-painted 3D art (no decals on the plastics, capsule
+  limbs).
+- The scenery is generic geometry (cones and blobs for trees, extruded
+  ridges for hills and mesas). It doesn't have the painted, illustrated
+  quality of a game with a dedicated art team, and there are no hero
+  set-pieces (buildings, landmarks) behind the track.
+- The track runs in one straight line along x. It can't curve toward or
+  away from the camera.
+- Crowd members are simple capsule figures.
 - At the start gate all four riders share the same x position, so they
-  overlap until the pack spreads out. Lanes separate them in depth, but not
-  completely.
-- The cut face uses one tiling soil texture per track. It looks repetitive on
-  long flat sections.
+  overlap until the pack spreads out.

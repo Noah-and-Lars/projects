@@ -14,7 +14,7 @@ import { ragdollJoints } from './ragdoll.js';
 import { THEMES, SPONSORS } from './themes.js';
 import * as TX from './textures.js';
 
-export const TW = 4.6; // half track width (z)
+export const TW = 5.4; // half track width (z)
 
 let envCache = null;
 export function createRenderer(canvas, quality) {
@@ -61,7 +61,7 @@ export function createView(renderer, race, quality) {
   sun.castShadow = true;
   sun.shadow.mapSize.set(quality.shadowSize, quality.shadowSize);
   const sc = sun.shadow.camera;
-  sc.left = -16; sc.right = 16; sc.top = 12; sc.bottom = -10; sc.near = 1; sc.far = 90;
+  sc.left = -24; sc.right = 24; sc.top = 16; sc.bottom = -14; sc.near = 1; sc.far = 110;
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.025;
   sun.shadow.radius = 2.5;
@@ -69,6 +69,10 @@ export function createView(renderer, race, quality) {
   const sunDir = new THREE.Vector3(...T.sun.dir).normalize().multiplyScalar(40);
 
   // ---------- Ground levels ----------
+  // The track is a raised dirt berm: its foot (base) sits BERM metres below
+  // the lowest nearby riding surface, so even flat sections stand proud of the
+  // venue ground and every jump reads as a solid sculpted mound.
+  const BERM = 0.8;
   const n = track.xs.length;
   const base = new Float32Array(n);
   {
@@ -82,7 +86,7 @@ export function createView(renderer, race, quality) {
     for (let i = 0; i < n; i++) {
       let s = 0, c = 0;
       for (let k = Math.max(0, i - win); k <= Math.min(n - 1, i + win); k++) { s += mins[k]; c++; }
-      base[i] = Math.min(s / c, track.ys[i]) - 0.2;
+      base[i] = Math.min(s / c, track.ys[i]) - BERM;
     }
   }
   const x0 = track.xs[0], dxs = (track.xs[n - 1] - x0) / (n - 1);
@@ -99,145 +103,109 @@ export function createView(renderer, race, quality) {
     return base[j] + (base[j + 1] - base[j]) * t;
   };
   const heightAt = (x) => track.heightAt(Math.max(x0, Math.min(track.xs[n - 1], x)));
-  const outerAt = (x) => TW + 0.4 + (heightAt(x) - baseAt(x)) * 0.75; // foot of the back batter
-  // Venue ground behind the track (gently rolling further back).
+  // Shoulders: start SH_IN inside the riding edge and roll down to the foot.
+  const SH_IN = 0.6;
+  const runOf = (H) => 0.7 + H * 0.7;
+  const outerAt = (x) => TW - SH_IN + runOf(heightAt(x) - baseAt(x)); // foot of either shoulder
+  // Venue ground (gently rolling further back).
   const groundAt = (x, z) => baseAt(x) - 0.05 + (z < -14 ? smoothNoise(x, 3) * Math.min(4, (-z - 14) * 0.08) : 0);
 
-  // ---------- Track: top, cut face, back batter ----------
+  // ---------- Track: one sculpted cross-section swept along the profile ----------
+  // Across the track (z): back foot -> rounded shoulder -> crowned riding
+  // surface -> rounded shoulder -> front foot. The texture's v axis covers the
+  // whole cross-section in metres, so the raked grooves run continuously over
+  // the top and down both shoulders, and the lane ruts line up with LANES.
   const dirtCol = new THREE.Color(T.dirt);
-  const laneV = LANES.map(z => (z + TW) / (2 * TW));
-  const dirt = TX.dirtTexture(dirtCol, laneV, def.id.length * 31);
+  const SPAN = 7.5;                 // metres of shoulder texture each side
+  const VT = 2 * TW + 2 * SPAN;     // texture height in metres
+  const laneV = LANES.map(z => (z + TW + SPAN) / VT);
+  const dirt = TX.dirtTexture(dirtCol, laneV, def.id.length * 31, { top: [SPAN / VT, (SPAN + 2 * TW) / VT], metres: VT });
   keep(dirt.map); keep(dirt.bump);
-  const U = 7; // metres per texture repeat along the track
+  const U = 8; // metres per texture repeat along the track
   {
-    const zs = [];
-    const cols = 14;
-    for (let k = 0; k <= cols; k++) zs.push(-TW + (2 * TW * k) / cols);
-    const pos = [], uv = [], idx = [];
+    const TOPN = 12, SHN = 8;
+    // +2: a skirt at each foot that digs below the venue ground, so no gap
+    // can open between the berm and the ground beside it.
+    const W = TOPN + 1 + 2 * SHN + 2;
+    const inner = TW - SH_IN;
+    const smooth = (u) => u * u * (3 - 2 * u);
+    const pos = [], uv = [], col = [], idx = [];
+    const zs = new Float32Array(W), ys = new Float32Array(W), vs = new Float32Array(W), ao = new Float32Array(W);
     for (let i = 0; i < n; i++) {
-      const x = track.xs[i], y = track.ys[i];
-      for (let k = 0; k <= cols; k++) {
-        // Slight crown and rounded edges so it reads as packed dirt.
-        const t = k / cols;
-        const edge = Math.min(t, 1 - t);
-        const lip = edge < 0.04 ? -0.08 * (1 - edge / 0.04) : 0;
-        pos.push(x, y + lip + Math.sin(t * Math.PI) * 0.04, zs[k]);
-        uv.push(x / U, t);
+      const x = track.xs[i], y = track.ys[i], H = Math.max(0.3, y - base[i]), run = runOf(H);
+      let k = 0;
+      zs[k] = -inner - run - 0.8; ys[k] = base[i] - 0.6; ao[k] = 0.55; k++;
+      for (let s = SHN; s >= 1; s--, k++) { const u = s / SHN; zs[k] = -inner - run * u; ys[k] = y - H * smooth(u); ao[k] = 1 - 0.4 * u * u; }
+      for (let s = 0; s <= TOPN; s++, k++) { const t = s / TOPN; zs[k] = -inner + 2 * inner * t; ys[k] = y + Math.sin(t * Math.PI) * 0.06; ao[k] = 1; }
+      for (let s = 1; s <= SHN; s++, k++) { const u = s / SHN; zs[k] = inner + run * u; ys[k] = y - H * smooth(u); ao[k] = 1 - 0.4 * u * u; }
+      zs[k] = inner + run + 0.8; ys[k] = base[i] - 0.6; ao[k] = 0.55; k++;
+      // v in metres: straight z on the top, arc length down each shoulder.
+      const t0 = SHN + 1, t1 = SHN + 1 + TOPN;
+      for (let q = t0; q <= t1; q++) vs[q] = zs[q] + TW + SPAN;
+      for (let q = t0 - 1; q >= 0; q--) vs[q] = vs[q + 1] - Math.hypot(zs[q + 1] - zs[q], ys[q + 1] - ys[q]);
+      for (let q = t1 + 1; q < W; q++) vs[q] = vs[q - 1] + Math.hypot(zs[q] - zs[q - 1], ys[q] - ys[q - 1]);
+      for (let q = 0; q < W; q++) {
+        pos.push(x, ys[q], zs[q]);
+        uv.push(x / U, Math.max(0.002, Math.min(0.998, vs[q] / VT)));
+        col.push(ao[q], ao[q] * 0.98, ao[q] * 0.95);
       }
     }
-    const W = cols + 1;
-    for (let i = 0; i < n - 1; i++) for (let k = 0; k < cols; k++) {
+    for (let i = 0; i < n - 1; i++) for (let k = 0; k < W - 1; k++) {
       const a = i * W + k, b = a + 1, c = a + W, d = c + 1;
       idx.push(a, b, d, a, d, c);
     }
     const g = keep(new THREE.BufferGeometry());
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    g.setIndex(idx);
-    g.computeVertexNormals();
-    const m = new THREE.Mesh(g, keep(new THREE.MeshStandardMaterial({ map: dirt.map, bumpMap: dirt.bump, bumpScale: 1.2, roughness: 0.95 })));
-    m.receiveShadow = true;
-    scene.add(m);
-  }
-  const bottomY = track.minY - 30;
-  {
-    // Cut front face: a vertical cross-section of the dirt, down out of view.
-    const strata = keep(TX.strataTexture(dirtCol, 3));
-    // Rows: top edge, a band just below it, deeper down, then out of view.
-    // Vertex colours darken quickly with depth (fake occlusion), so the face
-    // reads as a solid slab of earth instead of a busy wall of texture.
-    const rows = [[0.08, 1.0], [0.9, 0.82], [2.6, 0.5], [5.5, 0.3], [null, 0.22]];
-    const R5 = rows.length;
-    const pos = [], uv = [], idx = [], col = [];
-    for (let i = 0; i < n; i++) {
-      const x = track.xs[i];
-      for (const [d, c] of rows) {
-        const y = d === null ? bottomY : track.ys[i] - d;
-        pos.push(x, y, TW);
-        uv.push(x / 5, y / 5);
-        const warm = d === null ? 0 : 0.03; // a touch warmer near the top
-        col.push(c + warm, c, c * 0.95);
-      }
-    }
-    for (let i = 0; i < n - 1; i++) for (let r = 0; r < R5 - 1; r++) {
-      const a = i * R5 + r, b = a + R5;
-      idx.push(a, a + 1, b + 1, a, b + 1, b);
-    }
-    const g = keep(new THREE.BufferGeometry());
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    g.setIndex(idx);
-    g.computeVertexNormals();
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    const m = new THREE.Mesh(g, keep(new THREE.MeshStandardMaterial({ map: strata, vertexColors: true, roughness: 1 })));
-    m.receiveShadow = true;
-    scene.add(m);
-    // A darker band right under the top edge sells the thickness.
-    const lip = [], lidx = [], luv = [];
-    for (let i = 0; i < n; i++) {
-      const x = track.xs[i], y = track.ys[i];
-      lip.push(x, y - 0.08, TW, x, y - 0.08, TW + 0.12, x, y - 0.5, TW + 0.02);
-      luv.push(x / U, 0, x / U, 0.02, x / U, 0.04);
-    }
-    for (let i = 0; i < n - 1; i++) { const a = i * 3, b = a + 3; lidx.push(a, b, b + 1, a, b + 1, a + 1, a + 1, b + 1, b + 2, a + 1, b + 2, a + 2); }
-    const lg = keep(new THREE.BufferGeometry());
-    lg.setAttribute('position', new THREE.Float32BufferAttribute(lip, 3));
-    lg.setAttribute('uv', new THREE.Float32BufferAttribute(luv, 2));
-    lg.setIndex(lidx); lg.computeVertexNormals();
-    const lm = new THREE.Mesh(lg, keep(new THREE.MeshStandardMaterial({ map: dirt.map, roughness: 1, color: 0xd8c8b8 })));
-    lm.receiveShadow = true;
-    scene.add(lm);
-  }
-  {
-    // Back batter: the far side of the mounds sloping down to the ground.
-    const pos = [], uv = [], idx = [];
-    for (let i = 0; i < n; i++) {
-      const x = track.xs[i];
-      pos.push(x, track.ys[i] - 0.06, -TW, x, base[i], -outerAt(x));
-      uv.push(x / U, 0.0, x / U, 0.15);
-    }
-    for (let i = 0; i < n - 1; i++) { const a = i * 2; idx.push(a, a + 2, a + 3, a, a + 3, a + 1); }
-    const g = keep(new THREE.BufferGeometry());
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    g.setIndex(idx); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, keep(new THREE.MeshStandardMaterial({ map: dirt.map, roughness: 1, color: 0xc8b4a0 })));
-    m.receiveShadow = true;
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, keep(new THREE.MeshStandardMaterial({ map: dirt.map, bumpMap: dirt.bump, bumpScale: 1.6, roughness: 0.95, vertexColors: true })));
+    m.receiveShadow = true; m.castShadow = true;
     scene.add(m);
   }
   {
-    // Venue ground behind the track.
+    // Venue ground on both sides of the berm: behind it out to the scenery,
+    // and in front of it down past the bottom of the screen.
     const gtex = keep(T.groundTex === 'sand' ? TX.sandTexture(new THREE.Color(T.ground)) : TX.grassTexture(new THREE.Color(T.ground)));
-    const rows = [-TW - 0.3, -6, -9, -14, -20, -30, -45, -70, -110];
+    const gmat = keep(new THREE.MeshStandardMaterial({ map: gtex, vertexColors: true, roughness: 1 }));
     const xa = track.minX - 150, xb = track.endX + 200, step = 3;
-    const pos = [], uv = [], idx = [], col = [];
     const nx = Math.ceil((xb - xa) / step) + 1;
-    for (let i = 0; i < nx; i++) {
-      const x = xa + i * step;
-      for (const z of rows) {
-        const zz = z === rows[0] ? -Math.max(TW + 0.3, outerAt(x) - 0.1) : z;
-        pos.push(x, groundAt(x, zz), zz);
-        uv.push(x / 9, zz / 9);
-        // Darker right at the foot of the track (contact occlusion), plus
-        // large soft patches so distant ground never shows a tiling grid.
-        const ao = z === rows[0] ? 0.6 : z === rows[1] ? 0.85 : 1;
-        const patch = 0.9 + 0.1 * smoothNoise(x * 3 + zz * 5, 7);
-        col.push(ao * patch, ao * (patch * 0.97 + 0.03), ao * patch);
+    const build = (rows, sign) => {
+      const pos = [], uv = [], idx = [], col = [];
+      for (let i = 0; i < nx; i++) {
+        const x = xa + i * step;
+        rows.forEach((z, r) => {
+          // Row 0 starts hidden under the berm (the berm's skirt digs below it).
+          const zz = r === 0 ? sign * (TW - SH_IN) : z;
+          pos.push(x, groundAt(x, zz) - (r === 0 ? 0.45 : 0), zz);
+          const us = sign > 0 ? 5 : 9;
+          uv.push(x / us, zz / us);
+          // Darker at the foot of the berm (contact occlusion), large soft
+          // patches so distant ground never shows a tiling grid, and a darker
+          // foreground so the eye goes to the track.
+          let shade = r === 0 ? 0.62 : r === 1 ? 0.85 : 1;
+          if (sign > 0) shade *= r >= 3 ? 0.72 : 0.85;
+          const patch = 0.9 + 0.1 * smoothNoise(x * 0.8 + zz * 1.7, 7);
+          col.push(shade * patch, shade * (patch * 0.97 + 0.03), shade * patch);
+        });
       }
-    }
-    const W = rows.length;
-    for (let i = 0; i < nx - 1; i++) for (let k = 0; k < W - 1; k++) {
-      const a = i * W + k, b = a + 1, c = a + W, d = c + 1;
-      idx.push(a, c, d, a, d, b);
-    }
-    const g = keep(new THREE.BufferGeometry());
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    g.setIndex(idx); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, keep(new THREE.MeshStandardMaterial({ map: gtex, vertexColors: true, roughness: 1 })));
-    m.receiveShadow = true;
-    scene.add(m);
+      const Wr = rows.length;
+      for (let i = 0; i < nx - 1; i++) for (let k = 0; k < Wr - 1; k++) {
+        const a = i * Wr + k, b = a + 1, c = a + Wr, d = c + 1;
+        if (sign < 0) idx.push(a, c, d, a, d, b); else idx.push(a, d, c, a, b, d);
+      }
+      const g = keep(new THREE.BufferGeometry());
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      g.setIndex(idx); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, gmat);
+      m.receiveShadow = true;
+      scene.add(m);
+    };
+    build([0, -TW - 6, -TW - 8, -14, -20, -30, -45, -70, -110], -1);
+    build([0, TW + 6, TW + 9, TW + 14, TW + 22, TW + 40], 1);
   }
 
   // ---------- Background layers (parallax) ----------
@@ -387,6 +355,27 @@ export function createView(renderer, race, quality) {
     for (const m of [trunk, foliage, round].filter(Boolean)) { m.castShadow = !quality.mobile; m.receiveShadow = true; scene.add(m); }
   }
 
+  // Boulders scattered over the venue ground (desert and canyon).
+  if (T.props.rocks) {
+    const rockM = keep(new THREE.MeshStandardMaterial({ map: rockTex, color: 0xffffff, roughness: 0.95, flatShading: true }));
+    const geo = keep(new THREE.DodecahedronGeometry(1, 0));
+    const spots = [];
+    for (let x = track.minX - 60; x < track.endX + 120; x += (3 + R() * 9) / T.props.rocks) {
+      const z = -(TW + 9) - R() * 40;
+      spots.push([x, z, 0.4 + R() * R() * 2.6]);
+    }
+    const inst = new THREE.InstancedMesh(geo, rockM, spots.length);
+    const mt = new THREE.Matrix4(), qq = new THREE.Quaternion(), ee = new THREE.Euler(), ss = new THREE.Vector3(), pp = new THREE.Vector3();
+    spots.forEach(([x, z, sc], i) => {
+      ee.set(R() * 3, R() * 3, R() * 3); qq.setFromEuler(ee);
+      ss.set(sc * (1 + R() * 0.6), sc * (0.55 + R() * 0.4), sc * (1 + R() * 0.5));
+      pp.set(x, groundAt(x, z) + sc * 0.2, z);
+      inst.setMatrixAt(i, mt.compose(pp, qq, ss));
+    });
+    inst.castShadow = !quality.mobile; inst.receiveShadow = true;
+    scene.add(inst);
+  }
+
   // Fence with banners along the back edge (or arena boards at night).
   const bannerG = keep(new THREE.PlaneGeometry(6, 0.95));
   let bi = 0;
@@ -469,7 +458,7 @@ export function createView(renderer, race, quality) {
       const g = new THREE.Group();
       const pole = new THREE.Mesh(poleG, poleM); pole.castShadow = true; g.add(pole);
       const flag = new THREE.Mesh(flagG, flagMats[i % flagMats.length]); flag.position.y = 2.4; flag.castShadow = true; g.add(flag);
-      g.position.set(lip, heightAt(lip) - 0.1, -TW - 0.15);
+      g.position.set(lip, heightAt(lip) - 0.05, -(TW - 0.7));
       scene.add(g);
       lipFlags.push({ flag, phase: R() * 6 });
     });
@@ -601,12 +590,12 @@ export function createView(renderer, race, quality) {
   {
     const y = heightAt(gateX);
     const frameM = keep(new THREE.MeshStandardMaterial({ color: 0x9aa0aa, metalness: 0.6, roughness: 0.4 }));
-    const beam = new THREE.Mesh(keep(new THREE.BoxGeometry(0.15, 0.12, TW * 2)), frameM);
+    const beam = new THREE.Mesh(keep(new THREE.BoxGeometry(0.15, 0.12, (TW - 0.6) * 2)), frameM);
     beam.position.set(gateX, y + 0.05, 0); scene.add(beam);
     const pillarG = keep(new THREE.BoxGeometry(0.18, 2.6, 0.18)); pillarG.translate(0, 1.3, 0);
-    const p = new THREE.Mesh(pillarG, frameM); p.position.set(gateX - 0.5, y, -TW - 0.3); p.castShadow = true; scene.add(p);
+    const p = new THREE.Mesh(pillarG, frameM); p.position.set(gateX - 0.5, y, -(TW - 0.5)); p.castShadow = true; scene.add(p);
     const top = new THREE.Mesh(keep(new THREE.BoxGeometry(1.6, 0.7, 0.12)), bannerMats[0]);
-    top.position.set(gateX - 0.5, y + 2.7, -TW - 0.3); scene.add(top);
+    top.position.set(gateX - 0.5, y + 2.7, -(TW - 0.5)); scene.add(top);
     const plateG = keep(new THREE.BoxGeometry(0.06, 0.6, 1.3)); plateG.translate(0, 0.3, 0);
     const plateM = keep(new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.5 }));
     for (const z of LANES) {
@@ -620,13 +609,13 @@ export function createView(renderer, race, quality) {
     const fx = finishX, y = heightAt(fx);
     const postM = keep(new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.3, roughness: 0.5 }));
     const post = new THREE.Mesh(keep(new THREE.BoxGeometry(0.4, 5.4, 0.4)), postM);
-    post.position.set(fx, y + 2.7, -TW - 0.6); post.castShadow = true; scene.add(post);
-    const arm = new THREE.Mesh(keep(new THREE.BoxGeometry(0.3, 0.3, TW * 2 + 0.6)), postM);
+    post.position.set(fx, y + 2.7, -(TW - 0.4)); post.castShadow = true; scene.add(post);
+    const arm = new THREE.Mesh(keep(new THREE.BoxGeometry(0.3, 0.3, TW * 2 - 0.6)), postM);
     arm.position.set(fx, y + 5.2, -0.3); arm.castShadow = true; scene.add(arm);
-    const banner = new THREE.Mesh(keep(new THREE.PlaneGeometry(TW * 2 + 0.4, 1.0)), keep(new THREE.MeshStandardMaterial({ map: keep(TX.checkerTexture('FINISH')), side: THREE.DoubleSide })));
+    const banner = new THREE.Mesh(keep(new THREE.PlaneGeometry(TW * 2 - 1.0, 1.0)), keep(new THREE.MeshStandardMaterial({ map: keep(TX.checkerTexture('FINISH')), side: THREE.DoubleSide })));
     banner.rotation.y = Math.PI / 2; banner.position.set(fx + 0.05, y + 4.5, -0.3);
     scene.add(banner);
-    const line = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.9, TW * 2)), keep(new THREE.MeshStandardMaterial({ map: keep(TX.checkerTexture('')), roughness: 0.9 })));
+    const line = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.9, (TW - 0.6) * 2)), keep(new THREE.MeshStandardMaterial({ map: keep(TX.checkerTexture('')), roughness: 0.9 })));
     line.rotation.x = -Math.PI / 2; line.position.set(fx, y + 0.06, 0); line.receiveShadow = true;
     scene.add(line);
   }

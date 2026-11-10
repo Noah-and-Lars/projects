@@ -1,12 +1,14 @@
-// Side-scroller camera: close, almost flat side-on with a slight downward
-// tilt and a narrow field of view. The player sits left of centre so more of
+// Side-scroller camera: side-on, tilted down about 14 degrees with a fairly
+// narrow field of view, so the track reads as a sculpted 3D berm and the four
+// riders sit in clearly separate depth lanes. The player sits left of centre so more of
 // the track ahead is visible. Zooms out a little with speed and big air,
 // follows smoothly, and shakes on hard landings.
 import * as THREE from 'three';
 
-const FOV = 24;            // narrow lens: reads like 2D with 3D depth
-const TILT = 0.13;         // radians of downward tilt (~7.5 degrees)
-const BASE_HEIGHT = 6.4;   // metres visible vertically at rest (~bike = 1/4 screen)
+const FOV = 32;            // fairly narrow lens: reads like 2D with 3D depth
+const TILT = 0.24;         // radians of downward tilt (~14 degrees): the riding
+                           // surface and the riders' depth lanes stay readable
+const BASE_HEIGHT = 11.2;  // metres visible vertically at rest (~bike = 1/6 screen)
 const PLAYER_SCREEN_X = 0.34; // player at about a third from the left
 
 export function createCameraRig() {
@@ -27,8 +29,8 @@ export function createCameraRig() {
 
     // Visible height grows a little with speed and air time. On very wide
     // screens keep at least ~22 m of width; on tall ones at least ~11 m.
-    let height = BASE_HEIGHT + Math.min(1.5, speed * 0.06) + st.air * 2.2;
-    height = Math.max(height, 11 / camera.aspect);
+    let height = BASE_HEIGHT + Math.min(2.2, speed * 0.09) + st.air * 2.6;
+    height = Math.max(height, 16 / camera.aspect);
     const tanHalf = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
     const width = height * camera.aspect;
 

@@ -17,7 +17,7 @@ export const RIDERS = [
 // Depth offsets (render only). The player is in the nearest lane.
 // Spread wide enough that, with the camera's slight downward tilt, each rider
 // sits visibly higher and smaller than the one in front: no overlapping blob.
-export const LANES = [3.4, 1.0, -1.4, -3.8];
+export const LANES = [4.1, 1.35, -1.4, -4.15];
 const RESPAWN_DELAY = 1.0;
 const STUCK_TIME = 3.5;
 
