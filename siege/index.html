@@ -74,7 +74,7 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=2"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.17';
+const VERSION = '1.0.18';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
@@ -1053,9 +1053,9 @@ const BCOLS = 4, BROWS = 4;                 // barricade planks
 // 1.0.3: every defender has 3 reinforcements and 5 barricades (it was 2 of each, too few for the doors and windows round a site)
 const REINF_N = 3, BARR_N = 5;
 const BAR_HP = 110; // 1.0.6: a barricade breaks all at once (1.0.7: 2 melee hits, a lot of bullets, or any explosive)
-// 1.0.7: a barricade is one solid board (its own plank texture, BAR_PX pixels a metre). Bullets punch holes in it
-// that you can see and shoot through; when about half of it is holes it falls apart.
-const BAR_PX = 80, BAR_OPEN = 0.5;
+// 1.0.7: a barricade is one board (its own texture, BAR_PX pixels a metre). 1.0.18: it is one solid green block:
+// bullets stop at it and only leave dents (no more holes to see and shoot through), and it breaks when BAR_HP runs out.
+const BAR_PX = 80, BAR_GREEN = [70, 168, 78], BAR_DEBRIS = 0x3e9446;
 // 1.0.8: drones are slower, and Shift boosts one for DRONE_BOOST_S seconds, DRONE_BOOSTS times a round
 const DRONE_SP = 3.8, DRONE_BOOST_SP = 6.6, DRONE_BOOSTS = 3, DRONE_BOOST_S = 5;
 const PREP_S = 45, ACTION_S = 180, DEFUSE_S = 45, PICK_S = 20, END_S = 7, PLANT_S = 7, DISABLE_S = 7;
@@ -1138,7 +1138,7 @@ const SG_OPS = freezeDeep({
   shoji:   { side: 'def', n: 'SHOJI', role: 'Barrier', c: '#f15bb5', spd: 2, arm: 2, guns: ['ump', 'm590'], sec2: ['d50'], sec: ['impact', 'shield'],
              g: { k: 'kunai', n: 'Foam Kunai', n0: 5, d: 'Throw a kunai and a bulletproof foam barrier bursts out where it lands. Patch holes or block a door.' } },
   hush:    { side: 'def', n: 'HUSH', role: 'Breach Denial', c: '#8d99ae', spd: 2, arm: 2, guns: ['mp5', 'm590'], sec2: ['smg11'], sec: ['nitro', 'shield'],
-             g: { k: 'jammer', n: 'Signal Jammer', n0: 4, d: 'Kills drones and blocks breaching charges and electronic attacker gadgets within 4 m.' } },
+             g: { k: 'jammer', n: 'Signal Jammer', n0: 4, d: 'Jams drones and blocks breaching charges and electronic attacker gadgets it can reach: 2.5 m, and not through floors or walls.' } },
   murk:    { side: 'def', n: 'MURK', role: 'Anchor / Denial', c: '#7b2cbf', spd: 1, arm: 3, guns: ['p90', 'm590'], sec2: ['smg11'], sec: ['wire', 'shield'],
              g: { k: 'gas', n: 'Toxic Canister', n0: 3, d: 'Throw a canister (X; Shift + X throws another while one is out), then press X to set them all off: poison gas that blocks the way for 12 seconds.' } },
   warden:  { side: 'def', n: 'WARDEN', role: 'Utility Denial', c: '#2a9d8f', spd: 3, arm: 1, guns: ['spear', 'm590'], sec2: ['p12'], sec: ['bcam', 'claymore'],
@@ -2289,8 +2289,7 @@ function sgPanelDraw(p) {
   if (p.k === 'wall') starMarks(p); // 1.0.15
 }
 // ----- 1.0.7: barricade boards -----
-// two thin faces 7 cm apart, each the whole opening; the texture's alpha is the holes (alphaTest), and sgRay asks the
-// same texture whether a ray meets wood or a hole, so what you see through is what you can shoot through
+// two thin faces 7 cm apart, each the whole opening, both fully opaque (1.0.18: no holes, rays always stop at it)
 const BAR_GEO = new THREE.PlaneGeometry(1, 1); BAR_GEO.userData.keep = true;
 function barBuild(M, p) {
   const L1 = sgLightAt(...barMid(p, 0.12), ...barNrm(p, 1)), L2 = sgLightAt(...barMid(p, -0.12), ...barNrm(p, -1));
@@ -2298,12 +2297,12 @@ function barBuild(M, p) {
   const TW = Math.max(8, Math.round(p.w * BAR_PX)), TH = Math.max(8, Math.round(p.h * BAR_PX));
   const tex = new THREE.DataTexture(new Uint8Array(TW * TH * 4), TW, TH, THREE.RGBAFormat);
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false; tex.encoding = THREE.sRGBEncoding;
-  const mat = new THREE.MeshLambertMaterial({ map: tex, color: col, alphaTest: 0.5, side: THREE.DoubleSide });
+  const mat = new THREE.MeshLambertMaterial({ map: tex, color: col, side: THREE.DoubleSide });
   mat.userData.ownTex = tex;
   const g = new THREE.Group();
   for (const s of [-1, 1]) { const m = new THREE.Mesh(BAR_GEO, mat); m.position.z = s * 0.035; g.add(m); }
   g.visible = false; M.group.add(g);
-  p.mesh = g; p.tex = tex; p.TW = TW; p.TH = TH; p.open = 0;
+  p.mesh = g; p.tex = tex; p.TW = TW; p.TH = TH;
 }
 function barNrm(p, s) { return p.ax === 'x' ? [0, 0, s] : [s, 0, 0]; }
 function barOff(p) { return p.side === 1 ? -0.1 : 0.1; }
@@ -2315,40 +2314,28 @@ function barDraw(p) {
   const [x, y, z] = barMid(p);
   g.position.set(x, y, z); g.rotation.set(0, p.ax === 'x' ? 0 : -Math.PI / 2, 0); g.scale.set(p.w, p.h, 1);
 }
-// fresh planks: boards across the opening, each its own shade with grain, dark seams and nails at the ends
+// 1.0.18: a fresh barricade is one solid green block (a faint mottle and a darker rim so it reads as a slab)
 function barPlanks(p) {
-  const T = p.tex, D = T.image.data, TW = p.TW, TH = p.TH, R = mulberry((p.id + 1) * 7919 + (G.round | 0) * 131);
-  let y = 0;
-  while (y < TH) {
-    const bh = Math.min(TH - y, Math.round(BAR_PX * (0.12 + R() * 0.05))), base = 0.75 + R() * 0.3, tilt = (R() - 0.5) * 0.02;
-    for (let j = 0; j < bh; j++) for (let i = 0; i < TW; i++) {
-      const k = ((y + j) * TW + i) * 4, grain = 0.88 + 0.12 * Math.sin((i * 0.35 + j * 2.1 + tilt * i * 40) + Math.sin(i * 0.07 + y) * 3), seam = j === 0 || j === bh - 1 ? 0.55 : 1;
-      const nail = (i < 6 || i > TW - 7) && Math.abs(j - bh / 2) < 1.2 && (i === 3 || i === TW - 4) ? 0.35 : 1;
-      const v = base * grain * seam * nail * (0.93 + R() * 0.07);
-      D[k] = Math.min(255, 150 * v); D[k + 1] = Math.min(255, 104 * v); D[k + 2] = Math.min(255, 62 * v); D[k + 3] = 255;
-    }
-    y += bh;
+  const T = p.tex, D = T.image.data, TW = p.TW, TH = p.TH, R = mulberry((p.id + 1) * 7919 + (G.round | 0) * 131), [gr, gg, gb] = BAR_GREEN;
+  for (let j = 0; j < TH; j++) for (let i = 0; i < TW; i++) {
+    const k = (j * TW + i) * 4, e = Math.min(i, j, TW - 1 - i, TH - 1 - j);
+    const v = (e < 2 ? 0.55 : e < 5 ? 0.8 : 1) * (0.95 + 0.05 * Math.sin(i * 0.11 + j * 0.07) + R() * 0.04);
+    D[k] = Math.min(255, gr * v); D[k + 1] = Math.min(255, gg * v); D[k + 2] = Math.min(255, gb * v); D[k + 3] = 255;
   }
-  p.open = 0; T.needsUpdate = true;
+  T.needsUpdate = true;
 }
-// punch a hole: rm metres across the middle, u/v across the board from its start and bottom (0..1); a ring of torn,
-// darker wood round it
+// 1.0.18: a hit leaves a dent: rm metres across, u/v across the board from its start and bottom (0..1), darker in the
+// middle. It never opens a hole (it used to clear the alpha, and you could see and shoot through)
 function barHole(p, u, v, rm) {
   if (!p.tex) return;
-  const D = p.tex.image.data, TW = p.TW, TH = p.TH, cx = u * TW, cy = v * TH, r = Math.max(1.2, rm * BAR_PX), R = mulberry(Math.round(u * 9973 + v * 7741) + 1);
+  const D = p.tex.image.data, TW = p.TW, TH = p.TH, cx = u * TW, cy = v * TH, r = Math.max(1.2, rm * BAR_PX * 0.6), R = mulberry(Math.round(u * 9973 + v * 7741) + 1);
   const x0 = Math.max(0, Math.floor(cx - r - 3)), x1 = Math.min(TW - 1, Math.ceil(cx + r + 3)), y0 = Math.max(0, Math.floor(cy - r - 3)), y1 = Math.min(TH - 1, Math.ceil(cy + r + 3));
   for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) {
     const k = (j * TW + i) * 4, d = Math.hypot(i + 0.5 - cx, (j + 0.5 - cy) * 0.85) - R() * 0.9;
-    if (d <= r) { if (D[k + 3]) { D[k + 3] = 0; p.open++; } }
-    else if (d <= r + 2.2 && D[k + 3]) { D[k] *= 0.55; D[k + 1] *= 0.55; D[k + 2] *= 0.55; }
+    const f = d <= r * 0.6 ? 0.82 : d <= r + 1.5 ? 0.9 : 1;
+    if (f < 1) { D[k] *= f; D[k + 1] *= f; D[k + 2] *= f; }
   }
   p.tex.needsUpdate = true;
-}
-// does a ray at (u, v) on this barricade meet a hole?
-function barOpenAt(p, u, v) {
-  if (!p.tex) return false;
-  const i = Math.min(p.TW - 1, Math.max(0, Math.floor(u * p.TW))), j = Math.min(p.TH - 1, Math.max(0, Math.floor(v * p.TH)));
-  return p.tex.image.data[(j * p.TW + i) * 4 + 3] === 0;
 }
 // where on a barricade a world point is (u along it from s0, v up from y0)
 function barUV(p, x, y, z) { return [((p.ax === 'x' ? x : z) - p.s0) / p.w, (y - p.y0) / p.h]; }
@@ -2471,6 +2458,7 @@ function sgRay(ox, oy, oz, dx, dy, dz, maxT, opts = {}) {
       const c = z * Wd + x;
       for (const o of M.cellObs[c]) {
         if (!o.b || _seenOb.has(o)) continue; _seenOb.add(o);
+        if (opts.noProps && (o.k === 'prop' || o.k === 'step' || o.k === 'top' || o.k === 'rail')) continue; // 1.0.18: jammer lines pass furniture
         const t = rayBox(ox, oy, oz, dx, dy, dz, o.x0, o.y0, o.z0, o.x1, o.y1, o.z1, best);
         if (t >= 0 && t < best) { best = t; bk = o.k; bo = o; bp = null; bax = rayBox.ax; }
       }
@@ -2488,7 +2476,6 @@ function sgRay(ox, oy, oz, dx, dy, dz, maxT, opts = {}) {
         if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
         const i = Math.floor(v * p.rows) * p.cols + Math.floor(u * p.cols);
         if (!p.alive[i]) continue;
-        if (p.k === 'bar' && !opts.solidBar && barOpenAt(p, u, v)) continue; // 1.0.7: through a hole in the barricade (a swing is wider than a hole: solidBar)
         if (opts.skipChunk && opts.skipChunk(p, i)) continue;
         best = t; bk = 'panel'; bp = p; bi = i; bo = null;
         bax = p.ax === 'y' ? (dy > 0 ? -2 : 2) : p.ax === 'x' ? (dz > 0 ? -3 : 3) : (dx > 0 ? -1 : 1);
@@ -3607,11 +3594,10 @@ function sgTrace(P, o, d, dmg, G0, first) {
       const p = h.p;
       if (p.k === 'glass') { emit('wd', { c: [[p.id, 0]] }); snd('glass', end, 0.8); o = { x: end.x + d.x * 0.05, y: end.y + d.y * 0.05, z: end.z + d.z * 0.05 }; left -= h.t; continue; }
       if (p.reinf && p.k !== 'bar') { fxSpark(end.x, end.y, end.z, 0xffe0a0, 5); snd('metal', end, 0.5); return end; }
-      if (p.k === 'bar') { // the shot goes on through the planks, and leaves a hole (1.0.7)
+      if (p.k === 'bar') { // 1.0.18: the shot stops at the barricade and leaves a dent (it used to go through and leave a hole)
         const [u, v] = barUV(p, end.x, end.y, end.z);
-        emit('bhit', { p: p.id, d: Math.round(dm * (G0.pel ? 0.5 : 0.08) * 10) / 10, u: Math.round(u * 1000) / 1000, v: Math.round(v * 1000) / 1000, r: G0.pel ? 0.045 : G0.t === 'DMR' ? 0.04 : G0.t === 'HG' || G0.t === 'MP' ? 0.028 : 0.032 });
-        fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 3, 0x7a5532, 0.05, 2); snd('wood', end, 0.45);
-        if (pierce++ < 2) { dm *= 0.7; o = { x: end.x + d.x * 0.12, y: end.y + d.y * 0.12, z: end.z + d.z * 0.12 }; left -= h.t + 0.12; continue; }
+        emit('bhit', { p: p.id, d: Math.round(dm * (G0.pel ? 0.5 : 0.1) * 10) / 10, u: Math.round(u * 1000) / 1000, v: Math.round(v * 1000) / 1000, r: G0.pel ? 0.045 : G0.t === 'DMR' ? 0.04 : G0.t === 'HG' || G0.t === 'MP' ? 0.028 : 0.032 });
+        fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 3, BAR_DEBRIS, 0.05, 2); snd('wood', end, 0.45);
         return end;
       }
       // 1.0.13: drywall: the shot goes through (wallbang, a bit weaker for each wall) and wears the chunk down; it took a
@@ -3625,8 +3611,8 @@ function sgTrace(P, o, d, dmg, G0, first) {
         if (pierce++ < 2) { dm *= 0.6; o = { x: end.x + d.x * 0.2, y: end.y + d.y * 0.2, z: end.z + d.z * 0.2 }; left -= h.t + 0.2; continue; }
         return end;
       }
-      fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 2, p.k === 'bar' || p.k === 'hatch' ? 0x7a5532 : 0xcfc8b8, 0.05, 2);
-      fxPuff(end.x, end.y, end.z, p.k === 'bar' ? 0x6a4a2a : 0xb8b0a0, 0.3, 0.5, 0.1);
+      fxDebris(end.x + h.n[0] * 0.05, end.y, end.z + h.n[2] * 0.05, 2, p.k === 'bar' ? BAR_DEBRIS : p.k === 'hatch' ? 0x7a5532 : 0xcfc8b8, 0.05, 2);
+      fxPuff(end.x, end.y, end.z, p.k === 'bar' ? 0x2f6a35 : 0xb8b0a0, 0.3, 0.5, 0.1);
       snd(p.k === 'bar' || p.k === 'hatch' ? 'wood' : 'chip', end, 0.45);
       if (broke) {
         _wd.push([p.id, h.i]); sgPanelDraw(p);
@@ -3648,7 +3634,7 @@ EV.wd = (d, local) => {
     const p = W && W.panels[pid];
     if (!p || !p.alive[i]) continue;
     p.alive[i] = 0;
-    if (!local) { const b = chunkBox(p, i, 0, _cb); fxDebris((b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2, 2, p.k === 'bar' ? 0x7a5532 : 0xcfc8b8, 0.06, 2); }
+    if (!local) { const b = chunkBox(p, i, 0, _cb); fxDebris((b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2, 2, p.k === 'bar' ? BAR_DEBRIS : 0xcfc8b8, 0.06, 2); }
     p.dirtyDraw = true;
   }
   for (const p of W.panels) if (p.dirtyDraw) { p.dirtyDraw = false; sgPanelDraw(p); }
@@ -3668,12 +3654,12 @@ EV.bhit = (d) => {
   const p = W && W.panels[d.p]; if (!p || p.k !== 'bar' || !p.active || !p.alive.some(v => v)) return;
   if (d.u != null) barHole(p, +d.u, +d.v, Math.min(0.3, +d.r || 0.03));
   p.barHp = (p.barHp ?? BAR_HP) - (+d.d || 0);
-  if (p.barHp <= 0 || p.open > p.TW * p.TH * BAR_OPEN) sgBreakBar(p);
+  if (p.barHp <= 0) sgBreakBar(p);
 };
 function sgBreakBar(p) {
   for (let i = 0; i < p.n; i++) p.alive[i] = 0;
   sgPanelDraw(p); const c = chunkCenter(p);
-  fxDebris(c.x, c.y, c.z, 14, 0x7a5532, 0.09, 4); fxPuff(c.x, c.y, c.z, 0x6a4a2a, 0.9, 0.6, 0.1); snd('crumble', c, 0.9);
+  fxDebris(c.x, c.y, c.z, 14, BAR_DEBRIS, 0.09, 4); fxPuff(c.x, c.y, c.z, 0x2f6a35, 0.9, 0.6, 0.1); snd('crumble', c, 0.9);
 }
 EV.barr = (d) => {
   const p = W.panels[d.p]; if (!p || p.active && p.alive.some(v => v)) return;
@@ -4029,7 +4015,7 @@ function sgGadgetsUpdate(dt) {
     if (g.k === 'lance') {
       // burns through; shock rods on the same wall destroy it, jammers hold it
       const shock = [...G.gad.values()].find(s => s.k === 'shock' && s.p === g.p && !(s.off > t));
-      const jam = [...G.gad.values()].some(j => j.k === 'jammer' && !(j.off > t) && Math.hypot(j.x - g.x, j.z - g.z) < 4);
+      const jam = jammedAt(g.x, g.y, g.z, g.n);
       if (O && auth(O)) {
         if (shock) { emit('gdel', { id: g.id, why: 'zap' }); continue; }
         if (!jam) { g.burn += dt; if (g.burn >= 5) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgDispose(g.mesh); sgBoom('lance', g.x, g.y, g.z, g.o, { panel: g.p, self: g.id }); emit('gdel', { id: g.id }); continue; } }
@@ -4040,7 +4026,7 @@ function sgGadgetsUpdate(dt) {
       const shock = g.p >= 0 && [...G.gad.values()].find(s => s.k === 'shock' && s.p === g.p && !(s.off > t));
       if (shock && O && auth(O)) { emit('gdel', { id: g.id, why: 'zap' }); continue; }
       if (g.k === 'piston' && O && auth(O)) {
-        const jam = [...G.gad.values()].some(j => j.k === 'jammer' && !(j.off > t) && Math.hypot(j.x - g.x, j.z - g.z) < 4);
+        const jam = jammedAt(g.x, g.y, g.z, g.n);
         if (!jam) { g.wait -= dt; if (g.wait <= 0) { G.gad.delete(g.id); sgScene.remove(g.mesh); sgDispose(g.mesh); sgBoom('piston', g.x - (g.n ? g.n[0] : 0) * 0.1, g.y, g.z - (g.n ? g.n[2] : 0) * 0.1, g.o, { self: g.id }); emit('gdel', { id: g.id }); continue; } }
       }
     } else if (g.k === 'ads' && !off && O && auth(O)) {
@@ -4741,14 +4727,26 @@ function placeOn(P, k, need) { // need: 'wall' | 'panel' | 'floor' | 'any'
   emit('gadd', { id: uid(), k, o: P.id, x: r2(s.x), y: r2(s.y), z: r2(s.z), n: s.n, p: s.p ?? -1, yaw: r2(P.yaw) });
   return true;
 }
-const jammedAt = (x, z) => [...G.gad.values()].some(j => j.k === 'jammer' && !(j.off > now()) && Math.hypot(j.x - x, j.z - z) < 4);
+// 1.0.18: a jammer reaches JAM_R metres in every direction (it was 4 m flat, so one on the floor below still caught a
+// drone upstairs) and only what it has a clear line to: walls, floors, ceilings and barricades block it (furniture doesn't). A charge stuck
+// on a wall (n = the wall's outward normal) is still caught by a jammer right behind that wall, through that one wall.
+const JAM_R = 2.5;
+function jamReach(j, x, y, z, n) {
+  if (j.k !== 'jammer' || j.off > now()) return false;
+  const o = { x: j.x, y: j.y + 0.2, z: j.z };
+  if (Math.hypot(j.x - x, o.y - y, j.z - z) > JAM_R) return false;
+  const op = { solidBar: true, noProps: true };
+  if (sgClear(o, { x, y, z }, op)) return true;
+  return !!(n && (n[0] || n[2]) && sgClear(o, { x: x - n[0] * (WALL_T + 0.12), y, z: z - n[2] * (WALL_T + 0.12) }, op));
+}
+const jammedAt = (x, y, z, n) => { for (const j of G.gad.values()) if (jamReach(j, x, y, z, n)) return true; return false; };
 function sgUseSecondary(P) {
   const k = P.secKey, S = SG_SEC[k];
   if (S.remote) { // second press sets off the one you placed
     const mine = [...G.gad.values()].filter(g => g.o === P.id && g.k === k);
     if (mine.length) {
       const g = mine[mine.length - 1];
-      if (jammedAt(g.x, g.z)) return sgToast('JAMMED', '#ff6b6b');
+      if (jammedAt(g.x, g.y, g.z, g.n)) return sgToast('JAMMED', '#ff6b6b');
       G.gad.delete(g.id); sgScene.remove(g.mesh); sgDispose(g.mesh); emit('gdel', { id: g.id });
       sgBoom(k, g.x, g.y, g.z, P.id, { panel: g.p >= 0 ? g.p : undefined, self: g.id });
       return;
@@ -4802,7 +4800,7 @@ function sgMelee(P) {
   if (he && he.kind === 'p' && he.P.team !== P.team) { sgDealHit(P, he.P, 55, false, 'Melee'); fxSpark(_e.x + _d.x * he.t, _e.y + _d.y * he.t, _e.z + _d.z * he.t, 0xffffff, 3); return; }
   const h = sgRay(_e.x, _e.y, _e.z, _d.x, _d.y, _d.z, 1.7, { solidBar: true });
   for (const g of G.gad.values()) if ((g.k === 'wire' || g.k === 'foam') && g.side !== sideOf(P) && Math.hypot(g.x - (_e.x + _d.x), g.z - (_e.z + _d.z)) < 1.1) { emit('gdel', { id: g.id, why: 'shot' }); return; }
-  if (h && h.k === 'panel' && h.p.k === 'bar') { const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t }, [u, v] = barUV(h.p, pt.x, pt.y, pt.z); emit('bhit', { p: h.p.id, d: 60, u: Math.round(u * 1000) / 1000, v: Math.round(v * 1000) / 1000, r: 0.13 }); snd('wood', pt, 0.9); fxDebris(pt.x, pt.y, pt.z, 5, 0x7a5532, 0.08, 3); return; }
+  if (h && h.k === 'panel' && h.p.k === 'bar') { const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t }, [u, v] = barUV(h.p, pt.x, pt.y, pt.z); emit('bhit', { p: h.p.id, d: 60, u: Math.round(u * 1000) / 1000, v: Math.round(v * 1000) / 1000, r: 0.13 }); snd('wood', pt, 0.9); fxDebris(pt.x, pt.y, pt.z, 5, BAR_DEBRIS, 0.08, 3); return; }
   if (h && h.k === 'panel' && !h.p.reinf) {
     const pt = { x: _e.x + _d.x * h.t, y: _e.y + _d.y * h.t, z: _e.z + _d.z * h.t };
     // 1.0.13: a punch knocks out the one piece of drywall you hit (a small hole to see and shoot through)
@@ -4934,7 +4932,7 @@ function sgLocalUpdate(dt) {
     const D = P.drones[P.droneN];
     if (!D || !D.alive) { P.mode = 'body'; return; }
     D.yaw -= mx * sens; P.dronePitch = Math.max(-1.2, Math.min(1.0, (P.dronePitch || 0) - my * sens));
-    if (D.jam > t || jammedAt(D.x, D.z)) { D.jam = t + 0.5; if (Math.random() < dt * 3) snd('zap', null, 0.3); }
+    if (D.jam > t || jammedAt(D.x, D.y + 0.08, D.z)) { D.jam = t + 0.5; if (Math.random() < dt * 3) snd('zap', null, 0.3); }
     // 1.0.8: Shift starts a boost (one press, one boost)
     if (inp.run && !P.droneShift && !(D.boostT > 0) && (D.boosts ?? DRONE_BOOSTS) > 0) { D.boosts = (D.boosts ?? DRONE_BOOSTS) - 1; D.boostT = DRONE_BOOST_S; snd('beep2', null, 0.4); }
     P.droneShift = !!inp.run;
@@ -5792,6 +5790,11 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.18', t: 'Jammers and barricades', d: '10 November 2026', intro: 'Jammers have a shorter reach and barricades are solid again.', items: [
+    ['Shorter jammer range', 'A jammer reached 4 m across the map, ignoring height, so one on the floor below could jam your drone upstairs. It now reaches 2.5 m in every direction.'],
+    ['Jammers stop at walls', 'A jammer only reaches what it has a clear line to: walls, floors, ceilings and barricades block it. It still holds a breaching charge on the wall it sits right behind.'],
+    ['Solid barricades', 'Barricades are one solid green block. Bullets no longer go through them or leave holes you can see through; they leave dents and wear the barricade down until it breaks.'],
+  ] },
   { v: '1.0.17', t: 'Drone fixes', d: '7 November 2026', intro: 'A round of fixes for drones.', items: [
     ['Jammed drones fall', 'A drone caught by a jammer used to freeze where it was, even in the middle of a hop. Now it loses control but still drops to the floor and slows down.'],
     ['No more drones through walls', 'Throwing out a drone while standing right against a thin wall could put it on the other side. The drone now leaves your hands in small steps and stops at the wall.'],
@@ -5948,7 +5951,7 @@ function sgUiBuild() {
         <div><b>The round</b><p>20 seconds to pick an operator, 45 seconds of prep, then 3 minutes of action. One life each. First team to 4 rounds wins; sides swap at half time.</p></div>
         <div><b>Attack</b><p>In prep you drive drones: find the bomb site (it only shows up for your team once someone has seen it) and click to mark defenders. Then breach in. Whoever carries the defuser holds F next to a bomb to plant it, and it has to run for 45 seconds.</p></div>
         <div><b>Defence</b><p>Hold F on walls and hatches to reinforce them with steel, and on doors and windows to barricade them (10 reinforcements for the team, 5 barricades each). Place your gadgets, watch the cameras (5), shoot drones. Disable a planted defuser with F.</p></div>
-        <div><b>Breaking in</b><p>Drywall, barricades and hatches break piece by piece and bullets go through them. Reinforced steel only gives way to the Thermal Lance, the Piston Breacher and the Cutting Torch. Shock rods and jammers stop charges; an EMP shuts defender electronics down.</p></div>
+        <div><b>Breaking in</b><p>Drywall and hatches break piece by piece and bullets go through drywall. Barricades are solid: bullets stop at them and wear them down until they break. Reinforced steel only gives way to the Thermal Lance, the Piston Breacher and the Cutting Torch. Shock rods and jammers stop charges; an EMP shuts defender electronics down.</p></div>
       </div>
       <h3>Keys</h3><div class="keys" id="sgKeysHow"></div>
     </div></section>
@@ -6483,9 +6486,9 @@ function sgGiveAway(dt) {
     const R = sgRoomAt(T.x, T.y + 0.5, T.z);
     if (R && R.out) { T.outT = (T.outT || 0) + dt; if (T.outT > 3 && T.spottedUntil < t) { emit('spot', { t: T.id, by: '', d: 2 }); if (T.id === G.myId && T.outT < 3.5) sgToast('YOU ARE OUTSIDE — ATTACKERS CAN SEE YOU', '#ff5050'); } } else T.outT = 0;
     // Pulse Scan: moving while it's on
-    if (G.scan && t > G.scan.at && t < G.scan.until && Math.hypot(T.vx, T.vz) > 0.9 && !jammedAt(T.x, T.z) && T.spottedUntil < t + 0.5) emit('spot', { t: T.id, by: G.scan.o, d: 3 });
+    if (G.scan && t > G.scan.at && t < G.scan.until && Math.hypot(T.vx, T.vz) > 0.9 && !jammedAt(T.x, T.y + 1, T.z) && T.spottedUntil < t + 0.5) emit('spot', { t: T.id, by: G.scan.o, d: 3 });
     // Signal Hack: the phone rings until it's hung up (a bot hangs up after 2 to 4 seconds)
-    if (T.ringUntil > t && !jammedAt(T.x, T.z)) {
+    if (T.ringUntil > t && !jammedAt(T.x, T.y + 1, T.z)) {
       if (T.spottedUntil < t + 0.3) emit('spot', { t: T.id, by: '', d: 1 });
       if (Math.random() < dt * 1.6) emit('ringfx', { i: T.id });
       if (T.bot) { if (!T.hangAt) T.hangAt = t + 2 + Math.random() * 2; else if (t > T.hangAt) { T.hangAt = 0; emit('hangup', { i: T.id }); } }
@@ -6612,7 +6615,7 @@ function sgBoot() {
 sgInputInit();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sgBoot); else sgBoot();
 // test handle, only on a local copy
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, barOpenAt, barUV, sgClear, sgArm, sgCutter, sgSlugShot, sgTaser, chunkCenter, botWallOnly, botHoldSpot, roomEntrances, eyeOf };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, jamReach, jammedAt, barUV, sgClear, sgArm, sgCutter, sgSlugShot, sgTaser, chunkCenter, botWallOnly, botHoldSpot, roomEntrances, eyeOf };
 
 })();
 </script>
