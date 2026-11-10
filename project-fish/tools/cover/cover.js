@@ -53,7 +53,9 @@ const DEG = Math.PI / 180;
 // - cloud: the smoke's middle and size (in frame heights).
 // - jets: the lead jet, the line the three fly in, their size.
 // - title: the top of STEELHEAD's capitals and their height (fractions of
-//   the frame's height), and DEAD GROUND's capitals as a fraction of those.
+//   the frame's height), DEAD GROUND's capitals as a fraction of those,
+//   and its band's width as a fraction of STEELHEAD's (0: just round the
+//   words, as on the box art, where it would otherwise cover a jet).
 const LAYOUTS = {
   cover: {
     size: [1200, 1800],
@@ -61,7 +63,7 @@ const LAYOUTS = {
     sun: [0.3, 0.32],
     cloud: { at: [-0.78, -0.25], size: 0.62 },
     jets: { at: [0.5, 0.66], step: [0.15, -0.07], size: 0.034 },
-    title: { top: 0.052, cap: 0.105, sub: 0.2 },
+    title: { top: 0.05, cap: 0.095, sub: 0.18, band: 0 },
   },
   thumb: {
     size: [1280, 720],
@@ -69,7 +71,7 @@ const LAYOUTS = {
     sun: [0.2, 0.3],
     cloud: { at: [-0.74, -0.42], size: 0.62 },
     jets: { at: [0.5, 0.5], step: [0.11, -0.1], size: 0.04 },
-    title: { top: 0.048, cap: 0.112, sub: 0.25 },
+    title: { top: 0.06, cap: 0.098, sub: 0.3, band: 1.04 },
   },
   og: {
     size: [1200, 630],
@@ -77,7 +79,7 @@ const LAYOUTS = {
     sun: [0.2, 0.3],
     cloud: { at: [-0.74, -0.42], size: 0.62 },
     jets: { at: [0.5, 0.5], step: [0.11, -0.1], size: 0.04 },
-    title: { top: 0.046, cap: 0.104, sub: 0.26 },
+    title: { top: 0.044, cap: 0.1, sub: 0.29, band: 1.04 },
   },
 };
 
@@ -891,8 +893,8 @@ function drawTitle(ctx) {
   ctx.fillStyle = '#ffffff';
   ctx.fillText(name, nameX, baseline);
 
-  // DEAD GROUND: capitals a fraction of STEELHEAD's, spaced wide, on a band
-  // as wide as STEELHEAD with torn ends and edges.
+  // DEAD GROUND: capitals a fraction of STEELHEAD's, spaced wide, on a dark
+  // band with torn ends and edges.
   const sub = 'DEAD GROUND';
   const subCap = RH * T.cap * T.sub;
   const subSize = (subCap / capPer100) * 100;
@@ -900,9 +902,9 @@ function drawTitle(ctx) {
   ctx.font = `900 ${subSize}px "${font}"`;
   ctx.letterSpacing = `${(subSize * subSpacing).toFixed(1)}px`;
   const subWidth = ctx.measureText(sub).width - subSize * subSpacing;
-  const bandH = subCap * 2.05;
+  const bandH = subCap * 1.85;
   const bandTop = baseline + RH * T.cap * 0.13;
-  const bandW = Math.max(nameWidth * 1.04, subWidth + subCap * 3.2);
+  const bandW = Math.max(nameWidth * T.band, subWidth + subCap * 2.6);
   roughBand(ctx, cx - bandW / 2, bandTop, bandW, bandH);
   ctx.fillStyle = '#fff4e2';
   ctx.fillText(sub, cx + (subSize * subSpacing) / 2, bandTop + bandH / 2 + subCap / 2);
@@ -951,11 +953,11 @@ function roughBand(ctx, x, y, w, h) {
   ctx.fillStyle = 'rgba(22, 11, 3, 0.75)';
   for (const side of [-1, 1]) {
     const ex = side < 0 ? x : x + w;
-    for (let i = 0; i < 7; i++) {
-      const sy = y + h * (0.08 + rand() * 0.84);
-      const len = h * (0.25 + rand() * 0.9);
-      const th = h * (0.03 + rand() * 0.06);
-      const start = ex - side * h * 0.2;
+    for (let i = 0; i < 5; i++) {
+      const sy = y + h * (0.1 + rand() * 0.8);
+      const len = h * (0.15 + rand() * 0.35);
+      const th = h * (0.06 + rand() * 0.08);
+      const start = ex - side * h * 0.1;
       ctx.beginPath();
       ctx.moveTo(start, sy - th / 2);
       ctx.lineTo(start + side * len, sy - th * 0.1);
