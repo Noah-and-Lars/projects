@@ -722,10 +722,10 @@ export class Directory extends DurableObject {
 // takes new dives (and yesterday's for KD_LATE after midnight, for a dive that started before it), so a finished
 // day never changes. 'lbdays' lists the days that have a board; the oldest are dropped past KD_DAYS.
 //   POST /kd/score {d, s}  (Authorization: Bearer <token>; the name is the token's account) -> { rank, n, s }
-//   POST /kd/lb {d}        -> { d, list: [{ n, s, at }], n }   (best first, top KD_SHOW)
+//   POST /kd/lb {d}        -> { d, list: [{ n, s, at }], n }   (every diver, best first)
 //   POST /kd/lb-days {}    -> { days: [{ d, n, top: [{ n, s }] }] }   (newest first, the last KD_DAYS days)
 const KD_Q = 160, KD_A = 80, KD_ID = /^[0-9a-z]{8,32}$/, KD_VOTERS = 20000, KD_ANSWERS = 800, KD_PROMPTS = 5000;
-const KD_DAY = /^\d{4}-\d{2}-\d{2}$/, KD_MAX = 700, KD_KEEP = 5000, KD_SHOW = 500, KD_DAYS = 60, KD_LATE = 20 * 60000;
+const KD_DAY = /^\d{4}-\d{2}-\d{2}$/, KD_MAX = 700, KD_KEEP = 5000, KD_SHOW = 5000, KD_DAYS = 60, KD_LATE = 20 * 60000;
 async function krill(req, env, url) {
   const origin = req.headers.get('Origin') || '';
   if (!ACCT_ORIGINS.includes(origin)) return new Response('only available on the official website', { status: 403 });

@@ -31,14 +31,14 @@ window.GAMES = [
     id: 'krill-dive',
     title: 'Krill Dive',
     category: 'Puzzle',
-    tagline: 'Daily trivia where the obvious answer scores least: name something rare and your krill sinks deeper.',
+    tagline: 'Daily trivia where the obvious answer scores least: name something rare and your krill sinks deeper. Now with versus lobbies.',
     description: 'A daily trivia game where rare answers score more. Answer seven prompts with 25 seconds each, and every point sinks your krill deeper toward the trench floor at 7,000 m. Practice dives give you a new set any time.',
     controls: 'Keyboard or touch',
     keys: [['Type', 'Your answer'], ['Enter', 'Lock it in'], ['Practice dive', 'A new random set of prompts']],
     path: 'krill-dive/index.html',
     thumb: 'krill-dive/thumb.svg',
     added: '2026-11-07T08:00:00+11:00',
-    updated: '2026-11-10T23:00:00+11:00',
+    updated: '2026-11-11T12:00:00+11:00',
     stat() { const s = readSave('krilldive', true); return s && s.played ? 'Best ' + ((s.best || 0) * 10).toLocaleString() + ' m' : null; },
   },
   {
@@ -295,6 +295,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-11', game: 'krill-dive', text: 'Krill Dive 1.4: versus lobbies. Make a lobby and share the code (or join an open one), and everyone dives the same seven prompts with live standings. The leaderboard now lists every diver from first to last, and the game no longer tells you the rarest answer after a prompt.' },
   { date: '2026-11-10', game: 'krill-dive', text: 'Krill Dive 1.3: a daily leaderboard. Every signed-in diver\'s daily dive is ranked by depth, with today\'s 1st, 2nd and 3rd and the time left at the top, and every finished day kept below as its own board.' },
   { date: '2026-11-10', game: 'krill-dive', text: 'Krill Dive 1.2: about five times as many accepted answers on the prompts coming up this week (16,700 across the week, up from 3,400), from everyday answers that were missing to real deep cuts, and niche answers now score as the rare finds they are.' },
   { date: '2026-11-10', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.2.1: fixed versus calls showing "undefined" on the driver\'s screen instead of the navigator\'s call.' },

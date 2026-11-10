@@ -134,9 +134,28 @@
   .lbRow .m { font: 800 15px var(--display); }
   .lbRow.me, .pod.me { box-shadow: inset 0 0 0 2px var(--krill); }
   .lbNote { font-size: 13px; color: var(--muted); }
-  .lbMore { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 13px; justify-self: start; padding: 0; }
   .pastHead { width: min(640px, 100%); font: 800 20px var(--display); margin: 6px 0 -4px; text-shadow: 0 2px 0 #0a3b5c, 0 4px 14px rgba(0, 20, 40, .7); }
   #resRank { margin: 6px 0 0; font-weight: 800; color: var(--t4); }
+
+  /* versus lobbies */
+  #lobby { gap: 12px; }
+  .vsCard { width: min(560px, 100%); padding: 16px; display: grid; gap: 10px; }
+  .vsCard h3 { margin: 0; font: 800 20px var(--display); }
+  .vsJoin { display: flex; gap: 8px; }
+  .vsJoin input { flex: 1; min-width: 0; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .25); color: var(--ink); font: 800 20px var(--display); letter-spacing: .2em; text-transform: uppercase; padding: 8px 12px; }
+  .vsCode { font: 800 46px/1 var(--display); letter-spacing: .18em; color: var(--krill-hi); text-align: center; }
+  .vsRow { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .05); }
+  .vsRow .r { color: var(--muted); font-weight: 800; }
+  .vsRow .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vsRow .st { font-size: 13px; color: var(--muted); text-align: right; }
+  .vsRow .st b { font: 800 16px var(--display); color: var(--ink); display: block; }
+  .vsRow.me { box-shadow: inset 0 0 0 2px var(--krill); }
+  .vsRow .join { padding: 6px 14px; font-size: 14px; }
+  .vsNote { font-size: 13px; color: var(--muted); text-align: center; }
+  #vsStrip { width: min(640px, 100%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  #vsStrip span { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: rgba(4, 22, 40, .7); border: 1px solid var(--line); }
+  #vsStrip span.me { border-color: var(--krill); }
+  #vsStand { width: min(640px, 100%); padding: 10px; display: grid; gap: 6px; }
 
   /* how to play */
   #how { justify-content: center; }
@@ -161,6 +180,7 @@
     <div class="doneNote" id="doneNote" hidden></div>
     <button class="btn" id="dailyBtn">Start today's dive</button>
     <button class="btn alt" id="practiceBtn">Practice dive (random prompts)</button>
+    <button class="btn alt" id="vsBtn">⚔️ Versus lobby</button>
     <div class="statsGrid">
       <div><b id="stBest">0</b><span>Best m</span></div>
       <div><b id="stPlayed">0</b><span>Dives</span></div>
@@ -180,6 +200,7 @@
       <li>You get <b>3 seconds</b> to read each prompt, then <b>25 seconds</b> to answer.</li>
       <li><b>One shot:</b> the first answer the game recognises is locked in. Answers it doesn't know don't count against you, so keep typing.</li>
       <li>Rarer answers score more. Every point sinks your krill <b>10 m</b>.</li>
+      <li><b>Versus lobby:</b> make a lobby and share its code (or join an open one). When the host starts, everyone gets the same seven random prompts, and the deepest dive wins.</li>
       <li>Your daily dive goes on <b>today's leaderboard</b> under your arcade name (practice dives don't). Each day ends at midnight UTC, and its final top three stay on the board as a previous day.</li>
     </ul>
     <div class="tierTable">
@@ -196,6 +217,7 @@
 
 <section id="game" class="screen">
   <div class="topbar"><button class="iconBtn" id="quitBtn" title="Quit this dive">✕</button><div class="pips" id="pips"></div><div class="depthTag" id="depthTag">0 m</div></div>
+  <div id="vsStrip" hidden></div>
   <div class="card panel" id="card">
     <div class="qNum" id="qNum">Prompt 1 of 7</div>
     <div class="prompt" id="prompt"></div>
@@ -214,10 +236,31 @@
   <div id="boardPast" style="display:contents"></div>
 </section>
 
+<section id="lobby" class="screen">
+  <div class="boardHead"><h2>Versus</h2><button class="btn alt" id="lobbyBack">Back</button></div>
+  <div class="vsCard panel" id="vsOut">
+    <h3>Dive against your friends</h3>
+    <div class="vsNote" style="text-align:left">Everyone in a lobby gets the same seven random prompts. The deepest dive wins. Versus dives don't go on the daily leaderboard.</div>
+    <button class="btn" id="vsCreate">Make a lobby</button>
+    <div class="vsJoin"><input id="vsCodeIn" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="btn alt" id="vsJoinBtn">Join</button></div>
+    <h3 style="font-size:16px">Open lobbies</h3>
+    <div id="vsOpen" style="display:grid;gap:6px"><div class="vsNote">Looking for lobbies…</div></div>
+  </div>
+  <div class="vsCard panel" id="vsIn" hidden>
+    <div class="vsNote">Lobby code</div>
+    <div class="vsCode" id="vsCodeShow"></div>
+    <div id="vsPeople" style="display:grid;gap:6px"></div>
+    <div class="vsNote" id="vsWait"></div>
+    <button class="btn" id="vsStartBtn" hidden>Start the dive</button>
+    <button class="btn alt" id="vsLeaveBtn">Leave lobby</button>
+  </div>
+</section>
+
 <section id="results" class="screen">
   <div class="resHead"><p id="resKind">Today's dive</p><h2 id="resDepth">0 m</h2><span class="zone" id="resZone"></span><p id="resScore"></p><p id="resRank" hidden></p></div>
+  <div class="panel" id="vsStand" hidden></div>
   <div class="resList panel" id="resList"></div>
-  <div class="resBtns"><button class="btn" id="shareBtn">Copy my dive</button><button class="btn alt" id="resBoardBtn">Leaderboard</button><button class="btn alt" id="againBtn">Practice dive</button><button class="btn alt" id="homeBtn">Home</button></div>
+  <div class="resBtns"><button class="btn" id="shareBtn">Copy my dive</button><button class="btn" id="resLobbyBtn" hidden>Back to the lobby</button><button class="btn alt" id="resBoardBtn">Leaderboard</button><button class="btn alt" id="againBtn">Practice dive</button><button class="btn alt" id="homeBtn">Home</button></div>
 </section>
 <div class="toast" id="toast"></div>
 <script>
@@ -339,7 +382,7 @@ window.KD_DATA = (() => {
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
-const VERSION = '1.3';
+const VERSION = '1.4';
 const MAX_DEPTH = 7000, PER_POINT = 10, READ_S = 3, ANSWER_S = 25, ROUNDS = 7;
 const TIERS = [
   { name: 'Plankton', what: 'Common' }, { name: 'Shallows', what: 'Uncommon' }, { name: 'Reef', what: 'Rare' },
@@ -519,10 +562,11 @@ function refreshHome() {
 
 // ---------- a dive ----------
 let RUN = null, ticker = 0;
-function startDive(daily) {
+function startDive(daily, vsIds) {
   Sound.init();
-  const d = today(), ids = daily ? pickPrompts(rng(hash('krill-dive:' + d))) : pickPrompts(Math.random);
-  RUN = { daily, date: d, ids, i: -1, res: [], score: 0 };
+  const d = today(), ids = vsIds || (daily ? pickPrompts(rng(hash('krill-dive:' + d))) : pickPrompts(Math.random));
+  RUN = { daily, vs: !!vsIds, date: d, ids, i: -1, res: [], score: 0 };
+  $('vsStrip').hidden = !vsIds; if (vsIds) vsDraw();
   SEA.depth = 0; SEA.shown = 0;
   $('pips').innerHTML = ids.map(() => '<i></i>').join('');
   show('game'); next();
@@ -564,9 +608,9 @@ function submit() {
 }
 function lockIn(m) {
   const R = RUN; R.locked = true; R.phase = 'done'; clearInterval(ticker);
-  const sc = score(m.i, m.n, R.P.filter ? null : KD_DATA.cuts[R.P.list]), rarest = answersFor(R.P).slice(-3).map(e => e.show);
-  const res = { q: R.P.q, a: m.e.show, tier: sc.tier, pts: sc.pts, share: 'Counting divers…', rarest: rarest[Math.floor(Math.random() * rarest.length)] };
-  R.res.push(res);
+  const sc = score(m.i, m.n, R.P.filter ? null : KD_DATA.cuts[R.P.list]);
+  const res = { q: R.P.q, a: m.e.show, tier: sc.tier, pts: sc.pts, share: 'Counting divers…' };
+  R.res.push(res); if (R.vs) vsProgress();
   kdPost('vote', { q: R.P.q, a: m.e.show, id: save.id }).then(x => setShare(res, x.c, x.n), () => setShare(res, 0, 0));
   R.score += sc.pts; SEA.depth = R.score * PER_POINT;
   $('ans').disabled = true; $('goBtn').disabled = true;
@@ -577,10 +621,9 @@ function lockIn(m) {
 }
 function timeUp() {
   const R = RUN; if (R.phase !== 'answer') return; R.phase = 'done'; clearInterval(ticker);
-  const L = answersFor(R.P), deep = L[Math.floor(L.length * 0.9)] || L[L.length - 1];
-  R.res.push({ q: R.P.q, a: null, tier: -1, pts: 0, rarest: deep.show });
+  R.res.push({ q: R.P.q, a: null, tier: -1, pts: 0 }); if (R.vs) vsProgress();
   $('ans').disabled = true; $('goBtn').disabled = true; Sound.timeup();
-  $('verdict').innerHTML = `<div class="verdict vbgx"><span class="chip" style="background:#55606b;color:#fff">Time's up</span><div><b>No answer</b><div style="font-size:13px;color:var(--muted)">A deep one would have been: ${esc(deep.show)}</div></div><div class="pts">+0</div></div>`;
+  $('verdict').innerHTML = `<div class="verdict vbgx"><span class="chip" style="background:#55606b;color:#fff">Time's up</span><div><b>No answer</b><div style="font-size:13px;color:var(--muted)">No points for this one</div></div><div class="pts">+0</div></div>`;
   setTimeout(next, 2300);
 }
 function bindShares(box, rs) { box.querySelectorAll('[data-share]').forEach((el, k) => { el.kdRes = rs[k]; el.textContent = rs[k].share; }); }
@@ -593,17 +636,19 @@ function finish() {
     save.streak = save.lastDay === y ? save.streak + 1 : 1; save.lastDay = R.date;
     const keys = Object.keys(save.days).sort(); while (keys.length > 120) delete save.days[keys.shift()];
   }
+  if (R.vs) vsProgress(true);
   save.played++; save.total += R.score; save.best = Math.max(save.best, R.score); if (!R.daily) save.practiceBest = Math.max(save.practiceBest, R.score); persist();
   showResults(R);
 }
 function showResults(R) {
   const m = R.score * PER_POINT;
-  $('resKind').textContent = R.daily ? 'Dive #' + dayNo(R.date) + ' · today\'s prompts' : 'Practice dive';
+  $('resKind').textContent = R.daily ? 'Dive #' + dayNo(R.date) + ' · today\'s prompts' : R.vs ? 'Versus dive · lobby ' + VS.code : 'Practice dive';
+  $('vsStand').hidden = !R.vs; $('resLobbyBtn').hidden = !R.vs; $('againBtn').hidden = !!R.vs;
   $('resDepth').textContent = m.toLocaleString() + ' m'; $('resZone').textContent = zoneAt(m);
   $('resScore').textContent = `${R.score} of ${R.ids.length * 100} rarity points` + (m >= MAX_DEPTH ? ' · a perfect dive!' : '');
-  $('resList').innerHTML = R.res.map((r, k) => `<div class="resRow"><div class="q">${k + 1}. ${esc(r.q)}</div><div class="p">+${r.pts}<small>${r.pts * PER_POINT} m</small></div><div class="a">${r.a ? `${esc(r.a)} <span class="chip sm t${r.tier}">${TIERS[r.tier].name}</span>` : '<span style="color:var(--muted)">No answer</span>'}</div>${r.a ? `<div class="x"><span data-share></span>.${r.tier < 4 ? ' A rarer one: ' + esc(r.rarest) + '.' : ''}</div>` : `<div class="x">A deep answer: ${esc(r.rarest)}.</div>`}</div>`).join('');
+  $('resList').innerHTML = R.res.map((r, k) => `<div class="resRow"><div class="q">${k + 1}. ${esc(r.q)}</div><div class="p">+${r.pts}<small>${r.pts * PER_POINT} m</small></div><div class="a">${r.a ? `${esc(r.a)} <span class="chip sm t${r.tier}">${TIERS[r.tier].name}</span>` : '<span style="color:var(--muted)">No answer</span>'}</div>${r.a ? `<div class="x"><span data-share></span>.</div>` : ''}</div>`).join('');
   bindShares($('resList'), R.res.filter(r => r.a));
-  RUN = null; show('results'); SEA.depth = m;
+  RUN = null; show('results'); SEA.depth = m; if (R.vs) vsDraw();
   $('resRank').hidden = true;
   if (R.daily && R.date === today()) {
     if (!account()) { $('resRank').hidden = false; $('resRank').textContent = 'Sign in to the arcade to put your dive on today\'s leaderboard.'; }
@@ -621,7 +666,7 @@ function showResults(R) {
 function showSaved(d) {
   const S = save.days[d]; if (!S) return;
   const ids = pickPrompts(rng(hash('krill-dive:' + d)));
-  const R = { daily: true, date: d, ids, score: S.score, res: S.res.map((x, k) => { const P = KD_DATA.prompts[ids[k]], L = answersFor(P), i = x[0] ? L.findIndex(e => e.show === x[0]) : -1; return { q: P ? P.q : '', a: x[0], tier: x[1], pts: x[2], share: 'Counting divers…', rarest: L.length ? L[L.length - 1].show : '' }; }) };
+  const R = { daily: true, date: d, ids, score: S.score, res: S.res.map((x, k) => { const P = KD_DATA.prompts[ids[k]], L = answersFor(P), i = x[0] ? L.findIndex(e => e.show === x[0]) : -1; return { q: P ? P.q : '', a: x[0], tier: x[1], pts: x[2], share: 'Counting divers…' }; }) };
   showResults(R);
   // a diver's vote stays put when they send the same answer again, so this just reads the counts (and adds dives from before 1.1)
   for (const r of R.res) if (r.a) kdPost('vote', { q: r.q, a: r.a, id: save.id }).then(x => setShare(r, x.c, x.n), () => setShare(r, 0, 0));
@@ -668,26 +713,23 @@ function drawToday() {
     : 'Finish today\'s dive to get on the board. Practice dives don\'t count.';
   $('boardToday').innerHTML = `<div class="top"><div><b>Today</b> <small>${dayLabel(d)}</small></div><div class="clock"><span>Ends in</span><i id="clock">${clockText(msLeft())}</i></div></div>
     ${podium(list, me)}
-    ${!b ? '<div class="lbNote">Loading today\'s divers…</div>' : list.length > 3 ? `<div class="lbList">${rows(list, me, 3)}</div>` : list.length ? '' : '<div class="lbNote">No divers on the board yet today. Be the first!</div>'}
+    ${!b ? '<div class="lbNote">Loading today\'s divers…</div>' : list.length ? `<div class="lbList">${rows(list, me, 0)}</div>` : '<div class="lbNote">No divers on the board yet today. Be the first!</div>'}
     <div class="lbNote">${b ? (b.n === 1 ? '1 diver' : b.n + ' divers') + ' so far · ' : ''}${note}</div>`;
 }
 function pastPanel(day) {
   const a = account(), me = a && a.name.toLowerCase(), full = boards[day.d] && boards[day.d].final ? boards[day.d] : null;
   const list = full ? full.list : day.top, n = full ? full.n : day.n;
   return `<div class="dayPanel panel" data-day="${day.d}"><div class="top"><div><b>${new Date(day.d + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}</b> <small>Dive #${dayNo(day.d)}</small></div><small>${n === 1 ? '1 diver' : n + ' divers'}</small></div>
-    ${podium(list, me)}${full && full.list.length > 3 ? `<div class="lbList" hidden>${rows(full.list, me, 3)}</div>` : ''}
-    ${n > 3 ? `<button class="lbMore">Show all ${n} divers</button>` : ''}</div>`;
+    ${podium(list, me)}<div class="lbList">${full ? rows(full.list, me, 0) : '<div class="lbNote">Loading every diver…</div>'}</div></div>`;
 }
 function drawPast(days) {
   const past = days.filter(x => x.d < today() && x.n);
   $('pastHead').hidden = !past.length;
   $('boardPast').innerHTML = past.map(pastPanel).join('');
-  $('boardPast').querySelectorAll('.lbMore').forEach(btn => btn.onclick = () => {
-    const box = btn.closest('.dayPanel'), d = box.dataset.day, a = account(), me = a && a.name.toLowerCase();
-    let lst = box.querySelector('.lbList');
-    if (lst) { lst.hidden = !lst.hidden; btn.textContent = lst.hidden ? btn.textContent.replace('Hide', 'Show all') : btn.textContent.replace('Show all', 'Hide'); return; }
-    btn.textContent = 'Loading…';
-    getBoard(d).then(b => { btn.insertAdjacentHTML('beforebegin', `<div class="lbList">${rows(b.list, me, 3)}</div>`); btn.textContent = `Hide ${b.n} divers`; }, () => { btn.textContent = 'Couldn\'t load. Tap to try again.'; });
+  const a = account(), me = a && a.name.toLowerCase();
+  $('boardPast').querySelectorAll('.dayPanel').forEach(box => {
+    const d = box.dataset.day; if (boards[d] && boards[d].final) return;
+    getBoard(d).then(b => { box.querySelector('.lbList').innerHTML = rows(b.list, me, 0); }, () => { box.querySelector('.lbList').innerHTML = '<div class="lbNote">Couldn\'t load this day.</div>'; });
   });
 }
 function loadToday() { const d = today(); return kdPost('lb', { d }).then(b => { todayBoard = b; drawToday(); drawMini(); }, () => {}); }
@@ -718,6 +760,147 @@ function drawMini() {
 }
 setInterval(() => { const c = $('miniClock'); if (c && $('home').classList.contains('on')) { c.textContent = clockText(msLeft()); if (msLeft() < 1000) setTimeout(() => { refreshHome(); postScore(today()).then(loadToday); }, 1500); } }, 1000);
 
+// ---------- versus lobbies ----------
+// A lobby is one realtime channel, 'kd-room-<CODE>', with each diver's presence keyed by their arcade name. Presence
+// carries everything: { n, t: joined, host, g: the game, st: 'lobby' | 'diving' | 'done', pts, i: prompts done },
+// so standings stay right for anyone who joins or reconnects. The host starts a game by broadcasting
+// 'start' { g, ids }; every diver then dives the same prompts at their own pace and the presence shows how deep
+// everyone is. Hosts list their open lobby in 'kd-lobbies' (presence keyed by code) for the open-lobbies list.
+// The host is whoever has the host flag, or the earliest diver left when the host goes.
+const RT_SRC = window.KD_RT_SRC || 'https://noah-and-lars.github.io/projects/rt.js?v=2', VS_MAX = 8;
+const VS = { code: '', ch: null, list: null, me: '', t: 0, host: false, g: '', state: 'lobby', pts: 0, i: 0, people: [], listed: '' };
+let rtClient = null;
+function rtc() {
+  if (rtClient) return Promise.resolve(rtClient);
+  return new Promise((res, rej) => {
+    const go = () => { try { rtClient = window.supabase.createClient(); res(rtClient); } catch (e) { rej(e); } };
+    if (window.supabase && window.supabase.createClient) return go();
+    const sc = document.createElement('script'); sc.src = RT_SRC; sc.onload = go; sc.onerror = () => rej('offline'); document.head.appendChild(sc);
+  });
+}
+const vsMeta = () => ({ n: VS.me, t: VS.t, host: VS.host ? 1 : 0, g: VS.g, st: VS.state, pts: VS.pts, i: VS.i });
+function vsTrack() { if (VS.ch) try { VS.ch.track(vsMeta()); } catch (e) {} vsListOpen(); }
+function vsReadPeople() {
+  if (!VS.ch) return [];
+  const st = VS.ch.presenceState(), out = [];
+  for (const k in st) { const m = st[k] && st[k][0]; if (m && m.n) out.push(m); }
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
+function vsHostName(people) { const h = people.find(p => p.host); return h ? h.n : people[0] ? people[0].n : ''; }
+function vsSync() {
+  VS.people = vsReadPeople();
+  const host = vsHostName(VS.people);
+  if (host === VS.me && !VS.host) { VS.host = true; vsTrack(); } // the host left: the earliest diver takes over
+  // too many divers: the newest one steps out
+  if (VS.people.length > VS_MAX && VS.people.findIndex(p => p.n === VS.me) >= VS_MAX) { vsLeave(); toast('That lobby is full.'); return; }
+  vsListOpen(); vsDraw();
+}
+// the standings for the current game, deepest first
+function vsStandings() {
+  const ps = VS.people.filter(p => VS.g && p.g === VS.g && p.st !== 'lobby');
+  return ps.sort((a, b) => b.pts - a.pts || a.t - b.t);
+}
+function vsDraw() {
+  const host = vsHostName(VS.people), stand = vsStandings();
+  // lobby screen
+  $('vsOut').hidden = !!VS.ch; $('vsIn').hidden = !VS.ch;
+  if (VS.ch) {
+    $('vsCodeShow').textContent = VS.code;
+    $('vsPeople').innerHTML = VS.people.map(p => `<div class="vsRow${p.n === VS.me ? ' me' : ''}"><span class="r">${p.n === host ? '👑' : '🦐'}</span><span class="nm">${esc(p.n)}</span><span class="st">${p.st === 'diving' ? `Diving · ${p.i}/7<b>${metres(p.pts)}</b>` : p.st === 'done' && p.g === VS.g ? `Finished<b>${metres(p.pts)}</b>` : 'Ready'}</span></div>`).join('');
+    const diving = VS.people.filter(p => p.st === 'diving');
+    $('vsStartBtn').hidden = !VS.host;
+    $('vsStartBtn').disabled = VS.people.length < 2 || diving.length > 0;
+    $('vsWait').textContent = VS.people.length < 2 ? 'Share the code. You need at least one more diver to start.'
+      : diving.length ? `Waiting for ${diving.map(p => p.n).join(', ')} to finish their dive.`
+      : VS.host ? `${VS.people.length} divers ready. Start when everyone's in.` : `Waiting for ${host} to start the dive.`;
+  }
+  // the strip on the dive screen
+  if (RUN && RUN.vs) $('vsStrip').innerHTML = stand.map((p, k) => `<span class="${p.n === VS.me ? 'me' : ''}">${k + 1}. ${esc(p.n)} ${metres(p.pts)}${p.st === 'diving' ? ` · ${p.i}/7` : ' ✓'}</span>`).join('');
+  // the results
+  if (!$('vsStand').hidden) {
+    const all = stand.every(p => p.st === 'done');
+    $('vsStand').innerHTML = `<div class="vsNote" style="font-weight:800">${all ? 'Final standings' : 'Live standings: others are still diving'}</div>`
+      + stand.map((p, k) => `<div class="vsRow${p.n === VS.me ? ' me' : ''}"><span class="r">${all && k < 3 ? MEDALS[k] : k + 1}</span><span class="nm">${esc(p.n)}</span><span class="st">${p.st === 'done' ? 'Finished' : `Diving · ${p.i}/7`}<b>${metres(p.pts)}</b></span></div>`).join('');
+  }
+}
+function vsProgress(done) { if (!RUN || !RUN.vs) return; VS.pts = RUN.score; VS.i = RUN.res.length; VS.state = done ? 'done' : 'diving'; vsTrack(); vsDraw(); }
+function vsStart(p) {
+  if (!p || !Array.isArray(p.ids) || !p.ids.every(i => KD_DATA.prompts[i])) return;
+  if (RUN) return; // already in a dive (it carries on; this diver sits the game out)
+  VS.g = p.g; VS.state = 'diving'; VS.pts = 0; VS.i = 0; vsTrack();
+  startDive(false, p.ids);
+}
+function vsJoin(code, making) {
+  const a = account();
+  if (!a) { toast('Versus needs an arcade account. Sign in first.'); return; }
+  code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== 4) { toast('Lobby codes are 4 letters.'); return; }
+  vsLeave(true);
+  Object.assign(VS, { code, me: a.name, t: Date.now(), host: !!making, g: '', state: 'lobby', pts: 0, i: 0, people: [] });
+  $('vsWait').textContent = 'Connecting…';
+  rtc().then(client => {
+    const ch = client.channel('kd-room-' + code, { config: { broadcast: { self: true }, presence: { key: a.name } } });
+    VS.ch = ch;
+    ch.on('presence', { event: 'sync' }, () => { if (VS.ch === ch) vsSync(); });
+    ch.on('broadcast', { event: 'start' }, m => { if (VS.ch === ch) vsStart(m.payload); });
+    let joined = false;
+    ch.subscribe(st => {
+      if (VS.ch !== ch) return;
+      if (st === 'SUBSCRIBED') {
+        joined = true;
+        vsTrack(); vsDraw();
+        if (!making) setTimeout(() => { if (VS.ch === ch && vsReadPeople().filter(p => p.n !== VS.me).length === 0) { vsLeave(); toast('No lobby with the code ' + code + '.'); } }, 2500);
+      } else if (!joined && (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT')) { vsLeave(); toast('Couldn\'t reach the lobby. Check your connection.'); }
+    });
+    vsDraw();
+  }, () => toast('Couldn\'t load online play.'));
+}
+function vsLeave(quiet) {
+  const ch = VS.ch; VS.ch = null; VS.host = false; VS.people = [];
+  vsListOpen();
+  if (ch) { try { ch.untrack(); } catch (e) {} try { rtClient.removeChannel(ch); } catch (e) {} }
+  if (!quiet) vsDraw();
+}
+// the open-lobbies list: hosts of lobbies waiting to start show up there
+function vsListOpen() {
+  const want = VS.ch && VS.host && VS.people.length < VS_MAX && !VS.people.some(p => p.st === 'diving') ? VS.code + ':' + VS.people.length : '';
+  if (want === VS.listed || !VS.list) { if (!VS.list) VS.listed = ''; return; }
+  VS.listed = want;
+  try { if (want) VS.list.track({ code: VS.code, host: VS.me, n: Math.max(1, VS.people.length) }); else VS.list.untrack(); } catch (e) {}
+}
+function vsOpenList() {
+  if (VS.list) { vsDrawOpen(); return; }
+  if (!account()) { $('vsOpen').innerHTML = '<div class="vsNote">Sign in to the arcade to play versus.</div>'; return; }
+  rtc().then(client => {
+    const ch = client.channel('kd-lobbies', { config: { presence: { key: account().name } } });
+    VS.list = ch; VS.listed = '';
+    ch.on('presence', { event: 'sync' }, vsDrawOpen);
+    ch.subscribe(st => { if (st === 'SUBSCRIBED') { vsListOpen(); vsDrawOpen(); } });
+  }, () => { $('vsOpen').innerHTML = '<div class="vsNote">Couldn\'t load online play.</div>'; });
+}
+function vsDrawOpen() {
+  if (!VS.list) return;
+  const st = VS.list.presenceState(), rooms = [];
+  for (const k in st) { const m = st[k] && st[k][0]; if (m && m.code && m.code !== VS.code) rooms.push(m); }
+  $('vsOpen').innerHTML = rooms.length ? rooms.map(r => `<div class="vsRow"><span class="r">🦐</span><span class="nm">${esc(r.host)}'s lobby · ${r.n} diver${r.n === 1 ? '' : 's'}</span><button class="btn alt join" data-code="${esc(r.code)}">Join</button></div>`).join('')
+    : '<div class="vsNote">No open lobbies right now. Make one and share the code!</div>';
+  $('vsOpen').querySelectorAll('[data-code]').forEach(b => b.onclick = () => vsJoin(b.dataset.code));
+}
+function openLobby() { show('lobby'); vsDraw(); vsOpenList(); }
+function newCode() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from(crypto.getRandomValues(new Uint8Array(4)), b => A[b % A.length]).join(''); }
+$('vsBtn').onclick = openLobby;
+$('lobbyBack').onclick = () => { refreshHome(); show('home'); };
+$('vsCreate').onclick = () => vsJoin(newCode(), true);
+$('vsJoinBtn').onclick = () => vsJoin($('vsCodeIn').value);
+$('vsCodeIn').addEventListener('keydown', e => { if (e.key === 'Enter') vsJoin($('vsCodeIn').value); });
+$('vsLeaveBtn').onclick = () => vsLeave();
+$('vsStartBtn').onclick = () => {
+  if (!VS.ch || !VS.host) return;
+  VS.ch.send({ type: 'broadcast', event: 'start', payload: { g: Math.random().toString(36).slice(2, 10), ids: pickPrompts(Math.random) } });
+};
+$('resLobbyBtn').onclick = () => { VS.state = 'lobby'; vsTrack(); $('vsStand').hidden = true; openLobby(); };
+
 // ---------- buttons and keys ----------
 $('dailyBtn').onclick = () => { Sound.init(); if (save.days[today()]) showSaved(today()); else startDive(true); };
 $('practiceBtn').onclick = () => startDive(false);
@@ -729,7 +912,7 @@ $('howBtn').onclick = () => show('how'); $('howBack').onclick = () => show('home
 $('muteBtn').onclick = () => { save.mute = !save.mute; persist(); refreshHome(); };
 $('goBtn').onclick = submit;
 $('ans').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
-$('quitBtn').onclick = () => { if (!RUN) return; if (RUN.daily && !confirm('Quit today\'s dive? It will count with the answers you have so far.')) return; if (RUN.daily) { while (RUN.res.length < RUN.ids.length) RUN.res.push({ q: KD_DATA.prompts[RUN.ids[RUN.res.length]].q, a: null, tier: -1, pts: 0, rarest: '' }); RUN.i = RUN.ids.length; finish(); } else { clearInterval(ticker); RUN = null; refreshHome(); show('home'); } };
+$('quitBtn').onclick = () => { if (!RUN) return; if ((RUN.daily || RUN.vs) && !confirm(RUN.vs ? 'Stop diving? Your depth so far counts in the lobby.' : 'Quit today\'s dive? It will count with the answers you have so far.')) return; if (RUN.daily || RUN.vs) { while (RUN.res.length < RUN.ids.length) RUN.res.push({ q: KD_DATA.prompts[RUN.ids[RUN.res.length]].q, a: null, tier: -1, pts: 0 }); RUN.i = RUN.ids.length; finish(); } else { clearInterval(ticker); RUN = null; refreshHome(); show('home'); } };
 refreshHome(); drawMini();
 postScore(today()).then(loadToday);
 if (/[?&]debug/.test(location.search)) window.__kd = { match, score, answersFor, pickPrompts, rng, hash, LISTS, save };

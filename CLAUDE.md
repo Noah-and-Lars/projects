@@ -517,6 +517,14 @@ source in Settings → Pages should be switched to `main`.
   Worker only passes vote/lb/lb-days/score through, so 'lb-add' can't be called directly. The `#board` screen:
   today (podium, countdown to UTC midnight, everyone else, refreshed every 30 s) then previous days; a day's board
   is cached for good in localStorage `krilldive.boards` once it's final (25 min after the day ends).
+  1.4 (2026-11-11): boards list every diver 1st to last (podium plus the full list; past days load theirs
+  straight away). The rarest answer is no longer shown after a prompt or on the results. Versus lobbies: channel
+  'kd-room-<CODE>' (4-character code), presence keyed by account name carries { n, t, host, g, st, pts, i }, the
+  host broadcasts 'start' { g, ids } and everyone dives those prompts at their own pace (`startDive(false, ids)`,
+  `RUN.vs`); standings come from presence (the dive strip `#vsStrip`, the results `#vsStand`). Host = the host flag
+  or the earliest diver left; 8 divers max. Hosts list open lobbies in 'kd-lobbies' (presence keyed by code).
+  Versus dives count like practice (no leaderboard, no daily save). `window.KD_RT_SRC` points rt.js elsewhere for
+  tests (with `ARCADE_RT_URL`); two players test as two origins (127.0.0.1 and localhost) with their own accounts.
 
 - `intro.js` (2026-11-08): the "Made by The Arcade" intro, a 2.2 s canvas cinematic drawn inside `#stage` on
   play.html, so it plays where the game goes. The game's iframe only gets its `src` when `ArcadeIntro.load` resolves
