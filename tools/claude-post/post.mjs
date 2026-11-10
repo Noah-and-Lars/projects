@@ -64,8 +64,23 @@ for (const g of games) {
   const text = was ? (/\d+\.\d+/.test(msg) ? msg.replace(/^[^:]*?(\d+(?:\.\d+)+[a-z]?)\s*[:,-]?\s*/, g.title + ' $1: ') : g.title + ' update: ' + (msg || g.tagline) + '.') : 'New game: ' + g.title + '. ' + (g.description || g.tagline);
   fresh.push({ auto: 1, game: g.id, updated: g.updated, text });
 }
-if (!fresh.length) { console.log('nothing new to post'); process.exit(0); }
+// one-off posts (like the pinned feedback post): tools/claude-post/posts.json, [{ key, t, imgs, pill, kicker, headline, pin }]
+// each is sent on every run; the server posts a key only once
+const extra = fs.existsSync('tools/claude-post/posts.json') ? JSON.parse(fs.readFileSync('tools/claude-post/posts.json', 'utf8')) : [];
+if (!fresh.length && !extra.length) { console.log('nothing new to post'); process.exit(0); }
 fresh.reverse(); // oldest first, so the newest ends up on top
+const send = async body => {
+  const r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-bot-key': process.env.BOT_KEY || '' }, body: JSON.stringify({ ...body, r: process.env.ROOM || '' }) });
+  console.log(r.status, await r.text());
+  if (!r.ok) process.exitCode = 1;
+};
+for (const x of extra) {
+  const imgs = [].concat(x.imgs || []).filter(f => fs.existsSync(f));
+  const out = JSON.parse(execFileSync('python3', ['tools/claude-post/card.py'], { input: JSON.stringify({ imgs: imgs.length ? imgs : ['og.png'], pill: x.pill || 'NEWS', kicker: x.kicker || '', headline: x.headline || '' }), maxBuffer: 64 << 20 }).toString());
+  console.log('--- extra', x.key, x.pin ? '(pinned)' : '', '\n' + x.t);
+  if (process.env.DRY) { fs.writeFileSync('claude-post-' + x.key + '.jpg', Buffer.from(out.img, 'base64')); continue; }
+  await send({ key: 'x:' + x.key, replace: x.replace || [], pin: !!x.pin, g: x.g || '', t: x.t, img: out.img, poster: out.poster, w: out.w, h: out.h });
+}
 for (const n of fresh) {
   const g = games.find(x => x.id === n.game), p = parse(n, g);
   const shots = [].concat(n.imgs || n.img || []).map(fileOf).filter(f => fs.existsSync(f) && /\.(jpe?g|png|webp)$/i.test(f));

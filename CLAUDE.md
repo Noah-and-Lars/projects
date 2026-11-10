@@ -667,6 +667,13 @@ Posts look like social media posts, and **show the new feature, not the game's c
 - `post: '...'`: the caption (up to 700 characters, `\n` line breaks, a hook line, emoji bullets for the features, a
   question or call to play, hashtags; no secret test names). Without it one is written from the NEWS text.
 - `repost: N` posts the entry again (with new pictures or caption) and takes the earlier post down.
+- One-off Claude posts that aren't NEWS (like the pinned feedback-form post) live in `tools/claude-post/posts.json`
+  ({ key, t, imgs, pill, kicker, headline, pin }); every run sends them all and the server posts each key once. `pin: true`
+  keeps a post first on Claude's profile (📌 on its tile). https links in Claude's captions are clickable (`capNodes`);
+  other players' captions stay plain text.
+- Clip videos (2026-11-11): Safari refused WebM files whose size fields are 8 bytes (what muxWebm wrote before). muxWebm
+  now writes short sizes and social.html's `fixWebm` rewrites old clips as they load. Videos loop by hand ('ended'), and a
+  playing video stuck without data for ~1.2 s is reloaded from its blob (Safari hangs after looping some clips).
 The picture is drawn by `tools/claude-post/card.py` (Pillow). Try it locally:
 `DRY=1 node tools/claude-post/post.mjs <old games.js> games.js` prints the captions and saves the pictures.
 Server: `POST /clips/bot` on the Worker, checked against the `BOT_KEY` Worker secret (the same value is the repo's

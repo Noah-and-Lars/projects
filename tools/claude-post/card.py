@@ -51,7 +51,7 @@ for y in range(H):
 card = Image.composite(Image.new('RGB', (W, H), (6, 8, 18)), card, shade.resize((W, H)))
 
 d = ImageDraw.Draw(card)
-colours = {'NEW GAME': (46, 204, 113), 'UPDATE': (79, 140, 255), 'NEW FEATURE': (255, 165, 50)}
+colours = {'NEW GAME': (46, 204, 113), 'UPDATE': (79, 140, 255), 'NEW FEATURE': (255, 165, 50), 'FEEDBACK': (236, 72, 153), 'NEWS': (124, 92, 255)}
 pf = font(36)
 pill = a['pill']
 pw = d.textlength(pill, font=pf)

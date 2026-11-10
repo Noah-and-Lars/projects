@@ -1101,7 +1101,7 @@ async function whoami(env, auth) {
   const w = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + nm.toLowerCase())).fetch(new Request('https://acct/whoami', { headers: { authorization: auth } }));
   return w.ok ? ((await w.json().catch(() => ({}))).name || '') : '';
 }
-// The site's own announcer: POST /clips/bot { key, g, t, img, poster, w, h } with header x-bot-key = the BOT_KEY secret.
+// The site's own announcer: POST /clips/bot { key, replace, pin, g, t, img, poster, w, h } (pin = always first on the profile; links in its captions are clickable) with header x-bot-key = the BOT_KEY secret.
 // Called by the repo's GitHub Action when NEWS gets a new entry; posts a photo as BOT_NAME. `key` makes it post once.
 const BOT_NAME = 'Claude', BOT_CAP = 700;
 async function clipsBot(req, env) {
@@ -1111,7 +1111,7 @@ async function clipsBot(req, env) {
   const img = Uint8Array.from(atob(String(b.img || '')), c => c.charCodeAt(0));
   if (!img.length || img.length > CLIP_MAX) return out({ error: 'bad' }, 400);
   const room = String(b.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
-  const r = await clipIndex(env, room).fetch(new Request('https://clips/botnew', { method: 'POST', body: JSON.stringify({ me: BOT_NAME, key: b.key, replace: b.replace, g: b.g, t: b.t, w: b.w, h: b.h, sz: img.length, poster: b.poster, int: 1 }) }));
+  const r = await clipIndex(env, room).fetch(new Request('https://clips/botnew', { method: 'POST', body: JSON.stringify({ me: BOT_NAME, key: b.key, replace: b.replace, pin: b.pin, g: b.g, t: b.t, w: b.w, h: b.h, sz: img.length, poster: b.poster, int: 1 }) }));
   const q = await r.json();
   if (!q.k) return out(q, r.status);
   const put = await clipMedia(env, q.id).fetch(new Request('https://clips/media-put?' + new URLSearchParams({ id: q.id, k: q.k, r: room }), { method: 'PUT', body: img }));
@@ -1225,7 +1225,7 @@ export class Clips extends DurableObject {
     for (let i = 0; i < list.length; i += 128) for (const [k, v] of await S.get(list.slice(i, i + 128).map(m => 'p:' + m.id))) posters.set(k, v);
     const u = me ? await this.user(me) : null, liked = new Set(u ? u.lk : []), now = Date.now();
     return list.map(m => ({ id: m.id, by: m.by, k: m.k || 'clip', ll: m.ll || '', g: m.g, t: m.t, at: m.at, dur: m.dur, w: m.w, h: m.h, lk: m.lk, vw: m.vw, cm: m.cm, sh: m.sh || 0,
-      wr: m.vw ? Math.round(m.wf / m.vw * 100) / 100 : 0, rp: (m.rp || []).length, hot: Math.round(this.hot(m, now) * 1e4) / 1e4, p: posters.get('p:' + m.id) || '', me: liked.has(m.id) ? 1 : 0 }));
+      wr: m.vw ? Math.round(m.wf / m.vw * 100) / 100 : 0, bot: m.bot ? 1 : 0, pin: m.pin ? 1 : 0, rp: (m.rp || []).length, hot: Math.round(this.hot(m, now) * 1e4) / 1e4, p: posters.get('p:' + m.id) || '', me: liked.has(m.id) ? 1 : 0 }));
   }
   live() { return [...this.m.values()].filter(m => (m.rp || []).length < CLIP_REPORTS); }
   async read(route, q, j) {
@@ -1250,7 +1250,7 @@ export class Clips extends DurableObject {
     if (route === 'user') {
       const name = String(q.get('name') || ''), k = name.toLowerCase();
       if (!NAME_RE.test(name)) return j({ error: 'bad' }, 400);
-      const theirs = [...this.m.values()].filter(m => m.by.toLowerCase() === k).sort((a, b) => b.at - a.at);
+      const theirs = [...this.m.values()].filter(m => m.by.toLowerCase() === k).sort((a, b) => (b.pin || 0) - (a.pin || 0) || b.at - a.at); // pinned first
       const u = await this.user(name), mine = me ? await this.user(me) : null;
       return j({ n: theirs.length ? theirs[0].by : u.n, clips: await this.show(theirs, me), followers: u.fr.length, following: u.f.length,
         views: theirs.reduce((s, m) => s + m.vw, 0), likes: theirs.reduce((s, m) => s + m.lk, 0), iFollow: mine && mine.f.includes(k) ? 1 : 0, followsMe: mine && u.f.includes(me.toLowerCase()) ? 1 : 0,
@@ -1346,7 +1346,7 @@ export class Clips extends DurableObject {
       const mine = [...this.m.values()].filter(m => m.by.toLowerCase() === mk).sort((a, c) => a.at - c.at);
       while (mine.length >= CLIP_PER_USER) await this.drop(mine.shift().id);
       let id; do { id = rnd(5); } while (this.m.has(id));
-      const m = { id, by: me, k: 'photo', g: b.g || '', t: String(b.t || '').replace(/\r/g, '').replace(/[^\S\n]+/g, ' ').trim().slice(0, BOT_CAP), at: now, dur: 0, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [], bot: 1 };
+      const m = { id, by: me, k: 'photo', g: b.g || '', t: String(b.t || '').replace(/\r/g, '').replace(/[^\S\n]+/g, ' ').trim().slice(0, BOT_CAP), at: now, dur: 0, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [], bot: 1, pin: b.pin ? 1 : 0 };
       const k = rnd(16);
       await S.put({ ['q:' + id]: { k, m, p, at: now }, [bk]: id });
       return j({ id, k });

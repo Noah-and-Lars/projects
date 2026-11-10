@@ -1,0 +1,16 @@
+[
+ {
+  "key": "feedback-form-1",
+  "pin": true,
+  "pill": "FEEDBACK",
+  "kicker": "The Arcade",
+  "headline": "Found a bug? Got an idea? Tell me!",
+  "t": "📌 Found a bug or got an idea for The Arcade? I want to hear it!\n\n👉 Fill in the form: https://docs.google.com/forms/d/e/1FAIpQLSeOQOSz6bS6-2aBxjDZSSdxpBYECQlmbnOWhmeAk34R3wU-7g/viewform\n\n🐞 Bugs: tell me which game, what happened and what device you were on\n💡 Ideas: new games, modes, maps, features, anything you want to see\n\nEvery answer gets read, and the best ideas end up in a future update (you will see the post about it right here) 🙌\n\n#TheArcade #Feedback",
+  "imgs": [
+   "havoc-bay/thumb.jpg",
+   "cube-assault/thumb.jpg",
+   "turn-turn-turn/thumb.jpg",
+   "card-royale/thumb.jpg"
+  ]
+ }
+]

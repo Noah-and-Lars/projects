@@ -176,6 +176,8 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .grid3 a:hover img { filter: brightness(.6); }
 .grid3 .kind { position: absolute; top: 6px; right: 6px; color: #fff; filter: drop-shadow(0 1px 4px #000); }
 .grid3 .kind svg { width: 20px; height: 20px; }
+.grid3 .kind.pin { font-size: 18px; line-height: 1; }
+.cap a.lnk, .body a.lnk { color: #7cb3ff; font-weight: 600; margin: 0; text-decoration: underline; }
 .grid3 .vw { position: absolute; left: 8px; bottom: 6px; color: #fff; font-size: 13px; font-weight: 800; text-shadow: 0 1px 6px #000; display: flex; align-items: center; gap: 4px; }
 .grid3 .vw svg { width: 14px; height: 14px; fill: #fff; stroke: none; }
 .grid3 .hov { position: absolute; inset: 0; display: none; place-items: center; grid-auto-flow: column; gap: 18px; color: #fff; font-weight: 800; }
@@ -688,7 +690,7 @@ function postCard(c, opt) {
   a._paint = () => {
     lb.classList.toggle('on', !!c.me); vb.classList.toggle('on', isSaved(c.id));
     lk.replaceWith(lk = likesLine(c));
-    cap.replaceChildren(); if (c.t) { const cn = el('a', '', c.by); cn.href = userLink(c.by); cap.className = 'cap'; cap.append(cn, document.createTextNode(c.t)); }
+    cap.replaceChildren(); if (c.t) { const cn = el('a', '', c.by); cn.href = userLink(c.by); cap.className = 'cap'; cap.append(cn, ...capNodes(c)); }
     all.hidden = !c.cm; all.textContent = c.cm === 1 ? 'View 1 comment' : 'View all ' + num(c.cm) + ' comments';
   };
   a._paint();
@@ -718,7 +720,7 @@ function reelItem(c, root) {
   r.append(box, shade, side, info);
   r._paint = () => {
     lb.classList.toggle('on', !!c.me); ls_.textContent = num(c.lk); cs.textContent = num(c.cm); vb.classList.toggle('on', isSaved(c.id));
-    cap.textContent = c.t || ''; cap.hidden = !c.t;
+    cap.replaceChildren(...capNodes(c)); cap.hidden = !c.t;
     meta.replaceChildren();
     if (g) { const gl = el('a', '', '🎮 ' + g.title + ' · Play'); gl.href = 'play.html?game=' + encodeURIComponent(c.g); meta.append(gl); }
     if (c.k !== 'photo') meta.append(el('span', '', '▶ ' + plural(c.vw, 'view')));
@@ -932,7 +934,7 @@ function commentsPanel(c) {
   list.append(el('li', 'none', 'Loading comments…'));
   get('comments', { id: c.id }).then(r => {
     if (r.status !== 200) { list.replaceChildren(el('li', 'none', 'Couldn’t load the comments.')); return; }
-    const top = c.t ? (() => { const li = el('li'), body = el('div', 'body'), nm = el('a', 'nm', c.by), al = el('a'); nm.href = al.href = userLink(c.by); al.append(avatar(c.by)); body.append(nm, document.createTextNode(c.t)); const meta = el('div', 'meta'); meta.append(el('span', '', ago(c.at))); body.append(meta); li.append(al, body); return li; })() : null;
+    const top = c.t ? (() => { const li = el('li'), body = el('div', 'body'), nm = el('a', 'nm', c.by), al = el('a'); nm.href = al.href = userLink(c.by); al.append(avatar(c.by)); body.append(nm, ...capNodes(c)); const meta = el('div', 'meta'); meta.append(el('span', '', ago(c.at))); body.append(meta); li.append(al, body); return li; })() : null;
     list.replaceChildren(...(top ? [top] : []), ...r.list.map(row)); if (!r.list.length) { list.append(el('li', 'none', 'No comments yet. Start the conversation.')); }
   });
   form.onsubmit = async e => {
@@ -1094,6 +1096,16 @@ async function showExplore() {
   q.style.marginBottom = '12px';
   view.replaceChildren(wrap);
 }
+// a caption as text; in the site's own (Claude) posts, https links are clickable
+function capNodes(c) {
+  const t = c.t || '';
+  if (!c.bot) return [document.createTextNode(t)];
+  return t.split(/(https:\/\/[^\s]+)/).map((part, i) => {
+    if (!(i % 2)) return document.createTextNode(part);
+    const a = el('a', 'lnk', part.replace(/^https:\/\//, '').slice(0, 40) + (part.length > 48 ? '…' : '')); a.href = part; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.onclick = e => e.stopPropagation(); return a;
+  });
+}
 function gridOf(list) {
   const grid = el('div', 'grid3');
   list.forEach((c, i) => {
@@ -1101,7 +1113,8 @@ function gridOf(list) {
     a.onclick = e => { e.preventDefault(); openViewer(list, i); };
     const img = el('img'); img.alt = c.t || 'Post by ' + c.by; img.loading = 'lazy'; img.src = c.p || ((gameOf(c.g) || {}).thumb || '');
     a.append(img);
-    if (c.k !== 'photo') { const k = el('span', 'kind'); k.innerHTML = svg(IC.reel); a.append(k); const vw = el('span', 'vw'); vw.innerHTML = svg(IC.play); vw.append(num(c.vw)); a.append(vw); }
+    if (c.pin) { const k = el('span', 'kind pin', '📌'); k.title = 'Pinned'; a.append(k); }
+    else if (c.k !== 'photo') { const k = el('span', 'kind'); k.innerHTML = svg(IC.reel); a.append(k); const vw = el('span', 'vw'); vw.innerHTML = svg(IC.play); vw.append(num(c.vw)); a.append(vw); }
     const hov = el('div', 'hov'), h1 = el('span'), h2 = el('span'); h1.innerHTML = svg(IC.heart); h1.append(num(c.lk)); h2.innerHTML = svg(IC.comment); h2.append(num(c.cm)); hov.append(h1, h2); a.append(hov);
     grid.append(a);
   });
