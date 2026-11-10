@@ -17,6 +17,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#ece6dc;fon
 #cards{position:fixed;inset:0;z-index:6;pointer-events:none}
 .card{position:absolute;left:0;right:0;top:50%;text-align:center;opacity:0;white-space:nowrap;text-transform:uppercase;will-change:opacity,transform,filter}
 .card.cap{top:auto;bottom:calc(var(--lb,0px) + 7.5vh);font-weight:300;font-size:clamp(13px,2.2vw,30px);letter-spacing:.62em;padding-left:.62em;color:#f1ebe0;text-shadow:0 0 20px rgba(0,0,0,.75),0 0 3px rgba(0,0,0,.6)}
+.card.slug{top:calc(var(--lb,0px) + 6vh);left:calc(5vw + env(safe-area-inset-left));right:auto;text-align:left;white-space:pre;font-weight:600;font-size:clamp(10px,1.25vw,16px);line-height:1.7;letter-spacing:.32em;color:#efe9df;text-shadow:0 0 14px rgba(0,0,0,.7);border-left:2px solid rgba(239,233,223,.75);padding-left:.9em}
 .card.flash{transform:translateY(-50%);font-weight:700;font-size:clamp(20px,4.6vw,64px);letter-spacing:.34em;padding-left:.34em;color:#efe8dc;text-shadow:0 0 30px rgba(255,190,120,.18)}
 #title{position:fixed;inset:0;z-index:7;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;opacity:0}
 #title .pre{font-weight:400;font-size:clamp(11px,1.5vw,19px);letter-spacing:.9em;padding-left:.9em;color:#cfc6b8;opacity:0}
@@ -162,6 +163,7 @@ function makeFilm() {
   const bl = (src, dst, x, y) => { blur.uniforms.t.value = src.texture; blur.uniforms.d.value.set(x, y); draw(blur, dst); };
   return {
     main,
+    setSamples(n) { if (main.samples !== n) { main.samples = n; main.dispose(); } },
     setSize() {
       renderer.getDrawingBufferSize(size); const w = Math.max(4, size.x), h = Math.max(4, size.y);
       main.setSize(w, h); for (const rt of [half, b1, b2]) rt.setSize(Math.max(4, w >> 1), Math.max(4, h >> 1));
@@ -388,7 +390,7 @@ class Soft {
         void main(){ vUv = uv; vC = iC; vec4 mv = modelViewMatrix * vec4(iP, 1.0); float c = cos(iS.y), s = sin(iS.y);
           mv.xy += vec2(c * position.x - s * position.y, s * position.x + c * position.y) * iS.x; vD = -mv.z; gl_Position = projectionMatrix * mv; }`,
       fragmentShader: `uniform sampler2D map; uniform vec3 tint, fogC; uniform float fogN, fogF; varying vec2 vUv; varying vec4 vC; varying float vD;
-        void main(){ vec4 t = texture2D(map, vUv); float f = smoothstep(fogN, fogF, vD);
+        void main(){ vec4 t = texture2D(map, vUv); t.a *= smoothstep(1.2, 9.0, vD); float f = smoothstep(fogN, fogF, vD);
           ${additive ? 'gl_FragColor = vec4(t.rgb * vC.rgb * t.a * vC.a * (1.0 - f), 1.0);' : 'gl_FragColor = vec4(mix(t.rgb * vC.rgb * tint, fogC, f), t.a * vC.a);'} }`,
     }));
     this.mesh.frustumCulled = false; this.mesh.renderOrder = additive ? 4 : 3; scene.add(this.mesh);
@@ -551,8 +553,8 @@ function flares(p, v, n) {
     const d = v.clone().multiplyScalar(0.45).add(Vc(rand(-14, 14), rand(-18, -4), rand(-14, 14)));
     const q = p.clone(), last = p.clone(); let life = rand(1.6, 2.4);
     FX.misc.push({ step(dt) { life -= dt; d.multiplyScalar(Math.exp(-1.2 * dt)); d.y -= 9 * dt; q.addScaledVector(d, dt);
-      PF.spawn(q.x, q.y, q.z, 0, 0, 0, 0.05, 1.5, 0.6, 0xfffbe8, 0xffb060);
       const n = Math.min(30, Math.ceil(last.distanceTo(q) / 0.45));
+      for (let j = 0; j < Math.min(n, 6); j++) { const r = _tv.copy(last).lerp(q, (j + 1) / Math.min(n, 6)); SF.spawn(r.x, r.y, r.z, 0, 0, 0, 0.06, 1.6, 0.8, 0xfffbe8, 0xffb060, 1.6, 0); }
       for (let j = 0; j < n; j++) { const r = _tv.copy(last).lerp(q, (j + 1) / n); SS.spawn(r.x, r.y, r.z, rand(-0.3, 0.3), rand(0, 0.6), rand(-0.3, 0.3), rand(1.4, 2.2), rand(0.3, 0.5), rand(1.4, 2.2), 0xf8f6f2, 0xb4b0aa, 0.6, 0, -0.4, 0.8); }
       last.copy(q); return life > 0; } });
   }
@@ -602,7 +604,7 @@ function updateFx(dt) {
   for (const L of FX.lights) { L.k *= Math.exp(-L.decay * dt); L.l.intensity = L.peak * L.k; }
   if (C && C.fire) C.fire.l.intensity = C.fire.k * (2.2 + 0.5 * Math.sin(FX.ft = (FX.ft || 0) + dt * 9) + 0.4 * Math.sin(FX.ft * 2.3));
   for (let i = FX.misc.length - 1; i >= 0; i--) { const o = FX.misc[i]; if (o.step(dt) === false) FX.misc.splice(i, 1); }
-  updateRecoil(dt);
+  updateRecoil(dt); updateBolt(dt);
   FX.flash *= Math.exp(-6 * dt);
   camShake *= Math.exp(-3.2 * dt);
   updateEmitters(dt);
@@ -643,7 +645,7 @@ function clearFx() {
   for (const g of FX.rings) { g.t = g.T; g.m.visible = false; }
   for (const g of FX.spheres) { g.t = g.T; g.m.visible = false; }
   for (const L of FX.lights) { L.k = 0; L.l.intensity = 0; }
-  FX.flash = 0; camShake = 0; clearRecoil();
+  FX.flash = 0; camShake = 0; clearRecoil(); BOLT.t = 9; FX.fill = 0; if (BOLT.mesh) BOLT.mesh.visible = false;
   fxFire.clear(); fxSmoke.clear(); fxWake.clear(); PF.clear(); PW.clear(); PS.clear(); PWK.clear(); SS.clear(); SF.clear(); EMITTERS.length = 0;
 }
 
@@ -687,13 +689,84 @@ function makeCloudBank() {
   const m = b.mesh(MAT.cloud, false); m.frustumCulled = false; m.visible = false; scene.add(m); return m;
 }
 
+// ---------- storm: rain and lightning ----------
+// Rain: line streaks kept in a box round the camera, each drawn along its speed relative to the camera (so from the
+// bomber's belly they streak sideways). Lightning: a jagged bolt from the cloud base, a flash on everything and a
+// brief lift of the sky.
+const RAIN = { n: 2600, on: false, lastT: -1, prev: Vc(), cv: Vc() };
+function makeRain() {
+  const g = new T.BufferGeometry(); RAIN.pos = new Float32Array(RAIN.n * 6); RAIN.p = new Float32Array(RAIN.n * 3);
+  g.setAttribute('position', new T.BufferAttribute(RAIN.pos, 3).setUsage(T.DynamicDrawUsage));
+  RAIN.mesh = new T.LineSegments(g, new T.LineBasicMaterial({ color: new T.Color(0.62, 0.7, 0.82), transparent: true, opacity: 0.32, depthWrite: false, fog: true }));
+  RAIN.mesh.frustumCulled = false; RAIN.mesh.visible = false; scene.add(RAIN.mesh);
+  for (let i = 0; i < RAIN.n; i++) { RAIN.p[i * 3] = rand(-36, 36); RAIN.p[i * 3 + 1] = rand(-22, 26); RAIN.p[i * 3 + 2] = rand(-36, 36); }
+}
+const RAIN_V = Vc(5, -34, 2.5);
+function updateRain(t, on) {
+  RAIN.mesh.visible = on; if (!on) { RAIN.lastT = -1; return; }
+  const dt = RAIN.lastT < 0 ? 0 : clamp(t - RAIN.lastT, 0, 0.05); RAIN.lastT = t;
+  const jump = camera.position.distanceTo(RAIN.prev);   // a cut or a seek moves the camera far in one frame: no streak for that
+  if (dt > 0 && jump < 40) { RAIN.cv.subVectors(camera.position, RAIN.prev).divideScalar(dt); if (RAIN.cv.length() > 160) RAIN.cv.setLength(160); } else RAIN.cv.set(0, 0, 0);
+  RAIN.prev.copy(camera.position);
+  const rx = RAIN_V.x - RAIN.cv.x, ry = RAIN_V.y - RAIN.cv.y, rz = RAIN_V.z - RAIN.cv.z, L = 0.03;
+  const wrap = (v, a, b) => { const w = b - a; return v < a ? v + w * Math.ceil((a - v) / w) : v > b ? v - w * Math.ceil((v - b) / w) : v; };
+  for (let i = 0; i < RAIN.n; i++) {
+    let x = wrap(RAIN.p[i * 3] + rx * dt, -36, 36), y = wrap(RAIN.p[i * 3 + 1] + ry * dt, -22, 26), z = wrap(RAIN.p[i * 3 + 2] + rz * dt, -36, 36);
+    RAIN.p[i * 3] = x; RAIN.p[i * 3 + 1] = y; RAIN.p[i * 3 + 2] = z;
+    const X = camera.position.x + x, Y = camera.position.y + y, Z = camera.position.z + z;
+    RAIN.pos[i * 6] = X; RAIN.pos[i * 6 + 1] = Y; RAIN.pos[i * 6 + 2] = Z; RAIN.pos[i * 6 + 3] = X - rx * L; RAIN.pos[i * 6 + 4] = Y - ry * L; RAIN.pos[i * 6 + 5] = Z - rz * L;
+  }
+  RAIN.mesh.geometry.attributes.position.needsUpdate = true;
+}
+const BOLT = { mesh: null, t: 9, at: Vc() };
+function makeBolt() {
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(new Float32Array(80 * 6), 3).setUsage(T.DynamicDrawUsage));
+  BOLT.mesh = new T.LineSegments(g, new T.LineBasicMaterial({ color: new T.Color(7, 7.5, 10), fog: false })); BOLT.mesh.frustumCulled = false; BOLT.mesh.visible = false; scene.add(BOLT.mesh);
+}
+// strike somewhere ahead of the camera: from the cloud base down to the sea, with a couple of forks
+function lightning(dist = 1200, top = 620) {
+  const f = Vc(); camera.getWorldDirection(f); f.y = 0; f.normalize(); const side = Vc(f.z, 0, -f.x);
+  const base = camera.position.clone().addScaledVector(f, dist).addScaledVector(side, rand(-0.45, 0.45) * dist); base.y = 0;
+  const a = BOLT.mesh.geometry.attributes.position.array; let n = 0;
+  const seg = (p, q) => { if (n >= 80) return; a.set([p.x, p.y, p.z, q.x, q.y, q.z], n * 6); n++; };
+  let p = base.clone().setY(top); const steps = 34;
+  for (let i = 0; i < steps; i++) {
+    const q = p.clone().add(Vc(rand(-26, 26), -top / steps * rand(0.7, 1.3), rand(-26, 26))); if (q.y < 0) q.y = 0; seg(p, q);
+    if (i % 9 === 4) { let r = p.clone(); for (let j = 0; j < 8; j++) { const w = r.clone().add(Vc(rand(-30, 30), -rand(10, 22), rand(-30, 30))); seg(r, w); r = w; } }
+    p = q;
+  }
+  for (; n < 80; n++) a.fill(0, n * 6, n * 6 + 6);
+  BOLT.mesh.geometry.attributes.position.needsUpdate = true; BOLT.t = 0; BOLT.at.copy(base); screenFlash(0.28);
+}
+function updateBolt(dt) {
+  BOLT.t += dt; const on = BOLT.t < 0.26 && (BOLT.t < 0.06 || (BOLT.t > 0.1 && BOLT.t < 0.16) || BOLT.t > 0.2);
+  BOLT.mesh.visible = on;
+  const k = BOLT.t < 0.35 ? (on ? 1 : 0.25) * (1 - BOLT.t / 0.35) : 0;
+  applyFlashLight(Math.max(k, FX.fill || 0));
+  if (k > 0) { skyMat.uniforms.top.value.set(LOOK.top).lerp(_c.setRGB(0.55, 0.6, 0.75), k * 0.6); skyMat.uniforms.mid.value.set(LOOK.mid).lerp(_c.setRGB(0.75, 0.8, 0.95), k * 0.7); }
+  else if (BOLT.t < 0.6) { skyMat.uniforms.top.value.set(LOOK.top); skyMat.uniforms.mid.value.set(LOOK.mid); }
+}
+
 // ---------- the shots ----------
 // t0/t1: film seconds. setup() places the cast at the shot's start; update(lt, dt) moves everything; cam(lt)
 // returns the camera: p (position), l (look-at point), fov, roll. card: a black frame with a title over it.
 // speed < 1 plays the shot's action in slow motion (the camera keeps real time). shadow: [x, z, size] of the
 // sun's shadow box (default: round the point the camera looks at).
 const SHOTS = [];
-const shot = (name, t0, t1, o) => { const s = Object.assign({ name, t0, t1, look: 'day', shake: 0, speed: 1 }, o); s._keys = new Set(Object.keys(s)); SHOTS.push(s); return s; };
+// ramp: [[real seconds into the shot, speed], ...], speeds eased linearly between keys. The shot's action then runs on
+// its own clock simT(lt) (slow where the speed is low, catching up where it's above 1) while the camera can keep real
+// time. Ramps are set so the moments the score hits (a blast, a kill) still land on the beat.
+function rampTable(keys) {
+  const end = keys[keys.length - 1][0], dt = 1 / 600, tab = [0]; let s = 0;
+  const sp = x => { for (let i = 1; i < keys.length; i++) if (x <= keys[i][0]) { const a = keys[i - 1], b = keys[i]; return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]); } return keys[keys.length - 1][1]; };
+  for (let x = 0; x < end; x += dt) { s += sp(x) * dt; tab.push(s); }
+  return lt => { const f = clamp(lt, 0, end) / dt, i = Math.floor(f), k = f - i; return lerp(tab[Math.min(i, tab.length - 1)], tab[Math.min(i + 1, tab.length - 1)], k) + Math.max(0, lt - end) * keys[keys.length - 1][1]; };
+}
+const shot = (name, t0, t1, o) => {
+  const s = Object.assign({ name, t0, t1, look: 'day', shake: 0, speed: 1 }, o);
+  s.simT = s.ramp ? rampTable(s.ramp) : (lt => lt * s.speed);
+  s._keys = new Set(Object.keys(s)); SHOTS.push(s); return s;
+};
 const camOut = { p: Vc(), l: Vc(), fov: 40, roll: 0 };
 const CAM = (p, l, fov, roll = 0) => { camOut.p.copy(p); camOut.l.copy(l); camOut.fov = fov; camOut.roll = roll; return camOut; };
 const lerpV = (a, b, k, out = Vc()) => out.copy(a).lerp(b, k);
@@ -714,7 +787,8 @@ shot('blueHarbor', 0, 6.5, {
     if (lt > 1.6) { fly(C.jet, Vc(-2090, 80, -430), dir, 125, lt - 1.6, 0.05, dt); fly(C.jet2, Vc(-2112, 84, -452), dir, 125, lt - 1.6, 0.05, dt); C.jet.flame(0.5); C.jet2.flame(0.5); }
     for (const P of [C.jet, C.jet2]) P.mis.forEach(m => m.visible = true);
   },
-  cam(lt) { const k = eio(lt / 6.5); return CAM(lerpV(Vc(-1440, 78, 330), Vc(-1525, 58, 228), k), lerpV(Vc(-1985, 14, 40), Vc(-1995, 18, 6), k), 40); },
+  cam(lt) { const k = eio(lt / 6.5), up = Math.pow(sm(0.3, 6.5, lt), 1.25), p = lerpV(Vc(-1420, 0, 312), Vc(-1525, 0, 228), k); p.y = 0.9 + 57 * up + Math.sin(lt * 1.3) * 0.15 * (1 - up);
+    return CAM(p, lerpV(Vc(-1985, 30, 40), Vc(-1995, 16, 6), sm(0, 5, lt)), lerp(34, 40, k), Math.sin(lt * 0.8) * 0.01 * (1 - up)); },
 });
 // 2. the Red harbor against the sunrise: the alarm going, its fleet coming out, fighters climbing away
 shot('redHarbor', 6.5, 11.5, {
@@ -874,7 +948,6 @@ function updateMissiles(tabs, dt) {
     if (s > 0.15 && dt > 0 && M.last) {
       const L = M.last.distanceTo(_a), n = Math.min(70, Math.ceil(L / 1.0));
       for (let i = 0; i < n; i++) { const q = _tv.copy(M.last).lerp(_a, (i + 1) / n); SS.spawn(q.x, q.y, q.z, rand(-0.4, 0.4) + WIND.x * 0.2, rand(0.1, 0.6), rand(-0.4, 0.4), rand(1.6, 2.4), 0.35, rand(1.6, 2.6), 0xf4f2ee, 0xb0aca6, 0.55, 0, -0.2, 0.6); }
-      PF.spawn(_a.x, _a.y, _a.z, 0, 0, 0, 0.05, 1.5, 0.5, 0xfff4c0, 0xffa030);
     }
     M.last = (M.last || Vc()).copy(_a);
   }
@@ -906,7 +979,7 @@ shot('jetIn', 22.4, 24.8, {
   },
 });
 shot('jetOut', 24.8, 27.2, {
-  look: 'day', shake: 0.1,
+  look: 'day', shake: 0.1, ramp: [[0, 1], [0.38, 1], [0.44, 0.2], [1.0, 0.2], [1.05, 2.0], [1.5, 2.0], [1.55, 1], [2.4, 1]],
   setup() {
     setupMissiles();
     for (const M of MS) {   // the trail each missile laid before the cut
@@ -920,8 +993,12 @@ shot('jetOut', 24.8, 27.2, {
     amb(this, dt, { flak: { box: [C.jet.pos.x - 150, C.jet.pos.x + 150, C.jet.pos.y - 20, C.jet.pos.y + 90, C.jet.pos.z - 150, C.jet.pos.z + 150], rate: 9 } });
     for (const [k, P] of [[0, C.jet], [1, C.jet2]]) {
       const j = jetAt(k, tabs - 22.4);
-      if (j.burner > 0.3 && dt > 0 && ((this['ct' + k] = (this['ct' + k] || 0) - dt) <= 0)) {   // wingtip vapour in the hard turn
-        this['ct' + k] = 0.015; for (const s of [-1, 1]) { local(P, s * 4.6, -0.2, -1.5, _a); PW.spawn(_a.x, _a.y, _a.z, 0, 0, 0, 0.9, 0.3, 0.9, 0xffffff, 0xe6ebf0); }
+      if (j.burner > 0.3 && dt > 0) {   // wingtip vapour in the hard turn: a continuous soft streak from each tip
+        for (const sd of [-1, 1]) {
+          const key = 'vt' + k + sd, q = local(P, sd * 4.6, -0.2, -1.5, Vc()), l0 = this[key] || q, n = Math.min(40, Math.ceil(l0.distanceTo(q) / 0.8));
+          for (let i = 0; i < n; i++) { const r = _tv.copy(l0).lerp(q, (i + 1) / n); SS.spawn(r.x, r.y, r.z, 0, 0, 0, rand(0.7, 1.0), 0.25, rand(0.7, 1.0), 0xffffff, 0xdfe6ee, 0.55, 0); }
+          this[key] = q;
+        }
       }
     }
     for (const t0 of [0.45, 0.7, 0.95, 1.2, 1.45]) if (this.once(t0)) { const j = jetAt(0, tabs - 22.4); flares(C.jet.pos.clone().addScaledVector(j.dir, -5), j.dir.clone().multiplyScalar(j.v), 4); }
@@ -929,8 +1006,8 @@ shot('jetOut', 24.8, 27.2, {
     if (this.once(1.3)) { const p = boxTop(KEEP(HR)).add(Vc(-40, -10, 60)); boom(p, 14, { ground: p.y - 8, ringK: 3 }); debris(p, 6, 30, 0x55504a); }
     if (this.once(1.8)) { const p = boxTop(KEEP(HR)).add(Vc(60, -12, -50)); boom(p, 12, { ground: p.y - 8, ringK: 3 }); }
   },
-  cam(lt) {
-    const tau = 24.8 + lt - 22.4, j = jetAt(0, tau), j0 = jetAt(0, 2.4), right = Vc(-j0.dir.z, 0, j0.dir.x);
+  cam(lt, st) {
+    lt = st; const tau = 24.8 + lt - 22.4, j = jetAt(0, tau), j0 = jetAt(0, 2.4), right = Vc(-j0.dir.z, 0, j0.dir.x);
     const back = j0.p.clone().addScaledVector(j0.dir, 80 * (1 - Math.exp(-(tau - 2.4) * 1.1)) - 46).addScaledVector(right, 6).add(Vc(0, 13 + lt * 3, 0));
     const look = Vc(2000, 26, 0).lerp(j.p, 0.55 + 0.42 * sm(0.3, 1.4, lt));
     return CAM(back, look, lerp(44, 54, sm(0.4, 2.0, lt)), 0.02 * Math.sin(lt * 1.4));
@@ -941,7 +1018,7 @@ const DOG = { C: Vc(80, 0, 600), R: 430, w: 0.215, a0: -0.6, h: 250 };
 function dogPos(a, h, out, R = DOG.R) { return out.set(DOG.C.x + Math.cos(a) * R, h, DOG.C.z + Math.sin(a) * R); }
 function dogDir(a, out) { return out.set(-Math.sin(a), 0, Math.cos(a)); }
 shot('dogfight', 27.2, 29.6, {
-  look: 'day', shake: 0.3,
+  look: 'day', shake: 0.3, ramp: [[0, 1], [1.73, 1], [1.78, 0.2], [2.25, 0.2], [2.3, 2.0], [2.4, 2.0]],
   setup() { this.dead = false; },
   update(lt, dt) {
     const ar = DOG.a0 + DOG.w * lt, ab = ar - 0.075, bank = 1.05;   // circling to the right: banked right
@@ -966,8 +1043,8 @@ shot('dogfight', 27.2, 29.6, {
     if (!this.dead && this.once(1.75)) { this.dead = true; C.rfig.g.visible = false; boom(red, 7, { ring: false }); debris(red, 9, 26, 0x8c2a22); shake(0.9); screenFlash(0.1); }
     amb(this, dt, { flak: { box: [-300, 500, 180, 380, 200, 1000], rate: 4 } });
   },
-  cam(lt) {
-    const ab = DOG.a0 + DOG.w * lt - 0.075; dogPos(ab, DOG.h + 4, _b); dogDir(ab, _d);
+  cam(lt, st) {
+    lt = st; const ab = DOG.a0 + DOG.w * lt - 0.075; dogPos(ab, DOG.h + 4, _b); dogDir(ab, _d);
     const out = Vc(Math.cos(ab), 0, Math.sin(ab));
     const p = _b.clone().addScaledVector(_d, -17).addScaledVector(out, 2.5).add(Vc(0, 4.6, 0));
     const ar = DOG.a0 + DOG.w * Math.min(lt, 1.75); dogPos(ar, DOG.h, _a);
@@ -1121,12 +1198,11 @@ function escortJets(t, dt) {
   C.jet.flame(0.3); C.jet2.flame(0.3); C.jet.mis.forEach(m => m.visible = true); C.jet2.mis.forEach(m => m.visible = true);
 }
 shot('b52', 41.6, 45.0, {
-  look: 'storm', shake: 0.15,
+  look: 'storm', shake: 0.15, rain: true,
   setup() { C.bank.visible = true; C.b52.doorL.rotation.z = C.b52.doorR.rotation.z = 0; C.bombs.forEach(b => b.visible = false); C.b52.bomb.visible = false; },
   update(lt, dt) {
     const t = 41.6 + lt, p = b52At(t); placeB52(p, lt); escortJets(t, dt);
-    const L = (0.8 < lt && lt < 1.05) || (2.55 < lt && lt < 2.7) ? (Math.sin(lt * 80) > -0.2 ? 1 : 0.2) : 0; applyFlashLight(L);
-    if (this.once(0.8)) screenFlash(0.3); if (this.once(2.55)) screenFlash(0.18);
+    if (this.once(0.8)) lightning(900, 600); if (this.once(2.55)) lightning(1400, 640);
     amb(this, dt, { flak: { box: [p.x + 250, p.x + 700, 470, 640, -260, 200], rate: lt > 1.8 ? 6 : 0, size: 1.3 } });
   },
   cam(lt) { return CAM(Vc(1060, 494 + lt * 1.5, 6), b52At(41.6 + lt).add(Vc(0, 2, 0)), lerp(30, 48, sm(1.5, 3.4, lt))); },
@@ -1136,7 +1212,7 @@ function placeB52(p, t) {
 }
 // 19. bombs away, through the flak
 shot('bombs', 45.0, 47.6, {
-  look: 'storm', shake: 0.14,
+  look: 'storm', shake: 0.14, rain: true,
   setup() { C.bank.visible = true; C.b52.bomb.visible = false; this.drop = C.bombs.map((b, i) => ({ b, t: 1.2 + i * 0.2, z: -4.5 + i * 1.8, p: null, v: null })); C.bombs.forEach(b => b.visible = true); },
   update(lt, dt) {
     const tabs = 45 + lt, p = b52At(tabs); placeB52(p, tabs - 41.6); escortJets(tabs, dt);
@@ -1146,7 +1222,8 @@ shot('bombs', 45.0, 47.6, {
       if (!d.p) { d.p = d.b.position.clone(); d.v = Vc(95, -5, 0); }
       d.v.y -= 9.8 * dt; d.p.addScaledVector(d.v, dt); d.b.position.copy(d.p); d.b.rotateX(dt * 0.06);
     }
-    applyFlashLight(0.3 + 0.5 * FX.lights.reduce((m, L) => Math.max(m, L.k), 0));
+    FX.fill = 0.3 + 0.5 * FX.lights.reduce((m, L) => Math.max(m, L.k), 0);
+    if (this.once(0.35)) lightning(1300, 900); if (this.once(1.75)) lightning(1700, 900);
     if ((this.fl = (this.fl || 0) - dt) <= 0 && dt > 0) { this.fl = 0.3; const q = p.clone().add(Vc(rand(-40, 120), rand(-50, 40), rand(-70, 70))); flak(q, 1.3); flashLight(q, 2.5, 6); }
     amb(this, dt, { flak: { box: [p.x - 60, p.x + 260, 480, 620, -150, 110], rate: 14, size: 1.2 }, aa: [{ from: Vc(p.x + 600, 30, -30), to: [p.x - 40, p.x + 120, 540, 600, -80, 40], rate: 10, speed: 900, life: 1.2, len: 14 }] });
     if (this.once(0.55)) { flak(p.clone().add(Vc(28, -18, 22)), 1.4); shake(0.6); }
@@ -1162,7 +1239,7 @@ shot('bombs', 45.0, 47.6, {
 // 20. the Red harbor is flattened
 const DEST = { t0: 47.6, hits: [48.0, 48.25, 48.5, 48.7, 48.95, 49.2, 49.4], mega: 49.8 };
 shot('destroy', 47.6, 51.6, {
-  look: 'fire', shake: 0.06, shadow: [2066, 0, 340],
+  look: 'fire', shake: 0.06, shadow: [2066, 0, 340], rain: true, ramp: [[0, 1], [2.18, 1], [2.24, 0.22], [2.75, 0.22], [2.8, 2.2], [3.12, 2.2], [3.17, 1], [4, 1]],
   setup() {
     harborWhole(HR);
     const line = (u, out) => out.set(lerp(1880, 2150, u), 0, lerp(-70, 60, u));
@@ -1177,6 +1254,7 @@ shot('destroy', 47.6, 51.6, {
     for (const f of this.falling) { const s = DEST.hits[this.falling.indexOf(f)] - tabs; f.b.visible = s > 0 && s < 0.4; if (f.b.visible) { f.b.position.copy(f.p).add(Vc(-s * 60, s * 260, 0)); f.b.rotation.set(-1.35, 0, 0); f.b.lookAt(f.p); } }
     DEST.hits.forEach((t, i) => { if (this.once(t - 47.6)) { const p = this.hp[i]; boom(p, rand(13, 17), { ground: p.y - 6, ringK: 4, ember: 1e9 }); debris(p, 6, 34, 0x5a5550); shake(0.6); screenFlash(0.08); } });
     if (tabs >= 48) harborRuin(HR, sm(0, 2.2, tabs - 48));
+    if (this.once(0.2)) lightning(1500, 650); if (this.once(3.5)) lightning(1900, 650);
     if (this.once(48.6 - 47.6)) { const p = local(C.rdd, 0, 6, 0); boom(p, 11, { ring: false }); addEmitter(p, 5); C.rdd.roll = 0.1; }
     if (this.once(49.1 - 47.6)) { const p = local(C.rdd2, 0, 6, 4); boom(p, 10, { ring: false }); addEmitter(p, 5); C.rdd2.roll = -0.12; }
     if (this.once(DEST.mega - 47.6)) {
@@ -1190,7 +1268,7 @@ shot('destroy', 47.6, 51.6, {
       for (const B of HR.boxes) if (hs(B.minX, B.maxZ) < 0.35) addEmitter(boxTop(B), 3 + hs(B.minZ, 1) * 4);
     }
     for (const [t0, dx, dz] of [[50.4, -70, 40], [50.9, 60, -60], [51.3, -20, -90]]) if (this.once(t0 - 47.6)) { const p = this.keep.clone().add(Vc(dx, -12, dz)); boom(p, 10, { ground: p.y - 6, ringK: 3 }); }
-    if (this.once(3.0)) { shake(1.4); screenFlash(0.18); }
+    if (this.once(2.83)) { shake(1.4); screenFlash(0.18); }
   },
   cam(lt) { return CAM(Vc(1555 + lt * 3, 9 + lt * 0.4, -335 + lt * 2), Vc(2050, 24 + lt * 3, 12), lerp(31, 34, lt / 4)); },
 });
@@ -1237,14 +1315,14 @@ function advance(s, lt, dt) { s._lt = lt; if (s.update) s.update(lt, dt); update
 // step to film time t, replaying the shot from its start when jumping (a slow-motion shot runs its action at
 // `speed` of real time)
 function goTo(t) {
-  const s = shotAt(t), sp = s.speed;
+  const s = shotAt(t);
   if (s !== cur || t < curT - 1e-6) {
-    begin(s); if (!s.card) { const c = s.cam(0); camera.position.copy(c.p); }
+    begin(s); if (!s.card) { const c = s.cam(0, 0); camera.position.copy(c.p); }
     let lt = 0; advance(s, 0, 0);
-    const target = (t - s.t0) * sp; while (lt < target - 1e-6) { const d = Math.min(1 / 30, target - lt); lt += d; advance(s, lt, d); }
+    const target = s.simT(t - s.t0); while (lt < target - 1e-6) { const d = Math.min(1 / 30, target - lt); lt += d; advance(s, lt, d); }
   } else {
     // forward within the shot: step on, but never more than a second of catching up after a stall
-    let lt = Math.max((curT - s.t0) * sp, (t - s.t0) * sp - 1); const target = (t - s.t0) * sp;
+    let lt = Math.max(s.simT(curT - s.t0), s.simT(t - s.t0) - 1); const target = s.simT(t - s.t0);
     while (lt < target - 1e-6) { const d = Math.min(1 / 30, target - lt); lt += d; advance(s, lt, d); }
   }
   curT = t;
@@ -1252,7 +1330,7 @@ function goTo(t) {
 }
 function draw(s, t) {
   if (s.card) { renderer.setRenderTarget(null); renderer.setClearColor(0x000000); renderer.clear(); return; }
-  const lt = t - s.t0, c = s.cam(lt);
+  const lt = t - s.t0, st = s.simT(lt), c = s.cam(lt, st);
   camera.fov = c.fov; camera.near = c.p.distanceTo(c.l) > 250 ? 2 : 0.8; camera.far = 9000; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   camera.position.copy(c.p); camera.up.set(0, 1, 0); camera.lookAt(c.l); camera.rotateZ(c.roll);
   const sh = s.shake + camShake, e = t;
@@ -1261,10 +1339,10 @@ function draw(s, t) {
   camera.rotateZ(sh * 0.004 * wob(e * 0.9, 7));
   camera.updateMatrixWorld(true);
   sky.position.copy(camera.position);
-  const tw = s.t0 + (t - s.t0) * s.speed;   // world time: slow in a slow-motion shot
+  const tw = s.t0 + st;   // world time: slow in slow motion
   waterMat.uniforms.time.value = tw; waterMat.uniforms.camPos.value.copy(camera.position);
   if (clouds) clouds.position.x = Math.sin(tw * 0.003) * 500;
-  softLight();
+  softLight(); updateRain(t, !!s.rain);
   if (s.shadow) aimShadow(Vc(s.shadow[0], 0, s.shadow[1]), s.shadow[2]);
   else { const d = Math.min(400, Math.max(90, c.p.distanceTo(c.l) * 0.9)); aimShadow(c.l, d); }
   for (const H of HARBORS) H.flag.rotation.y = (H.sgn > 0 ? 0 : Math.PI) + Math.sin(tw * 2.2) * 0.2;
@@ -1293,12 +1371,14 @@ function init() {
     jet: plane('jet', BLUE), jet2: plane('jet', BLUE), rfig: plane('fighter', RED), rfig2: plane('fighter', RED), rbomb: plane('bomber', RED), rbomb2: plane('bomber', RED),
   };
   // the jets' missiles in flight and the torpedo use the game's own projectile models
-  C.missiles = [0, 1, 2, 3].map(() => { const m = new T.Mesh(PROJ_GEO.missile, MAT.solid); m.visible = false; scene.add(m); return m; });
+  C.missiles = [0, 1, 2, 3].map(() => { const m = new T.Mesh(PROJ_GEO.missile, MAT.solid); m.visible = false; scene.add(m);
+    const glow = new T.Sprite(new T.SpriteMaterial({ map: FX.glowTex, color: new T.Color(6, 3.4, 1.4), blending: T.AdditiveBlending, depthWrite: false, fog: false })); glow.scale.setScalar(3.2); glow.position.z = -1.9; m.add(glow);
+    const fl = new T.Mesh(new T.ConeGeometry(0.28, 2.6, 10, 1, true).rotateX(Math.PI / 2).translate(0, 0, -2.9), BURN_MAT); m.add(fl); return m; });
   C.torp = new T.Mesh(PROJ_GEO.torp, MAT.solid); C.torp.visible = false; scene.add(C.torp);
   C.shellM = shellVisual(1.25);
   C.b52 = buildB52(BLUE); C.b52.cp.g.visible = false; C.b52.g.visible = false; scene.add(C.b52.g); CAST.push(C.b52.g);
   C.bombs = Array.from({ length: 6 }, () => { const b = C.b52.bomb.clone(); b.visible = false; scene.add(b); return b; });
-  C.beacons = makeBeacons(); C.bank = makeCloudBank();
+  C.beacons = makeBeacons(); C.bank = makeCloudBank(); makeRain(); makeBolt();
   C.fire = { l: new T.PointLight(0xff7a30, 0, 700, 2), k: 0 }; C.fire.l.position.set(2060, 45, 0); scene.add(C.fire.l);
   JET.paths = [buildJetPath(Vc(1300, 38, -30), -1, 2.55), buildJetPath(Vc(1278, 41, -4), 1, 2.68)];
   renderer.toneMapping = T.NoToneMapping;
@@ -1308,8 +1388,17 @@ function init() {
   sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
   try { film = makeFilm(); } catch (e) { console.warn('trailer: plain rendering', e); film = null; }
   if (!film) renderer.toneMapping = T.ACESFilmicToneMapping;
-  setScale(1);
+  setScale(1); setQuality(matchMedia && matchMedia('(pointer: coarse)').matches ? 1 : 2);
   addEventListener('resize', resize);
+}
+let quality = 2;
+// 2: everything; 1: lighter anti-aliasing and a smaller shadow map; 0: no anti-aliasing, small shadow map, less rain
+function setQuality(q) {
+  quality = clamp(q, 0, 2);
+  const want = quality === 2 ? (renderer.capabilities.maxTextureSize >= 8192 ? 4096 : 2048) : quality === 1 ? 2048 : 1024;
+  if (want !== SHADOW_MAP) { SHADOW_MAP = want; sun.shadow.mapSize.set(want, want); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  if (film) film.setSamples(quality === 2 ? 4 : quality === 1 ? 2 : 0);
+  if (RAIN.mesh) RAIN.mesh.geometry.setDrawRange(0, quality === 0 ? RAIN.n : RAIN.n * 2);
 }
 let scale = 1;
 function setScale(k) { scale = k; renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5) * k); resize(); }
@@ -1322,6 +1411,8 @@ window.HBT = {
   warm() { for (const s of SHOTS) if (!s.card) { const t = Math.min(s.t0 + 0.3, s.t1 - 0.01); goTo(t); draw(s, t); } cur = null; curT = -1; },
   setScale,
   get scale() { return scale; },
+  setQuality,
+  get quality() { return quality; },
   get flash() { return FX.flash; },
   get film() { return !!film; },
   get _film() { return film; },
@@ -2245,6 +2336,8 @@ const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t
 // ---------- title cards ----------
 // cap: a line low in the frame over the picture; flash: big, centred, over black
 const CARDS = [
+  { t0: 0.9, t1: 5.0, text: 'Blue Harbor\n05:58 · first light', kind: 'slug' },
+  { t0: 6.9, t1: 10.6, text: 'Red Harbor\n06:01 · the alarm', kind: 'slug' },
   { t0: 1.6, t1: 5.4, text: 'Two harbors', kind: 'cap' },
   { t0: 7.6, t1: 10.8, text: 'One bay', kind: 'cap' },
   { t0: 12.7, t1: 15.7, text: 'Only one will stand', kind: 'cap' },
@@ -2257,7 +2350,8 @@ function updateCards(t) {
   for (const c of CARDS) {
     const k = clamp((t - c.t0) / (c.t1 - c.t0), 0, 1);
     let o;
-    if (c.kind === 'cap') { o = sm(c.t0, c.t0 + 0.9, t) * (1 - sm(c.t1 - 0.8, c.t1, t)); c.el.style.letterSpacing = (0.56 + k * 0.12).toFixed(3) + 'em'; }
+    if (c.kind === 'slug') { o = sm(c.t0, c.t0 + 0.7, t) * (1 - sm(c.t1 - 0.7, c.t1, t)); c.el.style.transform = `translateX(${((1 - sm(c.t0, c.t0 + 1.2, t)) * -10).toFixed(2)}px)`; }
+    else if (c.kind === 'cap') { o = sm(c.t0, c.t0 + 0.9, t) * (1 - sm(c.t1 - 0.8, c.t1, t)); c.el.style.letterSpacing = (0.56 + k * 0.12).toFixed(3) + 'em'; }
     else { o = sm(c.t0 + 0.02, c.t0 + 0.14, t) * (1 - sm(c.t1 - 0.18, c.t1 - 0.02, t)); c.el.style.transform = `translateY(-50%) scale(${(1.06 - k * 0.06).toFixed(4)})`; }
     c.el.style.opacity = o.toFixed(3);
   }
@@ -2381,9 +2475,10 @@ function adapt(ms) {
   perf.n++; perf.sum += ms;
   if (perf.n < 45) return;
   const avg = perf.sum / perf.n; perf.n = 0; perf.sum = 0;
-  const s = W.HBT.scale;
-  if (avg > 42 && s > 0.55) W.HBT.setScale(Math.max(0.55, s - 0.15));
-  else if (avg < 22 && s < 1) W.HBT.setScale(Math.min(1, s + 0.1));
+  // slow: first drop the extras (anti-aliasing, shadow detail), only then the resolution; fast: the other way round
+  const s = W.HBT.scale, q = W.HBT.quality;
+  if (avg > 42) { if (q > 0) W.HBT.setQuality(q - 1); else if (s > 0.6) W.HBT.setScale(Math.max(0.6, s - 0.1)); }
+  else if (avg < 22) { if (s < 1) W.HBT.setScale(Math.min(1, s + 0.1)); else if (q < 2 && avg < 18) W.HBT.setQuality(q + 1); }
 }
 function tick() {
   requestAnimationFrame(tick);
