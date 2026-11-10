@@ -45,7 +45,8 @@ if (!fresh.length) { console.log('no new NEWS entries'); process.exit(0); }
 for (const n of fresh) {
   const g = games.find(x => x.id === n.game);
   const t = caption(n, g), [pill, title, sub] = label(n, g);
-  const thumb = g && /\.(jpe?g|png|webp)$/i.test(g.thumb || '') && fs.existsSync(g.thumb) ? g.thumb : 'og.png';
+  const tf = String((g && g.thumb) || '').split('?')[0]; // thumbs can carry a ?v= for the browser's cache
+  const thumb = g && /\.(jpe?g|png|webp)$/i.test(tf) && fs.existsSync(tf) ? tf : 'og.png';
   const out = JSON.parse(execFileSync('python3', ['tools/claude-post/card.py', thumb, pill, title, sub], { maxBuffer: 64 << 20 }).toString());
   console.log('---', keyOf(n).slice(0, 8), n.game || n.href || '', '\n' + t);
   if (process.env.DRY) { fs.writeFileSync('claude-post-' + keyOf(n).slice(0, 8) + '.jpg', Buffer.from(out.img, 'base64')); continue; }
