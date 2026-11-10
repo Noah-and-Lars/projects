@@ -38,6 +38,24 @@
 .msg.me .mh a.who { color: #ffd166; }
 .mh .guest, .people li em { color: var(--muted); font-style: normal; font-size: 11px; }
 .people li span a.who { color: inherit; }
+/* 2026-11-12: video calls from the Global chat (call.js, the same calls as profiles and DMs) */
+.chat-call { flex: none; padding: 6px 12px; font-size: 14px; }
+.people .pcall { flex: none; padding: 1px 7px; border-radius: 6px; border: 1px solid #ffffff22; background: transparent; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.people .pcall:hover { border-color: #ffffff55; background: #ffffff0d; }
+.call-box .notice-box { text-align: left; }
+.call-box h2 { margin: 0 0 6px; }
+.call-box p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+.call-list { list-style: none; margin: 0 0 14px; padding: 0; max-height: 46vh; overflow-y: auto; border: 1px solid #ffffff14; border-radius: 10px; }
+.call-list li + li { border-top: 1px solid #ffffff0d; }
+.call-list label { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; font-weight: 600; }
+.call-list label:hover { background: #ffffff08; }
+.call-list input { width: 17px; height: 17px; accent-color: var(--accent); flex: none; }
+.call-list .av { width: 26px; height: 26px; font-size: 12px; flex: none; }
+.call-list .none { padding: 14px 12px; color: var(--muted); font-size: 14px; }
+.call-acts { display: flex; justify-content: flex-end; gap: 8px; }
+.call-acts .btn[disabled] { opacity: .45; cursor: default; filter: none; }
+.chat-head h1 { white-space: nowrap; }
+@media (max-width: 480px) { .chat-call .wide { display: none; } .chat-head { gap: 8px; } .chat-status { min-width: 0; } .chat-status span { overflow: hidden; text-overflow: ellipsis; } }
 </style>
 </head>
 <body>
@@ -55,6 +73,7 @@
     <section class="chat-main" aria-labelledby="chatT">
       <div class="chat-head">
         <h1 id="chatT">Global chat</h1>
+        <button id="callBtn" class="btn chat-call" type="button" title="Video call people in the chat">📹<span class="wide"> Video call</span></button>
         <span id="status" class="chat-status" role="status"><i aria-hidden="true"></i><span>Connecting…</span></span>
       </div>
       <div id="log" class="chat-log" role="log" aria-label="Messages"></div>
@@ -82,6 +101,19 @@
     <input id="nameIn" class="field" maxlength="20" aria-label="Chat name" spellcheck="false">
     <p id="nameErr" class="name-err" hidden></p>
     <button class="notice-ok" type="submit">Join the chat</button>
+  </form>
+</div>
+
+<div id="callBox" class="notice call-box" role="dialog" aria-modal="true" aria-labelledby="callT" hidden>
+  <form id="callForm" class="notice-box" autocomplete="off">
+    <div class="notice-tag">Video call</div>
+    <h2 id="callT">Call people in the chat</h2>
+    <p id="callNote">Pick who to call. Only signed-in players can be called (not guests). Each one gets a ringing card, the same as a call from their profile.</p>
+    <ul id="callList" class="call-list"></ul>
+    <div class="call-acts">
+      <button id="callCancel" class="btn ghost" type="button">Cancel</button>
+      <button id="callGo" class="btn" type="submit">📹 Call</button>
+    </div>
   </form>
 </div>
 
@@ -222,12 +254,78 @@ function people() {
     s.append(nameEl(p.id, p.n, p.a, false));
     li.append(avatar(p.id, p.n), s);
     if (p.id === me) { const e = document.createElement('em'); e.textContent = 'you'; li.append(e); }
-    else { if (!p.a) { const g = document.createElement('em'); g.textContent = 'guest'; li.append(g); } if (muted[p.id]) li.className = 'muted'; li.append(muteButton(p.id, p.n)); }
+    else { if (!p.a) { const g = document.createElement('em'); g.textContent = 'guest'; li.append(g); } if (muted[p.id]) li.className = 'muted'; if (p.a) li.append(callButton(p.n)); li.append(muteButton(p.id, p.n)); }
     return li;
   }));
+  callLabels();
   if (!list.length) $('people').innerHTML = '<li class="people-none">' + (broken ? 'Not connected' : 'Connecting…') + '</li>';
   status();
 }
+// ---------- video calls (2026-11-12) ----------
+// The same calls as a profile's or a DM's 📹 button: call.js's ArcadeCall.start(names, groupName). Only signed-in
+// players (account ids 'a:<lower>') can be called; guests have no account to ring. 'Global chat' shows on their
+// ringing card as the call's name.
+const CALL_MAX = 14; // call.js MAX (15) minus you
+const inCallAdd = () => !!(window.ArcadeCall && ArcadeCall.canAdd && ArcadeCall.canAdd());
+function callable() { // signed-in players in the chat right now, apart from you
+  const seen = new Set();
+  return who.filter(([id, n, a]) => a && id !== me && String(id).startsWith('a:') && !seen.has(id) && seen.add(id))
+    .map(([id, n]) => ({ id, n: String(n).slice(0, NAME_LEN) })).sort((x, y) => x.n.localeCompare(y.n));
+}
+function callButton(n) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'pcall'; b.textContent = '📹';
+  b.title = (inCallAdd() ? 'Add ' + n + ' to your call' : 'Video call ' + n);
+  b.setAttribute('aria-label', b.title);
+  b.onclick = () => startCall([n]);
+  return b;
+}
+function callLabels() {
+  const add = inCallAdd(), b = $('callBtn');
+  b.lastChild.textContent = add ? ' Add to call' : ' Video call';
+  b.title = add ? 'Add people in the chat to your call' : 'Video call people in the chat';
+}
+function startCall(names) {
+  if (!window.ArcadeCall) return;
+  if (!acctName()) { if (window.ArcadeAccount && ArcadeAccount.welcome) ArcadeAccount.welcome('signup'); else alert('Make an arcade account to make video calls.'); return; }
+  ArcadeCall.start(names, 'Global chat');
+  setTimeout(callLabels, 400);
+}
+function openCallBox() {
+  if (!window.ArcadeCall) return;
+  if (!acctName()) { startCall([]); return; }
+  const list = callable(), add = inCallAdd();
+  $('callT').textContent = add ? 'Add people in the chat to your call' : 'Call people in the chat';
+  $('callList').replaceChildren(...list.map(p => {
+    const li = document.createElement('li'), lab = document.createElement('label'), cb = document.createElement('input'), nm = document.createElement('span');
+    cb.type = 'checkbox'; cb.value = p.n; nm.textContent = p.n;
+    lab.append(cb, avatar(p.id, p.n), nm); li.append(lab); return li;
+  }));
+  if (!list.length) $('callList').innerHTML = '<li class="none">No other signed-in players are in the chat right now. Guests can’t be called.</li>';
+  callPicked();
+  $('callBox').hidden = false;
+  const f = $('callList').querySelector('input'); (f || $('callCancel')).focus();
+}
+function callPicked() {
+  const boxes = [...$('callList').querySelectorAll('input')], on = boxes.filter(b => b.checked).length;
+  boxes.forEach(b => { b.disabled = !b.checked && on >= CALL_MAX; });
+  $('callGo').disabled = !on;
+  $('callGo').textContent = on > 1 ? '📹 Call ' + on + ' people' : '📹 Call';
+}
+$('callBtn').onclick = openCallBox;
+$('callList').addEventListener('change', callPicked);
+$('callCancel').onclick = () => { $('callBox').hidden = true; $('callBtn').focus(); };
+$('callBox').addEventListener('keydown', e => { if (e.key === 'Escape') $('callBox').hidden = true; });
+$('callBox').addEventListener('click', e => { if (e.target === $('callBox')) $('callBox').hidden = true; });
+$('callForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const names = [...$('callList').querySelectorAll('input:checked')].map(b => b.value);
+  if (!names.length) return;
+  $('callBox').hidden = true;
+  startCall(names);
+});
+setInterval(callLabels, 3000); // 'Add to call' while you host a call
+
 function status() {
   const el = $('status'), n = who.length;
   el.className = 'chat-status' + (joined ? ' ok' : broken ? ' off' : '');

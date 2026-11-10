@@ -124,6 +124,11 @@ source in Settings → Pages should be switched to `main`.
   A friend's camera shows on the ringing card before you pick up; a non-friend's doesn't (and their card has Block).
   Protocol in the comment at the top of call.js ('ring', 'ans', 'ok', 'no', 'busy', 'end', 'roster', 'join', 'jans').
   Tests: scratchpad `cdpNv.mjs` with FAKECAM=1 (fake cameras, n browsers) + rt-local accounts Tester, Noah, Lars.
+  Global chat (2026-11-12): a 📹 Video call button in the chat header opens `#callBox`, a picker of the signed-in
+  players in the chat now (`callable()`: `who` entries with account ids, not guests, up to 14), and each signed-in
+  player in "In the chat" has a 📹 button (`callButton`); both call `ArcadeCall.start(names, 'Global chat')`, so the
+  ringing card shows "Global chat" as the call's name. Without an online account they open the sign-up popup. Labels
+  turn to "Add to call" while you host a call (`callLabels`).
 - `tos.js`: the Terms of Service pop-up, loaded by `index.html`, `play.html` and
   `chat.html`. It shows until the visitor ticks the box and agrees; agreeing is
   remembered in localStorage (`arcade-tos-agreed`, set to `TOS_VERSION`). Change
