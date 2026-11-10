@@ -153,6 +153,10 @@ source in Settings → Pages should be switched to `main`.
   inbox over the accounts' DMs: Primary = friends and groups, General = everyone else; groups open on players.html).
   Media is fetched with fetch() (the server only answers the official origin, so <img src> can't be used) and kept as
   blob URLs (`mediaUrl`, 16 kept). A view counts after 2 s of a video (or most of a short one) or 1 s of a photo.
+  Profile pictures (2026-11-10): your profile's picture button uploads a square JPEG (at most 256 px, under 40,000
+  characters) to /clips/avatar, kept as 'a:<lower>' in the index; every avatar on social.html asks for its picture
+  (`fillAvatar`, batched through /clips/avatars, cached 10 minutes in sessionStorage); no picture = the coloured letter.
+  `?admin` on a profile has "Admin: remove picture" (`/acct/admin` op 'avatardel'). Only social.html shows them so far.
   clips.js on play.html: the 🎬 Clip last 30s button (or F8) saves the last 30 seconds. While a game is on screen and
   the tab is visible, every visible game canvas is captured (captureStream into tiny hidden videos, drawn into one
   1280x720 canvas, 960x540 on phones; HTML overlays aren't in it) and encoded with WebCodecs (VP8, 1.5 Mbit/s, a keyframe

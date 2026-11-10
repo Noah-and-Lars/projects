@@ -55,6 +55,10 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .empty .btn { margin-top: 14px; }
 .note { color: var(--muted); font-size: 13px; text-align: center; margin: 20px 0; }
 .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; background: hsl(var(--h) 55% 42%); color: #fff; font-weight: 800; font-size: 15px; position: relative; }
+.av.pic { background-size: cover; background-position: center; color: transparent; }
+.av-edit { position: relative; border: 0; background: none; padding: 0; cursor: pointer; border-radius: 50%; }
+.av-edit .cam-b { position: absolute; right: 4px; bottom: 4px; width: 30px; height: 30px; border-radius: 50%; background: var(--blue); color: #fff; display: grid; place-items: center; border: 3px solid var(--bg); }
+.av-edit .cam-b svg { width: 15px; height: 15px; }
 .ring { padding: 2.5px; border-radius: 50%; background: var(--ring); flex: none; display: inline-grid; }
 .ring.seen { background: #ffffff33; }
 .ring > .av { border: 2.5px solid var(--bg); }
@@ -355,7 +359,36 @@ const me = () => ArcadeAccount.kind() === 'online' ? ArcadeAccount.name() : '';
 const lc = s => String(s || '').toLowerCase();
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const hue = id => { let h = 0; for (const c of lc(id)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
-const avatar = n => { const s = el('span', 'av', (String(n).match(/[a-z0-9]/i) || [String(n)[0] || '?'])[0].toUpperCase()); s.setAttribute('aria-hidden', 'true'); s.style.setProperty('--h', hue(n)); return s; };
+const avatar = n => { const s = el('span', 'av', (String(n).match(/[a-z0-9]/i) || [String(n)[0] || '?'])[0].toUpperCase()); s.setAttribute('aria-hidden', 'true'); s.style.setProperty('--h', hue(n)); fillAvatar(s, n); return s; };
+/* profile pictures: every avatar asks for its player's picture; the names are gathered and fetched together
+   (/clips/avatars, up to 60 a request) and kept for 10 minutes in sessionStorage. No picture = the coloured letter. */
+const AV_KEY = 'arcade-social-av', avWait = new Map();
+let avCache = new Map(), avQ = new Set(), avT = 0;
+try { const c = JSON.parse(sessionStorage.getItem(AV_KEY) || 'null'); if (c && Date.now() - c.at < 600000) avCache = new Map(Object.entries(c.av)); } catch (e) {}
+function saveAv() { try { sessionStorage.setItem(AV_KEY, JSON.stringify({ at: Date.now(), av: Object.fromEntries(avCache) })); } catch (e) {} }
+function paintAv(span, url) { span.classList.toggle('pic', !!url); span.style.backgroundImage = url ? 'url("' + url + '")' : ''; }
+function fillAvatar(span, n) {
+  const k = lc(n);
+  if (!/^[a-z0-9_]{3,16}$/.test(k)) return;
+  span.dataset.n = k;
+  if (avCache.has(k)) return paintAv(span, avCache.get(k));
+  if (!avWait.has(k)) avWait.set(k, []);
+  avWait.get(k).push(span); avQ.add(k);
+  clearTimeout(avT); avT = setTimeout(fetchAvs, 40);
+}
+async function fetchAvs() {
+  const ks = [...avQ].slice(0, 60); ks.forEach(k => avQ.delete(k));
+  if (!ks.length) return;
+  const r = await get('avatars', { n: ks.join(','), me: '' });
+  for (const k of ks) {
+    const url = r.status === 200 && r.av ? r.av[k] || '' : '';
+    if (r.status === 200) avCache.set(k, url);
+    (avWait.get(k) || []).forEach(sp => paintAv(sp, url)); avWait.delete(k);
+  }
+  saveAv();
+  if (avQ.size) fetchAvs();
+}
+function setMyAvatar(url) { const k = lc(me()); avCache.set(k, url); saveAv(); document.querySelectorAll('.av[data-n="' + k + '"]').forEach(sp => paintAv(sp, url)); }
 const ringed = (n, seen) => { const r = el('span', 'ring' + (seen ? ' seen' : '')); r.append(avatar(n)); return r; };
 const num = n => n < 1000 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0).replace(/\.0$/, '') + 'K' : (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
 const plural = (n, w) => num(n) + ' ' + w + (n === 1 ? '' : 's');
@@ -951,8 +984,10 @@ async function showUser(name) {
   stat(r.following, ' following', () => peopleSheet('Following', r.fg || []));
   stat(r.views, r.views === 1 ? ' view' : ' views');
   const sc = el('a', 'play-link', 'Best scores in every game →'); sc.href = 'players.html#p=' + encodeURIComponent(r.n);
+  if (ADMIN && !isMe) { const ab = el('button', 'btn grey', 'Admin: remove picture'); ab.type = 'button'; ab.onclick = async () => { if (!adminPw) adminPw = prompt('Admin password') || ''; if (!adminPw) return; const x = await acct('admin', { method: 'POST', body: { pw: adminPw, op: 'avatardel', name: r.n, r: ROOM } }); if (x.status === 200) { avCache.set(lc(r.n), ''); saveAv(); document.querySelectorAll('.av[data-n="' + lc(r.n) + '"]').forEach(sp => paintAv(sp, '')); } else { adminPw = ''; alert(x.error === 'wrong' ? 'Wrong password.' : 'Couldn’t remove it.'); } }; nmrow.append(ab); }
   info.append(nmrow, st, sc);
-  h.append(ringed(r.n, true), info);
+  if (isMe) { const ed = el('button', 'av-edit'); ed.type = 'button'; ed.title = 'Change profile picture'; ed.setAttribute('aria-label', 'Change profile picture'); const cb = el('span', 'cam-b'); cb.innerHTML = svg(IC.cam); ed.append(ringed(r.n, true), cb); ed.onclick = editAvatar; h.append(ed, info); }
+  else h.append(ringed(r.n, true), info);
   const tabs = el('div', 'ptabs'), body = el('div');
   const tabsList = [['posts', IC.grid, 'Posts'], ['videos', IC.reel, 'Reels']].concat(isMe ? [['saved', IC.save, 'Saved']] : []);
   if (!tabsList.some(t => t[0] === profTab)) profTab = 'posts';
@@ -1245,6 +1280,39 @@ function postMedia(item, progress) {
       x.onerror = () => no(new Error('The upload failed. Check your connection and try again.'));
       x.send(item.blob);
     }));
+}
+
+/* ---------- your profile picture ---------- */
+function editAvatar() {
+  if (!me()) return needAccount();
+  const b = el('div', 'sheet-b'), opts = el('div', 'create-opts'), file = el('input'); file.type = 'file'; file.accept = 'image/*'; file.hidden = true;
+  const up = el('button'); up.type = 'button'; up.innerHTML = '<span class="big">🖼️</span><span><b>Upload a picture</b><small>It’s cropped to a square from the middle.</small></span>';
+  const rm = el('button'); rm.type = 'button'; rm.innerHTML = '<span class="big">🗑️</span><span><b>Remove picture</b><small>Go back to your coloured letter.</small></span>';
+  const msg = el('p', 'up-msg', '');
+  opts.append(up); if (avCache.get(lc(me()))) opts.append(rm); opts.append(file);
+  b.append(opts, msg);
+  const ov = sheet('Profile picture', b, true);
+  up.onclick = () => file.click();
+  rm.onclick = async () => { const r = await post('avatar', { img: '' }); if (r.status === 200) { setMyAvatar(''); ov.close(); } else { msg.className = 'up-msg err'; msg.textContent = 'Couldn’t remove it. Try again.'; } };
+  file.onchange = async () => {
+    const f = file.files[0]; if (!f) return;
+    msg.className = 'up-msg'; msg.textContent = 'Saving…';
+    try {
+      const url = URL.createObjectURL(f), img = new Image();
+      await new Promise((ok, no) => { img.onload = ok; img.onerror = () => no(new Error('That picture couldn’t be opened. Try a JPEG or PNG.')); img.src = url; });
+      const side = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement('canvas');
+      let d = '';
+      for (const [px, q] of [[256, 0.85], [256, 0.7], [200, 0.6], [160, 0.5]]) { // small enough for the server (40,000 characters)
+        c.width = c.height = px; const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, px, px);
+        g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, px, px);
+        d = c.toDataURL('image/jpeg', q); if (d.length <= 38000) break;
+      }
+      URL.revokeObjectURL(url);
+      const r = await post('avatar', { img: d });
+      if (r.status !== 200) throw new Error(r.status === 0 ? 'Couldn’t reach the server.' : 'Couldn’t save it (' + (r.error || r.status) + ').');
+      setMyAvatar(d); ov.close();
+    } catch (e) { msg.className = 'up-msg err'; msg.textContent = e.message; }
+  };
 }
 
 /* ---------- routing ---------- */

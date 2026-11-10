@@ -204,7 +204,7 @@ async function accounts(req, env, url) {
 // object is asked through a header only this Worker ever sets
 async function admin(env, body, out) {
   const name = String(body.name || ''), op = body.op;
-  if (op !== 'info' && op !== 'delete' && op !== 'chatdel' && op !== 'clipdel') return out({ error: 'bad' }, 400);
+  if (op !== 'info' && op !== 'delete' && op !== 'chatdel' && op !== 'clipdel' && op !== 'avatardel') return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
   if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
@@ -215,6 +215,11 @@ async function admin(env, body, out) {
   if (op === 'clipdel') { // take a clip off Social (body.r: a ?clipsroom= test room)
     const room = String(body.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
     const r = await clipIndex(env, room).fetch(new Request('https://clips/admindel', { method: 'POST', body: JSON.stringify({ id: String(body.id || ''), me: 'admin_' }) }));
+    return out(await r.json().catch(() => ({})), r.status);
+  }
+  if (op === 'avatardel') { // take a player's Social profile picture down
+    const room = String(body.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
+    const r = await clipIndex(env, room).fetch(new Request('https://clips/adminav', { method: 'POST', body: JSON.stringify({ name, me: 'admin_' }) }));
     return out(await r.json().catch(() => ({})), r.status);
   }
   if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
@@ -1067,7 +1072,7 @@ export class Tally extends DurableObject {
        each view watched, so wf / vw is how much of it people watch); 'p:<id>' = the poster (a small JPEG data URL);
        'l:<id>' = [lower names who liked]; 'c:<id>' = [{ i, n, t, at, re, lk: [lower names] }]; 'v:<id>' = [viewer
        keys] (one view per viewer: an account name or a device id); 'u:<lower>' = { n, f: [following], fr: [followers],
-       lk: [liked ids], day, k (clips published that day) }; 'q:<id>' = an upload waiting for its video.
+       lk: [liked ids], day, k (clips published that day) }; 'a:<lower>' = their profile picture (a data URL, at most AVATAR_MAX); 'q:<id>' = an upload waiting for its video.
        All the 'm:' rows are read once when the object wakes and kept in memory (they're small; posters aren't).
      'clip:<id>': one clip's video, in 1 MB pieces 'v:0'... ('vn' pieces, 'ty' type). Served with a year-long cache.
    Publishing is two steps: POST /clips/new (details + poster, checked against the account) gives an id and a one-time
@@ -1081,12 +1086,13 @@ export class Tally extends DurableObject {
      POST /clips/new { kind, g, t, dur, w, h, sz, poster } -> { id, k }   PUT /clips/v/<id>?k= <video or picture bytes>
        (kind 'clip' = recorded from a game; 'video' and 'photo' = the player's own uploads, game optional)
      POST /clips/like { id, on }   /clips/comment { id, t, re }   /clips/cdel { id, i }   /clips/clike { id, i, on }
-     POST /clips/follow { name, on }   /clips/del { id }   /clips/report { id }
-   The owner deletes any clip with /acct/admin op 'clipdel'. Every route takes ?r=<room> for test rooms.
+     POST /clips/follow { name, on }   /clips/del { id }   /clips/report { id }   /clips/avatar { img: data URL or '' }
+     GET  /clips/avatars?n=a,b,c  -> { av: { lower: data URL } }   (profile pictures, up to 60 names at once)
+   The owner deletes any clip with /acct/admin op 'clipdel', and a profile picture with op 'avatardel' {name}. Every route takes ?r=<room> for test rooms.
    ========================================================================== */
 const CLIP_MAX = 12 * 1024 * 1024, CLIP_PIECE = 1024 * 1024, CLIP_STORE = 3.5e9, CLIP_DAY = 25, CLIP_PER_USER = 100;
 const CLIP_ID = /^[a-z0-9]{10}$/, CLIP_TITLE = 80, CLIP_COMMENT = 300, CLIP_COMMENTS = 500, CLIP_VIEWERS = 5000;
-const CLIP_POSTER = 60000, CLIP_REPORTS = 3, VIEWER_RE = /^[A-Za-z0-9_:.-]{3,40}$/;
+const CLIP_POSTER = 60000, AVATAR_MAX = 40000, CLIP_REPORTS = 3, VIEWER_RE = /^[A-Za-z0-9_:.-]{3,40}$/;
 const clipIndex = (env, room) => env.CLIPS.get(env.CLIPS.idFromName(room ? 'index-test-' + room : 'index'));
 const clipMedia = (env, id) => env.CLIPS.get(env.CLIPS.idFromName('clip:' + id));
 async function whoami(env, auth) {
@@ -1115,14 +1121,14 @@ async function clips(req, env, url) {
   }
   const idx = clipIndex(env, room);
   if (req.method === 'GET') {
-    if (!['feed', 'user', 'one', 'comments'].includes(route)) return out({ error: 'not_found' }, 404);
+    if (!['feed', 'user', 'one', 'comments', 'avatars'].includes(route)) return out({ error: 'not_found' }, 404);
     return pass(await idx.fetch(new Request('https://clips/' + route + url.search)));
   }
   if (req.method !== 'POST' || +(req.headers.get('content-length') || 0) > 100000) return out({ error: 'bad' }, 400);
   let b; try { b = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
   if (!b || typeof b !== 'object') return out({ error: 'bad' }, 400);
   if (route === 'seen' || route === 'share') return pass(await idx.fetch(new Request('https://clips/' + route, { method: 'POST', body: JSON.stringify(b) })));
-  if (!['new', 'like', 'comment', 'cdel', 'clike', 'follow', 'del', 'report'].includes(route)) return out({ error: 'not_found' }, 404);
+  if (!['new', 'like', 'comment', 'cdel', 'clike', 'follow', 'del', 'report', 'avatar'].includes(route)) return out({ error: 'not_found' }, 404);
   const who = await whoami(env, req.headers.get('authorization') || '');
   if (!who) return out({ error: 'auth' }, 401);
   b.me = who;
@@ -1238,6 +1244,11 @@ export class Clips extends DurableObject {
       if (!m) return j({ error: 'not_found' }, 404);
       return j({ clip: (await this.show([m], me))[0] });
     }
+    if (route === 'avatars') { // profile pictures: ?n=name,name,... (up to 60) -> { av: { lower: data URL } } (no entry = none)
+      const ks = String(q.get('n') || '').toLowerCase().split(',').filter(k => NAME_RE.test(k)).slice(0, 60), av = {};
+      if (ks.length) for (const [k, v] of await this.ctx.storage.get(ks.map(k => 'a:' + k))) if (v) av[k.slice(2)] = v;
+      return j({ av });
+    }
     if (route === 'comments') {
       const id = q.get('id') || '', mk = me.toLowerCase();
       if (!this.m.has(id)) return j({ error: 'not_found' }, 404);
@@ -1265,6 +1276,8 @@ export class Clips extends DurableObject {
       for (const m of [...this.m.values()].filter(x => x.by.toLowerCase() === from)) {
         if (route === 'purge') await this.drop(m.id); else { m.by = to; await S.put('m:' + m.id, m); }
       }
+      const pic = await S.get('a:' + from);
+      if (pic) { await S.delete('a:' + from); if (route === 'rename') await S.put('a:' + to.toLowerCase(), pic); }
       const u = await S.get('u:' + from);
       if (u) {
         await S.delete('u:' + from); this.users.delete(from);
@@ -1322,6 +1335,14 @@ export class Clips extends DurableObject {
       if (old.length) await S.delete(old);
       return j({ id, k });
     }
+    if (route === 'avatar') { // your profile picture: a small square JPEG/WebP/PNG data URL, or '' to remove it
+      const img = String(b.img || '');
+      if (!img) { await S.delete('a:' + mk); return j({ ok: 1 }); }
+      if (!/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(img) || img.length > AVATAR_MAX) return j({ error: 'bad' }, 400);
+      await S.put('a:' + mk, img);
+      return j({ ok: 1 });
+    }
+    if (route === 'adminav') { await S.delete('a:' + String(b.name || '').toLowerCase()); return j({ ok: 1 }); } // only from admin()
     if (route === 'follow') {
       const other = String(b.name || ''), ok = other.toLowerCase();
       if (!NAME_RE.test(other) || ok === mk) return j({ error: 'bad' }, 400);
