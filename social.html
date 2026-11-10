@@ -20,7 +20,7 @@
 })();
 </script>
 <title>Social · The Arcade</title>
-<meta name="description" content="Gameplay clips from players on The Arcade: watch, like, comment and follow.">
+<meta name="description" content="Clips, photos and videos from players on The Arcade: watch, like, comment, follow and message.">
 <meta name="theme-color" content="#0f0d1f">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
@@ -32,141 +32,281 @@
 <meta name="apple-mobile-web-app-title" content="The Arcade">
 <link rel="stylesheet" href="arcade.css?v=15">
 <style>
-.soc { max-width: 980px; padding-bottom: 50px; }
-.soc-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 20px 0 16px; }
-.soc-seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--panel); border: 1px solid #ffffff14; }
-.soc-seg button { padding: 7px 14px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-.soc-seg button:hover { color: var(--text); }
-.soc-seg button.on { background: var(--accent); color: #fff; }
-.soc-top .sp { flex: 1; }
-.soc-top .btn { padding: 8px 14px; font-size: 14px; }
-.btn.ghost2 { background: transparent; border: 1px solid #ffffff2a; color: var(--text); box-shadow: none; }
-.btn.small { padding: 5px 12px; font-size: 13px; }
-.soc-note { color: var(--muted); font-size: 13px; margin: -6px 0 14px; }
-.soc-note summary { cursor: pointer; width: max-content; }
-.soc-note p { margin: 6px 0 0; max-width: 640px; line-height: 1.5; }
-.feed { display: flex; flex-direction: column; gap: 22px; max-width: 640px; margin: 0 auto; }
-.empty { margin: 40px auto; padding: 30px; max-width: 460px; text-align: center; color: var(--muted); background: var(--panel); border: 1px solid #ffffff14; border-radius: 18px; }
+:root { --ring: linear-gradient(45deg, #f9ce34, #ee2a7b 55%, #6228d7); --line: #ffffff17; --like: #ff3040; --blue: #3797f0; }
+.ig { width: 100%; max-width: 940px; margin: 0 auto; padding: 0 16px 60px; }
+/* top bar and section nav */
+.ig-top { display: flex; align-items: center; gap: 6px; padding: 14px 0 6px; }
+.ig-brand { font: italic 800 28px/1 Georgia, "Times New Roman", serif; letter-spacing: -0.02em; margin-right: auto; background: var(--ring); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ib { position: relative; display: inline-grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 12px; background: none; color: var(--text); cursor: pointer; }
+.ib:hover { background: #ffffff10; }
+.ib svg { width: 26px; height: 26px; }
+.badge { position: absolute; top: 3px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--like); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; border: 2px solid var(--bg); }
+.badge[hidden] { display: none; }
+.ig-nav { position: sticky; top: 0; z-index: 30; display: flex; justify-content: space-around; gap: 4px; margin: 4px 0 14px; padding: 6px; border-radius: 16px; background: rgba(27, 24, 53, .92); border: 1px solid var(--line); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.ig-nav a { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 6px; border-radius: 11px; color: var(--muted); font-weight: 700; font-size: 14px; }
+.ig-nav a:hover { background: #ffffff0d; color: var(--text); }
+.ig-nav a.on { color: var(--text); background: #ffffff14; }
+.ig-nav svg { width: 24px; height: 24px; flex: none; }
+.ig-nav a.on svg { stroke-width: 2.6; }
+@media (max-width: 700px) { .ig-nav a span { display: none; } }
+svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.empty { margin: 30px auto; padding: 30px; max-width: 460px; text-align: center; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; }
 .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
 .empty .btn { margin-top: 14px; }
-.more { display: block; margin: 0 auto; }
+.note { color: var(--muted); font-size: 13px; text-align: center; margin: 20px 0; }
+.av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; background: hsl(var(--h) 55% 42%); color: #fff; font-weight: 800; font-size: 15px; position: relative; }
+.ring { padding: 2.5px; border-radius: 50%; background: var(--ring); flex: none; display: inline-grid; }
+.ring.seen { background: #ffffff33; }
+.ring > .av { border: 2.5px solid var(--bg); }
+.on-dot::after { content: ""; position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; border-radius: 50%; background: #2ecc71; border: 2.5px solid var(--bg); }
 
-/* a clip */
-.card { background: var(--panel); border: 1px solid #ffffff14; border-radius: 18px; overflow: hidden; }
-.ch { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
-.av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; background: hsl(var(--h) 55% 42%); color: #fff; font-weight: 800; font-size: 15px; }
-.ch .who { flex: 1; min-width: 0; line-height: 1.25; }
-.ch .who a.nm { font-weight: 800; }
-.ch .who a.nm:hover { text-decoration: underline; }
-.ch .who small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ch .who small a:hover { color: var(--text); text-decoration: underline; }
-.fol { border: 0; background: none; color: var(--accent-2); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; padding: 0 0 0 6px; }
+/* stories */
+.stories { display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 14px; scrollbar-width: none; max-width: 470px; margin: 0 auto 6px; }
+.stories::-webkit-scrollbar { display: none; }
+.story { flex: none; width: 70px; display: flex; flex-direction: column; align-items: center; gap: 5px; border: 0; background: none; color: var(--text); cursor: pointer; padding: 0; font: inherit; }
+.story .av { width: 60px; height: 60px; font-size: 24px; }
+.story small { width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; text-align: center; color: var(--muted); }
+.story .plus { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 17px; font-weight: 800; display: grid; place-items: center; border: 3px solid var(--bg); line-height: 1; }
+.chips { display: flex; gap: 6px; justify-content: center; margin: 0 0 14px; overflow-x: auto; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button { flex: none; white-space: nowrap; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.chips button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+/* a post (home feed) */
+.feed { display: flex; flex-direction: column; gap: 10px; max-width: 470px; margin: 0 auto; }
+.post { border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.ph { display: flex; align-items: center; gap: 10px; padding: 8px 2px; }
+.ph .ring .av { width: 32px; height: 32px; font-size: 13px; }
+.ph .who { flex: 1; min-width: 0; line-height: 1.25; font-size: 14px; }
+.ph .who a.nm { font-weight: 800; }
+.ph .who a.nm:hover { color: var(--muted); }
+.ph .who small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph .who small a:hover { text-decoration: underline; }
+.dot { color: var(--muted); }
+.fol { border: 0; background: none; color: var(--blue); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; padding: 0; }
 .fol.on { color: var(--muted); }
-.dots { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
-.dots:hover { background: #ffffff10; color: var(--text); }
-.vid { position: relative; background: #000; aspect-ratio: 16 / 9; cursor: pointer; overflow: hidden; }
-.vid img, .vid video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.vid video { opacity: 0; transition: opacity .2s; }
-.vid.ready video { opacity: 1; }
-.vid .snd { position: absolute; right: 10px; bottom: 14px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #000a; color: #fff; font-size: 15px; cursor: pointer; }
-.vid .paused { position: absolute; inset: 0; display: none; place-items: center; font-size: 54px; color: #fffd; text-shadow: 0 4px 20px #000; pointer-events: none; }
-.vid.stopped .paused { display: grid; }
-.vid .load { position: absolute; left: 10px; bottom: 14px; font-size: 12px; color: #fffc; background: #000a; padding: 3px 8px; border-radius: 999px; display: none; }
-.vid.loading .load { display: block; }
-.vid .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #ffffff22; }
-.vid .prog i { display: block; height: 100%; width: 0; background: #fff; }
-.vid .heart { position: absolute; left: 50%; top: 50%; font-size: 90px; transform: translate(-50%, -50%) scale(0); opacity: 0; pointer-events: none; filter: drop-shadow(0 6px 20px #0008); }
-.vid .heart.pop { animation: heartpop .8s ease-out; }
+.media { position: relative; background: #000; border-radius: 6px; overflow: hidden; cursor: pointer; aspect-ratio: 16 / 9; }
+.post .media { border: 1px solid var(--line); }
+.media img.pic, .media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.media .bg { position: absolute; inset: -30px; background-size: cover; background-position: center; filter: blur(26px) brightness(.5); }
+.media video { opacity: 0; transition: opacity .2s; }
+.media.ready video { opacity: 1; }
+.media .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.media .snd { position: absolute; right: 10px; bottom: 12px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: #000a; color: #fff; cursor: pointer; display: grid; place-items: center; }
+.media .snd svg { width: 15px; height: 15px; }
+.media .paused { position: absolute; inset: 0; display: none; place-items: center; pointer-events: none; }
+.media .paused svg { width: 64px; height: 64px; fill: #fffd; filter: drop-shadow(0 4px 18px #000a); }
+.media.stopped.ready .paused { display: grid; }
+.media .load { position: absolute; left: 10px; bottom: 12px; font-size: 12px; color: #fffc; background: #000a; padding: 3px 9px; border-radius: 999px; display: none; }
+.media.loading .load { display: block; }
+.media .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #ffffff26; }
+.media .prog i { display: block; height: 100%; width: 0; background: #fff; }
+.media .heart { position: absolute; left: 50%; top: 50%; width: 100px; height: 100px; transform: translate(-50%, -50%) scale(0); opacity: 0; pointer-events: none; }
+.media .heart svg { width: 100%; height: 100%; fill: #fff; filter: drop-shadow(0 6px 24px #0009); }
+.media .heart.pop { animation: heartpop .9s ease-out; }
 @keyframes heartpop { 15% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 30% { transform: translate(-50%, -50%) scale(.95); } 70% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
-.acts { display: flex; align-items: center; gap: 4px; padding: 8px 8px 0; }
-.acts button { display: flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--text); font: inherit; font-weight: 700; font-size: 14px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
-.acts button:hover { background: #ffffff0d; }
-.acts .ic { font-size: 21px; line-height: 1; }
-.acts .like.on .ic { color: #ff4d6d; }
-.acts .views { margin-left: auto; color: var(--muted); font-size: 13px; font-weight: 600; padding-right: 6px; white-space: nowrap; }
-.cap { margin: 4px 14px 0; overflow-wrap: anywhere; line-height: 1.45; }
+.tag-kind { position: absolute; top: 10px; right: 10px; padding: 3px 8px; border-radius: 999px; background: #000a; color: #fff; font-size: 11px; font-weight: 800; pointer-events: none; }
+.acts { display: flex; align-items: center; gap: 2px; padding: 6px 0 2px; margin-left: -8px; }
+.acts button { border: 0; background: none; color: var(--text); padding: 8px; cursor: pointer; border-radius: 50%; display: grid; place-items: center; }
+.acts button:hover { color: var(--muted); }
+.acts svg { width: 25px; height: 25px; }
+.acts .like.on svg { fill: var(--like); stroke: var(--like); }
+.acts .save { margin-left: auto; }
+.acts .save.on svg { fill: currentColor; }
+.likes { font-weight: 800; font-size: 14px; margin: 2px 0; }
+.likes a { font-weight: 800; }
+.likes .views { color: var(--muted); font-weight: 600; margin-left: 8px; }
+.cap { font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; margin: 2px 0; }
 .cap a { font-weight: 800; margin-right: 6px; }
-.cap a:hover { text-decoration: underline; }
-.allcm { display: block; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; padding: 4px 14px 0; cursor: pointer; }
-.allcm:hover { color: var(--text); }
-.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px 12px; }
-.card-foot time { color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
-.card-foot a { font-size: 13px; font-weight: 700; color: var(--accent-2); }
-.card-foot a:hover { text-decoration: underline; }
-.menu { position: absolute; z-index: 60; min-width: 190px; padding: 6px; background: var(--panel-2); border: 1px solid #ffffff22; border-radius: 12px; box-shadow: 0 16px 40px #000a; }
-.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.allcm { display: block; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; padding: 2px 0; cursor: pointer; }
+.when { display: block; color: var(--muted); font-size: 11px; letter-spacing: .03em; text-transform: uppercase; margin-top: 4px; }
+.play-link { font-size: 13px; color: var(--accent-2); font-weight: 700; }
+.play-link:hover { text-decoration: underline; }
+.menu { position: absolute; z-index: 300; min-width: 200px; padding: 6px; background: var(--panel-2); border: 1px solid #ffffff22; border-radius: 12px; box-shadow: 0 16px 40px #000a; }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
 .menu button:hover { background: #ffffff12; }
 .menu button.bad { color: #ff8a8a; }
 
-/* comments */
-.cmts { display: flex; flex-direction: column; min-height: 0; }
+/* reels */
+.reels { position: relative; height: 70vh; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; max-width: 460px; margin: 0 auto; border-radius: 16px; background: #000; overscroll-behavior: contain; }
+.reels::-webkit-scrollbar { display: none; }
+.reel { position: relative; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; }
+.reel .media { position: absolute; inset: 0; border-radius: 0; aspect-ratio: auto !important; }
+.reel .shade { position: absolute; left: 0; right: 0; bottom: 0; height: 45%; background: linear-gradient(transparent, #000c); pointer-events: none; }
+.reel .side { position: absolute; right: 8px; bottom: 26px; display: flex; flex-direction: column; align-items: center; gap: 14px; z-index: 2; }
+.reel .side button { border: 0; background: none; color: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; font-size: 12px; font-weight: 700; padding: 0; text-shadow: 0 1px 6px #000; }
+.reel .side svg { width: 30px; height: 30px; filter: drop-shadow(0 1px 5px #0008); }
+.reel .side .like.on svg { fill: var(--like); stroke: var(--like); }
+.reel .side .save.on svg { fill: #fff; }
+.reel .info { position: absolute; left: 14px; right: 70px; bottom: 22px; z-index: 2; color: #fff; text-shadow: 0 1px 6px #000; font-size: 14px; }
+.reel .info .row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.reel .info .av { width: 32px; height: 32px; font-size: 13px; text-shadow: none; }
+.reel .info a.nm { font-weight: 800; }
+.reel .info .fol { color: #fff; border: 1px solid #ffffffb0; border-radius: 8px; padding: 3px 10px; font-size: 13px; text-shadow: none; }
+.reel .info .fol.on { border-color: #ffffff55; color: #ffffffb0; }
+.reel .info .cap { margin: 0 0 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+.reel .info .cap.open { -webkit-line-clamp: unset; }
+.reel .info .meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; opacity: .9; }
+.reel .info .meta a { font-weight: 800; }
+.reel .media .snd { top: 12px; bottom: auto; }
+.reel .media .prog { bottom: 0; z-index: 3; }
+.reels-end { height: 100%; scroll-snap-align: start; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 30px; }
+.reels-end b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
+.viewer { position: fixed; inset: 0; z-index: 200; background: rgba(0, 0, 0, .92); display: flex; align-items: center; justify-content: center; }
+.viewer .reels { height: 100vh; height: 100dvh; max-width: min(520px, 100vw); border-radius: 0; }
+.viewer .x { position: fixed; top: 12px; right: 14px; z-index: 210; width: 42px; height: 42px; border-radius: 50%; border: 0; background: #ffffff22; color: #fff; font-size: 26px; cursor: pointer; line-height: 1; }
+.updown { position: fixed; right: max(16px, calc(50% - 330px)); top: 50%; transform: translateY(-50%); z-index: 205; display: flex; flex-direction: column; gap: 10px; }
+.updown button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 18px; cursor: pointer; }
+.mob .updown { display: none; }
+
+/* grids (profile, explore) */
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.grid3 a { position: relative; display: block; aspect-ratio: 1; background: #000; overflow: hidden; }
+.grid3 img { width: 100%; height: 100%; object-fit: cover; transition: filter .2s; }
+.grid3 a:hover img { filter: brightness(.6); }
+.grid3 .kind { position: absolute; top: 6px; right: 6px; color: #fff; filter: drop-shadow(0 1px 4px #000); }
+.grid3 .kind svg { width: 20px; height: 20px; }
+.grid3 .vw { position: absolute; left: 8px; bottom: 6px; color: #fff; font-size: 13px; font-weight: 800; text-shadow: 0 1px 6px #000; display: flex; align-items: center; gap: 4px; }
+.grid3 .vw svg { width: 14px; height: 14px; fill: #fff; stroke: none; }
+.grid3 .hov { position: absolute; inset: 0; display: none; place-items: center; grid-auto-flow: column; gap: 18px; color: #fff; font-weight: 800; }
+.grid3 a:hover .hov { display: grid; }
+.grid3 .hov span { display: flex; align-items: center; gap: 6px; }
+.grid3 .hov svg { width: 20px; height: 20px; fill: #fff; stroke: #fff; }
+.search { width: 100%; padding: 11px 16px; border-radius: 12px; border: 0; background: var(--panel-2); color: var(--text); font: inherit; font-size: 15px; }
+.search:focus { outline: 2px solid var(--accent); }
+.people { list-style: none; margin: 0; padding: 4px 0; }
+.people a { display: flex; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 10px; }
+.people a:hover { background: #ffffff0a; }
+.people .av { width: 44px; height: 44px; font-size: 18px; }
+.people b { display: block; font-size: 14px; }
+.people small { color: var(--muted); font-size: 13px; }
+.people .none { color: var(--muted); padding: 20px; text-align: center; }
+
+/* profile */
+.prof { max-width: 935px; margin: 0 auto; }
+.prof-h { display: flex; gap: 28px; align-items: center; padding: 10px 6px 24px; flex-wrap: wrap; }
+.prof-h .ring .av, .prof-h > .av { width: 110px; height: 110px; font-size: 46px; }
+.prof-h .info { flex: 1; min-width: 230px; }
+.prof-h .nmrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prof-h h1 { margin: 0 8px 0 0; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.prof-h .btn { padding: 7px 16px; font-size: 14px; border-radius: 9px; }
+.btn.grey { background: #ffffff1c; color: var(--text); box-shadow: none; }
+.btn.blue { background: var(--blue); color: #fff; box-shadow: none; }
+.tag { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #ffffff14; color: var(--muted); }
+.stats { display: flex; gap: 26px; flex-wrap: wrap; margin: 16px 0 10px; }
+.stats button, .stats span { border: 0; background: none; color: var(--text); font: inherit; padding: 0; font-size: 15px; }
+.stats button { cursor: pointer; }
+.stats b { font-weight: 800; margin-right: 4px; }
+.ptabs { display: flex; justify-content: center; gap: 50px; border-top: 1px solid var(--line); margin-bottom: 4px; }
+.ptabs button { display: flex; align-items: center; gap: 6px; padding: 14px 0; border: 0; border-top: 1px solid transparent; margin-top: -1px; background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.ptabs button.on { color: var(--text); border-top-color: var(--text); }
+.ptabs svg { width: 14px; height: 14px; }
+
+/* comments and sheets */
+.cmts { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .cm-list { list-style: none; margin: 0; padding: 6px 14px; overflow-y: auto; flex: 1; min-height: 0; }
 .cm-list li { display: flex; gap: 10px; padding: 8px 0; }
-.cm-list .av { width: 30px; height: 30px; font-size: 13px; }
+.cm-list .av { width: 32px; height: 32px; font-size: 13px; }
 .cm-list .body { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.4; font-size: 14px; }
 .cm-list .body a.nm { font-weight: 800; margin-right: 6px; }
-.cm-list .body .re { color: var(--accent-2); font-weight: 700; margin-right: 4px; }
+.cm-list .body .re { color: var(--blue); font-weight: 700; margin-right: 4px; }
 .cm-list .meta { display: flex; gap: 12px; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .cm-list .meta button { border: 0; background: none; color: inherit; font: inherit; padding: 0; cursor: pointer; }
 .cm-list .meta button:hover { color: var(--text); }
-.cm-list .cl { border: 0; background: none; color: var(--muted); font-size: 14px; cursor: pointer; align-self: center; padding: 4px; }
-.cm-list .cl.on { color: #ff4d6d; }
+.cm-list .cl { border: 0; background: none; color: var(--muted); cursor: pointer; align-self: center; padding: 4px; }
+.cm-list .cl svg { width: 14px; height: 14px; }
+.cm-list .cl.on svg { fill: var(--like); stroke: var(--like); }
 .cm-list .none { color: var(--muted); justify-content: center; padding: 26px 0; }
-.cm-form { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #ffffff12; }
-.cm-form input { flex: 1; min-width: 0; padding: 9px 14px; border-radius: 999px; border: 1px solid #ffffff22; background: #0f0d1f; color: var(--text); font: inherit; }
-.cm-form button { border: 0; background: none; color: var(--accent-2); font: inherit; font-weight: 800; cursor: pointer; padding: 0 6px; }
+.cm-form { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+.cm-form input { flex: 1; min-width: 0; padding: 10px 14px; border-radius: 999px; border: 1px solid #ffffff22; background: var(--bg); color: var(--text); font: inherit; }
+.cm-form button { border: 0; background: none; color: var(--blue); font: inherit; font-weight: 800; cursor: pointer; }
 .cm-form button:disabled { opacity: .4; cursor: default; }
 .cm-reply { display: flex; justify-content: space-between; padding: 6px 14px 0; color: var(--muted); font-size: 12px; }
 .cm-reply button { border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; }
-.card .cmts { border-top: 1px solid #ffffff12; max-height: 520px; }
-
-/* pop-ups */
-.ov { position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: 16px; background: rgba(5, 4, 14, .72); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
-.sheet { width: min(520px, 100%); height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--panel); border: 1px solid #ffffff1f; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 80px #000c; }
-.sheet.short { height: auto; max-height: min(560px, calc(100vh - 32px)); }
-.sheet-h { display: flex; align-items: center; padding: 12px 14px; border-bottom: 1px solid #ffffff12; font-weight: 800; }
+.single .cmts { border: 1px solid var(--line); border-radius: 12px; margin-top: 10px; max-height: 480px; }
+.ov { position: fixed; inset: 0; z-index: 250; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .7); }
+.sheet { width: min(520px, 100%); height: min(640px, calc(100vh - 32px)); display: flex; flex-direction: column; background: var(--panel); border: 1px solid #ffffff1f; border-radius: 16px; overflow: hidden; box-shadow: 0 30px 80px #000c; }
+.sheet.short { height: auto; max-height: min(640px, calc(100vh - 32px)); }
+.sheet-h { display: flex; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); font-weight: 800; }
 .sheet-h span { flex: 1; text-align: center; }
-.sheet-h button { border: 0; background: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; width: 30px; }
-.people { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
-.people a { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; font-weight: 700; }
-.people a:hover { background: #ffffff0d; }
-.people .none { color: var(--muted); padding: 20px; text-align: center; }
-.howto-clip ol { margin: 0; padding: 14px 18px 4px 36px; line-height: 1.6; color: var(--muted); }
-.howto-clip ol b { color: var(--text); }
-.howto-clip .btn { margin: 10px 16px 16px; }
+.sheet-h button { border: 0; background: none; color: var(--muted); font-size: 24px; cursor: pointer; line-height: 1; width: 30px; }
+.sheet-b { overflow-y: auto; padding: 14px 16px 18px; }
+.create-opts { display: grid; gap: 10px; }
+.create-opts button, .create-opts a { display: flex; align-items: center; gap: 14px; text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: #ffffff06; color: var(--text); font: inherit; cursor: pointer; }
+.create-opts button:hover, .create-opts a:hover { background: #ffffff10; }
+.create-opts .big { font-size: 28px; width: 40px; text-align: center; }
+.create-opts b { display: block; }
+.create-opts small { color: var(--muted); font-size: 13px; }
+.up-prev { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 10; }
+.up-prev img, .up-prev video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.sheet-b label { display: block; margin: 14px 0 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.sheet-b input[type=text], .sheet-b select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #ffffff22; background: var(--bg); color: var(--text); font: inherit; }
+.up-bar { height: 6px; border-radius: 9px; background: #ffffff14; overflow: hidden; margin-top: 14px; }
+.up-bar i { display: block; height: 100%; width: 0; background: var(--blue); transition: width .2s; }
+.up-msg { min-height: 1.4em; margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+.up-msg.err { color: #ff8a8a; }
+.up-acts { display: flex; gap: 8px; margin-top: 14px; }
+.up-acts .btn { flex: 1; }
 
-/* a profile */
-.prof { max-width: 860px; margin: 0 auto; }
-.prof-h { display: flex; gap: 26px; align-items: center; padding: 10px 6px 22px; border-bottom: 1px solid #ffffff14; flex-wrap: wrap; }
-.prof-h .av { width: 96px; height: 96px; font-size: 42px; }
-.prof-h .info { flex: 1; min-width: 220px; }
-.prof-h h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; overflow-wrap: anywhere; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.prof-h h1 .tag { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #ffffff14; color: var(--muted); }
-.stats { display: flex; gap: 22px; flex-wrap: wrap; margin: 10px 0 14px; }
-.stats button, .stats span { border: 0; background: none; color: var(--muted); font: inherit; padding: 0; font-size: 15px; }
-.stats button { cursor: pointer; }
-.stats button:hover { color: var(--text); }
-.stats b { color: var(--text); font-size: 17px; margin-right: 4px; }
-.prof-acts { display: flex; gap: 8px; flex-wrap: wrap; }
-.prof-acts .btn { padding: 8px 16px; font-size: 14px; }
-.pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
-.pgrid a { position: relative; display: block; aspect-ratio: 16 / 10; background: #000; overflow: hidden; border-radius: 4px; }
-.pgrid img { width: 100%; height: 100%; object-fit: cover; transition: transform .2s, filter .2s; }
-.pgrid a:hover img { transform: scale(1.04); filter: brightness(.7); }
-.pgrid .ov2 { position: absolute; left: 8px; bottom: 6px; right: 8px; display: flex; justify-content: space-between; color: #fff; font-size: 13px; font-weight: 800; text-shadow: 0 1px 6px #000; pointer-events: none; }
-.pgrid .hov { position: absolute; inset: 0; display: none; place-items: center; gap: 18px; grid-auto-flow: column; color: #fff; font-weight: 800; pointer-events: none; }
-.pgrid a:hover .hov { display: grid; }
-.pgrid-none { text-align: center; color: var(--muted); padding: 50px 10px; }
-.back { display: inline-flex; margin: 0 0 12px; }
-.single { max-width: 640px; margin: 0 auto; }
-@media (max-width: 640px) {
-  .soc-seg { width: 100%; } .soc-seg button { flex: 1; padding: 7px 4px; font-size: 13px; }
-  .prof-h { gap: 16px; } .prof-h .av { width: 72px; height: 72px; font-size: 30px; }
-  .pgrid { gap: 2px; }
-}
-.mob-phone .soc { padding-left: 0; padding-right: 0; }
-.mob-phone .soc-top, .mob-phone .soc-note, .mob-phone .prof-h, .mob-phone .back { margin-left: 12px; margin-right: 12px; }
-.mob-phone .card { border-radius: 0; border-left: 0; border-right: 0; }
+/* messages (inbox and a chat) */
+.dms { max-width: 640px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+.dm-top { display: flex; align-items: center; gap: 10px; padding: 14px 16px 8px; }
+.dm-top h1 { flex: 1; margin: 0; font-size: 19px; text-align: center; }
+.dm-top .ib svg { width: 24px; height: 24px; }
+.dm-search { margin: 4px 16px 6px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 10px; background: var(--panel-2); }
+.dm-search svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.dm-search input { flex: 1; border: 0; background: none; color: var(--text); font: inherit; font-size: 15px; padding: 10px 0; outline: none; }
+.dm-tabs { display: flex; align-items: center; gap: 22px; padding: 8px 16px 0; border-bottom: 1px solid var(--line); }
+.dm-tabs button { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 800; font-size: 15px; padding: 8px 0 10px; border-bottom: 2px solid transparent; cursor: pointer; }
+.dm-tabs button.on { color: var(--text); border-bottom-color: var(--text); }
+.dm-tabs a { margin-left: auto; color: var(--blue); font-weight: 800; font-size: 14px; padding-bottom: 8px; }
+.dm-list { list-style: none; margin: 0; padding: 4px 0; min-height: 300px; }
+.dm-list li { display: flex; align-items: center; gap: 12px; padding: 9px 16px; cursor: pointer; }
+.dm-list li:hover { background: #ffffff08; }
+.dm-list .av { width: 56px; height: 56px; font-size: 22px; }
+.dm-list .tx { flex: 1; min-width: 0; }
+.dm-list .tx b { display: block; font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-list .tx small { display: block; color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-list li.un .tx b, .dm-list li.un .tx small { font-weight: 800; color: var(--text); }
+.dm-list .udot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); flex: none; }
+.dm-list .cam { border: 0; background: none; color: var(--text); padding: 6px; cursor: pointer; border-radius: 50%; flex: none; }
+.dm-list .cam:hover { background: #ffffff12; }
+.dm-list .cam svg { width: 26px; height: 26px; }
+.dm-list .none { cursor: default; color: var(--muted); justify-content: center; padding: 40px 16px; text-align: center; }
+.dm-list .none:hover { background: none; }
+.dm-foot { display: flex; justify-content: center; padding: 12px; border-top: 1px solid var(--line); }
+.dm-foot a { display: flex; align-items: center; gap: 8px; color: var(--blue); font-weight: 800; }
+.dm-foot svg { width: 20px; height: 20px; }
+.chat { height: min(720px, calc(100vh - 220px)); }
+.chat-h { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.chat-h .av { width: 40px; height: 40px; font-size: 16px; }
+.chat-h .tx { flex: 1; min-width: 0; line-height: 1.25; }
+.chat-h .tx a { font-weight: 800; }
+.chat-h .tx small { display: block; color: var(--muted); font-size: 12px; }
+.chat-log { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 3px; }
+.bub { max-width: min(72%, 420px); padding: 8px 13px; border-radius: 20px; background: #ffffff16; align-self: flex-start; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.4; font-size: 15px; }
+.bub.me { align-self: flex-end; background: linear-gradient(135deg, #7b5cff, #3797f0); color: #fff; }
+.day-sep { align-self: center; color: var(--muted); font-size: 12px; margin: 12px 0 4px; }
+.seen-note { align-self: flex-end; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.chat-send { display: flex; align-items: center; gap: 10px; margin: 10px 14px 14px; padding: 4px 6px 4px 16px; border: 1px solid #ffffff2a; border-radius: 999px; }
+.chat-send input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 15px; padding: 9px 0; outline: none; }
+.chat-send button { border: 0; background: none; color: var(--blue); font: inherit; font-weight: 800; cursor: pointer; padding: 8px 10px; }
+.chat-send button:disabled { opacity: .4; }
+
+/* phones */
+.mob-phone .ig { padding: 0 0 60px; }
+.mob-phone .ig-top, .mob-phone .chips, .mob-phone .ig-nav { margin-left: 10px; margin-right: 10px; }
+.mob-phone .chips { justify-content: flex-start; }
+.mob-phone .post .media { border-radius: 0; border-left: 0; border-right: 0; }
+.mob-phone .post > :not(.media) { margin-left: 12px; margin-right: 12px; }
+.mob-phone .post .acts { margin-left: 4px; }
+.mob-phone .reels { border-radius: 0; max-width: none; }
+.mob-phone .dms { border-radius: 0; border-left: 0; border-right: 0; }
+.mob-phone .prof-h { padding: 6px 14px 18px; gap: 18px; }
+.mob-phone .prof-h .ring .av, .mob-phone .prof-h > .av { width: 80px; height: 80px; font-size: 34px; }
+.mob-phone .stats { gap: 18px; }
+.mob-phone .grid3 { gap: 2px; }
+.mob-phone .search, .mob-phone .stories { margin-left: 10px; margin-right: 10px; width: calc(100% - 20px); }
 </style>
 </head>
 <body>
@@ -180,18 +320,19 @@
   </nav>
 </header>
 
-<main class="wrap soc">
-  <div class="soc-top">
-    <div class="soc-seg" role="tablist" id="seg">
-      <button type="button" data-t="foryou" role="tab">For you</button>
-      <button type="button" data-t="following" role="tab">Following</button>
-      <button type="button" data-t="new" role="tab">New</button>
-      <button type="button" data-t="top" role="tab">Top</button>
-    </div>
-    <span class="sp"></span>
-    <button type="button" class="btn ghost2" id="mine">My profile</button>
-    <button type="button" class="btn" id="make">🎬 Make a clip</button>
+<main class="ig">
+  <div class="ig-top">
+    <span class="ig-brand">Social</span>
+    <button class="ib" type="button" id="topCreate" aria-label="New post"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></button>
+    <a class="ib" href="#dm" id="topDm" aria-label="Messages"><svg class="i" viewBox="0 0 24 24"><path d="M22 3 9.2 10.1M22 3l-7 18-3.8-8.8L2 9.5 22 3Z"/></svg><b class="badge" id="dmN" hidden></b></a>
   </div>
+  <nav class="ig-nav" aria-label="Social">
+    <a href="#home" data-v="home"><svg class="i" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg><span>Home</span></a>
+    <a href="#explore" data-v="explore"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Explore</span></a>
+    <a href="#create" data-v="create"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg><span>Create</span></a>
+    <a href="#reels" data-v="reels"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 8.5h18M8 3l3 5.5M14 3l3 5.5M10 12.5v5l4.5-2.5z"/></svg><span>Reels</span></a>
+    <a href="#me" data-v="me"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>Profile</span></a>
+  </nav>
   <div id="view" aria-live="polite"></div>
 </main>
 
@@ -199,27 +340,50 @@
 <script src="account.js?v=14"></script>
 <script src="call.js?v=6"></script>
 <script>
-/* Social (2026-11-10): gameplay clips, Instagram style. The server is the Worker's /clips/* routes (see the comment
-   block above `clips()` in realtime-worker/src/worker.js); clips are recorded on play.html by clips.js.
-   Views: #t=foryou|following|new|top (feeds), #u=<name> (a profile), #c=<id> (one clip with its comments).
-   A view counts once a clip has played for 2 seconds (or most of a short one), once per viewer (the account, or this
-   device for guests); how much of each clip people watch is sent too and helps rank For you. */
+/* Social (2026-11-10, Instagram style): clips recorded in games (clips.js on play.html, the last 30 seconds), and
+   players' own photos and videos. The server is the Worker's /clips/* routes (see the comment block above `clips()`
+   in realtime-worker/src/worker.js); messages use the accounts' DMs (/acct/dm, the same chats as the Players page).
+   Views (the hash): #home (stories + posts), #reels (one post per screen, scroll), #explore (find players, grid),
+   #create, #me / #u=<name> (a profile: posts, videos, saved), #c=<id> (one post with its comments), #dm (inbox),
+   #dm=<name> (a chat). A view counts once a video has played 2 s (or most of a short one) or a photo has been on
+   screen for 1 s, once per viewer (the account, or this device for guests). */
 const $ = id => document.getElementById(id);
 const ROOM = ((/[?&]clipsroom=([a-z0-9-]+)/i.exec(location.search) || [])[1] || '').toLowerCase(); // tests: a separate Social
 const ADMIN = /[?&]admin\b/.test(location.search);
-const KEEP = ROOM ? '?clipsroom=' + ROOM + (ADMIN ? '&admin' : '') : ADMIN ? '?admin' : '';
 const API = () => ArcadeAccount.server + '/clips/';
 const me = () => ArcadeAccount.kind() === 'online' ? ArcadeAccount.name() : '';
 const lc = s => String(s || '').toLowerCase();
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const hue = id => { let h = 0; for (const c of lc(id)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 const avatar = n => { const s = el('span', 'av', (String(n).match(/[a-z0-9]/i) || [String(n)[0] || '?'])[0].toUpperCase()); s.setAttribute('aria-hidden', 'true'); s.style.setProperty('--h', hue(n)); return s; };
+const ringed = (n, seen) => { const r = el('span', 'ring' + (seen ? ' seen' : '')); r.append(avatar(n)); return r; };
 const num = n => n < 1000 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0).replace(/\.0$/, '') + 'K' : (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
 const plural = (n, w) => num(n) + ' ' + w + (n === 1 ? '' : 's');
-const ago = t => { const s = (Date.now() - t) / 1000; if (s < 60) return 'now'; if (s < 3600) return Math.floor(s / 60) + 'm'; if (s < 86400) return Math.floor(s / 3600) + 'h'; if (s < 604800) return Math.floor(s / 86400) + 'd'; if (s < 2592000) return Math.floor(s / 604800) + 'w'; return new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' }); };
+const ago = t => { const s = (Date.now() - t) / 1000; if (s < 60) return 'now'; if (s < 3600) return Math.floor(s / 60) + 'm'; if (s < 86400) return Math.floor(s / 3600) + 'h'; if (s < 604800) return Math.floor(s / 86400) + 'd'; return Math.floor(s / 604800) + 'w'; };
+const agoLong = t => { const s = (Date.now() - t) / 1000, u = (n, w) => n + ' ' + w + (n === 1 ? '' : 's') + ' ago'; if (s < 60) return 'Just now'; if (s < 3600) return u(Math.floor(s / 60), 'minute'); if (s < 86400) return u(Math.floor(s / 3600), 'hour'); if (s < 604800) return u(Math.floor(s / 86400), 'day'); return new Date(t).toLocaleDateString([], { month: 'long', day: 'numeric' }); };
 const gameOf = id => GAMES.find(g => g.id === id);
 const ls = { get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
 const userLink = n => '#u=' + encodeURIComponent(n);
+const svg = (d, extra) => '<svg class="i" viewBox="0 0 24 24"' + (extra || '') + '>' + d + '</svg>';
+const IC = {
+  heart: '<path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.5 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.5 0 5.5 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/>',
+  comment: '<path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.6-4.6A8.5 8.5 0 1 1 20.5 11.5z"/>',
+  send: '<path d="M22 3 9.2 10.1M22 3l-7 18-3.8-8.8L2 9.5 22 3Z"/>',
+  save: '<path d="M19 21l-7-5-7 5V4.5A1.5 1.5 0 0 1 6.5 3h11A1.5 1.5 0 0 1 19 4.5z"/>',
+  more: '<circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/>',
+  play: '<path d="M8 5v14l11-7z"/>',
+  muted: '<path d="M11 5 6 9H3v6h3l5 4zM22 9l-6 6M16 9l6 6"/>',
+  sound: '<path d="M11 5 6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+  grid: '<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',
+  reel: '<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 8.5h18M8 3l3 5.5M14 3l3 5.5M10 12.5v5l4.5-2.5z"/>',
+  cam: '<path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.4-2h6.6l1.4 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.8"/>',
+  video: '<rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/>',
+  pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  photo: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.8"/><path d="m21 15-5-5L5 21"/>'
+};
 
 /* ---------- the server ---------- */
 function qs(o) { const p = new URLSearchParams(); for (const [k, v] of Object.entries(o || {})) if (v !== '' && v != null) p.set(k, v); if (ROOM) p.set('r', ROOM); const s = p.toString(); return s ? '?' + s : ''; }
@@ -233,51 +397,60 @@ async function post(path, body, noAuth) {
   try { const r = await fetch(API() + path + qs(), { method: 'POST', headers: h, body: JSON.stringify(body), keepalive: !!noAuth }); const j = await r.json().catch(() => ({})); j.status = r.status; return j; }
   catch (e) { return { error: 'offline', status: 0 }; }
 }
+const acct = (path, opt) => ArcadeAccount.api(path, opt);
 function needAccount() { ArcadeAccount.welcome(); }
 function failed(r) { alert(r.error === 'slow' ? 'Slow down a little and try again.' : r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : 'That didn’t work (' + (r.error || r.status) + ').'); }
 
-/* ---------- who you follow, friends, blocks ---------- */
+/* ---------- follows, friends, blocks, saved ---------- */
 let following = new Set(ls.get('arcade-social-following', []));
 function setFollowing(list) { following = new Set(list.map(lc)); ls.set('arcade-social-following', [...following]); }
-function friends() { const s = ArcadeAccount.social && ArcadeAccount.social(); return s && s.f ? Object.values(s.f).filter(f => f.st === 'f').map(f => f.n) : []; }
-function blocked() { const s = ArcadeAccount.social && ArcadeAccount.social(); return new Set(s && s.b ? Object.keys(s.b) : []); }
-async function follow(name, on, btns) {
+let soc = null; // the account's friends, chats and blocks (/acct/social)
+const friends = () => soc ? Object.values(soc.f).filter(f => f.st === 'f').map(f => f.n) : [];
+const blocked = () => new Set(soc ? Object.keys(soc.b) : []);
+let saved = ls.get('arcade-social-saved', []);
+const isSaved = id => saved.includes(id);
+function toggleSave(id) { saved = isSaved(id) ? saved.filter(x => x !== id) : [id, ...saved].slice(0, 300); ls.set('arcade-social-saved', saved); return isSaved(id); }
+async function follow(name, on) {
   const r = await post('follow', { name, on: on ? 1 : 0 });
-  if (r.status !== 200) return r.status === 401 ? null : failed(r);
+  if (r.status !== 200) { if (r.status !== 401) failed(r); return null; }
   if (on) following.add(lc(name)); else following.delete(lc(name));
   ls.set('arcade-social-following', [...following]);
-  document.querySelectorAll('[data-follow="' + CSS.escape(lc(name)) + '"]').forEach(b => paintFollow(b, on));
+  document.querySelectorAll('[data-follow="' + CSS.escape(lc(name)) + '"]').forEach(b => paintFollow(b));
   return r;
 }
-function paintFollow(b, on) {
+function paintFollow(b) {
+  const on = following.has(b.dataset.follow);
   b.classList.toggle('on', on);
-  if (b.classList.contains('btn')) { b.textContent = on ? 'Following' : 'Follow'; b.className = 'btn ' + (on ? 'ghost2' : ''); b.classList.toggle('on', on); }
+  if (b.classList.contains('btn')) { b.textContent = on ? 'Following' : 'Follow'; b.classList.toggle('blue', !on); b.classList.toggle('grey', on); }
   else b.textContent = on ? 'Following' : 'Follow';
 }
 function followBtn(name, big) {
   const b = el('button', big ? 'btn' : 'fol'); b.type = 'button'; b.dataset.follow = lc(name);
-  paintFollow(b, following.has(lc(name)));
+  paintFollow(b);
   b.onclick = e => { e.stopPropagation(); follow(name, !following.has(lc(name))); };
   return b;
 }
 
-/* ---------- views: once a clip has played 2 s, once per viewer; how much of it was watched ---------- */
+/* ---------- views ---------- */
 let devId = ls.get('arcade-social-dev', '');
 if (!devId) { devId = Math.random().toString(36).slice(2, 12); ls.set('arcade-social-dev', devId); }
 const viewer = () => me() ? 'a:' + lc(me()) : 'd:' + devId;
-const seen = ls.get('arcade-social-seen', {}); // clip id -> when this device first viewed it (For you shows those less)
-const watch = new Map(), pending = new Map(); // id -> { t: seconds watched, last, counted }
-function watched(c, v, card) {
-  const w = watch.get(c.id) || { t: 0, last: v.currentTime };
-  watch.set(c.id, w);
-  let d = v.currentTime - w.last; if (d < 0 || d > 1.5) d = 0.25; // looped round, or a jump
-  w.last = v.currentTime; w.t += d;
-  const dur = c.dur || v.duration || 10, frac = Math.min(1, w.t / dur);
-  if (!w.counted && w.t >= Math.min(2, dur * 0.8)) {
+const seen = ls.get('arcade-social-seen', {});
+const watch = new Map(), pending = new Map();
+function countView(c, frac) {
+  const w = watch.get(c.id) || {}; watch.set(c.id, w);
+  if (!w.counted) {
     w.counted = true;
-    if (!seen[c.id]) { seen[c.id] = Date.now(); const ks = Object.keys(seen); if (ks.length > 3000) ks.sort((a, b) => seen[a] - seen[b]).slice(0, 500).forEach(k => delete seen[k]); ls.set('arcade-social-seen', seen); c.vw++; paintViews(card, c); }
+    if (!seen[c.id]) { seen[c.id] = Date.now(); const ks = Object.keys(seen); if (ks.length > 3000) ks.sort((a, b) => seen[a] - seen[b]).slice(0, 500).forEach(k => delete seen[k]); ls.set('arcade-social-seen', seen); c.vw++; repaint(c); }
   }
-  if (w.counted && !w.sent) pending.set(c.id, frac);
+  if (!w.sent) pending.set(c.id, Math.max(pending.get(c.id) || 0, frac));
+}
+function watched(c, v) {
+  const w = watch.get(c.id) || { t: 0, last: v.currentTime }; watch.set(c.id, w);
+  let d = v.currentTime - (w.last == null ? v.currentTime : w.last); if (d < 0 || d > 1.5) d = 0.25;
+  w.last = v.currentTime; w.t = (w.t || 0) + d;
+  const dur = c.dur || v.duration || 10, frac = Math.min(1, w.t / dur);
+  if (w.counted || w.t >= Math.min(2, dur * 0.8)) countView(c, frac);
 }
 function flushViews() {
   if (!pending.size) return;
@@ -288,161 +461,261 @@ setInterval(flushViews, 15000);
 addEventListener('pagehide', flushViews);
 document.addEventListener('visibilitychange', () => { if (document.hidden) { flushViews(); if (playing) playing.pause(); } });
 
-/* ---------- videos: fetched whole (so seeking works everywhere), a few kept ---------- */
+/* ---------- media: fetched whole (seeking works everywhere, and the server only answers the official site) ---------- */
 const blobs = new Map();
-function videoUrl(id) {
+function mediaUrl(id) {
   if (blobs.has(id)) { const p = blobs.get(id); blobs.delete(id); blobs.set(id, p); return p; }
   const p = fetch(API() + 'v/' + id).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); }).then(b => URL.createObjectURL(b));
   p.catch(() => blobs.delete(id));
   blobs.set(id, p);
-  while (blobs.size > 12) { const [old, op] = blobs.entries().next().value; blobs.delete(old); op.then(u => { if (!document.querySelector('video[src="' + u + '"]')) URL.revokeObjectURL(u); }, () => {}); }
+  while (blobs.size > 16) { const [old, op] = blobs.entries().next().value; blobs.delete(old); op.then(u => { if (!document.querySelector('[src="' + u + '"]')) URL.revokeObjectURL(u); }, () => {}); }
   return p;
 }
 let muted = ls.get('arcade-social-muted', true), playing = null;
-const io = new IntersectionObserver(es => {
-  for (const e of es) { const v = e.target.querySelector('video'); if (e.isIntersecting && e.intersectionRatio >= 0.6) startVideo(e.target); else if (v && !v.paused) v.pause(); }
-}, { threshold: [0, 0.6] });
-function startVideo(box) {
-  const v = box.querySelector('video'), c = box._clip;
+const observers = new Map();
+function observe(box, root) {
+  const key = root || document;
+  if (!observers.has(key)) observers.set(key, new IntersectionObserver(es => {
+    for (const e of es) { const b = e.target; if (e.isIntersecting && e.intersectionRatio >= 0.6) activate(b); else deactivate(b); }
+  }, { root: root || null, threshold: [0, 0.6] }));
+  observers.get(key).observe(box);
+}
+function deactivate(box) { const v = box.querySelector('video'); if (v && !v.paused) v.pause(); clearTimeout(box._pt); }
+function activate(box) {
+  const c = box._clip;
+  if (c.k === 'photo') { // a photo counts as viewed after a second on screen
+    const img = box.querySelector('img.pic');
+    if (!img.src) mediaUrl(c.id).then(u => { img.src = u; box.classList.add('ready'); }, () => {});
+    clearTimeout(box._pt); box._pt = setTimeout(() => countView(c, 1), 1000);
+    return;
+  }
+  const v = box.querySelector('video');
   if (playing && playing !== v) playing.pause();
-  playing = v; v.muted = muted;
-  box.querySelector('.snd').textContent = muted ? '🔇' : '🔊';
+  playing = v; v.muted = muted; paintSnd(box);
   if (v.src) { v.play().catch(() => {}); return; }
   box.classList.add('loading');
-  videoUrl(c.id).then(u => {
+  mediaUrl(c.id).then(u => {
     box.classList.remove('loading');
     if (!v.src) v.src = u;
-    if (playing === v) v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
-    // fetch the next clip in the feed while this one plays
-    const next = box.closest('.card') && box.closest('.card').nextElementSibling;
-    if (next && next._clip) videoUrl(next._clip.id);
-  }, () => { box.classList.remove('loading'); box.querySelector('.load').textContent = 'Couldn’t load this clip'; box.classList.add('loading'); });
+    if (playing === v) v.play().catch(() => { v.muted = true; paintSnd(box); v.play().catch(() => {}); });
+    const next = box.closest('.post, .reel'), n = next && next.nextElementSibling;
+    if (n && n._clip && n._clip.k !== 'photo') mediaUrl(n._clip.id);
+  }, () => { box.classList.remove('loading'); box.querySelector('.load').textContent = 'Couldn’t load this'; box.classList.add('loading'); });
+}
+function paintSnd(box) { const s = box.querySelector('.snd'); if (s) s.innerHTML = svg(muted ? IC.muted : IC.sound); }
+
+/* ---------- the picture or video of a post ---------- */
+function mediaBox(c, onLike) {
+  const box = el('div', 'media stopped'); box._clip = c;
+  if (c.w && c.h) box.style.aspectRatio = Math.max(0.8, Math.min(2, c.w / c.h)).toFixed(3);
+  const g = gameOf(c.g), bg = el('div', 'bg'); if (c.p) bg.style.backgroundImage = 'url("' + c.p + '")';
+  const pst = el('img', 'poster'); pst.alt = ''; pst.src = c.p || (g ? g.thumb : ''); pst.loading = 'lazy';
+  box.append(bg, pst);
+  if (c.k === 'photo') { const img = el('img', 'pic'); img.alt = c.t || 'Photo by ' + c.by; box.append(img); }
+  else {
+    const v = el('video'); v.loop = true; v.playsInline = true; v.muted = true; v.preload = 'none'; v.setAttribute('playsinline', '');
+    const snd = el('button', 'snd'); snd.type = 'button'; snd.setAttribute('aria-label', 'Sound on or off');
+    const prog = el('div', 'prog'), pi = el('i'), paused = el('div', 'paused'), load = el('div', 'load', 'Loading…');
+    paused.innerHTML = svg(IC.play, ' style="fill:#fffd;stroke:none"'); prog.append(pi);
+    box.append(v, paused, load, snd, prog);
+    v.addEventListener('playing', () => { box.classList.add('ready'); box.classList.remove('stopped'); });
+    v.addEventListener('pause', () => box.classList.add('stopped'));
+    v.addEventListener('timeupdate', () => { if (!v.paused) watched(c, v); pi.style.width = Math.min(100, v.currentTime / (c.dur || v.duration || 1) * 100) + '%'; });
+    snd.onclick = e => { e.stopPropagation(); muted = !muted; ls.set('arcade-social-muted', muted); v.muted = muted; document.querySelectorAll('.media').forEach(paintSnd); };
+    paintSnd(box);
+  }
+  if (c.k === 'clip' && g) { const t = el('span', 'tag-kind', '🎮 ' + g.title); box.append(t); }
+  const heart = el('div', 'heart'); heart.innerHTML = svg(IC.heart); box.append(heart);
+  let tap = 0;
+  box.addEventListener('click', () => { // one tap: pause or play; two quick taps: like (like Instagram)
+    clearTimeout(tap);
+    tap = setTimeout(() => { const v = box.querySelector('video'); if (!v) return; if (v.paused) activate(box); else v.pause(); }, 260);
+  });
+  box.addEventListener('dblclick', e => { e.preventDefault(); clearTimeout(tap); heart.classList.remove('pop'); void heart.offsetWidth; heart.classList.add('pop'); if (!c.me) onLike(true); });
+  return box;
 }
 
-/* ---------- a clip card ---------- */
-function paintViews(card, c) { const v = card && card.querySelector('.views'); if (v) v.textContent = '👁 ' + plural(c.vw, 'view'); }
-function card(c, opt) {
+/* ---------- a post in the home feed ---------- */
+const cards = new Map(); // clip id -> [elements showing it], so a like or view shows everywhere at once
+function track(c, node) { const l = cards.get(c.id) || []; l.push(node); cards.set(c.id, l.filter(n => n.isConnected || n === node)); }
+function repaint(c) { (cards.get(c.id) || []).forEach(n => n._paint && n._paint()); }
+function likesLine(c) {
+  const d = el('div', 'likes');
+  if (c.lk && c.ll && lc(c.ll) !== lc(me()) && c.lk > 1) { d.append('Liked by '); const a = el('a', '', c.ll); a.href = userLink(c.ll); d.append(a, ' and ' + plural(c.lk - 1, 'other')); }
+  else d.append(c.lk ? plural(c.lk, 'like') : 'Be the first to like this');
+  if (c.k !== 'photo') d.append(el('span', 'views', '▶ ' + plural(c.vw, 'view')));
+  else if (c.vw) d.append(el('span', 'views', plural(c.vw, 'view')));
+  return d;
+}
+function postCard(c, opt) {
   opt = opt || {};
-  const a = el('article', 'card'); a._clip = c;
+  const a = el('article', 'post'); a._clip = c; track(c, a);
   const g = gameOf(c.g), mine = lc(c.by) === lc(me());
-  // header: who, follow, game, menu
-  const ch = el('div', 'ch'), who = el('div', 'who'), nm = el('a', 'nm', c.by);
-  const avl = el('a'); avl.href = userLink(c.by); avl.append(avatar(c.by));
-  nm.href = userLink(c.by);
+  const ph = el('div', 'ph'), avl = el('a'), who = el('div', 'who'), nm = el('a', 'nm', c.by);
+  avl.href = nm.href = userLink(c.by); avl.append(ringed(c.by, true));
   who.append(nm);
-  if (!mine && !following.has(lc(c.by))) { who.append(document.createTextNode(' · ')); who.append(followBtn(c.by)); }
-  const sm = el('small'), gl = el('a', '', g ? g.title : c.g); gl.href = 'play.html?game=' + encodeURIComponent(c.g);
-  sm.append(gl, document.createTextNode(' · ' + Math.round(c.dur) + 's'));
+  if (!mine && !following.has(lc(c.by))) who.append(el('span', 'dot', ' • '), followBtn(c.by));
+  const sm = el('small');
+  if (g) { const gl = el('a', '', g.title); gl.href = 'play.html?game=' + encodeURIComponent(c.g); sm.append(gl); } else sm.append(c.k === 'photo' ? 'Photo' : c.k === 'video' ? 'Original video' : 'Clip');
   who.append(sm);
-  const dots = el('button', 'dots', '⋯'); dots.type = 'button'; dots.setAttribute('aria-label', 'More');
+  const dots = el('button', 'ib'); dots.type = 'button'; dots.innerHTML = svg(IC.more); dots.setAttribute('aria-label', 'More');
   dots.onclick = e => { e.stopPropagation(); menu(dots, c, a); };
-  ch.append(avl, who, dots);
-  // the video
-  const box = el('div', 'vid stopped'); box._clip = c;
-  if (c.w && c.h) box.style.aspectRatio = c.w + ' / ' + c.h;
-  const img = el('img'); img.alt = ''; img.src = c.p || (g ? g.thumb : ''); img.loading = 'lazy';
-  const v = el('video'); v.loop = true; v.playsInline = true; v.muted = true; v.preload = 'none'; v.setAttribute('playsinline', '');
-  const snd = el('button', 'snd', '🔇'); snd.type = 'button'; snd.setAttribute('aria-label', 'Sound on or off');
-  const heart = el('div', 'heart', '❤️'), prog = el('div', 'prog'), pi = el('i'), paused = el('div', 'paused', '▶'), load = el('div', 'load', 'Loading…');
-  prog.append(pi);
-  box.append(img, v, paused, load, snd, heart, prog);
-  v.addEventListener('playing', () => { box.classList.add('ready'); box.classList.remove('stopped'); });
-  v.addEventListener('pause', () => box.classList.add('stopped'));
-  v.addEventListener('timeupdate', () => { if (!v.paused) watched(c, v, a); pi.style.width = Math.min(100, v.currentTime / (c.dur || v.duration || 1) * 100) + '%'; });
-  snd.onclick = e => { e.stopPropagation(); muted = !muted; ls.set('arcade-social-muted', muted); v.muted = muted; snd.textContent = muted ? '🔇' : '🔊'; };
-  let tap = 0;
-  box.addEventListener('click', () => { // one tap: pause/play; two quick taps: like (like Instagram)
-    clearTimeout(tap);
-    tap = setTimeout(() => { if (v.paused) startVideo(box); else v.pause(); }, 260);
-  });
-  box.addEventListener('dblclick', e => { e.preventDefault(); clearTimeout(tap); heart.classList.remove('pop'); void heart.offsetWidth; heart.classList.add('pop'); if (!c.me) like(c, a, true); });
-  io.observe(box);
-  // actions
+  ph.append(avl, who, dots);
+  const doLike = on => like(c, on);
+  const box = mediaBox(c, doLike);
   const acts = el('div', 'acts');
-  const lb = el('button', 'like' + (c.me ? ' on' : '')); lb.type = 'button'; lb.innerHTML = '<span class="ic"></span><span class="n"></span>';
-  const cb = el('button'); cb.type = 'button'; cb.innerHTML = '<span class="ic">💬</span><span class="n"></span>';
-  const sb = el('button'); sb.type = 'button'; sb.innerHTML = '<span class="ic">↗</span><span>Share</span>';
-  const views = el('span', 'views');
-  acts.append(lb, cb, sb, views);
-  lb.onclick = () => like(c, a, !c.me);
-  cb.onclick = () => opt.inline ? a.querySelector('.cm-form input').focus() : openComments(c, a);
+  const lb = el('button', 'like'), cb = el('button'), sb = el('button'), vb = el('button', 'save');
+  [lb, cb, sb, vb].forEach(b => b.type = 'button');
+  lb.setAttribute('aria-label', 'Like'); cb.setAttribute('aria-label', 'Comment'); sb.setAttribute('aria-label', 'Share'); vb.setAttribute('aria-label', 'Save');
+  lb.innerHTML = svg(IC.heart); cb.innerHTML = svg(IC.comment); sb.innerHTML = svg(IC.send); vb.innerHTML = svg(IC.save);
+  lb.onclick = () => doLike(!c.me);
+  cb.onclick = () => opt.inline ? a.querySelector('.cm-form input').focus() : openComments(c);
   sb.onclick = () => share(c);
-  a.append(ch, box, acts);
-  if (c.t) { const cap = el('p', 'cap'), cn = el('a', '', c.by); cn.href = userLink(c.by); cap.append(cn, document.createTextNode(c.t)); a.append(cap); }
-  const all = el('button', 'allcm'); all.type = 'button'; all.onclick = () => openComments(c, a);
+  vb.onclick = () => { vb.classList.toggle('on', toggleSave(c.id)); };
+  acts.append(lb, cb, sb, vb);
+  let lk = el('div');
+  const cap = el('div'), all = el('button', 'allcm'), when = el('a', 'when', agoLong(c.at));
+  all.type = 'button'; all.onclick = () => openComments(c);
+  when.href = '#c=' + c.id; when.title = new Date(c.at).toLocaleString();
+  a.append(ph, box, acts, lk, cap);
   if (!opt.inline) a.append(all);
-  const foot = el('div', 'card-foot'), tm = el('time', '', ago(c.at)); tm.dateTime = new Date(c.at).toISOString(); tm.title = new Date(c.at).toLocaleString();
-  const play = el('a', '', '▶ Play ' + (g ? g.title : 'this game')); play.href = 'play.html?game=' + encodeURIComponent(c.g);
-  const tl = el('a', '', ''); tl.href = '#c=' + c.id; tl.append(tm); tl.style.color = 'inherit';
-  foot.append(tl, play);
-  a.append(foot);
-  if (ADMIN && c.rp) { const r = el('p', 'soc-note', '⚑ Reported by ' + c.rp + (c.rp >= 3 ? ' (hidden from feeds)' : '')); r.style.margin = '0 14px 10px'; a.append(r); }
-  paintCard(a, c);
-  if (opt.inline) a.append(commentsPanel(c, a, true));
+  a.append(when);
+  if (g) { const pl = el('a', 'play-link', '▶ Play ' + g.title); pl.href = 'play.html?game=' + encodeURIComponent(c.g); a.append(pl); }
+  if (ADMIN && c.rp) a.append(el('p', 'note', '⚑ Reported by ' + c.rp + (c.rp >= 3 ? ' (hidden from feeds)' : '')));
+  a._paint = () => {
+    lb.classList.toggle('on', !!c.me); vb.classList.toggle('on', isSaved(c.id));
+    lk.replaceWith(lk = likesLine(c));
+    cap.replaceChildren(); if (c.t) { const cn = el('a', '', c.by); cn.href = userLink(c.by); cap.className = 'cap'; cap.append(cn, document.createTextNode(c.t)); }
+    all.hidden = !c.cm; all.textContent = c.cm === 1 ? 'View 1 comment' : 'View all ' + num(c.cm) + ' comments';
+  };
+  a._paint();
+  observe(box);
+  if (opt.inline) a.append(commentsPanel(c));
   return a;
 }
-function paintCard(a, c) {
-  const lb = a.querySelector('.like');
-  lb.classList.toggle('on', !!c.me); lb.querySelector('.ic').textContent = c.me ? '❤️' : '♡';
-  lb.querySelector('.n').textContent = num(c.lk); lb.setAttribute('aria-label', (c.me ? 'Unlike' : 'Like') + ' (' + c.lk + ')');
-  a.querySelectorAll('.acts button')[1].querySelector('.n').textContent = num(c.cm);
-  const all = a.querySelector('.allcm');
-  if (all) { all.hidden = false; all.textContent = c.cm ? (c.cm === 1 ? 'View 1 comment' : 'View all ' + num(c.cm) + ' comments') : 'Add a comment…'; }
-  paintViews(a, c);
+
+/* ---------- a reel (one post filling the screen) ---------- */
+function reelItem(c, root) {
+  const r = el('section', 'reel'); r._clip = c; track(c, r);
+  const g = gameOf(c.g), mine = lc(c.by) === lc(me());
+  const box = mediaBox(c, on => like(c, on));
+  const shade = el('div', 'shade'), side = el('div', 'side'), info = el('div', 'info');
+  const btn = (cls, ic, label) => { const b = el('button', cls); b.type = 'button'; b.innerHTML = svg(ic); b.setAttribute('aria-label', label); const s = el('span'); b.append(s); side.append(b); return [b, s]; };
+  const [lb, ls_] = btn('like', IC.heart, 'Like'), [cb, cs] = btn('', IC.comment, 'Comments'), [sb] = btn('', IC.send, 'Share'), [vb] = btn('save', IC.save, 'Save'), [mb] = btn('', IC.more, 'More');
+  lb.onclick = () => like(c, !c.me); cb.onclick = () => openComments(c); sb.onclick = () => share(c);
+  vb.onclick = () => { vb.classList.toggle('on', toggleSave(c.id)); };
+  mb.onclick = e => { e.stopPropagation(); menu(mb, c, r); };
+  const row = el('div', 'row'), avl = el('a'), nm = el('a', 'nm', c.by);
+  avl.href = nm.href = userLink(c.by); avl.append(avatar(c.by));
+  row.append(avl, nm);
+  if (!mine) row.append(followBtn(c.by));
+  const cap = el('div', 'cap'); cap.onclick = () => cap.classList.toggle('open');
+  const meta = el('div', 'meta');
+  info.append(row, cap, meta);
+  r.append(box, shade, side, info);
+  r._paint = () => {
+    lb.classList.toggle('on', !!c.me); ls_.textContent = num(c.lk); cs.textContent = num(c.cm); vb.classList.toggle('on', isSaved(c.id));
+    cap.textContent = c.t || ''; cap.hidden = !c.t;
+    meta.replaceChildren();
+    if (g) { const gl = el('a', '', '🎮 ' + g.title + ' · Play'); gl.href = 'play.html?game=' + encodeURIComponent(c.g); meta.append(gl); }
+    if (c.k !== 'photo') meta.append(el('span', '', '▶ ' + plural(c.vw, 'view')));
+    meta.append(el('span', '', ago(c.at)));
+  };
+  r._paint();
+  observe(box, root);
+  return r;
 }
-async function like(c, a, on) {
+function reelsBox(list, opt) {
+  opt = opt || {};
+  const box = el('div', 'reels');
+  list.forEach(c => box.append(reelItem(c, box)));
+  const end = el('div', 'reels-end'); end.innerHTML = '<div><b>You’re all caught up</b>Come back later for more, or make your own.</div>';
+  const mk = el('button', 'btn', 'Create a post'); mk.style.marginTop = '14px'; mk.onclick = openCreate; end.firstChild.append(el('br'), mk);
+  box.append(end);
+  if (opt.start) requestAnimationFrame(() => { const t = box.children[opt.start]; if (t) box.scrollTop = t.offsetTop; });
+  return box;
+}
+function step(box, d) { const h = box.clientHeight; box.scrollBy({ top: d * h, behavior: 'smooth' }); }
+function sizeReels(box) { // fill the screen below the nav (and above the phone tab bar)
+  const fit = () => { if (!box.isConnected) return removeEventListener('resize', fit); const pad = document.documentElement.classList.contains('mob-phone') ? 92 : 16; box.style.height = Math.max(380, innerHeight - Math.max(0, box.getBoundingClientRect().top) - pad) + 'px'; };
+  fit(); addEventListener('resize', fit);
+}
+addEventListener('keydown', e => {
+  if (/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) return;
+  const box = document.querySelector('.viewer .reels') || (view.querySelector('.reels'));
+  if (!box) return;
+  if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); step(box, 1); }
+  if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); step(box, -1); }
+  if (e.key === 'Escape' && document.querySelector('.viewer') && !document.querySelector('.ov')) document.querySelector('.viewer .x').click();
+});
+// a full-screen reels viewer over the page (from a profile, Explore or a story)
+function openViewer(list, start) {
+  const v = el('div', 'viewer'), x = el('button', 'x', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Close');
+  const box = reelsBox(list, { start });
+  const ud = el('div', 'updown'), up = el('button', '', '↑'), dn = el('button', '', '↓'); up.onclick = () => step(box, -1); dn.onclick = () => step(box, 1); ud.append(up, dn);
+  v.append(box, x, ud);
+  document.body.append(v); document.body.style.overflow = 'hidden';
+  const close = () => { box.querySelectorAll('video').forEach(vd => vd.pause()); v.remove(); document.body.style.overflow = ''; removeEventListener('hashchange', close); };
+  x.onclick = close; addEventListener('hashchange', close);
+}
+
+/* ---------- actions ---------- */
+async function like(c, on) {
   if (!me()) return needAccount();
-  c.me = on ? 1 : 0; c.lk += on ? 1 : -1; paintCard(a, c); // straight away; put back if the server says no
+  if (!!c.me === on) return;
+  c.me = on ? 1 : 0; c.lk += on ? 1 : -1; if (on) c.ll = me(); repaint(c);
   const r = await post('like', { id: c.id, on: c.me });
-  if (r.status === 200) { c.lk = r.lk; paintCard(a, c); }
-  else { c.me = on ? 0 : 1; c.lk += on ? -1 : 1; paintCard(a, c); if (r.status !== 401) failed(r); }
+  if (r.status === 200) { c.lk = r.lk; repaint(c); }
+  else { c.me = on ? 0 : 1; c.lk += on ? -1 : 1; repaint(c); if (r.status !== 401) failed(r); }
 }
 async function share(c) {
   const url = location.href.split('#')[0] + '#c=' + c.id, g = gameOf(c.g);
   const shared = ls.get('arcade-social-shared', {});
-  const count = () => { if (!shared[c.id]) { shared[c.id] = 1; ls.set('arcade-social-shared', shared); post('share', { id: c.id }, true); } };
-  if (navigator.share && /mob/.test(document.documentElement.className)) { try { await navigator.share({ title: c.by + ' on The Arcade', text: c.t || (g ? g.title + ' clip' : 'A clip'), url }); count(); } catch (e) {} return; }
-  try { await navigator.clipboard.writeText(url); ArcadeAccount.toast('Link copied', 'Paste it anywhere to share this clip.', url); count(); }
+  const count = () => { if (!shared[c.id]) { shared[c.id] = 1; ls.set('arcade-social-shared', shared); post('share', { id: c.id }, true); c.sh++; } };
+  if (navigator.share && /mob/.test(document.documentElement.className)) { try { await navigator.share({ title: c.by + ' on The Arcade', text: c.t || (g ? g.title + ' clip' : 'A post'), url }); count(); } catch (e) {} return; }
+  try { await navigator.clipboard.writeText(url); ArcadeAccount.toast('Link copied', 'Paste it anywhere to share this post.', url); count(); }
   catch (e) { prompt('Copy this link:', url); count(); }
 }
-let openMenu = null;
-function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } }
+let openMenuEl = null;
+function closeMenu() { if (openMenuEl) { openMenuEl.remove(); openMenuEl = null; } }
 document.addEventListener('click', closeMenu);
-function menu(btn, c, a) {
+function menu(btn, c, node) {
   closeMenu();
   const m = el('div', 'menu'), mine = lc(c.by) === lc(me()), add = (t, f, bad) => { const b = el('button', bad ? 'bad' : '', t); b.type = 'button'; b.onclick = e => { e.stopPropagation(); closeMenu(); f(); }; m.append(b); };
   add('Go to post', () => { location.hash = 'c=' + c.id; });
   add('Copy link', () => share(c));
-  add('About ' + c.by, () => { location.hash = 'u=' + encodeURIComponent(c.by); });
+  add('About this account', () => { location.hash = 'u=' + encodeURIComponent(c.by); });
+  if (!mine && me()) add('Message ' + c.by, () => { location.hash = 'dm=' + encodeURIComponent(c.by); });
   if (!mine) add('Report', async () => {
     if (!me()) return needAccount();
-    if (!confirm('Report this clip? Clips reported by a few players are hidden until the owner looks at them.')) return;
-    const r = await post('report', { id: c.id }); if (r.status === 200) ArcadeAccount.toast('Thanks', 'The clip was reported.', location.href); else if (r.status !== 401) failed(r);
+    if (!confirm('Report this post? Posts reported by a few players are hidden until the owner looks at them.')) return;
+    const r = await post('report', { id: c.id }); if (r.status === 200) ArcadeAccount.toast('Thanks', 'The post was reported.', location.href); else if (r.status !== 401) failed(r);
   }, true);
   if (mine) add('Delete', async () => {
-    if (!confirm('Delete this clip for good?')) return;
-    const r = await post('del', { id: c.id }); if (r.status === 200) gone(a); else if (r.status !== 401) failed(r);
+    if (!confirm('Delete this post for good?')) return;
+    const r = await post('del', { id: c.id }); if (r.status === 200) gone(node); else if (r.status !== 401) failed(r);
   }, true);
-  if (ADMIN) add('Admin: delete', () => adminDelete(c, a), true);
-  const r = btn.getBoundingClientRect();
-  m.style.top = (r.bottom + scrollY + 4) + 'px'; m.style.left = Math.max(8, r.right + scrollX - 200) + 'px';
-  document.body.append(m); openMenu = m;
+  if (ADMIN) add('Admin: delete', () => adminDelete(c, node), true);
+  const rc = btn.getBoundingClientRect();
+  m.style.top = (rc.bottom + scrollY + 4) + 'px'; m.style.left = Math.max(8, Math.min(innerWidth - 216, rc.right + scrollX - 200)) + 'px';
+  document.body.append(m); openMenuEl = m;
 }
-function gone(a) { a.style.transition = 'opacity .3s'; a.style.opacity = 0; setTimeout(() => a.remove(), 300); }
+function gone(node) { node.style.transition = 'opacity .3s'; node.style.opacity = 0; setTimeout(() => node.remove(), 300); }
 let adminPw = '';
-async function adminDelete(c, a) {
+async function adminDelete(c, node) {
   if (!adminPw) adminPw = prompt('Admin password') || '';
-  if (!adminPw || !confirm('Delete this clip by ' + c.by + ' for everyone?')) return;
-  const r = await ArcadeAccount.api('admin', { method: 'POST', body: { pw: adminPw, op: 'clipdel', id: c.id, r: ROOM } });
-  if (r.status === 200) gone(a); else { adminPw = ''; alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').'); }
+  if (!adminPw || !confirm('Delete this post by ' + c.by + ' for everyone?')) return;
+  const r = await acct('admin', { method: 'POST', body: { pw: adminPw, op: 'clipdel', id: c.id, r: ROOM } });
+  if (r.status === 200) gone(node); else { adminPw = ''; alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').'); }
 }
 
 /* ---------- comments ---------- */
-function commentsPanel(c, a, inline) {
+function commentsPanel(c) {
   const wrap = el('div', 'cmts'), list = el('ul', 'cm-list'), reply = el('div', 'cm-reply'), form = el('form', 'cm-form');
   const inp = el('input'); inp.maxLength = 300; inp.placeholder = me() ? 'Add a comment…' : 'Sign in to comment'; inp.setAttribute('aria-label', 'Add a comment');
   const send = el('button', '', 'Post'); send.disabled = true;
-  form.append(inp, send); reply.hidden = true;
+  form.append(avatar(me() || '?'), inp, send); form.firstChild.style.cssText = 'width:32px;height:32px;font-size:13px';
+  reply.hidden = true;
   wrap.append(list, reply, form);
   let re = '';
   const setRe = n => { re = n; reply.hidden = !n; reply.replaceChildren(el('span', '', 'Replying to ' + n)); const x = el('button', '', '✕'); x.type = 'button'; x.onclick = () => setRe(''); reply.append(x); };
@@ -456,30 +729,30 @@ function commentsPanel(c, a, inline) {
     body.append(document.createTextNode(m.t));
     const meta = el('div', 'meta'); meta.append(el('span', '', ago(m.at)));
     const lks = el('span', '', m.lk ? plural(m.lk, 'like') : ''); meta.append(lks);
-    const rb = el('button', '', 'Reply'); rb.type = 'button'; rb.onclick = () => { if (!me()) return needAccount(); setRe(m.n); inp.focus(); };
+    const rb = el('button', '', 'Reply'); rb.type = 'button'; rb.onclick = () => { if (!me()) return needAccount(); setRe(m.n); inp.value = ''; inp.focus(); };
     meta.append(rb);
     if (me() && (lc(m.n) === lc(me()) || lc(c.by) === lc(me()))) {
       const db = el('button', '', 'Delete'); db.type = 'button';
-      db.onclick = async () => { if (!confirm('Delete this comment?')) return; const r = await post('cdel', { id: c.id, i: m.i }); if (r.status === 200) { li.remove(); c.cm = r.cm; paintCard(a, c); } else failed(r); };
+      db.onclick = async () => { if (!confirm('Delete this comment?')) return; const r = await post('cdel', { id: c.id, i: m.i }); if (r.status === 200) { li.remove(); c.cm = r.cm; repaint(c); } else failed(r); };
       meta.append(db);
     }
     body.append(meta);
-    const hb = el('button', 'cl' + (m.me ? ' on' : ''), m.me ? '♥' : '♡'); hb.type = 'button'; hb.setAttribute('aria-label', 'Like comment');
+    const hb = el('button', 'cl' + (m.me ? ' on' : '')); hb.type = 'button'; hb.innerHTML = svg(IC.heart); hb.setAttribute('aria-label', 'Like comment');
     hb.onclick = async () => {
       if (!me()) return needAccount();
       const on = !m.me, r = await post('clike', { id: c.id, i: m.i, on: on ? 1 : 0 });
       if (r.status !== 200) return failed(r);
-      m.me = on; m.lk = r.lk; hb.classList.toggle('on', on); hb.textContent = on ? '♥' : '♡'; lks.textContent = m.lk ? plural(m.lk, 'like') : '';
+      m.me = on; m.lk = r.lk; hb.classList.toggle('on', on); lks.textContent = m.lk ? plural(m.lk, 'like') : '';
     };
     li.append(al, body, hb);
     return li;
   };
-  const none = () => { if (!list.querySelector('li:not(.none)')) list.replaceChildren(el('li', 'none', 'No comments yet. Say something nice!')); };
+  const none = () => { if (!list.querySelector('li:not(.none)')) list.replaceChildren(el('li', 'none', 'No comments yet. Start the conversation.')); };
   list.append(el('li', 'none', 'Loading comments…'));
   get('comments', { id: c.id }).then(r => {
     if (r.status !== 200) { list.replaceChildren(el('li', 'none', 'Couldn’t load the comments.')); return; }
-    list.replaceChildren(...r.list.map(row)); none();
-    if (!inline) list.scrollTop = list.scrollHeight;
+    const top = c.t ? (() => { const li = el('li'), body = el('div', 'body'), nm = el('a', 'nm', c.by), al = el('a'); nm.href = al.href = userLink(c.by); al.append(avatar(c.by)); body.append(nm, document.createTextNode(c.t)); const meta = el('div', 'meta'); meta.append(el('span', '', ago(c.at))); body.append(meta); li.append(al, body); return li; })() : null;
+    list.replaceChildren(...(top ? [top] : []), ...r.list.map(row)); if (!r.list.length) { list.append(el('li', 'none', 'No comments yet. Start the conversation.')); }
   });
   form.onsubmit = async e => {
     e.preventDefault();
@@ -488,42 +761,44 @@ function commentsPanel(c, a, inline) {
     const r = await post('comment', { id: c.id, t, re });
     if (r.status !== 200) { send.disabled = false; if (r.status !== 401) failed(r); return; }
     inp.value = ''; setRe('');
-    list.querySelector('.none') && list.querySelector('.none').remove();
+    const n = list.querySelector('.none'); if (n) n.remove();
     list.append(row(r.c)); list.scrollTop = list.scrollHeight;
-    c.cm = r.cm; paintCard(a, c);
+    c.cm = r.cm; repaint(c);
   };
   return wrap;
 }
 function sheet(title, content, short) {
   const ov = el('div', 'ov'), sh = el('div', 'sheet' + (short ? ' short' : '')), h = el('div', 'sheet-h'), x = el('button', '', '×');
   x.type = 'button'; x.setAttribute('aria-label', 'Close');
-  h.append(el('i', '', ''), el('span', '', title), x); h.firstChild.style.width = '30px';
+  const sp = el('i'); sp.style.width = '30px';
+  h.append(sp, el('span', '', title), x);
   sh.append(h, content); ov.append(sh);
-  const close = () => { ov.remove(); removeEventListener('keydown', esc); removeEventListener('hashchange', close); };
-  const esc = e => { if (e.key === 'Escape') close(); };
+  const close = () => { ov.remove(); removeEventListener('keydown', esc); removeEventListener('hashchange', close); if (ov._onclose) ov._onclose(); };
+  const esc = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
   x.onclick = close; ov.onclick = e => { if (e.target === ov) close(); };
   addEventListener('keydown', esc); addEventListener('hashchange', close);
   document.body.append(ov);
-  return close;
+  ov.close = close;
+  return ov;
 }
-function openComments(c, a) { const p = commentsPanel(c, a); p.style.flex = '1'; sheet('Comments', p); setTimeout(() => { if (me()) p.querySelector('input').focus(); }, 50); }
+function openComments(c) { const p = commentsPanel(c); sheet('Comments', p); setTimeout(() => { if (me()) p.querySelector('input').focus(); }, 50); }
 function peopleSheet(title, names) {
-  const ul = el('ul', 'people');
+  const ul = el('ul', 'people'), b = el('div', 'sheet-b');
   if (!names.length) ul.append(el('li', 'none', 'Nobody yet.'));
-  for (const n of names) { const li = el('li'), a = el('a'); a.href = userLink(n); a.append(avatar(n), el('span', '', n)); li.append(a); ul.append(li); }
-  sheet(title, ul, true);
+  for (const n of names) { const li = el('li'), a = el('a'), t = el('div'); a.href = userLink(n); t.append(el('b', '', n)); a.append(avatar(n), t); li.append(a); ul.append(li); }
+  b.append(ul); sheet(title, b, true);
 }
 
 /* ---------- For you: ranked for this player ---------- */
-// The server sends its hottest clips (engagement: likes, comments, shares and how much of each view was watched,
-// cooled by age) and its newest. Here they're ranked for you: games you play, games whose clips you like and people
-// you follow count more, clips you've already seen far less, then no more than a couple from one player in a row.
+// The server sends its hottest posts (likes, comments, shares and how much of each video people watch, cooled by
+// age) and its newest. Here they're ranked for you: games you play, games whose posts you like and people you follow
+// or are friends with count more, posts you've already seen far less, then no more than a couple from one player in a row.
 function rank(list) {
   const played = Arcade.played(), fol = new Set([...following, ...friends().map(lc)]), likedGame = {}, now = Date.now();
-  for (const c of list) if (c.me) likedGame[c.g] = (likedGame[c.g] || 0) + 1;
+  for (const c of list) if (c.me && c.g) likedGame[c.g] = (likedGame[c.g] || 0) + 1;
   let pool = list.map(c => {
     let s = c.hot || 0.001;
-    if (played[c.g]) s *= 1.5;
+    if (c.g && played[c.g]) s *= 1.5;
     if (likedGame[c.g]) s *= 1 + Math.min(1, likedGame[c.g] * 0.25);
     if (fol.has(lc(c.by))) s *= 2;
     if (now - c.at < 6 * 36e5) s *= 1.3;
@@ -539,132 +814,465 @@ function rank(list) {
   }
   return out;
 }
+let forYouCache = null;
+async function forYou(fresh) {
+  if (forYouCache && !fresh && Date.now() - forYouCache.at < 120000) return forYouCache;
+  const r = await get('feed', { tab: 'foryou' });
+  if (r.status !== 200) return r;
+  if (me()) setFollowing(r.following || []);
+  const hide = blocked();
+  forYouCache = { status: 200, at: Date.now(), clips: rank(r.clips.filter(c => !hide.has(lc(c.by)))) };
+  return forYouCache;
+}
 
 /* ---------- views ---------- */
 const view = $('view');
-let tab = 'foryou', gen = 0;
-function empty(title, text, btnText, href) {
+let gen = 0;
+function empty(title, text, btnText, onClick) {
   const d = el('div', 'empty'); d.append(el('b', '', title), document.createTextNode(text));
-  if (btnText) { const b = el(href ? 'a' : 'button', 'btn', btnText); if (href) b.href = href; else { b.type = 'button'; b.onclick = howTo; } d.append(el('br'), b); }
+  if (btnText) { const b = el('button', 'btn', btnText); b.type = 'button'; b.onclick = onClick; d.append(el('br'), b); }
   return d;
 }
-function offline(retry) { const d = empty('Couldn’t reach Social', 'Check your connection and try again.'); const b = el('button', 'btn', 'Try again'); b.onclick = retry; d.append(el('br'), b); return d; }
-function setTab(t) { tab = t; document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); }
-async function showFeed(t) {
-  const my = ++gen; setTab(t);
-  view.replaceChildren(el('p', 'soc-note', 'Loading clips…'));
-  if (t === 'following' && !me()) { view.replaceChildren(empty('Follow players to see their clips', 'Make an online account, then follow people from their clips or profiles. Your friends’ clips show here too.', 'Make an account')); view.querySelector('.btn').onclick = needAccount; return; }
-  const extra = t === 'following' ? { by: friends().slice(0, 300).join(',') } : {};
-  const r = await get('feed', Object.assign({ tab: t }, extra));
+function offline(retry) { return empty('Couldn’t reach Social', 'Check your connection and try again.', 'Try again', retry); }
+function setNav(v) { document.querySelectorAll('.ig-nav a').forEach(a => a.classList.toggle('on', a.dataset.v === v)); }
+function loading(t) { view.replaceChildren(el('p', 'note', t || 'Loading…')); }
+
+// Home: stories (people you follow and friends with new posts, or suggested players) and the posts
+let homeTab = 'foryou';
+async function showHome() {
+  const my = ++gen; setNav('home'); loading();
+  const [fy, fo] = await Promise.all([forYou(), me() ? get('feed', { tab: 'following', by: friends().slice(0, 300).join(',') }) : Promise.resolve({ status: 200, clips: [] })]);
   if (my !== gen) return;
-  if (r.status !== 200) { view.replaceChildren(offline(() => showFeed(t))); return; }
-  if (me()) setFollowing(r.following || []);
-  const hide = blocked(), list = (t === 'foryou' ? rank(r.clips) : r.clips).filter(c => !hide.has(lc(c.by)));
+  if (fy.status !== 200) { view.replaceChildren(offline(showHome)); return; }
+  const stories = el('div', 'stories');
+  const mine = el('button', 'story');
+  const meAv = avatar(me() || '+'); const plus = el('span', 'plus', '+'); meAv.append(plus);
+  mine.append(meAv, el('small', '', 'Your story')); mine.onclick = openCreate; stories.append(mine);
+  // one circle per player: those you follow (newest posts first), then suggestions
+  const by = new Map();
+  const addStory = (c, sug) => { const k = lc(c.by); if (k === lc(me())) return; if (!by.has(k)) by.set(k, { n: c.by, list: [], sug }); by.get(k).list.push(c); };
+  (fo.clips || []).forEach(c => addStory(c, false));
+  if (by.size < 8) fy.clips.filter(c => Date.now() - c.at < 14 * 864e5).forEach(c => addStory(c, true));
+  [...by.values()].sort((a, b) => a.sug - b.sug || b.list[0].at - a.list[0].at).slice(0, 20).forEach(s => {
+    s.list.sort((a, b) => b.at - a.at);
+    const allSeen = s.list.every(c => seen[c.id]);
+    const b = el('button', 'story'); b.append(ringed(s.n, allSeen), el('small', '', s.n));
+    b.onclick = () => openViewer(s.list.slice(0, 12), 0);
+    stories.append(b);
+  });
+  const chips = el('div', 'chips');
+  [['foryou', 'For you'], ['following', 'Following'], ['new', 'New'], ['top', 'Top this week']].forEach(([k, t]) => { const b = el('button', homeTab === k ? 'on' : '', t); b.type = 'button'; b.onclick = () => { homeTab = k; showHome(); }; chips.append(b); });
+  let list;
+  if (homeTab === 'foryou') list = fy.clips;
+  else if (homeTab === 'following') list = fo.clips || [];
+  else { const r = await get('feed', { tab: homeTab }); if (my !== gen) return; list = r.status === 200 ? r.clips.filter(c => !blocked().has(lc(c.by))) : []; }
   const feed = el('div', 'feed');
-  const nodes = [];
-  if (t === 'foryou') {
-    const d = el('details', 'soc-note'); d.innerHTML = '<summary>How For you picks clips</summary><p></p>';
-    d.querySelector('p').textContent = 'Clips that people like, comment on, share and watch to the end rise; newer clips get a boost and older ones cool down. Then it’s made yours: clips from games you play, games whose clips you like, and people you follow or are friends with come first, clips you’ve already watched drop back, and you won’t get lots from one player in a row.';
-    nodes.push(d);
-  }
   if (!list.length) {
-    nodes.push(t === 'following' ? empty('Nothing here yet', 'Nobody you follow has posted a clip. Find players on For you and tap Follow.') : empty('No clips yet', 'Be the first: open a game and press 🎬 Clip to record what happens.', 'How to make a clip'));
-    view.replaceChildren(...nodes); return;
+    feed.append(homeTab === 'following'
+      ? (me() ? empty('Nothing here yet', 'Follow players to see their posts here. Find them on Explore or in the stories above.', 'Explore', () => location.hash = 'explore') : empty('Follow players', 'Make an online account, then follow players to see their posts here.', 'Make an account', needAccount))
+      : empty('No posts yet', 'Be the first: clip a game (the last 30 seconds) or share a photo or video.', 'Create a post', openCreate));
   }
-  list.forEach(c => feed.append(card(c)));
-  nodes.push(feed);
-  // older clips for New and Following
-  if ((t === 'new' || t === 'following') && r.clips.length >= 30) {
-    const more = el('button', 'btn ghost2 more', 'Load more'); more.type = 'button';
-    more.onclick = async () => {
-      more.disabled = true; more.textContent = 'Loading…';
-      const last = feed.lastElementChild._clip, r2 = await get('feed', Object.assign({ tab: t, before: last.at }, extra));
-      if (r2.status !== 200) { more.disabled = false; more.textContent = 'Load more'; return; }
-      r2.clips.filter(c => !hide.has(lc(c.by))).forEach(c => feed.append(card(c)));
-      if (r2.clips.length < 30) more.remove(); else { more.disabled = false; more.textContent = 'Load more'; }
-    };
-    nodes.push(el('br'), more);
-  }
-  view.replaceChildren(...nodes);
+  list.forEach(c => feed.append(postCard(c)));
+  view.replaceChildren(stories, chips, feed);
 }
+async function showReels(startId) {
+  const my = ++gen; setNav('reels'); loading();
+  const fy = await forYou();
+  if (my !== gen) return;
+  if (fy.status !== 200) { view.replaceChildren(offline(() => showReels(startId))); return; }
+  let list = fy.clips.filter(c => c.k !== 'photo');
+  if (!list.length) { view.replaceChildren(empty('No reels yet', 'Clip a game or upload a video and it’ll show here.', 'Create a post', openCreate)); return; }
+  const i = startId ? Math.max(0, list.findIndex(c => c.id === startId)) : 0;
+  const box = reelsBox(list, { start: i });
+  const ud = el('div', 'updown'), up = el('button', '', '↑'), dn = el('button', '', '↓'); up.onclick = () => step(box, -1); dn.onclick = () => step(box, 1); ud.append(up, dn);
+  view.replaceChildren(box, ud);
+  sizeReels(box);
+}
+async function showExplore() {
+  const my = ++gen; setNav('explore'); loading();
+  const [top, nw] = await Promise.all([get('feed', { tab: 'top' }), get('feed', { tab: 'new' })]);
+  if (my !== gen) return;
+  if (top.status !== 200) { view.replaceChildren(offline(showExplore)); return; }
+  const ids = new Set(), list = [];
+  [...top.clips, ...(nw.clips || [])].forEach(c => { if (!ids.has(c.id) && !blocked().has(lc(c.by))) { ids.add(c.id); list.push(c); } });
+  const wrap = el('div'), q = el('input', 'search'); q.type = 'search'; q.placeholder = 'Search players'; q.setAttribute('aria-label', 'Search players');
+  const results = el('ul', 'people'), grid = gridOf(list);
+  wrap.append(q, results, grid);
+  let players = null;
+  q.oninput = async () => {
+    const t = lc(q.value.trim());
+    if (!t) { results.replaceChildren(); grid.hidden = false; return; }
+    grid.hidden = true;
+    if (!players) { const r = await acct('players'); players = r.status === 200 ? r.players : []; }
+    const hits = players.filter(p => lc(p[0]).includes(t)).sort((a, b) => lc(a[0]).indexOf(t) - lc(b[0]).indexOf(t)).slice(0, 30);
+    results.replaceChildren(...hits.map(p => { const li = el('li'), a = el('a'), tx = el('div'); a.href = userLink(p[0]); tx.append(el('b', '', p[0]), el('small', '', following.has(lc(p[0])) ? 'Following' : 'Player')); a.append(avatar(p[0]), tx); li.append(a); return li; }));
+    if (!hits.length) results.append(el('li', 'none', 'No players found.'));
+  };
+  if (!list.length) wrap.append(empty('Nothing to explore yet', 'Posts from everyone show here.', 'Create a post', openCreate));
+  q.style.marginBottom = '12px';
+  view.replaceChildren(wrap);
+}
+function gridOf(list) {
+  const grid = el('div', 'grid3');
+  list.forEach((c, i) => {
+    const a = el('a'); a.href = '#c=' + c.id; a.title = c.t || '';
+    a.onclick = e => { e.preventDefault(); openViewer(list, i); };
+    const img = el('img'); img.alt = c.t || 'Post by ' + c.by; img.loading = 'lazy'; img.src = c.p || ((gameOf(c.g) || {}).thumb || '');
+    a.append(img);
+    if (c.k !== 'photo') { const k = el('span', 'kind'); k.innerHTML = svg(IC.reel); a.append(k); const vw = el('span', 'vw'); vw.innerHTML = svg(IC.play); vw.append(num(c.vw)); a.append(vw); }
+    const hov = el('div', 'hov'), h1 = el('span'), h2 = el('span'); h1.innerHTML = svg(IC.heart); h1.append(num(c.lk)); h2.innerHTML = svg(IC.comment); h2.append(num(c.cm)); hov.append(h1, h2); a.append(hov);
+    grid.append(a);
+  });
+  return grid;
+}
+let profTab = 'posts';
 async function showUser(name) {
-  const my = ++gen; setTab('');
-  view.replaceChildren(el('p', 'soc-note', 'Loading ' + name + '…'));
+  const my = ++gen; setNav(lc(name) === lc(me()) ? 'me' : ''); loading('Loading ' + name + '…');
   const r = await get('user', { name });
   if (my !== gen) return;
   if (r.status !== 200) { view.replaceChildren(r.status === 400 ? empty('No such player', 'Check the name and try again.') : offline(() => showUser(name))); return; }
   const isMe = lc(r.n) === lc(me());
   if (me() && !isMe) { if (r.iFollow) following.add(lc(r.n)); else following.delete(lc(r.n)); }
-  const p = el('section', 'prof'), h = el('div', 'prof-h'), info = el('div', 'info'), h1 = el('h1', '', r.n);
   document.title = r.n + ' · Social · The Arcade';
-  if (r.followsMe) h1.append(el('span', 'tag', 'Follows you'));
-  const st = el('div', 'stats');
-  const stat = (n, w, f) => { const b = el(f ? 'button' : 'span'); if (f) { b.type = 'button'; b.onclick = f; } b.append(el('b', '', num(n)), document.createTextNode(w)); st.append(b); return b; };
-  stat(r.clips.length, r.clips.length === 1 ? 'clip' : 'clips');
-  const flB = stat(r.followers, r.followers === 1 ? 'follower' : 'followers', () => peopleSheet('Followers', r.fl || []));
-  stat(r.following, 'following', () => peopleSheet('Following', r.fg || []));
-  stat(r.views, r.views === 1 ? 'view' : 'views');
-  stat(r.likes, r.likes === 1 ? 'like' : 'likes');
-  const acts = el('div', 'prof-acts');
-  if (isMe) { const mk = el('button', 'btn', '🎬 Make a clip'); mk.type = 'button'; mk.onclick = howTo; acts.append(mk); }
+  const p = el('section', 'prof'), h = el('div', 'prof-h'), info = el('div', 'info'), nmrow = el('div', 'nmrow');
+  nmrow.append(el('h1', '', r.n));
+  if (isMe) { const mk = el('button', 'btn grey', 'New post'); mk.type = 'button'; mk.onclick = openCreate; nmrow.append(mk); }
   else {
     const fb = followBtn(r.n, true);
-    fb.onclick = async () => { const on = !following.has(lc(r.n)), x = await follow(r.n, on); if (x && x.followers != null) { flB.firstChild.textContent = num(x.followers); r.followers = x.followers; const mn = lc(me()); r.fl = (r.fl || []).filter(n => n !== mn); if (on) r.fl.unshift(mn); } };
-    acts.append(fb);
-    const msg = el('a', 'btn ghost2', 'Message'); msg.href = 'players.html#dm=' + encodeURIComponent(r.n); acts.append(msg);
+    fb.onclick = async () => { const on = !following.has(lc(r.n)), x = await follow(r.n, on); if (x && x.followers != null) { flB.firstChild.textContent = num(x.followers); const mn = lc(me()); r.fl = (r.fl || []).filter(n => n !== mn); if (on) r.fl.unshift(mn); } };
+    nmrow.append(fb);
+    const msg = el('a', 'btn grey', 'Message'); msg.href = '#dm=' + encodeURIComponent(r.n); nmrow.append(msg);
+    if (r.followsMe) nmrow.append(el('span', 'tag', 'Follows you'));
   }
-  const sc = el('a', 'btn ghost2', 'Best scores'); sc.href = 'players.html#p=' + encodeURIComponent(r.n); acts.append(sc);
-  info.append(h1, st, acts);
-  h.append(avatar(r.n), info);
-  const grid = el('div', 'pgrid');
-  for (const c of r.clips) {
-    const a = el('a'); a.href = '#c=' + c.id; a.title = c.t || (gameOf(c.g) || {}).title || '';
-    const img = el('img'); img.alt = c.t || 'Clip'; img.loading = 'lazy'; img.src = c.p || ((gameOf(c.g) || {}).thumb || '');
-    const o = el('div', 'ov2'); o.append(el('span', '', '▶ ' + num(c.vw)), el('span', '', Math.round(c.dur) + 's'));
-    const hov = el('div', 'hov'); hov.append(el('span', '', '❤️ ' + num(c.lk)), el('span', '', '💬 ' + num(c.cm)));
-    a.append(img, o, hov); grid.append(a);
-  }
-  p.append(h, grid);
-  if (!r.clips.length) p.append(el('p', 'pgrid-none', isMe ? 'You haven’t posted any clips yet. Open a game and press 🎬 Clip.' : r.n + ' hasn’t posted any clips yet.'));
+  const st = el('div', 'stats');
+  const stat = (n, w, f) => { const b = el(f ? 'button' : 'span'); if (f) { b.type = 'button'; b.onclick = f; } b.append(el('b', '', num(n)), document.createTextNode(w)); st.append(b); return b; };
+  stat(r.clips.length, r.clips.length === 1 ? ' post' : ' posts');
+  const flB = stat(r.followers, r.followers === 1 ? ' follower' : ' followers', () => peopleSheet('Followers', r.fl || []));
+  stat(r.following, ' following', () => peopleSheet('Following', r.fg || []));
+  stat(r.views, r.views === 1 ? ' view' : ' views');
+  const sc = el('a', 'play-link', 'Best scores in every game →'); sc.href = 'players.html#p=' + encodeURIComponent(r.n);
+  info.append(nmrow, st, sc);
+  h.append(ringed(r.n, true), info);
+  const tabs = el('div', 'ptabs'), body = el('div');
+  const tabsList = [['posts', IC.grid, 'Posts'], ['videos', IC.reel, 'Reels']].concat(isMe ? [['saved', IC.save, 'Saved']] : []);
+  if (!tabsList.some(t => t[0] === profTab)) profTab = 'posts';
+  const fill = async () => {
+    tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.t === profTab));
+    if (profTab === 'saved') {
+      body.replaceChildren(el('p', 'note', 'Loading your saved posts…'));
+      const got = (await Promise.all(saved.slice(0, 30).map(id => get('one', { id })))).filter(x => x.status === 200).map(x => x.clip);
+      body.replaceChildren(got.length ? gridOf(got) : el('p', 'note', 'Save posts with the bookmark button and they’ll show here. Only you can see what you’ve saved.'));
+      return;
+    }
+    const list = profTab === 'videos' ? r.clips.filter(c => c.k !== 'photo') : r.clips;
+    body.replaceChildren(list.length ? gridOf(list) : el('p', 'note', isMe ? 'Share your first post: clip a game or upload a photo or video.' : r.n + ' hasn’t posted anything yet.'));
+  };
+  tabsList.forEach(([k, ic, t]) => { const b = el('button'); b.type = 'button'; b.dataset.t = k; b.innerHTML = svg(ic); b.append(t); b.onclick = () => { profTab = k; fill(); }; tabs.append(b); });
+  p.append(h, tabs, body);
   view.replaceChildren(p);
+  fill();
 }
-async function showClip(id) {
-  const my = ++gen; setTab('');
-  view.replaceChildren(el('p', 'soc-note', 'Loading the clip…'));
+async function showPost(id) {
+  const my = ++gen; setNav(''); loading();
   const r = await get('one', { id });
   if (my !== gen) return;
-  if (r.status !== 200) { view.replaceChildren(r.status === 404 ? empty('This clip isn’t here', 'It may have been deleted.', 'Back to For you', '#t=foryou') : offline(() => showClip(id))); return; }
-  const back = el('button', 'btn ghost2 small back', '← Back'); back.type = 'button';
-  back.onclick = () => { if (history.length > 1 && document.referrer.indexOf(location.pathname) >= 0) history.back(); else location.hash = 't=foryou'; };
-  const wrap = el('div', 'single'); wrap.append(back, card(r.clip, { inline: true }));
+  if (r.status !== 200) { view.replaceChildren(r.status === 404 ? empty('This post isn’t here', 'It may have been deleted.', 'Back to Home', () => location.hash = 'home') : offline(() => showPost(id))); return; }
+  const wrap = el('div', 'feed single'); wrap.append(postCard(r.clip, { inline: true }));
   view.replaceChildren(wrap);
   document.title = r.clip.by + (r.clip.t ? ': ' + r.clip.t : '') + ' · Social · The Arcade';
 }
+
+/* ---------- messages: the accounts' DMs, Instagram style ---------- */
+let online = {}, dmTab = 'primary', chat = null;
+ArcadeOnline.start('social');
+ArcadeOnline.onNames(n => { online = n || {}; if (location.hash === '#dm') paintInbox(); });
+async function loadSoc() {
+  if (!me()) { soc = null; return null; }
+  const r = await acct('social', { auth: true });
+  if (r.status === 200) soc = { f: r.f || {}, c: r.c || {}, b: r.b || {} };
+  paintDmBadge();
+  return soc;
+}
+function paintDmBadge() { const n = soc ? Object.values(soc.c).reduce((s, c) => s + (c.un || 0), 0) : 0; $('dmN').hidden = !n; $('dmN').textContent = n > 99 ? '99+' : n; }
+let inboxQ = '';
+async function showInbox() {
+  const my = ++gen; setNav(''); chat = null;
+  if (!me()) { view.replaceChildren(empty('Your messages', 'Make an online account to send private messages to other players.', 'Make an account', needAccount)); return; }
+  loading('Loading messages…');
+  await loadSoc();
+  if (my !== gen) return;
+  if (!soc) { view.replaceChildren(offline(showInbox)); return; }
+  const box = el('div', 'dms');
+  const top = el('div', 'dm-top'), back = el('a', 'ib'), h1 = el('h1', '', me()), pen = el('button', 'ib');
+  back.href = '#home'; back.innerHTML = svg(IC.back); back.setAttribute('aria-label', 'Back');
+  pen.type = 'button'; pen.innerHTML = svg(IC.pen); pen.setAttribute('aria-label', 'New message'); pen.onclick = newMessage;
+  top.append(back, h1, pen);
+  const sr = el('label', 'dm-search'), si = el('input'); sr.innerHTML = svg(IC.search); si.type = 'search'; si.placeholder = 'Search'; si.value = inboxQ; si.setAttribute('aria-label', 'Search messages');
+  si.oninput = () => { inboxQ = si.value; paintInbox(); }; sr.append(si);
+  const tabs = el('div', 'dm-tabs');
+  [['primary', 'Primary'], ['general', 'General']].forEach(([k, t]) => { const b = el('button', dmTab === k ? 'on' : '', t); b.type = 'button'; b.onclick = () => { dmTab = k; tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); paintInbox(); }; tabs.append(b); });
+  const req = Object.values(soc.f).filter(f => f.st === 'in').length;
+  if (req) { const a = el('a', '', plural(req, 'request')); a.href = 'players.html'; tabs.append(a); }
+  const list = el('ul', 'dm-list'); list.id = 'dmList';
+  const foot = el('div', 'dm-foot'), fa = el('a'); fa.href = 'chat.html'; fa.innerHTML = svg(IC.comment); fa.append('Global chat'); foot.append(fa);
+  box.append(top, sr, tabs, list, foot);
+  view.replaceChildren(box);
+  paintInbox();
+}
+function paintInbox() {
+  const list = $('dmList'); if (!list || !soc) return;
+  const fr = new Set(Object.entries(soc.f).filter(([, f]) => f.st === 'f').map(([k]) => k)), q = lc(inboxQ.trim());
+  // Primary: friends and group chats; General: everyone else
+  const rows = Object.entries(soc.c).filter(([k, c]) => (dmTab === 'primary') === (!!c.g || fr.has(k)) && (!q || lc(c.n).includes(q))).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0));
+  list.replaceChildren();
+  if (!rows.length) { list.append(el('li', 'none', q ? 'No chats match.' : dmTab === 'primary' ? 'Chats with your friends and your group chats show here. Tap ✏️ to start one.' : 'Chats with players who aren’t your friends show here.')); return; }
+  for (const [k, c] of rows) {
+    const li = el('li', c.un ? 'un' : ''), av = avatar(c.g ? 'G' : c.n), tx = el('div', 'tx');
+    if (c.g) av.style.background = 'linear-gradient(135deg, #6c5ce7, #00d2a8)';
+    else if (online[k]) av.classList.add('on-dot');
+    const sub = c.un ? (c.un > 1 ? c.un + ' new messages' : (c.by ? c.by + ': ' : '') + (c.t || '')) : online[k] && !c.g ? 'Active now' : (c.me ? 'You: ' : c.by ? c.by + ': ' : '') + (c.t || '');
+    tx.append(el('b', '', c.n), el('small', '', sub + (c.ts && !(online[k] && !c.un && !c.g) ? ' · ' + ago(c.ts) : '')));
+    li.append(av, tx);
+    if (c.un) li.append(el('span', 'udot'));
+    const cam = el('button', 'cam'); cam.type = 'button'; cam.innerHTML = svg(IC.cam); cam.setAttribute('aria-label', 'Video call ' + c.n);
+    cam.onclick = e => { e.stopPropagation(); if (window.ArcadeCall) ArcadeCall.start(c.g ? (c.mem || []).filter(n => lc(n) !== lc(me())) : [c.n], c.g ? c.n : undefined); };
+    li.append(cam);
+    li.onclick = () => { if (c.g) location.href = 'players.html#g=' + encodeURIComponent(k.slice(2)); else location.hash = 'dm=' + encodeURIComponent(c.n); };
+    list.append(li);
+  }
+}
+async function newMessage() {
+  const b = el('div', 'sheet-b'), q = el('input', 'search'), ul = el('ul', 'people');
+  q.type = 'search'; q.placeholder = 'Search players'; b.append(q, ul);
+  const ov = sheet('New message', b, true);
+  const r = await acct('players'), all = r.status === 200 ? r.players.map(p => p[0]).filter(n => lc(n) !== lc(me())) : [];
+  const fr = friends();
+  const paint = () => {
+    const t = lc(q.value.trim()), names = t ? all.filter(n => lc(n).includes(t)).slice(0, 40) : fr.concat(all.filter(n => !fr.includes(n)).slice(0, 20));
+    ul.replaceChildren(...names.map(n => { const li = el('li'), a = el('a'), tx = el('div'); a.href = '#dm=' + encodeURIComponent(n); tx.append(el('b', '', n), el('small', '', fr.includes(n) ? 'Friend' : 'Player')); a.append(avatar(n), tx); li.append(a); return li; }));
+    if (!names.length) ul.append(el('li', 'none', 'No players found.'));
+  };
+  q.oninput = paint; paint(); q.focus();
+}
+async function showChat(name) {
+  const my = ++gen; setNav('');
+  if (!me()) { view.replaceChildren(empty('Messages', 'Make an online account to send private messages.', 'Make an account', needAccount)); return; }
+  if (lc(name) === lc(me())) { location.hash = 'dm'; return; }
+  const box = el('div', 'dms chat'), head = el('div', 'chat-h'), back = el('a', 'ib'), avl = el('a'), tx = el('div', 'tx'), nm = el('a', '', name), sub = el('small', '', ''), call = el('button', 'ib');
+  back.href = '#dm'; back.innerHTML = svg(IC.back); back.setAttribute('aria-label', 'Back to messages');
+  avl.href = nm.href = userLink(name); avl.append(avatar(name));
+  call.type = 'button'; call.innerHTML = svg(IC.video); call.setAttribute('aria-label', 'Video call'); call.onclick = () => { if (window.ArcadeCall) ArcadeCall.start([chat ? chat.n : name]); };
+  tx.append(nm, sub); head.append(back, avl, tx, call);
+  const log = el('div', 'chat-log'), form = el('form', 'chat-send'), inp = el('input'), send = el('button', '', 'Send');
+  inp.maxLength = 500; inp.placeholder = 'Message…'; inp.setAttribute('aria-label', 'Message'); inp.autocomplete = 'off'; inp.enterKeyHint = 'send'; send.disabled = true;
+  form.append(inp, send);
+  inp.oninput = () => { send.disabled = !inp.value.trim() || !chat || !chat.ready; };
+  box.append(head, log, form);
+  view.replaceChildren(box);
+  log.append(el('p', 'note', 'Loading…'));
+  const k = lc(name);
+  chat = { k, n: name, msgs: [], log };
+  const r = await acct('dm?with=' + encodeURIComponent(name), { auth: true });
+  if (my !== gen) return;
+  if (r.status !== 200) { log.replaceChildren(el('p', 'note', r.status === 404 ? 'There’s no player called ' + name + '.' : 'Couldn’t load the messages. Check your connection.')); return; }
+  chat.n = r.n; chat.msgs = r.msgs; chat.ready = true; nm.textContent = r.n;
+  sub.textContent = online[k] ? 'Active now' : '';
+  if (soc && soc.c[k]) { soc.c[k].un = 0; paintDmBadge(); }
+  drawChat();
+  send.disabled = !inp.value.trim();
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const text = inp.value.replace(/\s+/g, ' ').trim().slice(0, 500);
+    if (!text) return;
+    send.disabled = true;
+    const x = await acct('dm', { method: 'POST', auth: true, body: { to: chat.n, text } });
+    if (x.status !== 200) { send.disabled = false; alert(x.error === 'slow' ? 'Slow down a little.' : x.error === 'you_blocked' ? 'You blocked this player. Unblock them on their Players profile first.' : x.error === 'no_account' ? 'That account doesn’t exist any more.' : 'Not sent. Check your connection and try again.'); return; }
+    inp.value = ''; gotDm(k, x.n, x.m); inp.focus();
+  };
+  setTimeout(() => inp.focus(), 50);
+}
+function drawChat() {
+  if (!chat) return;
+  const log = chat.log, frag = document.createDocumentFragment();
+  let day = '';
+  chat.msgs.forEach(m => {
+    const d = new Date(m.ts).toDateString();
+    if (d !== day) { day = d; frag.append(el('div', 'day-sep', new Date(m.ts).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' + new Date(m.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))); }
+    const b = el('div', 'bub' + (m.f ? ' me' : ''), m.t); b.title = new Date(m.ts).toLocaleString(); frag.append(b);
+  });
+  if (!chat.msgs.length) frag.append(el('p', 'note', 'Say hi to ' + chat.n + '! Only the two of you can see this chat.'));
+  log.replaceChildren(frag); log.scrollTop = log.scrollHeight;
+}
+function gotDm(k, n, m) {
+  if (soc) { const c = soc.c[k] || (soc.c[k] = { n, seq: 0, un: 0 }); c.n = n; c.t = m.t.slice(0, 80); c.ts = m.ts; c.me = m.f ? 1 : 0; c.by = ''; if (!m.f && !(chat && chat.k === k)) c.un = (c.un || 0) + 1; }
+  if (chat && chat.k === k && !chat.msgs.some(x => x.id === m.id)) { chat.msgs.push(m); drawChat(); if (!m.f) setTimeout(() => acct('dm?with=' + encodeURIComponent(n) + '&before=1', { auth: true }), 1200); } // marks it read
+  paintDmBadge(); paintInbox();
+}
+ArcadeAccount.onLive(m => {
+  if (!soc) return;
+  if (m.t === 'dm' && m.m) gotDm(m.k, m.n, m.m);
+  else if (m.t === 'read') { if (soc.c[m.k]) soc.c[m.k].un = 0; paintDmBadge(); paintInbox(); }
+  else if (m.t === 'social' || m.t === 'friend' || m.t === 'grp' || m.t === 'gm') loadSoc().then(paintInbox);
+});
+// the chat open on screen gets no pop-up from account.js
+setInterval(() => { window.ArcadeDmOpen = chat && !document.hidden ? chat.k : ''; }, 300);
+
+/* ---------- create: clip a game, or upload a photo or video ---------- */
+function openCreate() {
+  const b = el('div', 'sheet-b'), opts = el('div', 'create-opts');
+  const clip = el('a'); clip.href = 'index.html';
+  clip.innerHTML = '<span class="big">🎮</span><span><b>Clip a game</b><small>Open any game and press <b>🎬 Clip last 30s</b> (or F8) after something cool happens. It saves what you just played.</small></span>';
+  const up = el('button'); up.type = 'button';
+  up.innerHTML = '<span class="big">🖼️</span><span><b>Upload a photo or video</b><small>From your device. Videos up to 3 minutes.</small></span>';
+  const file = el('input'); file.type = 'file'; file.accept = 'image/*,video/*'; file.hidden = true;
+  up.onclick = () => { if (!me()) { ov.close(); needAccount(); return; } file.click(); };
+  file.onchange = () => { const f = file.files[0]; if (f) { ov.close(); editUpload(f); } };
+  opts.append(clip, up, file);
+  b.append(opts);
+  b.append(el('p', 'note', 'Only post things you made or have the right to share. No personal details, and keep it friendly: posts can be reported and removed.'));
+  const ov = sheet('Create', b, true);
+}
+const MAX_BYTES = 12 * 1024 * 1024, MAX_VIDEO_S = 180;
+function thumb(src, w, h) {
+  const c = document.createElement('canvas'), k = Math.min(1, 360 / Math.max(w, h));
+  c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  let d = c.toDataURL('image/jpeg', 0.72); if (d.length > 55000) d = c.toDataURL('image/jpeg', 0.45);
+  return d;
+}
+async function editUpload(f) {
+  const isImg = f.type.startsWith('image/'), isVid = f.type.startsWith('video/');
+  if (!isImg && !isVid) { alert('Pick a photo or a video.'); return; }
+  const b = el('div', 'sheet-b'), prev = el('div', 'up-prev'), msg = el('p', 'up-msg', 'Getting it ready…'), bar = el('div', 'up-bar'), bi = el('i');
+  bar.append(bi); bar.hidden = true;
+  const capL = el('label', '', 'Caption'), cap = el('input'); cap.type = 'text'; cap.maxLength = 80; cap.placeholder = 'Write a caption…';
+  const gL = el('label', '', 'Game (optional)'), gs = el('select'); gs.append(new Option('No game', ''));
+  GAMES.forEach(g => gs.append(new Option(g.title, g.id)));
+  const acts = el('div', 'up-acts'), share = el('button', 'btn blue', 'Share'), cancel = el('button', 'btn grey', 'Cancel');
+  share.type = cancel.type = 'button'; share.disabled = true;
+  acts.append(cancel, share);
+  b.append(prev, capL, cap, gL, gs, bar, msg, acts);
+  const ov = sheet(isImg ? 'New photo' : 'New video', b, true);
+  let busy = false;
+  ov._onclose = () => { stopped = true; };
+  let stopped = false;
+  cancel.onclick = () => ov.close();
+  const err = t => { msg.className = 'up-msg err'; msg.textContent = t; };
+  let item = null;
+  try {
+    item = isImg ? await preparePhoto(f, prev) : await prepareVideo(f, prev, p => { msg.textContent = 'Making it smaller to post… ' + Math.round(p * 100) + '%'; }, () => stopped);
+  } catch (e) { err(String(e.message || e)); return; }
+  if (stopped) return;
+  msg.textContent = (isImg ? 'Photo' : 'Video ' + Math.round(item.dur) + ' s') + ' · ' + (item.blob.size / 1048576).toFixed(1) + ' MB';
+  share.disabled = false;
+  share.onclick = async () => {
+    if (busy) return; busy = true; share.disabled = true; cancel.disabled = true; bar.hidden = false; msg.className = 'up-msg'; msg.textContent = 'Sharing…';
+    try {
+      const id = await postMedia(Object.assign({}, item, { t: cap.value, g: gs.value }), p => { bi.style.width = Math.round(p * 100) + '%'; });
+      ov.close(); forYouCache = null;
+      ArcadeAccount.toast('Shared', 'Your post is up.', '#c=' + id);
+      location.hash = 'c=' + id;
+    } catch (e) { busy = false; share.disabled = false; cancel.disabled = false; bar.hidden = true; err(String(e.message || e)); }
+  };
+}
+async function preparePhoto(f, prev) {
+  const url = URL.createObjectURL(f), img = new Image();
+  await new Promise((ok, no) => { img.onload = ok; img.onerror = () => no(new Error('That picture couldn’t be opened. Try a JPEG or PNG.')); img.src = url; });
+  const w = img.naturalWidth, h = img.naturalHeight;
+  prev.append(img);
+  // an animated GIF is kept as it is (if it's small enough); everything else becomes a JPEG of at most 1600 px
+  if (f.type === 'image/gif' && f.size <= 8 * 1024 * 1024) return { kind: 'photo', blob: f, w, h, dur: 0, poster: thumb(img, w, h) };
+  const k = Math.min(1, 1600 / Math.max(w, h)), c = document.createElement('canvas');
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+  let blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.86));
+  if (blob.size > MAX_BYTES) blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.6));
+  return { kind: 'photo', blob, w: c.width, h: c.height, dur: 0, poster: thumb(c, c.width, c.height) };
+}
+async function prepareVideo(f, prev, progress, stopped) {
+  const url = URL.createObjectURL(f), v = el('video'); v.src = url; v.muted = true; v.playsInline = true; v.controls = true; v.preload = 'auto';
+  prev.append(v);
+  await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = () => no(new Error('This video can’t be played in this browser. Try an MP4.')); });
+  const dur = v.duration, w = v.videoWidth, h = v.videoHeight;
+  if (!w || !h) throw new Error('This video can’t be played in this browser. Try an MP4.');
+  if (!(dur > 0.5)) throw new Error('That video is too short.');
+  if (dur > MAX_VIDEO_S) throw new Error('Videos can be up to 3 minutes long. Trim it and try again.');
+  v.currentTime = Math.min(1, dur / 3); await new Promise(r => { v.onseeked = r; setTimeout(r, 1500); });
+  const poster = thumb(v, w, h);
+  v.currentTime = 0;
+  const playable = /^video\/(mp4|webm|quicktime)$/.test(f.type);
+  if (playable && f.size <= MAX_BYTES) return { kind: 'video', blob: f, w, h, dur, poster };
+  return compress(v, w, h, dur, progress, stopped).then(blob => ({ kind: 'video', blob, w: Math.min(w, Math.round(w * Math.min(1, 1280 / Math.max(w, h)))), h: Math.round(h * Math.min(1, 1280 / Math.max(w, h))), dur, poster }));
+}
+// Too big (or a format other browsers can't play): play it once into a canvas and record that at a lower bitrate.
+// It takes as long as the video. The bitrate is picked so the result stays under 12 MB.
+async function compress(v, w, h, dur, progress, stopped) {
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) throw new Error('This video is over 12 MB and this browser can’t shrink it. Try a shorter video.');
+  const k = Math.min(1, 1280 / Math.max(w, h)), c = document.createElement('canvas'); c.width = Math.round(w * k / 2) * 2; c.height = Math.round(h * k / 2) * 2;
+  const g = c.getContext('2d'), stream = c.captureStream(30);
+  try { const ac = new AudioContext(), src = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination(); src.connect(dst); dst.stream.getAudioTracks().forEach(t => stream.addTrack(t)); v._ac = ac; } catch (e) {}
+  const types = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'], type = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const bits = Math.max(400000, Math.min(2500000, Math.floor((MAX_BYTES * 8 * 0.85) / dur) - 96000));
+  const mr = new MediaRecorder(stream, { mimeType: type || undefined, videoBitsPerSecond: bits, audioBitsPerSecond: 96000 }), chunks = [];
+  mr.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  v.controls = false; v.muted = false; v.volume = 0.0001; v.currentTime = 0;
+  await v.play().catch(() => { v.muted = true; return v.play(); });
+  mr.start(1000);
+  await new Promise(done => {
+    const tick = () => { if (stopped()) { v.pause(); done(); return; } g.drawImage(v, 0, 0, c.width, c.height); progress(Math.min(1, v.currentTime / dur)); if (v.ended || v.currentTime >= dur - 0.05) done(); else requestAnimationFrame(tick); };
+    requestAnimationFrame(tick); v.onended = done;
+  });
+  await new Promise(r => { mr.onstop = r; mr.stop(); });
+  v.pause(); v.controls = true; v.muted = true;
+  if (stopped()) throw new Error('Cancelled.');
+  const blob = new Blob(chunks, { type: (type || 'video/webm').split(';')[0] });
+  if (blob.size > MAX_BYTES) throw new Error('This video is still too big after shrinking. Try a shorter one.');
+  return blob;
+}
+const WHY = { slow: 'You’ve posted a lot today. Try again tomorrow.', too_many: 'You have 100 posts, the most an account can keep. Delete some first.', auth: 'You’re signed out. Sign in again and retry.', too_big: 'That’s too big to post (over 12 MB).', not_video: 'That file isn’t a photo or video the server accepts.', expired: 'The upload took too long. Try again.', bad: 'Something about that post wasn’t right. Try another file.' };
+function postMedia(item, progress) {
+  return fetch(API() + 'new' + qs(), {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + ArcadeAccount.token() },
+    body: JSON.stringify({ kind: item.kind, g: item.g || '', t: String(item.t || '').slice(0, 80), dur: Math.round((item.dur || 0) * 10) / 10, w: item.w, h: item.h, sz: item.blob.size, poster: item.poster })
+  }).then(r => r.json().catch(() => ({})).then(j => { if (!r.ok) throw new Error(WHY[j.error] || 'Couldn’t post it (' + (j.error || r.status) + ').'); return j; }),
+    e => { throw e instanceof Error && e.message.length > 30 ? e : new Error('Couldn’t reach the server. Check your connection.'); })
+    .then(n => new Promise((ok, no) => {
+      const x = new XMLHttpRequest();
+      x.open('PUT', API() + 'v/' + n.id + qs({ k: n.k }));
+      x.setRequestHeader('content-type', item.blob.type || 'application/octet-stream');
+      x.upload.onprogress = e => { if (e.lengthComputable) progress(e.loaded / e.total); };
+      x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200) ok(n.id); else no(new Error(WHY[j.error] || 'Couldn’t post it (' + (j.error || x.status) + ').')); };
+      x.onerror = () => no(new Error('The upload failed. Check your connection and try again.'));
+      x.send(item.blob);
+    }));
+}
+
+/* ---------- routing ---------- */
 function route() {
   closeMenu();
   if (playing) { playing.pause(); playing = null; }
-  const h = decodeURIComponent(location.hash.slice(1)), [k, v] = [h.split('=')[0], h.slice(h.indexOf('=') + 1)];
+  chat = null;
+  const h = (() => { try { return decodeURIComponent(location.hash.slice(1)); } catch (e) { return ''; } })(), i = h.indexOf('='), k = i < 0 ? h : h.slice(0, i), v = i < 0 ? '' : h.slice(i + 1);
   document.title = 'Social · The Arcade';
   scrollTo(0, 0);
   if (k === 'u' && v) return showUser(v);
-  if (k === 'c' && v) return showClip(v);
-  showFeed(k === 't' && ['foryou', 'following', 'new', 'top'].includes(v) ? v : 'foryou');
+  if (k === 'me') return me() ? showUser(me()) : (setNav('me'), view.replaceChildren(empty('Your profile', 'Make an online account to post, follow players and save posts.', 'Make an account', needAccount)));
+  if (k === 'c' && v) return showPost(v);
+  if (k === 'reels') return showReels(v);
+  if (k === 'explore') return showExplore();
+  if (k === 'dm' && v) return showChat(v);
+  if (k === 'dm') return showInbox();
+  if (k === 'create') { history.replaceState(null, '', location.pathname + location.search + '#home'); showHome(); openCreate(); return; }
+  if (k === 't') { homeTab = ['following', 'new', 'top'].includes(v) ? v : 'foryou'; } // links from the first version
+  showHome();
 }
-function howTo() {
-  const d = el('div', 'howto-clip');
-  d.innerHTML = '<ol><li>Open any game from <b>Games</b>.</li><li>Press <b>🎬 Clip</b> at the top (or <b>F8</b> in the game) to start recording, and again to stop. Clips can be up to a minute long.</li><li>Add a caption and press <b>Post to Social</b>. Posting needs an online Arcade account.</li></ol>';
-  const b = el('a', 'btn', 'Pick a game'); b.href = 'index.html'; d.append(b);
-  sheet('Make a clip', d, true);
-}
-$('seg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) location.hash = 't=' + b.dataset.t; });
-$('make').onclick = howTo;
-$('mine').onclick = () => { if (!me()) return needAccount(); location.hash = 'u=' + encodeURIComponent(me()); };
+$('topCreate').onclick = () => openCreate();
 addEventListener('hashchange', route);
-// keep the test room and ?admin on links within the page's own feeds (they're hash links, so nothing to do) and on
-// links out to play.html (a clip posted from a test room goes to that room)
-if (KEEP) document.addEventListener('click', e => { const a = e.target.closest('a[href^="play.html"]'); if (a && !/clipsroom=/.test(a.href) && ROOM) a.href += '&clipsroom=' + ROOM; }, true);
-ArcadeAccount.ready().then(route);
-if (ArcadeAccount.onSocial) ArcadeAccount.onSocial(() => {}); // friends and blocks arrive with the account's sync
+// a clip posted from a test room's play page goes to that room
+if (ROOM) document.addEventListener('click', e => { const a = e.target.closest('a[href^="play.html"], a[href="index.html"]'); if (a && !/clipsroom=/.test(a.getAttribute('href')) && /play\.html/.test(a.getAttribute('href'))) a.href += '&clipsroom=' + ROOM; }, true);
+ArcadeAccount.ready().then(() => { loadSoc(); route(); });
+let lastName = me();
+setInterval(() => { if (me() !== lastName) { lastName = me(); loadSoc(); forYouCache = null; route(); } }, 1000);
 </script>
 <script src="tos.js?v=9"></script>
 </body>

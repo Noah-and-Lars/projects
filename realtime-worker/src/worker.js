@@ -1062,7 +1062,8 @@ export class Tally extends DurableObject {
    (play.html, the 🎬 Clip button) and publish it here; social.html shows the feeds, profiles and comments.
    One Durable Object class, two kinds of object:
      'index' (or 'index-test-<room>' for ?clipsroom= tests): every clip's details, likes, comments, views, follows.
-       'm:<id>' = { id, by, g, t, at, dur, w, h, sz, ty, lk, vw, wf, cm, sh, rp }   (wf = sum of the share of the clip
+       'm:<id>' = { id, by, k, g, t, at, dur, w, h, sz, ty, lk, ll, vw, wf, cm, sh, rp }   (k = 'clip' | 'video' | 'photo'; ll = the
+       latest liker's name)   (wf = sum of the share of the clip
        each view watched, so wf / vw is how much of it people watch); 'p:<id>' = the poster (a small JPEG data URL);
        'l:<id>' = [lower names who liked]; 'c:<id>' = [{ i, n, t, at, re, lk: [lower names] }]; 'v:<id>' = [viewer
        keys] (one view per viewer: an account name or a device id); 'u:<lower>' = { n, f: [following], fr: [followers],
@@ -1077,12 +1078,13 @@ export class Tally extends DurableObject {
      GET  /clips/user?name=&me=   GET /clips/one?id=&me=   GET /clips/comments?id=&me=   GET /clips/v/<id> (the video)
      POST /clips/seen { v: viewer key, l: [[id, share watched 0-1]] }   POST /clips/share { id }
    With "Authorization: Bearer <token>" (an online account):
-     POST /clips/new { g, t, dur, w, h, sz, ty, poster } -> { id, k }      PUT /clips/v/<id>?k= <video bytes>
+     POST /clips/new { kind, g, t, dur, w, h, sz, poster } -> { id, k }   PUT /clips/v/<id>?k= <video or picture bytes>
+       (kind 'clip' = recorded from a game; 'video' and 'photo' = the player's own uploads, game optional)
      POST /clips/like { id, on }   /clips/comment { id, t, re }   /clips/cdel { id, i }   /clips/clike { id, i, on }
      POST /clips/follow { name, on }   /clips/del { id }   /clips/report { id }
    The owner deletes any clip with /acct/admin op 'clipdel'. Every route takes ?r=<room> for test rooms.
    ========================================================================== */
-const CLIP_MAX = 12 * 1024 * 1024, CLIP_PIECE = 1024 * 1024, CLIP_STORE = 3.5e9, CLIP_DAY = 15, CLIP_PER_USER = 60;
+const CLIP_MAX = 12 * 1024 * 1024, CLIP_PIECE = 1024 * 1024, CLIP_STORE = 3.5e9, CLIP_DAY = 25, CLIP_PER_USER = 100;
 const CLIP_ID = /^[a-z0-9]{10}$/, CLIP_TITLE = 80, CLIP_COMMENT = 300, CLIP_COMMENTS = 500, CLIP_VIEWERS = 5000;
 const CLIP_POSTER = 60000, CLIP_REPORTS = 3, VIEWER_RE = /^[A-Za-z0-9_:.-]{3,40}$/;
 const clipIndex = (env, room) => env.CLIPS.get(env.CLIPS.idFromName(room ? 'index-test-' + room : 'index'));
@@ -1157,9 +1159,12 @@ export class Clips extends DurableObject {
       if (!buf.byteLength || buf.byteLength > CLIP_MAX) return j({ error: 'too_big' }, 413);
       const u = new Uint8Array(buf, 0, Math.min(12, buf.byteLength));
       const webm = u[0] === 0x1a && u[1] === 0x45 && u[2] === 0xdf && u[3] === 0xa3;
-      const mp4 = u[4] === 0x66 && u[5] === 0x74 && u[6] === 0x79 && u[7] === 0x70; // 'ftyp'
-      if (!webm && !mp4) return j({ error: 'not_video' }, 415);
-      const n = Math.ceil(buf.byteLength / CLIP_PIECE), put = { vn: n, ty: webm ? 'video/webm' : 'video/mp4' };
+      const mp4 = u[4] === 0x66 && u[5] === 0x74 && u[6] === 0x79 && u[7] === 0x70; // 'ftyp' (MP4 and MOV)
+      const jpg = u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff, png = u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4e && u[3] === 0x47;
+      const gif = u[0] === 0x47 && u[1] === 0x49 && u[2] === 0x46, webp = u[0] === 0x52 && u[1] === 0x49 && u[2] === 0x46 && u[3] === 0x46 && u[8] === 0x57 && u[9] === 0x45;
+      const ty = webm ? 'video/webm' : mp4 ? 'video/mp4' : jpg ? 'image/jpeg' : png ? 'image/png' : gif ? 'image/gif' : webp ? 'image/webp' : '';
+      if (!ty) return j({ error: 'not_video' }, 415);
+      const n = Math.ceil(buf.byteLength / CLIP_PIECE), put = { vn: n, ty };
       for (let i = 0; i < n; i++) put['v:' + i] = buf.slice(i * CLIP_PIECE, (i + 1) * CLIP_PIECE);
       // pieces go in a few at a time (each put is one transaction, kept well under its size limit)
       const keys = Object.keys(put);
@@ -1196,7 +1201,7 @@ export class Clips extends DurableObject {
     const S = this.ctx.storage, posters = new Map();
     for (let i = 0; i < list.length; i += 128) for (const [k, v] of await S.get(list.slice(i, i + 128).map(m => 'p:' + m.id))) posters.set(k, v);
     const u = me ? await this.user(me) : null, liked = new Set(u ? u.lk : []), now = Date.now();
-    return list.map(m => ({ id: m.id, by: m.by, g: m.g, t: m.t, at: m.at, dur: m.dur, w: m.w, h: m.h, lk: m.lk, vw: m.vw, cm: m.cm, sh: m.sh || 0,
+    return list.map(m => ({ id: m.id, by: m.by, k: m.k || 'clip', ll: m.ll || '', g: m.g, t: m.t, at: m.at, dur: m.dur, w: m.w, h: m.h, lk: m.lk, vw: m.vw, cm: m.cm, sh: m.sh || 0,
       wr: m.vw ? Math.round(m.wf / m.vw * 100) / 100 : 0, rp: (m.rp || []).length, hot: Math.round(this.hot(m, now) * 1e4) / 1e4, p: posters.get('p:' + m.id) || '', me: liked.has(m.id) ? 1 : 0 }));
   }
   live() { return [...this.m.values()].filter(m => (m.rp || []).length < CLIP_REPORTS); }
@@ -1247,6 +1252,7 @@ export class Clips extends DurableObject {
       if (!b.int) return j({ error: 'bad' }, 400);
       const q = await S.get('q:' + b.id);
       if (!q || !same(String(b.k || ''), q.k) || now - q.at > 30 * 60000) return j({ error: 'expired' }, 410);
+      if ((q.m.k === 'photo') !== String(b.ty || '').startsWith('image/')) return j({ error: 'not_video' }, 415); // a photo post takes a picture, the others a video
       const m = Object.assign(q.m, { sz: +b.sz || 0, ty: b.ty, at: now });
       this.m.set(m.id, m);
       await S.put({ ['m:' + m.id]: m, ['p:' + m.id]: q.p });
@@ -1301,10 +1307,13 @@ export class Clips extends DurableObject {
       if (u.k >= CLIP_DAY) return j({ error: 'slow' }, 429);
       if ([...this.m.values()].filter(m => m.by.toLowerCase() === mk).length >= CLIP_PER_USER) return j({ error: 'too_many' }, 400);
       const p = String(b.poster || '');
-      if (!GAME_RE.test(b.g || '') || !(b.dur > 0.5 && b.dur <= 75) || !(b.sz > 0 && b.sz <= CLIP_MAX)) return j({ error: 'bad' }, 400);
+      // kinds: 'clip' (recorded on play.html, always from a game), 'video' and 'photo' (the player's own uploads; a game is optional)
+      const kind = ['clip', 'video', 'photo'].includes(b.kind) ? b.kind : 'clip';
+      if (b.g ? !GAME_RE.test(b.g) : kind === 'clip') return j({ error: 'bad' }, 400);
+      if (!(kind === 'photo' ? true : b.dur > 0.5 && b.dur <= (kind === 'clip' ? 75 : 185)) || !(b.sz > 0 && b.sz <= CLIP_MAX)) return j({ error: 'bad' }, 400);
       if (!/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(p) || p.length > CLIP_POSTER) return j({ error: 'bad' }, 400);
       let id; do { id = rnd(5); } while (this.m.has(id));
-      const m = { id, by: me, g: b.g, t: tidy(b.t).slice(0, CLIP_TITLE), at: now, dur: Math.round(b.dur * 10) / 10, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [] };
+      const m = { id, by: me, k: kind, g: b.g || '', t: tidy(b.t).slice(0, CLIP_TITLE), at: now, dur: kind === 'photo' ? 0 : Math.round(b.dur * 10) / 10, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [] };
       const k = rnd(16);
       u.k++; await this.saveUser(u);
       await S.put('q:' + id, { k, m, p, at: now });
@@ -1327,7 +1336,7 @@ export class Clips extends DurableObject {
     if (route === 'like') {
       const u = await this.user(me), likes = (await S.get('l:' + id)) || [], had = likes.includes(mk);
       if (!!b.on !== had) {
-        if (b.on) { likes.push(mk); u.lk.push(id); if (u.lk.length > 3000) u.lk.splice(0, u.lk.length - 3000); }
+        if (b.on) { likes.push(mk); u.lk.push(id); if (u.lk.length > 3000) u.lk.splice(0, u.lk.length - 3000); m.ll = me; } // "Liked by <ll> and others"
         else { likes.splice(likes.indexOf(mk), 1); u.lk = u.lk.filter(x => x !== id); }
         m.lk = likes.length;
         await S.put({ ['l:' + id]: likes, ['u:' + mk]: u, ['m:' + id]: m });

@@ -16,8 +16,8 @@ source in Settings → Pages should be switched to `main`.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
-- The header of the home, chat and Players pages has three tabs: Games (`index.html`), Global chat (`chat.html`)
-  and Players (`players.html`). The home page's chat tab shows how many are in the chat (`byGame.chat`); the Players
+- The header of the home, chat, Players and Social pages has four tabs: Games (`index.html`), Global chat (`chat.html`),
+  Players (`players.html`) and Social (`social.html`; on phones the bottom bar's 4th icon, 🎬, in arcade.css). The home page's chat tab shows how many are in the chat (`byGame.chat`); the Players
   tab's `#plN` count (friend requests + unread messages) is set by account.js from the `soc` field of the sync answer.
 - `chat.html`: the Global chat (rebuilt 2026-11-06; before, messages lived only in browsers and history passed peer
   to peer, so people not online together never saw each other's messages). One WebSocket to the Worker's `/chat/ws`
@@ -120,7 +120,7 @@ source in Settings → Pages should be switched to `main`.
   Screen sharing (2026-11-10): the call bar's screen button (hidden where getDisplayMedia is missing: phones and
   tablets) puts your screen in place of your camera on every link with replaceTrack (no new offer); a shared tab's
   sound is mixed with the mic (Web Audio); 'scr' {on} tells each person once their link is up, and their tile shows
-  it whole (object-fit contain) and big. Clips of gameplay are a parked idea; don't build them unasked.
+  it whole (object-fit contain) and big. Gameplay clips were built on 2026-11-10 (see Social below).
   A friend's camera shows on the ringing card before you pick up; a non-friend's doesn't (and their card has Block).
   Protocol in the comment at the top of call.js ('ring', 'ans', 'ok', 'no', 'busy', 'end', 'roster', 'join', 'jans').
   Tests: scratchpad `cdpNv.mjs` with FAKECAM=1 (fake cameras, n browsers) + rt-local accounts Tester, Noah, Lars.
@@ -129,6 +129,37 @@ source in Settings → Pages should be switched to `main`.
   player in "In the chat" has a 📹 button (`callButton`); both call `ArcadeCall.start(names, 'Global chat')`, so the
   ringing card shows "Global chat" as the call's name. Without an online account they open the sign-up popup. Labels
   turn to "Add to call" while you host a call (`callLabels`).
+- Social (2026-11-10, asked for by the owner: "like Instagram"): `social.html` + `clips.js` + the Worker's `/clips/*`
+  routes (the comment block above `clips()` in `realtime-worker/src/worker.js` lists them) and the `Clips` Durable Object
+  class (migration v5; deployed 2026-11-10). Posts are kind 'clip' (recorded on play.html, always from a game), 'video'
+  and 'photo' (players' own uploads, game optional). One object 'index' holds every post's details, likes, comments
+  (with replies and comment likes), views (one per viewer: 'a:<lower>' or a guest's device id 'd:<id>', with the share
+  of the video watched, `wf`) and follows ('u:<lower>' = { f: following, fr: followers, lk: liked }); each post's file
+  is its own object 'clip:<id>' in 1 MB pieces, served with a year-long cache. Uploading is POST /clips/new (details +
+  a small JPEG poster) then PUT /clips/v/<id>?k=<one-time key>; the file's object checks the magic bytes (WebM, MP4/MOV,
+  JPEG, PNG, GIF, WebP; a photo post must get a picture) and asks the index to `commit`. Limits: 12 MB a file, 25 posts
+  a day and 100 kept per account; past 3.5 GB in all (the free plan has 5 GB) the weakest post older than 3 days is
+  deleted (`prune`). Three reports from different accounts hide a post from feeds; `?admin` on social.html shows
+  report counts and "Admin: delete" (`/acct/admin` op 'clipdel'). Deleting an account deletes its posts; a rename moves
+  them (Account `goodbye` / `renameTo` call the index's 'purge' / 'rename'). Comments and captions shown with
+  textContent; captions go through `tidy()`, comments don't (like the chats). `?clipsroom=<name>` on social.html and
+  play.html uses a separate index ('index-test-<name>'): test there, never on the real feed.
+  social.html (hash routes): #home (stories row: people you follow and friends with posts, else suggestions; posts
+  ranked by `rank()`: the server's `hot` score (likes x4, comments x6, shares x5, views x share watched, divided by
+  (age in hours + 2)^1.4) times this player's boosts: games they've played, games whose posts they liked, people they
+  follow, fresh posts; seen posts x0.12; at most a couple from one player in a row), #reels (snap-scrolling, videos
+  only), #explore (player search from /acct/players and a grid), #create, #me / #u=<name> (grid, Reels, Saved: saved
+  is per device, `arcade-social-saved`), #c=<id> (one post with comments), #dm and #dm=<name> (an Instagram-style
+  inbox over the accounts' DMs: Primary = friends and groups, General = everyone else; groups open on players.html).
+  Media is fetched with fetch() (the server only answers the official origin, so <img src> can't be used) and kept as
+  blob URLs (`mediaUrl`, 16 kept). A view counts after 2 s of a video (or most of a short one) or 1 s of a photo.
+  clips.js on play.html: the 🎬 Clip last 30s button (or F8) saves the last 30 seconds. While a game is on screen and
+  the tab is visible, every visible game canvas is captured (captureStream into tiny hidden videos, drawn into one
+  1280x720 canvas, 960x540 on phones; HTML overlays aren't in it) and encoded with WebCodecs (VP8, 1.5 Mbit/s, a keyframe
+  each second); the game's sound is tapped (its AudioContext constructor is wrapped as soon as the frame's window
+  exists, so contexts made before that are missed) and read by an AudioWorklet inside the game's own context, resampled
+  to 48 kHz and encoded to Opus. About 36 s of encoded pieces are kept; Clip writes them to a WebM file (`muxWebm`, a
+  small EBML writer) at once. Browsers without WebCodecs get start/stop recording with MediaRecorder (up to 60 s).
 - `tos.js`: the Terms of Service pop-up, loaded by `index.html`, `play.html` and
   `chat.html`. It shows until the visitor ticks the box and agrees; agreeing is
   remembered in localStorage (`arcade-tos-agreed`, set to `TOS_VERSION`). Change
@@ -599,5 +630,5 @@ source in Settings → Pages should be switched to `main`.
   `account.js` copies those saves to the player's Arcade account when they have one (2026-11-01). A game never
   talks to the accounts server itself. When a game adds a save key, make sure `GROUPS` in `account.js` puts it
   with that game (a new game's keys otherwise land in `misc`, which still syncs). The Worker on Cloudflare runs the
-  live "on now" counter, the Global chat, the games' online rooms, Blockcraft's public server and the accounts;
-  apart from accounts it passes messages along and stores nothing. No email or other personal data is collected.
+  live "on now" counter, the Global chat, the games' online rooms, Blockcraft's public server, the accounts and
+  Social; apart from accounts, Social's posts and a few leaderboards it passes messages along and stores nothing. No email or other personal data is collected.

@@ -4,6 +4,7 @@
 
 Open `index.html` to browse the games, or turn on GitHub Pages to put the arcade online.
 The Chat tab (`chat.html`) is a global chat for everyone on the arcade; messages are kept only in each player's browser.
+The Social tab (`social.html`) is the arcade's Instagram: clip the last 30 seconds of any game with the 🎬 button (or F8), or post your own photos and videos; then scroll Reels, like, comment, follow and message other players.
 
 ## Games
 
