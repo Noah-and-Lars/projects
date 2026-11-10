@@ -27,6 +27,7 @@
 
   /* ---------- which saved entries belong to which game ---------- */
   var GROUPS = [
+    ['throttle-ridge', /^throttle-ridge\./],
     ['turn-turn-turn', /^turnturnturn\./],
     ['siege', /^siege\./],
     ['card-royale', /^cardroyale\./],

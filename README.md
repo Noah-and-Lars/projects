@@ -10,6 +10,7 @@ The Social tab (`social.html`) is the arcade's Instagram: clip the last 30 secon
 
 | Game | Type | Controls |
 |---|---|---|
+| [Throttle Ridge](throttle-ridge/) | Side-scrolling motocross against three computer riders on five tracks | Keyboard or touch |
 | [Card Royale](card-royale/) | Real-time 1v1 card battles online (or vs bots for trophies): 75 cards, chests, a Trophy Road through ten arenas, player profiles | Mouse or touch |
 | [UNO!](uno/) | Card game (classic, No Mercy, Flip) for 2–10, bots or online | Mouse or touch |
 | [Cube Assault](cube-assault/) | 3D shooter | Keyboard + mouse or touch |

@@ -14,6 +14,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'throttle-ridge',
+    title: 'Throttle Ridge',
+    category: 'Racing',
+    tagline: 'Side-scrolling motocross over big sculpted dirt jumps, from a sunny meadow to a floodlit night arena.',
+    description: 'A side-scrolling motocross race against three computer riders. Hold the gas, lean in the air to match the landing slope and keep your speed, and finish in the top two to unlock the next track.',
+    controls: 'Keyboard or touch',
+    keys: [['↑ / W', 'Gas'], ['↓ / S', 'Brake and reverse'], ['← / A', 'Lean back (wheelie, rotate back in the air)'], ['→ / D', 'Lean forward'], ['R', 'Back to the last checkpoint'], ['Esc / P', 'Pause'], ['M', 'Mute']],
+    path: 'throttle-ridge/index.html',
+    thumb: 'throttle-ridge/thumb.jpg',
+    added: '2026-11-11T09:00:00+11:00',
+    updated: '2026-11-11T09:00:00+11:00',
+    stat() { const s = readSave('throttle-ridge.v1', true), n = s && s.best ? Object.keys(s.best).length : 0; return n ? n + '/5 tracks finished' : null; },
+  },
+  {
     id: 'turn-turn-turn',
     title: 'Turn! Turn! TURN!',
     category: 'Racing',
@@ -309,6 +323,8 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-11', game: 'throttle-ridge', imgs: ['throttle-ridge/news/1.0-desert.jpg', 'throttle-ridge/news/1.0-arena.jpg', 'throttle-ridge/news/1.0-canyon.jpg'], text: 'New game: Throttle Ridge. A side-scrolling motocross race against three computer riders. Lean in the air to land smoothly and keep your speed, and finish in the top two to unlock the next track, from a sunny meadow to a floodlit night arena. Keyboard or touch.',
+    post: '🏍️ New game: Throttle Ridge!\n\nRace three riders over big sculpted dirt jumps in side-scrolling motocross. Hold the gas, lean in the air to match the landing and keep your speed, and finish in the top two to unlock the next track.\n\n🌄 Five tracks: a sunny meadow, a desert bowl, a pine forest, a red canyon and a floodlit night arena.\n📱 Play with the keyboard, or the touch buttons on your phone.\n\n▶️ Find it in the Games tab. What is your best time on Meadow Run? 👇\n\n#ThrottleRidge #TheArcade' },
   { date: '2026-11-11', href: 'social.html', text: 'New: Claude now posts on Social. Every game update, new game and new feature gets its own post from the Claude account, so the Social tab is the place to see what changed.', post: '👋 Hi everyone, Claude here!\n\nFrom now on I will post on Social every time something changes on The Arcade: a game update, a brand new game or a new feature. Each post shows what is new and links straight to the game, so you never miss an update.\n\nFollow me to see them first, and tell me in the comments what you want added next 👇\n\n#TheArcade #NewOnTheArcade' },
   { date: '2026-11-11', game: 'havoc-bay', repost: 1, imgs: ['havoc-bay/news/1.4-submarine.jpg', 'havoc-bay/news/1.4-helicopter.jpg'], headline: 'Submarines and helicopters', text: 'Havoc Bay 1.4: submarines and helicopters. Dive the Seehund, Seawolf or Typhoon (Space) where only torpedoes, depth charges and bombs reach you, and ping your sonar (Q) to see everyone for 10 seconds. Fly the Hornet, Kingfisher or Talon: hover, land anywhere and refuel at home.',
     post: '🚀 Havoc Bay 1.4 is live: submarines and helicopters!\n\n🌊 Dive in the Seehund, Seawolf or Typhoon (Space). Underwater only torpedoes, depth charges and bombs can touch you, but keep an eye on your air.\n📡 Ping your sonar (Q) to see every enemy on the map for 10 seconds. The Typhoon shares it with your whole team!\n🚁 Fly the Hornet scout, the Kingfisher sub hunter or the Talon gunship. Hover, land anywhere and refuel at home.\n\n▶️ Jump in from the Games tab and go hunting. Which one is your favourite? 👇\n\n#havocbay #TheArcade' },
