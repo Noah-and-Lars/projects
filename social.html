@@ -528,9 +528,35 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { flu
 
 /* ---------- media: fetched whole (seeking works everywhere, and the server only answers the official site) ---------- */
 const blobs = new Map();
+// Clips recorded before 2026-11-11 wrote every WebM size field in 8 bytes, which Safari won't play: rewrite them short.
+const EBML_MASTER = new Set([0x1A45DFA3, 0x18538067, 0x1F43B675, 0x1654AE6B, 0xAE, 0x1549A966, 0xE0, 0xE1, 0x1C53BB6B, 0xBB, 0xB7, 0xA0, 0x114D9B74, 0x4DBB, 0x1254C367, 0x7373, 0x63C0]);
+async function fixWebm(blob) {
+  if (!/webm/.test(blob.type)) return blob;
+  const d = new Uint8Array(await blob.arrayBuffer());
+  if (d[0] !== 0x1a || d[1] !== 0x45 || d[4] !== 0x01) return blob; // not one of ours with 8-byte sizes
+  try {
+    const out = [];
+    const vint = (p, keep) => { let l = 1; while (l <= 8 && !(d[p] & (0x80 >> (l - 1)))) l++; let v = keep ? d[p] : d[p] & ((0x80 >> (l - 1)) - 1); for (let i = 1; i < l; i++) v = v * 256 + d[p + i]; return [v, l]; };
+    const size = n => { let l = 1; while (n >= 2 ** (7 * l) - 1) l++; const b = new Uint8Array(l); for (let i = l - 1; i >= 0; i--) { b[i] = n % 256; n = Math.floor(n / 256); } b[0] |= 0x80 >> (l - 1); return b; };
+    const walk = (p, end) => { // returns the rewritten parts of [p, end) as a list of Uint8Arrays and their total length
+      const parts = []; let len = 0;
+      while (p < end) {
+        const [id, il] = vint(p, true), [s, sl] = vint(p + il), body = p + il + sl;
+        if (body + s > end) throw new Error('bad size');
+        const head = d.subarray(p, p + il);
+        let inner, n;
+        if (EBML_MASTER.has(id)) [inner, n] = walk(body, body + s); else { inner = [d.subarray(body, body + s)]; n = s; }
+        const sz = size(n); parts.push(head, sz, ...inner); len += head.length + sz.length + n; p = body + s;
+      }
+      return [parts, len];
+    };
+    out.push(...walk(0, d.length)[0]);
+    return new Blob(out, { type: 'video/webm' });
+  } catch (e) { return blob; }
+}
 function mediaUrl(id) {
   if (blobs.has(id)) { const p = blobs.get(id); blobs.delete(id); blobs.set(id, p); return p; }
-  const p = fetch(API() + 'v/' + id).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); }).then(b => URL.createObjectURL(b));
+  const p = fetch(API() + 'v/' + id).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); }).then(fixWebm).then(b => URL.createObjectURL(b));
   p.catch(() => blobs.delete(id));
   blobs.set(id, p);
   while (blobs.size > 16) { const [old, op] = blobs.entries().next().value; blobs.delete(old); op.then(u => { if (!document.querySelector('[src="' + u + '"]')) URL.revokeObjectURL(u); }, () => {}); }
@@ -567,6 +593,16 @@ function activate(box) {
     if (n && n._clip && n._clip.k !== 'photo') mediaUrl(n._clip.id);
   }, () => { box.classList.remove('loading'); box.querySelector('.load').textContent = 'Couldn’t load this'; box.classList.add('loading'); });
 }
+// a playing video stuck without data for ~1.2 s (Safari, after looping some clips) is loaded again from its blob
+let stuckT = -1, stuckN = 0;
+setInterval(() => {
+  const v = playing;
+  if (!v || v.paused || !v.src || document.hidden) { stuckN = 0; return; }
+  if (Math.abs(v.currentTime - stuckT) < 0.01 && v.readyState < 3) {
+    if (++stuckN >= 3) { stuckN = 0; const u = v.src; v.removeAttribute('src'); v.load(); v.src = u; v.play().catch(() => {}); }
+  } else stuckN = 0;
+  stuckT = v.currentTime;
+}, 400);
 function paintSnd(box) { const s = box.querySelector('.snd'); if (s) s.innerHTML = svg(muted ? IC.muted : IC.sound); }
 
 /* ---------- the picture or video of a post ---------- */
@@ -578,7 +614,9 @@ function mediaBox(c, onLike) {
   box.append(bg, pst);
   if (c.k === 'photo') { const img = el('img', 'pic'); img.alt = c.t || 'Photo by ' + c.by; box.append(img); }
   else {
-    const v = el('video'); v.loop = true; v.playsInline = true; v.muted = true; v.preload = 'none'; v.setAttribute('playsinline', '');
+    // looped by hand: Safari's own loop can hang at the end or the start of a recorded clip
+    const v = el('video'); v.playsInline = true; v.muted = true; v.preload = 'none'; v.setAttribute('playsinline', '');
+    v.addEventListener('ended', () => { v.currentTime = 0; if (playing === v) v.play().catch(() => {}); });
     const snd = el('button', 'snd'); snd.type = 'button'; snd.setAttribute('aria-label', 'Sound on or off');
     const prog = el('div', 'prog'), pi = el('i'), paused = el('div', 'paused'), load = el('div', 'load', 'Loading…');
     paused.innerHTML = svg(IC.play, ' style="fill:#fffd;stroke:none"'); prog.append(pi);
