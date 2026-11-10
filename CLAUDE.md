@@ -625,6 +625,26 @@ source in Settings → Pages should be switched to `main`.
 3. Add a row to the games table in `README.md`.
 4. Test it in a browser, including a phone-sized viewport.
 
+## Claude posts every update to Social (the owner's rule, 2026-11-11)
+
+Every game update, new game or new site feature gets a post on Social from the **Claude** account, shown to
+everyone. It is automatic: `.github/workflows/claude-post.yml` runs on every push to the Pages branch that changes
+`games.js`, and `tools/claude-post/post.mjs` posts each `NEWS` entry that wasn't there before (at most 5 a push,
+oldest first). So the rule for whoever ships: **every update, game or feature gets its own new `NEWS` line** (that is
+what triggers the post). Quiet fixes that the owner wants kept silent get no NEWS line and so no post.
+- The caption is written from the NEWS text ("New game: X. ..." → new-game post, "New: ..." → feature post,
+  "Title 1.2: ..." → update post). For a better post, add `post: '...'` to the NEWS entry with the full caption
+  (up to 700 characters, `\n` for line breaks, a few emoji and hashtags are fine; no secret test names, as in
+  patch notes). Write it like a friendly announcement: what's new and why it's fun, then a call to play.
+- The picture is drawn by `tools/claude-post/card.py` (Pillow) from the game's `thumb.jpg`/`.png` (an SVG thumb or
+  no game uses `og.png`) with a NEW GAME / UPDATE / NEW FEATURE label. Try it locally:
+  `DRY=1 node tools/claude-post/post.mjs <old games.js> games.js` prints the captions and saves the pictures.
+- Server: `POST /clips/bot` on the Worker, checked against the `BOT_KEY` Worker secret (the same value is the repo's
+  `ARCADE_BOT_KEY` Actions secret; to change it, set both). It posts a photo as 'Claude' (`BOT_NAME`); each entry's
+  key is remembered ('bk:<key>' in the index) so it never posts twice. Bot posts (`bot: 1`) aren't pruned for space;
+  past 100 the oldest Claude post goes. Test with Actions → "Claude posts updates to Social" → Run workflow, with a
+  `before` commit and a `room` (posts go to `?clipsroom=<room>` only).
+
 ## Conventions
 
   1.0.16 (after the 2026-11-05 outage, when the Worker hit the free plan's Durable Objects limit): `snSendStates` sends your

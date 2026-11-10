@@ -1101,7 +1101,24 @@ async function whoami(env, auth) {
   const w = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + nm.toLowerCase())).fetch(new Request('https://acct/whoami', { headers: { authorization: auth } }));
   return w.ok ? ((await w.json().catch(() => ({}))).name || '') : '';
 }
+// The site's own announcer: POST /clips/bot { key, g, t, img, poster, w, h } with header x-bot-key = the BOT_KEY secret.
+// Called by the repo's GitHub Action when NEWS gets a new entry; posts a photo as BOT_NAME. `key` makes it post once.
+const BOT_NAME = 'Claude', BOT_CAP = 700;
+async function clipsBot(req, env) {
+  const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
+  if (!env.BOT_KEY || !same(req.headers.get('x-bot-key') || '', env.BOT_KEY)) return out({ error: 'auth' }, 401);
+  let b; try { b = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
+  const img = Uint8Array.from(atob(String(b.img || '')), c => c.charCodeAt(0));
+  if (!img.length || img.length > CLIP_MAX) return out({ error: 'bad' }, 400);
+  const room = String(b.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
+  const r = await clipIndex(env, room).fetch(new Request('https://clips/botnew', { method: 'POST', body: JSON.stringify({ me: BOT_NAME, key: b.key, g: b.g, t: b.t, w: b.w, h: b.h, sz: img.length, poster: b.poster, int: 1 }) }));
+  const q = await r.json();
+  if (!q.k) return out(q, r.status);
+  const put = await clipMedia(env, q.id).fetch(new Request('https://clips/media-put?' + new URLSearchParams({ id: q.id, k: q.k, r: room }), { method: 'PUT', body: img }));
+  return out(await put.json(), put.status);
+}
 async function clips(req, env, url) {
+  if (url.pathname === '/clips/bot' && req.method === 'POST') return clipsBot(req, env);
   const origin = req.headers.get('Origin') || '';
   if (!ACCT_ORIGINS.includes(origin)) return new Response('only available on the official website', { status: 403 });
   const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type, authorization', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
@@ -1314,6 +1331,20 @@ export class Clips extends DurableObject {
       return j({ ok: 1, sh: m ? m.sh : 0 });
     }
     if (!NAME_RE.test(me)) return j({ error: 'auth' }, 401);
+    if (route === 'botnew' && b.int) { // only from clipsBot (the route isn't reachable from a browser)
+      const bk = 'bk:' + String(b.key || '').slice(0, 120);
+      if (bk === 'bk:') return j({ error: 'bad' }, 400);
+      if (await S.get(bk)) return j({ dup: 1 });
+      const p = String(b.poster || '');
+      if ((b.g && !GAME_RE.test(b.g)) || !/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(p) || p.length > CLIP_POSTER) return j({ error: 'bad' }, 400);
+      const mine = [...this.m.values()].filter(m => m.by.toLowerCase() === mk).sort((a, c) => a.at - c.at);
+      while (mine.length >= CLIP_PER_USER) await this.drop(mine.shift().id);
+      let id; do { id = rnd(5); } while (this.m.has(id));
+      const m = { id, by: me, k: 'photo', g: b.g || '', t: String(b.t || '').replace(/\r/g, '').replace(/[^\S\n]+/g, ' ').trim().slice(0, BOT_CAP), at: now, dur: 0, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [], bot: 1 };
+      const k = rnd(16);
+      await S.put({ ['q:' + id]: { k, m, p, at: now }, [bk]: now });
+      return j({ id, k });
+    }
     if (route === 'new') {
       const u = await this.user(me), day = new Date(now).toISOString().slice(0, 10);
       if (u.day !== day) { u.day = day; u.k = 0; }
@@ -1414,7 +1445,7 @@ export class Clips extends DurableObject {
   async prune(now) {
     let total = 0; for (const m of this.m.values()) total += m.sz || 0;
     while (total > CLIP_STORE) {
-      const old = [...this.m.values()].filter(m => now - m.at > 3 * 864e5).sort((a, b) => this.hot(a, now) - this.hot(b, now))[0];
+      const old = [...this.m.values()].filter(m => !m.bot && now - m.at > 3 * 864e5).sort((a, b) => this.hot(a, now) - this.hot(b, now))[0];
       if (!old) break;
       total -= old.sz || 0; await this.drop(old.id);
     }

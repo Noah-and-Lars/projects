@@ -1,0 +1,32 @@
+name: Claude posts updates to Social
+on:
+  push:
+    branches: [claude/jimmyscafe-projects-access-9mbcw3]
+    paths: [games.js]
+  workflow_dispatch:
+    inputs:
+      before:
+        description: Compare against this commit (posts the NEWS entries added since)
+        required: true
+      room:
+        description: Test room (clipsroom); leave empty for the real feed
+        required: false
+concurrency: claude-post
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Old games.js
+        env:
+          BEFORE: ${{ github.event.before || inputs.before }}
+        run: |
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then cp games.js /tmp/old.js; exit 0; fi
+          git fetch --depth=1 origin "$BEFORE"
+          git show "$BEFORE:games.js" > /tmp/old.js
+      - run: pip install --quiet pillow
+      - name: Post
+        env:
+          BOT_KEY: ${{ secrets.ARCADE_BOT_KEY }}
+          ROOM: ${{ inputs.room }}
+        run: node tools/claude-post/post.mjs /tmp/old.js games.js
