@@ -452,8 +452,8 @@ kbd {
 .mob-phone .top .tab:nth-child(1)::before { content: "🎮"; }
 .mob-phone .top .tab:nth-child(2)::before { content: "💬"; }
 .mob-phone .top .tab:nth-child(3)::before { content: "👥"; }
-.mob-phone .top .tab:nth-child(4)::before { content: "🎬"; }
-.mob-phone .top .tab:nth-child(5)::before { content: "🛟"; }
+.mob-phone .top .tab[href="social.html"]::before { content: "🎬"; }
+.mob-phone .top .tab[href="support.html"]::before { content: "🛟"; } /* by address: Social is closed for now (2026-11-11) */
 .mob-phone .top .tab .wide { display: none; } .mob-phone .top .tab .narrow { display: inline; }
 .mob-phone .top .tab-n { position: absolute; top: 2px; left: calc(50% + 8px); }
 .mob-phone body:not(.player) { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
