@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+// 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
+// not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
+(function () {
+  var u = navigator.userAgent || '', c = document.documentElement.classList, f = '';
+  try { f = (/[?&]mob=(phone|tab|off)/.exec(location.search) || [])[1] || sessionStorage.getItem('arcade-mob') || ''; if (f) sessionStorage.setItem('arcade-mob', f); } catch (e) {}
+  var ipad = /iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|webOS|Android.+Mobile|Mobile.+Firefox/.test(u);
+  var tab = !phone && (ipad || /Android|Tablet|Silk|Kindle|PlayBook/.test(u));
+  if (f) { phone = f === 'phone'; tab = f === 'tab'; }
+  if (phone || tab) { c.add('mob'); c.add(phone ? 'mob-phone' : 'mob-tab'); }
+  var vh = function () { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
+  vh(); window.addEventListener('resize', vh);
+  // older browsers (iOS before 14) don't have replaceChildren, which the home page uses to list the games
+  if (window.Element && !Element.prototype.replaceChildren) Element.prototype.replaceChildren = function () { while (this.firstChild) this.removeChild(this.firstChild); for (var i = 0; i < arguments.length; i++) { var n = arguments[i]; this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n); } };
+})();
+</script>
+<title>Support · The Arcade</title>
+<meta name="description" content="Found a bug or got an idea for The Arcade? Send feedback here.">
+<meta name="theme-color" content="#0f0d1f">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Arcade">
+<link rel="stylesheet" href="arcade.css?v=16">
+<style>
+.sup { max-width: 760px; margin: 28px auto 0; }
+.sup h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.01em; }
+.sup-lead { margin: 0 0 22px; color: var(--muted); font-size: 15px; }
+.feedback { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; padding: 20px 22px; border-radius: 18px;
+  background: linear-gradient(135deg, #6c5ce733, #ec489926); border: 1px solid #ffffff1a; }
+.feedback .sec-h { margin: 0 0 6px; }
+.feedback p { margin: 0; color: var(--muted, #aab); font-size: 14px; line-height: 1.5; max-width: 560px; }
+.fb-btn { flex: none; padding: 12px 20px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 800; text-decoration: none; }
+.fb-btn:hover { filter: brightness(1.12); }
+.mob .sup { margin-top: 18px; }
+.mob .sup h1 { font-size: 26px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">The Arcade</a>
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab" href="index.html">Games</a>
+    <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
+    <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
+    <a class="tab" href="social.html">Social</a>
+    <a class="tab on" href="support.html" aria-current="page">Support</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="sup">
+    <h1>Support</h1>
+    <p class="sup-lead">Something not working, or something you want to see on The Arcade? Let us know.</p>
+
+    <section class="section feedback" aria-labelledby="fbH">
+      <div class="fb-text">
+        <h2 class="sec-h" id="fbH">Found a bug? Got an idea?</h2>
+        <p>Tell us which game, what happened and what device you were on, or what you want added next. Every answer gets read.</p>
+      </div>
+      <a class="fb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSeOQOSz6bS6-2aBxjDZSSdxpBYECQlmbnOWhmeAk34R3wU-7g/viewform" target="_blank" rel="noopener noreferrer">Send feedback ↗</a>
+    </section>
+  </div>
+</main>
+
+<footer class="foot">
+  <p>The Arcade</p>
+</footer>
+
+<script src="games.js?v=189"></script>
+<script src="account.js?v=15"></script>
+<script src="call.js?v=6"></script>
+<script>
+// Support (2026-11-11): the feedback form (a Google Form), moved here from the bottom of the home page.
+ArcadeOnline.start('support');
+</script>
+<script src="tos.js?v=9"></script>
+</body>
+</html>

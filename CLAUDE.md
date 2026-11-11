@@ -16,8 +16,10 @@ source in Settings → Pages should be switched to `main`.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
-- The header of the home, chat, Players and Social pages has four tabs: Games (`index.html`), Global chat (`chat.html`),
-  Players (`players.html`) and Social (`social.html`; on phones the bottom bar's 4th icon, 🎬, in arcade.css). The home page's chat tab shows how many are in the chat (`byGame.chat`); the Players
+- The header of the home, chat, Players, Social and Support pages has five tabs: Games (`index.html`), Global chat (`chat.html`),
+  Players (`players.html`), Social (`social.html`; on phones the bottom bar's 4th icon, 🎬, in arcade.css) and Support
+  (`support.html`, 🛟 on phones; added 2026-11-11 at the owner's request). Support holds the bug and feature feedback
+  form (a Google Form link), which used to sit at the bottom of the home page. The home page's chat tab shows how many are in the chat (`byGame.chat`); the Players
   tab's `#plN` count (friend requests + unread messages) is set by account.js from the `soc` field of the sync answer.
 - `chat.html`: the Global chat (rebuilt 2026-11-06; before, messages lived only in browsers and history passed peer
   to peer, so people not online together never saw each other's messages). One WebSocket to the Worker's `/chat/ws`
