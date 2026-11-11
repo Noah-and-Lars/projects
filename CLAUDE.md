@@ -132,6 +132,16 @@ source in Settings → Pages should be switched to `main`.
   player in "In the chat" has a 📹 button (`callButton`); both call `ArcadeCall.start(names, 'Global chat')`, so the
   ringing card shows "Global chat" as the call's name. Without an online account they open the sign-up popup. Labels
   turn to "Add to call" while you host a call (`callLabels`).
+- Admin accounts (2026-11-11, the owner's request): `ADMIN_ACCOUNTS = ['noah']` in worker.js (and account.js). A signed-in
+  admin account uses `/acct/admin` without the password (whoami on its token); others still need the admin password.
+  Ops: info, delete, chatdel, clipdel, avatardel, and new ban / unban / rename {name, to}. A ban (`a.banned`) clears every
+  session, blocks login/recover/everything (403 'banned'), closes sockets and takes the name off the Players list; posts
+  stay until deleted. Admin rename = renameTo() without the weekly limit. Admin accounts can't be banned, renamed or
+  deleted. UI: account panel "🛡️ Admin tools" (openAdmin, also ?admin), and Social shows Admin: delete on posts and
+  remove picture / rename / unban / ban on profiles for admins.
+  Renamed accounts: the password key was stretched with the old name, so the account keeps `kn` (that name), `check`
+  returns it, and account.js `keyName()` uses it for login, password change and delete; a new password or a recovery
+  re-keys on the current name and drops `kn`. (Before this, a renamed player couldn't log in with a password again.)
 - Social words (2026-11-11): captions and group names are stored as written (no server word filter; usernames still are
   filtered). The account panel's Settings has "Filter swear words on Social" (`arcade-swear-filter` = '1', synced in the
   account's misc group); social.html's `fw()` then stars words in captions, comments and messages. Captions starred

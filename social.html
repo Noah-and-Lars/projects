@@ -377,7 +377,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 </main>
 
 <script src="games.js?v=194"></script>
-<script src="account.js?v=16"></script>
+<script src="account.js?v=17"></script>
 <script src="call.js?v=6"></script>
 <script>
 /* Social (2026-11-10, Instagram style): clips recorded in games (clips.js on play.html, the last 30 seconds), and
@@ -389,7 +389,10 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
    screen for 1 s, once per viewer (the account, or this device for guests). */
 const $ = id => document.getElementById(id);
 const ROOM = ((/[?&]clipsroom=([a-z0-9-]+)/i.exec(location.search) || [])[1] || '').toLowerCase(); // tests: a separate Social
-const ADMIN = /[?&]admin\b/.test(location.search);
+const ADMIN_Q = /[?&]admin\b/.test(location.search);
+// 2026-11-11: the admin tools show with ?admin (password) or for a signed-in admin account (no password)
+const owner = () => { try { return !!(window.ArcadeAccount && ArcadeAccount.isAdmin && ArcadeAccount.isAdmin()); } catch (e) { return false; } };
+const isAdm = () => ADMIN_Q || owner();
 const API = () => ArcadeAccount.server + '/clips/';
 const me = () => ArcadeAccount.kind() === 'online' ? ArcadeAccount.name() : '';
 const lc = s => String(s || '').toLowerCase();
@@ -688,7 +691,7 @@ function postCard(c, opt) {
   if (!opt.inline) a.append(all);
   a.append(when);
   if (g) { const pl = el('a', 'play-link', '▶ Play ' + g.title); pl.href = 'play.html?game=' + encodeURIComponent(c.g); a.append(pl); }
-  if (ADMIN && c.rp) a.append(el('p', 'note', '⚑ Reported by ' + c.rp + (c.rp >= 3 ? ' (hidden from feeds)' : '')));
+  if (isAdm() && c.rp) a.append(el('p', 'note', '⚑ Reported by ' + c.rp + (c.rp >= 3 ? ' (hidden from feeds)' : '')));
   a._paint = () => {
     lb.classList.toggle('on', !!c.me); vb.classList.toggle('on', isSaved(c.id));
     lk.replaceWith(lk = likesLine(c));
@@ -813,18 +816,25 @@ function menu(btn, c, node) {
     if (!confirm('Delete this post for good?')) return;
     const r = await post('del', { id: c.id }); if (r.status === 200) gone(node); else if (r.status !== 401) failed(r);
   }, true);
-  if (ADMIN) add('Admin: delete', () => adminDelete(c, node), true);
+  if (isAdm()) add('Admin: delete', () => adminDelete(c, node), true);
   const rc = btn.getBoundingClientRect();
   m.style.top = (rc.bottom + scrollY + 4) + 'px'; m.style.left = Math.max(8, Math.min(innerWidth - 216, rc.right + scrollX - 200)) + 'px';
   document.body.append(m); openMenuEl = m;
 }
 function gone(node) { node.style.transition = 'opacity .3s'; node.style.opacity = 0; setTimeout(() => node.remove(), 300); }
 let adminPw = '';
+// the owner's request: as an admin account no password is asked; otherwise the admin password (once per page)
+async function adminCall(body) {
+  if (!owner() && !adminPw) adminPw = prompt('Admin password') || '';
+  if (!owner() && !adminPw) return { status: 0, error: 'cancel' };
+  const r = await acct('admin', { method: 'POST', auth: owner(), body: Object.assign({ pw: owner() ? '' : adminPw, r: ROOM }, body) });
+  if (r.status === 401) adminPw = '';
+  return r;
+}
 async function adminDelete(c, node) {
-  if (!adminPw) adminPw = prompt('Admin password') || '';
-  if (!adminPw || !confirm('Delete this post by ' + c.by + ' for everyone?')) return;
-  const r = await acct('admin', { method: 'POST', body: { pw: adminPw, op: 'clipdel', id: c.id, r: ROOM } });
-  if (r.status === 200) gone(node); else { adminPw = ''; alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').'); }
+  if (!confirm('Delete this post by ' + c.by + ' for everyone?')) return;
+  const r = await adminCall({ op: 'clipdel', id: c.id });
+  if (r.status === 200) gone(node); else if (r.error !== 'cancel') alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').');
 }
 
 /* ---------- send a post to people (Instagram's paper-plane button) ----------
@@ -1131,6 +1141,7 @@ let profTab = 'posts';
 async function showUser(name) {
   const my = ++gen; setNav(lc(name) === lc(me()) ? 'me' : ''); loading('Loading ' + name + '…');
   const r = await get('user', { name });
+  const r0 = r; // (the admin tools' own answers are also called r)
   if (my !== gen) return;
   if (r.status !== 200) { view.replaceChildren(r.status === 400 ? empty('No such player', 'Check the name and try again.') : offline(() => showUser(name))); return; }
   const isMe = lc(r.n) === lc(me());
@@ -1153,7 +1164,14 @@ async function showUser(name) {
   stat(r.following, ' following', () => peopleSheet('Following', r.fg || []));
   stat(r.views, r.views === 1 ? ' view' : ' views');
   const sc = el('a', 'play-link', 'Best scores in every game →'); sc.href = 'players.html#p=' + encodeURIComponent(r.n);
-  if (ADMIN && !isMe) { const ab = el('button', 'btn grey', 'Admin: remove picture'); ab.type = 'button'; ab.onclick = async () => { if (!adminPw) adminPw = prompt('Admin password') || ''; if (!adminPw) return; const x = await acct('admin', { method: 'POST', body: { pw: adminPw, op: 'avatardel', name: r.n, r: ROOM } }); if (x.status === 200) { avCache.set(lc(r.n), ''); saveAv(); document.querySelectorAll('.av[data-n="' + lc(r.n) + '"]').forEach(sp => paintAv(sp, '')); } else { adminPw = ''; alert(x.error === 'wrong' ? 'Wrong password.' : 'Couldn’t remove it.'); } }; nmrow.append(ab); }
+  if (isAdm() && !isMe) { // the admin tools on a profile
+    const tool = (label, fn, red) => { const b = el('button', 'btn grey', label); b.type = 'button'; if (red) b.style.color = '#ff8a80'; b.onclick = fn; nmrow.append(b); };
+    const say = (r, ok) => { if (r.status === 200) { alert(ok); route(); } else if (r.error !== 'cancel') alert(r.error === 'wrong' ? 'Wrong password.' : r.error === 'protected' ? 'Admin accounts can’t be changed here.' : r.error === 'taken' ? 'That name is taken.' : r.error === 'reserved' || r.error === 'rude' || r.error === 'format' ? 'That name isn’t allowed.' : 'Couldn’t do that (' + (r.error || r.status) + ').'); };
+    tool('Admin: remove picture', async () => { const r = await adminCall({ op: 'avatardel', name: r0.n }); if (r.status === 200) { avCache.set(lc(r0.n), ''); saveAv(); document.querySelectorAll('.av[data-n="' + lc(r0.n) + '"]').forEach(sp => paintAv(sp, '')); } else say(r); });
+    tool('Admin: rename', async () => { const to = (prompt('New username for ' + r0.n + ' (they log in with it, same password)') || '').trim(); if (!to) return; const r = await adminCall({ op: 'rename', name: r0.n, to }); say(r, r0.n + ' is now ' + to + '.'); if (r.status === 200) location.hash = '#u=' + encodeURIComponent(to); });
+    tool('Admin: unban', async () => { say(await adminCall({ op: 'unban', name: r0.n }), r0.n + ' can log in again.'); });
+    tool('Admin: ban', async () => { if (!confirm('Ban ' + r0.n + '? They are signed out everywhere, can’t log in, and leave the Players list. Their posts stay until you delete them.')) return; say(await adminCall({ op: 'ban', name: r0.n }), r0.n + ' is banned.'); }, true);
+  }
   info.append(nmrow, st);
   if (r.bio) { const bio = el('p', 'bio'); bio.append(...capNodes({ t: r.bio, bot: lc(r.n) === 'claude' ? 1 : 0 })); info.append(bio); } // 2026-11-11: a profile description (only Claude's, set by the site)
   info.append(sc);
