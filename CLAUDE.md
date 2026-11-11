@@ -139,7 +139,7 @@ source in Settings → Pages should be switched to `main`.
   player in "In the chat" has a 📹 button (`callButton`); both call `ArcadeCall.start(names, 'Global chat')`, so the
   ringing card shows "Global chat" as the call's name. Without an online account they open the sign-up popup. Labels
   turn to "Add to call" while you host a call (`callLabels`).
-- Admin accounts (2026-11-11, the owner's request): `ADMIN_ACCOUNTS = ['noah']` in worker.js (and account.js). A signed-in
+- Admin accounts (2026-11-11, the owner's request; lars and Claude added 2026-11-12): `ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']` in worker.js (and account.js). A signed-in
   admin account uses `/acct/admin` without the password (whoami on its token); others still need the admin password.
   Ops: info, delete, chatdel, clipdel, avatardel, and new ban / unban / rename {name, to}. A ban (`a.banned`) clears every
   session, blocks login/recover/everything (403 'banned'), closes sockets and takes the name off the Players list; posts

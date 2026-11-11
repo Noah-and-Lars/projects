@@ -203,7 +203,7 @@ async function accounts(req, env, url) {
 // the owner's tools: the password is checked (and wrong tries counted) by one guard object, then the account's own
 // object is asked through a header only this Worker ever sets. Since 2026-11-11 a signed-in admin account (ADMIN_ACCOUNTS)
 // needs no password, and can also ban, unban and rename accounts.
-const ADMIN_ACCOUNTS = ['noah'];
+const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
   if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny'].includes(op)) return out({ error: 'bad' }, 400);
