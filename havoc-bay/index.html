@@ -421,6 +421,15 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.4.2 <small>Helicopters fly for real, heavier planes</small></h3>
+    <ul>
+      <li><b>Helicopters fly like real ones:</b> they turn to face where you look, and you tip the nose with the mouse: look down to lean forward and fly forward (the further down, the faster), look up to lean back and fly backward. <b>W</b> and <b>S</b> climb and descend (Space and Shift still work), A and D slide sideways. W lifts off.</li>
+      <li>Fixed: helicopters showed PULL UP when you looked down while climbing. It now goes by how fast you are really dropping.</li>
+      <li>Helicopters can no longer look straight up.</li>
+      <li><b>Helicopter buff:</b> a new heavy machine gun that hits harder and does real damage to ships and turrets, stronger, faster Talon rockets, more top speed (Hornet 66, Kingfisher 56, Talon 58), faster climbing, quicker acceleration, more health, and they turn much faster than planes.</li>
+      <li><b>Planes are heavier to fly:</b> turning and pulling up both get slower the faster you go, pulling up and diving is slower than turning, climbs and dives stop at about 69 degrees (no more flips), and hard turns cost speed.</li>
+      <li>New battle and room channels, so 1.4.2 players only meet other 1.4.2 players.</li>
+    </ul>
     <h3>v1.4.1 <small>Controllers and TV remotes</small></h3>
     <ul>
       <li><b>Play with a controller</b> (laid out like a PlayStation DualShock 4; Xbox pads work the same way): left stick moves and steers, right stick looks and aims, <b>R2</b> fires, <b>L2</b> secondary weapon (torpedo or bomb), <b>R1</b> missiles, <b>L1</b> sprint, boost or descend, <b>✕</b> jump, climb or dive, <b>□</b> use (hold to bail out), <b>△</b> deploy, <b>○</b> camera, <b>R3</b> zoom, <b>D-pad ↑</b> sonar ping, <b>↓</b> map, <b>←/→</b> weapons, <b>Options</b> pause, <b>touchpad</b> or <b>Share</b> scoreboard.</li>
@@ -699,7 +708,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.4.1';
+const VERSION = '1.4.2';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -1588,17 +1597,20 @@ const PLANE_TYPES = {
 PLANE_TYPES.dual = { name: 'Dual Gunner', icon: '🛩️', cost: 200, hp: 1200, min: 42, max: 96, turn: 1.15, r: 6.5, guns: [[1.9, -0.2, 2.4], [-1.9, -0.2, 2.4]], bombs: 0, missiles: 0,
   gunners: [[0, 1.75, -2.0], [0, -1.05, -1.2]], cam: 22, kill: 85, sound: 'plane', desc: 'Two forward guns, plus a gunner on top and one underneath who shoot at any plane in range.' }; // 1.2
 const PLANE_ORDER = ['fighter', 'jet', 'bomber', 'dual'];
+// 1.4.2: plane handling (players asked for heavier planes): overall turn, pitch as a share of it, the steepest climb or
+// dive (radians, ~69 degrees), and how much speed a turn costs
+const PLANE_TURN = 0.9, PLANE_PITCH = 0.7, PLANE_PMAX = 1.2, PLANE_BLEED = 0.22;
 // 1.4: helicopters. They hover: the mouse turns and aims the nose gun, W/S fly forward and back, A/D sideways,
 // Space climbs and Shift drops. They set down on any flat ground, roof or deck (gently), and landed on your own
 // harbor, an island of yours or your carrier they refuel, rearm and repair like a parked plane. max: top speed,
 // climb: metres a second up, sonar: how far they find dived submarines, bombW: what F drops or fires.
 Object.assign(PLANE_TYPES, {
-  hornet: { name: 'Hornet', icon: '🚁', cost: 150, hp: 600, min: 0, max: 52, turn: 1.7, r: 5.5, guns: [[1.1, -0.75, 2.6], [-1.1, -0.75, 2.6]], bombs: 0, missiles: 0, cam: 17, kill: 55, sound: 'plane',
-    heli: true, climb: 15, sonar: 220, desc: 'Scout helicopter. Hovers, twin nose guns, and its sonar finds diving subs within 220 m.' },
-  kingfisher: { name: 'Kingfisher', icon: '🚁', cost: 350, hp: 1100, min: 0, max: 44, turn: 1.3, r: 6.5, guns: [[0, -1.35, 3.8]], bombs: 4, bombW: 'dcharge', bombName: 'Depth charges', rearmT: 12, missiles: 0, cam: 20, kill: 80, sound: 'plane',
-    heli: true, climb: 12, sonar: 380, desc: 'Sub hunter. Nose gun, 4 depth charges (F) and sonar that finds diving subs within 380 m.' },
-  talon: { name: 'Talon', icon: '🚁', cost: 550, hp: 1500, min: 0, max: 46, turn: 1.3, r: 6.5, guns: [[0, -1.3, 5.0]], bombs: 12, bombW: 'rocket', bombName: 'Rockets', rearmT: 3.5, missiles: 0, cam: 20, kill: 110, sound: 'plane',
-    heli: true, climb: 12, sonar: 0, desc: 'Gunship. Nose gun and 12 rockets (F) for ships and turrets. No sonar.' },
+  hornet: { name: 'Hornet', icon: '🚁', cost: 150, hp: 700, min: 0, max: 66, turn: 2.5, r: 5.5, guns: [[1.1, -0.75, 2.6], [-1.1, -0.75, 2.6]], bombs: 0, missiles: 0, cam: 17, kill: 55, sound: 'plane',
+    heli: true, climb: 18, sonar: 220, desc: 'Scout helicopter. Hovers, twin nose guns, and its sonar finds diving subs within 220 m.' },
+  kingfisher: { name: 'Kingfisher', icon: '🚁', cost: 350, hp: 1250, min: 0, max: 56, turn: 2.1, r: 6.5, guns: [[0, -1.35, 3.8]], bombs: 4, bombW: 'dcharge', bombName: 'Depth charges', rearmT: 12, missiles: 0, cam: 20, kill: 80, sound: 'plane',
+    heli: true, climb: 15, sonar: 380, desc: 'Sub hunter. Nose gun, 4 depth charges (F) and sonar that finds diving subs within 380 m.' },
+  talon: { name: 'Talon', icon: '🚁', cost: 550, hp: 1700, min: 0, max: 58, turn: 2.0, r: 6.5, guns: [[0, -1.3, 5.0]], bombs: 12, bombW: 'rocket', bombName: 'Rockets', rearmT: 3.5, missiles: 0, cam: 20, kill: 110, sound: 'plane',
+    heli: true, climb: 15, sonar: 0, desc: 'Gunship. Nose gun and 12 rockets (F) for ships and turrets. No sonar.' },
 });
 PLANE_ORDER.push('hornet', 'kingfisher', 'talon');
 const HELI_GEAR = 1.7; // from the middle of a helicopter down to its skids
@@ -2466,8 +2478,11 @@ Object.assign(WEAP, {
 // blast does (0.4 if not given)
 Object.assign(WEAP, {
   dcharge: { speed: 0, dmg: 650, life: 20, grav: 22, splash: 15, splashK: 1, sinks: true, deep: 1, model: 'bomb', snd: 'drop', vs: { ship: 0.6, harbor: 0.15, turret: 0.3, plane: 0, soldier: 1 } },
-  rocket: { speed: 230, dmg: 140, life: 3.5, grav: 3, splash: 5, model: 'missile', snd: 'missile', range: 600, vs: { ship: 1, turret: 1.1, harbor: 0.35, plane: 0.5, soldier: 1 } },
+  rocket: { speed: 260, dmg: 200, life: 3.5, grav: 3, splash: 5, model: 'missile', snd: 'missile', range: 600, vs: { ship: 1, turret: 1.1, harbor: 0.35, plane: 0.5, soldier: 1 } },
 });
+// 1.4.2: the helicopters' own heavy machine gun (added last, so the other weapons keep their numbers online): harder
+// hitting than the planes' guns, and it hurts ships and turrets
+WEAP.hmg = { speed: 500, dmg: 17, life: 1.3, grav: 0, tracer: 0xffd05a, len: 4.5, w: 0.26, snd: 'mg', rof: 12, spread: 0.009, range: 520, vs: { ship: 0.75, plane: 1.1, turret: 0.7, harbor: 0.06, soldier: 1 } };
 WEAP.torpedo.deep = 1; WEAP.bomb.deep = 0.5;
 const FOOT_GUNS = ['rifle', 'pistol', 'shotgun', 'sniper', 'rpg'], FOOT_GUN_NAME = { rifle: 'Rifle', pistol: 'Pistol', shotgun: 'Shotgun', sniper: 'Sniper Rifle', rpg: 'Rocket Launcher' };
 const FOOT_GUN_MODEL = { pistol: 'pistol', shotgun: 'shotgun', sniper: 'sniper', rpg: 'rocket' };
@@ -3197,15 +3212,17 @@ class Plane extends Ent {
     }
     if (this.fuel <= 0) { this.thr = 0; this.desired.y = Math.min(this.desired.y, -0.07); }
     // steer toward the desired direction
-    const d = this.desired, steep = this.driver === PLAYER ? 0.995 : 0.88; // 1.3.1: you can climb almost straight up (and black out if you hold it)
-    if (d.y > steep) d.y = steep; if (d.y < -0.88) d.y = -0.88; d.normalize();
-    const ang = this.fwd.angleTo(d);
-    if (ang > 1e-4) {
-      const ax = _v3.crossVectors(this.fwd, d);
-      if (ax.lengthSq() > 1e-8) { ax.normalize(); this.fwd.applyAxisAngle(ax, Math.min(ang, P.turn * dt * clamp(this.speed / P.min, 0.7, 1.15) * (this.disabled ? 0.45 : 1))); }
-    }
-    if (this.fwd.y > Math.max(0.9, steep)) { this.fwd.y = Math.max(0.9, steep); this.fwd.normalize(); }
-    if (this.fwd.y < -0.9) { this.fwd.y = -0.9; this.fwd.normalize(); }
+    // 1.4.2: turning (left/right) and pitch (up/down) each have their own limit. Both get slower the faster you go,
+    // pitch is slower than turning, climbs and dives stop at about 69 degrees (no flips), and hard turns cost speed
+    const d = this.desired; d.normalize();
+    const cyaw = Math.atan2(this.fwd.x, this.fwd.z), cpit = Math.asin(clamp(this.fwd.y, -1, 1));
+    const tyaw = Math.atan2(d.x, d.z), tpit = clamp(Math.asin(clamp(d.y, -1, 1)), -PLANE_PMAX, PLANE_PMAX);
+    const sf = clamp((this.speed - P.min) / Math.max(1, P.max - P.min), 0, 1.3);
+    const rate = P.turn * PLANE_TURN * clamp(1.15 - 0.55 * sf, 0.5, 1.15) * (this.disabled ? 0.45 : 1);
+    const dyaw = clamp(wrapA(tyaw - cyaw), -rate * dt, rate * dt), dpit = clamp(tpit - cpit, -rate * PLANE_PITCH * dt, rate * PLANE_PITCH * dt);
+    const ny = cyaw + dyaw, np = clamp(cpit + dpit, -PLANE_PMAX, PLANE_PMAX);
+    this.fwd.set(Math.sin(ny) * Math.cos(np), Math.sin(np), Math.cos(ny) * Math.cos(np));
+    if (dt > 0) this.speed -= (Math.abs(dyaw) + Math.abs(dpit)) * this.speed * PLANE_BLEED;
     const target = lerp(P.min, P.max, this.thr) - this.fwd.y * 28;
     this.speed = approach(this.speed, target, (target > this.speed ? 16 : 11) * dt);
     this.speed = Math.max(this.speed, P.min * 0.75);
@@ -3281,7 +3298,7 @@ class Plane extends Ent {
       const g = P.guns[this.gi++ % P.guns.length];
       _v1.set(g[0], g[1], g[2]).applyMatrix4(this.group.matrixWorld);
       const sp = 0.012; _v2.copy(this.fwd).add(_v3.set(rand(-sp, sp), rand(-sp, sp), rand(-sp, sp))).normalize();
-      fire('mg', this, _v1, _v2, { vel: _v3.copy(this.fwd).multiplyScalar(this.speed * 0.6), silent: this.gi % 2 === 0, gi: 0 });
+      fire(P.heli ? 'hmg' : 'mg', this, _v1, _v2, { vel: _v3.copy(this.fwd).multiplyScalar(this.speed * 0.6), silent: this.gi % 2 === 0, gi: 0 }); // 1.4.2: helicopters fire the heavy gun
       muzzleFlash(_v1, 0.7);
       this.gunCd = 1 / 13;
     }
@@ -3465,7 +3482,7 @@ function heliUpdate(h, dt) {
   h.yaw = wrapA(h.yaw);
   const sy = Math.sin(h.yaw), cy = Math.cos(h.yaw), top = power ? P.max : 0;
   const wx = (sy * hi.f - cy * hi.s * 0.7) * top, wz = (cy * hi.f + sy * hi.s * 0.7) * top;
-  const acc = power ? 17 : 4;
+  const acc = power ? 24 : 4; // 1.4.2: quicker to get going and to stop
   h.vel.x = approach(h.vel.x, wx, acc * dt); h.vel.z = approach(h.vel.z, wz, acc * dt);
   let vy = power ? hi.v * P.climb * (hi.v < 0 ? 0.6 : 1) : h.disabled ? -22 : -10;
   if (power && vy < -5 && h.pos.y - h.lastFloor < 8) vy = -5; // coming down near the ground: it slows itself for a soft landing
@@ -4758,7 +4775,11 @@ function playerPre(dt, c) {
     if (e.S.sub) { if (c.jump && !PLAYER.diveHeld) toggleDive(e); PLAYER.diveHeld = c.jump; } // 1.4
   } else if (PLAYER.mode === 'plane' && e.P.heli) { // 1.4: a helicopter
     const hi = e.hin || (e.hin = { f: 0, s: 0, v: 0 });
-    hi.f = c.y; hi.s = c.x; hi.v = (c.jump ? 1 : 0) - (c.sprint || (touchOn() && c.alt2) ? 1 : 0); // on touch, the second button goes down
+    // 1.4.2: it flies like a real one. It turns to where you look; looking down tips it forward and it flies forward
+    // (further down, faster), looking up tips it back; W/S (and Space/Shift) climb and descend, A/D slide sideways
+    const lp = -cam.pitch, tilt = Math.abs(lp) < 0.05 ? 0 : clamp((lp - Math.sign(lp) * 0.05) / 0.42, -1, 1);
+    hi.f = tilt > 0 ? tilt : tilt * 0.6; hi.s = c.x;
+    hi.v = clamp(c.y + (c.jump ? 1 : 0) - (c.sprint || (touchOn() && c.alt2) ? 1 : 0), -1, 1); // on touch, the second button goes down
     e.yawWant = cam.yaw; e.aimP = cam.pitch; e.trigger = c.fire;
   } else if (PLAYER.mode === 'plane') {
     e.thr = clamp(e.thr + c.y * dt * 0.8, 0, 1);
@@ -5128,7 +5149,7 @@ function updateCamera(dt) {
   if (CINE.on) { cineCamera(dt); return; }
   const mode = PLAYER.mode, e = PLAYER.ent;
   let pMin = -1.2, pMax = 1.3;
-  if (mode === 'ship') { pMin = -0.55; pMax = 0.9; } else if (mode === 'plane') { pMin = -1.35; pMax = 1.48; } else if (mode === 'turret') { pMin = -0.45; pMax = 1.45; } else if (mode === 'gunner') { pMin = -1.3; pMax = 1.4; }
+  if (mode === 'ship') { pMin = -0.55; pMax = 0.9; } else if (mode === 'plane' && e && e.P && e.P.heli) { pMin = -1.0; pMax = 0.32; } else if (mode === 'plane') { pMin = -1.35; pMax = 1.48; } else if (mode === 'turret') { pMin = -0.45; pMax = 1.45; } else if (mode === 'gunner') { pMin = -1.3; pMax = 1.4; }
   cam.pitch = clamp(cam.pitch, pMin, pMax);
   setAimDir();
   const zoom = (cam.zoom || IN.rmb) && mode !== 'dead' && mode !== 'demo';
@@ -5348,7 +5369,7 @@ function updateHUD(dt) {
       if (mode === 'foot') keys = `<div><kbd>1</kbd>-<kbd>5</kbd>${FOOT_GUN_NAME[FOOT_GUNS[PLAYER.wpn || 0]]}</div><div><kbd>E</kbd>Use</div><div><kbd>B</kbd>Deploy</div><div><kbd>M</kbd>Map</div><div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div><div><kbd>Ctrl</kbd>${['Crouch', 'Lie down', 'Stand up'][PLAYER.stance || 0]}</div>`;
       else if (mode === 'ship' && !e.alive) keys = '<div><kbd>E</kbd>Jump overboard</div>';
       else if (mode === 'ship') keys = `<div><kbd>W</kbd><kbd>S</kbd>Throttle <kbd>A</kbd><kbd>D</kbd>Steer</div>${e.S.sub ? `<div><kbd>Space</kbd>${e.dive ? 'Surface' : 'Dive'}</div>` : ''}${e.S.ping ? `<div><kbd>Q</kbd>Sonar ping ${e.pingT > 0 ? '(on)' : e.pingCd > 0 ? '(' + Math.ceil(e.pingCd) + 's)' : '(ready)'}</div>` : ''}${e.guns.some(g => !g.auto) ? '<div><kbd>Click</kbd>Fire</div>' : ''}${e.S.torps ? '<div><kbd>F</kbd>Torpedo</div>' : ''}${e.S.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}${e.S.carrier ? '<div><kbd>B</kbd>Launch a plane</div>' : ''}${flareMax(e) ? `<div><kbd>X</kbd>Flare (${flaresOf(e)})</div>` : ''}<div><kbd>C</kbd>${settings.fp ? "Third" : "First"} person</div><div><kbd>E</kbd>Get out</div>`;
-      else if (mode === 'plane' && e.P.heli) keys = `<div><kbd>Mouse</kbd>Turn and aim</div><div><kbd>W</kbd><kbd>S</kbd>Forward/back <kbd>A</kbd><kbd>D</kbd>Sideways</div><div><kbd>Space</kbd>Up <kbd>Shift</kbd>Down</div><div><kbd>Click</kbd>Guns</div>${e.P.bombs ? `<div><kbd>F</kbd>${e.P.bombW === 'rocket' ? 'Rockets' : 'Depth charge'}</div>` : ''}<div><kbd>X</kbd>Flare (${flaresOf(e)})</div><div><kbd>E</kbd>${e.grounded ? 'Get out' : 'Hold to bail out'}</div>`; // 1.4
+      else if (mode === 'plane' && e.P.heli) keys = `<div><kbd>Mouse</kbd>Turn and aim · look down to fly forward, up to back</div><div><kbd>W</kbd><kbd>S</kbd>Climb/descend <kbd>A</kbd><kbd>D</kbd>Sideways</div><div><kbd>Click</kbd>Guns</div>${e.P.bombs ? `<div><kbd>F</kbd>${e.P.bombW === 'rocket' ? 'Rockets' : 'Depth charge'}</div>` : ''}<div><kbd>X</kbd>Flare (${flaresOf(e)})</div><div><kbd>E</kbd>${e.grounded ? 'Get out' : 'Hold to bail out'}</div>`; // 1.4
       else if (mode === 'plane') keys = `<div><kbd>Mouse</kbd>Steer <kbd>W</kbd><kbd>S</kbd>Throttle</div>${e.P.guns.length ? '<div><kbd>Click</kbd>Guns</div>' : ''}${e.P.bombs ? '<div><kbd>F</kbd>Bomb</div>' : ''}${e.P.missiles ? '<div><kbd>R</kbd>Missile</div>' : ''}<div><kbd>X</kbd>Flare (${flaresOf(e)})</div><div><kbd>Shift</kbd>+<kbd>A</kbd>/<kbd>D</kbd>Barrel roll</div><div><kbd>Space</kbd>Level out</div><div><kbd>C</kbd>Cockpit view</div><div><kbd>E</kbd>${e.landed ? 'Get out' : 'Hold to bail out'}</div>`;
       else if (mode === 'turret') keys = '<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>Leave</div>';
       else if (mode === 'gunner') keys = `<div><kbd>Click</kbd>Fire</div><div><kbd>Right-click</kbd>Zoom</div><div><kbd>E</kbd>${e.ship ? 'Jump off' : 'Hold to bail out'}</div>`;
@@ -5392,7 +5413,7 @@ function updateHUD(dt) {
   else if (mode === 'ship' && e && !e.alive) prompt = '<kbd>E</kbd>Jump overboard';
   else if (mode === 'plane' && e && e.alive && e.landed) prompt = e.svcDone ? '<kbd>W</kbd>Take off · refuelled' : e.fuel > 0 ? `<kbd>W</kbd>Take off · refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s` : `Refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s`; // 1.2.5
   else if (mode === 'plane' && e && e.alive && e.P.heli && e.svcHome && !e.svcDone) prompt = `Refuelling ${Math.max(1, Math.ceil(SERVICE_S - (e.svcT || 0)))}s`; // 1.4
-  else if (mode === 'plane' && e && e.alive && e.P.heli && e.grounded) prompt = '<kbd>Space</kbd>Lift off';
+  else if (mode === 'plane' && e && e.alive && e.P.heli && e.grounded) prompt = '<kbd>W</kbd>Lift off';
   else if (mode === 'plane' && e && e.alive && !e.P.heli && landHint(e)) prompt = '<kbd>S</kbd>Lowest speed, then touch down gently to land';
   else if (MCAM.m) prompt = '<kbd>E</kbd>Skip';
   else if (mode === 'foot' && PLAYER.soldier && PLAYER.soldier.swim && !nearOwnBase(PLAYER.soldier.pos)) prompt = `<kbd>${touchOn() ? 'E' : 'B'}</kbd>Redeploy, or swim to land`;
@@ -5414,8 +5435,8 @@ function updateHUD(dt) {
     let best = null, bs = 0.5;
     for (const o of ENTS) { if (!o.alive || o.kind !== 'plane' || o.team === PLAYER.team || o.team < 0) continue; _v3.copy(o.pos).sub(e.pos); const d = _v3.length(); if (d > 700 || d < 15) continue; const a = _v3.normalize().angleTo(e.fwd); if (a < bs) { bs = a; best = o; } }
     if (best) lead = leadPoint(_v2, e.pos, best, WEAP.mg.speed + e.speed * 0.6, 0);
-    const alt = e.pos.y - Math.max(0, landH(e.pos.x, e.pos.z)), vy = e.fwd.y * e.speed;
-    pull = (vy < -2 && alt / -vy < 3.2 && alt < 160) || (alt < 16 && e.fwd.y < -0.05);
+    const alt = e.pos.y - Math.max(0, landH(e.pos.x, e.pos.z)), vy = e.P.heli ? e.vel.y : e.fwd.y * e.speed; // 1.4.2
+    pull = (vy < -2 && alt / -vy < 3.2 && alt < 160) || (!e.P.heli && alt < 16 && e.fwd.y < -0.05);
   }
   placeMk('leadm', lead);
   setShow('pullup', pull); if (pull && (!PLAYER.pullT || performance.now() - PLAYER.pullT > 450)) { PLAYER.pullT = performance.now(); Sound.play('lock'); }
@@ -6566,7 +6587,7 @@ function landedRepair(pl, dt) {
   pl.svcDone = true;
   pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * SERVICE_HEAL);
   pl.fuel = pl.fuelMax; pl.lowFuel = false; pl.bombs = P.bombs; pl.missiles = P.missiles;
-  if (pl.driver === PLAYER) { showMsg('Refuelled', pl.P.heli ? 'Rearmed and repaired. Space to lift off' : 'Rearmed and repaired. Hold W to take off'); Sound.play('buy'); }
+  if (pl.driver === PLAYER) { showMsg('Refuelled', pl.P.heli ? 'Rearmed and repaired. W to lift off' : 'Rearmed and repaired. Hold W to take off'); Sound.play('buy'); }
 }
 
 /* ---------------- Dual Gunner seats ---------------- */
@@ -7983,7 +8004,7 @@ function rbox(w, h, d, r, seg = 3) {
   const isHost = () => !!room && room.hostId === myId;
   function newRoom(code, name, topic) {
     let synced; const sync = new Promise(r => synced = r);
-    return { code, topic: topic || 'hb-room14-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
+    return { code, topic: topic || 'hb-room142-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
       roster: new Map(), names: new Map(), settings: { ...DEFAULTS }, pings: {}, acks: {}, myPing: null, seen: new Set(),
       ups: new Map(), lastHeard: new Map(), hz: MAX_HZ, stDue: false, lastSt: 0, lastSend: 0, sync, synced, trouble: 0, waitAcc: null, matchOn: false, infoAt: 0 };
   }
@@ -8150,7 +8171,7 @@ function rbox(w, h, d, r, seg = 3) {
   async function joinWorld(name) {
     if (room) leaveRoom();
     await getClient();
-    room = newRoom('WORLD', name, 'hb-world-14'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
+    room = newRoom('WORLD', name, 'hb-world-142'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
     try {
       room.ch = chan(room.topic, true); wireRoom(room.ch);
       await joinChan(room.ch, trouble);
@@ -9659,7 +9680,7 @@ function boardParked(e) {
   if (e.P.heli) e.landed = null; else if (!e.landed) { const f = landFrame(e); if (!f) return; parkOn(e, f); }
   if (!e.P.heli) { e.speed = 0; e.thr = 0; }
   enterVehicle(e); Sound.play('ui');
-  if (e.P.heli) showMsg('', 'Space to lift off'); else showMsg('', e.svcDone ? 'Hold W to take off' : `Stay parked ${SERVICE_S} seconds to refuel, or hold W to take off`);
+  if (e.P.heli) showMsg('', 'W to lift off'); else showMsg('', e.svcDone ? 'Hold W to take off' : `Stay parked ${SERVICE_S} seconds to refuel, or hold W to take off`);
 }
 function parkedCap() { // keep at most 14 empty planes parked about: the one parked longest goes
   if (NET.client) return;

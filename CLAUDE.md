@@ -497,6 +497,11 @@ source in Settings → Pages should be switched to `main`.
   ship; planes keep C for the cockpit), the soldier is hidden while you look through his eyes (`fpBody`). The cockpit
   (`COCKPIT`) is now a cabin fixed to the plane (`COCKPIT.orient()` after the camera turns): a tub with floor, walls, seat,
   bulkhead and glass for fighters and the jet, a flight deck with roof, side windows and glazed nose for the bomber.
+  1.4.2 (2026-11-11, players' feedback): helicopters turn to the camera yaw and tilt from the camera pitch (look down =
+  forward, up = back at 0.6), W/S climb/descend (hi.v), camera pitch for helis limited to -1.0..0.32; PULL UP uses vel.y
+  for helis. Planes: yaw and pitch limited separately (PLANE_TURN 0.9, PLANE_PITCH 0.7 of it, both slower with speed,
+  PLANE_PMAX 1.2 rad, PLANE_BLEED speed cost). Heli buff: WEAP.hmg (added after every other weapon: WN numbers),
+  rockets 200 dmg, more speed/climb/hp/turn, acc 24. Channels hb-world-142 / hb-room142-.
   1.4.1 (2026-11-11): controllers (DualShock 4 layout, standard mapping) and TV remotes. `GP` (pollPad on a 16 ms timer)
   feeds ctl() (x/y, fire R2, alt L2, alt2 R1, jump ✕, sprint L1/L3) and padLook() (right stick); □ E (held for bail), △ B,
   ○ C, R3 V, D-pad ↑ Q ↓ M ←/→ weapons, Options pause, touchpad/Share board. Menus: navMove/navChoose over the open
