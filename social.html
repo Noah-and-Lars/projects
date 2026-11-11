@@ -30,7 +30,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=17">
+<link rel="stylesheet" href="arcade.css?v=16">
 <style>
 :root { --ring: linear-gradient(45deg, #f9ce34, #ee2a7b 55%, #6228d7); --line: #ffffff17; --like: #ff3040; --blue: #3797f0; }
 .ig { width: 100%; max-width: 940px; margin: 0 auto; padding: 0 16px 60px; }
@@ -355,6 +355,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
     <a class="tab" href="index.html">Games</a>
     <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
     <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
+    <a class="tab on" href="social.html" aria-current="page">Social</a>
     <a class="tab" href="support.html">Support</a>
   </nav>
 </header>
@@ -375,7 +376,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
   <div id="view" aria-live="polite"></div>
 </main>
 
-<script src="games.js?v=193"></script>
+<script src="games.js?v=194"></script>
 <script src="account.js?v=16"></script>
 <script src="call.js?v=6"></script>
 <script>
@@ -1508,19 +1509,8 @@ function editAvatar() {
   };
 }
 
-/* ---------- closed for now (games.js SOCIAL_CLOSED, 2026-11-11) ---------- */
-function showClosed() {
-  document.querySelectorAll('.ig-top, .ig-nav').forEach(e => { e.style.display = 'none'; });
-  document.title = 'Social · The Arcade';
-  const d = el('div', 'empty'), b = el('a', 'btn', 'Back to the games');
-  d.append(el('b', '', 'Social is closed for now'), document.createTextNode('It’s taking a short break. Check back soon!'));
-  b.href = 'index.html'; d.append(el('br'), b);
-  view.replaceChildren(d);
-}
-
 /* ---------- routing ---------- */
 function route() {
-  if (window.SOCIAL_CLOSED) return showClosed();
   closeMenu();
   if (playing) { playing.pause(); playing = null; }
   chat = null;

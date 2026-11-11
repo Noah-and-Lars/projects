@@ -39,7 +39,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=17">
+<link rel="stylesheet" href="arcade.css?v=16">
 </head>
 <body class="player">
 <header class="top">
@@ -78,7 +78,7 @@
   <section id="more" class="grid small"></section>
 </main>
 
-<script src="games.js?v=193"></script>
+<script src="games.js?v=194"></script>
 <script src="account.js?v=16"></script>
 <script src="call.js?v=6"></script>
 <script src="clips.js?v=3"></script>
@@ -122,8 +122,7 @@ if (!game) {
     ArcadeAccount.onPulled(g => { if (g.includes(game.id) && frame.src) try { frame.contentWindow.location.reload(); } catch (e) { frame.src = game.path; } });
   } else start();
   // 🎬 Clip: record the game and post it to Social (clips.js)
-  // Social is closed for now (2026-11-11): no clip button and no replay buffer. Set SOCIAL_CLOSED to false in games.js to bring it back.
-  if (window.ArcadeClips && !window.SOCIAL_CLOSED) ArcadeClips.attach(frame, game, $('clip')); else $('clip').hidden = true;
+  if (window.ArcadeClips) ArcadeClips.attach(frame, game, $('clip')); else $('clip').hidden = true;
   $('newtab').href = game.path;
 
   const next = GAMES[(index + 1) % GAMES.length];

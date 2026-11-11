@@ -1,6 +1,3 @@
-// Social is closed for now (the owner, 2026-11-11): no tab, no clip button, social.html shows a closed screen, its news
-// and pop-up are hidden. Set this to false (and put the Social tab back in the page headers) to reopen it.
-window.SOCIAL_CLOSED = true;
 // Reads something a game saved in this browser. Returns null if it isn't there or storage is blocked.
 function readSave(key, json) {
   try {
@@ -510,7 +507,6 @@ window.NEWS = [
   { date: '2026-10-13', game: '2048', text: 'New game: 2048. Slide and merge your way to the big tile.' },
   { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 1.7.2: the Extreme Gun, a turret and a combat knife in the shop.' },
 ];
-if (window.SOCIAL_CLOSED) window.NEWS = window.NEWS.filter(n => n.href !== 'social.html'); // Social is closed for now
 
 // What this browser has played, for "Continue playing" and the NEW / UPDATED badges
 window.Arcade = {
@@ -616,7 +612,7 @@ window.ArcadeOnline = (() => {
 
 // Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
 // localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
-const SITE_NOTICE_SOCIAL = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
+const SITE_NOTICE = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
   id: 'social-launch-2026-11-10',
   tag: 'New',
   title: 'Social is here! 🎬',
@@ -631,7 +627,6 @@ const SITE_NOTICE_SOCIAL = { // 2026-11-10: Social launch (popup only, no banner
   go: { text: 'Open Social', href: 'social.html' },
   skip: /social\.html$/,
 };
-const SITE_NOTICE = window.SOCIAL_CLOSED ? null : SITE_NOTICE_SOCIAL;
 const SITE_NOTICE_CHAT = { // 2026-11-06: the rebuilt Global chat and the new Players tab (popup only, no banner)
   id: 'chat-fixed-2026-11-06',
   tag: 'Fixed',
