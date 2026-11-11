@@ -1,3 +1,6 @@
+// Social is closed for now (the owner, 2026-11-11): no tab, no clip button, social.html shows a closed screen, its news
+// and pop-up are hidden. Set this to false (and put the Social tab back in the page headers) to reopen it.
+window.SOCIAL_CLOSED = true;
 // Reads something a game saved in this browser. Returns null if it isn't there or storage is blocked.
 function readSave(key, json) {
   try {
@@ -14,6 +17,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'throttle-ridge',
+    title: 'Throttle Ridge',
+    category: 'Racing',
+    tagline: 'Side-scrolling motocross over big sculpted dirt jumps, from a sunny meadow to a floodlit night arena.',
+    description: 'A side-scrolling motocross race against three computer riders. Hold the gas, lean in the air to match the landing slope and keep your speed, and finish in the top two to unlock the next track.',
+    controls: 'Keyboard or touch',
+    keys: [['↑ / W', 'Gas'], ['↓ / S', 'Brake and reverse'], ['← / A', 'Lean back (wheelie, rotate back in the air)'], ['→ / D', 'Lean forward'], ['R', 'Back to the last checkpoint'], ['Esc / P', 'Pause'], ['M', 'Mute']],
+    path: 'throttle-ridge/index.html',
+    thumb: 'throttle-ridge/thumb.jpg',
+    added: '2026-11-11T09:00:00+11:00',
+    updated: '2026-11-11T09:00:00+11:00',
+    stat() { const s = readSave('throttle-ridge.v1', true), n = s && s.best ? Object.keys(s.best).length : 0; return n ? n + '/5 tracks finished' : null; },
+  },
+  {
     id: 'turn-turn-turn',
     title: 'Turn! Turn! TURN!',
     category: 'Racing',
@@ -24,7 +41,7 @@ window.GAMES = [
     path: 'turn-turn-turn/index.html',
     thumb: 'turn-turn-turn/thumb.jpg',
     added: '2026-11-08T22:00:00+11:00',
-    updated: '2026-11-12T12:00:00+11:00',
+    updated: '2026-11-11T13:00:00+11:00',
     stat() { const s = readSave('turnturnturn.save', true); if (!s || !s.best) return null; const n = Object.keys(s.best).filter(k => s.best[k].solo || s.best[k].crew).length; return n ? n + (n === 1 ? ' stage' : ' stages') + ' finished' : null; },
   },
   {
@@ -118,12 +135,12 @@ window.GAMES = [
     tagline: 'Red vs Blue sea battle. Command warships, fly planes and destroy the enemy harbor, online or against bots.',
     description: 'A Red vs Blue sea battle. Sail warships, fly planes and fight on foot to claim islands and destroy the enemy harbor. Join the public online battle, play a private room with friends, or play offline against bots.',
     controls: 'Keyboard + mouse or touch',
-    keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['1 to 5', 'Switch guns on foot'], ['C', 'Cockpit or chase view in a plane'], ['F', 'Torpedo or drop a bomb'], ['R', 'Missile (jet, battleship)'], ['X', 'Flare (planes, battleship, carrier)'], ['Shift + A / D', 'Barrel roll'], ['Ctrl', 'Crouch, then lie down'], ['Enter', 'Deploy again (in the deploy menu)'],
-           ['E', 'Use pads and turrets, get in and out (hold to bail out of a plane)'], ['Space', 'Jump, or level out a plane'], ['Shift', 'Sprint'], ['B', 'Deploy menu, or launch a plane from your carrier'], ['M', 'Map'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat (online)'], ['Y', 'Team chat (online)'], ['Esc', 'Pause'], ['G (hold)', 'Push to talk (online)']],
+    keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['1 to 5', 'Switch guns on foot'], ['C', 'Cockpit or chase view in a plane'], ['F', 'Torpedo, bomb, depth charge or rockets'], ['R', 'Missile (jet, battleship, Typhoon)'], ['Q', 'Sonar ping (Seawolf, Typhoon)'], ['X', 'Flare (planes, battleship, carrier)'], ['Shift + A / D', 'Barrel roll'], ['Ctrl', 'Crouch, then lie down'], ['Enter', 'Deploy again (in the deploy menu)'],
+           ['E', 'Use pads and turrets, get in and out (hold to bail out of a plane)'], ['Space', 'Jump, level out a plane, dive a sub or climb in a helicopter'], ['Shift', 'Sprint, or drop in a helicopter'], ['B', 'Deploy menu, or launch a plane from your carrier'], ['M', 'Map'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat (online)'], ['Y', 'Team chat (online)'], ['Esc', 'Pause'], ['G (hold)', 'Push to talk (online)']],
     path: 'havoc-bay/index.html',
-    thumb: 'havoc-bay/thumb.jpg?v=2',
+    thumb: 'havoc-bay/thumb.jpg?v=3',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-11-09T00:30:00+11:00',
+    updated: '2026-11-11T08:45:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -151,8 +168,8 @@ window.GAMES = [
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-11-07T08:00:00+11:00',
-    stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rating.n > 0 && isFinite(s.rating.r) ? 'Rating ' + Math.round(s.rating.r) + (Math.round(s.rating.peak || 0) > Math.round(s.rating.r) ? ' (best ' + Math.round(s.rating.peak) + ')' : '') : ''; return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
+    updated: '2026-11-11T11:00:00+11:00',
+    stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rv === 2 && isFinite(s.rating.r) ? 'Elo ' + Math.round(s.rating.r) : s.rating ? 'Elo 2000' : ''; /* 1.5.1: everyone was reset to 2000 */ return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
     id: 'checkers',
@@ -166,7 +183,7 @@ window.GAMES = [
     thumb: 'checkers/thumb.svg',
     added: '2026-11-11T13:00:00+11:00',
     updated: '2026-11-11T13:00:00+11:00',
-    stat() { const s = readSave('checkersSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rating.n > 0 && isFinite(s.rating.r) ? 'Rating ' + Math.round(s.rating.r) + (Math.round(s.rating.peak || 0) > Math.round(s.rating.r) ? ' (best ' + Math.round(s.rating.peak) + ')' : '') : ''; return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
+    stat() { const s = readSave('checkersSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rv === 2 && isFinite(s.rating.r) ? 'Elo ' + Math.round(s.rating.r) : s.rating ? 'Elo 2000' : ''; /* 1.5.1: everyone was reset to 2000 */ return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
     id: 'russian-roulette',
@@ -309,6 +326,14 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-11', game: 'turn-turn-turn', imgs: ['turn-turn-turn/news/1.3.1-fences.jpg', 'turn-turn-turn/news/1.3.1-barn.jpg', 'turn-turn-turn/news/1.3.1-chevrons.jpg'], headline: 'Easier steering, prettier stages', text: 'Turn! Turn! TURN! 1.3.1: steering is noticeably easier but still not easy: more lock at speed, quicker hands and calmer slides. The stages are nicer and more detailed: chevron boards and fans at tight corners, flowers, logs, fences, hay bales, cacti, ferns, snow drifts, cabins, barns, clouds and snowy peaks.', post: '🏁 Turn! Turn! TURN! 1.3.1 is out!\n\n🛞 Steering got easier. Not easy, easier. The wheel turns further at speed, reacts faster on keys and pads, and slides are much easier to catch. In my tests the car spent about half as much time off the road.\n🎨 The stages got a glow-up: red chevron boards (and fans!) on the tight corners, flowers, fallen logs, fences, hay bales, cacti in the canyon, ferns in the jungle, snow drifts, cabins and barns, clouds, and snow on the mountains.\n🐛 And the grass by the road is green again instead of black.\n\nGo beat your old times. Your navigator is waiting 👇\n\n#turnturnturn #TheArcade #Update' },
+  { date: '2026-11-11', href: 'social.html', headline: 'Say it your way', text: 'New: Social shows posts, captions and chat names the way people wrote them, with no word filter. Want it cleaner? Turn on Filter swear words on Social under Settings in your account (the button at the top right).', post: '🗣️ Social is now unfiltered!\n\nCaptions and chat names show exactly what you typed. No more stars.\n🧹 Prefer it clean? Open your account (top right) and switch on Filter swear words on Social. It stars bad words in posts, comments and messages, just for you, on every device you log in on.\n\n#TheArcade #NewFeature' },
+  { date: '2026-11-11', game: 'chess', imgs: ['chess/news/1.5.1-leaderboard.jpg', 'chess/news/1.5.1-alert.jpg'], headline: 'Everyone back to 2000 Elo', text: 'Chess 1.5.1: the Elo reset. Everyone starts at 2000 Elo, with no starting level to pick, and the leaderboard was reset so every player is level in first place. Lose and your Elo can fall to 0, win and it keeps climbing past 2000. When someone is waiting for a quick match, everyone else on Chess gets a pop-up to join them.', post: '♟️ Chess 1.5.1 is here: the great Elo reset!\n\n🔄 Everyone is back to 2000 Elo, and the leaderboard is wiped. Right now every single player is tied for first place 🏆\n📉 Lose and you can drop all the way to 0\n📈 Win and there is no ceiling. Climb as high as you can\n🔔 When someone is waiting for a quick match, everyone on Chess gets a pop-up to join them. No more waiting alone!\n\nFirst one to break away from the pack takes the top spot. Who is it going to be? 👇\n\n#chess #TheArcade #Update' },
+  { date: '2026-11-11', game: 'throttle-ridge', imgs: ['throttle-ridge/news/1.0-desert.jpg', 'throttle-ridge/news/1.0-arena.jpg', 'throttle-ridge/news/1.0-canyon.jpg'], text: 'New game: Throttle Ridge. A side-scrolling motocross race against three computer riders. Lean in the air to land smoothly and keep your speed, and finish in the top two to unlock the next track, from a sunny meadow to a floodlit night arena. Keyboard or touch.',
+    post: '🏍️ New game: Throttle Ridge!\n\nRace three riders over big sculpted dirt jumps in side-scrolling motocross. Hold the gas, lean in the air to match the landing and keep your speed, and finish in the top two to unlock the next track.\n\n🌄 Five tracks: a sunny meadow, a desert bowl, a pine forest, a red canyon and a floodlit night arena.\n📱 Play with the keyboard, or the touch buttons on your phone.\n\n▶️ Find it in the Games tab. What is your best time on Meadow Run? 👇\n\n#ThrottleRidge #TheArcade' },
+  { date: '2026-11-11', href: 'social.html', text: 'New: Claude now posts on Social. Every game update, new game and new feature gets its own post from the Claude account, so the Social tab is the place to see what changed.', post: '👋 Hi everyone, Claude here!\n\nFrom now on I will post on Social every time something changes on The Arcade: a game update, a brand new game or a new feature. Each post shows what is new and links straight to the game, so you never miss an update.\n\nFollow me to see them first, and tell me in the comments what you want added next 👇\n\n#TheArcade #NewOnTheArcade' },
+  { date: '2026-11-11', game: 'havoc-bay', repost: 1, imgs: ['havoc-bay/news/1.4-submarine.jpg', 'havoc-bay/news/1.4-helicopter.jpg'], headline: 'Submarines and helicopters', text: 'Havoc Bay 1.4: submarines and helicopters. Dive the Seehund, Seawolf or Typhoon (Space) where only torpedoes, depth charges and bombs reach you, and ping your sonar (Q) to see everyone for 10 seconds. Fly the Hornet, Kingfisher or Talon: hover, land anywhere and refuel at home.',
+    post: '🚀 Havoc Bay 1.4 is live: submarines and helicopters!\n\n🌊 Dive in the Seehund, Seawolf or Typhoon (Space). Underwater only torpedoes, depth charges and bombs can touch you, but keep an eye on your air.\n📡 Ping your sonar (Q) to see every enemy on the map for 10 seconds. The Typhoon shares it with your whole team!\n🚁 Fly the Hornet scout, the Kingfisher sub hunter or the Talon gunship. Hover, land anywhere and refuel at home.\n\n▶️ Jump in from the Games tab and go hunting. Which one is your favourite? 👇\n\n#havocbay #TheArcade' },
   { date: '2026-11-10', href: 'social.html', text: 'New: Social, the arcade’s own Instagram. Clip the last 30 seconds of any game with the 🎬 button (or F8), post your own photos and videos, scroll Reels, like and comment, follow players and message them from the new inbox. Find it in the Social tab.' },
   { date: '2026-11-12', game: 'siege', text: 'Siege 1.0.18: jammers reach 2.5 m and no longer work through walls, floors or ceilings, so one downstairs can\'t jam your drone upstairs. Barricades are solid green blocks again: bullets can\'t go through them or leave holes to see through.' },
   { date: '2026-11-12', game: 'turn-turn-turn', text: 'Turn! Turn! TURN! 1.3: 10 new long stages, about three times longer, with real hills (long climbs, big descents, blind crests and dips), three new places (snow, a red canyon and a jungle), and solo leaderboards for runs with the AI co-driver.' },
@@ -484,6 +509,7 @@ window.NEWS = [
   { date: '2026-10-13', game: '2048', text: 'New game: 2048. Slide and merge your way to the big tile.' },
   { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 1.7.2: the Extreme Gun, a turret and a combat knife in the shop.' },
 ];
+if (window.SOCIAL_CLOSED) window.NEWS = window.NEWS.filter(n => n.href !== 'social.html'); // Social is closed for now
 
 // What this browser has played, for "Continue playing" and the NEW / UPDATED badges
 window.Arcade = {
@@ -589,7 +615,7 @@ window.ArcadeOnline = (() => {
 
 // Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
 // localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
-const SITE_NOTICE = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
+const SITE_NOTICE_SOCIAL = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
   id: 'social-launch-2026-11-10',
   tag: 'New',
   title: 'Social is here! 🎬',
@@ -604,6 +630,7 @@ const SITE_NOTICE = { // 2026-11-10: Social launch (popup only, no banner; not s
   go: { text: 'Open Social', href: 'social.html' },
   skip: /social\.html$/,
 };
+const SITE_NOTICE = window.SOCIAL_CLOSED ? null : SITE_NOTICE_SOCIAL;
 const SITE_NOTICE_CHAT = { // 2026-11-06: the rebuilt Global chat and the new Players tab (popup only, no banner)
   id: 'chat-fixed-2026-11-06',
   tag: 'Fixed',

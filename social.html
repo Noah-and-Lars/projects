@@ -30,7 +30,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=15">
+<link rel="stylesheet" href="arcade.css?v=17">
 <style>
 :root { --ring: linear-gradient(45deg, #f9ce34, #ee2a7b 55%, #6228d7); --line: #ffffff17; --like: #ff3040; --blue: #3797f0; }
 .ig { width: 100%; max-width: 940px; margin: 0 auto; padding: 0 16px 60px; }
@@ -120,7 +120,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .likes { font-weight: 800; font-size: 14px; margin: 2px 0; }
 .likes a { font-weight: 800; }
 .likes .views { color: var(--muted); font-weight: 600; margin-left: 8px; }
-.cap { font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; margin: 2px 0; }
+.cap { font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; margin: 2px 0; white-space: pre-line; }
 .cap a { font-weight: 800; margin-right: 6px; }
 .allcm { display: block; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; padding: 2px 0; cursor: pointer; }
 .when { display: block; color: var(--muted); font-size: 11px; letter-spacing: .03em; text-transform: uppercase; margin-top: 4px; }
@@ -176,6 +176,9 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .grid3 a:hover img { filter: brightness(.6); }
 .grid3 .kind { position: absolute; top: 6px; right: 6px; color: #fff; filter: drop-shadow(0 1px 4px #000); }
 .grid3 .kind svg { width: 20px; height: 20px; }
+.grid3 .kind.pin { font-size: 18px; line-height: 1; }
+.prof .bio { margin: 8px 0 6px; font-size: 14px; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; max-width: 520px; }
+.cap a.lnk, .body a.lnk { color: #7cb3ff; font-weight: 600; margin: 0; text-decoration: underline; }
 .grid3 .vw { position: absolute; left: 8px; bottom: 6px; color: #fff; font-size: 13px; font-weight: 800; text-shadow: 0 1px 6px #000; display: flex; align-items: center; gap: 4px; }
 .grid3 .vw svg { width: 14px; height: 14px; fill: #fff; stroke: none; }
 .grid3 .hov { position: absolute; inset: 0; display: none; place-items: center; grid-auto-flow: column; gap: 18px; color: #fff; font-weight: 800; }
@@ -352,7 +355,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
     <a class="tab" href="index.html">Games</a>
     <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
     <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
-    <a class="tab on" href="social.html" aria-current="page">Social</a>
+    <a class="tab" href="support.html">Support</a>
   </nav>
 </header>
 
@@ -372,8 +375,8 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
   <div id="view" aria-live="polite"></div>
 </main>
 
-<script src="games.js?v=185"></script>
-<script src="account.js?v=14"></script>
+<script src="games.js?v=192"></script>
+<script src="account.js?v=16"></script>
 <script src="call.js?v=6"></script>
 <script>
 /* Social (2026-11-10, Instagram style): clips recorded in games (clips.js on play.html, the last 30 seconds), and
@@ -530,9 +533,35 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { flu
 
 /* ---------- media: fetched whole (seeking works everywhere, and the server only answers the official site) ---------- */
 const blobs = new Map();
+// Clips recorded before 2026-11-11 wrote every WebM size field in 8 bytes, which Safari won't play: rewrite them short.
+const EBML_MASTER = new Set([0x1A45DFA3, 0x18538067, 0x1F43B675, 0x1654AE6B, 0xAE, 0x1549A966, 0xE0, 0xE1, 0x1C53BB6B, 0xBB, 0xB7, 0xA0, 0x114D9B74, 0x4DBB, 0x1254C367, 0x7373, 0x63C0]);
+async function fixWebm(blob) {
+  if (!/webm/.test(blob.type)) return blob;
+  const d = new Uint8Array(await blob.arrayBuffer());
+  if (d[0] !== 0x1a || d[1] !== 0x45 || d[4] !== 0x01) return blob; // not one of ours with 8-byte sizes
+  try {
+    const out = [];
+    const vint = (p, keep) => { let l = 1; while (l <= 8 && !(d[p] & (0x80 >> (l - 1)))) l++; let v = keep ? d[p] : d[p] & ((0x80 >> (l - 1)) - 1); for (let i = 1; i < l; i++) v = v * 256 + d[p + i]; return [v, l]; };
+    const size = n => { let l = 1; while (n >= 2 ** (7 * l) - 1) l++; const b = new Uint8Array(l); for (let i = l - 1; i >= 0; i--) { b[i] = n % 256; n = Math.floor(n / 256); } b[0] |= 0x80 >> (l - 1); return b; };
+    const walk = (p, end) => { // returns the rewritten parts of [p, end) as a list of Uint8Arrays and their total length
+      const parts = []; let len = 0;
+      while (p < end) {
+        const [id, il] = vint(p, true), [s, sl] = vint(p + il), body = p + il + sl;
+        if (body + s > end) throw new Error('bad size');
+        const head = d.subarray(p, p + il);
+        let inner, n;
+        if (EBML_MASTER.has(id)) [inner, n] = walk(body, body + s); else { inner = [d.subarray(body, body + s)]; n = s; }
+        const sz = size(n); parts.push(head, sz, ...inner); len += head.length + sz.length + n; p = body + s;
+      }
+      return [parts, len];
+    };
+    out.push(...walk(0, d.length)[0]);
+    return new Blob(out, { type: 'video/webm' });
+  } catch (e) { return blob; }
+}
 function mediaUrl(id) {
   if (blobs.has(id)) { const p = blobs.get(id); blobs.delete(id); blobs.set(id, p); return p; }
-  const p = fetch(API() + 'v/' + id).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); }).then(b => URL.createObjectURL(b));
+  const p = fetch(API() + 'v/' + id).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); }).then(fixWebm).then(b => URL.createObjectURL(b));
   p.catch(() => blobs.delete(id));
   blobs.set(id, p);
   while (blobs.size > 16) { const [old, op] = blobs.entries().next().value; blobs.delete(old); op.then(u => { if (!document.querySelector('[src="' + u + '"]')) URL.revokeObjectURL(u); }, () => {}); }
@@ -569,6 +598,16 @@ function activate(box) {
     if (n && n._clip && n._clip.k !== 'photo') mediaUrl(n._clip.id);
   }, () => { box.classList.remove('loading'); box.querySelector('.load').textContent = 'Couldn’t load this'; box.classList.add('loading'); });
 }
+// a playing video stuck without data for ~1.2 s (Safari, after looping some clips) is loaded again from its blob
+let stuckT = -1, stuckN = 0;
+setInterval(() => {
+  const v = playing;
+  if (!v || v.paused || !v.src || document.hidden) { stuckN = 0; return; }
+  if (Math.abs(v.currentTime - stuckT) < 0.01 && v.readyState < 3) {
+    if (++stuckN >= 3) { stuckN = 0; const u = v.src; v.removeAttribute('src'); v.load(); v.src = u; v.play().catch(() => {}); }
+  } else stuckN = 0;
+  stuckT = v.currentTime;
+}, 400);
 function paintSnd(box) { const s = box.querySelector('.snd'); if (s) s.innerHTML = svg(muted ? IC.muted : IC.sound); }
 
 /* ---------- the picture or video of a post ---------- */
@@ -580,7 +619,9 @@ function mediaBox(c, onLike) {
   box.append(bg, pst);
   if (c.k === 'photo') { const img = el('img', 'pic'); img.alt = c.t || 'Photo by ' + c.by; box.append(img); }
   else {
-    const v = el('video'); v.loop = true; v.playsInline = true; v.muted = true; v.preload = 'none'; v.setAttribute('playsinline', '');
+    // looped by hand: Safari's own loop can hang at the end or the start of a recorded clip
+    const v = el('video'); v.playsInline = true; v.muted = true; v.preload = 'none'; v.setAttribute('playsinline', '');
+    v.addEventListener('ended', () => { v.currentTime = 0; if (playing === v) v.play().catch(() => {}); });
     const snd = el('button', 'snd'); snd.type = 'button'; snd.setAttribute('aria-label', 'Sound on or off');
     const prog = el('div', 'prog'), pi = el('i'), paused = el('div', 'paused'), load = el('div', 'load', 'Loading…');
     paused.innerHTML = svg(IC.play, ' style="fill:#fffd;stroke:none"'); prog.append(pi);
@@ -652,7 +693,7 @@ function postCard(c, opt) {
   a._paint = () => {
     lb.classList.toggle('on', !!c.me); vb.classList.toggle('on', isSaved(c.id));
     lk.replaceWith(lk = likesLine(c));
-    cap.replaceChildren(); if (c.t) { const cn = el('a', '', c.by); cn.href = userLink(c.by); cap.className = 'cap'; cap.append(cn, document.createTextNode(c.t)); }
+    cap.replaceChildren(); if (c.t) { const cn = el('a', '', c.by); cn.href = userLink(c.by); cap.className = 'cap'; cap.append(cn, ...capNodes(c)); }
     all.hidden = !c.cm; all.textContent = c.cm === 1 ? 'View 1 comment' : 'View all ' + num(c.cm) + ' comments';
   };
   a._paint();
@@ -682,7 +723,7 @@ function reelItem(c, root) {
   r.append(box, shade, side, info);
   r._paint = () => {
     lb.classList.toggle('on', !!c.me); ls_.textContent = num(c.lk); cs.textContent = num(c.cm); vb.classList.toggle('on', isSaved(c.id));
-    cap.textContent = c.t || ''; cap.hidden = !c.t;
+    cap.replaceChildren(...capNodes(c)); cap.hidden = !c.t;
     meta.replaceChildren();
     if (g) { const gl = el('a', '', '🎮 ' + g.title + ' · Play'); gl.href = 'play.html?game=' + encodeURIComponent(c.g); meta.append(gl); }
     if (c.k !== 'photo') meta.append(el('span', '', '▶ ' + plural(c.vw, 'view')));
@@ -871,7 +912,7 @@ function commentsPanel(c) {
     nm.href = al.href = userLink(m.n); al.append(avatar(m.n));
     body.append(nm);
     if (m.re) { const r = el('a', 're', '@' + m.re); r.href = userLink(m.re); body.append(r); }
-    body.append(document.createTextNode(m.t));
+    body.append(document.createTextNode(fw(m.t)));
     const meta = el('div', 'meta'); meta.append(el('span', '', ago(m.at)));
     const lks = el('span', '', m.lk ? plural(m.lk, 'like') : ''); meta.append(lks);
     const rb = el('button', '', 'Reply'); rb.type = 'button'; rb.onclick = () => { if (!me()) return needAccount(); setRe(m.n); inp.value = ''; inp.focus(); };
@@ -896,7 +937,7 @@ function commentsPanel(c) {
   list.append(el('li', 'none', 'Loading comments…'));
   get('comments', { id: c.id }).then(r => {
     if (r.status !== 200) { list.replaceChildren(el('li', 'none', 'Couldn’t load the comments.')); return; }
-    const top = c.t ? (() => { const li = el('li'), body = el('div', 'body'), nm = el('a', 'nm', c.by), al = el('a'); nm.href = al.href = userLink(c.by); al.append(avatar(c.by)); body.append(nm, document.createTextNode(c.t)); const meta = el('div', 'meta'); meta.append(el('span', '', ago(c.at))); body.append(meta); li.append(al, body); return li; })() : null;
+    const top = c.t ? (() => { const li = el('li'), body = el('div', 'body'), nm = el('a', 'nm', c.by), al = el('a'); nm.href = al.href = userLink(c.by); al.append(avatar(c.by)); body.append(nm, ...capNodes(c)); const meta = el('div', 'meta'); meta.append(el('span', '', ago(c.at))); body.append(meta); li.append(al, body); return li; })() : null;
     list.replaceChildren(...(top ? [top] : []), ...r.list.map(row)); if (!r.list.length) { list.append(el('li', 'none', 'No comments yet. Start the conversation.')); }
   });
   form.onsubmit = async e => {
@@ -1058,6 +1099,21 @@ async function showExplore() {
   q.style.marginBottom = '12px';
   view.replaceChildren(wrap);
 }
+// a caption as text; in the site's own (Claude) posts, https links are clickable
+// 2026-11-11: words are shown as written; the account panel's "Filter swear words on Social" stars them out (per account)
+const SWEAR = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;
+const filterOn = () => { try { return localStorage.getItem('arcade-swear-filter') === '1'; } catch (e) { return false; } };
+const fw = t => filterOn() ? String(t == null ? '' : t).replace(SWEAR, w => w[0] + '*'.repeat(w.length - 1)) : String(t == null ? '' : t);
+addEventListener('arcade-filter', () => { try { route(); } catch (e) {} });
+function capNodes(c) {
+  const t = c.t || '';
+  if (!c.bot) return [document.createTextNode(fw(t))];
+  return t.split(/(https:\/\/[^\s]+)/).map((part, i) => {
+    if (!(i % 2)) return document.createTextNode(fw(part));
+    const a = el('a', 'lnk', part.replace(/^https:\/\//, '').slice(0, 40) + (part.length > 48 ? '…' : '')); a.href = part; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.onclick = e => e.stopPropagation(); return a;
+  });
+}
 function gridOf(list) {
   const grid = el('div', 'grid3');
   list.forEach((c, i) => {
@@ -1065,7 +1121,8 @@ function gridOf(list) {
     a.onclick = e => { e.preventDefault(); openViewer(list, i); };
     const img = el('img'); img.alt = c.t || 'Post by ' + c.by; img.loading = 'lazy'; img.src = c.p || ((gameOf(c.g) || {}).thumb || '');
     a.append(img);
-    if (c.k !== 'photo') { const k = el('span', 'kind'); k.innerHTML = svg(IC.reel); a.append(k); const vw = el('span', 'vw'); vw.innerHTML = svg(IC.play); vw.append(num(c.vw)); a.append(vw); }
+    if (c.pin) { const k = el('span', 'kind pin', '📌'); k.title = 'Pinned'; a.append(k); }
+    else if (c.k !== 'photo') { const k = el('span', 'kind'); k.innerHTML = svg(IC.reel); a.append(k); const vw = el('span', 'vw'); vw.innerHTML = svg(IC.play); vw.append(num(c.vw)); a.append(vw); }
     const hov = el('div', 'hov'), h1 = el('span'), h2 = el('span'); h1.innerHTML = svg(IC.heart); h1.append(num(c.lk)); h2.innerHTML = svg(IC.comment); h2.append(num(c.cm)); hov.append(h1, h2); a.append(hov);
     grid.append(a);
   });
@@ -1098,7 +1155,9 @@ async function showUser(name) {
   stat(r.views, r.views === 1 ? ' view' : ' views');
   const sc = el('a', 'play-link', 'Best scores in every game →'); sc.href = 'players.html#p=' + encodeURIComponent(r.n);
   if (ADMIN && !isMe) { const ab = el('button', 'btn grey', 'Admin: remove picture'); ab.type = 'button'; ab.onclick = async () => { if (!adminPw) adminPw = prompt('Admin password') || ''; if (!adminPw) return; const x = await acct('admin', { method: 'POST', body: { pw: adminPw, op: 'avatardel', name: r.n, r: ROOM } }); if (x.status === 200) { avCache.set(lc(r.n), ''); saveAv(); document.querySelectorAll('.av[data-n="' + lc(r.n) + '"]').forEach(sp => paintAv(sp, '')); } else { adminPw = ''; alert(x.error === 'wrong' ? 'Wrong password.' : 'Couldn’t remove it.'); } }; nmrow.append(ab); }
-  info.append(nmrow, st, sc);
+  info.append(nmrow, st);
+  if (r.bio) { const bio = el('p', 'bio'); bio.append(...capNodes({ t: r.bio, bot: lc(r.n) === 'claude' ? 1 : 0 })); info.append(bio); } // 2026-11-11: a profile description (only Claude's, set by the site)
+  info.append(sc);
   if (isMe) { const ed = el('button', 'av-edit'); ed.type = 'button'; ed.title = 'Change profile picture'; ed.setAttribute('aria-label', 'Change profile picture'); const cb = el('span', 'cam-b'); cb.innerHTML = svg(IC.cam); ed.append(ringed(r.n, true), cb); ed.onclick = editAvatar; h.append(ed, info); }
   else h.append(ringed(r.n, true), info);
   const tabs = el('div', 'ptabs'), body = el('div');
@@ -1178,7 +1237,7 @@ function paintInbox() {
     const li = el('li', c.un ? 'un' : ''), av = avatar(c.g ? 'G' : c.n), tx = el('div', 'tx');
     if (c.g) av.style.background = 'linear-gradient(135deg, #6c5ce7, #00d2a8)';
     else if (online[k]) av.classList.add('on-dot');
-    const last = POST_LINK.test(c.t || '') ? (c.me ? 'You sent a post' : 'Sent a post') : (c.t || '');
+    const last = POST_LINK.test(c.t || '') ? (c.me ? 'You sent a post' : 'Sent a post') : fw(c.t || '');
     const sub = c.un ? (c.un > 1 ? c.un + ' new messages' : (c.by ? c.by + ': ' : '') + last) : online[k] && !c.g ? 'Active now' : (POST_LINK.test(c.t || '') ? '' : c.me ? 'You: ' : c.by ? c.by + ': ' : '') + last;
     tx.append(el('b', '', c.n), el('small', '', sub + (c.ts && !(online[k] && !c.un && !c.g) ? ' · ' + ago(c.ts) : '')));
     li.append(av, tx);
@@ -1253,7 +1312,7 @@ function drawChat() {
       if (note) { const t = el('div', 'bub' + (m.f ? ' me' : ''), note); frag.append(t); }
       return;
     }
-    const b = el('div', 'bub' + (m.f ? ' me' : ''), m.t); b.title = new Date(m.ts).toLocaleString(); frag.append(b);
+    const b = el('div', 'bub' + (m.f ? ' me' : ''), fw(m.t)); b.title = new Date(m.ts).toLocaleString(); frag.append(b);
   });
   if (!chat.msgs.length) frag.append(el('p', 'note', 'Say hi to ' + chat.n + '! Only the two of you can see this chat.'));
   log.replaceChildren(frag); log.scrollTop = log.scrollHeight;
@@ -1270,7 +1329,7 @@ function postBubble(id, mine) {
     const c = r.clip, g = gameOf(c.g);
     head.append(avatar(c.by), el('span', '', c.by));
     img.src = c.p || (g ? g.thumb : '');
-    cap.replaceChildren(); const nb = el('b', '', c.by); cap.append(nb, document.createTextNode(c.t || (c.k === 'photo' ? 'Photo' : g ? g.title + ' clip' : 'Video')));
+    cap.replaceChildren(); const nb = el('b', '', c.by); cap.append(nb, document.createTextNode(fw(c.t) || (c.k === 'photo' ? 'Photo' : g ? g.title + ' clip' : 'Video')));
   });
   return b;
 }
@@ -1451,8 +1510,19 @@ function editAvatar() {
   };
 }
 
+/* ---------- closed for now (games.js SOCIAL_CLOSED, 2026-11-11) ---------- */
+function showClosed() {
+  document.querySelectorAll('.ig-top, .ig-nav').forEach(e => { e.style.display = 'none'; });
+  document.title = 'Social · The Arcade';
+  const d = el('div', 'empty'), b = el('a', 'btn', 'Back to the games');
+  d.append(el('b', '', 'Social is closed for now'), document.createTextNode('It’s taking a short break. Check back soon!'));
+  b.href = 'index.html'; d.append(el('br'), b);
+  view.replaceChildren(d);
+}
+
 /* ---------- routing ---------- */
 function route() {
+  if (window.SOCIAL_CLOSED) return showClosed();
   closeMenu();
   if (playing) { playing.pause(); playing = null; }
   chat = null;

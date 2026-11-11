@@ -478,7 +478,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.3';
+const VERSION = '1.3.1';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -1166,7 +1166,8 @@ function treeGeos(r) {
   const tuft = new THREE.BufferGeometry();
   { const p = [], n = []; for (let k = 0; k < 3; k++) { const a = k * 2.1, cx = Math.cos(a) * 0.12, cz = Math.sin(a) * 0.12, lx = Math.cos(a + 1.57) * 0.07, lz = Math.sin(a + 1.57) * 0.07, tx = Math.cos(a) * 0.3, tz = Math.sin(a) * 0.3;
       p.push(cx - lx, 0, cz - lz, cx + lx, 0, cz + lz, tx, 0.55 + k * 0.08, tz); n.push(0, 1, 0, 0, 1, 0, 0, 1, 0); }
-    tuft.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); tuft.setAttribute('normal', new THREE.Float32BufferAttribute(n, 3)); }
+    tuft.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); tuft.setAttribute('normal', new THREE.Float32BufferAttribute(n, 3));
+    tuft.setAttribute('color', new THREE.Float32BufferAttribute(new Array(p.length).fill(1), 3)); } // 1.3.1: without colours the tufts drew black
   return { pine, pineT, leaf, leafT, bush, rock, tuft };
 }
 
@@ -1239,6 +1240,143 @@ function buildDecor(st, rng, noise) {
   }
   st.counts = { pines: pines.length, leafs: leafs.length, bushes: bushes.length, rocks: rocks.length, tufts: tufts.length };
   buildGates(st, rng);
+  buildDetail(st, inst);
+}
+
+/* 1.3.1: more detail on every stage, from its own random stream (so the road, trees and rocks stay where they were):
+   corner chevrons and fans at tight turns, flowers, logs and stumps, fences, hay bales, cacti, ferns, snow drifts,
+   cabins and barns away from the road, and clouds. */
+const DETAIL = {
+  forest: { flowers: [0xf2e04a, 0xffffff, 0xd84a8a, 0x8a6ad8], logs: 1, fence: 1, cabins: 1, ferns: 0.3 },
+  dry: { flowers: [0xf2c04a, 0xe8e0c8], hay: 1, fence: 1, cactus: 0.4, cabins: 1 },
+  wet: { flowers: [0xffffff, 0x7a9ad8], logs: 1.3, ferns: 0.6, cabins: 0.6 },
+  autumn: { flowers: [0xf2a03a, 0xd8462a, 0xf2e04a], logs: 1, hay: 1.2, fence: 1.2, cabins: 1.2 },
+  alpine: { flowers: [0xffffff, 0x8a6ad8, 0xf2e04a], logs: 0.6, fence: 0.6, cabins: 0.8 },
+  fog: { flowers: [0xffffff], logs: 1.2, ferns: 0.4, cabins: 0.5 },
+  dusk: { flowers: [0xf2a03a, 0xd84a8a], hay: 0.8, fence: 1, cabins: 1 },
+  snow: { drifts: 1, logs: 0.5, cabins: 0.8, fence: 0.6 },
+  canyon: { cactus: 1, cabins: 0.4 },
+  jungle: { flowers: [0xe0322a, 0xf2e04a, 0xd84a8a, 0xff7a1a], logs: 1.2, ferns: 1.6 },
+};
+function buildDetail(st, inst) {
+  const D = DETAIL[st.def.biome] || DETAIL.forest, B = st.B, r = mulberry(st.def.seed * 7 + 31337), hi = S.quality !== 'low';
+  const { X, Z, HD, N, half } = st;
+  // a spot beside road sample i, at offset o (+ = right): only if this part of the road is the nearest one
+  const spot = (i, o) => {
+    const x = X[i] - Math.cos(HD[i]) * o, z = Z[i] + Math.sin(HD[i]) * o, inf = gridInfo(st, x, z);
+    if (inf.i < 0 || Math.abs(inf.i - i) > 12 || inf.e < 1.6) return null;
+    return { x, z, y: groundH(st, x, z), e: inf.e };
+  };
+  const dropSide = (i, side) => st.PC[i] * side > 0.3;
+  const at = st.detailAt = {}, flowers = [], logs = [], stumps = [], fposts = [], frails = [], hay = [], cacti = [], ferns = [], drifts = [], chev = [], walls = [], roofs = [];
+
+  // chevrons on the outside of the tight corners (and a few fans at some of them)
+  let fans = 0;
+  for (const n of st.notes) {
+    if (n.c === 'JUMP' || n.sev > 2) continue;
+    const side = n.dir > 0 ? 1 : -1; // turning left: the outside is on the right
+    for (let k = 0; k < 3; k++) {
+      const i = clamp(Math.round(lerp(n.i, n.i1, 0.25 + k * 0.25)), 2, N - 3), o = side * (half + 1.6), p = spot(i, o);
+      if (!p) continue;
+      chev.push([p.x, p.y, p.z, 1, HD[i] + (side > 0 ? -Math.PI / 2 : Math.PI / 2) + Math.PI]);
+      addCollider(st, p.x, p.z, 0.16, 'post');
+    }
+    if (fans < 6 && r() < 0.35) { fans++; crowd(st, Math.round((n.i + n.i1) / 2), r, 4 + Math.floor(r() * 3)); }
+  }
+  // along the road
+  for (let i = 40; i < N - 20; i += 3) {
+    for (const side of [-1, 1]) {
+      if (dropSide(i, side)) continue;
+      if (D.flowers && r() < (hi ? 0.5 : 0.25)) {
+        const c = 1 + Math.floor(r() * 4), o0 = side * (half + 1.4 + r() * 6);
+        for (let q = 0; q < c; q++) { const p = spot(i, o0 + (r() - 0.5) * 1.6); if (p) flowers.push([p.x + (r() - 0.5), p.y, p.z + (r() - 0.5), 1.2 + r() * 1.0, r() * 6.3]); }
+      }
+      if (D.logs && r() < 0.012 * D.logs) { const p = spot(i, side * (half + 3 + r() * 9)); if (p) { logs.push([p.x, p.y + 0.25, p.z, 0.8 + r() * 0.6, r() * 6.3]); if (p.e < 6) addCollider(st, p.x, p.z, 0.5, 'rock'); } }
+      if (D.logs && r() < 0.015 * D.logs) { const p = spot(i, side * (half + 2.5 + r() * 10)); if (p) { stumps.push([p.x, p.y, p.z, 0.8 + r() * 0.5, r() * 6.3]); if (p.e < 6) addCollider(st, p.x, p.z, 0.3, 'tree'); } }
+      if (D.hay && r() < 0.01 * D.hay) { const p = spot(i, side * (half + 4 + r() * 12)); if (p) for (let q = 0, z0 = at.hay || (at.hay = [i, side * 6]); q < 1 + Math.floor(r() * 3); q++) hay.push([p.x + q * 1.5 * Math.sin(HD[i]), p.y + 0.55, p.z + q * 1.5 * Math.cos(HD[i]), 1, HD[i] + Math.PI / 2]); }
+      if (D.cactus && r() < 0.014 * D.cactus) { const p = spot(i, side * (half + 2.5 + r() * 14)); if (p) { cacti.push([p.x, p.y, p.z, 0.8 + r() * 0.7, r() * 6.3]); if (p.e < 6) addCollider(st, p.x, p.z, 0.3, 'tree'); } }
+      if (D.ferns && r() < 0.06 * D.ferns * (hi ? 1 : 0.5)) { const p = spot(i, side * (half + 1.6 + r() * 7)); if (p) ferns.push([p.x, p.y, p.z, 0.7 + r() * 0.8, r() * 6.3]); }
+      if (D.drifts && r() < 0.05) { const p = spot(i, side * (half + 1.2 + r() * 5)); if (p) drifts.push([p.x, p.y - 0.1, p.z, 0.8 + r() * 1.2, HD[i]]); }
+    }
+  }
+  // fences: a stretch of post-and-rail on one side of a straight-ish bit
+  if (D.fence) for (let f = 0, nf = Math.round(st.L / 600 * D.fence); f < nf; f++) {
+    const a = Math.floor(lerp(60, N - 120, r())), len = 25 + Math.floor(r() * 35), side = r() < 0.5 ? -1 : 1, o = side * (half + 3.2 + r() * 2);
+    let ok = true; for (let i = a; i < a + len; i++) if (dropSide(i, side) || Math.abs(st.K[i]) > 1 / 45) { ok = false; break; }
+    if (!ok) continue;
+    let prev = null;
+    for (let i = a; i < a + len; i += 2) {
+      const p = spot(i, o); if (!p) { prev = null; continue; }
+      fposts.push([p.x, p.y, p.z, 1, HD[i]]); if (!at.fence) at.fence = [i, o]; addCollider(st, p.x, p.z, 0.12, 'post');
+      if (prev) { const dx = p.x - prev.x, dz = p.z - prev.z, l = Math.hypot(dx, dz); if (l < 6) frails.push([(p.x + prev.x) / 2, (p.y + prev.y) / 2, (p.z + prev.z) / 2, l, Math.atan2(dx, dz)]); }
+      prev = p;
+    }
+  }
+  // cabins and barns, away from the road and facing it
+  if (D.cabins) for (let k = 0, nk = Math.round(st.L / 700 * D.cabins); k < nk; k++) {
+    const i = Math.floor(lerp(80, N - 80, r())), side = r() < 0.5 ? -1 : 1;
+    if (dropSide(i, side)) continue;
+    const p = spot(i, side * (half + 18 + r() * 25)); if (!p || p.e < 14) continue;
+    const sl = Math.abs(groundH(st, p.x + 3, p.z) - groundH(st, p.x - 3, p.z)) + Math.abs(groundH(st, p.x, p.z + 3) - groundH(st, p.x, p.z - 3));
+    if (sl > 2.2) continue;
+    const barn = r() < 0.35, s = barn ? 1.4 : 1;
+    if (!at.cabin) at.cabin = [i, side * (half + 18)];
+    walls.push([p.x, p.y - 0.3, p.z, s, HD[i] + (barn ? Math.PI / 2 : 0), barn]); roofs.push([p.x, p.y - 0.3, p.z, s, HD[i] + (barn ? Math.PI / 2 : 0), barn]);
+  }
+
+  // geometry
+  const fl = mergeGeos([paint(tr(new THREE.CylinderGeometry(0.02, 0.02, 0.32, 3), 0, 0.16, 0), 0x4f8a33), paint(tr(new THREE.IcosahedronGeometry(0.11, 0), 0, 0.36, 0), 0xffffff)]);
+  const lg = new THREE.CylinderGeometry(0.28, 0.32, 3.2, 7); lg.rotateZ(Math.PI / 2);
+  const log = mergeGeos([paint(lg, 0x6a4a30), paint(tr(new THREE.CylinderGeometry(0.27, 0.27, 0.02, 7).rotateZ(Math.PI / 2), 1.61, 0, 0), 0xc8a070)]);
+  const stump = mergeGeos([paint(tr(new THREE.CylinderGeometry(0.32, 0.4, 0.5, 7), 0, 0.25, 0), 0x6a4a30), paint(tr(new THREE.CylinderGeometry(0.31, 0.31, 0.02, 7), 0, 0.51, 0), 0xc8a070)]);
+  const fpost = mergeGeos([paint(tr(new THREE.BoxGeometry(0.14, 1.15, 0.14), 0, 0.57, 0), 0x7a5a3a)]);
+  const frail = mergeGeos([paint(tr(new THREE.BoxGeometry(0.06, 0.1, 1), 0, 0.95, 0), 0x8a6a46), paint(tr(new THREE.BoxGeometry(0.06, 0.1, 1), 0, 0.55, 0), 0x8a6a46)]);
+  const hb = new THREE.CylinderGeometry(0.62, 0.62, 1.2, 10); hb.rotateZ(Math.PI / 2);
+  const hayG = mergeGeos([paint(hb, 0xd8b85a)]);
+  const cac = mergeGeos([paint(tr(new THREE.CylinderGeometry(0.22, 0.26, 2.4, 7), 0, 1.2, 0), 0x4f7a3a), paint(tr(new THREE.CylinderGeometry(0.13, 0.15, 0.9, 6), 0.45, 1.25, 0), 0x4f7a3a), paint(tr(new THREE.CylinderGeometry(0.13, 0.13, 0.5, 6), 0.3, 1.0, 0).rotateZ(Math.PI / 2), 0x4f7a3a), paint(tr(new THREE.CylinderGeometry(0.12, 0.14, 0.7, 6), -0.42, 1.55, 0), 0x45703a), paint(tr(new THREE.CylinderGeometry(0.12, 0.12, 0.45, 6), -0.28, 1.3, 0).rotateZ(Math.PI / 2), 0x45703a)]);
+  const fernParts = []; for (let k = 0; k < 6; k++) { const g = new THREE.ConeGeometry(0.16, 1.3, 3); g.translate(0, 0.65, 0); g.rotateX(0.95); g.rotateY(k * Math.PI / 3); fernParts.push(paint(g, k % 2 ? 0xffffff : 0xe6e6e6)); }
+  const fern = mergeGeos(fernParts);
+  const dg = jitter(new THREE.IcosahedronGeometry(1, 1), 0.2, r); dg.scale(1.6, 0.35, 1);
+  const drift = mergeGeos([paint(dg, 0xf6f9fc)]);
+  const ch = document.createElement('canvas'); ch.width = 64; ch.height = 64; { const x = ch.getContext('2d'); x.fillStyle = '#d8241c'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#fff'; for (const ox of [-2, 30]) { x.beginPath(); x.moveTo(ox + 6, 8); x.lineTo(ox + 26, 32); x.lineTo(ox + 6, 56); x.lineTo(ox + 16, 56); x.lineTo(ox + 36, 32); x.lineTo(ox + 16, 8); x.fill(); } }
+  const chevPost = mergeGeos([paint(tr(new THREE.BoxGeometry(0.1, 1.0, 0.1), 0, 0.5, 0), 0x333333)]);
+  const chevBoard = new THREE.PlaneGeometry(0.9, 0.6); chevBoard.translate(0, 1.25, 0.06);
+  // walls and roofs of cabins (log brown) and barns (red), one instanced mesh each
+  const cabinW = mergeGeos([paint(tr(new THREE.BoxGeometry(4.2, 2.6, 3.4), 0, 1.3, 0), 0xffffff), paint(tr(new THREE.BoxGeometry(0.9, 1.7, 0.1), 0, 0.85, 1.72), 0x3a2618), paint(tr(new THREE.BoxGeometry(0.8, 0.7, 0.1), 1.3, 1.5, 1.72), 0x9ac8e6), paint(tr(new THREE.BoxGeometry(0.8, 0.7, 0.1), -1.3, 1.5, 1.72), 0x9ac8e6), paint(tr(new THREE.BoxGeometry(0.5, 1.6, 0.5), 1.4, 3.3, -0.6), 0x8a7a70)]);
+  const rf = new THREE.CylinderGeometry(0.01, 2.9, 1.7, 4, 1); rf.rotateY(Math.PI / 4); rf.scale(1.05, 1, 0.85); rf.translate(0, 3.45, 0);
+  const roof = mergeGeos([paint(rf, 0xffffff)]);
+
+  inst(fl, flowers, 0, D.flowers || [0xffffff], false);
+  inst(log, logs, 0xffffff, null, true); inst(stump, stumps, 0xffffff, null, true);
+  inst(fpost, fposts, 0xffffff, null, true);
+  if (frails.length) { // rails stretch to the gap between posts
+    const m = new THREE.InstancedMesh(frail, lowMat({ vertexColors: true }), frails.length), o = new THREE.Object3D();
+    frails.forEach((t, k) => { o.position.set(t[0], t[1], t[2]); o.rotation.set(0, t[4], 0); o.scale.set(1, 1, t[3]); o.updateMatrix(); m.setMatrixAt(k, o.matrix); });
+    m.castShadow = true; m.receiveShadow = true; st.group.add(m);
+  }
+  inst(hayG, hay, 0xffffff, null, true); inst(cac, cacti, 0xffffff, null, true);
+  inst(fern, ferns, 0, B.leaf, false, { side: THREE.DoubleSide });
+  inst(drift, drifts, 0xffffff, null, false);
+  if (chev.length) {
+    inst(chevPost, chev, 0xffffff, null, true);
+    const m = new THREE.InstancedMesh(chevBoard, new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(ch), side: THREE.DoubleSide }), chev.length), o = new THREE.Object3D();
+    chev.forEach((t, k) => { o.position.set(t[0], t[1], t[2]); o.rotation.set(0, t[4], 0); o.scale.setScalar(1); o.updateMatrix(); m.setMatrixAt(k, o.matrix); });
+    m.castShadow = true; st.group.add(m);
+  }
+  if (walls.length) {
+    const cab = walls.filter(w => !w[5]), barn = walls.filter(w => w[5]);
+    inst(cabinW, cab, 0x8a5e3a, null, true); inst(roof, roofs.filter(w => !w[5]), 0x5a4a44, null, true);
+    inst(cabinW, barn, 0xb03a2a, null, true); inst(roof, roofs.filter(w => w[5]), 0x4a4a4a, null, true);
+  }
+  // clouds: soft flat clusters high up (not fogged, so they read as sky)
+  const cg = [], cr = mulberry(st.def.seed + 777), g = st.grid, cx = g.minX + g.nx * g.CS / 2, cz = g.minZ + g.nz * g.CS / 2, R = Math.max(g.nx, g.nz) * g.CS * 0.6;
+  const cloudCol = new THREE.Color(0xffffff).lerp(new THREE.Color(B.sky[1]), 0.25);
+  for (let k = 0; k < (hi ? 26 : 12); k++) {
+    const a = cr() * Math.PI * 2, d = R * (0.2 + cr() * 0.8), y = 140 + cr() * 70, px = cx + Math.cos(a) * d, pz = cz + Math.sin(a) * d;
+    for (let b = 0; b < 4; b++) { const s = 14 + cr() * 16, q = jitter(new THREE.IcosahedronGeometry(1, 0), 0.3, cr); q.scale(s * 1.6, s * 0.45, s); q.translate(px + (b - 1.5) * s * 1.3, y + cr() * 6, pz + (cr() - 0.5) * s); cg.push(paint(q, cloudCol)); }
+  }
+  if (st.def.biome !== 'fog') { const m = new THREE.Mesh(mergeGeos(cg), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, transparent: true, opacity: 0.92 })); st.group.add(m); }
+  st.counts.detail = { flowers: flowers.length, logs: logs.length, stumps: stumps.length, fence: fposts.length, hay: hay.length, cacti: cacti.length, ferns: ferns.length, drifts: drifts.length, chevrons: chev.length, cabins: walls.length };
 }
 
 function bannerTex(text, finish) {
@@ -1300,6 +1438,8 @@ function buildBackdrop(st, rng) {
     const a = k / 40 * Math.PI * 2 + rng() * 0.1, h = 120 + rng() * 220, r = 160 + rng() * 200;
     const g = jitter(new THREE.ConeGeometry(r, h, 5 + Math.floor(rng() * 3)), 30, rng); g.translate(cx + Math.cos(a) * R, h / 2 - 60, cz + Math.sin(a) * R);
     geos.push(paint(g, new THREE.Color(col).multiplyScalar(0.92 + rng() * 0.12)));
+    // 1.3.1: snow caps on the tall ones (not in the warm biomes)
+    if (h > 200 && !['dry', 'canyon', 'jungle', 'dusk'].includes(st.def.biome)) { const c = new THREE.ConeGeometry(r * 0.3, h * 0.3, 6); c.translate(cx + Math.cos(a) * R, h - 60 - h * 0.15 + 2, cz + Math.sin(a) * R); geos.push(paint(c, new THREE.Color(0xffffff).lerp(new THREE.Color(st.B.sky[1]), 0.2))); }
   }
   const m = new THREE.Mesh(mergeGeos(geos), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }));
   st.group.add(m);
@@ -1354,13 +1494,13 @@ class Car {
     const st = this.st, c = CAR;
     this.track();
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
-    // steering: slower and less lock at speed, help to catch slides
+    // steering: slower and less lock at speed, help to catch slides (1.3.1: a bit more lock at speed, quicker hands)
     const sp = Math.abs(this.vx);
-    const maxS = 0.6 / (1 + sp / 19);
+    const maxS = 0.63 / (1 + sp / 24);
     let target = -I.steer * maxS * (this.oneHand > 0 || this.bird > 0.4 ? 0.45 : 1);
-    if (S.assist && this.grounded && sp > 4) target += -Math.atan2(this.vl, sp) * [0, 0.42, 0.8][S.assist] * Math.sign(this.vx);
+    if (this.grounded && sp > 4) target += -Math.atan2(this.vl, sp) * [0.1, 0.5, 0.85][S.assist] * Math.sign(this.vx);
     target = clamp(target, -0.62, 0.62);
-    const rate = (S.assist === 2 ? 2.6 : 3.3) * dt;
+    const rate = (S.assist === 2 ? 3.2 : 3.9) * dt;
     this.steer += clamp(target - this.steer, -rate, rate);
     if (this.oneHand > 0) this.oneHand -= dt;
 
@@ -1428,7 +1568,7 @@ class Car {
     if (gas > 0 && this.vx < -1.2) Fx += gas * mu * load * 0.95;
     if (hand) Fx -= Math.sign(this.vx) * Math.min(Math.abs(this.vx) * c.m * 4, mu * NR * 0.55);
     const use = clamp(Math.abs(drive) * 0.42 / (mu * NR + 1) + hand * 0.6, 0, 0.96);
-    let FyF = -mu * NF * pac(aF, 7.0), FyR = -mu * NR * 1.06 * Math.sqrt(1 - use * use) * (hand ? 0.42 : 1) * pac(aR, 8.6);
+    let FyF = -mu * NF * 1.08 * pac(aF, 7.0), FyR = -mu * NR * 1.1 * Math.sqrt(1 - use * use) * (hand ? 0.42 : 1) * pac(aR, 8.6);
     Fx += -0.74 * this.vx * Math.abs(this.vx) - (this.onRoad ? 0.022 : 0.075) * c.m * 9.8 * clamp(this.vx, -1, 1) - (this.inMud ? 0.06 * c.m * 9.8 * clamp(this.vx / 5, -1, 1) : 0);
     // open doors catch the air
     for (let d = 0; d < 2; d++) if (this.doors[d].open) Fx -= this.doors[d].a * 0.02 * this.vx * Math.abs(this.vx);
@@ -1441,7 +1581,7 @@ class Car {
     this.ax = Fx / c.m; this.ay = Fy / c.m;
     this.vx += (this.ax - this.vl * this.r) * dt;
     this.vl += (this.ay + this.vx * this.r) * dt;
-    this.r += (contact ? M / c.Iz - this.r * 0.35 : -this.r * 0.4) * dt;
+    this.r += (contact ? M / c.Iz - this.r * 0.42 : -this.r * 0.4) * dt;
     if (contact && sp < 1.5 && gas === 0) { this.vl *= 0.9; this.r *= 0.9; if (brk === 0 && sp < 0.3) this.vx *= 0.9; }
     this.p.x += (fx * this.vx + rx * this.vl) * dt; this.p.z += (fz * this.vx + rz * this.vl) * dt;
     this.yaw += this.r * dt;
@@ -2379,7 +2519,7 @@ const TOUCH = { left: false, right: false, gas: false, brake: false };
 function driverInput(dt) {
   let s = (key('KeyD', 'ArrowRight') || TOUCH.right ? 1 : 0) - (key('KeyA', 'ArrowLeft') || TOUCH.left ? 1 : 0);
   // keys ease in so a tap is a small correction, the stick is direct
-  GAME.kSteer += clamp(s - GAME.kSteer, -dt * (s ? 4.5 : 7), dt * (s ? 4.5 : 7));
+  GAME.kSteer += clamp(s - GAME.kSteer, -dt * (s ? 5.6 : 8), dt * (s ? 5.6 : 8));
   const steer = Math.abs(PAD.lx) > 0.02 ? PAD.lx : GAME.kSteer;
   const gas = Math.max(key('KeyW', 'ArrowUp') || TOUCH.gas ? 1 : 0, PAD.rt), brake = Math.max(key('KeyS', 'ArrowDown') || TOUCH.brake ? 1 : 0, PAD.lt);
   return { steer, gas, brake, hand: key('Space') || padHeld(0), clutch: key('ShiftLeft', 'ShiftRight') || padHeld(4) };
@@ -3410,6 +3550,11 @@ function showBoardResult(j) {
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.3.1', date: '11 November 2026', items: [
+    'Easier steering (but not easy): the wheel turns further at speed, reacts faster (keys and pads), and the car is calmer after a quick flick, so slides are easier to catch. Light help catches a little even with Steering help off.',
+    'Nicer, more detailed stages: red and white chevron boards on the outside of the tight corners (with fans at some of them), flowers, fallen logs and stumps, wooden fences, hay bales, cacti in the canyon, ferns in the jungle, snow drifts, cabins and barns back from the road, clouds, and snow on the tall mountains.',
+    'Fixed: the grass tufts beside the road were drawn black.',
+  ] },
   { v: '1.3', date: '12 November 2026', items: [
     '10 new long stages, about three times the length of the others (6 to 8.6 km), each with its own character: a mountain pass that climbs all the way, a long drop down a snowy mountain, a rollercoaster of hills, a red canyon, a jungle full of mud, a gentle meadow marathon, a stormy climb, a frozen forest, harvest hills and the longest of all into the sunset.',
     'Real hills on the long stages: long climbs and descents, steeper slopes, blind crests that throw the car light (the navigator calls them as jumps) and dips that squash the suspension.',

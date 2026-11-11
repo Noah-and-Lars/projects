@@ -259,7 +259,8 @@
     var num = function (n, len) { var b = []; len = len || (n < 256 ? 1 : n < 65536 ? 2 : n < 16777216 ? 3 : 4); for (var i = len - 1; i >= 0; i--) b.push(Math.floor(n / Math.pow(256, i)) & 255); return new Uint8Array(b); };
     var f64 = function (x) { var b = new Uint8Array(8); new DataView(b.buffer).setFloat64(0, x); return b; };
     var cat = function (parts) { var n = 0; parts.forEach(function (p) { n += p.length; }); var o = new Uint8Array(n), k = 0; parts.forEach(function (p) { o.set(p, k); k += p.length; }); return o; };
-    var size = function (n) { var b = new Uint8Array(8); b[0] = 1; for (var i = 7; i >= 1; i--) { b[i] = n & 255; n = Math.floor(n / 256); } return b; };
+    // shortest size field that fits: Safari refuses WebM files whose sizes are all written in 8 bytes
+    var size = function (n) { var l = 1; while (n >= Math.pow(2, 7 * l) - 1) l++; var b = new Uint8Array(l); for (var i = l - 1; i >= 0; i--) { b[i] = n % 256; n = Math.floor(n / 256); } b[0] |= 0x80 >> (l - 1); return b; };
     var E = function (id, body) { if (!(body instanceof Uint8Array)) body = cat(body); return cat([num(id), size(body.length), body]); };
     var U = function (id, n) { return E(id, num(n)); }, S = function (id, s) { return E(id, enc.encode(s)); };
     var ms = function (ts) { return Math.round((ts - t0) / 1000); };

@@ -1,0 +1,27 @@
+[
+ {
+  "key": "feedback-form-1",
+  "pin": true,
+  "pill": "FEEDBACK",
+  "kicker": "The Arcade",
+  "headline": "Found a bug? Got an idea? Tell me!",
+  "t": "📌 Found a bug or got an idea for The Arcade? I want to hear it!\n\n👉 Fill in the form: https://docs.google.com/forms/d/e/1FAIpQLSeOQOSz6bS6-2aBxjDZSSdxpBYECQlmbnOWhmeAk34R3wU-7g/viewform\n\n🐞 Bugs: tell me which game, what happened and what device you were on\n💡 Ideas: new games, modes, maps, features, anything you want to see\n\nEvery answer gets read, and the best ideas end up in a future update (you will see the post about it right here) 🙌\n\n#TheArcade #Feedback",
+  "imgs": [
+   "havoc-bay/thumb.jpg",
+   "cube-assault/thumb.jpg",
+   "turn-turn-turn/thumb.jpg",
+   "card-royale/thumb.jpg"
+  ]
+ },
+ {
+  "key": "feedback-home-1",
+  "pill": "NEW FEATURE",
+  "kicker": "Home page",
+  "headline": "Feedback is now on the home page",
+  "imgs": [
+   "news/feedback-home.jpg",
+   "havoc-bay/thumb.jpg"
+  ],
+  "t": "📣 You can now send feedback straight from the home page!\n\n👇 Scroll to the bottom of the Games tab and tap \"Send feedback\". Or use the link right here: https://docs.google.com/forms/d/e/1FAIpQLSeOQOSz6bS6-2aBxjDZSSdxpBYECQlmbnOWhmeAk34R3wU-7g/viewform\n\n🐞 Spotted a bug? Tell me which game, what happened and what device you were on\n💡 Want a new game, mode or map? Drop the idea in\n\nI read every answer, and the fixes and ideas show up here as posts when they ship 🙌\n\n#TheArcade #Feedback"
+ }
+]

@@ -355,7 +355,7 @@ kbd {
 .tab-n { min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--accent-2); color: #04211b; font-size: 11px; font-weight: 800; text-align: center; }
 .tab-n[hidden] { display: none; }
 .tab .narrow { display: none; }
-@media (max-width: 420px) { .tab { padding: 6px 11px; } .tab .wide { display: none; } .tab .narrow { display: inline; } }
+@media (max-width: 480px) { .tab { padding: 6px 9px; } .tab .wide { display: none; } .tab .narrow { display: inline; } }
 
 /* Global chat page (chat.html) */
 .chat { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 18px; margin-top: 20px; height: calc(100vh - 150px); height: calc(100dvh - 150px); min-height: 440px; }
@@ -452,7 +452,8 @@ kbd {
 .mob-phone .top .tab:nth-child(1)::before { content: "🎮"; }
 .mob-phone .top .tab:nth-child(2)::before { content: "💬"; }
 .mob-phone .top .tab:nth-child(3)::before { content: "👥"; }
-.mob-phone .top .tab:nth-child(4)::before { content: "🎬"; }
+.mob-phone .top .tab[href="social.html"]::before { content: "🎬"; }
+.mob-phone .top .tab[href="support.html"]::before { content: "🛟"; } /* by address: Social is closed for now (2026-11-11) */
 .mob-phone .top .tab .wide { display: none; } .mob-phone .top .tab .narrow { display: inline; }
 .mob-phone .top .tab-n { position: absolute; top: 2px; left: calc(50% + 8px); }
 .mob-phone body:not(.player) { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }

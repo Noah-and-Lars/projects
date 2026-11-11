@@ -16,8 +16,11 @@ source in Settings → Pages should be switched to `main`.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
-- The header of the home, chat, Players and Social pages has four tabs: Games (`index.html`), Global chat (`chat.html`),
-  Players (`players.html`) and Social (`social.html`; on phones the bottom bar's 4th icon, 🎬, in arcade.css). The home page's chat tab shows how many are in the chat (`byGame.chat`); the Players
+- The header of the home, chat, Players, Social and Support pages has five tabs: Games (`index.html`), Global chat (`chat.html`),
+  Players (`players.html`), Social (`social.html`; on phones the bottom bar's 4th icon, 🎬, in arcade.css) and Support
+  (`support.html`, 🛟 on phones; added 2026-11-11 at the owner's request). Support holds the bug and feature feedback
+  form (a Google Form link), which used to sit at the bottom of the home page. Under it is the "Want to be a game tester?" card,
+  a link to the game tester request Google Form. The home page's chat tab shows how many are in the chat (`byGame.chat`); the Players
   tab's `#plN` count (friend requests + unread messages) is set by account.js from the `soc` field of the sync answer.
 - `chat.html`: the Global chat (rebuilt 2026-11-06; before, messages lived only in browsers and history passed peer
   to peer, so people not online together never saw each other's messages). One WebSocket to the Worker's `/chat/ws`
@@ -129,6 +132,10 @@ source in Settings → Pages should be switched to `main`.
   player in "In the chat" has a 📹 button (`callButton`); both call `ArcadeCall.start(names, 'Global chat')`, so the
   ringing card shows "Global chat" as the call's name. Without an online account they open the sign-up popup. Labels
   turn to "Add to call" while you host a call (`callLabels`).
+- Social words (2026-11-11): captions and group names are stored as written (no server word filter; usernames still are
+  filtered). The account panel's Settings has "Filter swear words on Social" (`arcade-swear-filter` = '1', synced in the
+  account's misc group); social.html's `fw()` then stars words in captions, comments and messages. Captions starred
+  before this stay starred (the server had already replaced them).
 - Social (2026-11-10, asked for by the owner: "like Instagram"): `social.html` + `clips.js` + the Worker's `/clips/*`
   routes (the comment block above `clips()` in `realtime-worker/src/worker.js` lists them) and the `Clips` Durable Object
   class (migration v5; deployed 2026-11-10). Posts are kind 'clip' (recorded on play.html, always from a game), 'video'
@@ -211,6 +218,11 @@ source in Settings → Pages should be switched to `main`.
 
 ## Games
 
+- `throttle-ridge/`: Throttle Ridge, side-scrolling motocross against three computer riders (Three.js + planck.js
+  bundled into the file). The file is a build: its source (plain ES modules in `throttle-ridge/src/`), the build script
+  (`throttle-ridge/tools/build.mjs`, esbuild) and a headless test (`tools/test.cjs`) live on the `main` branch, not
+  here. Edit the source there, run `npm run build` in `throttle-ridge/tools`, and copy the new `index.html` over. Saves
+  one key, `throttle-ridge.v1` ({best: {trackId: seconds}, unlocked, skill, muted}). `window.__game` is a test hook.
 - `cube-assault/`: first-person 3D shooter (Three.js bundled into the file). Since 2.3 it has touch controls (`#touch` layer, `autoTouch` / `touchMode()`, setting `touch`: auto, on or off).
   Since 2.6 it has online multiplayer. The blocks `mp-ui-css`, `mp-ui`, `mp-stub` and `CS MAP` are the lobby, HUD, results and Outpost map; the `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). Supabase's free plan capped the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`); the Cloudflare server doesn't need that cap, so it can be raised (an mp-net change: ask first). Room chat (2.8.3): 'chat' on the room channel, `CAMP.chat()` and the 'chat' event, drawn by the `<script id="mp-chat">` block (Enter opens it).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.
@@ -370,6 +382,12 @@ source in Settings → Pages should be switched to `main`.
   on 2026-11-07, not yet deployed), otherwise `/acct/players` then `/acct/player` for each player with scores, 6 at a
   time, cached 10 minutes in sessionStorage. It reads games.js chess `stat()`, which now adds "(best N)" from `rating.peak`.
   The 1.4 patch notes were missing (the ratings update still said v1.3): fixed in 1.5.
+  1.5.1 (2026-11-11, the owner's rules): everyone starts at 2000 Elo with no level to pick; every saved rating was
+  reset once (`save.rv = 2`). Elo has a floor of 0 and no top. games.js stat() says "Elo N"; the leaderboard ranks by
+  current Elo, reads any older "Rating ..." line as 2000 (so everyone who played is on it), and players on the same Elo
+  share a place. Quick match uses the lobby `ch-lobby2`, so old copies never meet the reset ratings. Every Chess tab with an
+  online account that isn't playing online watches that lobby without joining it (`Net.watch`) and shows `#waitPop`
+  ("X is waiting for a quick match. Join?") when exactly one person waits there.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
@@ -396,7 +414,7 @@ source in Settings → Pages should be switched to `main`.
 
 - `bull-run/`: Stocks Game (first called Bull Run; the folder, game id and save keys keep that name so saves and links still work), a stock-trading game (plain canvas 2D, no libraries). Twelve made-up companies (plus two crypto coins) with prices from a random walk plus market, sector and company moods and news shocks. The calendar advances a trading day every `DAY_SECS`, but prices and news only move every `TICK` trading days (about 25 seconds); change figures compare with the previous move (`prevTick`, `tickWorth`). Earnings and dividends every `EARN` trading days per company, with rumours one update before; tips and pumps land at least `MIN_LEAD` days out (`leadUpdate`); the back room pauses the market while open; the back room (`buyTip`, `pumpStart`, `borrow`/`repay`, `bribe`) schedules events in `G.pending` and raises `G.heat`, which sets the chance of a fine (`bust`); three convictions (`G.busts`) call `prison()`, which runs a year of days instantly. Shorts live in `G.short` (cash is the collateral; `marginCalls` closes one that rises 50%), the loan in `G.debt`/`G.debtAge` (`loanDay`, `collect`). There is deliberately no fast-forward: the only speeds are pause and 1x. Market randomness goes through `mr`/`mrand`/`mgauss`/`mpick` (seeded with `mulberry32` from the date in the daily challenge, `G.daily`, saved under `bullRunDaily`); player actions use `Math.random`, and each part of a daily market day draws from its own stream (`stream(key)`, earnings fixed in advance by `beatOf`), so a tip or pump only changes the stock it targets. Each day's targets are saved (`G.opened`, `G.targets`) so a reload does not re-roll the day. Reputation (`rep()`, best net worth across both saves) unlocks crypto (`unlock` on a company), half-price deals and options (`G.options`, settled by `settleOptions`). `showReport` is the year-end report and the daily's final score. Saves everything to `bullRunSave` (format `v: 1`, including a year of generated price history); `stat()` on the home page reads `stats.best`.
 
-- `havoc-bay/`: Havoc Bay, a Red vs Blue sea battle in the style of Harbor Havoc on Roblox (Three.js r128 copied from Poly Racer into the file). Single player with bots on both teams (`Bot`, `botShip`, `botPlane`). Each harbor is a `HarborEnt` with 25,000 health whose buildings are collider boxes flagged `h`; the five claimable islands (`ISLANDS`, `updateIslands`) give the owner their turrets and a boat pad. The world is built from Roblox-style parts with `Builder`/`Site` and the island shapes come from `landH()`; the second half of the map is the first half turned 180 degrees (`flip`). Balance lives in `WEAP` (damage per weapon, with `vs` multipliers per target kind; harbors take reduced damage), `SHIP_TYPES`, `PLANE_TYPES` and `TURRET_TYPES`. The title screen runs a bot-only demo match (`startMatch(true)`). Losing your ship is not a death: you stay on the slowly sinking wreck (`sinkT` in `Ship.update`) until you press E or the deck goes under, then swim; B (`deployKey`) redeploys from anywhere after 5 seconds. Aircraft carriers (`SHIP_TYPES.carrier`, `carrier: true`) are plane spawn points for their whole team (`teamCarriers`, `launchFromCarrier`); bots build at most one per team at the home harbor and keep it on their own side (`station` mission). When a match ends with a loser (harbor destroyed or time up), `startCine` plays the ending: it opens in the B-52's cockpit (`buildCockpit`, jet pilots from `makePilot`, displays drawn on canvases), then the bay doors open, the camera rides the bomb down, then a wide shot shows the losing harbor flatten (`H.mesh` scaled down and charred, restored in `resetWorld`) while the bomber banks away; click or Space skips (`skipCine`). Saves `havocbay.profile.v1` (matches, wins, kills, best damage) and `havocbay.settings.v1`. To test balance without waiting, call `step(1/30)` in a loop from the console; a hidden preview pane pauses `requestAnimationFrame`. Its title screen plays a separate realistic reel (`<!-- hb-reel:start -->` block before `</body>`, own renderer and scenes, `window.hbReel`): five 7 s shots with fades (pilot's-eye cockpit, camera on the pilot, carrier aerial, catapult launch, desert assault), detailed people (`Person`, arm IK onto rifles, `mergeTree` to keep draw calls low) and a film pass (`makePost`). `frame()` skips drawing the demo battle while `hbReel.covering`. It follows Graphics quality: Low keeps the demo battle, Medium draws it plainly, High adds the film pass. Check a moment with `hbReel.hold = true; hbReel.seek(24)`. 1.3.1's additions live in `<script id="hb-131">` (before the reel): flares (`FLARES`, `dropFlare`, `decoy`), barrel rolls (`barrelRoll`, `rollA`), blacking out (`glocStep`), hold-E bail (`holdToBail`), stances (`PLAYER.stance`, ANIM 5/6), the first-person hands (`VM`, a second render pass), team upgrades (`TUP`, `UPGRADES`, the computer's third app), computer missiles at big ships (`SHIP_TGT + id`), lifeboats (`SHIP_TYPES.lifeboat`, hidden from the shop), parked planes you can get back into (`parkOn`, `boardParked`), the low performance popup (`PERF`). Online it adds `m.x` requests, `S.z` (upgrades) and 'z' events. 1.3.2: houses are hollow (`hollowHouse`: wall pieces cut round a door and windows, each its own collider, a bullet-stopping roof collider, `houseFloor` sets the floor over the highest ground; island ones are `addHut` at quarter turns, the barracks are built in `buildHarbor`), the cockpit cabins are rebuilt in `COCKPIT` (`shell`, `rbox`, `dome`, `skin` cuts the bomber's windows along the skin's grid; parts are shaded with vertex colours), tracers are `tracerMesh` (core) plus `tracerGlow` (additive), the first-person muzzle flash is `VM.shot` (recoil was tried and removed at the owner's request), and `settings.minutes = 0` is an unlimited bot game (`GAME.unlimited`, `matchClock`). Houses are 10x8 / 12x8 on the islands and 15x11 in the harbors, placed by `houseSpot` (flattest free spot) and the ground under each island house is levelled (`I.flat`, `houseFlat` in `isleH`; the island terrain is rebuilt after `detailIsland`). The channels are `hb-world-132b` / `hb-room132b-` (the bigger level houses went out without a version bump or patch note).
+- `havoc-bay/`: Havoc Bay, a Red vs Blue sea battle in the style of Harbor Havoc on Roblox (Three.js r128 copied from Poly Racer into the file). Single player with bots on both teams (`Bot`, `botShip`, `botPlane`). Each harbor is a `HarborEnt` with 25,000 health whose buildings are collider boxes flagged `h`; the five claimable islands (`ISLANDS`, `updateIslands`) give the owner their turrets and a boat pad. The world is built from Roblox-style parts with `Builder`/`Site` and the island shapes come from `landH()`; the second half of the map is the first half turned 180 degrees (`flip`). Balance lives in `WEAP` (damage per weapon, with `vs` multipliers per target kind; harbors take reduced damage), `SHIP_TYPES`, `PLANE_TYPES` and `TURRET_TYPES`. The title screen runs a bot-only demo match (`startMatch(true)`). Losing your ship is not a death: you stay on the slowly sinking wreck (`sinkT` in `Ship.update`) until you press E or the deck goes under, then swim; B (`deployKey`) redeploys from anywhere after 5 seconds. Aircraft carriers (`SHIP_TYPES.carrier`, `carrier: true`) are plane spawn points for their whole team (`teamCarriers`, `launchFromCarrier`); bots build at most one per team at the home harbor and keep it on their own side (`station` mission). When a match ends with a loser (harbor destroyed or time up), `startCine` plays the ending: it opens in the B-52's cockpit (`buildCockpit`, jet pilots from `makePilot`, displays drawn on canvases), then the bay doors open, the camera rides the bomb down, then a wide shot shows the losing harbor flatten (`H.mesh` scaled down and charred, restored in `resetWorld`) while the bomber banks away; click or Space skips (`skipCine`). Saves `havocbay.profile.v1` (matches, wins, kills, best damage) and `havocbay.settings.v1`. To test balance without waiting, call `step(1/30)` in a loop from the console; a hidden preview pane pauses `requestAnimationFrame`. Its title screen plays a separate realistic reel (`<!-- hb-reel:start -->` block before `</body>`, own renderer and scenes, `window.hbReel`): five 7 s shots with fades (pilot's-eye cockpit, camera on the pilot, carrier aerial, catapult launch, desert assault), detailed people (`Person`, arm IK onto rifles, `mergeTree` to keep draw calls low) and a film pass (`makePost`). `frame()` skips drawing the demo battle while `hbReel.covering`. It follows Graphics quality: Low keeps the demo battle, Medium draws it plainly, High adds the film pass. Check a moment with `hbReel.hold = true; hbReel.seek(24)`. 1.3.1's additions live in `<script id="hb-131">` (before the reel): flares (`FLARES`, `dropFlare`, `decoy`), barrel rolls (`barrelRoll`, `rollA`), blacking out (`glocStep`), hold-E bail (`holdToBail`), stances (`PLAYER.stance`, ANIM 5/6), the first-person hands (`VM`, a second render pass), team upgrades (`TUP`, `UPGRADES`, the computer's third app), computer missiles at big ships (`SHIP_TGT + id`), lifeboats (`SHIP_TYPES.lifeboat`, hidden from the shop), parked planes you can get back into (`parkOn`, `boardParked`), the low performance popup (`PERF`). Online it adds `m.x` requests, `S.z` (upgrades) and 'z' events. 1.3.2: houses are hollow (`hollowHouse`: wall pieces cut round a door and windows, each its own collider, a bullet-stopping roof collider, `houseFloor` sets the floor over the highest ground; island ones are `addHut` at quarter turns, the barracks are built in `buildHarbor`), the cockpit cabins are rebuilt in `COCKPIT` (`shell`, `rbox`, `dome`, `skin` cuts the bomber's windows along the skin's grid; parts are shaded with vertex colours), tracers are `tracerMesh` (core) plus `tracerGlow` (additive), the first-person muzzle flash is `VM.shot` (recoil was tried and removed at the owner's request), and `settings.minutes = 0` is an unlimited bot game (`GAME.unlimited`, `matchClock`). Houses are 10x8 / 12x8 on the islands and 15x11 in the harbors, placed by `houseSpot` (flattest free spot) and the ground under each island house is levelled (`I.flat`, `houseFlat` in `isleH`; the island terrain is rebuilt after `detailIsland`). The channels were `hb-world-132b` / `hb-room132b-` (the bigger level houses went out without a version bump or patch note); since 1.4 they are `hb-world-14` / `hb-room14-`.
   Online play works like Cube Assault's. ▶ PLAY joins the one shared server, the realtime channel `hb-world` (up to 8 players, fixed settings in `WORLD`): a match always full of bots where each real player takes a bot's place on the side with fewer real players, and the next match starts by itself `NEXT_MS` after a result. 🔒 Private room makes a `hb-room-<CODE>` room with a lobby (up to 6); 🤖 Practice is the offline game. Presence is the player list and the host is whoever has been there longest; each player has a `<channel>-<id>` pipe to the host. The connection is `ArcadeOnline.client()` inside play.html. If the host leaves, the next player takes over (`takeOver`): their screen turns its copies back into real bots and stand-ins under the same ids and the match carries on; the others follow (`hostMoved`). The netcode is the `<script id="hb-net">` block at the end; the main script only calls hooks behind `NET.on` / `NET.host` / `NET.client` (look for `NET.`). The host's screen runs the whole match (bots, damage, islands, harbors, clock). Every other player drives their own vehicle locally and sends its state, gun angles, "fired" bits for machine guns and each heavy shot; the host keeps a stand-in for it (`e.peer`). Other screens draw the host's world ~230 ms behind as puppets (`Track`, `driveKind`) and replay its events (shells, kills) on the same clock. Bots fill the empty places (`fillBots`, `NET.humans`); a bot that makes way finishes its current life first. Rate: `MAX_HZ` 6, `ROOM_BUDGET` 60 messages a second (3n - 2 per update; 2 a second at 8 players). A hidden host tab slows the shared match to about one update a second (browsers throttle timers in background tabs). Chat (1.2.2): Enter or T to everyone, Y to your team (Tab switches, 💬 on touch), in the lobby and in a match; 'chat' on the room channel `{ id, m, tm, t }`, team messages dropped by the other team's screens, the Global chat's `tidy()` filter, 5 messages per 10 s; it's the chat part of `hb-net`. F3 shows the network overlay; `?mplag=150&mploss=0.05` simulates a bad connection; `window.HBNet` has helpers for console testing (two iframes of the game on one page both get frames).
   1.2.3: cold water. `s.cold` counts seconds swimming (down three times as fast out of the water); at `FREEZE_S` (30) you die (a `team: -2` hit, sent to the host like a fall); `updateFreeze` puts the `#freeze` meter over your head. The keep's computer (`PC`, `drawPC`) has a desktop with two apps (`appTile`): Missiles (`BTN_SEND`, as before) and Map (`BTN_MAP`, state `'radar'`, `drawRadar`: every ship with a crew, plane and soldier, real players named, you ringed).
   1.2.4: day and night (`updateDayNight`, called from `frame()`): `dayClock()` is match seconds into the day from
@@ -424,6 +442,26 @@ source in Settings → Pages should be switched to `main`.
   1.2.7: `HARBOR_X` 2126 (was 1575) and harbor islands `r` 290 (was 225); `MAP`, `BOUND` (x 2950), `DEPTH_W`, `MINI` and
   the PC map's `MAPV.s` grew to match. Each harbor has six more turret spots on the new land (4 AA, 2 cannons).
   `restoreIsland` (called by `setIslandOwner` when a team claims it) removes `SCORCHES` and `EMITTERS` on that island.
+  1.4 (2026-11-11, called 1.4 by the owner; the code comments say 1.4): submarines and helicopters. Subs are `SHIP_TYPES`
+  stingray/barracuda/leviathan (shown as Seehund, Seawolf, Typhoon: 11, 32 and 64 m, `S.sub`, models in `subHull` with
+  spinning `subProp`s, hulls sit low with `S.deckY`). Space dives (`toggleDive`, `subStep`: `s.dive`, `s.depth` up to `S.depth`,
+  air `s.air` of `S.air` seconds, refilled in `SUB_REFILL` on the surface). `subUnder(e)` (depth past `SUB_HIDE`) is the test
+  everything uses: dived subs are skipped by `traceEnts` unless the weapon has `W.deep` (torpedo 1, bomb 0.5, dcharge 1;
+  `impact`/`splashDamage` multiply by it), by `nearestEnemy`, `autoTarget`, aiming, locks, `shipUnder` and island claims;
+  dived deck guns (`Gun.shoot`) and missiles don't fire and speed is x0.75. Seeing them: `updateSubs` sets `e.spot[team]`
+  (`subSpotted`: any driven ship, sailor or turret of that team within `SUB_SPOT` 120 m, or `S.quiet` 60 m for the Seehund,
+  or a helicopter's `P.sonar`) and hides the model, the name tag and the map marker from teams that haven't (`subSeen`); a
+  dived sub you can see gets a dark shape on the water (`e.shade`). Sonar ping (Q, touch PING; `S.ping` {dur, cd, team}):
+  `sonarPing`, `pinging(s)`, `teamPing(team)`, `myPing()`; while it lasts the minimap grows (`#mini.sonar`) and `drawMap(cv,
+  big, sonar)` shows everything (sailors, dived subs ringed, even at night). The Seawolf's is its captain's only, the
+  Typhoon's is the whole team's (counts as spotting) and the other side gets a warning. Helicopters are `PLANE_TYPES`
+  hornet/kingfisher/talon (`P.heli`; models `heliModel` + `heliRotors`): `Plane.update` hands them to `heliUpdate` (inputs
+  `h.hin` {f, s, v}, `yawWant`, `aimP`; the nose and gun follow the aim; skims the sea at 2.5 m with a pilot aboard; lands
+  gently on ground, roofs and decks found by `heliFloor` and sets `h.grounded`; `heliHome` + `landedRepair` service it;
+  `h.svcHome` is flag 16 online). They never use `landed`/`tryLand`/the cockpit/barrel rolls. F is `P.bombW`: 'dcharge'
+  (sinks, then goes off: `W.sinks`, `p.sank`, `W.splashK`) or 'rocket'. Bots: `botHeli`, sub missions 'hunt' and diving
+  in `botShip`, `spottedSub`. Online: ship rows carry depth (16) and ping (17), a client's 's' state at 12 and 13; heli
+  puppets carry on with `e.netV`; `releaseProxy` leaves a heli to settle by itself.
   1.3.3: voice chat (`<script id="hb-voice">`, `window.HBVoice`): everyone in an online lobby (Public Battle or private room)
   talks to the whole lobby, push to talk on G. WebRTC mesh; setup over its own channel `<room topic>-voice` (Presence + 'sig',
   'tk'), found through `NET.voiceTopic()` (set once the room accepts you). Settings `voice` 0 leaves the channel (you hear and
@@ -461,6 +499,13 @@ source in Settings → Pages should be switched to `main`.
   with whoami; one entry per pair of players, best kept; Tally object `ttt-board`); only crew runs are sent (`submitRun`).
   `localStorage['ttt-api']` points it at a local server on localhost. `?tttroom=<name>` uses test channels; `window.__ci` on localhost for tests. Medals are
   par x1.25 / x1.5 / x1.85 (`MEDAL`). Add a `PATCH_NOTES` entry and bump `VERSION` with every release.
+  1.3.1 (2026-11-11): the scratchpad build sources are gone, so this was edited straight in index.html (keep doing that,
+  or rebuild sources first). Steering easier but not easy: maxS 0.63/(1+sp/24), steer rate 3.9, keyboard ramp 5.6/8,
+  front grip x1.08, rear x1.1, yaw damping 0.42, a light slide catch even with assist off (0.1). Measured with a scripted
+  driver over 4 stages: ~18% faster, about half the time off road. `buildDetail()` adds per-biome detail (`DETAIL`):
+  chevrons and fans at sev 1-2 corners, flowers, logs, stumps, fences, hay, cacti, ferns, drifts, cabins/barns, clouds,
+  snow caps on far mountains; it uses its own rng so the road and old scenery don't move. Grass tufts had no vertex
+  colours and drew black (fixed).
 - `card-royale/`: Card Royale (1.1), a real-time 1v1 card battler (towers, lanes, Elixir, 75 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by
   `build.sh`): data, `20-sim.js` (the battle: `newBattle`, `step` at 20 ticks a second, `play`, `canDeploy`, the bot in
@@ -626,6 +671,44 @@ source in Settings → Pages should be switched to `main`.
    this on 2026-11-08); taglines stay one line.
 3. Add a row to the games table in `README.md`.
 4. Test it in a browser, including a phone-sized viewport.
+
+## Claude posts every update to Social (the owner's rule, 2026-11-11)
+
+Every game update, new game or new site feature, pushed by anyone, gets a post on Social from the **Claude** account,
+shown to everyone. It is automatic: `.github/workflows/claude-post.yml` runs on every push to the Pages branch that
+changes `games.js`, and `tools/claude-post/post.mjs` posts:
+- each `NEWS` entry that wasn't there before (at most 5 a push), and
+- every game whose `updated` time changed (or that is new) with no new NEWS line of its own: the commit message is
+  the news, so name the version in it ("Chess 1.5: puzzles and faster bots"). Fixes that should stay silent must not
+  change `updated` and get no NEWS line.
+Posts look like social media posts, and **show the new feature, not the game's cover**:
+- `imgs: ['<game>/news/<version>-<feature>.jpg', ...]` on the NEWS entry: 1 to 4 screenshots of the new things (1080 px
+  wide JPEGs kept in the game's `news/` folder; e.g. Havoc Bay 1.4 has a submarine and a helicopter). Take them in a
+  real match (render with the game's renderer and save the canvas). Without `imgs` the thumbnail is used.
+- `headline: '...'`: the big words on the picture (default: the first phrase after "Game 1.2:").
+- `post: '...'`: the caption (up to 700 characters, `\n` line breaks, a hook line, emoji bullets for the features, a
+  question or call to play, hashtags; no secret test names). Without it one is written from the NEWS text.
+- `repost: N` posts the entry again (with new pictures or caption) and takes the earlier post down.
+- **Claude comments and profile (the owner's rule, 2026-11-11):** with every push, Claude may leave ONE funny comment on
+  other players' posts: read the feed (`/clips/feed?tab=new` with the official Origin), add `{ id, t }` lines to
+  `tools/claude-post/comments.json` for posts that don't have one yet. The server keeps one per post ('bc:<id>') and never
+  comments on Claude's own posts. Keep it kind and about the game: no jokes about real people in photos, nothing on posts
+  with slurs or mean captions about someone. Claude's profile description is `tools/claude-post/profile.json` (`bio`,
+  shown under the name on Social; links clickable).
+- One-off Claude posts that aren't NEWS (like the pinned feedback-form post) live in `tools/claude-post/posts.json`
+  ({ key, t, imgs, pill, kicker, headline, pin }); every run sends them all and the server posts each key once. `pin: true`
+  keeps a post first on Claude's profile (📌 on its tile). https links in Claude's captions are clickable (`capNodes`);
+  other players' captions stay plain text.
+- Clip videos (2026-11-11): Safari refused WebM files whose size fields are 8 bytes (what muxWebm wrote before). muxWebm
+  now writes short sizes and social.html's `fixWebm` rewrites old clips as they load. Videos loop by hand ('ended'), and a
+  playing video stuck without data for ~1.2 s is reloaded from its blob (Safari hangs after looping some clips).
+The picture is drawn by `tools/claude-post/card.py` (Pillow). Try it locally:
+`DRY=1 node tools/claude-post/post.mjs <old games.js> games.js` prints the captions and saves the pictures.
+Server: `POST /clips/bot` on the Worker, checked against the `BOT_KEY` Worker secret (the same value is the repo's
+`ARCADE_BOT_KEY` Actions secret; to change it, set both). It posts a photo as 'Claude' (`BOT_NAME`); each post's key is
+kept ('bk:<key>' = the post id) so it never posts twice. Bot posts (`bot: 1`) aren't pruned for space; past 100 the
+oldest Claude post goes. Manual runs need the workflow on `main`; to test, push a throwaway branch with that branch in
+the trigger and `ROOM: <name>` (posts go to `?clipsroom=<name>` only), then delete it.
 
 ## Conventions
 
