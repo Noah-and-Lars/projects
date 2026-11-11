@@ -21,7 +21,7 @@
 })();
 </script>
 <title>Support · The Arcade</title>
-<meta name="description" content="Found a bug or got an idea for The Arcade? Send feedback here.">
+<meta name="description" content="Found a bug or got an idea for The Arcade? Send feedback, or apply to become a game tester.">
 <meta name="theme-color" content="#0f0d1f">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
@@ -42,6 +42,9 @@
 .feedback p { margin: 0; color: var(--muted, #aab); font-size: 14px; line-height: 1.5; max-width: 560px; }
 .fb-btn { flex: none; padding: 12px 20px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 800; text-decoration: none; }
 .fb-btn:hover { filter: brightness(1.12); }
+.feedback + .feedback { margin-top: 16px; }
+.tester { background: linear-gradient(135deg, #00d2a826, #6c5ce733); }
+.tester .fb-btn { background: var(--accent-2); color: #04211b; }
 .mob .sup { margin-top: 18px; }
 .mob .sup h1 { font-size: 26px; }
 </style>
@@ -70,6 +73,14 @@
       </div>
       <a class="fb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSeOQOSz6bS6-2aBxjDZSSdxpBYECQlmbnOWhmeAk34R3wU-7g/viewform" target="_blank" rel="noopener noreferrer">Send feedback ↗</a>
     </section>
+
+    <section class="section feedback tester" aria-labelledby="ttH">
+      <div class="fb-text">
+        <h2 class="sec-h" id="ttH">Want to be a game tester?</h2>
+        <p>Play new games and updates before everyone else and help find bugs before they go live. Send a request and we'll get back to you.</p>
+      </div>
+      <a class="fb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLScRRLtCvERDPKOwirvIU6wiKfjw2f6LrIRz43iTdZ9hRYqnCg/viewform" target="_blank" rel="noopener noreferrer">Apply to test ↗</a>
+    </section>
   </div>
 </main>
 
@@ -81,7 +92,8 @@
 <script src="account.js?v=15"></script>
 <script src="call.js?v=6"></script>
 <script>
-// Support (2026-11-11): the feedback form (a Google Form), moved here from the bottom of the home page.
+// Support (2026-11-11): the feedback form (a Google Form), moved here from the bottom of the home page, and the
+// game tester request form (also a Google Form).
 ArcadeOnline.start('support');
 </script>
 <script src="tos.js?v=9"></script>
