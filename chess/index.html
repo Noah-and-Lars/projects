@@ -106,7 +106,7 @@
   #lb h2 { margin: 0 0 4px; } #lb .lbsub { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
   #lbList { overflow-y: auto; flex: 1; min-height: 80px; margin-bottom: 12px; border-radius: 8px; background: var(--panel2); }
   .lbrow { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 15px; }
-  .lbrow:nth-child(1) .rk { color: #ffd34d; } .lbrow:nth-child(2) .rk { color: #d8dee8; } .lbrow:nth-child(3) .rk { color: #e3a46b; }
+  .lbrow .rk.p1 { color: #ffd34d; } .lbrow .rk.p2 { color: #d8dee8; } .lbrow .rk.p3 { color: #e3a46b; } /* 1.5.1: by place, so a tie shares the colour */
   .lbrow .rk { font-weight: 800; } .lbrow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; } .lbrow .rt { font-weight: 800; font-variant-numeric: tabular-nums; } .lbrow .rt.un { color: var(--muted); font-weight: 600; font-size: 13px; }
   .lbrow.me { background: rgba(129,182,76,.18); }
   .lbmsg { padding: 18px; color: var(--muted); text-align: center; }
@@ -152,6 +152,11 @@
   .txt:focus { outline: none; border-color: var(--green); }
   .bigbtn.net { margin-top: 8px; font-size: 16px; padding: 11px; }
   .netbtn { display: block; width: 100%; margin-top: 8px; border: 0; border-radius: 6px; background: #3c3a37; color: var(--ink); font-weight: 700; font-size: 14px; padding: 10px; } .netbtn:hover { background: #484643; }
+  #waitPop { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; width: min(520px, calc(100vw - 24px)); padding: 12px 12px 12px 14px; border-radius: 12px; background: #262421; border: 1px solid #81b64c; box-shadow: 0 10px 30px #000a; color: var(--ink); font-size: 14px; animation: wpIn .25s ease-out; }
+  #waitPop[hidden] { display: none; } #waitPop .wp-ic { font-size: 22px; } #waitPop .wp-t { flex: 1; line-height: 1.35; }
+  #waitPop button { border: 0; border-radius: 8px; padding: 9px 14px; font-weight: 800; font-size: 14px; cursor: pointer; }
+  #waitJoin { background: #81b64c; color: #fff; } #waitNo { background: #3c3a37; color: var(--ink); }
+  @keyframes wpIn { from { opacity: 0; transform: translate(-50%, -10px); } }
   #netCancel[hidden], #rateCard[hidden], #rateLevel[hidden] { display: none; } /* 1.4: .netbtn and the card's flex used to override hidden (Cancel always showed) */
   /* 1.4: your rating */
   #rateCard { background: var(--panel2); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -193,10 +198,6 @@
     <div class="sect" id="netBox"><h4>Play online</h4>
       <div id="rateCard" hidden></div>
       <div id="netPick">
-        <div id="rateLevel" hidden><p>Online games are rated, like on chess.com. How well do you play? This sets your starting rating.</p><div class="lv">
-          <button data-lv="new">New to chess<small>400</small></button><button data-lv="beginner">Beginner<small>800</small></button>
-          <button data-lv="intermediate">Intermediate<small>1200</small></button><button data-lv="advanced">Advanced<small>1600</small></button>
-          <button data-lv="expert">Expert<small>2000</small></button></div></div>
         <input id="netName" class="txt" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false">
         <button class="bigbtn net" data-net="quick">Quick match</button>
         <button class="netbtn" data-net="create">Create a private table</button>
@@ -216,10 +217,18 @@
       <label class="check">Sound<input type="checkbox" id="soundChk"></label></div>
   </aside>
 </div>
-<div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their highest online rating. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
+<div id="waitPop" hidden role="alert"><span class="wp-ic">♟️</span><div class="wp-t"><b id="waitName">Someone</b> is waiting for a quick match. Would you like to join?</div><button id="waitJoin">Join</button><button id="waitNo" aria-label="Not now">Not now</button></div>
+<div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.5</span></summary>
+    <summary>Patch notes <span>v1.5.1</span></summary>
+    <h3>v1.5.1 <small>Elo reset and quick match alerts</small></h3>
+    <ul>
+      <li><b>Everyone starts at 2000 Elo.</b> Every rating was reset to 2000, and new players start there too. There is no starting level to pick any more.</li>
+      <li>Your Elo can drop all the way to 0 if you lose, and there is no top: win and it keeps climbing past 2000.</li>
+      <li><b>Leaderboard reset:</b> everyone who has played is still on it, all on 2000 and sharing first place until they play. It now ranks by your Elo right now, not your best.</li>
+      <li><b>Quick match alerts:</b> when someone is waiting for a quick match, everyone else with Chess open gets a pop-up asking if they want to join. One tap on Join and the game starts.</li>
+    </ul>
     <h3>v1.5 <small>Local 2-player and a leaderboard</small></h3>
     <ul>
       <li><b>Local 2-player:</b> under Opponent, pick <b>Local 2-player</b> to play a friend on the same computer. After White moves, the board turns round so Black is at the bottom, and back again after Black moves. Undo takes back one move. These games don’t count towards your rating or record.</li>
@@ -565,7 +574,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.5';
+const VERSION = '1.5.1';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -599,7 +608,9 @@ if (!LEVELS.includes(save.level)) save.level = 'medium';
 if (!['w', 'b', 'r'].includes(save.color)) save.color = 'w';
 for (const l of LEVELS) { const s = save.stats[l] || {}; save.stats[l] = { w: +s.w || 0, l: +s.l || 0, d: +s.d || 0 }; }
 // 1.4: the online rating: r and rd (Glicko), when the last rated game was (at, ms), rated games (n), best rating (peak)
-{ const R = save.rating; save.rating = R && typeof R === 'object' && isFinite(R.r) && isFinite(R.rd) ? { r: Math.min(3500, Math.max(100, +R.r)), rd: Math.min(350, Math.max(30, +R.rd)), at: +R.at || 0, n: Math.max(0, R.n | 0), peak: +R.peak || +R.r } : null; }
+{ const R = save.rating; save.rating = R && typeof R === 'object' && isFinite(R.r) && isFinite(R.rd) ? { r: Math.max(0, +R.r), rd: Math.min(350, Math.max(30, +R.rd)), at: +R.at || 0, n: Math.max(0, R.n | 0), peak: +R.peak || +R.r } : null; }
+// 1.5.1: every rating was reset to 2000 once (rv 2), and everyone starts at 2000: there's no level to pick any more
+if (save.rv !== 2 || !save.rating) { save.rating = { r: 2000, rd: 350, at: 0, n: 0, peak: 2000 }; save.rv = 2; try { localStorage.setItem('chessSave', JSON.stringify(save)); } catch (e) {} }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
 // ---------- sound ----------
@@ -722,9 +733,9 @@ function finish() {
     else {
       const R = save.rating, before = Math.round(R.r), sc = !over.winner ? 0.5 : over.winner === player ? 1 : 0;
       const res = glicko(R.r, rdNow(R), online.oppRate.r, online.oppRate.rd, sc);
-      R.r = Math.min(3500, Math.max(RATE.floor, res.r)); R.rd = Math.max(RATE.rdMin, res.rd); R.at = Date.now(); R.n++; R.peak = Math.max(R.peak || 0, R.r);
+      R.r = Math.max(RATE.floor, res.r); R.rd = Math.max(RATE.rdMin, res.rd); R.at = Date.now(); R.n++; R.peak = Math.max(R.peak || 0, R.r);
       const d = Math.round(R.r) - before; online.delta = d;
-      $('resR').textContent = `Rating ${showR(R.r)} (${d >= 0 ? '+' : ''}${d})`; $('resR').className = d < 0 ? 'dn' : '';
+      $('resR').textContent = `Elo ${showR(R.r)} (${d >= 0 ? '+' : ''}${d})`; $('resR').className = d < 0 ? 'dn' : '';
       Net.retrack();
     }
   }
@@ -947,10 +958,9 @@ addEventListener('resize', resize);
 // Leaving the table loses the game. ?chroom=<name> uses separate test channels.
 // ---------- 1.4: ratings, the way chess.com does them ----------
 // chess.com rates with the Glicko system: every player has a rating and a rating deviation (RD), how sure the system is
-// of that rating. You start at the level you pick (400 new to chess, 800 beginner, 1200 intermediate, 1600 advanced,
-// 2000 expert) with RD 350, so your first games move it a lot; each game lowers your RD, and time away raises it again.
+// of that rating. Everyone starts at 2000 (1.5.1; before, you picked a level from 400 to 2000) with RD 350, so your first games move it a lot; each game lowers your RD, and time away raises it again.
 // Each game is its own rating period (Glickman's Glicko formulas). Only online games against a person are rated.
-const RATE = { start: { new: 400, beginner: 800, intermediate: 1200, advanced: 1600, expert: 2000 }, rd0: 350, rdMin: 30, c: 18, floor: 100, prov: 110 };
+const RATE = { start: 2000, rd0: 350, rdMin: 30, c: 18, floor: 0, prov: 110 }; // 1.5.1: everyone starts at 2000; it can fall to 0 and has no top
 const GQ = Math.log(10) / 400, gRD = rd => 1 / Math.sqrt(1 + 3 * GQ * GQ * rd * rd / (Math.PI * Math.PI));
 // RD grows while you don't play: about a year away takes a settled rating back to RD 350
 function rdNow(R, t = Date.now()) { if (!R) return RATE.rd0; const days = R.at ? Math.max(0, (t - R.at) / 864e5) : 0; return Math.min(RATE.rd0, Math.sqrt(R.rd * R.rd + RATE.c * RATE.c * days)); }
@@ -1008,7 +1018,7 @@ const Net = (() => {
   }
   // 1.4: after a rated game, tell the table your new rating (for the rematch)
   api.retrack = () => { if (table && table.state === 'joined') { try { const p = table.track(Object.assign({ id: myId, n: api.name, h: hostId === myId }, api.myRating ? api.myRating() : {})); if (p && p.catch) p.catch(() => {}); } catch (e) {} } };
-  const rateOf = m => { const r = +m.r, rd = +m.rd; return isFinite(r) && isFinite(rd) && r >= 100 && r <= 3500 && rd >= 30 && rd <= 350 ? { r, rd } : null; };
+  const rateOf = m => { const r = +m.r, rd = +m.rd; return isFinite(r) && isFinite(rd) && r >= 0 && r <= 1e5 && rd >= 30 && rd <= 350 ? { r, rd } : null; };
   function onTable() {
     const others = members(table).filter(m => m.id !== myId);
     if (!api.opp) {
@@ -1022,9 +1032,10 @@ const Net = (() => {
     else { const o = others.find(m => m.id === api.opp.id); if (o) { api.opp.rate = rateOf(o); emit('rate'); } }
   }
   api.quick = async (name, again) => {
+    api.unwatch();
     api.name = api.cleanName(name) || 'Player'; api.on = true;
     await getClient();
-    lobby = chan(BASE + '-lobby');
+    lobby = chan(BASE + '-lobby2'); // 1.5.1: a new lobby, so the reset ratings never meet older copies
     const t = again && queueT ? queueT : (queueT = Date.now());
     let pairing = false;
     lobby.on('presence', { event: 'sync' }, () => {
@@ -1045,6 +1056,7 @@ const Net = (() => {
     await lobby.track({ id: myId, n: api.name, t });
   };
   api.create = async name => {
+    api.unwatch();
     api.name = api.cleanName(name) || 'Player'; api.on = true;
     await getClient();
     const code = Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
@@ -1052,13 +1064,28 @@ const Net = (() => {
     return code;
   };
   api.join = async (name, code) => {
+    api.unwatch();
     api.name = api.cleanName(name) || 'Player'; api.on = true;
     await getClient();
     await seat('c' + code, null, null);
     clearTimeout(waitTimer);
     waitTimer = setTimeout(() => { if (!api.opp && api.on) { emit('error', 'Nobody is at table ' + code + '.'); api.leave(); } }, 6000);
   };
-  api.leave = () => { api.on = false; clearTimeout(waitTimer); const a = lobby, b = table; lobby = table = null; api.opp = null; hostId = null; drop(a); drop(b); };
+  api.leave = () => { api.on = false; clearTimeout(waitTimer); const a = lobby, b = table; lobby = table = null; api.opp = null; hostId = null; drop(a); drop(b); setTimeout(() => { if (!api.on) api.watch(); }, 1500); };
+  // 1.5.1: every Chess tab that isn't playing online watches the quick-match lobby without joining it, and hears when
+  // someone is waiting there alone ('waiting' with that player, or null)
+  let watchCh = null;
+  api.watch = async () => {
+    if (watchCh || api.on) return;
+    // only for an online account: without one, connecting would bring up the site's "needs an account" popup
+    try { const A = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); if (!A || !A.name || !A.token) return; } catch (e) { return; }
+    try { await getClient(); } catch (e) { return; }
+    if (watchCh || api.on) return;
+    const w = watchCh = chan(BASE + '-lobby2');
+    w.on('presence', { event: 'sync' }, () => { if (watchCh !== w) return; const q = members(w); emit('waiting', q.length === 1 && q[0].id !== myId ? q[0] : null); });
+    joinChan(w).catch(() => { if (watchCh === w) { watchCh = null; drop(w); } });
+  };
+  api.unwatch = () => { const w = watchCh; watchCh = null; drop(w); emit('waiting', null); };
   api.myRating = myRating;
   return api;
 })();
@@ -1115,6 +1142,18 @@ Net.onEvent('left', () => {
 Net.onEvent('again', () => { online.oppAgain = true; if (online.meAgain) startOnline(); else if (over) $('resP').textContent = `${oppName()} wants a rematch.`; });
 Net.onEvent('error', msg => { netWaiting(false); netStatus(msg === 'offline' ? 'Couldn’t connect. Check your internet and try again.' : msg, true); });
 Net.onEvent('queue', n => { if (Net.on && !Net.opp) netStatus(n > 1 ? 'Found someone. Starting…' : 'Looking for someone to play… You’re the only one waiting right now. Keep this open, or send a friend a private table code.'); });
+// 1.5.1: someone is waiting for a quick match: ask everyone else on Chess if they'd like to play them
+const waitSkip = new Set();
+Net.onEvent('waiting', m => {
+  const pop = $('waitPop');
+  if (!m || Net.on || online.on || waitSkip.has(m.id)) { pop.hidden = true; return; }
+  if (!pop.hidden && pop.dataset.id === m.id) return;
+  pop.dataset.id = m.id; $('waitName').textContent = Net.cleanName(m.n) || 'Someone'; pop.hidden = false;
+  if (save.sound) { try { Sound.init(); Sound.move(); } catch (e) {} }
+});
+$('waitJoin').addEventListener('click', () => { $('waitPop').hidden = true; const b = document.querySelector('button[data-net="quick"]'); if (b) b.click(); });
+$('waitNo').addEventListener('click', () => { waitSkip.add($('waitPop').dataset.id); $('waitPop').hidden = true; });
+setTimeout(() => Net.watch(), 1500);
 function netStatus(t, bad) { const s = $('netStatus'); s.textContent = t || ''; s.classList.toggle('bad', !!bad); }
 function netWaiting(on) { $('netPick').hidden = on; $('netCancel').hidden = !on; }
 function netFail() { Net.leave(); netWaiting(false); netStatus('Couldn’t connect. Check your internet and try again.', true); }
@@ -1123,7 +1162,6 @@ $('netBox').addEventListener('click', e => {
   const go = b.dataset.net, name = Net.cleanName($('netName').value);
   if (go === 'cancel') { Net.leave(); netWaiting(false); netStatus(''); return; }
   if (go === 'leave') { leaveOnline(); return; }
-  if (!save.rating) { netStatus('Pick how well you play first: it sets your starting rating.', true); return; } // 1.4
   if (!name) { netStatus('Type your name first.', true); $('netName').focus(); return; }
   save.name = name; persist(); netWaiting(true);
   if (go === 'quick') { netStatus('Looking for someone to play…'); Net.quick(name).catch(netFail); }
@@ -1135,18 +1173,13 @@ $('netBox').addEventListener('click', e => {
   }
 });
 $('netName').value = save.name || '';
-// 1.4: the level you start from (once), and the rating card
-$('rateLevel').addEventListener('click', e => {
-  const b = e.target.closest('button[data-lv]'); if (!b || save.rating) return;
-  const r = RATE.start[b.dataset.lv]; if (!r) return;
-  save.rating = { r, rd: RATE.rd0, at: 0, n: 0, peak: r }; persist(); netStatus(''); renderRate();
-});
+// 1.4: the rating card
 function renderRate() {
   const R = save.rating, card = $('rateCard'), esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  $('rateLevel').hidden = !!R || online.on; card.hidden = !R;
+  card.hidden = !R;
   if (!R) return;
   const prov = rdNow(R) > RATE.prov; // like chess.com, a rating it isn't sure of yet gets a question mark
-  let h = `<span class="rl">Rating</span><b>${showR(R.r)}${prov ? '?' : ''}</b><span class="rl">${R.n ? R.n + ' rated game' + (R.n === 1 ? '' : 's') + ' · best ' + showR(R.peak) : 'No rated games yet'}${prov ? ' · provisional' : ''}</span>`;
+  let h = `<span class="rl">Elo</span><b>${showR(R.r)}${prov ? '?' : ''}</b><span class="rl">${R.n ? R.n + ' rated game' + (R.n === 1 ? '' : 's') + ' · best ' + showR(R.peak) : 'No rated games yet'}${prov ? ' · provisional' : ''}</span>`;
   if (online.on && Net.opp) h += `<div class="vs">Playing ${esc(oppName())} ${online.oppRate ? '(' + showR(online.oppRate.r) + (online.oppRate.rd > RATE.prov ? '?' : '') + ')' : '(unrated game)'}${online.delta !== null && online.delta !== undefined && over ? ` · this game ${online.delta >= 0 ? '+' : ''}${online.delta}` : ''}</div>`;
   card.innerHTML = h;
 }
@@ -1158,11 +1191,11 @@ Net.onEvent('rate', () => { if (online.on && !hist.length && Net.opp && Net.opp.
 // for the player list and then each player who has scores (6 at a time). Either way the result is kept for 10 minutes
 // in this tab (sessionStorage), so opening the board again costs nothing.
 const LB = (() => {
-  const KEY = 'chess-lb', TTL = 10 * 60e3;
+  const KEY = 'chess-lb2', TTL = 10 * 60e3;
   const acc = () => { try { return (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount || null; } catch (e) { return window.ArcadeAccount || null; } };
   const server = () => { const A = acc(); return (A && A.server) || 'https://arcade-realtime.arcade-realtime.workers.dev'; };
   const myName = () => { const A = acc(); try { const n = A && (typeof A.name === 'function' ? A.name() : A.name); if (n) return String(n); } catch (e) {} return save.name || ''; };
-  const best = s => { const m = /best (\d+)/.exec(s || '') || /Rating (\d+)/.exec(s || ''); return m ? +m[1] : 0; };
+  const best = s => { const m = /Elo (\d+)/.exec(s || ''); return m ? +m[1] : 2000; }; // 1.5.1: a line from before the reset ("Rating ...") counts as 2000
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   async function load(force) {
     try { const c = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (!force && c && Date.now() - c.at < TTL) return c.rows; } catch (e) {}
@@ -1179,10 +1212,10 @@ const LB = (() => {
     return rows;
   }
   function draw(rows) {
-    const me = myName().toLowerCase(); let rk = 0;
+    const me = myName().toLowerCase(); let rk = 0, last = null;
     // your own best from this device, in case the server hasn't heard it yet
-    if (me && save.rating && save.rating.n > 0) { const peak = Math.round(Math.max(save.rating.peak || 0, save.rating.r)), row = rows.find(x => x.n.toLowerCase() === me); if (row) row.r = Math.max(row.r || 0, peak); else rows.push({ n: myName(), r: peak }); rows.sort((a, b) => (b.r || 0) - (a.r || 0) || a.n.localeCompare(b.n)); }
-    $('lbList').innerHTML = rows.length ? rows.map(x => `<div class="lbrow${x.n.toLowerCase() === me ? ' me' : ''}"><span class="rk">${x.r ? '#' + (++rk) : '–'}</span><span class="nm">${esc(x.n)}</span>${x.r ? `<span class="rt">${x.r}</span>` : '<span class="rt un">Unrated</span>'}</div>`).join('') : '<div class="lbmsg">Nobody has played chess with an account yet. Be the first!</div>';
+    if (me && save.rating) { const now = Math.round(save.rating.r), row = rows.find(x => x.n.toLowerCase() === me); if (row) row.r = now; else rows.push({ n: myName(), r: now }); rows.sort((a, b) => (b.r || 0) - (a.r || 0) || a.n.localeCompare(b.n)); }
+    $('lbList').innerHTML = rows.length ? rows.map((x, i) => `<div class="lbrow${x.n.toLowerCase() === me ? ' me' : ''}"><span class="rk p${(last === x.r ? rk : (rk = i + 1, last = x.r, rk))}">#${rk}</span><span class="nm">${esc(x.n)}</span><span class="rt">${x.r}</span></div>`).join('') : '<div class="lbmsg">Nobody has played chess with an account yet. Be the first!</div>';
   }
   async function open(force) {
     $('lb').hidden = false; $('lbList').innerHTML = '<div class="lbmsg">Loading the leaderboard…</div>';

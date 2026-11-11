@@ -375,6 +375,12 @@ source in Settings → Pages should be switched to `main`.
   on 2026-11-07, not yet deployed), otherwise `/acct/players` then `/acct/player` for each player with scores, 6 at a
   time, cached 10 minutes in sessionStorage. It reads games.js chess `stat()`, which now adds "(best N)" from `rating.peak`.
   The 1.4 patch notes were missing (the ratings update still said v1.3): fixed in 1.5.
+  1.5.1 (2026-11-11, the owner's rules): everyone starts at 2000 Elo with no level to pick; every saved rating was
+  reset once (`save.rv = 2`). Elo has a floor of 0 and no top. games.js stat() says "Elo N"; the leaderboard ranks by
+  current Elo, reads any older "Rating ..." line as 2000 (so everyone who played is on it), and players on the same Elo
+  share a place. Quick match uses the lobby `ch-lobby2`, so old copies never meet the reset ratings. Every Chess tab with an
+  online account that isn't playing online watches that lobby without joining it (`Net.watch`) and shows `#waitPop`
+  ("X is waiting for a quick match. Join?") when exactly one person waits there.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
