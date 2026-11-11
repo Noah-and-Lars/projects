@@ -355,16 +355,6 @@ export class Account extends DurableObject {
     // 'list' (admin header only): used once on 2026-11-06 to put every older account on the Players list
     if (route === 'list') { if (!a.listed) { const r = await dirCall(this.env, 'add', { n: a.name, c: a.created }); if (r.ok) { a.listed = 1; await S.put('acct', a); } } return j({ name: a.name }); }
     if (route === 'adminwipe') { await this.goodbye(a); await S.deleteAll(); return j({ deleted: true, name: a.name }); }
-    if (route === 'sysdm') { // an automatic private message sent as this account (Social's take-down notes, sent as Claude)
-      const s = await this.soc(), other = String(body.to || ''), k = other.toLowerCase(), t = plain(body.text).slice(0, DM_LEN);
-      if (!NAME_RE.test(other) || !t || k === a.name.toLowerCase()) return j({ error: 'bad' }, 400);
-      const m = { id: rnd(6), t, ts: now };
-      const r = await peerCall(this.env, other, 'p-dm', Object.assign({ from: a.name }, m));
-      if (r.status !== 200) return j({ error: 'failed' }, r.status === 404 ? 404 : 502);
-      const rec = await this.addMsg(s, k, r.n || other, m, true);
-      this.push({ t: 'dm', k, n: s.c[k].n, m: rec });
-      return j({ ok: 1 });
-    }
     return j({ error: 'not_found' }, 404);
   }
   /* ---------- friends and private messages (2026-11-06) ----------
@@ -1103,17 +1093,6 @@ export class Tally extends DurableObject {
 const CLIP_MAX = 12 * 1024 * 1024, CLIP_PIECE = 1024 * 1024, CLIP_STORE = 3.5e9, CLIP_DAY = 25, CLIP_PER_USER = 100;
 const CLIP_ID = /^[a-z0-9]{10}$/, CLIP_TITLE = 80, CLIP_COMMENT = 300, CLIP_COMMENTS = 500, CLIP_VIEWERS = 5000;
 const CLIP_POSTER = 60000, AVATAR_MAX = 40000, CLIP_REPORTS = 3, VIEWER_RE = /^[A-Za-z0-9_:.-]{3,40}$/;
-// When a post is taken down (the owner deletes it, or enough reports hide it), its poster gets a private message from
-// the Claude account (MOD_ACCOUNT) saying it broke the guidelines. Nothing is sent if that account doesn't exist.
-const MOD_ACCOUNT = 'Claude';
-function takedownNote(env, m, how) {
-  if (!m || !NAME_RE.test(m.by || '') || m.by.toLowerCase() === MOD_ACCOUNT.toLowerCase()) return Promise.resolve();
-  const what = m.k === 'photo' ? 'photo' : m.k === 'video' ? 'video' : 'clip', cap = m.t ? ' "' + m.t.slice(0, 60) + '"' : '';
-  const text = 'Hi ' + m.by + ', it\'s Claude from The Arcade. Your ' + what + cap + ' ' + (how === 'hidden' ? 'has been hidden after several players reported it' : 'has been taken down') +
-    ' because it goes against our community guidelines. Please keep posts friendly and about things you made: no personal details, nothing rude, hurtful or unsafe. ' +
-    'If you think this was a mistake, reply here and we\'ll take another look. Thanks for understanding!';
-  return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + MOD_ACCOUNT.toLowerCase())).fetch(new Request('https://acct/sysdm', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify({ to: m.by, text }) })).catch(() => null);
-}
 const clipIndex = (env, room) => env.CLIPS.get(env.CLIPS.idFromName(room ? 'index-test-' + room : 'index'));
 const clipMedia = (env, id) => env.CLIPS.get(env.CLIPS.idFromName('clip:' + id));
 async function whoami(env, auth) {
@@ -1412,17 +1391,14 @@ export class Clips extends DurableObject {
     }
     if (route === 'report') {
       m.rp = m.rp || [];
-      if (!m.rp.includes(mk) && m.by.toLowerCase() !== mk) {
-        m.rp.push(mk); await S.put('m:' + id, m);
-        if (m.rp.length === CLIP_REPORTS) this.ctx.waitUntil(takedownNote(this.env, m, 'hidden')); // just hidden from the feeds
-      }
+      if (!m.rp.includes(mk) && m.by.toLowerCase() !== mk) { m.rp.push(mk); await S.put('m:' + id, m); }
       return j({ ok: 1 });
     }
     if (route === 'del') {
       if (m.by.toLowerCase() !== mk) return j({ error: 'not_yours' }, 403);
       await this.drop(id); return j({ ok: 1 });
     }
-    if (route === 'admindel') { const was = Object.assign({}, m); await this.drop(id); this.ctx.waitUntil(takedownNote(this.env, was, 'deleted')); return j({ ok: 1 }); } // only from admin() (it checks the owner's password)
+    if (route === 'admindel') { await this.drop(id); return j({ ok: 1 }); } // only from admin() (it checks the owner's password)
     return j({ error: 'not_found' }, 404);
   }
   async drop(id) {
