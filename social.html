@@ -429,6 +429,8 @@ const agoLong = t => { const s = (Date.now() - t) / 1000, u = (n, w) => n + ' ' 
 const gameOf = id => GAMES.find(g => g.id === id);
 const ls = { get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
 const userLink = n => '#u=' + encodeURIComponent(n);
+const MODS = ['claude']; // moderators can delete any post or comment (checked again on the server: CLIP_MODS)
+const isMod = () => MODS.includes(lc(me()));
 const svg = (d, extra) => '<svg class="i" viewBox="0 0 24 24"' + (extra || '') + '>' + d + '</svg>';
 const IC = {
   heart: '<path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.5 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.5 0 5.5 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/>',
@@ -767,8 +769,8 @@ function menu(btn, c, node) {
     if (!confirm('Report this post? Posts reported by a few players are hidden until the owner looks at them.')) return;
     const r = await post('report', { id: c.id }); if (r.status === 200) ArcadeAccount.toast('Thanks', 'The post was reported.', location.href); else if (r.status !== 401) failed(r);
   }, true);
-  if (mine) add('Delete', async () => {
-    if (!confirm('Delete this post for good?')) return;
+  if (mine || isMod()) add(mine ? 'Delete' : 'Delete (moderator)', async () => {
+    if (!confirm(mine ? 'Delete this post for good?' : 'Delete ' + c.by + '’s post for everyone? This can’t be undone.')) return;
     const r = await post('del', { id: c.id }); if (r.status === 200) gone(node); else if (r.status !== 401) failed(r);
   }, true);
   if (ADMIN) add('Admin: delete', () => adminDelete(c, node), true);
@@ -874,7 +876,7 @@ function commentsPanel(c) {
     const lks = el('span', '', m.lk ? plural(m.lk, 'like') : ''); meta.append(lks);
     const rb = el('button', '', 'Reply'); rb.type = 'button'; rb.onclick = () => { if (!me()) return needAccount(); setRe(m.n); inp.value = ''; inp.focus(); };
     meta.append(rb);
-    if (me() && (lc(m.n) === lc(me()) || lc(c.by) === lc(me()))) {
+    if (me() && (lc(m.n) === lc(me()) || lc(c.by) === lc(me()) || isMod())) {
       const db = el('button', '', 'Delete'); db.type = 'button';
       db.onclick = async () => { if (!confirm('Delete this comment?')) return; const r = await post('cdel', { id: c.id, i: m.i }); if (r.status === 200) { li.remove(); c.cm = r.cm; repaint(c); } else failed(r); };
       meta.append(db);

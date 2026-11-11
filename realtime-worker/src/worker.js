@@ -1086,13 +1086,15 @@ export class Tally extends DurableObject {
      POST /clips/new { kind, g, t, dur, w, h, sz, poster } -> { id, k }   PUT /clips/v/<id>?k= <video or picture bytes>
        (kind 'clip' = recorded from a game; 'video' and 'photo' = the player's own uploads, game optional)
      POST /clips/like { id, on }   /clips/comment { id, t, re }   /clips/cdel { id, i }   /clips/clike { id, i, on }
-     POST /clips/follow { name, on }   /clips/del { id }   /clips/report { id }   /clips/avatar { img: data URL or '' }
+     POST /clips/follow { name, on }   /clips/del { id } (yours, or any post for CLIP_MODS)   /clips/report { id }   /clips/avatar { img: data URL or '' }
      GET  /clips/avatars?n=a,b,c  -> { av: { lower: data URL } }   (profile pictures, up to 60 names at once)
    The owner deletes any clip with /acct/admin op 'clipdel', and a profile picture with op 'avatardel' {name}. Every route takes ?r=<room> for test rooms.
    ========================================================================== */
 const CLIP_MAX = 12 * 1024 * 1024, CLIP_PIECE = 1024 * 1024, CLIP_STORE = 3.5e9, CLIP_DAY = 25, CLIP_PER_USER = 100;
 const CLIP_ID = /^[a-z0-9]{10}$/, CLIP_TITLE = 80, CLIP_COMMENT = 300, CLIP_COMMENTS = 500, CLIP_VIEWERS = 5000;
 const CLIP_POSTER = 60000, AVATAR_MAX = 40000, CLIP_REPORTS = 3, VIEWER_RE = /^[A-Za-z0-9_:.-]{3,40}$/;
+// Social moderators: these accounts can delete anyone's post or comment (the owner's choice, 2026-11-11). Lower case.
+const CLIP_MODS = ['claude'];
 const clipIndex = (env, room) => env.CLIPS.get(env.CLIPS.idFromName(room ? 'index-test-' + room : 'index'));
 const clipMedia = (env, id) => env.CLIPS.get(env.CLIPS.idFromName('clip:' + id));
 async function whoami(env, auth) {
@@ -1380,7 +1382,7 @@ export class Clips extends DurableObject {
       const list = (await S.get('c:' + id)) || [], c = list.find(x => x.i === b.i);
       if (!c) return j({ error: 'not_found' }, 404);
       if (route === 'cdel') { // your own comment, or any comment on your clip
-        if (c.n.toLowerCase() !== mk && m.by.toLowerCase() !== mk) return j({ error: 'not_yours' }, 403);
+        if (c.n.toLowerCase() !== mk && m.by.toLowerCase() !== mk && !CLIP_MODS.includes(mk)) return j({ error: 'not_yours' }, 403);
         list.splice(list.indexOf(c), 1); m.cm = list.length;
         await S.put({ ['c:' + id]: list, ['m:' + id]: m });
         return j({ ok: 1, cm: m.cm });
@@ -1395,7 +1397,7 @@ export class Clips extends DurableObject {
       return j({ ok: 1 });
     }
     if (route === 'del') {
-      if (m.by.toLowerCase() !== mk) return j({ error: 'not_yours' }, 403);
+      if (m.by.toLowerCase() !== mk && !CLIP_MODS.includes(mk)) return j({ error: 'not_yours' }, 403); // your own post, or a moderator
       await this.drop(id); return j({ ok: 1 });
     }
     if (route === 'admindel') { await this.drop(id); return j({ ok: 1 }); } // only from admin() (it checks the owner's password)

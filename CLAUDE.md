@@ -157,6 +157,8 @@ source in Settings → Pages should be switched to `main`.
   characters) to /clips/avatar, kept as 'a:<lower>' in the index; every avatar on social.html asks for its picture
   (`fillAvatar`, batched through /clips/avatars, cached 10 minutes in sessionStorage); no picture = the coloured letter.
   `?admin` on a profile has "Admin: remove picture" (`/acct/admin` op 'avatardel'). Only social.html shows them so far.
+  Moderators (2026-11-11): the accounts in `CLIP_MODS` (Worker) and `MODS` (social.html), so far only Claude, can
+  delete any post or comment ("Delete (moderator)" in a post's ⋯ menu; the server checks the account).
   clips.js on play.html: the 🎬 Clip last 30s button (or F8) saves the last 30 seconds. While a game is on screen and
   the tab is visible, every visible game canvas is captured (captureStream into tiny hidden videos, drawn into one
   1280x720 canvas, 960x540 on phones; HTML overlays aren't in it) and encoded with WebCodecs (VP8, 1.5 Mbit/s, a keyframe
