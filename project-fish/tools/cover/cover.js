@@ -503,27 +503,31 @@ function puffMesh(puffs, camera) {
 }
 
 // The smoke: a column of billowing smoke rising out of the left of the
-// frame, with earth and debris thrown out of it. It's drawn in two passes.
-// First its density over the frame (at the saved picture's size, with
-// mipmaps for the blurred looks below): a heap of soft round masses, their
-// outline rolled by warped noise, billows at several scales over them, their
-// edges eaten into wisps, a few streamers of thrown earth rising out of the
-// top, and dust spreading at the foot. Then that density lit, on a plane
-// behind him: the sun's light reaching each point through the smoke between
-// it and the sun (marched across the density towards the sun, blurrier
-// further away), the side of each billow facing the sun brighter, thin edges
-// glowing where the sun is behind them, the sky's light from above, dimmer
-// deep inside, and the haze over it, thicker low down. Debris is flung out
-// of it, some in front of the smoke and some behind.
+// frame, with earth and debris thrown out of it, drawn as a volume.
+// - Its shape: a heap of round masses, billows heaped on them two levels
+//   down, softly joined, baked into a 3D texture (SMOKE_MASSES, smokeSpheres).
+// - Its billows and wisps: the heap's edges eaten by billowy cell noise (a
+//   tiling 3D texture made here, smokeNoise) at two scales, the finer
+//   eating most where the smoke is thin, all rolled by a warp.
+// - Its light: marched through, front to back, at the saved picture's size.
+//   At each step: the sun's light reaching it through the smoke between
+//   (a few steps towards the sun), scattered mostly forwards, so thin smoke
+//   with the sun behind it glows and the dense middle is dark; and the sky's
+//   light from above, dimmer the more smoke is over it.
+// - Streamers of thrown earth rising out of the top, dust along the ground
+//   at its foot, and the haze over it, thicker low down.
+// It's drawn on a plane behind him; the debris flung out of it is real
+// geometry, some in front of the smoke and some behind.
 
 // The big masses, in cloud units (the cloud's middle at 0, 0; one unit is
-// the layout's cloud size in half frame heights): x, y, radius.
+// the layout's cloud size in half frame heights; z towards the camera):
+// x, y, z, radius.
 const SMOKE_MASSES = [
-  [0.0, -0.55, 0.62], [0.42, -0.62, 0.5], [-0.45, -0.5, 0.55],
-  [0.15, -0.05, 0.5], [-0.25, 0.05, 0.48], [0.4, 0.15, 0.38],
-  [0.05, 0.48, 0.42], [-0.3, 0.55, 0.36], [0.28, 0.62, 0.32],
-  [-0.05, 0.92, 0.33], [0.22, 1.05, 0.25], [-0.28, 1.0, 0.26],
-  [0.65, -0.25, 0.36], [-0.7, -0.15, 0.4], [0.7, -0.75, 0.4],
+  [0.0, -0.55, 0.0, 0.62], [0.42, -0.62, 0.1, 0.5], [-0.45, -0.5, 0.0, 0.55],
+  [0.15, -0.05, 0.05, 0.5], [-0.25, 0.05, -0.1, 0.48], [0.4, 0.15, 0.0, 0.38],
+  [0.05, 0.48, 0.0, 0.42], [-0.3, 0.55, 0.05, 0.36], [0.28, 0.62, -0.05, 0.32],
+  [-0.05, 0.92, 0.0, 0.33], [0.22, 1.05, 0.05, 0.25], [-0.28, 1.0, 0.0, 0.26],
+  [0.65, -0.25, 0.1, 0.36], [-0.7, -0.15, 0.0, 0.4], [0.7, -0.75, 0.15, 0.4],
 ];
 // Streamers of thrown earth: from, through, to (cloud units), width.
 const SMOKE_STREAMERS = [
@@ -534,51 +538,167 @@ const SMOKE_STREAMERS = [
   [0.55, 0.25, 0.78, 0.42, 0.98, 0.52, 0.035],
   [0.05, 1.1, 0.1, 1.3, 0.12, 1.45, 0.03],
 ];
-const SMOKE_BLOBS = 64;
+// The box the smoke fills (cloud units): its low and high corners, and how
+// many texels to a unit its shape is baked at.
+const SMOKE_BOX = { min: [-1.75, -1.7, -1.2], max: [1.75, 1.9, 1.2], res: 44 };
 
-function smokeBlobs() {
+// The masses and the billows heaped on them, two levels down.
+function smokeSpheres() {
   const random = rng(7);
-  const blobs = SMOKE_MASSES.map(([x, y, r]) => [x, y, r * 1.15, 1]);
-  // Billows on each mass, mostly on its upper and outer side.
-  let i = 0;
-  while (blobs.length < SMOKE_BLOBS) {
-    const [x, y, r] = SMOKE_MASSES[i++ % SMOKE_MASSES.length];
-    const a = random() * Math.PI * 2;
-    const dx = Math.cos(a);
-    const dy = Math.sin(a) * 0.8 + 0.3;
-    const d = r * (0.55 + random() * 0.4);
-    blobs.push([x + dx * d, y + dy * d, r * (0.35 + random() * 0.3), 0.55 + random() * 0.35]);
+  const spheres = SMOKE_MASSES.map(([x, y, z, r]) => ({ x, y, z, r }));
+  let parents = spheres.slice();
+  for (const [count, shrink] of [[num('k_kids', 4), num('k_shrink', 0.5)]]) {
+    const next = [];
+    for (const p of parents) {
+      for (let i = 0; i < count; i++) {
+        // Mostly towards the camera, upwards and outwards.
+        let dx = random() * 2 - 1;
+        let dy = random() * 2 - 1 + 0.3;
+        let dz = random() * 1.4 - 0.3;
+        const len = Math.hypot(dx, dy, dz) || 1;
+        dx /= len; dy /= len; dz /= len;
+        const r = p.r * shrink * (0.7 + random() * 0.6);
+        const d = p.r * (0.75 + random() * 0.2);
+        next.push({ x: p.x + dx * d, y: p.y + dy * d, z: p.z + dz * d, r });
+      }
+    }
+    spheres.push(...next);
+    parents = next;
   }
-  return blobs;
+  return spheres;
+}
+
+// The heap baked into a 3D texture: at each texel, how far inside the
+// spheres it is (0 at their surface, 1 at a middle), softly joined.
+function smokeShape() {
+  const { min, max, res } = SMOKE_BOX;
+  const n = [0, 1, 2].map((k) => Math.round((max[k] - min[k]) * res));
+  const field = new Float32Array(n[0] * n[1] * n[2]);
+  const k = 0.12; // the softness of the joins
+  for (const s of smokeSpheres()) {
+    const lo = [s.x - s.r, s.y - s.r, s.z - s.r].map((v, a) => Math.max(0, Math.floor((v - min[a]) * res)));
+    const hi = [s.x + s.r, s.y + s.r, s.z + s.r].map((v, a) => Math.min(n[a] - 1, Math.ceil((v - min[a]) * res)));
+    for (let zi = lo[2]; zi <= hi[2]; zi++) {
+      const z = min[2] + (zi + 0.5) / res - s.z;
+      for (let yi = lo[1]; yi <= hi[1]; yi++) {
+        const y = min[1] + (yi + 0.5) / res - s.y;
+        let at = (zi * n[1] + yi) * n[0];
+        for (let xi = lo[0]; xi <= hi[0]; xi++) {
+          const x = min[0] + (xi + 0.5) / res - s.x;
+          const f = 1 - Math.sqrt(x * x + y * y + z * z) / s.r;
+          if (f > -k) {
+            const v = field[at + xi];
+            // Soft max of the two.
+            const h = Math.min(1, Math.max(0, 0.5 + (0.5 * (f - v)) / k));
+            field[at + xi] = v + (f - v) * h + k * h * (1 - h);
+          }
+        }
+      }
+    }
+  }
+  const data = new Uint8Array(field.length);
+  for (let i = 0; i < field.length; i++) data[i] = Math.round(Math.min(1, Math.max(0, field[i] * num('k_mgain', 1.0))) * 255);
+  const texture = new THREE.Data3DTexture(data, n[0], n[1], n[2]);
+  texture.format = THREE.RedFormat;
+  texture.minFilter = texture.magFilter = THREE.LinearFilter;
+  texture.unpackAlignment = 1;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+// A tiling 3D noise texture (N texels a side): R and G billowy cell noise
+// (one minus the distance to the nearest of scattered points, at three
+// scales), coarse and fine; B and A smooth value noise, for the warp.
+function smokeNoise(N = 64) {
+  const random = rng(23);
+  const cellNoise = (cells) => {
+    const pts = new Float32Array(cells * cells * cells * 3);
+    for (let i = 0; i < pts.length; i++) pts[i] = random();
+    return (x, y, z) => {
+      const fx = x * cells, fy = y * cells, fz = z * cells;
+      const cx = Math.floor(fx), cy = Math.floor(fy), cz = Math.floor(fz);
+      let best = 9;
+      for (let k = -1; k <= 1; k++) for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        const ix = cx + i, iy = cy + j, iz = cz + k;
+        const w = ((((iz % cells) + cells) % cells) * cells + (((iy % cells) + cells) % cells)) * cells + (((ix % cells) + cells) % cells);
+        const dx = ix + pts[w * 3] - fx, dy = iy + pts[w * 3 + 1] - fy, dz = iz + pts[w * 3 + 2] - fz;
+        const d = dx * dx + dy * dy + dz * dz;
+        if (d < best) best = d;
+      }
+      return 1 - Math.min(1, Math.sqrt(best));
+    };
+  };
+  const valueNoise = (cells) => {
+    const v = new Float32Array(cells * cells * cells);
+    for (let i = 0; i < v.length; i++) v[i] = random();
+    const at = (i, j, k) => v[((((k % cells) + cells) % cells) * cells + (((j % cells) + cells) % cells)) * cells + (((i % cells) + cells) % cells)];
+    const s = (t) => t * t * (3 - 2 * t);
+    return (x, y, z) => {
+      const fx = x * cells, fy = y * cells, fz = z * cells;
+      const i = Math.floor(fx), j = Math.floor(fy), k = Math.floor(fz);
+      const u = s(fx - i), w = s(fy - j), t = s(fz - k);
+      const l = (a, b, f) => a + (b - a) * f;
+      return l(
+        l(l(at(i, j, k), at(i + 1, j, k), u), l(at(i, j + 1, k), at(i + 1, j + 1, k), u), w),
+        l(l(at(i, j, k + 1), at(i + 1, j, k + 1), u), l(at(i, j + 1, k + 1), at(i + 1, j + 1, k + 1), u), w),
+        t,
+      );
+    };
+  };
+  const c = [cellNoise(4), cellNoise(8), cellNoise(16), cellNoise(32)];
+  const v = [valueNoise(4), valueNoise(8), valueNoise(16), valueNoise(4), valueNoise(8), valueNoise(16)];
+  const data = new Uint8Array(N * N * N * 4);
+  let o = 0;
+  for (let z = 0; z < N; z++) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const px = x / N, py = y / N, pz = z / N;
+    const c4 = c[0](px, py, pz), c8 = c[1](px, py, pz), c16 = c[2](px, py, pz), c32 = c[3](px, py, pz);
+    // (Coarse: the cell noise lifted by smooth noise, so its billows join.)
+    const cells = c4 * 0.625 + c8 * 0.25 + c16 * 0.125;
+    const smooth = v[0](px, py, pz) * 0.5 + v[1](px, py, pz) * 0.3 + v[2](px, py, pz) * 0.2;
+    data[o++] = Math.round(Math.min(1, Math.max(0, (smooth - (cells - 1)) / (2 - cells))) * 255);
+    data[o++] = Math.round((c8 * 0.625 + c16 * 0.25 + c32 * 0.125) * 255);
+    data[o++] = Math.round((v[0](px, py, pz) * 0.57 + v[1](px, py, pz) * 0.29 + v[2](px, py, pz) * 0.14) * 255);
+    data[o++] = Math.round((v[3](px, py, pz) * 0.57 + v[4](px, py, pz) * 0.29 + v[5](px, py, pz) * 0.14) * 255);
+  }
+  const texture = new THREE.Data3DTexture(data, N, N, N);
+  texture.format = THREE.RGBAFormat;
+  texture.minFilter = texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = texture.wrapT = texture.wrapR = THREE.RepeatWrapping;
+  texture.unpackAlignment = 1;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function makeSmoke(renderer, frame, layout, distance) {
   const spec = layout.cloud;
   const group = new THREE.Group();
+  const K = (name, v) => num('k_' + name, v).toFixed(4); // (tuning)
 
-  // --- Its density over the frame -----------------------------------------
+  // --- The smoke, marched through, into a picture of its own ----------------
   const DW = Math.round(RW / 2);
   const DH = Math.round(RH / 2);
-  const density = new THREE.WebGLRenderTarget(DW, DH, {
-    type: THREE.HalfFloatType,
-    generateMipmaps: true,
-    minFilter: THREE.LinearMipmapLinearFilter,
-    magFilter: THREE.LinearFilter,
-    depthBuffer: false,
-  });
-  const blobs = smokeBlobs();
-  const K = (name, v) => num('k_' + name, v).toFixed(4); // (tuning)
-  const densityMaterial = new THREE.ShaderMaterial({
+  const picture = new THREE.WebGLRenderTarget(DW, DH, { type: THREE.HalfFloatType, depthBuffer: false });
+  // Where the sun is, seen from the cloud (cloud units): its place in the
+  // frame, and behind.
+  const sunU = ((layout.sun[0] - spec.at[0]) * ASPECT) / spec.size;
+  const sunV = (layout.sun[1] - spec.at[1]) / spec.size;
+  const toSun = new THREE.Vector3(sunU * num('k_sx', 0.25), sunV * num('k_sy', 0.4), -num('k_sz', 0.8)).normalize();
+  const marchMaterial = new THREE.ShaderMaterial({
     depthTest: false,
     depthWrite: false,
     uniforms: {
+      tShape: { value: smokeShape() },
+      tNoise: { value: smokeNoise() },
       uRes: { value: new THREE.Vector2(DW, DH) },
       uAspect: { value: ASPECT },
       uAt: { value: new THREE.Vector2(...spec.at) },
       uSize: { value: spec.size },
-      uBlobs: { value: blobs.map((b) => new THREE.Vector4(...b)) },
+      uBoxMin: { value: new THREE.Vector3(...SMOKE_BOX.min) },
+      uBoxMax: { value: new THREE.Vector3(...SMOKE_BOX.max) },
+      uToSun: { value: toSun },
       uStreamA: { value: SMOKE_STREAMERS.map((s) => new THREE.Vector4(s[0], s[1], s[2], s[3])) },
       uStreamB: { value: SMOKE_STREAMERS.map((s, k) => new THREE.Vector4(s[4], s[5], s[6], k * 7.31)) },
+      uSun: { value: new THREE.Vector2(...layout.sun) },
     },
     vertexShader: /* glsl */ `
       void main() {
@@ -586,51 +706,47 @@ function makeSmoke(renderer, frame, layout, distance) {
       }
     `,
     fragmentShader: /* glsl */ `
-      #define NB ${SMOKE_BLOBS}
+      precision highp sampler3D;
       #define NS ${SMOKE_STREAMERS.length}
+      uniform sampler3D tShape;
+      uniform sampler3D tNoise;
       uniform vec2 uRes;
       uniform float uAspect;
       uniform vec2 uAt;
       uniform float uSize;
-      uniform vec4 uBlobs[NB];
+      uniform vec3 uBoxMin;
+      uniform vec3 uBoxMax;
+      uniform vec3 uToSun;
       uniform vec4 uStreamA[NS];
       uniform vec4 uStreamB[NS];
+      uniform vec2 uSun;
       ${NOISE}
-      // The masses: a sum of soft round bumps.
-      float masses(vec2 p) {
-        float m = 0.0;
-        for (int i = 0; i < NB; i++) {
-          vec4 b = uBlobs[i];
-          vec2 d = (p - b.xy) / b.z;
-          m += b.w * exp(-2.2 * dot(d, d));
-        }
-        return m;
+      ${SKY}
+      float remap(float v, float lo, float hi) {
+        return clamp((v - lo) / max(hi - lo, 1e-4), 0.0, 1.0);
       }
-      // Billows: noise folded about its middle, so it rises in rounded
-      // lobes between creases, at several scales.
-      float billow(vec2 p) {
-        float v = 0.0;
-        float a = 0.5;
-        mat2 turn = mat2(0.8, 0.6, -0.6, 0.8);
-        for (int i = 0; i < 6; i++) {
-          v += a * abs(vnoise(p) * 2.0 - 1.0);
-          p = turn * p * 2.05 + vec2(13.7, 4.1);
-          a *= ${K('bgain', 0.5)};
-        }
-        return v;
+      float shapeAt(vec3 p) {
+        return texture(tShape, (p - uBoxMin) / (uBoxMax - uBoxMin)).r;
       }
-      float fbm3(vec2 p) {
-        float v = 0.0;
-        float a = 0.5;
-        for (int i = 0; i < 3; i++) {
-          v += a * vnoise(p);
-          p = p * 2.03 + vec2(17.1, 9.2);
-          a *= 0.5;
-        }
-        return v / 0.875;
+      // The smoke's density at p (0 to 1); cheap: without the fine wisps.
+      float densityAt(vec3 p, bool cheap) {
+        float m = shapeAt(p);
+        if (m < 0.004) return 0.0;
+        vec4 w = texture(tNoise, p * ${K('wf', 0.22)} + vec3(0.13, 0.31, 0.71));
+        // Rising: the warp stretched upwards a little.
+        vec3 pw = p + vec3(w.b - 0.5, (w.a - 0.5) * 0.7, w.b - w.a) * ${K('warp', 0.55)};
+        float billows = texture(tNoise, pw * ${K('f1', 0.42)}).r;
+        // (Eaten most at the edges, where the heap is thin.)
+        float d = remap(m, (1.0 - billows) * ${K('e1', 0.85)} * (1.0 - m * ${K('ek', 1.0)}), 1.0);
+        if (cheap) return d;
+        float fine = texture(tNoise, pw * ${K('f2', 1.1)} + vec3(0.5, 0.2, 0.9)).g;
+        d = remap(d, fine * ${K('e2', 0.5)} * (1.0 - d * ${K('e2k', 1.0)}), 1.0);
+        return d;
       }
-      // Distance from p to the curve through a, b, c (as 8 straight
-      // pieces), and how far along it the nearest point is (0 to 1).
+      float hg(float c, float g) {
+        float g2 = g * g;
+        return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * c, 1.5);
+      }
       vec2 curve(vec2 p, vec2 a, vec2 b, vec2 c) {
         float best = 1e9;
         float along = 0.0;
@@ -649,85 +765,114 @@ function makeSmoke(renderer, frame, layout, distance) {
         }
         return vec2(best, along);
       }
+      float fbm3(vec2 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 3; i++) {
+          v += a * vnoise(p);
+          p = p * 2.03 + vec2(17.1, 9.2);
+          a *= 0.5;
+        }
+        return v / 0.875;
+      }
       void main() {
         vec2 xy = gl_FragCoord.xy / uRes * 2.0 - 1.0;
-        vec2 p = vec2((xy.x - uAt.x) * uAspect, xy.y - uAt.y) / uSize;
-        float rough = masses(p);
-        // Dust low down, spreading along the ground.
-        float dustZone = smoothstep(-0.5, -0.98, xy.y) * (1.0 - smoothstep(0.6, 1.7, p.x));
-        // The streamers' reach.
-        bool nearStreamer = p.y > 0.2 && p.y < 1.8 && p.x > -1.2 && p.x < 1.1;
-        if (rough < 0.004 && dustZone < 0.001 && !nearStreamer) {
-          gl_FragColor = vec4(0.0, 0.5, 0.0, 0.0);
-          return;
+        vec2 p2 = vec2((xy.x - uAt.x) * uAspect, xy.y - uAt.y) / uSize;
+        float lum = 0.0;
+        float trans = 1.0;
+        if (p2.x > uBoxMin.x && p2.x < uBoxMax.x && p2.y > uBoxMin.y && p2.y < uBoxMax.y) {
+          // Front to back.
+          const int STEPS = 72;
+          float span = uBoxMax.z - uBoxMin.z;
+          float ds = span / float(STEPS);
+          float jitter = hash12(gl_FragCoord.xy);
+          float sigma = ${K('sigma', 22.0)};
+          float cosView = dot(-uToSun, vec3(0.0, 0.0, 1.0));
+          float phase0 = mix(hg(cosView, ${K('g', 0.55)}), hg(cosView, -0.25), 0.3);
+          float phase1 = mix(hg(cosView, ${K('g', 0.55)} * 0.5), hg(cosView, -0.12), 0.3);
+          for (int i = 0; i < STEPS; i++) {
+            vec3 p = vec3(p2, uBoxMax.z - (float(i) + jitter) * ds);
+            float d = densityAt(p, false);
+            if (d <= 0.0) continue;
+            // The smoke between here and the sun.
+            float toward = 0.0;
+            float step = 0.03;
+            vec3 q = p;
+            for (int j = 0; j < 6; j++) {
+              q += uToSun * step;
+              toward += densityAt(q, j > ${num('k_fullj', 1)}) * step;
+              step *= 1.7;
+            }
+            // And above (the sky's light).
+            float above = 0.0;
+            for (int j = 1; j <= 3; j++) {
+              above += shapeAt(p + vec3(0.0, float(j * j) * 0.08, 0.0)) * 0.08 * float(2 * j - 1);
+            }
+            float tl = toward * sigma;
+            float sun = exp(-tl) * phase0 + ${K('ms1', 0.5)} * exp(-tl * 0.35) * phase1 + ${K('ms2', 0.1)} * exp(-tl * 0.12);
+            float sky = exp(-above * ${K('skyk', 4.0)});
+            float light = ${K('isun', 0.9)} * sun + ${K('isky', 0.5)} * sky + ${K('ifloor', 0.04)};
+            float absorb = 1.0 - exp(-d * sigma * ds);
+            lum += trans * absorb * light;
+            trans *= 1.0 - absorb;
+            if (trans < 0.01) break;
+          }
         }
-        // Rolled: warped twice, coarse then finer.
-        vec2 w1 = vec2(fbm(p * 1.1 + vec2(3.1, 1.7)), fbm(p * 1.1 + vec2(8.3, 5.2))) - 0.5;
-        vec2 q = p + w1 * ${K('w1', 0.5)};
-        vec2 w2 = vec2(fbm3(q * 2.7 + vec2(1.3, 9.1)), fbm3(q * 2.7 + vec2(6.7, 2.9))) - 0.5;
-        q += w2 * ${K('w2', 0.18)};
-        float m = rough > 0.004 ? masses(q) : 0.0;
-        float b = billow(q * ${K('bfreq', 2.6)} + vec2(5.0, 1.0));
-        float d = m * (${K('bbase', 0.5)} + ${K('bamp', 1.0)} * b) - ${K('thresh', 0.3)};
-        // The edges eaten into wisps, stretched a little upwards.
-        float wisp = fbm(vec2(q.x * 7.0, q.y * 4.5) + w2 * 4.0 + vec2(2.0, 8.0));
-        float edge = 1.0 - smoothstep(0.0, ${K('edgew', 0.5)}, d);
-        d -= edge * (wisp - 0.35) * ${K('erode', 0.5)};
-        float body = max(d, 0.0);
-        float tau = body * ${K('tauk', 30.0)};
-        float height = sqrt(body);
-        // A thin veil of wisps round it.
-        float veil = smoothstep(0.1, 0.7, m) * smoothstep(0.45, 0.8, wisp) * ${K('veil', 0.6)};
-        tau += veil;
-        // How dark the smoke is: sootier in places.
-        float albedo = 0.5 + ${K('albv', 0.4)} * (fbm3(q * 0.9 + vec2(11.0, 3.0)) - 0.5);
-        // Streamers of thrown earth.
-        if (nearStreamer) {
+        // Streamers of thrown earth, in front.
+        if (p2.y > 0.2 && p2.y < 1.8 && p2.x > -1.2 && p2.x < 1.1) {
           for (int i = 0; i < NS; i++) {
             vec4 A = uStreamA[i];
             vec4 B = uStreamB[i];
-            vec2 sp = p + (vec2(fbm3(p * 4.0 + B.w), fbm3(p * 4.0 + B.w + 5.0)) - 0.5) * 0.08;
+            vec2 sp = p2 + (vec2(fbm3(p2 * 4.0 + B.w), fbm3(p2 * 4.0 + B.w + 5.0)) - 0.5) * 0.08;
             vec2 c = curve(sp, A.xy, A.zw, B.xy);
-            float width = B.z * mix(1.0, 0.35, c.y) * (0.8 + 0.6 * fbm3(vec2(c.y * 6.0, B.w)));
-            float s = exp(-pow(c.x / width, 2.0)) * smoothstep(1.0, 0.75, c.y);
-            s *= 0.6 + 0.8 * fbm3(vec2(c.y * 9.0 + B.w, c.x * 30.0));
-            float st = s * 6.0;
-            albedo = mix(albedo, 0.18, clamp(st / (tau + st + 1e-3), 0.0, 1.0));
-            tau += st;
-            height = max(height, s * 0.3);
+            float width = B.z * 0.6 * mix(1.0, 0.3, c.y) * (0.5 + 1.0 * fbm3(vec2(c.y * 7.0, B.w)));
+            float s = exp(-pow(c.x / width, 2.0)) * smoothstep(1.0, 0.6, c.y);
+            s *= smoothstep(0.25, 0.65, fbm(vec2(c.y * 11.0 + B.w, c.x * 25.0 + B.w)));
+            float a = 1.0 - exp(-s * 5.0);
+            lum = lum * (1.0 - a) + a * 0.12;
+            trans *= 1.0 - a;
           }
         }
-        // Dust: thin, pale, stretched along the ground.
+        // Dust along the ground, behind.
+        float dustZone = smoothstep(-0.5, -0.98, xy.y) * (1.0 - smoothstep(0.6, 1.7, p2.x));
         if (dustZone > 0.001) {
-          float dust = dustZone * smoothstep(0.35, 0.8, fbm(vec2(p.x * 1.4, p.y * 4.0) + w1 * 1.5 + vec2(0.0, 3.0)));
-          float dt = dust * ${K('dust', 1.2)};
-          albedo = mix(albedo, 0.85, clamp(dt / (tau + dt + 1e-3), 0.0, 1.0));
-          tau += dt;
+          float dust = dustZone * smoothstep(0.35, 0.8, fbm(vec2(p2.x * 1.4, p2.y * 4.0) + vec2(0.0, 3.0)));
+          float a = 1.0 - exp(-dust * ${K('dust', 0.5)});
+          float sky = skyLum(xy, uSun, uAspect);
+          lum += trans * a * sky * 0.8;
+          trans *= 1.0 - a;
         }
-        gl_FragColor = vec4(tau, albedo, height, min(tau, ${K('cap', 6.0)}));
+        gl_FragColor = vec4(lum, 1.0 - trans, 0.0, 1.0);
       }
     `,
   });
   const quadScene = new THREE.Scene();
-  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), densityMaterial);
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), marchMaterial);
   quad.frustumCulled = false;
   quadScene.add(quad);
-  renderer.setRenderTarget(density);
-  renderer.render(quadScene, new THREE.Camera());
+  renderer.setRenderTarget(picture);
+  // (In strips, so no one draw runs long.)
+  const strips = 8;
+  for (let i = 0; i < strips; i++) {
+    const y0 = Math.floor((DH * i) / strips);
+    const y1 = Math.floor((DH * (i + 1)) / strips);
+    picture.scissor.set(0, y0, DW, y1 - y0);
+    picture.scissorTest = true;
+    renderer.render(quadScene, new THREE.Camera());
+  }
+  picture.scissorTest = false;
   renderer.setRenderTarget(null);
 
-  // --- That density, lit, on a plane behind him ----------------------------
-  const view = { tau: 1, height: 2, sun: 3, lit: 4 }[q.get('smokeview')] || 0;
+  // --- That picture on a plane behind him, with the haze over it ------------
   const material = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
+    premultipliedAlpha: true,
     uniforms: {
-      tDensity: { value: density.texture },
+      tSmoke: { value: picture.texture },
       uRes: { value: new THREE.Vector2(RW, RH) },
-      uTexel: { value: new THREE.Vector2(1 / DW, 1 / DH) },
       uSun: { value: new THREE.Vector2(...layout.sun) },
       uAspect: { value: ASPECT },
-      uSize: { value: spec.size },
     },
     vertexShader: /* glsl */ `
       void main() {
@@ -735,66 +880,20 @@ function makeSmoke(renderer, frame, layout, distance) {
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform sampler2D tDensity;
+      uniform sampler2D tSmoke;
       uniform vec2 uRes;
-      uniform vec2 uTexel;
       uniform vec2 uSun;
       uniform float uAspect;
-      uniform float uSize;
       ${NOISE}
       ${SKY}
-      // The slope of the billows' surface at a scale (a mip level), per
-      // cloud unit.
-      vec2 slope(vec2 uv, float lod) {
-        vec2 e = uTexel * exp2(lod) * 1.5;
-        float gx = textureLod(tDensity, uv + vec2(e.x, 0.0), lod).b - textureLod(tDensity, uv - vec2(e.x, 0.0), lod).b;
-        float gy = textureLod(tDensity, uv + vec2(0.0, e.y), lod).b - textureLod(tDensity, uv - vec2(0.0, e.y), lod).b;
-        return vec2(gx / (4.0 * e.x * uAspect), gy / (4.0 * e.y)) * uSize;
-      }
       void main() {
         vec2 uv = gl_FragCoord.xy / uRes;
-        vec4 s = textureLod(tDensity, uv, 0.0);
-        float tau = s.r;
-        if (tau < 0.004) discard;
-        float albedo = s.g;
+        vec4 s = texture2D(tSmoke, uv);
+        float alpha = s.g;
+        if (alpha < 0.002) discard;
         vec2 xy = uv * 2.0 - 1.0;
-        // Towards the sun, in frame heights.
-        vec2 toSun = uSun - xy;
-        toSun.x *= uAspect;
-        vec2 dir = normalize(toSun);
-        vec2 step = vec2(dir.x / uAspect, dir.y); // uv per frame height
-        // The smoke between here and the sun.
-        float through = 0.0;
-        float t = 0.002;
-        for (int i = 0; i < 22; i++) {
-          float lod = clamp(log2(t * ${K('slod', 0.4)} / uTexel.y), 0.0, 7.0);
-          through += textureLod(tDensity, uv + step * t, lod).a * t * 0.28;
-          t *= 1.28;
-        }
-        float sunReach = exp(-through * ${K('shadow', 3.0)});
-        float nearReach = exp(-through * ${K('shadow2', 1.0)});
-        // The billows' surface.
-        vec2 g = slope(uv, 0.0) * ${K('g0', 0.5)} + slope(uv, 2.0) * ${K('g1', 0.6)} + slope(uv, 4.0) * ${K('g2', 0.5)};
-        vec3 n = normalize(vec3(-g * ${K('gk', 0.6)}, 1.0));
-        vec3 L = normalize(vec3(dir, ${K('lz', 0.15)}));
-        float facing = clamp((dot(n, L) + ${K('wrap', 0.3)}) / (1.0 + ${K('wrap', 0.3)}), 0.0, 1.0);
-        // Thin parts with the sun behind them glow.
-        float thin = exp(-tau * 0.6);
-        float deep = exp(-textureLod(tDensity, uv, 5.0).a * ${K('deep', 0.25)});
-        float sky = skyLum(xy, uSun, uAspect);
-        float sun = ${K('isun', 2.2)} * sunReach * facing;
-        float amb = ${K('iamb', 0.45)} * (0.5 + 0.5 * n.y) * (0.3 + 0.7 * deep);
-        float lum = albedo * (sun + amb);
-        lum += ${K('rim', 2.0)} * nearReach * thin * (1.0 - thin) * 4.0 * sky * 0.5;
-        // Haze over it, thicker low down.
-        float haze = ${K('haze0', 0.06)} + ${K('haze1', 0.3)} * smoothstep(-0.2, -1.0, xy.y);
-        lum = mix(lum, sky, haze);
-        float alpha = 1.0 - exp(-tau);
-        int view = ${view};
-        if (view == 1) { lum = tau * 0.1; alpha = 1.0; }
-        if (view == 2) { lum = s.b; alpha = 1.0; }
-        if (view == 3) { lum = sunReach; alpha = 1.0; }
-        if (view == 4) { lum = facing; alpha = 1.0; }
+        float haze = ${K('haze0', 0.06)} + ${K('haze1', 0.22)} * smoothstep(-0.2, -1.0, xy.y);
+        float lum = mix(s.r, skyLum(xy, uSun, uAspect) * alpha, haze);
         gl_FragColor = vec4(vec3(lum), alpha);
       }
     `,
