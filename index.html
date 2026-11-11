@@ -217,7 +217,7 @@ function renderNews() {
 function render() {
   const q = $('search').value.trim().toLowerCase();
   // the order of the All games grid: these first (rows of four), then everything else as listed in games.js
-  const FIRST = ['siege', 'cube-assault', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'gamble-your-life-away', 'card-royale', 'uno', 'russian-roulette', 'free-criminal', 'football', 'chess', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop'];
+  const FIRST = ['chess', 'cube-assault', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'gamble-your-life-away', 'card-royale', 'uno', 'russian-roulette', 'free-criminal', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop'];
   const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
   const list = [...GAMES].sort((a, b) => rank(a) - rank(b)).filter(g =>
     (active === 'All' || g.category === active) &&
