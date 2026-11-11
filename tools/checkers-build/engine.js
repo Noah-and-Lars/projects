@@ -4,7 +4,7 @@
 // =====================================================================
 // American checkers (English draughts) on the dark squares of an 8x8 board. Red ('w', at the bottom) moves first.
 // Men move one square diagonally forward and become kings on the far row; kings move one square diagonally either
-// way. Taking is compulsory: a piece that can jump must, and keeps jumping while it can (a man that is crowned
+// way. Taking is optional (1.0.1, the owner's rule): a piece may jump or not; once it jumps it keeps jumping while it can (a man that is crowned
 // mid-jump stops there). You lose when you have no pieces or no move. Draws: the same position three times, or
 // 40 moves each with no capture and no man moved.
 // The board is 64 squares (0 = top left) so the board code can stay the same as Chess. Pieces: P red man, K red king,
@@ -50,12 +50,12 @@ function gen(G) {
     const p = G.b[s]; if (!p || isW(p) !== G.w) continue;
     const dirs = isKing(p) ? D4 : G.w ? FWD_W : FWD_B;
     jumps(G, s, s, p, dirs, [s], [], caps);
-    if (!caps.length) for (const [dr, dc] of dirs) {
+    for (const [dr, dc] of dirs) { // 1.0.1: jumping is optional, so the plain moves are always there too
       const r = (s >> 3) + dr, c = (s & 7) + dc; if (r < 0 || r > 7 || c < 0 || c > 7) continue;
       const t = r * 8 + c; if (!G.b[t]) quiet.push(mk(s, t, [s, t], [], p));
     }
   }
-  return caps.length ? caps : quiet;
+  return caps.concat(quiet);
 }
 const legal = G => gen(G);
 function make(G, m) {
@@ -112,11 +112,16 @@ function search(G, depth, alpha, beta, ply, S) {
   const ms = gen(G);
   if (!ms.length) return -WIN + ply;
   if (G.h >= 80) return 0;
-  // forced captures always get looked at, so the search never stops in the middle of an exchange
-  if (depth <= 0 && (!ms[0].cap || ply > 48)) return evaluate(G);
-  order(ms, S, ply);
-  let best = -INF;
-  for (const m of ms) {
+  // at the end of the look-ahead: stand pat, but keep following captures so it never stops in the middle of an exchange
+  let list = ms, best = -INF;
+  if (depth <= 0) {
+    const stand = evaluate(G), caps = ms.filter(m => m.cap);
+    if (!caps.length || ply > 48) return stand;
+    best = stand; if (stand > alpha) alpha = stand; if (alpha >= beta) return stand;
+    list = caps;
+  }
+  order(list, S, ply);
+  for (const m of list) {
     make(G, m); const v = -search(G, depth - 1, -beta, -alpha, ply + 1, S); unmake(G);
     if (S.stop) return 0;
     if (v > best) best = v;

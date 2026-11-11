@@ -221,12 +221,18 @@
 <div id="lb" hidden><div class="card"><h2>🏆 Checkers leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played checkers, ranked by their highest online rating. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.0</span></summary>
+    <summary>Patch notes <span>v1.0.1</span></summary>
+    <h3>v1.0.1 <small>Jumping is optional</small></h3>
+    <ul>
+      <li>You no longer have to jump. When you can take a piece, you can still make any other move instead. Pieces that can jump are still ringed in gold, as a hint.</li>
+      <li>Once you start a jump, you still keep jumping while you can (a multi-jump goes all the way).</li>
+      <li>The computer plays by the same rule, so it may skip a capture to set a trap.</li>
+    </ul>
     <h3>v1.0 <small>First release</small></h3>
     <ul>
       <li>Checkers, made from the arcade's Chess: the same board, buttons and online play, with checker pieces and checkers rules.</li>
-      <li>American checkers: men move diagonally forward, and become kings (with a gold crown) on the far row; kings move both ways. Jumping is compulsory and you keep jumping while you can. A man crowned in the middle of a jump stops there.</li>
-      <li>Pieces that must jump are ringed in gold. Drag a piece or click it and then where it should go; legal moves show as dots, and a multi-jump slides through every hop.</li>
+      <li>American checkers: men move diagonally forward, and become kings (with a gold crown) on the far row; kings move both ways. Jumping is up to you (1.0.1): take a piece or make any other move. Once you jump, you keep jumping while you can. A man crowned in the middle of a jump stops there.</li>
+      <li>Pieces that can jump are ringed in gold. Drag a piece or click it and then where it should go; legal moves show as dots, and a multi-jump slides through every hop.</li>
       <li>You win by taking every piece or leaving your opponent with no move. Draws: the same position three times, or 40 moves each with no capture and no man moved.</li>
       <li>Six computer levels, Easy to Master, plus Local 2-player on one screen.</li>
       <li>Play online: Quick match, private tables with a 5-letter code, chat, and rematches with colours swapped.</li>
@@ -242,7 +248,7 @@
 // =====================================================================
 // American checkers (English draughts) on the dark squares of an 8x8 board. Red ('w', at the bottom) moves first.
 // Men move one square diagonally forward and become kings on the far row; kings move one square diagonally either
-// way. Taking is compulsory: a piece that can jump must, and keeps jumping while it can (a man that is crowned
+// way. Taking is optional (1.0.1, the owner's rule): a piece may jump or not; once it jumps it keeps jumping while it can (a man that is crowned
 // mid-jump stops there). You lose when you have no pieces or no move. Draws: the same position three times, or
 // 40 moves each with no capture and no man moved.
 // The board is 64 squares (0 = top left) so the board code can stay the same as Chess. Pieces: P red man, K red king,
@@ -288,12 +294,12 @@ function gen(G) {
     const p = G.b[s]; if (!p || isW(p) !== G.w) continue;
     const dirs = isKing(p) ? D4 : G.w ? FWD_W : FWD_B;
     jumps(G, s, s, p, dirs, [s], [], caps);
-    if (!caps.length) for (const [dr, dc] of dirs) {
+    for (const [dr, dc] of dirs) { // 1.0.1: jumping is optional, so the plain moves are always there too
       const r = (s >> 3) + dr, c = (s & 7) + dc; if (r < 0 || r > 7 || c < 0 || c > 7) continue;
       const t = r * 8 + c; if (!G.b[t]) quiet.push(mk(s, t, [s, t], [], p));
     }
   }
-  return caps.length ? caps : quiet;
+  return caps.concat(quiet);
 }
 const legal = G => gen(G);
 function make(G, m) {
@@ -350,11 +356,16 @@ function search(G, depth, alpha, beta, ply, S) {
   const ms = gen(G);
   if (!ms.length) return -WIN + ply;
   if (G.h >= 80) return 0;
-  // forced captures always get looked at, so the search never stops in the middle of an exchange
-  if (depth <= 0 && (!ms[0].cap || ply > 48)) return evaluate(G);
-  order(ms, S, ply);
-  let best = -INF;
-  for (const m of ms) {
+  // at the end of the look-ahead: stand pat, but keep following captures so it never stops in the middle of an exchange
+  let list = ms, best = -INF;
+  if (depth <= 0) {
+    const stand = evaluate(G), caps = ms.filter(m => m.cap);
+    if (!caps.length || ply > 48) return stand;
+    best = stand; if (stand > alpha) alpha = stand; if (alpha >= beta) return stand;
+    list = caps;
+  }
+  order(list, S, ply);
+  for (const m of list) {
     make(G, m); const v = -search(G, depth - 1, -beta, -alpha, ply + 1, S); unmake(G);
     if (S.stop) return 0;
     if (v > best) best = v;
@@ -418,7 +429,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Checkers v1.0 (made from Chess 1.5): the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.0';
+const VERSION = '1.0.1';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -517,7 +528,7 @@ function renderMarks() {
   const last = hist.length ? hist[hist.length - 1].m : null;
   for (let sq = 0; sq < 64; sq++) {
     const d = sqEls[sq]; d.classList.toggle('last', !!last && (sq === last.from || sq === last.to)); d.classList.toggle('sel', sq === selected);
-    d.classList.toggle('must', !over && !!legalNow.length && legalNow[0].cap && legalNow.some(m => m.from === sq) && (localGame || (G.w ? 'w' : 'b') === player));
+    d.classList.toggle('must', !over && !!legalNow.length && legalNow.some(m => m.cap && m.from === sq) && (localGame || (G.w ? 'w' : 'b') === player));
     const old = d.querySelector('.dot'); if (old) old.remove();
   }
   if (selected >= 0 && save.hints) for (const m of legalNow) if (m.from === selected) {
@@ -681,7 +692,7 @@ function renderSide() {
   else if (resignArm) st = 'Click Resign again to give up this game.';
   else if (aiBusy) st = 'The computer is thinking…';
   else if (online.on && (G.w ? 'w' : 'b') !== player) st = `${oppName()}’s move.`;
-  else st = (legalNow.length && legalNow[0].cap ? 'You must jump! ' : '') + 'Your move.' + (online.on && !hist.length ? ` You’re ${SIDE(player)}.` : '');
+  else st = (legalNow.length && legalNow[0].cap ? 'You can jump! ' : '') + 'Your move.' + (online.on && !hist.length ? ` You’re ${SIDE(player)}.` : '');
   $('status').textContent = st;
   $('undoBtn').disabled = online.on || !!over || !hist.some((x, i) => (i % 2 === 0) === (player === 'w'));
   $('resignBtn').disabled = !!over || !hist.length;
@@ -697,7 +708,7 @@ function renderSide() {
     $('topName').innerHTML = nm(topCol); $('botName').innerHTML = nm(botCol);
     for (const [bar, c] of [['topBar', topCol], ['botBar', botCol]]) { const a = $(bar).querySelector('.avatar'); a.textContent = c === 'w' ? '🔴' : '⚫'; a.classList.toggle('you', c === (G.w ? 'w' : 'b') && !over); }
     const side = G.w ? 'w' : 'b';
-    $('status').textContent = over ? (!over.winner ? 'Draw ' + over.why + '.' : over.resigned ? SIDE(over.winner === 'w' ? 'b' : 'w') + ' resigned.' : SIDE(over.winner) + ' won ' + over.why + '.') : resignArm ? 'Click Resign again to give up for ' + SIDE(side) + '.' : (legalNow.length && legalNow[0].cap ? 'Must jump! ' : '') + SIDE(side) + ' to move.';
+    $('status').textContent = over ? (!over.winner ? 'Draw ' + over.why + '.' : over.resigned ? SIDE(over.winner === 'w' ? 'b' : 'w') + ' resigned.' : SIDE(over.winner) + ' won ' + over.why + '.') : resignArm ? 'Click Resign again to give up for ' + SIDE(side) + '.' : (legalNow.length && legalNow[0].cap ? 'Can jump! ' : '') + SIDE(side) + ' to move.';
     $('undoBtn').disabled = !!over || !hist.length;
     $('statsT').textContent = 'Local 2-player'; $('headT').textContent = 'Local 2-player';
     $('stats').innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--muted)">Pass the device after each move: the board turns round for whoever plays next. These games don\'t count towards your record or rating.</div>';
@@ -795,7 +806,7 @@ const Net = (() => {
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
   const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
   const TEST = (new URLSearchParams(location.search).get('ckroom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
-  const BASE = TEST ? 'ck-test-' + TEST : 'ck';
+  const BASE = TEST ? 'ck2-test-' + TEST : 'ck2'; // 1.0.1: new channels, so a 1.0 copy (forced jumps) never meets a 1.0.1 one
   const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const myId = (Math.random().toString(36) + '0000000').slice(2, 8);
   let client = null, libLoad = null, lobby = null, table = null, hostId = null, expectId = null, waitTimer = 0, queueT = 0;

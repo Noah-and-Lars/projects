@@ -360,6 +360,10 @@ source in Settings → Pages should be switched to `main`.
   gold ring (`.sq.must`). Wooden board (owner's choice): `--light #ecca93`, `--dark #a5652f`, a frame drawn with
   box-shadow round `#board` (resize leaves room for it). Since the page is built from chess/index.html, a fix to
   Chess's shared code can be carried over by re-running build.py (it stops if a replaced line has changed).
+  1.0.1 (2026-11-11, the owner's rule): jumping is optional (gen() returns captures and plain moves; a jump once started
+  still runs to the end). The search stands pat at depth 0 and only follows captures from there. Gold ring = "can jump".
+  Online channels moved to `ck2-*` so 1.0 copies never meet it. Edited in checkers/index.html and engine.js directly:
+  build.py still expects Chess 1.5 and would pull Chess 1.5.1's Elo reset and lobby into Checkers, so don't re-run it as is.
 - `chess/`: Chess against the computer (the engine is the `<script id="engine">` block, shared with a Web Worker).
   Saves `chessSave` (settings, per-level stats, the game in progress). Since 1.1 it plays online too: the `Net`
   block and the Play online box in the side panel. Quick match pairs in Presence on `ch-lobby`; a private table has
