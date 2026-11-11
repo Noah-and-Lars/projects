@@ -1,0 +1,93 @@
+{
+ "morning": {
+  "name": "morning",
+  "sunU": 0.7051,
+  "sunEl": 7.4,
+  "ev": -2.56,
+  "mean": 0.8655
+ },
+ "noon": {
+  "name": "noon",
+  "sunU": 0.6001,
+  "sunEl": 42.9,
+  "ev": -1.69,
+  "mean": 0.5789
+ },
+ "afternoon": {
+  "name": "afternoon",
+  "sunU": 0.5996,
+  "sunEl": 74.4,
+  "ev": -2.04,
+  "mean": 1.6457
+ },
+ "sunset": {
+  "name": "sunset",
+  "sunU": 0.6372,
+  "sunEl": 12.8,
+  "ev": -0.84,
+  "mean": 0.3381
+ },
+ "night": {
+  "name": "night",
+  "sunU": 0.7827,
+  "sunEl": 84.0,
+  "ev": -3.42,
+  "mean": 0.572
+ },
+ "moon": {
+  "name": "moon",
+  "sunU": 0.6001,
+  "sunEl": 13.7,
+  "ev": -2.25,
+  "mean": 0.7734
+ },
+ "cloudy": {
+  "name": "cloudy",
+  "sunU": 0.5947,
+  "sunEl": 47.8,
+  "ev": -2.05,
+  "mean": 0.6972
+ },
+ "cloudysunset": {
+  "name": "cloudysunset",
+  "sunU": 0.6001,
+  "sunEl": 5.8,
+  "ev": -3.5,
+  "mean": 0.9953
+ },
+ "overcast": {
+  "name": "overcast",
+  "sunU": 0.5815,
+  "sunEl": 23.0,
+  "ev": -2.34,
+  "mean": 0.888
+ },
+ "fog": {
+  "name": "fog",
+  "sunU": 0.6021,
+  "sunEl": 47.3,
+  "ev": -2.44,
+  "mean": 0.8457
+ },
+ "snow": {
+  "name": "snow",
+  "sunU": 0.6187,
+  "sunEl": 16.9,
+  "ev": -1.5,
+  "mean": 0.5523
+ },
+ "nightcloudy": {
+  "name": "nightcloudy",
+  "sunU": 0.5991,
+  "sunEl": 38.1,
+  "ev": -0.44,
+  "mean": 0.2417
+ },
+ "dusk": {
+  "name": "dusk",
+  "sunU": 0.6099,
+  "sunEl": 8.4,
+  "ev": -3.22,
+  "mean": 0.9065
+ }
+}
