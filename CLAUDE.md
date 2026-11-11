@@ -142,6 +142,12 @@ source in Settings → Pages should be switched to `main`.
   Renamed accounts: the password key was stretched with the old name, so the account keeps `kn` (that name), `check`
   returns it, and account.js `keyName()` uses it for login, password change and delete; a new password or a recovery
   re-keys on the current name and drops `kn`. (Before this, a renamed player couldn't log in with a password again.)
+- Approval (2026-11-11, the owner's rule): game clips made by the site's recorder (kind 'clip' and a WebM whose header
+  says "The Arcade", checked in media-put as `own`) and Claude's posts (`bot`) go live; every other upload (photos,
+  videos, a "clip" from anywhere else) gets `pend: 1` and is hidden from feeds, profiles, /one, comments and likes until
+  approved. Only an admin ACCOUNT (ADMIN_ACCOUNTS, not the password) can use /acct/admin ops pending / approve / deny
+  (the index's 'review' route). social.html: the shield button (#topReview, count badge) and #review panel for admins;
+  uploaders see "Sent for approval". Posts from before this stayed live.
 - Social words (2026-11-11): captions and group names are stored as written (no server word filter; usernames still are
   filtered). The account panel's Settings has "Filter swear words on Social" (`arcade-swear-filter` = '1', synced in the
   account's misc group); social.html's `fw()` then stars words in captions, comments and messages. Captions starred
