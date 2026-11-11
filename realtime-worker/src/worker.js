@@ -478,7 +478,7 @@ export class Account extends DurableObject {
   async group(req, url, body, a, j, now) {
     const S = this.ctx.storage, s = await this.soc(), me = a.name;
     const gid = String((body && body.id) || url.searchParams.get('id') || ''), k = 'g~' + gid, c = s.c[k];
-    const gname = v => tidy(v).slice(0, 40);
+    const gname = v => plain(v).slice(0, 40);
     const tell = (names, b) => Promise.all(names.map(n => peerCall(this.env, n, b.op ? 'p-grp' : 'p-gmsg', Object.assign({ from: me, id: gid }, b)).then(r => ({ n, r }), () => ({ n, r: { status: 0 } }))));
     if (req.method === 'GET') {
       if (!c || !c.g) return j({ error: 'not_found' }, 404);
@@ -616,7 +616,7 @@ export class Account extends DurableObject {
         return j({ ok: 1, n: a.name });
       }
       const c = cur || (s.c[gk] = { seq: 0, un: 1, ts: now, t: from + ' added you', me: 0, by: '' });
-      Object.assign(c, { n: tidy(body.name).slice(0, 40) || 'Group', g: 1, mem, own: NAME_RE.test(String(body.own || '')) ? String(body.own) : from });
+      Object.assign(c, { n: plain(body.name).slice(0, 40) || 'Group', g: 1, mem, own: NAME_RE.test(String(body.own || '')) ? String(body.own) : from });
       await S.put('soc', s);
       this.push({ t: 'grp', k: gk, c, by: from, fresh: !cur });
       return j({ ok: 1, n: a.name });
@@ -736,6 +736,7 @@ const pad = n => String(n).padStart(10, '0');
 // stars out swear words and slurs (the same list as the chat page's tidy())
 const BAD = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;
 const tidy = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().replace(BAD, w => w[0] + '*'.repeat(w.length - 1));
+// Social captions and group names are stored as written too (2026-11-11); each player can turn on a filter in their account
 // chat and private message text is not filtered (the owner asked for uncensored chats, 2026-11-06); names still are
 const plain = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 const socCounts = s => ({ req: Object.values(s.f).filter(x => x.st === 'in').length, un: Object.values(s.c).reduce((n, c) => n + (c.un || 0), 0) });
@@ -1108,9 +1109,11 @@ async function clipsBot(req, env) {
   const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
   if (!env.BOT_KEY || !same(req.headers.get('x-bot-key') || '', env.BOT_KEY)) return out({ error: 'auth' }, 401);
   let b; try { b = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
+  const room = String(b.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
+  // 2026-11-11: Claude's profile description, and one comment per post on other players' posts
+  if (b.op === 'bio' || b.op === 'comment') { const r = await clipIndex(env, room).fetch(new Request('https://clips/bot' + b.op, { method: 'POST', body: JSON.stringify({ me: BOT_NAME, t: b.t, id: b.id, int: 1 }) })); return out(await r.json(), r.status); }
   const img = Uint8Array.from(atob(String(b.img || '')), c => c.charCodeAt(0));
   if (!img.length || img.length > CLIP_MAX) return out({ error: 'bad' }, 400);
-  const room = String(b.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
   const r = await clipIndex(env, room).fetch(new Request('https://clips/botnew', { method: 'POST', body: JSON.stringify({ me: BOT_NAME, key: b.key, replace: b.replace, pin: b.pin, g: b.g, t: b.t, w: b.w, h: b.h, sz: img.length, poster: b.poster, int: 1 }) }));
   const q = await r.json();
   if (!q.k) return out(q, r.status);
@@ -1254,7 +1257,7 @@ export class Clips extends DurableObject {
       const u = await this.user(name), mine = me ? await this.user(me) : null;
       return j({ n: theirs.length ? theirs[0].by : u.n, clips: await this.show(theirs, me), followers: u.fr.length, following: u.f.length,
         views: theirs.reduce((s, m) => s + m.vw, 0), likes: theirs.reduce((s, m) => s + m.lk, 0), iFollow: mine && mine.f.includes(k) ? 1 : 0, followsMe: mine && u.f.includes(me.toLowerCase()) ? 1 : 0,
-        fl: u.fr.slice(-500).reverse(), fg: u.f.slice(-500).reverse() }); // follower and following names (lower case), newest first
+        fl: u.fr.slice(-500).reverse(), fg: u.f.slice(-500).reverse(), bio: u.bio || '' }); // follower and following names (lower case), newest first
     }
     if (route === 'one') {
       const m = this.m.get(q.get('id') || '');
@@ -1331,6 +1334,17 @@ export class Clips extends DurableObject {
       return j({ ok: 1, sh: m ? m.sh : 0 });
     }
     if (!NAME_RE.test(me)) return j({ error: 'auth' }, 401);
+    if (route === 'botbio' && b.int) { const u = await this.user(me); u.bio = String(b.t || '').replace(/\r/g, '').trim().slice(0, 300); await this.saveUser(u); return j({ ok: 1 }); }
+    if (route === 'botcomment' && b.int) { // at most one Claude comment per post, never on Claude's own posts
+      const id = String(b.id || ''), m = this.m.get(id), t = plain(b.t).slice(0, CLIP_COMMENT);
+      if (!m || !t) return j({ error: 'not_found' }, 404);
+      if (m.by.toLowerCase() === mk || await S.get('bc:' + id)) return j({ dup: 1 });
+      const list = (await S.get('c:' + id)) || [];
+      list.push({ i: rnd(4), n: me, t, at: now, lk: [] }); if (list.length > CLIP_COMMENTS) list.shift();
+      m.cm = list.length;
+      await S.put({ ['c:' + id]: list, ['m:' + id]: m, ['bc:' + id]: now });
+      return j({ ok: 1, cm: m.cm });
+    }
     if (route === 'botnew' && b.int) { // only from clipsBot (the route isn't reachable from a browser)
       const bk = 'bk:' + String(b.key || '').slice(0, 120);
       if (bk === 'bk:') return j({ error: 'bad' }, 400);
@@ -1363,7 +1377,7 @@ export class Clips extends DurableObject {
       if (!(kind === 'photo' ? true : b.dur > 0.5 && b.dur <= (kind === 'clip' ? 75 : 185)) || !(b.sz > 0 && b.sz <= CLIP_MAX)) return j({ error: 'bad' }, 400);
       if (!/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(p) || p.length > CLIP_POSTER) return j({ error: 'bad' }, 400);
       let id; do { id = rnd(5); } while (this.m.has(id));
-      const m = { id, by: me, k: kind, g: b.g || '', t: tidy(b.t).slice(0, CLIP_TITLE), at: now, dur: kind === 'photo' ? 0 : Math.round(b.dur * 10) / 10, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [] };
+      const m = { id, by: me, k: kind, g: b.g || '', t: plain(b.t).slice(0, CLIP_TITLE), at: now, dur: kind === 'photo' ? 0 : Math.round(b.dur * 10) / 10, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [] };
       const k = rnd(16);
       u.k++; await this.saveUser(u);
       await S.put('q:' + id, { k, m, p, at: now });

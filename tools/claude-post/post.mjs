@@ -67,6 +67,13 @@ for (const g of games) {
 // one-off posts (like the pinned feedback post): tools/claude-post/posts.json, [{ key, t, imgs, pill, kicker, headline, pin }]
 // each is sent on every run; the server posts a key only once
 const extra = fs.existsSync('tools/claude-post/posts.json') ? JSON.parse(fs.readFileSync('tools/claude-post/posts.json', 'utf8')) : [];
+// Claude's profile description and its comments on other players' posts (tools/claude-post/profile.json, comments.json:
+// [{ id, t }]); sent on every run, the server keeps one comment per post
+const readJ = f => fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : null;
+const profile = readJ('tools/claude-post/profile.json'), comments = readJ('tools/claude-post/comments.json') || [];
+const bot = async body => { if (process.env.DRY) { console.log('DRY', JSON.stringify(body)); return; } const r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json', 'x-bot-key': process.env.BOT_KEY || '' }, body: JSON.stringify({ ...body, r: process.env.ROOM || '' }) }); console.log(body.op, body.id || '', r.status, await r.text()); };
+if (profile && profile.bio) await bot({ op: 'bio', t: profile.bio });
+for (const c of comments) if (c && c.id && c.t) await bot({ op: 'comment', id: c.id, t: c.t });
 if (!fresh.length && !extra.length) { console.log('nothing new to post'); process.exit(0); }
 fresh.reverse(); // oldest first, so the newest ends up on top
 const send = async body => {

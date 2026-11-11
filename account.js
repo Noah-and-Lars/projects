@@ -524,6 +524,9 @@
     if (k === 'online') html += '<p id="acSt" style="margin-top:10px">' + statusText() + '</p><div class="row"><button class="alt" id="acSync">Sync now</button><button class="alt" id="acPw">Change password</button></div><div class="row"><button class="alt" id="acNm">Change username</button></div>';
     else html += '<div class="warn">Your progress is only saved in this browser. Make an online account to keep it safe and play on any device. Everything you have now comes with you.</div><button class="go" id="acMake">Create an online account</button><div class="row"><button class="alt" id="acIn">Log in</button><button class="alt" id="acRen">Change name</button></div>';
     html += '<h3 style="margin:18px 0 0;font-size:15px">Your games</h3><div class="stats">' + (games || '<div><span>Play a game and your stats show up here.</span></div>') + '</div>';
+    // 2026-11-11: Social shows words as people wrote them; this turns a swear filter on (it syncs with the account, in 'misc')
+    var filt = false; try { filt = localStorage.getItem('arcade-swear-filter') === '1'; } catch (e) {}
+    html += '<h3 style="margin:18px 0 6px;font-size:15px">Settings</h3><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px;line-height:1.4"><input type="checkbox" id="acFilt"' + (filt ? ' checked' : '') + ' style="margin-top:3px;width:18px;height:18px;flex:none"><span><b>Filter swear words on Social</b><br><span style="opacity:.75">Stars out bad words in posts, comments and messages. Off by default.</span></span></label>';
     if (k === 'online') html += '<button class="link" id="acOut">Log out of this device</button><button class="link" id="acDel" style="margin-top:6px;color:#ff8a80">Delete my account</button>';
     overlay(html, true);
     var b;
@@ -534,6 +537,7 @@
     if ((b = $('acIn'))) b.onclick = function () { openWelcome('login'); };
     if ((b = $('acRen'))) b.onclick = localName;
     if ((b = $('acDel'))) b.onclick = openDelete;
+    if ((b = $('acFilt'))) b.onchange = function () { try { localStorage.setItem('arcade-swear-filter', this.checked ? '1' : '0'); } catch (e) {} try { window.dispatchEvent(new Event('arcade-filter')); } catch (e) {} };
     if ((b = $('acOut'))) b.onclick = function () { if (confirm('Log out? Your progress stays safe in your account, and this device’s copy is cleared.')) { b.disabled = true; b.textContent = 'Saving and logging out…'; logout(); } };
   }
   // deleting your own account: your password again, then everything in the cloud is gone (this device keeps its copy)

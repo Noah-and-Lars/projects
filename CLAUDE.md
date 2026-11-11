@@ -132,6 +132,10 @@ source in Settings → Pages should be switched to `main`.
   player in "In the chat" has a 📹 button (`callButton`); both call `ArcadeCall.start(names, 'Global chat')`, so the
   ringing card shows "Global chat" as the call's name. Without an online account they open the sign-up popup. Labels
   turn to "Add to call" while you host a call (`callLabels`).
+- Social words (2026-11-11): captions and group names are stored as written (no server word filter; usernames still are
+  filtered). The account panel's Settings has "Filter swear words on Social" (`arcade-swear-filter` = '1', synced in the
+  account's misc group); social.html's `fw()` then stars words in captions, comments and messages. Captions starred
+  before this stay starred (the server had already replaced them).
 - Social (2026-11-10, asked for by the owner: "like Instagram"): `social.html` + `clips.js` + the Worker's `/clips/*`
   routes (the comment block above `clips()` in `realtime-worker/src/worker.js` lists them) and the `Clips` Durable Object
   class (migration v5; deployed 2026-11-10). Posts are kind 'clip' (recorded on play.html, always from a game), 'video'
@@ -493,6 +497,13 @@ source in Settings → Pages should be switched to `main`.
   with whoami; one entry per pair of players, best kept; Tally object `ttt-board`); only crew runs are sent (`submitRun`).
   `localStorage['ttt-api']` points it at a local server on localhost. `?tttroom=<name>` uses test channels; `window.__ci` on localhost for tests. Medals are
   par x1.25 / x1.5 / x1.85 (`MEDAL`). Add a `PATCH_NOTES` entry and bump `VERSION` with every release.
+  1.3.1 (2026-11-11): the scratchpad build sources are gone, so this was edited straight in index.html (keep doing that,
+  or rebuild sources first). Steering easier but not easy: maxS 0.63/(1+sp/24), steer rate 3.9, keyboard ramp 5.6/8,
+  front grip x1.08, rear x1.1, yaw damping 0.42, a light slide catch even with assist off (0.1). Measured with a scripted
+  driver over 4 stages: ~18% faster, about half the time off road. `buildDetail()` adds per-biome detail (`DETAIL`):
+  chevrons and fans at sev 1-2 corners, flowers, logs, stumps, fences, hay, cacti, ferns, drifts, cabins/barns, clouds,
+  snow caps on far mountains; it uses its own rng so the road and old scenery don't move. Grass tufts had no vertex
+  colours and drew black (fixed).
 - `card-royale/`: Card Royale (1.1), a real-time 1v1 card battler (towers, lanes, Elixir, 75 cards in `CARDS`, plus `TOKENS`
   for troops other cards spawn). The file is built from parts kept outside the repo (`~/Downloads/card-royale/src`, joined by
   `build.sh`): data, `20-sim.js` (the battle: `newBattle`, `step` at 20 ticks a second, `play`, `canDeploy`, the bot in
@@ -676,6 +687,12 @@ Posts look like social media posts, and **show the new feature, not the game's c
 - `post: '...'`: the caption (up to 700 characters, `\n` line breaks, a hook line, emoji bullets for the features, a
   question or call to play, hashtags; no secret test names). Without it one is written from the NEWS text.
 - `repost: N` posts the entry again (with new pictures or caption) and takes the earlier post down.
+- **Claude comments and profile (the owner's rule, 2026-11-11):** with every push, Claude may leave ONE funny comment on
+  other players' posts: read the feed (`/clips/feed?tab=new` with the official Origin), add `{ id, t }` lines to
+  `tools/claude-post/comments.json` for posts that don't have one yet. The server keeps one per post ('bc:<id>') and never
+  comments on Claude's own posts. Keep it kind and about the game: no jokes about real people in photos, nothing on posts
+  with slurs or mean captions about someone. Claude's profile description is `tools/claude-post/profile.json` (`bio`,
+  shown under the name on Social; links clickable).
 - One-off Claude posts that aren't NEWS (like the pinned feedback-form post) live in `tools/claude-post/posts.json`
   ({ key, t, imgs, pill, kicker, headline, pin }); every run sends them all and the server posts each key once. `pin: true`
   keeps a post first on Claude's profile (📌 on its tile). https links in Claude's captions are clickable (`capNodes`);

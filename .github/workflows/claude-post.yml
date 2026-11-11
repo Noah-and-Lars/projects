@@ -2,7 +2,7 @@ name: Claude posts updates to Social
 on:
   push:
     branches: [claude/jimmyscafe-projects-access-9mbcw3]
-    paths: [games.js, tools/claude-post/posts.json]
+    paths: [games.js, tools/claude-post/posts.json, tools/claude-post/profile.json, tools/claude-post/comments.json]
   workflow_dispatch:
     inputs:
       before:
