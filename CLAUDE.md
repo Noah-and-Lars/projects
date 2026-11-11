@@ -13,6 +13,13 @@ source in Settings → Pages should be switched to `main`.
 
 ## Layout
 
+- `console.js` (2026-11-11, loaded by every site page after account.js): the console version. It detects PlayStation, Xbox,
+  Nintendo and smart-TV browsers from the user agent (`?console=on|off|playstation|xbox|tv` overrides, remembered in
+  `arcade-console`), adds `html.console` (bigger text and cards, a yellow focus ring), a banner "You're on the console
+  version" with a Full website button, and spatial navigation: arrow keys / TV remote (OK, Back = 461 webOS, 10009 Tizen,
+  BrowserBack), and controllers (standard mapping, polled on a 40 ms timer: D-pad/left stick, A/✕ choose, B/○ back,
+  L1/R1 tabs). The pinned header is its own layer; pop-ups (#acctOv, .ov, dialogs) trap the focus. On play.html it stays
+  out of the way while the game frame has focus. A detected device that turned it off gets a small "Console version" button.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
@@ -490,6 +497,12 @@ source in Settings → Pages should be switched to `main`.
   ship; planes keep C for the cockpit), the soldier is hidden while you look through his eyes (`fpBody`). The cockpit
   (`COCKPIT`) is now a cabin fixed to the plane (`COCKPIT.orient()` after the camera turns): a tub with floor, walls, seat,
   bulkhead and glass for fighters and the jet, a flight deck with roof, side windows and glazed nose for the bomber.
+  1.4.1 (2026-11-11): controllers (DualShock 4 layout, standard mapping) and TV remotes. `GP` (pollPad on a 16 ms timer)
+  feeds ctl() (x/y, fire R2, alt L2, alt2 R1, jump ✕, sprint L1/L3) and padLook() (right stick); □ E (held for bail), △ B,
+  ○ C, R3 V, D-pad ↑ Q ↓ M ←/→ weapons, Options pause, touchpad/Share board. Menus: navMove/navChoose over the open
+  overlay (kept by id/text across redraws, `navLast`). TV remote: arrows move (on foot ←/→ turn, `GP.remoteTurn`), Enter
+  fires, Back pauses, colour keys 403-406 jump/use/deploy/map, CH+/- 427/428 secondary/missiles; the camera follows the
+  vehicle in remote mode.
 - `turn-turn-turn/`: Turn! Turn! TURN! (1.0, 2026-11-08), a two-player co-op dirt rally (Three.js r128 copied from Havoc Bay).
   1.3 (2026-11-12): 10 long stages in `STAGES` (`long: 1`, 6.2-8.6 km) with their own hill model in buildStage: `relief`,
   `wave`, `trend` (overall climb/drop), `grade` (max slope), `crests` (gaussian brows, added to `jumps` so they're called

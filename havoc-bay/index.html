@@ -421,6 +421,12 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.4.1 <small>Controllers and TV remotes</small></h3>
+    <ul>
+      <li><b>Play with a controller</b> (laid out like a PlayStation DualShock 4; Xbox pads work the same way): left stick moves and steers, right stick looks and aims, <b>R2</b> fires, <b>L2</b> secondary weapon (torpedo or bomb), <b>R1</b> missiles, <b>L1</b> sprint, boost or descend, <b>✕</b> jump, climb or dive, <b>□</b> use (hold to bail out), <b>△</b> deploy, <b>○</b> camera, <b>R3</b> zoom, <b>D-pad ↑</b> sonar ping, <b>↓</b> map, <b>←/→</b> weapons, <b>Options</b> pause, <b>touchpad</b> or <b>Share</b> scoreboard.</li>
+      <li>Menus work with the controller too: D-pad or left stick to move, ✕ to choose, ○ to go back.</li>
+      <li><b>Play with a TV remote:</b> arrows move and steer (on foot ← and → turn you), <b>OK</b> fires, <b>Back</b> pauses, <b>red</b> jump or dive, <b>green</b> use, <b>yellow</b> deploy, <b>blue</b> map, <b>CH+ / CH−</b> secondary and missiles, numbers pick a weapon. The camera follows your boat or plane.</li>
+    </ul>
     <h3>v1.4 <small>Submarines and helicopters</small></h3>
     <ul>
       <li><b>Three submarines</b> at the boat pads, each its own size and shape: the <b>Seehund</b> (150, an 11 m mini sub with 2 torpedoes), the <b>Seawolf</b> (400, a 32 m attack sub with 4 torpedoes and a deck gun) and the <b>Typhoon</b> (750, a 64 m missile sub with 4 torpedoes and 4 missiles).</li>
@@ -693,7 +699,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.4';
+const VERSION = '1.4.1';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -4377,6 +4383,138 @@ bindHold('tFire', 'fire'); bindHold('tAlt', 'alt'); bindHold('tAlt2', 'alt2'); b
 bindTap('tUse', () => { if (playing() && !overlayOpen()) useKey(); });
 bindTap('tZoom', () => { cam.zoom = !cam.zoom; $('tZoom').classList.toggle('on', cam.zoom); });
 bindTap('tPause', () => { if (playing()) openPause(); });
+
+/* ---------- 1.4.1: controllers (laid out like a DualShock 4) and TV remotes ----------
+   Standard Gamepad mapping: 0 ✕, 1 ○, 2 □, 3 △, 4 L1, 5 R1, 6 L2, 7 R2, 8 Share, 9 Options, 10 L3, 11 R3, 12-15 D-pad,
+   16 PS, 17 touchpad. In a match: left stick move/steer, right stick look/aim, R2 fire, L2 secondary (torpedo/bomb),
+   R1 missiles, L1 sprint/boost/descend, ✕ jump/climb/dive, □ use (hold: bail out), △ deploy, ○ camera, R3 zoom,
+   D-pad ↑ sonar ping ↓ map ←/→ weapon, Options pause, touchpad or Share scoreboard. In menus: D-pad or left stick moves
+   between buttons, ✕ chooses, ○ goes back. TV remotes: arrows move/steer (on foot ←/→ turn), OK fires, Back pauses,
+   red jump/dive, green use, yellow deploy, blue map, CH+/CH- secondary/missiles, numbers pick weapons. */
+const GP = { x: 0, y: 0, rx: 0, ry: 0, fire: false, alt: false, alt2: false, jump: false, sprint: false, active: false, remote: false, remoteTurn: false, prev: {}, rep: {} };
+const DZ = v => Math.abs(v) < 0.16 ? 0 : Math.sign(v) * (Math.abs(v) - 0.16) / 0.84;
+function padLook(dt, inv) {
+  if (!playing() || overlayOpen()) return;
+  const lookS = 2.6 * settings.sens * (cam.zoom ? 0.4 : 1);
+  if (GP.rx || GP.ry) { cam.yaw -= GP.rx * Math.abs(GP.rx) * lookS * dt; cam.pitch -= GP.ry * Math.abs(GP.ry) * lookS * 0.7 * dt * inv; }
+  // a TV remote has no second stick: on foot ←/→ turn you, in a vehicle the camera swings round behind it
+  GP.remoteTurn = GP.remote && !IN.locked && PLAYER.mode === 'foot';
+  if (GP.remoteTurn) cam.yaw -= ((KEYS.ArrowRight ? 1 : 0) - (KEYS.ArrowLeft ? 1 : 0)) * 2.2 * dt;
+  else if (GP.remote && !IN.locked && PLAYER.ent && (PLAYER.mode === 'ship' || PLAYER.mode === 'plane')) {
+    const e = PLAYER.ent, h = PLAYER.mode === 'ship' ? e.heading : e.fwd ? Math.atan2(e.fwd.x, e.fwd.z) : cam.yaw;
+    if (isFinite(h)) cam.yaw += wrapA(h - cam.yaw) * Math.min(1, dt * 2.5);
+  }
+}
+const NAV_SEL = 'button:not([disabled]),a[href],input:not([type=hidden]):not([disabled]),select,[tabindex]:not([tabindex="-1"])';
+function navVisible(el) { const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return false; const st = getComputedStyle(el); return st.visibility !== 'hidden' && st.display !== 'none' && !el.closest('.hidden,[hidden]'); }
+function navScope() {
+  const ov = ['settings', 'help', 'deploy', 'pause', 'end', 'board', 'bigmapWrap'].map($).filter(o => o && !o.classList.contains('hidden'));
+  const extra = [...document.querySelectorAll('.ov:not(.hidden),[role=dialog]')].filter(navVisible);
+  const all = ov.concat(extra).filter(o => o.querySelector(NAV_SEL));
+  return all.length ? all[0] : document.body;
+}
+// menus redraw themselves (the deploy list does every second): keep the choice by its id or text and find it again
+const navKey = el => (el.id || '') + '|' + (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+let navLast = '';
+function navCurrent(list) {
+  const a = document.activeElement;
+  if (a && list.indexOf(a) >= 0) return a;
+  const b = navLast && list.find(el => navKey(el) === navLast);
+  if (b) { b.classList.add('padfocus'); try { b.focus({ preventScroll: true }); } catch (e) {} }
+  return b || null;
+}
+function navMove(dir) {
+  const list = [...navScope().querySelectorAll(NAV_SEL)].filter(navVisible), a = navCurrent(list);
+  if (!list.length) return;
+  if (!a) { navFocus(list[0]); return; }
+  const ra = a.getBoundingClientRect(), ax = ra.left + ra.width / 2, ay = ra.top + ra.height / 2;
+  let best = null, bd = 1e18;
+  for (const el of list) {
+    if (el === a) continue;
+    const r = el.getBoundingClientRect(), dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay, horiz = dir === 'left' || dir === 'right';
+    const main = dir === 'left' ? -dx : dir === 'right' ? dx : dir === 'up' ? -dy : dy;
+    if (main <= 4) continue;
+    if (horiz && (r.bottom < ra.top + 4 || r.top > ra.bottom - 4)) continue;
+    const d = main + (horiz ? Math.abs(dy) * 2.5 : Math.abs(dx) * (r.right > ra.left && r.left < ra.right ? 0.5 : 3));
+    if (d < bd) { bd = d; best = el; }
+  }
+  if (best) navFocus(best);
+}
+function navFocus(el) { navLast = navKey(el); document.querySelectorAll('.padfocus').forEach(x => x.classList.remove('padfocus')); el.classList.add('padfocus'); try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); } el.scrollIntoView({ block: 'nearest' }); }
+function navChoose() { const a = navCurrent([...navScope().querySelectorAll(NAV_SEL)].filter(navVisible)); if (a && a !== document.body) { if (a.tagName === 'INPUT' && !/^(checkbox|radio|range)$/i.test(a.type)) a.focus(); else a.click(); } }
+{
+  const css = document.createElement('style');
+  css.textContent = '.padfocus,html.padnav button:focus,html.padnav a:focus,html.padnav input:focus,html.padnav select:focus{outline:4px solid #ffd23f !important;outline-offset:2px !important;box-shadow:0 0 0 7px #ffd23f40 !important}' +
+    '#padHint{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:40;padding:6px 12px;border-radius:999px;background:#000a;color:#fff;font:700 12px system-ui,sans-serif;pointer-events:none;white-space:nowrap}';
+  document.head.appendChild(css);
+}
+let padHintT = 0;
+function padHint(text) {
+  let h = $('padHint'); if (!h) { h = document.createElement('div'); h.id = 'padHint'; document.body.appendChild(h); }
+  h.textContent = text; h.style.display = ''; clearTimeout(padHintT); padHintT = setTimeout(() => { h.style.display = 'none'; }, 6000);
+}
+function pollPad() {
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  let p = null; for (const q of pads) if (q && q.connected) { p = q; break; }
+  if (!p) { if (GP.active) { GP.active = false; GP.x = GP.y = GP.rx = GP.ry = 0; GP.fire = GP.alt = GP.alt2 = GP.jump = GP.sprint = false; KEYS.KeyE = false; } return; }
+  const B = n => !!(p.buttons[n] && (p.buttons[n].pressed || p.buttons[n].value > 0.35)), ax = p.axes || [];
+  const now = {}; for (let i = 0; i < 18; i++) now[i] = B(i);
+  const lx = DZ(ax[0] || 0), ly = DZ(ax[1] || 0), rx = DZ(ax[2] || 0), ry = DZ(ax[3] || 0);
+  const any = Object.values(now).some(Boolean) || lx || ly || rx || ry;
+  if (any && !GP.active) { GP.active = true; GP.remote = false; document.documentElement.classList.add('padnav'); Sound.init(); padHint('Controller on · R2 fire · L2/R1 weapons · ✕ jump · □ use · △ deploy · Options pause'); }
+  if (!GP.active) return;
+  const pressed = i => now[i] && !GP.prev[i], t = performance.now();
+  const inGame = playing() && !overlayOpen() && !GAME.over;
+  if (CINE.on) { if (pressed(0) || pressed(1) || pressed(9)) skipCine(); }
+  else if (!inGame) { // menus
+    GP.x = GP.y = GP.rx = GP.ry = 0; GP.fire = GP.alt = GP.alt2 = GP.jump = GP.sprint = false;
+    const dirs = { up: now[12] || ly < -0.55, down: now[13] || ly > 0.55, left: now[14] || lx < -0.55, right: now[15] || lx > 0.55 };
+    for (const d in dirs) {
+      if (dirs[d] && (!GP.prev['d' + d] || t - (GP.rep[d] || 0) > (GP.rep[d + 'r'] ? 130 : 380))) { GP.rep[d + 'r'] = !!GP.prev['d' + d]; GP.rep[d] = t; navMove(d); }
+      now['d' + d] = dirs[d];
+    }
+    if (pressed(0)) navChoose();
+    if (pressed(1) || pressed(9)) onKey('Escape');
+    if (!pressed(0) && now[0] === false && !$('board').classList.contains('hidden') && !now[17] && !now[8]) $('board').classList.add('hidden');
+  } else { // in a match
+    GP.x = lx; GP.y = -ly; GP.rx = rx; GP.ry = ry;
+    GP.fire = now[7]; GP.alt = now[6]; GP.alt2 = now[5]; GP.jump = now[0]; GP.sprint = now[4] || now[10];
+    KEYS.KeyE = now[2]; // hold □ to bail out (useKey on the press)
+    if (pressed(2)) onKey('KeyE');
+    if (pressed(3)) onKey('KeyB');
+    if (pressed(1)) onKey('KeyC');
+    if (pressed(11)) onKey('KeyV');
+    if (pressed(12)) onKey('KeyQ');
+    if (pressed(13)) onKey('KeyM');
+    if ((pressed(14) || pressed(15)) && PLAYER.mode === 'foot') { const n = FOOT_GUNS.length; onKey('Digit' + ((PLAYER.wpn + (pressed(15) ? 1 : -1) + n) % n + 1)); }
+    if (pressed(9)) { IN.lmb = false; openPause(); setTimeout(() => navMove('down'), 50); }
+    if (pressed(17) || pressed(8)) onKey('Tab');
+    if (!now[17] && !now[8] && (GP.prev[17] || GP.prev[8])) $('board').classList.add('hidden');
+  }
+  GP.prev = now;
+}
+setInterval(pollPad, 16);
+// TV remotes (and the keyboard, where it's the same key): Back, OK, the coloured buttons, channel up and down
+const REMOTE = { 461: 'back', 10009: 'back', 403: 'red', 404: 'green', 405: 'yellow', 406: 'blue', 427: 'chup', 428: 'chdown', 33: 'chup', 34: 'chdown' };
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  const k = REMOTE[e.keyCode] || (e.key === 'BrowserBack' || e.key === 'GoBack' ? 'back' : e.key === 'ColorF0Red' ? 'red' : e.key === 'ColorF1Green' ? 'green' : e.key === 'ColorF2Yellow' ? 'yellow' : e.key === 'ColorF3Blue' ? 'blue' : e.key === 'ChannelUp' ? 'chup' : e.key === 'ChannelDown' ? 'chdown' : '');
+  const arrows = /^Arrow/.test(e.key);
+  if (k || (arrows && !IN.locked) || (e.key === 'Enter' && !IN.locked)) { if (!GP.remote) { GP.remote = true; GP.active = false; document.documentElement.classList.add('padnav'); padHint('TV remote · arrows move · OK fire · red jump/dive · green use · yellow deploy · blue map · Back pause'); } }
+  const inGame = playing() && !overlayOpen() && !GAME.over;
+  if (k === 'back') { e.preventDefault(); if (inGame) openPause(); else onKey('Escape'); return; }
+  if (!inGame && GP.remote && (arrows || e.key === 'Enter')) { // menus with a remote
+    if (arrows) { e.preventDefault(); e.stopImmediatePropagation(); navMove(e.key.slice(5).toLowerCase()); }
+    return;
+  }
+  if (!k || !inGame) return;
+  e.preventDefault();
+  if (k === 'red') KEYS.Space = true; if (k === 'chup') KEYS.KeyF = true; if (k === 'chdown') KEYS.KeyR = true;
+  if (k === 'green') onKey('KeyE'); if (k === 'yellow') onKey('KeyB'); if (k === 'blue') onKey('KeyM');
+}, true);
+addEventListener('keyup', e => { const k = REMOTE[e.keyCode]; if (k === 'red') KEYS.Space = false; if (k === 'chup') KEYS.KeyF = false; if (k === 'chdown') KEYS.KeyR = false; }, true);
+addEventListener('mousemove', e => { if (GP.remote && (Math.abs(e.movementX) > 2 || Math.abs(e.movementY) > 2)) { GP.remote = false; GP.remoteTurn = false; } });
+
 bindTap('tMap', () => { if (playing()) toggleMap(); });
 bindTap('tBoard', () => { if (!playing()) return; const b = $('board'); if (b.classList.contains('hidden')) { drawBoard(); b.classList.remove('hidden'); } else b.classList.add('hidden'); });
 $('board').addEventListener('pointerdown', () => { if (touchOn()) $('board').classList.add('hidden'); });
@@ -4409,10 +4547,11 @@ function moveStick(e) {
    The player
    ========================================================================== */
 const ctl = () => ({
-  x: clamp((KEYS.KeyD || KEYS.ArrowRight ? 1 : 0) - (KEYS.KeyA || KEYS.ArrowLeft ? 1 : 0) + TOUCH.mx, -1, 1),
-  y: clamp((KEYS.KeyW || KEYS.ArrowUp ? 1 : 0) - (KEYS.KeyS || KEYS.ArrowDown ? 1 : 0) + TOUCH.my, -1, 1),
-  fire: (IN.lmb && IN.locked) || TOUCH.fire, alt: KEYS.KeyF || TOUCH.alt, alt2: KEYS.KeyR || TOUCH.alt2,
-  jump: KEYS.Space || TOUCH.jump, sprint: KEYS.ShiftLeft || KEYS.ShiftRight,
+  // 1.4.1: plus the controller (GP) and a TV remote's OK button (fires); on foot with a remote, left/right turn instead
+  x: clamp((GP.remoteTurn ? 0 : (KEYS.KeyD || KEYS.ArrowRight ? 1 : 0) - (KEYS.KeyA || KEYS.ArrowLeft ? 1 : 0)) + TOUCH.mx + GP.x, -1, 1),
+  y: clamp((KEYS.KeyW || KEYS.ArrowUp ? 1 : 0) - (KEYS.KeyS || KEYS.ArrowDown ? 1 : 0) + TOUCH.my + GP.y, -1, 1),
+  fire: (IN.lmb && IN.locked) || TOUCH.fire || GP.fire || KEYS.Enter, alt: KEYS.KeyF || TOUCH.alt || GP.alt, alt2: KEYS.KeyR || TOUCH.alt2 || GP.alt2,
+  jump: KEYS.Space || TOUCH.jump || GP.jump, sprint: KEYS.ShiftLeft || KEYS.ShiftRight || GP.sprint,
 });
 const aimDir = new V3(1, 0, 0);
 function setAimDir() { aimDir.set(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)); }
@@ -4984,6 +5123,7 @@ function updateCamera(dt) {
   const sens = 0.0023 * settings.sens * (cam.zoom ? 0.45 : 1), inv = settings.invert ? -1 : 1;
   cam.yaw -= (IN.mdx * sens + TOUCH.lx * sens * 2.2);
   cam.pitch -= (IN.mdy * sens + TOUCH.ly * sens * 2.2) * inv;
+  padLook(dt, inv); // 1.4.1: the right stick, and a TV remote's camera
   IN.mdx = IN.mdy = 0; TOUCH.lx = TOUCH.ly = 0;
   if (CINE.on) { cineCamera(dt); return; }
   const mode = PLAYER.mode, e = PLAYER.ent;
