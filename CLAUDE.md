@@ -413,6 +413,10 @@ source in Settings → Pages should be switched to `main`.
   share a place. Quick match uses the lobby `ch-lobby2`, so old copies never meet the reset ratings. Every Chess tab with an
   online account that isn't playing online watches that lobby without joining it (`Net.watch`) and shows `#waitPop`
   ("X is waiting for a quick match. Join?") when exactly one person waits there.
+  1.5.2 (2026-11-12, quiet: the patch note only says "Bug fixes and improvements", no NEWS line, `updated` unchanged):
+  leaving an unfinished online game (Leave the table, refresh or closing the page: `pagehide`) costs the leaver a flat
+  100 Elo (`leavePenalty`), and the other player gets no change ('resign' with q: 1 = walked out, over.left). One account
+  set by the owner (PEN_SPECIAL, stored as char codes) loses 1000 the first two times (`save.lpn`), then 100.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
