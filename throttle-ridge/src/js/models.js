@@ -137,7 +137,7 @@ function makeWheel(front) {
 }
 
 // ---------- bike ----------
-export function makeBikeModel(scheme) {
+export function makeBikeModel(scheme, kind = 'stock') {
   const plastic = std(scheme.color, { roughness: 0.38 });
   const accent = std(scheme.accent, { roughness: 0.4 });
   const frameM = std(scheme.frame, { roughness: 0.35, metalness: 0.7 });
@@ -196,6 +196,14 @@ export function makeBikeModel(scheme) {
   // Footpegs.
   for (const z of [0.17, -0.17]) P.add(M.alu, new THREE.BoxGeometry(0.06, 0.02, 0.1), V3(-0.1, -0.37, z));
 
+  // MID 250 (1.1): a bigger, gold-anodised silencer, a twin-pipe header and a
+  // gold stripe along the tank, so it reads as the faster bike at a glance.
+  if (kind === 'mid') {
+    const gold = std(0xf2b631, { roughness: 0.3, metalness: 0.8 });
+    P.add(gold, cyl(0.07, 0.064, 0.5, 18), V3(-0.6, 0.13, 0.15), zRot(Math.PI / 2 - 0.32));
+    P.add(gold, rounded([[0.04, 0.2], [0.38, 0.32], [0.41, 0.29], [0.08, 0.17]], 0.34, 0.01));
+    P.add(M.pipe, tube([V3(0.27, -0.02, -0.03), V3(0.34, -0.14, -0.09), V3(0.2, -0.3, -0.13), V3(-0.02, -0.32, -0.14)], 0.02, 24));
+  }
   const frame = P.build();
   root.add(frame);
 

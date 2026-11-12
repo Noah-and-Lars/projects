@@ -20,6 +20,14 @@ export const BIKE = {
   suspensionDamp: 0.75,
 };
 
+// Bike classes (1.1). 'stock' is the original bike, exactly as before; 'mid' is
+// a mid-size bike with a stronger engine and a higher top speed.
+export const BIKES = {
+  stock: { id: 'stock', name: 'STOCK 125', short: '125', topSpeed: BIKE.topSpeed, driveTorque: BIKE.driveTorque, desc: 'The original bike. Easy to handle.' },
+  mid:   { id: 'mid',   name: 'MID 250',   short: '250', topSpeed: 29, driveTorque: 17.5, desc: 'Faster and punchier. Bigger air, so lean early.' },
+};
+export const bikeSpec = (kind) => BIKES[kind] || BIKES.stock;
+
 export function createBike(world, x, y, opts = {}) {
   const chassis = world.createBody({ type: 'dynamic', position: Vec2(x, y), angularDamping: 0.6 });
   const bikeFilter = { filterCategoryBits: CAT_BIKE, filterMaskBits: CAT_GROUND };
@@ -58,6 +66,8 @@ export function createBike(world, x, y, opts = {}) {
 
   const bike = {
     id: opts.id ?? 0,
+    kind: bikeSpec(opts.kind).id,
+    spec: bikeSpec(opts.kind),
     chassis, rear, front, rearJoint, frontJoint,
     input: { throttle: 0, brake: 0, lean: 0 },
     rearContact: false, frontContact: false,
@@ -116,10 +126,11 @@ export function applyControls(bike, track) {
   } else if (inp.throttle > 0) {
     frontJoint.enableMotor(false);
     rearJoint.enableMotor(true);
-    rearJoint.setMotorSpeed(-BIKE.topSpeed / BIKE.wheelR);
+    const spec = bike.spec;
+    rearJoint.setMotorSpeed(-spec.topSpeed / BIKE.wheelR);
     // Torque falls away near top speed so acceleration is punchy at low speed.
-    const k = Math.max(0.25, 1 - Math.max(0, fwdSpeed) / (BIKE.topSpeed * 1.1));
-    rearJoint.setMaxMotorTorque(BIKE.driveTorque * inp.throttle * (0.55 + 0.45 * k));
+    const k = Math.max(0.25, 1 - Math.max(0, fwdSpeed) / (spec.topSpeed * 1.1));
+    rearJoint.setMaxMotorTorque(spec.driveTorque * inp.throttle * (0.55 + 0.45 * k));
   } else {
     // Engine braking.
     frontJoint.enableMotor(false);
@@ -175,7 +186,7 @@ export function updateBike(bike, track, dt = STEP) {
   bike.leanVisual += (target - bike.leanVisual) * Math.min(1, dt * 12);
 
   // RPM for audio: rear wheel spin blended with throttle.
-  const wheelSpin = Math.abs(rear.getAngularVelocity()) * BIKE.wheelR / BIKE.topSpeed;
+  const wheelSpin = Math.abs(rear.getAngularVelocity()) * BIKE.wheelR / bike.spec.topSpeed;
   const targetRpm = bike.crashed ? 0.1 : Math.min(1.2, (bike.grounded ? wheelSpin : wheelSpin * 0.6 + bike.input.throttle * 0.5) * 0.85 + bike.input.throttle * 0.25);
   bike.rpm += (targetRpm - bike.rpm) * Math.min(1, dt * 8);
 

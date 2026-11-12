@@ -44,6 +44,7 @@
     <button id="btn-pause" class="icon-btn" aria-label="Pause">&#10074;&#10074;</button>
   </div>
 </div>
+<div id="speedo" class="hidden"><canvas id="speedoC" width="500" height="500"></canvas></div>
 <div id="countdown" class="hidden"></div>
 <div id="toast" class="hidden"></div>
 
@@ -66,9 +67,62 @@
     <p class="sub">Side-scrolling motocross</p>
     <div class="col">
       <button class="btn primary" id="btn-play">PLAY</button>
+      <button class="btn primary online" id="btn-online">ONLINE</button>
       <button class="btn" id="btn-how">HOW TO PLAY</button>
+      <button class="btn" id="btn-notes">PATCH NOTES</button>
       <button class="btn" id="btn-menu-mute">SOUND: ON</button>
     </div>
+    <p class="ver">v1.1</p>
+  </div>
+</section>
+
+<!-- Patch notes -->
+<section id="scr-notes" class="screen hidden">
+  <div class="panel">
+    <h2>Patch notes</h2>
+    <div class="how scroll notes">
+      <h3>v1.1 <small>13 Nov 2026</small></h3>
+      <ul>
+        <li><b>Online races.</b> Race up to 3 other people. Quick race puts you in a public room that starts by itself, or make a private room and share its code. Your name is your arcade account name.</li>
+        <li><b>New bike: MID 250.</b> A mid-size bike with a stronger engine and a higher top speed than the STOCK 125. Pick it on the track screen or in the online lobby. The STOCK 125 is unchanged.</li>
+        <li><b>Speedometer.</b> The dial from Poly Racer: revs, gear, speed and lights for gas, brake and air.</li>
+        <li><b>Bots make mistakes.</b> Computer riders now over-rotate, freeze up in the air and fumble the throttle now and then, more often on Easy.</li>
+        <li>Patch notes, right here.</li>
+      </ul>
+      <h3>v1.0 <small>11 Nov 2026</small></h3>
+      <ul><li>Five tracks, three computer riders, keyboard and touch.</li></ul>
+    </div>
+    <button class="btn primary" data-back>BACK</button>
+  </div>
+</section>
+
+<!-- Online menu -->
+<section id="scr-online" class="screen hidden">
+  <div class="panel">
+    <h2>Online</h2>
+    <p class="sub2">Race up to 4 people. Pick your bike in the lobby.</p>
+    <div class="col">
+      <button class="btn primary" id="btn-quick">QUICK RACE</button>
+      <button class="btn" id="btn-create">CREATE PRIVATE ROOM</button>
+      <div class="row join"><input id="join-code" maxlength="6" placeholder="ROOM CODE" autocomplete="off" spellcheck="false"><button class="btn" id="btn-join">JOIN</button></div>
+    </div>
+    <p id="online-msg" class="msg"></p>
+    <button class="btn small" data-back>&#8592; BACK</button>
+  </div>
+</section>
+
+<!-- Online lobby -->
+<section id="scr-lobby" class="screen hidden">
+  <div class="panel wide">
+    <div class="row between">
+      <button class="btn small" id="btn-lobby-leave">&#8592; LEAVE</button>
+      <h2 id="lobby-title">Lobby</h2>
+      <div class="seg bike-seg" data-bike-seg><button data-bike="stock">STOCK 125</button><button data-bike="mid">MID 250</button></div>
+    </div>
+    <ol id="lobby-players" class="lobby-players"></ol>
+    <div id="lobby-tracks" class="lobby-tracks"></div>
+    <p id="lobby-msg" class="msg"></p>
+    <button class="btn primary" id="btn-lobby-start">START RACE</button>
   </div>
 </section>
 
@@ -91,6 +145,7 @@
     <div class="row between">
       <button class="btn small" data-back>&#8592; BACK</button>
       <h2>Choose a track</h2>
+      <div class="seg bike-seg" data-bike-seg><button data-bike="stock">STOCK 125</button><button data-bike="mid">MID 250</button></div>
       <div class="seg" id="skill">
         <button data-skill="easy">EASY</button><button data-skill="medium">MEDIUM</button><button data-skill="hard">HARD</button>
       </div>
@@ -127,6 +182,7 @@
       <button class="btn" id="btn-res-menu">TRACKS</button>
       <button class="btn" id="btn-res-retry">RETRY</button>
       <button class="btn primary" id="btn-res-next">NEXT TRACK</button>
+      <button class="btn primary hidden" id="btn-res-lobby">BACK TO LOBBY</button>
     </div>
   </div>
 </section>

@@ -9,6 +9,9 @@ import { createAudio } from './audio.js';
 import { createUI, ordinal } from './ui.js';
 import { load, save } from './storage.js';
 import { createAI } from './ai.js';
+import { createNet } from './net.js';
+import { createSpeedo } from './speedo.js';
+import { BIKES } from './bike.js';
 
 window.__trStarted = true;
 const $ = (id) => document.getElementById(id);
@@ -72,6 +75,9 @@ const ui = createUI({
   click: () => audio.click(),
   save: () => data,
   setSkill: (s) => { data.skill = s; save(data); },
+  setBike: (k) => { data.bike = BIKES[k] ? k : 'stock'; save(data); if (net.on) net.set({ b: data.bike }); renderLobby(); },
+  online: () => openOnline(),
+  backToLobby: () => backToLobby(),
   startTrack: (i) => startRace(i),
   toggleMute,
   pause: () => pause(),
@@ -83,13 +89,14 @@ const ui = createUI({
 });
 ui.setMuted(data.muted);
 ui.show('menu');
+const speedo = createSpeedo($('speedoC'));
 
 const input = createInput({
   onRestart: () => {
     if (game.state === 'race' && game.race.state === 'racing' && !game.race.player.finished) {
       restartPlayer(game.race);
       rig.addShake(0.2);
-    } else if (game.state === 'results') startRace(game.trackIndex);
+    } else if (game.state === 'results' && !game.online) startRace(game.trackIndex);
   },
   onPause: () => { if (game.state === 'race') pause(); else if (game.state === 'paused') resume(); },
   onMute: toggleMute,
@@ -118,12 +125,15 @@ function disposeView() {
   game.view = null;
 }
 
-function startRace(i) {
-  if (i >= data.unlocked) return;
+function startRace(i, online = null) {
+  if (!online && i >= data.unlocked) return;
+  if (!online && net.on) net.leave();
   disposeView();
   game.trackIndex = i;
   game.attract = false;
-  game.race = createRace(TRACKS[i], { skill: data.skill });
+  game.online = !!online;
+  game.race = createRace(TRACKS[i], { skill: data.skill, bike: data.bike, online });
+  if (online) net.attach(game.race);
   game.view = createView(renderer, game.race, quality);
   game.state = 'race';
   game.gateDrop = 0;
@@ -135,8 +145,12 @@ function startRace(i) {
   input.clear();
   ui.show(null);
   ui.stack.length = 0;
-  ui.showHUD(true, `${i + 1}. ${TRACKS[i].name} · ${data.skill.toUpperCase()}`);
+  ui.showHUD(true, `${i + 1}. ${TRACKS[i].name} · ${online ? 'ONLINE' : data.skill.toUpperCase()} · ${BIKES[data.bike].name}`);
   $('touch').classList.toggle('hidden', !touch);
+  $('speedo').classList.remove('hidden');
+  speedo.reset();
+  $('btn-restart').classList.toggle('hidden', !!online);
+  $('btn-quit').textContent = online ? 'LEAVE RACE' : 'QUIT TO MENU';
   // Let suspension settle before the countdown begins.
   for (let k = 0; k < 40; k++) stepRace(game.race);
   game.view.afterStep(); game.view.afterStep();
@@ -147,6 +161,7 @@ function pause() {
   if (game.state !== 'race') return;
   game.state = 'paused';
   input.clear();
+  if (game.race) game.race.playerInput = { throttle: 0, brake: 0, lean: 0 };
   audio.suspend();
   ui.show('pause');
 }
@@ -158,23 +173,25 @@ function resume() {
   ui.stack.length = 0;
 }
 function quitToMenu(toSelect = false) {
+  if (game.online) { backToLobby(); return; }
   game.state = 'menu';
   audio.suspend();
   ui.showHUD(false);
   $('touch').classList.add('hidden');
+  $('speedo').classList.add('hidden');
   setupAttract();
   if (!toSelect) { ui.stack.length = 0; ui.show('menu'); }
 }
 
 function finishRace() {
   const race = game.race, p = race.player;
-  const position = race.finishOrder.indexOf(p.id) + 1;
+  const position = placeOf(race, p);
   const def = TRACKS[game.trackIndex];
   const prevBest = data.best[def.id];
   const newBest = !prevBest || p.finishTime < prevBest;
   if (newBest) data.best[def.id] = p.finishTime;
   let unlockedNext = false;
-  if (position <= 2 && game.trackIndex + 1 < TRACKS.length && data.unlocked < game.trackIndex + 2) {
+  if (!game.online && position <= 2 && game.trackIndex + 1 < TRACKS.length && data.unlocked < game.trackIndex + 2) {
     data.unlocked = game.trackIndex + 2;
     unlockedNext = true;
   }
@@ -183,8 +200,9 @@ function finishRace() {
   audio.suspend();
   ui.showHUD(false);
   $('touch').classList.add('hidden');
+  $('speedo').classList.add('hidden');
   ui.results({
-    race, position, time: p.finishTime, best: data.best[def.id], newBest, unlockedNext,
+    race, position, time: p.finishTime, best: data.best[def.id], newBest, unlockedNext, online: game.online,
     hasNext: game.trackIndex + 1 < TRACKS.length,
     nextLocked: game.trackIndex + 1 >= data.unlocked,
   });
@@ -207,11 +225,102 @@ function handleEvents(race) {
       ui.toast('CRASH!', 900);
     } else if (e.type === 'finish') {
       audio.finish();
-      ui.toast(`${ordinal(e.position)} place!`, 1400);
+      ui.toast(`${ordinal(placeOf(race, race.player))} place!`, 1400);
       game.finishTimer = 1.6;
     }
   }
 }
+
+// Finishing place: by finish time (online, the other riders' times come from
+// their own screens, so race.finishOrder only knows about this one).
+function placeOf(race, bike) {
+  if (!race.online) return race.finishOrder.indexOf(bike.id) + 1;
+  return 1 + race.bikes.filter(b => b !== bike && b.finished && b.finishTime < bike.finishTime).length;
+}
+
+// ---- Online (1.1) ----
+const net = createNet({
+  lobby: () => renderLobby(),
+  start: ({ track, players }) => startRace(track, { players }),
+  remoteFinish: (b) => { if (game.state === 'race') ui.toast(`${b.name} finished!`, 1100); },
+});
+const onlineMsg = (t) => { $('online-msg').textContent = t || ''; };
+function openOnline() {
+  onlineMsg('');
+  ui.show('online');
+}
+async function goOnline(how) {
+  onlineMsg('Connecting...');
+  for (const id of ['btn-quick', 'btn-create', 'btn-join']) $(id).disabled = true;
+  try {
+    const opts = { bike: data.bike, track: 0 };
+    let r;
+    if (how === 'quick') r = await net.quick(opts);
+    else if (how === 'create') r = await net.create(opts);
+    else r = await net.join($('join-code').value, opts);
+    if (r === 'full') onlineMsg(how === 'quick' ? 'Every public room is full. Try again soon.' : 'That room is full (4 riders).');
+    else if (r === 'bad') onlineMsg('Type a room code first.');
+    else { onlineMsg(''); ui.stack.length = 0; ui.stack.push('menu'); ui.show('lobby'); renderLobby(); }
+  } catch (e) {
+    onlineMsg('Could not connect. Online play needs an arcade account and works on the arcade website.');
+  }
+  for (const id of ['btn-quick', 'btn-create', 'btn-join']) $(id).disabled = false;
+}
+$('btn-quick').addEventListener('click', () => { audio.click(); goOnline('quick'); });
+$('btn-create').addEventListener('click', () => { audio.click(); goOnline('create'); });
+$('btn-join').addEventListener('click', () => { audio.click(); goOnline('join'); });
+$('join-code').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') goOnline('join'); });
+$('btn-lobby-leave').addEventListener('click', () => { audio.click(); net.leave(); ui.stack.length = 0; ui.show('menu'); });
+$('btn-lobby-start').addEventListener('click', () => { audio.click(); if (!net.start()) renderLobby(); });
+
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function renderLobby() {
+  if (!net.on) return;
+  ui.renderBike();
+  const ms = net.members(), host = net.host(), amHost = net.isHost();
+  $('lobby-title').textContent = net.isPublic ? 'Public race' : 'Room ' + net.room;
+  const list = $('lobby-players');
+  list.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const m = ms[i], li = document.createElement('li');
+    if (!m) { li.className = 'empty'; li.textContent = 'Waiting for a rider...'; list.appendChild(li); continue; }
+    const tags = [m.id === host?.id ? 'host' : '', m.s === 'race' ? 'racing' : ''].filter(Boolean).join(' · ');
+    li.innerHTML = `<span class="${m.id === net.id ? 'me' : ''}">${esc(m.n || 'Rider')}${m.id === net.id ? ' (you)' : ''}</span><span class="tg">${tags}</span><span class="bk">${m.b === 'mid' ? BIKES.mid.name : BIKES.stock.name}</span>`;
+    list.appendChild(li);
+  }
+  const k = (host && host.k) | 0;
+  const tr = $('lobby-tracks');
+  tr.innerHTML = '';
+  TRACKS.forEach((def, i) => {
+    const b = document.createElement('button');
+    b.textContent = `${i + 1}. ${def.name}`;
+    b.classList.toggle('on', i === k);
+    b.disabled = !amHost;
+    b.addEventListener('click', () => { if (!net.isHost()) return; audio.click(); net.set({ k: i }); renderLobby(); });
+    tr.appendChild(b);
+  });
+  const waiting = ms.filter(m => m.s === 'lobby').length;
+  const cd = net.countdown();
+  $('btn-lobby-start').classList.toggle('hidden', !amHost);
+  $('btn-lobby-start').disabled = !net.canStart();
+  $('lobby-msg').textContent = waiting < 2 ? 'Waiting for another rider to join...' + (net.isPublic ? '' : ' Share the code ' + net.room + '.')
+    : cd > 0 ? `Race starts in ${cd}...`
+    : amHost ? (net.isPublic ? 'Press START, or the race starts by itself.' : 'Pick a track and press START.')
+    : 'Waiting for the host to start the race...';
+}
+function backToLobby() {
+  game.online = false;
+  game.state = 'menu';
+  audio.suspend();
+  ui.showHUD(false);
+  $('touch').classList.add('hidden');
+  $('speedo').classList.add('hidden');
+  net.attach(null);
+  setupAttract();
+  if (net.on) { net.backToLobby(); ui.stack.length = 0; ui.stack.push('menu'); ui.show('lobby'); renderLobby(); }
+  else { ui.stack.length = 0; ui.show('menu'); }
+}
+let resTick = 0;
 
 // ---- Main loop ----
 let last = performance.now();
@@ -240,7 +349,8 @@ function frame(now) {
   const race = game.race;
   if (!race || !game.view) return;
 
-  const running = game.state === 'race' || game.state === 'menu' || game.state === 'results';
+  // Online races never stop: the pause menu is only an overlay there.
+  const running = game.state === 'race' || game.state === 'menu' || game.state === 'results' || (game.state === 'paused' && game.online);
   if (running) {
     if (game.state === 'race') race.playerInput = input.state();
     game.acc += dt;
@@ -272,12 +382,18 @@ function frame(now) {
   const ps = game.attract ? focus.chassis.getPosition() : game.view.playerState(alpha);
   const v = focus.chassis.getLinearVelocity();
   rig.update(running ? dt : 0, { x: ps.x, y: ps.y, vx: v.x, vy: v.y, airTime: focus.airTime }, race.track, game.view.laneZ);
+  if (window.__game && window.__game.cine) window.__game.cine(rig.camera, game); // test hook: posed shots
   game.view.draw(alpha, running ? dt : 0, rig.camera, game.gateDrop);
 
   if (game.state === 'race') {
     ui.hud(race, positionOf(race, race.player));
     const p = race.player;
     audio.setEngine(p.rpm, p.input.throttle, true);
+    speedo.update(p, dt);
+  }
+  if (game.online && race.online && game.state !== 'menu') {
+    net.tick(race);
+    if (game.state === 'results' && (resTick += dt) > 0.5) { resTick = 0; ui.resultsTable(race); }
   }
 
   // Adaptive resolution: drop pixel ratio if frames are slow.
@@ -296,7 +412,7 @@ requestAnimationFrame(frame);
 
 // Test hook for automated checks.
 window.__game = {
-  game, startRace, input, data: () => data, TRACKS, pause, resume, ui, createAI, rig,
+  game, startRace, input, data: () => data, TRACKS, pause, resume, ui, createAI, rig, net, cine: null,
   // Advance the simulation quickly (used by automated tests).
   simulate(seconds, playerInput) {
     const race = game.race;

@@ -4,7 +4,7 @@ import { RIDERS } from './race.js';
 import { formatTime } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ['menu', 'how', 'select', 'pause', 'results'];
+const SCREENS = ['menu', 'how', 'select', 'pause', 'results', 'notes', 'online', 'lobby'];
 const hex = (c) => '#' + c.toString(16).padStart(6, '0');
 export const ordinal = (n) => n + (['th', 'st', 'nd', 'rd'][n] || 'th');
 
@@ -21,6 +21,9 @@ export function createUI(handlers) {
   const on = (id, fn) => $(id).addEventListener('click', (e) => { handlers.click(); fn(e); });
   on('btn-play', () => { renderTracks(); show('select'); });
   on('btn-how', () => show('how'));
+  on('btn-notes', () => show('notes'));
+  on('btn-online', () => handlers.online());
+  on('btn-res-lobby', () => handlers.backToLobby());
   on('btn-menu-mute', () => handlers.toggleMute());
   on('btn-pause-mute', () => handlers.toggleMute());
   on('btn-mute', () => handlers.toggleMute());
@@ -38,6 +41,15 @@ export function createUI(handlers) {
   function renderSkill() {
     const s = handlers.save().skill;
     document.querySelectorAll('#skill button').forEach(b => b.classList.toggle('on', b.dataset.skill === s));
+    renderBike();
+  }
+  // Bike picker (1.1): on the track screen and in the online lobby.
+  document.querySelectorAll('[data-bike-seg] button').forEach(b => b.addEventListener('click', () => {
+    handlers.click(); handlers.setBike(b.dataset.bike); renderBike();
+  }));
+  function renderBike() {
+    const k = handlers.save().bike || 'stock';
+    document.querySelectorAll('[data-bike-seg] button').forEach(b => b.classList.toggle('on', b.dataset.bike === k));
   }
 
   function trackArt(def, i) {
@@ -80,20 +92,26 @@ export function createUI(handlers) {
     });
   }
 
-  // HUD
-  const dots = RIDERS.map((r, i) => {
-    const d = document.createElement('div');
-    d.className = 'dot' + (i === 0 ? ' me' : '');
-    d.style.background = hex(r.color);
-    $('progress-dots').appendChild(d);
-    return d;
-  });
+  // HUD (the dots are made per race: online races can have 2 to 4 riders)
+  let dots = [];
+  function makeDots(n) {
+    $('progress-dots').innerHTML = '';
+    dots = RIDERS.slice(0, n).map((r, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' me' : '');
+      d.style.background = hex(r.color);
+      $('progress-dots').appendChild(d);
+      return d;
+    });
+  }
+  makeDots(4);
   let lastTime = '', lastPos = 0;
   function hud(race, pos) {
+    if (dots.length !== race.bikes.length) makeDots(race.bikes.length);
     const t = formatTime(race.time);
     if (t !== lastTime) { $('hud-time').textContent = t; lastTime = t; }
-    if (pos !== lastPos) { $('hud-pos').innerHTML = `${pos}<sup>${ordinal(pos).slice(-2)}</sup><span>/4</span>`; lastPos = pos; }
-    race.bikes.forEach((b, i) => { dots[i].style.left = (b.progress * 100).toFixed(2) + '%'; });
+    if (pos !== lastPos) { $('hud-pos').innerHTML = `${pos}<sup>${ordinal(pos).slice(-2)}</sup><span>/${race.bikes.length}</span>`; lastPos = pos; }
+    race.bikes.forEach((b, i) => { dots[i].style.left = (b.progress * 100).toFixed(2) + '%'; dots[i].style.opacity = b.remote && b.remote.gone ? 0.25 : 1; });
   }
   function showHUD(visible, trackName) {
     $('hud').classList.toggle('hidden', !visible);
@@ -124,13 +142,29 @@ export function createUI(handlers) {
     toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
   }
 
-  function results({ race, position, time, best, newBest, unlockedNext, hasNext, nextLocked }) {
+  // The finishing order; names are built with textContent (online names come from other players).
+  function resultsTable(race) {
+    const order = [...race.bikes].sort((a, b) => (a.finished ? a.finishTime : 1e9 - a.progress) - (b.finished ? b.finishTime : 1e9 - b.progress));
+    const el = $('res-table');
+    el.innerHTML = '';
+    order.forEach((b, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<b>${i + 1}</b><i style="background:${hex(RIDERS[b.id].color)}"></i><em></em><span></span>`;
+      li.querySelector('em').textContent = b.id === 0 ? 'You' : b.name;
+      li.querySelector('em').style.fontStyle = 'normal';
+      li.querySelector('span').textContent = b.finished ? formatTime(b.finishTime) : b.remote && b.remote.gone ? 'left' : race.online ? 'racing...' : '--';
+      el.appendChild(li);
+    });
+  }
+  function results({ race, position, time, best, newBest, unlockedNext, hasNext, nextLocked, online }) {
     $('res-title').textContent = position === 1 ? 'You win!' : position === 2 ? 'Great ride!' : 'Finished';
     $('res-pos').textContent = ordinal(position);
     $('res-time').textContent = formatTime(time);
     $('res-best').textContent = formatTime(best);
-    const order = [...race.bikes].sort((a, b) => (a.finished ? a.finishTime : 1e9 - a.progress) - (b.finished ? b.finishTime : 1e9 - b.progress));
-    $('res-table').innerHTML = order.map((b, i) => `<li><b>${i + 1}</b><i style="background:${hex(RIDERS[b.id].color)}"></i>${RIDERS[b.id].name}<span>${b.finished ? formatTime(b.finishTime) : '--'}</span></li>`).join('');
+    resultsTable(race);
+    for (const id of ['btn-res-menu', 'btn-res-retry', 'btn-res-next']) $(id).classList.toggle('hidden', !!online);
+    $('btn-res-lobby').classList.toggle('hidden', !online);
+    if (online) { $('res-note').textContent = newBest ? 'New best time!' : ''; show('results'); return; }
     const notes = [];
     if (newBest) notes.push('New best time!');
     if (unlockedNext) notes.push('Next track unlocked!');
@@ -147,5 +181,5 @@ export function createUI(handlers) {
     $('btn-menu-mute').textContent = $('btn-pause-mute').textContent = m ? 'SOUND: OFF' : 'SOUND: ON';
   }
 
-  return { show, hud, showHUD, countdown, toast, results, setMuted, renderTracks, stack };
+  return { show, hud, showHUD, countdown, toast, results, resultsTable, setMuted, renderTracks, renderBike, stack };
 }

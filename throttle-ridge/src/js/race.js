@@ -21,16 +21,26 @@ export const LANES = [4.1, 1.35, -1.4, -4.15];
 const RESPAWN_DELAY = 1.0;
 const STUCK_TIME = 3.5;
 
-export function createRace(trackDef, { skill = 'medium', aiOnly = false } = {}) {
+// online (1.1): { players: [{ id, name, kind }] } are the other players. The
+// local player is always bike 0 (the nearest lane); the others are puppets
+// moved by the network code (b.remote), not simulated here.
+export function createRace(trackDef, { skill = 'medium', aiOnly = false, bike = 'stock', online = null } = {}) {
   const track = buildTrack(trackDef);
   const { world } = createWorld(track);
-  const bikes = RIDERS.map((r, i) => {
-    const b = createBike(world, track.startX, 2, { id: i });
-    b.name = r.name;
+  const slots = online ? RIDERS.slice(0, 1 + Math.min(3, online.players.length)) : RIDERS;
+  const bikes = slots.map((r, i) => {
+    const o = online && i > 0 ? online.players[i - 1] : null;
+    // Computer riders keep the stock bike; the player rides the bike they picked.
+    const b = createBike(world, track.startX, 2, { id: i, kind: o ? o.kind : (i === 0 && !aiOnly ? bike : 'stock') });
+    b.name = o ? o.name : r.name;
     b.checkpoint = track.startX;
     b.bestX = track.startX;
-    b.ai = (i > 0 || aiOnly) ? createAI(skill, i * 17 + 3) : null;
+    b.ai = (!online && (i > 0 || aiOnly)) ? createAI(skill, i * 17 + 3) : null;
     resetBike(b, track, track.startX);
+    if (o) {
+      b.remote = { id: o.id, buf: [], gone: false };
+      for (const body of [b.chassis, b.rear, b.front]) body.setActive(false);
+    }
     return b;
   });
   const race = {
@@ -42,6 +52,8 @@ export function createRace(trackDef, { skill = 'medium', aiOnly = false } = {}) 
     finishOrder: [],
     events: [],
     playerInput: { throttle: 0, brake: 0, lean: 0 },
+    online: !!online,
+    remoteStep: null, // set by the network code: (race, bike) => void
   };
   return race;
 }
@@ -68,6 +80,7 @@ export function stepRace(race) {
   const holding = race.state === 'countdown';
 
   for (const b of bikes) {
+    if (b.remote) continue;
     if (b.ai) aiControl(b.ai, b, track);
     else Object.assign(b.input, race.playerInput);
     b.input.hold = holding;
@@ -83,6 +96,7 @@ export function stepRace(race) {
   if (holding) {
     // Keep bikes behind the gate.
     for (const b of bikes) {
+      if (b.remote) continue;
       const v = b.chassis.getLinearVelocity();
       if (v.x > 0) for (const body of [b.chassis, b.rear, b.front]) body.setLinearVelocity({ x: 0, y: body.getLinearVelocity().y });
     }
@@ -92,6 +106,12 @@ export function stepRace(race) {
   if (!holding) race.time += STEP;
 
   for (const b of bikes) {
+    if (b.remote) {
+      if (race.remoteStep) race.remoteStep(race, b);
+      b.progress = Math.max(0, Math.min(1, (b.chassis.getPosition().x - track.startX) / (track.finishX - track.startX)));
+      if (b.remote.finished && !b.finished) { b.finished = true; b.finishTime = b.remote.finishTime; }
+      continue;
+    }
     updateBike(b, track);
     for (const e of b.events) {
       race.events.push({ ...e, bike: b.id });
@@ -128,7 +148,7 @@ export function stepRace(race) {
 }
 
 // Throw the rider off the bike as a ragdoll, starting from the riding pose.
-function throwRider(race, b) {
+export function throwRider(race, b) {
   const pose = riderPose(b.leanVisual, 0);
   const p = b.chassis.getPosition(), a = b.chassis.getAngle();
   const jw = {};

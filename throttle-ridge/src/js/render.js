@@ -622,7 +622,7 @@ export function createView(renderer, race, quality) {
 
   // ---------- Bikes and riders ----------
   const bikes = race.bikes.map((b, i) => {
-    const bike = makeBikeModel(RIDERS[i]);
+    const bike = makeBikeModel(RIDERS[i], b.kind);
     const rider = makeRiderModel(RIDERS[i]);
     scene.add(bike.root, rider.group);
     if (quality.mobile && i > 0) for (const o of [bike.root, rider.group]) o.traverse(m => { if (m.isMesh) m.castShadow = false; });
@@ -775,7 +775,7 @@ export function createView(renderer, race, quality) {
         poseRider(v.rider, j, z, ch.a);
       }
       const blink = b.crashed && b.crashTimer < 0.35 && Math.floor(time * 16) % 2 === 0;
-      v.bike.root.visible = v.rider.group.visible = !blink;
+      v.bike.root.visible = v.rider.group.visible = !blink && !(b.remote && b.remote.gone);
     });
 
     for (let i = 0; i < MAXP; i++) {

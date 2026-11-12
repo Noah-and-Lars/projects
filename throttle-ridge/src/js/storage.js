@@ -1,7 +1,7 @@
 // Saved progress: best times, unlocked tracks and settings (localStorage).
 const KEY = 'throttle-ridge.v1';
 
-const defaults = () => ({ best: {}, unlocked: 1, skill: 'medium', muted: false });
+const defaults = () => ({ best: {}, unlocked: 1, skill: 'medium', muted: false, bike: 'stock' });
 
 export function load() {
   try {
