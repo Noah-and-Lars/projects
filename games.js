@@ -62,7 +62,7 @@ window.GAMES = [
     path: 'krill-dive/index.html',
     thumb: 'krill-dive/thumb.svg',
     added: '2026-11-07T08:00:00+11:00',
-    updated: '2026-11-11T12:00:00+11:00',
+    updated: '2026-11-13T14:00:00+11:00',
     stat() { const s = readSave('krilldive', true); return s && s.played ? 'Best ' + ((s.best || 0) * 10).toLocaleString() + ' m' : null; },
   },
   {
@@ -333,6 +333,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-13', game: 'krill-dive', imgs: ['krill-dive/thumb.svg'], headline: '200 new Krill Dive questions', text: 'Krill Dive 1.5: 200 new questions for the daily dive and practice, from easy ones like mammals, desserts and superheroes to harder ones like Norse gods and Beatles songs. Every one has plenty of answers, so there is always a rarer one to dive for. They start showing up in tomorrow\u2019s dive.' },
   { date: '2026-11-12', game: 'havoc-bay', imgs: ['havoc-bay/news/1.4.3-marines.jpg'], headline: 'Marines, power grids and a bigger bay', text: 'Havoc Bay 1.4.3: a 1.5x bigger map with livelier islands, power grids you can knock out for 3 minutes, a taller harbor tower with lifts, roof AA and a spotting scope, AI marines who go ashore and guard islands, AI gunners, the Interceptor, Striker and Albatross, deploy tabs, and big helicopter and submarine buffs.', post: '⚓ Havoc Bay 1.4.3 is a big one!\n\n🗺️ The bay is 1.5x bigger, with new islets and islands full of life\n⚡ Power grids: blow up the enemy substation and their lights, map and computer go dark for 3 minutes\n🪖 AI marines ride your warships, hop off at islands and guard them\n🔫 AI gunners fill empty gunner seats until a friend jumps in\n✈️ New: the Interceptor, the Striker and the Albatross helicopter with door gunners\n🚁 Helicopter and 🌊 submarine buffs (the Typhoon does 60 knots)\n🏰 A taller harbor tower with lifts, roof AA and a spotting scope\n\nWhich team are you on? 🔵🔴\n\n#havocbay #TheArcade #Update' },
   { date: '2026-11-12', game: 'chess', imgs: ['chess/thumb.svg'], headline: 'Chess move timer', text: 'Chess 1.5.3: in online games you get 1:30 to make each move. The timer sits above the board and turns red in the last 15 seconds. Run out and you lose on time.' },
   { date: '2026-11-12', href: 'index.html', imgs: ['russian-roulette/thumb.jpg', 'gamble-your-life-away/thumb.jpg'], headline: 'Watch the trailers', text: 'New: Play trailer buttons on the Russian Roulette and Gamble Your Life Away cards. The opening cinematics now play there, so the games start straight away.', post: '🎬 Trailers are here!\n\nRussian Roulette and Gamble Your Life Away now have a ▶ Play trailer button right on their cards. Watch the cinematic, then jump straight in with Play now\n⚡ And the games themselves now load straight to the menu, no waiting\n\nWhich trailer is better? 👇\n\n#TheArcade #NewFeature' },
