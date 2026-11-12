@@ -106,12 +106,27 @@
   function kind() { return acct ? 'online' : local && local.name ? 'local' : ''; }
 
   /* ---------- the server ---------- */
+  /* this browser's device id (2026-11-12): random, kept in localStorage and a cookie, sent with every account request so
+     the owner can ban a device (admin op 'devban'). It says nothing about the person or the hardware. */
+  var devId = (function () {
+    var re = /^[a-z0-9]{12,40}$/, d = '';
+    try { d = localStorage.getItem('arcade-dev-id') || ''; } catch (e) {}
+    if (!re.test(d)) { var m = /(?:^|; )arcade_dev=([a-z0-9]+)/.exec(document.cookie || ''); d = m ? m[1] : ''; }
+    if (!re.test(d)) { var b = crypto.getRandomValues(new Uint8Array(12)); d = Array.prototype.map.call(b, function (x) { return ('0' + x.toString(36)).slice(-2); }).join('').slice(0, 20).padEnd(16, '0'); }
+    try { localStorage.setItem('arcade-dev-id', d); } catch (e) {}
+    try { document.cookie = 'arcade_dev=' + d + '; max-age=315360000; path=/; samesite=lax'; } catch (e) {}
+    return d;
+  })();
+  function deviceBanned() { // this device is banned: sign out here and say so
+    if (acct) { acct = null; ls.del(K_ACCT); setStatus('off'); refresh(); }
+    if (!deviceBanned.shown) { deviceBanned.shown = 1; setTimeout(function () { alert('This device has been banned from The Arcade.'); }, 300); }
+  }
   function api(path, opt) {
     opt = opt || {};
-    var headers = { 'content-type': 'application/json' };
+    var headers = { 'content-type': 'application/json', 'x-arcade-dev': devId };
     if (opt.auth) { if (!acct) return Promise.resolve({ error: 'auth', status: 401 }); headers.authorization = 'Bearer ' + acct.token; }
     return fetch(API + path, { method: opt.method || 'GET', headers: headers, body: opt.body ? JSON.stringify(opt.body) : undefined, keepalive: !!opt.keepalive, cache: 'no-store' })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j = j || {}; j.status = r.status; if (r.status === 401 && opt.auth && j.error === 'auth') signedOutElsewhere(); return j; }); })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j = j || {}; j.status = r.status; if (r.status === 401 && opt.auth && j.error === 'auth') signedOutElsewhere(); if (r.status === 403 && j.error === 'device_banned') deviceBanned(); return j; }); })
       .catch(function () { return { error: 'offline', status: 0 }; });
   }
   // after a rename the password key still uses the name it was made with (the server says which: check's kn)
@@ -143,7 +158,7 @@
     if (reservedName(n) || ownerOnly(n)) return 'That name isn’t allowed. Pick another.';
     return '';
   }
-  var WHY = { format: 'Use 3 to 16 letters, numbers or underscores (no spaces).', reserved: 'That name is reserved. Pick another.', rude: 'Pick a different name.', taken: 'That username is taken. Pick another.' };
+  var WHY = { device_banned: 'This device has been banned from The Arcade.', format: 'Use 3 to 16 letters, numbers or underscores (no spaces).', reserved: 'That name is reserved. Pick another.', rude: 'Pick a different name.', taken: 'That username is taken. Pick another.' };
 
   /* ---------- syncing ---------- */
   var busy = null, pulledHandlers = [];
@@ -332,6 +347,7 @@
   }
   function login(n, pw) {
     return keyName(n).then(function (kn) { return stretch(kn, pw); }).then(function (key) { return api('login', { method: 'POST', body: { name: n, key: key } }); }).then(function (r) {
+      if (r.status === 403 && r.error === 'device_banned') return { error: 'This device has been banned from The Arcade.' };
       if (r.status === 403 && r.error === 'banned') return { error: 'This account has been banned.' };
       if (r.status === 429) return { error: 'Too many tries. Wait ' + Math.ceil((r.wait || 600) / 60) + ' minutes and try again.' };
       if (r.status === 404) return { error: 'There’s no account with that username.' };
@@ -342,6 +358,7 @@
   }
   function recover(n, code, pw) {
     return stretch(n, pw).then(function (key) { return api('recover', { method: 'POST', body: { name: n, code: code, key: key } }); }).then(function (r) {
+      if (r.status === 403 && r.error === 'device_banned') return { error: 'This device has been banned from The Arcade.' };
       if (r.status === 403 && r.error === 'banned') return { error: 'This account has been banned.' };
       if (r.status === 429) return { error: 'Too many tries. Wait ' + Math.ceil((r.wait || 600) / 60) + ' minutes and try again.' };
       if (r.status === 404) return { error: 'There’s no account with that username.' };
@@ -565,12 +582,13 @@
   function isAdmin() { return !!(acct && acct.token && ADMIN_ACCOUNTS.indexOf(String(acct.name).toLowerCase()) >= 0); }
   function openAdmin() {
     var me = isAdmin();
-    overlay('<h2>Accounts admin</h2><p>Look up, ban, rename or delete an account, or make a new recovery code for a player who can\u2019t get in.</p><form id="acF" autocomplete="off">' +
+    overlay('<h2>Accounts admin</h2><p>Look up, ban (or device ban), rename or delete an account, or make a new recovery code for a player who can\u2019t get in.</p><form id="acF" autocomplete="off">' +
       (me ? '' : '<label for="acA">Admin password</label><input type="password" id="acA" autocomplete="off">') +
       '<label for="acN">Username</label><input type="text" id="acN" maxlength="16" spellcheck="false" autocapitalize="off">' +
       '<label for="acTo">New username (for Rename)</label><input type="text" id="acTo" maxlength="16" spellcheck="false" autocapitalize="off"><div class="err" id="acE"></div>' +
       '<div class="row"><button class="go" id="acLook" type="button">Look up</button><button class="go" id="acRn" type="button">Rename</button></div>' +
       '<div class="row"><button class="go" id="acBan" type="button" style="background:#c46a1a">Ban</button><button class="go" id="acUnban" type="button">Unban</button><button class="go" id="acKill" type="button" style="background:#d63a3a">Delete</button></div>' +
+      '<div class="row"><button class="go" id="acDev" type="button" style="background:#8b1e3f">Device ban</button><button class="go" id="acUndev" type="button">Remove device ban</button></div>' +
       '<button class="go" id="acCode" type="button" style="width:100%;margin-top:8px;background:#3797f0">New recovery code (for a player who can\u2019t get in)</button></form><div id="acRes" class="stats"></div>', true);
     var run = function (op) {
       var E = $('acE'), n = $('acN').value.trim(), to = $('acTo').value.trim(); E.textContent = ''; $('acRes').innerHTML = '';
@@ -579,6 +597,7 @@
       if (op === 'delete' && !confirm('Delete the account ' + n + ' and all its saved progress for good?')) return;
       if (op === 'ban' && !confirm('Ban ' + n + '? They are signed out everywhere, can’t log in, and leave the Players list.')) return;
       if (op === 'rename' && !confirm('Rename ' + n + ' to ' + to + '? They are signed out and log in with the new name (same password).')) return;
+      if (op === 'devban' && !confirm('Device ban ' + n + '? The account is banned, and every device it was used on can\u2019t sign up, log in or use any account any more.')) return;
       if (op === 'newcode' && !confirm('Make a new recovery code for ' + n + '? Their old code stops working.\n\nOnly do this if you\u2019re sure the person asking really owns this account.')) return;
       api('admin', { method: 'POST', auth: me, body: { pw: me ? '' : $('acA').value, op: op, name: n, to: to } }).then(function (r) {
         if (r.status === 401) { E.textContent = 'Wrong admin password.'; return; }
@@ -592,15 +611,16 @@
             '<div><b>Tell them</b><span>Log in \u2192 Forgot password, then type ' + esc(r.name) + ', this code and a new password. Any lockout from wrong tries is cleared. After they use it they get a fresh code of their own, so this one works once.</span></div>';
           return;
         }
+        if (op === 'devban' || op === 'devunban') { $('acRes').innerHTML = '<div><b>' + esc(r.name || n) + '</b><span>' + (op === 'devban' ? 'banned, with ' : 'unbanned, and ') + r.devices + ' device' + (r.devices === 1 ? '' : 's') + (op === 'devban' ? ' blocked' : ' unblocked') + '</span></div>'; return; }
         var done = r.deleted ? 'deleted' : r.banned ? 'banned' : r.unbanned ? 'unbanned' : op === 'rename' ? 'renamed to ' + r.name : '';
         if (done) { $('acRes').innerHTML = '<div><b>' + esc(op === 'rename' ? n : r.name) + '</b><span>' + esc(done) + '</span></div>'; return; }
-        var rows = [['Username', r.name], ['Created', new Date(r.created).toLocaleString()], ['Signed-in devices', r.devices], ['Banned', r.banned ? 'Yes' : 'No']];
+        var rows = [['Username', r.name], ['Created', new Date(r.created).toLocaleString()], ['Signed-in devices', r.devices], ['Banned', r.banned ? (r.devban ? 'Yes, device ban' : 'Yes') : 'No'], ['Devices seen', r.devs == null ? '?' : r.devs]];
         Object.keys(r.games || {}).forEach(function (g) { rows.push([g, Math.ceil(r.games[g].size / 1024) + ' KB, saved ' + new Date(r.games[g].at).toLocaleString()]); });
         $('acRes').innerHTML = rows.map(function (x) { return '<div><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></div>'; }).join('');
       });
     };
     $('acLook').onclick = function () { run('info'); }; $('acKill').onclick = function () { run('delete'); };
-    $('acBan').onclick = function () { run('ban'); }; $('acUnban').onclick = function () { run('unban'); }; $('acRn').onclick = function () { run('rename'); }; $('acCode').onclick = function () { run('newcode'); };
+    $('acBan').onclick = function () { run('ban'); }; $('acUnban').onclick = function () { run('unban'); }; $('acRn').onclick = function () { run('rename'); }; $('acCode').onclick = function () { run('newcode'); }; $('acDev').onclick = function () { run('devban'); }; $('acUndev').onclick = function () { run('devunban'); };
     $('acF').onsubmit = function (e) { e.preventDefault(); run('info'); };
   }
   function openPassword() {

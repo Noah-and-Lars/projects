@@ -163,7 +163,7 @@ function nameProblem(n) {
 async function accounts(req, env, url) {
   const origin = req.headers.get('Origin') || '';
   if (!ACCT_ORIGINS.includes(origin)) return new Response('accounts are only available on the official website', { status: 403 });
-  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type, authorization', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
+  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type, authorization, x-arcade-dev', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
   const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const route = url.pathname.slice(6);
@@ -196,17 +196,37 @@ async function accounts(req, env, url) {
   }
   if (route === 'check' || route === 'signup') { const p = nameProblem(name); if (p) return out(route === 'check' ? { free: false, why: p } : { error: p }, route === 'check' ? 200 : 400); }
   else if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
+  // device bans (2026-11-12): a banned device can't sign up, log in, recover or sync any account
+  const dev = DEV_RE.test(req.headers.get('x-arcade-dev') || '') ? req.headers.get('x-arcade-dev') : '';
+  if (dev && ['signup', 'login', 'recover', 'sync'].includes(route) && await devBanned(env, dev)) return out({ error: 'device_banned' }, 403);
   const stub = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + name.toLowerCase()));
-  const r = await stub.fetch(new Request('https://acct/' + route + url.search, { method: req.method, headers: { 'authorization': req.headers.get('Authorization') || '', 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }));
+  const r = await stub.fetch(new Request('https://acct/' + route + url.search, { method: req.method, headers: { 'authorization': req.headers.get('Authorization') || '', 'content-type': 'application/json', 'x-arcade-dev': dev }, body: body ? JSON.stringify(body) : undefined }));
   return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
 }
+/* Device bans (2026-11-12, the owner's request for "hardware bans"; real hardware ids can't be read by a website):
+   every browser keeps a random device id (account.js `devId`, sent as x-arcade-dev). Each account remembers the last
+   DEV_KEEP devices it was used on ('devs'). The admin op 'devban' bans the account and puts all its devices on the list
+   kept by the '__devbans__' object; a listed device can't sign up, log in, recover or sync. Clearing the browser's data
+   or using another browser gives a new id, so it stops casual ban dodging, not determined people. */
+const DEV_RE = /^[a-z0-9]{12,40}$/, DEV_KEEP = 12, DEV_MAX = 5000;
+let devCache = { at: 0, set: null };
+const devStore = env => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('__devbans__'));
+async function devBanned(env, dev) {
+  if (!devCache.set || Date.now() - devCache.at > 60000) {
+    const r = await devStore(env).fetch(new Request('https://acct/devlist', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: '{}' })).catch(() => null);
+    const j = r && r.ok ? await r.json().catch(() => ({})) : {};
+    devCache = { at: Date.now(), set: new Set(j.list || []) };
+  }
+  return devCache.set.has(dev);
+}
+const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).includes(dev)) return false; a.devs = (a.devs || []).concat(dev).slice(-DEV_KEEP); return true; };
 // the owner's tools: the password is checked (and wrong tries counted) by one guard object, then the account's own
 // object is asked through a header only this Worker ever sets. Since 2026-11-11 a signed-in admin account (ADMIN_ACCOUNTS)
 // needs no password, and can also ban, unban and rename accounts.
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -220,7 +240,20 @@ async function admin(env, body, out, auth) {
     const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
     if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
   }
-  if ((op === 'ban' || op === 'rename' || op === 'delete' || op === 'newcode') && ADMIN_ACCOUNTS.includes(name.toLowerCase())) return out({ error: 'protected' }, 400);
+  if ((op === 'ban' || op === 'rename' || op === 'delete' || op === 'newcode' || op === 'devban') && ADMIN_ACCOUNTS.includes(name.toLowerCase())) return out({ error: 'protected' }, 400);
+  if (op === 'devban' || op === 'devunban') { // the account's ban plus every device it was used on
+    if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
+    const d = await call('u:' + name.toLowerCase(), 'admindevs');
+    if (d.status !== 200) return out(await d.json().catch(() => ({})), d.status);
+    const { devs } = await d.json();
+    const ds = await devStore(env).fetch(new Request('https://acct/' + (op === 'devban' ? 'devadd' : 'devdel'), { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify({ devs }) }));
+    if (ds.status !== 200) return out({ error: 'failed' }, 502);
+    devCache = { at: 0, set: null };
+    await call('u:' + name.toLowerCase(), 'admindevflag', { on: op === 'devban' ? 1 : 0 });
+    const r = await call('u:' + name.toLowerCase(), op === 'devban' ? 'adminban' : 'adminunban');
+    const x = await r.json().catch(() => ({}));
+    return out(Object.assign(x, { devices: devs.length, devbanned: op === 'devban' ? 1 : 0 }), r.status);
+  }
   if (op === 'chatdel') { // take a message out of the Global chat
     const r = await env.CHAT.get(env.CHAT.idFromName('chat:global')).fetch(new Request('https://chat/del', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-int': '1' }, body: JSON.stringify({ id: String(body.id || '') }) }));
     return out(await r.json().catch(() => ({})), r.status);
@@ -269,6 +302,7 @@ export class Account extends DurableObject {
       const code = newCode();
       a = { name: String(body.name), salt: rnd(16), created: now, fails: 0, lockUntil: 0, sess: [], games: {}, rs: rnd(16) };
       a.h = await sha(a.salt + body.key); a.rh = await sha(a.rs + normCode(code));
+      noteDev(a, req.headers.get('x-arcade-dev'));
       const token = await this.session(a);
       await dirCall(this.env, 'add', { n: a.name, c: a.created }); a.listed = 1;
       await S.put('acct', a);
@@ -284,6 +318,7 @@ export class Account extends DurableObject {
       a.fails = 0;
       let recovery;
       if (route === 'recover') { a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn; recovery = newCode(); a.rs = rnd(16); a.rh = await sha(a.rs + normCode(recovery)); }
+      noteDev(a, req.headers.get('x-arcade-dev'));
       const token = await this.session(a);
       await S.put('acct', a);
       return j(recovery ? { token, name: a.name, recovery } : { token, name: a.name });
@@ -292,7 +327,7 @@ export class Account extends DurableObject {
     const tok = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), part = tok.split('.')[1] || '';
     const th = part ? await sha(part) : '', si = (a.sess || []).findIndex(x => same(x.h, th));
     if (si < 0) return j({ error: 'auth' }, 401);
-    if (now - (a.sess[si].seen || 0) > 864e5) { a.sess[si].seen = now; await S.put('acct', a); }
+    if (now - (a.sess[si].seen || 0) > 864e5 | noteDev(a, req.headers.get('x-arcade-dev'))) { a.sess[si].seen = now; await S.put('acct', a); }
     // accounts made before the Players list (2026-11-06) join it the next time they're used
     if (!a.listed) { const r = await dirCall(this.env, 'add', { n: a.name, c: a.created }); if (r.ok) { a.listed = 1; await S.put('acct', a); } }
     if (route === 'whoami') return j({ name: a.name });
@@ -360,11 +395,20 @@ export class Account extends DurableObject {
       if (g.fails) { g.fails = 0; await S.put('guard', g); }
       return j({ ok: true });
     }
+    if (route === 'devlist' || route === 'devadd' || route === 'devdel') { // only on the '__devbans__' object
+      let list = (await S.get('devbans')) || [];
+      if (route === 'devlist') return j({ list });
+      const ds = (Array.isArray(body.devs) ? body.devs : []).filter(d => DEV_RE.test(d));
+      list = route === 'devadd' ? [...new Set(list.concat(ds))].slice(-DEV_MAX) : list.filter(d => !ds.includes(d));
+      await S.put('devbans', list);
+      return j({ ok: 1, n: list.length });
+    }
     const a = await S.get('acct');
     if (!a) return j({ error: 'no_account' }, 404);
+    if (route === 'admindevs') return j({ name: a.name, devs: a.devs || [] });
     if (route === 'admininfo') {
       const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
-      return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games, banned: a.banned ? 1 : 0 });
+      return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games, banned: a.banned ? 1 : 0, devs: (a.devs || []).length, devban: a.devban ? 1 : 0 });
     }
     // 2026-11-11: a ban signs the account out everywhere, stops it logging in, and takes it off the Players list
     if (route === 'adminban') {
@@ -381,6 +425,7 @@ export class Account extends DurableObject {
       await S.put('acct', a);
       return j({ name: a.name, code });
     }
+    if (route === 'admindevflag') { if (body.on) a.devban = { at: now }; else delete a.devban; await S.put('acct', a); return j({ ok: 1 }); }
     if (route === 'adminunban') { delete a.banned; await S.put('acct', a); await dirCall(this.env, 'add', { n: a.name, c: a.created }).catch(() => null); return j({ unbanned: true, name: a.name }); }
     if (route === 'adminrename') return this.renameTo(a, { name: body && body.to }, j, now, true);
     // 'list' (admin header only): used once on 2026-11-06 to put every older account on the Players list
