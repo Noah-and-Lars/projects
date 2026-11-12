@@ -94,6 +94,9 @@ source in Settings → Pages should be switched to `main`.
   Players can delete their own account in the panel (password again; this device keeps a local copy). The owner's
   tools: open the site with `?admin` to look up or delete any account with the Cube Assault ADMINTEST password
   (checked on the server against its SHA-256; 5 wrong tries lock it for 15 minutes). A deleted name is free again.
+  New recovery code (2026-11-12): the admin panel's "New recovery code" button (op 'newcode', Account 'adminnewcode') gives a
+  fresh code for a player who can't get in and clears a wrong-tries lockout; they use Log in > Forgot password with it.
+  Codes are only stored hashed, so an old code can never be shown. Admin accounts can't be given one.
 - Player names: every game with a name (Cube Assault, Cube Tower Defense, Havoc Bay, Rocket Rivals, Football,
   Poly Racer, Chess, Russian Roulette, Free Criminal, Blockcraft's server name) has a `<script id="arcade-name">`
   block at the top of `<head>`: it writes the account's (or local account's) name into the game's save before the

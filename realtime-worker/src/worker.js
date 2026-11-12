@@ -206,7 +206,7 @@ async function accounts(req, env, url) {
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -220,7 +220,7 @@ async function admin(env, body, out, auth) {
     const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
     if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
   }
-  if ((op === 'ban' || op === 'rename' || op === 'delete') && ADMIN_ACCOUNTS.includes(name.toLowerCase())) return out({ error: 'protected' }, 400);
+  if ((op === 'ban' || op === 'rename' || op === 'delete' || op === 'newcode') && ADMIN_ACCOUNTS.includes(name.toLowerCase())) return out({ error: 'protected' }, 400);
   if (op === 'chatdel') { // take a message out of the Global chat
     const r = await env.CHAT.get(env.CHAT.idFromName('chat:global')).fetch(new Request('https://chat/del', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-int': '1' }, body: JSON.stringify({ id: String(body.id || '') }) }));
     return out(await r.json().catch(() => ({})), r.status);
@@ -236,7 +236,7 @@ async function admin(env, body, out, auth) {
     return out(await r.json().catch(() => ({})), r.status);
   }
   if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
-  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename' }[op], { to: String(body.to || '') });
+  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename', newcode: 'adminnewcode' }[op], { to: String(body.to || '') });
   return out(await r.json().catch(() => ({})), r.status);
 }
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -372,6 +372,14 @@ export class Account extends DurableObject {
       await dirCall(this.env, 'del', { n: a.name }).catch(() => null);
       for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'banned'); } catch (e) {}
       return j({ banned: true, name: a.name });
+    }
+    // 2026-11-12: a new recovery code for a player who can't get in (the owner gives it to them; they choose a new password
+    // with Forgot password). The old code stops working, a lockout from wrong tries is cleared, devices stay signed in.
+    // Codes are only ever stored hashed, so the old one can't be shown.
+    if (route === 'adminnewcode') {
+      const code = newCode(); a.rs = rnd(16); a.rh = await sha(a.rs + normCode(code)); a.fails = 0; a.lockUntil = 0;
+      await S.put('acct', a);
+      return j({ name: a.name, code });
     }
     if (route === 'adminunban') { delete a.banned; await S.put('acct', a); await dirCall(this.env, 'add', { n: a.name, c: a.created }).catch(() => null); return j({ unbanned: true, name: a.name }); }
     if (route === 'adminrename') return this.renameTo(a, { name: body && body.to }, j, now, true);

@@ -565,12 +565,13 @@
   function isAdmin() { return !!(acct && acct.token && ADMIN_ACCOUNTS.indexOf(String(acct.name).toLowerCase()) >= 0); }
   function openAdmin() {
     var me = isAdmin();
-    overlay('<h2>Accounts admin</h2><p>Look up, ban, rename or delete an account.</p><form id="acF" autocomplete="off">' +
+    overlay('<h2>Accounts admin</h2><p>Look up, ban, rename or delete an account, or make a new recovery code for a player who can\u2019t get in.</p><form id="acF" autocomplete="off">' +
       (me ? '' : '<label for="acA">Admin password</label><input type="password" id="acA" autocomplete="off">') +
       '<label for="acN">Username</label><input type="text" id="acN" maxlength="16" spellcheck="false" autocapitalize="off">' +
       '<label for="acTo">New username (for Rename)</label><input type="text" id="acTo" maxlength="16" spellcheck="false" autocapitalize="off"><div class="err" id="acE"></div>' +
       '<div class="row"><button class="go" id="acLook" type="button">Look up</button><button class="go" id="acRn" type="button">Rename</button></div>' +
-      '<div class="row"><button class="go" id="acBan" type="button" style="background:#c46a1a">Ban</button><button class="go" id="acUnban" type="button">Unban</button><button class="go" id="acKill" type="button" style="background:#d63a3a">Delete</button></div></form><div id="acRes" class="stats"></div>', true);
+      '<div class="row"><button class="go" id="acBan" type="button" style="background:#c46a1a">Ban</button><button class="go" id="acUnban" type="button">Unban</button><button class="go" id="acKill" type="button" style="background:#d63a3a">Delete</button></div>' +
+      '<button class="go" id="acCode" type="button" style="width:100%;margin-top:8px;background:#3797f0">New recovery code (for a player who can\u2019t get in)</button></form><div id="acRes" class="stats"></div>', true);
     var run = function (op) {
       var E = $('acE'), n = $('acN').value.trim(), to = $('acTo').value.trim(); E.textContent = ''; $('acRes').innerHTML = '';
       if (!n) { E.textContent = 'Type a username.'; return; }
@@ -578,13 +579,19 @@
       if (op === 'delete' && !confirm('Delete the account ' + n + ' and all its saved progress for good?')) return;
       if (op === 'ban' && !confirm('Ban ' + n + '? They are signed out everywhere, can’t log in, and leave the Players list.')) return;
       if (op === 'rename' && !confirm('Rename ' + n + ' to ' + to + '? They are signed out and log in with the new name (same password).')) return;
+      if (op === 'newcode' && !confirm('Make a new recovery code for ' + n + '? Their old code stops working.\n\nOnly do this if you\u2019re sure the person asking really owns this account.')) return;
       api('admin', { method: 'POST', auth: me, body: { pw: me ? '' : $('acA').value, op: op, name: n, to: to } }).then(function (r) {
         if (r.status === 401) { E.textContent = 'Wrong admin password.'; return; }
         if (r.status === 429) { E.textContent = r.error === 'slow' ? 'Try again later.' : 'Too many wrong tries. Wait ' + Math.ceil((r.wait || 900) / 60) + ' minutes.'; return; }
         if (r.status === 404) { E.textContent = 'There’s no account called ' + n + '.'; return; }
-        if (r.error === 'protected') { E.textContent = 'Admin accounts can’t be banned, renamed or deleted here.'; return; }
+        if (r.error === 'protected') { E.textContent = 'Admin accounts can’t be banned, renamed, deleted or given a new code here.'; return; }
         if (op === 'rename' && r.status !== 200) { E.textContent = r.error === 'taken' ? 'That new name is taken.' : WHY[r.error] || 'Couldn’t rename (' + (r.error || r.status) + ').'; return; }
         if (r.status !== 200) { E.textContent = 'Something went wrong (' + (r.error || r.status) + ').'; return; }
+        if (r.code) { // 2026-11-12: give this to the player: Log in > Forgot password > their username, this code, a new password
+          $('acRes').innerHTML = '<div><b>New recovery code for ' + esc(r.name) + '</b><span style="font:800 20px/1.4 ui-monospace,monospace;letter-spacing:.06em;user-select:all">' + esc(r.code) + '</span></div>' +
+            '<div><b>Tell them</b><span>Log in \u2192 Forgot password, then type ' + esc(r.name) + ', this code and a new password. Any lockout from wrong tries is cleared. After they use it they get a fresh code of their own, so this one works once.</span></div>';
+          return;
+        }
         var done = r.deleted ? 'deleted' : r.banned ? 'banned' : r.unbanned ? 'unbanned' : op === 'rename' ? 'renamed to ' + r.name : '';
         if (done) { $('acRes').innerHTML = '<div><b>' + esc(op === 'rename' ? n : r.name) + '</b><span>' + esc(done) + '</span></div>'; return; }
         var rows = [['Username', r.name], ['Created', new Date(r.created).toLocaleString()], ['Signed-in devices', r.devices], ['Banned', r.banned ? 'Yes' : 'No']];
@@ -593,7 +600,7 @@
       });
     };
     $('acLook').onclick = function () { run('info'); }; $('acKill').onclick = function () { run('delete'); };
-    $('acBan').onclick = function () { run('ban'); }; $('acUnban').onclick = function () { run('unban'); }; $('acRn').onclick = function () { run('rename'); };
+    $('acBan').onclick = function () { run('ban'); }; $('acUnban').onclick = function () { run('unban'); }; $('acRn').onclick = function () { run('rename'); }; $('acCode').onclick = function () { run('newcode'); };
     $('acF').onsubmit = function (e) { e.preventDefault(); run('info'); };
   }
   function openPassword() {
