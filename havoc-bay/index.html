@@ -849,10 +849,10 @@ document.body.prepend(renderer.domElement);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.32; // 1.1: filmic, so colours stop looking like plastic toys
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.3, 7000);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.3, 10000); // 1.4.3: far 7000 -> 10000 for the bigger map
 camera.rotation.order = 'YXZ';
 const FOG_COL = new THREE.Color(0xc4d6e2); // 1.1: hazier
-scene.fog = new THREE.Fog(FOG_COL, 900, 4300);
+scene.fog = new THREE.Fog(FOG_COL, 1000, 5600); // 1.4.3: was 900-4300
 scene.background = FOG_COL;
 
 const SUN_DIR = new V3(0.42, 0.78, 0.46).normalize();
@@ -895,15 +895,17 @@ const skyMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(c, 1.0); }`,
   side: THREE.BackSide, depthWrite: false, fog: false,
 });
-const sky = new THREE.Mesh(new THREE.SphereGeometry(5500, 32, 16), skyMat);
+const sky = new THREE.Mesh(new THREE.SphereGeometry(8500, 32, 16), skyMat); // 1.4.3: was 5500
 sky.renderOrder = -10; sky.frustumCulled = false;
 scene.add(sky);
 
 // The map area and the shallow-water texture (filled in once islands exist)
-const MAP = { x0: -3150, z0: -1850, w: 6300, h: 3700 }; // 1.2.7: wider, the harbors are further apart
-const BOUND = { x: 2950, z: 1650 };
+// 1.4.3: the whole map is 1.5x bigger (MAP_K): harbors, islands, bounds, minimap, sea floor and the computer's map all scale
+const MAP_K = 1.5;
+const MAP = { x0: -3150 * MAP_K, z0: -1850 * MAP_K, w: 6300 * MAP_K, h: 3700 * MAP_K }; // 1.2.7: wider, the harbors are further apart
+const BOUND = { x: 2950 * MAP_K, z: 1650 * MAP_K };
 const FREEZE_S = 30;   // 1.2.3: seconds in the water before you freeze
-const DEPTH_W = 968, DEPTH_H = 568;
+const DEPTH_W = 1210, DEPTH_H = 710; // 1.4.3: x1.25 for the 1.5x map (a little coarser per metre, much cheaper than x1.5)
 const depthData = new Uint8Array(DEPTH_W * DEPTH_H * 4);
 const depthTex = new THREE.DataTexture(depthData, DEPTH_W, DEPTH_H, THREE.RGBAFormat);
 depthTex.magFilter = depthTex.minFilter = THREE.LinearFilter; depthTex.generateMipmaps = false;
@@ -947,7 +949,7 @@ const waterMat = new THREE.ShaderMaterial({
       gl_FragColor = vec4(col, 1.0);
     }`,
 });
-const water = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000, 1, 1), waterMat);
+const water = new THREE.Mesh(new THREE.PlaneGeometry(21000, 21000, 1, 1), waterMat); // 1.4.3: was 14000
 water.rotation.x = -Math.PI / 2; water.frustumCulled = false;
 scene.add(water);
 
@@ -1632,7 +1634,7 @@ const HELI_GEAR = 1.7; // from the middle of a helicopter down to its skids
 // 1.2.5: fuel, in seconds of flying at full throttle (it burns slower throttled back). Empty, the engine stops and the
 // plane glides down. Parked on a runway or your carrier for SERVICE_S seconds it is refuelled, rearmed and patched up.
 const PLANE_FUEL = { fighter: 150, jet: 110, bomber: 220, dual: 170, hornet: 240, kingfisher: 280, talon: 230, interceptor: 130, striker: 180, albatross: 300 }; // 1.4.3: bigger heli tanks
-for (const k in PLANE_FUEL) PLANE_TYPES[k].fuel = PLANE_FUEL[k];
+for (const k in PLANE_FUEL) PLANE_TYPES[k].fuel = Math.round(PLANE_FUEL[k] * 1.3); // 1.4.3: +30% for the 1.5x map
 const SERVICE_S = 8, SERVICE_HEAL = 0.5, JET_WAIT = 45; // JET_WAIT: a jet is ready 45 seconds into the match, and 45 seconds after each one (1.3.1: was a minute)
 const REAR_RANGE = 340, REAR_HIT = 0.75; // 1.2.5: the bomber's tail gunner hits three shots in four within range
 // 1.2: where your eyes are in each cockpit (plane space: +z forward)
@@ -2002,23 +2004,32 @@ function buildPad(team, kind) {
 /* ==========================================================================
    World: islands, terrain, harbors, colliders
    ========================================================================== */
-const HARBOR_X = 2126, G = 3.2; // 1.2.7: 35% further apart (it was 1575)
+const HARBOR_X = Math.round(2126 * MAP_K), G = 3.2; // 1.2.7: 35% further apart (it was 1575). 1.4.3: x1.5
 const ISLES = [
   { id: 'hb', name: 'Blue Harbor', x: -HARBOR_X, z: 0, r: 290, h: G, n: 0.03, seed: 1.3, type: 'harbor', team: 0 }, // 1.2.7: r 225 -> 290
   { id: 'hr', name: 'Red Harbor', x: HARBOR_X, z: 0, r: 290, h: G, n: 0.03, seed: 1.3, type: 'harbor', team: 1, flip: true },
   { id: 'crown', name: 'Crown Isle', x: 0, z: 0, r: 105, h: 13, n: 0.13, seed: 2.2, type: 'claim', rw: true }, // rw: 1.2.1, two runways
-  { id: 'gull', name: 'Gull Rock', x: -90, z: -810, r: 90, h: 11, n: 0.17, seed: 5.5, type: 'claim', rw: true }, // 1.3.1: bigger, with a runway (r was 78)
-  { id: 'turtle', name: 'Turtle Cay', x: 90, z: 810, r: 90, h: 11, n: 0.17, seed: 5.5, type: 'claim', flip: true, rw: true },
-  { id: 'palm', name: 'Palm Key', x: -750, z: 465, r: 78, h: 8, n: 0.15, seed: 3.3, type: 'claim', rw: true }, // 1.3.1: r was 66
-  { id: 'drift', name: 'Driftwood', x: 750, z: -465, r: 78, h: 8, n: 0.15, seed: 3.3, type: 'claim', flip: true, rw: true },
-  { x: -930, z: -660, r: 26, h: 5, n: 0.25, seed: 1.1, type: 'deco' },
-  { x: 930, z: 660, r: 26, h: 5, n: 0.25, seed: 1.1, type: 'deco', flip: true },
-  { x: -375, z: -285, r: 17, h: 4, n: 0.3, seed: 6.1, type: 'deco' },
-  { x: 375, z: 285, r: 17, h: 4, n: 0.3, seed: 6.1, type: 'deco', flip: true },
-  { x: -450, z: 1080, r: 30, h: 6, n: 0.22, seed: 8.8, type: 'deco' },
-  { x: 450, z: -1080, r: 30, h: 6, n: 0.22, seed: 8.8, type: 'deco', flip: true },
-  { x: -1185, z: -840, r: 22, h: 4.5, n: 0.25, seed: 4.4, type: 'deco' },
-  { x: 1185, z: 840, r: 22, h: 4.5, n: 0.25, seed: 4.4, type: 'deco', flip: true },
+  { id: 'gull', name: 'Gull Rock', x: -135, z: -1215, r: 90, h: 11, n: 0.17, seed: 5.5, type: 'claim', rw: true }, // 1.3.1: bigger, with a runway (r was 78)
+  { id: 'turtle', name: 'Turtle Cay', x: 135, z: 1215, r: 90, h: 11, n: 0.17, seed: 5.5, type: 'claim', flip: true, rw: true },
+  { id: 'palm', name: 'Palm Key', x: -1125, z: 698, r: 78, h: 8, n: 0.15, seed: 3.3, type: 'claim', rw: true }, // 1.3.1: r was 66
+  { id: 'drift', name: 'Driftwood', x: 1125, z: -698, r: 78, h: 8, n: 0.15, seed: 3.3, type: 'claim', flip: true, rw: true },
+  { x: -1395, z: -990, r: 26, h: 5, n: 0.25, seed: 1.1, type: 'deco' },
+  { x: 1395, z: 990, r: 26, h: 5, n: 0.25, seed: 1.1, type: 'deco', flip: true },
+  { x: -562, z: -428, r: 17, h: 4, n: 0.3, seed: 6.1, type: 'deco' },
+  { x: 562, z: 428, r: 17, h: 4, n: 0.3, seed: 6.1, type: 'deco', flip: true },
+  { x: -675, z: 1620, r: 30, h: 6, n: 0.22, seed: 8.8, type: 'deco' },
+  { x: 675, z: -1620, r: 30, h: 6, n: 0.22, seed: 8.8, type: 'deco', flip: true },
+  { x: -1778, z: -1260, r: 22, h: 4.5, n: 0.25, seed: 4.4, type: 'deco' },
+  { x: 1778, z: 1260, r: 22, h: 4.5, n: 0.25, seed: 4.4, type: 'deco', flip: true },
+  // 1.4.3: more small islands to fill the bigger sea (pairs: each one turned 180 degrees on the other side)
+  { x: -1500, z: 1650, r: 34, h: 6, n: 0.22, seed: 7.7, type: 'deco' },
+  { x: 1500, z: -1650, r: 34, h: 6, n: 0.22, seed: 7.7, type: 'deco', flip: true },
+  { x: -2100, z: -1200, r: 40, h: 7, n: 0.2, seed: 9.4, type: 'deco' },
+  { x: 2100, z: 1200, r: 40, h: 7, n: 0.2, seed: 9.4, type: 'deco', flip: true },
+  { x: -300, z: 1950, r: 24, h: 5, n: 0.28, seed: 2.9, type: 'deco' },
+  { x: 300, z: -1950, r: 24, h: 5, n: 0.28, seed: 2.9, type: 'deco', flip: true },
+  { x: -2400, z: 1500, r: 30, h: 5, n: 0.25, seed: 6.6, type: 'deco' },
+  { x: 2400, z: -1500, r: 30, h: 5, n: 0.25, seed: 6.6, type: 'deco', flip: true },
 ];
 // flip: the island is the same shape as its partner turned 180 degrees, so both halves of the map match
 ISLES.forEach(I => { I.br = I.r * (1 + I.n) * 1.45 + 24; });
@@ -2279,6 +2290,7 @@ function buildHarbor(team) {
     addPalm(s.b, x, h - 0.3, z, 0.9 + R() * 0.4, R);
   }
   buildGrid(H, s); // 1.4.3: the power grid and the harbor lights
+  buildKeepTop(H, s); // 1.4.3: a taller keep with a roof deck, a lift, AA guns and a spotting scope
   const [sx, sz] = s.wx(96, 0);
   H.spawn = new V3(sx, G, sz); H.spawnYaw = sgn > 0 ? Math.PI / 2 : -Math.PI / 2;
   H.mesh = s.finish();
@@ -3178,6 +3190,7 @@ function myPing() { // is a sonar map showing on this screen (seconds left, or 0
   if (!GAME.on || GAME.demo || PLAYER.team < 0) return 0;
   let t = 0;
   for (const e of ENTS) if (e.kind === 'ship' && pinging(e) && e.team === PLAYER.team && (e.S.ping.team || e === PLAYER.ent)) t = Math.max(t, e.pingT > 0 ? e.pingT : 1);
+  if (PLAYER.scopeT > 0) t = Math.max(t, PLAYER.scopeT); // 1.4.3: the keep's spotting scope
   return t;
 }
 function sonarPing(s) {
@@ -4733,6 +4746,13 @@ function useKey() {
     if (it.type === 'pad') openDeploy(it.pad.kind, it.pad);
     else if (it.type === 'turret' || it.type === 'ship') { enterVehicle(it.ent); Sound.play('ui'); }
     else if (it.type === 'pc') openPC(it.H);
+    else if (it.type === 'lift') { const e = PLAYER.soldier || PLAYER.ent; if (e) { e.pos.copy(it.L.to); e.vel && e.vel.set(0, 0, 0); } Sound.play('ui'); } // 1.4.3
+    else if (it.type === 'scope') { // 1.4.3: every enemy on your map for SCOPE_S seconds
+      const S = it.H.scope;
+      if (!powered(it.H.team)) { showMsg('⚡ No power', 'The spotting scope needs the power grid'); Sound.play('deny'); }
+      else if (S.cd > 0) { showMsg('', 'The scope is ready in ' + Math.ceil(S.cd) + 's'); Sound.play('deny'); }
+      else { S.cd = SCOPE_CD; PLAYER.scopeT = SCOPE_S; Sound.play('sonar'); showMsg('Spotted!', `Every enemy is on your map for ${SCOPE_S} seconds`); }
+    }
     else if (it.type === 'plane') boardParked(it.ent); // 1.3.1
   } else if (holdToBail()) return; // 1.3.1: out of a flying plane you hold E for 3 seconds
   else if (PLAYER.mode === 'ship' || PLAYER.mode === 'plane' || PLAYER.mode === 'turret' || PLAYER.mode === 'gunner') exitVehicle();
@@ -4762,6 +4782,12 @@ function findInteract(s) {
     if (e.kind !== 'plane' || !e.alive || e.team !== PLAYER.team || e.driver || e.disabled || !(e.landed || (e.P.heli ? e.grounded || (NET.client && e.speed < 2 && e.pos.y < heliFloor(e).y + HELI_GEAR + 1.5) : NET.client && e.speed < 3 && landFrame(e)))) continue; // 1.4: a landed helicopter
     const d = Math.hypot(s.pos.x - e.pos.x, s.pos.z - e.pos.z);
     if (d < e.P.r + 3 && Math.abs(s.pos.y - e.pos.y) < 5 && d < bd) { bd = d; best = { type: 'plane', ent: e, text: 'Get in the ' + e.P.name }; }
+  }
+  // 1.4.3: the keep's lift and spotting scope
+  for (const H of HARBORS) {
+    if (H.team !== PLAYER.team) continue;
+    for (const L of H.lifts || []) { const d = Math.hypot(s.pos.x - L.pos.x, s.pos.z - L.pos.z); if (d < 2.2 && Math.abs(s.pos.y - L.pos.y) < 2.5 && d < bd) { bd = d; best = { type: 'lift', L, text: L.text }; } }
+    const S = H.scope; if (S) { const d = Math.hypot(s.pos.x - S.pos.x, s.pos.z - S.pos.z); if (d < 2.4 && Math.abs(s.pos.y - S.pos.y) < 2.5 && d < bd) { bd = d; best = { type: 'scope', H, text: S.cd > 0 ? `Spotting scope · ready in ${Math.ceil(S.cd)}s` : 'Look through the spotting scope' }; } }
   }
   // 1.2.1: the missile computer in the keep
   for (const H of HARBORS) if (H.pc && Math.hypot(s.pos.x - H.pc.stand.x, s.pos.z - H.pc.stand.z) < 2.6 && Math.abs(s.pos.y - H.pc.stand.y) < 2) best = { type: 'pc', H, text: H.team === PLAYER.team ? 'Log on to the missile computer' : 'Use the enemy\u2019s computer' };
@@ -5557,7 +5583,7 @@ function updateHUD(dt) {
 }
 
 /* ---------- minimap ---------- */
-const MINI = { x0: -2980, z0: -2187, w: 5960, h: 4374 }; // 1.2.7: the whole wider map, same shape as the minimap
+const MINI = { x0: -2980 * MAP_K, z0: -2187 * MAP_K, w: 5960 * MAP_K, h: 4374 * MAP_K }; // 1.2.7: the whole wider map, same shape as the minimap (1.4.3: x MAP_K)
 let mapBase = null;
 function buildMapBase() {
   const W = 620, H = 460, c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -5609,6 +5635,36 @@ function buildGrid(H, s) {
   H.lampMat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: true });
   const lg = new THREE.Group(); lg.position.set(s.ox, 0, s.oz); lg.rotation.y = s.sgn > 0 ? 0 : Math.PI; lg.add(lb.mesh(H.lampMat, false)); scene.add(lg);
 }
+// 1.4.3: the keep grows a third tier with a radar on top and a roof deck round it: a lift by the door takes you up
+// (and another back down), two AA guns to man, and a spotting scope that shows every enemy on your map for SCOPE_S
+// seconds (SCOPE_CD between uses; it needs the power on). The lift and scope are E interactions (findInteract).
+const SCOPE_S = 15, SCOPE_CD = 60, KEEP_TOP = [];
+function buildKeepTop(H, s) {
+  const y = G + 28, b = s.b, T = TEAM[H.team], DK = 0x2a2d33, W = (lx, ly, lz) => { const [x, z] = s.wx(lx, lz); return new V3(x, ly, z); };
+  s.box(10, 7, 8, C.stone, 60, y + 3.5, 0, 'sh'); b.box(10.6, 0.7, 8.6, C.dstone, 60, y + 7.05, 0);
+  crenels(s, 55, 65, -4, -4, y + 7.4, C.dstone); crenels(s, 55, 65, 4, 4, y + 7.4, C.dstone); crenels(s, 55, 55, -4, 4, y + 7.4, C.dstone); crenels(s, 65, 65, -4, 4, y + 7.4, C.dstone);
+  for (const lz of [-4.05, 4.05]) for (const lx of [57, 60, 63]) b.box(1.1, 1.8, 0.2, DK, lx, y + 4, lz); // windows
+  for (const lx of [54.95, 65.05]) for (const lz of [-2, 2]) b.box(0.2, 1.8, 1.1, DK, lx, y + 4, lz);
+  b.box(0.3, 5, 3, T.flag, 65.2, y + 3.4, 0); b.box(0.32, 0.8, 3, 0xf2c230, 65.25, y + 1.3, 0); // banner
+  // the radar: a lattice mast and a dish that turns
+  for (const [dx, dz] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) b.box(0.14, 5, 0.14, DK, 62.5 + dx, y + 9.9, 2 + dz);
+  for (let i = 0; i < 4; i++) b.box(1.4, 0.1, 1.4, DK, 62.5, y + 8.2 + i * 1.2, 2);
+  const dish = new THREE.Group(), db = new Builder();
+  db.box(5.4, 1.6, 0.25, 0xd6dade, 0, 0, 0); db.box(5.6, 0.12, 0.3, 0x9aa1a8, 0, 0.85, 0); db.box(5.6, 0.12, 0.3, 0x9aa1a8, 0, -0.85, 0); db.box(0.3, 0.3, 1.2, DK, 0, 0, 0.6);
+  dish.add(db.mesh()); const [rx, rz] = s.wx(62.5, 2); dish.position.set(rx, y + 13, rz); scene.add(dish);
+  KEEP_TOP.push({ H, dish });
+  // the deck: a rail round the edge, searchlights, a lift down, two AA guns and the scope
+  for (const [lx, lz, w, d] of [[60, -7.1, 18, 0.15], [60, 7.1, 18, 0.15], [51.1, 0, 0.15, 14], [68.9, 0, 0.15, 14]]) { b.box(w, 0.12, d, 0x9aa1a8, lx, y + 1.1, lz); s.col(w, 1.2, d, lx, y + 0.6, lz, 's'); }
+  const lb = new Builder();
+  for (const [lx, lz] of [[51.8, -6.4], [68.2, 6.4]]) { b.cyl(0.18, 2, DK, lx, y + 1, lz, 0, 0, 0, 6); b.cyl(0.55, 0.7, DK, lx, y + 2.2, lz, Math.PI / 2, 0, 0, 10); lb.cyl(0.45, 0.05, 0xffffff, lx, y + 2.2, lz + 0.36, Math.PI / 2, 0, 0, 10); }
+  const lg = new THREE.Group(); lg.position.set(s.ox, 0, s.oz); lg.rotation.y = s.sgn > 0 ? 0 : Math.PI; lg.add(lb.mesh(H.lampMat, false)); scene.add(lg);
+  b.cyl(1.3, 0.12, 0xf2c230, 53, y + 0.06, -5, 0, 0, 0, 16); b.cyl(1.3, 0.12, 0xf2c230, 79, G + 0.06, 6, 0, 0, 0, 16); // the lift pads
+  b.box(0.15, 2.4, 1.6, 0xf2c230, 80.6, G + 1.6, 6); b.box(0.16, 0.9, 0.9, DK, 80.65, G + 1.9, 6);
+  b.cyl(0.12, 1.2, DK, 66.5, y + 0.6, 5.2, 0, 0, 0, 6); b.cyl(0.22, 1.4, 0x3a3f46, 66.5, y + 1.35, 5.2, 0, 0, Math.PI / 2 - 0.15, 8); b.cyl(0.26, 0.1, C.glass, 67.2, y + 1.45, 5.2, 0, 0, Math.PI / 2, 8); // the scope
+  TURRET_SPOTS.push({ type: 'aa', team: H.team, site: s, lx: 56, ly: y, lz: 5, owner: H }, { type: 'aa', team: H.team, site: s, lx: 64, ly: y, lz: -5, owner: H });
+  H.lifts = [{ pos: W(79, G, 6), to: W(53, y + 0.3, -5), text: '⬆ Take the lift to the roof deck' }, { pos: W(53, y, -5), to: W(79, G + 0.3, 9), text: '⬇ Take the lift down' }];
+  H.scope = { pos: W(66, y, 5.2), cd: 0 };
+}
 function gridDamage(H, amt, src) {
   if (NET.client || !H || !H.grid || GAME.over) return;
   const g = H.grid;
@@ -5642,7 +5698,10 @@ function gridStep(dt) {
     if (g.st === 1 && !NET.client) { g.left -= dt; if (g.left <= 0) { g.left = 0; g.st = 2; gridNote(H, 'ready'); } }
     if (g.st === 1 && NET.client) g.left = Math.max(0, g.left - dt);
     if (H.lampMat) { const k = g.st === 0 ? 0.35 + 0.65 * (1 - (DN.k ?? 1)) : 0.06; H.lampMat.color.setRGB(k, k * 0.92, k * 0.7); }
+    if (H.scope && H.scope.cd > 0) H.scope.cd -= dt;
   }
+  for (const k of KEEP_TOP) if (powered(k.H.team)) k.dish.rotation.y += dt * 0.9; // the radar turns while there's power
+  if (PLAYER.scopeT > 0) PLAYER.scopeT -= dt;
   // repairing your own grid
   const H = HARBORS[PLAYER.team], g = H && H.grid, e = PLAYER.ent;
   const near = !!(g && g.st === 2 && PLAYER.mode === 'foot' && e && e.alive && e.pos.distanceTo(g.pos) < GRID_FIX_R + 3);
@@ -7055,7 +7114,7 @@ function closePC() {
 // screen layout (canvas pixels)
 const BTN_SEND = [22, 66, 148, 140], BTN_MAP = [182, 66, 148, 140], BTN_UPG = [342, 66, 148, 140], BTN_OFF = [418, 34, 82, 26], BTN_BACK = [12, 286, 80, 26];   // 1.2.3: two apps, Missiles and Map (1.3.1: and Team Upgrades)
 const inBox = (b, x, y) => x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3];
-const MAPV = { cx: 256, cy: 166, s: 0.053 }; // 1.2.7: fits the wider map
+const MAPV = { cx: 256, cy: 166, s: 0.053 / MAP_K }; // 1.2.7: fits the wider map (1.4.3: and the 1.5x one)
 const mapXY = (x, z) => [MAPV.cx + x * MAPV.s, MAPV.cy + z * MAPV.s];
 function pcStep(dt) {
   const pc = PC.on, mine = pc.H.team === PLAYER.team;
@@ -7532,6 +7591,29 @@ function addCampfire(b, x, y, z) {
   for (const [lx, lz, a] of [[2.6, 0, 0], [-2.2, 1.4, 1], [0.4, -2.6, 2]]) b.box(1.8, 0.45, 0.45, 0x6e4826, x + lx, y + 0.22, z + lz, 0, a, 0); // logs to sit on
   ANIMS.push({ kind: 'fire', pos: new V3(x, y + 0.5, z), t: 0 });
 }
+// 1.4.3: more life on the islands
+function addCanoe(b, x, y, z, a) { // a dugout pulled up on the sand, with a paddle
+  const c = Math.cos(a), sn = Math.sin(a);
+  b.add(sphGeo(10), 0x7a4e2a, x, y + 0.25, z, 0, a, 0, 0.55, 0.32, 2.4); b.add(sphGeo(10), 0x3b2614, x, y + 0.36, z, 0, a, 0, 0.42, 0.2, 2.1);
+  b.box(0.08, 0.06, 1.8, 0xc9a26b, x + c * 0.8, y + 0.08, z - sn * 0.8, 0, a + 0.3, 0); b.box(0.3, 0.05, 0.5, 0xc9a26b, x + c * 0.8 + sn * 0.9, y + 0.08, z - sn * 0.8 + c * 0.9, 0, a + 0.3, 0);
+}
+function addLookout(b, x, y, z) { // a wooden lookout tower on stilts with a ladder and a thatched roof
+  for (const [dx, dz] of [[-1.3, -1.3], [1.3, -1.3], [-1.3, 1.3], [1.3, 1.3]]) b.box(0.25, 7, 0.25, 0x6e4826, x + dx, y + 3.5, z + dz);
+  for (const yy of [2.3, 4.6]) { b.box(2.9, 0.12, 0.12, 0x5a3b1e, x, y + yy, z - 1.3); b.box(2.9, 0.12, 0.12, 0x5a3b1e, x, y + yy, z + 1.3); }
+  b.box(3.4, 0.2, 3.4, 0x8a5d33, x, y + 7, z);
+  for (const [dx, dz, w, d] of [[0, -1.6, 3.4, 0.1], [0, 1.6, 3.4, 0.1], [-1.6, 0, 0.1, 3.4]]) b.box(w, 0.9, d, 0x6e4826, x + dx, y + 7.55, z + dz);
+  for (const dx of [-1.6, 1.6]) for (const dz of [-1.6, 1.6]) b.box(0.15, 2.4, 0.15, 0x5a3b1e, x + dx, y + 8.3, z + dz);
+  b.add(cylGeo(0, 1, 8), 0xc9b27a, x, y + 10.2, z, 0, Math.PI / 8, 0, 2.9, 1.4, 2.9);
+  for (let i = 0; i < 8; i++) b.box(0.9, 0.08, 0.1, 0x5a3b1e, x + 2.0, y + 0.5 + i * 0.85, z, 0, 0, 0); b.box(0.1, 7, 0.1, 0x5a3b1e, x + 2.4, y + 3.5, z); b.box(0.1, 7, 0.1, 0x5a3b1e, x + 1.6, y + 3.5, z);
+}
+function addCrates(b, x, y, z, R) { for (let i = 0; i < 3 + (R() * 3 | 0); i++) { const s = 0.9 + R() * 0.4; b.box(s, s, s, pick([0x9b6a3c, 0x8a5d33, 0xb07d48]), x + (i % 3) * 1.1 - 1.1, y + s / 2 + (i > 2 ? 1 : 0), z + (i > 2 ? 0.3 : 0), 0, R() * 0.6, 0); } }
+function addRack(b, x, y, z, a) { // fish drying on a rack
+  for (const d of [-1.4, 1.4]) b.box(0.12, 1.9, 0.12, 0x6e4826, x + Math.cos(a) * d, y + 0.95, z - Math.sin(a) * d);
+  b.box(3.0, 0.08, 0.08, 0x5a3b1e, x, y + 1.85, z, 0, a, 0);
+  for (let i = -2; i <= 2; i++) b.add(sphGeo(6), 0xb8c4cc, x + Math.cos(a) * i * 0.55, y + 1.45, z - Math.sin(a) * i * 0.55, 0, a, 0, 0.12, 0.38, 0.06);
+}
+function addFlowers(b, x, y, z, R) { for (let i = 0; i < 5; i++) { const a = R() * TAU, d = R() * 1.6; b.ball(0.5 + R() * 0.3, 0x2f7d3a, x + Math.cos(a) * d, y + 0.3, z + Math.sin(a) * d, 6); b.ball(0.16, pick([0xff5a8a, 0xffd23a, 0xff7a3a, 0xc86aff, 0xffffff]), x + Math.cos(a) * d, y + 0.75, z + Math.sin(a) * d, 5); } }
+function addLog(b, x, y, z, a) { b.cyl(0.32, 3.4, 0x8f7558, x, y + 0.25, z, Math.PI / 2, a, 0, 7); b.cyl(0.33, 0.06, 0xb89a74, x + Math.sin(a) * 1.7, y + 0.25, z + Math.cos(a) * 1.7, Math.PI / 2, a, 0, 7); }
 function addBarrels(b, x, y, z, R) { for (let i = 0; i < 3 + (R() * 3 | 0); i++) b.cyl(0.45, 1.1, pick([0x3d6b3a, 0x8f3a2a, 0x4a5a6a]), x + (i % 3) * 1 - 1, y + 0.55 + (i > 2 ? 1.1 : 0), z + (i > 2 ? 0.5 : 0), 0, 0, 0, 10); }
 function addUmbrella(b, x, y, z, R) {
   const c = pick([0xff5a4a, 0x3f8fff, 0xffd23a, 0x3dbb6a]);
@@ -7630,6 +7712,14 @@ function detailIsland(I) {
     let p = spot(4); if (p) addCampfire(b, p[0], p[1] - 0.05, p[2]);
     p = spot(3); if (p) addBarrels(b, p[0], p[1], p[2], R);
     for (let k = 0; k < 3; k++) { const q = spot(3, 0.75, 1.05); if (q && q[1] < 2.6) addUmbrella(b, q[0], q[1] - 0.05, q[2], R); }
+    // 1.4.3: a lookout, canoes on the beach, crates, a fish rack, flowers, driftwood and more palms
+    p = spot(5, 0.35, 0.7); if (p) { addLookout(b, p[0], p[1] - 0.1, p[2]); solid(p[0], p[2], 3, 8, 3, p[1]); }
+    for (let k = 0; k < 2; k++) { const q = spot(3, 0.85, 1.1); if (q && q[1] < 2.4) addCanoe(b, q[0], q[1], q[2], q[3] + Math.PI / 2); }
+    p = spot(3, 0.3, 0.8); if (p) addCrates(b, p[0], p[1], p[2], R);
+    p = spot(3, 0.5, 0.9); if (p) addRack(b, p[0], p[1], p[2], p[3]);
+    for (let k = 0; k < 4; k++) { const q = spot(2.5, 0.25, 0.9); if (q) addFlowers(b, q[0], q[1], q[2], R); }
+    for (let k = 0; k < 3; k++) { const q = spot(3, 0.8, 1.1); if (q && q[1] < 2.6) addLog(b, q[0], q[1], q[2], R() * TAU); }
+    for (let k = 0; k < 6; k++) { const q = spot(2.5, 0.45, 0.95); if (q) addPalm(b, q[0], q[1] - 0.3, q[2], 0.8 + R() * 0.45, R); }
     if (I.id === 'crown') { p = spot(5, 0.15, 0.35); if (p) { g.add(addMast(b, p[0], p[1] - 0.2, p[2])); solid(p[0], p[2], 3, 34, 3, p[1]); } }
     if (I.id === 'gull' || I.id === 'turtle') { // a lighthouse on the outer shore
       const dirZ = I.z < 0 ? -1 : 1;
@@ -7641,7 +7731,8 @@ function detailIsland(I) {
     const dp = pad && pad.pads.find(q => q.kind === 'boat');
     if (dp) { const dx = Math.sin(dp.heading), dz = Math.cos(dp.heading); addBoat(dp.pos.x + dz * 7 - dx * 10, dp.pos.z - dx * 7 - dz * 10, dp.heading + 0.1); }
   } else {
-    if (I.r >= 26) { let p = houseSpot(7.5, 5.8, 0.05, 0.55); if (p) addHut(b, ib, I, p[0], p[1], p[2], R() * 4 & 3); p = spot(3, 0.2, 0.7); if (p) addCampfire(b, p[0], p[1] - 0.05, p[2]); }
+    if (I.r >= 26) { let p = houseSpot(7.5, 5.8, 0.05, 0.55); if (p) addHut(b, ib, I, p[0], p[1], p[2], R() * 4 & 3); p = spot(3, 0.2, 0.7); if (p) addCampfire(b, p[0], p[1] - 0.05, p[2]);
+      const q = spot(3, 0.75, 1.1); if (q && q[1] < 2.4) addCanoe(b, q[0], q[1], q[2], q[3]); for (let k = 0; k < 3; k++) { const f = spot(2, 0.2, 0.8); if (f) (k ? addPalm(b, f[0], f[1] - 0.3, f[2], 0.75 + R() * 0.3, R) : addCrates(b, f[0], f[1], f[2], R)); } } // 1.4.3
     else {
       for (let d = I.r * 0.4; d < I.r * 1.4; d += 1) { const a = I.seed * 2.1 + (I.flip ? Math.PI : 0), wx = I.x + Math.cos(a) * d, wz = I.z + Math.sin(a) * d; if (landH(wx, wz) < 0.4) { addWreck(b, wx - I.x, -0.4, wz - I.z, a + 1.2, R); break; } }
       const p = spot(3, 0.1, 0.6); if (p) addBarrels(b, p[0], p[1], p[2], R);
@@ -7656,10 +7747,10 @@ const BIRDS = (() => {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.35, 0, 0, -0.35, -1.3, 0.35, -0.1, 0, 0, -0.35, 0, 0, 0.35, 1.3, 0.35, -0.1], 3));
   geo.computeVertexNormals();
-  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: 0xf2f4f6, side: THREE.DoubleSide }), 48);
+  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: 0xf2f4f6, side: THREE.DoubleSide }), 80); // 1.4.3: 48 -> 80 for the bigger map
   mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   const list = [], R = rng(4.2), spots = ISLES.filter(I => I.type !== 'deco' || I.r > 20);
-  for (let i = 0; i < 48; i++) { const I = spots[i % spots.length]; list.push({ x: I.x, z: I.z, r: (I.type === 'harbor' ? 120 : I.r * 0.6) + R() * 30, h: 22 + R() * 40, a: R() * TAU, sp: (0.25 + R() * 0.2) * (R() < 0.5 ? -1 : 1), ph: R() * TAU }); }
+  for (let i = 0; i < 80; i++) { const I = spots[i % spots.length]; list.push({ x: I.x, z: I.z, r: (I.type === 'harbor' ? 120 : I.r * 0.6) + R() * 30, h: 22 + R() * 40, a: R() * TAU, sp: (0.25 + R() * 0.2) * (R() < 0.5 ? -1 : 1), ph: R() * TAU }); }
   scene.add(mesh);
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new V3(), S = new V3(), E = new THREE.Euler();
   return { tick(dt, t) {
