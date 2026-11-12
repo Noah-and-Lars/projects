@@ -2278,6 +2278,7 @@ function buildHarbor(team) {
     if (h < 0.6) continue;
     addPalm(s.b, x, h - 0.3, z, 0.9 + R() * 0.4, R);
   }
+  buildGrid(H, s); // 1.4.3: the power grid and the harbor lights
   const [sx, sz] = s.wx(96, 0);
   H.spawn = new V3(sx, G, sz); H.spawnYaw = sgn > 0 ? Math.PI / 2 : -Math.PI / 2;
   H.mesh = s.finish();
@@ -2753,6 +2754,7 @@ function impact(p, point, ent, box, water) {
   const W = p.W, k = p.auto ? AUTO_DMG : 1; // 1.3.1: automatic guns hit 30% softer
   if (ent) applyDamage(ent, W.dmg * mult(W, ent) * k * (subUnder(ent) ? W.deep : 1), p);
   else if (box && box.hit && box.owner && box.owner.ent && box.owner.ent.kind === 'harbor') applyDamage(box.owner.ent, W.dmg * W.vs.harbor * k, p);
+  else if (box && box.hit && box.owner && box.owner.grid) gridDamage(box.owner.grid, W.dmg * (W.vs.turret ?? 0.6) * k, p); // 1.4.3
   if (W.splash) {
     splashDamage(point, W.splash, W.dmg * (W.splashK || 0.4) * k, p, ent);
     if (p.sank) { const q = _v1.set(point.x, 0, point.z); splash(q, 9); splash(q, 6, true); fxWake.spawn(q.x, 0.1, q.z, 0, 0, 0, 2.4, 6, 30, 0xffffff); if (camera.position.distanceTo(q) < 200) camShake = Math.max(camShake, 0.5); } // 1.4: a plume of water
@@ -2780,6 +2782,11 @@ function splashDamage(point, R, dmg, p, skip) {
       if (dx * dx + dy * dy + dz * dz < R * R) near = true;
     }
     if (near) applyDamage(H.ent, dmg * p.W.vs.harbor * 0.5, p);
+  }
+  for (const H of HARBORS) { // 1.4.3: the power grid takes splash too
+    const g = H && H.grid; if (!g || H.team === p.team || g.st !== 0) continue;
+    const d = g.pos.distanceTo(point) - 6;
+    if (d < R) gridDamage(H, dmg * (p.W.vs.turret ?? 0.6) * (1 - Math.max(0, d) / R), p);
   }
 }
 
@@ -3656,6 +3663,7 @@ function planeImpact(pl, ship) {
     applyDamage(e, (e.kind === 'ship' ? e.maxHp * 0.15 : e.kind === 'turret' ? e.maxHp * 0.6 : 450) * f, src(e));
   }
   for (const H of HARBORS) if (H.ent && H.team !== pl.team && Math.hypot(H.isle.x - pl.pos.x, H.isle.z - pl.pos.z) < H.isle.r + 20) applyDamage(H.ent, 1000, foe); // 1.4.3: a kamikaze does 1000 to an enemy base (was 700)
+  for (const H of HARBORS) if (H.grid && H.team !== pl.team && H.grid.pos.distanceTo(pl.pos) < 40) gridDamage(H, 1000, foe); // 1.4.3: and 1000 to its power grid
 }
 /* ---------------- the player on foot ---------------- */
 class Soldier extends Ent {
@@ -5481,6 +5489,7 @@ function updateHUD(dt) {
   // prompt
   let prompt = '';
   if (PLAYER.pc) prompt = '';
+  else if (PLAYER.gridNear) { const g = HARBORS[PLAYER.team].grid; prompt = g.fix > 0 ? `Repairing the power grid… ${Math.max(0, GRID_FIX_S - g.fix).toFixed(1)}s` : '<kbd>E</kbd>Hold to repair the power grid (10 s)'; } // 1.4.3
   else if (PLAYER.bailT > 0 && holdToBail()) prompt = `<kbd>E</kbd>Bailing out in ${Math.max(0, BAIL_S - PLAYER.bailT).toFixed(1)}s…`; // 1.3.1
   else if (mode === 'foot' && PLAYER.interact) prompt = (touchOn() ? '<kbd>E</kbd>' : '<kbd>E</kbd>') + PLAYER.interact.text;
   else if (mode === 'foot' && PLAYER.soldier && PLAYER.soldier.chute) prompt = 'Parachuting…';
@@ -5568,8 +5577,93 @@ function buildMapBase() {
   }
   mapBase = c;
 }
+/* 1.4.3: the power grid. Each harbor has a substation (GRID_HP health) in its courtyard that powers the harbor lights,
+   the keep's computer (Havoc OS) and the team's map. Knocked out, that team has no power for GRID_DOWN_S seconds; then
+   anyone on the team can hold E at it for GRID_FIX_S seconds to repair it. The host decides (gridDamage); everyone gets
+   its state with the team upgrades (snap131: [hp, state, seconds left]). state: 0 = on, 1 = down, 2 = broken (repairable). */
+const GRID_HP = 2000, GRID_DOWN_S = 180, GRID_FIX_S = 10, GRID_FIX_R = 9;
+const powered = team => { const H = HARBORS[team]; return !H || !H.grid || H.grid.st === 0; };
+function buildGrid(H, s) {
+  const lx = 98, lz = -38, y = G, b = s.b, MET = 0x6f7780, DK = 0x3a3f46, CER = 0xd9d3c4;
+  b.box(15, 0.5, 11, 0x8a8d92, lx, y + 0.25, lz);                                    // concrete pad
+  for (const [fx, fz, fw, fd] of [[0, -5.4, 15, 0.12], [0, 5.4, 15, 0.12], [-7.4, 0, 0.12, 11], [7.4, 0, 0.12, 11]]) { b.box(fw, 2.2, fd, 0x9aa1a8, lx + fx, y + 1.35, lz + fz); } // chain-link fence
+  for (let i = -1; i <= 1; i++) {                                                     // three transformers
+    const x = lx + i * 4.4;
+    b.box(3, 3.2, 2.4, MET, x, y + 2.1, lz - 1.6); b.box(3.1, 0.25, 2.5, DK, x, y + 3.75, lz - 1.6);
+    for (let f = -1; f <= 1; f++) b.box(0.12, 2.6, 2.6, DK, x + f * 1.0, y + 2.0, lz - 1.6); // cooling fins
+    for (const ix of [-0.9, 0, 0.9]) { b.cyl(0.16, 1.2, CER, x + ix, y + 4.5, lz - 1.6, 0, 0, 0, 8); b.cyl(0.26, 0.12, CER, x + ix, y + 4.3, lz - 1.6, 0, 0, 0, 8); b.cyl(0.26, 0.12, CER, x + ix, y + 4.7, lz - 1.6, 0, 0, 0, 8); }
+  }
+  for (const sx of [-6, 6]) { b.box(0.35, 9, 0.35, DK, lx + sx, y + 4.5, lz + 3); b.box(0.3, 0.3, 3.4, DK, lx + sx, y + 8.6, lz + 3); } // gantry posts
+  b.box(12.4, 0.3, 0.3, DK, lx, y + 8.6, lz + 3);
+  for (let i = -2; i <= 2; i++) b.cyl(0.05, 6.5, 0x202326, lx + i * 2.4, y + 8.9, lz + 0.7, Math.PI / 2 - 0.25, 0, 0, 4); // wires down to the transformers
+  b.box(3.2, 1.6, 0.15, 0xf2c230, lx, y + 1.9, lz + 5.6); b.box(0.5, 1.1, 0.16, 0x1c1c1c, lx, y + 1.9, lz + 5.62, 0, 0, 0.5); // ⚡ sign
+  b.box(2.6, 3, 2, 0xcfd3d8, lx + 5.2, y + 1.75, lz + 2.6); b.box(0.9, 2, 0.08, DK, lx + 5.2, y + 1.3, lz + 3.62); // control hut
+  const box = s.col(15, 6, 11, lx, y + 3, lz, 'sh'); box.owner = { grid: H };
+  const [wx, wz] = s.wx(lx, lz);
+  H.grid = { hp: GRID_HP, st: 0, left: 0, fix: 0, pos: new V3(wx, y + 3, wz), box, fire: null };
+  // the harbor lights: lamps on posts round the courtyard and along the piers (a material of their own, so they can go dark)
+  const lb = new Builder(), lamp = (x, z, h) => { b.cyl(0.15, h, DK, x, y + h / 2, z, 0, 0, 0, 6); b.box(0.9, 0.18, 0.5, DK, x, y + h + 0.1, z); lb.box(0.7, 0.22, 0.38, 0xffffff, x, y + h - 0.05, z); };
+  for (let z = -44; z <= 44; z += 22) { lamp(10, z, 6); lamp(110, z, 6); }
+  for (let x = 32; x <= 92; x += 30) { lamp(x, -50, 6); lamp(x, 50, 6); }
+  for (const z of [-30, -10, 10, 30]) lamp(132, z, 5);
+  H.lampMat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: true });
+  const lg = new THREE.Group(); lg.position.set(s.ox, 0, s.oz); lg.rotation.y = s.sgn > 0 ? 0 : Math.PI; lg.add(lb.mesh(H.lampMat, false)); scene.add(lg);
+}
+function gridDamage(H, amt, src) {
+  if (NET.client || !H || !H.grid || GAME.over) return;
+  const g = H.grid;
+  if (g.st !== 0 || amt <= 0 || (src && src.team === H.team)) return;
+  g.hp -= amt;
+  if (src && src.owner && src.owner.isPlayer) hitMarker(false);
+  if (g.hp <= 0) gridDown(H, src && src.owner);
+}
+function gridDown(H, by) {
+  const g = H.grid; g.hp = 0; g.st = 1; g.left = GRID_DOWN_S; g.fix = 0;
+  explode(g.pos.clone(), 9); if (!g.fire) g.fire = addEmitter(g.pos.clone().setY(g.pos.y + 2), 3);
+  if (by && by.isPlayer) giveGold(120); else if (by && by.peer) giveGold(120, by);
+  gridNote(H, 'down');
+}
+function gridFix(H) {
+  const g = H.grid; g.hp = GRID_HP; g.st = 0; g.left = 0; g.fix = 0;
+  if (g.fire) { g.fire.life = 0; g.fire = null; }
+  gridNote(H, 'fixed');
+}
+function gridNote(H, what) {
+  const ours = H.team === PLAYER.team;
+  if (what === 'down') { showMsg(ours ? '⚡ Our power grid is down!' : '⚡ Enemy power grid destroyed!', ours ? 'No computer, map or harbor lights for 3 minutes. Then repair it in the courtyard (hold E).' : 'Their computer, map and harbor lights are out for 3 minutes'); Sound.play(ours ? 'deny' : 'buy'); }
+  else if (what === 'ready') { if (ours) showMsg('⚡ Grid ready to repair', 'Go to the substation in the courtyard and hold E for 10 seconds'); }
+  else showMsg(ours ? '⚡ Power restored' : '⚡ Enemy power restored', ours ? 'The computer, map and harbor lights are back' : 'Their grid is back up');
+  if (what === 'down' && ours && PC.on) closePC();
+}
+// every frame: the outage clock, the repair you're holding E for, and the lights
+function gridStep(dt) {
+  for (const H of HARBORS) {
+    const g = H && H.grid; if (!g) continue;
+    if (g.st === 1 && !NET.client) { g.left -= dt; if (g.left <= 0) { g.left = 0; g.st = 2; gridNote(H, 'ready'); } }
+    if (g.st === 1 && NET.client) g.left = Math.max(0, g.left - dt);
+    if (H.lampMat) { const k = g.st === 0 ? 0.35 + 0.65 * (1 - (DN.k ?? 1)) : 0.06; H.lampMat.color.setRGB(k, k * 0.92, k * 0.7); }
+  }
+  // repairing your own grid
+  const H = HARBORS[PLAYER.team], g = H && H.grid, e = PLAYER.ent;
+  const near = !!(g && g.st === 2 && PLAYER.mode === 'foot' && e && e.alive && e.pos.distanceTo(g.pos) < GRID_FIX_R + 3);
+  PLAYER.gridNear = near;
+  if (near && (KEYS.KeyE || TOUCH.use) && !overlayOpen() && !PC.on) {
+    g.fix += dt;
+    if (g.fix >= GRID_FIX_S) { g.fix = 0; if (NET.client) NET.ask131(['g']); else gridFix(H); }
+  } else if (g) g.fix = 0;
+}
 function drawMap(cv, big, sonar) {
   if (!mapBase) return;
+  if (!powered(PLAYER.team) && !sonar) { // 1.4.3: no power, no map
+    const x = cv.getContext('2d'), W = cv.width, Hh = cv.height;
+    x.fillStyle = '#0b0e13'; x.fillRect(0, 0, W, Hh);
+    x.fillStyle = 'rgba(255,255,255,.06)'; for (let i = 0; i < 60; i++) x.fillRect(Math.random() * W, Math.random() * Hh, 2, 2);
+    x.fillStyle = '#ffd34d'; x.font = `900 ${big ? 34 : 15}px system-ui,sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('⚡ NO POWER', W / 2, Hh / 2 - (big ? 18 : 8));
+    const g = HARBORS[PLAYER.team].grid; x.fillStyle = '#cfd6df'; x.font = `700 ${big ? 18 : 10}px system-ui,sans-serif`;
+    x.fillText(g.st === 1 ? 'Grid down · ' + fmtClock(g.left) : 'Repair the grid (hold E)', W / 2, Hh / 2 + (big ? 18 : 9));
+    return;
+  }
   const x = cv.getContext('2d'), W = cv.width, H = cv.height;
   x.drawImage(mapBase, 0, 0, W, H);
   const sx = W / MINI.w, sz = H / MINI.h, X = v => (v - MINI.x0) * sx, Z = v => (v - MINI.z0) * sz;
@@ -6422,6 +6516,7 @@ function step(dt) {
   step121(dt, c); // 1.2.1: missiles, gunner seats, the computer, the islands' life
   updateProjectiles(dt);
   updateIslands(dt);
+  gridStep(dt); // 1.4.3
   updateSubs(dt); // 1.4
   updateEmitters(dt);
   fxFire.update(dt); fxSmoke.update(dt); fxWake.update(dt);
@@ -6945,6 +7040,7 @@ const isleName = I => I.name || (I.type === 'deco' ? 'Islet' : 'Island');
 // you at the computer
 const PC = { on: null, st: 'boot', t: 0, cx: 256, cy: 160, click: false, lmb: false, hover: -1, pend: null, note: '', noteT: 0 };
 function openPC(H) {
+  if (!powered(H.team)) { showMsg('⚡ No power', H.grid.st === 1 ? `The power grid is down for ${fmtClock(H.grid.left)} more` : 'Repair the power grid in the courtyard first (hold E)'); Sound.play('deny'); return; } // 1.4.3
   PC.on = H.pc; PC.st = 'boot'; PC.t = 0; PC.cx = 256; PC.cy = 200; PC.hover = -1; PC.pend = null; PC.note = ''; PC.lmb = IN.lmb;
   PLAYER.pc = H.pc;
   if (PLAYER.soldier) PLAYER.soldier.group.visible = false;
@@ -10003,6 +10099,7 @@ function hud131(mode, e) {
 function peer131(P, r) {
   if (!GAME.on || GAME.over) return;
   if (r[0] === 'f') { const e = P.ent; if (e && (e.kind === 'plane' || e.kind === 'ship')) dropFlare(e, P.id); }
+  else if (r[0] === 'g') { const H = HARBORS[P.team], e = P.ent; if (H && H.grid && H.grid.st === 2 && e && e.alive && e.kind === 'soldier' && e.pos.distanceTo(H.grid.pos) < GRID_FIX_R + 6) gridFix(H); } // 1.4.3: a repaired grid
   else if (r[0] === 'u') {
     const U = UPGRADES.find(u => u.bit === r[1]), H = HARBORS[P.team], e = P.ent;
     if (!U || teamUp(P.team, U.bit) || !H || !H.pc || !e || !e.alive || e.kind !== 'soldier' || e.pos.distanceTo(H.pc.stand) > 10) return;
@@ -10021,8 +10118,21 @@ function ev131(a) {
     upgradeNote(t, bit, mine ? 'You' : 'A teammate');
   }
 }
-const snap131 = () => [TUP[0], TUP[1]];
-function apply131(z) { [0, 1].forEach(t => { const n = z[t] | 0, add = n & ~TUP[t]; if (!add) return; TUP[t] |= add; for (const U of UPGRADES) if (add & U.bit) applyUpgrade(t, U.bit); }); }
+const snap131 = () => [TUP[0], TUP[1], ...HARBORS.map(H => H && H.grid ? [Math.ceil(H.grid.hp), H.grid.st, Math.ceil(H.grid.left)] : 0)]; // 1.4.3: the power grids
+function apply131(z) {
+  [0, 1].forEach(t => { const n = z[t] | 0, add = n & ~TUP[t]; if (!add) return; TUP[t] |= add; for (const U of UPGRADES) if (add & U.bit) applyUpgrade(t, U.bit); });
+  [0, 1].forEach(t => { // 1.4.3: the power grids, as the host has them
+    const r = z[2 + t], H = HARBORS[t], g = H && H.grid; if (!g || !Array.isArray(r) || r.length < 3) return;
+    const st = r[1] === 1 || r[1] === 2 ? r[1] : 0, was = g.st;
+    g.hp = clamp(+r[0] || 0, 0, GRID_HP); g.left = clamp(+r[2] || 0, 0, GRID_DOWN_S);
+    if (st !== was) {
+      g.st = st;
+      if (st === 1) { explode(g.pos.clone(), 9); if (!g.fire) g.fire = addEmitter(g.pos.clone().setY(g.pos.y + 2), 3); gridNote(H, 'down'); }
+      else if (st === 2) gridNote(H, 'ready');
+      else { if (g.fire) { g.fire.life = 0; g.fire = null; } gridNote(H, 'fixed'); }
+    }
+  });
+}
 </script>
 <!-- hb-reel:start -->
 <script id="hb-voice">
