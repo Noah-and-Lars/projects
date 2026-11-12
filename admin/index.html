@@ -244,6 +244,95 @@ table.data tr[data-l="error"] td.msg { color: var(--crit); }
   .bar-row { grid-template-columns: minmax(80px, 110px) minmax(0, 1fr) 4.5em; }
 }
 @media (prefers-reduced-motion: reduce) { .port[data-state="up"] .jack i:last-child { animation: none; } }
+
+/* ---------- Admin Control ---------- */
+.ctl-access { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); margin-bottom: 14px; }
+.ctl-access .who { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.ctl-access .who svg { width: 18px; height: 18px; color: var(--accent); }
+.ctl-access .note { color: var(--muted); font-size: 12.5px; flex: 1 1 260px; min-width: 0; }
+.ctl-access input { width: 200px; max-width: 100%; }
+.subtabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 14px; overflow-x: auto; }
+.subtabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 14px; font-size: 13.5px; font-weight: 500; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.subtabs button:hover { color: var(--ink); }
+.subtabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.subtabs .n { font-family: var(--mono); font-size: 11px; margin-left: 5px; color: var(--muted); }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+.inp, .ctl select { padding: 6px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); min-width: 0; }
+.inp:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-soft); }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.btn-group-label { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 10px 0 6px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); color: #fff; }
+.btn.warn { color: var(--warn); border-color: var(--warn); }
+.btn.danger { color: var(--crit); border-color: var(--crit); }
+.btn.danger.solid { background: var(--crit); color: #fff; }
+.btn.warn:hover, .btn.danger:hover { filter: brightness(1.1); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.sm { padding: 2px 8px; font-size: 12px; }
+.msg-line { min-height: 20px; font-size: 13px; margin: 4px 0 10px; }
+.msg-line[data-k="err"] { color: var(--crit); }
+.msg-line[data-k="ok"] { color: var(--good); }
+.result-card { border: 1px solid var(--line); border-radius: 3px; }
+.result-card + .result-card { margin-top: 12px; }
+.result-card h4 { margin: 0; padding: 8px 12px; font-size: 13px; background: var(--panel-head); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.result-card .rc-body { padding: 10px 12px; }
+.code-box { font-family: var(--mono); font-size: 22px; letter-spacing: .08em; user-select: all; padding: 8px 0; }
+.empty-state { color: var(--muted); padding: 20px 4px; text-align: center; font-size: 13px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 1px 7px; border-radius: 10px; background: var(--panel-head); color: var(--muted); white-space: nowrap; }
+.chip.on { background: var(--good-bg); color: var(--good); }
+.chip.bad { background: var(--crit-bg); color: var(--crit); }
+.chip.warn { background: var(--warn-bg); color: var(--warn); }
+a.name-link { color: var(--accent); text-decoration: none; font-weight: 500; cursor: pointer; }
+a.name-link:hover { text-decoration: underline; }
+table.data th button.sort { background: none; border: 0; padding: 0; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+table.data th button.sort[data-dir]::after { content: " ▾"; }
+table.data th button.sort[data-dir="asc"]::after { content: " ▴"; }
+table.data tr.sel td { background: var(--accent-soft); }
+.bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--accent); background: var(--info-bg); border-radius: 3px; margin-bottom: 10px; font-size: 13px; }
+.signup-chart { position: relative; }
+.signup-chart svg { width: 100%; display: block; }
+.signup-chart .bar { fill: var(--accent); }
+.signup-chart .bar:hover { fill: var(--ink); }
+.chat-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 14px; }
+.chat-list { height: 460px; overflow-y: auto; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); padding: 4px 0; }
+.chat-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 8px; padding: 5px 10px; align-items: start; font-size: 13px; }
+.chat-row:hover { background: var(--panel); }
+.chat-row .ct { font-family: var(--mono); font-size: 11.5px; color: var(--muted); padding-top: 1px; }
+.chat-row .cn { font-weight: 600; margin-right: 6px; }
+.chat-row .cx { overflow-wrap: anywhere; }
+.chat-row.gone { opacity: .45; text-decoration: line-through; }
+.chat-row.hl { background: var(--warn-bg); }
+.chat-send { display: flex; gap: 8px; margin-top: 8px; }
+.chat-send .inp { flex: 1; }
+.who-list { border: 1px solid var(--line); border-radius: 3px; max-height: 460px; overflow-y: auto; }
+.who-list div { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.who-list div:last-child { border-bottom: 0; }
+.who-list button { margin-left: auto; }
+.post-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.post { border: 1px solid var(--line); border-radius: 3px; overflow: hidden; display: flex; flex-direction: column; background: var(--panel); }
+.post .pm { aspect-ratio: 16 / 10; background: var(--bar); display: grid; place-items: center; color: var(--bar-muted); font-size: 12px; overflow: hidden; max-width: 100%; }
+.post .pm img, .post .pm video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.post .pb { padding: 8px 10px; display: grid; gap: 4px; font-size: 12.5px; flex: 1; }
+.post .pcap { overflow-wrap: anywhere; }
+.post .pstats { color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+.post .pa { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.post.done { opacity: .5; }
+.modal-back { position: fixed; inset: 0; background: rgba(10, 14, 18, .55); z-index: 50; display: grid; place-items: center; padding: 16px; }
+.modal { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; width: min(480px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.modal h3 { margin: 0; padding: 12px 16px; font-size: 15px; border-bottom: 1px solid var(--line); background: var(--panel-head); }
+.modal .mb { padding: 14px 16px; display: grid; gap: 10px; font-size: 13.5px; }
+.modal .mb p { margin: 0; }
+.modal .names { font-family: var(--mono); font-size: 12px; max-height: 140px; overflow-y: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 6px 8px; overflow-wrap: anywhere; }
+.modal .ma { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.toast-box { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: grid; gap: 8px; }
+.toast { background: var(--bar); color: var(--bar-ink); padding: 9px 14px; border-radius: 3px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.3); border-left: 4px solid var(--good); max-width: 360px; }
+.toast[data-k="err"] { border-left-color: var(--crit); }
+@media (max-width: 760px) { .chat-wrap { grid-template-columns: minmax(0, 1fr); } .chat-list { height: 380px; } }
+
+.scan-bar { height: 6px; background: var(--panel-head); border-radius: 3px; overflow: hidden; margin: 4px 0 8px; }
+.scan-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 </style>
 
 <header class="topbar">
@@ -267,6 +356,9 @@ table.data tr[data-l="error"] td.msg { color: var(--crit); }
     <a href="#players" data-view="players"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="5" r="3"/><path d="M2 15c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5Z"/></svg>Players<span class="count" id="navPlayers">–</span></a>
     <a href="#system-status" data-view="system-status"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M1 8h3l2-5 4 10 2-5h3"/></svg>System Status</a>
     <a href="#traffic-monitor" data-view="traffic-monitor"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="10" height="2" rx="1"/><rect x="1" y="12" width="12" height="2" rx="1"/></svg>Traffic Monitor<span class="count" id="navLogs">0</span></a>
+    <h2>Control</h2>
+    <a href="#admin-control" data-view="admin-control"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/></svg>Admin Control</a>
+    <a href="#accounts" data-view="accounts"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="5" r="2.5"/><circle cx="11" cy="6" r="2"/><path d="M0.5 14c0-2.8 2.2-4.5 5-4.5s5 1.7 5 4.5Z"/><path d="M11 14h4.5c0-2.3-1.6-3.8-4-3.8-.6 0-1.2.1-1.7.3 1 .9 1.6 2 1.7 3.5Z"/></svg>Accounts</a>
   </nav>
 
   <main class="main">
@@ -362,6 +454,197 @@ table.data tr[data-l="error"] td.msg { color: var(--crit); }
             <button class="btn" type="button" id="logClear">Clear</button>
           </div>
           <div class="table-wrap tall"><table class="data"><thead><tr><th>Time</th><th>Level</th><th>Source</th><th>Message</th></tr></thead><tbody id="logRows"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Admin control -->
+    <section id="view-admin-control" data-title="Admin Control" class="ctl" hidden>
+      <div class="ctl-access" id="ctlAccess"></div>
+      <div class="subtabs" role="tablist" id="ctlTabs">
+        <button type="button" role="tab" data-tab="accounts">Account Tools</button>
+        <button type="button" role="tab" data-tab="directory">Player Directory<span class="n" id="ctlDirN"></span></button>
+        <button type="button" role="tab" data-tab="chat">Chat Moderation<span class="n" id="ctlChatN"></span></button>
+        <button type="button" role="tab" data-tab="social">Social Moderation<span class="n" id="ctlRevN"></span></button>
+        <button type="button" role="tab" data-tab="leaderboards">Leaderboards</button>
+        <button type="button" role="tab" data-tab="log">Action Log<span class="n" id="ctlLogN"></span></button>
+      </div>
+
+      <!-- Accounts -->
+      <div class="ctl-pane" data-pane="accounts">
+        <div class="grid">
+          <div class="w s5">
+            <div class="w-head"><h3>Account Tools</h3><span class="sub">Every tool from the old admin panel</span></div>
+            <div class="w-body">
+              <form id="acForm" autocomplete="off">
+                <div class="form-row">
+                  <div class="field"><label for="acName">Username</label><input class="inp" id="acName" list="acNames" maxlength="16" spellcheck="false" autocapitalize="off"></div>
+                  <div class="field"><label for="acTo">New username (for Rename)</label><input class="inp" id="acTo" maxlength="16" spellcheck="false" autocapitalize="off"></div>
+                </div>
+                <datalist id="acNames"></datalist>
+                <div class="msg-line" id="acMsg"></div>
+                <div class="btn-group-label">Look up</div>
+                <div class="btn-row"><button class="btn primary" type="submit" data-op="info">Look up</button><button class="btn" type="button" data-op="profile">Scores and profile</button></div>
+                <div class="btn-group-label">Change</div>
+                <div class="btn-row"><button class="btn" type="button" data-op="rename">Rename</button><button class="btn" type="button" data-op="newcode">New recovery code</button><button class="btn" type="button" data-op="avatardel">Remove profile picture</button></div>
+                <div class="btn-group-label">Bans</div>
+                <div class="btn-row"><button class="btn warn" type="button" data-op="ban">Ban</button><button class="btn" type="button" data-op="unban">Unban</button><button class="btn danger" type="button" data-op="devban">Device ban</button><button class="btn" type="button" data-op="devunban">Remove device ban</button></div>
+                <div class="btn-group-label">Delete</div>
+                <div class="btn-row"><button class="btn danger solid" type="button" data-op="delete">Delete account</button></div>
+              </form>
+            </div>
+          </div>
+          <div class="w s7">
+            <div class="w-head"><h3>Result</h3><span class="sub" id="acResSub"></span></div>
+            <div class="w-body" id="acResult"><div class="empty-state">Type a username and press Look up. You can also click any player name in this console.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Directory -->
+      <div class="ctl-pane" data-pane="directory" hidden>
+        <dl class="stats" id="dirStats"></dl>
+        <div class="grid">
+          <div class="w">
+            <div class="w-head"><h3>New Accounts per Day</h3><span class="sub">Last 30 days</span><div class="tools"><button class="btn sm" type="button" id="dirReload">Refresh</button></div></div>
+            <div class="w-body"><div class="signup-chart" id="dirChart"><svg role="img" aria-label="New accounts per day"></svg><div class="tip" hidden></div></div></div>
+          </div>
+          <div class="w">
+            <div class="w-head"><h3>Every Account</h3><span class="sub" id="dirSub"></span></div>
+            <div class="w-body">
+              <div class="log-tools">
+                <input type="search" id="dirSearch" placeholder="Search usernames" aria-label="Search usernames">
+                <select id="dirFilter" aria-label="Show">
+                  <option value="all">Everyone</option><option value="online">Online now</option><option value="new7">New this week</option>
+                  <option value="active1">Active in the last 24 h</option><option value="active7">Active this week</option>
+                  <option value="inactive30">Not seen for 30+ days</option><option value="noscores">No scores yet</option>
+                </select>
+              </div>
+              <div class="bulk" id="dirBulk" hidden></div>
+              <div class="table-wrap tall"><table class="data"><thead><tr>
+                <th><input type="checkbox" id="dirAll" aria-label="Select all shown"></th>
+                <th><button class="sort" type="button" data-k="n">Username</button></th>
+                <th><button class="sort" type="button" data-k="c">Created</button></th>
+                <th><button class="sort" type="button" data-k="seen">Last online</button></th>
+                <th>Scores</th><th>Now</th></tr></thead><tbody id="dirRows"></tbody></table></div>
+              <div class="btn-row" style="margin-top:8px"><button class="btn" type="button" id="dirMore" hidden>Show more</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <div class="ctl-pane" data-pane="chat" hidden>
+        <div class="w">
+          <div class="w-head"><h3>Global Chat</h3><span class="sub" id="chatSub">Not connected</span>
+            <div class="tools"><button class="btn sm" type="button" id="chatConn">Connect</button></div></div>
+          <div class="w-body">
+            <div class="log-tools">
+              <input type="search" id="chatSearch" placeholder="Search messages" aria-label="Search chat messages">
+              <select id="chatWho" aria-label="From"><option value="">Everyone</option></select>
+              <button class="btn danger" type="button" id="chatPurge" disabled>Delete all from this person</button>
+            </div>
+            <div class="chat-wrap">
+              <div>
+                <div class="chat-list" id="chatList"><div class="empty-state">Connect to see the last 150 messages and new ones as they arrive.</div></div>
+                <form class="chat-send" id="chatSend" autocomplete="off"><input class="inp" id="chatText" maxlength="200" placeholder="Send a message as yourself" aria-label="Message"><button class="btn primary" type="submit">Send</button></form>
+              </div>
+              <div><div class="btn-group-label" style="margin-top:0">In the chat now</div><div class="who-list" id="chatPeople"><div>Not connected</div></div></div>
+            </div>
+            <p class="chart-note">While connected you show up in the chat's "In the chat" list. Text in messages is not filtered (the owner's choice), so read with care.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Social -->
+      <div class="ctl-pane" data-pane="social" hidden>
+        <div class="grid">
+          <div class="w">
+            <div class="w-head"><h3>Posts Waiting for Approval</h3><span class="sub" id="revSub"></span><div class="tools"><button class="btn sm" type="button" id="revReload">Refresh</button></div></div>
+            <div class="w-body"><div class="post-grid" id="revList"></div></div>
+          </div>
+          <div class="w">
+            <div class="w-head"><h3>Newest Posts</h3><span class="sub">Delete anything that shouldn't be up. Reports show in orange.</span><div class="tools"><button class="btn sm" type="button" id="feedReload">Refresh</button></div></div>
+            <div class="w-body"><div class="post-grid" id="feedList"></div><div class="btn-row" style="margin-top:10px"><button class="btn" type="button" id="feedMore" hidden>Load older posts</button></div></div>
+          </div>
+          <div class="w s6">
+            <div class="w-head"><h3>Delete a Post by ID</h3></div>
+            <div class="w-body"><form id="clipDelForm" class="form-row" style="align-items:end" autocomplete="off"><div class="field"><label for="clipId">Post ID (10 letters and numbers)</label><input class="inp" id="clipId" maxlength="10" spellcheck="false"></div><div><button class="btn danger" type="submit">Delete post</button></div></form></div>
+          </div>
+          <div class="w s6">
+            <div class="w-head"><h3>Remove a Profile Picture</h3></div>
+            <div class="w-body"><form id="avDelForm" class="form-row" style="align-items:end" autocomplete="off"><div class="field"><label for="avName">Username</label><input class="inp" id="avName" list="acNames" maxlength="16" spellcheck="false"></div><div><button class="btn danger" type="submit">Remove picture</button></div></form></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboards -->
+      <div class="ctl-pane" data-pane="leaderboards" hidden>
+        <div class="w">
+          <div class="w-head"><h3>Best Scores</h3><span class="sub">Each signed-in player's best, as the game reports it</span></div>
+          <div class="w-body">
+            <div class="log-tools">
+              <select id="lbGame" aria-label="Game"></select>
+              <select id="lbSort" aria-label="Sort"><option value="hi">Highest number first</option><option value="lo">Lowest number first (times)</option><option value="az">Username A to Z</option></select>
+              <input type="search" id="lbSearch" placeholder="Find a player" aria-label="Find a player">
+            </div>
+            <div class="table-wrap tall"><table class="data"><thead><tr><th>#</th><th>Player</th><th>Best</th></tr></thead><tbody id="lbRows"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action log -->
+      <div class="ctl-pane" data-pane="log" hidden>
+        <div class="w">
+          <div class="w-head"><h3>Admin Actions</h3><span class="sub">Everything done from this console in this browser</span>
+            <div class="tools"><button class="btn sm" type="button" id="auditCopy">Copy as text</button><button class="btn sm" type="button" id="auditClear">Clear</button></div></div>
+          <div class="w-body"><div class="table-wrap tall"><table class="data"><thead><tr><th>Time</th><th>By</th><th>Action</th><th>Target</th><th>Result</th></tr></thead><tbody id="auditRows"></tbody></table></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Accounts: who is who across devices -->
+    <section id="view-accounts" data-title="Accounts" class="ctl" hidden>
+      <div class="ctl-access" id="altAccess"></div>
+      <div class="banner" data-kind="warn" id="altDeploy" hidden><div><b>The Worker needs a one-time update</b><p>Scanning needs the new read-only admin action <code>devinfo</code>. From the <code>realtime-worker</code> folder, run <code>npx wrangler deploy</code> on the owner's Cloudflare account, then scan again.</p></div></div>
+      <div class="grid">
+        <div class="w">
+          <div class="w-head"><h3>Device Scan</h3><span class="sub" id="altLast">Not scanned yet</span></div>
+          <div class="w-body">
+            <p style="margin:0 0 10px;max-width:84ch">Checks every account for the devices it has been used on, then groups accounts that share a device as one person. Each group's main account is picked by the rule below; the rest are alts.</p>
+            <div class="form-row">
+              <div class="field"><label for="altMain">Main account is the one</label><select id="altMain" class="inp"><option value="last">played most recently</option><option value="most">with the most progress saved</option></select></div>
+              <div class="field"><label for="altShared">Ignore devices used by more than</label><select id="altShared" class="inp"><option value="3">3 accounts</option><option value="4">4 accounts</option><option value="6">6 accounts</option><option value="10">10 accounts</option><option value="999">never ignore</option></select></div>
+            </div>
+            <div class="btn-row"><button class="btn primary" type="button" id="altScan" data-needs="pw">Scan every account</button><button class="btn" type="button" id="altStop" hidden>Stop</button></div>
+            <div class="scan-bar" id="altBar" hidden><i></i></div>
+            <div class="msg-line" id="altMsg"></div>
+            <p class="chart-note">Device IDs are random IDs the site keeps in each browser since 12 Nov 2026. They aren't hardware IDs. A school, library or family computer makes different people look like one person, so check a group before you ban anyone. Accounts not used since device IDs started can't be linked yet. "Most progress saved" counts cloud save size, because the server doesn't record play time.</p>
+          </div>
+        </div>
+      </div>
+      <dl class="stats" id="altStats" style="margin-top:14px"></dl>
+      <div class="grid">
+        <div class="w">
+          <div class="w-head"><h3>People</h3><span class="sub" id="altSub"></span></div>
+          <div class="w-body">
+            <div class="log-tools">
+              <input type="search" id="altSearch" placeholder="Find an account" aria-label="Find an account">
+              <select id="altFilter" aria-label="Show"><option value="alts">People with alts</option><option value="dodge">Possible ban dodgers</option><option value="all">Everyone scanned</option><option value="nodev">No device recorded yet</option></select>
+            </div>
+            <div class="table-wrap tall"><table class="data"><thead><tr><th></th><th>Main account</th><th>Alts</th><th>Devices</th><th>Last played</th><th>Flags</th></tr></thead><tbody id="altRows"></tbody></table></div>
+          </div>
+        </div>
+        <div class="w s6">
+          <div class="w-head"><h3>Investigate One Account</h3></div>
+          <div class="w-body">
+            <form id="altOneForm" class="form-row" style="align-items:end" autocomplete="off"><div class="field"><label for="altOne">Username</label><input class="inp" id="altOne" list="acNames" maxlength="16" spellcheck="false"></div><div><button class="btn primary" type="submit" data-needs="pw">Investigate</button></div></form>
+            <div id="altOneOut"></div>
+          </div>
+        </div>
+        <div class="w s6">
+          <div class="w-head"><h3>Shared Devices</h3><span class="sub">Used by more accounts than the limit, so not used for linking</span></div>
+          <div class="w-body"><div class="table-wrap"><table class="data"><thead><tr><th>Device</th><th>Accounts</th></tr></thead><tbody id="altShRows"></tbody></table></div></div>
         </div>
       </div>
     </section>
@@ -712,7 +995,7 @@ function gauge(frac, label, valText, unit, note, state) {
 // ---------- Rendering ----------
 const dirty = new Set(); let raf = 0;
 function schedule(what) { dirty.add(what); if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
-const VIEWS = ['dashboard', 'players', 'system-status', 'traffic-monitor'];
+const VIEWS = ['dashboard', 'players', 'system-status', 'traffic-monitor', 'admin-control', 'accounts'];
 function currentView() { const h = location.hash.slice(1); return VIEWS.includes(h) ? h : 'dashboard'; }
 function playersNow() { if (S.mode === 'sample') return S.sample.players.size; return S.joined && S.synced ? S.live.players.size : null; }
 
@@ -729,7 +1012,7 @@ function render() {
   document.querySelectorAll('.nav a').forEach(a => { if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   document.querySelectorAll('main > section').forEach(s => { s.hidden = s.id !== 'view-' + view; });
   const title = $('view-' + view).dataset.title;
-  $('viewTitle').textContent = title; $('viewPath').textContent = 'Monitor / ' + title;
+  $('viewTitle').textContent = title; $('viewPath').textContent = (view === 'admin-control' || view === 'accounts' ? 'Control / ' : 'Monitor / ') + title;
   document.querySelectorAll('.seg[data-range-for]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.r === S.ranges[seg.dataset.rangeFor]))));
   renderBanners();
   renderPorts();
@@ -800,7 +1083,7 @@ function renderSystem() {
 }
 function renderSessions() {
   const P = [...D().players.values()].sort((a, b) => (a.since || 0) - (b.since || 0)), now = Date.now();
-  $('sessions').innerHTML = P.length ? P.map(p => `<tr><td>${p.name ? esc(p.name) : `<span class="mono">${esc(p.key.slice(0, 6))}</span><span class="guest">Guest</span>`}</td><td>${esc(gameName(p.game))}</td><td class="t">${p.since ? hhmmss(p.since) : 'Before console opened'}</td><td class="t">${p.since ? dur(now - p.since) : 'at least ' + dur(now - S.startedAt)}</td></tr>`).join('')
+  $('sessions').innerHTML = P.length ? P.map(p => `<tr><td>${p.name ? `<a class="name-link" data-manage="${esc(p.name)}">${esc(p.name)}</a>` : `<span class="mono">${esc(p.key.slice(0, 6))}</span><span class="guest">Guest</span>`}</td><td>${esc(gameName(p.game))}</td><td class="t">${p.since ? hhmmss(p.since) : 'Before console opened'}</td><td class="t">${p.since ? dur(now - p.since) : 'at least ' + dur(now - S.startedAt)}</td></tr>`).join('')
     : `<tr class="empty-row"><td colspan="4">${playersNow() == null ? 'No presence data. Check System Status.' : 'Nobody is on the arcade right now.'}</td></tr>`;
 }
 function renderHealth(tickOnly) {
@@ -857,7 +1140,794 @@ let rz = 0; window.addEventListener('resize', () => { cancelAnimationFrame(rz); 
 setInterval(() => { $('clock').textContent = hhmmss(Date.now()); schedule('tick'); }, 1000);
 $('clock').textContent = hhmmss(Date.now());
 
+window.__ops = { players: () => S.live.players, gameName, GAME_NAMES };
 startLive();
+})();
+</script>
+
+<script>
+// ---------- Admin Control ----------
+// Every tool from the account panel's "Admin tools" (account.js openAdmin), the Global chat's ?admin Delete and
+// Social's review queue and admin deletes, plus a player directory, live chat moderation, Social moderation,
+// leaderboards and an action log. It only uses routes the Worker already has (see realtime-worker/src/worker.js).
+// On any other origin than the official site it runs in sample mode: nothing is sent and every result is made up.
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const SITE = 'https://noah-and-lars.github.io';
+const LIVE = location.origin === SITE;
+const SERVER = 'https://arcade-realtime.arcade-realtime.workers.dev';
+const ADMINS = ['noah', 'lars', 'claude']; // ADMIN_ACCOUNTS in worker.js and account.js
+const NAME_RE = /^[A-Za-z0-9_]{3,16}$/, CLIP_RE = /^[a-z0-9]{10}$/;
+const OPS = window.__ops;
+const gameName = OPS.gameName;
+const DAY = 864e5;
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+const pad = n => String(n).padStart(2, '0');
+const when = t => t ? new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–';
+const hhmm = t => { const d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const ago = t => { if (!t) return 'never'; const s = Math.max(0, (Date.now() - t) / 1000); return s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago'; };
+const lc = s => String(s || '').toLowerCase();
+const rid = n => { const b = crypto.getRandomValues(new Uint8Array(n)); return [...b].map(x => (x % 36).toString(36)).join(''); };
+
+// ---------- Who is acting ----------
+const acct = () => { if (!LIVE) return { name: 'Sample admin', token: '' }; const a = ls.get('arcade-acct', null); return a && typeof a.name === 'string' && typeof a.token === 'string' && a.token ? a : null; };
+const isAdminAcct = () => !LIVE || (!!acct() && ADMINS.includes(lc(acct().name)));
+let adminPw = ''; // kept in memory for this visit only
+const canAct = () => isAdminAcct() || !!adminPw;
+const actor = () => !LIVE ? 'Sample admin' : isAdminAcct() ? acct().name : adminPw ? 'Admin password' : '';
+
+// ---------- Server ----------
+async function call(path, opt = {}) {
+  if (!LIVE) return MOCK.call(path, opt);
+  const h = {};
+  if (opt.body) h['content-type'] = 'application/json';
+  if (path.startsWith('/acct/')) { let d = ''; try { d = localStorage.getItem('arcade-dev-id') || ''; } catch (e) {} if (/^[a-z0-9]{12,40}$/.test(d)) h['x-arcade-dev'] = d; }
+  const a = acct(); if (opt.auth && a) h.authorization = 'Bearer ' + a.token;
+  try {
+    const r = await fetch(SERVER + path, { method: opt.method || 'GET', headers: h, body: opt.body ? JSON.stringify(opt.body) : undefined, cache: 'no-store' });
+    const j = (await r.json().catch(() => ({}))) || {};
+    j.status = r.status; return j;
+  } catch (e) { return { error: 'offline', status: 0 }; }
+}
+const admin = body => call('/acct/admin', { method: 'POST', auth: isAdminAcct(), body: Object.assign({ pw: isAdminAcct() ? '' : adminPw }, body) });
+function why(r, name) {
+  if (r.status === 0) return 'Couldn’t reach the server. Check your connection and try again.';
+  if (r.status === 401) {
+    if (isAdminAcct()) return 'Your admin sign-in has expired. Sign in again on the arcade, then reload this page.';
+    adminPw = ''; renderAccess(); return 'Wrong admin password. Unlock again with the right one.';
+  }
+  if (r.status === 429) return r.error === 'locked' ? `Too many wrong passwords. Wait ${Math.ceil((r.wait || 900) / 60)} minutes.` : 'Too many requests. Wait a minute and try again.';
+  if (r.status === 403 && r.error === 'not_admin') return 'This needs a signed-in admin account. The admin password isn’t enough.';
+  if (r.status === 404) return name ? `There’s no account called ${name}.` : 'Not found. It may already be gone.';
+  if (r.error === 'protected') return 'Admin accounts can’t be banned, renamed, deleted or given a new code.';
+  if (r.error === 'taken') return 'That new username is taken.';
+  if (r.error === 'format') return 'Usernames are 3 to 16 letters, numbers or underscores.';
+  if (r.error === 'reserved' || r.error === 'rude') return 'That username isn’t allowed.';
+  return `Something went wrong (${esc(r.error || r.status)}).`;
+}
+
+// ---------- Small UI helpers ----------
+function toast(text, kind) {
+  let box = document.querySelector('.toast-box');
+  if (!box) { box = document.createElement('div'); box.className = 'toast-box'; box.setAttribute('role', 'status'); document.body.append(box); }
+  const t = document.createElement('div'); t.className = 'toast'; if (kind) t.dataset.k = kind; t.textContent = text;
+  box.append(t); setTimeout(() => t.remove(), 4200);
+}
+// In-page confirmation (the viewer may block confirm()). typeName: the person has to type it to go ahead.
+function ask({ title, text, names, ok = 'Go ahead', danger = false, typeName = '' }) {
+  return new Promise(res => {
+    const back = document.createElement('div'); back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mdT"><h3 id="mdT">${esc(title)}</h3><div class="mb"><p>${esc(text)}</p>
+      ${names && names.length ? `<div class="names">${names.map(esc).join(', ')}</div>` : ''}
+      ${typeName ? `<div class="field"><label for="mdIn">Type <b>${esc(typeName)}</b> to confirm</label><input class="inp" id="mdIn" autocomplete="off" spellcheck="false"></div>` : ''}</div>
+      <div class="ma"><button class="btn" type="button" data-a="no">Cancel</button><button class="btn ${danger ? 'danger solid' : 'primary'}" type="button" data-a="yes"${typeName ? ' disabled' : ''}>${esc(ok)}</button></div></div>`;
+    document.body.append(back);
+    const yes = back.querySelector('[data-a="yes"]'), inp = back.querySelector('#mdIn');
+    const done = v => { back.remove(); document.removeEventListener('keydown', key); res(v); };
+    const key = e => { if (e.key === 'Escape') done(false); };
+    document.addEventListener('keydown', key);
+    if (inp) { inp.addEventListener('input', () => { yes.disabled = lc(inp.value.trim()) !== lc(typeName); }); inp.focus(); } else yes.focus();
+    back.addEventListener('click', e => { if (e.target === back) done(false); const a = e.target.closest('[data-a]'); if (a) done(a.dataset.a === 'yes'); });
+  });
+}
+function setMsg(el, text, kind) { el.textContent = text || ''; if (kind) el.dataset.k = kind; else delete el.dataset.k; }
+
+// ---------- Action log ----------
+const AUDIT = 'arcadeops.audit.v1';
+let audit = LIVE ? ls.get(AUDIT, []) : [];
+if (!Array.isArray(audit)) audit = [];
+function record(op, target, ok, detail) {
+  audit.push({ t: Date.now(), by: actor(), op, target, ok: ok ? 1 : 0, detail: detail || '' });
+  if (audit.length > 1000) audit.splice(0, audit.length - 1000);
+  if (LIVE) ls.set(AUDIT, audit);
+  renderAudit();
+}
+function renderAudit() {
+  $('ctlLogN').textContent = audit.length || '';
+  const rows = audit.slice().reverse();
+  $('auditRows').innerHTML = rows.length ? rows.map(a => `<tr data-l="${a.ok ? 'info' : 'error'}"><td class="t">${esc(when(a.t))}</td><td>${esc(a.by)}</td><td>${esc(a.op)}</td><td>${a.target && NAME_RE.test(a.target) ? `<a class="name-link" data-manage="${esc(a.target)}">${esc(a.target)}</a>` : `<span class="mono">${esc(a.target)}</span>`}</td><td class="msg">${a.ok ? '' : '<span class="lvl" data-l="error">Failed</span> '}${esc(a.detail)}</td></tr>`).join('')
+    : '<tr class="empty-row"><td colspan="5">Nothing yet. Every ban, rename, delete and approval you make here is listed, in this browser only.</td></tr>';
+}
+$('auditCopy').addEventListener('click', async () => {
+  const text = audit.map(a => `${new Date(a.t).toISOString()}\t${a.by}\t${a.op}\t${a.target}\t${a.ok ? 'ok' : 'failed'}\t${a.detail}`).join('\n') || '(empty)';
+  try { await navigator.clipboard.writeText(text); toast('Action log copied'); } catch (e) { toast('Couldn’t copy. Select the table and copy it instead.', 'err'); }
+});
+$('auditClear').addEventListener('click', async () => {
+  if (!audit.length || !await ask({ title: 'Clear the action log?', text: 'This only clears the list in this browser. Nothing on the arcade changes.', ok: 'Clear log' })) return;
+  audit = []; if (LIVE) ls.set(AUDIT, audit); renderAudit();
+});
+
+// ---------- Access bar ----------
+const shield = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>';
+function renderAccess() {
+  const el = $('ctlAccess'), a = acct();
+  if (!LIVE) el.innerHTML = `<span class="who">${shield}Sample mode</span><span class="tag">Sample</span><span class="note">Admin tools only work at ${esc(SITE)}/projects/admin/. Here nothing is sent to the arcade and every player, post and result is made up.</span>`;
+  else if (isAdminAcct()) el.innerHTML = `<span class="who">${shield}Signed in as ${esc(a.name)}</span><span class="chip on">Admin account</span><span class="note">Every tool is unlocked, including approving Social posts.</span>`;
+  else if (adminPw) el.innerHTML = `<span class="who">${shield}Unlocked with the admin password</span><span class="note">For this visit only. Approving Social posts still needs an admin account.</span><button class="btn sm" type="button" id="ctlLock">Lock</button>`;
+  else el.innerHTML = `<span class="who">${shield}${a ? 'Signed in as ' + esc(a.name) : 'Not signed in'}</span><span class="note">${a ? 'That isn’t an admin account.' : `Sign in with an admin account <a class="name-link" href="../" target="_blank" rel="noopener">on the arcade</a>, then reload, or`} enter the admin password. 5 wrong tries lock it for 15 minutes.</span>
+      <form id="ctlPwForm" style="display:flex;gap:8px;flex-wrap:wrap" autocomplete="off"><input class="inp" type="password" id="ctlPw" placeholder="Admin password" aria-label="Admin password" autocomplete="off"><button class="btn primary" type="submit">Unlock</button></form>`;
+  const f = $('ctlPwForm'); if (f) f.addEventListener('submit', e => { e.preventDefault(); const v = $('ctlPw').value; if (!v) return; adminPw = v; renderAccess(); toast('Unlocked. A wrong password shows up on your first action.'); });
+  const l = $('ctlLock'); if (l) l.addEventListener('click', () => { adminPw = ''; renderAccess(); });
+  document.querySelectorAll('.ctl [data-needs]').forEach(b => { b.disabled = b.dataset.needs === 'acct' ? !isAdminAcct() : !canAct(); });
+  renderAltAccess();
+}
+
+// ---------- Sub-tabs ----------
+let tab = ls.get('arcadeops.ctltab', 'accounts');
+function showTab(t) {
+  tab = t; ls.set('arcadeops.ctltab', t);
+  document.querySelectorAll('#ctlTabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  document.querySelectorAll('.ctl-pane').forEach(p => { p.hidden = p.dataset.pane !== t; });
+  if (t === 'directory' && !dir.loaded) loadDir();
+  if (t === 'directory' && dir.loaded) drawSignups();
+  if (t === 'social') { if (!rev.loaded) loadReview(); if (!feed.loaded) loadFeed(); }
+  if (t === 'leaderboards') loadBoard();
+  if (t === 'chat' && !LIVE && !chat.ws) chatConnect();
+  if (t !== 'chat') chatDisconnect(true);
+}
+$('ctlTabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
+const inView = () => location.hash.slice(1) === 'admin-control';
+window.addEventListener('hashchange', () => { if (inView()) showTab(tab); else chatDisconnect(true); });
+
+// Anywhere in the console: a player name with data-manage opens their account here.
+document.addEventListener('click', e => {
+  const m = e.target.closest('[data-manage]'); if (!m) return;
+  e.preventDefault(); openAccount(m.dataset.manage);
+});
+function openAccount(name) {
+  if (!inView()) location.hash = 'admin-control';
+  showTab('accounts');
+  $('acName').value = name; $('acTo').value = '';
+  runOp('info');
+  $('acName').scrollIntoView({ block: 'nearest' });
+}
+
+// ---------- Presence (from the monitor) ----------
+function onlineNow() {
+  const m = new Map();
+  if (!LIVE) { MOCK.online.forEach(n => m.set(lc(n), MOCK.onlineGame(n))); return m; }
+  OPS.players().forEach(p => { if (p.name) m.set(lc(p.name), p.game); });
+  return m;
+}
+
+// ---------- Accounts ----------
+const CONFIRM = {
+  ban: n => ({ title: `Ban ${n}?`, text: 'They are signed out everywhere, can’t log in, and leave the Players list. You can unban them later.', ok: 'Ban', danger: true }),
+  rename: (n, to) => ({ title: `Rename ${n} to ${to}?`, text: 'They are signed out and log in with the new name and the same password.', ok: 'Rename' }),
+  devban: n => ({ title: `Device ban ${n}?`, text: 'The account is banned, and every device it was used on (up to 12) can’t sign up, log in or use any account. Clearing browser data gets round it, so it stops casual ban dodging only.', ok: 'Device ban', danger: true }),
+  newcode: n => ({ title: `New recovery code for ${n}?`, text: 'Their old code stops working. Only do this if you’re sure the person asking really owns this account.', ok: 'Make a new code' }),
+  delete: n => ({ title: `Delete ${n} for good?`, text: 'The account and all its saved progress are wiped and can’t be brought back. The name becomes free to register again.', ok: 'Delete account', danger: true, typeName: n }),
+  avatardel: n => ({ title: `Remove ${n}’s profile picture?`, text: 'It comes off Social straight away. They can upload a new one.', ok: 'Remove picture', danger: true }),
+};
+const OP_LABEL = { info: 'Look up', profile: 'Scores', rename: 'Rename', newcode: 'New recovery code', avatardel: 'Remove profile picture', ban: 'Ban', unban: 'Unban', devban: 'Device ban', devunban: 'Remove device ban', delete: 'Delete account', chatdel: 'Delete chat message', clipdel: 'Delete post', approve: 'Approve post', deny: 'Deny post' };
+$('acForm').addEventListener('submit', e => { e.preventDefault(); runOp('info'); });
+$('acForm').addEventListener('click', e => { const b = e.target.closest('button[data-op]'); if (b && b.type !== 'submit') runOp(b.dataset.op); });
+let acBusy = false;
+async function runOp(op) {
+  const M = $('acMsg'), n = $('acName').value.trim(), to = $('acTo').value.trim();
+  setMsg(M, '');
+  if (!n) { setMsg(M, 'Type a username first.', 'err'); $('acName').focus(); return; }
+  if (!NAME_RE.test(n)) { setMsg(M, 'Usernames are 3 to 16 letters, numbers or underscores.', 'err'); return; }
+  if (op === 'rename' && !to) { setMsg(M, 'Type the new username for Rename.', 'err'); $('acTo').focus(); return; }
+  if (op !== 'profile' && op !== 'info' && !canAct()) { setMsg(M, 'Unlock the admin tools first (top of this page).', 'err'); return; }
+  if (op === 'info' && !canAct()) { op = 'profile'; setMsg(M, 'Showing the public profile. Unlock the admin tools to see the account itself.'); }
+  if (CONFIRM[op] && !await ask(CONFIRM[op](n, to))) return;
+  if (acBusy) return; acBusy = true;
+  document.querySelectorAll('#acForm button').forEach(b => { b.disabled = true; });
+  const out = $('acResult');
+  try {
+    if (op === 'profile' || op === 'info') {
+      const [info, prof] = await Promise.all([op === 'info' ? admin({ op: 'info', name: n }) : Promise.resolve(null), call('/acct/player?name=' + encodeURIComponent(n))]);
+      if (info && info.status !== 200) { setMsg(M, why(info, n), 'err'); if (info.status !== 404 || prof.status !== 200) { out.innerHTML = '<div class="empty-state">No result.</div>'; return; } }
+      if (!info && prof.status !== 200) { setMsg(M, prof.status === 404 ? `${n} isn’t on the Players list (banned, a local account, or no account).` : why(prof, n), 'err'); out.innerHTML = '<div class="empty-state">No result.</div>'; return; }
+      out.innerHTML = accountCard(info && info.status === 200 ? info : null, prof.status === 200 ? prof : null, n);
+      $('acResSub').textContent = 'Looked up ' + hhmm(Date.now());
+      return;
+    }
+    const r = await admin({ op, name: n, to });
+    if (r.status !== 200) { const w = why(r, n); setMsg(M, w, 'err'); record(OP_LABEL[op], n, false, w); return; }
+    let detail = '';
+    if (op === 'newcode') {
+      out.innerHTML = `<div class="result-card"><h4>New recovery code for ${esc(r.name)}</h4><div class="rc-body"><div class="code-box">${esc(r.code)}</div>
+        <p style="margin:0">Give it to the player privately. They go to Log in, then Forgot password, and type ${esc(r.name)}, this code and a new password. Any lockout from wrong tries is cleared. It works once; afterwards they get a fresh code of their own.</p></div></div>`;
+      detail = 'Code shown once';
+    } else {
+      detail = op === 'rename' ? `Renamed to ${r.name}` : op === 'devban' ? `Banned, ${r.devices} device${r.devices === 1 ? '' : 's'} blocked` : op === 'devunban' ? `Unbanned, ${r.devices} device${r.devices === 1 ? '' : 's'} unblocked`
+        : op === 'ban' ? 'Banned, signed out everywhere' : op === 'unban' ? 'Unbanned' : op === 'delete' ? 'Deleted for good' : op === 'avatardel' ? 'Profile picture removed' : 'Done';
+      out.innerHTML = `<div class="result-card"><h4>${esc(op === 'rename' ? n : (r.name || n))}</h4><div class="rc-body"><span class="pill" data-s="up">Done</span> ${esc(detail)}</div></div>`;
+      if (op === 'rename') { $('acName').value = r.name || to; $('acTo').value = ''; }
+    }
+    setMsg(M, `${OP_LABEL[op]}: done.`, 'ok'); toast(`${OP_LABEL[op]}: ${detail}`);
+    record(OP_LABEL[op], op === 'rename' ? n : (r.name || n), true, detail);
+    if (['ban', 'unban', 'devban', 'devunban', 'delete', 'rename'].includes(op)) dir.loaded = false;
+  } finally {
+    acBusy = false; document.querySelectorAll('#acForm button').forEach(b => { b.disabled = false; });
+  }
+}
+function accountCard(info, prof, n) {
+  const on = onlineNow().get(lc(n)), name = (info && info.name) || (prof && prof.n) || n;
+  let h = '';
+  if (info) {
+    const status = info.banned ? `<span class="chip bad">${info.devban ? 'Device banned' : 'Banned'}</span>` : '<span class="chip on">Active</span>';
+    const rows = [['Username', esc(info.name)], ['Created', esc(when(info.created))], ['Status', status], ['Online now', on ? `<span class="chip on">On ${esc(gameName(on))}</span>` : 'No'],
+      ['Last online', prof ? esc(ago(prof.seen)) : '–'], ['Signed-in devices', esc(info.devices)], ['Devices seen', esc(info.devs == null ? '?' : info.devs)]];
+    const games = Object.entries(info.games || {}).sort((a, b) => b[1].at - a[1].at);
+    h += `<div class="result-card"><h4>Account ${status}</h4><div class="rc-body"><table class="kv">${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table></div></div>`;
+    h += `<div class="result-card"><h4>Cloud saves <span class="chip">${games.length} game${games.length === 1 ? '' : 's'}</span></h4><div class="rc-body">${games.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Game</th><th>Size</th><th>Last saved</th></tr></thead><tbody>${games.map(([g, m]) => `<tr><td>${esc(gameName(g))}</td><td class="t">${Math.ceil((m.size || 0) / 1024)} KB</td><td class="t">${esc(when(m.at))}</td></tr>`).join('')}</tbody></table></div>` : '<span class="g-note">No cloud saves yet.</span>'}</div></div>`;
+  } else if (prof) {
+    h += `<div class="result-card"><h4>${esc(prof.n)}</h4><div class="rc-body"><table class="kv"><tr><th>Created</th><td>${esc(when(prof.c))}</td></tr><tr><th>Last online</th><td>${esc(ago(prof.seen))}</td></tr><tr><th>Online now</th><td>${on ? `<span class="chip on">On ${esc(gameName(on))}</span>` : 'No'}</td></tr></table></div></div>`;
+  }
+  if (prof) {
+    const s = Object.entries(prof.s || {});
+    h += `<div class="result-card"><h4>Best scores <span class="chip">${s.length}</span></h4><div class="rc-body">${s.length ? `<table class="kv">${s.map(([g, v]) => `<tr><th>${esc(gameName(g))}</th><td>${esc(v)}</td></tr>`).join('')}</table>` : '<span class="g-note">No scores sent yet.</span>'}</div></div>`;
+  } else if (info) h += `<div class="result-card"><h4>Best scores</h4><div class="rc-body"><span class="g-note">Not on the Players list${info.banned ? ' (banned accounts are taken off it)' : ''}.</span></div></div>`;
+  $('acResSub').textContent = name;
+  return h;
+}
+
+// ---------- Player directory ----------
+const dir = { loaded: false, list: [], sort: { k: 'seen', dir: 'desc' }, shown: 200, sel: new Set() };
+async function loadDir() {
+  $('dirSub').textContent = 'Loading…';
+  const r = await call('/acct/players');
+  if (r.status !== 200 || !Array.isArray(r.players)) { $('dirSub').textContent = 'Couldn’t load the player list. ' + why(r); return; }
+  dir.list = r.players.filter(p => Array.isArray(p) && typeof p[0] === 'string').map(p => ({ n: p[0], c: +p[1] || 0, has: p[2] ? 1 : 0, seen: +p[3] || 0 }));
+  dir.loaded = true; dir.at = Date.now();
+  $('acNames').innerHTML = dir.list.map(p => `<option value="${esc(p.n)}"></option>`).join('');
+  $('ctlDirN').textContent = dir.list.length;
+  renderDir(); drawSignups();
+}
+$('dirReload').addEventListener('click', loadDir);
+function dirStats() {
+  const now = Date.now(), d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  const on = onlineNow(), L = dir.list;
+  return [['Accounts', L.length], ['New today', L.filter(p => p.c >= +d0).length], ['New this week', L.filter(p => p.c > now - 7 * DAY).length],
+    ['Active 24 h', L.filter(p => p.seen > now - DAY).length], ['Active 7 days', L.filter(p => p.seen > now - 7 * DAY).length], ['Signed in now', on.size]];
+}
+function dirRows() {
+  const q = lc($('dirSearch').value.trim()), f = $('dirFilter').value, now = Date.now(), on = onlineNow();
+  let L = dir.list.filter(p => !q || lc(p.n).includes(q));
+  if (f === 'online') L = L.filter(p => on.has(lc(p.n)));
+  else if (f === 'new7') L = L.filter(p => p.c > now - 7 * DAY);
+  else if (f === 'active1') L = L.filter(p => p.seen > now - DAY);
+  else if (f === 'active7') L = L.filter(p => p.seen > now - 7 * DAY);
+  else if (f === 'inactive30') L = L.filter(p => p.seen < now - 30 * DAY);
+  else if (f === 'noscores') L = L.filter(p => !p.has);
+  const { k, dir: d } = dir.sort, m = d === 'asc' ? 1 : -1;
+  return L.sort((a, b) => k === 'n' ? m * a.n.localeCompare(b.n) : m * ((a[k] || 0) - (b[k] || 0)));
+}
+function renderDir() {
+  if (!dir.loaded) return;
+  $('dirStats').innerHTML = dirStats().map(([k, v]) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  const rows = dirRows(), on = onlineNow(), show = rows.slice(0, dir.shown);
+  $('dirSub').textContent = `${rows.length} of ${dir.list.length} shown · loaded ${hhmm(dir.at)}`;
+  document.querySelectorAll('#view-admin-control .sort').forEach(b => { if (b.dataset.k === dir.sort.k) b.dataset.dir = dir.sort.dir; else delete b.dataset.dir; });
+  $('dirRows').innerHTML = show.length ? show.map(p => {
+    const l = lc(p.n), g = on.get(l), sel = dir.sel.has(l);
+    return `<tr class="${sel ? 'sel' : ''}"><td><input type="checkbox" data-pick="${esc(l)}" ${sel ? 'checked' : ''} aria-label="Select ${esc(p.n)}"></td><td><a class="name-link" data-manage="${esc(p.n)}">${esc(p.n)}</a>${ADMINS.includes(l) ? ' <span class="chip">Admin</span>' : ''}</td><td class="t">${esc(when(p.c))}</td><td class="t">${esc(ago(p.seen))}</td><td>${p.has ? '<span class="chip on">Yes</span>' : '<span class="chip">No</span>'}</td><td>${g ? `<span class="chip on">${esc(gameName(g))}</span>` : ''}</td></tr>`;
+  }).join('') : '<tr class="empty-row"><td colspan="6">No players match.</td></tr>';
+  $('dirMore').hidden = rows.length <= dir.shown;
+  $('dirAll').checked = show.length > 0 && show.every(p => dir.sel.has(lc(p.n)));
+  renderBulk();
+}
+['dirSearch', 'dirFilter'].forEach(id => $(id).addEventListener(id === 'dirSearch' ? 'input' : 'change', () => { dir.shown = 200; renderDir(); }));
+$('dirMore').addEventListener('click', () => { dir.shown += 200; renderDir(); });
+document.querySelector('#view-admin-control thead').addEventListener('click', e => {
+  const b = e.target.closest('.sort'); if (!b) return;
+  dir.sort = { k: b.dataset.k, dir: dir.sort.k === b.dataset.k && dir.sort.dir === 'desc' ? 'asc' : 'desc' }; renderDir();
+});
+$('dirRows').addEventListener('change', e => { const c = e.target.closest('[data-pick]'); if (!c) return; if (c.checked) dir.sel.add(c.dataset.pick); else dir.sel.delete(c.dataset.pick); renderDir(); });
+$('dirAll').addEventListener('change', e => { dirRows().slice(0, dir.shown).forEach(p => { if (e.target.checked) dir.sel.add(lc(p.n)); else dir.sel.delete(lc(p.n)); }); renderDir(); });
+function selectedNames() { const m = new Map(dir.list.map(p => [lc(p.n), p.n])); return [...dir.sel].map(l => m.get(l) || l); }
+function renderBulk() {
+  const b = $('dirBulk'), n = dir.sel.size; b.hidden = !n;
+  if (!n) return;
+  b.innerHTML = `<b>${n} selected</b><button class="btn sm warn" type="button" data-bulk="ban" data-needs="pw">Ban</button><button class="btn sm" type="button" data-bulk="unban" data-needs="pw">Unban</button><button class="btn sm" type="button" data-bulk="copy">Copy names</button><button class="btn sm" type="button" data-bulk="clear">Clear selection</button>`;
+  b.querySelectorAll('[data-needs]').forEach(x => { x.disabled = !canAct(); });
+}
+$('dirBulk').addEventListener('click', async e => {
+  const b = e.target.closest('[data-bulk]'); if (!b) return;
+  const names = selectedNames(), op = b.dataset.bulk;
+  if (op === 'clear') { dir.sel.clear(); renderDir(); return; }
+  if (op === 'copy') { try { await navigator.clipboard.writeText(names.join('\n')); toast(`Copied ${names.length} names`); } catch (er) { toast('Couldn’t copy here.', 'err'); } return; }
+  const skip = names.filter(x => ADMINS.includes(lc(x))), go = names.filter(x => !ADMINS.includes(lc(x)));
+  if (!go.length) { toast('Admin accounts can’t be banned.', 'err'); return; }
+  const ok = await ask({ title: `${op === 'ban' ? 'Ban' : 'Unban'} ${go.length} account${go.length === 1 ? '' : 's'}?`, text: (op === 'ban' ? 'Each one is signed out everywhere and can’t log in.' : 'Each one can log in again and goes back on the Players list.') + (skip.length ? ` Admin accounts are skipped (${skip.length}).` : ''), names: go, ok: op === 'ban' ? 'Ban them' : 'Unban them', danger: op === 'ban' });
+  if (!ok) return;
+  let done = 0, fail = 0;
+  for (const n of go) {
+    const r = await admin({ op, name: n });
+    if (r.status === 200) { done++; record(OP_LABEL[op], n, true, 'Bulk action'); }
+    else { fail++; record(OP_LABEL[op], n, false, why(r, n)); if (r.status === 401 || r.status === 429) break; }
+  }
+  toast(`${OP_LABEL[op]}: ${done} done${fail ? `, ${fail} failed (see the Action Log)` : ''}`, fail ? 'err' : '');
+  dir.sel.clear(); loadDir();
+});
+function drawSignups() {
+  const box = $('dirChart'), svg = box.querySelector('svg'), tip = box.querySelector('.tip');
+  if (!dir.loaded || !box.clientWidth) return;
+  const W = Math.max(300, box.clientWidth), H = 190, m = { l: 34, r: 8, t: 10, b: 24 };
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  const days = [...Array(30)].map((_, i) => { const s = new Date(d0); s.setDate(s.getDate() - 29 + i); return { s: +s, n: 0 }; });
+  dir.list.forEach(p => { for (let i = 29; i >= 0; i--) if (p.c >= days[i].s) { if (i < 29 || p.c < days[i].s + DAY) days[i].n++; break; } });
+  const max = Math.max(4, ...days.map(d => d.n)), top = Math.ceil(max / 4) * 4;
+  const bw = (W - m.l - m.r) / 30, y = v => m.t + (1 - v / top) * (H - m.t - m.b);
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = top * i / 4, yy = y(v).toFixed(1); g += `<line class="${i ? 'grid-l' : 'base-l'}" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text class="axis" x="${m.l - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end" fill="var(--muted)" font-size="10.5" font-family="var(--mono)">${v}</text>`; }
+  days.forEach((d, i) => {
+    const x = m.l + i * bw + 1, h = y(0) - y(d.n);
+    if (d.n) g += `<path class="bar" data-i="${i}" d="M${x.toFixed(1)},${y(0)}V${(y(d.n) + Math.min(4, h)).toFixed(1)}q0,-${Math.min(4, h).toFixed(1)} ${Math.min(4, h).toFixed(1)},-${Math.min(4, h).toFixed(1)}H${(x + bw - 2 - Math.min(4, h)).toFixed(1)}q${Math.min(4, h).toFixed(1)},0 ${Math.min(4, h).toFixed(1)},${Math.min(4, h).toFixed(1)}V${y(0)}Z"/>`;
+    g += `<rect x="${(m.l + i * bw).toFixed(1)}" y="${m.t}" width="${bw.toFixed(1)}" height="${H - m.t - m.b}" fill="transparent" data-i="${i}"/>`;
+    if (i % 5 === 4 || i === 29) g += `<text x="${(x + bw / 2 - 1).toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="var(--muted)" font-size="10.5" font-family="var(--mono)">${new Date(d.s).getDate()}/${new Date(d.s).getMonth() + 1}</text>`;
+  });
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = g;
+  svg.onpointermove = e => {
+    const i = e.target.dataset && e.target.dataset.i; if (i == null) { tip.hidden = true; return; }
+    const d = days[+i], r = svg.getBoundingClientRect();
+    tip.hidden = false; tip.innerHTML = `<b>${d.n}</b> new · ${new Date(d.s).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}`;
+    tip.style.left = Math.min(Math.max((m.l + (+i + .5) * bw) / W * r.width, 70), r.width - 70) + 'px'; tip.style.top = (y(d.n) / H * r.height) + 'px';
+  };
+  svg.onpointerleave = () => { tip.hidden = true; };
+}
+window.addEventListener('resize', () => { if (inView() && tab === 'directory') drawSignups(); });
+
+// ---------- Chat moderation ----------
+const chat = { ws: null, log: [], who: [], you: null, pingT: 0, idleT: 0 };
+const guestId = rid(12);
+function chatConnect() {
+  if (chat.ws) return;
+  const a = acct();
+  $('chatSub').textContent = 'Connecting…';
+  let ws;
+  if (!LIVE) ws = MOCK.chatSocket();
+  else {
+    try { ws = new WebSocket(SERVER.replace('https:', 'wss:') + '/chat/ws?u=' + guestId + '&n=Guest', a ? ['arcade', a.token] : ['arcade']); }
+    catch (e) { $('chatSub').textContent = 'Couldn’t connect.'; return; }
+  }
+  chat.ws = ws; $('chatConn').textContent = 'Disconnect';
+  ws.onmessage = ev => {
+    if (chat.ws !== ws || ev.data === 'pong') return;
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m.t === 'hello') { chat.you = m.you; chat.log = Array.isArray(m.log) ? m.log : []; chat.who = m.who || []; $('chatSub').textContent = `Connected as ${m.you && m.you.n ? m.you.n : 'Guest'}`; renderChat(true); }
+    else if (m.t === 'msg' && m.m) { chat.log.push(m.m); if (chat.log.length > 400) chat.log.shift(); renderChat(); }
+    else if (m.t === 'who') { chat.who = m.who || []; renderPeople(); }
+    else if (m.t === 'del') { chat.log = chat.log.filter(x => x.id !== m.id); renderChat(); }
+    else if (m.t === 'slow') toast('Slow down: 5 messages in 10 seconds at most.', 'err');
+  };
+  ws.onclose = () => { if (chat.ws !== ws) return; chat.ws = null; clearInterval(chat.pingT); $('chatSub').textContent = 'Disconnected'; $('chatConn').textContent = 'Connect'; renderPeople(); };
+  ws.onerror = () => {};
+  clearInterval(chat.pingT); chat.pingT = setInterval(() => { if (ws.readyState === 1) try { ws.send('ping'); } catch (e) {} }, 25e3);
+}
+function chatDisconnect(quiet) {
+  const ws = chat.ws; if (!ws) return;
+  chat.ws = null; clearInterval(chat.pingT); try { ws.close(1000, 'bye'); } catch (e) {}
+  $('chatSub').textContent = quiet ? 'Disconnected (reconnect to keep watching)' : 'Disconnected'; $('chatConn').textContent = 'Connect'; renderPeople();
+}
+$('chatConn').addEventListener('click', () => { if (chat.ws) chatDisconnect(); else chatConnect(); });
+document.addEventListener('visibilitychange', () => { clearTimeout(chat.idleT); if (document.hidden && chat.ws) chat.idleT = setTimeout(() => chatDisconnect(true), 15 * 60e3); });
+function renderChat(jump) {
+  const list = $('chatList'), atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+  const q = lc($('chatSearch').value.trim()), from = $('chatWho').value;
+  const senders = new Map(); chat.log.forEach(m => senders.set(m.u, m.n));
+  const keep = $('chatWho').value;
+  $('chatWho').innerHTML = '<option value="">Everyone</option>' + [...senders].sort((a, b) => a[1].localeCompare(b[1])).map(([u, n]) => `<option value="${esc(u)}">${esc(n)}${u.startsWith('g:') ? ' (guest ' + esc(u.slice(2, 6)) + ')' : ''}</option>`).join('');
+  $('chatWho').value = senders.has(keep) ? keep : '';
+  $('chatPurge').disabled = !$('chatWho').value || !canAct();
+  const rows = chat.log.filter(m => (!from || m.u === from) && (!q || lc(m.t).includes(q) || lc(m.n).includes(q)));
+  $('ctlChatN').textContent = chat.ws ? chat.who.length : '';
+  list.innerHTML = rows.length ? rows.map(m => `<div class="chat-row" data-id="${esc(m.id)}"><span class="ct">${esc(hhmm(m.ts))}</span><span><span class="cn">${m.a ? `<a class="name-link" data-manage="${esc(m.n)}">${esc(m.n)}</a>` : esc(m.n) + ' <span class="guest">Guest</span>'}</span><span class="cx">${esc(m.t)}</span></span><button class="btn sm danger" type="button" data-del="${esc(m.id)}" ${canAct() ? '' : 'disabled'}>Delete</button></div>`).join('')
+    : `<div class="empty-state">${chat.ws || chat.log.length ? 'No messages match.' : 'Connect to see the last 150 messages and new ones as they arrive.'}</div>`;
+  if (jump || atEnd) list.scrollTop = list.scrollHeight;
+  renderPeople();
+}
+function renderPeople() {
+  const el = $('chatPeople');
+  if (!chat.ws) { el.innerHTML = '<div>Not connected</div>'; return; }
+  el.innerHTML = chat.who.length ? chat.who.map(w => `<div>${w[2] ? `<a class="name-link" data-manage="${esc(w[1])}">${esc(w[1])}</a>` : `${esc(w[1])} <span class="guest">Guest</span>`}${chat.you && w[0] === chat.you.u ? ' <span class="chip">You</span>' : ''}</div>`).join('') : '<div>Nobody</div>';
+  $('ctlChatN').textContent = chat.who.length;
+}
+['chatSearch', 'chatWho'].forEach(id => $(id).addEventListener(id === 'chatSearch' ? 'input' : 'change', () => renderChat()));
+$('chatList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  const m = chat.log.find(x => x.id === b.dataset.del); if (!m) return;
+  b.disabled = true;
+  const r = await admin({ op: 'chatdel', id: m.id });
+  if (r.status === 200 || r.deleted) { record('Delete chat message', m.n, true, `"${m.t.slice(0, 60)}"`); chat.log = chat.log.filter(x => x.id !== m.id); renderChat(); toast('Message deleted'); }
+  else { b.disabled = false; const w = why(r); record('Delete chat message', m.n, false, w); toast(w, 'err'); }
+});
+$('chatPurge').addEventListener('click', async () => {
+  const u = $('chatWho').value; if (!u) return;
+  const mine = chat.log.filter(m => m.u === u), n = mine.length ? mine[0].n : '';
+  if (!mine.length || !await ask({ title: `Delete all ${mine.length} message${mine.length === 1 ? '' : 's'} from ${n}?`, text: 'Each one comes out of the Global chat for everyone. This can’t be undone.', ok: 'Delete them', danger: true })) return;
+  let done = 0;
+  for (const m of mine) { const r = await admin({ op: 'chatdel', id: m.id }); if (r.status === 200) { done++; chat.log = chat.log.filter(x => x.id !== m.id); } else if (r.status !== 404) { toast(why(r), 'err'); break; } }
+  record('Delete chat messages', n, done === mine.length, `${done} of ${mine.length} deleted`);
+  toast(`Deleted ${done} message${done === 1 ? '' : 's'} from ${n}`); renderChat();
+});
+$('chatSend').addEventListener('submit', e => {
+  e.preventDefault();
+  const t = $('chatText').value.trim(); if (!t) return;
+  if (!chat.ws || chat.ws.readyState !== 1) { toast('Connect to the chat first.', 'err'); return; }
+  try { chat.ws.send(JSON.stringify({ t: 'say', text: t, k: rid(8) })); $('chatText').value = ''; } catch (er) { toast('Not sent.', 'err'); }
+});
+
+// ---------- Social moderation ----------
+const rev = { loaded: false, list: [] }, feed = { loaded: false, list: [], before: 0 };
+const KIND = { photo: 'Photo', video: 'Video', clip: 'Game clip' };
+const safeImg = p => typeof p === 'string' && /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(p) ? p : '';
+async function loadReview() {
+  const el = $('revList');
+  if (!isAdminAcct()) { el.innerHTML = '<div class="empty-state">Approving posts needs a signed-in admin account. Sign in with one on the arcade, then reload this page.</div>'; $('revSub').textContent = ''; return; }
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
+  const r = await admin({ op: 'pending', r: '' });
+  if (r.status !== 200) { el.innerHTML = `<div class="empty-state">${esc(why(r))}</div>`; return; }
+  rev.loaded = true; rev.list = Array.isArray(r.list) ? r.list : [];
+  $('ctlRevN').textContent = rev.list.length || '';
+  $('revSub').textContent = rev.list.length ? `${rev.list.length} waiting` : 'Nothing waiting';
+  el.innerHTML = rev.list.length ? rev.list.map((c, i) => postCard(c, true, i < 4)).join('') : '<div class="empty-state">Nothing is waiting. Uploaded photos and videos show up here before they go on Social.</div>';
+  el.querySelectorAll('[data-autoload]').forEach(b => b.click());
+}
+async function loadFeed(more) {
+  const el = $('feedList');
+  if (!more) { feed.list = []; feed.before = 0; el.innerHTML = '<div class="empty-state">Loading…</div>'; }
+  const r = await call('/clips/feed?tab=new' + (feed.before ? '&before=' + feed.before : ''));
+  if (r.status !== 200 || !Array.isArray(r.clips)) { if (!more) el.innerHTML = `<div class="empty-state">${esc(why(r))}</div>`; return; }
+  feed.loaded = true; feed.list = feed.list.concat(r.clips);
+  feed.before = r.clips.length ? Math.min(...r.clips.map(c => c.at)) : feed.before;
+  el.innerHTML = feed.list.length ? feed.list.map(c => postCard(c, false)).join('') : '<div class="empty-state">No posts yet.</div>';
+  $('feedMore').hidden = r.clips.length < 30;
+}
+function postCard(c, review, auto) {
+  const poster = safeImg(c.p), g = c.g ? gameName(c.g) : '';
+  const media = poster ? `<img src="${poster}" alt="">` : review ? `<button class="btn sm" type="button" data-media="${esc(c.id)}" data-k="${esc(c.k)}"${auto ? ' data-autoload="1"' : ''}>Show ${c.k === 'photo' ? 'photo' : 'video'}</button>` : 'No preview';
+  const chips = [KIND[c.k] || 'Post', g].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join(' ') + (c.rp ? ` <span class="chip warn">${c.rp} report${c.rp === 1 ? '' : 's'}</span>` : '') + (c.pin ? ' <span class="chip">Pinned</span>' : '') + (c.bot ? ' <span class="chip">Site post</span>' : '');
+  const acts = review
+    ? `<button class="btn sm primary" type="button" data-rev="approve" data-id="${esc(c.id)}" data-by="${esc(c.by)}">Approve</button><button class="btn sm danger" type="button" data-rev="deny" data-id="${esc(c.id)}" data-by="${esc(c.by)}">Deny</button>`
+    : `<button class="btn sm danger" type="button" data-clipdel="${esc(c.id)}" data-by="${esc(c.by)}" ${canAct() ? '' : 'disabled'}>Delete</button>`;
+  return `<article class="post" data-post="${esc(c.id)}"><div class="pm">${media}</div><div class="pb"><div><a class="name-link" data-manage="${esc(c.by)}">${esc(c.by)}</a> · <span class="g-note">${esc(ago(c.at))}</span></div><div>${chips}</div>
+    <div class="pcap">${esc(c.t || '(no caption)')}</div>${review ? '' : `<div class="pstats">♥ ${+c.lk || 0} · ${+c.vw || 0} views · ${+c.cm || 0} comments</div>`}<div class="pstats">ID ${esc(c.id)}</div></div><div class="pa">${acts}</div></article>`;
+}
+$('revReload').addEventListener('click', loadReview);
+$('feedReload').addEventListener('click', () => loadFeed());
+$('feedMore').addEventListener('click', () => loadFeed(true));
+const blobUrls = [];
+document.querySelector('[data-pane="social"]').addEventListener('click', async e => {
+  const mb = e.target.closest('[data-media]');
+  if (mb) {
+    const id = mb.dataset.media, k = mb.dataset.k, box = mb.parentElement;
+    if (!CLIP_RE.test(id)) return;
+    box.textContent = 'Loading…';
+    if (!LIVE) { box.innerHTML = `<img src="${MOCK.poster(id)}" alt="">`; return; }
+    try {
+      const r = await fetch(SERVER + '/clips/v/' + id); if (!r.ok) throw 0;
+      const u = URL.createObjectURL(await r.blob()); blobUrls.push(u);
+      const m = document.createElement(k === 'photo' ? 'img' : 'video'); m.src = u;
+      if (k !== 'photo') { m.controls = true; m.muted = true; m.playsInline = true; m.preload = 'metadata'; }
+      box.replaceChildren(m);
+    } catch (er) { box.textContent = 'Couldn’t load the file.'; }
+    return;
+  }
+  const rb = e.target.closest('[data-rev]');
+  if (rb) {
+    const op = rb.dataset.rev, id = rb.dataset.id, by = rb.dataset.by;
+    if (op === 'deny' && !await ask({ title: `Deny this post by ${by}?`, text: 'It’s deleted for good and never shows on Social.', ok: 'Deny and delete', danger: true })) return;
+    const card = rb.closest('.post'); card.querySelectorAll('button').forEach(x => { x.disabled = true; });
+    const r = await admin({ op, id, r: '' });
+    if (r.status === 200) {
+      record(OP_LABEL[op], by, true, `Post ${id}`); card.classList.add('done');
+      card.querySelector('.pa').innerHTML = `<span class="pill" data-s="${op === 'approve' ? 'up' : 'down'}">${op === 'approve' ? 'Approved' : 'Denied'}</span>`;
+      rev.list = rev.list.filter(x => x.id !== id); $('ctlRevN').textContent = rev.list.length || ''; $('revSub').textContent = rev.list.length ? `${rev.list.length} waiting` : 'Nothing waiting';
+      if (op === 'approve') feed.loaded = false;
+    } else { card.querySelectorAll('button').forEach(x => { x.disabled = false; }); const w = why(r); record(OP_LABEL[op], by, false, w); toast(w, 'err'); }
+    return;
+  }
+  const db = e.target.closest('[data-clipdel]');
+  if (db) delClip(db.dataset.clipdel, db.dataset.by, db.closest('.post'));
+});
+async function delClip(id, by, card) {
+  if (!canAct()) { toast('Unlock the admin tools first.', 'err'); return; }
+  if (!await ask({ title: by ? `Delete this post by ${by}?` : `Delete post ${id}?`, text: 'It comes off Social for everyone, with its likes and comments. This can’t be undone.', ok: 'Delete post', danger: true })) return;
+  const r = await admin({ op: 'clipdel', id, r: '' });
+  if (r.status === 200) {
+    record('Delete post', by || id, true, `Post ${id}`); toast('Post deleted');
+    if (card) { card.classList.add('done'); card.querySelector('.pa').innerHTML = '<span class="pill" data-s="down">Deleted</span>'; }
+    feed.list = feed.list.filter(x => x.id !== id);
+  } else { const w = why(r); record('Delete post', by || id, false, w); toast(w, 'err'); }
+}
+$('clipDelForm').addEventListener('submit', e => { e.preventDefault(); const id = lc($('clipId').value.trim()); if (!CLIP_RE.test(id)) { toast('A post ID is 10 lower-case letters and numbers.', 'err'); return; } delClip(id, '', document.querySelector(`[data-post="${id}"]`)); });
+$('avDelForm').addEventListener('submit', async e => {
+  e.preventDefault(); const n = $('avName').value.trim();
+  if (!NAME_RE.test(n)) { toast('Type a username.', 'err'); return; }
+  if (!canAct()) { toast('Unlock the admin tools first.', 'err'); return; }
+  if (!await ask(CONFIRM.avatardel(n))) return;
+  const r = await admin({ op: 'avatardel', name: n, r: '' });
+  if (r.status === 200) { record('Remove profile picture', n, true, 'Removed'); toast('Profile picture removed'); $('avName').value = ''; }
+  else { const w = why(r, n); record('Remove profile picture', n, false, w); toast(w, 'err'); }
+});
+
+// ---------- Leaderboards ----------
+const boards = {};
+const BOARD_GAMES = Object.keys(OPS.GAME_NAMES).filter(g => g !== 'home' && g !== 'chat').sort((a, b) => gameName(a).localeCompare(gameName(b)));
+$('lbGame').innerHTML = BOARD_GAMES.map(g => `<option value="${esc(g)}">${esc(gameName(g))}</option>`).join('');
+$('lbGame').value = ls.get('arcadeops.lbgame', 'cube-assault');
+async function loadBoard() {
+  const g = $('lbGame').value; ls.set('arcadeops.lbgame', g);
+  const c = boards[g];
+  if (!c || Date.now() - c.at > 60e3) {
+    $('lbRows').innerHTML = '<tr class="empty-row"><td colspan="3">Loading…</td></tr>';
+    const r = await call('/acct/top?g=' + encodeURIComponent(g));
+    if (r.status !== 200) { $('lbRows').innerHTML = `<tr class="empty-row"><td colspan="3">${esc(why(r))}</td></tr>`; return; }
+    boards[g] = { at: Date.now(), top: Array.isArray(r.top) ? r.top : [] };
+  }
+  renderBoard();
+}
+const firstNum = s => { const m = String(s).replace(/,/g, '').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; };
+function renderBoard() {
+  const g = $('lbGame').value, b = boards[g]; if (!b) return;
+  const how = $('lbSort').value, q = lc($('lbSearch').value.trim());
+  const L = b.top.slice().sort((x, y) => how === 'az' ? x.n.localeCompare(y.n) : (() => { const a = firstNum(x.s), c = firstNum(y.s); if (isNaN(a)) return 1; if (isNaN(c)) return -1; return how === 'lo' ? a - c : c - a; })());
+  const rows = L.map((e, i) => ({ e, i })).filter(({ e }) => !q || lc(e.n).includes(q));
+  $('lbRows').innerHTML = rows.length ? rows.map(({ e, i }) => `<tr><td class="t">${how === 'az' ? '' : i + 1}</td><td><a class="name-link" data-manage="${esc(e.n)}">${esc(e.n)}</a></td><td>${esc(e.s)}</td></tr>`).join('') : `<tr class="empty-row"><td colspan="3">${b.top.length ? 'No players match.' : 'Nobody has a score in ' + esc(gameName(g)) + ' yet.'}</td></tr>`;
+}
+$('lbGame').addEventListener('change', loadBoard);
+['lbSort', 'lbSearch'].forEach(id => $(id).addEventListener(id === 'lbSearch' ? 'input' : 'change', renderBoard));
+
+
+// ---------- Accounts: link accounts by device, find each person's main account and alts ----------
+const ALT_KEY = 'arcadeops.devscan.v1';
+let scan = (LIVE && ls.get(ALT_KEY, null)) || { at: 0, acc: {} };
+if (!scan || typeof scan.acc !== 'object') scan = { at: 0, acc: {} };
+const saveScan = () => { if (LIVE) ls.set(ALT_KEY, scan); };
+const alt = { running: false, stop: false, people: [], shared: [], open: new Set(), main: ls.get('arcadeops.altmain', 'last'), limit: +ls.get('arcadeops.altlimit', 4) || 4 };
+$('altMain').value = alt.main; $('altShared').value = String(alt.limit);
+const shortDev = d => String(d).slice(0, 6) + '…';
+function renderAltAccess() {
+  $('altAccess').innerHTML = !LIVE ? `<span class="who">${shield}Sample mode</span><span class="tag">Sample</span><span class="note">Every account, device and group here is made up. On the arcade site this tab scans the real accounts.</span>`
+    : canAct() ? `<span class="who">${shield}Unlocked as ${esc(actor())}</span><span class="note">Scanning reads accounts only. It never changes or bans anything by itself.</span>`
+    : `<span class="who">${shield}Locked</span><span class="note">Unlock the admin tools in <a class="name-link" href="#admin-control">Admin Control</a> first (an admin account or the admin password).</span>`;
+  document.querySelectorAll('#view-accounts [data-needs]').forEach(b => { b.disabled = !canAct() || alt.running; });
+}
+const lastPlayed = a => Math.max(a.seenAt || 0, a.sessSeen || 0, a.dirSeen || 0, ...Object.values(a.games || {}).map(g => g.at || 0));
+const saved = a => Object.values(a.games || {}).reduce((s, g) => s + (g.size || 0), 0);
+async function fetchOne(name) {
+  const r = await admin({ op: 'devinfo', name });
+  if (r.status === 200) {
+    const d = dir.list.find(p => lc(p.n) === lc(r.name));
+    scan.acc[lc(r.name)] = { name: r.name, created: r.created, seenAt: r.seenAt || 0, sessSeen: r.sessSeen || 0, dirSeen: d ? d.seen : 0, games: r.games || {}, banned: r.banned ? 1 : 0, devban: r.devban ? 1 : 0, devs: Array.isArray(r.devs) ? r.devs.filter(x => typeof x === 'string') : [], at: Date.now() };
+    return { ok: true };
+  }
+  if (r.status === 404) { delete scan.acc[lc(name)]; return { ok: true, gone: true }; }
+  if (r.status === 400 && r.error === 'bad') { $('altDeploy').hidden = false; return { stop: 'The Worker hasn’t been updated yet (see the note above).' }; }
+  if (r.status === 401 || r.status === 429 || r.status === 403 || r.status === 0) return { stop: why(r) };
+  return { ok: false, err: why(r, name) };
+}
+$('altScan').addEventListener('click', async () => {
+  if (!canAct() || alt.running) return;
+  const M = $('altMsg'); setMsg(M, 'Loading the player list…');
+  if (!dir.loaded) await loadDir();
+  if (!dir.loaded) { setMsg(M, 'Couldn’t load the player list.', 'err'); return; }
+  // banned accounts leave the Players list, so add any this console banned (and, in sample mode, every sample account)
+  const bannedHere = audit.filter(a => a.ok && /ban/i.test(a.op) && !/unban/i.test(a.op) && NAME_RE.test(a.target)).map(a => a.target);
+  const names = [...new Set(dir.list.map(p => p.n).concat(Object.values(scan.acc).map(a => a.name), bannedHere, LIVE ? [] : MOCK.allNames()))];
+  const cost = names.length * (isAdminAcct() ? 2 : 2);
+  const ok = await ask({ title: `Scan ${names.length} accounts?`, text: `This reads every account once, about ${cost.toLocaleString()} of the free plan's 100,000 daily Durable Object requests (${Math.max(1, Math.round(cost / 1000))}%). It takes about ${Math.max(1, Math.round(names.length / 6 / 60))} minute${names.length > 360 ? 's' : ''}. Nothing on any account changes.`, ok: 'Start scan' });
+  if (!ok) { setMsg(M, ''); return; }
+  alt.running = true; alt.stop = false; renderAltAccess(); $('altStop').hidden = false; $('altBar').hidden = false;
+  let i = 0, done = 0, fail = 0, stopWhy = '';
+  const bar = $('altBar').firstElementChild;
+  const worker = async () => {
+    while (i < names.length && !alt.stop && !stopWhy) {
+      const n = names[i++];
+      const r = await fetchOne(n);
+      if (r.stop) { stopWhy = r.stop; break; }
+      if (r.ok) done++; else fail++;
+      bar.style.width = ((done + fail) / names.length * 100).toFixed(1) + '%';
+      setMsg(M, `Checked ${done + fail} of ${names.length}${fail ? ` (${fail} failed)` : ''}…`);
+      if ((done + fail) % 25 === 0) { saveScan(); analyze(); }
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  scan.at = Date.now(); saveScan();
+  alt.running = false; $('altStop').hidden = true; renderAltAccess();
+  if (stopWhy) setMsg(M, `Stopped: ${stopWhy}`, 'err');
+  else if (alt.stop) setMsg(M, `Stopped after ${done + fail} accounts. Press Scan to run it again.`);
+  else setMsg(M, `Done: ${done} accounts checked${fail ? `, ${fail} failed` : ''}.`, fail ? 'err' : 'ok');
+  if (!stopWhy) record('Device scan', `${done} accounts`, !fail, alt.stop ? 'Stopped early' : 'Read only');
+  analyze();
+});
+$('altStop').addEventListener('click', () => { alt.stop = true; });
+$('altMain').addEventListener('change', e => { alt.main = e.target.value; ls.set('arcadeops.altmain', alt.main); analyze(); });
+$('altShared').addEventListener('change', e => { alt.limit = +e.target.value; ls.set('arcadeops.altlimit', alt.limit); analyze(); });
+function analyze() {
+  const A = Object.values(scan.acc);
+  const devMap = new Map();
+  A.forEach(a => a.devs.forEach(d => { if (!devMap.has(d)) devMap.set(d, new Set()); devMap.get(d).add(lc(a.name)); }));
+  const sharedDevs = new Set([...devMap].filter(([, s]) => s.size > alt.limit).map(([d]) => d));
+  // union-find: accounts that share any device that isn't a shared (school/family) one are the same person
+  const up = new Map(A.map(a => [lc(a.name), lc(a.name)]));
+  const root = x => { while (up.get(x) !== x) { up.set(x, up.get(up.get(x))); x = up.get(x); } return x; };
+  devMap.forEach((s, d) => { if (sharedDevs.has(d)) return; const l = [...s]; for (let k = 1; k < l.length; k++) up.set(root(l[k]), root(l[0])); });
+  const groups = new Map();
+  A.forEach(a => { const r = root(lc(a.name)); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(a); });
+  alt.people = [...groups.values()].map(list => {
+    const by = alt.main === 'most' ? (x, y) => saved(y) - saved(x) || lastPlayed(y) - lastPlayed(x) : (x, y) => lastPlayed(y) - lastPlayed(x) || saved(y) - saved(x);
+    list.sort(by);
+    const main = list[0], alts = list.slice(1), devs = new Set(list.flatMap(a => a.devs));
+    const banned = list.filter(a => a.banned), free = list.filter(a => !a.banned);
+    return { id: lc(main.name), main, alts, list, devs, last: Math.max(...list.map(lastPlayed)), dodge: banned.length > 0 && free.length > 0, onShared: list.some(a => a.devs.some(d => sharedDevs.has(d))), nodev: list.every(a => !a.devs.length) };
+  });
+  alt.shared = [...sharedDevs].map(d => ({ d, names: [...devMap.get(d)].map(l => (scan.acc[l] || {}).name || l) })).sort((x, y) => y.names.length - x.names.length);
+  alt.devMap = devMap; alt.sharedDevs = sharedDevs;
+  renderAlts();
+}
+function renderAlts() {
+  const P = alt.people, withAlts = P.filter(p => p.alts.length), scanned = Object.keys(scan.acc).length;
+  $('altLast').textContent = scan.at ? `Last scan ${when(scan.at)} · ${scanned} accounts` : scanned ? `${scanned} accounts checked so far` : 'Not scanned yet';
+  const cell = (k, v) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`;
+  $('altStats').innerHTML = cell('Accounts scanned', scanned) + cell('People', P.filter(p => !p.nodev).length) + cell('With alts', withAlts.length) + cell('Alt accounts', withAlts.reduce((s, p) => s + p.alts.length, 0)) + cell('Possible ban dodgers', P.filter(p => p.dodge).length) + cell('No device yet', P.filter(p => p.nodev).length);
+  const q = lc($('altSearch').value.trim()), f = $('altFilter').value;
+  let rows = P.filter(p => f === 'all' ? true : f === 'alts' ? p.alts.length > 0 : f === 'dodge' ? p.dodge : p.nodev);
+  if (q) rows = P.filter(p => p.list.some(a => lc(a.name).includes(q)));
+  rows.sort((x, y) => (y.dodge - x.dodge) || (y.alts.length - x.alts.length) || (y.last - x.last));
+  $('altSub').textContent = `${rows.length} shown`;
+  const on = onlineNow();
+  $('altRows').innerHTML = !scanned ? '<tr class="empty-row"><td colspan="6">Press Scan every account to build the groups.</td></tr>'
+    : rows.length ? rows.slice(0, 300).map(p => {
+      const open = alt.open.has(p.id), nm = a => `<a class="name-link" data-manage="${esc(a.name)}">${esc(a.name)}</a>${a.banned ? ' <span class="chip bad">Banned</span>' : ''}${on.has(lc(a.name)) ? ' <span class="chip on">Online</span>' : ''}`;
+      const flags = (p.dodge ? '<span class="chip bad">Possible ban dodger</span> ' : '') + (p.onShared ? '<span class="chip warn">On a shared device</span> ' : '') + (p.nodev ? '<span class="chip">No device yet</span>' : '');
+      let h = `<tr><td><button class="btn sm" type="button" data-open="${esc(p.id)}" aria-expanded="${open}" aria-label="Details for ${esc(p.main.name)}">${open ? '−' : '+'}</button></td><td>${nm(p.main)}</td><td>${p.alts.length ? p.alts.map(nm).join(', ') : '<span class="g-note">None found</span>'}</td><td class="t">${p.devs.size}</td><td class="t">${esc(ago(p.last))}</td><td>${flags}</td></tr>`;
+      if (open) h += `<tr><td></td><td colspan="5">${groupDetail(p)}</td></tr>`;
+      return h;
+    }).join('') : '<tr class="empty-row"><td colspan="6">Nobody matches.</td></tr>';
+  $('altShRows').innerHTML = alt.shared.length ? alt.shared.map(s => `<tr><td class="mono">${esc(shortDev(s.d))}</td><td>${s.names.map(n => `<a class="name-link" data-manage="${esc(n)}">${esc(n)}</a>`).join(', ')} <span class="chip">${s.names.length}</span></td></tr>`).join('') : `<tr class="empty-row"><td colspan="2">${scanned ? 'No device is used by more than ' + (alt.limit >= 999 ? 'the limit' : alt.limit + ' accounts') + '.' : 'Scan first.'}</td></tr>`;
+}
+function groupDetail(p) {
+  const others = new Set(p.list.map(a => lc(a.name)));
+  const why = a => a.devs.filter(d => !alt.sharedDevs.has(d) && [...alt.devMap.get(d)].some(l => l !== lc(a.name) && others.has(l))).map(shortDev);
+  const rows = p.list.map((a, i) => `<tr><td><a class="name-link" data-manage="${esc(a.name)}">${esc(a.name)}</a></td><td>${i ? 'Alt' : '<b>Main</b>'}</td><td class="t">${esc(when(a.created))}</td><td class="t">${esc(ago(lastPlayed(a)))}</td><td class="t">${Math.ceil(saved(a) / 1024)} KB · ${Object.keys(a.games).length} game${Object.keys(a.games).length === 1 ? '' : 's'}</td><td>${a.banned ? `<span class="chip bad">${a.devban ? 'Device banned' : 'Banned'}</span>` : '<span class="chip on">Active</span>'}</td><td class="mono">${why(a).join(' ') || (a.devs.length ? '' : 'no device yet')}</td></tr>`).join('');
+  const altsFree = p.alts.filter(a => !a.banned && !ADMINS.includes(lc(a.name))), allFree = p.list.filter(a => !a.banned && !ADMINS.includes(lc(a.name)));
+  return `<div class="table-wrap"><table class="data"><thead><tr><th>Account</th><th>Role</th><th>Created</th><th>Last played</th><th>Progress saved</th><th>Status</th><th>Linked by device</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="btn-row" style="margin-top:8px">${altsFree.length ? `<button class="btn sm warn" type="button" data-gban="alts" data-g="${esc(p.id)}" ${canAct() ? '' : 'disabled'}>Ban the ${altsFree.length} alt${altsFree.length === 1 ? '' : 's'}</button>` : ''}${allFree.length ? `<button class="btn sm danger" type="button" data-gban="all" data-g="${esc(p.id)}" ${canAct() ? '' : 'disabled'}>Ban all ${allFree.length} account${allFree.length === 1 ? '' : 's'}</button>` : ''}</div>`;
+}
+$('altRows').addEventListener('click', async e => {
+  const o = e.target.closest('[data-open]');
+  if (o) { const id = o.dataset.open; if (alt.open.has(id)) alt.open.delete(id); else alt.open.add(id); renderAlts(); return; }
+  const g = e.target.closest('[data-gban]'); if (!g) return;
+  const p = alt.people.find(x => x.id === g.dataset.g); if (!p) return;
+  const targets = (g.dataset.gban === 'alts' ? p.alts : p.list).filter(a => !a.banned && !ADMINS.includes(lc(a.name))).map(a => a.name);
+  if (!targets.length || !await ask({ title: `Ban ${targets.length} account${targets.length === 1 ? '' : 's'}?`, text: 'Each is signed out everywhere and can’t log in. These accounts were linked only by sharing a device, so make sure it’s really one person first.', names: targets, ok: 'Ban them', danger: true })) return;
+  let done = 0;
+  for (const n of targets) { const r = await admin({ op: 'ban', name: n }); if (r.status === 200) { done++; record('Ban', n, true, `Alt group of ${p.main.name}`); if (scan.acc[lc(n)]) scan.acc[lc(n)].banned = 1; } else { record('Ban', n, false, why(r, n)); if ([0, 401, 429].includes(r.status)) break; } }
+  saveScan(); toast(`Banned ${done} of ${targets.length}`, done === targets.length ? '' : 'err'); dir.loaded = false; analyze();
+});
+['altSearch', 'altFilter'].forEach(id => $(id).addEventListener(id === 'altSearch' ? 'input' : 'change', renderAlts));
+$('altOneForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const n = $('altOne').value.trim(), out = $('altOneOut');
+  if (!NAME_RE.test(n)) { out.innerHTML = '<p class="msg-line" data-k="err">Type a username.</p>'; return; }
+  if (!canAct()) { out.innerHTML = '<p class="msg-line" data-k="err">Unlock the admin tools first.</p>'; return; }
+  out.innerHTML = '<p class="msg-line">Checking…</p>';
+  if (!dir.loaded) await loadDir();
+  const r = await fetchOne(n);
+  if (r.stop || r.ok === false) { out.innerHTML = `<p class="msg-line" data-k="err">${esc(r.stop || r.err)}</p>`; return; }
+  if (r.gone) { out.innerHTML = `<p class="msg-line" data-k="err">There’s no account called ${esc(n)}.</p>`; return; }
+  saveScan(); analyze();
+  const a = scan.acc[lc(n)], p = alt.people.find(x => x.list.includes(a));
+  const full = scan.at && Object.keys(scan.acc).length > 1;
+  out.innerHTML = `<div class="result-card"><h4>${esc(a.name)} ${p && p.main === a ? '<span class="chip on">Main account</span>' : p ? '<span class="chip warn">Alt of ' + esc(p.main.name) + '</span>' : ''}</h4><div class="rc-body">
+    <table class="kv"><tr><th>Devices recorded</th><td>${a.devs.length ? a.devs.map(d => `<span class="mono">${esc(shortDev(d))}</span>${alt.sharedDevs.has(d) ? ' <span class="chip warn">shared</span>' : ''}`).join(', ') : 'None yet (not used since 12 Nov 2026)'}</td></tr>
+    <tr><th>Last played</th><td>${esc(ago(lastPlayed(a)))}</td></tr><tr><th>Progress saved</th><td>${Math.ceil(saved(a) / 1024)} KB in ${Object.keys(a.games).length} games</td></tr>
+    <tr><th>Same person</th><td>${p && p.list.length > 1 ? p.list.filter(x => x !== a).map(x => `<a class="name-link" data-manage="${esc(x.name)}">${esc(x.name)}</a>`).join(', ') : 'No other account found'}</td></tr></table>
+    ${full ? '' : '<p class="chart-note">Only accounts already scanned can be matched. Run Scan every account to check against everyone.</p>'}</div></div>`;
+  if (p && p.alts.length) { alt.open.add(p.id); renderAlts(); }
+});
+window.addEventListener('hashchange', () => { if (location.hash === '#accounts') { renderAltAccess(); if (!dir.loaded) loadDir(); analyze(); } });
+
+// ---------- Sample mode (anywhere but the official site) ----------
+const MOCK = LIVE ? null : (() => {
+  const W = ['comet', 'pixel', 'nova', 'turbo', 'ember', 'frost', 'quartz', 'orbit', 'blaze', 'echo', 'lunar', 'vortex', 'sprout', 'rocket', 'maple', 'zephyr', 'cinder', 'glitch', 'koi', 'tango', 'delta', 'ivy', 'jolt', 'nimbus', 'onyx', 'pepper', 'quill', 'rune', 'sable', 'tidal', 'umber', 'velvet', 'wisp', 'yarrow', 'zinc', 'acorn', 'basil', 'cobalt', 'dune', 'fable', 'gecko', 'harbor', 'indigo', 'juniper', 'kestrel', 'lumen', 'mango', 'nectar'];
+  const now = Date.now(), pick = a => a[Math.floor(Math.random() * a.length)];
+  const people = W.map(w => { const c = now - Math.floor(Math.pow(Math.random(), 1.4) * 45 * DAY); return { n: 'demo_' + w, c, has: Math.random() < .7 ? 1 : 0, seen: now - Math.pow(Math.random(), 3) * (now - c), banned: 0, devban: 0, av: 1 }; });
+  const games = ['cube-assault', 'blockcraft', 'poly-racer', 'chess', 'uno', 'krill-dive', '2048', 'havoc-bay'];
+  let dn = 0; const nd = () => 'd' + (dn++).toString(36).padStart(5, '0') + rid(10);
+  people.forEach(p => { p.devs = [nd()]; if (Math.random() < .25) p.devs.push(nd()); p.gs = {}; games.filter(() => p.has && Math.random() < .4).forEach(g => { p.gs[g] = { size: 1500 + Math.floor(Math.random() * 90000), at: p.seen - Math.random() * 5 * DAY }; }); });
+  for (let k = 0; k < 6; k++) { const a = people[k * 3], b = people[k * 3 + 1]; b.devs.push(a.devs[0]); if (k % 2 === 0) people[k * 3 + 2].devs.push(a.devs[0]); }
+  people[2].banned = 1; people[2].devban = 1; people[7].banned = 1;
+  const school = nd(); people.slice(30, 38).forEach(p => p.devs.push(school));
+  people.slice(40).forEach(p => { p.devs = []; });
+  const online = new Set(people.filter(() => Math.random() < .18).map(p => p.n));
+  const og = {}; online.forEach(n => { og[lc(n)] = pick(games.concat(['home'])); });
+  const find = n => people.find(p => lc(p.n) === lc(n));
+  const score = g => ({ 'cube-assault': () => 'Wave ' + (3 + Math.floor(Math.random() * 30)), '2048': () => (Math.floor(Math.random() * 40) * 512 + 1024).toLocaleString() + ' points', chess: () => (Math.floor(Math.random() * 20)) + ' wins', 'poly-racer': () => '1:' + pad(20 + Math.floor(Math.random() * 39)) + '.' + Math.floor(Math.random() * 10) + ' best lap' }[g] || (() => (10 + Math.floor(Math.random() * 990)) + ' points'))();
+  const posters = {};
+  const poster = id => {
+    if (posters[id]) return posters[id];
+    const c = document.createElement('canvas'); c.width = 320; c.height = 200; const x = c.getContext('2d');
+    const h = [...id].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360;
+    const gr = x.createLinearGradient(0, 0, 320, 200); gr.addColorStop(0, `hsl(${h} 60% 45%)`); gr.addColorStop(1, `hsl(${(h + 60) % 360} 55% 25%)`);
+    x.fillStyle = gr; x.fillRect(0, 0, 320, 200); x.fillStyle = 'rgba(255,255,255,.85)'; x.font = '600 18px sans-serif'; x.fillText('Sample post', 16, 184);
+    return (posters[id] = c.toDataURL('image/jpeg', .7));
+  };
+  const caps = ['wave 25 finally', 'look at this jump', 'my blockcraft castle', 'clutch win', 'new best lap', 'gg everyone', 'how is this even possible', 'first try!!'];
+  const mkPost = (i, pend) => { const id = rid(10), by = pick(people).n; return { id, by, k: pend ? pick(['photo', 'video']) : pick(['clip', 'clip', 'photo', 'video']), g: pick(games), t: pick(caps), at: now - i * 47 * 60e3 - Math.random() * 30 * 60e3, lk: Math.floor(Math.random() * 40), vw: Math.floor(Math.random() * 400), cm: Math.floor(Math.random() * 12), rp: Math.random() < .15 ? 1 + Math.floor(Math.random() * 2) : 0, p: pend ? '' : poster(id) }; };
+  const posts = [...Array(45)].map((_, i) => mkPost(i, false)), pending = [...Array(3)].map((_, i) => mkPost(i, true));
+  const lines = ['anyone want to play chess?', 'gg', 'how do you get the extreme gun', 'wave 20 on cube assault!!', 'krill dive is hard today', 'lol', 'who’s on blockcraft', 'new high score on 2048', 'join my uno game', 'poly racer track 3 is so fun', 'brb', 'nice'];
+  const chatLog = [...Array(26)].map((_, i) => { const p = pick(people), g = Math.random() < .3; return { id: rid(6), u: g ? 'g:' + rid(6) : 'a:' + lc(p.n), n: g ? 'Guest' : p.n, a: g ? 0 : 1, t: pick(lines), ts: now - (26 - i) * 2.4 * 60e3 }; });
+  const json = (o, status = 200) => new Promise(r => setTimeout(() => r(Object.assign(o, { status })), 220 + Math.random() * 200));
+  return {
+    online, onlineGame: n => og[lc(n)] || 'home', poster, allNames: () => people.map(p => p.n),
+    call(path, opt) {
+      const u = new URL(path, SERVER), q = u.searchParams, b = (opt && opt.body) || {};
+      if (u.pathname === '/acct/players') return json({ players: people.filter(p => !p.banned).map(p => [p.n, p.c, p.has, p.seen]) });
+      if (u.pathname === '/acct/player') { const p = find(q.get('name')); if (!p || p.banned) return json({ error: 'no_account' }, 404); const s = {}; if (p.has) games.slice(0, 2 + Math.floor(Math.random() * 4)).forEach(g => { s[g] = score(g); }); return json({ n: p.n, c: p.c, s, seen: p.seen }); }
+      if (u.pathname === '/acct/top') return json({ top: people.filter(p => p.has && !p.banned).slice(0, 30).map(p => ({ n: p.n, s: score(q.get('g')) })) });
+      if (u.pathname === '/clips/feed') { const before = +q.get('before') || Infinity; return json({ clips: posts.filter(c => c.at < before).sort((a, b2) => b2.at - a.at).slice(0, 30), following: [] }); }
+      if (u.pathname === '/acct/admin') {
+        const op = b.op, p = find(b.name);
+        if (op === 'pending') return json({ list: pending.slice() });
+        if (op === 'approve' || op === 'deny') { const i = pending.findIndex(c => c.id === b.id); if (i < 0) return json({ error: 'not_found' }, 404); const [c] = pending.splice(i, 1); if (op === 'approve') posts.unshift(Object.assign(c, { p: poster(c.id), at: Date.now() })); return json({ ok: 1 }); }
+        if (op === 'clipdel') { const i = posts.findIndex(c => c.id === b.id); if (i < 0) return json({ error: 'not_found' }, 404); posts.splice(i, 1); return json({ deleted: true }); }
+        if (op === 'chatdel') { const i = chatLog.findIndex(m => m.id === b.id); if (i < 0) return json({ error: 'not_found' }, 404); chatLog.splice(i, 1); return json({ deleted: true }); }
+        if (!p) return json({ error: 'no_account' }, 404);
+        if (['ban', 'rename', 'delete', 'newcode', 'devban'].includes(op) && ADMINS.includes(lc(p.n))) return json({ error: 'protected' }, 400);
+        if (op === 'devinfo') return json({ name: p.n, created: p.c, seenAt: p.seen, sessSeen: p.seen, devices: 1, games: p.gs, banned: p.banned, devban: p.devban, devs: p.devs.slice() });
+        if (op === 'info') { const gs = {}; if (p.has) games.slice(0, 3).forEach((g, i) => { gs[g] = { size: 2048 + i * 9000, at: p.seen - i * 3600e3 }; }); return json({ name: p.n, created: p.c, devices: 1 + Math.floor(Math.random() * 3), games: gs, banned: p.banned, devs: 2, devban: p.devban }); }
+        if (op === 'ban') { p.banned = 1; return json({ banned: true, name: p.n }); }
+        if (op === 'unban') { p.banned = 0; p.devban = 0; return json({ unbanned: true, name: p.n }); }
+        if (op === 'devban') { p.banned = 1; p.devban = 1; return json({ banned: true, name: p.n, devices: 2, devbanned: 1 }); }
+        if (op === 'devunban') { p.banned = 0; p.devban = 0; return json({ unbanned: true, name: p.n, devices: 2, devbanned: 0 }); }
+        if (op === 'rename') { if (!NAME_RE.test(b.to)) return json({ error: 'format' }, 400); if (find(b.to)) return json({ error: 'taken' }, 409); p.n = b.to; return json({ name: p.n }); }
+        if (op === 'newcode') return json({ name: p.n, code: 'SAMP-LE' + rid(2).toUpperCase() + '-CODE' });
+        if (op === 'delete') { people.splice(people.indexOf(p), 1); return json({ deleted: true, name: p.n }); }
+        if (op === 'avatardel') return json({ ok: 1 });
+      }
+      return json({ error: 'not_found' }, 404);
+    },
+    chatSocket() {
+      const s = { readyState: 1, onmessage: null, onclose: null, onerror: null };
+      const emit = o => setTimeout(() => s.onmessage && s.onmessage({ data: JSON.stringify(o) }), 0);
+      const you = { u: 'g:you', n: 'Sample admin', a: 1 };
+      const who = () => [[you.u, you.n, 1, now]].concat(people.filter(p => online.has(p.n)).slice(0, 6).map(p => ['a:' + lc(p.n), p.n, 1, now]));
+      setTimeout(() => emit({ t: 'hello', you, log: chatLog.slice(), who: who() }), 300);
+      const tick = setInterval(() => { const p = pick(people); const m = { id: rid(6), u: 'a:' + lc(p.n), n: p.n, a: 1, t: pick(lines), ts: Date.now() }; chatLog.push(m); emit({ t: 'msg', m }); }, 7000);
+      s.send = d => { if (d === 'ping') return; try { const m = JSON.parse(d); if (m.t === 'say') { const x = { id: rid(6), u: you.u, n: you.n, a: 1, t: m.text, ts: Date.now() }; chatLog.push(x); emit({ t: 'msg', m: x, k: m.k }); } } catch (e) {} };
+      s.close = () => { clearInterval(tick); s.readyState = 3; setTimeout(() => s.onclose && s.onclose({ code: 1000 }), 0); };
+      return s;
+    },
+  };
+})();
+
+// ---------- Start ----------
+renderAccess(); renderAudit();
+if (inView()) showTab(tab); else document.querySelectorAll('#ctlTabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+document.querySelectorAll('.ctl-pane').forEach(p => { p.hidden = p.dataset.pane !== tab; });
+// keep "online now" flags fresh while the directory is showing
+setInterval(() => { if (inView() && tab === 'directory' && dir.loaded) { const s = $('dirStats'); if (s) s.innerHTML = dirStats().map(([k, v]) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`).join(''); } }, 15e3);
 })();
 </script>
 </body>

@@ -29,6 +29,15 @@ source in Settings → Pages should be switched to `main`.
   time (kept 24 h in `arcadeops.history.v1`), players by game, who's online, the socket's ping round trip, a no-cors check of
   the Worker's plain route every 60 s, and an event log. Like rt.js it lets go of its socket after 15 minutes hidden. Away from
   the official origin (a local file, a preview) the Worker refuses it and it shows sample data with a banner.
+  Admin Control (#admin-control, 2026-11-12): every tool from account.js openAdmin (look up, rename, ban/unban, device ban,
+  new recovery code, delete) plus Social review/approve/deny and post/picture deletes, a player directory (/acct/players:
+  search, filters, sign-ups per day, bulk ban/unban), live Global chat moderation (its own /chat/ws socket, only while that
+  tab is open; delete one message or all from a person), leaderboards (/acct/top) and an action log (this browser only,
+  `arcadeops.audit.v1`). It uses the signed-in admin account from `arcade-acct`, or the admin password (memory only).
+  Accounts (#accounts): reads every account with the admin op 'devinfo' (read only; needs the Worker deploy of 2026-11-12),
+  groups accounts that share a device id (union-find; a device used by more than N accounts, default 4, is treated as a
+  school/family computer and ignored), picks each group's main account (latest activity, or most cloud save bytes, since
+  play time isn't recorded) and lists the rest as alts, with ban dodger flags. The scan is cached in `arcadeops.devscan.v1`.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".

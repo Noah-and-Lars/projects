@@ -227,7 +227,7 @@ const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).in
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -270,7 +270,9 @@ async function admin(env, body, out, auth) {
     return out(await r.json().catch(() => ({})), r.status);
   }
   if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
-  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename', newcode: 'adminnewcode' }[op], { to: String(body.to || '') });
+  // 2026-11-12: 'devinfo' (read only) is 'info' plus the account's device ids and activity times, for the admin console's
+  // Accounts tab, which groups accounts that share a device to find each person's main account and their alts.
+  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', devinfo: 'admindevinfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename', newcode: 'adminnewcode' }[op], { to: String(body.to || '') });
   return out(await r.json().catch(() => ({})), r.status);
 }
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -415,6 +417,11 @@ export class Account extends DurableObject {
     const a = await S.get('acct');
     if (!a) return j({ error: 'no_account' }, 404);
     if (route === 'admindevs') return j({ name: a.name, devs: a.devs || [] });
+    if (route === 'admindevinfo') {
+      const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
+      return j({ name: a.name, created: a.created, seenAt: a.seenAt || 0, sessSeen: Math.max(0, ...(a.sess || []).map(x => x.seen || 0)), devices: (a.sess || []).length,
+        games, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, devs: a.devs || [] });
+    }
     if (route === 'admininfo') {
       const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
       return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games, banned: a.banned ? 1 : 0, devs: (a.devs || []).length, devban: a.devban ? 1 : 0 });
