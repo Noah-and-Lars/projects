@@ -9914,7 +9914,7 @@ function apply131(z) { [0, 1].forEach(t => { const n = z[t] | 0, add = n & ~TUP[
 </script>
 <script id="hb-cheat">
 'use strict';
-/* Cheat menu (Shift+C) for a few arcade accounts only. The account server signs a short ticket for them
+/* Cheat menu (Shift+B) for a few arcade accounts only. The account server signs a short ticket for them
    (/acct/hbcheat); every screen checks it with HBC_PUB before obeying, so a renamed save can't open it. */
 (() => {
   const HBC_PUB = { kty: 'EC', crv: 'P-256', x: 'rx2nkXtRJ-6u-gpGXyOvyf6YaDJZZ4YpoIWp7tA1jUk', y: 'kXPgz1b60Hxx4Fgy_k--lzN634wBj2rzvpNeCo4IVfw' };
@@ -10039,7 +10039,7 @@ function apply131(z) { [0, 1].forEach(t => { const n = z[t] | 0, add = n & ~TUP[
     const list = [...named().keys()].filter(n => !isMe(n));
     if (!list.includes(pick)) pick = list[0] || '';
     const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
-    box.innerHTML = `<h3>🛠️ Cheats</h3><small>Shift+C to close · ${esc(myName())}</small>
+    box.innerHTML = `<h3>🛠️ Cheats</h3><small>Shift+B to close · ${esc(myName())}</small>
 <h4>You</h4><div class="row">${T('god', 'God mode')}${T('ohk', 'One-hit kills')}${T('ammo', '∞ missiles, bombs, torpedoes, flares')}${T('rapid', 'Rapid fire')}${T('mis', '∞ computer missiles')}
 <button data-sp="1">Speed ×${ME.speed}</button>${B('heal', 'Repair me')}</div><small>Infinite gold is always on.</small>
 <h4>Everyone</h4><div class="row">${B('killall', 'Kill all enemies')}${B('harbor', 'Destroy enemy harbor')}</div>
@@ -10065,7 +10065,7 @@ function apply131(z) { [0, 1].forEach(t => { const n = z[t] | 0, add = n & ~TUP[
   });
   let redraw = 0;
   addEventListener('keydown', ev => {
-    if (!ME.on || !ev.shiftKey || ev.code !== 'KeyC' || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (!ME.on || !ev.shiftKey || ev.code !== 'KeyB' || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     const tag = document.activeElement && document.activeElement.tagName; if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     ev.preventDefault(); ev.stopImmediatePropagation();
     const open = box.style.display === 'none';
