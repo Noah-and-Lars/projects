@@ -21,7 +21,7 @@
 })();
 </script>
 <title>Support · The Arcade</title>
-<meta name="description" content="Found a bug or got an idea for The Arcade? Send feedback, or apply to become a game tester.">
+<meta name="description" content="Found a bug or got an idea for The Arcade? Send feedback, apply to become a game tester, or apply to be a developer.">
 <meta name="theme-color" content="#0f0d1f">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
@@ -45,6 +45,8 @@
 .feedback + .feedback { margin-top: 16px; }
 .tester { background: linear-gradient(135deg, #00d2a826, #6c5ce733); }
 .tester .fb-btn { background: var(--accent-2); color: #04211b; }
+.dev { background: linear-gradient(135deg, #f2b13426, #6c5ce733); }
+.dev .fb-btn { background: #f2b134; color: #1a1408; }
 .mob .sup { margin-top: 18px; }
 .mob .sup h1 { font-size: 26px; }
 </style>
@@ -81,6 +83,14 @@
       </div>
       <a class="fb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLScRRLtCvERDPKOwirvIU6wiKfjw2f6LrIRz43iTdZ9hRYqnCg/viewform" target="_blank" rel="noopener noreferrer">Apply to test ↗</a>
     </section>
+
+    <section class="section feedback dev" aria-labelledby="dvH">
+      <div class="fb-text">
+        <h2 class="sec-h" id="dvH">Want to help build The Arcade?</h2>
+        <p>Apply to be a developer: make new games, improve the ones we have and work on the site itself. Tell us what you can do and we'll message you on your Arcade account if you're a good fit.</p>
+      </div>
+      <a class="fb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSeb-tJoOAOTlLPfvIURxqCWMsid596ekZ1O1DCfpFkJEWJmeg/viewform" target="_blank" rel="noopener noreferrer">Apply to develop ↗</a>
+    </section>
   </div>
 </main>
 
@@ -88,13 +98,13 @@
   <p>The Arcade</p>
 </footer>
 
-<script src="games.js?v=199"></script>
+<script src="games.js?v=200"></script>
 <script src="account.js?v=20"></script>
 <script src="console.js?v=1"></script>
 <script src="call.js?v=6"></script>
 <script>
 // Support (2026-11-11): the feedback form (a Google Form), moved here from the bottom of the home page, and the
-// game tester request form (also a Google Form).
+// game tester request form and the developer application form (also Google Forms).
 ArcadeOnline.start('support');
 </script>
 <script src="tos.js?v=9"></script>
