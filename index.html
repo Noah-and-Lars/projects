@@ -134,7 +134,7 @@
   <p>The Arcade · <span id="count"></span></p>
 </footer>
 
-<script src="games.js?v=201"></script>
+<script src="games.js?v=202"></script>
 <script src="account.js?v=20"></script>
 <script src="console.js?v=1"></script>
 <script src="call.js?v=6"></script>
@@ -255,7 +255,7 @@ function renderNews() {
 function render() {
   const q = $('search').value.trim().toLowerCase();
   // the order of the All games grid: these first (rows of four), then everything else as listed in games.js
-  const FIRST = ['chess', 'cube-assault', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'gamble-your-life-away', 'card-royale', 'uno', 'russian-roulette', 'free-criminal', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop'];
+  const FIRST = ['chess', 'cube-assault', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'gamble-your-life-away', 'throttle-ridge', 'uno', 'russian-roulette', 'free-criminal', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop', 'card-royale'];
   const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
   const list = [...GAMES].sort((a, b) => rank(a) - rank(b)).filter(g =>
     (active === 'All' || g.category === active) &&

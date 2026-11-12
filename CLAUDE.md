@@ -274,7 +274,15 @@ source in Settings → Pages should be switched to `main`.
   bundled into the file). The file is a build: its source (plain ES modules in `throttle-ridge/src/`), the build script
   (`throttle-ridge/tools/build.mjs`, esbuild) and a headless test (`tools/test.cjs`) live on the `main` branch, not
   here. Edit the source there, run `npm run build` in `throttle-ridge/tools`, and copy the new `index.html` over. Saves
-  one key, `throttle-ridge.v1` ({best: {trackId: seconds}, unlocked, skill, muted}). `window.__game` is a test hook.
+  one key, `throttle-ridge.v1` ({best: {trackId: seconds}, unlocked, skill, muted, bike}). `window.__game` is a test hook.
+  1.1 (2026-11-13): online races for 2-4 players (`src/js/net.js`): channels `tr11-pub<N>` (Quick race; the host's
+  screen starts it 15 s after two riders wait) and `tr11-r-<CODE>` (private rooms), `?trroom=<name>` for test channels.
+  Presence is the player list {id, n, b bike, t, s lobby|race, k track}; the longest-present player is host and sends
+  'go'. Each screen simulates only its own bike and sends 's' at 10 Hz; the others are switched-off planck bodies moved
+  from the snapshots 160 ms behind (`remoteStep`). Names come from `arcade-acct` / `arcade-local`. Bikes: `BIKES` in
+  bike.js, STOCK 125 (the original) and MID 250 (faster; computer riders stay on the stock bike). The speedometer is
+  Poly Racer's dial (`speedo.js`), computer riders make mistakes (`slip` / `fumble` in ai.js), and the menu has
+  Patch notes (in src/index.html; add each version there).
 - `cube-assault/`: first-person 3D shooter (Three.js bundled into the file). Since 2.3 it has touch controls (`#touch` layer, `autoTouch` / `touchMode()`, setting `touch`: auto, on or off).
   Since 2.6 it has online multiplayer. The blocks `mp-ui-css`, `mp-ui`, `mp-stub` and `CS MAP` are the lobby, HUD, results and Outpost map; the `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). Supabase's free plan capped the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`); the Cloudflare server doesn't need that cap, so it can be raised (an mp-net change: ask first). Room chat (2.8.3): 'chat' on the room channel, `CAMP.chat()` and the 'chat' event, drawn by the `<script id="mp-chat">` block (Enter opens it).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.

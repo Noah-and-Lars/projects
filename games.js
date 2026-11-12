@@ -27,14 +27,14 @@ window.GAMES = [
     id: 'throttle-ridge',
     title: 'Throttle Ridge',
     category: 'Racing',
-    tagline: 'Side-scrolling motocross over big sculpted dirt jumps, from a sunny meadow to a floodlit night arena.',
-    description: 'A side-scrolling motocross race against three computer riders. Hold the gas, lean in the air to match the landing slope and keep your speed, and finish in the top two to unlock the next track.',
-    controls: 'Keyboard or touch',
+    tagline: 'Side-scrolling motocross over big sculpted dirt jumps. Now with 4-player online races and a faster MID 250 bike.',
+    description: 'A side-scrolling motocross race against three computer riders, or up to three other people online. Hold the gas, lean in the air to match the landing slope and keep your speed, and finish in the top two to unlock the next track. Pick the STOCK 125 or the faster MID 250.',
+    controls: 'Keyboard or touch · Online for up to 4',
     keys: [['↑ / W', 'Gas'], ['↓ / S', 'Brake and reverse'], ['← / A', 'Lean back (wheelie, rotate back in the air)'], ['→ / D', 'Lean forward'], ['R', 'Back to the last checkpoint'], ['Esc / P', 'Pause'], ['M', 'Mute']],
     path: 'throttle-ridge/index.html',
     thumb: 'throttle-ridge/thumb.jpg',
     added: '2026-11-11T09:00:00+11:00',
-    updated: '2026-11-11T09:00:00+11:00',
+    updated: '2026-11-13T10:30:00+11:00',
     stat() { const s = readSave('throttle-ridge.v1', true), n = s && s.best ? Object.keys(s.best).length : 0; return n ? n + '/5 tracks finished' : null; },
   },
   {
@@ -333,6 +333,8 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-13', game: 'throttle-ridge', imgs: ['throttle-ridge/news/1.1-online.jpg', 'throttle-ridge/news/1.1-lobby.jpg', 'throttle-ridge/news/1.1-mid-bike.jpg'], headline: 'Throttle Ridge goes online', text: 'Throttle Ridge 1.1: online races for up to 4 players (quick race or a private room with a code, using your arcade name), a new MID 250 bike that is faster than the STOCK 125, the Poly Racer speedometer, computer riders that make mistakes, and a Patch notes button.',
+    post: '🏍️ Throttle Ridge 1.1 is out!\n\n🌐 Online races for up to 4 players. Quick race drops you in a public room that starts by itself, or make a private room and share the code.\n⚡ New bike: the MID 250. More power and a higher top speed than the STOCK 125.\n⏱️ The speedometer dial from Poly Racer: revs, gear and speed.\n🤖 Computer riders now make mistakes: over-rotating, freezing in the air and fumbling the throttle.\n📝 A Patch notes button in the game.' },
   { date: '2026-11-13', game: 'krill-dive', imgs: ['krill-dive/thumb.svg'], headline: '200 new Krill Dive questions', text: 'Krill Dive 1.5: 200 new questions for the daily dive and practice, from easy ones like mammals, desserts and superheroes to harder ones like Norse gods and Beatles songs. Every one has plenty of answers, so there is always a rarer one to dive for. They start showing up in tomorrow\u2019s dive.' },
   { date: '2026-11-12', game: 'havoc-bay', imgs: ['havoc-bay/news/1.4.3-marines.jpg'], headline: 'Marines, power grids and a bigger bay', text: 'Havoc Bay 1.4.3: a 1.5x bigger map with livelier islands, power grids you can knock out for 3 minutes, a taller harbor tower with lifts, roof AA and a spotting scope, AI marines who go ashore and guard islands, AI gunners, the Interceptor, Striker and Albatross, deploy tabs, and big helicopter and submarine buffs.', post: '⚓ Havoc Bay 1.4.3 is a big one!\n\n🗺️ The bay is 1.5x bigger, with new islets and islands full of life\n⚡ Power grids: blow up the enemy substation and their lights, map and computer go dark for 3 minutes\n🪖 AI marines ride your warships, hop off at islands and guard them\n🔫 AI gunners fill empty gunner seats until a friend jumps in\n✈️ New: the Interceptor, the Striker and the Albatross helicopter with door gunners\n🚁 Helicopter and 🌊 submarine buffs (the Typhoon does 60 knots)\n🏰 A taller harbor tower with lifts, roof AA and a spotting scope\n\nWhich team are you on? 🔵🔴\n\n#havocbay #TheArcade #Update' },
   { date: '2026-11-12', game: 'chess', imgs: ['chess/thumb.svg'], headline: 'Chess move timer', text: 'Chess 1.5.3: in online games you get 1:30 to make each move. The timer sits above the board and turns red in the last 15 seconds. Run out and you lose on time.' },
