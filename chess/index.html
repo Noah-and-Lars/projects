@@ -732,8 +732,15 @@ function finish() {
   if (online.on && save.rating && over.quit) { // 1.5.2: you walked out of the game (the button, a refresh or closing the page)
     const d = leavePenalty(); online.delta = d;
     $('resR').textContent = `You left the game: Elo ${showR(save.rating.r)} (${d})`; $('resR').className = 'dn';
-  } else if (online.on && save.rating && over.left) { // 1.5.2: the other player walked out: nothing changes for you
-    $('resR').textContent = 'Your opponent left: no Elo change';
+  } else if (online.on && save.rating && over.left) { // 1.5.2: the other player walked out: you get half of what a win would give
+    if (!online.oppRate) $('resR').textContent = 'Your opponent left: no Elo change';
+    else {
+      const R = save.rating, before = Math.round(R.r), res = glicko(R.r, rdNow(R), online.oppRate.r, online.oppRate.rd, 1);
+      R.r = Math.max(RATE.floor, R.r + Math.max(0, res.r - R.r) / 2); R.at = Date.now(); R.n++; R.peak = Math.max(R.peak || 0, R.r);
+      const d = Math.round(R.r) - before; online.delta = d;
+      $('resR').textContent = `Your opponent left: Elo ${showR(R.r)} (+${d})`;
+      Net.retrack();
+    }
   } else if (online.on && save.rating) {
     if (aborted) $('resR').textContent = 'Game aborted: not rated';
     else if (!online.oppRate) $('resR').textContent = 'Not rated: your opponent’s copy of the game is out of date';
