@@ -221,7 +221,9 @@
 <div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.5.1</span></summary>
+    <summary>Patch notes <span>v1.5.2</span></summary>
+    <h3>v1.5.2 <small>Bug fixes and improvements</small></h3>
+    <ul><li>Bug fixes and improvements.</li></ul>
     <h3>v1.5.1 <small>Elo reset and quick match alerts</small></h3>
     <ul>
       <li><b>Everyone starts at 2000 Elo.</b> Every rating was reset to 2000, and new players start there too. There is no starting level to pick any more.</li>
@@ -574,7 +576,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -727,7 +729,12 @@ function finish() {
   if (!online.on) save.game = null;
   // 1.4: rated: an online game against a person in which both of you moved (one that ends sooner is aborted, as on chess.com)
   $('resR').textContent = ''; $('resR').className = '';
-  if (online.on && save.rating) {
+  if (online.on && save.rating && over.quit) { // 1.5.2: you walked out of the game (the button, a refresh or closing the page)
+    const d = leavePenalty(); online.delta = d;
+    $('resR').textContent = `You left the game: Elo ${showR(save.rating.r)} (${d})`; $('resR').className = 'dn';
+  } else if (online.on && save.rating && over.left) { // 1.5.2: the other player walked out: nothing changes for you
+    $('resR').textContent = 'Your opponent left: no Elo change';
+  } else if (online.on && save.rating) {
     if (aborted) $('resR').textContent = 'Game aborted: not rated';
     else if (!online.oppRate) $('resR').textContent = 'Not rated: your opponent’s copy of the game is out of date';
     else {
@@ -1104,9 +1111,29 @@ function startOnline() {
   document.body.classList.add('online');
   buildSquares(); renderAll(); renderSide(); Sound.start();
 }
+// 1.5.2: leaving a game before it ends costs a flat 100 Elo (the other player keeps theirs). One account (by its char
+// codes) loses 1000 the first two times.
+const LEAVE_PEN = 100, PEN_SPECIAL = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000, 2];
+function myAcctName() {
+  try { const A = (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount; const n = A && (typeof A.name === 'function' ? A.name() : A.name); if (n) return String(n); } catch (e) {}
+  try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); if (a && a.name) return String(a.name); } catch (e) {}
+  return '';
+}
+function leavePenalty() {
+  const R = save.rating; if (!R) return 0;
+  let pen = LEAVE_PEN;
+  if (myAcctName().toLowerCase() === PEN_SPECIAL[0] && (save.lpn || 0) < PEN_SPECIAL[2]) { pen = PEN_SPECIAL[1]; save.lpn = (save.lpn || 0) + 1; }
+  const before = Math.round(R.r); R.r = Math.max(RATE.floor, R.r - pen); R.at = Date.now(); R.n++;
+  persist(); Net.retrack();
+  return Math.round(R.r) - before;
+}
+// refreshing or closing the page in the middle of a game counts as leaving it
+addEventListener('pagehide', () => {
+  if (online.on && Net.opp && !over && !localGame) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true, quit: true }; try { Net.send('resign', { q: 1 }); } catch (e) {} try { finish(); } catch (e) { leavePenalty(); } persist(); }
+});
 function leaveOnline() {
   // 1.4: walking out of a game you've both moved in loses it, as on chess.com
-  if (online.on && !over && hist.length >= 2) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true }; try { Net.send('resign', {}); } catch (e) {} finish(); }
+  if (online.on && !over && Net.opp) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true, quit: true }; try { Net.send('resign', { q: 1 }); } catch (e) {} finish(); } // 1.5.2: any unfinished game
   Net.leave(); online.on = false; online.gameNo = 0; document.body.classList.remove('online');
   netWaiting(false); netStatus('');
   // back to your game against the computer
@@ -1133,7 +1160,7 @@ Net.onEvent('mv', p => {
   if (!online.on || over || (p.n | 0) !== hist.length || (G.w ? 'w' : 'b') === player) return;
   const m = legalNow.find(x => uci(x) === p.u); if (m) playMove(m);
 });
-Net.onEvent('resign', () => { if (online.on && !over) { over = { winner: player, why: 'by resignation', oppResigned: true }; finish(); renderMarks(); } });
+Net.onEvent('resign', p => { if (online.on && !over) { over = p && p.q ? { winner: player, why: '', left: true } : { winner: player, why: 'by resignation', oppResigned: true }; finish(); renderMarks(); } }); // 1.5.2: q = they walked out (no Elo change)
 Net.onEvent('left', () => {
   if (!online.on) return;
   if (!over) { over = { winner: player, why: '', left: true }; finish(); renderMarks(); }

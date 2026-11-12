@@ -30,7 +30,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=17">
+<link rel="stylesheet" href="arcade.css?v=16">
 <style>
 :root { --ring: linear-gradient(45deg, #f9ce34, #ee2a7b 55%, #6228d7); --line: #ffffff17; --like: #ff3040; --blue: #3797f0; }
 .ig { width: 100%; max-width: 940px; margin: 0 auto; padding: 0 16px 60px; }
@@ -177,6 +177,14 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .grid3 .kind { position: absolute; top: 6px; right: 6px; color: #fff; filter: drop-shadow(0 1px 4px #000); }
 .grid3 .kind svg { width: 20px; height: 20px; }
 .grid3 .kind.pin { font-size: 18px; line-height: 1; }
+.review { max-width: 560px; margin: 0 auto; padding: 8px 0 40px; }
+.rv-head h2 { margin: 6px 0 4px; font-size: 20px; }
+.rv-card { border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 14px 0; background: #ffffff08; }
+.rv-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.rv-who { font-weight: 800; } .rv-meta { color: var(--muted); font-size: 13px; margin-left: auto; }
+.rv-media img, .rv-media video { width: 100%; max-height: 70vh; object-fit: contain; background: #000; border-radius: 10px; display: block; }
+.rv-cap { margin: 10px 0; white-space: pre-line; overflow-wrap: anywhere; }
+.rv-acts { display: flex; gap: 10px; } .rv-acts .btn { flex: 1; }
 .prof .bio { margin: 8px 0 6px; font-size: 14px; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; max-width: 520px; }
 .cap a.lnk, .body a.lnk { color: #7cb3ff; font-weight: 600; margin: 0; text-decoration: underline; }
 .grid3 .vw { position: absolute; left: 8px; bottom: 6px; color: #fff; font-size: 13px; font-weight: 800; text-shadow: 0 1px 6px #000; display: flex; align-items: center; gap: 4px; }
@@ -355,6 +363,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
     <a class="tab" href="index.html">Games</a>
     <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
     <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
+    <a class="tab on" href="social.html" aria-current="page">Social</a>
     <a class="tab" href="support.html">Support</a>
   </nav>
 </header>
@@ -363,6 +372,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
   <div class="ig-top">
     <span class="ig-brand">Social</span>
     <button class="ib" type="button" id="topCreate" aria-label="New post"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></button>
+    <a class="ib" href="#review" id="topReview" aria-label="Posts to approve" title="Posts to approve" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><b class="badge" id="reviewN" hidden></b></a>
     <a class="ib" href="#dm" id="topDm" aria-label="Messages"><svg class="i" viewBox="0 0 24 24"><path d="M22 3 9.2 10.1M22 3l-7 18-3.8-8.8L2 9.5 22 3Z"/></svg><b class="badge" id="dmN" hidden></b></a>
   </div>
   <nav class="ig-nav" aria-label="Social">
@@ -375,8 +385,9 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
   <div id="view" aria-live="polite"></div>
 </main>
 
-<script src="games.js?v=192"></script>
-<script src="account.js?v=16"></script>
+<script src="games.js?v=197"></script>
+<script src="account.js?v=18"></script>
+<script src="console.js?v=1"></script>
 <script src="call.js?v=6"></script>
 <script>
 /* Social (2026-11-10, Instagram style): clips recorded in games (clips.js on play.html, the last 30 seconds), and
@@ -388,7 +399,10 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
    screen for 1 s, once per viewer (the account, or this device for guests). */
 const $ = id => document.getElementById(id);
 const ROOM = ((/[?&]clipsroom=([a-z0-9-]+)/i.exec(location.search) || [])[1] || '').toLowerCase(); // tests: a separate Social
-const ADMIN = /[?&]admin\b/.test(location.search);
+const ADMIN_Q = /[?&]admin\b/.test(location.search);
+// 2026-11-11: the admin tools show with ?admin (password) or for a signed-in admin account (no password)
+const owner = () => { try { return !!(window.ArcadeAccount && ArcadeAccount.isAdmin && ArcadeAccount.isAdmin()); } catch (e) { return false; } };
+const isAdm = () => ADMIN_Q || owner();
 const API = () => ArcadeAccount.server + '/clips/';
 const me = () => ArcadeAccount.kind() === 'online' ? ArcadeAccount.name() : '';
 const lc = s => String(s || '').toLowerCase();
@@ -689,7 +703,7 @@ function postCard(c, opt) {
   if (!opt.inline) a.append(all);
   a.append(when);
   if (g) { const pl = el('a', 'play-link', '▶ Play ' + g.title); pl.href = 'play.html?game=' + encodeURIComponent(c.g); a.append(pl); }
-  if (ADMIN && c.rp) a.append(el('p', 'note', '⚑ Reported by ' + c.rp + (c.rp >= 3 ? ' (hidden from feeds)' : '')));
+  if (isAdm() && c.rp) a.append(el('p', 'note', '⚑ Reported by ' + c.rp + (c.rp >= 3 ? ' (hidden from feeds)' : '')));
   a._paint = () => {
     lb.classList.toggle('on', !!c.me); vb.classList.toggle('on', isSaved(c.id));
     lk.replaceWith(lk = likesLine(c));
@@ -814,18 +828,25 @@ function menu(btn, c, node) {
     if (!confirm(mine ? 'Delete this post for good?' : 'Delete ' + c.by + '’s post for everyone? This can’t be undone.')) return;
     const r = await post('del', { id: c.id }); if (r.status === 200) gone(node); else if (r.status !== 401) failed(r);
   }, true);
-  if (ADMIN) add('Admin: delete', () => adminDelete(c, node), true);
+  if (isAdm()) add('Admin: delete', () => adminDelete(c, node), true);
   const rc = btn.getBoundingClientRect();
   m.style.top = (rc.bottom + scrollY + 4) + 'px'; m.style.left = Math.max(8, Math.min(innerWidth - 216, rc.right + scrollX - 200)) + 'px';
   document.body.append(m); openMenuEl = m;
 }
 function gone(node) { node.style.transition = 'opacity .3s'; node.style.opacity = 0; setTimeout(() => node.remove(), 300); }
 let adminPw = '';
+// the owner's request: as an admin account no password is asked; otherwise the admin password (once per page)
+async function adminCall(body) {
+  if (!owner() && !adminPw) adminPw = prompt('Admin password') || '';
+  if (!owner() && !adminPw) return { status: 0, error: 'cancel' };
+  const r = await acct('admin', { method: 'POST', auth: owner(), body: Object.assign({ pw: owner() ? '' : adminPw, r: ROOM }, body) });
+  if (r.status === 401) adminPw = '';
+  return r;
+}
 async function adminDelete(c, node) {
-  if (!adminPw) adminPw = prompt('Admin password') || '';
-  if (!adminPw || !confirm('Delete this post by ' + c.by + ' for everyone?')) return;
-  const r = await acct('admin', { method: 'POST', body: { pw: adminPw, op: 'clipdel', id: c.id, r: ROOM } });
-  if (r.status === 200) gone(node); else { adminPw = ''; alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').'); }
+  if (!confirm('Delete this post by ' + c.by + ' for everyone?')) return;
+  const r = await adminCall({ op: 'clipdel', id: c.id });
+  if (r.status === 200) gone(node); else if (r.error !== 'cancel') alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').');
 }
 
 /* ---------- send a post to people (Instagram's paper-plane button) ----------
@@ -1132,6 +1153,7 @@ let profTab = 'posts';
 async function showUser(name) {
   const my = ++gen; setNav(lc(name) === lc(me()) ? 'me' : ''); loading('Loading ' + name + '…');
   const r = await get('user', { name });
+  const r0 = r; // (the admin tools' own answers are also called r)
   if (my !== gen) return;
   if (r.status !== 200) { view.replaceChildren(r.status === 400 ? empty('No such player', 'Check the name and try again.') : offline(() => showUser(name))); return; }
   const isMe = lc(r.n) === lc(me());
@@ -1154,7 +1176,14 @@ async function showUser(name) {
   stat(r.following, ' following', () => peopleSheet('Following', r.fg || []));
   stat(r.views, r.views === 1 ? ' view' : ' views');
   const sc = el('a', 'play-link', 'Best scores in every game →'); sc.href = 'players.html#p=' + encodeURIComponent(r.n);
-  if (ADMIN && !isMe) { const ab = el('button', 'btn grey', 'Admin: remove picture'); ab.type = 'button'; ab.onclick = async () => { if (!adminPw) adminPw = prompt('Admin password') || ''; if (!adminPw) return; const x = await acct('admin', { method: 'POST', body: { pw: adminPw, op: 'avatardel', name: r.n, r: ROOM } }); if (x.status === 200) { avCache.set(lc(r.n), ''); saveAv(); document.querySelectorAll('.av[data-n="' + lc(r.n) + '"]').forEach(sp => paintAv(sp, '')); } else { adminPw = ''; alert(x.error === 'wrong' ? 'Wrong password.' : 'Couldn’t remove it.'); } }; nmrow.append(ab); }
+  if (isAdm() && !isMe) { // the admin tools on a profile
+    const tool = (label, fn, red) => { const b = el('button', 'btn grey', label); b.type = 'button'; if (red) b.style.color = '#ff8a80'; b.onclick = fn; nmrow.append(b); };
+    const say = (r, ok) => { if (r.status === 200) { alert(ok); route(); } else if (r.error !== 'cancel') alert(r.error === 'wrong' ? 'Wrong password.' : r.error === 'protected' ? 'Admin accounts can’t be changed here.' : r.error === 'taken' ? 'That name is taken.' : r.error === 'reserved' || r.error === 'rude' || r.error === 'format' ? 'That name isn’t allowed.' : 'Couldn’t do that (' + (r.error || r.status) + ').'); };
+    tool('Admin: remove picture', async () => { const r = await adminCall({ op: 'avatardel', name: r0.n }); if (r.status === 200) { avCache.set(lc(r0.n), ''); saveAv(); document.querySelectorAll('.av[data-n="' + lc(r0.n) + '"]').forEach(sp => paintAv(sp, '')); } else say(r); });
+    tool('Admin: rename', async () => { const to = (prompt('New username for ' + r0.n + ' (they log in with it, same password)') || '').trim(); if (!to) return; const r = await adminCall({ op: 'rename', name: r0.n, to }); say(r, r0.n + ' is now ' + to + '.'); if (r.status === 200) location.hash = '#u=' + encodeURIComponent(to); });
+    tool('Admin: unban', async () => { say(await adminCall({ op: 'unban', name: r0.n }), r0.n + ' can log in again.'); });
+    tool('Admin: ban', async () => { if (!confirm('Ban ' + r0.n + '? They are signed out everywhere, can’t log in, and leave the Players list. Their posts stay until you delete them.')) return; say(await adminCall({ op: 'ban', name: r0.n }), r0.n + ' is banned.'); }, true);
+  }
   info.append(nmrow, st);
   if (r.bio) { const bio = el('p', 'bio'); bio.append(...capNodes({ t: r.bio, bot: lc(r.n) === 'claude' ? 1 : 0 })); info.append(bio); } // 2026-11-11: a profile description (only Claude's, set by the site)
   info.append(sc);
@@ -1398,10 +1427,12 @@ async function editUpload(f) {
   share.onclick = async () => {
     if (busy) return; busy = true; share.disabled = true; cancel.disabled = true; bar.hidden = false; msg.className = 'up-msg'; msg.textContent = 'Sharing…';
     try {
-      const id = await postMedia(Object.assign({}, item, { t: cap.value, g: gs.value }), p => { bi.style.width = Math.round(p * 100) + '%'; });
+      const res = await postMedia(Object.assign({}, item, { t: cap.value, g: gs.value }), p => { bi.style.width = Math.round(p * 100) + '%'; });
       ov.close(); forYouCache = null;
-      ArcadeAccount.toast('Shared', 'Your post is up.', '#c=' + id);
-      location.hash = 'c=' + id;
+      // 2026-11-11: uploaded photos and videos wait for approval before anyone sees them
+      if (res.pend) { ArcadeAccount.toast('Sent for approval', 'Photos and videos are checked before they go up. Yours will appear once it\u2019s approved.'); location.hash = 'home'; if (owner()) paintReview(); return; }
+      ArcadeAccount.toast('Shared', 'Your post is up.', '#c=' + res.id);
+      location.hash = 'c=' + res.id;
     } catch (e) { busy = false; share.disabled = false; cancel.disabled = false; bar.hidden = true; err(String(e.message || e)); }
   };
 }
@@ -1471,7 +1502,7 @@ function postMedia(item, progress) {
       x.open('PUT', API() + 'v/' + n.id + qs({ k: n.k }));
       x.setRequestHeader('content-type', item.blob.type || 'application/octet-stream');
       x.upload.onprogress = e => { if (e.lengthComputable) progress(e.loaded / e.total); };
-      x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200) ok(n.id); else no(new Error(WHY[j.error] || 'Couldn’t post it (' + (j.error || x.status) + ').')); };
+      x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200) ok({ id: n.id, pend: j.pend ? 1 : 0 }); else no(new Error(WHY[j.error] || 'Couldn’t post it (' + (j.error || x.status) + ').')); };
       x.onerror = () => no(new Error('The upload failed. Check your connection and try again.'));
       x.send(item.blob);
     }));
@@ -1510,19 +1541,54 @@ function editAvatar() {
   };
 }
 
-/* ---------- closed for now (games.js SOCIAL_CLOSED, 2026-11-11) ---------- */
-function showClosed() {
-  document.querySelectorAll('.ig-top, .ig-nav').forEach(e => { e.style.display = 'none'; });
-  document.title = 'Social · The Arcade';
-  const d = el('div', 'empty'), b = el('a', 'btn', 'Back to the games');
-  d.append(el('b', '', 'Social is closed for now'), document.createTextNode('It’s taking a short break. Check back soon!'));
-  b.href = 'index.html'; d.append(el('br'), b);
-  view.replaceChildren(d);
-}
-
 /* ---------- routing ---------- */
+/* ---------- 2026-11-11: the approval queue (admin accounts only: noah) ----------
+   Uploaded photos and videos wait here; game clips from the site's recorder and Claude's posts go straight up. */
+let reviewList = [];
+async function paintReview() {
+  const b = $('topReview'); if (!b) return;
+  b.hidden = !owner(); if (!owner()) return;
+  const r = await acct('admin', { method: 'POST', auth: true, body: { op: 'pending', r: ROOM } });
+  reviewList = r.status === 200 ? r.list || [] : [];
+  const n = $('reviewN'); n.hidden = !reviewList.length; n.textContent = reviewList.length > 99 ? '99+' : reviewList.length;
+  return r;
+}
+async function showReview() {
+  setNav('');
+  if (!owner()) { view.replaceChildren(empty('Not for you', 'Only the site\u2019s admin can approve posts.')); return; }
+  const my = ++gen; loading('Loading posts to approve…');
+  const r = await paintReview(); if (my !== gen) return;
+  if (!r || r.status !== 200) { view.replaceChildren(offline(showReview)); return; }
+  document.title = 'Approve posts · Social · The Arcade';
+  const wrap = el('section', 'review'), head = el('div', 'rv-head');
+  head.append(el('h2', '', 'Posts to approve'), el('p', 'note', reviewList.length ? reviewList.length + (reviewList.length === 1 ? ' post is' : ' posts are') + ' waiting. Game clips from the site and Claude\u2019s posts go up on their own; uploaded photos and videos wait here.' : 'Nothing is waiting. New photo and video uploads will show up here.'));
+  wrap.append(head);
+  for (const c of reviewList) {
+    const card = el('article', 'rv-card'), top = el('div', 'rv-top'), who = el('a', 'rv-who', c.by); who.href = userLink(c.by);
+    const g = gameOf(c.g); top.append(avatar(c.by), who, el('span', 'rv-meta', (c.k === 'photo' ? 'Photo' : c.k === 'clip' ? 'Clip' : 'Video') + (g ? ' · ' + g.title : '') + ' · ' + ago(c.at)));
+    const media = el('div', 'rv-media'); media.append(el('p', 'note', 'Loading…'));
+    mediaUrl(c.id).then(u => {
+      const m = c.k === 'photo' ? el('img') : el('video'); m.src = u;
+      if (c.k !== 'photo') { m.controls = true; m.playsInline = true; m.muted = true; m.preload = 'metadata'; }
+      media.replaceChildren(m);
+    }, () => media.replaceChildren(el('p', 'note', 'Couldn\u2019t load the file.')));
+    const cap = el('p', 'rv-cap'); cap.textContent = c.t || '(no caption)';
+    const acts = el('div', 'rv-acts'), yes = el('button', 'btn', 'Approve'), no = el('button', 'btn grey', 'Deny');
+    yes.type = no.type = 'button'; no.style.color = '#ff8a80';
+    const act = async op => {
+      if (op === 'deny' && !confirm('Deny this post by ' + c.by + '? It is deleted for good.')) return;
+      yes.disabled = no.disabled = true;
+      const x = await acct('admin', { method: 'POST', auth: true, body: { op, id: c.id, r: ROOM } });
+      if (x.status === 200) { card.replaceChildren(el('p', 'note', op === 'approve' ? '✅ Approved: it\u2019s on Social now.' : '🗑️ Denied and deleted.')); forYouCache = null; reviewList = reviewList.filter(z => z.id !== c.id); const n = $('reviewN'); n.hidden = !reviewList.length; n.textContent = reviewList.length; }
+      else { yes.disabled = no.disabled = false; alert('Couldn\u2019t do that (' + (x.error || x.status) + ').'); }
+    };
+    yes.onclick = () => act('approve'); no.onclick = () => act('deny');
+    acts.append(yes, no);
+    card.append(top, media, cap, acts); wrap.append(card);
+  }
+  view.replaceChildren(wrap);
+}
 function route() {
-  if (window.SOCIAL_CLOSED) return showClosed();
   closeMenu();
   if (playing) { playing.pause(); playing = null; }
   chat = null;
@@ -1532,6 +1598,7 @@ function route() {
   if (k === 'u' && v) return showUser(v);
   if (k === 'me') return me() ? showUser(me()) : (setNav('me'), view.replaceChildren(empty('Your profile', 'Make an online account to post, follow players and save posts.', 'Make an account', needAccount)));
   if (k === 'c' && v) return showPost(v);
+  if (k === 'review') return showReview();
   if (k === 'reels') return showReels(v);
   if (k === 'explore') return showExplore();
   if (k === 'dm' && v) return showChat(v);
@@ -1542,6 +1609,7 @@ function route() {
 }
 $('topCreate').onclick = () => openCreate();
 addEventListener('hashchange', route);
+setTimeout(() => { paintReview().catch(() => {}); }, 800); // the admin's count of posts waiting for approval
 // a clip posted from a test room's play page goes to that room
 if (ROOM) document.addEventListener('click', e => { const a = e.target.closest('a[href^="play.html"], a[href="index.html"]'); if (a && !/clipsroom=/.test(a.getAttribute('href')) && /play\.html/.test(a.getAttribute('href'))) a.href += '&clipsroom=' + ROOM; }, true);
 ArcadeAccount.ready().then(() => { loadSoc(); route(); });

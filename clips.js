@@ -384,8 +384,10 @@
       }
       post.disabled = true; msg.className = 'clip-msg'; msg.textContent = 'Posting…'; bar.hidden = false;
       upload(c, box.querySelector('#clipTitle').value, function (p) { bar.firstChild.style.width = Math.round(p * 100) + '%'; })
-        .then(function (id) {
-          c.posted = true;
+        .then(function (res) {
+          var id = res.id; c.posted = true;
+          // 2026-11-11: a clip that didn't come from this recorder (an older browser's recording) waits for approval
+          if (res.pend) { msg.textContent = 'Sent for approval. It goes up on Social once it\u2019s checked.'; post.textContent = 'Sent ✓'; box.querySelector('.bin').textContent = 'Close'; return; }
           msg.innerHTML = 'Posted! <a target="_top"></a>';
           var a = msg.querySelector('a'); a.textContent = 'See it on Social →'; a.href = 'social.html' + (ROOM ? '?clipsroom=' + ROOM : '') + '#c=' + id;
           post.textContent = 'Posted ✓';
@@ -412,7 +414,7 @@
           x.open('PUT', api() + 'v/' + n.id + q({ k: n.k }));
           x.setRequestHeader('content-type', c.blob.type || 'video/webm');
           x.upload.onprogress = function (e) { if (e.lengthComputable) progress(e.loaded / e.total); };
-          x.onload = function () { var j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200) ok(n.id); else no(WHY[j.error] || 'Couldn’t post it (' + (j.error || x.status) + ').'); };
+          x.onload = function () { var j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200) ok({ id: n.id, pend: j.pend ? 1 : 0 }); else no(WHY[j.error] || 'Couldn’t post it (' + (j.error || x.status) + ').'); };
           x.onerror = function () { no('The upload failed. Check your connection and try again.'); };
           x.send(c.blob);
         });

@@ -13,6 +13,13 @@ source in Settings → Pages should be switched to `main`.
 
 ## Layout
 
+- `console.js` (2026-11-11, loaded by every site page after account.js): the console version. It detects PlayStation, Xbox,
+  Nintendo and smart-TV browsers from the user agent (`?console=on|off|playstation|xbox|tv` overrides, remembered in
+  `arcade-console`), adds `html.console` (bigger text and cards, a yellow focus ring), a banner "You're on the console
+  version" with a Full website button, and spatial navigation: arrow keys / TV remote (OK, Back = 461 webOS, 10009 Tizen,
+  BrowserBack), and controllers (standard mapping, polled on a 40 ms timer: D-pad/left stick, A/✕ choose, B/○ back,
+  L1/R1 tabs). The pinned header is its own layer; pop-ups (#acctOv, .ov, dialogs) trap the focus. On play.html it stays
+  out of the way while the game frame has focus. A detected device that turned it off gets a small "Console version" button.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
@@ -132,6 +139,22 @@ source in Settings → Pages should be switched to `main`.
   player in "In the chat" has a 📹 button (`callButton`); both call `ArcadeCall.start(names, 'Global chat')`, so the
   ringing card shows "Global chat" as the call's name. Without an online account they open the sign-up popup. Labels
   turn to "Add to call" while you host a call (`callLabels`).
+- Admin accounts (2026-11-11, the owner's request; lars and Claude added 2026-11-12): `ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']` in worker.js (and account.js). A signed-in
+  admin account uses `/acct/admin` without the password (whoami on its token); others still need the admin password.
+  Ops: info, delete, chatdel, clipdel, avatardel, and new ban / unban / rename {name, to}. A ban (`a.banned`) clears every
+  session, blocks login/recover/everything (403 'banned'), closes sockets and takes the name off the Players list; posts
+  stay until deleted. Admin rename = renameTo() without the weekly limit. Admin accounts can't be banned, renamed or
+  deleted. UI: account panel "🛡️ Admin tools" (openAdmin, also ?admin), and Social shows Admin: delete on posts and
+  remove picture / rename / unban / ban on profiles for admins.
+  Renamed accounts: the password key was stretched with the old name, so the account keeps `kn` (that name), `check`
+  returns it, and account.js `keyName()` uses it for login, password change and delete; a new password or a recovery
+  re-keys on the current name and drops `kn`. (Before this, a renamed player couldn't log in with a password again.)
+- Approval (2026-11-11, the owner's rule): game clips made by the site's recorder (kind 'clip' and a WebM whose header
+  says "The Arcade", checked in media-put as `own`) and Claude's posts (`bot`) go live; every other upload (photos,
+  videos, a "clip" from anywhere else) gets `pend: 1` and is hidden from feeds, profiles, /one, comments and likes until
+  approved. Only an admin ACCOUNT (ADMIN_ACCOUNTS, not the password) can use /acct/admin ops pending / approve / deny
+  (the index's 'review' route). social.html: the shield button (#topReview, count badge) and #review panel for admins;
+  uploaders see "Sent for approval". Posts from before this stayed live.
 - Social words (2026-11-11): captions and group names are stored as written (no server word filter; usernames still are
   filtered). The account panel's Settings has "Filter swear words on Social" (`arcade-swear-filter` = '1', synced in the
   account's misc group); social.html's `fw()` then stars words in captions, comments and messages. Captions starred
@@ -362,6 +385,10 @@ source in Settings → Pages should be switched to `main`.
   gold ring (`.sq.must`). Wooden board (owner's choice): `--light #ecca93`, `--dark #a5652f`, a frame drawn with
   box-shadow round `#board` (resize leaves room for it). Since the page is built from chess/index.html, a fix to
   Chess's shared code can be carried over by re-running build.py (it stops if a replaced line has changed).
+  1.0.1 (2026-11-11, the owner's rule): jumping is optional (gen() returns captures and plain moves; a jump once started
+  still runs to the end). The search stands pat at depth 0 and only follows captures from there. Gold ring = "can jump".
+  Online channels moved to `ck2-*` so 1.0 copies never meet it. Edited in checkers/index.html and engine.js directly:
+  build.py still expects Chess 1.5 and would pull Chess 1.5.1's Elo reset and lobby into Checkers, so don't re-run it as is.
 - `chess/`: Chess against the computer (the engine is the `<script id="engine">` block, shared with a Web Worker).
   Saves `chessSave` (settings, per-level stats, the game in progress). Since 1.1 it plays online too: the `Net`
   block and the Play online box in the side panel. Quick match pairs in Presence on `ch-lobby`; a private table has
@@ -388,6 +415,10 @@ source in Settings → Pages should be switched to `main`.
   share a place. Quick match uses the lobby `ch-lobby2`, so old copies never meet the reset ratings. Every Chess tab with an
   online account that isn't playing online watches that lobby without joining it (`Net.watch`) and shows `#waitPop`
   ("X is waiting for a quick match. Join?") when exactly one person waits there.
+  1.5.2 (2026-11-12, quiet: the patch note only says "Bug fixes and improvements", no NEWS line, `updated` unchanged):
+  leaving an unfinished online game (Leave the table, refresh or closing the page: `pagehide`) costs the leaver a flat
+  100 Elo (`leavePenalty`), and the other player gets no change ('resign' with q: 1 = walked out, over.left). One account
+  set by the owner (PEN_SPECIAL, stored as char codes) loses 1000 the first two times (`save.lpn`), then 100.
 
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
@@ -472,6 +503,17 @@ source in Settings → Pages should be switched to `main`.
   ship; planes keep C for the cockpit), the soldier is hidden while you look through his eyes (`fpBody`). The cockpit
   (`COCKPIT`) is now a cabin fixed to the plane (`COCKPIT.orient()` after the camera turns): a tub with floor, walls, seat,
   bulkhead and glass for fighters and the jet, a flight deck with roof, side windows and glazed nose for the bomber.
+  1.4.2 (2026-11-11, players' feedback): helicopters turn to the camera yaw and tilt from the camera pitch (look down =
+  forward, up = back at 0.6), W/S climb/descend (hi.v), camera pitch for helis limited to -1.0..0.32; PULL UP uses vel.y
+  for helis. Planes: yaw and pitch limited separately (PLANE_TURN 0.9, PLANE_PITCH 0.7 of it, both slower with speed,
+  PLANE_PMAX 1.2 rad, PLANE_BLEED speed cost). Heli buff: WEAP.hmg (added after every other weapon: WN numbers),
+  rockets 200 dmg, more speed/climb/hp/turn, acc 24. Channels hb-world-142 / hb-room142-.
+  1.4.1 (2026-11-11): controllers (DualShock 4 layout, standard mapping) and TV remotes. `GP` (pollPad on a 16 ms timer)
+  feeds ctl() (x/y, fire R2, alt L2, alt2 R1, jump ✕, sprint L1/L3) and padLook() (right stick); □ E (held for bail), △ B,
+  ○ C, R3 V, D-pad ↑ Q ↓ M ←/→ weapons, Options pause, touchpad/Share board. Menus: navMove/navChoose over the open
+  overlay (kept by id/text across redraws, `navLast`). TV remote: arrows move (on foot ←/→ turn, `GP.remoteTurn`), Enter
+  fires, Back pauses, colour keys 403-406 jump/use/deploy/map, CH+/- 427/428 secondary/missiles; the camera follows the
+  vehicle in remote mode.
 - `turn-turn-turn/`: Turn! Turn! TURN! (1.0, 2026-11-08), a two-player co-op dirt rally (Three.js r128 copied from Havoc Bay).
   1.3 (2026-11-12): 10 long stages in `STAGES` (`long: 1`, 6.2-8.6 km) with their own hill model in buildStage: `relief`,
   `wave`, `trend` (overall climb/drop), `grade` (max slope), `crests` (gaussian brows, added to `jumps` so they're called

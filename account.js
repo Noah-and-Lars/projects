@@ -114,6 +114,8 @@
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j = j || {}; j.status = r.status; if (r.status === 401 && opt.auth && j.error === 'auth') signedOutElsewhere(); return j; }); })
       .catch(function () { return { error: 'offline', status: 0 }; });
   }
+  // after a rename the password key still uses the name it was made with (the server says which: check's kn)
+  function keyName(n) { return api('check?name=' + encodeURIComponent(n)).then(function (r) { return (r && r.kn) || n; }, function () { return n; }); }
   function stretch(n, pw) {
     var enc = new TextEncoder();
     return crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits'])
@@ -329,7 +331,8 @@
     });
   }
   function login(n, pw) {
-    return stretch(n, pw).then(function (key) { return api('login', { method: 'POST', body: { name: n, key: key } }); }).then(function (r) {
+    return keyName(n).then(function (kn) { return stretch(kn, pw); }).then(function (key) { return api('login', { method: 'POST', body: { name: n, key: key } }); }).then(function (r) {
+      if (r.status === 403 && r.error === 'banned') return { error: 'This account has been banned.' };
       if (r.status === 429) return { error: 'Too many tries. Wait ' + Math.ceil((r.wait || 600) / 60) + ' minutes and try again.' };
       if (r.status === 404) return { error: 'There’s no account with that username.' };
       if (r.status !== 200 || !r.token) return { error: r.status === 401 ? 'Wrong password.' : r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : 'Something went wrong. Try again.' };
@@ -339,6 +342,7 @@
   }
   function recover(n, code, pw) {
     return stretch(n, pw).then(function (key) { return api('recover', { method: 'POST', body: { name: n, code: code, key: key } }); }).then(function (r) {
+      if (r.status === 403 && r.error === 'banned') return { error: 'This account has been banned.' };
       if (r.status === 429) return { error: 'Too many tries. Wait ' + Math.ceil((r.wait || 600) / 60) + ' minutes and try again.' };
       if (r.status === 404) return { error: 'There’s no account with that username.' };
       if (r.status !== 200 || !r.token) return { error: r.status === 401 ? 'That recovery code isn’t right.' : 'Something went wrong. Try again.' };
@@ -367,7 +371,7 @@
     setTimeout(function () { openWelcome('login', 'You were signed out of this device. Log in again.'); }, 300);
   }
   function changePassword(oldPw, newPw) {
-    return Promise.all([stretch(acct.name, oldPw), stretch(acct.name, newPw)]).then(function (k) { return api('password', { method: 'POST', auth: true, body: { old: k[0], key: k[1] } }); }).then(function (r) {
+    return keyName(acct.name).then(function (kn) { return Promise.all([stretch(kn, oldPw), stretch(acct.name, newPw)]); }).then(function (k) { return api('password', { method: 'POST', auth: true, body: { old: k[0], key: k[1] } }); }).then(function (r) {
       if (r.status === 200 && r.token) { acct.token = r.token; ls.set(K_ACCT, JSON.stringify(acct)); return { ok: true }; }
       return { error: r.status === 401 ? 'Your current password is wrong.' : 'Something went wrong. Try again.' };
     });
@@ -527,6 +531,7 @@
     // 2026-11-11: Social shows words as people wrote them; this turns a swear filter on (it syncs with the account, in 'misc')
     var filt = false; try { filt = localStorage.getItem('arcade-swear-filter') === '1'; } catch (e) {}
     html += '<h3 style="margin:18px 0 6px;font-size:15px">Settings</h3><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px;line-height:1.4"><input type="checkbox" id="acFilt"' + (filt ? ' checked' : '') + ' style="margin-top:3px;width:18px;height:18px;flex:none"><span><b>Filter swear words on Social</b><br><span style="opacity:.75">Stars out bad words in posts, comments and messages. Off by default.</span></span></label>';
+    if (k === 'online' && isAdmin()) html += '<button class="alt" id="acAdm" style="margin-top:14px;width:100%">🛡️ Admin tools</button>';
     if (k === 'online') html += '<button class="link" id="acOut">Log out of this device</button><button class="link" id="acDel" style="margin-top:6px;color:#ff8a80">Delete my account</button>';
     overlay(html, true);
     var b;
@@ -537,6 +542,7 @@
     if ((b = $('acIn'))) b.onclick = function () { openWelcome('login'); };
     if ((b = $('acRen'))) b.onclick = localName;
     if ((b = $('acDel'))) b.onclick = openDelete;
+    if ((b = $('acAdm'))) b.onclick = openAdmin;
     if ((b = $('acFilt'))) b.onchange = function () { try { localStorage.setItem('arcade-swear-filter', this.checked ? '1' : '0'); } catch (e) {} try { window.dispatchEvent(new Event('arcade-filter')); } catch (e) {} };
     if ((b = $('acOut'))) b.onclick = function () { if (confirm('Log out? Your progress stays safe in your account, and this device’s copy is cleared.')) { b.disabled = true; b.textContent = 'Saving and logging out…'; logout(); } };
   }
@@ -546,34 +552,48 @@
       '<form id="acF"><label for="acP">Your password</label><input type="password" id="acP" autocomplete="current-password"><div class="err" id="acE"></div><button class="go" id="acGo" style="background:#d63a3a">Delete my account</button></form>', true);
     $('acF').onsubmit = function (e) {
       e.preventDefault(); var E = $('acE'), n = acct.name; $('acGo').disabled = true;
-      stretch(n, $('acP').value).then(function (key) { return api('delete', { method: 'POST', auth: true, body: { key: key } }); }).then(function (r) {
+      keyName(n).then(function (kn) { return stretch(kn, $('acP').value); }).then(function (key) { return api('delete', { method: 'POST', auth: true, body: { key: key } }); }).then(function (r) {
         if (!(r.status === 200 && r.deleted)) { E.textContent = r.status === 401 ? 'Wrong password.' : 'Something went wrong. Try again.'; $('acGo').disabled = false; return; }
         acct = null; ls.del(K_ACCT); syncMap = {}; ls.del(K_SYNC); setLocal(n); setStatus('off'); refresh();
         done('Account deleted', 'Your account is gone. You\u2019re playing with a local account called ' + n + ' now.');
       });
     };
   }
-  // the owner's tools: open the site with ?admin. Look up or delete any account (the Cube Assault ADMINTEST password)
+  // the owner's tools: open the site with ?admin (admin password), or sign in as an admin account (no password).
+  // Look up, ban, unban, rename or delete any account.
+  var ADMIN_ACCOUNTS = ['noah', 'lars', 'claude'];
+  function isAdmin() { return !!(acct && acct.token && ADMIN_ACCOUNTS.indexOf(String(acct.name).toLowerCase()) >= 0); }
   function openAdmin() {
-    overlay('<h2>Accounts admin</h2><p>Look up or delete an account.</p><form id="acF" autocomplete="off"><label for="acA">Admin password</label><input type="password" id="acA" autocomplete="off">' +
-      '<label for="acN">Username</label><input type="text" id="acN" maxlength="16" spellcheck="false" autocapitalize="off"><div class="err" id="acE"></div>' +
-      '<div class="row"><button class="go" id="acLook" type="button">Look up</button><button class="go" id="acKill" type="button" style="background:#d63a3a">Delete</button></div></form><div id="acRes" class="stats"></div>', true);
+    var me = isAdmin();
+    overlay('<h2>Accounts admin</h2><p>Look up, ban, rename or delete an account.</p><form id="acF" autocomplete="off">' +
+      (me ? '' : '<label for="acA">Admin password</label><input type="password" id="acA" autocomplete="off">') +
+      '<label for="acN">Username</label><input type="text" id="acN" maxlength="16" spellcheck="false" autocapitalize="off">' +
+      '<label for="acTo">New username (for Rename)</label><input type="text" id="acTo" maxlength="16" spellcheck="false" autocapitalize="off"><div class="err" id="acE"></div>' +
+      '<div class="row"><button class="go" id="acLook" type="button">Look up</button><button class="go" id="acRn" type="button">Rename</button></div>' +
+      '<div class="row"><button class="go" id="acBan" type="button" style="background:#c46a1a">Ban</button><button class="go" id="acUnban" type="button">Unban</button><button class="go" id="acKill" type="button" style="background:#d63a3a">Delete</button></div></form><div id="acRes" class="stats"></div>', true);
     var run = function (op) {
-      var E = $('acE'), n = $('acN').value.trim(); E.textContent = ''; $('acRes').innerHTML = '';
+      var E = $('acE'), n = $('acN').value.trim(), to = $('acTo').value.trim(); E.textContent = ''; $('acRes').innerHTML = '';
       if (!n) { E.textContent = 'Type a username.'; return; }
+      if (op === 'rename' && !to) { E.textContent = 'Type the new username.'; return; }
       if (op === 'delete' && !confirm('Delete the account ' + n + ' and all its saved progress for good?')) return;
-      api('admin', { method: 'POST', body: { pw: $('acA').value, op: op, name: n } }).then(function (r) {
+      if (op === 'ban' && !confirm('Ban ' + n + '? They are signed out everywhere, can’t log in, and leave the Players list.')) return;
+      if (op === 'rename' && !confirm('Rename ' + n + ' to ' + to + '? They are signed out and log in with the new name (same password).')) return;
+      api('admin', { method: 'POST', auth: me, body: { pw: me ? '' : $('acA').value, op: op, name: n, to: to } }).then(function (r) {
         if (r.status === 401) { E.textContent = 'Wrong admin password.'; return; }
-        if (r.status === 429) { E.textContent = 'Too many wrong tries. Wait ' + Math.ceil((r.wait || 900) / 60) + ' minutes.'; return; }
-        if (r.status === 404) { E.textContent = 'There\u2019s no account called ' + n + '.'; return; }
+        if (r.status === 429) { E.textContent = r.error === 'slow' ? 'Try again later.' : 'Too many wrong tries. Wait ' + Math.ceil((r.wait || 900) / 60) + ' minutes.'; return; }
+        if (r.status === 404) { E.textContent = 'There’s no account called ' + n + '.'; return; }
+        if (r.error === 'protected') { E.textContent = 'Admin accounts can’t be banned, renamed or deleted here.'; return; }
+        if (op === 'rename' && r.status !== 200) { E.textContent = r.error === 'taken' ? 'That new name is taken.' : WHY[r.error] || 'Couldn’t rename (' + (r.error || r.status) + ').'; return; }
         if (r.status !== 200) { E.textContent = 'Something went wrong (' + (r.error || r.status) + ').'; return; }
-        if (r.deleted) { $('acRes').innerHTML = '<div><b>' + esc(r.name) + '</b><span>deleted</span></div>'; return; }
-        var rows = [['Username', r.name], ['Created', new Date(r.created).toLocaleString()], ['Signed-in devices', r.devices]];
+        var done = r.deleted ? 'deleted' : r.banned ? 'banned' : r.unbanned ? 'unbanned' : op === 'rename' ? 'renamed to ' + r.name : '';
+        if (done) { $('acRes').innerHTML = '<div><b>' + esc(op === 'rename' ? n : r.name) + '</b><span>' + esc(done) + '</span></div>'; return; }
+        var rows = [['Username', r.name], ['Created', new Date(r.created).toLocaleString()], ['Signed-in devices', r.devices], ['Banned', r.banned ? 'Yes' : 'No']];
         Object.keys(r.games || {}).forEach(function (g) { rows.push([g, Math.ceil(r.games[g].size / 1024) + ' KB, saved ' + new Date(r.games[g].at).toLocaleString()]); });
         $('acRes').innerHTML = rows.map(function (x) { return '<div><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></div>'; }).join('');
       });
     };
     $('acLook').onclick = function () { run('info'); }; $('acKill').onclick = function () { run('delete'); };
+    $('acBan').onclick = function () { run('ban'); }; $('acUnban').onclick = function () { run('unban'); }; $('acRn').onclick = function () { run('rename'); };
     $('acF').onsubmit = function (e) { e.preventDefault(); run('info'); };
   }
   function openPassword() {
@@ -694,6 +714,7 @@
     // for the Players page and the chat: the server's address, the sign-in token, requests to the account
     server: API.replace(/\/acct\/$/, ''), token: function () { return acct ? acct.token : ''; },
     api: function (path, opt) { return api(path, opt); },
+    isAdmin: function () { return isAdmin(); },
     onLive: function (f) { liveHandlers.push(f); }, toast: toast,
     social: function () { return social; }, onSocial: function (f) { socialHandlers.push(f); if (social) f(social); }, setSocial: setSocial,
     _test: { groupOf: groupOf, localGroups: localGroups, hash: hash, score: score, syncMap: function () { return syncMap; } }

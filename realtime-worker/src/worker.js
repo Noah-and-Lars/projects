@@ -186,7 +186,7 @@ async function accounts(req, env, url) {
     try { body = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
     if (!body || typeof body !== 'object') return out({ error: 'bad' }, 400);
   }
-  if (route === 'admin') return admin(env, body, out);
+  if (route === 'admin') return admin(env, body, out, req.headers.get('Authorization') || '');
   if (route === 'check') name = String(url.searchParams.get('name') || '');
   else if (route === 'signup' || route === 'login' || route === 'recover') name = String(body && body.name || '');
   else {
@@ -201,13 +201,26 @@ async function accounts(req, env, url) {
   return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
 }
 // the owner's tools: the password is checked (and wrong tries counted) by one guard object, then the account's own
-// object is asked through a header only this Worker ever sets
-async function admin(env, body, out) {
+// object is asked through a header only this Worker ever sets. Since 2026-11-11 a signed-in admin account (ADMIN_ACCOUNTS)
+// needs no password, and can also ban, unban and rename accounts.
+const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
+async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (op !== 'info' && op !== 'delete' && op !== 'chatdel' && op !== 'clipdel' && op !== 'avatardel') return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
-  const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
-  if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
+  const who = auth ? await whoami(env, auth) : '';
+  // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
+  if (op === 'pending' || op === 'approve' || op === 'deny') {
+    if (!ADMIN_ACCOUNTS.includes(who.toLowerCase())) return out({ error: 'not_admin' }, 403);
+    const room = String(body.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
+    const r = await clipIndex(env, room).fetch(new Request('https://clips/review', { method: 'POST', body: JSON.stringify({ op, id: String(body.id || ''), int: 1 }) }));
+    return out(await r.json().catch(() => ({})), r.status);
+  }
+  if (!ADMIN_ACCOUNTS.includes(who.toLowerCase())) {
+    const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
+    if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
+  }
+  if ((op === 'ban' || op === 'rename' || op === 'delete') && ADMIN_ACCOUNTS.includes(name.toLowerCase())) return out({ error: 'protected' }, 400);
   if (op === 'chatdel') { // take a message out of the Global chat
     const r = await env.CHAT.get(env.CHAT.idFromName('chat:global')).fetch(new Request('https://chat/del', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-int': '1' }, body: JSON.stringify({ id: String(body.id || '') }) }));
     return out(await r.json().catch(() => ({})), r.status);
@@ -223,7 +236,7 @@ async function admin(env, body, out) {
     return out(await r.json().catch(() => ({})), r.status);
   }
   if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
-  const r = await call('u:' + name.toLowerCase(), op === 'info' ? 'admininfo' : 'adminwipe');
+  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename' }[op], { to: String(body.to || '') });
   return out(await r.json().catch(() => ({})), r.status);
 }
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -247,7 +260,7 @@ export class Account extends DurableObject {
     if (req.headers.get('x-arcade-peer') === '1') return this.peer(route, body || {}, j, now);
     if (req.headers.get('x-arcade-move') === '1') return this.moveIn(body || {}, j, now);
     let a = await S.get('acct');
-    if (route === 'check') return j({ free: !a });
+    if (route === 'check') return j(a && a.kn ? { free: false, kn: a.kn } : { free: !a }); // kn: the name the password key was made with (2026-11-11)
     // an account that moved to a new name (renameTo): its old devices are signed out, so they log in again with the new name
     if (!a && !['signup', 'login', 'recover'].includes(route) && await S.get('moved')) return j({ error: 'auth' }, 401);
     if (route === 'signup') {
@@ -262,6 +275,7 @@ export class Account extends DurableObject {
       return j({ token, name: a.name, recovery: code });
     }
     if (!a) return j({ error: 'no_account' }, 404);
+    if (a.banned) return j({ error: 'banned' }, 403);
     if (route === 'login' || route === 'recover') {
       if (a.lockUntil > now) return j({ error: 'locked', wait: Math.ceil((a.lockUntil - now) / 1000) }, 429);
       if (!KEY_RE.test(body.key || '')) return j({ error: 'bad' }, 400);
@@ -269,7 +283,7 @@ export class Account extends DurableObject {
       if (!ok) { a.fails = (a.fails || 0) + 1; if (a.fails >= 8) { a.fails = 0; a.lockUntil = now + 10 * 60 * 1000; } await S.put('acct', a); return j({ error: 'wrong' }, 401); }
       a.fails = 0;
       let recovery;
-      if (route === 'recover') { a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; recovery = newCode(); a.rs = rnd(16); a.rh = await sha(a.rs + normCode(recovery)); }
+      if (route === 'recover') { a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn; recovery = newCode(); a.rs = rnd(16); a.rh = await sha(a.rs + normCode(recovery)); }
       const token = await this.session(a);
       await S.put('acct', a);
       return j(recovery ? { token, name: a.name, recovery } : { token, name: a.name });
@@ -295,7 +309,7 @@ export class Account extends DurableObject {
     if (route === 'logout') { a.sess.splice(si, 1); await S.put('acct', a); return j({ ok: true }); }
     if (route === 'password') {
       if (!KEY_RE.test(body.key || '') || !same(await sha(a.salt + (body.old || '')), a.h)) return j({ error: 'wrong' }, 401);
-      a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = [];
+      a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn;
       const token = await this.session(a); await S.put('acct', a); return j({ token });
     }
     if (route === 'delete') { // the player deletes their own account (they type their password again)
@@ -350,8 +364,17 @@ export class Account extends DurableObject {
     if (!a) return j({ error: 'no_account' }, 404);
     if (route === 'admininfo') {
       const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
-      return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games });
+      return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games, banned: a.banned ? 1 : 0 });
     }
+    // 2026-11-11: a ban signs the account out everywhere, stops it logging in, and takes it off the Players list
+    if (route === 'adminban') {
+      a.banned = { at: now }; a.sess = []; await S.put('acct', a);
+      await dirCall(this.env, 'del', { n: a.name }).catch(() => null);
+      for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'banned'); } catch (e) {}
+      return j({ banned: true, name: a.name });
+    }
+    if (route === 'adminunban') { delete a.banned; await S.put('acct', a); await dirCall(this.env, 'add', { n: a.name, c: a.created }).catch(() => null); return j({ unbanned: true, name: a.name }); }
+    if (route === 'adminrename') return this.renameTo(a, { name: body && body.to }, j, now, true);
     // 'list' (admin header only): used once on 2026-11-06 to put every older account on the Players list
     if (route === 'list') { if (!a.listed) { const r = await dirCall(this.env, 'add', { n: a.name, c: a.created }); if (r.ok) { a.listed = 1; await S.put('acct', a); } } return j({ name: a.name }); }
     if (route === 'adminwipe') { await this.goodbye(a); await S.deleteAll(); return j({ deleted: true, name: a.name }); }
@@ -661,9 +684,9 @@ export class Account extends DurableObject {
      account is asked once (sync's mustRename) to pick a new name; everything moves to the new name's object
      ('x-arcade-move', in batches), the Players list and everyone it knows (friends, chats, groups: 'p-rename') get the new
      name, this device gets a new token, and the old object keeps only 'moved' so its other devices are signed out. */
-  async renameTo(a, body, j, now) {
-    // anyone can change their name (2026-11-11), once a week; a forced change is always allowed
-    if (!mustRename(a) && a.renamedAt && now - a.renamedAt < 7 * 864e5) return j({ error: 'slow', wait: Math.ceil((a.renamedAt + 7 * 864e5 - now) / 864e5) }, 429);
+  async renameTo(a, body, j, now, byAdmin) {
+    // anyone can change their name (2026-11-11), once a week; a forced change (or the owner's) is always allowed
+    if (!byAdmin && !mustRename(a) && a.renamedAt && now - a.renamedAt < 7 * 864e5) return j({ error: 'slow', wait: Math.ceil((a.renamedAt + 7 * 864e5 - now) / 864e5) }, 429);
     const nn = String(body.name || ''), p = nameProblem(nn);
     if (p) return j({ error: p }, 400);
     if (nn.toLowerCase() === a.name.toLowerCase()) return j({ error: 'taken' }, 409);
@@ -672,6 +695,7 @@ export class Account extends DurableObject {
     if (await move({ begin: 1 }) !== 200) return j({ error: 'taken' }, 409);
     const all = [...(await S.list()).entries()].filter(([k]) => k !== 'acct' && k !== 'moved');
     for (let i = 0; i < all.length; i += 100) if (await move({ e: all.slice(i, i + 100) }) !== 200) return j({ error: 'failed' }, 502);
+    if (!a.kn) a.kn = old.toLowerCase(); // the password key was stretched with the old name: keep using it until the password changes
     a.name = nn; a.listed = 1; a.renamedAt = now;
     const token = await this.session(a);
     if (await move({ e: [['acct', a]], end: 1 }) !== 200) return j({ error: 'failed' }, 502);
@@ -1192,12 +1216,13 @@ export class Clips extends DurableObject {
       const gif = u[0] === 0x47 && u[1] === 0x49 && u[2] === 0x46, webp = u[0] === 0x52 && u[1] === 0x49 && u[2] === 0x46 && u[3] === 0x46 && u[8] === 0x57 && u[9] === 0x45;
       const ty = webm ? 'video/webm' : mp4 ? 'video/mp4' : jpg ? 'image/jpeg' : png ? 'image/png' : gif ? 'image/gif' : webp ? 'image/webp' : '';
       if (!ty) return j({ error: 'not_video' }, 415);
+      const head = new TextDecoder('latin1').decode(new Uint8Array(buf, 0, Math.min(4096, buf.byteLength))), own = ty === 'video/webm' && head.includes('The Arcade') ? 1 : 0;
       const n = Math.ceil(buf.byteLength / CLIP_PIECE), put = { vn: n, ty };
       for (let i = 0; i < n; i++) put['v:' + i] = buf.slice(i * CLIP_PIECE, (i + 1) * CLIP_PIECE);
       // pieces go in a few at a time (each put is one transaction, kept well under its size limit)
       const keys = Object.keys(put);
       for (let i = 0; i < keys.length; i += 4) { const part = {}; for (const k of keys.slice(i, i + 4)) part[k] = put[k]; await S.put(part); }
-      const r = await this.env.CLIPS.get(this.env.CLIPS.idFromName(p.get('r') ? 'index-test-' + p.get('r') : 'index')).fetch(new Request('https://clips/commit', { method: 'POST', body: JSON.stringify({ id: p.get('id'), k: p.get('k'), sz: buf.byteLength, ty: put.ty, int: 1 }) }));
+      const r = await this.env.CLIPS.get(this.env.CLIPS.idFromName(p.get('r') ? 'index-test-' + p.get('r') : 'index')).fetch(new Request('https://clips/commit', { method: 'POST', body: JSON.stringify({ id: p.get('id'), k: p.get('k'), sz: buf.byteLength, ty: put.ty, own, int: 1 }) }));
       if (r.status !== 200) { await S.deleteAll(); return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json' } }); }
       return j(await r.json());
     }
@@ -1230,9 +1255,9 @@ export class Clips extends DurableObject {
     for (let i = 0; i < list.length; i += 128) for (const [k, v] of await S.get(list.slice(i, i + 128).map(m => 'p:' + m.id))) posters.set(k, v);
     const u = me ? await this.user(me) : null, liked = new Set(u ? u.lk : []), now = Date.now();
     return list.map(m => ({ id: m.id, by: m.by, k: m.k || 'clip', ll: m.ll || '', g: m.g, t: m.t, at: m.at, dur: m.dur, w: m.w, h: m.h, lk: m.lk, vw: m.vw, cm: m.cm, sh: m.sh || 0,
-      wr: m.vw ? Math.round(m.wf / m.vw * 100) / 100 : 0, bot: m.bot ? 1 : 0, pin: m.pin ? 1 : 0, rp: (m.rp || []).length, hot: Math.round(this.hot(m, now) * 1e4) / 1e4, p: posters.get('p:' + m.id) || '', me: liked.has(m.id) ? 1 : 0 }));
+      wr: m.vw ? Math.round(m.wf / m.vw * 100) / 100 : 0, bot: m.bot ? 1 : 0, pin: m.pin ? 1 : 0, pend: m.pend ? 1 : 0, ty: m.ty || '', rp: (m.rp || []).length, hot: Math.round(this.hot(m, now) * 1e4) / 1e4, p: posters.get('p:' + m.id) || '', me: liked.has(m.id) ? 1 : 0 }));
   }
-  live() { return [...this.m.values()].filter(m => (m.rp || []).length < CLIP_REPORTS); }
+  live() { return [...this.m.values()].filter(m => !m.pend && (m.rp || []).length < CLIP_REPORTS); }
   async read(route, q, j) {
     const me = String(q.get('me') || ''), now = Date.now();
     if (route === 'feed') {
@@ -1255,7 +1280,7 @@ export class Clips extends DurableObject {
     if (route === 'user') {
       const name = String(q.get('name') || ''), k = name.toLowerCase();
       if (!NAME_RE.test(name)) return j({ error: 'bad' }, 400);
-      const theirs = [...this.m.values()].filter(m => m.by.toLowerCase() === k).sort((a, b) => (b.pin || 0) - (a.pin || 0) || b.at - a.at); // pinned first
+      const theirs = [...this.m.values()].filter(m => !m.pend && m.by.toLowerCase() === k).sort((a, b) => (b.pin || 0) - (a.pin || 0) || b.at - a.at); // pinned first
       const u = await this.user(name), mine = me ? await this.user(me) : null;
       return j({ n: theirs.length ? theirs[0].by : u.n, clips: await this.show(theirs, me), followers: u.fr.length, following: u.f.length,
         views: theirs.reduce((s, m) => s + m.vw, 0), likes: theirs.reduce((s, m) => s + m.lk, 0), iFollow: mine && mine.f.includes(k) ? 1 : 0, followsMe: mine && u.f.includes(me.toLowerCase()) ? 1 : 0,
@@ -1263,7 +1288,7 @@ export class Clips extends DurableObject {
     }
     if (route === 'one') {
       const m = this.m.get(q.get('id') || '');
-      if (!m) return j({ error: 'not_found' }, 404);
+      if (!m || m.pend) return j({ error: 'not_found' }, 404);
       return j({ clip: (await this.show([m], me))[0] });
     }
     if (route === 'avatars') { // profile pictures: ?n=name,name,... (up to 60) -> { av: { lower: data URL } } (no entry = none)
@@ -1273,7 +1298,7 @@ export class Clips extends DurableObject {
     }
     if (route === 'comments') {
       const id = q.get('id') || '', mk = me.toLowerCase();
-      if (!this.m.has(id)) return j({ error: 'not_found' }, 404);
+      if (!this.m.has(id) || this.m.get(id).pend) return j({ error: 'not_found' }, 404);
       const list = (await this.ctx.storage.get('c:' + id)) || [];
       return j({ list: list.map(c => ({ i: c.i, n: c.n, t: c.t, at: c.at, re: c.re || '', lk: (c.lk || []).length, me: mk && (c.lk || []).includes(mk) ? 1 : 0 })) });
     }
@@ -1287,11 +1312,14 @@ export class Clips extends DurableObject {
       if (!q || !same(String(b.k || ''), q.k) || now - q.at > 30 * 60000) return j({ error: 'expired' }, 410);
       if ((q.m.k === 'photo') !== String(b.ty || '').startsWith('image/')) return j({ error: 'not_video' }, 415); // a photo post takes a picture, the others a video
       const m = Object.assign(q.m, { sz: +b.sz || 0, ty: b.ty, at: now });
+      // 2026-11-11: game clips made by the site's recorder and Claude's posts go live; uploaded photos and videos wait
+      // for an admin account to approve them ('pend', hidden everywhere until then)
+      if (!m.bot && !(m.k === 'clip' && b.own)) m.pend = 1;
       this.m.set(m.id, m);
       await S.put({ ['m:' + m.id]: m, ['p:' + m.id]: q.p });
       await S.delete('q:' + b.id);
       await this.prune(now);
-      return j({ ok: 1, id: m.id });
+      return j({ ok: 1, id: m.id, pend: m.pend ? 1 : 0 });
     }
     if ((route === 'purge' || route === 'rename') && b.int) { // from Account: the account was deleted (its clips go) or renamed
       const from = String(b.from || '').toLowerCase(), to = String(b.to || '');
@@ -1313,6 +1341,14 @@ export class Clips extends DurableObject {
         if (route === 'rename') { u.n = to; this.users.set(to.toLowerCase(), u); await S.put('u:' + to.toLowerCase(), u); }
       }
       return j({ ok: 1 });
+    }
+    if (route === 'review' && b.int) {
+      if (b.op === 'pending') return j({ list: await this.show([...this.m.values()].filter(m => m.pend).sort((a, c) => a.at - c.at).slice(0, 200), '') });
+      const m = this.m.get(String(b.id || ''));
+      if (!m || !m.pend) return j({ error: 'not_found' }, 404);
+      if (b.op === 'approve') { delete m.pend; m.at = now; await S.put('m:' + m.id, m); return j({ ok: 1, approved: m.id }); }
+      if (b.op === 'deny') { await this.drop(m.id); return j({ ok: 1, denied: m.id }); }
+      return j({ error: 'bad' }, 400);
     }
     if (route === 'seen') { // views: one per viewer per clip; also how much of the clip they watched
       const v = String(b.v || '');
@@ -1339,7 +1375,7 @@ export class Clips extends DurableObject {
     if (route === 'botbio' && b.int) { const u = await this.user(me); u.bio = String(b.t || '').replace(/\r/g, '').trim().slice(0, 300); await this.saveUser(u); return j({ ok: 1 }); }
     if (route === 'botcomment' && b.int) { // at most one Claude comment per post, never on Claude's own posts
       const id = String(b.id || ''), m = this.m.get(id), t = plain(b.t).slice(0, CLIP_COMMENT);
-      if (!m || !t) return j({ error: 'not_found' }, 404);
+      if (!m || m.pend || !t) return j({ error: 'not_found' }, 404);
       if (m.by.toLowerCase() === mk || await S.get('bc:' + id)) return j({ dup: 1 });
       const list = (await S.get('c:' + id)) || [];
       list.push({ i: rnd(4), n: me, t, at: now, lk: [] }); if (list.length > CLIP_COMMENTS) list.shift();
@@ -1406,7 +1442,7 @@ export class Clips extends DurableObject {
       return j({ on: b.on ? 1 : 0, followers: them.fr.length });
     }
     const id = String(b.id || ''), m = this.m.get(id);
-    if (!m) return j({ error: 'not_found' }, 404);
+    if (!m || (m.pend && route !== 'del' && route !== 'admindel')) return j({ error: 'not_found' }, 404);
     if (route === 'like') {
       const u = await this.user(me), likes = (await S.get('l:' + id)) || [], had = likes.includes(mk);
       if (!!b.on !== had) {

@@ -1,6 +1,3 @@
-// Social is closed for now (the owner, 2026-11-11): no tab, no clip button, social.html shows a closed screen, its news
-// and pop-up are hidden. Set this to false (and put the Social tab back in the page headers) to reopen it.
-window.SOCIAL_CLOSED = true;
 // Reads something a game saved in this browser. Returns null if it isn't there or storage is blocked.
 function readSave(key, json) {
   try {
@@ -134,13 +131,13 @@ window.GAMES = [
     category: 'Action',
     tagline: 'Red vs Blue sea battle. Command warships, fly planes and destroy the enemy harbor, online or against bots.',
     description: 'A Red vs Blue sea battle. Sail warships, fly planes and fight on foot to claim islands and destroy the enemy harbor. Join the public online battle, play a private room with friends, or play offline against bots.',
-    controls: 'Keyboard + mouse or touch',
-    keys: [['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['1 to 5', 'Switch guns on foot'], ['C', 'Cockpit or chase view in a plane'], ['F', 'Torpedo, bomb, depth charge or rockets'], ['R', 'Missile (jet, battleship, Typhoon)'], ['Q', 'Sonar ping (Seawolf, Typhoon)'], ['X', 'Flare (planes, battleship, carrier)'], ['Shift + A / D', 'Barrel roll'], ['Ctrl', 'Crouch, then lie down'], ['Enter', 'Deploy again (in the deploy menu)'],
+    controls: 'Keyboard + mouse, touch, controller or TV remote',
+    keys: [['Controller', 'Sticks move and aim, R2 fire, L2 / R1 weapons, ✕ jump, □ use, △ deploy, Options pause'], ['TV remote', 'Arrows move, OK fire, Back pause, colour buttons for jump, use, deploy and map'], ['W A S D', 'Walk, or throttle and steer'], ['Mouse', 'Look and aim (planes fly where you aim)'], ['Click', 'Fire'], ['Right-click', 'Zoom'], ['1 to 5', 'Switch guns on foot'], ['C', 'Cockpit or chase view in a plane'], ['F', 'Torpedo, bomb, depth charge or rockets'], ['R', 'Missile (jet, battleship, Typhoon)'], ['Q', 'Sonar ping (Seawolf, Typhoon)'], ['X', 'Flare (planes, battleship, carrier)'], ['Shift + A / D', 'Barrel roll'], ['Ctrl', 'Crouch, then lie down'], ['Enter', 'Deploy again (in the deploy menu)'],
            ['E', 'Use pads and turrets, get in and out (hold to bail out of a plane)'], ['Space', 'Jump, level out a plane, dive a sub or climb in a helicopter'], ['Shift', 'Sprint, or drop in a helicopter'], ['B', 'Deploy menu, or launch a plane from your carrier'], ['M', 'Map'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat (online)'], ['Y', 'Team chat (online)'], ['Esc', 'Pause'], ['G (hold)', 'Push to talk (online)']],
     path: 'havoc-bay/index.html',
     thumb: 'havoc-bay/thumb.jpg?v=3',
     added: '2026-10-18T20:55:00+11:00',
-    updated: '2026-11-11T08:45:00+11:00',
+    updated: '2026-11-11T18:00:00+11:00',
     stat() { const p = readSave('havocbay.profile.v1', true); return p && p.matches ? p.wins + (p.wins === 1 ? ' win' : ' wins') : null; },
   },
   {
@@ -176,13 +173,13 @@ window.GAMES = [
     title: 'Checkers',
     category: 'Board',
     tagline: 'Classic checkers against the computer, or online against a real person.',
-    description: 'American checkers with forced jumps, multi-jumps and kings: against the computer on six levels, two players on one screen, or online against a real person for a rating of its own and its own leaderboard.',
+    description: 'American checkers with optional jumps, multi-jumps and kings: against the computer on six levels, two players on one screen, or online against a real person for a rating of its own and its own leaderboard.',
     controls: 'Mouse or touch',
     keys: [['Local 2-player', 'Two players on one screen: the board turns round after every move'], ['🏆 Leaderboard', 'Everyone\u2019s highest online rating'], ['Drag or click', 'Move a piece'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
     path: 'checkers/index.html',
     thumb: 'checkers/thumb.svg',
     added: '2026-11-11T13:00:00+11:00',
-    updated: '2026-11-11T13:00:00+11:00',
+    updated: '2026-11-11T14:00:00+11:00',
     stat() { const s = readSave('checkersSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rv === 2 && isFinite(s.rating.r) ? 'Elo ' + Math.round(s.rating.r) : s.rating ? 'Elo 2000' : ''; /* 1.5.1: everyone was reset to 2000 */ return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
@@ -326,6 +323,11 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-11', game: 'havoc-bay', imgs: ['havoc-bay/news/1.4-helicopter.jpg'], headline: 'Helicopters fly like the real thing', text: 'Havoc Bay 1.4.2: helicopters turn to where you look and fly forward when you look down (back when you look up), W and S climb and descend, no more false PULL UP, and a big buff: a heavy gun that hurts ships, stronger rockets, more speed and much faster turning than planes. Planes turn and climb slower at speed, with no more flips.', post: '🚁 Havoc Bay 1.4.2: you asked, helicopters got a glow-up!\n\n🎯 They fly like real ones now: look down to tip forward and go, look up to tip back. W and S climb and descend\n🔧 No more PULL UP screaming at you while you are climbing\n💪 Serious buff: a new heavy machine gun that actually hurts ships, harder-hitting rockets on the Talon, more speed, more health and way faster turning than planes\n✈️ Planes got heavier: turning and pulling up slow down at high speed, and no more full flips\n\nTime to hunt some boats 👇\n\n#havocbay #TheArcade #Update' },
+  { date: '2026-11-11', game: 'havoc-bay', imgs: ['havoc-bay/news/1.4.1-controls.jpg', 'havoc-bay/news/1.4-helicopter.jpg'], headline: 'Controller and TV remote support', text: 'Havoc Bay 1.4.1: play with a controller (laid out like a DualShock 4) or a TV remote. Sticks move and aim, R2 fires, L2 and R1 for torpedoes, bombs and missiles, ✕ jump or dive, □ use, △ deploy, Options pause; menus work with the D-pad. With a remote: arrows, OK to fire, Back to pause and the colour buttons.', post: '🎮 Havoc Bay 1.4.1: grab a controller!\n\n🕹️ Full DualShock 4 support: sticks to move and aim, R2 to fire, L2 and R1 for torpedoes, bombs and missiles, ✕ to jump or dive, □ to jump in and out of vehicles, △ to deploy, Options to pause\n📺 Playing on a TV? The remote works too: arrows to steer, OK to fire, Back to pause, and the coloured buttons for jump, use, deploy and map\n🧭 Menus and the deploy screen work with the D-pad, no mouse needed\n\nCouch naval battles tonight? 🌊\n\n#havocbay #TheArcade #Update' },
+  { date: '2026-11-11', href: 'index.html', imgs: ['news/console-version.jpg'], headline: 'The Arcade on your TV and console', text: 'New: a console version of The Arcade for PlayStation, Xbox and smart-TV browsers. It switches on by itself, says so at the top, and has bigger cards and buttons you move around with the D-pad, a controller or a TV remote (✕ or OK to choose, ○ or Back to go back). Turn it off with Full website.', post: '📺 The Arcade now has a console version!\n\nOpen it on a PlayStation, Xbox or smart TV and it switches to a big-screen layout by itself (a banner at the top tells you).\n🎮 Move around with the D-pad or stick, ✕ to choose, ○ to go back, L1/R1 to switch tabs\n📡 TV remotes work too: arrows, OK and Back\n🖥️ Want the normal site? Hit Full website at the top\n\nCouch gaming, unlocked 🛋️\n\n#TheArcade #NewFeature' },
+  { date: '2026-11-11', href: 'social.html', headline: 'Photos and videos are checked first', text: 'New: photos and videos you upload to Social are checked before they go up, to keep it friendly. Game clips you record on the site with the 🎬 button still go up straight away.', post: '🛡️ A little update to keep Social friendly\n\n🎬 Game clips you record here with the clip button still go up instantly\n📸 Photos and videos you upload now get a quick check first, then appear once they are approved\n\nPlease keep it about games and fun: no photos of people without asking, and nothing mean. Thanks for making this a good place to hang out 💜\n\n#TheArcade #NewFeature' },
+  { date: '2026-11-11', game: 'checkers', imgs: ['checkers/news/1.0.1-board.jpg'], headline: 'Jumping is optional now', text: 'Checkers 1.0.1: you no longer have to jump. When you can take a piece you can still make any other move, and pieces that can jump are ringed in gold as a hint. Once you start a jump you keep going while you can. The computer plays by the same rule.', post: '♟️ Checkers 1.0.1 is out: jumping is optional!\n\n🙅 No more forced captures. Can take a piece? Cool. Rather make another move? Also cool.\n💛 Pieces that can jump still glow gold, so you never miss one by accident\n🔗 Once you start jumping, a multi-jump still goes all the way\n🤖 The computer plays by the same rules, so watch out: it might skip a capture to set you up\n\nGo out-think someone 👇\n\n#checkers #TheArcade #Update' },
   { date: '2026-11-11', game: 'turn-turn-turn', imgs: ['turn-turn-turn/news/1.3.1-fences.jpg', 'turn-turn-turn/news/1.3.1-barn.jpg', 'turn-turn-turn/news/1.3.1-chevrons.jpg'], headline: 'Easier steering, prettier stages', text: 'Turn! Turn! TURN! 1.3.1: steering is noticeably easier but still not easy: more lock at speed, quicker hands and calmer slides. The stages are nicer and more detailed: chevron boards and fans at tight corners, flowers, logs, fences, hay bales, cacti, ferns, snow drifts, cabins, barns, clouds and snowy peaks.', post: '🏁 Turn! Turn! TURN! 1.3.1 is out!\n\n🛞 Steering got easier. Not easy, easier. The wheel turns further at speed, reacts faster on keys and pads, and slides are much easier to catch. In my tests the car spent about half as much time off the road.\n🎨 The stages got a glow-up: red chevron boards (and fans!) on the tight corners, flowers, fallen logs, fences, hay bales, cacti in the canyon, ferns in the jungle, snow drifts, cabins and barns, clouds, and snow on the mountains.\n🐛 And the grass by the road is green again instead of black.\n\nGo beat your old times. Your navigator is waiting 👇\n\n#turnturnturn #TheArcade #Update' },
   { date: '2026-11-11', href: 'social.html', headline: 'Say it your way', text: 'New: Social shows posts, captions and chat names the way people wrote them, with no word filter. Want it cleaner? Turn on Filter swear words on Social under Settings in your account (the button at the top right).', post: '🗣️ Social is now unfiltered!\n\nCaptions and chat names show exactly what you typed. No more stars.\n🧹 Prefer it clean? Open your account (top right) and switch on Filter swear words on Social. It stars bad words in posts, comments and messages, just for you, on every device you log in on.\n\n#TheArcade #NewFeature' },
   { date: '2026-11-11', game: 'chess', imgs: ['chess/news/1.5.1-leaderboard.jpg', 'chess/news/1.5.1-alert.jpg'], headline: 'Everyone back to 2000 Elo', text: 'Chess 1.5.1: the Elo reset. Everyone starts at 2000 Elo, with no starting level to pick, and the leaderboard was reset so every player is level in first place. Lose and your Elo can fall to 0, win and it keeps climbing past 2000. When someone is waiting for a quick match, everyone else on Chess gets a pop-up to join them.', post: '♟️ Chess 1.5.1 is here: the great Elo reset!\n\n🔄 Everyone is back to 2000 Elo, and the leaderboard is wiped. Right now every single player is tied for first place 🏆\n📉 Lose and you can drop all the way to 0\n📈 Win and there is no ceiling. Climb as high as you can\n🔔 When someone is waiting for a quick match, everyone on Chess gets a pop-up to join them. No more waiting alone!\n\nFirst one to break away from the pack takes the top spot. Who is it going to be? 👇\n\n#chess #TheArcade #Update' },
@@ -509,7 +511,6 @@ window.NEWS = [
   { date: '2026-10-13', game: '2048', text: 'New game: 2048. Slide and merge your way to the big tile.' },
   { date: '2026-10-13', game: 'cube-assault', text: 'Cube Assault 1.7.2: the Extreme Gun, a turret and a combat knife in the shop.' },
 ];
-if (window.SOCIAL_CLOSED) window.NEWS = window.NEWS.filter(n => n.href !== 'social.html'); // Social is closed for now
 
 // What this browser has played, for "Continue playing" and the NEW / UPDATED badges
 window.Arcade = {
@@ -615,7 +616,7 @@ window.ArcadeOnline = (() => {
 
 // Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
 // localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
-const SITE_NOTICE_SOCIAL = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
+const SITE_NOTICE = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
   id: 'social-launch-2026-11-10',
   tag: 'New',
   title: 'Social is here! 🎬',
@@ -630,7 +631,6 @@ const SITE_NOTICE_SOCIAL = { // 2026-11-10: Social launch (popup only, no banner
   go: { text: 'Open Social', href: 'social.html' },
   skip: /social\.html$/,
 };
-const SITE_NOTICE = window.SOCIAL_CLOSED ? null : SITE_NOTICE_SOCIAL;
 const SITE_NOTICE_CHAT = { // 2026-11-06: the rebuilt Global chat and the new Players tab (popup only, no banner)
   id: 'chat-fixed-2026-11-06',
   tag: 'Fixed',

@@ -18,7 +18,7 @@ rep('<title>Chess</title>', '<title>Checkers</title>')
 rep('put("chessSave", ["name"]);', 'put("checkersSave", ["name"]);')
 rep("const SAVE_KEY = 'chessSave';", "const SAVE_KEY = 'checkersSave';")
 rep("get('chroom')", "get('ckroom')")
-rep("const BASE = TEST ? 'ch-test-' + TEST : 'ch';", "const BASE = TEST ? 'ck-test-' + TEST : 'ck';")
+rep("const BASE = TEST ? 'ch-test-' + TEST : 'ch';", "const BASE = TEST ? 'ck2-test-' + TEST : 'ck2';")  # 1.0.1: optional jumps, new channels
 rep("const KEY = 'chess-lb', TTL = 10 * 60e3;", "const KEY = 'checkers-lb', TTL = 10 * 60e3;")
 rep("fetch(base + 'top?g=chess'", "fetch(base + 'top?g=checkers'")
 rep("if (p && p.s && p.s.chess) rows.push({ n: String(p.n || n), r: best(p.s.chess) });", "if (p && p.s && p.s.checkers) rows.push({ n: String(p.n || n), r: best(p.s.checkers) });")
@@ -67,7 +67,7 @@ function animateMove(m, dropped) {
 }
 ''' + s[b:]
 rep("""    d.classList.toggle('check', !!G.b[sq] && G.b[sq].toUpperCase() === 'K' && isW(G.b[sq]) === G.w && inCheck(G, G.w));""",
-"""    d.classList.toggle('must', !over && !!legalNow.length && legalNow[0].cap && legalNow.some(m => m.from === sq) && (localGame || (G.w ? 'w' : 'b') === player));""")
+"""    d.classList.toggle('must', !over && !!legalNow.length && legalNow.some(m => m.cap && m.from === sq) && (localGame || (G.w ? 'w' : 'b') === player));""")
 rep("""  if (selected >= 0 && save.hints) for (const m of legalNow) if (m.from === selected && !(m.pr && m.pr.toUpperCase() !== 'Q')) {""",
 """  if (selected >= 0 && save.hints) for (const m of legalNow) if (m.from === selected) {""")
 
@@ -110,10 +110,10 @@ s = s[:a] + r'''function captured(forWhite) { // the other colour's pieces this 
 rep("""  else if (online.on && (G.w ? 'w' : 'b') !== player) st = (inCheck(G, G.w) ? 'Check! ' : '') + `${oppName()}’s move.`;
   else st = (inCheck(G, G.w) ? 'Check! ' : '') + 'Your move.' + (online.on && !hist.length ? ` You’re ${player === 'w' ? 'White' : 'Black'}.` : '');""",
 """  else if (online.on && (G.w ? 'w' : 'b') !== player) st = `${oppName()}’s move.`;
-  else st = (legalNow.length && legalNow[0].cap ? 'You must jump! ' : '') + 'Your move.' + (online.on && !hist.length ? ` You’re ${SIDE(player)}.` : '');""")
+  else st = (legalNow.length && legalNow[0].cap ? 'You can jump! ' : '') + 'Your move.' + (online.on && !hist.length ? ` You’re ${SIDE(player)}.` : '');""")
 rep("""    const nm = c => c === 'w' ? 'White<small>Player 1</small>' : 'Black<small>Player 2</small>';""", """    const nm = c => c === 'w' ? 'Red<small>Player 1</small>' : 'Black<small>Player 2</small>';""")
 rep("""a.textContent = c === 'w' ? '\\u2654' : '\\u265A';""", """a.textContent = c === 'w' ? '🔴' : '⚫';""")
-rep(""": (inCheck(G, G.w) ? 'Check! ' : '') + SIDE(side) + ' to move.';""", """: (legalNow.length && legalNow[0].cap ? 'Must jump! ' : '') + SIDE(side) + ' to move.';""")
+rep(""": (inCheck(G, G.w) ? 'Check! ' : '') + SIDE(side) + ' to move.';""", """: (legalNow.length && legalNow[0].cap ? 'Can jump! ' : '') + SIDE(side) + ' to move.';""")
 
 # html and css
 rep('<button data-v="w">White</button><button data-v="r">Random</button><button data-v="b">Black</button>', '<button data-v="w">Red (first)</button><button data-v="r">Random</button><button data-v="b">Black</button>')
@@ -129,8 +129,8 @@ s = s[:a] + '''<div id="notes">
     <h3>v1.0 <small>First release</small></h3>
     <ul>
       <li>Checkers, made from the arcade's Chess: the same board, buttons and online play, with checker pieces and checkers rules.</li>
-      <li>American checkers: men move diagonally forward, and become kings (with a gold crown) on the far row; kings move both ways. Jumping is compulsory and you keep jumping while you can. A man crowned in the middle of a jump stops there.</li>
-      <li>Pieces that must jump are ringed in gold. Drag a piece or click it and then where it should go; legal moves show as dots, and a multi-jump slides through every hop.</li>
+      <li>American checkers: men move diagonally forward, and become kings (with a gold crown) on the far row; kings move both ways. Jumping is up to you (1.0.1): take a piece or make any other move. Once you jump, you keep jumping while you can. A man crowned in the middle of a jump stops there.</li>
+      <li>Pieces that can jump are ringed in gold. Drag a piece or click it and then where it should go; legal moves show as dots, and a multi-jump slides through every hop.</li>
       <li>You win by taking every piece or leaving your opponent with no move. Draws: the same position three times, or 40 moves each with no capture and no man moved.</li>
       <li>Six computer levels, Easy to Master, plus Local 2-player on one screen.</li>
       <li>Play online: Quick match, private tables with a 5-letter code, chat, and rematches with colours swapped.</li>
