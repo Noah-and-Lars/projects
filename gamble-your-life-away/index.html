@@ -230,8 +230,7 @@
     <button class="btn sec" data-go="stats">Your stats</button>
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
-    <button class="btn sec" id="bIntro">Watch the intro</button>
-    <button class="link" data-go="notes">v1.0.8 · Patch notes</button>
+    <button class="link" data-go="notes">v1.1.1 · Patch notes</button>
   </div>
 
   <div class="menu wide" id="m-list">
@@ -303,6 +302,10 @@
           <li>Pick 3 pays fairly when you pick repeated digits: 175× in any order with a pair, 950× for a triple.</li></ul></li>
         <li>Fixed: Dragon Tiger’s tie showed three different payouts (11 to 1, 12× and 15×). It’s 16× everywhere now.</li>
         <li>Fixed: in Blackjack the dealer could turn up a blackjack after already checking for one.</li>
+      </ul>
+      <h3>v1.1.1 <span>Update</span></h3>
+      <ul>
+        <li>Video trailer has been removed.</li>
       </ul>
       <h3>v1.0.8 <span>Update</span></h3>
       <ul>
@@ -406,7 +409,8 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.f
 const weighted = list => { let r = Math.random() * list.reduce((s, x) => s + x.w, 0); for (const x of list) { r -= x.w; if (r <= 0) return x; } return list[list.length - 1]; };
 
 // ---------- save ----------
-const START = 80000, CREDIT = 10000, VERSION = '1.1', SKEY = 'gambleLifeSave';
+const TRAILER = /[?&]trailer\b/.test(location.search); // 1.1.1: opened by the site's Play trailer button
+const START = 80000, CREDIT = 10000, VERSION = '1.1.1', SKEY = 'gambleLifeSave';
 const save = Object.assign({ money: START, peak: START, rounds: 0, wins: 0, biggest: 0, deaths: 0, played: {}, bet: 1000, stress: 0, seenVersion: '', volume: 0.7, music: true, quality: 'high' },
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { return {}; } })());
 if (!save.rounds && save.money === 50000) save.money = START; // never played before 1.0.4: start with the new amount
@@ -1600,7 +1604,6 @@ function resume() { hideMenus(); if (mode === 'paused') mode = cur ? 'game' : 'f
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { Sound.init(); Sound.play('click'); const go = b.dataset.go;
   if (go === 'back') { if (b.id === 'notesOk') { save.seenVersion = VERSION; store(); } back(); } else if (go === 'resume') resume(); else showMenu(go); }));
 $('bPlay').onclick = async () => { Sound.init(); Music.start(); Sound.play('chip'); hideMenus(); mode = 'floor'; $('top').hidden = false; $('hint').hidden = false; orbit.auto = true; await flyTo(orbitPos(), orbit.target, 1.4); if (save.money < 0) lastChance(-save.money); else if (save.money === 0) lastChance(0); else if ((save.stress || 0) >= 100) cigPrompt(true); };
-$('bIntro').onclick = () => { Sound.init(); Sound.play('click'); Intro.play(); };
 $('bMenu').onclick = () => { Sound.play('click'); if (mode === 'game' && (busy || roundOpen)) { msg('Finish this round first.', 'bad'); return; } if (mode === 'game') { mode = 'paused'; } showMenu('pause'); };
 $('bList').onclick = () => { Sound.play('click'); if (mode === 'game' && (busy || roundOpen)) { msg('Finish this round first.', 'bad'); return; } if (mode === 'game') mode = 'paused'; showMenu('list'); };
 $('bTitle').onclick = () => { Sound.play('click'); if (cur) { if (cur.leave) cur.leave(); cur = null; $('gp').hidden = true; scene.userData.spot.intensity = 0; } toTitle(); };
@@ -2218,8 +2221,9 @@ const Intro = (() => {
     dropSet(); dropCraps(); dropSlots(); dropMore(); jackEl.style.opacity = 0; canvas.style.filter = ''; flashEl.style.opacity = 0; logoEl.style.opacity = 0; Beat.fade();
     el.classList.remove('on'); busy = false; camera.up.set(0, 1, 0); camera.fov = 55; camera.updateProjectionMatrix();
     camera.position.copy(orbitPos()); look.copy(orbit.target); camera.lookAt(look);
-    toTitle(); if (save.seenVersion !== VERSION) showMenu('notes');
+    toTitle(); if (save.seenVersion !== VERSION && !TRAILER) showMenu('notes');
     fadeBlack(0, 0.9);
+    if (TRAILER) try { parent.postMessage({ arcadeTrailer: 'done' }, location.origin); } catch (e) {} // 1.1.1: the site's trailer player
   }
   el.querySelector('#introSkip').addEventListener('click', e => { e.stopPropagation(); Sound.init(); SND('click'); finish(); });
   addEventListener('keydown', e => { if (on && (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); finish(); } });
@@ -2239,7 +2243,7 @@ scene.add(camera); buildHall(); buildStations(); applyQuality(); hud();
 camera.position.copy(orbitPos()); look.copy(orbit.target); camera.lookAt(look);
 toTitle(); if (save.seenVersion !== VERSION) showMenu('notes');
 requestAnimationFrame(frame);
-if (!/nointro|debug/.test(location.search)) Intro.play(); // the intro cinematic plays as the game opens
+if (TRAILER) Intro.play(); // 1.1.1: the opening cinematic only plays as the site's trailer (?trailer)
 if (/debug/.test(location.search)) setInterval(() => { if (performance.now() - lastFrame > 150) tick(performance.now()); }, 33);
 if (/debug/.test(location.search)) window.__gl = { save, GAMES, enter: id => enterGame(GAMES.find(g => g.id === id)), leave: leaveGame, get mode() { return mode; }, get busy() { return busy; }, get roundOpen() { return roundOpen; }, get cur() { return cur; }, die, settle, camera, scene, THREE, orbit, lastChance, smoke, addStress, cigPrompt, rigged, riggedStep, PLINKO, KENO_PAY, warV, bjVal, get lcOn() { return lcOn; }, SIX, SIX_SEGS, WHEEL_ORDER, STRIP, SYMS,
   topFace(d) { d.updateMatrixWorld(true); const q = new THREE.Quaternion(); d.userData.inner.getWorldQuaternion(q); const axes = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], vals = [3, 4, 1, 6, 2, 5]; let best = 0, by = -2;

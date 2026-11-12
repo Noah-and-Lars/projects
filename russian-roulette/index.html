@@ -265,8 +265,7 @@
     <button class="mbtn" data-go="mode">Change gamemode</button>
     <button class="mbtn" data-go="how">How to play</button>
     <button class="mbtn" data-go="settings">Settings</button>
-    <button class="mbtn" data-go="intro">Watch the intro</button>
-    <button class="link" data-go="notes">v1.3 · Patch notes</button>
+    <button class="link" data-go="notes">v1.3.1 · Patch notes</button>
   </div>
   <div class="menu" id="m-mode">
     <h2>Game mode</h2>
@@ -354,6 +353,9 @@
       <li>Russian Roulette online is still one against one.</li>
       <li>A new opening cinematic plays when the game opens. Skip it, or watch it again with Watch the intro on the main menu.</li>
     </ul></div>
+    <div class="box"><h3>v1.3.1 <span>Update</span></h3><ul>
+      <li>Video trailer has been removed.</li>
+    </ul></div>
     <div class="box"><h3>v1.2.1 <span>Buckshot online</span></h3><ul>
       <li>Buckshot Roulette can be played online too. Pick Buckshot with Change gamemode, then press Play online.</li>
       <li>The other player sits in the dealer’s seat. Watch them use their items and turn the shotgun on you or on themselves.</li>
@@ -439,7 +441,8 @@
 // =====================================================================
 //  Russian Roulette v1.1.3
 // =====================================================================
-const VERSION = '1.3';
+const VERSION = '1.3.1';
+const TRAILER = /[?&]trailer\b/.test(location.search); // 1.3.1: opened by the site's Play trailer button
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -4047,6 +4050,7 @@ const Intro = (() => {
     tear = null; gunLight.intensity = 0; SND.unmuffle(); dark = darkTo = 0;
     blackNow(1); if (npc) npc.alive = false;   // a new stranger sits down for the title
     toTitle();
+    if (TRAILER) try { parent.postMessage({ arcadeTrailer: 'done' }, location.origin); } catch (e) {} // 1.3.1: the site's trailer player
   }
   function skip() { if (!on) return; abortAll(); finish(); }
   el.querySelector('#introSkip').addEventListener('click', e => { e.stopPropagation(); SND.ui(); skip(); });
@@ -4066,7 +4070,7 @@ applyQuality(); resize(); updateHud();
 cam.look.copy(cam.lookTo);
 showMenu('title');
 requestAnimationFrame(frame);
-{ const q = new URLSearchParams(location.search); if (!q.has('rrroom') && !q.has('nointro')) Intro.play(); } // the intro cinematic plays as the game opens
+if (TRAILER) Intro.play(); // 1.3.1: the opening cinematic only plays as the site's trailer (?trailer)
 
 </script>
 </body>
