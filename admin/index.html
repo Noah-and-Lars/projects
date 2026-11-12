@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Arcade Ops Console</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Russo+One&display=swap">
+<style>
+/* Layout: network-appliance console. Fixed dark top bar, left menu, light work area of titled widget panels. */
+:root {
+  --bg: #e6e9ee;
+  --panel: #ffffff;
+  --panel-head: #eef1f5;
+  --line: #cdd3dc;
+  --ink: #1c2530;
+  --muted: #5a6677;
+  --accent: #1d6fce;
+  --accent-soft: rgba(29, 111, 206, .14);
+  --bar: #1e252d;
+  --bar-ink: #e9edf2;
+  --bar-muted: #9aa6b5;
+  --nav: #29313b;
+  --nav-hover: #333d49;
+  --nav-active: #3b4757;
+  --good: #23874a;
+  --warn: #b57a00;
+  --crit: #c8342a;
+  --good-bg: #e3f3e8;
+  --warn-bg: #fbf1d9;
+  --crit-bg: #fbe6e4;
+  --info-bg: #e3eefb;
+  --led-off: #9aa3ae;
+  --font: 'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --brand: 'Russo One', 'Arial Black', Impact, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12171d; --panel: #1a212a; --panel-head: #212a35; --line: #2f3a47;
+    --ink: #e2e7ed; --muted: #95a2b2; --accent: #5ba3f2; --accent-soft: rgba(91, 163, 242, .16);
+    --bar: #0c1014; --bar-ink: #e9edf2; --bar-muted: #8c98a7;
+    --nav: #161c23; --nav-hover: #1f2730; --nav-active: #283240;
+    --good: #4cc274; --warn: #e9b543; --crit: #f26b60;
+    --good-bg: #17301f; --warn-bg: #352a10; --crit-bg: #3a1a18; --info-bg: #15283d;
+    --led-off: #4b5562;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12171d; --panel: #1a212a; --panel-head: #212a35; --line: #2f3a47;
+  --ink: #e2e7ed; --muted: #95a2b2; --accent: #5ba3f2; --accent-soft: rgba(91, 163, 242, .16);
+  --bar: #0c1014; --bar-ink: #e9edf2; --bar-muted: #8c98a7;
+  --nav: #161c23; --nav-hover: #1f2730; --nav-active: #283240;
+  --good: #4cc274; --warn: #e9b543; --crit: #f26b60;
+  --good-bg: #17301f; --warn-bg: #352a10; --crit-bg: #3a1a18; --info-bg: #15283d;
+  --led-off: #4b5562;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+[hidden] { display: none !important; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bar); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Top bar */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bar); color: var(--bar-ink);
+  display: flex; align-items: center; gap: 16px; min-height: 50px; flex-wrap: wrap;
+  padding-block: 6px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 3px solid var(--accent); }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+.brand svg { width: 26px; height: 26px; flex: none; }
+.brand b { font-family: var(--brand); font-weight: 400; font-size: 17px; letter-spacing: .04em; }
+.brand span { color: var(--bar-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; border-left: 1px solid #3a4552; padding-left: 10px; }
+.topbar .spacer { flex: 1; }
+.top-meta { display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--bar-muted); flex-wrap: wrap; }
+.top-meta .clock { font-family: var(--mono); color: var(--bar-ink); font-variant-numeric: tabular-nums; }
+.top-meta .dev b { color: var(--bar-ink); font-weight: 500; }
+.mode { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 3px; border: 1px solid #3a4552; color: var(--bar-ink); }
+.mode i { width: 8px; height: 8px; border-radius: 50%; background: #66707c; }
+.mode[data-mode="live"] i { background: #4cc274; box-shadow: 0 0 6px #4cc274; }
+.mode[data-mode="sample"] { border-color: #e9b543; color: #f3cf7c; }
+.mode[data-mode="sample"] i { background: #e9b543; }
+.topbtn { background: transparent; border: 1px solid #3a4552; color: var(--bar-ink); border-radius: 3px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; }
+.topbtn:hover { background: #2c3540; }
+
+/* Frame */
+.frame { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: calc(100vh - 53px); }
+.nav { background: var(--nav); padding-block: 14px; padding-left: env(safe-area-inset-left, 0px); }
+.nav h2 { margin: 6px 18px 8px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--bar-muted); }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 9px 18px; color: #c9d1db; text-decoration: none; font-size: 13.5px; border-left: 3px solid transparent; }
+.nav a svg { width: 16px; height: 16px; flex: none; opacity: .8; }
+.nav a:hover { background: var(--nav-hover); color: #fff; }
+.nav a[aria-current="page"] { background: var(--nav-active); color: #fff; border-left-color: var(--accent); }
+.nav .count { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--bar-muted); }
+.main { min-width: 0; padding-block: 18px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (min-width: 761px) { .main { padding-left: 22px; padding-right: max(22px, env(safe-area-inset-right, 0px)); } }
+
+.crumbs { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.crumbs h1 { margin: 0; font-size: 20px; font-weight: 600; text-wrap: balance; }
+.crumbs .path { color: var(--muted); font-size: 12.5px; }
+
+/* Banner */
+.banner { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; border: 1px solid var(--line); border-left-width: 4px; border-radius: 3px; padding: 10px 14px; margin-bottom: 14px; background: var(--panel); }
+.banner[data-kind="crit"] { border-left-color: var(--crit); background: var(--crit-bg); }
+.banner[data-kind="info"] { border-left-color: var(--accent); background: var(--info-bg); }
+.banner[data-kind="warn"] { border-left-color: var(--warn); background: var(--warn-bg); }
+.banner > div { flex: 1 1 320px; min-width: 0; }
+.banner b { display: block; margin-bottom: 2px; }
+.banner p { margin: 0; max-width: 84ch; }
+.banner code { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.btn { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 5px 11px; cursor: pointer; font-size: 13px; }
+a.btn { color: var(--accent); text-decoration: none; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Widgets */
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.w { grid-column: span 12; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; min-width: 0; display: flex; flex-direction: column; }
+.w-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 7px 12px; background: var(--panel-head); border-bottom: 1px solid var(--line); min-height: 38px; }
+.w-head h3 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+.w-head .sub { color: var(--muted); font-size: 12px; }
+.w-head .tools { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.w-body { padding: 12px; min-width: 0; flex: 1; }
+@media (min-width: 900px) {
+  .s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; } .s7 { grid-column: span 7; } .s8 { grid-column: span 8; }
+}
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.seg button { background: var(--panel); border: 0; border-right: 1px solid var(--line); padding: 3px 9px; font-size: 12px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.tag { display: inline-block; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px; border-radius: 2px; border: 1px solid var(--warn); color: var(--warn); }
+
+/* Front panel */
+.ports { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.port { border: 1px solid var(--line); border-radius: 3px; padding: 10px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: center; background: var(--bg); }
+.port .jack { grid-row: span 2; width: 34px; height: 30px; border-radius: 3px; background: var(--bar); position: relative; }
+.port .jack::before { content: ""; position: absolute; left: 8px; right: 8px; top: 7px; bottom: 9px; border: 2px solid #4a5563; border-top-width: 5px; border-radius: 1px; }
+.port .jack i { position: absolute; bottom: 3px; width: 6px; height: 4px; border-radius: 1px; background: #5b6470; }
+.port .jack i:first-child { left: 4px; } .port .jack i:last-child { right: 4px; }
+.port[data-state="up"] .jack i { background: #4cc274; box-shadow: 0 0 5px #4cc274; }
+.port[data-state="up"] .jack i:last-child { animation: blink 1.6s steps(2, start) infinite; }
+.port[data-state="warn"] .jack i { background: #e9b543; }
+.port[data-state="down"] .jack i:first-child { background: #f26b60; box-shadow: 0 0 5px #f26b60; }
+@keyframes blink { 50% { opacity: .25; } }
+.port .pname { font-weight: 600; font-size: 13px; }
+.port .pstat { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+
+/* Status pills */
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill[data-s="up"] { color: var(--good); background: var(--good-bg); }
+.pill[data-s="warn"] { color: var(--warn); background: var(--warn-bg); }
+.pill[data-s="down"] { color: var(--crit); background: var(--crit-bg); }
+.pill[data-s="wait"] { color: var(--muted); background: var(--panel-head); }
+
+/* Info table */
+.kv { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kv th { text-align: left; font-weight: 500; color: var(--muted); padding: 5px 10px 5px 0; width: 44%; vertical-align: top; }
+.kv td { padding: 5px 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kv tr + tr th, .kv tr + tr td { border-top: 1px solid var(--line); }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+
+/* Gauges */
+.gauges { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.gauge { text-align: center; }
+.gauge svg { width: 100%; max-width: 170px; height: auto; display: block; margin: 0 auto; }
+.gauge .g-val { font-family: var(--mono); font-size: 20px; font-weight: 500; fill: var(--ink); }
+.gauge .g-unit { font-size: 10px; fill: var(--muted); }
+.gauge .g-label { font-size: 12.5px; font-weight: 600; }
+.gauge .g-note { font-size: 11.5px; color: var(--muted); }
+
+/* Stat strip */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); margin: 0 0 12px; border: 1px solid var(--line); border-radius: 3px; }
+.stat { padding: 8px 12px; border-right: 1px solid var(--line); }
+.stat:last-child { border-right: 0; }
+.stat dt { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.stat dd { margin: 2px 0 0; font-family: var(--mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+
+/* Charts */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart .axis { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
+.chart .grid-l { stroke: var(--line); stroke-width: 1; }
+.chart .base-l { stroke: var(--muted); stroke-width: 1; opacity: .6; }
+.chart .series { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .area { fill: var(--accent-soft); stroke: none; }
+.chart .endpt { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.chart .cross { stroke: var(--muted); stroke-width: 1; }
+.chart .empty { font-size: 12.5px; fill: var(--muted); }
+.tip { position: absolute; pointer-events: none; background: var(--bar); color: var(--bar-ink); border-radius: 3px; padding: 5px 8px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -100%); margin-top: -10px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.tip b { font-family: var(--mono); font-weight: 500; font-size: 13px; }
+.chart-note { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+
+/* Bars: players by game */
+.bars { display: grid; gap: 7px; }
+.bar-row { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) 4.5em; gap: 10px; align-items: center; font-size: 13px; }
+.bar-row .bn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-row .track { height: 14px; background: var(--panel-head); border-radius: 0 3px 3px 0; position: relative; }
+.bar-row .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 0 4px 4px 0; }
+.bar-row .peak { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--muted); }
+.bar-row .bv { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.bar-row .bv small { color: var(--muted); font-size: 11px; }
+.bars-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+/* Logs */
+.log-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.log-tools input[type="search"] { flex: 1 1 200px; min-width: 0; padding: 5px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); }
+.log-tools select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 3px; }
+.table-wrap.tall { max-height: 560px; overflow-y: auto; }
+table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.data th { position: sticky; top: 0; background: var(--panel-head); text-align: left; font-weight: 600; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.data td { padding: 5px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.data tr:last-child td { border-bottom: 0; }
+table.data td.t { font-family: var(--mono); white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+table.data td.msg { font-family: var(--mono); min-width: 260px; overflow-wrap: anywhere; }
+table.data tr[data-l="warn"] td.msg { color: var(--warn); }
+table.data tr[data-l="error"] td.msg { color: var(--crit); }
+.lvl { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 2px; }
+.lvl[data-l="info"] { color: var(--accent); background: var(--info-bg); }
+.lvl[data-l="warn"] { color: var(--warn); background: var(--warn-bg); }
+.lvl[data-l="error"] { color: var(--crit); background: var(--crit-bg); }
+.guest { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; }
+.empty-row td { color: var(--muted); text-align: center; padding: 18px; font-family: var(--font); }
+
+@media (max-width: 760px) {
+  .topbar { position: static; }
+  .frame { grid-template-columns: minmax(0, 1fr); }
+  .nav { display: flex; overflow-x: auto; padding: 0; padding-left: env(safe-area-inset-left, 0px); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 15; }
+  .nav h2 { display: none; }
+  .nav a { border-left: 0; border-bottom: 3px solid transparent; white-space: nowrap; padding: 10px 14px; }
+  .nav a[aria-current="page"] { border-bottom-color: var(--accent); }
+  .nav .count { margin-left: 4px; }
+  .brand span { display: none; }
+  .bar-row { grid-template-columns: minmax(80px, 110px) minmax(0, 1fr) 4.5em; }
+}
+@media (prefers-reduced-motion: reduce) { .port[data-state="up"] .jack i:last-child { animation: none; } }
+</style>
+
+<header class="topbar">
+  <a class="brand" href="#dashboard" aria-label="Arcade Ops Console home">
+    <svg viewBox="0 0 26 26" aria-hidden="true"><rect x="2" y="2" width="22" height="22" rx="4" fill="#6c5ce7"/><rect x="6" y="9" width="14" height="8" rx="2" fill="#1e252d"/><circle cx="10" cy="13" r="2" fill="#00d2a8"/><rect x="14" y="12" width="4" height="2" rx="1" fill="#f1effa"/></svg>
+    <b>ARCADE OPS</b><span>Admin Console</span>
+  </a>
+  <div class="spacer"></div>
+  <div class="top-meta">
+    <span class="mode" id="modePill" data-mode="connecting"><i></i><span id="modeText">Connecting</span></span>
+    <button class="topbtn" id="modeBtn" type="button">Show sample data</button>
+    <span class="dev">Server <b>arcade-realtime</b></span>
+    <span class="clock" id="clock">--:--:--</span>
+  </div>
+</header>
+
+<div class="frame">
+  <nav class="nav" aria-label="Console sections">
+    <h2>Monitor</h2>
+    <a href="#dashboard" data-view="dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Dashboard</a>
+    <a href="#players" data-view="players"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="5" r="3"/><path d="M2 15c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5Z"/></svg>Players<span class="count" id="navPlayers">–</span></a>
+    <a href="#system-status" data-view="system-status"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M1 8h3l2-5 4 10 2-5h3"/></svg>System Status</a>
+    <a href="#traffic-monitor" data-view="traffic-monitor"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="10" height="2" rx="1"/><rect x="1" y="12" width="12" height="2" rx="1"/></svg>Traffic Monitor<span class="count" id="navLogs">0</span></a>
+  </nav>
+
+  <main class="main">
+    <div class="crumbs"><h1 id="viewTitle">Dashboard</h1><span class="path" id="viewPath">Monitor / Dashboard</span></div>
+    <div id="banners"></div>
+
+    <!-- Dashboard -->
+    <section id="view-dashboard" data-title="Dashboard">
+      <div class="grid">
+        <div class="w">
+          <div class="w-head"><h3>Front Panel</h3><span class="sub">The Cloudflare Worker and the services that run on it</span><span class="tools" id="fpTag"></span></div>
+          <div class="w-body"><div class="ports" id="ports"></div></div>
+        </div>
+
+        <div class="w s8">
+          <div class="w-head"><h3>Players Online</h3><span class="sub">Whole arcade, from the on-now counter</span>
+            <div class="tools"><div class="seg" data-range-for="dash"><button type="button" data-r="15m">15m</button><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button></div></div></div>
+          <div class="w-body">
+            <dl class="stats" id="dashStats"></dl>
+            <div class="chart" id="dashChart"><svg role="img" aria-label="Players online over time"></svg><div class="tip" hidden></div></div>
+            <p class="chart-note" id="dashNote"></p>
+          </div>
+        </div>
+
+        <div class="w s4">
+          <div class="w-head"><h3>System</h3></div>
+          <div class="w-body">
+            <div class="gauges" id="gauges"></div>
+            <table class="kv" id="sysInfo" style="margin-top:10px"></table>
+          </div>
+        </div>
+
+        <div class="w s6">
+          <div class="w-head"><h3>Players by Game</h3><span class="sub" id="byGameSub">Now, with the peak for the last hour</span></div>
+          <div class="w-body"><div class="bars" id="byGame"></div></div>
+        </div>
+
+        <div class="w s6">
+          <div class="w-head"><h3>Traffic Monitor</h3><span class="sub">Latest events</span><div class="tools"><a class="btn" href="#traffic-monitor">Open full log</a></div></div>
+          <div class="w-body"><div class="table-wrap"><table class="data"><thead><tr><th>Time</th><th>Level</th><th>Message</th></tr></thead><tbody id="dashLogs"></tbody></table></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Players -->
+    <section id="view-players" data-title="Players" hidden>
+      <div class="grid">
+        <div class="w">
+          <div class="w-head"><h3>Player Count</h3><span class="sub">Browsers on the arcade, one per player</span>
+            <div class="tools"><div class="seg" data-range-for="players"><button type="button" data-r="15m">15m</button><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button></div></div></div>
+          <div class="w-body">
+            <dl class="stats" id="playerStats"></dl>
+            <div class="chart" id="playerChart"><svg role="img" aria-label="Players online over time, large"></svg><div class="tip" hidden></div></div>
+            <p class="chart-note" id="playerNote"></p>
+          </div>
+        </div>
+        <div class="w">
+          <div class="w-head"><h3>Who's Online</h3><span class="sub">Signed-in players show their account name. Guests show the first characters of their browser ID.</span></div>
+          <div class="w-body"><div class="table-wrap tall"><table class="data"><thead><tr><th>Player</th><th>Playing</th><th>Seen since</th><th>Online for</th></tr></thead><tbody id="sessions"></tbody></table></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- System status -->
+    <section id="view-system-status" data-title="System Status" hidden>
+      <div class="grid">
+        <div class="w s7">
+          <div class="w-head"><h3>Socket Round Trip</h3><span class="sub">Ping to pong on the realtime socket, every 25 s</span>
+            <div class="tools"><div class="seg" data-range-for="latency"><button type="button" data-r="15m">15m</button><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button></div></div></div>
+          <div class="w-body">
+            <div class="chart" id="latencyChart"><svg role="img" aria-label="Socket round trip time over time"></svg><div class="tip" hidden></div></div>
+            <p class="chart-note">Gaps mean the socket was closed or the ping got no answer.</p>
+          </div>
+        </div>
+        <div class="w s5">
+          <div class="w-head"><h3>Health Checks</h3><div class="tools"><button class="btn" type="button" id="checkNow">Check now</button></div></div>
+          <div class="w-body"><div class="table-wrap"><table class="data"><thead><tr><th>Service</th><th>Status</th><th>Detail</th></tr></thead><tbody id="checks"></tbody></table></div>
+            <table class="kv" id="healthInfo" style="margin-top:12px"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Traffic monitor -->
+    <section id="view-traffic-monitor" data-title="Traffic Monitor" hidden>
+      <div class="w">
+        <div class="w-head"><h3>Event Log</h3><span class="sub" id="logCount"></span></div>
+        <div class="w-body">
+          <div class="log-tools">
+            <input type="search" id="logSearch" placeholder="Filter, e.g. Cube Assault or joined" aria-label="Filter log messages">
+            <select id="logLevel" aria-label="Level"><option value="all">All levels</option><option value="info">Info</option><option value="warn">Warning</option><option value="error">Error</option></select>
+            <select id="logSource" aria-label="Source"><option value="all">All sources</option></select>
+            <button class="btn" type="button" id="logPause" aria-pressed="false">Pause</button>
+            <button class="btn" type="button" id="logClear">Clear</button>
+          </div>
+          <div class="table-wrap tall"><table class="data"><thead><tr><th>Time</th><th>Level</th><th>Source</th><th>Message</th></tr></thead><tbody id="logRows"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- Config ----------
+// The arcade's realtime server: the Cloudflare Worker in realtime-worker/ (see CLAUDE.md).
+// It accepts WebSockets only from the official site, so live data works only when this page is served from there.
+const CFG = {
+  ws: 'wss://arcade-realtime.arcade-realtime.workers.dev/ws',
+  http: 'https://arcade-realtime.arcade-realtime.workers.dev/',
+  topic: 'online:arcade',
+  origin: 'https://noah-and-lars.github.io',
+  siteUrl: 'https://noah-and-lars.github.io/projects/admin/',
+  roomMax: 400,        // MAX_SOCKETS per room in worker.js
+};
+const GAME_NAMES = { home: 'Home page', chat: 'Global chat', 'throttle-ridge': 'Throttle Ridge', 'turn-turn-turn': 'Turn! Turn! TURN!', 'krill-dive': 'Krill Dive', 'card-royale': 'Card Royale', siege: 'Siege', uno: 'UNO!', 'rocket-rivals': 'Rocket Rivals', football: 'Football', 'havoc-bay': 'Havoc Bay', 'bull-run': 'Stocks Game', chess: 'Chess', checkers: 'Checkers', 'russian-roulette': 'Russian Roulette', 'gamble-your-life-away': 'Gamble Your Life Away', 'cube-tower-defense': 'Cube Tower Defense', 'free-criminal': 'Free Criminal', 'cube-assault': 'Cube Assault', 'block-drop': 'Blocktris', 2048: '2048', 'poly-racer': 'Poly Racer', blockcraft: 'Blockcraft' };
+const gameName = g => GAME_NAMES[g] || String(g).replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+const RANGES = { '15m': 15 * 60e3, '1h': 60 * 60e3, '24h': 24 * 60 * 60e3 };
+const SAMPLE_EVERY = 15e3, PING_EVERY = 25e3, HTTP_EVERY = 60e3, IDLE_MS = 15 * 60e3, BACKOFF = [1e3, 2e3, 5e3, 10e3, 30e3];
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+
+// ---------- State ----------
+const newData = () => ({ history: [], latency: [], logs: [], players: new Map() });
+const onSite = location.origin === CFG.origin;
+const S = {
+  mode: 'connecting', sampleReason: null, startedAt: Date.now(),
+  live: newData(), sample: null,
+  svc: {
+    http:   { name: 'Worker', s: 'wait', text: 'Not checked yet' },
+    socket: { name: 'Realtime socket', s: 'wait', text: 'Connecting' },
+    room:   { name: 'Presence room', s: 'wait', text: 'Waiting' },
+    origin: { name: 'Origin check', s: onSite ? 'up' : 'down', text: onSite ? 'Served from the official site' : 'Not on noah-and-lars.github.io' },
+  },
+  joined: false, synced: false, everJoined: false, tries: 0, reconnects: 0, lastSync: null, lastHttp: null, lastPing: null,
+  ranges: Object.assign({ dash: '1h', players: '1h', latency: '1h' }, store.get('arcadeops.ranges', {})),
+  logPaused: false,
+};
+const D = () => S.mode === 'sample' ? S.sample : S.live;
+
+// Live history stays in this browser for 24 h so the graphs fill in over time.
+(() => {
+  const h = store.get('arcadeops.history.v1', []), cut = Date.now() - RANGES['24h'];
+  if (Array.isArray(h)) S.live.history = h.filter(p => p && p.t > cut);
+})();
+let saveTimer = 0;
+const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set('arcadeops.history.v1', S.live.history), 3000); };
+
+// ---------- Utilities ----------
+const pad = n => String(n).padStart(2, '0');
+const hhmm = t => { const d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const hhmmss = t => { const d = new Date(t); return hhmm(t) + ':' + pad(d.getSeconds()); };
+const dur = ms => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h}h ${pad(m)}m` : m ? `${m}m ${pad(s % 60)}s` : `${s % 60}s`; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const rid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+const who = p => p.name || 'Guest ' + p.key.slice(0, 6);
+
+function log(level, src, msg, data = D(), t = Date.now()) {
+  data.logs.push({ t, level, src, msg });
+  if (data.logs.length > 2000) data.logs.splice(0, data.logs.length - 2000);
+  if (data === D()) schedule('logs');
+}
+function setSvc(key, s, text, quiet) {
+  const v = S.svc[key], changed = v.s !== s;
+  v.s = s; v.text = text;
+  if (changed && !quiet && S.mode !== 'sample') log(s === 'down' ? 'error' : s === 'warn' ? 'warn' : 'info', v.name, `${v.name}: ${text}`, S.live);
+  schedule('status');
+}
+function pushPoint(arr, point) {
+  arr.push(point);
+  const cut = point.t - RANGES['24h'];
+  while (arr.length && arr[0].t < cut) arr.shift();
+}
+// The same counting rule as the site's on-now counter: one per browser, counted on a game over the home page.
+function tally(state) {
+  const players = new Map(), byGame = {};
+  for (const key in state) {
+    const metas = Array.isArray(state[key]) ? state[key] : [];
+    const games = metas.map(m => (m && m.game) || 'home');
+    const game = games.find(g => g !== 'home') || 'home';
+    const named = metas.find(m => m && typeof m.n === 'string' && /^[A-Za-z0-9_]{3,16}$/.test(m.n));
+    players.set(key, { key, game, name: named ? named.n : '' });
+    byGame[game] = (byGame[game] || 0) + 1;
+  }
+  return { players, byGame };
+}
+
+// ---------- Live connection (raw WebSocket, the same protocol rt.js speaks) ----------
+let ws = null, pingT = 0, httpT = 0, sampleT = 0, retryT = 0, idleT = 0, pingSent = 0, fallbackT = 0;
+const myKey = 'admin-console-' + rid();
+function startLive() {
+  S.mode = 'connecting'; S.sampleReason = null; stopSample();
+  log('info', 'Console', `Console opened. Connecting to ${CFG.topic}.`, S.live);
+  if (!onSite) log('warn', 'Origin check', `This page is on ${location.origin === 'null' ? 'a local file' : location.origin}. The server only accepts ${CFG.origin}.`, S.live);
+  checkHttp();
+  httpT = setInterval(checkHttp, HTTP_EVERY);
+  sampleT = setInterval(sampleLive, SAMPLE_EVERY);
+  fallbackT = setTimeout(() => { if (!S.everJoined && S.mode !== 'sample') { log('error', 'Console', 'Could not join the presence room after 12 s. Showing sample data.', S.live); startSample(onSite ? 'down' : 'origin'); } }, 12e3);
+  openSocket();
+  render();
+}
+function openSocket() {
+  clearTimeout(retryT);
+  if (document.hidden && S.idle) return;
+  S.tries++;
+  setSvc('socket', 'wait', S.tries > 1 ? `Reconnecting (try ${S.tries})` : 'Connecting', true);
+  let sock;
+  try { sock = new WebSocket(CFG.ws + '?topic=' + encodeURIComponent(CFG.topic) + '&key=' + encodeURIComponent(myKey)); }
+  catch (e) { setSvc('socket', 'down', 'Could not open a WebSocket'); return retry(); }
+  ws = sock;
+  sock.onopen = () => { if (ws === sock) setSvc('socket', 'up', 'Open (WebSocket)'); };
+  sock.onmessage = ev => {
+    if (ws !== sock) return;
+    if (ev.data === 'pong') {
+      const ms = Math.round(performance.now() - pingSent);
+      S.lastPing = { at: Date.now(), ms };
+      pushPoint(S.live.latency, { t: Date.now(), v: ms });
+      if (ms > 1500) log('warn', 'Realtime socket', `Slow ping: ${ms} ms`, S.live);
+      schedule('status');
+      return;
+    }
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m.t === 'joined') {
+      S.joined = true; S.everJoined = true; S.tries = 0; clearTimeout(fallbackT);
+      if (S.mode === 'connecting') S.mode = 'live';
+      setSvc('room', 'up', 'Joined ' + CFG.topic);
+      ping();
+    } else if (m.t === 'state') onState(m.s || {});
+  };
+  sock.onclose = ev => {
+    if (ws !== sock) return;
+    ws = null; clearInterval(pingT);
+    const was = S.joined; S.joined = false; S.synced = false;
+    if (S.idle) { setSvc('socket', 'wait', 'Asleep while this tab is hidden', true); setSvc('room', 'wait', 'Asleep', true); return; }
+    if (was) { S.reconnects++; setSvc('socket', 'down', `Closed (code ${ev.code}). Reconnecting.`); setSvc('room', 'down', 'Left the room'); }
+    else setSvc('socket', 'down', onSite ? 'Refused or unreachable' : 'Refused: wrong origin', S.tries > 1);
+    retry();
+  };
+  sock.onerror = () => {};
+}
+function retry() {
+  if (S.mode === 'sample') return;
+  const wait = !S.everJoined && S.tries >= 6 ? 5 * 60e3 : BACKOFF[Math.min(S.tries - 1, BACKOFF.length - 1)];
+  retryT = setTimeout(openSocket, wait);
+}
+function ping() {
+  clearInterval(pingT);
+  const send = () => { if (ws && ws.readyState === 1) { pingSent = performance.now(); try { ws.send('ping'); } catch (e) {} } };
+  send(); pingT = setInterval(send, PING_EVERY);
+}
+function onState(state) {
+  const now = Date.now(), P = S.live.players, { players } = tally(state);
+  players.delete(myKey);
+  if (!S.synced) {
+    P.clear(); players.forEach((p, k) => P.set(k, Object.assign(p, { since: null })));
+    S.synced = true;
+    log('info', 'Presence', `First sync: ${players.size} player${players.size === 1 ? '' : 's'} online`, S.live);
+  } else {
+    players.forEach((p, k) => {
+      const old = P.get(k);
+      if (!old) { P.set(k, Object.assign(p, { since: now })); log('info', 'Presence', `${who(p)} joined on ${gameName(p.game)}`, S.live); }
+      else {
+        if (old.game !== p.game) log('info', 'Presence', `${who(p)} moved from ${gameName(old.game)} to ${gameName(p.game)}`, S.live);
+        old.game = p.game; old.name = p.name;
+      }
+    });
+    [...P.keys()].forEach(k => { if (!players.has(k)) { log('info', 'Presence', `${who(P.get(k))} left`, S.live); P.delete(k); } });
+  }
+  S.lastSync = now;
+  if (P.size >= CFG.roomMax * .8) log('warn', 'Capacity', `${P.size} of ${CFG.roomMax} connections in the room`, S.live);
+  record(S.live, now);
+  persist();
+  schedule('players');
+}
+function byGameOf(data) { const g = {}; data.players.forEach(p => { g[p.game] = (g[p.game] || 0) + 1; }); return g; }
+function record(data, now) {
+  const h = data.history, last = h[h.length - 1], point = { t: now, v: data.players.size, g: byGameOf(data) };
+  if (last && last.v != null && now - last.t < 2000) Object.assign(last, point); else pushPoint(h, point);
+}
+function sampleLive() {
+  if (S.mode === 'sample') return;
+  if (S.joined && S.synced) record(S.live, Date.now()); else pushPoint(S.live.history, { t: Date.now(), v: null });
+  persist(); schedule('players');
+}
+async function checkHttp() {
+  if (S.mode === 'sample') return;
+  const t0 = performance.now(), at = Date.now();
+  try {
+    // The Worker's plain "arcade realtime ok" route. It sends no CORS headers, so only reachability and timing are visible.
+    await fetch(CFG.http + '?probe=' + at, { mode: 'no-cors', cache: 'no-store' });
+    const ms = Math.round(performance.now() - t0);
+    S.lastHttp = { at, ms, ok: true };
+    setSvc('http', ms > 1500 ? 'warn' : 'up', `Reachable, ${ms} ms`);
+  } catch (e) {
+    S.lastHttp = { at, ms: null, ok: false };
+    setSvc('http', 'down', 'No response');
+  }
+}
+function stopLive() {
+  [pingT, httpT, sampleT].forEach(clearInterval); [retryT, fallbackT, idleT].forEach(clearTimeout);
+  const s = ws; ws = null; try { if (s) s.close(1000, 'bye'); } catch (e) {}
+  S.joined = S.synced = S.everJoined = false; S.tries = 0; S.live.players.clear();
+}
+// Like the rest of the arcade: a tab hidden for 15 minutes lets go of its socket, and reconnects when shown.
+document.addEventListener('visibilitychange', () => {
+  clearTimeout(idleT);
+  if (document.hidden) idleT = setTimeout(() => {
+    if (S.mode === 'sample' || !ws) return;
+    S.idle = true; log('info', 'Console', 'Tab hidden for 15 minutes. Closing the socket to save the daily request budget.', S.live);
+    const s = ws; try { s.close(1000, 'idle'); } catch (e) {}
+  }, IDLE_MS);
+  else if (S.idle) { S.idle = false; log('info', 'Console', 'Tab shown again. Reconnecting.', S.live); openSocket(); }
+});
+
+// ---------- Sample data (clearly labelled) ----------
+let sampleTimers = [];
+const SAMPLE_GAMES = [['home', 6], ['cube-assault', 7], ['blockcraft', 5], ['poly-racer', 4], ['chess', 2], ['uno', 3], ['havoc-bay', 2], ['chat', 2], ['krill-dive', 1], ['2048', 1]];
+function pickGame() { const tot = SAMPLE_GAMES.reduce((a, g) => a + g[1], 0); let r = Math.random() * tot; for (const [g, w] of SAMPLE_GAMES) if ((r -= w) < 0) return g; return 'home'; }
+function curve(t) { const d = new Date(t), h = d.getHours() + d.getMinutes() / 60; return Math.max(0, 22 + 17 * Math.sin((h - 14) / 24 * 2 * Math.PI) + 5 * Math.sin(t / 2.7e6)); }
+function samplePlayer(since) { const key = rid(); return { key, game: pickGame(), name: Math.random() < .55 ? 'sample_' + key.slice(0, 4) : '', since }; }
+function startSample(reason) {
+  stopLive();
+  S.mode = 'sample'; S.sampleReason = reason;
+  const d = S.sample = newData(), now = Date.now();
+  let drift = 0;
+  for (let t = now - RANGES['24h']; t <= now; t += 60e3) {
+    drift = Math.max(-6, Math.min(6, drift + (Math.random() - .5) * 1.6));
+    const v = Math.round(Math.max(0, curve(t) + drift)), g = {};
+    for (let i = 0; i < v; i++) { const k = pickGame(); g[k] = (g[k] || 0) + 1; }
+    d.history.push({ t, v, g });
+  }
+  for (let t = now - RANGES['24h']; t <= now; t += PING_EVERY * 4) d.latency.push({ t, v: Math.round(38 + Math.random() * 30 + (Math.random() < .02 ? 600 : 0)) });
+  const n = d.history[d.history.length - 1].v;
+  for (let i = 0; i < n; i++) { const p = samplePlayer(now - Math.random() * 45 * 60e3); d.players.set(p.key, p); }
+  [['info', 'Console', 'Console opened. Sample data loaded.'], ['info', 'Realtime socket', 'Realtime socket: Open (WebSocket)'], ['info', 'Presence room', 'Presence room: Joined online:arcade'], ['info', 'Presence', `First sync: ${n} players online`]]
+    .forEach(([l, s, m], i) => d.logs.push({ t: now - (20 - i) * 60e3, level: l, src: s, msg: m }));
+  for (let i = 0; i < 22; i++) {
+    const t = now - (15 - i * .65) * 60e3, p = samplePlayer(t), r = Math.random();
+    d.logs.push(r < .06 ? { t, level: 'warn', src: 'Realtime socket', msg: `Slow ping: ${1550 + Math.round(Math.random() * 600)} ms` }
+      : { t, level: 'info', src: 'Presence', msg: r < .45 ? `${who(p)} joined on ${gameName(p.game)}` : r < .75 ? `${who(p)} left` : `${who(p)} moved from Home page to ${gameName(p.game)}` });
+  }
+  Object.assign(S.svc.http, { s: 'up', text: 'Reachable, 212 ms' });
+  Object.assign(S.svc.socket, { s: 'up', text: 'Open (WebSocket)' });
+  Object.assign(S.svc.room, { s: 'up', text: 'Joined ' + CFG.topic });
+  S.sampleSync = now;
+  sampleTimers.push(setInterval(tickSample, 4000));
+  sampleTimers.push(setInterval(() => pushPoint(d.latency, { t: Date.now(), v: Math.round(38 + Math.random() * 30) }), PING_EVERY));
+  render();
+}
+function tickSample() {
+  const d = S.sample, now = Date.now(), size = d.players.size, r = Math.random();
+  if (r < .42 && (size < curve(now) + 3 || r < .12)) { const p = samplePlayer(now); d.players.set(p.key, p); log('info', 'Presence', `${who(p)} joined on ${gameName(p.game)}`, d); }
+  else if (r < .72 && size > 0) { const k = [...d.players.keys()][Math.floor(Math.random() * size)]; log('info', 'Presence', `${who(d.players.get(k))} left`, d); d.players.delete(k); }
+  else if (r < .85 && size > 0) { const p = [...d.players.values()][Math.floor(Math.random() * size)], g = pickGame(); if (g !== p.game) { log('info', 'Presence', `${who(p)} moved from ${gameName(p.game)} to ${gameName(g)}`, d); p.game = g; } }
+  S.sampleSync = now;
+  const last = d.history[d.history.length - 1];
+  if (now - last.t >= SAMPLE_EVERY) pushPoint(d.history, { t: now, v: d.players.size, g: byGameOf(d) }); else Object.assign(last, { v: d.players.size, g: byGameOf(d) });
+  schedule('players');
+}
+function stopSample() { sampleTimers.forEach(clearInterval); sampleTimers = []; }
+
+// ---------- Charts ----------
+// Top of the y-axis: four equal whole-number steps that clear the largest value.
+function niceMax(v) {
+  const raw = Math.max(v, 1) / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const m of [1, 1.5, 2, 2.5, 5, 10]) if (m * p >= raw && Number.isInteger(m * p)) return Math.max(4, m * p * 4);
+  return 40 * p;
+}
+function lineChart(id, pts, o) {
+  const box = $(id), svg = box.querySelector('svg'), tip = box.querySelector('.tip');
+  const W = Math.max(280, box.clientWidth || 600), H = o.h, m = { l: 40, r: 14, t: 12, b: 24 };
+  const now = Date.now(), span = RANGES[o.range], t0 = now - span;
+  const data = pts.filter(p => p.t >= t0 - o.step);
+  const vals = data.filter(p => p.v != null).map(p => p.v);
+  const top = niceMax(Math.max(o.minTop, ...vals) * 1.05);
+  const x = t => Math.max(m.l, m.l + (t - t0) / span * (W - m.l - m.r));
+  const y = v => m.t + (1 - v / top) * (H - m.t - m.b);
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = top * i / 4, yy = y(v).toFixed(1);
+    g += `<line class="${i ? 'grid-l' : 'base-l'}" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}"/><text class="axis" x="${m.l - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end">${Math.round(v)}</text>`;
+  }
+  const tickStep = { '15m': 5 * 60e3, '1h': 15 * 60e3, '24h': 4 * 3600e3 }[o.range];
+  for (let t = Math.ceil(t0 / tickStep) * tickStep; t <= now; t += tickStep) {
+    const xx = x(t); if (xx < m.l + 14 || xx > W - m.r - 14) continue;
+    g += `<text class="axis" x="${xx.toFixed(1)}" y="${H - 6}" text-anchor="middle">${hhmm(t)}</text>`;
+  }
+  // Split into runs at nulls and at gaps longer than a few sample steps.
+  const runs = []; let cur = [];
+  data.forEach((p, i) => {
+    const prev = data[i - 1];
+    if (p.v == null || (prev && p.t - prev.t > o.step * 3.5)) { if (cur.length) runs.push(cur); cur = []; }
+    if (p.v != null) cur.push(p);
+  });
+  if (cur.length) runs.push(cur);
+  runs.forEach(r => {
+    const line = r.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+    if (r.length > 1) g += `<path class="area" d="${line}L${x(r[r.length - 1].t).toFixed(1)},${y(0)}L${x(r[0].t).toFixed(1)},${y(0)}Z"/>`;
+    g += `<path class="series" d="${line}"/>`;
+    if (r.length === 1) g += `<circle class="endpt" cx="${x(r[0].t)}" cy="${y(r[0].v)}" r="3"/>`;
+  });
+  const lastPt = [...data].reverse().find(p => p.v != null);
+  if (lastPt) g += `<circle class="endpt" cx="${x(lastPt.t).toFixed(1)}" cy="${y(lastPt.v).toFixed(1)}" r="4.5"/>`;
+  if (!vals.length) g += `<text class="empty" x="${(m.l + W - m.r) / 2}" y="${H / 2}" text-anchor="middle">${esc(o.empty)}</text>`;
+  g += `<g class="hover"></g><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent" class="hit"/>`;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
+  svg.innerHTML = g; tip.hidden = true;
+  const hov = svg.querySelector('.hover'), hit = svg.querySelector('.hit'), real = data.filter(p => p.v != null);
+  const move = ev => {
+    if (!real.length) return;
+    const rect = svg.getBoundingClientRect(), px = (ev.clientX - rect.left) * (W / rect.width);
+    const t = t0 + (px - m.l) / (W - m.l - m.r) * span;
+    let best = real[0];
+    for (const p of real) if (Math.abs(p.t - t) < Math.abs(best.t - t)) best = p;
+    const cx = x(best.t), cy = y(best.v);
+    hov.innerHTML = `<line class="cross" x1="${cx}" x2="${cx}" y1="${m.t}" y2="${H - m.b}"/><circle class="endpt" cx="${cx}" cy="${cy}" r="4.5"/>`;
+    tip.hidden = false;
+    tip.innerHTML = `<b>${esc(o.fmtTip(best.v))}</b> · ${hhmmss(best.t)}`;
+    tip.style.left = Math.min(Math.max(cx / W * rect.width, 60), rect.width - 60) + 'px';
+    tip.style.top = (cy / H * rect.height) + 'px';
+  };
+  const track = ev => { box._hover = { clientX: ev.clientX }; move(ev); };
+  hit.addEventListener('pointermove', track);
+  hit.addEventListener('pointerdown', track);
+  hit.addEventListener('pointerleave', () => { box._hover = null; hov.innerHTML = ''; tip.hidden = true; });
+  if (box._hover) move(box._hover);
+}
+function gauge(frac, label, valText, unit, note, state) {
+  const f = Math.max(0, Math.min(1, frac || 0));
+  const col = state === 'down' ? 'var(--crit)' : state === 'warn' ? 'var(--warn)' : state === 'wait' ? 'var(--led-off)' : 'var(--good)';
+  return `<div class="gauge"><svg viewBox="0 0 120 86" aria-hidden="true">
+    <path d="M12 64 A48 48 0 0 1 108 64" fill="none" stroke="var(--line)" stroke-width="10" stroke-linecap="round" pathLength="100"/>
+    <path d="M12 64 A48 48 0 0 1 108 64" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="${(f * 100).toFixed(1)} 100" ${f === 0 ? 'opacity="0"' : ''}/>
+    <text class="g-val" x="60" y="60" text-anchor="middle">${esc(valText)}</text>
+    <text class="g-unit" x="60" y="82" text-anchor="middle">${esc(unit)}</text></svg>
+    <div class="g-label">${esc(label)}</div><div class="g-note">${esc(note)}</div></div>`;
+}
+
+// ---------- Rendering ----------
+const dirty = new Set(); let raf = 0;
+function schedule(what) { dirty.add(what); if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+const VIEWS = ['dashboard', 'players', 'system-status', 'traffic-monitor'];
+function currentView() { const h = location.hash.slice(1); return VIEWS.includes(h) ? h : 'dashboard'; }
+function playersNow() { if (S.mode === 'sample') return S.sample.players.size; return S.joined && S.synced ? S.live.players.size : null; }
+
+function render() {
+  const tickOnly = dirty.size === 1 && dirty.has('tick');
+  dirty.clear();
+  const d = D(), view = currentView(), sample = S.mode === 'sample';
+  $('modePill').dataset.mode = S.mode;
+  $('modeText').textContent = sample ? 'Sample data' : S.mode === 'live' ? 'Live' : 'Connecting';
+  $('modeBtn').textContent = sample ? 'Back to live' : 'Show sample data';
+  const n = playersNow();
+  $('navPlayers').textContent = n == null ? '–' : n;
+  $('navLogs').textContent = d.logs.length;
+  document.querySelectorAll('.nav a').forEach(a => { if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  document.querySelectorAll('main > section').forEach(s => { s.hidden = s.id !== 'view-' + view; });
+  const title = $('view-' + view).dataset.title;
+  $('viewTitle').textContent = title; $('viewPath').textContent = 'Monitor / ' + title;
+  document.querySelectorAll('.seg[data-range-for]').forEach(seg => seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.r === S.ranges[seg.dataset.rangeFor]))));
+  renderBanners();
+  renderPorts();
+  if (view === 'dashboard') { if (!tickOnly) { renderPlayerBlock('dash'); renderByGame(); } renderSystem(); renderLogs($('dashLogs'), d.logs.slice(-9).reverse(), false); }
+  if (view === 'players') { if (!tickOnly) renderPlayerBlock('players'); renderSessions(); }
+  if (view === 'system-status') renderHealth(tickOnly);
+  if (view === 'traffic-monitor' && !tickOnly) renderFullLog();
+}
+function renderBanners() {
+  let html = '';
+  if (S.mode === 'sample' && S.sampleReason !== 'manual') {
+    const why = S.sampleReason === 'origin'
+      ? `The realtime server only accepts connections from <code>${CFG.origin}</code>, and this page is somewhere else, so the numbers below are sample data.`
+      : `The realtime server didn't let this page into the presence room, so the numbers below are sample data. Check the Worker in the Cloudflare dashboard.`;
+    html += `<div class="banner" data-kind="info"><div><b>Showing sample data</b><p>${why} For live data, open <code>${CFG.siteUrl}</code> once this page is on the GitHub Pages branch.</p></div><button class="btn" type="button" data-act="live">Try live again</button></div>`;
+  } else if (S.mode === 'sample') {
+    html += `<div class="banner" data-kind="warn"><div><b>Showing sample data</b><p>These numbers are made up. Switch back to see the real arcade.</p></div><button class="btn" type="button" data-act="live">Back to live</button></div>`;
+  } else if (S.everJoined && !S.joined && !S.idle) {
+    html += `<div class="banner" data-kind="crit"><div><b>Lost the connection to the realtime server</b><p>The console is reconnecting. If this lasts, the Worker may be over the free plan's daily Durable Object requests (100,000 a day, reset at 00:00 UTC). Online play and the on-now counter are down for everyone while that's the case.</p></div></div>`;
+  }
+  const el = $('banners'); if (el.innerHTML !== html) el.innerHTML = html;
+}
+function renderPorts() {
+  $('ports').innerHTML = ['http', 'socket', 'room', 'origin'].map(k => { const v = S.svc[k]; return `<div class="port" data-state="${v.s}"><div class="jack"><i></i><i></i></div><div class="pname">${esc(v.name)}</div><div class="pstat">${esc(v.text)}</div></div>`; }).join('');
+  $('fpTag').innerHTML = S.mode === 'sample' ? '<span class="tag">Sample</span>' : '';
+}
+function inRange(range) { const cut = Date.now() - RANGES[range]; return D().history.filter(p => p.t >= cut && p.v != null); }
+function renderPlayerBlock(which) {
+  const range = S.ranges[which], v = inRange(range).map(p => p.v), now = playersNow();
+  const cell = (k, x) => `<div class="stat"><dt>${k}</dt><dd>${x}</dd></div>`;
+  $(which === 'dash' ? 'dashStats' : 'playerStats').innerHTML = cell('Now', now == null ? '–' : now)
+    + cell(`Peak ${range}`, v.length ? Math.max(...v) : '–') + cell(`Average ${range}`, v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : '–') + cell(`Low ${range}`, v.length ? Math.min(...v) : '–');
+  lineChart(which === 'dash' ? 'dashChart' : 'playerChart', D().history, {
+    range, h: which === 'dash' ? 230 : 320, step: S.mode === 'sample' ? 60e3 : SAMPLE_EVERY, minTop: 5,
+    fmtTip: x => `${x} player${x === 1 ? '' : 's'}`,
+    empty: S.mode === 'connecting' ? 'Waiting for the first presence sync' : 'No player data for this range yet',
+  });
+  $(which === 'dash' ? 'dashNote' : 'playerNote').textContent = S.mode === 'sample' ? 'Sample data, not real players.'
+    : 'Recorded while this console is open and saved in this browser for 24 h. Gaps are times it was closed or disconnected.';
+}
+function renderByGame() {
+  const d = D(), now = byGameOf(d), peaks = {};
+  inRange('1h').forEach(p => { for (const g in p.g || {}) peaks[g] = Math.max(peaks[g] || 0, p.g[g]); });
+  const games = [...new Set([...Object.keys(now), ...Object.keys(peaks)])].sort((a, b) => (now[b] || 0) - (now[a] || 0) || (peaks[b] || 0) - (peaks[a] || 0)).slice(0, 10);
+  const max = Math.max(1, ...games.map(g => Math.max(now[g] || 0, peaks[g] || 0)));
+  $('byGame').innerHTML = games.length ? games.map(g => `<div class="bar-row" title="${esc(gameName(g))}: ${now[g] || 0} now, peak ${peaks[g] || 0} in the last hour"><span class="bn">${esc(gameName(g))}</span><span class="track"><span class="fill" style="width:${(now[g] || 0) / max * 100}%"></span><span class="peak" style="left:calc(${(peaks[g] || 0) / max * 100}% - 1px)"></span></span><span class="bv">${now[g] || 0} <small>/ ${peaks[g] || 0}</small></span></div>`).join('')
+    : `<div class="bars-empty">${playersNow() == null ? 'No presence data yet.' : 'Nobody is on the arcade right now.'}</div>`;
+  $('byGameSub').textContent = 'Now / peak in the last hour (grey tick)';
+}
+function renderSystem() {
+  const n = playersNow(), lp = S.mode === 'sample' ? { ms: D().latency[D().latency.length - 1].v, at: Date.now() } : S.lastPing;
+  const fresh = lp && Date.now() - lp.at < PING_EVERY * 2.5;
+  $('gauges').innerHTML =
+    gauge(n == null ? 0 : n / CFG.roomMax, 'Room load', n == null ? '–' : String(n), `of ${CFG.roomMax} sockets`, n == null ? 'No presence data' : `${Math.round(n / CFG.roomMax * 100)}% used`, n == null ? 'wait' : n >= CFG.roomMax * .9 ? 'down' : n >= CFG.roomMax * .7 ? 'warn' : 'up') +
+    gauge(fresh ? Math.min(1, lp.ms / 1500) : 0, 'Round trip', fresh ? String(lp.ms) : '–', 'ms', fresh ? (lp.ms > 1000 ? 'Slow' : lp.ms > 300 ? 'Fair' : 'Good') : 'No recent ping', !fresh ? 'wait' : lp.ms > 1000 ? 'down' : lp.ms > 300 ? 'warn' : 'up');
+  const sync = S.mode === 'sample' ? S.sampleSync : S.lastSync;
+  const reset = new Date(); reset.setUTCHours(24, 0, 0, 0);
+  const rows = [
+    ['Server', 'Cloudflare Worker'],
+    ['Presence room', `<span class="mono">${CFG.topic}</span>`],
+    ['Signed in now', String([...D().players.values()].filter(p => p.name).length)],
+    ['Last presence sync', sync ? `${dur(Date.now() - sync)} ago` : '–'],
+    ['Daily budget resets', `in ${dur(reset - Date.now())} (00:00 UTC)`],
+    ['Console uptime', dur(Date.now() - S.startedAt)],
+    ['Reconnects', String(S.mode === 'sample' ? 0 : S.reconnects)],
+  ];
+  $('sysInfo').innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+}
+function renderSessions() {
+  const P = [...D().players.values()].sort((a, b) => (a.since || 0) - (b.since || 0)), now = Date.now();
+  $('sessions').innerHTML = P.length ? P.map(p => `<tr><td>${p.name ? esc(p.name) : `<span class="mono">${esc(p.key.slice(0, 6))}</span><span class="guest">Guest</span>`}</td><td>${esc(gameName(p.game))}</td><td class="t">${p.since ? hhmmss(p.since) : 'Before console opened'}</td><td class="t">${p.since ? dur(now - p.since) : 'at least ' + dur(now - S.startedAt)}</td></tr>`).join('')
+    : `<tr class="empty-row"><td colspan="4">${playersNow() == null ? 'No presence data. Check System Status.' : 'Nobody is on the arcade right now.'}</td></tr>`;
+}
+function renderHealth(tickOnly) {
+  if (!tickOnly) lineChart('latencyChart', D().latency, { range: S.ranges.latency, h: 260, step: S.mode === 'sample' ? PING_EVERY * 4 : PING_EVERY, minTop: 100, fmtTip: v => `${v} ms`, empty: 'No pings answered in this range' });
+  const word = { up: 'OK', warn: 'Degraded', down: 'Down', wait: 'Pending' };
+  $('checks').innerHTML = ['http', 'socket', 'room', 'origin'].map(k => { const v = S.svc[k]; return `<tr><td>${esc(v.name)}</td><td><span class="pill" data-s="${v.s}">${word[v.s]}</span></td><td>${esc(v.text)}</td></tr>`; }).join('');
+  const cut = Date.now() - RANGES['1h'], lat = D().latency.filter(p => p.v != null && p.t > cut).map(p => p.v).sort((a, b) => a - b);
+  const lh = S.mode === 'sample' ? null : S.lastHttp;
+  const rows = [
+    ['Last Worker check', lh ? `${hhmmss(lh.at)} · ${lh.ok ? lh.ms + ' ms' : 'no response'}` : (S.mode === 'sample' ? 'Sample data' : '–')],
+    ['Median round trip (1 h)', lat.length ? lat[Math.floor(lat.length / 2)] + ' ms' : '–'],
+    ['Slowest round trip (1 h)', lat.length ? lat[lat.length - 1] + ' ms' : '–'],
+    ['Endpoint', `<span class="mono">${CFG.ws.replace('wss://', '')}</span>`],
+  ];
+  $('healthInfo').innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+}
+function renderLogs(tbody, rows, withSrc = true) {
+  const cols = withSrc ? 4 : 3;
+  tbody.innerHTML = rows.length ? rows.map(r => `<tr data-l="${r.level}"><td class="t">${hhmmss(r.t)}</td><td><span class="lvl" data-l="${r.level}">${r.level === 'warn' ? 'Warning' : r.level}</span></td>${withSrc ? `<td>${esc(r.src)}</td>` : ''}<td class="msg">${esc(r.msg)}</td></tr>`).join('')
+    : `<tr class="empty-row"><td colspan="${cols}">No events match.</td></tr>`;
+}
+let frozenLogs = null;
+function renderFullLog() {
+  const d = D(), srcSel = $('logSource'), have = new Set([...srcSel.options].map(o => o.value));
+  [...new Set(d.logs.map(l => l.src))].sort().forEach(s => { if (!have.has(s)) srcSel.add(new Option(s, s)); });
+  const all = S.logPaused && frozenLogs ? frozenLogs : d.logs;
+  const q = $('logSearch').value.trim().toLowerCase(), lv = $('logLevel').value, src = srcSel.value;
+  const rows = all.filter(l => (lv === 'all' || l.level === lv) && (src === 'all' || l.src === src) && (!q || (l.msg + ' ' + l.src).toLowerCase().includes(q)));
+  $('logCount').textContent = `${rows.length} of ${all.length} events${S.logPaused ? ' · paused' : ''}`;
+  renderLogs($('logRows'), rows.slice(-500).reverse());
+}
+
+// ---------- Controls ----------
+document.addEventListener('click', e => {
+  const r = e.target.closest('.seg[data-range-for] button');
+  if (r) { S.ranges[r.parentElement.dataset.rangeFor] = r.dataset.r; store.set('arcadeops.ranges', S.ranges); render(); return; }
+  if (e.target.closest('[data-act="live"]')) goLive();
+});
+function goLive() {
+  stopSample(); S.sample = null; S.startedAt = Date.now();
+  Object.assign(S.svc.http, { s: 'wait', text: 'Not checked yet' }); Object.assign(S.svc.socket, { s: 'wait', text: 'Connecting' }); Object.assign(S.svc.room, { s: 'wait', text: 'Waiting' });
+  startLive();
+}
+$('modeBtn').addEventListener('click', () => { if (S.mode === 'sample') goLive(); else { log('info', 'Console', 'Switched to sample data.', S.live); startSample('manual'); } });
+$('checkNow').addEventListener('click', () => {
+  if (S.mode === 'sample') { pushPoint(S.sample.latency, { t: Date.now(), v: Math.round(38 + Math.random() * 30) }); log('info', 'Worker', 'Manual check: reachable', S.sample); render(); return; }
+  checkHttp(); if (ws && ws.readyState === 1) { pingSent = performance.now(); try { ws.send('ping'); } catch (e) {} }
+});
+['logSearch', 'logLevel', 'logSource'].forEach(id => $(id).addEventListener(id === 'logSearch' ? 'input' : 'change', render));
+$('logPause').addEventListener('click', e => { S.logPaused = !S.logPaused; frozenLogs = S.logPaused ? D().logs.slice() : null; e.currentTarget.setAttribute('aria-pressed', String(S.logPaused)); e.currentTarget.textContent = S.logPaused ? 'Resume' : 'Pause'; render(); });
+$('logClear').addEventListener('click', () => { D().logs.length = 0; frozenLogs = S.logPaused ? [] : null; render(); });
+window.addEventListener('hashchange', render);
+let rz = 0; window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(render); });
+setInterval(() => { $('clock').textContent = hhmmss(Date.now()); schedule('tick'); }, 1000);
+$('clock').textContent = hhmmss(Date.now());
+
+startLive();
+})();
+</script>
+</body>
+</html>
