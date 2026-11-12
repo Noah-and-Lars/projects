@@ -20,6 +20,10 @@ source in Settings → Pages should be switched to `main`.
   BrowserBack), and controllers (standard mapping, polled on a 40 ms timer: D-pad/left stick, A/✕ choose, B/○ back,
   L1/R1 tabs). The pinned header is its own layer; pop-ups (#acctOv, .ov, dialogs) trap the focus. On play.html it stays
   out of the way while the game frame has focus. A detected device that turned it off gets a small "Console version" button.
+- Trailers (2026-11-12): `TRAILERS` in index.html puts a "▶ Play trailer" button above "playing now" on those cards;
+  it opens #trailerOv with the game in an iframe at `?trailer=1`, which plays only the game's opening cinematic and posts
+  `{arcadeTrailer: 'done'}` when it ends (Play now / Watch again). Gamble Your Life Away (1.1.1) and Russian Roulette
+  (1.3.1) no longer play the cinematic on start and lost their Watch the intro buttons.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".

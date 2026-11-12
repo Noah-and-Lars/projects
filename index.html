@@ -41,6 +41,20 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="arcade.css?v=16">
+<style>
+  .trailer-btn { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 2px; padding: 6px 12px; border-radius: 999px; background: #ffffff14; border: 1px solid #ffffff26; color: var(--text); font-size: 13px; font-weight: 800; cursor: pointer; }
+  .trailer-btn:hover, .trailer-btn:focus-visible { background: var(--accent); border-color: var(--accent); outline: none; }
+  #trailerOv { position: fixed; inset: 0; z-index: 9500; background: rgba(4, 4, 12, .92); display: grid; place-items: center; padding: 18px; }
+  #trailerOv .tr-box { position: relative; width: min(1280px, 100%); aspect-ratio: 16 / 9; max-height: calc(100vh - 36px); background: #000; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px #000c; }
+  #trailerOv iframe { width: 100%; height: 100%; border: 0; display: block; }
+  #trailerOv .tr-x { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: #000a; color: #fff; font-size: 18px; cursor: pointer; z-index: 2; }
+  #trailerOv .tr-end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 18px; background: radial-gradient(ellipse at center, #1b1640e6, #000e); }
+  #trailerOv .tr-end[hidden] { display: none; }
+  #trailerOv .tr-end h2 { margin: 0; font-size: clamp(24px, 4vw, 44px); }
+  #trailerOv .tr-acts { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  #trailerOv .tr-acts a, #trailerOv .tr-acts button { padding: 12px 22px; border-radius: 999px; border: 0; font: 800 16px system-ui, sans-serif; cursor: pointer; text-decoration: none; }
+  #trailerOv .tr-play { background: var(--accent); color: #fff; } #trailerOv .tr-again { background: #ffffff1f; color: #fff; }
+</style>
 </head>
 <body>
 <div id="intro" class="intro" aria-hidden="true">
@@ -120,7 +134,7 @@
   <p>The Arcade · <span id="count"></span></p>
 </footer>
 
-<script src="games.js?v=197"></script>
+<script src="games.js?v=198"></script>
 <script src="account.js?v=19"></script>
 <script src="console.js?v=1"></script>
 <script src="call.js?v=6"></script>
@@ -189,6 +203,7 @@ function tile(g) {
       <p class="desc"></p>
       <div class="meta"><span class="tag"></span><span class="ctl"></span></div>
       ${stat ? '<p class="best">' + TROPHY + '<span></span></p>' : ''}
+      ${TRAILERS.has(g.id) ? '<span class="trailer-btn" role="button" tabindex="0">▶ Play trailer</span>' : ''}
       <p class="playing" hidden><i aria-hidden="true"></i><span><b>0</b> playing now</span></p>
     </div>`;
   a.querySelector('.playing').dataset.g = g.id;
@@ -198,8 +213,31 @@ function tile(g) {
   a.querySelector('.tag').textContent = g.category;
   a.querySelector('.ctl').textContent = g.controls;
   if (stat) a.querySelector('.best span').textContent = stat;
+  const tb = a.querySelector('.trailer-btn');
+  if (tb) { const go = e => { e.preventDefault(); e.stopPropagation(); openTrailer(g); }; tb.addEventListener('click', go); tb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); }); }
   return a;
 }
+
+// 2026-11-12: game trailers. These games' opening cinematics play here (the game opened with ?trailer), not in the game
+const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette']);
+function openTrailer(g) {
+  closeTrailer();
+  const ov = document.createElement('div'); ov.id = 'trailerOv'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', g.title + ' trailer');
+  ov.innerHTML = '<div class="tr-box"><iframe allow="autoplay; fullscreen" title="Trailer"></iframe><div class="tr-end" hidden><h2></h2><div class="tr-acts"><a class="tr-play">▶ Play now</a><button type="button" class="tr-again">↻ Watch again</button></div></div><button type="button" class="tr-x" aria-label="Close">✕</button></div>';
+  const fr = ov.querySelector('iframe'), end = ov.querySelector('.tr-end');
+  const src = g.path + (g.path.includes('?') ? '&' : '?') + 'trailer=1';
+  fr.src = src; ov.querySelector('h2').textContent = g.title;
+  ov.querySelector('.tr-play').href = playUrl(g);
+  ov.querySelector('.tr-again').onclick = () => { end.hidden = true; fr.src = src + '&t=' + Date.now(); };
+  ov.querySelector('.tr-x').onclick = closeTrailer;
+  ov.addEventListener('click', e => { if (e.target === ov) closeTrailer(); });
+  ov._msg = e => { if (e.origin === location.origin && e.source === fr.contentWindow && e.data && e.data.arcadeTrailer === 'done') { end.hidden = false; ov.querySelector('.tr-play').focus(); } };
+  addEventListener('message', ov._msg);
+  document.body.appendChild(ov); document.body.style.overflow = 'hidden';
+  fr.addEventListener('load', () => { try { fr.contentWindow.focus(); } catch (e) {} });
+}
+function closeTrailer() { const ov = $('trailerOv'); if (!ov) return; removeEventListener('message', ov._msg); ov.querySelector('iframe').src = 'about:blank'; ov.remove(); document.body.style.overflow = ''; }
+addEventListener('keydown', e => { if (e.key === 'Escape' && $('trailerOv')) closeTrailer(); });
 
 function renderNews() {
   $('news').replaceChildren(...NEWS.slice(0, 5).map(n => {
