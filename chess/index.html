@@ -178,11 +178,14 @@
     #app { flex-direction: column; align-items: center; padding: 10px 8px; gap: 12px; }
     #side { width: var(--size); } #moves { max-height: 180px; }
   }
+  #moveClock { text-align: center; font: 700 18px/1 system-ui, sans-serif; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.08); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  #moveClock.low { background: #c0392b; color: #fff; }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="left">
+    <div id="moveClock" hidden></div>
     <div class="player" id="topBar"><div class="avatar">🤖</div><div style="min-width:0"><div class="pname" id="topName">Computer</div><div class="caps" id="topCaps"></div></div><div class="thinking" id="thinking" hidden><i></i><i></i><i></i></div></div>
     <div id="board"><div id="squares"></div><div id="pieces"></div><div id="promo" hidden></div>
       <div id="result" hidden><div class="card"><h2 id="resT"></h2><p id="resP"></p><p id="resR"></p><button class="bigbtn" id="resNew">New game</button><button class="link" id="resView" style="margin-top:10px;background:none;border:0;color:var(--muted);font-weight:700">View the board</button></div></div>
@@ -221,7 +224,9 @@
 <div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.5.2</span></summary>
+    <summary>Patch notes <span>v1.5.3</span></summary>
+    <h3>v1.5.3 <small>Move timer</small></h3>
+    <ul><li><b>1:30 to move:</b> in online games you have a minute and a half to make each move. The timer is shown above the board and turns red in the last 15 seconds. If it runs out, you lose the game on time.</li></ul>
     <h3>v1.5.2 <small>Bug fixes and improvements</small></h3>
     <ul><li>Bug fixes and improvements.</li></ul>
     <h3>v1.5.1 <small>Elo reset and quick match alerts</small></h3>
@@ -576,7 +581,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.5.2';
+const VERSION = '1.5.3';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -1163,11 +1168,26 @@ $('chatIn').addEventListener('keydown', e => {
   if (!t || !online.on || Date.now() - chatT < 600) return;
   chatT = Date.now(); Net.send('chat', { m: t }); chatLine('You', t, true); e.target.value = '';
 });
+// 1.5.3: online, each move has to be made within 1:30, or that player loses the game on time
+const MOVE_MS = 90000, CLAIM_MS = 5000;
+const mclock = { n: -1, side: '', end: 0 };
+function clockTick() {
+  const el = $('moveClock');
+  if (!online.on || over || localGame || !Net.opp) { el.hidden = true; mclock.n = -1; return; }
+  const side = G.w ? 'w' : 'b', mine = side === player;
+  if (mclock.n !== hist.length || mclock.side !== side) { mclock.n = hist.length; mclock.side = side; mclock.end = Date.now() + MOVE_MS; }
+  const raw = mclock.end - Date.now(), left = Math.max(0, raw), sec = Math.ceil(left / 1000);
+  el.hidden = false; el.className = sec <= 15 ? 'low' : '';
+  el.textContent = `${mine ? 'Your move' : oppName() + '\u2019s move'} \u00b7 ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  if (mine && raw <= 0) { over = { winner: player === 'w' ? 'b' : 'w', why: 'on time' }; try { Net.send('resign', { t: 1 }); } catch (e) {} finish(); renderMarks(); }
+  else if (!mine && raw <= -CLAIM_MS) { over = { winner: player, why: 'on time' }; finish(); renderMarks(); } // their screen never said so
+}
+setInterval(clockTick, 250);
 Net.onEvent('mv', p => {
   if (!online.on || over || (p.n | 0) !== hist.length || (G.w ? 'w' : 'b') === player) return;
   const m = legalNow.find(x => uci(x) === p.u); if (m) playMove(m);
 });
-Net.onEvent('resign', p => { if (online.on && !over) { over = p && p.q ? { winner: player, why: '', left: true } : { winner: player, why: 'by resignation', oppResigned: true }; finish(); renderMarks(); } }); // 1.5.2: q = they walked out (no Elo change)
+Net.onEvent('resign', p => { if (online.on && !over) { over = p && p.t ? { winner: player, why: 'on time' } : p && p.q ? { winner: player, why: '', left: true } : { winner: player, why: 'by resignation', oppResigned: true }; finish(); renderMarks(); } }); // 1.5.2: q = they walked out (no Elo change)
 Net.onEvent('left', () => {
   if (!online.on) return;
   if (!over) { over = { winner: player, why: '', left: true }; finish(); renderMarks(); }
