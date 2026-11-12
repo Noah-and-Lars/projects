@@ -1,3 +1,13 @@
+// Profile tags (the owner, 2026-11-12): a small label next to a player's name on their Players and Social profile.
+// Keys are lower-case usernames. Pages show it with profileTag(name).
+window.ARCADE_TAGS = { samlad: 'Tester', cjrey28: 'Tester' };
+window.profileTag = function (name) {
+  var t = window.ARCADE_TAGS[String(name || '').toLowerCase()];
+  if (!t) return null;
+  var e = document.createElement('small'); e.className = 'ptag'; e.textContent = t; e.title = 'Official The Arcade ' + t.toLowerCase();
+  e.style.cssText = 'display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;border:1px solid #00d2a866;color:#00d2a8;font:700 10px/1.6 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;vertical-align:middle;white-space:nowrap';
+  return e;
+};
 // Reads something a game saved in this browser. Returns null if it isn't there or storage is blocked.
 function readSave(key, json) {
   try {

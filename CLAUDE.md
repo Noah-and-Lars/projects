@@ -199,6 +199,8 @@ source in Settings → Pages should be switched to `main`.
   exists, so contexts made before that are missed) and read by an AudioWorklet inside the game's own context, resampled
   to 48 kHz and encoded to Opus. About 36 s of encoded pieces are kept; Clip writes them to a WebM file (`muxWebm`, a
   small EBML writer) at once. Browsers without WebCodecs get start/stop recording with MediaRecorder (up to 60 s).
+- Profile tags (2026-11-12): `window.ARCADE_TAGS` at the top of games.js ({ lower name: 'Tester' }; SamLad and CJREY28)
+  puts a small label next to the name on the Players and Social profiles (`profileTag(name)`). Bump games.js?v when it changes.
 - `tos.js`: the Terms of Service pop-up, loaded by `index.html`, `play.html` and
   `chat.html`. It shows until the visitor ticks the box and agrees; agreeing is
   remembered in localStorage (`arcade-tos-agreed`, set to `TOS_VERSION`). Change

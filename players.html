@@ -158,7 +158,7 @@
   </div>
 </main>
 
-<script src="games.js?v=197"></script>
+<script src="games.js?v=198"></script>
 <script src="account.js?v=19"></script>
 <script src="console.js?v=1"></script>
 <script src="call.js?v=6"></script>
@@ -313,7 +313,8 @@ function drawProfile(box, r) {
   const st = el('p', '', [joined(r.c), mine ? 'This is you' : ''].filter(Boolean).join(' · '));
   if (online[k]) { const o = el('span', 'on-now', ' · ● ' + where(online[k])); st.append(o); }
   else if (r.seen && !mine) st.append(document.createTextNode(' · ' + lastOn(r.seen)));
-  t.append(el('h1', '', r.n), st);
+  const h1 = el('h1', '', r.n), tag = window.profileTag && profileTag(r.n); if (tag) h1.append(tag);
+  t.append(h1, st);
   head.append(backBtn(), avatar(r.n), t);
   const acts = el('div', 'prof-acts');
   const btn = (text, cls, fn) => { const b = el('button', 'btn' + (cls ? ' ' + cls : ''), text); b.type = 'button'; b.onclick = () => { b.disabled = true; Promise.resolve(fn()).finally(() => { b.disabled = false; }); }; acts.append(b); return b; };

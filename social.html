@@ -385,7 +385,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
   <div id="view" aria-live="polite"></div>
 </main>
 
-<script src="games.js?v=197"></script>
+<script src="games.js?v=198"></script>
 <script src="account.js?v=19"></script>
 <script src="console.js?v=1"></script>
 <script src="call.js?v=6"></script>
@@ -1160,7 +1160,8 @@ async function showUser(name) {
   if (me() && !isMe) { if (r.iFollow) following.add(lc(r.n)); else following.delete(lc(r.n)); }
   document.title = r.n + ' · Social · The Arcade';
   const p = el('section', 'prof'), h = el('div', 'prof-h'), info = el('div', 'info'), nmrow = el('div', 'nmrow');
-  nmrow.append(el('h1', '', r.n));
+  const h1 = el('h1', '', r.n), ptag = window.profileTag && profileTag(r.n); if (ptag) h1.append(ptag);
+  nmrow.append(h1);
   if (isMe) { const mk = el('button', 'btn grey', 'New post'); mk.type = 'button'; mk.onclick = openCreate; nmrow.append(mk); }
   else {
     const fb = followBtn(r.n, true);
