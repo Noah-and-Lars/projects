@@ -10333,6 +10333,7 @@ function apply131(z) {
   const HBC_PUB = { kty: 'EC', crv: 'P-256', x: 'rx2nkXtRJ-6u-gpGXyOvyf6YaDJZZ4YpoIWp7tA1jUk', y: 'kXPgz1b60Hxx4Fgy_k--lzN634wBj2rzvpNeCo4IVfw' };
   let API = 'https://arcade-realtime.arcade-realtime.workers.dev/acct/';
   try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && localStorage.getItem('arcade-acct-api')) API = localStorage.getItem('arcade-acct-api'); } catch (e) {}
+  const LOCAL_ONLY = ['lars']; // the owner's request (2026-11-12)
   const ME = { ticket: '', on: false, god: false, ohk: false, ammo: false, rapid: false, speed: 1, mis: false };
   Object.defineProperty(window, 'hbCheatOn', { get: () => ME.on });
   const seen = new Map(); let pubKey = null;
@@ -10354,7 +10355,12 @@ function apply131(z) {
     if (!a || !a.token || !NET.cheatId) return;
     try {
       const r = await fetch(API + 'hbcheat?id=' + NET.cheatId(), { headers: { authorization: 'Bearer ' + a.token } });
-      if (!r.ok) return;
+      if (!r.ok) { // until the server's list has them: these admin accounts, checked by the server's admin route (their own screen only)
+        if (!LOCAL_ONLY.includes(String(a.name).toLowerCase())) return;
+        const q = await fetch(API + 'admin', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + a.token }, body: JSON.stringify({ op: 'pending', r: '' }) });
+        if (q.ok) { ME.on = true; ME.ticket = ''; ME.exp = Date.now() + 864e5; }
+        return;
+      }
       const t = (await r.json()).t;
       if (await verify(t, NET.cheatId())) { ME.ticket = t; ME.on = true; ME.exp = +t.split('|')[3]; }
     } catch (e) {}

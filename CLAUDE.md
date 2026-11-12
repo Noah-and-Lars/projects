@@ -541,6 +541,10 @@ source in Settings → Pages should be switched to `main`.
   (`guardsHit`) and leave when the island is lost; synced as `snap131()[4]`. Empty gunner seats show AI gunners (`e.aiGun`).
   Teams: the host refuses a join to the bigger team (`team0`/`team1`), nobody is moved; the title screen peeks at
   presence `t` (`peekWorld`) and greys out the bigger side. Kamikaze into a base = 1000. Channels `hb-world-143` / `hb-room143-`.
+  Cheat menu (`<script id="hb-cheat">`, Shift+B): the Worker's `HB_CHEATERS` (noah, archiemccarthy, lars) get a signed
+  ticket from /acct/hbcheat that every screen checks. `LOCAL_ONLY` (lars) also opens it when the server says no but its
+  admin route answers for that account (until a Worker deploy adds lars): no ticket, so it works on their own screen only
+  (practice, or online as host); other screens ignore their orders.
 - `turn-turn-turn/`: Turn! Turn! TURN! (1.0, 2026-11-08), a two-player co-op dirt rally (Three.js r128 copied from Havoc Bay).
   1.3 (2026-11-12): 10 long stages in `STAGES` (`long: 1`, 6.2-8.6 km) with their own hill model in buildStage: `relief`,
   `wave`, `trend` (overall climb/drop), `grade` (max slope), `crests` (gaussian brows, added to `jumps` so they're called
