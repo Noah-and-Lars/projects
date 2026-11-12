@@ -24,6 +24,11 @@ source in Settings → Pages should be switched to `main`.
   it opens #trailerOv with the game in an iframe at `?trailer=1`, which plays only the game's opening cinematic and posts
   `{arcadeTrailer: 'done'}` when it ends (Play now / Watch again). Gamble Your Life Away (1.1.1) and Russian Roulette
   (1.3.1) no longer play the cinematic on start and lost their Watch the intro buttons.
+- `admin/index.html` (2026-11-12): Arcade Ops, the admin console. Its own page, not linked from the site, `noindex`. It joins
+  `online:arcade` with a raw WebSocket (the rt.js protocol) without tracking, so it is never counted, and shows players over
+  time (kept 24 h in `arcadeops.history.v1`), players by game, who's online, the socket's ping round trip, a no-cors check of
+  the Worker's plain route every 60 s, and an event log. Like rt.js it lets go of its socket after 15 minutes hidden. Away from
+  the official origin (a local file, a preview) the Worker refuses it and it shows sample data with a banner.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
