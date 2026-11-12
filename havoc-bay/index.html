@@ -422,6 +422,21 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.4.3 <small>A bigger bay, power grids, marines and new aircraft</small></h3>
+    <ul>
+      <li><b>The map is 1.5x bigger,</b> with eight new islets, and every island has more going on: canoes, lookout towers, crates, drying racks, flowers, logs and more birds.</li>
+      <li><b>Power grids:</b> each harbor has a substation with 2,000 health. It powers the harbor lights, the map and the Havoc OS computer. Destroy the enemy's and they lose power for 3 minutes, then anyone on their team can hold <b>E</b> for 10 seconds to repair it.</li>
+      <li><b>A taller harbor tower:</b> a third floor with a spinning radar, searchlights, two lifts, two AA turret spots on the roof and a scope that shows every enemy for 15 seconds.</li>
+      <li><b>AI marines:</b> warships carry three marines. Stop beside an island that's yours or nobody's and they go ashore and guard it: they help claim it, stop the enemy taking it while they stand and shoot enemy soldiers and low aircraft.</li>
+      <li><b>AI gunners</b> sit in empty gunner seats (Dual Gunner and the new Albatross) and shoot for you. A player who joins takes their place.</li>
+      <li><b>New aircraft:</b> the Interceptor (the fastest plane), the Striker (a rocket attack plane) and the Albatross (a transport helicopter with two door gunners who shoot out of the sides).</li>
+      <li>The deploy screen is sorted into tabs: boats, submarines, planes and helicopters.</li>
+      <li><b>Helicopter buff:</b> more health and speed, rockets with a 2.5x bigger blast, and the heavy machine gun hits much more easily. Fixed: a refuel didn't stay; the tank now fills while you're landed at a service spot.</li>
+      <li><b>Submarine buff:</b> more health, air, speed and torpedoes for all three, faster dived speed, faster and stronger torpedoes. The Typhoon goes 60 knots.</li>
+      <li>A plane that crashes into the enemy's base (kamikaze) does 1,000 damage.</li>
+      <li>Fixed: after changing team you could keep the other team's colours and get shot by your own turrets. Teams are now balanced on the title screen: the bigger team's join button is greyed out, and nobody is moved mid-game.</li>
+      <li>New battle and room channels, so 1.4.3 players only meet other 1.4.3 players.</li>
+    </ul>
     <h3>v1.4.2 <small>Helicopters fly for real, heavier planes</small></h3>
     <ul>
       <li><b>Helicopters fly like real ones:</b> they turn to face where you look, and you tip the nose with the mouse: look down to lean forward and fly forward (the further down, the faster), look up to lean back and fly backward. <b>W</b> and <b>S</b> climb and descend (Space and Shift still work), A and D slide sideways. W lifts off.</li>
@@ -712,7 +727,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.4.2';
+const VERSION = '1.4.3';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -2795,6 +2810,7 @@ function splashDamage(point, R, dmg, p, skip) {
     }
     if (near) applyDamage(H.ent, dmg * p.W.vs.harbor * 0.5, p);
   }
+  guardsHit(point, R, dmg, p.team); // 1.4.3
   for (const H of HARBORS) { // 1.4.3: the power grid takes splash too
     const g = H && H.grid; if (!g || H.team === p.team || g.st !== 0) continue;
     const d = g.pos.distanceTo(point) - 6;
@@ -3726,7 +3742,9 @@ function islandUnits(isl) {
 function updateIslands(dt) {
   for (const isl of ISLANDS) {
     if (!NET.client) { // online, the host's screen claims islands and everyone else is told
-      const n = islandUnits(isl); isl.units = n;
+      const n = islandUnits(isl).slice(); // 1.4.3: guards count as units of their team
+      if (isl.guards && isl.guards.team >= 0 && isl.guards.list.length) n[isl.guards.team] += isl.guards.list.length;
+      isl.units = n;
       let capTeam = -1;
       if (n[0] > 0 && n[1] === 0) capTeam = 0; else if (n[1] > 0 && n[0] === 0) capTeam = 1;
       if (capTeam >= 0) {
@@ -4354,6 +4372,7 @@ function resetWorld() {
   stopCine();
   for (const H of HARBORS) { H.mesh.scale.y = 1; H.mesh.material = MAT.solid; if (H.flagY0 !== undefined) { H.flag.position.y = H.flagY0; H.flag.rotation.z = 0; } }
   clearDynamic();
+  for (const isl of ISLANDS) setGuards(isl, -1, 0); // 1.4.3: island guards go home between matches
   for (const H of HARBORS) { const e = H.ent; e.hp = e.maxHp; e.alive = true; e.mark = 1; H.fires = []; }
   for (const isl of ISLANDS) { isl.prog = 0; if (isl.owner !== -1) setIslandOwner(isl, -1); isl.owner = -1; }
   for (const t of TURRETS) { t.manned = null; t.ownerDriver = null; t.driver = t.peer = null; t.team = t.spot.team; t.hp = t.maxHp; t.alive = true; t.build(); }
@@ -5667,6 +5686,79 @@ function buildKeepTop(H, s) {
   H.lifts = [{ pos: W(79, G, 6), to: W(53, y + 0.3, -5), text: '⬆ Take the lift to the roof deck' }, { pos: W(53, y, -5), to: W(79, G + 0.3, 9), text: '⬇ Take the lift down' }];
   H.scope = { pos: W(66, y, 5.2), cd: 0 };
 }
+/* 1.4.3: AI soldiers.
+   Marines: a warship (anything but jet skis and subs) carries MARINES of them on deck. Stopped (under 3 m/s) beside an
+   island that's yours or nobody's, they go ashore and guard it (up to GUARD_MAX): guards count as your units for claiming
+   (so the enemy can't take it while they stand), shoot enemy soldiers and low aircraft near them, and die to explosions.
+   The host decides the guards (crewStep); everyone gets them with the team upgrades (snap131: [team, count] per island),
+   and every screen works out the marines on deck the same way, so they step off everywhere at once.
+   Gunners: an empty gunner seat (Dual Gunner, Albatross doors) shows an AI gunner, who already shoots by himself; a
+   player who takes the seat takes his place. */
+const MARINES = 3, GUARD_MAX = 6, GUARD_HP = 120, GUARD_R = 70, GUARD_AIR_R = 150, GUARD_AIR_Y = 90;
+const marineShip = e => e.kind === 'ship' && !e.S.sub && e.type !== 'jetski' && !e.S.hidden;
+function deckSpots(e) { const L = e.S.len, y = (e.S.deckY ?? Math.max(1.6, (e.S.top || 4) * 0.35)) + 0.1; return [[-0.9, y, -L * 0.28], [0.9, y, -L * 0.3], [0, y, -L * 0.36]]; }
+function crewShip(e) { // put the marines on deck (once, when the ship is new)
+  if (e.crewDone) return; e.crewDone = true;
+  if (!marineShip(e)) return;
+  e.marines = []; for (const [x, y, z] of deckSpots(e)) { const a = makeAvatar(e.team, true); a.group.position.set(x, y, z); a.group.rotation.y = Math.PI; e.group.add(a.group); e.marines.push(a); }
+}
+function guardSlot(isl, i) { const a = i / GUARD_MAX * TAU + 0.4, r = Math.min(isl.r * 0.45, 14) + (i % 2) * 4, x = isl.x + Math.cos(a) * r, z = isl.z + Math.sin(a) * r; return new V3(x, Math.max(1, landH(x, z)), z); }
+function setGuards(isl, team, n) { // make the island's guard figures match (team, n)
+  const G0 = isl.guards || (isl.guards = { team: -1, list: [] });
+  if (G0.team !== team) { for (const g of G0.list) scene.remove(g.av.group); G0.list = []; G0.team = team; }
+  while (G0.list.length > n) scene.remove(G0.list.pop().av.group);
+  while (G0.list.length < n && team >= 0) { const i = G0.list.length, pos = guardSlot(isl, i), av = makeAvatar(team, true); av.group.position.copy(pos); av.group.rotation.y = Math.atan2(pos.x - isl.x, pos.z - isl.z); scene.add(av.group); G0.list.push({ pos, av, hp: GUARD_HP, cd: Math.random() }); }
+}
+const guardCount = (isl, team) => (isl.guards && isl.guards.team === team ? isl.guards.list.length : 0);
+function crewStep(dt) {
+  for (const e of ENTS) {
+    if (e.kind === 'ship') {
+      if (e.alive) crewShip(e);
+      if (!e.marines || !e.marines.length || !e.alive || !e.driver || Math.abs(e.speed) > 3) { e.landT = 0; continue; }
+      const isl = ISLANDS.find(i => Math.hypot(i.x - e.pos.x, i.z - e.pos.z) < i.capR + 25 && (i.owner === e.team || i.owner === -1) && !(i.guards && i.guards.team >= 0 && i.guards.team !== e.team && i.guards.list.length));
+      if (!isl || guardCount(isl, e.team) >= GUARD_MAX) { e.landT = 0; continue; }
+      e.landT = (e.landT || 0) + dt; if (e.landT < 2) continue;
+      // ashore they go: off the deck on every screen, onto the island on the host's (it tells the rest)
+      const n = Math.min(e.marines.length, GUARD_MAX - guardCount(isl, e.team));
+      for (let i = 0; i < n; i++) e.group.remove(e.marines.pop().group);
+      if (!NET.client) setGuards(isl, e.team, guardCount(isl, e.team) + n);
+      if (e.driver === PLAYER) showMsg('Marines ashore', `${n} marine${n > 1 ? 's' : ''} landed on ${isl.name} and will guard it`);
+    } else if (e.kind === 'plane' && e.P.gunners) { // AI gunners in the empty seats
+      if (!e.aiGun) e.aiGun = e.P.gunners.map(gp => { const a = makeAvatar(e.team, false); a.group.scale.setScalar(0.55); a.group.position.set(gp[0], gp[1] - (gp[1] < 0 ? -0.2 : 0.9), gp[2]); e.group.add(a.group); return a; });
+      e.aiGun.forEach((a, k) => { a.group.visible = e.alive && !!e.driver && !seatHolder(e, k); });
+    }
+  }
+  if (NET.client) return;
+  // the guards: shoot, and leave if the island is lost
+  for (const isl of ISLANDS) {
+    const G0 = isl.guards; if (!G0 || !G0.list.length) continue;
+    if (isl.owner >= 0 && isl.owner !== G0.team) { setGuards(isl, -1, 0); continue; }
+    for (const g of G0.list) {
+      g.cd -= dt; if (g.cd > 0) continue;
+      let best = null, bd = 1e9;
+      for (const t of ENTS) {
+        if (!t.alive || t.team === G0.team || t.team < 0 || subUnder(t)) continue;
+        const d = t.pos.distanceTo(g.pos), ok = t.kind === 'soldier' ? d < GUARD_R : (t.kind === 'plane' && t.pos.y < GUARD_AIR_Y && d < GUARD_AIR_R);
+        if (ok && d < bd) { bd = d; best = t; }
+      }
+      if (!best) { g.cd = 0.6; continue; }
+      g.av.group.rotation.y = Math.atan2(best.pos.x - g.pos.x, best.pos.z - g.pos.z);
+      _v1.copy(g.pos).setY(g.pos.y + 1.6); leadPoint(_v2, _v1, best, WEAP.rifle.speed, 0); _v2.sub(_v1).normalize();
+      _v2.x += rand(-0.02, 0.02); _v2.y += rand(-0.02, 0.02); _v2.z += rand(-0.02, 0.02); _v2.normalize();
+      fire('rifle', { team: G0.team, pos: g.pos, vel: _v3.set(0, 0, 0), driver: null, kind: 'guard', alive: true }, _v1, _v2, { auto: true });
+      g.cd = 0.45 + Math.random() * 0.3;
+    }
+  }
+}
+function guardsHit(point, R, dmg, team) { // explosions kill guards
+  if (NET.client) return;
+  for (const isl of ISLANDS) {
+    const G0 = isl.guards; if (!G0 || !G0.list.length || G0.team === team || Math.hypot(point.x - isl.x, point.z - isl.z) > isl.capR + R) continue;
+    let lost = 0;
+    for (const g of G0.list) { const d = g.pos.distanceTo(point); if (d < R) { g.hp -= dmg * (1 - d / R); if (g.hp <= 0) lost++; } }
+    if (lost) { const keep = G0.list.filter(g => g.hp > 0); for (const g of G0.list) if (g.hp <= 0) scene.remove(g.av.group); G0.list = keep; }
+  }
+}
 function gridDamage(H, amt, src) {
   if (NET.client || !H || !H.grid || GAME.over) return;
   const g = H.grid;
@@ -6578,6 +6670,7 @@ function step(dt) {
   updateProjectiles(dt);
   updateIslands(dt);
   gridStep(dt); // 1.4.3
+  crewStep(dt); // 1.4.3: marines and AI gunners
   updateSubs(dt); // 1.4
   updateEmitters(dt);
   fxFire.update(dt); fxSmoke.update(dt); fxWake.update(dt);
@@ -6969,7 +7062,7 @@ function renderSeats(pad, atCarrier) {
   setShow('dSeatWrap', cards.length > 0);
   $('dSeats').innerHTML = cards.map(({ e, k, n }) => e.kind === 'ship'
     ? `<button class="card free" data-k="seat" data-t="${e.id}:${k}" ${DEPLOY.locked ? 'disabled' : ''}><div class="em">${e.S.icon}</div><div class="nm">AA gunner · ${esc(e.S.name)}</div><div class="ds">Man an anti-aircraft gun on ${esc(e.driver.name)}'s ${esc(e.S.name)} (${n} free). Kamikazes and bombs are deadly up there.</div><div class="pr">FREE</div></button>`
-    : `<button class="card free" data-k="seat" data-t="${e.id}:${k}" ${DEPLOY.locked ? 'disabled' : ''}><div class="em">🎯</div><div class="nm">${seatName(e, k)}</div><div class="ds">Ride in ${esc(e.driver.name)}'s ${e.P.name} and shoot ${e.P.doorGuns ? 'planes and ships' : 'down planes'} for them.</div><div class="pr">FREE</div></button>`).join('');
+    : `<button class="card free" data-k="seat" data-t="${e.id}:${k}" ${DEPLOY.locked ? 'disabled' : ''}><div class="em">🎯</div><div class="nm">${seatName(e, k)}</div><div class="ds">Ride in ${esc(e.driver.name)}'s ${e.P.name} and shoot ${e.P.doorGuns ? 'planes and ships' : 'down planes'} for them. You take the AI gunner's place.</div><div class="pr">FREE</div></button>`).join('');
 }
 function deploySeat(t) {
   if (DEPLOY.locked) return;
@@ -10215,9 +10308,10 @@ function ev131(a) {
     upgradeNote(t, bit, mine ? 'You' : 'A teammate');
   }
 }
-const snap131 = () => [TUP[0], TUP[1], ...HARBORS.map(H => H && H.grid ? [Math.ceil(H.grid.hp), H.grid.st, Math.ceil(H.grid.left)] : 0)]; // 1.4.3: the power grids
+const snap131 = () => [TUP[0], TUP[1], ...HARBORS.map(H => H && H.grid ? [Math.ceil(H.grid.hp), H.grid.st, Math.ceil(H.grid.left)] : 0), ISLANDS.map(i => i.guards && i.guards.list.length ? [i.guards.team, i.guards.list.length] : 0)]; // 1.4.3: the power grids, the island guards
 function apply131(z) {
   [0, 1].forEach(t => { const n = z[t] | 0, add = n & ~TUP[t]; if (!add) return; TUP[t] |= add; for (const U of UPGRADES) if (add & U.bit) applyUpgrade(t, U.bit); });
+  if (Array.isArray(z[4])) z[4].forEach((r, i) => { const isl = ISLANDS[i]; if (!isl) return; if (Array.isArray(r)) setGuards(isl, r[0] === 1 ? 1 : 0, clamp(r[1] | 0, 0, GUARD_MAX)); else setGuards(isl, -1, 0); }); // 1.4.3: island guards
   [0, 1].forEach(t => { // 1.4.3: the power grids, as the host has them
     const r = z[2 + t], H = HARBORS[t], g = H && H.grid; if (!g || !Array.isArray(r) || r.length < 3) return;
     const st = r[1] === 1 || r[1] === 2 ? r[1] : 0, was = g.st;

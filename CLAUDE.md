@@ -528,6 +528,18 @@ source in Settings → Pages should be switched to `main`.
   overlay (kept by id/text across redraws, `navLast`). TV remote: arrows move (on foot ←/→ turn, `GP.remoteTurn`), Enter
   fires, Back pauses, colour keys 403-406 jump/use/deploy/map, CH+/- 427/428 secondary/missiles; the camera follows the
   vehicle in remote mode.
+  1.4.3 (2026-11-12, the owner's list): `MAP_K` 1.5 scales MAP, BOUND, HARBOR_X (3189), MINI, MAPV.s; ISLES x/z x1.5 plus 8
+  deco islets; island props `addCanoe`/`addLookout`/`addCrates`/`addRack`/`addFlowers`/`addLog` in `detailIsland`; fuel x1.3.
+  Deploy screen tabs `#dCats` (`DEPLOY.cat`: all/boat/sub/plane/heli). New aircraft at the end of `PLANE_ORDER`: interceptor,
+  striker (8 rockets), albatross (heli, `doorGuns`, two gunner seats). Power grid (`buildGrid`, `H.grid` {hp, st 0 on / 1 down /
+  2 broken, left}, `GRID_HP` 2000, `GRID_DOWN_S` 180, then hold E `GRID_FIX_S` 10; `powered(team)` gates lamps, the map and
+  `openPC`; synced in `snap131`, repairs are `peer131` 'g'). Keep third tier `buildKeepTop` (radar, lifts `H.lifts`, 2 roof AA
+  spots, scope `H.scope`: 15 s reveal through `myPing`). AI soldiers (`crewStep`): `marineShip` warships carry `MARINES` 3 that
+  go ashore when stopped (<3 m/s, 2 s) by an island that's theirs or neutral, becoming guards (`isl.guards`, `setGuards`,
+  `GUARD_MAX` 6) that count as units in `updateIslands`, shoot soldiers and low aircraft (host only), die to splash
+  (`guardsHit`) and leave when the island is lost; synced as `snap131()[4]`. Empty gunner seats show AI gunners (`e.aiGun`).
+  Teams: the host refuses a join to the bigger team (`team0`/`team1`), nobody is moved; the title screen peeks at
+  presence `t` (`peekWorld`) and greys out the bigger side. Kamikaze into a base = 1000. Channels `hb-world-143` / `hb-room143-`.
 - `turn-turn-turn/`: Turn! Turn! TURN! (1.0, 2026-11-08), a two-player co-op dirt rally (Three.js r128 copied from Havoc Bay).
   1.3 (2026-11-12): 10 long stages in `STAGES` (`long: 1`, 6.2-8.6 km) with their own hill model in buildStage: `relief`,
   `wave`, `trend` (overall climb/drop), `grade` (max slope), `crests` (gaussian brows, added to `jumps` so they're called
