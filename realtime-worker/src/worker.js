@@ -730,7 +730,7 @@ export class Account extends DurableObject {
     const S = this.ctx.storage, a = await S.get('acct');
     if (!a) return j({ error: 'no_account' }, 404);
     if (route === 'p-chessget') { const c = await this.chessOf(a); return j({ r: c.r, rd: chessRd(c, now) }); }
-    if (route === 'p-chessapply') return j(await this.chessApply(a, String(body.kind || ''), body.o || {}, now));
+    if (route === 'p-chessapply') return j(await this.chessApply(a, String(body.kind || ''), body.o || {}, now, body.opp || body.from));
     const from = String(body.from || ''), k = from.toLowerCase();
     if (!NAME_RE.test(from)) return j({ error: 'bad' }, 400);
     const s = await this.soc();
@@ -900,7 +900,7 @@ export class Account extends DurableObject {
     const me = x => ({ r: Math.round(x.r), rd: Math.round(chessRd(x, now)), n: x.n, peak: Math.round(x.peak || x.r) });
     if (req.method === 'GET') return j(me(c));
     const g = String(body.g || ''), opp = String(body.opp || ''), res = String(body.res || '');
-    if (!/^[a-z0-9:]{3,40}$/i.test(g) || !NAME_RE.test(opp) || opp.toLowerCase() === a.name.toLowerCase() || !['w', 'l', 'd', 'quit', 'left'].includes(res)) return j({ error: 'bad' }, 400);
+    if (!/^[a-z0-9:]{3,40}$/i.test(g) || !NAME_RE.test(opp) || opp.toLowerCase() === a.name.toLowerCase() || !['start', 'w', 'l', 'd', 'quit', 'left'].includes(res)) return j({ error: 'bad' }, 400);
     const pair = [a.name.toLowerCase(), opp.toLowerCase()].sort().join(':');
     const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('cg:' + g + ':' + pair)).fetch(new Request('https://acct/cg', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-cg': '1' }, body: JSON.stringify({ me: a.name, opp, res, n: body.n | 0 }) }));
     const x = await r.json().catch(() => ({}));
@@ -908,8 +908,12 @@ export class Account extends DurableObject {
     return j(Object.assign({ pending: !!x.pending, d: x.d || 0, error: x.error }, me(fresh)), r.ok ? 200 : r.status);
   }
   // one rating change, told by a game's object (peer route 'p-chessapply'); o is the opponent's rating when the game was reported
-  async chessApply(a, kind, o, now) {
+  async chessApply(a, kind, o, now, opp) {
     const c = await this.chessOf(a), before = c.r, ro = +o.r, rdo = +o.rd;
+    // 1.6.2: limits on gains, so two accounts can't farm Elo off each other: from one opponent at most CHESS.pairWins
+    // gains a day, and at most CHESS.dayGain Elo gained a day in all
+    c.g = (c.g || []).filter(x => now - x[0] < 864e5);
+    const fromOpp = c.g.filter(x => x[1] === String(opp || '').toLowerCase() && x[2] > 0).length, today = c.g.reduce((t, x) => t + Math.max(0, x[2]), 0);
     if (kind === 'quit') { // leaving a game: a flat 100 (ELO_FIXED's account: 1000 the first two times, as in 1.5.2)
       let pen = 100; if (String(a.name).toLowerCase() === ELO_FIXED[0] && (c.lpn || 0) < 2) { pen = 1000; c.lpn = (c.lpn || 0) + 1; }
       c.r = Math.max(CHESS.floor, c.r - pen);
@@ -919,6 +923,8 @@ export class Account extends DurableObject {
       if (kind === 'left') c.r = Math.max(CHESS.floor, c.r + Math.max(0, g.r - c.r) / 2); // the other player walked out: half a win
       else { c.r = Math.max(CHESS.floor, g.r); c.rd = Math.max(CHESS.rdMin, g.rd); }
     }
+    if (c.r > before) { const room = Math.max(0, CHESS.dayGain - today); if (fromOpp >= CHESS.pairWins) c.r = before; else c.r = Math.min(c.r, before + room); }
+    c.g.push([now, String(opp || '').toLowerCase(), Math.round(c.r - before)]); if (c.g.length > 200) c.g.splice(0, c.g.length - 200);
     c.at = now; c.n = (c.n || 0) + 1; c.peak = Math.max(c.peak || 0, c.r);
     await this.chessSave(a, c);
     return { r: Math.round(c.r), d: Math.round(c.r) - Math.round(before) };
@@ -928,17 +934,23 @@ export class Account extends DurableObject {
     return this.ctx.blockConcurrencyWhile(async () => {
       const S = this.ctx.storage, me = String(b.me || '').toLowerCase(), opp = String(b.opp || '').toLowerCase();
       let st = await S.get('cg');
-      if (!st || now - st.at > 6 * 3600e3) st = { at: now, rep: {}, done: {}, out: {}, snap: null };
-      if (!st.rep[me]) st.rep[me] = { res: String(b.res), n: b.n | 0 };
+      if (!st || now - st.at > 6 * 3600e3) st = { at: now, rep: {}, done: {}, out: {}, snap: null, start: {} };
+      st.start = st.start || {}; st.me2 = st.me2 || [me, opp];
+      // 1.6.2: both players say 'start' when the game becomes rated (after the second move). A game only one of them
+      // started (a made-up game) never gains anyone Elo; a loss or leaving still counts.
+      if (String(b.res) === 'start') { if (!st.start[me]) st.start[me] = now; await S.put('cg', st); return j({ pending: true, d: 0 }); }
+      if (!st.rep[me]) st.rep[me] = { res: String(b.res), n: b.n | 0, at: now };
       if (!st.snap) { // both ratings as the game ended: each side is worked out against the other's number from here
         const get = async n => { const x = await peerCall(this.env, n, 'p-chessget', { from: n }); return x.status === 200 && isFinite(x.r) ? { r: x.r, rd: x.rd } : null; };
         const [x, y] = await Promise.all([get(me), get(opp)]);
         if (!x || !y) return j({ error: 'no_account' }, 404);
         st.snap = { [me]: x, [opp]: y };
       }
+      const both = st.start[me] && st.start[opp], real = both && now - Math.min(st.start[me], st.start[opp]) >= 20e3;
       const kindFor = (k, o) => { // what to apply to k now, or '' to wait for the other report
         const r = st.rep[k] && st.rep[k].res, t = st.rep[o] && st.rep[o].res;
         if (r === 'l') return 'loss'; if (r === 'quit') return 'quit';
+        if (!real) return ''; // no gains from a game both didn't really play
         if ((r === 'w' || r === 'left') && (t === 'l' || t === 'quit')) return t === 'quit' ? 'left' : 'win';
         if (r === 'd' && t === 'd') return 'draw';
         return '';
@@ -946,12 +958,32 @@ export class Account extends DurableObject {
       for (const [k, o] of [[me, opp], [opp, me]]) {
         if (st.done[k] || !st.rep[k]) continue;
         const kind = kindFor(k, o); if (!kind) continue;
-        const x = await peerCall(this.env, k, 'p-chessapply', { from: o, kind, o: st.snap[o] });
+        const x = await peerCall(this.env, k, 'p-chessapply', { from: o, kind, o: st.snap[o], opp: o });
         if (x.status === 200 && !x.error) { st.done[k] = 1; st.out[k] = { r: x.r, d: x.d }; }
       }
+      // 1.6.2: someone who started the game and then goes quiet (closed the tab, left, lost the connection) is the one
+      // who left: if they haven't reported within CHESS.quietMs, they lose like leaving, and the other gets half a win
+      if (!st.rep[opp] && both) await this.ctx.storage.setAlarm(now + CHESS.quietMs);
       await S.put('cg', st);
       return j({ pending: !st.done[me], d: (st.out[me] && st.out[me].d) || 0 });
     });
+  }
+  async alarm() { // only game objects ('cg') set one
+    const S = this.ctx.storage, st = await S.get('cg'), now = Date.now();
+    if (!st || !st.me2) return;
+    for (const [k, o] of [st.me2, [st.me2[1], st.me2[0]]]) {
+      if (st.rep[k] || !st.start[k] || !st.rep[o] || st.done[k]) continue; // k went quiet while o reported
+      const r = st.rep[o].res;
+      if (!['w', 'left', 'd'].includes(r) && r !== 'quit') continue;
+      if (r === 'quit') continue; // both left: the one who reported already lost
+      const x = await peerCall(this.env, k, 'p-chessapply', { from: o, kind: 'quit', o: st.snap[o], opp: o });
+      if (x.status === 200 && !x.error) { st.done[k] = 1; st.out[k] = { r: x.r, d: x.d }; st.rep[k] = { res: 'quit', n: 0, at: now, auto: 1 }; }
+      if (!st.done[o] && (r === 'w' || r === 'left') && st.start[o]) {
+        const y = await peerCall(this.env, o, 'p-chessapply', { from: k, kind: 'left', o: st.snap[k], opp: k });
+        if (y.status === 200 && !y.error) { st.done[o] = 1; st.out[o] = { r: y.r, d: y.d }; }
+      }
+    }
+    await S.put('cg', st);
   }
   // a new signed-in device: the token is the name plus a random part; only a hash of that part is kept
   async session(a) {
@@ -974,7 +1006,7 @@ export class Account extends DurableObject {
 const RENAME_NAMES = ['lars'], RENAME_BEFORE = 1794280371000;
 const mustRename = a => RENAME_NAMES.includes(String(a.name || '').toLowerCase()) && (a.created || 0) < RENAME_BEFORE;
 // Chess Elo (1.6.1): Glicko like chess.com, the same numbers Chess 1.5.1 used in the browser
-const CHESS = { start: 2000, rd0: 350, rdMin: 30, c: 18, floor: 0 };
+const CHESS = { start: 2000, rd0: 350, rdMin: 30, c: 18, floor: 0, pairWins: 3, dayGain: 300, quietMs: 100e3 }; // 1.6.2: limits
 const ELO_FIXED = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000]; // the owner's request (2026-11-13): starts at 1000
 const CGQ = Math.log(10) / 400, cgRD = rd => 1 / Math.sqrt(1 + 3 * CGQ * CGQ * rd * rd / (Math.PI * Math.PI));
 const chessRd = (c, t) => { const days = c.at ? Math.max(0, (t - c.at) / 864e5) : 0; return Math.min(CHESS.rd0, Math.sqrt(c.rd * c.rd + CHESS.c * CHESS.c * days)); };

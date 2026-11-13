@@ -257,7 +257,10 @@
 <div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.6.1</span></summary>
+    <summary>Patch notes <span>v1.6.2</span></summary>
+    <h3>v1.6.2 <small>Emergency update</small></h3>
+    <ul><li>Whoever leaves the table now always loses the Elo. If a player closes the game, loses their connection or stops answering, they lose like leaving after 100 seconds, and the player who stayed gets Elo for it.</li>
+      <li>Fixed Elo bugs that let people get lots of Elo by repeating games and results. Games now only count when both players really played them, and you can only gain Elo from the same opponent 3 times a day.</li></ul>
     <h3>v1.6.1 <small>Update</small></h3>
     <ul><li>Players elo is no longer stored in the players browser.</li></ul>
     <h3>v1.6 <small>Spectating</small></h3>
@@ -619,7 +622,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.6.1';
+const VERSION = '1.6.2';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -738,6 +741,7 @@ function playMove(m, dropped) {
   if (online.on && (G.w ? 'w' : 'b') === player) Net.send('mv', { n: hist.length, u: uci(m) });
   const s = san(G, m, legalNow); make(G, m); G.u.length = 0;
   hist.push({ m, san: s }); keys.push(posKey(G)); legalNow = legal(G); selected = -1;
+  if (online.on && !localGame && hist.length === 2) Elo.start(); // 1.6.2: the game is rated from here: tell the server
   animateMove(m, dropped);
   if (s.endsWith('#') || s.endsWith('+')) Sound.check(); else if (m.pr) Sound.promote(); else if (m.fl === 'c') Sound.castle(); else if (m.cap) Sound.capture(); else Sound.move();
   checkEnd(); renderMarks(); renderSide(); saveGame();
@@ -1240,7 +1244,9 @@ const Elo = (() => {
       setTimeout(again, 2500);
     }).catch(() => done('Your Elo couldn’t be updated (offline)', ''));
   }
-  return { fetch: fetchElo, report };
+  // 1.6.2: both players check in when a game becomes rated; the server only rates games both of them started
+  function start() { const t = tok(), opp = Net.opp && Net.opp.name; if (!t || !opp || !Net.key) return; fetch(base() + 'chess', { method: 'POST', headers: { authorization: 'Bearer ' + t, 'content-type': 'application/json' }, body: JSON.stringify({ g: Net.key + ':' + online.gameNo, opp, res: 'start', n: hist.length }), cache: 'no-store' }).catch(() => {}); }
+  return { fetch: fetchElo, report, start };
 })();
 setTimeout(() => Elo.fetch(), 800);
 // refreshing or closing the page in the middle of a game counts as leaving it
