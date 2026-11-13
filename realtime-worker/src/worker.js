@@ -1136,6 +1136,12 @@ export class Directory extends DurableObject {
     if (route === 'list') return j({ players: list });
     if (route === 'top') { // 1.5: each player's stat line for one game (Chess's leaderboard), cached for a minute
       const g = String(url.searchParams.get('g') || ''); if (!GAME_RE.test(g)) return j({ error: 'bad' }, 400);
+      // Chess 1.6.1: once, every player with a chess line moves their Elo to their account (which rewrites the line)
+      if (g === 'chess' && !(await S.get('chessSeeded'))) {
+        const ns = []; for (let i = 0; i < list.length; i += 128) { const m = await S.get(list.slice(i, i + 128).filter(x => x[2]).map(x => 'u:' + x[0].toLowerCase())); for (const [k, u] of m) if (u && u.s && u.s.chess) { const e = list.find(x => 'u:' + x[0].toLowerCase() === k); if (e) ns.push(e[0]); } }
+        for (let i = 0; i < ns.length; i += 8) await Promise.all(ns.slice(i, i + 8).map(n => peerCall(this.env, n, 'p-chessget', { from: n }).catch(() => null)));
+        await S.put('chessSeeded', 1); if (this.topCache) delete this.topCache.chess;
+      }
       const c = (this.topCache = this.topCache || {})[g]; if (c && Date.now() - c.at < 60e3) return j({ top: c.top });
       const ks = list.filter(x => x[2]).map(x => 'u:' + x[0].toLowerCase()), top = [];
       for (let i = 0; i < ks.length; i += 128) { const m = await S.get(ks.slice(i, i + 128)); for (const [k, u] of m) if (u && u.s && u.s[g]) { const e = list.find(x => 'u:' + x[0].toLowerCase() === k); top.push({ n: e ? e[0] : k.slice(2), s: u.s[g] }); } }

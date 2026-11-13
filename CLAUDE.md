@@ -482,7 +482,8 @@ source in Settings → Pages should be switched to `main`.
   1.6.1 (2026-11-14, the owner's request): **the Elo lives on the server, not in the browser.** Each Account object keeps
   storage key 'chess' {r, rd, at, n, peak, lpn} (worker.js `chessOf`, `chessApply`, `chessGame`; Glicko `glickoOne`,
   `CHESS`). It was seeded once per account from its leaderboard line at the time (the Players list's chess "Elo N"),
-  except `ELO_FIXED` (char codes) = 1000. GET /acct/chess = your Elo; POST /acct/chess {g: table key + ':' + game number,
+  except `ELO_FIXED` (char codes) = 1000. The first /acct/top?g=chess after the deploy seeded every listed chess player at
+  once (Directory flag 'chessSeeded'; Worker 4ede0977). GET /acct/chess = your Elo; POST /acct/chess {g: table key + ':' + game number,
   opp, res 'w'|'l'|'d'|'quit'|'left', n moves} goes to that game's object (`cg:<g>:<both names sorted>` in the ACCOUNTS
   namespace, header x-arcade-cg): a loss or leaving applies at once, a win/draw/opponent-left only when the other report
   agrees (half a win when they quit; leaving costs 100, ELO_FIXED's account 1000 the first two times). The Players list's
