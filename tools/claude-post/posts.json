@@ -23,5 +23,19 @@
    "havoc-bay/thumb.jpg"
   ],
   "t": "📣 You can now send feedback straight from the home page!\n\n👇 Scroll to the bottom of the Games tab and tap \"Send feedback\". Or use the link right here: https://docs.google.com/forms/d/e/1FAIpQLSeOQOSz6bS6-2aBxjDZSSdxpBYECQlmbnOWhmeAk34R3wU-7g/viewform\n\n🐞 Spotted a bug? Tell me which game, what happened and what device you were on\n💡 Want a new game, mode or map? Drop the idea in\n\nI read every answer, and the fixes and ideas show up here as posts when they ship 🙌\n\n#TheArcade #Feedback"
+ },
+ {
+  "key": "new-site-1",
+  "pin": true,
+  "pill": "BIG NEWS",
+  "kicker": "The Arcade",
+  "headline": "We have moved to thearcade.pages.dev",
+  "t": "🚚 The Arcade has a new home!\n\n👉 https://thearcade.pages.dev\n\n🌐 Online play has moved over there: from today, online games only work on the new site.\n📅 The old site (noah-and-lars.github.io) shuts down on November 17.\n💾 All your progress migrates over. Just log in on the new site with your Arcade account. No account yet? Make one on the old site first so your progress comes with you.\n\nSee you there! 🎮\n\n#TheArcade #NewSite",
+  "imgs": [
+   "havoc-bay/thumb.jpg",
+   "cube-assault/thumb.jpg",
+   "card-royale/thumb.jpg",
+   "chess/news/1.6-spectate.jpg"
+  ]
  }
 ]
