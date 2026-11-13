@@ -28,7 +28,7 @@
       b.style.cssText = 'max-width:360px;margin:16px;padding:22px;border-radius:16px;background:#1b1835;color:#f1effa;text-align:center;border:1px solid #6c5ce7';
       var h = document.createElement('h2'); h.textContent = 'Online play needs an account'; h.style.margin = '0 0 8px';
       var p = document.createElement('p'); p.textContent = 'Make a free Arcade account (just a username and a password) or log in on The Arcade to play online. Playing offline and against bots still works.'; p.style.margin = '0 0 14px';
-      var a = document.createElement('a'); a.href = 'https://noah-and-lars.github.io/projects/'; a.target = '_top'; a.textContent = 'Make an account';
+      var a = document.createElement('a'); a.href = location.hostname === 'thearcade.pages.dev' ? 'https://thearcade.pages.dev/' : 'https://noah-and-lars.github.io/projects/'; a.target = '_top'; a.textContent = 'Make an account';
       a.style.cssText = 'display:inline-block;padding:9px 16px;border-radius:10px;background:#6c5ce7;color:#fff;font-weight:700;text-decoration:none;margin:0 6px';
       var x = document.createElement('button'); x.textContent = 'Not now';
       x.style.cssText = 'padding:9px 16px;border-radius:10px;border:1px solid #ffffff33;background:none;color:#f1effa;font:inherit;cursor:pointer;margin:0 6px';

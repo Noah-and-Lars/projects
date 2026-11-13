@@ -725,10 +725,41 @@
     setTimeout(function () { N.focus(); }, 50);
   }
 
+  /* ---------- site announcement (2026-11-13): a banner written in the admin console, from the Worker's GET /notice ---------- */
+  function showNotice() {
+    var SKEY = 'arcade-notice-live', DKEY = 'arcade-notice-dismissed', cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(SKEY) || 'null'); } catch (e) {}
+    var paint = function (n) {
+      var old = $('liveNotice'); if (old) old.remove();
+      if (!n || typeof n.text !== 'string' || !n.text || (n.until && n.until < Date.now())) return;
+      var gone = ''; try { gone = localStorage.getItem(DKEY) || ''; } catch (e) {}
+      if (gone === n.id) return;
+      var c = { info: ['#4a3fd1', '#fff'], warn: ['#f2b134', '#1a1408'], alert: ['#c8342a', '#fff'] }[n.level] || ['#4a3fd1', '#fff'];
+      var b = document.createElement('div'); b.id = 'liveNotice'; b.setAttribute('role', 'status');
+      b.style.cssText = 'position:relative;z-index:40;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 44px 8px 14px;font:700 14px/1.35 system-ui,-apple-system,sans-serif;text-align:center;background:' + c[0] + ';color:' + c[1];
+      var t = document.createElement('span'); t.textContent = n.text; b.appendChild(t);
+      if (n.link && /^(https:\/\/(noah-and-lars\.github\.io|thearcade\.pages\.dev)\/|[a-z0-9])/i.test(n.link) && !/^javascript:/i.test(n.link)) {
+        var a = document.createElement('a'); a.href = n.link; a.target = '_top'; a.textContent = n.linkText || 'Find out more';
+        a.style.cssText = 'color:inherit;text-decoration:underline'; b.appendChild(a);
+      }
+      var x = document.createElement('button'); x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.textContent = '×';
+      x.style.cssText = 'position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:inherit;font:700 22px/1 system-ui,sans-serif;cursor:pointer;padding:4px 10px';
+      x.onclick = function () { b.remove(); try { localStorage.setItem(DKEY, n.id); } catch (e) {} };
+      b.appendChild(x); document.body.prepend(b);
+    };
+    if (cached && Date.now() - cached.at < 120000) return paint(cached.n);
+    fetch(API.replace(/\/acct\/$/, '') + '/notice').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (!j) return;
+      try { sessionStorage.setItem(SKEY, JSON.stringify({ at: Date.now(), n: j.n || null })); } catch (e) {}
+      paint(j.n);
+    }).catch(function () {});
+  }
+
   /* ---------- start ---------- */
   var readyRes, ready = new Promise(function (r) { readyRes = r; });
   function start() {
     addButton();
+    showNotice();
     if (enforceName()) return; // locked out until the name is changed; nothing else runs
     // first visit (after the Terms): ask everyone to make an account
     if (/[?&]admin\b/.test(location.search)) { var adm = function () { if ($('tosPop')) return setTimeout(adm, 500); openAdmin(); }; setTimeout(adm, 300); return finishStart(); }

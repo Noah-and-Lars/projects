@@ -86,7 +86,7 @@ const levelOf = xp => 1 + Math.floor(Math.sqrt((xp || 0) / 120));
 const touchMode = () => matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
 
 // online play only works on the arcade website (the realtime server refuses anything else)
-window.caOnlineOK = /^(noah-and-lars\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname);
+window.caOnlineOK = /^(noah-and-lars\.github\.io|thearcade\.pages\.dev|localhost|127\.0\.0\.1)$/.test(location.hostname);
 window.caNeedWebsite = () => { if (window.sgToast) sgToast('ONLINE PLAY ONLY WORKS ON THE ARCADE WEBSITE', '#ffb066'); const n = $id('sgNote'); if (n) n.textContent = 'Online play only works on the arcade website. Vs bots works anywhere.'; };
 
 // ---------- renderer ----------

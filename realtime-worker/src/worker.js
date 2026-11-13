@@ -24,13 +24,14 @@ const SWEEP_MS = 5 * 60 * 1000;
 // Online play is for the official arcade only. The browser sets the Origin header on the WebSocket
 // handshake and page code can't forge it, so a downloaded/edited copy (origin null) or a copy re-hosted
 // elsewhere is refused here, on the server, where a cheater can't edit this rule.
-const ALLOWED_ORIGINS = ['https://noah-and-lars.github.io'];
+const ALLOWED_ORIGINS = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev']; // 2026-11-13: the Cloudflare Pages copy shares this server
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname.startsWith('/acct/')) return accounts(req, env, url);
     if (url.pathname === '/chat/ws') return chatSocket(req, env, url);
+    if (url.pathname === '/notice') return siteNotice(req, env);
     if (url.pathname.startsWith('/kd/')) return krill(req, env, url);
     if (url.pathname.startsWith('/ttt/')) return turnBoard(req, env, url);
     if (url.pathname.startsWith('/clips/')) return clips(req, env, url);
@@ -144,7 +145,7 @@ export class Room extends DurableObject {
                                               ADMINTEST; only its SHA-256 is here; 5 wrong tries lock it for 15 minutes)
    Deleting an account wipes its object, so the name can be registered again.
    ========================================================================== */
-const ACCT_ORIGINS = ['https://noah-and-lars.github.io'];
+const ACCT_ORIGINS = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'];
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gametester|imacheater|^system$|^support$|^server$|^null$|^undefined$|^guest$|^anonymous$/;
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
@@ -227,7 +228,7 @@ const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).in
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -240,6 +241,13 @@ async function admin(env, body, out, auth) {
   if (!ADMIN_ACCOUNTS.includes(who.toLowerCase())) {
     const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
     if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
+  }
+  if (op === 'noticeget' || op === 'noticeset' || op === 'noticeclear') { // the site announcement (see siteNotice)
+    let n = null;
+    if (op === 'noticeset') { n = cleanNotice(body, who); if (!n) return out({ error: 'bad' }, 400); }
+    const r = await call('__notice__', op === 'noticeget' ? 'noticeget' : 'noticeput', { n });
+    noticeCache = { at: 0, v: null };
+    return out(await r.json().catch(() => ({})), r.status);
   }
   if ((op === 'ban' || op === 'rename' || op === 'delete' || op === 'newcode' || op === 'devban') && ADMIN_ACCOUNTS.includes(name.toLowerCase())) return out({ error: 'protected' }, 400);
   if (op === 'devban' || op === 'devunban') { // the account's ban plus every device it was used on
@@ -274,6 +282,29 @@ async function admin(env, body, out, auth) {
   // Accounts tab, which groups accounts that share a device to find each person's main account and their alts.
   const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', devinfo: 'admindevinfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename', newcode: 'adminnewcode' }[op], { to: String(body.to || '') });
   return out(await r.json().catch(() => ({})), r.status);
+}
+/* Site announcement (2026-11-13): a banner on every page of the arcade, written in the admin console
+   (admin ops noticeget / noticeset / noticeclear). Stored as one value on the '__notice__' object.
+   GET /notice -> { n: { id, text, level: 'info'|'warn'|'alert', until, link, linkText, at, by } | null }
+   Each Worker instance keeps it for a minute so page views don't each wake the object; account.js keeps it for 2 minutes. */
+let noticeCache = { at: 0, v: null };
+const NOTICE_LINK = /^(https:\/\/(noah-and-lars\.github\.io|thearcade\.pages\.dev)\/[^\s"'<>]*|[a-z0-9][a-z0-9_\-./?=&#]*)$/i;
+function cleanNotice(b, who) {
+  const text = tidy(b.text).slice(0, 280), level = ['info', 'warn', 'alert'].includes(b.level) ? b.level : 'info', now = Date.now();
+  const until = +b.until || 0, link = String(b.link || '').trim().slice(0, 300), linkText = tidy(b.linkText).slice(0, 40);
+  if (!text || (until && (until < now || until > now + 31 * 864e5)) || (link && (!NOTICE_LINK.test(link) || link.startsWith('//')))) return null;
+  return { id: rnd(6), text, level, until, link, linkText, at: now, by: who || 'password' };
+}
+async function siteNotice(req, env) {
+  const origin = req.headers.get('Origin') || '';
+  if (!ACCT_ORIGINS.includes(origin)) return new Response('only available on the official website', { status: 403 });
+  if (Date.now() - noticeCache.at > 60000) {
+    const r = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('__notice__')).fetch(new Request('https://acct/noticeget', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: '{}' })).catch(() => null);
+    const x = r && r.ok ? await r.json().catch(() => ({})) : {};
+    noticeCache = { at: Date.now(), v: x.n || null };
+  }
+  const n = noticeCache.v && (!noticeCache.v.until || noticeCache.v.until > Date.now()) ? noticeCache.v : null;
+  return new Response(JSON.stringify({ n }), { headers: { 'content-type': 'application/json', 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin', 'Cache-Control': 'max-age=60' } });
 }
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 const sha = async s => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
@@ -417,6 +448,8 @@ export class Account extends DurableObject {
       if (g.fails) { g.fails = 0; await S.put('guard', g); }
       return j({ ok: true });
     }
+    if (route === 'noticeget') return j({ n: (await S.get('notice')) || null }); // only on the '__notice__' object
+    if (route === 'noticeput') { if (body && body.n) await S.put('notice', body.n); else await S.delete('notice'); return j({ ok: 1, n: (body && body.n) || null }); }
     if (route === 'devlist' || route === 'devadd' || route === 'devdel') { // only on the '__devbans__' object
       let list = (await S.get('devbans')) || [];
       if (route === 'devlist') return j({ list });

@@ -6,6 +6,13 @@ from jimmyscafe/projects). That address comes from the GitHub account name;
 apart from it, no personal names appear anywhere on the site (pages, games,
 credits, comments, images). Keep it that way.
 
+Cloudflare Pages copy (2026-11-13): https://thearcade.pages.dev is the same site from the same files, on the owner's
+Cloudflare account (Pages project `thearcade`). Publish it with `tools/pages-deploy.sh` (needs `npx wrangler login`; it
+serves the site at the root, so the script rewrites 404.html's /projects/ paths and points the games' rt.js at the copy's
+own). Both addresses share the one Worker: ALLOWED_ORIGINS and ACCT_ORIGINS list both, and so do the online checks in
+Cube Assault (caOnlineOK), Siege and the admin console. Browsers keep localStorage per address, so players sign in again
+on the copy; their accounts and cloud saves are the same. Keep both addresses in mind when adding an origin check.
+
 GitHub Pages currently publishes from the branch
 `claude/jimmyscafe-projects-access-9mbcw3`, not `main`. Anything pushed there
 goes live in a minute or two. If that branch gets merged into `main`, the Pages
@@ -38,6 +45,11 @@ source in Settings → Pages should be switched to `main`.
   groups accounts that share a device id (union-find; a device used by more than N accounts, default 4, is treated as a
   school/family computer and ignored), picks each group's main account (latest activity, or most cloud save bytes, since
   play time isn't recorded) and lists the rest as alts, with ban dodger flags. The scan is cached in `arcadeops.devscan.v1`.
+  Game Stats (#game-stats, 2026-11-13): player-hours per game, busiest hours and peaks, from the history this console
+  recorded. Announcement (Admin Control tab): a banner on every site page. The Worker keeps it on the '__notice__' object
+  (admin ops noticeget / noticeset / noticeclear; public GET /notice, cached a minute per Worker instance), and account.js
+  `showNotice()` shows it (cached 2 minutes in sessionStorage; closing it is remembered per notice id in
+  `arcade-notice-dismissed`). CSV downloads on Game Stats, Player Directory, Chat, Leaderboards, Accounts and Action Log.
 - `index.html`: home page. Intro animation (once per visit), a featured-game
   banner (the most recently added or updated game), "Continue playing", the
   game grid with search and category filters, and "What's new".
