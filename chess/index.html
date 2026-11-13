@@ -257,7 +257,9 @@
 <div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.6</span></summary>
+    <summary>Patch notes <span>v1.6.1</span></summary>
+    <h3>v1.6.1 <small>Update</small></h3>
+    <ul><li>Players elo is no longer stored in the players browser.</li></ul>
     <h3>v1.6 <small>Spectating</small></h3>
     <ul><li><b>📺 Watch live games:</b> see every online game being played right now and press Spectate to watch one move by move, with both players, their Elo and the move timer. Watching never changes your Elo.</li>
       <li>When someone is watching your game, their name shows above the board.</li></ul>
@@ -617,7 +619,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.6';
+const VERSION = '1.6.1';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -654,16 +656,6 @@ for (const l of LEVELS) { const s = save.stats[l] || {}; save.stats[l] = { w: +s
 { const R = save.rating; save.rating = R && typeof R === 'object' && isFinite(R.r) && isFinite(R.rd) ? { r: Math.max(0, +R.r), rd: Math.min(350, Math.max(30, +R.rd)), at: +R.at || 0, n: Math.max(0, R.n | 0), peak: +R.peak || +R.r } : null; }
 // 1.5.1: every rating was reset to 2000 once (rv 2), and everyone starts at 2000: there's no level to pick any more
 if (save.rv !== 2 || !save.rating) { save.rating = { r: 2000, rd: 350, at: 0, n: 0, peak: 2000 }; save.rv = 2; try { localStorage.setItem('chessSave', JSON.stringify(save)); } catch (e) {} }
-// 2026-11-14 (the owner's request): one account's Elo is reset to 1000 once (its name as char codes; the flag syncs with the save)
-const ELO_FIX = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000, 'f1'];
-function eloFix() {
-  let n = ''; try { const A = (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount; n = A && (typeof A.name === 'function' ? A.name() : A.name) || ''; } catch (e) {}
-  if (!n) try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); n = a && a.name || ''; } catch (e) {}
-  if (String(n).toLowerCase() !== ELO_FIX[0] || save.ef === ELO_FIX[2] || !save.rating) return;
-  save.rating.r = ELO_FIX[1]; save.rating.peak = ELO_FIX[1]; save.rating.at = Date.now(); save.ef = ELO_FIX[2];
-  try { localStorage.setItem('chessSave', JSON.stringify(save)); } catch (e) {}
-}
-eloFix(); setTimeout(eloFix, 3000);
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
 // ---------- sound ----------
@@ -780,29 +772,11 @@ function finish() {
   if (!online.on) save.game = null;
   // 1.4: rated: an online game against a person in which both of you moved (one that ends sooner is aborted, as on chess.com)
   $('resR').textContent = ''; $('resR').className = '';
-  if (online.on && save.rating && over.quit) { // 1.5.2: you walked out of the game (the button, a refresh or closing the page)
-    const d = leavePenalty(); online.delta = d;
-    $('resR').textContent = `You left the game: Elo ${showR(save.rating.r)} (${d})`; $('resR').className = 'dn';
-  } else if (online.on && save.rating && over.left) { // 1.5.2: the other player walked out: you get half of what a win would give
-    if (!online.oppRate) $('resR').textContent = 'Your opponent left: no Elo change';
-    else {
-      const R = save.rating, before = Math.round(R.r), res = glicko(R.r, rdNow(R), online.oppRate.r, online.oppRate.rd, 1);
-      R.r = Math.max(RATE.floor, R.r + Math.max(0, res.r - R.r) / 2); R.at = Date.now(); R.n++; R.peak = Math.max(R.peak || 0, R.r);
-      const d = Math.round(R.r) - before; online.delta = d;
-      $('resR').textContent = `Your opponent left: Elo ${showR(R.r)} (+${d})`;
-      Net.retrack();
-    }
-  } else if (online.on && save.rating) {
-    if (aborted) $('resR').textContent = 'Game aborted: not rated';
-    else if (!online.oppRate) $('resR').textContent = 'Not rated: your opponent’s copy of the game is out of date';
-    else {
-      const R = save.rating, before = Math.round(R.r), sc = !over.winner ? 0.5 : over.winner === player ? 1 : 0;
-      const res = glicko(R.r, rdNow(R), online.oppRate.r, online.oppRate.rd, sc);
-      R.r = Math.max(RATE.floor, res.r); R.rd = Math.max(RATE.rdMin, res.rd); R.at = Date.now(); R.n++; R.peak = Math.max(R.peak || 0, R.r);
-      const d = Math.round(R.r) - before; online.delta = d;
-      $('resR').textContent = `Elo ${showR(R.r)} (${d >= 0 ? '+' : ''}${d})`; $('resR').className = d < 0 ? 'dn' : '';
-      Net.retrack();
-    }
+  if (online.on) { // 1.6.1: the server rates the game (see Elo)
+    const res = over.quit ? 'quit' : over.left ? 'left' : !over.winner ? 'd' : over.winner === player ? 'w' : 'l';
+    const q = !!over.quit, lft = !!over.left, show = (t, c) => { $('resR').textContent = q && /^Elo/.test(t) ? 'You left the game: ' + t : lft && /^Elo/.test(t) ? 'Your opponent left: ' + t : t; $('resR').className = c || ''; };
+    if (aborted && !over.quit && !over.left) show('Game aborted: not rated');
+    else Elo.report(res, show, !!over.quit && document.visibilityState === 'hidden');
   }
   persist();
   if (online.on) { sendState(); if (Net.isHost()) Net.liveOff(); } // 1.6: off the Watch list until the rematch starts
@@ -1199,7 +1173,7 @@ const Net = (() => {
 const online = { on: false, gameNo: 0, meAgain: false, oppAgain: false };
 const oppName = () => (Net.opp && Net.opp.name) || online.lastOpp || 'Opponent';
 function startOnline() {
-  eloFix(); if (Net.retrack) Net.retrack();
+  Elo.fetch();
   online.on = true; localGame = false; localT++; document.body.classList.remove('local'); online.lastOpp = Net.opp.name;
   reqId++; aiBusy = false; $('thinking').hidden = true; $('result').hidden = true; $('promo').hidden = true;
   // the host is White in odd games, Black in even ones
@@ -1224,25 +1198,54 @@ function sendState() {
 }
 Net.onEvent('look', sendState);
 Net.onEvent('watchers', list => { const el = $('watchBar'); el.hidden = !online.on || !list.length; el.textContent = '👁 ' + (list.length === 1 ? list[0] + ' is watching' : list.length + ' watching: ' + list.join(', ')); el.title = el.textContent; });
-// 1.5.2: leaving a game before it ends costs a flat 100 Elo (the other player keeps theirs). One account (by its char
-// codes) loses 1000 the first two times.
-const LEAVE_PEN = 100, PEN_SPECIAL = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000, 2];
 function myAcctName() {
   try { const A = (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount; const n = A && (typeof A.name === 'function' ? A.name() : A.name); if (n) return String(n); } catch (e) {}
   try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); if (a && a.name) return String(a.name); } catch (e) {}
   return '';
 }
-function leavePenalty() {
-  const R = save.rating; if (!R) return 0;
-  let pen = LEAVE_PEN;
-  if (myAcctName().toLowerCase() === PEN_SPECIAL[0] && (save.lpn || 0) < PEN_SPECIAL[2]) { pen = PEN_SPECIAL[1]; save.lpn = (save.lpn || 0) + 1; }
-  const before = Math.round(R.r); R.r = Math.max(RATE.floor, R.r - pen); R.at = Date.now(); R.n++;
-  persist(); Net.retrack();
-  return Math.round(R.r) - before;
-}
+/* 1.6.1: your Elo lives on the arcade's server, not in this browser. The server works out every rated game from both
+   players' reports (a loss or leaving counts straight away; a win or draw once the other side's report agrees), and
+   the leaderboard reads it from there. save.rating is only a copy for showing it. */
+const Elo = (() => {
+  const acc = () => { try { return (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount || null; } catch (e) { return window.ArcadeAccount || null; } };
+  const base = () => {
+    try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && localStorage.getItem('arcade-acct-api')) return localStorage.getItem('arcade-acct-api'); } catch (e) {} // tests only
+    const A = acc(); return ((A && A.server) || 'https://arcade-realtime.arcade-realtime.workers.dev') + '/acct/';
+  };
+  const tok = () => { try { const A = acc(); const t = A && A.token && A.token(); if (t) return t; } catch (e) {} try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return (a && a.token) || ''; } catch (e) { return ''; } };
+  const keep = x => { if (!x || !isFinite(x.r)) return; save.rating = { r: x.r, rd: Math.max(30, Math.min(350, +x.rd || 350)), at: Date.now(), n: x.n | 0, peak: isFinite(x.peak) ? x.peak : x.r }; save.rv = 2; persist(); try { renderRate(); } catch (e) {} try { Net.retrack(); } catch (e) {} };
+  async function fetchElo() {
+    const t = tok(); if (!t) return null;
+    try { const r = await fetch(base() + 'chess', { headers: { authorization: 'Bearer ' + t }, cache: 'no-store' }); if (!r.ok) return null; const x = await r.json(); keep(x); return x; } catch (e) { return null; }
+  }
+  // a finished game: res 'w' | 'l' | 'd' | 'quit' | 'left'; done(text, cls) shows what happened to your Elo
+  function report(res, done, closing) {
+    const t = tok(), opp = Net.opp && Net.opp.name;
+    if (!t || !opp || !Net.key) { done('Not rated: you need an online Arcade account', ''); return; }
+    const before = save.rating ? Math.round(save.rating.r) : null, beforeN = save.rating ? save.rating.n | 0 : 0, who = oppName();
+    const body = JSON.stringify({ g: Net.key + ':' + online.gameNo, opp, res, n: hist.length });
+    const p = fetch(base() + 'chess', { method: 'POST', headers: { authorization: 'Bearer ' + t, 'content-type': 'application/json' }, body, keepalive: !!closing, cache: 'no-store' });
+    if (closing) return;
+    done('Updating your Elo…', '');
+    const show = x => { const d = before == null ? x.d : Math.round(x.r) - before; online.delta = d; done(`Elo ${Math.round(x.r)} (${d >= 0 ? '+' : ''}${d})`, d < 0 ? 'dn' : ''); try { renderRate(); } catch (e) {} };
+    p.then(r => r.json()).then(x => {
+      if (x.error || !isFinite(x.r)) { done('Your Elo couldn’t be updated (' + (x.error || 'offline') + ')', ''); return; }
+      if (!x.pending) { keep(x); show(x); return; }
+      done(`Waiting for ${who}’s game to confirm the result…`, '');
+      let tries = 0;
+      const again = () => fetchElo().then(y => {
+        if (y && (y.n | 0) > beforeN) { show(y); return; }
+        if (++tries < 4) setTimeout(again, [2500, 5000, 10000][tries - 1] || 10000); else done('Not rated: ' + who + '’s game didn’t confirm the result', '');
+      });
+      setTimeout(again, 2500);
+    }).catch(() => done('Your Elo couldn’t be updated (offline)', ''));
+  }
+  return { fetch: fetchElo, report };
+})();
+setTimeout(() => Elo.fetch(), 800);
 // refreshing or closing the page in the middle of a game counts as leaving it
 addEventListener('pagehide', () => {
-  if (online.on && Net.opp && !over && !localGame) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true, quit: true }; try { Net.send('resign', { q: 1 }); } catch (e) {} try { finish(); } catch (e) { leavePenalty(); } persist(); }
+  if (online.on && Net.opp && !over && !localGame) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true, quit: true }; try { Net.send('resign', { q: 1 }); } catch (e) {} try { finish(); } catch (e) {} persist(); }
 });
 function leaveOnline() {
   // 1.4: walking out of a game you've both moved in loses it, as on chess.com

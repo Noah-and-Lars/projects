@@ -175,7 +175,7 @@ window.GAMES = [
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-11-14T10:00:00+11:00',
+    updated: '2026-11-14T13:00:00+11:00',
     stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rv === 2 && isFinite(s.rating.r) ? 'Elo ' + Math.round(s.rating.r) : s.rating ? 'Elo 2000' : ''; /* 1.5.1: everyone was reset to 2000 */ return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
@@ -333,6 +333,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-14', game: 'chess', imgs: ['chess/thumb.svg'], headline: 'Chess 1.6.1', text: 'Chess 1.6.1: Players elo is no longer stored in the players browser.' },
   { date: '2026-11-14', game: 'chess', imgs: ['chess/news/1.6-spectate.jpg', 'chess/news/1.6-watching.jpg'], headline: 'Watch live chess games', text: 'Chess 1.6: press Watch live games to see every online game being played right now, then Spectate to follow one move by move with both players, their Elo and the move timer. Watching never changes your Elo, and the players see who is watching above the board.',
     post: '📺 Chess 1.6: spectating is here!\n\n♟️ Press Watch live games to see every online game going on right now.\n👀 Hit Spectate and follow it move by move, with both players, their Elo and the move timer.\n🔒 Watching never touches your Elo.\n👁 Players can see who is watching, right above the board.' },
   { date: '2026-11-14', game: 'gamble-your-life-away', imgs: ['gamble-your-life-away/news/1.2-leaderboard.jpg'], headline: 'Gamble Your Life Away leaderboard', text: 'Gamble Your Life Away 1.2: an all-time leaderboard on the main menu and the pause menu, ranking every player with an Arcade account by the most money they have ever had, from first to last.',

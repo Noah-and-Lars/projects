@@ -151,7 +151,7 @@ const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gameteste
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
 const ADMIN_HASH = '899ba39fe0b4ce0b8d4994cf7449cc63c2a8ade12fa77e590cfaf5999256ccf2';
-const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat']; // what a browser may ask an account for
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat', 'chess']; // what a browser may ask an account for
 const HB_CHEATERS = ['noah', 'archiemccarthy', 'lars']; // Havoc Bay cheat menu accounts
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
@@ -228,7 +228,7 @@ const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).in
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -280,7 +280,7 @@ async function admin(env, body, out, auth) {
   if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
   // 2026-11-12: 'devinfo' (read only) is 'info' plus the account's device ids and activity times, for the admin console's
   // Accounts tab, which groups accounts that share a device to find each person's main account and their alts.
-  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', devinfo: 'admindevinfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename', newcode: 'adminnewcode' }[op], { to: String(body.to || '') });
+  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', devinfo: 'admindevinfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename', newcode: 'adminnewcode', chessset: 'adminchess' }[op], { to: String(body.to || ''), r: body.r });
   return out(await r.json().catch(() => ({})), r.status);
 }
 /* Site announcement (2026-11-13): a banner on every page of the arcade, written in the admin console
@@ -326,6 +326,7 @@ export class Account extends DurableObject {
     if (req.headers.get('x-arcade-admin') === '1') return this.admin(route, body, j, now);
     if (req.headers.get('x-arcade-peer') === '1') return this.peer(route, body || {}, j, now);
     if (req.headers.get('x-arcade-move') === '1') return this.moveIn(body || {}, j, now);
+    if (req.headers.get('x-arcade-cg') === '1') return this.chessGame(body || {}, j, now); // a Chess game's result (only this Worker sets the header)
     let a = await S.get('acct');
     if (route === 'check') return j(a && a.kn ? { free: false, kn: a.kn } : { free: !a }); // kn: the name the password key was made with (2026-11-11)
     // an account that moved to a new name (renameTo). Since 2026-11-13 ('keep') its devices stay signed in: their old
@@ -385,6 +386,7 @@ export class Account extends DurableObject {
     }
     if (['social', 'friend', 'block', 'dm', 'profile', 'call'].includes(route)) return this.social(route, req, url, body, a, j, now);
     if (route === 'group') return this.group(req, url, body, a, j, now);
+    if (route === 'chess') return this.chess(req, body, a, j, now);
     if (route === 'turn') return this.turn(j, now);
     if (route === 'logout') { a.sess.splice(si, 1); await S.put('acct', a); return j({ ok: true }); }
     if (route === 'password') {
@@ -488,6 +490,10 @@ export class Account extends DurableObject {
     if (route === 'admindevflag') { if (body.on) a.devban = { at: now }; else delete a.devban; await S.put('acct', a); return j({ ok: 1 }); }
     if (route === 'adminunban') { delete a.banned; await S.put('acct', a); await dirCall(this.env, 'add', { n: a.name, c: a.created }).catch(() => null); return j({ unbanned: true, name: a.name }); }
     if (route === 'adminrename') return this.renameTo(a, { name: body && body.to }, j, now, true);
+    if (route === 'adminchess') { // 2026-11-14: set a player's Chess Elo (it lives here since Chess 1.6.1)
+      const r = Math.round(+(body && body.r)); if (!isFinite(r) || r < 0 || r > 4000) return j({ error: 'bad' }, 400);
+      const c = await this.chessOf(a); c.r = r; c.peak = r; c.at = now; await this.chessSave(a, c); return j({ name: a.name, elo: r });
+    }
     // 'list' (admin header only): used once on 2026-11-06 to put every older account on the Players list
     if (route === 'list') { if (!a.listed) { const r = await dirCall(this.env, 'add', { n: a.name, c: a.created }); if (r.ok) { a.listed = 1; await S.put('acct', a); } } return j({ name: a.name }); }
     if (route === 'adminwipe') { await this.goodbye(a); await S.deleteAll(); return j({ deleted: true, name: a.name }); }
@@ -527,6 +533,8 @@ export class Account extends DurableObject {
       const st = body && body.s, clean = {};
       if (!st || typeof st !== 'object') return j({ error: 'bad' }, 400);
       for (const [g, v] of Object.entries(st).slice(0, 60)) if (GAME_RE.test(g) && typeof v === 'string' && v) clean[g] = tidy(v).slice(0, 60);
+      // Chess 1.6.1: the Elo on the leaderboard is the server's, whatever the browser says
+      if (clean.chess) { const c = await this.chessOf(a), e = 'Elo ' + Math.round(c.r); clean.chess = /Elo \d+/.test(clean.chess || '') ? clean.chess.replace(/Elo \d+/, e) : [e, clean.chess].filter(Boolean).join(' · '); }
       const r = await dirCall(this.env, 'stats', { n: a.name, c: a.created, s: clean });
       return j({ ok: r.ok }, r.ok ? 200 : 502);
     }
@@ -712,6 +720,8 @@ export class Account extends DurableObject {
   async peer(route, body, j, now) {
     const S = this.ctx.storage, a = await S.get('acct');
     if (!a) return j({ error: 'no_account' }, 404);
+    if (route === 'p-chessget') { const c = await this.chessOf(a); return j({ r: c.r, rd: chessRd(c, now) }); }
+    if (route === 'p-chessapply') return j(await this.chessApply(a, String(body.kind || ''), body.o || {}, now));
     const from = String(body.from || ''), k = from.toLowerCase();
     if (!NAME_RE.test(from)) return j({ error: 'bad' }, 400);
     const s = await this.soc();
@@ -851,6 +861,89 @@ export class Account extends DurableObject {
     await clipIndex(this.env, '').fetch(new Request('https://clips/purge', { method: 'POST', body: JSON.stringify({ int: 1, from: a.name }) })).catch(() => null);
     for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'deleted'); } catch (e) {}
   }
+  /* ---------- Chess Elo (1.6.1, 2026-11-14) ----------
+     The Elo lives here (storage key 'chess' {r, rd, at, n, peak, lpn}), not in the player's browser. It started from the number on
+     the leaderboard (the Players list's chess line) the first time this account was asked, except ELO_FIXED (1000).
+     GET /acct/chess: your Elo. POST /acct/chess {g, opp, res, n}: a game's result, res 'w' | 'l' | 'd' | 'quit' (you left)
+     | 'left' (they left); it goes to that game's own object ('cg:<g>:<both names>'), which changes a rating only when it
+     hurts the player who reported it (a loss, leaving) or when both players' reports agree. The Players list's chess
+     line always carries this number, so editing a browser's save can't change the leaderboard. */
+  async chessOf(a) {
+    const have = await this.ctx.storage.get('chess'); // its own key, so other requests saving 'acct' never undo a game
+    if (have && isFinite(have.r)) return have;
+    let r = CHESS.start, rd = CHESS.rd0, n = 0;
+    if (String(a.name).toLowerCase() === ELO_FIXED[0]) { r = ELO_FIXED[1]; rd = 100; n = 1; }
+    else {
+      const p = await (await dirCall(this.env, 'get?name=' + encodeURIComponent(a.name))).json().catch(() => ({}));
+      const m = /Elo (\d+)/.exec((p && p.s && p.s.chess) || '');
+      if (m) { r = Math.min(4000, +m[1]); if (r !== CHESS.start) { rd = 100; n = 1; } }
+    }
+    const c = { r, rd, at: Date.now(), n, peak: r, lpn: 0 };
+    await this.chessSave(a, c);
+    return c;
+  }
+  async chessSave(a, c) {
+    await this.ctx.storage.put('chess', c);
+    await dirCall(this.env, 'stat1', { n: a.name, c: a.created, g: 'chess', v: 'Elo ' + Math.round(c.r) }).catch(() => null);
+  }
+  async chess(req, body, a, j, now) {
+    const c = await this.chessOf(a);
+    const me = x => ({ r: Math.round(x.r), rd: Math.round(chessRd(x, now)), n: x.n, peak: Math.round(x.peak || x.r) });
+    if (req.method === 'GET') return j(me(c));
+    const g = String(body.g || ''), opp = String(body.opp || ''), res = String(body.res || '');
+    if (!/^[a-z0-9:]{3,40}$/i.test(g) || !NAME_RE.test(opp) || opp.toLowerCase() === a.name.toLowerCase() || !['w', 'l', 'd', 'quit', 'left'].includes(res)) return j({ error: 'bad' }, 400);
+    const pair = [a.name.toLowerCase(), opp.toLowerCase()].sort().join(':');
+    const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('cg:' + g + ':' + pair)).fetch(new Request('https://acct/cg', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-cg': '1' }, body: JSON.stringify({ me: a.name, opp, res, n: body.n | 0 }) }));
+    const x = await r.json().catch(() => ({}));
+    const fresh = (await this.ctx.storage.get('chess')) || c; // the game's object may have just changed it
+    return j(Object.assign({ pending: !!x.pending, d: x.d || 0, error: x.error }, me(fresh)), r.ok ? 200 : r.status);
+  }
+  // one rating change, told by a game's object (peer route 'p-chessapply'); o is the opponent's rating when the game was reported
+  async chessApply(a, kind, o, now) {
+    const c = await this.chessOf(a), before = c.r, ro = +o.r, rdo = +o.rd;
+    if (kind === 'quit') { // leaving a game: a flat 100 (ELO_FIXED's account: 1000 the first two times, as in 1.5.2)
+      let pen = 100; if (String(a.name).toLowerCase() === ELO_FIXED[0] && (c.lpn || 0) < 2) { pen = 1000; c.lpn = (c.lpn || 0) + 1; }
+      c.r = Math.max(CHESS.floor, c.r - pen);
+    } else {
+      if (!isFinite(ro) || !isFinite(rdo) || !['win', 'loss', 'draw', 'left'].includes(kind)) return { error: 'bad' };
+      const sc = kind === 'win' || kind === 'left' ? 1 : kind === 'draw' ? 0.5 : 0, g = glickoOne(c.r, chessRd(c, now), ro, Math.max(CHESS.rdMin, Math.min(CHESS.rd0, rdo)), sc);
+      if (kind === 'left') c.r = Math.max(CHESS.floor, c.r + Math.max(0, g.r - c.r) / 2); // the other player walked out: half a win
+      else { c.r = Math.max(CHESS.floor, g.r); c.rd = Math.max(CHESS.rdMin, g.rd); }
+    }
+    c.at = now; c.n = (c.n || 0) + 1; c.peak = Math.max(c.peak || 0, c.r);
+    await this.chessSave(a, c);
+    return { r: Math.round(c.r), d: Math.round(c.r) - Math.round(before) };
+  }
+  // the object of one game (one pair of players): collects both reports and applies each side once
+  async chessGame(b, j, now) {
+    return this.ctx.blockConcurrencyWhile(async () => {
+      const S = this.ctx.storage, me = String(b.me || '').toLowerCase(), opp = String(b.opp || '').toLowerCase();
+      let st = await S.get('cg');
+      if (!st || now - st.at > 6 * 3600e3) st = { at: now, rep: {}, done: {}, out: {}, snap: null };
+      if (!st.rep[me]) st.rep[me] = { res: String(b.res), n: b.n | 0 };
+      if (!st.snap) { // both ratings as the game ended: each side is worked out against the other's number from here
+        const get = async n => { const x = await peerCall(this.env, n, 'p-chessget', { from: n }); return x.status === 200 && isFinite(x.r) ? { r: x.r, rd: x.rd } : null; };
+        const [x, y] = await Promise.all([get(me), get(opp)]);
+        if (!x || !y) return j({ error: 'no_account' }, 404);
+        st.snap = { [me]: x, [opp]: y };
+      }
+      const kindFor = (k, o) => { // what to apply to k now, or '' to wait for the other report
+        const r = st.rep[k] && st.rep[k].res, t = st.rep[o] && st.rep[o].res;
+        if (r === 'l') return 'loss'; if (r === 'quit') return 'quit';
+        if ((r === 'w' || r === 'left') && (t === 'l' || t === 'quit')) return t === 'quit' ? 'left' : 'win';
+        if (r === 'd' && t === 'd') return 'draw';
+        return '';
+      };
+      for (const [k, o] of [[me, opp], [opp, me]]) {
+        if (st.done[k] || !st.rep[k]) continue;
+        const kind = kindFor(k, o); if (!kind) continue;
+        const x = await peerCall(this.env, k, 'p-chessapply', { from: o, kind, o: st.snap[o] });
+        if (x.status === 200 && !x.error) { st.done[k] = 1; st.out[k] = { r: x.r, d: x.d }; }
+      }
+      await S.put('cg', st);
+      return j({ pending: !st.done[me], d: (st.out[me] && st.out[me].d) || 0 });
+    });
+  }
   // a new signed-in device: the token is the name plus a random part; only a hash of that part is kept
   async session(a) {
     const part = rnd(24);
@@ -871,6 +964,15 @@ export class Account extends DurableObject {
 // 2026-11-11: the owner gave the name lars to a friend: the account that had it (made 2026-11-09) is asked to pick a new one
 const RENAME_NAMES = ['lars'], RENAME_BEFORE = 1794280371000;
 const mustRename = a => RENAME_NAMES.includes(String(a.name || '').toLowerCase()) && (a.created || 0) < RENAME_BEFORE;
+// Chess Elo (1.6.1): Glicko like chess.com, the same numbers Chess 1.5.1 used in the browser
+const CHESS = { start: 2000, rd0: 350, rdMin: 30, c: 18, floor: 0 };
+const ELO_FIXED = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000]; // the owner's request (2026-11-14): starts at 1000
+const CGQ = Math.log(10) / 400, cgRD = rd => 1 / Math.sqrt(1 + 3 * CGQ * CGQ * rd * rd / (Math.PI * Math.PI));
+const chessRd = (c, t) => { const days = c.at ? Math.max(0, (t - c.at) / 864e5) : 0; return Math.min(CHESS.rd0, Math.sqrt(c.rd * c.rd + CHESS.c * CHESS.c * days)); };
+function glickoOne(r, rd, ro, rdo, s) {
+  const g = cgRD(rdo), E = 1 / (1 + Math.pow(10, -g * (r - ro) / 400)), d2 = 1 / (CGQ * CGQ * g * g * E * (1 - E)), k = 1 / (1 / (rd * rd) + 1 / d2);
+  return { r: r + CGQ * k * g * (s - E), rd: Math.sqrt(k) };
+}
 const MAX_FRIENDS = 300, MAX_CONVOS = 300, KEEP_DM = 300, DM_LEN = 500, CALL_MAX = 24000, TURN_TTL = 4 * 3600, GROUP_MAX = 15;
 const pad = n => String(n).padStart(10, '0');
 // stars out swear words and slurs (the same list as the chat page's tidy())
@@ -1056,6 +1158,13 @@ export class Directory extends DurableObject {
       if (i < 0) { list.push([n, +b.c || Date.now(), has]); await this.saveNames(); }
       else if (list[i][2] !== has || list[i][0] !== n) { list[i] = [n, list[i][1], has, list[i][3] || 0]; await this.saveNames(); }
       if (route === 'stats') await S.put('u:' + k, { s: b.s || {}, at: Date.now() });
+      return j({ ok: true });
+    }
+    if (route === 'stat1') { // one game's line (Chess's Elo, set by the account itself), the rest kept
+      const u = (await S.get('u:' + k)) || {}, sv = Object.assign({}, u.s || {}, { [String(b.g)]: String(b.v).slice(0, 60) });
+      await S.put('u:' + k, { s: sv, at: Date.now() });
+      if (i < 0) { list.push([n, +b.c || Date.now(), 1]); await this.saveNames(); } else if (!list[i][2]) { list[i][2] = 1; await this.saveNames(); }
+      if (this.topCache) delete this.topCache[String(b.g)];
       return j({ ok: true });
     }
     if (route === 'seen') { if (i >= 0) { list[i][3] = Date.now(); await this.saveNames(); } return j({ ok: true }); }

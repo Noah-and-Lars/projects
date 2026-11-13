@@ -479,8 +479,16 @@ source in Settings → Pages should be switched to `main`.
   leaving an unfinished online game (Leave the table, refresh or closing the page: `pagehide`) costs the leaver a flat
   100 Elo (`leavePenalty`), and the other player gets no change ('resign' with q: 1 = walked out, over.left). One account
   set by the owner (PEN_SPECIAL, stored as char codes) loses 1000 the first two times (`save.lpn`), then 100.
-  2026-11-14 (quiet, no patch note or NEWS): the same account's Elo (and best) is reset to 1000 once (`ELO_FIX`,
-  `eloFix()` on load and at each online game start; flag `save.ef = 'f1'` syncs with the save so it never repeats).
+  1.6.1 (2026-11-14, the owner's request): **the Elo lives on the server, not in the browser.** Each Account object keeps
+  storage key 'chess' {r, rd, at, n, peak, lpn} (worker.js `chessOf`, `chessApply`, `chessGame`; Glicko `glickoOne`,
+  `CHESS`). It was seeded once per account from its leaderboard line at the time (the Players list's chess "Elo N"),
+  except `ELO_FIXED` (char codes) = 1000. GET /acct/chess = your Elo; POST /acct/chess {g: table key + ':' + game number,
+  opp, res 'w'|'l'|'d'|'quit'|'left', n moves} goes to that game's object (`cg:<g>:<both names sorted>` in the ACCOUNTS
+  namespace, header x-arcade-cg): a loss or leaving applies at once, a win/draw/opponent-left only when the other report
+  agrees (half a win when they quit; leaving costs 100, ELO_FIXED's account 1000 the first two times). The Players list's
+  chess line is always rewritten with the server's Elo (profile route + Directory 'stat1'), so editing `chessSave` changes
+  nothing. Admin op 'chessset' {name, r} sets an Elo. In the page, `Elo` (fetch on load and each game start, report in
+  `finish`, keepalive on pagehide) and `save.rating` is only a display copy. Unconfirmed wins stay unrated.
   1.6 (2026-11-14, the owner's request): spectating. The host of each online game tracks it in Presence on
   `<base>-live` ({ id, k: table key, w/b names, wr/br Elo, t }) from `startOnline` until `finish` (`Net.liveOn/liveOff`).
   "📺 Watch live games" (`#specBtn`, the `Spec` block) lists that channel (`Net.listLive`, no tracking) and Spectate joins
