@@ -1318,7 +1318,7 @@ function onlineNow() {
 // ---------- Accounts ----------
 const CONFIRM = {
   ban: n => ({ title: `Ban ${n}?`, text: 'They are signed out everywhere, can’t log in, and leave the Players list. You can unban them later.', ok: 'Ban', danger: true }),
-  rename: (n, to) => ({ title: `Rename ${n} to ${to}?`, text: 'They are signed out and log in with the new name and the same password.', ok: 'Rename' }),
+  rename: (n, to) => ({ title: `Rename ${n} to ${to}?`, text: 'They stay signed in on every device and switch to the new name. Their password stays the same.', ok: 'Rename' }),
   devban: n => ({ title: `Device ban ${n}?`, text: 'The account is banned, and every device it was used on (up to 12) can’t sign up, log in or use any account. Clearing browser data gets round it, so it stops casual ban dodging only.', ok: 'Device ban', danger: true }),
   newcode: n => ({ title: `New recovery code for ${n}?`, text: 'Their old code stops working. Only do this if you’re sure the person asking really owns this account.', ok: 'Make a new code' }),
   delete: n => ({ title: `Delete ${n} for good?`, text: 'The account and all its saved progress are wiped and can’t be brought back. The name becomes free to register again.', ok: 'Delete account', danger: true, typeName: n }),

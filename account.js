@@ -612,7 +612,7 @@
       if (op === 'rename' && !to) { E.textContent = 'Type the new username.'; return; }
       if (op === 'delete' && !confirm('Delete the account ' + n + ' and all its saved progress for good?')) return;
       if (op === 'ban' && !confirm('Ban ' + n + '? They are signed out everywhere, can’t log in, and leave the Players list.')) return;
-      if (op === 'rename' && !confirm('Rename ' + n + ' to ' + to + '? They are signed out and log in with the new name (same password).')) return;
+      if (op === 'rename' && !confirm('Rename ' + n + ' to ' + to + '? They stay signed in on every device and switch to the new name (same password).')) return;
       if (op === 'devban' && !confirm('Device ban ' + n + '? The account is banned, and every device it was used on can\u2019t sign up, log in or use any account any more.')) return;
       if (op === 'newcode' && !confirm('Make a new recovery code for ' + n + '? Their old code stops working.\n\nOnly do this if you\u2019re sure the person asking really owns this account.')) return;
       api('admin', { method: 'POST', auth: me, body: { pw: me ? '' : $('acA').value, op: op, name: n, to: to } }).then(function (r) {
@@ -692,12 +692,12 @@
 
   /* ---------- changing your username (2026-11-11) ----------
      POST /acct/rename {name}: everything (progress, friends, messages, group chats) moves to the new name and this
-     device gets a new sign-in; other devices are signed out. Once a week, except when forced: an account whose name
+     device gets a new sign-in; other devices stay signed in and switch to the new name (2026-11-13). Once a week, except when forced: an account whose name
      the owner gave to someone else is shown this until it picks a new one (forced, no way to close it). */
   function openRename(forced) {
     css();
     overlay('<div class="big">✏️</div><h2>' + (forced ? 'Your username needs to change' : 'Change your username') + '</h2>' +
-      '<p>' + (forced ? 'The name <b>' + esc(name()) + '</b> is going to someone else, so please pick a new one. Your progress, friends, messages and group chats all stay with you.' : 'Your progress, friends, messages and group chats all move to the new name. You can change it once a week, and your other devices will need to log in again.') + '</p>' +
+      '<p>' + (forced ? 'The name <b>' + esc(name()) + '</b> is going to someone else, so please pick a new one. Your progress, friends, messages and group chats all stay with you.' : 'Your progress, friends, messages and group chats all move to the new name. You can change it once a week. Your other devices stay signed in and switch to the new name.') + '</p>' +
       '<form id="acRenF" autocomplete="off"><label for="acN">New username</label><input type="text" id="acN" maxlength="16" spellcheck="false" autocapitalize="off"><div class="hint" id="acNh"></div><div class="err" id="acE"></div><button class="go" id="acGo">Change my username</button></form>', !forced);
     var N = $('acN'), E = $('acE'), go = $('acGo'), t = 0;
     N.addEventListener('input', function () {

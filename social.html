@@ -386,7 +386,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 </main>
 
 <script src="games.js?v=200"></script>
-<script src="account.js?v=21"></script>
+<script src="account.js?v=22"></script>
 <script src="console.js?v=1"></script>
 <script src="call.js?v=6"></script>
 <script>
@@ -1181,7 +1181,7 @@ async function showUser(name) {
     const tool = (label, fn, red) => { const b = el('button', 'btn grey', label); b.type = 'button'; if (red) b.style.color = '#ff8a80'; b.onclick = fn; nmrow.append(b); };
     const say = (r, ok) => { if (r.status === 200) { alert(ok); route(); } else if (r.error !== 'cancel') alert(r.error === 'wrong' ? 'Wrong password.' : r.error === 'protected' ? 'Admin accounts can’t be changed here.' : r.error === 'taken' ? 'That name is taken.' : r.error === 'reserved' || r.error === 'rude' || r.error === 'format' ? 'That name isn’t allowed.' : 'Couldn’t do that (' + (r.error || r.status) + ').'); };
     tool('Admin: remove picture', async () => { const r = await adminCall({ op: 'avatardel', name: r0.n }); if (r.status === 200) { avCache.set(lc(r0.n), ''); saveAv(); document.querySelectorAll('.av[data-n="' + lc(r0.n) + '"]').forEach(sp => paintAv(sp, '')); } else say(r); });
-    tool('Admin: rename', async () => { const to = (prompt('New username for ' + r0.n + ' (they log in with it, same password)') || '').trim(); if (!to) return; const r = await adminCall({ op: 'rename', name: r0.n, to }); say(r, r0.n + ' is now ' + to + '.'); if (r.status === 200) location.hash = '#u=' + encodeURIComponent(to); });
+    tool('Admin: rename', async () => { const to = (prompt('New username for ' + r0.n + ' (they stay signed in, same password)') || '').trim(); if (!to) return; const r = await adminCall({ op: 'rename', name: r0.n, to }); say(r, r0.n + ' is now ' + to + '.'); if (r.status === 200) location.hash = '#u=' + encodeURIComponent(to); });
     tool('Admin: unban', async () => { say(await adminCall({ op: 'unban', name: r0.n }), r0.n + ' can log in again.'); });
     tool('Admin: ban', async () => { if (!confirm('Ban ' + r0.n + '? They are signed out everywhere, can’t log in, and leave the Players list. Their posts stay until you delete them.')) return; say(await adminCall({ op: 'ban', name: r0.n }), r0.n + ' is banned.'); }, true);
   }
