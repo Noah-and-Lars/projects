@@ -1,4 +1,4 @@
-/* The Arcade is moving (2026-11-14, the owner's request): the GitHub Pages address (noah-and-lars.github.io) shuts
+/* The Arcade is moving (2026-11-13, the owner's request): the GitHub Pages address (noah-and-lars.github.io) shuts
    down on November 17 and everyone moves to https://thearcade.pages.dev. This file is loaded by every page and game,
    but it only does anything on the GitHub address: the Cloudflare copy is built from these same files and must never
    show it. On the old address: a banner that stays at the top, and a pop-up when a page opens and again every few

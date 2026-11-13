@@ -1391,7 +1391,7 @@ if (/debug/.test(location.search)) window.__td = { get state() { return state; }
 window.TDN = (() => {
   $('overlay').appendChild($('menu-online')); // the menu lives with the others
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
-  const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
+  const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=3';
   const TEST = (new URLSearchParams(location.search).get('tdroom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
   const BASE = TEST ? 'ctd-test-' + TEST : 'ctd', VER = 1;
   const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';

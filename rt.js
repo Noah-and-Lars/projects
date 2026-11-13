@@ -37,6 +37,38 @@
     };
     if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
   }
+  /* The move (2026-11-13, the owner's request): from 2:30pm Sydney time on 13 November 2026, online play on the old
+     GitHub address (noah-and-lars.github.io) is switched off and every try to go online shows a pop-up with the new
+     site. The Worker refuses those connections too (MOVED_AT in worker.js); this only says why. The Cloudflare copy
+     (thearcade.pages.dev) loads this same file and is never affected. */
+  var MOVED_AT = Date.UTC(2026, 10, 13, 3, 30), NEW_SITE = 'https://thearcade.pages.dev';
+  try { if (window.ARCADE_RT_MOVED_AT) MOVED_AT = +window.ARCADE_RT_MOVED_AT; } catch (e) {} // tests only
+  var OLD_SITE = location.hostname === 'noah-and-lars.github.io';
+  try { if (window.ARCADE_RT_OLD_SITE) OLD_SITE = true; } catch (e) {} // tests only
+  function moved() { return OLD_SITE && Date.now() >= MOVED_AT; }
+  function movedPopup() {
+    var top = window; try { if (window.top !== window && window.top.document) top = window.top; } catch (e) {}
+    var doc = top.document;
+    var show = function () {
+      if (doc.getElementById('rtMoved')) return;
+      var d = doc.createElement('div'); d.id = 'rtMoved';
+      d.style.cssText = 'position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#000b;font:15px/1.45 system-ui,sans-serif;padding:16px';
+      var b = doc.createElement('div');
+      b.style.cssText = 'max-width:400px;width:100%;box-sizing:border-box;padding:22px;border-radius:16px;background:#1b1835;color:#f1effa;text-align:center;border:2px solid #c8342a';
+      var i = doc.createElement('div'); i.textContent = '🚚'; i.style.cssText = 'font-size:38px;line-height:1';
+      var h = doc.createElement('h2'); h.textContent = 'We have moved!'; h.style.margin = '8px 0';
+      var p = doc.createElement('p'); p.textContent = 'Online play has moved over to the new site. Online games no longer work here, so play online at:'; p.style.margin = '0 0 8px';
+      var l = doc.createElement('p'); l.textContent = NEW_SITE; l.style.cssText = 'margin:0 0 10px;font-weight:800;color:#ffd34d;font-size:17px;word-break:break-all';
+      var q = doc.createElement('p'); q.textContent = 'Log in there with your Arcade account and all your progress comes with you. Playing offline still works on this site.'; q.style.margin = '0 0 14px';
+      var a = doc.createElement('a'); a.href = NEW_SITE + '/'; a.target = '_top'; a.textContent = 'Go to the new site';
+      a.style.cssText = 'display:inline-block;padding:10px 18px;border-radius:12px;background:#c8342a;color:#fff;font-weight:800;text-decoration:none;margin:0 6px';
+      var x = doc.createElement('button'); x.textContent = 'Close';
+      x.style.cssText = 'padding:10px 16px;border-radius:12px;border:1px solid #ffffff44;background:none;color:#f1effa;font:inherit;font-weight:700;cursor:pointer;margin:0 6px';
+      x.onclick = function () { d.remove(); };
+      b.appendChild(i); b.appendChild(h); b.appendChild(p); b.appendChild(l); b.appendChild(q); b.appendChild(a); b.appendChild(x); d.appendChild(b); doc.body.appendChild(d);
+    };
+    if (doc.body) show(); else doc.addEventListener('DOMContentLoaded', show);
+  }
   var PING_MS = 25000, DEAD_MS = 120000, JOIN_MS = 10000, BACKOFF = [1000, 2000, 5000, 10000];
   // Saving the server's daily allowance (2026-11-09):
   //  - a tab left in the background for IDLE_MS quietly disconnects every channel (the game isn't told, so nothing
@@ -90,6 +122,12 @@
   Channel.prototype.subscribe = function (cb) {
     if (cb) this.cb = cb;
     if (this.gone || this.ws) return this;
+    if (moved()) { // online play moved to the new site: refuse, and say where to go
+      var me = this;
+      this.state = 'errored';
+      setTimeout(function () { if (!FREE.test(me.subTopic)) movedPopup(); me.emit('CHANNEL_ERROR', new Error('online play has moved to ' + NEW_SITE)); }, 0);
+      return this;
+    }
     if (!FREE.test(this.subTopic) && !hasAccount()) { // no online account: refuse, like a server that can't be reached
       var self = this;
       this.state = 'errored';
@@ -228,6 +266,13 @@
     return Promise.all(all.map(function (c) { return c.unsubscribe(); }));
   };
   Client.prototype.getChannels = function () { return this.channels.slice(); };
+
+  // at the moment of the move, a page that's already online here drops every channel and says why
+  if (OLD_SITE && Date.now() < MOVED_AT && MOVED_AT - Date.now() < 7 * 864e5) setTimeout(function () {
+    var on = live(), any = on.some(function (c) { return !FREE.test(c.subTopic); });
+    on.forEach(function (c) { try { c.state = 'errored'; c.emit('CHANNEL_ERROR', new Error('online play has moved to ' + NEW_SITE)); c.unsubscribe(); } catch (e) {} });
+    if (any) movedPopup();
+  }, MOVED_AT - Date.now() + 500);
 
   window.supabase = {
     arcadeRealtime: true,

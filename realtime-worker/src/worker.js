@@ -39,12 +39,17 @@ export default {
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426 });
     const origin = req.headers.get('Origin') || '';
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('online play is only available on the official website', { status: 403 });
+    if (origin === MOVED_FROM && Date.now() >= MOVED_AT) return new Response('online play has moved to https://thearcade.pages.dev', { status: 403 }); // the move (2026-11-13)
     const topic = url.searchParams.get('topic') || '';
     if (!topic || topic.length > MAX_TOPIC) return new Response('bad topic', { status: 400 });
     return env.ROOMS.get(env.ROOMS.idFromName(topic)).fetch(req);
   },
 };
 
+// The move (2026-11-13, the owner's request): from 2:30pm Sydney time that day, the old GitHub address gets no online
+// play at all: new connections are refused above, and a socket opened from there before is closed on its next message.
+// The site itself (accounts, saves, chat) keeps working there, so progress can still sync before people move.
+const MOVED_FROM = 'https://noah-and-lars.github.io', MOVED_AT = Date.UTC(2026, 10, 13, 3, 30);
 export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -59,7 +64,7 @@ export class Room extends DurableObject {
     const pair = new WebSocketPair();
     const ws = pair[1];
     this.ctx.acceptWebSocket(ws);
-    ws.serializeAttachment({ key, ref: crypto.randomUUID().slice(0, 8), at: Date.now(), meta: null });
+    ws.serializeAttachment({ key, ref: crypto.randomUUID().slice(0, 8), at: Date.now(), meta: null, old: req.headers.get('Origin') === MOVED_FROM ? 1 : 0 });
     ws.send('{"t":"joined"}');
     ws.send(JSON.stringify({ t: 'state', s: this.state() }));
     return new Response(null, { status: 101, webSocket: pair[0] });
@@ -67,6 +72,7 @@ export class Room extends DurableObject {
 
   async webSocketMessage(ws, data) {
     if (typeof data !== 'string' || data.length > MAX_MSG) return;
+    if (Date.now() >= MOVED_AT && (ws.deserializeAttachment() || {}).old) { try { ws.close(4001, 'moved'); } catch (e) {} return; }
     let m; try { m = JSON.parse(data); } catch (e) { return; }
     if (m.t === 'b') {
       const out = JSON.stringify({ t: 'b', e: String(m.e || ''), p: m.p === undefined ? {} : m.p });
@@ -490,7 +496,7 @@ export class Account extends DurableObject {
     if (route === 'admindevflag') { if (body.on) a.devban = { at: now }; else delete a.devban; await S.put('acct', a); return j({ ok: 1 }); }
     if (route === 'adminunban') { delete a.banned; await S.put('acct', a); await dirCall(this.env, 'add', { n: a.name, c: a.created }).catch(() => null); return j({ unbanned: true, name: a.name }); }
     if (route === 'adminrename') return this.renameTo(a, { name: body && body.to }, j, now, true);
-    if (route === 'adminchess') { // 2026-11-14: set a player's Chess Elo (it lives here since Chess 1.6.1)
+    if (route === 'adminchess') { // 2026-11-13: set a player's Chess Elo (it lives here since Chess 1.6.1)
       const r = Math.round(+(body && body.r)); if (!isFinite(r) || r < 0 || r > 4000) return j({ error: 'bad' }, 400);
       const c = await this.chessOf(a); c.r = r; c.peak = r; c.at = now; await this.chessSave(a, c); return j({ name: a.name, elo: r });
     }
@@ -861,7 +867,7 @@ export class Account extends DurableObject {
     await clipIndex(this.env, '').fetch(new Request('https://clips/purge', { method: 'POST', body: JSON.stringify({ int: 1, from: a.name }) })).catch(() => null);
     for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'deleted'); } catch (e) {}
   }
-  /* ---------- Chess Elo (1.6.1, 2026-11-14) ----------
+  /* ---------- Chess Elo (1.6.1, 2026-11-13) ----------
      The Elo lives here (storage key 'chess' {r, rd, at, n, peak, lpn}), not in the player's browser. It started from the number on
      the leaderboard (the Players list's chess line) the first time this account was asked, except ELO_FIXED (1000).
      GET /acct/chess: your Elo. POST /acct/chess {g, opp, res, n}: a game's result, res 'w' | 'l' | 'd' | 'quit' (you left)
@@ -966,7 +972,7 @@ const RENAME_NAMES = ['lars'], RENAME_BEFORE = 1794280371000;
 const mustRename = a => RENAME_NAMES.includes(String(a.name || '').toLowerCase()) && (a.created || 0) < RENAME_BEFORE;
 // Chess Elo (1.6.1): Glicko like chess.com, the same numbers Chess 1.5.1 used in the browser
 const CHESS = { start: 2000, rd0: 350, rdMin: 30, c: 18, floor: 0 };
-const ELO_FIXED = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000]; // the owner's request (2026-11-14): starts at 1000
+const ELO_FIXED = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000]; // the owner's request (2026-11-13): starts at 1000
 const CGQ = Math.log(10) / 400, cgRD = rd => 1 / Math.sqrt(1 + 3 * CGQ * CGQ * rd * rd / (Math.PI * Math.PI));
 const chessRd = (c, t) => { const days = c.at ? Math.max(0, (t - c.at) / 864e5) : 0; return Math.min(CHESS.rd0, Math.sqrt(c.rd * c.rd + CHESS.c * CHESS.c * days)); };
 function glickoOne(r, rd, ro, rdo, s) {

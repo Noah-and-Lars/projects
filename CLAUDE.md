@@ -6,7 +6,13 @@ from jimmyscafe/projects). That address comes from the GitHub account name;
 apart from it, no personal names appear anywhere on the site (pages, games,
 credits, comments, images). Keep it that way.
 
-Moving notice (2026-11-14, the owner's request): `moving.js` (loaded before `</body>` by every root page, admin/ and every
+Online cut-off on the old address (2026-11-13, the owner's request): from 2:30pm Sydney time that day
+(MOVED_AT = Date.UTC(2026, 10, 13, 3, 30), in both rt.js and worker.js) no game can go online from
+noah-and-lars.github.io: the Worker refuses /ws from that Origin and closes older sockets from it on their next message
+(Room attachment `old`), and rt.js (?v=3) refuses every channel there with a "We have moved!" pop-up (none for the
+'online:arcade' counter) and drops channels already open at that moment. Accounts, saves and chat still work there so
+progress can sync. thearcade.pages.dev is never affected.
+Moving notice (2026-11-13, the owner's request): `moving.js` (loaded before `</body>` by every root page, admin/ and every
 game folder's index.html; 404.html uses /projects/moving.js) shows a fixed red banner and a pop-up (on open and every 4
 minutes) saying the site moves to https://thearcade.pages.dev and this one shuts down on November 17, progress migrating
 with the Arcade account. It only runs when location.hostname is noah-and-lars.github.io, so the Cloudflare copy never
@@ -485,7 +491,7 @@ source in Settings → Pages should be switched to `main`.
   leaving an unfinished online game (Leave the table, refresh or closing the page: `pagehide`) costs the leaver a flat
   100 Elo (`leavePenalty`), and the other player gets no change ('resign' with q: 1 = walked out, over.left). One account
   set by the owner (PEN_SPECIAL, stored as char codes) loses 1000 the first two times (`save.lpn`), then 100.
-  1.6.1 (2026-11-14, the owner's request): **the Elo lives on the server, not in the browser.** Each Account object keeps
+  1.6.1 (2026-11-13, the owner's request): **the Elo lives on the server, not in the browser.** Each Account object keeps
   storage key 'chess' {r, rd, at, n, peak, lpn} (worker.js `chessOf`, `chessApply`, `chessGame`; Glicko `glickoOne`,
   `CHESS`). It was seeded once per account from its leaderboard line at the time (the Players list's chess "Elo N"),
   except `ELO_FIXED` (char codes) = 1000. The first /acct/top?g=chess after the deploy seeded every listed chess player at
@@ -496,7 +502,7 @@ source in Settings → Pages should be switched to `main`.
   chess line is always rewritten with the server's Elo (profile route + Directory 'stat1'), so editing `chessSave` changes
   nothing. Admin op 'chessset' {name, r} sets an Elo. In the page, `Elo` (fetch on load and each game start, report in
   `finish`, keepalive on pagehide) and `save.rating` is only a display copy. Unconfirmed wins stay unrated.
-  1.6 (2026-11-14, the owner's request): spectating. The host of each online game tracks it in Presence on
+  1.6 (2026-11-13, the owner's request): spectating. The host of each online game tracks it in Presence on
   `<base>-live` ({ id, k: table key, w/b names, wr/br Elo, t }) from `startOnline` until `finish` (`Net.liveOn/liveOff`).
   "📺 Watch live games" (`#specBtn`, the `Spec` block) lists that channel (`Net.listLive`, no tracking) and Spectate joins
   the table channel with `s: 1` in Presence (`Net.spectate`): the players leave `s` members out of everything
@@ -506,7 +512,7 @@ source in Settings → Pages should be switched to `main`.
   touches `save` (no Elo, record or saved game). Test with three origins (two players + a watcher) and a copy of the
   page that sets `window.ARCADE_RT_URL` before loading /rt.js (rt.js honours it), against a local wrangler dev.
 
-- `gamble-your-life-away/`: Gamble Your Life Away, a 3D casino (save `gambleLifeSave`). 1.2 (2026-11-14): an all-time
+- `gamble-your-life-away/`: Gamble Your Life Away, a 3D casino (save `gambleLifeSave`). 1.2 (2026-11-13): an all-time
   leaderboard (`Board`, menu `#m-board`, "🏆 Leaderboard" on the main and pause menus) from `/acct/top?g=gamble-your-life-away`,
   ranked by the number in each account's games.js `stat()` line ("Richest $N", the save's `peak`); your own row uses this
   device's peak when it's higher; same amount shares a place; cached 2 minutes in sessionStorage. No Worker change.
