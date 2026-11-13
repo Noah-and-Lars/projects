@@ -3698,5 +3698,6 @@ function openPatch() {
 document.fonts && document.fonts.ready.then(() => { for (const k in PORTRAIT) delete PORTRAIT[k]; if (PAGE !== 'battle') renderPage(); });
 addEventListener('visibilitychange', () => { if (!document.hidden && !BT) { dailyReset(); renderAll(); } });
 </script>
+<script src="../moving.js?v=1"></script>
 </body>
 </html>

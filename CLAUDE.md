@@ -6,6 +6,12 @@ from jimmyscafe/projects). That address comes from the GitHub account name;
 apart from it, no personal names appear anywhere on the site (pages, games,
 credits, comments, images). Keep it that way.
 
+Moving notice (2026-11-14, the owner's request): `moving.js` (loaded before `</body>` by every root page, admin/ and every
+game folder's index.html; 404.html uses /projects/moving.js) shows a fixed red banner and a pop-up (on open and every 4
+minutes) saying the site moves to https://thearcade.pages.dev and this one shuts down on November 17, progress migrating
+with the Arcade account. It only runs when location.hostname is noah-and-lars.github.io, so the Cloudflare copy never
+shows it (do not change that check), and frames inside play.html skip it. "Go to the new site" keeps the same page.
+
 Cloudflare Pages copy (2026-11-13): https://thearcade.pages.dev is the same site from the same files, on the owner's
 Cloudflare account (Pages project `thearcade`). Publish it with `tools/pages-deploy.sh` (needs `npx wrangler login`; it
 serves the site at the root, so the script rewrites 404.html's /projects/ paths and points the games' rt.js at the copy's
