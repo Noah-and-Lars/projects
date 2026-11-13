@@ -120,7 +120,7 @@
 </div>
 
 <script src="games.js?v=200"></script>
-<script src="account.js?v=20"></script>
+<script src="account.js?v=21"></script>
 <script src="console.js?v=1"></script>
 <script src="call.js?v=6"></script>
 <script>
@@ -133,6 +133,10 @@ const $ = id => document.getElementById(id);
 const ROOM = (new URLSearchParams(location.search).get('chatroom') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
 const PREFIX = ROOM ? 'arcade-chat-test-' + ROOM + '-' : 'arcade-chat-';
 const ADMIN = /[?&]admin\b/.test(location.search);
+// 2026-11-13: signed-in admin accounts (the server's ADMIN_ACCOUNTS) get Delete on every message without the password;
+// the server checks the account the socket signed in as. amAdmin is set from 'hello'.
+const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude'];
+let amAdmin = false;
 const MAX_LEN = 200, NAME_LEN = 20;
 
 const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(PREFIX + k)); return v == null ? d : v; } catch (e) { return d; } };
@@ -208,7 +212,7 @@ function row(m, cont) {
   if (!m.a) { const g = document.createElement('em'); g.className = 'guest'; g.textContent = 'guest'; head.append(g); }
   head.append(time);
   if (!mine) head.append(muteButton(m.u, m.n));
-  if (ADMIN) { const d = document.createElement('button'); d.type = 'button'; d.className = 'mute'; d.textContent = 'Delete'; d.onclick = () => adminDelete(m); head.append(d); }
+  if (ADMIN || amAdmin) { const d = document.createElement('button'); d.type = 'button'; d.className = 'mute'; d.textContent = 'Delete'; d.onclick = () => adminDelete(m); head.append(d); }
   p.textContent = m.t;
   if (cont) div.title = m.n + ' · ' + clock(m.ts);
   body.append(head, p);
@@ -364,6 +368,7 @@ function connect() {
     if (m.t === 'hello') {
       joined = true; broken = false; tries = 0;
       me = m.you.u;
+      amAdmin = !!(m.you.a && ADMIN_ACCOUNTS.includes(String(m.you.u).slice(2)));
       if (m.you.a) name = m.you.n;
       $('meBtn').textContent = name || 'Pick a name';
       log = (m.log || []).map(clean).filter(Boolean); keep();
@@ -378,6 +383,7 @@ function connect() {
       if (document.hidden && !muted[x.u] && x.u !== me) document.title = '(' + ++unread + ') ' + TITLE;
     } else if (m.t === 'who') { who = m.who || []; people(); }
     else if (m.t === 'del') { log = log.filter(x => x.id !== m.id); keep(); render(); }
+    else if (m.t === 'banned') { if (pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); } flash('That link isn’t allowed in the chat.'); }
     else if (m.t === 'slow') { if (pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); } flash('Slow down a little.'); }
   };
   s.onclose = () => { if (ws === s) dropped(); };
@@ -420,6 +426,12 @@ function flash(text) {
 // The owner's tools (?admin): take a message out of the chat for everyone
 let adminPw = '';
 function adminDelete(m) {
+  if (amAdmin) { // a signed-in admin account: straight over the chat socket
+    if (!confirm('Delete this message for everyone?\n\n' + m.n + ': ' + m.t)) return;
+    if (!ws || !joined) { alert('Not connected. Try again in a moment.'); return; }
+    try { ws.send(JSON.stringify({ t: 'del', id: m.id })); } catch (e) { alert('Couldn’t delete it. Check your connection.'); }
+    return;
+  }
   if (!adminPw) adminPw = prompt('Admin password') || '';
   if (!adminPw || !confirm('Delete this message for everyone?\n\n' + m.n + ': ' + m.t)) return;
   ArcadeAccount.api('admin', { method: 'POST', body: { pw: adminPw, op: 'chatdel', id: m.id } }).then(r => { if (r.status !== 200) { adminPw = ''; alert(r.error === 'wrong' ? 'Wrong password.' : 'Couldn’t delete it (' + (r.error || r.status) + ').'); } });
@@ -428,6 +440,9 @@ function adminDelete(m) {
 // New messages while the tab is in the background show as a count in its title
 const TITLE = document.title;
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { unread = 0; document.title = TITLE; } });
+
+// 2026-11-13: the account got a new name (an admin renamed it): join again under it
+if (window.ArcadeAccount && ArcadeAccount.onLive) ArcadeAccount.onLive(m => { if (m.t === 'renamed' && m.name) { name = m.name; tries = 0; connect(); } });
 
 ArcadeOnline.start('chat'); // so the home page's chat tab can show how many are here
 

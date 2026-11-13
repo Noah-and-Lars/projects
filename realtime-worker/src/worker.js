@@ -297,8 +297,19 @@ export class Account extends DurableObject {
     if (req.headers.get('x-arcade-move') === '1') return this.moveIn(body || {}, j, now);
     let a = await S.get('acct');
     if (route === 'check') return j(a && a.kn ? { free: false, kn: a.kn } : { free: !a }); // kn: the name the password key was made with (2026-11-11)
-    // an account that moved to a new name (renameTo): its old devices are signed out, so they log in again with the new name
-    if (!a && !['signup', 'login', 'recover'].includes(route) && await S.get('moved')) return j({ error: 'auth' }, 401);
+    // an account that moved to a new name (renameTo). Since 2026-11-13 ('keep') its devices stay signed in: their old
+    // token (old name + random part) is passed on to the new name's object, which checks the part against its sessions,
+    // and account.js swaps in the new name when sync answers (or the live socket says 'renamed'). Older moves sign out.
+    if (!a && !['signup', 'login', 'recover'].includes(route)) {
+      const mv = await S.get('moved');
+      if (mv && mv.keep && NAME_RE.test(mv.to || '')) {
+        const part = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').split('.')[1] || '';
+        if (!part) return j({ error: 'auth' }, 401);
+        const h = new Headers(req.headers); h.set('authorization', 'Bearer ' + mv.to + '.' + part);
+        return this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('u:' + mv.to.toLowerCase())).fetch(new Request('https://acct/' + route + url.search, { method: req.method, headers: h, body: body ? JSON.stringify(body) : undefined }));
+      }
+      if (mv) return j({ error: 'auth' }, 401);
+    }
     if (route === 'signup') {
       if (a) return j({ error: 'taken' }, 409);
       if (!KEY_RE.test(body.key || '')) return j({ error: 'bad' }, 400);
@@ -752,7 +763,9 @@ export class Account extends DurableObject {
      The owner gave a name to someone else (RENAME_NAMES: accounts with that name made before RENAME_BEFORE). Such an
      account is asked once (sync's mustRename) to pick a new name; everything moves to the new name's object
      ('x-arcade-move', in batches), the Players list and everyone it knows (friends, chats, groups: 'p-rename') get the new
-     name, this device gets a new token, and the old object keeps only 'moved' so its other devices are signed out. */
+     name, this device gets a new token, and the old object keeps only 'moved' {to, keep}. Every signed-in device keeps
+     working (2026-11-13: an admin renaming a player no longer signs them out): the sessions move with the account, the
+     old object passes old tokens on, and the live sockets are told { t: 'renamed', name } before they close. */
   async renameTo(a, body, j, now, byAdmin) {
     // anyone can change their name (2026-11-11), once a week; a forced change (or the owner's) is always allowed
     if (!byAdmin && !mustRename(a) && a.renamedAt && now - a.renamedAt < 7 * 864e5) return j({ error: 'slow', wait: Math.ceil((a.renamedAt + 7 * 864e5 - now) / 864e5) }, 429);
@@ -766,7 +779,7 @@ export class Account extends DurableObject {
     for (let i = 0; i < all.length; i += 100) if (await move({ e: all.slice(i, i + 100) }) !== 200) return j({ error: 'failed' }, 502);
     if (!a.kn) a.kn = old.toLowerCase(); // the password key was stretched with the old name: keep using it until the password changes
     a.name = nn; a.listed = 1; a.renamedAt = now;
-    const token = await this.session(a);
+    const token = byAdmin ? '' : await this.session(a); // an admin's rename adds no session (the player's own carry over)
     if (await move({ e: [['acct', a]], end: 1 }) !== 200) return j({ error: 'failed' }, 502);
     // the Players list, with the scores carried over
     const prof = await (await dirCall(this.env, 'get?name=' + encodeURIComponent(old))).json().catch(() => ({}));
@@ -780,9 +793,10 @@ export class Account extends DurableObject {
     names.delete(old); names.delete(nn);
     await Promise.all([...names].slice(0, 600).map(n => peerCall(this.env, n, 'p-rename', { from: old, to: nn }).catch(() => null)));
     await clipIndex(this.env, '').fetch(new Request('https://clips/rename', { method: 'POST', body: JSON.stringify({ int: 1, from: old, to: nn }) })).catch(() => null);
-    for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'renamed'); } catch (e) {}
-    await S.deleteAll(); await S.put('moved', { to: nn, at: now });
-    return j({ token, name: nn });
+    const note = JSON.stringify({ t: 'renamed', name: nn, from: old, admin: byAdmin ? 1 : 0 });
+    for (const ws of this.ctx.getWebSockets()) try { ws.send(note); ws.close(1000, 'renamed'); } catch (e) {}
+    await S.deleteAll(); await S.put('moved', { to: nn, at: now, keep: 1 });
+    return j(token ? { token, name: nn } : { name: nn });
   }
   // the new name's object, filled in by renameTo()
   async moveIn(b, j, now) {
@@ -857,6 +871,10 @@ function chatSocket(req, env, url) {
 }
 
 const CHAT_KEEP = 150, CHAT_LEN = 200, CHAT_MAX = 1000;
+// links the owner banned from the Global chat (2026-11-13: another games site). Checked with spaces, dots and
+// look-alike characters taken out, so 'playforge-3pb . pages . dev' or 'p l a y f o r g e' is caught too.
+const CHAT_BANNED = ['playforge'];
+const chatBanned = t => { const s = String(t || '').toLowerCase().normalize('NFKD').replace(/[0]/g, 'o').replace(/[1!|]/g, 'l').replace(/[^a-z]/g, ''); return CHAT_BANNED.some(w => s.includes(w)); };
 // One room's chat. The newest CHAT_KEEP messages are one stored value ('log'), so waking up costs one read and
 // each message one write. Everyone connected is the "In the chat" list.
 export class Chat extends DurableObject {
@@ -865,15 +883,20 @@ export class Chat extends DurableObject {
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     this.log = null;
   }
-  async getLog() { if (!this.log) this.log = (await this.ctx.storage.get('log')) || []; return this.log; }
+  async getLog() { if (!this.log) this.log = ((await this.ctx.storage.get('log')) || []).filter(m => !chatBanned(m.t)); return this.log; }
+  async delMsg(id) {
+    const log = await this.getLog(), i = log.findIndex(m => m.id === id);
+    if (i < 0) return false;
+    log.splice(i, 1); await this.ctx.storage.put('log', log);
+    this.all({ t: 'del', id });
+    return true;
+  }
   async fetch(req) {
     const url = new URL(req.url), now = Date.now();
     if (url.pathname === '/del') { // the owner's tools (admin() in the Worker)
       if (req.headers.get('x-arcade-int') !== '1') return new Response('{}', { status: 403 });
-      const b = await req.json().catch(() => ({})), log = await this.getLog(), i = log.findIndex(m => m.id === b.id);
-      if (i < 0) return new Response('{"error":"not_found"}', { status: 404 });
-      log.splice(i, 1); await this.ctx.storage.put('log', log);
-      this.all({ t: 'del', id: b.id });
+      const b = await req.json().catch(() => ({}));
+      if (!(await this.delMsg(String(b.id || '')))) return new Response('{"error":"not_found"}', { status: 404 });
       return new Response('{"deleted":true}');
     }
     this.sweep();
@@ -900,13 +923,17 @@ export class Chat extends DurableObject {
   async webSocketMessage(ws, data) {
     if (typeof data !== 'string' || data.length > 2000) return;
     let m; try { m = JSON.parse(data); } catch (e) { return; }
-    if (!m || m.t !== 'say') return;
+    if (!m) return;
     const a = ws.deserializeAttachment() || {}, now = Date.now();
+    // 2026-11-13: a signed-in admin account (checked by its token when the socket opened) deletes a message for everyone
+    if (m.t === 'del') { if (a.a && ADMIN_ACCOUNTS.includes(String(a.u).slice(2))) await this.delMsg(String(m.id || '').slice(0, 20)); return; }
+    if (m.t !== 'say') return;
     a.sent = (a.sent || []).filter(x => now - x < 10000);
     const k = String(m.k || '').slice(0, 20);
     if (a.sent.length >= 5) { try { ws.send(JSON.stringify({ t: 'slow', k })); } catch (e) {} return; }
     const text = plain(m.text).slice(0, CHAT_LEN);
     if (!text) return;
+    if (chatBanned(text)) { try { ws.send(JSON.stringify({ t: 'banned', k })); } catch (e) {} return; }
     a.sent.push(now); ws.serializeAttachment(a);
     const log = await this.getLog();
     const msg = { id: rnd(6), u: a.u, n: a.n, a: a.a, t: text, ts: Math.max(now, log.length ? log[log.length - 1].ts + 1 : 0) };

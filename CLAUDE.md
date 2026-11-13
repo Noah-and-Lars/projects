@@ -56,7 +56,12 @@ source in Settings → Pages should be switched to `main`.
   (id `a:<lower>`, links to their profile); others are guests (`g:<chat id>`, tagged "guest"). Message text in the
   chat and in DMs is NOT swear-filtered (the owner asked for uncensored chats, 2026-11-06); names still are, and all
   text is shown with textContent only. 5 messages in 10 s per connection (server-checked). Mute and "Hide the chat
-  history" are per device. `?admin` adds Delete (admin password; `/acct/admin` op `chatdel`). A local copy for
+  history" are per device. `?admin` adds Delete (admin password; `/acct/admin` op `chatdel`). Signed-in admin accounts
+  (ADMIN_ACCOUNTS, 2026-11-13) get Delete on every message without `?admin`: chat.html sends { t: 'del', id } on the chat
+  socket and the Chat object deletes only if the socket signed in (token checked on connect) as an admin account; the
+  'del' broadcast removes it everywhere. Banned links (2026-11-13, `CHAT_BANNED` in worker.js, now 'playforge', another
+  games site): a message whose letters (spaces, dots, digits taken out) contain one is refused with { t: 'banned' }
+  ("That link isn't allowed in the chat."), and old ones drop out of the log when the room wakes. A local copy for
   offline display is `arcade-chat-srv-log`. `?chatroom=<name>` is a test room (`chat:test-<name>`): test there.
 - `players.html` (2026-11-06): every account (`/acct/players`, the `Directory` object: [[name, created, hasScores]]),
   search, and All / Friends / Requests / Chats. A profile (`#p=<name>`, `/acct/player`) shows the best in every game:
@@ -130,7 +135,13 @@ source in Settings → Pages should be switched to `main`.
 - Username changes (2026-11-11): the account panel's "Change username" (account.js `openRename`) calls `/acct/rename`;
   `Account.renameTo` copies every stored key to the new name's object (header 'x-arcade-move', `moveIn`, in batches),
   moves the Players list entry and scores, tells everyone it knows ('p-rename': friends, blocks, chat history keys,
-  group members), gives this device a new token and leaves 'moved' behind so old devices get 401 (signed out). Once a
+  group members), gives this device a new token and leaves 'moved' {to, keep} behind. Since 2026-11-13 nobody is signed
+  out by a rename (the owner's request, for admin renames; self-renames share it): the sessions move with the account
+  (an admin rename adds none), the old name's object passes any request with an old token (`old.part`) on to the new
+  name's object as `new.part` (which checks the part as usual; chains of renames work), the live `/acct/ws` sockets get
+  { t: 'renamed', name, admin } before they close, and account.js `renamed()` swaps `arcade-acct` to the new name with
+  the same random part (also when sync answers a different `name`), reconnects, tells onLive() listeners (chat.html
+  joins again) and, for an admin rename, shows a toast. Moves from before that (no `keep`) still sign out. Once a
   week (`a.renamedAt`). Forced: `RENAME_NAMES`/`RENAME_BEFORE` (the lars account made 2026-11-09, whose name the owner
   gave to a friend) makes sync answer `mustRename`, and account.js shows the rename popup with no way to close it.
 - Group chats and bigger calls (2026-11-11): group chats of up to 15 (`GROUP_MAX`) are conversations 'g~<id>' in every

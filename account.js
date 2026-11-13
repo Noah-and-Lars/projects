@@ -211,6 +211,7 @@
           return settle(g, d, s).then(function (y) { if (y === 'down') pulled.push(g); });
         });
       });
+      if (meta.name && meta.name !== acct.name) renamed(meta.name, false);
       if (meta.mustRename && !$('acRenF')) openRename(true); // 2026-11-11: this account's name went to someone else
       return chain.then(function () {
         saveSync(); state.last = Date.now(); setStatus('ok');
@@ -276,7 +277,7 @@
   }
   function liveConnect() {
     if (inShell) {
-      if (!shellHooked) { shellHooked = true; var alive = true; addEventListener('pagehide', function () { alive = false; }); shellTop().ArcadeAccount.onLive(function (m) { if (alive) liveHandlers.forEach(function (f) { try { f(m); } catch (e) {} }); }); }
+      if (!shellHooked) { shellHooked = true; var alive = true; addEventListener('pagehide', function () { alive = false; }); shellTop().ArcadeAccount.onLive(function (m) { if (alive && m.t === 'renamed') renamed(m.name, false); if (alive) liveHandlers.forEach(function (f) { try { f(m); } catch (e) {} }); }); }
       return;
     }
     if (liveIdle) return;
@@ -293,6 +294,7 @@
       heard = Date.now();
       if (ev.data === 'pong') return;
       var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.t === 'renamed' && m.name) { renamed(m.name, m.admin); return; }
       liveHandlers.forEach(function (f) { try { f(m); } catch (e) {} });
       var c = social || { req: 0, un: 0 };
       if (m.t === 'dm' && m.m && !m.m.f) {
@@ -318,6 +320,20 @@
       if (Date.now() - heard > 120000) { try { s.close(); } catch (e) {} return; }
       if (s.readyState === 1) try { s.send('ping'); } catch (e) {}
     }, 25000);
+  }
+  /* 2026-11-13: this account got a new name (an admin renamed it, or it was renamed on another device). The sign-in
+     stays: the server moved the sessions with the account, so the token is just the new name with the same random part.
+     The live socket reconnects as the new name, and pages listening through onLive() get { t: 'renamed', name }. */
+  function renamed(n, byAdmin) {
+    if (!acct || !n || n === acct.name || !/^[A-Za-z0-9_]{3,16}$/.test(n)) return;
+    var part = String(acct.token).split('.')[1] || '', old = acct.name;
+    if (!part) return;
+    setAcct({ name: n, token: n + '.' + part }, false);
+    try { localStorage.removeItem('arcade-acct-prof'); } catch (e) {}
+    if (live && !inShell) { var o = live; live = null; liveTok = ''; clearInterval(livePing); try { o.close(); } catch (e) {} }
+    liveConnect();
+    liveHandlers.forEach(function (f) { try { f({ t: 'renamed', name: n, from: old }); } catch (e) {} });
+    if (byAdmin) toast('Admin', '🛡️ changed your username to ' + n, 'players.html#p=' + encodeURIComponent(n));
   }
   // a pop-up in the top right; other players' text only ever goes in with textContent
   function toast(who, text, href) {
