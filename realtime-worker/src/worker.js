@@ -156,7 +156,8 @@ const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gametester|imacheater|^system$|^support$|^server$|^null$|^undefined$|^guest$|^anonymous$/;
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
-const ADMIN_HASH = '899ba39fe0b4ce0b8d4994cf7449cc63c2a8ade12fa77e590cfaf5999256ccf2';
+// The admin password (2026-11-13): only its SHA-256 is kept, as the Worker secret ADMIN_PW_HASH (npx wrangler secret put
+// ADMIN_PW_HASH), so it isn't in this public file. With no secret set, the password works nowhere (admin accounts still do).
 const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat', 'chess']; // what a browser may ask an account for
 const HB_CHEATERS = ['noah', 'archiemccarthy', 'lars']; // Havoc Bay cheat menu accounts
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
@@ -234,7 +235,7 @@ const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).in
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset', 'check'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -248,6 +249,7 @@ async function admin(env, body, out, auth) {
     const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
     if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
   }
+  if (op === 'check') return out({ ok: 1, who: who || '' }); // the admin console's sign-in: is this password (or admin account) good?
   if (op === 'noticeget' || op === 'noticeset' || op === 'noticeclear') { // the site announcement (see siteNotice)
     let n = null;
     if (op === 'noticeset') { n = cleanNotice(body, who); if (!n) return out({ error: 'bad' }, 400); }
@@ -452,7 +454,8 @@ export class Account extends DurableObject {
     if (route === 'guard') {
       const g = (await S.get('guard')) || { fails: 0, lockUntil: 0 };
       if (g.lockUntil > now) return j({ error: 'locked', wait: Math.ceil((g.lockUntil - now) / 1000) }, 429);
-      if (!same(await sha(String(body.pw || '')), ADMIN_HASH)) { g.fails++; if (g.fails >= 5) { g.fails = 0; g.lockUntil = now + 15 * 60 * 1000; } await S.put('guard', g); return j({ error: 'wrong' }, 401); }
+      if (!this.env.ADMIN_PW_HASH) return j({ error: 'not_set' }, 503);
+      if (!same(await sha(String(body.pw || '')), String(this.env.ADMIN_PW_HASH).trim().toLowerCase())) { g.fails++; if (g.fails >= 5) { g.fails = 0; g.lockUntil = now + 15 * 60 * 1000; } await S.put('guard', g); return j({ error: 'wrong' }, 401); }
       if (g.fails) { g.fails = 0; await S.put('guard', g); }
       return j({ ok: true });
     }

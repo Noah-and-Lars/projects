@@ -18,6 +18,13 @@ minutes) saying the site moves to https://thearcade.pages.dev and this one shuts
 with the Arcade account. It only runs when location.hostname is noah-and-lars.github.io, so the Cloudflare copy never
 shows it (do not change that check), and frames inside play.html skip it. "Go to the new site" keeps the same page.
 
+Admin password (2026-11-13): the Worker no longer has the admin password's hash in its source. It checks the secret
+ADMIN_PW_HASH (SHA-256 of the password; set with `npx wrangler secret put ADMIN_PW_HASH` in realtime-worker/). The old
+ADMINTEST password no longer works for the admin tools (?admin, chat Delete, the console); Cube Assault's ADMINTEST and
+Havoc Bay's tester key are separate, in-game checks and still use the old hash. The admin console (admin/) shows a
+sign-in screen on the arcade's addresses and opens only after the admin op 'check' accepts the password (kept for the
+tab in sessionStorage 'arcadeops.pw'; Lock clears it). Admin accounts still skip the password in account.js and chat.
+
 Cloudflare Pages copy (2026-11-13): https://thearcade.pages.dev is the same site from the same files, on the owner's
 Cloudflare account (Pages project `thearcade`). Publish it with `tools/pages-deploy.sh` (needs `npx wrangler login`; it
 serves the site at the root, so the script rewrites 404.html's /projects/ paths and points the games' rt.js at the copy's

@@ -333,12 +333,36 @@ table.data tr.sel td { background: var(--accent-soft); }
 .nt-banner b { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; font-weight: 700; }
 textarea.inp { resize: vertical; font: inherit; line-height: 1.4; }
 .count-note { font-size: 11.5px; color: var(--muted); text-align: right; }
+/* Sign-in screen (2026-11-13): the whole console stays hidden until the admin password checks out */
+.gate { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: var(--bar); }
+.gate-box { width: min(380px, 100%); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 4px; padding: 22px; display: grid; gap: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, .4); }
+.gate-brand { display: flex; align-items: center; gap: 10px; font-family: var(--brand); font-size: 17px; letter-spacing: .04em; }
+.gate-brand svg { width: 26px; height: 26px; }
+.gate h1 { margin: 0; font-size: 18px; }
+.gate p { margin: 0; color: var(--muted); font-size: 13px; }
+body.locked .topbar, body.locked .frame { display: none; }
 @media (max-width: 760px) { .chat-wrap { grid-template-columns: minmax(0, 1fr); } .chat-list { height: 380px; } }
 
 .scan-bar { height: 6px; background: var(--panel-head); border-radius: 3px; overflow: hidden; margin: 4px 0 8px; }
 .scan-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 </style>
 
+<div class="gate" id="gate" hidden>
+  <form class="gate-box" id="gateForm" autocomplete="off">
+    <div class="gate-brand"><svg viewBox="0 0 26 26" aria-hidden="true"><rect x="2" y="2" width="22" height="22" rx="4" fill="#6c5ce7"/><rect x="6" y="9" width="14" height="8" rx="2" fill="#1e252d"/><circle cx="10" cy="13" r="2" fill="#00d2a8"/><rect x="14" y="12" width="4" height="2" rx="1" fill="#f1effa"/></svg>ARCADE OPS</div>
+    <h1>Admin sign-in</h1>
+    <p>Enter the admin password to open the console.</p>
+    <label class="field" for="gatePw" style="font-size:12px;font-weight:600;color:var(--muted)">Admin password</label>
+    <input class="inp" type="password" id="gatePw" autocomplete="current-password" spellcheck="false">
+    <div class="msg-line" id="gateMsg"></div>
+    <button class="btn primary" type="submit" id="gateGo">Open console</button>
+    <p>5 wrong tries lock the password for 15 minutes.</p>
+  </form>
+</div>
+<script>
+// on the arcade's own addresses, cover everything until the password is checked (sample previews elsewhere stay open)
+if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'].includes(location.origin)) { document.body.classList.add('locked'); document.getElementById('gate').hidden = false; }
+</script>
 <header class="topbar">
   <a class="brand" href="#dashboard" aria-label="Arcade Ops Console home">
     <svg viewBox="0 0 26 26" aria-hidden="true"><rect x="2" y="2" width="22" height="22" rx="4" fill="#6c5ce7"/><rect x="6" y="9" width="14" height="8" rx="2" fill="#1e252d"/><circle cx="10" cy="13" r="2" fill="#00d2a8"/><rect x="14" y="12" width="4" height="2" rx="1" fill="#f1effa"/></svg>
@@ -350,6 +374,7 @@ textarea.inp { resize: vertical; font: inherit; line-height: 1.4; }
     <button class="topbtn" id="modeBtn" type="button">Show sample data</button>
     <span class="dev">Server <b>arcade-realtime</b></span>
     <span class="clock" id="clock">--:--:--</span>
+    <button class="topbtn" id="lockBtn" type="button" hidden>Lock</button>
   </div>
 </header>
 
@@ -1257,7 +1282,9 @@ $('histCsv').addEventListener('click', () => {
 });
 
 window.__ops = { players: () => S.live.players, gameName, GAME_NAMES, csvDownload, stamp };
-startLive();
+// on the arcade's own addresses the console connects only after the admin sign-in (Admin Control script calls this)
+if (onSite) window.__startLive = () => { if (!window.__liveStarted) { window.__liveStarted = 1; startLive(); } };
+else startLive();
 })();
 </script>
 
@@ -1294,7 +1321,7 @@ const rid = n => { const b = crypto.getRandomValues(new Uint8Array(n)); return [
 // ---------- Who is acting ----------
 const acct = () => { if (!LIVE) return { name: 'Sample admin', token: '' }; const a = ls.get('arcade-acct', null); return a && typeof a.name === 'string' && typeof a.token === 'string' && a.token ? a : null; };
 const isAdminAcct = () => !LIVE || (!!acct() && ADMINS.includes(lc(acct().name)));
-let adminPw = ''; // kept in memory for this visit only
+let adminPw = ''; // the checked admin password, kept for this tab only (sessionStorage 'arcadeops.pw')
 const canAct = () => isAdminAcct() || !!adminPw;
 const actor = () => !LIVE ? 'Sample admin' : isAdminAcct() ? acct().name : adminPw ? 'Admin password' : '';
 
@@ -1316,7 +1343,7 @@ function why(r, name) {
   if (r.status === 0) return 'Couldn’t reach the server. Check your connection and try again.';
   if (r.status === 401) {
     if (isAdminAcct()) return 'Your admin sign-in has expired. Sign in again on the arcade, then reload this page.';
-    adminPw = ''; renderAccess(); return 'Wrong admin password. Unlock again with the right one.';
+    lockConsole(); return 'Wrong admin password.';
   }
   if (r.status === 429) return r.error === 'locked' ? `Too many wrong passwords. Wait ${Math.ceil((r.wait || 900) / 60)} minutes.` : 'Too many requests. Wait a minute and try again.';
   if (r.status === 403 && r.error === 'not_admin') return 'This needs a signed-in admin account. The admin password isn’t enough.';
@@ -1389,7 +1416,7 @@ function renderAccess() {
   else el.innerHTML = `<span class="who">${shield}${a ? 'Signed in as ' + esc(a.name) : 'Not signed in'}</span><span class="note">${a ? 'That isn’t an admin account.' : `Sign in with an admin account <a class="name-link" href="../" target="_blank" rel="noopener">on the arcade</a>, then reload, or`} enter the admin password. 5 wrong tries lock it for 15 minutes.</span>
       <form id="ctlPwForm" style="display:flex;gap:8px;flex-wrap:wrap" autocomplete="off"><input class="inp" type="password" id="ctlPw" placeholder="Admin password" aria-label="Admin password" autocomplete="off"><button class="btn primary" type="submit">Unlock</button></form>`;
   const f = $('ctlPwForm'); if (f) f.addEventListener('submit', e => { e.preventDefault(); const v = $('ctlPw').value; if (!v) return; adminPw = v; renderAccess(); toast('Unlocked. A wrong password shows up on your first action.'); });
-  const l = $('ctlLock'); if (l) l.addEventListener('click', () => { adminPw = ''; renderAccess(); });
+  const l = $('ctlLock'); if (l) l.addEventListener('click', lockConsole);
   document.querySelectorAll('.ctl [data-needs]').forEach(b => { b.disabled = b.dataset.needs === 'acct' ? !isAdminAcct() : !canAct(); });
   renderAltAccess();
 }
@@ -2095,9 +2122,36 @@ const MOCK = LIVE ? null : (() => {
   };
 })();
 
+// ---------- Sign-in screen ----------
+const GATE_KEY = 'arcadeops.pw';
+function lockConsole() { adminPw = ''; try { sessionStorage.removeItem(GATE_KEY); } catch (e) {} if (LIVE) location.reload(); else renderAccess(); }
+async function unlock(pw, quiet) {
+  const r = await call('/acct/admin', { method: 'POST', body: { op: 'check', pw } }); // no account token: the password itself has to be right
+  if (r.status === 200) {
+    adminPw = pw; try { sessionStorage.setItem(GATE_KEY, pw); } catch (e) {}
+    document.body.classList.remove('locked'); $('gate').hidden = true; $('lockBtn').hidden = false;
+    if (window.__startLive) window.__startLive();
+    renderAccess(); if (inView()) showTab(tab);
+    return true;
+  }
+  try { sessionStorage.removeItem(GATE_KEY); } catch (e) {}
+  if (!quiet) setMsg($('gateMsg'), r.status === 401 ? 'Wrong password.' : r.status === 429 ? `Too many wrong tries. Wait ${Math.ceil((r.wait || 900) / 60)} minutes.` : r.status === 503 ? 'The admin password isn’t set up on the server yet.' : r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : `Something went wrong (${esc(r.error || r.status)}).`, 'err');
+  return false;
+}
+$('lockBtn').addEventListener('click', lockConsole);
+$('gateForm').addEventListener('submit', async e => {
+  e.preventDefault(); const pw = $('gatePw').value; if (!pw) return;
+  $('gateGo').disabled = true; setMsg($('gateMsg'), 'Checking…');
+  const ok = await unlock(pw, false); $('gateGo').disabled = false; if (ok) $('gatePw').value = '';
+});
+if (LIVE) {
+  let saved = ''; try { saved = sessionStorage.getItem(GATE_KEY) || ''; } catch (e) {}
+  if (saved) unlock(saved, true).then(ok => { if (!ok) $('gatePw').focus(); }); else setTimeout(() => $('gatePw').focus(), 50);
+}
+
 // ---------- Start ----------
 renderAccess(); renderAudit();
-if (inView()) showTab(tab); else document.querySelectorAll('#ctlTabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+if (inView() && !LIVE) showTab(tab); // on the real site, unlock() opens the tab after the sign-in else document.querySelectorAll('#ctlTabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
 document.querySelectorAll('.ctl-pane').forEach(p => { p.hidden = p.dataset.pane !== tab; });
 // keep "online now" flags fresh while the directory is showing
 setInterval(() => { if (inView() && tab === 'directory' && dir.loaded) { const s = $('dirStats'); if (s) s.innerHTML = dirStats().map(([k, v]) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`).join(''); } }, 15e3);
