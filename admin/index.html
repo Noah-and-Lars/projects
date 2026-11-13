@@ -329,6 +329,10 @@ table.data tr.sel td { background: var(--accent-soft); }
 .toast-box { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: grid; gap: 8px; }
 .toast { background: var(--bar); color: var(--bar-ink); padding: 9px 14px; border-radius: 3px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.3); border-left: 4px solid var(--good); max-width: 360px; }
 .toast[data-k="err"] { border-left-color: var(--crit); }
+.nt-banner { position: relative; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 8px 40px 8px 14px; font: 700 14px/1.35 system-ui, -apple-system, sans-serif; text-align: center; border-radius: 3px; }
+.nt-banner b { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; font-weight: 700; }
+textarea.inp { resize: vertical; font: inherit; line-height: 1.4; }
+.count-note { font-size: 11.5px; color: var(--muted); text-align: right; }
 @media (max-width: 760px) { .chat-wrap { grid-template-columns: minmax(0, 1fr); } .chat-list { height: 380px; } }
 
 .scan-bar { height: 6px; background: var(--panel-head); border-radius: 3px; overflow: hidden; margin: 4px 0 8px; }
@@ -355,6 +359,7 @@ table.data tr.sel td { background: var(--accent-soft); }
     <a href="#dashboard" data-view="dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Dashboard</a>
     <a href="#players" data-view="players"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="5" r="3"/><path d="M2 15c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5Z"/></svg>Players<span class="count" id="navPlayers">–</span></a>
     <a href="#system-status" data-view="system-status"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M1 8h3l2-5 4 10 2-5h3"/></svg>System Status</a>
+    <a href="#game-stats" data-view="game-stats"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="8" width="3" height="7" rx="1"/><rect x="6.5" y="3" width="3" height="12" rx="1"/><rect x="12" y="6" width="3" height="9" rx="1"/></svg>Game Stats</a>
     <a href="#traffic-monitor" data-view="traffic-monitor"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="10" height="2" rx="1"/><rect x="1" y="12" width="12" height="2" rx="1"/></svg>Traffic Monitor<span class="count" id="navLogs">0</span></a>
     <h2>Control</h2>
     <a href="#admin-control" data-view="admin-control"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/></svg>Admin Control</a>
@@ -441,6 +446,25 @@ table.data tr.sel td { background: var(--accent-soft); }
       </div>
     </section>
 
+    <!-- Game stats -->
+    <section id="view-game-stats" data-title="Game Stats" hidden>
+      <div class="grid">
+        <div class="w">
+          <div class="w-head"><h3>Most Played Games</h3><span class="sub">Player-hours recorded while this console was open</span>
+            <div class="tools"><div class="seg" data-range-for="gstats"><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button></div><button class="btn sm" type="button" id="histCsv">Download CSV</button></div></div>
+          <div class="w-body"><dl class="stats" id="gsStats"></dl><div class="bars" id="gsBars"></div></div>
+        </div>
+        <div class="w s7">
+          <div class="w-head"><h3>Busiest Hours</h3><span class="sub">Average players online by hour of the day, your time</span></div>
+          <div class="w-body"><div class="signup-chart" id="gsHours"><svg role="img" aria-label="Average players by hour of day"></svg><div class="tip" hidden></div></div><p class="chart-note" id="gsHoursNote"></p></div>
+        </div>
+        <div class="w s5">
+          <div class="w-head"><h3>Peak by Game</h3></div>
+          <div class="w-body"><div class="table-wrap"><table class="data"><thead><tr><th>Game</th><th>Peak</th><th>Average</th><th>Share</th></tr></thead><tbody id="gsTable"></tbody></table></div></div>
+        </div>
+      </div>
+    </section>
+
     <!-- Traffic monitor -->
     <section id="view-traffic-monitor" data-title="Traffic Monitor" hidden>
       <div class="w">
@@ -467,6 +491,7 @@ table.data tr.sel td { background: var(--accent-soft); }
         <button type="button" role="tab" data-tab="chat">Chat Moderation<span class="n" id="ctlChatN"></span></button>
         <button type="button" role="tab" data-tab="social">Social Moderation<span class="n" id="ctlRevN"></span></button>
         <button type="button" role="tab" data-tab="leaderboards">Leaderboards</button>
+        <button type="button" role="tab" data-tab="notice">Announcement<span class="n" id="ctlNtN"></span></button>
         <button type="button" role="tab" data-tab="log">Action Log<span class="n" id="ctlLogN"></span></button>
       </div>
 
@@ -519,6 +544,7 @@ table.data tr.sel td { background: var(--accent-soft); }
                   <option value="active1">Active in the last 24 h</option><option value="active7">Active this week</option>
                   <option value="inactive30">Not seen for 30+ days</option><option value="noscores">No scores yet</option>
                 </select>
+                <button class="btn" type="button" id="dirCsv">Download CSV</button>
               </div>
               <div class="bulk" id="dirBulk" hidden></div>
               <div class="table-wrap tall"><table class="data"><thead><tr>
@@ -543,6 +569,7 @@ table.data tr.sel td { background: var(--accent-soft); }
               <input type="search" id="chatSearch" placeholder="Search messages" aria-label="Search chat messages">
               <select id="chatWho" aria-label="From"><option value="">Everyone</option></select>
               <button class="btn danger" type="button" id="chatPurge" disabled>Delete all from this person</button>
+              <button class="btn" type="button" id="chatCsv">Download CSV</button>
             </div>
             <div class="chat-wrap">
               <div>
@@ -587,8 +614,41 @@ table.data tr.sel td { background: var(--accent-soft); }
               <select id="lbGame" aria-label="Game"></select>
               <select id="lbSort" aria-label="Sort"><option value="hi">Highest number first</option><option value="lo">Lowest number first (times)</option><option value="az">Username A to Z</option></select>
               <input type="search" id="lbSearch" placeholder="Find a player" aria-label="Find a player">
+              <button class="btn" type="button" id="lbCsv">Download CSV</button>
             </div>
             <div class="table-wrap tall"><table class="data"><thead><tr><th>#</th><th>Player</th><th>Best</th></tr></thead><tbody id="lbRows"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Announcement -->
+      <div class="ctl-pane" data-pane="notice" hidden>
+        <div class="grid">
+          <div class="w s7">
+            <div class="w-head"><h3>Site Announcement</h3><span class="sub">A banner across the top of every page of the arcade</span></div>
+            <div class="w-body">
+              <form id="noticeForm" autocomplete="off">
+                <div class="field" style="margin-bottom:4px"><label for="ntText">Message</label><textarea class="inp" id="ntText" rows="3" maxlength="280" placeholder="e.g. Online play is back! Thanks for waiting."></textarea></div>
+                <div class="count-note" id="ntCount">0 / 280</div>
+                <div class="form-row">
+                  <div class="field"><label for="ntLevel">Colour</label><select class="inp" id="ntLevel"><option value="info">Purple: news</option><option value="warn">Yellow: heads up</option><option value="alert">Red: something is wrong</option></select></div>
+                  <div class="field"><label for="ntUntil">Take it down after</label><select class="inp" id="ntUntil"><option value="3600000">1 hour</option><option value="21600000">6 hours</option><option value="86400000" selected>1 day</option><option value="259200000">3 days</option><option value="604800000">1 week</option><option value="0">Never (until I take it down)</option></select></div>
+                </div>
+                <div class="form-row">
+                  <div class="field"><label for="ntLink">Link (optional)</label><input class="inp" id="ntLink" maxlength="300" placeholder="e.g. chat.html or social.html" spellcheck="false"></div>
+                  <div class="field"><label for="ntLinkText">Link text</label><input class="inp" id="ntLinkText" maxlength="40" placeholder="Find out more"></div>
+                </div>
+                <div class="btn-group-label">Preview</div>
+                <div id="ntPreview"></div>
+                <div class="msg-line" id="ntMsg"></div>
+                <div class="btn-row"><button class="btn primary" type="submit" data-needs="pw">Post announcement</button></div>
+                <p class="chart-note">It shows on every page within about 2 minutes, on both addresses. Players can close it, and a new announcement shows again even to people who closed the last one.</p>
+              </form>
+            </div>
+          </div>
+          <div class="w s5">
+            <div class="w-head"><h3>Showing Now</h3><div class="tools"><button class="btn sm" type="button" id="ntReload">Refresh</button></div></div>
+            <div class="w-body" id="ntNow"><div class="empty-state">Open this tab to check.</div></div>
           </div>
         </div>
       </div>
@@ -597,7 +657,7 @@ table.data tr.sel td { background: var(--accent-soft); }
       <div class="ctl-pane" data-pane="log" hidden>
         <div class="w">
           <div class="w-head"><h3>Admin Actions</h3><span class="sub">Everything done from this console in this browser</span>
-            <div class="tools"><button class="btn sm" type="button" id="auditCopy">Copy as text</button><button class="btn sm" type="button" id="auditClear">Clear</button></div></div>
+            <div class="tools"><button class="btn sm" type="button" id="auditCsv">Download CSV</button><button class="btn sm" type="button" id="auditCopy">Copy as text</button><button class="btn sm" type="button" id="auditClear">Clear</button></div></div>
           <div class="w-body"><div class="table-wrap tall"><table class="data"><thead><tr><th>Time</th><th>By</th><th>Action</th><th>Target</th><th>Result</th></tr></thead><tbody id="auditRows"></tbody></table></div></div>
         </div>
       </div>
@@ -631,6 +691,7 @@ table.data tr.sel td { background: var(--accent-soft); }
             <div class="log-tools">
               <input type="search" id="altSearch" placeholder="Find an account" aria-label="Find an account">
               <select id="altFilter" aria-label="Show"><option value="alts">People with alts</option><option value="dodge">Possible ban dodgers</option><option value="all">Everyone scanned</option><option value="nodev">No device recorded yet</option></select>
+              <button class="btn" type="button" id="altCsv">Download CSV</button>
             </div>
             <div class="table-wrap tall"><table class="data"><thead><tr><th></th><th>Main account</th><th>Alts</th><th>Devices</th><th>Last played</th><th>Flags</th></tr></thead><tbody id="altRows"></tbody></table></div>
           </div>
@@ -661,8 +722,8 @@ const CFG = {
   ws: 'wss://arcade-realtime.arcade-realtime.workers.dev/ws',
   http: 'https://arcade-realtime.arcade-realtime.workers.dev/',
   topic: 'online:arcade',
-  origin: 'https://noah-and-lars.github.io',
-  siteUrl: 'https://noah-and-lars.github.io/projects/admin/',
+  origins: ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'], // the GitHub site and its Cloudflare Pages copy
+  siteUrl: location.origin === 'https://thearcade.pages.dev' ? 'https://thearcade.pages.dev/admin/' : 'https://noah-and-lars.github.io/projects/admin/',
   roomMax: 400,        // MAX_SOCKETS per room in worker.js
 };
 const GAME_NAMES = { home: 'Home page', chat: 'Global chat', 'throttle-ridge': 'Throttle Ridge', 'turn-turn-turn': 'Turn! Turn! TURN!', 'krill-dive': 'Krill Dive', 'card-royale': 'Card Royale', siege: 'Siege', uno: 'UNO!', 'rocket-rivals': 'Rocket Rivals', football: 'Football', 'havoc-bay': 'Havoc Bay', 'bull-run': 'Stocks Game', chess: 'Chess', checkers: 'Checkers', 'russian-roulette': 'Russian Roulette', 'gamble-your-life-away': 'Gamble Your Life Away', 'cube-tower-defense': 'Cube Tower Defense', 'free-criminal': 'Free Criminal', 'cube-assault': 'Cube Assault', 'block-drop': 'Blocktris', 2048: '2048', 'poly-racer': 'Poly Racer', blockcraft: 'Blockcraft' };
@@ -678,7 +739,7 @@ const store = {
 
 // ---------- State ----------
 const newData = () => ({ history: [], latency: [], logs: [], players: new Map() });
-const onSite = location.origin === CFG.origin;
+const onSite = CFG.origins.includes(location.origin);
 const S = {
   mode: 'connecting', sampleReason: null, startedAt: Date.now(),
   live: newData(), sample: null,
@@ -686,10 +747,10 @@ const S = {
     http:   { name: 'Worker', s: 'wait', text: 'Not checked yet' },
     socket: { name: 'Realtime socket', s: 'wait', text: 'Connecting' },
     room:   { name: 'Presence room', s: 'wait', text: 'Waiting' },
-    origin: { name: 'Origin check', s: onSite ? 'up' : 'down', text: onSite ? 'Served from the official site' : 'Not on noah-and-lars.github.io' },
+    origin: { name: 'Origin check', s: onSite ? 'up' : 'down', text: onSite ? 'Served from ' + location.host : 'Not on an official address' },
   },
   joined: false, synced: false, everJoined: false, tries: 0, reconnects: 0, lastSync: null, lastHttp: null, lastPing: null,
-  ranges: Object.assign({ dash: '1h', players: '1h', latency: '1h' }, store.get('arcadeops.ranges', {})),
+  ranges: Object.assign({ dash: '1h', players: '1h', latency: '1h', gstats: '24h' }, store.get('arcadeops.ranges', {})),
   logPaused: false,
 };
 const D = () => S.mode === 'sample' ? S.sample : S.live;
@@ -747,7 +808,7 @@ const myKey = 'admin-console-' + rid();
 function startLive() {
   S.mode = 'connecting'; S.sampleReason = null; stopSample();
   log('info', 'Console', `Console opened. Connecting to ${CFG.topic}.`, S.live);
-  if (!onSite) log('warn', 'Origin check', `This page is on ${location.origin === 'null' ? 'a local file' : location.origin}. The server only accepts ${CFG.origin}.`, S.live);
+  if (!onSite) log('warn', 'Origin check', `This page is on ${location.origin === 'null' ? 'a local file' : location.origin}. The server only accepts ${CFG.origins.join(' and ')}.`, S.live);
   checkHttp();
   httpT = setInterval(checkHttp, HTTP_EVERY);
   sampleT = setInterval(sampleLive, SAMPLE_EVERY);
@@ -995,7 +1056,7 @@ function gauge(frac, label, valText, unit, note, state) {
 // ---------- Rendering ----------
 const dirty = new Set(); let raf = 0;
 function schedule(what) { dirty.add(what); if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
-const VIEWS = ['dashboard', 'players', 'system-status', 'traffic-monitor', 'admin-control', 'accounts'];
+const VIEWS = ['dashboard', 'players', 'system-status', 'game-stats', 'traffic-monitor', 'admin-control', 'accounts'];
 function currentView() { const h = location.hash.slice(1); return VIEWS.includes(h) ? h : 'dashboard'; }
 function playersNow() { if (S.mode === 'sample') return S.sample.players.size; return S.joined && S.synced ? S.live.players.size : null; }
 
@@ -1019,15 +1080,16 @@ function render() {
   if (view === 'dashboard') { if (!tickOnly) { renderPlayerBlock('dash'); renderByGame(); } renderSystem(); renderLogs($('dashLogs'), d.logs.slice(-9).reverse(), false); }
   if (view === 'players') { if (!tickOnly) renderPlayerBlock('players'); renderSessions(); }
   if (view === 'system-status') renderHealth(tickOnly);
+  if (view === 'game-stats' && !tickOnly) renderGameStats();
   if (view === 'traffic-monitor' && !tickOnly) renderFullLog();
 }
 function renderBanners() {
   let html = '';
   if (S.mode === 'sample' && S.sampleReason !== 'manual') {
     const why = S.sampleReason === 'origin'
-      ? `The realtime server only accepts connections from <code>${CFG.origin}</code>, and this page is somewhere else, so the numbers below are sample data.`
+      ? `The realtime server only accepts connections from the arcade's own addresses, and this page is somewhere else, so the numbers below are sample data.`
       : `The realtime server didn't let this page into the presence room, so the numbers below are sample data. Check the Worker in the Cloudflare dashboard.`;
-    html += `<div class="banner" data-kind="info"><div><b>Showing sample data</b><p>${why} For live data, open <code>${CFG.siteUrl}</code> once this page is on the GitHub Pages branch.</p></div><button class="btn" type="button" data-act="live">Try live again</button></div>`;
+    html += `<div class="banner" data-kind="info"><div><b>Showing sample data</b><p>${why} For live data, open <code>noah-and-lars.github.io/projects/admin/</code> or <code>thearcade.pages.dev/admin/</code>.</p></div><button class="btn" type="button" data-act="live">Try live again</button></div>`;
   } else if (S.mode === 'sample') {
     html += `<div class="banner" data-kind="warn"><div><b>Showing sample data</b><p>These numbers are made up. Switch back to see the real arcade.</p></div><button class="btn" type="button" data-act="live">Back to live</button></div>`;
   } else if (S.everJoined && !S.joined && !S.idle) {
@@ -1140,7 +1202,61 @@ let rz = 0; window.addEventListener('resize', () => { cancelAnimationFrame(rz); 
 setInterval(() => { $('clock').textContent = hhmmss(Date.now()); schedule('tick'); }, 1000);
 $('clock').textContent = hhmmss(Date.now());
 
-window.__ops = { players: () => S.live.players, gameName, GAME_NAMES };
+// ---------- Game stats (from the history this console recorded) ----------
+function gameTotals(range) {
+  const cut = Date.now() - RANGES[range], h = D().history.filter(p => p.t >= cut && p.v != null), step = S.mode === 'sample' ? 60e3 : SAMPLE_EVERY;
+  const hours = {}, peak = {}, sum = {}; let total = 0;
+  h.forEach((p, i) => {
+    const g = p.g || {};
+    for (const k in g) { peak[k] = Math.max(peak[k] || 0, g[k]); sum[k] = (sum[k] || 0) + g[k]; }
+    if (i) { const prev = h[i - 1], dt = Math.min(p.t - prev.t, step * 3) / 3600e3; total += (prev.v || 0) * dt; for (const k in prev.g || {}) hours[k] = (hours[k] || 0) + prev.g[k] * dt; }
+  });
+  return { h, hours, peak, avg: Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, v / Math.max(1, h.length)])), total };
+}
+function renderGameStats() {
+  const range = S.ranges.gstats, T = gameTotals(range), games = Object.keys(Object.assign({}, T.peak, T.hours)).sort((a, b) => (T.hours[b] || 0) - (T.hours[a] || 0));
+  const fmtH = x => x >= 10 ? Math.round(x) + ' h' : x >= 1 ? x.toFixed(1) + ' h' : Math.round(x * 60) + ' min';
+  const top = games.filter(g => g !== 'home' && g !== 'chat')[0];
+  const cell = (k, v) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`;
+  $('gsStats').innerHTML = cell(`Player-hours ${range}`, T.h.length ? fmtH(T.total) : '–') + cell('Games played', games.filter(g => g !== 'home' && g !== 'chat' && T.hours[g] > 0).length) + cell('Most played', top ? esc(gameName(top)) : '–') + cell(`Peak ${range}`, T.h.length ? Math.max(...T.h.map(p => p.v)) : '–');
+  const max = Math.max(1e-9, ...games.map(g => T.hours[g] || 0)), totalH = Object.values(T.hours).reduce((a, b) => a + b, 0) || 1;
+  $('gsBars').innerHTML = games.length ? games.slice(0, 14).map(g => `<div class="bar-row" title="${esc(gameName(g))}: ${fmtH(T.hours[g] || 0)}, ${Math.round((T.hours[g] || 0) / totalH * 100)}% of time played"><span class="bn">${esc(gameName(g))}</span><span class="track"><span class="fill" style="width:${(T.hours[g] || 0) / max * 100}%"></span></span><span class="bv">${fmtH(T.hours[g] || 0)}</span></div>`).join('')
+    : '<div class="bars-empty">No game data recorded in this range yet. Leave the console open and it fills in.</div>';
+  $('gsTable').innerHTML = games.length ? games.map(g => `<tr><td>${esc(gameName(g))}</td><td class="t">${T.peak[g] || 0}</td><td class="t">${(T.avg[g] || 0).toFixed(1)}</td><td class="t">${Math.round((T.hours[g] || 0) / totalH * 100)}%</td></tr>`).join('') : '<tr class="empty-row"><td colspan="4">No data yet.</td></tr>';
+  // busiest hours: average total players per hour of the day over everything recorded (up to 24 h)
+  const byH = [...Array(24)].map(() => ({ s: 0, n: 0 }));
+  D().history.forEach(p => { if (p.v != null) { const hr = new Date(p.t).getHours(); byH[hr].s += p.v; byH[hr].n++; } });
+  const box = $('gsHours'), svg = box.querySelector('svg'), tip = box.querySelector('.tip');
+  const W = Math.max(300, box.clientWidth || 600), H = 200, m = { l: 34, r: 8, t: 10, b: 24 }, vals = byH.map(x => x.n ? x.s / x.n : null);
+  const top4 = niceMax(Math.max(4, ...vals.filter(v => v != null)) * 1.05), bw = (W - m.l - m.r) / 24, y = v => m.t + (1 - v / top4) * (H - m.t - m.b);
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = top4 * i / 4, yy = y(v).toFixed(1); g += `<line class="${i ? 'grid-l' : 'base-l'}" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${m.l - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end" fill="var(--muted)" font-size="10.5" font-family="var(--mono)">${Math.round(v)}</text>`; }
+  vals.forEach((v, i) => {
+    const x = m.l + i * bw + 1;
+    if (v) { const hh = y(0) - y(v), r = Math.min(4, hh); g += `<path class="bar" d="M${x.toFixed(1)},${y(0)}V${(y(v) + r).toFixed(1)}q0,-${r.toFixed(1)} ${r.toFixed(1)},-${r.toFixed(1)}H${(x + bw - 2 - r).toFixed(1)}q${r.toFixed(1)},0 ${r.toFixed(1)},${r.toFixed(1)}V${y(0)}Z"/>`; }
+    g += `<rect x="${(m.l + i * bw).toFixed(1)}" y="${m.t}" width="${bw.toFixed(1)}" height="${H - m.t - m.b}" fill="transparent" data-i="${i}"/>`;
+    if (i % 3 === 0) g += `<text x="${(x + bw / 2 - 1).toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="var(--muted)" font-size="10.5" font-family="var(--mono)">${pad(i)}:00</text>`;
+  });
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = g;
+  svg.onpointermove = e => { const i = e.target.dataset && e.target.dataset.i; if (i == null) { tip.hidden = true; return; } const v = vals[+i], r = svg.getBoundingClientRect(); tip.hidden = false; tip.innerHTML = v == null ? `No data · ${pad(+i)}:00` : `<b>${v.toFixed(1)}</b> players · ${pad(+i)}:00`; tip.style.left = Math.min(Math.max((m.l + (+i + .5) * bw) / W * r.width, 70), r.width - 70) + 'px'; tip.style.top = (y(v || 0) / H * r.height) + 'px'; };
+  svg.onpointerleave = () => { tip.hidden = true; };
+  const covered = vals.filter(v => v != null).length;
+  $('gsHoursNote').textContent = S.mode === 'sample' ? 'Sample data.' : covered < 24 ? `${covered} of 24 hours have data so far. Hours fill in as the console stays open.` : 'Every hour of the last day has data.';
+}
+// CSV download (on the arcade site; the artifact preview blocks downloads). Cells that look like formulas get a ' in front.
+function csvDownload(name, rows) {
+  const cell = v => { let x = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(x)) x = "'" + x; return /[",\r\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+  const blob = new Blob(['﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+$('histCsv').addEventListener('click', () => {
+  const h = D().history, games = [...new Set(h.flatMap(p => Object.keys(p.g || {})))].sort();
+  csvDownload(`arcade-players-${stamp()}.csv`, [['time', 'players online', ...games.map(gameName)], ...h.map(p => [new Date(p.t).toISOString(), p.v == null ? '' : p.v, ...games.map(g => p.v == null ? '' : (p.g && p.g[g]) || 0)])]);
+});
+
+window.__ops = { players: () => S.live.players, gameName, GAME_NAMES, csvDownload, stamp };
 startLive();
 })();
 </script>
@@ -1155,8 +1271,9 @@ startLive();
 'use strict';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SITE = 'https://noah-and-lars.github.io';
-const LIVE = location.origin === SITE;
+const SITES = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'];
+const LIVE = SITES.includes(location.origin);
+const SITE = LIVE ? location.origin : SITES[0];
 const SERVER = 'https://arcade-realtime.arcade-realtime.workers.dev';
 const ADMINS = ['noah', 'lars', 'claude']; // ADMIN_ACCOUNTS in worker.js and account.js
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/, CLIP_RE = /^[a-z0-9]{10}$/;
@@ -1266,7 +1383,7 @@ $('auditClear').addEventListener('click', async () => {
 const shield = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>';
 function renderAccess() {
   const el = $('ctlAccess'), a = acct();
-  if (!LIVE) el.innerHTML = `<span class="who">${shield}Sample mode</span><span class="tag">Sample</span><span class="note">Admin tools only work at ${esc(SITE)}/projects/admin/. Here nothing is sent to the arcade and every player, post and result is made up.</span>`;
+  if (!LIVE) el.innerHTML = `<span class="who">${shield}Sample mode</span><span class="tag">Sample</span><span class="note">Admin tools only work on the arcade's own admin page (noah-and-lars.github.io/projects/admin/ or thearcade.pages.dev/admin/). Here nothing is sent to the arcade and every player, post and result is made up.</span>`;
   else if (isAdminAcct()) el.innerHTML = `<span class="who">${shield}Signed in as ${esc(a.name)}</span><span class="chip on">Admin account</span><span class="note">Every tool is unlocked, including approving Social posts.</span>`;
   else if (adminPw) el.innerHTML = `<span class="who">${shield}Unlocked with the admin password</span><span class="note">For this visit only. Approving Social posts still needs an admin account.</span><button class="btn sm" type="button" id="ctlLock">Lock</button>`;
   else el.innerHTML = `<span class="who">${shield}${a ? 'Signed in as ' + esc(a.name) : 'Not signed in'}</span><span class="note">${a ? 'That isn’t an admin account.' : `Sign in with an admin account <a class="name-link" href="../" target="_blank" rel="noopener">on the arcade</a>, then reload, or`} enter the admin password. 5 wrong tries lock it for 15 minutes.</span>
@@ -1287,6 +1404,7 @@ function showTab(t) {
   if (t === 'directory' && dir.loaded) drawSignups();
   if (t === 'social') { if (!rev.loaded) loadReview(); if (!feed.loaded) loadFeed(); }
   if (t === 'leaderboards') loadBoard();
+  if (t === 'notice') { ntPreview(); loadNotice(); }
   if (t === 'chat' && !LIVE && !chat.ws) chatConnect();
   if (t !== 'chat') chatDisconnect(true);
 }
@@ -1318,7 +1436,7 @@ function onlineNow() {
 // ---------- Accounts ----------
 const CONFIRM = {
   ban: n => ({ title: `Ban ${n}?`, text: 'They are signed out everywhere, can’t log in, and leave the Players list. You can unban them later.', ok: 'Ban', danger: true }),
-  rename: (n, to) => ({ title: `Rename ${n} to ${to}?`, text: 'They are signed out and log in with the new name and the same password.', ok: 'Rename' }),
+  rename: (n, to) => ({ title: `Rename ${n} to ${to}?`, text: 'They stay signed in on every device and switch to the new name. Their password stays the same.', ok: 'Rename' }),
   devban: n => ({ title: `Device ban ${n}?`, text: 'The account is banned, and every device it was used on (up to 12) can’t sign up, log in or use any account. Clearing browser data gets round it, so it stops casual ban dodging only.', ok: 'Device ban', danger: true }),
   newcode: n => ({ title: `New recovery code for ${n}?`, text: 'Their old code stops working. Only do this if you’re sure the person asking really owns this account.', ok: 'Make a new code' }),
   delete: n => ({ title: `Delete ${n} for good?`, text: 'The account and all its saved progress are wiped and can’t be brought back. The name becomes free to register again.', ok: 'Delete account', danger: true, typeName: n }),
@@ -1848,6 +1966,58 @@ $('altOneForm').addEventListener('submit', async e => {
 });
 window.addEventListener('hashchange', () => { if (location.hash === '#accounts') { renderAltAccess(); if (!dir.loaded) loadDir(); analyze(); } });
 
+// ---------- Site announcement ----------
+const NT_COL = { info: ['#4a3fd1', '#fff'], warn: ['#f2b134', '#1a1408'], alert: ['#c8342a', '#fff'] }; // the same colours account.js uses
+let ntCur = null;
+const ntBanner = n => { const c = NT_COL[n.level] || NT_COL.info; return `<div class="nt-banner" style="background:${c[0]};color:${c[1]}"><span>${esc(n.text || 'Your message shows here')}</span>${n.link ? `<u>${esc(n.linkText || 'Find out more')}</u>` : ''}<b aria-hidden="true">×</b></div>`; };
+function ntPreview() {
+  $('ntPreview').innerHTML = ntBanner({ text: $('ntText').value.trim(), level: $('ntLevel').value, link: $('ntLink').value.trim(), linkText: $('ntLinkText').value.trim() });
+  $('ntCount').textContent = `${$('ntText').value.length} / 280`;
+}
+async function loadNotice() {
+  if (!canAct()) { $('ntNow').innerHTML = '<div class="empty-state">Unlock the admin tools to see and change the announcement.</div>'; return; }
+  $('ntNow').innerHTML = '<div class="empty-state">Loading…</div>';
+  const r = await admin({ op: 'noticeget' });
+  if (r.status === 400 && r.error === 'bad') { $('ntNow').innerHTML = '<div class="empty-state">The Worker needs updating before announcements work.</div>'; return; }
+  if (r.status !== 200) { $('ntNow').innerHTML = `<div class="empty-state">${esc(why(r))}</div>`; return; }
+  ntCur = r.n && (!r.n.until || r.n.until > Date.now()) ? r.n : null; renderNotice();
+}
+function renderNotice() {
+  $('ctlNtN').textContent = ntCur ? '1' : '';
+  $('ntNow').innerHTML = ntCur ? `${ntBanner(ntCur)}<table class="kv" style="margin-top:10px"><tr><th>Posted</th><td>${esc(when(ntCur.at))} by ${esc(ntCur.by)}</td></tr><tr><th>Ends</th><td>${ntCur.until ? esc(when(ntCur.until)) : 'When you take it down'}</td></tr>${ntCur.link ? `<tr><th>Link</th><td class="mono">${esc(ntCur.link)}</td></tr>` : ''}</table><div class="btn-row" style="margin-top:10px"><button class="btn danger" type="button" id="ntClear">Take it down</button></div>`
+    : '<div class="empty-state">No announcement is showing.</div>';
+  const c = $('ntClear'); if (c) c.addEventListener('click', clearNotice);
+}
+$('noticeForm').addEventListener('input', ntPreview);
+$('noticeForm').addEventListener('change', ntPreview);
+$('ntReload').addEventListener('click', loadNotice);
+$('noticeForm').addEventListener('submit', async e => {
+  e.preventDefault(); const M = $('ntMsg'), text = $('ntText').value.trim(), link = $('ntLink').value.trim();
+  if (!text) { setMsg(M, 'Write the message first.', 'err'); return; }
+  if (!canAct()) { setMsg(M, 'Unlock the admin tools first.', 'err'); return; }
+  if (link && (/^\/\/|^javascript:/i.test(link) || (/^https?:/i.test(link) && !/^https:\/\/(noah-and-lars\.github\.io|thearcade\.pages\.dev)\//i.test(link)))) { setMsg(M, 'The link has to be a page on the arcade, like chat.html.', 'err'); return; }
+  const ms = +$('ntUntil').value, until = ms ? Date.now() + ms : 0;
+  if (!await ask({ title: ntCur ? 'Replace the announcement?' : 'Post this announcement?', text: 'It shows at the top of every page of the arcade within about 2 minutes. Players can close it.', ok: 'Post' })) return;
+  const r = await admin({ op: 'noticeset', text, level: $('ntLevel').value, until, link, linkText: $('ntLinkText').value.trim() });
+  if (r.status === 200) { ntCur = r.n; renderNotice(); setMsg(M, 'Posted.', 'ok'); toast('Announcement posted'); record('Post announcement', 'Whole site', true, text.slice(0, 80)); }
+  else { const w = r.status === 400 && r.error === 'bad' ? 'The server refused it. Check the link (a page on the arcade) and try again. If announcements never worked, the Worker needs updating.' : why(r); setMsg(M, w, 'err'); record('Post announcement', 'Whole site', false, w); }
+});
+async function clearNotice() {
+  if (!await ask({ title: 'Take the announcement down?', text: 'It disappears from every page within about 2 minutes.', ok: 'Take it down', danger: true })) return;
+  const r = await admin({ op: 'noticeclear' });
+  if (r.status === 200) { ntCur = null; renderNotice(); toast('Announcement taken down'); record('Take down announcement', 'Whole site', true, ''); }
+  else { const w = why(r); toast(w, 'err'); record('Take down announcement', 'Whole site', false, w); }
+}
+
+// ---------- CSV downloads ----------
+const csv = (name, rows) => { OPS.csvDownload(`arcade-${name}-${OPS.stamp()}.csv`, rows); toast('Download started'); };
+const iso = t => t ? new Date(t).toISOString() : '';
+$('dirCsv').addEventListener('click', () => { if (!dir.loaded) { toast('Load the player list first.', 'err'); return; } const on = onlineNow(); csv('players', [['username', 'created', 'last online', 'has scores', 'playing now'], ...dirRows().map(p => [p.n, iso(p.c), iso(p.seen), p.has ? 'yes' : 'no', on.has(lc(p.n)) ? gameName(on.get(lc(p.n))) : ''])]); });
+$('chatCsv').addEventListener('click', () => { if (!chat.log.length) { toast('Connect to the chat first.', 'err'); return; } csv('chat', [['time', 'name', 'account', 'message'], ...chat.log.map(m => [iso(m.ts), m.n, m.a ? 'yes' : 'guest', m.t])]); });
+$('lbCsv').addEventListener('click', () => { const g = $('lbGame').value, b = boards[g]; if (!b) return; csv('best-' + g, [['player', 'best'], ...b.top.map(e => [e.n, e.s])]); });
+$('auditCsv').addEventListener('click', () => { csv('admin-log', [['time', 'by', 'action', 'target', 'result', 'detail'], ...audit.map(a => [iso(a.t), a.by, a.op, a.target, a.ok ? 'ok' : 'failed', a.detail])]); });
+$('altCsv').addEventListener('click', () => { if (!alt.people.length) { toast('Scan first.', 'err'); return; } csv('alt-accounts', [['main account', 'alt accounts', 'devices', 'last played', 'possible ban dodger', 'on a shared device'], ...alt.people.filter(p => p.alts.length).map(p => [p.main.name, p.alts.map(a => a.name).join(' '), p.devs.size, iso(p.last), p.dodge ? 'yes' : '', p.onShared ? 'yes' : ''])]); });
+
 // ---------- Sample mode (anywhere but the official site) ----------
 const MOCK = LIVE ? null : (() => {
   const W = ['comet', 'pixel', 'nova', 'turbo', 'ember', 'frost', 'quartz', 'orbit', 'blaze', 'echo', 'lunar', 'vortex', 'sprout', 'rocket', 'maple', 'zephyr', 'cinder', 'glitch', 'koi', 'tango', 'delta', 'ivy', 'jolt', 'nimbus', 'onyx', 'pepper', 'quill', 'rune', 'sable', 'tidal', 'umber', 'velvet', 'wisp', 'yarrow', 'zinc', 'acorn', 'basil', 'cobalt', 'dune', 'fable', 'gecko', 'harbor', 'indigo', 'juniper', 'kestrel', 'lumen', 'mango', 'nectar'];
@@ -1890,6 +2060,9 @@ const MOCK = LIVE ? null : (() => {
       if (u.pathname === '/acct/admin') {
         const op = b.op, p = find(b.name);
         if (op === 'pending') return json({ list: pending.slice() });
+        if (op === 'noticeget') return json({ n: MOCK.notice || null });
+        if (op === 'noticeset') { MOCK.notice = { id: rid(6), text: b.text, level: b.level, until: b.until, link: b.link, linkText: b.linkText, at: Date.now(), by: 'Sample admin' }; return json({ ok: 1, n: MOCK.notice }); }
+        if (op === 'noticeclear') { MOCK.notice = null; return json({ ok: 1, n: null }); }
         if (op === 'approve' || op === 'deny') { const i = pending.findIndex(c => c.id === b.id); if (i < 0) return json({ error: 'not_found' }, 404); const [c] = pending.splice(i, 1); if (op === 'approve') posts.unshift(Object.assign(c, { p: poster(c.id), at: Date.now() })); return json({ ok: 1 }); }
         if (op === 'clipdel') { const i = posts.findIndex(c => c.id === b.id); if (i < 0) return json({ error: 'not_found' }, 404); posts.splice(i, 1); return json({ deleted: true }); }
         if (op === 'chatdel') { const i = chatLog.findIndex(m => m.id === b.id); if (i < 0) return json({ error: 'not_found' }, 404); chatLog.splice(i, 1); return json({ deleted: true }); }
