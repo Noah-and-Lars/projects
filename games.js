@@ -333,6 +333,8 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-13', href: 'app/', imgs: ['news/app-download.jpg', 'icon-512.png'], headline: 'The Arcade app is here', text: 'The Arcade app is here for Mac and Windows: every game, your account and your progress in their own window. Download it from the banner at the top of the site, for Mac with Apple Silicon or Intel, and Windows 64-bit or ARM.',
+    post: '🎮 The Arcade app is here!\n\n💻 Play every game in its own window on your Mac or PC.\n🍎 Mac: Apple Silicon (M1 to M4) or Intel.\n🪟 Windows: 64-bit or ARM.\n⚡ Only a few MB, and new games and updates arrive by themselves.\n💾 Log in with your Arcade account and all your progress is there.\n\nHit Download on the banner at the top of the site to get it.' },
   { date: '2026-11-13', game: 'chess', imgs: ['chess/thumb.svg'], headline: 'Chess 1.6.2 emergency update', text: 'Chess 1.6.2, emergency update: whoever leaves the table now always loses the Elo, and the Elo bugs that let people farm lots of Elo by repeating games are fixed.' },
   { date: '2026-11-14', game: 'chess', imgs: ['chess/thumb.svg'], headline: 'Chess 1.6.1', text: 'Chess 1.6.1: Players elo is no longer stored in the players browser.' },
   { date: '2026-11-14', game: 'chess', imgs: ['chess/news/1.6-spectate.jpg', 'chess/news/1.6-watching.jpg'], headline: 'Watch live chess games', text: 'Chess 1.6: press Watch live games to see every online game being played right now, then Spectate to follow one move by move with both players, their Elo and the move timer. Watching never changes your Elo, and the players see who is watching above the board.',

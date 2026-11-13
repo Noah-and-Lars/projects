@@ -6,6 +6,18 @@ from jimmyscafe/projects). That address comes from the GitHub account name;
 apart from it, no personal names appear anywhere on the site (pages, games,
 credits, comments, images). Keep it that way.
 
+The Arcade app (2026-11-13, the owner's request): Tauri 2 apps for Mac (Apple Silicon + Intel .dmg) and Windows (x64 +
+ARM64 NSIS .exe), source in ~/Downloads/arcade-app (not in this repo). The app is a window onto https://thearcade.pages.dev;
+other links open in the normal browser. It runs a script on every page setting `window.ARCADE_APP` {version, os} and
+`html.arcade-app`: the site uses that to hide `appbanner.js` (the "The Arcade app is here" bar with Download, on index,
+play, chat, players, social and support; also hidden on phones/tablets, closable) and `app/index.html` (the download page,
+linked only from that bar, noindex) sends the app home. The files are in `app/` (TheArcade-mac-apple-silicon.dmg,
+-mac-intel.dmg, -windows-x64-setup.exe, -windows-arm64-setup.exe). Build: `npm run build` style `npx tauri build --target
+<t>` (Mac) and `--runner cargo-xwin --target <t>-pc-windows-msvc --bundles nsis` (Windows, needs LC_ALL=en_US.UTF-8 for
+makensis), with TAURI_SIGNING_PRIVATE_KEY from ~/.tauri/arcade-app.key (never commit it). The updater checks
+github.com/Noah-and-Lars/projects/releases/latest/download/latest.json (no release published yet). Unsigned: SmartScreen /
+Gatekeeper warnings, explained at the top of the download page.
+
 Online cut-off on the old address (2026-11-13, the owner's request): from 2:30pm Sydney time that day
 (MOVED_AT = Date.UTC(2026, 10, 13, 3, 30), in both rt.js and worker.js) no game can go online from
 noah-and-lars.github.io: the Worker refuses /ws from that Origin and closes older sockets from it on their next message
