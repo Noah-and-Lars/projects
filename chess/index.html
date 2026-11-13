@@ -654,6 +654,16 @@ for (const l of LEVELS) { const s = save.stats[l] || {}; save.stats[l] = { w: +s
 { const R = save.rating; save.rating = R && typeof R === 'object' && isFinite(R.r) && isFinite(R.rd) ? { r: Math.max(0, +R.r), rd: Math.min(350, Math.max(30, +R.rd)), at: +R.at || 0, n: Math.max(0, R.n | 0), peak: +R.peak || +R.r } : null; }
 // 1.5.1: every rating was reset to 2000 once (rv 2), and everyone starts at 2000: there's no level to pick any more
 if (save.rv !== 2 || !save.rating) { save.rating = { r: 2000, rd: 350, at: 0, n: 0, peak: 2000 }; save.rv = 2; try { localStorage.setItem('chessSave', JSON.stringify(save)); } catch (e) {} }
+// 2026-11-14 (the owner's request): one account's Elo is reset to 1000 once (its name as char codes; the flag syncs with the save)
+const ELO_FIX = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000, 'f1'];
+function eloFix() {
+  let n = ''; try { const A = (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount; n = A && (typeof A.name === 'function' ? A.name() : A.name) || ''; } catch (e) {}
+  if (!n) try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); n = a && a.name || ''; } catch (e) {}
+  if (String(n).toLowerCase() !== ELO_FIX[0] || save.ef === ELO_FIX[2] || !save.rating) return;
+  save.rating.r = ELO_FIX[1]; save.rating.peak = ELO_FIX[1]; save.rating.at = Date.now(); save.ef = ELO_FIX[2];
+  try { localStorage.setItem('chessSave', JSON.stringify(save)); } catch (e) {}
+}
+eloFix(); setTimeout(eloFix, 3000);
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
 // ---------- sound ----------
@@ -1189,6 +1199,7 @@ const Net = (() => {
 const online = { on: false, gameNo: 0, meAgain: false, oppAgain: false };
 const oppName = () => (Net.opp && Net.opp.name) || online.lastOpp || 'Opponent';
 function startOnline() {
+  eloFix(); if (Net.retrack) Net.retrack();
   online.on = true; localGame = false; localT++; document.body.classList.remove('local'); online.lastOpp = Net.opp.name;
   reqId++; aiBusy = false; $('thinking').hidden = true; $('result').hidden = true; $('promo').hidden = true;
   // the host is White in odd games, Black in even ones

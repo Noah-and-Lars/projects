@@ -467,6 +467,8 @@ source in Settings → Pages should be switched to `main`.
   leaving an unfinished online game (Leave the table, refresh or closing the page: `pagehide`) costs the leaver a flat
   100 Elo (`leavePenalty`), and the other player gets no change ('resign' with q: 1 = walked out, over.left). One account
   set by the owner (PEN_SPECIAL, stored as char codes) loses 1000 the first two times (`save.lpn`), then 100.
+  2026-11-14 (quiet, no patch note or NEWS): the same account's Elo (and best) is reset to 1000 once (`ELO_FIX`,
+  `eloFix()` on load and at each online game start; flag `save.ef = 'f1'` syncs with the save so it never repeats).
   1.6 (2026-11-14, the owner's request): spectating. The host of each online game tracks it in Presence on
   `<base>-live` ({ id, k: table key, w/b names, wr/br Elo, t }) from `startOnline` until `finish` (`Net.liveOn/liveOff`).
   "📺 Watch live games" (`#specBtn`, the `Spec` block) lists that channel (`Net.listLive`, no tracking) and Spectate joins
