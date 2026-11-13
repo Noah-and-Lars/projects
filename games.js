@@ -333,6 +333,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-13', game: 'chess', imgs: ['chess/thumb.svg'], headline: 'Chess 1.6.2 emergency update', text: 'Chess 1.6.2, emergency update: whoever leaves the table now always loses the Elo, and the Elo bugs that let people farm lots of Elo by repeating games are fixed.' },
   { date: '2026-11-14', game: 'chess', imgs: ['chess/thumb.svg'], headline: 'Chess 1.6.1', text: 'Chess 1.6.1: Players elo is no longer stored in the players browser.' },
   { date: '2026-11-14', game: 'chess', imgs: ['chess/news/1.6-spectate.jpg', 'chess/news/1.6-watching.jpg'], headline: 'Watch live chess games', text: 'Chess 1.6: press Watch live games to see every online game being played right now, then Spectate to follow one move by move with both players, their Elo and the move timer. Watching never changes your Elo, and the players see who is watching above the board.',
     post: '📺 Chess 1.6: spectating is here!\n\n♟️ Press Watch live games to see every online game going on right now.\n👀 Hit Spectate and follow it move by move, with both players, their Elo and the move timer.\n🔒 Watching never touches your Elo.\n👁 Players can see who is watching, right above the board.' },

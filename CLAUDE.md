@@ -509,6 +509,11 @@ source in Settings → Pages should be switched to `main`.
   chess line is always rewritten with the server's Elo (profile route + Directory 'stat1'), so editing `chessSave` changes
   nothing. Admin op 'chessset' {name, r} sets an Elo. In the page, `Elo` (fetch on load and each game start, report in
   `finish`, keepalive on pagehide) and `save.rating` is only a display copy. Unconfirmed wins stay unrated.
+  1.6.2 (2026-11-13, emergency): both clients POST res 'start' at move 2 (`Elo.start`); gains need both starts and 20 s
+  between start and result. A player who started and then goes quiet while the other reported a win/left is treated as
+  leaving after `CHESS.quietMs` (100 s, Account `alarm()` on the game object): quit penalty, the other gets half a win.
+  Gains are capped (`chessApply`): `CHESS.pairWins` (3) gains a day from one opponent, `CHESS.dayGain` (300) Elo a day
+  ('chess'.g keeps 24 h of [time, opp, delta]). Losses and leaving always apply.
   1.6 (2026-11-13, the owner's request): spectating. The host of each online game tracks it in Presence on
   `<base>-live` ({ id, k: table key, w/b names, wr/br Elo, t }) from `startOnline` until `finish` (`Net.liveOn/liveOff`).
   "📺 Watch live games" (`#specBtn`, the `Spec` block) lists that channel (`Net.listLive`, no tracking) and Spectate joins
