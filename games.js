@@ -175,7 +175,7 @@ window.GAMES = [
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-11-12T13:30:00+11:00',
+    updated: '2026-11-14T10:00:00+11:00',
     stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rv === 2 && isFinite(s.rating.r) ? 'Elo ' + Math.round(s.rating.r) : s.rating ? 'Elo 2000' : ''; /* 1.5.1: everyone was reset to 2000 */ return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
@@ -217,7 +217,7 @@ window.GAMES = [
     path: 'gamble-your-life-away/index.html',
     thumb: 'gamble-your-life-away/thumb.jpg',
     added: '2026-10-15T10:15:00+11:00',
-    updated: '2026-11-01T01:30:00+11:00',
+    updated: '2026-11-14T09:55:00+11:00',
     stat() { const s = readSave('gambleLifeSave', true); return s && s.rounds ? 'Richest ' + '$' + Math.round(s.peak).toLocaleString('en-US') : null; },
   },
   {
@@ -333,6 +333,10 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-14', game: 'chess', imgs: ['chess/news/1.6-spectate.jpg', 'chess/news/1.6-watching.jpg'], headline: 'Watch live chess games', text: 'Chess 1.6: press Watch live games to see every online game being played right now, then Spectate to follow one move by move with both players, their Elo and the move timer. Watching never changes your Elo, and the players see who is watching above the board.',
+    post: '📺 Chess 1.6: spectating is here!\n\n♟️ Press Watch live games to see every online game going on right now.\n👀 Hit Spectate and follow it move by move, with both players, their Elo and the move timer.\n🔒 Watching never touches your Elo.\n👁 Players can see who is watching, right above the board.' },
+  { date: '2026-11-14', game: 'gamble-your-life-away', imgs: ['gamble-your-life-away/news/1.2-leaderboard.jpg'], headline: 'Gamble Your Life Away leaderboard', text: 'Gamble Your Life Away 1.2: an all-time leaderboard on the main menu and the pause menu, ranking every player with an Arcade account by the most money they have ever had, from first to last.',
+    post: '🏆 Gamble Your Life Away 1.2: the all-time leaderboard!\n\n💰 Every player ranked by the richest they have ever been in the casino, from first to last.\n🎰 Open it from the main menu or the pause menu.\n✨ Sign in to your Arcade account to get on it. Your spot is highlighted.' },
   { date: '2026-11-13', game: 'throttle-ridge', imgs: ['throttle-ridge/news/1.1-online.jpg', 'throttle-ridge/news/1.1-lobby.jpg', 'throttle-ridge/news/1.1-mid-bike.jpg'], headline: 'Throttle Ridge goes online', text: 'Throttle Ridge 1.1: online races for up to 4 players (quick race or a private room with a code, using your arcade name), a new MID 250 bike that is faster than the STOCK 125, the Poly Racer speedometer, computer riders that make mistakes, and a Patch notes button.',
     post: '🏍️ Throttle Ridge 1.1 is out!\n\n🌐 Online races for up to 4 players. Quick race drops you in a public room that starts by itself, or make a private room and share the code.\n⚡ New bike: the MID 250. More power and a higher top speed than the STOCK 125.\n⏱️ The speedometer dial from Poly Racer: revs, gear and speed.\n🤖 Computer riders now make mistakes: over-rotating, freezing in the air and fumbling the throttle.\n📝 A Patch notes button in the game.' },
   { date: '2026-11-13', game: 'krill-dive', imgs: ['krill-dive/thumb.svg'], headline: '200 new Krill Dive questions', text: 'Krill Dive 1.5: 200 new questions for the daily dive and practice, from easy ones like mammals, desserts and superheroes to harder ones like Norse gods and Beatles songs. Every one has plenty of answers, so there is always a rarer one to dive for. They start showing up in tomorrow\u2019s dive.' },

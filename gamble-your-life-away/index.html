@@ -141,6 +141,17 @@
   .menu h2 { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 0; text-transform: uppercase; color: var(--gold-hi); }
   .menu p { color: var(--muted); margin: 0; line-height: 1.45; }
   .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
+  .lbSub { margin: -4px 0 0; color: var(--muted); font-weight: 600; }
+  .lbMe { width: 100%; color: var(--gold-hi); font-weight: 800; }
+  .lbList { width: 100%; max-height: min(56vh, 520px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 6px; box-sizing: border-box; }
+  .lbRow { display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; text-align: left; font-weight: 700; }
+  .lbRow:nth-child(odd) { background: rgba(255, 255, 255, .04); }
+  .lbRow .rk { font-family: var(--display); font-size: 18px; color: var(--muted); }
+  .lbRow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lbRow .v { font-family: var(--display); color: var(--green); }
+  .lbRow.top1 .rk { color: #ffd34d; } .lbRow.top2 .rk { color: #d8dde6; } .lbRow.top3 .rk { color: #e3995a; }
+  .lbRow.me { background: rgba(245, 192, 74, .18); outline: 1px solid var(--gold); }
+  .lbNote { padding: 18px; color: var(--muted); text-align: center; font-weight: 700; }
   .stats div { background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; text-align: left; }
   .stats small { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
   .stats b { font-family: var(--display); font-weight: 400; font-size: 20px; }
@@ -228,9 +239,10 @@
     <p id="mainSub">44 casino games. $80,000 to start. Don’t end up in debt.</p>
     <button class="btn" id="bPlay">Play</button>
     <button class="btn sec" data-go="stats">Your stats</button>
+    <button class="btn sec" data-go="board">🏆 Leaderboard</button>
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.1.1 · Patch notes</button>
+    <button class="link" data-go="notes">v1.2 · Patch notes</button>
   </div>
 
   <div class="menu wide" id="m-list">
@@ -243,6 +255,7 @@
     <h2>Paused</h2>
     <button class="btn" data-go="resume">Resume</button>
     <button class="btn sec" data-go="stats">Your stats</button>
+    <button class="btn sec" data-go="board">🏆 Leaderboard</button>
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
     <button class="btn sec" data-go="notes">Patch notes</button>
@@ -253,6 +266,15 @@
     <h2>Your stats</h2>
     <div class="stats" id="statsBox"></div>
     <button class="btn danger" id="bReset">Start over with $80,000</button>
+    <button class="btn sec" data-go="back">Back</button>
+  </div>
+
+  <!-- 1.2: the all-time leaderboard (every player with an Arcade account, by the most money they ever had) -->
+  <div class="menu wide" id="m-board">
+    <h2>🏆 All-time leaderboard</h2>
+    <p class="lbSub">The richest anyone has ever been in the casino. Players with an Arcade account show up here.</p>
+    <div class="lbMe" id="lbMe"></div>
+    <div class="lbList" id="lbList"></div>
     <button class="btn sec" data-go="back">Back</button>
   </div>
 
@@ -276,10 +298,11 @@
   </div>
 
   <div class="menu wide" id="m-notes">
-    <div class="hero"><div class="ribbon">BIG EXPANSION</div><h1>v1.1<span>20 new games</span></h1><p>The casino nearly doubles: 44 games under one roof, including Texas Hold’em, a bigger floor, and fairer payouts across the old favourites.</p>
+    <div class="hero"><div class="ribbon">NEW</div><h1>v1.2<span>All-time leaderboard</span></h1><p>See who has been the richest in the casino. Every player with an Arcade account, ranked from first to last.</p>
       <div class="dice"><i>7</i><i>♠</i></div>
       <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:14%;top:76%;animation-delay:1.5s"></span></div>
     <div class="feat">
+      <div><i>🏆</i><span><b>All-time leaderboard</b>Everyone ranked by the richest they’ve ever been. Open it from the main menu or the pause menu.</span></div>
       <div><i>🃏</i><span><b>Texas Hold’em</b>Casino Hold’em against the dealer, plus Three Card Poker, Red Dog and Andar Bahar.</span></div>
       <div><i>🎰</i><span><b>3 new slots</b>Blazing 7s with wild multipliers, Fruit Frenzy (5 lines) and Pharaoh’s Gold (10 lines and scatters).</span></div>
       <div><i>🎈</i><span><b>Push your luck</b>Balloon Pop, Chicken Crossing, Safe Cracker, Treasure Chests and Dice 100.</span></div>
@@ -292,6 +315,11 @@
       <div><i>🎷</i><span><b>Lounge music</b>A smooth jazz loop while you lose everything.</span></div>
     </div>
     <div class="box notes">
+      <h3>v1.2 <span>All-time leaderboard</span></h3>
+      <ul>
+        <li><b>🏆 Leaderboard</b> on the main menu and the pause menu: every player ranked by the most money they’ve ever had, from first to last.</li>
+        <li>Sign in to an Arcade account on the site to get on it. Your spot is highlighted.</li>
+      </ul>
       <h3>v1.1 <span>20 new games</span></h3>
       <ul>
         <li><b>20 new games</b>, all on the floor next to the old ones: Texas Hold’em, Three Card Poker, Red Dog, Andar Bahar, Blazing 7s, Fruit Frenzy, Pharaoh’s Gold, Dice 100, Balloon Pop, Chicken Crossing, Treasure Chests, Safe Cracker, Lucky Bowling, Darts, Penalty Shootout, Rock Paper Scissors, Chuck-a-Luck, Dice Duel, Fan Tan and Bingo Blitz.</li>
@@ -410,7 +438,7 @@ const weighted = list => { let r = Math.random() * list.reduce((s, x) => s + x.w
 
 // ---------- save ----------
 const TRAILER = /[?&]trailer\b/.test(location.search); // 1.1.1: opened by the site's Play trailer button
-const START = 80000, CREDIT = 10000, VERSION = '1.1.1', SKEY = 'gambleLifeSave';
+const START = 80000, CREDIT = 10000, VERSION = '1.2', SKEY = 'gambleLifeSave';
 const save = Object.assign({ money: START, peak: START, rounds: 0, wins: 0, biggest: 0, deaths: 0, played: {}, bet: 1000, stress: 0, seenVersion: '', volume: 0.7, music: true, quality: 'high' },
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { return {}; } })());
 if (!save.rounds && save.money === 50000) save.money = START; // never played before 1.0.4: start with the new amount
@@ -1597,7 +1625,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape') { if (mode === 'game'
 // ---------- menus ----------
 let menuStack = [];
 function showMenu(name) { $('ov').hidden = false; $('tag').hidden = true; $('cig').hidden = true; document.querySelectorAll('.menu').forEach(m => m.classList.toggle('active', m.id === 'm-' + name)); menuStack.push(name);
-  if (mode === 'floor') mode = 'paused'; if (name === 'stats') fillStats(); if (name === 'settings') fillSettings(); if (name === 'list') fillList(); }
+  if (mode === 'floor') mode = 'paused'; if (name === 'stats') fillStats(); if (name === 'settings') fillSettings(); if (name === 'list') fillList(); if (name === 'board') Board.show(); }
 function hideMenus() { $('ov').hidden = true; menuStack = []; }
 function back() { menuStack.pop(); const prev = menuStack.pop(); if (prev) showMenu(prev); else resume(); }
 function resume() { hideMenus(); if (mode === 'paused') mode = cur ? 'game' : 'floor'; }
@@ -1611,6 +1639,43 @@ function toTitle() { mode = 'title'; $('top').hidden = true; $('hint').hidden = 
 function fillList() { const L = $('list'); L.innerHTML = ''; root0.forEach(g => { const b = el('button', '', `<i>${g.icon}</i><b>${g.name}</b><span>${g.blurb}</span>`, L); b.onclick = () => { Sound.play('click'); hideMenus(); if (cur) { cur.leave && cur.leave(); cur = null; } $('top').hidden = false; mode = 'floor'; enterGame(g); }; }); }
 function fillStats() { const fav = Object.entries(save.played).sort((a, b) => b[1] - a[1])[0], fg = fav && GAMES.find(g => g.id === fav[0]);
   $('statsBox').innerHTML = [['Money', fmt(save.money)], ['Richest ever', fmt(save.peak)], ['Biggest win', fmt(save.biggest)], ['Rounds played', save.rounds.toLocaleString()], ['Rounds won', save.wins.toLocaleString()], ['Killed by the casino', save.deaths], ['Favourite game', fg ? fg.name : '–'], ['Games tried', Object.keys(save.played).length + ' / ' + GAMES.length]].map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join(''); }
+// ---------- 1.2: the all-time leaderboard ----------
+// The arcade's server keeps every account's best in each game (the site's games.js stat(): "Richest $N", from this
+// save's peak, sent by account.js). /acct/top?g=gamble-your-life-away returns them all in one request; this ranks them
+// by that number. Your own row uses this device's peak when it's higher (the site sends it on its next sync). Cached
+// for 2 minutes in this tab.
+const Board = (() => {
+  const G = 'gamble-your-life-away', KEY = 'gyl-lb1', TTL = 2 * 60e3;
+  const acc = () => { try { return (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount || null; } catch (e) { return window.ArcadeAccount || null; } };
+  const server = () => { const A = acc(); return (A && A.server) || 'https://arcade-realtime.arcade-realtime.workers.dev'; };
+  const myName = () => { try { const A = acc(); if (A && A.kind && A.kind() === 'online') return String(A.name()); } catch (e) {}
+    try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); if (a && a.name && a.token) return String(a.name); } catch (e) {} return ''; };
+  const num = t => { const m = /\$\s*([\d,]+)/.exec(String(t || '')); return m ? +m[1].replace(/,/g, '') : 0; };
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  async function load() {
+    try { const c = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (c && Date.now() - c.at < TTL) return c.rows; } catch (e) {}
+    const r = await fetch(server() + '/acct/top?g=' + G, { cache: 'no-store' });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const j = await r.json(), rows = (j.top || []).map(x => ({ n: String(x.n), v: num(x.s) })).filter(x => x.v > 0);
+    try { sessionStorage.setItem(KEY, JSON.stringify({ at: Date.now(), rows })); } catch (e) {}
+    return rows;
+  }
+  async function show() {
+    const L = $('lbList'), M = $('lbMe'), me = myName();
+    L.innerHTML = '<div class="lbNote">Loading the leaderboard…</div>'; M.textContent = '';
+    let rows;
+    try { rows = (await load()).slice(); } catch (e) { L.innerHTML = '<div class="lbNote">Couldn’t load the leaderboard. Check your connection and try again.</div>'; return; }
+    if (me && save.rounds) { const k = me.toLowerCase(), o = rows.find(x => x.n.toLowerCase() === k), p = Math.round(save.peak); if (o) o.v = Math.max(o.v, p); else rows.push({ n: me, v: p }); }
+    rows.sort((a, b) => b.v - a.v || a.n.localeCompare(b.n));
+    let rank = 0, last = null; rows.forEach((x, i) => { if (x.v !== last) { rank = i + 1; last = x.v; } x.r = rank; }); // the same amount shares a place
+    if (!rows.length) { L.innerHTML = '<div class="lbNote">Nobody is on the board yet. Play a round while signed in to the Arcade to be first.</div>'; }
+    else L.innerHTML = rows.map(x => `<div class="lbRow${x.r <= 3 ? ' top' + x.r : ''}${me && x.n.toLowerCase() === me.toLowerCase() ? ' me' : ''}"><span class="rk">#${x.r}</span><span class="nm">${esc(x.n)}</span><span class="v">${fmt(x.v)}</span></div>`).join('');
+    const mine = me && rows.find(x => x.n.toLowerCase() === me.toLowerCase());
+    M.textContent = mine ? `You’re #${mine.r} of ${rows.length} with ${fmt(mine.v)}.` : me ? 'Play a round to get on the board.' : 'Sign in to an Arcade account on the site to get on the board.';
+    const el = L.querySelector('.me'); if (el) el.scrollIntoView({ block: 'center' });
+  }
+  return { show };
+})();
 function fillSettings() { $('vol').value = Math.round(save.volume * 100); document.querySelectorAll('#musSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.v === 'on') === !!save.music)); document.querySelectorAll('#qSeg button').forEach(b => b.classList.toggle('sel', b.dataset.v === save.quality)); }
 $('vol').oninput = e => { save.volume = e.target.value / 100; Sound.setVolume(save.volume); store(); };
 document.querySelectorAll('#musSeg button').forEach(b => b.onclick = () => { save.music = b.dataset.v === 'on'; store(); if (save.music) { Sound.init(); Music.start(); } else Music.stop(); fillSettings(); });

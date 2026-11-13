@@ -180,11 +180,32 @@
   }
   #moveClock { text-align: center; font: 700 18px/1 system-ui, sans-serif; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.08); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
   #moveClock.low { background: #c0392b; color: #fff; }
+  /* 1.6: spectating */
+  #watchBar { text-align: center; font-weight: 700; font-size: 14px; padding: 6px 10px; border-radius: 10px; background: rgba(129,182,76,.18); color: var(--ink); margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #watchBar[hidden] { display: none; }
+  #spec { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 60; display: grid; place-items: center; background: rgba(0,0,0,.6); padding: 16px; }
+  #spec[hidden], #specPick[hidden], #specView[hidden] { display: none; }
+  #spec .card { background: var(--panel); border-radius: 10px; padding: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.55); width: min(480px, 100%); max-height: 94vh; overflow-y: auto; text-align: left; box-sizing: border-box; }
+  #spec h2 { margin: 0 0 4px; } #spec .lbsub { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+  #specList { min-height: 80px; max-height: 50vh; overflow-y: auto; margin-bottom: 12px; border-radius: 8px; background: var(--panel2); }
+  .sprow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .sprow .who { flex: 1; min-width: 0; font-weight: 700; } .sprow .who small { display: block; color: var(--muted); font-weight: 600; font-size: 12px; }
+  .sprow .netbtn { width: auto; margin: 0; padding: 8px 14px; background: var(--green); color: #fff; } .sprow .netbtn:hover { background: var(--green-hi); }
+  .spTop { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; } .spTop .netbtn { width: auto; margin: 0; padding: 8px 12px; }
+  #specLive { margin-left: auto; color: #ff5b4f; font-weight: 800; font-size: 13px; letter-spacing: .06em; } #specLive.off { color: var(--muted); }
+  .spBar { display: flex; align-items: center; gap: 8px; font-weight: 700; padding: 6px 2px; } .spBar small { color: var(--muted); font-weight: 600; } .spBar .tm { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); } .spBar .tm.go { color: var(--ink); } .spBar .tm.low { color: #ff6b5b; }
+  #spBoard { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; width: 100%; border-radius: 4px; overflow: hidden; }
+  #spBoard .sq { background-size: 100% 100%; } #spBoard .sq.pc-on { background-repeat: no-repeat; }
+  #spBoard .pcs { position: absolute; inset: 0; background-size: 100% 100%; z-index: 1; }
+  #spStatus { margin-top: 8px; font-weight: 700; text-align: center; }
+  #spMoves { margin-top: 6px; max-height: 70px; overflow-y: auto; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  #spWho { margin-top: 6px; font-size: 13px; color: var(--muted); }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="left">
+    <div id="watchBar" hidden></div>
     <div id="moveClock" hidden></div>
     <div class="player" id="topBar"><div class="avatar">🤖</div><div style="min-width:0"><div class="pname" id="topName">Computer</div><div class="caps" id="topCaps"></div></div><div class="thinking" id="thinking" hidden><i></i><i></i><i></i></div></div>
     <div id="board"><div id="squares"></div><div id="pieces"></div><div id="promo" hidden></div>
@@ -211,7 +232,7 @@
       <button class="netbtn" data-net="leave" id="netLeave">Leave the table</button>
       <div id="netStatus"></div>
     </div>
-    <div class="sect"><button class="netbtn" id="lbBtn">🏆 Chess leaderboard</button></div>
+    <div class="sect"><button class="netbtn" id="lbBtn">🏆 Chess leaderboard</button><button class="netbtn" id="specBtn">📺 Watch live games</button></div>
     <div id="moves"></div>
     <div id="status"></div>
     <div class="tools"><button id="undoBtn" title="Take back your last move"><b>↶</b>Undo</button><button id="flipBtn" title="Turn the board around"><b>⇅</b>Flip</button><button id="resignBtn" title="Give up this game"><b>⚑</b>Resign</button></div>
@@ -221,10 +242,25 @@
   </aside>
 </div>
 <div id="waitPop" hidden role="alert"><span class="wp-ic">♟️</span><div class="wp-t"><b id="waitName">Someone</b> is waiting for a quick match. Would you like to join?</div><button id="waitJoin">Join</button><button id="waitNo" aria-label="Not now">Not now</button></div>
+<div id="spec" hidden><div class="card">
+  <div id="specPick"><h2>📺 Live games</h2><p class="lbsub">Online games being played right now. Pick one to watch it move by move. Watching never changes your Elo, and the players can see who is watching.</p><div id="specList"></div><button class="bigbtn" id="specClose">Close</button></div>
+  <div id="specView" hidden>
+    <div class="spTop"><button class="netbtn" id="specBack">← All games</button><span id="specLive">● LIVE</span></div>
+    <div class="spBar" id="spTopBar"></div>
+    <div id="spBoard"></div>
+    <div class="spBar" id="spBotBar"></div>
+    <div id="spStatus"></div>
+    <div id="spMoves"></div>
+    <div id="spWho"></div>
+  </div>
+</div></div>
 <div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.5.3</span></summary>
+    <summary>Patch notes <span>v1.6</span></summary>
+    <h3>v1.6 <small>Spectating</small></h3>
+    <ul><li><b>📺 Watch live games:</b> see every online game being played right now and press Spectate to watch one move by move, with both players, their Elo and the move timer. Watching never changes your Elo.</li>
+      <li>When someone is watching your game, their name shows above the board.</li></ul>
     <h3>v1.5.3 <small>Move timer</small></h3>
     <ul><li><b>1:30 to move:</b> in online games you have a minute and a half to make each move. The timer is shown above the board and turns red in the last 15 seconds. If it runs out, you lose the game on time.</li></ul>
     <h3>v1.5.2 <small>Bug fixes and improvements</small></h3>
@@ -581,7 +617,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.5.3';
+const VERSION = '1.6';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -759,6 +795,7 @@ function finish() {
     }
   }
   persist();
+  if (online.on) { sendState(); if (Net.isHost()) Net.liveOff(); } // 1.6: off the Watch list until the rematch starts
   const won = over.winner === player;
   $('resT').textContent = !over.winner ? 'Draw' : won ? 'You won!' : 'You lost';
   $('resP').textContent = over.left ? `${oppName()} left the table. You win.` : over.oppResigned ? `${oppName()} resigned` : over.resigned ? 'You resigned' : (over.winner ? (won ? 'You won ' : (online.on ? oppName() : 'The computer') + ' won ') : 'Drawn ') + over.why;
@@ -1025,12 +1062,14 @@ const Net = (() => {
   }
   function drop(ch) { if (!ch || !client) return; try { ch.untrack && ch.untrack().catch(() => {}); } catch (e) {} try { const p = client.removeChannel(ch); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
   const members = ch => { const st = ch ? ch.presenceState() : {}, out = []; for (const k in st) { const m = st[k] && st[k][0]; if (m && typeof m.id === 'string') out.push(m); } return out; };
+  const players = ch => members(ch).filter(m => !m.s); // 1.6: spectators (s: 1) are never an opponent
   api.send = (ev, payload = {}) => { if (!table || table.state !== 'joined') return; try { const p = table.send({ type: 'broadcast', event: ev, payload: Object.assign({ f: myId }, payload) }); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
 
   async function seat(key, host, expect) {
-    hostId = host; expectId = expect || null; api.opp = null; api.left = false;
+    hostId = host; expectId = expect || null; api.opp = null; api.left = false; api.key = key;
     table = chan(BASE + '-t-' + key);
     for (const ev of ['mv', 'resign', 'again', 'chat']) table.on('broadcast', { event: ev }, m => { const p = m.payload || {}; if (api.opp && p.f === api.opp.id) emit(ev, p); });
+    table.on('broadcast', { event: 'look' }, () => emit('look')); // 1.6: a spectator asks for the game so far
     table.on('presence', { event: 'sync' }, onTable);
     await joinChan(table);
     await table.track(Object.assign({ id: myId, n: api.name, h: host === myId }, api.myRating ? api.myRating() : {})); // 1.4: with your rating
@@ -1039,7 +1078,9 @@ const Net = (() => {
   api.retrack = () => { if (table && table.state === 'joined') { try { const p = table.track(Object.assign({ id: myId, n: api.name, h: hostId === myId }, api.myRating ? api.myRating() : {})); if (p && p.catch) p.catch(() => {}); } catch (e) {} } };
   const rateOf = m => { const r = +m.r, rd = +m.rd; return isFinite(r) && isFinite(rd) && r >= 0 && r <= 1e5 && rd >= 30 && rd <= 350 ? { r, rd } : null; };
   function onTable() {
-    const others = members(table).filter(m => m.id !== myId);
+    // 1.6: who is watching this table (shown above the board)
+    api.watchers = members(table).filter(m => m.s && m.id !== myId).map(m => api.cleanName(m.n) || 'Someone'); emit('watchers', api.watchers);
+    const others = players(table).filter(m => m.id !== myId);
     if (!api.opp) {
       const c = expectId ? others.find(m => m.id === expectId) : hostId === myId ? others[0] : others.find(m => m.h);
       if (!hostId && others.length > 1) { emit('error', 'That table is full.'); api.leave(); return; }
@@ -1090,7 +1131,42 @@ const Net = (() => {
     clearTimeout(waitTimer);
     waitTimer = setTimeout(() => { if (!api.opp && api.on) { emit('error', 'Nobody is at table ' + code + '.'); api.leave(); } }, 6000);
   };
-  api.leave = () => { api.on = false; clearTimeout(waitTimer); const a = lobby, b = table; lobby = table = null; api.opp = null; hostId = null; drop(a); drop(b); setTimeout(() => { if (!api.on) api.watch(); }, 1500); };
+  /* 1.6: spectating. The host of every game in progress shows it in Presence on '<base>-live' ({ id, k: table key,
+     w/b: names, wr/br: Elo, t: when it started}); the Watch list reads that channel without joining it. A spectator
+     joins the table's channel with s: 1 in Presence (the players leave it out of everything and list it as watching),
+     asks for the game so far ('look', answered by both players with 'st') and then follows the 'mv' and 'resign'
+     messages. Nothing a spectator sees is ever rated or saved. */
+  let liveCh = null, liveInfo = null;
+  api.liveOn = async info => {
+    liveInfo = Object.assign({ id: myId, k: api.key, t: Date.now() }, info);
+    try {
+      if (!liveCh) { liveCh = chan(BASE + '-live'); const c = liveCh; await joinChan(c); if (liveCh !== c) return; }
+      if (liveInfo) { const p = liveCh.track(liveInfo); if (p && p.catch) p.catch(() => {}); }
+    } catch (e) { const c = liveCh; liveCh = null; drop(c); }
+  };
+  api.liveOff = () => { liveInfo = null; const c = liveCh; liveCh = null; drop(c); };
+  let listCh = null;
+  api.listLive = async cb => {
+    api.listStop(); await getClient();
+    const c = listCh = chan(BASE + '-live');
+    c.on('presence', { event: 'sync' }, () => { if (listCh === c) cb(members(c).filter(m => typeof m.k === 'string' && /^[a-z0-9]{2,20}$/i.test(m.k))); });
+    await joinChan(c);
+  };
+  api.listStop = () => { const c = listCh; listCh = null; drop(c); };
+  let specCh = null;
+  api.spectate = async (key, name, on) => {
+    api.unspectate(); await getClient();
+    const c = specCh = chan(BASE + '-t-' + key);
+    for (const ev of ['mv', 'resign', 'st']) c.on('broadcast', { event: ev }, m => { if (specCh === c) on(ev, m.payload || {}); });
+    c.on('presence', { event: 'sync' }, () => { if (specCh === c) on('who', { players: players(c), watchers: members(c).filter(m => m.s && m.id !== myId).map(m => api.cleanName(m.n) || 'Someone') }); });
+    await joinChan(c);
+    if (specCh !== c) return;
+    await c.track({ id: myId, n: api.cleanName(name) || 'Someone', s: 1 });
+    const ask = () => { try { const p = c.send({ type: 'broadcast', event: 'look', payload: { f: myId } }); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+    ask(); setTimeout(() => { if (specCh === c) ask(); }, 2500);
+  };
+  api.unspectate = () => { const c = specCh; specCh = null; drop(c); };
+  api.leave = () => { api.on = false; api.liveOff(); api.key = null; api.watchers = []; clearTimeout(waitTimer); const a = lobby, b = table; lobby = table = null; api.opp = null; hostId = null; drop(a); drop(b); setTimeout(() => { if (!api.on) api.watch(); }, 1500); };
   // 1.5.1: every Chess tab that isn't playing online watches the quick-match lobby without joining it, and hears when
   // someone is waiting there alone ('waiting' with that player, or null)
   let watchCh = null;
@@ -1122,7 +1198,21 @@ function startOnline() {
   G = fromFEN(START_FEN); hist = []; keys = [posKey(G)]; legalNow = legal(G); over = null; selected = -1; resignArm = 0; flipped = false;
   document.body.classList.add('online');
   buildSquares(); renderAll(); renderSide(); Sound.start();
+  // 1.6: the host lists the game for spectators, and anyone already watching is told a new game started
+  if (Net.isHost()) Net.liveOn({ w: whiteName(), b: blackName(), wr: rOf('w'), br: rOf('b') });
+  sendState();
 }
+// 1.6: the game so far, for spectators ('look' asks for it; sent again when a game starts and ends)
+function whiteName() { return player === 'w' ? Net.name : oppName(); }
+function blackName() { return player === 'b' ? Net.name : oppName(); }
+function rOf(c) { const r = c === player ? save.rating && save.rating.r : online.oppRate && online.oppRate.r; return isFinite(r) ? Math.round(r) : null; }
+function sendState() {
+  if (!online.on || !Net.opp) return;
+  Net.send('st', { g: online.gameNo, mv: hist.map(x => uci(x.m)), w: whiteName(), b: blackName(), wi: player === 'w' ? Net.me : Net.opp.id, bi: player === 'b' ? Net.me : Net.opp.id, wr: rOf('w'), br: rOf('b'),
+    o: over ? { w: over.winner || null, y: over.left ? 'left' : over.resigned ? 'resigned' : over.why || '' } : null, ms: Math.max(0, mclock.end - Date.now()) });
+}
+Net.onEvent('look', sendState);
+Net.onEvent('watchers', list => { const el = $('watchBar'); el.hidden = !online.on || !list.length; el.textContent = '👁 ' + (list.length === 1 ? list[0] + ' is watching' : list.length + ' watching: ' + list.join(', ')); el.title = el.textContent; });
 // 1.5.2: leaving a game before it ends costs a flat 100 Elo (the other player keeps theirs). One account (by its char
 // codes) loses 1000 the first two times.
 const LEAVE_PEN = 100, PEN_SPECIAL = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000, 2];
@@ -1146,7 +1236,7 @@ addEventListener('pagehide', () => {
 function leaveOnline() {
   // 1.4: walking out of a game you've both moved in loses it, as on chess.com
   if (online.on && !over && Net.opp) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true, quit: true }; try { Net.send('resign', { q: 1 }); } catch (e) {} finish(); } // 1.5.2: any unfinished game
-  Net.leave(); online.on = false; online.gameNo = 0; document.body.classList.remove('online');
+  Net.leave(); online.on = false; online.gameNo = 0; document.body.classList.remove('online'); $('watchBar').hidden = true;
   netWaiting(false); netStatus('');
   // back to your game against the computer
   if (save.game && Array.isArray(save.game.moves)) {
@@ -1281,6 +1371,93 @@ const LB = (() => {
   $('lbClose').addEventListener('click', () => { $('lb').hidden = true; });
   $('lb').addEventListener('click', e => { if (e.target === $('lb')) $('lb').hidden = true; });
   return { open };
+})();
+
+// ---------- 1.6: watching other people's online games ----------
+// Its own little board, so nothing here touches your game, your saved game, your record or your Elo.
+const Spec = (() => {
+  let sp = null, clockT = 0;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const nm = n => Net.cleanName(n) || 'Player';
+  const ago = t => { const m = Math.max(0, Math.round((Date.now() - (+t || Date.now())) / 60000)); return m < 1 ? 'just now' : m + ' min ago'; };
+  function list(rows) {
+    rows = rows.filter(r => r.k !== Net.key).sort((a, b) => (b.t || 0) - (a.t || 0));
+    $('specList').innerHTML = rows.length ? rows.map(r => `<div class="sprow"><div class="who">♔ ${esc(nm(r.w))} <small style="display:inline">${r.wr != null ? '(' + (r.wr | 0) + ')' : ''}</small> vs ♚ ${esc(nm(r.b))} <small style="display:inline">${r.br != null ? '(' + (r.br | 0) + ')' : ''}</small><small>Started ${ago(r.t)}</small></div><button class="netbtn" data-k="${esc(r.k)}">Spectate</button></div>`).join('')
+      : '<div class="lbmsg">Nobody is playing online right now. Leave this open and games show up as they start.</div>';
+  }
+  function open() {
+    if (online.on) { netStatus('Finish or leave your online game before watching others.', true); return; }
+    $('spec').hidden = false; $('specPick').hidden = false; $('specView').hidden = true;
+    $('specList').innerHTML = '<div class="lbmsg">Looking for live games…</div>';
+    Net.listLive(list).catch(() => { $('specList').innerHTML = '<div class="lbmsg">Couldn’t connect. Live games work on the Arcade website, online.</div>'; });
+  }
+  function close() { stop(); Net.listStop(); $('spec').hidden = true; }
+  function stop() { Net.unspectate(); sp = null; clearInterval(clockT); }
+  function reset(st) {
+    sp.G = fromFEN(START_FEN); sp.hist = []; sp.keys = [posKey(sp.G)]; sp.legal = legal(sp.G); sp.over = null; sp.left = '';
+    for (const u of st.mv || []) if (!apply(u, true)) break;
+    sp.g = st.g | 0; sp.w = nm(st.w); sp.b = nm(st.b); sp.wi = st.wi; sp.bi = st.bi; sp.wr = st.wr; sp.br = st.br; sp.has = true;
+    if (st.o) sp.over = { w: st.o.w === 'w' || st.o.w === 'b' ? st.o.w : null, y: String(st.o.y || '').slice(0, 40) };
+    sp.end = Date.now() + Math.min(90000, Math.max(0, +st.ms || 90000));
+  }
+  function apply(u, quiet) {
+    const m = sp.legal.find(x => uci(x) === u); if (!m) return false;
+    const s = san(sp.G, m, sp.legal); make(sp.G, m); sp.G.u.length = 0; sp.hist.push({ m, san: s }); sp.keys.push(posKey(sp.G)); sp.legal = legal(sp.G);
+    const G2 = sp.G;
+    if (!sp.legal.length) sp.over = inCheck(G2, G2.w) ? { w: G2.w ? 'b' : 'w', y: 'by checkmate' } : { w: null, y: 'by stalemate' };
+    else if (G2.h >= 100) sp.over = { w: null, y: 'by the 50-move rule' };
+    else if (sp.keys.filter(k => k === sp.keys[sp.keys.length - 1]).length >= 3) sp.over = { w: null, y: 'by repetition' };
+    else if (insufficient(G2)) sp.over = { w: null, y: 'not enough pieces to checkmate' };
+    sp.end = Date.now() + MOVE_MS;
+    if (!quiet && save.sound) { try { if (s.endsWith('+') || s.endsWith('#')) Sound.check(); else if (m.cap) Sound.capture(); else Sound.move(); } catch (e) {} }
+    return true;
+  }
+  function draw() {
+    if (!sp) return;
+    const B = $('spBoard'), last = sp.hist.length ? sp.hist[sp.hist.length - 1].m : null; let h = '';
+    for (let sq = 0; sq < 64; sq++) {
+      const r = sq >> 3, c = sq & 7, p = sp.G.b[sq], chk = p && p.toUpperCase() === 'K' && isW(p) === sp.G.w && inCheck(sp.G, sp.G.w);
+      h += `<div class="sq ${(r + c) % 2 ? 'd' : 'l'}${last && (sq === last.from || sq === last.to) ? ' last' : ''}${chk ? ' check' : ''}">${p ? `<div class="pcs" style="background-image:url('${IMG[p]}')"></div>` : ''}</div>`;
+    }
+    B.innerHTML = h;
+    const side = sp.G.w ? 'w' : 'b', sec = Math.ceil(Math.max(0, sp.end - Date.now()) / 1000), tm = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    const bar = c => `${c === 'w' ? '♔' : '♚'} ${esc(c === 'w' ? sp.w : sp.b)} <small>${(c === 'w' ? sp.wr : sp.br) != null ? (c === 'w' ? sp.wr : sp.br) | 0 : ''}</small>${!sp.over && !sp.left && sp.has ? `<span class="tm${side === c ? (sec <= 15 ? ' low' : ' go') : ''}">${side === c ? tm : ''}</span>` : ''}`;
+    $('spTopBar').innerHTML = bar('b'); $('spBotBar').innerHTML = bar('w');
+    const W = c => c === 'w' ? sp.w : sp.b;
+    $('spStatus').textContent = !sp.has ? 'Joining the game…' : sp.over ? (!sp.over.w ? 'Draw ' + sp.over.y + '.' : sp.over.y === 'resigned' ? W(sp.over.w === 'w' ? 'b' : 'w') + ' resigned. ' + W(sp.over.w) + ' wins.' : sp.over.y === 'left' ? W(sp.over.w === 'w' ? 'b' : 'w') + ' left. ' + W(sp.over.w) + ' wins.' : W(sp.over.w) + ' wins ' + sp.over.y + '.') + ' Waiting for a rematch…'
+      : sp.left ? sp.left : (inCheck(sp.G, sp.G.w) ? 'Check! ' : '') + W(side) + ' to move.';
+    let mv = ''; for (let i = 0; i < sp.hist.length; i += 2) mv += `${i / 2 + 1}. ${sp.hist[i].san} ${sp.hist[i + 1] ? sp.hist[i + 1].san : ''}  `;
+    $('spMoves').textContent = mv || 'No moves yet.'; $('spMoves').scrollTop = 1e6;
+    $('specLive').className = sp.over || sp.left ? 'off' : ''; $('specLive').textContent = sp.over || sp.left ? 'GAME OVER' : '● LIVE';
+  }
+  function watch(key) {
+    Net.listStop();
+    $('specPick').hidden = true; $('specView').hidden = false;
+    sp = { key, has: false, g: -1, G: fromFEN(START_FEN), hist: [], keys: [], legal: [], over: null, left: '', w: 'White', b: 'Black', end: Date.now() + MOVE_MS };
+    $('spWho').textContent = ''; draw();
+    clearInterval(clockT); clockT = setInterval(draw, 500);
+    const me = myAcctName() || save.name || 'Guest';
+    Net.spectate(key, me, (ev, p) => {
+      if (!sp) return;
+      if (ev === 'st') { if (!Array.isArray(p.mv)) return; if ((p.g | 0) > sp.g || ((p.g | 0) === sp.g && p.mv.length >= sp.hist.length && (!sp.over || p.o))) reset(p); }
+      else if (ev === 'mv') { if (sp.has && !sp.over && (p.n | 0) === sp.hist.length && typeof p.u === 'string') apply(p.u); }
+      else if (ev === 'resign') { if (sp.has && !sp.over && (p.f === sp.wi || p.f === sp.bi)) { const loser = p.f === sp.wi ? 'w' : 'b'; sp.over = { w: loser === 'w' ? 'b' : 'w', y: p.t ? 'on time' : p.q ? 'left' : 'resigned' }; } }
+      else if (ev === 'who') {
+        const ids = p.players.map(m => m.id);
+        if (sp.has && sp.wi && sp.bi && !(ids.includes(sp.wi) && ids.includes(sp.bi))) sp.left = (!ids.includes(sp.wi) ? sp.w : sp.b) + ' left the table.';
+        if (!p.players.length && !sp.has) sp.left = 'This game has ended.';
+        $('spWho').textContent = '👁 Watching: you' + (p.watchers.length ? ', ' + p.watchers.join(', ') : '');
+      }
+      draw();
+    }).catch(() => { if (sp) { sp.left = 'Couldn’t connect to that game.'; draw(); } });
+  }
+  $('specBtn').addEventListener('click', () => { Sound.init(); open(); });
+  $('specClose').addEventListener('click', close);
+  $('specBack').addEventListener('click', () => { stop(); open(); });
+  $('specList').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (b) watch(b.dataset.k); });
+  $('spec').addEventListener('click', e => { if (e.target === $('spec')) close(); });
+  $('netBox').addEventListener('click', e => { if (e.target.closest('button[data-net]') && !$('spec').hidden) close(); }, true); // playing online yourself ends watching
+  return { open, close };
 })();
 
 // ---------- start: carry on a saved game, or start a new one ----------

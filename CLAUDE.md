@@ -467,7 +467,20 @@ source in Settings → Pages should be switched to `main`.
   leaving an unfinished online game (Leave the table, refresh or closing the page: `pagehide`) costs the leaver a flat
   100 Elo (`leavePenalty`), and the other player gets no change ('resign' with q: 1 = walked out, over.left). One account
   set by the owner (PEN_SPECIAL, stored as char codes) loses 1000 the first two times (`save.lpn`), then 100.
+  1.6 (2026-11-14, the owner's request): spectating. The host of each online game tracks it in Presence on
+  `<base>-live` ({ id, k: table key, w/b names, wr/br Elo, t }) from `startOnline` until `finish` (`Net.liveOn/liveOff`).
+  "📺 Watch live games" (`#specBtn`, the `Spec` block) lists that channel (`Net.listLive`, no tracking) and Spectate joins
+  the table channel with `s: 1` in Presence (`Net.spectate`): the players leave `s` members out of everything
+  (`players()`), show them in `#watchBar` above the board ('watchers' event), and answer the spectator's 'look' with
+  'st' { g: game number, mv: UCI list, w/b, wi/bi ids, wr/br, o: result, ms: move clock left } (also sent when a game
+  starts and ends). The spectator then follows 'mv' and 'resign' on its own little board (`#spBoard`), so watching never
+  touches `save` (no Elo, record or saved game). Test with three origins (two players + a watcher) and a copy of the
+  page that sets `window.ARCADE_RT_URL` before loading /rt.js (rt.js honours it), against a local wrangler dev.
 
+- `gamble-your-life-away/`: Gamble Your Life Away, a 3D casino (save `gambleLifeSave`). 1.2 (2026-11-14): an all-time
+  leaderboard (`Board`, menu `#m-board`, "🏆 Leaderboard" on the main and pause menus) from `/acct/top?g=gamble-your-life-away`,
+  ranked by the number in each account's games.js `stat()` line ("Richest $N", the save's `peak`); your own row uses this
+  device's peak when it's higher; same amount shares a place; cached 2 minutes in sessionStorage. No Worker change.
 - `cube-tower-defense/`: Cube Tower Defense, an endless tower defense with the cubes from Cube Assault (Three.js bundled into the file). Saves `cubeTDProfile` (name, level, best wave, stats) and `cubeTDSettings`.
 
   1.3: 25 new units in `NEW_T` (each has `base`, one of the first nine, which sets its model (`personModel` via `BASE_OF`,
