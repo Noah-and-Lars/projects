@@ -30,6 +30,17 @@ minutes) saying the site moves to https://thearcade.pages.dev and this one shuts
 with the Arcade account. It only runs when location.hostname is noah-and-lars.github.io, so the Cloudflare copy never
 shows it (do not change that check), and frames inside play.html skip it. "Go to the new site" keeps the same page.
 
+Investigation records (2026-11-14, the owner's request): each Account keeps `ev` (its newest 80 events: signup, login,
+recover, wrongpw (merged per hour with a count), password, rename, ban/unban, devban/devunban, newcode, dmread; each with
+the device id, IP and rough location where it applies, and `by` = the admin), `ips` (last 10 IPs with location, first/last
+seen and a count; the Worker passes CF-Connecting-IP and request.cf as x-arcade-ip / x-arcade-geo, which a browser can't
+set) and `pt` (play time per game: seconds, sessions, last played; account.js `trackPlay()` sends it from play.html via
+/acct/play every 5 minutes and on leaving, capped by real time). The Chat object keeps each account's own messages
+('h:a:<lower>', newest 300). Admin ops: 'investigate' (all of that, read only), 'dmlist' / 'dmread' (private messages:
+signed-in admin ACCOUNT only, never the password; 'dmread' needs a reason of 10+ characters and writes a 'dmread' event
+before returning). The console shows these under Account Tools > Look up; private messages sit behind two warnings, a
+reason and typing the username. The Terms (tos.js section 7, TOS_VERSION 2026-11-14) say what is kept.
+
 Admin password (2026-11-13): the Worker no longer has the admin password's hash in its source. It checks the secret
 ADMIN_PW_HASH (SHA-256 of the password; set with `npx wrangler secret put ADMIN_PW_HASH` in realtime-worker/). The old
 ADMINTEST password no longer works for the admin tools (?admin, chat Delete, the console); Cube Assault's ADMINTEST and

@@ -158,7 +158,7 @@ const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
 // The admin password (2026-11-13): only its SHA-256 is kept, as the Worker secret ADMIN_PW_HASH (npx wrangler secret put
 // ADMIN_PW_HASH), so it isn't in this public file. With no secret set, the password works nowhere (admin accounts still do).
-const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat', 'chess']; // what a browser may ask an account for
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat', 'chess', 'play']; // what a browser may ask an account for
 const HB_CHEATERS = ['noah', 'archiemccarthy', 'lars']; // Havoc Bay cheat menu accounts
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
@@ -185,7 +185,7 @@ async function accounts(req, env, url) {
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426 });
     const tok = wsToken(req), nm = tok.split('.')[0] || '';
     if (!NAME_RE.test(nm)) return new Response('sign in first', { status: 401 });
-    return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + nm.toLowerCase())).fetch(new Request('https://acct/ws', { headers: { Upgrade: 'websocket', authorization: 'Bearer ' + tok } }));
+    return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + nm.toLowerCase())).fetch(new Request('https://acct/ws', { headers: { Upgrade: 'websocket', authorization: 'Bearer ' + tok, ...ipHeaders(req) } }));
   }
   if (route !== 'admin' && !ROUTES.includes(route)) return out({ error: 'not_found' }, 404);
   let name = '', body = null;
@@ -209,7 +209,7 @@ async function accounts(req, env, url) {
   const dev = DEV_RE.test(req.headers.get('x-arcade-dev') || '') ? req.headers.get('x-arcade-dev') : '';
   if (dev && ['signup', 'login', 'recover', 'sync'].includes(route) && await devBanned(env, dev)) return out({ error: 'device_banned' }, 403);
   const stub = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + name.toLowerCase()));
-  const r = await stub.fetch(new Request('https://acct/' + route + url.search, { method: req.method, headers: { 'authorization': req.headers.get('Authorization') || '', 'content-type': 'application/json', 'x-arcade-dev': dev }, body: body ? JSON.stringify(body) : undefined }));
+  const r = await stub.fetch(new Request('https://acct/' + route + url.search, { method: req.method, headers: { 'authorization': req.headers.get('Authorization') || '', 'content-type': 'application/json', 'x-arcade-dev': dev, ...ipHeaders(req) }, body: body ? JSON.stringify(body) : undefined }));
   return new Response(r.body, { status: r.status, headers: { ...cors, 'content-type': 'application/json' } });
 }
 /* Device bans (2026-11-12, the owner's request for "hardware bans"; real hardware ids can't be read by a website):
@@ -228,6 +228,28 @@ async function devBanned(env, dev) {
   }
   return devCache.set.has(dev);
 }
+// An account's own history (2026-11-14, for investigations): the newest EV_KEEP events, kept on the account. Repeated wrong
+// passwords within an hour are one entry with a count, so a flood of guesses can't push the real history out.
+const EV_KEEP = 80;
+function logEv(a, k, x) {
+  const now = Date.now(), ev = a.ev || (a.ev = []), last = ev[ev.length - 1];
+  if (k === 'wrongpw' && last && last.k === 'wrongpw' && now - last.t < 3600e3) { last.n = (last.n || 1) + 1; last.t = now; return; }
+  ev.push(Object.assign({ t: now, k }, x || {}));
+  if (ev.length > EV_KEEP) ev.splice(0, ev.length - EV_KEEP);
+}
+// IP addresses (2026-11-14, the owner's request, for investigations): Cloudflare tells the Worker the caller's IP and rough
+// location; the Worker passes them to the account object in its own headers (a browser can't set them). Each account keeps
+// its last IP_KEEP addresses with first/last seen and a count, and its sign-in events carry the IP too.
+const IP_KEEP = 10;
+const ipHeaders = req => ({ 'x-arcade-ip': (req.headers.get('CF-Connecting-IP') || '').slice(0, 45), 'x-arcade-geo': [req.cf && req.cf.city, req.cf && req.cf.region, req.cf && req.cf.country].filter(Boolean).join(', ').slice(0, 80) });
+const ipOf = req => { const ip = (req.headers.get('x-arcade-ip') || '').slice(0, 45); return ip ? { ip, loc: (req.headers.get('x-arcade-geo') || '').slice(0, 80) } : {}; };
+function noteIp(a, req) {
+  const x = ipOf(req); if (!x.ip) return;
+  const now = Date.now(), L = a.ips || (a.ips = []), e = L.find(z => z.ip === x.ip);
+  if (e) { e.last = now; e.n = (e.n || 1) + 1; if (x.loc) e.loc = x.loc; } else L.push({ ip: x.ip, loc: x.loc, first: now, last: now, n: 1 });
+  L.sort((p, q) => q.last - p.last); if (L.length > IP_KEEP) L.length = IP_KEEP;
+}
+const devOf = req => { const d = req.headers.get('x-arcade-dev') || ''; return DEV_RE.test(d) ? d : ''; };
 const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).includes(dev)) return false; a.devs = (a.devs || []).concat(dev).slice(-DEV_KEEP); return true; };
 // the owner's tools: the password is checked (and wrong tries counted) by one guard object, then the account's own
 // object is asked through a header only this Worker ever sets. Since 2026-11-11 a signed-in admin account (ADMIN_ACCOUNTS)
@@ -235,7 +257,7 @@ const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).in
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset', 'check'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset', 'check', 'investigate', 'dmlist', 'dmread'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -249,7 +271,28 @@ async function admin(env, body, out, auth) {
     const g = await call('__admin_guard__', 'guard', { pw: String(body.pw || '') });
     if (g.status !== 200) return out(await g.json().catch(() => ({ error: 'wrong' })), g.status);
   }
-  if (op === 'check') return out({ ok: 1, who: who || '' }); // the admin console's sign-in: is this password (or admin account) good?
+  if (op === 'check') return out({ ok: 1, who: who || '' });
+  if (op === 'investigate') { // 2026-11-14 (read only): the account's records plus its Global chat messages, for the admin console
+    if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
+    const r = await call('u:' + name.toLowerCase(), 'admininvest');
+    if (r.status !== 200) return out(await r.json().catch(() => ({})), r.status);
+    const x = await r.json();
+    const us = [...new Set([x.name, ...(x.ev || []).filter(e => e.k === 'rename' && e.from).map(e => e.from)].map(n => 'a:' + String(n).toLowerCase()))].slice(0, 6);
+    const h = await env.CHAT.get(env.CHAT.idFromName('chat:global')).fetch(new Request('https://chat/hist', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-int': '1' }, body: JSON.stringify({ us }) })).catch(() => null);
+    x.chat = h && h.ok ? ((await h.json().catch(() => ({}))).h || []) : [];
+    return out(x);
+  }
+  // Private messages (2026-11-14, the owner's request, for serious cases only): a signed-in admin account (never just the
+  // password) can list an account's conversations and read one, with a written reason. Every read is written into that
+  // account's own history (who, when, which conversation, why) before anything is returned.
+  if (op === 'dmlist' || op === 'dmread') {
+    if (!ADMIN_ACCOUNTS.includes(who.toLowerCase())) return out({ error: 'not_admin' }, 403);
+    if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
+    const why = tidy(body.why).slice(0, 200);
+    if (op === 'dmread' && why.length < 10) return out({ error: 'reason' }, 400);
+    const r = await call('u:' + name.toLowerCase(), op === 'dmlist' ? 'admindmlist' : 'admindmread', { k: String(body.k || ''), before: +body.before || 0, why, by: who });
+    return out(await r.json().catch(() => ({})), r.status);
+  } // the admin console's sign-in: is this password (or admin account) good?
   if (op === 'noticeget' || op === 'noticeset' || op === 'noticeclear') { // the site announcement (see siteNotice)
     let n = null;
     if (op === 'noticeset') { n = cleanNotice(body, who); if (!n) return out({ error: 'bad' }, 400); }
@@ -266,8 +309,8 @@ async function admin(env, body, out, auth) {
     const ds = await devStore(env).fetch(new Request('https://acct/' + (op === 'devban' ? 'devadd' : 'devdel'), { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify({ devs }) }));
     if (ds.status !== 200) return out({ error: 'failed' }, 502);
     devCache = { at: 0, set: null };
-    await call('u:' + name.toLowerCase(), 'admindevflag', { on: op === 'devban' ? 1 : 0 });
-    const r = await call('u:' + name.toLowerCase(), op === 'devban' ? 'adminban' : 'adminunban');
+    await call('u:' + name.toLowerCase(), 'admindevflag', { on: op === 'devban' ? 1 : 0, by: who || 'password' });
+    const r = await call('u:' + name.toLowerCase(), op === 'devban' ? 'adminban' : 'adminunban', { by: who || 'password' });
     const x = await r.json().catch(() => ({}));
     return out(Object.assign(x, { devices: devs.length, devbanned: op === 'devban' ? 1 : 0 }), r.status);
   }
@@ -288,7 +331,7 @@ async function admin(env, body, out, auth) {
   if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
   // 2026-11-12: 'devinfo' (read only) is 'info' plus the account's device ids and activity times, for the admin console's
   // Accounts tab, which groups accounts that share a device to find each person's main account and their alts.
-  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', devinfo: 'admindevinfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename', newcode: 'adminnewcode', chessset: 'adminchess' }[op], { to: String(body.to || ''), r: body.r });
+  const r = await call('u:' + name.toLowerCase(), { info: 'admininfo', devinfo: 'admindevinfo', delete: 'adminwipe', ban: 'adminban', unban: 'adminunban', rename: 'adminrename', newcode: 'adminnewcode', chessset: 'adminchess' }[op], { to: String(body.to || ''), r: body.r, by: who || 'password' });
   return out(await r.json().catch(() => ({})), r.status);
 }
 /* Site announcement (2026-11-13): a banner on every page of the arcade, written in the admin console
@@ -356,7 +399,7 @@ export class Account extends DurableObject {
       const code = newCode();
       a = { name: String(body.name), salt: rnd(16), created: now, fails: 0, lockUntil: 0, sess: [], games: {}, rs: rnd(16) };
       a.h = await sha(a.salt + body.key); a.rh = await sha(a.rs + normCode(code));
-      noteDev(a, req.headers.get('x-arcade-dev'));
+      noteDev(a, req.headers.get('x-arcade-dev')); logEv(a, 'signup', { d: devOf(req), ...ipOf(req) }); noteIp(a, req);
       const token = await this.session(a);
       await dirCall(this.env, 'add', { n: a.name, c: a.created }); a.listed = 1;
       await S.put('acct', a);
@@ -368,11 +411,11 @@ export class Account extends DurableObject {
       if (a.lockUntil > now) return j({ error: 'locked', wait: Math.ceil((a.lockUntil - now) / 1000) }, 429);
       if (!KEY_RE.test(body.key || '')) return j({ error: 'bad' }, 400);
       const ok = route === 'login' ? same(await sha(a.salt + body.key), a.h) : same(await sha(a.rs + normCode(body.code)), a.rh);
-      if (!ok) { a.fails = (a.fails || 0) + 1; if (a.fails >= 8) { a.fails = 0; a.lockUntil = now + 10 * 60 * 1000; } await S.put('acct', a); return j({ error: 'wrong' }, 401); }
+      if (!ok) { a.fails = (a.fails || 0) + 1; if (a.fails >= 8) { a.fails = 0; a.lockUntil = now + 10 * 60 * 1000; } logEv(a, 'wrongpw', { d: devOf(req), via: route, ...ipOf(req) }); await S.put('acct', a); return j({ error: 'wrong' }, 401); }
       a.fails = 0;
       let recovery;
       if (route === 'recover') { a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn; recovery = newCode(); a.rs = rnd(16); a.rh = await sha(a.rs + normCode(recovery)); }
-      noteDev(a, req.headers.get('x-arcade-dev'));
+      noteDev(a, req.headers.get('x-arcade-dev')); logEv(a, route, { d: devOf(req), ...ipOf(req) }); noteIp(a, req);
       const token = await this.session(a);
       await S.put('acct', a);
       return j(recovery ? { token, name: a.name, recovery } : { token, name: a.name });
@@ -389,7 +432,7 @@ export class Account extends DurableObject {
       const pair = new WebSocketPair();
       this.ctx.acceptWebSocket(pair[1]);
       // "last online" on the Players page: every site page opens this socket, so tell the list at most every 5 minutes
-      if (now - (a.seenAt || 0) > 5 * 60000) { a.seenAt = now; await S.put('acct', a); this.ctx.waitUntil(dirCall(this.env, 'seen', { n: a.name }).catch(() => null)); }
+      if (now - (a.seenAt || 0) > 5 * 60000) { a.seenAt = now; noteIp(a, req); await S.put('acct', a); this.ctx.waitUntil(dirCall(this.env, 'seen', { n: a.name }).catch(() => null)); }
       return new Response(null, { status: 101, webSocket: pair[0], headers: { 'Sec-WebSocket-Protocol': 'arcade' } });
     }
     if (['social', 'friend', 'block', 'dm', 'profile', 'call'].includes(route)) return this.social(route, req, url, body, a, j, now);
@@ -399,7 +442,7 @@ export class Account extends DurableObject {
     if (route === 'logout') { a.sess.splice(si, 1); await S.put('acct', a); return j({ ok: true }); }
     if (route === 'password') {
       if (!KEY_RE.test(body.key || '') || !same(await sha(a.salt + (body.old || '')), a.h)) return j({ error: 'wrong' }, 401);
-      a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn;
+      a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn; logEv(a, 'password', { d: devOf(req), ...ipOf(req) }); noteIp(a, req);
       const token = await this.session(a); await S.put('acct', a); return j({ token });
     }
     if (route === 'delete') { // the player deletes their own account (they type their password again)
@@ -413,6 +456,15 @@ export class Account extends DurableObject {
       const key = await crypto.subtle.importKey('jwk', JSON.parse(this.env.HB_CHEAT_KEY), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
       const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(msg)));
       return j({ t: msg + '|' + btoa(String.fromCharCode(...sig)) });
+    }
+    if (route === 'play') { // 2026-11-14: play time per game, sent by account.js from play.html every few minutes (seconds, capped by real time)
+      const g = String((body && body.g) || ''), pt = a.pt || (a.pt = {});
+      if (!GAME_RE.test(g) || (!pt[g] && Object.keys(pt).length >= 80)) return j({ error: 'bad' }, 400);
+      const e = pt[g] || (pt[g] = { s: 0, n: 0, at: 0 });
+      let sec = Math.max(0, Math.min(600, Math.round(+body.s || 0)));
+      if (e.at) sec = Math.min(sec, Math.round((now - e.at) / 1000) + 5); // can't report more time than has passed
+      e.s += sec; if (body.n) e.n++; e.at = now;
+      await S.put('acct', a); return j({ ok: 1 });
     }
     if (route === 'sync') return j({ name: a.name, created: a.created, games: a.games || {}, soc: socCounts(await this.soc()), mustRename: mustRename(a) ? 1 : 0 });
     if (route === 'rename') return this.renameTo(a, body || {}, j, now);
@@ -475,14 +527,30 @@ export class Account extends DurableObject {
     if (route === 'admindevinfo') {
       const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
       return j({ name: a.name, created: a.created, seenAt: a.seenAt || 0, sessSeen: Math.max(0, ...(a.sess || []).map(x => x.seen || 0)), devices: (a.sess || []).length,
-        games, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, devs: a.devs || [] });
+        games, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, devs: a.devs || [], pt: a.pt || {}, ips: (a.ips || []).map(z => z.ip) });
     }
     if (route === 'admininfo') {
       const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
       return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games, banned: a.banned ? 1 : 0, devs: (a.devs || []).length, devban: a.devban ? 1 : 0 });
     }
     // 2026-11-11: a ban signs the account out everywhere, stops it logging in, and takes it off the Players list
+    if (route === 'admininvest') return j({ name: a.name, created: a.created, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, ev: a.ev || [], pt: a.pt || {},
+      devs: a.devs || [], ips: a.ips || [], sessions: (a.sess || []).map(x => ({ seen: x.seen || 0 })), seenAt: a.seenAt || 0, games: Object.fromEntries(Object.entries(a.games || {}).map(([k, m]) => [k, { size: m.size, at: m.at }])) });
+    if (route === 'admindmlist') { // conversations only: who with, how many messages, when; no message text
+      const s = await this.soc();
+      return j({ name: a.name, convos: Object.entries(s.c).map(([k, c]) => ({ k, n: c.n, g: c.g ? 1 : 0, mem: c.g ? (c.mem || []).length : 0, seq: c.seq || 0, ts: c.ts || 0 })).sort((x, y) => y.ts - x.ts) });
+    }
+    if (route === 'admindmread') {
+      const s = await this.soc(), k = String(body.k || ''), c = s.c[k];
+      if (!c) return j({ error: 'not_found' }, 404);
+      logEv(a, 'dmread', { by: body.by || '', with: c.n || k, why: String(body.why || '').slice(0, 200) }); await S.put('acct', a);
+      const opt = { prefix: 'm:' + k + ':', reverse: true, limit: 50 };
+      if (+body.before > 0) opt.end = 'm:' + k + ':' + pad(+body.before);
+      const list = [...(await S.list(opt)).values()].reverse();
+      return j({ name: a.name, n: c.n, g: c.g ? 1 : 0, mem: c.mem || [], msgs: list, more: list.length === 50 });
+    }
     if (route === 'adminban') {
+      logEv(a, 'ban', { by: (body && body.by) || '' });
       a.banned = { at: now }; a.sess = []; await S.put('acct', a);
       await dirCall(this.env, 'del', { n: a.name }).catch(() => null);
       for (const ws of this.ctx.getWebSockets()) try { ws.close(1000, 'banned'); } catch (e) {}
@@ -492,13 +560,14 @@ export class Account extends DurableObject {
     // with Forgot password). The old code stops working, a lockout from wrong tries is cleared, devices stay signed in.
     // Codes are only ever stored hashed, so the old one can't be shown.
     if (route === 'adminnewcode') {
+      logEv(a, 'newcode', { by: (body && body.by) || '' });
       const code = newCode(); a.rs = rnd(16); a.rh = await sha(a.rs + normCode(code)); a.fails = 0; a.lockUntil = 0;
       await S.put('acct', a);
       return j({ name: a.name, code });
     }
-    if (route === 'admindevflag') { if (body.on) a.devban = { at: now }; else delete a.devban; await S.put('acct', a); return j({ ok: 1 }); }
-    if (route === 'adminunban') { delete a.banned; await S.put('acct', a); await dirCall(this.env, 'add', { n: a.name, c: a.created }).catch(() => null); return j({ unbanned: true, name: a.name }); }
-    if (route === 'adminrename') return this.renameTo(a, { name: body && body.to }, j, now, true);
+    if (route === 'admindevflag') { logEv(a, body.on ? 'devban' : 'devunban', { by: body.by || '' }); if (body.on) a.devban = { at: now }; else delete a.devban; await S.put('acct', a); return j({ ok: 1 }); }
+    if (route === 'adminunban') { logEv(a, 'unban', { by: (body && body.by) || '' }); delete a.banned; await S.put('acct', a); await dirCall(this.env, 'add', { n: a.name, c: a.created }).catch(() => null); return j({ unbanned: true, name: a.name }); }
+    if (route === 'adminrename') return this.renameTo(a, { name: body && body.to, by: body && body.by }, j, now, true);
     if (route === 'adminchess') { // 2026-11-13: set a player's Chess Elo (it lives here since Chess 1.6.1)
       const r = Math.round(+(body && body.r)); if (!isFinite(r) || r < 0 || r > 4000) return j({ error: 'bad' }, 400);
       const c = await this.chessOf(a); c.r = r; c.peak = r; c.at = now; await this.chessSave(a, c); return j({ name: a.name, elo: r });
@@ -830,6 +899,7 @@ export class Account extends DurableObject {
     const all = [...(await S.list()).entries()].filter(([k]) => k !== 'acct' && k !== 'moved');
     for (let i = 0; i < all.length; i += 100) if (await move({ e: all.slice(i, i + 100) }) !== 200) return j({ error: 'failed' }, 502);
     if (!a.kn) a.kn = old.toLowerCase(); // the password key was stretched with the old name: keep using it until the password changes
+    logEv(a, 'rename', { from: old, to: nn, by: byAdmin ? (body.by || 'admin') : '' });
     a.name = nn; a.listed = 1; a.renamedAt = now;
     const token = byAdmin ? '' : await this.session(a); // an admin's rename adds no session (the player's own carry over)
     if (await move({ e: [['acct', a]], end: 1 }) !== 200) return j({ error: 'failed' }, 502);
@@ -1046,7 +1116,7 @@ function chatSocket(req, env, url) {
   return env.CHAT.get(env.CHAT.idFromName(room ? 'chat:test-' + room : 'chat:global')).fetch(new Request('https://chat/ws?' + q, { headers: h }));
 }
 
-const CHAT_KEEP = 150, CHAT_LEN = 200, CHAT_MAX = 1000;
+const CHAT_KEEP = 150, CHAT_LEN = 200, CHAT_MAX = 1000, CHAT_HIST = 300; // CHAT_HIST: each account's own kept messages
 // links the owner banned from the Global chat (2026-11-13: another games site). Checked with spaces, dots and
 // look-alike characters taken out, so 'playforge-3pb . pages . dev' or 'p l a y f o r g e' is caught too.
 const CHAT_BANNED = ['playforge'];
@@ -1069,6 +1139,14 @@ export class Chat extends DurableObject {
   }
   async fetch(req) {
     const url = new URL(req.url), now = Date.now();
+    if (url.pathname === '/hist') { // the admin's investigate tool: these accounts' kept messages (body.us: ['a:<lower>', ...])
+      if (req.headers.get('x-arcade-int') !== '1') return new Response('{}', { status: 403 });
+      const b = await req.json().catch(() => ({})), us = (Array.isArray(b.us) ? b.us : []).filter(u => /^a:[a-z0-9_]{3,16}$/.test(u)).slice(0, 6);
+      const got = us.length ? await this.ctx.storage.get(us.map(u => 'h:' + u)) : new Map(), h = [];
+      for (const [k, v] of got) for (const m of v || []) h.push(Object.assign({ u: k.slice(2) }, m));
+      h.sort((x, y) => x.ts - y.ts);
+      return new Response(JSON.stringify({ h }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/del') { // the owner's tools (admin() in the Worker)
       if (req.headers.get('x-arcade-int') !== '1') return new Response('{}', { status: 403 });
       const b = await req.json().catch(() => ({}));
@@ -1115,7 +1193,13 @@ export class Chat extends DurableObject {
     const msg = { id: rnd(6), u: a.u, n: a.n, a: a.a, t: text, ts: Math.max(now, log.length ? log[log.length - 1].ts + 1 : 0) };
     log.push(msg);
     if (log.length > CHAT_KEEP) log.splice(0, log.length - CHAT_KEEP);
-    await this.ctx.storage.put('log', log);
+    const put = { log };
+    if (a.a) { // 2026-11-14: an account's own messages are kept for investigations, even after they leave the 150 or are deleted
+      const hk = 'h:' + a.u, h = (await this.ctx.storage.get(hk)) || [];
+      h.push({ id: msg.id, t: msg.t, ts: msg.ts }); if (h.length > CHAT_HIST) h.splice(0, h.length - CHAT_HIST);
+      put[hk] = h;
+    }
+    await this.ctx.storage.put(put);
     this.all({ t: 'msg', m: msg, k });
   }
   async webSocketClose(ws, code) {

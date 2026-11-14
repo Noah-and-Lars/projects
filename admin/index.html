@@ -333,6 +333,15 @@ table.data tr.sel td { background: var(--accent-soft); }
 .nt-banner b { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; font-weight: 700; }
 textarea.inp { resize: vertical; font: inherit; line-height: 1.4; }
 .count-note { font-size: 11.5px; color: var(--muted); text-align: right; }
+/* Investigation records and private messages (2026-11-14) */
+.inv-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 10px; }
+.dm-zone { border: 2px dashed var(--crit); border-radius: 4px; padding: 12px; background: var(--crit-bg); }
+.dm-zone h4 { margin: 0 0 6px; color: var(--crit); font-size: 13px; }
+.dm-msg { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.dm-msg .who { font-weight: 600; } .dm-msg .when { font-family: var(--mono); font-size: 11px; color: var(--muted); display: block; font-weight: 400; }
+.dm-msg .txt { overflow-wrap: anywhere; white-space: pre-wrap; }
+.dm-list { max-height: 420px; overflow-y: auto; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); }
+textarea.inp.why { min-height: 70px; }
 /* Sign-in screen (2026-11-13): the whole console stays hidden until the admin password checks out */
 .gate { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: var(--bar); }
 .gate-box { width: min(380px, 100%); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 4px; padding: 22px; display: grid; gap: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, .4); }
@@ -698,13 +707,14 @@ if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'].includes(
           <div class="w-body">
             <p style="margin:0 0 10px;max-width:84ch">Checks every account for the devices it has been used on, then groups accounts that share a device as one person. Each group's main account is picked by the rule below; the rest are alts.</p>
             <div class="form-row">
-              <div class="field"><label for="altMain">Main account is the one</label><select id="altMain" class="inp"><option value="last">played most recently</option><option value="most">with the most progress saved</option></select></div>
+              <div class="field"><label for="altMain">Main account is the one</label><select id="altMain" class="inp"><option value="last">played most recently</option><option value="most">with the most play time</option></select></div>
               <div class="field"><label for="altShared">Ignore devices used by more than</label><select id="altShared" class="inp"><option value="3">3 accounts</option><option value="4">4 accounts</option><option value="6">6 accounts</option><option value="10">10 accounts</option><option value="999">never ignore</option></select></div>
+              <div class="field"><label for="altIp">Also link accounts on the same IP address</label><select id="altIp" class="inp"><option value="1">Yes</option><option value="0">No, devices only</option></select></div>
             </div>
             <div class="btn-row"><button class="btn primary" type="button" id="altScan" data-needs="pw">Scan every account</button><button class="btn" type="button" id="altStop" hidden>Stop</button></div>
             <div class="scan-bar" id="altBar" hidden><i></i></div>
             <div class="msg-line" id="altMsg"></div>
-            <p class="chart-note">Device IDs are random IDs the site keeps in each browser since 12 Nov 2026. They aren't hardware IDs. A school, library or family computer makes different people look like one person, so check a group before you ban anyone. Accounts not used since device IDs started can't be linked yet. "Most progress saved" counts cloud save size, because the server doesn't record play time.</p>
+            <p class="chart-note">Device IDs are random IDs the site keeps in each browser since 12 Nov 2026. They aren't hardware IDs. A school, library or family computer makes different people look like one person, so check a group before you ban anyone. Accounts not used since device IDs started can't be linked yet. "Most play time" uses the play time recorded from 14 Nov 2026, then cloud save size for older accounts.</p>
           </div>
         </div>
       </div>
@@ -729,8 +739,8 @@ if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'].includes(
           </div>
         </div>
         <div class="w s6">
-          <div class="w-head"><h3>Shared Devices</h3><span class="sub">Used by more accounts than the limit, so not used for linking</span></div>
-          <div class="w-body"><div class="table-wrap"><table class="data"><thead><tr><th>Device</th><th>Accounts</th></tr></thead><tbody id="altShRows"></tbody></table></div></div>
+          <div class="w-head"><h3>Shared Devices and Networks</h3><span class="sub">Used by more accounts than the limit, so not used for linking</span></div>
+          <div class="w-body"><div class="table-wrap"><table class="data"><thead><tr><th>Device or IP</th><th>Accounts</th></tr></thead><tbody id="altShRows"></tbody></table></div></div>
         </div>
       </div>
     </section>
@@ -1490,7 +1500,8 @@ async function runOp(op) {
       const [info, prof] = await Promise.all([op === 'info' ? admin({ op: 'info', name: n }) : Promise.resolve(null), call('/acct/player?name=' + encodeURIComponent(n))]);
       if (info && info.status !== 200) { setMsg(M, why(info, n), 'err'); if (info.status !== 404 || prof.status !== 200) { out.innerHTML = '<div class="empty-state">No result.</div>'; return; } }
       if (!info && prof.status !== 200) { setMsg(M, prof.status === 404 ? `${n} isn’t on the Players list (banned, a local account, or no account).` : why(prof, n), 'err'); out.innerHTML = '<div class="empty-state">No result.</div>'; return; }
-      out.innerHTML = accountCard(info && info.status === 200 ? info : null, prof.status === 200 ? prof : null, n);
+      out.innerHTML = accountCard(info && info.status === 200 ? info : null, prof.status === 200 ? prof : null, n) + (info && info.status === 200 ? '<div id="invest"><div class="empty-state">Loading the investigation records…</div></div>' : '');
+      if (info && info.status === 200) loadInvestigation(info.name);
       $('acResSub').textContent = 'Looked up ' + hhmm(Date.now());
       return;
     }
@@ -1849,8 +1860,10 @@ let scan = (LIVE && ls.get(ALT_KEY, null)) || { at: 0, acc: {} };
 if (!scan || typeof scan.acc !== 'object') scan = { at: 0, acc: {} };
 const saveScan = () => { if (LIVE) ls.set(ALT_KEY, scan); };
 const alt = { running: false, stop: false, people: [], shared: [], open: new Set(), main: ls.get('arcadeops.altmain', 'last'), limit: +ls.get('arcadeops.altlimit', 4) || 4 };
-$('altMain').value = alt.main; $('altShared').value = String(alt.limit);
-const shortDev = d => String(d).slice(0, 6) + '…';
+alt.byIp = ls.get('arcadeops.altip', 1) ? 1 : 0;
+$('altMain').value = alt.main; $('altShared').value = String(alt.limit); $('altIp').value = String(alt.byIp);
+$('altIp').addEventListener('change', e => { alt.byIp = +e.target.value; ls.set('arcadeops.altip', alt.byIp); analyze(); });
+const shortDev = d => String(d).startsWith('ip:') ? 'IP ' + String(d).slice(3) : 'device ' + String(d).slice(0, 6) + '…';
 function renderAltAccess() {
   $('altAccess').innerHTML = !LIVE ? `<span class="who">${shield}Sample mode</span><span class="tag">Sample</span><span class="note">Every account, device and group here is made up. On the arcade site this tab scans the real accounts.</span>`
     : canAct() ? `<span class="who">${shield}Unlocked as ${esc(actor())}</span><span class="note">Scanning reads accounts only. It never changes or bans anything by itself.</span>`
@@ -1859,11 +1872,12 @@ function renderAltAccess() {
 }
 const lastPlayed = a => Math.max(a.seenAt || 0, a.sessSeen || 0, a.dirSeen || 0, ...Object.values(a.games || {}).map(g => g.at || 0));
 const saved = a => Object.values(a.games || {}).reduce((s, g) => s + (g.size || 0), 0);
+const played = a => Object.values(a.pt || {}).reduce((s, e) => s + (e.s || 0), 0);
 async function fetchOne(name) {
   const r = await admin({ op: 'devinfo', name });
   if (r.status === 200) {
     const d = dir.list.find(p => lc(p.n) === lc(r.name));
-    scan.acc[lc(r.name)] = { name: r.name, created: r.created, seenAt: r.seenAt || 0, sessSeen: r.sessSeen || 0, dirSeen: d ? d.seen : 0, games: r.games || {}, banned: r.banned ? 1 : 0, devban: r.devban ? 1 : 0, devs: Array.isArray(r.devs) ? r.devs.filter(x => typeof x === 'string') : [], at: Date.now() };
+    scan.acc[lc(r.name)] = { name: r.name, created: r.created, seenAt: r.seenAt || 0, sessSeen: r.sessSeen || 0, dirSeen: d ? d.seen : 0, games: r.games || {}, banned: r.banned ? 1 : 0, devban: r.devban ? 1 : 0, devs: Array.isArray(r.devs) ? r.devs.filter(x => typeof x === 'string') : [], pt: r.pt || {}, ips: Array.isArray(r.ips) ? r.ips.filter(x => typeof x === 'string') : [], at: Date.now() };
     return { ok: true };
   }
   if (r.status === 404) { delete scan.acc[lc(name)]; return { ok: true, gone: true }; }
@@ -1912,6 +1926,7 @@ function analyze() {
   const A = Object.values(scan.acc);
   const devMap = new Map();
   A.forEach(a => a.devs.forEach(d => { if (!devMap.has(d)) devMap.set(d, new Set()); devMap.get(d).add(lc(a.name)); }));
+  if (alt.byIp) A.forEach(a => (a.ips || []).forEach(ip => { const k = 'ip:' + ip; if (!devMap.has(k)) devMap.set(k, new Set()); devMap.get(k).add(lc(a.name)); }));
   const sharedDevs = new Set([...devMap].filter(([, s]) => s.size > alt.limit).map(([d]) => d));
   // union-find: accounts that share any device that isn't a shared (school/family) one are the same person
   const up = new Map(A.map(a => [lc(a.name), lc(a.name)]));
@@ -1920,11 +1935,11 @@ function analyze() {
   const groups = new Map();
   A.forEach(a => { const r = root(lc(a.name)); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(a); });
   alt.people = [...groups.values()].map(list => {
-    const by = alt.main === 'most' ? (x, y) => saved(y) - saved(x) || lastPlayed(y) - lastPlayed(x) : (x, y) => lastPlayed(y) - lastPlayed(x) || saved(y) - saved(x);
+    const by = alt.main === 'most' ? (x, y) => played(y) - played(x) || saved(y) - saved(x) || lastPlayed(y) - lastPlayed(x) : (x, y) => lastPlayed(y) - lastPlayed(x) || saved(y) - saved(x);
     list.sort(by);
     const main = list[0], alts = list.slice(1), devs = new Set(list.flatMap(a => a.devs));
     const banned = list.filter(a => a.banned), free = list.filter(a => !a.banned);
-    return { id: lc(main.name), main, alts, list, devs, last: Math.max(...list.map(lastPlayed)), dodge: banned.length > 0 && free.length > 0, onShared: list.some(a => a.devs.some(d => sharedDevs.has(d))), nodev: list.every(a => !a.devs.length) };
+    return { id: lc(main.name), main, alts, list, devs: new Set(list.flatMap(a => a.devs)), last: Math.max(...list.map(lastPlayed)), dodge: banned.length > 0 && free.length > 0, onShared: list.some(a => a.devs.some(d => sharedDevs.has(d)) || (alt.byIp && (a.ips || []).some(ip => sharedDevs.has('ip:' + ip)))), nodev: list.every(a => !a.devs.length) };
   });
   alt.shared = [...sharedDevs].map(d => ({ d, names: [...devMap.get(d)].map(l => (scan.acc[l] || {}).name || l) })).sort((x, y) => y.names.length - x.names.length);
   alt.devMap = devMap; alt.sharedDevs = sharedDevs;
@@ -1944,7 +1959,7 @@ function renderAlts() {
   $('altRows').innerHTML = !scanned ? '<tr class="empty-row"><td colspan="6">Press Scan every account to build the groups.</td></tr>'
     : rows.length ? rows.slice(0, 300).map(p => {
       const open = alt.open.has(p.id), nm = a => `<a class="name-link" data-manage="${esc(a.name)}">${esc(a.name)}</a>${a.banned ? ' <span class="chip bad">Banned</span>' : ''}${on.has(lc(a.name)) ? ' <span class="chip on">Online</span>' : ''}`;
-      const flags = (p.dodge ? '<span class="chip bad">Possible ban dodger</span> ' : '') + (p.onShared ? '<span class="chip warn">On a shared device</span> ' : '') + (p.nodev ? '<span class="chip">No device yet</span>' : '');
+      const flags = (p.dodge ? '<span class="chip bad">Possible ban dodger</span> ' : '') + (p.onShared ? '<span class="chip warn">On a shared device or network</span> ' : '') + (p.nodev ? '<span class="chip">No device yet</span>' : '');
       let h = `<tr><td><button class="btn sm" type="button" data-open="${esc(p.id)}" aria-expanded="${open}" aria-label="Details for ${esc(p.main.name)}">${open ? '−' : '+'}</button></td><td>${nm(p.main)}</td><td>${p.alts.length ? p.alts.map(nm).join(', ') : '<span class="g-note">None found</span>'}</td><td class="t">${p.devs.size}</td><td class="t">${esc(ago(p.last))}</td><td>${flags}</td></tr>`;
       if (open) h += `<tr><td></td><td colspan="5">${groupDetail(p)}</td></tr>`;
       return h;
@@ -1953,7 +1968,7 @@ function renderAlts() {
 }
 function groupDetail(p) {
   const others = new Set(p.list.map(a => lc(a.name)));
-  const why = a => a.devs.filter(d => !alt.sharedDevs.has(d) && [...alt.devMap.get(d)].some(l => l !== lc(a.name) && others.has(l))).map(shortDev);
+  const why = a => a.devs.concat(alt.byIp ? (a.ips || []).map(ip => 'ip:' + ip) : []).filter(d => !alt.sharedDevs.has(d) && [...alt.devMap.get(d)].some(l => l !== lc(a.name) && others.has(l))).map(shortDev);
   const rows = p.list.map((a, i) => `<tr><td><a class="name-link" data-manage="${esc(a.name)}">${esc(a.name)}</a></td><td>${i ? 'Alt' : '<b>Main</b>'}</td><td class="t">${esc(when(a.created))}</td><td class="t">${esc(ago(lastPlayed(a)))}</td><td class="t">${Math.ceil(saved(a) / 1024)} KB · ${Object.keys(a.games).length} game${Object.keys(a.games).length === 1 ? '' : 's'}</td><td>${a.banned ? `<span class="chip bad">${a.devban ? 'Device banned' : 'Banned'}</span>` : '<span class="chip on">Active</span>'}</td><td class="mono">${why(a).join(' ') || (a.devs.length ? '' : 'no device yet')}</td></tr>`).join('');
   const altsFree = p.alts.filter(a => !a.banned && !ADMINS.includes(lc(a.name))), allFree = p.list.filter(a => !a.banned && !ADMINS.includes(lc(a.name)));
   return `<div class="table-wrap"><table class="data"><thead><tr><th>Account</th><th>Role</th><th>Created</th><th>Last played</th><th>Progress saved</th><th>Status</th><th>Linked by device</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -1992,6 +2007,94 @@ $('altOneForm').addEventListener('submit', async e => {
   if (p && p.alts.length) { alt.open.add(p.id); renderAlts(); }
 });
 window.addEventListener('hashchange', () => { if (location.hash === '#accounts') { renderAltAccess(); if (!dir.loaded) loadDir(); analyze(); } });
+
+// ---------- Investigation records (2026-11-14) ----------
+const EV_LABEL = { signup: 'Account created', login: 'Signed in', recover: 'Got back in with recovery code', wrongpw: 'Wrong password', password: 'Changed password', rename: 'Renamed',
+  ban: 'Banned', unban: 'Unbanned', devban: 'Device banned', devunban: 'Device ban removed', newcode: 'New recovery code made', dmread: 'Private messages read' };
+const fmtDur = sec => { sec = Math.round(sec || 0); const h = Math.floor(sec / 3600), m = Math.round(sec % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; };
+let inv = null;
+function otherAccountsOn(dev, self) { return Object.values(scan.acc || {}).filter(x => lc(x.name) !== lc(self) && (x.devs || []).includes(dev)).map(x => x.name); }
+async function loadInvestigation(name) {
+  const box = $('invest'); if (!box) return;
+  const r = await admin({ op: 'investigate', name });
+  if (r.status === 400 && r.error === 'bad') { box.innerHTML = '<div class="result-card"><h4>Investigation records</h4><div class="rc-body g-note">The Worker needs updating before these records show.</div></div>'; return; }
+  if (r.status !== 200) { box.innerHTML = `<div class="result-card"><h4>Investigation records</h4><div class="rc-body g-note">${esc(why(r, name))}</div></div>`; return; }
+  inv = r; renderInvestigation();
+}
+function renderInvestigation() {
+  const box = $('invest'); if (!box || !inv) return;
+  const pt = Object.entries(inv.pt || {}).sort((a, b) => b[1].s - a[1].s), total = pt.reduce((x, [, e]) => x + e.s, 0);
+  const ev = (inv.ev || []).slice().reverse(), chat = (inv.chat || []).slice().reverse();
+  const evRow = e => {
+    let what = EV_LABEL[e.k] || e.k, more = '';
+    if (e.k === 'wrongpw' && e.n > 1) what += ` (${e.n} times)`;
+    if (e.k === 'rename') more = `${e.from} → ${e.to}`;
+    if (e.k === 'dmread') more = `with ${e.with}. Reason: ${e.why}`;
+    if (e.by) more = (more ? more + ' · ' : '') + 'by ' + e.by;
+    const others = e.d ? otherAccountsOn(e.d, inv.name) : [];
+    const dev = e.d ? `<span class="mono">${esc(e.d.slice(0, 6))}…</span>${others.length ? ` <span class="chip warn" title="Also used by ${esc(others.join(', '))}">also ${others.length} other${others.length === 1 ? '' : 's'}</span>` : ''}` : '';
+    return `<tr data-l="${['ban', 'devban', 'wrongpw', 'dmread'].includes(e.k) ? 'warn' : 'info'}"><td class="t">${esc(when(e.t))}</td><td>${esc(what)}</td><td>${dev}</td><td class="mono" title="${esc(e.loc || '')}">${esc(e.ip || '')}</td><td class="msg">${esc(more)}</td></tr>`;
+  };
+  box.innerHTML = `
+    <div class="result-card"><h4>Play time <span class="chip">${fmtDur(total)} total</span></h4><div class="rc-body">${pt.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Game</th><th>Time</th><th>Sessions</th><th>Last played</th></tr></thead><tbody>${pt.map(([g, e]) => `<tr><td>${esc(gameName(g))}</td><td class="t">${fmtDur(e.s)}</td><td class="t">${e.n || 0}</td><td class="t">${esc(when(e.at))}</td></tr>`).join('')}</tbody></table></div>` : '<span class="g-note">No play time recorded yet. It’s counted from 14 Nov 2026, on the game page, while signed in.</span>'}</div></div>
+    <div class="result-card"><h4>IP addresses <span class="chip">${(inv.ips || []).length}</span></h4><div class="rc-body">${(inv.ips || []).length ? `<div class="table-wrap"><table class="data"><thead><tr><th>IP address</th><th>Rough location</th><th>First seen</th><th>Last seen</th><th>Times</th><th>Other accounts on it</th></tr></thead><tbody>${inv.ips.map(z => { const o = Object.values(scan.acc || {}).filter(x => lc(x.name) !== lc(inv.name) && (x.ips || []).includes(z.ip)).map(x => x.name); return `<tr><td class="mono">${esc(z.ip)}</td><td>${esc(z.loc || '–')}</td><td class="t">${esc(when(z.first))}</td><td class="t">${esc(when(z.last))}</td><td class="t">${z.n || 1}</td><td>${o.length ? o.map(n => `<a class="name-link" data-manage="${esc(n)}">${esc(n)}</a>`).join(', ') : '<span class="g-note">none in your last scan</span>'}</td></tr>`; }).join('')}</tbody></table></div><p class="chart-note">Homes, schools, cafés and phone networks share IPs, and VPNs hide them, so treat a match as a lead, not proof.</p>` : '<span class="g-note">No IPs recorded yet. They’re recorded from 14 Nov 2026 when the account signs in or opens the site.</span>'}</div></div>
+    <div class="result-card"><h4>Sign-ins and account history <span class="chip">${ev.length}</span></h4><div class="rc-body">${ev.length ? `<div class="table-wrap tall"><table class="data"><thead><tr><th>When</th><th>What</th><th>Device</th><th>IP</th><th>Details</th></tr></thead><tbody>${ev.map(evRow).join('')}</tbody></table></div><p class="chart-note">Recorded from 14 Nov 2026. "Also N others" means that device was used by other accounts in your last Accounts scan.</p>` : '<span class="g-note">Nothing recorded yet (records start 14 Nov 2026).</span>'}</div></div>
+    <div class="result-card"><h4>Global chat messages <span class="chip">${chat.length}</span></h4><div class="rc-body">${chat.length ? `<div class="dm-list">${chat.slice(0, 300).map(m => `<div class="dm-msg"><span class="who">${esc(m.u)}<span class="when">${esc(when(m.ts))}</span></span><span class="txt">${esc(m.t)}</span></div>`).join('')}</div><p class="chart-note">Their own messages, kept even after they leave the chat's last 150 or are deleted. Kept from 14 Nov 2026.</p>` : '<span class="g-note">No kept chat messages (kept from 14 Nov 2026).</span>'}</div></div>
+    <div class="btn-row" style="margin-top:10px"><button class="btn" type="button" id="invCsv">Download records (CSV)</button></div>
+    <div class="dm-zone" style="margin-top:12px"><h4>Private messages</h4><p style="margin:0 0 8px;font-size:13px">For serious situations only. Opening this area takes two warnings and a reason, and every conversation you read is recorded on ${esc(inv.name)}’s account history.</p><button class="btn danger" type="button" id="dmOpen">Open private messages…</button><div id="dmArea"></div></div>`;
+  $('invCsv').addEventListener('click', () => csv('investigation-' + inv.name, [['section', 'time', 'what', 'device / game', 'details'],
+    ...pt.map(([g, e]) => ['play time', iso(e.at), fmtDur(e.s), gameName(g), (e.n || 0) + ' sessions']),
+    ...(inv.ips || []).map(z => ['ip address', iso(z.last), z.ip, z.loc || '', `first ${iso(z.first)}; ${z.n || 1} times`]),
+    ...(inv.ev || []).map(e => ['history', iso(e.t), (EV_LABEL[e.k] || e.k) + (e.n > 1 ? ` (${e.n} times)` : ''), [e.d, e.ip].filter(Boolean).join(' / '), [e.from && `${e.from} -> ${e.to}`, e.with && 'with ' + e.with, e.why && 'reason: ' + e.why, e.by && 'by ' + e.by].filter(Boolean).join('; ')]),
+    ...(inv.chat || []).map(m => ['global chat', iso(m.ts), m.t, m.u, ''])]));
+  $('dmOpen').addEventListener('click', () => dmEnter(inv.name));
+}
+
+// ---------- Private messages: two warnings and a reason, then each conversation read is recorded ----------
+let dmWhy = '';
+function dmModal(html, okLabel, check) {
+  return new Promise(res => {
+    const back = document.createElement('div'); back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}<div class="ma"><button class="btn" type="button" data-a="no">Cancel</button><button class="btn danger solid" type="button" data-a="yes"${check ? ' disabled' : ''}>${esc(okLabel)}</button></div></div>`;
+    document.body.append(back);
+    const yes = back.querySelector('[data-a="yes"]'), upd = () => { if (check) yes.disabled = !check(back); };
+    back.addEventListener('input', upd);
+    const done = v => { back.remove(); res(v); };
+    back.addEventListener('click', e => { if (e.target === back) done(null); const a = e.target.closest('[data-a]'); if (a) done(a.dataset.a === 'yes' ? back : null); });
+    const f = back.querySelector('input, textarea'); if (f) f.focus(); else yes.focus();
+  });
+}
+async function dmEnter(name) {
+  const area = $('dmArea');
+  if (LIVE && !(acct() && ADMINS.includes(lc(acct().name)))) { area.innerHTML = '<p class="msg-line" data-k="err">Reading private messages needs a signed-in admin account (noah, lars or claude), so every read is tied to a person. Sign in with one on the arcade, then reload this page.</p>'; return; }
+  const w1 = await dmModal(`<h3>Warning 1 of 2: private messages</h3><div class="mb"><p><b>These are private conversations.</b> Only open them in a serious situation: threats, harassment or bullying, scams, someone at risk, or a credible report you need to check.</p><p>Don’t open them out of curiosity, to settle arguments, or to look for something to ban someone for.</p></div>`, 'I understand, continue');
+  if (!w1) return;
+  const w2 = await dmModal(`<h3>Warning 2 of 2: this is recorded</h3><div class="mb"><p>Every conversation you open is written into <b>${esc(name)}</b>’s account history with <b>your name</b>, the time, who the conversation is with, and your reason. Other admins can see it.</p>
+    <div class="field"><label for="dmWhy">Why do you need to read ${esc(name)}’s messages? (at least 10 characters)</label><textarea class="inp why" id="dmWhy" maxlength="200" placeholder="e.g. Report from another player that ${esc(name)} sent threats in private messages"></textarea></div>
+    <div class="field"><label for="dmName">Type <b>${esc(name)}</b> to confirm</label><input class="inp" id="dmName" autocomplete="off" spellcheck="false"></div></div>`, 'Open private messages',
+    b => b.querySelector('#dmWhy').value.trim().length >= 10 && lc(b.querySelector('#dmName').value.trim()) === lc(name));
+  if (!w2) return;
+  dmWhy = w2.querySelector('#dmWhy').value.trim();
+  area.innerHTML = '<p class="msg-line">Loading conversations…</p>';
+  const r = await admin({ op: 'dmlist', name });
+  if (r.status !== 200) { area.innerHTML = `<p class="msg-line" data-k="err">${esc(r.status === 400 && r.error === 'bad' ? 'The Worker needs updating first.' : why(r, name))}</p>`; return; }
+  record('Opened private messages', name, true, 'Reason: ' + dmWhy);
+  const L = r.convos || [];
+  area.innerHTML = `<p class="chart-note" style="margin:10px 0 6px">Reason on record: “${esc(dmWhy)}”. Opening a conversation records it.</p>` + (L.length ? `<div class="table-wrap"><table class="data"><thead><tr><th>Conversation</th><th>Messages</th><th>Last message</th><th></th></tr></thead><tbody>${L.map(c => `<tr><td>${c.g ? 'Group: ' + esc(c.n) + ` <span class="chip">${c.mem + 1} people</span>` : esc(c.n)}</td><td class="t">${c.seq}</td><td class="t">${esc(when(c.ts))}</td><td><button class="btn sm danger" type="button" data-dm="${esc(c.k)}" data-dmn="${esc(c.n)}">Read</button></td></tr>`).join('')}</tbody></table></div><div id="dmRead"></div>` : '<div class="empty-state">No private conversations.</div>');
+  area.querySelectorAll('[data-dm]').forEach(b => b.addEventListener('click', () => dmRead(name, b.dataset.dm, b.dataset.dmn, 0)));
+}
+async function dmRead(name, k, withName, before) {
+  if (!before && !await ask({ title: `Read ${name}’s conversation with ${withName}?`, text: `This read is recorded on ${name}’s account history with your name and your reason.`, ok: 'Read conversation', danger: true })) return;
+  const out = $('dmRead'); if (!before) out.innerHTML = '<p class="msg-line">Loading…</p>';
+  const r = await admin({ op: 'dmread', name, k, before, why: dmWhy });
+  if (r.status !== 200) { out.innerHTML = `<p class="msg-line" data-k="err">${esc(r.error === 'reason' ? 'The reason is too short.' : why(r, name))}</p>`; return; }
+  if (!before) record('Read private messages', name, true, `With ${withName}. Reason: ${dmWhy}`);
+  const msgs = r.msgs || [], who = m => r.g ? (m.f ? name : (m.by || '?')) : (m.f ? name : r.n);
+  const rows = msgs.map(m => `<div class="dm-msg"><span class="who">${esc(who(m))}<span class="when">${esc(when(m.ts))}</span></span><span class="txt">${esc(m.t)}</span></div>`).join('');
+  const prev = before ? out.querySelector('.dm-list').innerHTML : '';
+  out.innerHTML = `<div class="btn-group-label">${esc(name)} and ${esc(withName)}</div><div class="dm-list">${rows}${prev}</div>${r.more ? `<div class="btn-row" style="margin-top:6px"><button class="btn sm" type="button" id="dmOlder">Load older</button></div>` : ''}`;
+  const o = $('dmOlder'); if (o) o.addEventListener('click', () => dmRead(name, k, withName, msgs.length ? msgs[0].q : 0));
+}
 
 // ---------- Site announcement ----------
 const NT_COL = { info: ['#4a3fd1', '#fff'], warn: ['#f2b134', '#1a1408'], alert: ['#c8342a', '#fff'] }; // the same colours account.js uses
@@ -2043,7 +2146,7 @@ $('dirCsv').addEventListener('click', () => { if (!dir.loaded) { toast('Load the
 $('chatCsv').addEventListener('click', () => { if (!chat.log.length) { toast('Connect to the chat first.', 'err'); return; } csv('chat', [['time', 'name', 'account', 'message'], ...chat.log.map(m => [iso(m.ts), m.n, m.a ? 'yes' : 'guest', m.t])]); });
 $('lbCsv').addEventListener('click', () => { const g = $('lbGame').value, b = boards[g]; if (!b) return; csv('best-' + g, [['player', 'best'], ...b.top.map(e => [e.n, e.s])]); });
 $('auditCsv').addEventListener('click', () => { csv('admin-log', [['time', 'by', 'action', 'target', 'result', 'detail'], ...audit.map(a => [iso(a.t), a.by, a.op, a.target, a.ok ? 'ok' : 'failed', a.detail])]); });
-$('altCsv').addEventListener('click', () => { if (!alt.people.length) { toast('Scan first.', 'err'); return; } csv('alt-accounts', [['main account', 'alt accounts', 'devices', 'last played', 'possible ban dodger', 'on a shared device'], ...alt.people.filter(p => p.alts.length).map(p => [p.main.name, p.alts.map(a => a.name).join(' '), p.devs.size, iso(p.last), p.dodge ? 'yes' : '', p.onShared ? 'yes' : ''])]); });
+$('altCsv').addEventListener('click', () => { if (!alt.people.length) { toast('Scan first.', 'err'); return; } csv('alt-accounts', [['main account', 'alt accounts', 'devices', 'last played', 'possible ban dodger', 'on a shared device or network'], ...alt.people.filter(p => p.alts.length).map(p => [p.main.name, p.alts.map(a => a.name).join(' '), p.devs.size, iso(p.last), p.dodge ? 'yes' : '', p.onShared ? 'yes' : ''])]); });
 
 // ---------- Sample mode (anywhere but the official site) ----------
 const MOCK = LIVE ? null : (() => {
@@ -2057,6 +2160,7 @@ const MOCK = LIVE ? null : (() => {
   people[2].banned = 1; people[2].devban = 1; people[7].banned = 1;
   const school = nd(); people.slice(30, 38).forEach(p => p.devs.push(school));
   people.slice(40).forEach(p => { p.devs = []; });
+  people.forEach((p, i) => { p.ips = ['203.0.113.' + (10 + i)]; }); people[12].ips.push('203.0.113.10'); people[13].ips.push('203.0.113.10');
   const online = new Set(people.filter(() => Math.random() < .18).map(p => p.n));
   const og = {}; online.forEach(n => { og[lc(n)] = pick(games.concat(['home'])); });
   const find = n => people.find(p => lc(p.n) === lc(n));
@@ -2088,6 +2192,9 @@ const MOCK = LIVE ? null : (() => {
         const op = b.op, p = find(b.name);
         if (op === 'pending') return json({ list: pending.slice() });
         if (op === 'noticeget') return json({ n: MOCK.notice || null });
+        if (op === 'investigate') { const q = find(b.name); if (!q) return json({ error: 'no_account' }, 404); const t0 = Date.now(); return json({ name: q.n, created: q.c, ips: (q.ips || []).map((ip, i) => ({ ip, loc: 'Sample City, Sample Country', first: q.c, last: t0 - i * 864e5, n: 5 - i })), ev: [{ t: q.c, k: 'signup', d: (q.devs || [])[0] || '' }, { t: t0 - 3 * 864e5, k: 'wrongpw', n: 3, d: rid(12) }, { t: t0 - 2 * 864e5, k: 'login', d: (q.devs || [])[0] || '' }, { t: t0 - 3600e3, k: 'login', d: (q.devs || [])[1] || (q.devs || [])[0] || '' }], pt: Object.fromEntries(games.slice(0, 3).map((g, i) => [g, { s: 1800 + i * 2400, n: 2 + i, at: t0 - i * 864e5 }])), chat: chatLog.filter(m => m.n === q.n).map(m => ({ u: lc(q.n), t: m.t, ts: m.ts, id: m.id })) }); }
+        if (op === 'dmlist') return json({ name: b.name, convos: [{ k: 'demo_comet', n: 'demo_comet', g: 0, seq: 14, ts: Date.now() - 3600e3 }, { k: 'g~abc', n: 'cube squad', g: 1, mem: 3, seq: 40, ts: Date.now() - 864e5 }] });
+        if (op === 'dmread') return json({ name: b.name, n: b.k === 'g~abc' ? 'cube squad' : 'demo_comet', g: b.k === 'g~abc' ? 1 : 0, msgs: [{ f: 0, t: 'sample message', ts: Date.now() - 7200e3, q: 1, by: 'demo_comet' }, { f: 1, t: 'sample reply', ts: Date.now() - 7000e3, q: 2 }], more: false });
         if (op === 'noticeset') { MOCK.notice = { id: rid(6), text: b.text, level: b.level, until: b.until, link: b.link, linkText: b.linkText, at: Date.now(), by: 'Sample admin' }; return json({ ok: 1, n: MOCK.notice }); }
         if (op === 'noticeclear') { MOCK.notice = null; return json({ ok: 1, n: null }); }
         if (op === 'approve' || op === 'deny') { const i = pending.findIndex(c => c.id === b.id); if (i < 0) return json({ error: 'not_found' }, 404); const [c] = pending.splice(i, 1); if (op === 'approve') posts.unshift(Object.assign(c, { p: poster(c.id), at: Date.now() })); return json({ ok: 1 }); }
@@ -2095,7 +2202,7 @@ const MOCK = LIVE ? null : (() => {
         if (op === 'chatdel') { const i = chatLog.findIndex(m => m.id === b.id); if (i < 0) return json({ error: 'not_found' }, 404); chatLog.splice(i, 1); return json({ deleted: true }); }
         if (!p) return json({ error: 'no_account' }, 404);
         if (['ban', 'rename', 'delete', 'newcode', 'devban'].includes(op) && ADMINS.includes(lc(p.n))) return json({ error: 'protected' }, 400);
-        if (op === 'devinfo') return json({ name: p.n, created: p.c, seenAt: p.seen, sessSeen: p.seen, devices: 1, games: p.gs, banned: p.banned, devban: p.devban, devs: p.devs.slice() });
+        if (op === 'devinfo') return json({ name: p.n, created: p.c, seenAt: p.seen, sessSeen: p.seen, devices: 1, games: p.gs, banned: p.banned, devban: p.devban, devs: p.devs.slice(), ips: (p.ips || []).slice() });
         if (op === 'info') { const gs = {}; if (p.has) games.slice(0, 3).forEach((g, i) => { gs[g] = { size: 2048 + i * 9000, at: p.seen - i * 3600e3 }; }); return json({ name: p.n, created: p.c, devices: 1 + Math.floor(Math.random() * 3), games: gs, banned: p.banned, devs: 2, devban: p.devban }); }
         if (op === 'ban') { p.banned = 1; return json({ banned: true, name: p.n }); }
         if (op === 'unban') { p.banned = 0; p.devban = 0; return json({ unbanned: true, name: p.n }); }

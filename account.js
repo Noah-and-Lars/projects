@@ -755,11 +755,30 @@
     }).catch(function () {});
   }
 
+  /* ---------- play time (2026-11-14): minutes per game on play.html, for the admins' investigation tools (online accounts only) ---------- */
+  function trackPlay() {
+    if (!/play\.html$/.test(location.pathname)) return;
+    var g = String(new URLSearchParams(location.search).get('game') || '').toLowerCase();
+    if (!/^[a-z0-9-]{1,32}$/.test(g)) return;
+    var secs = 0, last = Date.now(), first = true;
+    // count only time the page is on screen; a gap of more than 5 s (sleep, a frozen tab) isn't counted
+    setInterval(function () { var now = Date.now(); if (!document.hidden && now - last < 5000) secs += (now - last) / 1000; last = now; }, 1000);
+    var send = function (leaving) {
+      if (!acct || secs < (leaving ? 5 : 30)) return;
+      var s = Math.min(600, Math.round(secs)); secs -= s;
+      api('play', { method: 'POST', auth: true, keepalive: !!leaving, body: { g: g, s: s, n: first ? 1 : 0 } }); first = false;
+    };
+    setInterval(function () { send(false); }, 5 * 60000);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) send(true); });
+    addEventListener('pagehide', function () { send(true); });
+  }
+
   /* ---------- start ---------- */
   var readyRes, ready = new Promise(function (r) { readyRes = r; });
   function start() {
     addButton();
     showNotice();
+    trackPlay();
     if (enforceName()) return; // locked out until the name is changed; nothing else runs
     // first visit (after the Terms): ask everyone to make an account
     if (/[?&]admin\b/.test(location.search)) { var adm = function () { if ($('tosPop')) return setTimeout(adm, 500); openAdmin(); }; setTimeout(adm, 300); return finishStart(); }
