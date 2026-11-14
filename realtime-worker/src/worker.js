@@ -172,7 +172,7 @@ function nameProblem(n) {
 async function accounts(req, env, url) {
   const origin = req.headers.get('Origin') || '';
   if (!ACCT_ORIGINS.includes(origin)) return new Response('accounts are only available on the official website', { status: 403 });
-  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type, authorization, x-arcade-dev', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
+  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type, authorization, x-arcade-dev, x-arcade-fp', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
   const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const route = url.pathname.slice(6);
@@ -241,13 +241,38 @@ function logEv(a, k, x) {
 // location; the Worker passes them to the account object in its own headers (a browser can't set them). Each account keeps
 // its last IP_KEEP addresses with first/last seen and a count, and its sign-in events carry the IP too.
 const IP_KEEP = 10;
-const ipHeaders = req => ({ 'x-arcade-ip': (req.headers.get('CF-Connecting-IP') || '').slice(0, 45), 'x-arcade-geo': [req.cf && req.cf.city, req.cf && req.cf.region, req.cf && req.cf.country].filter(Boolean).join(', ').slice(0, 80) });
+const ipHeaders = req => ({ 'x-arcade-ua': (req.headers.get('User-Agent') || '').slice(0, 400), 'x-arcade-fp': (req.headers.get('x-arcade-fp') || '').slice(0, 1200), 'x-arcade-ip': (req.headers.get('CF-Connecting-IP') || '').slice(0, 45), 'x-arcade-geo': [req.cf && req.cf.city, req.cf && req.cf.region, req.cf && req.cf.country].filter(Boolean).join(', ').slice(0, 80) });
 const ipOf = req => { const ip = (req.headers.get('x-arcade-ip') || '').slice(0, 45); return ip ? { ip, loc: (req.headers.get('x-arcade-geo') || '').slice(0, 80) } : {}; };
 function noteIp(a, req) {
   const x = ipOf(req); if (!x.ip) return;
   const now = Date.now(), L = a.ips || (a.ips = []), e = L.find(z => z.ip === x.ip);
   if (e) { e.last = now; e.n = (e.n || 1) + 1; if (x.loc) e.loc = x.loc; } else L.push({ ip: x.ip, loc: x.loc, first: now, last: now, n: 1 });
   L.sort((p, q) => q.last - p.last); if (L.length > IP_KEEP) L.length = IP_KEEP;
+}
+// Browser, device and fingerprint (2026-11-14, the owner's request, for investigations): the browser type and system come from
+// the User-Agent; account.js sends 'x-arcade-fp' (screen, time zone, languages, CPU cores, memory, touch, graphics card and a
+// canvas test, hashed together into fh). Each account keeps its last FP_KEEP fingerprints with first/last seen and a count.
+const FP_KEEP = 10;
+function uaInfo(ua) {
+  ua = String(ua || '');
+  const br = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /Firefox\/|FxiOS/.test(ua) ? 'Firefox' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Other';
+  const os = /PlayStation/.test(ua) ? 'PlayStation' : /Xbox/.test(ua) ? 'Xbox' : /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /CrOS/.test(ua) ? 'ChromeOS' : /Windows/.test(ua) ? 'Windows' : /Macintosh|Mac OS X/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'Other';
+  const dev = /PlayStation|Xbox|SmartTV|Tizen|Web0S|webOS/.test(ua) ? 'console or TV' : /iPad|Tablet/.test(ua) || (/Android/.test(ua) && !/Mobile/.test(ua)) ? 'tablet' : /Mobi|iPhone|Android/.test(ua) ? 'phone' : 'computer';
+  return { br, os, dev };
+}
+function fpOf(req) {
+  let x = {}; try { x = JSON.parse(decodeURIComponent(req.headers.get('x-arcade-fp') || '')) || {}; } catch (e) {}
+  const t = v => String(v == null ? '' : v).slice(0, 120), f = Object.assign({ fh: /^[0-9a-f]{16}$/.test(x.fh || '') ? x.fh : '' }, uaInfo(req.headers.get('x-arcade-ua')),
+    { scr: t(x.scr), tz: t(x.tz), lang: t(x.lang), cores: +x.cores || 0, mem: +x.mem || 0, touch: +x.touch || 0, gpu: t(x.gpu) });
+  if (f.os === 'Mac' && f.touch > 1) { f.os = 'iPad'; f.dev = 'tablet'; } // iPads say "Macintosh" but have a touch screen
+  return f;
+}
+const fpBrief = req => { const f = fpOf(req); return f.br === 'Other' && !f.fh ? {} : { ua: `${f.br} on ${f.os} (${f.dev})`, fh: f.fh }; };
+function noteFp(a, req) {
+  const f = fpOf(req); if (!f.fh && f.br === 'Other') return;
+  const now = Date.now(), k = f.fh || (f.br + '/' + f.os + '/' + f.dev), L = a.fps || (a.fps = []), e = L.find(z => z.k === k);
+  if (e) { Object.assign(e, f, { last: now, n: (e.n || 1) + 1 }); } else L.push(Object.assign({ k }, f, { first: now, last: now, n: 1 }));
+  L.sort((p, q) => q.last - p.last); if (L.length > FP_KEEP) L.length = FP_KEEP;
 }
 const devOf = req => { const d = req.headers.get('x-arcade-dev') || ''; return DEV_RE.test(d) ? d : ''; };
 const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).includes(dev)) return false; a.devs = (a.devs || []).concat(dev).slice(-DEV_KEEP); return true; };
@@ -399,7 +424,7 @@ export class Account extends DurableObject {
       const code = newCode();
       a = { name: String(body.name), salt: rnd(16), created: now, fails: 0, lockUntil: 0, sess: [], games: {}, rs: rnd(16) };
       a.h = await sha(a.salt + body.key); a.rh = await sha(a.rs + normCode(code));
-      noteDev(a, req.headers.get('x-arcade-dev')); logEv(a, 'signup', { d: devOf(req), ...ipOf(req) }); noteIp(a, req);
+      noteDev(a, req.headers.get('x-arcade-dev')); logEv(a, 'signup', { d: devOf(req), ...ipOf(req), ...fpBrief(req) }); noteIp(a, req); noteFp(a, req);
       const token = await this.session(a);
       await dirCall(this.env, 'add', { n: a.name, c: a.created }); a.listed = 1;
       await S.put('acct', a);
@@ -411,11 +436,11 @@ export class Account extends DurableObject {
       if (a.lockUntil > now) return j({ error: 'locked', wait: Math.ceil((a.lockUntil - now) / 1000) }, 429);
       if (!KEY_RE.test(body.key || '')) return j({ error: 'bad' }, 400);
       const ok = route === 'login' ? same(await sha(a.salt + body.key), a.h) : same(await sha(a.rs + normCode(body.code)), a.rh);
-      if (!ok) { a.fails = (a.fails || 0) + 1; if (a.fails >= 8) { a.fails = 0; a.lockUntil = now + 10 * 60 * 1000; } logEv(a, 'wrongpw', { d: devOf(req), via: route, ...ipOf(req) }); await S.put('acct', a); return j({ error: 'wrong' }, 401); }
+      if (!ok) { a.fails = (a.fails || 0) + 1; if (a.fails >= 8) { a.fails = 0; a.lockUntil = now + 10 * 60 * 1000; } logEv(a, 'wrongpw', { d: devOf(req), via: route, ...ipOf(req), ...fpBrief(req) }); await S.put('acct', a); return j({ error: 'wrong' }, 401); }
       a.fails = 0;
       let recovery;
       if (route === 'recover') { a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn; recovery = newCode(); a.rs = rnd(16); a.rh = await sha(a.rs + normCode(recovery)); }
-      noteDev(a, req.headers.get('x-arcade-dev')); logEv(a, route, { d: devOf(req), ...ipOf(req) }); noteIp(a, req);
+      noteDev(a, req.headers.get('x-arcade-dev')); logEv(a, route, { d: devOf(req), ...ipOf(req), ...fpBrief(req) }); noteIp(a, req); noteFp(a, req);
       const token = await this.session(a);
       await S.put('acct', a);
       return j(recovery ? { token, name: a.name, recovery } : { token, name: a.name });
@@ -424,7 +449,7 @@ export class Account extends DurableObject {
     const tok = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), part = tok.split('.')[1] || '';
     const th = part ? await sha(part) : '', si = (a.sess || []).findIndex(x => same(x.h, th));
     if (si < 0) return j({ error: 'auth' }, 401);
-    if (now - (a.sess[si].seen || 0) > 864e5 | noteDev(a, req.headers.get('x-arcade-dev'))) { a.sess[si].seen = now; await S.put('acct', a); }
+    if (now - (a.sess[si].seen || 0) > 864e5 | noteDev(a, req.headers.get('x-arcade-dev'))) { a.sess[si].seen = now; noteFp(a, req); noteIp(a, req); await S.put('acct', a); }
     // accounts made before the Players list (2026-11-06) join it the next time they're used
     if (!a.listed) { const r = await dirCall(this.env, 'add', { n: a.name, c: a.created }); if (r.ok) { a.listed = 1; await S.put('acct', a); } }
     if (route === 'whoami') return j({ name: a.name });
@@ -442,7 +467,7 @@ export class Account extends DurableObject {
     if (route === 'logout') { a.sess.splice(si, 1); await S.put('acct', a); return j({ ok: true }); }
     if (route === 'password') {
       if (!KEY_RE.test(body.key || '') || !same(await sha(a.salt + (body.old || '')), a.h)) return j({ error: 'wrong' }, 401);
-      a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn; logEv(a, 'password', { d: devOf(req), ...ipOf(req) }); noteIp(a, req);
+      a.salt = rnd(16); a.h = await sha(a.salt + body.key); a.sess = []; delete a.kn; logEv(a, 'password', { d: devOf(req), ...ipOf(req), ...fpBrief(req) }); noteIp(a, req); noteFp(a, req);
       const token = await this.session(a); await S.put('acct', a); return j({ token });
     }
     if (route === 'delete') { // the player deletes their own account (they type their password again)
@@ -527,7 +552,7 @@ export class Account extends DurableObject {
     if (route === 'admindevinfo') {
       const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
       return j({ name: a.name, created: a.created, seenAt: a.seenAt || 0, sessSeen: Math.max(0, ...(a.sess || []).map(x => x.seen || 0)), devices: (a.sess || []).length,
-        games, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, devs: a.devs || [], pt: a.pt || {}, ips: (a.ips || []).map(z => z.ip) });
+        games, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, devs: a.devs || [], pt: a.pt || {}, ips: (a.ips || []).map(z => z.ip), fhs: (a.fps || []).map(z => z.fh).filter(Boolean) });
     }
     if (route === 'admininfo') {
       const games = {}; for (const [k, m] of Object.entries(a.games || {})) games[k] = { size: m.size, at: m.at };
@@ -535,7 +560,7 @@ export class Account extends DurableObject {
     }
     // 2026-11-11: a ban signs the account out everywhere, stops it logging in, and takes it off the Players list
     if (route === 'admininvest') return j({ name: a.name, created: a.created, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, ev: a.ev || [], pt: a.pt || {},
-      devs: a.devs || [], ips: a.ips || [], sessions: (a.sess || []).map(x => ({ seen: x.seen || 0 })), seenAt: a.seenAt || 0, games: Object.fromEntries(Object.entries(a.games || {}).map(([k, m]) => [k, { size: m.size, at: m.at }])) });
+      devs: a.devs || [], ips: a.ips || [], fps: a.fps || [], sessions: (a.sess || []).map(x => ({ seen: x.seen || 0 })), seenAt: a.seenAt || 0, games: Object.fromEntries(Object.entries(a.games || {}).map(([k, m]) => [k, { size: m.size, at: m.at }])) });
     if (route === 'admindmlist') { // conversations only: who with, how many messages, when; no message text
       const s = await this.soc();
       return j({ name: a.name, convos: Object.entries(s.c).map(([k, c]) => ({ k, n: c.n, g: c.g ? 1 : 0, mem: c.g ? (c.mem || []).length : 0, seq: c.seq || 0, ts: c.ts || 0 })).sort((x, y) => y.ts - x.ts) });

@@ -39,7 +39,10 @@ set) and `pt` (play time per game: seconds, sessions, last played; account.js `t
 ('h:a:<lower>', newest 300). Admin ops: 'investigate' (all of that, read only), 'dmlist' / 'dmread' (private messages:
 signed-in admin ACCOUNT only, never the password; 'dmread' needs a reason of 10+ characters and writes a 'dmread' event
 before returning). The console shows these under Account Tools > Look up; private messages sit behind two warnings, a
-reason and typing the username. The Terms (tos.js section 7, TOS_VERSION 2026-11-14) say what is kept.
+reason and typing the username. Browsers and devices: the Worker reads the User-Agent (passed as x-arcade-ua) and account.js
+sends 'x-arcade-fp' (screen, time zone, languages, cores, memory, touch, graphics card, canvas test, hashed into `fh`); each
+account keeps `fps` (last 10, with first/last seen and a count) and sign-in events carry `ua` and `fh`; devinfo returns
+`fhs` and the Accounts tab can link accounts by fingerprint. The Terms (tos.js section 7, TOS_VERSION 2026-11-14b) say what is kept.
 
 Admin password (2026-11-13): the Worker no longer has the admin password's hash in its source. It checks the secret
 ADMIN_PW_HASH (SHA-256 of the password; set with `npx wrangler secret put ADMIN_PW_HASH` in realtime-worker/). The old

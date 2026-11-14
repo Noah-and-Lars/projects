@@ -121,9 +121,30 @@
     if (acct) { acct = null; ls.del(K_ACCT); setStatus('off'); refresh(); }
     if (!deviceBanned.shown) { deviceBanned.shown = 1; setTimeout(function () { alert('This device has been banned from The Arcade.'); }, 300); }
   }
+  /* browser fingerprint (2026-11-14, for the admins' investigation tools; the Terms say so): screen, time zone, languages,
+     CPU cores, memory, touch, graphics card and a canvas drawing test, hashed together. Sent with account requests. */
+  var FP = '', fpReady = (function () {
+    try {
+      var x = { scr: screen.width + 'x' + screen.height + '@' + (window.devicePixelRatio || 1), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
+        lang: (navigator.languages || [navigator.language || '']).join(','), cores: navigator.hardwareConcurrency || 0, mem: navigator.deviceMemory || 0, touch: navigator.maxTouchPoints || 0, gpu: '' };
+      try { var gl = document.createElement('canvas').getContext('webgl'), dbg = gl && gl.getExtension('WEBGL_debug_renderer_info'); if (gl) x.gpu = String(gl.getParameter(dbg ? dbg.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '').slice(0, 120); } catch (e) {}
+      var cv = '';
+      try { var c = document.createElement('canvas'); c.width = 220; c.height = 40; var g = c.getContext('2d'); g.textBaseline = 'top'; g.font = '16px Arial'; g.fillStyle = '#f60'; g.fillRect(100, 1, 60, 20); g.fillStyle = '#069'; g.fillText('The Arcade ✨ 0123', 2, 4); g.fillStyle = 'rgba(102,204,0,0.7)'; g.fillText('The Arcade ✨ 0123', 4, 8); cv = c.toDataURL(); } catch (e) {}
+      var all = [x.scr, x.tz, x.lang, x.cores, x.mem, x.touch, x.gpu, cv, navigator.platform || ''].join('|');
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(all)).then(function (b) {
+        x.fh = Array.prototype.map.call(new Uint8Array(b), function (v) { return ('0' + v.toString(16)).slice(-2); }).join('').slice(0, 16);
+        FP = encodeURIComponent(JSON.stringify(x));
+      }).catch(function () {});
+    } catch (e) { return Promise.resolve(); }
+  })();
   function api(path, opt) {
     opt = opt || {};
+    var waitFp = Promise.race([fpReady, new Promise(function (r) { setTimeout(r, 400); })]);
+    return waitFp.then(function () { return apiNow(path, opt); });
+  }
+  function apiNow(path, opt) {
     var headers = { 'content-type': 'application/json', 'x-arcade-dev': devId };
+    if (FP) headers['x-arcade-fp'] = FP;
     if (opt.auth) { if (!acct) return Promise.resolve({ error: 'auth', status: 401 }); headers.authorization = 'Bearer ' + acct.token; }
     return fetch(API + path, { method: opt.method || 'GET', headers: headers, body: opt.body ? JSON.stringify(opt.body) : undefined, keepalive: !!opt.keepalive, cache: 'no-store' })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j = j || {}; j.status = r.status; if (r.status === 401 && opt.auth && j.error === 'auth') signedOutElsewhere(); if (r.status === 403 && j.error === 'device_banned') deviceBanned(); return j; }); })
