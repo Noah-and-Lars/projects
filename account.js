@@ -131,7 +131,10 @@
       var cv = '';
       try { var c = document.createElement('canvas'); c.width = 220; c.height = 40; var g = c.getContext('2d'); g.textBaseline = 'top'; g.font = '16px Arial'; g.fillStyle = '#f60'; g.fillRect(100, 1, 60, 20); g.fillStyle = '#069'; g.fillText('The Arcade ✨ 0123', 2, 4); g.fillStyle = 'rgba(102,204,0,0.7)'; g.fillText('The Arcade ✨ 0123', 4, 8); cv = c.toDataURL(); } catch (e) {}
       var all = [x.scr, x.tz, x.lang, x.cores, x.mem, x.touch, x.gpu, cv, navigator.platform || ''].join('|');
-      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(all)).then(function (b) {
+      // connection and battery change all the time, so they ride along but stay out of the hash (only some browsers share them)
+      try { var nc = navigator.connection; if (nc) x.net = { t: nc.type || '', e: nc.effectiveType || '', d: nc.downlink || 0, r: nc.rtt || 0, s: nc.saveData ? 1 : 0 }; } catch (e) {}
+      var bat = navigator.getBattery ? Promise.race([navigator.getBattery().then(function (b) { x.bat = { l: Math.round(b.level * 100), c: b.charging ? 1 : 0 }; }).catch(function () {}), new Promise(function (r) { setTimeout(r, 250); })]) : Promise.resolve();
+      return bat.then(function () { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(all)); }).then(function (b) {
         x.fh = Array.prototype.map.call(new Uint8Array(b), function (v) { return ('0' + v.toString(16)).slice(-2); }).join('').slice(0, 16);
         FP = encodeURIComponent(JSON.stringify(x));
       }).catch(function () {});
@@ -794,12 +797,34 @@
     addEventListener('pagehide', function () { send(true); });
   }
 
+  /* ---------- visit timeline (2026-11-14): which pages are open and for how long, for the admins' investigation tools
+     (online accounts only). Each stretch of time on screen is one record, sent when the page is hidden or closed. ---------- */
+  function trackVisit() {
+    var page = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '') || 'index';
+    if (!/^[a-z0-9-]{1,32}$/.test(page)) return;
+    var g = page === 'play' ? String(new URLSearchParams(location.search).get('game') || '').toLowerCase() : '';
+    var start = Date.now(), vis = 0, last = Date.now(), ref = '';
+    try { if (document.referrer && new URL(document.referrer).origin !== location.origin && !localStorage.getItem('arcade-ref-sent')) ref = document.referrer.slice(0, 200); } catch (e) {}
+    setInterval(function () { var now = Date.now(); if (!document.hidden && now - last < 5000) vis += (now - last) / 1000; last = now; }, 1000);
+    var send = function () {
+      if (!acct || vis < 3) return;
+      var b = { p: page, s: start, d: Math.round(vis) };
+      if (/^[a-z0-9-]{1,32}$/.test(g)) b.g = g;
+      if (ref) { b.ref = ref; ref = ''; try { localStorage.setItem('arcade-ref-sent', '1'); } catch (e) {} }
+      api('visit', { method: 'POST', auth: true, keepalive: true, body: b });
+      vis = 0;
+    };
+    document.addEventListener('visibilitychange', function () { if (document.hidden) send(); else start = Date.now(); });
+    addEventListener('pagehide', send);
+  }
+
   /* ---------- start ---------- */
   var readyRes, ready = new Promise(function (r) { readyRes = r; });
   function start() {
     addButton();
     showNotice();
     trackPlay();
+    trackVisit();
     if (enforceName()) return; // locked out until the name is changed; nothing else runs
     // first visit (after the Terms): ask everyone to make an account
     if (/[?&]admin\b/.test(location.search)) { var adm = function () { if ($('tosPop')) return setTimeout(adm, 500); openAdmin(); }; setTimeout(adm, 300); return finishStart(); }

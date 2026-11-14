@@ -158,7 +158,7 @@ const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
 // The admin password (2026-11-13): only its SHA-256 is kept, as the Worker secret ADMIN_PW_HASH (npx wrangler secret put
 // ADMIN_PW_HASH), so it isn't in this public file. With no secret set, the password works nowhere (admin accounts still do).
-const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat', 'chess', 'play']; // what a browser may ask an account for
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat', 'chess', 'play', 'visit']; // what a browser may ask an account for
 const HB_CHEATERS = ['noah', 'archiemccarthy', 'lars']; // Havoc Bay cheat menu accounts
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
@@ -230,7 +230,7 @@ async function devBanned(env, dev) {
 }
 // An account's own history (2026-11-14, for investigations): the newest EV_KEEP events, kept on the account. Repeated wrong
 // passwords within an hour are one entry with a count, so a flood of guesses can't push the real history out.
-const EV_KEEP = 80;
+const EV_KEEP = 80, VISIT_KEEP = 500; // VISIT_KEEP: visit timeline records per account
 function logEv(a, k, x) {
   const now = Date.now(), ev = a.ev || (a.ev = []), last = ev[ev.length - 1];
   if (k === 'wrongpw' && last && last.k === 'wrongpw' && now - last.t < 3600e3) { last.n = (last.n || 1) + 1; last.t = now; return; }
@@ -264,6 +264,11 @@ function fpOf(req) {
   let x = {}; try { x = JSON.parse(decodeURIComponent(req.headers.get('x-arcade-fp') || '')) || {}; } catch (e) {}
   const t = v => String(v == null ? '' : v).slice(0, 120), f = Object.assign({ fh: /^[0-9a-f]{16}$/.test(x.fh || '') ? x.fh : '' }, uaInfo(req.headers.get('x-arcade-ua')),
     { scr: t(x.scr), tz: t(x.tz), lang: t(x.lang), cores: +x.cores || 0, mem: +x.mem || 0, touch: +x.touch || 0, gpu: t(x.gpu) });
+  // connection and battery (2026-11-14): latest values only, where the browser shares them (Chrome, Edge, Android)
+  const n = x.net && typeof x.net === 'object' ? x.net : null, b = x.bat && typeof x.bat === 'object' ? x.bat : null;
+  const NT = { wifi: 'Wi-Fi', cellular: 'mobile data', ethernet: 'cable', bluetooth: 'Bluetooth', wimax: 'WiMAX', none: 'offline', other: 'other' };
+  f.net = n ? [NT[n.t] || '', /^(slow-2g|2g|3g|4g)$/.test(n.e) ? n.e.toUpperCase() + '-like' : '', +n.d > 0 ? Math.min(+n.d, 10000) + ' Mb/s' : '', +n.r > 0 ? Math.min(+n.r, 60000) + ' ms' : '', n.s ? 'data saver' : ''].filter(Boolean).join(', ') : '';
+  f.bat = b && +b.l >= 0 && +b.l <= 100 ? Math.round(+b.l) + '%' + (b.c ? ', charging' : '') : '';
   if (f.os === 'Mac' && f.touch > 1) { f.os = 'iPad'; f.dev = 'tablet'; } // iPads say "Macintosh" but have a touch screen
   return f;
 }
@@ -487,6 +492,16 @@ export class Account extends DurableObject {
       const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(msg)));
       return j({ t: msg + '|' + btoa(String.fromCharCode(...sig)) });
     }
+    if (route === 'visit') { // 2026-11-14: the visit timeline: one record per stretch of time a page was on screen (kept separately from 'acct')
+      const pg = String((body && body.p) || ''), g = String((body && body.g) || ''), st = +(body && body.s) || 0;
+      if (!/^[a-z0-9-]{1,32}$/.test(pg) || st > now + 60000 || st < now - 864e5) return j({ error: 'bad' }, 400);
+      const d = Math.max(0, Math.min(6 * 3600, Math.round(+body.d || 0), Math.round((now - st) / 1000) + 5));
+      const V = (await S.get('visits')) || [], rec = { p: pg, s: st, d }; if (GAME_RE.test(g)) rec.g = g;
+      V.push(rec); if (V.length > VISIT_KEEP) V.splice(0, V.length - VISIT_KEEP);
+      const put = { visits: V };
+      if (body.ref && !a.ref) { a.ref = { u: String(body.ref).replace(/[\s<>"']/g, '').slice(0, 200), t: now }; put.acct = a; } // how they first found the site
+      await S.put(put); return j({ ok: 1 });
+    }
     if (route === 'play') { // 2026-11-14: play time per game, sent by account.js from play.html every few minutes (seconds, capped by real time)
       const g = String((body && body.g) || ''), pt = a.pt || (a.pt = {});
       if (!GAME_RE.test(g) || (!pt[g] && Object.keys(pt).length >= 80)) return j({ error: 'bad' }, 400);
@@ -564,7 +579,7 @@ export class Account extends DurableObject {
       return j({ name: a.name, created: a.created, devices: (a.sess || []).length, games, banned: a.banned ? 1 : 0, devs: (a.devs || []).length, devban: a.devban ? 1 : 0 });
     }
     // 2026-11-11: a ban signs the account out everywhere, stops it logging in, and takes it off the Players list
-    if (route === 'admininvest') return j({ name: a.name, created: a.created, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, ev: a.ev || [], pt: a.pt || {},
+    if (route === 'admininvest') return j({ visits: (await S.get('visits')) || [], ref: a.ref || null, name: a.name, created: a.created, banned: a.banned ? 1 : 0, devban: a.devban ? 1 : 0, ev: a.ev || [], pt: a.pt || {},
       devs: a.devs || [], ips: a.ips || [], fps: a.fps || [], sessions: (a.sess || []).map(x => ({ seen: x.seen || 0 })), seenAt: a.seenAt || 0, games: Object.fromEntries(Object.entries(a.games || {}).map(([k, m]) => [k, { size: m.size, at: m.at }])) });
     if (route === 'admindmlist') { // conversations only: who with, how many messages, when; no message text
       const s = await this.soc();

@@ -43,7 +43,12 @@ before returning). The console shows these under Account Tools > Look up; privat
 reason and typing the username. Browsers and devices: the Worker reads the User-Agent (passed as x-arcade-ua) and account.js
 sends 'x-arcade-fp' (screen, time zone, languages, cores, memory, touch, graphics card, canvas test, hashed into `fh`); each
 account keeps `fps` (last 10, with first/last seen and a count) and sign-in events carry `ua` and `fh`; devinfo returns
-`fhs` and the Accounts tab can link accounts by fingerprint. The Terms (tos.js section 7, TOS_VERSION 2026-11-14b) say what is kept.
+`fhs` and the Accounts tab can link accounts by fingerprint. Connection type and battery (where the browser shares them)
+ride along in x-arcade-fp outside the hash and are kept as the latest `net` / `bat` on each fingerprint. Visit timeline:
+account.js `trackVisit()` sends /acct/visit {p: page, g: game, s: start, d: seconds on screen, ref: first outside referrer,
+once per browser} when a page is hidden or closed; the account keeps them under the storage key 'visits' (newest 500) and
+`a.ref`; investigate returns both and the console groups them into sessions (30-minute gaps) with an active-hours chart in
+the player's time zone. The Terms (tos.js section 7, TOS_VERSION 2026-11-14e) say what is kept.
 
 Admin password (2026-11-13): the Worker no longer has the admin password's hash in its source. It checks the secret
 ADMIN_PW_HASH (SHA-256 of the password; set with `npx wrangler secret put ADMIN_PW_HASH` in realtime-worker/). The old
