@@ -45,3 +45,7 @@ class_name = "Clips"
 [[migrations]]
 tag = "v5"
 new_sqlite_classes = ["Clips"]
+
+# 2026-11-14: every 5 minutes, record players online for the admin console (scheduled() in src/worker.js)
+[triggers]
+crons = ["*/5 * * * *"]

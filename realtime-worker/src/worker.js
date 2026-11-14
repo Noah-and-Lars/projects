@@ -27,6 +27,9 @@ const SWEEP_MS = 5 * 60 * 1000;
 const ALLOWED_ORIGINS = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev']; // 2026-11-13: the Cloudflare Pages copy shares this server
 
 export default {
+  // 2026-11-14: every 5 minutes (wrangler.toml [triggers]) the Worker records players online and its own response time,
+  // so the admin console's graphs cover all day, not only while someone has it open
+  async scheduled(event, env, ctx) { ctx.waitUntil(recordHistory(env)); },
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname.startsWith('/acct/')) return accounts(req, env, url);
@@ -57,6 +60,12 @@ export class Room extends DurableObject {
   }
 
   async fetch(req) {
+    if (req.headers.get('x-arcade-int') === '1' && new URL(req.url).pathname === '/stats') { // the 5-minute history (recordHistory)
+      this.sweep();
+      const st = this.state(), byGame = {};
+      for (const k in st) { const gs = st[k].map(m => (m && m.game) || 'home'), g = gs.find(x => x !== 'home') || 'home'; byGame[g] = (byGame[g] || 0) + 1; }
+      return new Response(JSON.stringify({ total: Object.keys(st).length, byGame, sockets: this.ctx.getWebSockets().length }), { headers: { 'content-type': 'application/json' } });
+    }
     this.sweep();
     if (this.ctx.getWebSockets().length >= MAX_SOCKETS) return new Response('room full', { status: 503 });
     const url = new URL(req.url);
@@ -287,7 +296,7 @@ const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).in
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset', 'check', 'investigate', 'dmlist', 'dmread', 'dmstats'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset', 'check', 'investigate', 'dmlist', 'dmread', 'dmstats', 'history'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -311,6 +320,10 @@ async function admin(env, body, out, auth) {
     const h = await env.CHAT.get(env.CHAT.idFromName('chat:global')).fetch(new Request('https://chat/hist', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-int': '1' }, body: JSON.stringify({ us }) })).catch(() => null);
     x.chat = h && h.ok ? ((await h.json().catch(() => ({}))).h || []) : [];
     return out(x);
+  }
+  if (op === 'history') { // the server's 5-minute player history for the console's graphs
+    const r = await call('__history__', 'histget', { days: +body.days || 1 });
+    return out(await r.json().catch(() => ({})), r.status);
   }
   if (op === 'dmstats') { // 2026-11-14: who the account messages and how much, never the text; each view is logged on the account
     if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
@@ -391,6 +404,16 @@ async function siteNotice(req, env) {
   }
   const n = noticeCache.v && (!noticeCache.v.until || noticeCache.v.until > Date.now()) ? noticeCache.v : null;
   return new Response(JSON.stringify({ n }), { headers: { 'content-type': 'application/json', 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin', 'Cache-Control': 'max-age=60' } });
+}
+/* Player history (2026-11-14): one point every 5 minutes { t, v: players online, g: { game: players }, s: sockets, ms: how long
+   the room took to answer } (or { t, err: 1 } if it didn't), kept on the '__history__' object as one array per UTC day
+   ('h:YYYY-MM-DD'), HIST_DAYS days. Admin op 'history' { days } returns them for the console. */
+const HIST_DAYS = 30;
+async function recordHistory(env) {
+  const t0 = Date.now(); let st = null;
+  try { const r = await env.ROOMS.get(env.ROOMS.idFromName('online:arcade')).fetch(new Request('https://room/stats', { headers: { 'x-arcade-int': '1' } })); if (r.ok) st = await r.json(); } catch (e) {}
+  const ms = Date.now() - t0, pt = st ? { t: t0, v: st.total || 0, g: st.byGame || {}, s: st.sockets || 0, ms } : { t: t0, err: 1, ms };
+  await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('__history__')).fetch(new Request('https://acct/histadd', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify({ pt }) })).catch(() => null);
 }
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 const sha = async s => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
@@ -555,6 +578,21 @@ export class Account extends DurableObject {
       if (!same(await sha(String(body.pw || '')), String(this.env.ADMIN_PW_HASH).trim().toLowerCase())) { g.fails++; if (g.fails >= 5) { g.fails = 0; g.lockUntil = now + 15 * 60 * 1000; } await S.put('guard', g); return j({ error: 'wrong' }, 401); }
       if (g.fails) { g.fails = 0; await S.put('guard', g); }
       return j({ ok: true });
+    }
+    if (route === 'histadd' || route === 'histget') { // only on the '__history__' object (recordHistory, admin op 'history')
+      const day = t => new Date(t).toISOString().slice(0, 10), days = (await S.get('hdays')) || [];
+      if (route === 'histadd') {
+        const pt = body && body.pt; if (!pt || !pt.t) return j({ error: 'bad' }, 400);
+        const k = 'h:' + day(pt.t), L = (await S.get(k)) || []; L.push(pt);
+        const put = { [k]: L }; if (!days.includes(k)) { days.push(k); days.sort(); put.hdays = days.slice(-HIST_DAYS); }
+        await S.put(put);
+        if (days.length > HIST_DAYS) await S.delete(days.slice(0, days.length - HIST_DAYS));
+        return j({ ok: 1 });
+      }
+      const n = Math.max(1, Math.min(HIST_DAYS, +(body && body.days) || 1)) + 1; // +1: a window of N days spans N+1 UTC dates
+      const want = days.slice(-n), got = want.length ? await S.get(want) : new Map(), points = [];
+      for (const k of want) points.push(...(got.get(k) || []));
+      return j({ points });
     }
     if (route === 'noticeget') return j({ n: (await S.get('notice')) || null }); // only on the '__notice__' object
     if (route === 'noticeput') { if (body && body.n) await S.put('notice', body.n); else await S.delete('notice'); return j({ ok: 1, n: (body && body.n) || null }); }

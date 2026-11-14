@@ -419,7 +419,7 @@ if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'].includes(
 
         <div class="w s8">
           <div class="w-head"><h3>Players Online</h3><span class="sub">Whole arcade, from the on-now counter</span>
-            <div class="tools"><div class="seg" data-range-for="dash"><button type="button" data-r="15m">15m</button><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button></div></div></div>
+            <div class="tools"><div class="seg" data-range-for="dash"><button type="button" data-r="15m">15m</button><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button><button type="button" data-r="7d">7d</button></div></div></div>
           <div class="w-body">
             <dl class="stats" id="dashStats"></dl>
             <div class="chart" id="dashChart"><svg role="img" aria-label="Players online over time"></svg><div class="tip" hidden></div></div>
@@ -452,7 +452,7 @@ if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'].includes(
       <div class="grid">
         <div class="w">
           <div class="w-head"><h3>Player Count</h3><span class="sub">Browsers on the arcade, one per player</span>
-            <div class="tools"><div class="seg" data-range-for="players"><button type="button" data-r="15m">15m</button><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button></div></div></div>
+            <div class="tools"><div class="seg" data-range-for="players"><button type="button" data-r="15m">15m</button><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button><button type="button" data-r="7d">7d</button></div></div></div>
           <div class="w-body">
             <dl class="stats" id="playerStats"></dl>
             <div class="chart" id="playerChart"><svg role="img" aria-label="Players online over time, large"></svg><div class="tip" hidden></div></div>
@@ -469,6 +469,11 @@ if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'].includes(
     <!-- System status -->
     <section id="view-system-status" data-title="System Status" hidden>
       <div class="grid">
+        <div class="w">
+          <div class="w-head"><h3>Server Response</h3><span class="sub">Checked by the server itself every 5 minutes, even with this console closed. Gaps mean a check didn’t run or failed.</span>
+            <div class="tools"><div class="seg" data-range-for="srv"><button type="button" data-r="24h">24h</button><button type="button" data-r="7d">7d</button></div></div></div>
+          <div class="w-body"><dl class="stats" id="srvStats"></dl><div class="chart" id="srvChart"><svg role="img" aria-label="Server response time over time"></svg><div class="tip" hidden></div></div></div>
+        </div>
         <div class="w s7">
           <div class="w-head"><h3>Socket Round Trip</h3><span class="sub">Ping to pong on the realtime socket, every 25 s</span>
             <div class="tools"><div class="seg" data-range-for="latency"><button type="button" data-r="15m">15m</button><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button></div></div></div>
@@ -489,8 +494,8 @@ if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'].includes(
     <section id="view-game-stats" data-title="Game Stats" hidden>
       <div class="grid">
         <div class="w">
-          <div class="w-head"><h3>Most Played Games</h3><span class="sub">Player-hours recorded while this console was open</span>
-            <div class="tools"><div class="seg" data-range-for="gstats"><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button></div><button class="btn sm" type="button" id="histCsv">Download CSV</button></div></div>
+          <div class="w-head"><h3>Most Played Games</h3><span class="sub">Player-hours, from the server's 5-minute records and this console</span>
+            <div class="tools"><div class="seg" data-range-for="gstats"><button type="button" data-r="1h">1h</button><button type="button" data-r="24h">24h</button><button type="button" data-r="7d">7d</button></div><button class="btn sm" type="button" id="histCsv">Download CSV</button></div></div>
           <div class="w-body"><dl class="stats" id="gsStats"></dl><div class="bars" id="gsBars"></div></div>
         </div>
         <div class="w s7">
@@ -769,7 +774,8 @@ const CFG = {
 };
 const GAME_NAMES = { home: 'Home page', chat: 'Global chat', 'throttle-ridge': 'Throttle Ridge', 'turn-turn-turn': 'Turn! Turn! TURN!', 'krill-dive': 'Krill Dive', 'card-royale': 'Card Royale', siege: 'Siege', uno: 'UNO!', 'rocket-rivals': 'Rocket Rivals', football: 'Football', 'havoc-bay': 'Havoc Bay', 'bull-run': 'Stocks Game', chess: 'Chess', checkers: 'Checkers', 'russian-roulette': 'Russian Roulette', 'gamble-your-life-away': 'Gamble Your Life Away', 'cube-tower-defense': 'Cube Tower Defense', 'free-criminal': 'Free Criminal', 'cube-assault': 'Cube Assault', 'block-drop': 'Blocktris', 2048: '2048', 'poly-racer': 'Poly Racer', blockcraft: 'Blockcraft' };
 const gameName = g => GAME_NAMES[g] || String(g).replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-const RANGES = { '15m': 15 * 60e3, '1h': 60 * 60e3, '24h': 24 * 60 * 60e3 };
+const RANGES = { '15m': 15 * 60e3, '1h': 60 * 60e3, '24h': 24 * 60 * 60e3, '7d': 7 * 24 * 60 * 60e3 };
+const SRV_GAP = 12 * 60e3; // the server records every 5 minutes; a gap longer than this is a real gap
 const SAMPLE_EVERY = 15e3, PING_EVERY = 25e3, HTTP_EVERY = 60e3, IDLE_MS = 15 * 60e3, BACKOFF = [1e3, 2e3, 5e3, 10e3, 30e3];
 
 const $ = id => document.getElementById(id);
@@ -791,7 +797,7 @@ const S = {
     origin: { name: 'Origin check', s: onSite ? 'up' : 'down', text: onSite ? 'Served from ' + location.host : 'Not on an official address' },
   },
   joined: false, synced: false, everJoined: false, tries: 0, reconnects: 0, lastSync: null, lastHttp: null, lastPing: null,
-  ranges: Object.assign({ dash: '1h', players: '1h', latency: '1h', gstats: '24h' }, store.get('arcadeops.ranges', {})),
+  ranges: Object.assign({ dash: '1h', players: '1h', latency: '1h', gstats: '24h', srv: '24h' }, store.get('arcadeops.ranges', {})),
   logPaused: false,
 };
 const D = () => S.mode === 'sample' ? S.sample : S.live;
@@ -802,7 +808,7 @@ const D = () => S.mode === 'sample' ? S.sample : S.live;
   if (Array.isArray(h)) S.live.history = h.filter(p => p && p.t > cut);
 })();
 let saveTimer = 0;
-const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set('arcadeops.history.v1', S.live.history), 3000); };
+const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set('arcadeops.history.v1', S.live.history.filter(p => !p.srv && p.t > Date.now() - RANGES['24h'])), 3000); };
 
 // ---------- Utilities ----------
 const pad = n => String(n).padStart(2, '0');
@@ -824,9 +830,9 @@ function setSvc(key, s, text, quiet) {
   if (changed && !quiet && S.mode !== 'sample') log(s === 'down' ? 'error' : s === 'warn' ? 'warn' : 'info', v.name, `${v.name}: ${text}`, S.live);
   schedule('status');
 }
-function pushPoint(arr, point) {
+function pushPoint(arr, point, keep) {
   arr.push(point);
-  const cut = point.t - RANGES['24h'];
+  const cut = point.t - (keep || RANGES['24h']);
   while (arr.length && arr[0].t < cut) arr.shift();
 }
 // The same counting rule as the site's on-now counter: one per browser, counted on a game over the home page.
@@ -933,11 +939,11 @@ function onState(state) {
 function byGameOf(data) { const g = {}; data.players.forEach(p => { g[p.game] = (g[p.game] || 0) + 1; }); return g; }
 function record(data, now) {
   const h = data.history, last = h[h.length - 1], point = { t: now, v: data.players.size, g: byGameOf(data) };
-  if (last && last.v != null && now - last.t < 2000) Object.assign(last, point); else pushPoint(h, point);
+  if (last && last.v != null && !last.srv && now - last.t < 2000) Object.assign(last, point); else pushPoint(h, point, RANGES['7d']);
 }
 function sampleLive() {
   if (S.mode === 'sample') return;
-  if (S.joined && S.synced) record(S.live, Date.now()); else pushPoint(S.live.history, { t: Date.now(), v: null });
+  if (S.joined && S.synced) record(S.live, Date.now()); else pushPoint(S.live.history, { t: Date.now(), v: null }, RANGES['7d']);
   persist(); schedule('players');
 }
 async function checkHttp() {
@@ -1038,16 +1044,18 @@ function lineChart(id, pts, o) {
     const v = top * i / 4, yy = y(v).toFixed(1);
     g += `<line class="${i ? 'grid-l' : 'base-l'}" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}"/><text class="axis" x="${m.l - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end">${Math.round(v)}</text>`;
   }
-  const tickStep = { '15m': 5 * 60e3, '1h': 15 * 60e3, '24h': 4 * 3600e3 }[o.range];
-  for (let t = Math.ceil(t0 / tickStep) * tickStep; t <= now; t += tickStep) {
+  const tickStep = { '15m': 5 * 60e3, '1h': 15 * 60e3, '24h': 4 * 3600e3, '7d': 864e5 }[o.range];
+  const tickLabel = t => o.range === '7d' ? new Date(t).toLocaleDateString(undefined, { weekday: 'short' }) : hhmm(t);
+  const tz0 = o.range === '7d' ? new Date().getTimezoneOffset() * 60e3 : 0; // day ticks at local midnight
+  for (let t = Math.ceil((t0 - tz0) / tickStep) * tickStep + tz0; t <= now; t += tickStep) {
     const xx = x(t); if (xx < m.l + 14 || xx > W - m.r - 14) continue;
-    g += `<text class="axis" x="${xx.toFixed(1)}" y="${H - 6}" text-anchor="middle">${hhmm(t)}</text>`;
+    g += `<text class="axis" x="${xx.toFixed(1)}" y="${H - 6}" text-anchor="middle">${tickLabel(o.range === '7d' ? t + 432e5 : t)}</text>`;
   }
   // Split into runs at nulls and at gaps longer than a few sample steps.
   const runs = []; let cur = [];
   data.forEach((p, i) => {
     const prev = data[i - 1];
-    if (p.v == null || (prev && p.t - prev.t > o.step * 3.5)) { if (cur.length) runs.push(cur); cur = []; }
+    if (p.v == null || (prev && p.t - prev.t > Math.max(o.step * 3.5, o.gapMs || 0))) { if (cur.length) runs.push(cur); cur = []; }
     if (p.v != null) cur.push(p);
   });
   if (cur.length) runs.push(cur);
@@ -1073,7 +1081,7 @@ function lineChart(id, pts, o) {
     const cx = x(best.t), cy = y(best.v);
     hov.innerHTML = `<line class="cross" x1="${cx}" x2="${cx}" y1="${m.t}" y2="${H - m.b}"/><circle class="endpt" cx="${cx}" cy="${cy}" r="4.5"/>`;
     tip.hidden = false;
-    tip.innerHTML = `<b>${esc(o.fmtTip(best.v))}</b> · ${hhmmss(best.t)}`;
+    tip.innerHTML = `<b>${esc(o.fmtTip(best.v))}</b> · ${o.range === '7d' ? esc(new Date(best.t).toLocaleDateString(undefined, { weekday: 'short' })) + ' ' + hhmm(best.t) : hhmmss(best.t)}`;
     tip.style.left = Math.min(Math.max(cx / W * rect.width, 60), rect.width - 60) + 'px';
     tip.style.top = (cy / H * rect.height) + 'px';
   };
@@ -1149,12 +1157,12 @@ function renderPlayerBlock(which) {
   $(which === 'dash' ? 'dashStats' : 'playerStats').innerHTML = cell('Now', now == null ? '–' : now)
     + cell(`Peak ${range}`, v.length ? Math.max(...v) : '–') + cell(`Average ${range}`, v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : '–') + cell(`Low ${range}`, v.length ? Math.min(...v) : '–');
   lineChart(which === 'dash' ? 'dashChart' : 'playerChart', D().history, {
-    range, h: which === 'dash' ? 230 : 320, step: S.mode === 'sample' ? 60e3 : SAMPLE_EVERY, minTop: 5,
+    range, h: which === 'dash' ? 230 : 320, step: S.mode === 'sample' ? 60e3 : SAMPLE_EVERY, gapMs: S.mode === 'sample' ? 0 : SRV_GAP, minTop: 5,
     fmtTip: x => `${x} player${x === 1 ? '' : 's'}`,
     empty: S.mode === 'connecting' ? 'Waiting for the first presence sync' : 'No player data for this range yet',
   });
   $(which === 'dash' ? 'dashNote' : 'playerNote').textContent = S.mode === 'sample' ? 'Sample data, not real players.'
-    : 'Recorded while this console is open and saved in this browser for 24 h. Gaps are times it was closed or disconnected.';
+    : 'Recorded by the server every 5 minutes (kept 30 days), plus every 15 s while this console is open. Gaps mean nothing was recorded.';
 }
 function renderByGame() {
   const d = D(), now = byGameOf(d), peaks = {};
@@ -1190,6 +1198,7 @@ function renderSessions() {
     : `<tr class="empty-row"><td colspan="4">${playersNow() == null ? 'No presence data. Check System Status.' : 'Nobody is on the arcade right now.'}</td></tr>`;
 }
 function renderHealth(tickOnly) {
+  if (!tickOnly) renderServerHealth();
   if (!tickOnly) lineChart('latencyChart', D().latency, { range: S.ranges.latency, h: 260, step: S.mode === 'sample' ? PING_EVERY * 4 : PING_EVERY, minTop: 100, fmtTip: v => `${v} ms`, empty: 'No pings answered in this range' });
   const word = { up: 'OK', warn: 'Degraded', down: 'Down', wait: 'Pending' };
   $('checks').innerHTML = ['http', 'socket', 'room', 'origin'].map(k => { const v = S.svc[k]; return `<tr><td>${esc(v.name)}</td><td><span class="pill" data-s="${v.s}">${word[v.s]}</span></td><td>${esc(v.text)}</td></tr>`; }).join('');
@@ -1243,6 +1252,25 @@ let rz = 0; window.addEventListener('resize', () => { cancelAnimationFrame(rz); 
 setInterval(() => { $('clock').textContent = hhmmss(Date.now()); schedule('tick'); }, 1000);
 $('clock').textContent = hhmmss(Date.now());
 
+// ---------- The server's own 5-minute history (2026-11-14), loaded by the Admin Control script after sign-in ----------
+S.srv = [];
+function addServerHistory(points) {
+  S.srv = points.filter(p => p && p.t).sort((a, b) => a.t - b.t);
+  const local = S.live.history.filter(p => !p.srv), mins = new Set(local.map(p => Math.floor(p.t / 60e3)));
+  const fromSrv = S.srv.filter(p => !mins.has(Math.floor(p.t / 60e3))).map(p => ({ t: p.t, v: p.err ? null : p.v, g: p.g || {}, srv: 1 }));
+  S.live.history = local.concat(fromSrv).sort((a, b) => a.t - b.t).filter(p => p.t > Date.now() - RANGES['7d']);
+  schedule('players'); schedule('status');
+}
+function renderServerHealth() {
+  const range = S.ranges.srv, cut = Date.now() - RANGES[range], P = S.srv.filter(p => p.t >= cut);
+  const ok = P.filter(p => !p.err), ms = ok.map(p => p.ms).sort((a, b) => a - b);
+  const since = P.length ? Math.max(cut, P[0].t) : Date.now(), expected = Math.max(1, Math.floor((Date.now() - since) / 300e3) + 1);
+  const up = P.length ? Math.min(100, ok.length / expected * 100) : null, last = S.srv[S.srv.length - 1];
+  const cell = (k, v) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`;
+  $('srvStats').innerHTML = cell(`Uptime ${range}`, up == null ? '–' : (up >= 99.95 ? '100' : up.toFixed(1)) + '%') + cell('Typical response', ms.length ? ms[Math.floor(ms.length / 2)] + ' ms' : '–') + cell('Slowest', ms.length ? ms[ms.length - 1] + ' ms' : '–') + cell('Last check', last ? (last.err ? 'Failed · ' : '') + esc(hhmm(last.t)) : '–');
+  lineChart('srvChart', S.srv.map(p => ({ t: p.t, v: p.err ? null : p.ms })), { range, h: 220, step: 300e3, gapMs: SRV_GAP, minTop: 50, fmtTip: v => `${v} ms`, empty: S.mode === 'sample' ? 'Server records show on the arcade’s own admin page' : 'No server records yet. The first arrives within 5 minutes of the update.' });
+}
+
 // ---------- Game stats (from the history this console recorded) ----------
 function gameTotals(range) {
   const cut = Date.now() - RANGES[range], h = D().history.filter(p => p.t >= cut && p.v != null), step = S.mode === 'sample' ? 60e3 : SAMPLE_EVERY;
@@ -1250,7 +1278,7 @@ function gameTotals(range) {
   h.forEach((p, i) => {
     const g = p.g || {};
     for (const k in g) { peak[k] = Math.max(peak[k] || 0, g[k]); sum[k] = (sum[k] || 0) + g[k]; }
-    if (i) { const prev = h[i - 1], dt = Math.min(p.t - prev.t, step * 3) / 3600e3; total += (prev.v || 0) * dt; for (const k in prev.g || {}) hours[k] = (hours[k] || 0) + prev.g[k] * dt; }
+    if (i) { const prev = h[i - 1], dt = Math.min(p.t - prev.t, Math.max(step * 3, S.mode === 'sample' ? 0 : SRV_GAP)) / 3600e3; total += (prev.v || 0) * dt; for (const k in prev.g || {}) hours[k] = (hours[k] || 0) + prev.g[k] * dt; }
   });
   return { h, hours, peak, avg: Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, v / Math.max(1, h.length)])), total };
 }
@@ -1297,7 +1325,7 @@ $('histCsv').addEventListener('click', () => {
   csvDownload(`arcade-players-${stamp()}.csv`, [['time', 'players online', ...games.map(gameName)], ...h.map(p => [new Date(p.t).toISOString(), p.v == null ? '' : p.v, ...games.map(g => p.v == null ? '' : (p.g && p.g[g]) || 0)])]);
 });
 
-window.__ops = { players: () => S.live.players, gameName, GAME_NAMES, csvDownload, stamp };
+window.__ops = { players: () => S.live.players, gameName, GAME_NAMES, csvDownload, stamp, addServerHistory };
 // on the arcade's own addresses the console connects only after the admin sign-in (Admin Control script calls this)
 if (onSite) window.__startLive = () => { if (!window.__liveStarted) { window.__liveStarted = 1; startLive(); } };
 else startLive();
@@ -2289,6 +2317,12 @@ const MOCK = LIVE ? null : (() => {
   };
 })();
 
+// ---------- The server's 5-minute history for the graphs (2026-11-14) ----------
+async function loadServerHistory() {
+  const r = await admin({ op: 'history', days: 7 });
+  if (r.status === 200 && Array.isArray(r.points)) OPS.addServerHistory(r.points);
+}
+
 // ---------- Sign-in screen ----------
 const GATE_KEY = 'arcadeops.pw';
 function lockConsole() { adminPw = ''; try { sessionStorage.removeItem(GATE_KEY); } catch (e) {} if (LIVE) location.reload(); else renderAccess(); }
@@ -2299,6 +2333,7 @@ async function unlock(pw, quiet) {
     document.body.classList.remove('locked'); $('gate').hidden = true; $('lockBtn').hidden = false;
     if (window.__startLive) window.__startLive();
     renderAccess(); if (inView()) showTab(tab);
+    loadServerHistory(); if (!loadServerHistory.timer) loadServerHistory.timer = setInterval(loadServerHistory, 5 * 60e3);
     return true;
   }
   try { sessionStorage.removeItem(GATE_KEY); } catch (e) {}

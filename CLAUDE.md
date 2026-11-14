@@ -30,6 +30,12 @@ minutes) saying the site moves to https://thearcade.pages.dev and this one shuts
 with the Arcade account. It only runs when location.hostname is noah-and-lars.github.io, so the Cloudflare copy never
 shows it (do not change that check), and frames inside play.html skip it. "Go to the new site" keeps the same page.
 
+Player history (2026-11-14): a Cron Trigger (wrangler.toml [triggers], every 5 minutes) runs scheduled() -> recordHistory():
+it asks the 'online:arcade' Room for its counts (internal GET /stats, header x-arcade-int) and stores { t, v, g, s, ms } (or
+{ t, err: 1 }) on the '__history__' Account object, one array per UTC day, 30 days. Admin op 'history' { days } returns them;
+the console loads 7 days after sign-in (and every 5 minutes) into the Players Online / Player Count / Game Stats graphs (7d
+range added) and a Server Response graph with uptime on System Status. About 900 Durable Object requests a day.
+
 Investigation records (2026-11-14, the owner's request): each Account keeps `ev` (its newest 80 events: signup, login,
 recover, wrongpw (merged per hour with a count), password, rename, ban/unban, devban/devunban, newcode, dmread; each with
 the device id, IP and rough location where it applies, and `by` = the admin), `ips` (last 10 IPs with location, first/last
