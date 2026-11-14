@@ -36,7 +36,8 @@ the device id, IP and rough location where it applies, and `by` = the admin), `i
 seen and a count; the Worker passes CF-Connecting-IP and request.cf as x-arcade-ip / x-arcade-geo, which a browser can't
 set) and `pt` (play time per game: seconds, sessions, last played; account.js `trackPlay()` sends it from play.html via
 /acct/play every 5 minutes and on leaving, capped by real time). The Chat object keeps each account's own messages
-('h:a:<lower>', newest 300). Admin ops: 'investigate' (all of that, read only), 'dmlist' / 'dmread' (private messages:
+('h:a:<lower>', newest 300). Admin ops: 'investigate' (all of that, read only), 'dmstats' (who they message: counts and times per
+conversation, never text; password is enough; logged as a 'dmmeta' event), 'dmlist' / 'dmread' (private messages:
 signed-in admin ACCOUNT only, never the password; 'dmread' needs a reason of 10+ characters and writes a 'dmread' event
 before returning). The console shows these under Account Tools > Look up; private messages sit behind two warnings, a
 reason and typing the username. Browsers and devices: the Worker reads the User-Agent (passed as x-arcade-ua) and account.js

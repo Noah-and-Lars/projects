@@ -282,7 +282,7 @@ const noteDev = (a, dev) => { if (!dev || !DEV_RE.test(dev) || (a.devs || []).in
 const ADMIN_ACCOUNTS = ['noah', 'lars', 'claude']; // the owner's request (2026-11-12): lars and Claude get the same powers
 async function admin(env, body, out, auth) {
   const name = String(body.name || ''), op = body.op;
-  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset', 'check', 'investigate', 'dmlist', 'dmread'].includes(op)) return out({ error: 'bad' }, 400);
+  if (!['info', 'delete', 'chatdel', 'clipdel', 'avatardel', 'ban', 'unban', 'rename', 'pending', 'approve', 'deny', 'newcode', 'devban', 'devunban', 'devinfo', 'noticeget', 'noticeset', 'noticeclear', 'chessset', 'check', 'investigate', 'dmlist', 'dmread', 'dmstats'].includes(op)) return out({ error: 'bad' }, 400);
   const call = (id, route, b) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName(id)).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: JSON.stringify(b || {}) }));
   const who = auth ? await whoami(env, auth) : '';
   // 2026-11-11: uploaded photos and videos wait for approval, and only an admin account (not the password) can review them
@@ -306,6 +306,11 @@ async function admin(env, body, out, auth) {
     const h = await env.CHAT.get(env.CHAT.idFromName('chat:global')).fetch(new Request('https://chat/hist', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-int': '1' }, body: JSON.stringify({ us }) })).catch(() => null);
     x.chat = h && h.ok ? ((await h.json().catch(() => ({}))).h || []) : [];
     return out(x);
+  }
+  if (op === 'dmstats') { // 2026-11-14: who the account messages and how much, never the text; each view is logged on the account
+    if (!NAME_RE.test(name)) return out({ error: 'no_account' }, 404);
+    const r = await call('u:' + name.toLowerCase(), 'admindmstats', { by: who || 'password' });
+    return out(await r.json().catch(() => ({})), r.status);
   }
   // Private messages (2026-11-14, the owner's request, for serious cases only): a signed-in admin account (never just the
   // password) can list an account's conversations and read one, with a written reason. Every read is written into that
@@ -564,6 +569,16 @@ export class Account extends DurableObject {
     if (route === 'admindmlist') { // conversations only: who with, how many messages, when; no message text
       const s = await this.soc();
       return j({ name: a.name, convos: Object.entries(s.c).map(([k, c]) => ({ k, n: c.n, g: c.g ? 1 : 0, mem: c.g ? (c.mem || []).length : 0, seq: c.seq || 0, ts: c.ts || 0 })).sort((x, y) => y.ts - x.ts) });
+    }
+    if (route === 'admindmstats') { // counts and times per conversation from the kept messages (each record has f = sent by them)
+      const s = await this.soc(), per = {};
+      for (const [key, m] of await S.list({ prefix: 'm:' })) {
+        const k = key.slice(2, key.lastIndexOf(':')), e = per[k] || (per[k] = { sent: 0, recv: 0, first: 0, last: 0, wk: 0 });
+        if (m.f) e.sent++; else e.recv++;
+        if (!e.first || m.ts < e.first) e.first = m.ts; if (m.ts > e.last) e.last = m.ts; if (now - m.ts < 7 * 864e5) e.wk++;
+      }
+      logEv(a, 'dmmeta', { by: body.by || '' }); await S.put('acct', a);
+      return j({ name: a.name, convos: Object.entries(s.c).map(([k, c]) => Object.assign({ k, n: c.n, g: c.g ? 1 : 0, people: c.g ? (c.mem || []).length + 1 : 2, total: c.seq || 0, sent: 0, recv: 0, first: 0, last: c.ts || 0, wk: 0 }, per[k] || {})).sort((x, y) => (y.last || 0) - (x.last || 0)) });
     }
     if (route === 'admindmread') {
       const s = await this.soc(), k = String(body.k || ''), c = s.c[k];
