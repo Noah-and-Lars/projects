@@ -10758,16 +10758,17 @@ function subBubble(pos, size = 1) { fxSmoke.spawn(pos.x + rand(-0.5, 0.5), pos.y
 window.subBubble = subBubble;
 // the camera and the view under the water
 function subCam(e, zoom) {
-  if (!(e.depth > 2.6 || e.inSys)) return false;
+  const deep = e.depth > 2.6;
+  if (!deep && !e.inSys) return false;
   const S = e.S;
-  _ct.set(e.pos.x, -e.depth + S.top * 0.3, e.pos.z);
+  _ct.set(e.pos.x, -e.depth + S.top * (deep ? 0.3 : 0.6), e.pos.z);
   _cp.copy(_ct).addScaledVector(aimDir, -S.cam * (zoom ? 0.5 : 0.78)); _cp.y += S.cam * 0.06;
   if (e.inSys && e.sysH) { // keep it inside the pipe or the basin
     const H = e.sysH; let [lx, lz] = hbLocal(H, _cp.x, _cp.z);
     const inPipe = lx > PIPE_X0, zr = (inPipe ? PIPE_Z : BASIN_Z) - 1.6;
     lz = clamp(lz, -zr, zr); lx = clamp(lx, BASIN_X0 + 1.6, PIPE_X1 + 30);
     _cp.x = H.isle.x + H.sgn * lx; _cp.z = H.isle.z + H.sgn * lz;
-    _cp.y = clamp(_cp.y, PIPE_FLOOR + 1.6, inPipe ? PIPE_TOP - 1.2 : -1.2);
+    _cp.y = deep ? clamp(_cp.y, PIPE_FLOOR + 1.6, inPipe ? PIPE_TOP - 1.2 : -1.2) : clamp(_cp.y, 1.4, ROOF_Y - 1.5); // surfaced in the basin: under the roof
   } else _cp.y = clamp(_cp.y, floorAt(_cp.x, _cp.z, _cp.y) + 1.6, -1.2);
   camera.position.copy(_cp);
   UW.bubT -= 0.016; if (UW.bubT <= 0 && Math.abs(e.speed) > 2) { UW.bubT = 0.08; const b = -Math.sign(e.speed) * S.len * 0.5; subBubble(_v1.set(e.pos.x + Math.sin(e.heading) * b, -e.depth, e.pos.z + Math.cos(e.heading) * b), 1.4); }
