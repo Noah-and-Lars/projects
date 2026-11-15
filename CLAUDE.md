@@ -842,6 +842,16 @@ source in Settings → Pages should be switched to `main`.
   wall (`g.n`) also counts from a point just behind that wall. Barricades are solid green (`BAR_GREEN`, `BAR_DEBRIS`): bullets
   stop at them (no pierce), `barHole` only darkens a dent, `barOpenAt`/`BAR_OPEN` are gone, and they break at `BAR_HP`
   (bullets do `dm * 0.1`, pellets 0.5).
+  1.0.19 (2026-11-15, the owner's request: "more of a scope based game"): sights. `SG_SIGHTS` (zoom, aimed spread, aim
+  time, walk speed `mv`, full scope picture, sway), `SIGHTS_T` (sights per gun kind), `SIGHT_DEF`, `HIP_T` (hip spread x),
+  `SIGHT_MOUNT`; `sightIdx(P, slot)` / `sightOf(P, slot)`. `P.ld` bits: 0-1 primary, 2 gadget, 3-5 primary sight + 1,
+  6-7 secondary sight + 1 (0 = default; `ldMake`, `ldGun`, `ldPs`, `ldSs`; `EV.op` masks & 255); saved per operator in
+  `settings.ld2` (`ldSaved` converts `settings.ld`) and per gun in `settings.sights`; bots `botLoadout`. Sight models
+  `GUN_SIGHT` in sg-guns (`rifle({bare})`/`sniper({bare})` drop the old built-in scope); magnified sights have a depth-only
+  `mask` disc so the world shows through. `vmBuild(gunKey, si)`, `rig.sight`, `AIM` {k, breath, out, ...}: 6x/8x sway,
+  Shift holds breath `BREATH_S` 4 s, then `BREATH_OUT`. `sgSpreadDeg(P, G0)` is the spread; `sgDrawRet` draws reticles and
+  the 4x+ scope picture on `#sgRet` (`UI.scopeOn` hides the gun). Glint `sgGlint` (snapshot flag `sc`). New SR-25 marksman
+  rifle; `settings.adsSens`. Bots set `P.adsB` and see further with magnified sights. Not yet tested online with two players.
 
 - `krill-dive/` (2026-11-07): Krill Dive, a daily rarity-trivia game (plain canvas 2D and HTML, no libraries; named
   Krill Dive rather than after the existing game the owner described). `KD_DATA` (the first script) holds the
