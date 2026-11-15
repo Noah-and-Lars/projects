@@ -676,6 +676,29 @@ source in Settings → Pages should be switched to `main`.
   ticket from /acct/hbcheat that every screen checks. `LOCAL_ONLY` (lars) also opens it when the server says no but its
   admin route answers for that account (until a Worker deploy adds lars): no ticket, so it works on their own screen only
   (practice, or online as host); other screens ignore their orders.
+  1.5 (2026-11-15, the owner's list; channels `hb-world-15` / `hb-room15-`): `BAIL_S` 1.5, `NO_BAIL` (the free Fighter has no
+  parachute, `noBail()`). Planes (not helis): max x1.3, min x1.15, `PLANE_TURN` 0.7; A/D barrel roll without Shift (`key131`
+  and an edge in `playerPre`; touch keeps stick steering). Planes only spawn at home: `planeSpotOk` refuses islands (their
+  runway pads still serve helis and landing); `buildSupercarrier(H)`: a static Supercarrier behind each harbor (`SC_X` -560
+  in harbor space, deck `SC_DECK` 22, own `RUNWAYS` entry with `sc`, pad `H.scPad`, deploy location 'super' for aircraft
+  only, drawn on the map). Customisation (`<script id="hb-15">`): `settings.tune` {type: [spd, dmg, hp, hnd]} in points of
+  `TUNE_STEP` 6%, each `TUNE_MIN`..`TUNE_CAP` except the vehicle's `TUNE_MAIN` stat (..`TUNE_TOP`), sum <= 0
+  (`sanitizeTune`); `applyTune` gives the ent its own copy of S/P, maxHp and `dmgK` (used in `applyDamage` via `src.src`);
+  the panel is `#tune` (⚙ Customise vehicles on the deploy screen), cards show `tuneLabel`. Online the tune rides in the
+  client's state row (ship 14, plane 15) and `makeProxy` applies it on the host. Troops: `AIR_TROOPS` per aircraft jump out
+  after `AIR_LAND_S` when landed on an island (`airLanded`, `landIsle`); guards man island turrets (`guardTurrets`:
+  `t.guardCrew`, a guard figure at the gun, better aim, full damage), fire RPGs at ships within `GUARD_SHIP_R` and shoot
+  helis at any height. Subs (`<script id="hb-sub">`): players steer the depth (`subControl`, `depthWant`, `SUB_MAX`
+  16/26/34; bots still use S.depth and keep off the bottom in `subDepth`); past `SUB_DEEP` (12) `Ship.segHit` uses the real
+  depth; torpedoes have `W.torp`, `runY` (start at a deep sub's depth and climb; `hold` stays) and the launchers' small
+  `WEAP.utorp` (last in WEAP). `subCam` + `uwView` (fog, `uwSurf` the surface from below, `uwFloor` at -40, `#uwFx`).
+  `ROCKS` (cones; tops -18..-31, below bots) and `MINES` (neutral fields + 3 per pipe for the owner; host decides, `mineSnap`
+  is `snap131()[5]`, `mineApply`; back after `MINE_BACK`); `subHazards` hurts a sub that scrapes rock or bottom. The pump
+  house (`buildPumpHouse`): basin `BASIN_X0..PIPE_X0`, pipe `PIPE_X0..PIPE_X1` (ceiling `PIPE_TOP`, floor `PIPE_FLOOR`,
+  dug out in `isleH`), `subZone`/`subBlocked` (in through the mouth at a depth that fits `pipeDepth`, then the walls hold
+  it; `s.inSys`/`inPipe`/`inBasin`/`sysH`), no firing in the pipe, foundations are colliders with `found` (x `FOUND_K` harbor
+  damage), the `MOON` hole in the roof, two roof turrets, `LAUNCHERS` (3 a harbor) and the harbor hears anything inside
+  (`subSpotted`). Boot waits for DOMContentLoaded (`bootSoon`; the bare 30 ms timer sometimes ran before later blocks).
 - `turn-turn-turn/`: Turn! Turn! TURN! (1.0, 2026-11-08), a two-player co-op dirt rally (Three.js r128 copied from Havoc Bay).
   1.3 (2026-11-12): 10 long stages in `STAGES` (`long: 1`, 6.2-8.6 km) with their own hill model in buildStage: `relief`,
   `wave`, `trend` (overall climb/drop), `grade` (max slope), `crests` (gaussian brows, added to `jumps` so they're called
