@@ -21,7 +21,28 @@ Press 5 to switch between watching your teammates and the cameras (defenders: th
 
 ## Loadouts and rappelling
 
-On the operator screen, choose one of each operator's two primary guns and one of their two gadgets (kept for next time). Attackers can rappel: Space facing an outside wall, W / S up and down, A / D along the wall, shoot as usual, F at a window to go in (kicking any barricade through), Space to let go. W at the top of a wall climbs onto the roof (since 1.0.12 every roof is walkable, with two hatches into the top floor); Space at a roof's edge takes you back down the outside.
+On the operator screen, choose one of each operator's primary guns (two, or three for operators with a marksman rifle), a sight for it and for your pistol, and one of their two gadgets (all kept for next time). Attackers can rappel: Space facing an outside wall, W / S up and down, A / D along the wall, shoot as usual, F at a window to go in (kicking any barricade through), Space to let go. W at the top of a wall climbs onto the roof (since 1.0.12 every roof is walkable, with two hatches into the top floor); Space at a roof's edge takes you back down the outside.
+
+## Sights and scopes
+
+Since 1.0.19 Siege is played through the sights. Every gun carries a sight you choose on the operator screen, modelled on the gun so you see it from the hip:
+
+| Sight | Zoom | Fits |
+|---|---|---|
+| Iron sights | none | everything |
+| Red dot | 1× (slight zoom) | rifles, SMGs, shotguns, marksman rifles, pistols (a small slide dot) |
+| Holographic | 1× | rifles, SMGs, shotguns, marksman rifles |
+| 2.5× scope | 2.5× | rifles, SMGs, marksman rifles |
+| 4× ACOG | 4× | rifles, marksman rifles |
+| 6× and 8× scopes | 6×, 8× | marksman rifles |
+
+- **Aiming down the sight** (right mouse) lines the sight up with the middle of the screen and zooms to its magnification, with its own reticle (red dot, holo ring, 2.5× crosshair). On 4× and up you see a full scope picture (black round the glass, the ACOG chevron or a sniper crosshair) and the gun is hidden.
+- **Hip fire is wide, aimed fire is tight.** The crosshair shows the real spread. Bigger scopes take longer to aim in, slow you down more while aimed and spread more when you move.
+- **Sway:** the 6× and 8× drift. Hold Shift while scoped to steady them for 4 seconds (the bar under the crosshair), then you are out of breath for a moment. Crouching steadies them, lying down more.
+- **Glint:** anyone scoped in on 4× or more flashes a lens glint at the enemies their scope points at.
+- **Look speed** follows the zoom, so every scope feels the same under the mouse; the ADS sensitivity setting makes aiming faster or slower.
+- **Marksman rifles** (semi-auto, a headshot always kills): the MK-14 EBR for Hex, Tripwire, Oracle and Vesper, the SR-25 for Warden, Mender and Bramble.
+- **Bots** carry sights too: with a magnified scope they see and hit you from further away, but are slow to swing onto you up close.
 
 ## Down but not out
 
@@ -71,7 +92,7 @@ Each has three pairs of bomb sites, stairs, hatches and five defender cameras.
 
 ## Keys
 
-WASD move, Shift sprint, Space rappel (attackers, at an outside wall), C / Ctrl crouch, Z prone, Q / E lean, mouse to shoot (right-click to aim: a click toggles it, or hold it if you pick Hold in Settings), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras (Space hops a drone), V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
+WASD move, Shift sprint, Space rappel (attackers, at an outside wall), C / Ctrl crouch, Z prone, Q / E lean, mouse to shoot (right-click to aim down your sight: a click toggles it, or hold it if you pick Hold in Settings; Shift while scoped on a 6× or 8× holds your breath), R reload, 1 / 2 guns, X operator gadget, G secondary gadget, hold F to reinforce / barricade / plant / disable, 5 drones or cameras (Space hops a drone), V melee, Tab scoreboard, Enter or T chat (Y for team only, Tab switches while typing), Esc menu.
 
 ## Playing
 
@@ -85,4 +106,5 @@ WASD move, Shift sprint, Space rappel (attackers, at an outside wall), C / Ctrl 
 - Maps are cell grids in `SG_MAPS`: rooms as rectangles, walls between rooms appear by themselves, doors and windows are listed per edge. Furniture is placed from a seed so every player gets the same rooms, and the lighting is baked into the walls when a map loads.
 - Online: rooms `csiege-lobby` and `csiege-<code>` on the arcade's realtime server (`rt.js`). The host runs the clock, the bots and the round result; every player owns their own movement, shots and health.
 - Chat (1.0.2): 'chat' on the room channel, `{ i, m, tm }` (`tm` = team only; the other team's screens drop it). Works in the lobby, operator pick and the round. `sgSay()` sends, `EV.chat` receives, `window.sgChat` draws (textContent only). `sgTidy()` is the Global chat's swear filter; 5 messages per 10 s to send, more than 8 per 10 s from someone is ignored.
+- Sights (1.0.19): `SG_SIGHTS` (zoom, aimed spread, aim time, walking speed, scope picture, sway), which sights each kind of gun takes (`SIGHTS_T`) and where they sit on each gun model (`SIGHT_MOUNT`); the models are `GUN_SIGHT` in `sg-guns`. The chosen sights travel in the loadout number (`P.ld`, see `ldMake`) in the existing 'op' event and roster, so they cost no extra messages; being scoped in on 4× or more adds `sc: 1` to a player's state (the glint).
 - On a local copy (localhost), `window.__sg` is a test handle: `__sg.step(n)` advances the game by n frames.

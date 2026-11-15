@@ -74,11 +74,11 @@ canvas{display:block}
 <script src="https://noah-and-lars.github.io/projects/rt.js?v=3"></script>
 <script id="sg-base">
 // ---------- Siege: the base the game runs on (renderer, saves, sound, online check) ----------
-const VERSION = '1.0.18';
+const VERSION = '1.0.19';
 const $id = id => document.getElementById(id);
 // settings and profile live in this browser (and in your arcade account, which copies siege.* entries)
 // ads: 'toggle' (click right mouse to aim, click again to stop) or 'hold'
-const settings = Object.assign({ sens: 1, fov: 78, volume: 0.7, quality: 'high', seenNotes: '', ads: 'toggle', sndIcons: true },(() => { try { return JSON.parse(localStorage.getItem('siege.settings') || '{}'); } catch (e) { return {}; } })());
+const settings = Object.assign({ sens: 1, adsSens: 1, fov: 78, volume: 0.7, quality: 'high', seenNotes: '', ads: 'toggle', sndIcons: true },(() => { try { return JSON.parse(localStorage.getItem('siege.settings') || '{}'); } catch (e) { return {}; } })());
 function saveSettings() { try { localStorage.setItem('siege.settings', JSON.stringify(settings)); } catch (e) {} }
 const profile = Object.assign({ name: '', xp: 0, matches: 0, wins: 0, losses: 0, kills: 0, deaths: 0, rounds: 0, fav: {} }, (() => { try { return JSON.parse(localStorage.getItem('siege.profile') || '{}'); } catch (e) { return {}; } })());
 function saveProfile() { try { localStorage.setItem('siege.profile', JSON.stringify(profile)); } catch (e) {} }
@@ -380,7 +380,7 @@ const GUN_MODELS = {
              muzzle: [0, 0.033, 0.146], eject: [0.014, 0.05, 0.03], shell: 'pistol', slideTravel: 0.028 };
   },
 
-  rifle() {
+  rifle(o = {}) { // Siege 1.0.19: o.bare leaves the scope off (the sight is its own part, see GUN_SIGHT)
     const g = new THREE.Group(), mag = new THREE.Group();
     // lower receiver, trigger guard, grip
     g.add(extrudeSide([[-0.075, 0.013], [0.112, 0.013], [0.114, -0.03], [0.106, -0.044], [0.044, -0.044], [0.04, -0.012], [-0.014, -0.012], [-0.034, -0.006], [-0.075, -0.008]], 0.022, GM.alu));
@@ -413,6 +413,7 @@ const GUN_MODELS = {
     g.add(extrudeSide([[-0.165, 0.052], [-0.29, 0.056], [-0.3, 0.05], [-0.305, -0.058], [-0.285, -0.065], [-0.205, -0.004], [-0.17, 0.012]], 0.04, GM.polymer));
     g.add(extrudeSide([[-0.3, 0.051], [-0.313, 0.051], [-0.318, -0.06], [-0.305, -0.059]], 0.043, GM.rubber, { bevel: 0.002 }));
     // 2.7: a scope (like the sniper's, a bit shorter) on two rings on the top rail
+    if (!o.bare) {
     for (const u of [-0.02, 0.085]) { S27ring(g, u); }
     g.add(lathe([[0.011, -0.075], [0.0185, -0.07], [0.019, -0.064], [0.019, -0.035], [0.0145, -0.022], [0.0135, -0.01], [0.0135, 0.09], [0.0165, 0.105],
       [0.0225, 0.135], [0.0225, 0.165], [0.021, 0.168], [0.011, 0.169]], GM.scope, 0.089));
@@ -420,6 +421,7 @@ const GUN_MODELS = {
     const tur = new THREE.Mesh(new THREE.CylinderGeometry(0.0095, 0.0095, 0.012, 24), GM.knurl); tur.position.set(0, 0.108, -0.04); g.add(tur);
     const tur2 = tur.clone(); tur2.rotation.z = Math.PI / 2; tur2.position.set(-0.02, 0.089, -0.04); g.add(tur2);
     g.add(lens(0.0205, GM.glass, 0.089, 0.168, false), lens(0.0175, GM.glass, 0.089, -0.074, true));
+    }
     return { g, mag, magDir: [0, -1, 0], view: { pos: [0.17, -0.205, -0.5], scale: 0.95, yaw: 0.09, pitch: 0.07, roll: -0.08 },
              muzzle: [0, 0.031, 0.57], eject: [0.013, 0.04, 0.06], shell: 'rifle' };
   },
@@ -452,7 +454,7 @@ const GUN_MODELS = {
              muzzle: [0, 0.032, 0.62], eject: [0.016, 0.03, 0.07], shell: 'shotgun' };
   },
 
-  sniper() {
+  sniper(o = {}) {
     const g = new THREE.Group(), bolt = new THREE.Group(), mag = new THREE.Group();
     // thumbhole stock
     g.add(extrudeSide([[0.385, 0.012], [-0.065, 0.012], [-0.14, 0.032], [-0.42, 0.036], [-0.445, 0.042], [-0.445, -0.12], [-0.41, -0.125], [-0.2, -0.075],
@@ -469,6 +471,7 @@ const GUN_MODELS = {
     g.add(lathe([[0.0098, 0.68], [0.0135, 0.682], [0.0135, 0.742], [0.0115, 0.745], [0.0055, 0.745], [0.0055, 0.735]], GM.dark, 0.03));
     for (let i = 0; i < 3; i++) for (const s of [-1, 1]) g.add(box(0.0016, 0.009, 0.009, GM.bore, s * 0.0136, 0.03, 0.695 + i * 0.016));
     // scope
+    if (!o.bare) {
     for (const u of [-0.025, 0.065]) { g.add(cylU(0.0185, 0.0185, u - 0.006, u + 0.006, 0.085, GM.dark)); g.add(box(0.02, 0.026, 0.014, GM.dark, 0, 0.06, u)); }
     g.add(lathe([[0.012, -0.125], [0.0205, -0.12], [0.0215, -0.115], [0.0215, -0.075], [0.017, -0.06], [0.015, -0.045], [0.015, 0.075], [0.018, 0.095],
       [0.0255, 0.135], [0.0255, 0.172], [0.024, 0.176], [0.012, 0.177]], GM.scope, 0.085));
@@ -477,6 +480,7 @@ const GUN_MODELS = {
     const tw = tu.clone(); tw.rotation.z = Math.PI / 2; tw.position.set(-0.023, 0.085, 0.02); g.add(tw);
     const tp = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.012, 24), GM.knurl); tp.rotation.z = Math.PI / 2; tp.position.set(0.021, 0.085, 0.02); g.add(tp);
     g.add(lens(0.0236, GM.glass, 0.085, 0.176, false), lens(0.0196, GM.glass, 0.085, -0.124, true));
+    }
     // bolt (pivots around the bore axis)
     bolt.add(lathe([[0.0, -0.104], [0.013, -0.1], [0.0155, -0.094], [0.0155, -0.072], [0.009, -0.07]], GM.dark, 0));
     bolt.add(cylU(0.0092, 0.0092, -0.075, -0.035, 0, GM.bright));
@@ -727,6 +731,117 @@ const GUN_MODELS = {
              muzzle: [0, 0.04, 0.6], eject: null };
   },
 };
+// ---- Siege 1.0.19: sights, a part of their own on the gun. Each one stands on a rail top at y = 0, centred on u = 0
+// (u forward). eyeY = the height of its line of sight, rearU = its back end (where the eye goes), eyeR = the radius of
+// the window you look through, relief = how far behind it the eye sits when aiming, lenses = glass hidden while aiming.
+// mask = an invisible disc over the eyepiece that writes depth only: while aiming, nothing of the gun or the sight behind
+// it is drawn there, so the world (drawn first) shows through the glass.
+const GUN_SIGHT = (() => {
+  const scopeF = GM.scope, maskMat = new THREE.MeshBasicMaterial({ colorWrite: false });
+  const mask = (r, y, u) => { const m = lens(r, maskMat, y, u - 0.0006, true); m.renderOrder = -1; return m; };
+  const tint = new THREE.MeshStandardMaterial({ color: 0x2f6c86, metalness: 0.3, roughness: 0.04, envMap: gunEnv, envMapIntensity: 2.6, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false });
+  const amber = new THREE.MeshBasicMaterial({ color: 0xffa630 }), red = new THREE.MeshBasicMaterial({ color: 0xff3b30 });
+  // a scope ring clamped round a tube of radius r with its axis at y
+  const sring = (g, u, r, y) => { g.add(cylU(r + 0.0026, r + 0.0026, u - 0.0055, u + 0.0055, y, GM.alu)); g.add(box(0.017, y - r, 0.012, GM.alu, 0, (y - r) / 2, u)); g.add(box(0.026, 0.006, 0.015, GM.alu, 0, 0.003, u)); g.add(cylU(0.0028, 0.0028, u - 0.003, u + 0.003, 0.004, GM.bright, 0.0135, 10)); };
+  const turrets = (g, y, r, u, big) => {
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(big ? 0.0105 : 0.0075, big ? 0.0105 : 0.0075, big ? 0.015 : 0.01, 22), GM.knurl);
+    t.position.set(0, y + r + (big ? 0.0075 : 0.005), -u); g.add(t);
+    const w = t.clone(); w.rotation.z = Math.PI / 2; w.position.set(r + (big ? 0.0075 : 0.005), y, -u); g.add(w);
+  };
+  const glass = (r, y, uF, uB) => [lens(r, tint, y, uF, false), lens(r, tint, y, uB, true)];
+  return {
+    // folding iron sights for a rail gun: a rear aperture here and a front post o.front ahead (its foot at o.fy)
+    iron(o = {}) {
+      const g = new THREE.Group(), y = 0.018, fu = o.front || 0.4, fy = o.fy || 0;
+      g.add(box(0.018, 0.007, 0.022, GM.alu, 0, 0.0035, 0));
+      for (const s of [-1, 1]) g.add(box(0.0032, 0.02, 0.01, GM.alu, s * 0.0078, 0.012, -0.002));
+      const ap = new THREE.Mesh(new THREE.TorusGeometry(0.0046, 0.0019, 8, 22), GM.alu); ap.position.set(0, y, 0.002); g.add(ap);
+      g.add(box(0.016, 0.009, 0.014, GM.alu, 0, fy + 0.0045, fu));
+      const ph = y - fy;
+      for (const s of [-1, 1]) g.add(box(0.003, ph + 0.004, 0.008, GM.alu, s * 0.0072, fy + (ph + 0.004) / 2, fu));
+      g.add(box(0.0019, ph, 0.003, GM.dark, 0, fy + ph / 2, fu));
+      return { g, eyeY: y, rearU: -0.004, eyeR: 0.0046, relief: 0.1, lenses: [] };
+    },
+    // a red dot in a short tube
+    red() {
+      const g = new THREE.Group(), y = 0.029, r = 0.0138, ri = r - 0.0016;
+      g.add(box(0.019, y - r + 0.002, 0.028, GM.alu, 0, (y - r + 0.002) / 2, 0), box(0.027, 0.006, 0.03, GM.alu, 0, 0.003, 0));
+      g.add(cylU(0.0035, 0.0035, -0.004, 0.004, 0.006, GM.bright, 0.015, 10));
+      g.add(lathe([[ri, -0.031], [r + 0.0012, -0.031], [r + 0.0012, -0.026], [r, -0.022], [r, 0.02], [r + 0.0024, 0.025], [r + 0.0024, 0.032], [ri, 0.032]], scopeF, y));
+      turrets(g, y, r, -0.002, false);
+      const L = glass(ri, y, 0.031, -0.03); g.add(...L);
+      const M = mask(ri, y, -0.031); g.add(M);
+      return { g, eyeY: y, rearU: -0.031, eyeR: ri, relief: 0.12, lenses: L, mask: M };
+    },
+    // a holographic sight: a box with a square window
+    holo() {
+      const g = new THREE.Group(), y = 0.0345;
+      g.add(box(0.026, 0.006, 0.07, GM.alu, 0, 0.003, 0), box(0.029, 0.014, 0.054, GM.scope, 0, 0.013, -0.004));
+      g.add(box(0.02, 0.006, 0.01, GM.rubber, 0, 0.016, -0.034), box(0.006, 0.006, 0.008, GM.rubber, 0.017, 0.012, -0.02));
+      for (const s of [-1, 1]) g.add(box(0.0036, 0.031, 0.05, GM.scope, s * 0.0168, 0.0345, 0));
+      g.add(box(0.037, 0.0036, 0.05, GM.scope, 0, 0.0508, 0), box(0.037, 0.003, 0.004, GM.scope, 0, 0.0492, 0.024));
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.029), tint); pane.position.set(0, y, -0.021); g.add(pane);
+      const back = pane.clone(); back.position.z = 0.02; back.rotation.y = Math.PI; g.add(back);
+      return { g, eyeY: y, rearU: -0.025, eyeR: 0.0145, relief: 0.13, lenses: [pane, back] };
+    },
+    // a small open red dot for a pistol slide
+    rmr() {
+      const g = new THREE.Group(), y = 0.0125;
+      g.add(box(0.021, 0.006, 0.03, GM.scope, 0, 0.003, 0));
+      for (const s of [-1, 1]) g.add(box(0.003, 0.016, 0.013, GM.scope, s * 0.0098, 0.012, 0.007));
+      g.add(box(0.0226, 0.003, 0.015, GM.scope, 0, 0.0205, 0.007));
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(0.017, 0.014), tint); pane.position.set(0, y, -0.007); g.add(pane);
+      return { g, eyeY: y, rearU: 0, eyeR: 0.0075, relief: 0.2, lenses: [pane] };
+    },
+    // 2.5x: a short scope with a wide eyepiece
+    x25() {
+      const g = new THREE.Group(), y = 0.032;
+      for (const u of [-0.024, 0.034]) sring(g, u, 0.0135, y);
+      g.add(lathe([[0.0148, -0.072], [0.0188, -0.072], [0.0188, -0.045], [0.0146, -0.036], [0.0135, -0.03], [0.0135, 0.045], [0.0172, 0.06], [0.0182, 0.077], [0.0158, 0.078]], scopeF, y));
+      g.add(cylU(0.0194, 0.0194, -0.066, -0.052, y, GM.knurl));
+      turrets(g, y, 0.0135, 0.005, false);
+      const L = glass(0.0152, y, 0.077, -0.071); g.add(...L);
+      const M = mask(0.0148, y, -0.072); g.add(M);
+      return { g, eyeY: y, rearU: -0.072, eyeR: 0.0148, relief: 0.052, lenses: L, mask: M };
+    },
+    // 4x: a boxy ACOG with an amber fibre on top
+    acog() {
+      const g = new THREE.Group(), y = 0.031;
+      g.add(box(0.026, 0.008, 0.062, GM.alu, 0, 0.004, 0), box(0.02, y - 0.008, 0.05, GM.scope, 0, 0.008 + (y - 0.008) / 2, 0.004));
+      g.add(lathe([[0.0122, -0.062], [0.0166, -0.062], [0.0166, -0.038], [0.0146, -0.032], [0.0146, 0.038], [0.0198, 0.054], [0.0204, 0.077], [0.0172, 0.078]], scopeF, y));
+      g.add(box(0.029, 0.013, 0.052, GM.scope, 0, y + 0.0065, 0.006), box(0.0045, 0.003, 0.044, amber, 0, y + 0.0145, 0.006));
+      g.add(box(0.008, 0.006, 0.01, GM.knurl, 0.017, y + 0.004, 0.0), box(0.006, 0.006, 0.006, red, 0, y + 0.016, 0.032));
+      const L = glass(0.017, y, 0.077, -0.061); g.add(...L);
+      const M = mask(0.0122, y, -0.062); g.add(M);
+      return { g, eyeY: y, rearU: -0.062, eyeR: 0.0122, relief: 0.06, lenses: L, mask: M };
+    },
+    // 6x: a rifle scope
+    x6() {
+      const g = new THREE.Group(), y = 0.033, du = -0.047;
+      for (const u of [-0.067, 0.038]) sring(g, u, 0.0135, y);
+      g.add(lathe([[0.011, -0.075], [0.0185, -0.07], [0.019, -0.064], [0.019, -0.035], [0.0145, -0.022], [0.0135, -0.01], [0.0135, 0.09], [0.0165, 0.105],
+        [0.0225, 0.135], [0.0225, 0.165], [0.021, 0.168], [0.011, 0.169]].map(([r, u]) => [r, u + du]), scopeF, y));
+      g.add(cylU(0.0198, 0.0198, -0.06 + du, -0.044 + du, y, GM.knurl));
+      turrets(g, y, 0.0135, -0.04 + du, true);
+      const L = glass(0.0205, y, 0.168 + du, -0.074 + du); g.add(...L);
+      const M = mask(0.011, y, -0.075 + du); g.add(M);
+      return { g, eyeY: y, rearU: -0.075 + du, eyeR: 0.011, relief: 0.06, lenses: L, mask: M };
+    },
+    // 8x: a long scope with a big objective and three turrets
+    x8() {
+      const g = new THREE.Group(), y = 0.035, du = -0.026;
+      for (const u of [-0.051, 0.039]) sring(g, u, 0.015, y);
+      g.add(lathe([[0.012, -0.125], [0.0205, -0.12], [0.0215, -0.115], [0.0215, -0.075], [0.017, -0.06], [0.015, -0.045], [0.015, 0.075], [0.018, 0.095],
+        [0.0255, 0.135], [0.0255, 0.172], [0.024, 0.176], [0.012, 0.177]].map(([r, u]) => [r, u + du]), scopeF, y));
+      g.add(cylU(0.0222, 0.0222, -0.108 + du, -0.086 + du, y, GM.knurl));
+      turrets(g, y, 0.015, 0.02 + du, true);
+      const tp = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.012, 20), GM.knurl); tp.rotation.z = Math.PI / 2; tp.position.set(-0.021, y, -(0.02 + du)); g.add(tp);
+      const L = glass(0.0236, y, 0.176 + du, -0.124 + du); g.add(...L);
+      const M = mask(0.012, y, -0.125 + du); g.add(M);
+      return { g, eyeY: y, rearU: -0.125 + du, eyeR: 0.012, relief: 0.06, lenses: L, mask: M };
+    },
+  };
+})();
 // 2.9.13: a carved jack-o'-lantern (the Pumpkin Launcher's round and the Halloween decorations): a ribbed pumpkin with
 // a stem, and a face cut in one side that glows from inside. The face looks down -z. Made once and shared.
 let PK_ASSETS = null;
@@ -1039,7 +1154,7 @@ const _armV = new THREE.Vector3(), _armW = new THREE.Vector3();
 <script id="siege">
 (() => {
 "use strict";
-const SG_CSS = "#sg{position:fixed;inset:0;z-index:60;display:none;font-family:Barlow,'Segoe UI',system-ui,sans-serif;color:#e8ebef;user-select:none;-webkit-user-select:none}\n#sg.on{display:block}\n#sg .scr{position:absolute;inset:0;display:none}\n#sg .scr.on{display:block}\n#sg button{font:inherit;cursor:pointer}\n#sg .vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.55) 100%)}\n/* ---- menu screens ---- */\n#sg .menuBg{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,7,10,.94) 0%,rgba(5,7,10,.78) 38%,rgba(5,7,10,.15) 75%,rgba(5,7,10,.4) 100%)}\n#sg .sgHomeIn{position:absolute;left:clamp(16px,6vw,90px);top:50%;transform:translateY(-50%);width:min(440px,calc(100vw - 32px))}\n#sg .kick{font:600 12px Barlow,sans-serif;letter-spacing:.35em;color:#ff8a1a;text-transform:uppercase}\n#sg .bigT{font:400 clamp(54px,9vw,92px)/.9 'Russo One',Barlow,sans-serif;letter-spacing:.04em;margin:8px 0 6px;text-shadow:0 6px 30px rgba(0,0,0,.6)}\n#sg .bigT em{font-style:normal;color:#ff8a1a}\n#sg .lead{color:#9aa3ad;font-size:15px;line-height:1.45;margin:0 0 22px}\n#sg .mBtn{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:rgba(18,22,28,.82);border:1px solid rgba(255,255,255,.08);border-left:3px solid transparent;color:#e8ebef;padding:13px 16px;margin:0 0 8px;border-radius:4px;transition:background .15s,border-color .15s,transform .15s}\n#sg .mBtn:hover{background:rgba(32,38,46,.95);border-left-color:#ff8a1a;transform:translateX(3px)}\n#sg .mBtn b{display:block;font:600 17px Barlow,sans-serif;letter-spacing:.08em;text-transform:uppercase}\n#sg .mBtn small{display:block;color:#8d96a0;font-size:12.5px;margin-top:2px}\n#sg .mBtn i{font-style:normal;width:30px;height:30px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.15);border-radius:3px;color:#ff8a1a;font-size:15px;flex:none}\n#sg .mBtn.prime{background:linear-gradient(90deg,rgba(255,138,26,.22),rgba(18,22,28,.85));border-left-color:#ff8a1a}\n#sg .mBtn.ghost{background:transparent;border-color:transparent;color:#8d96a0;padding:8px 16px}\n#sg .row{display:flex;gap:8px}\n#sg .row .mBtn{flex:1}\n#sg .codeIn{display:flex;gap:8px;margin:0 0 8px}\n#sg .codeIn input{flex:1;min-width:0;background:rgba(10,12,16,.9);border:1px solid rgba(255,255,255,.15);color:#fff;font:600 18px Barlow,sans-serif;letter-spacing:.3em;text-transform:uppercase;padding:10px 12px;border-radius:4px;outline:none}\n#sg .codeIn button{background:#ff8a1a;border:0;color:#120a02;font-weight:700;letter-spacing:.1em;padding:0 18px;border-radius:4px}\n#sg .note{color:#8d96a0;font-size:13px;min-height:18px;margin:6px 0}\n#sg .rooms{max-height:180px;overflow:auto;margin:4px 0 10px}\n#sg .roomRow{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(18,22,28,.7);border:1px solid rgba(255,255,255,.06);margin-bottom:4px;border-radius:3px;font-size:14px}\n#sg .roomRow button{background:rgba(255,138,26,.15);border:1px solid #ff8a1a;color:#ffb066;padding:4px 12px;border-radius:3px;font-size:12px;letter-spacing:.1em}\n/* panel pages */\n#sg .page{position:absolute;inset:0;overflow:auto;padding:clamp(16px,4vw,48px);background:rgba(5,7,10,.86);backdrop-filter:blur(3px)}\n#sg .pageIn{max-width:1100px;margin:0 auto}\n#sg .pTitle{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:12px}\n#sg .pTitle h2{margin:4px 0 0;font:400 34px 'Russo One',Barlow,sans-serif;letter-spacing:.04em}\n#sg .code{font:700 22px Barlow,sans-serif;letter-spacing:.32em;color:#ffb066}\n#sg .teams{display:grid;grid-template-columns:1fr 1fr;gap:16px}\n@media (max-width:720px){#sg .teams{grid-template-columns:1fr}}\n#sg .team{background:rgba(14,17,22,.9);border:1px solid rgba(255,255,255,.07);border-top:3px solid var(--tc);padding:12px;border-radius:4px}\n#sg .team h3{margin:0 0 10px;font:600 14px Barlow,sans-serif;letter-spacing:.25em;text-transform:uppercase;color:var(--tc);display:flex;justify-content:space-between;align-items:center}\n#sg .team h3 button{background:transparent;border:1px solid var(--tc);color:var(--tc);font-size:11px;letter-spacing:.12em;padding:3px 10px;border-radius:3px}\n#sg .pl{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,.03);margin-bottom:4px;border-radius:3px;font-size:15px}\n#sg .pl .tag{font-size:10px;letter-spacing:.15em;color:#8d96a0;border:1px solid rgba(255,255,255,.15);padding:1px 6px;border-radius:2px;margin-left:auto}\n#sg .pl.me{background:rgba(255,138,26,.1)}\n#sg .sets{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:18px 0}\n#sg .set{background:rgba(14,17,22,.9);border:1px solid rgba(255,255,255,.07);padding:12px;border-radius:4px}\n#sg .set label{display:block;font-size:11px;letter-spacing:.25em;color:#8d96a0;text-transform:uppercase;margin-bottom:8px}\n#sg .seg{display:flex;gap:4px;flex-wrap:wrap}\n#sg .seg button{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#c8ced5;padding:7px 8px;border-radius:3px;font-size:13px;white-space:nowrap}\n#sg .seg button.sel{background:rgba(255,138,26,.18);border-color:#ff8a1a;color:#fff}\n#sg .seg button:disabled{cursor:default;opacity:.7}\n#sg .maps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}\n#sg .mapC{position:relative;text-align:left;background:#0d1015;border:1px solid rgba(255,255,255,.08);border-radius:4px;overflow:hidden;padding:0;color:#e8ebef}\n#sg .mapC canvas{display:block;width:100%;height:110px;background:#07090c}\n#sg .mapC div{padding:8px 10px}\n#sg .mapC b{display:block;font-size:15px;letter-spacing:.06em;text-transform:uppercase}\n#sg .mapC small{color:#8d96a0;font-size:12px}\n#sg .mapC.sel{border-color:#ff8a1a;box-shadow:0 0 0 1px #ff8a1a}\n#sg .startBar{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}\n#sg .bigBtn{background:#ff8a1a;color:#120a02;border:0;font:700 16px Barlow,sans-serif;letter-spacing:.2em;padding:14px 28px;border-radius:4px;text-transform:uppercase}\n#sg .bigBtn.sec{background:rgba(255,255,255,.06);color:#c8ced5;border:1px solid rgba(255,255,255,.12)}\n#sg .bigBtn:disabled{opacity:.4;cursor:default}\n/* operator badges */\n#sg .badge{--c:#888;width:var(--s,40px);height:var(--s,40px);flex:none;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:linear-gradient(160deg,var(--c),#111 140%);display:grid;place-items:center;font:400 calc(var(--s,40px)*.42) 'Russo One',sans-serif;color:#0b0d10;text-shadow:0 1px 0 rgba(255,255,255,.25)}\n#sg .badge.dead{filter:grayscale(1) brightness(.4)}\n/* pick screen */\n#sg .pickWrap{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}\n@media (max-width:860px){#sg .pickWrap{grid-template-columns:1fr}}\n#sg .opGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}\n@media (max-width:560px){#sg .opGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}\n#sg .opC{position:relative;background:rgba(14,17,22,.92);border:1px solid rgba(255,255,255,.07);border-radius:4px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#e8ebef;transition:border-color .12s,background .12s}\n#sg .opC:hover{background:rgba(28,33,40,.95)}\n#sg .opC b{font-size:12px;letter-spacing:.12em}\n#sg .opC small{font-size:10px;color:#8d96a0;letter-spacing:.06em;text-align:center}\n#sg .opC.sel{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}\n#sg .opC.taken{opacity:.35;pointer-events:none}\n#sg .opC .who{position:absolute;top:4px;right:5px;font-size:9px;color:#ffb066;letter-spacing:.08em}\n#sg .opD{background:rgba(14,17,22,.92);border:1px solid rgba(255,255,255,.07);border-radius:4px;padding:16px}\n#sg .opD h3{margin:0;font:400 30px 'Russo One',sans-serif;letter-spacing:.06em}\n#sg .opD .role{color:#8d96a0;letter-spacing:.2em;font-size:12px;text-transform:uppercase}\n#sg .pips{display:flex;gap:18px;margin:12px 0;font-size:12px;color:#8d96a0;letter-spacing:.15em}\n#sg .pips i{display:inline-block;width:14px;height:5px;background:rgba(255,255,255,.12);margin-left:3px;border-radius:1px}\n#sg .pips i.on{background:#ffb066}\n#sg .gad{border-left:3px solid var(--c);background:rgba(255,255,255,.03);padding:10px 12px;margin:10px 0}\n#sg .gad b{display:block;letter-spacing:.08em}\n#sg .gad span{color:#aab2bb;font-size:13.5px;line-height:1.4}\n#sg .ldRow{display:flex;gap:6px;align-items:center;margin:8px 0;flex-wrap:wrap}\n#sg .ldRow>span{width:92px;font:700 11px Barlow;letter-spacing:.12em;color:#8b949e}\n#sg .ldB{flex:1;min-width:110px;padding:7px 9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8ebef;font:600 13px Barlow;text-align:left;cursor:pointer}\n#sg .ldB small{display:block;color:#8b949e;font-size:11px;letter-spacing:.06em}\n#sg .ldB.sel{border-color:#ffb066;background:rgba(255,176,102,.12)}\n#sg .ldB:hover{background:rgba(255,255,255,.1)}\n#sg .kit{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}\n#sg .kit span{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:4px 8px;border-radius:3px;font-size:12px;color:#c8ced5}\n#sg .sideTag{display:inline-block;padding:3px 10px;border-radius:2px;font-weight:700;letter-spacing:.25em;font-size:12px}\n#sg .sideTag.atk{background:#ff8a1a;color:#140a00}\n#sg .sideTag.def{background:#3fa0ff;color:#00101e}\n#sg .timerBig{font:400 34px 'Russo One',sans-serif;color:#fff}\n/* ---- HUD ---- */\n#sgHud{position:absolute;inset:0;pointer-events:none;display:none}\n#sgHud.on{display:block}\n#sgHud .top{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px}\n#sgHud .tRow{display:flex;gap:4px}\n#sgHud .tRow .badge{--s:30px}\n#sgHud .clock{min-width:150px;text-align:center;background:rgba(8,10,14,.75);border:1px solid rgba(255,255,255,.1);border-radius:3px;padding:4px 10px}\n#sgHud .clock b{display:block;font:400 26px 'Russo One',sans-serif;letter-spacing:.06em}\n#sgHud .clock small{display:block;font-size:10px;letter-spacing:.3em;color:#aab2bb;text-transform:uppercase}\n#sgHud .clock .sc{display:flex;justify-content:center;gap:10px;font:700 14px Barlow;letter-spacing:.1em}\n#sgHud .clock.red b{color:#ff5050}\n#sgHud .tl{font-weight:700}\n#sgHud .ch{position:absolute;left:50%;top:50%;width:0;height:0}\n#sgHud .ch i{position:absolute;background:rgba(255,255,255,.9);box-shadow:0 0 2px #000}\n#sgHud .ch .h{width:8px;height:2px;top:-1px}\n#sgHud .ch .v{width:2px;height:8px;left:-1px}\n#sgHud .ch .dot{width:2px;height:2px;left:-1px;top:-1px}\n#sgHud .hm{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;opacity:0;transition:opacity .25s}\n#sgHud .hm:before,#sgHud .hm:after{content:'';position:absolute;left:50%;top:0;width:2px;height:100%;background:#fff;transform:rotate(45deg)}\n#sgHud .hm:after{transform:rotate(-45deg)}\n#sgHud .hm.hs:before,#sgHud .hm.hs:after{background:#ff4040}\n#sgHud .bl{position:absolute;left:18px;bottom:18px;display:flex;align-items:flex-end;gap:12px}\n#sgHud .hp{width:220px}\n#sgHud .hp .bar{height:8px;background:rgba(255,255,255,.12);border-radius:1px;overflow:hidden}\n#sgHud .hp .bar i{display:block;height:100%;background:#f2f2f2;transition:width .15s}\n#sgHud .hp b{font:400 30px 'Russo One',sans-serif}\n#sgHud .hp small{color:#aab2bb;letter-spacing:.2em;font-size:11px;margin-left:6px}\n#sgHud .br{position:absolute;right:18px;bottom:18px;text-align:right}\n#sgHud .ammo b{font:400 36px 'Russo One',sans-serif}\n#sgHud .ammo span{color:#aab2bb;font-size:16px;margin-left:4px}\n#sgHud .ammo small{display:block;color:#aab2bb;letter-spacing:.2em;font-size:11px;text-transform:uppercase}\n#sgHud .gads{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}\n#sgHud .gads div{background:rgba(8,10,14,.75);border:1px solid rgba(255,255,255,.1);padding:4px 8px;border-radius:3px;font-size:12px;min-width:46px;text-align:center}\n#sgHud .gads div kbd{display:block;font:700 10px Barlow;color:#ffb066;letter-spacing:.1em}\n#sgHud .gads div.off{opacity:.4}\n#sgHud .feed{position:absolute;right:16px;top:14px;display:flex;flex-direction:column;gap:3px;align-items:flex-end}\n#sgHud .feed div{background:rgba(8,10,14,.7);padding:4px 10px;border-radius:2px;font-size:13.5px}\n#sgHud .feed .kw{color:#aab2bb;font-size:12px}\n#sgHud .toast{position:absolute;left:50%;top:92px;transform:translateX(-50%);font:700 15px Barlow;letter-spacing:.25em;text-shadow:0 2px 8px #000;opacity:0;transition:opacity .3s;white-space:nowrap}\n#sgHud .act{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);text-align:center;font:700 13px Barlow;letter-spacing:.2em;text-shadow:0 1px 4px #000}\n#sgHud .act .pb{width:180px;height:4px;background:rgba(255,255,255,.2);margin:6px auto 0}\n#sgHud .act .pb i{display:block;height:100%;background:#ffb066;width:0}\n#sgHud .marks{position:absolute;inset:0;overflow:hidden}\n#sgHud .mk{position:absolute;transform:translate(-50%,-100%);font:700 11px Barlow;letter-spacing:.1em;text-align:center;white-space:nowrap;text-shadow:0 1px 3px #000}\n#sgHud .mk.en:before{content:'';display:block;width:10px;height:10px;margin:0 auto 2px;background:#ff3030;transform:rotate(45deg);box-shadow:0 0 6px #ff3030}\n#sgHud .mk.fr{color:#7fc8ff}\n#sgHud .mk.obj{color:#ffcf5a}\n#sgHud .mk.obj:before{content:'';display:block;width:12px;height:12px;margin:0 auto 2px;border:2px solid #ffcf5a;transform:rotate(45deg)}\n#sgHud .mk.son{color:#40ffa0}\n.mk.snd{font:400 17px/1 system-ui,'Segoe UI Emoji','Apple Color Emoji',sans-serif;transform:translate(-50%,-50%);filter:drop-shadow(0 0 3px #000)}\n.mk.snd:after{content:'';position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border:2px solid #ffffffb0;border-radius:50%;animation:sgSndR .7s ease-out infinite}\n@keyframes sgSndR{from{transform:scale(.55);opacity:1}to{transform:scale(1.5);opacity:0}}\n#sgHud .mk.son:before{content:'';display:block;width:12px;height:12px;margin:0 auto;border:2px solid #40ffa0;border-radius:50%}\n#sgHud .overlay{position:absolute;inset:0;opacity:0}\n#sgHud .dmg{background:radial-gradient(ellipse at center,rgba(120,0,0,0) 50%,rgba(150,0,0,.7) 100%)}\n#sgHud .blind{background:#fff}\n#sgHud .dread{background:radial-gradient(ellipse at center,rgba(0,0,0,.75) 0%,rgba(0,0,0,.97) 60%)}\n#sgHud .feedCam{position:absolute;inset:0;display:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px);box-shadow:inset 0 0 160px rgba(0,0,0,.9)}\n#sgHud .feedCam.on{display:block}\n#sgHud .feedCam .lbl{position:absolute;left:24px;top:70px;font:700 13px Barlow;letter-spacing:.3em;color:#9fe0ff}\n#sgHud .feedCam .rec{position:absolute;right:24px;top:70px;font:700 12px Barlow;letter-spacing:.2em;color:#ff4040}\n#sgHud .feedCam .hint{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);font:600 12px Barlow;letter-spacing:.2em;color:#c8ced5;text-shadow:0 1px 3px #000}\n#sgHud .dir{position:absolute;left:50%;top:50%;width:140px;height:140px;margin:-70px;border-radius:50%;pointer-events:none}\n#sgHud .dir i{position:absolute;left:50%;top:0;width:30px;height:8px;margin-left:-15px;background:linear-gradient(90deg,transparent,#ff3030,transparent);opacity:0;transition:opacity .6s}\n#sgHud .spec{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);text-align:center;font:600 13px Barlow;letter-spacing:.2em;text-shadow:0 1px 3px #000}\n#sgHud .spec b{display:block;font-size:20px;color:#fff}\n#sgHud .banner{position:absolute;left:0;right:0;top:34%;text-align:center;display:none}\n#sgHud .banner.on{display:block}\n#sgHud .banner b{display:block;font:400 clamp(40px,7vw,72px) 'Russo One',sans-serif;letter-spacing:.08em;text-shadow:0 6px 30px rgba(0,0,0,.7)}\n#sgHud .banner small{display:block;font:600 15px Barlow;letter-spacing:.3em;color:#c8ced5;text-transform:uppercase;margin-top:6px}\n#sgHud .banner.win b{color:#7fe08a}\n#sgHud .banner.lose b{color:#ff6060}\n#sgHud .hint2{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);font:600 11px Barlow;letter-spacing:.2em;color:rgba(255,255,255,.55)}\n#sgHud .sb{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 32px));background:rgba(8,10,14,.92);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:14px;display:none}\n#sgHud .sb.on{display:block}\n#sgHud .sb table{width:100%;border-collapse:collapse;font-size:14px}\n#sgHud .sb td,#sgHud .sb th{padding:6px 8px;text-align:left}\n#sgHud .sb th{font-size:10px;letter-spacing:.2em;color:#8d96a0;font-weight:600}\n#sgHud .sb tr.t0 td:first-child{border-left:3px solid #ff8a1a}\n#sgHud .sb tr.t1 td:first-child{border-left:3px solid #3fa0ff}\n#sgHud .sb tr.dead td{opacity:.45}\n#sgHud .sb tr.me td{background:rgba(255,255,255,.05)}\n#sgHud .scope{position:absolute;inset:0;display:none;background:radial-gradient(circle at center,transparent 0 31vh,rgba(0,0,0,.96) 31.3vh)}\n/* pause / over */\n#sg .pause{position:absolute;inset:0;background:rgba(4,6,9,.8);display:none;place-items:center;backdrop-filter:blur(4px)}\n#sg .pause.on{display:grid}\n#sg .pauseIn{width:min(380px,calc(100vw - 32px))}\n#sg .pauseIn h2{font:400 34px 'Russo One',sans-serif;margin:0 0 14px;letter-spacing:.06em}\n#sg .pauseIn input[type=range]{width:100%}\n#sg .keys{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;color:#aab2bb;margin:10px 0 16px}\n#sg .keys kbd{font:700 11px Barlow;color:#ffb066;letter-spacing:.1em;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:1px 6px;border-radius:2px;text-align:center}\n#sg .over{position:absolute;inset:0;display:none;place-items:center;background:rgba(4,6,9,.82)}\n#sg .over.on{display:grid}\n#sg .overIn{text-align:center;width:min(760px,calc(100vw - 32px))}\n#sg .overIn h1{font:400 clamp(48px,9vw,96px) 'Russo One',sans-serif;margin:0;letter-spacing:.08em}\n#sg .coinsWon{color:#ffcf5a;font:700 18px Barlow;letter-spacing:.2em;margin:8px 0 16px}\n#sg .chat{position:absolute;left:18px;bottom:110px;width:min(380px,calc(100% - 36px));font-size:13px;z-index:8;pointer-events:none;display:none}\n#sg .chat.on{display:block}\n#sg .chat.lob{bottom:96px}\n#sg .chat .ln{background:rgba(8,10,14,.68);padding:3px 8px;margin-top:2px;border-radius:2px;width:fit-content;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;transition:opacity .6s}\n#sg .chat .ln.old{opacity:0}\n#sg .chat.open .ln.old{opacity:1}\n#sg .chat .ln .tm{color:#8ee6a0;margin-right:5px;font-weight:600}\n#sg .chat .ln.sys{color:#ffcf5a}\n#sg .chat .row{display:none;gap:6px;margin-top:6px;pointer-events:auto}\n#sg .chat.open .row{display:flex}\n#sg .chat .to{flex:none;background:#2a3140;color:#fff;border:1px solid rgba(255,255,255,.25);padding:0 10px;font-weight:700;font-size:11px;letter-spacing:.08em}\n#sg .chat.tmode .to{background:#2f7a45}\n#sg .chat input{flex:1;min-width:0;background:rgba(8,10,14,.92);color:#fff;border:1px solid rgba(255,255,255,.25);padding:7px 9px;font:14px Barlow,sans-serif;outline:none;user-select:text;-webkit-user-select:text}\n#sg .chat .hint{margin-top:4px;font-size:11px;color:rgba(232,235,239,.55);letter-spacing:.04em}\n#sg .chat.open .hint,#sg .chat.lob .hint{display:none}\n#sg .touchNote{margin-top:10px;color:#ffb066;font-size:13px}\n/* ---- standalone menu ---- */\nhtml,body{margin:0;height:100%;overflow:hidden;background:#05070a}\n#sg .menuBg{background:linear-gradient(90deg,rgba(5,7,10,.92) 0%,rgba(5,7,10,.7) 34%,rgba(5,7,10,.1) 70%,rgba(5,7,10,.35) 100%),linear-gradient(180deg,rgba(5,7,10,.75) 0%,rgba(5,7,10,0) 18%)}\n#sg .hdr{position:absolute;left:0;right:0;top:0;height:64px;display:flex;align-items:center;gap:28px;padding:0 clamp(16px,4vw,48px);z-index:2}\n#sg .brand{display:flex;align-items:center;gap:10px}\n#sg .brand .hex{width:30px;height:30px;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:#ff8a1a;display:grid;place-items:center;font:400 15px 'Russo One',sans-serif;color:#140a00}\n#sg .brand b{font:400 20px 'Russo One',sans-serif;letter-spacing:.14em}\n#sg nav{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}\n#sg nav button{background:none;border:0;color:#8d96a0;font:600 13px Barlow,sans-serif;letter-spacing:.16em;text-transform:uppercase;padding:22px 12px 20px;border-bottom:2px solid transparent;white-space:nowrap;position:relative}\n#sg nav button:hover{color:#e8ebef}\n#sg nav button.sel{color:#fff;border-bottom-color:#ff8a1a}\n#sg nav button.dot:after{content:'';position:absolute;top:18px;right:4px;width:6px;height:6px;border-radius:50%;background:#ff8a1a}\n#sg .meChip{display:flex;align-items:center;gap:10px;background:rgba(14,17,22,.75);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 12px 6px 6px;color:#e8ebef;text-align:left}\n#sg .meChip:hover{border-color:rgba(255,138,26,.6)}\n#sg .meChip .lvl{width:30px;height:30px;display:grid;place-items:center;background:rgba(255,138,26,.15);border:1px solid rgba(255,138,26,.5);border-radius:4px;font:700 14px Barlow;color:#ffb066}\n#sg .meChip b{display:block;font-size:14px}\n#sg .meChip small{display:block;font-size:11px;color:#8d96a0;letter-spacing:.08em}\n#sg .pane{position:absolute;inset:64px 0 0 0;display:none;overflow:auto}\n#sg .pane.on{display:block}\n#sg .playIn{position:absolute;left:clamp(16px,6vw,90px);top:50%;transform:translateY(-52%);width:min(420px,calc(100vw - 32px))}\n#sg .bigT{font:400 clamp(60px,10vw,104px)/.9 'Russo One',Barlow,sans-serif;letter-spacing:.06em;margin:10px 0 12px}\n#sg .mBtn{justify-content:space-between;padding:14px 18px;border-left-width:1px;border-radius:6px}\n#sg .mBtn:hover{transform:none;border-color:rgba(255,138,26,.7)}\n#sg .mBtn i{border:0;width:auto;height:auto;font-size:22px}\n#sg .mBtn.prime{background:#ff8a1a;border-color:#ff8a1a;color:#140a00}\n#sg .mBtn.prime small{color:rgba(20,10,0,.7)}\n#sg .mBtn.prime i{color:#140a00}\n#sg .mBtn.prime:hover{background:#ff9a3a}\n#sg .codeIn input{letter-spacing:.2em;font-size:15px;border-radius:6px}\n#sg .codeIn input::placeholder{letter-spacing:.12em;color:#5a636d}\n#sg .codeIn button{border-radius:6px;letter-spacing:.14em;text-transform:uppercase}\n#sg .roomsT{font-size:11px;letter-spacing:.25em;color:#8d96a0;text-transform:uppercase;margin:12px 0 6px}\n#sg .roomRow{border-radius:6px}\n#sg .paneIn{max-width:980px;margin:0 auto;padding:24px clamp(16px,4vw,48px) 60px;background:linear-gradient(180deg,rgba(5,7,10,.88),rgba(5,7,10,.94));min-height:calc(100% - 84px)}\n#sg .paneIn.narrow{max-width:620px}\n#sg .paneIn h2{font:400 34px 'Russo One',sans-serif;letter-spacing:.05em;margin:8px 0 20px}\n#sg .paneIn h3{font:600 12px Barlow;letter-spacing:.25em;color:#8d96a0;text-transform:uppercase;margin:26px 0 10px}\n#sg .howGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}\n#sg .howGrid div{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:16px}\n#sg .howGrid b{font-size:15px;letter-spacing:.06em;text-transform:uppercase}\n#sg .howGrid p{color:#aab2bb;font-size:14px;line-height:1.5;margin:8px 0 0}\n#sg .keys{grid-template-columns:auto 1fr auto 1fr;max-width:640px}\n#sg .note1{border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:18px 20px;margin-bottom:14px;background:rgba(255,255,255,.02)}\n#sg .note1.latest{border-color:rgba(255,138,26,.35)}\n#sg .nHead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}\n#sg .nV{font:700 13px Barlow;letter-spacing:.12em;color:#140a00;background:#ff8a1a;padding:2px 8px;border-radius:3px}\n#sg .note1:not(.latest) .nV{background:rgba(255,255,255,.12);color:#e8ebef}\n#sg .nHead b{font-size:19px;letter-spacing:.04em}\n#sg .nHead small{color:#8d96a0;margin-left:auto}\n#sg .nIntro{color:#aab2bb;line-height:1.5;margin:10px 0}\n#sg .note1 ul{margin:0;padding-left:18px;color:#c8ced5;line-height:1.55;font-size:14.5px}\n#sg .note1 li{margin:6px 0}\n#sg .setRow{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.07)}\n#sg .setRow label{font-weight:600;letter-spacing:.06em}\n#sg .setRow label span{color:#ffb066;margin-left:8px;font-weight:700}\n#sg .setRow input[type=range]{width:min(260px,45vw);accent-color:#ff8a1a}\n#sg .setRow .seg{min-width:240px}\n#sg .lvlBar{display:flex;align-items:center;gap:12px;font-size:13px;color:#aab2bb;letter-spacing:.06em}\n#sg .lvlBar div{flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}\n#sg .lvlBar i{display:block;height:100%;background:#ff8a1a}\n#sg .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}\n#sg .stats div{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:14px;text-align:center}\n#sg .stats b{display:block;font:400 26px 'Russo One',sans-serif}\n#sg .stats small{color:#8d96a0;font-size:11px;letter-spacing:.18em;text-transform:uppercase}\n#sg .favOp{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:12px 14px}\n#sg .favOp small{display:block;color:#8d96a0;font-size:11px;letter-spacing:.18em;text-transform:uppercase}\n#sg .favOp b{font-size:17px}\n#sg .nameBox{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(380px,calc(100vw - 32px));background:rgba(10,12,16,.94);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:26px}\n#sg .nameBox h2{font:400 30px 'Russo One',sans-serif;margin:6px 0}\n#sg .nameBox p{color:#8d96a0;margin:0 0 16px}\n#sg .nameBox input{width:100%;box-sizing:border-box;background:#07090c;border:1px solid rgba(255,255,255,.15);color:#fff;font:600 17px Barlow;padding:12px;border-radius:6px;outline:none;margin-bottom:12px}\n#sg .nameBox .bigBtn{width:100%}\n#sg .team{border-radius:8px}\n#sg .pl{border-radius:5px}\n#sg .pl.empty{color:#5a636d;font-size:13px;justify-content:center;border:1px dashed rgba(255,255,255,.08);background:none}\n#sg .rmBot{background:none;border:0;color:#8d96a0;font-size:13px;padding:0 2px 0 8px}\n#sg .rmBot:hover{color:#ff6b6b}\n#sg .addBot{width:100%;margin-top:6px;background:rgba(255,255,255,.03);border:1px dashed var(--tc);color:var(--tc);padding:8px;border-radius:5px;font:600 12px Barlow;letter-spacing:.14em;text-transform:uppercase}\n#sg .addBot:hover{background:rgba(255,255,255,.06)}\n#sg .set,#sg .opC,#sg .opD,#sg .mapC{border-radius:8px}\n#sg .bigBtn{border-radius:6px}\n#sgHud .top{gap:6px;align-items:stretch}\n#sgHud .tRow{align-items:flex-start;gap:5px}\n#sgHud .opb{display:flex;flex-direction:column;align-items:center;gap:3px}\n#sgHud .opb i{display:block;width:30px;height:3px;background:rgba(0,0,0,.5)}\n#sgHud .opb i b{display:block;height:100%}\n#sgHud .scb{min-width:58px;display:flex;align-items:center;justify-content:center;gap:7px;font:400 24px 'Russo One',sans-serif;background:rgba(8,10,14,.78);border-bottom:3px solid var(--tc);border-radius:3px;padding:0 10px;height:44px}\n#sgHud .scb svg{width:17px;height:17px;fill:var(--tc)}\n#sgHud .clock{min-width:120px;padding:3px 12px}\n#sgHud .clock .rnd{font:600 10px Barlow,sans-serif;letter-spacing:.3em;color:#aab2bb}\n#sgHud .cd{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font:400 190px/1 'Russo One',sans-serif;color:#fff;text-shadow:0 10px 50px rgba(0,0,0,.65),0 0 2px #000;opacity:0;pointer-events:none;letter-spacing:.04em}\n#sgHud .cd.go{animation:sgcd 1s ease-out forwards}\n#sgHud .cd.act{color:#ffb066;font-size:120px}\n@keyframes sgcd{0%{opacity:0;transform:translate(-50%,-50%) scale(2.4)}14%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1;transform:translate(-50%,-50%) scale(.96)}100%{opacity:0;transform:translate(-50%,-50%) scale(.8)}}\n@media (max-width:700px){#sg .hdr{gap:10px}#sg .meChip span:last-child{display:none}#sg .keys{grid-template-columns:auto 1fr}}\n";
+const SG_CSS = "#sg{position:fixed;inset:0;z-index:60;display:none;font-family:Barlow,'Segoe UI',system-ui,sans-serif;color:#e8ebef;user-select:none;-webkit-user-select:none}\n#sg.on{display:block}\n#sg .scr{position:absolute;inset:0;display:none}\n#sg .scr.on{display:block}\n#sg button{font:inherit;cursor:pointer}\n#sg .vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.55) 100%)}\n/* ---- menu screens ---- */\n#sg .menuBg{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,7,10,.94) 0%,rgba(5,7,10,.78) 38%,rgba(5,7,10,.15) 75%,rgba(5,7,10,.4) 100%)}\n#sg .sgHomeIn{position:absolute;left:clamp(16px,6vw,90px);top:50%;transform:translateY(-50%);width:min(440px,calc(100vw - 32px))}\n#sg .kick{font:600 12px Barlow,sans-serif;letter-spacing:.35em;color:#ff8a1a;text-transform:uppercase}\n#sg .bigT{font:400 clamp(54px,9vw,92px)/.9 'Russo One',Barlow,sans-serif;letter-spacing:.04em;margin:8px 0 6px;text-shadow:0 6px 30px rgba(0,0,0,.6)}\n#sg .bigT em{font-style:normal;color:#ff8a1a}\n#sg .lead{color:#9aa3ad;font-size:15px;line-height:1.45;margin:0 0 22px}\n#sg .mBtn{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:rgba(18,22,28,.82);border:1px solid rgba(255,255,255,.08);border-left:3px solid transparent;color:#e8ebef;padding:13px 16px;margin:0 0 8px;border-radius:4px;transition:background .15s,border-color .15s,transform .15s}\n#sg .mBtn:hover{background:rgba(32,38,46,.95);border-left-color:#ff8a1a;transform:translateX(3px)}\n#sg .mBtn b{display:block;font:600 17px Barlow,sans-serif;letter-spacing:.08em;text-transform:uppercase}\n#sg .mBtn small{display:block;color:#8d96a0;font-size:12.5px;margin-top:2px}\n#sg .mBtn i{font-style:normal;width:30px;height:30px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.15);border-radius:3px;color:#ff8a1a;font-size:15px;flex:none}\n#sg .mBtn.prime{background:linear-gradient(90deg,rgba(255,138,26,.22),rgba(18,22,28,.85));border-left-color:#ff8a1a}\n#sg .mBtn.ghost{background:transparent;border-color:transparent;color:#8d96a0;padding:8px 16px}\n#sg .row{display:flex;gap:8px}\n#sg .row .mBtn{flex:1}\n#sg .codeIn{display:flex;gap:8px;margin:0 0 8px}\n#sg .codeIn input{flex:1;min-width:0;background:rgba(10,12,16,.9);border:1px solid rgba(255,255,255,.15);color:#fff;font:600 18px Barlow,sans-serif;letter-spacing:.3em;text-transform:uppercase;padding:10px 12px;border-radius:4px;outline:none}\n#sg .codeIn button{background:#ff8a1a;border:0;color:#120a02;font-weight:700;letter-spacing:.1em;padding:0 18px;border-radius:4px}\n#sg .note{color:#8d96a0;font-size:13px;min-height:18px;margin:6px 0}\n#sg .rooms{max-height:180px;overflow:auto;margin:4px 0 10px}\n#sg .roomRow{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(18,22,28,.7);border:1px solid rgba(255,255,255,.06);margin-bottom:4px;border-radius:3px;font-size:14px}\n#sg .roomRow button{background:rgba(255,138,26,.15);border:1px solid #ff8a1a;color:#ffb066;padding:4px 12px;border-radius:3px;font-size:12px;letter-spacing:.1em}\n/* panel pages */\n#sg .page{position:absolute;inset:0;overflow:auto;padding:clamp(16px,4vw,48px);background:rgba(5,7,10,.86);backdrop-filter:blur(3px)}\n#sg .pageIn{max-width:1100px;margin:0 auto}\n#sg .pTitle{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:12px}\n#sg .pTitle h2{margin:4px 0 0;font:400 34px 'Russo One',Barlow,sans-serif;letter-spacing:.04em}\n#sg .code{font:700 22px Barlow,sans-serif;letter-spacing:.32em;color:#ffb066}\n#sg .teams{display:grid;grid-template-columns:1fr 1fr;gap:16px}\n@media (max-width:720px){#sg .teams{grid-template-columns:1fr}}\n#sg .team{background:rgba(14,17,22,.9);border:1px solid rgba(255,255,255,.07);border-top:3px solid var(--tc);padding:12px;border-radius:4px}\n#sg .team h3{margin:0 0 10px;font:600 14px Barlow,sans-serif;letter-spacing:.25em;text-transform:uppercase;color:var(--tc);display:flex;justify-content:space-between;align-items:center}\n#sg .team h3 button{background:transparent;border:1px solid var(--tc);color:var(--tc);font-size:11px;letter-spacing:.12em;padding:3px 10px;border-radius:3px}\n#sg .pl{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,.03);margin-bottom:4px;border-radius:3px;font-size:15px}\n#sg .pl .tag{font-size:10px;letter-spacing:.15em;color:#8d96a0;border:1px solid rgba(255,255,255,.15);padding:1px 6px;border-radius:2px;margin-left:auto}\n#sg .pl.me{background:rgba(255,138,26,.1)}\n#sg .sets{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:18px 0}\n#sg .set{background:rgba(14,17,22,.9);border:1px solid rgba(255,255,255,.07);padding:12px;border-radius:4px}\n#sg .set label{display:block;font-size:11px;letter-spacing:.25em;color:#8d96a0;text-transform:uppercase;margin-bottom:8px}\n#sg .seg{display:flex;gap:4px;flex-wrap:wrap}\n#sg .seg button{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#c8ced5;padding:7px 8px;border-radius:3px;font-size:13px;white-space:nowrap}\n#sg .seg button.sel{background:rgba(255,138,26,.18);border-color:#ff8a1a;color:#fff}\n#sg .seg button:disabled{cursor:default;opacity:.7}\n#sg .maps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}\n#sg .mapC{position:relative;text-align:left;background:#0d1015;border:1px solid rgba(255,255,255,.08);border-radius:4px;overflow:hidden;padding:0;color:#e8ebef}\n#sg .mapC canvas{display:block;width:100%;height:110px;background:#07090c}\n#sg .mapC div{padding:8px 10px}\n#sg .mapC b{display:block;font-size:15px;letter-spacing:.06em;text-transform:uppercase}\n#sg .mapC small{color:#8d96a0;font-size:12px}\n#sg .mapC.sel{border-color:#ff8a1a;box-shadow:0 0 0 1px #ff8a1a}\n#sg .startBar{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}\n#sg .bigBtn{background:#ff8a1a;color:#120a02;border:0;font:700 16px Barlow,sans-serif;letter-spacing:.2em;padding:14px 28px;border-radius:4px;text-transform:uppercase}\n#sg .bigBtn.sec{background:rgba(255,255,255,.06);color:#c8ced5;border:1px solid rgba(255,255,255,.12)}\n#sg .bigBtn:disabled{opacity:.4;cursor:default}\n/* operator badges */\n#sg .badge{--c:#888;width:var(--s,40px);height:var(--s,40px);flex:none;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:linear-gradient(160deg,var(--c),#111 140%);display:grid;place-items:center;font:400 calc(var(--s,40px)*.42) 'Russo One',sans-serif;color:#0b0d10;text-shadow:0 1px 0 rgba(255,255,255,.25)}\n#sg .badge.dead{filter:grayscale(1) brightness(.4)}\n/* pick screen */\n#sg .pickWrap{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}\n@media (max-width:860px){#sg .pickWrap{grid-template-columns:1fr}}\n#sg .opGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}\n@media (max-width:560px){#sg .opGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}\n#sg .opC{position:relative;background:rgba(14,17,22,.92);border:1px solid rgba(255,255,255,.07);border-radius:4px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#e8ebef;transition:border-color .12s,background .12s}\n#sg .opC:hover{background:rgba(28,33,40,.95)}\n#sg .opC b{font-size:12px;letter-spacing:.12em}\n#sg .opC small{font-size:10px;color:#8d96a0;letter-spacing:.06em;text-align:center}\n#sg .opC.sel{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}\n#sg .opC.taken{opacity:.35;pointer-events:none}\n#sg .opC .who{position:absolute;top:4px;right:5px;font-size:9px;color:#ffb066;letter-spacing:.08em}\n#sg .opD{background:rgba(14,17,22,.92);border:1px solid rgba(255,255,255,.07);border-radius:4px;padding:16px}\n#sg .opD h3{margin:0;font:400 30px 'Russo One',sans-serif;letter-spacing:.06em}\n#sg .opD .role{color:#8d96a0;letter-spacing:.2em;font-size:12px;text-transform:uppercase}\n#sg .pips{display:flex;gap:18px;margin:12px 0;font-size:12px;color:#8d96a0;letter-spacing:.15em}\n#sg .pips i{display:inline-block;width:14px;height:5px;background:rgba(255,255,255,.12);margin-left:3px;border-radius:1px}\n#sg .pips i.on{background:#ffb066}\n#sg .gad{border-left:3px solid var(--c);background:rgba(255,255,255,.03);padding:10px 12px;margin:10px 0}\n#sg .gad b{display:block;letter-spacing:.08em}\n#sg .gad span{color:#aab2bb;font-size:13.5px;line-height:1.4}\n#sg .ldRow{display:flex;gap:6px;align-items:center;margin:8px 0;flex-wrap:wrap}\n#sg .ldRow>span{width:92px;font:700 11px Barlow;letter-spacing:.12em;color:#8b949e}\n#sg .ldB{flex:1;min-width:110px;padding:7px 9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8ebef;font:600 13px Barlow;text-align:left;cursor:pointer}\n#sg .ldB small{display:block;color:#8b949e;font-size:11px;letter-spacing:.06em}\n#sg .ldB.sel{border-color:#ffb066;background:rgba(255,176,102,.12)}\n#sg .ldRow.sights{flex-wrap:nowrap;gap:4px;margin:5px 0}\n#sg .ldB.ldS{flex:1 1 0;min-width:0;padding:3px 2px;text-align:center}\n#sg .ldB.ldS b{display:block;font:400 13px 'Russo One',sans-serif;letter-spacing:.02em}\n#sg .ldB.ldS small{font-size:10px;letter-spacing:.02em;white-space:nowrap;overflow:hidden}\n#sg .ldNote{margin:-1px 0 4px 98px;font-size:11px;color:#aab2bb;line-height:1.3}\n#sg .ldB:hover{background:rgba(255,255,255,.1)}\n#sg .kit{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}\n#sg .kit span{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:4px 8px;border-radius:3px;font-size:12px;color:#c8ced5}\n#sg .sideTag{display:inline-block;padding:3px 10px;border-radius:2px;font-weight:700;letter-spacing:.25em;font-size:12px}\n#sg .sideTag.atk{background:#ff8a1a;color:#140a00}\n#sg .sideTag.def{background:#3fa0ff;color:#00101e}\n#sg .timerBig{font:400 34px 'Russo One',sans-serif;color:#fff}\n/* ---- HUD ---- */\n#sgHud{position:absolute;inset:0;pointer-events:none;display:none}\n#sgHud.on{display:block}\n#sgHud .top{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px}\n#sgHud .tRow{display:flex;gap:4px}\n#sgHud .tRow .badge{--s:30px}\n#sgHud .clock{min-width:150px;text-align:center;background:rgba(8,10,14,.75);border:1px solid rgba(255,255,255,.1);border-radius:3px;padding:4px 10px}\n#sgHud .clock b{display:block;font:400 26px 'Russo One',sans-serif;letter-spacing:.06em}\n#sgHud .clock small{display:block;font-size:10px;letter-spacing:.3em;color:#aab2bb;text-transform:uppercase}\n#sgHud .clock .sc{display:flex;justify-content:center;gap:10px;font:700 14px Barlow;letter-spacing:.1em}\n#sgHud .clock.red b{color:#ff5050}\n#sgHud .tl{font-weight:700}\n#sgHud .ch{position:absolute;left:50%;top:50%;width:0;height:0}\n#sgHud .ch i{position:absolute;background:rgba(255,255,255,.9);box-shadow:0 0 2px #000}\n#sgHud .ch .h{width:8px;height:2px;top:-1px}\n#sgHud .ch .v{width:2px;height:8px;left:-1px}\n#sgHud .ch .dot{width:2px;height:2px;left:-1px;top:-1px}\n#sgHud .hm{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;opacity:0;transition:opacity .25s}\n#sgHud .hm:before,#sgHud .hm:after{content:'';position:absolute;left:50%;top:0;width:2px;height:100%;background:#fff;transform:rotate(45deg)}\n#sgHud .hm:after{transform:rotate(-45deg)}\n#sgHud .hm.hs:before,#sgHud .hm.hs:after{background:#ff4040}\n#sgHud .bl{position:absolute;left:18px;bottom:18px;display:flex;align-items:flex-end;gap:12px}\n#sgHud .hp{width:220px}\n#sgHud .hp .bar{height:8px;background:rgba(255,255,255,.12);border-radius:1px;overflow:hidden}\n#sgHud .hp .bar i{display:block;height:100%;background:#f2f2f2;transition:width .15s}\n#sgHud .hp b{font:400 30px 'Russo One',sans-serif}\n#sgHud .hp small{color:#aab2bb;letter-spacing:.2em;font-size:11px;margin-left:6px}\n#sgHud .br{position:absolute;right:18px;bottom:18px;text-align:right}\n#sgHud .ammo b{font:400 36px 'Russo One',sans-serif}\n#sgHud .ammo span{color:#aab2bb;font-size:16px;margin-left:4px}\n#sgHud .ammo small{display:block;color:#aab2bb;letter-spacing:.2em;font-size:11px;text-transform:uppercase}\n#sgHud .gads{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}\n#sgHud .gads div{background:rgba(8,10,14,.75);border:1px solid rgba(255,255,255,.1);padding:4px 8px;border-radius:3px;font-size:12px;min-width:46px;text-align:center}\n#sgHud .gads div kbd{display:block;font:700 10px Barlow;color:#ffb066;letter-spacing:.1em}\n#sgHud .gads div.off{opacity:.4}\n#sgHud .feed{position:absolute;right:16px;top:14px;display:flex;flex-direction:column;gap:3px;align-items:flex-end}\n#sgHud .feed div{background:rgba(8,10,14,.7);padding:4px 10px;border-radius:2px;font-size:13.5px}\n#sgHud .feed .kw{color:#aab2bb;font-size:12px}\n#sgHud .toast{position:absolute;left:50%;top:92px;transform:translateX(-50%);font:700 15px Barlow;letter-spacing:.25em;text-shadow:0 2px 8px #000;opacity:0;transition:opacity .3s;white-space:nowrap}\n#sgHud .act{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);text-align:center;font:700 13px Barlow;letter-spacing:.2em;text-shadow:0 1px 4px #000}\n#sgHud .act .pb{width:180px;height:4px;background:rgba(255,255,255,.2);margin:6px auto 0}\n#sgHud .act .pb i{display:block;height:100%;background:#ffb066;width:0}\n#sgHud .marks{position:absolute;inset:0;overflow:hidden}\n#sgHud .mk{position:absolute;transform:translate(-50%,-100%);font:700 11px Barlow;letter-spacing:.1em;text-align:center;white-space:nowrap;text-shadow:0 1px 3px #000}\n#sgHud .mk.en:before{content:'';display:block;width:10px;height:10px;margin:0 auto 2px;background:#ff3030;transform:rotate(45deg);box-shadow:0 0 6px #ff3030}\n#sgHud .mk.fr{color:#7fc8ff}\n#sgHud .mk.obj{color:#ffcf5a}\n#sgHud .mk.obj:before{content:'';display:block;width:12px;height:12px;margin:0 auto 2px;border:2px solid #ffcf5a;transform:rotate(45deg)}\n#sgHud .mk.son{color:#40ffa0}\n.mk.snd{font:400 17px/1 system-ui,'Segoe UI Emoji','Apple Color Emoji',sans-serif;transform:translate(-50%,-50%);filter:drop-shadow(0 0 3px #000)}\n.mk.snd:after{content:'';position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border:2px solid #ffffffb0;border-radius:50%;animation:sgSndR .7s ease-out infinite}\n@keyframes sgSndR{from{transform:scale(.55);opacity:1}to{transform:scale(1.5);opacity:0}}\n#sgHud .mk.son:before{content:'';display:block;width:12px;height:12px;margin:0 auto;border:2px solid #40ffa0;border-radius:50%}\n#sgHud .overlay{position:absolute;inset:0;opacity:0}\n#sgHud .dmg{background:radial-gradient(ellipse at center,rgba(120,0,0,0) 50%,rgba(150,0,0,.7) 100%)}\n#sgHud .blind{background:#fff}\n#sgHud .dread{background:radial-gradient(ellipse at center,rgba(0,0,0,.75) 0%,rgba(0,0,0,.97) 60%)}\n#sgHud .feedCam{position:absolute;inset:0;display:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px);box-shadow:inset 0 0 160px rgba(0,0,0,.9)}\n#sgHud .feedCam.on{display:block}\n#sgHud .feedCam .lbl{position:absolute;left:24px;top:70px;font:700 13px Barlow;letter-spacing:.3em;color:#9fe0ff}\n#sgHud .feedCam .rec{position:absolute;right:24px;top:70px;font:700 12px Barlow;letter-spacing:.2em;color:#ff4040}\n#sgHud .feedCam .hint{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);font:600 12px Barlow;letter-spacing:.2em;color:#c8ced5;text-shadow:0 1px 3px #000}\n#sgHud .dir{position:absolute;left:50%;top:50%;width:140px;height:140px;margin:-70px;border-radius:50%;pointer-events:none}\n#sgHud .dir i{position:absolute;left:50%;top:0;width:30px;height:8px;margin-left:-15px;background:linear-gradient(90deg,transparent,#ff3030,transparent);opacity:0;transition:opacity .6s}\n#sgHud .spec{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);text-align:center;font:600 13px Barlow;letter-spacing:.2em;text-shadow:0 1px 3px #000}\n#sgHud .spec b{display:block;font-size:20px;color:#fff}\n#sgHud .banner{position:absolute;left:0;right:0;top:34%;text-align:center;display:none}\n#sgHud .banner.on{display:block}\n#sgHud .banner b{display:block;font:400 clamp(40px,7vw,72px) 'Russo One',sans-serif;letter-spacing:.08em;text-shadow:0 6px 30px rgba(0,0,0,.7)}\n#sgHud .banner small{display:block;font:600 15px Barlow;letter-spacing:.3em;color:#c8ced5;text-transform:uppercase;margin-top:6px}\n#sgHud .banner.win b{color:#7fe08a}\n#sgHud .banner.lose b{color:#ff6060}\n#sgHud .hint2{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);font:600 11px Barlow;letter-spacing:.2em;color:rgba(255,255,255,.55)}\n#sgHud .sb{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 32px));background:rgba(8,10,14,.92);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:14px;display:none}\n#sgHud .sb.on{display:block}\n#sgHud .sb table{width:100%;border-collapse:collapse;font-size:14px}\n#sgHud .sb td,#sgHud .sb th{padding:6px 8px;text-align:left}\n#sgHud .sb th{font-size:10px;letter-spacing:.2em;color:#8d96a0;font-weight:600}\n#sgHud .sb tr.t0 td:first-child{border-left:3px solid #ff8a1a}\n#sgHud .sb tr.t1 td:first-child{border-left:3px solid #3fa0ff}\n#sgHud .sb tr.dead td{opacity:.45}\n#sgHud .sb tr.me td{background:rgba(255,255,255,.05)}\n#sgHud .ret{position:absolute;inset:0;width:100%;height:100%;display:none}\n/* pause / over */\n#sg .pause{position:absolute;inset:0;background:rgba(4,6,9,.8);display:none;place-items:center;backdrop-filter:blur(4px)}\n#sg .pause.on{display:grid}\n#sg .pauseIn{width:min(380px,calc(100vw - 32px))}\n#sg .pauseIn h2{font:400 34px 'Russo One',sans-serif;margin:0 0 14px;letter-spacing:.06em}\n#sg .pauseIn input[type=range]{width:100%}\n#sg .keys{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;color:#aab2bb;margin:10px 0 16px}\n#sg .keys kbd{font:700 11px Barlow;color:#ffb066;letter-spacing:.1em;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:1px 6px;border-radius:2px;text-align:center}\n#sg .over{position:absolute;inset:0;display:none;place-items:center;background:rgba(4,6,9,.82)}\n#sg .over.on{display:grid}\n#sg .overIn{text-align:center;width:min(760px,calc(100vw - 32px))}\n#sg .overIn h1{font:400 clamp(48px,9vw,96px) 'Russo One',sans-serif;margin:0;letter-spacing:.08em}\n#sg .coinsWon{color:#ffcf5a;font:700 18px Barlow;letter-spacing:.2em;margin:8px 0 16px}\n#sg .chat{position:absolute;left:18px;bottom:110px;width:min(380px,calc(100% - 36px));font-size:13px;z-index:8;pointer-events:none;display:none}\n#sg .chat.on{display:block}\n#sg .chat.lob{bottom:96px}\n#sg .chat .ln{background:rgba(8,10,14,.68);padding:3px 8px;margin-top:2px;border-radius:2px;width:fit-content;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;transition:opacity .6s}\n#sg .chat .ln.old{opacity:0}\n#sg .chat.open .ln.old{opacity:1}\n#sg .chat .ln .tm{color:#8ee6a0;margin-right:5px;font-weight:600}\n#sg .chat .ln.sys{color:#ffcf5a}\n#sg .chat .row{display:none;gap:6px;margin-top:6px;pointer-events:auto}\n#sg .chat.open .row{display:flex}\n#sg .chat .to{flex:none;background:#2a3140;color:#fff;border:1px solid rgba(255,255,255,.25);padding:0 10px;font-weight:700;font-size:11px;letter-spacing:.08em}\n#sg .chat.tmode .to{background:#2f7a45}\n#sg .chat input{flex:1;min-width:0;background:rgba(8,10,14,.92);color:#fff;border:1px solid rgba(255,255,255,.25);padding:7px 9px;font:14px Barlow,sans-serif;outline:none;user-select:text;-webkit-user-select:text}\n#sg .chat .hint{margin-top:4px;font-size:11px;color:rgba(232,235,239,.55);letter-spacing:.04em}\n#sg .chat.open .hint,#sg .chat.lob .hint{display:none}\n#sg .touchNote{margin-top:10px;color:#ffb066;font-size:13px}\n/* ---- standalone menu ---- */\nhtml,body{margin:0;height:100%;overflow:hidden;background:#05070a}\n#sg .menuBg{background:linear-gradient(90deg,rgba(5,7,10,.92) 0%,rgba(5,7,10,.7) 34%,rgba(5,7,10,.1) 70%,rgba(5,7,10,.35) 100%),linear-gradient(180deg,rgba(5,7,10,.75) 0%,rgba(5,7,10,0) 18%)}\n#sg .hdr{position:absolute;left:0;right:0;top:0;height:64px;display:flex;align-items:center;gap:28px;padding:0 clamp(16px,4vw,48px);z-index:2}\n#sg .brand{display:flex;align-items:center;gap:10px}\n#sg .brand .hex{width:30px;height:30px;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:#ff8a1a;display:grid;place-items:center;font:400 15px 'Russo One',sans-serif;color:#140a00}\n#sg .brand b{font:400 20px 'Russo One',sans-serif;letter-spacing:.14em}\n#sg nav{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}\n#sg nav button{background:none;border:0;color:#8d96a0;font:600 13px Barlow,sans-serif;letter-spacing:.16em;text-transform:uppercase;padding:22px 12px 20px;border-bottom:2px solid transparent;white-space:nowrap;position:relative}\n#sg nav button:hover{color:#e8ebef}\n#sg nav button.sel{color:#fff;border-bottom-color:#ff8a1a}\n#sg nav button.dot:after{content:'';position:absolute;top:18px;right:4px;width:6px;height:6px;border-radius:50%;background:#ff8a1a}\n#sg .meChip{display:flex;align-items:center;gap:10px;background:rgba(14,17,22,.75);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 12px 6px 6px;color:#e8ebef;text-align:left}\n#sg .meChip:hover{border-color:rgba(255,138,26,.6)}\n#sg .meChip .lvl{width:30px;height:30px;display:grid;place-items:center;background:rgba(255,138,26,.15);border:1px solid rgba(255,138,26,.5);border-radius:4px;font:700 14px Barlow;color:#ffb066}\n#sg .meChip b{display:block;font-size:14px}\n#sg .meChip small{display:block;font-size:11px;color:#8d96a0;letter-spacing:.08em}\n#sg .pane{position:absolute;inset:64px 0 0 0;display:none;overflow:auto}\n#sg .pane.on{display:block}\n#sg .playIn{position:absolute;left:clamp(16px,6vw,90px);top:50%;transform:translateY(-52%);width:min(420px,calc(100vw - 32px))}\n#sg .bigT{font:400 clamp(60px,10vw,104px)/.9 'Russo One',Barlow,sans-serif;letter-spacing:.06em;margin:10px 0 12px}\n#sg .mBtn{justify-content:space-between;padding:14px 18px;border-left-width:1px;border-radius:6px}\n#sg .mBtn:hover{transform:none;border-color:rgba(255,138,26,.7)}\n#sg .mBtn i{border:0;width:auto;height:auto;font-size:22px}\n#sg .mBtn.prime{background:#ff8a1a;border-color:#ff8a1a;color:#140a00}\n#sg .mBtn.prime small{color:rgba(20,10,0,.7)}\n#sg .mBtn.prime i{color:#140a00}\n#sg .mBtn.prime:hover{background:#ff9a3a}\n#sg .codeIn input{letter-spacing:.2em;font-size:15px;border-radius:6px}\n#sg .codeIn input::placeholder{letter-spacing:.12em;color:#5a636d}\n#sg .codeIn button{border-radius:6px;letter-spacing:.14em;text-transform:uppercase}\n#sg .roomsT{font-size:11px;letter-spacing:.25em;color:#8d96a0;text-transform:uppercase;margin:12px 0 6px}\n#sg .roomRow{border-radius:6px}\n#sg .paneIn{max-width:980px;margin:0 auto;padding:24px clamp(16px,4vw,48px) 60px;background:linear-gradient(180deg,rgba(5,7,10,.88),rgba(5,7,10,.94));min-height:calc(100% - 84px)}\n#sg .paneIn.narrow{max-width:620px}\n#sg .paneIn h2{font:400 34px 'Russo One',sans-serif;letter-spacing:.05em;margin:8px 0 20px}\n#sg .paneIn h3{font:600 12px Barlow;letter-spacing:.25em;color:#8d96a0;text-transform:uppercase;margin:26px 0 10px}\n#sg .howGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}\n#sg .howGrid div{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:16px}\n#sg .howGrid b{font-size:15px;letter-spacing:.06em;text-transform:uppercase}\n#sg .howGrid p{color:#aab2bb;font-size:14px;line-height:1.5;margin:8px 0 0}\n#sg .keys{grid-template-columns:auto 1fr auto 1fr;max-width:640px}\n#sg .note1{border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:18px 20px;margin-bottom:14px;background:rgba(255,255,255,.02)}\n#sg .note1.latest{border-color:rgba(255,138,26,.35)}\n#sg .nHead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}\n#sg .nV{font:700 13px Barlow;letter-spacing:.12em;color:#140a00;background:#ff8a1a;padding:2px 8px;border-radius:3px}\n#sg .note1:not(.latest) .nV{background:rgba(255,255,255,.12);color:#e8ebef}\n#sg .nHead b{font-size:19px;letter-spacing:.04em}\n#sg .nHead small{color:#8d96a0;margin-left:auto}\n#sg .nIntro{color:#aab2bb;line-height:1.5;margin:10px 0}\n#sg .note1 ul{margin:0;padding-left:18px;color:#c8ced5;line-height:1.55;font-size:14.5px}\n#sg .note1 li{margin:6px 0}\n#sg .setRow{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.07)}\n#sg .setRow label{font-weight:600;letter-spacing:.06em}\n#sg .setRow label span{color:#ffb066;margin-left:8px;font-weight:700}\n#sg .setRow input[type=range]{width:min(260px,45vw);accent-color:#ff8a1a}\n#sg .setRow .seg{min-width:240px}\n#sg .lvlBar{display:flex;align-items:center;gap:12px;font-size:13px;color:#aab2bb;letter-spacing:.06em}\n#sg .lvlBar div{flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}\n#sg .lvlBar i{display:block;height:100%;background:#ff8a1a}\n#sg .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}\n#sg .stats div{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:14px;text-align:center}\n#sg .stats b{display:block;font:400 26px 'Russo One',sans-serif}\n#sg .stats small{color:#8d96a0;font-size:11px;letter-spacing:.18em;text-transform:uppercase}\n#sg .favOp{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:12px 14px}\n#sg .favOp small{display:block;color:#8d96a0;font-size:11px;letter-spacing:.18em;text-transform:uppercase}\n#sg .favOp b{font-size:17px}\n#sg .nameBox{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(380px,calc(100vw - 32px));background:rgba(10,12,16,.94);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:26px}\n#sg .nameBox h2{font:400 30px 'Russo One',sans-serif;margin:6px 0}\n#sg .nameBox p{color:#8d96a0;margin:0 0 16px}\n#sg .nameBox input{width:100%;box-sizing:border-box;background:#07090c;border:1px solid rgba(255,255,255,.15);color:#fff;font:600 17px Barlow;padding:12px;border-radius:6px;outline:none;margin-bottom:12px}\n#sg .nameBox .bigBtn{width:100%}\n#sg .team{border-radius:8px}\n#sg .pl{border-radius:5px}\n#sg .pl.empty{color:#5a636d;font-size:13px;justify-content:center;border:1px dashed rgba(255,255,255,.08);background:none}\n#sg .rmBot{background:none;border:0;color:#8d96a0;font-size:13px;padding:0 2px 0 8px}\n#sg .rmBot:hover{color:#ff6b6b}\n#sg .addBot{width:100%;margin-top:6px;background:rgba(255,255,255,.03);border:1px dashed var(--tc);color:var(--tc);padding:8px;border-radius:5px;font:600 12px Barlow;letter-spacing:.14em;text-transform:uppercase}\n#sg .addBot:hover{background:rgba(255,255,255,.06)}\n#sg .set,#sg .opC,#sg .opD,#sg .mapC{border-radius:8px}\n#sg .bigBtn{border-radius:6px}\n#sgHud .top{gap:6px;align-items:stretch}\n#sgHud .tRow{align-items:flex-start;gap:5px}\n#sgHud .opb{display:flex;flex-direction:column;align-items:center;gap:3px}\n#sgHud .opb i{display:block;width:30px;height:3px;background:rgba(0,0,0,.5)}\n#sgHud .opb i b{display:block;height:100%}\n#sgHud .scb{min-width:58px;display:flex;align-items:center;justify-content:center;gap:7px;font:400 24px 'Russo One',sans-serif;background:rgba(8,10,14,.78);border-bottom:3px solid var(--tc);border-radius:3px;padding:0 10px;height:44px}\n#sgHud .scb svg{width:17px;height:17px;fill:var(--tc)}\n#sgHud .clock{min-width:120px;padding:3px 12px}\n#sgHud .clock .rnd{font:600 10px Barlow,sans-serif;letter-spacing:.3em;color:#aab2bb}\n#sgHud .cd{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font:400 190px/1 'Russo One',sans-serif;color:#fff;text-shadow:0 10px 50px rgba(0,0,0,.65),0 0 2px #000;opacity:0;pointer-events:none;letter-spacing:.04em}\n#sgHud .cd.go{animation:sgcd 1s ease-out forwards}\n#sgHud .cd.act{color:#ffb066;font-size:120px}\n@keyframes sgcd{0%{opacity:0;transform:translate(-50%,-50%) scale(2.4)}14%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1;transform:translate(-50%,-50%) scale(.96)}100%{opacity:0;transform:translate(-50%,-50%) scale(.8)}}\n@media (max-width:700px){#sg .hdr{gap:10px}#sg .meChip span:last-child{display:none}#sg .keys{grid-template-columns:auto 1fr}}\n";
 // ============================================================================================
 // SIEGE (3.0): 5v5 tactical attack/defend mode. One life a round, destructible walls,
 // reinforcements, barricades, drones, cameras, 20 operators with their own guns and gadgets.
@@ -1076,6 +1191,7 @@ const SG_GUNS = freezeDeep({
   arx:    { n: 'ARX-200', t: 'AR', dmg: 47, rpm: 700, mag: 20, rel: 2.6, rec: 1.0, spread: 0.85, model: 'ak47', tint: 'poly' },
   k556:   { n: '556-XI', t: 'AR', dmg: 47, rpm: 690, mag: 30, rel: 2.5, rec: 1.0, spread: 0.85, model: 'ak47' },
   mk14:   { n: 'MK-14 EBR', t: 'DMR', dmg: 60, rpm: 380, mag: 20, rel: 2.8, rec: 1.6, spread: 0.6, model: 'sniper', semi: true },
+  sr25:   { n: 'SR-25', t: 'DMR', dmg: 62, rpm: 360, mag: 20, rel: 2.9, rec: 1.45, spread: 0.55, model: 'sniper', semi: true }, // 1.0.19: the defenders' marksman rifle
   m1014:  { n: 'M1014', t: 'SG', dmg: 22, pel: 8, rpm: 240, mag: 8, rel: 3.2, rec: 2.2, spread: 3.6, model: 'shotgun' },
   mp5:    { n: 'MP5', t: 'SMG', dmg: 27, rpm: 800, mag: 30, rel: 2.1, rec: 0.6, spread: 0.8, model: 'ak47', tint: 'poly' },
   mp7:    { n: 'MP7', t: 'SMG', dmg: 32, rpm: 900, mag: 30, rel: 2.0, rec: 0.75, spread: 0.9, model: 'ak47', tint: 'poly' },
@@ -1089,6 +1205,61 @@ const SG_GUNS = freezeDeep({
   smg11:  { n: 'SMG-11', t: 'MP', dmg: 35, rpm: 1270, mag: 16, rel: 1.7, rec: 1.6, spread: 1.2, model: 'pistol' },
   p12:    { n: 'P12', t: 'HG', dmg: 44, rpm: 450, mag: 15, rel: 1.8, rec: 0.9, spread: 0.8, model: 'pistol', semi: true },
 });
+
+// ---------- sights (1.0.19) ----------
+// Every gun carries a sight you choose on the operator screen. mag = zoom while aiming, acc = spread while fully aimed
+// (times the gun's own), ads = seconds to aim in, mv = walking speed while aimed, over = a full scope picture with the
+// gun hidden (4x and up), sway = the picture drifts (hold Shift to steady it), m = the model for a pistol (GUN_SIGHT).
+const SG_SIGHTS = freezeDeep([
+  { k: 'iron', n: 'Iron sights', s: 'Iron', sh: 'Irons', mag: 1.12, acc: 0.3, ads: 0.17, mv: 0.66, d: 'No zoom, the quickest to aim.' },
+  { k: 'red', n: 'Red dot', s: '1×', sh: 'Red dot', mag: 1.25, acc: 0.24, ads: 0.2, mv: 0.62, m: 'rmr', d: 'A red dot and a slight zoom. Quick to aim.' },
+  { k: 'holo', n: 'Holographic', s: '1×', sh: 'Holo', mag: 1.3, acc: 0.23, ads: 0.21, mv: 0.62, d: 'A ring and dot in a wide window, a slight zoom.' },
+  { k: 'x25', n: '2.5× scope', s: '2.5×', sh: 'Scope', mag: 2.5, acc: 0.17, ads: 0.27, mv: 0.55, d: '2.5× zoom through a short scope. Tighter aim, a little slower to aim.' },
+  { k: 'acog', n: '4× ACOG', s: '4×', sh: 'ACOG', mag: 4, acc: 0.13, ads: 0.33, mv: 0.48, over: 1, d: '4× zoom with a full scope picture. Very tight aim, but slow to aim and slow on the move, and enemies you aim at see a glint.' },
+  { k: 'x6', n: '6× scope', s: '6×', sh: 'Scope', mag: 6, acc: 0.09, ads: 0.4, mv: 0.42, over: 1, sway: 1, d: '6× marksman scope. It sways: hold Shift to steady it for a few seconds. Glints.' },
+  { k: 'x8', n: '8× scope', s: '8×', sh: 'Scope', mag: 8, acc: 0.07, ads: 0.46, mv: 0.4, over: 1, sway: 1.35, d: '8× marksman scope for long sight lines. It sways more: hold Shift to steady it. Glints.' },
+]);
+// which sights each kind of gun takes (a gun can list its own as sights: [...]) and the one it comes with
+const SIGHTS_T = freezeDeep({ AR: [0, 1, 2, 3, 4], DMR: [0, 1, 2, 3, 4, 5, 6], SMG: [0, 1, 2, 3], SG: [0, 1, 2], HG: [0, 1], MP: [0, 1] });
+const SIGHT_DEF = freezeDeep({ AR: 3, DMR: 5, SMG: 1, SG: 2, HG: 0, MP: 0 });
+// hip fire is this much wider than the gun's spread (aiming brings it down to the sight's acc)
+const HIP_T = freezeDeep({ AR: 2, DMR: 3.2, SMG: 1.6, MP: 1.5, HG: 1.5, SG: 1 });
+const sightList = gk => SG_GUNS[gk].sights || SIGHTS_T[SG_GUNS[gk].t] || [0];
+// v = the stored choice + 1 (0 = the gun's default)
+const sightPick = (gk, v) => { const L = sightList(gk); return v > 0 && L.includes(v - 1) ? v - 1 : (L.includes(SIGHT_DEF[SG_GUNS[gk].t]) ? SIGHT_DEF[SG_GUNS[gk].t] : L[0]); };
+// where a sight sits on each gun model: y/u = the rail top and the sight's middle; iron = rail iron sights (rear u,
+// front post u, its foot), ironY/ironU/ironRel = the model's own iron sights; riser = a mount under the sight; small =
+// pistols (a slide red dot); slide = it rides on the slide
+const SIGHT_MOUNT = freezeDeep({
+  rifle:    { y: 0.0573, u: 0.02, iron: { rear: -0.05, front: 0.41, fy: 0.001 } },
+  sniper:   { y: 0.0533, u: 0.025, iron: { rear: -0.045, front: 0.66, fy: -0.014 } },
+  ak47:     { y: 0.0478, u: -0.015, riser: 0.016, ironY: 0.0672, ironU: 0.19, ironRel: 0.34 },
+  shotgun:  { y: 0.0495, u: 0.05, riser: 0.004, ironY: 0.0534, ironU: 0.0, ironRel: 0.3 },
+  pistol:   { y: 0.048, u: 0.004, small: 1, slide: 1, ironY: 0.0522, ironU: -0.036, ironRel: 0.3 },
+  revolver: { y: 0.031, u: -0.004, small: 1, ironY: 0.0315, ironU: -0.03, ironRel: 0.3 },
+});
+// the loadout P.ld (1.0.19): bits 0-1 the primary (0-2), bit 2 the second gadget, bits 3-5 the primary's sight + 1,
+// bits 6-7 the secondary's sight + 1 (0 = the gun's default). Sent in 'op' and the roster as before.
+const ldGun = ld => ld & 3, ldGad = ld => (ld >> 2) & 1, ldPs = ld => (ld >> 3) & 7, ldSs = ld => (ld >> 6) & 3;
+const ldMake = (g, s, ps, ss) => (g & 3) | ((s & 1) << 2) | ((ps & 7) << 3) | ((ss & 3) << 6);
+function sightIdx(P, slot) { if (!P || !P.w) return 0; const gk = P.w.keys[slot]; return sightPick(gk, slot ? ldSs(P.ld | 0) : ldPs(P.ld | 0)); }
+const sightOf = (P, slot) => SG_SIGHTS[sightIdx(P, slot === undefined ? P.slot : slot)];
+// the saved loadout for an operator (settings.ld2; settings.ld held 1.0.11's two bits) with the saved sight per gun
+const sightSaved = gk => ((settings.sights || {})[gk] | 0) & 7;
+function sightSave(gk, v) { settings.sights = Object.assign({}, settings.sights, { [gk]: v }); saveSettings(); }
+function ldSaved(op) {
+  const O = SG_OPS[op]; if (!O) return 0;
+  const v = settings.ld2 && typeof settings.ld2[op] === 'number' ? settings.ld2[op] : (o => ldMake(o & 1, (o >> 1) & 1, 0, 0))((settings.ld && settings.ld[op]) | 0);
+  const g = Math.min(ldGun(v), O.guns.length - 1);
+  return ldMake(g, ldGad(v), sightSaved(O.guns[g]) || ldPs(v), sightSaved(O.sec2[0]) || ldSs(v));
+}
+// a bot's loadout: any gun and gadget, any sight its gun takes (marksman rifles lean to the big scopes)
+function botLoadout(op) {
+  const O = SG_OPS[op], g = (Math.random() * O.guns.length) | 0, gk = O.guns[g], L = sightList(gk);
+  let si = L[(Math.random() * L.length) | 0];
+  if (SG_GUNS[gk].t === 'DMR' && Math.random() < 0.6) si = L[L.length - 1 - ((Math.random() * 3) | 0)];
+  return ldMake(g, Math.random() < 0.5 ? 1 : 0, si + 1, Math.random() < 0.5 ? 1 : 2);
+}
 
 // ---------- secondary gadgets (everyone carries one) ----------
 const SG_SEC = freezeDeep({
@@ -1118,15 +1289,15 @@ const SG_OPS = freezeDeep({
              g: { k: 'piston', n: 'Piston Breacher', n0: 3, d: 'Throw it on a wall. Two seconds later it punches a hole you can walk through, reinforced or not. Jammers block it.' } },
   wisp:    { side: 'atk', n: 'WISP', role: 'Silent Breacher', c: '#ffd166', spd: 3, arm: 1, guns: ['c8', 'g36c'], sec2: ['smg11'], sec: ['flash', 'claymore'],
              g: { k: 'cutter', n: 'Cutting Torch', n0: 1, d: 'Hold fire to melt through reinforced walls and barricades piece by piece. Quiet, and nothing can stop it.' } },
-  tripwire:{ side: 'atk', n: 'TRIPWIRE', role: 'Flank Watch', c: '#90be6d', spd: 2, arm: 2, guns: ['arx', 'm1014'], sec2: ['p226'], sec: ['breach', 'smoke'],
+  tripwire:{ side: 'atk', n: 'TRIPWIRE', role: 'Flank Watch', c: '#90be6d', spd: 2, arm: 2, guns: ['arx', 'm1014', 'mk14'], sec2: ['p226'], sec: ['breach', 'smoke'],
              g: { k: 'gust', n: 'Gust Mines', n0: 3, d: 'Fires sticky traps that blast defenders off their feet and give them away.' } },
-  oracle:  { side: 'atk', n: 'ORACLE', role: 'Intel', c: '#c77dff', spd: 2, arm: 2, guns: ['g36c', 'm1014'], sec2: ['p12'], sec: ['claymore', 'frag'],
+  oracle:  { side: 'atk', n: 'ORACLE', role: 'Intel', c: '#c77dff', spd: 2, arm: 2, guns: ['g36c', 'm1014', 'mk14'], sec2: ['p12'], sec: ['claymore', 'frag'],
              g: { k: 'scan', n: 'Pulse Scan', n0: 3, cd: 25, d: 'After a 2 second warning, every defender who moves for the next 3 seconds is shown to your team.' } },
   hex:     { side: 'atk', n: 'HEX', role: 'Intel', c: '#06d6a0', spd: 2, arm: 2, guns: ['mk14', 'smg11'], sec2: ['smg11'], sec: ['flash', 'smoke'],
              g: { k: 'hack', n: 'Signal Hack', n0: 3, d: 'Every defender\'s phone starts buzzing for 6 seconds and gives them away. You can also watch their cameras.' } },
   breaker: { side: 'atk', n: 'BREAKER', role: 'Soft Breacher', c: '#f4a261', spd: 2, arm: 2, guns: ['c8', 'ak12'], sec2: ['d50'], sec: ['frag', 'claymore'],
              g: { k: 'slug', n: 'Skeleton Key', n0: 12, d: 'An under-barrel shotgun (press X) that tears open soft walls, floors and hatches.' } },
-  vesper:  { side: 'atk', n: 'VESPER', role: 'Intel', c: '#577590', spd: 3, arm: 1, guns: ['f2', 'm1014'], sec2: ['p12'], sec: ['smoke', 'flash'],
+  vesper:  { side: 'atk', n: 'VESPER', role: 'Intel', c: '#577590', spd: 3, arm: 1, guns: ['f2', 'm1014', 'mk14'], sec2: ['p12'], sec: ['smoke', 'flash'],
              g: { k: 'sonar', n: 'Sonar Pulse', n0: 1, d: 'Raise it (X) to see defenders within 18 m through walls. You cannot shoot with it up.' } },
   mirage:  { side: 'atk', n: 'MIRAGE', role: 'Intel / Entry', c: '#a8dadc', spd: 2, arm: 2, guns: ['r4c', 'g36c'], sec2: ['p226'], sec: ['frag', 'smoke'],
              g: { k: 'holo', n: 'Holo Double', n0: 3, d: 'Send out a hologram of yourself and walk it for 10 seconds. Defenders cannot tell it apart until they shoot it.' } },
@@ -1141,15 +1312,15 @@ const SG_OPS = freezeDeep({
              g: { k: 'jammer', n: 'Signal Jammer', n0: 4, d: 'Jams drones and blocks breaching charges and electronic attacker gadgets it can reach: 2.5 m, and not through floors or walls.' } },
   murk:    { side: 'def', n: 'MURK', role: 'Anchor / Denial', c: '#7b2cbf', spd: 1, arm: 3, guns: ['p90', 'm590'], sec2: ['smg11'], sec: ['wire', 'shield'],
              g: { k: 'gas', n: 'Toxic Canister', n0: 3, d: 'Throw a canister (X; Shift + X throws another while one is out), then press X to set them all off: poison gas that blocks the way for 12 seconds.' } },
-  warden:  { side: 'def', n: 'WARDEN', role: 'Utility Denial', c: '#2a9d8f', spd: 3, arm: 1, guns: ['spear', 'm590'], sec2: ['p12'], sec: ['bcam', 'claymore'],
+  warden:  { side: 'def', n: 'WARDEN', role: 'Utility Denial', c: '#2a9d8f', spd: 3, arm: 1, guns: ['spear', 'm590', 'sr25'], sec2: ['p12'], sec: ['bcam', 'claymore'],
              g: { k: 'ads', n: 'Active Defense', n0: 3, d: 'Shoots down incoming grenades and thrown gadgets within 6.5 m. Two catches each, then it reloads.' } },
-  bramble: { side: 'def', n: 'BRAMBLE', role: 'Trapper', c: '#bc4749', spd: 2, arm: 2, guns: ['ump', 'm590'], sec2: ['d50'], sec: ['wire', 'alarm'],
+  bramble: { side: 'def', n: 'BRAMBLE', role: 'Trapper', c: '#bc4749', spd: 2, arm: 2, guns: ['ump', 'm590', 'sr25'], sec2: ['d50'], sec: ['wire', 'alarm'],
              g: { k: 'thorn', n: 'Thorn Bloom', n0: 3, d: 'A hidden shell that bursts into spikes 1.5 seconds after an attacker comes within 2.5 m.' } },
   dread:   { side: 'def', n: 'DREAD', role: 'Trapper', c: '#3d405b', spd: 2, arm: 2, guns: ['mp7', 'm590'], sec2: ['p12'], sec: ['shield', 'alarm'],
              g: { k: 'fear', n: 'Dread Mine', n0: 5, d: 'Attackers who walk near it are wrapped in a choking black fog: they can barely see and they slow down.' } },
   bulwark: { side: 'def', n: 'BULWARK', role: 'Shield / Roamer', c: '#457b9d', spd: 1, arm: 3, guns: ['smg11'], sec2: ['p12'], sec: ['impact', 'claymore'],
              g: { k: 'riot', n: 'Riot Shield', n0: 1, d: 'Raise a full-body bulletproof shield (X). Fire with it up to taser attackers in front of you and slow them down.' } },
-  mender:  { side: 'def', n: 'MENDER', role: 'Support / Roamer', c: '#52b788', spd: 3, arm: 1, guns: ['spear', 'm590'], sec2: ['smg11'], sec: ['bcam', 'shield'],
+  mender:  { side: 'def', n: 'MENDER', role: 'Support / Roamer', c: '#52b788', spd: 3, arm: 1, guns: ['spear', 'm590', 'sr25'], sec2: ['smg11'], sec: ['bcam', 'shield'],
              g: { k: 'medst', n: 'Med Station', n0: 3, d: 'Put down a station that heals anyone standing next to it, friend or foe.' } },
 });
 const ATK_OPS = Object.keys(SG_OPS).filter(k => SG_OPS[k].side === 'atk');
@@ -3331,13 +3502,16 @@ function sgPerson(op) {
   arms.add(armR, armL, box(0.08, 0.08, 0.08, mats.skin, 0.12, -0.18, -0.3), box(0.08, 0.08, 0.08, mats.skin, -0.02, -0.16, -0.5));
   const gun = new THREE.Group(); gun.position.set(0.08, -0.14, -0.42); arms.add(gun);
   gun.add(box(0.06, 0.1, 0.62, mats.dark, 0, 0, 0), box(0.04, 0.16, 0.06, mats.dark, 0, -0.1, 0.12), box(0.035, 0.035, 0.25, mats.dark, 0, 0.02, -0.42));
+  // 1.0.19: the sight on top: a small box for a red dot or holo, a tube for a scope (sgRenderEnts picks one)
+  const optic = { dot: box(0.04, 0.05, 0.07, mats.dark, 0, 0.075, -0.05), tube: new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.26, 10).rotateX(Math.PI / 2), mats.dark) };
+  optic.tube.position.set(0, 0.09, -0.06); optic.dot.visible = optic.tube.visible = false; gun.add(optic.dot, optic.tube);
   const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex(), color: 0xffc070, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
   flash.position.set(0, 0.02, -0.6); flash.scale.setScalar(0.35); flash.visible = false; gun.add(flash);
   // a riot shield for Bulwark
   let shield = null;
   if (op === 'bulwark') { shield = new THREE.Group(); shield.add(box(0.62, 1.5, 0.05, new THREE.MeshLambertMaterial({ color: 0x223040 }), 0, 0, 0)); const win = box(0.4, 0.14, 0.06, new THREE.MeshBasicMaterial({ color: 0x5f8aa8 }), 0, 0.5, 0); shield.add(win); shield.position.set(-0.05, -0.15, -0.45); shield.visible = false; arms.add(shield); }
   g.traverse(o => { o.castShadow = false; });
-  return { g, hips, torso, head, legs, arms, gun, flash, shield, mats, base: C, phase: Math.random() * 6, dead: 0 };
+  return { g, hips, torso, head, legs, arms, gun, flash, shield, optic, mats, base: C, phase: Math.random() * 6, dead: 0 };
 }
 // tint a person by the light where they stand, so they fit the room
 function sgTintPerson(M, light) {
@@ -3400,8 +3574,8 @@ function sgNewPlayer(id, name, team, bot) {
 // weapon state for an operator: [primary, secondary]
 function sgArm(P) {
   const O = SG_OPS[P.op];
-  // 1.0.11: the loadout (P.ld): bit 1 picks the second primary, bit 2 the second gadget
-  const gi = (P.ld & 1) && O.guns[1] ? 1 : 0, si = (P.ld & 2) && O.sec[1] ? 1 : 0;
+  // 1.0.11: the loadout (P.ld): which primary and which gadget (1.0.19: up to three primaries, and the sights: ldMake)
+  const gi = Math.min(ldGun(P.ld | 0), O.guns.length - 1), si = ldGad(P.ld | 0) && O.sec[1] ? 1 : 0;
   const k0 = O.guns[gi], k1 = O.sec2[0];
   P.w = { keys: [k0, k1], ammo: [SG_GUNS[k0].mag, SG_GUNS[k1].mag], res: [SG_GUNS[k0].mag * 4, SG_GUNS[k1].mag * 4], rel: 0, cd: 0, rec: 0, bloom: 0, trig: false };
   P.gu = O.g.n0; P.gs = SG_SEC[O.sec[si]].n0; P.secKey = O.sec[si];
@@ -3539,6 +3713,17 @@ function rayGadBoxes(o, d, maxT) {
   for (const g of G.gad.values()) { if (!g.box || !g.box.b) continue; const b = g.box; const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, b.x0, b.y0, b.z0, b.x1, b.y1, b.z1, maxT); if (t >= 0 && (best < 0 || t < best)) { best = t; bg = g; } }
   return best >= 0 ? { t: best, g: bg } : null;
 }
+// 1.0.19: the cone a shot can go in, in degrees. Hip fire is wide (HIP_T); aiming (P.adsK, 0-1, eased in over the
+// sight's aim time) narrows it to the sight's acc. Bloom from firing and moving widen it, less so while aimed.
+function sgSpreadDeg(P, G0) {
+  const W_ = P.w, pel = G0.pel || 1, k = Math.max(0, Math.min(1, P.adsK || 0)), S = sightOf(P);
+  const moving = Math.hypot(P.vx, P.vz) > 0.5;
+  const hip = HIP_T[G0.t] || 1.8, aim = pel > 1 ? 0.45 : S.acc, m = hip + (aim - hip) * k;
+  const bloom = pel > 1 ? 1 : 1 + (W_ ? W_.bloom : 0) * (2.5 - 1.3 * k);
+  const mv = moving && pel === 1 ? 1.3 * (1 - k) + (0.3 + 0.07 * S.mag) * k : 0;
+  const pose = P.prone ? 0.8 : P.crouch > 0.5 ? 0.9 : 1;
+  return (G0.spread * m * bloom + mv) * pose;
+}
 // fire the current weapon from P. Returns true if a shot went off.
 const _wd = []; // chunks broken this frame, sent in batches
 function sgFire(P, aimErr = 0) {
@@ -3547,9 +3732,8 @@ function sgFire(P, aimErr = 0) {
   if (W_.rel > 0 || W_.cd > 0) return false;
   if (W_.ammo[P.slot] <= 0) { snd('empty', P.id === G.myId ? null : P, 0.5); W_.cd = 0.25; return false; }
   W_.ammo[P.slot]--; W_.cd = 60 / G0.rpm;
-  const pel = G0.pel || 1, ads = P.id === G.myId ? !!window.sgAds : false;
-  const moving = Math.hypot(P.vx, P.vz) > 0.5;
-  const sp = (G0.spread * (ads ? 0.25 : 1) * (pel > 1 ? 1 : (1 + W_.bloom * 2.5)) + (moving && pel === 1 ? 0.8 : 0) + aimErr) * Math.PI / 180;
+  const pel = G0.pel || 1;
+  const sp = (sgSpreadDeg(P, G0) + aimErr) * Math.PI / 180;
   eyeOf(P, _e);
   let endP = null;
   for (let k = 0; k < pel; k++) {
@@ -4116,7 +4300,7 @@ function sgApplyRoster(rs) {
   }
   for (const id of [...G.P.keys()]) if (!seen.has(id) && id !== G.myId) sgDropPlayer(id);
 }
-function sgDropPlayer(id) { const P = G.P.get(id); if (!P) return; if (P.model) { sgScene.remove(P.model.g); sgDispose(P.model.g); } if (P.droneMesh) P.droneMesh.forEach(m => sgScene.remove(m)); if (P.holoModel) sgScene.remove(P.holoModel.g); G.P.delete(id); if (G.dfz.holder === id) { G.dfz.holder = null; G.dfz.drop = { x: P.x, y: P.y, z: P.z }; } }
+function sgDropPlayer(id) { const P = G.P.get(id); if (!P) return; if (P.model) { sgScene.remove(P.model.g); sgDispose(P.model.g); } if (P.glint) sgScene.remove(P.glint); if (P.droneMesh) P.droneMesh.forEach(m => sgScene.remove(m)); if (P.holoModel) sgScene.remove(P.holoModel.g); G.P.delete(id); if (G.dfz.holder === id) { G.dfz.holder = null; G.dfz.drop = { x: P.x, y: P.y, z: P.z }; } }
 EV.ph = (d) => {
   const key = d.ph + ':' + d.rnd, changed = key !== G.phKey;
   G.phKey = key;
@@ -4141,7 +4325,7 @@ EV.ph = (d) => {
   if (d.alive && d.ph !== 'pick' && d.ph !== 'prep') for (const P of G.P.values()) if (!d.alive.includes(P.id) && P.alive && !auth(P)) P.alive = false;
   if (window.sgUiPhase) sgUiPhase(d.ph);
 };
-EV.op = (d) => { const P = G.P.get(d.i); if (!P) return; P.op = d.op; if (typeof d.sp === 'number') P.sp = d.sp; if (typeof d.ld === 'number') P.ld = d.ld & 3; P.ready = !!d.r; if (window.sgUiPick) sgUiPick(); };
+EV.op = (d) => { const P = G.P.get(d.i); if (!P) return; P.op = d.op; if (typeof d.sp === 'number') P.sp = d.sp; if (typeof d.ld === 'number') P.ld = d.ld & 255; P.ready = !!d.r; if (window.sgUiPick) sgUiPick(); };
 EV.rend = (d) => {
   G.score = d.sc; G.lastWin = d.w; G.phase = 'post'; G.phaseEnd = now() + END_S; G.lastWhy = d.why;
   G.phKey = 'post:' + G.round;
@@ -4210,8 +4394,9 @@ function sgFreeOp(P) {
   const side = sideOf(P), list = side === 'atk' ? ATK_OPS : DEF_OPS;
   const taken = new Set([...G.P.values()].filter(Q => Q !== P && Q.team === P.team && Q.op).map(Q => Q.op));
   const free = list.filter(k => !taken.has(k));
-  if (P.bot) P.ld = (Math.random() * 4) | 0; // 1.0.11: bots pick a loadout too
-  return (free.length ? free : list)[(Math.random() * (free.length || list.length)) | 0];
+  const op = (free.length ? free : list)[(Math.random() * (free.length || list.length)) | 0];
+  if (P.bot) P.ld = botLoadout(op); // 1.0.11: bots pick a loadout too (1.0.19: and sights)
+  return op;
 }
 // spread a team over its spawn: defenders in the bomb rooms, attackers at their chosen entry
 function sgSpawn(P) {
@@ -4338,6 +4523,11 @@ vmScene.add(vmAmb, vmDir, vmCam2);
 const vmRoot = new THREE.Group(); vmCam2.add(vmRoot);
 const IN = { keys: {}, lmb: false, rmb: false, adsT: false, mx: 0, my: 0, held: {} }; // adsT: aim switched on with a click (toggle mode)
 window.sgAds = false;
+// 1.0.19: aiming down the sight. k = how far in (0-1, eased over the sight's aim time; the local P.adsK), breath = seconds
+// of held breath left (Shift on a 6x/8x), out = out of breath for a moment, amp/t/sx/sy = the scope's sway
+const BREATH_S = 4, BREATH_OUT = 2.5;
+const AIM = { k: 0, breath: BREATH_S, out: 0, held: false, amp: 0, t: 0, sx: 0, sy: 0 };
+function aimOff(P) { IN.adsT = false; window.sgAds = false; AIM.k = 0; AIM.amp = 0; AIM.held = false; if (P) { P.adsK = 0; P.scoped = false; P.yaw -= AIM.sx; P.pitch -= AIM.sy; } AIM.sx = AIM.sy = 0; }
 let vm = { key: null, g: null, rig: null }, vmT = { bob: 0, rec: 0, sw: 0, swx: 0, swy: 0, rel: 0 };
 let shake = 0, hurtT = 0, camRoll = 0, eyeSmooth = 0, specIdx = 0, holdF = 0, holdTarget = null, lastStep = 0, actMsg = '';
 // 1.0.8: out of the round, 5 switches between your teammates and the cameras (defenders: the cameras; attackers: the
@@ -4347,10 +4537,28 @@ const sgShake = k => { shake = Math.max(shake, k); };
 
 // a viewmodel for a gun: the game's own model and gloved hands, darker to suit the rooms
 const VM_CACHE = {};
-function vmBuild(gunKey) {
-  const G0 = SG_GUNS[gunKey], mk = G0.model;
-  if (!VM_CACHE[gunKey]) {
-    const rig = GUN_MODELS[mk]();
+// 1.0.19: the gun with its sight (si = SG_SIGHTS index) on top. rig.sight = { eyeY, rearU (model units), eyeR, relief
+// (metres from the eye to the back of the sight while aiming), lenses } lines the sight up with the middle of the screen.
+function vmSight(rig, mk, si) {
+  const MT = SIGHT_MOUNT[mk], S = SG_SIGHTS[si] || SG_SIGHTS[0];
+  if (!MT) return { eyeY: 0.06, rearU: 0, eyeR: 0.01, relief: 0.25, lenses: [] };
+  if (S.k === 'iron' && MT.ironY) return { eyeY: MT.ironY, rearU: MT.ironU, eyeR: 0.004, relief: MT.ironRel || 0.25, lenses: [] };
+  const sp = GUN_SIGHT[MT.small && S.m ? S.m : S.k](S.k === 'iron' ? MT.iron : {});
+  const host = MT.slide && rig.slide ? rig.slide : rig.g, u0 = S.k === 'iron' ? MT.iron.rear : MT.u;
+  let y = MT.y;
+  if (MT.riser && S.k !== 'iron') { // a mount that lifts the sight over the gun's own sights
+    host.add(box(0.021, MT.riser, 0.11, GM.alu, 0, y + MT.riser / 2, u0), box(0.024, 0.004, 0.11, GM.alu, 0, y + MT.riser - 0.002, u0));
+    y += MT.riser;
+  }
+  sp.g.position.set(0, y, -u0); host.add(sp.g);
+  if (sp.mask) sp.mask.visible = false;
+  return { eyeY: y + sp.eyeY, rearU: u0 + sp.rearU, eyeR: sp.eyeR, relief: sp.relief, lenses: sp.lenses, mask: sp.mask };
+}
+function vmBuild(gunKey, si = 0) {
+  const G0 = SG_GUNS[gunKey], mk = G0.model, ck = gunKey + '|' + si;
+  if (!VM_CACHE[ck]) {
+    const rig = GUN_MODELS[mk]({ bare: true });
+    rig.sight = vmSight(rig, mk, si);
     try { buildArms(rig, mk); } catch (e) {}
     rig.g.traverse(o => {
       if (!o.isMesh || !o.material) return;
@@ -4361,15 +4569,16 @@ function vmBuild(gunKey) {
     });
     rig.g.scale.setScalar(rig.view.scale);
     rig.g.rotation.set(rig.view.pitch || 0, rig.view.yaw, rig.view.roll || 0);
-    VM_CACHE[gunKey] = rig;
+    VM_CACHE[ck] = rig;
   }
-  return VM_CACHE[gunKey];
+  return VM_CACHE[ck];
 }
-function vmSet(gunKey) {
-  if (vm.key === gunKey) return;
+function vmSet(gunKey, si = 0) {
+  const ck = gunKey + '|' + si;
+  if (vm.key === ck) return;
   if (vm.g) vmRoot.remove(vm.g);
-  const rig = vmBuild(gunKey);
-  vm = { key: gunKey, g: rig.g, rig };
+  const rig = vmBuild(gunKey, si);
+  vm = { key: ck, g: rig.g, rig };
   vmRoot.add(rig.g);
   vmT.sw = 1;
 }
@@ -4533,11 +4742,11 @@ function sgMove(P, inp, dt) {
   if (P.vault) { if (ctl && P.alive) { sgVaultStep(P, dt); return; } P.vault = null; }
   if (P.rope) { if (P.alive && !P.down && P.mode === 'body') { sgRopeStep(P, inp, dt); return; } sgRopeEnd(P); }
   P.crouch += ((inp.crouch ? 1 : 0) - P.crouch) * Math.min(1, dt * 10);
-  const isAds = P.id === G.myId && window.sgAds;
+  const ak = P.w ? Math.max(0, Math.min(1, P.adsK || 0)) : 0, isAds = ak > 0.05 || (P.id === G.myId && window.sgAds);
   let sp = (inp.run && inp.f > 0 && !isAds && P.crouch < 0.5 && !P.prone ? 5.4 : 3.3) * opSpeed(P.op);
   if (P.crouch > 0.5) sp = 1.8;
   if (P.prone) sp = 0.9; // 1.0.14: crawling
-  if (isAds) sp *= 0.62;
+  if (ak > 0) sp *= 1 - (1 - sightOf(P).mv) * ak; // 1.0.19: slower behind a bigger scope
   if (P.shieldUp) sp *= 0.65;
   if (P.sonar) sp *= 0.7;
   if (P.inWire) sp *= 0.3;
@@ -4908,9 +5117,11 @@ function sgLocalUpdate(dt) {
   const t = now(), inPlay = P.alive && (G.phase === 'prep' || G.phase === 'action');
   P.stun = Math.max(0, P.stun - dt); P.slow = Math.max(0, P.slow - dt); P.blind = Math.max(0, P.blind - dt); P.dread = Math.max(0, P.dread - dt);
   const mx = IN.mx, my = IN.my; IN.mx = IN.my = 0;
-  const sens = 0.0022 * (settings.sens || 1) * (window.sgAds ? 0.7 : 1);
+  // 1.0.19: the look speed follows the zoom (and the ADS sensitivity setting)
+  const ek = smooth(AIM.k), zoomNow = P.w ? 1 + (sightOf(P).mag - 1) * ek : 1;
+  const sens = 0.0022 * (settings.sens || 1) * (1 + ((settings.adsSens || 1) - 1) * ek) / zoomNow;
   if (!inPlay) {
-    IN.adsT = false; window.sgAds = false; sgWeaponTick(P, dt);
+    aimOff(P); sgWeaponTick(P, dt);
     if (!P.alive && specCams && (G.phase === 'prep' || G.phase === 'action')) {
       const C = deadCam(P);
       specLook.yaw = Math.max(-1.3, Math.min(1.3, specLook.yaw - mx * sens)); specLook.pitch = Math.max(-0.9, Math.min(0.7, specLook.pitch - my * sens));
@@ -4927,7 +5138,7 @@ function sgLocalUpdate(dt) {
     if (G.phase !== 'prep') P.mode = 'body';
     else { sgMove(P, { f: 0, s: 0 }, dt); sgWeaponTick(P, dt); return; }
   }
-  if (P.mode !== 'body') { IN.adsT = false; window.sgAds = false; }
+  if (P.mode !== 'body' && (AIM.k || window.sgAds)) aimOff(P);
   if (P.mode === 'drone') {
     const D = P.drones[P.droneN];
     if (!D || !D.alive) { P.mode = 'body'; return; }
@@ -4985,15 +5196,30 @@ function sgLocalUpdate(dt) {
   // weapons
   sgWeaponTick(P, dt);
   const G0 = gunOf(P);
-  if (P.shieldUp || P.sonar || P.cutter || P.slug || P.vault || (inp.run && inp.f > 0 && P.crouch < 0.5)) IN.adsT = false; // sprinting or a gadget ends a toggled aim
+  const S = sightOf(P), steady = S.sway && AIM.k > 0.5; // on a 6x/8x, Shift holds your breath instead of sprinting
+  if (P.shieldUp || P.sonar || P.cutter || P.slug || P.vault || (inp.run && inp.f > 0 && P.crouch < 0.5 && !steady)) IN.adsT = false; // sprinting or a gadget ends a toggled aim
   window.sgAds = (settings.ads === 'hold' ? IN.rmb : IN.adsT) && P.w.rel <= 0 && !P.shieldUp && !P.sonar && !P.vault;
+  // 1.0.19: aiming in takes the sight's time (a bit longer with a marksman rifle); out is quicker
+  const tIn = S.ads * (G0.t === 'DMR' ? 1.15 : 1);
+  AIM.k = window.sgAds ? Math.min(1, AIM.k + dt / tIn) : Math.max(0, AIM.k - dt / (tIn * 0.6));
+  P.adsK = AIM.k; P.scoped = S.mag >= 4 && AIM.k > 0.8; // scoped in on 4x and up: other players see the lens glint
+  // scope sway on the 6x and 8x: less crouched, much less prone, more on the move; Shift steadies it for BREATH_S
+  const sw = steady ? S.sway : 0, shift = !!(K.ShiftLeft || K.ShiftRight);
+  AIM.held = !!(sw && shift && AIM.out <= 0 && AIM.breath > 0);
+  if (AIM.held) { AIM.breath -= dt; if (AIM.breath <= 0) { AIM.breath = 0; AIM.out = BREATH_OUT; snd('hurt', null, 0.25); } }
+  else { AIM.out = Math.max(0, AIM.out - dt); AIM.breath = Math.min(BREATH_S, AIM.breath + dt * (AIM.out > 0 ? 0.6 : 1.2)); }
+  const pose = P.prone ? 0.25 : P.crouch > 0.5 ? 0.55 : 1, mvK = Math.hypot(P.vx, P.vz) > 0.5 ? 1.7 : 1;
+  const swayT = sw * 0.0065 * pose * mvK * (AIM.held ? 0.06 : AIM.out > 0 ? 1.9 : 1);
+  AIM.amp += (swayT - AIM.amp) * Math.min(1, dt * 3); AIM.t += dt;
+  const nx = (Math.sin(AIM.t * 0.83) + 0.35 * Math.sin(AIM.t * 2.1 + 1.3)) * AIM.amp, ny = (Math.sin(AIM.t * 1.27 + 0.6) * 0.8 + 0.3 * Math.sin(AIM.t * 2.9)) * AIM.amp;
+  P.yaw += nx - AIM.sx; P.pitch = Math.max(-1.45, Math.min(1.45, P.pitch + ny - AIM.sy)); AIM.sx = nx; AIM.sy = ny;
   const canShoot = P.act === '' && !P.sonar && P.stun <= 0 && !P.vault && !P.down && (G.phase === 'action' || sideOf(P) === 'def');
   if (P.shieldUp) { if (IN.lmb && canShoot) sgTaser(P); }
   else if (P.cutter) { if (IN.lmb && canShoot) sgCutter(P, dt); }
   else if (P.slug) { if (IN.lmbPress && canShoot) sgSlugShot(P); }
   else if (canShoot && IN.lmb && (!G0.semi || IN.lmbPress)) {
     if (sgFire(P)) {
-      const r = G0.rec * (window.sgAds ? 0.55 : 0.8) * (P.prone ? 0.6 : P.crouch > 0.5 ? 0.8 : 1);
+      const r = G0.rec * (0.8 - 0.25 * AIM.k) * (P.prone ? 0.6 : P.crouch > 0.5 ? 0.8 : 1);
       P.pitch = Math.min(1.45, P.pitch + 0.009 * r + Math.random() * 0.004 * r); P.yaw += (Math.random() - 0.45) * 0.006 * r;
       vmT.rec = Math.min(1.5, vmT.rec + 0.5); shake = Math.max(shake, 0.05);
       fxLight(_e.x, _e.y, _e.z, 0xffb060, 1.6, 6, 0.05);
@@ -5005,7 +5231,7 @@ EV.ringfx = d => { const P = G.P.get(d.i); if (P && P.alive) snd('ring', { x: P.
 // hurt and hit feedback
 window.sgHurt = (dmg, dx, dz) => { hurtT = Math.min(1, hurtT + dmg / 50); snd('hurt', null, 0.6); shake = Math.max(shake, 0.15); if (window.sgHudHurt) sgHudHurt(dx, dz); };
 window.sgHitMarker = (hs, kill) => { snd(hs ? 'head' : 'hit', null, 0.7); if (window.sgHudHit) sgHudHit(hs, kill); };
-window.sgOnDeath = (K, d) => { window.sgAds = false; IN.adsT = false; specIdx = 0; specCams = false; specLook.yaw = specLook.pitch = 0; if (window.sgHudDeath) sgHudDeath(K, d); };
+window.sgOnDeath = (K, d) => { aimOff(me()); specIdx = 0; specCams = false; specLook.yaw = specLook.pitch = 0; if (window.sgHudDeath) sgHudDeath(K, d); };
 
 // ---------- camera and viewmodel ----------
 function deadCams(P) {
@@ -5024,7 +5250,7 @@ function sgViewUpdate(dt) {
   const P = me() || { op: null, alive: false, mode: 'body', lean: 0, vx: 0, vz: 0 };
   const t = now();
   shake = Math.max(0, shake - dt * 2); hurtT = Math.max(0, hurtT - dt * 0.8);
-  let showVm = false, fov = settings.fov || 78;
+  let showVm = false, fov = settings.fov || 78, snapFov = false;
   let vx, vy, vz, yaw, pitch, roll = 0;
   if (G.phase === 'pick' || G.phase === 'lobby' || G.phase === 'over' || !P.op) {
     // a slow look round one of the big rooms, a new room every 14 seconds
@@ -5059,35 +5285,43 @@ function sgViewUpdate(dt) {
     vx = _e.x; vy = eyeSmooth; vz = _e.z; yaw = P.yaw; pitch = P.pitch;
     camRoll += (-(P.leanV || 0) * 0.16 - camRoll) * Math.min(1, dt * 10); roll = camRoll;
     showVm = G.phase !== 'post' || P.alive;
-    if (window.sgAds) fov = fov / (gunOf(P).t === 'DMR' ? 2.2 : 1.35);
+    // 1.0.19: the sight's zoom (true magnification: the tangent of half the view shrinks by it)
+    if (P.w && AIM.k > 0) { const z = 1 + (sightOf(P).mag - 1) * smooth(AIM.k); fov = 2 * Math.atan(Math.tan(fov * Math.PI / 360) / z) * 180 / Math.PI; }
+    snapFov = true;
   }
   const sh = shake * shake * 0.08;
   sgCam.position.set(vx + (Math.random() - 0.5) * sh, vy + (Math.random() - 0.5) * sh, vz + (Math.random() - 0.5) * sh);
   sgCam.rotation.set(pitch, yaw, roll);
-  if (Math.abs(sgCam.fov - fov) > 0.05) { sgCam.fov += (fov - sgCam.fov) * Math.min(1, dt * 14); sgCam.updateProjectionMatrix(); }
+  if (Math.abs(sgCam.fov - fov) > 0.01) { sgCam.fov = snapFov && Math.abs(sgCam.fov - fov) < 30 ? fov : sgCam.fov + (fov - sgCam.fov) * Math.min(1, dt * 14); sgCam.updateProjectionMatrix(); }
   SA.listener.x = vx; SA.listener.y = vy; SA.listener.z = vz; SA.listener.yaw = yaw;
   // viewmodel
   if (P.down) showVm = false;
-  vmRoot.visible = !!(showVm && !P.shieldUp && !P.sonar && !P.cutter);
+  const S = P.w ? sightOf(P) : SG_SIGHTS[0], scopeOn = !!(showVm && S.over && AIM.k > 0.9 && P.w && !P.shieldUp && !P.sonar && !P.cutter && !P.slug);
+  vmRoot.visible = !!(showVm && !P.shieldUp && !P.sonar && !P.cutter && !scopeOn); // 1.0.19: behind a 4x+ scope you see the scope picture, not the gun
+  UI.scopeOn = scopeOn;
   vmShield.visible = !!(showVm && P.shieldUp);
   vmDevice.visible = !!(showVm && (P.sonar || P.cutter));
   if (showVm && P.w) {
-    vmSet(P.w.keys[P.slot]);
+    vmSet(P.w.keys[P.slot], sightIdx(P, P.slot));
     const rig = vm.rig, vp = rig.view.pos, moving = Math.hypot(P.vx, P.vz) > 0.5 && P.onGround;
     vmT.bob += dt * Math.hypot(P.vx, P.vz) * 2.2;
     vmT.rec = Math.max(0, vmT.rec - dt * 9); vmT.sw = Math.max(0, vmT.sw - dt * 3.5);
     const bx = moving ? Math.sin(vmT.bob) * 0.012 : 0, by = moving ? Math.abs(Math.cos(vmT.bob)) * 0.01 : 0;
     const relK = P.w.rel > 0 ? Math.sin(Math.min(1, 1 - P.w.rel / gunOf(P).rel) * Math.PI) : 0;
-    const ads = window.sgAds ? 1 : 0; vmT.ads = (vmT.ads || 0) + (ads - (vmT.ads || 0)) * Math.min(1, dt * 14);
-    const ax = vp[0] * (1 - vmT.ads), ay = vp[1] + (0.06 * vmT.ads), az = vp[2] + 0.06 * vmT.ads;
+    // 1.0.19: aiming brings the sight's line of sight onto the middle of the screen, its back end rig.sight.relief away
+    const e = vmT.ads = smooth(AIM.k), SI = rig.sight, sc = rig.g.scale.x, bk = 1 - 0.85 * e;
+    const ax = vp[0] * (1 - e), ay = vp[1] + (-SI.eyeY * sc - vp[1]) * e, az = vp[2] + (SI.rearU * sc - SI.relief - vp[2]) * e;
+    for (const L of SI.lenses) L.visible = e < 0.5;
+    if (SI.mask) SI.mask.visible = e > 0.5;
     vmT.mel = Math.max(0, (vmT.mel || 0) - dt); const mk = vmT.mel > 0 ? Math.sin((1 - vmT.mel / 0.38) * Math.PI) : 0; // melee: shove the gun forward and turn it
-    vm.g.position.set(ax + bx - relK * 0.05 - mk * 0.1, ay + by - relK * 0.12 - vmT.sw * 0.3 - P.crouch * 0.01 + mk * 0.04, az + vmT.rec * 0.05 - mk * 0.32);
-    vm.g.rotation.set((rig.view.pitch || 0) + vmT.rec * 0.08 + relK * 0.5 - mk * 0.35, rig.view.yaw * (1 - vmT.ads) + relK * 0.2, (rig.view.roll || 0) * (1 - vmT.ads) + relK * 0.5 + (P.slug ? 0.25 : 0));
+    vm.g.position.set(ax + bx * bk - relK * 0.05 - mk * 0.1, ay + by * bk - relK * 0.12 - vmT.sw * 0.3 - P.crouch * 0.01 * bk + mk * 0.04, az + vmT.rec * (0.05 - 0.03 * e) - mk * 0.32);
+    vm.g.rotation.set((rig.view.pitch || 0) * (1 - e) + vmT.rec * (0.08 - 0.06 * e) + relK * 0.5 - mk * 0.35, rig.view.yaw * (1 - e) + relK * 0.2, (rig.view.roll || 0) * (1 - e) + relK * 0.5 + (P.slug ? 0.25 : 0));
+    AIM.eyePx = SI.eyeR * sc / Math.max(0.02, SI.relief) / Math.tan(35 * Math.PI / 180) * innerHeight / 2; // the sight's window on screen (px)
     const L = sgLightProbe(P.x, P.y, P.z);
     vmAmb.intensity = 0.25 + (L.r + L.g + L.b) / 3 * 0.9; vmDir.intensity = 0.15 + (L.r + L.g + L.b) / 3 * 0.6;
     vmDevice.userData.screen.material.color.setHex(P.cutter ? 0xff8030 : 0x40ffa0);
   }
-  vmCam2.fov = 70; vmCam2.aspect = innerWidth / innerHeight; vmCam2.updateProjectionMatrix();
+  vmCam2.fov = 70; vmCam2.near = 0.05 - 0.035 * (vmT.ads || 0); vmCam2.aspect = innerWidth / innerHeight; vmCam2.updateProjectionMatrix();
   sgCam.aspect = innerWidth / innerHeight;
 }
 // the mirror is see-through from the side it faces
@@ -5127,9 +5361,14 @@ function sgBotsUpdate(dt) {
   for (const P of G.P.values()) {
     if (!P.bot) continue;
     P.stun = Math.max(0, P.stun - dt); P.slow = Math.max(0, P.slow - dt); P.blind = Math.max(0, P.blind - dt); P.dread = Math.max(0, P.dread - dt);
-    if (!P.alive || !P.w || (G.phase !== 'prep' && G.phase !== 'action')) continue;
+    if (!P.alive || !P.w || (G.phase !== 'prep' && G.phase !== 'action')) { P.adsK = 0; P.scoped = false; continue; }
     if (!P.ai || P.ai.round !== G.round) P.ai = { round: G.round, path: null, pi: 0, think: 0, react: 0, target: null, task: null, stuckT: 0, lx: P.x, lz: P.z, look: P.yaw, lookT: 0, role: Math.random() < 0.3 ? 'roam' : 'anchor', err: [0, 0], errT: 0, strafe: 0, strafeT: 0, done: new Set() };
+    P.adsB = false;
     botThink(P, dt, t);
+    // 1.0.19: bots aim down their sights too (botThink sets adsB), taking the sight's time to aim in
+    const S = sightOf(P);
+    P.adsK = P.adsB && !P.shieldUp && P.w.rel <= 0 ? Math.min(1, (P.adsK || 0) + dt / S.ads) : Math.max(0, (P.adsK || 0) - dt / (S.ads * 0.6));
+    P.scoped = S.mag >= 4 && P.adsK > 0.8;
   }
 }
 // ----- 1.0.14: smarter bots -----
@@ -5235,7 +5474,8 @@ function botSees(P, Q, wide) {
   if (P.blind > 0.5 || P.dread > 0.5) return null;
   const e = eyeOf(P, { x: 0, y: 0, z: 0 });
   const cr = Q.crouch > 0.5, dx = Q.x - e.x, dz = Q.z - e.z, d = Math.hypot(dx, dz);
-  if (d > 38) return null;
+  const mag = P.w ? sightOf(P).mag : 1; // 1.0.19: a magnified sight sees further (still only with a clear line)
+  if (d > 38 + (mag >= 6 ? 24 : mag >= 4 ? 16 : mag >= 2.5 ? 8 : 0)) return null;
   // a field of view, not eyes in the back of the head (someone right next to you is felt, not seen)
   const a = Math.abs(angDiff(Math.atan2(-dx, -dz), P.yaw));
   if (a > (wide ? 1.2 : 0.95) && d > 1.1) return null;
@@ -5270,7 +5510,9 @@ function botThink(P, dt, t) {
         // reacting takes time: longer for someone far off to the side, shorter for someone you just lost sight of
         const off = Math.abs(angDiff(Math.atan2(-(best.x - P.x), -(best.z - P.z)), P.yaw));
         const again = A.lastSeen && A.lastSeen.id === best.id && t - A.lastSeen.t < 1.5;
-        A.target = best.id; A.acq = t; A.react = t + (D.react * (0.8 + Math.random() * 0.5) + off * 0.25 + (bd > 15 ? 0.15 : 0)) * (again ? 0.55 : 1);
+        // 1.0.19: behind a magnified sight a bot is slow to swing onto someone close, and quicker to settle on someone far
+        const mag = sightOf(P).mag, scopeK = mag >= 2.5 ? (bd < 8 ? 1 + 0.12 * mag : bd > 18 ? 0.85 : 1) : 1;
+        A.target = best.id; A.acq = t; A.react = t + (D.react * (0.8 + Math.random() * 0.5) + off * 0.25 + (bd > 15 ? 0.15 : 0)) * (again ? 0.55 : 1) * scopeK;
         A.burst = 0; A.pauseT = 0; A.head = Math.random() < D.head;
       }
       A.seenT = t; A.aimH = bh; A.lastSeen = { id: best.id, x: best.x, y: best.y, z: best.z, t };
@@ -5304,7 +5546,9 @@ function botThink(P, dt, t) {
     if (A.errT < t) {
       A.errT = t + 0.3 + Math.random() * 0.25;
       const settle = 1 + 2.2 * Math.exp(-(t - A.acq) / 0.7), mv = (Math.hypot(T.vx, T.vz) > 1 ? 1.6 : 1) * (Math.hypot(P.vx, P.vz) > 1 ? 1.3 : 1);
-      const e = D.err * Math.PI / 180 * settle * mv;
+      // 1.0.19: a magnified sight steadies the aim at range and makes it clumsy up close
+      const mag = sightOf(P).mag, dd = Math.hypot(T.x - P.x, T.z - P.z), sm = dd > 15 ? Math.max(0.4, 1.05 - 0.08 * mag) : mag >= 4 && dd < 8 ? 1.35 : 1;
+      const e = D.err * Math.PI / 180 * settle * mv * sm;
       A.err = [(Math.random() - 0.5) * 2 * e, (Math.random() - 0.5) * 2 * e * 0.7];
     }
     A.errC = A.errC || [0, 0];
@@ -5318,14 +5562,15 @@ function botThink(P, dt, t) {
     P.yaw += Math.max(-turn, Math.min(turn, ay * Math.min(1, dt * 9)));
     P.pitch += Math.max(-turn, Math.min(turn, ap * Math.min(1, dt * 9)));
     const onAim = Math.abs(angDiff(wantYaw, P.yaw)) < 0.05 && Math.abs(wantPitch - P.pitch) < 0.05;
-    const G0 = gunOf(P);
+    const G0 = gunOf(P), SB = sightOf(P);
+    P.adsB = t > A.react - 0.25 && d > (SB.mag >= 4 ? 7 : SB.mag >= 2.5 ? 4 : 2); // 1.0.19: aim in once reacting (not up close with a big scope)
     if (A.burst <= 0 && !G0.semi && d > 12 && !(A.pauseT > t)) A.burst = 3 + ((Math.random() * 4) | 0);
     if (P.shieldUp && d > 6) P.shieldUp = false; // a riot shield only tasers up close: lower it to shoot
     if (t > A.react && onAim && P.act === '' && !(A.pauseT > t) && t - (A.seenT || 0) < 0.25) {
       if (P.shieldUp) sgTaser(P);
       else if (P.w.ammo[P.slot] <= 0) { if (P.w.res[P.slot] > 0) sgReload(P); else sgSwitch(P, 1); }
       else if ((!G0.semi || (P.semiT || 0) < t) && botLine(_e, { x: T.x, y: ty, z: T.z })) { // the wall check again, right before the trigger
-        if (sgFire(P, G.set.diff === 0 ? 1.4 : 0.6)) {
+        if (sgFire(P, (G.set.diff === 0 ? 1.4 : 0.6) * (SB.mag >= 4 && d > 15 ? 0.5 : 1))) {
           if (G0.semi) P.semiT = t + 0.22 + Math.random() * 0.2;
           // recoil kicks the bot's aim up too; it pulls back down at its turn speed
           P.pitch += (0.007 + Math.random() * 0.004) * G0.rec; P.yaw += (Math.random() - 0.5) * 0.006 * G0.rec;
@@ -5372,7 +5617,8 @@ function botThink(P, dt, t) {
       const dx = C.x - _e.x, dz = C.z - _e.z, d = Math.hypot(dx, dz), wy = Math.atan2(-dx, -dz), wp = Math.atan2(C.y - _e.y, d), turn = D.turn * dt;
       P.yaw += Math.max(-turn, Math.min(turn, angDiff(wy, P.yaw) * Math.min(1, dt * 9)));
       P.pitch += Math.max(-turn, Math.min(turn, (wp - P.pitch) * Math.min(1, dt * 9)));
-      if (Math.abs(angDiff(wy, P.yaw)) < 0.03 && Math.abs(wp - P.pitch) < 0.03 && !(P.semiT > t)) {
+      P.adsB = Math.abs(angDiff(wy, P.yaw)) < 0.3; // aim in at the camera
+      if (Math.abs(angDiff(wy, P.yaw)) < 0.03 && Math.abs(wp - P.pitch) < 0.03 && !(P.semiT > t) && (P.adsK || 0) > 0.9) {
         if (P.w.ammo[P.slot] <= 0) { if (P.w.res[P.slot] > 0) sgReload(P); }
         else if (sgFire(P, 0.3)) P.semiT = t + 0.25;
       }
@@ -5705,7 +5951,7 @@ function snState(d, bot) {
   const t = now();
   P.buf.push({ t, x: d.p[0], y: d.p[1], z: d.p[2], yaw: d.r[0], pitch: d.r[1] });
   if (P.buf.length > 12) P.buf.shift();
-  P.crouch = d.c; P.prone = !!d.pr; P.lean = d.l; P.leanV = (P.leanV || 0) + (d.l - (P.leanV || 0)) * 0.6; P.slot = d.s || 0; P.mode = d.m || 'body'; P.act = d.a || ''; P.shieldUp = !!d.su; P.sonar = !!d.so; P.down = !!d.dn;
+  P.scoped = !!d.sc; P.crouch = d.c; P.prone = !!d.pr; P.lean = d.l; P.leanV = (P.leanV || 0) + (d.l - (P.leanV || 0)) * 0.6; P.slot = d.s || 0; P.mode = d.m || 'body'; P.act = d.a || ''; P.shieldUp = !!d.su; P.sonar = !!d.so; P.down = !!d.dn;
   if (typeof d.h === 'number' && P.alive) P.hp = d.h;
   if (d.k && !P.op) P.op = d.k;
   P.vx = d.v ? d.v[0] : 0; P.vz = d.v ? d.v[1] : 0;
@@ -5721,7 +5967,7 @@ function snState(d, bot) {
 }
 function snRemoteShot(P, e) {
   if (!P.alive || !W) return;
-  const G0 = SG_GUNS[(SG_OPS[P.op] || {}).guns ? (P.slot ? SG_OPS[P.op].sec2[0] : SG_OPS[P.op].guns[0]) : 'r4c'];
+  const G0 = SG_GUNS[P.w ? P.w.keys[P.slot ? 1 : 0] : (SG_OPS[P.op] || {}).guns ? (P.slot ? SG_OPS[P.op].sec2[0] : SG_OPS[P.op].guns[0]) : 'r4c'];
   eyeOf(P, _e);
   snd(G0.t, { x: P.x, y: P.y + 1.4, z: P.z }, 1, P);
   if (e && Math.random() < 0.6) fxTracer({ x: _e.x, y: _e.y - 0.1, z: _e.z }, { x: e[0], y: e[1], z: e[2] });
@@ -5735,7 +5981,7 @@ function snSendStates(dt) {
   // 1.0.16: less traffic (the realtime server's free daily allowance ran out). 8 a second while you move, aim or
   // shoot, once a second while nothing about you changes, once a second in operator pick
   if (P && (P.alive || G.phase === 'pick') && t > SN.sendAt) {
-    const o = snPack(P), key = JSON.stringify([o.p, o.r, o.c, o.pr, o.l, o.s, o.m, o.a, o.h, o.su, o.so, o.dn, o.d, o.ho]);
+    const o = snPack(P), key = JSON.stringify([o.p, o.r, o.c, o.pr, o.l, o.s, o.m, o.a, o.h, o.su, o.so, o.dn, o.d, o.ho, o.sc]);
     const same = key === SN.lastKey && P.shots === SN.sentShots;
     if (!same || t > SN.lastSend + 1 || G.phase === 'pick') {
       NET.send('s', o); SN.lastKey = key; SN.sentShots = P.shots; SN.lastSend = t;
@@ -5748,7 +5994,7 @@ function snSendStates(dt) {
     const b = [];
     for (const Q of G.P.values()) {
       if (!Q.bot || !Q.alive) continue;
-      const o = snPack(Q), key = JSON.stringify([o.p, o.r, o.c, o.pr, o.s, o.m, o.a, o.h, o.su, o.dn, o.n, o.d]) /* 1.0.17: with the drones and mode, so a bot's drone moves smoothly on other screens */, k = SN.botKeys[Q.id];
+      const o = snPack(Q), key = JSON.stringify([o.p, o.r, o.c, o.pr, o.s, o.m, o.a, o.h, o.su, o.dn, o.n, o.d, o.sc]) /* 1.0.17: with the drones and mode, so a bot's drone moves smoothly on other screens */, k = SN.botKeys[Q.id];
       if (!k || k.key !== key || t > k.t + 1) { b.push(o); SN.botKeys[Q.id] = { key, t }; }
     }
     if (b.length) NET.send('bs', { b });
@@ -5759,6 +6005,7 @@ function snPack(P) {
   const o = { i: P.id, p: [r(P.x), r(P.y), r(P.z)], r: [r(P.yaw), r(P.pitch)], c: P.crouch > 0.5 ? 1 : 0, pr: P.prone ? 1 : 0, l: r(P.leanV || 0), s: P.slot, m: P.mode, a: P.act, h: Math.round(P.hp), k: P.op, v: [r(P.vx), r(P.vz)], n: P.shots };
   if (P.lastShot) o.e = [r(P.lastShot.x), r(P.lastShot.y), r(P.lastShot.z)];
   if (P.shieldUp) o.su = 1; if (P.sonar) o.so = 1; if (P.down) o.dn = 1;
+  if (P.scoped) o.sc = 1; // 1.0.19: scoped in on 4x or more (the lens glint)
   if (P.drones.length) o.d = P.drones.map(D => D.alive && !D.held ? [r(D.x), r(D.y), r(D.z), r(D.yaw)] : 0);
   if (P.holo) o.ho = [r(P.holo.x), r(P.holo.y), r(P.holo.z), r(P.holo.yaw)];
   return o;
@@ -5790,6 +6037,16 @@ function snPractice() {
 const $s = id => document.getElementById(id);
 const UI = { scr: 'home', pane: 'play', opSel: null, pickBrowse: false };
 const NOTES = [
+  { v: '1.0.19', t: 'Sights and scopes', d: '15 November 2026', intro: 'Siege is a game of scopes now. Every gun has a sight you choose, aiming down it is how you win fights, and marksman rifles join the fight.', items: [
+    ['Choose your sight', 'On the operator screen, pick a sight for your primary and your pistol (kept for next time): iron sights, red dot, holographic, 2.5×, 4× ACOG, and 6× or 8× scopes on marksman rifles. Rifles take up to 4×, SMGs up to 2.5×, shotguns 1× sights, pistols iron sights or a small red dot.'],
+    ['Real optics', 'The sight is part of the gun, so you see it from the hip. Aiming down it lines it up with the middle of the screen and zooms to its magnification, with its own reticle: a red dot, a holo ring, a scope crosshair. On 4× and up you look through a full scope picture, with the ACOG chevron or a sniper crosshair.'],
+    ['Aim to hit', 'Hip fire is much wider than before and aiming down your sight is much tighter, so scope in for anything past arm\'s length. The crosshair now shows the real spread. Bigger scopes take longer to aim in, slow you down more while aimed and spread more on the move.'],
+    ['Scope sway and breath', 'The 6× and 8× sway. Hold Shift while scoped to steady them for 4 seconds (the bar under the crosshair), then you are out of breath for a moment. Crouching steadies them, lying down even more.'],
+    ['Lens glint', 'Anyone scoped in on 4× or more flashes a glint at the enemies their scope points at. Look for it down long sight lines.'],
+    ['Marksman rifles', 'New SR-25 for Warden, Mender and Bramble, and the MK-14 EBR for Tripwire, Oracle and Vesper as well as Hex: semi-auto, hard-hitting, and a headshot always kills.'],
+    ['ADS sensitivity', 'Your look speed follows the zoom, so a scope feels like the same mouse. A new ADS sensitivity setting (Settings and the pause menu) makes it faster or slower while aiming.'],
+    ['Bots scope in too', 'Bots carry sights and aim down them. A bot with a magnified scope sees and hits you from further off, but is slow to swing onto you up close.'],
+  ] },
   { v: '1.0.18', t: 'Jammers and barricades', d: '10 November 2026', intro: 'Jammers have a shorter reach and barricades are solid again.', items: [
     ['Shorter jammer range', 'A jammer reached 4 m across the map, ignoring height, so one on the floor below could jam your drone upstairs. It now reaches 2.5 m in every direction.'],
     ['Jammers stop at walls', 'A jammer only reaches what it has a clear line to: walls, floors, ceilings and barricades block it. It still holds a breaching charge on the wall it sits right behind.'],
@@ -5959,6 +6216,7 @@ function sgUiBuild() {
     <section class="pane" id="pSettings"><div class="paneIn narrow">
       <h2>Settings</h2>
       <div class="setRow"><label>Look speed <span id="stSensV"></span></label><input type="range" id="stSens" min="0.2" max="3" step="0.1"></div>
+      <div class="setRow"><label>ADS sensitivity <span id="stAdsSV"></span></label><input type="range" id="stAdsS" min="0.3" max="2" step="0.05"></div>
       <div class="setRow"><label>Field of view <span id="stFovV"></span></label><input type="range" id="stFov" min="60" max="100" step="1"></div>
       <div class="setRow"><label>Volume <span id="stVolV"></span></label><input type="range" id="stVol" min="0" max="1" step="0.05"></div>
       <div class="setRow"><label>Graphics</label><div class="seg" id="stQ"><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div></div>
@@ -5996,7 +6254,7 @@ function sgUiBuild() {
     <div class="marks" id="sgMarks"></div>
     <div class="overlay dmg" id="sgDmg"></div>
     <div class="feedCam" id="sgCamFx"><div class="lbl" id="sgCamLbl"></div><div class="rec">● REC</div><div class="hint" id="sgCamHint"></div></div>
-    <div class="scope" id="sgScope"></div>
+    <canvas class="ret" id="sgRet"></canvas>
     <div class="top"><div class="tRow" id="sgRowL"></div><div class="scb" id="sgScBL"><span id="sgScIL"></span><span id="sgScL">0</span></div><div class="clock" id="sgClock"><small id="sgPh">PREP</small><b id="sgTime">0:45</b><div class="rnd" id="sgRnd">ROUND 1</div></div><div class="scb" id="sgScBR"><span id="sgScR">0</span><span id="sgScIR"></span></div><div class="tRow" id="sgRowR"></div></div>
     <div class="cd" id="sgCd"></div>
     <div class="ch" id="sgCh"><i class="h" style="left:-14px"></i><i class="h" style="left:6px"></i><i class="v" style="top:-14px"></i><i class="v" style="top:6px"></i><i class="dot"></i></div>
@@ -6017,13 +6275,14 @@ function sgUiBuild() {
   <div class="chat" id="sgChatBox"><div class="log" id="sgChatLog"></div><div class="row"><button type="button" class="to" id="sgChatTo">ALL</button><input id="sgChatIn" maxlength="120" autocomplete="off" spellcheck="false"></div><div class="hint">Enter / T: chat · Y: team chat</div></div>
   <div class="pause" id="sgPause"><div class="pauseIn"><h2>PAUSED</h2>
     <div class="set" style="margin-bottom:10px"><label>Look speed <span id="sgSensV"></span></label><input type="range" id="sgSens" min="0.2" max="3" step="0.1"></div>
+    <div class="set" style="margin-bottom:10px"><label>ADS sensitivity <span id="sgAdsSV"></span></label><input type="range" id="sgAdsS" min="0.3" max="2" step="0.05"></div>
     <div class="set" style="margin-bottom:10px"><label>Aim (right mouse)</label><div class="seg" id="sgAdsM"><button data-v="toggle">Click to toggle</button><button data-v="hold">Hold</button></div></div>
     <div class="keys" id="sgKeys"></div>
     <button class="mBtn prime" id="sgResume"><span><b>Resume</b></span></button>
     <button class="mBtn" id="sgQuit"><span><b>Leave match</b></span></button></div></div>
   <div class="over" id="sgOver"><div class="overIn"><div class="kick" id="sgOverK">Match over</div><h1 id="sgOverT">VICTORY</h1><div class="coinsWon" id="sgOverC"></div><div id="sgOverSb"></div></div></div>`;
   document.body.appendChild(d);
-  const keys = [['WASD', 'Move'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Z', 'Prone (lie down)'], ['Q / E', 'Lean left / right'], ['Mouse', 'Fire, aim (right click)'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant, disable'], ['5 / B', 'Drone (attack) · cameras (defence)'], ['Space', 'Drone hop (people can\'t jump)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat'], ['Y', 'Team chat'], ['Esc', 'Menu']].map(([k, v]) => `<kbd>${k}</kbd><span>${v}</span>`).join('');
+  const keys = [['WASD', 'Move'], ['Shift', 'Sprint'], ['C / Ctrl', 'Crouch'], ['Z', 'Prone (lie down)'], ['Q / E', 'Lean left / right'], ['Mouse', 'Fire, aim down your sight (right click)'], ['Shift (scoped)', 'Hold your breath (6× and 8× scopes)'], ['R', 'Reload'], ['1 / 2', 'Primary / secondary'], ['X', 'Operator gadget'], ['G', 'Secondary gadget'], ['F (hold)', 'Reinforce, barricade, plant, disable'], ['5 / B', 'Drone (attack) · cameras (defence)'], ['Space', 'Drone hop (people can\'t jump)'], ['V', 'Melee'], ['Tab', 'Scoreboard'], ['Enter / T', 'Chat'], ['Y', 'Team chat'], ['Esc', 'Menu']].map(([k, v]) => `<kbd>${k}</kbd><span>${v}</span>`).join('');
   $s('sgKeys').innerHTML = keys; $s('sgKeysHow').innerHTML = keys;
   $s('sgNotes').innerHTML = '<h2>Patch notes</h2>' + NOTES.map((N, i) => `<article class="note1 ${i ? '' : 'latest'}"><div class="nHead"><span class="nV">v${N.v}</span><b>${esc(N.t)}</b><small>${esc(N.d)}</small></div><p class="nIntro">${esc(N.intro)}</p><ul>${N.items.map(([a, b]) => `<li><b>${esc(a)}.</b> ${esc(b)}</li>`).join('')}</ul></article>`).join('');
   // top navigation
@@ -6039,6 +6298,8 @@ function sgUiBuild() {
   const setUI = () => {
     $s('stSens').value = settings.sens; $s('stSensV').textContent = (+settings.sens).toFixed(1) + '×';
     $s('stFov').value = settings.fov; $s('stFovV').textContent = settings.fov + '°';
+    // 1.0.19: look speed while aiming, on top of the zoom (1 = the same feel at every zoom)
+    for (const id of ['stAdsS', 'sgAdsS']) { $s(id).value = settings.adsSens || 1; $s(id + 'V').textContent = (+(settings.adsSens || 1)).toFixed(2) + '×'; }
     $s('stVol').value = settings.volume; $s('stVolV').textContent = Math.round(settings.volume * 100) + '%';
     $s('stQ').querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === settings.quality));
     for (const id of ['stAds', 'sgAdsM']) $s(id).querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === (settings.ads === 'hold' ? 'hold' : 'toggle')));
@@ -6046,6 +6307,7 @@ function sgUiBuild() {
   };
   $s('stSens').oninput = e => { settings.sens = +e.target.value; saveSettings(); setUI(); };
   $s('stFov').oninput = e => { settings.fov = +e.target.value; saveSettings(); setUI(); };
+  for (const id of ['stAdsS', 'sgAdsS']) $s(id).oninput = e => { settings.adsSens = +e.target.value; saveSettings(); setUI(); };
   $s('stVol').oninput = e => { settings.volume = +e.target.value; Sound.setVolume(settings.volume); saveSettings(); setUI(); };
   $s('stQ').querySelectorAll('button').forEach(b => b.onclick = () => { settings.quality = b.dataset.v; applyQuality(); renderer.setSize(innerWidth, innerHeight); saveSettings(); setUI(); });
   for (const id of ['stAds', 'sgAdsM']) $s(id).querySelectorAll('button').forEach(b => b.onclick = () => { settings.ads = b.dataset.v; IN.adsT = false; saveSettings(); setUI(); });
@@ -6188,24 +6450,36 @@ function sgUiPick() {
   $s('sgOpGrid').innerHTML = list.map(k => { const O = SG_OPS[k]; return `<button class="opC ${k === sel ? 'sel' : ''} ${taken[k] ? 'taken' : ''}" data-op="${k}" style="--c:${O.c}">${taken[k] ? `<span class="who">${esc(taken[k]).slice(0, 10)}</span>` : ''}${opBadge(k, 44)}<b>${O.n}</b><small>${O.role}</small></button>`; }).join('');
   $s('sgOpGrid').querySelectorAll('.opC').forEach(b => b.onclick = () => {
     UI.opSel = b.dataset.op;
-    if (!browse && P && !P.ready) { P.op = b.dataset.op; P.ld = (settings.ld && settings.ld[P.op]) | 0; emit('op', { i: P.id, op: P.op, sp: P.sp, ld: P.ld }); }
+    if (!browse && P && !P.ready) { P.op = b.dataset.op; P.ld = ldSaved(P.op); emit('op', { i: P.id, op: P.op, sp: P.sp, ld: P.ld }); }
     snd('click', null, 0.4); sgUiPick();
   });
-  const ld = browse ? (UI.ld | 0) : (P.ld | 0), gi = (ld & 1) && O_(sel).guns[1] ? 1 : 0, si = (ld & 2) && O_(sel).sec[1] ? 1 : 0;
+  const ld = browse ? (UI.ldOp === sel ? UI.ld | 0 : ldSaved(sel)) : (P.ld | 0), gi = Math.min(ldGun(ld), O_(sel).guns.length - 1), si = ldGad(ld) && O_(sel).sec[1] ? 1 : 0;
   const O = SG_OPS[sel], g0 = SG_GUNS[O.guns[gi]], s2 = SG_GUNS[O.sec2[0]], sec = SG_SEC[O.sec[si]];
+  const psi = sightPick(O.guns[gi], ldPs(ld)), ssi = sightPick(O.sec2[0], ldSs(ld)); // 1.0.19: the sights
+  const sightRow = (gk, cur, key) => sightList(gk).map(i => `<button class="ldB ldS ${i === cur ? 'sel' : ''}" data-${key}="${i}" title="${esc(SG_SIGHTS[i].n + ': ' + SG_SIGHTS[i].d)}"><b>${SG_SIGHTS[i].s}</b><small>${SG_SIGHTS[i].sh}</small></button>`).join('');
   const pips = n => [1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('');
   $s('sgOpD').innerHTML = `<div style="display:flex;gap:14px;align-items:center">${opBadge(sel, 64)}<div><h3>${O.n}</h3><div class="role">${O.role} · ${O.side === 'atk' ? 'Attacker' : 'Defender'}</div></div></div>
     <div class="pips"><span>SPEED ${pips(O.spd)}</span><span>ARMOUR ${pips(O.arm)}</span><span>${opHp(sel)} HP</span></div>
     <div class="gad" style="--c:${O.c}"><b>${O.g.n} <span style="color:#ffb066;font-size:12px">[X] ×${O.g.n0}</span></b><span>${esc(O.g.d)}</span></div>
     <div class="gad" style="--c:#8d96a0"><b>${sec.n} <span style="color:#ffb066;font-size:12px">[G] ×${sec.n0}</span></b><span>${esc(sec.d)}</span></div>
-    <div class="kit"><span>${g0.n} · ${g0.t}</span><span>${s2.n} · ${s2.t}</span><span>${g0.dmg}${g0.pel ? '×' + g0.pel : ''} dmg · ${g0.rpm} rpm · ${g0.mag} rds</span></div>
-    <div class="ldRow"><span>PRIMARY</span>${O.guns.map((k, n) => `<button class="ldB ${n === gi ? 'sel' : ''}" data-g="${n}">${SG_GUNS[k].n}<small>${SG_GUNS[k].t}</small></button>`).join('')}</div>
+    <div class="kit"><span>${g0.n} · ${g0.t} · ${SG_SIGHTS[psi].n}</span><span>${s2.n} · ${s2.t} · ${SG_SIGHTS[ssi].n}</span><span>${g0.dmg}${g0.pel ? '×' + g0.pel : ''} dmg · ${g0.rpm} rpm · ${g0.mag} rds</span></div>
+    <div class="ldRow"><span>PRIMARY</span>${O.guns.map((k, n) => `<button class="ldB ${n === gi ? 'sel' : ''}" data-g="${n}">${SG_GUNS[k].n}<small>${SG_GUNS[k].t === 'DMR' ? 'Marksman' : SG_GUNS[k].t}</small></button>`).join('')}</div>
+    <div class="ldRow sights"><span>SIGHT</span>${sightRow(O.guns[gi], psi, 'ps')}</div>
+    <div class="ldNote">${esc(SG_SIGHTS[psi].n + ': ' + SG_SIGHTS[psi].d)}</div>
+    <div class="ldRow sights"><span>${esc(s2.n.toUpperCase())} SIGHT</span>${sightRow(O.sec2[0], ssi, 'ss')}</div>
     <div class="ldRow"><span>GADGET [G]</span>${O.sec.map((k, n) => `<button class="ldB ${n === si ? 'sel' : ''}" data-s="${n}">${SG_SEC[k].icon} ${SG_SEC[k].n}<small>×${SG_SEC[k].n0}</small></button>`).join('')}</div>`;
-  // 1.0.11: choose between the operator's two guns and two gadgets (kept per operator for next time)
+  // 1.0.11: choose between the operator's guns and two gadgets (kept per operator for next time). 1.0.19: and the
+  // sight on each gun (kept per gun in settings.sights, for every operator who carries it)
   $s('sgOpD').querySelectorAll('.ldB').forEach(b => b.onclick = () => {
-    let v = ld; if (b.dataset.g !== undefined) v = (v & 2) | +b.dataset.g; else v = (v & 1) | (+b.dataset.s << 1);
-    if (browse) UI.ld = v;
-    else if (P && !P.ready) { P.ld = v; settings.ld = Object.assign({}, settings.ld, { [sel]: v }); saveSettings(); emit('op', { i: P.id, op: P.op || sel, sp: P.sp, ld: v }); }
+    if (!browse && (!P || P.ready)) return;
+    let g = gi, s_ = si, ps = ldPs(ld), ss = ldSs(ld);
+    if (b.dataset.g !== undefined) { g = +b.dataset.g; ps = sightSaved(O.guns[g]); }
+    else if (b.dataset.s !== undefined) s_ = +b.dataset.s;
+    else if (b.dataset.ps !== undefined) { ps = +b.dataset.ps + 1; sightSave(O.guns[gi], ps); }
+    else if (b.dataset.ss !== undefined) { ss = +b.dataset.ss + 1; sightSave(O.sec2[0], ss); }
+    const v = ldMake(g, s_, ps, ss);
+    if (browse) { UI.ld = v; UI.ldOp = sel; }
+    else { P.ld = v; settings.ld2 = Object.assign({}, settings.ld2, { [sel]: v }); saveSettings(); emit('op', { i: P.id, op: P.op || sel, sp: P.sp, ld: v }); }
     snd('click', null, 0.4); sgUiPick();
   });
   // attackers choose where to start
@@ -6267,6 +6541,69 @@ function fmtT(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':
 const _pv = new THREE.Vector3();
 function proj(x, y, z) { _pv.set(x, y, z).project(sgCam); if (_pv.z > 1) return null; return [(_pv.x + 1) / 2 * innerWidth, (1 - _pv.y) / 2 * innerHeight]; }
 let hudSlow = 0;
+// 1.0.19: the reticle in the sight (red dot, holo ring, 2.5x crosshair) once you are aimed in, and on 4x and up the
+// whole scope picture (UI.scopeOn: the gun is hidden): black round the glass, the ACOG chevron or the sniper crosshair,
+// and on the 6x/8x the breath bar. One canvas over the HUD, drawn only while it shows.
+const RET = { on: false };
+function sgDrawRet(P) {
+  const cv = $s('sgRet'), S = P ? sightOf(P) : null, k = AIM.k;
+  const want = !!(S && (S.over ? UI.scopeOn : S.k !== 'iron' && k > 0.82));
+  if (!want) { if (RET.on) { cv.style.display = 'none'; RET.on = false; } return; }
+  const dpr = Math.min(2, devicePixelRatio || 1), W = Math.round(innerWidth * dpr), H = Math.round(innerHeight * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  if (!RET.on) { cv.style.display = 'block'; RET.on = true; }
+  const g = cv.getContext('2d'), cx = W / 2, cy = H / 2, u = H / 1000; // u: a thousandth of the screen's height
+  const line = (x0, y0, x1, y1, w, c = '#000') => { g.strokeStyle = c; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
+  const dot = (x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
+  g.clearRect(0, 0, W, H); g.lineCap = 'butt'; g.shadowBlur = 0;
+  if (S.over) {
+    const R = (S.k === 'acog' ? 0.45 : 0.41) * H;
+    g.fillStyle = '#000'; g.beginPath(); g.rect(0, 0, W, H); g.arc(cx, cy, R, 0, Math.PI * 2, true); g.fill();
+    const eg = g.createRadialGradient(cx, cy, R * 0.8, cx, cy, R); eg.addColorStop(0, 'rgba(0,0,0,0)'); eg.addColorStop(0.75, 'rgba(0,0,0,.35)'); eg.addColorStop(1, 'rgba(0,0,0,.95)');
+    g.fillStyle = eg; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(70,120,150,.07)'; g.fill();
+    if (S.k === 'acog') {
+      // thin lines in from the edge, the glowing chevron, and the bullet-drop ladder under it
+      line(cx - R, cy, cx - R * 0.22, cy, 1.4 * u); line(cx + R * 0.22, cy, cx + R, cy, 1.4 * u); line(cx, cy + R * 0.5, cx, cy + R, 3 * u);
+      line(cx, cy + 24 * u, cx, cy + R * 0.42, 1.5 * u);
+      for (let i = 1; i <= 4; i++) line(cx - (30 - i * 5) * u, cy + (24 + i * 36) * u, cx + (30 - i * 5) * u, cy + (24 + i * 36) * u, 1.6 * u);
+      g.shadowColor = 'rgba(255,70,40,.9)'; g.shadowBlur = 8 * u; g.fillStyle = '#ff4a30';
+      g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + 19 * u, cy + 22 * u); g.lineTo(cx + 13 * u, cy + 22 * u); g.lineTo(cx, cy + 7 * u); g.lineTo(cx - 13 * u, cy + 22 * u); g.lineTo(cx - 19 * u, cy + 22 * u); g.closePath(); g.fill();
+      g.shadowBlur = 0;
+    } else {
+      // heavy posts from the edge, a fine cross, mil dots, a lit centre dot on the 8x
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1], [0, -1]]) {
+        line(cx + dx * R, cy + dy * R, cx + dx * R * 0.4, cy + dy * R * 0.4, (dy < 0 ? 3 : 7) * u);
+        line(cx + dx * R * 0.4, cy + dy * R * 0.4, cx + dx * 3 * u, cy + dy * 3 * u, 1.3 * u);
+        if (S.k === 'x8') for (let i = 1; i <= 4; i++) dot(cx + dx * R * 0.085 * i, cy + dy * R * 0.085 * i, 2.4 * u, '#000'); // mil dots on the 8x
+        else line(cx + dx * R * 0.2 - dy * 6 * u, cy + dy * R * 0.2 - dx * 6 * u, cx + dx * R * 0.2 + dy * 6 * u, cy + dy * R * 0.2 + dx * 6 * u, 1.3 * u); // ticks on the 6x
+      }
+      if (S.k === 'x8') { g.shadowColor = 'rgba(255,60,40,.9)'; g.shadowBlur = 5 * u; dot(cx, cy, 2.4 * u, '#ff3a2a'); g.shadowBlur = 0; }
+      else { g.strokeStyle = '#000'; g.lineWidth = 1.3 * u; g.beginPath(); g.arc(cx, cy, 9 * u, 0, Math.PI * 2); g.stroke(); }
+    }
+    if (S.sway) { // breath: hold Shift to steady the scope for a few seconds
+      const bw = 130 * u, bh = 5 * u, by = cy + R * 0.8, f = AIM.breath / BREATH_S;
+      g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(cx - bw / 2 - 2 * u, by - 2 * u, bw + 4 * u, bh + 4 * u);
+      g.fillStyle = AIM.out > 0 ? '#ff5a4a' : AIM.held ? '#7fe0ff' : 'rgba(255,255,255,.85)'; g.fillRect(cx - bw / 2, by, bw * f, bh);
+      g.font = `600 ${Math.max(11, Math.round(13 * u))}px Barlow, sans-serif`; g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.75)';
+      g.fillText(AIM.out > 0 ? 'OUT OF BREATH' : AIM.held ? 'HOLDING BREATH' : 'SHIFT · HOLD BREATH', cx, by - 7 * u);
+    }
+  } else {
+    g.globalAlpha = Math.min(1, (k - 0.82) / 0.15);
+    g.shadowColor = 'rgba(255,40,30,.9)'; g.shadowBlur = 6 * u;
+    if (S.k === 'red') dot(cx, cy, Math.max(2.5, 3.3 * u), '#ff2a1e');
+    else if (S.k === 'holo') {
+      g.strokeStyle = '#ff3626'; g.lineWidth = Math.max(1.5, 2 * u); g.beginPath(); g.arc(cx, cy, 24 * u, 0, Math.PI * 2); g.stroke();
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1], [0, -1]]) line(cx + dx * 24 * u, cy + dy * 24 * u, cx + dx * 30 * u, cy + dy * 30 * u, Math.max(1.5, 2 * u), '#ff3626');
+      dot(cx, cy, Math.max(1.5, 2 * u), '#ff2a1e');
+    } else if (S.k === 'x25') {
+      g.shadowBlur = 0; const r = Math.max(40 * u, (AIM.eyePx || 120) * dpr) * 0.94;
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1], [0, -1]]) { line(cx + dx * 7 * u, cy + dy * 7 * u, cx + dx * r, cy + dy * r, 1.3 * u); if (dy >= 0) line(cx + dx * r * 0.55, cy + dy * r * 0.55, cx + dx * r, cy + dy * r, 4 * u); }
+      g.shadowBlur = 5 * u; dot(cx, cy, Math.max(2, 2.8 * u), '#ff2a1e');
+    }
+    g.shadowBlur = 0; g.globalAlpha = 1;
+  }
+}
 function sgHudUpdate(dt) {
   if (!G.on) return;
   const P = me(), t = now();
@@ -6328,14 +6665,15 @@ function sgHudUpdate(dt) {
     if (P.slug) { $s('sgAm').textContent = P.gu; $s('sgRes').textContent = ''; $s('sgGun').textContent = 'Skeleton Key'; }
     else if (P.shieldUp) { $s('sgAm').textContent = '⛨'; $s('sgRes').textContent = ''; $s('sgGun').textContent = 'Riot shield · fire to taser'; }
     else if (P.cutter) { $s('sgAm').textContent = '🔥'; $s('sgRes').textContent = ''; $s('sgGun').textContent = 'Cutting torch'; }
-    else { $s('sgAm').textContent = P.w.rel > 0 ? '··' : P.w.ammo[P.slot]; $s('sgRes').textContent = '/ ' + P.w.res[P.slot]; $s('sgGun').textContent = G0.n + (P.w.rel > 0 ? ' · reloading' : ''); }
+    else { const S = sightOf(P); $s('sgAm').textContent = P.w.rel > 0 ? '··' : P.w.ammo[P.slot]; $s('sgRes').textContent = '/ ' + P.w.res[P.slot]; $s('sgGun').textContent = G0.n + (S.k !== 'iron' ? ' · ' + S.n : '') + (P.w.rel > 0 ? ' · reloading' : ''); }
   }
   // crosshair
   const inBody = P.alive && P.mode === 'body' && G.phase !== 'post';
-  const spread = P.w ? 6 + P.w.bloom * 16 + (Math.hypot(P.vx, P.vz) > 0.5 ? 6 : 0) : 6;
-  const ch = $s('sgCh'); ch.style.display = inBody && !window.sgAds ? '' : 'none';
+  // 1.0.19: the gap is the real cone a shot can go in (sgSpreadDeg) at the current zoom; it fades out as you aim in
+  const spread = P.w ? Math.max(3, Math.min(160, Math.tan(sgSpreadDeg(P, gunOf(P)) * Math.PI / 180) / Math.tan(sgCam.fov * Math.PI / 360) * innerHeight / 2)) : 6;
+  const ch = $s('sgCh'); ch.style.display = inBody && AIM.k < 0.6 ? '' : 'none'; ch.style.opacity = 1 - AIM.k / 0.6;
   const hs = ch.children; hs[0].style.left = -(spread + 8) + 'px'; hs[1].style.left = spread + 'px'; hs[2].style.top = -(spread + 8) + 'px'; hs[3].style.top = spread + 'px';
-  $s('sgScope').style.display = inBody && window.sgAds && P.w && gunOf(P).t === 'DMR' ? 'block' : 'none';
+  sgDrawRet(inBody && P.w && !P.shieldUp && !P.sonar && !P.cutter && !P.slug ? P : null);
   // interaction
   const act = $s('sgAct');
   if (inBody && actMsg) { act.style.display = ''; $s('sgActT').textContent = actMsg; $s('sgActP').style.width = (holdTarget ? Math.min(1, holdF / holdTarget.T) * 100 : 0) + '%'; } else act.style.display = 'none';
@@ -6400,6 +6738,24 @@ function sgMarkers(P, t) {
 // ---------- other players, drones, holograms ----------
 const DRONE_GEO = (() => { const g = new THREE.Group(); const L = c => new THREE.MeshLambertMaterial({ color: c }); const b = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.16), L(0x2a2e33)); b.position.y = 0.1; g.add(b); for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 10), L(0x111111)); w.rotation.z = Math.PI / 2; w.position.set(s * 0.13, 0.09, 0); g.add(w); } const cam = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), glowMat(0xff3030)); cam.position.set(0, 0.12, -0.09); g.add(cam); return g; })();
 let defDropMesh = null, entLightT = 0;
+// 1.0.19: sniper glint. An enemy scoped in on 4x or more (P.scoped; 'sc' in their state) flashes a lens glint at you
+// while their scope points your way (within about 20 degrees), brighter the straighter it points. It is a sprite in the
+// world, so walls hide it; its size grows with distance so it stays visible far off.
+const _gl = { x: 0, y: 0, z: 0 }, _gd = { x: 0, y: 0, z: 0 };
+function sgGlint(P, mine, dt) {
+  let s = P.glint;
+  const on = P.scoped && P.alive && !P.down && P.mode === 'body' && P.id !== G.myId && mine && P.team !== mine.team && (G.phase === 'action' || G.phase === 'prep');
+  if (!on) { if (s) s.visible = false; return; }
+  if (!s) { s = P.glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex(), color: 0xeaf6ff, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); s.renderOrder = 5; sgScene.add(s); }
+  eyeOf(P, _gl); dirOf(P.yaw, P.pitch, _gd);
+  const cp = sgCam.position, vx = cp.x - _gl.x, vy = cp.y - _gl.y, vz = cp.z - _gl.z, d = Math.hypot(vx, vy, vz) || 1;
+  const c = (vx * _gd.x + vy * _gd.y + vz * _gd.z) / d, k = Math.max(0, (c - 0.94) / 0.06);
+  if (k <= 0 || d < 2) { s.visible = false; return; }
+  s.visible = true;
+  s.position.set(_gl.x + _gd.x * 0.32, _gl.y + _gd.y * 0.32 - 0.03, _gl.z + _gd.z * 0.32);
+  s.scale.setScalar((0.4 + d * 0.03) * (0.4 + 0.6 * k) * (0.85 + 0.15 * Math.sin(now() * 13 + d)));
+  s.material.opacity = 0.35 + 0.65 * k;
+}
 function sgRenderEnts(dt) {
   const t = now(), mine = me();
   entLightT -= dt; const relight = entLightT <= 0; if (relight) entLightT = 0.2;
@@ -6417,8 +6773,11 @@ function sgRenderEnts(dt) {
         if (P.flashT > 0) { P.flashT -= dt; if (P.flashT <= 0) P.model.flash.visible = false; }
         if (P.model.shield) P.model.shield.visible = !!P.shieldUp;
         P.model.gun.visible = !P.shieldUp;
+        const so = P.w ? sightOf(P) : null, om = P.model.optic; // 1.0.19: their sight, from the loadout
+        if (om) { om.dot.visible = !!so && so.mag > 1.12 && so.mag < 2.5; om.tube.visible = !!so && so.mag >= 2.5; }
       }
     }
+    sgGlint(P, mine, dt);
     // drones that are out
     P.droneMesh = P.droneMesh || [];
     P.drones.forEach((D, n) => {
@@ -6615,7 +6974,7 @@ function sgBoot() {
 sgInputInit();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sgBoot); else sgBoot();
 // test handle, only on a local copy
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, jamReach, jammedAt, barUV, sgClear, sgArm, sgCutter, sgSlugShot, sgTaser, chunkCenter, botWallOnly, botHoldSpot, roomEntrances, eyeOf };
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__sg = { step(n, dt = 1 / 30) { for (let i = 0; i < n; i++) { SG_TOFF += dt; sgFrame(dt); } }, G, get W() { return W; }, me, IN, emit, sgSpawn, sgPath, sgFire, sgMove, sgCam, now, SG_OPS, UI, sgLoop, vmScene, vmRoot, vmCam2, sgScene, renderer: () => renderer, sgUseUnique, sgUseSecondary, sgInteractTarget, sgFinishInteract, sgThrow, sgBoom, sgMoveDrone, sgGround, sgBuildMap, sgCollide, sgRay, botSees, botLine, sgVaultCheck, sgApplyDamage, sgLightAt, sgSeeFlat, sgMelee, sgSwitch, snPractice, sgStartMatch, sgTrace, jamReach, jammedAt, barUV, sgClear, sgArm, sgCutter, sgSlugShot, sgTaser, chunkCenter, botWallOnly, botHoldSpot, roomEntrances, eyeOf, sightIdx, sightOf, sgSpreadDeg, SG_SIGHTS, SG_GUNS, AIM, ldMake, ldSaved, sgUiPick: () => sgUiPick() };
 
 })();
 </script>
