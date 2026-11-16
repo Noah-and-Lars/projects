@@ -36,6 +36,8 @@ it asks the 'online:arcade' Room for its counts (internal GET /stats, header x-a
 the console loads 7 days after sign-in (and every 5 minutes) into the Players Online / Player Count / Game Stats graphs (7d
 range added) and a Server Response graph with uptime on System Status. About 900 Durable Object requests a day.
 
+Hidden (2026-11-16, the owner's request): the console doesn't show the investigation records below (admin/index.html
+`SHOW_INVESTIGATION = false`); the server keeps recording. Set it to true when the owner asks to unhide them.
 Investigation records (2026-11-14, the owner's request): each Account keeps `ev` (its newest 80 events: signup, login,
 recover, wrongpw (merged per hour with a count), password, rename, ban/unban, devban/devunban, newcode, dmread; each with
 the device id, IP and rough location where it applies, and `by` = the admin), `ips` (last 10 IPs with location, first/last

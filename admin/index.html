@@ -1349,6 +1349,10 @@ const SERVER = 'https://arcade-realtime.arcade-realtime.workers.dev';
 const ADMINS = ['noah', 'lars', 'claude']; // ADMIN_ACCOUNTS in worker.js and account.js
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/, CLIP_RE = /^[a-z0-9]{10}$/;
 const OPS = window.__ops;
+// The owner hid the investigation records on 2026-11-16 (play time, visit timeline, IPs, browsers and devices, sign-in
+// history, kept chat, private message overview and private messages under Account Tools > Look up). The server still
+// records everything. Set to true to show them again.
+const SHOW_INVESTIGATION = false;
 const gameName = OPS.gameName;
 const DAY = 864e5;
 const ls = {
@@ -1534,8 +1538,8 @@ async function runOp(op) {
       const [info, prof] = await Promise.all([op === 'info' ? admin({ op: 'info', name: n }) : Promise.resolve(null), call('/acct/player?name=' + encodeURIComponent(n))]);
       if (info && info.status !== 200) { setMsg(M, why(info, n), 'err'); if (info.status !== 404 || prof.status !== 200) { out.innerHTML = '<div class="empty-state">No result.</div>'; return; } }
       if (!info && prof.status !== 200) { setMsg(M, prof.status === 404 ? `${n} isn’t on the Players list (banned, a local account, or no account).` : why(prof, n), 'err'); out.innerHTML = '<div class="empty-state">No result.</div>'; return; }
-      out.innerHTML = accountCard(info && info.status === 200 ? info : null, prof.status === 200 ? prof : null, n) + (info && info.status === 200 ? '<div id="invest"><div class="empty-state">Loading the investigation records…</div></div>' : '');
-      if (info && info.status === 200) loadInvestigation(info.name);
+      out.innerHTML = accountCard(info && info.status === 200 ? info : null, prof.status === 200 ? prof : null, n) + (SHOW_INVESTIGATION && info && info.status === 200 ? '<div id="invest"><div class="empty-state">Loading the investigation records…</div></div>' : '');
+      if (SHOW_INVESTIGATION && info && info.status === 200) loadInvestigation(info.name);
       $('acResSub').textContent = 'Looked up ' + hhmm(Date.now());
       return;
     }
