@@ -214,11 +214,11 @@ window.GAMES = [
     tagline: 'Classic chess against the computer, or online against a real person.',
     description: 'Classic chess against the computer on Easy, Medium or Hard, or online against a real person for a rating. Every rule is included and your game is saved.',
     controls: 'Mouse or touch',
-    keys: [['Local 2-player', 'Two players on one screen: the board turns round after every move'], ['🏆 Leaderboard', 'Everyone\u2019s highest online rating'], ['Drag or click', 'Move a piece'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
+    keys: [['Local 2-player', 'Two players on one screen: the board turns round after every move'], ['🏆 Leaderboard', 'Everyone\u2019s highest online rating'], ['Drag or click', 'Move a piece'], ['⏱ Game mode', 'Bullet, Blitz, Rapid, Classical and more for online games'], ['Pre-move', 'Move while your opponent is thinking; right-click to cancel'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-11-14T13:00:00+11:00',
+    updated: '2026-11-18T14:00:00+11:00',
     stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rv === 2 && isFinite(s.rating.r) ? 'Elo ' + Math.round(s.rating.r) : s.rating ? 'Elo 2000' : ''; /* 1.5.1: everyone was reset to 2000 */ return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
@@ -376,6 +376,9 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-18', game: 'chess', imgs: ['chess/news/1.7-modes.jpg', 'chess/news/1.7-clocks.jpg'], headline: 'Chess 1.7: game modes and pre-moves', text: 'Chess 1.7: pick a game mode for online games, from UltraBullet (15 seconds) through Bullet, Blitz and Rapid to Classical (90+30), each explained when you choose it. Timed games have real chess clocks with increments, quick match pairs you with someone on the same mode, and pre-moves let you move while your opponent is still thinking.',
+    post: '♟️ Chess 1.7 is out!\n\n⏱ Game modes: UltraBullet, Bullet, Blitz, Rapid and Classical, from 15 seconds to 90+30. Each one tells you how it plays when you pick it.\n🕰 Real chess clocks with increments next to both names\n🎯 Quick match only pairs you with someone on the same mode\n⚡ Pre-moves: make your move while they\u2019re still thinking, and it plays the instant they move\n\nWho\u2019s up for some bullet?' },
+  { date: '2026-11-18', href: 'index.html', headline: 'Your cursor, everywhere', text: 'The cursor you pick on the home page (Customise, next to the live cursors) is now your pointer on every page and in every game on the arcade, not just the home page. Other players\u2019 live cursors still only show on the home page.' },
   { date: '2026-11-17', href: 'social.html', headline: 'No links on Social', text: 'Links are now blocked on Social too: in post captions, text posts, comments and group chat names. Anything that looks like a link won’t go up.' },
   { date: '2026-11-17', href: 'chat.html', headline: 'No links in chats', text: 'To keep everyone safe, links are now blocked in every chat on the arcade: the Global chat, private messages, group chats and the chats inside games. Anything that looks like a link (even written with spaces or “dot com”) won’t be sent, along with a few banned words.' },
   { date: '2026-11-17', href: 'social.html', headline: 'Text posts on Social', text: 'Social: you can now post plain text with no photo or video. Tap Create → Write a post, type up to 500 characters, pick a background colour and share. Text posts go up straight away.',

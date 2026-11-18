@@ -222,6 +222,22 @@
     });
   }
 
+  /* 2026-11-18: your own cursor look is used on every page and game of the site, not only the home page (live
+     cursors of other people stay on the home page). Low priority (:where), so a game that hides the pointer or sets
+     its own, and buttons that show a hand, keep theirs. Picking a new look on the home page updates open tabs. */
+  (function () {
+    try {
+      var st = document.createElement('style');
+      st.textContent = ':where(html.own-cursor) body { cursor: var(--own-cursor); }';
+      (document.head || document.documentElement).appendChild(st);
+    } catch (e) {}
+    applyOwn();
+    addEventListener('storage', function (e) {
+      if (e.key === 'arcade-cursor-style') { mine = clean(JSON.parse(e.newValue || 'null'), me); applyOwn(); }
+      else if (e.key === 'arcade-cursors') { on = e.newValue !== 'off'; applyOwn(); }
+    });
+  })();
+
   window.ArcadeCursors = {
     // index.html: start(element to put the pill in)
     start: function (pillHost) {

@@ -200,6 +200,25 @@
   #spStatus { margin-top: 8px; font-weight: 700; text-align: center; }
   #spMoves { margin-top: 6px; max-height: 70px; overflow-y: auto; font-size: 13px; color: var(--muted); line-height: 1.5; }
   #spWho { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  /* 1.7: chess clocks, game modes, pre-moves */
+  .clk { margin-left: auto; flex: none; min-width: 84px; padding: 7px 10px; border-radius: 6px; background: #21201d; color: #8f8d89; font: 800 21px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; text-align: right; box-sizing: border-box; }
+  .clk.run { background: #f0efed; color: #262522; } .clk.low { background: #c0392b; color: #fff; } .clk[hidden] { display: none; }
+  .thinking + .clk { margin-left: 8px; }
+  .sq.pre::before { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(208, 72, 64, .6); }
+  #tcBtn { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 8px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel2); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+  #tcBtn:hover { border-color: var(--green); } #tcBtn .ic { font-size: 20px; } #tcBtn .tx { flex: 1; min-width: 0; } #tcBtn b { display: block; font-size: 15px; } #tcBtn small { color: var(--muted); font-size: 12px; font-weight: 600; } #tcBtn .ch { color: var(--muted); font-weight: 800; }
+  #tcPop { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 60; display: grid; place-items: center; background: rgba(0,0,0,.6); padding: 16px; }
+  #tcPop[hidden] { display: none; }
+  #tcPop .card { background: var(--panel); border-radius: 10px; padding: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.55); width: min(560px, 100%); max-height: 92vh; overflow-y: auto; box-sizing: border-box; }
+  #tcPop h2 { margin: 0 0 4px; } #tcPop .lbsub { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  .tcg { padding: 12px; border-radius: 8px; background: var(--panel2); margin-bottom: 8px; border: 1px solid transparent; }
+  .tcg.on { border-color: var(--green); }
+  .tcg-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; } .tcg-h b { font-size: 16px; } .tcg-h span { color: var(--muted); font-size: 13px; font-weight: 700; }
+  .tcg p { margin: 4px 0 8px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .tcg-f { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tcg-f button { border: 1px solid var(--line); background: #3c3a37; color: var(--ink); border-radius: 6px; padding: 7px 12px; font-weight: 800; font-size: 14px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .tcg-f button:hover { background: #484643; } .tcg-f button.on { background: var(--green); border-color: var(--green); color: #fff; }
+  .tcg-f button small { display: block; font-size: 10px; font-weight: 700; opacity: .75; }
 </style>
 </head>
 <body>
@@ -207,11 +226,11 @@
   <div id="left">
     <div id="watchBar" hidden></div>
     <div id="moveClock" hidden></div>
-    <div class="player" id="topBar"><div class="avatar">🤖</div><div style="min-width:0"><div class="pname" id="topName">Computer</div><div class="caps" id="topCaps"></div></div><div class="thinking" id="thinking" hidden><i></i><i></i><i></i></div></div>
+    <div class="player" id="topBar"><div class="avatar">🤖</div><div style="min-width:0"><div class="pname" id="topName">Computer</div><div class="caps" id="topCaps"></div></div><div class="thinking" id="thinking" hidden><i></i><i></i><i></i></div><div class="clk" id="topClk" hidden></div></div>
     <div id="board"><div id="squares"></div><div id="pieces"></div><div id="promo" hidden></div>
       <div id="result" hidden><div class="card"><h2 id="resT"></h2><p id="resP"></p><p id="resR"></p><button class="bigbtn" id="resNew">New game</button><button class="link" id="resView" style="margin-top:10px;background:none;border:0;color:var(--muted);font-weight:700">View the board</button></div></div>
     </div>
-    <div class="player" id="botBar"><div class="avatar you">🙂</div><div style="min-width:0"><div class="pname" id="botName">You</div><div class="caps" id="botCaps"></div></div></div>
+    <div class="player" id="botBar"><div class="avatar you">🙂</div><div style="min-width:0"><div class="pname" id="botName">You</div><div class="caps" id="botCaps"></div></div><div class="clk" id="botClk" hidden></div></div>
   </div>
   <aside id="side">
     <div class="head"><img id="logo" alt=""><span id="headT">Play the computer</span></div>
@@ -223,6 +242,7 @@
       <div id="rateCard" hidden></div>
       <div id="netPick">
         <input id="netName" class="txt" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false">
+        <button type="button" id="tcBtn" aria-haspopup="dialog"><span class="ic" id="tcIc">⚡</span><span class="tx"><b id="tcName">Blitz 3+2</b><small id="tcSub">Game mode</small></span><span class="ch">Change ›</span></button>
         <button class="bigbtn net" data-net="quick">Quick match</button>
         <button class="netbtn" data-net="create">Create a private table</button>
         <div class="netrow"><input id="netCode" class="txt code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="netbtn" data-net="join">Join with code</button></div>
@@ -238,10 +258,12 @@
     <div class="tools"><button id="undoBtn" title="Take back your last move"><b>↶</b>Undo</button><button id="flipBtn" title="Turn the board around"><b>⇅</b>Flip</button><button id="resignBtn" title="Give up this game"><b>⚑</b>Resign</button></div>
     <div class="sect"><h4 id="statsT">Your record against this level</h4><div class="stats" id="stats"></div>
       <label class="check">Show legal moves<input type="checkbox" id="hintsChk"></label>
-      <label class="check">Sound<input type="checkbox" id="soundChk"></label></div>
+      <label class="check">Sound<input type="checkbox" id="soundChk"></label>
+      <label class="check">Pre-moves in online games<input type="checkbox" id="preChk"></label></div>
   </aside>
 </div>
-<div id="waitPop" hidden role="alert"><span class="wp-ic">♟️</span><div class="wp-t"><b id="waitName">Someone</b> is waiting for a quick match. Would you like to join?</div><button id="waitJoin">Join</button><button id="waitNo" aria-label="Not now">Not now</button></div>
+<div id="waitPop" hidden role="alert"><span class="wp-ic">♟️</span><div class="wp-t"><b id="waitName">Someone</b> is waiting for a <b id="waitMode">Blitz 3+2</b> quick match. Would you like to join?</div><button id="waitJoin">Join</button><button id="waitNo" aria-label="Not now">Not now</button></div>
+<div id="tcPop" hidden role="dialog" aria-label="Game mode"><div class="card"><h2>⏱ Game mode</h2><p class="lbsub">How much time each player gets in online games. <b>3+2</b> means 3 minutes each, plus 2 seconds added after every move you make. Quick match only pairs you with someone who picked the same mode, and a private table uses its maker’s mode.</p><div id="tcList"></div><button class="bigbtn" id="tcClose" style="margin-top:6px">Done</button></div></div>
 <div id="spec" hidden><div class="card">
   <div id="specPick"><h2>📺 Live games</h2><p class="lbsub">Online games being played right now. Pick one to watch it move by move. Watching never changes your Elo, and the players can see who is watching.</p><div id="specList"></div><button class="bigbtn" id="specClose">Close</button></div>
   <div id="specView" hidden>
@@ -257,7 +279,13 @@
 <div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.6.2</span></summary>
+    <summary>Patch notes <span>v1.7</span></summary>
+    <h3>v1.7 <small>Game modes and pre-moves</small></h3>
+    <ul><li><b>⏱ Game modes:</b> pick how fast your online games are under Play online: UltraBullet (15s, 30s, 0+1), Bullet (1+0, 1+1, 2+1), Blitz (3+0, 3+2, 5+0, 5+3), Rapid (10+0, 10+5, 15+10, 30+0), Classical (60+30, 90+30) or the old 1:30 a move. Each mode explains how it plays when you choose it.</li>
+      <li><b>Chess clocks:</b> in timed modes both players have a clock next to their name. It counts down on your turn, and the extra seconds (the number after the +) are added after each move. Run out and you lose on time. Your first move has its own 30 seconds, so nobody loses before the game gets going.</li>
+      <li><b>Quick match by mode:</b> you’re only paired with someone who picked the same mode, and the “someone is waiting” alert says which mode they want.</li>
+      <li><b>Pre-moves:</b> in online games you can make your move while your opponent is still thinking. Drag or click a piece while it’s their turn: the squares turn red, and the move is played the instant they move, if it’s still legal. Right-click or click an empty square to cancel. You can switch pre-moves off in the settings.</li>
+      <li>Spectators see both clocks too.</li></ul>
     <h3>v1.6.2 <small>Emergency update</small></h3>
     <ul><li>Whoever leaves the table now always loses the Elo. If a player closes the game, loses their connection or stops answering, they lose like leaving after 100 seconds, and the player who stayed gets Elo for it.</li>
       <li>Fixed Elo bugs that let people get lots of Elo by repeating games and results. Games now only count when both players really played them, and you can only gain Elo from the same opponent 3 times a day.</li></ul>
@@ -622,7 +650,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.6.2';
+const VERSION = '1.7';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -649,7 +677,7 @@ document.head.insertAdjacentHTML('beforeend', `<link rel="icon" href="${IMG.N}">
 
 // ---------- saving ----------
 const SAVE_KEY = 'chessSave';
-const save = { level: 'medium', color: 'w', hints: true, sound: true, stats: {}, game: null, name: '', online: { w: 0, l: 0, d: 0 }, rating: null };
+const save = { level: 'medium', color: 'w', hints: true, sound: true, stats: {}, game: null, name: '', online: { w: 0, l: 0, d: 0 }, rating: null, tc: '180+2', pre: true };
 try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
 if (!save.online || typeof save.online !== 'object') save.online = {}; for (const k of ['w', 'l', 'd']) save.online[k] = Math.max(0, save.online[k] | 0);
 if (!LEVELS.includes(save.level)) save.level = 'medium';
@@ -730,6 +758,8 @@ function renderMarks() {
     d.classList.toggle('check', !!G.b[sq] && G.b[sq].toUpperCase() === 'K' && isW(G.b[sq]) === G.w && inCheck(G, G.w));
     const old = d.querySelector('.dot'); if (old) old.remove();
   }
+  for (let sq = 0; sq < 64; sq++) sqEls[sq].classList.toggle('pre', !!premove && (sq === premove.from || sq === premove.to)); // 1.7
+  if (selected >= 0 && preOn()) { for (const to of preDests(selected)) { const dot = document.createElement('div'); dot.className = 'dot' + (G.b[to] ? ' cap' : ''); dot.style.opacity = '.5'; sqEls[to].appendChild(dot); } return; }
   if (selected >= 0 && save.hints) for (const m of legalNow) if (m.from === selected && !(m.pr && m.pr.toUpperCase() !== 'Q')) {
     const dot = document.createElement('div'); dot.className = 'dot' + (m.cap ? ' cap' : ''); sqEls[m.to].appendChild(dot);
   }
@@ -738,7 +768,8 @@ function renderMarks() {
 // ---------- playing a move ----------
 function playMove(m, dropped) {
   // online, your own moves go to the other player
-  if (online.on && (G.w ? 'w' : 'b') === player) Net.send('mv', { n: hist.length, u: uci(m) });
+  if (online.on && !localGame) clkMoved(G.w ? 'w' : 'b'); // 1.7: stop the mover's clock and add the increment
+  if (online.on && (G.w ? 'w' : 'b') === player) Net.send('mv', Object.assign({ n: hist.length, u: uci(m) }, clk.on ? { c: Math.round(clk[G.w ? 'w' : 'b']) } : {}));
   const s = san(G, m, legalNow); make(G, m); G.u.length = 0;
   hist.push({ m, san: s }); keys.push(posKey(G)); legalNow = legal(G); selected = -1;
   if (online.on && !localGame && hist.length === 2) Elo.start(); // 1.6.2: the game is rated from here: tell the server
@@ -789,6 +820,9 @@ function finish() {
   const won = over.winner === player;
   $('resT').textContent = !over.winner ? 'Draw' : won ? 'You won!' : 'You lost';
   $('resP').textContent = over.left ? `${oppName()} left the table. You win.` : over.oppResigned ? `${oppName()} resigned` : over.resigned ? 'You resigned' : (over.winner ? (won ? 'You won ' : (online.on ? oppName() : 'The computer') + ' won ') : 'Drawn ') + over.why;
+  if (aborted && over.why === 'on time' && !over.quit && !over.left) { // 1.7: nobody lost: a first move never came
+    $('resT').textContent = 'Game aborted'; $('resP').textContent = (over.winner === player ? oppName() + ' didn’t' : 'You didn’t') + ' make a first move in time.';
+  }
   $('resNew').textContent = !online.on ? 'New game' : Net.left || !Net.on ? 'Find a new game' : 'Rematch'; $('resNew').disabled = false;
   setTimeout(() => { if (over) { $('result').hidden = false; Sound.end(won); } }, 450);
   renderSide();
@@ -814,6 +848,37 @@ function aiMove() {
 
 // ---------- your moves: drag a piece, or click it and then click a square ----------
 let drag = null;
+/* 1.7: pre-moves. Online, while it's the other player's turn, you can move a piece anyway: the move is kept (its
+   squares turn red) and played the moment their move arrives, if it's legal then. Where a piece may pre-move is worked
+   out from how it moves, ignoring other pieces (they may have moved by then), like chess.com and lichess. */
+let premove = null;
+const preOn = () => online.on && !localGame && !over && save.pre !== false && (G.w ? 'w' : 'b') !== player;
+function preDests(from) {
+  const p = G.b[from]; if (!p) return [];
+  const t = p.toUpperCase(), w = isW(p), r = from >> 3, c = from & 7, out = [];
+  const add = (rr, cc) => { if (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) out.push(rr * 8 + cc); };
+  if (t === 'N') for (const [a, b] of [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]) add(r + a, c + b);
+  if (t === 'K') { for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (a || b) add(r + a, c + b); if (c === 4 && r === (w ? 7 : 0)) { add(r, 6); add(r, 2); } }
+  if ('RQ'.includes(t)) for (let i = 0; i < 8; i++) { if (i !== r) add(i, c); if (i !== c) add(r, i); }
+  if ('BQ'.includes(t)) for (let d = 1; d < 8; d++) for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) add(r + a * d, c + b * d);
+  if (t === 'P') { const f = w ? -1 : 1; add(r + f, c); if (r === (w ? 6 : 1)) add(r + 2 * f, c); add(r + f, c - 1); add(r + f, c + 1); }
+  return out.filter(s => s !== from && !(G.b[s] && isW(G.b[s]) === w && G.b[s].toUpperCase() === 'K'));
+}
+function setPremove(from, to) {
+  if (!preDests(from).includes(to)) { premove = null; selected = -1; renderMarks(); return false; }
+  premove = { from, to }; selected = -1; renderMarks(); return true;
+}
+function clearPremove() { if (!premove) return; premove = null; renderMarks(); }
+function playPremove() {
+  if (!premove) return;
+  const p = premove; premove = null;
+  if (over || !myTurn()) { renderMarks(); return; }
+  const cands = legalNow.filter(m => m.from === p.from && m.to === p.to);
+  const m = cands.find(x => !x.pr || x.pr.toUpperCase() === 'Q') || cands[0]; // a pre-moved pawn becomes a queen
+  if (!m) { renderMarks(); return; }
+  if (pieceEls[p.from]) placeEl(pieceEls[p.from], p.from);
+  playMove(m);
+}
 function squareFromPoint(x, y) { const r = boardEl.getBoundingClientRect(); const col = Math.floor((x - r.left) / r.width * 8), row = Math.floor((y - r.top) / r.height * 8); if (col < 0 || col > 7 || row < 0 || row > 7) return -1; return sqAt(row, col); }
 function tryMove(from, to, dropped) {
   const cands = legalNow.filter(m => m.from === from && m.to === to);
@@ -843,14 +908,16 @@ boardEl.addEventListener('pointerdown', e => {
   Sound.init();
   if (!$('promo').hidden || !$('result').hidden) return;
   const sq = squareFromPoint(e.clientX, e.clientY); if (sq < 0) return;
+  if (e.button === 2) { clearPremove(); selected = -1; renderMarks(); return; } // 1.7: right-click cancels a pre-move
   const p = G.b[sq], mine = p && (isW(p) ? 'w' : 'b') === player;
   if (selected >= 0 && sq !== selected && legalNow.some(m => m.from === selected && m.to === sq) && myTurn()) { tryMove(selected, sq, false); return; }
+  if (selected >= 0 && sq !== selected && preOn() && !mine && preDests(selected).includes(sq)) { setPremove(selected, sq); return; } // 1.7
   if (mine && !over) {
-    const again = selected === sq; selected = sq; renderMarks();
-    if (myTurn() && pieceEls[sq]) { drag = { sq, el: pieceEls[sq], again, moved: false, x: e.clientX, y: e.clientY, id: e.pointerId }; try { boardEl.setPointerCapture(e.pointerId); } catch (_) {} }
+    const again = selected === sq; selected = sq; if (premove && preOn()) premove = null; renderMarks();
+    if ((myTurn() || preOn()) && pieceEls[sq]) { drag = { sq, el: pieceEls[sq], again, moved: false, x: e.clientX, y: e.clientY, id: e.pointerId }; try { boardEl.setPointerCapture(e.pointerId); } catch (_) {} }
     e.preventDefault(); return;
   }
-  selected = -1; renderMarks();
+  selected = -1; premove = null; renderMarks();
 });
 boardEl.addEventListener('pointermove', e => {
   if (!drag || e.pointerId !== drag.id) return;
@@ -868,6 +935,7 @@ function endDrag(e) {
   const to = squareFromPoint(e.clientX, e.clientY);
   if (to >= 0 && to !== d.sq && myTurn() && tryMove(d.sq, to, true)) return;
   d.el.classList.remove('drag'); placeEl(d.el, d.sq, true);
+  if (to >= 0 && to !== d.sq && preOn()) setPremove(d.sq, to); // 1.7: dropped while it's their turn: a pre-move
 }
 boardEl.addEventListener('pointerup', endDrag);
 boardEl.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) { drag.el.classList.remove('drag'); placeEl(drag.el, drag.sq, true); for (const s of sqEls) s.classList.remove('hover'); drag = null; } });
@@ -906,7 +974,8 @@ function renderSide() {
   const mv = $('moves'); mv.innerHTML = h || '<div class="mrow" style="color:var(--muted);display:block">Moves will show here.</div>'; mv.scrollTop = mv.scrollHeight;
   // status line
   let st;
-  if (over) st = !over.winner ? 'Draw ' + over.why + '.' : (over.winner === player ? 'You won ' : 'You lost ') + (over.resigned ? '(you resigned).' : over.why + '.');
+  if (over && online.on && hist.length < 2 && over.why === 'on time' && !over.quit && !over.left) st = 'Game aborted: no first move.'; // 1.7
+  else if (over) st = !over.winner ? 'Draw ' + over.why + '.' : (over.winner === player ? 'You won ' : 'You lost ') + (over.resigned ? '(you resigned).' : over.why + '.');
   else if (resignArm) st = 'Click Resign again to give up this game.';
   else if (aiBusy) st = 'The computer is thinking…';
   else if (online.on && (G.w ? 'w' : 'b') !== player) st = (inCheck(G, G.w) ? 'Check! ' : '') + `${oppName()}’s move.`;
@@ -1019,6 +1088,24 @@ function glicko(r, rd, ro, rdo, s) {
 const showR = r => String(Math.round(r));
 const myRating = () => save.rating ? { r: Math.round(save.rating.r), rd: Math.round(rdNow(save.rating)) } : {};
 
+/* 1.7: game modes (time controls). A key is 'base+inc' in seconds ('180+2' = Blitz 3+2), or 'm90' for the old
+   1:30-a-move timer. Players in a quick match only meet someone with the same key. */
+const TC_GROUPS = [
+  { k: 'ultra', name: 'UltraBullet', ic: '💥', limit: 'Under 1 minute', vibe: 'Pure mouse speed, pre-moving and gut feeling. There is no time to think, so play on instinct.', f: ['15+0', '30+0', '0+1'] },
+  { k: 'bullet', name: 'Bullet', ic: '🚀', limit: '1 to 2 minutes', vibe: 'Fast tactics and winning on time (flagging). Very little calculating: keep moving and keep your clock alive.', f: ['60+0', '60+1', '120+1'] },
+  { k: 'blitz', name: 'Blitz', ic: '⚡', limit: '3 to 5 minutes', vibe: 'The most popular mode online. Fast, but with enough time for a basic plan.', f: ['180+0', '180+2', '300+0', '300+3'] },
+  { k: 'rapid', name: 'Rapid', ic: '⏱️', limit: '10 to 60 minutes', vibe: 'Time to work out combinations and play real endgames.', f: ['600+0', '600+5', '900+10', '1800+0'] },
+  { k: 'classical', name: 'Classical', ic: '🏛️', limit: '60+ minutes', vibe: 'The tournament standard: deep calculation, long-term strategy and stamina.', f: ['3600+30', '5400+30'] },
+  { k: 'move', name: '1:30 a move', ic: '⌛', limit: 'Classic Arcade timer', vibe: 'No total clock: each move just has to be made within 1 minute 30 seconds, like before 1.7.', f: ['m90'] },
+];
+const TC_KEYS = TC_GROUPS.flatMap(g => g.f);
+const tcParse = k => { if (k === 'm90' || !TC_KEYS.includes(k)) return { k: 'm90', per: true }; const [b, i] = k.split('+').map(Number); return { k, base: b * 1000, inc: i * 1000 }; };
+const tcGroup = k => TC_GROUPS.find(g => g.f.includes(k)) || TC_GROUPS[TC_GROUPS.length - 1];
+const tcShort = k => { if (k === 'm90') return '1:30 a move'; const [b, i] = k.split('+').map(Number); return (b && b < 60 ? b + 's' : String(b / 60)) + '+' + i; };
+const tcLabel = k => k === 'm90' ? '1:30 a move' : tcGroup(k).name + ' ' + tcShort(k);
+const tcExplain = k => { if (k === 'm90') return 'Each move within 1:30'; const [b, i] = k.split('+').map(Number); const bt = b < 60 ? b + ' seconds' : (b / 60) + (b === 60 ? ' minute' : ' minutes'); return (b ? bt + ' each' : 'No starting time') + (i ? ', +' + i + 's a move' : ', no extra time'); };
+const myTc = () => TC_KEYS.includes(save.tc) ? save.tc : '180+2';
+
 const Net = (() => {
   const SB_URL = 'https://fewocduisjbctoxolkjr.supabase.co', SB_KEY = 'sb_publishable_ZRKsVTWRQ_XyH3K6VxeZ0g_g2fky-8d';
   const SB_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=3';
@@ -1062,10 +1149,10 @@ const Net = (() => {
     table.on('broadcast', { event: 'look' }, () => emit('look')); // 1.6: a spectator asks for the game so far
     table.on('presence', { event: 'sync' }, onTable);
     await joinChan(table);
-    await table.track(Object.assign({ id: myId, n: api.name, h: host === myId }, api.myRating ? api.myRating() : {})); // 1.4: with your rating
+    await table.track(Object.assign({ id: myId, n: api.name, h: host === myId, tc: api.tc }, api.myRating ? api.myRating() : {})); // 1.4: with your rating; 1.7: and the game mode
   }
   // 1.4: after a rated game, tell the table your new rating (for the rematch)
-  api.retrack = () => { if (table && table.state === 'joined') { try { const p = table.track(Object.assign({ id: myId, n: api.name, h: hostId === myId }, api.myRating ? api.myRating() : {})); if (p && p.catch) p.catch(() => {}); } catch (e) {} } };
+  api.retrack = () => { if (table && table.state === 'joined') { try { const p = table.track(Object.assign({ id: myId, n: api.name, h: hostId === myId, tc: api.tc }, api.myRating ? api.myRating() : {})); if (p && p.catch) p.catch(() => {}); } catch (e) {} } };
   const rateOf = m => { const r = +m.r, rd = +m.rd; return isFinite(r) && isFinite(rd) && r >= 0 && r <= 1e5 && rd >= 30 && rd <= 350 ? { r, rd } : null; };
   function onTable() {
     // 1.6: who is watching this table (shown above the board)
@@ -1076,13 +1163,14 @@ const Net = (() => {
       if (!hostId && others.length > 1) { emit('error', 'That table is full.'); api.leave(); return; }
       if (!c) return;
       if (!hostId) hostId = c.id;
-      api.opp = { id: c.id, name: api.cleanName(c.n) || 'Opponent', rate: rateOf(c) };
+      api.opp = { id: c.id, name: api.cleanName(c.n) || 'Opponent', rate: rateOf(c), tc: TC_KEYS.includes(c.tc) ? c.tc : 'm90' };
       clearTimeout(waitTimer); emit('matched', api.opp);
     } else if (!others.some(m => m.id === api.opp.id) && !api.left) { api.left = true; emit('left', api.opp); }
     else { const o = others.find(m => m.id === api.opp.id); if (o) { api.opp.rate = rateOf(o); emit('rate'); } }
   }
+  api.tc = 'm90';
   api.quick = async (name, again) => {
-    api.unwatch();
+    api.unwatch(); api.tc = myTc();
     api.name = api.cleanName(name) || 'Player'; api.on = true;
     await getClient();
     lobby = chan(BASE + '-lobby2'); // 1.5.1: a new lobby, so the reset ratings never meet older copies
@@ -1090,7 +1178,8 @@ const Net = (() => {
     let pairing = false;
     lobby.on('presence', { event: 'sync' }, () => {
       if (pairing || !lobby) return;
-      const q = members(lobby).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1)), i = q.findIndex(m => m.id === myId);
+      // 1.7: only people who picked the same game mode (older copies have none: the 1:30-a-move timer)
+      const q = members(lobby).filter(m => (TC_KEYS.includes(m.tc) ? m.tc : 'm90') === api.tc).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1)), i = q.findIndex(m => m.id === myId);
       if (i < 0) return;
       emit('queue', q.length);
       const mate = i % 2 === 0 ? q[i + 1] : q[i - 1];
@@ -1103,10 +1192,10 @@ const Net = (() => {
       waitTimer = setTimeout(() => { if (!api.opp && api.on) { const tb = table; table = null; drop(tb); api.quick(api.name, true).catch(() => emit('error', 'offline')); } }, 8000);
     });
     await joinChan(lobby);
-    await lobby.track({ id: myId, n: api.name, t });
+    await lobby.track(api.tc === 'm90' ? { id: myId, n: api.name, t } : { id: myId, n: api.name, t, tc: api.tc });
   };
   api.create = async (name, fixed) => { // fixed: a tournament match's table code (2026-11-17)
-    api.unwatch();
+    api.unwatch(); api.tc = fixed ? 'm90' : myTc();
     api.name = api.cleanName(name) || 'Player'; api.on = true;
     await getClient();
     const code = fixed || Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
@@ -1114,7 +1203,7 @@ const Net = (() => {
     return code;
   };
   api.join = async (name, code) => {
-    api.unwatch();
+    api.unwatch(); api.tc = myTc(); // the table maker's mode wins (startOnline)
     api.name = api.cleanName(name) || 'Player'; api.on = true;
     await getClient();
     await seat('c' + code, null, null);
@@ -1187,10 +1276,12 @@ function startOnline() {
   // 1.4: the ratings this game is played for (an opponent on an older copy of the game has none: unrated)
   online.oppRate = Net.opp.rate ? { r: Net.opp.rate.r, rd: Net.opp.rate.rd } : null; online.delta = null;
   G = fromFEN(START_FEN); hist = []; keys = [posKey(G)]; legalNow = legal(G); over = null; selected = -1; resignArm = 0; flipped = false;
+  // 1.7: the game mode is the table maker's (in a quick match both picked the same one)
+  online.tc = Net.isHost() ? Net.tc : (Net.opp.tc || 'm90'); clkReset(); premove = null;
   document.body.classList.add('online');
   buildSquares(); renderAll(); renderSide(); Sound.start();
   // 1.6: the host lists the game for spectators, and anyone already watching is told a new game started
-  if (Net.isHost()) Net.liveOn({ w: whiteName(), b: blackName(), wr: rOf('w'), br: rOf('b') });
+  if (Net.isHost()) Net.liveOn({ w: whiteName(), b: blackName(), wr: rOf('w'), br: rOf('b'), tc: online.tc });
   sendState();
 }
 // 1.6: the game so far, for spectators ('look' asks for it; sent again when a game starts and ends)
@@ -1200,7 +1291,8 @@ function rOf(c) { const r = c === player ? save.rating && save.rating.r : online
 function sendState() {
   if (!online.on || !Net.opp) return;
   Net.send('st', { g: online.gameNo, mv: hist.map(x => uci(x.m)), w: whiteName(), b: blackName(), wi: player === 'w' ? Net.me : Net.opp.id, bi: player === 'b' ? Net.me : Net.opp.id, wr: rOf('w'), br: rOf('b'),
-    o: over ? { w: over.winner || null, y: over.left ? 'left' : over.resigned ? 'resigned' : over.why || '' } : null, ms: Math.max(0, mclock.end - Date.now()) });
+    o: over ? { w: over.winner || null, y: over.left ? 'left' : over.resigned ? 'resigned' : over.why || '' } : null, ms: Math.max(0, mclock.end - Date.now()),
+    tc: online.tc, cw: clkLeft('w'), cb: clkLeft('b') }); // 1.7: the mode and both clocks
 }
 Net.onEvent('look', sendState);
 Net.onEvent('watchers', list => { const el = $('watchBar'); el.hidden = !online.on || !list.length; el.textContent = '👁 ' + (list.length === 1 ? list[0] + ' is watching' : list.length + ' watching: ' + list.join(', ')); el.title = el.textContent; });
@@ -1253,7 +1345,7 @@ const Elo = (() => {
 setTimeout(() => Elo.fetch(), 800);
 // refreshing or closing the page in the middle of a game counts as leaving it
 addEventListener('pagehide', () => {
-  if (online.on && Net.opp && !over && !localGame) { over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true, quit: true }; try { Net.send('resign', { q: 1 }); } catch (e) {} try { finish(); } catch (e) {} persist(); }
+  if (online.on && Net.opp && !over && !localGame) { premove = null; over = { winner: player === 'w' ? 'b' : 'w', why: 'by leaving the table', resigned: true, quit: true }; try { Net.send('resign', { q: 1 }); } catch (e) {} try { finish(); } catch (e) {} persist(); }
 });
 function leaveOnline() {
   // 1.4: walking out of a game you've both moved in loses it, as on chess.com
@@ -1268,7 +1360,7 @@ function leaveOnline() {
     if (!over && (G.w ? 'w' : 'b') !== player) aiMove();
   } else newGame();
 }
-Net.onEvent('matched', o => { netStatus(`Playing ${o.name}.`); $('chatLog').innerHTML = ''; startOnline(); });
+Net.onEvent('matched', o => { netStatus(`Playing ${o.name} · ${tcLabel(Net.isHost() ? Net.tc : (o.tc || 'm90'))}.`); $('chatLog').innerHTML = ''; startOnline(); });
 // chat with the other player (1.2)
 const escH = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function chatLine(name, text, me) { const el = document.createElement('div'); if (me) el.className = 'me'; el.innerHTML = `<b>${escH(name)}:</b> ${escH(text)}`; const log = $('chatLog'); log.appendChild(el); while (log.children.length > 60) log.firstChild.remove(); log.scrollTop = log.scrollHeight; }
@@ -1283,8 +1375,59 @@ $('chatIn').addEventListener('keydown', e => {
 // 1.5.3: online, each move has to be made within 1:30, or that player loses the game on time
 const MOVE_MS = 90000, CLAIM_MS = 5000;
 const mclock = { n: -1, side: '', end: 0 };
+/* 1.7: chess clocks for the timed modes. Each side's time is kept here; the side to move's clock runs once both
+   players have made their first move (each first move has its own FIRST_MS). A move takes the time used and adds the
+   increment; the mover sends their clock with the move ('c', ms left) and the other side takes it (never more than
+   it could be, so an edited copy can't add time). Running out loses on time, sent as resign t:1 like 1.5.3. */
+const FIRST_MS = 30000;
+const clk = { on: false, w: 0, b: 0, inc: 0, at: 0, first: 0 };
+function clkReset() {
+  const t = tcParse(online.tc || 'm90');
+  clk.on = !t.per; clk.w = clk.b = t.base || 0; clk.inc = t.inc || 0; clk.at = Date.now(); clk.first = Date.now() + FIRST_MS;
+}
+const clkRunning = () => clk.on && hist.length >= 2;
+function clkLeft(c) { if (!clk.on) return null; let v = clk[c]; if (clkRunning() && !over && (G.w ? 'w' : 'b') === c) v -= Date.now() - clk.at; return Math.round(v); }
+function clkMoved(side) {
+  if (!clk.on || over) return;
+  if (hist.length >= 2) clk[side] -= Date.now() - clk.at;
+  clk[side] = Math.max(0, clk[side]) + clk.inc;
+  clk.at = Date.now(); clk.first = Date.now() + FIRST_MS;
+}
+function clkFmt(ms) {
+  ms = Math.max(0, ms);
+  if (ms < 20000) return (Math.floor(ms / 100) / 10).toFixed(1); // the last 20 seconds in tenths
+  const s = Math.ceil(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0');
+}
+function clkPaint() {
+  const show = online.on && !localGame && !!Net.opp && clk.on;
+  const topCol = flip() ? 'w' : 'b', botCol = topCol === 'w' ? 'b' : 'w', side = G.w ? 'w' : 'b';
+  for (const [id, c] of [['topClk', topCol], ['botClk', botCol]]) {
+    const el = $(id); el.hidden = !show; if (!show) continue;
+    const v = clkLeft(c), run = !over && side === c;
+    el.textContent = clkFmt(v); el.className = 'clk' + (run ? ' run' : '') + (v < Math.min(20000, Math.max(5000, tcParse(online.tc).base / 10 || 5000)) ? ' low' : '');
+  }
+}
 function clockTick() {
   const el = $('moveClock');
+  clkPaint();
+  if (clk.on && online.on && !over && !localGame && Net.opp) { // 1.7: a timed mode
+    const side = G.w ? 'w' : 'b', mine = side === player;
+    if (!clkRunning()) { // a first move: its own 30 seconds
+      const left = clk.first - Date.now(), sec = Math.max(0, Math.ceil(left / 1000));
+      el.hidden = false; el.className = sec <= 10 ? 'low' : '';
+      el.textContent = `${mine ? 'Make your first move' : oppName() + ' to make their first move'} · 0:${String(sec).padStart(2, '0')}`;
+      if (mine && left <= 0) { over = { winner: player === 'w' ? 'b' : 'w', why: 'on time' }; try { Net.send('resign', { t: 1 }); } catch (e) {} finish(); renderMarks(); }
+      else if (!mine && left <= -CLAIM_MS) { over = { winner: player, why: 'on time' }; finish(); renderMarks(); }
+      return;
+    }
+    el.hidden = true;
+    const left = clkLeft(side);
+    if (mine && left <= 0) { clk[side] = 0; clk.at = Date.now(); over = { winner: player === 'w' ? 'b' : 'w', why: 'on time' }; try { Net.send('resign', { t: 1 }); } catch (e) {} finish(); renderMarks(); clkPaint(); }
+    else if (!mine && left <= -CLAIM_MS) { clk[side] = 0; clk.at = Date.now(); over = { winner: player, why: 'on time' }; finish(); renderMarks(); clkPaint(); } // their screen never said so
+    return;
+  }
+  if (clk.on) { el.hidden = true; mclock.n = -1; return; }
   if (!online.on || over || localGame || !Net.opp) { el.hidden = true; mclock.n = -1; return; }
   const side = G.w ? 'w' : 'b', mine = side === player;
   if (mclock.n !== hist.length || mclock.side !== side) { mclock.n = hist.length; mclock.side = side; mclock.end = Date.now() + MOVE_MS; }
@@ -1294,10 +1437,15 @@ function clockTick() {
   if (mine && raw <= 0) { over = { winner: player === 'w' ? 'b' : 'w', why: 'on time' }; try { Net.send('resign', { t: 1 }); } catch (e) {} finish(); renderMarks(); }
   else if (!mine && raw <= -CLAIM_MS) { over = { winner: player, why: 'on time' }; finish(); renderMarks(); } // their screen never said so
 }
-setInterval(clockTick, 250);
+setInterval(clockTick, 100);
 Net.onEvent('mv', p => {
   if (!online.on || over || (p.n | 0) !== hist.length || (G.w ? 'w' : 'b') === player) return;
-  const m = legalNow.find(x => uci(x) === p.u); if (m) playMove(m);
+  const m = legalNow.find(x => uci(x) === p.u); if (!m) return;
+  const side = G.w ? 'w' : 'b', est = clk.on ? clkLeft(side) + clk.inc : 0;
+  playMove(m);
+  // 1.7: take their clock from the move, but never more than it could be (lag allowance 2 s)
+  if (clk.on && isFinite(+p.c)) { clk[side] = Math.max(0, Math.min(+p.c, est + 2000)); clkPaint(); }
+  playPremove();
 });
 Net.onEvent('resign', p => { if (online.on && !over) { over = p && p.t ? { winner: player, why: 'on time' } : p && p.q ? { winner: player, why: '', left: true } : { winner: player, why: 'by resignation', oppResigned: true }; finish(); renderMarks(); } }); // 1.5.2: q = they walked out (no Elo change)
 Net.onEvent('left', () => {
@@ -1314,10 +1462,10 @@ Net.onEvent('waiting', m => {
   const pop = $('waitPop');
   if (!m || Net.on || online.on || waitSkip.has(m.id)) { pop.hidden = true; return; }
   if (!pop.hidden && pop.dataset.id === m.id) return;
-  pop.dataset.id = m.id; $('waitName').textContent = Net.cleanName(m.n) || 'Someone'; pop.hidden = false;
+  pop.dataset.id = m.id; pop.dataset.tc = TC_KEYS.includes(m.tc) ? m.tc : 'm90'; $('waitName').textContent = Net.cleanName(m.n) || 'Someone'; $('waitMode').textContent = tcLabel(pop.dataset.tc); pop.hidden = false;
   if (save.sound) { try { Sound.init(); Sound.move(); } catch (e) {} }
 });
-$('waitJoin').addEventListener('click', () => { $('waitPop').hidden = true; const b = document.querySelector('button[data-net="quick"]'); if (b) b.click(); });
+$('waitJoin').addEventListener('click', () => { $('waitPop').hidden = true; save.tc = $('waitPop').dataset.tc || 'm90'; persist(); paintTc(); const b = document.querySelector('button[data-net="quick"]'); if (b) b.click(); });
 $('waitNo').addEventListener('click', () => { waitSkip.add($('waitPop').dataset.id); $('waitPop').hidden = true; });
 setTimeout(() => Net.watch(), 1500);
 function netStatus(t, bad) { const s = $('netStatus'); s.textContent = t || ''; s.classList.toggle('bad', !!bad); }
@@ -1339,6 +1487,23 @@ $('netBox').addEventListener('click', e => {
   }
 });
 $('netName').value = save.name || '';
+// 1.7: the game mode picker, with what each mode is like
+function paintTc() {
+  const k = myTc(), g = tcGroup(k);
+  $('tcIc').textContent = g.ic; $('tcName').textContent = tcLabel(k); $('tcSub').textContent = tcExplain(k);
+  $('tcList').innerHTML = TC_GROUPS.map(g2 => `<div class="tcg${g2.f.includes(k) ? ' on' : ''}"><div class="tcg-h"><b>${g2.ic} ${g2.name}</b><span>${g2.limit}</span></div><p>${g2.vibe}</p><div class="tcg-f">${g2.f.map(f => `<button type="button" data-tc="${f}" class="${f === k ? 'on' : ''}" title="${tcExplain(f)}">${f === 'm90' ? '1:30 a move' : tcShort(f)}<small>${f === 'm90' ? 'per move' : tcExplain(f).replace(' each', '').replace(', ', ' · ')}</small></button>`).join('')}</div></div>`).join('');
+}
+$('tcBtn').addEventListener('click', () => { Sound.init(); paintTc(); $('tcPop').hidden = false; });
+$('tcClose').addEventListener('click', () => { $('tcPop').hidden = true; });
+$('tcPop').addEventListener('click', e => {
+  if (e.target === $('tcPop')) { $('tcPop').hidden = true; return; }
+  const b = e.target.closest('button[data-tc]'); if (!b) return;
+  save.tc = b.dataset.tc; persist(); paintTc();
+});
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('tcPop').hidden) $('tcPop').hidden = true; });
+paintTc();
+$('preChk').checked = save.pre !== false;
+$('preChk').addEventListener('change', e => { save.pre = e.target.checked; if (!save.pre) premove = null; persist(); renderMarks(); });
 // 2026-11-17: tournament matches (tourney.js): ?tmatch=CODE&tside=host|guest&tname=NAME opens that table straight away;
 // the guest keeps knocking until the host has sat down
 (() => {
@@ -1434,6 +1599,8 @@ const Spec = (() => {
     sp.g = st.g | 0; sp.w = nm(st.w); sp.b = nm(st.b); sp.wi = st.wi; sp.bi = st.bi; sp.wr = st.wr; sp.br = st.br; sp.has = true;
     if (st.o) sp.over = { w: st.o.w === 'w' || st.o.w === 'b' ? st.o.w : null, y: String(st.o.y || '').slice(0, 40) };
     sp.end = Date.now() + Math.min(90000, Math.max(0, +st.ms || 90000));
+    // 1.7: a timed mode: both clocks, the side to move's running from now
+    sp.tc = TC_KEYS.includes(st.tc) ? st.tc : 'm90'; sp.clk = sp.tc !== 'm90' && isFinite(+st.cw) && isFinite(+st.cb) ? { w: +st.cw, b: +st.cb, at: Date.now() } : null;
   }
   function apply(u, quiet) {
     const m = sp.legal.find(x => uci(x) === u); if (!m) return false;
@@ -1444,6 +1611,7 @@ const Spec = (() => {
     else if (sp.keys.filter(k => k === sp.keys[sp.keys.length - 1]).length >= 3) sp.over = { w: null, y: 'by repetition' };
     else if (insufficient(G2)) sp.over = { w: null, y: 'not enough pieces to checkmate' };
     sp.end = Date.now() + MOVE_MS;
+    if (sp.clk && !quiet) { const mover = sp.G.w ? 'b' : 'w'; if (sp.hist.length > 2) sp.clk[mover] -= Date.now() - sp.clk.at; sp.clk[mover] = Math.max(0, sp.clk[mover]) + (tcParse(sp.tc).inc || 0); sp.clk.at = Date.now(); }
     if (!quiet && save.sound) { try { if (s.endsWith('+') || s.endsWith('#')) Sound.check(); else if (m.cap) Sound.capture(); else Sound.move(); } catch (e) {} }
     return true;
   }
@@ -1456,7 +1624,8 @@ const Spec = (() => {
     }
     B.innerHTML = h;
     const side = sp.G.w ? 'w' : 'b', sec = Math.ceil(Math.max(0, sp.end - Date.now()) / 1000), tm = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-    const bar = c => `${c === 'w' ? '♔' : '♚'} ${esc(c === 'w' ? sp.w : sp.b)} <small>${(c === 'w' ? sp.wr : sp.br) != null ? (c === 'w' ? sp.wr : sp.br) | 0 : ''}</small>${!sp.over && !sp.left && sp.has ? `<span class="tm${side === c ? (sec <= 15 ? ' low' : ' go') : ''}">${side === c ? tm : ''}</span>` : ''}`;
+    const ck = c => { if (!sp.clk) return null; let v = sp.clk[c]; if (!sp.over && !sp.left && side === c && sp.hist.length >= 2) v -= Date.now() - sp.clk.at; return Math.max(0, v); };
+    const bar = c => `${c === 'w' ? '♔' : '♚'} ${esc(c === 'w' ? sp.w : sp.b)} <small>${(c === 'w' ? sp.wr : sp.br) != null ? (c === 'w' ? sp.wr : sp.br) | 0 : ''}</small>${sp.clk && sp.has ? `<span class="tm${side === c && !sp.over && !sp.left ? (ck(c) < 20000 ? ' low' : ' go') : ''}">${clkFmt(ck(c))}</span>` : !sp.over && !sp.left && sp.has ? `<span class="tm${side === c ? (sec <= 15 ? ' low' : ' go') : ''}">${side === c ? tm : ''}</span>` : ''}`;
     $('spTopBar').innerHTML = bar('b'); $('spBotBar').innerHTML = bar('w');
     const W = c => c === 'w' ? sp.w : sp.b;
     $('spStatus').textContent = !sp.has ? 'Joining the game…' : sp.over ? (!sp.over.w ? 'Draw ' + sp.over.y + '.' : sp.over.y === 'resigned' ? W(sp.over.w === 'w' ? 'b' : 'w') + ' resigned. ' + W(sp.over.w) + ' wins.' : sp.over.y === 'left' ? W(sp.over.w === 'w' ? 'b' : 'w') + ' left. ' + W(sp.over.w) + ' wins.' : W(sp.over.w) + ' wins ' + sp.over.y + '.') + ' Waiting for a rematch…'
@@ -1470,13 +1639,13 @@ const Spec = (() => {
     $('specPick').hidden = true; $('specView').hidden = false;
     sp = { key, has: false, g: -1, G: fromFEN(START_FEN), hist: [], keys: [], legal: [], over: null, left: '', w: 'White', b: 'Black', end: Date.now() + MOVE_MS };
     $('spWho').textContent = ''; draw();
-    clearInterval(clockT); clockT = setInterval(draw, 500);
+    clearInterval(clockT); clockT = setInterval(draw, 200);
     const me = myAcctName() || save.name || 'Guest';
     Net.spectate(key, me, (ev, p) => {
       if (!sp) return;
       if (ev === 'st') { if (!Array.isArray(p.mv)) return; if ((p.g | 0) > sp.g || ((p.g | 0) === sp.g && p.mv.length >= sp.hist.length && (!sp.over || p.o))) reset(p); }
-      else if (ev === 'mv') { if (sp.has && !sp.over && (p.n | 0) === sp.hist.length && typeof p.u === 'string') apply(p.u); }
-      else if (ev === 'resign') { if (sp.has && !sp.over && (p.f === sp.wi || p.f === sp.bi)) { const loser = p.f === sp.wi ? 'w' : 'b'; sp.over = { w: loser === 'w' ? 'b' : 'w', y: p.t ? 'on time' : p.q ? 'left' : 'resigned' }; } }
+      else if (ev === 'mv') { if (sp.has && !sp.over && (p.n | 0) === sp.hist.length && typeof p.u === 'string') { const mover = sp.G.w ? 'w' : 'b'; if (apply(p.u) && sp.clk && isFinite(+p.c)) sp.clk[mover] = Math.max(0, +p.c); } }
+      else if (ev === 'resign') { if (sp.has && !sp.over && (p.f === sp.wi || p.f === sp.bi)) { const loser = p.f === sp.wi ? 'w' : 'b'; sp.over = { w: loser === 'w' ? 'b' : 'w', y: p.t ? 'on time' : p.q ? 'left' : 'resigned' }; if (p.t && sp.clk) sp.clk[loser] = 0; } }
       else if (ev === 'who') {
         const ids = p.players.map(m => m.id);
         if (sp.has && sp.wi && sp.bi && !(ids.includes(sp.wi) && ids.includes(sp.bi))) sp.left = (!ids.includes(sp.wi) ? sp.w : sp.b) + ' left the table.';
@@ -1505,6 +1674,7 @@ if (save.game && Array.isArray(save.game.moves) && save.opp !== 'local') {
 
 </script>
 <script src="../moving.js?v=1"></script>
+<script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>
 </body>
 </html>
