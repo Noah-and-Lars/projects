@@ -727,7 +727,7 @@ function match(P, text) {
   const t = norm(text); if (t.length < 2) return null;
   const L = answersFor(P), tries = [t, t.replace(/es$/, ''), t.replace(/s$/, '')];
   for (const q of tries) { const i = L.findIndex(e => e.keys.includes(q)); if (i >= 0) return { i, n: L.length, e: L[i] }; }
-  if (t.length >= 5) { let best = null, bd = 9; L.forEach((e, i) => { for (const k of e.keys) { const d = lev(t, k); const ok = d <= (k.length >= 9 ? 2 : 1); if (ok && d < bd) { bd = d; best = { i, n: L.length, e }; } } }); if (best) return best; }
+  if (t.length >= 4) { let best = null, bd = 9; L.forEach((e, i) => { for (const k of e.keys) { const d = lev(t, k); const ok = d <= (k.length >= 9 ? 2 : 1); if (ok && d < bd) { bd = d; best = { i, n: L.length, e }; } } }); if (best) return best; }
   return null;
 }
 // rarity from the place in the list: the first 15% are common, the last 12% the rarest.
