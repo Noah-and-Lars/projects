@@ -102,13 +102,14 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   only that game's summary from games.js (tagline, description, controls, keys; 700 characters), elsewhere the page name.
   The server: POST `/ai` in the private Worker (`aiChat`): Bearer token checked by the Account object's 'aiuse' route,
   which also counts 15 messages a day per account (`a.ai` {d, n}; one Durable Object request per message);
-  `@cf/meta/llama-3.1-8b-instruct-fp8-fast` streamed as text/event-stream ('data: {"t"}' pieces, then {"done", "left"});
+  `@cf/google/gemma-4-26b-a4b-it` (since 2026-11-18 evening, replacing Llama 3.1 8B; its thinking is switched off with `chat_template_kwargs: { enable_thinking: false }`, or the thinking eats the whole reply; it streams OpenAI-style chunks, each with its own usage, which the Worker adds up) streamed as text/event-stream ('data: {"t"}' pieces, then {"done", "left"});
   Llama Guard 3 (`@cf/meta/llama-guard-3-8b`) checks only the finished reply and {"blocked": 1} makes the panel show a
   polite refusal instead. Site-wide about 9,000 neurons a day (the free plan has 10,000; a message costs about 35, so
   roughly 250 messages a day): each Worker instance counts from the models' own usage figures and adds to the Tally
   object 'ai-budget' every 150 neurons or minute; past the cutoff everyone gets "Assistant's resting until 11am" (00:00
-  UTC). The system prompt (`AI_SYSTEM`): The Arcade's helper, kid-friendly, only the site and its games, never a
-  person's name, no personal details, no links. Bump `assistant.js?v=N` in those 7 pages when it changes. Its classes are
+  UTC). The system prompt (`AI_SYSTEM`): the Arcade Assistant, kid-friendly, any topic a kid might ask (homework explained
+  rather than just answered, facts, jokes) plus the site and its games; never the name of anyone who made, runs or plays on
+  the site, no personal details, no links, plain text (assistant.js `plainMd` drops markdown that slips through). Bump `assistant.js?v=N` in those 7 pages when it changes. Its classes are
   prefixed `ai-` (arcade.css has a global `.msg` rule from the chat).
 - `console.js` (2026-11-11, loaded by every site page after account.js): the console version. It detects PlayStation, Xbox,
   Nintendo and smart-TV browsers from the user agent (`?console=on|off|playstation|xbox|tv` overrides, remembered in

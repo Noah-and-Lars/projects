@@ -10,7 +10,7 @@
 (function () {
   if (window.ArcadeAssistant) return;
   var KEY = 'arcade-acct-ai:', KEEP = 40, SEND = 8, MAX = 500;
-  var REFUSED = 'Sorry, I can’t help with that one. Ask me about a game on The Arcade!';
+  var REFUSED = 'Sorry, I can’t help with that one. Ask me something else!';
   var file = (location.pathname.match(/([a-z0-9-]+)\.html$/i) || [0, 'index'])[1].toLowerCase();
   var PAGE = file === 'index' ? 'home' : file;
   var panel, log, form, input, sendBtn, guestBox, sub, btn, busy = false, msgs = [], who = '';
@@ -77,6 +77,8 @@
     document.head.appendChild(s);
   }
 
+  // the model is told to write plain text; this drops any markdown that slips through (**bold**, # headings, * bullets)
+  function plainMd(t) { return String(t).replace(/\*\*|__/g, '').replace(/^#{1,6}\s+/gm, '').replace(/^(\s*)\*\s+/gm, '$1- '); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
   function build() {
@@ -96,7 +98,7 @@
     si.onclick = function () { close(); var a = A(); if (a && a.welcome) a.welcome(); else if (a && a.open) a.open(); };
     guestBox.appendChild(si);
     form = el('form');
-    input = el('textarea'); input.rows = 1; input.maxLength = MAX; input.placeholder = 'Ask about a game or the site…'; input.setAttribute('aria-label', 'Message');
+    input = el('textarea'); input.rows = 1; input.maxLength = MAX; input.placeholder = 'Ask me anything…'; input.setAttribute('aria-label', 'Message');
     sendBtn = el('button', 'ai-send', 'Send'); sendBtn.type = 'submit';
     form.appendChild(input); form.appendChild(sendBtn);
     form.onsubmit = function (e) { e.preventDefault(); send(); };
@@ -114,8 +116,8 @@
     log.textContent = '';
     if (!on) { sub.textContent = ''; return; }
     if (!msgs.length) {
-      var hi = el('div', 'ai-hi'); hi.appendChild(el('b', '', 'Hi! I’m The Arcade’s helper.'));
-      hi.appendChild(document.createTextNode(PAGE === 'play' ? 'Ask me how to play this game, its controls, or for a tip.' : 'Ask me about any game here, or how the site works.'));
+      var hi = el('div', 'ai-hi'); hi.appendChild(el('b', '', 'Hi! I’m the Arcade Assistant.'));
+      hi.appendChild(document.createTextNode(PAGE === 'play' ? 'Ask me how to play this game or for a tip, or anything else: homework, fun facts, jokes…' : 'Ask me about the games and the site, or anything else: homework, fun facts, jokes…'));
       log.appendChild(hi);
     }
     msgs.forEach(function (m) { log.appendChild(el('div', 'ai-msg ' + m.r, m.t)); });
@@ -177,7 +179,7 @@
           var line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
           if (line.indexOf('data:') !== 0) continue;
           var x; try { x = JSON.parse(line.slice(5)); } catch (e) { continue; }
-          if (typeof x.t === 'string') { reply += x.t; bubble.classList.remove('wait'); bubble.textContent = reply; log.scrollTop = log.scrollHeight; }
+          if (typeof x.t === 'string') { reply += x.t; bubble.classList.remove('wait'); bubble.textContent = plainMd(reply); log.scrollTop = log.scrollHeight; }
           if (x.done) done = x;
         }
       }
@@ -190,7 +192,7 @@
     bubble.classList.remove('wait');
     if (done && done.blocked) reply = REFUSED;
     else if (!reply.trim()) reply = 'Hmm, I didn’t get an answer that time. Try asking again!';
-    bubble.textContent = reply;
+    reply = plainMd(reply); bubble.textContent = reply;
     msgs.push({ r: 'a', t: reply }); save();
     if (done && typeof done.left === 'number') sub.textContent = done.left + ' left today';
     log.scrollTop = log.scrollHeight;
