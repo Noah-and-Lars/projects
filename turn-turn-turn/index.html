@@ -251,6 +251,33 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
 #touchDrv button{width:78px;height:78px;border-radius:50%;background:rgba(16,21,28,.55);border:2px solid rgba(255,255,255,.25);color:#fff;font:900 20px/1 var(--ff)}
 #touchDrv button.on{background:rgba(255,255,255,.35)}
 
+/* 1.5 horror */
+#horHud{position:absolute;left:50%;top:10px;transform:translateX(-50%);text-align:center;color:#fff;text-shadow:0 2px 8px #000;white-space:nowrap}
+#horHud .req{display:inline-flex;align-items:baseline;gap:9px;padding:8px 18px;border-radius:12px;background:rgba(10,6,6,.74);border:1px solid rgba(255,70,60,.4)}
+#horHud .req small{font:800 12px/1 var(--ff);letter-spacing:.14em;color:#ff8a80}
+#horHud .req b{font:900 italic 36px/1 var(--ff);font-variant-numeric:tabular-nums}
+#horHud .req i{font:700 13px/1 var(--ff);color:#c8ced4;font-style:normal}
+#horHud .gap{margin-top:6px;font:800 13px/1.2 var(--ff);letter-spacing:.05em;color:#d8dde2}
+#horHud.under .req{background:rgba(150,10,10,.88);border-color:#ff3b30;animation:horPulse .45s infinite alternate}
+#horHud.up .req{animation:horUp 1s ease}
+@keyframes horPulse{to{transform:scale(1.07)}}
+@keyframes horUp{0%{transform:scale(1.5);background:#ff3b30}100%{transform:none}}
+#hud.hor #calls{top:17%}
+#horVig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0) 42%,rgba(90,0,0,.5) 78%,rgba(25,0,0,.92));opacity:0}
+#horBlack{position:absolute;inset:0;background:#000;opacity:0;transition:opacity 1.5s;display:flex;align-items:center;justify-content:center;text-align:center;font:900 italic clamp(26px,5vw,56px)/1.1 var(--ff);letter-spacing:.04em;color:#b8c0c8}
+#horBlack.on{opacity:1}
+#horFix{position:absolute;left:50%;bottom:132px;transform:translateX(-50%);pointer-events:auto!important;padding:13px 22px 15px;border-radius:14px;background:rgba(150,10,10,.92);border:2px solid #ff3b30;color:#fff;font:900 16px/1.2 var(--ff);overflow:hidden;min-width:300px;touch-action:none}
+#horFix kbd{font-size:13px}
+#horFix i{position:absolute;left:0;bottom:0;height:6px;width:0;background:#1fc7b2}
+#menu .btn.horror-btn{background:linear-gradient(180deg,rgba(60,8,8,.88),rgba(18,4,4,.9));border-color:rgba(255,70,60,.5)}
+#menu .btn.horror-btn:hover{background:linear-gradient(180deg,rgba(90,12,12,.92),rgba(30,6,6,.92))}
+.horror-btn small{color:#ff8a80;opacity:1!important}
+.hor-panel{background:linear-gradient(180deg,rgba(26,8,8,.95),rgba(10,10,14,.95));border-color:rgba(255,70,60,.3)}
+.hor-list{margin:4px 0 14px 18px;display:flex;flex-direction:column;gap:7px;color:#d8dde2;line-height:1.45}
+.hor-best{text-align:center;color:var(--dim);margin-bottom:14px}.hor-best b{color:#fff}
+.stage.horror{border-color:rgba(255,70,60,.45)!important}
+.daily-tag.hor-tag{background:#ff3b30;color:#fff}
+
 /* pause + results */
 .res-time{font:900 italic 64px/1 var(--ff);letter-spacing:-1px;font-variant-numeric:tabular-nums;text-align:center;margin:6px 0 4px}
 .res-medal{text-align:center;font-weight:800;margin-bottom:14px}
@@ -295,6 +322,10 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
     <div id="netbar" class="hidden"><span class="dot"></span><span id="netTxt"></span></div>
     <div id="hint"></div>
     <div id="modTag" class="hidden"></div>
+    <div id="horVig" class="hidden"></div>
+    <div id="horHud" class="hidden"><div class="req"><small>REQUIRED SPEED</small><b id="horReq">45</b><i>km/h</i></div><div class="gap" id="horGap"></div></div>
+    <button id="horFix" class="hidden">Hold <kbd>R</kbd> to reconnect the map<i></i></button>
+    <div id="horBlack">IT THREW YOU<br>OUT OF EXISTENCE</div>
     <div id="navpad" class="hidden"></div>
     <div id="touchDrv" class="hidden">
       <div class="grp"><button data-t="left">◀</button><button data-t="right">▶</button></div>
@@ -315,6 +346,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
       </div>
       <button class="btn big" data-go="join"><span>Join with a code</span><small>6 digits</small></button>
       <button class="btn big" data-go="solo"><span>Solo run</span><small>AI co-driver</small></button>
+      <button class="btn big horror-btn" data-go="horror"><span>Horror mode</span><small>New · a night chase</small></button>
       <div class="menu-row">
         <button class="btn" data-go="stages">Stages</button>
         <button class="btn" data-go="settings">Settings</button>
@@ -327,6 +359,22 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
       <div class="online-note" id="onlineNote"></div>
     </div>
     <div class="ver" id="verTxt"></div>
+  </div>
+
+  <div id="horrorScr" class="screen dim hidden">
+    <div class="panel hor-panel" style="width:min(580px,100%)">
+      <div class="panel-head"><div><h2>Horror mode</h2><div class="sub" style="margin:0">Dead Woods · night · the road never ends</div></div><button class="close" data-back>✕</button></div>
+      <ul class="hor-list">
+        <li>It is night and all you have are your headlights. Something tall is following you down the road. Check your mirror.</li>
+        <li>The <b>required speed</b> at the top is how fast it runs. Stay above it. Every 20 to 30 seconds it gets 5 to 10 km/h faster, up to 80 to 90 km/h.</li>
+        <li>If it catches you, it is over. One crash can be enough.</li>
+        <li>It throws black tar over the windscreen: <b>five sweeps of the wipers</b> (<kbd>E</kbd>) to clear it.</li>
+        <li>It cuts the navigator's map: the navigator holds <kbd>R</kbd> for <b>7 seconds</b> to get it back.</li>
+        <li>The road loops forever. Get as far as you can.</li>
+      </ul>
+      <div class="hor-best" id="horBest"></div>
+      <div class="btn-row"><button class="btn primary" id="horSolo">Play solo</button><button class="btn" id="horCrew">Make a crew</button><button class="btn" id="horJoin">Join a crew</button></div>
+    </div>
   </div>
 
   <div id="stagesScr" class="screen dim hidden">
@@ -378,7 +426,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
           </div>
         </div>
       </div>
-      <div class="help-foot">Hazards: mud splats across the windscreen, the glass cracks when you crash, doors fly open on big hits, and a hard landing can knock the tablet out of the navigator's hands. Xbox controllers work too (driver: triggers and left stick; navigator: d-pad and bumpers). Turn on voice chat in the crew lobby, or just shout across the room.<br><br><b>Versus</b> (4 to 6 players): crews of two race the same stage at once. Each crew's clock starts at the START banner, so the grid order doesn't matter. Drivers can hold <kbd>F</kbd> to wind the window down and stick a hand out for the car behind. Versus races don't go on the leaderboard.</div>
+      <div class="help-foot">Hazards: mud splats across the windscreen, the glass cracks when you crash, doors fly open on big hits, and a hard landing can knock the tablet out of the navigator's hands. Xbox controllers work too (driver: triggers and left stick; navigator: d-pad and bumpers). Turn on voice chat in the crew lobby, or just shout across the room.<br><br><b>Versus</b> (4 to 6 players): crews of two race the same stage at once. Each crew's clock starts at the START banner, so the grid order doesn't matter. Drivers can hold <kbd>F</kbd> to wind the window down and stick a hand out for the car behind. Versus races don't go on the leaderboard.<br><br><b>Horror mode</b> (solo or a crew of two): night in the Dead Woods, on a road that never ends. Something follows you: stay above the required speed at the top of the screen or it catches you. Five sweeps of the wipers (<kbd>E</kbd>) clear the tar it throws, and the navigator holds <kbd>R</kbd> for 7 seconds when it cuts the map.</div>
     </div>
   </div>
 
@@ -493,7 +541,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.4.1';
+const VERSION = '1.5';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -709,6 +757,24 @@ const AUDIO = (() => {
     if (knockT <= 0) { knockT = 0.4 + Math.random() * 2.2; if (Math.random() < 0.6) { tone(75, 45, 0.11, 0.7, 'square'); burst(0.06, 1400, 2, 0.5); } else { burst(0.22, 180, 1, 0.8, 'lowpass'); tone(40, 30, 0.25, 0.55, 'sawtooth'); burst(0.05, 2200, 3, 0.4); } }
   };
   A.crunch = () => { burst(0.35, 900, 1.2, 0.5); tone(160, 50, 0.3, 0.3, 'square'); };
+  // 1.5 horror: a low drone, a heartbeat, its footsteps, the grab and the throw, radio static, the tar
+  let drone = null, stat = null;
+  A.hDrone = (on, near) => {
+    if (!ctx) return;
+    if (!drone) { const o = ctx.createOscillator(), o2 = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = 41; o2.type = 'sine'; o2.frequency.value = 61.7; lp.type = 'lowpass'; lp.frequency.value = 140; g.gain.value = 0; o.connect(lp); o2.connect(lp); lp.connect(g); g.connect(master); o.start(); o2.start(); drone = { g, lp, o2 }; }
+    const t = ctx.currentTime; drone.g.gain.setTargetAtTime(on ? 0.03 + near * 0.08 : 0, t, 0.4); drone.lp.frequency.setTargetAtTime(110 + near * 280, t, 0.3); drone.o2.frequency.setTargetAtTime(61.7 + near * 9, t, 0.5);
+  };
+  A.hStatic = v => {
+    if (!ctx) return;
+    if (!stat) { const sr = ctx.createBufferSource(); sr.buffer = noiseBuf; sr.loop = true; const fl = ctx.createBiquadFilter(); fl.type = 'highpass'; fl.frequency.value = 1800; stat = ctx.createGain(); stat.gain.value = 0; sr.connect(fl); fl.connect(stat); stat.connect(master); sr.start(); }
+    stat.gain.setTargetAtTime(v * 0.06, ctx.currentTime, 0.05);
+  };
+  A.hBeat = v => { tone(64, 40, 0.16, 0.55 * v, 'sine'); tone(58, 38, 0.18, 0.42 * v, 'sine', 0, 0.2); };
+  A.hStep = v => { tone(46, 28, 0.25, 0.5 * v, 'sine'); burst(0.12, 240, 0.8, 0.3 * v, 'lowpass'); };
+  A.hGrab = () => { burst(0.9, 160, 0.6, 1, 'lowpass'); tone(70, 28, 0.8, 0.8, 'sawtooth'); burst(0.4, 1800, 0.8, 0.5); A.glass(); };
+  A.hThrow = () => { burst(1.6, 500, 0.4, 0.6, 'bandpass'); tone(300, 60, 1.4, 0.25, 'triangle'); };
+  A.hTar = () => { burst(0.35, 260, 1.2, 0.9, 'lowpass'); burst(0.25, 700, 1.5, 0.4); tone(110, 50, 0.3, 0.45, 'sine'); };
+  A.hUp = () => { tone(55, 50, 1.6, 0.5, 'sawtooth'); tone(82, 76, 1.6, 0.25, 'sawtooth'); };
   A.stopAll = () => { if (eng) A.engine(900, 0, false, 0, 0); };
   return A;
 })();
@@ -741,6 +807,10 @@ const STAGES = [
   { id: 'golden', name: 'Golden Hour Marathon', long: 1, biome: 'dusk', seed: 61811, len: 8600, diff: 3, cliff: 0.45, mud: 0.4, jumps: 5, w: 6.8, relief: 40, wave: 750, trend: 0, grade: 0.17, crests: 7, dips: 4, parX: 1.1, blurb: 'The longest stage of all, chasing the sunset over the hills.' },
   { id: 'harvest', name: 'Harvest Hills', long: 1, biome: 'autumn', seed: 61907, len: 7000, diff: 2, cliff: 0.2, mud: 0.8, jumps: 3, w: 7.2, relief: 26, wave: 420, trend: 20, grade: 0.16, crests: 8, dips: 5, parX: 1.07, blurb: 'Rolling farm hills in the autumn leaves. Big crests, big air.' },
 ];
+// 1.5: Horror mode. One long dark loop through dead woods that never ends (pre/post: long flat straights at both
+// ends, so the loop can wrap from one to the other without a seam). Not in the stage list or on the leaderboard.
+const HORROR = { id: 'horror', horror: 1, long: 1, name: 'Dead Woods', biome: 'dead', seed: 66613, len: 7000, diff: 2, cliff: 0.25, mud: 0.15, jumps: 0, w: 7.0, relief: 20, wave: 650, trend: 0, grade: 0.13, crests: 4, dips: 4, pre: 240, post: 240,
+  blurb: 'Night. Dead trees. Something tall follows you down the road. Stay above the required speed for as long as you can.' };
 function dailyStage() {
   const d = new Date(), key = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
   const r = mulberry(key * 7 + 3), bi = ['forest', 'dry', 'wet', 'autumn', 'alpine', 'fog', 'dusk'];
@@ -749,7 +819,7 @@ function dailyStage() {
     diff: 1 + Math.floor(r() * 3), cliff: 0.1 + r() * 0.5, mud: 0.3 + r() * 1.2, jumps: 2 + Math.floor(r() * 3), w: 6.8 + r() * 0.6, blurb: 'A new stage every day (UTC). Same road for everyone.' };
 }
 function allStages() { return [dailyStage(), ...STAGES]; }
-function stageById(id) { return allStages().find(s => s.id === id) || STAGES[0]; }
+function stageById(id) { return id === 'horror' ? HORROR : allStages().find(s => s.id === id) || STAGES[0]; }
 
 const BIOMES = {
   forest: { sky: [0x5aa0dc, 0xd3e8f0], fog: 0xc8dfe6, fogN: 45, fogF: 290, sun: 0xfff0d8, sunI: 1.15, sunDir: [0.45, 0.75, 0.3], hemi: [0xd8ecff, 0x56703a, 0.62],
@@ -783,6 +853,10 @@ const BIOMES = {
   jungle: { sky: [0x5aa6c8, 0xd8eedc], fog: 0xb8d8c4, fogN: 35, fogF: 230, sun: 0xfff6dc, sunI: 1.1, sunDir: [0.35, 0.8, 0.3], hemi: [0xe0ffe8, 0x2f5a28, 0.7],
     grass: [0x2f7a2a, 0x3a8a30, 0x276a22], dirt: 0x7a5a3a, road: 0x8a6a48, pine: [0x1f5a2e, 0x24682f, 0x1a4e28], leaf: [0x2f8a2a, 0x3aa032, 0x268024, 0x52a83a], trunk: 0x4a3420,
     rock: 0x6e7a66, cliff: 0x5e6a52, bush: [0x2f7a2a, 0x3c8c32], pineMix: 0.15, density: 1.5, hill: 14, mtn: 0x5f8a7a },
+  // 1.5 horror: night in the dead woods (dead: bare trees, night: dark sky, dim cabin)
+  dead: { sky: [0x020309, 0x111622], fog: 0x0d1118, fogN: 4, fogF: 90, sun: 0x9fb0d0, sunI: 0.18, sunDir: [-0.35, 0.42, 0.6], hemi: [0x3a4a66, 0x0a0908, 0.24],
+    grass: [0x3c3c2e, 0x36372b, 0x303026], dirt: 0x4a4034, road: 0x625849, pine: [0x463d34, 0x4d4339, 0x3a332c], leaf: [0x463d34, 0x3a332c], trunk: 0x3a332c,
+    rock: 0x5a5a54, cliff: 0x4a463f, bush: [0x2f2c24, 0x36322a], pineMix: 0.55, density: 0.8, hill: 12, mtn: 0x05070b, dead: 1, night: 1 },
 };
 
 /* ---------- small geometry helpers ---------- */
@@ -855,7 +929,7 @@ function genPath(def, rng) {
     return false;
   };
   const pickSev = () => { const w = SEV_W[def.diff] || SEV_W[2]; let t = rng() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < 6; i++) { t -= w[i]; if (t <= 0) return i + 1; } return 4; };
-  emit(70, () => 0);
+  emit(def.pre || 70, () => 0);
   let fails = 0, guard = 0;
   while ((X.length - 1) * STEP < def.len - 80 && guard++ < 4000) {
     const mark = X.length, sx = x, sz = z, sh = hd;
@@ -879,7 +953,7 @@ function genPath(def, rng) {
     for (let i = mark; i < X.length; i++) addHash(i);
     turns.push({ i0, i1: X.length - 1, dir, sev, ang });
   }
-  emit(90, () => 0);
+  emit(def.post || 90, () => 0);
   return { X, Z, HD, K, turns };
 }
 
@@ -909,6 +983,8 @@ function buildStage(def, scene) {
     for (let i = 0; i < N; i++) { const s = i * STEP; H[i] = (noise.fbm1(s / wv) - 0.5) * 2 * rel + (noise.fbm1(s / (wv * 0.3) + 20) - 0.5) * 2 * rel * 0.3 + (noise.fbm1(s / 95 + 50) - 0.5) * 2 * 3 + (def.trend || 0) * s / L; }
   } else for (let i = 0; i < N; i++) { const s = i * STEP; H[i] = (noise.fbm1(s / 430) - 0.5) * 2 * (16 + def.diff * 4) + (noise.fbm1(s / 105 + 50) - 0.5) * 2 * 3.5; }
   for (let i = 0; i < 40; i++) H[i] = H[40];
+  // 1.5 horror: both end straights are flat, so wrapping from one to the other is seamless
+  if (def.pre) { const f = Math.round(def.pre / STEP); for (let i = 0; i < f; i++) H[i] = H[f]; for (let i = N - f; i < N; i++) H[i] = H[N - f - 1]; }
   const G = (def.grade || 0.11) * STEP;
   for (let pass = 0; pass < 2; pass++) {
     for (let i = 1; i < N; i++) H[i] = clamp(H[i], H[i - 1] - G, H[i - 1] + G);
@@ -930,7 +1006,7 @@ function buildStage(def, scene) {
   // 1.3: blind crests (the car goes light over the top: called as jumps) and dips, on the long stages
   const nearJump = c => jumps.some(j => Math.abs(j - c) * STEP < 120);
   for (let j = 0, tries = 0; j < (def.crests || 0) + (def.dips || 0) && tries < 400; tries++) {
-    const crest = j < (def.crests || 0), c = Math.round(lerp(160 / STEP, N - 160 / STEP, rng()));
+    const crest = j < (def.crests || 0), cm0 = (def.pre ? def.pre + 70 : 160) / STEP, c = Math.round(lerp(cm0, N - cm0, rng()));
     if (nearJump(c)) continue;
     let ks = 0; for (let i = c - 15; i <= c + 15; i++) ks = Math.max(ks, Math.abs(K[i] || 0));
     if (crest && ks > 1 / 70) continue; // crests on fast, straight-ish road only
@@ -946,7 +1022,7 @@ function buildStage(def, scene) {
   const nCliff = Math.round(def.cliff * L / 300);
   for (let c = 0; c < nCliff; c++) {
     const len = Math.round((120 + rng() * 150) / STEP), a = Math.round(lerp(60 / STEP, N - 120 / STEP - len, rng()));
-    if (a < 0) continue;
+    if (a < 0 || (def.pre && (a < def.pre / STEP || a + len > N - def.pre / STEP))) continue;
     let ks = 0; for (let i = a; i < a + len; i++) ks += K[i];
     const side = Math.abs(ks) > 0.02 ? Math.sign(ks) : (rng() < 0.5 ? 1 : -1);
     const ramp = 14;
@@ -985,6 +1061,8 @@ function buildStage(def, scene) {
 
   const st = { def, B, X, Z, HD, K, H, PC, N, L, W, half, notes, jumps, puddles, par, V, rhash, RH, rk, startI: Math.round(36 / STEP), finishI: N - 1 - Math.round(40 / STEP), group: new THREE.Group(), colliders: new Map(), CH: 8 };
   st.medals = { gold: par * 1.25, silver: par * 1.5, bronze: par * 1.85 };
+  // 1.5 horror: the loop runs from lapS to lapE; reaching lapE puts you back at lapS (both on the flat straights)
+  if (def.horror) { st.lapS = Math.round(100 / STEP); st.lapE = N - 1 - Math.round(140 / STEP); st.lapI = st.lapE - st.lapS; }
 
   buildTerrain(st, noise, rng);
   buildRoad(st);
@@ -1191,7 +1269,7 @@ function collidersNear(st, x, z, out) {
   return out;
 }
 
-function treeGeos(r) {
+function treeGeos(r, deadToo) {
   const pine = mergeGeos([
     paint(jitter(tr(new THREE.ConeGeometry(1.75, 2.7, 7), 0, 2.5, 0), 0.25, r), 0xffffff),
     paint(jitter(tr(new THREE.ConeGeometry(1.32, 2.3, 7), 0, 3.85, 0), 0.22, r), 0xf2f2f2),
@@ -1211,11 +1289,31 @@ function treeGeos(r) {
       p.push(cx - lx, 0, cz - lz, cx + lx, 0, cz + lz, tx, 0.55 + k * 0.08, tz); n.push(0, 1, 0, 0, 1, 0, 0, 1, 0); }
     tuft.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); tuft.setAttribute('normal', new THREE.Float32BufferAttribute(n, 3));
     tuft.setAttribute('color', new THREE.Float32BufferAttribute(new Array(p.length).fill(1), 3)); } // 1.3.1: without colours the tufts drew black
-  return { pine, pineT, leaf, leafT, bush, rock, tuft };
+  // 1.5: dead trees, a trunk and bare branches with a few twigs (horror only)
+  let dead = null, dead2 = null;
+  if (deadToo) {
+    const Y = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion();
+    const limb = (len, r0, r1, dir, at, seg = 4) => { const b = new THREE.CylinderGeometry(r1, r0, len, seg); b.translate(0, len / 2, 0); b.applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(q.setFromUnitVectors(Y, dir))); b.translate(at.x, at.y, at.z); return b; };
+    const deadTree = (h, nb, spread) => {
+      const parts = [paint(jitter(tr(new THREE.CylinderGeometry(0.07, 0.21, h, 5, 3), 0, h / 2, 0), 0.09, r), 0xffffff)];
+      for (let k = 0; k < nb; k++) {
+        const y = h * (0.32 + 0.6 * k / nb + r() * 0.06), a = k * 2.4 + r() * 0.9, len = spread * (0.6 + r() * 0.6) * (1 - 0.35 * k / nb), up = 0.35 + r() * 0.8;
+        const dir = new THREE.Vector3(Math.cos(a) * Math.cos(up), Math.sin(up), Math.sin(a) * Math.cos(up)), at = new THREE.Vector3(0, y, 0);
+        parts.push(paint(limb(len, 0.075, 0.02, dir, at), 0xf0f0f0));
+        for (let t = 0; t < 2; t++) {
+          const d2 = dir.clone().add(new THREE.Vector3((r() - 0.5) * 1.8, 0.2 + r() * 0.7, (r() - 0.5) * 1.8)).normalize(), from = at.clone().addScaledVector(dir, len * (0.55 + r() * 0.3));
+          parts.push(paint(limb(len * (0.3 + r() * 0.35), 0.03, 0.008, d2, from, 3), 0xe6e6e6));
+        }
+      }
+      return mergeGeos(parts);
+    };
+    dead = deadTree(6.4, 7, 2.3); dead2 = deadTree(4.6, 5, 2.9);
+  }
+  return { pine, pineT, leaf, leafT, bush, rock, tuft, dead, dead2 };
 }
 
 function buildDecor(st, rng, noise) {
-  const B = st.B, g = st.grid, GEO = treeGeos(mulberry(st.def.seed + 5));
+  const B = st.B, g = st.grid, GEO = treeGeos(mulberry(st.def.seed + 5), !!B.dead);
   const hi = S.quality !== 'low';
   const pines = [], leafs = [], bushes = [], rocks = [], tufts = [], posts = [];
   const area = (g.nx * g.CS) * (g.nz * g.CS);
@@ -1272,8 +1370,11 @@ function buildDecor(st, rng, noise) {
     m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true;
     m.castShadow = shadow; m.receiveShadow = true; st.group.add(m); return m;
   };
-  inst(GEO.pine, pines, 0, B.pine, true); inst(GEO.pineT, pines, B.trunk, null, true);
-  inst(GEO.leaf, leafs, 0, B.leaf, true); inst(GEO.leafT, leafs, B.trunk, null, true);
+  if (B.dead) { inst(GEO.dead, pines, 0, B.pine, true); inst(GEO.dead2, leafs, 0, B.leaf, true); }
+  else {
+    inst(GEO.pine, pines, 0, B.pine, true); inst(GEO.pineT, pines, B.trunk, null, true);
+    inst(GEO.leaf, leafs, 0, B.leaf, true); inst(GEO.leafT, leafs, B.trunk, null, true);
+  }
   inst(GEO.bush, bushes, 0, B.bush, true);
   inst(GEO.rock, rocks, B.rock, null, true);
   inst(GEO.tuft, tufts, 0, B.grass.map(c => new THREE.Color(c).multiplyScalar(1.15)), false, { side: THREE.DoubleSide, flatShading: false });
@@ -1300,6 +1401,7 @@ const DETAIL = {
   snow: { drifts: 1, logs: 0.5, cabins: 0.8, fence: 0.6 },
   canyon: { cactus: 1, cabins: 0.4 },
   jungle: { flowers: [0xe0322a, 0xf2e04a, 0xd84a8a, 0xff7a1a], logs: 1.2, ferns: 1.6 },
+  dead: { logs: 1.6, fence: 0.5, cabins: 0.3 },
 };
 function buildDetail(st, inst) {
   const D = DETAIL[st.def.biome] || DETAIL.forest, B = st.B, r = mulberry(st.def.seed * 7 + 31337), hi = S.quality !== 'low';
@@ -1324,7 +1426,7 @@ function buildDetail(st, inst) {
       chev.push([p.x, p.y, p.z, 1, HD[i] + (side > 0 ? -Math.PI / 2 : Math.PI / 2) + Math.PI]);
       addCollider(st, p.x, p.z, 0.16, 'post');
     }
-    if (fans < 6 && r() < 0.35) { fans++; crowd(st, Math.round((n.i + n.i1) / 2), r, 4 + Math.floor(r() * 3)); }
+    if (fans < 6 && r() < 0.35 && !st.def.horror) { fans++; crowd(st, Math.round((n.i + n.i1) / 2), r, 4 + Math.floor(r() * 3)); }
   }
   // along the road
   for (let i = 40; i < N - 20; i += 3) {
@@ -1418,7 +1520,7 @@ function buildDetail(st, inst) {
     const a = cr() * Math.PI * 2, d = R * (0.2 + cr() * 0.8), y = 140 + cr() * 70, px = cx + Math.cos(a) * d, pz = cz + Math.sin(a) * d;
     for (let b = 0; b < 4; b++) { const s = 14 + cr() * 16, q = jitter(new THREE.IcosahedronGeometry(1, 0), 0.3, cr); q.scale(s * 1.6, s * 0.45, s); q.translate(px + (b - 1.5) * s * 1.3, y + cr() * 6, pz + (cr() - 0.5) * s); cg.push(paint(q, cloudCol)); }
   }
-  if (st.def.biome !== 'fog') { const m = new THREE.Mesh(mergeGeos(cg), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, transparent: true, opacity: 0.92 })); st.group.add(m); }
+  if (st.def.biome !== 'fog' && !B.night) { const m = new THREE.Mesh(mergeGeos(cg), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, transparent: true, opacity: 0.92 })); st.group.add(m); }
   st.counts.detail = { flowers: flowers.length, logs: logs.length, stumps: stumps.length, fence: fposts.length, hay: hay.length, cacti: cacti.length, ferns: ferns.length, drifts: drifts.length, chevrons: chev.length, cabins: walls.length };
 }
 
@@ -1432,6 +1534,7 @@ function bannerTex(text, finish) {
   return new THREE.CanvasTexture(c);
 }
 function buildGates(st, rng) {
+  if (st.def.horror) return; // no banners and no crowd out here
   const mk = (i, text, finish) => {
     const g = new THREE.Group(), w = st.W + 3.2, h = st.H[i];
     const pm = lowMat({ color: finish ? 0x222222 : 0xf2f2f2 });
@@ -1482,7 +1585,7 @@ function buildBackdrop(st, rng) {
     const g = jitter(new THREE.ConeGeometry(r, h, 5 + Math.floor(rng() * 3)), 30, rng); g.translate(cx + Math.cos(a) * R, h / 2 - 60, cz + Math.sin(a) * R);
     geos.push(paint(g, new THREE.Color(col).multiplyScalar(0.92 + rng() * 0.12)));
     // 1.3.1: snow caps on the tall ones (not in the warm biomes)
-    if (h > 200 && !['dry', 'canyon', 'jungle', 'dusk'].includes(st.def.biome)) { const c = new THREE.ConeGeometry(r * 0.3, h * 0.3, 6); c.translate(cx + Math.cos(a) * R, h - 60 - h * 0.15 + 2, cz + Math.sin(a) * R); geos.push(paint(c, new THREE.Color(0xffffff).lerp(new THREE.Color(st.B.sky[1]), 0.2))); }
+    if (h > 200 && !['dry', 'canyon', 'jungle', 'dusk', 'dead'].includes(st.def.biome)) { const c = new THREE.ConeGeometry(r * 0.3, h * 0.3, 6); c.translate(cx + Math.cos(a) * R, h - 60 - h * 0.15 + 2, cz + Math.sin(a) * R); geos.push(paint(c, new THREE.Color(0xffffff).lerp(new THREE.Color(st.B.sky[1]), 0.2))); }
   }
   const m = new THREE.Mesh(mergeGeos(geos), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }));
   st.group.add(m);
@@ -1746,11 +1849,11 @@ function box(w, h, d, mat, x, y, z, rx = 0, ry = 0, rz = 0) { const m = new THRE
 const GLASS = (() => {
   const W = 512, Hh = 288;
   const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = Hh; return c; };
-  const out = mk(), mud = mk(), crack = mk();
-  const ox = out.getContext('2d'), mx = mud.getContext('2d'), cx = crack.getContext('2d');
+  const out = mk(), mud = mk(), crack = mk(), tar = mk();
+  const ox = out.getContext('2d'), mx = mud.getContext('2d'), cx = crack.getContext('2d'), tx = tar.getContext('2d');
   const tex = new THREE.CanvasTexture(out);
   const G = { W, H: Hh, tex, dirty: true, mudAmt: 0 };
-  G.reset = () => { mx.clearRect(0, 0, W, Hh); cx.clearRect(0, 0, W, Hh); G.dirty = true; G.mudAmt = 0; };
+  G.reset = () => { mx.clearRect(0, 0, W, Hh); cx.clearRect(0, 0, W, Hh); tx.clearRect(0, 0, W, Hh); G.tarN = 0; G.dirty = true; G.mudAmt = 0; };
   G.mud = (u, v, size, seed) => {
     const r = mulberry(seed), x = u * W, y = (1 - v) * Hh, R = size;
     mx.save();
@@ -1795,15 +1898,36 @@ const GLASS = (() => {
     mx.beginPath(); mx.arc(x, y, r1, -a1, -a0, false); mx.arc(x, y, r0, -a0, -a1, true); mx.closePath(); mx.fill();
     mx.restore();
     G.mudAmt = Math.max(0, G.mudAmt - Math.abs(a1 - a0) * 0.35);
+    if (G.tarN) { tx.save(); tx.globalCompositeOperation = 'destination-out'; tx.fillStyle = 'rgba(0,0,0,.06)'; tx.beginPath(); tx.arc(x, y, r1, -a1, -a0, false); tx.arc(x, y, r0, -a0, -a1, true); tx.closePath(); tx.fill(); tx.restore(); }
     G.dirty = true;
   };
+  // 1.5 horror: black tar over about 95% of the glass. Each sweep of the wipers takes some off; five sweeps clear it.
+  G.tarN = 0;
+  const TAR_A = [0, 0.42, 0.62, 0.78, 0.9, 0.985];
+  G.tar = seed => {
+    const r = mulberry(seed); tx.clearRect(0, 0, W, Hh);
+    tx.fillStyle = '#010101'; tx.fillRect(0, 0, W, Hh);
+    // wet lumps and runs, so it reads as something thick on the glass and not as a black screen
+    for (let k = 0; k < 46; k++) { const x = r() * W, y = r() * Hh, s = 6 + r() * 26; const v = 2 + r() * 6 | 0; tx.fillStyle = 'rgba(' + (v + 2) + ',' + (v + 1) + ',' + v + ',1)'; tx.beginPath(); tx.ellipse(x, y, s * 1.4, s, r() * 3, 0, 7); tx.fill(); }
+    tx.lineCap = 'round';
+    for (let k = 0; k < 30; k++) { const x = r() * W, y = r() * Hh * 0.7; tx.strokeStyle = 'rgba(60,64,72,' + (0.04 + r() * 0.08).toFixed(2) + ')'; tx.lineWidth = 1 + r() * 3; tx.beginPath(); tx.moveTo(x, y); tx.quadraticCurveTo(x + (r() - 0.5) * 10, y + 30, x + (r() - 0.5) * 8, y + 20 + r() * 90); tx.stroke(); }
+    // one gap at the edge to peer through (about 5% of the glass)
+    tx.save(); tx.globalCompositeOperation = 'destination-out';
+    const gx = W * (0.2 + r() * 0.6), gy = Hh * (r() < 0.5 ? 0.14 : 0.86);
+    tx.beginPath(); for (let k = 0; k <= 18; k++) { const a = k / 18 * Math.PI * 2, rr = 1 + (r() - 0.5) * 0.45, px = gx + Math.cos(a) * 82 * rr, py = gy + Math.sin(a) * 30 * rr; k ? tx.lineTo(px, py) : tx.moveTo(px, py); }
+    tx.closePath(); tx.fill(); tx.restore();
+    G.tarN = 5; G.dirty = true;
+  };
+  G.tarStep = () => { if (!G.tarN) return; G.tarN--; if (!G.tarN) tx.clearRect(0, 0, W, Hh); G.dirty = true; };
   G.update = () => {
     if (!G.dirty) return; G.dirty = false;
     ox.clearRect(0, 0, W, Hh);
     // a faint tint and dust at the edges so the glass reads as glass
     const g = ox.createLinearGradient(0, 0, 0, Hh); g.addColorStop(0, 'rgba(70,90,110,.16)'); g.addColorStop(0.25, 'rgba(200,220,235,.04)'); g.addColorStop(1, 'rgba(160,140,110,.12)');
     ox.fillStyle = g; ox.fillRect(0, 0, W, Hh);
-    ox.drawImage(mud, 0, 0); ox.drawImage(crack, 0, 0);
+    ox.drawImage(mud, 0, 0);
+    if (G.tarN) { ox.globalAlpha = TAR_A[G.tarN]; ox.drawImage(tar, 0, 0); ox.globalAlpha = 1; }
+    ox.drawImage(crack, 0, 0);
     tex.needsUpdate = true;
   };
   return G;
@@ -1963,6 +2087,56 @@ const TABLET = (() => {
     x.fillStyle = '#25352d'; x.fillRect(14, Hh - 18, W - 120, 6); x.fillStyle = '#1fc7b2'; x.fillRect(14, Hh - 18, (W - 120) * pr, 6);
     x.fillStyle = '#b9c9bf'; x.font = '700 13px Segoe UI, Arial'; x.textAlign = 'right';
     x.fillText(((st.finishI - i0) * STEP / 1000).toFixed(2) + ' km left', W - 12, Hh - 11);
+    tex.needsUpdate = true;
+  };
+  // 1.5 horror: the endless loop (past the end of the loop comes the start of the next lap) and static when the map is cut
+  const nz = document.createElement('canvas'); nz.width = 128; nz.height = 85; const nzx = nz.getContext('2d'), nimg = nzx.createImageData(128, 85);
+  T.drawH = (st, v) => {
+    if (v.sab) {
+      const d = nimg.data; for (let k = 0; k < d.length; k += 4) { const g = Math.random() * 160 | 0; d[k] = g; d[k + 1] = g; d[k + 2] = g + 12; d[k + 3] = 255; }
+      nzx.putImageData(nimg, 0, 0); x.imageSmoothingEnabled = false; x.drawImage(nz, 0, 0, W, Hh); x.imageSmoothingEnabled = true;
+      x.fillStyle = 'rgba(0,0,0,.74)'; x.fillRect(0, Hh / 2 - 70, W, 140);
+      x.textAlign = 'center'; x.fillStyle = '#ff3b30'; x.font = '900 italic 42px Segoe UI, Arial'; x.fillText('NO SIGNAL', W / 2, Hh / 2 - 16);
+      x.fillStyle = '#e8edf1'; x.font = '700 17px Segoe UI, Arial'; x.fillText(v.nav ? 'Hold R for 7 seconds to reconnect' : 'Reconnecting…', W / 2, Hh / 2 + 16);
+      x.fillStyle = '#2a2f36'; x.fillRect(W / 2 - 150, Hh / 2 + 34, 300, 12); x.fillStyle = '#1fc7b2'; x.fillRect(W / 2 - 150, Hh / 2 + 34, 300 * clamp(v.hold / 7, 0, 1), 12);
+      tex.needsUpdate = true; return;
+    }
+    x.fillStyle = '#0c100e'; x.fillRect(0, 0, W, Hh);
+    x.strokeStyle = 'rgba(200,120,110,.05)'; x.lineWidth = 1;
+    for (let gx = 0; gx < W; gx += 32) { x.beginPath(); x.moveTo(gx, 0); x.lineTo(gx, Hh); x.stroke(); }
+    for (let gy = 0; gy < Hh; gy += 32) { x.beginPath(); x.moveTo(0, gy); x.lineTo(W, gy); x.stroke(); }
+    const LS = st.lapS, LE = st.lapE, LI = st.lapI, th = st.HD[LE] - st.HD[LS], c0 = Math.cos(th), s0 = Math.sin(th);
+    const VX = i => { if (i <= LE) return [st.X[i], st.Z[i]]; const j = Math.min(i - LI, st.N - 1), rx = st.X[j] - st.X[LS], rz = st.Z[j] - st.Z[LS]; return [st.X[LE] + rx * c0 + rz * s0, st.Z[LE] - rx * s0 + rz * c0]; };
+    const i0 = clamp(v.idx, 0, LE), hi = i0 + 4, hd = hi <= LE ? st.HD[hi] : st.HD[hi - LI] + th, sn = Math.sin(hd), cs = Math.cos(hd);
+    const ahead = 210 + clamp(v.kmh, 0, 160) * 1.1, cx = W / 2, cy = Hh - 64, sc = (cy - 70) / ahead;
+    const P = i => { const q = VX(i), dx = q[0] - v.x, dz = q[1] - v.z, f = dx * sn + dz * cs, r = dx * -cs + dz * sn; return [cx + r * sc, cy - f * sc]; };
+    const end = i0 + Math.ceil(ahead * 1.6 / STEP), beg = Math.max(0, i0 - 30);
+    const path = (from, to, w, col) => { x.strokeStyle = col; x.lineWidth = w; x.lineCap = 'round'; x.lineJoin = 'round'; x.beginPath(); for (let i = from; i <= to; i++) { const p = P(i); i === from ? x.moveTo(p[0], p[1]) : x.lineTo(p[0], p[1]); } x.stroke(); };
+    path(beg, end, 17, '#020403'); path(beg, i0, 10, '#3f4642'); path(i0, end, 10, '#d6c8a6');
+    const notes = st.hnotes || st.notes, upcoming = notes.filter(n => n.i1 >= i0 - 2 && n.i <= end);
+    for (const n of upcoming.slice(0, 6)) {
+      const p = P(n.i), col = n.c === 'JUMP' ? '#ffcc33' : n.c.length === 2 ? '#ff4a3a' : '#ffffff', side = n.dir ? -n.dir : 1, bx = p[0] + side * 30, by = p[1];
+      x.fillStyle = 'rgba(6,10,8,.88)'; x.strokeStyle = col; x.lineWidth = 2;
+      x.beginPath(); x.roundRect ? x.roundRect(bx - 17, by - 17, 34, 34, 7) : x.rect(bx - 17, by - 17, 34, 34); x.fill(); x.stroke();
+      icon(bx, by, 24, n.c, col);
+    }
+    x.save(); x.translate(cx, cy); x.rotate(wrapA(v.yaw - hd) * -1);
+    x.fillStyle = '#1fc7b2'; x.strokeStyle = '#03201c'; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(0, -13); x.lineTo(9, 10); x.lineTo(0, 5); x.lineTo(-9, 10); x.closePath(); x.fill(); x.stroke();
+    x.restore();
+    const nx = notes.find(n => n.i1 >= i0 + 1 && n.i >= i0 - 1);
+    x.fillStyle = 'rgba(8,10,10,.94)'; x.fillRect(0, 0, W, 58);
+    if (nx) {
+      const dist = Math.max(0, (nx.i - i0) * STEP), col = nx.c === 'JUMP' ? '#ffcc33' : nx.c.length === 2 ? '#ff4a3a' : '#ffffff';
+      icon(34, 29, 34, nx.c, col);
+      x.fillStyle = col; x.font = '900 italic 27px Segoe UI, Arial'; x.textAlign = 'left'; x.fillText(names[nx.c], 62, 31);
+      x.fillStyle = '#b9c9bf'; x.font = '700 15px Segoe UI, Arial'; x.fillText(dist < 6 ? 'NOW' : 'in ' + Math.round(dist) + ' m', 64, 50);
+      const n2 = notes.find(n => n.i > nx.i);
+      if (n2) { x.textAlign = 'right'; x.fillStyle = '#7f9488'; x.font = '700 14px Segoe UI, Arial'; x.fillText('then ' + names[n2.c].toLowerCase() + ' (' + Math.round((n2.i - nx.i) * STEP) + ' m later)', W - 14, 25); }
+    }
+    x.fillStyle = 'rgba(8,10,10,.94)'; x.fillRect(0, Hh - 30, W, 30);
+    x.fillStyle = '#ff6a5a'; x.font = '800 13px Segoe UI, Arial'; x.textAlign = 'left'; x.fillText('DEAD WOODS · NO END', 14, Hh - 11);
+    x.fillStyle = '#b9c9bf'; x.textAlign = 'right'; x.fillText(fmtDist(v.dist) + ' driven', W - 12, Hh - 11);
     tex.needsUpdate = true;
   };
   T.drawLo = () => { lx.drawImage(c, 0, 0, 48, 32); texLo.needsUpdate = true; };
@@ -2239,7 +2413,7 @@ function buildCabin() {
     for (let k = 0; k < a.count; k++) if (bonnet.body[k * 3]) a.setXYZ(k, c.r, c.g, c.b);
     a.needsUpdate = true;
   };
-  return { root, wheel, spin, gripL, gripR, doors, wipers, glass, drv, nav, gloves, bird, cigH, smoke, wins, paint, tab, screen, tabMat, hb, toggles, trip: { c: tripC, t: tripT }, M };
+  return { root, wheel, spin, gripL, gripR, doors, wipers, glass, drv, nav, gloves, bird, cigH, smoke, wins, paint, tab, screen, tabMat, hb, toggles, trip: { c: tripC, t: tripT }, M, mir: mirFace };
 }
 /* ==========================================================================
    THE RACE: renderer, cameras, the two seats, calls, hazards and the flow
@@ -2255,7 +2429,8 @@ const hemi = new THREE.HemisphereLight(0xffffff, 0x445533, 0.6); scene.add(hemi)
 const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.castShadow = true; scene.add(sun); scene.add(sun.target);
 sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, near: 1, far: 400 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
 const chemi = new THREE.HemisphereLight(0xffffff, 0x333333, 0.55), csun = new THREE.DirectionalLight(0xffffff, 0.55);
-cabScene.add(chemi); cabScene.add(csun); cabScene.add(csun.target); cabScene.add(new THREE.AmbientLight(0xffffff, 0.12));
+const camb = new THREE.AmbientLight(0xffffff, 0.12);
+cabScene.add(chemi); cabScene.add(csun); cabScene.add(csun.target); cabScene.add(camb);
 const skyMat = new THREE.ShaderMaterial({
   uniforms: { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() } },
   vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -2375,6 +2550,8 @@ function applyBiome(B) {
   sun.color.set(B.sun); sun.intensity = B.sunI;
   chemi.color.set(B.hemi[0]); chemi.groundColor.set(0x2a2622); chemi.intensity = 0.5 + B.hemi[2] * 0.3;
   csun.color.set(B.sun); csun.intensity = B.sunI * 0.5;
+  camb.intensity = B.night ? 0.03 : 0.12; // 1.5: a dark cabin at night, lit by the dials
+  if (B.night) { chemi.intensity = 0.12; csun.intensity = 0.04; }
 }
 
 /* ---------- state ---------- */
@@ -2520,14 +2697,15 @@ function buildNavPad() {
 const AIC = { called: new Set(), rep: new Set(), queue: [], lastST: 0, said: 0 };
 function aiSay(text, toast) { if (toast) showToast(text, '', 1200); AUDIO.say(text); }
 function aiCoDriver(dt) {
-  const car = GAME.car, st = GAME.st;
+  const car = GAME.car, st = GAME.st, NOTES = st.hnotes || st.notes;
+  if (st.def.horror && HOR.sab) { AIC.queue.length = 0; horAiFix(dt); return; }
   for (let k = AIC.queue.length - 1; k >= 0; k--) { const q = AIC.queue[k]; q.t -= dt; if (q.t <= 0) { AIC.queue.splice(k, 1); showCall(q.c, 'Co-driver'); } }
   if (TAB.state !== 'held' && TAB.state !== 'raised') {
     if (TAB.state === 'drop') { TAB.aiT -= dt; if (TAB.aiT <= 0) tabGrab(); }
     return;
   }
   const v = Math.max(8, Math.abs(car.vx));
-  for (const n of st.notes) {
+  for (const n of NOTES) {
     if (n.i1 < car.idx) continue;
     if (n.i - car.idx > 200) break;
     const dist = (n.i - car.idx) * STEP, key = n.i * 10 + n.c.length;
@@ -2543,7 +2721,7 @@ function aiCoDriver(dt) {
     break;
   }
   // a long clear road ahead: tell them to send it
-  const nx = st.notes.find(n => n.i1 >= car.idx);
+  const nx = NOTES.find(n => n.i1 >= car.idx);
   if (nx && (nx.i - car.idx) * STEP > 260 && v < 32 && GAME.raceMs - AIC.lastST > 9000) { AIC.lastST = GAME.raceMs; showCall('ST', 'Co-driver'); }
   // and close their own door
   if (car.doors[1].open) { AIC.door = (AIC.door || 0) + dt; if (AIC.door > 1.6) { car.shutDoor(1); AIC.door = 0; } }
@@ -2559,7 +2737,7 @@ function setHint() {
   if (!S.hints) { h.classList.add('hidden'); return; }
   h.classList.remove('hidden', 'fade');
   h.innerHTML = GAME.role === 'nav'
-    ? '<kbd>Q</kbd><kbd>A</kbd><kbd>W</kbd><kbd>D</kbd><kbd>E</kbd> calls &nbsp; <kbd>S</kbd> slow &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Shift</kbd> tablet up &nbsp; <kbd>F</kbd> grab tablet &nbsp; <kbd>Z</kbd> door &nbsp; <kbd>C</kbd> look at driver'
+    ? '<kbd>Q</kbd><kbd>A</kbd><kbd>W</kbd><kbd>D</kbd><kbd>E</kbd> calls &nbsp; <kbd>S</kbd> slow &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Shift</kbd> tablet up &nbsp; <kbd>F</kbd> grab tablet &nbsp; <kbd>Z</kbd> door &nbsp; <kbd>C</kbd> look at driver' + (GAME.def && GAME.def.horror ? ' &nbsp; hold <kbd>R</kbd> reconnect the map' : '')
     : '<kbd>W</kbd><kbd>S</kbd> gas/brake &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>Space</kbd> handbrake &nbsp; <kbd>Shift</kbd> neutral (rev, let go to launch) &nbsp; <kbd>E</kbd> wipers &nbsp; <kbd>Q</kbd> door &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> look at navigator &nbsp; <kbd>X</kbd> cigarette' + (GAME.vs ? ' &nbsp; <kbd>F</kbd> window down, hand out for the car behind' : '');
   GAME.hintT = 9;
 }
@@ -2605,9 +2783,12 @@ function startRace(def, role, crew, vs) {
   CAB.drv.body.slice(0, 4).forEach(m => m.visible = role === 'nav'); CAB.nav.body.slice(0, 4).forEach(m => m.visible = role !== 'nav');
   $('hint').classList.toggle('top', role === 'nav');
   CAB.screen.material.map = role === 'nav' ? TABLET.tex : TABLET.texLo; CAB.screen.material.needsUpdate = true;
+  $('hud').classList.toggle('hor', !!def.horror);
+  if (def.horror) horReset(); else horEnd();
   setHint();
   if (role === 'nav') showToast('You are the navigator', 'Call the turns before the driver reaches them', 2600);
   else if (!crew) showToast(def.name, 'Your co-driver calls the turns. Listen up!', 2400);
+  if (def.horror) showToast('Something is behind you', 'Stay above the required speed. Do not let it catch you.', 3400);
 }
 function finishRace() {
   GAME.phase = 3; GAME.doneT = 0;
@@ -2638,10 +2819,11 @@ function resetCar(pen = 5000, why) {
   const car = GAME.car;
   car.place(Math.max(GAME.st.startI, car.lastGood - 3));
   GAME.pen += pen; GAME.resets++;
-  showToast(why || 'Back on the road', '+' + (pen / 1000) + ' s', 1300);
+  showToast(why || 'Back on the road', GAME.def.horror ? 'It is still coming' : '+' + (pen / 1000) + ' s', 1300);
   if (GAME.crew) netSend('fx', { k: 'reset', pen });
 }
 function leaveRace() {
+  horEnd(); $('hud').classList.remove('hor');
   if (GAME.st) { scene.fog.near = GAME.st.B.fogN; scene.fog.far = GAME.st.B.fogF; }
   looseClear(); GAME.mode = 'menu'; applyMods(); GAME.car = null; GAME.view = null; GAME.vs = false; GAME.aiNav = false; $('hud').classList.add('hidden'); AUDIO.stopAll(); rivalReset();
   try { speechSynthesis.cancel(); } catch (e) {}
@@ -2674,12 +2856,18 @@ function applyFx(e, local) {
   } else if (e.k === 'door') AUDIO.door(e.open);
   else if (e.k === 'doorOff') { AUDIO.crash(e.s); AUDIO.door(false); dropDoor(e.d, e.seed); if (local) showToast('Your door fell off!', 'It stays off for the rest of the stage', 1800); }
   else if (e.k === 'wipe') startWipe(false);
+  // 1.5 horror
+  else if (e.k === 'htar') { GLASS.tar(e.seed); AUDIO.hTar(); GAME.shake = Math.max(GAME.shake, 0.06); showToast('IT THREW SOMETHING!', GAME.role === 'nav' ? 'Tell your driver: wipers, five times' : 'Wipers! Press E five times', 2200); }
+  else if (e.k === 'hsab') { HOR.sab = true; HOR.hold = 0; HOR.aiFix = 0; HOR.fixAt = 0; if (GAME.role === 'nav') showToast('IT CUT THE MAP!', 'Hold R for 7 seconds to get it back', 2400); else if (!GAME.crew) aiSay("It's cut the map! Hang on!", true); else showToast('It cut the map!', NET.partnerName() + ' is getting it back', 1800); }
+  else if (e.k === 'hcaught') horCatch(false);
   else if (e.k === 'reset') { if (!local) showToast('Back on the road', '+' + (e.pen / 1000) + ' s', 1300); }
   else if (e.k === 'cut') { if (local) showToast('Cut! +10 s', 'Stay on the road', 1500); }
 }
 function startWipe(send) {
-  if (GAME.wipe.t >= 0 && GAME.wipe.n > 0) { GAME.wipe.n = 2; return; }
-  GAME.wipe = { t: 0, n: 2, a: 0 }; AUDIO.wiper();
+  // 1.5 horror: one sweep per press (a press during a sweep queues another), so five presses clear the tar
+  const hor = GAME.mode === 'race' && GAME.def && GAME.def.horror;
+  if (GAME.wipe.t >= 0 && GAME.wipe.n > 0) { GAME.wipe.n = hor ? Math.min(GAME.wipe.n + 1, 3) : 2; if (hor && send && GAME.crew) netSend('fx', { k: 'wipe' }); return; }
+  GAME.wipe = { t: 0, n: hor ? 1 : 2, a: 0 }; AUDIO.wiper();
   if (send && GAME.crew) netSend('fx', { k: 'wipe' });
 }
 function stepWipe(dt) {
@@ -2691,7 +2879,7 @@ function stepWipe(dt) {
     GLASS.wipe(0.216, 0.02, lo, hi, 38, 222); GLASS.wipe(0.539, 0.02, lo, hi, 38, 222);
   }
   W.a = a;
-  if (W.t >= 1) { W.n--; if (W.n > 0) { W.t = 0; AUDIO.wiper(); } else { W.t = -1; W.a = 0; } }
+  if (W.t >= 1) { if (GAME.def && GAME.def.horror) GLASS.tarStep(); W.n--; if (W.n > 0) { W.t = 0; AUDIO.wiper(); } else { W.t = -1; W.a = 0; } }
 }
 
 /* ---------- the driver's screen: input, physics, hazards ---------- */
@@ -2737,14 +2925,15 @@ function driverFrame(dt) {
       if (GAME.crew && e.k !== 'shift' && e.k !== 'oilDrip') netSend('fx', e);
     }
     car.events.length = 0;
+    if (GAME.def.horror) horDriverStep(dt);
     if (car.fallen > 1.1 && GAME.phase === 2) resetCar(5000, 'Over the edge!');
-    if (GAME.phase === 2 && car.idx >= st.finishI) finishRace();
+    if (GAME.phase === 2 && car.idx >= st.finishI && !GAME.def.horror) finishRace();
     if (GAME.phase === 2) {
       if (!car.onRoad && Math.abs(car.vx) < 1.2) { GAME.stuckT += dt; if (GAME.stuckT > 3.5) { GAME.stuckT = -6; showToast('Stuck?', 'Press R to get back on the road (+5 s)', 2500); } } else if (GAME.stuckT > 0) GAME.stuckT = 0; else GAME.stuckT = Math.min(0, GAME.stuckT + dt);
     }
   }
   if ((!GAME.crew || GAME.aiNav) && GAME.phase === 2) aiCoDriver(dt);
-  if (GAME.phase === 3) { GAME.doneT += dt; if (GAME.doneT > 1.8 && !GAME.resultShown) { GAME.resultShown = true; showResults(); } }
+  if (GAME.phase === 3) { GAME.doneT += dt; if (GAME.doneT > 1.8 && !GAME.resultShown && !GAME.def.horror) { GAME.resultShown = true; showResults(); } }
   if (GAME.crew) netDriverTick(dt);
 }
 
@@ -2771,6 +2960,12 @@ function navFrame(dt) {
   if (v.dl & 8) { car.oil = true; car.oilD += Math.abs(car.vx) / 60; if (car.oilD > 0.9) { car.oilD = 0; oilDrip(car); } }
   for (let d = 0; d < 2; d++) if ((v.dl >> d) & 1 && !car.doors[d].lost) { car.doors[d].lost = true; dropDoor(d, (Math.random() * 1e9) | 0); }
   GAME.raceMs = v.rt;
+  if (GAME.def.horror && v.hm) {
+    if (v.lp !== HOR.lap) { horCamShift(v.lp - HOR.lap); HOR.lap = v.lp; }
+    if (v.hm[1] > HOR.kmh && GAME.phase >= 2) { HOR.kmh = v.hm[1]; horFaster(); } else HOR.kmh = v.hm[1];
+    HOR.md = v.hm[0]; HOR.gap = v.hm[2]; HOR.dist = v.hm[3]; HOR.wait = v.hw ? 1 : 0;
+    if (!HOR.caught) horNavFix(dt, v);
+  }
   const ph = v.ph;
   if (ph === 1) {
     const n = Math.ceil(v.cd - 0.6);
@@ -2784,15 +2979,19 @@ function navFrame(dt) {
 function navSnap(d) { snapPush(NAVV, d); }
 function navInterp() { return snapInterp(NAVV); }
 function unpackSnap(A, B, t) {
+  if (A.lp !== B.lp) A = B; // 1.5 horror: the car just wrapped round the loop, don't slide it across the map
   const l = (a, b) => a + (b - a) * t, la = (a, b) => a + wrapA(b - a) * t;
   return { x: l(A.p[0], B.p[0]), y: l(A.p[1], B.p[1]), z: l(A.p[2], B.p[2]), yaw: la(A.a[0], B.a[0]), pitch: l(A.a[1], B.a[1]), roll: l(A.a[2], B.a[2]),
     vx: l(A.v, B.v), steer: l(A.s, B.s), rpm: l(A.rpm, B.rpm), gear: B.g, i: B.i, ay: l(A.ay, B.ay), ax: l(A.ax, B.ax), d0: l(A.d[0], B.d[0]), d1: l(A.d[1], B.d[1]),
-    hb: B.hb, gas: B.gs, on: !!B.on, rt: l(A.rt, B.rt), ph: B.ph, cd: l(A.cd, B.cd), oh: B.oh, bd: l(A.bd || 0, B.bd || 0), cs: B.cs || 0, ct: A.cs === B.cs ? l(A.ct || 0, B.ct || 0) : B.ct || 0, cb: B.cb || 0, dl: B.dl || 0 };
+    hb: B.hb, gas: B.gs, on: !!B.on, rt: l(A.rt, B.rt), ph: B.ph, cd: l(A.cd, B.cd), oh: B.oh, bd: l(A.bd || 0, B.bd || 0), cs: B.cs || 0, ct: A.cs === B.cs ? l(A.ct || 0, B.ct || 0) : B.ct || 0, cb: B.cb || 0, dl: B.dl || 0,
+    lp: B.lp, hm: B.hm ? [l(A.hm ? A.hm[0] : B.hm[0], B.hm[0]), B.hm[1], l(A.hm ? A.hm[2] : B.hm[2], B.hm[2]), B.hm[3]] : null, hs: B.hs, hw: B.hw };
 }
 function packSnap() {
   const c = GAME.car, r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000;
-  return { t: performance.now(), p: [r2(c.p.x), r3(c.p.y), r2(c.p.z)], a: [r3(c.yaw), r3(c.pitch), r3(c.roll)], v: r2(c.vx), s: r3(c.steer), rpm: Math.round(c.rpm), g: c.gear, i: c.idx,
+  const o = { t: performance.now(), p: [r2(c.p.x), r3(c.p.y), r2(c.p.z)], a: [r3(c.yaw), r3(c.pitch), r3(c.roll)], v: r2(c.vx), s: r3(c.steer), rpm: Math.round(c.rpm), g: c.gear, i: c.idx,
     ay: r2(c.ay), ax: r2(c.ax), d: [r2(c.doors[0].a), r2(c.doors[1].a)], hb: c.hand, gs: r2(c.gas), on: c.onRoad ? 1 : 0, rt: Math.round(GAME.raceMs), ph: GAME.phase, cd: r2(GAME.cd), oh: c.oneHand > 0 ? 1 : 0, bd: r2(c.bird), cs: c.cig.s, ct: r2(c.cig.t), cb: r2(c.cig.burn), dl: (c.doors[0].lost ? 1 : 0) | (c.doors[1].lost ? 2 : 0) | (c.sick ? 4 : 0) | (c.oil ? 8 : 0) };
+  if (GAME.def.horror) { o.lp = HOR.lap; o.hm = [r2(HOR.md), HOR.kmh, r2(HOR.gap), Math.round(HOR.dist)]; o.hs = HOR.sab ? 1 : 0; o.hw = HOR.wait > 0 ? 1 : 0; }
+  return o;
 }
 
 /* ---------- 1.4.1: the driver's cigarette ----------
@@ -2953,6 +3152,308 @@ function fling(car) {
   FLUNG.push({ m: g, v, age: 0 });
 }
 
+/* ---------- 1.5: Horror mode ----------
+   Night in the Dead Woods. The stage is one long loop: it wraps from a straight near the end to the same
+   straight near the start, so it never ends. Something tall follows the car along the road at the required
+   speed, which goes up by 5-10 km/h every 20-30 s until it tops out somewhere between 80 and 90 km/h. Drop
+   below it and the gap closes; if it reaches you it takes the car and throws it out of the world.
+   It also throws black tar over the windscreen (five sweeps of the wipers to clear it) and cuts the
+   navigator's map (hold R for 7 s to get it back). The driver's screen runs it all; the navigator gets it
+   in the snapshots (lp lap, hm [distance, km/h, gap, metres driven], hs map cut, hw still waiting). */
+const HOR = { lap: 0, md: 0, kmh: 45, cap: 85, upT: 25, tarT: 30, sabT: 40, sab: false, hold: 0, btn: false, fixAt: 0, aiFix: 0, caught: null, gap: 70, dist: 0, startD: 0,
+  wait: 2, t: 0, beatT: 0, stepPh: 0, lights: null, mon: null, mirN: 0, menuT: 0 };
+const H_START_KMH = 45, H_GAP0 = 70, H_HOLD = 7, H_STRIDE = 5.6;
+function horOn() { return GAME.mode === 'race' && !!(GAME.def && GAME.def.horror); }
+function fmtDist(m) { m = Math.max(0, Math.round(m)); return m < 1000 ? m + ' m' : (m / 1000).toFixed(2) + ' km'; }
+// move a point from the end of the loop to the start (dir 1) or back (-1); returns the turn to add to a heading
+function horXform(st, p, dir) {
+  const a = dir > 0 ? st.lapE : st.lapS, b = dir > 0 ? st.lapS : st.lapE, th = st.HD[b] - st.HD[a], c = Math.cos(th), s = Math.sin(th);
+  const rx = p.x - st.X[a], rz = p.z - st.Z[a];
+  p.x = st.X[b] + rx * c + rz * s; p.z = st.Z[b] - rx * s + rz * c; p.y += st.H[b] - st.H[a];
+  return th;
+}
+// how far the car is along the endless road (metres, counting every lap)
+function horCarD(car) { const st = GAME.st; return HOR.lap * st.lapI * STEP + (car.loc.i + car.loc.t - st.lapS) * STEP; }
+function horCamShift(n) { const st = GAME.st, cm = GAME.cm; if (cm) { cm.py += (st.H[st.lapS] - st.H[st.lapE]) * n; cm.pyaw += (st.HD[st.lapS] - st.HD[st.lapE]) * n; } }
+// the driver's car reached the end of the loop: put it on the same bit of road at the start
+function horLap(car) {
+  const st = GAME.st;
+  if (car.idx < st.lapE) return;
+  const th = horXform(st, car.p, 1);
+  car.yaw += th; car.idx -= st.lapI; car.lastGood = Math.max(st.lapS, car.lastGood - st.lapI);
+  if (car.hPrev != null) car.hPrev += st.H[st.lapS] - st.H[st.lapE];
+  car.loc = roadLocal(st, car.p.x, car.p.z, car.idx);
+  HOR.lap++; horCamShift(1);
+  AIC.called.clear(); AIC.rep.clear();
+}
+// where it is: a distance along the endless road, seen from the lap the car is on
+function horMonPose(md, carLap, out) {
+  const st = GAME.st, L = st.lapI * STEP;
+  let f = st.lapS + (md - carLap * L) / STEP, wrap = false;
+  if (f < 1) { f += st.lapI; wrap = true; }
+  f = clamp(f, 0, st.N - 1.001);
+  const i = Math.floor(f), t = f - i;
+  let yaw = lerp(st.HD[i], st.HD[i + 1], t);
+  const side = Math.sin(md * 0.037) * 1.4; // it drifts from one side of the road to the other
+  out.set(lerp(st.X[i], st.X[i + 1], t) - Math.cos(yaw) * side, lerp(st.H[i], st.H[i + 1], t) + 0.04, lerp(st.Z[i], st.Z[i + 1], t) + Math.sin(yaw) * side);
+  if (wrap) yaw += horXform(st, out, 1);
+  return yaw;
+}
+
+/* the thing: very tall, very thin, a crooked back, arms down to its knees. No face. Black. */
+const _UP = new THREE.Vector3(0, 1, 0), _bv = new THREE.Vector3();
+function setBone(m, a, b) { _bv.subVectors(b, a); const l = _bv.length() || 1e-4; m.position.copy(a); m.quaternion.setFromUnitVectors(_UP, _bv.divideScalar(l)); m.scale.set(1, l, 1); }
+function makeMonster() {
+  const g = new THREE.Group(), mat = lowMat({ color: 0x050506 });
+  const bone = (r0, r1, seg = 5) => { const geo = new THREE.CylinderGeometry(r1, r0, 1, seg); geo.translate(0, 0.5, 0); const m = new THREE.Mesh(geo, mat); g.add(m); return m; };
+  const two = (a, b, s) => [bone(a, b, s), bone(a, b, s)];
+  const B = { sp: [bone(0.13, 0.1), bone(0.1, 0.11), bone(0.11, 0.06)], neck: bone(0.05, 0.04), sh: bone(0.06, 0.06), hip: bone(0.08, 0.08),
+    ua: two(0.06, 0.045), la: two(0.045, 0.028), th: two(0.075, 0.05), sn: two(0.05, 0.03), ft: two(0.035, 0.015, 4),
+    fi: [[bone(0.02, 0.005, 3), bone(0.02, 0.005, 3), bone(0.02, 0.005, 3)], [bone(0.02, 0.005, 3), bone(0.02, 0.005, 3), bone(0.02, 0.005, 3)]] };
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.19, 0), mat); head.scale.set(0.72, 1.35, 0.85); g.add(head); B.head = head;
+  g.scale.setScalar(1.12);
+  g.traverse(o => { o.castShadow = false; o.frustumCulled = false; });
+  return { g, B, P: {} };
+}
+const _mv = []; for (let k = 0; k < 72; k++) _mv.push(new THREE.Vector3());
+// run 0 stands, 1 sprints; ph is the stride; over.hand puts its right hand on a point (its own axes: +Z ahead)
+function poseMonster(M, ph, run, over) {
+  let n = 0; const V = (x, y, z) => _mv[n++].set(x, y, z), B = M.B;
+  const lean = over && over.lean != null ? over.lean : 0.42 + run * 0.5, cl = Math.cos(lean), sl = Math.sin(lean);
+  const bob = Math.abs(Math.sin(ph)) * 0.16 * run, sway = Math.sin(performance.now() / 900) * 0.03 * (1 - run);
+  const hip = V(0, 2.02 + bob, 0);
+  // the spine bends forward from the hips and kinks to one side
+  const up = (x, y, z) => V(x + sway, hip.y + y * cl - z * sl, y * sl + z * cl);
+  const s1 = up(0.12, 0.55, -0.04), s2 = up(-0.12, 1.06, 0.12), nk = up(0.1, 1.38, 0.42), hd = up(0.24, 1.52, 0.66);
+  setBone(B.sp[0], hip, s1); setBone(B.sp[1], s1, s2); setBone(B.sp[2], s2, nk); setBone(B.neck, nk, hd);
+  B.head.position.copy(hd); B.head.rotation.set(-0.5 + lean * 0.5, 0.25, 0.62);
+  // shoulders: one sits lower than the other
+  const shL = V(s2.x + 0.42, s2.y + 0.02, s2.z - 0.02), shR = V(s2.x - 0.38, s2.y - 0.2, s2.z + 0.06);
+  setBone(B.sh, shR, shL);
+  const arm = (k, sh, swing, side) => {
+    const d1 = V(side * 0.3, -Math.cos(swing), Math.sin(swing)).normalize(), el = V(0, 0, 0).copy(sh).addScaledVector(d1, 1.28);
+    const sw2 = swing + 0.45 + run * 0.5, d2 = V(-side * 0.08, -Math.cos(sw2), Math.sin(sw2)).normalize(), wr = V(0, 0, 0).copy(el).addScaledVector(d2, 1.2);
+    return [el, wr, d2];
+  };
+  const swing = Math.sin(ph) * 0.75 * run;
+  const J = [arm(0, shL, -swing - 0.05 + 0.15 * run, 1), arm(1, shR, swing - 0.05 + 0.15 * run, -1)];
+  if (over && over.hand) { // two bones reaching for a point
+    const T = over.hand, S = shR, l1 = 1.28, l2 = 1.2, D = _mv[n++].subVectors(T, S), d = clamp(D.length(), 0.3, l1 + l2 - 0.02); D.normalize();
+    const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+    const pole = _mv[n++].set(-0.6, -0.4, -1).normalize(), perp = pole.addScaledVector(D, -pole.dot(D)).normalize();
+    const el = _mv[n++].copy(S).addScaledVector(D, a).addScaledVector(perp, h), wr = _mv[n++].copy(S).addScaledVector(D, d);
+    J[1] = [el, wr, _mv[n++].subVectors(wr, el).normalize()];
+  }
+  [shL, shR].forEach((sh, k) => {
+    const [el, wr, d2] = J[k];
+    setBone(B.ua[k], sh, el); setBone(B.la[k], el, wr);
+    // three long fingers, curled a little
+    const grip = over && over.hand && k === 1 ? 0.9 : 0.25;
+    for (let f = 0; f < 3; f++) { const tip = V(0, 0, 0).copy(wr).addScaledVector(d2, 0.48).add(V((f - 1) * 0.07, 0, grip * 0.18 * (1 - Math.abs(f - 1) * 0.3))); setBone(B.fi[k][f], wr, tip); }
+  });
+  // legs: long strides, knees bent the wrong way round a little
+  const hipL = V(0.17, hip.y - 0.04, 0), hipR = V(-0.17, hip.y, 0);
+  setBone(B.hip, hipR, hipL);
+  [hipL, hipR].forEach((hp, k) => {
+    const p = ph + (k ? Math.PI : 0), a = Math.sin(p) * 0.85 * run + 0.08, bend = 0.2 + (Math.max(0, -Math.cos(p)) * 1.2 + 0.2) * run;
+    const kn = V(0, 0, 0).copy(hp).add(V(k ? -0.03 : 0.03, -Math.cos(a) * 1.1, Math.sin(a) * 1.1));
+    const b = a - bend, an = V(0, 0, 0).copy(kn).add(V(0, -Math.cos(b) * 1.05, Math.sin(b) * 1.05));
+    setBone(B.th[k], hp, kn); setBone(B.sn[k], kn, an); setBone(B.ft[k], an, V(an.x, an.y - 0.03, an.z + 0.32));
+  });
+}
+
+/* lights: two headlights and a red glow behind (it shows up in that glow), a warm glow off the dials */
+function horLights(on) {
+  if (on && !HOR.lights) {
+    const L = { hl: [] };
+    for (const s of [-1, 1]) { const sp = new THREE.SpotLight(0xfff0d0, 2.7, 85, 0.5, 0.6, 1.1); scene.add(sp); scene.add(sp.target); L.hl.push(sp); }
+    L.tail = new THREE.PointLight(0xff2412, 1.7, 24, 1.5); scene.add(L.tail);
+    L.dash = new THREE.PointLight(0xffa860, 0.5, 1.8, 1.4); L.dash.position.set(0.3, 0.64, 0.33); cabScene.add(L.dash);
+    HOR.lights = L;
+  } else if (!on && HOR.lights) {
+    const L = HOR.lights; for (const sp of L.hl) { scene.remove(sp); scene.remove(sp.target); } scene.remove(L.tail); cabScene.remove(L.dash); HOR.lights = null;
+  }
+}
+// the rear-view mirror shows the road behind you (only in horror mode: the rest of the time it is just glass)
+const MIR = { rt: new THREE.WebGLRenderTarget(320, 70), cam: new THREE.PerspectiveCamera(13, 320 / 70, 0.4, 260), on: false };
+MIR.rt.texture.repeat.x = -1; MIR.rt.texture.offset.x = 1;
+function horMirror(on) {
+  const m = CAB.mir; if (!m || MIR.on === on) return;
+  MIR.on = on; m.material.map = on ? MIR.rt.texture : null; m.material.color.setHex(on ? 0xffffff : 0x8fa9bd); m.material.needsUpdate = true;
+  // the door mirrors are plain pale glass, which glows at night: dim them
+  if (!MIR.doors) { MIR.doors = []; CAB.root.traverse(o => { if (o.material && o.material.isMeshBasicMaterial && o.material.color.getHex() === 0x9fb8c8) MIR.doors.push(o.material); }); }
+  for (const d of MIR.doors) d.color.setHex(on ? 0x161b22 : 0x9fb8c8);
+}
+function horReset() {
+  const st = GAME.st, car = GAME.car;
+  car.place(st.lapS + 10);
+  HOR.lap = 0; HOR.kmh = H_START_KMH; HOR.cap = 80 + Math.round(Math.random() * 10); HOR.upT = 20 + Math.random() * 10; HOR.tarT = 20 + Math.random() * 14; HOR.sabT = 26 + Math.random() * 16;
+  HOR.sab = false; HOR.hold = 0; HOR.btn = false; HOR.fixAt = 0; HOR.aiFix = 0; HOR.wait = 2; HOR.t = 0; HOR.dist = 0; HOR.beatT = 0; HOR.stepPh = 0;
+  horCatchClear();
+  HOR.startD = horCarD(car); HOR.md = HOR.startD - H_GAP0; HOR.gap = H_GAP0;
+  if (!st.hnotes) { const own = st.notes.filter(n => n.i >= st.lapS && n.i1 <= st.lapE); st.hnotes = own.concat(own.map(n => Object.assign({}, n, { i: n.i + st.lapI, i1: n.i1 + st.lapI }))); }
+  if (!HOR.mon) HOR.mon = makeMonster();
+  scene.add(HOR.mon.g); HOR.mon.g.visible = true;
+  horLights(true); horMirror(true);
+  $('horHud').classList.remove('hidden'); $('horVig').classList.remove('hidden'); $('horBlack').classList.remove('on');
+  // closer haze than a normal stage: you only see as far as the headlights reach
+  scene.fog.near = 3; scene.fog.far = GAME.role === 'nav' ? 78 : 60;
+}
+function horEnd() {
+  horLights(false); horMirror(false); horCatchClear();
+  if (HOR.mon) scene.remove(HOR.mon.g);
+  HOR.sab = false; GLASS.tarN = 0;
+  $('horHud').classList.add('hidden'); $('horVig').classList.add('hidden'); $('horBlack').classList.remove('on'); $('horFix').classList.add('hidden');
+  AUDIO.hDrone(0, 0); AUDIO.hStatic(0);
+}
+// it speeds up
+function horFaster() { showToast('IT IS GETTING FASTER', 'Required speed: ' + HOR.kmh + ' km/h', 2200); AUDIO.hUp(); const h = $('horHud'); h.classList.remove('up'); void h.offsetWidth; h.classList.add('up'); }
+
+/* the driver's screen: the chase itself */
+function horDriverStep(dt) {
+  const car = GAME.car;
+  horLap(car);
+  const cd = horCarD(car);
+  HOR.dist = Math.max(HOR.dist, cd - HOR.startD);
+  if (GAME.phase !== 2 || HOR.caught) return;
+  HOR.t += dt;
+  if (HOR.wait > 0) HOR.wait -= dt; else HOR.md += HOR.kmh / 3.6 * dt;
+  HOR.md = Math.max(HOR.md, cd - 240); // however fast you go, it is never far behind
+  HOR.gap = cd - HOR.md;
+  if (HOR.wait <= 0 && HOR.kmh < HOR.cap && (HOR.upT -= dt) <= 0) { HOR.upT = 20 + Math.random() * 10; HOR.kmh = Math.min(HOR.cap, HOR.kmh + 5 + Math.round(Math.random() * 5)); horFaster(); }
+  if (!GLASS.tarN && (HOR.tarT -= dt) <= 0 && HOR.gap < 170) { HOR.tarT = 24 + Math.random() * 22; const e = { k: 'htar', seed: (Math.random() * 1e9) | 0 }; applyFx(e, true); if (GAME.crew) netSend('fx', e); }
+  if (!HOR.sab && (HOR.sabT -= dt) <= 0) { HOR.sabT = 30 + Math.random() * 25; const e = { k: 'hsab' }; applyFx(e, true); if (GAME.crew) netSend('fx', e); }
+  if (HOR.gap <= 2.4) horCatch(true);
+}
+// the solo co-driver gets the map back by itself (holds the button after a moment)
+function horAiFix(dt) {
+  HOR.aiFix += dt; HOR.hold = Math.max(0, HOR.aiFix - 1.3);
+  if (HOR.hold >= H_HOLD) { HOR.sab = false; HOR.aiFix = 0; HOR.hold = 0; AUDIO.hStatic(0); aiSay('Got the map back!', true); }
+}
+// the navigator: hold R (or the button, or RT) for 7 seconds to bring the map back
+function horNavFix(dt, v) {
+  if (v) {
+    if (v.hs && !HOR.sab && !HOR.fixAt) { HOR.sab = true; HOR.hold = 0; }
+    if (v.hs && !HOR.sab && HOR.fixAt && performance.now() - HOR.fixAt > 1200) { HOR.fixAt = performance.now(); netSend('hfix', {}); }
+    if (!v.hs) HOR.fixAt = 0;
+  }
+  const fb = $('horFix');
+  fb.classList.toggle('hidden', !HOR.sab);
+  if (!HOR.sab) { AUDIO.hStatic(0); return; }
+  AUDIO.hStatic(0.6);
+  if (key('KeyR') || HOR.btn || padHeld(7)) HOR.hold += dt; else HOR.hold = Math.max(0, HOR.hold - dt * 2);
+  fb.querySelector('i').style.width = (HOR.hold / H_HOLD * 100).toFixed(1) + '%';
+  if (HOR.hold >= H_HOLD) { HOR.sab = false; HOR.hold = 0; HOR.fixAt = performance.now(); netSend('hfix', {}); AUDIO.hStatic(0); AUDIO.ui(); showToast('Map is back!', '', 1200); fb.classList.add('hidden'); }
+}
+function horFinish() {
+  const dist = Math.round(HOR.dist), k = GAME.crew ? 'crew' : 'solo', b = SAVE.best.horror || (SAVE.best.horror = {});
+  const nb = !b[k] || dist > b[k]; if (nb) { b[k] = dist; if (GAME.crew) b.crewWith = NET.partnerName(); }
+  SAVE.runs++; save();
+  GAME.phase = 3; GAME.doneT = 0;
+  GAME.result = { horror: 1, dist, nb, kmh: HOR.kmh, ms: Math.round(GAME.raceMs), crashes: GAME.crashes, resets: GAME.resets, calls: GAME.calls };
+  if (GAME.crew) netSend('fin', { ms: Math.round(GAME.raceMs), pen: 0, cr: GAME.crashes, rs: GAME.resets, hd: dist, hk: HOR.kmh });
+}
+
+/* both screens: it runs after you, the sounds, the HUD, the lights and the mirror */
+function horFrame(dt) {
+  const car = GAME.view, M = HOR.mon, run = GAME.phase >= 2 && HOR.wait <= 0 ? 1 : 0;
+  if (!HOR.caught) {
+    const yaw = horMonPose(HOR.md, HOR.lap, M.g.position); M.g.rotation.set(0, yaw, 0);
+    const ph = HOR.md / H_STRIDE * Math.PI * 2;
+    poseMonster(M, ph, run);
+    // footsteps when it is close
+    if (run && HOR.gap < 45 && Math.floor(ph / Math.PI) !== HOR.stepPh) { HOR.stepPh = Math.floor(ph / Math.PI); AUDIO.hStep(clamp(1 - HOR.gap / 45, 0, 1)); }
+    // a heartbeat that speeds up as it closes in
+    HOR.beatT -= dt;
+    if (HOR.gap < 70 && HOR.beatT <= 0 && GAME.phase === 2) { HOR.beatT = lerp(0.36, 1.15, clamp(HOR.gap / 70, 0, 1)); AUDIO.hBeat(clamp(1.15 - HOR.gap / 70, 0.25, 1)); }
+  }
+  AUDIO.hDrone(HOR.caught ? 0 : 1, clamp(1 - HOR.gap / 90, 0, 1));
+  if (GAME.role !== 'nav') AUDIO.hStatic(HOR.sab ? 0.2 : 0);
+  // lights follow the car
+  const L = HOR.lights, W = CAB.root.matrixWorld;
+  if (L) {
+    L.hl.forEach((sp, k) => { const s = k ? 1 : -1; sp.position.set(s * 0.62, 0.32, 2.0).applyMatrix4(W); sp.target.position.set(s * 0.9, -1.2, 26).applyMatrix4(W); sp.target.updateMatrixWorld(); });
+    L.tail.position.set(0, 0.45, -2.6).applyMatrix4(W);
+  }
+  // HUD
+  const req = HOR.kmh, sp = car.kmh, under = GAME.phase === 2 && HOR.wait <= 0 && sp < req;
+  $('horReq').textContent = req; $('horHud').classList.toggle('under', under);
+  $('horGap').textContent = GAME.phase < 2 || HOR.wait > 0 ? 'It is waiting behind you' : HOR.gap < 12 ? 'IT IS RIGHT BEHIND YOU' : 'It is ' + Math.round(HOR.gap) + ' m behind you';
+  $('horVig').style.opacity = (HOR.caught ? 0.55 : clamp(1.1 - HOR.gap / 55, 0, 0.9)).toFixed(3);
+  STOPW.textContent = fmtDist(HOR.dist); STOPW.classList.remove('pen');
+  // the mirror: every other frame is plenty
+  if (MIR.on && !HOR.caught && (HOR.mirN = (HOR.mirN + 1) % 2) === 0) {
+    MIR.cam.position.set(0, 1.0, -0.9).applyMatrix4(W); MIR.cam.lookAt(_v2.set(0, 0.6, -40).applyMatrix4(W));
+    MIR.dirty = true;
+  }
+}
+function horRenderMirror() {
+  if (!MIR.dirty) return; MIR.dirty = false;
+  const fog = scene.fog.far; scene.fog.far = 90;
+  R.setRenderTarget(MIR.rt); R.clear(); R.render(scene, MIR.cam); R.setRenderTarget(null);
+  scene.fog.far = fog;
+}
+
+/* caught: it grabs the car by the roof, lifts it over its head and throws it out of the world */
+function horCatch(local) {
+  if (HOR.caught) return;
+  const car = GAME.view;
+  HOR.caught = { t: 0, p: car.p.clone(), yaw: car.yaw, car: null, v: null, spin: null, look: new THREE.Vector3(), done: false };
+  AUDIO.hGrab(); GAME.shake = 0.35; camKick(1.2, 0.6);
+  $('toast').classList.remove('on'); $('hint').classList.add('fade'); $('calls').innerHTML = '';
+  if (local) { if (GAME.crew) netSend('fx', { k: 'hcaught' }); horFinish(); }
+}
+function horCatchClear() {
+  const C = HOR.caught; if (C && C.car) scene.remove(C.car.g);
+  if (C && C.fov0) { wcam.fov = C.fov0; wcam.updateProjectionMatrix(); }
+  if (C && GAME.st) sun.intensity = GAME.st.B.sunI;
+  HOR.caught = null; $('horBlack').classList.remove('on');
+}
+const HK = [[0, [0.45, 2.1, 1.1]], [0.5, [0.05, 1.32, 2.35]], [1.45, [0.25, 4.7, 1.5]], [2.15, [0.55, 5.7, -1.1]], [2.45, [0.3, 5.3, 2.6]], [3.1, [0.35, 2.9, 2.9]]];
+function horHand(t, out) {
+  let k = 0; while (k < HK.length - 2 && t > HK[k + 1][0]) k++;
+  const [t0, a] = HK[k], [t1, b] = HK[k + 1], f = smooth(t0, t1, t);
+  return out.set(lerp(a[0], b[0], f), lerp(a[1], b[1], f), lerp(a[2], b[2], f));
+}
+const _hq = new THREE.Quaternion(), _he = new THREE.Euler(), _hw = new THREE.Vector3(), _hl = new THREE.Vector3();
+function horCatchFrame(dt) {
+  const C = HOR.caught, M = HOR.mon, t = (C.t += dt);
+  const c = Math.cos(C.yaw), s = Math.sin(C.yaw), gy = C.p.y - CAR.ride - 0.06;
+  // its own axes: it stands right behind the car, facing the way the car was going
+  const toW = (v, out) => out.set(M.g.position.x + v.x * c + v.z * s, M.g.position.y + v.y, M.g.position.z - v.x * s + v.z * c);
+  M.g.position.set(C.p.x - s * 2.7, gy, C.p.z - c * 2.7); M.g.rotation.set(0, C.yaw, 0); M.g.updateMatrixWorld(true);
+  const hand = horHand(t, _hl), sc = M.g.scale.x;
+  poseMonster(M, 0, 0.1, { hand: _v1.copy(hand).divideScalar(sc), lean: t < 1.2 ? 0.75 : t < 2.2 ? 0.05 : 0.55 });
+  if (!C.car) {
+    C.car = makeRivalCar(0, ' '); C.car.tag.visible = false; C.car.arm.up.visible = C.car.arm.lo.visible = C.car.arm.hand.visible = false;
+    C.car.g.traverse(o => { if (o.material && o.material.color && o.material.color.getHex() === CREW_COLS[0]) o.material.color.setHex(LOOK.body); });
+    C.car.g.position.copy(C.p); C.car.g.rotation.set(0, C.yaw, 0); scene.add(C.car.g);
+  }
+  const g = C.car.g; g.visible = t >= 0.45; // your own eyes first: the outside of the car would fill the screen
+  if (t > 0.5 && t < 2.42) { // hanging from its hand by the roof
+    toW(hand, _hw); g.position.set(_hw.x, _hw.y - 1.05, _hw.z);
+    const sw = smooth(1.45, 2.15, t) - smooth(2.15, 2.42, t);
+    _he.set(-sw * 1.1 + Math.sin(t * 9) * 0.06, C.yaw + Math.sin(t * 4) * 0.15, Math.sin(t * 7) * 0.12, 'YXZ'); g.quaternion.setFromEuler(_he);
+  } else if (t >= 2.42) { // thrown: up and away, spinning, until it is gone
+    if (!C.v) { C.v = toW(_v2.set(0.5, 0.75, 1).normalize().multiplyScalar(58), new THREE.Vector3()).sub(M.g.position); C.spin = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().multiplyScalar(9); AUDIO.hThrow(); }
+    g.position.addScaledVector(C.v, dt); C.v.y -= 2.5 * dt;
+    _hq.setFromAxisAngle(_v2.copy(C.spin).normalize(), C.spin.length() * dt); g.quaternion.premultiply(_hq);
+  }
+  for (const w of C.car.wheels) w.spin.rotation.x += dt * 20;
+  // the camera: your own eyes for a moment, then from the side of the road
+  if (t < 0.45) { poseCabin(dt); cameraFrame(dt); GAME.shake = Math.max(GAME.shake, 0.25); return true; }
+  // a low camera at the roadside, so it stands up against the sky; a little more moonlight for this bit
+  if (!C.fov0) { C.fov0 = wcam.fov; wcam.fov = 56; wcam.updateProjectionMatrix(); sun.intensity = 0.55; }
+  toW(_v2.set(-3.4, 1.6, -11), wcam.position);
+  const tgt = t < 2.42 ? toW(_v2.set(0, 3.0, 1.2), _hw) : g.position;
+  if (!C.lookSet) { C.look.copy(tgt); C.lookSet = true; }
+  C.look.lerp(tgt, Math.min(1, dt * (t < 2.42 ? 4 : 7)));
+  wcam.lookAt(C.look); sky.position.copy(wcam.position);
+  $('horBlack').classList.toggle('on', t > 3.7);
+  if (t > 5.8 && !GAME.resultShown && GAME.result) { GAME.resultShown = true; showResults(); }
+  return false;
+}
+
 /* ---------- the cabin, its crew and the camera ---------- */
 const _carQ = new THREE.Quaternion(), _m4 = new THREE.Matrix4(), _wq = new THREE.Quaternion();
 const POLE_L = new THREE.Vector3(1, -0.7, -0.2), POLE_R = new THREE.Vector3(-1, -0.7, -0.2), POLE_UP = new THREE.Vector3(0.2, -1, 0.3);
@@ -3086,6 +3587,8 @@ function roadAt(st, d, out, up = 0) {
 const ATR = { p: new THREE.Vector3(), t: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), last: -1 };
 function attractFrame(dt) {
   const st = GAME.st; if (!st) return;
+  // 1.5: back in the menu after a horror run: bring the daytime stage back (unless the crew is about to go again)
+  if (st.def.horror && !(NET.lobby && NET.lobby.st === 'horror') && $('loading').classList.contains('hidden')) { ensureStage(stageById(SAVE.stage)); return; }
   GAME.attractT += dt;
   const span = st.L - 140, d = 40 + (GAME.attractT * 12) % span;
   // the road's direction from points either side (smooth through corners), and a slow sway from side to side
@@ -3172,21 +3675,22 @@ function frame(now) {
     if (GAME.vs) rivalsFrame(dt);
     looseStep(dt);
     if (GAME.view.sick) AUDIO.sick(GAME.view.rpm, dt, !GAME.paused || GAME.crew);
-    poseCabin(dt);
-    cameraFrame(dt);
+    let ext = false;
+    if (HOR.caught && horOn()) ext = !horCatchFrame(dt); else { poseCabin(dt); cameraFrame(dt); }
+    if (horOn()) horFrame(dt);
     lightFrame(GAME.view.p);
     GLASS.update();
     tabT -= dt;
-    if (tabT <= 0) { tabT = GAME.role === 'nav' ? 1 / 20 : 0.5; TABLET.draw(GAME.st, { idx: GAME.view.idx, x: GAME.view.p.x, z: GAME.view.p.z, yaw: GAME.view.yaw, kmh: GAME.view.kmh, ms: GAME.raceMs + GAME.pen, rivals: GAME.vs ? rivalDots() : null }); if (GAME.role !== 'nav') TABLET.drawLo(); }
+    if (tabT <= 0) { tabT = GAME.role === 'nav' ? 1 / 20 : 0.5; if (horOn()) TABLET.drawH(GAME.st, { idx: GAME.view.idx, x: GAME.view.p.x, z: GAME.view.p.z, yaw: GAME.view.yaw, kmh: GAME.view.kmh, dist: HOR.dist, sab: HOR.sab, hold: HOR.hold, nav: GAME.role === 'nav' }); else TABLET.draw(GAME.st, { idx: GAME.view.idx, x: GAME.view.p.x, z: GAME.view.p.z, yaw: GAME.view.yaw, kmh: GAME.view.kmh, ms: GAME.raceMs + GAME.pen, rivals: GAME.vs ? rivalDots() : null }); if (GAME.role !== 'nav') TABLET.drawLo(); }
     { const k = Math.min(1, dt * 9); GAUGE.sk = lerp(GAUGE.sk || 0, GAME.view.kmh, k); GAUGE.sr = lerp(GAUGE.sr || 900, GAME.view.rpm, Math.min(1, dt * 14)); }
     gaugeT -= dt; if (gaugeT <= 0) { gaugeT = 1 / 40; GAUGE.draw(GAUGE.sk, GAUGE.sr, GAME.raceMs + GAME.pen, GAME.view.gear); }
-    STOPW.textContent = fmtTime(GAME.raceMs + GAME.pen); STOPW.classList.toggle('pen', GAME.pen > 0); STOPW.dataset.pen = GAME.pen ? '+' + Math.round(GAME.pen / 1000) + ' s' : '';
+    if (!horOn()) STOPW.textContent = fmtTime(GAME.raceMs + GAME.pen); STOPW.classList.toggle('pen', GAME.pen > 0 && !horOn()); STOPW.dataset.pen = GAME.pen ? '+' + Math.round(GAME.pen / 1000) + ' s' : '';
     tripT -= dt; if (tripT <= 0) { tripT = 0.25; drawTrip(); if (GAME.vs) { const rows = vsStandings(); $('vsPos').innerHTML = '<b>' + (rows.findIndex(r => r.me) + 1) + '</b>/' + rows.length; } }
     const car = GAME.view, sp = Math.abs(car.vx);
     AUDIO.engine(car.rpm, car.gas, !GAME.paused || GAME.crew, clamp(sp / 35, 0, 1) * (car.onRoad ? 0.75 : 1.2) + (car.hand && sp > 3 ? 0.4 : 0), clamp((sp / 45) ** 2, 0, 1) + (car.doors[0].open || car.doors[1].open ? 0.5 : 0));
     GAME.hintT -= dt; if (GAME.hintT < 0 && GAME.hintT > -1) $('hint').classList.add('fade');
     for (const f of FANS) { if (Math.abs(f.userData.i - car.idx) < 50) { f.userData.ph += dt * 9; f.userData.arms.position.y = 1.45 + Math.abs(Math.sin(f.userData.ph)) * 0.25; } }
-    CAB.root.visible = true;
+    CAB.root.visible = !ext;
     render(clamp((sp - 18) / 30, 0, 1) * 0.9);
   } else {
     attractFrame(dt);
@@ -3196,6 +3700,7 @@ function frame(now) {
   PRESSED.clear();
 }
 function render(blur) {
+  if (MIR.on && horOn()) horRenderMirror();
   if (modOn('drunk')) { DRUNK.render(); return; }
   if (S.blur && blur > 0.02) POST.render(blur);
   else { R.setRenderTarget(null); R.clear(); R.render(scene, wcam); }
@@ -3205,7 +3710,7 @@ function drawTrip() {
   const c = CAB.trip.c, x = c.getContext('2d'), st = GAME.st, car = GAME.view;
   x.fillStyle = '#120404'; x.fillRect(0, 0, 128, 40);
   x.fillStyle = '#ff3a2a'; x.font = '700 22px monospace'; x.textAlign = 'center';
-  const left = Math.max(0, (st.finishI - car.idx) * STEP / 1000);
+  const left = horOn() ? HOR.dist / 1000 : Math.max(0, (st.finishI - car.idx) * STEP / 1000);
   x.fillText(left.toFixed(2), 64, 28);
   CAB.trip.t.needsUpdate = true;
 }
@@ -3378,9 +3883,17 @@ function onNet(ev, d) {
     if (ev === 'call') { GAME.calls++; showCall(d.c, NET.partnerName()); }
     else if (ev === 'tb') NET.lastTab = d;
     else if (ev === 'shut') GAME.car.shutDoor(1);
+    else if (ev === 'hfix') { if (HOR.sab) { HOR.sab = false; HOR.hold = 0; showToast('Map is back', NET.partnerName() + ' got it back', 1300); } }
   }
 }
 function finishNav(d) {
+  if (d.hd !== undefined) { // 1.5 horror: how far the crew got
+    const b = SAVE.best.horror || (SAVE.best.horror = {}), nb = !b.crew || d.hd > b.crew; if (nb) { b.crew = d.hd; b.crewWith = NET.partnerName(); }
+    SAVE.runs++; save();
+    GAME.result = { horror: 1, dist: d.hd, nb, kmh: d.hk, ms: d.ms, crashes: d.cr, resets: d.rs, calls: GAME.calls };
+    if (!HOR.caught) horCatch(false);
+    return;
+  }
   const def = GAME.def, b = SAVE.best[def.id] || (SAVE.best[def.id] = {});
   // versus races don't count for bests or the leaderboard
   const nb = !GAME.vs && (!b.crew || d.ms < b.crew); if (nb) { b.crew = d.ms; b.crewWith = NET.partnerName(); }
@@ -3851,7 +4364,7 @@ function requeue(mode) { crewClose(); NET.quick = null; openQuick(); qmStart(mod
    MENUS: main menu, stages, settings, how to play, joining, the crew lobby,
    pause and results. Then boot.
    ========================================================================== */
-const SCREENS = ['menu', 'qmScr', 'stagesScr', 'settingsScr', 'helpScr', 'notesScr', 'lbScr', 'joinScr', 'lobbyScr', 'pauseScr', 'resultScr'];
+const SCREENS = ['menu', 'horrorScr', 'qmScr', 'stagesScr', 'settingsScr', 'helpScr', 'notesScr', 'lbScr', 'joinScr', 'lobbyScr', 'pauseScr', 'resultScr'];
 let SCREEN = 'menu', BACK = {};
 const RACE_SCREENS = [null, 'pauseScr', 'settingsScr', 'resultScr', 'lbScr'];
 function showScreen(id, from) {
@@ -3887,7 +4400,28 @@ document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('cl
   else if (g === 'crew') makeOnlineCrew('crew');
   else if (g === 'vsroom') makeOnlineCrew('vs');
   else if (g === 'quick') openQuick();
+  else if (g === 'horror') openHorror();
 }));
+
+/* ---------- 1.5: horror mode ---------- */
+function openHorror() {
+  const b = SAVE.best.horror || {};
+  $('horBest').innerHTML = 'Your best: <b>' + (b.solo ? fmtDist(b.solo) : '–') + '</b> solo &nbsp;·&nbsp; <b>' + (b.crew ? fmtDist(b.crew) : '–') + '</b> with a crew';
+  showScreen('horrorScr', 'menu');
+}
+$('horSolo').addEventListener('click', () => {
+  if (!onScreen($('horSolo'))) return;
+  AUDIO.unlock(); AUDIO.ui(); showLoading('Building ' + HORROR.name + '…');
+  setTimeout(() => { startRace(HORROR, 'driver', false); hideLoading(); }, 40);
+});
+$('horCrew').addEventListener('click', async () => {
+  if (!onScreen($('horCrew'))) return;
+  AUDIO.unlock(); AUDIO.ui();
+  await makeOnlineCrew('crew');
+  if (NET.host && NET.lobby && !NET.lobby.vs) { NET.lobby.st = 'horror'; hostPushLobby(); }
+});
+$('horJoin').addEventListener('click', () => { if (!onScreen($('horJoin'))) return; AUDIO.unlock(); AUDIO.ui(); openJoin(); });
+{ const fb = $('horFix'); const on = v => e => { e.preventDefault(); HOR.btn = v; }; fb.addEventListener('pointerdown', on(true)); fb.addEventListener('pointerup', on(false)); fb.addEventListener('pointerleave', on(false)); fb.addEventListener('pointercancel', on(false)); }
 
 /* ---------- quick match ---------- */
 function openQuick() {
@@ -3996,6 +4530,15 @@ function showBoardResult(j) {
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.5', date: '19 November 2026', items: [
+    'New: Horror mode (main menu, or pick it as your crew\'s stage). Night in the Dead Woods: dead trees with bare branches, fog, and only your headlights to see by.',
+    'Something tall and crooked follows you down the road. The required speed at the top of the screen is how fast it runs: stay above it. Every 20 to 30 seconds it gets 5 to 10 km/h faster, until it tops out at 80 to 90 km/h.',
+    'If it catches you, it grabs the car, lifts it over its head and throws you out of the world. One crash can be enough.',
+    'It throws black tar over almost all of the windscreen. It takes five sweeps of the wipers to get it off.',
+    'It cuts the navigator\'s map. The navigator has to hold R for 7 seconds to get it back (in a solo run your co-driver does it, and goes quiet meanwhile).',
+    'The road loops forever: one of the long stages, with no finish. The goal is to get as far as you can. Your best distance is saved for solo and crew runs.',
+    'In Horror mode your rear-view mirror works. You will want it.',
+  ] },
   { v: '1.4.1', date: '18 November 2026', items: [
     'Driver: press X to light a cigarette. You put it in your mouth, flick a zippo open and light it, then rest your elbow on the window sill and steer one-handed.',
     'Smoke curls off the tip and gets ripped away by the wind outside. Every few seconds you take a drag (the tip glows) and blow a cloud of smoke across the windscreen.',
@@ -4113,16 +4656,17 @@ function openStages(mode, from) {
 }
 function renderStages() {
   const g = $('stageGrid'); g.innerHTML = '';
-  for (const def of allStages()) {
+  for (const def of (STAGE_MODE === 'lobby' && NET.lobby && NET.lobby.vs ? [] : [HORROR]).concat(allStages())) {
     const B = BIOMES[def.biome], b = SAVE.best[def.id] || {};
     const el = document.createElement('button'); el.className = 'stage' + (STAGE_SEL === def.id ? ' sel' : '');
     const c1 = '#' + new THREE.Color(B.sky[0]).getHexString(), c2 = '#' + new THREE.Color(B.grass[0]).getHexString(), road = '#' + new THREE.Color(B.road).getHexString();
     el.innerHTML = `<div class="sw" style="background:linear-gradient(160deg,${c1},${c2})"><svg viewBox="0 0 200 54" preserveAspectRatio="xMidYMid meet"><path d="${stagePreview(def)}" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="${stagePreview(def)}" fill="none" stroke="${road}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`
-      + (def.daily ? '<span class="daily-tag">DAILY</span>' : def.long ? '<span class="daily-tag long-tag">LONG</span>' : '')
+      + (def.horror ? '<span class="daily-tag hor-tag">HORROR</span>' : def.daily ? '<span class="daily-tag">DAILY</span>' : def.long ? '<span class="daily-tag long-tag">LONG</span>' : '')
       + `<div class="nm"></div><div class="meta"><span class="pips">${[1, 2, 3].map(i => `<i class="${i <= def.diff ? 'on' : ''}"></i>`).join('')}</span><span>${(def.len / 1000).toFixed(1)} km · ${['', 'Easy', 'Medium', 'Hard'][def.diff]}</span></div><div class="bi"></div>`
       + `<div class="bests"><div><span>Solo</span> ${b.solo ? medalDot(def, b.solo) + fmtTime(b.solo) : '–'}</div><div><span>Crew</span> ${b.crew ? medalDot(def, b.crew) + fmtTime(b.crew) : '–'}</div></div>`;
     el.querySelector('.nm').textContent = def.name + (def.sub ? ' · ' + def.sub : '');
     el.querySelector('.bi').textContent = def.blurb;
+    if (def.horror) { el.classList.add('horror'); el.querySelector('.meta span:last-child').textContent = 'Endless · Night'; el.querySelector('.bests').innerHTML = `<div><span>Solo</span> ${b.solo ? fmtDist(b.solo) : '–'}</div><div><span>Crew</span> ${b.crew ? fmtDist(b.crew) : '–'}</div>`; }
     el.title = 'Gold ' + fmtTime(stageParMs(def) * MEDAL.gold);
     el.addEventListener('click', () => { AUDIO.ui(); STAGE_SEL = def.id; renderStages(); });
     el.addEventListener('dblclick', () => stageGo());
@@ -4137,7 +4681,7 @@ function stageGo() {
   if (!STAGE_SEL) return;
   AUDIO.ui();
   if (STAGE_MODE === 'lobby') { if (NET.host && NET.lobby) { NET.lobby.st = STAGE_SEL; hostPushLobby(); } showScreen('lobbyScr'); return; }
-  SAVE.stage = STAGE_SEL; save();
+  if (STAGE_SEL !== 'horror') { SAVE.stage = STAGE_SEL; save(); }
   const def = stageById(STAGE_SEL);
   showLoading('Building ' + def.name + '…');
   setTimeout(() => { startRace(def, 'driver', false); hideLoading(); }, 40);
@@ -4325,6 +4869,7 @@ function showResults() {
   $('hud').classList.add('hidden');
   $('resRows').classList.toggle('stand', !!GAME.vs);
   if (GAME.vs) { showVsResults(r, def); return; }
+  if (r.horror) { showHorrorResults(r, def); return; }
   $('resStage').textContent = def.name + (def.sub ? ' · ' + def.sub : '') + (GAME.crew ? ' · with ' + NET.partnerName() : ' · solo');
   $('resTime').innerHTML = ''; $('resTime').append(fmtTime(r.ms));
   if (r.nb) { const n = document.createElement('span'); n.className = 'newbest'; n.textContent = 'NEW BEST'; $('resTime').appendChild(n); }
@@ -4355,6 +4900,22 @@ function showResults() {
   showScreen('resultScr');
 }
 
+// 1.5 horror: how far you got before it caught you
+function showHorrorResults(r, def) {
+  const b = SAVE.best.horror || {}, best = b[GAME.crew ? 'crew' : 'solo'] || r.dist;
+  $('resStage').textContent = def.name + ' · Horror' + (GAME.crew ? ' · with ' + NET.partnerName() : ' · solo');
+  $('resTime').innerHTML = ''; $('resTime').append(fmtDist(r.dist));
+  if (r.nb) { const n = document.createElement('span'); n.className = 'newbest'; n.textContent = 'NEW BEST'; $('resTime').appendChild(n); }
+  $('resMedal').textContent = 'It caught you. The required speed was ' + r.kmh + ' km/h.';
+  $('resLb').textContent = '';
+  $('resRows').innerHTML = [['Survived', fmtTime(r.ms)], ['Required speed', r.kmh + ' km/h'], ['Crashes', r.crashes], ['Best', fmtDist(best)]].map(([a, v]) => `<div><b>${v}</b><span>${a}</span></div>`).join('');
+  const btns = $('resBtns'); btns.innerHTML = ''; $('resStatus').textContent = '';
+  const btn = (t, cls, fn) => { const e = document.createElement('button'); e.className = 'btn ' + (cls || ''); e.textContent = t; e.onclick = () => { AUDIO.ui(); fn(); }; btns.appendChild(e); };
+  if (!GAME.crew) { btn('Try again', 'primary', () => startRace(def, 'driver', false)); btn('Menu', '', () => { leaveRace(); showScreen('menu'); }); }
+  else if (NET.host) { btn('Run it again', 'primary', () => hostStart(false)); btn('Swap seats & go', 'teal', () => hostStart(true)); btn('Back to lobby', '', () => { netSend('tolobby', {}); leaveRace(); showScreen('lobbyScr'); renderLobby(); }); }
+  else { btn('Ask for another run', 'primary', () => { netSend('restart', {}); $('resStatus').textContent = 'Asked the host…'; }); btn('Back to lobby', '', () => { netSend('tolobby', {}); leaveRace(); showScreen('lobbyScr'); renderLobby(); }); $('resStatus').textContent = 'The host picks what happens next.'; }
+  showScreen('resultScr');
+}
 function showVsResults(r, def) {
   $('resStage').textContent = def.name + ' · Versus · ' + CREW_NAMES[GAME.crewIdx] + ' crew';
   $('resTime').innerHTML = ''; $('resTime').append(fmtTime(r.ms));
@@ -4407,7 +4968,7 @@ document.querySelectorAll('#touchDrv button').forEach(b => {
   hideLoading();
   showScreen('menu');
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__ci = { GAME, NET, TAB, GLASS, CAB, startRace, stageById, buildStage, STAGES, driverFrame, navFrame, S, SAVE, render, cameraFrame, poseCabin, R, wcam, ccam, scene, cabScene, showCall, finishRace, AUDIO, packSnap, navSnap, applyFx, startWipe, stepWipe, tabDrop, tabGrab, TABLET, KEYS, PRESSED };
+  if (IS_LOCAL) window.__ci = { HOR, HORROR, horCatch, MIR, GAME, NET, TAB, GLASS, CAB, startRace, stageById, buildStage, STAGES, driverFrame, navFrame, S, SAVE, render, cameraFrame, poseCabin, R, wcam, ccam, scene, cabScene, showCall, finishRace, AUDIO, packSnap, navSnap, applyFx, startWipe, stepWipe, tabDrop, tabGrab, TABLET, KEYS, PRESSED };
 })();
 </script>
 <script src="../moving.js?v=1"></script>
