@@ -102,9 +102,14 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   only that game's summary from games.js (tagline, description, controls, keys; 700 characters), elsewhere the page name.
   The server: POST `/ai` in the private Worker (`aiChat`): Bearer token checked by the Account object's 'aiuse' route,
   which also counts 15 messages a day per account (`a.ai` {d, n}; one Durable Object request per message);
-  `@cf/openai/gpt-oss-120b` (since 2026-11-18 evening: the best model the free Workers plan allows, after Llama 3.1 8B and then
-  Gemma 4 26B the same day; Kimi K2.6, DeepSeek V4 Pro and GLM 5.3 need the paid plan; `reasoning_effort: 'low'`, since its
-  thinking tokens count as output; it streams OpenAI-style chunks, each with its own usage, which the Worker adds up) streamed as text/event-stream ('data: {"t"}' pieces, then {"done", "left"});
+  the model the player picks in the panel's Model menu (2026-11-18, the owner's request; `MODELS` in assistant.js, the
+  choice kept per device in 'arcade-ai-model', each reply labelled with its model): `AI_MODELS` in the Worker, keyed
+  oss120 (GPT-OSS 120B, the default), llama70, qwen27 (counts as 2 of the 15 messages: `w`), gemma4, mistral, scout,
+  oss20, glm, qwen30, llama8, every one on the free Workers plan (Kimi K2.6, DeepSeek V4 Pro, GLM 5.3 need the paid plan;
+  Gemma 3 isn't allowed on the account; Nemotron 3 answered with thinking only). Each entry has its neuron prices, an
+  up-front estimate and extra settings (thinking off, or GPT-OSS `reasoning_effort: 'low'`). An unknown key gets the
+  default. Keep the keys in step on both sides. They stream OpenAI-style chunks, each with its own usage, which the Worker
+  adds up, streamed as text/event-stream ('data: {"t"}' pieces, then {"done", "left"});
   Llama Guard 3 (`@cf/meta/llama-guard-3-8b`) checks only the finished reply and {"blocked": 1} makes the panel show a
   polite refusal instead. Site-wide about 9,000 neurons a day (the free plan has 10,000; a GPT-OSS message costs about 30-80 with the
   Guard check, so roughly 100-250 messages a day): each Worker instance counts from the models' own usage figures and adds to the Tally

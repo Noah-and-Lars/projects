@@ -13,7 +13,24 @@
   var REFUSED = 'Sorry, I can’t help with that one. Ask me something else!';
   var file = (location.pathname.match(/([a-z0-9-]+)\.html$/i) || [0, 'index'])[1].toLowerCase();
   var PAGE = file === 'index' ? 'home' : file;
-  var panel, log, form, input, sendBtn, guestBox, sub, btn, busy = false, msgs = [], who = '';
+  // the models players can pick (2026-11-18): the keys match AI_MODELS in the Worker, which picks the real model and
+  // counts w messages of the day's 15 for it; the choice is kept on this device ('arcade-ai-model')
+  var MODELS = [
+    { k: 'oss120', n: 'GPT-OSS 120B', d: 'Smartest' },
+    { k: 'llama70', n: 'Llama 3.3 70B', d: 'Smart' },
+    { k: 'qwen27', n: 'Qwen 3.8 27B', d: 'Smart, counts as 2 messages', w: 2 },
+    { k: 'gemma4', n: 'Gemma 4 26B', d: 'All-rounder' },
+    { k: 'mistral', n: 'Mistral Small 3.1', d: 'All-rounder' },
+    { k: 'scout', n: 'Llama 4 Scout', d: 'Quick' },
+    { k: 'oss20', n: 'GPT-OSS 20B', d: 'Quick' },
+    { k: 'glm', n: 'GLM 4.7 Flash', d: 'Fastest' },
+    { k: 'qwen30', n: 'Qwen 3 30B', d: 'Fastest' },
+    { k: 'llama8', n: 'Llama 3.1 8B', d: 'Fastest, the original' }
+  ], MKEY = 'arcade-ai-model';
+  function modelOf(k) { for (var i = 0; i < MODELS.length; i++) if (MODELS[i].k === k) return MODELS[i]; return null; }
+  function getModel() { var k = ''; try { k = localStorage.getItem(MKEY) || ''; } catch (e) {} return modelOf(k) ? k : MODELS[0].k; }
+  function setModel(k) { try { localStorage.setItem(MKEY, k); } catch (e) {} }
+  var panel, log, form, input, sendBtn, guestBox, sub, btn, msel, mrow, busy = false, msgs = [], who = '';
 
   function A() { return window.ArcadeAccount || null; }
   function kind() { var a = A(); try { return a && a.kind ? a.kind() : ''; } catch (e) { return ''; } }
@@ -68,6 +85,10 @@
       '#aiPanel form{display:flex;gap:8px;align-items:flex-end;padding:12px 14px 6px;border-top:1px solid var(--line,#ffffff14)}#aiPanel form[hidden]{display:none}' +
       '#aiPanel textarea{flex:1;min-height:40px;max-height:120px;resize:none;padding:10px 12px;border-radius:var(--radius,12px);border:1px solid var(--line-2,#ffffff24);background:var(--panel,#121215);color:var(--text,#fff);font:14px/1.35 var(--font,system-ui);outline:none}' +
       '#aiPanel textarea:focus{border-color:var(--accent,#ff5a2c)}' +
+      '#aiPanel .ai-mrow{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 18px;border-bottom:1px solid var(--line,#ffffff14);color:var(--dim,#74747f);font:500 12px var(--font,system-ui)}#aiPanel .ai-mrow[hidden]{display:none}' +
+      '#aiPanel .ai-mrow select{flex:1;min-width:0;height:32px;padding:0 8px;border-radius:var(--radius-sm,8px);border:1px solid var(--line-2,#ffffff24);background:var(--panel,#121215);color:var(--text,#fff);font:500 13px var(--font,system-ui);cursor:pointer}' +
+      '#aiPanel .ai-mrow select:focus{outline:none;border-color:var(--accent,#ff5a2c)}#aiPanel .ai-mrow select option{background:var(--panel,#121215);color:var(--text,#fff)}' +
+      '#aiPanel .ai-by{align-self:flex-start;margin:-6px 0 0 4px;color:var(--dim,#74747f);font:500 10.5px var(--mono,monospace)}' +
       '#aiPanel .ai-foot{padding:4px 16px 12px;color:var(--dim,#74747f);font-size:11.5px}' +
       'html.ai-open body.player{padding-right:380px;box-sizing:border-box}' +
       '@media (max-width:820px){html.ai-open body.player{padding-right:0}}' +
@@ -91,6 +112,11 @@
     var clr = el('button', 'ai-clear', 'Clear'); clr.type = 'button'; clr.title = 'Clear this chat'; clr.onclick = function () { if (busy) return; msgs = []; save(); render(); };
     var x = el('button', 'x', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.onclick = close;
     hd.appendChild(clr); hd.appendChild(x);
+    mrow = el('label', 'ai-mrow'); mrow.appendChild(document.createTextNode('Model'));
+    msel = el('select'); msel.setAttribute('aria-label', 'AI model');
+    MODELS.forEach(function (m) { var o = el('option', '', m.n + ' · ' + m.d); o.value = m.k; msel.appendChild(o); });
+    msel.value = getModel(); msel.onchange = function () { setModel(msel.value); };
+    mrow.appendChild(msel);
     log = el('div', 'ai-log'); log.setAttribute('aria-live', 'polite');
     guestBox = el('div', 'ai-guest'); guestBox.hidden = true;
     guestBox.appendChild(el('p', '', 'Sign in to use the assistant'));
@@ -105,14 +131,14 @@
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
     input.addEventListener('input', function () { input.style.height = 'auto'; input.style.height = Math.min(120, input.scrollHeight) + 'px'; });
     var foot = el('div', 'ai-foot', 'The assistant can get things wrong. Never share personal details.');
-    panel.appendChild(hd); panel.appendChild(log); panel.appendChild(guestBox); panel.appendChild(form); panel.appendChild(foot);
+    panel.appendChild(hd); panel.appendChild(mrow); panel.appendChild(log); panel.appendChild(guestBox); panel.appendChild(form); panel.appendChild(foot);
     document.body.appendChild(panel);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) { e.stopPropagation(); close(); } }, true);
   }
 
   function render() {
     var on = signedIn();
-    guestBox.hidden = on; form.hidden = !on; log.hidden = !on;
+    guestBox.hidden = on; form.hidden = !on; log.hidden = !on; mrow.hidden = !on; msel.value = getModel();
     log.textContent = '';
     if (!on) { sub.textContent = ''; return; }
     if (!msgs.length) {
@@ -120,7 +146,7 @@
       hi.appendChild(document.createTextNode(PAGE === 'play' ? 'Ask me how to play this game or for a tip, or anything else: homework, fun facts, jokes…' : 'Ask me about the games and the site, or anything else: homework, fun facts, jokes…'));
       log.appendChild(hi);
     }
-    msgs.forEach(function (m) { log.appendChild(el('div', 'ai-msg ' + m.r, m.t)); });
+    msgs.forEach(function (m) { log.appendChild(el('div', 'ai-msg ' + m.r, m.t)); if (m.r === 'a' && modelOf(m.m)) log.appendChild(el('div', 'ai-by', modelOf(m.m).n)); });
     log.scrollTop = log.scrollHeight;
   }
   function note(text) { var n = el('div', 'ai-msg n', text); log.appendChild(n); log.scrollTop = log.scrollHeight; }
@@ -160,14 +186,14 @@
       var res = await fetch(base + '/ai', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token() },
-        body: JSON.stringify({ p: PAGE, g: gameInfo(), msgs: msgs.slice(-SEND) })
+        body: JSON.stringify({ p: PAGE, g: gameInfo(), m: getModel(), msgs: msgs.slice(-SEND).map(function (m) { return { r: m.r, t: m.t }; }) })
       });
       if (!res.ok || !/event-stream/.test(res.headers.get('content-type') || '')) {
         var j = await res.json().catch(function () { return {}; });
         bubble.remove(); msgs.pop(); save();
         if (j.error === 'auth') { render(); guestBox.hidden = false; form.hidden = true; log.hidden = true; }
         else note(j.t || 'The assistant couldn’t answer just now. Try again in a moment.');
-        if (j.error === 'limit') sub.textContent = '0 left today';
+        if (j.error === 'limit') sub.textContent = (j.left || 0) + ' left today';
         return;
       }
       var rd = res.body.getReader(), dec = new TextDecoder(), buf = '';
@@ -193,7 +219,9 @@
     if (done && done.blocked) reply = REFUSED;
     else if (!reply.trim()) reply = 'Hmm, I didn’t get an answer that time. Try asking again!';
     reply = plainMd(reply); bubble.textContent = reply;
-    msgs.push({ r: 'a', t: reply }); save();
+    var mk = done && modelOf(done.m) ? done.m : '';
+    msgs.push(mk ? { r: 'a', t: reply, m: mk } : { r: 'a', t: reply }); save();
+    if (mk) bubble.after(el('div', 'ai-by', modelOf(mk).n));
     if (done && typeof done.left === 'number') sub.textContent = done.left + ' left today';
     log.scrollTop = log.scrollHeight;
   }

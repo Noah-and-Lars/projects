@@ -957,7 +957,7 @@ html.trl-on body { overflow: hidden; }
 .t-hero { margin-top: 48px; max-width: 760px; }
 .t-hero h1 { margin: 14px 0 0; font-size: clamp(48px, 7vw, 104px); line-height: .88; font-weight: 800; font-stretch: 125%; letter-spacing: -.04em; text-transform: uppercase; }
 .t-hero p { margin: 18px 0 0; color: #d4d4d8; font-size: 18px; max-width: 46ch; }
-.t-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+.t-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 18px; }
 .t-card { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--panel); box-shadow: 0 0 0 1px var(--line); transition: transform .3s var(--ease), box-shadow .3s; }
 .t-card:hover { transform: translateY(-3px); box-shadow: 0 0 0 2px #fff; }
 .t-ci { position: relative; aspect-ratio: 16 / 7; overflow: hidden; }
@@ -1051,7 +1051,7 @@ html.trl-on body { overflow: hidden; }
 .t-pill b { color: var(--warn); }
 .t-empty { justify-content: center; min-height: 140px; box-shadow: inset 0 0 0 1px var(--line-2); background: transparent; }
 .t-empty b { color: var(--text); }
-.t-home { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+.t-home { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 18px; }
 @media (max-width: 760px) { .t-bi { padding: 24px; } .t-clock { position: static; text-align: left; padding: 0 24px 24px; } .t-banner { flex-direction: column; align-items: stretch; justify-content: flex-end; } .t-mine { padding: 20px; } }
 .mob-phone .br-m { flex-basis: 170px; }
 
