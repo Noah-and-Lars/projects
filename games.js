@@ -87,11 +87,11 @@ window.GAMES = [
     tagline: 'Co-op dirt rally: one of you drives blind, the other reads the map and shouts the turns. Now with quick match and 4-6 player versus.',
     description: 'A two-player co-op rally. The driver has the wheel but no map; the navigator holds the tablet with the route and calls every turn. Beat the stage clock through mud, cracked glass, flying doors and a dropped tablet, or drive solo with an AI co-driver.',
     controls: 'Keyboard, mouse or Xbox controller',
-    keys: [['W A S D', 'Drive (driver)'], ['Space', 'Handbrake (driver) / Jump call (navigator)'], ['E', 'Wipers (driver) / Sharp right (navigator)'], ['Q A W D E S', 'Calls (navigator)'], ['F / click', 'Grab the dropped tablet'], ['C', 'Look at your partner'], ['F (hold)', 'Hand out of the window (versus driver)']],
+    keys: [['W A S D', 'Drive (driver)'], ['Space', 'Handbrake (driver) / Jump call (navigator)'], ['E', 'Wipers (driver) / Sharp right (navigator)'], ['Q A W D E S', 'Calls (navigator)'], ['X', 'Light a cigarette / flick it out (driver)'], ['F / click', 'Grab the dropped tablet'], ['C', 'Look at your partner'], ['F (hold)', 'Hand out of the window (versus driver)']],
     path: 'turn-turn-turn/index.html',
     thumb: 'turn-turn-turn/thumb.jpg',
     added: '2026-11-08T22:00:00+11:00',
-    updated: '2026-11-17T21:00:00+11:00',
+    updated: '2026-11-18T21:00:00+11:00',
     stat() { const s = readSave('turnturnturn.save', true); if (!s || !s.best) return null; const n = Object.keys(s.best).filter(k => s.best[k].solo || s.best[k].crew).length; return n ? n + (n === 1 ? ' stage' : ' stages') + ' finished' : null; },
   },
   {
@@ -376,6 +376,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-18', game: 'turn-turn-turn', imgs: ['turn-turn-turn/news/1.4.1-light.jpg', 'turn-turn-turn/news/1.4.1-window.jpg', 'turn-turn-turn/news/1.4.1-exhale.jpg'], headline: 'Turn! Turn! TURN! 1.4.1: light one up', text: 'Turn! Turn! TURN! 1.4.1: drivers can press X to light a cigarette. You flick a zippo open, light it, then hang your elbow out of the window and steer one-handed. Smoke curls off the tip, every few seconds you take a drag and blow a cloud across the windscreen, and pressing X again flicks it out of the window and down the road. Your navigator sees it all too.', post: '🚬 Turn! Turn! TURN! 1.4.1 is out!\n\n🔥 Driver, press X: you put a cigarette in your mouth, flick a zippo open and light it.\n💪 Then it\'s elbow on the window sill, one hand on the wheel.\n💨 Smoke curls off the tip and the wind rips it away. Every few seconds you take a drag and blow a cloud right across your own windscreen (good luck seeing that corner).\n👋 Press X again to flick it out of the window and watch it bounce down the road behind you.\n\nYour navigator sees all of it. Mostly the smoke. 👇\n\n#turnturnturn #TheArcade #Update' },
   { date: '2026-11-18', href: 'index.html', imgs: ['news/assistant-panel.jpg'], headline: 'Meet the Arcade Assistant', text: 'Stuck on a game? Tap the ✨ button at the top of any page to open the Assistant, a helper that answers questions about The Arcade and the game you’re playing. It needs an online account: everyone gets 15 questions a day.',
     post: '✨ Say hi to the Arcade Assistant!\n\nTap ✨ at the top of any page and ask away:\n🎮 How do I play this game? What do the keys do?\n💡 Tips when you’re stuck on a level\n🧭 Where to find chat, friends, Social and tournaments\n\nOn a game it knows which game you’re playing, and it slides out at the side so the game stays in view. Sign in with your Arcade account to use it (15 questions a day).\n\nWhat will you ask it first? 👇\n#TheArcade #NewFeature' },
   { date: '2026-11-18', href: 'app/', headline: 'The Arcade app for Windows 7, 8 and 8.1', text: 'The Arcade app now works on older PCs too: there’s a version for Windows 7, 8 and 8.1 (64-bit and 32-bit) on the download page, under the Software tab. Windows 10 and 11 keep the main app.' },

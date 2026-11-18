@@ -361,6 +361,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
             <span><kbd>Q</kbd></span><span>Pull your door shut</span>
             <span><kbd>R</kbd></span><span>Back on the road (+5 s)</span>
             <span><kbd>C</kbd></span><span>Look at your navigator</span>
+            <span><kbd>X</kbd></span><span>Light a cigarette (press again to flick it out)</span>
           </div>
         </div>
         <div class="help-card">
@@ -492,7 +493,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.4';
+const VERSION = '1.4.1';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -681,6 +682,11 @@ const AUDIO = (() => {
   A.beep = (f, d = 0.15) => tone(f, f, d, 0.22, 'square');
   A.drop = () => { tone(500, 140, 0.25, 0.25, 'triangle'); burst(0.15, 700, 1, 0.3, 'lowpass', 0, 0.22); };
   A.ui = () => tone(880, 1200, 0.06, 0.06, 'triangle');
+  // 1.4.1 cigarette: the zippo's lid and wheel, a soft drag and a long breath out
+  A.zippo = () => { tone(2400, 1500, 0.035, 0.12, 'square'); burst(0.05, 4200, 1.5, 0.22, 'highpass', 0, 0.16); burst(0.45, 700, 0.7, 0.1, 'lowpass', 0, 0.2); };
+  A.drag = () => burst(0.5, 2600, 0.6, 0.05, 'bandpass');
+  A.exhale = () => burst(0.9, 900, 0.5, 0.07, 'lowpass');
+  A.flick = () => tone(900, 400, 0.06, 0.06, 'triangle');
   // a call's chime: panned to its side, sharper calls are higher and doubled
   A.call = c => {
     const pan = c === 'L' || c === 'SL' ? -0.85 : c === 'R' || c === 'SR' ? 0.85 : 0;
@@ -1510,7 +1516,7 @@ class Car {
     const dl = this.doors ? this.doors.map(d => d.lost) : [false, false];
     this.doors = [{ open: false, a: 0, v: 0, ph: 0, lost: dl[0] }, { open: false, a: 0, v: 0, ph: 1.7, lost: dl[1] }];
     this.sick = !!this.sick; this.oil = !!this.oil; this.oilD = 0;
-    this.oneHand = 0; this.bird = 0; this.hand = 0; this.gas = 0; this.brk = 0; this.clutch = false; this.launch = 0; this.limT = 0; this.mudGap = 0; this.mudN = 0; this.mudP = -1;
+    this.oneHand = 0; this.bird = 0; this.cig = { s: 0, t: 0, burn: 0 }; this.hand = 0; this.gas = 0; this.brk = 0; this.clutch = false; this.launch = 0; this.limT = 0; this.mudGap = 0; this.mudN = 0; this.mudP = -1;
     this.loc = roadLocal(st, this.p.x, this.p.z, i);
   }
   surf(x, z) {
@@ -2009,6 +2015,48 @@ function makeGlove(cuffCol) {
   return g;
 }
 
+// 1.4.1: a hand holding a cigarette between two fingers, and a zippo.
+// Hand space: the knuckles run along X, the fingers point +Z, the back of the hand is +Y. The cigarette
+// pokes out through the fingers along +Y: filter on the palm side, the burning tip out the back.
+function makeCigHand(cuffCol) {
+  const g = new THREE.Group(), gm = cabinMat(LOOK.glove), g2 = cabinMat(0x2c2e34), cm = cabinMat(cuffCol);
+  g.add(box(0.075, 0.042, 0.07, gm, 0, 0, 0));                            // palm
+  for (const fx of [-0.0135, 0.0135]) g.add(box(0.017, 0.017, 0.072, fx < 0 ? gm : g2, fx, 0.004, 0.068, -0.12)); // index + middle, stretched out
+  for (const fx of [0.026, 0.044]) { g.add(box(0.017, 0.017, 0.03, g2, fx - 0.005, -0.004, 0.044)); g.add(box(0.017, 0.03, 0.017, gm, fx - 0.005, -0.016, 0.056)); } // ring + little finger curled in
+  g.add(box(0.02, 0.018, 0.05, gm, -0.044, -0.008, 0.02, 0, 0.5, 0)); // thumb
+  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.042, 0.05, 8), cm); cuff.rotation.x = Math.PI / 2; cuff.position.set(0, 0, -0.055); g.add(cuff);
+  // the cigarette
+  const cig = new THREE.Group();
+  const filt = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.024, 8), cabinMat(0xd9933f)); filt.position.y = -0.022; cig.add(filt);
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.0057, 0.0057, 0.003, 8), cabinMat(0xc9a64a)); ring.position.y = -0.0105; cig.add(ring);
+  const paper = new THREE.Mesh(new THREE.CylinderGeometry(0.0053, 0.0053, 1, 8), cabinMat(0xf6f3ec)); cig.add(paper);
+  const ash = new THREE.Mesh(new THREE.CylinderGeometry(0.0052, 0.005, 0.006, 8), cabinMat(0x77736c)); cig.add(ash);
+  const emberM = new THREE.MeshBasicMaterial({ color: 0x401008 }), ember = new THREE.Mesh(new THREE.CylinderGeometry(0.0056, 0.0056, 0.004, 8), emberM); cig.add(ember);
+  const glowM = new THREE.SpriteMaterial({ map: SMOKE_TEX(true), color: 0xff7a2a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 });
+  const glow = new THREE.Sprite(glowM); glow.scale.setScalar(0.04); glow.renderOrder = 6; cig.add(glow);
+  // the zippo: chrome case, a lid that flips open and a flame
+  // the zippo stands upright (+Y): a chrome case, a lid hinged at the back, the chimney and a flame
+  const zip = new THREE.Group();
+  const chrome = new THREE.MeshPhongMaterial({ color: 0xd4d8dd, shininess: 90, specular: 0xffffff, flatShading: true });
+  zip.add(box(0.03, 0.04, 0.013, chrome, 0, -0.02, 0));
+  zip.add(box(0.031, 0.003, 0.014, cabinMat(0x8a9097), 0, -0.002, 0));
+  const lidP = new THREE.Group(); lidP.position.set(0, 0, -0.0065); zip.add(lidP); lidP.add(box(0.03, 0.016, 0.013, chrome, 0, 0.008, 0.0065));
+  const chim = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.012, 0.009), cabinMat(0x6d7178)); chim.position.y = 0.006; zip.add(chim);
+  const flameM = new THREE.MeshBasicMaterial({ color: 0xffa828, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.036, 8), flameM); flame.position.y = 0.03; zip.add(flame);
+  const core = new THREE.Mesh(new THREE.ConeGeometry(0.004, 0.016, 6), new THREE.MeshBasicMaterial({ color: 0x6aa8ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })); core.position.y = 0.019; zip.add(core);
+  const fglow = new THREE.Sprite(new THREE.SpriteMaterial({ map: SMOKE_TEX(true), color: 0xffa040, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8 })); fglow.scale.setScalar(0.05); fglow.position.y = 0.03; zip.add(fglow); flame.userData.glow = fglow;
+  return { g, cig, paper, ash, ember, emberM, glow, glowM, zip, lidP, flame, core, flameM };
+}
+// soft round puff for the smoke (and a hot one for glows)
+const SMOKE_TEX = (() => { const t = {}; return hot => {
+  const k = hot ? 'h' : 's'; if (t[k]) return t[k];
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  if (hot) { g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); }
+  else { g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(0.45, 'rgba(255,255,255,.45)'); g.addColorStop(1, 'rgba(255,255,255,0)'); }
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64); return (t[k] = new THREE.CanvasTexture(c));
+}; })();
+
 // a fist with the middle finger up; the back of the hand faces -Z
 function makeBirdHand(cuffCol) {
   const g = new THREE.Group(), gm = cabinMat(LOOK.glove), g2 = cabinMat(0x2c2e34), cm = cabinMat(cuffCol);
@@ -2176,6 +2224,8 @@ function buildCabin() {
   const gloves = { dl: makeGlove(LOOK.cuff), dr: makeGlove(LOOK.cuff), nl: makeGlove(0x1fc7b2), nr: makeGlove(0x1fc7b2) };
   for (const k in gloves) add(gloves[k]);
   const bird = makeBirdHand(LOOK.cuff); bird.visible = false; add(bird);
+  const cigH = makeCigHand(LOOK.cuff); cigH.g.visible = false; add(cigH.g); add(cigH.cig); add(cigH.zip); cigH.cig.visible = cigH.zip.visible = false;
+  const smoke = new THREE.Group(); add(smoke);
   // the navigator's tablet
   const tab = new THREE.Group(); add(tab);
   tab.add(box(0.31, 0.215, 0.03, cabinMat(0x2b2f36), 0, 0, 0));
@@ -2189,7 +2239,7 @@ function buildCabin() {
     for (let k = 0; k < a.count; k++) if (bonnet.body[k * 3]) a.setXYZ(k, c.r, c.g, c.b);
     a.needsUpdate = true;
   };
-  return { root, wheel, spin, gripL, gripR, doors, wipers, glass, drv, nav, gloves, bird, wins, paint, tab, screen, tabMat, hb, toggles, trip: { c: tripC, t: tripT }, M };
+  return { root, wheel, spin, gripL, gripR, doors, wipers, glass, drv, nav, gloves, bird, cigH, smoke, wins, paint, tab, screen, tabMat, hb, toggles, trip: { c: tripC, t: tripT }, M };
 }
 /* ==========================================================================
    THE RACE: renderer, cameras, the two seats, calls, hazards and the flow
@@ -2510,7 +2560,7 @@ function setHint() {
   h.classList.remove('hidden', 'fade');
   h.innerHTML = GAME.role === 'nav'
     ? '<kbd>Q</kbd><kbd>A</kbd><kbd>W</kbd><kbd>D</kbd><kbd>E</kbd> calls &nbsp; <kbd>S</kbd> slow &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>Shift</kbd> tablet up &nbsp; <kbd>F</kbd> grab tablet &nbsp; <kbd>Z</kbd> door &nbsp; <kbd>C</kbd> look at driver'
-    : '<kbd>W</kbd><kbd>S</kbd> gas/brake &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>Space</kbd> handbrake &nbsp; <kbd>Shift</kbd> neutral (rev, let go to launch) &nbsp; <kbd>E</kbd> wipers &nbsp; <kbd>Q</kbd> door &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> look at navigator' + (GAME.vs ? ' &nbsp; <kbd>F</kbd> window down, hand out for the car behind' : '');
+    : '<kbd>W</kbd><kbd>S</kbd> gas/brake &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>Space</kbd> handbrake &nbsp; <kbd>Shift</kbd> neutral (rev, let go to launch) &nbsp; <kbd>E</kbd> wipers &nbsp; <kbd>Q</kbd> door &nbsp; <kbd>R</kbd> reset &nbsp; <kbd>C</kbd> look at navigator &nbsp; <kbd>X</kbd> cigarette' + (GAME.vs ? ' &nbsp; <kbd>F</kbd> window down, hand out for the car behind' : '');
   GAME.hintT = 9;
 }
 
@@ -2526,7 +2576,7 @@ function startRace(def, role, crew, vs) {
   const st = ensureStage(def);
   GAME.mode = 'race'; GAME.role = role; GAME.crew = !!crew; GAME.paused = false;
   applyMods();
-  GAME.car = new Car(st); GAME.view = GAME.car; looseClear();
+  GAME.car = new Car(st); GAME.view = GAME.car; looseClear(); cigClear();
   // versus: your crew's colour and grid slot; a crew of one gets the AI co-driver; the clock starts at the START banner
   GAME.vs = !!vs; GAME.lob = vs ? vs.lob : crew ? NET.lobby : null; GAME.crewIdx = vs ? vs.k : 0; GAME.stand = {}; GAME.gone = {}; GAME.vsGo = false;
   GAME.aiNav = !!(vs && role === 'driver' && !vs.lob.crews[vs.k][1]);
@@ -2660,7 +2710,10 @@ function driverFrame(dt) {
   if (hit('KeyQ') || padHit(1)) car.shutDoor(0);
   if ((hit('KeyR') || padHit(3)) && GAME.phase === 2) resetCar();
   // versus: hold F to wind the window down and give the car behind a hand signal
-  if (GAME.vs) car.bird = clamp(car.bird + ((key('KeyF') || padHeld(13)) ? dt * 2.4 : -dt * 3), 0, 1);
+  if (GAME.vs) car.bird = clamp(car.bird + ((key('KeyF') || padHeld(13)) && !car.cig.s ? dt * 2.4 : -dt * 3), 0, 1);
+  // 1.4.1: X lights a cigarette (your left hand leaves the wheel for it); X again flicks it out of the window
+  if (hit('KeyX') && car.bird < 0.05) { const c = car.cig; if (c.s === 0) { c.s = 1; c.t = 0; c.burn = 0; } else if (c.s === 2) { c.s = 3; c.t = 0; } }
+  cigStep(car, dt);
   const I = driverInput(dt);
   if (GAME.phase === 1) {
     GAME.cd -= dt;
@@ -2713,7 +2766,7 @@ function navFrame(dt) {
   const car = GAME.car;
   car.p.set(v.x, v.y, v.z); car.yaw = v.yaw; car.pitch = v.pitch; car.roll = v.roll; car.vx = v.vx; car.steer = v.steer; car.rpm = v.rpm; car.gear = v.gear;
   car.idx = v.i; car.ay = v.ay; car.ax = v.ax; car.doors[0].a = v.d0; car.doors[1].a = v.d1; car.doors[0].open = v.d0 > 0.02; car.doors[1].open = v.d1 > 0.02; car.hand = v.hb; car.gas = v.gas;
-  car.onRoad = v.on; car.oneHand = v.oh; car.bird = v.bd || 0;
+  car.onRoad = v.on; car.oneHand = v.oh; car.bird = v.bd || 0; car.cig.s = v.cs; car.cig.t = v.ct; car.cig.burn = v.cb;
   car.sick = !!(v.dl & 4);
   if (v.dl & 8) { car.oil = true; car.oilD += Math.abs(car.vx) / 60; if (car.oilD > 0.9) { car.oilD = 0; oilDrip(car); } }
   for (let d = 0; d < 2; d++) if ((v.dl >> d) & 1 && !car.doors[d].lost) { car.doors[d].lost = true; dropDoor(d, (Math.random() * 1e9) | 0); }
@@ -2734,12 +2787,170 @@ function unpackSnap(A, B, t) {
   const l = (a, b) => a + (b - a) * t, la = (a, b) => a + wrapA(b - a) * t;
   return { x: l(A.p[0], B.p[0]), y: l(A.p[1], B.p[1]), z: l(A.p[2], B.p[2]), yaw: la(A.a[0], B.a[0]), pitch: l(A.a[1], B.a[1]), roll: l(A.a[2], B.a[2]),
     vx: l(A.v, B.v), steer: l(A.s, B.s), rpm: l(A.rpm, B.rpm), gear: B.g, i: B.i, ay: l(A.ay, B.ay), ax: l(A.ax, B.ax), d0: l(A.d[0], B.d[0]), d1: l(A.d[1], B.d[1]),
-    hb: B.hb, gas: B.gs, on: !!B.on, rt: l(A.rt, B.rt), ph: B.ph, cd: l(A.cd, B.cd), oh: B.oh, bd: l(A.bd || 0, B.bd || 0), dl: B.dl || 0 };
+    hb: B.hb, gas: B.gs, on: !!B.on, rt: l(A.rt, B.rt), ph: B.ph, cd: l(A.cd, B.cd), oh: B.oh, bd: l(A.bd || 0, B.bd || 0), cs: B.cs || 0, ct: A.cs === B.cs ? l(A.ct || 0, B.ct || 0) : B.ct || 0, cb: B.cb || 0, dl: B.dl || 0 };
 }
 function packSnap() {
   const c = GAME.car, r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000;
   return { t: performance.now(), p: [r2(c.p.x), r3(c.p.y), r2(c.p.z)], a: [r3(c.yaw), r3(c.pitch), r3(c.roll)], v: r2(c.vx), s: r3(c.steer), rpm: Math.round(c.rpm), g: c.gear, i: c.idx,
-    ay: r2(c.ay), ax: r2(c.ax), d: [r2(c.doors[0].a), r2(c.doors[1].a)], hb: c.hand, gs: r2(c.gas), on: c.onRoad ? 1 : 0, rt: Math.round(GAME.raceMs), ph: GAME.phase, cd: r2(GAME.cd), oh: c.oneHand > 0 ? 1 : 0, bd: r2(c.bird), dl: (c.doors[0].lost ? 1 : 0) | (c.doors[1].lost ? 2 : 0) | (c.sick ? 4 : 0) | (c.oil ? 8 : 0) };
+    ay: r2(c.ay), ax: r2(c.ax), d: [r2(c.doors[0].a), r2(c.doors[1].a)], hb: c.hand, gs: r2(c.gas), on: c.onRoad ? 1 : 0, rt: Math.round(GAME.raceMs), ph: GAME.phase, cd: r2(GAME.cd), oh: c.oneHand > 0 ? 1 : 0, bd: r2(c.bird), cs: c.cig.s, ct: r2(c.cig.t), cb: r2(c.cig.burn), dl: (c.doors[0].lost ? 1 : 0) | (c.doors[1].lost ? 2 : 0) | (c.sick ? 4 : 0) | (c.oil ? 8 : 0) };
+}
+
+/* ---------- 1.4.1: the driver's cigarette ----------
+   s 0 none, 1 lighting (2.5 s), 2 smoking (a drag every 7 s, burns down in ~80 s), 3 flicked out of the window (0.8 s).
+   Only the state and its clock go over the net; both screens draw the hand, the zippo and the smoke from them. */
+const CIG_P = 7;
+function cigStep(car, dt) {
+  const c = car.cig; if (!c.s) return;
+  c.t += dt;
+  if (c.s === 1 && c.t >= 2.5) { c.s = 2; c.t = 0; }
+  else if (c.s === 2) { c.burn = Math.min(1, c.burn + dt / 80); if (c.burn >= 1) { c.s = 3; c.t = 0; } }
+  else if (c.s === 3 && c.t >= 0.8) { c.s = 0; c.t = 0; c.burn = 0; }
+}
+const SMK = []; // smoke puffs in cabin space: { sp, v, age, life, s0, s1, a }
+const FLUNG = []; // cigarettes flicked out of the window, in world space
+function cigClear() {
+  for (const p of SMK) CAB.smoke.remove(p.sp); SMK.length = 0;
+  for (const f of FLUNG) scene.remove(f.m); FLUNG.length = 0;
+  CAB.cigWin = 0; CAB.cigPT = 0; CAB.cigPS = 0; CAB.cigFace = 0; CAB.cigH.g.visible = CAB.cigH.cig.visible = CAB.cigH.zip.visible = false;
+}
+function puff(p, v, life, s0, s1, a) {
+  let q = SMK.length >= 160 ? SMK.shift() : null;
+  if (!q) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: SMOKE_TEX(false), color: 0xdfe3e6, transparent: true, depthWrite: false, opacity: 0 })); sp.renderOrder = 5; q = { sp }; }
+  CAB.smoke.add(q.sp); q.sp.position.copy(p); q.v = v.clone(); q.age = 0; q.life = life; q.s0 = s0; q.s1 = s1; q.a = a; q.rot = (Math.random() - 0.5) * 2;
+  q.sp.material.rotation = Math.random() * 6; SMK.push(q);
+}
+const _cq = { w: new THREE.Quaternion(), f: new THREE.Quaternion(), r: new THREE.Quaternion(), k: new THREE.Quaternion(), m: new THREE.Matrix4() };
+const basisQ = (q, X, Y, Z) => q.setFromRotationMatrix(_cq.m.makeBasis(V3(...X).normalize(), V3(...Y).normalize(), V3(...Z).normalize()));
+// at your face: palm to the mouth, fingers up, the tip pointing ahead. resting: hand on the window sill, the tip out of the window.
+basisQ(_cq.f, [-1, 0, 0.12], [0.1, 0.25, 1], [0, 1, -0.25]);
+basisQ(_cq.r, [0, -1, 0], [1, 0.15, 0], [0, 0, 1]);
+_cq.f.normalize(); _cq.r.normalize();
+_cq.lips = basisQ(new THREE.Quaternion(), [1, 0, 0], [0.04, -0.3, 1], [0, -1, -0.3]).normalize(); // in your lips: the tip points ahead and a little down
+const CIG_MOUTH = V3(0.39, 0.69, -0.12), CIG_LIPS = V3(0.37, 0.725, -0.2), CIG_ZIP = V3(0.372, 0.625, -0.162), CIG_REST = V3(0.78, 0.67, 0.04), CIG_FLICK = V3(1.0, 0.72, 0.05);
+const ss = k => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
+const crossed = (pt, t, th, P) => P ? Math.floor((t - th) / P) > Math.floor((pt - th) / P) : pt < th && t >= th;
+function poseCig(car, dt, inv) {
+  const C = CAB, H = C.cigH, c = car.cig, gl = C.gloves, s = c.s, t = c.t;
+  // the smoke always keeps moving, even after the cigarette is gone
+  const spd = Math.abs(car.vx);
+  for (let i = SMK.length - 1; i >= 0; i--) {
+    const q = SMK[i]; q.age += dt; const k = q.age / q.life;
+    if (k >= 1) { C.smoke.remove(q.sp); SMK.splice(i, 1); continue; }
+    const out = q.sp.position.x > 0.8 || q.sp.position.x < -0.8 || q.sp.position.y > 1.0;
+    // outside the car the wind rips it away; inside it hangs about and slowly drifts back
+    if (out) { q.v.z = lerp(q.v.z, -Math.min(14, spd * 0.7), Math.min(1, dt * 6)); q.v.x += dt * 0.4 * Math.sign(q.sp.position.x); }
+    else { q.v.multiplyScalar(1 - Math.min(1, dt * 1.6)); q.v.y += dt * 0.07; q.v.z -= dt * (0.05 + spd * 0.004); q.v.x += Math.sin(q.age * 3 + i) * dt * 0.05; }
+    q.sp.position.addScaledVector(q.v, dt);
+    q.sp.scale.setScalar(lerp(q.s0, q.s1, Math.sqrt(k)));
+    q.sp.material.opacity = q.a * Math.min(1, k * 6) * (1 - k) * (1 - k);
+    q.sp.material.rotation += q.rot * dt * 0.5;
+  }
+  for (let i = FLUNG.length - 1; i >= 0; i--) {
+    const f = FLUNG[i]; f.age += dt; f.v.y -= 9.8 * dt; f.m.position.addScaledVector(f.v, dt); f.m.rotation.x += dt * 14; f.m.rotation.z += dt * 9;
+    const gy = GAME.st ? groundH(GAME.st, f.m.position.x, f.m.position.z) : -1e9;
+    if (f.m.position.y < gy + 0.01) { f.m.position.y = gy + 0.01; f.v.multiplyScalar(0.3); f.v.y = Math.abs(f.v.y) * 0.3; }
+    if (f.age > 4) { scene.remove(f.m); FLUNG.splice(i, 1); }
+  }
+  const pt = s === C.cigPS ? C.cigPT : (s === 2 ? -1 : 0); C.cigPS = s; C.cigPT = t;
+  if (!s || (s === 3 && t > 0.8)) { H.g.visible = H.cig.visible = H.zip.visible = false; C.cigFace = 0; return; }
+  // where the hand is
+  const W = gl.dl.position, Wq = gl.dl.quaternion;
+  const P = _v3c.copy(W), Q = _cq.k.copy(Wq);
+  let face = 0, zip = 0, lid = 0, fl = 0, drag = 0, lit = true, hasCig = true;
+  const go = (A, Aq, B, Bq, k) => { k = ss(k); P.copy(A).lerp(B, k); Q.copy(Aq).slerp(Bq, k); };
+  let inMouth = false;
+  if (s === 1) {
+    // bring it to your mouth, let go of it, flick the zippo up under the tip, light it, take it back and have a drag
+    lit = t >= 0.95;
+    if (t < 0.45) { go(W, Wq, CIG_MOUTH, _cq.f, t / 0.45); face = ss(t / 0.45); }
+    else if (t < 0.7) { go(CIG_MOUTH, _cq.f, CIG_ZIP, _cq.r, (t - 0.45) / 0.25); face = 1; inMouth = true; }
+    else if (t < 1.45) { P.copy(CIG_ZIP); P.y += Math.sin(t * 9) * 0.002; Q.copy(_cq.r); face = 1; inMouth = true; }
+    else if (t < 1.75) { go(CIG_ZIP, _cq.r, CIG_MOUTH, _cq.f, (t - 1.45) / 0.3); face = 1; inMouth = t < 1.72; }
+    else if (t < 2.0) { P.copy(CIG_MOUTH); Q.copy(_cq.f); face = 1; drag = ss((t - 1.75) / 0.1); }
+    else { go(CIG_MOUTH, _cq.f, CIG_REST, _cq.r, (t - 2.0) / 0.5); face = 1 - ss((t - 2.0) / 0.5); }
+    zip = ss((t - 0.5) / 0.15) * (1 - ss((t - 1.42) / 0.2)); lid = ss((t - 0.6) / 0.08) * (1 - ss((t - 1.36) / 0.08));
+    fl = t > 0.68 && t < 1.38 ? 1 : 0;
+    if (inMouth && t > 0.95 && t < 1.4) drag = 0.8;
+    if (crossed(pt, t, 0.62)) AUDIO.zippo();
+    if (crossed(pt, t, 1.78)) AUDIO.drag();
+    if (crossed(pt, t, 2.15)) exhale(inv);
+  } else if (s === 2) {
+    const u = ((t % CIG_P) + CIG_P) % CIG_P;
+    const idle = _v4c.set(0, Math.sin(t * 1.3) * 0.006, Math.sin(t * 0.8) * 0.01);
+    // every so often the ash gets tapped off
+    const tap = u > 2.0 && u < 2.5 ? Math.sin((u - 2.0) / 0.5 * Math.PI * 3) * 0.012 : 0;
+    const R = _v5c.copy(CIG_REST).add(idle); R.y += tap;
+    if (u < 4.6) { P.copy(R); Q.copy(_cq.r); }
+    else if (u < 5.1) { go(R, _cq.r, CIG_MOUTH, _cq.f, (u - 4.6) / 0.5); face = ss((u - 4.6) / 0.5); }
+    else if (u < 5.8) { P.copy(CIG_MOUTH); Q.copy(_cq.f); face = 1; drag = ss((u - 5.1) / 0.15) * (1 - ss((u - 5.65) / 0.15)); }
+    else if (u < 6.3) { go(CIG_MOUTH, _cq.f, R, _cq.r, (u - 5.8) / 0.5); face = 1 - ss((u - 5.8) / 0.5); }
+    else { P.copy(R); Q.copy(_cq.r); }
+    if (crossed(pt, t, 5.15, CIG_P)) AUDIO.drag();
+    if (crossed(pt, t, 6.0, CIG_P)) exhale(inv);
+    if (crossed(pt, t, 2.05, CIG_P)) for (let k = 0; k < 3; k++) puff(tipPos(inv), V3((Math.random() - 0.5) * 0.1, -0.15, 0), 0.6, 0.006, 0.02, 0.5); // falling ash
+  } else if (s === 3) {
+    if (t < 0.3) { go(CIG_REST, _cq.r, CIG_FLICK, _cq.r, t / 0.3); }
+    else go(CIG_FLICK, _cq.r, W, Wq, (t - 0.3) / 0.5);
+    hasCig = t < 0.22;
+    if (crossed(pt, t, 0.22)) fling(car);
+  }
+  C.cigFace = face;
+  H.g.visible = true; H.g.position.copy(P); H.g.quaternion.copy(Q);
+  // the cigarette sits between your fingers, or in your mouth while you light it
+  if (inMouth) { H.cig.position.copy(CIG_LIPS); H.cig.quaternion.copy(_cq.lips); }
+  else { H.cig.position.set(0, 0, 0.07).applyQuaternion(Q).add(P); H.cig.quaternion.copy(Q); }
+  // the zippo stands on top of your fist, its flame licking the tip
+  H.zip.position.set(0, 0, 0.012).applyQuaternion(Q).add(P); H.zip.position.y += 0.045; H.zip.quaternion.identity();
+  gl.dl.visible = false;
+  // the arm follows the hand; the wrist sits behind the palm
+  const wrist = _v4c.set(0, 0, -0.06).applyQuaternion(Q).add(P);
+  ik(C.drv.armL, C.drv.shL, wrist, face > 0.5 ? POLE_UP : _v5c.set(1, -1.1, 0.1));
+  // the cigarette burns down; the tip glows harder while you drag on it
+  const burn = s === 1 ? 0 : c.burn, L = 0.062 * (1 - burn * 0.75);
+  H.cig.visible = hasCig;
+  H.paper.scale.y = L; H.paper.position.y = -0.009 + L / 2;
+  H.ash.visible = lit; H.ash.position.y = -0.009 + L + 0.003;
+  H.ember.position.y = -0.009 + L + (lit ? 0.0005 : 0.002);
+  const flick = 0.8 + Math.sin(performance.now() / 70) * 0.1 + Math.sin(performance.now() / 23) * 0.06;
+  const glow = lit ? lerp(0.45, 1.25, drag) * flick : 0;
+  H.emberM.color.setRGB(lerp(0.25, 1, Math.min(1, glow)), lerp(0.06, 0.45, Math.min(1, glow)), 0.03);
+  H.glow.position.y = H.ember.position.y; H.glowM.opacity = clamp(glow * 0.9, 0, 1); H.glow.scale.setScalar(0.03 + glow * 0.03);
+  H.zip.visible = zip > 0.01; H.zip.scale.setScalar(Math.max(0.01, zip));
+  H.lidP.rotation.x = -lid * 2.1;
+  H.flame.visible = H.core.visible = fl > 0;
+  H.flame.userData.glow.visible = fl > 0;
+  if (fl) { const w = 1 + Math.sin(performance.now() / 40) * 0.15 + (Math.random() - 0.5) * 0.15; H.flame.scale.set(1 + (Math.random() - 0.5) * 0.2, w, 1); H.flameM.opacity = 0.75 + Math.random() * 0.2; H.flame.userData.glow.scale.setScalar(0.045 + Math.random() * 0.012); }
+  // smoke curls up off the tip
+  C.cigSm = (C.cigSm || 0) - dt;
+  if (lit && hasCig && C.cigSm <= 0) {
+    C.cigSm = 0.045 + Math.random() * 0.03;
+    const outside = P.x > 0.7;
+    puff(tipPos(inv), V3((Math.random() - 0.5) * 0.04 + (outside ? 0.1 : 0), 0.12 + Math.random() * 0.08, (Math.random() - 0.5) * 0.04), outside ? 1.6 : 2.4, 0.014, outside ? 0.15 : 0.09, 0.6);
+  }
+  if (s === 1 && crossed(pt, t, 0.95)) for (let k = 0; k < 6; k++) puff(tipPos(inv), V3((Math.random() - 0.5) * 0.1, 0.12 + Math.random() * 0.1, (Math.random() - 0.5) * 0.1), 1.2, 0.015, 0.07, 0.5);
+}
+const _v3c = new THREE.Vector3(), _v4c = new THREE.Vector3(), _v5c = new THREE.Vector3();
+function tipPos(inv) { return CAB.cigH.ember.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv); }
+// a long breath out: a cloud from your mouth that rolls forward past your eyes
+function exhale(inv) {
+  AUDIO.exhale();
+  const m = V3(0.37, 0.725, -0.24);
+  for (let k = 0; k < 16; k++) {
+    const d = k / 16;
+    puff(m, V3((Math.random() - 0.5) * 0.14, 0.03 + Math.random() * 0.08, 0.35 + Math.random() * 0.35 - d * 0.2), 1.6 + Math.random() * 0.8, 0.03, 0.2 + Math.random() * 0.1, 0.42);
+  }
+}
+// the flicked cigarette sails out of the window and bounces down the road behind you
+function fling(car) {
+  AUDIO.flick();
+  const H = CAB.cigH, g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.07, 6), lowMat({ color: 0xf6f3ec })));
+  const e = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff5a1a })); e.position.y = 0.035; g.add(e);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: SMOKE_TEX(true), color: 0xff7a2a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(0.12); sp.position.y = 0.035; g.add(sp);
+  H.ember.getWorldPosition(g.position); scene.add(g);
+  const fwd = V3(Math.sin(car.yaw), 0, Math.cos(car.yaw)), side = V3(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
+  const v = fwd.multiplyScalar(car.vx).addScaledVector(side, 4.5); v.y = 2.2;
+  FLUNG.push({ m: g, v, age: 0 });
 }
 
 /* ---------- the cabin, its crew and the camera ---------- */
@@ -2763,13 +2974,15 @@ function poseCabin(dt) {
   const wristOf = (g, out) => out.set(0, -0.06, -0.04).applyQuaternion(g.quaternion).add(g.position);
   ik(C.drv.armL, C.drv.shL, wristOf(gl.dl, _v2), POLE_L); ik(C.drv.armR, C.drv.shR, wristOf(gl.dr, _v2), POLE_R);
   const bd = car.bird || 0, out = clamp(bd * 2 - 1, 0, 1);
-  C.wins[0].position.y = 0.73 - clamp(bd * 2, 0, 1) * 0.44;
+  C.cigWin = lerp(C.cigWin || 0, car.cig.s ? 1 : 0, Math.min(1, dt * 2.5));
+  C.wins[0].position.y = 0.73 - Math.max(clamp(bd * 2, 0, 1), C.cigWin * 0.85) * 0.44;
   gl.dl.visible = out <= 0; C.bird.visible = out > 0;
   if (out > 0) {
     const w = wristOf(gl.dl, new THREE.Vector3()).lerp(_v2.set(1.0, 0.76, -0.3), out * out * (3 - 2 * out));
     C.bird.position.copy(w); C.bird.position.y += 0.06; C.bird.rotation.set(0, 0, -0.2 * out);
     ik(C.drv.armL, C.drv.shL, w, POLE_UP);
   }
+  poseCig(car, dt, inv);
   // the navigator's tablet and hands (pointing when calling)
   C.tab.position.copy(TAB.pos); C.tab.quaternion.copy(TAB.q);
   const tabHeld = TAB.state === 'held' || TAB.state === 'raised' || TAB.state === 'grab';
@@ -2786,7 +2999,7 @@ function poseCabin(dt) {
   // the crew's heads look about a bit
   const t = performance.now() / 1000;
   C.nav.head.rotation.set(TAB.state === 'drop' ? 0.6 : 0.42 + Math.sin(t * 1.3) * 0.04, (GAME.role === 'driver' ? 0 : 0) + (GAME.point && GAME.point.t > 0 ? 0.3 : 0.08), 0);
-  C.drv.head.rotation.set(0.05, lerp(clamp(-car.steer * 0.6, -0.4, 0.4), 1.1, out), 0);
+  C.drv.head.rotation.set(0.05 + (C.cigFace || 0) * 0.15, lerp(clamp(-car.steer * 0.6, -0.4, 0.4), 1.1, out), 0);
 }
 // the head-on-a-spring camera motion (1.4). Works from the car's position and yaw only, so the
 // navigator (who only gets snapshots) feels the same jumps and corners as the driver.
@@ -3783,6 +3996,12 @@ function showBoardResult(j) {
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.4.1', date: '18 November 2026', items: [
+    'Driver: press X to light a cigarette. You put it in your mouth, flick a zippo open and light it, then rest your elbow on the window sill and steer one-handed.',
+    'Smoke curls off the tip and gets ripped away by the wind outside. Every few seconds you take a drag (the tip glows) and blow a cloud of smoke across the windscreen.',
+    'Press X again to flick it out of the window: it bounces down the road behind you. It also burns down and gets flicked by itself after about 80 seconds.',
+    'Your navigator sees all of it too, smoke included.',
+  ] },
   { v: '1.4', date: '17 November 2026', items: [
     'Camera motion: your head now moves with the car. Corners throw it to the outside and tilt the view, you look into the turn, jumps make it float and landings slam it down, braking nods it forward.',
     'New Camera motion slider in Settings: from Off up to 300% if you want it really violent (100% is the default).',
