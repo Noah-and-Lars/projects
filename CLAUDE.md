@@ -92,19 +92,27 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
 ## Layout
 
 - `assistant.js` (2026-11-18, the owner's request; loaded right after account.js on index, play, chat, players, social,
-  support and tourney): the ✨ Assistant. A ✨ button in `header.top` just before `#acctBtn` (in the desktop rail above the
+  support and tourney): the Assistant. A button (a chat bubble with an accent spark, `ICON`; it was ✨ until the evening) in `header.top` just before `#acctBtn` (in the desktop rail above the
   account button; on play.html beside Clip/Fullscreen, never over the game) opens `#aiPanel`, a right-side slide-out
   (380 px; full screen on phones; on play.html on a wide screen `html.ai-open body.player` gets padding-right so the game
   isn't covered). The panel is `[role=dialog]`, so console.js traps the focus in it and Back/Escape closes it (focus goes
-  back to ✨). Online accounts only: guests and local accounts see "Sign in to use the assistant" (Sign in opens
+  back to the button). Online accounts only: guests and local accounts see "Sign in to use the assistant" (Sign in opens
   `ArcadeAccount.welcome`). History is kept per account in localStorage `arcade-acct-ai:<lower name>` (40 messages; the
   `arcade-acct` prefix keeps it out of account.js's cloud sync via `NEVER`); the last 8 are sent. On play.html it sends
   only that game's summary from games.js (tagline, description, controls, keys; 700 characters), elsewhere the page name.
   The server: POST `/ai` in the private Worker (`aiChat`): Bearer token checked by the Account object's 'aiuse' route,
-  which also counts 15 messages a day per account (`a.ai` {d, n}; one Durable Object request per message);
+  which also charges the usage allowance (2026-11-18 evening, the owner's request: lighter models use less). Usage is in
+  the neurons each reply really costs: `AI_SESSION` 300 per 5-hour session (starts with the first message) and
+  `AI_USER_DAY` 900 a day (00:00 UTC) per account, kept in `a.ai` {d, u, s, su}. 'aiuse' charges the model's measured
+  `est` up front and refuses a model whose est doesn't fit; 'aicharge' (in waitUntil) corrects it to the real cost after
+  the reply (two Durable Object requests a message); POST /ai {usage: 1} ('aiusage') reads it when the panel opens (at most
+  once a minute). Per session / per day that is about: GLM 4.7 Flash 16/50, Qwen 3 30B and Llama 3.1 8B 15/45,
+  Gemma 4 13/39, GPT-OSS 20B 9/29, Llama 4 Scout and Mistral 7/23, Llama 3.3 70B 6/20, GPT-OSS 120B and Qwen 3.8 4/13.
+  The panel shows Session and Today bars (refill times), "~N left" for the chosen model and in every menu entry, and a
+  limit message that names a lighter model with room. The estimates (`est` in AI_MODELS, `e` in MODELS) must match;
   the model the player picks in the panel's Model menu (2026-11-18, the owner's request; `MODELS` in assistant.js, the
   choice kept per device in 'arcade-ai-model', each reply labelled with its model): `AI_MODELS` in the Worker, keyed
-  oss120 (GPT-OSS 120B, the default), llama70, qwen27 (counts as 2 of the 15 messages: `w`), gemma4, mistral, scout,
+  oss120 (GPT-OSS 120B, the default), llama70, qwen27, gemma4, mistral, scout,
   oss20, glm, qwen30, llama8, every one on the free Workers plan (Kimi K2.6, DeepSeek V4 Pro, GLM 5.3 need the paid plan;
   Gemma 3 isn't allowed on the account; Nemotron 3 answered with thinking only). Each entry has its neuron prices, an
   up-front estimate and extra settings (thinking off, or GPT-OSS `reasoning_effort: 'low'`). An unknown key gets the
