@@ -102,10 +102,12 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   only that game's summary from games.js (tagline, description, controls, keys; 700 characters), elsewhere the page name.
   The server: POST `/ai` in the private Worker (`aiChat`): Bearer token checked by the Account object's 'aiuse' route,
   which also counts 15 messages a day per account (`a.ai` {d, n}; one Durable Object request per message);
-  `@cf/google/gemma-4-26b-a4b-it` (since 2026-11-18 evening, replacing Llama 3.1 8B; its thinking is switched off with `chat_template_kwargs: { enable_thinking: false }`, or the thinking eats the whole reply; it streams OpenAI-style chunks, each with its own usage, which the Worker adds up) streamed as text/event-stream ('data: {"t"}' pieces, then {"done", "left"});
+  `@cf/openai/gpt-oss-120b` (since 2026-11-18 evening: the best model the free Workers plan allows, after Llama 3.1 8B and then
+  Gemma 4 26B the same day; Kimi K2.6, DeepSeek V4 Pro and GLM 5.3 need the paid plan; `reasoning_effort: 'low'`, since its
+  thinking tokens count as output; it streams OpenAI-style chunks, each with its own usage, which the Worker adds up) streamed as text/event-stream ('data: {"t"}' pieces, then {"done", "left"});
   Llama Guard 3 (`@cf/meta/llama-guard-3-8b`) checks only the finished reply and {"blocked": 1} makes the panel show a
-  polite refusal instead. Site-wide about 9,000 neurons a day (the free plan has 10,000; a message costs about 35, so
-  roughly 250 messages a day): each Worker instance counts from the models' own usage figures and adds to the Tally
+  polite refusal instead. Site-wide about 9,000 neurons a day (the free plan has 10,000; a GPT-OSS message costs about 30-80 with the
+  Guard check, so roughly 100-250 messages a day): each Worker instance counts from the models' own usage figures and adds to the Tally
   object 'ai-budget' every 150 neurons or minute; past the cutoff everyone gets "Assistant's resting until 11am" (00:00
   UTC). The system prompt (`AI_SYSTEM`): the Arcade Assistant, kid-friendly, any topic a kid might ask (homework explained
   rather than just answered, facts, jokes) plus the site and its games; never the name of anyone who made, runs or plays on
