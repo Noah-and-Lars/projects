@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Get the app · The Arcade</title>
-<meta name="theme-color" content="#0f0d1f">
+<meta name="theme-color" content="#050506">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
 <script>
 // 2026-11-13: the download page for The Arcade app (Tauri, ~/Downloads/arcade-app). Only the "Download" button on the
@@ -15,53 +15,67 @@
 if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app') || /TheArcadeApp\//.test(navigator.userAgent)) location.replace('../');
 </script>
 <style>
-  :root { --bg: #0f0d1f; --panel: #1b1835; --panel2: #231f45; --line: #ffffff1c; --text: #f1effa; --muted: #a9a3c9; --accent: #6c5ce7; --accent2: #00d2a8; --warn: #f2b134; }
+  /* 2026-11-18: the site's own look (arcade.css colours and fonts) instead of the old purple/teal */
+  @font-face { font-family: "Archivo"; src: url("../fonts/archivo.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "JetBrains Mono"; src: url("../fonts/jetbrains-mono.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
+  :root { color-scheme: dark; --bg: #050506; --panel: #121215; --panel2: #1a1a1f; --panel3: #25252c; --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.14); --text: #f4f4f5; --muted: #a1a1aa; --dim: #74747f; --accent: #ff5a2c; --accent-hi: #ff6d43; --ink: #160500; --live: #3ddc97; --warn: #ffb224; --font: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace; }
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
-  body { min-height: 100vh; background: radial-gradient(1100px 620px at 15% -10%, #2a1f5c 0%, transparent 60%), radial-gradient(900px 600px at 110% 110%, #00d2a81f 0%, transparent 60%), var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; }
+  body { min-height: 100vh; display: flex; flex-direction: column; background: radial-gradient(900px 480px at 50% -12%, rgba(255,90,44,.14), transparent 65%), var(--bg); color: var(--text); font: 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   a { color: inherit; }
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px clamp(16px, 4vw, 40px); }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; text-decoration: none; }
-  .brand img { width: 34px; height: 34px; }
-  .back { color: var(--muted); text-decoration: none; font-weight: 700; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; }
-  .back:hover { color: var(--text); border-color: #ffffff44; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: min(1060px, 100%); margin: 0 auto; padding: 18px clamp(16px, 4vw, 40px); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; text-decoration: none; }
+  .brand img { width: 30px; height: 30px; }
+  .back { color: var(--muted); text-decoration: none; font-weight: 500; font-size: 14px; padding: 7px 14px; border: 1px solid var(--line2); border-radius: 999px; transition: color .15s, border-color .15s; }
+  .back:hover { color: var(--text); border-color: rgba(255,255,255,.3); }
   main { flex: 1; width: min(1060px, 100%); margin: 0 auto; padding: 8px clamp(16px, 4vw, 40px) 40px; }
-  .hero { display: flex; align-items: center; gap: 22px; margin: 6px 0 22px; }
-  .hero img { width: 92px; height: 92px; filter: drop-shadow(0 12px 30px #6c5ce766); flex: none; }
-  .hero h1 { margin: 0 0 4px; font-size: clamp(28px, 4.4vw, 42px); line-height: 1.1; letter-spacing: -.01em; }
-  .hero p { margin: 0; color: var(--muted); font-size: 16px; max-width: 640px; }
-  .warn { display: flex; gap: 14px; align-items: flex-start; background: linear-gradient(90deg, #f2b13424, #f2b1340a); border: 1px solid #f2b13466; border-radius: 16px; padding: 14px 18px; margin-bottom: 26px; }
-  .warn .ic { font-size: 22px; line-height: 1.2; }
-  .warn b { color: var(--warn); }
-  .warn p { margin: 2px 0 0; color: #e9e3cf; font-size: 14px; }
-  .warn ul { margin: 6px 0 0; padding-left: 18px; font-size: 14px; color: #e9e3cf; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 0 0 12px; }
-  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 26px; }
-  .card { position: relative; display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; transition: border-color .15s, transform .15s; }
-  .card:hover { border-color: #ffffff3a; transform: translateY(-2px); }
-  .card.rec { border-color: var(--accent2); box-shadow: 0 0 0 1px #00d2a855, 0 14px 40px #00d2a81f; }
-  .card.you { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .tag { position: absolute; top: -11px; left: 18px; background: var(--accent2); color: #08261f; font-weight: 800; font-size: 12px; letter-spacing: .04em; padding: 3px 10px; border-radius: 999px; }
-  .you-tag { background: var(--accent); color: #fff; left: auto; right: 18px; }
-  .head { display: flex; align-items: center; gap: 12px; }
-  .os { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--panel2); flex: none; }
-  .os svg { width: 24px; height: 24px; fill: var(--text); }
-  .head h3 { margin: 0; font-size: 18px; }
-  .head small { display: block; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .hero { display: flex; align-items: center; gap: 22px; margin: 18px 0 26px; }
+  .hero img { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 14px 40px rgba(255,90,44,.25); flex: none; }
+  .hero h1 { margin: 0 0 6px; font-size: clamp(30px, 4.6vw, 46px); line-height: 1.05; letter-spacing: -.02em; font-weight: 800; }
+  .hero p { margin: 0; color: var(--muted); font-size: 16px; max-width: 620px; }
+  .warn { display: flex; gap: 14px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 12px; padding: 16px 18px; margin-bottom: 34px; }
+  .warn .ic { font-size: 20px; line-height: 1.3; }
+  .warn > div > b { color: var(--text); font-weight: 700; }
+  .warn p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+  .warn ul { margin: 10px 0 0; padding-left: 18px; font-size: 14px; color: var(--muted); display: grid; gap: 5px; }
+  .warn li b { color: var(--text); font-weight: 600; }
+  h2 { font: 600 11.5px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--dim); margin: 0 0 14px; scroll-margin-top: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 34px; }
+  .grid.one { grid-template-columns: minmax(0, 1fr); }
+  .card { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 20px 20px; transition: border-color .15s, transform .15s; }
+  .card:hover { border-color: var(--line2); transform: translateY(-2px); }
+  .card.rec { border-color: rgba(255,90,44,.45); background: linear-gradient(180deg, rgba(255,90,44,.07), rgba(255,90,44,0) 60%), var(--panel); }
+  .card.you { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 16px 44px rgba(255,90,44,.16); }
+  .tag { position: absolute; top: -10px; left: 18px; background: var(--panel3); color: var(--text); border: 1px solid var(--line2); font: 700 10.5px/1 var(--mono); letter-spacing: .1em; padding: 5px 9px; border-radius: 6px; }
+  .card.rec .tag:not(.you-tag) { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+  .you-tag { background: var(--live); color: #02140c; border-color: var(--live); left: auto; right: 18px; }
+  .head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .os { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--panel2); border: 1px solid var(--line); flex: none; }
+  .os svg { width: 22px; height: 22px; fill: var(--text); }
+  .head h3 { margin: 0; font-size: 18px; font-weight: 700; }
+  .head small { display: block; color: var(--muted); font-weight: 500; font-size: 13px; }
   .card p { margin: 0; color: var(--muted); font-size: 14px; flex: 1; }
-  .meta { color: var(--muted); font-size: 12.5px; }
-  .dl { display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-weight: 800; padding: 12px 16px; border-radius: 12px; background: var(--accent); color: #fff; transition: filter .15s; }
-  .dl:hover { filter: brightness(1.12); }
-  .card.rec .dl { background: var(--accent2); color: #08261f; }
+  .meta { color: var(--dim); font: 500 12px/1.4 var(--mono); }
+  .dl { display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-weight: 700; padding: 12px 16px; border-radius: 10px; background: var(--panel3); color: var(--text); border: 1px solid var(--line2); transition: background .15s, border-color .15s; }
+  .dl:hover { background: #2e2e36; border-color: rgba(255,255,255,.24); }
+  .card.rec .dl, .card.you .dl { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+  .card.rec .dl:hover, .card.you .dl:hover { background: var(--accent-hi); }
+  .grid.one .card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "head dl" "p dl" "meta dl"; column-gap: 28px; row-gap: 8px; align-items: center; }
+  .grid.one .head { grid-area: head; } .grid.one p { grid-area: p; } .grid.one .meta { grid-area: meta; } .grid.one .dl { grid-area: dl; min-width: 220px; }
   .dl svg { width: 18px; height: 18px; fill: currentColor; }
   .help { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-  .help div { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
-  .help h4 { margin: 0 0 6px; font-size: 15px; }
+  .help div { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; min-width: 0; }
+  .help h4 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
   .help ol { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
-  .help li { margin: 3px 0; }
-  .help b { color: var(--text); }
-  .foot { text-align: center; color: var(--muted); font-size: 13px; padding: 18px 16px 26px; }
-  @media (max-width: 760px) { .grid, .help { grid-template-columns: 1fr; } .hero img { width: 64px; height: 64px; } }
+  .help li { margin: 4px 0; overflow-wrap: anywhere; }
+  .help b { color: var(--text); font-weight: 600; }
+  .foot { text-align: center; color: var(--dim); font-size: 13px; padding: 18px 16px 30px; }
+  @media (max-width: 760px) {
+    .grid, .help { grid-template-columns: 1fr; }
+    .grid.one .card { display: flex; }
+    .grid.one .dl { min-width: 0; }
+    .hero { gap: 16px; } .hero img { width: 60px; height: 60px; border-radius: 14px; }
+  }
 </style>
 </head>
 <body>
@@ -92,10 +106,10 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
   </div>
 
   <h2>Mac</h2>
-  <div class="grid">
+  <div class="grid one">
     <div class="card rec" id="mac">
       <span class="tag">ONE DOWNLOAD FOR EVERY MAC</span>
-      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9s-2-.9-3.3-.9c-1.7 0-3.3 1-4.1 2.5-1.8 3.1-.5 7.6 1.3 10.1.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-4.1zM14 5.2c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg></span><div><h3>Mac</h3><small>Apple chip (M1 to M4) and Intel</small></div>
+      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9s-2-.9-3.3-.9c-1.7 0-3.3 1-4.1 2.5-1.8 3.1-.5 7.6 1.3 10.1.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-4.1zM14 5.2c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg></span><div><h3>Mac</h3><small>Apple chip (M1 to M4) and Intel</small></div></div>
       <p>Works on every Mac, with an Apple chip (M1, M2, M3, M4…) or an Intel processor. The 3D games run best on macOS 12 Monterey or newer.</p>
       <div class="meta">macOS 10.15 or later · .dmg · 4.8 MB · Apple chip + Intel</div>
       <a class="dl" href="TheArcade-mac.dmg" download><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download for Mac</a>
