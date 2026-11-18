@@ -45,7 +45,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="arcade.css?v=23">
+<link rel="stylesheet" href="arcade.css?v=24">
 <style>
   #trailerOv { position: fixed; inset: 0; z-index: 9500; background: rgba(4, 4, 6, .94); display: grid; place-items: center; padding: 18px; animation: fadeIn .2s ease; }
   #trailerOv .tr-box { position: relative; width: min(1280px, 100%); aspect-ratio: 16 / 9; max-height: calc(100vh - 36px); background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 40px 120px rgba(0, 0, 0, .8); }
@@ -219,7 +219,7 @@
   </div>
 </div>
 
-<script src="games.js?v=261"></script>
+<script src="games.js?v=262"></script>
 <script src="account.js?v=40"></script>
 <script src="assistant.js?v=4"></script>
 <script src="console.js?v=3"></script>
@@ -784,13 +784,16 @@ if (location.hash && byId[location.hash.slice(1)]) { const id = location.hash.sl
 if (window.ArcadeAccount && ArcadeAccount.ready) ArcadeAccount.ready().then(greet);
 // 2026-11-18: the online pill opens a list of every game with how many are on it right now
 const PAGE_NAMES = { home: 'Home page', chat: 'Global chat', social: 'Social', players: 'Players', tournaments: 'Tournaments', support: 'Support' };
+// 2026-11-19: Social, Global chat and Players always show their count at the top of the list (0 too)
+const SPOTS = [['social', 'Social', 'social.html'], ['chat', 'Global chat', 'chat.html'], ['players', 'Players', 'players.html']], SPOT_KEYS = new Set(SPOTS.map(x => x[0]));
 function paintOnlinePop() {
   const pop = $('onlinePop'); if (!pop || pop.hidden) return;
   const by = (live && live.byGame) || {}, esc2 = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const games = GAMES.map(g => ({ g, n: by[g.id] || 0 })).sort((a, b) => b.n - a.n || a.g.title.localeCompare(b.g.title));
   const playing = games.reduce((t, x) => t + x.n, 0);
-  const pages = Object.keys(by).filter(k => !byId[k] && by[k] > 0).map(k => ({ k, n: by[k] })).sort((a, b) => b.n - a.n);
+  const pages = Object.keys(by).filter(k => !byId[k] && !SPOT_KEYS.has(k) && by[k] > 0).map(k => ({ k, n: by[k] })).sort((a, b) => b.n - a.n);
   pop.innerHTML = `<div class="on-h"><b>${live ? liveLabel(live.total) : 0} online</b><span>${playing} in games right now</span></div>
+    <div class="on-spots">${SPOTS.map(([k, t, href]) => { const n = by[k] || 0; return `<a class="on-spot${n ? '' : ' zero'}" href="${href}" title="${n} ${n === 1 ? 'person' : 'people'} on ${t} right now"><b>${n ? '<i class="live-dot"></i>' : ''}${n}</b><span>${t}</span></a>`; }).join('')}</div>
     <div class="on-list">${games.map(({ g, n }) => `<a class="on-row${n ? '' : ' zero'}" href="${playUrl(g)}"><img alt="" src="${esc2(g.thumb || '')}" loading="lazy"><span class="on-t">${esc2(g.title)}</span><span class="on-n">${n ? '<i class="live-dot"></i>' + n : '0'}</span></a>`).join('')}</div>
     ${pages.length ? `<div class="on-sub">Around the site</div><div class="on-list">${pages.map(({ k, n }) => `<div class="on-row page"><span class="on-t">${esc2(PAGE_NAMES[k] || k.replace(/-/g, ' '))}</span><span class="on-n">${n}</span></div>`).join('')}</div>` : ''}`;
 }

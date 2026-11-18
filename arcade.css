@@ -1079,3 +1079,10 @@ a.on-row:hover { background: var(--panel-3); }
 .on-row .on-n { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; font-weight: 600; }
 .on-row.zero { color: var(--dim); } .on-row.zero img { opacity: .5; }
 .on-row.page { color: var(--muted); }
+/* 2026-11-19: Social / Global chat / Players counts at the top of the online list */
+.on-spots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 2px 0 8px; margin-bottom: 6px; border-bottom: 1px solid var(--line); }
+.on-spot { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 4px 8px; border-radius: var(--radius-sm); background: var(--panel-2); border: 1px solid var(--line); color: var(--text); text-decoration: none; min-width: 0; }
+a.on-spot:hover { background: var(--panel-3); border-color: var(--line-2); }
+.on-spot b { display: inline-flex; align-items: center; gap: 6px; font-size: 17px; font-variant-numeric: tabular-nums; }
+.on-spot span { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.on-spot.zero b { color: var(--dim); }
