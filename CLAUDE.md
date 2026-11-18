@@ -148,7 +148,9 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   Video trailers (2026-11-19): a game in `TRAILER_VIDEOS` (index.html) plays a video file in the same overlay instead of
   the iframe (`<video controls playsinline>`, started from the click so it has sound; the end screen shows on `ended`).
   Turn! Turn! TURN! uses `trailers/turn-turn-turn.mp4` (22 MB, H.264 1080p 2-pass ~2.3 Mbit/s; Cloudflare Pages caps a file
-  at 25 MiB) with `trailers/turn-turn-turn.jpg` as the poster. The trailer's master and sources are on the owner's Mac
+  at 25 MiB) with `trailers/turn-turn-turn.jpg` as the poster. Cloudflare Pages ignores Range (always 200, whole file) and
+  Safari/iOS won't play an MP4 without 206s, so browsers that play HLS natively get `trailers/turn-turn-turn/index.m3u8`
+  (the same encode, `ffmpeg -c copy -f hls -hls_time 6`, TS segments); everyone else gets the MP4. The trailer's master and sources are on the owner's Mac
   (~/Downloads/ttt-trailer-src), not in the repo.
 - `admin/index.html` (2026-11-12): Arcade Ops, the admin console. Its own page, not linked from the site, `noindex`. It joins
   `online:arcade` with a raw WebSocket (the rt.js protocol) without tracking, so it is never counted, and shows players over
