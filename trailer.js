@@ -1,4 +1,4 @@
-/* trailer.js (2026-11-17): "Welcome to the new Arcade", a ~44 second feature trailer on the home page.
+/* trailer.js (2026-11-17): "Welcome to the new Arcade", a ~50 second feature trailer on the home page.
    Plays once for each visitor (after the 3D logo), and again from the footer or search ("Watch the trailer").
    Built from the site's own art and interface, scene by scene, with clean wipes and cross-fades and a few slow
    moments. An optional soundtrack is synthesised with Web Audio (no files); browsers only allow it after a tap,
@@ -185,9 +185,25 @@
       s.timer(function () { var k = s.querySelector('.trl-cur.glow'); if (k) { k.classList.add('wave'); } }, 3600);
       caption(s, '04 · Live cursors', 'You’re never browsing alone.', 800).classList.add('side');
     } },
+    { dur: 7200, build: function (s) { // 7. Go live + predictions
+      s.classList.add('trl-black');
+      var frame = el('div', 'trl-live', '<img alt=""><span class="tl-badge">LIVE</span><span class="tl-v"><b>3</b> watching</span>'); frame.querySelector('img').src = shot('storm-drop');
+      var side = el('div', 'trl-side', '<div class="tl-pred"><small>Prediction</small><b>Victory royale?</b><div class="tl-bar"><i></i><span>Yes</span><em>64%</em></div><div class="tl-bar no"><i></i><span>No</span><em>36%</em></div></div><ol class="tl-chat"></ol>');
+      s.append(frame, side);
+      anim(frame, [{ opacity: 0, transform: 'translateX(-30px)' }, { opacity: 1, transform: 'none' }], { duration: 1000, delay: 200 });
+      anim(side, [{ opacity: 0, transform: 'translateX(30px)' }, { opacity: 1, transform: 'none' }], { duration: 1000, delay: 500 });
+      anim(frame.querySelector('img'), [{ transform: 'scale(1.02)' }, { transform: 'scale(1.1)' }], { duration: 7200, easing: 'linear' });
+      var v = frame.querySelector('.tl-v b'), n = 3;
+      var up = setInterval(function () { n = Math.min(128, Math.round(n * 1.22 + 1)); v.textContent = n; }, 180); s.cleanup.push(function () { clearInterval(up); });
+      [['Kai', 'that landing was clean'], ['Mika', 'GG incoming'], ['Rio', 'betting everything on yes'], ['Nova', 'final circle!!']].forEach(function (m, i) {
+        s.timer(function () { var li = el('li', '', '<b></b> <span></span>'); li.querySelector('b').textContent = m[0]; li.querySelector('span').textContent = m[1]; side.querySelector('.tl-chat').appendChild(li); anim(li, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 400 }); }, 1500 + i * 900);
+      });
+      s.timer(function () { anim(side.querySelector('.tl-bar i'), [{ width: '0%' }, { width: '64%' }], { duration: 2200, easing: IO }); anim(side.querySelector('.tl-bar.no i'), [{ width: '0%' }, { width: '36%' }], { duration: 2200, easing: IO }); }, 1700);
+      caption(s, '05 · Go live', 'Stream it. Let your friends call it.', 900).classList.add('under');
+    } },
     { dur: 4400, build: function (s) { // 8. Montage: quick cuts
       s.classList.add('trl-black');
-      var ids = ['sproutling', 'space-strike', 'cube-assault', 'uno', 'football', 'rocket-rivals', 'poly-racer', 'throttle-ridge'];
+      var ids = ['sproutling', 'space-strike', 'cube-assault', 'uno', 'free-criminal', 'rocket-rivals', 'siege', 'gamble-your-life-away'];
       ids.forEach(function (id, i) {
         var b = el('div', 'trl-bg cut', '<img alt="">'); b.querySelector('img').src = shot(id); s.appendChild(b);
         anim(b, [{ opacity: 0, transform: 'scale(1.15)' }, { opacity: 1, transform: 'scale(1.05)', offset: .25 }, { opacity: 1, transform: 'scale(1)', offset: .8 }, { opacity: 0, transform: 'scale(.98)' }], { duration: 650, delay: i * 380, easing: 'linear' });
@@ -218,7 +234,7 @@
     opts = opts || {};
     if (document.querySelector('.trl')) return;
     ls.set(KEY, VERSION);
-    preload(['havoc-bay', 'storm-drop', 'turn-turn-turn', 'throttle-ridge', 'poly-racer', 'sproutling', 'space-strike', 'cube-assault', 'uno', 'football', 'rocket-rivals', 'siege'].map(shot));
+    preload(['havoc-bay', 'storm-drop', 'turn-turn-turn', 'throttle-ridge', 'poly-racer', 'sproutling', 'space-strike', 'cube-assault', 'uno', 'free-criminal', 'rocket-rivals', 'siege', 'gamble-your-life-away'].map(shot));
     var root = el('div', 'trl', '<div class="trl-stage"></div><div class="trl-bars"><i></i><i></i></div><div class="trl-grain"></div>' +
       '<div class="trl-ui"><button type="button" class="trl-sound" aria-pressed="false"><span class="ic"></span><span class="tx">Sound off</span></button><div class="trl-prog"><i></i></div><button type="button" class="trl-skip">Skip trailer</button></div>');
     root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Welcome to the new Arcade');

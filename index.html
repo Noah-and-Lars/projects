@@ -45,7 +45,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="arcade.css?v=23">
+<link rel="stylesheet" href="arcade.css?v=24">
 <style>
   #trailerOv { position: fixed; inset: 0; z-index: 9500; background: rgba(4, 4, 6, .94); display: grid; place-items: center; padding: 18px; animation: fadeIn .2s ease; }
   #trailerOv .tr-box { position: relative; width: min(1280px, 100%); aspect-ratio: 16 / 9; max-height: calc(100vh - 36px); background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 40px 120px rgba(0, 0, 0, .8); }
@@ -148,6 +148,11 @@
     <div id="recent" class="recent"></div>
   </section>
 
+  <section class="section" id="liveWrap" hidden data-cur="live">
+    <div class="sec-head"><h2 class="sec-h"><span class="live-dot" style="display:inline-block;margin:0 10px 4px 0;vertical-align:middle"></span>Live now</h2><span class="sec-sub" id="liveSub"></span><a class="sec-link" href="live.html" style="margin-left:auto;color:var(--muted);font-size:14px">See all</a></div>
+    <div id="liveRow" class="lv-grid"></div>
+  </section>
+
   <section class="section" id="tournWrap" data-cur="tourn">
     <div class="sec-head"><h2 class="sec-h">Tournaments</h2><span class="sec-sub" id="tournSub">Open to everyone · 1v1 knockout</span><a class="sec-link" href="tourney.html" style="margin-left:auto;color:var(--muted);font-size:14px">All tournaments</a></div>
     <div id="tournRow" class="t-home"></div>
@@ -219,13 +224,14 @@
   </div>
 </div>
 
-<script src="games.js?v=256"></script>
+<script src="games.js?v=257"></script>
 <script src="account.js?v=40"></script>
 <script src="assistant.js?v=4"></script>
 <script src="console.js?v=3"></script>
 <script src="call.js?v=8"></script>
 <script src="cursors.js?v=2"></script>
-<script src="trailer.js?v=1"></script>
+<script src="live.js?v=1"></script>
+<script src="trailer.js?v=2"></script>
 <script src="tourney.js?v=2"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -370,8 +376,7 @@ function renderStage(g) {
 
 // until someone touches anything, the screen walks through the featured games by itself
 // Havoc Bay leads; then the next games that have real screenshots (board games don't make much of a backdrop)
-const NOT_FEATURED = new Set(['Casino', 'Thriller']); // shown in the library, never pushed on the front screen
-const AUTO = ORDER.map((g, i) => SHOT[g.id] && g.category !== 'Board' && !NOT_FEATURED.has(g.category) ? i : -1).filter(i => i >= 0).sort((a, b) => (ORDER[b].id === 'havoc-bay') - (ORDER[a].id === 'havoc-bay')).slice(0, 6);
+const AUTO = ORDER.map((g, i) => SHOT[g.id] && g.category !== 'Board' ? i : -1).filter(i => i >= 0).sort((a, b) => (ORDER[b].id === 'havoc-bay') - (ORDER[a].id === 'havoc-bay')).slice(0, 6);
 function startAuto() {
   if (REDUCED) return;
   dash.classList.add('auto');
@@ -414,7 +419,7 @@ let rankKey = '';
 function renderRanked() {
   const busy = live && live.total > 0 ? GAMES.filter(g => liveN(g.id) > 0).sort((a, b) => liveN(b.id) - liveN(a.id) || rank(a) - rank(b)) : [];
   const popular = busy.length >= 3;
-  const list = (popular ? busy : [...GAMES].filter(g => g.badge !== 'DISCONTINUED' && !NOT_FEATURED.has(g.category)).sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))).slice(0, 5);
+  const list = (popular ? busy : [...GAMES].filter(g => g.badge !== 'DISCONTINUED').sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))).slice(0, 5);
   const key = popular + list.map(g => g.id + liveN(g.id)).join();
   if (key === rankKey) return; rankKey = key;
   $('rankTitle').textContent = popular ? 'Popular right now' : 'Top 5 this week';
@@ -845,6 +850,18 @@ if (window.ArcadeTourney) {
   ArcadeTourney.directory(list => { tList = list; paintT(); });
   setInterval(paintT, 30000);
 }
+// people streaming right now (live.js)
+if (window.ArcadeLive) ArcadeLive.directory(list => {
+  $('liveWrap').hidden = !list.length;
+  $('liveSub').textContent = list.length + (list.length === 1 ? ' stream' : ' streams');
+  $('liveRow').replaceChildren(...list.slice(0, 4).map(s => {
+    const g = byId[s.g] || {}, a = el('a', 'lv-card', '<div class="lv-thumb"><img alt=""><span class="lv-badge">LIVE</span><span class="lv-count"></span></div><b></b><span></span>');
+    a.href = 'live.html?u=' + encodeURIComponent(s.n);
+    a.querySelector('img').src = s.th || g.thumb || '';
+    txt(a, 'b', s.n); txt(a, 'span:last-child', s.t || g.title || ''); txt(a, '.lv-count', (s.v || 0) + ' watching');
+    return a;
+  }));
+});
 // scores change while you play in another tab, so refresh when you come back
 addEventListener('pageshow', e => { if (e.persisted) { renderRecent(); const g = ORDER[sel]; if (g) renderStage(g); } });
 </script>

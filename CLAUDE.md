@@ -91,6 +91,18 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
 
 ## Layout
 
+- Live broadcasts and predictions (2026-11-17, restored 2026-11-18 at the owner's request after being taken out for the
+  school-wifi block): `live.js` + `live.html`. play.html's "Go live" button (`#liveBtn`, online accounts only) captures the
+  game area with its sound (getDisplayMedia, cropped to `#stage` with CropTarget where Chrome has it; `?livecanvas` or no tab
+  capture: the game's biggest visible canvas) and streams it peer to peer (STUN, plus TURN from the 'turn' account route) to
+  up to 12 viewers. Channels (rt.js, free without an account for watching): "live:index" presence lists everyone streaming
+  (home page "Live now" row, live.html with no ?u), "live:<lower name>" carries signalling ('sig', 'hello'), 'chat' (the
+  Worker's chat filter applies to that event name; chatting needs an online account), 'react' and predictions ('pred'
+  from the streamer, 'vote' from viewers). Predictions: the streamer's dock opens a two-option question for 60 s, viewers
+  stake tickets, the streamer locks bets and picks the winner, winners split the pot. Tickets are per device
+  (`arcade-tickets`: 1000 to start, topped up to 200 a day). tourney.html lets viewers bet 50 tickets on a ready match
+  (`arcade-tbets`, paid double on this device when that player wins; the server doesn't see bets). The home screen's
+  rotation, the "Top 5" row and the trailer include every game again (the casino and Russian Roulette too).
 - `assistant.js` (2026-11-18, the owner's request; loaded right after account.js on index, play, chat, players, social,
   support and tourney): the Assistant. A button (a chat bubble with an accent spark, `ICON`; it was ✨ until the evening) in `header.top` just before `#acctBtn` (in the desktop rail above the
   account button; on play.html beside Clip/Fullscreen, never over the game) opens `#aiPanel`, a right-side slide-out

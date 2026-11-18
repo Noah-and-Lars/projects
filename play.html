@@ -43,7 +43,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=23">
+<link rel="stylesheet" href="arcade.css?v=24">
 <script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
 </head>
 <body class="player">
@@ -55,6 +55,7 @@
   </div>
   <div class="actions">
     <button id="padBtn" class="btn ghost pad-btn" type="button" title="Use your phone as a controller"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>Phone</span></button>
+    <button id="liveBtn" class="btn ghost live-btn" type="button" title="Stream this game to your friends"><i aria-hidden="true"></i><span>Go live</span></button>
     <button id="clip" class="btn ghost" title="Record a clip of your game (F8)">Clip</button>
     <a id="next" class="btn ghost">Next game →</a>
     <button id="fs" class="btn">Fullscreen</button>
@@ -84,7 +85,7 @@
   <section id="more" class="grid small"></section>
 </main>
 
-<script src="games.js?v=256"></script>
+<script src="games.js?v=257"></script>
 <script src="account.js?v=40"></script>
 <script src="assistant.js?v=4"></script>
 <script src="console.js?v=3"></script>
@@ -93,6 +94,7 @@
 <script src="vendor/qrcode.js?v=1"></script>
 <script src="pair.js?v=1"></script>
 <script src="tourney.js?v=2"></script>
+<script src="live.js?v=1"></script>
 <script>
 const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('game');
@@ -149,6 +151,8 @@ if (!game) {
   if (window.ArcadeClips) ArcadeClips.attach(frame, game, $('clip')); else $('clip').hidden = true;
   // 📱 Phone: phones as controllers, or carry on playing on the phone (pair.js)
   if (window.ArcadePair) ArcadePair.attach(game, frame, $('padBtn')); else $('padBtn').hidden = true;
+  // Go live: stream this game to viewers on live.html (live.js)
+  if (window.ArcadeLive && window.RTCPeerConnection) ArcadeLive.host(game, $('stage'), frame, $('liveBtn')); else $('liveBtn').hidden = true;
   $('newtab').href = game.path;
 
   const next = GAMES[(index + 1) % GAMES.length];

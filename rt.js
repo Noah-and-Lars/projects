@@ -12,9 +12,9 @@
   // Online play needs an online Arcade account (2026-11-06): without one (no account, or a local account), every
   // channel except the site's "on now" counter fails to connect and a popup asks the player to make an account.
   // The game then behaves as if it were offline (most fall back to bots or offline play).
-  // 2026-11-17: phones as controllers (pair:), the home page's live cursors (cursors:) and following a tournament
-  // (tourn:) work without an account too; joining a tournament still needs one (checked in tourney.js)
-  var FREE = /^online:arcade$|^pair:[A-Z0-9]{5}$|^cursors:home$|^tourn:/;
+  // 2026-11-17: phones as controllers (pair:), the home page's live cursors (cursors:) and watching a live broadcast
+  // (live:) work without an account too; going live or chatting on a broadcast still needs one (checked in live.js)
+  var FREE = /^online:arcade$|^pair:[A-Z0-9]{5}$|^cursors:home$|^live:|^tourn:/;
   function hasAccount() { try { var a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return !!(a && a.name && a.token); } catch (e) { return false; } }
   var askedAt = 0;
   function askForAccount() {
