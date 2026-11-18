@@ -4,6 +4,10 @@
 // thread and would freeze the animation. Time only moves on with the frames actually drawn, so a stall can't skip it.
 // It lasts INTRO_S seconds, then fades into the loading screen or the game. A click skips it, a hidden tab skips it,
 // and reduced-motion users get a short fade. window.ArcadeIntro.done is a promise for when it has gone.
+// 2026-11-18 (v4): redrawn in the "console" look (arcade.css): near-black, the one orange signal colour, the orange
+// joystick logo, Archivo expanded for the name and JetBrains Mono for the labels. Same length as before (2.2 s).
+// The beat: an orange line scans across, opens up into the logo tile, the joystick knocks over and springs back,
+// "MADE BY" types in, THE ARCADE rises letter by letter, then a boot bar fills and it all fades.
 (function () {
   var INTRO_S = 2.2, stage = document.getElementById('stage');
   var resolveDone, done = new Promise(function (r) { resolveDone = r; }), resolveLoad, load = new Promise(function (r) { resolveLoad = r; });
@@ -12,10 +16,15 @@
   var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var total = reduced ? 0.9 : INTRO_S;
 
+  var BG = '#050506', ORANGE = '#ff5a2c', INK = '#1a0700', TEXT = '#f4f4f5', MUTED = '#a1a1aa', DIM = '#74747f';
+  var SANS = '"Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  var MONO = '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace';
+  try { if (document.fonts) { document.fonts.load('900 40px "Archivo"'); document.fonts.load('600 12px "JetBrains Mono"'); } } catch (e) {}
+
   var cv = document.createElement('canvas');
   cv.className = 'arcade-intro';
   cv.setAttribute('aria-label', 'Made by The Arcade');
-  cv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;display:block;cursor:pointer;background:#05040f';
+  cv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;display:block;cursor:pointer;background:' + BG;
   stage.appendChild(cv);
   var x = cv.getContext('2d'), W = 0, H = 0, DPR = 1;
   function size() {
@@ -25,127 +34,183 @@
   }
   size(); addEventListener('resize', size); document.addEventListener('fullscreenchange', size);
 
+  // film grain: one small noise tile made once, drawn shifted each frame (cheaper than random dots every frame)
+  var grain = document.createElement('canvas'); grain.width = grain.height = 128;
+  (function () {
+    var g = grain.getContext('2d'), im = g.createImageData(128, 128), d = im.data;
+    for (var i = 0; i < d.length; i += 4) { var v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
+    g.putImageData(im, 0, 0);
+  })();
+  var grainPat = null;
+
   var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
   var ramp = function (t, a, b) { return clamp((t - a) / (b - a), 0, 1); };
   var ease = function (k) { return 1 - Math.pow(1 - k, 3); };
-  var back = function (k) { var c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
-  var VIOLET = '#7b6cff', TEAL = '#00d2a8';
+  var easeIO = function (k) { return k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; };
+  var back = function (k) { var c = 1.6; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+  // a damped spring from 1 to 0 (for the joystick knock)
+  var spring = function (k) { return Math.exp(-5.5 * k) * Math.cos(k * 15); };
 
-  // sparks thrown out from the logo
-  var sparks = [];
-  for (var i = 0; i < 70; i++) { var a = Math.random() * Math.PI * 2; sparks.push({ a: a, v: 0.25 + Math.random() * 0.75, s: 0.6 + Math.random() * 1.6, d: 0.2 + Math.random() * 0.35, c: Math.random() < 0.5 ? VIOLET : TEAL }); }
+  function rr(px, py, w, h, r) { r = Math.min(r, w / 2, h / 2); x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); }
 
-  // the site's joystick logo (logo.svg), drawn at the origin, 64 units square
-  function logo(glow) {
-    var g = x.createLinearGradient(-32, -32, 32, 32); g.addColorStop(0, VIOLET); g.addColorStop(1, TEAL);
-    x.shadowColor = 'rgba(123,108,255,' + (0.8 * glow) + ')'; x.shadowBlur = 40 * glow;
-    rr(-32, -32, 64, 64, 16); x.fillStyle = g; x.fill(); x.shadowBlur = 0;
-    x.fillStyle = '#fff';
-    rr(-19, 9, 38, 11, 5.5); x.fill(); rr(-2.5, -9, 5, 21, 2.5); x.fill();
-    x.beginPath(); x.arc(0, -12, 8.5, 0, Math.PI * 2); x.fill();
-    x.fillStyle = '#6c5ce7'; x.beginPath(); x.arc(12.5, 14.5, 2.6, 0, Math.PI * 2); x.fill();
+  // the site's joystick logo (logo.svg), centred on the origin, 64 units square. open: 0 = a flat line, 1 = the full
+  // tile. tilt: the stick's lean in radians (it pivots on the base).
+  function logo(open, tilt, glow) {
+    var h = Math.max(2, 64 * open);
+    if (glow > 0) { x.shadowColor = 'rgba(255,90,44,' + (0.55 * glow) + ')'; x.shadowBlur = 46 * glow; }
+    rr(-32, -h / 2, 64, h, 15 * open); x.fillStyle = ORANGE; x.fill(); x.shadowBlur = 0;
+    if (open < 0.55) return;
+    var ink = ease(ramp(open, 0.55, 1));
+    x.save(); x.globalAlpha *= ink; x.fillStyle = INK;
+    rr(-18, 10, 36, 9, 4.5); x.fill(); // base
+    x.translate(0, 12); x.rotate(tilt); x.translate(0, -12);
+    rr(-2.5, -8, 5, 20, 2.5); x.fill(); // stick
+    x.beginPath(); x.arc(0, -11.5, 8, 0, Math.PI * 2); x.fill(); // ball
+    x.fillStyle = 'rgba(255,90,44,.55)'; x.beginPath(); x.arc(-2.8, -14.2, 2.4, 0, Math.PI * 2); x.fill();
+    x.restore();
   }
-  function rr(px, py, w, h, r) { x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); }
+
+  function setFont(weight, px, family, stretch) {
+    x.font = weight + ' ' + px + 'px ' + family;
+    if ('fontStretch' in x) x.fontStretch = stretch || 'normal';
+    if ('letterSpacing' in x) x.letterSpacing = '0px';
+  }
 
   function draw(t) {
     x.setTransform(DPR, 0, 0, DPR, 0, 0);
     var u = Math.min(W, H), cx = W / 2, cy = H / 2;
-    // the whole thing fades out at the end and pushes in slightly the whole time
-    var out = ease(ramp(t, total - 0.45, total)), alpha = 1 - out;
-    cv.style.opacity = alpha;
-    var bg = x.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.75);
-    bg.addColorStop(0, '#16123a'); bg.addColorStop(0.55, '#0a0820'); bg.addColorStop(1, '#030209');
-    x.fillStyle = bg; x.fillRect(0, 0, W, H);
-    if (reduced) { // a plain title card
-      x.save(); x.translate(cx, cy - u * 0.08); var sc = u * 0.0024; x.scale(sc, sc); logo(0.6); x.restore();
-      title(t, cx, cy, u, 1, 1, 1); return;
+    var out = ease(ramp(t, total - 0.42, total));
+    cv.style.opacity = 1 - out;
+
+    // background: near-black with a faint warm glow behind the logo and a vignette
+    x.fillStyle = BG; x.fillRect(0, 0, W, H);
+    var glowK = reduced ? 0.6 : ease(ramp(t, 0.2, 0.9)) * (1 - 0.4 * ramp(t, 1.2, 2.0));
+    var lg = x.createRadialGradient(cx, cy - u * 0.08, 0, cx, cy - u * 0.08, u * 0.7);
+    lg.addColorStop(0, 'rgba(255,90,44,' + 0.16 * glowK + ')'); lg.addColorStop(0.5, 'rgba(255,90,44,' + 0.04 * glowK + ')'); lg.addColorStop(1, 'rgba(255,90,44,0)');
+    x.fillStyle = lg; x.fillRect(0, 0, W, H);
+    var vg = x.createRadialGradient(cx, cy, u * 0.35, cx, cy, Math.max(W, H) * 0.8);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.7)');
+    x.fillStyle = vg; x.fillRect(0, 0, W, H);
+
+    var LS = u * 0.003, ly = cy - u * 0.13; // logo scale and centre
+    if (reduced) {
+      x.save(); x.translate(cx, ly); x.scale(LS, LS); logo(1, 0, 0.5); x.restore();
+      title(t, cx, cy, u, 1, 1, 1); corners(u, 1); return;
     }
-    var zoom = 1 + 0.05 * ease(ramp(t, 0, total));
+
+    var zoom = 1 + 0.04 * easeIO(ramp(t, 0, total));
     x.save(); x.translate(cx, cy); x.scale(zoom, zoom); x.translate(-cx, -cy);
-    // a beam of light opens across the middle, then the logo pops up out of it
-    var beam = ease(ramp(t, 0.05, 0.55)), beamFade = 1 - ramp(t, 0.7, 1.3);
-    if (beam > 0 && beamFade > 0) {
-      var bw = W * 0.8 * beam, bfs = Math.max(18, u * 0.11), by = cy + u * 0.17 + bfs * 0.62; // just under the title
-      var lg = x.createLinearGradient(cx - bw / 2, 0, cx + bw / 2, 0);
-      lg.addColorStop(0, 'rgba(123,108,255,0)'); lg.addColorStop(0.5, 'rgba(220,235,255,' + 0.95 * beamFade + ')'); lg.addColorStop(1, 'rgba(0,210,168,0)');
-      x.fillStyle = lg; x.fillRect(cx - bw / 2, by - 1, bw, 2);
-      x.globalCompositeOperation = 'lighter';
-      var hg = x.createRadialGradient(cx, by, 0, cx, by, u * 0.5 * beam);
-      hg.addColorStop(0, 'rgba(123,108,255,' + 0.35 * beamFade + ')'); hg.addColorStop(1, 'rgba(0,0,0,0)');
-      x.fillStyle = hg; x.fillRect(0, by - u * 0.5, W, u);
-      x.globalCompositeOperation = 'source-over';
-    }
-    // sparks
-    var sk = ramp(t, 0.3, 1.9);
-    if (sk > 0 && sk < 1) {
-      x.globalCompositeOperation = 'lighter';
-      for (var i = 0; i < sparks.length; i++) {
-        var p = sparks[i], k = ease(sk), r = u * (0.08 + p.v * 0.55 * k), sx = cx + Math.cos(p.a) * r * 1.4, sy = cy - u * 0.08 + Math.sin(p.a) * r * 0.8;
-        x.globalAlpha = (1 - sk) * 0.9; x.fillStyle = p.c; x.beginPath(); x.arc(sx, sy, p.s, 0, Math.PI * 2); x.fill();
-      }
-      x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
-    }
-    // the logo: pops in with a bounce, glows, then settles
-    var lk = ramp(t, 0.25, 0.75);
-    if (lk > 0) {
-      x.save(); x.globalAlpha = ease(lk); x.translate(cx, cy - u * 0.1);
-      var sc = u * 0.0026 * (0.55 + 0.45 * back(lk)); x.scale(sc, sc);
-      logo(1 - 0.6 * ramp(t, 0.8, 1.6)); x.restore();
-    }
-    title(t, cx, cy, u, ramp(t, 0.55, 0.95), ramp(t, 0.7, 1.15), ramp(t, 1.0, 1.55));
-    x.restore();
-    // letterbox bars slide in at the start and away at the end, and a little film grain
-    var bar = H * 0.09 * ease(ramp(t, 0, 0.35)) * (1 - out);
-    x.fillStyle = '#000'; x.fillRect(0, 0, W, bar); x.fillRect(0, H - bar, W, bar);
-    x.globalAlpha = 0.05;
-    for (var n = 0; n < 140; n++) { x.fillStyle = Math.random() < 0.5 ? '#fff' : '#000'; x.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5); }
-    x.globalAlpha = 1;
-  }
-  // "MADE BY" (spreading out) over "THE ARCADE" (revealed from the middle, with a shine passing over it)
-  function title(t, cx, cy, u, made, word, shine) {
-    var fs = Math.max(18, u * 0.11), ty = cy + u * 0.17 + fs * 0.35;
-    x.textAlign = 'center'; x.textBaseline = 'alphabetic';
-    if (made > 0) {
-      var ms = Math.max(10, u * 0.032), track = (0.25 + 0.35 * ease(made)) * ms;
-      x.font = '700 ' + ms + 'px system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
-      x.fillStyle = 'rgba(200,196,235,' + ease(made) + ')';
-      spaced('MADE BY', cx, ty - fs * 1.05, track);
-    }
-    if (word > 0) {
-      x.font = '900 ' + fs + 'px system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
-      var tw = x.measureText('THE ARCADE').width, rv = ease(word);
-      x.save(); x.beginPath(); x.rect(cx - tw / 2 * rv - 4, ty - fs * 1.1, tw * rv + 8, fs * 1.4); x.clip();
-      var g = x.createLinearGradient(cx - tw / 2, 0, cx + tw / 2, 0); g.addColorStop(0, '#b3a9ff'); g.addColorStop(0.5, '#ffffff'); g.addColorStop(1, '#6ff0d4');
-      x.shadowColor = 'rgba(123,108,255,.6)'; x.shadowBlur = fs * 0.4; x.fillStyle = g; x.fillText('THE ARCADE', cx, ty); x.shadowBlur = 0;
-      if (shine > 0 && shine < 1) { // a bright band sweeping left to right across the letters (the text drawn again, lit only in the band)
-        var sx = cx - tw / 2 - fs + (tw + fs * 2) * ease(shine), sg = x.createLinearGradient(sx - fs * 0.6, 0, sx + fs * 0.6, 0);
-        sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,.95)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
-        x.fillStyle = sg; x.fillText('THE ARCADE', cx, ty);
-      }
+
+    // 1. an orange scan line shoots across the middle of the logo spot, then pulls in to the tile's width
+    var shoot = ease(ramp(t, 0.0, 0.32)), pull = easeIO(ramp(t, 0.3, 0.52));
+    var full = W * 0.9, tileW = 64 * LS, lineW = full * shoot * (1 - pull) + tileW * pull;
+    if (t < 0.6) {
+      x.save(); x.globalCompositeOperation = 'lighter';
+      var sg = x.createLinearGradient(cx - lineW / 2, 0, cx + lineW / 2, 0);
+      sg.addColorStop(0, 'rgba(255,90,44,0)'); sg.addColorStop(0.5, 'rgba(255,170,130,1)'); sg.addColorStop(1, 'rgba(255,90,44,0)');
+      x.fillStyle = sg; x.globalAlpha = 1 - ramp(t, 0.5, 0.6);
+      x.fillRect(cx - lineW / 2, ly - 1, lineW, 2);
+      x.globalAlpha *= 0.5; x.fillRect(cx - lineW / 2, ly - 5, lineW, 10 * (1 - pull));
       x.restore();
     }
-  }
-  function spaced(s, cx, y, track) {
-    var w = 0, i; for (i = 0; i < s.length; i++) w += x.measureText(s[i]).width + (i < s.length - 1 ? track : 0);
-    var px = cx - w / 2; x.textAlign = 'left';
-    for (i = 0; i < s.length; i++) { x.fillText(s[i], px, y); px += x.measureText(s[i]).width + track; }
-    x.textAlign = 'center';
+    // 2. the line opens up into the logo tile; the joystick knocks over and springs back
+    var open = back(ramp(t, 0.46, 0.78));
+    if (t >= 0.46) {
+      var knock = ramp(t, 0.72, 1.6), tilt = t < 0.72 ? 0 : -0.5 * spring(knock);
+      var pop = 1 + 0.06 * Math.sin(Math.PI * ramp(t, 0.7, 0.95));
+      x.save(); x.translate(cx, ly); x.scale(LS * pop, LS * pop);
+      logo(Math.max(0.03, open), tilt, 1 - 0.55 * ramp(t, 0.9, 1.6));
+      x.restore();
+      // a ring pulses out from the tile when it lands
+      var ring = ramp(t, 0.7, 1.25);
+      if (ring > 0 && ring < 1) {
+        var rs = tileW * (1 + 0.9 * ease(ring));
+        x.save(); x.strokeStyle = ORANGE; x.globalAlpha = 0.6 * (1 - ring); x.lineWidth = Math.max(1, u * 0.004 * (1 - ring));
+        rr(cx - rs / 2, ly - rs / 2, rs, rs, rs * 0.23); x.stroke(); x.restore();
+      }
+    }
+    title(t, cx, cy, u, ramp(t, 0.68, 1.05), ramp(t, 0.82, 1.3), ramp(t, 1.15, 1.8));
+    x.restore();
+
+    corners(u, ease(ramp(t, 0.05, 0.4)) * (1 - out));
+
+    // grain over everything
+    if (!grainPat) grainPat = x.createPattern(grain, 'repeat');
+    x.save(); x.globalAlpha = 0.045; x.globalCompositeOperation = 'overlay';
+    x.translate(Math.random() * 128, Math.random() * 128); x.fillStyle = grainPat; x.fillRect(-128, -128, W + 256, H + 256);
+    x.restore();
   }
 
-  // a soft whoosh and chime, only if the browser already allows sound on this page
+  // "MADE BY" typed in (mono), "THE ARCADE" rising letter by letter (Archivo, expanded), then the boot bar
+  function title(t, cx, cy, u, made, word, bar) {
+    var fs = Math.max(20, Math.min(u * 0.105, W * 0.085)), ty = cy + u * 0.17 + fs * 0.35;
+    x.textBaseline = 'alphabetic';
+    if (made > 0) {
+      var ms = Math.max(10, u * 0.03), s = 'MADE BY', n = Math.ceil(s.length * made), shown = s.slice(0, n);
+      setFont('600', ms, MONO); x.textAlign = 'center';
+      var track = ms * 0.55, full = 0, i;
+      for (i = 0; i < s.length; i++) full += x.measureText(s[i]).width + (i < s.length - 1 ? track : 0);
+      var px = cx - full / 2, my = ty - fs * 1.08; x.textAlign = 'left';
+      x.fillStyle = MUTED;
+      for (i = 0; i < shown.length; i++) { x.fillText(shown[i], px, my); px += x.measureText(shown[i]).width + track; }
+      if (made < 1 || Math.floor(t * 6) % 2 === 0) { x.fillStyle = ORANGE; x.fillRect(px - track * 0.5 + 2, my - ms * 0.8, ms * 0.5, ms * 0.95); } // the cursor
+    }
+    if (word > 0) {
+      var s2 = 'THE ARCADE';
+      setFont('900', fs, SANS, 'expanded'); x.textAlign = 'left';
+      var gap = fs * 0.02, widths = [], tw = 0;
+      for (var j = 0; j < s2.length; j++) { widths.push(x.measureText(s2[j]).width); tw += widths[j] + (j < s2.length - 1 ? gap : 0); }
+      if (tw > W * 0.9) { fs *= W * 0.9 / tw; setFont('900', fs, SANS, 'expanded'); tw = 0; for (j = 0; j < s2.length; j++) { widths[j] = x.measureText(s2[j]).width; tw += widths[j] + (j < s2.length - 1 ? gap : 0); } }
+      x.save(); x.beginPath(); x.rect(0, ty - fs * 1.05, W, fs * 1.3); x.clip(); // letters rise up from under this line
+      var lx = cx - tw / 2;
+      for (j = 0; j < s2.length; j++) {
+        var k = ease(ramp(word, j * 0.06, j * 0.06 + 0.46)), dy = (1 - k) * fs * 1.05;
+        x.fillStyle = TEXT;
+        x.globalAlpha = k; x.fillText(s2[j], lx, ty + dy);
+        lx += widths[j] + gap;
+      }
+      x.globalAlpha = 1; x.restore();
+      // the boot bar: a thin track under the name that fills orange, with a mono label and percentage
+      if (bar > 0) {
+        var bw = tw, bx = cx - tw / 2, by = ty + fs * 0.42, bh = Math.max(2, u * 0.006), k2 = easeIO(bar);
+        x.globalAlpha = ease(ramp(bar, 0, 0.2));
+        x.fillStyle = 'rgba(255,255,255,.1)'; x.fillRect(bx, by, bw, bh);
+        x.fillStyle = ORANGE; x.fillRect(bx, by, bw * k2, bh);
+        x.shadowColor = 'rgba(255,90,44,.9)'; x.shadowBlur = bh * 5; x.fillRect(bx + bw * k2 - bh * 2, by, bh * 2, bh); x.shadowBlur = 0;
+        var ls = Math.max(9, u * 0.022); setFont('500', ls, MONO);
+        x.fillStyle = DIM; x.textAlign = 'left'; x.fillText(k2 < 1 ? 'STARTING GAME' : 'READY', bx, by + bh + ls * 1.6);
+        x.textAlign = 'right'; x.fillStyle = k2 < 1 ? MUTED : ORANGE; x.fillText(Math.round(k2 * 100) + '%', bx + bw, by + bh + ls * 1.6);
+        x.globalAlpha = 1;
+      }
+    }
+  }
+
+  // console-style corner brackets around the frame
+  function corners(u, k) {
+    if (k <= 0) return;
+    var m = Math.max(14, u * 0.05), L = Math.max(14, u * 0.06) * k;
+    x.save(); x.strokeStyle = 'rgba(255,255,255,' + 0.22 * k + ')'; x.lineWidth = 1.5; x.beginPath();
+    x.moveTo(m, m + L); x.lineTo(m, m); x.lineTo(m + L, m);
+    x.moveTo(W - m - L, m); x.lineTo(W - m, m); x.lineTo(W - m, m + L);
+    x.moveTo(m, H - m - L); x.lineTo(m, H - m); x.lineTo(m + L, H - m);
+    x.moveTo(W - m - L, H - m); x.lineTo(W - m, H - m); x.lineTo(W - m, H - m - L);
+    x.stroke(); x.restore();
+  }
+
+  // a low thump as the tile opens, then a quick two-note blip; only if the browser already allows sound on this page
   try {
     var AC = window.AudioContext || window.webkitAudioContext, ac = AC && new AC();
     if (ac && ac.state === 'running') {
-      var now = ac.currentTime, len = ac.sampleRate * 0.9, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
-      for (var j = 0; j < len; j++) d[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 2);
-      var src = ac.createBufferSource(), bp = ac.createBiquadFilter(), gn = ac.createGain();
-      src.buffer = buf; bp.type = 'bandpass'; bp.frequency.setValueAtTime(300, now); bp.frequency.exponentialRampToValueAtTime(2400, now + 0.6);
-      gn.gain.setValueAtTime(0.0001, now); gn.gain.exponentialRampToValueAtTime(0.18, now + 0.25); gn.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
-      src.connect(bp).connect(gn).connect(ac.destination); src.start(now);
-      [523.25, 783.99, 1046.5].forEach(function (f, k) {
-        var o = ac.createOscillator(), g = ac.createGain(), at = now + 0.55 + k * 0.06;
-        o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.07, at + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, at + 1.2);
-        o.connect(g).connect(ac.destination); o.start(at); o.stop(at + 1.3);
+      var now = ac.currentTime;
+      var th = ac.createOscillator(), tg = ac.createGain(), ta = now + 0.46;
+      th.type = 'sine'; th.frequency.setValueAtTime(140, ta); th.frequency.exponentialRampToValueAtTime(45, ta + 0.35);
+      tg.gain.setValueAtTime(0.0001, ta); tg.gain.exponentialRampToValueAtTime(0.32, ta + 0.015); tg.gain.exponentialRampToValueAtTime(0.0001, ta + 0.45);
+      th.connect(tg).connect(ac.destination); th.start(ta); th.stop(ta + 0.5);
+      [[659.25, 0.74], [987.77, 0.84]].forEach(function (n) {
+        var o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter(), at = now + n[1];
+        o.type = 'square'; o.frequency.value = n[0]; f.type = 'lowpass'; f.frequency.value = 2600;
+        g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.045, at + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
+        o.connect(f).connect(g).connect(ac.destination); o.start(at); o.stop(at + 0.55);
       });
     } else if (ac) ac.close();
   } catch (e) {}
@@ -160,7 +225,7 @@
   (function tick() {
     if (gone) return;
     var now = performance.now(); t += Math.min(0.05, (now - last) / 1000); last = now; // a long stall counts as one frame
-    if (t >= total - 0.45) resolveLoad(); // start loading the game as the intro fades out
+    if (t >= total - 0.42) resolveLoad(); // start loading the game as the intro fades out
     draw(Math.min(t, total));
     if (t >= total) finish(); else requestAnimationFrame(tick);
   })();
