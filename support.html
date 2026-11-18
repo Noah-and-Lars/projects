@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
 <script>
 // 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
 // not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
@@ -22,7 +26,7 @@
 </script>
 <title>Support · The Arcade</title>
 <meta name="description" content="Found a bug or got an idea for The Arcade? Send feedback, apply to become a game tester, or apply to be a developer.">
-<meta name="theme-color" content="#0f0d1f">
+<meta name="theme-color" content="#050506">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -31,25 +35,26 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=16">
+<link rel="stylesheet" href="arcade.css?v=21">
 <style>
 .sup { max-width: 760px; margin: 28px auto 0; }
 .sup h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.01em; }
 .sup-lead { margin: 0 0 22px; color: var(--muted); font-size: 15px; }
 .feedback { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; padding: 20px 22px; border-radius: 18px;
-  background: linear-gradient(135deg, #6c5ce733, #ec489926); border: 1px solid #ffffff1a; }
+  background: linear-gradient(135deg, #ff5a2c1f, #16161a 60%); border: 1px solid #ffffff14; }
 .feedback .sec-h { margin: 0 0 6px; }
 .feedback p { margin: 0; color: var(--muted, #aab); font-size: 14px; line-height: 1.5; max-width: 560px; }
 .fb-btn { flex: none; padding: 12px 20px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 800; text-decoration: none; }
 .fb-btn:hover { filter: brightness(1.12); }
 .feedback + .feedback { margin-top: 16px; }
-.tester { background: linear-gradient(135deg, #00d2a826, #6c5ce733); }
-.tester .fb-btn { background: var(--accent-2); color: #04211b; }
-.dev { background: linear-gradient(135deg, #f2b13426, #6c5ce733); }
+.tester { background: linear-gradient(135deg, #3ddc971a, #16161a 60%); }
+.tester .fb-btn { background: var(--accent-2); color: #021a10; }
+.dev { background: linear-gradient(135deg, #ffb2241a, #16161a 60%); }
 .dev .fb-btn { background: #f2b134; color: #1a1408; }
 .mob .sup { margin-top: 18px; }
 .mob .sup h1 { font-size: 26px; }
 </style>
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
 </head>
 <body>
 <header class="top">
@@ -98,17 +103,18 @@
   <p>The Arcade</p>
 </footer>
 
-<script src="games.js?v=200"></script>
-<script src="account.js?v=26"></script>
-<script src="console.js?v=1"></script>
-<script src="call.js?v=6"></script>
+<script src="games.js?v=246"></script>
+<script src="account.js?v=40"></script>
+<script src="console.js?v=2"></script>
+<script src="call.js?v=8"></script>
 <script>
 // Support (2026-11-11): the feedback form (a Google Form), moved here from the bottom of the home page, and the
 // game tester request form and the developer application form (also Google Forms).
 ArcadeOnline.start('support');
 </script>
-<script src="tos.js?v=14"></script>
-<script src="appbanner.js?v=1"></script>
+<script src="tos.js?v=21"></script>
+<script src="appbanner.js?v=2"></script>
 <script src="moving.js?v=1"></script>
+<script src="outage.js?v=2"></script>
 </body>
 </html>

@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
+<script>
+// 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
+// not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
+(function () {
+  var u = navigator.userAgent || '', c = document.documentElement.classList, f = '';
+  try { f = (/[?&]mob=(phone|tab|off)/.exec(location.search) || [])[1] || sessionStorage.getItem('arcade-mob') || ''; if (f) sessionStorage.setItem('arcade-mob', f); } catch (e) {}
+  var ipad = /iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|webOS|Android.+Mobile|Mobile.+Firefox/.test(u);
+  var tab = !phone && (ipad || /Android|Tablet|Silk|Kindle|PlayBook/.test(u));
+  if (f) { phone = f === 'phone'; tab = f === 'tab'; }
+  if (phone || tab) { c.add('mob'); c.add(phone ? 'mob-phone' : 'mob-tab'); }
+  var vh = function () { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
+  vh(); window.addEventListener('resize', vh);
+  // older browsers (iOS before 14) don't have replaceChildren, which the home page uses to list the games
+  if (window.Element && !Element.prototype.replaceChildren) Element.prototype.replaceChildren = function () { while (this.firstChild) this.removeChild(this.firstChild); for (var i = 0; i < arguments.length; i++) { var n = arguments[i]; this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n); } };
+})();
+</script>
+<title>Tournaments · The Arcade</title>
+<meta name="description" content="Open tournaments on The Arcade: sign up, then 1v1 knockout rounds all the way to the final.">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="logo.svg?v=2" type="image/svg+xml">
+<link rel="stylesheet" href="arcade.css?v=21">
+</head>
+<body class="tpage">
+<header class="top">
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg?v=2" alt="">The Arcade</a>
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab" href="index.html">Games</a>
+    <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
+    <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
+    <a class="tab" href="social.html">Social</a>
+    <a class="tab" href="support.html">Support</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <!-- every tournament -->
+  <section id="dir" hidden>
+    <div class="t-hero">
+      <span class="eyebrow"><span class="pip"></span>Open to everyone</span>
+      <h1>Tournaments</h1>
+      <p>Sign up, then it’s 1v1 knockout: win your match to climb the bracket, all the way to the final.</p>
+      <div class="acts" style="margin-top:22px"><button type="button" class="btn big accent" id="hostBtn">Host a tournament</button></div>
+    </div>
+    <div class="section" id="dLive" hidden><div class="sec-head"><h2 class="sec-h">Live now</h2></div><div class="t-list" id="dLiveL"></div></div>
+    <div class="section" id="dOpen" hidden><div class="sec-head"><h2 class="sec-h">Starting soon</h2><span class="sec-sub">Join before it starts</span></div><div class="t-list" id="dOpenL"></div></div>
+    <div class="section" id="dDone" hidden><div class="sec-head"><h2 class="sec-h">Finished</h2></div><div class="t-list" id="dDoneL"></div></div>
+    <div class="lv-empty" id="dEmpty" hidden style="margin-top:40px"><b>No tournaments right now</b><p>Host one: pick a game and a start time, and everyone on The Arcade can join.</p></div>
+  </section>
+
+  <!-- one tournament -->
+  <section id="one" hidden>
+    <div class="t-banner" id="tBanner">
+      <div class="t-bg"><img id="tArt" alt=""></div>
+      <div class="t-bi">
+        <div class="kicker"><span class="pill" id="tState">Open</span><span class="eyebrow" id="tKick"></span></div>
+        <h1 id="tTitle">Tournament</h1>
+        <div class="facts-row" id="tFacts"></div>
+        <div class="acts" id="tActs"></div>
+      </div>
+      <div class="t-clock" id="tClock" hidden><small>Starts in</small><b id="tCount">0:00</b></div>
+    </div>
+    <div class="t-hostbar" id="hostBar" hidden>
+      <div><b>You’re hosting.</b> Keep this page open: the tournament runs from here. It starts by itself at the start time with everyone who’s around.</div>
+      <div class="t-hb-acts"><button type="button" class="btn" id="startNow">Start now</button><button type="button" class="btn ghost" id="later5">+5 min</button><button type="button" class="btn ghost" id="cancelT">Cancel</button></div>
+    </div>
+    <div class="t-note" id="tNote" hidden></div>
+    <div class="t-mine" id="mine" hidden></div>
+    <div class="section" id="playersWrap" style="margin-top:34px"><div class="sec-head"><h2 class="sec-h">Players</h2><span class="sec-sub" id="pCount"></span></div><div class="t-players" id="players"></div></div>
+    <div class="section" id="bracketWrap" hidden style="margin-top:40px">
+      <div class="sec-head"><h2 class="sec-h">Bracket</h2><span class="sec-sub">Win to move up. Final at the top.</span></div>
+      <div class="bracket" id="bracket"></div>
+    </div>
+  </section>
+</main>
+
+<div class="pp-wrap" id="createDlg" hidden>
+  <form class="pp t-form" id="createForm" role="dialog" aria-modal="true" aria-labelledby="cT">
+    <button type="button" class="pp-x" id="createX" aria-label="Close">✕</button>
+    <h2 id="cT">Host a tournament</h2>
+    <label>Name<input class="field" id="cName" maxlength="40" value="Weekly Chess Cup" required></label>
+    <label>Game<select class="field" id="cGame"><option value="chess">Chess</option><option value="checkers">Checkers</option><option value="card-royale">Card Royale</option><option value="rocket-rivals">Rocket Rivals</option></select></label>
+    <div class="t-two">
+      <label>Starts<select class="field" id="cWhen"><option value="10">In 10 minutes</option><option value="30" selected>In 30 minutes</option><option value="60">In 1 hour</option><option value="custom">Pick a time…</option></select></label>
+      <label>Players<select class="field" id="cCap"><option>8</option><option selected>16</option><option>32</option><option>64</option></select></label>
+    </div>
+    <label id="cAtWrap" hidden>Start time<input class="field" type="datetime-local" id="cAt"></label>
+    <label class="t-check"><input type="checkbox" id="cPlay" checked> I’m playing too</label>
+    <p class="t-small" id="cHint"></p>
+    <button class="btn big accent" type="submit">Create tournament</button>
+  </form>
+</div>
+
+<footer class="foot"><p>The Arcade</p></footer>
+
+<script src="games.js?v=246"></script>
+<script src="account.js?v=40"></script>
+<script src="console.js?v=2"></script>
+<script src="call.js?v=8"></script>
+<script src="tourney.js?v=1"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const byId = Object.fromEntries(GAMES.map(g => [g.id, g]));
+  const TT = ArcadeTourney;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const SHOT = {}; for (const n of NEWS) if (n.game && n.imgs && n.imgs.length && !SHOT[n.game]) SHOT[n.game] = n.imgs[0];
+  const art = g => SHOT[g] || (byId[g] || {}).thumb || '';
+  const gname = g => (byId[g] || {}).title || g;
+  const when = at => new Date(at).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  const left = at => { let s = Math.max(0, Math.round((at - Date.now()) / 1000)); const h = Math.floor(s / 3600); s -= h * 3600; const m = Math.floor(s / 60); s -= m * 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); };
+  const toast = t => { const e = document.createElement('div'); e.className = 'cur-wave'; e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2800); };
+  ArcadeOnline.start('tournaments');
+  const q = new URLSearchParams(location.search), tid = (q.get('t') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+  /* ---------- hosting ---------- */
+  const dlg = $('createDlg');
+  const openCreate = () => {
+    if (!TT.online()) { if (window.ArcadeAccount) ArcadeAccount.welcome('signup', 'Hosting a tournament needs an online account. Make one (free) or log in.'); return; }
+    dlg.hidden = false; $('cName').focus(); hint();
+  };
+  const hint = () => { $('cAtWrap').hidden = $('cWhen').value !== 'custom'; $('cHint').textContent = TT.GAMES[$('cGame').value] === 'auto' ? 'Matches open straight into a private table and the result counts by itself.' : 'Players open the game together and report who won.'; };
+  $('cGame').onchange = () => { hint(); const n = $('cName'); if (/^Weekly .* Cup$/.test(n.value)) n.value = 'Weekly ' + gname($('cGame').value) + ' Cup'; };
+  $('cWhen').onchange = hint;
+  $('createX').onclick = () => { dlg.hidden = true; };
+  dlg.addEventListener('mousedown', e => { if (e.target === dlg) dlg.hidden = true; });
+  $('createForm').onsubmit = e => {
+    e.preventDefault();
+    const w = $('cWhen').value, at = w === 'custom' ? Date.parse($('cAt').value) : Date.now() + (+w) * 60000;
+    if (!at || at < Date.now() - 60000) { $('cHint').textContent = 'Pick a start time in the future.'; return; }
+    const id = TT.newId();
+    sessionStorage.setItem('arcade-tourn-new', JSON.stringify({ id, t: $('cName').value.trim().slice(0, 40) || 'Tournament', g: $('cGame').value, at, cap: +$('cCap').value, play: $('cPlay').checked }));
+    location.href = 'tourney.html?t=' + id;
+  };
+  $('hostBtn').onclick = openCreate;
+
+  /* ---------- every tournament ---------- */
+  if (!tid) {
+    $('dir').hidden = false;
+    const card = t => {
+      const a = document.createElement('a'); a.className = 't-card'; a.href = 'tourney.html?t=' + t.id;
+      a.innerHTML = `<div class="t-ci"><img alt=""><span class="pill ${t.st === 'live' ? 'off' : t.st === 'done' ? 'upd' : ''}">${t.st === 'live' ? 'LIVE' : t.st === 'done' ? 'DONE' : 'OPEN'}</span></div><div class="t-cb"><b></b><span class="t-cm"></span><span class="t-cs"></span></div>`;
+      a.querySelector('img').src = art(t.g); a.querySelector('b').textContent = t.t;
+      a.querySelector('.t-cm').textContent = gname(t.g) + ' · hosted by ' + (t.h || '?');
+      a.querySelector('.t-cs').textContent = t.st === 'open' ? t.n + '/' + t.cap + ' players · starts ' + when(t.at) : t.st === 'live' ? t.n + ' players · in progress' : (t.w ? 'Champion: ' + t.w : 'Ended');
+      return a;
+    };
+    TT.directory(list => {
+      const by = s => list.filter(t => t.st === s);
+      for (const [s, box] of [['live', 'dLive'], ['open', 'dOpen'], ['done', 'dDone']]) { $(box).hidden = !by(s).length; $(box + 'L').replaceChildren(...by(s).map(card)); }
+      $('dEmpty').hidden = list.length > 0;
+    });
+    if (q.has('host')) openCreate();
+    return;
+  }
+
+  /* ---------- one tournament ---------- */
+  $('one').hidden = false;
+  let T = null, ME = {}, pres = { present: {}, host: false };
+  let lastMine = '';
+  const ui = {
+    state(t, me) { T = t; ME = me; paint(); },
+    presence(p) { pres = p; paintNote(); paintPlayers(); },
+    error(t) { $('tNote').hidden = false; $('tNote').textContent = t; },
+    toast,
+  };
+  const Tn = TT.open(tid, ui);
+  const fresh = JSON.parse(sessionStorage.getItem('arcade-tourn-new') || 'null');
+  if (fresh && fresh.id === tid && !Tn.get()) { sessionStorage.removeItem('arcade-tourn-new'); Tn.create(fresh); }
+  setTimeout(paintNote, 4000);
+  function paintNote() {
+    const n = $('tNote');
+    if (!T) { n.hidden = false; n.textContent = 'Looking for this tournament… If it doesn’t show up, its host has closed their page.'; return; }
+    if (!ME.host && !pres.host && T.st !== 'done') { n.hidden = false; n.textContent = 'The host isn’t here right now, so the tournament is paused. It carries on when they’re back.'; return; }
+    n.hidden = true;
+  }
+  function paint() {
+    if (!T) return;
+    document.title = T.t + ' · Tournaments · The Arcade';
+    $('tArt').src = art(T.g); $('tTitle').textContent = T.t;
+    $('tState').textContent = T.cancelled ? 'Cancelled' : T.st === 'open' ? 'Open' : T.st === 'live' ? 'Live' : 'Finished';
+    $('tState').className = 'pill' + (T.st === 'live' ? ' off' : T.st === 'done' ? ' upd' : '');
+    $('tKick').textContent = gname(T.g) + ' · 1v1 knockout';
+    const rounds = T.rounds ? T.rounds.length : 0;
+    $('tFacts').innerHTML = `<span>Hosted by <b>${esc(T.host)}</b></span><span><b>${(T.players || []).length}</b>/${T.cap} players</span><span>${T.st === 'open' ? 'Starts ' + esc(when(T.at)) : T.st === 'live' ? esc(currentRound()) : T.champ ? 'Champion: <b>' + esc(T.champ) + '</b>' : 'Ended'}</span>`;
+    $('tClock').hidden = T.st !== 'open';
+    const acts = $('tActs'); acts.innerHTML = '';
+    if (T.st === 'open') {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn big ' + (ME.joined ? 'ghost' : 'accent');
+      b.textContent = ME.joined ? 'Leave' : ((T.players || []).length >= T.cap ? 'Full' : 'Join tournament'); b.disabled = !ME.joined && (T.players || []).length >= T.cap;
+      b.onclick = () => ME.joined ? Tn.leave() : Tn.join(); acts.appendChild(b);
+      if (ME.joined) { const s = document.createElement('span'); s.className = 't-in'; s.textContent = 'You’re in. Stay on The Arcade around the start time.'; acts.appendChild(s); }
+    }
+    if (T.st === 'done' && T.champ) acts.innerHTML = `<div class="t-champ"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M4 1h8v1h3v2.5A3.5 3.5 0 0 1 11.7 8 4 4 0 0 1 9 10.4V12h2v2H5v-2h2v-1.6A4 4 0 0 1 4.3 8 3.5 3.5 0 0 1 1 4.5V2h3zm8 2.5V6.3A1.5 1.5 0 0 0 13 5V3.5zM4 3.5H3V5a1.5 1.5 0 0 0 1 1.3z"/></svg><span>Champion</span><b>${esc(T.champ)}</b></div>`;
+    $('hostBar').hidden = !ME.host || T.st !== 'open';
+    paintNote(); paintPlayers(); paintMine(); paintBracket();
+  }
+  function currentRound() { if (!T.rounds) return ''; for (let r = 0; r < T.rounds.length; r++) if (T.rounds[r].some(m => !m.w && m.a && m.b)) return TT.roundName(T, r); return ''; }
+  setInterval(() => { if (T && T.st === 'open') $('tCount').textContent = left(T.at); }, 500);
+  function paintPlayers() {
+    if (!T) return;
+    $('playersWrap').hidden = T.st !== 'open' && !(T.dropped && T.dropped.length);
+    const list = T.players || [];
+    $('pCount').textContent = list.length + ' of ' + T.cap + (T.st === 'open' ? ' · green means here now' : '');
+    $('players').replaceChildren(...(T.st === 'open' ? list : T.dropped || []).map(n => {
+      const d = document.createElement('div'); d.className = 't-pl' + (pres.present && pres.present[n.toLowerCase()] ? ' here' : '');
+      d.innerHTML = '<span class="av"></span><b></b>'; d.querySelector('.av').textContent = n[0].toUpperCase(); d.querySelector('b').textContent = n;
+      if (window.ArcadeAvatars) try { ArcadeAvatars.fill(d.querySelector('.av'), n); } catch (e) {}
+      return d;
+    }));
+    if (T.st !== 'open' && T.dropped && T.dropped.length) $('pCount').textContent = 'Signed up but not here at the start';
+    if (T.st !== 'open') $('playersWrap').querySelector('.sec-h').textContent = 'Missed the start';
+  }
+  function paintMine() {
+    const box = $('mine');
+    const m = T && T.st === 'live' && ME.name && TT.matchOf(T, ME.name);
+    box.hidden = !m;
+    if (!m) return;
+    const opp = TT.same(m.a, ME.name) ? m.b : m.a, auto = TT.GAMES[T.g] === 'auto';
+    const key = m.id + m.code;
+    if (key !== lastMine) { lastMine = key; toast('Your match is ready: you vs ' + opp); try { navigator.vibrate && navigator.vibrate(120); } catch (e) {} }
+    box.innerHTML = `<div class="t-mi"><span class="eyebrow"><span class="pip"></span>${esc(TT.roundName(T, +m.id.split('-')[0]))}${m.g > 1 ? ' · game ' + m.g : ''}</span><h2>You vs ${esc(opp)}</h2><p>${m.st === 'dispute' ? 'You both said you won. The host will decide.' : m.note ? esc(m.note) : auto ? 'Your table is set up. Press Play, and the result counts by itself.' : 'Open the game with ' + esc(opp) + ' (use its private room), then report the result here.'}</p></div>
+      <div class="t-ma">${m.st !== 'dispute' ? `<a class="btn big accent" href="${TT.playUrl(T, m)}">Play match</a>` : ''}${!auto && m.st !== 'dispute' ? '<button type="button" class="btn big ghost" data-rep="1">I won</button><button type="button" class="btn big ghost" data-rep="0">I lost</button>' : ''}</div>`;
+    box.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => { Tn.report(m.id, b.dataset.rep === '1'); toast('Result sent to the host'); });
+  }
+  function paintBracket() {
+    const wrap = $('bracketWrap'), br = $('bracket');
+    wrap.hidden = !T.rounds;
+    if (!T.rounds) return;
+    br.innerHTML = '';
+    const levels = T.rounds.map((row, r) => ({ row, r })).reverse(); // the final at the top
+    if (T.champ) { const c = document.createElement('div'); c.className = 'br-row br-top'; c.innerHTML = `<div class="br-champ"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M4 1h8v1h3v2.5A3.5 3.5 0 0 1 11.7 8 4 4 0 0 1 9 10.4V12h2v2H5v-2h2v-1.6A4 4 0 0 1 4.3 8 3.5 3.5 0 0 1 1 4.5V2h3zm8 2.5V6.3A1.5 1.5 0 0 0 13 5V3.5zM4 3.5H3V5a1.5 1.5 0 0 0 1 1.3z"/></svg><small>Champion</small><b>${esc(T.champ)}</b></div>`; br.appendChild(c); }
+    for (const { row, r } of levels) {
+      const lv = document.createElement('div'); lv.className = 'br-row'; lv.dataset.r = r;
+      const lab = document.createElement('div'); lab.className = 'br-lab'; lab.textContent = TT.roundName(T, r); lv.appendChild(lab);
+      const cells = document.createElement('div'); cells.className = 'br-cells';
+      for (const m of row) cells.appendChild(matchEl(m, r));
+      lv.appendChild(cells); br.appendChild(lv);
+    }
+    requestAnimationFrame(lines);
+  }
+  function matchEl(m, r) {
+    const d = document.createElement('div');
+    const mine = ME.name && (TT.same(m.a, ME.name) || TT.same(m.b, ME.name));
+    d.className = 'br-m ' + m.st + (mine ? ' mine' : '') + (m.w ? ' has-w' : ''); d.dataset.id = m.id;
+    const slot = (n, side) => `<div class="br-p${m.w && TT.same(m.w, n) ? ' win' : m.w && n ? ' lose' : ''}${!n ? ' empty' : ''}"><span class="av">${n ? esc(n[0].toUpperCase()) : ''}</span><b>${n ? esc(n) : (m.st === 'bye' ? 'Bye' : 'TBD')}</b></div>`;
+    d.innerHTML = slot(m.a, 'a') + slot(m.b, 'b');
+    const foot = document.createElement('div'); foot.className = 'br-f';
+    if (m.st === 'ready' && !m.w) {
+      foot.innerHTML = '<span>Playing</span>';
+    } else if (m.st === 'dispute') foot.innerHTML = '<span class="bad">Both claim the win</span>';
+    if (ME.host && !m.w && m.a && m.b) foot.innerHTML += `<span class="br-host">Advance <button type="button" data-win="a">${esc(m.a)}</button><button type="button" data-win="b">${esc(m.b)}</button></span>`;
+    if (foot.innerHTML) d.appendChild(foot);
+    d.querySelectorAll('[data-win]').forEach(b => b.onclick = () => { const w = b.dataset.win === 'a' ? m.a : m.b; if (confirm('Advance ' + w + '?')) Tn.setWinner(m.id, w); });
+    return d;
+  }
+  // lines from each match up to the one its winner plays next
+  function lines() {
+    const br = $('bracket'); br.querySelectorAll('svg.br-lines').forEach(s => s.remove());
+    if (!T || !T.rounds) return;
+    const box = br.getBoundingClientRect(), svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'br-lines'); svg.setAttribute('width', br.scrollWidth); svg.setAttribute('height', br.scrollHeight);
+    let path = '', hot = '';
+    T.rounds.forEach((row, r) => { if (!T.rounds[r + 1]) return; row.forEach((m, i) => {
+      const a = br.querySelector(`.br-m[data-id="${m.id}"]`), b = br.querySelector(`.br-m[data-id="${T.rounds[r + 1][Math.floor(i / 2)].id}"]`); if (!a || !b) return;
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      const x1 = ra.left + ra.width / 2 - box.left + br.scrollLeft, y1 = ra.top - box.top, x2 = rb.left + rb.width / 2 - box.left + br.scrollLeft, y2 = rb.bottom - box.top, my = (y1 + y2) / 2;
+      const d = `M${x1} ${y1}V${my}H${x2}V${y2}`;
+      if (m.w) hot += d; else path += d;
+    }); });
+    svg.innerHTML = `<path d="${path}" class="ln"/><path d="${hot}" class="ln hot"/>`;
+    br.prepend(svg);
+  }
+  addEventListener('resize', () => requestAnimationFrame(lines));
+  $('startNow').onclick = () => Tn.start();
+  $('later5').onclick = () => { if (T) Tn.moveStart(Math.max(T.at, Date.now()) + 5 * 60000); };
+  $('cancelT').onclick = () => { if (confirm('Cancel this tournament for everyone?')) Tn.cancel(); };
+})();
+</script>
+<script src="tos.js?v=21"></script>
+<script src="appbanner.js?v=2"></script>
+<script src="moving.js?v=1"></script>
+<script src="outage.js?v=2"></script>
+</body>
+</html>

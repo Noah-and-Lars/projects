@@ -12,6 +12,9 @@
    Loaded by index.html, play.html and chat.html. window.ArcadeAccount is the interface. */
 (function () {
   'use strict';
+  // 2026-11-15: Social profile pictures (avatars.js) and voice notes/replies (voice.js) on every page that has an account button
+  (function () { try { var me = document.currentScript && document.currentScript.src, base = me ? me.replace(/account\.js(\?.*)?$/, '') : '';
+    [['ArcadeAvatars', 'avatars.js?v=1'], ['ArcadeVoice', 'voice.js?v=5']].forEach(function (x) { if (window[x[0]] || document.querySelector('script[src*="' + x[1].split('?')[0] + '"]')) return; var sc = document.createElement('script'); sc.src = base + x[1]; sc.async = false; document.head.appendChild(sc); }); } catch (e) {} })();
   var API = 'https://arcade-realtime.arcade-realtime.workers.dev/acct/';
   try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && localStorage.getItem('arcade-acct-api')) API = localStorage.getItem('arcade-acct-api'); } catch (e) {} // tests only: a local copy of the server
   var K_ACCT = 'arcade-acct', K_LOCAL = 'arcade-local', K_SYNC = 'arcade-acct-sync';
@@ -31,6 +34,9 @@
     ['turn-turn-turn', /^turnturnturn\./],
     ['siege', /^siege\./],
     ['card-royale', /^cardroyale\./],
+    ['storm-drop', /^stormdrop\./],
+    ['space-strike', /^space-strike-/],
+    ['sproutling', /^sproutling\./],
     ['uno', /^uno\./],
     ['cube-assault', /^(cubeAssault|caE2$)/],
     ['havoc-bay', /^havocbay\./],
@@ -47,7 +53,7 @@
     ['2048', /^2048-/],
     ['poly-racer', /^polyracer/],
     ['blockcraft', /^blockcraft-(?!.*-backup-1x$)/],
-    ['arcade', /^arcade-(played|popup-closed|tos-agreed|chat-muted)$/]
+    ['arcade', /^arcade-(played|playtime|popup-closed|tos-agreed|chat-muted)$/]
   ];
   // this device's own things, never copied: the account itself, ids, the chat log, anti-cheat bookkeeping, old backups
   var NEVER = /^(arcade-(acct|local|online-id|chat-id|chat-log|chat-cleared|chat-name)|caLedger$|caReset1$|sb-)|-backup-1x$/;
@@ -87,7 +93,11 @@
         case 'russian-roulette': { var x = J('russianRouletteSave'); return N(x.best) * 10 + N(x.games) + N(x.onGames); }
         case 'gamble-your-life-away': { var y = J('gambleLifeSave'); return N(y.rounds) + N(y.peak) * 1e-6; }
         case 'cube-tower-defense': { var t = J('cubeTDProfile'); return N(t.level) * 1000 + N(t.best) * 10 + N(t.xp); }
+        case 'sproutling': { var sp = J('sproutling.save'); return N(sp.u) * 100000 + N(sp.score) * 0.01 + N(sp.gems); }
+        case 'space-strike': { var ss = J('space-strike-save-v1'); return N(ss.unlocked) * 100000 + N(ss.best); }
+        case 'storm-drop': { var sd = J('stormdrop.save.v1'); return N(sd.xp) + N(sd.coins) * 0.01 + (sd.pass ? N(sd.pass.xp) * 0.1 : 0); }
         case 'card-royale': { var cr = J('cardroyale.save'), cn = 0; for (var ck in (cr.cards || {})) cn += 10 + N(cr.cards[ck].lv) * 5; return N(cr.kl) * 1000 + N(cr.xp) + N(cr.tr) + cn + N(cr.wins) + N(cr.losses); }
+        case 'arcade': { var pt = J('arcade-playtime'), ps = 0; for (var pg in pt) ps += N(pt[pg]); return ps; } // the copy with more play time
         case 'turn-turn-turn': { var tt = J('turnturnturn.save'); return N(tt.runs) * 10 + Object.keys(tt.best || {}).length * 100; }
         case 'block-drop': return N(d['blockdrop-best']);
         case '2048': return N(d['2048-best']);
@@ -150,8 +160,8 @@
     if (FP) headers['x-arcade-fp'] = FP;
     if (opt.auth) { if (!acct) return Promise.resolve({ error: 'auth', status: 401 }); headers.authorization = 'Bearer ' + acct.token; }
     return fetch(API + path, { method: opt.method || 'GET', headers: headers, body: opt.body ? JSON.stringify(opt.body) : undefined, keepalive: !!opt.keepalive, cache: 'no-store' })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j = j || {}; j.status = r.status; if (r.status === 401 && opt.auth && j.error === 'auth') signedOutElsewhere(); if (r.status === 403 && j.error === 'device_banned') deviceBanned(); return j; }); })
-      .catch(function () { return { error: 'offline', status: 0 }; });
+      .then(function (r) { if (r.status >= 500) { try { if (window.ArcadeOutage) ArcadeOutage.hint(); } catch (e) {} } return r.json().catch(function () { return {}; }).then(function (j) { j = j || {}; j.status = r.status; if (r.status === 401 && opt.auth && j.error === 'auth') signedOutElsewhere(); if (r.status === 403 && j.error === 'device_banned') deviceBanned(); return j; }); })
+      .catch(function () { try { if (window.ArcadeOutage) ArcadeOutage.hint(); } catch (e) {} return { error: 'offline', status: 0 }; });
   }
   // after a rename the password key still uses the name it was made with (the server says which: check's kn)
   function keyName(n) { return api('check?name=' + encodeURIComponent(n)).then(function (r) { return (r && r.kn) || n; }, function () { return n; }); }
@@ -272,6 +282,8 @@
   function sendProfile() {
     if (!acct || !window.GAMES || !window.Arcade) return;
     var s = {}; GAMES.forEach(function (g) { var v = Arcade.stat(g); if (v) s[g.id] = String(v); });
+    // 2026-11-16: the game played longest, as "<game id>:<minutes>" (in 10-minute steps, so it isn't sent every sync)
+    var mp = Arcade.mostPlayed && Arcade.mostPlayed(); if (mp) s['most-played'] = mp.id + ':' + Math.floor(mp.secs / 600) * 10;
     var j = JSON.stringify(s), last = ls.get('arcade-acct-prof');
     if (last === acct.name.toLowerCase() + j) return;
     api('profile', { method: 'PUT', auth: true, body: { s: s } }).then(function (r) { if (r.status === 200) ls.set('arcade-acct-prof', acct.name.toLowerCase() + j); });
@@ -365,9 +377,10 @@
     var box = $('acctToasts');
     if (!box) { box = document.createElement('div'); box.id = 'acctToasts'; document.body.appendChild(box); }
     var t = document.createElement('a'); t.className = 'acToast'; t.href = href;
-    var av = document.createElement('span'); av.className = 'av'; av.textContent = String(who).charAt(0).toUpperCase();
+    var av = document.createElement('span'); av.className = 'av'; av.textContent = String(who).charAt(0).toUpperCase(); if (window.ArcadeAvatars) ArcadeAvatars.fill(av, who);
     var tx = document.createElement('span'), b = document.createElement('b'), p = document.createElement('span');
-    b.textContent = who; p.textContent = String(text).length > 120 ? String(text).slice(0, 120) + '…' : text;
+    b.textContent = who; if (window.ArcadeVoice) text = ArcadeVoice.preview(text);
+    p.textContent = String(text).length > 120 ? String(text).slice(0, 120) + '…' : text;
     tx.appendChild(b); tx.appendChild(p); t.appendChild(av); t.appendChild(tx);
     var x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Close');
     x.onclick = function (e) { e.preventDefault(); e.stopPropagation(); t.remove(); };
@@ -415,6 +428,8 @@
   }
   // signing out: the progress is safe in the account, so this device's copy of it is cleared
   function logout() {
+    // 2026-11-15: if the servers are down (outage.js), logging out would wipe progress that hasn't synced yet
+    if (window.ArcadeOutage && ArcadeOutage.down()) { alert('The Arcade’s servers are down right now, so logging out would lose progress that hasn’t synced yet. Try again when they’re back.'); return Promise.resolve(); }
     var done = function () {
       ls.keys().forEach(function (k) { if (groupOf(k) && groupOf(k) !== 'arcade') ls.del(k); });
       acct = null; ls.del(K_ACCT); syncMap = {}; ls.del(K_SYNC); local = null; ls.del(K_LOCAL);
@@ -438,29 +453,29 @@
   /* ---------- the look ---------- */
   var CSS = '' +
     '#acctToasts{position:fixed;top:calc(max(12px,env(safe-area-inset-top)) + 58px);right:14px;z-index:2147483000;display:flex;flex-direction:column;gap:8px;width:min(340px,calc(100vw - 28px));pointer-events:none}' +
-    '.acToast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:14px;background:rgba(27,24,53,.96);border:1px solid #6c5ce7;box-shadow:0 12px 36px #000a;color:#f1effa;font:14px/1.35 system-ui,sans-serif;text-decoration:none;animation:acT .3s ease-out;transition:opacity .4s,transform .4s}' +
+    '.acToast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:14px;background:rgba(18,18,22,.97);border:1px solid #ffffff1f;box-shadow:0 12px 36px #000a;color:#f4f4f5;font:14px/1.35 Archivo,system-ui,sans-serif;text-decoration:none;animation:acT .3s ease-out;transition:opacity .4s,transform .4s}' +
     '.acToast.out{opacity:0;transform:translateX(20px)}@keyframes acT{from{opacity:0;transform:translateX(30px)}}' +
-    '.acToast .av{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#6c5ce7,#00d2a8);font-weight:800}' +
-    '.acToast>span:nth-child(2){flex:1;min-width:0}.acToast b{display:block}.acToast>span>span{display:block;color:#a9a3c9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-    '.acToast button{flex:none;width:26px;height:26px;border-radius:7px;border:0;background:#ffffff14;color:#f1effa;font-size:16px;line-height:1;cursor:pointer}' +
-    '#acctBtn{margin-left:10px;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid #ffffff22;background:#1b1835;color:#f1effa;font:600 14px system-ui,sans-serif;cursor:pointer;white-space:nowrap;flex:none}' +
-    '#acctBtn:hover{border-color:#6c5ce7}#acctBtn .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#6c5ce7,#00d2a8);font-weight:800;color:#fff}' +
-    '#acctBtn .dot{width:8px;height:8px;border-radius:50%;background:#00d2a8}#acctBtn .dot.local{background:#f5b041}#acctBtn .dot.sync{background:#6cb6ff;animation:acctP 1s infinite}#acctBtn .dot.err{background:#ff6b6b}' +
+    '.acToast .av{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#25252c;font-weight:800}' +
+    '.acToast>span:nth-child(2){flex:1;min-width:0}.acToast b{display:block}.acToast>span>span{display:block;color:#a1a1aa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+    '.acToast button{flex:none;width:26px;height:26px;border-radius:7px;border:0;background:#ffffff14;color:#f4f4f5;font-size:16px;line-height:1;cursor:pointer}' +
+    '#acctBtn{margin-left:10px;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid #ffffff22;background:#121215;color:#f4f4f5;font:600 14px Archivo,system-ui,sans-serif;cursor:pointer;white-space:nowrap;flex:none}' +
+    '#acctBtn:hover{border-color:#ffffff33}#acctBtn .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#25252c;font-weight:800;color:#fff}' +
+    '#acctBtn .dot{width:8px;height:8px;border-radius:50%;background:#3ddc97}#acctBtn .dot.local{background:#f5b041}#acctBtn .dot.sync{background:#6cb6ff;animation:acctP 1s infinite}#acctBtn .dot.err{background:#ff6b6b}' +
     '@keyframes acctP{50%{opacity:.3}}@media (max-width:620px){#acctBtn .nm{display:none}#acctBtn{padding:4px}}' +
-    '#acctOv{position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483000;background:rgba(8,7,20,.78);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;font:15px/1.5 system-ui,-apple-system,sans-serif;color:#f1effa}' +
-    '#acctOv .box{width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#1b1835;border:1px solid #ffffff1c;border-radius:18px;padding:24px 22px;box-shadow:0 24px 70px rgba(0,0,0,.55)}' +
-    '#acctOv h2{margin:0 0 6px;font-size:22px}#acctOv p{margin:0 0 12px;color:#a9a3c9}#acctOv .big{font-size:40px;line-height:1;margin-bottom:8px}' +
-    '#acctOv .tabs{display:flex;gap:6px;margin:14px 0 12px;background:#0f0d1f;border-radius:12px;padding:4px}#acctOv .tabs button{flex:1;padding:8px;border:0;border-radius:9px;background:none;color:#a9a3c9;font:600 14px system-ui,sans-serif;cursor:pointer}#acctOv .tabs button.on{background:#6c5ce7;color:#fff}' +
-    '#acctOv label{display:block;font-size:13px;font-weight:600;color:#cfcae8;margin:10px 0 4px}#acctOv input[type=text],#acctOv input[type=password]{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #ffffff22;background:#0f0d1f;color:#fff;font:15px system-ui,sans-serif;outline:none}#acctOv input:focus{border-color:#6c5ce7}' +
-    '#acctOv .hint{font-size:12px;color:#8f89b3;margin-top:4px;min-height:16px}#acctOv .hint.bad{color:#ff8a80}#acctOv .hint.good{color:#00d2a8}#acctOv .err{color:#ff8a80;font-size:14px;margin:10px 0 0;min-height:18px}' +
-    '#acctOv .go{width:100%;margin-top:16px;padding:12px;border:0;border-radius:12px;background:linear-gradient(135deg,#6c5ce7,#5a4bd6);color:#fff;font:700 16px system-ui,sans-serif;cursor:pointer}#acctOv .go:disabled{opacity:.5;cursor:default}' +
-    '#acctOv .alt{display:block;width:100%;margin-top:10px;padding:10px;border:1px solid #ffffff22;border-radius:12px;background:none;color:#cfcae8;font:600 14px system-ui,sans-serif;cursor:pointer}#acctOv .link{background:none;border:0;color:#8f89b3;font:13px system-ui,sans-serif;text-decoration:underline;cursor:pointer;display:block;margin:14px auto 0}' +
-    '#acctOv .code{font:700 24px ui-monospace,Menlo,monospace;letter-spacing:2px;text-align:center;background:#0f0d1f;border:1px dashed #6c5ce7;border-radius:12px;padding:14px;margin:8px 0 12px;user-select:all}' +
-    '#acctOv .perks{margin:4px 0 0;padding:0;list-style:none}#acctOv .perks li{padding:6px 0 6px 28px;position:relative;color:#d8d4f0}#acctOv .perks li:before{content:"\\2714";position:absolute;left:4px;color:#00d2a8;font-weight:800}' +
-    '#acctOv .stats{margin:12px 0 0;border-top:1px solid #ffffff14}#acctOv .stats div{display:flex;justify-content:space-between;gap:12px;padding:8px 2px;border-bottom:1px solid #ffffff0d;font-size:14px}#acctOv .stats b{font-weight:600}#acctOv .stats span{color:#a9a3c9;text-align:right}' +
-    '#acctOv .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}#acctOv .head .av{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#6c5ce7,#00d2a8);font-weight:800;font-size:22px;color:#fff;flex:none}' +
-    '#acctOv .pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:#00d2a822;color:#00d2a8}#acctOv .pill.local{background:#f5b04122;color:#f5b041}#acctOv .row{display:flex;gap:8px}#acctOv .row>*{flex:1}' +
-    '#acctOv .x{float:right;background:none;border:0;color:#8f89b3;font-size:22px;cursor:pointer;line-height:1;margin:-8px -6px 0 0}#acctOv .warn{background:#f5b04114;border:1px solid #f5b04144;color:#ffd58a;border-radius:12px;padding:10px 12px;font-size:14px;margin:10px 0}';
+    '#acctOv{position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483000;background:rgba(2,2,3,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;font:15px/1.5 Archivo,Archivo,system-ui,sans-serif;color:#f4f4f5}' +
+    '#acctOv .box{width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#121215;border:1px solid #ffffff14;border-radius:20px;padding:30px 28px;box-shadow:0 24px 70px rgba(0,0,0,.55)}' +
+    '#acctOv h2{margin:0 0 8px;font-size:24px;font-weight:750;font-stretch:110%;letter-spacing:-.02em}#acctOv p{margin:0 0 12px;color:#a1a1aa}#acctOv .big{display:none}' +
+    '#acctOv .tabs{display:flex;gap:6px;margin:14px 0 12px;background:#08080a;border-radius:12px;padding:4px}#acctOv .tabs button{flex:1;padding:8px;border:0;border-radius:9px;background:none;color:#a1a1aa;font:600 14px Archivo,system-ui,sans-serif;cursor:pointer}#acctOv .tabs button.on{background:#25252c;color:#fff}' +
+    '#acctOv label{display:block;font-size:13px;font-weight:600;color:#d4d4d8;margin:10px 0 4px}#acctOv input[type=text],#acctOv input[type=password]{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #ffffff22;background:#08080a;color:#fff;font:15px Archivo,system-ui,sans-serif;outline:none}#acctOv input:focus{border-color:#74747f}' +
+    '#acctOv .hint{font-size:12px;color:#74747f;margin-top:4px;min-height:16px}#acctOv .hint.bad{color:#ff8a80}#acctOv .hint.good{color:#3ddc97}#acctOv .err{color:#ff8a80;font-size:14px;margin:10px 0 0;min-height:18px}' +
+    '#acctOv .go{width:100%;margin-top:16px;padding:13px;border:0;border-radius:12px;background:#f4f4f5;color:#08080a;font:700 16px Archivo,system-ui,sans-serif;cursor:pointer}#acctOv .go:disabled{opacity:.5;cursor:default}' +
+    '#acctOv .alt{display:block;width:100%;margin-top:10px;padding:10px;border:1px solid #ffffff22;border-radius:12px;background:none;color:#d4d4d8;font:600 14px Archivo,system-ui,sans-serif;cursor:pointer}#acctOv .link{background:none;border:0;color:#74747f;font:13px Archivo,system-ui,sans-serif;text-decoration:underline;cursor:pointer;display:block;margin:14px auto 0}' +
+    '#acctOv .code{font:700 24px ui-monospace,Menlo,monospace;letter-spacing:2px;text-align:center;background:#08080a;border:1px dashed #ff5a2c;border-radius:12px;padding:14px;margin:8px 0 12px;user-select:all}' +
+    '#acctOv .perks{margin:4px 0 0;padding:0;list-style:none}#acctOv .perks li{padding:6px 0 6px 28px;position:relative;color:#e4e4e7}#acctOv .perks li:before{content:"\\2714";position:absolute;left:4px;color:#3ddc97;font-weight:800}' +
+    '#acctOv .stats{margin:12px 0 0;border-top:1px solid #ffffff14}#acctOv .stats div{display:flex;justify-content:space-between;gap:12px;padding:8px 2px;border-bottom:1px solid #ffffff0d;font-size:14px}#acctOv .stats b{font-weight:600}#acctOv .stats span{color:#a1a1aa;text-align:right}' +
+    '#acctOv .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}#acctOv .head .av{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#25252c;font-weight:800;font-size:22px;color:#fff;flex:none}' +
+    '#acctOv .pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:#3ddc9722;color:#3ddc97}#acctOv .pill.local{background:#f5b04122;color:#f5b041}#acctOv .row{display:flex;gap:8px}#acctOv .row>*{flex:1}' +
+    '#acctOv .x{float:right;background:none;border:0;color:#74747f;font-size:22px;cursor:pointer;line-height:1;margin:-8px -6px 0 0}#acctOv .warn{background:#f5b04114;border:1px solid #f5b04144;color:#ffd58a;border-radius:12px;padding:10px 12px;font-size:14px;margin:10px 0}';
   function css() { if ($('acctCss')) return; var st = document.createElement('style'); st.id = 'acctCss'; st.textContent = CSS; document.head.appendChild(st); }
   function overlay(html, closable) {
     css(); closeOv();
@@ -470,7 +485,7 @@
     d.addEventListener('click', function (e) { if (closable && (e.target === d || (e.target.closest && e.target.closest('[data-x]')))) closeOv(); });
     d.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Escape' && closable) closeOv(); });
     d.addEventListener('keyup', function (e) { e.stopPropagation(); });
-    var f = d.querySelector('input'); if (f) setTimeout(function () { f.focus(); }, 30);
+    var f = d.querySelector('input'); if (f && !window.ARCADE_WATCH) setTimeout(function () { f.focus(); }, 30);
     return d;
   }
   function closeOv() { var o = $('acctOv'); if (o) o.remove(); }
@@ -591,6 +606,7 @@
     if (k === 'online' && isAdmin()) html += '<button class="alt" id="acAdm" style="margin-top:14px;width:100%">🛡️ Admin tools</button>';
     if (k === 'online') html += '<button class="link" id="acOut">Log out of this device</button><button class="link" id="acDel" style="margin-top:6px;color:#ff8a80">Delete my account</button>';
     overlay(html, true);
+    if (k === 'online' && window.ArcadeAvatars) { var hv = document.querySelector('#acctOv .head .av'); if (hv) ArcadeAvatars.fill(hv, name()); }
     var b;
     if ((b = $('acSync'))) b.onclick = function () { b.disabled = true; sync('manual').then(function (p) { b.disabled = false; var s = $('acSt'); if (s) s.textContent = statusText(); if (p && p.length) location.reload(); }); };
     if ((b = $('acPw'))) b.onclick = openPassword;
@@ -684,6 +700,7 @@
   function refresh() {
     var b = $('acctBtn'); if (!b) return;
     var k = kind();
+    setTimeout(function () { if (kind() === 'online' && window.ArcadeAvatars) { var bv = b.querySelector('.av'); if (bv) ArcadeAvatars.fill(bv, name()); } });
     b.innerHTML = k ? '<span class="av">' + esc(name().charAt(0).toUpperCase()) + '</span><span class="nm">' + esc(name()) + '</span><span class="dot ' + (k === 'local' ? 'local' : state.status === 'syncing' ? 'sync' : state.status === 'error' || state.status === 'offline' ? 'err' : '') + '"></span>' : '<span class="av">👤</span><span class="nm">Sign in</span>';
     b.title = k === 'online' ? statusText() : k === 'local' ? 'Local account: progress only on this device' : 'Make an account to save your progress';
   }
@@ -716,12 +733,13 @@
 
   /* ---------- changing your username (2026-11-11) ----------
      POST /acct/rename {name}: everything (progress, friends, messages, group chats) moves to the new name and this
-     device gets a new sign-in; other devices stay signed in and switch to the new name (2026-11-13). Once a week, except when forced: an account whose name
+     device gets a new sign-in; other devices stay signed in and switch to the new name (2026-11-13). Every 10 minutes, up to 3 times a day (2026-11-16), except when forced: an account whose name
      the owner gave to someone else is shown this until it picks a new one (forced, no way to close it). */
+  function waitText(m) { return m < 60 ? m + ' minute' + (m === 1 ? '' : 's') : Math.ceil(m / 60) + ' hour' + (Math.ceil(m / 60) === 1 ? '' : 's'); }
   function openRename(forced) {
     css();
     overlay('<div class="big">✏️</div><h2>' + (forced ? 'Your username needs to change' : 'Change your username') + '</h2>' +
-      '<p>' + (forced ? 'The name <b>' + esc(name()) + '</b> is going to someone else, so please pick a new one. Your progress, friends, messages and group chats all stay with you.' : 'Your progress, friends, messages and group chats all move to the new name. You can change it once a week. Your other devices stay signed in and switch to the new name.') + '</p>' +
+      '<p>' + (forced ? 'The name <b>' + esc(name()) + '</b> is going to someone else, so please pick a new one. Your progress, friends, messages and group chats all stay with you.' : 'Your progress, friends, messages and group chats all move to the new name. You can change it every 10 minutes, up to 3 times a day. Your other devices stay signed in and switch to the new name.') + '</p>' +
       '<form id="acRenF" autocomplete="off"><label for="acN">New username</label><input type="text" id="acN" maxlength="16" spellcheck="false" autocapitalize="off"><div class="hint" id="acNh"></div><div class="err" id="acE"></div><button class="go" id="acGo">Change my username</button></form>', !forced);
     var N = $('acN'), E = $('acE'), go = $('acGo'), t = 0;
     N.addEventListener('input', function () {
@@ -738,7 +756,7 @@
       api('rename', { method: 'POST', auth: true, body: { name: v } }).then(function (r) {
         if (r.status !== 200 || !r.token) {
           go.disabled = false; go.textContent = 'Change my username';
-          E.textContent = r.error === 'slow' ? 'You can change your username once a week. Try again in ' + (r.wait || 7) + ' day' + (r.wait === 1 ? '' : 's') + '.' : WHY[r.error] || (r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : 'Something went wrong. Try again.');
+          E.textContent = r.error === 'slow' ? (r.day ? 'You can change your username 3 times a day. ' : 'You can change your username every 10 minutes. ') + 'Try again in ' + waitText(r.mins || 10) + '.' : WHY[r.error] || (r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : 'Something went wrong. Try again.');
           return;
         }
         setAcct({ name: r.name, token: r.token }, false);

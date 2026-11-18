@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
 <script>
 // 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
 // not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
@@ -22,7 +26,7 @@
 </script>
 <title>Global chat · The Arcade</title>
 <meta name="description" content="Talk with everyone on The Arcade right now.">
-<meta name="theme-color" content="#0f0d1f">
+<meta name="theme-color" content="#050506">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -31,7 +35,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=16">
+<link rel="stylesheet" href="arcade.css?v=21">
 <style>
 .mh a.who { color: hsl(var(--h) 85% 76%); font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mh a.who:hover { text-decoration: underline; }
@@ -57,6 +61,7 @@
 .chat-head h1 { white-space: nowrap; }
 @media (max-width: 480px) { .chat-call .wide { display: none; } .chat-head { gap: 8px; } .chat-status { min-width: 0; } .chat-status span { overflow: hidden; text-overflow: ellipsis; } }
 </style>
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
 </head>
 <body>
 <header class="top">
@@ -85,7 +90,7 @@
         <input id="msg" class="field" maxlength="200" placeholder="Say something to everyone…" aria-label="Message" enterkeyhint="send" spellcheck="true">
         <button id="sendBtn" class="btn" type="submit">Send</button>
       </form>
-      <p class="chat-note">Be kind. Never share your full name, address, school or passwords. The newest 150 messages are kept on the arcade’s server so everyone sees the same chat. Players with an account chat under their account name; others show as guests.</p>
+      <p class="chat-note">Be kind. Never share your full name, address, school or passwords. The newest 150 messages are kept on the arcade’s server so everyone sees the same chat. Only players signed in to an online account can write here; guests can read along.</p>
     </section>
     <aside class="chat-side" aria-labelledby="peopleT">
       <h2 class="sec-h" id="peopleT">In the chat <b id="count">0</b></h2>
@@ -119,10 +124,14 @@
   </form>
 </div>
 
-<script src="games.js?v=200"></script>
-<script src="account.js?v=26"></script>
-<script src="console.js?v=1"></script>
-<script src="call.js?v=6"></script>
+<script src="games.js?v=246"></script>
+<script src="account.js?v=40"></script>
+<script src="console.js?v=2"></script>
+<script src="call.js?v=8"></script>
+<script src="typing.js?v=2"></script>
+<script src="avatars.js?v=1"></script>
+<script src="voice.js?v=5"></script>
+<script>window.ArcadeTyping = window.ArcadeTyping || (() => { const nop = () => ({ input() {}, stop() {} }); return { dm: nop, group: nop, heard() {}, list: () => [], label: () => '', line: () => document.createElement('div'), watch() {}, refresh() {} }; })(); // typing.js didn't load: chats work without it</script>
 <script>
 // Global chat (rebuilt 2026-11-06): one chat room on the arcade's Cloudflare server (the Chat object in
 // realtime-worker). The server keeps the newest 150 messages, so everyone sees the same chat, even people who
@@ -159,9 +168,35 @@ let clearedAt = load('cleared', 0);
 let ws = null, joined = false, broken = false, unread = 0, tries = 0, who = [];
 const pending = new Map(); // k -> timer for messages waiting for the server's echo
 
+// links the owner banned from the chat (the server refuses them too; this hides old ones kept on this device)
+// 2026-11-17: same filter as the Worker's chatBanned (links of any kind, and 'arc' / 'the arc')
+const BANNED_LINKS = ['playforge', 'thearcumpages', 'pagesdev', 'workersdev', 'githubio', 'discordgg', 'vercelapp', 'netlifyapp', 'dotcom', 'bitly', 'tinyurl', 'glitchme', 'replit', 'http'];
+const LINK_TLD = 'com|net|org|io|dev|app|gg|xyz|tv|ly|uk|ru|cn|de|fr|cc|tk|gl|html?|php|pages|vercel|netlify|github|onion';
+const LINK_RES = [
+  /:\s*\/\s*\//, /\bwww\s*\./, /\b(https?|ftp)\b/,
+  /[a-z0-9]\.[a-z]{2,}/,                                               // name.anything
+  new RegExp('[a-z0-9]\\s*(\\s\\.|\\.\\s|[(\\[{<]\\s*(\\.|dot)\\s*[)\\]}>]|\\bdot\\b)\\s*(' + LINK_TLD + ')\\b'), // name . com, name(dot)com, name dot com
+  /[a-z0-9],(com|net|org|io|dev|app|gg|xyz)\b/,                        // name,com
+  /\b\d{1,3}(\s*\.\s*\d{1,3}){3}\b/,                                      // IP addresses
+  /\b(gg|ly|io|com|dev|app)\s*\/\s*[a-z0-9]/                             // discord.gg/ style tails
+];
+const chatFold = t => String(t || '').normalize('NFKD').replace(/[̀-ͯ​-‏⁠﻿]/g, '').toLowerCase()
+  .replace(/[。｡．․‧·•・܁܂]/g, '.').replace(/[⁄∕／]/g, '/');
+const bannedLink = t => {
+  const f = chatFold(t), g = f.split(/\s+/).reduce((o, w, i, a) => o + (i && w.length === 1 && a[i - 1].length === 1 ? '' : ' ') + w, ''); // "g o o g l e . c o m" -> "google.com"
+  if (LINK_RES.some(r => r.test(f) || r.test(g))) return true;
+  const l = f.replace(/[4@]/g, 'a').replace(/3/g, 'e').replace(/7|\+/g, 't').replace(/0/g, 'o').replace(/[1!|]/g, 'l').replace(/[(¢]/g, 'c');
+  const all = l.replace(/[^a-z]/g, '');
+  if (BANNED_LINKS.some(w => all.includes(w))) return true;
+  if (/thearc(?!ade|ane|h|tic)/.test(all)) return true;                  // the arc, t.h.e a-r-c, thearc6um
+  // single letters spaced out ("a r c") count as one word
+  const words = l.replace(/\b([a-z])[^a-z]+(?=[a-z]\b)/g, '$1').split(/[^a-z]+/);
+  return words.some(w => /^arc(?!ade|ane|h|tic|ing)/.test(w));
+};
 // A message from the server or from storage, checked and tidied, or null
 function clean(m) {
   if (!m || typeof m.id !== 'string' || typeof m.u !== 'string' || typeof m.n !== 'string' || typeof m.t !== 'string') return null;
+  if (bannedLink(m.t)) return null;
   if (typeof m.ts !== 'number' || !isFinite(m.ts)) return null;
   const n = tidy(m.n).slice(0, NAME_LEN), t = plain(m.t).slice(0, MAX_LEN);
   if (!n || !t) return null;
@@ -178,8 +213,9 @@ function dayName(d) {
   const diff = Math.round((today - that) / 864e5);
   return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : that.toLocaleDateString([], { weekday: diff < 7 ? 'long' : undefined, day: 'numeric', month: 'short' });
 }
-function avatar(id, n) {
+function avatar(id, n, acct) {
   const s = document.createElement('span');
+  if (acct && window.ArcadeAvatars) setTimeout(() => ArcadeAvatars.fill(s, n));
   s.className = 'av'; s.setAttribute('aria-hidden', 'true');
   s.style.setProperty('--h', hue(id));
   s.textContent = (n.match(/[a-z0-9]/i) || [n[0]])[0].toUpperCase();
@@ -213,10 +249,10 @@ function row(m, cont) {
   head.append(time);
   if (!mine) head.append(muteButton(m.u, m.n));
   if (ADMIN || amAdmin) { const d = document.createElement('button'); d.type = 'button'; d.className = 'mute'; d.textContent = 'Delete'; d.onclick = () => adminDelete(m); head.append(d); }
-  p.textContent = m.t;
+  if (window.ArcadeVoice) { p.append(ArcadeVoice.content(m.t)); if (joined && name) head.append(ArcadeVoice.replyBtn(() => replyTo && replyTo.set(m.n, m.t))); } else p.textContent = m.t;
   if (cont) div.title = m.n + ' · ' + clock(m.ts);
   body.append(head, p);
-  div.append(avatar(m.u, m.n), body);
+  div.append(avatar(m.u, m.n, m.a), body);
   return div;
 }
 function dayLine(ts) { const d = document.createElement('div'); d.className = 'day'; d.textContent = dayName(ts); return d; }
@@ -259,7 +295,7 @@ function people() {
   $('people').replaceChildren(...list.map(p => {
     const li = document.createElement('li'), s = document.createElement('span');
     s.append(nameEl(p.id, p.n, p.a, false));
-    li.append(avatar(p.id, p.n), s);
+    li.append(avatar(p.id, p.n, p.a), s);
     if (p.id === me) { const e = document.createElement('em'); e.textContent = 'you'; li.append(e); }
     else { if (!p.a) { const g = document.createElement('em'); g.textContent = 'guest'; li.append(g); } if (muted[p.id]) li.className = 'muted'; if (p.a) li.append(callButton(p.n)); li.append(muteButton(p.id, p.n)); }
     return li;
@@ -306,7 +342,7 @@ function openCallBox() {
   $('callList').replaceChildren(...list.map(p => {
     const li = document.createElement('li'), lab = document.createElement('label'), cb = document.createElement('input'), nm = document.createElement('span');
     cb.type = 'checkbox'; cb.value = p.n; nm.textContent = p.n;
-    lab.append(cb, avatar(p.id, p.n), nm); li.append(lab); return li;
+    lab.append(cb, avatar(p.id, p.n, true), nm); li.append(lab); return li;
   }));
   if (!list.length) $('callList').innerHTML = '<li class="none">No other signed-in players are in the chat right now. Guests can’t be called.</li>';
   callPicked();
@@ -337,8 +373,9 @@ function status() {
   const el = $('status'), n = who.length;
   el.className = 'chat-status' + (joined ? ' ok' : broken ? ' off' : '');
   el.lastChild.textContent = joined ? n + ' in the chat' : broken ? "Can't connect. Trying again…" : 'Connecting…';
-  $('msg').disabled = $('sendBtn').disabled = !joined || !name;
-  $('msg').placeholder = joined ? 'Say something to everyone…' : broken ? 'The chat is offline right now' : 'Connecting…';
+  const guest = !acctName(); // guests can read, not write (2026-11-16)
+  $('msg').disabled = $('sendBtn').disabled = !joined || !name || guest;
+  $('msg').placeholder = !joined ? (broken ? 'The chat is offline right now' : 'Connecting…') : guest ? 'Sign in to an online account to chat' : 'Say something to everyone…';
 }
 
 // The connection: one WebSocket, a ping every 25 s (answered by Cloudflare without waking the room), and
@@ -370,20 +407,22 @@ function connect() {
       me = m.you.u;
       amAdmin = !!(m.you.a && ADMIN_ACCOUNTS.includes(String(m.you.u).slice(2)));
       if (m.you.a) name = m.you.n;
-      $('meBtn').textContent = name || 'Pick a name';
+      $('meBtn').textContent = name || 'Pick a name'; guestLock();
       log = (m.log || []).map(clean).filter(Boolean); keep();
       who = m.who || [];
-      render(); toBottom(); people();
+      render(); toBottom(); people(); typingChannel();
     } else if (m.t === 'msg') {
       const x = clean(m.m);
       if (m.k && pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); }
       if (!x || log.some(y => y.id === x.id)) return;
+      ArcadeTyping.heard('global', x.n, true);
       log.push(x); if (log.length > 150) log.splice(0, log.length - 150); keep();
       append(x);
       if (document.hidden && !muted[x.u] && x.u !== me) document.title = '(' + ++unread + ') ' + TITLE;
-    } else if (m.t === 'who') { who = m.who || []; people(); }
+    } else if (m.t === 'who') { who = m.who || []; people(); ArcadeTyping.refresh('global'); }
     else if (m.t === 'del') { log = log.filter(x => x.id !== m.id); keep(); render(); }
-    else if (m.t === 'banned') { if (pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); } flash('That link isn’t allowed in the chat.'); }
+    else if (m.t === 'banned') { if (pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); } flash('Links and that word aren’t allowed in the chat.'); }
+    else if (m.t === 'guest') { if (pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); } flash('Sign in to an online account to chat.'); guestLock(); }
     else if (m.t === 'slow') { if (pending.has(m.k)) { clearTimeout(pending.get(m.k)); pending.delete(m.k); } flash('Slow down a little.'); }
   };
   s.onclose = () => { if (ws === s) dropped(); };
@@ -404,15 +443,21 @@ function dropped() {
 
 // Sending: at most 5 messages in 10 seconds (the server checks too), and not two within 0.7 s
 let sentAt = [];
+// 2026-11-15: replies + voice notes (voice.js); a voice note needs an online account
+var replyTo = window.ArcadeVoice ? ArcadeVoice.replyBar($('send'), $('msg')) : null;
+if (window.ArcadeVoice) $('sendBtn').before(ArcadeVoice.button($('msg'), $('send'), { check: () => joined && !!name }));
 $('send').addEventListener('submit', e => {
   e.preventDefault();
   const text = plain($('msg').value).slice(0, MAX_LEN), now = Date.now();
+  if (!acctName()) { guestLock(); if (window.ArcadeAccount) ArcadeAccount.open(); return; }
   if (!text || !joined || !name || !ws) return;
   sentAt = sentAt.filter(t => now - t < 10000);
   if (sentAt.length >= 5 || now - (sentAt[sentAt.length - 1] || 0) < 700) { flash('Slow down a little.'); return; }
   sentAt.push(now);
   const k = rid();
+  if (bannedLink(text)) { flash('Links and that word aren’t allowed in the chat.'); return; }
   try { ws.send(JSON.stringify({ t: 'say', text, k })); } catch (err) { flash('Not sent. Check your connection.'); return; }
+  typingStop();
   $('msg').value = '';
   pending.set(k, setTimeout(() => { pending.delete(k); flash('Not sent. Check your connection.'); if (!$('msg').value) $('msg').value = text; }, 6000));
 });
@@ -446,6 +491,32 @@ if (window.ArcadeAccount && ArcadeAccount.onLive) ArcadeAccount.onLive(m => { if
 
 ArcadeOnline.start('chat'); // so the home page's chat tab can show how many are here
 
+// 2026-11-14: "… is typing" (typing.js). It goes over its own realtime channel, so only signed-in players (an online
+// account, which realtime needs) send and see it, and only names the chat server lists as signed-in people here show.
+const TYP_TOPIC = 'chattyping:' + (ROOM || 'global');
+let typCh = null, typLast = 0, typOn = false;
+const typLine = ArcadeTyping.line('global', n => n.toLowerCase() !== String(name).toLowerCase() && who.some(w => w[2] && String(w[1]).toLowerCase() === n.toLowerCase()));
+$('send').before(typLine);
+function typingChannel() {
+  if (typCh || !acctName()) return;
+  typCh = 'opening';
+  ArcadeOnline.ready(c => {
+    if (!c) { typCh = null; return; }
+    const ch = c.channel(TYP_TOPIC);
+    ch.on('broadcast', { event: 'typ' }, e => { const p = (e && e.payload) || {}; if (typeof p.n === 'string' && /^[A-Za-z0-9_]{3,16}$/.test(p.n)) ArcadeTyping.heard('global', p.n, !!p.stop); }).subscribe();
+    typCh = ch;
+  });
+}
+function typingSend(stop) { if (typCh && typCh.send && acctName()) typCh.send({ type: 'broadcast', event: 'typ', payload: stop ? { n: acctName(), stop: 1 } : { n: acctName() } }); }
+function typingStop() { if (!typOn) return; typOn = false; typLast = 0; typingSend(true); }
+$('msg').addEventListener('input', () => {
+  if (!$('msg').value.trim()) { typingStop(); return; }
+  const now = Date.now();
+  if (!joined || now - typLast < 2500) return;
+  typLast = now; typOn = true; typingSend(false);
+});
+addEventListener('pagehide', typingStop);
+
 // Chat name for guests: asked for on the first visit, changed with the button next to the message box
 function askName(first) {
   $('nameT').textContent = first ? 'Pick a chat name' : 'Change your chat name';
@@ -470,7 +541,14 @@ $('nameForm').addEventListener('submit', e => {
   $('msg').focus();
 });
 $('nameBox').addEventListener('keydown', e => { if (e.key === 'Escape' && name) $('nameBox').hidden = true; });
-$('meBtn').onclick = () => { if (window.ArcadeAccount && ArcadeAccount.name()) ArcadeAccount.open(); else askName(false); }; // with an account the name is set on the account
+$('meBtn').onclick = () => { if (window.ArcadeAccount && (ArcadeAccount.name() || !acctName())) ArcadeAccount.open(); else askName(false); }; // with an account the name is set on the account
+// 2026-11-16 (owner's request): guests can read the Global chat, only signed-in (online) accounts can write in it
+function guestLock() {
+  const g = !acctName();
+  if (g) $('meBtn').textContent = 'Sign in';
+  status();
+  $('send').classList.toggle('guest-lock', g);
+}
 
 $('clear').onclick = () => {
   if (!confirm('Hide the chat history on this device? Messages from now on still show.')) return;
@@ -479,18 +557,19 @@ $('clear').onclick = () => {
 };
 
 $('meBtn').textContent = name || 'Pick a name';
+guestLock();
 render(); toBottom(); people();
 connect();
 // signing in (or making a local account) while the page is open: reconnect with the new name
 let lastAcct = acctName();
 setInterval(() => {
   const n = window.ArcadeAccount ? ArcadeAccount.name() : '';
-  if (acctName() !== lastAcct || (n && !name)) { lastAcct = acctName(); name = n || name; $('meBtn').textContent = name || 'Pick a name'; connect(); }
+  if (acctName() !== lastAcct || (n && !name)) { lastAcct = acctName(); name = n || name; $('meBtn').textContent = name || 'Pick a name'; guestLock(); connect(); }
 }, 1000);
-if (!name && !window.ArcadeAccount) askName(true);
 </script>
-<script src="tos.js?v=14"></script>
-<script src="appbanner.js?v=1"></script>
+<script src="tos.js?v=21"></script>
+<script src="appbanner.js?v=2"></script>
 <script src="moving.js?v=1"></script>
+<script src="outage.js?v=2"></script>
 </body>
 </html>

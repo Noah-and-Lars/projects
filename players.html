@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
 <script>
 // 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
 // not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
@@ -22,7 +26,7 @@
 </script>
 <title>Players · The Arcade</title>
 <meta name="description" content="Everyone on The Arcade: find players, see their best scores, add friends and send messages.">
-<meta name="theme-color" content="#0f0d1f">
+<meta name="theme-color" content="#050506">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -31,7 +35,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=16">
+<link rel="stylesheet" href="arcade.css?v=21">
 <style>
 .pl { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 18px; margin-top: 20px; height: calc(100vh - 150px); height: calc(100dvh - 150px); min-height: 460px; }
 .pl-side, .pl-main { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid #ffffff14; border-radius: 18px; overflow: hidden; }
@@ -47,7 +51,7 @@
 .plist { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; }
 .plist li { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; cursor: pointer; }
 .plist li:hover, .plist li:focus-visible { background: #ffffff0d; outline: none; }
-.plist li.sel { background: #6c5ce733; }
+.plist li.sel { background: rgba(255, 255, 255, .08); }
 .plist .av { width: 32px; height: 32px; font-size: 14px; flex: none; }
 .plist .tx { flex: 1; min-width: 0; }
 .plist .tx b, .plist .tx small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -81,6 +85,14 @@
 .score.no span { color: var(--muted); font-weight: 500; }
 .score > div { min-width: 0; }
 .note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+.fav { display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 14px; background: linear-gradient(90deg, #ffd16614, #ffffff06); border: 1px solid #ffd16633; max-width: 520px; min-width: 0; }
+.fav img { width: 128px; height: 72px; object-fit: cover; border-radius: 9px; flex: none; background: #0004; }
+.fav > div { min-width: 0; }
+.fav b, .fav span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav b { font-size: 17px; }
+.fav span { color: #ffd166; font-size: 14px; font-weight: 700; margin-top: 2px; }
+.fav.no { background: #ffffff06; border-color: #ffffff0f; color: var(--muted); font-size: 14px; padding: 14px; }
+@media (max-width: 480px) { .fav img { width: 96px; height: 54px; } .fav b { font-size: 15px; } }
 .dm-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #ffffff12; }
 .dm-head .av { width: 32px; height: 32px; font-size: 14px; }
 .dm-head a { font-weight: 800; font-size: 17px; }
@@ -98,7 +110,7 @@
 .dm-note { margin: 0; padding: 0 14px 10px; background: #ffffff05; color: var(--muted); font-size: 12px; }
 .dm-older { align-self: center; margin-bottom: 6px; }
 /* group chats (2026-11-11) */
-.av.grp { background: linear-gradient(135deg, #6c5ce7, #00d2a8); }
+.av.grp { background: #25252c; }
 .plist li.newgrp { color: var(--accent-2); font-weight: 800; }
 .plist li.newgrp .av { background: #00d2a822; color: var(--accent-2); }
 .bub .by { display: block; font-size: 12px; font-weight: 800; margin-bottom: 1px; color: hsl(var(--h, 260) 70% 72%); }
@@ -126,6 +138,7 @@
   .prof-head .back { order: -1; width: 100%; max-width: 90px; }
 }
 </style>
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
 </head>
 <body>
 <header class="top">
@@ -158,10 +171,14 @@
   </div>
 </main>
 
-<script src="games.js?v=200"></script>
-<script src="account.js?v=26"></script>
-<script src="console.js?v=1"></script>
-<script src="call.js?v=6"></script>
+<script src="games.js?v=246"></script>
+<script src="account.js?v=40"></script>
+<script src="console.js?v=2"></script>
+<script src="call.js?v=8"></script>
+<script src="typing.js?v=2"></script>
+<script src="avatars.js?v=1"></script>
+<script src="voice.js?v=5"></script>
+<script>window.ArcadeTyping = window.ArcadeTyping || (() => { const nop = () => ({ input() {}, stop() {} }); return { dm: nop, group: nop, heard() {}, list: () => [], label: () => '', line: () => document.createElement('div'), watch() {}, refresh() {} }; })(); // typing.js didn't load: chats work without it</script>
 <script>
 // Players (2026-11-06): every account on the arcade, their best score in each game, friends and private messages.
 // Everything comes from the arcade's server (realtime-worker: /acct/players, /acct/player, /acct/social,
@@ -176,9 +193,10 @@ const lc = s => String(s).toLowerCase();
 const BAD = /\b(f+u+c+k+\w*|f+u+k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|c+u+n+t+\w*|d+i+c+k+s?\b|p+u+s+s+y+\w*|a+s+s+h+o+l+e+\w*|bastard\w*|slut\w*|whore\w*|nigg\w*|n+i+g+a+\w*|fag\w*|retard\w*|twat\w*|wank\w*|porn\w*|penis\w*|vagina\w*|rape\w*)/gi;
 const tidy = s => String(s).replace(/\s+/g, ' ').trim().replace(BAD, w => w[0] + '*'.repeat(w.length - 1));
 const plain = s => String(s).replace(/\s+/g, ' ').trim(); // messages are shown uncensored
+const vprev = t => window.ArcadeVoice ? ArcadeVoice.preview(plain(t || '')) : plain(t || '');
 const hue = id => { let h = 0; for (const c of lc(id)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-function avatar(n) { const s = el('span', 'av', (n.match(/[a-z0-9]/i) || [n[0]])[0].toUpperCase()); s.setAttribute('aria-hidden', 'true'); s.style.setProperty('--h', hue(n)); return s; }
+function avatar(n) { const s = el('span', 'av', (n.match(/[a-z0-9]/i) || [n[0]])[0].toUpperCase()); s.setAttribute('aria-hidden', 'true'); s.style.setProperty('--h', hue(n)); if (window.ArcadeAvatars) ArcadeAvatars.fill(s, n); return s; }
 const joined = ts => ts ? 'Joined ' + new Date(ts).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 const clock = ts => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const lastOn = ts => { if (!ts) return ''; const d = (Date.now() - ts) / 60000; return 'Last online ' + (d < 10 ? 'just now' : d < 60 ? Math.round(d) + ' min ago' : d < 1440 ? Math.round(d / 60) + (Math.round(d / 60) === 1 ? ' hour ago' : ' hours ago') : Math.round(d / 1440) < 2 ? 'yesterday' : Math.round(d / 1440) + ' days ago'); };
@@ -242,8 +260,8 @@ function renderList() {
     $('plCount').textContent = view === 'friends' ? rows.length + (rows.length === 1 ? ' friend' : ' friends') : rows.length ? 'Friend requests' : '';
   } else {
     rows = Object.entries(soc ? soc.c : {}).filter(([k, c]) => !q || k.includes(q) || lc(c.n || '').includes(q)).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0))
-      .map(([k, c]) => c.g ? { k, n: c.n, id: k.slice(2), sub: (c.me ? 'You: ' : c.by ? c.by + ': ' : '') + plain(c.t || ''), kind: 'g', un: c.un, ts: c.ts }
-        : { k, n: c.n, sub: (c.me ? 'You: ' : '') + plain(c.t || ''), kind: 'dm', un: c.un, ts: c.ts });
+      .map(([k, c]) => c.g ? { k, n: c.n, id: k.slice(2), sub: (c.me ? 'You: ' : c.by ? c.by + ': ' : '') + vprev(c.t), kind: 'g', un: c.un, ts: c.ts }
+        : { k, n: c.n, sub: (c.me ? 'You: ' : '') + vprev(c.t), kind: 'dm', un: c.un, ts: c.ts });
     $('plCount').textContent = rows.length ? 'Private and group chats' : '';
     const ng = item('New group chat', 'Up to 15 people'); ng.classList.add('newgrp'); ng.querySelector('.av').textContent = '+';
     ng.onclick = () => go('new', 'group'); ng.onkeydown = e => { if (e.key === 'Enter') go('new', 'group'); };
@@ -255,7 +273,7 @@ function renderList() {
     if (r.kind === 'dm' || r.kind === 'g') { extra = r.un ? el('span', 'un', r.un) : el('small', 'pl-count', ago(r.ts)); }
     else if (view === 'all') extra = tagFor(r.k);
     const li = item(r.n, r.sub, extra), dest = r.kind === 'g' ? r.id : r.n;
-    if (r.kind === 'g') { const av = li.querySelector('.av'); av.textContent = '👥'; av.classList.add('grp'); }
+    if (r.kind === 'g') { const av = li.querySelector('.av'); av.textContent = '👥'; av.classList.add('grp', 'x'); av.classList.remove('av-pic'); av.style.backgroundImage = ''; }
     if (cur && cur.k === r.k && (cur.kind === r.kind || view === 'all')) li.classList.add('sel');
     li.onclick = () => go(r.kind, dest);
     li.onkeydown = e => { if (e.key === 'Enter') go(r.kind, dest); };
@@ -274,7 +292,9 @@ function setView(v) {
 $('q').addEventListener('input', () => { limit = 200; renderList(); });
 
 // ---------- a player's profile ----------
-const backBtn = () => { const b = el('button', 'back', '← Back'); b.type = 'button'; b.onclick = () => { history.replaceState(null, '', location.pathname + location.search); cur = null; $('pl').classList.remove('detail'); renderList(); }; return b; };
+const quitTyping = () => { if (dm && dm.tx) dm.tx.stop(); };
+addEventListener('pagehide', () => quitTyping());
+const backBtn = () => { const b = el('button', 'back', '← Back'); b.type = 'button'; b.onclick = () => { quitTyping(); history.replaceState(null, '', location.pathname + location.search); cur = null; $('pl').classList.remove('detail'); renderList(); }; return b; };
 function go(kind, n) {
   const h = '#' + kind + '=' + encodeURIComponent(n);
   if (location.hash !== h) history.replaceState(null, '', h);
@@ -341,10 +361,20 @@ function drawProfile(box, r) {
   };
   for (const g of have) grid.append(card(g, tidy(s[g.id])));
   for (const g of not) grid.append(card(g, ''));
+  // 2026-11-16: the game this player has spent the most time on (s['most-played'] = '<game id>:<minutes>', sent by account.js)
+  const mp = String(s['most-played'] || '').match(/^([a-z0-9-]+):(\d+)$/), fg = mp && GAMES.find(g => g.id === mp[1]);
+  const playedFor = m => { if (m < 10) return 'Under 10 min played'; if (m < 60) return m + ' min played'; const h = m >= 600 ? Math.round(m / 60) : Math.round(m / 6) / 10; return h + (h === 1 ? ' hour played' : ' hours played'); };
+  let fav;
+  if (fg) {
+    const a = el('a', 'fav'), img = el('img'), d = el('div');
+    a.href = 'play.html?game=' + encodeURIComponent(fg.id); img.src = fg.thumb; img.alt = ''; img.loading = 'lazy';
+    d.append(el('b', '', fg.title), el('span', '', playedFor(+mp[2])));
+    a.append(img, d); fav = a;
+  } else fav = el('div', 'fav no', mine ? 'Play any game for a minute and your most played game shows up here.' : 'Nothing yet. It shows up after ' + r.n + ' plays a game.');
   const h2 = el('h2', '', 'Best scores');
   box.replaceChildren(head);
   if (acts.childNodes.length) box.append(acts);
-  box.append(h2, grid);
+  box.append(el('h2', '', 'Most played'), fav, h2, grid);
   box.append(el('p', 'note', !r.at ? (mine ? 'Your scores show up here after your account syncs. Play a game and come back.' : r.n + ' hasn’t synced any scores yet. They show up the next time ' + r.n + ' visits the arcade.')
     : 'Updated ' + new Date(r.at).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '. Scores come from the player’s own saves.'));
 }
@@ -369,6 +399,7 @@ function refreshCur() {
 // ---------- private messages ----------
 let dm = null; // { k, n, msgs, more, log }
 function openDm(n) {
+  quitTyping();
   const k = lc(n);
   cur = { kind: 'dm', k, n: nameOf(k) };
   renderList();
@@ -384,13 +415,16 @@ function openDm(n) {
   send.type = 'submit';
   form.append(inp, send);
   const note = el('p', 'dm-note', soc && soc.b[k] ? 'You blocked ' + nameOf(k) + '. Unblock them on their profile to send messages.' : 'Only you and ' + nameOf(k) + ' can see this chat. Be kind, and never share passwords or personal details.');
-  $('main').replaceChildren(head, log, form, note);
+  const typ = ArcadeTyping.line(k), tx = ArcadeTyping.dm(() => (dm && dm.k === k ? dm.n : nameOf(k)));
+  inp.oninput = () => tx.input(inp.value);
+  $('main').replaceChildren(head, log, typ, form, note);
   log.append(el('p', 'note', 'Loading…'));
-  dm = { k, n: nameOf(k), msgs: [], more: false, log };
+  dm = { k, n: nameOf(k), msgs: [], more: false, log, tx };
+  if (window.ArcadeVoice) { dm.reply = ArcadeVoice.replyBar(form, inp); send.before(ArcadeVoice.button(inp, form)); }
   api('dm?with=' + encodeURIComponent(n), { auth: true }).then(r => {
     if (!dm || dm.k !== k) return;
     if (r.status !== 200) { log.replaceChildren(el('p', 'note', r.status === 404 ? 'There’s no player called ' + n + '.' : 'Couldn’t load the messages. Check your connection.')); return; }
-    dm.n = r.n; dm.msgs = r.msgs; dm.more = r.more;
+    dm.n = r.n; dm.msgs = r.msgs; dm.more = r.more; dm.rd = r.rd || {};
     link.textContent = r.n;
     if (soc && soc.c[k]) { soc.c[k].un = 0; counts(); renderList(); }
     drawDm(true);
@@ -403,8 +437,8 @@ function openDm(n) {
     sending = true; send.disabled = true;
     api('dm', { method: 'POST', auth: true, body: { to: dm.n, text } }).then(r => {
       sending = false; send.disabled = false;
-      if (r.status !== 200) { alert(r.error === 'slow' ? 'Slow down a little.' : r.error === 'you_blocked' ? 'You blocked this player. Unblock them on their profile first.' : r.error === 'no_account' ? 'That account doesn’t exist any more.' : 'Not sent. Check your connection and try again.'); return; }
-      inp.value = '';
+      if (r.status !== 200) { alert(r.error === 'slow' ? 'Slow down a little.' : r.error === 'banned_link' ? 'Links and that word aren’t allowed in the chat.' : r.error === 'you_blocked' ? 'You blocked this player. Unblock them on their profile first.' : r.error === 'no_account' ? 'That account doesn’t exist any more.' : 'Not sent. Check your connection and try again.'); return; }
+      inp.value = ''; tx.stop();
       gotDm(k, r.n, r.m);
       inp.focus();
     });
@@ -420,7 +454,12 @@ function drawDm(bottom) {
     if (d !== day) { day = d; frag.append(el('div', 'dm-day', new Date(m.ts).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }))); }
     const b = el('div', 'bub' + (m.f ? ' me' : '')), t = el('time', '', clock(m.ts));
     if (dm.g && !m.f && m.by) { const by = el('span', 'by', m.by); by.style.setProperty('--h', hue(m.by)); b.append(by); }
-    b.append(document.createTextNode(plain(m.t)), t); frag.append(b);
+    if (window.ArcadeVoice) { b.append(ArcadeVoice.content(plain(m.t)), t); if (dm.reply) { const who = m.f ? myName() : (m.by || dm.n), rt = m.t; t.after(ArcadeVoice.replyBtn(() => dm.reply.set(who, rt))); } } else b.append(document.createTextNode(plain(m.t)), t);
+    frag.append(b);
+  }
+  if (window.ArcadeVoice) { // read receipts
+    const g = dm.g && soc && soc.c[dm.k], names = dm.g ? (g ? g.mem.filter(n => lc(n) !== lc(myName())) : []) : [dm.n];
+    const sn = ArcadeVoice.seen(dm.msgs, dm.rd, names, !!dm.g); if (sn) frag.append(sn);
   }
   if (!dm.msgs.length) frag.append(el('p', 'note', dm.g ? 'No messages yet. Say hi to the group!' : 'No messages yet. Say hi!'));
   const keepFrom = log.scrollHeight - log.scrollTop;
@@ -437,6 +476,7 @@ function older() {
 }
 let readT = 0;
 function gotDm(k, n, m) {
+  if (!m.f) ArcadeTyping.heard(k, n, true);
   if (soc) {
     const c = soc.c[k] || (soc.c[k] = { n, un: 0 });
     c.n = n; c.ts = m.ts; c.t = m.t.slice(0, 80); c.me = m.f;
@@ -454,7 +494,7 @@ function gotDm(k, n, m) {
 // ---------- group chats (2026-11-11) ----------
 // A group is the conversation 'g~<id>' (soc.c) with its name, members (mem) and who made it (own); /acct/group does the rest.
 const GROUP_MAX = 15;
-const grpErr = r => r.error === 'too_many' ? 'A group chat can have up to ' + GROUP_MAX + ' people.' : r.error === 'slow' ? 'Slow down a little.' : r.error === 'no_one' ? 'None of those players could be added (they may have blocked you, or the names are wrong).' : r.error === 'not_found' ? 'You’re not in that group chat any more.' : 'Couldn’t do that. Check your connection and try again.';
+const grpErr = r => r.error === 'banned_link' ? 'Links and that word aren’t allowed in the chat.' : r.error === 'too_many' ? 'A group chat can have up to ' + GROUP_MAX + ' people.' : r.error === 'slow' ? 'Slow down a little.' : r.error === 'no_one' ? 'None of those players could be added (they may have blocked you, or the names are wrong).' : r.error === 'not_found' ? 'You’re not in that group chat any more.' : 'Couldn’t do that. Check your connection and try again.';
 // pick people: your friends as buttons, or type any name
 function picker(box, taken, onChange) {
   const chosen = new Map(), chips = el('div', 'grp-chips'), row = el('div', 'grp-row'), inp = el('input', 'field'), add = el('button', 'btn ghost2', 'Add');
@@ -499,6 +539,7 @@ function newGroup() {
   $('main').replaceChildren(f); setTimeout(() => name.focus(), 50);
 }
 function openGroup(id) {
+  quitTyping();
   const k = 'g~' + id, c = soc && soc.c[k];
   cur = { kind: 'g', k, n: c ? c.n : 'Group' };
   renderList();
@@ -516,9 +557,13 @@ function openGroup(id) {
   abtn('Leave', 'danger', () => { if (!confirm('Leave this group chat? Its messages go from your list.')) return; api('group', { method: 'POST', auth: true, body: { op: 'leave', id } }).then(r => { if (r.status !== 200 && r.error !== 'not_found') { alert(grpErr(r)); return; } delete soc.c[k]; counts(); history.replaceState(null, '', location.pathname + location.search); cur = null; dm = null; $('pl').classList.remove('detail'); $('main').replaceChildren(el('div', 'pl-empty', 'You left the group chat.')); renderList(); }); });
   inp.maxLength = 500; inp.placeholder = 'Message the group…'; inp.setAttribute('aria-label', 'Message'); inp.autocomplete = 'off'; inp.enterKeyHint = 'send'; send.type = 'submit';
   form.append(inp, send);
-  $('main').replaceChildren(head, mem, log, form, el('p', 'dm-note', 'Everyone in this group chat can see these messages. Be kind, and never share passwords or personal details.'));
+  const inGrp = n => { const g = soc && soc.c[k]; return !!g && g.mem.some(x => lc(x) === lc(n)); };
+  const typ = ArcadeTyping.line(k, inGrp), tx = ArcadeTyping.group(id, () => { const g = soc && soc.c[k]; return g ? g.mem : []; });
+  inp.oninput = () => tx.input(inp.value);
+  $('main').replaceChildren(head, mem, log, typ, form, el('p', 'dm-note', 'Everyone in this group chat can see these messages. Be kind, and never share passwords or personal details.'));
   log.append(el('p', 'note', 'Loading…'));
-  dm = { k, n: c.n, g: id, msgs: [], more: false, log };
+  dm = { k, n: c.n, g: id, msgs: [], more: false, log, tx };
+  if (window.ArcadeVoice) { dm.reply = ArcadeVoice.replyBar(form, inp); send.before(ArcadeVoice.button(inp, form)); }
   function drawGroupHead() {
     const g = soc.c[k]; if (!g) return;
     title.textContent = g.n; cur.n = g.n;
@@ -529,7 +574,7 @@ function openGroup(id) {
   api('group?id=' + id, { auth: true }).then(r => {
     if (!dm || dm.k !== k) return;
     if (r.status !== 200) { log.replaceChildren(el('p', 'note', r.status === 404 ? 'You’re not in that group chat any more.' : 'Couldn’t load the messages. Check your connection.')); return; }
-    dm.msgs = r.msgs; dm.more = r.more;
+    dm.msgs = r.msgs; dm.more = r.more; dm.rd = r.rd || {};
     if (soc.c[k]) { soc.c[k].un = 0; counts(); renderList(); }
     drawDm(true);
   });
@@ -542,7 +587,7 @@ function openGroup(id) {
     api('group', { method: 'POST', auth: true, body: { op: 'say', id, text } }).then(r => {
       sending = false; send.disabled = false;
       if (r.status !== 200) { alert(grpErr(r)); return; }
-      inp.value = ''; gotGm(k, r.n, r.m); inp.focus();
+      inp.value = ''; tx.stop(); gotGm(k, r.n, r.m); inp.focus();
     });
   };
   setTimeout(() => inp.focus(), 50);
@@ -574,6 +619,7 @@ function addPeople(id) {
   dm = null; $('main').replaceChildren(f);
 }
 function gotGm(k, n, m) {
+  if (!m.f && m.by) ArcadeTyping.heard(k, m.by, true);
   if (soc) {
     const c = soc.c[k]; if (!c) return;
     c.n = n; c.ts = m.ts; c.t = m.t.slice(0, 80); c.me = m.f; c.by = m.by || '';
@@ -612,6 +658,7 @@ A.onLive(m => {
   else if (m.t === 'gm' && m.m) gotGm(m.k, m.n, m.m);
   else if (m.t === 'grp') gotGrp(m.k, m.c);
   else if (m.t === 'friend') { if (m.v) soc.f[m.k] = m.v; else delete soc.f[m.k]; refreshCur(); }
+  else if (m.t === 'seen') { if (soc && soc.c[m.k]) (soc.c[m.k].rd = soc.c[m.k].rd || {})[lc(m.n)] = m.ts; if (dm && dm.k === m.k) { (dm.rd = dm.rd || {})[lc(m.n)] = m.ts; const L = dm.log, near = L.scrollHeight - L.scrollTop - L.clientHeight < 80; drawDm(near); } }
   else if (m.t === 'read') { if (soc.c[m.k]) soc.c[m.k].un = 0; counts(); renderList(); }
   else if (m.t === 'social') loadSocial();
 });
@@ -628,8 +675,9 @@ loadSocial();
 let lastName = myName();
 setInterval(() => { if (myName() !== lastName) { lastName = myName(); loadSocial(); if (cur) route(); } }, 1000);
 </script>
-<script src="tos.js?v=14"></script>
-<script src="appbanner.js?v=1"></script>
+<script src="tos.js?v=21"></script>
+<script src="appbanner.js?v=2"></script>
 <script src="moving.js?v=1"></script>
+<script src="outage.js?v=2"></script>
 </body>
 </html>

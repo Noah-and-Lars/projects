@@ -5,6 +5,7 @@
    minutes. Progress moves with the Arcade account (cloud saves), so someone who isn't signed in to an online account
    is told to make one or sign in here first. Games shown inside play.html skip it (the page around them has it). */
 (function () {
+  return; // 2026-11-18: the GitHub site is back as a full copy of .dev, so no moving banner anywhere
   if (location.hostname !== 'noah-and-lars.github.io') return;
   try { if (window.top !== window && window.top.location.hostname === location.hostname) return; } catch (e) {}
   if (window.__arcadeMoving) return; window.__arcadeMoving = 1;

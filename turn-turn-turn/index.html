@@ -191,6 +191,15 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
 
 /* race hud */
 #hud{position:absolute;inset:0;pointer-events:none}
+.mods{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:stretch}
+.mods .mods-h{width:100%;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.mod{flex:1 1 150px;text-align:left;padding:9px 11px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#fff;cursor:pointer}
+.mod b{display:block;font-size:14px}.mod span{display:block;font-size:12px;color:var(--dim);margin-top:2px;line-height:1.3}
+.mod.on{background:#ffd23f;border-color:#ffd23f;color:#11161c}.mod.on span{color:#3a3320}
+#blindCover{position:absolute;inset:0;background:#000;pointer-events:none}
+#modTag{position:absolute;top:8px;right:10px;font:800 12px/1 system-ui,sans-serif;letter-spacing:.06em;color:#ffd23f;background:rgba(0,0,0,.5);padding:5px 8px;border-radius:6px}
+#fps{position:fixed;top:8px;left:8px;z-index:60;pointer-events:none;font:700 12px/1 monospace;color:#9f6;background:rgba(0,0,0,.5);padding:4px 6px;border-radius:4px}
+#fps.hidden{display:none}
 #hud > *{pointer-events:none}
 #count{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font:900 italic 120px/1 var(--ff);color:#fff;text-shadow:0 6px 0 rgba(0,0,0,.35),0 0 40px rgba(0,0,0,.4)}
 #count.go{color:var(--orange)}
@@ -274,6 +283,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
 <body>
 <canvas id="gl"></canvas>
 <div id="ui">
+  <div id="fps"></div>
   <div id="hud" class="hidden">
     <div id="stopwatch">0:00.00</div>
     <div id="vsPos" class="hidden"></div>
@@ -284,6 +294,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
     <div id="navtip" class="hidden"></div>
     <div id="netbar" class="hidden"><span class="dot"></span><span id="netTxt"></span></div>
     <div id="hint"></div>
+    <div id="modTag" class="hidden"></div>
     <div id="navpad" class="hidden"></div>
     <div id="touchDrv" class="hidden">
       <div class="grp"><button data-t="left">◀</button><button data-t="right">▶</button></div>
@@ -291,6 +302,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
     </div>
   </div>
 
+  <div id="blindCover" class="hidden"></div>
   <div id="menu" class="screen">
     <svg class="route" viewBox="0 0 110 34" fill="none"><path d="M4 28 C 22 28, 22 6, 40 6 S 58 28, 74 22 S 92 4, 106 8" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".9"/><circle cx="106" cy="8" r="5" fill="#ff7a1a"/></svg>
     <div class="logo"><span class="w1">Turn!</span> <span class="w2">Turn!</span> <b>TURN!</b></div>
@@ -321,6 +333,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
     <div class="panel" style="width:min(900px,100%)">
       <div class="panel-head"><div><h2 id="stagesTitle">Stages</h2><div class="sub" id="stagesSub" style="margin:0">Pick a stage. Beat the gold time with your crew.</div></div><button class="close" data-back>✕</button></div>
       <div class="stages" id="stageGrid"></div>
+      <div class="mods" id="modsStage"></div>
       <div class="btn-row" style="margin-top:14px;justify-content:flex-end"><button class="btn primary hidden" id="stageGo">Start run</button></div>
     </div>
   </div>
@@ -427,6 +440,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
         <div class="lobby-stage"><div style="flex:1"><div class="nm" id="lobStage"></div><div class="meta" id="lobStageMeta"></div></div><button class="btn small" id="lobPick">Change</button></div>
         <div class="voice"><span class="dot" id="voiceDot"></span><button class="btn small" id="voiceBtn">Voice chat: off</button></div>
       </div>
+      <div class="mods" id="modsLobby"></div>
       <div class="lobby-foot"><button class="btn primary" id="lobStart">Start the stage</button></div>
       <div class="status" id="lobStatus"></div>
     </div>
@@ -478,7 +492,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.3.1';
+const VERSION = '1.4';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -514,15 +528,18 @@ const fmtTime = ms => {
 
 /* ---------------- save ---------------- */
 const SAVE_KEY = 'turnturnturn.save';
-const DEFAULT_SETTINGS = { fov: 100, quality: 'high', blur: true, mlook: true, assist: 1, units: 'kmh', vol: 0.8, speech: true, hints: true, shake: 1 };
+const DEFAULT_SETTINGS = { fov: 120, fps: true, quality: 'high', blur: true, mlook: true, assist: 1, units: 'kmh', vol: 0.8, speech: true, hints: true, shake: 1, camMove: 1 };
 const SAVE = (() => {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) {}
   if (!s || typeof s !== 'object') s = {};
   s.settings = Object.assign({}, DEFAULT_SETTINGS, s.settings || {});
+  // 1.3.2: everyone starts at the new 120 field of view once
+  if (!s.fov132) { s.fov132 = 1; s.settings.fov = 120; }
   s.best = s.best || {};     // stageId -> { solo: ms, crew: ms, crewWith: name }
   s.runs = s.runs || 0;
   s.stage = s.stage || 'pine';
+  s.mods = Object.assign({ drunk: false, blind: false, deaf: false }, s.mods || {});
   return s;
 })();
 const S = SAVE.settings;
@@ -612,7 +629,7 @@ const AUDIO = (() => {
     grit = loop('bandpass', 2600, 0.6);
     wind = loop('lowpass', 420, 0.5);
   };
-  A.setVol = v => { if (master) master.gain.value = v; };
+  A.setVol = v => { if (master) master.gain.value = modOn('deaf') ? 0 : v; };
   A.engine = (rpm, thr, on, gravelAmt, windAmt) => {
     if (!ctx || !eng) return;
     const t = ctx.currentTime, f = rpm / 60 * 2; // four-cylinder firing rate
@@ -624,7 +641,18 @@ const AUDIO = (() => {
     gravel.fl.frequency.setTargetAtTime(300 + gravelAmt * 600, t, 0.1);
     grit.g.gain.setTargetAtTime(on ? gravelAmt * gravelAmt * 0.035 : 0, t, 0.08);
     wind.g.gain.setTargetAtTime(on ? windAmt * 0.11 : 0, t, 0.1);
+    // a soft, lumpy idle burble that fades in near idle revs
+    if (!idle) {
+      const o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain(), am = ctx.createGain(), lfo = ctx.createOscillator(), ld = ctx.createGain();
+      o.type = 'triangle'; lp.type = 'lowpass'; lp.frequency.value = 220; lfo.frequency.value = 7.5; ld.gain.value = 0.5; am.gain.value = 0.5; g.gain.value = 0;
+      lfo.connect(ld); ld.connect(am.gain); o.connect(lp); lp.connect(am); am.connect(g); g.connect(master); o.start(); lfo.start();
+      idle = { o, g, lfo };
+    }
+    const near = clamp(1 - (rpm - 900) / 900, 0, 1) * (1 - thr * 0.7);
+    idle.o.frequency.setTargetAtTime(rpm / 60 * 1.5, t, 0.05); idle.lfo.frequency.setTargetAtTime(rpm / 60 / 2 * (0.95 + Math.random() * 0.1), t, 0.1);
+    idle.g.gain.setTargetAtTime(on ? near * 0.045 : 0, t, 0.12);
   };
+  let idle = null;
   const burst = (dur, f, q, gain, type = 'bandpass', pan = 0, when = 0) => {
     if (!ctx) return;
     const t = ctx.currentTime + when, s = ctx.createBufferSource(); s.buffer = noiseBuf;
@@ -663,9 +691,18 @@ const AUDIO = (() => {
     else tone(660, 990, 0.2, 0.18, 'triangle');
   };
   A.say = text => {
-    if (!S.speech || !window.speechSynthesis) return;
+    if (modOn('deaf') || ((!S.speech && !modOn('blind')) || !window.speechSynthesis)) return;
     try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.0; u.pitch = 1.0; u.volume = clamp(S.vol * 1.1, 0, 1); speechSynthesis.speak(u); } catch (e) {}
   };
+  // a sick engine: valve ticks in time with the revs, the odd knock and misfire
+  let tickT = 0, knockT = 2;
+  A.sick = (rpm, dt, on) => {
+    if (!ctx || !on) return;
+    tickT -= dt; knockT -= dt;
+    if (tickT <= 0) { tickT = 60 / Math.max(800, rpm) * 2.5; burst(0.03, 3200 + Math.random() * 800, 5, 0.22 + Math.random() * 0.1, 'bandpass'); }
+    if (knockT <= 0) { knockT = 0.4 + Math.random() * 2.2; if (Math.random() < 0.6) { tone(75, 45, 0.11, 0.7, 'square'); burst(0.06, 1400, 2, 0.5); } else { burst(0.22, 180, 1, 0.8, 'lowpass'); tone(40, 30, 0.25, 0.55, 'sawtooth'); burst(0.05, 2200, 3, 0.4); } }
+  };
+  A.crunch = () => { burst(0.35, 900, 1.2, 0.5); tone(160, 50, 0.3, 0.3, 'square'); };
   A.stopAll = () => { if (eng) A.engine(900, 0, false, 0, 0); };
   return A;
 })();
@@ -1469,7 +1506,10 @@ class Car {
     this.pitch = 0; this.roll = 0; this.steer = 0; this.rpm = 900; this.gear = 1; this.shiftT = 0;
     this.grounded = true; this.airT = 0; this.ax = 0; this.ay = 0; this.spin = 0; this.hPrev = null;
     this.onRoad = true; this.inMud = 0; this.lastGood = i; this.goodT = 0; this.fallen = 0; this.cutPen = 0;
-    this.doors = [{ open: false, a: 0, v: 0, ph: 0 }, { open: false, a: 0, v: 0, ph: 1.7 }];
+    // damage (a lost door, a sick engine, a cracked oil pan) stays through a respawn
+    const dl = this.doors ? this.doors.map(d => d.lost) : [false, false];
+    this.doors = [{ open: false, a: 0, v: 0, ph: 0, lost: dl[0] }, { open: false, a: 0, v: 0, ph: 1.7, lost: dl[1] }];
+    this.sick = !!this.sick; this.oil = !!this.oil; this.oilD = 0;
     this.oneHand = 0; this.bird = 0; this.hand = 0; this.gas = 0; this.brk = 0; this.clutch = false; this.launch = 0; this.limT = 0; this.mudGap = 0; this.mudN = 0; this.mudP = -1;
     this.loc = roadLocal(st, this.p.x, this.p.z, i);
   }
@@ -1536,7 +1576,7 @@ class Car {
       const imp = this.gv - this.vy; this.p.y = floor; if (this.vy < this.gv) this.vy = this.gv;
       if (imp > 2.5) this.events.push({ k: 'bump', g: imp });
     }
-    if (contact && !this.grounded && this.airT > 0.22) { const g = this.gv - vyBefore; this.events.push({ k: 'land', g, air: this.airT }); }
+    if (contact && !this.grounded && this.airT > 0.22) { const g = this.gv - vyBefore; this.events.push({ k: 'land', g, air: this.airT }); if (!this.oil && this.airT > 0.45 && g > 9) { this.oil = true; this.events.push({ k: 'oilPan', g }); } }
     this.grounded = this.p.y < hFree + 0.04;
     this.airT = this.grounded ? 0 : this.airT + dt;
 
@@ -1582,7 +1622,9 @@ class Car {
     this.vx += (this.ax - this.vl * this.r) * dt;
     this.vl += (this.ay + this.vx * this.r) * dt;
     this.r += (contact ? M / c.Iz - this.r * 0.42 : -this.r * 0.4) * dt;
-    if (contact && sp < 1.5 && gas === 0) { this.vl *= 0.9; this.r *= 0.9; if (brk === 0 && sp < 0.3) this.vx *= 0.9; }
+    // nearly stopped: settle the car. 1.4: use the real speed, not just the forward part, so a car sliding
+    // sideways (forward speed near zero mid-drift) is no longer frozen on the spot
+    if (contact && Math.hypot(this.vx, this.vl) < 1.5 && gas === 0) { this.vl *= 0.9; this.r *= 0.9; if (brk === 0 && sp < 0.3) this.vx *= 0.9; }
     this.p.x += (fx * this.vx + rx * this.vl) * dt; this.p.z += (fz * this.vx + rz * this.vl) * dt;
     this.yaw += this.r * dt;
 
@@ -1619,6 +1661,7 @@ class Car {
     // doors
     for (let d = 0; d < 2; d++) {
       const D = this.doors[d];
+      if (D.lost) { D.a = 0; continue; }
       if (!D.open) { D.a = Math.max(0, D.a - dt * 5); continue; }
       D.ph += dt;
       const lat = (d === 0 ? 1 : -1) * this.ay;
@@ -1627,6 +1670,10 @@ class Car {
     }
     if (Math.abs(this.ay) > 8.5 && Math.random() < dt * 0.05) { const d = this.ay > 0 ? 0 : 1; if (!this.doors[d].open) this.openDoor(d); }
 
+    // now and then the engine starts ticking and knocking (it keeps running fine)
+    if (!this.sick && sp > 4 && Math.random() < dt / 150) { this.sick = true; this.events.push({ k: 'sick' }); }
+    // a cracked oil pan leaves a trail
+    if (this.oil) { this.oilD += sp * dt; if (this.oilD > 0.9) { this.oilD = 0; this.events.push({ k: 'oilDrip' }); } }
     // mud from puddles
     this.mudGap -= dt;
     if (this.inMud && sp > 7) {
@@ -1655,12 +1702,15 @@ class Car {
     if (s > 2) {
       const along = ox * fx + oz * fz, side = ox * rx + oz * rz;
       this.events.push({ k: 'crash', s, along, side, kind, seed: (Math.random() * 1e9) | 0 });
+      // a hard hit can rip a door clean off; it stays off for the rest of the stage
+      if (s > 8 && Math.random() < 0.22) { const d = Math.abs(side) > 0.55 ? (side > 0 ? 1 : 0) : (Math.random() < 0.5 ? 0 : 1); if (!this.doors[d].lost) { this.loseDoor(d, s); return; } }
       if (s > 5.5 && Math.abs(side) > 0.55 && Math.abs(along) < 1.4) this.openDoor(side > 0 ? 1 : 0);
       else if (s > 9 && Math.random() < 0.35) this.openDoor(Math.random() < 0.5 ? 0 : 1);
     }
   }
-  openDoor(d) { const D = this.doors[d]; if (D.open) return; D.open = true; D.v = 6; D.ph = Math.random() * 6; this.events.push({ k: 'door', d, open: true }); }
-  shutDoor(d) { const D = this.doors[d]; if (!D.open) return; D.open = false; D.v = 0; this.events.push({ k: 'door', d, open: false }); if (d === 0) this.oneHand = 0.45; }
+  loseDoor(d, s = 10) { const D = this.doors[d]; if (D.lost) return; D.lost = true; D.open = false; D.a = 0; this.events.push({ k: 'doorOff', d, s, seed: (Math.random() * 1e9) | 0 }); }
+  openDoor(d) { const D = this.doors[d]; if (D.open || D.lost) return; D.open = true; D.v = 6; D.ph = Math.random() * 6; this.events.push({ k: 'door', d, open: true }); }
+  shutDoor(d) { const D = this.doors[d]; if (!D.open || D.lost) return; D.open = false; D.v = 0; this.events.push({ k: 'door', d, open: false }); if (d === 0) this.oneHand = 0.45; }
   get kmh() { return Math.abs(this.vx) * 3.6; }
 }
 const _cols = [];
@@ -2184,6 +2234,77 @@ const POST = (() => {
   };
 })();
 
+/* ---------- game modifiers (1.4): Drunk, Blind, Deaf ---------- */
+const MODS = [
+  { k: 'drunk', n: '🍺 Drunk', d: 'Your screen swirls, wobbles and sees double.' },
+  { k: 'blind', n: '🕶️ Blind', d: 'Black screen. Drive by ear: the calls are read out to you.' },
+  { k: 'deaf', n: '🔇 Deaf', d: 'No sound at all and no calls on screen. Good luck.' },
+];
+function modOn(k) { return GAME.mode === 'race' && !!(SAVE.mods && SAVE.mods[k]); }
+function modsActive() { return MODS.filter(m => SAVE.mods[m.k]); }
+function renderMods() {
+  for (const id of ['modsStage', 'modsLobby']) {
+    const box = $(id); if (!box) continue; box.innerHTML = '<div class="mods-h">Modifiers</div>';
+    for (const m of MODS) {
+      const b = document.createElement('button'); b.className = 'mod' + (SAVE.mods[m.k] ? ' on' : '');
+      b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = m.n; b.querySelector('span').textContent = m.d;
+      b.onclick = () => {
+        AUDIO.ui(); SAVE.mods[m.k] = !SAVE.mods[m.k];
+        if (SAVE.mods[m.k] && m.k === 'blind') SAVE.mods.deaf = false; // blind and deaf together would leave you nothing
+        if (SAVE.mods[m.k] && m.k === 'deaf') SAVE.mods.blind = false;
+        save(); renderMods();
+      };
+      box.appendChild(b);
+    }
+  }
+}
+// called at the start and end of a race
+function applyMods() {
+  const race = GAME.mode === 'race', on = race ? modsActive() : [];
+  $('blindCover').classList.toggle('hidden', !modOn('blind'));
+  const tag = $('modTag'); tag.classList.toggle('hidden', !on.length); tag.textContent = on.map(m => m.k.toUpperCase()).join(' · ');
+  AUDIO.setVol(S.vol);
+  if (typeof VOICE !== 'undefined' && VOICE.el) VOICE.el.muted = modOn('deaf');
+  if (modOn('deaf')) { try { speechSynthesis.cancel(); } catch (e) {} $('calls').innerHTML = ''; }
+}
+// the drunk screen: swirl, wobbly waves and double vision, drawn over the whole view (cabin too)
+const DRUNK = (() => {
+  let rt = null;
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { tD: { value: null }, t: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `uniform sampler2D tD; uniform float t; varying vec2 vUv;
+      vec2 warp(vec2 uv){
+        vec2 d = uv - 0.5; float r = length(d);
+        float a = (0.55 * sin(t * 0.55) + 0.3 * sin(t * 1.17 + 1.3)) * (1.0 - smoothstep(0.0, 0.75, r));
+        float ca = cos(a), sa = sin(a); d = mat2(ca, -sa, sa, ca) * d;
+        d *= 1.0 - 0.05 * sin(t * 0.8);
+        uv = d + 0.5;
+        uv.x += 0.014 * sin(uv.y * 9.0 + t * 2.1); uv.y += 0.011 * sin(uv.x * 7.0 + t * 1.7);
+        return uv;
+      }
+      void main(){
+        vec2 uv = warp(vUv);
+        vec2 off = vec2(0.03 * (0.55 + 0.45 * sin(t * 0.9)), 0.008 * sin(t * 1.6));
+        vec4 c = texture2D(tD, clamp(uv - off, 0.001, 0.999)) * 0.5 + texture2D(tD, clamp(uv + off, 0.001, 0.999)) * 0.5;
+        vec4 b = texture2D(tD, clamp(uv + vec2(0.004, 0.0), 0.001, 0.999)) + texture2D(tD, clamp(uv - vec2(0.0, 0.004), 0.001, 0.999));
+        c = mix(c, b * 0.5, 0.3);
+        float v = smoothstep(0.95, 0.35, length(vUv - 0.5));
+        gl_FragColor = vec4(c.rgb * (0.55 + 0.45 * v) * vec3(1.04, 1.0, 0.94), 1.0);
+      }`,
+    depthTest: false, depthWrite: false });
+  const q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat), sc = new THREE.Scene(), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); sc.add(q);
+  return {
+    size(w, h) { if (rt) rt.dispose(); rt = new THREE.WebGLRenderTarget(w, h); mat.uniforms.tD.value = rt.texture; },
+    render() {
+      mat.uniforms.t.value = performance.now() / 1000;
+      R.setRenderTarget(rt); R.clear(); R.render(scene, wcam);
+      if (CAB.root.visible) { R.clearDepth(); R.render(cabScene, ccam); }
+      R.setRenderTarget(null); R.clear(); R.render(sc, cam);
+    }
+  };
+})();
+
 function resize() {
   const pr = Math.min(devicePixelRatio || 1, S.quality === 'low' ? 1 : 1.6);
   R.setPixelRatio(pr); R.setSize(innerWidth, innerHeight, false);
@@ -2191,6 +2312,7 @@ function resize() {
   const vf = clamp(2 * Math.atan(Math.tan(S.fov * Math.PI / 360) / asp) * 180 / Math.PI, 40, 105);
   for (const c of [wcam, ccam]) { c.aspect = asp; c.fov = vf; c.updateProjectionMatrix(); }
   POST.size(Math.floor(innerWidth * pr), Math.floor(innerHeight * pr));
+  DRUNK.size(Math.floor(innerWidth * pr), Math.floor(innerHeight * pr));
 }
 addEventListener('resize', resize);
 
@@ -2297,6 +2419,7 @@ function callSvg(c, color = 'currentColor') {
 }
 let LASTCALL = { c: null, t: 0, n: 0, el: null, tm: 0 };
 function showCall(c, who) {
+  if (modOn('deaf')) { GAME.point = { c, t: 0.7 }; return; } // deaf: no call on screen, no sound (you can still see your partner point)
   const box = $('calls'), now = performance.now();
   AUDIO.call(c);
   if (LASTCALL.el && LASTCALL.c === c && now - LASTCALL.t < 1700) {
@@ -2402,7 +2525,8 @@ function ensureStage(def) {
 function startRace(def, role, crew, vs) {
   const st = ensureStage(def);
   GAME.mode = 'race'; GAME.role = role; GAME.crew = !!crew; GAME.paused = false;
-  GAME.car = new Car(st); GAME.view = GAME.car;
+  applyMods();
+  GAME.car = new Car(st); GAME.view = GAME.car; looseClear();
   // versus: your crew's colour and grid slot; a crew of one gets the AI co-driver; the clock starts at the START banner
   GAME.vs = !!vs; GAME.lob = vs ? vs.lob : crew ? NET.lobby : null; GAME.crewIdx = vs ? vs.k : 0; GAME.stand = {}; GAME.gone = {}; GAME.vsGo = false;
   GAME.aiNav = !!(vs && role === 'driver' && !vs.lob.crews[vs.k][1]);
@@ -2413,7 +2537,7 @@ function startRace(def, role, crew, vs) {
   }
   $('vsPos').classList.toggle('hidden', !vs);
   GAME.phase = role === 'nav' || crew ? 0 : 1; GAME.cd = 3.6; GAME.resultShown = false; GAME.result = null; GAME.lbRes = null; GAME.raceMs = 0; GAME.pen = 0; GAME.crashes = 0; GAME.calls = 0; GAME.resets = 0; GAME.doneT = 0;
-  GAME.wipe = { t: -1, n: 0, a: 0 }; GAME.shake = 0; GAME.look.yaw = 0; GAME.look.pitch = 0; GAME.acc = 0; GAME.stuckT = 0; GAME.point = null; GAME.mudSeen = false; GAME.lastCnt = -1;
+  GAME.wipe = { t: -1, n: 0, a: 0 }; GAME.shake = 0; GAME.cm = null; GAME.look.yaw = 0; GAME.look.pitch = 0; GAME.acc = 0; GAME.stuckT = 0; GAME.point = null; GAME.mudSeen = false; GAME.lastCnt = -1;
   GLASS.reset(); tabReset(); AIC.called.clear(); AIC.rep.clear(); AIC.queue.length = 0; AIC.lastST = -99999; AIC.door = 0;
   NAVV.buf.length = 0; NAVV.off = null;
   $('calls').innerHTML = ''; $('count').classList.add('hidden');
@@ -2469,7 +2593,7 @@ function resetCar(pen = 5000, why) {
 }
 function leaveRace() {
   if (GAME.st) { scene.fog.near = GAME.st.B.fogN; scene.fog.far = GAME.st.B.fogF; }
-  GAME.mode = 'menu'; GAME.car = null; GAME.view = null; GAME.vs = false; GAME.aiNav = false; $('hud').classList.add('hidden'); AUDIO.stopAll(); rivalReset();
+  looseClear(); GAME.mode = 'menu'; applyMods(); GAME.car = null; GAME.view = null; GAME.vs = false; GAME.aiNav = false; $('hud').classList.add('hidden'); AUDIO.stopAll(); rivalReset();
   try { speechSynthesis.cancel(); } catch (e) {}
 }
 
@@ -2482,6 +2606,7 @@ function applyFx(e, local) {
     if (!GAME.mudSeen && GAME.role !== 'nav') { GAME.mudSeen = true; showToast('Mud on the glass!', 'Press E for the wipers', 1800); }
   } else if (e.k === 'crash') {
     GAME.shake = Math.max(GAME.shake, clamp(e.s * 0.012, 0, 0.12)); AUDIO.crash(e.s);
+    if (e.s > 3) camKick(clamp(e.s * 0.02, 0, 0.5), clamp(-(e.side || 0) * e.s * 0.05, -0.8, 0.8));
     if (e.s > 6.5) {
       const r = mulberry(e.seed);
       const u = e.along > 0.8 ? 0.2 + r() * 0.6 : e.side > 0.4 ? 0.78 + r() * 0.18 : e.side < -0.4 ? 0.04 + r() * 0.18 : 0.2 + r() * 0.6;
@@ -2489,10 +2614,15 @@ function applyFx(e, local) {
       if (e.s > 14) GLASS.crack(clamp(u + (r() - 0.5) * 0.4, 0.05, 0.95), 0.2 + r() * 0.6, 0.7, e.seed + 1);
     }
     if (GAME.role !== 'driver' || !GAME.crew) tabShock(e.s * 0.9);
-  } else if (e.k === 'land' || e.k === 'bump') {
+  } else if (e.k === 'sick') { if (local) showToast('Your engine sounds bad...', 'It is ticking and knocking', 2200); }
+  else if (e.k === 'oilPan') { AUDIO.crash(10); burst2(); if (local) showToast('Cracked the oil pan!', 'Oil is leaking out', 2200); }
+  else if (e.k === 'oilDrip') oilDrip(GAME.view);
+  else if (e.k === 'land' || e.k === 'bump') {
     GAME.shake = Math.max(GAME.shake, clamp(e.g * 0.009, 0, 0.09)); AUDIO.thud(e.g);
+    if (e.k === 'land') camKick(clamp(e.g * 0.06, 0, 1.1));
     if (GAME.role !== 'driver' || !GAME.crew) tabShock(e.g);
   } else if (e.k === 'door') AUDIO.door(e.open);
+  else if (e.k === 'doorOff') { AUDIO.crash(e.s); AUDIO.door(false); dropDoor(e.d, e.seed); if (local) showToast('Your door fell off!', 'It stays off for the rest of the stage', 1800); }
   else if (e.k === 'wipe') startWipe(false);
   else if (e.k === 'reset') { if (!local) showToast('Back on the road', '+' + (e.pen / 1000) + ' s', 1300); }
   else if (e.k === 'cut') { if (local) showToast('Cut! +10 s', 'Stay on the road', 1500); }
@@ -2551,7 +2681,7 @@ function driverFrame(dt) {
     for (const e of car.events) {
       if (e.k === 'crash') GAME.crashes += e.s > 6 ? 1 : 0;
       applyFx(e, true);
-      if (GAME.crew && e.k !== 'shift') netSend('fx', e);
+      if (GAME.crew && e.k !== 'shift' && e.k !== 'oilDrip') netSend('fx', e);
     }
     car.events.length = 0;
     if (car.fallen > 1.1 && GAME.phase === 2) resetCar(5000, 'Over the edge!');
@@ -2584,6 +2714,9 @@ function navFrame(dt) {
   car.p.set(v.x, v.y, v.z); car.yaw = v.yaw; car.pitch = v.pitch; car.roll = v.roll; car.vx = v.vx; car.steer = v.steer; car.rpm = v.rpm; car.gear = v.gear;
   car.idx = v.i; car.ay = v.ay; car.ax = v.ax; car.doors[0].a = v.d0; car.doors[1].a = v.d1; car.doors[0].open = v.d0 > 0.02; car.doors[1].open = v.d1 > 0.02; car.hand = v.hb; car.gas = v.gas;
   car.onRoad = v.on; car.oneHand = v.oh; car.bird = v.bd || 0;
+  car.sick = !!(v.dl & 4);
+  if (v.dl & 8) { car.oil = true; car.oilD += Math.abs(car.vx) / 60; if (car.oilD > 0.9) { car.oilD = 0; oilDrip(car); } }
+  for (let d = 0; d < 2; d++) if ((v.dl >> d) & 1 && !car.doors[d].lost) { car.doors[d].lost = true; dropDoor(d, (Math.random() * 1e9) | 0); }
   GAME.raceMs = v.rt;
   const ph = v.ph;
   if (ph === 1) {
@@ -2601,12 +2734,12 @@ function unpackSnap(A, B, t) {
   const l = (a, b) => a + (b - a) * t, la = (a, b) => a + wrapA(b - a) * t;
   return { x: l(A.p[0], B.p[0]), y: l(A.p[1], B.p[1]), z: l(A.p[2], B.p[2]), yaw: la(A.a[0], B.a[0]), pitch: l(A.a[1], B.a[1]), roll: l(A.a[2], B.a[2]),
     vx: l(A.v, B.v), steer: l(A.s, B.s), rpm: l(A.rpm, B.rpm), gear: B.g, i: B.i, ay: l(A.ay, B.ay), ax: l(A.ax, B.ax), d0: l(A.d[0], B.d[0]), d1: l(A.d[1], B.d[1]),
-    hb: B.hb, gas: B.gs, on: !!B.on, rt: l(A.rt, B.rt), ph: B.ph, cd: l(A.cd, B.cd), oh: B.oh, bd: l(A.bd || 0, B.bd || 0) };
+    hb: B.hb, gas: B.gs, on: !!B.on, rt: l(A.rt, B.rt), ph: B.ph, cd: l(A.cd, B.cd), oh: B.oh, bd: l(A.bd || 0, B.bd || 0), dl: B.dl || 0 };
 }
 function packSnap() {
   const c = GAME.car, r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000;
   return { t: performance.now(), p: [r2(c.p.x), r3(c.p.y), r2(c.p.z)], a: [r3(c.yaw), r3(c.pitch), r3(c.roll)], v: r2(c.vx), s: r3(c.steer), rpm: Math.round(c.rpm), g: c.gear, i: c.idx,
-    ay: r2(c.ay), ax: r2(c.ax), d: [r2(c.doors[0].a), r2(c.doors[1].a)], hb: c.hand, gs: r2(c.gas), on: c.onRoad ? 1 : 0, rt: Math.round(GAME.raceMs), ph: GAME.phase, cd: r2(GAME.cd), oh: c.oneHand > 0 ? 1 : 0, bd: r2(c.bird) };
+    ay: r2(c.ay), ax: r2(c.ax), d: [r2(c.doors[0].a), r2(c.doors[1].a)], hb: c.hand, gs: r2(c.gas), on: c.onRoad ? 1 : 0, rt: Math.round(GAME.raceMs), ph: GAME.phase, cd: r2(GAME.cd), oh: c.oneHand > 0 ? 1 : 0, bd: r2(c.bird), dl: (c.doors[0].lost ? 1 : 0) | (c.doors[1].lost ? 2 : 0) | (c.sick ? 4 : 0) | (c.oil ? 8 : 0) };
 }
 
 /* ---------- the cabin, its crew and the camera ---------- */
@@ -2617,6 +2750,7 @@ function poseCabin(dt) {
   L.position.copy(car.p); L.rotation.set(-car.pitch, car.yaw, car.roll, 'YXZ'); L.updateMatrixWorld(true);
   C.spin.rotation.z = -car.steer * 5.2;
   C.doors[0].rotation.y = -car.doors[0].a; C.doors[1].rotation.y = car.doors[1].a;
+  C.doors[0].visible = !car.doors[0].lost; C.doors[1].visible = !car.doors[1].lost;
   const wa = GAME.wipe.t >= 0 ? GAME.wipe.a : 0; C.wipers[0].rotation.z = -wa; C.wipers[1].rotation.z = -wa;
   C.hb.rotation.x = car.hand ? -0.55 : 0;
   L.updateMatrixWorld(true);
@@ -2654,12 +2788,53 @@ function poseCabin(dt) {
   C.nav.head.rotation.set(TAB.state === 'drop' ? 0.6 : 0.42 + Math.sin(t * 1.3) * 0.04, (GAME.role === 'driver' ? 0 : 0) + (GAME.point && GAME.point.t > 0 ? 0.3 : 0.08), 0);
   C.drv.head.rotation.set(0.05, lerp(clamp(-car.steer * 0.6, -0.4, 0.4), 1.1, out), 0);
 }
+// the head-on-a-spring camera motion (1.4). Works from the car's position and yaw only, so the
+// navigator (who only gets snapshots) feels the same jumps and corners as the driver.
+function camMotion(car, dt) {
+  let cm = GAME.cm;
+  dt = Math.min(dt, 0.05);
+  const fresh = !cm || cm.car !== car;
+  if (fresh) cm = GAME.cm = { car, x: 0, vx: 0, y: 0, vy: 0, p: 0, look: 0, yr: 0, py: car.p.y, pyaw: car.yaw, svy: 0 };
+  const M = S.camMove || 0;
+  if (dt <= 0) return cm;
+  // the car's vertical speed and acceleration, and how fast it is turning
+  let vyNow = (car.p.y - cm.py) / dt, yr = wrapA(car.yaw - cm.pyaw) / dt;
+  cm.py = car.p.y; cm.pyaw = car.yaw;
+  if (Math.abs(vyNow) > 40 || Math.abs(yr) > 12) { vyNow = cm.svy; yr = cm.yr; } // put back on the road: ignore the jump
+  const svy = lerp(cm.svy, vyNow, Math.min(1, dt * (GAME.role === 'nav' ? 10 : 18)));
+  const accY = clamp((svy - cm.svy) / dt, -45, 45); cm.svy = svy;
+  cm.yr = lerp(cm.yr, clamp(yr, -4, 4), Math.min(1, dt * 6));
+  if (M <= 0) { cm.x = cm.vx = cm.y = cm.vy = cm.p = cm.look = 0; return cm; }
+  // springs, in small steps so a slow frame can't blow them up
+  const n = Math.ceil(dt / 0.008), h = dt / n;
+  for (let k = 0; k < n; k++) {
+    // up and down: weightless off a crest, thrown down on a landing (a bit bouncy)
+    cm.vy += (-accY * 0.45 * M - 110 * cm.y - 10 * cm.vy) * h; cm.y += cm.vy * h;
+    // side to side: thrown to the outside of the corner
+    cm.vx += (car.ay * 0.38 * M - 60 * cm.x - 9 * cm.vx) * h; cm.x += cm.vx * h;
+  }
+  // how far the head can go grows with the setting, but it never leaves the seat
+  const yU = Math.min(0.16, 0.08 + 0.03 * M), yD = Math.min(0.19, 0.09 + 0.033 * M), xL = Math.min(0.21, 0.1 + 0.04 * M);
+  if (cm.y > yU) { cm.y = yU; cm.vy = Math.min(cm.vy, 0); } if (cm.y < -yD) { cm.y = -yD; cm.vy = Math.max(cm.vy, 0); }
+  if (Math.abs(cm.x) > xL) { cm.x = Math.sign(cm.x) * xL; cm.vx = 0; }
+  // braking nods the head down, hard acceleration presses it back
+  cm.p = lerp(cm.p, clamp(car.ax * 0.007 * M, -0.16, 0.09), Math.min(1, dt * 5));
+  // look into the corner (and into the slide)
+  cm.look = lerp(cm.look, clamp(cm.yr * 0.13 * M, -0.5, 0.5), Math.min(1, dt * 4));
+  return cm;
+}
+// landings and crashes also give the head a kick straight away
+function camKick(down, side = 0) {
+  const cm = GAME.cm, M = S.camMove || 0; if (!cm || M <= 0) return;
+  cm.vy -= down * M; cm.vx += side * M;
+}
 function cameraFrame(dt) {
   const car = GAME.view, nav = GAME.role === 'nav';
   const eye = _v1.set(nav ? -0.37 : 0.37, 0.83, -0.32);
-  // head moves with the car: lean against the turn, sink on landings
-  GAME.headX = lerp(GAME.headX || 0, clamp(car.ay * 0.004, -0.06, 0.06), Math.min(1, dt * 6));
-  eye.x += GAME.headX; eye.y += clamp(-Math.abs(car.ax) * 0.0015, -0.02, 0) ;
+  // 1.4: your head is a weight on a spring inside the car. Corners throw it sideways and tilt the view,
+  // jumps float it up and landings slam it down, braking nods it forward. Settings > Camera motion scales it all.
+  const cm = camMotion(car, dt), M = S.camMove;
+  eye.x += cm.x; eye.y += cm.y;
   GAME.shake = Math.max(0, GAME.shake - dt * 0.25);
   const sh = GAME.shake * S.shake + (car.onRoad ? 0 : Math.min(0.012, Math.abs(car.vx) * 0.0006)) * S.shake + (car.doors[0].open || car.doors[1].open ? 0.004 : 0);
   eye.x += (Math.random() - 0.5) * sh; eye.y += (Math.random() - 0.5) * sh;
@@ -2672,10 +2847,12 @@ function cameraFrame(dt) {
   GAME.look.yaw = lerp(GAME.look.yaw, ty, Math.min(1, dt * 7)); GAME.look.pitch = lerp(GAME.look.pitch, tp, Math.min(1, dt * 7));
   const L = CAB.root;
   eye.applyMatrix4(L.matrixWorld);
-  _e1.set(GAME.look.pitch + (Math.random() - 0.5) * sh * 0.6, Math.PI + GAME.look.yaw, 0, 'YXZ');
+  _e1.set(GAME.look.pitch + cm.p + cm.y * 1.4 + (Math.random() - 0.5) * sh * 0.6, Math.PI + GAME.look.yaw + cm.look, cm.x * 1.7 * (M > 0 ? 1 : 0), 'YXZ');
   _wq.setFromEuler(_e1).premultiply(L.quaternion);
+  if (modOn('drunk')) { const t = performance.now() / 1000; _e1.set(Math.sin(t * 0.7) * 0.05, Math.sin(t * 0.43) * 0.09, Math.sin(t * 0.61) * 0.1, 'YXZ'); _wq.multiply(_q2.setFromEuler(_e1)); }
   for (const c of [wcam, ccam]) { c.position.copy(eye); c.quaternion.copy(_wq); }
 }
+const _q2 = new THREE.Quaternion();
 const _lr = new THREE.Vector3(), _lu = new THREE.Vector3(), _lf = new THREE.Vector3();
 function lightFrame(focus) {
   // snap the shadow camera to whole shadow-map texels in the light's own axes, so shadows don't shimmer while moving
@@ -2714,9 +2891,62 @@ function attractFrame(dt) {
 
 /* ---------- main loop ---------- */
 let lastT = performance.now(), tabT = 0, gaugeT = 0, tripT = 0;
+/* doors that fell off: a copy tumbles onto the road and stays there */
+const LOOSE = [];
+function dropDoor(d, seed) {
+  const piv = CAB.doors[d], car = GAME.view; if (!piv || !car) return;
+  CAB.root.updateMatrixWorld(true);
+  const g = piv.clone(true); g.visible = true; g.rotation.y = 0;
+  const m = new THREE.Matrix4().copy(CAB.root.matrixWorld).multiply(new THREE.Matrix4().compose(piv.position, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)));
+  m.decompose(g.position, g.quaternion, g.scale);
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.renderOrder = 0; } });
+  scene.add(g);
+  const r = mulberry(seed), s = d === 0 ? 1 : -1, fx = Math.sin(car.yaw), fz = Math.cos(car.yaw), rx = -Math.cos(car.yaw), rz = Math.sin(car.yaw);
+  const out = (s > 0 ? -1 : 1) * (2 + r() * 2), fw = car.vx * 0.55;
+  LOOSE.push({ g, vx: fx * fw + rx * out, vz: fz * fw + rz * out, vy: 2.5 + r() * 2.5, wx: (r() - 0.5) * 9, wy: (r() - 0.5) * 7, wz: (r() - 0.5) * 9, rest: false });
+}
+const OILG = new THREE.CircleGeometry(1, 10), OILM = new THREE.MeshBasicMaterial({ color: 0x0a0806, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+const OILS = [];
+function burst2() { AUDIO.crunch && AUDIO.crunch(); }
+function oilDrip(car) {
+  if (!car || !GAME.st) return;
+  const m = new THREE.Mesh(OILG, OILM), x = car.p.x - Math.sin(car.yaw) * 0.6 + (Math.random() - 0.5) * 0.3, z = car.p.z - Math.cos(car.yaw) * 0.6 + (Math.random() - 0.5) * 0.3;
+  const r = 0.12 + Math.random() * 0.16; m.scale.set(r, r * (0.7 + Math.random() * 0.6), 1);
+  m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * 6; m.position.set(x, groundH(GAME.st, x, z) + 0.04, z);
+  scene.add(m); OILS.push(m); if (OILS.length > 600) scene.remove(OILS.shift());
+}
+function looseClear() { for (const m of OILS) scene.remove(m); OILS.length = 0; for (const L of LOOSE) scene.remove(L.g); LOOSE.length = 0; }
+const _le = new THREE.Euler(), _lq = new THREE.Quaternion();
+function looseStep(dt) {
+  const st = GAME.st; if (!st) return;
+  for (const L of LOOSE) {
+    if (L.rest) continue;
+    const g = L.g; L.vy -= 19 * dt;
+    g.position.x += L.vx * dt; g.position.y += L.vy * dt; g.position.z += L.vz * dt;
+    _lq.setFromEuler(_le.set(L.wx * dt, L.wy * dt, L.wz * dt)); g.quaternion.premultiply(_lq);
+    const h = groundH(st, g.position.x, g.position.z) + 0.05;
+    if (g.position.y < h) {
+      g.position.y = h;
+      if (Math.abs(L.vy) < 2.5 && Math.hypot(L.vx, L.vz) < 1.5) {
+        // lie flat on the ground and stay there
+        L.rest = true; const yaw = Math.atan2(L.vx, L.vz) || 0;
+        g.quaternion.setFromEuler(_le.set(0, yaw, Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1), 'YXZ'));
+        g.position.y = h + 0.03;
+      } else { L.vy = Math.abs(L.vy) * 0.3; L.vx *= 0.55; L.vz *= 0.55; L.wx *= 0.5; L.wy *= 0.5; L.wz *= 0.5; }
+    }
+  }
+}
+/* fps counter */
+let fpsN = 0, fpsT = 0;
+function fpsFrame(now) {
+  const el = $('fps'); if (!el) return;
+  el.classList.toggle('hidden', !S.fps);
+  fpsN++; if (now - fpsT >= 500) { el.textContent = Math.round(fpsN * 1000 / (now - fpsT)) + ' FPS'; fpsN = 0; fpsT = now; }
+}
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  fpsFrame(now);
   readPad();
   if (hit('Escape') || padHit(9)) togglePause();
   if (GAME.mode === 'race' && GAME.car) {
@@ -2727,6 +2957,8 @@ function frame(now) {
     if (GAME.role !== 'nav' && (!GAME.crew || GAME.aiNav)) tabStep(dt, GAME.car.ax, GAME.car.ay, false);
     if (GAME.role === 'driver' && GAME.crew && !GAME.aiNav) netTabApply();
     if (GAME.vs) rivalsFrame(dt);
+    looseStep(dt);
+    if (GAME.view.sick) AUDIO.sick(GAME.view.rpm, dt, !GAME.paused || GAME.crew);
     poseCabin(dt);
     cameraFrame(dt);
     lightFrame(GAME.view.p);
@@ -2751,6 +2983,7 @@ function frame(now) {
   PRESSED.clear();
 }
 function render(blur) {
+  if (modOn('drunk')) { DRUNK.render(); return; }
   if (S.blur && blur > 0.02) POST.render(blur);
   else { R.setRenderTarget(null); R.clear(); R.render(scene, wcam); }
   if (CAB.root.visible) { R.clearDepth(); R.render(cabScene, ccam); }
@@ -3550,6 +3783,21 @@ function showBoardResult(j) {
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.4', date: '17 November 2026', items: [
+    'Camera motion: your head now moves with the car. Corners throw it to the outside and tilt the view, you look into the turn, jumps make it float and landings slam it down, braking nods it forward.',
+    'New Camera motion slider in Settings: from Off up to 300% if you want it really violent (100% is the default).',
+    'Fixed: drifting hard to the left or right no longer stops the car dead. The car keeps sliding and scrubs off speed like it should.',
+    'Game modifiers! Pick them under the stage list or in your crew lobby. Drunk: your screen swirls, wobbles and sees double. Blind: a completely black screen, so you drive only by the calls read out to you. Deaf: no sound at all and no calls on screen.',
+  ] },
+  { v: '1.3.2', date: '15 November 2026', items: [
+    'Wider view: everyone now starts with a 120° field of view (was 100°). You can still change it in Settings.',
+    'FPS counter in the top left, on by default (turn it off in Settings).',
+    'Engine trouble: now and then your engine starts ticking and knocking and sounds awful.',
+    'Land a jump too hard and you crack the oil pan: oil leaks out behind you for the rest of the stage.',
+    'A subtle engine idle: a soft, lumpy burble when the engine is ticking over.',
+    'Damage sticks: a lost door, a bad engine and a cracked oil pan all stay with the car when it is put back on the road.',
+    'Doors can fall off! A hard crash can rip a door clean off; it tumbles onto the road and stays off for the rest of the stage.',
+  ] },
   { v: '1.3.1', date: '11 November 2026', items: [
     'Easier steering (but not easy): the wheel turns further at speed, reacts faster (keys and pads), and the car is calmer after a quick flick, so slides are easier to catch. Light help catches a little even with Steering help off.',
     'Nicer, more detailed stages: red and white chevron boards on the outside of the tight corners (with fans at some of them), flowers, fallen logs and stumps, wooden fences, hay bales, cacti in the canyon, ferns in the jungle, snow drifts, cabins and barns back from the road, clouds, and snow on the tall mountains.',
@@ -3641,7 +3889,7 @@ function openStages(mode, from) {
   STAGE_MODE = mode; STAGE_SEL = mode === 'lobby' ? (NET.lobby && NET.lobby.st) : SAVE.stage;
   $('stagesTitle').textContent = mode === 'lobby' ? 'Pick the stage' : mode === 'solo' ? 'Solo run' : 'Stages';
   $('stagesSub').textContent = mode === 'solo' ? 'You drive, the AI co-driver calls the turns. Pick a stage.' : mode === 'lobby' ? 'Your crew runs this one next.' : 'Gold, silver and bronze times are the same for solo runs and crews.';
-  renderStages();
+  renderStages(); renderMods();
   showScreen('stagesScr', from);
 }
 function renderStages() {
@@ -3698,7 +3946,9 @@ function renderSettings() {
   row('Speed blur', '', seg('blur', [[false, 'Off'], [true, 'On']]));
   row('Mouse look', 'Move the mouse to turn your head a little', seg('mlook', [[false, 'Off'], [true, 'On']]));
   row('Steering help', 'Catches slides for you', seg('assist', [[0, 'Off'], [1, 'Light'], [2, 'Strong']]));
+  row('Camera motion', 'How hard corners, jumps and landings throw your head about', range('camMove', 0, 3, 0.05, v => v <= 0 ? 'Off' : Math.round(v * 100) + '%'));
   row('Camera shake', '', seg('shake', [[0, 'Off'], [1, 'On']]));
+  row('FPS counter', 'Frames per second, top left', seg('fps', [[false, 'Off'], [true, 'On']]));
   row('Speed units', '', seg('units', [['kmh', 'km/h'], ['mph', 'mph']]));
   row('Spoken calls', 'The driver hears every call read out', seg('speech', [[false, 'Off'], [true, 'On']]));
   row('Key hints', '', seg('hints', [[false, 'Off'], [true, 'On']]));
@@ -3755,6 +4005,7 @@ function showMenuError() { $('onlineNote').textContent = 'Could not reach the se
 
 /* ---------- lobby ---------- */
 function renderLobby() {
+  renderMods();
   const L = NET.lobby; if (!L) return;
   $('crewDigits').textContent = NET.code || '------';
   const vs = !!L.vs;
@@ -3941,5 +4192,6 @@ document.querySelectorAll('#touchDrv button').forEach(b => {
 })();
 </script>
 <script src="../moving.js?v=1"></script>
+<script src="../outage.js?v=2"></script>
 </body>
 </html>

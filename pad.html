@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Phone controller · The Arcade</title>
+<meta name="theme-color" content="#050506">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="logo.svg?v=2" type="image/svg+xml">
+<link rel="stylesheet" href="arcade.css?v=21">
+<style>
+  /* pad.html (2026-11-17): your phone as a controller for a game open on a computer (see pair.js) */
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  body.padpage { background: #050506; min-height: 0; }
+  .pbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 12px; height: 54px; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); padding-top: env(safe-area-inset-top); box-sizing: content-box; border-bottom: 1px solid var(--line); background: rgba(5, 5, 6, .9); }
+  .pbar .logo { width: 26px; height: 26px; }
+  .pbar .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+  .pbar .who b { font-size: 14px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pbar .who span { font: 500 11px var(--mono); color: var(--dim); letter-spacing: .06em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+  .pbar .who span i { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+  .pbar .who span.ok i { background: var(--live); }
+  .pslot { margin-left: auto; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font: 700 12px/28px var(--mono); letter-spacing: .06em; }
+  .pslot[hidden] { display: none; }
+  .ptabs { display: flex; padding: 3px; border-radius: 999px; border: 1px solid var(--line); }
+  .ptabs button { height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--muted); font: 500 13px var(--font); }
+  .ptabs button.on { background: var(--panel-3); color: var(--text); }
+  .stagep { position: fixed; inset: calc(55px + env(safe-area-inset-top)) 0 0 0; }
+  .view { position: absolute; inset: 0; display: none; }
+  .view.on { display: block; }
+
+  /* join */
+  .join { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; height: 100%; padding: 24px; text-align: center; }
+  .join h1 { margin: 0; font-size: 30px; font-weight: 800; font-stretch: 120%; letter-spacing: -.03em; text-transform: uppercase; }
+  .join p { margin: 0; color: var(--muted); max-width: 32ch; }
+  .codein { display: flex; gap: 8px; }
+  .codein input { width: 48px; height: 60px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text); font: 700 26px var(--mono); text-align: center; text-transform: uppercase; outline: none; }
+  .codein input:focus { border-color: var(--text); }
+  .join .err { color: var(--danger); font-size: 14px; min-height: 20px; }
+
+  /* shared controls */
+  .btnp { position: absolute; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .05); color: var(--text); font: 700 18px var(--font); touch-action: none; transition: transform .06s, background .06s; }
+  .btnp.down { background: rgba(255, 255, 255, .22); transform: scale(.94); }
+  .btnp small { font: 500 10px var(--mono); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; position: absolute; bottom: -18px; white-space: nowrap; }
+
+  /* wheel: brake on the left, gas on the right, tilt to steer */
+  .pedal { position: absolute; top: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); width: 30%; border-radius: 22px; border: 1px solid var(--line-2); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; padding-bottom: 22px; touch-action: none; transition: background .08s, transform .08s; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .03) 0 10px, transparent 10px 20px), rgba(255, 255, 255, .03); }
+  .pedal b { font: 800 22px var(--font); font-stretch: 120%; letter-spacing: -.02em; text-transform: uppercase; }
+  .pedal span { font: 500 11px var(--mono); color: var(--dim); letter-spacing: .1em; text-transform: uppercase; }
+  .pedal.brake { left: max(14px, env(safe-area-inset-left)); }
+  .pedal.gas { right: max(14px, env(safe-area-inset-right)); }
+  .pedal.gas.down { background: var(--accent); color: var(--accent-ink); transform: scale(.98); }
+  .pedal.gas.down span { color: var(--accent-ink); }
+  .pedal.brake.down { background: rgba(255, 255, 255, .25); transform: scale(.98); }
+  .wheelc { position: absolute; left: 30%; right: 30%; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+  .wheel { width: min(36vw, 46vh, 190px); aspect-ratio: 1; transition: transform .05s linear; }
+  .wheel svg { width: 100%; height: 100%; }
+  .tiltbar { width: min(34vw, 180px); height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); position: relative; }
+  .tiltbar i { position: absolute; top: -3px; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--text); }
+  .wrow { display: flex; gap: 10px; }
+  .wrow button { height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .05); color: var(--text); font: 500 13px var(--font); }
+  .wrow button.down { background: rgba(255, 255, 255, .22); }
+  .tiltask { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: rgba(5, 5, 6, .92); text-align: center; padding: 24px; }
+  .tiltask[hidden] { display: none; }
+  .tiltask p { color: var(--muted); margin: 10px 0 18px; }
+  .turnme { position: absolute; inset: 0; z-index: 4; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px; background: #050506; }
+  @media (orientation: portrait) { .wheelmode .turnme { display: flex; } }
+  .turnme svg { width: 64px; height: 64px; animation: turn 2.4s var(--ease-io) infinite; }
+  @keyframes turn { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+
+  /* pad: stick on the left, buttons on the right */
+  .stickz { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; touch-action: none; }
+  .stick { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .04); left: 26%; top: 58%; pointer-events: none; }
+  .stick i { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255, 255, 255, .85); box-shadow: 0 10px 30px rgba(0, 0, 0, .6); }
+  .abxy { position: absolute; right: max(26px, env(safe-area-inset-right)); top: 58%; width: 196px; height: 196px; margin-top: -98px; }
+  .abxy .btnp { width: 64px; height: 64px; }
+  .abxy [data-btn="3"] { left: 66px; top: 0; } .abxy [data-btn="2"] { left: 0; top: 66px; } .abxy [data-btn="1"] { right: 0; top: 66px; } .abxy [data-btn="0"] { left: 66px; bottom: 0; background: rgba(255, 90, 44, .14); border-color: rgba(255, 90, 44, .5); }
+  .shoulders { position: absolute; top: 12px; left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); display: flex; justify-content: space-between; }
+  .shoulders .grp { display: flex; gap: 8px; }
+  .shoulders .btnp, .mids .btnp { position: relative; width: auto; height: 38px; padding: 0 16px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+  .mids { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; gap: 10px; }
+
+  /* info: the second screen */
+  .info2 { height: 100%; overflow-y: auto; padding: 18px max(18px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); touch-action: pan-y; -webkit-user-select: text; user-select: text; }
+  .info2 .art { width: 100%; max-width: 520px; aspect-ratio: 16 / 9; border-radius: 14px; object-fit: cover; box-shadow: 0 0 0 1px var(--line); background: var(--panel); display: block; }
+  .info2 h2 { margin: 16px 0 4px; font-size: 30px; line-height: 1; font-weight: 800; font-stretch: 120%; letter-spacing: -.03em; text-transform: uppercase; }
+  .info2 .acts2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 18px 0; max-width: 520px; }
+  .info2 .acts2 button { height: 48px; border-radius: 12px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .05); color: var(--text); font: 600 14px var(--font); }
+  .info2 h3 { margin: 22px 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .info2 ul { list-style: none; margin: 0; padding: 0; max-width: 520px; }
+  .info2 li { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  .info2 li span:last-child { text-align: right; }
+  .info2 .row2 { display: flex; flex-wrap: wrap; gap: 8px; max-width: 520px; }
+  .info2 .row2 .btn { flex: 1; }
+  @media (orientation: landscape) {
+    .info2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 0 28px; align-items: start; }
+    .info2 .i-left { position: sticky; top: 0; }
+    .info2 .acts2 { margin-top: 0; }
+    .info2 .art { max-height: 46vh; width: 100%; }
+  }
+  .toast2 { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 9; padding: 10px 16px; border-radius: 999px; background: var(--text); color: #08080a; font-weight: 600; font-size: 14px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .toast2.on { opacity: 1; }
+</style>
+</head>
+<body class="player padpage">
+<div class="pbar">
+  <img class="logo" src="logo.svg?v=2" alt="">
+  <div class="who"><b id="gTitle">Phone controller</b><span id="conn"><i></i><em id="connT" style="font-style:normal">Not connected</em></span></div>
+  <span class="pslot" id="slot" hidden>P1</span>
+  <div class="ptabs" id="tabs" hidden><button type="button" data-v="ctl" class="on">Controller</button><button type="button" data-v="info">Info</button></div>
+</div>
+
+<div class="stagep">
+  <section class="view on" id="vJoin">
+    <div class="join">
+      <h1>Phone controller</h1>
+      <p>On the computer, open a game on The Arcade, press <b>Phone</b>, then type the code you see.</p>
+      <form class="codein" id="codeForm" autocomplete="off">
+        <input maxlength="1" inputmode="text" aria-label="Code letter 1"><input maxlength="1" aria-label="Code letter 2"><input maxlength="1" aria-label="Code letter 3"><input maxlength="1" aria-label="Code letter 4"><input maxlength="1" aria-label="Code letter 5">
+      </form>
+      <div class="err" id="joinErr"></div>
+      <button type="button" class="btn big accent" id="joinBtn">Connect</button>
+    </div>
+  </section>
+
+  <section class="view wheelmode" id="vWheel">
+    <div class="pedal brake" data-ped="lt"><b>Brake</b><span>Hold</span></div>
+    <div class="wheelc">
+      <div class="wheel" id="wheel"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="6"><circle cx="50" cy="50" r="42"/><circle cx="50" cy="50" r="9" fill="currentColor" stroke="none"/><path d="M12 54h29M59 54h29M50 59v32" stroke-linecap="round"/><path d="M50 8v8" stroke="#ff5a2c" stroke-linecap="round"/></svg></div>
+      <div class="tiltbar"><i id="tiltDot"></i></div>
+      <div class="wrow"><button type="button" data-btn="0">Boost</button><button type="button" id="recenter">Re-centre</button><button type="button" data-act="pause">Pause</button></div>
+    </div>
+    <div class="pedal gas" data-ped="rt"><b>Gas</b><span>Hold</span></div>
+    <div class="tiltask" id="tiltAsk" hidden><div><h2 style="margin:0">Steer by tilting</h2><p>Hold your phone sideways like a steering wheel.</p><button type="button" class="btn big accent" id="tiltOk">Turn on tilt steering</button><p style="margin-top:14px"><button type="button" class="btn ghost" id="tiltNo">Use buttons instead</button></p></div></div>
+    <div class="turnme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg><b>Turn your phone sideways</b><span style="color:var(--muted)">Hold it like a steering wheel</span></div>
+  </section>
+
+  <section class="view" id="vPad">
+    <div class="shoulders"><div class="grp"><button type="button" class="btnp" data-btn="6">LT</button><button type="button" class="btnp" data-btn="4">LB</button></div><div class="grp"><button type="button" class="btnp" data-btn="5">RB</button><button type="button" class="btnp" data-btn="7">RT</button></div></div>
+    <div class="stickz" id="stickZone"><div class="stick" id="stick"><i></i></div></div>
+    <div class="abxy"><button type="button" class="btnp" data-btn="3">Y</button><button type="button" class="btnp" data-btn="2">X</button><button type="button" class="btnp" data-btn="1">B</button><button type="button" class="btnp" data-btn="0">A</button></div>
+    <div class="mids"><button type="button" class="btnp" data-btn="8">Select</button><button type="button" class="btnp" data-btn="9">Start</button></div>
+  </section>
+
+  <section class="view" id="vInfo">
+    <div class="info2">
+      <div class="i-left"><img class="art" id="iArt" alt="">
+      <h2 id="iTitle"></h2></div>
+      <div class="i-right"><div class="acts2"><button type="button" data-act="pause">Pause</button><button type="button" data-act="mute">Mute</button><button type="button" data-act="clip">Clip</button></div>
+      <div class="row2"><a class="btn big accent" id="playHere">Play on this phone</a></div>
+      <h3>Controller</h3>
+      <div class="row2"><button type="button" class="btn ghost" id="lWheel">Steering wheel</button><button type="button" class="btn ghost" id="lPad">Gamepad</button></div>
+      <div class="row2" style="margin-top:8px"><button type="button" class="btn ghost" id="invert">Flip steering</button></div>
+      <h3>Controls in this game</h3>
+      <ul id="iKeys"></ul></div>
+    </div>
+  </section>
+</div>
+<div class="toast2" id="toast"></div>
+
+<script src="rt.js?v=6"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  const ID = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 12);
+  let ch = null, info = null, slot = null, layout = null, invert = ls.get('arcade-pad-invert') === '1';
+  const st = { x: 0, y: 0, lt: 0, rt: 0, m: 0 }; // what we send
+  let tiltX = 0, tiltOn = false, zero = null;
+
+  const toast = t => { const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('on'), 1600); };
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
+  const show = v => { for (const s of document.querySelectorAll('.view')) s.classList.toggle('on', s.id === v); };
+  const conn = (ok, t) => { $('conn').classList.toggle('ok', ok); $('connT').textContent = t; };
+
+  /* ---------- joining ---------- */
+  const boxes = [...document.querySelectorAll('.codein input')];
+  boxes.forEach((b, i) => {
+    b.addEventListener('input', () => { b.value = b.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (b.value && boxes[i + 1]) boxes[i + 1].focus(); if (boxes.every(x => x.value)) join(boxes.map(x => x.value).join('')); });
+    b.addEventListener('keydown', e => { if (e.key === 'Backspace' && !b.value && boxes[i - 1]) boxes[i - 1].focus(); });
+    b.addEventListener('paste', e => { const t = (e.clipboardData.getData('text') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); if (t.length === 5) { e.preventDefault(); t.split('').forEach((c, k) => boxes[k].value = c); join(t); } });
+  });
+  $('codeForm').onsubmit = e => { e.preventDefault(); };
+  $('joinBtn').onclick = () => { const c = boxes.map(x => x.value).join(''); if (c.length === 5) join(c); else $('joinErr').textContent = 'Type all 5 letters of the code.'; };
+
+  function join(code) {
+    code = code.toUpperCase();
+    if (!/^[A-Z0-9]{5}$/.test(code)) { $('joinErr').textContent = 'That code doesn’t look right.'; return; }
+    if (ch) { try { ch.unsubscribe && ch.unsubscribe(); } catch (e) {} ch = null; }
+    $('joinErr').textContent = ''; conn(false, 'Connecting…');
+    history.replaceState(null, '', '?c=' + code);
+    const client = window.supabase && window.supabase.createClient();
+    if (!client) { conn(false, 'Can’t connect'); return; }
+    ch = client.channel('pair:' + code, { config: { presence: { key: ID } } });
+    ch.on('broadcast', { event: 'info' }, e => onInfo(e.payload || {}));
+    ch.on('broadcast', { event: 'rumble' }, e => { if (e.payload && e.payload.id === ID) buzz(Math.min(e.payload.ms || 80, 400)); });
+    ch.on('presence', { event: 'sync' }, () => {
+      const s = ch.presenceState();
+      const host = Object.keys(s).some(k => (s[k] || []).some(m => m.role === 'host'));
+      if (!host) { conn(false, info ? 'The game closed' : 'Waiting for the game…'); if (!info) $('joinErr').textContent = 'No game with that code. Check the code on the computer.'; }
+    });
+    ch.subscribe(s => {
+      if (s === 'SUBSCRIBED') { ch.track({ role: 'pad', id: ID }); conn(false, 'Waiting for the game…'); }
+      else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') conn(false, 'Can’t connect');
+    });
+  }
+
+  function onInfo(p) {
+    const first = !info;
+    info = p;
+    slot = p.slots ? p.slots[ID] : undefined;
+    if (slot === undefined) { conn(false, 'Game is full (4 players)'); return; }
+    conn(true, 'Connected');
+    $('gTitle').textContent = p.t || 'The Arcade';
+    $('slot').hidden = false; $('slot').textContent = 'P' + (slot + 1);
+    $('tabs').hidden = false;
+    $('iTitle').textContent = p.t || ''; $('iArt').src = p.th || '';
+    $('playHere').href = p.play || 'index.html';
+    $('iKeys').replaceChildren(...(p.k || []).map(([k, w]) => { const li = document.createElement('li'); const a = document.createElement('span'), b = document.createElement('span'); a.textContent = k; b.textContent = w; li.append(a, b); return li; }));
+    if (first) { buzz(30); setLayout(ls.get('arcade-pad-layout-' + p.g) || p.l || 'pad'); toast('Connected as Player ' + (slot + 1)); }
+  }
+
+  /* ---------- sending ---------- */
+  let last = '', lastAt = 0, queued = false;
+  function send(force) {
+    if (!ch || !info || slot === undefined || slot === null) return;
+    const p = { id: ID, x: +st.x.toFixed(3), y: +st.y.toFixed(3), lt: +st.lt.toFixed(2), rt: +st.rt.toFixed(2), m: st.m };
+    const s = JSON.stringify(p), now = Date.now();
+    if (!force && s === last) return;
+    if (now - lastAt < 33) { if (!queued) { queued = true; setTimeout(() => { queued = false; send(); }, 33); } return; }
+    last = s; lastAt = now;
+    ch.send({ type: 'broadcast', event: 'in', payload: p });
+  }
+  setInterval(() => send(true), 400); // a heartbeat, so a dropped message never leaves a key held
+  const setBtn = (b, on) => { const bit = 1 << b; st.m = on ? st.m | bit : st.m & ~bit; if (b === 6) st.lt = on ? 1 : 0; if (b === 7) st.rt = on ? 1 : 0; send(); };
+  const act = a => { if (ch && info) { ch.send({ type: 'broadcast', event: 'act', payload: { id: ID, a } }); buzz(15); toast(a === 'pause' ? 'Paused' : a === 'mute' ? 'Sound toggled' : 'Saving a clip'); } };
+
+  /* ---------- touch buttons (several fingers at once) ---------- */
+  function hold(el, on, off) {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('down'); buzz(8); on(); });
+    const up = e => { if (!el.classList.contains('down')) return; el.classList.remove('down'); off(); };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+    el.addEventListener('contextmenu', e => e.preventDefault());
+  }
+  for (const b of document.querySelectorAll('[data-btn]')) { const n = +b.dataset.btn; hold(b, () => setBtn(n, true), () => setBtn(n, false)); }
+  for (const p of document.querySelectorAll('[data-ped]')) { const k = p.dataset.ped; hold(p, () => { st[k] = 1; setBtn(k === 'rt' ? 7 : 6, true); }, () => { st[k] = 0; setBtn(k === 'rt' ? 7 : 6, false); }); }
+  for (const b of document.querySelectorAll('[data-act]')) b.addEventListener('click', () => act(b.dataset.act));
+
+  /* ---------- the stick ---------- */
+  const zone = $('stickZone'), stick = $('stick'), knob = stick.firstElementChild;
+  let sid = null, cx = 0, cy = 0;
+  zone.addEventListener('pointerdown', e => {
+    if (sid !== null) return; sid = e.pointerId; zone.setPointerCapture(sid);
+    const r = zone.getBoundingClientRect(); cx = e.clientX; cy = e.clientY;
+    stick.style.left = (cx - r.left) + 'px'; stick.style.top = (cy - r.top) + 'px';
+  });
+  zone.addEventListener('pointermove', e => {
+    if (e.pointerId !== sid) return;
+    let dx = e.clientX - cx, dy = e.clientY - cy; const d = Math.hypot(dx, dy), R = 50;
+    if (d > R) { dx *= R / d; dy *= R / d; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    st.x = dx / R; st.y = dy / R; send();
+  });
+  const stickUp = e => { if (e.pointerId !== sid) return; sid = null; knob.style.transform = ''; st.x = 0; st.y = 0; send(); };
+  zone.addEventListener('pointerup', stickUp); zone.addEventListener('pointercancel', stickUp);
+
+  /* ---------- tilt steering ---------- */
+  const angleNow = g => Math.atan2(g.y, g.x) * 180 / Math.PI;
+  function onMotion(e) {
+    const g = e.accelerationIncludingGravity; if (!g || g.x === null) return;
+    const a = angleNow(g);
+    if (zero === null) zero = a;
+    let d = a - zero; if (d > 180) d -= 360; if (d < -180) d += 360;
+    const o = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    let v = (o === 270 || o === -90 ? 1 : -1) * d / 40;
+    if (/iPhone|iPad/.test(navigator.userAgent)) v = -v; // iOS reports gravity the other way round
+    if (invert) v = -v;
+    if (Math.abs(v) < 0.05) v = 0;
+    tiltX = tiltX * 0.55 + Math.max(-1, Math.min(1, v)) * 0.45;
+    if (layout === 'wheel' && tiltOn) {
+      st.x = tiltX; send();
+      $('wheel').style.transform = `rotate(${tiltX * 90}deg)`;
+      $('tiltDot').style.left = (50 + tiltX * 50) + '%';
+    }
+  }
+  function startTilt() {
+    const go = () => { tiltOn = true; zero = null; addEventListener('devicemotion', onMotion); $('tiltAsk').hidden = true; ls.set('arcade-pad-tilt', '1'); };
+    if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') DeviceMotionEvent.requestPermission().then(r => r === 'granted' ? go() : (toast('Tilt steering is off'), setLayout('pad'))).catch(() => setLayout('pad'));
+    else if ('DeviceMotionEvent' in window) go(); else setLayout('pad');
+  }
+  $('tiltOk').onclick = startTilt;
+  $('tiltNo').onclick = () => setLayout('pad');
+  $('recenter').onclick = () => { zero = null; buzz(20); toast('Centred'); };
+  $('invert').onclick = () => { invert = !invert; ls.set('arcade-pad-invert', invert ? '1' : '0'); toast(invert ? 'Steering flipped' : 'Steering normal'); };
+
+  function setLayout(l) {
+    layout = l;
+    if (info) ls.set('arcade-pad-layout-' + info.g, l);
+    st.x = st.y = 0; send();
+    show(l === 'wheel' ? 'vWheel' : 'vPad'); tab('ctl');
+    if (l === 'wheel' && !tiltOn) {
+      // iPhones ask for permission with a tap; elsewhere it just starts
+      if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') $('tiltAsk').hidden = false; else startTilt();
+    }
+  }
+  $('lWheel').onclick = () => setLayout('wheel');
+  $('lPad').onclick = () => setLayout('pad');
+  function tab(v) {
+    for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.v === v);
+    if (v === 'info') show('vInfo'); else show(layout === 'wheel' ? 'vWheel' : 'vPad');
+  }
+  for (const b of document.querySelectorAll('#tabs button')) b.onclick = () => tab(b.dataset.v);
+
+  // keep the screen on while it's a controller
+  let lock = null;
+  const wake = () => { if (navigator.wakeLock && document.visibilityState === 'visible') navigator.wakeLock.request('screen').then(l => { lock = l; }).catch(() => {}); };
+  document.addEventListener('visibilitychange', wake); document.addEventListener('pointerdown', wake, { once: true });
+
+  const c = (/[?&]c=([A-Za-z0-9]{5})/.exec(location.search) || [])[1];
+  if (c) { c.toUpperCase().split('').forEach((ch2, k) => boxes[k].value = ch2); join(c); } else boxes[0].focus();
+  window.__pad = { st, setBtn, join, get info() { return info; } }; // tests
+})();
+</script>
+</body>
+</html>

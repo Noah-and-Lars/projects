@@ -4,15 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Game over · The Arcade</title>
-<meta name="theme-color" content="#0f0d1f">
+<meta name="theme-color" content="#050506">
 <!-- This page can show up at any address, so every link is from the site root -->
 <link rel="icon" href="/projects/logo.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/projects/arcade.css?v=6">
+<link rel="stylesheet" href="/projects/arcade.css?v=21">
 <style>
   .lost { flex: 1; display: grid; place-items: center; text-align: center; padding: 40px 20px; }
   .lost .code { font: 800 clamp(80px, 22vw, 180px)/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: -0.04em;
-    background: linear-gradient(180deg, #fff, #6c5ce7); -webkit-background-clip: text; background-clip: text; color: transparent;
-    text-shadow: 0 0 60px #6c5ce755; }
+    color: transparent; -webkit-text-stroke: 2px rgba(255, 255, 255, .5); font-family: var(--font); font-stretch: 125%; }
   .lost h1 { margin: 4px 0 8px; font-size: clamp(26px, 5vw, 38px); letter-spacing: .2em; text-transform: uppercase; }
   .lost p { margin: 0 auto 26px; color: var(--muted); max-width: 420px; }
   .lost .btn { padding: 12px 24px; font-size: 16px; }
@@ -34,5 +33,6 @@
   </div>
 </main>
 <script src="/projects/moving.js?v=1"></script>
+<script src="/projects/outage.js?v=2"></script>
 </body>
 </html>

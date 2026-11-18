@@ -569,6 +569,8 @@ function checkEnd() {
 }
 function finish() {
   if (localGame) { finishLocal(); return; } // 1.5
+  // 2026-11-17: a tournament match tells the tournament page (tourney.js, through play.html) how it ended
+  if (online.on && window.__tmatch) { const r = hist.length < 2 && !over.quit && !over.left ? 'aborted' : over.quit ? 'quit' : over.left ? 'left' : !over.winner ? 'd' : over.winner === player ? 'w' : 'l'; try { parent.postMessage({ arcadeMatch: { code: window.__tmatch.code, res: r, opp: oppName() } }, location.origin); } catch (e) {} }
   // online games have their own record, and leave your saved game against the computer alone
   const st = online.on ? save.online : save.stats[level], aborted = online.on && hist.length < 2; // 1.4: an aborted online game doesn't count at all
   if (!aborted) { if (!over.winner) st.d++; else if (over.winner === player) st.w++; else st.l++; }
@@ -883,10 +885,10 @@ const Net = (() => {
     await joinChan(lobby);
     await lobby.track({ id: myId, n: api.name, t });
   };
-  api.create = async name => {
+  api.create = async (name, fixed) => { // fixed: a tournament match's table code (2026-11-17)
     api.name = api.cleanName(name) || 'Player'; api.on = true;
     await getClient();
-    const code = Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
+    const code = fixed || Array.from({ length: 5 }, () => ALPH[Math.floor(Math.random() * ALPH.length)]).join('');
     await seat('c' + code, myId, null);
     return code;
   };
@@ -974,6 +976,19 @@ $('netBox').addEventListener('click', e => {
   }
 });
 $('netName').value = save.name || '';
+// 2026-11-17: tournament matches (tourney.js): ?tmatch=CODE&tside=host|guest&tname=NAME opens that table straight away;
+// the guest keeps knocking until the host has sat down
+(() => {
+  const q = new URLSearchParams(location.search), code = (q.get('tmatch') || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), side = q.get('tside');
+  if (code.length !== 5) return;
+  window.__tmatch = { code };
+  const name = Net.cleanName(q.get('tname') || save.name || '') || 'Player';
+  $('netName').value = name; save.name = name;
+  let tries = 0;
+  const go = () => { if (Net.opp || tries++ > 60) return; netWaiting(true); if (side === 'host') { netStatus('Tournament match: waiting for your opponent at table ' + code + '…'); Net.create(name, code).catch(netFail); } else { netStatus('Tournament match: joining table ' + code + '…'); Net.join(name, code).catch(() => setTimeout(go, 3000)); } };
+  if (side !== 'host') Net.onEvent('error', () => { if (!Net.opp) setTimeout(go, 3000); });
+  setTimeout(go, 700);
+})();
 // 1.4: the level you start from (once), and the rating card
 $('rateLevel').addEventListener('click', e => {
   const b = e.target.closest('button[data-lv]'); if (!b || save.rating) return;
@@ -1045,5 +1060,6 @@ if (save.game && Array.isArray(save.game.moves) && save.opp !== 'local') {
 
 </script>
 <script src="../moving.js?v=1"></script>
+<script src="../outage.js?v=2"></script>
 </body>
 </html>

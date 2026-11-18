@@ -11,6 +11,7 @@
    WebCodecs (older Safari) get start/stop recording instead, up to MAX_S seconds.
    Posting: POST /clips/new (details + poster) then PUT /clips/v/<id>?k= with the video (see the Worker). */
 (function () {
+  if (window.ARCADE_WATCH) return; // Apple Watch: no video calls, clip recorder, typing dots or TV mode (lighter)
   'use strict';
   var MAX_S = 60, MAX_BYTES = 12 * 1024 * 1024, OUT_W = 1280, OUT_H = 720, FPS = 30;
   var ROOM = ((/[?&]clipsroom=([a-z0-9-]+)/i.exec(location.search) || [])[1] || '').toLowerCase(); // tests: a separate Social
@@ -352,7 +353,7 @@
   function paintBtn() {
     if (!btn || rec) return;
     btn.classList.remove('on');
-    btn.textContent = canReplay ? '🎬 Clip last 30s' : '🎬 Clip';
+    btn.textContent = canReplay ? 'Clip last 30s' : 'Clip';
     btn.title = canReplay ? 'Save the last 30 seconds of your game (F8)' : 'Record a clip of your game (F8)';
     btn.classList.toggle('live', !!rp);
   }

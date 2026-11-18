@@ -2,9 +2,28 @@
 // tick the box and agree. Agreeing is remembered in this browser under TOS_KEY; change TOS_VERSION to ask everyone
 // again after the terms change.
 (function () {
-  var TOS_VERSION = '2026-11-14e', TOS_KEY = 'arcade-tos-agreed';
-  try { if (localStorage.getItem(TOS_KEY) === TOS_VERSION) return; } catch (e) {}
-  if (/[?&]notos=1/.test(location.search)) return;
+  var TOS_VERSION = '2026-11-16b', TOS_KEY = 'arcade-tos-agreed';
+  // 2026-11-16: window.arcadeShowTerms() reopens the terms any time (the "Terms of Service" link in the home page footer);
+  // only the automatic first-visit pop-up is skipped once agreed, on a watch or with ?notos=1
+  var agreed = false;
+  try { agreed = localStorage.getItem(TOS_KEY) === TOS_VERSION; } catch (e) {}
+  // 2026-11-15: no pop-up on an Apple Watch: the button doesn't fit on the screen (window.ARCADE_WATCH, set at the top of each page)
+  // its own check too, in case a page didn't set the flag: any watch-sized touch screen (no phone is this small)
+  var isWatch = function () {
+    try {
+      var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0;
+      var t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+      return !!window.ARCADE_WATCH || /Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420);
+    } catch (e) { return false; }
+  };
+  var auto = !agreed && !isWatch() && !/[?&]notos=1/.test(location.search);
+
+  // 2026-11-16: no-affiliation notice, shown in capitals above section 1
+  var NOTICE = ['IMPORTANT NOTICE: NO AFFILIATION WITH "THE ARC"',
+    ['THE ARCADE IS AN INDEPENDENT WEBSITE. IT IS NOT, AND SHOULD NOT BE MISTAKEN FOR, CONFUSED WITH OR TAKEN TO BE PART OF, ANY OTHER GAMES WEBSITE, INCLUDING THE WEBSITE KNOWN AS "THE ARC".',
+     'THE ARCADE IS NOT AFFILIATED WITH, ASSOCIATED WITH, ENDORSED BY, SPONSORED BY, PARTNERED WITH OR OTHERWISE CONNECTED TO "THE ARC" OR ANY OF ITS CREATORS, OPERATORS, STAFF OR USERS IN ANY WAY, AND "THE ARC" IS NOT AFFILIATED WITH THE ARCADE.',
+     'NO ACCOUNT, MESSAGE, LINK, GAME, ANNOUNCEMENT OR OTHER CONTENT FROM OR ABOUT "THE ARC" REPRESENTS OR SPEAKS FOR THE ARCADE. WE ACCEPT NO RESPONSIBILITY OR LIABILITY FOR "THE ARC", ITS CONTENT, ITS SERVICES OR ANYTHING THAT HAPPENS ON IT.',
+     'NO CONFUSION BETWEEN THE TWO WEBSITES SHOULD BE MADE. YOU MUST NOT PRESENT THE ARCADE AS BEING CONNECTED TO "THE ARC", OR "THE ARC" AS BEING CONNECTED TO THE ARCADE.']];
 
   var TERMS = [
     ['1. Acceptance of Terms',
@@ -51,45 +70,70 @@
     ['11. Changes to These Terms',
       ['We may amend these Terms at any time. When the Terms change, the Site may ask you to agree to them again. Your continued use of the Site after any change constitutes your acceptance of the amended Terms.']],
     ['12. General',
-      ['If any provision of these Terms is found to be unenforceable, the remaining provisions remain in full force and effect. Our failure to enforce any provision does not waive our right to enforce it later. These Terms constitute the entire agreement between you and us regarding your use of the Site.']]
+      ['If any provision of these Terms is found to be unenforceable, the remaining provisions remain in full force and effect. Our failure to enforce any provision does not waive our right to enforce it later. These Terms constitute the entire agreement between you and us regarding your use of the Site.']],
+    // 2026-11-16: shown in capitals in a red box, like the notice at the top (third item = red)
+    ['13. USER\'S FAILURE TO READ THE TERMS OF SERVICE',
+      ['ANY COMPLAINTS, CLAIMS, DISPUTES, LOSSES OR PROBLEMS OF ANY KIND ARISING FROM, OR IN CONNECTION WITH, A USER\'S FAILURE TO READ THESE TERMS OF SERVICE ARE THE SOLE RESPONSIBILITY AND LIABILITY OF THAT USER. NEITHER THE SITE NOR ITS CREATORS ACCEPT ANY RESPONSIBILITY OR LIABILITY FOR THEM.',
+       'IT IS YOUR RESPONSIBILITY TO READ THESE TERMS IN FULL, CAREFULLY AND FROM BEGINNING TO END, BEFORE YOU ACCESS OR USE THE SITE, AND TO MAKE SURE THAT YOU UNDERSTAND THEM. IF ANY PART OF THESE TERMS IS UNCLEAR TO YOU, YOU SHOULD NOT USE THE SITE UNTIL IT IS CLEAR.',
+       'BY TICKING THE BOX AND SELECTING "AGREE AND CONTINUE", OR BY ACCESSING OR USING THE SITE IN ANY WAY, YOU CONFIRM THAT YOU HAVE READ AND UNDERSTOOD THESE TERMS IN FULL. YOU AGREE THAT YOU CANNOT RELY ON A FAILURE TO READ, SKIM OR UNDERSTAND ANY PART OF THESE TERMS AS AN EXCUSE, DEFENCE OR GROUND FOR ANY COMPLAINT OR CLAIM, AND THAT THESE TERMS APPLY TO YOU IN FULL WHETHER OR NOT YOU HAVE READ THEM.',
+       'THESE TERMS CAN BE READ AGAIN AT ANY TIME USING THE "TERMS OF SERVICE" LINK AT THE BOTTOM OF THE HOME PAGE. IT IS YOUR RESPONSIBILITY TO REREAD THEM FROM TIME TO TIME, AND WHENEVER YOU ARE ASKED TO AGREE TO THEM AGAIN, SO THAT YOU ARE AWARE OF ANY CHANGES.'], true]
   ];
 
-  var css = '#tosPop{position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483000;display:grid;place-items:center;padding:16px;background:rgba(8,6,20,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-family:inherit;color:var(--text,#f1effa)}' +
+  var css = '#tosPop{position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483000;display:grid;place-items:center;padding:16px;background:rgba(2,2,3,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-family:inherit;color:var(--text,#f4f4f5)}' +
     '#tosPop *{box-sizing:border-box}' +
-    '#tosPop .tbox{width:min(720px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--panel,#1b1835);border:1px solid rgba(255,255,255,.12);border-top:4px solid var(--accent,#6c5ce7);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}' +
-    '#tosPop .thead{padding:20px 24px 12px}#tosPop .thead small{display:block;color:var(--accent-2,#00d2a8);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:12px}' +
-    '#tosPop h2{margin:6px 0 4px;font-size:26px}#tosPop .thead p{margin:0;color:var(--muted,#a9a3c9);font-size:14px;line-height:1.5}' +
+    '#tosPop .tbox{width:min(720px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--panel,#121215);border:1px solid rgba(255,255,255,.12);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}' +
+    '#tosPop .thead{padding:20px 24px 12px}#tosPop .thead small{display:block;color:var(--accent-2,#3ddc97);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:12px}' +
+    '#tosPop h2{margin:6px 0 4px;font-size:26px}#tosPop .thead p{margin:0;color:var(--muted,#a1a1aa);font-size:14px;line-height:1.5}' +
     '#tosPop .tbody{flex:1;overflow:auto;padding:4px 24px 16px;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.15)}' +
-    '#tosPop h3{margin:18px 0 6px;font-size:16px}#tosPop .tbody p{margin:0 0 8px;color:#d8d4ee;font-size:14px;line-height:1.55}' +
+    '#tosPop h3{margin:18px 0 6px;font-size:16px}#tosPop .tbody p{margin:0 0 8px;color:#c9c9cf;font-size:14px;line-height:1.55}' +
+    '#tosPop .tnotice{margin:16px 0 4px;padding:12px 14px;border:1px solid rgba(255,90,90,.45);border-left:4px solid #ff5a5a;border-radius:10px;background:rgba(255,60,60,.08)}' +
+    '#tosPop .tnotice.tred{margin:10px 0}#tosPop .tnotice.tred p{margin:0}' +
+    '#tosPop .tnotice h3{margin:0 0 8px;color:#ff8a8a;letter-spacing:.02em}#tosPop .tnotice p{color:#f4f4f5;font-weight:700;font-size:13px;letter-spacing:.01em}' +
+    '#tosPop label.off{opacity:.45;cursor:not-allowed}#tosPop label.off input{cursor:not-allowed}' +
     '#tosPop .tfoot{padding:14px 24px 18px;display:flex;flex-direction:column;gap:12px}' +
-    '#tosPop label{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45;cursor:pointer}#tosPop input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--accent,#6c5ce7);cursor:pointer}' +
-    '#tosPop button{align-self:flex-end;border:0;border-radius:10px;padding:12px 22px;font:inherit;font-weight:800;font-size:15px;background:var(--accent,#6c5ce7);color:#fff;cursor:pointer}' +
-    '#tosPop button:disabled{background:#3a3560;color:#8f89b3;cursor:not-allowed}#tosPop .thint{font-size:12px;color:var(--muted,#a9a3c9)}' +
-    '@media (max-width:520px){#tosPop h2{font-size:22px}#tosPop .thead,#tosPop .tbody,#tosPop .tfoot{padding-left:16px;padding-right:16px}#tosPop button{align-self:stretch}}';
+    '#tosPop label{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45;cursor:pointer}#tosPop input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--accent,#ff5a2c);cursor:pointer}' +
+    '#tosPop button{align-self:flex-end;border:0;border-radius:10px;padding:12px 22px;font:inherit;font-weight:600;font-size:15px;background:#f4f4f5;color:#08080a;cursor:pointer}' +
+    '#tosPop button:disabled{background:#25252c;color:#74747f;cursor:not-allowed}#tosPop .thint{font-size:12px;color:var(--muted,#a1a1aa)}' +
+    '@media (max-width:520px){#tosPop h2{font-size:22px}#tosPop .thead,#tosPop .tbody,#tosPop .tfoot{padding-left:16px;padding-right:16px}#tosPop button{align-self:stretch}}' +
+    // any very short screen that still gets the pop-up: full screen, so the tick box and button always fit
+    '@media (max-height:460px){#tosPop{padding:0}#tosPop .tbox{max-height:none;height:100%;border-radius:0}#tosPop .thead{padding:8px 10px 6px}#tosPop .thead p{display:none}#tosPop h2{font-size:16px}#tosPop .tbody,#tosPop .tfoot{padding:6px 10px}#tosPop .tfoot{gap:6px}#tosPop label,#tosPop .tbody p{font-size:12px}#tosPop button{padding:8px;align-self:stretch}}';
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function show() {
+  function show(again) {
+    if (!again && isWatch()) return; // checked again once the page has its real size
     if (document.getElementById('tosPop')) return;
     var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     var d = document.createElement('div'); d.id = 'tosPop'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'tosTitle');
-    var body = TERMS.map(function (s) { return '<h3>' + esc(s[0]) + '</h3>' + s[1].map(function (p) { return '<p>' + esc(p) + '</p>'; }).join(''); }).join('');
+    var notice = '<div class="tnotice"><h3>' + esc(NOTICE[0]) + '</h3>' + NOTICE[1].map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>';
+    var body = notice + TERMS.map(function (s) { if (s[2]) return '<div class="tnotice"><h3>' + esc(s[0]) + '</h3>' + s[1].map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>'; return '<h3>' + esc(s[0]) + '</h3>' + s[1].map(function (p) { return /^IF YOU CIRCUMVENT/.test(p) ? '<div class="tnotice tred"><p>' + esc(p) + '</p></div>' : '<p>' + esc(p) + '</p>'; }).join(''); }).join('');
     d.innerHTML = '<div class="tbox"><div class="thead"><small>The Arcade</small><h2 id="tosTitle">Terms of Service</h2>' +
-      '<p>Please read these Terms carefully before using the Site. Last updated 10 November 2026.</p></div>' +
+      '<p>Please read these Terms carefully before using the Site. Last updated 16 November 2026.</p></div>' +
       '<div class="tbody" tabindex="0">' + body + '</div>' +
-      '<div class="tfoot"><label><input type="checkbox" id="tosCheck"><span>I have read and agree to the Terms of Service. I acknowledge that I am solely responsible for everything I post on the Site, that games may be changed or removed at any time, and that the Site may be changed, taken down or terminated at any time.</span></label>' +
-      '<span class="thint" id="tosHint">Tick the box to continue.</span><button id="tosOk" disabled>Agree and continue</button></div></div>';
+      '<div class="tfoot"><label id="tosLabel" class="off"><input type="checkbox" id="tosCheck" disabled><span>I have read and agree to the Terms of Service. I acknowledge that I am solely responsible for everything I post on the Site, that games may be changed or removed at any time, and that the Site may be changed, taken down or terminated at any time.</span></label>' +
+      '<span class="thint" id="tosHint">Scroll to the bottom of the terms to continue.</span><button id="tosOk" disabled>Agree and continue</button></div></div>';
     document.body.appendChild(d);
     var keep = document.documentElement.style.overflow; document.documentElement.style.overflow = 'hidden';
     var cb = d.querySelector('#tosCheck'), ok = d.querySelector('#tosOk'), hint = d.querySelector('#tosHint');
+    var close = function () { d.remove(); st.remove(); document.documentElement.style.overflow = keep; };
+    if (again && agreed) { cb.checked = true; ok.disabled = false; hint.style.visibility = 'hidden'; ok.textContent = 'Close'; }
+    // the tick box only unlocks once the terms have been scrolled to the very bottom
+    var tb = d.querySelector('.tbody'), lab = d.querySelector('#tosLabel'), read = false;
+    var unlock = function () { if (read) return; read = true; cb.disabled = false; lab.className = ''; if (!cb.checked) hint.textContent = 'Tick the box to continue.'; };
+    var atEnd = function () { if (tb.scrollTop + tb.clientHeight >= tb.scrollHeight - 6) unlock(); };
+    tb.addEventListener('scroll', atEnd); setTimeout(atEnd, 300);
+    if (again && agreed) unlock();
     cb.addEventListener('change', function () { ok.disabled = !cb.checked; hint.style.visibility = cb.checked ? 'hidden' : 'visible'; });
     ok.addEventListener('click', function () {
       if (!cb.checked) return;
       try { localStorage.setItem(TOS_KEY, TOS_VERSION); } catch (e) {}
-      d.remove(); st.remove(); document.documentElement.style.overflow = keep;
+      agreed = true; close();
     });
-    // nothing else on the page can be used until they agree
-    d.addEventListener('keydown', function (e) { if (e.key === 'Escape') e.preventDefault(); });
+    // nothing else on the page can be used until they agree (once agreed, a reopened copy closes with Escape or a click outside)
+    d.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); if (agreed) close(); } });
+    d.addEventListener('click', function (e) { if (e.target === d && agreed) close(); });
     setTimeout(function () { try { d.querySelector('.tbody').focus(); } catch (e) {} }, 50);
   }
-  if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+  window.arcadeShowTerms = function () { show(true); };
+  if (!auto) return;
+  if (document.body) show(); else document.addEventListener('DOMContentLoaded', function () { show(); });
 })();

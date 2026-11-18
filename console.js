@@ -6,6 +6,7 @@
      move, A/✕ to choose, B/○ to go back, L1/R1 or LB/RB to switch tabs). Games in play.html's frame get the
      controller to themselves while they're focused. */
 (function () {
+  if (window.ARCADE_WATCH) return; // Apple Watch: no video calls, clip recorder, typing dots or TV mode (lighter)
   if (window.ArcadeConsole) return;
   var UA = navigator.userAgent || '';
   var DEVICES = [

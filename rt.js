@@ -12,7 +12,9 @@
   // Online play needs an online Arcade account (2026-11-06): without one (no account, or a local account), every
   // channel except the site's "on now" counter fails to connect and a popup asks the player to make an account.
   // The game then behaves as if it were offline (most fall back to bots or offline play).
-  var FREE = /^online:arcade$/;
+  // 2026-11-17: phones as controllers (pair:), the home page's live cursors (cursors:) and following a tournament
+  // (tourn:) work without an account too; joining a tournament still needs one (checked in tourney.js)
+  var FREE = /^online:arcade$|^pair:[A-Z0-9]{5}$|^cursors:home$|^tourn:/;
   function hasAccount() { try { var a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return !!(a && a.name && a.token); } catch (e) { return false; } }
   var askedAt = 0;
   function askForAccount() {
@@ -43,7 +45,7 @@
      (thearcade.pages.dev) loads this same file and is never affected. */
   var MOVED_AT = Date.UTC(2026, 10, 13, 3, 30), NEW_SITE = 'https://thearcade.pages.dev';
   try { if (window.ARCADE_RT_MOVED_AT) MOVED_AT = +window.ARCADE_RT_MOVED_AT; } catch (e) {} // tests only
-  var OLD_SITE = location.hostname === 'noah-and-lars.github.io';
+  var OLD_SITE = false; // 2026-11-18: online play is back on the GitHub site
   try { if (window.ARCADE_RT_OLD_SITE) OLD_SITE = true; } catch (e) {} // tests only
   function moved() { return OLD_SITE && Date.now() >= MOVED_AT; }
   function movedPopup() {

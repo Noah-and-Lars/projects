@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
 <script>
 // 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
 // not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
@@ -21,7 +25,7 @@
 </script>
 <title>Social · The Arcade</title>
 <meta name="description" content="Clips, photos and videos from players on The Arcade: watch, like, comment, follow and message.">
-<meta name="theme-color" content="#0f0d1f">
+<meta name="theme-color" content="#050506">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -30,7 +34,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
-<link rel="stylesheet" href="arcade.css?v=16">
+<link rel="stylesheet" href="arcade.css?v=21">
 <style>
 :root { --ring: linear-gradient(45deg, #f9ce34, #ee2a7b 55%, #6228d7); --line: #ffffff17; --like: #ff3040; --blue: #3797f0; }
 .ig { width: 100%; max-width: 940px; margin: 0 auto; padding: 0 16px 60px; }
@@ -42,7 +46,7 @@
 .ib svg { width: 26px; height: 26px; }
 .badge { position: absolute; top: 3px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--like); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; border: 2px solid var(--bg); }
 .badge[hidden] { display: none; }
-.ig-nav { position: sticky; top: 0; z-index: 30; display: flex; justify-content: space-around; gap: 4px; margin: 4px 0 14px; padding: 6px; border-radius: 16px; background: rgba(27, 24, 53, .92); border: 1px solid var(--line); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.ig-nav { position: sticky; top: 0; z-index: 30; display: flex; justify-content: space-around; gap: 4px; margin: 4px 0 14px; padding: 6px; border-radius: 16px; background: rgba(18, 18, 22, .9); border: 1px solid var(--line); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .ig-nav a { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 6px; border-radius: 11px; color: var(--muted); font-weight: 700; font-size: 14px; }
 .ig-nav a:hover { background: #ffffff0d; color: var(--text); }
 .ig-nav a.on { color: var(--text); background: #ffffff14; }
@@ -89,12 +93,36 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .dot { color: var(--muted); }
 .fol { border: 0; background: none; color: var(--blue); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; padding: 0; }
 .fol.on { color: var(--muted); }
+.media.multi .slides { position: absolute; inset: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.media.multi .slides::-webkit-scrollbar { display: none; }
+.media.multi .slides > .media { flex: 0 0 100%; height: 100%; scroll-snap-align: center; aspect-ratio: auto !important; border: 0; border-radius: 0; }
+.media .mdots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 5px; pointer-events: none; z-index: 3; }
+.media .mdots i { width: 6px; height: 6px; border-radius: 50%; background: #fff7; }
+.media .mdots i.on { background: #2f8cff; }
+.media .mcount { position: absolute; right: 10px; top: 10px; z-index: 3; background: #000b; color: #fff; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 10px; pointer-events: none; }
+.media .marr { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 28px; height: 28px; border-radius: 50%; border: 0; background: #fffd; color: #000; font-size: 16px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.media .marr.l { left: 8px; } .media .marr.r { right: 8px; }
+.media .marr[hidden] { display: none; }
+.up-prev.many { display: flex; gap: 6px; overflow-x: auto; }
+.up-prev.many > * { flex: 0 0 auto; width: 110px; height: 110px; object-fit: cover; border-radius: 6px; background: #000; }
 .media { position: relative; background: #000; border-radius: 6px; overflow: hidden; cursor: pointer; aspect-ratio: 16 / 9; }
 .post .media { border: 1px solid var(--line); }
 .media img.pic, .media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .media .bg { position: absolute; inset: -30px; background-size: cover; background-position: center; filter: blur(26px) brightness(.5); }
 .media video { opacity: 0; transition: opacity .2s; }
 .media.ready video { opacity: 1; }
+.media.voice video { opacity: 0 !important; }
+.media.text { display: grid; place-items: center; cursor: default; }
+.media .txt { position: absolute; inset: 0; display: grid; place-items: center; padding: 26px; overflow: auto; color: #fff; font-weight: 700; text-align: center; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.3; text-shadow: 0 2px 12px #0005; }
+.media .txt > div { max-width: 100%; margin: auto; }
+.txt-new textarea { width: 100%; min-height: 130px; resize: vertical; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #ffffff08; color: var(--text); font: inherit; font-size: 16px; }
+.txt-new .cnt { font-size: 12px; color: var(--muted); text-align: right; margin-top: 4px; }
+.txt-new .bgs { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 2px; }
+.txt-new .bgs button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.txt-new .bgs button.on { border-color: #fff; box-shadow: 0 0 0 2px #2f8cff; }
+.txt-new .media { aspect-ratio: 1; max-height: 260px; margin: 0 auto 6px; }
+.media.voice .poster { opacity: 1 !important; visibility: visible !important; }
+.chat-send .vn-mic { align-self: center; }
 .media .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .media .snd { position: absolute; right: 10px; bottom: 12px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: #000a; color: #fff; cursor: pointer; display: grid; place-items: center; }
 .media .snd svg { width: 15px; height: 15px; }
@@ -315,6 +343,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .dm-list .tx b { display: block; font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dm-list .tx small { display: block; color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dm-list li.un .tx b, .dm-list li.un .tx small { font-weight: 800; color: var(--text); }
+.dm-list .tx small.typing { color: var(--blue); font-weight: 700; }
 .dm-list .udot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); flex: none; }
 .dm-list .cam { border: 0; background: none; color: var(--text); padding: 6px; cursor: pointer; border-radius: 50%; flex: none; }
 .dm-list .cam:hover { background: #ffffff12; }
@@ -355,6 +384,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
 .mob-phone .grid3 { gap: 2px; }
 .mob-phone .search, .mob-phone .stories { margin-left: 10px; margin-right: 10px; width: calc(100% - 20px); }
 </style>
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
 </head>
 <body>
 <header class="top">
@@ -385,10 +415,14 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
   <div id="view" aria-live="polite"></div>
 </main>
 
-<script src="games.js?v=200"></script>
-<script src="account.js?v=26"></script>
-<script src="console.js?v=1"></script>
-<script src="call.js?v=6"></script>
+<script src="games.js?v=246"></script>
+<script src="account.js?v=40"></script>
+<script src="console.js?v=2"></script>
+<script src="call.js?v=8"></script>
+<script src="typing.js?v=2"></script>
+<script src="avatars.js?v=1"></script>
+<script src="voice.js?v=5"></script>
+<script>window.ArcadeTyping = window.ArcadeTyping || (() => { const nop = () => ({ input() {}, stop() {} }); return { dm: nop, group: nop, heard() {}, list: () => [], label: () => '', line: () => document.createElement('div'), watch() {}, refresh() {} }; })(); // typing.js didn't load: chats work without it</script>
 <script>
 /* Social (2026-11-10, Instagram style): clips recorded in games (clips.js on play.html, the last 30 seconds), and
    players' own photos and videos. The server is the Worker's /clips/* routes (see the comment block above `clips()`
@@ -437,7 +471,7 @@ async function fetchAvs() {
   saveAv();
   if (avQ.size) fetchAvs();
 }
-function setMyAvatar(url) { const k = lc(me()); avCache.set(k, url); saveAv(); document.querySelectorAll('.av[data-n="' + k + '"]').forEach(sp => paintAv(sp, url)); }
+function setMyAvatar(url) { const k = lc(me()); avCache.set(k, url); saveAv(); if (window.ArcadeAvatars) ArcadeAvatars.set(k, url); document.querySelectorAll('.av[data-n="' + k + '"]').forEach(sp => paintAv(sp, url)); }
 const ringed = (n, seen) => { const r = el('span', 'ring' + (seen ? ' seen' : '')); r.append(avatar(n)); return r; };
 const num = n => n < 1000 ? String(n) : n < 1e6 ? (n / 1e3).toFixed(n < 1e4 ? 1 : 0).replace(/\.0$/, '') + 'K' : (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
 const plural = (n, w) => num(n) + ' ' + w + (n === 1 ? '' : 's');
@@ -483,7 +517,7 @@ async function post(path, body, noAuth) {
 }
 const acct = (path, opt) => ArcadeAccount.api(path, opt);
 function needAccount() { ArcadeAccount.welcome(); }
-function failed(r) { alert(r.error === 'slow' ? 'Slow down a little and try again.' : r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : 'That didn’t work (' + (r.error || r.status) + ').'); }
+function failed(r) { alert(r.error === 'banned_link' ? 'Links and that word aren’t allowed on Social.' : r.error === 'slow' ? 'Slow down a little and try again.' : r.status === 0 ? 'Couldn’t reach the server. Check your connection.' : 'That didn’t work (' + (r.error || r.status) + ').'); }
 
 /* ---------- follows, friends, blocks, saved ---------- */
 let following = new Set(ls.get('arcade-social-following', []));
@@ -590,12 +624,14 @@ function observe(box, root) {
   }, { root: root || null, threshold: [0, 0.6] }));
   observers.get(key).observe(box);
 }
-function deactivate(box) { const v = box.querySelector('video'); if (v && !v.paused) v.pause(); clearTimeout(box._pt); }
+function deactivate(box) { if (box._multi) { box._on = 0; box._multi.forEach(deactivate); return; } const v = box.querySelector('video'); if (v && !v.paused) v.pause(); clearTimeout(box._pt); }
 function activate(box) {
+  if (box._multi) { box._on = 1; activate(box._multi[box._i || 0]); return; }
   const c = box._clip;
+  if (c.k === 'text') { clearTimeout(box._pt); box._pt = setTimeout(() => countView(c, 1), 1000); return; }
   if (c.k === 'photo') { // a photo counts as viewed after a second on screen
     const img = box.querySelector('img.pic');
-    if (!img.src) mediaUrl(c.id).then(u => { img.src = u; box.classList.add('ready'); }, () => {});
+    if (!img.src) mediaUrl(c.mid || c.id).then(u => { img.src = u; box.classList.add('ready'); }, () => {});
     clearTimeout(box._pt); box._pt = setTimeout(() => countView(c, 1), 1000);
     return;
   }
@@ -604,12 +640,12 @@ function activate(box) {
   playing = v; v.muted = muted; paintSnd(box);
   if (v.src) { v.play().catch(() => {}); return; }
   box.classList.add('loading');
-  mediaUrl(c.id).then(u => {
+  mediaUrl(c.mid || c.id).then(u => {
     box.classList.remove('loading');
     if (!v.src) v.src = u;
     if (playing === v) v.play().catch(() => { v.muted = true; paintSnd(box); v.play().catch(() => {}); });
     const next = box.closest('.post, .reel'), n = next && next.nextElementSibling;
-    if (n && n._clip && n._clip.k !== 'photo') mediaUrl(n._clip.id);
+    if (n && n._clip && !still(n._clip) && !n._clip.x) mediaUrl(n._clip.id);
   }, () => { box.classList.remove('loading'); box.querySelector('.load').textContent = 'Couldn’t load this'; box.classList.add('loading'); });
 }
 // a playing video stuck without data for ~1.2 s (Safari, after looping some clips) is loaded again from its blob
@@ -625,11 +661,72 @@ setInterval(() => {
 function paintSnd(box) { const s = box.querySelector('.snd'); if (s) s.innerHTML = svg(muted ? IC.muted : IC.sound); }
 
 /* ---------- the picture or video of a post ---------- */
+// 2026-11-15: a post with more than one photo/video (c.x = the extras, served at v/<id>-<n>) swipes between them
 function mediaBox(c, onLike) {
+  if (!c.x || !c.x.length) return oneBox(c, onLike);
+  const wrap = el('div', 'media multi'); wrap._clip = c; wrap._i = 0;
+  if (c.w && c.h) wrap.style.aspectRatio = Math.max(0.8, Math.min(2, c.w / c.h)).toFixed(3);
+  const items = [c].concat(c.x.map((x, n) => Object.assign(Object.create(c), { mid: c.id + '-' + (n + 1), k: x.k, dur: x.dur, w: x.w, h: x.h, p: '' })));
+  const boxes = items.map(it => oneBox(it, onLike)), slides = el('div', 'slides'), dots = el('div', 'mdots'), cnt = el('span', 'mcount');
+  boxes.forEach(b => { slides.append(b); dots.append(el('i')); });
+  const L = el('button', 'marr l', '‹'), R = el('button', 'marr r', '›'); L.type = R.type = 'button'; L.setAttribute('aria-label', 'Previous'); R.setAttribute('aria-label', 'Next');
+  wrap._multi = boxes;
+  const paint = () => { [...dots.children].forEach((d, n) => d.classList.toggle('on', n === wrap._i)); cnt.textContent = (wrap._i + 1) + '/' + boxes.length; L.hidden = wrap._i === 0; R.hidden = wrap._i === boxes.length - 1; };
+  const go = n => slides.scrollTo({ left: n * slides.clientWidth, behavior: 'smooth' });
+  L.onclick = e => { e.stopPropagation(); go(wrap._i - 1); }; R.onclick = e => { e.stopPropagation(); go(wrap._i + 1); };
+  slides.addEventListener('scroll', () => {
+    const n = Math.max(0, Math.min(boxes.length - 1, Math.round(slides.scrollLeft / (slides.clientWidth || 1))));
+    if (n === wrap._i) return;
+    deactivate(boxes[wrap._i]); wrap._i = n; paint();
+    if (wrap._on) activate(boxes[n]);
+    const nx = items[n + 1]; if (nx) mediaUrl(nx.mid);
+  }, { passive: true });
+  wrap.append(slides, dots, cnt, L, R); paint();
+  return wrap;
+}
+// 2026-11-17: text posts (k 'text'): just words on a coloured card, no photo or video
+const still = c => c.k === 'photo' || c.k === 'text';
+const TXT_BG = [['#5b2bff', '#ff3d8b'], ['#ff7a18', '#ff2e63'], ['#00b4db', '#0052d4'], ['#11998e', '#38ef7d'], ['#232526', '#5a5f66'], ['#8e2de2', '#4a00e0'], ['#f7971e', '#d4a017'], ['#e52d27', '#b31217']];
+function txtBg(c) { let h = 0; const k = String(c.id || c.t || ''); for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; return TXT_BG[c.bg != null ? c.bg : h % TXT_BG.length]; }
+function txtSize(t, w) { const n = t.length + (t.split('\n').length - 1) * 30, k = (w || 470) / 470; return Math.round((n < 40 ? 32 : n < 100 ? 26 : n < 200 ? 21 : n < 340 ? 18 : 16) * Math.max(0.7, Math.min(1.5, k))); }
+function textBox(c, bgIdx) {
+  const box = el('div', 'media text'), [a, b] = bgIdx != null ? TXT_BG[bgIdx] : txtBg(c), t = el('div', 'txt'), inner = el('div');
+  box.style.background = 'linear-gradient(135deg,' + a + ',' + b + ')'; box.style.aspectRatio = '1';
+  inner.textContent = fw(c.t || ''); t.style.fontSize = txtSize(c.t || '') + 'px'; t.append(inner); box.append(t);
+  return box;
+}
+// the card picture for grids and shared-post bubbles (360 px square JPEG)
+function textPoster(t, bgIdx) {
+  const c = document.createElement('canvas'); c.width = c.height = 360;
+  const g = c.getContext('2d'), [a, b] = TXT_BG[bgIdx], gr = g.createLinearGradient(0, 0, 360, 360);
+  gr.addColorStop(0, a); gr.addColorStop(1, b); g.fillStyle = gr; g.fillRect(0, 0, 360, 360);
+  let fs = txtSize(t, 300); const lines = [];
+  for (;;) {
+    g.font = '700 ' + fs + 'px system-ui, -apple-system, Segoe UI, sans-serif'; lines.length = 0;
+    for (const para of t.split('\n')) {
+      let line = '';
+      for (const w of para.split(' ')) { const tryL = line ? line + ' ' + w : w; if (g.measureText(tryL).width > 312 && line) { lines.push(line); line = w; } else line = tryL; }
+      lines.push(line);
+    }
+    if (lines.length * fs * 1.25 <= 312 || fs <= 13) break; fs -= 2;
+  }
+  const max = Math.floor(312 / (fs * 1.25)); if (lines.length > max) { lines.length = max; lines[max - 1] = lines[max - 1].replace(/.{0,2}$/, '') + '…'; }
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = '#0005'; g.shadowBlur = 10;
+  const top = 180 - (lines.length - 1) * fs * 1.25 / 2;
+  lines.forEach((l, i) => g.fillText(l, 180, top + i * fs * 1.25, 330));
+  return c.toDataURL('image/jpeg', 0.8);
+}
+function oneBox(c, onLike) {
+  if (c.k === 'text') {
+    const box = textBox(c); box._clip = c;
+    const heart = el('div', 'heart'); heart.innerHTML = svg(IC.heart); box.append(heart);
+    box.addEventListener('dblclick', e => { e.preventDefault(); heart.classList.remove('pop'); void heart.offsetWidth; heart.classList.add('pop'); if (!c.me) onLike(true); });
+    return box;
+  }
   const box = el('div', 'media stopped'); box._clip = c;
   if (c.w && c.h) box.style.aspectRatio = Math.max(0.8, Math.min(2, c.w / c.h)).toFixed(3);
   const g = gameOf(c.g), bg = el('div', 'bg'); if (c.p) bg.style.backgroundImage = 'url("' + c.p + '")';
-  const pst = el('img', 'poster'); pst.alt = ''; pst.src = c.p || (g ? g.thumb : ''); pst.loading = 'lazy';
+  const pst = el('img', 'poster'), psrc = c.p || (g ? g.thumb : ''); pst.alt = ''; if (psrc) pst.src = psrc; else pst.hidden = true; pst.loading = 'lazy';
   box.append(bg, pst);
   if (c.k === 'photo') { const img = el('img', 'pic'); img.alt = c.t || 'Photo by ' + c.by; box.append(img); }
   else {
@@ -647,6 +744,7 @@ function mediaBox(c, onLike) {
     paintSnd(box);
   }
   if (c.k === 'clip' && g) { const t = el('span', 'tag-kind', '🎮 ' + g.title); box.append(t); }
+  if (c.k === 'voice') { box.classList.add('voice'); box.append(el('span', 'tag-kind', '🎤 Voice note · tap 🔊 for sound')); }
   const heart = el('div', 'heart'); heart.innerHTML = svg(IC.heart); box.append(heart);
   let tap = 0;
   box.addEventListener('click', () => { // one tap: pause or play; two quick taps: like (like Instagram)
@@ -665,7 +763,7 @@ function likesLine(c) {
   const d = el('div', 'likes');
   if (c.lk && c.ll && lc(c.ll) !== lc(me()) && c.lk > 1) { d.append('Liked by '); const a = el('a', '', c.ll); a.href = userLink(c.ll); d.append(a, ' and ' + plural(c.lk - 1, 'other')); }
   else d.append(c.lk ? plural(c.lk, 'like') : 'Be the first to like this');
-  if (c.k !== 'photo') d.append(el('span', 'views', '▶ ' + plural(c.vw, 'view')));
+  if (!still(c)) d.append(el('span', 'views', '▶ ' + plural(c.vw, 'view')));
   else if (c.vw) d.append(el('span', 'views', plural(c.vw, 'view')));
   return d;
 }
@@ -678,7 +776,7 @@ function postCard(c, opt) {
   who.append(nm);
   if (!mine && !following.has(lc(c.by))) who.append(el('span', 'dot', ' • '), followBtn(c.by));
   const sm = el('small');
-  if (g) { const gl = el('a', '', g.title); gl.href = 'play.html?game=' + encodeURIComponent(c.g); sm.append(gl); } else sm.append(c.k === 'photo' ? 'Photo' : c.k === 'video' ? 'Original video' : 'Clip');
+  if (g) { const gl = el('a', '', g.title); gl.href = 'play.html?game=' + encodeURIComponent(c.g); sm.append(gl); } else sm.append(c.k === 'photo' ? 'Photo' : c.k === 'video' ? 'Original video' : c.k === 'voice' ? 'Voice note' : c.k === 'text' ? 'Post' : 'Clip');
   who.append(sm);
   const dots = el('button', 'ib'); dots.type = 'button'; dots.innerHTML = svg(IC.more); dots.setAttribute('aria-label', 'More');
   dots.onclick = e => { e.stopPropagation(); menu(dots, c, a); };
@@ -707,7 +805,7 @@ function postCard(c, opt) {
   a._paint = () => {
     lb.classList.toggle('on', !!c.me); vb.classList.toggle('on', isSaved(c.id));
     lk.replaceWith(lk = likesLine(c));
-    cap.replaceChildren(); if (c.t) { const cn = el('a', '', c.by); cn.href = userLink(c.by); cap.className = 'cap'; cap.append(cn, ...capNodes(c)); }
+    cap.replaceChildren(); if (c.t && c.k !== 'text') { const cn = el('a', '', c.by); cn.href = userLink(c.by); cap.className = 'cap'; cap.append(cn, ...capNodes(c)); }
     all.hidden = !c.cm; all.textContent = c.cm === 1 ? 'View 1 comment' : 'View all ' + num(c.cm) + ' comments';
   };
   a._paint();
@@ -737,10 +835,10 @@ function reelItem(c, root) {
   r.append(box, shade, side, info);
   r._paint = () => {
     lb.classList.toggle('on', !!c.me); ls_.textContent = num(c.lk); cs.textContent = num(c.cm); vb.classList.toggle('on', isSaved(c.id));
-    cap.replaceChildren(...capNodes(c)); cap.hidden = !c.t;
+    cap.replaceChildren(...(c.k === 'text' ? [] : capNodes(c))); cap.hidden = !c.t || c.k === 'text';
     meta.replaceChildren();
     if (g) { const gl = el('a', '', '🎮 ' + g.title + ' · Play'); gl.href = 'play.html?game=' + encodeURIComponent(c.g); meta.append(gl); }
-    if (c.k !== 'photo') meta.append(el('span', '', '▶ ' + plural(c.vw, 'view')));
+    if (!still(c)) meta.append(el('span', '', '▶ ' + plural(c.vw, 'view')));
     meta.append(el('span', '', ago(c.at)));
   };
   r._paint();
@@ -883,7 +981,7 @@ async function sendSheet(c) {
   let everyone = null;
   const tile = p => {
     const t = el('button', 'snd-p' + (picked.has(p.k) ? ' on' : '')), wrap = el('span'); t.type = 'button';
-    wrap.style.position = 'relative'; const av = p.g ? avatar('G') : avatar(p.n); if (p.g) av.style.background = 'linear-gradient(135deg, #6c5ce7, #00d2a8)';
+    wrap.style.position = 'relative'; const av = p.g ? avatar('G') : avatar(p.n); if (p.g) av.style.background = '#25252c';
     wrap.append(av, el('span', 'tick', '✓'));
     t.append(wrap, el('small', '', p.n));
     t.onclick = () => { if (picked.has(p.k)) picked.delete(p.k); else picked.set(p.k, p); t.classList.toggle('on', picked.has(p.k)); paintFoot(); };
@@ -1077,7 +1175,7 @@ async function showHome() {
   if (!list.length) {
     feed.append(homeTab === 'following'
       ? (me() ? empty('Nothing here yet', 'Follow players to see their posts here. Find them on Explore or in the stories above.', 'Explore', () => location.hash = 'explore') : empty('Follow players', 'Make an online account, then follow players to see their posts here.', 'Make an account', needAccount))
-      : empty('No posts yet', 'Be the first: clip a game (the last 30 seconds) or share a photo or video.', 'Create a post', openCreate));
+      : empty('No posts yet', 'Be the first: write a post, clip a game (the last 30 seconds) or share a photo or video.', 'Create a post', openCreate));
   }
   list.forEach(c => feed.append(postCard(c)));
   view.replaceChildren(stories, chips, feed);
@@ -1087,7 +1185,7 @@ async function showReels(startId) {
   const fy = await forYou();
   if (my !== gen) return;
   if (fy.status !== 200) { view.replaceChildren(offline(() => showReels(startId))); return; }
-  let list = fy.clips.filter(c => c.k !== 'photo');
+  let list = fy.clips.filter(c => !still(c));
   if (!list.length) { view.replaceChildren(empty('No reels yet', 'Clip a game or upload a video and it’ll show here.', 'Create a post', openCreate)); return; }
   const i = startId ? Math.max(0, list.findIndex(c => c.id === startId)) : 0;
   const box = reelsBox(list, { start: i }), wrap = el('div', 'reels-wrap');
@@ -1143,7 +1241,8 @@ function gridOf(list) {
     const img = el('img'); img.alt = c.t || 'Post by ' + c.by; img.loading = 'lazy'; img.src = c.p || ((gameOf(c.g) || {}).thumb || '');
     a.append(img);
     if (c.pin) { const k = el('span', 'kind pin', '📌'); k.title = 'Pinned'; a.append(k); }
-    else if (c.k !== 'photo') { const k = el('span', 'kind'); k.innerHTML = svg(IC.reel); a.append(k); const vw = el('span', 'vw'); vw.innerHTML = svg(IC.play); vw.append(num(c.vw)); a.append(vw); }
+    else if (c.x && c.x.length) { const k = el('span', 'kind', '❐'); k.title = (c.x.length + 1) + ' photos/videos'; a.append(k); }
+    else if (!still(c)) { const k = el('span', 'kind'); k.innerHTML = svg(IC.reel); a.append(k); const vw = el('span', 'vw'); vw.innerHTML = svg(IC.play); vw.append(num(c.vw)); a.append(vw); }
     const hov = el('div', 'hov'), h1 = el('span'), h2 = el('span'); h1.innerHTML = svg(IC.heart); h1.append(num(c.lk)); h2.innerHTML = svg(IC.comment); h2.append(num(c.cm)); hov.append(h1, h2); a.append(hov);
     grid.append(a);
   });
@@ -1201,7 +1300,7 @@ async function showUser(name) {
       body.replaceChildren(got.length ? gridOf(got) : el('p', 'note', 'Save posts with the bookmark button and they’ll show here. Only you can see what you’ve saved.'));
       return;
     }
-    const list = profTab === 'videos' ? r.clips.filter(c => c.k !== 'photo') : r.clips;
+    const list = profTab === 'videos' ? r.clips.filter(c => !still(c)) : r.clips;
     body.replaceChildren(list.length ? gridOf(list) : el('p', 'note', isMe ? 'Share your first post: clip a game or upload a photo or video.' : r.n + ' hasn’t posted anything yet.'));
   };
   tabsList.forEach(([k, ic, t]) => { const b = el('button'); b.type = 'button'; b.dataset.t = k; b.innerHTML = svg(ic); b.append(t); b.onclick = () => { profTab = k; fill(); }; tabs.append(b); });
@@ -1233,7 +1332,7 @@ async function loadSoc() {
 function paintDmBadge() { const n = soc ? Object.values(soc.c).reduce((s, c) => s + (c.un || 0), 0) : 0; $('dmN').hidden = !n; $('dmN').textContent = n > 99 ? '99+' : n; }
 let inboxQ = '';
 async function showInbox() {
-  const my = ++gen; setNav(''); chat = null;
+  const my = ++gen; setNav(''); if (chat && chat.tx) chat.tx.stop(); chat = null;
   if (!me()) { view.replaceChildren(empty('Your messages', 'Make an online account to send private messages to other players.', 'Make an account', needAccount)); return; }
   loading('Loading messages…');
   await loadSoc();
@@ -1265,11 +1364,12 @@ function paintInbox() {
   if (!rows.length) { list.append(el('li', 'none', q ? 'No chats match.' : dmTab === 'primary' ? 'Chats with your friends and your group chats show here. Tap ✏️ to start one.' : 'Chats with players who aren’t your friends show here.')); return; }
   for (const [k, c] of rows) {
     const li = el('li', c.un ? 'un' : ''), av = avatar(c.g ? 'G' : c.n), tx = el('div', 'tx');
-    if (c.g) av.style.background = 'linear-gradient(135deg, #6c5ce7, #00d2a8)';
+    if (c.g) av.style.background = '#25252c';
     else if (online[k]) av.classList.add('on-dot');
-    const last = POST_LINK.test(c.t || '') ? (c.me ? 'You sent a post' : 'Sent a post') : fw(c.t || '');
-    const sub = c.un ? (c.un > 1 ? c.un + ' new messages' : (c.by ? c.by + ': ' : '') + last) : online[k] && !c.g ? 'Active now' : (POST_LINK.test(c.t || '') ? '' : c.me ? 'You: ' : c.by ? c.by + ': ' : '') + last;
-    tx.append(el('b', '', c.n), el('small', '', sub + (c.ts && !(online[k] && !c.un && !c.g) ? ' · ' + ago(c.ts) : '')));
+    const last = POST_LINK.test(c.t || '') ? (c.me ? 'You sent a post' : 'Sent a post') : fw(window.ArcadeVoice ? ArcadeVoice.preview(c.t || '') : c.t || '');
+    const typing = ArcadeTyping.list(k).filter(n => !c.g || (c.mem || []).some(x => lc(x) === lc(n)));
+    const sub = typing.length ? (c.g ? ArcadeTyping.label(typing) + '…' : 'Typing…') : c.un ? (c.un > 1 ? c.un + ' new messages' : (c.by ? c.by + ': ' : '') + last) : online[k] && !c.g ? 'Active now' : (POST_LINK.test(c.t || '') ? '' : c.me ? 'You: ' : c.by ? c.by + ': ' : '') + last;
+    tx.append(el('b', '', c.n), el('small', typing.length ? 'typing' : '', sub + (!typing.length && c.ts && !(online[k] && !c.un && !c.g) ? ' · ' + ago(c.ts) : '')));
     li.append(av, tx);
     if (c.un) li.append(el('span', 'udot'));
     const cam = el('button', 'cam'); cam.type = 'button'; cam.innerHTML = svg(IC.cam); cam.setAttribute('aria-label', 'Video call ' + c.n);
@@ -1304,16 +1404,19 @@ async function showChat(name) {
   const log = el('div', 'chat-log'), form = el('form', 'chat-send'), inp = el('input'), send = el('button', '', 'Send');
   inp.maxLength = 500; inp.placeholder = 'Message…'; inp.setAttribute('aria-label', 'Message'); inp.autocomplete = 'off'; inp.enterKeyHint = 'send'; send.disabled = true;
   form.append(inp, send);
-  inp.oninput = () => { send.disabled = !inp.value.trim() || !chat || !chat.ready; };
-  box.append(head, log, form);
+  const k0 = lc(name), typ = ArcadeTyping.line(k0), typer = ArcadeTyping.dm(() => (chat && chat.k === k0 ? chat.n : name));
+  inp.oninput = () => { send.disabled = !inp.value.trim() || !chat || !chat.ready; typer.input(inp.value); };
+  box.append(head, log, typ, form);
   view.replaceChildren(box);
   log.append(el('p', 'note', 'Loading…'));
   const k = lc(name);
-  chat = { k, n: name, msgs: [], log };
+  if (chat && chat.tx) chat.tx.stop();
+  chat = { k, n: name, msgs: [], log, tx: typer };
+  if (window.ArcadeVoice) { chat.reply = ArcadeVoice.replyBar(form, inp); send.before(ArcadeVoice.button(inp, form, { check: () => chat && chat.ready })); }
   const r = await acct('dm?with=' + encodeURIComponent(name), { auth: true });
   if (my !== gen) return;
   if (r.status !== 200) { log.replaceChildren(el('p', 'note', r.status === 404 ? 'There’s no player called ' + name + '.' : 'Couldn’t load the messages. Check your connection.')); return; }
-  chat.n = r.n; chat.msgs = r.msgs; chat.ready = true; nm.textContent = r.n;
+  chat.n = r.n; chat.msgs = r.msgs; chat.ready = true; chat.rd = r.rd || {}; nm.textContent = r.n;
   sub.textContent = online[k] ? 'Active now' : '';
   if (soc && soc.c[k]) { soc.c[k].un = 0; paintDmBadge(); }
   drawChat();
@@ -1324,8 +1427,8 @@ async function showChat(name) {
     if (!text) return;
     send.disabled = true;
     const x = await acct('dm', { method: 'POST', auth: true, body: { to: chat.n, text } });
-    if (x.status !== 200) { send.disabled = false; alert(x.error === 'slow' ? 'Slow down a little.' : x.error === 'you_blocked' ? 'You blocked this player. Unblock them on their Players profile first.' : x.error === 'no_account' ? 'That account doesn’t exist any more.' : 'Not sent. Check your connection and try again.'); return; }
-    inp.value = ''; gotDm(k, x.n, x.m); inp.focus();
+    if (x.status !== 200) { send.disabled = false; alert(x.error === 'slow' ? 'Slow down a little.' : x.error === 'banned_link' ? 'Links and that word aren’t allowed in the chat.' : x.error === 'you_blocked' ? 'You blocked this player. Unblock them on their Players profile first.' : x.error === 'no_account' ? 'That account doesn’t exist any more.' : 'Not sent. Check your connection and try again.'); return; }
+    inp.value = ''; typer.stop(); gotDm(k, x.n, x.m); inp.focus();
   };
   setTimeout(() => inp.focus(), 50);
 }
@@ -1342,8 +1445,11 @@ function drawChat() {
       if (note) { const t = el('div', 'bub' + (m.f ? ' me' : ''), note); frag.append(t); }
       return;
     }
-    const b = el('div', 'bub' + (m.f ? ' me' : ''), fw(m.t)); b.title = new Date(m.ts).toLocaleString(); frag.append(b);
+    const b = el('div', 'bub' + (m.f ? ' me' : '')); b.title = new Date(m.ts).toLocaleString();
+    if (window.ArcadeVoice) { b.append(ArcadeVoice.content(m.t, fw)); if (chat.reply) { const who = m.f ? me() : chat.n, rt = m.t; b.append(ArcadeVoice.replyBtn(() => chat.reply.set(who, rt))); } } else b.textContent = fw(m.t);
+    frag.append(b);
   });
+  if (window.ArcadeVoice) { const sn = ArcadeVoice.seen(chat.msgs, chat.rd, [chat.n], false); if (sn) frag.append(sn); } // read receipt
   if (!chat.msgs.length) frag.append(el('p', 'note', 'Say hi to ' + chat.n + '! Only the two of you can see this chat.'));
   log.replaceChildren(frag); log.scrollTop = log.scrollHeight;
 }
@@ -1364,14 +1470,19 @@ function postBubble(id, mine) {
   return b;
 }
 function gotDm(k, n, m) {
+  if (!m.f) ArcadeTyping.heard(k, n, true);
   if (soc) { const c = soc.c[k] || (soc.c[k] = { n, seq: 0, un: 0 }); c.n = n; c.t = m.t.slice(0, 80); c.ts = m.ts; c.me = m.f ? 1 : 0; c.by = ''; if (!m.f && !(chat && chat.k === k)) c.un = (c.un || 0) + 1; }
   if (chat && chat.k === k && !chat.msgs.some(x => x.id === m.id)) { chat.msgs.push(m); drawChat(); if (!m.f) setTimeout(() => acct('dm?with=' + encodeURIComponent(n) + '&before=1', { auth: true }), 1200); } // marks it read
   paintDmBadge(); paintInbox();
 }
+ArcadeTyping.watch('*', () => { if (location.hash === '#dm') paintInbox(); });
+window.addEventListener('hashchange', () => { if (chat && chat.tx && !location.hash.startsWith('#dm=')) chat.tx.stop(); });
+addEventListener('pagehide', () => { if (chat && chat.tx) chat.tx.stop(); });
 ArcadeAccount.onLive(m => {
   if (!soc) return;
   if (m.t === 'dm' && m.m) gotDm(m.k, m.n, m.m);
   else if (m.t === 'read') { if (soc.c[m.k]) soc.c[m.k].un = 0; paintDmBadge(); paintInbox(); }
+  else if (m.t === 'seen') { if (chat && chat.k === m.k) { (chat.rd = chat.rd || {})[lc(m.n)] = m.ts; drawChat(); } }
   else if (m.t === 'social' || m.t === 'friend' || m.t === 'grp' || m.t === 'gm') loadSoc().then(paintInbox);
 });
 // the chat open on screen gets no pop-up from account.js
@@ -1383,16 +1494,28 @@ function openCreate() {
   const clip = el('a'); clip.href = 'index.html';
   clip.innerHTML = '<span class="big">🎮</span><span><b>Clip a game</b><small>Open any game and press <b>🎬 Clip last 30s</b> (or F8) after something cool happens. It saves what you just played.</small></span>';
   const up = el('button'); up.type = 'button';
-  up.innerHTML = '<span class="big">🖼️</span><span><b>Upload a photo or video</b><small>From your device. Videos up to 3 minutes.</small></span>';
-  const file = el('input'); file.type = 'file'; file.accept = 'image/*,video/*'; file.hidden = true;
+  up.innerHTML = '<span class="big">🖼️</span><span><b>Upload photos or videos</b><small>From your device. Pick up to 5 for one post. Videos up to 3 minutes.</small></span>';
+  const file = el('input'); file.type = 'file'; file.accept = 'image/*,video/*'; file.multiple = true; file.hidden = true;
   up.onclick = () => { if (!me()) { ov.close(); needAccount(); return; } file.click(); };
-  file.onchange = () => { const f = file.files[0]; if (f) { ov.close(); editUpload(f); } };
-  opts.append(clip, up, file);
+  file.onchange = () => {
+    const fs = [...file.files]; if (!fs.length) return;
+    if (fs.length > MAX_ITEMS) alert('A post can have up to ' + MAX_ITEMS + ' photos or videos. The first ' + MAX_ITEMS + ' will be used.');
+    ov.close(); editUpload(fs.slice(0, MAX_ITEMS));
+  };
+  const vo = el('button'); vo.type = 'button';
+  vo.innerHTML = '<span class="big">🎤</span><span><b>Record a voice note</b><small>Up to 2 minutes with your mic. Goes straight up.</small></span>';
+  vo.onclick = async () => { if (!me()) { ov.close(); needAccount(); return; } ov.close(); const rec = await ArcadeVoice.record({ max: 120, title: 'Voice note post', action: 'next' }); if (rec) editVoice(rec); };
+  const tx = el('button'); tx.type = 'button';
+  tx.innerHTML = '<span class="big">✍️</span><span><b>Write a post</b><small>Just text, no photo or video. Up to 500 characters. Goes straight up.</small></span>';
+  tx.onclick = () => { if (!me()) { ov.close(); needAccount(); return; } ov.close(); editText(); };
+  opts.append(tx, clip, up);
+  if (window.ArcadeVoice && ArcadeVoice.supported()) opts.append(vo);
+  opts.append(file);
   b.append(opts);
   b.append(el('p', 'note', 'Only post things you made or have the right to share. No personal details, and keep it friendly: posts can be reported and removed.'));
   const ov = sheet('Create', b, true);
 }
-const MAX_BYTES = 12 * 1024 * 1024, MAX_VIDEO_S = 180;
+const MAX_BYTES = 12 * 1024 * 1024, MAX_VIDEO_S = 180, MAX_ITEMS = 5;
 function thumb(src, w, h) {
   const c = document.createElement('canvas'), k = Math.min(1, 360 / Math.max(w, h));
   c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
@@ -1400,10 +1523,11 @@ function thumb(src, w, h) {
   let d = c.toDataURL('image/jpeg', 0.72); if (d.length > 55000) d = c.toDataURL('image/jpeg', 0.45);
   return d;
 }
-async function editUpload(f) {
-  const isImg = f.type.startsWith('image/'), isVid = f.type.startsWith('video/');
-  if (!isImg && !isVid) { alert('Pick a photo or a video.'); return; }
-  const b = el('div', 'sheet-b'), prev = el('div', 'up-prev'), msg = el('p', 'up-msg', 'Getting it ready…'), bar = el('div', 'up-bar'), bi = el('i');
+async function editUpload(files) {
+  files = [].concat(files);
+  if (files.some(f => !f.type.startsWith('image/') && !f.type.startsWith('video/'))) { alert('Pick photos or videos.'); return; }
+  const many = files.length > 1, isImg = files.every(f => f.type.startsWith('image/'));
+  const b = el('div', 'sheet-b'), prev = el('div', 'up-prev' + (many ? ' many' : '')), msg = el('p', 'up-msg', 'Getting it ready…'), bar = el('div', 'up-bar'), bi = el('i');
   bar.append(bi); bar.hidden = true;
   const capL = el('label', '', 'Caption'), cap = el('input'); cap.type = 'text'; cap.maxLength = 80; cap.placeholder = 'Write a caption…';
   const gL = el('label', '', 'Game (optional)'), gs = el('select'); gs.append(new Option('No game', ''));
@@ -1412,29 +1536,91 @@ async function editUpload(f) {
   share.type = cancel.type = 'button'; share.disabled = true;
   acts.append(cancel, share);
   b.append(prev, capL, cap, gL, gs, bar, msg, acts);
-  const ov = sheet(isImg ? 'New photo' : 'New video', b, true);
+  const ov = sheet(many ? 'New post · ' + files.length + ' items' : isImg ? 'New photo' : 'New video', b, true);
   let busy = false;
   ov._onclose = () => { stopped = true; };
   let stopped = false;
   cancel.onclick = () => ov.close();
   const err = t => { msg.className = 'up-msg err'; msg.textContent = t; };
-  let item = null;
+  const items = [];
   try {
-    item = isImg ? await preparePhoto(f, prev) : await prepareVideo(f, prev, p => { msg.textContent = 'Making it smaller to post… ' + Math.round(p * 100) + '%'; }, () => stopped);
+    for (let n = 0; n < files.length; n++) {
+      const f = files[n], pre = many ? (n + 1) + ' of ' + files.length + ': ' : '';
+      if (many) msg.textContent = 'Getting ' + (n + 1) + ' of ' + files.length + ' ready…';
+      items.push(f.type.startsWith('image/') ? await preparePhoto(f, prev) : await prepareVideo(f, prev, p => { msg.textContent = pre + 'Making it smaller to post… ' + Math.round(p * 100) + '%'; }, () => stopped));
+      if (stopped) return;
+    }
   } catch (e) { err(String(e.message || e)); return; }
   if (stopped) return;
-  msg.textContent = (isImg ? 'Photo' : 'Video ' + Math.round(item.dur) + ' s') + ' · ' + (item.blob.size / 1048576).toFixed(1) + ' MB';
+  const item = items[0], mb = (items.reduce((a, x) => a + x.blob.size, 0) / 1048576).toFixed(1) + ' MB';
+  msg.textContent = many ? items.filter(x => x.kind === 'photo').length + ' photos, ' + items.filter(x => x.kind === 'video').length + ' videos · ' + mb : (isImg ? 'Photo' : 'Video ' + Math.round(item.dur) + ' s') + ' · ' + mb;
   share.disabled = false;
   share.onclick = async () => {
     if (busy) return; busy = true; share.disabled = true; cancel.disabled = true; bar.hidden = false; msg.className = 'up-msg'; msg.textContent = 'Sharing…';
     try {
-      const res = await postMedia(Object.assign({}, item, { t: cap.value, g: gs.value }), p => { bi.style.width = Math.round(p * 100) + '%'; });
+      const res = await postMedia(Object.assign({}, item, { t: cap.value, g: gs.value, more: items.slice(1) }), p => { bi.style.width = Math.round(p * 100) + '%'; });
       ov.close(); forYouCache = null;
       // 2026-11-11: uploaded photos and videos wait for approval before anyone sees them
       if (res.pend) { ArcadeAccount.toast('Sent for approval', 'Photos and videos are checked before they go up. Yours will appear once it\u2019s approved.'); location.hash = 'home'; if (owner()) paintReview(); return; }
       ArcadeAccount.toast('Shared', 'Your post is up.', '#c=' + res.id);
       location.hash = 'c=' + res.id;
     } catch (e) { busy = false; share.disabled = false; cancel.disabled = false; bar.hidden = true; err(String(e.message || e)); }
+  };
+}
+function editText() {
+  const b = el('div', 'sheet-b txt-new'), ta = el('textarea'), cnt = el('div', 'cnt'), msg = el('p', 'up-msg', '');
+  ta.maxLength = 500; ta.placeholder = 'What\u2019s on your mind?';
+  let bgI = Math.floor(Math.random() * TXT_BG.length), prev = textBox({ t: '' }, bgI);
+  const bgs = el('div', 'bgs');
+  TXT_BG.forEach(([a, z], i) => { const d = el('button'); d.type = 'button'; d.setAttribute('aria-label', 'Colour ' + (i + 1)); d.style.background = 'linear-gradient(135deg,' + a + ',' + z + ')'; d.onclick = () => { bgI = i; paint(); }; bgs.append(d); });
+  const gL = el('label', '', 'Game (optional)'), gs = el('select'); gs.append(new Option('No game', ''));
+  GAMES.forEach(g => gs.append(new Option(g.title, g.id)));
+  const acts = el('div', 'up-acts'), share = el('button', 'btn blue', 'Share'), cancel = el('button', 'btn grey', 'Cancel');
+  share.type = cancel.type = 'button'; acts.append(cancel, share);
+  const paint = () => {
+    const t = ta.value.trim(), nb = textBox({ t: t || 'What\u2019s on your mind?' }, bgI); if (!t) nb.style.opacity = '.55';
+    prev.replaceWith(prev = nb); [...bgs.children].forEach((d, i) => d.classList.toggle('on', i === bgI));
+    cnt.textContent = ta.value.length + ' / 500'; share.disabled = !t;
+  };
+  ta.oninput = paint;
+  b.append(prev, ta, cnt, el('label', '', 'Background'), bgs, gL, gs, msg, acts);
+  const ov = sheet('New post', b, true);
+  paint(); setTimeout(() => ta.focus(), 50);
+  cancel.onclick = () => ov.close();
+  share.onclick = async () => {
+    const t = ta.value.replace(/\r/g, '').replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, 500); if (!t) return;
+    share.disabled = cancel.disabled = true; msg.className = 'up-msg'; msg.textContent = 'Sharing…';
+    try {
+      const r = await fetch(API() + 'new' + qs(), { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + ArcadeAccount.token() }, body: JSON.stringify({ kind: 'text', t, g: gs.value, bg: bgI, poster: textPoster(t, bgI) }) })
+        .catch(() => { throw new Error('Couldn\u2019t reach the server. Check your connection.'); });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.id) throw new Error(WHY[j.error] || 'Couldn\u2019t post it (' + (j.error || r.status) + ').');
+      ov.close(); forYouCache = null;
+      ArcadeAccount.toast('Shared', 'Your post is up.', '#c=' + j.id);
+      location.hash = 'c=' + j.id;
+    } catch (e) { share.disabled = cancel.disabled = false; msg.className = 'up-msg err'; msg.textContent = String(e.message || e); }
+  };
+}
+async function editVoice(rec) {
+  const b = el('div', 'sheet-b'), prev = el('div', 'up-prev'), msg = el('p', 'up-msg', 'Voice note ' + ArcadeVoice.fmt(rec.dur) + ' · ' + (rec.blob.size / 1048576).toFixed(2) + ' MB'), bar = el('div', 'up-bar'), bi = el('i');
+  bar.append(bi); bar.hidden = true;
+  const poster = await ArcadeVoice.poster(rec, me()), img = el('img'); img.src = poster; prev.append(img);
+  const capL = el('label', '', 'Caption'), cap = el('input'); cap.type = 'text'; cap.maxLength = 80; cap.placeholder = 'Write a caption…';
+  const gL = el('label', '', 'Game (optional)'), gs = el('select'); gs.append(new Option('No game', ''));
+  GAMES.forEach(g => gs.append(new Option(g.title, g.id)));
+  const acts = el('div', 'up-acts'), share = el('button', 'btn blue', 'Share'), cancel = el('button', 'btn grey', 'Cancel');
+  share.type = cancel.type = 'button'; acts.append(cancel, share);
+  b.append(prev, capL, cap, gL, gs, bar, msg, acts);
+  const ov = sheet('New voice note', b, true);
+  cancel.onclick = () => ov.close();
+  share.onclick = async () => {
+    share.disabled = cancel.disabled = true; bar.hidden = false; msg.className = 'up-msg'; msg.textContent = 'Sharing…';
+    try {
+      const res = await postMedia({ kind: 'voice', blob: rec.blob, dur: rec.dur, w: 360, h: 360, poster, t: cap.value, g: gs.value }, p => { bi.style.width = Math.round(p * 100) + '%'; });
+      ov.close(); forYouCache = null;
+      ArcadeAccount.toast('Shared', 'Your voice note is up.', '#c=' + res.id);
+      location.hash = 'c=' + res.id;
+    } catch (e) { share.disabled = cancel.disabled = false; bar.hidden = true; msg.className = 'up-msg err'; msg.textContent = String(e.message || e); }
   };
 }
 async function preparePhoto(f, prev) {
@@ -1491,22 +1677,33 @@ async function compress(v, w, h, dur, progress, stopped) {
   if (blob.size > MAX_BYTES) throw new Error('This video is still too big after shrinking. Try a shorter one.');
   return blob;
 }
-const WHY = { slow: 'You’ve posted a lot today. Try again tomorrow.', too_many: 'You have 100 posts, the most an account can keep. Delete some first.', auth: 'You’re signed out. Sign in again and retry.', too_big: 'That’s too big to post (over 12 MB).', not_video: 'That file isn’t a photo or video the server accepts.', expired: 'The upload took too long. Try again.', bad: 'Something about that post wasn’t right. Try another file.' };
+const WHY = { banned_link: 'Links and that word aren\u2019t allowed on Social.', slow: 'You’ve posted a lot today. Try again tomorrow.', too_many: 'You have 100 posts, the most an account can keep. Delete some first.', auth: 'You’re signed out. Sign in again and retry.', too_big: 'That’s too big to post (over 12 MB).', not_video: 'That file isn’t a photo or video the server accepts.', expired: 'The upload took too long. Try again.', bad: 'Something about that post wasn’t right. Try another file.' };
 function postMedia(item, progress) {
   return fetch(API() + 'new' + qs(), {
     method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + ArcadeAccount.token() },
-    body: JSON.stringify({ kind: item.kind, g: item.g || '', t: String(item.t || '').slice(0, 80), dur: Math.round((item.dur || 0) * 10) / 10, w: item.w, h: item.h, sz: item.blob.size, poster: item.poster })
+    body: JSON.stringify({ kind: item.kind, g: item.g || '', t: String(item.t || '').slice(0, 80), dur: Math.round((item.dur || 0) * 10) / 10, w: item.w, h: item.h, sz: item.blob.size, poster: item.poster,
+      x: (item.more || []).map(x => ({ kind: x.kind, dur: Math.round((x.dur || 0) * 10) / 10, w: x.w, h: x.h, sz: x.blob.size })) })
   }).then(r => r.json().catch(() => ({})).then(j => { if (!r.ok) throw new Error(WHY[j.error] || 'Couldn’t post it (' + (j.error || r.status) + ').'); return j; }),
     e => { throw e instanceof Error && e.message.length > 30 ? e : new Error('Couldn’t reach the server. Check your connection.'); })
-    .then(n => new Promise((ok, no) => {
-      const x = new XMLHttpRequest();
-      x.open('PUT', API() + 'v/' + n.id + qs({ k: n.k }));
-      x.setRequestHeader('content-type', item.blob.type || 'application/octet-stream');
-      x.upload.onprogress = e => { if (e.lengthComputable) progress(e.loaded / e.total); };
-      x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200) ok({ id: n.id, pend: j.pend ? 1 : 0 }); else no(new Error(WHY[j.error] || 'Couldn’t post it (' + (j.error || x.status) + ').')); };
-      x.onerror = () => no(new Error('The upload failed. Check your connection and try again.'));
-      x.send(item.blob);
-    }));
+    .then(async n => {
+      // the extras go first (v/<id>-1 …), the first one last: the post goes up once they're all in
+      const all = [item].concat(item.more || []), order = all.map((_, i) => i).slice(1).concat([0]), total = all.reduce((a, x) => a + x.blob.size, 0);
+      let done = 0, res = null;
+      for (const i of order) {
+        const blob = all[i].blob;
+        res = await new Promise((ok, no) => {
+          const x = new XMLHttpRequest();
+          x.open('PUT', API() + 'v/' + n.id + (i ? '-' + i : '') + qs({ k: n.k }));
+          x.setRequestHeader('content-type', blob.type || 'application/octet-stream');
+          x.upload.onprogress = e => { if (e.lengthComputable) progress((done + e.loaded) / total); };
+          x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200) ok({ id: n.id, pend: j.pend ? 1 : 0 }); else no(new Error(WHY[j.error] || 'Couldn’t post it (' + (j.error || x.status) + ').')); };
+          x.onerror = () => no(new Error('The upload failed. Check your connection and try again.'));
+          x.send(blob);
+        });
+        done += blob.size;
+      }
+      return res;
+    });
 }
 
 /* ---------- your profile picture ---------- */
@@ -1568,10 +1765,13 @@ async function showReview() {
     const card = el('article', 'rv-card'), top = el('div', 'rv-top'), who = el('a', 'rv-who', c.by); who.href = userLink(c.by);
     const g = gameOf(c.g); top.append(avatar(c.by), who, el('span', 'rv-meta', (c.k === 'photo' ? 'Photo' : c.k === 'clip' ? 'Clip' : 'Video') + (g ? ' · ' + g.title : '') + ' · ' + ago(c.at)));
     const media = el('div', 'rv-media'); media.append(el('p', 'note', 'Loading…'));
-    mediaUrl(c.id).then(u => {
-      const m = c.k === 'photo' ? el('img') : el('video'); m.src = u;
-      if (c.k !== 'photo') { m.controls = true; m.playsInline = true; m.muted = true; m.preload = 'metadata'; }
-      media.replaceChildren(m);
+    const rvItems = [{ id: c.id, k: c.k }].concat((c.x || []).map((x, n) => ({ id: c.id + '-' + (n + 1), k: x.k })));
+    Promise.all(rvItems.map(it => mediaUrl(it.id))).then(us => {
+      media.replaceChildren(...us.map((u, n) => {
+        const k = rvItems[n].k, m = k === 'photo' ? el('img') : el('video'); m.src = u;
+        if (k !== 'photo') { m.controls = true; m.playsInline = true; m.muted = true; m.preload = 'metadata'; }
+        return m;
+      }));
     }, () => media.replaceChildren(el('p', 'note', 'Couldn\u2019t load the file.')));
     const cap = el('p', 'rv-cap'); cap.textContent = c.t || '(no caption)';
     const acts = el('div', 'rv-acts'), yes = el('button', 'btn', 'Approve'), no = el('button', 'btn grey', 'Deny');
@@ -1592,7 +1792,7 @@ async function showReview() {
 function route() {
   closeMenu();
   if (playing) { playing.pause(); playing = null; }
-  chat = null;
+  if (chat && chat.tx) chat.tx.stop(); chat = null;
   const h = (() => { try { return decodeURIComponent(location.hash.slice(1)); } catch (e) { return ''; } })(), i = h.indexOf('='), k = i < 0 ? h : h.slice(0, i), v = i < 0 ? '' : h.slice(i + 1);
   document.title = 'Social · The Arcade';
   scrollTo(0, 0);
@@ -1617,8 +1817,9 @@ ArcadeAccount.ready().then(() => { loadSoc(); route(); });
 let lastName = me();
 setInterval(() => { if (me() !== lastName) { lastName = me(); loadSoc(); forYouCache = null; route(); } }, 1000);
 </script>
-<script src="tos.js?v=14"></script>
-<script src="appbanner.js?v=1"></script>
+<script src="tos.js?v=21"></script>
+<script src="appbanner.js?v=2"></script>
 <script src="moving.js?v=1"></script>
+<script src="outage.js?v=2"></script>
 </body>
 </html>

@@ -12,6 +12,8 @@ The Social tab (`social.html`) is the arcade's Instagram: clip the last 30 secon
 |---|---|---|
 | [Throttle Ridge](throttle-ridge/) | Side-scrolling motocross against three computer riders on five tracks | Keyboard or touch |
 | [Card Royale](card-royale/) | Real-time 1v1 card battles online (or vs bots for trophies): 75 cards, chests, a Trophy Road through ten arenas, player profiles | Mouse or touch |
+| [Space Strike](space-strike/) | Top-down space shooter: 30 levels, 3 worlds, bosses | Keyboard or touch |
+| [Storm Drop](storm-drop/) | 50-player battle royale (beta): loot, build, drive, weekly seasons | Keyboard and mouse, touch or controller |
 | [UNO!](uno/) | Card game (classic, No Mercy, Flip) for 2–10, bots or online | Mouse or touch |
 | [Cube Assault](cube-assault/) | 3D shooter | Keyboard + mouse or touch |
 | [Blocktris](block-drop/) | Falling-block puzzle | Keyboard or touch |

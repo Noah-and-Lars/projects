@@ -10,7 +10,9 @@
 <script>
 // 2026-11-13: the download page for The Arcade app (Tauri, ~/Downloads/arcade-app). Only the "Download" button on the
 // app banner (appbanner.js) links here. Inside the app itself (window.ARCADE_APP, set by the app) it goes straight home.
-if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app')) location.replace('../');
+// 2026-11-15: and the Android app (~/Downloads/arcade-android, one APK for phones, tablets and Android TV), which also
+// says "TheArcadeApp/" in its browser name.
+if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app') || /TheArcadeApp\//.test(navigator.userAgent)) location.replace('../');
 </script>
 <style>
   :root { --bg: #0f0d1f; --panel: #1b1835; --panel2: #231f45; --line: #ffffff1c; --text: #f1effa; --muted: #a9a3c9; --accent: #6c5ce7; --accent2: #00d2a8; --warn: #f2b134; }
@@ -72,18 +74,19 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
     <img src="../icon-512.png" alt="">
     <div>
       <h1>The Arcade app</h1>
-      <p>Every game, your account and your progress in their own window on your Mac or PC. It updates by itself and only takes a few MB.</p>
+      <p>Every game, your account and your progress in their own app on your Mac, PC, Android phone or Android TV. It updates by itself and only takes a few MB.</p>
     </div>
   </section>
 
   <div class="warn" role="note">
     <span class="ic">⚠️</span>
     <div>
-      <b>Your computer will show a warning the first time. That's normal.</b>
-      <p>The app isn't signed with a paid Apple or Microsoft certificate yet, so your computer asks before opening it. It's safe: just allow it once.</p>
+      <b>Your device will show a warning the first time. That's normal.</b>
+      <p>The app isn't from an app store or signed with a paid Apple or Microsoft certificate yet, so your device asks before opening it. It's safe: just allow it once.</p>
       <ul>
         <li><b>Windows:</b> when SmartScreen says “Windows protected your PC”, click <b>More info</b>, then <b>Run anyway</b>.</li>
         <li><b>Mac:</b> if it says the app “can't be opened”, open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>.</li>
+        <li><b>Android:</b> when it asks, allow your browser (or the Downloader app on a TV) to <b>install unknown apps</b>, then tap <b>Install</b>.</li>
       </ul>
     </div>
   </div>
@@ -121,18 +124,38 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
     </div>
   </div>
 
+  <h2 id="android">Android</h2>
+  <div class="grid">
+    <div class="card" id="and-phone">
+      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.13c-1.78 0-3.45.39-4.92 1.01L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg></span><div><h3>Android phone or tablet</h3><small>Android 7 or newer</small></div></div>
+      <p>Every game full screen with touch controls, plus voice chat, video calls and Social. Open this page on your phone and tap Download.</p>
+      <div class="meta">Android 7.0 or later · .apk · 0.2 MB</div>
+      <a class="dl" href="TheArcade-android.apk" download><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download for Android</a>
+    </div>
+    <div class="card" id="and-tv">
+      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M21 3H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5v2h8v-2h5a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 14H3V5h18z"/></svg></span><div><h3>Android TV</h3><small>Google TV, Chromecast, Nvidia Shield, Sony and TCL TVs</small></div></div>
+      <p>The same app opens in the big-screen layout, played with the TV remote or a controller, and shows on your TV's home screen. Install it with the free Downloader app.</p>
+      <div class="meta">Android TV 7.0 or later · .apk · 0.2 MB</div>
+      <a class="dl" href="TheArcade-android.apk" download><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download for Android TV</a>
+    </div>
+  </div>
+
   <h2>After downloading</h2>
   <div class="help">
     <div><h4>On a Mac</h4><ol><li>Open the <b>.dmg</b> file.</li><li>Drag <b>The Arcade</b> into <b>Applications</b>.</li><li>Open it from Applications or Launchpad. If macOS warns you, use <b>Open Anyway</b> (see above).</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
     <div><h4>On Windows</h4><ol><li>Run the <b>setup .exe</b>.</li><li>If SmartScreen appears, click <b>More info → Run anyway</b>.</li><li>Follow the installer. The Arcade goes in your Start menu.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
+    <div><h4>On an Android phone</h4><ol><li>Tap the downloaded <b>.apk</b> (or open it from Downloads).</li><li>Allow your browser to <b>install unknown apps</b> when asked.</li><li>Tap <b>Install</b>, then open The Arcade.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
+    <div><h4>On Android TV</h4><ol><li>Install the free <b>Downloader</b> app from the TV's Play Store.</li><li>In Settings, allow Downloader to <b>install unknown apps</b>.</li><li>Open Downloader and type <b>thearcade.pages.dev/app/TheArcade-android.apk</b>.</li><li>Install it: The Arcade appears on your TV's home screen.</li></ol></div>
   </div>
 </main>
 <div class="foot">The app opens thearcade.pages.dev in its own window, so new games and updates arrive there straight away.</div>
 <script>
-// mark the download that fits this computer ("Your computer")
+// mark the download that fits this computer ("Your computer") or Android device ("Your device")
 (function () {
   var ua = navigator.userAgent || '', id = '';
-  if (/Windows/.test(ua)) id = /ARM64|aarch64/i.test(ua) ? 'win-arm' : 'win-x64';
+  if (/Android/i.test(ua)) id = /Android TV|GoogleTV|BRAVIA|AFT[A-Z]|SHIELD|\bTV\b|Large Screen/i.test(ua) ? 'and-tv' : 'and-phone';
+  else if (/Windows/.test(ua)) id = /ARM64|aarch64/i.test(ua) ? 'win-arm' : 'win-x64';
+  else if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) id = ''; // no app for iPhone and iPad (an iPad says Macintosh)
   else if (/Macintosh|Mac OS X/.test(ua)) {
     id = 'mac-arm';
     try { // Safari and Chrome both say "Intel" in the user agent on every Mac, so ask the graphics chip instead
@@ -144,7 +167,8 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
   var el = id && document.getElementById(id);
   if (!el) return;
   el.classList.add('you');
-  var t = document.createElement('span'); t.className = 'tag you-tag'; t.textContent = 'YOUR COMPUTER'; el.appendChild(t);
+  var t = document.createElement('span'); t.className = 'tag you-tag'; t.textContent = /^and-/.test(id) ? 'YOUR DEVICE' : 'YOUR COMPUTER';
+  if (/^and-/.test(id) && !location.hash) el.scrollIntoView({ block: 'center' }); el.appendChild(t);
 })();
 </script>
 </body>

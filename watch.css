@@ -1,0 +1,104 @@
+/* Apple Watch (2026-11-15). Only loaded when the page marks html.watch (see the top of each page), after arcade.css
+   and the page's own styles, on top of the phone layout (html.mob-phone). The whole site, made to fit a ~200 px
+   screen: smaller type, every pop-up full screen with its buttons always reachable, and no blur, shadows or
+   animations, which are slow on a watch. */
+html.watch { --radius: 10px; }
+html.watch body { font-size: 13px; line-height: 1.35; background: #000 !important; }
+html.watch *, html.watch *::before, html.watch *::after {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  animation-duration: 0s !important; animation-delay: 0s !important; transition: none !important;
+}
+html.watch .tile, html.watch .feature, html.watch .notice-box, html.watch #acctOv .box { box-shadow: none !important; }
+
+/* header: logo + account on one line, search under it */
+html.watch .top { gap: 6px; padding: 6px 8px 8px; padding-top: max(6px, env(safe-area-inset-top)); }
+html.watch .brand { font-size: 14px; gap: 6px; }
+html.watch .logo { width: 20px; height: 20px; }
+html.watch #acctBtn { font-size: 12px; padding: 4px 8px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.watch #search { padding: 6px 10px; font-size: 13px; }
+
+/* section tabs: a slim icon-only bar along the bottom */
+html.watch .top .tabs { left: 4px !important; right: 4px !important; bottom: max(4px, env(safe-area-inset-bottom)) !important; padding: 2px !important; gap: 0 !important; background: #1b1835 !important; box-shadow: none !important; }
+html.watch .top .tab { padding: 4px 0 !important; font-size: 0 !important; min-width: 0; }
+html.watch .top .tab::before { font-size: 17px !important; }
+html.watch .top .tab-n { font-size: 9px !important; top: 0 !important; left: calc(50% + 4px) !important; min-width: 14px; padding: 0 3px; }
+html.watch body:not(.player) { padding-bottom: calc(44px + env(safe-area-inset-bottom)) !important; }
+
+/* home */
+html.watch .wrap { padding: 0 6px; }
+html.watch .live { margin-top: 6px; padding: 5px 8px; gap: 6px; border-radius: 10px; }
+html.watch .live b { font-size: 16px; } html.watch .live span { font-size: 11px; }
+html.watch .feature { margin-top: 8px; min-height: 120px; border-radius: 12px; }
+html.watch .feature-body { padding: 10px; }
+html.watch .feature h1 { font-size: 20px; margin: 0; }
+html.watch .feature-tag, html.watch .feature-meta { display: none !important; }
+html.watch .feature .btn.big { padding: 6px 12px; font-size: 12px; margin-top: 6px; }
+html.watch .section { margin-top: 12px; }
+html.watch .sec-h { font-size: 15px; }
+html.watch .chips { margin: 0 -6px; padding: 2px 6px 4px; gap: 4px; }
+html.watch .chip { padding: 4px 9px; font-size: 11px; }
+html.watch .recent { margin: 0 -6px; padding: 0 6px 4px; gap: 6px; }
+html.watch .grid { gap: 6px; padding-bottom: 10px; }
+html.watch .tile { border-radius: 10px; }
+html.watch .info { padding: 5px 6px 6px; }
+html.watch .info h2 { font-size: 12px; }
+html.watch .desc, html.watch .meta, html.watch .tile .best, html.watch .tile .playing { display: none !important; }
+html.watch .badge { top: 4px; left: 4px; font-size: 8px; padding: 1px 4px; }
+html.watch .news li { padding: 7px 8px; font-size: 12px; }
+html.watch .foot { margin-top: 12px; font-size: 11px; }
+
+/* pop-ups (news notices, name box, account panel): full screen, scroll inside, button stuck to the bottom */
+html.watch .notice, html.watch #acctOv { padding: 0 !important; align-items: stretch !important; background: #000 !important; }
+html.watch .notice-box, html.watch #acctOv .box {
+  width: 100% !important; max-height: none !important; height: 100% !important; overflow: auto !important;
+  border-radius: 0 !important; border: 0 !important; padding: 10px 8px 0 !important; -webkit-overflow-scrolling: touch;
+}
+html.watch .notice-tag { font-size: 9px; padding: 2px 6px; margin-bottom: 6px; }
+html.watch .notice-box h2, html.watch #acctOv h2 { font-size: 16px !important; margin-bottom: 6px !important; }
+html.watch .notice-box p, html.watch .notice-box li, html.watch #acctOv p { font-size: 12px !important; margin-bottom: 6px !important; }
+html.watch .notice-box li { padding: 6px 8px; }
+html.watch .notice-ok, html.watch #acctOv button { font-size: 13px !important; }
+html.watch .notice-ok { display: block; width: 100%; min-width: 0; padding: 9px; margin: 6px 0 0; border-radius: 10px; }
+html.watch .notice-box > :last-child { margin-bottom: 10px; }
+html.watch #acctOv .big { font-size: 26px !important; }
+html.watch #acctOv input { font-size: 13px !important; padding: 7px 8px !important; }
+html.watch #acctToasts { top: 4px !important; right: 4px !important; width: calc(100vw - 8px) !important; font-size: 12px; }
+
+/* playing a game: the game takes the whole screen under a very slim bar */
+html.watch .player .top { gap: 4px; padding: 3px 6px; padding-top: max(3px, env(safe-area-inset-top)); }
+html.watch .player .back::before { font-size: 17px; padding: 0 4px; }
+html.watch .player .ptitle { font-size: 13px; }
+html.watch .player .actions .btn { padding: 4px 8px; font-size: 11px; }
+html.watch .player .stage { height: calc(var(--vh, 1vh) * 100 - 30px - env(safe-area-inset-top)); }
+html.watch .player .howto, html.watch .player .more-h, html.watch .player #more { margin-left: 6px; margin-right: 6px; font-size: 12px; }
+html.watch .loading-box { max-width: 100%; padding: 8px; }
+html.watch #loadArt { max-width: 100%; height: auto; }
+
+/* chat, players, social, support */
+html.watch .chat-send { gap: 4px !important; padding: 4px !important; }
+html.watch .chat-me { max-width: 56px !important; padding: 5px !important; font-size: 11px !important; }
+html.watch #sendBtn { padding: 6px 8px; font-size: 12px; }
+html.watch input, html.watch textarea, html.watch select { font-size: 13px; }
+html.watch .wrap, html.watch main { max-width: 100vw; overflow-wrap: anywhere; }
+html.watch img, html.watch video, html.watch canvas { max-width: 100%; }
+html.watch, html.watch body { max-width: 100vw; overflow-x: hidden; }
+
+/* Social */
+html.watch .ig-top, html.watch .ig-nav, html.watch.mob-phone .chips { margin-left: 4px !important; margin-right: 4px !important; }
+html.watch .ig-top { gap: 4px; }
+html.watch .ig-brand { font-size: 20px !important; }
+html.watch .ig-top .ib { width: 28px; height: 28px; padding: 3px; }
+html.watch .ig-top .ib svg { width: 18px; height: 18px; }
+html.watch .ig-nav { padding: 2px !important; gap: 0 !important; margin-bottom: 8px !important; border-radius: 10px !important; }
+html.watch .ig-nav a { padding: 5px 0 !important; min-width: 0; }
+html.watch .ig-nav svg { width: 18px !important; height: 18px !important; }
+
+/* small fixes */
+html.watch .feature .eyebrow { font-size: 9px !important; padding: 2px 6px !important; letter-spacing: .04em !important; }
+html.watch .seg { gap: 2px !important; padding: 2px !important; }
+html.watch .seg button { font-size: 11px !important; padding: 5px 2px !important; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+html.watch h1 { font-size: 20px; }
+/* the site announcement bar (account.js #liveNotice): three short lines at most, X still on the right */
+html.watch #liveNotice { display: block !important; font-size: 10px !important; line-height: 1.3 !important; padding: 3px 24px 3px 6px !important; max-height: 44px; overflow: hidden; }
+html.watch #liveNotice button { font-size: 16px !important; padding: 2px 6px !important; right: 2px !important; }
+html.watch #liveNotice:hover, html.watch #liveNotice:active { max-height: none; } /* a tap shows the whole message */

@@ -24,6 +24,7 @@
    (openShell), and the address bar follows the frame. Pages in that frame hand calls to this page (their call.js
    only forwards start()) and share its live connection (account.js). */
 (function () {
+  if (window.ARCADE_WATCH) return; // Apple Watch: no video calls, clip recorder, typing dots or TV mode (lighter)
   var A = window.ArcadeAccount;
   // a page inside the call frame: the page underneath has the call
   try {
@@ -500,7 +501,7 @@
     end: '<svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-2 3-4-2v-3c-2-1-4-1-6 0v3l-4 2z"/></svg>',
     min: '<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>'
   };
-  function avatar(n) { return el('span', 'acc-av', String(n).charAt(0).toUpperCase()); }
+  function avatar(n) { var s = el('span', 'acc-av', String(n).charAt(0).toUpperCase()); if (window.ArcadeAvatars) ArcadeAvatars.fill(s, n); return s; }
   function names(list) { return list.length <= 1 ? list.join('') : list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1]; }
   function drawRing() {
     css();

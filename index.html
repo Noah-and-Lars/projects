@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
 <script>
 // 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
 // not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
@@ -22,8 +26,8 @@
 </script>
 <title>The Arcade</title>
 <meta name="description" content="Free browser games. No downloads, no sign-ups. Just pick a game and play.">
-<meta name="theme-color" content="#0f0d1f">
-<link rel="icon" href="logo.svg" type="image/svg+xml">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="logo.svg?v=2" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -35,66 +39,71 @@
 <meta property="og:site_name" content="The Arcade">
 <meta property="og:title" content="The Arcade">
 <meta property="og:description" content="Free browser games. No downloads, no sign-ups.">
-<meta property="og:url" content="https://noah-and-lars.github.io/projects/">
-<meta property="og:image" content="https://noah-and-lars.github.io/projects/og.png">
+<meta property="og:url" content="https://thearcade.pages.dev/">
+<meta property="og:image" content="https://thearcade.pages.dev/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="arcade.css?v=16">
+<link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="arcade.css?v=21">
 <style>
-  .trailer-btn { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 2px; padding: 6px 12px; border-radius: 999px; background: #ffffff14; border: 1px solid #ffffff26; color: var(--text); font-size: 13px; font-weight: 800; cursor: pointer; }
-  .trailer-btn:hover, .trailer-btn:focus-visible { background: var(--accent); border-color: var(--accent); outline: none; }
-  #trailerOv { position: fixed; inset: 0; z-index: 9500; background: rgba(4, 4, 12, .92); display: grid; place-items: center; padding: 18px; }
-  #trailerOv .tr-box { position: relative; width: min(1280px, 100%); aspect-ratio: 16 / 9; max-height: calc(100vh - 36px); background: #000; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px #000c; }
+  #trailerOv { position: fixed; inset: 0; z-index: 9500; background: rgba(4, 4, 6, .94); display: grid; place-items: center; padding: 18px; animation: fadeIn .2s ease; }
+  #trailerOv .tr-box { position: relative; width: min(1280px, 100%); aspect-ratio: 16 / 9; max-height: calc(100vh - 36px); background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 40px 120px rgba(0, 0, 0, .8); }
   #trailerOv iframe { width: 100%; height: 100%; border: 0; display: block; }
-  #trailerOv .tr-x { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: #000a; color: #fff; font-size: 18px; cursor: pointer; z-index: 2; }
-  #trailerOv .tr-end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 18px; background: radial-gradient(ellipse at center, #1b1640e6, #000e); }
+  #trailerOv .tr-x { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .2); background: rgba(0, 0, 0, .55); color: #fff; cursor: pointer; z-index: 2; display: grid; place-items: center; }
+  #trailerOv .tr-x svg { width: 16px; height: 16px; }
+  #trailerOv .tr-end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 22px; background: rgba(6, 6, 8, .82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
   #trailerOv .tr-end[hidden] { display: none; }
-  #trailerOv .tr-end h2 { margin: 0; font-size: clamp(24px, 4vw, 44px); }
-  #trailerOv .tr-acts { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-  #trailerOv .tr-acts a, #trailerOv .tr-acts button { padding: 12px 22px; border-radius: 999px; border: 0; font: 800 16px system-ui, sans-serif; cursor: pointer; text-decoration: none; }
-  #trailerOv .tr-play { background: var(--accent); color: #fff; } #trailerOv .tr-again { background: #ffffff1f; color: #fff; }
+  #trailerOv .tr-end h2 { margin: 0; font-size: clamp(28px, 4.4vw, 52px); font-weight: 800; font-stretch: 118%; letter-spacing: -.03em; }
+  #trailerOv .tr-acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  #trailerOv .tr-acts a, #trailerOv .tr-acts button { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 11px; border: 1px solid transparent; font: 600 15px var(--font); cursor: pointer; text-decoration: none; }
+  #trailerOv .tr-acts svg { width: 15px; height: 15px; }
+  #trailerOv .tr-play { background: var(--text); color: #0b0b0d; } #trailerOv .tr-again { background: rgba(255, 255, 255, .08); color: #fff; border-color: rgba(255, 255, 255, .14) !important; }
 </style>
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
 </head>
-<body>
+<body class="home">
 <div id="intro" class="intro" aria-hidden="true">
-  <div class="intro-glow"></div>
-  <h1 class="intro-title" id="introTitle">The Arcade</h1>
-  <hr class="intro-line">
+  <div class="intro-flat"><span class="t1">The</span><span class="t2">Arcade</span></div>
   <p class="intro-sub">Play instantly · No downloads</p>
+  <div class="intro-fade"></div>
+  <span class="intro-skip">Click to skip</span>
 </div>
 <script>
-// Play the intro once per visit, not every time someone comes back from a game. A tap skips it.
+// The opening trailer, once per visit: 3D letters (intro3d.js) where WebGL works, a flat version where it doesn't
+// (or with Reduce Motion on). A click, a tap or any key skips it.
 (() => {
-  const intro = document.getElementById('intro');
+  const intro = document.getElementById('intro'), html = document.documentElement;
   let seen = false;
   try { seen = sessionStorage.getItem('intro-seen'); sessionStorage.setItem('intro-seen', '1'); } catch (e) {}
-  if (seen) { intro.remove(); return; }
-  document.documentElement.classList.add('intro-on');
-  // one span per letter so they can appear one after another
-  const title = document.getElementById('introTitle');
-  let i = 0;
-  title.replaceChildren(...title.textContent.split(' ').flatMap((word, w) => {
-    const box = document.createElement('span');
-    box.className = 'word';
-    for (const ch of word) {
-      const s = document.createElement('span');
-      s.textContent = ch; s.style.animationDelay = (0.5 + 0.06 * i++).toFixed(2) + 's';
-      box.appendChild(s);
-    }
-    i++;
-    return w ? [' ', box] : [box];
-  }));
-  const done = () => { intro.remove(); document.documentElement.classList.remove('intro-on'); };
-  intro.addEventListener('click', () => {
-    intro.classList.add('skip');
-    for (const el of document.querySelectorAll('.intro-on .wrap, .intro-on .foot')) el.style.animationDelay = '0s';
-  });
-  intro.addEventListener('animationend', e => { if (e.target === intro) done(); });
+  if (seen || window.ARCADE_WATCH || /[?&]nointro\b/.test(location.search)) { intro.remove(); return; }
+  html.classList.add('intro-on');
+  let ctl = null, over = false, timer = 0;
+  const done = () => {
+    if (over) return; over = true; clearTimeout(timer);
+    removeEventListener('keydown', onKey, true);
+    html.classList.remove('intro-on'); html.classList.add('reveal'); intro.classList.add('out');
+    setTimeout(() => { intro.remove(); html.classList.remove('reveal'); }, 1700);
+    dispatchEvent(new Event('arcade-intro-done'));
+  };
+  const skip = () => { if (ctl) ctl.skip(); else done(); };
+  const onKey = e => { e.preventDefault(); e.stopPropagation(); skip(); };
+  intro.addEventListener('click', skip);
+  addEventListener('keydown', onKey, true);
+  const flat = () => { if (over || ctl) return; intro.classList.add('flat'); timer = setTimeout(done, 4600); };
+  let gl = false;
+  try { const c = document.createElement('canvas'); gl = !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) {}
+  if (!gl || matchMedia('(prefers-reduced-motion: reduce)').matches) return flat();
+  const giveUp = setTimeout(flat, 2600); // a slow connection gets the flat version rather than a long black screen
+  import('./intro3d.js?v=1').then(m => {
+    clearTimeout(giveUp);
+    if (over || intro.classList.contains('flat')) return;
+    ctl = m.play(intro, done);
+  }).catch(() => { clearTimeout(giveUp); flat(); });
 })();
 </script>
 <header class="top">
-  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">The Arcade</a>
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg?v=2" alt="">The Arcade</a>
   <nav class="tabs" aria-label="Sections">
     <a class="tab on" href="index.html" aria-current="page">Games</a>
     <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span> <b id="chatN" class="tab-n" hidden></b></a>
@@ -102,128 +111,646 @@
     <a class="tab" href="social.html">Social</a>
     <a class="tab" href="support.html">Support</a>
   </nav>
-  <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
+  <button id="searchBtn" class="search-btn" type="button" aria-label="Search games" aria-haspopup="dialog" title="Search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <span>Search games</span><kbd id="kbdHint">⌘K</kbd>
+  </button>
 </header>
 
+<section class="dash" id="dash" aria-label="Featured games" data-cur="dash">
+  <div class="dash-bg" id="bg"><img alt=""><img alt=""></div>
+  <div class="dash-top">
+    <div class="greet"><small id="today"></small><b id="hello"></b></div>
+    <div class="stat-pills">
+      <span id="online" class="glass-pill" role="status" hidden><i class="live-dot" aria-hidden="true"></i><span><b>0</b> <span>online now</span></span></span>
+      <span class="glass-pill"><b id="count">0</b> games</span>
+    </div>
+  </div>
+  <div class="dash-body" id="stageBody" aria-live="polite" data-cur="stage"></div>
+  <div class="shelf-wrap" data-cur="shelf">
+    <div class="shelf-head">
+      <h2>All games</h2>
+      <span class="hint">Hover or use <kbd>←</kbd> <kbd>→</kbd> to browse, <kbd>↵</kbd> to play</span>
+      <div class="sec-tools">
+        <button type="button" class="arrow" id="shPrev" aria-label="Scroll left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button type="button" class="arrow" id="shNext" aria-label="Scroll right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+    </div>
+    <div class="shelf" id="shelf" role="listbox" aria-label="All games" aria-orientation="horizontal"></div>
+  </div>
+</section>
 
 <main class="wrap">
-  <div id="online" class="live" role="status" hidden><i aria-hidden="true"></i><b>0</b><span>people on the arcade right now</span></div>
-  <a id="feature" class="feature"></a>
-
-  <section id="recentWrap" class="section" hidden>
-    <h2 class="sec-h">Continue playing</h2>
+  <section id="recentWrap" class="section" hidden data-cur="recent">
+    <div class="sec-head"><h2 class="sec-h">Jump back in</h2></div>
     <div id="recent" class="recent"></div>
   </section>
 
-  <section class="section">
-    <div class="sec-bar">
-      <h2 class="sec-h" id="gridTitle">All games</h2>
-      <nav id="cats" class="chips" aria-label="Categories"></nav>
-    </div>
-    <div id="grid" class="grid" aria-live="polite"></div>
-    <p id="empty" class="empty" hidden>No games match that search.</p>
+  <section class="section" id="tournWrap" data-cur="tourn">
+    <div class="sec-head"><h2 class="sec-h">Tournaments</h2><span class="sec-sub" id="tournSub">Open to everyone · 1v1 knockout</span><a class="sec-link" href="tourney.html" style="margin-left:auto;color:var(--muted);font-size:14px">All tournaments</a></div>
+    <div id="tournRow" class="t-home"></div>
   </section>
 
-  <section id="newsWrap" class="section news">
-    <h2 class="sec-h">What's new</h2>
-    <ol id="news"></ol>
+  <section class="section" id="rankWrap" data-cur="rank">
+    <div class="sec-head"><h2 class="sec-h" id="rankTitle">Top picks</h2><span class="sec-sub" id="rankSub"></span></div>
+    <div id="ranked" class="ranked" data-cur="ranked"></div>
+  </section>
+
+  <section class="section" id="browse" data-cur="browse">
+    <div class="sec-head"><h2 class="sec-h" id="gridTitle">Library</h2><span class="sec-sub" id="gridSub"></span></div>
+    <div id="toolbarSentinel"></div>
+    <div class="toolbar" id="toolbar">
+      <nav id="cats" class="chips" aria-label="Categories"></nav>
+      <div class="tools">
+        <label class="select" title="Sort games">
+          <span class="sr">Sort by</span>
+          <select id="sort">
+            <option value="featured">Featured</option>
+            <option value="popular">Most played now</option>
+            <option value="new">Newest</option>
+            <option value="updated">Recently updated</option>
+            <option value="az">A–Z</option>
+          </select>
+        </label>
+        <div class="seg" role="group" aria-label="Layout">
+          <button type="button" data-view="grid" aria-label="Grid" title="Grid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg></button>
+          <button type="button" data-view="list" aria-label="List" title="List"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div id="grid" class="grid" data-cur="grid"></div>
+    <p id="empty" class="empty" hidden><b>Nothing here yet</b>No games in this category.</p>
+  </section>
+
+  <section id="newsWrap" class="section news" data-cur="news">
+    <div class="sec-head">
+      <h2 class="sec-h">Patch notes</h2><span class="sec-sub">New games and updates</span>
+      <div class="sec-tools">
+        <button type="button" class="arrow" id="nPrev" aria-label="Earlier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button type="button" class="arrow" id="nNext" aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+    </div>
+    <ol id="news" class="notes" data-cur="notes"></ol>
   </section>
 </main>
 
-<footer class="foot">
-  <p>The Arcade · <span id="count"></span></p>
+<footer class="foot" data-cur="foot">
+  <div class="foot-in">
+    <div><a class="brand" href="index.html"><img class="logo" src="logo.svg?v=2" alt="">The Arcade</a><p style="margin-top:14px">Free browser games. No downloads, no sign-ups. Just pick a game and play.</p></div>
+    <div><h3>Play</h3><ul><li><a href="#browse">Library</a></li><li><a href="tourney.html">Tournaments</a></li><li><button type="button" class="link" id="footRandom">Surprise me</button></li><li><button type="button" class="link" id="footSearch">Search</button></li><li><button type="button" class="link" id="footTrailer">Watch the trailer</button></li></ul></div>
+    <div><h3>Community</h3><ul><li><a href="chat.html">Global chat</a></li><li><a href="players.html">Players</a></li><li><a href="social.html">Social</a></li></ul></div>
+    <div><h3>Help</h3><ul><li><a href="support.html">Support</a></li><li><a href="#" id="tosLink" onclick="if(window.arcadeShowTerms){arcadeShowTerms()}return false">Terms of Service</a></li></ul></div>
+  </div>
+  <div class="wordmark" aria-hidden="true">The Arcade</div>
+  <div class="foot-base"><span>© 2026 The Arcade</span><span id="footCount"></span></div>
 </footer>
 
-<script src="games.js?v=206"></script>
-<script src="account.js?v=26"></script>
-<script src="console.js?v=1"></script>
-<script src="call.js?v=6"></script>
+<div class="cmdk-wrap" id="cmdk" hidden>
+  <div class="cmdk" role="dialog" aria-modal="true" aria-label="Search">
+    <div class="cmdk-in">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="cmdkQ" type="text" placeholder="Search games, pages and actions…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="cmdkList" aria-autocomplete="list">
+      <kbd>esc</kbd>
+    </div>
+    <div class="cmdk-list" id="cmdkList" role="listbox"></div>
+    <div class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd>move</span><span><kbd>↵</kbd>play</span><span><kbd>tab</kbd>details</span></div>
+  </div>
+</div>
+
+<script src="games.js?v=246"></script>
+<script src="account.js?v=40"></script>
+<script src="console.js?v=2"></script>
+<script src="call.js?v=8"></script>
+<script src="cursors.js?v=1"></script>
+<script src="trailer.js?v=1"></script>
+<script src="tourney.js?v=1"></script>
 <script>
 const $ = id => document.getElementById(id);
 const playUrl = g => 'play.html?game=' + encodeURIComponent(g.id);
 const byId = Object.fromEntries(GAMES.map(g => [g.id, g]));
-const TROPHY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 1h8v1h3v2.5A3.5 3.5 0 0 1 11.7 8 4 4 0 0 1 9 10.4V12h2v2H5v-2h2v-1.6A4 4 0 0 1 4.3 8 3.5 3.5 0 0 1 1 4.5V2h3zm8 2.5V6.3A1.5 1.5 0 0 0 13 5V3.5zM4 3.5H3V5a1.5 1.5 0 0 0 1 1.3z"/></svg>';
-let active = 'All';
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TOUCH = matchMedia('(hover: none)').matches;
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const I = {
+  play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>',
+  info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/>'),
+  film: svg('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4-2.5z"/>'),
+  close: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
+  link: svg('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
+  check: svg('<path d="M20 6 9 17l-5-5"/>'),
+  chat: svg('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>'),
+  users: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>'),
+  social: svg('<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M10 8.5v7l5.5-3.5z"/>'),
+  help: svg('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.9M12 17h.01"/>'),
+  user: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+  dice: svg('<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 8h.01M16 8h.01M12 12h.01M8 16h.01M16 16h.01"/>'),
+  doc: svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
+  news: svg('<path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2M8 9h5M8 13h5"/>'),
+  ret: svg('<path d="M9 10l-5 5 5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/>'),
+  pad: svg('<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/>'),
+  tag: svg('<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><path d="M7.5 7.5h.01"/>'),
+  trophy: '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 1h8v1h3v2.5A3.5 3.5 0 0 1 11.7 8 4 4 0 0 1 9 10.4V12h2v2H5v-2h2v-1.6A4 4 0 0 1 4.3 8 3.5 3.5 0 0 1 1 4.5V2h3zm8 2.5V6.3A1.5 1.5 0 0 0 13 5V3.5zM4 3.5H3V5a1.5 1.5 0 0 0 1 1.3z"/></svg>',
+};
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const txt = (e, sel, t) => { const n = e.querySelector(sel); if (n) n.textContent = t; return n; };
+const DAY = 864e5;
+const ago = iso => {
+  const d = Math.floor((Date.now() - Date.parse(iso)) / DAY);
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 7 ? d + ' days ago' : d < 30 ? (Math.round(d / 7) === 1 ? '1 week ago' : Math.round(d / 7) + ' weeks ago') : new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+};
+const fmtDate = s => new Date(s.length === 10 ? s + 'T12:00' : s).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const shortControls = c => (c || '').replace(/Keyboard \+ mouse/i, 'Keyboard & mouse').replace(/, touch.*$/i, ' + more');
+// a heading for news items that don't have one: "Krill Dive 1.4: versus lobbies…" -> "Krill Dive 1.4"
+const headOf = n => n.headline || ((m => m && m[1].length <= 42 ? m[1] : '')(/^([^:.]+):/.exec(n.text || '')) || (byId[n.game] ? byId[n.game].title + ' update' : 'The Arcade'));
+const badgeHtml = b => b ? `<span class="pill${b === 'UPDATED' ? ' upd' : b === 'DISCONTINUED' ? ' off' : b === 'BETA' ? ' beta' : ''}">${b}</span>` : '';
+// the order games are shown in: these first, then everything else as listed in games.js
+const FIRST = ['chess', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'storm-drop', 'cube-assault', 'gamble-your-life-away', 'throttle-ridge', 'uno', 'russian-roulette', 'free-criminal', 'space-strike', 'sproutling', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop', 'card-royale'];
+const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
+// 2026-11-12: game trailers. These games' opening cinematics play here (the game opened with ?trailer), not in the game
+const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette']);
+// a screenshot from the game's latest update makes a better backdrop than its cover (which has the logo on it)
+const SHOT = {};
+for (const n of NEWS) if (n.game && n.imgs && n.imgs.length && !SHOT[n.game]) SHOT[n.game] = n.imgs[0];
+const backdrop = g => SHOT[g.id] || g.thumb;
+let live = null;
+const liveN = id => live ? (live.byGame[id] || 0) : 0;
+const liveLabel = n => ArcadeOnline.label(n, live);
 
-$('count').textContent = GAMES.length + (GAMES.length === 1 ? ' game' : ' games');
+$('count').textContent = GAMES.length;
+$('footCount').textContent = GAMES.length + ' games';
+$('kbdHint').textContent = IS_MAC ? '⌘K' : 'Ctrl K';
+const hour = new Date().getHours();
+$('today').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+const greet = () => { const n = window.ArcadeAccount && ArcadeAccount.name(); $('hello').textContent = (hour < 5 ? 'Up late' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening') + (n ? ', ' + n : ''); };
+greet();
 
-// Featured: whichever game arrived or changed most recently
-function renderFeature() {
-  // Pinned: Havoc Bay is in the banner
-  const g = GAMES.find(x => x.id === 'havoc-bay') || [...GAMES].sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))[0];
-  const badge = Arcade.badge(g), stat = Arcade.stat(g);
-  const f = $('feature');
-  f.href = playUrl(g);
-  f.innerHTML = `<img class="feature-art" alt="">
-    <div class="feature-body">
-      <span class="eyebrow"></span>
-      <h1></h1>
-      <p class="feature-tag"></p>
-      <div class="feature-meta"></div>
-      <span class="btn big"><span aria-hidden="true">▶</span> Play now</span>
-    </div>`;
-  f.querySelector('img').src = g.thumb;
-  f.querySelector('.eyebrow').textContent = g.id === 'card-royale' ? 'NEW: Card Royale 1.0.2 · Bots give trophies' : g.id === 'havoc-bay' ? 'NEW: Havoc Bay 1.4.2 · Helicopters fly for real' : g.id === 'siege' ? 'NEW GAME: Siege 1.0' : g.id === 'uno' ? 'NEW GAME: UNO! 1.0' : g.id === 'free-criminal' ? 'NEW: v1.9 · The big one' : g.id === 'russian-roulette' ? 'New gamemode: Buckshot' : g.id === 'rocket-rivals' ? 'NEW GAME: Rocket Rivals 1.0' : g.id === 'football' ? 'NEW: Football 1.0.1 · Change your keys' : g.id === 'cube-assault' ? 'NEW: v3.0 · Siege, a 5v5 tactical mode' : badge === 'NEW' ? 'New game' : badge === 'UPDATED' ? 'Just updated' : 'Featured';
-  f.querySelector('h1').textContent = g.title;
-  f.querySelector('.feature-tag').textContent = g.tagline;
-  const meta = f.querySelector('.feature-meta');
-  for (const t of [g.category, g.controls]) { const s = document.createElement('span'); s.textContent = t; meta.appendChild(s); }
-  if (stat) { const s = document.createElement('span'); s.className = 'best'; s.innerHTML = TROPHY; s.append(stat); meta.appendChild(s); }
+/* ============================== The console screen ============================== */
+const ORDER = [...GAMES].sort((a, b) => rank(a) - rank(b));
+const EYEBROW = {
+  'storm-drop': 'Battle royale · Early beta', 'card-royale': 'Card Royale 1.0.2 · Bots give trophies', 'havoc-bay': 'Havoc Bay 1.4.2 · Helicopters fly for real',
+  siege: 'Siege 1.0', uno: 'UNO! 1.0', 'free-criminal': 'v1.9 · The big one', 'russian-roulette': 'New game mode · Buckshot',
+  'rocket-rivals': 'Rocket Rivals 1.0', football: 'Football 1.0.1 · Change your keys', 'cube-assault': 'v3.0 · Siege, a 5v5 tactical mode',
+};
+const eyebrow = g => EYEBROW[g.id] || g.category + ' · Updated ' + ago(g.updated);
+const dash = $('dash'), shelf = $('shelf'), bgs = [...$('bg').children];
+let sel = -1, bgOn = 0, bgToken = 0;
+
+function buildShelf() {
+  shelf.replaceChildren(...ORDER.map((g, i) => {
+    const b = el('button', 'card', `<img alt="" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async"><span class="cb">${badgeHtml(Arcade.badge(g))}</span><span class="prog"><i></i></span>`);
+    b.type = 'button'; b.setAttribute('role', 'option'); b.setAttribute('aria-label', g.title); b.dataset.i = i;
+    b.querySelector('img').src = g.thumb;
+    return b;
+  }));
+  let hoverT = 0;
+  shelf.addEventListener('pointerover', e => {
+    const c = e.target.closest('.card'); if (!c || e.pointerType !== 'mouse') return;
+    clearTimeout(hoverT); hoverT = setTimeout(() => { stopAuto(); select(+c.dataset.i); }, 110);
+  });
+  shelf.addEventListener('pointerleave', () => clearTimeout(hoverT));
+  shelf.addEventListener('focusin', e => { const c = e.target.closest('.card'); if (c && +c.dataset.i !== sel) { stopAuto(); select(+c.dataset.i); } });
+  shelf.addEventListener('click', e => {
+    const c = e.target.closest('.card'); if (!c) return;
+    const i = +c.dataset.i;
+    // on touch screens the first tap picks a game, the second plays it
+    if (TOUCH && i !== sel) { stopAuto(); select(i, true); return; }
+    location.href = playUrl(ORDER[i]);
+  });
+  const page = d => shelf.scrollBy({ left: d * shelf.clientWidth * 0.8, behavior: REDUCED ? 'auto' : 'smooth' });
+  $('shPrev').onclick = () => page(-1); $('shNext').onclick = () => page(1);
+  const arrows = () => { $('shPrev').disabled = shelf.scrollLeft < 8; $('shNext').disabled = shelf.scrollLeft > shelf.scrollWidth - shelf.clientWidth - 8; };
+  shelf.addEventListener('scroll', arrows, { passive: true }); arrows();
 }
 
+function select(i, reveal) {
+  i = (i + ORDER.length) % ORDER.length;
+  if (i === sel) return;
+  sel = i;
+  const g = ORDER[i];
+  [...shelf.children].forEach((c, k) => { const on = k === i; c.classList.toggle('sel', on); c.setAttribute('aria-selected', on); if (on) { const bar = c.querySelector('.prog i'); bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = ''; } });
+  // keep the selected card in view, without scrolling the page
+  const c = shelf.children[i], pad = parseFloat(getComputedStyle(shelf).paddingLeft) || 0;
+  const l = c.offsetLeft - pad, r = c.offsetLeft + c.offsetWidth - shelf.clientWidth + 60;
+  if (shelf.scrollLeft > l) shelf.scrollTo({ left: l, behavior: REDUCED ? 'auto' : 'smooth' });
+  else if (shelf.scrollLeft < r) shelf.scrollTo({ left: r, behavior: REDUCED ? 'auto' : 'smooth' });
+  // the backdrop cross-fades once the next picture has loaded
+  const tok = ++bgToken, next = bgs[1 - bgOn], src = backdrop(g);
+  const swap = () => { if (tok !== bgToken) return; bgs[bgOn].classList.remove('on'); next.classList.toggle('flatart', !SHOT[g.id]); next.classList.add('on'); bgOn = 1 - bgOn; };
+  next.classList.remove('on');
+  if (next.getAttribute('src') === src && next.complete) swap(); else { next.onload = swap; next.onerror = swap; next.src = src; }
+  renderStage(g);
+  if (reveal && TOUCH && dash.getBoundingClientRect().top < -80) dash.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' });
+}
+
+function renderStage(g) {
+  const b = Arcade.badge(g), stat = Arcade.stat(g), tr = TRAILERS.has(g.id);
+  const body = $('stageBody');
+  body.classList.remove('swap'); void body.offsetWidth; body.classList.add('swap');
+  body.innerHTML = `<div class="kicker">${badgeHtml(b)}<span class="eyebrow"></span></div>
+    <h1 class="title"></h1>
+    <p class="tagline"></p>
+    <div class="facts-row"><span>${I.tag}<span class="c1"></span></span><span class="ctl-f">${I.pad}<span class="c2"></span></span><span class="live" data-g hidden><i></i><span><b></b> playing now</span></span>${stat ? '<span class="best">' + I.trophy + '<span class="c3"></span></span>' : ''}</div>
+    <div class="acts"><a class="btn big accent">${I.play} Play</a><button type="button" class="btn big ghost" data-info>${I.info} More info</button>${tr ? `<button type="button" class="btn big ghost" data-trailer>${I.film} Trailer</button>` : ''}</div>`;
+  txt(body, '.eyebrow', eyebrow(g));
+  const h = txt(body, '.title', g.title);
+  h.classList.toggle('long', g.title.length > 11); h.classList.toggle('xlong', g.title.length > 16);
+  txt(body, '.tagline', g.tagline); txt(body, '.c1', g.category); txt(body, '.c2', shortControls(g.controls));
+  if (stat) txt(body, '.c3', stat);
+  body.querySelector('.live').dataset.g = g.id;
+  body.querySelector('a.btn').href = playUrl(g);
+  body.querySelector('[data-info]').onclick = () => openSheet(g.id);
+  if (tr) body.querySelector('[data-trailer]').onclick = () => openTrailer(g);
+  paintLive();
+}
+
+// until someone touches anything, the screen walks through the featured games by itself
+// Havoc Bay leads; then the next games that have real screenshots (board games don't make much of a backdrop)
+const NOT_FEATURED = new Set(['Casino', 'Thriller']); // shown in the library, never pushed on the front screen
+const AUTO = ORDER.map((g, i) => SHOT[g.id] && g.category !== 'Board' && !NOT_FEATURED.has(g.category) ? i : -1).filter(i => i >= 0).sort((a, b) => (ORDER[b].id === 'havoc-bay') - (ORDER[a].id === 'havoc-bay')).slice(0, 6);
+function startAuto() {
+  if (REDUCED) return;
+  dash.classList.add('auto');
+  shelf.addEventListener('animationend', e => { if (dash.classList.contains('auto') && e.target.parentElement.classList.contains('prog')) select(AUTO[(AUTO.indexOf(sel) + 1) % AUTO.length]); });
+  $('stageBody').addEventListener('pointerenter', () => dash.classList.add('paused'));
+  $('stageBody').addEventListener('pointerleave', () => dash.classList.remove('paused'));
+  document.addEventListener('visibilitychange', () => dash.classList.toggle('paused', document.hidden));
+}
+function stopAuto() { dash.classList.remove('auto'); }
+
+// arrow keys move along the shelf while the screen is in view; Enter plays
+addEventListener('keydown', e => {
+  if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (document.querySelector('.intro, #acctOv, #tosPop, .notice, #trailerOv') || sheet || !$('cmdk').hidden) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  if (dash.getBoundingClientRect().bottom < innerHeight * 0.4) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault(); stopAuto(); select(sel + (e.key === 'ArrowRight' ? 1 : -1));
+    if (shelf.contains(document.activeElement)) shelf.children[sel].focus({ preventScroll: true });
+  } else if (e.key === 'Enter' && !document.activeElement.closest('a, button')) { e.preventDefault(); location.href = playUrl(ORDER[sel]); }
+  else if ((e.key === 'i' || e.key === 'I') && !document.activeElement.closest('.tile')) { e.preventDefault(); openSheet(ORDER[sel].id); }
+});
+
+/* ============================== Jump back in ============================== */
 function renderRecent() {
   const list = Arcade.recent(3);
   $('recentWrap').hidden = !list.length;
   $('recent').replaceChildren(...list.map(g => {
-    const a = document.createElement('a');
-    a.className = 'mini'; a.href = playUrl(g);
-    a.innerHTML = '<img alt=""><div><b></b><span></span></div><span class="mini-play" aria-hidden="true">▶</span>';
+    const a = el('a', 'mini', `<img alt=""><div><b></b><span></span></div><span class="mini-play" aria-hidden="true">${I.play}</span>`);
+    a.href = playUrl(g);
     a.querySelector('img').src = g.thumb;
-    a.querySelector('b').textContent = g.title;
-    a.querySelector('div span').textContent = Arcade.stat(g) || 'Keep playing';
+    txt(a, 'b', g.title);
+    txt(a, 'div span', Arcade.stat(g) || 'Played ' + ago(Arcade.played()[g.id]));
     return a;
   }));
 }
 
-for (const c of ['All', ...new Set(GAMES.map(g => g.category))]) {
-  const b = document.createElement('button');
-  b.className = 'chip'; b.textContent = c;
-  b.onclick = () => { active = c; render(); };
-  $('cats').appendChild(b);
+/* ============================== Ranked: popular right now, or top picks ============================== */
+let rankKey = '';
+function renderRanked() {
+  const busy = live && live.total > 0 ? GAMES.filter(g => liveN(g.id) > 0).sort((a, b) => liveN(b.id) - liveN(a.id) || rank(a) - rank(b)) : [];
+  const popular = busy.length >= 3;
+  const list = (popular ? busy : [...GAMES].filter(g => g.badge !== 'DISCONTINUED' && !NOT_FEATURED.has(g.category)).sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))).slice(0, 5);
+  const key = popular + list.map(g => g.id + liveN(g.id)).join();
+  if (key === rankKey) return; rankKey = key;
+  $('rankTitle').textContent = popular ? 'Popular right now' : 'Top 5 this week';
+  $('rankSub').textContent = popular ? 'By players online this minute' : 'The freshest updates';
+  $('ranked').replaceChildren(...list.map((g, i) => {
+    const a = el('a', 'rk', `<span class="n" aria-hidden="true">${i + 1}</span><span class="im"><img alt="" loading="lazy"><span class="lv" ${popular ? '' : 'hidden'}><i class="live-dot"></i><b></b></span></span>`);
+    a.href = playUrl(g); a.setAttribute('aria-label', (i + 1) + '. ' + g.title);
+    a.querySelector('img').src = g.thumb;
+    if (popular) txt(a, '.lv b', liveLabel(liveN(g.id)) + ' playing');
+    return a;
+  }));
 }
 
+/* ============================== Library ============================== */
+let active = 'All';
+let sort = ['featured', 'popular', 'new', 'updated', 'az'].includes(ls.get('arcade-home-sort')) ? ls.get('arcade-home-sort') : 'featured';
+let view = ls.get('arcade-home-view') === 'list' ? 'list' : 'grid';
+const cats = (() => { const m = new Map(); for (const g of GAMES) m.set(g.category, (m.get(g.category) || 0) + 1); return [['All', GAMES.length], ...m]; })();
+$('cats').replaceChildren(...cats.map(([c, n]) => {
+  const b = el('button', 'chip'); b.type = 'button';
+  b.append(c, ' '); const s = el('small'); s.textContent = n; b.append(s);
+  b.dataset.cat = c; b.onclick = () => { active = c; render(); };
+  return b;
+}));
+$('sort').value = sort;
+$('sort').onchange = () => { sort = $('sort').value; ls.set('arcade-home-sort', sort); render(); };
+for (const b of document.querySelectorAll('.seg button')) b.onclick = () => { view = b.dataset.view; ls.set('arcade-home-view', view); render(true); };
+
+const tiles = new Map();
 function tile(g) {
-  const a = document.createElement('a');
-  a.className = 'tile'; a.href = playUrl(g);
-  const badge = Arcade.badge(g), stat = Arcade.stat(g);
+  if (tiles.has(g.id)) return tiles.get(g.id);
+  const a = el('a', 'tile');
+  a.href = playUrl(g); a.dataset.id = g.id;
+  const badge = Arcade.badge(g), stat = Arcade.stat(g), tr = TRAILERS.has(g.id);
   a.innerHTML = `
-    <div class="thumb"><img alt="" loading="lazy">${badge ? `<span class="badge${badge === 'UPDATED' ? ' upd' : badge === 'DISCONTINUED' ? ' off' : ''}">${badge}</span>` : ''}</div>
+    <div class="thumb"><img alt="" loading="lazy" decoding="async"></div>
+    ${badge ? `<span class="badge">${badgeHtml(badge)}</span>` : ''}
+    <div class="hov">${tr ? `<button type="button" data-trailer>${I.film} Trailer</button>` : ''}<button type="button" data-info>${I.info} Details</button></div>
     <div class="info">
       <h2></h2>
       <p class="desc"></p>
       <div class="meta"><span class="tag"></span><span class="ctl"></span></div>
-      ${stat ? '<p class="best">' + TROPHY + '<span></span></p>' : ''}
-      ${TRAILERS.has(g.id) ? '<span class="trailer-btn" role="button" tabindex="0">▶ Play trailer</span>' : ''}
-      <p class="playing" hidden><i aria-hidden="true"></i><span><b>0</b> playing now</span></p>
-    </div>`;
-  a.querySelector('.playing').dataset.g = g.id;
+      ${stat ? '<p class="best">' + I.trophy + '<span></span></p>' : ''}
+    </div>
+    <p class="playing" data-g hidden title="Playing now"><i aria-hidden="true"></i><b>0</b></p>
+    <div class="list-acts"><span class="btn ghost" role="button" data-info>Details</span><span class="btn accent">${I.play} Play</span></div>`;
   a.querySelector('img').src = g.thumb;
-  a.querySelector('h2').textContent = g.title;
-  a.querySelector('.desc').textContent = g.description;
-  a.querySelector('.tag').textContent = g.category;
-  a.querySelector('.ctl').textContent = g.controls;
-  if (stat) a.querySelector('.best span').textContent = stat;
-  const tb = a.querySelector('.trailer-btn');
-  if (tb) { const go = e => { e.preventDefault(); e.stopPropagation(); openTrailer(g); }; tb.addEventListener('click', go); tb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); }); }
+  txt(a, 'h2', g.title); txt(a, '.desc', g.tagline);
+  txt(a, '.tag', g.category); txt(a, '.ctl', shortControls(g.controls));
+  a.querySelector('.playing').dataset.g = g.id;
+  if (stat) txt(a, '.best span', stat);
+  tiles.set(g.id, a);
   return a;
 }
+$('grid').addEventListener('click', e => {
+  const t = e.target.closest('[data-info], [data-trailer]'); if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  const id = t.closest('.tile').dataset.id;
+  if (t.hasAttribute('data-trailer')) openTrailer(byId[id]); else openSheet(id);
+});
+// "i" on a focused card opens its details
+$('grid').addEventListener('keydown', e => { if ((e.key === 'i' || e.key === 'I') && e.target.classList.contains('tile')) { e.preventDefault(); openSheet(e.target.dataset.id); } });
 
-// 2026-11-12: game trailers. These games' opening cinematics play here (the game opened with ?trailer), not in the game
-const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette']);
+function sorted() {
+  const list = GAMES.filter(g => active === 'All' || g.category === active);
+  const by = {
+    featured: (a, b) => rank(a) - rank(b),
+    popular: (a, b) => liveN(b.id) - liveN(a.id) || rank(a) - rank(b),
+    new: (a, b) => Date.parse(b.added) - Date.parse(a.added),
+    updated: (a, b) => Date.parse(b.updated) - Date.parse(a.updated),
+    az: (a, b) => a.title.localeCompare(b.title),
+  }[sort];
+  return list.sort(by);
+}
+let lastOrder = '';
+function render(viewChanged) {
+  const grid = $('grid');
+  const list = sorted();
+  const order = active + '|' + view + '|' + list.map(g => g.id).join(',');
+  if (order === lastOrder) return paintLive();
+  // FLIP: remember where every card was, change the order, then glide each card from its old spot
+  const before = new Map();
+  if (!REDUCED && !viewChanged) for (const t of grid.children) before.set(t, t.getBoundingClientRect());
+  grid.classList.toggle('list', view === 'list');
+  grid.replaceChildren(...list.map(tile));
+  for (const t of grid.children) {
+    const r0 = before.get(t);
+    t.classList.remove('enter');
+    if (!r0) { if (lastOrder && !viewChanged && !REDUCED) { void t.offsetWidth; t.classList.add('enter'); } continue; }
+    const r1 = t.getBoundingClientRect(), dx = r0.left - r1.left, dy = r0.top - r1.top;
+    if (dx || dy) t.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 520, easing: 'cubic-bezier(.2,.7,.2,1)' });
+  }
+  lastOrder = order;
+  $('empty').hidden = list.length > 0;
+  for (const b of $('cats').children) { const on = b.dataset.cat === active; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }
+  for (const b of document.querySelectorAll('.seg button')) b.classList.toggle('on', b.dataset.view === view);
+  $('gridTitle').textContent = active === 'All' ? 'Library' : active;
+  $('gridSub').textContent = list.length + (list.length === 1 ? ' game' : ' games');
+  paintLive();
+}
+// a hairline under the toolbar once it sticks
+new IntersectionObserver(([e]) => $('toolbar').classList.toggle('stuck', !e.isIntersecting && e.boundingClientRect.top < 100), { rootMargin: '-60px 0px 0px 0px' }).observe($('toolbarSentinel'));
+
+/* ============================== Patch notes ============================== */
+function renderNews() {
+  $('news').replaceChildren(...NEWS.slice(0, 16).map(n => {
+    const g = byId[n.game];
+    const li = el('li');
+    const card = g ? el('button', 'note') : el(n.href ? 'a' : 'div', 'note');
+    if (g) { card.type = 'button'; card.onclick = () => openSheet(g.id); } else if (n.href) card.href = n.href;
+    const pic = (n.imgs && n.imgs[0]) || (g && g.thumb);
+    card.innerHTML = `<span class="ni">${pic ? '<img alt="" loading="lazy">' : `<span class="ic">${/chat/.test(n.href || '') ? I.chat : /social/.test(n.href || '') ? I.social : I.news}<strong></strong></span>`}<em></em></span><span class="nb"><time></time><b></b><p></p></span>`;
+    if (pic) card.querySelector('img').src = pic; else { txt(card, 'strong', n.headline || 'The Arcade'); card.querySelector('.nb b').remove(); }
+    txt(card, 'em', g ? g.title : /social/.test(n.href || '') ? 'Social' : /chat/.test(n.href || '') ? 'Chat' : 'The Arcade');
+    txt(card, 'time', fmtDate(n.date)); card.querySelector('time').dateTime = n.date;
+    txt(card, 'b', headOf(n));
+    txt(card, 'p', n.text);
+    li.append(card); li.style.display = 'contents';
+    return li;
+  }));
+  const box = $('news');
+  const page = d => box.scrollBy({ left: d * box.clientWidth * 0.8, behavior: REDUCED ? 'auto' : 'smooth' });
+  $('nPrev').onclick = () => page(-1); $('nNext').onclick = () => page(1);
+  const arrows = () => { $('nPrev').disabled = box.scrollLeft < 8; $('nNext').disabled = box.scrollLeft > box.scrollWidth - box.clientWidth - 8; };
+  box.addEventListener('scroll', arrows, { passive: true }); arrows();
+}
+
+/* ============================== Live counts ============================== */
+function paintLive() {
+  for (const e of document.querySelectorAll('.playing[data-g], .live[data-g]')) {
+    const n = liveN(e.dataset.g);
+    e.hidden = !live || (e.classList.contains('live') && n < 1);
+    if (!live) continue;
+    e.classList.toggle('none', n < 1);
+    e.querySelector('b').textContent = liveLabel(n);
+    if (e.classList.contains('playing')) e.title = liveLabel(n) + ' playing now';
+  }
+  const f = $('sheetLive'); if (f) f.textContent = live ? liveLabel(liveN(f.dataset.g)) + ' playing now' : '–';
+}
+
+/* ============================== Game details ============================== */
+let sheet = null, sheetFrom = null;
+function openSheet(id) {
+  const g = byId[id]; if (!g) return;
+  closeSheet(true);
+  stopAuto();
+  sheetFrom = document.activeElement;
+  const badge = Arcade.badge(g), stat = Arcade.stat(g), tr = TRAILERS.has(g.id);
+  const scrim = el('div', 'scrim');
+  const s = el('div', 'sheet');
+  s.setAttribute('role', 'dialog'); s.setAttribute('aria-modal', 'true'); s.setAttribute('aria-labelledby', 'sheetTitle'); s.tabIndex = -1;
+  s.innerHTML = `<div class="sheet-art"><img alt=""><button type="button" class="sheet-x" aria-label="Close">${I.close}</button>
+      <div class="sheet-head"><div class="kicker">${badgeHtml(badge)}<span class="eyebrow"></span></div><h2 id="sheetTitle"></h2>
+        <div class="sheet-acts"><a class="btn big accent">${I.play} Play</a>${tr ? `<button type="button" class="btn big ghost" data-trailer>${I.film} Trailer</button>` : ''}<button type="button" class="btn big ghost icon" data-copy aria-label="Copy link" title="Copy link">${I.link}</button></div></div></div>
+    <div class="sheet-body">
+      <div><p class="lead"></p><p class="about"></p></div>
+      <dl class="facts">
+        <div><dt>Players</dt><dd id="sheetLive"></dd></div>
+        <div><dt>Your best</dt><dd class="f-best"></dd></div>
+        <div><dt>Category</dt><dd class="f-cat"></dd></div>
+        <div><dt>Plays with</dt><dd class="f-ctl"></dd></div>
+        <div><dt>Added</dt><dd class="f-add"></dd></div>
+        <div><dt>Updated</dt><dd class="f-upd"></dd></div>
+      </dl>
+      ${(g.keys || []).length ? '<div class="span"><h3>Controls</h3><ul class="keys"></ul></div>' : ''}
+      <div class="span upd-wrap"><h3>Recent updates</h3><ol class="ups"></ol></div>
+    </div>`;
+  s.querySelector('.sheet-art img').src = backdrop(g);
+  txt(s, '.eyebrow', g.category + ' · Updated ' + ago(g.updated));
+  txt(s, 'h2', g.title); txt(s, '.lead', g.tagline); txt(s, '.about', g.description);
+  txt(s, '.f-best', stat || '–'); txt(s, '.f-cat', g.category); txt(s, '.f-ctl', g.controls);
+  txt(s, '.f-add', fmtDate(g.added)); txt(s, '.f-upd', ago(g.updated));
+  s.querySelector('#sheetLive').dataset.g = g.id;
+  s.querySelector('a.btn').href = playUrl(g);
+  if (tr) s.querySelector('[data-trailer]').onclick = () => openTrailer(g);
+  s.querySelector('[data-copy]').onclick = e => {
+    const u = new URL(playUrl(g), location.href).href, b = e.currentTarget;
+    (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => { b.innerHTML = I.check; setTimeout(() => { b.innerHTML = I.link; }, 1400); }, () => prompt('Copy this link', u));
+  };
+  const keys = s.querySelector('.keys');
+  if (keys) for (const [k, what] of g.keys) {
+    const li = el('li', '', '<span class="kbds"></span><span></span>');
+    for (const part of k.split(' / ')) { const kb = el('kbd'); kb.textContent = part; li.firstChild.append(kb); }
+    li.lastChild.textContent = what; keys.append(li);
+  }
+  const ups = NEWS.filter(n => n.game === g.id).slice(0, 5);
+  if (!ups.length) s.querySelector('.upd-wrap').remove();
+  else s.querySelector('.ups').replaceChildren(...ups.map(n => {
+    const li = el('li', '', '<time></time><div><b></b><p></p></div>');
+    txt(li, 'time', fmtDate(n.date)); txt(li, 'b', headOf(n)); txt(li, 'p', n.text);
+    if (n.imgs && n.imgs.length) { const sh = el('div', 'shots'); for (const src of n.imgs.slice(0, 4)) { const im = el('img'); im.alt = ''; im.loading = 'lazy'; im.src = src; sh.append(im); } li.lastChild.append(sh); }
+    return li;
+  }));
+  scrim.onclick = () => closeSheet();
+  s.querySelector('.sheet-x').onclick = () => closeSheet();
+  s.addEventListener('keydown', e => { // keep Tab inside the dialog
+    if (e.key !== 'Tab') return;
+    const f = [...s.querySelectorAll('a[href], button:not([disabled])')]; if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+  });
+  document.body.append(scrim, s);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => { scrim.classList.add('open'); s.classList.add('open'); });
+  s.focus({ preventScroll: true });
+  sheet = { s, scrim, id };
+  paintLive();
+  if (location.hash !== '#' + g.id) history.pushState({ sheet: g.id }, '', '#' + g.id);
+}
+function dropSheet(k, instant) {
+  document.body.style.overflow = '';
+  if (instant || REDUCED) { k.s.remove(); k.scrim.remove(); return; }
+  k.s.classList.remove('open'); k.scrim.classList.remove('open'); setTimeout(() => { k.s.remove(); k.scrim.remove(); }, 450);
+}
+function closeSheet(instant) {
+  if (!sheet) return;
+  const k = sheet; sheet = null;
+  if (history.state && history.state.sheet) history.back();
+  else if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  dropSheet(k, instant);
+  if (sheetFrom && sheetFrom.focus && !instant) sheetFrom.focus({ preventScroll: true });
+}
+addEventListener('popstate', () => { if (sheet && !(history.state && history.state.sheet)) { const k = sheet; sheet = null; dropSheet(k); } });
+
+/* ============================== Command palette ============================== */
+const cmdk = $('cmdk'), q = $('cmdkQ'), listEl = $('cmdkList');
+let items = [], csel = 0, cmdkFrom = null;
+const PAGES = [
+  { label: 'Global chat', ic: I.chat, href: 'chat.html', hint: 'Page' },
+  { label: 'Players', ic: I.users, href: 'players.html', hint: 'Page' },
+  { label: 'Social', ic: I.social, href: 'social.html', hint: 'Page' },
+  { label: 'Support', ic: I.help, href: 'support.html', hint: 'Page' },
+];
+const ACTIONS = [
+  { label: 'Surprise me', ic: I.dice, hint: 'Play a random game', run: () => { location.href = playUrl(GAMES[Math.floor(Math.random() * GAMES.length)]); } },
+  { label: 'Your account', ic: I.user, hint: 'Action', run: () => { if (window.ArcadeAccount && ArcadeAccount.open) ArcadeAccount.open(); else { const b = $('acctBtn'); if (b) b.click(); } } },
+  { label: 'Tournaments', ic: I.dice, hint: 'Join or host one', run: () => { location.href = 'tourney.html'; } },
+  { label: 'Watch the trailer', ic: I.film, hint: 'What’s new on The Arcade', run: () => { if (window.ArcadeTrailer) ArcadeTrailer.play({ onDone: () => {} }); } },
+  { label: 'Terms of Service', ic: I.doc, hint: 'Action', run: () => { if (window.arcadeShowTerms) arcadeShowTerms(); } },
+];
+function score(g, s) {
+  const t = g.title.toLowerCase();
+  if (t.startsWith(s)) return 100 - t.length / 100;
+  if (t.split(/[\s!:-]+/).some(w => w.startsWith(s))) return 80;
+  if (t.includes(s)) return 60;
+  if (g.category.toLowerCase().startsWith(s)) return 40;
+  if ((g.tagline + ' ' + g.description).toLowerCase().includes(s)) return 20;
+  let i = 0; for (const ch of t) if (ch === s[i]) i++; // letters in order ("tr" finds Throttle Ridge)
+  return i === s.length ? 10 : 0;
+}
+function hl(title, s) {
+  const e = document.createElement('span');
+  const i = s ? title.toLowerCase().indexOf(s) : -1;
+  if (i < 0) { e.textContent = title; return e; }
+  const m = document.createElement('mark'); m.textContent = title.slice(i, i + s.length);
+  e.append(title.slice(0, i), m, title.slice(i + s.length));
+  return e;
+}
+function buildCmdk() {
+  const s = q.value.trim().toLowerCase();
+  const groups = [];
+  if (!s) {
+    const rec = Arcade.recent(3);
+    if (rec.length) groups.push(['Jump back in', rec.map(g => ({ game: g }))]);
+    groups.push(['Featured', ORDER.filter(g => !rec.includes(g)).slice(0, 4).map(g => ({ game: g }))]);
+    groups.push(['Pages', PAGES]);
+    groups.push(['Actions', ACTIONS]);
+  } else {
+    const gs = GAMES.map(g => [g, score(g, s)]).filter(x => x[1] > (s.length < 3 ? 30 : 0)).sort((a, b) => b[1] - a[1] || rank(a[0]) - rank(b[0])).map(x => ({ game: x[0] }));
+    if (gs.length) groups.push(['Games', gs]);
+    const pa = [...PAGES, ...ACTIONS].filter(p => p.label.toLowerCase().includes(s));
+    if (pa.length) groups.push(['Pages & actions', pa]);
+  }
+  items = []; csel = 0;
+  const frag = document.createDocumentFragment();
+  for (const [name, list] of groups) {
+    const gh = el('div', 'cmdk-g'); gh.textContent = name; frag.append(gh);
+    for (const it of list) {
+      const b = el('button', 'cmdk-i'); b.type = 'button'; b.setAttribute('role', 'option'); b.id = 'ck' + items.length;
+      if (it.game) {
+        const g = it.game, im = el('img'); im.alt = ''; im.src = g.thumb;
+        const sm = el('small'); const n = liveN(g.id);
+        sm.textContent = live && n ? liveLabel(n) + ' playing' : g.category;
+        b.append(im, hl(g.title, s), sm);
+      } else {
+        const ic = el('span', 'ic', it.ic); const sm = el('small'); sm.textContent = it.hint;
+        b.append(ic, hl(it.label, s), sm);
+      }
+      b.insertAdjacentHTML('beforeend', `<span class="ret">${I.ret}</span>`);
+      const k = items.length;
+      b.onmousemove = () => { if (csel !== k) { csel = k; mark(); } };
+      b.onclick = () => runItem(it);
+      items.push(it); frag.append(b);
+    }
+  }
+  if (!items.length) { const n = el('div', 'cmdk-none'); n.textContent = 'No games match “' + q.value.trim() + '”'; frag.append(n); }
+  listEl.replaceChildren(frag);
+  mark();
+}
+function mark() {
+  listEl.querySelectorAll('.cmdk-i').forEach((b, k) => { b.classList.toggle('on', k === csel); b.setAttribute('aria-selected', k === csel); if (k === csel) { b.scrollIntoView({ block: 'nearest' }); q.setAttribute('aria-activedescendant', b.id); } });
+}
+function runItem(it, details) {
+  if (it.game) { if (details) { closeCmdk(); openSheet(it.game.id); } else location.href = playUrl(it.game); return; }
+  closeCmdk();
+  if (it.href) location.href = it.href; else if (it.run) it.run();
+}
+function openCmdk() {
+  if (!cmdk.hidden) return;
+  cmdkFrom = document.activeElement;
+  cmdk.hidden = false; q.value = ''; buildCmdk(); q.focus();
+  document.body.style.overflow = 'hidden';
+}
+function closeCmdk() { if (cmdk.hidden) return; cmdk.hidden = true; if (!sheet) document.body.style.overflow = ''; if (cmdkFrom && cmdkFrom.focus) cmdkFrom.focus({ preventScroll: true }); }
+q.addEventListener('input', buildCmdk);
+q.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (items.length) { csel = (csel + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; mark(); } }
+  else if (e.key === 'Enter') { e.preventDefault(); if (items[csel]) runItem(items[csel], e.shiftKey); }
+  else if (e.key === 'Tab') { e.preventDefault(); if (items[csel] && items[csel].game) runItem(items[csel], true); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeCmdk(); }
+});
+cmdk.addEventListener('mousedown', e => { if (e.target === cmdk) closeCmdk(); });
+$('searchBtn').onclick = openCmdk;
+$('footSearch').onclick = openCmdk;
+$('footRandom').onclick = ACTIONS[0].run;
+$('footTrailer').onclick = () => { if (window.ArcadeTrailer) ArcadeTrailer.play({}); };
+addEventListener('keydown', e => {
+  if (document.querySelector('.intro')) return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.activeElement.isContentEditable;
+  if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); cmdk.hidden ? openCmdk() : closeCmdk(); return; }
+  if (e.key === '/' && !typing && cmdk.hidden && !document.querySelector('#acctOv, #tosPop, .notice')) { e.preventDefault(); openCmdk(); return; }
+  if (e.key === 'Escape') { if ($('trailerOv')) closeTrailer(); else if (!cmdk.hidden) closeCmdk(); else if (sheet) closeSheet(); }
+});
+
+/* ============================== Trailers ============================== */
 function openTrailer(g) {
-  closeTrailer();
+  closeTrailer(); stopAuto();
   const ov = document.createElement('div'); ov.id = 'trailerOv'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', g.title + ' trailer');
-  ov.innerHTML = '<div class="tr-box"><iframe allow="autoplay; fullscreen" title="Trailer"></iframe><div class="tr-end" hidden><h2></h2><div class="tr-acts"><a class="tr-play">▶ Play now</a><button type="button" class="tr-again">↻ Watch again</button></div></div><button type="button" class="tr-x" aria-label="Close">✕</button></div>';
+  ov.innerHTML = `<div class="tr-box"><iframe allow="autoplay; fullscreen" title="Trailer"></iframe><div class="tr-end" hidden><h2></h2><div class="tr-acts"><a class="tr-play">${I.play} Play now</a><button type="button" class="tr-again">Watch again</button></div></div><button type="button" class="tr-x" aria-label="Close">${I.close}</button></div>`;
   const fr = ov.querySelector('iframe'), end = ov.querySelector('.tr-end');
   const src = g.path + (g.path.includes('?') ? '&' : '?') + 'trailer=1';
   fr.src = src; ov.querySelector('h2').textContent = g.title;
@@ -236,72 +763,70 @@ function openTrailer(g) {
   document.body.appendChild(ov); document.body.style.overflow = 'hidden';
   fr.addEventListener('load', () => { try { fr.contentWindow.focus(); } catch (e) {} });
 }
-function closeTrailer() { const ov = $('trailerOv'); if (!ov) return; removeEventListener('message', ov._msg); ov.querySelector('iframe').src = 'about:blank'; ov.remove(); document.body.style.overflow = ''; }
-addEventListener('keydown', e => { if (e.key === 'Escape' && $('trailerOv')) closeTrailer(); });
+function closeTrailer() { const ov = $('trailerOv'); if (!ov) return; removeEventListener('message', ov._msg); ov.querySelector('iframe').src = 'about:blank'; ov.remove(); document.body.style.overflow = sheet ? 'hidden' : ''; }
 
-function renderNews() {
-  $('news').replaceChildren(...NEWS.slice(0, 5).map(n => {
-    const li = document.createElement('li');
-    const g = byId[n.game];
-    li.innerHTML = '<time></time><a></a>';
-    li.querySelector('time').textContent = new Date(n.date + 'T12:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-    const a = li.querySelector('a');
-    a.textContent = n.text;
-    if (g) a.href = playUrl(g); else if (n.href) a.href = n.href; else a.removeAttribute('href');
-    return li;
-  }));
-}
-
-function render() {
-  const q = $('search').value.trim().toLowerCase();
-  // the order of the All games grid: these first (rows of four), then everything else as listed in games.js
-  const FIRST = ['chess', 'cube-assault', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'gamble-your-life-away', 'throttle-ridge', 'uno', 'russian-roulette', 'free-criminal', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop', 'card-royale'];
-  const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
-  const list = [...GAMES].sort((a, b) => rank(a) - rank(b)).filter(g =>
-    (active === 'All' || g.category === active) &&
-    (!q || (g.title + ' ' + g.description + ' ' + g.category).toLowerCase().includes(q)));
-  $('grid').replaceChildren(...list.map(tile));
-  $('empty').hidden = list.length > 0;
-  for (const b of $('cats').children) b.classList.toggle('on', b.textContent === active);
-  // while searching, only show the results
-  document.body.classList.toggle('searching', !!q);
-  $('gridTitle').textContent = q ? 'Results' : 'All games';
-  paintPlaying();
-}
-
-// How many people are playing each game, on its card (from the same live count as the one at the top)
-let live = null;
-function paintPlaying() {
-  for (const el of document.querySelectorAll('.playing[data-g]')) {
-    el.hidden = !live;
-    if (!live) continue;
-    const n = live.byGame[el.dataset.g] || 0;
-    el.classList.toggle('none', n < 1);
-    el.querySelector('b').textContent = ArcadeOnline.label(n, live);
-  }
-}
-
-$('search').addEventListener('input', render);
-
-renderFeature(); renderRecent(); renderNews(); render();
+/* ============================== Start ============================== */
+buildShelf(); select(AUTO.length ? AUTO[0] : 0); startAuto();
+renderRecent(); renderRanked(); renderNews(); render();
+// a link to a game's details (index.html#chess) opens them
+if (location.hash && byId[location.hash.slice(1)]) { const id = location.hash.slice(1); history.replaceState(null, '', location.pathname + location.search); openSheet(id); }
+if (window.ArcadeAccount && ArcadeAccount.ready) ArcadeAccount.ready().then(greet);
 // Live count of everyone on the arcade (home page and every game)
 ArcadeOnline.subscribe(c => {
-  live = c; paintPlaying();
+  live = c;
   $('online').hidden = !c || c.total < 1;
-  if (!c) return;
-  $('online').querySelector('b').textContent = ArcadeOnline.label(c.total, c);
-  $('online').querySelector('span').textContent = (c.total === 1 && !c.full ? 'person' : 'people') + ' on the arcade right now';
-  // how many are on the Global chat page, on its tab
-  const n = c.byGame.chat || 0;
-  $('chatN').hidden = !n; $('chatN').textContent = n;
-  $('chatN').title = n + (n === 1 ? ' person' : ' people') + ' in the chat';
+  if (c) {
+    $('online').querySelector('b').textContent = liveLabel(c.total);
+    $('online').querySelector('b + span').textContent = 'online now';
+    // how many are on the Global chat page, on its tab
+    const n = c.byGame.chat || 0;
+    $('chatN').hidden = !n; $('chatN').textContent = n;
+    $('chatN').title = n + (n === 1 ? ' person' : ' people') + ' in the chat';
+  }
+  renderRanked();
+  if (sort === 'popular') render(); else paintLive();
 });
 ArcadeOnline.start('home');
+// first visit to the new site: the feature trailer, straight after the opening logo (trailer.js)
+if (window.ArcadeTrailer && ArcadeTrailer.shouldPlay()) {
+  const run = () => setTimeout(() => ArcadeTrailer.play({}), 250);
+  if (document.querySelector('.intro')) addEventListener('arcade-intro-done', run, { once: true }); else run();
+}
+// live cursors: everyone else on the home page, moving in real time (cursors.js)
+if (window.ArcadeCursors) ArcadeCursors.start(document.querySelector('.dash-top .stat-pills'));
+// tournaments: open ones to join, live ones to watch (tourney.js); the next one also shows on the home screen
+if (window.ArcadeTourney) {
+  const tName = g => (byId[g] || {}).title || g;
+  const tLeft = at => { const m = Math.max(0, Math.round((at - Date.now()) / 60000)); return m < 1 ? 'starting now' : m < 60 ? 'in ' + m + ' min' : 'at ' + new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
+  let tList = [];
+  const paintT = () => {
+    const list = tList.filter(t => t.st !== 'done').slice(0, 3);
+    $('tournRow').replaceChildren(...(list.length ? list.map(t => {
+      const a = el('a', 't-card', '<div class="t-ci"><img alt=""><span class="pill"></span></div><div class="t-cb"><b></b><span class="t-cm"></span><span class="t-cs"></span></div>');
+      a.href = 'tourney.html?t=' + t.id; a.querySelector('img').src = SHOT[t.g] || (byId[t.g] || {}).thumb || '';
+      const p = a.querySelector('.pill'); p.textContent = t.st === 'live' ? 'LIVE' : 'OPEN'; if (t.st === 'live') p.classList.add('off');
+      txt(a, 'b', t.t); txt(a, '.t-cm', tName(t.g) + ' · hosted by ' + t.h);
+      txt(a, '.t-cs', t.st === 'open' ? t.n + '/' + t.cap + ' joined · starts ' + tLeft(t.at) : t.n + ' players · in progress');
+      return a;
+    }) : [(() => { const d = el('a', 't-card t-empty', '<div class="t-cb"><b>Host a tournament</b><span class="t-cm">Pick a game and a start time. Everyone on The Arcade can join.</span><span class="t-cs">Chess · Checkers · Card Royale · Rocket Rivals</span></div>'); d.href = 'tourney.html?host'; return d; })()]));
+    const next = tList.find(t => t.st === 'open');
+    let pill = document.getElementById('tPill');
+    if (next) {
+      if (!pill) { pill = el('a', 'glass-pill t-pill'); pill.id = 'tPill'; document.querySelector('.dash-top .stat-pills').prepend(pill); }
+      pill.href = 'tourney.html?t=' + next.id;
+      pill.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M4 1h8v1h3v2.5A3.5 3.5 0 0 1 11.7 8 4 4 0 0 1 9 10.4V12h2v2H5v-2h2v-1.6A4 4 0 0 1 4.3 8 3.5 3.5 0 0 1 1 4.5V2h3zm8 2.5V6.3A1.5 1.5 0 0 0 13 5V3.5zM4 3.5H3V5a1.5 1.5 0 0 0 1 1.3z"/></svg><span></span><b>Join</b>';
+      txt(pill, 'span', next.t + ' · starts ' + tLeft(next.at));
+    } else if (pill) pill.remove();
+  };
+  ArcadeTourney.directory(list => { tList = list; paintT(); });
+  setInterval(paintT, 30000);
+}
 // scores change while you play in another tab, so refresh when you come back
-addEventListener('pageshow', () => { renderFeature(); renderRecent(); render(); });
+addEventListener('pageshow', e => { if (e.persisted) { renderRecent(); const g = ORDER[sel]; if (g) renderStage(g); } });
 </script>
-<script src="tos.js?v=14"></script>
-<script src="appbanner.js?v=1"></script>
+<script src="tos.js?v=21"></script>
+<script src="appbanner.js?v=2"></script>
 <script src="moving.js?v=1"></script>
+<script src="outage.js?v=2"></script>
 </body>
 </html>
