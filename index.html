@@ -49,7 +49,7 @@
 <style>
   #trailerOv { position: fixed; inset: 0; z-index: 9500; background: rgba(4, 4, 6, .94); display: grid; place-items: center; padding: 18px; animation: fadeIn .2s ease; }
   #trailerOv .tr-box { position: relative; width: min(1280px, 100%); aspect-ratio: 16 / 9; max-height: calc(100vh - 36px); background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 40px 120px rgba(0, 0, 0, .8); }
-  #trailerOv iframe { width: 100%; height: 100%; border: 0; display: block; }
+  #trailerOv iframe, #trailerOv video { width: 100%; height: 100%; border: 0; display: block; background: #000; }
   #trailerOv .tr-x { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .2); background: rgba(0, 0, 0, .55); color: #fff; cursor: pointer; z-index: 2; display: grid; place-items: center; }
   #trailerOv .tr-x svg { width: 16px; height: 16px; }
   #trailerOv .tr-end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 22px; background: rgba(6, 6, 8, .82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -219,7 +219,7 @@
   </div>
 </div>
 
-<script src="games.js?v=257"></script>
+<script src="games.js?v=258"></script>
 <script src="account.js?v=40"></script>
 <script src="assistant.js?v=4"></script>
 <script src="console.js?v=3"></script>
@@ -272,7 +272,9 @@ const badgeHtml = b => b ? `<span class="pill${b === 'UPDATED' ? ' upd' : b === 
 const FIRST = ['chess', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'storm-drop', 'cube-assault', 'gamble-your-life-away', 'throttle-ridge', 'uno', 'russian-roulette', 'free-criminal', 'space-strike', 'sproutling', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop', 'card-royale'];
 const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
 // 2026-11-12: game trailers. These games' opening cinematics play here (the game opened with ?trailer), not in the game
-const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette']);
+const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette', 'turn-turn-turn']);
+// 2026-11-19: some trailers are a video file instead of the game's own cinematic
+const TRAILER_VIDEOS = { 'turn-turn-turn': { src: 'trailers/turn-turn-turn.mp4', poster: 'trailers/turn-turn-turn.jpg' } };
 // a screenshot from the game's latest update makes a better backdrop than its cover (which has the logo on it)
 const SHOT = {};
 for (const n of NEWS) if (n.game && n.imgs && n.imgs.length && !SHOT[n.game]) SHOT[n.game] = n.imgs[0];
@@ -753,20 +755,24 @@ addEventListener('keydown', e => {
 function openTrailer(g) {
   closeTrailer(); stopAuto();
   const ov = document.createElement('div'); ov.id = 'trailerOv'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', g.title + ' trailer');
-  ov.innerHTML = `<div class="tr-box"><iframe allow="autoplay; fullscreen" title="Trailer"></iframe><div class="tr-end" hidden><h2></h2><div class="tr-acts"><a class="tr-play">${I.play} Play now</a><button type="button" class="tr-again">Watch again</button></div></div><button type="button" class="tr-x" aria-label="Close">${I.close}</button></div>`;
-  const fr = ov.querySelector('iframe'), end = ov.querySelector('.tr-end');
+  const vid = TRAILER_VIDEOS[g.id];
+  ov.innerHTML = `<div class="tr-box">${vid ? '<video playsinline controls preload="auto" title="Trailer"></video>' : '<iframe allow="autoplay; fullscreen" title="Trailer"></iframe>'}<div class="tr-end" hidden><h2></h2><div class="tr-acts"><a class="tr-play">${I.play} Play now</a><button type="button" class="tr-again">Watch again</button></div></div><button type="button" class="tr-x" aria-label="Close">${I.close}</button></div>`;
+  const fr = ov.querySelector('iframe'), v = ov.querySelector('video'), end = ov.querySelector('.tr-end');
   const src = g.path + (g.path.includes('?') ? '&' : '?') + 'trailer=1';
-  fr.src = src; ov.querySelector('h2').textContent = g.title;
+  ov.querySelector('h2').textContent = g.title;
   ov.querySelector('.tr-play').href = playUrl(g);
-  ov.querySelector('.tr-again').onclick = () => { end.hidden = true; fr.src = src + '&t=' + Date.now(); };
+  if (v) { v.poster = vid.poster; v.src = vid.src; v.onended = () => { end.hidden = false; ov.querySelector('.tr-play').focus(); }; }
+  else fr.src = src;
+  ov.querySelector('.tr-again').onclick = () => { end.hidden = true; if (v) { v.currentTime = 0; v.play().catch(() => {}); } else fr.src = src + '&t=' + Date.now(); };
   ov.querySelector('.tr-x').onclick = closeTrailer;
   ov.addEventListener('click', e => { if (e.target === ov) closeTrailer(); });
-  ov._msg = e => { if (e.origin === location.origin && e.source === fr.contentWindow && e.data && e.data.arcadeTrailer === 'done') { end.hidden = false; ov.querySelector('.tr-play').focus(); } };
+  ov._msg = e => { if (fr && e.origin === location.origin && e.source === fr.contentWindow && e.data && e.data.arcadeTrailer === 'done') { end.hidden = false; ov.querySelector('.tr-play').focus(); } };
   addEventListener('message', ov._msg);
   document.body.appendChild(ov); document.body.style.overflow = 'hidden';
-  fr.addEventListener('load', () => { try { fr.contentWindow.focus(); } catch (e) {} });
+  if (v) { v.play().catch(() => {}); v.focus(); }   // started straight from the click, so it plays with sound
+  else fr.addEventListener('load', () => { try { fr.contentWindow.focus(); } catch (e) {} });
 }
-function closeTrailer() { const ov = $('trailerOv'); if (!ov) return; removeEventListener('message', ov._msg); ov.querySelector('iframe').src = 'about:blank'; ov.remove(); document.body.style.overflow = sheet ? 'hidden' : ''; }
+function closeTrailer() { const ov = $('trailerOv'); if (!ov) return; removeEventListener('message', ov._msg); const fr = ov.querySelector('iframe'), v = ov.querySelector('video'); if (fr) fr.src = 'about:blank'; if (v) { v.pause(); v.removeAttribute('src'); v.load(); } ov.remove(); document.body.style.overflow = sheet ? 'hidden' : ''; }
 
 /* ============================== Start ============================== */
 buildShelf(); select(AUTO.length ? AUTO[0] : 0); startAuto();

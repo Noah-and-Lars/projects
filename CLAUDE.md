@@ -145,6 +145,11 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   it opens #trailerOv with the game in an iframe at `?trailer=1`, which plays only the game's opening cinematic and posts
   `{arcadeTrailer: 'done'}` when it ends (Play now / Watch again). Gamble Your Life Away (1.1.1) and Russian Roulette
   (1.3.1) no longer play the cinematic on start and lost their Watch the intro buttons.
+  Video trailers (2026-11-19): a game in `TRAILER_VIDEOS` (index.html) plays a video file in the same overlay instead of
+  the iframe (`<video controls playsinline>`, started from the click so it has sound; the end screen shows on `ended`).
+  Turn! Turn! TURN! uses `trailers/turn-turn-turn.mp4` (22 MB, H.264 1080p 2-pass ~2.3 Mbit/s; Cloudflare Pages caps a file
+  at 25 MiB) with `trailers/turn-turn-turn.jpg` as the poster. The trailer's master and sources are on the owner's Mac
+  (~/Downloads/ttt-trailer-src), not in the repo.
 - `admin/index.html` (2026-11-12): Arcade Ops, the admin console. Its own page, not linked from the site, `noindex`. It joins
   `online:arcade` with a raw WebSocket (the rt.js protocol) without tracking, so it is never counted, and shows players over
   time (kept 24 h in `arcadeops.history.v1`), players by game, who's online, the socket's ping round trip, a no-cors check of
