@@ -105,7 +105,7 @@ window.GAMES = [
     path: 'krill-dive/index.html',
     thumb: 'krill-dive/thumb.svg',
     added: '2026-11-07T08:00:00+11:00',
-    updated: '2026-11-13T14:00:00+11:00',
+    updated: '2026-11-18T20:00:00+11:00',
     stat() { const s = readSave('krilldive', true); return s && s.played ? 'Best ' + ((s.best || 0) * 10).toLocaleString() + ' m' : null; },
   },
   {
@@ -376,6 +376,8 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-18', game: 'krill-dive', imgs: ['krill-dive/thumb.svg'], headline: '547 new Krill Dive questions', text: 'Krill Dive 1.6: 547 new questions, from Pok\u00e9mon types and Bond films to countries in Africa and words that rhyme with "cat". Every old question was checked too, and about 30,000 missing answers were added, so a right answer now counts. They start showing up in the daily dive on 20 November.',
+    post: '🦐 Krill Dive 1.6 is here!\n\n\u2753 547 new questions, from Pok\u00e9mon types and Bond films to countries in Africa and words that rhyme with "cat".\n\u2705 Every old question checked: about 30,000 missing answers added, plus other spellings and old names (Burma, Holland, AC/DC...).\n📅 The new ones join the daily dive on 20 November.\n\nHow deep can you dive? #KrillDive' },
   { date: '2026-11-18', href: 'tourney.html', headline: 'Tournaments fixed', text: 'Tournaments now live on the arcade’s server, so everyone can see every tournament, join it, and play it, even when the host has closed their page. They start on time by themselves. Anyone with an online account can host one (local accounts can’t).' },
   { date: '2026-11-18', href: 'index.html', headline: 'See what everyone is playing', text: 'Click the “online now” counter on the home page to see every game and how many people are on it right now, busiest first.' },
   { date: '2026-11-18', href: 'app/', headline: 'The Mac app is fixed', text: 'The Mac app no longer says it’s “damaged”. There’s now one download that works on every Mac (Apple chip or Intel). If yours said it was damaged, download it again from the new Software tab in the sidebar.' },
