@@ -28,7 +28,7 @@
 <meta name="description" content="Open tournaments on The Arcade: sign up, then 1v1 knockout rounds all the way to the final.">
 <meta name="theme-color" content="#050506">
 <link rel="icon" href="logo.svg?v=2" type="image/svg+xml">
-<link rel="stylesheet" href="arcade.css?v=21">
+<link rel="stylesheet" href="arcade.css?v=22">
 </head>
 <body class="tpage">
 <header class="top">
@@ -39,6 +39,7 @@
     <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
     <a class="tab" href="social.html">Social</a>
     <a class="tab" href="support.html">Support</a>
+    <a class="tab" href="app/">Software</a>
   </nav>
 </header>
 
@@ -102,11 +103,11 @@
 
 <footer class="foot"><p>The Arcade</p></footer>
 
-<script src="games.js?v=247"></script>
+<script src="games.js?v=248"></script>
 <script src="account.js?v=40"></script>
 <script src="console.js?v=2"></script>
 <script src="call.js?v=8"></script>
-<script src="tourney.js?v=1"></script>
+<script src="tourney.js?v=2"></script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
@@ -137,9 +138,12 @@
     e.preventDefault();
     const w = $('cWhen').value, at = w === 'custom' ? Date.parse($('cAt').value) : Date.now() + (+w) * 60000;
     if (!at || at < Date.now() - 60000) { $('cHint').textContent = 'Pick a start time in the future.'; return; }
-    const id = TT.newId();
-    sessionStorage.setItem('arcade-tourn-new', JSON.stringify({ id, t: $('cName').value.trim().slice(0, 40) || 'Tournament', g: $('cGame').value, at, cap: +$('cCap').value, play: $('cPlay').checked }));
-    location.href = 'tourney.html?t=' + id;
+    // 2026-11-18: the server keeps the tournament (and gives it its id)
+    const btn = $('createForm').querySelector('button[type=submit]'); if (btn) btn.disabled = true;
+    $('cHint').textContent = 'Setting it up…';
+    TT.create({ t: $('cName').value.trim().slice(0, 40) || 'Tournament', g: $('cGame').value, at, cap: +$('cCap').value, play: $('cPlay').checked })
+      .then(T => { location.href = 'tourney.html?t=' + T.id; })
+      .catch(err => { if (btn) btn.disabled = false; $('cHint').textContent = (err && err.message) || 'Couldn’t create it. Try again.'; });
   };
   $('hostBtn').onclick = openCreate;
 
@@ -170,17 +174,15 @@
   const ui = {
     state(t, me) { T = t; ME = me; paint(); },
     presence(p) { pres = p; paintNote(); paintPlayers(); },
-    error(t) { $('tNote').hidden = false; $('tNote').textContent = t; },
+    error(t) { if (T) return; $('tNote').hidden = false; $('tNote').dataset.err = t; $('tNote').textContent = t; },
     toast,
   };
   const Tn = TT.open(tid, ui);
-  const fresh = JSON.parse(sessionStorage.getItem('arcade-tourn-new') || 'null');
-  if (fresh && fresh.id === tid && !Tn.get()) { sessionStorage.removeItem('arcade-tourn-new'); Tn.create(fresh); }
   setTimeout(paintNote, 4000);
   function paintNote() {
     const n = $('tNote');
-    if (!T) { n.hidden = false; n.textContent = 'Looking for this tournament… If it doesn’t show up, its host has closed their page.'; return; }
-    if (!ME.host && !pres.host && T.st !== 'done') { n.hidden = false; n.textContent = 'The host isn’t here right now, so the tournament is paused. It carries on when they’re back.'; return; }
+    if (!T) { n.hidden = false; n.textContent = n.dataset.err || 'Loading this tournament…'; return; }
+    if (T.note && T.st === 'open') { n.hidden = false; n.textContent = T.note; return; }
     n.hidden = true;
   }
   function paint() {
@@ -287,7 +289,7 @@
 })();
 </script>
 <script src="tos.js?v=21"></script>
-<script src="appbanner.js?v=2"></script>
+<script src="appbanner.js?v=3"></script>
 <script src="moving.js?v=1"></script>
 <script src="cursors.js?v=2"></script>
 <script src="outage.js?v=2"></script>

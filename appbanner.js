@@ -8,22 +8,27 @@
 (function () {
   var html = document.documentElement, ua = navigator.userAgent || '';
   var inApp = function () { return !!window.ARCADE_APP || html.classList.contains('arcade-app') || /TheArcadeApp\//.test(ua); };
-  if (inApp()) return;
+  if (inApp()) { if (/TheArcadeApp\//.test(ua)) html.classList.add("arcade-app"); return; } // the Android app: hides the Software tab too
   try { if (window.top !== window) return; } catch (e) { return; }
   var android = /Android/i.test(ua);
   if (!android && (html.classList.contains('mob') || html.classList.contains('console'))) return;
-  var KEY = 'arcade-app-banner-closed-2';
+  var KEY = 'arcade-app-banner-closed-3'; // 2026-11-18: new look, shown once more
   try { if (localStorage.getItem(KEY) === '1') return; } catch (e) {}
   function show() {
     if (document.getElementById('appBanner') || inApp()) return;
     var b = document.createElement('div'); b.id = 'appBanner'; b.setAttribute('role', 'region'); b.setAttribute('aria-label', 'The Arcade app');
-    b.style.cssText = 'position:relative;z-index:30;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:9px 48px 9px 16px;background:linear-gradient(90deg,#6c5ce7,#00a98a);color:#fff;font:700 14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:center';
-    var t = document.createElement('span'); t.textContent = android ? '🎮 Get The Arcade app for Android phones and Android TV!' : '🎮 The Arcade app is here for Mac, Windows and Android!';
+    // 2026-11-18: the site's own look (dark bar, orange accent) instead of the old purple/teal gradient
+    b.style.cssText = 'position:relative;z-index:30;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:8px 48px 8px 16px;background:radial-gradient(120% 220% at 50% 0%,rgba(255,90,44,.16),rgba(255,90,44,0) 60%),#0b0b0d;border-bottom:1px solid rgba(255,255,255,.08);color:#f4f4f5;font:500 14px/1.35 "Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:center';
+    var tag = document.createElement('span'); tag.textContent = 'NEW';
+    tag.style.cssText = 'display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:6px;background:#ff5a2c;color:#160500;font:700 10.5px/1 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.1em';
+    var t = document.createElement('span'); t.textContent = android ? 'Get The Arcade app for Android phones and Android TV' : 'The Arcade app is here for Mac, Windows and Android';
     var a = document.createElement('a'); a.href = android ? 'app/#android' : 'app/'; a.textContent = 'Download';
-    a.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:#fff;color:#3b2fb8;border-radius:999px;padding:5px 16px;text-decoration:none;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+    a.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:#ff5a2c;color:#160500;border-radius:999px;padding:5px 16px;text-decoration:none;font-weight:700;font-size:13.5px;transition:background .15s';
+    a.onmouseenter = function () { a.style.background = '#ff6d43'; }; a.onmouseleave = function () { a.style.background = '#ff5a2c'; };
     var x = document.createElement('button'); x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.textContent = '×';
-    x.style.cssText = 'position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:#fff;font:700 22px/1 system-ui,sans-serif;cursor:pointer;padding:4px 10px;opacity:.85';
+    x.style.cssText = 'position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:#a1a1aa;font:400 22px/1 system-ui,sans-serif;cursor:pointer;padding:4px 10px';
     x.onclick = function () { b.remove(); try { localStorage.setItem(KEY, '1'); } catch (e) {} };
+    b.appendChild(tag);
     b.appendChild(t); b.appendChild(a); b.appendChild(x);
     document.body.prepend(b);
   }
