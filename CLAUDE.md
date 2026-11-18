@@ -18,6 +18,14 @@ makensis), with TAURI_SIGNING_PRIVATE_KEY from ~/.tauri/arcade-app.key (never co
 github.com/Noah-and-Lars/projects/releases/latest/download/latest.json (no release published yet). Unsigned: SmartScreen /
 Gatekeeper warnings, explained at the top of the download page.
 
+Old-Mac app (2026-11-18, the owner's request): The Arcade for macOS 10.9 to 10.12, source ~/Downloads/arcade-app-legacy-mac
+(not in this repo; README there). Three Intel DMGs from one source: 10.11-10.12 = Electron 19.1.9, 10.10 = Electron 11.5.0,
+10.9 = Electron 3.1.13; the last two run the site through compat.js (an in-app proxy that Babel-converts the site's
+JavaScript and adds polyfills). Hosted on the GitHub PRE-release `legacy-mac-<version>` (too big for Pages); app/legacy.json
+`mac` holds the version the app checks. On app/index.html they're in the **Legacy** section at the bottom (#legacy, with the
+Windows 7/8/8.1 card #win-old moved there too, the owner's request: newest apps on top); the "Your computer" script marks
+#mac-old and the right button for Mac OS X 10_9 to 10_12 user agents.
+
 Online cut-off on the old address (2026-11-13, the owner's request): from 2:30pm Sydney time that day
 (MOVED_AT = Date.UTC(2026, 10, 13, 3, 30), in both rt.js and worker.js) no game can go online from
 noah-and-lars.github.io: the Worker refuses /ws from that Origin and closes older sockets from it on their next message
