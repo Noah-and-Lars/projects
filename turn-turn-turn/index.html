@@ -541,7 +541,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.5';
+const VERSION = '1.5.1';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -3266,12 +3266,14 @@ function poseMonster(M, ph, run, over) {
 function horLights(on) {
   if (on && !HOR.lights) {
     const L = { hl: [] };
-    for (const s of [-1, 1]) { const sp = new THREE.SpotLight(0xfff0d0, 2.7, 85, 0.5, 0.6, 1.1); scene.add(sp); scene.add(sp.target); L.hl.push(sp); }
+    for (const s of [-1, 1]) { const sp = new THREE.SpotLight(0xfff4e2, 8, 145, 0.6, 0.45, 0.7); scene.add(sp); scene.add(sp.target); L.hl.push(sp); }
     L.tail = new THREE.PointLight(0xff2412, 1.7, 24, 1.5); scene.add(L.tail);
-    L.dash = new THREE.PointLight(0xffa860, 0.5, 1.8, 1.4); L.dash.position.set(0.3, 0.64, 0.33); cabScene.add(L.dash);
+    L.dash = new THREE.PointLight(0xffa860, 0.25, 1.4, 1.4); L.dash.position.set(0.3, 0.64, 0.33); CAB.root.add(L.dash);
+    // 1.5.1: a dim, warm dome light in the roof, so you can see the inside of the car
+    L.dome = new THREE.PointLight(0xffa458, 0.32, 2.6, 1.3); L.dome.position.set(0, 0.9, -0.12); CAB.root.add(L.dome); // both ride along with the car
     HOR.lights = L;
   } else if (!on && HOR.lights) {
-    const L = HOR.lights; for (const sp of L.hl) { scene.remove(sp); scene.remove(sp.target); } scene.remove(L.tail); cabScene.remove(L.dash); HOR.lights = null;
+    const L = HOR.lights; for (const sp of L.hl) { scene.remove(sp); scene.remove(sp.target); } scene.remove(L.tail); CAB.root.remove(L.dash); CAB.root.remove(L.dome); HOR.lights = null;
   }
 }
 // the rear-view mirror shows the road behind you (only in horror mode: the rest of the time it is just glass)
@@ -3372,7 +3374,7 @@ function horFrame(dt) {
   // lights follow the car
   const L = HOR.lights, W = CAB.root.matrixWorld;
   if (L) {
-    L.hl.forEach((sp, k) => { const s = k ? 1 : -1; sp.position.set(s * 0.62, 0.32, 2.0).applyMatrix4(W); sp.target.position.set(s * 0.9, -1.2, 26).applyMatrix4(W); sp.target.updateMatrixWorld(); });
+    L.hl.forEach((sp, k) => { const s = k ? 1 : -1; sp.position.set(s * 0.62, 0.32, 2.0).applyMatrix4(W); sp.target.position.set(s * 0.9, -1.0, 32).applyMatrix4(W); sp.target.updateMatrixWorld(); });
     L.tail.position.set(0, 0.45, -2.6).applyMatrix4(W);
   }
   // HUD
@@ -4530,6 +4532,10 @@ function showBoardResult(j) {
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.5.1', date: '19 November 2026', items: [
+    'Horror mode: brighter headlights that reach further down the road.',
+    'Horror mode: a dim, warm light in the roof of the car, so you can see the inside of the cabin at night.',
+  ] },
   { v: '1.5', date: '19 November 2026', items: [
     'New: Horror mode (main menu, or pick it as your crew\'s stage). Night in the Dead Woods: dead trees with bare branches, fog, and only your headlights to see by.',
     'Something tall and crooked follows you down the road. The required speed at the top of the screen is how fast it runs: stay above it. Every 20 to 30 seconds it gets 5 to 10 km/h faster, until it tops out at 80 to 90 km/h.',
