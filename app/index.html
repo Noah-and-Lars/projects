@@ -63,6 +63,9 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
   .grid.one .card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "head dl" "p dl" "meta dl"; column-gap: 28px; row-gap: 8px; align-items: center; }
   .grid.one .head { grid-area: head; } .grid.one p { grid-area: p; } .grid.one .meta { grid-area: meta; } .grid.one .dl { grid-area: dl; min-width: 220px; }
   .dl svg { width: 18px; height: 18px; fill: currentColor; }
+  .dls { display: flex; flex-direction: column; gap: 8px; grid-area: dl; min-width: 220px; }
+  .card .dls .dl.alt { background: transparent; color: var(--text); border-color: var(--line2); }
+  .card .dls .dl.alt:hover { background: var(--panel3); }
   .help { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .help div { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; min-width: 0; }
   .help h4 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
@@ -73,7 +76,7 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
   @media (max-width: 760px) {
     .grid, .help { grid-template-columns: 1fr; }
     .grid.one .card { display: flex; }
-    .grid.one .dl { min-width: 0; }
+    .grid.one .dl, .dls { min-width: 0; }
     .hero { gap: 16px; } .hero img { width: 60px; height: 60px; border-radius: 14px; }
   }
 </style>
@@ -98,7 +101,7 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
       <b>Your device will show a warning the first time. That's normal.</b>
       <p>The app isn't from an app store or signed with a paid Apple or Microsoft certificate yet, so your device asks before opening it. It's safe: just allow it once.</p>
       <ul>
-        <li><b>Windows:</b> when SmartScreen says “Windows protected your PC”, click <b>More info</b>, then <b>Run anyway</b>.</li>
+        <li><b>Windows:</b> when SmartScreen says “Windows protected your PC”, click <b>More info</b>, then <b>Run anyway</b>. On Windows 7 it may say “unknown publisher”: click <b>Run</b>.</li>
         <li><b>Mac:</b> if it says Apple “could not verify” the app, click <b>Done</b>, then open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b> (on macOS 14 or older you can also right-click the app and choose <b>Open</b>). If you downloaded the app before 18 November and it said it was “damaged”, download it again: that copy was broken and this one is fixed.</li>
         <li><b>Android:</b> when it asks, allow your browser (or the Downloader app on a TV) to <b>install unknown apps</b>, then tap <b>Install</b>.</li>
       </ul>
@@ -132,6 +135,15 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
     </div>
   </div>
 
+  <div class="grid one">
+    <div class="card" id="win-old">
+      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M3 5.5l7.5-1v7H3zM11.5 4.3L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg></span><div><h3>Windows 7, 8 and 8.1</h3><small>Older PCs that can’t run the app above</small></div></div>
+      <p>A separate version for Windows 7, 8 and 8.1, which the main Windows app doesn’t support. It’s bigger because it brings its own browser engine. Not sure which one? Start → right-click Computer → Properties says “64-bit” or “32-bit”.</p>
+      <div class="meta">Windows 7, 8 or 8.1 · installer .exe · 64-bit 61 MB · 32-bit 57 MB</div>
+      <div class="dls"><a class="dl" id="win-old-64" href="https://github.com/Noah-and-Lars/projects/releases/download/legacy-win7-1.0.0/TheArcade-windows7-x64-setup.exe"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download 64-bit</a><a class="dl alt" id="win-old-32" href="https://github.com/Noah-and-Lars/projects/releases/download/legacy-win7-1.0.0/TheArcade-windows7-ia32-setup.exe"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download 32-bit</a></div>
+    </div>
+  </div>
+
   <h2 id="android">Android</h2>
   <div class="grid">
     <div class="card" id="and-phone">
@@ -162,6 +174,10 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
 (function () {
   var ua = navigator.userAgent || '', id = '';
   if (/Android/i.test(ua)) id = /Android TV|GoogleTV|BRAVIA|AFT[A-Z]|SHIELD|\bTV\b|Large Screen/i.test(ua) ? 'and-tv' : 'and-phone';
+  else if (/Windows NT 6\.[123]\b/.test(ua)) { // 2026-11-18: Windows 7 (6.1), 8 (6.2) and 8.1 (6.3) get the legacy app
+    id = 'win-old';
+    if (!/Win64|WOW64|x64/i.test(ua)) { var a64 = document.getElementById('win-old-64'), a32 = document.getElementById('win-old-32'); if (a64 && a32) { a64.classList.add('alt'); a32.classList.remove('alt'); a32.parentNode.insertBefore(a32, a64); } }
+  }
   else if (/Windows/.test(ua)) id = /ARM64|aarch64/i.test(ua) ? 'win-arm' : 'win-x64';
   else if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) id = ''; // no app for iPhone and iPad (an iPad says Macintosh)
   else if (/Macintosh|Mac OS X/.test(ua)) {

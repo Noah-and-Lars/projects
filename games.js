@@ -376,6 +376,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-18', href: 'app/', headline: 'The Arcade app for Windows 7, 8 and 8.1', text: 'The Arcade app now works on older PCs too: there’s a version for Windows 7, 8 and 8.1 (64-bit and 32-bit) on the download page, under the Software tab. Windows 10 and 11 keep the main app.' },
   { date: '2026-11-18', href: 'tourney.html', headline: 'Tournaments fixed', text: 'Tournaments now live on the arcade’s server, so everyone can see every tournament, join it, and play it, even when the host has closed their page. They start on time by themselves. Anyone with an online account can host one (local accounts can’t).' },
   { date: '2026-11-18', href: 'index.html', headline: 'See what everyone is playing', text: 'Click the “online now” counter on the home page to see every game and how many people are on it right now, busiest first.' },
   { date: '2026-11-18', href: 'app/', headline: 'The Mac app is fixed', text: 'The Mac app no longer says it’s “damaged”. There’s now one download that works on every Mac (Apple chip or Intel). If yours said it was damaged, download it again from the new Software tab in the sidebar.' },
