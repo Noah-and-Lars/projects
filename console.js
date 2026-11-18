@@ -121,7 +121,7 @@
       var d = main + side * (horiz ? 2.5 : overlap ? 0.5 : 3); if (d < bd) { bd = d; best = el; }
     }
     if (best) focus(best);
-    else if (dir === 'up' && !inHdr && scrollY < 40) { var t = document.querySelector(HDR + ' .tab.on') || document.querySelector(HDR + ' a'); if (t) focus(t); }
+    else if (dir === 'up' && !inHdr && scrollY < 40 && scope() === document) { /* never out of an open pop-up (2026-11-18) */ var t = document.querySelector(HDR + ' .tab.on') || document.querySelector(HDR + ' a'); if (t) focus(t); }
     else if (dir === 'up') scrollBy(0, -300);
     else if (dir === 'down') scrollBy(0, 300);
   }

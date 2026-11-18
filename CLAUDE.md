@@ -72,19 +72,50 @@ own). Both addresses share the one Worker: ALLOWED_ORIGINS and ACCT_ORIGINS list
 Cube Assault (caOnlineOK), Siege and the admin console. Browsers keep localStorage per address, so players sign in again
 on the copy; their accounts and cloud saves are the same. Keep both addresses in mind when adding an origin check.
 
-GitHub Pages currently publishes from the branch
-`claude/jimmyscafe-projects-access-9mbcw3`, not `main`. Anything pushed there
-goes live in a minute or two. If that branch gets merged into `main`, the Pages
-source in Settings → Pages should be switched to `main`.
+**The live branch is `github-site`** (checked 2026-11-18 with `gh api repos/Noah-and-Lars/projects/pages`: GitHub Pages
+publishes from it, and thearcade.pages.dev is deployed from it with `tools/pages-deploy.sh`). Anything pushed there goes
+live on GitHub in a minute or two. `claude/jimmyscafe-projects-access-9mbcw3` (the Pages branch until 2026-11-16) and
+`main` are behind it: don't build on them. Other `claude/*` branches can hold unmerged work (on 2026-11-18,
+`claude/dreamy-hawking-xotc48` had Krill Dive 1.6, not live). Before changing anything: `git fetch --all`, compare the
+branches, work on top of the newest; before pushing or deploying, fetch and rebase again (merge, never overwrite or
+force-push).
+
+**The Worker's source is NOT in this repo any more** (2026-11-18, the owner's rule): it lives in the PRIVATE repo
+Noah-and-Lars/arcade-realtime (local copy `~/arcade-realtime`), rebuilt from the live version, with its own
+`.github/workflows/deploy.yml` (deploys on push to main once that repo has the CLOUDFLARE_API_TOKEN /
+CLOUDFLARE_ACCOUNT_ID secrets; skips otherwise). `realtime-worker/` here is an old copy (2026-11-14): never edit or deploy
+from it, and never copy the private source into this public repo. Deploy with `npx wrangler deploy --config wrangler.toml`
+in `~/arcade-realtime` (without `--config`, wrangler on the owner's Mac picked up an unrelated config). Before deploying,
+check `npx wrangler deployments status --name arcade-realtime` against the repo: uploads through the Cloudflare API
+(several on 2026-11-17/18) don't leave a source file anywhere.
 
 ## Layout
 
+- `assistant.js` (2026-11-18, the owner's request; loaded right after account.js on index, play, chat, players, social,
+  support and tourney): the ✨ Assistant. A ✨ button in `header.top` just before `#acctBtn` (in the desktop rail above the
+  account button; on play.html beside Clip/Fullscreen, never over the game) opens `#aiPanel`, a right-side slide-out
+  (380 px; full screen on phones; on play.html on a wide screen `html.ai-open body.player` gets padding-right so the game
+  isn't covered). The panel is `[role=dialog]`, so console.js traps the focus in it and Back/Escape closes it (focus goes
+  back to ✨). Online accounts only: guests and local accounts see "Sign in to use the assistant" (Sign in opens
+  `ArcadeAccount.welcome`). History is kept per account in localStorage `arcade-acct-ai:<lower name>` (40 messages; the
+  `arcade-acct` prefix keeps it out of account.js's cloud sync via `NEVER`); the last 8 are sent. On play.html it sends
+  only that game's summary from games.js (tagline, description, controls, keys; 700 characters), elsewhere the page name.
+  The server: POST `/ai` in the private Worker (`aiChat`): Bearer token checked by the Account object's 'aiuse' route,
+  which also counts 15 messages a day per account (`a.ai` {d, n}; one Durable Object request per message);
+  `@cf/meta/llama-3.1-8b-instruct-fp8-fast` streamed as text/event-stream ('data: {"t"}' pieces, then {"done", "left"});
+  Llama Guard 3 (`@cf/meta/llama-guard-3-8b`) checks only the finished reply and {"blocked": 1} makes the panel show a
+  polite refusal instead. Site-wide about 9,000 neurons a day (the free plan has 10,000; a message costs about 35, so
+  roughly 250 messages a day): each Worker instance counts from the models' own usage figures and adds to the Tally
+  object 'ai-budget' every 150 neurons or minute; past the cutoff everyone gets "Assistant's resting until 11am" (00:00
+  UTC). The system prompt (`AI_SYSTEM`): The Arcade's helper, kid-friendly, only the site and its games, never a
+  person's name, no personal details, no links. Bump `assistant.js?v=N` in those 7 pages when it changes. Its classes are
+  prefixed `ai-` (arcade.css has a global `.msg` rule from the chat).
 - `console.js` (2026-11-11, loaded by every site page after account.js): the console version. It detects PlayStation, Xbox,
   Nintendo and smart-TV browsers from the user agent (`?console=on|off|playstation|xbox|tv` overrides, remembered in
   `arcade-console`), adds `html.console` (bigger text and cards, a yellow focus ring), a banner "You're on the console
   version" with a Full website button, and spatial navigation: arrow keys / TV remote (OK, Back = 461 webOS, 10009 Tizen,
   BrowserBack), and controllers (standard mapping, polled on a 40 ms timer: D-pad/left stick, A/✕ choose, B/○ back,
-  L1/R1 tabs). The pinned header is its own layer; pop-ups (#acctOv, .ov, dialogs) trap the focus. On play.html it stays
+  L1/R1 tabs). The pinned header is its own layer; pop-ups (#acctOv, .ov, dialogs) trap the focus. (2026-11-18: Up at the top no longer jumps from an open pop-up to the header; console.js?v=3.) On play.html it stays
   out of the way while the game frame has focus. A detected device that turned it off gets a small "Console version" button.
 - Trailers (2026-11-12): `TRAILERS` in index.html puts a "▶ Play trailer" button above "playing now" on those cards;
   it opens #trailerOv with the game in an iframe at `?trailer=1`, which plays only the game's opening cinematic and posts
@@ -319,8 +350,8 @@ source in Settings → Pages should be switched to `main`.
   password check, the recovery code hash, signed-in devices (hashed tokens) and each game's saves in 40,000-char
   chunks (5 MB a game, 20 MB an account). Only the official origin may call it. Deployed with the Worker.
 - Realtime server (since 2026-10-31; it used to be Supabase Realtime): a Cloudflare Worker,
-  `arcade-realtime` at `wss://arcade-realtime.arcade-realtime.workers.dev/ws`, source in
-  `realtime-worker/`. Each channel topic is one Durable Object, each browser channel is one
+  `arcade-realtime` at `wss://arcade-realtime.arcade-realtime.workers.dev/ws`, source in the private repo
+  Noah-and-Lars/arcade-realtime (`~/arcade-realtime`; `realtime-worker/` here is an old copy). Each channel topic is one Durable Object, each browser channel is one
   WebSocket to it; it only does broadcast and presence and stores nothing. `rt.js` is the
   browser side: a drop-in for the bits of supabase-js the arcade uses (it sets
   `window.supabase.createClient`), so every game's online code still reads like Supabase code.
@@ -335,8 +366,8 @@ source in Settings → Pages should be switched to `main`.
   account: without `arcade-acct` (no account or a local account) every channel except `online:arcade` (the on-now
   counter) reports CHANNEL_ERROR without connecting and `askForAccount()` opens the account popup (the top window's
   `ArcadeAccount.welcome`, or its own box when a game runs on its own). Games then act as if offline. It's a
-  client-side check, not enforced on the server. Deploy the Worker with `npx wrangler deploy`
-  in `realtime-worker/` (owner's Cloudflare account). Free plan: 100,000 Durable Object requests
+  client-side check, not enforced on the server. Deploy the Worker with `npx wrangler deploy --config wrangler.toml`
+  in `~/arcade-realtime` (owner's Cloudflare account). Free plan: 100,000 Durable Object requests
   a day (incoming WebSocket messages count 20 to 1, outgoing are free), reset at 00:00 UTC.
 - Live "on now" counter: `ArcadeOnline` in `games.js` joins one realtime
   Presence channel (`online:arcade`)
@@ -881,7 +912,8 @@ source in Settings → Pages should be switched to `main`.
 ## Claude posts every update to Social (the owner's rule, 2026-11-11)
 
 Every game update, new game or new site feature, pushed by anyone, gets a post on Social from the **Claude** account,
-shown to everyone. It is automatic: `.github/workflows/claude-post.yml` runs on every push to the Pages branch that
+shown to everyone. It is automatic: `.github/workflows/claude-post.yml` runs on every push to the live branch (`github-site`; the old Pages branch is still
+listed too) that
 changes `games.js`, and `tools/claude-post/post.mjs` posts:
 - each `NEWS` entry that wasn't there before (at most 5 a push), and
 - every game whose `updated` time changed (or that is new) with no new NEWS line of its own: the commit message is
