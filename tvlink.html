@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign in on your TV · The Arcade</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="logo.svg?v=2" type="image/svg+xml">
+<link rel="stylesheet" href="arcade.css?v=24">
+<style>
+  /* tvlink.html (2026-11-19): sign in on a TV from your phone. The TV (tv.js, "Sign in with your phone") shows a QR code
+     that opens this page with its code and its public key, or a 5-letter code to type here. You type your username and
+     password here; the password is stretched exactly like account.js does it, and {name, key} goes to that TV only,
+     encrypted (ECDH P-256 + AES-GCM) over the realtime channel pair:<code>. Both screens show a 6-digit check number.
+     The TV then logs in with its own session; this phone stays as it is. Nothing is stored here. */
+  body { padding: 0 !important; display: block; min-height: 100vh; }
+  main { max-width: 440px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) 20px 40px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 28px; }
+  h1 { font-size: 28px; line-height: 1.15; margin: 0 0 8px; font-stretch: 112%; }
+  p { color: var(--muted, #a1a1aa); margin: 0 0 14px; }
+  label { display: block; font-weight: 600; margin: 14px 0 6px; }
+  input { width: 100%; box-sizing: border-box; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line-2, #ffffff26); background: #111116; color: #fff; font: 500 17px var(--font, system-ui); }
+  .codein { display: flex; gap: 8px; }
+  .codein input { text-align: center; font: 800 26px ui-monospace, monospace; text-transform: uppercase; padding: 12px 0; }
+  button.go { width: 100%; margin-top: 20px; padding: 15px; border-radius: 12px; border: 0; background: var(--accent, #ff6a3d); color: var(--accent-ink, #160a05); font: 800 17px var(--font, system-ui); cursor: pointer; }
+  button.go:disabled { opacity: .5; }
+  .err { color: #ff8b8b; min-height: 1.4em; margin-top: 10px; }
+  .sas { font: 800 34px ui-monospace, monospace; letter-spacing: .12em; color: #ffd23f; margin: 6px 0 4px; }
+  .box { padding: 16px; border-radius: 16px; border: 1px solid var(--line, #ffffff1a); background: #0e0e13; margin: 16px 0; }
+  .view { display: none; } .view.on { display: block; }
+  .ok { font-size: 56px; text-align: center; margin: 10px 0; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><img class="logo" src="logo.svg?v=2" alt=""> The Arcade</div>
+
+  <section class="view on" id="vCode">
+    <h1>Sign in on your TV</h1>
+    <p>On the TV, open the TV menu and choose <b>Sign in with your phone</b>. Then type the code it shows.</p>
+    <form id="codeForm" autocomplete="off">
+      <div class="codein" role="group" aria-label="Code from the TV">
+        <input maxlength="1" inputmode="text" autocapitalize="characters" aria-label="Letter 1"><input maxlength="1" autocapitalize="characters" aria-label="Letter 2"><input maxlength="1" autocapitalize="characters" aria-label="Letter 3"><input maxlength="1" autocapitalize="characters" aria-label="Letter 4"><input maxlength="1" autocapitalize="characters" aria-label="Letter 5">
+      </div>
+      <button class="go" type="submit">Connect</button>
+      <div class="err" id="codeErr" role="alert"></div>
+    </form>
+  </section>
+
+  <section class="view" id="vWait">
+    <h1>Connecting to your TV…</h1>
+    <p id="waitT">Keep the TV on the sign-in screen.</p>
+  </section>
+
+  <section class="view" id="vForm">
+    <h1>Sign in on your TV</h1>
+    <div class="box"><p style="margin:0">Your TV should show this number. If it doesn’t, stop here.</p><div class="sas" id="sas"></div></div>
+    <form id="loginForm">
+      <label for="un">Username</label>
+      <input id="un" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="16" required>
+      <label for="pw">Password</label>
+      <input id="pw" type="password" autocomplete="current-password" required>
+      <button class="go" type="submit" id="sendBtn">Sign in on the TV</button>
+      <div class="err" id="formErr" role="alert"></div>
+    </form>
+    <p style="margin-top:16px;font-size:14px">Your password never leaves this phone. Only a scrambled key goes to the TV, and only that TV can read it.</p>
+  </section>
+
+  <section class="view" id="vDone">
+    <div class="ok" aria-hidden="true">✅</div>
+    <h1 id="doneT">Check your TV</h1>
+    <p id="doneP">Press <b>Yes, sign in</b> on the TV.</p>
+  </section>
+</main>
+<script src="rt.js?v=6"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let API = 'https://arcade-realtime.arcade-realtime.workers.dev/acct/';
+  try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && localStorage.getItem('arcade-acct-api')) API = localStorage.getItem('arcade-acct-api'); } catch (e) {} // tests only
+  const ID = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
+  const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const unb64 = s => { s = String(s).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
+  const show = v => document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === v));
+  const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+  let ch = null, keys = null, myPub = null, tvKey = null, aes = null, urlKey = null, helloT = 0;
+
+  if (!window.crypto || !crypto.subtle) { $('codeErr').textContent = 'This browser can’t do a secure sign-in. Try another browser.'; }
+  try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); if (a && a.name) $('un').value = a.name; } catch (e) {}
+
+  // the code: from the QR link (?c=CODE#k=key) or typed
+  const boxes = [...document.querySelectorAll('.codein input')];
+  boxes.forEach((b, i) => {
+    b.addEventListener('input', () => { b.value = b.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (b.value && boxes[i + 1]) boxes[i + 1].focus(); });
+    b.addEventListener('keydown', e => { if (e.key === 'Backspace' && !b.value && boxes[i - 1]) boxes[i - 1].focus(); });
+    b.addEventListener('paste', e => { const t = (e.clipboardData.getData('text') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); if (t.length === 5) { e.preventDefault(); t.split('').forEach((c, j) => { boxes[j].value = c; }); } });
+  });
+  $('codeForm').onsubmit = e => { e.preventDefault(); const c = boxes.map(x => x.value).join(''); if (c.length === 5) join(c); else $('codeErr').textContent = 'Type all 5 letters of the code.'; };
+  const q = /[?&]c=([A-Z0-9]{5})\b/i.exec(location.search), k = /[#&]k=([A-Za-z0-9_-]{40,})/.exec(location.hash);
+  if (k) try { urlKey = unb64(k[1]); } catch (e) {}
+  if (q) join(q[1].toUpperCase());
+
+  async function join(code) {
+    if (!/^[A-Z0-9]{5}$/.test(code)) { $('codeErr').textContent = 'That code doesn’t look right.'; return; }
+    show('vWait'); $('waitT').textContent = 'Keep the TV on the sign-in screen.';
+    history.replaceState(null, '', '?c=' + code + location.hash);
+    keys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveKey']);
+    myPub = new Uint8Array(await crypto.subtle.exportKey('raw', keys.publicKey));
+    const commit = b64(await crypto.subtle.digest('SHA-256', myPub));
+    const client = window.supabase && window.supabase.createClient();
+    if (!client) { fail('Can’t connect. Check your internet connection.'); return; }
+    if (ch) try { ch.unsubscribe(); } catch (e) {}
+    ch = client.channel('pair:' + code, { config: { presence: { key: 'ph-' + ID } } });
+    ch.on('broadcast', { event: 'tl-key' }, e => gotKey(e.payload || {}));
+    ch.on('broadcast', { event: 'tl-res' }, e => gotRes(e.payload || {}));
+    ch.subscribe(st => {
+      if (st === 'SUBSCRIBED') {
+        // first we commit to our key (its hash); the TV answers with its key; only then do we show ours
+        let tries = 0;
+        const hello = () => { if (tvKey) return; if (++tries > 6) { fail('No TV with that code. Check the code on the TV.'); return; } ch.send({ type: 'broadcast', event: 'tl-hello', payload: { id: ID, c: commit } }); helloT = setTimeout(hello, 2000); };
+        hello();
+      } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') fail('Can’t connect. Check your internet connection.');
+    });
+  }
+  function fail(t) { show('vCode'); $('codeErr').textContent = t; }
+  async function gotKey(m) {
+    if (m.id !== ID || tvKey || !m.k) return;
+    clearTimeout(helloT);
+    const raw = unb64(m.k);
+    if (urlKey && !same(urlKey, raw)) { fail('That doesn’t match the TV you scanned. Scan the code on the TV again.'); return; }
+    tvKey = raw;
+    const pub = await crypto.subtle.importKey('raw', raw, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    aes = await crypto.subtle.deriveKey({ name: 'ECDH', public: pub }, keys.privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+    ch.send({ type: 'broadcast', event: 'tl-pk', payload: { id: ID, pk: b64(myPub) } });
+    const j = new Uint8Array(raw.length + myPub.length); j.set(raw); j.set(myPub, raw.length);
+    const v = new DataView(await crypto.subtle.digest('SHA-256', j)).getUint32(0) % 1000000;
+    $('sas').textContent = String(v).padStart(6, '0').replace(/(\d{3})(\d{3})/, '$1 $2');
+    show('vForm'); ($('un').value ? $('pw') : $('un')).focus();
+  }
+  $('loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const n = $('un').value.trim(), pw = $('pw').value;
+    if (!/^[A-Za-z0-9_]{3,16}$/.test(n)) { $('formErr').textContent = 'Usernames are 3 to 16 letters, numbers or _.'; return; }
+    if (!pw || !aes) return;
+    $('sendBtn').disabled = true; $('formErr').textContent = ''; $('sendBtn').textContent = 'Working…';
+    try {
+      // the same key account.js makes: PBKDF2 with the name the account was made with (check's kn after a rename)
+      let kn = n;
+      try { const r = await fetch(API + 'check?name=' + encodeURIComponent(n), { cache: 'no-store' }); const j = await r.json(); if (j && j.kn) kn = j.kn; } catch (e2) {}
+      const enc = new TextEncoder();
+      const base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('arcade-account:' + kn.toLowerCase()), iterations: 150000 }, base, 256);
+      const key = Array.from(new Uint8Array(bits), x => x.toString(16).padStart(2, '0')).join('');
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aes, enc.encode(JSON.stringify({ n, k: key })));
+      ch.send({ type: 'broadcast', event: 'tl-cred', payload: { id: ID, iv: b64(iv), ct: b64(ct) } });
+      $('pw').value = '';
+      show('vDone'); $('doneT').textContent = 'Check your TV'; $('doneP').innerHTML = 'Press <b>Yes, sign in</b> on the TV if it shows <b>' + n.replace(/[^A-Za-z0-9_]/g, '') + '</b>.';
+    } catch (err) { $('formErr').textContent = 'Something went wrong. Try again.'; }
+    $('sendBtn').disabled = false; $('sendBtn').textContent = 'Sign in on the TV';
+  };
+  function gotRes(m) {
+    if (m.id !== ID) return;
+    if (m.ok) { show('vDone'); $('doneT').textContent = 'You’re signed in on the TV'; $('doneP').textContent = 'Have fun! You can close this page.'; try { ch.unsubscribe(); } catch (e) {} }
+    else { show('vForm'); $('formErr').textContent = m.err || 'The TV couldn’t sign in. Try again.'; }
+  }
+})();
+</script>
+</body>
+</html>

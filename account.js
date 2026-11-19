@@ -53,7 +53,7 @@
     ['2048', /^2048-/],
     ['poly-racer', /^polyracer/],
     ['blockcraft', /^blockcraft-(?!.*-backup-1x$)/],
-    ['arcade', /^arcade-(played|playtime|popup-closed|tos-agreed|chat-muted)$/],
+    ['arcade', /^arcade-(played|playtime|playdays|popup-closed|tos-agreed|chat-muted)$/],
     ['tickets', /^arcade-tickets$/] // 2026-11-19: tickets.js, the play currency
   ];
   // this device's own things, never copied: the account itself, ids, the chat log, anti-cheat bookkeeping, old backups

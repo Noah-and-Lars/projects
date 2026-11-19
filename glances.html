@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en" class="mob mob-phone">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-19: Glances, the watch dashboard (see the comment at the end of the page). Same watch check as every page:
+     html.watch on an Apple Watch (or ?watch=1); it is laid out for a ~200 px screen either way and also works on phones. -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
+<title>Glances · The Arcade</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="logo.svg?v=2" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="arcade.css?v=24">
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
+<style>
+  html, body { background: #000 !important; }
+  body { padding: 0 0 18px !important; display: block; min-height: 100vh; font-size: 14px; }
+  .g { max-width: 420px; margin: 0 auto; padding: 0 8px; }
+  header.top.gtop { position: sticky !important; top: 0; z-index: 30; display: flex !important; flex-direction: row !important; align-items: center; gap: 6px !important; padding: max(6px, env(safe-area-inset-top)) 8px 6px !important; background: #000 !important; border: 0 !important; width: auto !important; height: auto !important; bottom: auto !important; }
+  .gtop .gb { display: flex; align-items: center; gap: 6px; font: 800 15px var(--font); color: #fff; text-decoration: none; flex: 1; min-width: 0; }
+  .gtop .gb img { width: 20px; height: 20px; border-radius: 6px; }
+  .gtop .gb span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gtop #acctBtn { margin-left: 0 !important; font-size: 12px !important; padding: 3px 8px 3px 3px !important; max-width: 96px; overflow: hidden; }
+  .gtop #acctBtn .av { width: 22px !important; height: 22px !important; }
+  .gcard { display: block; width: 100%; box-sizing: border-box; text-align: left; margin-top: 8px; padding: 10px; border-radius: 14px; background: #15141f; border: 1px solid #ffffff1a; color: #fff; font: inherit; text-decoration: none; }
+  button.gcard { cursor: pointer; }
+  .gcard h2 { margin: 0 0 4px; font: 700 11px var(--mono, monospace); letter-spacing: .06em; text-transform: uppercase; color: #a9a6c8; display: flex; align-items: center; gap: 6px; }
+  .gcard .gbig { font: 800 26px/1.05 var(--font); letter-spacing: -.02em; }
+  .gcard .sub { color: #b9b6d6; font-size: 12px; margin-top: 2px; }
+  .gcard .grow { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .alert { background: #3a1408; border-color: #ff6a3d; }
+  .alert .gbig { font-size: 19px; color: #ffb199; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tiles .gcard { margin-top: 0; }
+  .tiles { margin-top: 8px; }
+  .streak .gbig { color: #ffd23f; }
+  .krill .gbig { color: #6cd3ff; }
+  .bars { display: flex; gap: 3px; align-items: flex-end; height: 34px; margin-top: 6px; }
+  .bars i { flex: 1; background: #3d3a63; border-radius: 3px 3px 1px 1px; min-height: 2px; position: relative; }
+  .bars i.today { background: #ff6a3d; }
+  .bars + .days { display: flex; gap: 3px; } .days span { flex: 1; text-align: center; font: 600 9px var(--mono, monospace); color: #8d8aab; }
+  .who b { color: #3ddc97; }
+  .names { font-size: 12px; color: #d6d3ee; margin-top: 4px; overflow-wrap: anywhere; }
+  .glist .it { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 0; border: 0; border-top: 1px solid #ffffff12; background: none; color: #fff; font: inherit; text-align: left; cursor: pointer; }
+  .glist .it:first-of-type { border-top: 0; }
+  .glist .it .av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; flex: none; }
+  .glist .it b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .un { background: #ff6a3d; color: #160a05; border-radius: 999px; padding: 0 6px; font: 800 11px/18px var(--mono, monospace); }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .btn2 { flex: 1 1 auto; min-height: 36px; padding: 6px 10px; border-radius: 10px; border: 1px solid #ffffff26; background: #24223a; color: #fff; font: 700 13px var(--font); cursor: pointer; }
+  .btn2.pri { background: #ff6a3d; border-color: #ff6a3d; color: #160a05; }
+  .view { display: none; } .view.on { display: block; }
+  .gback { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 6px 8px; border-radius: 10px; border: 0; background: #1d1c2b; color: #fff; font: 700 13px var(--font); cursor: pointer; }
+  .msgs { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .msgs .m { padding: 6px 8px; border-radius: 10px; background: #24223a; font-size: 13px; overflow-wrap: anywhere; max-width: 92%; }
+  .msgs .m.me { align-self: flex-end; background: #3a2a8f; }
+  .board { display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; max-width: 240px; aspect-ratio: 1; margin: 6px auto 0; border-radius: 6px; overflow: hidden; }
+  .board i { display: grid; place-items: center; font-style: normal; font-size: min(5.6vw, 24px); line-height: 1; background: #b58863; }
+  .board i.l { background: #f0d9b5; } .board i.hl { box-shadow: inset 0 0 0 100px #f5e14a88; }
+  .board i.w { color: #fff; text-shadow: 0 0 1px #000, 0 0 2px #000; } .board i.b { color: #111; }
+  .clocks { display: flex; gap: 6px; margin-top: 6px; } .clocks div { flex: 1; padding: 6px; border-radius: 10px; background: #24223a; text-align: center; font: 700 12px var(--font); } .clocks div.run { background: #ff6a3d; color: #160a05; }
+  .clocks b { display: block; font: 800 18px var(--mono, monospace); }
+  .gsw { font: 800 34px/1 var(--mono, monospace); text-align: center; margin: 10px 0 4px; letter-spacing: -.02em; }
+  .delta { text-align: center; font: 800 16px var(--mono, monospace); }
+  .delta.ahead { color: #3ddc97; } .delta.behind { color: #ff8b8b; }
+  .gprog { height: 6px; border-radius: 3px; background: #2b2945; overflow: hidden; margin-top: 8px; } .gprog i { display: block; height: 100%; width: 0; background: #ffd23f; }
+  select { width: 100%; padding: 7px; border-radius: 10px; background: #24223a; color: #fff; border: 1px solid #ffffff26; font: 600 13px var(--font); }
+  #react { width: 100%; min-height: 150px; border: 0; border-radius: 16px; font: 800 20px/1.2 var(--font); color: #fff; background: #2a2850; cursor: pointer; padding: 12px; margin-top: 8px; touch-action: manipulation; }
+  #react.wait { background: #a32020; } #react.go { background: #1fa85a; } #react.early { background: #5a2a00; }
+  .tog { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 0; background: none; border: 0; color: #fff; font: 600 13px var(--font); text-align: left; cursor: pointer; }
+  .tog span { flex: 1; } .tog i { width: 34px; height: 20px; border-radius: 10px; background: #3d3a63; position: relative; flex: none; } .tog i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; } .tog[aria-pressed=true] i { background: #3ddc97; } .tog[aria-pressed=true] i::after { left: 16px; }
+  .gnote { color: #8d8aab; font-size: 11px; margin-top: 6px; }
+  .gfoot { text-align: center; margin-top: 14px; font-size: 12px; } .gfoot a { color: #b9b6d6; }
+  html.watch .gcard .gbig { font-size: 22px; } html.watch .tiles { gap: 6px; } html.watch .gcard { padding: 8px; }
+</style>
+</head>
+<body>
+<header class="top gtop">
+  <a class="gb" href="index.html" aria-label="The Arcade home"><img src="logo.svg?v=2" alt=""><span>Glances</span></a>
+</header>
+<main class="g">
+
+<section class="view on" id="vHome" aria-label="Glances">
+  <a class="gcard alert" id="tAlert" hidden><h2>🏆 Tournament</h2><div class="gbig">Your match is ready</div><div class="sub" id="tAlertT"></div></a>
+
+  <div class="tiles">
+    <div class="gcard streak" id="streak"><h2>🔥 Streak</h2><div class="gbig" id="stN">–</div><div class="sub" id="stS"></div></div>
+    <a class="gcard krill" id="krill" href="play.html?game=krill-dive"><h2>🦐 Krill Dive</h2><div class="gbig" id="kdN">–</div><div class="sub" id="kdS"></div></a>
+  </div>
+
+  <div class="gcard" id="time"><h2>⏱ Time played</h2><div class="grow"><div class="gbig" id="tmToday">0m</div><div class="sub">today</div></div><div class="sub" id="tmWeek"></div><div class="bars" id="tmBars" aria-hidden="true"></div><div class="days" id="tmDays" aria-hidden="true"></div><div class="gnote" id="tmNote"></div></div>
+
+  <div class="gcard who" id="who"><h2>🟢 Online now</h2><div class="grow"><div class="gbig" id="onN">–</div><div class="sub" id="onS">connecting…</div></div><div class="names" id="onF"></div></div>
+
+  <div class="gcard glist" id="msgs"><h2>💬 Messages</h2><div id="msgList"><div class="sub">Loading…</div></div></div>
+
+  <button type="button" class="gcard" id="chessBtn"><h2>♟ Chess</h2><div class="sub" id="chessS">See your live game: the last move and the clocks.</div></button>
+  <button type="button" class="gcard" id="swBtn"><h2>🏍 Throttle Ridge</h2><div class="sub" id="swS">Stopwatch against your best times.</div></button>
+  <button type="button" class="gcard" id="rxBtn"><h2>⚡ Reaction</h2><div class="sub" id="rxS">A one-tap reflex game.</div></button>
+
+  <div class="gcard"><h2>⚙ Watch</h2>
+    <button type="button" class="tog" id="buzzTog" aria-pressed="false"><span>Buzz when a friend comes online</span><i></i></button>
+    <div class="gnote" id="buzzNote"></div>
+  </div>
+  <p class="gfoot"><a href="index.html">Open the full Arcade ›</a></p>
+</section>
+
+<section class="view" id="vDm" aria-label="Quick reply">
+  <button type="button" class="gback" data-home>‹ Back</button>
+  <div class="gcard"><h2 id="dmWho"></h2><div class="msgs" id="dmMsgs"></div>
+    <div class="btns" id="dmPresets"></div><div class="gnote" id="dmNote"></div></div>
+</section>
+
+<section class="view" id="vChess" aria-label="Chess">
+  <button type="button" class="gback" data-home>‹ Back</button>
+  <div class="gcard"><h2 id="chT">♟ Chess</h2><div class="sub" id="chInfo">Looking for your game…</div>
+    <div class="clocks" id="chClocks" hidden><div id="chB"><span></span><b></b></div><div id="chW"><span></span><b></b></div></div>
+    <div class="board" id="chBoard" hidden></div>
+    <div class="sub" id="chLast" style="margin-top:6px"></div>
+    <div class="glist" id="chLive"></div></div>
+</section>
+
+<section class="view" id="vSw" aria-label="Throttle Ridge stopwatch">
+  <button type="button" class="gback" data-home>‹ Back</button>
+  <div class="gcard"><h2>🏍 Beat your best</h2>
+    <select id="swTrack" aria-label="Track"></select>
+    <div class="sub" id="swPb" style="margin-top:6px"></div>
+    <div class="gsw" id="swT" aria-live="off">0:00.00</div>
+    <div class="delta" id="swD" aria-live="polite"></div>
+    <div class="gprog" aria-hidden="true"><i id="swP"></i></div>
+    <div class="btns"><button type="button" class="btn2 pri" id="swGo">Start</button><button type="button" class="btn2" id="swReset">Reset</button></div>
+    <div class="gnote">A practice stopwatch to time a run against your best. It doesn’t change your Throttle Ridge save.</div></div>
+</section>
+
+<section class="view" id="vRx" aria-label="Reaction game">
+  <button type="button" class="gback" data-home>‹ Back</button>
+  <button type="button" id="react">Tap to start</button>
+  <div class="gcard"><div class="grow"><div class="gbig" id="rxBest">–</div><div class="sub">your best</div></div><div class="sub" id="rxLast"></div></div>
+</section>
+
+</main>
+<script src="games.js?v=264"></script>
+<script src="account.js?v=42"></script>
+<script src="watch.js?v=1"></script>
+<script>
+/* Glances (2026-11-19): a watch-sized dashboard for the Apple Watch layout (and phones). Everything comes from what
+   this browser already has (game saves synced by account.js) or existing routes; nothing new on the server.
+   - Tournament alert: the server's tournament list (/tourn), and each live one's bracket, every 30 s while the page is
+     on screen; "Your match is ready" (with a buzz where vibration works) when you're in an unplayed match.
+   - Streak: days in a row with at least a minute of play ('arcade-playdays', kept by games.js from 2026-11-19).
+   - Krill Dive: today's (UTC) dive from its save 'krilldive', and its own streak.
+   - Time played: today and this week (from Monday) from 'arcade-playdays'.
+   - Online now: the on-now counter (ArcadeOnline) and which of your friends are in it.
+   - Messages: your private chats (/acct/social), the last few messages (/acct/dm) and preset quick replies (POST /acct/dm).
+   - Chess: finds your game in the live-games list ('ch-live' presence) and follows its table like a spectator, but
+     without joining its presence (so you don't show as a watcher): asks 'look' for the game so far, then follows 'mv'.
+   - Throttle Ridge: a stopwatch against a best time from 'throttle-ridge.v1'.
+   - Reaction: wait for green, tap. Best kept in 'arcade-watch-react'. */
+(() => {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const J = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+  const A = () => window.ArcadeAccount;
+  const online = () => { const a = A(); return !!(a && a.kind && a.kind() === 'online'); };
+  const me = () => online() ? A().name() : '';
+  const same = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+  const lc = s => String(s || '').toLowerCase();
+  const HUES = [12, 200, 140, 280, 40, 330, 90, 240];
+  const hue = n => { let h = 0; for (const c of lc(n)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return HUES[h % HUES.length]; };
+  const dur = s => { s = Math.round(s / 60); return s >= 60 ? Math.floor(s / 60) + 'h ' + (s % 60 ? (s % 60) + 'm' : '') : s + 'm'; };
+  const dayKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const gameName = id => (((typeof GAMES !== 'undefined' && GAMES) || []).find(g => g.id === id) || {}).title || id;
+
+  /* ---------- views ---------- */
+  let leave = null;
+  function show(v) { document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === v)); scrollTo(0, 0); if (v === 'vHome' && leave) { leave(); leave = null; } }
+  document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => show('vHome'));
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !$('vHome').classList.contains('on')) show('vHome'); });
+
+  /* ---------- streak, time played ---------- */
+  function paintTime() {
+    const L = J('arcade-playdays') || {}, now = new Date(), today = dayKey(now);
+    const back = n => { const d = new Date(now); d.setDate(d.getDate() - n); return dayKey(d); };
+    let streak = 0; for (let i = (L[today] >= 60 ? 0 : 1); i < 400 && (L[back(i)] || 0) >= 60; i++) streak++;
+    $('stN').textContent = streak + (streak === 1 ? ' day' : ' days');
+    $('stS').textContent = streak ? (L[today] >= 60 ? 'Played today ✓' : 'Play today to keep it') : 'Play a game to start one';
+    $('tmToday').textContent = dur(L[today] || 0);
+    const dow = (now.getDay() + 6) % 7; // Monday = 0
+    let week = 0; const bars = [], max = Math.max(60, ...Array.from({ length: 7 }, (_, i) => L[back(dow - i)] || 0));
+    for (let i = 0; i < 7; i++) { const k = back(dow - i), v = i <= dow ? (L[k] || 0) : 0; if (i <= dow) week += v; bars.push('<i class="' + (i === dow ? 'today' : '') + '" style="height:' + Math.round(v / max * 100) + '%" title="' + dur(v) + '"></i>'); }
+    $('tmWeek').textContent = dur(week) + ' this week';
+    $('tmBars').innerHTML = bars.join(''); $('tmDays').innerHTML = 'MTWTFSS'.split('').map(c => '<span>' + c + '</span>').join('');
+    const first = Object.keys(L).sort()[0];
+    $('tmNote').textContent = !first ? 'Counting starts with your next game.' : first > back(dow) ? 'Counting since ' + new Date(first + 'T12:00').toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }) + '.' : '';
+  }
+  function paintKrill() {
+    const s = J('krilldive') || {}, d = new Date().toISOString().slice(0, 10), t = s.days && s.days[d];
+    const y = new Date(Date.now() - 864e5).toISOString().slice(0, 10), alive = s.lastDay === d || s.lastDay === y;
+    $('kdN').textContent = t ? ((t.score || 0) * 10).toLocaleString() + ' m' : 'Not yet';
+    $('kdS').textContent = t ? 'Today’s dive' + (alive && s.streak > 1 ? ' · ' + s.streak + ' day streak' : '') : 'Today’s dive is waiting' + (alive && s.streak ? ' · streak ' + s.streak : '');
+  }
+
+  /* ---------- online now + friends ---------- */
+  let friends = {}, names = {}, counts = null;
+  function paintWho() {
+    if (!counts) { $('onN').textContent = '–'; $('onS').textContent = window.ArcadeOnline ? 'can’t connect right now' : ''; return; }
+    $('onN').textContent = ArcadeOnline.label(counts.total, counts);
+    const top = Object.entries(counts.byGame || {}).filter(([g]) => g !== 'home' && g !== 'chat' && g !== 'watch').sort((a, b) => b[1] - a[1]).slice(0, 2).map(([g, n]) => gameName(g) + ' ' + n);
+    $('onS').textContent = (counts.total === 1 ? 'player' : 'players') + (top.length ? ' · ' + top.join(', ') : '');
+    const on = Object.keys(friends).filter(k => names[k]);
+    $('onF').innerHTML = !online() ? '' : on.length ? 'Friends: ' + on.map(k => '<b>' + esc(friends[k]) + '</b>' + (names[k] && names[k] !== 'home' ? ' (' + esc(gameName(names[k])) + ')' : '')).join(', ') : Object.keys(friends).length ? 'No friends online right now.' : '';
+  }
+  if (window.ArcadeOnline) {
+    ArcadeOnline.start('home');
+    ArcadeOnline.subscribe(c => { counts = c; paintWho(); });
+    ArcadeOnline.onNames(n => { names = n || {}; paintWho(); });
+    setTimeout(() => { if (!counts) paintWho(); }, 8000);
+  }
+
+  /* ---------- messages and quick replies ---------- */
+  const PRESETS = ['On my way!', 'GG!', 'Can’t play right now', 'Play in 5 min?', 'Yes!', 'No, sorry', 'Be right back', '👍', '😂'];
+  function loadMsgs(force) {
+    if (!online()) { $('msgList').innerHTML = '<div class="sub">Log in with an online account to see your messages.</div>'; return; }
+    ArcadeWatch.friends(force).then(f => {
+      friends = f; paintWho();
+      let c = {}; try { c = (JSON.parse(sessionStorage.getItem('arcade-watch-fr') || '{}').c) || {}; } catch (e) {}
+      const chats = Object.entries(c).filter(([k]) => !k.startsWith('g~')).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0)).slice(0, 5).map(([k, v]) => ({ n: v.n || k, un: v.un || 0 }));
+      Object.keys(f).forEach(k => { if (chats.length < 5 && !chats.some(x => same(x.n, k))) chats.push({ n: f[k], un: 0 }); });
+      if (!chats.length) { $('msgList').innerHTML = '<div class="sub">No messages yet. Add friends on the Players tab.</div>'; return; }
+      $('msgList').innerHTML = chats.map((x, i) => '<button type="button" class="it" data-i="' + i + '"><span class="av" style="background:hsl(' + hue(x.n) + ' 55% 40%)">' + esc(x.n.charAt(0).toUpperCase()) + '</span><b>' + esc(x.n) + '</b>' + (x.un ? '<span class="un">' + x.un + '</span>' : '') + '</button>').join('');
+      $('msgList').querySelectorAll('[data-i]').forEach(b => b.onclick = () => openDm(chats[+b.dataset.i].n));
+    });
+  }
+  function openDm(n) {
+    show('vDm'); $('dmWho').textContent = '💬 ' + n; $('dmMsgs').innerHTML = '<div class="sub">Loading…</div>'; $('dmNote').textContent = '';
+    const draw = msgs => { $('dmMsgs').innerHTML = msgs.slice(-3).map(m => '<div class="m' + (m.f ? ' me' : '') + '">' + esc(String(m.t || '').slice(0, 200)) + '</div>').join('') || '<div class="sub">No messages yet. Say hi!</div>'; };
+    let msgs = [];
+    A().api('dm?with=' + encodeURIComponent(n), { auth: true }).then(r => { if (r.status === 200) { msgs = r.msgs || []; draw(msgs); } else $('dmMsgs').innerHTML = '<div class="sub">Couldn’t load the messages.</div>'; });
+    $('dmPresets').innerHTML = PRESETS.map((p, i) => '<button type="button" class="btn2" data-p="' + i + '">' + esc(p) + '</button>').join('');
+    $('dmPresets').querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+      const text = PRESETS[+b.dataset.p]; b.disabled = true; $('dmNote').textContent = 'Sending…';
+      A().api('dm', { method: 'POST', auth: true, body: { to: n, text } }).then(r => {
+        b.disabled = false;
+        if (r.status !== 200) { $('dmNote').textContent = r.error === 'slow' ? 'Slow down a little.' : r.error === 'you_blocked' ? 'You blocked this player.' : 'Couldn’t send. Check your connection.'; return; }
+        msgs.push(r.m || { t: text, f: 1 }); draw(msgs); $('dmNote').textContent = 'Sent ✓'; ArcadeWatch.buzz(40);
+      });
+    });
+    leave = () => loadMsgs(true);
+  }
+
+  /* ---------- tournament alerts ---------- */
+  const tBase = () => { try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && localStorage.getItem('arcade-acct-api')) return localStorage.getItem('arcade-acct-api').replace(/\/acct\/?$/, '') + '/tourn'; } catch (e) {} const a = A(); return ((a && a.server) || 'https://arcade-realtime.arcade-realtime.workers.dev') + '/tourn'; };
+  const getT = q => fetch(tBase() + (q || ''), { cache: 'no-store' }).then(r => r.json());
+  function matchOf(T, name) { for (const r of T.rounds || []) for (const m of r) if (!m.w && m.a && m.b && (same(m.a, name) || same(m.b, name))) return m; return null; }
+  function roundName(T, r) { const left = T.rounds.length - r; return left === 1 ? 'Final' : left === 2 ? 'Semi-finals' : left === 3 ? 'Quarter-finals' : 'Round ' + (r + 1); }
+  function checkTourn() {
+    if (!online() || document.hidden) return;
+    getT('').then(j => Promise.all(((j && j.list) || []).filter(t => t.st === 'live').slice(0, 4).map(t => getT('?id=' + encodeURIComponent(t.id)).then(x => x && x.T).catch(() => null)))).then(ts => {
+      let hit = null;
+      for (const T of ts) { if (!T) continue; const m = matchOf(T, me()); if (m && m.st !== 'dispute') { hit = { T, m }; break; } }
+      $('tAlert').hidden = !hit;
+      if (!hit) return;
+      const opp = same(hit.m.a, me()) ? hit.m.b : hit.m.a;
+      $('tAlertT').textContent = 'You vs ' + opp + ' · ' + roundName(hit.T, +String(hit.m.id).split('-')[0]) + ' · ' + (hit.T.t || 'Tournament') + '. Play it on your phone or computer.';
+      $('tAlert').href = 'tourney.html?t=' + encodeURIComponent(hit.T.id);
+      const k = 'arcade-watch-tm:' + hit.T.id + ':' + hit.m.id;
+      try { if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k, '1'); ArcadeWatch.buzz([200, 100, 200, 100, 200]); } } catch (e) {}
+    }).catch(() => {});
+  }
+
+  /* ---------- chess: your live game ---------- */
+  const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+  const GLYPH = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
+  function fresh() { const b = []; for (const ch of START.replace(/\//g, '')) { if (/\d/.test(ch)) for (let i = 0; i < +ch; i++) b.push(''); else b.push(ch); } return b; }
+  const sq = s => (8 - +s[1]) * 8 + (s.charCodeAt(0) - 97);
+  function apply(b, u) {
+    if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(u)) return;
+    const f = sq(u.slice(0, 2)), t = sq(u.slice(2, 4)), p = b[f]; if (!p) return;
+    const white = p === p.toUpperCase(), type = p.toLowerCase();
+    if (type === 'p' && f % 8 !== t % 8 && !b[t]) b[Math.floor(f / 8) * 8 + t % 8] = ''; // en passant
+    if (type === 'k' && Math.abs(f % 8 - t % 8) === 2) { const row = Math.floor(f / 8) * 8, kingSide = t % 8 === 6; b[row + (kingSide ? 5 : 3)] = b[row + (kingSide ? 7 : 0)]; b[row + (kingSide ? 7 : 0)] = ''; }
+    b[t] = u[4] ? (white ? u[4].toUpperCase() : u[4]) : p; b[f] = '';
+  }
+  let G = null, chTimer = 0;
+  const fmtClk = ms => { if (ms == null || !isFinite(ms)) return '–'; ms = Math.max(0, ms); const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  function drawChess() {
+    if (!G || !G.has) return;
+    const b = fresh(); G.mv.forEach(u => apply(b, u));
+    const last = G.mv[G.mv.length - 1], hl = last ? [sq(last.slice(0, 2)), sq(last.slice(2, 4))] : [];
+    const flip = G.mine === 'b', cells = [];
+    for (let i = 0; i < 64; i++) { const j = flip ? 63 - i : i, p = b[j], r = Math.floor(j / 8), c = j % 8; cells.push('<i class="' + ((r + c) % 2 ? '' : 'l') + (hl.includes(j) ? ' hl' : '') + (p ? (p === p.toUpperCase() ? ' w' : ' b') : '') + '">' + (p ? GLYPH[p.toLowerCase()] : '') + '</i>'); }
+    $('chBoard').innerHTML = cells.join(''); $('chBoard').hidden = false;
+    const side = G.mv.length % 2 ? 'b' : 'w', now = Date.now(), running = !G.over && G.mv.length >= 2;
+    const left = c => G.clk ? (G.clk[c] == null ? null : G.clk[c] - (running && side === c ? now - G.at : 0)) : (side === c && !G.over ? G.ms - (now - G.at) : null);
+    $('chClocks').hidden = false;
+    [['w', $('chW')], ['b', $('chB')]].forEach(([c, el]) => { el.classList.toggle('run', side === c && !G.over); el.querySelector('span').textContent = (c === 'w' ? '♔ ' + (G.w || 'White') : '♚ ' + (G.b || 'Black')); el.querySelector('b').textContent = G.clk ? fmtClk(left(c)) : side === c && !G.over ? fmtClk(left(c)) : ''; });
+    const opp = G.mine === 'w' ? 'b' : 'w', lastOpp = [...G.mv.keys()].reverse().find(i => (i % 2 ? 'b' : 'w') === opp);
+    const nice = u => u.slice(0, 2) + '→' + u.slice(2, 4) + (u[4] ? '=' + u[4].toUpperCase() : '');
+    $('chLast').textContent = G.over ? 'Game over' + (G.over.w ? ': ' + (G.over.w === 'w' ? G.w : G.b) + ' won' : G.over.y === 'ended' ? '' : ': a draw') + '.' : (G.mine ? (lastOpp != null ? 'Their last move: ' + nice(G.mv[lastOpp]) : 'They haven’t moved yet.') : (last ? 'Last move: ' + nice(last) : 'No moves yet.')) + (G.mine ? (side === G.mine ? ' Your move.' : ' Their move.') : '');
+    $('chInfo').textContent = (G.w || 'White') + ' vs ' + (G.b || 'Black') + (G.clk ? '' : ' · move timer');
+  }
+  function openChess() {
+    show('vChess'); $('chBoard').hidden = true; $('chClocks').hidden = true; $('chLast').textContent = ''; $('chLive').innerHTML = '';
+    if (!online()) { $('chInfo').textContent = 'Log in with an online account to follow your games.'; return; }
+    $('chInfo').textContent = 'Looking for your game…';
+    let list = null, table = null, stop = false;
+    const drop = c => { try { c && c.unsubscribe(); } catch (e) {} };
+    leave = () => { stop = true; drop(list); drop(table); clearInterval(chTimer); G = null; };
+    ArcadeOnline.ready(client => {
+      if (stop) return;
+      if (!client) { $('chInfo').textContent = 'Can’t connect right now.'; return; }
+      list = client.channel('ch-live', { config: { broadcast: { self: false, ack: false }, presence: { key: 'w' + Math.random().toString(36).slice(2, 10) } } });
+      let picked = false;
+      list.on('presence', { event: 'sync' }, () => {
+        if (stop || picked) return;
+        const st = list.presenceState(), games = [];
+        for (const k in st) { const m = st[k] && st[k][0]; if (m && typeof m.k === 'string' && /^[a-z0-9]{2,20}$/i.test(m.k)) games.push(m); }
+        const mine = games.find(g => same(g.w, me()) || same(g.b, me()));
+        if (mine) { picked = true; follow(client, mine, same(mine.w, me()) ? 'w' : 'b'); return; }
+        $('chInfo').textContent = 'You’re not in a live game right now.' + (games.length ? ' Watch one:' : '');
+        $('chLive').innerHTML = games.slice(0, 4).map((g, i) => '<button type="button" class="it" data-g="' + i + '"><b>' + esc(g.w || '?') + ' vs ' + esc(g.b || '?') + '</b><span>›</span></button>').join('');
+        $('chLive').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { picked = true; $('chLive').innerHTML = ''; follow(client, games[+b.dataset.g], ''); });
+      });
+      list.subscribe(s => { if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') $('chInfo').textContent = 'Can’t connect right now.'; });
+    });
+    function follow(client, g, mine) {
+      drop(list); list = null;
+      G = { has: false, mine, w: g.w, b: g.b, mv: [], clk: null, ms: 90000, at: Date.now(), over: null, gno: -1 };
+      $('chInfo').textContent = 'Joining ' + g.w + ' vs ' + g.b + '…';
+      table = client.channel('ch-t-' + g.k, { config: { broadcast: { self: false, ack: false }, presence: { key: 'w' + Math.random().toString(36).slice(2, 10) } } });
+      table.on('broadcast', { event: 'st' }, e => { const p = e.payload || {}; if (!Array.isArray(p.mv) || (p.g | 0) < G.gno) return; G.gno = p.g | 0; G.has = true; G.mv = p.mv.slice(); G.w = p.w || G.w; G.b = p.b || G.b; G.clk = p.cw != null || p.cb != null ? { w: p.cw, b: p.cb } : null; G.ms = isFinite(p.ms) ? p.ms : 90000; G.at = Date.now(); G.over = p.o || null; drawChess(); });
+      table.on('broadcast', { event: 'mv' }, e => { const p = e.payload || {}; if (!G.has || G.over || (p.n | 0) !== G.mv.length || typeof p.u !== 'string') return; const mover = G.mv.length % 2 ? 'b' : 'w'; G.mv.push(p.u); if (G.clk && isFinite(+p.c)) G.clk[mover] = +p.c; G.ms = 90000; G.at = Date.now(); ArcadeWatch.buzz(30); drawChess(); });
+      table.on('broadcast', { event: 'resign' }, () => { if (G.has && !G.over) { G.over = { w: null, y: 'ended' }; drawChess(); } });
+      table.subscribe(s => {
+        if (s === 'SUBSCRIBED') { const ask = () => { try { table.send({ type: 'broadcast', event: 'look', payload: { f: 'watch' } }); } catch (e) {} }; ask(); setTimeout(() => { if (G && !G.has) ask(); }, 2500); setTimeout(() => { if (G && !G.has) $('chInfo').textContent = 'That game isn’t answering. It may have ended.'; }, 8000); }
+        else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') $('chInfo').textContent = 'Can’t connect to that game.';
+      });
+      clearInterval(chTimer); chTimer = setInterval(drawChess, 500);
+    }
+  }
+  $('chessBtn').onclick = openChess;
+
+  /* ---------- Throttle Ridge stopwatch ---------- */
+  const TRACKS = { meadow: 'Meadow Run', dustbowl: 'Dust Bowl', ridgeback: 'Pine Ridge', canyon: 'Red Canyon', thunder: 'Thunder Arena', sunset: 'Sunset Valley', frostbite: 'Frostbite Pass', coastline: 'Coastline Cliffs', dunes: 'Midnight Dunes', lava: 'Lava Lane', marsh: 'Mudflat Marsh', golden: 'Golden Hills', glacier: 'Glacier Gap', sandstorm: 'Sandstorm Speedway', timber: 'Timber Trail', crimson: 'Crimson Mesa', neon: 'Neon Nights', tidebreak: 'Tidebreak Beach', ashfall: 'Ashfall Ridge', bayou: 'Bayou Bounce', summit: 'Summit Rush', badlands: 'Badlands Blitz', starlight: 'Starlight Stadium', twilight: 'Twilight Ridge', gauntlet: 'The Gauntlet' };
+  const order = Object.keys(TRACKS);
+  const fmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60); return m + ':' + (s % 60).toFixed(2).padStart(5, '0'); };
+  let sw = { run: false, t0: 0, el: 0, raf: 0 };
+  function bests() { const s = J('throttle-ridge.v1') || {}; return Object.entries(s.best || {}).filter(([, v]) => isFinite(+v) && +v > 0).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])); }
+  function swPaint() {
+    const pb = +($('swTrack').value ? (J('throttle-ridge.v1') || {}).best[$('swTrack').value] : 0) || 0, t = sw.el + (sw.run ? (performance.now() - sw.t0) / 1000 : 0);
+    $('swT').textContent = fmt(t);
+    if (pb) {
+      const d = t - pb; $('swP').style.width = Math.min(100, t / pb * 100) + '%';
+      if (sw.run) { $('swD').textContent = d < 0 ? fmt(-d) + ' left to beat it' : '+' + d.toFixed(2) + ' s over'; $('swD').className = 'delta ' + (d < 0 ? 'ahead' : 'behind'); }
+      else if (t > 0) { $('swD').textContent = d < 0 ? (-d).toFixed(2) + ' s faster than your best!' : d.toFixed(2) + ' s slower than your best'; $('swD').className = 'delta ' + (d < 0 ? 'ahead' : 'behind'); }
+      else { $('swD').textContent = ''; }
+    }
+    if (sw.run) sw.raf = requestAnimationFrame(swPaint);
+  }
+  function openSw() {
+    show('vSw');
+    const list = bests();
+    $('swTrack').innerHTML = list.length ? list.map(([id, v]) => '<option value="' + esc(id) + '">' + esc(TRACKS[id] || id) + ' · ' + fmt(+v) + '</option>').join('') : '<option value="">No best times yet</option>';
+    $('swPb').textContent = list.length ? '' : 'Finish a Throttle Ridge track and your best time shows up here.';
+    reset();
+    leave = () => { cancelAnimationFrame(sw.raf); sw.run = false; };
+  }
+  function reset() { cancelAnimationFrame(sw.raf); sw = { run: false, t0: 0, el: 0, raf: 0 }; $('swGo').textContent = 'Start'; $('swP').style.width = '0'; $('swD').textContent = ''; const pb = bests().find(x => x[0] === $('swTrack').value); $('swPb').textContent = pb ? 'Your best: ' + fmt(+pb[1]) : $('swPb').textContent; swPaint(); }
+  $('swTrack').onchange = reset;
+  $('swGo').onclick = () => { if (sw.run) { sw.el += (performance.now() - sw.t0) / 1000; sw.run = false; cancelAnimationFrame(sw.raf); $('swGo').textContent = 'Go on'; ArcadeWatch.buzz(60); swPaint(); } else { sw.t0 = performance.now(); sw.run = true; $('swGo').textContent = 'Stop'; ArcadeWatch.buzz(30); swPaint(); } };
+  $('swReset').onclick = reset;
+  $('swBtn').onclick = openSw;
+  { const n = bests().length; if (n) $('swS').textContent = n + ' best ' + (n === 1 ? 'time' : 'times') + ' to race.'; }
+
+  /* ---------- reaction game ---------- */
+  const RK = 'arcade-watch-react';
+  let rx = { st: 'idle', t: 0, go: 0 };
+  function rxPaint() { const s = J(RK) || {}; $('rxBest').textContent = s.best ? s.best + ' ms' : '–'; $('rxLast').textContent = s.last && s.last.length ? 'Last: ' + s.last.slice(-5).join(', ') + ' ms' : 'Wait for green, then tap as fast as you can.'; $('rxS').textContent = s.best ? 'Best ' + s.best + ' ms. Can you beat it?' : 'A one-tap reflex game.'; }
+  function rxTap(e) {
+    if (e) e.preventDefault();
+    const b = $('react'), now = performance.now();
+    if (rx.st === 'idle' || rx.st === 'done' || rx.st === 'early') { rx.st = 'wait'; b.className = 'wait'; b.textContent = 'Wait for green…'; clearTimeout(rx.t); rx.t = setTimeout(() => { rx.st = 'go'; rx.go = performance.now(); b.className = 'go'; b.textContent = 'TAP!'; }, 1200 + Math.random() * 2600); return; }
+    if (rx.st === 'wait') { clearTimeout(rx.t); rx.st = 'early'; b.className = 'early'; b.textContent = 'Too soon! Tap to try again'; return; }
+    if (rx.st === 'go') {
+      const ms = Math.round(now - rx.go); rx.st = 'done'; b.className = ''; b.textContent = ms + ' ms · tap to go again';
+      const s = J(RK) || {}; s.n = (s.n || 0) + 1; s.last = (s.last || []).concat(ms).slice(-10); const best = !s.best || ms < s.best; if (best) s.best = ms;
+      try { localStorage.setItem(RK, JSON.stringify(s)); } catch (err) {}
+      if (best) { b.textContent = ms + ' ms · new best! 🎉'; ArcadeWatch.buzz([40, 40, 40]); }
+      rxPaint();
+    }
+  }
+  $('react').addEventListener('pointerdown', rxTap);
+  $('react').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') rxTap(e); });
+  $('rxBtn').onclick = () => { show('vRx'); rx = { st: 'idle', t: 0, go: 0 }; $('react').className = ''; $('react').textContent = 'Tap to start'; rxPaint(); leave = () => clearTimeout(rx.t); };
+
+  /* ---------- the buzz setting ---------- */
+  function paintBuzz() {
+    const on = !!ArcadeWatch.settings.buzz; $('buzzTog').setAttribute('aria-pressed', on);
+    $('buzzNote').textContent = !online() ? 'Needs an online account with friends.' : ArcadeWatch.canBuzz() ? 'Off unless you turn it on.' : 'This browser can’t vibrate, so you’ll get a pop-up instead.';
+  }
+  $('buzzTog').onclick = () => { ArcadeWatch.setBuzz(!ArcadeWatch.settings.buzz); paintBuzz(); };
+
+  /* ---------- go ---------- */
+  function paintAll() { paintTime(); paintKrill(); paintWho(); paintBuzz(); rxPaint(); }
+  paintAll();
+  const ready = A() && A().ready ? A().ready() : Promise.resolve();
+  Promise.resolve(ready).then(() => { paintAll(); loadMsgs(); checkTourn(); });
+  if (A() && A().onPulled) A().onPulled(() => paintAll());
+  if (A() && A().onLive) A().onLive(m => { if (m.t === 'dm' || m.t === 'friend') loadMsgs(true); });
+  setInterval(() => { if (!document.hidden) checkTourn(); }, 30000);
+  setInterval(() => { if (!document.hidden) { paintTime(); paintKrill(); } }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { paintAll(); checkTourn(); } });
+})();
+</script>
+<script src="tos.js?v=21"></script>
+</body>
+</html>

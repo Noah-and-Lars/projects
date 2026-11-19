@@ -681,6 +681,8 @@ window.Arcade = {
     const t = this.playTime();
     t[id] = Math.round((+t[id] || 0) + secs);
     try { localStorage.setItem('arcade-playtime', JSON.stringify(t)); } catch (e) {}
+    // 2026-11-19: seconds per local day too ('arcade-playdays', 35 days kept) for the watch's time played today / this week and streak
+    try { const d = new Date(), k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'), L = readSave('arcade-playdays', true) || {}; L[k] = Math.round((+L[k] || 0) + secs); Object.keys(L).sort().slice(0, -35).forEach(x => delete L[x]); localStorage.setItem('arcade-playdays', JSON.stringify(L)); } catch (e) {}
   },
   mostPlayed() {
     const t = this.playTime(); let best = null;
