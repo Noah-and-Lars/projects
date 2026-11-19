@@ -59,12 +59,20 @@ export function clockText(t) {
 
 // 1 = all the overhead lights on. At night they go off at once with a clunk
 // (only the emergency fittings stay lit) and come back on in the morning.
+export const NIGHT_L = 0.035, CASCADE = 1.8;
+// The ripple of lights going out (or on): { r, inside, outside } or null.
+export function cascade(t, ev) {
+  if (t >= DAY_LEN && t < DAY_LEN + CASCADE) return { r: (t - DAY_LEN) / CASCADE * 75, inside: NIGHT_L, outside: 1, k: (t - DAY_LEN) / CASCADE };
+  if (t >= CYCLE - CASCADE) return { r: (t - (CYCLE - CASCADE)) / CASCADE * 75, inside: 1, outside: NIGHT_L, k: 1 - (t - (CYCLE - CASCADE)) / CASCADE };
+  return null;
+}
 export function lightLevel(t, ev, time) {
-  const N = 0.035;
+  const N = NIGHT_L;
   let L;
   if (t < DAY_LEN) L = 1;
-  else if (t > CYCLE - 2) L = N + (t - (CYCLE - 2)) / 2 * (1 - N);
-  else L = t < DAY_LEN + 0.25 ? (Math.sin(time * 60) > 0 ? 0.5 : N) : N; // a quick stutter as they cut out
+  else if (t > CYCLE - CASCADE) L = N + (t - (CYCLE - CASCADE)) / CASCADE * (1 - N);
+  else if (t < DAY_LEN + CASCADE) L = 1 - (t - DAY_LEN) / CASCADE * (1 - N);
+  else L = N;
   if (powerOut(t, ev)) {
     const into = t - POWERCUT[0], left = POWERCUT[1] - t;
     if (into < 3 || left < 2) L = Math.sin(time * 37) > 0.2 ? 1 : 0.05; // flicker
@@ -86,6 +94,9 @@ export function applyLight(scene, lights, L, ev, low) {
   // hemisphere and environment are the bounce light; colours are linear,
   // so the dark end needs small numbers.
   uniforms.uLevel.value = L;
+  const cs = lights.cascade;
+  if (cs) { uniforms.uLevel.value = cs.outside; uniforms.uCutIn.value = cs.inside; uniforms.uCutR.value = cs.r; uniforms.uCutC.value.set(lights.cx, lights.cz); }
+  else uniforms.uCutR.value = 0;
   uniforms.uEmerg.value = Math.max(0, Math.min(1, (0.6 - L) / 0.4));
   uniforms.uRed.value = crimson ? 1 : 0;
   lights.hemi.intensity = 0.02 + 0.8 * L + (crimson ? 0.05 : 0);

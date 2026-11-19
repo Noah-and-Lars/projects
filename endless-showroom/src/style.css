@@ -144,3 +144,9 @@ body.touch #whistle { display: none; }
 .sw-btn.on { border-color: #fff; box-shadow: 0 0 0 2px #ffd34d; }
 body.crimson #dark { background: radial-gradient(ellipse at center, rgba(90, 0, 0, 0.1) 30%, rgba(80, 0, 0, 0.75)); }
 body.crimson #clock-day { color: #ff8a8a; }
+
+#daytitle { position: absolute; top: 34%; left: 0; right: 0; text-align: center; opacity: 0; pointer-events: none; }
+#daytitle.show { animation: daytitle 4.5s ease-out; }
+.dt-day { font-size: clamp(48px, 9vw, 96px); font-weight: 900; letter-spacing: 0.12em; color: #fff; text-shadow: 0 4px 30px #000c; }
+.dt-week { font-size: clamp(16px, 2.4vw, 24px); font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: #ffd34d; text-shadow: 0 2px 12px #000c; }
+@keyframes daytitle { 0% { opacity: 0; transform: scale(1.08); } 12% { opacity: 1; transform: scale(1); } 70% { opacity: 1; } 100% { opacity: 0; } }

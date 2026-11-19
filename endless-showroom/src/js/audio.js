@@ -80,6 +80,7 @@ export const sfx = {
   lightsOff(red) {
     if (!ctx) return;
     burst(0.35, 120, 0.7, 0.7, 'lowpass'); tone(70, 0.4, 'square', 0.12, 0, 0.5);
+    for (let i = 1; i < 6; i++) setTimeout(() => burst(0.25, 110, 0.45 * (1 - i / 7), 0.7, 'lowpass'), i * 300); // bank after bank, further away
     tone(120, 1.4, 'sawtooth', 0.05, 0.05, 0.3);
     for (let i = 0; i < 4; i++) tone(880 - i * 120, 0.9, 'triangle', 0.14 * (1 - i * 0.2), 0.5 + i * 0.75, 0.97);
     if (red) { // a long, thin rising shriek

@@ -23,6 +23,11 @@ export const uniforms = {
   uCeil: { value: 6.5 },
   uGain: { value: 1 },
   uRed: { value: 0 },      // Crimson Night
+  // Closing time and opening time ripple out from the player: fittings
+  // within uCutR of uCutC are at uCutIn, the rest at uLevel.
+  uCutC: { value: new THREE.Vector2() },
+  uCutR: { value: 0 },
+  uCutIn: { value: 1 },
 };
 
 // ---- Detail texture: R wood grain, G fabric weave, B card fibre, A plaster.
@@ -88,7 +93,8 @@ vWN = normalize(mat3(modelMatrix) * esN);
 `;
 const FRAG_HEAD = /* glsl */`
 uniform sampler2D uDetail;
-uniform float uLevel, uEmerg, uCeil, uGain, uRed;
+uniform float uLevel, uEmerg, uCeil, uGain, uRed, uCutR, uCutIn;
+uniform vec2 uCutC;
 varying float vMat;
 varying vec3 vWP;
 varying vec3 vWN;
@@ -136,10 +142,11 @@ const FRAG_LIGHTS = /* glsl */`
     vec3 L = lp - vWP; float d2 = max(dot(L, L), 0.05); L *= inversesqrt(d2);
     float sel = mix(step(mod(c.x * 7.0 + c.y * 13.0, 9.0), 0.5), step(mod(c.x * 7.0 + c.y * 13.0, 3.0), 0.5), uRed);
     float em = sel * uEmerg;
-    float I = uLevel + em * mix(0.3, 0.45, uRed);
+    float lvl = distance(c * ${FIX.spacing.toFixed(1)} + ${(FIX.spacing / 2).toFixed(1)}, uCutC) < uCutR ? uCutIn : uLevel;
+    float I = lvl + em * mix(0.3, 0.45, uRed);
     if (I < 0.002) continue;
     vec3 emCol = mix(vec3(1.0, 0.42, 0.16), vec3(1.0, 0.06, 0.03), uRed);
-    vec3 col = mix(vec3(1.0, 0.96, 0.88), emCol, clamp(em * (1.0 - uLevel * 3.0), 0.0, 1.0));
+    vec3 col = mix(vec3(1.0, 0.96, 0.88), emCol, clamp(em * (1.0 - lvl * 3.0), 0.0, 1.0));
     float att = I / (1.0 + 0.1 * d2) * smoothstep(170.0, 70.0, d2);
     float ndl = max(dot(esNr, L), 0.0);
     vec3 H = normalize(L + esV);
@@ -230,7 +237,8 @@ export function makeFixtures(scene) {
   return {
     update(x, z, level, emergLevel, ceil) {
       const ncx = Math.floor(x / FIX.spacing), ncz = Math.floor(z / FIX.spacing);
-      const key = ncx + ',' + ncz + ',' + level.toFixed(2) + ',' + emergLevel.toFixed(2) + ',' + uniforms.uRed.value;
+      const cut = uniforms.uCutR.value;
+      const key = ncx + ',' + ncz + ',' + level.toFixed(2) + ',' + emergLevel.toFixed(2) + ',' + uniforms.uRed.value + ',' + cut.toFixed(1);
       if (key === lastKey) return;
       const moved = ncx !== cx || ncz !== cz;
       lastKey = key; cx = ncx; cz = ncz;
@@ -245,8 +253,10 @@ export function makeFixtures(scene) {
         }
         const red = uniforms.uRed.value > 0.5;
         const isEm = ((((gx * 7 + gz * 13) % (red ? 3 : 9)) + (red ? 3 : 9)) % (red ? 3 : 9)) === 0;
-        col.copy(off).lerp(day, level);
-        if (isEm && emergLevel > 0) col.lerp(red ? redEm : emerg, emergLevel * (1 - Math.min(1, level * 3)));
+        const fx = gx * FIX.spacing + FIX.spacing / 2, fz = gz * FIX.spacing + FIX.spacing / 2;
+        const lv = cut > 0 && Math.hypot(fx - uniforms.uCutC.value.x, fz - uniforms.uCutC.value.y) < cut ? uniforms.uCutIn.value : level;
+        col.copy(off).lerp(day, lv);
+        if (isEm && emergLevel > 0) col.lerp(red ? redEm : emerg, emergLevel * (1 - Math.min(1, lv * 3)));
         mesh.setColorAt(k, col);
         k++;
       }

@@ -13,7 +13,7 @@ import { createNet, myName, cleanName, myShirt } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume } from './audio.js';
-import { DAY_LEN, CYCLE, EVENTS, POWERCUT, HAIL, hailing, dayEvent, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
+import { DAY_LEN, CYCLE, EVENTS, POWERCUT, HAIL, hailing, dayEvent, cascade, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { uniforms, storeMaterial, SURF, makeFixtures, makeDust, setLowQuality, furnitureMaterial as furnitureMaterialRef } from './mats.js';
@@ -154,6 +154,14 @@ function announce(title, sub, secs = 5) {
   a.classList.remove('hidden');
   clearTimeout(announce.t); announce.t = setTimeout(() => a.classList.add('hidden'), secs * 1000);
 }
+function showDayTitle() {
+  const el = $('daytitle');
+  el.innerHTML = '';
+  const a = document.createElement('div'); a.className = 'dt-day'; a.textContent = `DAY ${clock.day}`;
+  const b = document.createElement('div'); b.className = 'dt-week'; b.textContent = weekday(clock.day) + (dayEvent(world.seed, clock.day) ? ' · ' + EVENTS[dayEvent(world.seed, clock.day)].name : '');
+  el.append(a, b);
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+}
 function chatLine(name, msg, sys) {
   const d = document.createElement('div');
   if (sys) { d.className = 'sys'; d.textContent = msg; }
@@ -206,7 +214,30 @@ $('b-online').onclick = () => goOnline('quick');
 $('b-create').onclick = () => goOnline('create');
 $('b-join').onclick = () => goOnline('join');
 $('code-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') goOnline('join'); });
-$('b-solo').onclick = () => { initAudio(); startGame((Math.random() * 4294967296) >>> 0, false); };
+$('b-solo').onclick = () => { initAudio(); startGame((Math.random() * 4294967296) >>> 0, false); saveSolo(); };
+$('b-continue').onclick = () => { const sv = loadSolo(); if (!sv) return; initAudio(); startGame(sv.seed >>> 0, false, sv); };
+
+// ---------------------------------------------------------------- solo saves
+// A solo store is saved every 20 s and when you leave, so you can carry on later.
+function saveSolo() {
+  if (net.on || mode !== 'play') return;
+  try {
+    localStorage.setItem('es-solo', JSON.stringify({
+      v: 1, seed: world.seed, day: clock.day, t: +clock.t.toFixed(1), mods: world.allMods(), waypoints,
+      P: { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), hp: P.alive ? Math.ceil(P.hp) : 100, food: Math.ceil(P.food), en: Math.ceil(P.en), nights: P.nights, inv: P.inv, invId: P.invId },
+    }));
+  } catch (_) {}
+  refreshContinue();
+}
+function loadSolo() { try { const s = JSON.parse(localStorage.getItem('es-solo') || 'null'); return s && s.v === 1 && s.seed ? s : null; } catch (_) { return null; } }
+function refreshContinue() {
+  const sv = loadSolo(), b = $('b-continue');
+  b.classList.toggle('hidden', !sv);
+  if (sv) b.textContent = `Continue Solo · Day ${sv.day} (${weekday(sv.day)})`;
+}
+refreshContinue();
+setInterval(() => { if (mode === 'play' && !net.on && P.alive) saveSolo(); }, 20000);
+addEventListener('pagehide', () => { if (mode === 'play' && !net.on) saveSolo(); });
 $('b-how').onclick = () => { returnTo = 'menu'; show('how'); };
 $('b-settings').onclick = () => { returnTo = 'menu'; openSettings(); };
 for (const b of document.querySelectorAll('.back')) b.onclick = () => show(returnTo);
@@ -239,16 +270,28 @@ function resume() { paused = false; show(null); if (!IS_TOUCH) lockPointer(canva
 function roomText() { return net.on ? (net.isPublic ? `Public store ${net.room.replace('pub', '#')}` : `Private room code: ${net.room}`) : 'Solo store'; }
 
 // ---------------------------------------------------------------- game start / leave
-function startGame(seed, waitForState) {
+function startGame(seed, waitForState, save) {
   world.reset(seed);
   clock.day = 1; clock.t = 30; clock.ev = '';
   world.setDay(1);
+  if (save) { // carry on a saved solo store
+    for (const [id, st] of save.mods || []) world.applyState(id, st);
+    clock.day = Math.max(1, save.day | 0); clock.t = clamp(+save.t || 30, 0, CYCLE - 1);
+    world.setDay(clock.day);
+  }
   remotes.forEach((r) => scene.remove(r.model.root)); remotes.clear();
   staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
   staffSim = net.isHost() ? new StaffSim(world) : null;
   Object.assign(P, { hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, nights: 0, vy: 0, hurtT: 99, using: null, whistleT: 0 });
   waypoints.length = 0;
-  { // like everyone else, you start somewhere random in the store
+  if (save && save.P) {
+    const sp = save.P;
+    Object.assign(P, { hp: clamp(+sp.hp || 100, 1, 100), food: clamp(+sp.food || 100, 0, 100), en: clamp(+sp.en || 100, 0, 100), nights: sp.nights | 0, yaw: +sp.yaw || 0 });
+    (sp.inv || []).slice(0, INV).forEach((k, i) => { if (ITEMS[k]) { P.inv[i] = k; P.invId[i] = (sp.invId || [])[i] || null; } });
+    for (const w of save.waypoints || []) waypoints.push({ x: +w.x, y: +w.y, z: +w.z, name: String(w.name).slice(0, 30), death: !!w.death });
+    spawnAt(+sp.x || 0, +sp.z || 0, 3);
+    P.y = Math.max(0, +sp.y || 0);
+  } else { // like everyone else, you start somewhere random in the store
     const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 130;
     spawnAt(Math.cos(a) * d, Math.sin(a) * d, 10);
   }
@@ -264,12 +307,15 @@ function startGame(seed, waitForState) {
   buildHotbar();
   if (waitForState) { pendingFull.parts = null; net.send('need', {}); }
   if (net.on) toast(`Joined ${roomText().toLowerCase()}. Press Enter to chat.`);
+  showDayTitle();
+  if (save) { announce(`Welcome back · Day ${clock.day}`, 'Your solo store is just as you left it.', 5); return; }
   announce('Welcome to the store', net.on ? 'You\'re somewhere in the aisles. Whistle (H) to find the others, gather food, and be ready for closing time.' : 'Gather food, build somewhere high, and be ready for closing time.', 7);
 }
 let touchReady = false;
 function initTouchOnce() { if (!touchReady) { initTouch($('touch')); touchReady = true; } $('touch').classList.remove('hidden'); }
 
 function leaveGame() {
+  if (!net.on) saveSolo();
   net.leave();
   mode = 'menu'; paused = false;
   $('hud').classList.add('hidden'); $('death').classList.add('hidden'); $('touch').classList.add('hidden');
@@ -878,7 +924,8 @@ function updateClock(dt) {
       if (P.alive) { P.nights++; if (P.nights > stats.best) stats.best = P.nights; stats.days++; saveStats(); }
       const e = clock.ev && EVENTS[clock.ev];
       const restock = isRestockDay(clock.day) ? ' Food and first aid have been restocked.' : '';
-      announce(`Good morning! Day ${clock.day} · ${weekday(clock.day)}`, e ? `${e.name}: ${e.desc}` : `The store is open.${restock}`, 7);
+      announce(`Good morning!`, e ? `${e.name}: ${e.desc}` : `The store is open.${restock}`, 7);
+      showDayTitle();
     }
   }
   if (phase === 'day' && clock.t > DAY_LEN - 30 && !warned) { warned = true; sfx.chime(); announce('The store closes in 30 seconds', nightEvent(world.seed, clock.day) === 'crimson' ? 'Something feels wrong tonight. Find somewhere safe.' : 'Find somewhere safe.', 4); }
@@ -1057,6 +1104,10 @@ function frame() {
   }
   // light and camera
   const L = lightLevel(clock.t, clock.ev, now / 1000);
+  lights.cascade = cascade(clock.t, clock.ev);
+  if (lights.cascade && !lights.cascadeAt) { lights.cascadeAt = [P.x, P.z]; }
+  if (!lights.cascade) lights.cascadeAt = null;
+  if (lights.cascadeAt) { lights.cx = lights.cascadeAt[0]; lights.cz = lights.cascadeAt[1]; }
   applyLight(scene, lights, L, clock.ev, settings.low);
   setAmbience(isHostile(clock.t, clock.ev), L > 0.5);
   setMusic(clock.ev === 'crimson' ? 'crimson' : isNight(clock.t) ? 'night' : clock.ev === 'fog' ? 'fog' : 'day', clock.day);
