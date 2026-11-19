@@ -46,12 +46,14 @@ export const TYPES = {
   bench: { m: 'wood', name: 'Bench', w: 1.4, d: 0.4, h: 0.45, hp: 70, cols: WOOD, build(g, c) {
     g.box(-0.6, 0.21, 0, 0.06, 0.42, 0.38, c); g.box(0.6, 0.21, 0, 0.06, 0.42, 0.38, c); g.box(0, 0.43, 0, 1.4, 0.04, 0.4, c);
   } },
-  bedSingle: { m: 'fabric', name: 'Single Bed', w: 1.0, d: 2.0, h: 0.55, hp: 130, cols: FABRIC, build(g, c) {
+  bedSingle: { m: 'fabric', name: 'Single Bed', w: 1.0, d: 2.0, h: 1.0, hp: 130, cols: FABRIC,
+    parts: [[-0.5, 0, -0.95, 0.5, 0.55, 1.0], [-0.5, 0, -1.0, 0.5, 1.0, -0.95]], build(g, c) {
     g.box(0, 0.15, 0, 1.0, 0.3, 2.0, 0xa47c55); g.box(0, 0.4, 0.02, 0.94, 0.2, 1.9, WHITE);
     g.box(0, 0.51, 0.25, 0.96, 0.04, 1.4, c); g.box(0, 0.54, -0.75, 0.6, 0.1, 0.32, WHITE);
-    g.box(0, 0.5, -0.98, 1.0, 1.0, 0.06, 0xa47c55);
+    g.box(0, 0.5, -0.975, 1.0, 1.0, 0.05, 0xa47c55);
   } },
-  bedDouble: { m: 'fabric', name: 'Double Bed', w: 1.6, d: 2.1, h: 0.55, hp: 170, cols: FABRIC, build(g, c) {
+  bedDouble: { m: 'fabric', name: 'Double Bed', w: 1.6, d: 2.1, h: 1.2, hp: 170, cols: FABRIC,
+    parts: [[-0.8, 0, -0.99, 0.8, 0.55, 1.05], [-0.8, 0, -1.05, 0.8, 1.2, -0.99]], build(g, c) {
     g.box(0, 0.15, 0, 1.6, 0.3, 2.1, 0x6e4a2f); g.box(0, 0.4, 0.02, 1.54, 0.2, 2.0, WHITE);
     g.box(0, 0.51, 0.28, 1.56, 0.04, 1.45, c);
     g.box(-0.4, 0.54, -0.78, 0.6, 0.1, 0.34, WHITE); g.box(0.4, 0.54, -0.78, 0.6, 0.1, 0.34, WHITE);
@@ -76,8 +78,8 @@ export const TYPES = {
       g.box(0, 1.75, -0.1, 1.1, 0.025, 0.025, METAL); // hanging rail
       for (let i = 0; i < 3; i++) g.box(-0.3 + i * 0.3, 1.55, -0.1, 0.02, 0.35, 0.3, shade(c, 0.9 - i * 0.05)); // hangers with clothes
       // open doors, folded back against the sides
-      g.box(-0.64, 1.05, 0.12, 0.03, 1.95, 0.56, shade(c, 1.05)); g.box(0.64, 1.05, 0.12, 0.03, 1.95, 0.56, shade(c, 1.05));
-      g.box(-0.66, 1.1, 0.3, 0.02, 0.25, 0.03, METAL); g.box(0.66, 1.1, 0.3, 0.02, 0.25, 0.03, METAL);
+      g.box(-0.615, 1.05, 0.125, 0.03, 1.95, 0.55, shade(c, 1.05)); g.box(0.615, 1.05, 0.125, 0.03, 1.95, 0.55, shade(c, 1.05));
+      g.box(-0.635, 1.1, -0.08, 0.015, 0.25, 0.03, METAL); g.box(0.635, 1.1, -0.08, 0.015, 0.25, 0.03, METAL);
     } },
   bathtub: { m: 'plastic', name: 'Bathtub', w: 1.7, d: 0.8, h: 0.6, hp: 200, cols: [0xf4f4f2, 0xe8eef2, 0xf2ebe0],
     parts: [[-0.85, 0, -0.4, 0.85, 0.12, 0.4], [-0.85, 0, -0.4, 0.85, 0.6, -0.32], [-0.85, 0, 0.32, 0.85, 0.6, 0.4], [-0.85, 0, -0.4, -0.77, 0.6, 0.4], [0.77, 0, -0.4, 0.85, 0.6, 0.4]],
@@ -254,21 +256,24 @@ export function itemGeometry(kind) {
 }
 
 // Size of a furniture piece as placed: [x size, height, z size]. rot is a
-// quarter turn (0..3); tilt stands it up on its back (a pallet becomes a
-// wall), so its depth becomes its height.
+// quarter turn (0..3). tilt 1 lays it on its back (a pallet stands up as a
+// wall, a bookcase lies flat); tilt 2 lays it on its side.
 export function itemDims(type, rot, tilt) {
   const t = TYPES[type];
-  let sx = t.w, sy = tilt ? t.d : t.h, sz = tilt ? t.h : t.d;
+  let sx = t.w, sy = t.h, sz = t.d;
+  if (tilt === 1) { sy = t.d; sz = t.h; } else if (tilt === 2) { sx = t.h; sy = t.w; }
   if (rot & 1) { const q = sx; sx = sz; sz = q; }
   return [sx, sy, sz];
 }
+
 // The collision boxes of a hollow piece, as placed (relative to its x/z
 // centre and its base). null for solid pieces (one box, from itemDims).
 export function itemParts(type, rot, tilt) {
   const t = TYPES[type];
   if (!t.parts) return null;
   return t.parts.map(([x0, y0, z0, x1, y1, z1]) => {
-    if (tilt) { const a = [x0, z0 + t.d / 2, t.h / 2 - y1, x1, z1 + t.d / 2, t.h / 2 - y0]; [x0, y0, z0, x1, y1, z1] = a; }
+    if (tilt === 1) [x0, y0, z0, x1, y1, z1] = [x0, z0 + t.d / 2, t.h / 2 - y1, x1, z1 + t.d / 2, t.h / 2 - y0];
+    else if (tilt === 2) [x0, y0, z0, x1, y1, z1] = [t.h / 2 - y1, x0 + t.w / 2, z0, t.h / 2 - y0, x1 + t.w / 2, z1];
     for (let i = 0; i < (rot & 3); i++) { const nx0 = z0, nx1 = z1, nz0 = -x1, nz1 = -x0; x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1; }
     return [x0, y0, z0, x1, y1, z1];
   });
@@ -276,13 +281,14 @@ export function itemParts(type, rot, tilt) {
 export function footprint(type, rot, tilt) { const d = itemDims(type, rot, tilt); return [d[0], d[2]]; }
 
 // The model matrix for a piece standing at (x, y, z).
-const _q = new THREE.Quaternion(), _qt = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0), _ax = new THREE.Vector3(1, 0, 0), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _off = new THREE.Vector3();
+const _q = new THREE.Quaternion(), _qt = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0), _ax = new THREE.Vector3(1, 0, 0), _az = new THREE.Vector3(0, 0, 1), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _off = new THREE.Vector3();
 export function itemMatrix(m4, type, x, y, z, rot, tilt, scale = 1) {
   _q.setFromAxisAngle(_up, rot * Math.PI / 2);
   if (tilt && TYPES[type]) {
     const t = TYPES[type];
-    _qt.setFromAxisAngle(_ax, -Math.PI / 2);
-    _off.set(0, t.d / 2, t.h / 2).applyQuaternion(_q);
+    if (tilt === 1) { _qt.setFromAxisAngle(_ax, -Math.PI / 2); _off.set(0, t.d / 2, t.h / 2); }
+    else { _qt.setFromAxisAngle(_az, Math.PI / 2); _off.set(t.h / 2, t.w / 2, 0); }
+    _off.applyQuaternion(_q);
     _q.multiply(_qt);
     return m4.compose(_p.set(x + _off.x * scale, y + _off.y * scale, z + _off.z * scale), _q, _one.setScalar(scale));
   }

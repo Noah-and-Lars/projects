@@ -523,7 +523,7 @@ export class World {
 
   // ---- Items ----
   _addItem(id, s) {
-    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: s.tl ? 1 : 0, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, mesh: null, cells: null };
+    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, mesh: null, cells: null };
     if (it.k === 'f' && !TYPES[it.t]) return null;
     if (it.k === 'i' && !ITEMS[it.t]) return null;
     this.items.set(id, it);
@@ -713,11 +713,11 @@ export class World {
   }
 
   // ---- Shared state (net.js keeps every screen's mods the same) ----
-  stateOf(it) { return { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl ? 1 : 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; }
+  stateOf(it) { return { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; }
 
   applyState(id, s) {
     if (!s || typeof s !== 'object') return null;
-    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: +s.x || 0, y: Math.max(0, +s.y || 0), z: +s.z || 0, r: (s.r | 0) & 3, tl: s.tl ? 1 : 0, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0 };
+    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: +s.x || 0, y: Math.max(0, +s.y || 0), z: +s.z || 0, r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0 };
     if (st.k === 'f' ? !TYPES[st.t] : !ITEMS[st.t]) return null;
     this.mods.set(id, st);
     let it = this.items.get(id);

@@ -386,7 +386,7 @@ function hostRequest(from, q) {
   } else if (q.a === 'place') {
     if (it.c !== from) { broadcastItems([it.id]); return; }
     const x = num(q.x, it.x), y = clamp(num(q.y), 0, CEIL), z = num(q.z, it.z);
-    world.edit(it, { x, y, z, r: (q.r | 0) & 3, tl: q.tl ? 1 : 0, c: null });
+    world.edit(it, { x, y, z, r: (q.r | 0) & 3, tl: ((q.tl | 0) % 3 + 3) % 3, c: null });
     broadcastItems([it.id]);
   }
 }
@@ -605,7 +605,7 @@ function updateInteraction(dt) {
   } else {
     const t = TYPES[P.carry.t];
     if (input.pressed.has('KeyR') || input.rclicked) P.carry.r = (P.carry.r + 1) & 3;
-    if (input.pressed.has('KeyT') && !t.flat) P.carry.tl = P.carry.tl ? 0 : 1;
+    if (input.pressed.has('KeyT') && !t.flat) P.carry.tl = (P.carry.tl + 1) % 3;
     if (input.wheel) P.carryDist = clamp(P.carryDist - input.wheel * 0.4, 1.5, 6);
     const [w, h, d] = itemDims(P.carry.t, P.carry.r, P.carry.tl);
     const hit = raycast(ex, ey, ez, dx, dy, dz, P.carryDist, false);
@@ -628,7 +628,7 @@ function updateInteraction(dt) {
     itemMatrix(ghost.matrix, P.carry.t, px, py + 0.005, pz, P.carry.r, P.carry.tl);
     ghostMat.color.setHex(ok ? 0x44ff66 : 0xff4444);
     ghost.visible = true;
-    text = `Carrying ${t.name} · <b>E</b>/click place · <b>R</b> turn · <b>T</b> tilt · <b>wheel</b> distance · <b>Q</b> drop · <b>F</b> throw`;
+    text = `Carrying ${t.name} · <b>E</b>/click place · <b>R</b> turn · <b>T</b> tilt (${['upright', 'on its back', 'on its side'][P.carry.tl | 0]}) · <b>wheel</b> distance · <b>Q</b> drop · <b>F</b> throw`;
     if (pressedUse || clicked) {
       if (placement && placement.ok) placeCarry(placement);
       else sfx.deny();
@@ -645,7 +645,7 @@ function updateInteraction(dt) {
   if (text) { prompt.innerHTML = text; prompt.classList.remove('hidden'); } else prompt.classList.add('hidden');
 }
 function pickUp(it) {
-  P.carry = { id: it.id, t: it.t, v: it.v, r: it.r, tl: it.tl ? 1 : 0 };
+  P.carry = { id: it.id, t: it.t, v: it.v, r: it.r, tl: it.tl | 0 };
   sfx.pick();
   if (!net.isHost()) { world.edit(it, { c: net.id }); }
   request({ a: 'take', id: it.id });
@@ -653,10 +653,10 @@ function pickUp(it) {
 function placeCarry(p) {
   const id = P.carry.id;
   const it = world.items.get(id);
-  if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, r: p.r, tl: p.tl ? 1 : 0, c: null }); }
+  if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, r: p.r, tl: p.tl | 0, c: null }); }
   P.carry = null;
   sfx.place();
-  request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), r: p.r, tl: p.tl ? 1 : 0 });
+  request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), r: p.r, tl: p.tl | 0 });
 }
 function shove(id) {
   if (P.eatCd > 0) return;
