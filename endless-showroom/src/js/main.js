@@ -6,17 +6,17 @@
 // host of a room with nobody else in it.
 import * as THREE from 'three';
 import { World, CHUNK, CEIL } from './world.js';
-import { TYPES, ITEMS, footprint, furnitureGeometry, itemGeometry } from './furniture.js';
+import { TYPES, ITEMS, itemDims, itemMatrix, furnitureGeometry, itemGeometry } from './furniture.js';
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash } from './models.js';
-import { initAudio, sfx, setAmbience, setVolume } from './audio.js';
-import { DAY_LEN, CYCLE, EVENTS, eventFor, isNight, isHostile, clockText, lightLevel, applyLight } from './env.js';
+import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume } from './audio.js';
+import { DAY_LEN, CYCLE, EVENTS, POWERCUT, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { uniforms, storeMaterial, SURF, makeFixtures, makeDust, setLowQuality } from './mats.js';
+import { uniforms, storeMaterial, SURF, makeFixtures, makeDust, setLowQuality, furnitureMaterial as furnitureMaterialRef } from './mats.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
@@ -24,7 +24,7 @@ const darkEl = $('dark');
 const IS_TOUCH = matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window;
 
 // ---------------------------------------------------------------- settings
-const settings = { sens: 1, vol: 0.7, fov: 75, low: IS_TOUCH };
+const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('es-settings') || '{}')); } catch (_) {}
 const saveSettings = () => { try { localStorage.setItem('es-settings', JSON.stringify(settings)); } catch (_) {} };
 const stats = { best: 0, days: 0 };
@@ -53,9 +53,10 @@ scene.add(camera);
 const hemi = new THREE.HemisphereLight(0xfff6e8, 0x7d7466, 1.0);
 const amb = new THREE.AmbientLight(0xffffff, 0.3);
 scene.add(hemi, amb);
-const torch = new THREE.SpotLight(0xfff1d6, 0, 34, 0.5, 0.5, 1.2);
-torch.position.set(0.25, -0.2, 0);
-camera.add(torch); camera.add(torch.target); torch.target.position.set(0, -0.3, -5);
+// Lamps are your light at night: the six nearest lit lamps (standing ones,
+// and any being carried, yours included) each get a real light.
+const lampLights = [];
+for (let i = 0; i < 6; i++) { const l = new THREE.PointLight(0xffd59a, 0, 11, 1.6); scene.add(l); lampLights.push(l); }
 
 // Floor and ceiling: one big plane each that follows the player.
 function tileTexture(draw, size = 512) {
@@ -114,7 +115,7 @@ const world = new World(scene);
 let staffSim = null;
 const ghostMat = new THREE.MeshBasicMaterial({ color: 0x44ff66, transparent: true, opacity: 0.4, depthWrite: false });
 const ghost = new THREE.Mesh(new THREE.BufferGeometry(), ghostMat);
-ghost.visible = false; scene.add(ghost);
+ghost.visible = false; ghost.matrixAutoUpdate = false; scene.add(ghost);
 const highlight = new THREE.Box3Helper(new THREE.Box3(), 0xffd34d);
 highlight.visible = false; scene.add(highlight);
 // First-person view of what you're carrying.
@@ -126,14 +127,17 @@ const heldMaterial = storeMaterial({ transparent: true, opacity: 0.9 });
 const net = createNet({
   members: onMembers, hostChanged: onHostChanged, player: onPlayer, request: (from, q) => hostRequest(from, q),
   world: onWorld, staff: onStaffSnap, clock: onClock, hit: (d) => hurt(d, 'staff'), chat: onChat, caught: onCaught,
-  need: onNeed, full: onFull,
+  need: onNeed, full: onFull, push: onPushRequest, whistle: onWhistle,
 });
 
+const INV = 16, HOTBAR = 8;
 const P = {
   x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: 0, radius: 0.35, height: 1.75, step: 0.45, gravity: 22, onGround: true,
-  hp: 100, food: 100, stam: 100, alive: true, carry: null, inv: [null, null, null, null, null], sel: 0, torch: false, third: false,
-  nights: 0, hurtT: 99, stamT: 0, respawnT: 0, stepAcc: 0, eatCd: 0, speed: 0, deadAt: 0,
+  hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, third: false,
+  nights: 0, hurtT: 99, respawnT: 0, stepAcc: 0, eatCd: 0, speed: 0, deadAt: 0, carryDist: 3, canClimb: false, climbing: false,
+  using: null, whistleT: 0, sprinting: false, crouch: false, eyeH: 1.6,
 };
+const waypoints = []; // { x, y, z, name, death }
 const clock = { day: 1, t: 30, ev: '' };
 let mode = 'menu', paused = false, chatOpen = false, lastPhase = '', warned = false;
 const remotes = new Map(); // id -> { model, tag, buf, name, st }
@@ -200,7 +204,7 @@ $('p-settings').onclick = () => { returnTo = 'pause'; openSettings(); };
 $('p-leave').onclick = leaveGame;
 
 function openSettings() {
-  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-fov').value = settings.fov; $('s-low').checked = settings.low;
+  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low;
   show('settings');
 }
 $('s-sens').oninput = (e) => { settings.sens = +e.target.value; saveSettings(); };
@@ -208,10 +212,12 @@ $('s-vol').oninput = (e) => { settings.vol = +e.target.value; setVolume(settings
 $('s-fov').oninput = (e) => { settings.fov = +e.target.value; camera.fov = settings.fov; camera.updateProjectionMatrix(); saveSettings(); };
 $('s-low').onchange = (e) => { settings.low = e.target.checked; setLowQuality(settings.low); renderer.setPixelRatio(Math.min(devicePixelRatio, settings.low ? 1 : 1.75)); saveSettings(); };
 setVolume(settings.vol);
+setMusicVolume(settings.music);
+$('s-music').oninput = (e) => { settings.music = +e.target.value; setMusicVolume(settings.music); saveSettings(); };
 
 initInput(canvas, {
-  wantLock: () => { if (mode === 'play' && !paused) lockPointer(canvas); },
-  lockLost: () => { if (mode === 'play' && !chatOpen && !IS_TOUCH) pause(); },
+  wantLock: () => { if (mode === 'play' && !paused && !invOpen) lockPointer(canvas); },
+  lockLost: () => { if (mode === 'play' && !chatOpen && !invOpen && !IS_TOUCH) pause(); },
 });
 if (IS_TOUCH) { document.body.classList.add('touch'); }
 
@@ -227,8 +233,12 @@ function startGame(seed, waitForState) {
   remotes.forEach((r) => scene.remove(r.model.root)); remotes.clear();
   staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
   staffSim = net.isHost() ? new StaffSim(world) : null;
-  Object.assign(P, { hp: 100, food: 100, stam: 100, alive: true, carry: null, inv: [null, null, null, null, null], sel: 0, nights: 0, vy: 0, hurtT: 99 });
-  spawnAt(12 + (Math.random() - 0.5) * 6, 12 + (Math.random() - 0.5) * 6, 4);
+  Object.assign(P, { hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, nights: 0, vy: 0, hurtT: 99, using: null, whistleT: 0 });
+  waypoints.length = 0;
+  { // like everyone else, you start somewhere random in the store
+    const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 130;
+    spawnAt(Math.cos(a) * d, Math.sin(a) * d, 10);
+  }
   if (!myModel) { myModel = makeShopper(nameHash(net.id)); scene.add(myModel.root); }
   mode = 'play'; paused = false; lastPhase = ''; warned = false;
   show(null);
@@ -239,8 +249,8 @@ function startGame(seed, waitForState) {
   if (IS_TOUCH) initTouchOnce(); else lockPointer(canvas);
   buildHotbar();
   if (waitForState) { pendingFull.parts = null; net.send('need', {}); }
-  if (net.on) toast(`Joined ${roomText().toLowerCase()}. Press T to chat.`);
-  announce('Welcome to the store', 'Find food, build somewhere high, and be ready for closing time.', 6);
+  if (net.on) toast(`Joined ${roomText().toLowerCase()}. Press Enter to chat.`);
+  announce('Welcome to the store', net.on ? 'You\'re somewhere in the aisles. Whistle (H) to find the others, gather food, and be ready for closing time.' : 'Gather food, build somewhere high, and be ready for closing time.', 7);
 }
 let touchReady = false;
 function initTouchOnce() { if (!touchReady) { initTouch($('touch')); touchReady = true; } $('touch').classList.remove('hidden'); }
@@ -252,6 +262,7 @@ function leaveGame() {
   ghost.visible = false; highlight.visible = false;
   try { document.exitPointerLock(); } catch (_) {}
   show('menu'); refreshBest();
+  setMusic('', 0);
 }
 
 // Find a free spot near (x, z), searching outward.
@@ -289,7 +300,7 @@ function onHostChanged(isMe) {
 const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 function onPlayer(id, p) {
   const r = remotes.get(id); if (!r) return;
-  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: TYPES[p.ct] ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100) };
+  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: TYPES[p.ct] ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0 };
   r.buf.push(st); if (r.buf.length > 20) r.buf.shift();
   r.st = st; r.seen = performance.now();
 }
@@ -339,6 +350,7 @@ function broadcastItems(ids, extra) {
   if (u.length) net.send('w', { u });
 }
 // The host applies a request (its own or someone else's) and tells everyone.
+// Furniture stays exactly where it's put, even in mid-air.
 function hostRequest(from, q) {
   if (!q || typeof q.id !== 'string') return;
   const it = world.items.get(q.id);
@@ -346,21 +358,21 @@ function hostRequest(from, q) {
   if (q.a === 'take') {
     if (it.k === 'i') {
       if (world.isGone(it) && from !== net.id) return;
-      world.edit(it, { g: true, d: clock.day });
-      const changed = [it.id];
-      broadcastItems(changed);
+      world.edit(it, { g: true, d: restockEpoch(clock.day) });
+      broadcastItems([it.id]);
       return;
     }
     if (world.isGone(it) || (it.c && it.c !== from)) { broadcastItems([it.id]); return; }
-    const box = world.itemBox(it);
     world.edit(it, { c: from });
-    const changed = [it.id, ...world.settle(box)];
-    broadcastItems(changed);
+    broadcastItems([it.id]);
+  } else if (q.a === 'drop' && it.k === 'i') {
+    // food or a kit put down from someone's inventory
+    world.edit(it, { x: num(q.x, it.x), y: clamp(num(q.y), 0, CEIL), z: num(q.z, it.z), g: false, c: null });
+    broadcastItems([it.id]);
   } else if (q.a === 'place') {
     if (it.c !== from) { broadcastItems([it.id]); return; }
     const x = num(q.x, it.x), y = clamp(num(q.y), 0, CEIL), z = num(q.z, it.z);
-    if (Math.abs(x - it.x) > 80 && remotes.size === 0 && from !== net.id) return;
-    world.edit(it, { x, y, z, r: (q.r | 0) & 3, c: null });
+    world.edit(it, { x, y, z, r: (q.r | 0) & 3, tl: q.tl ? 1 : 0, c: null });
     broadcastItems([it.id]);
   }
 }
@@ -368,6 +380,22 @@ function hostRequest(from, q) {
 function request(q) {
   if (net.isHost()) hostRequest(net.id, q);
   else net.send('q', q);
+}
+const staffEnv = () => ({ hostile: isHostile(clock.t, clock.ev), event: clock.ev });
+// A shove, on the host: knock the member of staff down (or, in fog, it hurts you).
+function onPushRequest(from, p) {
+  if (!staffSim) return;
+  const who = from === net.id ? P : (remotes.get(from) || {}).st;
+  if (!who) return;
+  const res = staffSim.push(p.id | 0, who.x, who.z, staffEnv());
+  if (res === 'immune') { if (from === net.id) hurt(10, 'staff'); else net.send('h', { to: from, d: 10 }); }
+}
+function onWhistle(from, p) {
+  const x = num(p.x), z = num(p.z), d = Math.hypot(x - P.x, z - P.z);
+  const r = remotes.get(from);
+  if (d < 120) { const a = Math.atan2(x - P.x, z - P.z) - P.yaw; sfx.whistle(clamp(-Math.sin(a), -1, 1), Math.max(0.15, 1 - d / 120)); }
+  if (r) { r.revealT = 8; toast(`${r.name} whistled${d < 120 ? ` (${Math.round(d)} m away)` : ''}.`); }
+  if (staffSim && isHostile(clock.t, clock.ev)) staffSim.noise(x, z, 45);
 }
 
 // ---------------------------------------------------------------- player
@@ -381,31 +409,34 @@ function hurt(d, why) {
 function die(why) {
   P.hp = 0; P.alive = false; P.deadAt = performance.now();
   P.respawnT = 7;
+  P.using = null;
   sfx.death();
-  if (P.carry) { // drop what we carried where we stand
+  if (P.carry) { // let go of what we carried where we stand
     const it = world.items.get(P.carry.id);
-    if (it) { const y = world.supportHeight(P.x - 0.4, P.z - 0.4, P.x + 0.4, P.z + 0.4, P.y + 0.1, it); request({ a: 'place', id: it.id, x: P.x, y, z: P.z, r: P.carry.r }); }
+    if (it) request({ a: 'place', id: it.id, x: P.x, y: P.y, z: P.z, r: P.carry.r, tl: P.carry.tl });
     P.carry = null;
   }
-  P.inv = [null, null, null, null, null]; buildHotbar();
+  P.inv = new Array(INV).fill(null); P.invId = new Array(INV).fill(null); buildHotbar();
+  for (let i = waypoints.length - 1; i >= 0; i--) if (waypoints[i].death) waypoints.splice(i, 1);
+  waypoints.push({ x: P.x, y: P.y + 1, z: P.z, name: 'Where you were caught', death: true });
   $('death').classList.remove('hidden');
-  $('death-msg').textContent = why === 'hunger' ? 'You starved.' : why === 'fall' ? 'You fell too far.' : `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
+  $('death-msg').textContent = why === 'hunger' ? 'You starved.' : why === 'fall' ? 'You fell too far.' : why === 'food' ? 'Something you ate finished you off.' : `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
   net.send('x', { n: P.nights, w: why });
   P.nights = 0;
 }
 function respawn() {
   // Wake up somewhere else in the store.
-  const a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 40;
+  const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 60;
   spawnAt(P.x + Math.cos(a) * d, P.z + Math.sin(a) * d, 10);
-  Object.assign(P, { hp: 100, food: 80, stam: 100, alive: true, vy: 0, hurtT: 99 });
+  Object.assign(P, { hp: 100, food: 70, en: 70, alive: true, vy: 0, hurtT: 99 });
   $('death').classList.add('hidden');
-  announce('You wake up in another aisle', 'Your things are gone. Find food and shelter.', 4);
+  announce('You wake up in another aisle', 'Your things are gone. A marker shows where you were caught.', 5);
 }
 
 function updatePlayer(dt) {
   const k = input.keys;
-  const busy = paused || chatOpen;
-  if (!busy) {
+  const busy = paused || chatOpen || invOpen;
+  if (!paused && !chatOpen && !invOpen) {
     P.yaw -= input.lookDX * 0.0022 * settings.sens;
     P.pitch = clamp(P.pitch - input.lookDY * 0.0022 * settings.sens, -1.5, 1.5);
   }
@@ -420,12 +451,19 @@ function updatePlayer(dt) {
   const m = Math.hypot(fx, fz);
   if (m > 1) { fx /= m; fz /= m; }
   const moving = m > 0.1;
-  const wantSprint = (k.has('ShiftLeft') || k.has('ShiftRight')) && moving && fz < 0.3;
-  const sprint = wantSprint && P.stam > 1;
-  let speed = (sprint ? 7.4 : 4.6) * (P.carry ? 0.85 : 1);
+  // Crouch (C or Ctrl): low enough to get through gaps the staff can't.
+  const wantCrouch = !busy && P.alive && (k.has('KeyC') || k.has('ControlLeft') || k.has('ControlRight'));
+  if (wantCrouch && !P.crouch) { P.crouch = true; P.height = 1.0; }
+  else if (!wantCrouch && P.crouch && bodyFits(world, P.x, P.y, P.z, P.radius - 0.02, 1.75)) { P.crouch = false; P.height = 1.75; }
+  const wantSprint = (k.has('ShiftLeft') || k.has('ShiftRight')) && moving && fz < 0.3 && !P.crouch;
+  const sprint = wantSprint && P.en > 0;
+  P.sprinting = sprint;
+  const speed = (P.crouch ? 2.2 : sprint ? 7.4 : 4.6) * (P.carry ? 0.85 : 1);
   const sin = Math.sin(P.yaw), cos = Math.cos(P.yaw);
   const dx = (fx * cos + fz * sin) * speed * dt, dz = (-fx * sin + fz * cos) * speed * dt;
-  if (!busy && P.alive && k.has('Space') && P.onGround) { P.vy = 7.2; P.onGround = false; }
+  if (!busy && P.alive && k.has('Space') && P.onGround) { P.vy = 7.2; P.onGround = false; P.en = Math.max(0, P.en - 1.5); }
+  // walk into shelving or a bookcase to climb it
+  P.canClimb = !busy && P.alive && fz < -0.3;
   const ox = P.x, oz = P.z, wasAir = !P.onGround;
   P.landSpeed = 0;
   if (P.alive) moveBody(world, P, dx, dz, dt);
@@ -434,15 +472,22 @@ function updatePlayer(dt) {
   if (P.landSpeed > 13) hurt((P.landSpeed - 13) * 9, 'fall');
   // footsteps
   if (P.onGround && P.speed > 0.5) { P.stepAcc += P.speed * dt; if (P.stepAcc > (sprint ? 2.2 : 1.7)) { P.stepAcc = 0; sfx.step(!sprint); } }
-  // stamina, hunger and health
-  if (sprint) { P.stam = Math.max(0, P.stam - 22 * dt); P.stamT = 0.8; }
-  else if ((P.stamT -= dt) <= 0) P.stam = Math.min(100, P.stam + 15 * dt);
   if (P.alive) {
-    P.food = Math.max(0, P.food - dt * (100 / 600) * (sprint ? 1.8 : 1));
-    if (P.food <= 0) { P.hp -= dt * 1.2; if (P.hp <= 0) die('hunger'); }
+    // Energy: sprinting, jumping and carrying use it; standing still slowly gets it back.
+    if (sprint) P.en = Math.max(0, P.en - 3.2 * dt);
+    if (P.carry) P.en = Math.max(0, P.en - 0.25 * dt);
+    if (!moving && P.onGround && !P.carry) P.en = Math.min(100, P.en + 0.8 * dt);
+    // Hunger empties in about 15 minutes, twice as fast with no energy. No food, no health.
+    P.food = Math.max(0, P.food - dt * (100 / 900) * (P.en <= 0 ? 2 : 1) * (sprint ? 1.5 : 1));
+    if (P.food <= 0) { P.hp -= dt * 1.0; if (P.hp <= 0) die('hunger'); }
     P.hurtT += dt;
-    if (P.food > 45 && P.hurtT > 6 && P.hp < 100) P.hp = Math.min(100, P.hp + dt * 0.8);
+    // a first aid kit takes a moment
+    if (P.using) {
+      P.using.t -= dt;
+      if (P.using.t <= 0) { const u = P.using; P.using = null; applyItem(u.key); }
+    }
   }
+  P.whistleT = Math.max(0, P.whistleT - dt);
   if (P.y < -5) { P.y = 0; } // safety
 }
 
@@ -468,22 +513,35 @@ function raycast(ox, oy, oz, dx, dy, dz, maxT, withSmall) {
   world.forBoxes(Math.min(ox, ex) - 0.1, Math.min(oz, ez) - 0.1, Math.max(ox, ex) + 0.1, Math.max(oz, ez) + 0.1, test);
   if (withSmall) world.forItems(Math.min(ox, ex) - 0.5, Math.min(oz, ez) - 0.5, Math.max(ox, ex) + 0.5, Math.max(oz, ez) + 0.5, (it) => {
     if (!world.active(it)) return;
-    if (it.k === 'i' || TYPES[it.t].flat) { const b = world.itemBox(it); if (it.k === 'f') b.y1 = 0.06; test(b); }
+    if (it.k === 'i' || TYPES[it.t].flat) { const b = world.itemBox(it); if (it.k === 'f') b.y1 = b.y0 + 0.06; test(b); }
   });
   if (dy < 0) { const tf = -oy / dy; if (tf > 0 && tf < best.t) best = { t: tf, box: null, n: [0, 1, 0], floor: true }; }
   return best;
 }
 
 let target = null, placement = null;
-function eye() { return [P.x, P.y + 1.6, P.z]; }
+function eye() { return [P.x, P.y + P.eyeH, P.z]; }
 function lookDir() { const cp = Math.cos(P.pitch); return [-Math.sin(P.yaw) * cp, Math.sin(P.pitch), -Math.cos(P.yaw) * cp]; }
+
+// The member of staff you're facing, close enough to shove.
+function staffInReach() {
+  let best = null, bd = 3.0;
+  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+  for (const [id, v] of staffViews) {
+    const p = v.model.root.position, dx = p.x - P.x, dz = p.z - P.z, d = Math.hypot(dx, dz);
+    if (d > bd || Math.abs(p.y - P.y) > 1.8) continue;
+    if ((dx * fx + dz * fz) / (d || 1) < 0.8) continue;
+    bd = d; best = id;
+  }
+  return best;
+}
 
 function updateInteraction(dt) {
   target = null; placement = null;
   highlight.visible = false; ghost.visible = false;
   const prompt = $('prompt');
   let text = '';
-  if (!P.alive || paused) { prompt.classList.add('hidden'); return; }
+  if (!P.alive || paused || invOpen) { prompt.classList.add('hidden'); return; }
   const [ex, ey, ez] = eye(), [dx, dy, dz] = lookDir();
   const pressedUse = input.pressed.has('KeyE');
   const clicked = input.clicked || input.pressed.has('Mouse0');
@@ -497,82 +555,165 @@ function updateInteraction(dt) {
       highlight.visible = true;
       if (it.k === 'i') {
         const free = P.inv.indexOf(null);
-        text = free >= 0 ? `<b>E</b> Take ${ITEMS[it.t].name}` : 'Your hands are full (5 items)';
+        const info = ITEMS[it.t];
+        text = free >= 0 ? `<b>E</b> Take ${info.name} <span class="stat">${itemStats(info)}</span>` : 'Your inventory is full (16 items)';
         if ((pressedUse || (IS_TOUCH && clicked)) && free >= 0) {
-          P.inv[free] = it.t; buildHotbar(); sfx.pick();
-          if (!net.isHost()) { world.edit(it, { g: true, d: clock.day }); }
+          P.inv[free] = it.t; P.invId[free] = it.id; buildHotbar(); sfx.pick();
+          if (!net.isHost()) { world.edit(it, { g: true, d: restockEpoch(clock.day) }); }
           request({ a: 'take', id: it.id });
         }
       } else {
         text = `<b>E</b> Pick up ${TYPES[it.t].name}`;
-        if (pressedUse) {
-          P.carry = { id: it.id, t: it.t, v: it.v, r: it.r };
-          sfx.pick();
-          if (!net.isHost()) { world.edit(it, { c: net.id }); }
-          request({ a: 'take', id: it.id });
-        }
+        if (pressedUse) pickUp(it);
       }
     }
-    // use food from the hotbar
-    if (clicked && !(IS_TOUCH && target && target.k === 'i')) useSelected();
+    // A click shoves the member of staff in front of you, or uses the selected item.
+    const sid = staffInReach();
+    if (sid != null && !target) text = text || '<b>Click</b> Shove';
+    if (clicked && !(IS_TOUCH && target && target.k === 'i')) {
+      if (sid != null && isHostile(clock.t, clock.ev)) shove(sid);
+      else useSelected();
+    }
   } else {
     const t = TYPES[P.carry.t];
     if (input.pressed.has('KeyR') || input.rclicked) P.carry.r = (P.carry.r + 1) & 3;
-    const [w, d] = footprint(P.carry.t, P.carry.r);
-    const hit = raycast(ex, ey, ez, dx, dy, dz, 5, false);
-    let px, pz, maxY;
+    if (input.pressed.has('KeyT') && !t.flat) P.carry.tl = P.carry.tl ? 0 : 1;
+    if (input.wheel) P.carryDist = clamp(P.carryDist - input.wheel * 0.4, 1.5, 6);
+    const [w, h, d] = itemDims(P.carry.t, P.carry.r, P.carry.tl);
+    const hit = raycast(ex, ey, ez, dx, dy, dz, P.carryDist, false);
     const hp = [ex + dx * hit.t, ey + dy * hit.t, ez + dz * hit.t];
-    if (hit.n && hit.n[1] > 0.5) { px = hp[0]; pz = hp[2]; maxY = hp[1] + 0.05; }
-    else if (hit.n) { px = hp[0] + hit.n[0] * (w / 2 + 0.02); pz = hp[2] + hit.n[2] * (d / 2 + 0.02); maxY = hp[1] + 0.05; }
-    else { px = hp[0]; pz = hp[2]; maxY = hp[1]; }
-    if (px !== undefined) {
-      px = Math.round(px * 4) / 4 + (w * 4 % 2 ? 0.125 : 0); pz = Math.round(pz * 4) / 4 + (d * 4 % 2 ? 0.125 : 0);
-      const item = world.items.get(P.carry.id);
-      const py = world.supportHeight(px - w / 2, pz - d / 2, px + w / 2, pz + d / 2, maxY, item);
-      const box = { x0: px - w / 2, x1: px + w / 2, z0: pz - d / 2, z1: pz + d / 2, y0: py, y1: py + t.h };
-      const pr = P.radius + 0.02;
-      const onMe = !t.flat && box.x0 < P.x + pr && box.x1 > P.x - pr && box.z0 < P.z + pr && box.z1 > P.z - pr && box.y0 < P.y + P.height && box.y1 > P.y + 0.01;
-      const ok = (t.flat || world.fits(box, item)) && !onMe && Math.hypot(px - P.x, pz - P.z) < 5;
-      placement = { x: px, y: py, z: pz, r: P.carry.r, ok };
-      ghost.geometry = furnitureGeometry(P.carry.t, P.carry.v);
-      ghost.position.set(px, py + 0.005, pz); ghost.rotation.y = P.carry.r * Math.PI / 2;
-      ghostMat.color.setHex(ok ? 0x44ff66 : 0xff4444);
-      ghost.visible = true;
-    }
-    text = `Carrying ${t.name} · <b>E</b>/click place · <b>R</b> rotate · <b>Q</b> drop`;
+    let px = hp[0], pz = hp[2], py;
+    if (hit.n && hit.n[1] > 0.5) py = hp[1];                         // on top of something
+    else if (hit.n && hit.n[1] < -0.5) py = hp[1] - h;               // under something
+    else if (hit.n) { px += hit.n[0] * (w / 2 + 0.01); pz += hit.n[2] * (d / 2 + 0.01); py = hp[1] - h / 2; } // against a side
+    else py = hp[1] - h / 2;                                         // in mid-air
+    px = Math.round(px * 4) / 4 + (w * 4 % 2 ? 0.125 : 0); pz = Math.round(pz * 4) / 4 + (d * 4 % 2 ? 0.125 : 0);
+    if (!(hit.n && hit.n[1] > 0.5)) py = Math.round(py * 20) / 20;
+    py = clamp(py, 0, CEIL - h);
+    const item = world.items.get(P.carry.id);
+    const box = { x0: px - w / 2, x1: px + w / 2, z0: pz - d / 2, z1: pz + d / 2, y0: py, y1: py + h };
+    const pr = P.radius + 0.02;
+    const onMe = !t.flat && box.x0 < P.x + pr && box.x1 > P.x - pr && box.z0 < P.z + pr && box.z1 > P.z - pr && box.y0 < P.y + P.height && box.y1 > P.y + 0.01;
+    const ok = (t.flat || world.fits(box, item)) && !onMe;
+    placement = { x: px, y: py, z: pz, r: P.carry.r, tl: P.carry.tl, ok };
+    ghost.geometry = furnitureGeometry(P.carry.t, P.carry.v);
+    itemMatrix(ghost.matrix, P.carry.t, px, py + 0.005, pz, P.carry.r, P.carry.tl);
+    ghostMat.color.setHex(ok ? 0x44ff66 : 0xff4444);
+    ghost.visible = true;
+    text = `Carrying ${t.name} · <b>E</b>/click place · <b>R</b> turn · <b>T</b> tilt · <b>wheel</b> distance · <b>Q</b> drop · <b>F</b> throw`;
     if (pressedUse || clicked) {
       if (placement && placement.ok) placeCarry(placement);
       else sfx.deny();
     } else if (input.pressed.has('KeyQ')) {
-      const fx = P.x - Math.sin(P.yaw) * 1.2, fz = P.z - Math.cos(P.yaw) * 1.2;
-      const item = world.items.get(P.carry.id);
+      // let go in front of you, at your feet
+      const fx = P.x - Math.sin(P.yaw) * (Math.max(w, d) / 2 + 0.6), fz = P.z - Math.cos(P.yaw) * (Math.max(w, d) / 2 + 0.6);
       const fy = world.supportHeight(fx - w / 2, fz - d / 2, fx + w / 2, fz + d / 2, P.y + 0.5, item);
-      const box = { x0: fx - w / 2, x1: fx + w / 2, z0: fz - d / 2, z1: fz + d / 2, y0: fy, y1: fy + t.h };
-      if (t.flat || world.fits(box, item)) placeCarry({ x: fx, y: fy, z: fz, r: P.carry.r });
+      const b2 = { x0: fx - w / 2, x1: fx + w / 2, z0: fz - d / 2, z1: fz + d / 2, y0: fy, y1: fy + h };
+      if (t.flat || world.fits(b2, item)) placeCarry({ x: fx, y: fy, z: fz, r: P.carry.r, tl: P.carry.tl });
       else sfx.deny();
     }
   }
+  if (P.using) text = `Using ${ITEMS[P.using.key].name}… ${Math.max(0, P.using.t).toFixed(1)} s`;
   if (text) { prompt.innerHTML = text; prompt.classList.remove('hidden'); } else prompt.classList.add('hidden');
+}
+function pickUp(it) {
+  P.carry = { id: it.id, t: it.t, v: it.v, r: it.r, tl: it.tl ? 1 : 0 };
+  sfx.pick();
+  if (!net.isHost()) { world.edit(it, { c: net.id }); }
+  request({ a: 'take', id: it.id });
 }
 function placeCarry(p) {
   const id = P.carry.id;
   const it = world.items.get(id);
-  if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, r: p.r, c: null }); }
+  if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, r: p.r, tl: p.tl ? 1 : 0, c: null }); }
   P.carry = null;
   sfx.place();
-  request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), r: p.r });
+  request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), r: p.r, tl: p.tl ? 1 : 0 });
 }
-function useSelected() {
-  const key = P.inv[P.sel];
-  if (!key || P.eatCd > 0) return;
+function shove(id) {
+  if (P.eatCd > 0) return;
+  P.eatCd = 0.6;
+  sfx.shove();
+  feel.shake = Math.max(feel.shake, 0.3);
+  if (net.isHost()) onPushRequest(net.id, { id });
+  else net.send('pu', { id });
+}
+function itemStats(it) {
+  const parts = [];
+  if (it.food) parts.push(`+${it.food} hunger`);
+  if (it.en) parts.push(`+${it.en} energy`);
+  if (it.hp) parts.push(`${it.hp > 0 ? '+' : ''}${it.hp} health`);
+  return parts.join(' · ');
+}
+function useSelected(slot = P.sel) {
+  const key = P.inv[slot];
+  if (!key || P.eatCd > 0 || P.using) return;
   const it = ITEMS[key];
-  if (it.hp && !it.food && P.hp >= 100) { toast("You're not hurt."); return; }
+  if (it.hp > 0 && !it.food && !it.en && P.hp >= 100) { toast("You're not hurt."); return; }
   P.eatCd = 0.5;
+  P.inv[slot] = null; P.invId[slot] = null; buildHotbar();
+  if (it.use) { P.using = { key, t: it.use }; sfx.heal(); return; }
+  applyItem(key);
+}
+// Put the selected item down at your feet (to keep food in your base).
+function dropSelected(slot = P.sel) {
+  const key = P.inv[slot], id = P.invId[slot];
+  if (!key) return;
+  const it = id && world.items.get(id);
+  P.inv[slot] = null; P.invId[slot] = null; buildHotbar();
+  if (!it) return;
+  const fx = P.x - Math.sin(P.yaw) * 0.7, fz = P.z - Math.cos(P.yaw) * 0.7;
+  const fy = world.supportHeight(fx - 0.1, fz - 0.1, fx + 0.1, fz + 0.1, P.y + 0.6, null);
+  if (!net.isHost()) world.edit(it, { x: fx, y: fy, z: fz, g: false, c: null });
+  request({ a: 'drop', id, x: +fx.toFixed(3), y: +fy.toFixed(3), z: +fz.toFixed(3) });
+  sfx.place();
+}
+// Throw what you're carrying: it flies in an arc and lands where it lands.
+// Without energy you can't throw far.
+const flying = [];
+function throwCarry() {
+  if (!P.carry) return;
+  const [w, h, d] = itemDims(P.carry.t, P.carry.r, P.carry.tl);
+  const item = world.items.get(P.carry.id);
+  const [dx, dy, dz] = lookDir(), power = P.en > 5 ? 9 : 3.5;
+  let x = P.x + dx * 0.9, y = P.y + 1.2, z = P.z + dz * 0.9, vx = dx * power, vy = dy * power + 2.5, vz = dz * power;
+  const pts = [];
+  for (let i = 0; i < 200; i++) {
+    const nx = x + vx * 0.025, ny = y + vy * 0.025, nz = z + vz * 0.025; vy -= 20 * 0.025;
+    const b = { x0: nx - w / 2, x1: nx + w / 2, z0: nz - d / 2, z1: nz + d / 2, y0: Math.max(0, ny), y1: Math.max(0, ny) + h };
+    if (ny <= 0 || !world.fits(b, item)) break;
+    x = nx; y = ny; z = nz; pts.push([x, y, z]);
+  }
+  const ly = world.supportHeight(x - w / 2, z - d / 2, x + w / 2, z + d / 2, y + 0.05, item);
+  const land = { x, y: ly, z, r: P.carry.r, tl: P.carry.tl };
+  const box = { x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y0: ly, y1: ly + h };
+  if (!world.fits(box, item)) { land.y = Math.max(ly, y); }
+  const mesh = new THREE.Mesh(furnitureGeometry(P.carry.t, P.carry.v), furnitureMaterialRef);
+  mesh.matrixAutoUpdate = false; scene.add(mesh);
+  flying.push({ mesh, pts, i: 0, carry: P.carry, land });
+  P.carry = null; P.en = Math.max(0, P.en - 3);
+  sfx.shove();
+}
+function updateFlying(dt) {
+  for (let k = flying.length - 1; k >= 0; k--) {
+    const f = flying[k];
+    f.i += dt / 0.025;
+    const p = f.pts[Math.min(f.pts.length - 1, Math.floor(f.i))];
+    if (p) itemMatrix(f.mesh.matrix, f.carry.t, p[0], p[1], p[2], f.carry.r, f.carry.tl);
+    if (f.i >= f.pts.length) {
+      scene.remove(f.mesh);
+      flying.splice(k, 1);
+      P.carry = f.carry; placeCarry(f.land);
+    }
+  }
+}
+function applyItem(key) {
+  const it = ITEMS[key];
   if (it.food) P.food = Math.min(100, P.food + it.food);
-  if (it.hp) P.hp = Math.min(100, P.hp + it.hp);
-  if (it.stam) P.stam = Math.min(100, P.stam + it.stam);
-  P.inv[P.sel] = null; buildHotbar();
-  if (it.food) sfx.eat(); else sfx.heal();
+  if (it.en) P.en = Math.min(100, P.en + it.en);
+  if (it.hp > 0) P.hp = Math.min(100, P.hp + it.hp);
+  if (it.hp < 0) { toast("That didn't taste right."); hurt(-it.hp, 'food'); }
+  if (it.food) sfx.eat(); else if (it.hp > 0 && !it.en) sfx.heal(); else sfx.drink();
 }
 
 // ---------------------------------------------------------------- hotbar / HUD
@@ -608,22 +749,44 @@ function makeIcons() {
     rt.dispose(); mat.dispose();
   } catch (_) { icons = {}; }
 }
+function slotEl(key, i, small) {
+  const s = document.createElement('div'); s.className = 'slot' + (i === P.sel ? ' sel' : '');
+  const k = document.createElement('span'); k.className = 'k'; k.textContent = i < HOTBAR ? i + 1 : ''; s.append(k);
+  if (key) {
+    const it = ITEMS[key];
+    if (icons[key]) { const im = document.createElement('img'); im.className = 'ic'; im.src = icons[key]; im.alt = ''; s.append(im); }
+    else { const sw = document.createElement('div'); sw.className = 'sw'; sw.style.background = '#' + it.color.toString(16).padStart(6, '0'); s.append(sw); }
+    const n = document.createElement('span'); n.className = 'nm'; n.textContent = it.name; s.append(n);
+    s.title = `${it.name}: ${itemStats(it)}`;
+  }
+  return s;
+}
+// The hotbar shows the first 8 of your 16 slots; G opens all of them.
 function buildHotbar() {
   if (!icons) makeIcons();
   const hb = $('hotbar'); hb.innerHTML = '';
-  P.inv.forEach((key, i) => {
-    const s = document.createElement('div'); s.className = 'slot' + (i === P.sel ? ' sel' : '');
-    const k = document.createElement('span'); k.className = 'k'; k.textContent = i + 1; s.append(k);
-    if (key) {
-      const it = ITEMS[key];
-      if (icons[key]) { const im = document.createElement('img'); im.className = 'ic'; im.src = icons[key]; im.alt = ''; s.append(im); }
-      else { const sw = document.createElement('div'); sw.className = 'sw'; sw.style.background = '#' + it.color.toString(16).padStart(6, '0'); s.append(sw); }
-      s.append(it.name);
-    }
+  for (let i = 0; i < HOTBAR; i++) {
+    const s = slotEl(P.inv[i], i);
     s.addEventListener('touchstart', (e) => { e.stopPropagation(); if (P.sel === i) useSelected(); else { P.sel = i; buildHotbar(); } }, { passive: true });
     hb.append(s);
+  }
+  const grid = $('inv-grid'); grid.innerHTML = '';
+  P.inv.forEach((key, i) => {
+    const s = slotEl(key, i);
+    s.addEventListener('click', () => { P.sel = i < HOTBAR ? i : P.sel; useSelected(i); });
+    s.addEventListener('contextmenu', (e) => { e.preventDefault(); dropSelected(i); });
+    grid.append(s);
   });
+  $('inv-count').textContent = `${P.inv.filter(Boolean).length} / ${INV}`;
 }
+let invOpen = false;
+function toggleInventory(open = !invOpen) {
+  invOpen = open;
+  $('inv').classList.toggle('hidden', !open);
+  if (open) { input.keys.clear(); try { document.exitPointerLock(); } catch (_) {} }
+  else if (!IS_TOUCH && mode === 'play' && !paused) lockPointer(canvas);
+}
+$('inv-close').onclick = () => toggleInventory(false);
 function updateRoster() {
   const r = $('roster');
   r.innerHTML = '';
@@ -636,12 +799,19 @@ let hudT = 0;
 function updateHud(dt) {
   hudT -= dt;
   const bars = document.querySelectorAll('#bars .bar i');
-  bars[0].style.width = P.hp + '%'; bars[1].style.width = P.food + '%'; bars[2].style.width = P.stam + '%';
+  bars[0].style.width = P.hp + '%'; bars[1].style.width = P.food + '%'; bars[2].style.width = P.en + '%';
+  $('bars').classList.toggle('starving', P.food <= 0); $('bars').classList.toggle('tired', P.en <= 0);
+  const wh = $('whistle');
+  wh.textContent = P.whistleT > 0 ? `Whistle ${Math.ceil(P.whistleT)} s` : 'H · Whistle';
+  wh.classList.toggle('cool', P.whistleT > 0);
+  updateMarks();
   const night = isNight(clock.t);
   $('clock').classList.toggle('night', isHostile(clock.t, clock.ev));
-  $('clock-day').textContent = `Day ${clock.day}`;
+  $('clock-day').textContent = `Day ${clock.day} · ${weekday(clock.day)}`;
   $('clock-time').textContent = clockText(clock.t);
-  $('clock-phase').textContent = isHostile(clock.t, clock.ev) ? (night ? `Closed · staff hunting · ${Math.ceil(CYCLE - clock.t)}s` : 'Power cut · staff hunting') : `Open · closing in ${Math.ceil(DAY_LEN - clock.t)}s`;
+  const tm = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  $('clock-phase').textContent = night ? `Closed · opens in ${tm(CYCLE - clock.t)}` : isHostile(clock.t, clock.ev) ? (clock.ev === 'fog' ? `Fog · staff hunting · ${tm(DAY_LEN - clock.t)}` : 'Power cut · staff hunting') : `Open · closes in ${tm(DAY_LEN - clock.t)}`;
+  $('clock').classList.toggle('red', clock.ev === 'crimson');
   const ev = $('event');
   if (clock.ev) { ev.textContent = EVENTS[clock.ev].name; ev.classList.remove('hidden'); } else ev.classList.add('hidden');
   $('survived').textContent = `Nights survived: ${P.nights}`;
@@ -658,27 +828,35 @@ function updateHud(dt) {
 }
 
 // ---------------------------------------------------------------- clock & announcements
+let lastTick = -1;
 function updateClock(dt) {
   if (net.isHost()) {
     clock.t += dt;
     if (clock.t >= CYCLE) { clock.t -= CYCLE; clock.day++; world.setDay(clock.day); }
   } else clock.t = Math.min(CYCLE - 0.001, clock.t + dt);
-  clock.ev = eventFor(world.seed, clock.day);
+  clock.ev = eventAt(world.seed, clock.day, clock.t);
   const phase = isNight(clock.t) ? 'night' : 'day';
   if (lastPhase && phase !== lastPhase) {
     if (phase === 'night') {
-      sfx.chime();
-      announce('The store is now closed', 'Staff are on the floor. Get somewhere high or stay hidden.', 6);
+      const red = clock.ev === 'crimson';
+      sfx.lightsOff(red);
+      if (red) announce(`${EVENTS.crimson.name}`, EVENTS.crimson.desc, 7);
+      else announce('The store is now closed', 'The lights are out and the staff are hunting. Get somewhere high or stay hidden.', 6);
       warned = false;
     } else {
-      sfx.morning();
+      sfx.lightsOn();
       if (P.alive) { P.nights++; if (P.nights > stats.best) stats.best = P.nights; stats.days++; saveStats(); }
       const e = clock.ev && EVENTS[clock.ev];
-      announce(`Good morning! Day ${clock.day}`, e ? `${e.name}: ${e.desc}` : 'The store is open. Food has been restocked.', 7);
+      const restock = isRestockDay(clock.day) ? ' Food and first aid have been restocked.' : '';
+      announce(`Good morning! Day ${clock.day} · ${weekday(clock.day)}`, e ? `${e.name}: ${e.desc}` : `The store is open.${restock}`, 7);
     }
   }
-  if (phase === 'day' && clock.t > DAY_LEN - 30 && !warned) { warned = true; sfx.chime(); announce('The store closes in 30 seconds', 'Find somewhere safe.', 4); }
-  if (clock.ev === 'powercut' && Math.abs(clock.t - 120) < dt * 1.5) announce('Power cut!', 'The staff are restless in the dark.', 4);
+  if (phase === 'day' && clock.t > DAY_LEN - 30 && !warned) { warned = true; sfx.chime(); announce('The store closes in 30 seconds', nightEvent(world.seed, clock.day) === 'crimson' ? 'Something feels wrong tonight. Find somewhere safe.' : 'Find somewhere safe.', 4); }
+  // the last five seconds before closing tick down
+  const left = Math.ceil(DAY_LEN - clock.t);
+  if (phase === 'day' && left <= 5 && left >= 1 && left !== lastTick) { lastTick = left; sfx.tick(6 - left); }
+  if (clock.ev === 'powercut' && Math.abs(clock.t - POWERCUT[0]) < dt * 1.5) { sfx.lightsOff(false); announce('Power cut!', 'The staff hunt in the dark until the power comes back.', 4); }
+  if (clock.ev === 'powercut' && Math.abs(clock.t - POWERCUT[1]) < dt * 1.5) sfx.lightsOn();
   lastPhase = phase;
 }
 
@@ -689,17 +867,33 @@ function ingestStaff(list, now) {
     if (!Array.isArray(e) || e.length < 6) continue;
     const id = e[0] | 0; seen.add(id);
     let v = staffViews.get(id);
-    if (!v) { v = { model: makeStaff(), buf: [] }; scene.add(v.model.root); staffViews.set(id, v); }
-    v.buf.push({ t: now, x: e[1] / 100, y: e[2] / 100, z: e[3] / 100, ry: e[4] / 100, f: e[5] | 0, s: (e[6] | 0) / 10 });
+    if (!v) { v = { model: makeStaff(id), buf: [] }; scene.add(v.model.root); staffViews.set(id, v); }
+    v.buf.push({ t: now, x: e[1] / 100, y: e[2] / 100, z: e[3] / 100, ry: e[4] / 100, f: e[5] | 0, s: (e[6] | 0) / 10, tg: typeof e[7] === 'string' ? e[7] : '' });
     if (v.buf.length > 12) v.buf.shift();
     v.seen = now;
   }
   for (const [id, v] of staffViews) if (!seen.has(id) && now - v.seen > 600) { scene.remove(v.model.root); staffViews.delete(id); }
 }
+// What they say when they're after you. Spoken in a flat, low voice where the
+// browser can speak, and always shown as a subtitle.
+const LINES = ['Closing time. Closing time.', "You can't stay here after hours.", 'Please put everything back and go home.', 'Shopping is over for today.', 'Why are you still here?', 'We are closed. We are closed.', 'Let me show you the way out.'];
+let voiceT = 0, voiceN = 0;
+function speak(line, vol) {
+  const el = $('voice');
+  el.textContent = line; el.classList.remove('hidden');
+  clearTimeout(speak.t); speak.t = setTimeout(() => el.classList.add('hidden'), 2600);
+  try {
+    if (!('speechSynthesis' in window) || settings.vol <= 0) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(line);
+    u.pitch = 0.05; u.rate = 0.82; u.volume = clamp(vol * settings.vol, 0, 1);
+    speechSynthesis.speak(u);
+  } catch (_) {}
+}
 let murmurT = 0;
 function drawStaff(dt, now) {
   const delay = net.isHost() ? 0 : 140;
-  let nearest = Infinity, nearPan = 0, anyHostile = false;
+  let nearest = Infinity, nearPan = 0, anyHostile = false, hunter = Infinity;
   for (const v of staffViews.values()) {
     const at = now - delay, b = v.buf;
     let i = b.length - 1; while (i > 0 && b[i - 1].t > at) i--;
@@ -708,15 +902,17 @@ function drawStaff(dt, now) {
     const m = v.model;
     m.root.position.set(lerp(s0.x, s1.x, u), lerp(s0.y, s1.y, u), lerp(s0.z, s1.z, u));
     m.root.rotation.y = angLerp(s0.ry, s1.ry, u);
-    const hostile = !!(s1.f & 1);
+    const hostile = !!(s1.f & 1) || isHostile(clock.t, clock.ev);
     m.eyes.visible = hostile;
-    animate(m, s1.s, dt, { reach: s1.f & 6 ? now / 1000 : 0 });
+    animate(m, s1.s, dt, { reach: s1.f & 2 ? now / 1000 : 0, climbing: !!(s1.f & 8) && !(s1.f & 4), down: !!(s1.f & 4) });
     const d = Math.hypot(m.root.position.x - P.x, m.root.position.z - P.z);
-    if (hostile) { anyHostile = true; if (d < nearest) { nearest = d; const a = Math.atan2(m.root.position.x - P.x, m.root.position.z - P.z) - P.yaw; nearPan = clamp(-Math.sin(a), -1, 1); } }
-    if ((s1.f & 4) && Math.random() < dt * 2.5 && d < 18) sfx.bash();
+    if (s1.f & 1) { anyHostile = true; if (d < nearest) { nearest = d; const a = Math.atan2(m.root.position.x - P.x, m.root.position.z - P.z) - P.yaw; nearPan = clamp(-Math.sin(a), -1, 1); } }
+    if (s1.tg === net.id) hunter = Math.min(hunter, d);
   }
   murmurT -= dt;
   if (anyHostile && nearest < 14 && murmurT <= 0) { sfx.staffNear(nearPan); murmurT = 0.5 + nearest / 10; }
+  voiceT -= dt;
+  if (hunter < 18 && voiceT <= 0 && P.alive) { speak(LINES[voiceN++ % LINES.length], 1 - hunter / 22); voiceT = 4 + Math.random() * 2; }
 }
 
 // ---------------------------------------------------------------- remote shoppers (drawing)
@@ -736,7 +932,7 @@ function drawRemotes(dt, now) {
     m.root.rotation.y = angLerp(s0.ry, s1.ry, u) + Math.PI;
     m.root.visible = !!s1.a;
     setHeld(m, s1.ct, s1.cv);
-    animate(m, Math.min(sp, 9), dt, { carrying: !!s1.ct });
+    animate(m, Math.min(sp, 9), dt, { carrying: !!s1.ct, crouch: !!s1.cr });
   }
 }
 
@@ -760,24 +956,13 @@ function frame() {
     world.update(focus);
   }
   updateInteraction(dt);
+  updateFlying(dt);
   // host: staff
   if (net.isHost() && staffSim) {
-    const players = [{ id: net.id, x: P.x, y: P.y, z: P.z, alive: P.alive }];
-    for (const [id, r] of remotes) if (r.st && now - r.seen < 6000) players.push({ id, x: r.st.x, y: r.st.y, z: r.st.z, alive: !!r.st.a });
-    const out = staffSim.update(dt, players, { hostile: isHostile(clock.t, clock.ev), event: clock.ev });
+    const players = [{ id: net.id, x: P.x, y: P.y, z: P.z, alive: P.alive, sprinting: P.sprinting, crouch: P.crouch }];
+    for (const [id, r] of remotes) if (r.st && now - r.seen < 6000) players.push({ id, x: r.st.x, y: r.st.y, z: r.st.z, alive: !!r.st.a, sprinting: !!r.st.sp, crouch: !!r.st.cr });
+    const out = staffSim.update(dt, players, staffEnv(), clock.day);
     for (const h of out.hits) { if (h.to === net.id) hurt(h.d, 'staff'); else net.send('h', { to: h.to, d: h.d }); }
-    if (out.items.length) {
-      const ids = [], extra = {};
-      for (const { it, broke } of out.items) {
-        if (broke) {
-          const box = world.itemBox(it);
-          world.edit(it);
-          ids.push(it.id, ...world.settle(box)); extra[it.id] = { brk: 1 };
-          if (Math.hypot(it.x - P.x, it.z - P.z) < 20) sfx.breakIt();
-        } else ids.push(it.id);
-      }
-      broadcastItems([...new Set(ids)], extra);
-    }
     const snap = staffSim.snapshot();
     ingestStaff(snap, now);
     if (now >= staffSendT && net.on) { staffSendT = now + 125; net.send('s', { s: snap }); }
@@ -788,13 +973,14 @@ function frame() {
   // send our state
   if (now >= sendT && net.on) {
     sendT = now + 100;
-    net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: P.carry ? P.carry.t : '', cv: P.carry ? P.carry.v : 0, n: P.nights, hp: Math.ceil(P.hp) });
+    net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: P.carry ? P.carry.t : '', cv: P.carry ? P.carry.v : 0, n: P.nights, hp: Math.ceil(P.hp), sp: P.sprinting ? 1 : 0, cr: P.crouch ? 1 : 0 });
   }
   // light and camera
   const L = lightLevel(clock.t, clock.ev, now / 1000);
   applyLight(scene, lights, L, clock.ev, settings.low);
   setAmbience(isHostile(clock.t, clock.ev), L > 0.5);
-  torch.intensity = P.torch && P.alive ? 42 : 0;
+  setMusic(clock.ev === 'crimson' ? 'crimson' : isNight(clock.t) ? 'night' : clock.ev === 'fog' ? 'fog' : 'day', clock.day);
+  updateLamps(L);
   floor.position.set(Math.round(P.x / 4) * 4, 0, Math.round(P.z / 4) * 4);
   ceiling.position.set(Math.round(P.x / 6) * 6, CEIL, Math.round(P.z / 6) * 6);
   fixtures.update(P.x, P.z, L, uniforms.uEmerg.value, CEIL);
@@ -806,6 +992,28 @@ function frame() {
   world.flushItems();
   renderer.render(scene, camera);
   endFrame();
+}
+
+const _v = new THREE.Vector3();
+let lampT = 0, lampList = [];
+function updateLamps(L) {
+  lampT -= 1 / 60;
+  if (lampT <= 0) {
+    lampT = 0.25;
+    lampList = [];
+    if (P.carry && TYPES[P.carry.t].lamp) { viewHeld.getWorldPosition(_v); lampList.push({ x: P.third ? P.x : _v.x, y: P.y + 1.5, z: P.third ? P.z : _v.z, mine: true }); }
+    for (const r of remotes.values()) if (r.st && r.st.a && r.st.ct && TYPES[r.st.ct].lamp) { const p = r.model.root.position; lampList.push({ x: p.x, y: p.y + 1.6, z: p.z }); }
+    for (const it of world.lampsNear(P.x, P.z, 30, 6)) lampList.push({ x: it.x, y: it.y + itemDims(it.t, it.r, it.tl)[1] + 0.08, z: it.z });
+    lampList = lampList.slice(0, lampLights.length);
+  }
+  const k = Math.max(0, 1 - L * 1.4);
+  lampLights.forEach((l, i) => {
+    const e = lampList[i];
+    if (!e || k <= 0) { l.intensity = 0; return; }
+    if (e.mine) { viewHeld.getWorldPosition(_v); l.position.set(P.third ? P.x : _v.x, P.y + 1.5, P.third ? P.z : _v.z); }
+    else l.position.set(e.x, e.y, e.z);
+    l.intensity = 9 * k;
+  });
 }
 
 // Camera feel: head bob while walking, a wider view when sprinting, a dip on
@@ -822,13 +1030,14 @@ function placeCamera(dt) {
   const fov = settings.fov + feel.fov;
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
   const sh = feel.shake * feel.shake;
-  const ey = P.y + 1.6 + Math.sin(feel.bob * 2) * 0.045 * bobAmt - feel.dip * 0.4;
+  P.eyeH += ((P.crouch ? 0.85 : 1.6) - P.eyeH) * Math.min(1, dt * 12);
+  const ey = P.y + P.eyeH + Math.sin(feel.bob * 2) * 0.045 * bobAmt - feel.dip * 0.4;
   camera.rotation.set(P.pitch + (Math.random() - 0.5) * sh * 0.12, P.yaw + (Math.random() - 0.5) * sh * 0.12, Math.sin(feel.bob) * 0.006 * bobAmt + (Math.random() - 0.5) * sh * 0.08, 'YXZ');
   viewHeld.position.set(0.42 + Math.sin(feel.bob) * 0.015 * bobAmt, -0.42 + Math.abs(Math.cos(feel.bob)) * 0.015 * bobAmt - feel.dip * 0.2, -0.9);
   myModel.root.position.set(P.x, P.y, P.z);
   myModel.root.rotation.y = P.yaw + Math.PI;
   setHeld(myModel, P.carry ? P.carry.t : '', P.carry ? P.carry.v : 0);
-  animate(myModel, P.speed, dt, { carrying: !!P.carry });
+  animate(myModel, P.speed, dt, { carrying: !!P.carry, crouch: P.crouch });
   if (P.third && P.alive) {
     const [dx, dy, dz] = lookDir();
     const hit = raycast(P.x, ey, P.z, -dx, -dy, -dz, 4, false);
@@ -857,13 +1066,66 @@ function placeCamera(dt) {
 function handleKeys() {
   const p = input.pressed;
   if (chatOpen) return;
-  if (p.has('KeyT') || p.has('Enter')) { openChat(); return; }
-  if (p.has('Escape') && IS_TOUCH) { pause(); return; }
+  if (p.has('Enter') || p.has('Slash')) { openChat(); return; }
+  if (p.has('Escape') && (IS_TOUCH || invOpen)) { if (invOpen) toggleInventory(false); else pause(); return; }
+  if (p.has('KeyG') || p.has('KeyI')) toggleInventory();
   if (p.has('KeyV')) P.third = !P.third;
-  if (p.has('KeyF')) P.torch = !P.torch;
-  if (p.has('KeyH')) { const pa = paused; pause(); if (!pa) { returnTo = 'pause'; show('how'); } }
-  for (let i = 0; i < 5; i++) if (p.has('Digit' + (i + 1))) { P.sel = i; buildHotbar(); }
-  if (input.wheel) { P.sel = (P.sel + input.wheel + 5) % 5; buildHotbar(); }
+  if (p.has('KeyH')) whistle();
+  if (p.has('KeyF') && P.carry && P.alive) throwCarry();
+  if (p.has('KeyQ') && !P.carry && P.alive && !invOpen) dropSelected();
+  if (p.has('KeyZ')) setWaypoint(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));
+  if (p.has('F1')) { pause(); returnTo = 'pause'; show('how'); }
+  for (let i = 0; i < HOTBAR; i++) if (p.has('Digit' + (i + 1))) { P.sel = i; buildHotbar(); }
+  if (input.wheel && !P.carry) { P.sel = (P.sel + input.wheel + HOTBAR) % HOTBAR; buildHotbar(); }
+}
+
+// ---------------------------------------------------------------- whistle and waypoints
+// A whistle shows everyone nearby (staff in red, shoppers in blue) for a few
+// seconds, and tells your friends where you are. At night it also brings the
+// staff. 25 s between whistles; it costs a little energy.
+let revealT = 0;
+function whistle() {
+  if (!P.alive || P.whistleT > 0) { if (P.whistleT > 0) sfx.deny(); return; }
+  P.whistleT = 25; P.en = Math.max(0, P.en - 5);
+  revealT = 6;
+  sfx.whistle(0, 1);
+  net.send('wh', { x: +P.x.toFixed(1), z: +P.z.toFixed(1) });
+  if (staffSim && isHostile(clock.t, clock.ev)) staffSim.noise(P.x, P.z, 45);
+}
+// Z drops a waypoint where you stand (up to 4; the oldest goes). Shift+Z clears them.
+function setWaypoint(clear) {
+  if (clear) { for (let i = waypoints.length - 1; i >= 0; i--) if (!waypoints[i].death) waypoints.splice(i, 1); toast('Waypoints cleared.'); return; }
+  const mine = waypoints.filter((w) => !w.death);
+  if (mine.length >= 4) waypoints.splice(waypoints.indexOf(mine[0]), 1);
+  const n = [1, 2, 3, 4].find((k) => !waypoints.some((w) => w.name === 'Waypoint ' + k)) || 1;
+  waypoints.push({ x: P.x, y: P.y + 1.2, z: P.z, name: 'Waypoint ' + n });
+  sfx.pick(); toast(`Waypoint ${n} set. Shift+Z clears your waypoints.`);
+}
+// Markers drawn over the 3D view: waypoints always, and everyone nearby for a
+// few seconds after a whistle.
+const markPool = [];
+function updateMarks() {
+  const host = $('marks');
+  const list = [];
+  for (const w of waypoints) list.push({ x: w.x, y: w.y, z: w.z, cls: w.death ? 'wp death' : 'wp', label: w.name });
+  revealT = Math.max(0, revealT - 1 / 60);
+  if (revealT > 0) for (const v of staffViews.values()) { const p = v.model.root.position; if (Math.hypot(p.x - P.x, p.z - P.z) < 45) list.push({ x: p.x, y: p.y + 2.3, z: p.z, cls: 'staff', label: '' }); }
+  for (const r of remotes.values()) {
+    r.revealT = Math.max(0, (r.revealT || 0) - 1 / 60);
+    if (r.st && r.st.a && (revealT > 0 || r.revealT > 0)) { const p = r.model.root.position; list.push({ x: p.x, y: p.y + 2.5, z: p.z, cls: 'mate', label: r.name }); }
+  }
+  while (markPool.length < list.length) { const d = document.createElement('div'); host.append(d); markPool.push(d); }
+  markPool.forEach((el, i) => {
+    const m = list[i];
+    if (!m) { el.style.display = 'none'; return; }
+    _v.set(m.x, m.y, m.z).project(camera);
+    if (_v.z > 1 || _v.z < -1) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.className = 'mark ' + m.cls;
+    el.style.transform = `translate(${((_v.x + 1) / 2 * innerWidth).toFixed(0)}px, ${((1 - _v.y) / 2 * innerHeight).toFixed(0)}px)`;
+    const dist = Math.round(Math.hypot(m.x - P.x, m.z - P.z));
+    el.textContent = m.label ? `${m.label} · ${dist} m` : '';
+  });
 }
 
 // ---------------------------------------------------------------- chat
@@ -895,7 +1157,7 @@ function renderMenuBackdrop(dt) {
   ceiling.position.set(Math.round(x / 6) * 6, CEIL, Math.round(z / 6) * 6);
   camera.position.set(x, 2.2, z);
   camera.rotation.set(-0.12, Math.PI + Math.sin(menuT * 0.07) * 0.6, 0, 'YXZ');
-  torch.intensity = 0;
+  for (const l of lampLights) l.intensity = 0;
   fixtures.update(x, z, 1, 0, CEIL);
   dust.update(dt, x, z, 1);
   world.flushItems();
@@ -913,4 +1175,4 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
-  useForTest: () => useSelected(), setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
+  useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };

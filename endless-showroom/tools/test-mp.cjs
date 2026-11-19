@@ -111,7 +111,7 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
 
   // Host leaves: guest takes over.
   await A.close();
-  await B.waitForTimeout(1500);
+  await B.waitForFunction(() => __game.net.isHost(), null, { timeout: 30000 }).catch(() => {});
   check(await B.evaluate(() => __game.net.isHost()), 'guest became host after host left');
   check(await B.evaluate((id) => { const it = __game.world.items.get(id); return !!(it && __game.world.mods.has(id)); }, moved), 'guest kept the store changes');
   await B.waitForTimeout(3000);

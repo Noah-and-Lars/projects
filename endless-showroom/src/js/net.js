@@ -14,6 +14,7 @@
 //            g  the clock and today's event, from the host
 //            h  a member of staff hit someone, from the host
 //            c  chat;  x  someone was caught
+//            pu a shove, to the host;  wh  someone whistled
 //            need / full  a newcomer asks for, and gets, the store's changes
 const RT_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
 const MAX = 8;
@@ -123,6 +124,8 @@ export function createNet(h) {
       on('c', (p) => h.chat?.(p.f, cleanChat(p.m)));
       on('x', (p) => h.caught?.(p.f, p));
       on('need', (p) => { if (api.isHost()) h.need?.(p.f); });
+      on('pu', (p) => { if (api.isHost()) h.push?.(p.f, p); });
+      on('wh', (p) => h.whistle?.(p.f, p));
       on('full', (p) => { if (fromHost(p) && p.to === myId) h.full?.(p); });
       ch.subscribe((st) => {
         if (st === 'SUBSCRIBED') track();

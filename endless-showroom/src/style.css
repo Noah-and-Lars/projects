@@ -15,6 +15,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #clock-time { font-weight: 800; font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.1; }
 #clock-phase { font-size: 12px; opacity: 0.85; }
 #clock.night #clock-phase { color: #ff7a7a; font-weight: 700; }
+#clock.red { background: #4a0606cc; box-shadow: 0 0 24px #ff000055; }
 #event { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 84px); left: 50%; transform: translateX(-50%); background: #7a2e2ecc; padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; }
 #cross { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #0008; }
 #prompt { position: absolute; left: 50%; top: calc(50% + 28px); transform: translateX(-50%); background: #000a; padding: 4px 12px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
@@ -89,8 +90,8 @@ button.primary:hover { background: #3a7cc4; }
 .stick { position: absolute; left: 40px; bottom: 60px; width: 120px; height: 120px; border-radius: 50%; background: #ffffff18; border: 2px solid #ffffff30; opacity: 0.6; }
 .stick.on { opacity: 1; }
 .knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: #ffffff55; }
-.tb-col { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2, 64px); gap: 8px; }
-.tb { width: 64px; height: 52px; border-radius: 14px; background: #0007; border: 2px solid #ffffff40; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.tb-col { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 58px); gap: 6px; }
+.tb { width: 58px; height: 46px; border-radius: 14px; background: #0007; border: 2px solid #ffffff40; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
 .tb.on { background: #ffd34d66; }
 .tb-pause { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 36px); right: max(12px, env(safe-area-inset-right)); width: 44px; height: 40px; }
 body.touch #help-hint, body.touch #cross { display: none; }
@@ -107,3 +108,28 @@ body.touch #chat { display: none; }
   #bars { width: 160px; }
   .logo-b { font-size: 34px; }
 }
+
+/* Inventory */
+#inv { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; background: #0008; }
+.inv-panel { width: min(560px, 100%); }
+#inv-count { font-size: 14px; opacity: 0.7; font-weight: 600; margin-left: 6px; }
+#inv-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin: 12px 0; }
+#inv-grid .slot { width: auto; aspect-ratio: 1; height: auto; cursor: pointer; pointer-events: auto; }
+#inv-grid .slot:hover { border-color: #fff8; }
+.slot .nm { display: block; font-size: 9px; line-height: 1.05; }
+#prompt .stat { font-weight: 500; opacity: 0.8; font-size: 12px; margin-left: 6px; }
+#bars.starving .bar.food { animation: pulse 0.8s infinite; }
+#bars.tired .bar.stam { animation: pulse 0.8s infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 2px #ff5a5a; } }
+#whistle { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 30px); font-size: 12px; background: #0007; padding: 3px 8px; border-radius: 6px; }
+#whistle.cool { opacity: 0.55; }
+#marks { position: absolute; inset: 0; overflow: hidden; }
+.mark { position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 12px; font-weight: 700; margin: -10px 0 0 -6px; padding-left: 16px; text-shadow: 0 1px 2px #000; }
+.mark::before { content: ''; position: absolute; left: 0; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.mark.wp { color: #ffd34d; }
+.mark.wp.death { color: #ff6b6b; }
+.mark.staff { color: #ff3b3b; }
+.mark.mate { color: #5cb6ff; }
+#voice { position: absolute; left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 86px); transform: translateX(-50%); background: #000c; color: #e9e2d6; padding: 6px 14px; border-radius: 8px; font-style: italic; letter-spacing: 0.04em; border-left: 3px solid #1f6f6b; }
+#voice::before { content: 'Staff: '; font-style: normal; font-weight: 700; color: #6fc9c2; }
+body.touch #whistle { display: none; }

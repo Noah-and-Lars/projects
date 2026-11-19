@@ -11,8 +11,9 @@
 // their chunk.
 import * as THREE from 'three';
 import { hashInts, rng } from './rng.js';
+import { restockEpoch } from './env.js';
 import { GeoBuilder } from './geo.js';
-import { TYPES, ITEMS, FOOD_KEYS, footprint, furnitureGeometry, itemGeometry } from './furniture.js';
+import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts } from './furniture.js';
 import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry, ShadowBuilder } from './mats.js';
 
 export const CHUNK = 24, CEIL = 6.5, HALF = 12;
@@ -33,18 +34,18 @@ const SECTIONS = {
   warehouse: { label: 'WAREHOUSE', color: '#c05621' },
   display: { label: 'FURNITURE', color: '#2f855a' },
   market: { label: 'MARKET HALL', color: '#6b46c1' },
-  food: { label: 'FOOD COURT', color: '#c53030' },
+  food: { label: 'CAFETERIA', color: '#c53030' },
   storage: { label: 'STOCK ROOM', color: '#4a5568' },
 };
 
 function sectionOf(seed, cx, cz) {
   if (cx === 0 && cz === 0) return 'display';
   const h = hashInts(seed, cx, cz, 11) % 100;
-  if (h < 36) return 'showroom';
-  if (h < 56) return 'warehouse';
-  if (h < 72) return 'display';
-  if (h < 84) return 'market';
-  if (h < 92) return 'food';
+  if (h < 37) return 'showroom';
+  if (h < 58) return 'warehouse';
+  if (h < 75) return 'display';
+  if (h < 87) return 'market';
+  if (h < 91) return 'food'; // cafeterias are rare, and worth finding
   return 'storage';
 }
 
@@ -91,12 +92,13 @@ class ChunkGen {
     this.items.push({ t: type, k: 'f', v: this.r.int(16), x: x + this.ox, y, z: z + this.oz, r: ((rot % 4) + 4) % 4 });
   }
   food(kind, x, z, y) { this.items.push({ t: kind, k: 'i', v: 0, x: x + this.ox, y, z: z + this.oz, r: this.r.int(4) }); }
-  randomFood(x, z, y) {
-    if (this.r.chance(0.04)) this.food('medkit', x, z, y);
-    else this.food(this.r.pick(FOOD_KEYS), x, z, y);
+  randomFood(x, z, y, stock = STOCK.any) {
+    if (this.r.chance(0.03)) this.food('medkit', x, z, y);
+    else this.food(this.r.pick(stock), x, z, y);
   }
-  // Furniture in a quadrant frame.
-  ff(f, type, u, v, rot) { const [x, z] = f.pt(u, v); this.furn(type, x, z, rot + f.k); }
+  // Furniture and food in a quadrant frame.
+  ff(f, type, u, v, rot, y = 0) { const [x, z] = f.pt(u, v); this.furn(type, x, z, rot + f.k, y); }
+  fd(f, stock, u, v, y) { const [x, z] = f.pt(u, v); this.food(this.r.pick(stock), x, z, y); }
   fs(f, u0, v0, u1, v1, y0, y1, hex) { const [a, b, c, d] = f.rect(u0, v0, u1, v1); this.solid(a, b, c, d, y0, y1, hex); }
 
   run() {
@@ -130,8 +132,11 @@ class ChunkGen {
     }
     for (const qx of [0, HALF]) for (const qz of [0, HALF]) {
       const f = frame(qx + QPAD, qz + QPAD, r.int(4));
-      this['q_' + this.section](f);
-      if (r.chance(0.035)) { const [x, z] = f.pt(r.range(1, 8.6), r.range(7.5, 9.2)); this.food('medkit', x, z, 0); }
+      const roll = r();
+      if (roll < 0.025 && this.section !== 'food') this.q_firstaid(f);
+      else if (roll < 0.04 && this.section !== 'food') this.q_fort(f);
+      else if (roll < 0.35 && this.section === 'market') this.q_snack(f);
+      else this['q_' + this.section](f);
     }
     return this;
   }
@@ -145,29 +150,35 @@ class ChunkGen {
     { const [a, b, c, d] = f.rect(0, 0, Q, 0.16); this.deco(a, b, c, d, 2.6, 2.7, 0x8a857b); }
     this.fs(f, 0, 0.12, 0.12, 6.2, 0, 2.6, PARTITION);
     this.fs(f, Q - 0.12, 0.12, Q, 6.2, 0, 2.6, PARTITION);
-    const theme = r.int(5);
+    const theme = r.int(6);
     if (theme === 0) { // living room
       this.ff(f, 'rug', 4.8, 3.0, 0); this.ff(f, 'sofa', 4.8, 0.75, 0); this.ff(f, 'coffeeTable', 4.8, 2.4, 0);
       this.ff(f, 'armchair', 1.4, 2.8, 1); this.ff(f, 'tvStand', 4.8, 5.0, 2); this.ff(f, 'bookshelf', 8.6, 0.4, 0);
       this.ff(f, 'floorLamp', 2.8, 0.5, 0); this.ff(f, 'plant', 0.7, 0.7, 0); if (r.chance(0.6)) this.ff(f, 'armchair', 8.2, 3.0, 3);
     } else if (theme === 1) { // bedroom
-      this.ff(f, 'bedDouble', 4.8, 1.25, 0); this.ff(f, 'cabinet', 3.4, 0.4, 0); this.ff(f, 'floorLamp', 6.3, 0.5, 0);
-      this.ff(f, 'wardrobe', 8.4, 0.5, 0); this.ff(f, 'dresser', 1.2, 0.45, 0); this.ff(f, 'rug', 4.8, 3.6, 0);
+      this.ff(f, 'bedDouble', 4.8, 1.25, 0); this.ff(f, 'cabinet', 3.4, 0.4, 0); this.ff(f, 'tableLamp', 3.4, 0.4, 0, 1.0); this.ff(f, 'floorLamp', 6.3, 0.5, 0);
+      this.ff(f, 'wardrobe', 8.4, 0.58, 0); this.ff(f, 'dresser', 1.2, 0.45, 0); this.ff(f, 'rug', 4.8, 3.6, 0);
       this.ff(f, 'plant', 0.7, 4.8, 0); if (r.chance(0.5)) this.ff(f, 'armchair', 8.3, 3.4, 3);
     } else if (theme === 2) { // kitchen
       for (let i = 0; i < 4; i++) this.ff(f, 'counter', 0.8 + i * 1.22, 0.42, 0);
       this.ff(f, 'fridge', 5.75, 0.5, 0); this.ff(f, 'diningTable', 5.6, 4.4, 0);
       this.ff(f, 'chair', 5.1, 3.6, 0); this.ff(f, 'chair', 6.1, 3.6, 0); this.ff(f, 'chair', 5.1, 5.2, 2); this.ff(f, 'chair', 6.1, 5.2, 2);
       this.ff(f, 'cabinet', 8.6, 0.4, 0); this.ff(f, 'stool', 2.0, 1.4, 0); this.ff(f, 'stool', 3.0, 1.4, 0);
-      if (r.chance(0.5)) this.food(r.pick(FOOD_KEYS), ...f.pt(1.4, 0.4), 0.9);
+      for (let i = 0, n = r.int(3); i < n; i++) this.fd(f, STOCK.kitchen, 0.6 + i * 1.2 + r.range(0, 0.6), 0.4, 0.9);
     } else if (theme === 3) { // workspace
       this.ff(f, 'desk', 2.6, 0.45, 0); this.ff(f, 'chair', 2.6, 1.3, 2); this.ff(f, 'desk', 6.6, 0.45, 0); this.ff(f, 'chair', 6.6, 1.3, 2);
       this.ff(f, 'bookshelf', 0.32, 2.6, 1); this.ff(f, 'bookshelf', 0.32, 3.6, 1); this.ff(f, 'cabinet', 9.3, 2.8, 3);
       this.ff(f, 'plant', 8.9, 0.6, 0); this.ff(f, 'lockers', 9.3, 4.6, 3); this.ff(f, 'rug', 4.6, 3.4, 0);
+      this.ff(f, 'tableLamp', 3.0, 0.4, 0, 0.75);
+    } else if (theme === 5) { // bathroom
+      this.ff(f, 'bathtub', 1.2, 0.5, 0); this.ff(f, 'toilet', 3.4, 0.45, 0); this.ff(f, 'cabinet', 4.6, 0.3, 0);
+      this.ff(f, 'cabinet', 5.5, 0.3, 0); this.ff(f, 'plant', 8.9, 0.6, 0); this.ff(f, 'rug', 3.0, 2.2, 0); this.ff(f, 'shelfCube', 7.8, 0.3, 0);
+      this.ff(f, 'tableLamp', 4.6, 0.3, 0, 1.0);
     } else { // kids room
       this.ff(f, 'bunkBed', 0.75, 1.1, 0); this.ff(f, 'bunkBed', 3.0, 1.1, 0); this.ff(f, 'shelfCube', 6.4, 0.32, 0);
       this.ff(f, 'mattress', 7.6, 3.4, 0); this.ff(f, 'rug', 4.6, 4.0, 1); this.ff(f, 'box', 5.2, 2.2, 0); this.ff(f, 'box', 5.9, 2.6, 1);
-      this.ff(f, 'stool', 3.4, 4.2, 0); this.ff(f, 'plant', 9.0, 0.6, 0);
+      this.ff(f, 'stool', 3.4, 4.2, 0); this.ff(f, 'plant', 9.0, 0.6, 0); this.ff(f, 'tableLamp', 6.0, 0.3, 0, 1.5);
+      if (r.chance(0.6)) for (let i = 0, n = 1 + r.int(2); i < n; i++) this.fd(f, STOCK.play, 4.0 + i * 0.4, 4.2, 0);
     }
   }
 
@@ -177,7 +188,7 @@ class ChunkGen {
     const rows = [0.7, 4.8, 8.9];
     for (const v of rows) {
       const [x0, z0, x1, z1] = f.rect(0.2, v - deep / 2, Q - 0.2, v + deep / 2);
-      this.boxes.push({ x0: x0 + this.ox, x1: x1 + this.ox, z0: z0 + this.oz, z1: z1 + this.oz, y0: 0, y1: top });
+      this.boxes.push({ x0: x0 + this.ox, x1: x1 + this.ox, z0: z0 + this.oz, z1: z1 + this.oz, y0: 0, y1: top, climb: true });
       this.sh.rect(x0, z0, x1, z1, 0.004, 0.3);
       const alongX = x1 - x0 > z1 - z0;
       const len = alongX ? x1 - x0 : z1 - z0;
@@ -207,20 +218,21 @@ class ChunkGen {
         }
       }
     }
-    // loose stock in the aisles
-    const n = 2 + r.int(4);
+    // loose stock in the aisles: pallets (great for building), crates, boxes
+    const n = 3 + r.int(4);
     for (let i = 0; i < n; i++) {
-      const v = r.pick([2.75, 6.85]), u = r.range(0.8, Q - 0.8);
-      this.ff(f, r.chance(0.55) ? 'box' : 'crate', u, v, r.int(4));
+      const v = r.pick([2.75, 6.85]), u = 0.9 + (i / n) * (Q - 1.8) + r.range(-0.2, 0.2), k = r();
+      if (k < 0.45) { const st = 1 + r.int(3); for (let j = 0; j < st; j++) this.ff(f, 'pallet', u, v, 1, j * 0.15); }
+      else this.ff(f, k < 0.75 ? 'box' : 'crate', u, v, r.int(4));
     }
-    if (r.chance(0.5)) { const [x, z] = f.pt(r.range(1, Q - 1), r.pick([2.2, 6.3])); this.randomFood(x, z, 0); }
+    if (r.chance(0.25)) { const [x, z] = f.pt(r.range(1, Q - 1), r.pick([2.2, 6.3])); this.randomFood(x, z, 0); }
   }
 
   q_display(f) {
     const { r } = this;
     const pick = r.pick([
       ['sofa', 2.8, 2.4], ['armchair', 1.7, 1.8], ['bedSingle', 1.8, 3.0], ['bedDouble', 2.4, 3.1], ['wardrobe', 1.9, 1.6],
-      ['bookshelf', 1.4, 1.4], ['diningTable', 2.6, 2.4], ['dresser', 1.7, 1.5], ['desk', 2.0, 1.8], ['shelfCube', 2.2, 1.6], ['counter', 1.5, 1.6],
+      ['bookshelf', 1.4, 1.4], ['diningTable', 2.6, 2.4], ['dresser', 1.7, 1.5], ['desk', 2.0, 1.8], ['shelfCube', 2.2, 1.6], ['counter', 1.5, 1.6], ['floorLamp', 1.2, 1.2], ['bunkBed', 1.6, 2.6],
     ]);
     const [type, su, sv] = pick;
     const nu = Math.max(1, Math.floor((Q - 0.6) / su)), nv = Math.max(1, Math.floor((Q - 2.0) / sv));
@@ -240,28 +252,68 @@ class ChunkGen {
       this.fs(f, u0, v0, u0 + 2.2, v0 + 1.2, 0, 0.8, 0x7b6a58);
       const [a, b, c, d] = f.rect(u0 + 0.08, v0 + 0.08, u0 + 2.12, v0 + 1.12);
       this.deco(a, b, c, d, 0.8, 0.86, 0xb8a98f);
-      const n = 1 + r.int(4);
+      const n = 1 + r.int(3);
       for (let k = 0; k < n; k++) {
-        const [x, z] = f.pt(u0 + r.range(0.3, 1.9), v0 + r.range(0.25, 0.95));
-        if (r.chance(0.55)) this.randomFood(x, z, 0.86);
+        const u = u0 + 0.35 + k * 0.7, v = v0 + 0.6;
+        if (r.chance(0.15)) this.fd(f, STOCK.any, u, v, 0.86);
+        else this.ff(f, r.pick(['tableLamp', 'tableLamp', 'plant', 'box']), u, v, r.int(4), 0.86);
       }
     }
     for (let i = 0; i < 2; i++) this.ff(f, r.pick(['plant', 'floorLamp', 'box', 'stool']), r.range(0.6, Q - 0.6), r.pick([3.2, 7.6]), r.int(4));
   }
 
+  // Cafeterias: long serving counters piled with food, and seating.
   q_food(f) {
     const { r } = this;
-    // serving counter with food on it
     this.fs(f, 0.3, 0.3, Q - 0.3, 1.1, 0, 1.0, 0x9c3d2e);
     const [a, b, c, d] = f.rect(0.25, 0.25, Q - 0.25, 1.15);
     this.deco(a, b, c, d, 1.0, 1.05, 0xe8e2d6);
-    const n = 4 + r.int(4);
-    for (let i = 0; i < n; i++) { const [x, z] = f.pt(0.8 + (i / n) * (Q - 1.6), r.range(0.5, 0.9)); this.randomFood(x, z, 1.05); }
+    const n = 7 + r.int(4);
+    for (let i = 0; i < n; i++) this.fd(f, STOCK.cafeteria, 0.6 + (i / n) * (Q - 1.2), r.range(0.5, 0.9), 1.05);
+    if (r.chance(0.3)) { const [x, z] = f.pt(Q - 0.7, 0.7); this.food('medkit', x, z, 1.05); }
     for (const u of [2.4, 7.2]) for (const v of [3.6, 7.4]) {
       this.ff(f, 'diningTable', u, v, 0);
       this.ff(f, 'chair', u - 0.5, v - 0.8, 0); this.ff(f, 'chair', u + 0.5, v - 0.8, 0);
       this.ff(f, 'chair', u - 0.5, v + 0.8, 2); if (r.chance(0.7)) this.ff(f, 'chair', u + 0.5, v + 0.8, 2);
+      if (r.chance(0.3)) this.fd(f, STOCK.cafeteria, u + r.range(-0.4, 0.4), v, 0.77);
     }
+  }
+
+  // Somebody's old fort: walls of upturned pallets and crates around a lamp,
+  // a raised platform, and maybe a little food left behind.
+  q_fort(f) {
+    const { r } = this;
+    for (let i = 0; i < 3; i++) {
+      this.ff(f, 'pallet', 3.0 + i * 1.2, 2.5, 0, 0); this.items[this.items.length - 1].tl = 1;
+      this.ff(f, 'pallet', 3.0 + i * 1.2, 6.1, 0, 0); this.items[this.items.length - 1].tl = 1;
+    }
+    for (let i = 0; i < 3; i++) {
+      this.ff(f, 'pallet', 2.3, 3.2 + i * 1.2, 1, 0); this.items[this.items.length - 1].tl = 1;
+      if (i !== 1) { this.ff(f, 'pallet', 6.3, 3.2 + i * 1.2, 1, 0); this.items[this.items.length - 1].tl = 1; }
+    }
+    this.ff(f, 'crate', 4.2, 4.3, 0); this.ff(f, 'crate', 4.2, 4.3, 0, 1.0); this.ff(f, 'pallet', 4.2, 4.3, 0, 2.0);
+    this.ff(f, 'floorLamp', 3.2, 3.5, 0); this.ff(f, 'mattress', 5.4, 4.6, 0);
+    for (let i = 0, n = r.int(3); i < n; i++) this.fd(f, STOCK.any, 3.3 + i * 0.5, 5.4, 0);
+  }
+
+  // A first aid station: a white kiosk with four kits on it.
+  q_firstaid(f) {
+    this.fs(f, 3.2, 0.3, 6.4, 1.0, 0, 1.0, 0xf2f2f2);
+    const [a, b, c, d] = f.rect(3.2, 0.25, 6.4, 0.35); this.deco(a, b, c, d, 1.0, 2.2, 0xf2f2f2);
+    const [e, g, h, i] = f.rect(4.5, 0.36, 5.1, 0.38); this.deco(e, g, h, i, 1.4, 2.0, 0xd63031);
+    const [j, k, l, m] = f.rect(4.2, 0.36, 5.4, 0.38); this.deco(j, k, l, m, 1.6, 1.8, 0xd63031);
+    for (let n = 0; n < 4; n++) { const [x, z] = f.pt(3.6 + n * 0.8, 0.65); this.food('medkit', x, z, 1.0); }
+    this.ff(f, 'bench', 4.8, 3.0, 2);
+  }
+
+  // A snack bar: ice cream, fizzy drinks and crisps.
+  q_snack(f) {
+    const { r } = this;
+    this.fs(f, 1.0, 0.3, 6.0, 1.0, 0, 1.05, 0x2e86c1);
+    const [a, b, c, d] = f.rect(0.95, 0.25, 6.05, 1.05); this.deco(a, b, c, d, 1.05, 1.1, 0xf2f2f2);
+    for (let i = 0, n = 3 + r.int(3); i < n; i++) this.fd(f, STOCK.snack, 1.4 + i * 0.9, 0.65, 1.1);
+    for (let i = 0; i < 3; i++) this.ff(f, 'stool', 2.0 + i * 1.5, 1.6, 0);
+    this.ff(f, 'diningTable', 7.6, 4.0, 1); this.ff(f, 'bench', 6.8, 4.0, 1); this.ff(f, 'bench', 8.4, 4.0, 3);
   }
 
   q_storage(f) {
@@ -272,7 +324,7 @@ class ChunkGen {
       this.ff(f, r.chance(0.5) ? 'crate' : 'box', u, v, 0);
     }
     if (r.chance(0.4)) this.ff(f, 'lockers', 0.4, 4.8, 1);
-    if (r.chance(0.4)) { const [x, z] = f.pt(r.range(1, 8), r.range(1, 8)); this.randomFood(x, z, 0); }
+    if (r.chance(0.2)) { const [x, z] = f.pt(r.range(1, 8), r.range(1, 8)); this.randomFood(x, z, 0); }
   }
 }
 
@@ -296,6 +348,7 @@ export class World {
     this.group = new THREE.Group(); scene.add(this.group);
     this.seed = 1;
     this.day = 1;
+    this.epoch = 1;
     this.chunks = new Map();
     this.items = new Map();
     this.mods = new Map();
@@ -312,6 +365,7 @@ export class World {
     this.inst.clear(); this.itemsDirty = true;
     this.chunks.clear(); this.items.clear(); this.mods.clear(); this.grid.clear();
     this.seed = seed >>> 0;
+    this.day = 1; this.epoch = 1;
   }
 
   static key(cx, cz) { return cx + ',' + cz; }
@@ -398,7 +452,7 @@ export class World {
 
   // ---- Items ----
   _addItem(id, s) {
-    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, mesh: null, cells: null };
+    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: s.tl ? 1 : 0, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, mesh: null, cells: null };
     if (it.k === 'f' && !TYPES[it.t]) return null;
     if (it.k === 'i' && !ITEMS[it.t]) return null;
     this.items.set(id, it);
@@ -407,20 +461,24 @@ export class World {
     return it;
   }
 
-  isGone(it) { return it.k === 'i' ? (it.g && it.d === this.day) : it.g; }
+  // Food and kits taken stay gone until the next restock (Monday or Friday).
+  isGone(it) { return it.k === 'i' ? (it.g && it.d === this.epoch) : it.g; }
   active(it) { return !this.isGone(it) && !it.c; }
 
   setDay(d) {
     if (d === this.day) return;
     this.day = d;
+    const e = restockEpoch(d);
+    if (e === this.epoch) return;
+    this.epoch = e;
     for (const it of this.items.values()) this.edit(it);
   }
 
   // Box of an item in world space.
   itemBox(it) {
     if (it.k === 'f') {
-      const [w, d] = footprint(it.t, it.r);
-      return { x0: it.x - w / 2, x1: it.x + w / 2, z0: it.z - d / 2, z1: it.z + d / 2, y0: it.y, y1: it.y + TYPES[it.t].h, item: it };
+      const [w, h, d] = itemDims(it.t, it.r, it.tl);
+      return { x0: it.x - w / 2, x1: it.x + w / 2, z0: it.z - d / 2, z1: it.z + d / 2, y0: it.y, y1: it.y + h, item: it, climb: !!TYPES[it.t].climb };
     }
     const s = ITEMS[it.t], w = Math.max(s.w, s.d) / 2 + 0.05;
     return { x0: it.x - w, x1: it.x + w, z0: it.z - w, z1: it.z + w, y0: it.y, y1: it.y + s.h, item: it };
@@ -481,9 +539,9 @@ export class World {
       const sc = new THREE.Vector3(); let k = 0;
       for (const list of groups.values()) for (const it of list) {
         if (it.k !== 'f' || TYPES[it.t].flat) continue;
-        const t = TYPES[it.t], grow = 1.55 + Math.min(0.5, t.h * 0.2);
-        q.setFromAxisAngle(up, it.r * Math.PI / 2);
-        m4.compose(pos.set(it.x, it.y + 0.005, it.z), q, sc.set(t.w * grow + 0.15, 1, t.d * grow + 0.15));
+        const [dw, dh, dd] = itemDims(it.t, it.r, it.tl), grow = 1.55 + Math.min(0.5, dh * 0.2);
+        q.identity();
+        m4.compose(pos.set(it.x, it.y + 0.005, it.z), q, sc.set(dw * grow + 0.15, 1, dd * grow + 0.15));
         this.shadowInst.setMatrixAt(k++, m4);
       }
       this.shadowInst.count = k; this.shadowInst.instanceMatrix.needsUpdate = true; this.shadowInst.computeBoundingSphere();
@@ -500,14 +558,25 @@ export class World {
         this.inst.set(key, im);
       }
       list.forEach((it, i) => {
-        q.setFromAxisAngle(up, it.r * Math.PI / 2);
-        m4.compose(pos.set(it.x, it.y, it.z), q, one);
+        if (it.k === 'f') itemMatrix(m4, it.t, it.x, it.y, it.z, it.r, it.tl);
+        else { q.setFromAxisAngle(up, it.r * Math.PI / 2); m4.compose(pos.set(it.x, it.y, it.z), q, one); }
         im.setMatrixAt(i, m4);
       });
       im.count = list.length; im.visible = true;
       im.instanceMatrix.needsUpdate = true;
       im.computeBoundingSphere();
     }
+  }
+
+  // Lamps standing near (x, z), nearest first.
+  lampsNear(x, z, r, max) {
+    const out = [];
+    this.forItems(x - r, z - r, x + r, z + r, (it) => {
+      if (it.k !== 'f' || !TYPES[it.t].lamp || !this.active(it)) return;
+      const d = Math.hypot(it.x - x, it.z - z); if (d < r) out.push([d, it]);
+    });
+    out.sort((a, b) => a[0] - b[0]);
+    return out.slice(0, max).map((e) => e[1]);
   }
 
   forItems(x0, z0, x1, z1, fn) {
@@ -529,7 +598,13 @@ export class World {
     this.forItems(x0, z0, x1, z1, (it) => {
       if (it.k !== 'f' || TYPES[it.t].flat) return;
       const b = this.itemBox(it);
-      if (b.x1 > x0 && b.x0 < x1 && b.z1 > z0 && b.z0 < z1) fn(b);
+      if (!(b.x1 > x0 && b.x0 < x1 && b.z1 > z0 && b.z0 < z1)) return;
+      const parts = itemParts(it.t, it.r, it.tl);
+      if (!parts) { fn(b); return; }
+      for (const [a, c, d, e, f, g] of parts) {
+        const pb = { x0: it.x + a, x1: it.x + e, y0: it.y + c, y1: it.y + f, z0: it.z + d, z1: it.z + g, item: it, climb: b.climb };
+        if (pb.x1 > x0 && pb.x0 < x1 && pb.z1 > z0 && pb.z0 < z1) fn(pb);
+      }
     });
   }
 
@@ -552,11 +627,11 @@ export class World {
   }
 
   // ---- Shared state (net.js keeps every screen's mods the same) ----
-  stateOf(it) { return { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; }
+  stateOf(it) { return { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl ? 1 : 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; }
 
   applyState(id, s) {
     if (!s || typeof s !== 'object') return null;
-    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: +s.x || 0, y: Math.max(0, +s.y || 0), z: +s.z || 0, r: (s.r | 0) & 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0 };
+    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: +s.x || 0, y: Math.max(0, +s.y || 0), z: +s.z || 0, r: (s.r | 0) & 3, tl: s.tl ? 1 : 0, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0 };
     if (st.k === 'f' ? !TYPES[st.t] : !ITEMS[st.t]) return null;
     this.mods.set(id, st);
     let it = this.items.get(id);

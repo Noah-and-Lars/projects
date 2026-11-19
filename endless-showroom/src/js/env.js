@@ -1,31 +1,50 @@
-// Store hours, today's event, and the look of the light (renderer side).
+// Store hours, the week, today's event, and the look of the light.
+//
+// A day is 6 minutes and a night 5. Days run Monday to Sunday; the food and
+// first aid kits are restocked at the start of every Monday and Friday.
+// Every 10th night is a Crimson Night (and any other night has a 1 in 20
+// chance); every 15th day is a Fog Day (any other day: 1 in 100). Power cuts
+// are rare. Everything here follows from the room's seed and the day, so
+// every screen agrees without being told.
 import * as THREE from 'three';
 import { hashInts } from './rng.js';
 import { uniforms } from './mats.js';
 
-export const DAY_LEN = 360, NIGHT_LEN = 180, CYCLE = DAY_LEN + NIGHT_LEN;
-export const POWERCUT = [120, 200];
+export const DAY_LEN = 360, NIGHT_LEN = 300, CYCLE = DAY_LEN + NIGHT_LEN;
+export const POWERCUT = [150, 240];
+export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+export const weekday = (day) => WEEKDAYS[(day - 1) % 7];
+
+// How many restocks have happened by this day (one each Monday and Friday).
+export function restockEpoch(day) {
+  const w = Math.floor((day - 1) / 7), r = (day - 1) % 7;
+  return w * 2 + (r >= 4 ? 2 : 1);
+}
+export const isRestockDay = (day) => { const r = (day - 1) % 7; return r === 0 || r === 4; };
 
 export const EVENTS = {
-  fog: { name: 'Fog', desc: 'A thick haze has settled over the store.' },
-  powercut: { name: 'Power Cut', desc: 'The power will fail for a while today. Staff get restless in the dark.' },
-  overtime: { name: 'Overtime', desc: 'Extra staff are working tonight, and they are faster.' },
-  calm: { name: 'Calm Night', desc: 'Fewer staff are working tonight.' },
+  fog: { name: 'Fog Day', desc: 'Thick fog fills the store. The staff are hunting, slowly, and they hit very hard. You can\'t shove them.' },
+  powercut: { name: 'Power Cut', desc: 'The power will fail for a while this afternoon. Staff hunt in the dark.' },
+  crimson: { name: 'Crimson Night', desc: 'More staff, twice as fast, and they climb and jump higher. Build walls high.' },
 };
 
-// The same on every screen: decided by the room's seed and the day.
-export function eventFor(seed, day) {
+export function dayEvent(seed, day) {
   if (day <= 1) return '';
-  const h = hashInts(seed, day, 77) % 100;
-  if (h < 8) return 'fog';
-  if (h < 16) return 'powercut';
-  if (h < 25) return 'overtime';
-  if (h < 32) return 'calm';
+  if (day % 15 === 0) return 'fog';
+  const h = hashInts(seed, day, 77) % 1000;
+  if (h < 10) return 'fog';
+  if (h < 40) return 'powercut';
   return '';
 }
-
+export function nightEvent(seed, day) {
+  if (day % 10 === 0) return 'crimson';
+  if (day > 1 && hashInts(seed, day, 78) % 100 < 5) return 'crimson';
+  return '';
+}
 export const isNight = (t) => t >= DAY_LEN;
-export function isHostile(t, ev) { return isNight(t) || (ev === 'powercut' && t >= POWERCUT[0] && t < POWERCUT[1]); }
+export const eventAt = (seed, day, t) => (isNight(t) ? nightEvent(seed, day) : dayEvent(seed, day));
+export const powerOut = (t, ev) => ev === 'powercut' && t >= POWERCUT[0] && t < POWERCUT[1];
+export function isHostile(t, ev) { return isNight(t) || ev === 'fog' || powerOut(t, ev); }
 
 // Store time shown on the clock: day runs 08:00-22:00, night 22:00-08:00.
 export function clockText(t) {
@@ -34,37 +53,40 @@ export function clockText(t) {
   return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
 }
 
-// 1 = all lights on, 0.04 = night.
+// 1 = all the overhead lights on. At night they go off at once with a clunk
+// (only the emergency fittings stay lit) and come back on in the morning.
 export function lightLevel(t, ev, time) {
-  const N = 0.04;
+  const N = 0.035;
   let L;
-  if (t < DAY_LEN - 8) L = 1;
-  else if (t < DAY_LEN) L = 1 - (t - (DAY_LEN - 8)) / 8 * (1 - N);
-  else if (t > CYCLE - 6) L = N + (t - (CYCLE - 6)) / 6 * (1 - N);
-  else L = N;
-  if (ev === 'powercut' && t >= POWERCUT[0] && t < POWERCUT[1]) {
+  if (t < DAY_LEN) L = 1;
+  else if (t > CYCLE - 2) L = N + (t - (CYCLE - 2)) / 2 * (1 - N);
+  else L = t < DAY_LEN + 0.25 ? (Math.sin(time * 60) > 0 ? 0.5 : N) : N; // a quick stutter as they cut out
+  if (powerOut(t, ev)) {
     const into = t - POWERCUT[0], left = POWERCUT[1] - t;
-    if (into < 3 || left < 3) L = Math.sin(time * 37) > 0.2 ? 1 : 0.05; // flicker
-    else L = 0.03;
+    if (into < 3 || left < 2) L = Math.sin(time * 37) > 0.2 ? 1 : 0.05; // flicker
+    else L = 0.025;
   }
+  if (ev === 'fog' && L > 0.5) L = 0.7;
   return L;
 }
 
-const DAY_FOG = new THREE.Color(0xd8d3c8), NIGHT_FOG = new THREE.Color(0x06070a), HAZE = new THREE.Color(0xb9b6b0);
+const DAY_FOG = new THREE.Color(0xd8d3c8), NIGHT_FOG = new THREE.Color(0x050608), HAZE = new THREE.Color(0xc9c6c0), RED_FOG = new THREE.Color(0x1a0303);
 export function applyLight(scene, lights, L, ev, low) {
   const fog = scene.fog;
-  fog.color.copy(NIGHT_FOG).lerp(ev === 'fog' ? HAZE : DAY_FOG, L);
-  const far = ev === 'fog' ? 10 + 12 * L : (low ? 18 + 32 * L : 22 + 50 * L);
-  fog.near = ev === 'fog' ? 1 : 2 + 8 * L;
-  fog.far = far;
+  const crimson = ev === 'crimson';
+  fog.color.copy(crimson ? RED_FOG : NIGHT_FOG).lerp(ev === 'fog' ? HAZE : DAY_FOG, L);
+  fog.near = ev === 'fog' ? 0.5 : 2 + 8 * L;
+  fog.far = ev === 'fog' ? 14 : (low ? 18 + 32 * L : 22 + 50 * L) + (crimson ? 6 : 0);
   scene.background.copy(fog.color);
   // Most of the light comes from the ceiling fittings (mats.js). The
   // hemisphere and environment are the bounce light; colours are linear,
   // so the dark end needs small numbers.
   uniforms.uLevel.value = L;
   uniforms.uEmerg.value = Math.max(0, Math.min(1, (0.6 - L) / 0.4));
-  lights.hemi.intensity = 0.03 + 0.8 * L;
-  lights.amb.intensity = 0.012 + 0.2 * L;
-  scene.environmentIntensity = 0.015 + 0.35 * L;
-  lights.ceil.setScalar(0.012 + 0.6 * L * L);
+  uniforms.uRed.value = crimson ? 1 : 0;
+  lights.hemi.intensity = 0.02 + 0.8 * L + (crimson ? 0.05 : 0);
+  lights.hemi.color.setRGB(1, crimson ? 0.35 : 0.96, crimson ? 0.3 : 0.9);
+  lights.amb.intensity = 0.008 + 0.2 * L;
+  scene.environmentIntensity = 0.01 + 0.35 * L;
+  lights.ceil.setScalar(0.01 + 0.6 * L * L);
 }

@@ -76,4 +76,126 @@ export const sfx = {
   click() { tone(900, 0.04, 'square', 0.05); },
   death() { tone(220, 1.2, 'sawtooth', 0.15, 0, 0.25); burst(0.8, 200, 0.3, 0.5, 'lowpass'); },
   chat() { tone(1200, 0.05, 'sine', 0.06); },
+  // Closing time: a heavy breaker clunk, the hum dying, and a falling warning tone.
+  lightsOff(red) {
+    if (!ctx) return;
+    burst(0.35, 120, 0.7, 0.7, 'lowpass'); tone(70, 0.4, 'square', 0.12, 0, 0.5);
+    tone(120, 1.4, 'sawtooth', 0.05, 0.05, 0.3);
+    for (let i = 0; i < 4; i++) tone(880 - i * 120, 0.9, 'triangle', 0.14 * (1 - i * 0.2), 0.5 + i * 0.75, 0.97);
+    if (red) { // a long, thin rising shriek
+      const t = ctx.currentTime + 0.8;
+      for (const [f, g] of [[400, 0.06], [403, 0.05], [800, 0.025]]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 3.2, t + 3.5);
+        const gg = ctx.createGain(); gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(g, t + 1.2); gg.gain.exponentialRampToValueAtTime(0.0001, t + 4);
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.8;
+        o.connect(bp); bp.connect(gg); gg.connect(master); o.start(t); o.stop(t + 4.1);
+      }
+    }
+  },
+  // Morning: the breaker again and the tubes flickering on.
+  lightsOn() {
+    if (!ctx) return;
+    burst(0.3, 140, 0.5, 0.7, 'lowpass');
+    for (let i = 0; i < 6; i++) setTimeout(() => { burst(0.04, 3000, 0.08, 3); tone(120, 0.06, 'square', 0.05); }, 120 + i * 90 + Math.random() * 60);
+    tone(523, 0.5, 'sine', 0.12, 0.9); tone(659, 0.5, 'sine', 0.12, 1.15); tone(784, 0.8, 'sine', 0.12, 1.4);
+  },
+  // A two-note finger whistle, panned towards whoever made it.
+  whistle(pan = 0, vol = 1) {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    for (const [f0, f1, at, dur] of [[1900, 2500, 0, 0.22], [2500, 1700, 0.3, 0.5]]) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t + at); o.frequency.exponentialRampToValueAtTime(f1, t + at + dur);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t + at); g.gain.linearRampToValueAtTime(0.16 * vol, t + at + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + at + dur);
+      let node = g; if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); node = p; }
+      o.connect(g); node.connect(master); o.start(t + at); o.stop(t + at + dur + 0.05);
+    }
+  },
+  shove() { burst(0.12, 300, 0.35, 0.8); tone(90, 0.12, 'sine', 0.2); },
+  drink() { for (let i = 0; i < 4; i++) setTimeout(() => tone(300 + Math.random() * 80, 0.07, 'sine', 0.08), i * 140); },
+  tick(n) { tone(1500 + n * 120, 0.05, 'square', 0.04 + n * 0.02); burst(0.03, 4000, 0.05 + n * 0.02, 4); },
 };
+
+// ---------------------------------------------------------------- music
+// Generated as it plays. Each weekday has its own gentle in-store tune (same
+// style, different key and pattern); night is a low drone with the odd
+// distant note; a Crimson Night pulses; a Fog Day is slow and sad.
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+let musicGain = null, musicVol = 0.5, musicMode = '', musicDay = 0, nextBeat = 0, beat = 0, musicTimer = 0, droneNodes = [];
+const DAY_ROOTS = [60, 62, 63, 65, 67, 57, 58]; // Monday .. Sunday
+const PROG = [[0, 4, 7], [9, 12, 16], [5, 9, 12], [7, 11, 14]];
+const PROG_B = [[0, 4, 7], [5, 9, 12], [9, 12, 16], [7, 11, 14]];
+const FOG_PROG = [[0, 3, 7], [8, 12, 15], [3, 7, 10], [10, 14, 17]];
+
+function note(freq, at, dur, type, gain, cutoff = 0) {
+  const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(gain, at + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  let n = o;
+  if (cutoff) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cutoff; o.connect(f); n = f; }
+  n.connect(g); g.connect(musicGain); o.start(at); o.stop(at + dur + 0.05);
+}
+function stopDrone() { for (const n of droneNodes) { try { n.g.gain.setTargetAtTime(0, ctx.currentTime, 0.8); n.o.stop(ctx.currentTime + 4); } catch (_) {} } droneNodes = []; }
+function startDrone(freqs, gain, type = 'sawtooth', cutoff = 220) {
+  stopDrone();
+  for (const f of freqs) {
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 12;
+    const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = cutoff;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, ctx.currentTime); g.gain.setTargetAtTime(gain, ctx.currentTime, 2);
+    o.connect(fl); fl.connect(g); g.connect(musicGain); o.start();
+    droneNodes.push({ o, g });
+  }
+}
+
+function schedule() {
+  if (!ctx || !musicMode) return;
+  const ahead = ctx.currentTime + 0.25;
+  while (nextBeat < ahead) {
+    const t = nextBeat;
+    if (musicMode === 'day') {
+      const spb = 60 / 84 / 2; // eighth notes at 84 bpm
+      const root = DAY_ROOTS[(musicDay - 1) % 7], prog = (musicDay % 2) ? PROG : PROG_B;
+      const bar = Math.floor(beat / 8) % 4, step = beat % 8, ch = prog[bar];
+      const pat = [0, 1, 2, 1, 0, 2, 1, 2];
+      note(mtof(root + 12 + ch[pat[(step + musicDay) % 8]]), t, 0.9, 'triangle', 0.05, 2200);
+      if (step === 0) { note(mtof(root - 12 + ch[0]), t, 1.8, 'sine', 0.09); for (const c of ch) note(mtof(root + c), t, 2.6, 'sine', 0.025); }
+      if (step === 4) note(mtof(root - 12 + ch[2]), t, 1.0, 'sine', 0.05);
+      if (step === 6 && bar === 3 && Math.random() < 0.5) note(mtof(root + 24 + ch[1]), t, 1.2, 'sine', 0.025);
+      nextBeat += spb;
+    } else if (musicMode === 'fog') {
+      const spb = 60 / 60 / 2, root = 57;
+      const bar = Math.floor(beat / 8) % 4, step = beat % 8, ch = FOG_PROG[bar];
+      note(mtof(root + 12 + ch[[0, 2, 1, 2, 0, 1, 2, 1][step]]), t, 1.6, 'sine', 0.045, 1200);
+      if (step === 0) { note(mtof(root - 12 + ch[0]), t, 3.6, 'sine', 0.08); for (const c of ch) note(mtof(root + c), t, 3.8, 'triangle', 0.02, 800); }
+      nextBeat += spb;
+    } else if (musicMode === 'night') {
+      // sparse, distant notes over the drone
+      if (Math.random() < 0.35) { const sc = [0, 3, 5, 7, 10, 12, 13]; note(mtof(57 + sc[Math.floor(Math.random() * sc.length)] + (Math.random() < 0.3 ? 12 : 0)), t, 3, 'sine', 0.035, 900); }
+      if (Math.random() < 0.06) { note(mtof(69), t, 4, 'sine', 0.02); note(mtof(70), t, 4, 'sine', 0.02); } // a sour cluster
+      nextBeat += 1.2 + Math.random() * 1.8;
+    } else if (musicMode === 'crimson') {
+      const spb = 60 / 132 / 4;
+      const step = beat % 16;
+      note(mtof(step % 8 === 7 ? 34 : 33), t, 0.16, 'sawtooth', 0.07, 420);
+      if (step === 0 || step === 10) note(mtof(45), t, 0.3, 'square', 0.03, 700);
+      if (step === 0 && Math.random() < 0.5) note(mtof(Math.random() < 0.5 ? 82 : 81), t, 1.6, 'sine', 0.025);
+      nextBeat += spb;
+    } else nextBeat += 0.5;
+    beat++;
+  }
+}
+
+export function setMusicVolume(v) { musicVol = v; if (musicGain) musicGain.gain.setTargetAtTime(musicVol * 0.6, ctx.currentTime, 0.3); }
+// mode: 'day' | 'night' | 'crimson' | 'fog' | '' (silence); day = the day number (sets the weekday tune)
+export function setMusic(mode, day) {
+  if (!ctx) return;
+  if (!musicGain) { musicGain = ctx.createGain(); musicGain.gain.value = musicVol * 0.6; musicGain.connect(master); musicTimer = setInterval(schedule, 90); }
+  if (mode === musicMode && day === musicDay) return;
+  const changed = mode !== musicMode;
+  musicMode = mode; musicDay = day;
+  if (changed) {
+    beat = 0; nextBeat = ctx.currentTime + 1.5;
+    if (mode === 'night') startDrone([mtof(33), mtof(40), mtof(45.1)], 0.05);
+    else if (mode === 'crimson') startDrone([mtof(33), mtof(34)], 0.045, 'sawtooth', 300);
+    else if (mode === 'fog') startDrone([mtof(45), mtof(52)], 0.02, 'triangle', 500);
+    else stopDrone();
+  }
+}

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { GeoBuilder } from './geo.js';
 import { TYPES, furnitureGeometry, furnitureMaterial } from './furniture.js';
 import { SURF, characterMaterial } from './mats.js';
+import { staffLook } from './staff.js';
 
 const mat = characterMaterial;
 
@@ -47,10 +48,15 @@ export function makeShopper(look) {
 // A member of staff: tall, faceless, in a teal work vest with a blank badge.
 // Eyes glow when they're hunting.
 let glowTex = null;
-export function makeStaff() {
+// They come in four heights and four builds, with different skin tones; all
+// featureless, all in the same teal work vest.
+const STAFF_SKIN = [0xd8d2c8, 0xe9c9a8, 0xc69c78, 0x9a6b4c, 0x6b4a36, 0xf0d9c4];
+export function makeStaff(id) {
+  const look = staffLook(id);
   const root = new THREE.Group();
   const body = new THREE.Group(); root.add(body);
-  const skin = 0xd8d2c8, vest = 0x1f6f6b, shirt = 0xece8e0, trousers = 0x2a2a30;
+  const skin = STAFF_SKIN[look.skin], vest = 0x1f6f6b, shirt = 0xece8e0, trousers = 0x2a2a30;
+  SKINS.add(skin);
   const leg = (x) => part((g) => { g.box(0, -0.48, 0, 0.18, 0.96, 0.2, trousers); g.box(0, -0.94, 0.05, 0.2, 0.08, 0.3, 0x111111); }, x, 0.98, 0);
   const legL = leg(-0.11), legR = leg(0.11);
   const torso = part((g) => {
@@ -76,7 +82,8 @@ export function makeStaff() {
   eyes.add(glow);
   head.add(eyes);
   body.add(legL, legR, torso, armL, armR, head);
-  return { root, body, legL, legR, armL, armR, head, eyes, phase: 0, attackT: 0 };
+  body.scale.set(look.widthScale, look.heightScale, Math.min(1.25, look.widthScale));
+  return { root, body, legL, legR, armL, armR, head, eyes, look, phase: 0, attackT: 0, down: 0 };
 }
 
 // Walk cycle; speed in m/s.
@@ -86,10 +93,20 @@ export function animate(m, speed, dt, opts = {}) {
   else m.phase *= 0.9;
   const s = Math.sin(m.phase) * 0.8 * amp;
   m.legL.rotation.x = s; m.legR.rotation.x = -s;
-  if (opts.carrying) { m.armL.rotation.x = m.armR.rotation.x = -1.35; }
+  if (opts.climbing) { m.armL.rotation.x = -2.8 + Math.sin(m.phase * 2) * 0.4; m.armR.rotation.x = -2.8 - Math.sin(m.phase * 2) * 0.4; m.phase += dt * 6; }
+  else if (opts.carrying) { m.armL.rotation.x = m.armR.rotation.x = -1.35; }
   else if (opts.reach) { m.armL.rotation.x = -1.5; m.armR.rotation.x = -1.5 + Math.sin(opts.reach * 20) * 0.4; }
   else { m.armL.rotation.x = -s * 0.8; m.armR.rotation.x = s * 0.8; }
   m.body.position.y = Math.abs(Math.cos(m.phase)) * 0.05 * amp;
+  if (m.crouchK !== undefined || opts.crouch) {
+    m.crouchK = (m.crouchK || 0) + ((opts.crouch ? 1 : 0) - (m.crouchK || 0)) * Math.min(1, dt * 10);
+    m.body.scale.y = 1 - m.crouchK * 0.42;
+  }
+  if (m.down !== undefined) {
+    m.down += ((opts.down ? 1 : 0) - m.down) * Math.min(1, dt * (opts.down ? 10 : 3));
+    m.body.rotation.x = -m.down * 1.45;
+    m.body.position.y += m.down * 0.25;
+  }
 }
 
 // Show the furniture a shopper is carrying (or nothing).

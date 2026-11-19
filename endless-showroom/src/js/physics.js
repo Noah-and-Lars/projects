@@ -1,5 +1,7 @@
 // Moving a standing body (player or staff) through the store: an upright
 // cylinder against axis-aligned boxes, with step-up, gravity and a ceiling.
+// A body with canClimb set that walks into something climbable (shelving,
+// bookcases, bunk beds, pallets) climbs up its face instead of stopping.
 import { CEIL } from './world.js';
 
 export function moveBody(world, b, dx, dz, dt) {
@@ -11,11 +13,12 @@ export function moveBody(world, b, dx, dz, dt) {
     let blocked = false, stepUp = 0;
     world.forBoxes(nx - r, nz - r, nx + r, nz + r, (o) => {
       if (o.y1 <= b.y + 0.001 || o.y0 >= b.y + b.height) return; // below feet or above head
-      if (o.y1 - b.y <= step && b.onGround) { // a step: rise onto it if there's room
+      if (o.y1 - b.y <= step && (b.onGround || b.climbing)) { // a step: rise onto it if there's room
         stepUp = Math.max(stepUp, o.y1 - b.y);
         return;
       }
       blocked = true;
+      if (o.climb && b.canClimb) climbHit = true;
     });
     if (!blocked && stepUp > 0) {
       // check headroom at the stepped height
@@ -28,12 +31,15 @@ export function moveBody(world, b, dx, dz, dt) {
     return false;
   };
   b.hitWall = false;
+  let climbHit = false;
   // Sub-steps so fast movement can't tunnel through thin walls.
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dz)) / 0.2));
   for (let i = 0; i < n; i++) { tryAxis(0, dx / n); tryAxis(1, dz / n); }
 
   // Vertical.
-  b.vy -= b.gravity * dt;
+  b.climbing = climbHit;
+  if (b.climbing) b.vy = Math.max(b.vy, 3.2);
+  else b.vy -= b.gravity * dt;
   let ny = b.y + b.vy * dt;
   let ground = 0, ceil = CEIL;
   world.forBoxes(b.x - r + 0.01, b.z - r + 0.01, b.x + r - 0.01, b.z + r - 0.01, (o) => {
