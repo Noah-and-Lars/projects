@@ -440,6 +440,13 @@ body.touch #throttle{top:40%}
 <div id="notes" class="ov dim hidden">
   <div class="panel ts notesPanel">
     <h2>Patch notes</h2>
+    <h3>v1.5.2 <small>Planes start close to the fight again</small></h3>
+    <ul>
+      <li><b>The Supercarrier is back close behind your harbor</b> (1.5.1 had parked it far out at sea), so planes are in the fight much sooner.</li>
+      <li><b>Planes no longer start inside each other:</b> the Supercarrier has six take-off spots, and each new plane gets a free one.</li>
+      <li><b>The whole battle fits on the map again:</b> the edge of the play area is back where it was, so you and the Supercarrier always show on the minimap and the big map.</li>
+      <li>New battle and room channels, so 1.5.2 players only meet other 1.5.2 players.</li>
+    </ul>
     <h3>v1.5.1 <small>Subs that hit, planes from the Supercarrier, deadlier planes</small></h3>
     <ul>
       <li><b>Subs can fire in the pipe:</b> torpedoes from the pipe or the basin run straight along at your depth and hit the pump house foundations. The basin's back wall counts as a foundation too, so a straight shot down the pipe always lands (double damage to the harbor), and you see <b>Foundation hit!</b> when it does. Online, other players' torpedoes no longer jump to the surface on the host's screen.</li>
@@ -778,7 +785,7 @@ body.touch #throttle{top:40%}
    Havoc Bay: a Red vs Blue sea battle.
    One file: engine setup, models, world, vehicles, bots, player, HUD, flow.
    ========================================================================== */
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 // Online play lives in the hb-net script at the end of the page, which fills this in.
 // NET.on is true during an online match; NET.host on the screen that runs it, NET.client on everyone else's.
 const NET = { on: false, host: false, client: false, inRoom: () => false, inWorld: () => false };
@@ -969,7 +976,7 @@ scene.add(sky);
 // 1.4.3: the whole map is 1.5x bigger (MAP_K): harbors, islands, bounds, minimap, sea floor and the computer's map all scale
 const MAP_K = 1.5;
 const MAP = { x0: -3150 * MAP_K, z0: -1850 * MAP_K, w: 6300 * MAP_K, h: 3700 * MAP_K }; // 1.2.7: wider, the harbors are further apart
-const BOUND = { x: 3700 * MAP_K, z: 1650 * MAP_K }; // 1.5.1: x was 2950: room for the Supercarriers, now far behind the harbors
+const BOUND = { x: 2950 * MAP_K, z: 1650 * MAP_K }; // 1.5.2: back to 2950 (1.5.1's 3700 ran past the edge of the map), the Supercarriers are close again
 const FREEZE_S = 30;   // 1.2.3: seconds in the water before you freeze
 const DEPTH_W = 1210, DEPTH_H = 710; // 1.4.3: x1.25 for the 1.5x map (a little coarser per metre, much cheaper than x1.5)
 const depthData = new Uint8Array(DEPTH_W * DEPTH_H * 4);
@@ -2209,7 +2216,7 @@ class Site {
 // from this deck (1.5.1: only here; deploy() and spawnBot send them) and the carriers players buy, never from the islands, which were
 // too close to the other side's harbor. It can't be sunk. Its runway runs toward the enemy (RUNWAYS, team): land on it
 // to refuel. SC_X is the middle of the deck in the harbor's own space (-x is out to sea), SC_DECK its height.
-const SC_X = -1960, SC_L = 340, SC_W = 66, SC_DECK = 22; // 1.5.1: 3.5x further out to sea (was -560)
+const SC_X = -700, SC_L = 340, SC_W = 66, SC_DECK = 22; // 1.5.2: close behind the harbor again (1.5.1's -1960 was too far from the fight and off the map; 1.5 was -560)
 function buildSupercarrier(H) {
   const I = H.isle, sgn = H.sgn, T = TEAM[H.team];
   const s = new Site(I.x, I.z, sgn, H);
@@ -3980,9 +3987,24 @@ function heliSpawn(type, team, isl, driver) {
 function spawnPlane(type, team, pad, driver) {
   if (PLANE_TYPES[type].heli) return new Plane(type, team, new V3(pad.spawn.x, Math.max(pad.spawn.y, landH(pad.spawn.x, pad.spawn.z) + 12), pad.spawn.z), pad.heading, 0, driver); // 1.4
   if (pad.rw) return runwaySpawn(type, team, driver, pad.island); // 1.2.1: Crown Isle's runways (1.3.1: or that island's)
+  if (pad.sc) return new Plane(type, team, scSlot(pad), pad.heading, 0.16, driver); // 1.5.2: a free spot on the deck
   return new Plane(type, team, pad.spawn, pad.heading, 0.16, driver);
 }
 
+// 1.5.2: the Supercarrier has six take-off spots (two rows of three across the runway), so planes launched together
+// (players and bots on one team) no longer start inside each other. The first spot with no aircraft near it is used.
+function scSlot(pad) {
+  const fx = Math.sin(pad.heading), fz = Math.cos(pad.heading), sx = fz, sz = -fx;
+  let best = null, bestD = -1;
+  for (const [a, c] of [[0, 0], [0, -13], [0, 13], [45, 0], [45, -13], [45, 13]]) {
+    const x = pad.spawn.x + fx * a + sx * c, z = pad.spawn.z + fz * a + sz * c;
+    let d = 1e9;
+    for (const o of ENTS) if (o.kind === 'plane' && o.alive) d = Math.min(d, Math.hypot(o.pos.x - x, o.pos.y - pad.spawn.y, o.pos.z - z));
+    if (d > 22) return new V3(x, pad.spawn.y, z);
+    if (d > bestD) { bestD = d; best = new V3(x, pad.spawn.y, z); }
+  }
+  return best;
+}
 // carriers: planes take off from the bow end of the flight deck
 function teamCarriers(team) { return ENTS.filter(e => e.kind === 'ship' && e.alive && e.team === team && e.S.carrier); }
 function launchFromCarrier(type, team, c, driver) {
@@ -8572,7 +8594,7 @@ function rbox(w, h, d, r, seg = 3) {
   const isHost = () => !!room && room.hostId === myId;
   function newRoom(code, name, topic) {
     let synced; const sync = new Promise(r => synced = r);
-    return { code, topic: topic || 'hb-room151-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
+    return { code, topic: topic || 'hb-room152-' + code, world: false, name: cleanName(name) || 'Player', ch: null, up: null, hostId: null, j: 0, tracked: false, closed: false,
       roster: new Map(), names: new Map(), settings: { ...DEFAULTS }, pings: {}, acks: {}, myPing: null, seen: new Set(),
       ups: new Map(), lastHeard: new Map(), hz: MAX_HZ, stDue: false, lastSt: 0, lastSend: 0, sync, synced, trouble: 0, waitAcc: null, matchOn: false, infoAt: 0 };
   }
@@ -8740,7 +8762,7 @@ function rbox(w, h, d, r, seg = 3) {
   async function joinWorld(name) {
     if (room) leaveRoom();
     await getClient();
-    room = newRoom('WORLD', name, 'hb-world-151'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
+    room = newRoom('WORLD', name, 'hb-world-152'); room.world = true; room.settings = { ...WORLD }; // 1.2.1: a new channel (gunner seats, missiles), so older copies can't join this version's battle (1.3.1: again, for flares, rolls and upgrades). (In 1.2 this comment hid the two settings before it, so the public battle ignored the side you picked.)
     try {
       room.ch = chan(room.topic, true); wireRoom(room.ch);
       await joinChan(room.ch, trouble);
@@ -9691,7 +9713,7 @@ function rbox(w, h, d, r, seg = 3) {
     let ch = null;
     try {
       await getClient();
-      ch = chan('hb-world-151'); await joinChan(ch);
+      ch = chan('hb-world-152'); await joinChan(ch);
       await new Promise(r => setTimeout(r, 1200));
       const st = ch.presenceState(), n = [0, 0];
       for (const k in st) { const m = st[k] && st[k][0]; if (m && (m.t === 0 || m.t === 1)) n[m.t]++; }
