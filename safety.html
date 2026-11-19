@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
+<script>
+// 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
+// not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
+(function () {
+  var u = navigator.userAgent || '', c = document.documentElement.classList, f = '';
+  try { f = (/[?&]mob=(phone|tab|off)/.exec(location.search) || [])[1] || sessionStorage.getItem('arcade-mob') || ''; if (f) sessionStorage.setItem('arcade-mob', f); } catch (e) {}
+  var ipad = /iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|webOS|Android.+Mobile|Mobile.+Firefox/.test(u);
+  var tab = !phone && (ipad || /Android|Tablet|Silk|Kindle|PlayBook/.test(u));
+  if (f) { phone = f === 'phone'; tab = f === 'tab'; }
+  if (phone || tab) { c.add('mob'); c.add(phone ? 'mob-phone' : 'mob-tab'); }
+  var vh = function () { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
+  vh(); window.addEventListener('resize', vh);
+  // older browsers (iOS before 14) don't have replaceChildren, which the home page uses to list the games
+  if (window.Element && !Element.prototype.replaceChildren) Element.prototype.replaceChildren = function () { while (this.firstChild) this.removeChild(this.firstChild); for (var i = 0; i < arguments.length; i++) { var n = arguments[i]; this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n); } };
+})();
+</script>
+<title>Safety for parents and schools · The Arcade</title>
+<meta name="description" content="How chat, accounts, messages and moderation work on The Arcade, in plain words, for parents, carers and teachers.">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="arcade.css?v=24">
+<link rel="stylesheet" href="support.css?v=1">
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">The Arcade</a>
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab" href="index.html">Games</a>
+    <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
+    <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
+    <a class="tab" href="social.html">Social</a>
+    <a class="tab on" href="support.html" aria-current="page">Support</a>
+    <a class="tab" href="app/">Software</a>
+  </nav>
+</header>
+
+<!-- safety.html (2026-11-19): plain-English safety page for parents and schools. Keep it true to how the site works
+     (CLAUDE.md: chat.html, players.html, social.html, call.js, assistant.js, account.js; the Terms in tos.js section 7).
+     If a moderation feature changes (a chat filter, reporting, what's kept), change this page in the same commit. -->
+<main class="wrap">
+  <div class="sp sp-prose">
+    <a class="sp-crumb" href="support.html">← Support</a>
+    <h1>Safety for parents and schools</h1>
+    <p class="sp-lead">The Arcade is a free website of browser games. Some games and pages let players talk to each other. This page explains what children can see and do, what we keep, and how to report a problem. It is written to be accurate, not reassuring: please read the parts about chat.</p>
+    <nav class="sp-toc" aria-label="On this page">
+      <a href="#s-short">In short</a><a href="#s-accounts">Accounts</a><a href="#s-chat">Chat and messages</a><a href="#s-calls">Voice and video</a>
+      <a href="#s-social">Social</a><a href="#s-ai">Assistant</a><a href="#s-mod">Moderation</a><a href="#s-data">What we keep</a><a href="#s-tips">Tips</a><a href="#s-report">Reporting</a>
+    </nav>
+
+    <h2 id="s-short">In short</h2>
+    <ul>
+      <li>No email address, real name or phone number is needed. An account is just a username and password.</li>
+      <li>The <b>Global chat</b> is open to everyone, including visitors without an account. <b>Chat and private messages are not swear-filtered.</b> Usernames are.</li>
+      <li>Anyone with an online account can send a private message or video call to anyone else, unless they have been blocked.</li>
+      <li>Admins can delete messages and posts, and ban accounts. There is no one watching the chat all the time.</li>
+      <li>Children who don’t need chat or online play can use a <a href="#s-accounts">local account</a> and play offline.</li>
+    </ul>
+
+    <h2 id="s-accounts">Accounts</h2>
+    <p>There are three ways to use The Arcade:</p>
+    <table class="sp-table">
+      <tr><th scope="row">No account (guest)</th><td>Can play the offline games. Can read and write in the Global chat as a “guest”. Can’t play online, message people or post.</td></tr>
+      <tr><th scope="row">Local account</th><td>A name saved only in that browser. Can play the offline games. Can’t play online, add friends or send private messages. Nothing is sent to our servers, but progress is lost if the browser’s data is cleared.</td></tr>
+      <tr><th scope="row">Online account</th><td>A username and password. Saves progress to the account so it works on other devices, and unlocks online play, friends, private messages, video calls, Social and the Assistant.</td></tr>
+    </table>
+    <p>Usernames are public: they show in games, the chat and the Players list. Rude and reserved names are refused, but please make sure your child doesn’t use their real name. The password never leaves the device in readable form; we only store a scrambled check of it. A one-time recovery code is the only way to reset a forgotten password, as there is no email.</p>
+
+    <h2 id="s-chat">Chat and messages</h2>
+    <h3>Global chat</h3>
+    <p>One chat room for the whole site. Signed-in players chat under their username; visitors without an account chat as guests. Messages are shown as typed: <b>there is no swear filter on chat messages</b> (this was a deliberate choice for the chat). Usernames are filtered. Anyone can send up to 5 messages in 10 seconds, and links to some sites are blocked.</p>
+    <p>Each player can <b>Mute</b> anyone, which hides their messages on that device, and can hide the chat history. Admins can delete any message.</p>
+    <h3>Private messages and group chats</h3>
+    <p>On the Players tab, players with online accounts can message each other one-to-one, or in group chats of up to 15. <b>Anyone can message anyone</b>, not only friends. These messages are not swear-filtered either. <b>Block</b> on a player’s profile stops them sending messages, calls and friend requests; they aren’t told they were blocked.</p>
+    <h3>Chat inside games</h3>
+    <p>Some online games have their own room chat. Filtering there varies from game to game, so treat it like the Global chat.</p>
+
+    <h2 id="s-calls">Voice chat and video calls</h2>
+    <p>Some online games, such as Havoc Bay and Turn! Turn! TURN!, have voice chat with the other players in the same room. Players with online accounts can also video call each other, one-to-one or in groups of up to 15, including people who aren’t their friends unless one has blocked the other.</p>
+    <ul>
+      <li>Nobody sees or hears you until you accept a call. A friend’s camera shows while their call is ringing; someone who isn’t a friend shows only their name.</li>
+      <li>Voice and video go directly between the players’ browsers. <b>We don’t record them and can’t listen to or moderate them.</b></li>
+      <li>The camera and microphone only work after the browser asks for, and is given, permission.</li>
+    </ul>
+
+    <h2 id="s-social">Social</h2>
+    <p>Social is a feed of posts. Clips recorded from inside our games go up straight away. Any other photo or video a player uploads is hidden until an admin approves it. Players can <b>Report</b> a post; posts reported by several players are hidden from the feed until an admin looks at them. Captions and comments are shown as written, but each player can turn on “Filter swear words on Social” in their account settings.</p>
+
+    <h2 id="s-ai">The Assistant</h2>
+    <p>The Assistant is an AI chat helper for players with online accounts. It is told to be kid-friendly, to explain homework rather than just give answers, and not to share anyone’s personal details. Each reply is checked by a separate safety model before it is shown, and there is a daily limit on use. Like any AI, it can still get things wrong.</p>
+
+    <h2 id="s-mod">Moderation</h2>
+    <p>The Arcade is run by a small team. Admins can:</p>
+    <ul>
+      <li>delete chat messages, Social posts, comments and profile pictures;</li>
+      <li>rename an account, or ban it (a banned account is signed out everywhere and can’t sign in again);</li>
+      <li>ban the devices an account used, so new accounts can’t be made from them in that browser;</li>
+      <li>investigate reports using the records described below.</li>
+    </ul>
+    <p>Moderation happens when something is reported or spotted, not around the clock. A device ban can be dodged by clearing the browser’s data or using another browser.</p>
+
+    <h2 id="s-data">What we keep</h2>
+    <p>This is a summary of section 7 of our Terms of Service, which every visitor agrees to (the home page footer has the full Terms). We never ask for an email address or real name.</p>
+    <ul>
+      <li><b>Online accounts:</b> the username, a scrambled check of the password, and game saves, scores and settings, stored with Cloudflare so progress works on other devices.</li>
+      <li><b>Local accounts:</b> nothing on our servers; everything stays in that browser.</li>
+      <li><b>Safety records</b> (online accounts, seen only by admins): when the account signs in, from which device (a random ID in the browser) and internet address with rough location (city and country), the type of browser and device with some technical details, play time per game, which pages are opened, who the account exchanges private messages with and how many (not what they say), its Global chat messages (kept even after they’re removed from the chat), and changes like renames and bans.</li>
+      <li><b>Private messages</b> are stored so both people can see them. In serious situations, such as threats, bullying, scams or someone being at risk, an admin may read them, and the reason is recorded each time.</li>
+    </ul>
+
+    <h2 id="s-tips">Tips for parents and schools</h2>
+    <ul>
+      <li><b>Want no chat at all?</b> Use a local account or no account and stick to the offline games. Note that guests can still open and write in the Global chat page.</li>
+      <li>Talk to your child about not sharing their real name, school, address, photos or passwords, and about telling an adult if someone makes them uncomfortable.</li>
+      <li>Show them how to <b>Mute</b> in the Global chat and <b>Block</b> on the Players tab.</li>
+      <li>On a shared school computer, make sure each child logs out (account button → Log out of this device). Their progress stays in their account.</li>
+      <li>School networks can block online games and video calls; the offline games still work.</li>
+    </ul>
+
+    <h2 id="s-report">How to report a problem</h2>
+    <ol>
+      <li>On Social, use <b>Report</b> on the post.</li>
+      <li>For anything else (the Global chat, private messages, a game, a username), use <a href="support.html#spContact">Support → Contact us → Report a player</a>. Say the username, where it happened and when. Reports go to the site admins through a Google Form.</li>
+      <li>If someone may be in danger, contact the police or your local emergency number first.</li>
+    </ol>
+    <p class="sp-note small">Last checked 19 November 2026.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <p>The Arcade · <a href="support.html">Support</a> · <a href="release-notes.html">Release notes</a> · <a href="safety.html">Safety</a></p>
+</footer>
+
+<script src="games.js?v=263"></script>
+<script src="account.js?v=40"></script>
+<script src="console.js?v=3"></script>
+<script src="tos.js?v=21"></script>
+<script src="cursors.js?v=2"></script>
+<script src="outage.js?v=2"></script>
+<script src="support.js?v=1"></script>
+</body>
+</html>

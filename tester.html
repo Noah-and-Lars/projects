@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
+<script>
+// 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
+// not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
+(function () {
+  var u = navigator.userAgent || '', c = document.documentElement.classList, f = '';
+  try { f = (/[?&]mob=(phone|tab|off)/.exec(location.search) || [])[1] || sessionStorage.getItem('arcade-mob') || ''; if (f) sessionStorage.setItem('arcade-mob', f); } catch (e) {}
+  var ipad = /iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|webOS|Android.+Mobile|Mobile.+Firefox/.test(u);
+  var tab = !phone && (ipad || /Android|Tablet|Silk|Kindle|PlayBook/.test(u));
+  if (f) { phone = f === 'phone'; tab = f === 'tab'; }
+  if (phone || tab) { c.add('mob'); c.add(phone ? 'mob-phone' : 'mob-tab'); }
+  var vh = function () { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
+  vh(); window.addEventListener('resize', vh);
+  // older browsers (iOS before 14) don't have replaceChildren, which the home page uses to list the games
+  if (window.Element && !Element.prototype.replaceChildren) Element.prototype.replaceChildren = function () { while (this.firstChild) this.removeChild(this.firstChild); for (var i = 0; i < arguments.length; i++) { var n = arguments[i]; this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n); } };
+})();
+</script>
+<title>Become a game tester · The Arcade</title>
+<meta name="description" content="Want to play new games and updates on The Arcade before everyone else? Take a short skills quiz, then send your tester request.">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="arcade.css?v=24">
+<link rel="stylesheet" href="support.css?v=1">
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">The Arcade</a>
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab" href="index.html">Games</a>
+    <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
+    <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
+    <a class="tab" href="social.html">Social</a>
+    <a class="tab on" href="support.html" aria-current="page">Support</a>
+    <a class="tab" href="app/">Software</a>
+  </nav>
+</header>
+
+<!-- tester.html (2026-11-19): a short skills quiz (support.js QUIZ, 5 of 6 to pass) before the game tester request
+     Google Form, which opens pre-filled with the username and score. Passing is remembered in 'arcade-tester-quiz'. -->
+<main class="wrap">
+  <div class="sp">
+    <a class="sp-crumb" href="support.html">← Support</a>
+    <h1>Become a game tester</h1>
+    <p class="sp-lead">Testers play new games and updates before they go live and tell us what’s broken. Answer these six questions first: they’re about how to report bugs well. Get 5 right and you can send your request.</p>
+    <div class="sp-card" id="tqPrev" hidden>
+      <p style="margin:0 0 10px">You already passed the quiz on this device.</p>
+      <button type="button" class="sp-btn green small" id="tqPrevGo">Skip to the request</button>
+    </div>
+    <div id="tqQuiz"></div>
+    <div class="sp-row" style="margin-top:16px"><button type="button" class="sp-btn" id="tqCheck">Check my answers</button></div>
+    <div id="tqResult" class="sp-result" hidden aria-live="polite"></div>
+    <p class="sp-note small" style="margin-top:22px">Passing the quiz doesn’t make you a tester by itself: the testing team reads every request and picks testers. Testers can get a Tester tag on their profile.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <p>The Arcade · <a href="support.html">Support</a> · <a href="release-notes.html">Release notes</a> · <a href="safety.html">Safety</a></p>
+</footer>
+
+<script src="games.js?v=263"></script>
+<script src="account.js?v=40"></script>
+<script src="console.js?v=3"></script>
+<script src="tos.js?v=21"></script>
+<script src="cursors.js?v=2"></script>
+<script src="outage.js?v=2"></script>
+<script src="support.js?v=1"></script>
+</body>
+</html>

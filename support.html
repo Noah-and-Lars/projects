@@ -25,7 +25,7 @@
 })();
 </script>
 <title>Support · The Arcade</title>
-<meta name="description" content="Found a bug or got an idea for The Arcade? Send feedback, apply to become a game tester, or apply to be a developer.">
+<meta name="description" content="Help with The Arcade: answers about accounts, saves and online play, server status, bug reports, known issues, release notes, feature voting and safety information.">
 <meta name="theme-color" content="#050506">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
@@ -36,8 +36,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="The Arcade">
 <link rel="stylesheet" href="arcade.css?v=24">
+<link rel="stylesheet" href="support.css?v=1">
 <style>
-.sup { max-width: 760px; margin: 28px auto 0; }
+.sup { max-width: 820px; margin: 28px auto 0; }
 .sup h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.01em; }
 .sup-lead { margin: 0 0 22px; color: var(--muted); font-size: 15px; }
 .feedback { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; padding: 20px 22px; border-radius: 18px;
@@ -70,14 +71,95 @@
 </header>
 
 <main class="wrap">
-  <div class="sup">
+  <div class="sup sp">
     <h1>Support</h1>
-    <p class="sup-lead">Something not working, or something you want to see on The Arcade? Let us know.</p>
+    <p class="sup-lead">Something not working, or something you want to see on The Arcade? Find an answer or let us know.</p>
 
+    <!-- 332: server status (support.js; follows outage.js) -->
+    <div id="spStatus" class="sp-status unk" role="status" aria-live="polite"><i class="dot" aria-hidden="true"></i><div><b>Checking the servers…</b></div></div>
+
+    <nav class="sp-quick" aria-label="Support pages">
+      <a href="release-notes.html"><b>Release notes</b><small>Every update to every game, newest first.</small></a>
+      <a href="#spIssues"><b>Known issues</b><small>Problems we already know about.</small></a>
+      <a href="safety.html"><b>Safety</b><small>For parents and schools: chat, accounts and moderation.</small></a>
+      <a href="tester.html"><b>Become a tester</b><small>Take the quiz and play updates early.</small></a>
+    </nav>
+
+    <!-- help centre -->
+    <section class="sp-sec" id="spHelp" aria-labelledby="spHelpH">
+      <h2 id="spHelpH">Help centre</h2>
+      <p>Quick answers about accounts, saves, controls and online play.</p>
+      <label class="sp-l" for="spHelpQ" style="margin-top:0">Search the help</label>
+      <input type="search" id="spHelpQ" placeholder="Try “forgot password” or “controller”" autocomplete="off">
+      <div class="sp-chips" id="spHelpCats" role="group" aria-label="Topics"></div>
+      <p class="sp-note small" id="spHelpN" aria-live="polite"></p>
+      <div class="sp-arts" id="spHelpList"></div>
+    </section>
+
+    <!-- 336: contact categories -->
+    <section class="sp-sec sp-card" id="spContact" aria-labelledby="spContactH">
+      <h2 id="spContactH">Contact us</h2>
+      <p>Pick what it’s about and we’ll send you to the right place. Everything goes through Google Forms: The Arcade has no email address.</p>
+      <div class="sp-cats" id="spCats" role="group" aria-label="What is it about?"></div>
+      <div class="sp-dest" id="spDest" hidden aria-live="polite"></div>
+    </section>
+
+    <!-- 333: bug report with device info -->
+    <section class="sp-sec sp-card" id="spBug" aria-labelledby="spBugH">
+      <h2 id="spBugH">Report a bug</h2>
+      <p>We fill in your device and the game version for you. Pressing Send opens our feedback form (a Google Form) with your report already in it: press <b>Submit</b> there to send it.</p>
+      <form id="spBugForm" novalidate>
+        <label class="sp-l" for="spBugGame">Which game?</label>
+        <select id="spBugGame"></select>
+        <p class="sp-note small" id="spBugVer" style="margin:6px 0 0"></p>
+        <label class="sp-l" for="spBugWhat">What went wrong?</label>
+        <textarea id="spBugWhat" maxlength="600" placeholder="What happened, and what did you expect to happen?"></textarea>
+        <label class="sp-l" for="spBugSteps">How can we make it happen? <span style="color:var(--muted);font-weight:500">(optional)</span></label>
+        <textarea id="spBugSteps" maxlength="600" placeholder="1. Start a match  2. Jump off the boat  3. …"></textarea>
+        <label class="sp-l" for="spBugOften">How often?</label>
+        <select id="spBugOften"><option>Every time</option><option>Sometimes</option><option>Only once</option></select>
+        <label class="sp-l" for="spBugInfo">Your device (filled in automatically)</label>
+        <pre class="sp-pre" id="spBugInfo" tabindex="0"></pre>
+        <p class="sp-note small" style="margin:6px 0 0">This is sent with your report so we can find the bug. It includes your username if you’re signed in. Nothing is sent until you press Submit on the form.</p>
+        <p class="sp-note" id="spBugErr" role="alert" style="color:var(--danger);margin:10px 0 0"></p>
+        <div class="sp-row" style="margin-top:12px">
+          <button type="submit" class="sp-btn">Send report ↗</button>
+          <button type="button" class="sp-btn ghost" id="spBugCopy">Copy report</button>
+        </div>
+        <p class="sp-note" id="spBugDone" hidden style="margin:12px 0 0">Report <b></b> is in the form. Press Submit there, then follow it under My reports below.</p>
+      </form>
+    </section>
+
+    <!-- 334: my reports -->
+    <section class="sp-sec" id="spTix" aria-labelledby="spTixH">
+      <h2 id="spTixH">My reports</h2>
+      <p>Reports you sent from this page, saved on this device and in your account. Every report starts as <b>Received</b>; status changes from the team will show here once they can update them online.</p>
+      <div class="sp-tix" id="spTixList"></div>
+    </section>
+
+    <!-- 337: known issues -->
+    <section class="sp-sec sp-card" id="spIssues" aria-labelledby="spIssuesH">
+      <h2 id="spIssuesH">Known issues</h2>
+      <p>Problems we already know about. No need to report these.</p>
+      <label class="sp-l" for="spIssueGame" style="margin-top:0">Show issues for</label>
+      <select id="spIssueGame"></select>
+      <ul class="sp-issues" id="spIssueList"></ul>
+      <p class="sp-note small" id="spIssueDate" style="margin:10px 0 0"></p>
+    </section>
+
+    <!-- 335: feature voting -->
+    <section class="sp-sec" id="spVotes" aria-labelledby="spVotesH">
+      <h2 id="spVotesH">Vote for what’s next</h2>
+      <p id="spVoteNote">Vote for the ideas you want most (one vote per idea). Your votes are saved on this device and in your account. Totals from everyone will show here once vote counting is switched on.</p>
+      <div class="sp-votes" id="spVoteList"></div>
+      <div class="sp-row" style="margin-top:12px"><span class="sp-note small" id="spVoteN" style="margin:0;flex:1"></span><a class="sp-btn ghost small" id="spVoteIdea" href="#" target="_blank" rel="noopener noreferrer">Suggest an idea ↗</a></div>
+    </section>
+
+    <h2 class="sp-h" style="margin:40px 0 12px">Forms</h2>
     <section class="section feedback" aria-labelledby="fbH">
       <div class="fb-text">
         <h2 class="sec-h" id="fbH">Found a bug? Got an idea?</h2>
-        <p>Tell us which game, what happened and what device you were on, or what you want added next. Every answer gets read.</p>
+        <p>The feedback form on its own: tell us which game, what happened and what device you were on, or what you want added next. Every answer gets read.</p>
       </div>
       <a class="fb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSeOQOSz6bS6-2aBxjDZSSdxpBYECQlmbnOWhmeAk34R3wU-7g/viewform" target="_blank" rel="noopener noreferrer">Send feedback ↗</a>
     </section>
@@ -85,9 +167,9 @@
     <section class="section feedback tester" aria-labelledby="ttH">
       <div class="fb-text">
         <h2 class="sec-h" id="ttH">Want to be a game tester?</h2>
-        <p>Play new games and updates before everyone else and help find bugs before they go live. Send a request and we'll get back to you.</p>
+        <p>Play new games and updates before everyone else and help find bugs before they go live. Take a short quiz, then send a request and we'll get back to you.</p>
       </div>
-      <a class="fb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLScRRLtCvERDPKOwirvIU6wiKfjw2f6LrIRz43iTdZ9hRYqnCg/viewform" target="_blank" rel="noopener noreferrer">Apply to test ↗</a>
+      <a class="fb-btn" href="tester.html">Take the tester quiz</a>
     </section>
 
     <section class="section feedback dev" aria-labelledby="dvH">
@@ -101,7 +183,7 @@
 </main>
 
 <footer class="foot">
-  <p>The Arcade</p>
+  <p>The Arcade · <a href="release-notes.html">Release notes</a> · <a href="safety.html">Safety</a></p>
 </footer>
 
 <script src="games.js?v=263"></script>
@@ -112,6 +194,7 @@
 <script>
 // Support (2026-11-11): the feedback form (a Google Form), moved here from the bottom of the home page, and the
 // game tester request form and the developer application form (also Google Forms).
+// 2026-11-19: status, help centre, contact categories, bug report, my reports, known issues and voting (support.js).
 ArcadeOnline.start('support');
 </script>
 <script src="tos.js?v=21"></script>
@@ -119,5 +202,6 @@ ArcadeOnline.start('support');
 <script src="moving.js?v=1"></script>
 <script src="cursors.js?v=2"></script>
 <script src="outage.js?v=2"></script>
+<script src="support.js?v=1"></script>
 </body>
 </html>
