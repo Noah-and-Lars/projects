@@ -308,7 +308,6 @@ function startGame(seed, waitForState, save) {
   }
   remotes.forEach((r) => scene.remove(r.model.root)); remotes.clear();
   staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
-  npcViews.forEach((v) => scene.remove(v.m.root)); npcViews.clear();
   staffSim = net.isHost() ? new StaffSim(world) : null;
   Object.assign(P, { hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, nights: 0, vy: 0, hurtT: 99, using: null, whistleT: 0 });
   waypoints.length = 0;
@@ -691,61 +690,6 @@ let target = null, placement = null;
 function eye() { return [P.x, P.y + P.eyeH, P.z]; }
 function lookDir() { const cp = Math.cos(P.pitch); return [-Math.sin(P.yaw) * cp, Math.sin(P.pitch), -Math.cos(P.yaw) * cp]; }
 
-// ---------------------------------------------------------------- lost shoppers
-// The odd fellow survivor, sitting by a lamp. They talk, and the first time,
-// they share some food.
-const npcViews = new Map();
-let npcT = 0;
-const NPC_LINES = [
-  "I've been in here for weeks. They can climb about a metre, so stay higher than that... and don't leave a step.",
-  'Cafeterias have the most food. If you find one, drop a waypoint.',
-  'Every tenth night the lights go red. Build high, and build early.',
-  'If you get lost, whistle. Somebody might hear you. Something might, too.',
-  "Food comes back on Mondays and Fridays. Don't eat it all at once.",
-  'You can stand inside the big wardrobes. Block the front and keep still.',
-  'Hail comes through the skylights in the garden bit. Get something over your head.',
-];
-let npcGiven = new Set();
-try { npcGiven = new Set(JSON.parse(localStorage.getItem('es-npc') || '[]')); } catch (_) {}
-function updateNpcs(dt) {
-  npcT -= dt;
-  if (npcT > 0) return;
-  npcT = 0.5;
-  const want = new Set();
-  for (const ch of world.chunks.values()) if (ch.mesh) for (const n of ch.npcs || []) {
-    want.add(n.id);
-    if (npcViews.has(n.id)) continue;
-    const m = makeShopper(nameHash(n.id), (nameHash(n.id) >> 3) % 10);
-    m.root.position.set(n.x, n.y, n.z); m.root.rotation.y = n.ry;
-    // seated: hips on the bench (0.45 m), legs out in front
-    m.legL.rotation.x = m.legR.rotation.x = -1.5; m.armL.rotation.x = -0.4; m.armR.rotation.x = -0.4;
-    m.root.position.y = 0; m.body.position.y = 0.45 - 0.82 + 0.05;
-    scene.add(m.root);
-    npcViews.set(n.id, { m, n });
-  }
-  for (const [id, v] of npcViews) if (!want.has(id)) { scene.remove(v.m.root); npcViews.delete(id); }
-}
-function npcInReach() {
-  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
-  for (const [id, v] of npcViews) {
-    const dx = v.n.x - P.x, dz = v.n.z - P.z, d = Math.hypot(dx, dz);
-    if (d < 2.6 && (dx * fx + dz * fz) / (d || 1) > 0.7 && Math.abs(v.n.y - P.y) < 1.5) return v;
-  }
-  return null;
-}
-function talkTo(v) {
-  const line = NPC_LINES[(nameHash(v.n.id) + (talkTo.n = (talkTo.n || 0) + 1)) % NPC_LINES.length];
-  chatLine('Lost shopper', line); sfx.chat();
-  try { if ('speechSynthesis' in window && settings.voice && settings.vol > 0) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(line); u.rate = 1; u.pitch = 1.1; u.volume = 0.7 * settings.vol; speechSynthesis.speak(u); } } catch (_) {}
-  ach.unlock('friend');
-  if (!npcGiven.has(v.n.id)) {
-    npcGiven.add(v.n.id); try { localStorage.setItem('es-npc', JSON.stringify([...npcGiven].slice(-200))); } catch (_) {}
-    let given = 0;
-    for (const k of ['stew', 'water']) { const i = P.inv.indexOf(null); if (i >= 0) { P.inv[i] = k; P.invId[i] = null; given++; } }
-    if (given) { buildHotbar(); sfx.pick(); toast(`The lost shopper gave you ${given === 2 ? 'a bowl of stew and some water' : 'something to eat'}.`); }
-  }
-}
-
 // The member of staff you're facing, close enough to shove.
 function staffInReach() {
   let best = null, bd = 3.0;
@@ -791,8 +735,6 @@ function updateInteraction(dt) {
         if (pressedUse) pickUp(it);
       }
     }
-    const npc = !target && npcInReach();
-    if (npc) { text = '<b>E</b> Talk to the lost shopper'; if (pressedUse) talkTo(npc); }
     // A click shoves the member of staff in front of you, or uses the selected item.
     const sid = staffInReach();
     if (sid != null && !target) text = text || '<b>Click</b> Shove';
@@ -1262,7 +1204,6 @@ function frame() {
   updateInteraction(dt);
   updateFlying(dt);
   updateHail(dt);
-  updateNpcs(dt);
   achT -= dt;
   if (achT <= 0 && P.alive) {
     achT = 0.5;
@@ -1567,5 +1508,5 @@ resize();
 requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
-window.__game = { P, clock, world, net, renderer, npcViews, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
+window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
   useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, dayEventForTest: (d) => dayEvent(world.seed, d), get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
