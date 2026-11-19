@@ -10,5 +10,22 @@
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ]
+  ],
+  "shortcuts": [
+    { "name": "Chess", "short_name": "Chess", "description": "Play Chess", "url": "./play.html?game=chess", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Global chat", "short_name": "Chat", "description": "Open the Global chat", "url": "./chat.html", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Social", "short_name": "Social", "description": "See the latest posts", "url": "./social.html", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Offline games", "short_name": "Offline", "description": "Games you've downloaded to play without internet", "url": "./index.html#offline", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ],
+  "share_target": {
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [{ "name": "media", "accept": ["image/*", "video/*"] }]
+    }
+  }
 }

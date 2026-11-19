@@ -1,0 +1,4 @@
+{
+  "_how": "What's new in The Arcade app (Mac/Windows, Tauri). appbridge.js shows notes[<window.ARCADE_APP.version>] once, after the app updates to that version. Add an entry when you publish an app update: \"1.2.0\": [\"Short sentence.\", \"Another.\"]. With no entry for a version it just says which version the app is now on.",
+  "notes": {}
+}

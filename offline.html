@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#050506">
+<title>You’re offline · The Arcade</title>
+<!-- offline.html (2026-11-19): what sw.js shows for a page that isn't saved on this device while there's no internet.
+     Everything is inline (it can be shown at any address). Lists the games saved for offline by offline.js (saved when played) (localStorage
+     'arcade-offline-games') and has a small built-in game, Cube Hop (best in 'arcade-offline-hop-best'). -->
+<style>
+  :root { color-scheme: dark; --bg: #050506; --panel: #121215; --line: rgba(255,255,255,.1); --text: #f4f4f5; --muted: #a1a1aa; --accent: #ff5a2c; --ink: #160500; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: calc(28px + env(safe-area-inset-top)) 16px 40px; }
+  h1 { margin: 0 0 6px; font-size: clamp(26px, 6vw, 38px); letter-spacing: -.02em; }
+  p { margin: 0 0 14px; color: var(--muted); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 22px; }
+  .btn { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); font: 600 14px system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+  .btn.go { background: var(--accent); border-color: transparent; color: var(--ink); }
+  .btn:focus-visible, canvas:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  h2 { margin: 26px 0 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #74747f; }
+  .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .games a { display: block; border-radius: 12px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); color: var(--text); text-decoration: none; }
+  .games img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #1a1a1f; }
+  .games b { display: block; padding: 8px 10px; font-size: 14px; }
+  .wrap { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #0b0b0d; }
+  canvas { display: block; width: 100%; height: auto; touch-action: manipulation; cursor: pointer; }
+  .hud { display: flex; justify-content: space-between; margin-top: 8px; color: var(--muted); font: 600 13px ui-monospace, Menlo, monospace; }
+  .back { display: none; margin-bottom: 18px; padding: 10px 14px; border-radius: 10px; background: rgba(61,220,151,.1); border: 1px solid rgba(61,220,151,.3); color: #3ddc97; }
+  .back.on { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<main>
+  <div class="back" id="back" role="status"><span>You’re back online.</span><button class="btn go" type="button" id="reload2">Reload the page</button></div>
+  <h1>You’re offline</h1>
+  <p>This page isn’t saved on this device. Check your internet, or play something below while you wait.</p>
+  <div class="row">
+    <button class="btn go" type="button" id="reload">Try again</button>
+    <a class="btn" id="home" href="/">Home</a>
+  </div>
+
+  <section id="dl" hidden>
+    <h2>Games saved on this device</h2>
+    <div class="games" id="games"></div>
+  </section>
+
+  <h2>Cube Hop</h2>
+  <p>Jump the blocks. Space, Up, tap or a controller’s A button to jump.</p>
+  <div class="wrap"><canvas id="c" width="720" height="240" tabindex="0" aria-label="Cube Hop. Press Space to jump."></canvas></div>
+  <div class="hud"><span id="score">Score 0</span><span id="best">Best 0</span></div>
+</main>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var ls = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  $('reload').onclick = $('reload2').onclick = function () { location.reload(); };
+  addEventListener('online', function () { $('back').classList.add('on'); });
+
+  // the site's address: sw.js's scope (this page can be shown at any address)
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(function (r) { if (r && r.scope) $('home').href = r.scope + 'index.html'; }).catch(function () {});
+
+  // games saved for offline when played (offline.js), checked against what's really in the cache
+  var meta = {}; try { meta = JSON.parse(ls.get('arcade-offline-games') || '{}') || {}; } catch (e) {}
+  var ids = Object.keys(meta).filter(function (id) { return meta[id] && meta[id].url; });
+  if (ids.length && window.caches) {
+    Promise.all(ids.map(function (id) { return caches.has('arcade-game-' + id).then(function (h) { return h ? id : null; }, function () { return null; }); })).then(function (have) {
+      have = have.filter(Boolean).sort(function (a, b) { return String(meta[a].title || a).localeCompare(meta[b].title || b); });
+      if (!have.length) return;
+      $('dl').hidden = false;
+      have.forEach(function (id) {
+        var m = meta[id], a = document.createElement('a'), img = document.createElement('img'), b = document.createElement('b');
+        a.href = m.url; img.alt = ''; if (m.thumb) img.src = m.thumb; b.textContent = m.title || id;
+        a.appendChild(img); a.appendChild(b); $('games').appendChild(a);
+      });
+    });
+  }
+
+  /* ---------- Cube Hop ---------- */
+  var cv = $('c'), x = cv.getContext('2d'), W = cv.width, Hh = cv.height, G = Hh - 40;
+  var best = +ls.get('arcade-offline-hop-best') || 0, p, obs, speed, score, state = 'ready', t0 = 0, last = 0, spawnIn = 0, padWas = false;
+  $('best').textContent = 'Best ' + best;
+  function reset() { p = { y: G - 28, vy: 0, h: 28 }; obs = []; speed = 5; score = 0; spawnIn = 60; }
+  reset();
+  function jump() {
+    if (state !== 'run') { reset(); state = 'run'; return; }
+    if (p.y >= G - p.h - 0.5) p.vy = -11.5;
+  }
+  addEventListener('keydown', function (e) {
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { if (document.activeElement === cv || document.activeElement === document.body) { e.preventDefault(); jump(); } }
+  });
+  cv.addEventListener('pointerdown', function (e) { e.preventDefault(); cv.focus(); jump(); });
+  function step() {
+    p.vy += 0.62; p.y += p.vy; if (p.y > G - p.h) { p.y = G - p.h; p.vy = 0; }
+    if (--spawnIn <= 0) { var h = 18 + Math.random() * 30, w = 18 + Math.random() * 22; obs.push({ x: W + 10, w: w, h: h }); spawnIn = 48 + Math.random() * 60 - Math.min(30, speed * 2); }
+    for (var i = obs.length - 1; i >= 0; i--) { var o = obs[i]; o.x -= speed; if (o.x + o.w < 0) obs.splice(i, 1); else if (o.x < 80 + 28 - 4 && o.x + o.w > 80 + 4 && p.y + p.h > G - o.h + 3) { die(); return; } }
+    score++; speed = Math.min(13, 5 + score / 500);
+  }
+  function die() {
+    state = 'over'; var s = Math.floor(score / 10);
+    if (s > best) { best = s; ls.set('arcade-offline-hop-best', String(best)); $('best').textContent = 'Best ' + best; }
+  }
+  function draw() {
+    x.fillStyle = '#0b0b0d'; x.fillRect(0, 0, W, Hh);
+    x.fillStyle = 'rgba(255,255,255,.08)'; x.fillRect(0, G, W, 2);
+    for (var i = 0; i < 12; i++) { var gx = ((i * 80) - (score * speed * 0.3) % 80 + W) % W; x.fillRect(gx, G + 14, 30, 2); }
+    x.fillStyle = '#ff5a2c'; x.fillRect(80, p.y, 28, p.h);
+    x.fillStyle = '#160500'; x.fillRect(96, p.y + 7, 5, 5);
+    x.fillStyle = '#f4f4f5'; obs.forEach(function (o) { x.fillRect(o.x, G - o.h, o.w, o.h); });
+    x.fillStyle = '#f4f4f5'; x.font = '600 18px system-ui, sans-serif'; x.textAlign = 'center';
+    if (state === 'ready') x.fillText('Press Space or tap to start', W / 2, 80);
+    if (state === 'over') { x.fillText('Game over · ' + Math.floor(score / 10) + ' points', W / 2, 70); x.font = '14px system-ui, sans-serif'; x.fillStyle = '#a1a1aa'; x.fillText('Jump to play again', W / 2, 96); }
+    $('score').textContent = 'Score ' + Math.floor(score / 10);
+  }
+  function frame(t) {
+    // the same speed at any refresh rate: fixed 60 steps a second
+    if (!last) last = t; var acc = Math.min(100, t - last); last = t; t0 += acc;
+    while (t0 >= 1000 / 60) { t0 -= 1000 / 60; if (state === 'run') step(); }
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [], down = false;
+    for (var i = 0; i < pads.length; i++) if (pads[i] && pads[i].buttons[0] && pads[i].buttons[0].pressed) down = true;
+    if (down && !padWas) jump(); padWas = down;
+    draw(); requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

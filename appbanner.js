@@ -5,6 +5,16 @@
    2026-11-15 (the owner's request): Android phones, tablets and TVs see it too, for the Android app; other phones and
    tablets (iPhone, iPad) and consoles (PlayStation, Xbox) still don't, as there's no app for them. Closing it is
    remembered on this device (a new key that day, so everyone who had closed it sees it once more). */
+/* 2026-11-19: this file also loads offline.js (offline play, installing, storage) and appbridge.js (the web side of
+   the desktop apps) on the same pages, so those pages' <script> lists don't change. Not inside game frames. */
+(function () {
+  try { if (window.top !== window) return; } catch (e) { return; }
+  var me = document.currentScript, base = me && me.src ? me.src.replace(/[^\/]*$/, '') : '';
+  [['offline.js', 1, 'ArcadeOffline'], ['appbridge.js', 1, 'ArcadeBridge']].forEach(function (f) {
+    if (window[f[2]] || document.querySelector('script[src*="' + f[0] + '"]')) return;
+    var s = document.createElement('script'); s.src = base + f[0] + '?v=' + f[1]; s.async = false; (document.body || document.head).appendChild(s);
+  });
+})();
 (function () {
   var html = document.documentElement, ua = navigator.userAgent || '';
   var inApp = function () { return !!window.ARCADE_APP || html.classList.contains('arcade-app') || /TheArcadeApp\//.test(ua); };
