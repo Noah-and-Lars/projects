@@ -34,12 +34,18 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   await A.waitForFunction(() => window.__game.mode === 'play', null, { timeout: 15000 });
   const code = await A.evaluate(() => __game.net.room);
   check(/^[A-Z0-9]{4}$/.test(code), 'room created: ' + code);
+  // A change made before Bravo arrives must reach Bravo when they join.
+  const early = await A.evaluate(() => {
+    const w = __game.world; const it = [...w.items.values()].find((i) => i.k === 'f' && w.active(i) && i.y < 0.01);
+    const st = w.stateOf(it); st.x += 0.5; w.applyState(it.id, st); return [it.id, st.x];
+  });
   await B.fill('#code-in', code);
   await B.click('#b-join');
   await B.waitForFunction(() => window.__game.mode === 'play', null, { timeout: 15000 });
   await B.waitForTimeout(2500);
   const seeds = await Promise.all([A, B].map((p) => p.evaluate(() => __game.world.seed)));
   check(seeds[0] === seeds[1], 'same store seed on both screens');
+  check(await B.evaluate((e) => { const it = __game.world.items.get(e[0]); return !!it && Math.abs(it.x - e[1]) < 0.01; }, early), 'late joiner got the changes made before they joined');
   check(await A.evaluate(() => __game.net.isHost()) && !(await B.evaluate(() => __game.net.isHost())), 'Alpha hosts, Bravo is a guest');
   check(await A.evaluate(() => __game.remotes.size) === 1 && await B.evaluate(() => __game.remotes.size) === 1, 'each sees the other');
 

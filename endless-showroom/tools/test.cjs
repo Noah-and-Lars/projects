@@ -66,6 +66,35 @@ fs.mkdirSync(out, { recursive: true });
   console.log('after hunting', await g(() => ({ staff: __game.staffViews.size, hp: __game.P.hp, alive: __game.P.alive })));
   await page.screenshot({ path: path.join(out, '07-staff.png') });
 
+  // Eating: put a sandwich in slot 1 and click.
+  await g(() => { __game.P.food = 40; __game.P.inv[0] = 'sandwich'; __game.P.sel = 0; });
+  await page.keyboard.press('Digit1');
+  await g(() => { window.__game.useForTest && window.__game.useForTest(); });
+  const food = await g(() => __game.P.food);
+  console.log((food > 60 ? 'ok   ' : 'FAIL ') + 'eating a sandwich fills hunger (' + food.toFixed(0) + ')');
+
+  // Standing on a wardrobe keeps you out of reach.
+  const perch = await g(() => {
+    __game.setClock(380);
+    const P = __game.P, w = __game.world; P.hp = 100;
+    let best = null, bd = 1e9;
+    for (const it of w.items.values()) { if (it.t !== 'wardrobe' || !w.active(it) || it.y > 0.01) continue; const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd) { bd = d; best = it; } }
+    if (!best) return null;
+    P.x = best.x; P.z = best.z; P.y = 2.1; P.vy = 0;
+    const s = [...__game.staff.staff.values()][0];
+    if (s) { s.x = best.x + 1.0; s.z = best.z; s.y = 0; }
+    return best.id;
+  });
+  await page.waitForTimeout(4000);
+  const safe = await g(() => ({ hp: __game.P.hp, y: __game.P.y }));
+  console.log((perch && safe.hp === 100 && safe.y > 2 ? 'ok   ' : 'FAIL ') + 'on top of a wardrobe the staff cannot reach (' + JSON.stringify(safe) + ')');
+  await page.screenshot({ path: path.join(out, '08-perch.png') });
+  // Control: the same staff member does reach you on the floor.
+  await g(() => { const P = __game.P; P.y = 0; P.x += 1.6; P.vy = 0; const s = [...__game.staff.staff.values()][0]; if (s) { s.x = P.x + 0.7; s.z = P.z; } });
+  await page.waitForTimeout(4000);
+  const hp2 = await g(() => __game.P.hp);
+  console.log((hp2 < 100 ? 'ok   ' : 'FAIL ') + 'on the floor the staff do hit (' + hp2 + ')');
+
   const fps = await page.evaluate(() => new Promise((res) => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 3000) requestAnimationFrame(f); else res(n / 3); }; requestAnimationFrame(f); }));
   console.log('draw calls', await g(() => __game.renderer.info.render.calls), 'triangles', await g(() => __game.renderer.info.render.triangles));
   console.log('fps (software GL)', fps.toFixed(1));

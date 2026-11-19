@@ -88,12 +88,15 @@ button.primary:hover { background: #3a7cc4; }
 .stick { position: absolute; left: 40px; bottom: 60px; width: 120px; height: 120px; border-radius: 50%; background: #ffffff18; border: 2px solid #ffffff30; opacity: 0.6; }
 .stick.on { opacity: 1; }
 .knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: #ffffff55; }
-.tb-col { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(90px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2, 64px); gap: 8px; }
+.tb-col { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2, 64px); gap: 8px; }
 .tb { width: 64px; height: 52px; border-radius: 14px; background: #0007; border: 2px solid #ffffff40; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
 .tb.on { background: #ffd34d66; }
-.tb-pause { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); width: 44px; height: 40px; margin-top: 30px; }
+.tb-pause { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 36px); right: max(12px, env(safe-area-inset-right)); width: 44px; height: 40px; }
 body.touch #help-hint, body.touch #cross { display: none; }
-body.touch #hotbar { bottom: auto; top: calc(max(12px, env(safe-area-inset-top)) + 80px); }
+body.touch #hotbar { bottom: max(10px, env(safe-area-inset-bottom)); }
+body.touch #announce { top: 30%; font-size: 15px; padding: 8px 16px; }
+body.touch #announce small { font-size: 12px; }
+body.touch #prompt { top: calc(50% + 22px); font-size: 13px; }
 body.touch .slot { pointer-events: auto; }
 body.touch #bars { width: 150px; bottom: auto; top: calc(max(12px, env(safe-area-inset-top)) + 40px); }
 body.touch #chat { display: none; }

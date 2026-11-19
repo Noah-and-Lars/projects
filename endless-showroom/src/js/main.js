@@ -829,4 +829,4 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
-  setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
+  useForTest: () => useSelected(), setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
