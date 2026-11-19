@@ -3,12 +3,19 @@
 import * as THREE from 'three';
 import { GeoBuilder } from './geo.js';
 import { TYPES, furnitureGeometry, furnitureMaterial } from './furniture.js';
-import { SURF, characterMaterial } from './mats.js';
+import { SURF, characterMaterial, shadowMaterial, shadowGeometry } from './mats.js';
 import { staffLook } from './staff.js';
 
 const mat = characterMaterial;
 
 const SKINS = new Set([0xf1c9a5, 0xd9a47a, 0xa86f4c, 0x6e4630, 0xf5d7bf, 0xd8d2c8]);
+// A soft shadow on the ground under a character.
+function footShadow(root, size) {
+  const m = new THREE.Mesh(shadowGeometry, shadowMaterial);
+  m.scale.set(size, 1, size); m.position.y = 0.012; m.renderOrder = 1;
+  root.add(m);
+  return m;
+}
 function part(build, px, py, pz) {
   const g = new GeoBuilder();
   g.mat = SURF.fabric;
@@ -44,6 +51,7 @@ export function makeShopper(look, shirtPick = -1) {
   }, 0, 1.42, 0);
   body.add(legL, legR, torso, armL, armR, head);
   const held = new THREE.Group(); held.position.set(0, 0, 0.9); root.add(held);
+  footShadow(root, 1.3);
   return { root, body, legL, legR, armL, armR, head, held, phase: 0, heldKey: '' };
 }
 
@@ -91,6 +99,7 @@ export function makeStaff(id) {
   head.add(eyes);
   body.add(legL, legR, torso, armL, armR, head);
   body.scale.set(look.widthScale, look.heightScale, Math.min(1.25, look.widthScale));
+  footShadow(root, 1.2 * look.widthScale);
   // some of them carry a box of stock about during the day
   let stock = null;
   if (!look.manager && id % 3 === 0) {
