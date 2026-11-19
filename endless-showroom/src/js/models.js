@@ -91,7 +91,13 @@ export function makeStaff(id) {
   head.add(eyes);
   body.add(legL, legR, torso, armL, armR, head);
   body.scale.set(look.widthScale, look.heightScale, Math.min(1.25, look.widthScale));
-  return { root, body, legL, legR, armL, armR, head, eyes, look, phase: 0, attackT: 0, down: 0 };
+  // some of them carry a box of stock about during the day
+  let stock = null;
+  if (!look.manager && id % 3 === 0) {
+    const sb = new GeoBuilder(); sb.mat = SURF.card; sb.box(0, 1.15, 0.38, 0.5, 0.36, 0.4, 0xc8a26e); sb.box(0, 1.33, 0.38, 0.5, 0.005, 0.06, 0xd8cfa8);
+    stock = new THREE.Mesh(sb.build(), mat); body.add(stock);
+  }
+  return { root, body, legL, legR, armL, armR, head, eyes, look, stock, phase: 0, attackT: 0, down: 0 };
 }
 
 // Walk cycle; speed in m/s.

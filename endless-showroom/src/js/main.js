@@ -384,7 +384,30 @@ function onClock(p) {
   else if (Math.abs(t - clock.t) > 1.5) clock.t = t;
   else clock.t += (t - clock.t) * 0.3;
 }
-function onChat(from, m) { if (!m) return; const r = remotes.get(from); chatLine(r ? r.name : 'Shopper', m); sfx.chat(); }
+function onChat(from, m) {
+  if (!m) return;
+  const r = remotes.get(from);
+  chatLine(r ? r.name : 'Shopper', m); sfx.chat();
+  if (r) showBubble(r, m);
+}
+// A speech bubble over a shopper's head for a few seconds.
+function showBubble(r, text) {
+  if (r.bubble) { r.model.root.remove(r.bubble); r.bubble.material.map.dispose(); r.bubble.material.dispose(); }
+  const c = document.createElement('canvas'); c.width = 512; c.height = 160;
+  const x = c.getContext('2d');
+  x.font = '600 30px system-ui, sans-serif';
+  const words = text.split(/\s+/), lines = [''];
+  for (const w of words) { const t = (lines[lines.length - 1] + ' ' + w).trim(); if (x.measureText(t).width > 440 && lines[lines.length - 1]) { if (lines.length === 3) break; lines.push(w); } else lines[lines.length - 1] = t; }
+  const h = 24 + lines.length * 36;
+  x.fillStyle = 'rgba(255,255,255,0.94)'; x.beginPath(); x.roundRect(16, 160 - h - 14, 480, h, 18); x.fill();
+  x.beginPath(); x.moveTo(240, 146); x.lineTo(272, 146); x.lineTo(256, 160); x.fill();
+  x.fillStyle = '#1c2430'; x.textAlign = 'center'; x.textBaseline = 'top';
+  lines.forEach((l, i) => x.fillText(l, 256, 160 - h - 14 + 14 + i * 36));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, fog: false }));
+  sp.scale.set(1.9, 0.6, 1); sp.position.y = 2.75; sp.renderOrder = 11;
+  r.model.root.add(sp); r.bubble = sp; r.bubbleT = 7;
+}
 function onCaught(from, p) { const r = remotes.get(from); toast(`${r ? r.name : 'Someone'} was caught by the staff${p.n ? ` after ${p.n} night${p.n === 1 ? '' : 's'}` : ''}.`); }
 function onNeed(from) {
   // Send the newcomer every change, in parts small enough for the server.
@@ -993,8 +1016,9 @@ function ingestStaff(list, now) {
 // What they say when they're after you. Spoken in a flat, low voice where the
 // browser can speak, and always shown as a subtitle.
 const LINES = ['Closing time. Closing time.', "You can't stay here after hours.", 'Please put everything back and go home.', 'Shopping is over for today.', 'Why are you still here?', 'We are closed. We are closed.', 'Let me show you the way out.'];
+const MANAGER_LINES = ['I will need to speak to you.', 'This is not acceptable.', 'Staff. To me.', 'You are holding up the stocktake.'];
 let voiceT = 0, voiceN = 0;
-function speak(line, vol) {
+function speak(line, vol, pitch = 0.05) {
   const el = $('voice');
   el.textContent = line; el.classList.remove('hidden');
   clearTimeout(speak.t); speak.t = setTimeout(() => el.classList.add('hidden'), 2600);
@@ -1002,14 +1026,14 @@ function speak(line, vol) {
     if (!('speechSynthesis' in window) || settings.vol <= 0 || !settings.voice) return;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(line);
-    u.pitch = 0.05; u.rate = 0.82; u.volume = clamp(vol * settings.vol, 0, 1);
+    u.pitch = pitch; u.rate = 0.82; u.volume = clamp(vol * settings.vol, 0, 1);
     speechSynthesis.speak(u);
   } catch (_) {}
 }
 let murmurT = 0;
 function drawStaff(dt, now) {
   const delay = net.isHost() ? 0 : 140;
-  let nearest = Infinity, nearPan = 0, anyHostile = false, hunter = Infinity;
+  let nearest = Infinity, nearPan = 0, anyHostile = false, hunter = Infinity, hunterLook = null;
   for (const v of staffViews.values()) {
     const at = now - delay, b = v.buf;
     let i = b.length - 1; while (i > 0 && b[i - 1].t > at) i--;
@@ -1023,17 +1047,24 @@ function drawStaff(dt, now) {
     m.root.rotation.y = angLerp(s0.ry, s1.ry, u);
     const hostile = !!(s1.f & 1) || isHostile(clock.t, clock.ev);
     m.eyes.visible = hostile;
-    animate(m, s1.s, dt, { reach: s1.f & 2 ? now / 1000 : 0, climbing: !!(s1.f & 8) && !(s1.f & 4), down: !!(s1.f & 4) });
+    const carryingStock = m.stock && !isHostile(clock.t, clock.ev);
+    if (m.stock) m.stock.visible = carryingStock;
+    animate(m, s1.s, dt, { reach: s1.f & 2 ? now / 1000 : 0, climbing: !!(s1.f & 8) && !(s1.f & 4), down: !!(s1.f & 4), carrying: carryingStock });
     const d = Math.hypot(m.root.position.x - P.x, m.root.position.z - P.z);
     if (s1.f & 1) { anyHostile = true; if (d < nearest) { nearest = d; const a = Math.atan2(m.root.position.x - P.x, m.root.position.z - P.z) - P.yaw; nearPan = clamp(-Math.sin(a), -1, 1); } }
-    if (s1.tg === net.id) hunter = Math.min(hunter, d);
+    if (s1.tg === net.id && d < hunter) { hunter = d; hunterLook = m.look; }
     // heavy footsteps you can hear coming
     if (hostile && d < 18 && s1.s > 1) { v.stepAcc = (v.stepAcc || 0) + s1.s * dt; if (v.stepAcc > 1.5) { v.stepAcc = 0; const a = Math.atan2(m.root.position.x - P.x, m.root.position.z - P.z) - P.yaw; sfx.staffStep(clamp(-Math.sin(a), -1, 1), 1 - d / 18); } }
   }
   murmurT -= dt;
   if (anyHostile && nearest < 14 && murmurT <= 0) { sfx.staffNear(nearPan); murmurT = 0.5 + nearest / 10; }
   voiceT -= dt;
-  if (hunter < 18 && voiceT <= 0 && P.alive) { speak(LINES[voiceN++ % LINES.length], 1 - hunter / 22); voiceT = 4 + Math.random() * 2; }
+  if (hunter < 18 && voiceT <= 0 && P.alive) {
+    // big ones sound deep, small ones high; the Floor Manager has its own lines
+    const pitch = hunterLook ? (hunterLook.manager ? 0.0 : [0.0, 0.05, 0.6, 1.4][hunterLook.size]) : 0.05;
+    const line = hunterLook && hunterLook.manager ? MANAGER_LINES[voiceN++ % MANAGER_LINES.length] : LINES[voiceN++ % LINES.length];
+    speak(line, 1 - hunter / 22, pitch); voiceT = 4 + Math.random() * 2;
+  }
 }
 
 // ---------------------------------------------------------------- remote shoppers (drawing)
@@ -1052,6 +1083,7 @@ function drawRemotes(dt, now) {
     m.root.position.set(nx, jump ? s1.y : lerp(s0.y, s1.y, u), nz);
     m.root.rotation.y = angLerp(s0.ry, s1.ry, u) + Math.PI;
     m.root.visible = !!s1.a;
+    if (r.bubble && (r.bubbleT -= dt) <= 0) { r.model.root.remove(r.bubble); r.bubble.material.map.dispose(); r.bubble.material.dispose(); r.bubble = null; }
     { // names show faintly through the shelves, so friends can find each other
       const d = Math.hypot(nx - P.x, nz - P.z);
       r.tag.material.opacity = d < 20 ? 1 : d > 90 ? 0 : 0.35 + 0.65 * (1 - (d - 20) / 70) * 0.5;

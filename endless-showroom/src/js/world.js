@@ -139,6 +139,8 @@ class ChunkGen {
       const roll = r();
       if (roll < 0.025 && this.section !== 'food') this.q_firstaid(f);
       else if (roll < 0.04 && this.section !== 'food') this.q_fort(f);
+      else if (roll < 0.08 && this.section === 'showroom') this.q_play(f);
+      else if (roll < 0.14 && this.section === 'storage') this.q_office(f);
       else if (roll < 0.35 && this.section === 'market') this.q_snack(f);
       else this['q_' + this.section](f);
     }
@@ -157,7 +159,8 @@ class ChunkGen {
     const theme = r.int(6);
     if (theme === 0) { // living room
       this.ff(f, 'rug', 4.8, 3.0, 0); this.ff(f, 'sofa', 4.8, 0.75, 0); this.ff(f, 'coffeeTable', 4.8, 2.4, 0);
-      this.ff(f, 'armchair', 1.4, 2.8, 1); this.ff(f, 'tvStand', 4.8, 5.0, 2); this.ff(f, 'bookshelf', 8.6, 0.4, 0);
+      this.ff(f, 'armchair', 1.4, 2.8, 1); this.ff(f, 'tvStand', 4.8, 5.0, 2); this.ff(f, 'tv', 4.8, 5.0, 2, 0.5); this.ff(f, 'bookshelf', 8.6, 0.4, 0);
+      this.ff(f, 'sideTable', 2.0, 0.6, 0); this.ff(f, 'tableLamp', 2.0, 0.6, 0, 0.55);
       this.ff(f, 'floorLamp', 2.8, 0.5, 0); this.ff(f, 'plant', 0.7, 0.7, 0); if (r.chance(0.6)) this.ff(f, 'armchair', 8.2, 3.0, 3);
     } else if (theme === 1) { // bedroom
       this.ff(f, 'bedDouble', 4.8, 1.25, 0); this.ff(f, 'cabinet', 3.4, 0.4, 0); this.ff(f, 'tableLamp', 3.4, 0.4, 0, 1.0); this.ff(f, 'floorLamp', 6.3, 0.5, 0);
@@ -172,7 +175,7 @@ class ChunkGen {
     } else if (theme === 3) { // workspace
       this.ff(f, 'desk', 2.6, 0.45, 0); this.ff(f, 'chair', 2.6, 1.3, 2); this.ff(f, 'desk', 6.6, 0.45, 0); this.ff(f, 'chair', 6.6, 1.3, 2);
       this.ff(f, 'bookshelf', 0.32, 2.6, 1); this.ff(f, 'bookshelf', 0.32, 3.6, 1); this.ff(f, 'cabinet', 9.3, 2.8, 3);
-      this.ff(f, 'plant', 8.9, 0.6, 0); this.ff(f, 'lockers', 9.3, 4.6, 3); this.ff(f, 'rug', 4.6, 3.4, 0);
+      this.ff(f, 'plant', 8.9, 0.6, 0); this.ff(f, 'lockers', 9.3, 4.6, 3); this.ff(f, 'rug', 4.6, 3.4, 0); this.ff(f, 'filingCabinet', 4.6, 0.35, 0);
       this.ff(f, 'tableLamp', 3.0, 0.4, 0, 0.75);
     } else if (theme === 5) { // bathroom
       this.ff(f, 'bathtub', 1.2, 0.5, 0); this.ff(f, 'toilet', 3.4, 0.45, 0); this.ff(f, 'cabinet', 4.6, 0.3, 0);
@@ -180,7 +183,7 @@ class ChunkGen {
       this.ff(f, 'tableLamp', 4.6, 0.3, 0, 1.0);
     } else { // kids room
       this.ff(f, 'bunkBed', 0.75, 1.1, 0); this.ff(f, 'bunkBed', 3.0, 1.1, 0); this.ff(f, 'shelfCube', 6.4, 0.32, 0);
-      this.ff(f, 'mattress', 7.6, 3.4, 0); this.ff(f, 'rug', 4.6, 4.0, 1); this.ff(f, 'box', 5.2, 2.2, 0); this.ff(f, 'box', 5.9, 2.6, 1);
+      this.ff(f, 'mattress', 7.6, 3.4, 0); this.ff(f, 'rug', 4.6, 4.0, 1); this.ff(f, 'box', 5.2, 2.2, 0); this.ff(f, 'beanbag', 6.0, 2.6, 1);
       this.ff(f, 'stool', 3.4, 4.2, 0); this.ff(f, 'plant', 9.0, 0.6, 0); this.ff(f, 'tableLamp', 6.0, 0.3, 0, 1.5);
       if (r.chance(0.4)) for (let i = 0, n = 1 + r.int(2); i < n; i++) this.fd(f, STOCK.play, 4.0 + i * 0.4, 4.2, 0);
     }
@@ -236,7 +239,7 @@ class ChunkGen {
     const { r } = this;
     const pick = r.pick([
       ['sofa', 2.8, 2.4], ['armchair', 1.7, 1.8], ['bedSingle', 1.8, 3.0], ['bedDouble', 2.4, 3.1], ['wardrobe', 1.9, 1.6],
-      ['bookshelf', 1.4, 1.4], ['diningTable', 2.6, 2.4], ['dresser', 1.7, 1.5], ['desk', 2.0, 1.8], ['shelfCube', 2.2, 1.6], ['counter', 1.5, 1.6], ['floorLamp', 1.2, 1.2], ['bunkBed', 1.6, 2.6],
+      ['bookshelf', 1.4, 1.4], ['diningTable', 2.6, 2.4], ['dresser', 1.7, 1.5], ['desk', 2.0, 1.8], ['shelfCube', 2.2, 1.6], ['counter', 1.5, 1.6], ['floorLamp', 1.2, 1.2], ['bunkBed', 1.6, 2.6], ['tv', 1.6, 1.2], ['beanbag', 1.3, 1.3], ['filingCabinet', 1.8, 2.2],
     ]);
     const [type, su, sv] = pick;
     const nu = Math.max(1, Math.floor((Q - 0.6) / su)), nv = Math.max(1, Math.floor((Q - 2.0) / sv));
@@ -318,6 +321,30 @@ class ChunkGen {
     this.ff(f, 'diningTable', 3.2, 5.6, 1); this.ff(f, 'chair', 2.4, 5.6, 1); this.ff(f, 'chair', 4.0, 5.6, 3);
     this.ff(f, 'bench', 3.2, 8.6, 0); this.ff(f, 'plant', 0.8, 8.8, 0); this.ff(f, 'pallet', 6.0, 8.6, 0);
     if (r.chance(0.5)) this.fd(f, STOCK.play, 3.0, 5.4, 0.77);
+  }
+
+  // A kids' play area: slides, beanbags, little tables, and apples.
+  q_play(f) {
+    const { r } = this;
+    this.ff(f, 'rug', 4.8, 4.8, 0); this.ff(f, 'rug', 4.8, 3.0, 1);
+    this.ff(f, 'slide', 1.2, 2.0, 0); this.ff(f, 'slide', 8.4, 6.5, 2);
+    for (let i = 0; i < 4; i++) this.ff(f, 'beanbag', 3.5 + i * 1.0, 7.8, r.int(4));
+    this.ff(f, 'coffeeTable', 5.0, 4.4, 0); this.ff(f, 'stool', 4.2, 4.4, 0); this.ff(f, 'stool', 5.8, 4.4, 0);
+    this.ff(f, 'shelfCube', 4.8, 0.4, 0); this.ff(f, 'box', 7.0, 1.0, 0);
+    for (let i = 0, n = 1 + r.int(3); i < n; i++) this.fd(f, STOCK.play, 4.7 + i * 0.2, 4.4, 0.45);
+  }
+
+  // An office floor: rows of desks, chairs and filing cabinets.
+  q_office(f) {
+    const { r } = this;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) {
+      const u = 1.6 + i * 3.2, v = 1.5 + j * 4.0;
+      this.ff(f, 'desk', u, v, 0); this.ff(f, 'chair', u, v + 0.85, 2);
+      if (r.chance(0.4)) this.ff(f, 'tableLamp', u - 0.4, v - 0.1, 0, 0.75);
+    }
+    for (let i = 0; i < 4; i++) this.ff(f, 'filingCabinet', 0.6 + i * 0.6, 9.0, 2);
+    this.ff(f, 'plant', 8.9, 9.0, 0); this.ff(f, 'lockers', 7.6, 9.0, 2);
+    if (r.chance(0.5)) this.fd(f, ['water', 'soda', 'cookie', 'chips'], 1.4, 1.4, 0.75);
   }
 
   // A first aid station: a white kiosk with four kits on it.

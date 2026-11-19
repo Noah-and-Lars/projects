@@ -156,6 +156,28 @@ export const TYPES = {
   tableLamp: { m: 'plastic', lamp: true, name: 'Table Lamp', w: 0.3, d: 0.3, h: 0.5, hp: 20, cols: [0xf3e2b8, 0xe8d8c4, 0xd9e2ea], build(g, c) {
     g.cyl(0, 0, 0, 0.11, 0.03, DARK, 10); g.cyl(0, 0.03, 0, 0.018, 0.25, METAL, 6); g.cyl(0, 0.26, 0, 0.15, 0.22, c, 12, 0.09);
   } },
+  tv: { m: 'plastic', name: 'Television', w: 1.2, d: 0.25, h: 0.75, hp: 60, cols: [0x1d1f24, 0x2a2c33], build(g, c) {
+    g.box(0, 0.05, 0, 0.4, 0.05, 0.22, c); g.box(0, 0.12, -0.02, 0.06, 0.12, 0.05, c);
+    g.box(0, 0.45, 0, 1.2, 0.62, 0.06, c); g.box(0, 0.45, 0.032, 1.12, 0.55, 0.002, 0x0b1a2a);
+    g.box(0.5, 0.17, 0.032, 0.02, 0.01, 0.002, 0x44ff66);
+  } },
+  beanbag: { m: 'fabric', name: 'Beanbag', w: 0.8, d: 0.8, h: 0.6, hp: 40, cols: [0xc0392b, 0x2e86c1, 0xf1c40f, 0x27ae60, 0x8e44ad], build(g, c) {
+    g.cyl(0, 0, 0, 0.4, 0.3, c, 12, 0.38); g.cyl(0, 0.3, 0, 0.38, 0.2, shade(c, 1.06), 12, 0.25); g.box(0, 0.42, -0.2, 0.5, 0.18, 0.3, shade(c, 0.94));
+  } },
+  filingCabinet: { m: 'steel', name: 'Filing Cabinet', w: 0.5, d: 0.6, h: 1.3, hp: 150, cols: [0x7f8c8d, 0x34495e, 0xbdc3c7], build(g, c) {
+    g.box(0, 0.65, 0, 0.5, 1.3, 0.6, c);
+    for (let i = 0; i < 4; i++) { g.box(0, 0.17 + i * 0.32, 0.302, 0.44, 0.28, 0.01, shade(c, 1.08)); g.box(0, 0.25 + i * 0.32, 0.31, 0.14, 0.025, 0.02, METAL); }
+  } },
+  slide: { m: 'plastic', climb: true, name: 'Play Slide', w: 0.7, d: 2.2, h: 1.4, hp: 120, cols: [0xe74c3c, 0x3498db, 0xf39c12], build(g, c) {
+    for (const x of [-0.3, 0.3]) { g.box(x, 0.7, -0.95, 0.06, 1.4, 0.06, 0xecf0f1); g.box(x, 0.7, -0.65, 0.06, 1.4, 0.06, 0xecf0f1); }
+    for (let i = 0; i < 5; i++) g.box(0, 0.25 + i * 0.27, -0.95, 0.6, 0.04, 0.05, 0xecf0f1);
+    g.box(0, 1.37, -0.8, 0.7, 0.06, 0.36, c);
+    for (let i = 0; i < 8; i++) { const t = i / 8; g.box(0, 1.3 - t * 1.2, -0.55 + t * 1.6, 0.6, 0.06, 0.22, c); }
+    g.box(0.31, 0.95, 0.15, 0.04, 0.12, 1.5, shade(c, 0.85)); g.box(-0.31, 0.95, 0.15, 0.04, 0.12, 1.5, shade(c, 0.85));
+  } },
+  sideTable: { m: 'wood', name: 'Side Table', w: 0.5, d: 0.5, h: 0.55, hp: 40, cols: WOOD, build(g, c) {
+    legs4(g, 0.5, 0.5, 0.52, 0.04, c, 0.03); g.box(0, 0.535, 0, 0.5, 0.03, 0.5, c); g.box(0, 0.22, 0, 0.44, 0.02, 0.44, shade(c, 0.9));
+  } },
   rug: { m: 'fabric', name: 'Rug', w: 2.0, d: 1.4, h: 0.02, hp: 20, flat: true, cols: [0xb5523b, 0x5a6f8c, 0xd8cdbb, 0x6f8a5b], build(g, c) {
     g.box(0, 0.006, 0, 2.0, 0.012, 1.4, c); g.box(0, 0.013, 0, 1.6, 0.002, 1.0, shade(c, 1.15));
   } },

@@ -49,6 +49,11 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   check(await A.evaluate(() => __game.net.isHost()) && !(await B.evaluate(() => __game.net.isHost())), 'Alpha hosts, Bravo is a guest');
   check(await A.evaluate(() => __game.remotes.size) === 1 && await B.evaluate(() => __game.remotes.size) === 1, 'each sees the other');
 
+  // Chat shows in the log and as a bubble over the speaker's head.
+  await B.evaluate(() => __game.net.send('c', { m: 'Meet at the cafeteria' }));
+  await A.waitForTimeout(1500);
+  check(await A.evaluate(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.bubble) && document.getElementById('chat-log').textContent.includes('Meet at the cafeteria'); }), 'chat arrives with a bubble over the speaker');
+
   // Put Bravo next to Alpha, facing Alpha, and screenshot.
   await B.evaluate(() => { __game.P.x = 0; __game.P.z = 0; });
   const ap = await A.evaluate(() => ({ x: __game.P.x, z: __game.P.z }));
