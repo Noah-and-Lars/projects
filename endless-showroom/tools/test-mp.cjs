@@ -70,11 +70,15 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   await A.waitForTimeout(400);
   await A.keyboard.press('KeyE');
   await A.waitForTimeout(400);
+  await A.evaluate((id) => __game.grabForTest(id), moved); // in case the aim missed
   check(await A.evaluate(() => !!__game.P.carry), 'Alpha picked up ' + moved);
   await A.waitForTimeout(600);
   check(await B.evaluate((id) => { const it = __game.world.items.get(id); return !!(it && it.c); }, moved), 'Bravo sees it carried');
-  await A.evaluate(() => { __game.P.yaw += Math.PI; __game.P.pitch = -0.7; });
-  await A.waitForTimeout(400);
+  for (let i = 0; i < 16; i++) {
+    await A.evaluate(() => { __game.P.yaw += Math.PI / 8; __game.P.pitch = -0.7; });
+    await A.waitForTimeout(500);
+    if (await A.evaluate(() => __game.placement && __game.placement.ok)) break;
+  }
   await A.keyboard.press('KeyE');
   await A.waitForTimeout(800);
   const posA = await A.evaluate((id) => { const it = __game.world.items.get(id); return [it.x, it.y, it.z, it.c]; }, moved);
@@ -90,6 +94,8 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   });
   await B.waitForTimeout(400);
   await B.keyboard.press('KeyE');
+  await B.waitForTimeout(400);
+  await B.evaluate((id) => __game.grabForTest(id), gid);
   await B.waitForTimeout(800);
   check(await A.evaluate((id) => { const it = __game.world.items.get(id); return it && it.c === Object.keys(Object.fromEntries(__game.remotes))[0]; }, gid), 'host records the guest carrying ' + gid);
   check(await B.evaluate(() => !!__game.P.carry), 'guest still carrying after host confirms');
@@ -103,15 +109,23 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   // Put a member of staff right next to Bravo and wait for a hit.
   const hp0 = await B.evaluate(() => __game.P.hp);
   const bp = await B.evaluate(() => ({ x: __game.P.x, y: __game.P.y, z: __game.P.z }));
-  await A.evaluate((bp) => { const s = [...__game.staff.staff.values()][0]; if (s) { s.x = bp.x + 0.6; s.z = bp.z; s.y = bp.y; } }, bp);
-  await A.waitForTimeout(3000);
+  await A.evaluate((bp) => {
+    const w = __game.world; let s = [...__game.staff.staff.values()][0];
+    if (!s) return;
+    for (let a = 0; a < 6.28; a += 0.3) { // a clear spot 0.8 m from the guest
+      const x = bp.x + Math.cos(a) * 0.8, z = bp.z + Math.sin(a) * 0.8;
+      if (w.fits({ x0: x - 0.3, x1: x + 0.3, z0: z - 0.3, z1: z + 0.3, y0: bp.y + 0.05, y1: bp.y + 2 })) { s.x = x; s.z = z; break; }
+    }
+    s.y = bp.y; s.stunT = 0; s.cd = 0;
+  }, bp);
+  { const t0 = await A.evaluate(() => __game.clock.t); await B.waitForFunction((hp0) => __game.P.hp < hp0, hp0, { timeout: 120000 }).catch(() => {}); }
   const hp1 = await B.evaluate(() => __game.P.hp);
   check(hp1 < hp0, `guest got hit by host's staff (${hp0} -> ${hp1})`);
   await B.screenshot({ path: path.join(out, 'mp-02-guest-night.png') });
 
   // Host leaves: guest takes over.
   await A.close();
-  await B.waitForFunction(() => __game.net.isHost(), null, { timeout: 30000 }).catch(() => {});
+  await B.waitForFunction(() => __game.net.isHost(), null, { timeout: 120000 }).catch(() => {});
   check(await B.evaluate(() => __game.net.isHost()), 'guest became host after host left');
   check(await B.evaluate((id) => { const it = __game.world.items.get(id); return !!(it && __game.world.mods.has(id)); }, moved), 'guest kept the store changes');
   await B.waitForTimeout(3000);

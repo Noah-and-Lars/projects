@@ -436,6 +436,7 @@ function die(why) {
   $('death').classList.remove('hidden');
   $('death-msg').textContent = why === 'hunger' ? 'You starved.' : why === 'fall' ? 'You fell too far.' : why === 'food' ? 'Something you ate finished you off.' : why === 'hail' ? 'The hail got you.' : `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
   net.send('x', { n: P.nights, w: why });
+  $('death-best').textContent = `Day ${clock.day} · your best: ${Math.max(stats.best, P.nights)} night${Math.max(stats.best, P.nights) === 1 ? '' : 's'}`;
   P.nights = 0;
 }
 function respawn() {
@@ -490,7 +491,13 @@ function updatePlayer(dt) {
     // Energy: sprinting, jumping and carrying use it; standing still slowly gets it back.
     if (sprint) P.en = Math.max(0, P.en - 3.2 * dt);
     if (P.carry) P.en = Math.max(0, P.en - 0.25 * dt);
-    if (!moving && P.onGround && !P.carry) P.en = Math.min(100, P.en + 0.8 * dt);
+    if (!moving && P.onGround && !P.carry) {
+      // resting on a bed or a sofa gets your energy back much faster
+      const rest = restingOn();
+      P.en = Math.min(100, P.en + (rest ? 3 : 0.8) * dt);
+      if (rest && !P.resting && P.en < 95) toast(`Resting on the ${TYPES[rest].name.toLowerCase()}…`);
+      P.resting = !!rest;
+    } else P.resting = false;
     // Hunger empties in about 15 minutes, twice as fast with no energy. No food, no health.
     P.food = Math.max(0, P.food - dt * (100 / 900) * (P.en <= 0 ? 2 : 1) * (sprint ? 1.5 : 1));
     if (P.food <= 0) { P.hp -= dt * 1.0; if (P.hp <= 0) die('hunger'); }
@@ -503,6 +510,13 @@ function updatePlayer(dt) {
   }
   P.whistleT = Math.max(0, P.whistleT - dt);
   if (P.y < -5) { P.y = 0; } // safety
+}
+
+const RESTFUL = new Set(['bedSingle', 'bedDouble', 'bunkBed', 'mattress', 'sofa', 'armchair']);
+function restingOn() {
+  let found = null;
+  world.forBoxes(P.x - 0.1, P.z - 0.1, P.x + 0.1, P.z + 0.1, (b) => { if (b.item && RESTFUL.has(b.item.t) && Math.abs(b.y1 - P.y) < 0.12) found = b.item.t; });
+  return found;
 }
 
 // ---------------------------------------------------------------- ray picking
@@ -875,7 +889,44 @@ function updateClock(dt) {
   if (clock.ev === 'powercut' && Math.abs(clock.t - POWERCUT[1]) < dt * 1.5) sfx.lightsOn();
   if (clock.ev === 'hail' && Math.abs(clock.t - HAIL[0]) < dt * 1.5) announce('Hailstorm!', 'Hail is coming through the garden centre skylights. Stay under cover there.', 5);
   if (clock.ev === 'hail' && Math.abs(clock.t - HAIL[1]) < dt * 1.5) toast('The hail has stopped.');
+  // tips on your first day
+  if (stats.days === 0 && clock.day === 1) for (const [at, tip] of TIPS) if (clock.t >= at && clock.t - dt < at) toast('Tip: ' + tip);
+  // the odd announcement over the PA during the day
+  if (phase === 'day') for (const at of PA_TIMES) if (clock.t >= at && clock.t - dt < at) { const line = PA_LINES[(clock.day * 3 + at) % PA_LINES.length]; sfx.chime(); setTimeout(() => announcePA(line), 1200); }
+  // hunger and energy warnings
+  if (P.alive && P.food < 20 && !warn.food) { warn.food = true; toast("You're getting very hungry. Find something to eat."); }
+  if (P.food > 30) warn.food = false;
+  if (P.alive && P.en < 10 && !warn.en) { warn.en = true; toast("You're exhausted. Eat, drink, or stand still for a bit."); }
+  if (P.en > 20) warn.en = false;
   lastPhase = phase;
+}
+const warn = { food: false, en: false };
+const TIPS = [
+  [40, 'Look at furniture and press E to pick it up. Click or press E again to put it down, even in mid-air.'],
+  [70, 'Food and first aid are in cafeterias, kitchens and snack bars. Press G to see your inventory.'],
+  [110, 'At 22:00 the lights go out and the staff start hunting. They climb about a metre, so get higher than that.'],
+  [160, 'Press T while carrying to stand a piece upright. Pallets make good walls.'],
+  [210, 'Shelving, bookcases and bunk beds can be climbed, by you and by the staff.'],
+  [260, 'Press Z to drop a waypoint at your base so you can find it again.'],
+  [300, 'If a member of staff catches you, click to shove them over, then run and break their line of sight.'],
+];
+const PA_TIMES = [75, 210];
+const PA_LINES = [
+  'Good day, shoppers. Please remember to return any trolleys to the trolley bays.',
+  'A reminder that our cafeteria is open all day. While stocks last.',
+  'Shoppers are reminded that the store closes at ten o\'clock this evening.',
+  'Lost something? Our helpful staff will be happy to show you the way. After closing.',
+  'Today\'s special offer can be found in an aisle near you. Somewhere.',
+  'Please do not climb on the shelving. Thank you.',
+  'Would the shopper in the blue shirt please stay where you are.',
+];
+function announcePA(line) {
+  chatLine('', '📢 ' + line, true);
+  try {
+    if (!('speechSynthesis' in window) || !settings.voice || settings.vol <= 0) return;
+    const u = new SpeechSynthesisUtterance(line); u.rate = 0.95; u.pitch = 1.05; u.volume = 0.5 * settings.vol;
+    speechSynthesis.speak(u);
+  } catch (_) {}
 }
 
 // ---------------------------------------------------------------- staff (drawing)
@@ -951,6 +1002,11 @@ function drawRemotes(dt, now) {
     m.root.position.set(nx, jump ? s1.y : lerp(s0.y, s1.y, u), nz);
     m.root.rotation.y = angLerp(s0.ry, s1.ry, u) + Math.PI;
     m.root.visible = !!s1.a;
+    { // names show faintly through the shelves, so friends can find each other
+      const d = Math.hypot(nx - P.x, nz - P.z);
+      r.tag.material.opacity = d < 20 ? 1 : d > 90 ? 0 : 0.35 + 0.65 * (1 - (d - 20) / 70) * 0.5;
+      r.tag.scale.set(1.2 + d * 0.02, 0.3 + d * 0.005, 1);
+    }
     setHeld(m, s1.ct, s1.cv);
     animate(m, Math.min(sp, 9), dt, { carrying: !!s1.ct, crouch: !!s1.cr });
   }

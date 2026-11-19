@@ -168,7 +168,7 @@ class ChunkGen {
       this.ff(f, 'fridge', 5.75, 0.5, 0); this.ff(f, 'diningTable', 5.6, 4.4, 0);
       this.ff(f, 'chair', 5.1, 3.6, 0); this.ff(f, 'chair', 6.1, 3.6, 0); this.ff(f, 'chair', 5.1, 5.2, 2); this.ff(f, 'chair', 6.1, 5.2, 2);
       this.ff(f, 'cabinet', 8.6, 0.4, 0); this.ff(f, 'stool', 2.0, 1.4, 0); this.ff(f, 'stool', 3.0, 1.4, 0);
-      for (let i = 0, n = r.int(3); i < n; i++) this.fd(f, STOCK.kitchen, 0.6 + i * 1.2 + r.range(0, 0.6), 0.4, 0.9);
+      for (let i = 0, n = r.int(2); i < n; i++) this.fd(f, STOCK.kitchen, 0.6 + i * 1.2 + r.range(0, 0.6), 0.4, 0.9);
     } else if (theme === 3) { // workspace
       this.ff(f, 'desk', 2.6, 0.45, 0); this.ff(f, 'chair', 2.6, 1.3, 2); this.ff(f, 'desk', 6.6, 0.45, 0); this.ff(f, 'chair', 6.6, 1.3, 2);
       this.ff(f, 'bookshelf', 0.32, 2.6, 1); this.ff(f, 'bookshelf', 0.32, 3.6, 1); this.ff(f, 'cabinet', 9.3, 2.8, 3);
@@ -182,7 +182,7 @@ class ChunkGen {
       this.ff(f, 'bunkBed', 0.75, 1.1, 0); this.ff(f, 'bunkBed', 3.0, 1.1, 0); this.ff(f, 'shelfCube', 6.4, 0.32, 0);
       this.ff(f, 'mattress', 7.6, 3.4, 0); this.ff(f, 'rug', 4.6, 4.0, 1); this.ff(f, 'box', 5.2, 2.2, 0); this.ff(f, 'box', 5.9, 2.6, 1);
       this.ff(f, 'stool', 3.4, 4.2, 0); this.ff(f, 'plant', 9.0, 0.6, 0); this.ff(f, 'tableLamp', 6.0, 0.3, 0, 1.5);
-      if (r.chance(0.6)) for (let i = 0, n = 1 + r.int(2); i < n; i++) this.fd(f, STOCK.play, 4.0 + i * 0.4, 4.2, 0);
+      if (r.chance(0.4)) for (let i = 0, n = 1 + r.int(2); i < n; i++) this.fd(f, STOCK.play, 4.0 + i * 0.4, 4.2, 0);
     }
   }
 
@@ -259,7 +259,7 @@ class ChunkGen {
       const n = 1 + r.int(3);
       for (let k = 0; k < n; k++) {
         const u = u0 + 0.35 + k * 0.7, v = v0 + 0.6;
-        if (r.chance(0.15)) this.fd(f, STOCK.any, u, v, 0.86);
+        if (r.chance(0.08)) this.fd(f, STOCK.any, u, v, 0.86);
         else this.ff(f, r.pick(['tableLamp', 'tableLamp', 'plant', 'box']), u, v, r.int(4), 0.86);
       }
     }

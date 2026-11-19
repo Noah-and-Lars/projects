@@ -57,18 +57,24 @@ export function makeStaff(id) {
   const look = staffLook(id);
   const root = new THREE.Group();
   const body = new THREE.Group(); root.add(body);
-  const skin = STAFF_SKIN[look.skin], vest = 0x1f6f6b, shirt = 0xece8e0, trousers = 0x2a2a30;
+  // The Floor Manager (Crimson Nights only) wears a dark suit and a red tie.
+  const skin = STAFF_SKIN[look.skin], vest = look.manager ? 0x23252b : 0x1f6f6b, shirt = look.manager ? 0x2c2f36 : 0xece8e0, trousers = look.manager ? 0x1c1d22 : 0x2a2a30;
   SKINS.add(skin);
   const leg = (x) => part((g) => { g.box(0, -0.48, 0, 0.18, 0.96, 0.2, trousers); g.box(0, -0.94, 0.05, 0.2, 0.08, 0.3, 0x111111); }, x, 0.98, 0);
   const legL = leg(-0.11), legR = leg(0.11);
   const torso = part((g) => {
     g.box(0, 0.36, 0, 0.46, 0.74, 0.24, shirt);
     g.box(0, 0.33, 0.005, 0.48, 0.66, 0.26, vest);
-    g.box(-0.12, 0.5, 0.135, 0.12, 0.08, 0.01, 0xf5f5f5); // blank name badge
-    g.box(0, 0.68, 0.13, 0.02, 0.22, 0.01, 0x9b2c2c);
+    g.box(-0.12, 0.5, 0.135, 0.12, 0.08, 0.01, look.manager ? 0xd4af37 : 0xf5f5f5); // badge
+    g.box(0, look.manager ? 0.45 : 0.68, 0.13, look.manager ? 0.06 : 0.02, look.manager ? 0.5 : 0.22, 0.01, look.manager ? 0xb01e1e : 0x9b2c2c);
+    if (look.manager) { g.box(-0.1, 0.66, 0.135, 0.08, 0.16, 0.01, 0xece8e0); g.box(0.1, 0.66, 0.135, 0.08, 0.16, 0.01, 0xece8e0); }
   }, 0, 0.96, 0);
   const arm = (x) => part((g) => { g.box(0, -0.34, 0, 0.13, 0.7, 0.15, shirt); g.box(0, -0.76, 0, 0.12, 0.16, 0.13, skin); }, x, 1.66, 0);
   const armL = arm(-0.31), armR = arm(0.31);
+  if (look.manager) { // a clipboard
+    const cb = new GeoBuilder(); cb.mat = SURF.plastic; cb.box(0, -0.7, 0.12, 0.24, 0.32, 0.02, 0x8a6a3a); cb.box(0, -0.68, 0.132, 0.2, 0.26, 0.005, 0xf2f2f2);
+    armR.add(new THREE.Mesh(cb.build(), mat));
+  }
   const head = part((g) => { g.box(0, 0.08, 0, 0.1, 0.12, 0.1, skin); g.cyl(0, 0.12, 0, 0.15, 0.32, skin, 10, 0.13); g.cyl(0, 0.44, 0, 0.13, 0.04, skin, 10, 0.08); }, 0, 1.7, 0);
   const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2a2a, fog: false });
   const eyes = new THREE.Group();

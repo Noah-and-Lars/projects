@@ -22,9 +22,11 @@ const CELL = 0.5, MAX_EXPAND = 3200, RADIUS = 0.28;
 // Headroom each height class needs (tall, average, short, very short).
 const NEED = [2.2, 1.95, 1.6, 1.25];
 
-let nextId = 1;
+let nextId = 1, nextManager = 1000000; // managers get ids from MANAGER_ID up
 // What a member of staff looks like follows from its id (models.js reads the same).
+export const MANAGER_ID = 1000000;
 export function staffLook(id) {
+  if (id >= MANAGER_ID) return { size: 0, width: 1, skin: 0, heightScale: 1.2, widthScale: 1.05, speedScale: 0.6, manager: true };
   let h = (id * 2654435761) >>> 0;
   const size = h % 4; h = (h / 4) | 0;
   const width = h % 4; h = (h / 4) | 0;
@@ -148,12 +150,12 @@ export class StaffSim {
     return clear && len > 0;
   }
 
-  spawnNear(p) {
+  spawnNear(p, manager = false) {
     for (let tries = 0; tries < 12; tries++) {
       const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 16;
       const x = p.x + Math.cos(a) * d, z = p.z + Math.sin(a) * d;
-      if (!bodyFits(this.world, x, 0, z, 0.32, 2.0)) continue;
-      const id = nextId++, look = staffLook(id);
+      if (!bodyFits(this.world, x, 0, z, 0.32, 2.4)) continue;
+      const id = manager ? nextManager++ : nextId++, look = staffLook(id);
       this.staff.set(id, {
         id, look, x, y: 0, z, ry: Math.random() * 6.28, vy: 0, radius: RADIUS * look.widthScale, height: 2.0 * look.heightScale, step: 0.36, gravity: 20, onGround: true,
         mode: 'wander', goal: null, path: [], pathT: 0, waitT: Math.random() * 3, cd: 0, target: null, lastSeen: 0, lastPos: null,
@@ -169,7 +171,7 @@ export class StaffSim {
     if (!s) return '';
     const P = params(env);
     if (!env.hostile) return '';
-    if (!P.push) return 'immune';
+    if (!P.push || s.look.manager) return 'immune';
     const dx = s.x - fromX, dz = s.z - fromZ, d = Math.hypot(dx, dz) || 1;
     if (d > 3.2) return '';
     s.kx = dx / d * 7; s.kz = dz / d * 7; s.vy = 3.5; s.onGround = false;
@@ -199,6 +201,18 @@ export class StaffSim {
         if (near < perPlayer) this.spawnNear(p);
       }
     }
+    // On a Crimson Night the Floor Manager walks the aisles: one near each shopper.
+    if (env.event === 'crimson' && night) {
+      this.mgrT = (this.mgrT || 0) - dt;
+      if (this.mgrT <= 0) {
+        this.mgrT = 5;
+        for (const p of alive) {
+          let has = false;
+          for (const s of this.staff.values()) if (s.look.manager && Math.hypot(s.x - p.x, s.z - p.z) < 55) has = true;
+          if (!has) this.spawnNear(p, true);
+        }
+      }
+    } else for (const s of this.staff.values()) if (s.look.manager) this.staff.delete(s.id);
     for (const s of this.staff.values()) {
       let nearest = Infinity;
       for (const p of players) nearest = Math.min(nearest, Math.hypot(s.x - p.x, s.z - p.z));
@@ -228,11 +242,12 @@ export class StaffSim {
       if (night && s.senseT <= 0) {
         s.senseT = 0.25;
         let tgt = null, td = Infinity;
+        const sight = s.look.manager ? 60 : P.sight;
         for (const p of alive) {
           const d = Math.hypot(p.x - s.x, p.z - s.z);
-          if (d > P.sight) continue;
+          if (d > sight) continue;
           const heard = p.sprinting && d < P.hear;
-          const seen = d < (p.crouch ? P.sight * 0.6 : P.sight) && this.canSee(s.x, s.y + 1.6 * s.look.heightScale, s.z, p.x, p.y + (p.crouch ? 0.8 : 1.5), p.z);
+          const seen = d < (p.crouch ? sight * 0.6 : sight) && this.canSee(s.x, s.y + 1.6 * s.look.heightScale, s.z, p.x, p.y + (p.crouch ? 0.8 : 1.5), p.z);
           if ((seen || heard || (s.target && s.target.id === p.id && d < 3)) && d < td) { td = d; tgt = p; }
         }
         if (tgt) { s.target = tgt; s.lastSeen = 0; s.lastPos = [tgt.x, tgt.y, tgt.z]; s.mode = 'chase'; }
@@ -270,7 +285,10 @@ export class StaffSim {
         const t = s.target, d = Math.hypot(t.x - s.x, t.z - s.z), dy = t.y - s.y;
         if (d < 1.2 && dy < 1.6 && dy > -1.2) {
           s.ry = Math.atan2(t.x - s.x, t.z - s.z);
-          if (s.cd <= 0) { s.cd = P.cd; s.anim = 0.4; out.hits.push({ to: t.id, d: Math.round(P.dmg[0] + Math.random() * (P.dmg[1] - P.dmg[0])) }); }
+          if (s.cd <= 0) {
+            s.cd = s.look.manager ? 1.4 : P.cd; s.anim = 0.4;
+            out.hits.push({ to: t.id, d: s.look.manager ? 22 + Math.round(Math.random() * 6) : Math.round(P.dmg[0] + Math.random() * (P.dmg[1] - P.dmg[0])) });
+          }
         } else goTo(t.x, t.y, t.z, chase);
       } else if (s.mode === 'search' && s.lastPos) {
         goTo(s.lastPos[0], s.lastPos[1], s.lastPos[2], chase * 0.7);
