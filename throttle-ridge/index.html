@@ -500,6 +500,13 @@ body.touch #stunts .st i { font-size: 18px; }
 .trx-bopts { justify-content: flex-start; gap: 8px; font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 0.08em; }
 .trx-bopts .seg button { min-height: 36px; padding: 4px 10px; font-size: 11px; }
 @media (max-height: 460px) { .trx-bopts .seg button { min-height: 32px; } }
+.trx-screen .panel.wide { overflow-y: auto; }
+.trx-grid-wrap { flex: none; }
+@media (max-height: 460px) {
+  .trx-grid-wrap { max-height: none; height: 168px; }
+  .trx-swatches { gap: 5px; } .trx-swatches button { width: 24px; height: 24px; border-radius: 7px; }
+  #scr-build .row.between { flex-wrap: nowrap; } #scr-build #trx-bthemes button { padding: 4px 7px; font-size: 10px; }
+}
 </style><!-- /tr-extras-css -->
 </head>
 <body>
