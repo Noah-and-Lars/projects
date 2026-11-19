@@ -6,7 +6,7 @@
 // host of a room with nobody else in it.
 import * as THREE from 'three';
 import { World, CHUNK, CEIL } from './world.js';
-import { TYPES, ITEMS, footprint, furnitureGeometry } from './furniture.js';
+import { TYPES, ITEMS, footprint, furnitureGeometry, itemGeometry } from './furniture.js';
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName } from './net.js';
@@ -15,9 +15,12 @@ import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash } from './m
 import { initAudio, sfx, setAmbience, setVolume } from './audio.js';
 import { DAY_LEN, CYCLE, EVENTS, eventFor, isNight, isHostile, clockText, lightLevel, applyLight } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { uniforms, storeMaterial, SURF, makeFixtures, makeDust, setLowQuality } from './mats.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
+const darkEl = $('dark');
 const IS_TOUCH = matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window;
 
 // ---------------------------------------------------------------- settings
@@ -29,19 +32,28 @@ try { Object.assign(stats, JSON.parse(localStorage.getItem('es-stats') || '{}'))
 const saveStats = () => { try { localStorage.setItem('es-stats', JSON.stringify(stats)); } catch (_) {} };
 
 // ---------------------------------------------------------------- renderer
+setLowQuality(settings.low);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_TOUCH, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, settings.low ? 1 : 1.75));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xd8d3c8);
 scene.fog = new THREE.Fog(0xd8d3c8, 10, 70);
 const camera = new THREE.PerspectiveCamera(settings.fov, 1, 0.05, 200);
 scene.add(camera);
+// Soft reflections for metal and gloss, from a generic indoor room.
+{
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+  pm.dispose();
+}
 
-const hemi = new THREE.HemisphereLight(0xfff8ec, 0x8c8474, 1.8);
-const amb = new THREE.AmbientLight(0xffffff, 0.5);
+const hemi = new THREE.HemisphereLight(0xfff6e8, 0x7d7466, 1.0);
+const amb = new THREE.AmbientLight(0xffffff, 0.3);
 scene.add(hemi, amb);
-const torch = new THREE.SpotLight(0xfff1d6, 0, 32, 0.52, 0.45, 1.3);
+const torch = new THREE.SpotLight(0xfff1d6, 0, 34, 0.5, 0.5, 1.2);
 torch.position.set(0.25, -0.2, 0);
 camera.add(torch); camera.add(torch.target); torch.target.position.set(0, -0.3, -5);
 
@@ -52,26 +64,39 @@ function tileTexture(draw, size = 512) {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   return t;
 }
+// Speckled vinyl tiles, 2/3 m square, with the odd scuff.
 const floorTex = tileTexture((x, s) => {
-  const n = 4, w = s / n;
+  const n = 6, w = s / n;
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-    const v = 196 + ((i * 7 + j * 13) % 5) * 4;
-    x.fillStyle = `rgb(${v},${v - 4},${v - 10})`; x.fillRect(i * w, j * w, w, w);
-    for (let k = 0; k < 60; k++) { x.fillStyle = `rgba(90,80,70,${Math.random() * 0.08})`; x.fillRect(i * w + Math.random() * w, j * w + Math.random() * w, 2, 2); }
+    const v = 205 + Math.floor(rnd() * 10) - ((i + j) % 2) * 5;
+    x.fillStyle = `rgb(${v},${v - 3},${v - 9})`; x.fillRect(i * w, j * w, w, w);
+    for (let k = 0; k < 220; k++) {
+      const g = rnd();
+      x.fillStyle = g < 0.5 ? `rgba(70,64,58,${0.12 + rnd() * 0.25})` : g < 0.8 ? `rgba(255,255,255,${0.2 + rnd() * 0.3})` : `rgba(150,120,90,${0.15 + rnd() * 0.2})`;
+      const r = 0.6 + rnd() * 1.6; x.fillRect(i * w + rnd() * w, j * w + rnd() * w, r, r);
+    }
   }
-  x.strokeStyle = 'rgba(80,72,64,0.45)'; x.lineWidth = 2;
-  for (let i = 0; i <= n; i++) { x.beginPath(); x.moveTo(i * w, 0); x.lineTo(i * w, s); x.stroke(); x.beginPath(); x.moveTo(0, i * w); x.lineTo(s, i * w); x.stroke(); }
+  for (let k = 0; k < 7; k++) { // scuffs
+    x.strokeStyle = `rgba(60,55,50,${0.05 + rnd() * 0.06})`; x.lineWidth = 2 + rnd() * 6; x.lineCap = 'round';
+    x.beginPath(); const px = rnd() * s, py = rnd() * s; x.moveTo(px, py); x.quadraticCurveTo(px + rnd() * 60 - 30, py + rnd() * 60 - 30, px + rnd() * 90 - 45, py + rnd() * 90 - 45); x.stroke();
+  }
+  x.fillStyle = 'rgba(95,88,80,0.55)';
+  for (let i = 0; i <= n; i++) { x.fillRect(i * w - 1, 0, 2, s); x.fillRect(0, i * w - 1, s, 2); }
 });
-floorTex.repeat.set(300 / 4, 300 / 4); // 4 m texture = 1 m tiles
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshLambertMaterial({ map: floorTex }));
+floorTex.repeat.set(300 / 4, 300 / 4); // the texture covers 4 m
+const floorGeo = new THREE.PlaneGeometry(300, 300);
+floorGeo.setAttribute('aMat', new THREE.Float32BufferAttribute(new Array(floorGeo.attributes.position.count).fill(SURF.floor), 1));
+const floor = new THREE.Mesh(floorGeo, storeMaterial({ map: floorTex, vertexColors: false }));
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
+// Acoustic ceiling tiles; the light fittings are separate (mats.js).
 const ceilTex = tileTexture((x, s) => {
-  x.fillStyle = '#e4e2dc'; x.fillRect(0, 0, s, s);
-  const n = 5, w = s / n; x.strokeStyle = '#b9b6ae'; x.lineWidth = 3;
-  for (let i = 0; i <= n; i++) { x.beginPath(); x.moveTo(i * w, 0); x.lineTo(i * w, s); x.stroke(); x.beginPath(); x.moveTo(0, i * w); x.lineTo(s, i * w); x.stroke(); }
-  // two long fluorescent panels
-  for (const py of [w * 1, w * 3]) { x.fillStyle = '#ffffff'; x.shadowColor = '#fff'; x.shadowBlur = 20; x.fillRect(w * 0.5, py + w * 0.32, w * 4, w * 0.36); x.shadowBlur = 0; }
+  x.fillStyle = '#dedbd4'; x.fillRect(0, 0, s, s);
+  let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < 4000; k++) { x.fillStyle = `rgba(120,115,105,${rnd() * 0.25})`; x.fillRect(rnd() * s, rnd() * s, 1.5, 1.5); }
+  const n = 5, w = s / n; x.fillStyle = '#aaa69d';
+  for (let i = 0; i <= n; i++) { x.fillRect(i * w - 2, 0, 4, s); x.fillRect(0, i * w - 2, s, 4); }
 });
 ceilTex.repeat.set(300 / 6, 300 / 6);
 const ceilMat = new THREE.MeshBasicMaterial({ map: ceilTex, color: 0xffffff });
@@ -79,6 +104,10 @@ const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), ceilMat);
 ceiling.rotation.x = Math.PI / 2; ceiling.position.y = CEIL;
 scene.add(ceiling);
 const lights = { hemi, amb, ceil: ceilMat.color };
+uniforms.uCeil.value = CEIL;
+uniforms.uGain.value = 2.0;
+const fixtures = makeFixtures(scene);
+const dust = makeDust(scene);
 
 // ---------------------------------------------------------------- world
 const world = new World(scene);
@@ -91,6 +120,7 @@ highlight.visible = false; scene.add(highlight);
 // First-person view of what you're carrying.
 const viewHeld = new THREE.Group(); viewHeld.position.set(0.42, -0.42, -0.9); camera.add(viewHeld);
 let viewHeldKey = '';
+const heldMaterial = storeMaterial({ transparent: true, opacity: 0.9 });
 
 // ---------------------------------------------------------------- state
 const net = createNet({
@@ -176,7 +206,7 @@ function openSettings() {
 $('s-sens').oninput = (e) => { settings.sens = +e.target.value; saveSettings(); };
 $('s-vol').oninput = (e) => { settings.vol = +e.target.value; setVolume(settings.vol); saveSettings(); };
 $('s-fov').oninput = (e) => { settings.fov = +e.target.value; camera.fov = settings.fov; camera.updateProjectionMatrix(); saveSettings(); };
-$('s-low').onchange = (e) => { settings.low = e.target.checked; renderer.setPixelRatio(Math.min(devicePixelRatio, settings.low ? 1 : 1.75)); saveSettings(); };
+$('s-low').onchange = (e) => { settings.low = e.target.checked; setLowQuality(settings.low); renderer.setPixelRatio(Math.min(devicePixelRatio, settings.low ? 1 : 1.75)); saveSettings(); };
 setVolume(settings.vol);
 
 initInput(canvas, {
@@ -343,7 +373,7 @@ function request(q) {
 // ---------------------------------------------------------------- player
 function hurt(d, why) {
   if (!P.alive || mode !== 'play') return;
-  P.hp -= d; P.hurtT = 0;
+  P.hp -= d; P.hurtT = 0; feel.shake = Math.min(1, 0.5 + d / 30);
   $('hurt').style.opacity = 1; setTimeout(() => { $('hurt').style.opacity = 0; }, 180);
   sfx.hurt();
   if (P.hp <= 0) die(why);
@@ -400,7 +430,7 @@ function updatePlayer(dt) {
   P.landSpeed = 0;
   if (P.alive) moveBody(world, P, dx, dz, dt);
   P.speed = Math.hypot(P.x - ox, P.z - oz) / dt;
-  if (wasAir && P.onGround && P.landSpeed > 4) sfx.land();
+  if (wasAir && P.onGround && P.landSpeed > 4) { sfx.land(); feel.dip = Math.min(0.5, P.landSpeed * 0.035); }
   if (P.landSpeed > 13) hurt((P.landSpeed - 13) * 9, 'fall');
   // footsteps
   if (P.onGround && P.speed > 0.5) { P.stepAcc += P.speed * dt; if (P.stepAcc > (sprint ? 2.2 : 1.7)) { P.stepAcc = 0; sfx.step(!sprint); } }
@@ -546,14 +576,48 @@ function useSelected() {
 }
 
 // ---------------------------------------------------------------- hotbar / HUD
+// Little rendered pictures of each food and supply, made once.
+let icons = null;
+function makeIcons() {
+  icons = {};
+  try {
+    const S = 96, rt = new THREE.WebGLRenderTarget(S, S, { samples: 4 });
+    rt.texture.colorSpace = THREE.SRGBColorSpace;
+    const sc = new THREE.Scene();
+    sc.add(new THREE.HemisphereLight(0xffffff, 0x666666, 2.2));
+    const dl = new THREE.DirectionalLight(0xffffff, 2.2); dl.position.set(1, 2, 1.5); sc.add(dl);
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const buf = new Uint8Array(S * S * 4), c = document.createElement('canvas'); c.width = c.height = S;
+    const ctx = c.getContext('2d'), img = ctx.createImageData(S, S);
+    const prevTarget = renderer.getRenderTarget(), prevClear = renderer.getClearAlpha();
+    renderer.setClearColor(0x000000, 0);
+    for (const k of Object.keys(ITEMS)) {
+      const it = ITEMS[k], m = new THREE.Mesh(itemGeometry(k), mat);
+      m.rotation.y = 0.7; sc.add(m);
+      const r = Math.max(it.w, it.d, it.h);
+      cam.position.set(0, it.h / 2 + r * 1.1, r * 2.6); cam.lookAt(0, it.h / 2, 0);
+      renderer.setRenderTarget(rt); renderer.clear(); renderer.render(sc, cam);
+      renderer.readRenderTargetPixels(rt, 0, 0, S, S, buf);
+      for (let y = 0; y < S; y++) img.data.set(buf.subarray((S - 1 - y) * S * 4, (S - y) * S * 4), y * S * 4);
+      ctx.putImageData(img, 0, 0);
+      icons[k] = c.toDataURL();
+      sc.remove(m);
+    }
+    renderer.setRenderTarget(prevTarget); renderer.setClearColor(0x000000, prevClear);
+    rt.dispose(); mat.dispose();
+  } catch (_) { icons = {}; }
+}
 function buildHotbar() {
+  if (!icons) makeIcons();
   const hb = $('hotbar'); hb.innerHTML = '';
   P.inv.forEach((key, i) => {
     const s = document.createElement('div'); s.className = 'slot' + (i === P.sel ? ' sel' : '');
     const k = document.createElement('span'); k.className = 'k'; k.textContent = i + 1; s.append(k);
     if (key) {
       const it = ITEMS[key];
-      const sw = document.createElement('div'); sw.className = 'sw'; sw.style.background = '#' + it.color.toString(16).padStart(6, '0'); s.append(sw);
+      if (icons[key]) { const im = document.createElement('img'); im.className = 'ic'; im.src = icons[key]; im.alt = ''; s.append(im); }
+      else { const sw = document.createElement('div'); sw.className = 'sw'; sw.style.background = '#' + it.color.toString(16).padStart(6, '0'); s.append(sw); }
       s.append(it.name);
     }
     s.addEventListener('touchstart', (e) => { e.stopPropagation(); if (P.sel === i) useSelected(); else { P.sel = i; buildHotbar(); } }, { passive: true });
@@ -730,9 +794,13 @@ function frame() {
   const L = lightLevel(clock.t, clock.ev, now / 1000);
   applyLight(scene, lights, L, clock.ev, settings.low);
   setAmbience(isHostile(clock.t, clock.ev), L > 0.5);
-  torch.intensity = P.torch && P.alive ? 38 : 0;
+  torch.intensity = P.torch && P.alive ? 42 : 0;
   floor.position.set(Math.round(P.x / 4) * 4, 0, Math.round(P.z / 4) * 4);
   ceiling.position.set(Math.round(P.x / 6) * 6, CEIL, Math.round(P.z / 6) * 6);
+  fixtures.update(P.x, P.z, L, uniforms.uEmerg.value, CEIL);
+  const vig = (0.45 + 0.55 * (1 - L)).toFixed(2);
+  if (darkEl.style.opacity !== vig) darkEl.style.opacity = vig;
+  dust.update(dt, P.x, P.z, L);
   placeCamera(dt);
   updateHud(dt);
   world.flushItems();
@@ -740,9 +808,23 @@ function frame() {
   endFrame();
 }
 
+// Camera feel: head bob while walking, a wider view when sprinting, a dip on
+// landing, and a shake when you're hit.
+const feel = { bob: 0, dip: 0, shake: 0, fov: 0 };
 function placeCamera(dt) {
-  const ey = P.y + 1.6;
-  camera.rotation.set(P.pitch, P.yaw, 0, 'YXZ');
+  const moving = P.onGround && P.speed > 0.5 && P.alive;
+  feel.bob += moving ? dt * P.speed * 1.9 : 0;
+  const bobAmt = moving ? Math.min(1, P.speed / 5) : 0;
+  feel.dip = Math.max(0, feel.dip - dt * 1.6);
+  feel.shake = Math.max(0, feel.shake - dt * 2.5);
+  const sprinting = P.speed > 6;
+  feel.fov += ((sprinting ? 7 : 0) - feel.fov) * Math.min(1, dt * 6);
+  const fov = settings.fov + feel.fov;
+  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const sh = feel.shake * feel.shake;
+  const ey = P.y + 1.6 + Math.sin(feel.bob * 2) * 0.045 * bobAmt - feel.dip * 0.4;
+  camera.rotation.set(P.pitch + (Math.random() - 0.5) * sh * 0.12, P.yaw + (Math.random() - 0.5) * sh * 0.12, Math.sin(feel.bob) * 0.006 * bobAmt + (Math.random() - 0.5) * sh * 0.08, 'YXZ');
+  viewHeld.position.set(0.42 + Math.sin(feel.bob) * 0.015 * bobAmt, -0.42 + Math.abs(Math.cos(feel.bob)) * 0.015 * bobAmt - feel.dip * 0.2, -0.9);
   myModel.root.position.set(P.x, P.y, P.z);
   myModel.root.rotation.y = P.yaw + Math.PI;
   setHeld(myModel, P.carry ? P.carry.t : '', P.carry ? P.carry.v : 0);
@@ -754,7 +836,7 @@ function placeCamera(dt) {
     camera.position.set(P.x - dx * dist, ey - dy * dist + 0.3, P.z - dz * dist);
     myModel.root.visible = true;
   } else {
-    camera.position.set(P.x, P.alive ? ey : P.y + 0.4, P.z);
+    camera.position.set(P.x + Math.cos(P.yaw) * Math.sin(feel.bob) * 0.025 * bobAmt, P.alive ? ey : P.y + 0.4, P.z - Math.sin(P.yaw) * Math.sin(feel.bob) * 0.025 * bobAmt);
     myModel.root.visible = false;
   }
   // first-person carried piece
@@ -764,7 +846,7 @@ function placeCamera(dt) {
     while (viewHeld.children.length) viewHeld.remove(viewHeld.children[0]);
     if (key) {
       const t = TYPES[P.carry.t];
-      const mesh = new THREE.Mesh(furnitureGeometry(P.carry.t, P.carry.v), new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }));
+      const mesh = new THREE.Mesh(furnitureGeometry(P.carry.t, P.carry.v), heldMaterial);
       const s = 0.38 / Math.max(t.w, t.d, t.h);
       mesh.scale.setScalar(s); mesh.position.set(0, -t.h * s / 2, 0); mesh.rotation.y = 0.5;
       viewHeld.add(mesh);
@@ -814,6 +896,8 @@ function renderMenuBackdrop(dt) {
   camera.position.set(x, 2.2, z);
   camera.rotation.set(-0.12, Math.PI + Math.sin(menuT * 0.07) * 0.6, 0, 'YXZ');
   torch.intensity = 0;
+  fixtures.update(x, z, 1, 0, CEIL);
+  dust.update(dt, x, z, 1);
   world.flushItems();
   renderer.render(scene, camera);
 }

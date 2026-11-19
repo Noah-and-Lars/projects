@@ -98,6 +98,36 @@ chunks around the spawn have none.
 There are 26 kinds of furniture, from rugs (20 hp) to wardrobes and fridges
 (200 to 220 hp), and 10 kinds of food and supplies.
 
+## Look
+
+Everything is generated in code. There are no image or model files.
+
+- **Surfaces.** Every model is vertex-coloured, and each vertex also says what
+  it's made of: paint, wood, fabric, metal, cardboard, plastic, concrete,
+  floor, skin or painted steel. One shared material (`mats.js`) uses that to
+  pick a procedural detail texture: wood grain, fabric weave, card fibre or
+  plaster, generated at start-up. It's projected from world space on all
+  three axes, so models need no UVs. The surface type also sets roughness
+  and metalness.
+- **Ceiling light.** There's a fluorescent fitting every 6 m, forever. They
+  aren't real lights. The shader lights each pixel from the nine nearest
+  fittings, with a diffuse term and a glossy highlight. That gives pools of
+  light on the floor and their reflections in its polish, at a fixed cost
+  however far you walk.
+- **Night.** The fittings go out, except one in nine emergency fittings that
+  glow orange, and the edges of the screen darken. Staff eyes glow red. Your
+  torch (F) is a real spotlight.
+- **Contact shadows.** A soft shadow sits under every piece of furniture
+  (one instanced mesh) and around the base of every pillar, wall, rack and
+  counter (merged per chunk). Surfaces also darken slightly where they meet
+  the floor.
+- **Everything else.** Speckled vinyl floor tiles with scuffs, acoustic
+  ceiling tiles, feature-coloured back walls in the showrooms, a generic
+  room environment map for reflections on metal, ACES tone mapping, and
+  dust drifting in the light. The camera bobs when you walk, widens when you
+  sprint, dips when you land and shakes when you're hit. Hotbar icons are
+  rendered from the item models.
+
 ## Multiplayer design
 
 There's no game server. The realtime service only relays messages and
@@ -168,6 +198,7 @@ cd tools && npm install && npm run build
 | `net.js` | Rooms, presence, host election, messages |
 | `env.js` | Day/night timing, events, store clock, lighting levels |
 | `models.js` | Shopper and staff models, walk cycle, name tags, carried furniture |
+| `mats.js` | Surface types, detail texture, the store material (shader patch with ceiling lighting), contact shadows, light fittings, dust |
 | `geo.js` | Merged vertex-coloured geometry from boxes and cylinders |
 | `input.js` | Keyboard, mouse (pointer lock) and touch controls |
 | `audio.js` | All sound, synthesised with Web Audio |
@@ -175,6 +206,7 @@ cd tools && npm install && npm run build
 | `tools/build.mjs` | Builds the single-file `index.html` |
 | `tools/test.cjs` | Solo smoke test (see below) |
 | `tools/test-mp.cjs`, `tools/mock-rt.js` | Two-player test with a stand-in realtime server |
+| `tools/shots.cjs` | Screenshots of the look: day, close-up, night, torch, staff, third person |
 
 ### Testing
 

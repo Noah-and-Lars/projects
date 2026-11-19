@@ -1,6 +1,7 @@
 // Store hours, today's event, and the look of the light (renderer side).
 import * as THREE from 'three';
 import { hashInts } from './rng.js';
+import { uniforms } from './mats.js';
 
 export const DAY_LEN = 360, NIGHT_LEN = 180, CYCLE = DAY_LEN + NIGHT_LEN;
 export const POWERCUT = [120, 200];
@@ -57,8 +58,13 @@ export function applyLight(scene, lights, L, ev, low) {
   fog.near = ev === 'fog' ? 1 : 2 + 8 * L;
   fog.far = far;
   scene.background.copy(fog.color);
-  // Colours here are linear, so the dark end needs small numbers.
-  lights.hemi.intensity = 0.04 + 1.83 * L;
-  lights.amb.intensity = 0.015 + 0.57 * L;
-  lights.ceil.setScalar(0.015 + 0.985 * L * L);
+  // Most of the light comes from the ceiling fittings (mats.js). The
+  // hemisphere and environment are the bounce light; colours are linear,
+  // so the dark end needs small numbers.
+  uniforms.uLevel.value = L;
+  uniforms.uEmerg.value = Math.max(0, Math.min(1, (0.6 - L) / 0.4));
+  lights.hemi.intensity = 0.03 + 0.8 * L;
+  lights.amb.intensity = 0.012 + 0.2 * L;
+  scene.environmentIntensity = 0.015 + 0.35 * L;
+  lights.ceil.setScalar(0.012 + 0.6 * L * L);
 }

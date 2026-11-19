@@ -3,11 +3,16 @@
 import * as THREE from 'three';
 import { GeoBuilder } from './geo.js';
 import { TYPES, furnitureGeometry, furnitureMaterial } from './furniture.js';
+import { SURF, characterMaterial } from './mats.js';
 
-const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+const mat = characterMaterial;
 
+const SKINS = new Set([0xf1c9a5, 0xd9a47a, 0xa86f4c, 0x6e4630, 0xf5d7bf, 0xd8d2c8]);
 function part(build, px, py, pz) {
-  const g = new GeoBuilder(); build(g);
+  const g = new GeoBuilder();
+  g.mat = SURF.fabric;
+  g.matOf = (hex) => (SKINS.has(hex) ? SURF.skin : hex === 0x222222 || hex === 0x111111 ? SURF.plastic : hex === 0x1a1a1a ? SURF.plastic : null);
+  build(g);
   const m = new THREE.Mesh(g.build(), mat);
   const pivot = new THREE.Group(); pivot.position.set(px, py, pz); pivot.add(m);
   return pivot;
@@ -41,6 +46,7 @@ export function makeShopper(look) {
 
 // A member of staff: tall, faceless, in a teal work vest with a blank badge.
 // Eyes glow when they're hunting.
+let glowTex = null;
 export function makeStaff() {
   const root = new THREE.Group();
   const body = new THREE.Group(); root.add(body);
@@ -59,6 +65,15 @@ export function makeStaff() {
   const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2a2a, fog: false });
   const eyes = new THREE.Group();
   for (const x of [-0.06, 0.06]) { const e = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.01), eyeMat); e.position.set(x, 0.32, 0.148); eyes.add(e); }
+  // a faint glow around the eyes, so you can spot them in the dark
+  const gc = document.createElement('canvas'); gc.width = gc.height = 64;
+  const gx = gc.getContext('2d'), gr = gx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,60,40,0.9)'); gr.addColorStop(0.35, 'rgba(255,30,20,0.35)'); gr.addColorStop(1, 'rgba(255,0,0,0)');
+  gx.fillStyle = gr; gx.fillRect(0, 0, 64, 64);
+  glowTex = glowTex || new THREE.CanvasTexture(gc);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false, toneMapped: false }));
+  glow.scale.set(0.45, 0.25, 1); glow.position.set(0, 0.32, 0.17);
+  eyes.add(glow);
   head.add(eyes);
   body.add(legL, legR, torso, armL, armR, head);
   return { root, body, legL, legR, armL, armR, head, eyes, phase: 0, attackT: 0 };

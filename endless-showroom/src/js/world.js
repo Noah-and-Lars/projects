@@ -12,14 +12,21 @@
 import * as THREE from 'three';
 import { hashInts, rng } from './rng.js';
 import { GeoBuilder } from './geo.js';
-import { TYPES, ITEMS, FOOD_KEYS, footprint, furnitureGeometry, itemGeometry, furnitureMaterial } from './furniture.js';
+import { TYPES, ITEMS, FOOD_KEYS, footprint, furnitureGeometry, itemGeometry } from './furniture.js';
+import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry, ShadowBuilder } from './mats.js';
 
 export const CHUNK = 24, CEIL = 6.5, HALF = 12;
 const CELL = 4; // item spatial hash cell
 const RENDER_R = 2, DATA_R = 1;
 const Q = 9.6, QPAD = 1.2; // usable quadrant size and aisle padding
 
-const WALL = 0xe9e5dc, WALL_BASE = 0x8a857b, PILLAR = 0xdedad2, PARTITION = 0xf2efe8, RACK = 0x3f6f9a, RACK_BEAM = 0xe07b2b;
+const WALL = 0xd9d3c7, WALL_BASE = 0x8a857b, PILLAR = 0xd6d1c8, PARTITION = 0xe4ded2, RACK = 0x3f6f9a, RACK_BEAM = 0xe07b2b;
+// Surface of the fixed parts, by colour (anything else is paint).
+const STATIC_SURF = {
+  [PILLAR]: SURF.concrete, [WALL_BASE]: SURF.plastic, [RACK]: SURF.steel, [RACK_BEAM]: SURF.steel,
+  0xc8a26e: SURF.card, 0xb8915c: SURF.card, 0xd2b07d: SURF.card, 0xe7e1d3: SURF.card, 0x9cb3c4: SURF.plastic,
+  0x7b6a58: SURF.wood, 0xb8a98f: SURF.wood, 0xe8e2d6: SURF.concrete, 0x34495e: SURF.steel,
+};
 
 const SECTIONS = {
   showroom: { label: 'SHOWROOM', color: '#2b6cb0' },
@@ -65,6 +72,9 @@ class ChunkGen {
     this.w = world; this.cx = cx; this.cz = cz;
     this.ox = cx * CHUNK; this.oz = cz * CHUNK;
     this.g = new GeoBuilder();
+    this.g.mat = SURF.paint;
+    this.g.matOf = (hex) => STATIC_SURF[hex] ?? null;
+    this.sh = new ShadowBuilder();
     this.boxes = [];
     this.items = [];
     this.r = rng(hashInts(world.seed, cx, cz, 1));
@@ -73,6 +83,7 @@ class ChunkGen {
   // Static solid, in chunk-local coordinates.
   solid(x0, z0, x1, z1, y0, y1, hex, draw = true) {
     if (draw) this.g.boxMin(x0, y0, z0, x1 - x0, y1 - y0, z1 - z0, hex);
+    if (draw && y0 === 0) this.sh.rect(x0, z0, x1, z1, 0.004, y1 > 3 ? 0.3 : 0.18);
     this.boxes.push({ x0: x0 + this.ox, x1: x1 + this.ox, z0: z0 + this.oz, z1: z1 + this.oz, y0, y1 });
   }
   deco(x0, z0, x1, z1, y0, y1, hex) { this.g.boxMin(x0, y0, z0, x1 - x0, y1 - y0, z1 - z0, hex); }
@@ -128,8 +139,10 @@ class ChunkGen {
   // ---- Sections ----
   q_showroom(f) {
     const { r } = this;
-    // A three-walled room display.
-    this.fs(f, 0, 0, Q, 0.12, 0, 2.6, PARTITION);
+    // A three-walled room display, its back wall painted a feature colour.
+    const feature = r.pick([0x9fb39a, 0xc98f74, 0x5d7189, 0xe2cf96, 0xb7b2ab, 0x8a9e9a, 0xd9b4a8, 0x6f7f5c, PARTITION, PARTITION]);
+    this.fs(f, 0, 0, Q, 0.12, 0, 2.6, feature);
+    { const [a, b, c, d] = f.rect(0, 0, Q, 0.16); this.deco(a, b, c, d, 2.6, 2.7, 0x8a857b); }
     this.fs(f, 0, 0.12, 0.12, 6.2, 0, 2.6, PARTITION);
     this.fs(f, Q - 0.12, 0.12, Q, 6.2, 0, 2.6, PARTITION);
     const theme = r.int(5);
@@ -165,6 +178,7 @@ class ChunkGen {
     for (const v of rows) {
       const [x0, z0, x1, z1] = f.rect(0.2, v - deep / 2, Q - 0.2, v + deep / 2);
       this.boxes.push({ x0: x0 + this.ox, x1: x1 + this.ox, z0: z0 + this.oz, z1: z1 + this.oz, y0: 0, y1: top });
+      this.sh.rect(x0, z0, x1, z1, 0.004, 0.3);
       const alongX = x1 - x0 > z1 - z0;
       const len = alongX ? x1 - x0 : z1 - z0;
       const n = Math.round(len / 2.3);
@@ -275,7 +289,6 @@ function signTexture(label, color, line2) {
   return t;
 }
 
-const staticMat = new THREE.MeshLambertMaterial({ vertexColors: true });
 
 export class World {
   constructor(scene) {
@@ -295,6 +308,7 @@ export class World {
   reset(seed) {
     for (const ch of this.chunks.values()) this._dropVisual(ch);
     for (const im of this.inst.values()) { this.group.remove(im); im.dispose(); }
+    if (this.shadowInst) { this.group.remove(this.shadowInst); this.shadowInst.dispose(); this.shadowInst = null; }
     this.inst.clear(); this.itemsDirty = true;
     this.chunks.clear(); this.items.clear(); this.mods.clear(); this.grid.clear();
     this.seed = seed >>> 0;
@@ -351,11 +365,15 @@ export class World {
 
   _buildVisual(ch) {
     const geo = ch.gen.g.build();
-    const m = new THREE.Mesh(geo, staticMat);
+    const m = new THREE.Mesh(geo, staticMaterial);
     m.position.set(ch.cx * CHUNK, 0, ch.cz * CHUNK);
     m.matrixAutoUpdate = false; m.updateMatrix();
     this.group.add(m);
     ch.mesh = m;
+    const sh = new THREE.Mesh(ch.gen.sh.build(), shadowMaterial);
+    sh.position.copy(m.position); sh.matrixAutoUpdate = false; sh.updateMatrix(); sh.renderOrder = 1;
+    this.group.add(sh);
+    ch.shadow = sh;
     const sec = SECTIONS[ch.gen.section];
     const tex = signTexture(sec.label, sec.color, 'AISLE ' + (ch.cx >= 0 ? 'E' : 'W') + Math.abs(ch.cx) + ' · ' + (ch.cz >= 0 ? 'S' : 'N') + Math.abs(ch.cz));
     const mat = new THREE.MeshBasicMaterial({ map: tex, fog: true });
@@ -371,6 +389,7 @@ export class World {
 
   _dropVisual(ch) {
     if (ch.mesh) { this.group.remove(ch.mesh); ch.mesh.geometry.dispose(); ch.mesh = null; }
+    if (ch.shadow) { this.group.remove(ch.shadow); ch.shadow.geometry.dispose(); ch.shadow = null; }
     if (ch.sign) { this.group.remove(ch.sign); const m = ch.sign.children[0]; m.material.map.dispose(); m.material.dispose(); m.geometry.dispose(); ch.sign = null; }
   }
 
@@ -449,6 +468,26 @@ export class World {
     }
     const m4 = this._m4 || (this._m4 = new THREE.Matrix4()), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
     for (const [key, im] of this.inst) if (!groups.has(key)) { im.count = 0; im.visible = false; }
+    // soft shadows under furniture
+    let shadows = 0;
+    for (const list of groups.values()) for (const it of list) if (it.k === 'f' && !TYPES[it.t].flat) shadows++;
+    if (!this.shadowInst || this.shadowInst.instanceMatrix.count < shadows) {
+      if (this.shadowInst) { this.group.remove(this.shadowInst); this.shadowInst.dispose(); }
+      this.shadowInst = new THREE.InstancedMesh(shadowGeometry, shadowMaterial, Math.max(64, Math.ceil(shadows * 1.5)));
+      this.shadowInst.renderOrder = 1;
+      this.group.add(this.shadowInst);
+    }
+    {
+      const sc = new THREE.Vector3(); let k = 0;
+      for (const list of groups.values()) for (const it of list) {
+        if (it.k !== 'f' || TYPES[it.t].flat) continue;
+        const t = TYPES[it.t], grow = 1.55 + Math.min(0.5, t.h * 0.2);
+        q.setFromAxisAngle(up, it.r * Math.PI / 2);
+        m4.compose(pos.set(it.x, it.y + 0.005, it.z), q, sc.set(t.w * grow + 0.15, 1, t.d * grow + 0.15));
+        this.shadowInst.setMatrixAt(k++, m4);
+      }
+      this.shadowInst.count = k; this.shadowInst.instanceMatrix.needsUpdate = true; this.shadowInst.computeBoundingSphere();
+    }
     for (const [key, list] of groups) {
       let im = this.inst.get(key);
       if (!im || im.instanceMatrix.count < list.length) {

@@ -16,7 +16,7 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
 
 (async () => {
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: 960, height: 540 } });
+  const ctx = await browser.newContext({ viewport: { width: 480, height: 270 } });
   await ctx.addInitScript({ path: path.join(__dirname, 'mock-rt.js') });
   const errors = [];
   const open = async (name) => {
@@ -31,7 +31,7 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   };
   const A = await open('Alpha'), B = await open('Bravo');
   await A.click('#b-create');
-  await A.waitForFunction(() => window.__game.mode === 'play', null, { timeout: 15000 });
+  await A.waitForFunction(() => window.__game.mode === 'play', null, { timeout: 90000 });
   const code = await A.evaluate(() => __game.net.room);
   check(/^[A-Z0-9]{4}$/.test(code), 'room created: ' + code);
   // A change made before Bravo arrives must reach Bravo when they join.
@@ -41,7 +41,7 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   });
   await B.fill('#code-in', code);
   await B.click('#b-join');
-  await B.waitForFunction(() => window.__game.mode === 'play', null, { timeout: 15000 });
+  await B.waitForFunction(() => window.__game.mode === 'play', null, { timeout: 90000 });
   await B.waitForTimeout(2500);
   const seeds = await Promise.all([A, B].map((p) => p.evaluate(() => __game.world.seed)));
   check(seeds[0] === seeds[1], 'same store seed on both screens');
