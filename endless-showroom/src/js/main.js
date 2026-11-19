@@ -15,6 +15,7 @@ import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLO
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume } from './audio.js';
 import { DAY_LEN, CYCLE, EVENTS, POWERCUT, HAIL, DAY_SCALE, setDayScale, hailing, dayEvent, cascade, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
+import * as ach from './achievements.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { uniforms, storeMaterial, SURF, makeFixtures, makeDust, setLowQuality, furnitureMaterial as furnitureMaterialRef } from './mats.js';
 
@@ -146,7 +147,7 @@ let myModel = null;
 const pendingFull = { got: false };
 
 // ---------------------------------------------------------------- UI helpers
-function show(id) { for (const s of ['menu', 'how', 'settings', 'pause', 'loading']) $(s).classList.toggle('hidden', s !== id); }
+function show(id) { for (const s of ['menu', 'how', 'settings', 'pause', 'loading', 'achievements']) $(s).classList.toggle('hidden', s !== id); }
 let returnTo = 'menu';
 function announce(title, sub, secs = 5) {
   const a = $('announce');
@@ -175,6 +176,21 @@ function toast(msg) { chatLine('', msg, true); }
 // ---------------------------------------------------------------- menus
 $('name-in').value = myName();
 $('name-in').addEventListener('change', () => { const n = cleanName($('name-in').value) || 'Shopper'; $('name-in').value = n; try { localStorage.setItem('es-name', n); } catch (_) {} });
+// Achievements: a toast when one unlocks, and the list on the menu.
+ach.onUnlock((a) => { sfx.morning(); announce(`🏆 ${a.name}`, a.desc, 5); });
+function renderAchievements() {
+  const box = $('ach-list'); box.innerHTML = '';
+  const all = ach.list();
+  $('ach-count').textContent = `${all.filter((a) => a.got).length} / ${all.length}`;
+  for (const a of all) {
+    const d = document.createElement('div'); d.className = 'ach' + (a.got ? ' got' : '');
+    const b = document.createElement('b'); b.textContent = (a.got ? '🏆 ' : '🔒 ') + a.name;
+    const sm = document.createElement('small'); sm.textContent = a.desc;
+    d.append(b, sm); box.append(d);
+  }
+}
+$('b-ach').onclick = () => { returnTo = 'menu'; renderAchievements(); show('achievements'); };
+
 // Day length for the stores you start (solo, or a room you create).
 function refreshDayLen() {
   for (const b of document.querySelectorAll('#daylen button')) b.classList.toggle('on', (b.dataset.v === 'short') === !!settings.short);
@@ -304,6 +320,7 @@ function startGame(seed, waitForState, save) {
     const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 130;
     spawnAt(Math.cos(a) * d, Math.sin(a) * d, 10);
   }
+  P.startX = P.x; P.startZ = P.z;
   if (myModel) scene.remove(myModel.root);
   myModel = makeShopper(nameHash(net.id), myShirt()); scene.add(myModel.root);
   mode = 'play'; paused = false; lastPhase = ''; warned = false;
@@ -706,6 +723,7 @@ function updateInteraction(dt) {
         text = free >= 0 ? `<b>E</b> Take ${info.name} <span class="stat">${itemStats(info)}</span>` : 'Your inventory is full (16 items)';
         if ((pressedUse || (IS_TOUCH && clicked)) && free >= 0) {
           P.inv[free] = it.t; P.invId[free] = it.id; buildHotbar(); sfx.pick();
+          if (!P.inv.includes(null)) ach.unlock('full');
           if (!net.isHost()) { world.edit(it, { g: true, d: restockEpoch(clock.day) }); }
           request({ a: 'take', id: it.id });
         }
@@ -778,12 +796,14 @@ function placeCarry(p, carry = P.carry) {
   if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, r: p.r, tl: p.tl | 0, c: null }); }
   if (P.carry === carry) P.carry = null;
   sfx.place();
+  ach.count('placed', 'build50', 50); ach.count('placed2', 'build500', 500);
   request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), r: p.r, tl: p.tl | 0 });
 }
 function shove(id) {
   if (P.eatCd > 0) return;
   P.eatCd = 0.6;
   sfx.shove();
+  ach.count('shoves', 'shove20', 20);
   feel.shake = Math.max(feel.shake, 0.3);
   if (net.isHost()) onPushRequest(net.id, { id });
   else net.send('pu', { id });
@@ -859,6 +879,7 @@ function updateFlying(dt) {
 }
 function applyItem(key) {
   const it = ITEMS[key];
+  if (key !== 'medkit') ach.count('eaten', 'eat50', 50);
   if (it.food) P.food = Math.min(100, P.food + it.food);
   if (it.en) P.en = Math.min(100, P.en + it.en);
   if (it.hp > 0) P.hp = Math.min(100, P.hp + it.hp);
@@ -990,6 +1011,9 @@ function updateClock(dt) {
   const phase = isNight(clock.t) ? 'night' : 'day';
   if (lastPhase && phase !== lastPhase) {
     if (phase === 'night') {
+      if (P.alive && dayEvent(world.seed, clock.day) === 'fog') ach.unlock('fog');
+      if (P.alive && dayEvent(world.seed, clock.day) === 'hail' && !hail.wasHit) ach.unlock('hail');
+      hail.wasHit = false;
       const red = clock.ev === 'crimson';
       sfx.lightsOff(red);
       if (red) announce(`${EVENTS.crimson.name}`, EVENTS.crimson.desc, 7);
@@ -997,7 +1021,12 @@ function updateClock(dt) {
       warned = false;
     } else {
       sfx.lightsOn();
-      if (P.alive) { P.nights++; if (P.nights > stats.best) stats.best = P.nights; stats.days++; saveStats(); }
+      if (P.alive) {
+        P.nights++; if (P.nights > stats.best) stats.best = P.nights; stats.days++; saveStats();
+        ach.unlock('night1'); if (P.nights >= 7) ach.unlock('week'); if (P.nights >= 30) ach.unlock('month');
+        if (nightEvent(world.seed, clock.day - 1) === 'crimson') { ach.unlock('crimson'); if (managerChased) ach.unlock('manager'); }
+      }
+      managerChased = false;
       const e = clock.ev && EVENTS[clock.ev];
       const restock = isRestockDay(clock.day) ? ' Food and first aid have been restocked.' : '';
       announce(`Good morning!`, e ? `${e.name}: ${e.desc}` : `The store is open.${restock}`, 7);
@@ -1148,7 +1177,7 @@ function drawRemotes(dt, now) {
 }
 
 // ---------------------------------------------------------------- frame
-let frameDt = 1 / 60;
+let frameDt = 1 / 60, achT = 0, managerChased = false, fortNear = 0;
 let last = performance.now(), sendT = 0, staffSendT = 0, clockSendT = 0, chunkT = 0;
 function frame() {
   requestAnimationFrame(frame);
@@ -1172,6 +1201,21 @@ function frame() {
   updateInteraction(dt);
   updateFlying(dt);
   updateHail(dt);
+  achT -= dt;
+  if (achT <= 0 && P.alive) {
+    achT = 0.5;
+    const sec = world.sectionAt(P.x, P.z);
+    if (sec === 'food') ach.unlock('cafe');
+    if (P.y >= 4.3) ach.unlock('high');
+    if (Math.hypot(P.x - P.startX, P.z - P.startZ) > 1000) ach.unlock('far');
+    if (isNight(clock.t)) {
+      world.forBoxes(P.x - 0.1, P.z - 0.1, P.x + 0.1, P.z + 0.1, (b) => { if (b.item && b.item.t === 'wardrobe' && b.y0 > P.y + 1.5 && b.y0 < P.y + 2.3) ach.unlock('hide'); });
+      for (const v of staffViews.values()) { const b = v.buf[v.buf.length - 1]; if (v.model.look.manager && b && b.tg === net.id) managerChased = true; }
+    }
+    world.forItems(P.x - 6, P.z - 6, P.x + 6, P.z + 6, (it) => { if (it.k === 'f' && it.t === 'pallet' && it.tl === 1 && !world.mods.has(it.id) && Math.hypot(it.x - P.x, it.z - P.z) < 4) fortNear++; }); // upturned pallets nobody moved: a fort
+    if (fortNear > 5) ach.unlock('fort');
+    fortNear = 0;
+  }
   if (Math.random() < dt / (isNight(clock.t) ? 14 : 30)) sfx.distant(isNight(clock.t));
   // host: staff
   if (net.isHost() && staffSim) {
@@ -1285,7 +1329,7 @@ function updateHail(dt) {
   }
   if (on && P.alive && world.underSky(P.x, P.y + P.height, P.z)) {
     hail.hitT -= dt;
-    if (hail.hitT <= 0) { hail.hitT = 3; hurt(9 + Math.floor(Math.random() * 8), 'hail'); toast('The hail is hitting you. Get under cover!'); }
+    if (hail.hitT <= 0) { hail.hitT = 3; hail.wasHit = true; hurt(9 + Math.floor(Math.random() * 8), 'hail'); toast('The hail is hitting you. Get under cover!'); }
   } else hail.hitT = Math.min(hail.hitT, 1);
 }
 
@@ -1370,6 +1414,7 @@ let revealT = 0;
 function whistle() {
   if (!P.alive || P.whistleT > 0) { if (P.whistleT > 0) sfx.deny(); return; }
   P.whistleT = 25; P.en = Math.max(0, P.en - 5);
+  ach.count('whistles', 'whistle', 10);
   revealT = 6;
   sfx.whistle(0, 1);
   net.send('wh', { x: +P.x.toFixed(1), z: +P.z.toFixed(1) });

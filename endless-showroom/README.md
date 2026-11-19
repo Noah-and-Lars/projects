@@ -198,6 +198,14 @@ full-height walls with doorways. The chunks around the centre have none.
 There are 35 kinds of furniture and 18 kinds of food, drink and first aid.
 By day, some of the staff carry boxes of stock about.
 
+## Achievements
+
+18 achievements are saved on your device, with a toast when one unlocks and
+a list on the menu. Some examples: survive your first night, 7 or 30 nights
+in a row, a Crimson Night, a Fog Day, or a Hailstorm without being hit; place
+50 or 500 pieces; shove 20 staff; find a cafeteria or an abandoned fort; hide
+in a wardrobe at night; walk 1 km.
+
 ## Look
 
 Everything is generated in code. There are no image or model files.
@@ -305,6 +313,7 @@ cd tools && npm install && npm run build
 | `input.js` | Keyboard, mouse (pointer lock) and touch controls |
 | `audio.js` | All sound and music, synthesised with Web Audio |
 | `rng.js` | Seeded hashing and random numbers |
+| `achievements.js` | The achievements, their counters, and saving them |
 | `tools/build.mjs` | Builds the single-file `index.html` |
 | `tools/test.cjs` | Solo smoke test (see below) |
 | `tools/test-mp.cjs`, `tools/mock-rt.js` | Two-player test with a stand-in realtime server |

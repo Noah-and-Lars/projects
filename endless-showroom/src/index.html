@@ -83,7 +83,7 @@
       <button id="b-solo">New Solo Store</button>
     </div>
     <p id="menu-msg" class="msg"></p>
-    <div class="row-links"><button id="b-how" class="link">How to play</button><button id="b-settings" class="link">Settings</button></div>
+    <div class="row-links"><button id="b-how" class="link">How to play</button><button id="b-ach" class="link">Achievements</button><button id="b-settings" class="link">Settings</button></div>
     <p class="best" id="best"></p>
   </div>
 </div>
@@ -131,6 +131,14 @@
     <label class="check"><input id="s-low" type="checkbox"> Low graphics (shorter view distance, simpler lighting)</label>
     <label class="check"><input id="s-voice" type="checkbox"> Staff speak out loud (subtitles always show)</label>
     <label class="check"><input id="s-invert" type="checkbox"> Invert looking up and down</label>
+    <button class="back primary">Back</button>
+  </div>
+</div>
+
+<div id="achievements" class="screen hidden">
+  <div class="panel wide">
+    <h2>Achievements <span id="ach-count" class="msg small"></span></h2>
+    <div id="ach-list"></div>
     <button class="back primary">Back</button>
   </div>
 </div>
