@@ -18,7 +18,8 @@
    - Voice input (SpeechRecognition) and read-aloud replies (speechSynthesis), each hidden where unsupported; history
      search (the Search button filters and highlights); a kind note under a blocked reply; a "Good for" line per model;
      a tip to switch to a lighter model when it would stretch the allowance; Bigger text and High contrast.
-   Per-device panel settings: 'arcade-acct-ai-prefs' { tts, big, hc, coach, mem } (NEVER-pattern, so never synced). */
+   Per-device panel settings: 'arcade-acct-ai-prefs' { tts, big, hc, coach, mem, screen } (NEVER-pattern, so never synced).
+   - Screen pictures (opt-in, see SERVER.vision below): one still picture per message, `img` in the request. */
 (function () {
   if (window.ArcadeAssistant) return;
   var KEY = 'arcade-acct-ai:', KEEP = 40, SEND = 8, MAX = 500;
@@ -34,8 +35,8 @@
     { k: 'oss120', n: 'GPT-OSS 120B', d: 'Smartest', e: 65, g: 'homework help, tricky questions, long explanations' },
     { k: 'qwen27', n: 'Qwen 3.8 27B', d: 'Smart', e: 69, g: 'step-by-step maths and science' },
     { k: 'llama70', n: 'Llama 3.3 70B', d: 'Smart', e: 44, g: 'clear explanations and writing help' },
-    { k: 'mistral', n: 'Mistral Small 3.1', d: 'All-rounder', e: 38, g: 'everyday questions and game tips' },
-    { k: 'scout', n: 'Llama 4 Scout', d: 'All-rounder', e: 38, g: 'facts, summaries and everyday questions' },
+    { k: 'mistral', n: 'Mistral Small 3.1', d: 'All-rounder', e: 38, g: 'everyday questions and game tips', v: 1 },
+    { k: 'scout', n: 'Llama 4 Scout', d: 'All-rounder', e: 38, g: 'facts, summaries, everyday questions and pictures', v: 1 },
     { k: 'oss20', n: 'GPT-OSS 20B', d: 'Quick', e: 31, g: 'quick answers that need a bit of thinking' },
     { k: 'gemma4', n: 'Gemma 4 26B', d: 'Quick, light', e: 23, g: 'game tips, quick facts and fun chat' },
     { k: 'llama8', n: 'Llama 3.1 8B', d: 'Fastest, lightest', e: 20, g: 'jokes and short, simple questions' },
@@ -46,14 +47,124 @@
   function getModel() { var k = ''; try { k = localStorage.getItem(MKEY) || ''; } catch (e) {} return modelOf(k) ? k : MODELS[0].k; }
   function setModel(k) { try { localStorage.setItem(MKEY, k); } catch (e) {} }
   var panel, log, form, input, sendBtn, guestBox, sub, btn, msel, mrow, urow, use = null, useAt = 0, busy = false, msgs = [], who = '';
-  var goodFor, tools, coachBtn, searchBtn, setBtn, searchRow, searchIn, setBox, chipRow, micBtn, rec = null, searchQ = '', tipped = {};
+  var scrPill, camBtn, shotRow, scrChk, goodFor, tools, coachBtn, searchBtn, setBtn, searchRow, searchIn, setBox, chipRow, micBtn, rec = null, searchQ = '', tipped = {};
 
   // per-device panel settings (the arcade-acct prefix keeps them out of the cloud sync)
-  var PKEY = 'arcade-acct-ai-prefs', prefs = { tts: false, big: false, hc: false, coach: true, mem: true };
+  var PKEY = 'arcade-acct-ai-prefs', prefs = { tts: false, big: false, hc: false, coach: true, mem: true, screen: false };
   try { var px = JSON.parse(localStorage.getItem(PKEY) || 'null'); if (px && typeof px === 'object') for (var pk in prefs) if (typeof px[pk] === 'boolean') prefs[pk] = px[pk]; } catch (e) {}
   function savePrefs() { try { localStorage.setItem(PKEY, JSON.stringify(prefs)); } catch (e) {} }
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
   var TTS = ('speechSynthesis' in window) && typeof window.SpeechSynthesisUtterance === 'function';
+
+  // Screen (2026-11-19, the owner's request): with the player's OK the Assistant can see one still picture of their screen.
+  // Opt-in in Settings (off by default, remembered on this device only as prefs.screen), a "Screen on" pill with one-tap
+  // off while it's on, and a camera button that takes ONE picture, shown as a thumbnail with ✕ before Send. Never a live
+  // stream and never stored: the history only notes "📷 screenshot sent". On play.html the game's own canvases are copied
+  // (inside the frame's requestAnimationFrame, so WebGL frames aren't blank); otherwise, or for games drawn with HTML,
+  // the browser's own screen-share prompt (getDisplayMedia) gives one frame and the tracks stop straight away. The picture
+  // goes as `img` (a JPEG data URL, ~768 px, under ~150 KB) only to a model that can see pictures (`v` in MODELS).
+  // SERVER.vision stays false until the Worker's /ai accepts `img`; until then the setting shows "Coming soon".
+  var SERVER = { vision: false };
+  try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && (localStorage.getItem('arcade-ai-vision-test') === '1' || /[?&]aivision=1/.test(location.search))) SERVER.vision = true; } catch (e) {} // tests only
+  var IMG_SIDE = 768, IMG_MAX = 150000, shot = null; // shot = { url, w, h, from } while a picture waits for Send
+  function isWatch() { return !!window.ARCADE_WATCH || document.documentElement.classList.contains('watch'); }
+  function canDisplay() { return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia); }
+  function canShot() { return !isWatch() && (!!curGame() || canDisplay()); }
+  function screenOn() { return SERVER.vision && prefs.screen && canShot(); }
+  function visionModel() { var m = modelOf(getModel()); return m && m.v ? m : modelOf('scout'); }
+  // draw a source into a JPEG data URL: long side ≤ 768 px, quality 0.7, smaller until it fits under ~150 KB
+  function toJpeg(src, sw, sh, crop) {
+    var c = crop || { x: 0, y: 0, w: sw, h: sh }, sc = Math.min(1, IMG_SIDE / Math.max(c.w, c.h)), q = 0.7, url = '';
+    for (var i = 0; i < 6; i++) {
+      var w = Math.max(1, Math.round(c.w * sc)), h = Math.max(1, Math.round(c.h * sc)), cv = document.createElement('canvas');
+      cv.width = w; cv.height = h; var x = cv.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, w, h);
+      x.drawImage(src, c.x, c.y, c.w, c.h, 0, 0, w, h);
+      url = cv.toDataURL('image/jpeg', q);
+      if (url.length * 0.75 <= IMG_MAX) return { url: url, w: w, h: h };
+      if (q > 0.5) q -= 0.1; else sc *= 0.8;
+    }
+    return url.length * 0.75 <= IMG_MAX ? { url: url, w: w, h: h } : null;
+  }
+  function blank(cv) { // all one colour (or see-through): a WebGL canvas read at the wrong moment
+    try {
+      var t = document.createElement('canvas'); t.width = t.height = 16; var x = t.getContext('2d'); x.drawImage(cv, 0, 0, 16, 16);
+      var d = x.getImageData(0, 0, 16, 16).data, r = d[0], g = d[1], b = d[2], a = d[3];
+      for (var i = 4; i < d.length; i += 4) if (Math.abs(d[i] - r) > 6 || Math.abs(d[i + 1] - g) > 6 || Math.abs(d[i + 2] - b) > 6 || Math.abs(d[i + 3] - a) > 6) return false;
+      return true;
+    } catch (e) { return true; }
+  }
+  // play.html: copy the game's visible canvases (same origin) into one picture of the game's screen
+  function frameShot() {
+    return new Promise(function (ok) {
+      var fr = document.getElementById('frame'), w, d;
+      try { w = fr && fr.contentWindow; d = w && w.document; } catch (e) { d = null; }
+      if (!d || !d.body) return ok(null);
+      var to = setTimeout(function () { ok(null); }, 1500);
+      (w.requestAnimationFrame || requestAnimationFrame).call(w, function () { // after the game drew this frame, before it's cleared
+        clearTimeout(to);
+        try {
+          var vw = w.innerWidth, vh = w.innerHeight, area = 0, list = [].filter.call(d.querySelectorAll('canvas'), function (c) {
+            var r = c.getBoundingClientRect(), st = w.getComputedStyle(c);
+            if (!c.width || !c.height || r.width < 2 || r.height < 2 || st.visibility === 'hidden' || st.display === 'none' || +st.opacity === 0) return false;
+            var ix = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)), iy = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+            area = Math.max(area, ix * iy); return ix * iy > 0;
+          });
+          if (!list.length || area < vw * vh * 0.3) return ok(null); // a game drawn with HTML: no canvas to copy
+          var out = document.createElement('canvas'); out.width = vw; out.height = vh;
+          var x = out.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, vw, vh);
+          var big = null, bigA = 0;
+          list.forEach(function (c) { var r = c.getBoundingClientRect(); x.drawImage(c, r.left, r.top, r.width, r.height); if (r.width * r.height > bigA) { bigA = r.width * r.height; big = c; } });
+          if (blank(big) && blank(out)) return ok(null);
+          var j = toJpeg(out, vw, vh); ok(j ? Object.assign(j, { from: 'game', overlay: covered(w, d, vw, vh) }) : null);
+        } catch (e) { ok(null); }
+      });
+    });
+  }
+  // how much of the game is covered by HTML drawn over its canvas (menus, dialogs): a canvas copy would miss those
+  function painted(e, w) {
+    if (/^(IMG|SVG|VIDEO|BUTTON|INPUT|SELECT|TEXTAREA)$/i.test(e.tagName)) return true;
+    var st = w.getComputedStyle(e);
+    if (+st.opacity === 0 || st.visibility === 'hidden') return false;
+    if (st.backgroundImage !== 'none') return true;
+    var m = (st.backgroundColor || '').match(/[\d.]+/g); if (m && m.length >= 3 && (m.length < 4 ? 1 : +m[3]) > 0.15) return true;
+    for (var n = e.firstChild; n; n = n.nextSibling) if (n.nodeType === 3 && n.nodeValue.trim()) return true;
+    return false;
+  }
+  function covered(w, d, vw, vh) {
+    var hit = 0, all = 0;
+    try {
+      for (var gy = 1; gy <= 5; gy++) for (var gx = 1; gx <= 5; gx++) {
+        var list = d.elementsFromPoint(vw * gx / 6, vh * gy / 6); all++;
+        for (var i = 0; i < list.length && list[i].tagName !== 'CANVAS'; i++) if (painted(list[i], w)) { hit++; break; }
+      }
+    } catch (e) { return 0; }
+    return all ? hit / all : 0;
+  }
+  // anywhere: the browser's own screen-share prompt, one frame, tracks stopped at once
+  async function displayShot() {
+    if (!canDisplay()) return null;
+    var stream = null;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'browser', frameRate: 5 }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude', systemAudio: 'exclude' });
+      var v = document.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = stream;
+      await v.play();
+      var nextFrame = function () { return new Promise(function (r) { if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(function () { r(); }); else setTimeout(r, 100); setTimeout(r, 400); }); };
+      await nextFrame();
+      for (var tries = 0; tries < 8 && blank(v); tries++) await nextFrame(); // the first frames of a capture can be empty
+      var vw = v.videoWidth, vh = v.videoHeight, crop = null, tr = stream.getVideoTracks()[0], st = tr && tr.getSettings ? tr.getSettings() : {};
+      if (!vw || !vh || blank(v)) return null; // never send an empty picture
+      var still = document.createElement('canvas'); still.width = vw; still.height = vh; still.getContext('2d').drawImage(v, 0, 0, vw, vh);
+      stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; v.srcObject = null; // one frame only: stop sharing now
+      var fr = curGame() && document.getElementById('frame'); // this tab on play.html: keep just the game
+      if (fr && st.displaySurface === 'browser' && Math.abs(vw / vh - innerWidth / innerHeight) < 0.03) {
+        var r = fr.getBoundingClientRect(), k = vw / innerWidth;
+        if (r.width > 50 && r.height > 50) crop = { x: Math.max(0, r.left * k), y: Math.max(0, r.top * k), w: Math.min(vw, r.width * k), h: Math.min(vh, r.height * k) };
+      }
+      var j = toJpeg(still, vw, vh, crop);
+      if (j && crop) { var im = new Image(); im.src = j.url; await im.decode().catch(function () {}); if (blank(im)) return null; } // the game area came out empty
+      return j ? Object.assign(j, { from: 'screen' }) : null;
+    } catch (e) { return null; } finally { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); }
+  }
 
   // the games and pages the assistant knows by name (from games.js), matched on whole words
   function norm(s) { return String(s || '').toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
@@ -220,6 +331,11 @@
       '#aiPanel .ai-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 14px 4px;scrollbar-width:none}#aiPanel .ai-chips::-webkit-scrollbar{display:none}' +
       '#aiPanel .ai-mic{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--line-2,#ffffff24);background:transparent;color:var(--muted,#a1a1aa);cursor:pointer;display:grid;place-items:center}#aiPanel .ai-mic:hover{color:var(--text,#fff)}' +
       '#aiPanel .ai-mic.on{background:var(--danger,#ff4d4d);border-color:var(--danger,#ff4d4d);color:#fff;animation:aiDots 1.2s infinite}' +
+      '#aiPanel .ai-scr{display:inline-flex;align-items:center;gap:6px;height:28px!important;padding:0 10px!important;border-radius:999px!important;border:1px solid var(--danger,#ff4d4d)!important;color:var(--text,#fff)!important;font:700 12px var(--font,system-ui)!important;white-space:nowrap}' +
+      '#aiPanel .ai-scr i{width:8px;height:8px;border-radius:50%;background:var(--danger,#ff4d4d);animation:aiDots 1.4s infinite}#aiPanel .ai-scr[hidden],#aiPanel .ai-cam[hidden]{display:none}' +
+      '#aiPanel .ai-shot{display:flex;align-items:center;gap:10px;margin:8px 14px 0;padding:8px 10px;border-radius:12px;border:1px solid var(--line-2,#ffffff24);background:var(--panel,#121215);font-size:12.5px;color:var(--muted,#a1a1aa)}' +
+      '#aiPanel .ai-shot img{flex:none;border-radius:6px;border:1px solid var(--line-2,#ffffff24);object-fit:contain;background:#000}#aiPanel .ai-shot span{flex:1;min-width:0}#aiPanel .ai-shot .ai-mini{flex:none;width:30px;padding:0}' +
+      '#aiPanel .ai-soon{margin:-4px 0 0 27px;color:var(--warn,#ffb224);font-size:12px}#aiPanel .ai-set input:disabled+*{opacity:.6}#aiPanel .ai-sent{align-self:flex-end;margin:-6px 4px 0 0}' +
       '#aiPanel .ai-none{color:var(--dim,#74747f);text-align:center;font-size:13px;margin:auto}' +
       /* Bigger text and High contrast (per device) */
       '#aiPanel.ai-big .ai-msg{font-size:18px;line-height:1.5}#aiPanel.ai-big textarea,#aiPanel.ai-big .ai-srch input{font-size:17px}#aiPanel.ai-big .ai-chip,#aiPanel.ai-big .ai-tb,#aiPanel.ai-big .ai-mini{height:36px;font-size:15px}' +
@@ -249,6 +365,11 @@
     var hd = el('div', 'ai-hd');
     var ttl = el('span', 'ai-ttl'); ttl.appendChild(icon()); ttl.appendChild(document.createTextNode('Assistant')); hd.appendChild(ttl);
     sub = el('span', 'ai-sub', ''); hd.appendChild(sub);
+    scrPill = el('button', 'ai-scr'); scrPill.type = 'button'; scrPill.hidden = true;
+    scrPill.appendChild(el('i')); scrPill.appendChild(document.createTextNode('Screen on ✕'));
+    scrPill.title = 'The Assistant can see a picture of your screen when you send one. Tap to turn it off.'; scrPill.setAttribute('aria-label', 'Screen on. Turn off screen pictures');
+    scrPill.onclick = function () { setScreen(false); try { input.focus(); } catch (e) {} };
+    hd.appendChild(scrPill);
     var clr = el('button', 'ai-clear', 'Clear'); clr.type = 'button'; clr.title = 'Clear this chat'; clr.onclick = function () { if (busy) return; hush(); msgs = []; save(); render(); };
     var x = el('button', 'x', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.onclick = close;
     hd.appendChild(clr); hd.appendChild(x);
@@ -286,6 +407,12 @@
     opt('Bigger text', 'big', true);
     opt('High contrast', 'hc', true);
     opt('Remember what I ask about each game (this device only)', 'mem', true);
+    if (canShot()) { // screen pictures: opt-in, off by default
+      var sl = el('label'); scrChk = el('input'); scrChk.type = 'checkbox'; scrChk.checked = screenOn(); scrChk.disabled = !SERVER.vision;
+      scrChk.onchange = function () { setScreen(scrChk.checked); };
+      sl.appendChild(scrChk); sl.appendChild(document.createTextNode('Let the Assistant see my screen (only the pictures you send)')); setBox.appendChild(sl);
+      if (!SERVER.vision) setBox.appendChild(el('div', 'ai-soon', 'Coming soon: the server needs an update before the Assistant can look at pictures.'));
+    }
     var fg = el('button', 'ai-mini', 'Forget what I asked about games'); fg.type = 'button';
     fg.onclick = function () { forget(); fg.textContent = 'Forgotten'; setTimeout(function () { fg.textContent = 'Forget what I asked about games'; }, 1600); };
     setBox.appendChild(fg);
@@ -304,13 +431,17 @@
       micBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
       micBtn.onclick = listen; form.appendChild(micBtn);
     }
+    camBtn = el('button', 'ai-mic ai-cam'); camBtn.type = 'button'; camBtn.hidden = true; camBtn.setAttribute('aria-label', 'Take a picture of your screen'); camBtn.title = 'Take a picture of your screen to send';
+    camBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+    camBtn.onclick = takeShot; form.appendChild(camBtn);
     form.appendChild(sendBtn);
+    shotRow = el('div', 'ai-shot'); shotRow.hidden = true;
     chipRow = el('div', 'ai-chips'); chipRow.setAttribute('role', 'group'); chipRow.setAttribute('aria-label', 'Quick questions');
     form.onsubmit = function (e) { e.preventDefault(); send(); };
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
     input.addEventListener('input', function () { input.style.height = 'auto'; input.style.height = Math.min(120, input.scrollHeight) + 'px'; });
     var foot = el('div', 'ai-foot', 'The assistant can get things wrong. Never share personal details.');
-    [hd, mrow, goodFor, urow, tools, searchRow, setBox, log, guestBox, form, chipRow, foot].forEach(function (x) { panel.appendChild(x); });
+    [hd, mrow, goodFor, urow, tools, searchRow, setBox, log, guestBox, shotRow, form, chipRow, foot].forEach(function (x) { panel.appendChild(x); });
     look();
     document.body.appendChild(panel);
     document.addEventListener('keydown', function (e) {
@@ -325,6 +456,36 @@
     if (!panel) return;
     panel.classList.toggle('ai-big', prefs.big); panel.classList.toggle('ai-hc', prefs.hc);
     if (coachBtn) coachBtn.setAttribute('aria-pressed', String(!!prefs.coach));
+    var on = screenOn() && signedIn();
+    if (scrPill) scrPill.hidden = !on;
+    if (camBtn) camBtn.hidden = !on;
+    if (scrChk) scrChk.checked = screenOn();
+    if (!on && shot) dropShot();
+  }
+  // screen pictures on / off (the choice is kept on this device only)
+  function setScreen(v) { prefs.screen = !!v && SERVER.vision; savePrefs(); if (!prefs.screen) dropShot(); look(); }
+  function dropShot() { shot = null; if (shotRow) { shotRow.textContent = ''; shotRow.hidden = true; } }
+  function showShot() {
+    shotRow.textContent = ''; shotRow.hidden = !shot; if (!shot) return;
+    shotRow.setAttribute('data-from', shot.from);
+    var im = el('img'); im.src = shot.url; im.alt = 'The picture that will be sent'; im.width = Math.round(64 * shot.w / Math.max(shot.w, shot.h)); im.height = Math.round(64 * shot.h / Math.max(shot.w, shot.h));
+    var vm = visionModel(), cur = modelOf(getModel());
+    var t = el('span', '', 'This picture goes with your next message' + (cur && cur.v ? '.' : ' to ' + vm.n + ', which can see pictures.') + ' Only you choose what is sent.');
+    var x = el('button', 'ai-mini', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Don’t send this picture'); x.title = 'Don’t send this picture';
+    x.onclick = function () { dropShot(); try { input.focus(); } catch (e) {} };
+    shotRow.appendChild(im); shotRow.appendChild(t); shotRow.appendChild(x);
+  }
+  var shooting = false;
+  async function takeShot() {
+    if (shooting || busy || !screenOn()) return;
+    shooting = true; camBtn.disabled = true;
+    try {
+      var j = curGame() ? await frameShot() : null;
+      if (!j || (j.overlay > 0.15 && canDisplay())) j = (await displayShot()) || j; // menus drawn in HTML: ask for a real screen picture
+      if (!screenOn()) return; // turned off while the picture was being taken
+      if (!j) { note(curGame() && !canDisplay() ? 'I couldn’t take a picture of this game on this device.' : 'No picture was taken.'); return; }
+      shot = j; showShot();
+    } finally { shooting = false; camBtn.disabled = false; try { input.focus({ preventScroll: true }); } catch (e) {} }
   }
   function coaching() { return !!(coachBtn && prefs.coach && curGame()); }
   // text with the search words marked (text nodes only)
@@ -342,6 +503,7 @@
   function addMsg(m, q) {
     log.appendChild(fill(el('div', 'ai-msg ' + m.r), m.t, q));
     if (m.r === 'a' && modelOf(m.m)) log.appendChild(el('div', 'ai-by', modelOf(m.m).n));
+    if (m.s) log.appendChild(el('div', 'ai-by ai-sent', '📷 screenshot sent'));
     if (m.b) log.appendChild(el('div', 'ai-safe', SAFE_NOTE));
   }
   function renderChips() {
@@ -355,7 +517,7 @@
   function render() {
     var on = signedIn();
     guestBox.hidden = on; form.hidden = !on; log.hidden = !on; mrow.hidden = !on; goodFor.hidden = !on; tools.hidden = !on; chipRow.hidden = !on;
-    if (!on) { searchRow.hidden = true; setBox.hidden = true; }
+    if (!on) { searchRow.hidden = true; setBox.hidden = true; dropShot(); }
     urow.hidden = !on || !use; msel.value = getModel(); look();
     var gm = modelOf(getModel()); goodFor.textContent = 'Good for: ' + gm.g;
     var cg = coaching() ? curGame() : null;
@@ -501,7 +663,7 @@
   }
   function close() {
     if (!isOpen()) return;
-    hush();
+    hush(); dropShot(); // a waiting picture never outlives the panel
     panel.classList.remove('open');
     document.documentElement.classList.remove('ai-open');
     if (btn) { btn.setAttribute('aria-expanded', 'false'); }
@@ -512,17 +674,24 @@
   async function send() {
     if (busy) return;
     var text = input.value.replace(/\s+/g, ' ').trim().slice(0, MAX);
+    if (!text && shot && screenOn()) text = 'What do you see on my screen?';
     if (!text) return;
     if (!signedIn()) { render(); return; }
     if (name().toLowerCase() !== who) load();
     stopMic();
     if (searchQ && !searchRow.hidden) { searchRow.hidden = true; searchBtn.setAttribute('aria-expanded', 'false'); searchIn.value = ''; searchQ = ''; render(); }
-    var o = openIntent(text); if (o) { offerOpen(text, o); return; }
+    var pic = shot && screenOn() ? shot : null; // the one picture the player chose to send (never stored)
+    var o = !pic && openIntent(text); if (o) { offerOpen(text, o); return; }
+    var model = pic ? visionModel() : modelOf(getModel());
+    if (pic && model.k !== getModel() && !tipped.vision) { tipped.vision = 1; note('Pictures go to ' + model.n + ', which can see them. Your usual model stays ' + modelOf(getModel()).n + '.'); }
+    dropShot();
+    function giveBack() { if (pic && screenOn()) { shot = pic; showShot(); } }
     var ctx = context(text), about = findGame(text) || curGame();
     var hi = log.querySelector('.ai-hi'); if (hi) hi.remove();
     input.value = ''; input.style.height = '';
-    msgs.push({ r: 'u', t: text }); save();
+    msgs.push(pic ? { r: 'u', t: text, s: 1 } : { r: 'u', t: text }); save();
     var mine = el('div', 'ai-msg u', text); log.appendChild(mine);
+    var sentTag = pic ? el('div', 'ai-by ai-sent', '📷 screenshot sent') : null; if (sentTag) log.appendChild(sentTag);
     var bubble = el('div', 'ai-msg a wait', ''); log.appendChild(bubble); log.scrollTop = log.scrollHeight;
     busy = true; sendBtn.disabled = true;
     var reply = '', done = null, base = (A() && A().server) || 'https://arcade-realtime.arcade-realtime.workers.dev';
@@ -530,11 +699,11 @@
       var res = await fetch(base + '/ai', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token() },
-        body: JSON.stringify({ p: PAGE, g: ctx, m: getModel(), msgs: msgs.filter(function (m) { return !m.l; }).slice(-SEND).map(function (m) { return { r: m.r, t: m.t }; }) })
+        body: JSON.stringify({ p: PAGE, g: ctx, m: model.k, img: pic && SERVER.vision ? pic.url : undefined, msgs: msgs.filter(function (m) { return !m.l; }).slice(-SEND).map(function (m) { return { r: m.r, t: m.t }; }) })
       });
       if (!res.ok || !/event-stream/.test(res.headers.get('content-type') || '')) {
         var j = await res.json().catch(function () { return {}; });
-        bubble.remove(); msgs.pop(); save(); mine.remove(); if (!input.value) input.value = text; // not sent: give the text back
+        bubble.remove(); msgs.pop(); save(); mine.remove(); if (sentTag) sentTag.remove(); if (!input.value) input.value = text; giveBack(); // not sent: give the text and picture back
         if (j.error === 'auth') { render(); guestBox.hidden = false; form.hidden = true; log.hidden = true; }
         else if (j.error === 'limit') { setUse(j.use); note(limitText(j)); }
         else note(j.t || 'The assistant couldn’t answer just now. Try again in a moment.');
@@ -554,7 +723,7 @@
         }
       }
     } catch (e) {
-      if (!reply) { bubble.remove(); msgs.pop(); save(); note('Couldn’t reach the assistant. Check your connection and try again.'); }
+      if (!reply) { bubble.remove(); msgs.pop(); save(); mine.remove(); if (sentTag) sentTag.remove(); if (!input.value) input.value = text; giveBack(); note('Couldn’t reach the assistant. Check your connection and try again.'); }
     } finally {
       busy = false; sendBtn.disabled = false;
     }
@@ -574,7 +743,7 @@
     if (done && done.use) setUse(done.use);
     speak(blocked ? REFUSED : reply);
     log.scrollTop = log.scrollHeight;
-    if (!blocked) maybeTip(text);
+    if (!blocked && !pic) maybeTip(text);
   }
 
   function addButton() {
